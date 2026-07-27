@@ -7,10 +7,9 @@ use std::net::IpAddr;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
-use proto::control::AgentControl;
 
 use crate::source::{FileSource, VideoSource};
-use crate::transport::{Session, Tick};
+use crate::transport::Session;
 
 /// Configuration de l'agent, lue depuis l'environnement.
 struct Config {
@@ -51,44 +50,73 @@ async fn main() -> Result<()> {
         None => anyhow::bail!("TEST_FILE non défini ; la capture Windows arrive à la tâche 9"),
     };
 
-    let mut handle = signaling::run_signaling(&config.signaling_url, &config.session_id).await?;
+    // `receiver_task`/`sender_task` : conservés par `SignalingHandle` pour ne
+    // pas être abandonnés silencieusement (I6), mais cette tâche mono-session
+    // n'a rien de plus à en faire une fois `closed` observé ci-dessous — on
+    // les laisse donc détachés explicitement plutôt que de les ignorer par
+    // accident.
+    let signaling::SignalingHandle {
+        mut offers,
+        answers,
+        mut closed,
+        receiver_task: _,
+        sender_task: _,
+    } = signaling::run_signaling(&config.signaling_url, &config.session_id).await?;
     let mut session = Session::new(source, config.local_ip)?;
 
-    let offer = handle
-        .offers
+    let offer = offers
         .recv()
         .await
         .context("le signaling s'est fermé avant l'offre")?;
     tracing::info!("offre reçue");
     let answer = session.accept_offer(&offer)?;
-    handle.answers.send(answer).await?;
+    answers.send(answer).await?;
     tracing::info!("réponse envoyée");
+    // Note : `AgentControl::ready` n'est plus envoyé ici. À cet instant SCTP
+    // n'est pas encore ouvert (le canal de contrôle vaut encore `None`), donc
+    // l'envoyer maintenant serait silencieusement perdu (I3 de la revue).
+    // `Session` le met en file elle-même dès `Event::ChannelOpen("control")`.
 
-    // Ne mute pas `Rtc` : met simplement le message en file, `tick()` l'enverra
-    // dès que le canal de contrôle sera ouvert.
-    session.queue_control(AgentControl::ready(1280, 720));
+    // I6 : une perte du signaling après l'échange initial doit être visible
+    // plutôt que silencieuse. Le transport ne dépend plus du signaling une
+    // fois l'offre/réponse échangées (pas de renégociation dans cette
+    // tâche), donc on ne fait rien de plus qu'observer et journaliser — mais
+    // on l'observe.
+    tokio::spawn(async move {
+        if closed.changed().await.is_ok() && *closed.borrow() {
+            tracing::warn!(
+                "connexion de signaling perdue (aucune renégociation possible pour cette session)"
+            );
+        }
+    });
 
-    let mut on_input = |message| tracing::debug!(?message, "entrée reçue");
-    let mut on_control = |message| tracing::info!(?message, "contrôle reçu");
+    // I6 : `Session::run` bloque volontairement (lecture UDP synchrone bornée
+    // par la cadence vidéo et les échéances str0m). L'exécuter sur un ouvrier
+    // async de tokio gèlerait les autres tâches de ce processus — ici, la
+    // boucle d'émission du signaling — jusqu'à une seconde par tour, voire
+    // beaucoup plus dès que la session n'est plus vivante. On la déplace donc
+    // sur le pool de threads bloquants de tokio, dédié à cet usage.
+    let transport = tokio::task::spawn_blocking(move || {
+        let mut on_input = |message| tracing::debug!(?message, "entrée reçue");
+        let mut on_control = |message| tracing::info!(?message, "contrôle reçu");
+        session.run(&mut on_input, &mut on_control)
+    });
 
-    // `tick()` est l'unique point de mutation de `Rtc` : chaque appel draine
-    // intégralement puis effectue au plus une mutation (image, contrôle, ou
-    // paquet entrant) avant de rendre la main. Cette boucle ne fait donc
-    // qu'appeler `tick()` en séquence, sans jamais muter la session
-    // elle-même — voir `transport.rs` pour le détail de l'invariant.
-    //
-    // Une erreur ici signifie que `tick()` a jugé le problème irrécupérable
-    // au niveau de la session (voir `Session::begin_ending` pour ce qui est
-    // au contraire traité comme une fin de session propre) : on la remonte,
-    // ce qui arrête le processus — acceptable pour un agent mono-session.
-    loop {
-        match session.tick(&mut on_input, &mut on_control)? {
-            Tick::Continue => {}
-            Tick::Disconnected => {
-                tracing::info!("session terminée");
-                break;
-            }
+    match transport.await {
+        Ok(Ok(())) => tracing::info!("session terminée"),
+        Ok(Err(e)) => {
+            // `Session::run` ne remonte une erreur que pour un problème jugé
+            // irrécupérable au niveau de la session (voir
+            // `Session::begin_ending` pour ce qui est au contraire traité
+            // comme une fin de session propre, via `Ok(())`).
+            tracing::error!(erreur = %e, "erreur fatale dans la boucle de transport");
+            return Err(e);
+        }
+        Err(join_err) => {
+            tracing::error!(erreur = %join_err, "la boucle de transport a paniqué");
+            return Err(join_err.into());
         }
     }
+
     Ok(())
 }
