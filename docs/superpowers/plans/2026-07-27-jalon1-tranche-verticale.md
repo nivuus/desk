@@ -1080,10 +1080,9 @@ use serde::{Deserialize, Serialize};
 /// Version du protocole de contrôle. Incrémenter à tout changement de format.
 pub const CONTROL_VERSION: u8 = 1;
 
-fn version() -> u8 {
-    CONTROL_VERSION
-}
-
+// Pas de `default` sur le champ `v` : serde appliquerait la valeur par défaut
+// sans jamais appeler `deserialize_with`, et un message sans version serait
+// silencieusement accepté. Le champ doit rester obligatoire.
 fn verifie_version<'de, D>(deserializer: D) -> Result<u8, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -1102,7 +1101,7 @@ where
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum ClientControl {
     Resize {
-        #[serde(rename = "v", default = "version", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "verifie_version")]
         version: u8,
         width: u32,
         height: u32,
@@ -1114,13 +1113,13 @@ pub enum ClientControl {
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum AgentControl {
     Ready {
-        #[serde(rename = "v", default = "version", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "verifie_version")]
         version: u8,
         width: u32,
         height: u32,
     },
     SessionEnd {
-        #[serde(rename = "v", default = "version", deserialize_with = "verifie_version")]
+        #[serde(rename = "v", deserialize_with = "verifie_version")]
         version: u8,
         reason: String,
     },
