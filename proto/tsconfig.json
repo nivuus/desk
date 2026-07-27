@@ -6,6 +6,7 @@
     "strict": true,
     "resolveJsonModule": true,
     "noEmit": true,
+    "skipLibCheck": true,
     "lib": ["ES2022", "DOM"]
   },
   "include": ["ts/**/*.ts"]
