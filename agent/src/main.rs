@@ -64,23 +64,30 @@ async fn main() -> Result<()> {
     handle.answers.send(answer).await?;
     tracing::info!("réponse envoyée");
 
-    session.send_control(&AgentControl::ready(1280, 720)).ok();
+    // Ne mute pas `Rtc` : met simplement le message en file, `tick()` l'enverra
+    // dès que le canal de contrôle sera ouvert.
+    session.queue_control(AgentControl::ready(1280, 720));
 
-    // Cadence d'envoi : une image toutes les 16,67 ms.
-    let frame_interval = std::time::Duration::from_micros(16_667);
-    let mut next_frame = std::time::Instant::now();
     let mut on_input = |message| tracing::debug!(?message, "entrée reçue");
     let mut on_control = |message| tracing::info!(?message, "contrôle reçu");
 
+    // `tick()` est l'unique point de mutation de `Rtc` : chaque appel draine
+    // intégralement puis effectue au plus une mutation (image, contrôle, ou
+    // paquet entrant) avant de rendre la main. Cette boucle ne fait donc
+    // qu'appeler `tick()` en séquence, sans jamais muter la session
+    // elle-même — voir `transport.rs` pour le détail de l'invariant.
+    //
+    // Une erreur ici signifie que `tick()` a jugé le problème irrécupérable
+    // au niveau de la session (voir `Session::begin_ending` pour ce qui est
+    // au contraire traité comme une fin de session propre) : on la remonte,
+    // ce qui arrête le processus — acceptable pour un agent mono-session.
     loop {
-        if let Tick::Disconnected = session.tick(&mut on_input, &mut on_control)? {
-            tracing::info!("session terminée");
-            break;
-        }
-        let now = std::time::Instant::now();
-        if now >= next_frame {
-            session.send_next_frame()?;
-            next_frame = now + frame_interval;
+        match session.tick(&mut on_input, &mut on_control)? {
+            Tick::Continue => {}
+            Tick::Disconnected => {
+                tracing::info!("session terminée");
+                break;
+            }
         }
     }
     Ok(())

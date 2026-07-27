@@ -5,7 +5,7 @@
 
 use anyhow::{Context, Result};
 use futures_util::{SinkExt, StreamExt};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, watch};
 use tokio_tungstenite::tungstenite::Message;
 
 pub struct SignalingHandle {
@@ -28,6 +28,12 @@ pub async fn run_signaling(url: &str, session: &str) -> Result<SignalingHandle> 
 
     let (offer_tx, offers) = mpsc::channel::<String>(4);
     let (answers, mut answer_rx) = mpsc::channel::<String>(4);
+    // Signal de fin de connexion : la tâche d'émission ne doit pas rester
+    // bloquée indéfiniment sur `answer_rx.recv()` une fois la connexion
+    // morte côté réception — sans quoi elle survivrait, inutile, tant que
+    // `SignalingHandle::answers` reste vivant (potentiellement toute la
+    // durée du processus une fois l'agent durable, au-delà de cette tâche).
+    let (closed_tx, mut closed_rx) = watch::channel(false);
 
     // Réception : offres et erreurs venant du signaling.
     tokio::spawn(async move {
@@ -47,8 +53,21 @@ pub async fn run_signaling(url: &str, session: &str) -> Result<SignalingHandle> 
             match parsed["type"].as_str() {
                 Some("offer") => {
                     if let Some(sdp) = parsed["sdp"].as_str() {
-                        if offer_tx.send(sdp.to_string()).await.is_err() {
-                            break;
+                        // `try_send`, jamais `.send(...).await` : cette boucle
+                        // sert aussi `peer-gone` et `error` juste en dessous,
+                        // elle ne doit donc jamais s'endormir sur un canal
+                        // plein faute de consommateur. Une offre qui arrive
+                        // alors qu'une précédente n'a pas encore été
+                        // consommée est délibérément écartée (et journalisée)
+                        // plutôt que de geler la réception.
+                        match offer_tx.try_send(sdp.to_string()) {
+                            Ok(()) => {}
+                            Err(mpsc::error::TrySendError::Full(_)) => {
+                                tracing::warn!(
+                                    "offre écartée : la précédente n'a pas encore été consommée"
+                                );
+                            }
+                            Err(mpsc::error::TrySendError::Closed(_)) => break,
                         }
                     }
                 }
@@ -60,14 +79,30 @@ pub async fn run_signaling(url: &str, session: &str) -> Result<SignalingHandle> 
             }
         }
         tracing::info!("boucle de réception du signaling terminée");
+        // Réveille la tâche d'émission pour qu'elle se termine à son tour au
+        // lieu d'attendre indéfiniment sur un canal `answers` encore ouvert.
+        let _ = closed_tx.send(true);
     });
 
-    // Émission : réponses SDP.
+    // Émission : réponses SDP. Se termine soit quand `answers` est fermé
+    // (plus aucun expéditeur côté appelant), soit — c'est le cas manquant
+    // avant ce correctif — quand la réception a constaté la fin de la
+    // connexion, plutôt que d'attendre pour toujours un message qui ne
+    // viendra plus.
     tokio::spawn(async move {
-        while let Some(sdp) = answer_rx.recv().await {
-            let payload = serde_json::json!({ "type": "answer", "sdp": sdp });
-            if sink.send(Message::Text(payload.to_string())).await.is_err() {
-                break;
+        loop {
+            tokio::select! {
+                sdp = answer_rx.recv() => {
+                    let Some(sdp) = sdp else { break };
+                    let payload = serde_json::json!({ "type": "answer", "sdp": sdp });
+                    if sink.send(Message::Text(payload.to_string())).await.is_err() {
+                        break;
+                    }
+                }
+                _ = closed_rx.changed() => {
+                    tracing::info!("boucle d'émission du signaling terminée (connexion fermée)");
+                    break;
+                }
             }
         }
     });

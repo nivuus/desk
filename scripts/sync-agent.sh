@@ -34,6 +34,19 @@ mkdir -p "$DEST"
 rm -rf "$DEST/agent" "$DEST/proto"
 
 cd "$ROOT"
+
+# Garde-fou : un fichier créé sous agent/ ou proto/ puis jamais `git add`é
+# n'apparaît pas dans `git ls-files` et serait donc silencieusement absent de
+# la VM — on compilerait un état du code différent de celui qu'on a sous les
+# yeux, sans le moindre avertissement. On avertit plutôt que de bloquer : un
+# brouillon non indexé peut être testé volontairement, mais pas sans le savoir.
+untracked="$(git ls-files --others --exclude-standard -- agent proto)"
+if [ -n "$untracked" ]; then
+    echo "attention : fichiers non suivis par git sous agent/ ou proto/ — ils ne seront PAS synchronisés vers la VM :" >&2
+    echo "$untracked" | sed 's/^/  /' >&2
+    echo "  (lancez « git add » si ces fichiers doivent faire partie de la compilation Windows)" >&2
+fi
+
 git ls-files -z -- Cargo.toml Cargo.lock rust-toolchain.toml agent proto |
     rsync -a --from0 --files-from=- "$ROOT/" "$DEST/"
 
