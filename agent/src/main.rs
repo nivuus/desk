@@ -7,6 +7,8 @@ mod transport;
 #[cfg(windows)]
 mod capture;
 #[cfg(windows)]
+mod encode;
+#[cfg(windows)]
 mod window;
 
 use std::net::IpAddr;
@@ -270,6 +272,78 @@ async fn main() -> Result<()> {
             }
             tracing::info!(captured, "images capturées en 3 s");
             anyhow::ensure!(captured > 0, "aucune image capturée");
+
+            // Encodage de vérification : ENCODE_TEST=1 encode 120 images capturées.
+            //
+            // Écart au brief : les dimensions de l'encodeur viennent de `region`
+            // (la zone effectivement recadrée par `crop_region`, toujours paire)
+            // plutôt que de `window::client_size(hwnd)` — ce sont exactement les
+            // dimensions des `CapturedFrame` produites par `capture.next_frame`,
+            // qui peuvent différer de la zone client brute si la fenêtre déborde
+            // de l'écran. Utiliser une dimension différente de celle des textures
+            // réellement soumises aurait pu faire échouer `SetInputType`/
+            // `ProcessInput` de façon confuse.
+            if std::env::var("ENCODE_TEST").is_ok() {
+                let mut encoder =
+                    encode::H264Encoder::new(capture.device(), region.width, region.height, 60, 8_000_000)?;
+                encoder.request_keyframe()?;
+
+                let mut encoded = 0usize;
+                let mut keyframes = 0usize;
+                let mut submitted = 0usize;
+                let mut first_unit_has_params = None;
+                let mut pts = 0u64;
+                let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+                let mut last_progress_log = std::time::Instant::now();
+                while std::time::Instant::now() < deadline && encoded < 120 {
+                    if last_progress_log.elapsed() >= std::time::Duration::from_millis(500) {
+                        tracing::debug!(submitted, encoded, "progression de l'essai d'encodage");
+                        last_progress_log = std::time::Instant::now();
+                    }
+                    if let Some(frame) = capture.next_frame(region)? {
+                        encoder.submit(&frame, pts)?;
+                        submitted += 1;
+                        pts += 1500; // 90000 / 60
+                    }
+                    while let Some(unit) = encoder.poll_output()? {
+                        if encoded == 0 {
+                            // Une unité d'accès H.264 valide doit ouvrir sur des
+                            // NAL de paramètres (SPS puis PPS) avant la première
+                            // tranche IDR : sans elles le décodeur du navigateur
+                            // ne peut pas s'initialiser (tâche 11). On le vérifie
+                            // ici plutôt que de supposer que `group_access_units`
+                            // les a bien rattachées.
+                            let nals = h264::split_annex_b(&unit.data);
+                            let types: Vec<u8> =
+                                nals.iter().map(|n| n.first().map_or(0, |b| b & 0x1F)).collect();
+                            const NAL_SPS: u8 = 7;
+                            const NAL_PPS: u8 = 8;
+                            const NAL_IDR: u8 = 5;
+                            let sps_idx = types.iter().position(|&t| t == NAL_SPS);
+                            let pps_idx = types.iter().position(|&t| t == NAL_PPS);
+                            let idr_idx = types.iter().position(|&t| t == NAL_IDR);
+                            let ordered = matches!((sps_idx, pps_idx, idr_idx),
+                                (Some(s), Some(p), Some(i)) if s < p && p < i);
+                            tracing::info!(?types, ordered, "NAL de la première unité d'accès");
+                            first_unit_has_params = Some(ordered);
+                        }
+                        encoded += 1;
+                        if unit.is_keyframe {
+                            keyframes += 1;
+                        }
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+                tracing::info!(encoded, keyframes, submitted, "images encodées");
+                anyhow::ensure!(encoded > 0, "aucune image encodée");
+                anyhow::ensure!(keyframes > 0, "aucune image clé produite");
+                anyhow::ensure!(
+                    first_unit_has_params == Some(true),
+                    "la première unité d'accès ne commence pas par SPS puis PPS puis IDR : {:?}",
+                    first_unit_has_params
+                );
+            }
+
             Ok(())
         })();
 
