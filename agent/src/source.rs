@@ -146,4 +146,35 @@ mod tests {
         assert!(first.is_keyframe, "la première unité doit être une image clé");
         assert!(first.data.len() > 100, "une image clé réelle n'est pas minuscule");
     }
+
+    #[test]
+    fn boucle_avec_300_images_reelles_et_horodatages_strictement_croissants() {
+        // Vérification de non-régression sur le bug de sur-découpage : le
+        // fichier réel contient 300 images malgré ses 2400 tranches, donc le
+        // compteur de boucles doit incrémenter après 300 appels, pas 2400.
+        let path = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
+        let mut source = FileSource::from_path(path, 1280, 720, 60).expect("chargement du flux");
+
+        // Une boucle complète (300 images), plus la première image du tour suivant.
+        let mut horodatages = Vec::with_capacity(301);
+        let mut keyframes = Vec::with_capacity(301);
+        for _ in 0..301 {
+            let unit = source.next_frame().unwrap();
+            horodatages.push(unit.pts_90k);
+            keyframes.push(unit.is_keyframe);
+        }
+
+        assert!(keyframes[0], "la première image du fichier est une IDR");
+        assert!(
+            keyframes[300],
+            "la première image de la boucle suivante doit aussi être une IDR"
+        );
+        assert!(
+            horodatages.windows(2).all(|w| w[0] < w[1]),
+            "les horodatages doivent être strictement croissants, y compris au bouclage"
+        );
+        // 300 images à 1500 ticks (90000 / 60) : l'horodatage au bouclage
+        // continue la progression linéaire au lieu de redémarrer à zéro.
+        assert_eq!(horodatages[300], 300 * (CLOCK_RATE_HZ / 60));
+    }
 }

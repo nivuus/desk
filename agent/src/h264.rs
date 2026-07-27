@@ -67,6 +67,19 @@ fn nal_type(nal: &[u8]) -> u8 {
     nal.first().map_or(0, |b| b & 0x1F)
 }
 
+/// Vrai si la tranche est la première de son image (`first_mb_in_slice == 0`).
+///
+/// `first_mb_in_slice` est le tout premier champ de l'en-tête de tranche,
+/// codé en Exp-Golomb non signé (ue(v)) et débutant au premier octet suivant
+/// l'octet d'en-tête NAL. Dans ce codage, la valeur zéro tient sur un seul
+/// bit à 1 : il suffit donc de tester le bit de poids fort de cet octet.
+/// Une tranche sans octet de charge utile (NAL tronquée à son seul en-tête)
+/// est traitée comme une continuation plutôt que comme un début d'image,
+/// pour ne pas fragmenter davantage un flux déjà corrompu.
+fn is_first_slice(nal: &[u8]) -> bool {
+    nal.get(1).is_some_and(|b| b & 0x80 != 0)
+}
+
 /// Vrai si l'ensemble de NAL contient une image de référence instantanée.
 pub fn is_keyframe(nals: &[Vec<u8>]) -> bool {
     nals.iter().any(|nal| nal_type(nal) == NAL_TYPE_IDR)
@@ -74,8 +87,12 @@ pub fn is_keyframe(nals: &[Vec<u8>]) -> bool {
 
 /// Regroupe les NAL d'un flux en unités d'accès, une par image affichable.
 ///
-/// Une nouvelle unité commence à chaque NAL de tranche (IDR ou non-IDR) ; les
-/// NAL de paramètres (SPS/PPS) qui la précèdent lui sont rattachées.
+/// Une image peut être répartie sur plusieurs NAL de tranche (une par groupe
+/// de macroblocs, par exemple quand l'encodeur sous-découpe pour respecter
+/// une contrainte de niveau H.264). Seule la *première* tranche d'une image
+/// (`first_mb_in_slice == 0`) ouvre une nouvelle unité d'accès ; les tranches
+/// suivantes de la même image la rejoignent. Les NAL de paramètres (SPS/PPS)
+/// qui précèdent la première tranche sont rattachées à l'unité qui les suit.
 pub fn group_access_units(stream: &[u8], fps: u32) -> Vec<AccessUnit> {
     let nals = split_annex_b(stream);
     let tick = if fps == 0 { 0 } else { CLOCK_RATE_HZ / fps as u64 };
@@ -87,9 +104,14 @@ pub fn group_access_units(stream: &[u8], fps: u32) -> Vec<AccessUnit> {
     for nal in nals {
         let kind = nal_type(&nal);
         let is_slice = kind == NAL_TYPE_IDR || kind == NAL_TYPE_NON_IDR;
+        // Une nouvelle image ne commence qu'à la première tranche qui la compose ;
+        // les tranches suivantes de la même image ne déclenchent pas de flush.
+        let starts_new_picture = is_slice && is_first_slice(&nal);
 
-        // Une NAL de paramètres après une tranche ouvre l'unité suivante.
-        if slice_seen && (is_slice || kind == NAL_TYPE_SPS) {
+        // Une NAL de paramètres, ou la première tranche d'une nouvelle image,
+        // ouvre l'unité suivante — mais seulement si l'unité en cours contient
+        // déjà une image (sinon on est encore en train de la construire).
+        if slice_seen && (starts_new_picture || kind == NAL_TYPE_SPS) {
             flush(&mut units, &mut current, tick);
             slice_seen = false;
         }
@@ -190,5 +212,45 @@ mod tests {
     #[test]
     fn regroupe_un_flux_vide_sans_panique() {
         assert!(group_access_units(&[], 60).is_empty());
+    }
+
+    #[test]
+    fn regroupe_des_images_multi_tranches_en_une_seule_unite() {
+        // Deux images de trois tranches chacune. Le bit de poids fort du
+        // premier octet de charge utile distingue la première tranche
+        // (0x88 / 0x9A, bit armé) des suivantes (0x00, bit éteint).
+        let mut stream = Vec::new();
+        // Image 1 (IDR) : trois tranches de type 5.
+        for nal in [vec![0x65u8, 0x88], vec![0x65, 0x00], vec![0x65, 0x00]] {
+            stream.extend_from_slice(&[0, 0, 0, 1]);
+            stream.extend_from_slice(&nal);
+        }
+        // Image 2 (non-IDR) : trois tranches de type 1.
+        for nal in [vec![0x41u8, 0x9A], vec![0x41, 0x00], vec![0x41, 0x00]] {
+            stream.extend_from_slice(&[0, 0, 0, 1]);
+            stream.extend_from_slice(&nal);
+        }
+
+        let units = group_access_units(&stream, 60);
+        // Six tranches, mais seulement deux images : une NAL mal comptée par
+        // tranche produirait à tort six unités.
+        assert_eq!(units.len(), 2);
+        assert!(units[0].is_keyframe);
+        assert!(!units[1].is_keyframe);
+        assert_eq!(units[0].pts_90k, 0);
+        assert_eq!(units[1].pts_90k, 1500);
+    }
+
+    #[test]
+    fn compte_les_memes_unites_que_ffprobe_sur_le_flux_reel() {
+        // Référence indépendante : `ffprobe -count_frames` rapporte 300 images
+        // sur ce fichier, alors que chaque image y est en réalité découpée en
+        // huit tranches par libx264 (contrainte de niveau 3.1 à 1280x720/60).
+        // Une règle de découpage naïve (une unité par tranche) produirait 2400
+        // unités au lieu de 300.
+        let path = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
+        let data = std::fs::read(path).expect("lecture du flux de test");
+        let units = group_access_units(&data, 60);
+        assert_eq!(units.len(), 300);
     }
 }
