@@ -15,8 +15,10 @@ Ces contraintes s'appliquent à **toutes** les tâches.
 - **Spec de référence** : `docs/superpowers/specs/2026-07-27-jalon1-tranche-verticale-design.md`. Les critères d'acceptation du §1 de la spec sont le juge final.
 - **Versions figées** : `str0m = "0.21"`, `windows = "0.62"`, `windows-future = "0.3"`, `tokio = "1"`, Node ≥ 24, TypeScript ≥ 5.5, Vite ≥ 6.
 - **Machine de développement** : Linux (`/home/mallanic/Projects/Guacamole`). Rust n'y est pas installé — la tâche 1 l'installe.
-- **Machine cible** : VM Windows `192.168.3.2`, GPU avec encodeur matériel. WinRM ouvert sur 5985 (`Administrator`). Pas de SSH. Son `C:` est monté en lecture-écriture sur `/media/vm`.
+- **Machine cible** : VM Windows Server 2022 (build 20348) à `192.168.3.2`, GPU **NVIDIA RTX 4070** (plus un « SudoMaker Virtual Display Adapter »). WinRM ouvert sur 5985. Pas de SSH. Son `C:` est monté en lecture-écriture sur `/media/vm`.
+- **Compte administrateur : `Administrateur`** (Windows en français), pas `Administrator` — ce dernier échoue à l'authentification. Le répertoire personnel est donc `C:\Users\Administrateur`. Mot de passe dans `WINDOWS_ADMIN_PASSWORD` (valeur présente dans l'`index.js` hérité).
 - **Le code source vit dans le dépôt Linux.** Le répertoire `agent/` est synchronisé vers `C:\dev\agent` (via `/media/vm/dev/agent`) et compilé sur Windows par WinRM. Ne jamais éditer directement sous `/media/vm`.
+- **⚠️ Frontière de session — contrainte structurante.** WinRM s'exécute en **session 0** (service, non interactive) ; le bureau Windows est la **session 1** (`administrateur` sur la console). `Windows.Graphics.Capture` et `SendInput` ne franchissent pas cette frontière. **L'agent doit donc être lancé dans la session 1**, par tâche planifiée interactive (`schtasks /IT`), jamais directement par WinRM. La compilation, elle, passe bien par WinRM — seule l'exécution est concernée. Voir `scripts/run-agent.sh` (tâche 1).
 - **Nommage** : le nouveau client web s'appelle `client/` (le répertoire `web/` est occupé par l'ancien client Guacamole, qui reste intact).
 - **Langue** : commentaires et messages de commit en français ; identifiants de code en anglais.
 - **Commits** : un commit par tâche minimum, message conventionnel (`feat:`, `test:`, `chore:`).
@@ -197,7 +199,9 @@ Expected: compilation réussie des deux crates (`proto`, `agent`).
 const winrm = require('nodejs-winrm');
 
 const HOST = process.env.WINDOWS_HOSTNAME || '192.168.3.2';
-const USER = process.env.WINDOWS_ADMIN_USERNAME || 'Administrator';
+// Windows en français : le compte est « Administrateur ». « Administrator »
+// échoue à l'authentification sur cette machine.
+const USER = process.env.WINDOWS_ADMIN_USERNAME || 'Administrateur';
 const PASS = process.env.WINDOWS_ADMIN_PASSWORD;
 
 async function main() {
@@ -250,11 +254,28 @@ Expected: un numéro de version (5 ou 7). Si échec, corriger avant d'aller plus
 ```bash
 node scripts/winrm.js "if (-not (Test-Path 'C:\\dev')) { New-Item -ItemType Directory -Path 'C:\\dev' | Out-Null }; Invoke-WebRequest -Uri 'https://win.rustup.rs/x86_64' -OutFile 'C:\\dev\\rustup-init.exe'"
 node scripts/winrm.js "C:\\dev\\rustup-init.exe -y --default-toolchain stable --default-host x86_64-pc-windows-msvc"
-node scripts/winrm.js "\$env:Path += ';C:\\Users\\Administrator\\.cargo\\bin'; cargo --version"
+node scripts/winrm.js "\$env:Path += ';C:\\Users\\Administrateur\\.cargo\\bin'; cargo --version"
 ```
 
-Expected: `cargo 1.8x.x`. Si `cargo` compile mais que le lien échoue plus tard, installer les Build Tools MSVC :
-`node scripts/winrm.js "winget install --id Microsoft.VisualStudio.2022.BuildTools --silent --override '--wait --quiet --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended'"`
+Expected: `cargo 1.8x.x`.
+
+**Les Build Tools MSVC sont absents de cette VM** (vérifié) : la cible
+`x86_64-pc-windows-msvc` ne pourra pas lier sans eux. Les installer maintenant,
+avant toute compilation — c'est une étape obligatoire, pas un recours :
+
+```bash
+node scripts/winrm.js "winget install --id Microsoft.VisualStudio.2022.BuildTools --silent --accept-package-agreements --accept-source-agreements --override '--wait --quiet --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended'"
+```
+
+L'installation prend plusieurs minutes. Vérifier ensuite :
+
+```bash
+node scripts/winrm.js "if (Test-Path 'C:\\Program Files (x86)\\Microsoft Visual Studio') {'PRESENT'} else {'ABSENT'}"
+```
+
+Expected: `PRESENT`. Si `winget` est indisponible sur Windows Server 2022,
+télécharger `vs_BuildTools.exe` depuis `https://aka.ms/vs/17/release/vs_BuildTools.exe`
+et l'exécuter avec les mêmes arguments `--add Microsoft.VisualStudio.Workload.VCTools`.
 
 - [ ] **Step 9: Écrire les scripts de synchronisation et de compilation**
 
@@ -298,17 +319,93 @@ FLAG=""
 [ "$PROFILE" = "release" ] && FLAG="--release"
 
 node "$ROOT/scripts/winrm.js" \
-    "\$env:Path += ';C:\\Users\\Administrator\\.cargo\\bin'; Set-Location C:\\dev; cargo build $FLAG 2>&1 | Out-String"
+    "\$env:Path += ';C:\\Users\\Administrateur\\.cargo\\bin'; Set-Location C:\\dev; cargo build $FLAG 2>&1 | Out-String"
+```
+
+`scripts/run-agent.sh` — lance l'agent **dans la session interactive** :
+
+```bash
+#!/usr/bin/env bash
+# Lance l'agent dans la session interactive (session 1) de la VM Windows.
+#
+# WinRM s'exécute en session 0 : un agent lancé directement par WinRM ne peut
+# ni capturer une fenêtre (Windows.Graphics.Capture) ni injecter des entrées
+# (SendInput), ces API ne franchissant pas la frontière de session. La tâche
+# planifiée avec /IT s'exécute dans la session de l'utilisateur connecté.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+TASK_NAME="guacamole-agent"
+USER_NAME="${WINDOWS_ADMIN_USERNAME:-Administrateur}"
+: "${WINDOWS_ADMIN_PASSWORD:?WINDOWS_ADMIN_PASSWORD non défini}"
+
+# Les variables d'environnement passent par un script d'amorçage : schtasks ne
+# permet pas de les transmettre directement.
+cat > /media/vm/dev/run-agent.ps1 <<PS1
+\$env:SIGNALING_URL = '${SIGNALING_URL:-ws://192.168.3.1:8080}'
+\$env:SESSION_ID    = '${SESSION_ID:-demo}'
+\$env:LOCAL_IP      = '${LOCAL_IP:-192.168.3.2}'
+\$env:RUST_LOG      = '${RUST_LOG:-info}'
+\$env:WINDOW_TITLE  = '${WINDOW_TITLE:-firefox}'
+${TEST_FILE:+\$env:TEST_FILE = '$TEST_FILE'}
+${CAPTURE_TEST:+\$env:CAPTURE_TEST = '$CAPTURE_TEST'}
+${ENCODE_TEST:+\$env:ENCODE_TEST = '$ENCODE_TEST'}
+& 'C:\dev\target\debug\agent.exe' *>&1 | Tee-Object -FilePath 'C:\dev\agent.log'
+PS1
+
+node "$ROOT/scripts/winrm.js" \
+    "schtasks /delete /tn $TASK_NAME /f 2>\$null; \
+     schtasks /create /tn $TASK_NAME /f /it /ru '$USER_NAME' /rp '$WINDOWS_ADMIN_PASSWORD' \
+       /sc once /st 00:00 \
+       /tr 'powershell -NoProfile -ExecutionPolicy Bypass -File C:\\dev\\run-agent.ps1'; \
+     schtasks /run /tn $TASK_NAME"
+
+echo "agent lancé en session interactive ; journal : /media/vm/dev/agent.log"
+```
+
+`scripts/stop-agent.sh` :
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+node "$ROOT/scripts/winrm.js" \
+    "schtasks /end /tn guacamole-agent 2>\$null; \
+     Stop-Process -Name agent -Force -ErrorAction SilentlyContinue; 'arrêté'"
 ```
 
 ```bash
-chmod +x scripts/sync-agent.sh scripts/build-agent.sh
+chmod +x scripts/sync-agent.sh scripts/build-agent.sh scripts/run-agent.sh scripts/stop-agent.sh
 ```
 
 - [ ] **Step 10: Vérifier la compilation croisée de bout en bout**
 
 Run: `./scripts/build-agent.sh`
 Expected: sortie `cargo` se terminant par `Finished dev profile`. C'est la boucle de développement de tout le reste du plan.
+
+- [ ] **Step 10b: Vérifier le lancement en session interactive**
+
+```bash
+export WINDOWS_ADMIN_PASSWORD='<mot de passe>'
+./scripts/run-agent.sh
+sleep 3
+cat /media/vm/dev/agent.log
+```
+
+Expected: le journal contient `agent démarré`. Vérifier que l'agent tourne bien
+en session 1, pas 0 :
+
+```bash
+node scripts/winrm.js "Get-Process agent -ErrorAction SilentlyContinue | Select-Object Id, SessionId | Format-Table -AutoSize | Out-String"
+```
+
+Expected: `SessionId` vaut **1**. Si la valeur est 0, la tâche planifiée n'est pas
+interactive — vérifier la présence du drapeau `/it` et qu'un utilisateur est bien
+connecté sur la console (`quser`).
+
+```bash
+./scripts/stop-agent.sh
+```
 
 - [ ] **Step 11: Compléter le .gitignore et committer**
 
@@ -1909,7 +2006,13 @@ Expected: 13 tests réussis (8 h264 + 5 source).
 
 - [ ] **Step 9: Générer le flux H.264 de test**
 
-Sur la machine Linux (installer `ffmpeg` s'il est absent) :
+**`ffmpeg` est absent de cette machine** (vérifié) — l'installer d'abord :
+
+```bash
+sudo apt-get update && sudo apt-get install -y ffmpeg
+```
+
+Puis générer le flux :
 
 ```bash
 mkdir -p agent/testdata
@@ -3174,10 +3277,14 @@ Lancer Firefox sur la VM (par RDP ou via WinRM), puis :
 
 ```bash
 ./scripts/build-agent.sh
-node scripts/winrm.js "\$env:CAPTURE_TEST='firefox'; \$env:RUST_LOG='info'; C:\\dev\\target\\debug\\agent.exe 2>&1 | Out-String"
+CAPTURE_TEST=firefox ./scripts/run-agent.sh
+sleep 8
+cat /media/vm/dev/agent.log
 ```
 
-Expected: journal indiquant « fenêtre trouvée », « première image capturée » avec des dimensions plausibles, et un décompte d'images cohérent (plusieurs dizaines en 3 s). Un décompte de 0 signifie que `FrameArrived` ne se déclenche pas — vérifier que la fenêtre n'est pas minimisée.
+L'agent **doit** passer par `run-agent.sh` : lancé directement par WinRM il serait en session 0 et ne verrait aucune fenêtre de la session 1.
+
+Expected: journal indiquant « fenêtre trouvée », « première image capturée » avec des dimensions plausibles, et un décompte d'images cohérent (plusieurs dizaines en 3 s). Un décompte de 0 signifie que `FrameArrived` ne se déclenche pas — vérifier que la fenêtre n'est pas minimisée et que l'agent tourne bien en session 1.
 
 - [ ] **Step 9: Committer**
 
@@ -3599,12 +3706,14 @@ Ajouter au mode diagnostic de `agent/src/main.rs`, après la boucle de capture :
 
 ```bash
 ./scripts/build-agent.sh
-node scripts/winrm.js "\$env:CAPTURE_TEST='firefox'; \$env:ENCODE_TEST='1'; \$env:RUST_LOG='info'; C:\\dev\\target\\debug\\agent.exe 2>&1 | Out-String"
+CAPTURE_TEST=firefox ENCODE_TEST=1 ./scripts/run-agent.sh
+sleep 12
+cat /media/vm/dev/agent.log
 ```
 
-Expected: le nom de l'encodeur matériel retenu dans les journaux, puis « images encodées » avec `encoded` proche de 120 et `keyframes ≥ 1`.
+Expected: le nom de l'encodeur matériel retenu dans les journaux (une RTX 4070 étant présente, attendre `NVIDIA H.264 Encoder MFT`), puis « images encodées » avec `encoded` proche de 120 et `keyframes ≥ 1`.
 
-Si l'énumération ne trouve aucun encodeur, relire l'étape 1 : le pilote GPU est peut-être absent dans la VM alors que le matériel est présent.
+**Piège propre à cette VM** : deux adaptateurs coexistent, un « SudoMaker Virtual Display Adapter » et la RTX 4070. `D3D11CreateDevice(D3D_DRIVER_TYPE_HARDWARE)` retient l'adaptateur par défaut, qui peut être le virtuel — or l'encodeur NVENC n'accepte que des textures issues du périphérique NVIDIA. Si `ProcessInput` échoue ou si aucune image ne sort alors que la capture fonctionne, c'est cette discordance : énumérer les adaptateurs avec `IDXGIFactory1::EnumAdapters1`, retenir explicitement celui dont la description contient `NVIDIA`, et le passer en premier argument de `D3D11CreateDevice` (à la place de `None`) dans `agent/src/capture.rs`.
 
 - [ ] **Step 6: Committer**
 
@@ -3822,10 +3931,14 @@ cd signaling && SIGNALING_PORT=8080 npx tsx src/index.ts
 # Sur Linux — client web
 cd client && npx vite
 
-# Sur la VM — Firefox puis l'agent
-node scripts/winrm.js "Start-Process 'C:\\Program Files\\Mozilla Firefox\\firefox.exe'"
-node scripts/winrm.js "\$env:SIGNALING_URL='ws://192.168.3.1:8080'; \$env:SESSION_ID='demo'; \$env:LOCAL_IP='192.168.3.2'; \$env:WINDOW_TITLE='firefox'; \$env:RUST_LOG='info'; C:\\dev\\target\\debug\\agent.exe 2>&1 | Out-String"
+# Sur la VM — Firefox dans la session interactive, puis l'agent
+node scripts/winrm.js "schtasks /delete /tn lancer-firefox /f 2>\$null; schtasks /create /tn lancer-firefox /f /it /ru 'Administrateur' /rp \$env:PASS /sc once /st 00:00 /tr '\"C:\\Program Files\\Mozilla Firefox\\firefox.exe\"'; schtasks /run /tn lancer-firefox"
+
+SIGNALING_URL=ws://192.168.3.1:8080 SESSION_ID=demo LOCAL_IP=192.168.3.2 \
+WINDOW_TITLE=firefox ./scripts/run-agent.sh
 ```
+
+Firefox comme l'agent doivent tourner en **session 1** : lancés par WinRM ils seraient en session 0, invisibles l'un pour l'autre.
 
 Remplacer `192.168.3.1` par l'adresse de la machine Linux sur le réseau de la VM (`ip -4 addr show | grep 192.168.3` pour la trouver).
 
