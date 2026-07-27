@@ -8,3 +8,4 @@ target/
 client/dist/
 signaling/dist/
 *.264
+!agent/testdata/testsrc.264
