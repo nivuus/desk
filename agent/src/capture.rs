@@ -15,7 +15,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use windows::core::Interface;
 use windows::Win32::Graphics::Direct3D::D3D_FEATURE_LEVEL_11_0;
 use windows::Win32::Graphics::Direct3D11::{
-    D3D11CreateDevice, ID3D11Device, ID3D11DeviceContext, ID3D11Texture2D,
+    D3D11CreateDevice, ID3D11Device, ID3D11DeviceContext, ID3D11Multithread, ID3D11Texture2D,
     D3D11_BIND_RENDER_TARGET, D3D11_BOX, D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_SDK_VERSION,
     D3D11_TEXTURE2D_DESC, D3D11_USAGE_DEFAULT,
 };
@@ -79,6 +79,38 @@ impl DesktopCapture {
         }
         let device = device.ok_or_else(|| anyhow!("périphérique D3D11 absent"))?;
         let context = context.ok_or_else(|| anyhow!("contexte D3D11 absent"))?;
+
+        // Le contexte immédiat D3D11 n'est PAS sûr en accès concurrent par
+        // défaut : le pilote suppose un seul fil et ne pose aucun verrou. Or ce
+        // périphérique ne reste pas privé — il est confié à Media Foundation
+        // par un `IMFDXGIDeviceManager` (voir `encode::share_device`), et le
+        // convertisseur BGRA→NV12 comme l'encodeur H.264 matériel s'en servent
+        // depuis leurs propres fils de travail internes, pendant que notre fil
+        // principal appelle `CopySubresourceRegion` dans `crop` et que la
+        // duplication de sortie — bâtie sur ce même périphérique — sert
+        // `AcquireNextFrame`.
+        //
+        // Sans cette protection, deux fils entrent en même temps dans le
+        // pilote et l'un d'eux peut ne jamais ressortir. C'est le blocage
+        // mesuré ici : quatre exécutions sur quatre figées dans
+        // `AcquireNextFrame`, pourtant appelée avec un délai d'attente NUL,
+        // donc censée ne jamais bloquer — l'attente ne venait pas de DXGI mais
+        // du verrou interne du pilote. Aucune erreur n'est remontée, la
+        // fonction ne rend simplement plus la main.
+        //
+        // `SetMultithreadProtected(TRUE)` fait prendre au pilote son verrou
+        // interne autour de chaque commande : c'est la condition documentée
+        // pour partager un périphérique D3D11 avec Media Foundation, et elle
+        // doit être posée AVANT `DuplicateOutput`, la duplication héritant du
+        // périphérique tel qu'il est à cet instant.
+        let multithread: ID3D11Multithread = context
+            .cast()
+            .context("obtention de ID3D11Multithread depuis le contexte immédiat")?;
+        let was_protected = unsafe { multithread.SetMultithreadProtected(true) };
+        tracing::info!(
+            protection_precedente = was_protected.as_bool(),
+            "protection multi-fils activée sur le contexte immédiat D3D11"
+        );
 
         let duplication = unsafe { output.DuplicateOutput(&device) }
             .context("duplication de la sortie écran")?;
