@@ -361,8 +361,19 @@ async fn main() -> Result<()> {
                     .unwrap_or(5);
                 let start = std::time::Instant::now();
                 let deadline = start + std::time::Duration::from_secs(encode_secs);
+                let phase = encoder.telemetry();
                 while std::time::Instant::now() < deadline && encoded < encode_target {
-                    if let Some(frame) = capture.next_frame(region)? {
+                    // Marquer l'acquisition : un blocage dans la capture et un
+                    // blocage dans l'encodeur produisent la même signature vue
+                    // du fil de surveillance (compteurs figés, étape au repos).
+                    phase
+                        .phase
+                        .store(encode::PHASE_CAPTURE, std::sync::atomic::Ordering::Relaxed);
+                    let acquired = capture.next_frame(region)?;
+                    phase
+                        .phase
+                        .store(encode::PHASE_IDLE, std::sync::atomic::Ordering::Relaxed);
+                    if let Some(frame) = acquired {
                         encoder.submit(&frame, pts)?;
                         submitted += 1;
                         pts += 1500; // 90000 / 60

@@ -98,6 +98,11 @@ pub const PHASE_ENCODER_PROCESS_INPUT: u64 = 4;
 pub const PHASE_POLL_DRAIN_EVENTS: u64 = 5;
 pub const PHASE_ENCODER_PROCESS_OUTPUT: u64 = 6;
 pub const PHASE_ENCODER_READ_BUFFER: u64 = 7;
+/// Hors encodeur : l'appelant est dans l'acquisition d'image. Posée depuis la
+/// boucle de diagnostic (`main.rs`) pour que le fil de surveillance distingue
+/// « bloqué dans l'encodeur » de « bloqué dans la capture » — sans quoi les
+/// deux se ressemblent : compteurs figés, étape au repos.
+pub const PHASE_CAPTURE: u64 = 8;
 
 /// Nom lisible d'une étape, pour les journaux de surveillance.
 pub fn phase_name(phase: u64) -> &'static str {
@@ -110,6 +115,7 @@ pub fn phase_name(phase: u64) -> &'static str {
         PHASE_POLL_DRAIN_EVENTS => "poll_output/GetEvent",
         PHASE_ENCODER_PROCESS_OUTPUT => "encodeur/ProcessOutput",
         PHASE_ENCODER_READ_BUFFER => "encodeur/lecture du tampon",
+        PHASE_CAPTURE => "capture/next_frame",
         _ => "inconnu",
     }
 }
