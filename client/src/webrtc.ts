@@ -26,13 +26,61 @@ export interface SessionHandle {
 // jamais et l'utilisateur resterait bloqué indéfiniment.
 const ANSWER_TIMEOUT_MS = 15_000;
 
+/// Sous-ensemble des messages de signaling attendus en réponse à l'offre,
+/// discriminé par `type`.
+type SignalingMessage =
+    | { type: 'answer'; sdp: string }
+    | { type: 'error'; reason?: string }
+    | { type: 'peer-gone' };
+
+/// Parse et valide un message de signaling brut.
+///
+/// `JSON.parse` réussit sur des charges utiles qui ne sont pas des objets :
+/// `"null"` donne `null`, mais aussi `"42"` donne un nombre, `'"x"'` une
+/// chaîne, `"[1,2]"` un tableau. Accéder à `.type` sur l'une de ces valeurs
+/// ne lève pas toujours (un tableau ou une chaîne ont bien un `.type`
+/// `undefined`, pas d'exception), mais `null.type` lève une `TypeError` non
+/// interceptée — c'est le défaut corrigé ici. On valide donc explicitement
+/// que le résultat est un objet non nul et non tableau avant toute lecture
+/// de propriété, quelle que soit la forme de la charge utile.
+///
+/// Retourne `undefined` si le message est illisible ou de forme inattendue :
+/// l'appelant l'ignore alors silencieusement, sans faire planter l'attente
+/// (le message recherché — la réponse SDP — peut encore arriver ensuite).
+// Exportée uniquement pour être testée unitairement sans avoir à instancier
+// un vrai WebSocket (voir webrtc.test.ts) : le reste du module ne l'utilise
+// que via `waitForAnswer`, en interne.
+export function parseSignalingMessage(raw: string): SignalingMessage | undefined {
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(raw);
+    } catch {
+        return undefined;
+    }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        return undefined;
+    }
+    const { type } = parsed as Record<string, unknown>;
+    if (type === 'answer' || type === 'error' || type === 'peer-gone') {
+        return parsed as SignalingMessage;
+    }
+    return undefined;
+}
+
 /// Attend le SDP de réponse de l'agent, relayé par le socket de signaling.
 /// Rejette si : un message d'erreur ou « peer-gone » est reçu, le socket se
-/// ferme avant la réponse, ou le délai maximal est dépassé. Un message JSON
-/// illisible est journalisé et ignoré plutôt que de faire planter l'attente
-/// (avec une exception non interceptée) : d'autres messages valides peuvent
-/// encore arriver, notamment la réponse elle-même.
-function waitForAnswer(socket: WebSocket): Promise<string> {
+/// ferme avant la réponse, ou le délai maximal est dépassé. Un message
+/// illisible ou de forme inattendue (JSON invalide, valeur non-objet comme
+/// `null`/un nombre/un tableau, ou objet sans `type` reconnu) est journalisé
+/// et ignoré plutôt que de faire planter l'attente : d'autres messages
+/// valides peuvent encore arriver, notamment la réponse elle-même.
+///
+/// Exportée uniquement pour être testée sans passer par `connectSession`
+/// (qui exige un DOM complet — `RTCPeerConnection`, `WebSocket` réel, etc.,
+/// indisponibles sous le runtime Node du test) : `waitForAnswer` ne dépend
+/// que de `addEventListener`/`removeEventListener`, qu'un faux socket minimal
+/// suffit à fournir (voir webrtc.test.ts).
+export function waitForAnswer(socket: WebSocket): Promise<string> {
     return new Promise((resolve, reject) => {
         let settled = false;
 
@@ -49,11 +97,9 @@ function waitForAnswer(socket: WebSocket): Promise<string> {
         };
 
         const onMessage = (event: MessageEvent) => {
-            let message;
-            try {
-                message = JSON.parse(String(event.data));
-            } catch (error) {
-                console.warn('message de signaling illisible, ignoré', error);
+            const message = parseSignalingMessage(String(event.data));
+            if (!message) {
+                console.warn('message de signaling illisible ou de forme inattendue, ignoré');
                 return;
             }
             if (message.type === 'answer') {
