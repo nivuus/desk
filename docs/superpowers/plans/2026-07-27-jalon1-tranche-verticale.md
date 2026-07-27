@@ -2093,8 +2093,8 @@ Cœur du transport. L'agent se connecte au signaling, attend l'offre du navigate
   - `async fn run_signaling(url: &str, session: &str) -> Result<SignalingHandle>` avec `SignalingHandle { offers: mpsc::Receiver<String>, answers: mpsc::Sender<String> }`
   - `struct Session` avec `Session::new(source: Box<dyn VideoSource + Send>, local_ip: IpAddr) -> Result<Session>`
   - `Session::accept_offer(&mut self, offer_sdp: &str) -> Result<String>`
-  - `Session::send_next_frame(&mut self) -> Result<bool>`
-  - `Session::send_control(&mut self, message: &AgentControl) -> Result<()>`
+  - `Session::queue_control(&mut self, message: AgentControl)` — met un message en file ; ne mute jamais `Rtc`
+  - Note : l'envoi des images est **interne** à `tick`. Aucune méthode publique ne mute `Rtc` en dehors de `new`, `accept_offer` et `tick`, qui se drainent elles-mêmes — c'est ce qui rend l'invariant de drainage structurel plutôt que conventionnel.
   - `Session::tick(&mut self, on_input: &mut impl FnMut(InputMessage), on_control: &mut impl FnMut(ClientControl)) -> Result<Tick>`
   - `enum Tick { Continue, Disconnected }`
 
@@ -3924,7 +3924,7 @@ Adapter également l'annonce des dimensions au navigateur, qui était figée à 
 
 ```rust
 let (width, height) = session_dimensions;   // relevé avant de déplacer la source
-session.send_control(&AgentControl::ready(width, height)).ok();
+session.queue_control(AgentControl::ready(width, height));
 ```
 
 Relever les dimensions avant de transférer la source à `Session::new` :
@@ -4609,15 +4609,13 @@ Et dans le corps de la boucle, après le `tick` :
                 if let Err(e) = session.resize_source(width, height) {
                     tracing::warn!(erreur = %e, "redimensionnement échoué");
                 } else if let Some((w, h)) = session.source_dimensions() {
-                    session.send_control(&AgentControl::ready(w, h)).ok();
+                    session.queue_control(AgentControl::ready(w, h));
                 }
             }
 
             // Fin de session si la fenêtre capturée a disparu.
             if !session.source_alive() {
-                session
-                    .send_control(&AgentControl::session_end("fenêtre fermée"))
-                    .ok();
+                session.queue_control(AgentControl::session_end("fenêtre fermée"));
                 // Laisser le message partir avant de couper.
                 for _ in 0..50 {
                     let _ = session.tick(&mut on_input, &mut on_control);
@@ -4883,7 +4881,7 @@ Ne pas optimiser au hasard. Instrumenter dans cet ordre, en ajoutant des mesures
 
 1. **Capture** — compter les images renvoyées par `capture.next_texture()` par seconde. Sous 60, le problème est en amont : la fenêtre est peut-être occluse ou le compositeur limite la cadence.
 2. **Encodage** — compter les unités renvoyées par `encoder.poll_output()` par seconde. Un écart avec la capture signale que l'encodeur est saturé : baisser le débit cible, ou vérifier que la MFT matérielle est bien celle qui a été activée (le journal de la tâche 10 le nomme).
-3. **Envoi** — compter les appels réussis à `send_next_frame`. Un écart avec l'encodage signale que la boucle `tick` n'a pas assez de temps de calcul : la cadence fixe de `main.rs` limite peut-être artificiellement l'envoi.
+3. **Envoi** — l'envoi est interne à `Session::tick` depuis la tâche 7 : ajouter un compteur dans `Session` incrémenté à chaque écriture réussie, et le journaliser une fois par seconde. Un écart avec l'encodage signale que la boucle n'a pas assez de temps de calcul, ou que la cadence interne bride l'envoi.
 4. **Réception** — comparer `framesDecoded` du navigateur au nombre envoyé. Un écart signale de la perte réseau ou un tampon d'envoi saturé.
 
 - [ ] **Step 7: Committer**
