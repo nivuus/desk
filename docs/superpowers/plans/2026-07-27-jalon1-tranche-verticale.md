@@ -831,6 +831,7 @@ Expected: PASS. En cas d'échec, c'est `vectors.json` qui fait foi seulement si 
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
+    "skipLibCheck": true,
     "resolveJsonModule": true,
     "noEmit": true,
     "lib": ["ES2022", "DOM"]
@@ -1321,6 +1322,7 @@ Rôle unique : mettre en relation un agent et un client par identifiant de sessi
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
+    "skipLibCheck": true,
     "noEmit": true,
     "types": ["node"],
     "lib": ["ES2022"]
@@ -2597,6 +2599,7 @@ git commit -m "feat: transport WebRTC str0m et client de signaling"
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
+    "skipLibCheck": true,
     "noUnusedLocals": true,
     "noEmit": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"]
