@@ -87,6 +87,82 @@ fn next_frame_deadline(previous: Instant, now: Instant, interval: Duration) -> I
     }
 }
 
+/// Issue de la classification d'une erreur de réception UDP (voir
+/// `classify_recv_error`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RecvErrorAction {
+    /// Erreur transitoire connue, qui n'indique aucune corruption durable du
+    /// socket : on continue de recevoir, après une temporisation (voir
+    /// `recv_error_backoff`) pour ne pas transformer une rafale de telles
+    /// erreurs en boucle serrée.
+    RetryWithBackoff,
+    /// Erreur qui n'a aucune raison de se résorber d'elle-même (permissions,
+    /// socket dans un état invalide, interface réseau disparue...) :
+    /// continuer à boucler dessus ne ferait que masquer un problème réel
+    /// sans jamais le résoudre. On clôt la session proprement plutôt que de
+    /// journaliser indéfiniment.
+    Fatal,
+}
+
+/// Classe une erreur de `UdpSocket::recv_from` (hors `WouldBlock`/`TimedOut`,
+/// déjà traités séparément comme des échéances normales) selon qu'elle
+/// justifie une nouvelle tentative ou la fin de la session.
+///
+/// Le cas motivant : sous Windows, la plateforme cible, un socket UDP non
+/// connecté reçoit `WSAECONNRESET` quand un message ICMP « port injoignable »
+/// revient — typiquement après la fermeture brutale de l'onglet du
+/// navigateur, avant qu'ICE n'ait eu le temps de détecter la déconnexion.
+/// `std::io::ErrorKind::ConnectionReset` est la variante portable vers
+/// laquelle Rust normalise `WSAECONNRESET` (voir `std::io::Error::kind`) :
+/// on teste ce nom cross-plateforme, jamais une valeur d'erreur spécifique à
+/// Windows, pour que ce fichier reste indépendant de la plateforme de
+/// compilation. Sur Linux, avec un socket non connecté comme celui-ci, cette
+/// variante n'est en pratique jamais produite pour ce scénario — le test
+/// couvre donc la classification elle-même, pas un comportement observable
+/// uniquement sous Windows. `Interrupted` (signal reçu pendant l'appel
+/// bloquant) suit la même logique : retenter est le comportement standard
+/// documenté par `std::io::Error`.
+///
+/// Toute autre erreur (permissions, socket fermé, argument invalide...) est
+/// classée fatale : rien n'indique qu'elle se résorbera d'elle-même, et
+/// boucler dessus sans fin masquerait un problème réel plutôt que de le
+/// signaler.
+fn classify_recv_error(kind: std::io::ErrorKind) -> RecvErrorAction {
+    use std::io::ErrorKind::{ConnectionReset, Interrupted};
+    match kind {
+        ConnectionReset | Interrupted => RecvErrorAction::RetryWithBackoff,
+        _ => RecvErrorAction::Fatal,
+    }
+}
+
+/// Temporisation appliquée après `consecutive_errors` erreurs de réception
+/// UDP transitoires d'affilée : backoff exponentiel borné (1 ms, 2 ms, 4
+/// ms, ... jusqu'à `RECV_ERROR_BACKOFF_MAX`).
+///
+/// Sans cette borne, une rafale de `WSAECONNRESET` (un ICMP « port
+/// injoignable » par paquet renvoyé pendant qu'ICE n'a pas encore détecté la
+/// déconnexion, ce qui prend plusieurs secondes) tournerait en boucle serrée
+/// — `recv_from` renvoyant l'erreur immédiatement, sans jamais attendre le
+/// délai de lecture demandé — journalisant à chaque tour et consommant un
+/// cœur de processeur jusqu'à la détection ICE. Le plafond est choisi assez
+/// bas pour ne pas retarder sensiblement la réception d'un paquet légitime
+/// qui arriverait entre-temps (ni la détection ICE elle-même, qui ne dépend
+/// pas de cette boucle mais des échéances de `Rtc`).
+const RECV_ERROR_BACKOFF_BASE: Duration = Duration::from_millis(1);
+const RECV_ERROR_BACKOFF_MAX: Duration = Duration::from_millis(200);
+
+fn recv_error_backoff(consecutive_errors: u32) -> Duration {
+    // `1u32 << exponent` déborderait au-delà de 31 : borner l'exposant avant
+    // le décalage, plutôt que de compter sur `saturating_mul` seul, qui
+    // opère sur des `Duration` (pas d'overflow arithmétique là), mais dont
+    // l'opérande `2^exponent` aurait déjà débordé silencieusement en `u32`
+    // avant de lui être passé.
+    let exponent = consecutive_errors.min(31);
+    RECV_ERROR_BACKOFF_BASE
+        .saturating_mul(1u32 << exponent)
+        .min(RECV_ERROR_BACKOFF_MAX)
+}
+
 /// Durée à attendre avant le prochain réveil, bornée par la plus proche de
 /// deux échéances : celle que réclame `Rtc` (`rtc_deadline`) et, si une piste
 /// vidéo est négociée et la session n'est pas en cours de clôture,
@@ -125,6 +201,12 @@ pub struct Session {
     /// Empêche de noyer les journaux : la négociation incomplète (I4) est
     /// signalée une seule fois, pas à chaque image jetée.
     warned_negotiation: bool,
+    /// Nombre d'erreurs de réception UDP transitoires consécutives (voir
+    /// `classify_recv_error`/`recv_error_backoff`) : remis à zéro dès qu'un
+    /// tour de boucle se déroule sans une telle erreur (paquet reçu, ou
+    /// simple échéance sans donnée). Sert à faire croître la temporisation
+    /// appliquée entre deux tentatives pendant une rafale.
+    consecutive_recv_errors: u32,
 }
 
 impl Session {
@@ -172,6 +254,7 @@ impl Session {
             ending: false,
             next_frame_at: Instant::now() + FRAME_INTERVAL,
             warned_negotiation: false,
+            consecutive_recv_errors: 0,
         };
 
         // `add_local_candidate` est une mutation : on draine avant de rendre
@@ -324,6 +407,11 @@ impl Session {
         let mut buffer = vec![0u8; 2000];
         match self.socket.recv_from(&mut buffer) {
             Ok((n, source_addr)) => {
+                // Un tour de boucle sans erreur de réception met fin à une
+                // éventuelle rafale : la prochaine erreur, s'il y en a une,
+                // repart d'une temporisation minimale plutôt que de
+                // poursuivre la croissance entamée par une rafale passée.
+                self.consecutive_recv_errors = 0;
                 let destination = self.socket.local_addr()?;
                 // I2 : un datagramme qui n'est ni STUN, ni DTLS, ni RTP/RTCP
                 // (bruit réseau, sonde de port, paquet vide) fait échouer
@@ -350,15 +438,41 @@ impl Session {
                 if e.kind() == std::io::ErrorKind::WouldBlock
                     || e.kind() == std::io::ErrorKind::TimedOut =>
             {
+                // Échéance normale, pas une erreur : n'affecte pas le
+                // compteur de rafale.
+                self.consecutive_recv_errors = 0;
                 self.rtc
                     .handle_input(Input::Timeout(Instant::now()))
                     .map_err(|e| anyhow!("handle_input timeout : {e}"))?;
             }
-            Err(e) => {
+            Err(e) => match classify_recv_error(e.kind()) {
                 // I2 : erreur de réception transitoire — journalisée, pas
-                // fatale.
-                tracing::warn!(erreur = %e, "échec de réception UDP, ignoré");
-            }
+                // fatale. `recv_from` renvoyant l'erreur immédiatement (sans
+                // attendre `wait`), une rafale bouclerait à vide sans cette
+                // temporisation croissante (voir `recv_error_backoff`) — le
+                // socket lui-même n'est pas mis en cause, seul le rythme de
+                // nouvelles tentatives l'est.
+                RecvErrorAction::RetryWithBackoff => {
+                    self.consecutive_recv_errors = self.consecutive_recv_errors.saturating_add(1);
+                    let backoff = recv_error_backoff(self.consecutive_recv_errors);
+                    tracing::warn!(
+                        erreur = %e,
+                        consecutives = self.consecutive_recv_errors,
+                        backoff_ms = backoff.as_millis(),
+                        "échec de réception UDP transitoire, ignoré"
+                    );
+                    std::thread::sleep(backoff);
+                }
+                // Erreur qui n'a aucune raison de se résorber d'elle-même :
+                // clôture propre de la session (comme I5 pour une source
+                // épuisée), pas boucle indéfinie ni panique du processus —
+                // seules `Session::new`/`accept_offer` justifient de tuer le
+                // processus entier (voir le commentaire de module).
+                RecvErrorAction::Fatal => {
+                    tracing::warn!(erreur = %e, "échec de réception UDP non transitoire, fin de session");
+                    self.begin_ending("échec de réception UDP non transitoire");
+                }
+            },
         }
         Ok(Tick::Continue)
     }
@@ -530,6 +644,79 @@ mod tests {
 
     fn pt(v: u8) -> Pt {
         Pt::from(v)
+    }
+
+    // -- classify_recv_error / recv_error_backoff -------------------------
+    //
+    // Pas de socket réelle ici : provoquer un WSAECONNRESET déterministe
+    // demanderait une vraie machine Windows et un pair qui ferme sa
+    // connexion au bon moment, ce que la revue exclut explicitement comme
+    // non testable de façon fiable. On teste donc la logique pure de
+    // classification et de temporisation, indépendamment de toute E/S.
+
+    #[test]
+    fn connection_reset_est_transitoire() {
+        // Le cas motivant (I2 étendu) : `ConnectionReset` est la variante
+        // portable vers laquelle Rust normalise `WSAECONNRESET`, reçu sur
+        // une socket UDP Windows après un ICMP « port injoignable ».
+        assert_eq!(
+            classify_recv_error(std::io::ErrorKind::ConnectionReset),
+            RecvErrorAction::RetryWithBackoff
+        );
+    }
+
+    #[test]
+    fn interrupted_est_transitoire() {
+        assert_eq!(
+            classify_recv_error(std::io::ErrorKind::Interrupted),
+            RecvErrorAction::RetryWithBackoff
+        );
+    }
+
+    #[test]
+    fn erreurs_non_reconnues_sont_fatales() {
+        // Une sélection représentative d'erreurs qui n'ont aucune raison de
+        // se résorber d'elles-mêmes : pas de liste exhaustive nécessaire,
+        // seulement la preuve que le classement par défaut est bien fatal
+        // (pas transitoire), pas l'inverse d'une liste d'exceptions
+        // ouverte.
+        for kind in [
+            std::io::ErrorKind::PermissionDenied,
+            std::io::ErrorKind::NotConnected,
+            std::io::ErrorKind::InvalidInput,
+            std::io::ErrorKind::Unsupported,
+            std::io::ErrorKind::Other,
+        ] {
+            assert_eq!(classify_recv_error(kind), RecvErrorAction::Fatal, "{kind:?}");
+        }
+    }
+
+    #[test]
+    fn backoff_croit_avec_le_nombre_d_erreurs_consecutives() {
+        let un = recv_error_backoff(1);
+        let deux = recv_error_backoff(2);
+        let trois = recv_error_backoff(3);
+        assert!(un < deux, "{un:?} devrait être < {deux:?}");
+        assert!(deux < trois, "{deux:?} devrait être < {trois:?}");
+    }
+
+    #[test]
+    fn backoff_reste_borne_meme_apres_une_tres_longue_rafale() {
+        // Preuve directe du défaut visé : sans borne, une rafale
+        // d'erreurs consécutives ferait croître le délai sans limite (ou
+        // déborderait l'arithmétique). Ici, même après un nombre d'erreurs
+        // qui ferait déborder `1u32 << n` en `u32` sans la borne sur
+        // l'exposant, le résultat reste fini et plafonné.
+        assert_eq!(recv_error_backoff(1_000_000), RECV_ERROR_BACKOFF_MAX);
+        assert!(recv_error_backoff(50) <= RECV_ERROR_BACKOFF_MAX);
+    }
+
+    #[test]
+    fn backoff_est_non_nul_des_la_premiere_erreur() {
+        // Une seule erreur suffit déjà à introduire une temporisation : pas
+        // de « premier coup gratuit » qui laisserait passer un tour de
+        // boucle serrée avant que le mécanisme ne s'engage.
+        assert!(recv_error_backoff(1) > Duration::ZERO);
     }
 
     #[test]
