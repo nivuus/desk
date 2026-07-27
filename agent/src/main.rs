@@ -3,6 +3,11 @@ mod signaling;
 mod source;
 mod transport;
 
+#[cfg(windows)]
+mod capture;
+#[cfg(windows)]
+mod window;
+
 use std::net::IpAddr;
 use std::path::PathBuf;
 
@@ -42,6 +47,30 @@ async fn main() -> Result<()> {
         .init();
 
     let config = config()?;
+
+    // Mode diagnostic : CAPTURE_TEST=firefox vérifie le repérage et la capture.
+    #[cfg(windows)]
+    if let Ok(fragment) = std::env::var("CAPTURE_TEST") {
+        let hwnd = window::find_window_by_title(&fragment)?;
+        let (w, h) = window::client_size(hwnd)?;
+        tracing::info!(largeur = w, hauteur = h, "fenêtre trouvée");
+
+        let mut capture = capture::WindowCapture::new(hwnd)?;
+        let mut captured = 0;
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+        while std::time::Instant::now() < deadline {
+            if let Some(frame) = capture.next_texture()? {
+                captured += 1;
+                if captured == 1 {
+                    tracing::info!(frame.width, frame.height, "première image capturée");
+                }
+            }
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+        tracing::info!(captured, "images capturées en 3 s");
+        return Ok(());
+    }
+
     let source: Box<dyn VideoSource + Send> = match &config.test_file {
         Some(path) => {
             tracing::info!(?path, "source de test");
