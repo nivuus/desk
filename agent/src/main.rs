@@ -111,6 +111,54 @@ fn capture_center_pixel(
     anyhow::bail!("aucune image obtenue pour {region:?} en {timeout:?}")
 }
 
+/// Fil de surveillance du pipeline d'encodage : journalise chaque seconde
+/// l'étape Media Foundation en cours et les compteurs du chemin chaud.
+///
+/// Indispensable pour distinguer un appel qui ne rend JAMAIS la main (l'étape
+/// reste figée sur le même nom) d'une boucle qui tourne sans progresser
+/// (l'étape varie, les compteurs non). Aucune trace posée *autour* des appels
+/// ne peut faire cette distinction, puisqu'un appel bloqué n'atteint jamais sa
+/// trace de sortie — c'est exactement ce qui a rendu le blocage du 28/07
+/// invisible pendant plusieurs cycles d'investigation.
+///
+/// Renvoie de quoi l'arrêter : appeler la closure rendue rejoint le fil.
+#[cfg(windows)]
+fn watch_encoder(telemetry: std::sync::Arc<encode::EncoderTelemetry>) -> impl FnOnce() {
+    use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
+
+    let stop = std::sync::Arc::new(AtomicBool::new(false));
+    let flag = stop.clone();
+    let handle = std::thread::spawn(move || {
+        let started = std::time::Instant::now();
+        while !flag.load(Relaxed) {
+            std::thread::sleep(Duration::from_secs(1));
+            tracing::info!(
+                elapsed_ms = started.elapsed().as_millis() as u64,
+                etape = encode::phase_name(telemetry.phase.load(Relaxed)),
+                submit_calls = telemetry.submit_calls.load(Relaxed),
+                need_input_events = telemetry.need_input_events.load(Relaxed),
+                have_output_events = telemetry.have_output_events.load(Relaxed),
+                converter_inputs = telemetry.converter_inputs.load(Relaxed),
+                converter_outputs = telemetry.converter_outputs.load(Relaxed),
+                encoder_inputs = telemetry.encoder_inputs.load(Relaxed),
+                encoder_outputs = telemetry.encoder_outputs.load(Relaxed),
+                queued_nv12 = telemetry.queued_nv12.load(Relaxed),
+                pending_input_requests = telemetry.pending_input_requests.load(Relaxed),
+                skipped_busy = telemetry.skipped_busy.load(Relaxed),
+                awaiting_drain = telemetry.awaiting_drain.load(Relaxed),
+                conv_in_status = telemetry.converter_input_status.load(Relaxed),
+                conv_out_status = telemetry.converter_output_status.load(Relaxed),
+                conv_refus = telemetry.converter_not_accepting.load(Relaxed),
+                "surveillance du pipeline d'encodage"
+            );
+        }
+    });
+    move || {
+        stop.store(true, Relaxed);
+        let _ = handle.join();
+    }
+}
+
 /// Configuration de l'agent, lue depuis l'environnement.
 struct Config {
     signaling_url: String,
@@ -287,19 +335,33 @@ async fn main() -> Result<()> {
                 let mut encoder =
                     encode::H264Encoder::new(capture.device(), region.width, region.height, 60, 8_000_000)?;
                 encoder.request_keyframe()?;
+                // Même surveillance que la mesure de débit : elle sert ici à
+                // vérifier que des images RÉELLEMENT DISTINCTES traversent le
+                // convertisseur (`converter_inputs` doit progresser), et pas
+                // seulement que des unités d'accès sortent de l'encodeur.
+                let stop_watchdog = watch_encoder(encoder.telemetry());
 
                 let mut encoded = 0usize;
                 let mut keyframes = 0usize;
                 let mut submitted = 0usize;
                 let mut first_unit_has_params = None;
                 let mut pts = 0u64;
-                let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-                let mut last_progress_log = std::time::Instant::now();
-                while std::time::Instant::now() < deadline && encoded < 120 {
-                    if last_progress_log.elapsed() >= std::time::Duration::from_millis(500) {
-                        tracing::debug!(submitted, encoded, "progression de l'essai d'encodage");
-                        last_progress_log = std::time::Instant::now();
-                    }
+                // Bornes réglables : le contrat du brief (120 images, 5 s)
+                // reste la valeur par défaut, mais une mesure du pipeline
+                // RÉEL sur plusieurs centaines d'images demande une fenêtre
+                // plus longue — la source (Desktop Duplication) plafonne vers
+                // 48 im/s, donc 120 images ne durent que 2,5 s.
+                let encode_target: usize = std::env::var("ENCODE_TEST_TARGET")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(120);
+                let encode_secs: u64 = std::env::var("ENCODE_TEST_SECS")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(5);
+                let start = std::time::Instant::now();
+                let deadline = start + std::time::Duration::from_secs(encode_secs);
+                while std::time::Instant::now() < deadline && encoded < encode_target {
                     if let Some(frame) = capture.next_frame(region)? {
                         encoder.submit(&frame, pts)?;
                         submitted += 1;
@@ -334,7 +396,25 @@ async fn main() -> Result<()> {
                     }
                     std::thread::sleep(std::time::Duration::from_millis(1));
                 }
-                tracing::info!(encoded, keyframes, submitted, "images encodées");
+                stop_watchdog();
+                let elapsed = start.elapsed();
+                // `converter_inputs` prouve que ce sont bien des images
+                // NEUVES qui ont traversé le convertisseur, et pas la même
+                // réencodée : c'est la différence entre un pipeline qui
+                // fonctionne et un compteur qui monte.
+                let converter_inputs = encoder
+                    .telemetry()
+                    .converter_inputs
+                    .load(std::sync::atomic::Ordering::Relaxed);
+                tracing::info!(
+                    encoded,
+                    keyframes,
+                    submitted,
+                    converter_inputs,
+                    elapsed_ms = elapsed.as_millis() as u64,
+                    fps = encoded as f64 / elapsed.as_secs_f64(),
+                    "images encodées"
+                );
                 anyhow::ensure!(encoded > 0, "aucune image encodée");
                 anyhow::ensure!(keyframes > 0, "aucune image clé produite");
                 anyhow::ensure!(
@@ -342,6 +422,154 @@ async fn main() -> Result<()> {
                     "la première unité d'accès ne commence pas par SPS puis PPS puis IDR : {:?}",
                     first_unit_has_params
                 );
+            }
+
+            // Mesure de débit isolée du pipeline conversion+encodage :
+            // ENCODER_THROUGHPUT_TEST=1 réinjecte une SEULE texture déjà
+            // capturée, en boucle serrée, sans jamais repasser par
+            // `capture.next_frame` — contrairement à `ENCODE_TEST` ci-dessus,
+            // qui mélange le débit de la source (Desktop Duplication, limité
+            // par les changements d'écran réels) avec celui de l'encodeur
+            // lui-même. C'est cette mesure isolée, faite par le relecteur
+            // pendant la ronde de correction 1/5, qui a permis d'établir que
+            // le plafond à ~1 image/s observé avec `ENCODE_TEST` venait d'un
+            // bogue de pilotage du convertisseur (voir `encode.rs`), pas du
+            // GPU : rejouer la même texture prouve/dément la théorie
+            // matérielle sans dépendre de la disponibilité d'images fraîches.
+            // Conservée telle quelle pour la tâche 14, qui en aura besoin
+            // pour ses propres mesures de débit.
+            if std::env::var("ENCODER_THROUGHPUT_TEST").is_ok() {
+                let mut encoder =
+                    encode::H264Encoder::new(capture.device(), region.width, region.height, 60, 8_000_000)?;
+                encoder.request_keyframe()?;
+
+                // Une seule image réelle, capturée une fois puis réinjectée
+                // telle quelle à chaque itération : aucun autre appel à
+                // `capture.next_frame` dans cette boucle.
+                // Bornée : sans échéance, une capture qui ne rend plus d'image
+                // ferait attendre indéfiniment sans la moindre trace.
+                let frame_deadline = std::time::Instant::now() + Duration::from_secs(10);
+                let frame = loop {
+                    if let Some(frame) = capture.next_frame(region)? {
+                        break frame;
+                    }
+                    anyhow::ensure!(
+                        std::time::Instant::now() < frame_deadline,
+                        "aucune image capturée en 10 s pour amorcer la mesure de débit"
+                    );
+                    std::thread::sleep(std::time::Duration::from_millis(2));
+                };
+
+                let target: usize = std::env::var("ENCODER_THROUGHPUT_TARGET")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(600);
+                // Échéance réglable, et courte par défaut : une échéance de
+                // dix minutes transforme le moindre blocage du pipeline en
+                // dix minutes de silence complet, ce qui a réellement coûté
+                // plusieurs cycles d'investigation sur cette tâche.
+                let deadline_secs: u64 = std::env::var("ENCODER_THROUGHPUT_DEADLINE_SECS")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(30);
+                // Cadence de soumission, en images par seconde. 0 = aucune
+                // limite (on soumet aussi vite que la boucle tourne).
+                //
+                // Cadencer change ce que la mesure signifie, et c'est
+                // volontaire. Sans limite, `submit` est appelé bien plus
+                // souvent qu'aucune source réelle ne le ferait : le
+                // convertisseur, sollicité en permanence, refuse la quasi-
+                // totalité des images neuves et le débit mesuré ne reflète
+                // plus que l'encodeur rejouant la dernière image convertie.
+                // Avec une cadence, on mesure ce que le jalon exige vraiment :
+                // combien d'images NEUVES par seconde traversent conversion
+                // PUIS encodage (`converter_inputs` dans la ligne de
+                // résultat).
+                let submit_hz: u64 = std::env::var("ENCODER_THROUGHPUT_SUBMIT_HZ")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(0);
+                let submit_interval =
+                    (submit_hz > 0).then(|| Duration::from_nanos(1_000_000_000 / submit_hz));
+                tracing::info!(
+                    target,
+                    deadline_secs,
+                    submit_hz,
+                    "début de la mesure de débit isolée"
+                );
+                let stop_watchdog = watch_encoder(encoder.telemetry());
+
+                let mut encoded = 0usize;
+                let mut keyframes = 0usize;
+                let mut submitted = 0usize;
+                let mut pts = 0u64;
+                let start = std::time::Instant::now();
+                let deadline = start + std::time::Duration::from_secs(deadline_secs);
+                let loop_result = (|| -> Result<()> {
+                    let mut next_submit = std::time::Instant::now();
+                    while encoded < target && std::time::Instant::now() < deadline {
+                        let before = encoded;
+                        if let Some(interval) = submit_interval {
+                            let now = std::time::Instant::now();
+                            if now < next_submit {
+                                std::thread::sleep(next_submit - now);
+                            }
+                            next_submit += interval;
+                        }
+                        encoder.submit(&frame, pts)?;
+                        submitted += 1;
+                        pts += 1500; // 90000 / 60
+                        while let Some(unit) = encoder.poll_output()? {
+                            encoded += 1;
+                            if unit.is_keyframe {
+                                keyframes += 1;
+                            }
+                        }
+                        if encoded == before && submit_interval.is_none() {
+                            // Rien n'a avancé : rendre la main brièvement.
+                            // Marteler `submit` sans répit (mesuré : 90
+                            // millions d'appels en 30 s) ne mesure pas un
+                            // débit, ça le détruit — chaque appel interroge le
+                            // convertisseur et le maintient sous une pression
+                            // qu'aucune source réelle ne produirait. La pause
+                            // n'a lieu QUE sur un tour improductif, donc elle
+                            // ne peut pas plafonner le débit mesuré.
+                            std::thread::sleep(Duration::from_micros(100));
+                        }
+                    }
+                    Ok(())
+                })();
+                stop_watchdog();
+                let elapsed = start.elapsed();
+                let fps = encoded as f64 / elapsed.as_secs_f64();
+                // Une mesure de débit doit dire ce qu'elle a réellement fait :
+                // `converter_inputs` est le nombre de conversions DISTINCTES,
+                // `conv_refus` le nombre d'images sautées faute de
+                // disponibilité du convertisseur. Sans ces deux chiffres, un
+                // débit élevé pourrait n'être que la même image réencodée.
+                let telemetry = encoder.telemetry();
+                let converter_inputs = telemetry
+                    .converter_inputs
+                    .load(std::sync::atomic::Ordering::Relaxed);
+                let conv_refus = telemetry
+                    .converter_not_accepting
+                    .load(std::sync::atomic::Ordering::Relaxed);
+                // Journalisé AVANT de propager une éventuelle erreur de la
+                // boucle : une mesure partielle reste une donnée, alors qu'une
+                // erreur remontée sans chiffres ne dit rien de l'endroit où le
+                // pipeline s'est arrêté.
+                tracing::info!(
+                    encoded,
+                    keyframes,
+                    submitted,
+                    elapsed_ms = elapsed.as_millis() as u64,
+                    fps,
+                    converter_inputs,
+                    conv_refus,
+                    "débit isolé du pipeline conversion+encodage (source constante, sans capture)"
+                );
+                loop_result?;
+                anyhow::ensure!(encoded > 0, "aucune image encodée en mesure isolée");
             }
 
             Ok(())

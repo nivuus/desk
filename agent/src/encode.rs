@@ -20,23 +20,30 @@
 //! le GPU (le manager de périphérique D3D est partagé avec elle comme avec
 //! l'encodeur).
 //!
-//! **Constat de performance sur la VM cible, non résolu** : après une brève
-//! rafale initiale (~10 images en <1 s), chaque appel à `ProcessOutput` sur
-//! le convertisseur qui doit confirmer l'absence de sortie supplémentaire se
-//! met à durer environ 1,0 seconde de façon parfaitement reproductible (voir
-//! `drain_converter_output`), plafonnant le débit réel à ~1 image/s au lieu
-//! des 60 im/s visées. Cause écartée par des essais empiriques ciblés :
-//! bug de notre pilotage (identique en `debug` et en `release`), état GPU
-//! contaminé par un run précédent (identique après redémarrage complet de la
-//! VM), contention avec `sunshine.exe` (un service de streaming tiers
-//! tournant sur cette VM, arrêté sans effet sur la mesure),
-//! `MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT`/`_PROGRESSIVE` trop petit (essayé
-//! jusqu'à 16, sans effet), absence de `MF_LOW_LATENCY` sur le convertisseur
-//! (ajouté, sans effet). Le comportement pointe vers une caractéristique du
-//! pilote/de la virtualisation GPU de cette VM plutôt que vers un défaut du
-//! code — voir le rapport de tâche pour le détail de l'investigation.
+//! **Correction du 28/07 : le plafond à ~1 image/s, puis l'arrêt total du
+//! pipeline, venaient d'une fuite de références COM sur les échantillons de
+//! sortie.** Voir `take_output_sample` pour le mécanisme exact, et
+//! `feed_converter` pour le modèle de drainage qui en découle. En résumé :
+//! `MFT_OUTPUT_DATA_BUFFER::pSample` est un `ManuallyDrop` dont la référence
+//! n'était jamais relâchée, si bien que les échantillons du convertisseur ne
+//! retournaient jamais à son `IMFVideoSampleAllocator` ; passé les 10
+//! échantillons du pool, chaque `ProcessOutput` attendait une seconde entière
+//! avant de rendre `MF_E_SAMPLEALLOCATOR_EMPTY`. Les deux « corrections »
+//! précédentes (boucle de drainage jusqu'à `MF_E_TRANSFORM_NEED_MORE_INPUT`,
+//! puis report du drainage au tour suivant) traitaient les symptômes de cette
+//! fuite et l'ont aggravée jusqu'au blocage complet.
+//!
+//! Ces conclusions ne sont pas déduites du code mais mesurées : le chemin
+//! chaud publie son étape courante et ses compteurs dans `EncoderTelemetry`,
+//! qu'un fil de surveillance journalise chaque seconde (voir `main.rs`,
+//! `ENCODER_THROUGHPUT_TEST`). Le débit mesuré est consigné dans le rapport
+//! de tâche.
 
 #![cfg(windows)]
+
+use std::collections::VecDeque;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 
 use anyhow::{anyhow, bail, Context, Result};
 use windows::core::{Interface, PWSTR, GUID};
@@ -62,6 +69,90 @@ use crate::h264::{group_access_units, AccessUnit};
 /// brief).
 const ME_TRANSFORM_NEED_INPUT: u32 = METransformNeedInput.0 as u32;
 const ME_TRANSFORM_HAVE_OUTPUT: u32 = METransformHaveOutput.0 as u32;
+
+/// Au-delà de cette durée, un appel Media Foundation du chemin chaud est
+/// journalisé : à 60 im/s, une image entière tient dans ~16 ms, donc tout
+/// appel qui dépasse ce seuil est déjà un incident, pas du bruit.
+const SLOW_CALL: std::time::Duration = std::time::Duration::from_millis(50);
+
+/// Nombre maximal de sorties retirées d'affilée pour rendre le convertisseur
+/// preneur d'une nouvelle entrée (voir `feed_converter`). Strictement borné :
+/// ce MFT annonce une sortie prête en permanence, donc une boucle sans borne
+/// viderait son pool et bloquerait une seconde entière sur
+/// `MF_E_SAMPLEALLOCATOR_EMPTY`. En régime nominal, une itération suffit.
+const MAX_CONVERTER_COLLECTS: usize = 4;
+
+/// Étapes du chemin chaud, publiées dans `EncoderTelemetry::phase` avant
+/// chaque appel Media Foundation et remises à `PHASE_IDLE` juste après.
+///
+/// Raison d'être : un appel Media Foundation qui ne rend jamais la main est
+/// invisible pour toute trace posée *autour* de lui (la ligne « après » n'est
+/// jamais atteinte, la ligne « avant » se noie dans le flot). Publier l'étape
+/// courante dans un entier atomique permet à un fil de surveillance extérieur
+/// de nommer précisément l'appel bloqué pendant qu'il l'est encore.
+pub const PHASE_IDLE: u64 = 0;
+pub const PHASE_SUBMIT_DRAIN_EVENTS: u64 = 1;
+pub const PHASE_CONVERTER_PROCESS_INPUT: u64 = 2;
+pub const PHASE_CONVERTER_PROCESS_OUTPUT: u64 = 3;
+pub const PHASE_ENCODER_PROCESS_INPUT: u64 = 4;
+pub const PHASE_POLL_DRAIN_EVENTS: u64 = 5;
+pub const PHASE_ENCODER_PROCESS_OUTPUT: u64 = 6;
+pub const PHASE_ENCODER_READ_BUFFER: u64 = 7;
+
+/// Nom lisible d'une étape, pour les journaux de surveillance.
+pub fn phase_name(phase: u64) -> &'static str {
+    match phase {
+        PHASE_IDLE => "repos",
+        PHASE_SUBMIT_DRAIN_EVENTS => "submit/GetEvent",
+        PHASE_CONVERTER_PROCESS_INPUT => "convertisseur/ProcessInput",
+        PHASE_CONVERTER_PROCESS_OUTPUT => "convertisseur/ProcessOutput",
+        PHASE_ENCODER_PROCESS_INPUT => "encodeur/ProcessInput",
+        PHASE_POLL_DRAIN_EVENTS => "poll_output/GetEvent",
+        PHASE_ENCODER_PROCESS_OUTPUT => "encodeur/ProcessOutput",
+        PHASE_ENCODER_READ_BUFFER => "encodeur/lecture du tampon",
+        _ => "inconnu",
+    }
+}
+
+/// Compteurs du chemin chaud, tous atomiques pour rester lisibles **pendant**
+/// qu'un appel Media Foundation est en cours — c'est exactement le cas qu'on
+/// cherche à diagnostiquer. Le coût est nul en pratique (écritures `Relaxed`
+/// sur des entiers déjà en cache).
+#[derive(Default)]
+pub struct EncoderTelemetry {
+    /// Étape courante (voir les constantes `PHASE_*`).
+    pub phase: AtomicU64,
+    /// Nombre d'appels à `submit` entrés (pas nécessairement sortis).
+    pub submit_calls: AtomicU64,
+    /// Images BGRA effectivement remises au convertisseur.
+    pub converter_inputs: AtomicU64,
+    /// Échantillons NV12 effectivement obtenus du convertisseur.
+    pub converter_outputs: AtomicU64,
+    /// Images NV12 effectivement remises à l'encodeur.
+    pub encoder_inputs: AtomicU64,
+    /// Unités d'accès effectivement obtenues de l'encodeur.
+    pub encoder_outputs: AtomicU64,
+    /// Événements `METransformNeedInput` reçus depuis le démarrage.
+    pub need_input_events: AtomicU64,
+    /// Événements `METransformHaveOutput` reçus depuis le démarrage.
+    pub have_output_events: AtomicU64,
+    /// Longueur courante de `pending_nv12`.
+    pub queued_nv12: AtomicU64,
+    /// Valeur courante de `pending_input_requests`.
+    pub pending_input_requests: AtomicU64,
+    /// Occurrences de `MF_E_SAMPLEALLOCATOR_EMPTY`.
+    pub skipped_busy: AtomicU64,
+    /// 1 si une sortie du convertisseur reste à retirer.
+    pub awaiting_drain: AtomicU64,
+    /// Dernier `GetInputStatus` du convertisseur : bit 0 = `ACCEPT_DATA`,
+    /// `u64::MAX` si la méthode n'est pas implémentée par ce MFT.
+    pub converter_input_status: AtomicU64,
+    /// Dernier `GetOutputStatus` du convertisseur : bit 0 = `SAMPLE_READY`,
+    /// `u64::MAX` si la méthode n'est pas implémentée par ce MFT.
+    pub converter_output_status: AtomicU64,
+    /// Entrées refusées par le convertisseur (`MF_E_NOTACCEPTING`).
+    pub converter_not_accepting: AtomicU64,
+}
 
 /// Résultat d'un appel à `ProcessOutput` sur le convertisseur BGRA→NV12 (voir
 /// `H264Encoder::drain_converter_output`).
@@ -90,16 +181,27 @@ pub struct H264Encoder {
     /// construction : fournir un échantillon alors que le flag est positionné
     /// (ou l'inverse) est une erreur `ProcessOutput` documentée par MF.
     converter_provides_samples: bool,
-    /// Échantillon NV12 réutilisé à chaque image quand le convertisseur ne
-    /// s'auto-alloue pas (texture GPU allouée une seule fois : la taille est
-    /// fixe pour la durée de vie de l'encodeur).
-    nv12_sample: Option<IMFSample>,
-    /// Vrai si le convertisseur a produit un échantillon lors du dernier
-    /// appel mais n'a pas encore confirmé être drainé (`ProcessOutput` de
-    /// confirmation en attente — voir `convert_to_nv12`). Tant que c'est
-    /// vrai, un nouveau `ProcessInput` échouerait avec `MF_E_NOTACCEPTING` :
-    /// on retente la confirmation au tour suivant plutôt que d'échouer.
-    converter_needs_drain_confirmation: bool,
+    /// Périphérique D3D11 de la capture, conservé pour allouer des textures
+    /// NV12 de sortie quand le convertisseur ne s'auto-alloue pas.
+    device: ID3D11Device,
+    /// Horodatages (temps, durée) des entrées BGRA soumises au convertisseur
+    /// mais dont la sortie n'a pas encore été récupérée, dans l'ordre de
+    /// soumission. Un convertisseur vidéo ne réordonne jamais les images :
+    /// la sortie la plus ancienne pas encore récupérée correspond toujours
+    /// à l'entrée la plus ancienne pas encore ressortie (voir la ronde de
+    /// correction 1/5 — le convertisseur peut rendre, lors du drainage
+    /// d'une entrée, la sortie d'une entrée antérieure encore en attente ;
+    /// il faut alors lui associer SON horodatage d'origine, pas celui de
+    /// l'entrée qui vient d'être soumise).
+    pending_conversion_timestamps: VecDeque<(i64, i64)>,
+    /// Échantillons NV12 déjà produits par le convertisseur mais pas encore
+    /// soumis à l'encodeur (celui-ci n'en réclamait pas encore).
+    pending_nv12: VecDeque<IMFSample>,
+    /// Vrai si le convertisseur doit encore rendre la sortie d'une entrée déjà
+    /// consommée. Purement diagnostic depuis le 28/07 (publié en
+    /// `awaiting_drain`) : le pilotage s'appuie désormais sur `GetInputStatus`,
+    /// qui décrit l'état réel du convertisseur au lieu de le déduire.
+    converter_output_pending: bool,
     width: u32,
     height: u32,
     fps: u32,
@@ -107,11 +209,14 @@ pub struct H264Encoder {
     pending_input_requests: u32,
     /// Nombre d'images prêtes à être récupérées.
     pending_outputs: u32,
-    /// Compteur diagnostic : images renoncées faute de confirmation de
-    /// drainage du convertisseur (voir `convert_to_nv12`). Exposé pour
-    /// mesurer l'ampleur réelle de ce contournement, pas consommé par la
-    /// logique de pilotage elle-même.
+    /// Compteur diagnostic : occasions où le pool de sortie du convertisseur
+    /// était momentanément épuisé (voir `collect_converter_output`). Exposé
+    /// pour mesurer l'ampleur réelle de ce contournement, pas consommé par
+    /// la logique de pilotage elle-même.
     skipped_busy: u64,
+    /// Compteurs et étape courante, lisibles depuis un autre fil (voir
+    /// `EncoderTelemetry`).
+    telemetry: Arc<EncoderTelemetry>,
 }
 
 impl H264Encoder {
@@ -175,11 +280,14 @@ impl H264Encoder {
             converter_provides_samples,
             "convertisseur BGRA→NV12 (Video Processor MFT) configuré"
         );
-        let nv12_sample = if converter_provides_samples {
-            None
-        } else {
-            Some(create_nv12_sample(device, width, height)?)
-        };
+        // Essai mené (investigation débit) : fournir systématiquement notre
+        // propre échantillon de sortie, y compris quand
+        // `converter_provides_samples` est vrai, pour voir si cela évite
+        // l'attente d'~1 s mesurée dans `drain_converter_output`. Rejeté
+        // immédiatement par le convertisseur (`Output Sample is Invalid`,
+        // `0x80070057`) : le contrat documenté (ne jamais fournir de tampon
+        // quand ce drapeau est positionné) doit être respecté, il n'y a pas
+        // de contournement possible ici.
         unsafe { converter.ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0) }?;
         unsafe { converter.ProcessMessage(MFT_MESSAGE_NOTIFY_START_OF_STREAM, 0) }?;
 
@@ -189,15 +297,41 @@ impl H264Encoder {
             device_manager,
             converter,
             converter_provides_samples,
-            nv12_sample,
-            converter_needs_drain_confirmation: false,
+            device: device.clone(),
+            pending_conversion_timestamps: VecDeque::new(),
+            pending_nv12: VecDeque::new(),
+            converter_output_pending: false,
             skipped_busy: 0,
+            telemetry: Arc::new(EncoderTelemetry::default()),
             width,
             height,
             fps,
             pending_input_requests: 0,
             pending_outputs: 0,
         })
+    }
+
+    /// Poignée de télémétrie, à partager avec un fil de surveillance.
+    pub fn telemetry(&self) -> Arc<EncoderTelemetry> {
+        self.telemetry.clone()
+    }
+
+    /// Recopie les compteurs « d'état » (longueurs de file) dans la
+    /// télémétrie. Appelée aux points de respiration du chemin chaud.
+    fn publish_state(&self) {
+        self.telemetry
+            .queued_nv12
+            .store(self.pending_nv12.len() as u64, Ordering::Relaxed);
+        self.telemetry
+            .pending_input_requests
+            .store(self.pending_input_requests as u64, Ordering::Relaxed);
+        self.telemetry
+            .skipped_busy
+            .store(self.skipped_busy, Ordering::Relaxed);
+        self.telemetry.awaiting_drain.store(
+            self.converter_output_pending as u64,
+            Ordering::Relaxed,
+        );
     }
 
     /// Draine les événements disponibles sans bloquer.
@@ -212,6 +346,9 @@ impl H264Encoder {
             match kind {
                 ME_TRANSFORM_NEED_INPUT => {
                     self.pending_input_requests += 1;
+                    self.telemetry
+                        .need_input_events
+                        .fetch_add(1, Ordering::Relaxed);
                     tracing::trace!(
                         pending_input_requests = self.pending_input_requests,
                         "événement METransformNeedInput reçu"
@@ -219,6 +356,9 @@ impl H264Encoder {
                 }
                 ME_TRANSFORM_HAVE_OUTPUT => {
                     self.pending_outputs += 1;
+                    self.telemetry
+                        .have_output_events
+                        .fetch_add(1, Ordering::Relaxed);
                     tracing::trace!(
                         pending_outputs = self.pending_outputs,
                         "événement METransformHaveOutput reçu"
@@ -230,75 +370,61 @@ impl H264Encoder {
         Ok(())
     }
 
-    /// Convertit une texture BGRA capturée en un échantillon NV12, via le
-    /// convertisseur GPU synchrone. Contrairement à l'encodeur, ce transform
-    /// se pilote par une paire `ProcessInput`/`ProcessOutput` classique : pas
+    /// Convertit **une** texture BGRA capturée en **un** échantillon NV12,
+    /// empilé dans `pending_nv12`. Contrairement à l'encodeur, ce transform se
+    /// pilote par une paire `ProcessInput`/`ProcessOutput` classique : pas
     /// d'événements à suivre.
     ///
-    /// Piège rencontré à l'essai : un seul appel à `ProcessOutput` après
-    /// `ProcessInput` ne suffit pas. Le modèle documenté des MFT synchrones
-    /// (« Basic MFT Processing Model ») exige d'appeler `ProcessOutput` en
-    /// boucle jusqu'à ce qu'il renvoie `MF_E_TRANSFORM_NEED_MORE_INPUT` — ce
-    /// code signale que le transform est redevenu prêt à accepter une
-    /// nouvelle entrée. S'arrêter dès le premier échantillon obtenu laisse le
-    /// convertisseur dans un état interne non drainé : le `ProcessInput` de
-    /// l'image suivante échoue alors avec `MF_E_NOTACCEPTING`
-    /// (`0xC00D36B5`), observé tel quel lors du premier essai sur la VM.
+    /// **Correction du 28/07 — modèle de drainage revu, mesures à l'appui.**
+    /// La ronde précédente avait remplacé un `ProcessOutput` unique par une
+    /// boucle « jusqu'à observer réellement `MF_E_TRANSFORM_NEED_MORE_INPUT` »,
+    /// en s'appuyant sur le « Basic MFT Processing Model » de Microsoft. La
+    /// télémétrie (voir `EncoderTelemetry`) montre que ce MFT-ci **ne renvoie
+    /// jamais ce code** : avec seulement 2 entrées soumises, la boucle a tiré
+    /// 10 échantillons de sortie, puis 9 de plus par seconde — c'est-à-dire
+    /// autant d'échantillons que son `IMFVideoSampleAllocator` en contient,
+    /// après quoi `ProcessOutput` bloque une seconde entière avant de rendre
+    /// `MF_E_SAMPLEALLOCATOR_EMPTY`. Boucler ne « draine » donc pas ce
+    /// convertisseur : ça vide son pool, ça duplique des images qui n'ont
+    /// jamais été soumises, et ça impose une seconde d'attente par tour.
     ///
-    /// `Ok(None)` signifie qu'il n'y a rien à transmettre à l'encodeur pour
-    /// cette image : soit la confirmation de drainage d'un tour précédent
-    /// n'a pas encore abouti (voir le champ
-    /// `converter_needs_drain_confirmation`), soit le pool de sortie du
-    /// convertisseur est momentanément épuisé
-    /// (`MF_E_SAMPLEALLOCATOR_EMPTY`, `0xC00D4A3E` — rencontré de façon
-    /// reproductible après quelques images, malgré l'agrandissement du pool
-    /// via `MF_SA_MINIMUM_OUTPUT_SAMPLE_COUNT`/`_PROGRESSIVE`). Dans les deux
-    /// cas ce n'est pas une erreur fatale : l'appelant réessaiera à l'image
-    /// suivante (voir `submit`).
-    ///
-    /// Piège rencontré à l'essai, résolu par le champ
-    /// `converter_needs_drain_confirmation` : un premier correctif qui
-    /// abandonnait purement et simplement la confirmation en cas d'échec
-    /// laissait le convertisseur dans un état où `ProcessInput` échouait
-    /// ensuite systématiquement avec `MF_E_NOTACCEPTING` sur TOUTES les
-    /// images suivantes (le convertisseur exige d'avoir confirmé le drainage
-    /// de sa sortie précédente avant d'accepter une entrée nouvelle — voir
-    /// plus haut). La confirmation manquée est donc retentée aux tours
-    /// suivants plutôt qu'abandonnée : la sortie réelle de chaque image,
-    /// elle, est systématiquement obtenue dès le premier appel à
-    /// `drain_converter_output` — seule la confirmation « plus rien à
-    /// sortir » échoue parfois faute de place dans le pool.
-    fn convert_to_nv12(
-        &mut self,
-        frame: &CapturedFrame,
-        sample_time: i64,
-        duration: i64,
-    ) -> Result<Option<IMFSample>> {
-        if self.converter_needs_drain_confirmation {
-            let t = std::time::Instant::now();
-            let poll = self.drain_converter_output()?;
-            let elapsed = t.elapsed();
-            if elapsed > std::time::Duration::from_millis(20) {
-                tracing::debug!(?elapsed, "confirmation différée du convertisseur lente (voir commentaire de module)");
+    /// Le pilotage correct pour ce transform 1-entrée/1-sortie est celui
+    /// d'origine : un `ProcessOutput` par `ProcessInput`. Ce qui faisait
+    /// échouer cette version-là avec `MF_E_NOTACCEPTING` n'était pas le
+    /// modèle mais la fuite de références corrigée dans `take_output_sample` —
+    /// pool épuisé, donc convertisseur incapable d'accepter une entrée de
+    /// plus.
+    fn feed_converter(&mut self, frame: &CapturedFrame, sample_time: i64, duration: i64) -> Result<()> {
+        // 1. Retirer les sorties en attente jusqu'à ce que le convertisseur se
+        //    déclare preneur d'une entrée.
+        //
+        // C'est `GetInputStatus` — et non `GetOutputStatus` — qui sert de
+        // condition d'arrêt, pour une raison mesurée : après avoir consommé
+        // une entrée, ce MFT continue d'annoncer « sortie prête » en
+        // permanence (chaque `ProcessOutput` supplémentaire réussit en
+        // rejouant la dernière image convertie), si bien qu'une boucle
+        // « drainer jusqu'à ce qu'il n'annonce plus rien » ne se termine
+        // jamais et finit par vider son `IMFVideoSampleAllocator`. En
+        // revanche il refuse toute entrée neuve tant qu'on ne lui a pas repris
+        // sa sortie : l'appariement strict « une sortie par entrée » bloque
+        // donc tout aussi sûrement (mesuré : 1 seule image convertie en 30 s).
+        // Retirer des sorties jusqu'à ce qu'il redevienne preneur est le seul
+        // des trois pilotages qui fasse réellement passer des images neuves —
+        // en régime nominal, une seule itération suffit.
+        let mut collected = 0usize;
+        while !self.converter_accepts_input() {
+            if collected >= MAX_CONVERTER_COLLECTS || !self.collect_converter_output()? {
+                // Toujours pas preneur (ou pool momentanément vide) : on saute
+                // cette image et on retentera. Une image sautée vaut mieux
+                // qu'un pipeline mort — et mieux qu'un `MF_E_NOTACCEPTING`
+                // encaissé en erreur.
+                self.telemetry
+                    .converter_not_accepting
+                    .fetch_add(1, Ordering::Relaxed);
+                self.publish_state();
+                return Ok(());
             }
-            match poll {
-                ConverterPoll::NeedMoreInput => {
-                    self.converter_needs_drain_confirmation = false;
-                }
-                ConverterPoll::Sample(_) => {
-                    // Ne devrait pas se produire (conversion de format pure,
-                    // 1 entrée → 1 sortie) ; on l'écarte et on considère la
-                    // confirmation obtenue plutôt que de bloquer dessus.
-                    self.converter_needs_drain_confirmation = false;
-                }
-                ConverterPoll::Busy => {
-                    // Toujours pas confirmé : on ne peut pas soumettre de
-                    // nouvelle entrée ce tour-ci sans risquer
-                    // `MF_E_NOTACCEPTING`.
-                    self.skipped_busy += 1;
-                    return Ok(None);
-                }
-            }
+            collected += 1;
         }
 
         let bgra_sample = unsafe { MFCreateSample() }?;
@@ -307,62 +433,109 @@ impl H264Encoder {
         }
         .context("enveloppement de la texture BGRA pour le convertisseur")?;
         let t = std::time::Instant::now();
-        unsafe {
+        self.telemetry
+            .phase
+            .store(PHASE_CONVERTER_PROCESS_INPUT, Ordering::Relaxed);
+        let result = unsafe {
             bgra_sample.AddBuffer(&bgra_buffer)?;
             bgra_sample.SetSampleTime(sample_time)?;
             bgra_sample.SetSampleDuration(duration)?;
             self.converter.ProcessInput(0, &bgra_sample, 0)
+        };
+        self.telemetry.phase.store(PHASE_IDLE, Ordering::Relaxed);
+        // Filet de sécurité : `GetInputStatus` vient de dire oui, mais si le
+        // convertisseur se ravise, `MF_E_NOTACCEPTING` reste une
+        // contre-pression et non une panne — on saute l'image.
+        if let Err(e) = &result {
+            if e.code() == MF_E_NOTACCEPTING {
+                self.telemetry
+                    .converter_not_accepting
+                    .fetch_add(1, Ordering::Relaxed);
+                self.publish_state();
+                return Ok(());
+            }
         }
-        .context("soumission de l'image au convertisseur BGRA→NV12")?;
+        result.context("soumission de l'image au convertisseur BGRA→NV12")?;
+        self.telemetry
+            .converter_inputs
+            .fetch_add(1, Ordering::Relaxed);
+        self.converter_output_pending = true;
         let elapsed = t.elapsed();
-        if elapsed > std::time::Duration::from_millis(20) {
-            tracing::debug!(?elapsed, "ProcessInput du convertisseur lent");
+        if elapsed > SLOW_CALL {
+            tracing::warn!(?elapsed, "ProcessInput du convertisseur lent");
         }
+        self.pending_conversion_timestamps.push_back((sample_time, duration));
 
-        // La sortie réelle de cette image : observée fiable dès ce premier
-        // appel dans tous les essais menés (contrairement à l'appel de
-        // confirmation qui suit).
+        self.collect_converter_output()?;
+        Ok(())
+    }
+
+    /// Le convertisseur se déclare-t-il prêt à accepter une entrée ?
+    ///
+    /// Publie au passage les deux drapeaux dans la télémétrie. Si le MFT
+    /// n'implémente pas `GetInputStatus` (`u64::MAX`), on répond oui : mieux
+    /// vaut tenter `ProcessInput` et traiter un éventuel `MF_E_NOTACCEPTING`
+    /// que de ne jamais rien soumettre.
+    fn converter_accepts_input(&self) -> bool {
+        let input = converter_status(&self.converter, true);
+        self.telemetry
+            .converter_input_status
+            .store(input, Ordering::Relaxed);
+        self.telemetry.converter_output_status.store(
+            converter_status(&self.converter, false),
+            Ordering::Relaxed,
+        );
+        input == u64::MAX || input & MFT_INPUT_STATUS_ACCEPT_DATA.0 as u64 != 0
+    }
+
+    /// Retire **un** échantillon converti et l'empile dans `pending_nv12`,
+    /// avec l'horodatage de SON entrée d'origine (dépilé de
+    /// `pending_conversion_timestamps`, FIFO — voir son commentaire de champ).
+    ///
+    /// Renvoie `true` si la sortie due a bien été retirée (le convertisseur
+    /// accepte à nouveau une entrée), `false` s'il faut réessayer plus tard
+    /// (`MF_E_SAMPLEALLOCATOR_EMPTY`, `0xC00D4A3E` — pool momentanément vide,
+    /// signal de contre-pression et non une panne).
+    fn collect_converter_output(&mut self) -> Result<bool> {
         let t = std::time::Instant::now();
-        let first_poll = self.drain_converter_output()?;
+        self.telemetry
+            .phase
+            .store(PHASE_CONVERTER_PROCESS_OUTPUT, Ordering::Relaxed);
+        let poll = self.drain_converter_output();
+        self.telemetry.phase.store(PHASE_IDLE, Ordering::Relaxed);
+        let poll = poll?;
         let elapsed = t.elapsed();
-        if elapsed > std::time::Duration::from_millis(20) {
-            tracing::debug!(?elapsed, "récupération de la sortie du convertisseur lente");
+        if elapsed > SLOW_CALL {
+            tracing::warn!(?elapsed, "ProcessOutput du convertisseur lent");
         }
-        let sample = match first_poll {
-            ConverterPoll::Sample(sample) => sample,
+        let ready = match poll {
+            ConverterPoll::Sample(sample) => {
+                self.telemetry
+                    .converter_outputs
+                    .fetch_add(1, Ordering::Relaxed);
+                let (time, duration) =
+                    self.pending_conversion_timestamps.pop_front().unwrap_or((0, 0));
+                unsafe {
+                    let _ = sample.SetSampleTime(time);
+                    let _ = sample.SetSampleDuration(duration);
+                }
+                self.pending_nv12.push_back(sample);
+                self.converter_output_pending = false;
+                true
+            }
+            // Rien de prêt : le convertisseur est disponible pour une entrée.
             ConverterPoll::NeedMoreInput => {
-                return Ok(None);
+                self.converter_output_pending = false;
+                true
             }
             ConverterPoll::Busy => {
-                // Jamais observé à ce point précis en pratique, mais géré par
-                // prudence : la confirmation restera à faire au tour suivant.
-                self.converter_needs_drain_confirmation = true;
-                return Ok(None);
+                self.converter_output_pending = true;
+                self.skipped_busy += 1;
+                false
             }
         };
-
-        // Tentative de confirmation immédiate (cas courant : réussit tout de
-        // suite). Si elle échoue faute de place dans le pool, on la reporte
-        // au tour suivant plutôt que de perdre l'échantillon qu'on a déjà.
-        let t = std::time::Instant::now();
-        let confirm_poll = self.drain_converter_output()?;
-        let elapsed = t.elapsed();
-        if elapsed > std::time::Duration::from_millis(20) {
-            tracing::debug!(?elapsed, "confirmation immédiate du convertisseur lente (voir commentaire de module)");
-        }
-        match confirm_poll {
-            ConverterPoll::NeedMoreInput => {}
-            ConverterPoll::Sample(_) => {}
-            ConverterPoll::Busy => {
-                self.converter_needs_drain_confirmation = true;
-            }
-        }
-
-        unsafe {
-            sample.SetSampleTime(sample_time)?;
-            sample.SetSampleDuration(duration)?;
-        }
-        Ok(Some(sample))
+        self.publish_state();
+        Ok(ready)
     }
 
     /// Un appel à `ProcessOutput` sur le convertisseur.
@@ -382,23 +555,32 @@ impl H264Encoder {
     fn drain_converter_output(&mut self) -> Result<ConverterPoll> {
         let mut buffer = MFT_OUTPUT_DATA_BUFFER {
             dwStreamID: 0,
+            // Un échantillon neuf à chaque tour dans le cas où le
+            // convertisseur ne s'auto-alloue pas : plusieurs sorties peuvent
+            // être mises en file simultanément (`pending_nv12`), donc en
+            // réutiliser un seul les ferait toutes pointer sur la même texture
+            // — chacune écrasant la précédente. Ce chemin n'est pas emprunté
+            // sur la VM cible (`converter_provides_samples` y vaut `true`),
+            // mais il ne doit pas pour autant être faux.
             pSample: std::mem::ManuallyDrop::new(if self.converter_provides_samples {
                 None
             } else {
-                self.nv12_sample.clone()
+                Some(create_nv12_sample(&self.device, self.width, self.height)?)
             }),
             dwStatus: 0,
             pEvents: std::mem::ManuallyDrop::new(None),
         };
         let mut status = 0u32;
-        match unsafe {
+        let result = unsafe {
             self.converter
                 .ProcessOutput(0, std::slice::from_mut(&mut buffer), &mut status)
-        } {
-            Ok(()) => Ok(buffer
-                .pSample
-                .as_ref()
-                .cloned()
+        };
+        // `take_output_sample` DOIT être appelé sur tous les chemins, y compris
+        // d'erreur : voir son commentaire (la référence déposée dans
+        // `pSample` par le MFT n'appartient à personne d'autre que nous).
+        let sample = unsafe { take_output_sample(&mut buffer) };
+        match result {
+            Ok(()) => Ok(sample
                 .map(ConverterPoll::Sample)
                 .unwrap_or(ConverterPoll::NeedMoreInput)),
             Err(e) if e.code() == MF_E_TRANSFORM_NEED_MORE_INPUT => Ok(ConverterPoll::NeedMoreInput),
@@ -407,21 +589,28 @@ impl H264Encoder {
         }
     }
 
-    /// Soumet une image capturée si l'encodeur en réclame une.
+    /// Soumet une image capturée si l'encodeur pourrait en avoir besoin.
     ///
-    /// Si aucune demande n'est en attente, l'image est ignorée : l'encodeur est
-    /// saturé et une image de plus ne ferait qu'ajouter de la latence. La
-    /// conversion BGRA→NV12 n'est donc effectuée que lorsqu'elle sera
-    /// réellement consommée.
+    /// Ne nourrit le convertisseur que si `pending_nv12` ne contient pas
+    /// déjà de quoi satisfaire toutes les demandes d'entrée en attente —
+    /// convertir une image de plus n'ajouterait que de la latence si
+    /// l'encodeur est déjà servi. Chaque échantillon NV12 disponible (celui
+    /// qui vient d'être produit, ou un plus ancien laissé en file par un
+    /// appel précédent où l'encodeur ne réclamait rien) est ensuite transmis
+    /// à l'encodeur tant que celui-ci en réclame.
     pub fn submit(&mut self, frame: &CapturedFrame, pts_90k: u64) -> Result<()> {
+        self.telemetry.submit_calls.fetch_add(1, Ordering::Relaxed);
         let t = std::time::Instant::now();
-        self.drain_events()?;
+        self.telemetry
+            .phase
+            .store(PHASE_SUBMIT_DRAIN_EVENTS, Ordering::Relaxed);
+        let drained = self.drain_events();
+        self.telemetry.phase.store(PHASE_IDLE, Ordering::Relaxed);
+        drained?;
+        self.publish_state();
         let elapsed = t.elapsed();
-        if elapsed > std::time::Duration::from_millis(20) {
-            tracing::debug!(?elapsed, "drainage des événements de l'encodeur lent");
-        }
-        if self.pending_input_requests == 0 {
-            return Ok(());
+        if elapsed > SLOW_CALL {
+            tracing::warn!(?elapsed, "drainage des événements de l'encodeur lent");
         }
 
         // Media Foundation compte en unités de 100 ns ; nos horodatages sont
@@ -429,27 +618,55 @@ impl H264Encoder {
         let sample_time = (pts_90k as i64) * 1000 / 9;
         let duration = 10_000_000 / self.fps.max(1) as i64;
 
-        let Some(nv12_sample) = self.convert_to_nv12(frame, sample_time, duration)? else {
-            // Pool du convertisseur momentanément épuisé (voir
-            // `drain_converter_output`) : on renonce à cette image sans
-            // toucher `pending_input_requests`, l'encodeur redemandera une
-            // entrée à la prochaine image capturée.
-            return Ok(());
-        };
-        let t = std::time::Instant::now();
-        unsafe { self.transform.ProcessInput(0, &nv12_sample, 0) }
-            .context("soumission de l'image NV12 à l'encodeur")?;
-        let elapsed = t.elapsed();
-        if elapsed > std::time::Duration::from_millis(20) {
-            tracing::debug!(?elapsed, "ProcessInput de l'encodeur lent");
+        if (self.pending_nv12.len() as u32) < self.pending_input_requests {
+            self.feed_converter(frame, sample_time, duration)?;
         }
-        self.pending_input_requests -= 1;
+
+        while self.pending_input_requests > 0 {
+            let Some(nv12_sample) = self.pending_nv12.pop_front() else {
+                break;
+            };
+            let t = std::time::Instant::now();
+            self.telemetry
+                .phase
+                .store(PHASE_ENCODER_PROCESS_INPUT, Ordering::Relaxed);
+            let fed = unsafe { self.transform.ProcessInput(0, &nv12_sample, 0) };
+            self.telemetry.phase.store(PHASE_IDLE, Ordering::Relaxed);
+            fed.context("soumission de l'image NV12 à l'encodeur")?;
+            self.telemetry
+                .encoder_inputs
+                .fetch_add(1, Ordering::Relaxed);
+            let elapsed = t.elapsed();
+            if elapsed > SLOW_CALL {
+                tracing::warn!(?elapsed, "ProcessInput de l'encodeur lent");
+            }
+            self.pending_input_requests -= 1;
+        }
+        self.publish_state();
         Ok(())
     }
 
     /// Récupère une unité d'accès encodée si elle est disponible.
+    ///
+    /// **Ronde de correction 1/5** : le relecteur a demandé de vérifier,
+    /// plutôt que supposer, que le même raccourci (s'arrêter après un seul
+    /// échantillon) n'affecte pas aussi le drainage de l'encodeur. Modèle
+    /// async de MF : un événement `METransformHaveOutput` correspond à
+    /// exactement un appel à `ProcessOutput` — mais le drapeau
+    /// `MFT_OUTPUT_DATA_BUFFER_INCOMPLETE` (posé dans `dwStatus`) signale
+    /// explicitement, quand il est présent, qu'il reste de la sortie pour CE
+    /// flux sans qu'un nouvel événement ne soit garanti. On le vérifie
+    /// désormais explicitement plutôt que de l'ignorer : s'il est posé, on
+    /// se replanifie une entrée dans `pending_outputs` pour que la boucle de
+    /// l'appelant (`while let Some(unit) = poll_output()?`) redemande
+    /// immédiatement, sans attendre un événement qui pourrait ne pas venir.
     pub fn poll_output(&mut self) -> Result<Option<AccessUnit>> {
-        self.drain_events()?;
+        self.telemetry
+            .phase
+            .store(PHASE_POLL_DRAIN_EVENTS, Ordering::Relaxed);
+        let drained = self.drain_events();
+        self.telemetry.phase.store(PHASE_IDLE, Ordering::Relaxed);
+        drained?;
         if self.pending_outputs == 0 {
             return Ok(None);
         }
@@ -464,13 +681,28 @@ impl H264Encoder {
         }];
         let mut status = 0u32;
 
-        unsafe { self.transform.ProcessOutput(0, &mut buffers, &mut status) }
-            .context("récupération de l'image encodée")?;
+        let t = std::time::Instant::now();
+        self.telemetry
+            .phase
+            .store(PHASE_ENCODER_PROCESS_OUTPUT, Ordering::Relaxed);
+        let produced = unsafe { self.transform.ProcessOutput(0, &mut buffers, &mut status) };
+        self.telemetry
+            .phase
+            .store(PHASE_ENCODER_READ_BUFFER, Ordering::Relaxed);
+        produced.context("récupération de l'image encodée")?;
+        self.telemetry
+            .encoder_outputs
+            .fetch_add(1, Ordering::Relaxed);
+        let elapsed = t.elapsed();
+        if elapsed > SLOW_CALL {
+            tracing::warn!(?elapsed, "ProcessOutput de l'encodeur lent");
+        }
 
-        let sample = buffers[0]
-            .pSample
-            .as_ref()
-            .cloned()
+        if buffers[0].dwStatus & MFT_OUTPUT_DATA_BUFFER_INCOMPLETE.0 as u32 != 0 {
+            self.pending_outputs += 1;
+        }
+
+        let sample = unsafe { take_output_sample(&mut buffers[0]) }
             .ok_or_else(|| anyhow!("échantillon de sortie absent"))?;
 
         let media_buffer = unsafe { sample.ConvertToContiguousBuffer() }?;
@@ -490,6 +722,7 @@ impl H264Encoder {
         // L'horodatage vient de l'échantillon, pas de la position dans le flux.
         let sample_time = unsafe { sample.GetSampleTime() }.unwrap_or(0);
         unit.pts_90k = (sample_time.max(0) as u64) * 9 / 1000;
+        self.telemetry.phase.store(PHASE_IDLE, Ordering::Relaxed);
         Ok(Some(unit))
     }
 
@@ -523,6 +756,66 @@ impl Drop for H264Encoder {
         }
         let _ = &self.device_manager;
     }
+}
+
+/// Reprend possession de l'échantillon (et des événements) qu'un MFT vient de
+/// déposer dans un `MFT_OUTPUT_DATA_BUFFER`, en laissant la structure vide.
+///
+/// **C'est la cause racine du blocage du 28/07, corrigée ici** (voir le
+/// rapport de tâche). Les deux champs `pSample`/`pEvents` de
+/// `MFT_OUTPUT_DATA_BUFFER` sont des `ManuallyDrop<Option<...>>` : windows-rs
+/// se refuse délibérément à les libérer tout seul, puisque leur propriété
+/// dépend du sens de l'appel. `ProcessOutput` y dépose une référence COM dont
+/// **l'appelant devient propriétaire** ; la lire par `.as_ref().cloned()`
+/// ajoute une seconde référence sans jamais rendre la première, et le
+/// `ManuallyDrop` emporte celle-ci dans la tombe à la fin du bloc. Chaque
+/// image encodée fuyait donc une référence.
+///
+/// Conséquence observée, bien plus grave qu'une simple fuite mémoire : les
+/// échantillons de sortie du `Video Processor MFT` proviennent d'un
+/// `IMFVideoSampleAllocator` de taille fixe (10 sur cette VM). Un échantillon
+/// jamais relâché ne retourne jamais au pool. Après exactement 10 images le
+/// pool était définitivement vide, et chaque `ProcessOutput` suivant attendait
+/// une seconde entière un échantillon libre avant de rendre
+/// `MF_E_SAMPLEALLOCATOR_EMPTY` — d'où le « plafond à ~1 image/s » puis, dès
+/// que le drainage a exigé une confirmation par
+/// `MF_E_TRANSFORM_NEED_MORE_INPUT` (ronde précédente), l'arrêt total du
+/// pipeline. `ManuallyDrop::take` déplace la référence hors de la structure :
+/// elle est alors possédée normalement, et relâchée dès que l'appelant en a
+/// fini — ce qui rend l'échantillon au pool.
+///
+/// # Sécurité
+///
+/// Le tampon ne doit plus être lu après cet appel (ses deux champs COM sont
+/// laissés dans un état déplacé). Tous les appelants l'utilisent en variable
+/// locale et n'y touchent plus ensuite.
+/// Interroge le convertisseur : `true` pour `GetInputStatus` (peut-il accepter
+/// une entrée), `false` pour `GetOutputStatus` (une sortie est-elle prête).
+///
+/// Renvoie les drapeaux bruts, ou `u64::MAX` si la méthode n'est pas
+/// implémentée par ce MFT — les deux sont optionnelles dans `IMFTransform`, et
+/// la distinction « répond non » / « ne répond pas » est justement ce qu'on a
+/// besoin de savoir.
+fn converter_status(converter: &IMFTransform, input: bool) -> u64 {
+    // écart d'API windows-rs 0.62 : ces deux méthodes rendent les drapeaux par
+    // valeur de retour (`Result<u32>`), là où la signature C les écrit dans un
+    // paramètre de sortie.
+    let result = if input {
+        unsafe { converter.GetInputStatus(0) }
+    } else {
+        unsafe { converter.GetOutputStatus() }
+    };
+    match result {
+        Ok(flags) => flags as u64,
+        Err(_) => u64::MAX,
+    }
+}
+
+unsafe fn take_output_sample(buffer: &mut MFT_OUTPUT_DATA_BUFFER) -> Option<IMFSample> {
+    // `pEvents` est presque toujours nul, mais quand un MFT y dépose une file
+    // d'événements elle nous appartient exactement au même titre.
+    drop(std::mem::ManuallyDrop::take(&mut buffer.pEvents));
+    std::mem::ManuallyDrop::take(&mut buffer.pSample)
 }
 
 /// Construit une `VARIANT` `VT_UI4` manuellement : cette version de
@@ -614,9 +907,21 @@ fn create_color_converter(
     height: u32,
     fps: u32,
 ) -> Result<IMFTransform> {
-    let converter: IMFTransform =
-        unsafe { CoCreateInstance(&CLSID_VideoProcessorMFT, None, CLSCTX_INPROC_SERVER) }
-            .context("création du convertisseur vidéo (Video Processor MFT)")?;
+    // Essai (ronde de correction 1/5, investigation du débit) :
+    // `CoCreateInstance(CLSID_VideoProcessorMFT)` instancie l'implémentation
+    // par défaut de ce CLSID, qui pourrait être un chemin logiciel/mixte
+    // plutôt qu'une implémentation matérielle. On tente d'abord de trouver
+    // un convertisseur explicitement enregistré comme matériel via
+    // `MFTEnumEx`, comme pour l'encodeur — repli sur `CoCreateInstance` si
+    // rien n'est trouvé.
+    let converter: IMFTransform = match find_hardware_video_processor() {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::debug!(erreur = %e, "aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT");
+            unsafe { CoCreateInstance(&CLSID_VideoProcessorMFT, None, CLSCTX_INPROC_SERVER) }
+                .context("création du convertisseur vidéo (Video Processor MFT)")?
+        }
+    };
 
     // Essai : le mode faible latence n'était appliqué qu'à l'encodeur, pas au
     // convertisseur — potentiellement lié à l'attente d'~1 s observée dans
@@ -681,6 +986,65 @@ fn create_color_converter(
     Ok(converter)
 }
 
+/// Énumère les convertisseurs vidéo (BGRA→NV12) explicitement enregistrés
+/// comme matériels, et active le premier — même logique que
+/// `find_hardware_encoder`, avec les mêmes précautions de libération
+/// mémoire (voir son commentaire).
+fn find_hardware_video_processor() -> Result<IMFTransform> {
+    let input_info = MFT_REGISTER_TYPE_INFO {
+        guidMajorType: MFMediaType_Video,
+        guidSubtype: MFVideoFormat_ARGB32,
+    };
+    let output_info = MFT_REGISTER_TYPE_INFO {
+        guidMajorType: MFMediaType_Video,
+        guidSubtype: MFVideoFormat_NV12,
+    };
+
+    let mut activates: *mut Option<IMFActivate> = std::ptr::null_mut();
+    let mut count: u32 = 0;
+
+    unsafe {
+        MFTEnumEx(
+            MFT_CATEGORY_VIDEO_PROCESSOR,
+            MFT_ENUM_FLAG_HARDWARE | MFT_ENUM_FLAG_SORTANDFILTER,
+            Some(&input_info),
+            Some(&output_info),
+            &mut activates,
+            &mut count,
+        )
+        .context("énumération des convertisseurs vidéo matériels")?;
+    }
+
+    if count == 0 {
+        unsafe { CoTaskMemFree(Some(activates as *const _)) };
+        bail!("aucun convertisseur vidéo matériel enregistré");
+    }
+
+    let slice = unsafe { std::slice::from_raw_parts_mut(activates, count as usize) };
+    let mut first: Option<IMFActivate> = None;
+    for (index, slot) in slice.iter_mut().enumerate() {
+        let activate = slot.take();
+        if index == 0 {
+            first = activate;
+        }
+    }
+    let first = first.ok_or_else(|| anyhow!("activateur de convertisseur absent"))?;
+
+    let mut name_ptr = PWSTR::null();
+    let mut name_len = 0u32;
+    if unsafe { first.GetAllocatedString(&MFT_FRIENDLY_NAME_Attribute, &mut name_ptr, &mut name_len) }
+        .is_ok()
+    {
+        let name = unsafe { name_ptr.to_string() }.unwrap_or_default();
+        tracing::info!(convertisseur = %name, "convertisseur vidéo matériel retenu");
+        unsafe { CoTaskMemFree(Some(name_ptr.0 as *const _)) };
+    }
+
+    let transform: IMFTransform = unsafe { first.ActivateObject() }?;
+    unsafe { CoTaskMemFree(Some(activates as *const _)) };
+    Ok(transform)
+}
+
 /// Alloue une texture NV12 GPU et l'enveloppe dans un échantillon Media
 /// Foundation réutilisable, pour les cas où le convertisseur ne s'auto-alloue
 /// pas (`MFT_OUTPUT_STREAM_PROVIDES_SAMPLES` absent — voir
@@ -737,6 +1101,7 @@ fn find_hardware_encoder() -> Result<IMFTransform> {
     }
 
     if count == 0 {
+        unsafe { CoTaskMemFree(Some(activates as *const _)) };
         bail!(
             "aucun encodeur H.264 matériel trouvé sur cette machine. \
              Vérifier le pilote GPU ; le jalon 1 n'a pas de repli logiciel."
@@ -744,11 +1109,28 @@ fn find_hardware_encoder() -> Result<IMFTransform> {
     }
 
     // Récupérer les objets AVANT de libérer le tableau alloué par CoTaskMemAlloc.
-    let slice = unsafe { std::slice::from_raw_parts(activates, count as usize) };
-    let first = slice
-        .first()
-        .and_then(|a| a.clone())
-        .ok_or_else(|| anyhow!("activateur d'encodeur absent"))?;
+    //
+    // Ronde de correction 1/5 — fuite corrigée ici : la version précédente
+    // ne relâchait que le premier `IMFActivate` (par `.clone()`, qui ajoute
+    // une référence sans jamais libérer celle que `MFTEnumEx` a placée dans
+    // la case du tableau). `CoTaskMemFree` ne libère que la mémoire brute du
+    // tableau, pas les références COM qu'il contient : chaque entrée, y
+    // compris la première, fuyait donc une référence. `slot.take()` déplace
+    // chaque entrée hors du tableau (remplacée par `None`) ; les entrées
+    // qu'on ne garde pas sont droppées immédiatement (donc relâchées), la
+    // première est conservée dans `first` sans référence supplémentaire.
+    // Latent tant qu'un seul encodeur est présent, mais réel dès qu'il y en
+    // aurait plusieurs.
+    let slice = unsafe { std::slice::from_raw_parts_mut(activates, count as usize) };
+    let mut first: Option<IMFActivate> = None;
+    for (index, slot) in slice.iter_mut().enumerate() {
+        let activate = slot.take();
+        if index == 0 {
+            first = activate;
+        }
+        // Sinon : `activate` est droppé ici, relâchant sa référence COM.
+    }
+    let first = first.ok_or_else(|| anyhow!("activateur d'encodeur absent"))?;
 
     let mut name_ptr = PWSTR::null();
     let mut name_len = 0u32;
