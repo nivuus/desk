@@ -1791,8 +1791,14 @@ pub fn is_keyframe(nals: &[Vec<u8>]) -> bool {
 
 /// Regroupe les NAL d'un flux en unités d'accès, une par image affichable.
 ///
-/// Une nouvelle unité commence à chaque NAL de tranche (IDR ou non-IDR) ; les
-/// NAL de paramètres (SPS/PPS) qui la précèdent lui sont rattachées.
+/// Une image H.264 peut être découpée en plusieurs tranches : on ne peut donc
+/// pas ouvrir une unité à chaque NAL de tranche, sous peine de produire autant
+/// d'unités que de tranches. Une nouvelle unité commence à la tranche dont le
+/// champ `first_mb_in_slice` vaut zéro ; ce champ est le premier élément de
+/// l'en-tête de tranche, codé en Golomb exponentiel, où zéro s'écrit sur un
+/// unique bit à 1 — il suffit donc de tester le bit de poids fort du premier
+/// octet de charge utile. Les NAL de paramètres qui précèdent une tranche lui
+/// sont rattachées.
 pub fn group_access_units(stream: &[u8], fps: u32) -> Vec<AccessUnit> {
     let nals = split_annex_b(stream);
     let tick = if fps == 0 { 0 } else { CLOCK_RATE_HZ / fps as u64 };
@@ -1804,9 +1810,12 @@ pub fn group_access_units(stream: &[u8], fps: u32) -> Vec<AccessUnit> {
     for nal in nals {
         let kind = nal_type(&nal);
         let is_slice = kind == NAL_TYPE_IDR || kind == NAL_TYPE_NON_IDR;
+        // Première tranche de son image : bit de poids fort du premier octet
+        // de charge utile armé (first_mb_in_slice == 0).
+        let starts_frame = is_slice && nal.get(1).is_some_and(|b| b & 0x80 != 0);
 
         // Une NAL de paramètres après une tranche ouvre l'unité suivante.
-        if slice_seen && (is_slice || kind == NAL_TYPE_SPS) {
+        if slice_seen && (starts_frame || kind == NAL_TYPE_SPS) {
             flush(&mut units, &mut current, tick);
             slice_seen = false;
         }
