@@ -226,4 +226,52 @@ mod tests {
         let err = InputMessage::decode(&[PROTOCOL_VERSION, 2, 9, 1, 0, 0, 0, 0]).unwrap_err();
         assert!(matches!(err, DecodeError::UnknownButton(9)));
     }
+
+    #[test]
+    fn conformite_aux_vecteurs_partages() {
+        let raw = include_str!("../vectors.json");
+        let doc: serde_json::Value = serde_json::from_str(raw).expect("vectors.json valide");
+        let cases = doc["cases"].as_array().expect("tableau de cas");
+        assert!(!cases.is_empty(), "au moins un vecteur attendu");
+
+        for case in cases {
+            let name = case["name"].as_str().unwrap();
+            let expected: Vec<u8> = case["bytes"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|v| v.as_u64().unwrap() as u8)
+                .collect();
+
+            let msg = match case["kind"].as_str().unwrap() {
+                "mouse_move" => InputMessage::MouseMove {
+                    x: case["x"].as_u64().unwrap() as u16,
+                    y: case["y"].as_u64().unwrap() as u16,
+                },
+                "mouse_button" => InputMessage::MouseButton {
+                    button: MouseButton::from_u8(case["button"].as_u64().unwrap() as u8).unwrap(),
+                    pressed: case["pressed"].as_bool().unwrap(),
+                    x: case["x"].as_u64().unwrap() as u16,
+                    y: case["y"].as_u64().unwrap() as u16,
+                },
+                "wheel" => InputMessage::Wheel {
+                    delta_x: case["delta_x"].as_i64().unwrap() as i16,
+                    delta_y: case["delta_y"].as_i64().unwrap() as i16,
+                },
+                "key" => InputMessage::Key {
+                    scancode: case["scancode"].as_u64().unwrap() as u16,
+                    pressed: case["pressed"].as_bool().unwrap(),
+                    extended: case["extended"].as_bool().unwrap(),
+                },
+                other => panic!("type de vecteur inconnu : {other}"),
+            };
+
+            assert_eq!(msg.encode(), expected, "encodage du vecteur « {name} »");
+            assert_eq!(
+                InputMessage::decode(&expected).expect("décodage du vecteur"),
+                msg,
+                "décodage du vecteur « {name} »"
+            );
+        }
+    }
 }
