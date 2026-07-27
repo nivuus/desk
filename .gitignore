@@ -4,3 +4,7 @@ src/dist/
 core.*
 .env
 *.log
+target/
+client/dist/
+signaling/dist/
+*.264
