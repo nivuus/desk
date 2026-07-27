@@ -1,0 +1,43 @@
+:root {
+    color-scheme: dark;
+    --surface: #0b0d10;
+    --text: #e6e8eb;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: var(--surface);
+    color: var(--text);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+#remote {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    object-fit: contain;
+    background: #000;
+}
+
+#status {
+    position: fixed;
+    inset-block-start: 12px;
+    inset-inline-start: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: rgb(0 0 0 / 0.72);
+    font-variant-numeric: tabular-nums;
+    transition: opacity 0.3s;
+}
+
+#status[data-hidden="true"] {
+    opacity: 0;
+    pointer-events: none;
+}
