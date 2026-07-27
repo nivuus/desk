@@ -1493,6 +1493,14 @@ export function createSignalingServer(port: number): SignalingServer {
                 return;
             }
 
+            // Une charge utile JSON valide mais nulle ferait échouer l'accès
+            // aux propriétés ci-dessous, hors du try/catch : le processus
+            // entier tomberait et toutes les sessions avec lui.
+            if (message === null || typeof message !== 'object') {
+                send(socket, { type: 'error', reason: 'message JSON non objet' });
+                return;
+            }
+
             // Premier message : déclaration de rôle et de session.
             if (!role) {
                 const declaredRole = message.role;
