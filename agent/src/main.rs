@@ -362,10 +362,13 @@ async fn main() -> Result<()> {
                 let start = std::time::Instant::now();
                 let deadline = start + std::time::Duration::from_secs(encode_secs);
                 let phase = encoder.telemetry();
+                // Marquer l'acquisition : un blocage dans la capture et un
+                // blocage dans l'encodeur produisent la même signature vue du
+                // fil de surveillance (compteurs figés, étape au repos). La
+                // capture affine elle-même en sous-étapes (acquisition, copie
+                // GPU, libération) une fois le marqueur branché.
+                capture.set_phase_marker(phase.phase.clone());
                 while std::time::Instant::now() < deadline && encoded < encode_target {
-                    // Marquer l'acquisition : un blocage dans la capture et un
-                    // blocage dans l'encodeur produisent la même signature vue
-                    // du fil de surveillance (compteurs figés, étape au repos).
                     phase
                         .phase
                         .store(encode::PHASE_CAPTURE, std::sync::atomic::Ordering::Relaxed);

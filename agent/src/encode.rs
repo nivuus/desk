@@ -103,6 +103,15 @@ pub const PHASE_ENCODER_READ_BUFFER: u64 = 7;
 /// « bloqué dans l'encodeur » de « bloqué dans la capture » — sans quoi les
 /// deux se ressemblent : compteurs figés, étape au repos.
 pub const PHASE_CAPTURE: u64 = 8;
+/// Sous-étapes de `DesktopCapture::next_frame`, publiées depuis `capture.rs`.
+///
+/// `PHASE_CAPTURE` seule ne suffit pas : elle couvre trois appels Windows aux
+/// modes de panne très différents (acquisition DXGI, copie GPU, libération
+/// d'image). Sans les distinguer, corriger un blocage dans cette fonction
+/// reviendrait à corriger à l'aveugle.
+pub const PHASE_CAPTURE_ACQUIRE: u64 = 9;
+pub const PHASE_CAPTURE_CROP: u64 = 10;
+pub const PHASE_CAPTURE_RELEASE: u64 = 11;
 
 /// Nom lisible d'une étape, pour les journaux de surveillance.
 pub fn phase_name(phase: u64) -> &'static str {
@@ -116,6 +125,9 @@ pub fn phase_name(phase: u64) -> &'static str {
         PHASE_ENCODER_PROCESS_OUTPUT => "encodeur/ProcessOutput",
         PHASE_ENCODER_READ_BUFFER => "encodeur/lecture du tampon",
         PHASE_CAPTURE => "capture/next_frame",
+        PHASE_CAPTURE_ACQUIRE => "capture/AcquireNextFrame",
+        PHASE_CAPTURE_CROP => "capture/CopySubresourceRegion",
+        PHASE_CAPTURE_RELEASE => "capture/ReleaseFrame",
         _ => "inconnu",
     }
 }
@@ -127,7 +139,11 @@ pub fn phase_name(phase: u64) -> &'static str {
 #[derive(Default)]
 pub struct EncoderTelemetry {
     /// Étape courante (voir les constantes `PHASE_*`).
-    pub phase: AtomicU64,
+    ///
+    /// Derrière un `Arc` propre pour être partageable avec `DesktopCapture`,
+    /// qui publie ses propres sous-étapes sans rien connaître du reste de la
+    /// télémétrie de l'encodeur.
+    pub phase: Arc<AtomicU64>,
     /// Nombre d'appels à `submit` entrés (pas nécessairement sortis).
     pub submit_calls: AtomicU64,
     /// Images BGRA effectivement remises au convertisseur.

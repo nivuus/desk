@@ -8,6 +8,9 @@
 
 #![cfg(windows)]
 
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
+
 use anyhow::{anyhow, bail, Context, Result};
 use windows::core::Interface;
 use windows::Win32::Graphics::Direct3D::D3D_FEATURE_LEVEL_11_0;
@@ -41,6 +44,9 @@ pub struct DesktopCapture {
     target: Option<(ID3D11Texture2D, u32, u32)>,
     /// Vrai tant qu'une image acquise n'a pas été relâchée.
     frame_held: bool,
+    /// Étape courante publiée pour le fil de surveillance (voir
+    /// `encode::PHASE_CAPTURE_*`). Absente hors mode diagnostic.
+    phase: Option<Arc<AtomicU64>>,
 }
 
 impl DesktopCapture {
@@ -94,11 +100,26 @@ impl DesktopCapture {
             desktop_height,
             target: None,
             frame_held: false,
+            phase: None,
         })
     }
 
     pub fn device(&self) -> &ID3D11Device {
         &self.device
+    }
+
+    /// Branche le marqueur d'étape partagé avec le fil de surveillance.
+    ///
+    /// Sans lui, un blocage dans `next_frame` reste anonyme : les trois appels
+    /// Windows qu'elle enchaîne se confondent en une seule étape.
+    pub fn set_phase_marker(&mut self, phase: Arc<AtomicU64>) {
+        self.phase = Some(phase);
+    }
+
+    fn set_phase(&self, value: u64) {
+        if let Some(phase) = &self.phase {
+            phase.store(value, Ordering::Relaxed);
+        }
     }
 
     pub fn desktop_size(&self) -> (u32, u32) {
@@ -116,7 +137,9 @@ impl DesktopCapture {
         let mut resource: Option<IDXGIResource> = None;
         // Attente nulle : la cadence est pilotée par la boucle appelante, pas
         // par un blocage ici.
+        self.set_phase(crate::encode::PHASE_CAPTURE_ACQUIRE);
         let acquired = unsafe { self.duplication.AcquireNextFrame(0, &mut info, &mut resource) };
+        self.set_phase(crate::encode::PHASE_CAPTURE);
 
         if let Err(e) = acquired {
             if e.code() == DXGI_ERROR_WAIT_TIMEOUT {
@@ -126,11 +149,23 @@ impl DesktopCapture {
         }
         self.frame_held = true;
 
-        let resource = resource.ok_or_else(|| anyhow!("ressource d'image absente"))?;
-        let desktop: ID3D11Texture2D = resource.cast()?;
-
-        let frame = self.crop(&desktop, region)?;
-        Ok(Some(frame))
+        // À partir d'ici l'image est détenue : tout chemin de sortie doit la
+        // relâcher, sans quoi la duplication refuse toute acquisition
+        // ultérieure. `release_frame` en tête de la prochaine itération ne
+        // couvre pas le cas d'une erreur qui remonte et arrête la boucle,
+        // ni celui d'un appelant qui réessaie après avoir avalé l'erreur.
+        let cropped = (|| {
+            let resource = resource.ok_or_else(|| anyhow!("ressource d'image absente"))?;
+            let desktop: ID3D11Texture2D = resource.cast()?;
+            self.crop(&desktop, region)
+        })();
+        match cropped {
+            Ok(frame) => Ok(Some(frame)),
+            Err(e) => {
+                self.release_frame();
+                Err(e)
+            }
+        }
     }
 
     /// Copie la région demandée dans une texture dédiée, sur le GPU.
@@ -175,18 +210,22 @@ impl DesktopCapture {
             bottom: region.y.max(0) as u32 + height,
             back: 1,
         };
+        self.set_phase(crate::encode::PHASE_CAPTURE_CROP);
         unsafe {
             self.context
                 .CopySubresourceRegion(texture, 0, 0, 0, 0, source, 0, Some(&box_));
         }
+        self.set_phase(crate::encode::PHASE_CAPTURE);
 
         Ok(CapturedFrame { texture: texture.clone(), width, height })
     }
 
     fn release_frame(&mut self) {
         if self.frame_held {
+            self.set_phase(crate::encode::PHASE_CAPTURE_RELEASE);
             // Un échec ici n'est pas récupérable et ne doit pas masquer la suite.
             let _ = unsafe { self.duplication.ReleaseFrame() };
+            self.set_phase(crate::encode::PHASE_CAPTURE);
             self.frame_held = false;
         }
     }
