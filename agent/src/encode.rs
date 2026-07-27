@@ -217,6 +217,45 @@ pub struct H264Encoder {
     /// Compteurs et étape courante, lisibles depuis un autre fil (voir
     /// `EncoderTelemetry`).
     telemetry: Arc<EncoderTelemetry>,
+    /// Initialisation de Media Foundation, appariée par RAII.
+    ///
+    /// **Déclaré en dernier volontairement** : les champs sont détruits dans
+    /// l'ordre de déclaration, après l'exécution de `Drop for H264Encoder`.
+    /// `MFShutdown` doit venir après la libération des MFT et du gestionnaire
+    /// DXGI, pas avant.
+    _media_foundation: MediaFoundationSession,
+}
+
+/// Garde RAII sur l'initialisation de Media Foundation.
+///
+/// `MFStartup` et `MFShutdown` doivent être appariés. Les placer
+/// respectivement en tête de `H264Encoder::new` et dans `Drop for H264Encoder`
+/// ne les apparie **que si la construction réussit** : entre les deux, une
+/// douzaine de `?` peuvent sortir sans que l'objet n'existe jamais — donc sans
+/// que `Drop` ne s'exécute, donc sans `MFShutdown`. Chaque échec de
+/// construction fuyait un appel.
+///
+/// Latent tant qu'aucune reprise n'existe (un échec de construction terminait
+/// le processus), mais la tâche 11 en introduira : reconstruction de
+/// l'encodeur au redimensionnement, reprise après erreur. Une garde règle le
+/// problème pour tous les chemins de sortie, présents et à venir, sans avoir à
+/// se souvenir d'en ajouter un à chaque nouveau `?`.
+struct MediaFoundationSession;
+
+impl MediaFoundationSession {
+    fn start() -> Result<Self> {
+        unsafe { MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET) }
+            .context("démarrage de Media Foundation")?;
+        Ok(Self)
+    }
+}
+
+impl Drop for MediaFoundationSession {
+    fn drop(&mut self) {
+        unsafe {
+            let _ = MFShutdown();
+        }
+    }
 }
 
 impl H264Encoder {
@@ -227,9 +266,8 @@ impl H264Encoder {
         fps: u32,
         bitrate: u32,
     ) -> Result<Self> {
-        unsafe {
-            MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET).context("démarrage de Media Foundation")?;
-        }
+        // À partir d'ici, tout `?` relâche Media Foundation par la garde.
+        let media_foundation = MediaFoundationSession::start()?;
 
         let transform = find_hardware_encoder()?;
         let attributes = unsafe { transform.GetAttributes() }?;
@@ -303,6 +341,7 @@ impl H264Encoder {
             converter_output_pending: false,
             skipped_busy: 0,
             telemetry: Arc::new(EncoderTelemetry::default()),
+            _media_foundation: media_foundation,
             width,
             height,
             fps,
@@ -471,6 +510,15 @@ impl H264Encoder {
     }
 
     /// Le convertisseur se déclare-t-il prêt à accepter une entrée ?
+    ///
+    /// **Risque de portabilité à connaître** : ce pilotage repose sur une API
+    /// documentée, mais son adoption vient de l'observation d'un comportement
+    /// anormal constaté sur **un seul pilote (NVIDIA) et une seule machine**.
+    /// `GetInputStatus`/`GetOutputStatus` sont optionnelles dans `IMFTransform`
+    /// et rien ne garantit qu'un convertisseur Intel ou AMD se comporte de
+    /// même. Le repli ci-dessous (tenter `ProcessInput` quand la méthode n'est
+    /// pas implémentée) couvre le cas le plus probable, pas tous ; à revalider
+    /// sur le premier autre GPU rencontré.
     ///
     /// Publie au passage les deux drapeaux dans la télémétrie. Si le MFT
     /// n'implémente pas `GetInputStatus` (`u64::MAX`), on répond oui : mieux
@@ -689,6 +737,15 @@ impl H264Encoder {
         self.telemetry
             .phase
             .store(PHASE_ENCODER_READ_BUFFER, Ordering::Relaxed);
+        // Reprendre la référence AVANT toute propagation d'erreur, comme
+        // l'exige `take_output_sample` et comme le fait déjà
+        // `drain_converter_output`. Sortir par `?` d'abord laisserait fuir
+        // l'échantillon si le MFT en avait déposé un malgré l'échec — ce
+        // pilote ne semble pas le faire, mais c'est exactement la classe de
+        // fuite corrigée dans ce fichier, et rien ne la garantit ailleurs.
+        // `dwStatus` est lu avant, le tampon ne devant plus l'être après.
+        let incomplete = buffers[0].dwStatus & MFT_OUTPUT_DATA_BUFFER_INCOMPLETE.0 as u32 != 0;
+        let taken = unsafe { take_output_sample(&mut buffers[0]) };
         produced.context("récupération de l'image encodée")?;
         self.telemetry
             .encoder_outputs
@@ -698,12 +755,11 @@ impl H264Encoder {
             tracing::warn!(?elapsed, "ProcessOutput de l'encodeur lent");
         }
 
-        if buffers[0].dwStatus & MFT_OUTPUT_DATA_BUFFER_INCOMPLETE.0 as u32 != 0 {
+        if incomplete {
             self.pending_outputs += 1;
         }
 
-        let sample = unsafe { take_output_sample(&mut buffers[0]) }
-            .ok_or_else(|| anyhow!("échantillon de sortie absent"))?;
+        let sample = taken.ok_or_else(|| anyhow!("échantillon de sortie absent"))?;
 
         let media_buffer = unsafe { sample.ConvertToContiguousBuffer() }?;
         let mut data_ptr: *mut u8 = std::ptr::null_mut();
@@ -752,8 +808,10 @@ impl Drop for H264Encoder {
             let _ = self.converter.ProcessMessage(MFT_MESSAGE_NOTIFY_END_STREAMING, 0);
             let _ = self.transform.ProcessMessage(MFT_MESSAGE_NOTIFY_END_OF_STREAM, 0);
             let _ = self.transform.ProcessMessage(MFT_MESSAGE_NOTIFY_END_STREAMING, 0);
-            let _ = MFShutdown();
         }
+        // `MFShutdown` n'est plus appelé ici : il l'est par la destruction de
+        // `_media_foundation`, qui a lieu après ce corps ET après celle des
+        // MFT (dernier champ déclaré — voir son commentaire).
         let _ = &self.device_manager;
     }
 }
