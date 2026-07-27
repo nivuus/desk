@@ -19,6 +19,76 @@ export interface SessionHandle {
     close(): void;
 }
 
+// Délai maximal d'attente de la réponse de l'agent, après l'envoi de
+// l'offre. Si aucun agent n'est connecté à la session demandée, le serveur
+// de signaling relaie l'offre vers un pair inexistant et ne renvoie jamais
+// rien au client : sans ce délai, la promesse d'attente ne se résoudrait
+// jamais et l'utilisateur resterait bloqué indéfiniment.
+const ANSWER_TIMEOUT_MS = 15_000;
+
+/// Attend le SDP de réponse de l'agent, relayé par le socket de signaling.
+/// Rejette si : un message d'erreur ou « peer-gone » est reçu, le socket se
+/// ferme avant la réponse, ou le délai maximal est dépassé. Un message JSON
+/// illisible est journalisé et ignoré plutôt que de faire planter l'attente
+/// (avec une exception non interceptée) : d'autres messages valides peuvent
+/// encore arriver, notamment la réponse elle-même.
+function waitForAnswer(socket: WebSocket): Promise<string> {
+    return new Promise((resolve, reject) => {
+        let settled = false;
+
+        // Quelle que soit l'issue (succès, erreur, fermeture, délai), les
+        // écouteurs et le minuteur doivent être retirés une seule fois : pas
+        // de fuite, pas de résolution/rejet en double.
+        const finish = (action: () => void) => {
+            if (settled) return;
+            settled = true;
+            socket.removeEventListener('message', onMessage);
+            socket.removeEventListener('close', onClose);
+            clearTimeout(timer);
+            action();
+        };
+
+        const onMessage = (event: MessageEvent) => {
+            let message;
+            try {
+                message = JSON.parse(String(event.data));
+            } catch (error) {
+                console.warn('message de signaling illisible, ignoré', error);
+                return;
+            }
+            if (message.type === 'answer') {
+                finish(() => resolve(message.sdp));
+            } else if (message.type === 'error') {
+                finish(() => reject(new Error(message.reason ?? 'erreur de signaling')));
+            } else if (message.type === 'peer-gone') {
+                finish(() => reject(new Error('agent déconnecté')));
+            }
+        };
+
+        const onClose = () => {
+            finish(() =>
+                reject(new Error("connexion au serveur de signaling perdue avant la réponse de l'agent")),
+            );
+        };
+
+        const timer = setTimeout(() => {
+            // Message orienté utilisateur : pas de détail interne (pas de
+            // mention du serveur de signaling ni du protocole), juste de
+            // quoi diagnostiquer sans recharger la page à l'aveugle.
+            finish(() =>
+                reject(
+                    new Error(
+                        "l'agent n'a pas répondu — vérifiez qu'il est bien lancé et connecté à cette session",
+                    ),
+                ),
+            );
+        }, ANSWER_TIMEOUT_MS);
+
+        socket.addEventListener('message', onMessage);
+        socket.addEventListener('close', onClose);
+    });
+}
+
 /// Attend que la collecte ICE soit terminée : sans trickle, le SDP doit déjà
 /// contenir tous les candidats.
 function waitForIceGathering(pc: RTCPeerConnection): Promise<void> {
@@ -80,15 +150,6 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
     });
     socket.send(JSON.stringify({ role: 'client', session: options.sessionId }));
 
-    const answerReceived = new Promise<string>((resolve, reject) => {
-        socket.addEventListener('message', (event) => {
-            const message = JSON.parse(String(event.data));
-            if (message.type === 'answer') resolve(message.sdp);
-            else if (message.type === 'error') reject(new Error(message.reason));
-            else if (message.type === 'peer-gone') reject(new Error('agent déconnecté'));
-        });
-    });
-
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     await waitForIceGathering(pc);
@@ -96,7 +157,7 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
     status('offre envoyée, attente de l\'agent…');
     socket.send(JSON.stringify({ type: 'offer', sdp: pc.localDescription!.sdp }));
 
-    const answerSdp = await answerReceived;
+    const answerSdp = await waitForAnswer(socket);
     await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
     status('réponse reçue');
 
