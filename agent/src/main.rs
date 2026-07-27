@@ -230,10 +230,27 @@ async fn main() -> Result<()> {
         let jitter_hwnd_addr = hwnd.0 as isize;
         let jitter_thread = std::thread::spawn(move || {
             use windows::Win32::Foundation::HWND;
+            use windows::Win32::Foundation::RECT;
             use windows::Win32::UI::WindowsAndMessaging::{
-                SetWindowPos, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER,
+                GetWindowRect, SetWindowPos, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER,
             };
             let jitter_hwnd = HWND(jitter_hwnd_addr as *mut core::ffi::c_void);
+            // Repère d'oscillation : l'origine de la FENÊTRE, pas celle de sa
+            // zone client. `window_rect` est un rectangle client converti en
+            // coordonnées écran (`client_rect_on_screen`) : le repasser tel
+            // quel à `SetWindowPos`, qui attend des coordonnées de fenêtre,
+            // décalait la fenêtre vers la droite de l'épaisseur de sa bordure
+            // (~9 px) à chaque exécution. Le décalage s'accumulait d'un essai
+            // à l'autre jusqu'à faire chevaucher la fenêtre et la région de
+            // contrôle, ce qui faisait échouer la preuve de contenu — panne
+            // du banc d'essai, pas de la capture.
+            let mut origin = RECT::default();
+            let anchor = match unsafe { GetWindowRect(jitter_hwnd, &mut origin) } {
+                Ok(()) => (origin.left, origin.top),
+                // Repli sur l'ancien comportement : mieux vaut agiter la
+                // fenêtre à quelques pixels près que ne pas l'agiter du tout.
+                Err(_) => (window_rect.x, window_rect.y),
+            };
             let mut toggle = false;
             while !jitter_flag.load(std::sync::atomic::Ordering::Relaxed) {
                 let dx = if toggle { 0 } else { 1 };
@@ -241,8 +258,8 @@ async fn main() -> Result<()> {
                     SetWindowPos(
                         jitter_hwnd,
                         None,
-                        window_rect.x + dx,
-                        window_rect.y,
+                        anchor.0 + dx,
+                        anchor.1,
                         0,
                         0,
                         SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
