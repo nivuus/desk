@@ -17,6 +17,20 @@ function isRole(value: unknown): value is Role {
     return value === 'agent' || value === 'client';
 }
 
+// Garde de type : un message JSON valide peut être `null`, un nombre, une chaîne
+// ou un tableau (tous acceptés par JSON.parse), pas seulement un objet
+// `{role, session}` ou `{type, sdp}`. `null` est le cas dangereux : contrairement
+// aux nombres/chaînes/tableaux (dont l'accès de propriété retourne simplement
+// `undefined` par auto-boxing), `null.role` lève une TypeError. Comme ce code
+// tourne dans un handler d'événement `message` d'un WebSocket exposé sans
+// authentification, une TypeError non interceptée y est fatale : elle abat tout
+// le process Node (aucun `uncaughtException` n'est installé dans index.ts), donc
+// toutes les sessions actives avec elle. On rejette explicitement tout ce qui
+// n'est pas un objet simple avant d'accéder à la moindre propriété.
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 export interface SignalingServer {
     port: number;
     close(): Promise<void>;
@@ -37,11 +51,24 @@ export function createSignalingServer(port: number): SignalingServer {
         let sessionId: string | undefined;
 
         socket.on('message', (raw) => {
-            let message: any;
+            let message: unknown;
             try {
                 message = JSON.parse(raw.toString());
             } catch {
                 send(socket, { type: 'error', reason: 'JSON invalide' });
+                return;
+            }
+
+            // Rejet avant toute lecture de propriété : voir `isJsonObject` ci-dessus.
+            // Le pair fautif reçoit une erreur mais sa connexion reste ouverte, pour
+            // qu'il puisse retenter avec un message valide.
+            if (!isJsonObject(message)) {
+                send(socket, {
+                    type: 'error',
+                    reason: role
+                        ? 'message invalide : objet JSON attendu'
+                        : 'premier message invalide : {role, session} attendu',
+                });
                 return;
             }
 

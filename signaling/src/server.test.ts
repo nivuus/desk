@@ -98,4 +98,79 @@ describe('serveur de signaling', () => {
         first.close();
         second.close();
     });
+
+    // Ronde de correction 1 : un premier message JSON valide mais non-objet
+    // (`null`) faisait planter le handler (`null.role` lève une TypeError non
+    // interceptée). Ces deux tests verrouillent le correctif : le pair fautif
+    // reçoit une erreur et reste connecté, ET une session indépendante ouverte
+    // en parallèle continue de fonctionner normalement après l'incident — ce
+    // qui prouve que le serveur (au sens du process qui l'héberge dans ce même
+    // test, voir la mise en garde ci-dessous) n'a pas été affecté globalement.
+    //
+    // Attention : vitest installe son propre gestionnaire d'exceptions non
+    // interceptées, qui peut faire échouer le test sans pour autant faire
+    // planter le process. Ces deux tests prouvent donc le comportement de la
+    // fonction exportée `createSignalingServer`, mais pas celui du process
+    // réel lancé via `index.ts` : c'est `resilience.test.ts` (processus enfant
+    // séparé, hors du runtime vitest) qui apporte cette preuve-là.
+    it('rejette un message racine `null` en premier message sans planter, et permet de retenter', async () => {
+        const faulty = new WebSocket(`ws://127.0.0.1:${server.port}`);
+        await new Promise((resolve) => faulty.on('open', resolve));
+
+        const errorReceived = nextMessage(faulty);
+        faulty.send('null');
+        expect(await errorReceived).toEqual({
+            type: 'error',
+            reason: 'premier message invalide : {role, session} attendu',
+        });
+
+        // La connexion fautive reste utilisable : un second essai, valide cette
+        // fois, s'enregistre normalement et relaie comme n'importe quelle session.
+        faulty.send(JSON.stringify({ role: 'agent', session: 'retry' }));
+        const client = await connect('client', 'retry');
+        client.send(JSON.stringify({ type: 'offer', sdp: 'apres retry' }));
+        expect(await nextMessage(faulty)).toEqual({ type: 'offer', sdp: 'apres retry' });
+
+        // Une session totalement indépendante, déjà ouverte pendant l'incident,
+        // continue elle aussi de relayer normalement.
+        const agent = await connect('agent', 'temoin');
+        const clientTemoin = await connect('client', 'temoin');
+        clientTemoin.send(JSON.stringify({ type: 'offer', sdp: 'session temoin' }));
+        expect(await nextMessage(agent)).toEqual({ type: 'offer', sdp: 'session temoin' });
+
+        faulty.close();
+        client.close();
+        agent.close();
+        clientTemoin.close();
+    });
+
+    it('rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner', async () => {
+        const agent = await connect('agent', 's5');
+        const client = await connect('client', 's5');
+
+        // Session témoin ouverte en parallèle, avant l'envoi du message
+        // malveillant, pour prouver qu'elle n'est pas affectée par l'incident.
+        const agentTemoin = await connect('agent', 'temoin2');
+        const clientTemoin = await connect('client', 'temoin2');
+
+        const errorReceived = nextMessage(client);
+        client.send('null');
+        expect(await errorReceived).toEqual({
+            type: 'error',
+            reason: 'message invalide : objet JSON attendu',
+        });
+
+        // La session s5 reste fonctionnelle après l'incident.
+        client.send(JSON.stringify({ type: 'offer', sdp: 'apres null' }));
+        expect(await nextMessage(agent)).toEqual({ type: 'offer', sdp: 'apres null' });
+
+        // La session témoin, indépendante, fonctionne toujours normalement.
+        clientTemoin.send(JSON.stringify({ type: 'offer', sdp: 'temoin toujours vivant' }));
+        expect(await nextMessage(agentTemoin)).toEqual({ type: 'offer', sdp: 'temoin toujours vivant' });
+
+        agent.close();
+        client.close();
+        agentTemoin.close();
+        clientTemoin.close();
+    });
 });
