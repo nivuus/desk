@@ -26,11 +26,19 @@ ${ENCODE_TEST:+\$env:ENCODE_TEST = '$ENCODE_TEST'}
 & 'C:\dev\target\debug\agent.exe' *>&1 | Tee-Object -FilePath 'C:\dev\agent.log'
 PS1
 
+# -WindowStyle Hidden : sans ce drapeau, la console PowerShell qui héberge
+# agent.exe s'ouvre au premier plan de la session interactive et peut
+# recouvrir entièrement la fenêtre que l'agent est censé capturer (constaté
+# en tâche 9 : un essai de recadrage lisait la couleur de fond de CETTE
+# console — bleu PowerShell #012456 — au lieu du contenu de la fenêtre
+# ciblée, sur la totalité de la zone échantillonnée). Masquer la console
+# n'affecte ni la session (toujours 1, toujours interactive) ni la sortie
+# (toujours redirigée vers agent.log via Tee-Object).
 node "$ROOT/scripts/winrm.js" \
     "schtasks /delete /tn $TASK_NAME /f 2>\$null; \
      schtasks /create /tn $TASK_NAME /f /it /ru '$USER_NAME' /rp '$WINDOWS_ADMIN_PASSWORD' \
        /sc once /st 00:00 \
-       /tr 'powershell -NoProfile -ExecutionPolicy Bypass -File C:\\dev\\run-agent.ps1'; \
+       /tr 'powershell -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File C:\\dev\\run-agent.ps1'; \
      schtasks /run /tn $TASK_NAME"
 
 echo "agent lancé en session interactive ; journal : /media/vm/dev/agent.log"

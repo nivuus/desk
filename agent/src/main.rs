@@ -11,11 +11,103 @@ mod window;
 
 use std::net::IpAddr;
 use std::path::PathBuf;
+#[cfg(windows)]
+use std::time::Duration;
 
 use anyhow::{Context, Result};
 
 use crate::source::{FileSource, VideoSource};
 use crate::transport::Session;
+
+/// Lit un pixel BGRA d'une texture GPU en la copiant vers une texture
+/// « staging » accessible au CPU (`D3D11_USAGE_STAGING`).
+///
+/// Sert uniquement au mode diagnostic `CAPTURE_TEST` : prouver que le
+/// recadrage capture bien le contenu de la fenêtre, et pas juste des
+/// dimensions qui auraient l'air correctes sans l'être (voir l'appelant).
+/// Renvoie `(r, g, b, a)`.
+#[cfg(windows)]
+fn read_pixel(
+    device: &windows::Win32::Graphics::Direct3D11::ID3D11Device,
+    texture: &windows::Win32::Graphics::Direct3D11::ID3D11Texture2D,
+    width: u32,
+    height: u32,
+    x: u32,
+    y: u32,
+) -> Result<(u8, u8, u8, u8)> {
+    use windows::Win32::Graphics::Direct3D11::{
+        D3D11_CPU_ACCESS_READ, D3D11_MAP_READ, D3D11_MAPPED_SUBRESOURCE, D3D11_TEXTURE2D_DESC,
+        D3D11_USAGE_STAGING,
+    };
+    use windows::Win32::Graphics::Dxgi::Common::{DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_SAMPLE_DESC};
+
+    let desc = D3D11_TEXTURE2D_DESC {
+        Width: width,
+        Height: height,
+        MipLevels: 1,
+        ArraySize: 1,
+        Format: DXGI_FORMAT_B8G8R8A8_UNORM,
+        SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
+        Usage: D3D11_USAGE_STAGING,
+        BindFlags: 0,
+        CPUAccessFlags: D3D11_CPU_ACCESS_READ.0 as u32,
+        MiscFlags: 0,
+    };
+    let mut staging = None;
+    unsafe { device.CreateTexture2D(&desc, None, Some(&mut staging)) }
+        .context("allocation de la texture de lecture")?;
+    let staging = staging.context("texture de lecture absente")?;
+
+    let context = unsafe { device.GetImmediateContext() }.context("contexte immédiat")?;
+
+    unsafe { context.CopyResource(&staging, texture) };
+
+    let mut mapped = D3D11_MAPPED_SUBRESOURCE::default();
+    unsafe { context.Map(&staging, 0, D3D11_MAP_READ, 0, Some(&mut mapped)) }
+        .context("projection de la texture de lecture en mémoire CPU")?;
+
+    let base = mapped.pData as *const u8;
+    let offset = (y * mapped.RowPitch + x * 4) as isize;
+    // Format BGRA : l'ordre des octets en mémoire est bleu, vert, rouge, alpha.
+    let (b, g, r, a) = unsafe {
+        (
+            *base.offset(offset),
+            *base.offset(offset + 1),
+            *base.offset(offset + 2),
+            *base.offset(offset + 3),
+        )
+    };
+
+    unsafe { context.Unmap(&staging, 0) };
+
+    Ok((r, g, b, a))
+}
+
+/// Acquiert une image pour `region` (en retentant jusqu'à `timeout`) et lit
+/// le pixel en son centre.
+#[cfg(windows)]
+fn capture_center_pixel(
+    capture: &mut capture::DesktopCapture,
+    region: geometry::Rect,
+    timeout: Duration,
+) -> Result<(u32, u32, u8, u8, u8, u8)> {
+    let deadline = std::time::Instant::now() + timeout;
+    while std::time::Instant::now() < deadline {
+        if let Some(frame) = capture.next_frame(region)? {
+            let (r, g, b, a) = read_pixel(
+                capture.device(),
+                &frame.texture,
+                frame.width,
+                frame.height,
+                frame.width / 2,
+                frame.height / 2,
+            )?;
+            return Ok((frame.width, frame.height, r, g, b, a));
+        }
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    anyhow::bail!("aucune image obtenue pour {region:?} en {timeout:?}")
+}
 
 /// Configuration de l'agent, lue depuis l'environnement.
 struct Config {
@@ -62,19 +154,128 @@ async fn main() -> Result<()> {
             .ok_or_else(|| anyhow::anyhow!("la fenêtre est hors de l'écran"))?;
         tracing::info!(?region, bureau = ?(dw, dh), "région de recadrage");
 
-        let mut captured = 0;
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
-        while std::time::Instant::now() < deadline {
-            if let Some(frame) = capture.next_frame(region)? {
-                captured += 1;
-                if captured == 1 {
-                    tracing::info!(frame.width, frame.height, "première image capturée");
-                }
+        // Desktop Duplication ne rend une image que lorsque le bureau change
+        // (voir la note du brief). Une animation CSS dans la page de test
+        // suffit en général, mais elle peut être throttlée par le navigateur
+        // dès que sa fenêtre perd le focus (constaté en pratique : le tout
+        // premier next_frame réussit, les suivants expirent tous — y compris
+        // 5 s durant sur cette VM). Un premier essai a tenté de pallier ça en
+        // faisant osciller le curseur via `SetCursorPos` en tâche de fond,
+        // sans effet : le curseur matériel semble composé hors du pipeline
+        // que surveille Desktop Duplication sur cette configuration (double
+        // adaptateur virtuel/RTX 4070). On déplace donc plutôt la fenêtre
+        // elle-même d'un pixel, en boucle : un déplacement de fenêtre force
+        // toujours une recomposition DWM réelle du bureau, quel que soit le
+        // pipeline d'affichage, et débloque `AcquireNextFrame` pour N'IMPORTE
+        // QUELLE région échantillonnée (l'API renvoie l'image du bureau
+        // entier dès qu'UNE zone change, pas seulement celle qui a changé).
+        let stop_jitter = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let jitter_flag = stop_jitter.clone();
+        // écart d'API windows-rs 0.62 : `HWND` enveloppe un `*mut c_void`, qui
+        // n'est pas `Send` — on ne peut pas déplacer `hwnd` tel quel dans le
+        // fil d'agitation. Un HWND n'est qu'un identifiant opaque (pas un
+        // pointeur réellement déréférencé côté processus), donc le faire
+        // transiter par son adresse brute (`isize`, qui est `Send`) et le
+        // reconstruire dans le fil cible est sûr.
+        let jitter_hwnd_addr = hwnd.0 as isize;
+        let jitter_thread = std::thread::spawn(move || {
+            use windows::Win32::Foundation::HWND;
+            use windows::Win32::UI::WindowsAndMessaging::{
+                SetWindowPos, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER,
+            };
+            let jitter_hwnd = HWND(jitter_hwnd_addr as *mut core::ffi::c_void);
+            let mut toggle = false;
+            while !jitter_flag.load(std::sync::atomic::Ordering::Relaxed) {
+                let dx = if toggle { 0 } else { 1 };
+                let _ = unsafe {
+                    SetWindowPos(
+                        jitter_hwnd,
+                        None,
+                        window_rect.x + dx,
+                        window_rect.y,
+                        0,
+                        0,
+                        SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
+                    )
+                };
+                toggle = !toggle;
+                std::thread::sleep(Duration::from_millis(30));
             }
-            std::thread::sleep(std::time::Duration::from_millis(2));
-        }
-        tracing::info!(captured, "images capturées en 3 s");
-        anyhow::ensure!(captured > 0, "aucune image capturée");
+        });
+        let stop_jitter_on_exit = stop_jitter.clone();
+        // `result` porte le corps du diagnostic : on le fait passer par une
+        // closure pour garantir l'arrêt du fil d'agitation de la fenêtre sur
+        // TOUS les chemins de sortie (succès comme erreur via `?`), sans
+        // dupliquer le `store` avant chaque `return`/`?`.
+        let result = (|| -> Result<()> {
+            // Preuve fondée sur le CONTENU, pas seulement les dimensions
+            // (revue 1/5) : `CapturedFrame.width/height` sont recopiés
+            // depuis `region` par construction, donc les voir correspondre à
+            // la taille de la fenêtre ne prouve rien sur ce que
+            // `CopySubresourceRegion` a réellement copié — un box figé sur
+            // l'origine du bureau donnerait exactement le même journal. On
+            // lit donc un vrai pixel :
+            //   - une fois recadré sur `region` (la fenêtre, attendue verte
+            //     — voir la page de test utilisée pour l'essai),
+            //   - une fois recadré sur un rectangle de contrôle de même
+            //     taille, placé dans le coin du bureau le plus éloigné de la
+            //     fenêtre (et non à l'origine (0, 0) : pour une fenêtre
+            //     proche du coin haut-gauche, un rectangle de contrôle à
+            //     l'origine et de même taille peut chevaucher la fenêtre
+            //     elle-même, ce qui invaliderait la comparaison sans qu'on
+            //     s'en aperçoive).
+            let (rw, rh, rr, rg, rb, ra) =
+                capture_center_pixel(&mut capture, region, Duration::from_secs(5))?;
+            tracing::info!(
+                width = rw, height = rh, r = rr, g = rg, b = rb, a = ra,
+                "pixel lu au centre de la région réelle (recadrage sur la fenêtre)"
+            );
+
+            let control_region = geometry::Rect {
+                x: dw.saturating_sub(region.width) as i32,
+                y: dh.saturating_sub(region.height) as i32,
+                width: region.width,
+                height: region.height,
+            };
+            anyhow::ensure!(
+                !geometry::rects_overlap(window_rect, control_region),
+                "région de contrôle {control_region:?} chevauche la fenêtre {window_rect:?} : \
+                 la fenêtre est trop grande pour cet essai, la preuve de contenu serait invalide"
+            );
+            let (cw, ch, cr, cg, cb, ca) =
+                capture_center_pixel(&mut capture, control_region, Duration::from_secs(5))?;
+            tracing::info!(
+                ?control_region, width = cw, height = ch, r = cr, g = cg, b = cb, a = ca,
+                "pixel lu au centre de la région de contrôle (coin opposé du bureau, même taille)"
+            );
+            anyhow::ensure!(
+                (rr, rg, rb) != (cr, cg, cb),
+                "le pixel de la région réelle ({rr},{rg},{rb}) est identique à celui du \
+                 contrôle ({cr},{cg},{cb}) : le recadrage ne distingue pas les deux zones"
+            );
+            tracing::info!(
+                "preuve de contenu : le recadrage distingue bien la fenêtre du reste du bureau (pixels différents)"
+            );
+
+            let mut captured = 0;
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+            while std::time::Instant::now() < deadline {
+                if let Some(frame) = capture.next_frame(region)? {
+                    captured += 1;
+                    if captured == 1 {
+                        tracing::info!(frame.width, frame.height, "première image capturée");
+                    }
+                }
+                std::thread::sleep(std::time::Duration::from_millis(2));
+            }
+            tracing::info!(captured, "images capturées en 3 s");
+            anyhow::ensure!(captured > 0, "aucune image capturée");
+            Ok(())
+        })();
+
+        stop_jitter_on_exit.store(true, std::sync::atomic::Ordering::Relaxed);
+        let _ = jitter_thread.join();
+        result?;
         return Ok(());
     }
 
