@@ -1,191 +1,226 @@
-//! Capture d'une fenêtre via Windows.Graphics.Capture.
+//! Capture de l'écran par DXGI Desktop Duplication, recadrée sur une fenêtre.
 //!
-//! Les images restent sur le GPU : `next_texture` renvoie une `ID3D11Texture2D`
-//! que l'encodeur consomme directement, sans aller-retour en mémoire centrale.
+//! `Windows.Graphics.Capture` aurait permis de capturer directement la fenêtre,
+//! mais cette API est inutilisable sur Windows Server 2022 : le service système
+//! qui l'implémente plante sur `CreateForWindow`. On duplique donc la sortie
+//! écran et on recadre. Les images restent sur le GPU : le recadrage se fait
+//! par `CopySubresourceRegion`, sans aller-retour en mémoire centrale.
 
 #![cfg(windows)]
 
-use std::sync::mpsc::{channel, Receiver, TryRecvError};
-
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use windows::core::Interface;
-use windows::Foundation::TypedEventHandler;
-use windows::Graphics::Capture::{
-    Direct3D11CaptureFramePool, GraphicsCaptureItem, GraphicsCaptureSession,
-};
-use windows::Graphics::DirectX::DirectXPixelFormat;
-use windows::Win32::Foundation::{HMODULE, HWND};
-use windows::Win32::Graphics::Direct3D::{D3D_DRIVER_TYPE_HARDWARE, D3D_FEATURE_LEVEL_11_0};
+use windows::Win32::Graphics::Direct3D::D3D_FEATURE_LEVEL_11_0;
 use windows::Win32::Graphics::Direct3D11::{
     D3D11CreateDevice, ID3D11Device, ID3D11DeviceContext, ID3D11Texture2D,
-    D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_SDK_VERSION,
+    D3D11_BIND_RENDER_TARGET, D3D11_BOX, D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_SDK_VERSION,
+    D3D11_TEXTURE2D_DESC, D3D11_USAGE_DEFAULT,
 };
-use windows::Win32::Graphics::Dxgi::IDXGIDevice;
-use windows::Win32::System::WinRT::Direct3D11::{
-    CreateDirect3D11DeviceFromDXGIDevice, IDirect3DDxgiInterfaceAccess,
+use windows::Win32::Graphics::Dxgi::Common::{DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_SAMPLE_DESC};
+use windows::Win32::Graphics::Dxgi::{
+    CreateDXGIFactory1, IDXGIAdapter1, IDXGIFactory1, IDXGIOutput1, IDXGIOutputDuplication,
+    IDXGIResource, DXGI_ERROR_WAIT_TIMEOUT, DXGI_OUTDUPL_FRAME_INFO,
 };
-use windows::Win32::System::WinRT::Graphics::Capture::IGraphicsCaptureItemInterop;
-use windows::Win32::System::WinRT::{RoInitialize, RO_INIT_MULTITHREADED};
 
-/// Une image capturée, encore résidente sur le GPU.
+use crate::geometry::Rect;
+
+/// Une image capturée et recadrée, résidente sur le GPU.
 pub struct CapturedFrame {
     pub texture: ID3D11Texture2D,
     pub width: u32,
     pub height: u32,
 }
 
-pub struct WindowCapture {
+pub struct DesktopCapture {
     device: ID3D11Device,
-    _context: ID3D11DeviceContext,
-    _session: GraphicsCaptureSession,
-    frame_pool: Direct3D11CaptureFramePool,
-    frames: Receiver<()>,
+    context: ID3D11DeviceContext,
+    duplication: IDXGIOutputDuplication,
+    desktop_width: u32,
+    desktop_height: u32,
+    /// Texture de destination, réallouée seulement quand la taille change.
+    target: Option<(ID3D11Texture2D, u32, u32)>,
+    /// Vrai tant qu'une image acquise n'a pas été relâchée.
+    frame_held: bool,
 }
 
-impl WindowCapture {
-    pub fn new(hwnd: HWND) -> Result<Self> {
-        // Le runtime WinRT doit être initialisé sur le thread appelant avant
-        // toute utilisation de Windows.Graphics.Capture : sans cela,
-        // `IGraphicsCaptureItemInterop::CreateForWindow` échoue avec
-        // RPC_S_SERVER_UNAVAILABLE (0x800706BE), un message trompeur qui ne
-        // mentionne jamais COM/WinRT. MTA convient ici puisque
-        // `CreateFreeThreaded` évite justement de dépendre d'une pompe de
-        // messages STA. `RPC_E_CHANGED_MODE` signifie que le thread est déjà
-        // initialisé dans un autre mode : ce n'est pas une erreur pour nous.
-        unsafe { RoInitialize(RO_INIT_MULTITHREADED) }
-            .or_else(|e| {
-                if e.code() == windows::Win32::Foundation::RPC_E_CHANGED_MODE {
-                    Ok(())
-                } else {
-                    Err(e)
-                }
-            })
-            .context("initialisation du runtime WinRT (RoInitialize)")?;
+impl DesktopCapture {
+    pub fn new() -> Result<Self> {
+        let factory: IDXGIFactory1 =
+            unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI")?;
 
-        let (device, context) = create_d3d_device()?;
-        let direct3d_device = wrap_device_for_winrt(&device)?;
+        // On retient le premier adaptateur possédant une sortie attachée au
+        // bureau : c'est celui qui compose l'écran, et donc le seul duplicable.
+        // Sur la VM cible c'est la RTX 4070, ce qui donne du même coup le bon
+        // périphérique pour l'encodeur matériel de la tâche 10.
+        let (adapter, output) = find_desktop_output(&factory)?;
 
-        // Interop WinRT : obtenir un GraphicsCaptureItem pour une HWND Win32.
-        let interop =
-            windows::core::factory::<GraphicsCaptureItem, IGraphicsCaptureItemInterop>()
-                .context("fabrique IGraphicsCaptureItemInterop")?;
-        let item: GraphicsCaptureItem =
-            unsafe { interop.CreateForWindow(hwnd) }.context("capture de la fenêtre")?;
+        let mut device: Option<ID3D11Device> = None;
+        let mut context: Option<ID3D11DeviceContext> = None;
+        unsafe {
+            D3D11CreateDevice(
+                &adapter,
+                // Un adaptateur explicite impose le type « inconnu ».
+                windows::Win32::Graphics::Direct3D::D3D_DRIVER_TYPE_UNKNOWN,
+                Default::default(),
+                D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+                Some(&[D3D_FEATURE_LEVEL_11_0]),
+                D3D11_SDK_VERSION,
+                Some(&mut device),
+                None,
+                Some(&mut context),
+            )
+            .context("création du périphérique D3D11")?;
+        }
+        let device = device.ok_or_else(|| anyhow!("périphérique D3D11 absent"))?;
+        let context = context.ok_or_else(|| anyhow!("contexte D3D11 absent"))?;
 
-        let size = item.Size()?;
-        // CreateFreeThreaded évite d'avoir à faire tourner une pompe de messages.
-        let frame_pool = Direct3D11CaptureFramePool::CreateFreeThreaded(
-            &direct3d_device,
-            DirectXPixelFormat::B8G8R8A8UIntNormalized,
-            2, // deux tampons : capture et encodage se recouvrent
-            size,
-        )
-        .context("création du pool d'images")?;
+        let duplication = unsafe { output.DuplicateOutput(&device) }
+            .context("duplication de la sortie écran")?;
 
-        // Le rappel signale seulement l'arrivée d'une image ; la texture est
-        // récupérée dans next_texture, sur le fil de la boucle principale.
-        let (notify, frames) = channel::<()>();
-        // écart d'API windows-rs 0.62 : `TypedEventHandler::new` attend des
-        // paramètres `windows::core::Ref<T>` (une référence empruntée
-        // compatible ABI), plus `&Option<T>` comme dans les versions
-        // antérieures de windows-rs.
-        frame_pool.FrameArrived(&TypedEventHandler::new(
-            move |_pool: windows::core::Ref<'_, Direct3D11CaptureFramePool>,
-                  _frame: windows::core::Ref<'_, windows::core::IInspectable>| {
-                let _ = notify.send(());
-                Ok(())
-            },
-        ))?;
-
-        let session = frame_pool
-            .CreateCaptureSession(&item)
-            .context("création de la session de capture")?;
-        // Supprime la bordure jaune de capture sur Windows 11 ; échoue en silence
-        // sur les versions antérieures, ce qui est acceptable.
-        let _ = session.SetIsBorderRequired(false);
-        session.StartCapture().context("démarrage de la capture")?;
+        // écart d'API windows-rs 0.62 : `GetDesc` ne prend plus de paramètre
+        // de sortie ; elle renvoie directement la structure (par valeur pour
+        // `IDXGIOutputDuplication`, dans un `Result` pour `IDXGIOutput1` et
+        // `IDXGIAdapter1` juste plus bas, ces deux dernières pouvant échouer).
+        let desc = unsafe { duplication.GetDesc() };
+        let desktop_width = desc.ModeDesc.Width;
+        let desktop_height = desc.ModeDesc.Height;
+        tracing::info!(desktop_width, desktop_height, "duplication de sortie établie");
 
         Ok(Self {
             device,
-            _context: context,
-            _session: session,
-            frame_pool,
-            frames,
+            context,
+            duplication,
+            desktop_width,
+            desktop_height,
+            target: None,
+            frame_held: false,
         })
-    }
-
-    /// Récupère l'image la plus récente, ou `None` si aucune n'est disponible.
-    ///
-    /// Les images en retard sont volontairement écartées : en streaming, une
-    /// image périmée n'a aucune valeur face à celle qui la suit.
-    pub fn next_texture(&mut self) -> Result<Option<CapturedFrame>> {
-        let mut available = false;
-        loop {
-            match self.frames.try_recv() {
-                Ok(()) => available = true,
-                Err(TryRecvError::Empty) => break,
-                Err(TryRecvError::Disconnected) => {
-                    return Err(anyhow!("la capture s'est arrêtée"))
-                }
-            }
-        }
-        if !available {
-            return Ok(None);
-        }
-
-        let mut latest = None;
-        while let Ok(frame) = self.frame_pool.TryGetNextFrame() {
-            let surface = frame.Surface()?;
-            let access: IDirect3DDxgiInterfaceAccess = surface.cast()?;
-            let texture: ID3D11Texture2D = unsafe { access.GetInterface() }?;
-            let size = frame.ContentSize()?;
-            latest = Some(CapturedFrame {
-                texture,
-                width: size.Width.max(0) as u32,
-                height: size.Height.max(0) as u32,
-            });
-        }
-        Ok(latest)
     }
 
     pub fn device(&self) -> &ID3D11Device {
         &self.device
     }
-}
 
-fn create_d3d_device() -> Result<(ID3D11Device, ID3D11DeviceContext)> {
-    let mut device: Option<ID3D11Device> = None;
-    let mut context: Option<ID3D11DeviceContext> = None;
-    unsafe {
-        D3D11CreateDevice(
-            None,
-            D3D_DRIVER_TYPE_HARDWARE,
-            // écart d'API windows-rs 0.62 : `software` est un `HMODULE` non
-            // optionnel (plus `Option<HMODULE>`) ; un module nul signifie
-            // « pas de rasteriseur logiciel », ce qui est le comportement
-            // voulu ici puisqu'on demande un pilote matériel.
-            HMODULE::default(),
-            // BGRA_SUPPORT est obligatoire pour l'interopérabilité WinRT.
-            D3D11_CREATE_DEVICE_BGRA_SUPPORT,
-            Some(&[D3D_FEATURE_LEVEL_11_0]),
-            D3D11_SDK_VERSION,
-            Some(&mut device),
-            None,
-            Some(&mut context),
-        )
-        .context("création du périphérique D3D11")?;
+    pub fn desktop_size(&self) -> (u32, u32) {
+        (self.desktop_width, self.desktop_height)
     }
-    Ok((
-        device.ok_or_else(|| anyhow!("périphérique D3D11 absent"))?,
-        context.ok_or_else(|| anyhow!("contexte D3D11 absent"))?,
-    ))
+
+    /// Acquiert l'image suivante et la recadre sur `region`.
+    ///
+    /// Renvoie `Ok(None)` si aucune image nouvelle n'est disponible — cas
+    /// courant et normal : le bureau ne change pas à chaque appel.
+    pub fn next_frame(&mut self, region: Rect) -> Result<Option<CapturedFrame>> {
+        self.release_frame();
+
+        let mut info = DXGI_OUTDUPL_FRAME_INFO::default();
+        let mut resource: Option<IDXGIResource> = None;
+        // Attente nulle : la cadence est pilotée par la boucle appelante, pas
+        // par un blocage ici.
+        let acquired = unsafe { self.duplication.AcquireNextFrame(0, &mut info, &mut resource) };
+
+        if let Err(e) = acquired {
+            if e.code() == DXGI_ERROR_WAIT_TIMEOUT {
+                return Ok(None);
+            }
+            return Err(anyhow!("acquisition d'image : {e}"));
+        }
+        self.frame_held = true;
+
+        let resource = resource.ok_or_else(|| anyhow!("ressource d'image absente"))?;
+        let desktop: ID3D11Texture2D = resource.cast()?;
+
+        let frame = self.crop(&desktop, region)?;
+        Ok(Some(frame))
+    }
+
+    /// Copie la région demandée dans une texture dédiée, sur le GPU.
+    fn crop(&mut self, source: &ID3D11Texture2D, region: Rect) -> Result<CapturedFrame> {
+        let (width, height) = (region.width, region.height);
+        if width == 0 || height == 0 {
+            bail!("région de recadrage vide");
+        }
+
+        // Réallouer seulement si la taille a changé : un redimensionnement est
+        // rare, une image ne l'est pas.
+        let need_alloc = !matches!(self.target, Some((_, w, h)) if w == width && h == height);
+        if need_alloc {
+            let desc = D3D11_TEXTURE2D_DESC {
+                Width: width,
+                Height: height,
+                MipLevels: 1,
+                ArraySize: 1,
+                Format: DXGI_FORMAT_B8G8R8A8_UNORM,
+                SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
+                Usage: D3D11_USAGE_DEFAULT,
+                BindFlags: D3D11_BIND_RENDER_TARGET.0 as u32,
+                CPUAccessFlags: 0,
+                MiscFlags: 0,
+            };
+            let mut texture: Option<ID3D11Texture2D> = None;
+            unsafe { self.device.CreateTexture2D(&desc, None, Some(&mut texture)) }
+                .context("allocation de la texture de recadrage")?;
+            self.target = Some((
+                texture.ok_or_else(|| anyhow!("texture de recadrage absente"))?,
+                width,
+                height,
+            ));
+        }
+
+        let (texture, _, _) = self.target.as_ref().expect("texture allouée");
+        let box_ = D3D11_BOX {
+            left: region.x.max(0) as u32,
+            top: region.y.max(0) as u32,
+            front: 0,
+            right: region.x.max(0) as u32 + width,
+            bottom: region.y.max(0) as u32 + height,
+            back: 1,
+        };
+        unsafe {
+            self.context
+                .CopySubresourceRegion(texture, 0, 0, 0, 0, source, 0, Some(&box_));
+        }
+
+        Ok(CapturedFrame { texture: texture.clone(), width, height })
+    }
+
+    fn release_frame(&mut self) {
+        if self.frame_held {
+            // Un échec ici n'est pas récupérable et ne doit pas masquer la suite.
+            let _ = unsafe { self.duplication.ReleaseFrame() };
+            self.frame_held = false;
+        }
+    }
 }
 
-fn wrap_device_for_winrt(
-    device: &ID3D11Device,
-) -> Result<windows::Graphics::DirectX::Direct3D11::IDirect3DDevice> {
-    let dxgi: IDXGIDevice = device.cast()?;
-    let inspectable = unsafe { CreateDirect3D11DeviceFromDXGIDevice(&dxgi) }
-        .context("conversion du périphérique pour WinRT")?;
-    Ok(inspectable.cast()?)
+impl Drop for DesktopCapture {
+    fn drop(&mut self) {
+        self.release_frame();
+    }
+}
+
+/// Trouve l'adaptateur et la sortie qui composent le bureau.
+fn find_desktop_output(factory: &IDXGIFactory1) -> Result<(IDXGIAdapter1, IDXGIOutput1)> {
+    let mut index = 0;
+    while let Ok(adapter) = unsafe { factory.EnumAdapters1(index) } {
+        index += 1;
+        let mut out_index = 0;
+        while let Ok(output) = unsafe { adapter.EnumOutputs(out_index) } {
+            out_index += 1;
+            let desc = match unsafe { output.GetDesc() } {
+                Ok(desc) => desc,
+                Err(_) => continue,
+            };
+            if desc.AttachedToDesktop.as_bool() {
+                let name = match unsafe { adapter.GetDesc1() } {
+                    Ok(adapter_desc) => String::from_utf16_lossy(&adapter_desc.Description)
+                        .trim_end_matches('\0')
+                        .to_string(),
+                    Err(_) => "<inconnu>".to_string(),
+                };
+                tracing::info!(adaptateur = %name, "sortie attachée au bureau retenue");
+                return Ok((adapter.clone(), output.cast()?));
+            }
+        }
+    }
+    bail!("aucune sortie attachée au bureau : la session est-elle interactive ?")
 }

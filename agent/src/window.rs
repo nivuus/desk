@@ -2,16 +2,24 @@
 
 #![cfg(windows)]
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 // écart d'API windows-rs 0.62 : `BOOL` a été déplacé dans `windows::core`
 // (il n'est plus réexporté sous `Win32::Foundation`), contrairement à `TRUE`
 // qui y reste accessible.
 use windows::core::BOOL;
-use windows::Win32::Foundation::{HWND, LPARAM, RECT, TRUE};
+// écart d'API windows-rs 0.62 : `ClientToScreen` vit dans `Win32::Graphics::Gdi`
+// (module gdi32), pas dans `WindowsAndMessaging` (user32) où on l'attendrait
+// par analogie avec `GetClientRect`. Elle renvoie en outre un `BOOL` brut
+// (convention historique de gdi32), pas un `windows::core::Result<()>` comme
+// les fonctions user32 annotées succès/échec du même fichier.
+use windows::Win32::Foundation::{HWND, LPARAM, POINT, RECT, TRUE};
+use windows::Win32::Graphics::Gdi::ClientToScreen;
 use windows::Win32::UI::WindowsAndMessaging::{
     EnumWindows, GetClientRect, GetWindowTextLengthW, GetWindowTextW, IsWindow, IsWindowVisible,
     SetWindowPos, SWP_NOMOVE, SWP_NOZORDER,
 };
+
+use crate::geometry::Rect;
 
 struct SearchContext {
     fragment: String,
@@ -77,6 +85,31 @@ pub fn client_size(hwnd: HWND) -> Result<(u32, u32)> {
         bail!("la fenêtre a une zone client vide");
     }
     Ok((width, height))
+}
+
+/// Zone client de la fenêtre, convertie en coordonnées écran.
+///
+/// Nécessaire au recadrage : Desktop Duplication renvoie une image de tout
+/// l'écran, exprimée en coordonnées écran, alors que `GetClientRect` renvoie
+/// un rectangle en coordonnées client (origine toujours à (0, 0)).
+pub fn client_rect_on_screen(hwnd: HWND) -> Result<Rect> {
+    let mut rect = RECT::default();
+    unsafe { GetClientRect(hwnd, &mut rect)? };
+    let width = (rect.right - rect.left).max(0) as u32;
+    let height = (rect.bottom - rect.top).max(0) as u32;
+    if width == 0 || height == 0 {
+        bail!("la fenêtre a une zone client vide");
+    }
+
+    // L'origine de la zone client (0, 0) suffit : GetClientRect garantit que
+    // `left`/`top` valent toujours 0, donc ce point représente le coin
+    // supérieur gauche de la zone client dans son propre repère.
+    let mut origin = POINT { x: 0, y: 0 };
+    unsafe { ClientToScreen(hwnd, &mut origin) }
+        .ok()
+        .context("ClientToScreen")?;
+
+    Ok(Rect { x: origin.x, y: origin.y, width, height })
 }
 
 /// Redimensionne la fenêtre sans la déplacer ni changer son ordre d'affichage.
