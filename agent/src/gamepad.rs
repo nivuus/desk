@@ -62,6 +62,13 @@ pub fn probe(secondes: u64) -> Result<String> {
     // `wait_ready` n'est donc pas une garantie suffisante avant le premier
     // envoi d'état : il faut réessayer avec un court repli. Documenté ici
     // pour la tâche 10, qui devra faire de même dans le module définitif.
+    //
+    // Décompte exact : le premier appel à `update()` ci-dessous compte comme
+    // tentative n°1 et n'est pas soumis à la garde `tentatives < 20` (elle ne
+    // s'évalue qu'après un premier échec) ; en cas d'échecs répétés, la
+    // boucle en fait donc au plus 21 au total (1 initial + 20 reprises), pas
+    // 20 — c'est bien ce que `tentatives` compte à la fin (nombre de
+    // REPRISES, pas d'appels totaux).
     let mut tentatives = 0u32;
     loop {
         match target.update(&etat) {

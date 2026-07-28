@@ -1,5 +1,7 @@
 # Sondes préalables — chantier B « Input jeu »
 
+**Date d'exécution** : 28 juillet 2026
+
 Tâche 1 du chantier. Investigation, pas d'implémentation : ce document lève
 les quatre inconnues du §11 de `docs/superpowers/specs/2026-07-28-input-jeu-design.md`
 qui pouvaient invalider la conception du volet manette et du volet souris
@@ -207,9 +209,10 @@ WARN agent::gamepad: update() a échoué — variante brute erreur=WinError(259)
 l'est, voir `x360.rs::update`) — elle remonte donc telle quelle. Constat :
 `wait_ready()` peut rendre `Ok(())` avant que le bus USB virtuel ait fini son
 énumération PnP côté Windows ; un `update()` immédiatement après peut échouer
-une ou plusieurs fois. La sonde corrigée boucle jusqu'à 20 fois avec un repli
-de 250 ms. Dans l'essai retenu, **une seule tentative supplémentaire a
-suffi** :
+une ou plusieurs fois. La sonde corrigée tente l'appel initial puis, en cas
+d'échec, jusqu'à 20 reprises supplémentaires (21 appels à `update()` au
+maximum au total), 250 ms de repli entre chacune. Dans l'essai retenu, **une
+seule reprise a suffi** :
 
 ```
 WARN agent::gamepad: update() pas encore prêt, nouvelle tentative tentative=1 erreur=WinError(259)
@@ -233,7 +236,30 @@ chantier — code mort dans `encode.rs`/`window.rs`/`windows_source.rs`).
 
 Pendant la fenêtre de 25 s, vibration déclenchée depuis la VM via un petit
 programme C# appelant `XInputSetState` (`L=40000, R=20000`, répété 40 fois à
-400 ms d'intervalle) :
+400 ms d'intervalle). Le brief invoquait ce script en heredoc `@'...'@`
+directement dans `node scripts/winrm.js @'…'@` : cette forme casse le
+parseur PowerShell une fois traversée par l'appel `node` (guillemets
+imbriqués mal préservés). Écrit à la place dans un fichier sur le partage
+monté, puis exécuté par chemin — plus robuste, et reproductible tel quel.
+Contenu exact de `C:\dev\xinput-vibe.ps1` (déposé via `/media/vm/dev/xinput-vibe.ps1`
+depuis Linux) :
+
+```powershell
+Add-Type -TypeDefinition @"
+using System.Runtime.InteropServices;
+public class XI {
+  [StructLayout(LayoutKind.Sequential)] public struct VIB { public ushort L; public ushort R; }
+  [DllImport("xinput1_4.dll")] public static extern int XInputSetState(int i, ref VIB v);
+}
+"@
+$v = New-Object XI+VIB
+$v.L = 40000
+$v.R = 20000
+1..40 | ForEach-Object { [XI]::XInputSetState(0, [ref]$v); Start-Sleep -Milliseconds 400 }
+"vibration envoyee"
+```
+
+Invoqué ensuite via :
 
 ```bash
 node scripts/winrm.js "powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\xinput-vibe.ps1 2>&1 | Out-String"
@@ -296,11 +322,24 @@ cd client && npx vite --host 0.0.0.0
 
 ### Verdict
 
-**À MESURER MANUELLEMENT.** Sans cette mesure, la tâche 12 doit soit
-attendre cette mesure, soit prévoir d'emblée le repli documenté par la spec
-(§11) : prendre le `movementX` de l'événement principal seul, en perdant la
-restitution des positions intermédiaires — repli « immédiat et sans
-conséquence sur le reste du design » selon la spec elle-même.
+**À MESURER MANUELLEMENT — report décidé, pas un oubli.** Cette sonde exige
+une souris physique et un opérateur humain devant l'écran ; un mouvement de
+souris synthétique (généré par script) ne prouverait rien sur `movementX`
+sous Pointer Lock, puisque c'est précisément le comportement de coalescence
+du navigateur — pas la génération du mouvement — qui est en cause. Fabriquer
+une mesure automatisée aurait produit un chiffre sans valeur probante. Ce
+report a été décidé **au lancement de la tâche**, dans la résolution
+d'ambiguïté qui l'encadrait (point 4), pas subi faute de temps ou oublié en
+cours de route.
+
+Rien n'est bloqué en attendant : la tâche 12 embarque de toute façon le repli
+prévu par la spec (§11) — si `getCoalescedEvents()` rend une liste vide, ou
+que la somme des `movementX` de ses événements reste nulle, on retombe sur le
+`movementX` de l'événement principal seul, en perdant seulement la
+restitution des positions intermédiaires. Ce repli est le comportement par
+défaut, pas une branche d'urgence à ajouter après coup — la mesure manuelle
+sert à confirmer qu'on peut faire *mieux* que ce repli, pas à débloquer la
+tâche 12 elle-même.
 
 ---
 
@@ -308,7 +347,10 @@ conséquence sur le reste du design » selon la spec elle-même.
 
 Sonde nécessitant elle aussi un navigateur réellement ouvert, idéalement
 pendant une session vidéo active pour charger le thread principal comme en
-conditions réelles. **Non mesurée dans cette tâche.**
+conditions réelles — c'est-à-dire, comme l'inconnue 3, un opérateur humain
+devant un onglet ouvert plutôt qu'un script. **Non mesurée dans cette
+tâche**, par la même décision actée au lancement (résolution d'ambiguïté,
+point 4), pas par omission.
 
 ### Mode opératoire exact à suivre pour mesurer
 
@@ -325,10 +367,15 @@ Relever la valeur affichée après 10 secondes.
 
 ### Verdict
 
-**À MESURER MANUELLEMENT.** Seuil attendu : ≥ 200 Hz. En dessous, la tâche 14
-devra accepter une cadence moindre plutôt que de prétendre 250 Hz — la spec
-(§6) prévoit un sondage nominal à 250 Hz, plancher navigateur de
-`setInterval`.
+**À MESURER MANUELLEMENT — report décidé, pas un oubli**, pour la même
+raison que l'inconnue 3 : cette mesure porte sur le comportement réel du
+navigateur sous charge, qu'un script ne peut ni simuler ni évaluer à sa
+place. Seuil attendu : ≥ 200 Hz. En dessous, la tâche 14 devra accepter une
+cadence moindre plutôt que de prétendre 250 Hz — la spec (§6) prévoit un
+sondage nominal à 250 Hz, plancher navigateur de `setInterval`. Cette
+inconnue ne bloque rien dans l'immédiat : contrairement à l'inconnue 3, la
+spec ne prévoit pas de repli explicite si la cadence est plus basse — la
+tâche 14 devra alors composer avec la valeur mesurée le moment venu.
 
 ---
 
@@ -369,11 +416,12 @@ devra accepter une cadence moindre plutôt que de prétendre 250 Hz — la spec
 ## Doutes et réserves
 
 - **`WinError(259)` n'est pas expliqué en profondeur** : je documente le
-  contournement (repli 250 ms × jusqu'à 20 tentatives) qui a fonctionné une
-  fois, mais je n'ai pas caractérisé son comportement statistique (combien de
-  tentatives dans le pire cas, est-ce stable dans le temps). La tâche 10
-  devra probablement prévoir une marge plus large que « 1 tentative » observée
-  ici, ou consulter les retours de la communauté `vigem-client`/ViGEmBus sur
+  contournement (repli 250 ms, 21 appels à `update()` au maximum au total —
+  l'initial plus jusqu'à 20 reprises) qui a fonctionné une fois, mais je n'ai
+  pas caractérisé son comportement statistique (combien de reprises dans le
+  pire cas, est-ce stable dans le temps). La tâche 10 devra probablement
+  prévoir une marge plus large que « 1 reprise » observée ici, ou consulter
+  les retours de la communauté `vigem-client`/ViGEmBus sur
   ce code d'erreur précis.
 - **Une tâche planifiée `boucle-agent.ps1` tourne en arrière-plan sur la VM**
   (héritée d'une session antérieure, hors du périmètre de ce chantier) et
