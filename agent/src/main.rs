@@ -731,6 +731,108 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
+    // Sonde n°1 de la recette du chantier B : la visée est-elle linéaire
+    // 1:1 ? On injecte une somme connue de déplacements relatifs et on
+    // compare au déplacement réel du curseur.
+    //
+    // `INPUT_LINEARITY_NEUTRALISER=0` saute la neutralisation SPI : c'est ce
+    // qui rend la mesure démonstrative plutôt que rassurante — l'écart
+    // observé sans neutralisation chiffre ce que la neutralisation apporte.
+    #[cfg(windows)]
+    if std::env::var("INPUT_LINEARITY_PROBE").is_ok() {
+        use windows::Win32::Foundation::POINT;
+        use windows::Win32::UI::WindowsAndMessaging::{
+            GetCursorPos, GetSystemMetrics, SetCursorPos, SM_CXSCREEN, SM_CYSCREEN,
+        };
+
+        let pas: i16 = std::env::var("INPUT_LINEARITY_PAS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(10);
+        let repetitions: i32 = std::env::var("INPUT_LINEARITY_REPETITIONS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(100);
+
+        if std::env::var("INPUT_LINEARITY_NEUTRALISER").as_deref() != Ok("0") {
+            match pointer_settings::neutraliser() {
+                Ok(rapport) => tracing::info!(rapport, "neutralisation appliquée"),
+                Err(e) => tracing::warn!(erreur = %e, "neutralisation échouée"),
+            }
+        } else {
+            tracing::warn!("neutralisation SAUTÉE (mesure de référence)");
+        }
+
+        // Écart au brief, DEUX fois :
+        //
+        // 1. Le point fixe (960, 540) qu'il propose suppose un écran
+        //    1920×1080, jamais vérifié. Remplacé par une lecture réelle via
+        //    `GetSystemMetrics`.
+        //
+        // 2. Le CENTRE du bureau, lui, s'est révélé insuffisant à l'essai :
+        //    l'écran réel de cette VM mesure 1080 px de haut (voir le calcul
+        //    ci-dessous), et un centre à 540 px du bord ne laisse que 540 px
+        //    de marge — strictement moins que l'amplitude de 1000 px que la
+        //    tâche demande de mesurer (pas=10 × répétitions=100, ou
+        //    pas=200 × répétitions=5). Un essai de référence parti du centre
+        //    a bien clampé verticalement (obtenu_y=539 au lieu de 1000,
+        //    signature exacte d'un curseur buté en bas d'écran) alors que
+        //    l'axe X, sur un écran plus large, ne clampait pas.
+        //
+        //    `dx` et `dy` partagent toujours le signe de `pas` (la sonde ne
+        //    déplace le curseur que dans un seul quadrant), donc il ne faut
+        //    de la marge que DANS LE SENS du déplacement, pas des deux
+        //    côtés : partir à `MARGE` px du bord de départ (haut-gauche si
+        //    `pas` est positif, bas-droite sinon) suffit, quelle que soit la
+        //    résolution, tant que sa plus petite dimension excède
+        //    `2 * MARGE + amplitude`.
+        const MARGE: i32 = 20;
+        let largeur = unsafe { GetSystemMetrics(SM_CXSCREEN) };
+        let hauteur = unsafe { GetSystemMetrics(SM_CYSCREEN) };
+        let amplitude = pas as i32 * repetitions;
+        let point_depart = |dimension: i32| -> i32 {
+            if amplitude >= 0 { MARGE } else { (dimension - 1 - MARGE).max(0) }
+        };
+        let centre_x = point_depart(largeur);
+        let centre_y = point_depart(hauteur);
+        anyhow::ensure!(
+            largeur.min(hauteur) >= 2 * MARGE + amplitude.abs(),
+            "écran {largeur}x{hauteur} trop petit pour une amplitude de {amplitude} px \
+             (pas={pas}, répétitions={repetitions}) : le clampage fausserait la mesure"
+        );
+        tracing::info!(largeur, hauteur, centre_x, centre_y, amplitude, "point de départ de la sonde");
+        unsafe { SetCursorPos(centre_x, centre_y) }?;
+        std::thread::sleep(std::time::Duration::from_millis(200));
+
+        let mut avant = POINT::default();
+        unsafe { GetCursorPos(&mut avant) }?;
+
+        let injecteur_hwnd = windows::Win32::Foundation::HWND(std::ptr::null_mut());
+        let mode = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
+        let mut injecteur = input::InputInjector::new(injecteur_hwnd, mode);
+        for _ in 0..repetitions {
+            injecteur.inject(proto::input::InputMessage::MouseMoveRelative { dx: pas, dy: pas })?;
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+        std::thread::sleep(std::time::Duration::from_millis(200));
+
+        let mut apres = POINT::default();
+        unsafe { GetCursorPos(&mut apres) }?;
+
+        let attendu = pas as i32 * repetitions;
+        let obtenu_x = apres.x - avant.x;
+        let obtenu_y = apres.y - avant.y;
+        tracing::info!(
+            attendu,
+            obtenu_x,
+            obtenu_y,
+            ecart_x = obtenu_x - attendu,
+            ecart_y = obtenu_y - attendu,
+            "sonde de linéarité terminée"
+        );
+        return Ok(());
+    }
+
     // Renseigné dans la branche Windows ci-dessous : la fenêtre capturée est
     // aussi celle qui reçoit les entrées injectées (tâche 12). `None` en
     // mode fichier de test (pas de fenêtre Windows à piloter) ou hors
@@ -965,7 +1067,7 @@ async fn main() -> Result<()> {
         #[cfg(windows)]
         let mut injector = window_hwnd_addr.map(|addr| {
             let hwnd = windows::Win32::Foundation::HWND(addr as *mut core::ffi::c_void);
-            input::InputInjector::new(hwnd)
+            input::InputInjector::new(hwnd, mode_relatif.clone())
         });
 
         let mut on_input = |message: proto::input::InputMessage| {
