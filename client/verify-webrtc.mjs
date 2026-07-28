@@ -186,14 +186,28 @@ async function main() {
 
         const framesDecodedDelta = (second.stats?.framesDecoded ?? 0) - (first.stats?.framesDecoded ?? 0);
         const framesReceivedDelta = (second.stats?.framesReceived ?? 0) - (first.stats?.framesReceived ?? 0);
-        const dimensionsOk = second.stats?.frameWidth === 1280 && second.stats?.frameHeight === 720;
+        // La source est une fenêtre capturée (Desktop Duplication + recadrage
+        // sur la fenêtre, pas le bureau), pas un fichier de test à résolution
+        // fixe : selon la taille de la fenêtre côté agent, les dimensions
+        // réelles varient d'une session à l'autre (784x592, 764x484... jamais
+        // une valeur figée — voir la recette du jalon 1, critère 1). Ce qui
+        // compte ici est qu'une image ait été décodée avec des dimensions
+        // plausibles, pas qu'elles correspondent à une résolution attendue à
+        // l'avance.
+        const width = second.stats?.frameWidth;
+        const height = second.stats?.frameHeight;
+        const PLAUSIBLE_MAX_DIMENSION = 8192; // largement au-delà de tout écran réaliste ici
+        const dimensionsOk =
+            Number.isInteger(width) && Number.isInteger(height) &&
+            width > 0 && height > 0 &&
+            width <= PLAUSIBLE_MAX_DIMENSION && height <= PLAUSIBLE_MAX_DIMENSION;
 
         console.log('');
         console.log(`connectionState (final) : ${second.connectionState}`);
         console.log(`iceConnectionState (final) : ${second.iceConnectionState}`);
         console.log(`Δ framesDecoded sur ${sampleDelayMs}ms : ${framesDecodedDelta}`);
         console.log(`Δ framesReceived sur ${sampleDelayMs}ms : ${framesReceivedDelta}`);
-        console.log(`résolution attendue (1280x720) : ${dimensionsOk ? 'OK' : 'ÉCHEC'} (obtenu ${second.stats?.frameWidth}x${second.stats?.frameHeight})`);
+        console.log(`dimensions plausibles (>0, ≤ ${PLAUSIBLE_MAX_DIMENSION}px) : ${dimensionsOk ? 'OK' : 'ÉCHEC'} (obtenu ${width}x${height})`);
 
         if (cdp.consoleLines.length > 0) {
             console.log('\n--- Console de la page ---');
@@ -205,10 +219,13 @@ async function main() {
         }
 
         if (framesDecodedDelta > 0 && framesReceivedDelta > 0 && dimensionsOk) {
-            console.log('\nPREUVE : la vidéo traverse la chaîne (framesDecoded et framesReceived augmentent, résolution correcte).');
+            console.log('\nPREUVE : la vidéo traverse la chaîne (framesDecoded et framesReceived augmentent, dimensions plausibles).');
             exitCode = 0;
+        } else if (!dimensionsOk) {
+            console.log(`\nÉCHEC : dimensions rapportées non plausibles (${width}x${height}). Voir chrome://webrtc-internals pour le détail.`);
+            exitCode = 1;
         } else {
-            console.log('\nÉCHEC : les compteurs ne montrent pas de vidéo décodée. Voir chrome://webrtc-internals pour le détail.');
+            console.log('\nÉCHEC : les compteurs ne montrent pas de vidéo décodée (framesDecoded/framesReceived stagnants). Voir chrome://webrtc-internals pour le détail.');
             exitCode = 1;
         }
 
