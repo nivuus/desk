@@ -1,4 +1,5 @@
 mod audio;
+mod frames;
 mod geometry;
 mod h264;
 mod input;
