@@ -2,6 +2,13 @@ mod audio;
 mod clock;
 mod cursor;
 mod frames;
+// Pas de `#[cfg(windows)]` ici : les logiques pures de `gamepad` (tâche 9,
+// ordonnancement des états et limitation des vibrations) n'ont rien de
+// spécifique à Windows et doivent compiler et se tester sur Linux. La sonde
+// `probe`, elle, reste gated à l'intérieur même du fichier
+// (`agent/src/gamepad.rs`), avec ses dépendances `vigem-client` /
+// `anyhow::Context` propres à la sonde.
+mod gamepad;
 mod geometry;
 mod h264;
 mod input;
@@ -23,8 +30,6 @@ mod wasapi;
 mod windows_audio;
 #[cfg(windows)]
 mod windows_source;
-#[cfg(windows)]
-mod gamepad;
 
 use std::net::IpAddr;
 use std::path::PathBuf;
