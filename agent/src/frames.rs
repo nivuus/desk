@@ -15,7 +15,7 @@
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
-use crate::opus::{CHANNELS, FRAME_INTERLEAVED, FRAME_SAMPLES, SAMPLE_RATE_HZ};
+use crate::opus::{FRAME_INTERLEAVED, FRAME_SAMPLES, SAMPLE_RATE_HZ};
 
 /// Retard maximal toléré dans le tampon, en trames. Au-delà, les échantillons
 /// les plus anciens sont jetés : si WASAPI livre durablement plus vite que le
@@ -149,6 +149,8 @@ mod tests {
     use super::*;
     use std::time::Duration;
 
+    use crate::opus::CHANNELS;
+
     /// Durée correspondant à `n` trames de 10 ms.
     fn trames(n: u64) -> Duration {
         Duration::from_millis(n * 10)
@@ -270,14 +272,30 @@ mod tests {
         let origine = Instant::now();
         let mut a = FrameAssembler::new(origine);
         a.drain_due(origine);
-        // Bien plus que ce que le temps réel autorise.
-        a.push(&bloc(100, FRAME_SAMPLES * 50));
 
-        assert!(
-            a.echantillons_jetes() > 0,
-            "le tampon ne doit pas grossir sans fin"
-        );
+        // MAX_BACKLOG_FRAMES = 3, FRAME_INTERLEAVED = 960
+        // Plafond = 2880
+
+        // Première poussée : bien au-delà du plafond
+        a.push(&bloc(100, 2000));
+        // Buffer: 4000, plafond: 2880, excédent: 1120
+        // Jetés : 1120
+        assert_eq!(a.echantillons_jetes(), 1120,
+            "première poussée jette 1120 échantillons (4000 - 2880)");
+
+        // Deuxième poussée : de nouveau au-delà, avec valeur différente
+        a.push(&bloc(-100, 1600));
+        // Buffer avant: 2880 (100s), après extend: 6080
+        // Excédent: 3200, jetés cumulativement: 1120 + 3200 = 4320
+        // Buffer reste: 2880 (les -100s les plus récents)
+        assert_eq!(a.echantillons_jetes(), 4320,
+            "deuxième poussée jette les 3200 anciens (100s) du buffer");
+
+        // La trame émise doit contenir les -100s (les plus récents conservés),
+        // pas les 100s (les plus anciens, maintenant jetés).
         let sorties = a.drain_due(origine + trames(1));
         assert_eq!(sorties.len(), 1, "une seule trame est due après 10 ms");
+        assert!(sorties[0].pcm.iter().all(|&v| v == -100),
+            "la trame doit contenir les données les plus récentes (-100), pas les anciennes (100)");
     }
 }
