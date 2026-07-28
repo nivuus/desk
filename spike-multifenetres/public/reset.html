@@ -8,6 +8,8 @@
         body { font: 16px/1.5 system-ui, sans-serif; max-width: 46rem; margin: 3rem auto; padding: 0 1rem; }
         pre { background: #f4f4f5; padding: 1rem; border-radius: .5rem; overflow-x: auto; }
         .vide { color: #71717a; font-style: italic; }
+        .echec { background: #fee2e2; color: #7f1d1d; border: 2px solid #b91c1c; }
+        .propre { background: #dcfce7; color: #14532d; }
     </style>
 </head>
 <body>
@@ -29,15 +31,57 @@
 
         document.getElementById('origin').textContent = location.origin;
 
+        const sortie = document.getElementById('rapport');
+
+        function afficher(texte, classe) {
+            sortie.className = classe;
+            sortie.textContent = texte;
+        }
+
         document.getElementById('nettoyer').addEventListener('click', async () => {
-            const rapport = await nettoyerOrigin({
-                serviceWorker: navigator.serviceWorker,
-                caches: window.caches,
-            });
-            const sortie = document.getElementById('rapport');
-            sortie.classList.remove('vide');
-            sortie.textContent = JSON.stringify(rapport, null, 2);
-            console.log('[spike] hygiène de l\'origin', rapport);
+            // Sans ce try/catch, une exception de getRegistrations() ou de
+            // caches.keys() laissait le <pre> sur « Pas encore exécuté. » : un
+            // échec indiscernable d'un défaut d'affichage. L'opérateur poursuivait
+            // alors avec le service worker de l'ancienne application toujours
+            // actif, qui intercepte les requêtes du spike et rend TOUS les
+            // verdicts ininterprétables. C'est le point de contamination à plus
+            // fort levier de l'instrument : il doit crier, pas se taire.
+            try {
+                afficher('Nettoyage en cours…', 'vide');
+                const rapport = await nettoyerOrigin({
+                    serviceWorker: navigator.serviceWorker,
+                    caches: window.caches,
+                });
+
+                // Relevé APRÈS coup : on rapporte un état constaté, pas seulement
+                // une action tentée. Un unregister() qui rend `true` ne garantit
+                // pas que l'origin soit propre.
+                const restants = navigator.serviceWorker
+                    ? (await navigator.serviceWorker.getRegistrations()).map((e) => e.scope)
+                    : [];
+                const cachesRestants = window.caches ? await window.caches.keys() : [];
+                const propre = restants.length === 0 && cachesRestants.length === 0;
+
+                afficher(
+                    JSON.stringify({ ...rapport, restants, cachesRestants, propre }, null, 2) +
+                    (propre
+                        ? '\n\n✓ Origin propre — vous pouvez passer à la suite.'
+                        : '\n\n✗ Origin NON propre : il reste des service workers ou des caches. ' +
+                          'Ne lancez aucune variante — les verdicts seraient ininterprétables. ' +
+                          'Désinstallez l\'ancienne PWA, puis relancez ce nettoyage.'),
+                    propre ? 'propre' : 'echec',
+                );
+                console.log('[spike] hygiène de l\'origin', { rapport, restants, cachesRestants, propre });
+            } catch (erreur) {
+                afficher(
+                    `✗ Le nettoyage a ÉCHOUÉ : ${erreur?.stack ?? erreur}\n\n` +
+                    'L\'origin est dans un état inconnu. Ne lancez aucune variante tant que ce ' +
+                    'nettoyage n\'a pas abouti : un service worker de l\'ancienne application ' +
+                    'intercepterait les requêtes du spike.',
+                    'echec',
+                );
+                console.error('[spike] hygiène de l\'origin — échec', erreur);
+            }
         });
     </script>
 </body>
