@@ -161,6 +161,10 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
     const pc = new RTCPeerConnection({ iceServers: [] });
 
     pc.addTransceiver('video', { direction: 'recvonly' });
+    // Le navigateur est l'offrant : c'est lui qui doit déclarer la piste
+    // audio. L'agent ne fait que répondre, à condition d'avoir activé Opus sur
+    // son constructeur `Rtc` — sans quoi il répondrait sans piste audio.
+    pc.addTransceiver('audio', { direction: 'recvonly' });
 
     // Entrées : non fiable et non ordonné — une position de souris périmée n'a
     // aucune valeur, mieux vaut la perdre que retarder les suivantes.
@@ -178,9 +182,17 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
         }
     });
 
+    // Un seul MediaStream porte les deux pistes. Réassigner `srcObject` à
+    // chaque piste reçue ferait chasser la première par la seconde : l'ordre
+    // d'arrivée n'est pas garanti, et le résultat serait une session tantôt
+    // muette, tantôt sans image.
+    const flux = new MediaStream();
     pc.addEventListener('track', (event) => {
-        options.video.srcObject = event.streams[0] ?? new MediaStream([event.track]);
-        status('flux reçu');
+        flux.addTrack(event.track);
+        if (options.video.srcObject !== flux) {
+            options.video.srcObject = flux;
+        }
+        status(`flux reçu (${flux.getTracks().length} piste(s))`);
     });
 
     pc.addEventListener('connectionstatechange', () => {

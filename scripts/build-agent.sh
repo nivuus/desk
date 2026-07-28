@@ -34,5 +34,27 @@ PROFILE="${1:-release}"
 FLAG=""
 [ "$PROFILE" = "release" ] && FLAG="--release"
 
+# cmake est requis par `audiopus_sys`, qui bâtit libopus depuis la source C
+# vendorée dans le crate. Il n'est pas dans le PATH par défaut de la session
+# WinRM après une installation winget.
+#
+# CMAKE_POLICY_VERSION_MINIMUM=3.5 : le cmake installé par winget (4.0.2) a
+# retiré la compatibilité avec les `cmake_minimum_required` antérieurs à 3.5
+# et refuse net de configurer sans ce filet de sécurité — exactement le
+# CMakeLists.txt vendoré par `audiopus_sys` (`cmake_minimum_required(VERSION
+# 3.1)`). Sans cette variable, la configuration échoue avec « Compatibility
+# with CMake < 3.5 has been removed from CMake », alors même que cmake est
+# bien trouvé et sur le PATH.
+#
+# Portée : cette variable d'environnement s'applique à TOUT l'appel `cargo
+# build` qui suit, donc à chaque crate `-sys` du graphe qui invoque cmake —
+# pas seulement `audiopus_sys`. Aujourd'hui, `aws-lc-sys` (dépendance de
+# `str0m`, sans rapport avec l'audio) est le seul autre crate du graphe à
+# invoquer cmake ; il déclare `cmake_minimum_required(VERSION 3.5..3.31)`
+# (syntaxe intervalle) dans son CMakeLists.txt vendoré, qui n'est pas
+# concerné par le filet de compatibilité et ignore donc cette variable sans
+# effet de bord. Si une future dépendance ajoute un CMakeLists.txt vendoré
+# avec un plancher de version différent, vérifier qu'il tolère aussi
+# CMAKE_POLICY_VERSION_MINIMUM=3.5 avant de le supposer inoffensif.
 node "$ROOT/scripts/winrm.js" \
-    "\$env:Path += ';C:\\Users\\Administrateur\\.cargo\\bin'; Set-Location C:\\dev; cargo build $FLAG 2>&1 | Out-String"
+    "\$env:Path += ';C:\\Users\\Administrateur\\.cargo\\bin;C:\\Program Files\\CMake\\bin'; \$env:CMAKE_POLICY_VERSION_MINIMUM = '3.5'; Set-Location C:\\dev; cargo build $FLAG 2>&1 | Out-String"

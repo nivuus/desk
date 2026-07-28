@@ -44,9 +44,14 @@ pub struct WindowsSource {
     height: u32,
     fps: u32,
     bitrate: u32,
-    /// Origine de l'horloge de présentation. Jamais réinitialisée, y compris
-    /// lorsque `resize` reconstruit la chaîne d'encodage : le décodeur du
-    /// navigateur rejetterait un horodatage qui recule.
+    /// Origine d'horloge **de la session**, imposée par `main.rs` et partagée
+    /// avec la source audio. C'est cette origine commune qui rend les deux
+    /// lignes de temps comparables, donc la synchro A/V exacte. La créer ici
+    /// la décalerait de la durée d'initialisation de l'autre source.
+    ///
+    /// Jamais réinitialisée, y compris lorsque `resize` reconstruit la chaîne
+    /// d'encodage : le décodeur du navigateur rejetterait un horodatage qui
+    /// recule.
     clock_origin: std::time::Instant,
     /// Dernier horodatage attribué, pour garantir la stricte croissance même
     /// si deux captures tombaient dans la même graduation de 1/90000 s.
@@ -72,20 +77,26 @@ pub struct WindowsSource {
 
 // SÉCURITÉ : les types COM enveloppés ici (`HWND`, `ID3D11Device`,
 // `IMFTransform`...) ne sont pas `Send` par défaut dans windows-rs, mais
-// `Session` (voir `transport.rs`) exige `Box<dyn VideoSource + Send>` car
-// elle est déplacée une seule fois vers le fil dédié de `Session::run`
-// (`tokio::task::spawn_blocking`, voir `main.rs`) — jamais partagée ni
-// utilisée concurremment. Le périphérique D3D11 est explicitement protégé
-// pour un accès multi-fils (`SetMultithreadProtected(TRUE)`, posé dans
-// `DesktopCapture::new`, voir son commentaire) précisément parce qu'il est
-// aussi sollicité par les fils internes de Media Foundation ; les objets MF
-// eux-mêmes sont documentés agiles (utilisables depuis n'importe quel fil).
-// Aucun de ces objets n'est donc accédé depuis deux fils à la fois : ce
-// `WindowsSource` est seulement transféré, une fois, avant tout usage.
+// `Session` (voir `transport.rs`) exige `Box<dyn VideoSource + Send>` pour
+// finir sur le fil dédié de `Session::run` (`tokio::task::spawn_blocking`,
+// voir `main.rs`). Ce transfert n'est PAS un unique déplacement littéral :
+// entre sa construction et cette remise à `spawn_blocking`, l'objet est
+// porté par une tâche `#[tokio::main]` (ordonnanceur multi-fils par défaut)
+// qui franchit plusieurs `.await` (réception de l'offre, envoi de la
+// réponse...), et peut donc être repris sur un fil de travail différent à
+// chacun d'eux avant d'atteindre le fil bloquant dédié. Ce qui rend `Send`
+// sûr n'est pas un compte de déplacements, mais l'absence d'accès
+// CONCURRENT : à tout instant, un seul fil à la fois possède l'objet, quel
+// qu'il soit, et plus aucun ne le touche une fois remis à `spawn_blocking`.
+// Le périphérique D3D11 est explicitement protégé pour un accès multi-fils
+// (`SetMultithreadProtected(TRUE)`, posé dans `DesktopCapture::new`, voir son
+// commentaire) précisément parce qu'il est aussi sollicité par les fils
+// internes de Media Foundation ; les objets MF eux-mêmes sont documentés
+// agiles (utilisables depuis n'importe quel fil).
 unsafe impl Send for WindowsSource {}
 
 impl WindowsSource {
-    pub fn new(hwnd: HWND, fps: u32, bitrate: u32) -> Result<Self> {
+    pub fn new(hwnd: HWND, fps: u32, bitrate: u32, clock_origin: std::time::Instant) -> Result<Self> {
         let window_rect = window::client_rect_on_screen(hwnd)?;
 
         let capture = DesktopCapture::new()?;
@@ -108,7 +119,7 @@ impl WindowsSource {
             height,
             fps,
             bitrate,
-            clock_origin: std::time::Instant::now(),
+            clock_origin,
             last_pts_90k: None,
             fatal: false,
             encoder_warmed_up: false,

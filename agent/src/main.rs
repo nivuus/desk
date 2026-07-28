@@ -1,6 +1,10 @@
+mod audio;
+mod clock;
+mod frames;
 mod geometry;
 mod h264;
 mod input;
+mod opus;
 mod rebuild;
 mod signaling;
 mod source;
@@ -12,6 +16,10 @@ mod capture;
 mod encode;
 #[cfg(windows)]
 mod window;
+#[cfg(windows)]
+mod wasapi;
+#[cfg(windows)]
+mod windows_audio;
 #[cfg(windows)]
 mod windows_source;
 
@@ -625,6 +633,65 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
+    // Sonde audio (`AUDIO_PROBE=1`) : répond aux questions n°1 et n°2 de la
+    // spécification du chantier A — quel est le périphérique de rendu par
+    // défaut de CETTE session, quel est son format de mixage, et un loopback
+    // y capte-t-il bien ce que jouent les applications.
+    #[cfg(windows)]
+    if std::env::var("AUDIO_PROBE").is_ok() {
+        let secondes: u64 = std::env::var("AUDIO_PROBE_SECS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(10);
+
+        let mut capture = wasapi::LoopbackCapture::open()?;
+        tracing::info!(format = %capture.description(), "loopback ouvert");
+
+        let debut = std::time::Instant::now();
+        let mut echantillons = 0u64;
+        let mut crete = 0i16;
+        let mut lectures_vides = 0u64;
+        while debut.elapsed() < std::time::Duration::from_secs(secondes) {
+            match capture.read()? {
+                Some(bloc) => {
+                    echantillons += bloc.len() as u64;
+                    for v in bloc {
+                        crete = crete.max(v.saturating_abs());
+                    }
+                }
+                None => lectures_vides += 1,
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+
+        tracing::info!(
+            echantillons,
+            lectures_vides,
+            crete,
+            silencieux = crete == 0,
+            "sonde audio terminée"
+        );
+        return Ok(());
+    }
+
+    // Sonde n°4 de la spec du chantier A : le *process loopback*
+    // (Windows 10 build 19041+) isole l'audio d'un seul processus, ce
+    // qu'exige le modèle multi-fenêtres du chantier D. La VM est en build
+    // 20348, donc éligible sur le papier. RIEN N'EST CONSTRUIT DESSUS ici :
+    // on observe seulement si l'activation réussit, et le résultat est
+    // consigné pour le chantier D.
+    #[cfg(windows)]
+    if let Ok(pid_texte) = std::env::var("PROCESS_LOOPBACK_PROBE") {
+        let pid: u32 = pid_texte
+            .parse()
+            .context("PROCESS_LOOPBACK_PROBE doit être un identifiant de processus")?;
+        match wasapi::probe_process_loopback(pid) {
+            Ok(rapport) => tracing::info!(pid, rapport, "sonde process loopback"),
+            Err(e) => tracing::warn!(pid, erreur = %e, "sonde process loopback échouée"),
+        }
+        return Ok(());
+    }
+
     // Renseigné dans la branche Windows ci-dessous : la fenêtre capturée est
     // aussi celle qui reçoit les entrées injectées (tâche 12). `None` en
     // mode fichier de test (pas de fenêtre Windows à piloter) ou hors
@@ -640,6 +707,12 @@ async fn main() -> Result<()> {
     // fenêtre du mode diagnostic `CAPTURE_TEST` plus haut dans ce fichier.
     #[cfg(windows)]
     let mut window_hwnd_addr: Option<isize> = None;
+
+    // Origine d'horloge unique de la session. Les deux médias l'utilisent :
+    // c'est ce qui rend leurs lignes de temps comparables, et donc la synchro
+    // A/V exacte par construction. La créer ici, une seule fois, garantit
+    // qu'aucune durée d'initialisation ne les décale l'une de l'autre.
+    let clock_origin = std::time::Instant::now();
 
     let source: Box<dyn VideoSource + Send> = match &config.test_file {
         Some(path) => {
@@ -674,7 +747,7 @@ async fn main() -> Result<()> {
                     .and_then(|v| v.parse().ok())
                     .unwrap_or(90);
                 tracing::info!(title, bitrate, fps, "capture de la fenêtre Windows");
-                Box::new(windows_source::WindowsSource::new(hwnd, fps, bitrate)?)
+                Box::new(windows_source::WindowsSource::new(hwnd, fps, bitrate, clock_origin)?)
             }
             #[cfg(not(windows))]
             {
@@ -695,7 +768,25 @@ async fn main() -> Result<()> {
         receiver_task: _,
         sender_task: _,
     } = signaling::run_signaling(&config.signaling_url, &config.session_id).await?;
-    let mut session = Session::new(source, config.local_ip)?;
+    let mut session = Session::new(source, config.local_ip, clock_origin)?;
+
+    // Source audio : son absence ne compromet jamais la session vidéo. Sur une
+    // source de test (TEST_FILE), il n'y a rien à capter. Hors Windows, il n'y
+    // a pas de WASAPI. Et si le loopback refuse de s'ouvrir — pas de
+    // périphérique de rendu par défaut, format de mixage non supporté — on
+    // journalise et la session continue, muette.
+    #[cfg(windows)]
+    if config.test_file.is_none() {
+        match windows_audio::WindowsAudioSource::new(clock_origin) {
+            Ok(source_audio) => {
+                tracing::info!(format = source_audio.description(), "audio activé");
+                session.set_audio_source(Box::new(source_audio));
+            }
+            Err(e) => {
+                tracing::warn!(erreur = %e, "audio indisponible, la session continue sans son");
+            }
+        }
+    }
 
     // Surveillance du chemin réel (`SOURCE_TRACE=1`) : cadence d'appel de
     // `next_frame`, captures neuves, unités d'accès produites. Contrairement

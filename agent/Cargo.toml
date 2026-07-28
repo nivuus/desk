@@ -14,8 +14,16 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 str0m = "0.21"
 tokio-tungstenite = "0.24"
 futures-util = "0.3"
+opus = "0.3.1"
 
 [target.'cfg(windows)'.dependencies]
+# Dépendance directe requise par la macro `#[windows::core::implement]`
+# (tâche 10, sonde process loopback) : elle génère du code qui référence
+# `windows_core::...` directement, un chemin non résolu si seul le crate
+# `windows` (qui ne fait que RÉ-EXPORTER `windows_core` sous le nom `core`)
+# est déclaré en dépendance. Version alignée sur celle que verrouille déjà
+# Cargo.lock comme dépendance transitive de `windows`.
+windows-core = "0.62"
 windows = { version = "0.62", features = [
     "Win32_Foundation",
     "Win32_Graphics_Direct3D",
@@ -23,8 +31,11 @@ windows = { version = "0.62", features = [
     "Win32_Graphics_Dxgi",
     "Win32_Graphics_Dxgi_Common",
     "Win32_Graphics_Gdi",
+    "Win32_Media_Audio",
     "Win32_Media_MediaFoundation",
+    "Win32_Media_Multimedia",
     "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
     "Win32_System_Ole",
     "Win32_System_Threading",
     "Win32_System_Variant",
