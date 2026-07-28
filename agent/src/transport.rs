@@ -1411,6 +1411,48 @@ mod tests {
         use str0m::change::SdpAnswer;
         use str0m::media::{Direction, MediaKind};
 
+        /// Source audio de test : rend un paquet toutes les 10 ms au plus
+        /// tôt, avec un `pts_48k` qui avance de 480 (une trame de 10 ms) à
+        /// chaque paquet rendu — comme le ferait `WindowsAudioSource`
+        /// (`PacketRing` alimenté par un fil de capture paçé, jamais
+        /// disponible en continu). La charge utile n'a pas besoin d'être un
+        /// Opus valide : ce test vérifie que la `Session` ACHEMINE les
+        /// paquets jusqu'au pair, pas ce qu'un décodeur en ferait.
+        ///
+        /// **Constaté pendant l'écriture de ce test (ronde de correction
+        /// 1)** : une première version rendait un paquet à CHAQUE appel, sans
+        /// pacage. La branche `a3` passant avant la branche `b` (par
+        /// construction, voir plus haut), un flux audio en continu
+        /// affamait totalement la vidéo — `video_count` retombait à 0 sur
+        /// toute la fenêtre de mesure. Ce n'est pas un défaut de la source
+        /// réelle (`PacketRing`, bornée à 10 paquets et alimentée par un fil
+        /// séparé au rythme de la capture, ne peut pas rendre en continu),
+        /// mais un artefact d'une source de test irréaliste. Le pacage à
+        /// 10 ms ci-dessous restaure un comportement fidèle à
+        /// `WindowsAudioSource` : la plupart des appels à `next_packet`
+        /// rendent `None`, exactement comme en production.
+        struct DummyAudioSource {
+            next_pts_48k: u64,
+            next_due: Instant,
+        }
+
+        impl AudioSource for DummyAudioSource {
+            fn next_packet(&mut self) -> Option<AudioPacket> {
+                let now = Instant::now();
+                if now < self.next_due {
+                    return None;
+                }
+                self.next_due += Duration::from_millis(10);
+                let pts_48k = self.next_pts_48k;
+                self.next_pts_48k += 480;
+                Some(AudioPacket {
+                    data: vec![0xF8, 0xFF, 0xFE],
+                    pts_48k,
+                    captured_at: now,
+                })
+            }
+        }
+
         let local_ip: IpAddr = "127.0.0.1".parse().unwrap();
         let source_path =
             std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
@@ -1434,7 +1476,9 @@ mod tests {
 
         let mut api = peer_rtc.sdp_api();
         api.add_media(MediaKind::Video, Direction::RecvOnly, None, None, None);
-        let audio_mid = api.add_media(MediaKind::Audio, Direction::RecvOnly, None, None, None);
+        // Non lié à une variable lue plus loin : le décompte plus bas
+        // distingue audio et vidéo par codec, pas par `mid` (voir plus bas).
+        api.add_media(MediaKind::Audio, Direction::RecvOnly, None, None, None);
         api.add_channel("control".to_string());
         api.add_channel("input".to_string());
         let (offer, pending) = api.apply().expect("offre non vide");
@@ -1446,25 +1490,21 @@ mod tests {
             .accept_answer(pending, answer)
             .expect("réponse acceptée par le pair");
 
-        // Une piste audio négociée doit accepter une écriture Opus et la
-        // livrer au pair. Sans ce test, une régression sur la sélection du
-        // type de charge utile ne se verrait qu'à la recette, sur la VM.
-        let pt_opus = peer_rtc
-            .writer(audio_mid)
-            .expect("writer audio")
-            .payload_params()
-            .find(|p| p.spec().codec == Codec::Opus)
-            .map(|p| p.pt())
-            .expect("un type de charge utile Opus doit être négocié");
-        let writer = peer_rtc.writer(audio_mid).expect("writer audio");
-        writer
-            .write(
-                pt_opus,
-                Instant::now(),
-                MediaTime::new(0, Frequency::FORTY_EIGHT_KHZ),
-                vec![0xF8, 0xFF, 0xFE],
-            )
-            .expect("écriture audio");
+        // Ronde de correction 1 (revue) : la première version de ce test
+        // faisait écrire le PAIR lui-même sur `audio_mid`, ce qui ne passait
+        // jamais par `Session::write_audio` ni par la branche `a3` — la
+        // suppression pure et simple de cette branche aurait laissé ce test
+        // vert (constaté, voir le rapport de tâche). Ce qui doit réellement
+        // être prouvé : une `Session` munie d'une source audio
+        // (`set_audio_source`) ÉMET des paquets Opus que le pair reçoit. Le
+        // décompte, plus bas, distingue les paquets audio des paquets vidéo
+        // par leur codec (`Codec::Opus` vs `Codec::H264`), pas par leur
+        // `mid` : `audio_mid` n'a donc plus besoin d'être lu après la
+        // négociation SDP.
+        session.set_audio_source(Box::new(DummyAudioSource {
+            next_pts_48k: 0,
+            next_due: Instant::now(),
+        }));
 
         // La session tourne sur un thread dédié, comme en production (voir
         // `main.rs` / `tokio::task::spawn_blocking`). Le thread n'est pas
@@ -1479,13 +1519,25 @@ mod tests {
         });
 
         // Boucle du pair : pilote son propre `Rtc` (STUN, ACKs DTLS...) et
-        // compte les images vidéo reçues pendant une fenêtre fixe démarrée
-        // à la connexion (pas avant : le temps de poignée de main ICE/DTLS
-        // ne doit pas être compté contre la cadence mesurée).
+        // compte les images vidéo ET les paquets audio reçus pendant une
+        // fenêtre fixe démarrée à la connexion (pas avant : le temps de
+        // poignée de main ICE/DTLS ne doit pas être compté contre la cadence
+        // mesurée).
+        //
+        // Ronde de correction 1 (revue) : `media_count` comptait auparavant
+        // tout `Event::MediaData` sous le nom d'« images vidéo ». Une fois la
+        // source audio de test posée sur `Session` (ci-dessus), l'assertion
+        // de cadence vidéo aurait aussi compté des paquets audio et serait
+        // devenue fausse (silencieusement, sans jamais échouer pour la
+        // mauvaise raison qu'un décompte trop haut). Les deux compteurs sont
+        // désormais séparés par codec (`data.params.spec().codec`), pas par
+        // `mid` — un paquet Opus reste un paquet Opus quel que soit le `mid`
+        // qui le porte.
         let hard_deadline = Instant::now() + Duration::from_secs(10);
         let measure_window = Duration::from_secs(2);
         let mut connected_at: Option<Instant> = None;
-        let mut media_count = 0usize;
+        let mut video_count = 0usize;
+        let mut audio_count = 0usize;
 
         loop {
             let now = Instant::now();
@@ -1535,18 +1587,22 @@ mod tests {
                 Output::Event(Event::Connected) => {
                     connected_at = Some(Instant::now());
                 }
-                Output::Event(Event::MediaData(_)) => {
+                Output::Event(Event::MediaData(data)) => {
                     if connected_at.is_some() {
-                        media_count += 1;
+                        match data.params.spec().codec {
+                            Codec::Opus => audio_count += 1,
+                            Codec::H264 => video_count += 1,
+                            _ => {}
+                        }
                     }
                 }
                 Output::Event(_) => {}
             }
         }
 
-        let per_second = media_count as f64 / measure_window.as_secs_f64();
+        let per_second = video_count as f64 / measure_window.as_secs_f64();
         eprintln!(
-            "cadence mesurée : {media_count} images vidéo reçues en {measure_window:?} ({per_second:.1}/s)"
+            "cadence mesurée : {video_count} images vidéo et {audio_count} paquets audio reçus en {measure_window:?} ({per_second:.1} images/s)"
         );
 
         // Preuve de C1 : au rythme voulu (~60 Hz), on attend nettement plus
@@ -1557,6 +1613,19 @@ mod tests {
         assert!(
             per_second > 10.0,
             "cadence trop basse : {per_second:.1} images/s (attendu très supérieur à 1/s, la marque du bug de cadence C1)"
+        );
+
+        // Preuve de la tâche 8 (ronde de correction 1) : une `Session` munie
+        // d'une source audio (`set_audio_source`, plus haut) doit
+        // effectivement émettre des paquets Opus que le pair reçoit — pas
+        // seulement négocier la piste. Sans la branche `a3` d'`act_on_timeout`
+        // (celle qui appelle `write_audio`), ce compteur resterait à zéro :
+        // constaté en la retirant temporairement (voir le rapport de tâche).
+        assert!(
+            audio_count > 0,
+            "aucun paquet audio reçu par le pair : la Session, munie d'une source audio, \
+             n'a émis aucun paquet Opus (la branche a3 d'act_on_timeout est-elle bien avant b, \
+             ou write_audio échoue-t-il silencieusement ?)"
         );
     }
 
