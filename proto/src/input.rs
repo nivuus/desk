@@ -5,12 +5,37 @@
 //! non fiable et non ordonné, aucun message ne dépend d'un autre.
 
 /// Version du protocole d'entrée. Incrémenter à tout changement de format.
-pub const PROTOCOL_VERSION: u8 = 1;
+///
+/// v2 (chantier B) : ajout de `MouseMoveRelative` (type 5) et `Gamepad`
+/// (type 6). Agent et client étant déployés ensemble, le rejet mutuel des
+/// versions est le comportement souhaitable — un client v1 qui parlerait à
+/// un agent v2 n'aurait de toute façon aucun moyen d'annoncer un mode
+/// relatif.
+pub const PROTOCOL_VERSION: u8 = 2;
 
 const TYPE_MOUSE_MOVE: u8 = 1;
 const TYPE_MOUSE_BUTTON: u8 = 2;
 const TYPE_WHEEL: u8 = 3;
 const TYPE_KEY: u8 = 4;
+const TYPE_MOUSE_MOVE_RELATIVE: u8 = 5;
+const TYPE_GAMEPAD_STATE: u8 = 6;
+
+/// État complet d'une manette, calqué sur `XINPUT_GAMEPAD` : aucune
+/// conversion côté agent, donc aucune occasion de se tromper de convention.
+///
+/// `seq` croît d'un message à l'autre. Le canal est non ordonné : il permet
+/// de rejeter un état plus ancien arrivé après un plus récent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GamepadState {
+    pub seq: u16,
+    pub buttons: u16,
+    pub left_trigger: u8,
+    pub right_trigger: u8,
+    pub thumb_lx: i16,
+    pub thumb_ly: i16,
+    pub thumb_rx: i16,
+    pub thumb_ry: i16,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MouseButton {
@@ -49,6 +74,10 @@ pub enum InputMessage {
     MouseButton { button: MouseButton, pressed: bool, x: u16, y: u16 },
     Wheel { delta_x: i16, delta_y: i16 },
     Key { scancode: u16, pressed: bool, extended: bool },
+    /// Déplacement relatif, en pixels bruts. Émis sous Pointer Lock, quand
+    /// l'agent a annoncé un curseur masqué.
+    MouseMoveRelative { dx: i16, dy: i16 },
+    Gamepad(GamepadState),
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -91,6 +120,22 @@ impl InputMessage {
                 out.push(pressed as u8);
                 out.push(extended as u8);
             }
+            InputMessage::MouseMoveRelative { dx, dy } => {
+                out.push(TYPE_MOUSE_MOVE_RELATIVE);
+                out.extend_from_slice(&dx.to_le_bytes());
+                out.extend_from_slice(&dy.to_le_bytes());
+            }
+            InputMessage::Gamepad(state) => {
+                out.push(TYPE_GAMEPAD_STATE);
+                out.extend_from_slice(&state.seq.to_le_bytes());
+                out.extend_from_slice(&state.buttons.to_le_bytes());
+                out.push(state.left_trigger);
+                out.push(state.right_trigger);
+                out.extend_from_slice(&state.thumb_lx.to_le_bytes());
+                out.extend_from_slice(&state.thumb_ly.to_le_bytes());
+                out.extend_from_slice(&state.thumb_rx.to_le_bytes());
+                out.extend_from_slice(&state.thumb_ry.to_le_bytes());
+            }
         }
         out
     }
@@ -128,6 +173,26 @@ impl InputMessage {
                     pressed: p[2] != 0,
                     extended: p[3] != 0,
                 })
+            }
+            TYPE_MOUSE_MOVE_RELATIVE => {
+                let p = take(bytes, 2, 4)?;
+                Ok(InputMessage::MouseMoveRelative {
+                    dx: le_u16(p, 0) as i16,
+                    dy: le_u16(p, 2) as i16,
+                })
+            }
+            TYPE_GAMEPAD_STATE => {
+                let p = take(bytes, 2, 14)?;
+                Ok(InputMessage::Gamepad(GamepadState {
+                    seq: le_u16(p, 0),
+                    buttons: le_u16(p, 2),
+                    left_trigger: p[4],
+                    right_trigger: p[5],
+                    thumb_lx: le_u16(p, 6) as i16,
+                    thumb_ly: le_u16(p, 8) as i16,
+                    thumb_rx: le_u16(p, 10) as i16,
+                    thumb_ry: le_u16(p, 12) as i16,
+                }))
             }
             other => Err(DecodeError::UnknownType(other)),
         }
@@ -228,6 +293,32 @@ mod tests {
     }
 
     #[test]
+    fn round_trip_mouvement_relatif() {
+        round_trip(InputMessage::MouseMoveRelative { dx: 0, dy: 0 });
+        round_trip(InputMessage::MouseMoveRelative { dx: -32768, dy: 32767 });
+    }
+
+    #[test]
+    fn round_trip_manette() {
+        round_trip(InputMessage::Gamepad(GamepadState {
+            seq: 65535,
+            buttons: 0xF00D,
+            left_trigger: 255,
+            right_trigger: 1,
+            thumb_lx: -32768,
+            thumb_ly: 32767,
+            thumb_rx: 0,
+            thumb_ry: -1,
+        }));
+    }
+
+    #[test]
+    fn rejette_la_version_1_devenue_obsolete() {
+        let err = InputMessage::decode(&[1, 1, 0, 0, 0, 0]).unwrap_err();
+        assert!(matches!(err, DecodeError::UnsupportedVersion(1)));
+    }
+
+    #[test]
     fn conformite_aux_vecteurs_partages() {
         let raw = include_str!("../vectors.json");
         let doc: serde_json::Value = serde_json::from_str(raw).expect("vectors.json valide");
@@ -263,6 +354,20 @@ mod tests {
                     pressed: case["pressed"].as_bool().unwrap(),
                     extended: case["extended"].as_bool().unwrap(),
                 },
+                "mouse_move_relative" => InputMessage::MouseMoveRelative {
+                    dx: case["dx"].as_i64().unwrap() as i16,
+                    dy: case["dy"].as_i64().unwrap() as i16,
+                },
+                "gamepad_state" => InputMessage::Gamepad(GamepadState {
+                    seq: case["seq"].as_u64().unwrap() as u16,
+                    buttons: case["buttons"].as_u64().unwrap() as u16,
+                    left_trigger: case["left_trigger"].as_u64().unwrap() as u8,
+                    right_trigger: case["right_trigger"].as_u64().unwrap() as u8,
+                    thumb_lx: case["thumb_lx"].as_i64().unwrap() as i16,
+                    thumb_ly: case["thumb_ly"].as_i64().unwrap() as i16,
+                    thumb_rx: case["thumb_rx"].as_i64().unwrap() as i16,
+                    thumb_ry: case["thumb_ry"].as_i64().unwrap() as i16,
+                }),
                 other => panic!("type de vecteur inconnu : {other}"),
             };
 
