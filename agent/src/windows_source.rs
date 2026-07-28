@@ -32,6 +32,11 @@ pub struct WindowsSource {
     /// l'autre cas d'épuisement ; celui-ci couvre les pannes qui n'affectent
     /// pas forcément la fenêtre elle-même (périphérique GPU perdu...).
     fatal: bool,
+    /// Vrai dès que `self.encoder` a rendu sa toute première sortie. Sert
+    /// uniquement à borner `SUBMIT_POLL_BUDGET` (voir sa doc) à la phase de
+    /// démarrage : remis à faux par `resize`, qui reconstruit un encodeur
+    /// neuf n'ayant lui non plus encore rien produit.
+    encoder_warmed_up: bool,
 }
 
 // SÉCURITÉ : les types COM enveloppés ici (`HWND`, `ID3D11Device`,
@@ -74,6 +79,7 @@ impl WindowsSource {
             bitrate,
             next_pts_90k: 0,
             fatal: false,
+            encoder_warmed_up: false,
         })
     }
 
@@ -121,6 +127,9 @@ impl WindowsSource {
         self.encoder.request_keyframe()?;
         self.width = actual_width;
         self.height = actual_height;
+        // Nouvel encodeur : sa toute première sortie retombe dans le même
+        // cas que le démarrage initial (voir `SUBMIT_POLL_BUDGET`).
+        self.encoder_warmed_up = false;
 
         tracing::info!(self.width, self.height, "chaîne d'encodage reconstruite");
         Ok(())
@@ -138,29 +147,50 @@ impl WindowsSource {
 }
 
 /// Budget accordé à l'attente de la sortie d'une image **qui vient d'être
-/// soumise** à l'encodeur — jamais à l'attente d'une nouvelle capture.
+/// soumise** à l'encodeur, **uniquement tant qu'il n'a encore rien produit**
+/// (voir `WindowsSource::encoder_warmed_up`) — jamais à l'attente d'une
+/// nouvelle capture, et jamais non plus une fois l'encodeur établi comme
+/// capable de répondre.
 ///
-/// L'encodeur matériel est asynchrone (voir `encode.rs`) : après
-/// `submit()`, `poll_output()` n'a presque jamais encore de résultat au
-/// tout premier essai, l'événement `METransformHaveOutput` mettant un ou
-/// deux cycles à arriver. Sans ce court réessai, une image tout juste
-/// soumise n'était récupérée qu'au tour suivant de `Session::run`
-/// (~16,7 ms plus tard) au mieux — et en pratique nettement plus tard,
-/// mesuré : la file de sorties prêtes de l'encodeur se remplit plus vite
-/// qu'elle n'est vidée (un seul `poll_output` par appel externe), si bien
-/// que les images partent par rafales espacées de silences complets — un
-/// « figement » observable côté navigateur (`freezeCount`,
-/// `jitterBufferDelay` démesuré), pas seulement une cadence moyenne basse.
-/// Borné à quelques dizaines de millisecondes : largement suffisant pour
-/// la latence propre du pipeline en régime établi, sans jamais s'approcher
-/// de la seconde qui affamait `Session::run` (ronde de correction 1).
+/// L'encodeur matériel est asynchrone (voir `encode.rs`) : après le tout
+/// premier `submit()`, `poll_output()` n'a presque jamais encore de résultat
+/// au premier essai, l'événement `METransformHaveOutput` mettant un ou deux
+/// cycles à arriver. Sans ce court réessai, la toute première image (donc le
+/// premier keyframe) n'était récupérée qu'au tour suivant de `Session::run`
+/// (~16,7 ms plus tard) au mieux. Borné à quelques dizaines de millisecondes :
+/// largement suffisant pour ce démarrage, sans jamais s'approcher de la
+/// seconde qui affamait `Session::run` (ronde de correction 1).
+///
+/// **Ronde de diagnostic (débit plafonné ~25-30 im/s) :** repéré en relecture
+/// que l'inverse de la valeur alors en vigueur (40 ms) tombait exactement sur
+/// le plafond observé — hypothèse d'un plafond ARTIFICIEL si ce réessai
+/// bloquait `act_on_timeout` (donc tout `Session::run`, capture ET
+/// transport) sur la quasi-totalité des tours en régime établi. Mesuré
+/// directement (instrumentation temporaire, retirée) : FAUX sur cette VM. Le
+/// réessai résolvait systématiquement en 3-5 ms (jamais le budget de 40 ms
+/// atteint, sur des centaines d'images), et réduire le budget de 40 ms à
+/// 2 ms (vingt fois moins) n'a strictement rien changé au débit mesuré côté
+/// navigateur (297/10 s dans les deux cas, contenu identique). Le plafond
+/// réel se situe en amont : `DesktopCapture::next_frame` (donc
+/// `AcquireNextFrame`, non bloquant) ne signale une image neuve qu'à ~30 Hz,
+/// alors que la boucle l'interroge, elle, à 60 Hz exact (mesuré par
+/// comptage — voir aussi `fix-debit-socket-report.md`) : la cadence de
+/// composition/duplication du bureau sur cette VM est la vraie limite,
+/// identique que le contenu change par animation de page ou par défilement
+/// réel piloté à la molette. `SUBMIT_POLL_BUDGET` n'y est pour rien — mais
+/// comme il ne coûtait donc jamais rien qu'au tout premier démarrage
+/// (jamais revérifié une fois l'encodeur chaud), il est désormais borné à
+/// ce seul cas : sur du matériel où l'encodeur répondrait plus lentement en
+/// régime établi, l'ancienne version aurait pu réellement brider `run()`
+/// jusqu'à ce budget à chaque image — ce que cette restriction élimine
+/// structurellement, sans rien changer au débit mesuré ici.
 const SUBMIT_POLL_BUDGET: std::time::Duration = std::time::Duration::from_millis(40);
 const SUBMIT_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(1);
 
 impl VideoSource for WindowsSource {
     /// Un seul essai de capture par appel, jamais d'attente pour une
-    /// nouvelle image — mais un court réessai borné pour récupérer la
-    /// sortie de celle qu'on vient tout juste de soumettre.
+    /// nouvelle image — avec un court réessai borné, réservé au tout
+    /// premier démarrage de l'encodeur, pour en récupérer la sortie.
     ///
     /// **Ronde de correction 1 (revue), 1er correctif :** une première
     /// version de cette méthode retentait en boucle (sommeil de 1 ms)
@@ -178,13 +208,24 @@ impl VideoSource for WindowsSource {
     ///
     /// **2e correctif, après mesure :** supprimer TOUT réessai (un essai
     /// unique, quoi qu'il arrive) réglait bien les deux défauts ci-dessus,
-    /// mais dégradait fortement le débit observé côté navigateur (~16 im/s
-    /// au lieu de ~25, avec de longs figements) : la cadence externe de
-    /// `Session::run` (~16,7 ms) est trop grossière pour rattraper à temps
-    /// la sortie d'une image tout juste soumise, qui s'accumule alors par
-    /// rafales. Le réessai réapparaît donc, mais **seulement quand une
-    /// image a réellement été soumise ce tour-ci** (`submitted`), et borné à
-    /// `SUBMIT_POLL_BUDGET` (quelques dizaines de ms, pas deux secondes).
+    /// mais dégradait fortement le débit observé côté navigateur au tout
+    /// démarrage : la cadence externe de `Session::run` (~16,7 ms) est trop
+    /// grossière pour rattraper à temps la sortie de la toute première image
+    /// soumise, avant que l'encodeur ait prouvé qu'il répond vite. Le
+    /// réessai réapparaît donc, mais borné à `SUBMIT_POLL_BUDGET`.
+    ///
+    /// **3e correctif, après diagnostic du plafond de débit (voir
+    /// `SUBMIT_POLL_BUDGET`) :** ce réessai avait fini par s'appliquer à
+    /// *chaque* image soumise, pas seulement à la première — sans
+    /// conséquence mesurée sur cette VM (il ne consommait jamais son budget
+    /// en régime établi) mais restant un risque latent sur du matériel plus
+    /// lent, où il aurait réellement bridé `run()` à `1/SUBMIT_POLL_BUDGET`.
+    /// Désormais réservé à la phase de démarrage (`encoder_warmed_up`) :
+    /// une fois l'encodeur prouvé capable de répondre, chaque soumission ne
+    /// fait plus qu'un seul essai immédiat, exactement comme le cas « rien
+    /// de neuf à capturer » ci-dessous — une sortie non encore prête sort au
+    /// tour suivant, 16,7 ms plus tard, sans jamais bloquer celui-ci.
+    ///
     /// Quand rien n'a été capturé (cas normal, bureau immobile), retour
     /// immédiat, sans boucle ni attente, comme l'exige la revue. `None` ne
     /// signifie donc jamais « rien cette fois » ; il reste possible pour
@@ -218,13 +259,17 @@ impl VideoSource for WindowsSource {
             }
         }
 
-        if !submitted {
-            // Rien de neuf à capturer ce tour-ci : cas normal. On tente
-            // quand même de récupérer une sortie déjà en attente d'un appel
-            // précédent (l'encodeur peut avoir 1-2 images en vol), mais sans
-            // jamais attendre — un seul essai, retour immédiat.
+        if !submitted || self.encoder_warmed_up {
+            // Soit rien de neuf à capturer ce tour-ci (cas normal), soit
+            // l'encodeur a déjà prouvé qu'il répond vite (voir la doc de
+            // `SUBMIT_POLL_BUDGET`) : dans les deux cas, un seul essai,
+            // retour immédiat, jamais d'attente.
             return match self.encoder.poll_output() {
-                Ok(unit) => unit,
+                Ok(Some(unit)) => {
+                    self.encoder_warmed_up = true;
+                    Some(unit)
+                }
+                Ok(None) => None,
                 Err(e) => {
                     tracing::warn!(erreur = %e, "récupération de l'image encodée échouée");
                     None
@@ -232,18 +277,22 @@ impl VideoSource for WindowsSource {
             };
         }
 
-        // Une image vient d'être soumise : sa sortie est imminente (latence
-        // propre au pipeline asynchrone), on l'attend brièvement plutôt que
-        // de la laisser s'accumuler jusqu'au tour suivant.
+        // Encodeur pas encore chaud : sa toute première sortie peut mettre
+        // un peu plus d'un tour à arriver (voir la doc de
+        // `SUBMIT_POLL_BUDGET`) — on l'attend brièvement plutôt que de
+        // retarder le tout premier keyframe.
         let deadline = std::time::Instant::now() + SUBMIT_POLL_BUDGET;
         loop {
             match self.encoder.poll_output() {
-                Ok(Some(unit)) => return Some(unit),
+                Ok(Some(unit)) => {
+                    self.encoder_warmed_up = true;
+                    return Some(unit);
+                }
                 Ok(None) => {
                     if std::time::Instant::now() >= deadline {
                         // Pas encore prête : elle sortira à un appel
                         // suivant. Pas un échec, juste une latence un peu
-                        // plus longue que la normale ce tour-ci.
+                        // plus longue que la normale à ce tout premier tour.
                         return None;
                     }
                     std::thread::sleep(SUBMIT_POLL_INTERVAL);
