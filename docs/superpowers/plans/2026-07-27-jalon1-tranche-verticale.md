@@ -3930,7 +3930,7 @@ Assemblage : la capture et l'encodage sont réunis derrière le trait `VideoSour
 - Modify: `agent/src/main.rs`
 
 **Interfaces:**
-- Consumes: `WindowCapture`, `CapturedFrame` (tâche 9), `H264Encoder` (tâche 10), `VideoSource`, `AccessUnit` (tâche 6).
+- Consumes: `DesktopCapture`, `CapturedFrame`, `Rect`, `crop_region`, `client_rect_on_screen` (tâche 9), `H264Encoder` (tâche 10), `VideoSource`, `AccessUnit` (tâche 6).
 - Produces:
   - `struct WindowsSource` avec `WindowsSource::new(hwnd: HWND, fps: u32, bitrate: u32) -> Result<WindowsSource>`, implémentant `VideoSource`, plus `fn resize(&mut self, width: u32, height: u32) -> Result<()>` et `fn hwnd(&self) -> HWND`.
 
@@ -3946,7 +3946,8 @@ Assemblage : la capture et l'encodage sont réunis derrière le trait `VideoSour
 use anyhow::Result;
 use windows::Win32::Foundation::HWND;
 
-use crate::capture::WindowCapture;
+use crate::capture::DesktopCapture;
+use crate::geometry::{crop_region, Rect};
 use crate::encode::H264Encoder;
 use crate::h264::{AccessUnit, CLOCK_RATE_HZ};
 use crate::source::VideoSource;
@@ -3954,7 +3955,9 @@ use crate::window;
 
 pub struct WindowsSource {
     hwnd: HWND,
-    capture: WindowCapture,
+    capture: DesktopCapture,
+    /// Région de l'écran à recadrer, recalculée à chaque redimensionnement.
+    region: Rect,
     encoder: H264Encoder,
     width: u32,
     height: u32,
@@ -3966,11 +3969,15 @@ pub struct WindowsSource {
 
 impl WindowsSource {
     pub fn new(hwnd: HWND, fps: u32, bitrate: u32) -> Result<Self> {
-        let (width, height) = window::client_size(hwnd)?;
+        let window_rect = window::client_rect_on_screen(hwnd)?;
         // L'encodeur H.264 exige des dimensions paires.
         let (width, height) = (width & !1, height & !1);
 
-        let capture = WindowCapture::new(hwnd)?;
+        let capture = DesktopCapture::new()?;
+        let (dw, dh) = capture.desktop_size();
+        let region = crop_region(window_rect, dw, dh)
+            .ok_or_else(|| anyhow::anyhow!("la fenêtre est hors de l'écran"))?;
+        let (width, height) = (region.width, region.height);
         let mut encoder = H264Encoder::new(capture.device(), width, height, fps, bitrate)?;
         encoder.request_keyframe()?;
 
@@ -4004,10 +4011,16 @@ impl WindowsSource {
         window::resize_window(self.hwnd, width, height)?;
         // Laisser la fenêtre atteindre sa nouvelle taille avant de recapturer.
         std::thread::sleep(std::time::Duration::from_millis(50));
-        let (actual_width, actual_height) = window::client_size(self.hwnd)?;
+        let window_rect = window::client_rect_on_screen(self.hwnd)?;
         let (actual_width, actual_height) = (actual_width & !1, actual_height & !1);
 
-        self.capture = WindowCapture::new(self.hwnd)?;
+        // Un NOUVEAU périphérique D3D11 est créé ici : il doit recevoir
+        // SetMultithreadProtected(TRUE) comme le premier, sinon le blocage
+        // intermittent d'AcquireNextFrame réapparaît (voir tâche 10).
+        self.capture = DesktopCapture::new()?;
+        let (dw, dh) = self.capture.desktop_size();
+        self.region = crop_region(window_rect, dw, dh)
+            .ok_or_else(|| anyhow::anyhow!("la fenêtre est hors de l'écran"))?;
         self.encoder =
             H264Encoder::new(self.capture.device(), actual_width, actual_height, self.fps, self.bitrate)?;
         self.encoder.request_keyframe()?;
@@ -4032,7 +4045,7 @@ impl WindowsSource {
 impl VideoSource for WindowsSource {
     fn next_frame(&mut self) -> Option<AccessUnit> {
         // Alimenter l'encodeur avec l'image la plus récente, s'il en réclame une.
-        match self.capture.next_texture() {
+        match self.capture.next_frame(self.region) {
             Ok(Some(frame)) => {
                 let pts = self.next_pts_90k;
                 if let Err(e) = self.encoder.submit(&frame, pts) {
