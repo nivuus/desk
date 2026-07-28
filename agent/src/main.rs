@@ -1,4 +1,5 @@
 mod audio;
+mod clock;
 mod frames;
 mod geometry;
 mod h264;
@@ -689,6 +690,12 @@ async fn main() -> Result<()> {
     #[cfg(windows)]
     let mut window_hwnd_addr: Option<isize> = None;
 
+    // Origine d'horloge unique de la session. Les deux médias l'utilisent :
+    // c'est ce qui rend leurs lignes de temps comparables, et donc la synchro
+    // A/V exacte par construction. La créer ici, une seule fois, garantit
+    // qu'aucune durée d'initialisation ne les décale l'une de l'autre.
+    let clock_origin = std::time::Instant::now();
+
     let source: Box<dyn VideoSource + Send> = match &config.test_file {
         Some(path) => {
             tracing::info!(?path, "source de test");
@@ -722,7 +729,7 @@ async fn main() -> Result<()> {
                     .and_then(|v| v.parse().ok())
                     .unwrap_or(90);
                 tracing::info!(title, bitrate, fps, "capture de la fenêtre Windows");
-                Box::new(windows_source::WindowsSource::new(hwnd, fps, bitrate)?)
+                Box::new(windows_source::WindowsSource::new(hwnd, fps, bitrate, clock_origin)?)
             }
             #[cfg(not(windows))]
             {
@@ -743,7 +750,7 @@ async fn main() -> Result<()> {
         receiver_task: _,
         sender_task: _,
     } = signaling::run_signaling(&config.signaling_url, &config.session_id).await?;
-    let mut session = Session::new(source, config.local_ip)?;
+    let mut session = Session::new(source, config.local_ip, clock_origin)?;
 
     // Surveillance du chemin réel (`SOURCE_TRACE=1`) : cadence d'appel de
     // `next_frame`, captures neuves, unités d'accès produites. Contrairement

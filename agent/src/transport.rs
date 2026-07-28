@@ -33,7 +33,8 @@ use str0m::media::{MediaTime, Mid, Pt};
 use str0m::net::{DatagramRecv, Protocol, Receive};
 use str0m::{Candidate, Event, IceConnectionState, Input, Output, Rtc};
 
-use crate::h264::AccessUnit;
+use crate::clock::instant_from_pts;
+use crate::h264::{AccessUnit, CLOCK_RATE_HZ};
 use crate::source::VideoSource;
 
 /// Cadence d'interrogation de la source vidéo : une toutes les 10 ms (100 Hz).
@@ -328,6 +329,10 @@ pub struct Session {
     socket: UdpSocket,
     source: Box<dyn VideoSource + Send>,
     dimensions: (u32, u32),
+    /// Origine d'horloge de la session, partagée avec les sources. Sert à
+    /// reconstruire l'instant de capture d'une image à partir de son
+    /// horodatage (voir `write_frame`).
+    clock_origin: Instant,
     video_mid: Option<Mid>,
     control_channel: Option<ChannelId>,
     started: Instant,
@@ -385,7 +390,14 @@ impl Session {
     /// Prépare une session en attente d'offre.
     ///
     /// `local_ip` est l'adresse par laquelle le navigateur joindra l'agent.
-    pub fn new(source: Box<dyn VideoSource + Send>, local_ip: IpAddr) -> Result<Self> {
+    /// `clock_origin` est l'origine d'horloge de la session, partagée avec la
+    /// source audio (voir `capture_instant`) : c'est elle qui rend les deux
+    /// lignes de temps comparables et donc la synchro A/V exacte.
+    pub fn new(
+        source: Box<dyn VideoSource + Send>,
+        local_ip: IpAddr,
+        clock_origin: Instant,
+    ) -> Result<Self> {
         let socket = UdpSocket::bind(SocketAddr::new(local_ip, 0))
             .context("ouverture du socket UDP")?;
         // Non bloquant une fois pour toutes : `act_on_timeout` ne dépend plus
@@ -426,6 +438,7 @@ impl Session {
             socket,
             source,
             dimensions,
+            clock_origin,
             video_mid: None,
             control_channel: None,
             started: Instant::now(),
@@ -807,6 +820,15 @@ impl Session {
         }))
     }
 
+    /// Instant réel auquel l'image d'horodatage `pts_90k` a été capturée.
+    ///
+    /// C'est cette valeur que `write_frame` annonce à str0m comme `wallclock`.
+    /// Extraite en méthode pour être vérifiable directement : l'écriture
+    /// elle-même exige une session négociée, la conversion non.
+    fn capture_instant(&self, pts_90k: u64) -> Instant {
+        instant_from_pts(self.clock_origin, pts_90k, CLOCK_RATE_HZ as u32)
+    }
+
     /// Écrit une unité d'accès sur la piste vidéo. Mutation émise depuis
     /// l'intérieur de la boucle de `run()` (voir `act_on_timeout`), donc
     /// suivie d'un retour immédiat à `poll_output` — conforme à la règle de
@@ -830,12 +852,25 @@ impl Session {
             );
             return false;
         };
+        // Le `wallclock` de str0m est « the real world time that corresponds
+        // to the MediaTime » — l'instant de CAPTURE, pas celui de l'écriture.
+        // Passer `Instant::now()` ici encapsulait tout le délai de capture et
+        // d'encodage matériel dans la correspondance annoncée, ce qui restait
+        // invisible tant que la vidéo était seule. Avec une piste audio, dont
+        // le chemin est bien plus court, l'audio devancerait la vidéo de tout
+        // ce délai et la synchro labiale serait fausse par construction.
+        //
+        // L'horodatage fait l'aller-retour par Media Foundation sans perte
+        // (`encode.rs`), donc l'instant de capture se reconstruit exactement
+        // depuis l'origine partagée. Calculé avant l'emprunt de `writer` :
+        // celui-ci retient `&mut self.rtc`, incompatible avec l'emprunt
+        // immuable de `self.clock_origin` qu'exige `capture_instant`.
+        let capture_at = self.capture_instant(unit.pts_90k);
         let Some(writer) = self.rtc.writer(mid) else {
             self.warn_negotiation_once("piste vidéo plus accessible en écriture : images jetées");
             return false;
         };
-
-        match writer.write(pt, Instant::now(), MediaTime::from_90khz(unit.pts_90k), unit.data) {
+        match writer.write(pt, capture_at, MediaTime::from_90khz(unit.pts_90k), unit.data) {
             Ok(()) => true,
             Err(e) => {
                 // Échec d'écriture applicatif (ex. RID inconnu) : on clôt la
@@ -1154,6 +1189,34 @@ mod tests {
         assert_eq!(bounded_wait(now, rtc_deadline, None), Duration::from_millis(10));
     }
 
+    /// Non-régression sur la correction de la synchro A/V : `write_frame`
+    /// doit annoncer l'instant de CAPTURE, pas celui de l'écriture. Une
+    /// origine placée dans le PASSÉ rend les deux impossibles à confondre :
+    /// si la méthode lisait l'horloge courante, le résultat serait
+    /// postérieur à `avant`, pas antérieur.
+    #[test]
+    fn la_session_ancre_l_instant_de_capture_sur_son_origine() {
+        let local_ip: IpAddr = "127.0.0.1".parse().unwrap();
+        let source_path =
+            std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
+        let source = Box::new(
+            crate::source::FileSource::from_path(source_path, 1280, 720, 60)
+                .expect("chargement du flux de test"),
+        );
+
+        let avant = Instant::now();
+        let origine = avant - Duration::from_secs(10);
+        let session = Session::new(source, local_ip, origine).expect("session");
+
+        // Une image capturée 2 s après l'origine porte le PTS 180 000.
+        assert_eq!(session.capture_instant(180_000), origine + Duration::from_secs(2));
+        assert!(
+            session.capture_instant(180_000) < avant,
+            "l'instant doit être ancré sur l'origine (dans le passé), pas sur l'horloge courante"
+        );
+        assert_eq!(session.capture_instant(0), origine);
+    }
+
     /// Preuve d'intégration pour C1 (cadence) et C2 (drainage) : les tests
     /// ci-dessus valident les fonctions pures, mais la revue demandait une
     /// mesure réelle de cadence. Sans navigateur disponible, on simule le
@@ -1181,7 +1244,7 @@ mod tests {
                 .expect("chargement du flux de test"),
         );
 
-        let mut session = Session::new(source, local_ip).expect("session");
+        let mut session = Session::new(source, local_ip, Instant::now()).expect("session");
 
         // Pair « navigateur » minimal : un second `Rtc`, offrant, avec une
         // piste vidéo recvonly et les deux canaux de données.
@@ -1352,7 +1415,7 @@ mod tests {
             keyframe_requests: keyframe_requests.clone(),
         });
 
-        let mut session = Session::new(source, local_ip).expect("session");
+        let mut session = Session::new(source, local_ip, Instant::now()).expect("session");
 
         let peer_socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("socket du pair");
         let peer_addr = peer_socket.local_addr().unwrap();

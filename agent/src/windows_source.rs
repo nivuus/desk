@@ -44,9 +44,14 @@ pub struct WindowsSource {
     height: u32,
     fps: u32,
     bitrate: u32,
-    /// Origine de l'horloge de présentation. Jamais réinitialisée, y compris
-    /// lorsque `resize` reconstruit la chaîne d'encodage : le décodeur du
-    /// navigateur rejetterait un horodatage qui recule.
+    /// Origine d'horloge **de la session**, imposée par `main.rs` et partagée
+    /// avec la source audio. C'est cette origine commune qui rend les deux
+    /// lignes de temps comparables, donc la synchro A/V exacte. La créer ici
+    /// la décalerait de la durée d'initialisation de l'autre source.
+    ///
+    /// Jamais réinitialisée, y compris lorsque `resize` reconstruit la chaîne
+    /// d'encodage : le décodeur du navigateur rejetterait un horodatage qui
+    /// recule.
     clock_origin: std::time::Instant,
     /// Dernier horodatage attribué, pour garantir la stricte croissance même
     /// si deux captures tombaient dans la même graduation de 1/90000 s.
@@ -85,7 +90,7 @@ pub struct WindowsSource {
 unsafe impl Send for WindowsSource {}
 
 impl WindowsSource {
-    pub fn new(hwnd: HWND, fps: u32, bitrate: u32) -> Result<Self> {
+    pub fn new(hwnd: HWND, fps: u32, bitrate: u32, clock_origin: std::time::Instant) -> Result<Self> {
         let window_rect = window::client_rect_on_screen(hwnd)?;
 
         let capture = DesktopCapture::new()?;
@@ -108,7 +113,7 @@ impl WindowsSource {
             height,
             fps,
             bitrate,
-            clock_origin: std::time::Instant::now(),
+            clock_origin,
             last_pts_90k: None,
             fatal: false,
             encoder_warmed_up: false,
