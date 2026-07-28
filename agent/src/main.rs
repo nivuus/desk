@@ -22,6 +22,8 @@ mod wasapi;
 mod windows_audio;
 #[cfg(windows)]
 mod windows_source;
+#[cfg(windows)]
+mod gamepad;
 
 use std::net::IpAddr;
 use std::path::PathBuf;
@@ -688,6 +690,24 @@ async fn main() -> Result<()> {
         match wasapi::probe_process_loopback(pid) {
             Ok(rapport) => tracing::info!(pid, rapport, "sonde process loopback"),
             Err(e) => tracing::warn!(pid, erreur = %e, "sonde process loopback échouée"),
+        }
+        return Ok(());
+    }
+
+    // Sonde du chantier B (§11, inconnues n°1 et n°2) : ViGEmBus accepte-t-il
+    // de brancher une manette Xbox 360 virtuelle, et son rappel de
+    // notification restitue-t-il bien les magnitudes de vibration qu'un jeu
+    // demande ? RIEN N'EST CONSTRUIT DESSUS ici : on observe, et le résultat
+    // fige l'API réellement disponible pour la tâche 10.
+    #[cfg(windows)]
+    if std::env::var("VIGEM_PROBE").is_ok() {
+        let secondes: u64 = std::env::var("VIGEM_PROBE_SECS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(20);
+        match crate::gamepad::probe(secondes) {
+            Ok(rapport) => tracing::info!(rapport, "sonde ViGEmBus"),
+            Err(e) => tracing::warn!(erreur = %e, "sonde ViGEmBus échouée"),
         }
         return Ok(());
     }

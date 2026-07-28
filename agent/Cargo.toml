@@ -43,3 +43,9 @@ windows = { version = "0.62", features = [
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_UI_WindowsAndMessaging",
 ] }
+# Pilote de manette virtuelle. Crate Rust pur : il parle au pilote noyau
+# ViGEmBus par IOCTL, sans SDK C à embarquer. La fonctionnalité
+# "unstable_xtarget_notification" est nécessaire pour recevoir les rappels
+# de vibration — sans elle, `request_notification` n'existe même pas sur
+# `Xbox360Wired` (vérifié sur le code source publié, docs.rs 0.1.4).
+vigem-client = { version = "0.1", features = ["unstable_xtarget_notification"] }
