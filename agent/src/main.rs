@@ -18,6 +18,8 @@ mod window;
 #[cfg(windows)]
 mod wasapi;
 #[cfg(windows)]
+mod windows_audio;
+#[cfg(windows)]
 mod windows_source;
 
 use std::net::IpAddr;
