@@ -923,6 +923,25 @@ async fn main() -> Result<()> {
         }
     });
 
+    // Fil de sondage du curseur : décide du mode absolu/relatif et de la
+    // forme à afficher. Le drapeau est partagé avec l'injecteur d'entrées,
+    // les messages passent par la session (canal de contrôle).
+    #[cfg_attr(not(windows), allow(unused_variables))]
+    let mode_relatif = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let arret_sondes = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    // `control_tx` n'a de lecteur (`cursor::spawn_probe`) que sous Windows :
+    // même raison que `mode_relatif` ci-dessus, même traitement.
+    #[cfg_attr(not(windows), allow(unused_variables))]
+    let (control_tx, control_rx) = std::sync::mpsc::channel();
+    session.set_control_source(control_rx);
+
+    #[cfg(windows)]
+    let sonde_curseur = cursor::spawn_probe(
+        control_tx.clone(),
+        mode_relatif.clone(),
+        arret_sondes.clone(),
+    );
+
     // I6 : `Session::run` bloque volontairement (lecture UDP synchrone bornée
     // par la cadence vidéo et les échéances str0m). L'exécuter sur un ouvrier
     // async de tokio gèlerait les autres tâches de ce processus — ici, la
@@ -965,6 +984,10 @@ async fn main() -> Result<()> {
             return Err(join_err.into());
         }
     }
+
+    arret_sondes.store(true, std::sync::atomic::Ordering::Relaxed);
+    #[cfg(windows)]
+    let _ = sonde_curseur.join();
 
     Ok(())
 }
