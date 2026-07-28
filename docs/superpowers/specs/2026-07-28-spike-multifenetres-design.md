@@ -114,10 +114,16 @@ part sur l'IdP ressemble beaucoup à une fenêtre qui n'a pas pu s'ouvrir.
 | Observation | Conclusion |
 |---|---|
 | `window.open()` renvoie `null` | Bloqué par le navigateur — le vrai négatif |
-| Renvoie une référence, mais aucun `postMessage` de vie sous 3 s | Ouverte puis partie ailleurs : redirection d'authentification, ou page vide. **Pas un blocage** |
+| Renvoie une référence, mais aucun signal de vie dans le délai imparti | Ouverte puis partie ailleurs : redirection d'authentification, ou page vide. **Pas un blocage** |
 | Renvoie une référence et le message de vie arrive | Succès franc |
 
-La page ouverte poste donc un message à son ouvreur dès son chargement. Sans
+Le délai imparti dépend de ce qu'il mesure. Pour les variantes 1 à 3, il borne
+un chargement de page : **3 s**. Pour la variante 4, il borne un temps de
+réaction humain — le signal de vie ne peut arriver qu'après un clic sur la
+notification : **60 s**. Même unité, phénomènes sans rapport ; un seuil unique à
+3 s produirait un faux négatif systématique sur la variante 4.
+
+La page ouverte signale sa vie dès son chargement. Sans
 cette distinction, une session Pomerium expirée produirait un « bloqué » faux et
 très convaincant — exactement le genre de conclusion hâtive que le ledger du
 projet reproche aux rondes de diagnostic précédentes.

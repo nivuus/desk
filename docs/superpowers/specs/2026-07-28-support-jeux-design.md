@@ -304,11 +304,19 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
   simultanées (ordre de grandeur : 8 sur Ada, à confirmer pour la RTX 4070).
   Suspendre l'encodage des fenêtres masquées, piloté par la Page Visibility API
   côté client — souhaitable en soi, pas seulement comme contournement.
-- **Risque n°1 — popup blocker** : `window.open()` déclenché sans geste
-  utilisateur est bloqué par défaut dans tous les navigateurs. Une PWA installée
-  a plus de latitude mais rien n'est garanti. Repli envisagé : notification
-  cliquable (« Elden Ring est prêt → ouvrir ») ou barre des tâches dans le hub.
-  **À valider en tout premier** : ce point peut invalider le modèle.
+- **Risque n°1 — popup blocker : LEVÉ le 28/07/2026.** Mesuré sur ChromeOS —
+  résultats et protocole dans `plans/2026-07-28-spike-multifenetres-resultats.md`.
+  Le modèle tient, mais l'hypothèse « une PWA installée a plus de latitude » est
+  **fausse** : sans permission, une PWA installée est bloquée exactement comme un
+  onglet (3 mesures concordantes). Ce qui débloque l'ouverture sans geste est la
+  **permission pop-up du site**, accordée une fois comme les notifications.
+  Mécanisme retenu : demander cette permission à l'installation (coût nul
+  ensuite) ; replis validés, l'armement sur le prochain clic — déjà retenu au
+  §4.1 pour le plein écran, donc **un seul mécanisme pour les deux besoins** —
+  puis la notification cliquable, qui fonctionne fenêtre en arrière-plan.
+  Reste à vérifier avant engagement sur poste desktop : Chrome sous Windows,
+  macOS et Linux n'ont pas été testés, et ChromeOS est la plateforme au meilleur
+  support multi-fenêtres — l'inférence ne va pas dans ce sens.
 - **Cycle de vie** : fenêtre Windows fermée → fenêtre navigateur fermée ;
   fenêtre navigateur fermée → `WM_CLOSE` sur la fenêtre Windows (à confirmer
   comme comportement souhaité).
@@ -389,9 +397,9 @@ justifie le chantier 0 du §8.
 2. **Chantier C** (adaptation réseau) — conçu à partir des mesures obtenues en
    1, plutôt qu'à l'aveugle.
 3. **Chantier D** (multi-fenêtres) — le plus gros. Son risque n°1 (popup
-   blocker) mérite cependant d'être levé par un test isolé **dès maintenant**,
-   avant même les chantiers A et B : une réponse négative changerait le modèle
-   produit.
+   blocker) a été levé par un test isolé le 28/07/2026, avant les chantiers A et
+   B comme prévu : le modèle produit est confirmé, par la permission pop-up du
+   site et non par le statut de PWA installée (§5 D).
 
 Cet ordre est une recommandation, pas un engagement. L'argument pour remonter D
 en premier existe : il change la capture, et A/B/C construits sur une hypothèse
