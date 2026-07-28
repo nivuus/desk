@@ -430,7 +430,21 @@ pub fn probe_process_loopback(pid: u32) -> Result<String> {
         // n'est pas appliqué sur un champ d'union par le compilateur (il
         // faudrait sinon appeler le destructeur de l'ancienne valeur active,
         // indéterminée) — d'où le `*` explicite.
-        let mut propriete = PROPVARIANT::default();
+        //
+        // CORRECTIF (revue) : `PROPVARIANT` implémente `Drop`
+        // (`windows-0.62.2/src/extensions/Win32/System/StructuredStorage.rs`)
+        // et appelle `PropVariantClear` — qui, pour `VT_BLOB`, relâche
+        // `blob.pBlobData` via `CoTaskMemFree`. Or `pBlobData` pointe ici sur
+        // `params`, une variable de PILE, pas une allocation `CoTaskMemAlloc` :
+        // laisser ce `Drop` s'exécuter (sur TOUT chemin de sortie, y compris le
+        // `?` d'`ActivateAudioInterfaceAsync` juste en dessous) appelle
+        // `CoTaskMemFree` sur une adresse de pile — un comportement indéfini
+        // franc, seule cause plausible de la corruption qui rendait la sonde
+        // silencieuse (aucune ligne de log, aucun rapport de plantage
+        // cohérent avec le point d'échec). `ManuallyDrop` empêche ce `Drop` :
+        // rien n'a besoin d'être libéré, `blob` ne référence aucune mémoire
+        // dont ce PROPVARIANT est propriétaire.
+        let mut propriete = std::mem::ManuallyDrop::new(PROPVARIANT::default());
         (*propriete.Anonymous.Anonymous).vt = VT_BLOB;
         (*propriete.Anonymous.Anonymous).Anonymous.blob = BLOB {
             cbSize: std::mem::size_of_val(&params) as u32,
@@ -451,7 +465,7 @@ pub fn probe_process_loopback(pid: u32) -> Result<String> {
         let _operation = ActivateAudioInterfaceAsync(
             VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK,
             &IAudioClient::IID,
-            Some(&propriete),
+            Some(&*propriete),
             &gestionnaire,
         )
         .context("appel à ActivateAudioInterfaceAsync")?;

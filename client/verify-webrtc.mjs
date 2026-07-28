@@ -11,11 +11,16 @@
 //
 // Usage :
 //   node client/verify-webrtc.mjs [url] [--duration=8000]
+//   EXPECT_AUDIO=1 node client/verify-webrtc.mjs [url] [--duration=8000]
 //
 // Sortie : deux relevés de `getStats()` espacés de `duration` ms, pour
-// prouver que `framesDecoded`/`framesReceived` augmentent (et pas seulement
-// non nuls). Code de sortie 0 si la preuve est faite, 1 sinon — avec le
+// prouver que `framesDecoded`/`framesReceived` (vidéo) et
+// `bytesReceived`/`packetsReceived` (audio, s'il y en a) augmentent — et pas
+// seulement non nuls. Code de sortie 0 si la preuve vidéo est faite (et,
+// avec `EXPECT_AUDIO=1`, que l'audio est également vu), 1 sinon — avec le
 // diagnostic (état ICE, état de connexion, erreurs de page) dans les deux cas.
+// Sans `EXPECT_AUDIO=1`, une session sans piste audio active (recette vidéo
+// pure) ne fait jamais échouer le harnais.
 
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -26,6 +31,14 @@ const url = process.argv[2] ?? 'http://localhost:5173/?session=demo';
 const durationArg = process.argv.find((a) => a.startsWith('--duration='));
 const sampleDelayMs = durationArg ? Number(durationArg.split('=')[1]) : 8000;
 const chromeBin = process.env.CHROME_BIN ?? 'google-chrome';
+// Opt-in (revue de la tâche 10) : par défaut, une session sans piste audio
+// active ne fait jamais échouer le harnais (il sert aussi à la recette
+// vidéo pure, `TEST_FILE`). `EXPECT_AUDIO=1` renverse ce choix pour une
+// recette où l'audio EST attendu : l'absence totale d'audio devient alors
+// un échec, exactement comme un flux figé après avoir démarré. Sans cet
+// opt-in, une régression qui couperait totalement l'audio serait
+// indiscernable d'une session vidéo seule et laisserait le harnais vert.
+const expectAudio = process.env.EXPECT_AUDIO === '1';
 
 /// Client CDP minimal : une connexion WebSocket vers l'endpoint « page »,
 /// avec appariement requête/réponse par identifiant.
@@ -109,11 +122,16 @@ function extractVideoInboundStats(statsEntries) {
 /// Pendant audio de `extractVideoInboundStats` (tâche 10 du chantier A) :
 /// rend `bytesReceived`, `packetsReceived`, `packetsLost`, `jitter` et
 /// `estimatedPlayoutTimestamp` de la piste `inbound-rtp` audio — ou `null` si
-/// aucune entrée audio n'existe dans le rapport (ne devrait pas arriver ici :
-/// le client négocie toujours un transceiver audio `recvonly`, cf.
-/// `client/src/webrtc.ts`, même quand l'agent ne dispose d'aucune source
-/// audio réelle — c'est alors `bytesReceived` qui reste à zéro, pas l'entrée
-/// qui disparaît).
+/// aucune entrée audio n'existe dans le rapport.
+///
+/// Le client négocie TOUJOURS un transceiver audio `recvonly`
+/// (`client/src/webrtc.ts`), mais Chrome ne MATÉRIALISE l'entrée
+/// `inbound-rtp` correspondante qu'après réception d'au moins un paquet sur
+/// cette piste — vérifié en recette (§4 du rapport de résultats) : une
+/// session `TEST_FILE` (aucune source audio côté agent) rend `null` ici, pas
+/// une entrée à `bytesReceived: 0`. Les deux cas (entrée absente, entrée
+/// présente à zéro) sont donc possibles et doivent être traités de façon
+/// équivalente par l'appelant — c'est le rôle des `?? 0` dans `main()`.
 function extractAudioInboundStats(statsEntries) {
     const entry = statsEntries.find(([, stats]) => stats.type === 'inbound-rtp' && stats.kind === 'audio');
     return entry ? entry[1] : null;
@@ -243,13 +261,16 @@ async function main() {
         // --- Audio (tâche 10 du chantier A) ---
         //
         // Le client négocie TOUJOURS un transceiver audio `recvonly`
-        // (`client/src/webrtc.ts`), donc une entrée `inbound-rtp` audio existe
-        // dans `getStats()` même quand l'agent n'a aucune source audio réelle
-        // (`TEST_FILE`, recette vidéo pure) — c'est alors `bytesReceived` qui
-        // reste bloqué à zéro sur toute la fenêtre de mesure, pas l'entrée qui
-        // disparaît. On distingue donc « pas de son » (aucun octet reçu ni au
-        // relevé 1 ni au relevé 2 : silence attendu, PAS un échec) de « du son
-        // est arrivé une fois puis plus rien » (compteur figé après avoir
+        // (`client/src/webrtc.ts`), mais Chrome ne matérialise l'entrée
+        // `inbound-rtp` audio dans `getStats()` qu'après réception d'au
+        // moins un paquet sur cette piste — une session `TEST_FILE` (aucune
+        // source audio côté agent) rend `sample.audioStats === null`, pas une
+        // entrée à `bytesReceived: 0` (vérifié en recette). D'où les `?? 0`
+        // ci-dessous : ils traitent « entrée absente » et « entrée présente à
+        // zéro » de façon équivalente, ce qui est le comportement voulu dans
+        // les deux cas. On distingue donc « pas de son » (aucun octet reçu ni
+        // au relevé 1 ni au relevé 2 : silence attendu, PAS un échec) de « du
+        // son est arrivé une fois puis plus rien » (compteur figé après avoir
         // bougé : c'est précisément le faux positif que le brief met en garde
         // contre — un paquet isolé ne prouve pas un flux).
         const audioBytesFirst = first.audioStats?.bytesReceived ?? 0;
@@ -291,14 +312,32 @@ async function main() {
         console.log(`audio packetsLost (relevé 2) : ${second.audioStats?.packetsLost ?? 'absent'}`);
         console.log(`audio jitter (relevé 2) : ${(((second.audioStats?.jitter ?? 0)) * 1000).toFixed(1)} ms`);
         if (audioAbsent) {
-            console.log('audio : aucun octet reçu sur les deux relevés (pas de piste audio active — session vidéo seule, ou silence total).');
+            console.log(
+                'audio : aucun octet reçu sur les deux relevés (pas de piste audio active — session vidéo seule, ou silence total).' +
+                    (expectAudio ? ' EXPECT_AUDIO=1 : ceci est traité comme un échec.' : ''),
+            );
         } else if (audioGrowing) {
             console.log('audio : bytesReceived et packetsReceived augmentent — PREUVE que l\'audio traverse la chaîne.');
         } else {
             console.log('audio : des octets sont arrivés mais les compteurs ont cessé de progresser (figé) — ce n\'est PAS une preuve de flux continu.');
         }
         if (avSkewMs === null) {
-            console.log('décalage A/V : non mesurable (pas de piste audio active sur ce relevé).');
+            // Deux causes distinctes à ne pas confondre (revue de la tâche
+            // 10) : pas de piste audio du tout (rien à comparer), ou piste
+            // audio qui traverse mais dont l'entrée getStats() n'expose pas
+            // (encore) `estimatedPlayoutTimestamp` sur ce navigateur/cette
+            // plateforme — un message unique aurait pu laisser croire, dans
+            // ce second cas, que l'audio ne traverse pas du tout alors que
+            // la ligne juste au-dessus prouve le contraire.
+            if (audioAbsent) {
+                console.log('décalage A/V : non mesurable (pas de piste audio active sur ce relevé).');
+            } else {
+                console.log(
+                    'décalage A/V : non mesurable — la piste audio traverse (voir ci-dessus), mais ' +
+                        "`estimatedPlayoutTimestamp` est absent de getStats() pour l'une des deux pistes " +
+                        'sur ce navigateur/cette plateforme (voir les clés listées dans chaque relevé).',
+                );
+            }
         } else {
             const sens = avSkewMs > 0 ? 'audio en avance sur la vidéo' : avSkewMs < 0 ? 'audio en retard sur la vidéo' : 'aucun décalage mesuré';
             // Seuils de gêne ITU-R BT.1359 : 45 ms si l'audio devance l'image,
@@ -325,14 +364,25 @@ async function main() {
         if (framesDecodedDelta > 0 && framesReceivedDelta > 0 && dimensionsOk) {
             console.log('\nPREUVE : la vidéo traverse la chaîne (framesDecoded et framesReceived augmentent, dimensions plausibles).');
             // La vidéo est prouvée : c'est ici, et seulement ici, que l'audio
-            // peut faire échouer le harnais — et seulement s'il a été VU
-            // (au moins un octet reçu) puis a cessé de progresser. Une
-            // session sans piste audio active (`audioAbsent`) ne fait jamais
-            // échouer le harnais : il sert aussi à la recette vidéo pure
+            // peut faire échouer le harnais. Par défaut, seul un flux VU
+            // (au moins un octet reçu) puis figé fait échouer — une session
+            // sans piste audio active (`audioAbsent`) ne fait jamais échouer
+            // le harnais : il sert aussi à la recette vidéo pure
             // (`TEST_FILE`), qui n'a par construction aucun son à faire
-            // traverser. Le décalage A/V, lui, n'intervient jamais dans ce
-            // choix (voir plus haut : mesure, pas encore critère éprouvé).
-            if (audioAbsent || audioGrowing) {
+            // traverser. `EXPECT_AUDIO=1` (opt-in, revue de la tâche 10)
+            // renverse ce choix pour une recette où l'audio EST attendu :
+            // l'absence devient alors, elle aussi, un échec — sans quoi une
+            // régression qui couperait tout l'audio serait indiscernable
+            // d'une session vidéo seule et laisserait le harnais vert. Le
+            // décalage A/V, lui, n'intervient jamais dans ce choix (voir
+            // plus haut : mesure, pas encore critère éprouvé).
+            if (audioAbsent && expectAudio) {
+                console.log(
+                    "\nÉCHEC (audio) : EXPECT_AUDIO=1 mais aucune piste audio n'a été vue sur les deux relevés. " +
+                        'Voir chrome://webrtc-internals pour le détail.',
+                );
+                exitCode = 1;
+            } else if (audioAbsent || audioGrowing) {
                 exitCode = 0;
             } else {
                 console.log(
@@ -391,6 +441,22 @@ async function sampleStats(cdp) {
     };
 }
 
+/// Décrit le champ `estimatedPlayoutTimestamp` d'une entrée `getStats()` de
+/// façon à distinguer les deux causes possibles de `avSkewMs === null`
+/// (revue de la tâche 10) : la **clé** peut être totalement absente de
+/// l'objet (le navigateur ne l'implémente pas), ou présente mais valant
+/// `null`/`undefined` (implémentée mais pas encore produite pour cette
+/// piste). `a.estimatedPlayoutTimestamp ?? 'absent'` confondait ces deux cas
+/// — un seul des deux soutient la conclusion « champ non exposé par ce
+/// navigateur ».
+function decrireEstimatedPlayoutTimestamp(entry) {
+    if (!entry) return 'n/a (entrée absente)';
+    const clePresente = 'estimatedPlayoutTimestamp' in entry;
+    if (!clePresente) return 'CLÉ ABSENTE de l\'entrée';
+    const valeur = entry.estimatedPlayoutTimestamp;
+    return valeur == null ? `clé présente, valeur=${valeur}` : `clé présente, valeur=${valeur}`;
+}
+
 function printSample(sample) {
     if (!sample.stats) {
         console.log('  aucune entrée inbound-rtp vidéo dans getStats()');
@@ -402,6 +468,13 @@ function printSample(sample) {
                 `bytesReceived=${s.bytesReceived} packetsReceived=${s.packetsReceived} ` +
                 `packetsLost=${s.packetsLost} keyFramesDecoded=${s.keyFramesDecoded}`,
         );
+        console.log(
+            `  [vidéo] estimatedPlayoutTimestamp : ${decrireEstimatedPlayoutTimestamp(s)}`,
+        );
+        // Diagnostic demandé en revue : la liste complète des clés de
+        // l'entrée, pour vérifier par les faits plutôt que par déduction
+        // quels champs ce navigateur produit réellement sur `inbound-rtp`.
+        console.log(`  [vidéo] clés de l'entrée getStats() : ${Object.keys(s).sort().join(', ')}`);
     }
 
     if (!sample.audioStats) {
@@ -411,9 +484,12 @@ function printSample(sample) {
     const a = sample.audioStats;
     console.log(
         `  [audio] bytesReceived=${a.bytesReceived} packetsReceived=${a.packetsReceived} ` +
-            `packetsLost=${a.packetsLost} jitter=${((a.jitter ?? 0) * 1000).toFixed(1)}ms ` +
-            `estimatedPlayoutTimestamp=${a.estimatedPlayoutTimestamp ?? 'absent'}`,
+            `packetsLost=${a.packetsLost} jitter=${((a.jitter ?? 0) * 1000).toFixed(1)}ms`,
     );
+    console.log(
+        `  [audio] estimatedPlayoutTimestamp : ${decrireEstimatedPlayoutTimestamp(a)}`,
+    );
+    console.log(`  [audio] clés de l'entrée getStats() : ${Object.keys(a).sort().join(', ')}`);
 }
 
 main().catch((error) => {
