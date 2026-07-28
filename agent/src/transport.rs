@@ -207,6 +207,21 @@ pub struct Session {
     /// simple échéance sans donnée). Sert à faire croître la temporisation
     /// appliquée entre deux tentatives pendant une rafale.
     consecutive_recv_errors: u32,
+    /// Vrai juste après qu'une image vidéo a été écrite (`writer.write()`),
+    /// tant que le drainage str0m qui la fait réellement partir
+    /// (`Rtc::handle_input(Input::Timeout(..))`) n'a pas encore eu lieu.
+    ///
+    /// `writer.write()` empile l'image dans la file interne `to_payload` de
+    /// str0m ; seul `handle_input(Input::Timeout(..))` la dépile
+    /// (`do_payload`), jamais `poll_output()` seul (voir `act_on_timeout`,
+    /// ronde de correction 1). Ce drapeau reporte ce drainage au tour
+    /// suivant plutôt que de l'enchaîner dans le même appel : `write_frame`
+    /// (une mutation) et `handle_input` (une seconde mutation) restent ainsi
+    /// chacun séparés par un passage complet dans `poll_output()`, comme
+    /// l'exige str0m — les enchaîner directement, comme le faisait la
+    /// première version de ce correctif, reproduisait exactement la
+    /// violation qu'il prétendait résoudre.
+    video_write_pending_drain: bool,
 }
 
 impl Session {
@@ -255,6 +270,7 @@ impl Session {
             next_frame_at: Instant::now() + FRAME_INTERVAL,
             warned_negotiation: false,
             consecutive_recv_errors: 0,
+            video_write_pending_drain: false,
         };
 
         // `add_local_candidate` est une mutation : on draine avant de rendre
@@ -325,18 +341,37 @@ impl Session {
     }
 
     /// Réagit à `Output::Timeout` : décide et effectue AU PLUS UNE mutation
-    /// (message de contrôle en attente, image vidéo due, ou traitement d'un
-    /// paquet entrant / échéance str0m), puis rend la main à `run()`, qui
-    /// rappelle immédiatement `poll_output` — c'est cette structure qui
-    /// garantit le drainage avant toute mutation suivante (C2 de la revue) :
-    /// il n'existe aucun chemin de code qui mute `Rtc` sans que `run()`
-    /// ne rappelle `poll_output` juste après.
+    /// (drainage différé d'une image déjà écrite, message de contrôle en
+    /// attente, image vidéo due, ou traitement d'un paquet entrant /
+    /// échéance str0m), puis rend la main à `run()`, qui rappelle
+    /// immédiatement `poll_output` — c'est cette structure qui garantit le
+    /// drainage avant toute mutation suivante (C2 de la revue) : il
+    /// n'existe aucun chemin de code qui mute `Rtc` sans que `run()` ne
+    /// rappelle `poll_output` juste après. La priorité donnée au drainage
+    /// différé (voir `video_write_pending_drain`) est ce qui rend cette
+    /// garantie vraie même juste après l'écriture d'une image : sans elle,
+    /// `write_frame` (une mutation) suivi directement de `handle_input`
+    /// (une seconde) violerait la même règle.
     ///
     /// Ne prend pas `on_input`/`on_control` : `handle_input` ne produit
     /// jamais d'événement applicatif directement (les événements qui en
     /// résultent ne sortent que via un futur `poll_output`, donc via
     /// `run()`, qui les dispatche lui-même).
     fn act_on_timeout(&mut self, deadline: Instant) -> Result<Tick> {
+        // a0) Drainage dû après la dernière image vidéo écrite. Vérifié en
+        // priorité absolue, avant tout le reste : c'est la seule façon de
+        // garantir qu'aucune mutation ne s'enchaîne jamais sans un passage
+        // complet par `poll_output()` entre les deux, quel que soit l'état
+        // des autres files (voir le commentaire du champ et la ronde de
+        // correction 1 de la tâche 11).
+        if self.video_write_pending_drain {
+            self.video_write_pending_drain = false;
+            self.rtc
+                .handle_input(Input::Timeout(Instant::now()))
+                .map_err(|e| anyhow!("handle_input timeout (drainage vidéo) : {e}"))?;
+            return Ok(Tick::Continue);
+        }
+
         // a) Un message de contrôle est en attente.
         if !self.pending_control.is_empty() {
             if let Some(id) = self.control_channel {
@@ -374,41 +409,40 @@ impl Session {
             if now >= self.next_frame_at {
                 self.next_frame_at = next_frame_deadline(self.next_frame_at, now, FRAME_INTERVAL);
                 match self.source.next_frame() {
-                    Some(unit) => self.write_frame(mid, unit),
+                    Some(unit) => {
+                        // `writer.write()` ne fait qu'empiler l'image dans la
+                        // file interne `to_payload` de str0m — c'est
+                        // `Rtc::handle_input(Input::Timeout(..))` qui la
+                        // dépile réellement en paquets RTP (`do_payload`),
+                        // jamais `poll_output()` seul (voir `session.rs` de
+                        // str0m). L'appeler ICI serait une seconde mutation
+                        // dans le même appel à `act_on_timeout`, sans
+                        // `poll_output` entre les deux — exactement la
+                        // violation que ce mécanisme doit éviter (ronde de
+                        // correction 1). On pose donc un drapeau : la
+                        // PROCHAINE invocation de `act_on_timeout` le traite
+                        // en priorité absolue (voir a0 plus haut). La file de
+                        // charge non vide fait renvoyer une échéance
+                        // immédiate par `poll_output()`, donc `run()`
+                        // rappelle aussitôt.
+                        if self.write_frame(mid, unit) {
+                            self.video_write_pending_drain = true;
+                        }
+                    }
                     None => {
-                        // I5 : source épuisée — clore la session proprement
-                        // (chemin `AgentControl::session_end`), pas tuer le
-                        // processus. Inatteignable avec `FileSource` (boucle
-                        // à l'infini), mais devenu réel avec la capture
-                        // Windows (tâche 11).
-                        self.begin_ending("source vidéo épuisée");
+                        // Ronde de correction 1 : l'absence de nouvelle image
+                        // est le cas courant et normal d'une capture en
+                        // direct (bureau immobile) — pas une fin de session.
+                        // Seule une source réellement épuisée (fenêtre
+                        // fermée, erreur non récupérable) le justifie, via
+                        // `VideoSource::is_exhausted`. `FileSource` ne
+                        // renvoie jamais `None` et n'atteint donc jamais ce
+                        // chemin.
+                        if self.source.is_exhausted() {
+                            self.begin_ending("source vidéo épuisée");
+                        }
                     }
                 }
-                // Tâche 11 : `writer.write()` ne fait qu'empiler l'image dans
-                // la file interne `to_payload` de str0m — c'est
-                // `Rtc::handle_input(Input::Timeout(..))` (via
-                // `Session::handle_timeout`) qui la dépile réellement en
-                // paquets RTP. `poll_output()` seul ne le fait JAMAIS (voir
-                // `session.rs` de str0m : seul `handle_timeout` appelle
-                // `do_payload`). Avec `FileSource`, quasi instantanée, le tour
-                // suivant retombe presque toujours dans la branche (c)
-                // ci-dessous, qui appelle `handle_input(Timeout)` avant la
-                // prochaine image — la file n'a donc jamais le temps de
-                // s'accumuler. `WindowsSource`, elle, prend environ un
-                // intervalle d'image complet (débit réel mesuré : 47-51 im/s,
-                // contre une cadence cible à 60 Hz) : à son retour,
-                // `next_frame_at` est déjà de nouveau dépassé, la branche (b)
-                // se redéclenche aussitôt et la branche (c) n'est jamais
-                // atteinte. La file grossit alors sans jamais se vider,
-                // jusqu'à l'échec `RtcError::WriteWithoutPoll` de str0m
-                // au-delà de 100 entrées (mesuré : session close après
-                // seulement 2 images reçues par le navigateur). On force donc
-                // ici le drainage immédiatement après toute image écrite, sans
-                // attendre que la planification retombe par chance dans la
-                // branche (c).
-                self.rtc
-                    .handle_input(Input::Timeout(Instant::now()))
-                    .map_err(|e| anyhow!("handle_input timeout (drainage vidéo) : {e}"))?;
                 return Ok(Tick::Continue);
             }
         }
@@ -519,7 +553,15 @@ impl Session {
     /// l'intérieur de la boucle de `run()` (voir `act_on_timeout`), donc
     /// suivie d'un retour immédiat à `poll_output` — conforme à la règle de
     /// drainage de str0m.
-    fn write_frame(&mut self, mid: Mid, unit: AccessUnit) {
+    ///
+    /// Renvoie `true` si `writer.write()` a réellement été appelée et a
+    /// réussi (donc qu'une entrée a bien été empilée dans `to_payload` et
+    /// nécessite le drainage différé — voir `video_write_pending_drain`),
+    /// `false` si l'écriture n'a pas eu lieu (négociation incomplète,
+    /// piste indisponible) ou a échoué : dans ces deux cas, aucune entrée
+    /// n'a été ajoutée à `to_payload`, poser le drapeau de drainage serait
+    /// à tort et provoquerait un `handle_input(Timeout)` inutile.
+    fn write_frame(&mut self, mid: Mid, unit: AccessUnit) -> bool {
         let Some(pt) = self.select_negotiated_h264_pt(mid) else {
             // I4 : négociation incomplète (aucun profil H.264 en mode de
             // paquetisation 1) — sans ce journal, l'image est jetée
@@ -528,23 +570,25 @@ impl Session {
             self.warn_negotiation_once(
                 "aucun type de charge utile H.264 négocié (mode de paquetisation 1) : images jetées",
             );
-            return;
+            return false;
         };
         let Some(writer) = self.rtc.writer(mid) else {
             self.warn_negotiation_once("piste vidéo plus accessible en écriture : images jetées");
-            return;
+            return false;
         };
 
-        if let Err(e) =
-            writer.write(pt, Instant::now(), MediaTime::from_90khz(unit.pts_90k), unit.data)
-        {
-            // Échec d'écriture applicatif (ex. RID inconnu) : on clôt la
-            // session plutôt que de faire remonter l'erreur jusqu'au
-            // processus. Seules `Session::new` et `accept_offer` — avant
-            // qu'une session n'existe vraiment — justifient de tuer le
-            // processus entier.
-            tracing::warn!(erreur = %e, "échec d'écriture de l'image, fin de session");
-            self.begin_ending("échec d'écriture vidéo");
+        match writer.write(pt, Instant::now(), MediaTime::from_90khz(unit.pts_90k), unit.data) {
+            Ok(()) => true,
+            Err(e) => {
+                // Échec d'écriture applicatif (ex. RID inconnu) : on clôt la
+                // session plutôt que de faire remonter l'erreur jusqu'au
+                // processus. Seules `Session::new` et `accept_offer` — avant
+                // qu'une session n'existe vraiment — justifient de tuer le
+                // processus entier.
+                tracing::warn!(erreur = %e, "échec d'écriture de l'image, fin de session");
+                self.begin_ending("échec d'écriture vidéo");
+                false
+            }
         }
     }
 

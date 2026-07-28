@@ -26,6 +26,12 @@ pub struct WindowsSource {
     /// y compris lorsque `resize` reconstruit la chaîne d'encodage : le
     /// décodeur du navigateur rejetterait un horodatage qui recule.
     next_pts_90k: u64,
+    /// Vrai après une erreur non récupérable (capture ou encodeur) : rend la
+    /// source définitivement épuisée (voir `is_exhausted`), indépendamment
+    /// de l'état de la fenêtre. Une fenêtre disparue (`!is_alive()`) est
+    /// l'autre cas d'épuisement ; celui-ci couvre les pannes qui n'affectent
+    /// pas forcément la fenêtre elle-même (périphérique GPU perdu...).
+    fatal: bool,
 }
 
 // SÉCURITÉ : les types COM enveloppés ici (`HWND`, `ID3D11Device`,
@@ -67,6 +73,7 @@ impl WindowsSource {
             fps,
             bitrate,
             next_pts_90k: 0,
+            fatal: false,
         })
     }
 
@@ -130,70 +137,116 @@ impl WindowsSource {
     }
 }
 
-/// Budget maximal accordé à un seul appel à `next_frame` pour produire une
-/// unité d'accès avant d'abandonner.
+/// Budget accordé à l'attente de la sortie d'une image **qui vient d'être
+/// soumise** à l'encodeur — jamais à l'attente d'une nouvelle capture.
 ///
-/// Nécessaire pour une raison structurelle, pas seulement un cas limite :
-/// `VideoSource::next_frame` renvoyant `None` met fin à la session (voir
-/// `transport.rs`, « I5 : source épuisée »), un contrat pensé pour
-/// `FileSource` qui ne renvoie jamais `None`. Or l'encodeur matériel est
-/// asynchrone (voir encode.rs) : juste après avoir soumis la toute première
-/// image capturée, `poll_output` n'a quasiment jamais encore de sortie prête
-/// — l'événement `METransformHaveOutput` met quelques appels à arriver. Sans
-/// retenter, le tout premier appel (déclenché à la négociation de la piste
-/// vidéo, bien après la construction de la source) renvoyait `None` et
-/// terminait la session avant qu'aucune image n'ait jamais été envoyée.
-/// Retenter en boucle, borné par ce budget, laisse le temps au pipeline de
-/// produire sa première sortie tout en bornant le temps pendant lequel le
-/// fil unique de `Session::run` reste indisponible pour le reste du
-/// transport (ICE, RTCP...).
-const POLL_BUDGET: std::time::Duration = std::time::Duration::from_secs(2);
-/// Intervalle entre deux tentatives, le temps que le pipeline progresse.
-const POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(1);
+/// L'encodeur matériel est asynchrone (voir `encode.rs`) : après
+/// `submit()`, `poll_output()` n'a presque jamais encore de résultat au
+/// tout premier essai, l'événement `METransformHaveOutput` mettant un ou
+/// deux cycles à arriver. Sans ce court réessai, une image tout juste
+/// soumise n'était récupérée qu'au tour suivant de `Session::run`
+/// (~16,7 ms plus tard) au mieux — et en pratique nettement plus tard,
+/// mesuré : la file de sorties prêtes de l'encodeur se remplit plus vite
+/// qu'elle n'est vidée (un seul `poll_output` par appel externe), si bien
+/// que les images partent par rafales espacées de silences complets — un
+/// « figement » observable côté navigateur (`freezeCount`,
+/// `jitterBufferDelay` démesuré), pas seulement une cadence moyenne basse.
+/// Borné à quelques dizaines de millisecondes : largement suffisant pour
+/// la latence propre du pipeline en régime établi, sans jamais s'approcher
+/// de la seconde qui affamait `Session::run` (ronde de correction 1).
+const SUBMIT_POLL_BUDGET: std::time::Duration = std::time::Duration::from_millis(40);
+const SUBMIT_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(1);
 
 impl VideoSource for WindowsSource {
+    /// Un seul essai de capture par appel, jamais d'attente pour une
+    /// nouvelle image — mais un court réessai borné pour récupérer la
+    /// sortie de celle qu'on vient tout juste de soumettre.
+    ///
+    /// **Ronde de correction 1 (revue), 1er correctif :** une première
+    /// version de cette méthode retentait en boucle (sommeil de 1 ms)
+    /// jusqu'à DEUX SECONDES avant d'abandonner, **que quelque chose ait été
+    /// capturé ou non**. Deux défauts en découlaient, tous deux mesurés par
+    /// la relecture : (1) elle ne distinguait pas « l'encodeur démarre » (le
+    /// vrai bug visé) de « rien n'a bougé à l'écran » (le cas nominal d'une
+    /// capture en direct — `DesktopCapture::next_frame` documente elle-même
+    /// ce cas comme « courant et normal ») ; toute page statique ou tout
+    /// instant sans mouvement de plus de deux secondes coupait donc le flux ;
+    /// (2) pendant qu'elle bouclait, le fil unique de `Session::run` ne
+    /// traitait plus ni ICE, ni RTCP, ni les canaux de données — observé en
+    /// pratique par une déconnexion ICE spontanée ~20 s après la
+    /// négociation.
+    ///
+    /// **2e correctif, après mesure :** supprimer TOUT réessai (un essai
+    /// unique, quoi qu'il arrive) réglait bien les deux défauts ci-dessus,
+    /// mais dégradait fortement le débit observé côté navigateur (~16 im/s
+    /// au lieu de ~25, avec de longs figements) : la cadence externe de
+    /// `Session::run` (~16,7 ms) est trop grossière pour rattraper à temps
+    /// la sortie d'une image tout juste soumise, qui s'accumule alors par
+    /// rafales. Le réessai réapparaît donc, mais **seulement quand une
+    /// image a réellement été soumise ce tour-ci** (`submitted`), et borné à
+    /// `SUBMIT_POLL_BUDGET` (quelques dizaines de ms, pas deux secondes).
+    /// Quand rien n'a été capturé (cas normal, bureau immobile), retour
+    /// immédiat, sans boucle ni attente, comme l'exige la revue. `None` ne
+    /// signifie donc jamais « rien cette fois » ; il reste possible pour
+    /// deux causes réellement définitives (`is_exhausted` en informe
+    /// l'appelant) : la fenêtre a disparu, ou une erreur de capture non
+    /// récupérable s'est produite.
     fn next_frame(&mut self) -> Option<AccessUnit> {
-        let deadline = std::time::Instant::now() + POLL_BUDGET;
-        loop {
-            // Alimenter l'encodeur avec l'image la plus récente, si le bureau
-            // a changé depuis le dernier appel (Desktop Duplication ne rend
-            // une image que sur changement, voir capture.rs).
-            match self.capture.next_frame(self.region) {
-                Ok(Some(frame)) => {
-                    let pts = self.next_pts_90k;
-                    if let Err(e) = self.encoder.submit(&frame, pts) {
-                        tracing::warn!(erreur = %e, "soumission à l'encodeur échouée");
-                    } else {
-                        self.next_pts_90k += CLOCK_RATE_HZ / self.fps.max(1) as u64;
-                    }
-                }
-                Ok(None) => {}
-                Err(e) => {
-                    tracing::error!(erreur = %e, "capture interrompue");
-                    return None;
+        // Alimenter l'encodeur avec l'image la plus récente, si le bureau a
+        // changé depuis le dernier appel (Desktop Duplication ne rend une
+        // image que sur changement — cas courant et normal, voir
+        // capture.rs).
+        let mut submitted = false;
+        match self.capture.next_frame(self.region) {
+            Ok(Some(frame)) => {
+                let pts = self.next_pts_90k;
+                if let Err(e) = self.encoder.submit(&frame, pts) {
+                    tracing::warn!(erreur = %e, "soumission à l'encodeur échouée");
+                } else {
+                    self.next_pts_90k += CLOCK_RATE_HZ / self.fps.max(1) as u64;
+                    submitted = true;
                 }
             }
+            Ok(None) => {}
+            Err(e) => {
+                // Erreur de capture réelle (pas une absence de changement,
+                // déjà traduite en `Ok(None)`) : périphérique perdu ou autre
+                // panne non récupérable — fin légitime et définitive.
+                tracing::error!(erreur = %e, "capture interrompue, source déclarée épuisée");
+                self.fatal = true;
+                return None;
+            }
+        }
 
+        if !submitted {
+            // Rien de neuf à capturer ce tour-ci : cas normal. On tente
+            // quand même de récupérer une sortie déjà en attente d'un appel
+            // précédent (l'encodeur peut avoir 1-2 images en vol), mais sans
+            // jamais attendre — un seul essai, retour immédiat.
+            return match self.encoder.poll_output() {
+                Ok(unit) => unit,
+                Err(e) => {
+                    tracing::warn!(erreur = %e, "récupération de l'image encodée échouée");
+                    None
+                }
+            };
+        }
+
+        // Une image vient d'être soumise : sa sortie est imminente (latence
+        // propre au pipeline asynchrone), on l'attend brièvement plutôt que
+        // de la laisser s'accumuler jusqu'au tour suivant.
+        let deadline = std::time::Instant::now() + SUBMIT_POLL_BUDGET;
+        loop {
             match self.encoder.poll_output() {
                 Ok(Some(unit)) => return Some(unit),
                 Ok(None) => {
-                    // Rien n'était prêt ce tour-ci. Une fenêtre disparue est
-                    // une fin légitime ; sinon on retente tant que le budget
-                    // n'est pas écoulé — un bureau réellement figé plus de
-                    // deux secondes est le seul cas où l'on referme la
-                    // session pour ce motif.
-                    if !self.is_alive() {
-                        tracing::info!("fenêtre capturée disparue : fin de la source vidéo");
-                        return None;
-                    }
                     if std::time::Instant::now() >= deadline {
-                        tracing::warn!(
-                            budget = ?POLL_BUDGET,
-                            "aucune image encodée disponible avant l'échéance : fin de la source vidéo"
-                        );
+                        // Pas encore prête : elle sortira à un appel
+                        // suivant. Pas un échec, juste une latence un peu
+                        // plus longue que la normale ce tour-ci.
                         return None;
                     }
-                    std::thread::sleep(POLL_INTERVAL);
+                    std::thread::sleep(SUBMIT_POLL_INTERVAL);
                 }
                 Err(e) => {
                     tracing::warn!(erreur = %e, "récupération de l'image encodée échouée");
@@ -205,5 +258,12 @@ impl VideoSource for WindowsSource {
 
     fn dimensions(&self) -> (u32, u32) {
         (self.width, self.height)
+    }
+
+    /// Épuisée pour de bon seulement si la fenêtre a disparu ou qu'une
+    /// erreur de capture non récupérable a été observée — jamais pour un
+    /// simple bureau immobile (voir `next_frame`).
+    fn is_exhausted(&self) -> bool {
+        self.fatal || !self.is_alive()
     }
 }

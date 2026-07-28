@@ -8,10 +8,28 @@ use anyhow::{bail, Result};
 /// L'implémentation Windows (capture + encodage) et la source fichier de test
 /// se substituent l'une à l'autre derrière ce trait.
 pub trait VideoSource {
-    /// Unité d'accès suivante, ou `None` si la source est épuisée.
+    /// Unité d'accès suivante, ou `None` si rien n'est prêt ce tour-ci.
+    ///
+    /// `None` ne signifie **pas** systématiquement « source épuisée » : pour
+    /// une capture en direct, l'absence de nouvelle image est le cas courant
+    /// et normal (rien n'a changé à l'écran depuis le dernier appel). C'est
+    /// `is_exhausted()`, interrogée séparément par l'appelant après un
+    /// `None`, qui distingue ce cas normal d'un arrêt définitif.
     fn next_frame(&mut self) -> Option<AccessUnit>;
     /// Dimensions de la vidéo produite, en pixels.
     fn dimensions(&self) -> (u32, u32);
+    /// Vrai si la source ne produira plus jamais aucune image (périphérique
+    /// disparu, erreur non récupérable...) et que la session doit se clore.
+    ///
+    /// Uniquement consultée après un `next_frame()` ayant renvoyé `None`.
+    /// Par défaut, une source n'est jamais épuisée : c'est le cas exact de
+    /// `FileSource`, qui boucle indéfiniment et ne renvoie jamais `None`, et
+    /// le cas nominal de `WindowsSource` tant que la fenêtre capturée existe
+    /// — un bureau immobile ne doit jamais, à lui seul, clore la session
+    /// (voir `transport.rs`).
+    fn is_exhausted(&self) -> bool {
+        false
+    }
 }
 
 /// Source de test rejouant un fichier H.264 Annex-B en boucle.
