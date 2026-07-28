@@ -360,6 +360,10 @@ pub struct Session {
     /// Messages de contrôle en attente d'émission. `run()` en envoie un au
     /// plus par mutation, dès que le canal est ouvert.
     pending_control: VecDeque<AgentControl>,
+    /// Messages de contrôle produits HORS de la boucle : fil de sondage du
+    /// curseur, rappel de vibration du pilote ViGEmBus. Ni l'un ni l'autre ne
+    /// peut toucher la `Session`, qui n'est possédée que par `run()`.
+    outbound_control: Option<std::sync::mpsc::Receiver<AgentControl>>,
     /// Vrai dès qu'un `AgentControl::session_end` a été mis en file : plus
     /// aucune image n'est envoyée, la session se termine dès que la file de
     /// contrôle est vidée (ou constatée impossible à vider).
@@ -485,6 +489,7 @@ impl Session {
             control_channel: None,
             started: Instant::now(),
             pending_control: VecDeque::new(),
+            outbound_control: None,
             ending: false,
             next_frame_at: Instant::now() + FRAME_INTERVAL,
             warned_negotiation: false,
@@ -615,6 +620,27 @@ impl Session {
                 .handle_input(Input::Timeout(Instant::now()))
                 .map_err(|e| anyhow!("handle_input timeout (drainage média) : {e}"))?;
             return Ok(Tick::Continue);
+        }
+
+        // a0bis) Un message de contrôle produit hors de la boucle attend.
+        // `try_recv` ne bloque jamais. On rend la main immédiatement après
+        // l'avoir mis en file, comme les branches a1 et a2 : `queue_control`
+        // ne mute pas `Rtc`, mais garder une seule action par tour est ce qui
+        // rend cette fonction lisible comme une liste de priorités.
+        //
+        // La file est bornée : si le canal de contrôle n'est pas encore
+        // ouvert, les messages s'y accumuleraient sans limite. Au-delà du
+        // plafond on cesse de drainer — les producteurs (curseur, vibration)
+        // émettent des ÉTATS, dont seul le dernier compte, et le canal mpsc
+        // fera tampon en attendant.
+        const PLAFOND_CONTROLE_EN_FILE: usize = 32;
+        if self.pending_control.len() < PLAFOND_CONTROLE_EN_FILE {
+            if let Some(rx) = &self.outbound_control {
+                if let Ok(message) = rx.try_recv() {
+                    self.queue_control(message);
+                    return Ok(Tick::Continue);
+                }
+            }
         }
 
         // a) Un message de contrôle est en attente.
@@ -964,6 +990,12 @@ impl Session {
     /// vidéo fonctionne normalement.
     pub fn set_audio_source(&mut self, source: Box<dyn AudioSource + Send>) {
         self.audio_source = Some(source);
+    }
+
+    /// Branche une source externe de messages de contrôle. Même patron que
+    /// `set_audio_source` : la session tire, elle n'est jamais poussée.
+    pub fn set_control_source(&mut self, rx: std::sync::mpsc::Receiver<AgentControl>) {
+        self.outbound_control = Some(rx);
     }
 
     /// Plafond d'attente de la branche `c` : uniquement quand une source ET
@@ -1978,5 +2010,98 @@ mod tests {
             keyframe_requests.load(AtomicOrdering::SeqCst) > 0,
             "Event::KeyframeRequest du pair n'a jamais atteint VideoSource::request_keyframe"
         );
+    }
+
+    #[test]
+    fn relaie_au_pair_un_controle_pousse_depuis_l_exterieur_de_la_boucle() {
+        use std::sync::mpsc;
+        use std::thread;
+        use str0m::change::SdpAnswer;
+        use str0m::media::{Direction, MediaKind};
+        use proto::control::CursorShape;
+
+        let local_ip: IpAddr = "127.0.0.1".parse().unwrap();
+        let source_path =
+            std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
+        let source = Box::new(
+            crate::source::FileSource::from_path(source_path, 1280, 720, 60)
+                .expect("chargement du flux de test"),
+        );
+        let mut session = Session::new(source, local_ip, Instant::now()).expect("session");
+
+        let peer_socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("socket du pair");
+        let peer_addr = peer_socket.local_addr().unwrap();
+        let mut peer_rtc = Rtc::builder()
+            .clear_codecs()
+            .enable_h264(true)
+            .build(Instant::now());
+        peer_rtc.add_local_candidate(Candidate::host(peer_addr, "udp").unwrap());
+
+        let mut api = peer_rtc.sdp_api();
+        api.add_media(MediaKind::Video, Direction::RecvOnly, None, None, None);
+        api.add_channel("control".to_string());
+        api.add_channel("input".to_string());
+        let (offer, pending) = api.apply().expect("offre non vide");
+        let answer_sdp = session.accept_offer(&offer.to_sdp_string()).expect("offre acceptée");
+        let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("réponse SDP valide");
+        peer_rtc.sdp_api().accept_answer(pending, answer).expect("réponse acceptée");
+
+        // C'est le point du test : le message n'est produit NI par la boucle,
+        // NI par un événement str0m — il vient d'un tiers, comme le fera le
+        // fil de sondage du curseur.
+        let (tx, rx) = mpsc::channel();
+        session.set_control_source(rx);
+        tx.send(AgentControl::pointer(false, CursorShape::Default))
+            .expect("envoi dans le canal");
+
+        thread::spawn(move || {
+            let mut on_input = |_| {};
+            let mut on_control = |_| {};
+            let _ = session.run(&mut on_input, &mut on_control);
+        });
+
+        // Boucle du pair : pilote son `Rtc` et guette le message attendu sur
+        // le canal de contrôle. Borne dure pour ne pas pendre si rien n'arrive.
+        peer_socket
+            .set_read_timeout(Some(Duration::from_millis(50)))
+            .expect("délai de lecture");
+        let mut buf = vec![0u8; 4096];
+        let debut = Instant::now();
+        let mut recu = false;
+        while !recu && debut.elapsed() < Duration::from_secs(15) {
+            match peer_socket.recv_from(&mut buf) {
+                Ok((n, from)) => {
+                    let contents: str0m::net::DatagramRecv = buf[..n].try_into().unwrap();
+                    let _ = peer_rtc.handle_input(Input::Receive(
+                        Instant::now(),
+                        str0m::net::Receive {
+                            proto: str0m::net::Protocol::Udp,
+                            source: from,
+                            destination: peer_addr,
+                            contents,
+                        },
+                    ));
+                }
+                Err(_) => {}
+            }
+            while let Ok(output) = peer_rtc.poll_output() {
+                match output {
+                    Output::Timeout(_) => break,
+                    Output::Transmit(t) => {
+                        let _ = peer_socket.send_to(&t.contents, t.destination);
+                    }
+                    Output::Event(Event::ChannelData(data)) => {
+                        let texte = String::from_utf8_lossy(&data.data);
+                        if texte.contains("\"type\":\"pointer\"") {
+                            assert!(texte.contains("\"visible\":false"), "charge : {texte}");
+                            recu = true;
+                        }
+                    }
+                    Output::Event(_) => {}
+                }
+            }
+        }
+
+        assert!(recu, "le message de pointeur n'est jamais parvenu au pair");
     }
 }
