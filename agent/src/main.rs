@@ -752,6 +752,24 @@ async fn main() -> Result<()> {
     } = signaling::run_signaling(&config.signaling_url, &config.session_id).await?;
     let mut session = Session::new(source, config.local_ip, clock_origin)?;
 
+    // Source audio : son absence ne compromet jamais la session vidéo. Sur une
+    // source de test (TEST_FILE), il n'y a rien à capter. Hors Windows, il n'y
+    // a pas de WASAPI. Et si le loopback refuse de s'ouvrir — pas de
+    // périphérique de rendu par défaut, format de mixage non supporté — on
+    // journalise et la session continue, muette.
+    #[cfg(windows)]
+    if config.test_file.is_none() {
+        match windows_audio::WindowsAudioSource::new(clock_origin) {
+            Ok(source_audio) => {
+                tracing::info!(format = source_audio.description(), "audio activé");
+                session.set_audio_source(Box::new(source_audio));
+            }
+            Err(e) => {
+                tracing::warn!(erreur = %e, "audio indisponible, la session continue sans son");
+            }
+        }
+    }
+
     // Surveillance du chemin réel (`SOURCE_TRACE=1`) : cadence d'appel de
     // `next_frame`, captures neuves, unités d'accès produites. Contrairement
     // à `watch_encoder`, ces compteurs survivent à un redimensionnement (qui

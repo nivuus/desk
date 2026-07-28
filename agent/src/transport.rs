@@ -29,10 +29,11 @@ use proto::control::{AgentControl, ClientControl};
 use proto::input::InputMessage;
 use str0m::channel::ChannelId;
 use str0m::format::Codec;
-use str0m::media::{MediaTime, Mid, Pt};
+use str0m::media::{Frequency, MediaTime, Mid, Pt};
 use str0m::net::{DatagramRecv, Protocol, Receive};
 use str0m::{Candidate, Event, IceConnectionState, Input, Output, Rtc};
 
+use crate::audio::{AudioPacket, AudioSource};
 use crate::clock::instant_from_pts;
 use crate::h264::{AccessUnit, CLOCK_RATE_HZ};
 use crate::source::VideoSource;
@@ -63,6 +64,14 @@ use crate::source::VideoSource;
 /// sondage n'était donc pas le facteur limitant ; c'était le
 /// `MF_MT_FRAME_RATE` annoncé aux MFT (voir `main.rs`).
 const FRAME_INTERVAL: Duration = Duration::from_millis(10);
+
+/// Plafond d'attente quand une piste audio est négociée.
+///
+/// Les paquets audio arrivent d'un fil de capture indépendant : cette boucle
+/// n'a aucun moyen de prévoir leur instant d'arrivée, elle ne peut que se
+/// réveiller assez souvent pour ne pas les laisser vieillir. 2 ms pour une
+/// cadence de trames de 10 ms — un cinquième de trame de retard au pire.
+const AUDIO_POLL_INTERVAL: Duration = Duration::from_millis(2);
 
 /// Intervalle minimal entre deux vérifications de `source.is_alive()` dans
 /// `act_on_timeout`. Cet appel coûte un appel système à chaque tour côté
@@ -316,10 +325,22 @@ impl TimerResolutionGuard {
 /// rapport RTCP ou de statistiques, dès que rien d'autre n'était dû. Le
 /// rythme d'envoi était alors dicté par les réveils de str0m, pas par
 /// `FRAME_INTERVAL`.
-fn bounded_wait(now: Instant, rtc_deadline: Instant, next_frame_at: Option<Instant>) -> Duration {
+fn bounded_wait(
+    now: Instant,
+    rtc_deadline: Instant,
+    next_frame_at: Option<Instant>,
+    cap: Option<Duration>,
+) -> Duration {
     let mut wait = rtc_deadline.saturating_duration_since(now);
     if let Some(next_frame_at) = next_frame_at {
         wait = wait.min(next_frame_at.saturating_duration_since(now));
+    }
+    // Plafond audio : les paquets arrivent d'un AUTRE fil, sans échéance que
+    // cette boucle puisse prévoir. Seul un réveil régulier permet de les
+    // relever à temps. Un plafond ne fait que RACCOURCIR l'attente, jamais
+    // l'allonger.
+    if let Some(cap) = cap {
+        wait = wait.min(cap);
     }
     wait
 }
@@ -368,6 +389,19 @@ pub struct Session {
     /// première version de ce correctif, reproduisait exactement la
     /// violation qu'il prétendait résoudre.
     video_write_pending_drain: bool,
+    /// Source audio, absente tant qu'aucune n'a été fournie (source de test
+    /// vidéo, plateforme sans audio, ou échec d'ouverture du loopback — dans
+    /// tous les cas la session vidéo continue).
+    audio_source: Option<Box<dyn AudioSource + Send>>,
+    /// `mid` de la piste audio, renseigné à la négociation.
+    audio_mid: Option<Mid>,
+    /// Pendant audio de `video_write_pending_drain`. Distinct de lui : sans
+    /// drapeau propre, une écriture audio suivie d'une écriture vidéo au tour
+    /// suivant perdrait un drainage.
+    audio_write_pending_drain: bool,
+    /// Signale une seule fois qu'aucun type de charge utile Opus n'a été
+    /// négocié, plutôt qu'à chaque paquet jeté.
+    warned_audio_negotiation: bool,
     /// Dernier redimensionnement demandé, pas encore appliqué. On ne garde
     /// que le plus récent : pendant qu'un utilisateur tire un bord, les
     /// demandes intermédiaires n'ont aucun intérêt. Appliqué dans
@@ -419,9 +453,17 @@ impl Session {
         // processus ne panique pas.
         str0m::crypto::from_feature_flags().install_process_default();
 
+        // `enable_opus(true)` : sans cette ligne, aucun type de charge utile
+        // Opus n'est jamais proposé dans la réponse SDP, quoi que le pair
+        // négocie de son côté — `select_negotiated_opus_pt` ne trouverait
+        // alors jamais rien, et l'audio resterait muet même avec une source
+        // ouverte avec succès. Absente du brief original, ajoutée ici : sans
+        // elle, la piste audio ne se négocie tout simplement jamais (voir le
+        // rapport de tâche).
         let mut rtc = Rtc::builder()
             .clear_codecs()
             .enable_h264(true)
+            .enable_opus(true)
             .set_stats_interval(Some(Duration::from_secs(1)))
             .build(Instant::now());
 
@@ -448,6 +490,10 @@ impl Session {
             warned_negotiation: false,
             consecutive_recv_errors: 0,
             video_write_pending_drain: false,
+            audio_source: None,
+            audio_mid: None,
+            audio_write_pending_drain: false,
+            warned_audio_negotiation: false,
             pending_resize: None,
             last_alive_check: Instant::now(),
             _timer_resolution: TimerResolutionGuard::new(),
@@ -551,17 +597,23 @@ impl Session {
     /// résultent ne sortent que via un futur `poll_output`, donc via
     /// `run()`, qui les dispatche lui-même).
     fn act_on_timeout(&mut self, deadline: Instant) -> Result<Tick> {
-        // a0) Drainage dû après la dernière image vidéo écrite. Vérifié en
-        // priorité absolue, avant tout le reste : c'est la seule façon de
-        // garantir qu'aucune mutation ne s'enchaîne jamais sans un passage
-        // complet par `poll_output()` entre les deux, quel que soit l'état
-        // des autres files (voir le commentaire du champ et la ronde de
-        // correction 1 de la tâche 11).
-        if self.video_write_pending_drain {
+        // a0) Drainage dû après la dernière image vidéo ou le dernier paquet
+        // audio écrit. Vérifié en priorité absolue, avant tout le reste :
+        // c'est la seule façon de garantir qu'aucune mutation ne s'enchaîne
+        // jamais sans un passage complet par `poll_output()` entre les deux,
+        // quel que soit l'état des autres files (voir le commentaire du
+        // champ et la ronde de correction 1 de la tâche 11).
+        if self.video_write_pending_drain || self.audio_write_pending_drain {
+            // Un seul `handle_input(Timeout)` dépile `to_payload` pour TOUTES
+            // les pistes : les deux drapeaux retombent donc ensemble. Les
+            // garder séparés reste nécessaire en amont — c'est ce qui permet
+            // à `write_audio` et `write_frame` de signaler indépendamment
+            // qu'une écriture a bien eu lieu.
             self.video_write_pending_drain = false;
+            self.audio_write_pending_drain = false;
             self.rtc
                 .handle_input(Input::Timeout(Instant::now()))
-                .map_err(|e| anyhow!("handle_input timeout (drainage vidéo) : {e}"))?;
+                .map_err(|e| anyhow!("handle_input timeout (drainage média) : {e}"))?;
             return Ok(Tick::Continue);
         }
 
@@ -642,6 +694,29 @@ impl Session {
             }
         }
 
+        // a3) Un paquet audio, si la piste est négociée et qu'un paquet
+        //     attend. AVANT la vidéo : une coupure sonore s'entend, une image
+        //     en retard de 10 ms ne se voit pas. L'audio a de plus une
+        //     cadence dure de 10 ms, quand la vidéo est opportuniste par
+        //     nature.
+        //
+        //     Pas d'échéance à surveiller ici : le fil de capture dépose dans
+        //     un tampon, il suffit de regarder s'il y a quelque chose. Le
+        //     réveil régulier vient d'`AUDIO_POLL_INTERVAL`, appliqué en
+        //     branche `c`.
+        if let (Some(mid), false) = (self.audio_mid, self.ending) {
+            let paquet = self
+                .audio_source
+                .as_mut()
+                .and_then(|source| source.next_packet());
+            if let Some(paquet) = paquet {
+                if self.write_audio(mid, paquet) {
+                    self.audio_write_pending_drain = true;
+                }
+                return Ok(Tick::Continue);
+            }
+        }
+
         // b) Une image vidéo, si son échéance est atteinte et la piste
         //    négociée.
         if let Some(mid) = self.video_mid {
@@ -693,7 +768,7 @@ impl Session {
         let now = Instant::now();
         let next_frame_at =
             (self.video_mid.is_some() && !self.ending).then_some(self.next_frame_at);
-        let wait = bounded_wait(now, deadline, next_frame_at);
+        let wait = bounded_wait(now, deadline, next_frame_at, self.audio_wait_cap());
 
         if wait.is_zero() {
             self.rtc
@@ -885,6 +960,79 @@ impl Session {
         }
     }
 
+    /// Fournit la source audio. Sans appel, la session reste muette et la
+    /// vidéo fonctionne normalement.
+    pub fn set_audio_source(&mut self, source: Box<dyn AudioSource + Send>) {
+        self.audio_source = Some(source);
+    }
+
+    /// Plafond d'attente de la branche `c` : uniquement quand une source ET
+    /// une piste audio existent, sinon rien ne justifie de se réveiller plus
+    /// souvent.
+    fn audio_wait_cap(&self) -> Option<Duration> {
+        (self.audio_source.is_some() && self.audio_mid.is_some() && !self.ending)
+            .then_some(AUDIO_POLL_INTERVAL)
+    }
+
+    /// Sélectionne le type de charge utile Opus négocié pour `mid`.
+    ///
+    /// Appel séparé de `write_audio` pour que l'emprunt sur `self` via
+    /// `Rtc::writer` se termine avant tout appel `&mut self` ultérieur — même
+    /// raison que `select_negotiated_h264_pt`.
+    fn select_negotiated_opus_pt(&mut self, mid: Mid) -> Option<Pt> {
+        let writer = self.rtc.writer(mid)?;
+        // Lié à une variable plutôt que renvoyé directement : le type anonyme
+        // rendu par `payload_params()` (capturant la durée de vie de
+        // `writer`, voir sa signature) resterait sinon un temporaire vivant
+        // jusqu'à la fin du bloc, après la destruction de `writer` — rejeté
+        // par l'emprunteur (« `writer` does not live long enough ») alors que
+        // la valeur finale (`Option<Pt>`, `Copy`) n'emprunte plus rien.
+        let pt = writer
+            .payload_params()
+            .find(|p| p.spec().codec == Codec::Opus)
+            .map(|p| p.pt());
+        pt
+    }
+
+    /// Écrit un paquet Opus sur la piste audio.
+    ///
+    /// Renvoie `true` si `writer.write()` a réellement empilé le paquet — donc
+    /// qu'un drainage différé est nécessaire.
+    ///
+    /// Contrairement à `write_frame`, un échec d'écriture ne clôt **pas** la
+    /// session : un défaut audio ne doit jamais tuer une session vidéo qui
+    /// fonctionne.
+    fn write_audio(&mut self, mid: Mid, packet: AudioPacket) -> bool {
+        let Some(pt) = self.select_negotiated_opus_pt(mid) else {
+            self.warn_audio_negotiation_once();
+            return false;
+        };
+        let Some(writer) = self.rtc.writer(mid) else {
+            self.warn_audio_negotiation_once();
+            return false;
+        };
+
+        // `captured_at` est l'instant réel correspondant à `pts_48k` : c'est
+        // lui qui part dans les RTCP Sender Reports et porte la synchro A/V.
+        let rtp_time = MediaTime::new(packet.pts_48k, Frequency::FORTY_EIGHT_KHZ);
+        match writer.write(pt, packet.captured_at, rtp_time, packet.data) {
+            Ok(()) => true,
+            Err(e) => {
+                tracing::warn!(erreur = %e, "échec d'écriture audio, paquet abandonné");
+                false
+            }
+        }
+    }
+
+    fn warn_audio_negotiation_once(&mut self) {
+        if !self.warned_audio_negotiation {
+            self.warned_audio_negotiation = true;
+            tracing::warn!(
+                "aucun type de charge utile Opus négocié : paquets audio jetés (avertissement unique)"
+            );
+        }
+    }
+
     fn warn_negotiation_once(&mut self, message: &str) {
         if !self.warned_negotiation {
             self.warned_negotiation = true;
@@ -951,8 +1099,9 @@ impl Session {
             }
             Event::MediaAdded(media) => {
                 tracing::info!(mid = ?media.mid, kind = ?media.kind, "piste négociée");
-                if media.kind == str0m::media::MediaKind::Video {
-                    self.video_mid = Some(media.mid);
+                match media.kind {
+                    str0m::media::MediaKind::Video => self.video_mid = Some(media.mid),
+                    str0m::media::MediaKind::Audio => self.audio_mid = Some(media.mid),
                 }
             }
             Event::ChannelOpen(id, label) => {
@@ -1169,7 +1318,7 @@ mod tests {
         let now = Instant::now();
         let rtc_deadline = now + Duration::from_secs(1);
         let next_frame_at = now + Duration::from_micros(5_000);
-        let wait = bounded_wait(now, rtc_deadline, Some(next_frame_at));
+        let wait = bounded_wait(now, rtc_deadline, Some(next_frame_at), None);
         assert_eq!(wait, Duration::from_micros(5_000));
     }
 
@@ -1178,7 +1327,7 @@ mod tests {
         let now = Instant::now();
         let rtc_deadline = now + Duration::from_micros(2_000);
         let next_frame_at = now + Duration::from_secs(1);
-        let wait = bounded_wait(now, rtc_deadline, Some(next_frame_at));
+        let wait = bounded_wait(now, rtc_deadline, Some(next_frame_at), None);
         assert_eq!(wait, Duration::from_micros(2_000));
     }
 
@@ -1186,7 +1335,33 @@ mod tests {
     fn attente_dictee_par_rtc_seul_sans_piste_video() {
         let now = Instant::now();
         let rtc_deadline = now + Duration::from_millis(10);
-        assert_eq!(bounded_wait(now, rtc_deadline, None), Duration::from_millis(10));
+        assert_eq!(bounded_wait(now, rtc_deadline, None, None), Duration::from_millis(10));
+    }
+
+    #[test]
+    fn borne_l_attente_quand_l_audio_est_negocie() {
+        // Sans ce plafond, la branche d'attente dormirait jusqu'à l'échéance
+        // que réclame `Rtc` — jusqu'à la seconde entière — et traverserait
+        // ainsi une centaine de paquets audio dus. C'est le même défaut que
+        // C1 côté vidéo, transposé.
+        let maintenant = Instant::now();
+        let echeance_rtc = maintenant + Duration::from_secs(1);
+
+        let sans_audio = bounded_wait(maintenant, echeance_rtc, None, None);
+        assert_eq!(sans_audio, Duration::from_secs(1));
+
+        let avec_audio = bounded_wait(maintenant, echeance_rtc, None, Some(AUDIO_POLL_INTERVAL));
+        assert_eq!(avec_audio, AUDIO_POLL_INTERVAL);
+
+        // Le plafond ne doit jamais ALLONGER une attente déjà plus courte.
+        let echeance_proche = maintenant + Duration::from_micros(200);
+        let court = bounded_wait(
+            maintenant,
+            echeance_proche,
+            None,
+            Some(AUDIO_POLL_INTERVAL),
+        );
+        assert_eq!(court, Duration::from_micros(200));
     }
 
     /// Non-régression sur la correction de la synchro A/V : `write_frame`
@@ -1250,11 +1425,16 @@ mod tests {
         // piste vidéo recvonly et les deux canaux de données.
         let peer_socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("socket du pair");
         let peer_addr = peer_socket.local_addr().unwrap();
-        let mut peer_rtc = Rtc::builder().clear_codecs().enable_h264(true).build(Instant::now());
+        let mut peer_rtc = Rtc::builder()
+            .clear_codecs()
+            .enable_h264(true)
+            .enable_opus(true)
+            .build(Instant::now());
         peer_rtc.add_local_candidate(Candidate::host(peer_addr, "udp").unwrap());
 
         let mut api = peer_rtc.sdp_api();
         api.add_media(MediaKind::Video, Direction::RecvOnly, None, None, None);
+        let audio_mid = api.add_media(MediaKind::Audio, Direction::RecvOnly, None, None, None);
         api.add_channel("control".to_string());
         api.add_channel("input".to_string());
         let (offer, pending) = api.apply().expect("offre non vide");
@@ -1265,6 +1445,26 @@ mod tests {
             .sdp_api()
             .accept_answer(pending, answer)
             .expect("réponse acceptée par le pair");
+
+        // Une piste audio négociée doit accepter une écriture Opus et la
+        // livrer au pair. Sans ce test, une régression sur la sélection du
+        // type de charge utile ne se verrait qu'à la recette, sur la VM.
+        let pt_opus = peer_rtc
+            .writer(audio_mid)
+            .expect("writer audio")
+            .payload_params()
+            .find(|p| p.spec().codec == Codec::Opus)
+            .map(|p| p.pt())
+            .expect("un type de charge utile Opus doit être négocié");
+        let writer = peer_rtc.writer(audio_mid).expect("writer audio");
+        writer
+            .write(
+                pt_opus,
+                Instant::now(),
+                MediaTime::new(0, Frequency::FORTY_EIGHT_KHZ),
+                vec![0xF8, 0xFF, 0xFE],
+            )
+            .expect("écriture audio");
 
         // La session tourne sur un thread dédié, comme en production (voir
         // `main.rs` / `tokio::task::spawn_blocking`). Le thread n'est pas
