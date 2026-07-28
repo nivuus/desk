@@ -8,7 +8,16 @@
 import { classer, SEUIL_ACTIVATION_MS } from './lib/classify.js';
 
 const DELAI_ARMEMENT_MS = 15000;   // > SEUIL_ACTIVATION_MS, avec marge confortable
-const DELAI_SIGNAL_VIE_MS = 3000;  // au-delà, la fenêtre est réputée perdue
+
+// Deux chronomètres, deux phénomènes sans rapport malgré la même unité : celui
+// des variantes 1 à 3 mesure un chargement de page (quasi instantané), celui de
+// la variante 4 mesure un temps de réaction humain face à une notification. Un
+// délai unique de 3 s ferait expirer `attendreVie` avant même que l'utilisateur
+// ait vu la notification, et figerait la variante 4 sur un faux
+// « ouverte-mais-perdue » systématique — alors qu'elle est le repli documenté
+// du cadrage produit.
+const DELAI_SIGNAL_VIE_MS = 3000;      // variantes 1 à 3 : au-delà, la fenêtre est réputée perdue
+const DELAI_SIGNAL_VIE_V4_MS = 60000;  // variante 4 : attend un clic humain sur la notification
 
 const journal = document.getElementById('journal');
 const etat = document.getElementById('etat');
@@ -38,13 +47,15 @@ function tracer(texte, niveau = 'info') {
     console.log(`[spike] ${texte}`);
 }
 
-// Attend le signal de vie de la variante, ou renonce après DELAI_SIGNAL_VIE_MS.
+// Attend le signal de vie de la variante, ou renonce après le délai applicable
+// (voir le commentaire sur les deux constantes DELAI_SIGNAL_VIE_*).
 function attendreVie(variante) {
+    const delai = variante === 4 ? DELAI_SIGNAL_VIE_V4_MS : DELAI_SIGNAL_VIE_MS;
     return new Promise((resolve) => {
         vies.set(variante, resolve);
         setTimeout(() => {
             if (vies.delete(variante)) resolve(false);
-        }, DELAI_SIGNAL_VIE_MS);
+        }, delai);
     });
 }
 
@@ -98,7 +109,11 @@ async function executerVariante(variante) {
                 data: { url: '/opened.html?variant=4' },
                 tag: 'spike-4',
             });
-            tracer('notification affichée — cliquez dessus, fenêtre en arrière-plan', 'alerte');
+            tracer(
+                `notification affichée — cliquez dessus, fenêtre en arrière-plan ` +
+                `(${DELAI_SIGNAL_VIE_V4_MS / 1000} s pour réagir, rien ne presse)`,
+                'alerte',
+            );
             await conclure(4, 'sans-objet');
             break;
         }
