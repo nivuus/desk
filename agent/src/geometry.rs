@@ -55,6 +55,48 @@ pub fn crop_region(window: Rect, desktop_width: u32, desktop_height: u32) -> Opt
     Some(Rect { x: left as i32, y: top as i32, width, height })
 }
 
+/// Convertit une coordonnée normalisée sur la fenêtre en coordonnée normalisée
+/// sur le bureau virtuel, seule forme acceptée par `SendInput` en mode absolu
+/// (tâche 12).
+///
+/// `x`/`y` sont dans `0..=65535` relativement à la zone client de `window`.
+/// Le résultat est dans `0..=65535` relativement à `desktop`. Le calcul
+/// compose deux passages : coordonnée normalisée → pixel écran (via
+/// `window`), puis pixel écran → coordonnée normalisée sur le bureau (via
+/// `desktop`).
+///
+/// Arithmétique en `f64` plutôt qu'en entier, à dessein : `window.x`/
+/// `desktop.x` (`i32`) et `window.width`/`desktop.width` (`u32`) tiennent
+/// tous exactement dans la mantisse 52 bits d'un `f64` (le plus grand, tout
+/// `u32`, tient sur 32 bits), donc aucune perte de précision — et
+/// contrairement à une multiplication en `i32`/`i64`, une valeur `f64` ne
+/// panique jamais par débordement : au pire elle sature vers l'infini, et la
+/// conversion finale `as i32` sur un flottant hors bornes sature elle aussi
+/// (comportement garanti par Rust depuis la 1.45) plutôt que de produire un
+/// résultat indéfini. Le `.clamp(0.0, 65535.0)` avant conversion couvre donc
+/// à la fois les débordements représentables et les cas déjà dans les bornes.
+pub fn to_virtual_desktop(x: u16, y: u16, window: Rect, desktop: Rect) -> (i32, i32) {
+    // Position en pixels écran, au centre du pixel visé.
+    let screen_x = window.x as f64 + (x as f64 / 65535.0) * window.width as f64;
+    let screen_y = window.y as f64 + (y as f64 / 65535.0) * window.height as f64;
+
+    // `.max(1.0)` évite toute division par zéro pour un bureau dégénéré
+    // (largeur ou hauteur nulle) sans avoir à traiter ce cas séparément.
+    let width = (desktop.width as f64).max(1.0);
+    let height = (desktop.height as f64).max(1.0);
+    let normalized_x = ((screen_x - desktop.x as f64) / width * 65535.0).round();
+    let normalized_y = ((screen_y - desktop.y as f64) / height * 65535.0).round();
+
+    (clamp_normalized(normalized_x), clamp_normalized(normalized_y))
+}
+
+/// Borne une coordonnée normalisée dans `0..=65535`, y compris pour un
+/// flottant déjà hors de portée d'un `i32` (voir la note de
+/// `to_virtual_desktop` sur la saturation des conversions `as`).
+fn clamp_normalized(value: f64) -> i32 {
+    value.clamp(0.0, 65535.0) as i32
+}
+
 /// Vrai si les deux rectangles ont une intersection non vide (frontières qui
 /// se touchent exclues).
 ///
@@ -199,5 +241,73 @@ mod tests {
         let a = Rect { x: 0, y: 0, width: 100, height: 100 };
         let b = Rect { x: 100, y: 0, width: 100, height: 100 };
         assert!(!rects_overlap(a, b));
+    }
+
+    const DESKTOP: Rect = Rect { x: 0, y: 0, width: 1920, height: 1080 };
+
+    #[test]
+    fn coin_superieur_gauche_d_une_fenetre_a_l_origine() {
+        let window = Rect { x: 0, y: 0, width: 1920, height: 1080 };
+        assert_eq!(to_virtual_desktop(0, 0, window, DESKTOP), (0, 0));
+    }
+
+    #[test]
+    fn coin_inferieur_droit_d_une_fenetre_plein_ecran() {
+        let window = Rect { x: 0, y: 0, width: 1920, height: 1080 };
+        assert_eq!(to_virtual_desktop(65535, 65535, window, DESKTOP), (65535, 65535));
+    }
+
+    #[test]
+    fn centre_d_une_fenetre_decalee() {
+        // Fenêtre de 960×540 placée au centre : son centre est celui de l'écran.
+        let window = Rect { x: 480, y: 270, width: 960, height: 540 };
+        let (x, y) = to_virtual_desktop(32768, 32768, window, DESKTOP);
+        assert!((x - 32768).abs() <= 40, "x = {x}");
+        assert!((y - 32768).abs() <= 40, "y = {y}");
+    }
+
+    #[test]
+    fn origine_d_une_fenetre_decalee() {
+        let window = Rect { x: 960, y: 540, width: 960, height: 540 };
+        let (x, y) = to_virtual_desktop(0, 0, window, DESKTOP);
+        assert_eq!((x, y), (32768, 32768));
+    }
+
+    #[test]
+    fn borne_les_debordements_sur_un_bureau_multi_ecrans() {
+        // Bureau virtuel commençant en coordonnées négatives (écran à gauche).
+        let desktop = Rect { x: -1920, y: 0, width: 3840, height: 1080 };
+        let window = Rect { x: -1920, y: 0, width: 1920, height: 1080 };
+        assert_eq!(to_virtual_desktop(0, 0, window, desktop), (0, 0));
+        let (x, _) = to_virtual_desktop(65535, 0, window, desktop);
+        assert!((x - 32768).abs() <= 40, "x = {x}");
+    }
+
+    #[test]
+    fn ne_divise_jamais_par_zero() {
+        let degenerate = Rect { x: 0, y: 0, width: 0, height: 0 };
+        let (x, y) = to_virtual_desktop(32768, 32768, degenerate, degenerate);
+        assert!((0..=65535).contains(&x) && (0..=65535).contains(&y));
+    }
+
+    #[test]
+    fn ne_deborde_ni_ne_panique_sur_des_coordonnees_extremes() {
+        // Même esprit que `gere_une_largeur_superieure_a_i32_max` pour
+        // `crop_region` : une fenêtre aux coordonnées ou dimensions extrêmes
+        // (jamais produites par `client_rect_on_screen` en pratique, mais pas
+        // structurellement impossibles) ne doit ni paniquer, ni sortir de
+        // `0..=65535`.
+        let window = Rect { x: i32::MAX - 10, y: i32::MIN + 10, width: u32::MAX, height: u32::MAX };
+        let desktop = Rect { x: 0, y: 0, width: 1, height: 1 };
+        let (x, y) = to_virtual_desktop(65535, 0, window, desktop);
+        assert!((0..=65535).contains(&x), "x = {x}");
+        assert!((0..=65535).contains(&y), "y = {y}");
+
+        // Bureau lui-même dégénéré à l'extrême, combiné à une fenêtre normale.
+        let window = Rect { x: 0, y: 0, width: 1920, height: 1080 };
+        let desktop = Rect { x: i32::MIN + 10, y: i32::MAX - 10, width: u32::MAX, height: 0 };
+        let (x, y) = to_virtual_desktop(0, 65535, window, desktop);
+        assert!((0..=65535).contains(&x), "x = {x}");
+        assert!((0..=65535).contains(&y), "y = {y}");
     }
 }

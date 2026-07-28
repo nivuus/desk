@@ -1,3 +1,4 @@
+import { attachInput } from './input';
 import { connectSession } from './webrtc';
 
 const video = document.querySelector<HTMLVideoElement>('#remote')!;
@@ -30,6 +31,11 @@ connectSession({
             setStatus(`session terminée : ${message.reason}`);
         }
     },
-}).catch((error: unknown) => {
-    setStatus(`échec : ${error instanceof Error ? error.message : String(error)}`);
-});
+})
+    .then((session) => {
+        attachInput({ video, channel: session.inputChannel });
+        video.focus();
+    })
+    .catch((error: unknown) => {
+        setStatus(`échec : ${error instanceof Error ? error.message : String(error)}`);
+    });

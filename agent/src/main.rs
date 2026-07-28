@@ -1,5 +1,6 @@
 mod geometry;
 mod h264;
+mod input;
 mod signaling;
 mod source;
 mod transport;
@@ -614,6 +615,22 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
+    // Renseigné dans la branche Windows ci-dessous : la fenêtre capturée est
+    // aussi celle qui reçoit les entrées injectées (tâche 12). `None` en
+    // mode fichier de test (pas de fenêtre Windows à piloter) ou hors
+    // Windows.
+    //
+    // Conservé sous forme d'adresse brute (`isize`, qui est `Send`) plutôt
+    // que de `HWND` directement : `HWND` enveloppe un `*mut c_void`, non
+    // `Send` en windows-rs 0.62, et ne peut donc pas traverser tel quel la
+    // fermeture `move` de `spawn_blocking` ci-dessous. Un HWND n'est qu'un
+    // identifiant opaque (pas un pointeur réellement déréférencé côté
+    // processus), le faire transiter par son adresse et le reconstruire
+    // dans le fil cible est sûr — même technique que le fil d'agitation de
+    // fenêtre du mode diagnostic `CAPTURE_TEST` plus haut dans ce fichier.
+    #[cfg(windows)]
+    let mut window_hwnd_addr: Option<isize> = None;
+
     let source: Box<dyn VideoSource + Send> = match &config.test_file {
         Some(path) => {
             tracing::info!(?path, "source de test");
@@ -624,6 +641,7 @@ async fn main() -> Result<()> {
             {
                 let title = std::env::var("WINDOW_TITLE").unwrap_or_else(|_| "firefox".into());
                 let hwnd = window::find_window_by_title(&title)?;
+                window_hwnd_addr = Some(hwnd.0 as isize);
                 let bitrate: u32 = std::env::var("BITRATE")
                     .ok()
                     .and_then(|v| v.parse().ok())
@@ -685,7 +703,22 @@ async fn main() -> Result<()> {
     // beaucoup plus dès que la session n'est plus vivante. On la déplace donc
     // sur le pool de threads bloquants de tokio, dédié à cet usage.
     let transport = tokio::task::spawn_blocking(move || {
-        let mut on_input = |message| tracing::debug!(?message, "entrée reçue");
+        #[cfg(windows)]
+        let mut injector = window_hwnd_addr.map(|addr| {
+            let hwnd = windows::Win32::Foundation::HWND(addr as *mut core::ffi::c_void);
+            input::InputInjector::new(hwnd)
+        });
+
+        let mut on_input = |message: proto::input::InputMessage| {
+            #[cfg(windows)]
+            if let Some(injector) = injector.as_mut() {
+                if let Err(e) = injector.inject(message) {
+                    tracing::warn!(erreur = %e, "injection d'entrée échouée");
+                }
+            }
+            #[cfg(not(windows))]
+            tracing::debug!(?message, "entrée reçue");
+        };
         let mut on_control = |message| tracing::info!(?message, "contrôle reçu");
         session.run(&mut on_input, &mut on_control)
     });
