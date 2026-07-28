@@ -20,6 +20,7 @@ use windows::Win32::Media::Audio::{
     AUDCLNT_BUFFERFLAGS_SILENT, AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_LOOPBACK,
     WAVEFORMATEX, WAVEFORMATEXTENSIBLE,
 };
+use windows::Win32::Foundation::RPC_E_CHANGED_MODE;
 use windows::Win32::Media::Multimedia::KSDATAFORMAT_SUBTYPE_IEEE_FLOAT;
 use windows::Win32::System::Com::{
     CoCreateInstance, CoInitializeEx, CoTaskMemFree, CLSCTX_ALL, COINIT_MULTITHREADED,
@@ -79,15 +80,74 @@ pub struct LoopbackCapture {
     description: String,
 }
 
+// SÉCURITÉ : `LoopbackCapture` enveloppe des interfaces COM (`IAudioClient`,
+// `IAudioCaptureClient`) que `windows-core` ne marque pas `Send` par défaut —
+// un objet COM générique peut être lié à un appartement mono-thread (STA), et
+// le déplacer vers un autre fil serait alors un comportement indéfini. Ce
+// n'est pas le cas ici : `open()` (ci-dessous) *vérifie*, plutôt que de
+// supposer, que le fil appelant rejoint l'appartement multi-thread (MTA) via
+// `CoInitializeEx(None, COINIT_MULTITHREADED)`, et refuse d'ouvrir si ce fil
+// appartient déjà à une autre apartement (`RPC_E_CHANGED_MODE`).
+// `WindowsAudioSource::new` (agent/src/windows_audio.rs) déplace ensuite cet
+// objet, par `move`, vers un fil de capture dédié qui rejoint à son tour
+// cette même MTA avant tout appel COM (voir son commentaire). Un objet créé
+// dans une MTA est par construction appelable depuis n'importe quel fil qui
+// en est membre, sans marshaling — c'est cette propriété, garantie par la
+// vérification d'`open()`, qui rend le transfert sûr.
+//
+// Cette promesse porte sur le **struct entier, champs futurs compris** : si
+// un futur champ ajoute un `HANDLE` d'événement, un pointeur brut, ou tout
+// autre état lié à un fil précis plutôt qu'à l'apartement, cet `unsafe impl`
+// cesserait d'être valide sans que rien ne le signale. Quiconque ajoute un
+// champ à `LoopbackCapture` doit vérifier qu'il reste utilisable depuis
+// n'importe quel fil membre de la MTA avant de le faire — sans quoi ce
+// `Send` doit être retiré ou restreint.
+//
+// Alternative écartée : `windows_core::AgileReference<T>`, le mécanisme
+// officiellement prévu par `windows-core` 0.62 pour transporter un objet COM
+// entre fils sans supposer son modèle de threading. Non retenu ici : il exige
+// une résolution (`resolve()`, un `QueryInterface` interne) à chaque
+// récupération, un coût et une complexité inutiles alors que ce process n'a,
+// sous ce plan, aucune STA — la vérification d'`open()` suffit et reste bon
+// marché.
+unsafe impl Send for LoopbackCapture {}
+
 impl LoopbackCapture {
     /// Ouvre le loopback sur le périphérique de rendu par défaut et démarre la
     /// capture.
     pub fn open() -> Result<Self> {
         unsafe {
-            // Résultat volontairement ignoré : `RPC_E_CHANGED_MODE` signifie
-            // que COM est déjà initialisé sur ce fil, ce qui n'est pas une
-            // erreur ici.
-            //
+            // `CoInitializeEx` doit être **vérifié**, pas ignoré : c'est la
+            // précondition dont dépend `unsafe impl Send for LoopbackCapture`
+            // ci-dessus (lire son commentaire d'abord si ce n'est pas fait).
+            // `S_OK` (ce fil vient de rejoindre la MTA) et `S_FALSE` (il en
+            // était déjà membre) sont tous deux acceptables : dans les deux
+            // cas, ce fil est membre de l'appartement multi-thread — le même
+            // que rejoindra le fil de capture de `windows_audio.rs`. Seul
+            // `RPC_E_CHANGED_MODE` — ce fil appartient déjà à un autre
+            // appartement, typiquement une STA liée par un appel antérieur à
+            // `CoInitializeEx(..., COINIT_APARTMENTTHREADED)` sur ce même fil
+            // — doit faire échouer l'ouverture : sans ce refus,
+            // `LoopbackCapture` migrerait d'une STA vers la MTA du fil de
+            // capture sans marshaling, un comportement indéfini qu'aucun test
+            // ne révèle puisque l'appel par vtable directe « marche » la
+            // plupart du temps même quand c'est interdit.
+            let hr = CoInitializeEx(None, COINIT_MULTITHREADED);
+            if hr == RPC_E_CHANGED_MODE {
+                bail!(
+                    "ouverture du loopback audio refusée : le fil appelant appartient déjà \
+                     à un appartement à thread unique (STA), pas à l'appartement \
+                     multi-thread (MTA) qu'exige `LoopbackCapture`. `WindowsAudioSource::new` \
+                     (agent/src/windows_audio.rs) déplace cet objet, par `move`, vers un fil \
+                     de capture dédié qui rejoint la MTA : migrer un objet COM d'une STA vers \
+                     un autre appartement sans marshaling est un comportement indéfini, pas \
+                     seulement une erreur de type. Vérifiez qu'aucun \
+                     `CoInitializeEx(..., COINIT_APARTMENTTHREADED)` (ni aucune autre \
+                     initialisation qui lie ce fil à une STA, par exemple une init WinRT \
+                     implicite) n'a précédé cet appel sur ce même fil."
+                );
+            }
+
             // Pas de `CoUninitialize` en regard, et c'est délibéré : ce fil
             // n'est pas forcément celui qui utilisera ni celui qui libérera
             // l'objet rendu. La tâche 6 (`windows_audio.rs`) appelle `open()`
@@ -105,7 +165,6 @@ impl LoopbackCapture {
             // futur rééquilibrage devra se faire là où l'appel est
             // réellement possédé : autour du fil de `WindowsAudioSource::new`,
             // pas ici.
-            let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
 
             let enumerateur: IMMDeviceEnumerator =
                 CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)

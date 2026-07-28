@@ -30,22 +30,6 @@ const POLL_INTERVAL: Duration = Duration::from_millis(5);
 /// Intervalle entre deux journaux de compteurs agrégés.
 const REPORT_INTERVAL: Duration = Duration::from_secs(30);
 
-// SAFETY : `LoopbackCapture` encapsule des interfaces COM (`IAudioClient`,
-// `IAudioCaptureClient`) que `windows-core` ne marque `Send` dans aucun cas
-// général — un objet COM quelconque peut être lié à un appartement
-// mono-thread (STA), auquel cas le faire migrer entre fils serait dangereux.
-// Ce n'est pas le cas ici : `wasapi::open()` rejoint explicitement
-// l'appartement multi-thread (MTA) via `COINIT_MULTITHREADED`, et le fil de
-// capture ci-dessous y rejoint la même MTA avant tout appel COM. Les objets
-// créés dans une MTA sont par construction appelables depuis n'importe quel
-// fil qui en est membre, sans marshaling — c'est précisément pourquoi ce
-// design a été choisi, et le commentaire de `wasapi::open` documente déjà ce
-// transfert vers « un fil de capture dédié » comme le fonctionnement prévu de
-// cette tâche. Sans cet impl, `LoopbackCapture` ne peut pas être déplacé dans
-// la fermeture du fil ci-dessous : le compilateur refuse par défaut, faute de
-// pouvoir distinguer ce cas MTA du cas STA général.
-unsafe impl Send for LoopbackCapture {}
-
 pub struct WindowsAudioSource {
     ring: PacketRing,
     arret: Arc<AtomicBool>,
@@ -102,8 +86,19 @@ impl WindowsAudioSource {
                         Err(e) => {
                             // Une erreur de lecture ne doit pas tuer la
                             // session : on journalise et on arrête l'audio.
-                            // La vidéo continue.
-                            tracing::warn!(erreur = %e, "lecture audio échouée, capture arrêtée");
+                            // La vidéo continue. Les compteurs sont inclus
+                            // ici parce que c'est la dernière ligne de log de
+                            // ce fil : sans eux, une capture morte en cours
+                            // de session serait indiscernable d'un simple
+                            // silence — `next_packet` continuerait à rendre
+                            // `None` comme dans le cas nominal.
+                            tracing::warn!(
+                                erreur = %e,
+                                rejetes = ring_fil.rejetes(),
+                                complements = assembleur.complements(),
+                                echantillons_jetes = assembleur.echantillons_jetes(),
+                                "lecture audio échouée, capture arrêtée définitivement"
+                            );
                             return;
                         }
                     }
@@ -116,7 +111,17 @@ impl WindowsAudioSource {
                                 captured_at: trame.captured_at,
                             }),
                             Err(e) => {
-                                tracing::warn!(erreur = %e, "encodage Opus échoué, capture arrêtée");
+                                // Même raisonnement que pour l'erreur de
+                                // lecture ci-dessus : dernière ligne de log
+                                // de ce fil, donc dernière chance de rendre
+                                // les compteurs accumulés exploitables.
+                                tracing::warn!(
+                                    erreur = %e,
+                                    rejetes = ring_fil.rejetes(),
+                                    complements = assembleur.complements(),
+                                    echantillons_jetes = assembleur.echantillons_jetes(),
+                                    "encodage Opus échoué, capture arrêtée définitivement"
+                                );
                                 return;
                             }
                         }
