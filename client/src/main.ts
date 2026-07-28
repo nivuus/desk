@@ -1,9 +1,11 @@
 import { attachInput } from './input';
 import { connectSession } from './webrtc';
+import { attachStats } from './stats';
 import { encodeResize } from '../../proto/ts/control';
 
 const video = document.querySelector<HTMLVideoElement>('#remote')!;
 const statusElement = document.querySelector<HTMLDivElement>('#status')!;
+const statsElement = document.querySelector<HTMLDivElement>('#stats')!;
 
 function setStatus(message: string): void {
     statusElement.textContent = message;
@@ -35,6 +37,7 @@ connectSession({
 })
     .then((session) => {
         attachInput({ video, channel: session.inputChannel });
+        attachStats(session.pc, statsElement);
         video.focus();
 
         // Le redimensionnement reconstruit la chaîne d'encodage côté agent :

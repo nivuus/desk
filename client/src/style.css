@@ -41,3 +41,15 @@ body {
     opacity: 0;
     pointer-events: none;
 }
+
+#stats {
+    position: fixed;
+    inset-block-end: 12px;
+    inset-inline-start: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: rgb(0 0 0 / 0.72);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+}
