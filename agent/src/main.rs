@@ -16,6 +16,8 @@ mod encode;
 #[cfg(windows)]
 mod window;
 #[cfg(windows)]
+mod wasapi;
+#[cfg(windows)]
 mod windows_source;
 
 use std::net::IpAddr;
@@ -625,6 +627,47 @@ async fn main() -> Result<()> {
         stop_jitter_on_exit.store(true, std::sync::atomic::Ordering::Relaxed);
         let _ = jitter_thread.join();
         result?;
+        return Ok(());
+    }
+
+    // Sonde audio (`AUDIO_PROBE=1`) : répond aux questions n°1 et n°2 de la
+    // spécification du chantier A — quel est le périphérique de rendu par
+    // défaut de CETTE session, quel est son format de mixage, et un loopback
+    // y capte-t-il bien ce que jouent les applications.
+    #[cfg(windows)]
+    if std::env::var("AUDIO_PROBE").is_ok() {
+        let secondes: u64 = std::env::var("AUDIO_PROBE_SECS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(10);
+
+        let mut capture = wasapi::LoopbackCapture::open()?;
+        tracing::info!(format = %capture.description(), "loopback ouvert");
+
+        let debut = std::time::Instant::now();
+        let mut echantillons = 0u64;
+        let mut crete = 0i16;
+        let mut lectures_vides = 0u64;
+        while debut.elapsed() < std::time::Duration::from_secs(secondes) {
+            match capture.read()? {
+                Some(bloc) => {
+                    echantillons += bloc.len() as u64;
+                    for v in bloc {
+                        crete = crete.max(v.saturating_abs());
+                    }
+                }
+                None => lectures_vides += 1,
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+
+        tracing::info!(
+            echantillons,
+            lectures_vides,
+            crete,
+            silencieux = crete == 0,
+            "sonde audio terminée"
+        );
         return Ok(());
     }
 
