@@ -9,19 +9,33 @@ use crate::capture::DesktopCapture;
 use crate::encode::H264Encoder;
 use crate::geometry::{crop_region, Rect};
 use crate::h264::{AccessUnit, CLOCK_RATE_HZ};
+use crate::rebuild::{rebuild_or_recover, RebuildOutcome};
 use crate::source::VideoSource;
 use crate::window;
 
 pub struct WindowsSource {
     hwnd: HWND,
-    /// `None` seulement de façon transitoire, le temps d'un `resize` (voir son
-    /// commentaire) : DXGI n'autorise qu'une seule instance vivante
+    /// `None` seulement de façon transitoire, à l'intérieur de `resize` (voir
+    /// son commentaire) : DXGI n'autorise qu'une seule instance vivante
     /// d'`IDXGIOutputDuplication` par sortie et par processus à la fois, donc
     /// l'ancienne capture doit être explicitement relâchée avant que
-    /// `DesktopCapture::new()` ne rappelle `DuplicateOutput`. Ne vaut jamais
-    /// `None` en dehors de cette fenêtre : `capture()`/`capture_mut()` le
-    /// supposent et paniquent sinon, un signe de bug plutôt qu'un état à
-    /// gérer silencieusement.
+    /// `DesktopCapture::new()` ne rappelle `DuplicateOutput`.
+    ///
+    /// **Ronde de correction 1 (revue) :** une première version de ce
+    /// correctif vidait ce champ puis tentait la reconstruction via `?` — si
+    /// celle-ci échouait (GPU transitoirement indisponible, fenêtre déplacée
+    /// hors écran pendant le geste...), le champ restait `None` pour de bon,
+    /// et l'appel suivant à `next_frame` paniquait sur
+    /// `capture.as_mut().expect(...)`. Un panic traverse `spawn_blocking` et
+    /// termine tout le processus agent — exactement ce que le brief demande
+    /// de ne jamais faire pour un échec de redimensionnement censé être
+    /// toléré. `resize` garantit désormais qu'un échec retombe sur une
+    /// capture de secours (voir `rebuild::rebuild_or_recover`) plutôt que de
+    /// laisser ce champ vide ; le seul cas où il reste `None` après `resize`
+    /// est le double échec (ni la reconstruction complète, ni le secours),
+    /// auquel cas `fatal` passe à vrai et `next_frame` court-circuite AVANT
+    /// de toucher ce champ (voir son garde en tête de fonction) — jamais de
+    /// panique, y compris dans ce pire cas.
     capture: Option<DesktopCapture>,
     /// Région de l'écran à recadrer, recalculée à chaque redimensionnement.
     region: Rect,
@@ -95,11 +109,14 @@ impl WindowsSource {
         self.hwnd
     }
 
-    /// Capture courante, mutable. Panique hors de `resize` (voir le
-    /// commentaire du champ) : ce n'est alors jamais `None`, une panique ici
-    /// trahirait un bug plutôt qu'un état normal à absorber silencieusement.
+    /// Capture courante, mutable. Le seul appelant (`next_frame`) garde le
+    /// garde `if self.fatal { return None; }` avant tout appel : ce champ ne
+    /// vaut `None` que pendant `resize`, et `resize` ne rend jamais la main
+    /// avec `capture` à `None` sans avoir aussi mis `fatal` à vrai (voir le
+    /// commentaire du champ). Panique donc seulement sur un bug réel de cet
+    /// invariant, jamais en usage normal.
     fn capture_mut(&mut self) -> &mut DesktopCapture {
-        self.capture.as_mut().expect("capture toujours présente hors de resize()")
+        self.capture.as_mut().expect("capture toujours présente quand fatal est faux")
     }
 
     /// Redimensionne la fenêtre et reconstruit la chaîne d'encodage.
@@ -127,40 +144,86 @@ impl WindowsSource {
         // membre droit — donc `DuplicateOutput` — avant de remplacer
         // l'ancien `Some`, laissant les deux exister en même temps le temps
         // de l'appel. `DuplicateOutput` échoue alors avec « duplication de
-        // la sortie écran » — observé lors de l'essai bout en bout de la
-        // tâche 13, avant ce correctif.
+        // la sortie écran » — observé lors du premier essai bout en bout de
+        // la tâche 13.
+        //
+        // Cette libération anticipée ouvre en retour une fenêtre où
+        // `self.capture` peut rester `None` si la reconstruction échoue : on
+        // ne la referme jamais avec un simple `?` (voir la ronde de
+        // correction 1 au commentaire du champ `capture`). `rebuild_or_recover`
+        // (module `rebuild`, testé sans dépendance Windows) porte cette
+        // logique : tenter la reconstruction complète, et si elle échoue,
+        // retenter EXPLICITEMENT une capture de secours — avec les anciens
+        // `region`/`encoder`/dimensions, encore valides puisqu'eux n'ont pas
+        // été touchés — avant de renvoyer l'erreur à l'appelant.
         self.capture = None;
+        let fps = self.fps;
+        let bitrate = self.bitrate;
 
-        // Un NOUVEAU périphérique D3D11 est créé ici : `DesktopCapture::new`
-        // pose `SetMultithreadProtected(TRUE)` sur CE périphérique à chaque
-        // appel (voir capture.rs, champ `context`/`multithread`) — la
+        // Un NOUVEAU périphérique D3D11 est créé dans `DesktopCapture::new` :
+        // elle pose `SetMultithreadProtected(TRUE)` sur CE périphérique à
+        // chaque appel (voir capture.rs, champ `context`/`multithread`) — la
         // protection est donc reconstruite avec lui, pas seulement héritée de
         // l'ancien périphérique qui vient d'être libéré. Sans cela le
         // blocage intermittent d'`AcquireNextFrame` documenté à la tâche 10
         // réapparaîtrait après tout redimensionnement.
-        let new_capture = DesktopCapture::new()?;
-        let (dw, dh) = new_capture.desktop_size();
-        self.region = crop_region(window_rect, dw, dh)
-            .ok_or_else(|| anyhow::anyhow!("la fenêtre est hors de l'écran"))?;
-        let (actual_width, actual_height) = (self.region.width, self.region.height);
+        let outcome = rebuild_or_recover(
+            || -> Result<(DesktopCapture, Rect, H264Encoder)> {
+                let new_capture = DesktopCapture::new()?;
+                let (dw, dh) = new_capture.desktop_size();
+                let region = crop_region(window_rect, dw, dh)
+                    .ok_or_else(|| anyhow::anyhow!("la fenêtre est hors de l'écran"))?;
+                let mut encoder =
+                    H264Encoder::new(new_capture.device(), region.width, region.height, fps, bitrate)?;
+                encoder.request_keyframe()?;
+                Ok((new_capture, region, encoder))
+            },
+            // Fabrique de secours : juste une capture valide, pour ne jamais
+            // laisser `self.capture` à `None` sans `fatal` à vrai en retour.
+            // `region`/`encoder`/`width`/`height` restent ceux d'avant :
+            // seule la capture avait dû être relâchée, pas les paramètres qui
+            // en dépendent, qui n'ont jamais cessé d'être valides.
+            DesktopCapture::new,
+        );
 
-        self.encoder = H264Encoder::new(
-            new_capture.device(),
-            actual_width,
-            actual_height,
-            self.fps,
-            self.bitrate,
-        )?;
-        self.capture = Some(new_capture);
-        self.encoder.request_keyframe()?;
-        self.width = actual_width;
-        self.height = actual_height;
-        // Nouvel encodeur : sa toute première sortie retombe dans le même
-        // cas que le démarrage initial (voir `SUBMIT_POLL_BUDGET`).
-        self.encoder_warmed_up = false;
-
-        tracing::info!(self.width, self.height, "chaîne d'encodage reconstruite");
-        Ok(())
+        match outcome {
+            RebuildOutcome::Rebuilt((new_capture, region, encoder)) => {
+                self.capture = Some(new_capture);
+                self.region = region;
+                self.encoder = encoder;
+                self.width = region.width;
+                self.height = region.height;
+                // Nouvel encodeur : sa toute première sortie retombe dans le
+                // même cas que le démarrage initial (voir `SUBMIT_POLL_BUDGET`).
+                self.encoder_warmed_up = false;
+                tracing::info!(self.width, self.height, "chaîne d'encodage reconstruite");
+                Ok(())
+            }
+            RebuildOutcome::Recovered(new_capture, primary_error) => {
+                // État exploitable restauré (anciens région/encodeur/
+                // dimensions, nouvelle capture) : la session continue, comme
+                // l'exige le brief pour un échec de redimensionnement. La
+                // fenêtre OS, elle, a déjà changé de taille
+                // (`resize_window` ci-dessus a réussi) : un décalage
+                // transitoire entre la fenêtre réelle et la région capturée
+                // est possible jusqu'au prochain redimensionnement réussi —
+                // préférable, de loin, à un agent qui plante.
+                self.capture = Some(new_capture);
+                tracing::warn!(erreur = %primary_error, "reconstruction de la chaîne d'encodage échouée, capture de secours restaurée");
+                Err(primary_error)
+            }
+            RebuildOutcome::Fatal(primary_error) => {
+                // Ni la chaîne complète, ni une simple capture de secours
+                // n'ont pu être obtenues : `self.capture` reste `None`.
+                // `fatal` le signale pour de bon — `next_frame` s'arrête
+                // avant de toucher `capture` (voir son garde), et
+                // `is_exhausted()` fera clore la session proprement au tour
+                // suivant, plutôt qu'un panic sur le champ vide.
+                self.fatal = true;
+                tracing::error!(erreur = %primary_error, "reconstruction de la chaîne d'encodage et capture de secours toutes deux échouées, source déclarée épuisée");
+                Err(primary_error)
+            }
+        }
     }
 
     /// Vrai tant que la fenêtre capturée existe.
@@ -261,6 +324,17 @@ impl VideoSource for WindowsSource {
     /// l'appelant) : la fenêtre a disparu, ou une erreur de capture non
     /// récupérable s'est produite.
     fn next_frame(&mut self) -> Option<AccessUnit> {
+        if self.fatal {
+            // Une reconstruction de la chaîne par `resize` a pu échouer au
+            // point de ne laisser aucune capture de secours valide non plus
+            // (voir `RebuildOutcome::Fatal` dans `resize`) : `self.capture`
+            // vaut alors `None` pour de bon. Ne JAMAIS appeler
+            // `capture_mut()` dans ce cas — `is_exhausted()` (déjà vraie via
+            // `self.fatal`) fera clore la session proprement au tour
+            // suivant, plutôt qu'un panic sur le champ vide.
+            return None;
+        }
+
         // Alimenter l'encodeur avec l'image la plus récente, si le bureau a
         // changé depuis le dernier appel (Desktop Duplication ne rend une
         // image que sur changement — cas courant et normal, voir
