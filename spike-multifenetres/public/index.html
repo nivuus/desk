@@ -33,7 +33,12 @@
         Chaque bouton <strong>arme</strong> sa variante : l'ouverture est ensuite
         commandée par le serveur, 15 s plus tard. Ne touchez ni souris ni clavier
         pendant le compte à rebours (sauf variante 3, dont le clic est le
-        mécanisme testé).
+        mécanisme testé, et variante 4, qu'il faut mettre en arrière-plan).
+    </p>
+    <p>
+        Les boutons restent inactifs tant que le WebSocket n'est pas connecté :
+        sans lui l'ordre du serveur n'arriverait nulle part et la mesure serait
+        vide sans le dire.
     </p>
 
     <table>
@@ -43,13 +48,21 @@
         <tbody>
             <tr>
                 <td>1</td>
-                <td>Onglet normal, sans activation — <em>témoin</em></td>
+                <td>
+                    Onglet normal, sans activation — <em>témoin</em>.
+                    À jouer <strong>depuis un onglet ordinaire</strong> : elle refuse
+                    de s'exécuter dans la fenêtre PWA.
+                </td>
                 <td><button data-variante="1" data-libelle="Armer 1">Armer 1</button></td>
                 <td class="verdict" id="verdict-1">—</td>
             </tr>
             <tr>
                 <td>2</td>
-                <td>PWA installée (<code>standalone</code>), sans activation</td>
+                <td>
+                    PWA installée (<code>standalone</code>), sans activation.
+                    À jouer <strong>depuis la fenêtre de la PWA installée</strong> :
+                    elle refuse de s'exécuter dans un onglet.
+                </td>
                 <td><button data-variante="2" data-libelle="Armer 2">Armer 2</button></td>
                 <td class="verdict" id="verdict-2">—</td>
             </tr>
