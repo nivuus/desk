@@ -38,7 +38,7 @@ critère 1 sans ambiguïté.
 |---|---|---|---|---|---|
 | 1 | Firefox capturé par fenêtre | 784×632 (tâche 11) et 784×592 / 764×484 (recette, selon la taille de fenêtre du navigateur) — jamais 2400×1080 (bureau) | dimensions fenêtre, pas bureau | **Atteint** | — |
 | 2 | Défilement à 60 i/s | ~29,5–30 i/s (moyenne de 6 mesures indépendantes convergentes, voir détail) | ≥ 55 i/s | **Non atteint** | Encodage |
-| 3 | Latence bout en bout | approximation overlay : 5–57 ms · mesure directe (12 essais) : min 54,1 ms, médiane 291,9 ms, max 1516,8 ms | < 50 ms | **Non atteint** | Encodage (principal) + tampon de gigue (aggravant) |
+| 3 | Latence bout en bout | approximation overlay : 5–57 ms · mesure directe (12 essais) : min 54,1 ms, médiane 275,95 ms, max 1516,8 ms | < 50 ms | **Non atteint** | Encodage (hypothèse plausible, non confirmée pour la traîne — voir texte) + tampon de gigue (aggravant, confirmé) |
 | 4 | Souris, clavier, molette | clic → navigation, Origine+Suppr → bon caractère supprimé, F5 → rechargement, molette → défilement bidirectionnel (tâche 12) ; clavier reconfirmé en direct aujourd'hui | tous réussis | **Atteint** (avec une réserve, voir texte) | — |
 | 5 | Redimensionnement | 32 mesures connues : min 365 ms, max 534 ms, 27/32 (84 %) sous 500 ms | < 500 ms | **Non atteint de façon fiable** | Encodage (redémarrage à froid) |
 
@@ -71,6 +71,17 @@ différents (animation CSS, molette réelle, défilement clavier) :
 | `remesure-debit.md` | animation CSS, 3 essais (10/15/20 s) | 29,5 / 29,67 / 29,75 i/s |
 | `diagnostic-plafond-debit.md` | molette réelle | 29,70 i/s |
 | Recette (aujourd'hui) | animation CSS, overlay en direct | **30,0 i/s** |
+
+Les deux mesures à 9,7 et 22,9 i/s (tâche 12) ne sont **pas** incluses dans
+la valeur retenue (~29,5–30 i/s) : ce sont des essais à cadence de
+stimulus délibérément différente (rafale de molette « espacée » contre
+« dense »), cités ici pour montrer que le plafond apparaît quelle que soit
+l'intensité de la sollicitation, pas pour être moyennés avec les quatre
+autres mesures, qui elles isolent le plafond propre du pipeline (contenu
+changeant en continu, sans sous-échantillonnage volontaire du stimulus). Le
+lecteur pressé qui ne retiendrait que la ligne du haut du tableau pourrait
+sinon y voir une sélection favorable — ce n'en est pas une : les six chiffres
+sont rapportés tels quels, seuls les quatre derniers mesurent la même chose.
 
 Le débit **n'est pas** limité par la capture (~90 i/s isolée, `CAPTURE_TEST`),
 ni par le réseau (`packetsLost=0` dans tous les essais), ni par la boucle de
@@ -111,28 +122,81 @@ horloge unique) :
 
 ```
 valeurs (ms) : 54,1 · 60,5 · 70,2 · 102,4 · 218,4 · 260,0 · 291,9 · 294,4 · 580,9 · 829,2 · 1358,6 · 1516,8
-min = 54,1 ms · max = 1516,8 ms · moyenne = 469,8 ms · médiane = 291,9 ms
+min = 54,1 ms · max = 1516,8 ms · moyenne = 469,8 ms · médiane = 275,95 ms
 0/12 sous la cible de 50 ms (le MEILLEUR essai, 54,1 ms, la dépasse déjà légèrement)
 ```
 
+(Médiane corrigée d'une erreur de calcul relevée en revue : sur douze
+valeurs triées, la médiane est la moyenne des deux valeurs centrales
+— (260,0 + 291,9) / 2 = 275,95 — pas l'élément d'indice `longueur/2`, qui
+donne le 7ᵉ élément et non le milieu. L'écart avec le chiffre initialement
+publié, 291,9, est de 15,95 ms, soit 5,8 % de la valeur corrigée ; il ne
+change aucun verdict.)
+
 **Verdict : non atteint, et de loin** — y compris sur le meilleur des 12
 essais. La variance est elle-même un résultat important : un facteur 28
-entre le meilleur et le pire essai n'est pas du bruit de mesure ordinaire,
-c'est la signature du même goulot que le critère 2 (voir plus bas).
+entre le meilleur et le pire essai n'est pas du bruit de mesure ordinaire.
 
-**Étage responsable** : principalement l'encodage, pour la même raison que
-le critère 2 — un stimulus visuel doit attendre le prochain créneau de
-soumission accepté par l'encodeur, dont le rythme (~30 Hz, irrégulier) borne
-mécaniquement le meilleur cas à ~33 ms d'attente moyenne et explique la
-longue traîne (jusqu'à 1,5 s) si l'encodeur traverse une phase moins
-régulière. Facteur aggravant mesuré indépendamment : le **tampon de gigue**
+**Essai complémentaire, avec télémétrie de gel corrélée** : un second relevé
+de 12 essais a été conduit avec le harnais versionné
+(`client/recette/harness.mjs`), en échantillonnant `freezeCount` et
+`totalFreezesDuration` (`getStats()`, disponibles sur la piste vidéo)
+immédiatement avant et après chaque essai, pour vérifier plutôt que
+supposer l'origine de la traîne :
+
+```
+valeurs (ms) : 83,0 · 89,1 · 134,6 · 241,1 · 285,3 · 321,7 · 340,6 · 351,0 · 641,8 · 877,6 · 1164,0 · 1449,9
+min = 83,0 ms · max = 1449,9 ms · moyenne = 498,3 ms · médiane = 331,15 ms
+freezeCountDelta = 0 et totalFreezesDurationDelta = 0,0 ms sur les 12 essais,
+  y compris les quatre plus lents (641,8 à 1449,9 ms)
+```
+
+**Étage responsable — reformulé en hypothèse, pas en fait établi** :
+l'explication initialement avancée dans une version antérieure de ce
+document (« c'est la signature du goulot d'encodeur du critère 2 ») allait
+au-delà de ce que les données établissaient. Le goulot d'encodeur mesuré au
+critère 2 (~30 Hz au lieu de 60 Hz) explique mécaniquement une attente
+d'environ un cycle manqué, soit ~33 ms — pas un facteur allant jusqu'à 28.
+Le second relevé, ci-dessus, **infirme partiellement** l'hypothèse d'un arrêt
+net de capture/encodage comme cause des essais les plus lents : si la
+capture ou l'encodage s'étaient réellement arrêtés pendant 600 ms à 1,45 s,
+le détecteur de gel du navigateur (qui compare l'écart entre deux images
+consécutives à l'écart attendu) se serait presque certainement déclenché —
+il ne s'est déclenché sur **aucun** des douze essais, y compris les plus
+lents. Le document liste par ailleurs deux autres causes actives pendant
+cette recette et non exclues (instabilité de la VM, dérive du focus —
+voir « Ce qui a été appris ») : cet essai ne permet pas non plus de les
+écarter.
+
+Piste alternative, cohérente avec un motif observé dans le second relevé
+sans être démontrée : les essais 3 à 6 forment une **suite quasi monotone
+croissante** (641,8 → 877,6 → 1164,0 → 1449,9 ms) suivie d'une chute nette à
+83,0 ms à l'essai suivant — une signature plus proche d'un **tampon de
+gigue adaptatif qui dérive puis se resynchronise** que d'un événement isolé
+répété. Cohérent avec l'observation indépendante que le tampon de gigue
+affiché par l'overlay (35–55 ms en régime établi) est déjà proche de son
+propre sous-budget de 20 ms : un tampon dont la cible dérive occasionnellement
+vers le haut expliquerait les deux symptômes à la fois. Cette hypothèse
+n'est pas tranchée par les données de cette recette — elle demanderait une
+mesure dédiée de `jitterBufferDelay`/`jitterBufferTarget` échantillonnée en
+continu, pas seulement avant/après chaque essai.
+
+**Facteur aggravant confirmé indépendamment** : le **tampon de gigue**
 lui-même tourne autour de 35–55 ms dans les essais à 30 i/s (colonne
 « tampon » de l'overlay) — à lui seul, il dépasse déjà le sous-budget de
 20 ms alloué à « tampon de gigue + décodage » combinés. Cause probable :
 `playoutDelayHint`/`jitterBufferTarget` (mentionnés au §3.3 de la spec comme
 optimisation prévue) ne sont **jamais positionnés** côté client — vérifié
 par recherche dans `client/src/*.ts` : aucune occurrence. C'est un levier
-concret et non exploité pour la suite.
+concret et non exploité pour la suite — **mais avec une mise en garde** : le
+rythme d'encodage documenté au critère 2 est lui-même irrégulier (~30 Hz,
+pas un métronome parfait). Réduire agressivement `jitterBufferTarget` sans
+d'abord fiabiliser ce rythme risque de convertir de la latence en gels
+visibles (le tampon absorbe aujourd'hui une partie de cette irrégularité) —
+un compromis, pas un gain net garanti. Le prochain chantier qui touche ce
+réglage devrait mesurer `freezeCount`/`totalFreezesDuration` en fonction de
+plusieurs valeurs de `jitterBufferTarget`, plutôt que de minimiser la cible
+à l'aveugle.
 
 ## Critère 4 — Souris, clavier, molette : ATTEINT (avec une réserve)
 
@@ -208,16 +272,28 @@ implémentée dans `stats.ts` conformément au brief) :
   de la latence glass-to-glass réelle.
 
 **Méthode 2 — touche→photon, horloge unique** (nouvelle, écrite pour cette
-recette, harnais temporaire non commité) : un script piloté par CDP
-(Chrome sans interface) dispatche un `KeyboardEvent` synthétique
-(`code: 'Space'`) sur `window` — exactement l'événement que
-`client/src/input.ts` écoute réellement — et chronomètre, dans la **même
-horloge JavaScript** (`performance.now()`), le moment où un motif visuel
-plein écran (bascule noir/blanc sur une page de test dédiée,
-`C:\dev`-servie localement) change de couleur dans l'élément `<video>`
-décodé. La détection utilise `video.requestVideoFrameCallback`, qui fournit
-`metadata.presentationTime` — l'estimation du navigateur du moment où
-l'image a effectivement été présentée à l'écran, pas seulement décodée.
+recette, harnais versionné dans `client/recette/` — voir « Instrument versionné »
+ci-dessous) : un script piloté par CDP (Chrome sans interface) dispatche un
+`KeyboardEvent` synthétique (`code: 'Space'`) sur `window` — exactement
+l'événement que `client/src/input.ts` écoute réellement — et chronomètre,
+dans la **même horloge JavaScript** (`performance.now()`), le moment où un
+motif visuel plein écran (bascule noir/blanc sur `client/recette/latency-test.html`,
+servie localement puis ouverte dans Firefox côté VM) change de couleur dans
+l'élément `<video>` décodé. La détection utilise
+`video.requestVideoFrameCallback`, qui fournit `metadata.expectedDisplayTime`
+— le vsync par lequel le navigateur *s'attend* à ce que l'image soit
+affichée, c'est-à-dire l'estimation la plus proche du moment d'affichage
+réel. Point corrigé en revue : `metadata.presentationTime`, utilisé par
+erreur dans une version antérieure de ce document et du harnais, mesure
+autre chose — le moment où le navigateur a **soumis** l'image au
+compositeur, un cycle d'affichage plus tôt. L'écart entre les deux est de
+l'ordre d'un cycle d'affichage (quelques millisecondes), négligeable face
+aux latences mesurées ici (54 ms à 1,5 s), et s'il joue, c'est dans le sens
+où la latence réelle est très légèrement supérieure à ce qu'aurait rapporté
+`presentationTime` — aucun verdict ne change. Le harnais utilise désormais
+`expectedDisplayTime` (avec repli sur `presentationTime` si absent d'une
+implémentation donnée) ; les chiffres du relevé complémentaire ci-dessus
+(avec télémétrie de gel) ont été mesurés avec la version corrigée.
 
 - Ce qu'elle mesure : l'aller-retour complet réellement vécu par
   l'utilisateur pour un stimulus donné — envoi sur le canal de données →
@@ -231,7 +307,7 @@ l'image a effectivement été présentée à l'écran, pas seulement décodée.
   LAN typiquement inférieur à 1 ms), le temps de traitement `SendInput` côté
   Windows (sub-milliseconde), et le temps que met Firefox à réagir à
   l'événement clavier et à repeindre (généralement inférieur à une image).
-  Ce surcoût est real mais faible comparé aux écarts mesurés (54 ms à
+  Ce surcoût est réel mais faible comparé aux écarts mesurés (54 ms à
   1,5 s) — l'essentiel de la mesure reflète bien la chaîne vidéo.
 - Limite reconnue : un seul point de mesure par essai (le centre de
   l'image), et le seuil de détection de changement de couleur (somme des
@@ -241,10 +317,31 @@ l'image a effectivement été présentée à l'écran, pas seulement décodée.
 **Pourquoi la méthode 2 est retenue comme la mesure de référence** : elle ne
 suppose rien sur la symétrie du réseau, elle traverse réellement tous les
 étages (y compris ceux qu'un budget théorique doit couvrir), et elle a été
-vérifiée reproductible (12 essais indépendants, même chaîne, même
-Firefox/agent). Le brief demandait explicitement une mesure plus honnête si
-elle était à portée : celle-ci l'est, et elle est nettement moins flatteuse
-que l'approximation.
+vérifiée reproductible (deux relevés de 12 essais indépendants chacun, même
+chaîne, même Firefox/agent, à quelques heures d'écart). Le brief demandait
+explicitement une mesure plus honnête si elle était à portée : celle-ci
+l'est, et elle est nettement moins flatteuse que l'approximation.
+
+### Instrument versionné
+
+Le harnais est commité (une version antérieure ne vivait que dans un
+répertoire temporaire de session — corrigé en revue, avant que le fichier
+ne disparaisse et que seule la prose ne subsiste) :
+
+- `client/recette/harness.mjs` — les deux modes (`stats`, `latency`),
+  usage documenté en tête de fichier.
+- `client/recette/latency-test.html` — la page de test pilotée par le mode
+  `latency` (bascule noir/blanc sur Espace).
+- `client/recette/scroll-test.html` — la page de test pilotée par le mode
+  `stats` (bandes de couleur, défilement).
+
+Reproduction : chaîne complète montée (signaling, client Vite, agent via
+`scripts/run-agent.sh`), la page de test correspondante servie depuis cette
+machine (`python3 -m http.server 8099` dans `client/recette/`, ou pointer
+directement sur le fichier) et ouverte dans Firefox côté VM, puis
+`node client/recette/harness.mjs latency http://127.0.0.1:5173/?session=<id> 12`.
+Voir « Ce qui a été appris » ci-dessous pour le piège du focus à respecter
+avant de lancer une mesure.
 
 ---
 
@@ -419,15 +516,26 @@ ultérieur sensible à la molette (le jeu vidéo, notamment).
 
 Deux critères sur cinq sont tenus sans réserve (capture par fenêtre,
 entrées — avec la réserve molette ci-dessus). Les trois autres — débit,
-latence, redimensionnement fiable — pointent tous, par des chemins de
-mesure indépendants, vers le **même étage** : l'encodage matériel H.264, dont
-le rythme de soumission accepté (~30 Hz) ne suit pas la cadence de la
-boucle de transport (60 Hz), et dont la reconstruction à froid domine le
-délai de redimensionnement. C'est le prérequis de travail le plus clair pour
-la suite : tant que cet écart entre 30 Hz et 60 Hz n'est pas expliqué et
-corrigé côté pilote NVENC/Media Foundation, ni le débit ni la latence ne
-pourront atteindre leur cible, quelle que soit l'optimisation apportée
-ailleurs dans la chaîne (réseau et capture sont déjà largement dans leur
-budget). Le tampon de gigue non réglé (`playoutDelayHint`/
-`jitterBufferTarget` jamais positionnés) est un second levier, plus simple,
-à traiter en parallèle.
+latence, redimensionnement fiable — sont chacun affectés par le même
+étage à des degrés de certitude différents, à ne pas aplatir en une seule
+affirmation : l'encodage matériel H.264, dont le rythme de soumission
+accepté (~30 Hz) ne suit pas la cadence de la boucle de transport (60 Hz),
+explique **solidement** le débit (mesure directe du rythme
+`METransformNeedInput`) et **solidement** la reconstruction à froid qui
+domine le délai de redimensionnement. Pour la latence, seul le **plancher**
+(meilleurs essais, 54 à 133 ms, cohérent avec une attente d'environ un
+cycle manqué) se rattache à ce même mécanisme de façon plausible ; la
+**traîne** (jusqu'à 1,5 s) reste, à l'issue de cette recette, une question
+ouverte — l'hypothèse la plus cohérente avec les données récoltées est une
+dérive du tampon de gigue adaptatif plutôt qu'un arrêt de capture/encodage
+(voir critère 3). C'est néanmoins le prérequis de travail le plus clair
+pour la suite : tant que le rythme d'encodage à 30 Hz n'est pas expliqué et
+corrigé côté pilote NVENC/Media Foundation, le débit ne pourra pas
+atteindre sa cible, et la latence ne pourra pas descendre sous son plancher
+actuel, quelle que soit l'optimisation apportée ailleurs dans la chaîne
+(réseau et capture sont déjà largement dans leur budget). Le tampon de
+gigue non réglé (`playoutDelayHint`/`jitterBufferTarget` jamais positionnés)
+est un second levier à traiter en parallèle — mais pas à l'aveugle : voir la
+mise en garde du critère 3 sur le risque de convertir de la latence en gels
+si ce réglage est durci avant que le rythme d'encodage ne soit lui-même
+régularisé.

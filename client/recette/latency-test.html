@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+<head><title>latency-test</title></head>
+<body style="margin:0;padding:0;height:100vh;width:100vw;background:#000000;overflow:hidden">
+<script>
+  // Bascule tout le fond de page entre noir et blanc à chaque pression de la
+  // barre espace. Sert de motif visuel net pour chronométrer, dans un seul
+  // domaine d'horloge (celui du navigateur client), le délai entre l'envoi
+  // d'une touche et son effet visible dans le flux vidéo décodé.
+  var state = false;
+  document.addEventListener('keydown', function (e) {
+    if (e.code === 'Space') {
+      state = !state;
+      document.body.style.background = state ? '#ffffff' : '#000000';
+    }
+  });
+</script>
+</body>
+</html>

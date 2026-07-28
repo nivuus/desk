@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+<head><title>scroll-test</title>
+<style>
+  html,body{margin:0;padding:0;}
+  .band{height:300px;font:bold 48px sans-serif;color:#fff;display:flex;align-items:center;justify-content:center;}
+</style>
+</head>
+<body id="body"></body>
+<script>
+  // Page longue à bandes de couleur alternées, pour un défilement réel et
+  // visuellement non ambigu (chaque bande diffère de sa voisine).
+  var body = document.getElementById('body');
+  var hues = [];
+  for (var i = 0; i < 120; i++) {
+    var div = document.createElement('div');
+    div.className = 'band';
+    div.style.background = 'hsl(' + ((i * 37) % 360) + ',80%,45%)';
+    div.textContent = 'BAND ' + i;
+    body.appendChild(div);
+  }
+</script>
+</html>
