@@ -14,7 +14,15 @@ use crate::window;
 
 pub struct WindowsSource {
     hwnd: HWND,
-    capture: DesktopCapture,
+    /// `None` seulement de façon transitoire, le temps d'un `resize` (voir son
+    /// commentaire) : DXGI n'autorise qu'une seule instance vivante
+    /// d'`IDXGIOutputDuplication` par sortie et par processus à la fois, donc
+    /// l'ancienne capture doit être explicitement relâchée avant que
+    /// `DesktopCapture::new()` ne rappelle `DuplicateOutput`. Ne vaut jamais
+    /// `None` en dehors de cette fenêtre : `capture()`/`capture_mut()` le
+    /// supposent et paniquent sinon, un signe de bug plutôt qu'un état à
+    /// gérer silencieusement.
+    capture: Option<DesktopCapture>,
     /// Région de l'écran à recadrer, recalculée à chaque redimensionnement.
     region: Rect,
     encoder: H264Encoder,
@@ -70,7 +78,7 @@ impl WindowsSource {
 
         Ok(Self {
             hwnd,
-            capture,
+            capture: Some(capture),
             region,
             encoder,
             width,
@@ -85,6 +93,13 @@ impl WindowsSource {
 
     pub fn hwnd(&self) -> HWND {
         self.hwnd
+    }
+
+    /// Capture courante, mutable. Panique hors de `resize` (voir le
+    /// commentaire du champ) : ce n'est alors jamais `None`, une panique ici
+    /// trahirait un bug plutôt qu'un état normal à absorber silencieusement.
+    fn capture_mut(&mut self) -> &mut DesktopCapture {
+        self.capture.as_mut().expect("capture toujours présente hors de resize()")
     }
 
     /// Redimensionne la fenêtre et reconstruit la chaîne d'encodage.
@@ -104,26 +119,39 @@ impl WindowsSource {
         std::thread::sleep(std::time::Duration::from_millis(50));
         let window_rect = window::client_rect_on_screen(self.hwnd)?;
 
+        // Relâche explicitement l'ancienne capture (donc son
+        // `IDXGIOutputDuplication`) AVANT d'en créer une nouvelle. DXGI
+        // n'autorise qu'une seule instance vivante de la duplication pour une
+        // sortie donnée, dans un même processus : une simple réaffectation
+        // (`self.capture = Some(DesktopCapture::new()?)`) évaluerait le
+        // membre droit — donc `DuplicateOutput` — avant de remplacer
+        // l'ancien `Some`, laissant les deux exister en même temps le temps
+        // de l'appel. `DuplicateOutput` échoue alors avec « duplication de
+        // la sortie écran » — observé lors de l'essai bout en bout de la
+        // tâche 13, avant ce correctif.
+        self.capture = None;
+
         // Un NOUVEAU périphérique D3D11 est créé ici : `DesktopCapture::new`
         // pose `SetMultithreadProtected(TRUE)` sur CE périphérique à chaque
         // appel (voir capture.rs, champ `context`/`multithread`) — la
         // protection est donc reconstruite avec lui, pas seulement héritée de
-        // l'ancien périphérique qui va être libéré. Sans cela le blocage
-        // intermittent d'`AcquireNextFrame` documenté à la tâche 10
+        // l'ancien périphérique qui vient d'être libéré. Sans cela le
+        // blocage intermittent d'`AcquireNextFrame` documenté à la tâche 10
         // réapparaîtrait après tout redimensionnement.
-        self.capture = DesktopCapture::new()?;
-        let (dw, dh) = self.capture.desktop_size();
+        let new_capture = DesktopCapture::new()?;
+        let (dw, dh) = new_capture.desktop_size();
         self.region = crop_region(window_rect, dw, dh)
             .ok_or_else(|| anyhow::anyhow!("la fenêtre est hors de l'écran"))?;
         let (actual_width, actual_height) = (self.region.width, self.region.height);
 
         self.encoder = H264Encoder::new(
-            self.capture.device(),
+            new_capture.device(),
             actual_width,
             actual_height,
             self.fps,
             self.bitrate,
         )?;
+        self.capture = Some(new_capture);
         self.encoder.request_keyframe()?;
         self.width = actual_width;
         self.height = actual_height;
@@ -238,7 +266,8 @@ impl VideoSource for WindowsSource {
         // image que sur changement — cas courant et normal, voir
         // capture.rs).
         let mut submitted = false;
-        match self.capture.next_frame(self.region) {
+        let region = self.region;
+        match self.capture_mut().next_frame(region) {
             Ok(Some(frame)) => {
                 let pts = self.next_pts_90k;
                 if let Err(e) = self.encoder.submit(&frame, pts) {
@@ -314,5 +343,13 @@ impl VideoSource for WindowsSource {
     /// simple bureau immobile (voir `next_frame`).
     fn is_exhausted(&self) -> bool {
         self.fatal || !self.is_alive()
+    }
+
+    fn resize(&mut self, width: u32, height: u32) -> Result<()> {
+        WindowsSource::resize(self, width, height)
+    }
+
+    fn is_alive(&self) -> bool {
+        WindowsSource::is_alive(self)
     }
 }

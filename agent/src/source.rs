@@ -30,6 +30,21 @@ pub trait VideoSource {
     fn is_exhausted(&self) -> bool {
         false
     }
+
+    /// Redimensionne la source, si elle le permet.
+    ///
+    /// Par défaut sans effet : une source fichier ignore la demande. La source
+    /// Windows, elle, redimensionne la fenêtre et reconstruit sa chaîne.
+    fn resize(&mut self, _width: u32, _height: u32) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    /// Faux quand la source a définitivement disparu — fenêtre fermée, par
+    /// exemple. À distinguer de `is_exhausted`, qui signale l'épuisement d'un
+    /// flux fini.
+    fn is_alive(&self) -> bool {
+        true
+    }
 }
 
 /// Source de test rejouant un fichier H.264 Annex-B en boucle.
@@ -194,5 +209,23 @@ mod tests {
         // 300 images à 1500 ticks (90000 / 60) : l'horodatage au bouclage
         // continue la progression linéaire au lieu de redémarrer à zéro.
         assert_eq!(horodatages[300], 300 * (CLOCK_RATE_HZ / 60));
+    }
+
+    #[test]
+    fn resize_par_defaut_ignore_la_demande_et_ne_change_pas_les_dimensions() {
+        // `FileSource` ne redéfinit pas `resize` : la méthode par défaut du
+        // trait doit être un no-op qui réussit, sans jamais toucher aux
+        // dimensions de la source fichier (tâche 13, source.rs).
+        let mut source = FileSource::from_annex_b(flux_de_test(2), 640, 480, 60).unwrap();
+        source.resize(1920, 1080).expect("le no-op par défaut ne doit jamais échouer");
+        assert_eq!(source.dimensions(), (640, 480), "les dimensions ne doivent pas bouger");
+    }
+
+    #[test]
+    fn is_alive_par_defaut_vaut_toujours_vrai() {
+        // `FileSource` boucle indéfiniment et ne « meurt » jamais : la
+        // méthode par défaut du trait doit refléter cela.
+        let source = FileSource::from_annex_b(flux_de_test(2), 640, 480, 60).unwrap();
+        assert!(source.is_alive());
     }
 }

@@ -39,6 +39,12 @@ use crate::source::VideoSource;
 /// Cadence d'envoi des images : une toutes les 16,67 ms (~60 Hz).
 const FRAME_INTERVAL: Duration = Duration::from_micros(16_667);
 
+/// Intervalle minimal entre deux vérifications de `source.is_alive()` dans
+/// `act_on_timeout`. Cet appel coûte un appel système à chaque tour côté
+/// Windows (recherche de la fenêtre) ; une fenêtre fermée le reste, inutile
+/// de le revérifier à 60 Hz.
+const ALIVE_CHECK_INTERVAL: Duration = Duration::from_secs(1);
+
 /// Tranche maximale d'une attente sans donnée sur le socket, dans la boucle
 /// de sondage non bloquant d'`act_on_timeout` (branche c).
 ///
@@ -319,6 +325,17 @@ pub struct Session {
     /// première version de ce correctif, reproduisait exactement la
     /// violation qu'il prétendait résoudre.
     video_write_pending_drain: bool,
+    /// Dernier redimensionnement demandé, pas encore appliqué. On ne garde
+    /// que le plus récent : pendant qu'un utilisateur tire un bord, les
+    /// demandes intermédiaires n'ont aucun intérêt. Appliqué dans
+    /// `act_on_timeout`, jamais depuis `dispatch_channel_data` — voir le
+    /// commentaire de ce champ à son point de consommation.
+    pending_resize: Option<(u32, u32)>,
+    /// Dernier instant où `source.is_alive()` a été interrogée. Cet appel
+    /// coûte un appel système côté Windows (recherche de fenêtre) : on
+    /// l'espace plutôt que de le refaire à chaque tour de boucle — une
+    /// fenêtre fermée le reste (voir `ALIVE_CHECK_INTERVAL`).
+    last_alive_check: Instant,
     /// Résolution du minuteur Windows abaissée à 1 ms pour la durée de vie de
     /// la session (voir `TimerResolutionGuard`). Champ jamais lu : sa seule
     /// raison d'être est de vivre aussi longtemps que `Session` et de
@@ -380,6 +397,8 @@ impl Session {
             warned_negotiation: false,
             consecutive_recv_errors: 0,
             video_write_pending_drain: false,
+            pending_resize: None,
+            last_alive_check: Instant::now(),
             _timer_resolution: TimerResolutionGuard::new(),
         };
 
@@ -451,9 +470,9 @@ impl Session {
     }
 
     /// Réagit à `Output::Timeout` : décide et effectue AU PLUS UNE mutation
-    /// (drainage différé d'une image déjà écrite, message de contrôle en
-    /// attente, image vidéo due, ou traitement d'un paquet entrant /
-    /// échéance str0m), puis rend la main à `run()`, qui rappelle
+    /// de `Rtc` (drainage différé d'une image déjà écrite, message de
+    /// contrôle en attente, image vidéo due, ou traitement d'un paquet
+    /// entrant / échéance str0m), puis rend la main à `run()`, qui rappelle
     /// immédiatement `poll_output` — c'est cette structure qui garantit le
     /// drainage avant toute mutation suivante (C2 de la revue) : il
     /// n'existe aucun chemin de code qui mute `Rtc` sans que `run()` ne
@@ -462,6 +481,19 @@ impl Session {
     /// garantie vraie même juste après l'écriture d'une image : sans elle,
     /// `write_frame` (une mutation) suivi directement de `handle_input`
     /// (une seconde) violerait la même règle.
+    ///
+    /// Deux branches supplémentaires (a1, a2 : redimensionnement en attente
+    /// et vérification de la fenêtre) ne mutent JAMAIS `Rtc` — elles ne
+    /// touchent que `self.source` et, au plus, mettent en file un message de
+    /// contrôle (`queue_control`, qui n'empile qu'un `VecDeque`, sans effet
+    /// sur `Rtc` avant le tour suivant). Chacune rend quand même la main
+    /// immédiatement après son action plutôt que d'enchaîner sur la branche
+    /// suivante dans le même appel : le redimensionnement reconstruit une
+    /// chaîne d'encodage entière (potentiellement long, voir
+    /// `WindowsSource::resize`), et le traiter comme une étape à part
+    /// entière — au même titre que les branches qui, elles, mutent
+    /// réellement `Rtc` — garde cette fonction lisible comme une seule
+    /// liste de priorités plutôt que de mêler deux styles différents.
     ///
     /// Ne prend pas `on_input`/`on_control` : `handle_input` ne produit
     /// jamais d'événement applicatif directement (les événements qui en
@@ -510,6 +542,53 @@ impl Session {
         if self.ending {
             // Message de fin envoyé (file vidée ci-dessus) : terminé.
             return Ok(Tick::Disconnected);
+        }
+
+        // a1) Redimensionnement en attente, à traiter avant la branche
+        // vidéo. `self.source.resize()` ne mute jamais `Rtc` (elle
+        // reconstruit uniquement la source vidéo, pas la session WebRTC),
+        // mais reste une opération potentiellement longue — fenêtre ET
+        // périphérique D3D11 neufs, voir `WindowsSource::resize` — traitée
+        // ici comme une étape à part entière plutôt que mêlée à d'autres
+        // dans le même appel, à l'image des autres branches de cette
+        // fonction.
+        if let Some((width, height)) = self.pending_resize.take() {
+            match self.source.resize(width, height) {
+                Ok(()) => {
+                    // La fenêtre peut refuser la taille demandée (bornes
+                    // minimales, alignement pair...) : le navigateur doit
+                    // connaître les dimensions RÉELLEMENT obtenues, pas
+                    // celles demandées.
+                    let (actual_width, actual_height) = self.source.dimensions();
+                    self.dimensions = (actual_width, actual_height);
+                    self.queue_control(AgentControl::ready(actual_width, actual_height));
+                }
+                Err(e) => {
+                    // Un échec de redimensionnement ne doit pas terminer la
+                    // session : on journalise et la session continue avec
+                    // les dimensions précédentes.
+                    tracing::warn!(
+                        erreur = %e,
+                        width,
+                        height,
+                        "échec du redimensionnement, ignoré"
+                    );
+                }
+            }
+            return Ok(Tick::Continue);
+        }
+
+        // a2) La fenêtre capturée a-t-elle disparu ? Coûte un appel système
+        // côté Windows (recherche de la fenêtre) : espacé par
+        // `ALIVE_CHECK_INTERVAL` plutôt que vérifié à chaque tour de
+        // boucle — une fenêtre fermée le reste.
+        let now = Instant::now();
+        if now.saturating_duration_since(self.last_alive_check) >= ALIVE_CHECK_INTERVAL {
+            self.last_alive_check = now;
+            if !self.source.is_alive() {
+                self.begin_ending("fenêtre fermée");
+                return Ok(Tick::Continue);
+            }
         }
 
         // b) Une image vidéo, si son échéance est atteinte et la piste
@@ -828,7 +907,7 @@ impl Session {
     }
 
     fn dispatch_channel_data(
-        &self,
+        &mut self,
         data: &str0m::channel::ChannelData,
         on_input: &mut impl FnMut(InputMessage),
         on_control: &mut impl FnMut(ClientControl),
@@ -840,7 +919,24 @@ impl Session {
             }
         } else {
             match std::str::from_utf8(&data.data).map(serde_json::from_str::<ClientControl>) {
-                Ok(Ok(message)) => on_control(message),
+                Ok(Ok(message)) => {
+                    // Le redimensionnement ne s'applique pas ici : ce code
+                    // s'exécute pendant le drainage de `poll_output`, et
+                    // reconstruire la chaîne d'encodage y serait long et
+                    // romprait l'invariant de drainage de str0m (une seule
+                    // mutation de `Rtc` par appel). On mémorise seulement la
+                    // demande la plus récente ; `act_on_timeout` l'applique à
+                    // son tour, comme une étape à part entière.
+                    //
+                    // `ClientControl` n'a qu'une seule variante aujourd'hui :
+                    // une déstructuration directe (pas `if let`) évite
+                    // l'avertissement « pattern irréfutable ». Par référence,
+                    // pour laisser `message` intact et le transmettre
+                    // ensuite, inchangé, à `on_control`.
+                    let ClientControl::Resize { width, height, .. } = &message;
+                    self.pending_resize = Some((*width, *height));
+                    on_control(message);
+                }
                 Ok(Err(e)) => tracing::warn!(erreur = %e, "message de contrôle invalide"),
                 Err(e) => tracing::warn!(erreur = %e, "contrôle non UTF-8"),
             }
