@@ -1,5 +1,6 @@
 mod audio;
 mod clock;
+mod cursor;
 mod frames;
 mod geometry;
 mod h264;
