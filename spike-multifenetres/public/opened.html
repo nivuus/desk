@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>Spike — fenêtre ouverte</title>
+    <style>body { font: 16px/1.5 system-ui, sans-serif; padding: 2rem; }</style>
+</head>
+<body>
+    <h1>Fenêtre ouverte ✓</h1>
+    <p>Variante <strong id="variante"></strong>. Signal de vie envoyé au serveur.</p>
+    <p>Cette fenêtre peut être fermée.</p>
+    <script type="module">
+        // Le signal de vie passe par un fetch et non par window.opener.postMessage :
+        // clients.openWindow() (variante 4) n'établit aucun opener. Un seul canal
+        // pour les quatre variantes évite d'avoir à interpréter deux mécanismes
+        // différents dans le même tableau de résultats.
+        const variante = new URLSearchParams(location.search).get('variant') ?? '0';
+        document.getElementById('variante').textContent = variante;
+        fetch(`/alive?variant=${encodeURIComponent(variante)}`).catch((erreur) => {
+            console.error('[spike] signal de vie non transmis', erreur);
+        });
+    </script>
+</body>
+</html>

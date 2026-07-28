@@ -1,5 +1,85 @@
 <!doctype html>
 <html lang="fr">
-<head><meta charset="utf-8"><title>Spike multi-fenêtres</title></head>
-<body><p>Page de test — remplacée en tâche 3.</p></body>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Spike multi-fenêtres</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#111827">
+    <link rel="icon" href="/icon-192.png">
+    <style>
+        body { font: 16px/1.5 system-ui, sans-serif; max-width: 52rem; margin: 2rem auto; padding: 0 1rem; }
+        table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+        th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #e4e4e7; vertical-align: top; }
+        button { font: inherit; padding: .4rem .8rem; cursor: pointer; }
+        button:disabled { opacity: .5; cursor: default; }
+        #journal { margin-top: 1rem; font-family: ui-monospace, monospace; font-size: .85rem; }
+        .ligne { padding: .2rem 0; border-bottom: 1px solid #f4f4f5; }
+        .succes { color: #15803d; }
+        .echec { color: #b91c1c; }
+        .alerte { color: #a16207; }
+        .connecte { color: #15803d; }
+        .deconnecte { color: #b91c1c; }
+        .verdict { font-weight: 600; }
+    </style>
+</head>
+<body>
+    <h1>Spike — ouverture de fenêtre sans geste utilisateur</h1>
+    <p>
+        WebSocket : <span id="etat" class="deconnecte">déconnecté</span> ·
+        <a href="/reset.html">étape 0 — hygiène de l'origin</a>
+    </p>
+    <p>
+        Chaque bouton <strong>arme</strong> sa variante : l'ouverture est ensuite
+        commandée par le serveur, 15 s plus tard. Ne touchez ni souris ni clavier
+        pendant le compte à rebours (sauf variante 3, dont le clic est le
+        mécanisme testé).
+    </p>
+
+    <table>
+        <thead>
+            <tr><th>#</th><th>Variante</th><th>Armer</th><th>Verdict</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>1</td>
+                <td>Onglet normal, sans activation — <em>témoin</em></td>
+                <td><button data-variante="1" data-libelle="Armer 1">Armer 1</button></td>
+                <td class="verdict" id="verdict-1">—</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>PWA installée (<code>standalone</code>), sans activation</td>
+                <td><button data-variante="2" data-libelle="Armer 2">Armer 2</button></td>
+                <td class="verdict" id="verdict-2">—</td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>Armement sur le prochain clic</td>
+                <td><button data-variante="3" data-libelle="Armer 3">Armer 3</button></td>
+                <td class="verdict" id="verdict-3">—</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>Notification → <code>clients.openWindow()</code>, fenêtre en arrière-plan</td>
+                <td>
+                    <button id="permission">Autoriser les notifications</button>
+                    <button data-variante="4" data-libelle="Armer 4">Armer 4</button>
+                </td>
+                <td class="verdict" id="verdict-4">—</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Journal</h2>
+    <div id="journal"></div>
+
+    <script type="module" src="/app.js"></script>
+    <script type="module">
+        document.getElementById('permission').addEventListener('click', async () => {
+            const resultat = await Notification.requestPermission();
+            console.log('[spike] permission notifications :', resultat);
+        });
+    </script>
+</body>
 </html>
