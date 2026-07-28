@@ -240,9 +240,15 @@ Bénéficie à tout le produit, pas seulement au jeu.
   D**, qui devra construire au-delà de cette sonde d'activation.
 - **Encodage** : Media Foundation n'expose pas d'encodeur Opus. Passer par les
   bindings libopus (crate `opus` ou `audiopus`). 48 kHz stéréo, trames de 10 ms,
-  ~128 kbps, mode `RESTRICTED_LOWDELAY`, FEC in-band activé.
-- **Transport** : ajouter un media audio via `sdp_api()` de str0m. Le payload
-  type 111 est déjà déclaré (`agent/src/transport.rs:937`).
+  ~128 kbps, mode `RESTRICTED_LOWDELAY`, FEC in-band et DTX activés.
+- **Transport** : le PT 111 n'apparaît nulle part en production — seulement
+  dans deux fixtures de test (`agent/src/transport.rs`) — et la négociation ne
+  passe pas par `sdp_api()`. C'est `Rtc::builder().enable_opus(true)` qui
+  déclare le codec Opus ; sans cet appel, aucun type de charge utile Opus
+  n'est proposé et la piste ne se négocie jamais. C'est exactement l'erreur
+  que la spec du chantier A (§7) a corrigée pour elle-même — cette même
+  affirmation fausse était restée ici, dans le document qui alimente ce
+  chantier D.
 - **Synchronisation A/V** : horodatage sur une horloge commune, RTCP Sender
   Reports.
 - **Risque levé le 28/07/2026 (tâche 10 du chantier A)** : oui, la VM dispose

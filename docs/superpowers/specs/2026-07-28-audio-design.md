@@ -72,13 +72,15 @@ exige Windows.
 
 | Fichier | Responsabilité | Portable |
 | --- | --- | --- |
-| `agent/src/audio.rs` (créé) | Trait `AudioSource`, type `AudioPacket`, tampon circulaire borné `PacketRing`, source de test `ToneSource` (sinusoïde) | oui |
+| `agent/src/audio.rs` (créé) | Trait `AudioSource`, type `AudioPacket`, tampon circulaire borné `PacketRing` | oui |
 | `agent/src/opus.rs` (créé) | Enveloppe de l'encodeur libopus : configuration, encodage d'une trame de 10 ms | oui |
+| `agent/src/frames.rs` (créé) | Découpe le PCM capté (blocs irréguliers, à des instants irréguliers) en trames de 10 ms sur horloge réelle ; complète par du silence quand le tampon est vide | oui |
+| `agent/src/clock.rs` (créé) | Correspondance entre un horodatage de présentation (`pts`, une fréquence) et l'instant réel qu'il désigne, relativement à une origine commune aux deux médias | oui |
 | `agent/src/wasapi.rs` (créé) | Capture loopback brute : `IMMDeviceEnumerator`, `IAudioClient`, `IAudioCaptureClient`. Rend des blocs PCM | Windows |
-| `agent/src/windows_audio.rs` (créé) | Assemble wasapi + opus + fil dédié + canal ; implémente `AudioSource` | Windows |
-| `agent/src/transport.rs` (modifié) | Branche audio de la boucle, `audio_mid`, sélection du PT Opus, horodatage de capture |  |
-| `agent/src/h264.rs` (modifié) | `AccessUnit` porte l'instant de capture |  |
-| `agent/src/windows_source.rs` (modifié) | Renseigne cet instant ; accepte une origine d'horloge imposée |  |
+| `agent/src/windows_audio.rs` (créé) | Assemble wasapi + `frames` + opus + fil dédié + canal ; implémente `AudioSource` | Windows |
+| `agent/src/transport.rs` (modifié) | Branche audio de la boucle, `audio_mid`, sélection du PT Opus, horodatage de capture via `capture_instant` |  |
+| `agent/src/h264.rs` | Non touché par ce chantier : `AccessUnit` ne porte pas l'instant de capture (voir §6) |  |
+| `agent/src/windows_source.rs` (modifié) | Accepte une origine d'horloge imposée, partagée avec la source audio |  |
 | `agent/src/main.rs` (modifié) | Construit l'horloge de session et la source audio |  |
 | `client/src/webrtc.ts` (modifié) | Transceiver audio, flux unique à deux pistes, déblocage au geste |  |
 | `client/src/stats.ts` (modifié) | Métriques audio dans l'incrustation de mesure |  |
@@ -204,19 +206,27 @@ la rattraperait.
 `WindowsSource` horodate déjà ses images depuis une origine réelle
 (`clock_origin.elapsed()`, corrigé le 28/07 — le cadrage jeu §5 C, qui range
 encore le pacing des PTS parmi les correctifs à venir, est sur ce point périmé).
-L'instant de capture est donc **déjà connu ; il est simplement jeté**.
+L'instant de capture est donc **déjà connu**, mais uniquement sous forme de
+`pts_90k` : `AccessUnit` (`agent/src/h264.rs`) ne porte pas de champ
+`Instant` séparé, et ce chantier ne le lui ajoute pas — `h264.rs` n'est pas
+touché.
 
-Trois changements, tous locaux :
+La solution retenue reconstruit l'instant de capture depuis le PTS plutôt que
+de le transporter tel quel :
 
-1. `AccessUnit` gagne un champ `captured_at: Instant` ;
-2. les deux sources reçoivent la **même** origine d'horloge, créée une fois dans
-   `main.rs` et passée à la construction ;
-3. `write_frame` transmet `unit.captured_at` au lieu de `Instant::now()`, et le
-   chemin audio transmet `packet.captured_at`.
+1. `agent/src/clock.rs` (créé) porte `instant_from_pts(origin, pts, rate_hz)`,
+   la conversion pure PTS → instant réel, testable sous Linux ;
+2. les deux sources reçoivent la **même** origine d'horloge, créée une fois
+   dans `main.rs` et passée à la construction ;
+3. `Session::capture_instant(pts_90k)` (`agent/src/transport.rs`) applique
+   cette conversion à l'origine que la session a déjà retenue ; `write_frame`
+   l'appelle avant l'emprunt de `self.rtc.writer(mid)` (les deux emprunts sont
+   incompatibles) et passe le résultat à `writer.write(...)` comme `wallclock`.
 
-L'audio, lui, est exact par nature : son PTS est un **compte d'échantillons**
-depuis l'origine, à 48 kHz — pas une lecture d'horloge. `captured_at` s'en
-déduit, ce qui garantit que les deux quantités restent cohérentes entre elles.
+L'audio suit le même principe, via sa propre origine partagée et son propre
+taux (48 kHz) : son PTS est un **compte d'échantillons**, pas une lecture
+d'horloge, ce qui garantit que les deux pistes restent cohérentes entre elles
+sans qu'aucun `Instant` n'ait besoin de traverser les structures de données.
 
 Ce n'est pas un élargissement de périmètre : sans cette correction, le livrable
 du chantier serait un son désynchronisé, c'est-à-dire un défaut à la place d'une
@@ -330,8 +340,12 @@ Chaque chemin de dégradation journalise donc une fois, explicitement.
   bruit tout aussi bien.
 - **`opus.rs`** : une trame de 10 ms à 48 kHz stéréo consomme exactement 480
   échantillons par canal ; un compte différent est refusé.
-- **`audio.rs`** : `ToneSource` produit des PTS strictement croissants, espacés
-  de 480, sans trou — y compris à travers un intervalle de silence.
+- **`frames.rs`** : `FrameAssembler` produit des PTS strictement croissants,
+  espacés de 480, sans trou — y compris à travers un intervalle de silence
+  (`les_horodatages_avancent_de_480_sans_trou`). Pas de `ToneSource` : cette
+  garantie porte sur l'assemblage en trames, pas sur une source de test dédiée
+  — aucune n'a été construite, `audio.rs` n'expose qu'`AudioSource`,
+  `AudioPacket` et `PacketRing`.
 - **`audio.rs`** : à saturation, `PacketRing` rejette le plus **ancien**, ne
   bloque jamais, et incrémente son compteur. Un test nomme explicitement quel
   bout est jeté — c'est l'arbitrage du §5, et l'inverser passerait sinon
@@ -339,14 +353,22 @@ Chaque chemin de dégradation journalise donc une fois, explicitement.
 - **`transport.rs`** : le test de bouclage str0m existant (`transport.rs:1320`)
   étendu à une piste audio négociée — un paquet écrit côté agent est reçu côté
   pair, avec le PT attendu.
-- **`transport.rs`** : `write_frame` transmet bien `unit.captured_at` et non
-  l'instant courant (non-régression sur §6).
+- **`transport.rs`** : `write_frame` appelle bien `self.capture_instant(unit.pts_90k)`
+  et non `Instant::now()` (non-régression sur §6).
 
 ### Côté client
 
 - L'offre contient un `m=audio` en `recvonly` ;
 - deux pistes reçues aboutissent dans **un seul** `MediaStream` ;
 - le premier geste démute, et un second geste ne fait rien.
+
+Les deux premiers sont couverts dans `client/src/webrtc.test.ts`, via de
+fausses implémentations globales de `RTCPeerConnection`, `WebSocket` et
+`MediaStream` — `connectSession` les instancie directement plutôt que de les
+recevoir par injection, donc c'est la seule manière de les exercer sous Node
+sans navigateur réel. Ce que le test vérifie, c'est ce que `connectSession`
+**demande** (transceiver `audio` en `recvonly`, un seul flux porteur des deux
+pistes) — pas la génération SDP elle-même, hors de portée sans moteur WebRTC.
 
 La logique de démutage est testée par **injection** de l'élément et des
 écouteurs, sans toucher aux objets globaux — la technique retenue pour
