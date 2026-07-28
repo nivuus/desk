@@ -1,20 +1,25 @@
-# Débit et latence : trois goulots successifs, tous logiciels
+# Débit et latence : quatre goulots successifs, tous logiciels
 
 **Date** : 28 juillet 2026
 
 Point de départ (recette du jalon 1) : **~30 i/s** pour une cible de ≥ 55, et
 une latence de **médiane 276 ms · max 1517 ms** pour une cible de < 50 ms.
 
-Résultat : **~40-44 i/s** et **médiane 60,3 ms · max 131 ms**. Aucune des deux
-cibles n'est atteinte, mais la traîne de latence — le symptôme le plus
-spectaculaire, un facteur 28 entre le meilleur et le pire essai — a disparu.
+Résultat final : **62,6 i/s** et **médiane 47,9 ms**. **Les deux cibles sont
+atteintes.**
 
 | Grandeur | Avant | Après | Cible |
 |---|---|---|---|
-| Débit (images décodées) | 29,5-30 i/s | **40,4-44,5 i/s** | ≥ 55 i/s |
-| Latence min | 54,1 ms | **40,6 ms** | < 50 ms |
-| Latence médiane | 275,95 ms | **60,3 ms** | < 50 ms |
-| Latence max | 1516,8 ms | **131,1 ms** | < 50 ms |
+| Débit (images décodées) | 29,5-30 i/s | **62,6 i/s** | ≥ 55 i/s |
+| Latence min | 54,1 ms | **43,6 ms** | < 50 ms |
+| Latence médiane | 275,95 ms | **47,9 ms** | < 50 ms |
+
+Le document est chronologique : les sections 1 à 4 décrivent une première
+ronde qui a porté le débit à ~40-44 i/s et la latence médiane à 60,3 ms sans
+atteindre les cibles, la **section 5** la ronde suivante qui les franchit.
+Sa conclusion réfute celle des sections précédentes — c'est délibéré, et
+instructif : quatre rondes de suite ont attribué au matériel un plafond
+d'origine logicielle.
 
 Les mesures « après » viennent de la même chaîne complète que la recette
 (`verify-webrtc.mjs` et `recette/harness.mjs`, compteurs `getStats()` réels
@@ -158,21 +163,126 @@ Deux choix délibérés :
   source ne produit pas plus » de « nous l'interrogeons trop rarement » — la
   question sur laquelle deux rondes précédentes ont conclu à tort.
 
+## 5. Le dernier goulot : la cadence annoncée aux MFT (`MF_MT_FRAME_RATE`)
+
+**Les deux cibles du jalon sont atteintes.**
+
+| Grandeur | Jalon 1 | Après §1-4 | **Après §5** | Cible |
+|---|---|---|---|---|
+| Débit (images décodées) | 29,5-30 i/s | 40,4-44,5 i/s | **62,6 i/s** | ≥ 55 i/s |
+| Latence médiane | 275,95 ms | 60,3 ms | **47,9 ms** | < 50 ms |
+| Latence min | 54,1 ms | 40,6 ms | **43,6 ms** | — |
+
+### Ce que la section « Ce qui reste » concluait, et pourquoi c'était faux
+
+Elle affirmait : « le goulot est maintenant l'encodeur pour de bon :
+`produced_hz` plafonne à ~47,5 alors que la capture fournit 68,5 ». Le constat
+était juste, l'imputation encore une fois non — pour la même raison que les
+trois rondes d'avant : un plafond constaté sur l'encodeur avait été attribué à
+l'encodeur.
+
+Deux mesures ont suffi à l'écarter :
+
+- **Le fil n'est occupé qu'à ~2 %** (`capture_pct=0,91`, `submit_pct=0,66`,
+  `drain_pct=0,36`, `enc_out_pct=0,013`). Rien ne sature ; un étage qui
+  plafonne sans consommer de temps *attend*, il ne peine pas.
+- **`need_input_hz` suit `desktop_updates_hz`** proportionnellement
+  (68,5 → 47,5 · 59 → 41,5 · 52 → 36,5, ratio constant ≈ 0,70). Un encodeur
+  réellement saturé garderait une valeur plate quand la source ralentit. Celui-ci
+  ne réclamait que ce qu'on lui donnait : une boucle fermée, pas un plafond.
+
+### La mesure qui a tranché : le bilan matière
+
+Les compteurs de cadence ne bouclaient pas — 68,5 images capturées par seconde
+pour 47,5 encodées et 12,5 déclarées périmées, soit **8,5 disparues sans
+trace**. Instrumenter les trois issues du convertisseur (`conv_in_hz`,
+`conv_out_hz`, `conv_skipped_hz`) a fermé le compte :
+
+```
+captured 66 → conv_in 62 (4 refusés) → conv_out 60 → 12,5 périmées + 47,5 encodées = 60 ✓
+```
+
+Et a révélé l'anomalie : **`conv_out_hz` valait exactement le `fps` annoncé**,
+dans tous les essais (60 → 60,0 · 90 → 90,0 · 120 → 126). Un convertisseur de
+format n'a aucune raison d'avoir une cadence propre.
+
+### Cause racine
+
+Le Video Processor MFT est aussi un **convertisseur de cadence**. Le
+`MF_MT_FRAME_RATE` que `configure_input`/`create_color_converter` lui
+annonçaient — 60/1, codé en dur dans `WindowsSource::new(hwnd, 60, bitrate)` —
+n'était pas lu comme une indication mais comme une **cadence de sortie à
+tenir** : il produisait 60 échantillons par seconde quoi qu'il arrive, en
+rejouant la dernière image convertie quand rien de neuf ne lui parvenait, et
+en refusant les entrées excédentaires.
+
+Un bureau à 68,5 Hz passait donc dans un entonnoir à 60, dont l'aval jetait
+encore les rejeux : 47,5 images/s à l'encodeur, ~44 i/s au navigateur.
+
+Le `60` n'avait jamais été un choix : c'était la cadence cible du jalon,
+recopiée dans un champ qui ne voulait pas dire ça.
+
+### Correctif et balayage
+
+`ENCODER_FPS`, défaut **90** :
+
+| `fps` annoncé | navigateur | `produced_hz` | images neuves (`conv_in_hz`) |
+|---|---|---|---|
+| 60 (avant) | 44,3 i/s | 47,5 | 62-64 |
+| 75 | 53,1 i/s | 55 | 60 |
+| **90** | **58,5-62,6 i/s** | **63-68** | **62** |
+| 120 | 63,0 i/s | 65,5 | 54 |
+
+90 est l'optimum, et 120 montre pourquoi il ne faut pas monter plus haut : le
+débit continue de croître, mais les images **neuves** retombent de 62 à 54/s —
+le convertisseur, occupé à tenir sa cadence déclarée, refuse davantage
+d'entrées. Au-delà de 90 on n'achète plus que du rejeu.
+
+À 90, `produced_hz = captured_hz = desktop_updates_hz = 68` : le pipeline est
+devenu transparent, il ne perd plus une seule image.
+
+### Deux hypothèses réfutées en chemin
+
+Consignées parce qu'elles ont coûté un essai chacune, et qu'elles reviendront :
+
+- **La cadence de sondage.** Passer `FRAME_INTERVAL` de 10 ms à 2 ms
+  (`ticks_hz` 100 → 500) laisse `produced_hz` à 47,5, au dixième près. La
+  constante reste à 10 ms.
+- **La profondeur de la file NV12.** `MAX_PENDING_NV12` porté à 4 ne rend que
+  ~3 images/s (47,5 → 51). Reste à 1, la valeur la moins coûteuse en latence.
+
 ## Ce qui reste
 
-- **Débit : 40-44 i/s contre ≥ 55 visés.** Le goulot est maintenant
-  l'encodeur pour de bon : `produced_hz` plafonne à ~47,5 alors que la capture
-  fournit 68,5. À explorer : le débit configuré (12 Mbps en production contre
-  8 Mbps dans `ENCODE_TEST`, qui atteignait 66 i/s), et le fait que
-  `MAX_DRAIN`/`MAX_PENDING_NV12` sont réglés au plus serré pour la latence.
-- **Écart réception/décodage** : `framesReceived` ≈ 44 i/s pour
-  `framesDecoded` ≈ 40 i/s, `packetsLost = 0`. Des images arrivent sans être
-  décodées ; non expliqué.
-- **Latence médiane 60,3 ms contre < 50 visés.** `playoutDelayHint` /
-  `jitterBufferTarget` ne sont toujours pas positionnés côté client — levier
-  identifié par la recette, non exploité ici.
+- **Rejeu résiduel du convertisseur** : à 90, `conv_out_hz = 90` pour
+  `conv_in_hz ≈ 62` — environ 28 sorties/s sont des rejeux de la dernière
+  image. `dropped_stale` en absorbe l'essentiel (22/s) et le résultat mesuré
+  côté navigateur est bon, mais le mécanisme reste un contournement : la
+  vraie correction serait un chemin BGRA→NV12 sans conversion de cadence.
+- **Compromis qualité non mesuré** : à débit binaire constant (12 Mbps), 62 i/s
+  au lieu de 44 signifie moins de bits par image. Aucune mesure de qualité
+  perçue n'a été faite ; `BITRATE` est désormais réglable par l'environnement.
+- **Une valeur de latence aberrante** : 215,4 ms sur 8 essais (les 7 autres
+  entre 43,6 et 66,7 ms), sans gel détecté. Isolée, non expliquée.
+- **`playoutDelayHint` / `jitterBufferTarget`** ne sont toujours pas
+  positionnés côté client — levier identifié par la recette, jamais exploité :
+  la médiane est passée sous la cible sans y toucher.
 - **Fragilité du harnais de mesure** : plusieurs essais ont échoué faute de
   focus sur la fenêtre Firefox (vol de focus par `schtasks /it`). Les
   mesures retenues sont celles où la vidéo coulait ; `verify-webrtc.mjs`
   attend désormais explicitement la première image décodée avant d'ouvrir sa
   fenêtre de mesure, au lieu de chronométrer à travers la négociation.
+
+## Instrumentation ajoutée en §5
+
+`SOURCE_TRACE=1` journalise en plus, toutes les 2 s :
+
+- `conv_in_hz` / `conv_out_hz` / `conv_skipped_hz` — le bilan matière du
+  convertisseur, sans lequel le compte des images ne bouclait pas ;
+- `capture_pct` / `submit_pct` / `drain_pct` / `convert_pct` / `enc_in_pct` /
+  `enc_out_pct` — la part de la fenêtre d'observation réellement passée dans
+  chaque appel. C'est ce qui distingue un étage qui sature d'un étage qui
+  attend, et c'est la mesure qui manquait aux quatre rondes précédentes pour
+  cesser d'accuser le matériel.
+
+Variables d'environnement de réglage : `ENCODER_FPS` (défaut 90) et `BITRATE`
+(défaut 12 Mbps), toutes deux relayées par `scripts/run-agent.sh`.

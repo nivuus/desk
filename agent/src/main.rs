@@ -656,8 +656,25 @@ async fn main() -> Result<()> {
                     .ok()
                     .and_then(|v| v.parse().ok())
                     .unwrap_or(12_000_000);
-                tracing::info!(title, bitrate, "capture de la fenêtre Windows");
-                Box::new(windows_source::WindowsSource::new(hwnd, 60, bitrate)?)
+                // 90 et non 60 : cette valeur n'est pas une cadence cible, c'est
+                // le `MF_MT_FRAME_RATE` annoncé aux deux MFT — et le Video
+                // Processor s'en sert comme cadence de SORTIE, qu'il tient en
+                // rejouant la dernière image convertie quand rien de neuf ne
+                // lui est arrivé. Annoncer 60 plafonnait donc tout le pipeline
+                // à 60 sorties/s pour un bureau qui en produit 68,5, d'où
+                // 47,5 images/s encodées et ~44 i/s au navigateur.
+                //
+                // Mesuré (bureau à 68,5 Hz) : 60 → 44,3 i/s · 75 → 53,1 ·
+                // 90 → 58,5 · 120 → 63,0. Au-delà de 90, le gain est du
+                // rejeu : à 120, les images NEUVES converties retombent de 62
+                // à 54/s parce que le convertisseur, occupé à tenir sa cadence
+                // déclarée, refuse davantage d'entrées.
+                let fps: u32 = std::env::var("ENCODER_FPS")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(90);
+                tracing::info!(title, bitrate, fps, "capture de la fenêtre Windows");
+                Box::new(windows_source::WindowsSource::new(hwnd, fps, bitrate)?)
             }
             #[cfg(not(windows))]
             {
@@ -691,6 +708,9 @@ async fn main() -> Result<()> {
             use std::sync::atomic::Ordering::Relaxed;
             let (mut t0, mut c0, mut p0, mut a0, mut h0, mut ac0) = (0u64, 0u64, 0u64, 0u64, 0u64, 0u64);
             let (mut ni0, mut ei0, mut ds0) = (0u64, 0u64, 0u64);
+            let (mut cn0, mut sn0, mut dn0) = (0u64, 0u64, 0u64);
+            let (mut cv0, mut in0, mut out0) = (0u64, 0u64, 0u64);
+            let (mut ci0, mut co0, mut cs0) = (0u64, 0u64, 0u64);
             loop {
                 std::thread::sleep(Duration::from_secs(2));
                 let (t, c, p) = (
@@ -708,6 +728,25 @@ async fn main() -> Result<()> {
                     encode::ENCODER_INPUTS.load(Relaxed),
                     encode::DROPPED_STALE.load(Relaxed),
                 );
+                let (cap_ns, sub_ns, dr_ns) = (
+                    windows_source::CAPTURE_NS.load(Relaxed),
+                    windows_source::SUBMIT_NS.load(Relaxed),
+                    windows_source::DRAIN_NS.load(Relaxed),
+                );
+                let (ci, co, cs) = (
+                    encode::CONVERTER_INPUTS.load(Relaxed),
+                    encode::CONVERTER_OUTPUTS.load(Relaxed),
+                    encode::CONVERTER_SKIPPED.load(Relaxed),
+                );
+                let (cv_ns, in_ns, out_ns) = (
+                    encode::CONVERT_NS.load(Relaxed),
+                    encode::ENC_IN_NS.load(Relaxed),
+                    encode::ENC_OUT_NS.load(Relaxed),
+                );
+                // Part de la fenêtre d'observation (2 s = 2e9 ns) réellement
+                // passée dans chaque appel : c'est ce qui distingue un étage
+                // qui sature d'un étage qui attend.
+                let pct = |now: u64, prev: u64| (now - prev) as f64 / 2e9 * 100.0;
                 tracing::info!(
                     ticks_hz = (t - t0) as f64 / 2.0,
                     captured_hz = (c - c0) as f64 / 2.0,
@@ -721,10 +760,22 @@ async fn main() -> Result<()> {
                     need_input_hz = (ni - ni0) as f64 / 2.0,
                     encoder_inputs_hz = (ei - ei0) as f64 / 2.0,
                     dropped_stale_hz = (ds - ds0) as f64 / 2.0,
+                    conv_in_hz = (ci - ci0) as f64 / 2.0,
+                    conv_out_hz = (co - co0) as f64 / 2.0,
+                    conv_skipped_hz = (cs - cs0) as f64 / 2.0,
+                    capture_pct = pct(cap_ns, cn0),
+                    submit_pct = pct(sub_ns, sn0),
+                    drain_pct = pct(dr_ns, dn0),
+                    convert_pct = pct(cv_ns, cv0),
+                    enc_in_pct = pct(in_ns, in0),
+                    enc_out_pct = pct(out_ns, out0),
                     "cadence de la source (chemin réel)"
                 );
                 (t0, c0, p0, a0, h0, ac0) = (t, c, p, a, h, ac);
                 (ni0, ei0, ds0) = (ni, ei, ds);
+                (cn0, sn0, dn0) = (cap_ns, sub_ns, dr_ns);
+                (cv0, in0, out0) = (cv_ns, in_ns, out_ns);
+                (ci0, co0, cs0) = (ci, co, cs);
             }
         })
     });

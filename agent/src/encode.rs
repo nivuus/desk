@@ -96,6 +96,10 @@ const MAX_CONVERTER_COLLECTS: usize = 4;
 /// déphasage entre les deux rythmes (au plus un tour d'écart) sans ajouter
 /// plus de 16,7 ms au budget de latence. Au-delà, on n'achèterait plus de
 /// débit, seulement de la latence.
+///
+/// **Vérifié le 28/07** : porter cette file à 4 ne rend que ~3 images/s (47,5
+/// → 51). Ce n'était donc pas le facteur limitant non plus — la profondeur 1
+/// est conservée, car c'est celle qui coûte le moins de latence.
 const MAX_PENDING_NV12: usize = 1;
 
 /// Étapes du chemin chaud, publiées dans `EncoderTelemetry::phase` avant
@@ -208,6 +212,27 @@ pub struct EncoderTelemetry {
 pub static NEED_INPUT_EVENTS: AtomicU64 = AtomicU64::new(0);
 pub static ENCODER_INPUTS: AtomicU64 = AtomicU64::new(0);
 pub static DROPPED_STALE: AtomicU64 = AtomicU64::new(0);
+
+/// Temps cumulé (ns) dans les trois appels Media Foundation du chemin chaud,
+/// pour départager le convertisseur BGRA→NV12 de l'encodeur lui-même.
+///
+/// `submit` englobe la conversion ET la soumission ; sans cette ventilation,
+/// un `submit` lent ne dit pas lequel des deux MFT coûte.
+pub static CONVERT_NS: AtomicU64 = AtomicU64::new(0);
+pub static ENC_IN_NS: AtomicU64 = AtomicU64::new(0);
+pub static ENC_OUT_NS: AtomicU64 = AtomicU64::new(0);
+
+/// Bilan matière du convertisseur BGRA→NV12, à l'échelle du processus.
+///
+/// Sans ces trois-là, le compte des images ne boucle pas : la trace montrait
+/// 68,5 images capturées par seconde pour 47,5 remises à l'encodeur et 12,5
+/// déclarées périmées, soit 8,5 disparues sans trace. Elles se perdent ici —
+/// une entrée refusée (`converter_not_accepting`) ou une sortie non collectée
+/// (pool vide, `ConverterPoll::Busy`) fait sortir `feed_converter` sans avoir
+/// rien empilé dans `pending_nv12`, et l'image n'est jamais reproposée.
+pub static CONVERTER_INPUTS: AtomicU64 = AtomicU64::new(0);
+pub static CONVERTER_OUTPUTS: AtomicU64 = AtomicU64::new(0);
+pub static CONVERTER_SKIPPED: AtomicU64 = AtomicU64::new(0);
 
 /// Résultat d'un appel à `ProcessOutput` sur le convertisseur BGRA→NV12 (voir
 /// `H264Encoder::drain_converter_output`).
@@ -516,6 +541,7 @@ impl H264Encoder {
                 self.telemetry
                     .converter_not_accepting
                     .fetch_add(1, Ordering::Relaxed);
+                CONVERTER_SKIPPED.fetch_add(1, Ordering::Relaxed);
                 self.publish_state();
                 return Ok(());
             }
@@ -546,6 +572,7 @@ impl H264Encoder {
                 self.telemetry
                     .converter_not_accepting
                     .fetch_add(1, Ordering::Relaxed);
+                CONVERTER_SKIPPED.fetch_add(1, Ordering::Relaxed);
                 self.publish_state();
                 return Ok(());
             }
@@ -554,6 +581,7 @@ impl H264Encoder {
         self.telemetry
             .converter_inputs
             .fetch_add(1, Ordering::Relaxed);
+        CONVERTER_INPUTS.fetch_add(1, Ordering::Relaxed);
         self.converter_output_pending = true;
         let elapsed = t.elapsed();
         if elapsed > SLOW_CALL {
@@ -617,6 +645,7 @@ impl H264Encoder {
                 self.telemetry
                     .converter_outputs
                     .fetch_add(1, Ordering::Relaxed);
+                CONVERTER_OUTPUTS.fetch_add(1, Ordering::Relaxed);
                 let (time, duration) =
                     self.pending_conversion_timestamps.pop_front().unwrap_or((0, 0));
                 unsafe {
@@ -635,6 +664,7 @@ impl H264Encoder {
             ConverterPoll::Busy => {
                 self.converter_output_pending = true;
                 self.skipped_busy += 1;
+                CONVERTER_SKIPPED.fetch_add(1, Ordering::Relaxed);
                 false
             }
         };
@@ -753,7 +783,10 @@ impl H264Encoder {
 
         // Convertir sans condition : l'image ne sera jamais reproposée par la
         // capture (voir le commentaire de méthode).
-        self.feed_converter(frame, sample_time, duration)?;
+        let t_convert = std::time::Instant::now();
+        let converted = self.feed_converter(frame, sample_time, duration);
+        CONVERT_NS.fetch_add(t_convert.elapsed().as_nanos() as u64, Ordering::Relaxed);
+        converted?;
 
         // Ne garder que les plus récentes. `feed_converter` empile en queue,
         // donc les périmées sont en tête. Les retirer ici plutôt que de
@@ -776,6 +809,7 @@ impl H264Encoder {
                 .store(PHASE_ENCODER_PROCESS_INPUT, Ordering::Relaxed);
             let fed = unsafe { self.transform.ProcessInput(0, &nv12_sample, 0) };
             self.telemetry.phase.store(PHASE_IDLE, Ordering::Relaxed);
+            ENC_IN_NS.fetch_add(t.elapsed().as_nanos() as u64, Ordering::Relaxed);
             fed.context("soumission de l'image NV12 à l'encodeur")?;
             self.telemetry
                 .encoder_inputs
@@ -843,6 +877,7 @@ impl H264Encoder {
         // `dwStatus` est lu avant, le tampon ne devant plus l'être après.
         let incomplete = buffers[0].dwStatus & MFT_OUTPUT_DATA_BUFFER_INCOMPLETE.0 as u32 != 0;
         let taken = unsafe { take_output_sample(&mut buffers[0]) };
+        ENC_OUT_NS.fetch_add(t.elapsed().as_nanos() as u64, Ordering::Relaxed);
         produced.context("récupération de l'image encodée")?;
         self.telemetry
             .encoder_outputs
@@ -901,8 +936,10 @@ impl H264Encoder {
             let Some(nv12_sample) = self.pending_nv12.pop_front() else {
                 break;
             };
-            unsafe { self.transform.ProcessInput(0, &nv12_sample, 0) }
-                .context("soumission différée de l'image NV12 à l'encodeur")?;
+            let t = std::time::Instant::now();
+            let fed = unsafe { self.transform.ProcessInput(0, &nv12_sample, 0) };
+            ENC_IN_NS.fetch_add(t.elapsed().as_nanos() as u64, Ordering::Relaxed);
+            fed.context("soumission différée de l'image NV12 à l'encodeur")?;
             self.telemetry.encoder_inputs.fetch_add(1, Ordering::Relaxed);
             ENCODER_INPUTS.fetch_add(1, Ordering::Relaxed);
             self.pending_input_requests -= 1;

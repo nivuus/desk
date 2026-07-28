@@ -56,6 +56,11 @@ use crate::source::VideoSource;
 ///
 /// Le plafond de 60 im/s visé par le jalon reste, lui, celui du contenu : rien
 /// ici ne fabrique d'images qui n'existent pas.
+///
+/// **Vérifié le 28/07** : sonder 5× plus vite (2 ms) ne change rien au débit
+/// — `produced_hz` reste à 47,5 pour un bureau à 68,5 Hz. La cadence de
+/// sondage n'était donc pas le facteur limitant ; c'était le
+/// `MF_MT_FRAME_RATE` annoncé aux MFT (voir `main.rs`).
 const FRAME_INTERVAL: Duration = Duration::from_millis(10);
 
 /// Intervalle minimal entre deux vérifications de `source.is_alive()` dans

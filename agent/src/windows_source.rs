@@ -269,6 +269,18 @@ impl WindowsSource {
     /// ne doit pas pouvoir retenir la boucle de transport, qui a aussi ICE,
     /// RTCP et les canaux de données à servir.
     fn drain_ready_output(&mut self) -> Option<AccessUnit> {
+        let t_drain = std::time::Instant::now();
+        let unit = self.drain_ready_output_inner();
+        DRAIN_NS.fetch_add(
+            t_drain.elapsed().as_nanos() as u64,
+            std::sync::atomic::Ordering::Relaxed,
+        );
+        unit
+    }
+
+    /// Le drainage proprement dit ; séparé du chronométrage ci-dessus pour que
+    /// tous les chemins de sortie (dont les `break` d'erreur) soient mesurés.
+    fn drain_ready_output_inner(&mut self) -> Option<AccessUnit> {
         const MAX_DRAIN: usize = 8;
         for _ in 0..MAX_DRAIN {
             match self.encoder.poll_output() {
@@ -411,6 +423,21 @@ pub static TICKS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::n
 pub static CAPTURED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 pub static PRODUCED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
+/// Temps cumulé (ns) passé dans chaque étape d'un tour de `next_frame`.
+///
+/// Les compteurs ci-dessus disent COMBIEN d'images franchissent chaque étage ;
+/// ceux-ci disent OÙ part le temps. La distinction est celle qui manquait pour
+/// trancher entre « l'encodeur ne peut pas aller plus vite » et « on ne le
+/// sollicite pas assez souvent » : un étage qui plafonne sans occuper le fil
+/// attend quelque chose, un étage qui l'occupe est le vrai goulot.
+///
+/// Rapportés à la durée de la fenêtre d'observation, ils donnent un taux
+/// d'occupation du fil de `Session::run` — le fil unique qui sert aussi ICE,
+/// RTCP et les canaux de données.
+pub static CAPTURE_NS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+pub static SUBMIT_NS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+pub static DRAIN_NS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 impl VideoSource for WindowsSource {
     /// Un seul essai de capture par appel, jamais d'attente pour une
     /// nouvelle image — avec un court réessai borné, réservé au tout
@@ -475,14 +502,26 @@ impl VideoSource for WindowsSource {
         // capture.rs).
         let mut submitted = false;
         let region = self.region;
-        match self.capture_mut().next_frame(region) {
+        let t_capture = std::time::Instant::now();
+        let captured = self.capture_mut().next_frame(region);
+        CAPTURE_NS.fetch_add(
+            t_capture.elapsed().as_nanos() as u64,
+            std::sync::atomic::Ordering::Relaxed,
+        );
+        match captured {
             Ok(Some(frame)) => {
                 CAPTURED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 // Horodatage lu sur l'horloge réelle AVANT la soumission :
                 // c'est l'instant de la capture qui date l'image, pas celui
                 // où l'encodeur voudra bien l'accepter (voir `next_pts_90k`).
                 let pts = self.next_pts_90k();
-                if let Err(e) = self.encoder.submit(&frame, pts) {
+                let t_submit = std::time::Instant::now();
+                let fed = self.encoder.submit(&frame, pts);
+                SUBMIT_NS.fetch_add(
+                    t_submit.elapsed().as_nanos() as u64,
+                    std::sync::atomic::Ordering::Relaxed,
+                );
+                if let Err(e) = fed {
                     tracing::warn!(erreur = %e, "soumission à l'encodeur échouée");
                 } else {
                     submitted = true;
