@@ -1,15 +1,18 @@
 # Chantier A — Audio : recette et résultats
 
 **Date d'exécution** : 28 juillet 2026
-**Navigateur (harnais de recette, CDP sans interface)** : Google Chrome
-150.0.7871.181 (build officiel, 64 bits), `HeadlessChrome/150.0.0.0`, relevé
-par `google-chrome --version` et `navigator.userAgent` — pas supposé.
-**Plateforme du navigateur** : Debian GNU/Linux 13 (trixie), noyau
-6.12.96+deb13-amd64, x86_64. C'est la machine de développement (hôte du
-dépôt), **pas** un poste client réel ni un Chromebook — à la différence du
-spike multi-fenêtres (`2026-07-28-spike-multifenetres-resultats.md`), cette
-recette n'a pas été menée depuis la plateforme cliente privilégiée du
-cadrage. Voir « Réserves ».
+**Navigateur (harnais de recette automatique, §1-§2, CDP sans interface)** :
+Google Chrome 150.0.7871.181 (build officiel, 64 bits),
+`HeadlessChrome/150.0.0.0`, relevé par `google-chrome --version` et
+`navigator.userAgent` — pas supposé. **Plateforme** : Debian GNU/Linux 13
+(trixie), noyau 6.12.96+deb13-amd64, x86_64 — la machine de développement
+(hôte du dépôt), **pas** un poste client réel ni un Chromebook.
+**Navigateur et plateforme de la mesure d'écoute humaine (§3)** : **ChromeOS,
+sur Chromebook, en WiFi** — la plateforme cliente privilégiée du cadrage
+(§6.1) et celle du spike multi-fenêtres
+(`2026-07-28-spike-multifenetres-resultats.md`). Les deux mesures de ce
+rapport ne portent donc **pas** sur la même plateforme cliente ; voir
+« Réserves » pour ce que ça implique.
 **Plateforme agent** : VM Windows (build 20348), GPU NVIDIA RTX 4070,
 adaptateur d'affichage virtuel « SudoMaker Virtual Display Adapter ».
 **Périphérique de rendu audio et format de mixage** (sonde de la tâche 5,
@@ -24,17 +27,16 @@ toutes les sessions : **48 000 Hz, 2 canaux, 32 bits flottant**.
 
 ## Verdict
 
-**Le son passe.** La chaîne WASAPI loopback → assemblage de trames →
-encodage Opus → tampon circulaire → transport WebRTC → décodage navigateur
-est prouvée par des compteurs `getStats()` qui **augmentent** pendant la
-lecture d'un son connu et **ne perdent aucun paquet**, avec un silence
-prolongé (63 s mesurées en continu) qui ne produit ni coupure, ni dérive, ni
-resynchronisation brutale.
-
-**Ce que cette mesure ne prouve pas** : que le signal reçu est
-perceptuellement le bon son (intelligible, sans bruit) plutôt qu'un flux de
-la bonne taille par coïncidence. C'est la limite explicite de toute preuve
-fondée sur `getStats()` — voir « À confirmer par écoute humaine ».
+**Le son passe, il est audible, et il est synchrone avec la vidéo.** La
+chaîne WASAPI loopback → assemblage de trames → encodage Opus → tampon
+circulaire → transport WebRTC → décodage navigateur est prouvée par des
+compteurs `getStats()` qui **augmentent** pendant la lecture d'un son connu
+et **ne perdent aucun paquet**, avec un silence prolongé (63 s mesurées en
+continu) qui ne produit ni coupure, ni dérive, ni resynchronisation brutale.
+Le contenu perceptuel du signal — ce que `getStats()` ne peut pas prouver à
+lui seul — est confirmé par écoute humaine (§3) : son audible et
+intelligible, décalage A/V mesuré à **−10 ms** (audio en retard), très en
+deçà du seuil de gêne applicable (125 ms, ITU-R BT.1359).
 
 ---
 
@@ -42,12 +44,12 @@ fondée sur `getStats()` — voir « À confirmer par écoute humaine ».
 
 | # | Mesure | Valeur obtenue | Attendu (brief) | Verdict |
 |---|---|---|---|---|
-| 1 | Son audible et intelligible | **non mesuré par cet agent** — voir section dédiée | oui | ⚠️ À CONFIRMER PAR ÉCOUTE HUMAINE |
+| 1 | Son audible et intelligible | **oui**, confirmé par écoute humaine (voir §3) — méthode par annulation sur une mire flash+clic, décrite en §3 | oui | Atteint |
 | 2 | Débit audio pendant lecture (Windows Ding en boucle, fenêtre de 20 s) | Δ bytes = 278 365 → **111,3 kb/s** ; Δ packets = 2002 → 100,1 paquets/s | ~130 kb/s | Atteint (écart de 13 %, expliqué ci-dessous) |
 | 3 | Débit audio en silence (DTX, fenêtre continue de 63,2 s) | Δ bytes = 6623 → **0,84 kb/s** ; Δ packets = 6315 → 99,9 paquets/s, soit **1,05 octet/paquet en moyenne** | quelques kb/s | Atteint (mieux que l'estimation) — recoupe la convergence DTX à 1 octet/trame mesurée en tâche 2 (`agent/src/opus.rs`, test `le_silence_prolonge_retombe_a_quelques_octets_par_trame`) |
 | 4 | Pertes de paquets | **0** sur tous les essais (silence 63 s + relance sonore + essais avec son) | nulles/marginales sur LAN | Atteint |
 | 5 | Gigue (`jitter` `getStats()`) | 1–3 ms sur tous les essais | faible attendu sur LAN | Atteint |
-| 6 | Décalage A/V (`estimatedPlayoutTimestamp` audio − vidéo) | **non mesurable** : `estimatedPlayoutTimestamp` n'existe pas comme **clé** dans l'entrée `inbound-rtp`, ni côté audio ni côté vidéo — vérifié par `Object.keys()` sur les deux, pas seulement déduit d'une valeur `null`/`undefined` (voir §2) | < 45 ms avance, < 125 ms retard (ITU-R BT.1359) | NON MESURÉ — la clé absente (et non présente-mais-vide) pointe vers un champ non implémenté par ce Chrome/cette plateforme, plutôt que vers un défaut de la correction de la tâche 7. Voir « Réserves » pour ce qui reste néanmoins incertain |
+| 6 | Décalage A/V, mesure humaine par annulation (§3) | **−10 ms** (audio en **retard** de 10 ms sur la vidéo — voir §3 pour la lecture du signe et la méthode) | < 45 ms avance, < 125 ms retard (ITU-R BT.1359) | **Atteint** — un douzième du seuil de gêne applicable (retard), et sous la durée d'une image à 60 i/s (16,7 ms). C'est la vérification objective qui manquait à la correction du `wallclock` de la tâche 7 ; `estimatedPlayoutTimestamp` n'a pas pu la fournir (clé absente de `getStats()` sur le Chrome/plateforme de mon propre harnais automatisé, voir §2 et Réserves) |
 | 7 | Comportement après 60 s de silence | Continu sur 63,2 s : 0 perte, cadence paquets stable à 99,9–100,2/s (10 ms par trame, sans à-coup), transition vers le son suivante sans coupure ni resynchronisation (bytes/packets progressent sans discontinuité au moment du son) | pas de coupure/dérive/resynchro | Atteint |
 
 Le débit en jeu (mesure #2) a nécessité une deuxième tentative : la première
@@ -185,30 +187,73 @@ perte ni discontinuité de compteur.
     (`audioAbsent && expectAudio` est le seul nouveau chemin d'échec,
     disjoint de `audioGrowing`).
 
-## 3. À confirmer par écoute humaine
+## 3. Écoute humaine — faite, par le partenaire humain
 
-**Je n'ai pas pu entendre le son.** La preuve automatique établit que des
-paquets Opus arrivent, sont décodés en continu, sans perte, et que leur
-volume varie de façon cohérente avec la présence ou l'absence de son côté
-VM — mais elle ne prouve pas que le signal porte le bon contenu plutôt que
-du bruit ou un silence numérique de la bonne taille par coïncidence.
+**Je n'ai pas pu entendre le son moi-même** — la preuve automatique du §2
+établit que des paquets Opus arrivent et sont décodés en continu, sans
+perte, avec un volume cohérent avec la présence ou l'absence de son côté VM,
+mais elle ne prouve pas à elle seule que le signal porte le bon contenu.
+C'est le partenaire humain qui a conduit le test d'écoute, avec en prime une
+mesure de décalage A/V que ma propre chaîne de mesure automatisée ne
+pouvait pas fournir (§1, mesure #6 : `estimatedPlayoutTimestamp` absent de
+`getStats()` sur le Chrome de mon harnais).
 
-**Reste à faire, avec un humain** :
+**Résultat : le son est audible et intelligible.** Confirmé humainement,
+sans coupure ni artefact grossier.
 
-1. Ouvrir le client (`http://localhost:5174/?session=demo`, avec le
-   signaling — `cd signaling && npm start` — et l'agent —
-   `WINDOW_TITLE=firefox scripts/run-agent.sh` — actifs ; signaling et
-   client laissés démarrés sur cette machine à l'issue de cette tâche,
-   ports 8080 et 5174) et cliquer une fois dans la page pour lever la
-   politique d'autoplay.
-2. Jouer un son connu sur la VM : `(New-Object Media.SoundPlayer
-   'C:\Windows\Media\Windows Ding.wav').PlaySync()`.
-3. Confirmer que le son est audible, sans coupure ni artefact grossier
-   (métallique, haché), et reconnaissable comme un « ding » plutôt que du
-   bruit.
-4. Si possible, confirmer subjectivement que le son perçu est synchrone
-   avec une action visible à l'écran (utile puisque la mesure automatique du
-   décalage A/V — §1, mesure #6 — n'a pas pu être obtenue sur ce navigateur).
+**Méthode — par annulation, pas par jugement direct** : une mire affichée
+par Firefox sur la VM émet un flash visuel et un clic sonore au **même
+instant**, une fois par seconde, avec une barre qui balaie et atteint un
+repère pile au battement (l'anticipation du repère affine nettement le
+jugement par rapport à un flash surprise). Les flèches du clavier,
+transmises par le canal d'entrée jusqu'à la VM, décalent le son **à la
+source** par pas de 5 ms. L'observateur ajuste jusqu'à la coïncidence
+perçue et lit la valeur appliquée.
+
+**Résultat chiffré : −10 ms.** Une valeur négative signifie qu'il a fallu
+**avancer** le son pour atteindre la coïncidence perçue ⇒ **l'audio arrivait
+10 ms en retard sur la vidéo**, avant compensation.
+
+**Ce que ça établit** : le seuil de gêne ITU-R BT.1359 pour un audio en
+retard est de 125 ms. 10 ms, c'est un douzième de ce seuil, et c'est sous la
+durée d'une image à 60 i/s (16,7 ms). **C'est la vérification objective qui
+manquait à la correction du `wallclock` de la tâche 7** (annoncer l'instant
+de capture plutôt que d'écriture comme référence RTCP) — celle que
+`estimatedPlayoutTimestamp` n'a pas pu fournir sur mon propre harnais. Voir
+mesure #6 du tableau (§1).
+
+**Plateforme du client — relevée, pas supposée** : **ChromeOS, sur
+Chromebook, en WiFi.** Deux conséquences directes :
+
+- **C'est la plateforme cliente privilégiée du cadrage** (`2026-07-28-support-jeux-design.md`
+  §6.1), et c'est aussi celle sur laquelle le spike multi-fenêtres a été
+  mesuré. La mesure porte donc **directement sur la cible**, pas sur une
+  approximation — contrairement à mes propres mesures automatisées du §1-§2,
+  prises sur l'hôte de développement (Debian Linux). Mais l'inférence ne va
+  pas dans l'autre sens : rien ici ne dit ce que donnerait Chrome desktop
+  sous Windows, macOS ou Linux (le spike multi-fenêtres avait déjà écrit
+  cette même réserve, pour le même type de résultat).
+- **Les conditions réseau diffèrent de celles du harnais automatique, et pas
+  dans le sens d'un affaiblissement du résultat.** Le harnais (débit,
+  pertes, gigue, continuité sur 63 s, §1-§2) tournait en Chrome sans
+  interface **sur l'hôte lui-même** : le média ne traversait qu'un pont
+  virtuel entre l'hôte et la VM, sans lien radio ni FAI. La mesure d'écoute,
+  elle, est passée par un Chromebook **en WiFi** — un vrai lien radio
+  jusqu'à l'hôte, puis vers la VM — ainsi que par Pomerium en `wss://` pour
+  la page et le signaling (origine unique), le média restant en UDP
+  **direct** vers `192.168.3.2`, sans passer par le proxy. Le décalage de
+  10 ms a donc été obtenu sur un chemin **plus représentatif** de l'usage
+  réel que celui de mes propres mesures automatiques, pas moins.
+
+**Réserves sur cette mesure, sans les adoucir** :
+
+- **Un seul observateur, une seule session, aucune répétition.** Le pas de
+  réglage étant de 5 ms, la précision ne dépasse pas ±5 ms.
+- **La mesure inclut la mire elle-même.** Rien n'a vérifié indépendamment
+  que Firefox, sur la VM, restitue son flash et son clic exactement au même
+  instant. L'écart propre au navigateur source est donc compté dans les
+  10 ms, et le décalage imputable au transport seul pourrait différer de
+  quelques millisecondes.
 
 ## 4. Dégradation : session sans audio
 
@@ -236,8 +281,21 @@ brief.
 
 ## 5. Sonde process loopback (spec §11, sonde n°4)
 
-**Résultat : activation réussie.** Le risque « la VM est-elle éligible au
-process loopback » (build 20348) est **levé**.
+**Résultat : l'activation réussit.** C'est une partie seulement de ce que la
+spec §11 (sonde n°4) demande de vérifier — « si l'activation réussit **et**
+si des données arrivent » — et seule la première moitié est établie ici.
+**Ce qui est acquis** : Windows accepte d'activer une interface
+`AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK` pour un PID donné, sur ce
+build (20348) — l'hypothèse d'une indisponibilité de l'API sur cette VM est
+écartée. **Ce qui reste ouvert** : que le `IAudioClient` obtenu puisse
+réellement être initialisé (`Initialize`, `GetService`,
+`IAudioCaptureClient::Start`) et qu'un octet de données audio soit
+effectivement capturable pour ce processus — `probe_process_loopback` ne
+tente aucune de ces quatre étapes ; son `match` final rend `Ok(...)` dès
+l'obtention de l'interface, sans jamais l'utiliser (`_client`, préfixé d'un
+souligné, n'est ni initialisé ni lu). Rien dans ce chantier n'a construit
+plus loin — le périmètre de la tâche 10 est resté une sonde d'activation,
+pas une capture.
 
 ```
 INFO agent: sonde process loopback pid=3620 rapport="activation réussie : IAudioClient
@@ -246,7 +304,8 @@ obtenu pour le PID 3620 (VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK, INCLUDE_TARGET_P
 
 Reproduit deux fois de suite, avec le PID d'un vrai processus Firefox de la
 session interactive, code de sortie de la tâche planifiée **0** les deux
-fois, aucun rapport de plantage Windows corrélé.
+fois, aucun rapport de plantage Windows corrélé — mais dans les deux cas,
+seule l'obtention de l'interface a été observée, jamais son utilisation.
 
 Ce résultat n'a été obtenu qu'après correction d'un bogue de **corruption
 mémoire** trouvé en revue de code — sans cette correction, le rapport initial
@@ -335,40 +394,57 @@ release`), sonde relancée deux fois — voir le résultat en tête de section.
   ce chemin de refus n'a jamais été exercé.
 - **Microphone** : hors périmètre du chantier A (capture loopback de rendu
   uniquement, jamais de capture d'entrée). Non testé, non applicable.
-- **Réseau non local** : toutes les mesures ont été prises sur le réseau
-  virtuel LAN de la VM (gigue 1–3 ms, 0 perte). Le comportement sur un
-  réseau à latence/perte réelles (FEC in-band, DTX sous perte, tampon de
-  gigue du navigateur) n'a pas été testé — hors périmètre de cette tâche,
-  qui répond à la sonde n°4 et produit le livrable, pas au chantier C
-  (adaptation réseau).
-- **Décalage A/V non mesuré** (voir §1, mesure #6) : la **clé**
-  `estimatedPlayoutTimestamp` est absente de l'entrée `inbound-rtp` sur
-  Chrome 150.0.7871.181 / Debian 13 Linux headless — vérifié par
-  `Object.keys()` sur les deux pistes, à deux relevés espacés de 6 s (§2),
-  pas seulement déduit d'une valeur `null`/`undefined`. Une clé
-  structurellement absente, sur les deux pistes et de façon répétée, pointe
-  plus fortement vers « champ non implémenté par ce Chrome/cette
-  plateforme » que vers « champ implémenté mais qui attend un RTCP Sender
-  Report pour se peupler » (dans ce second cas, la clé existerait déjà dans
-  l'objet, à `undefined`, en attendant sa valeur). **Cela dit, je ne peux
-  pas exclure avec certitude absolue une troisième explication non testée** :
-  Chrome `--headless=new` tourne sans périphérique de sortie audio réel, et
-  je n'ai pas vérifié si l'estimation de restitution dépend d'un
-  périphérique de sortie effectivement ouvert plutôt que simplement d'un
-  Sender Report reçu. Le code du harnais reste écrit conformément au brief
-  (il fonctionnera dès que/si ce champ devient disponible) et gère
-  l'absence proprement (affiche « non mesurable », distingue désormais
-  « pas de piste » de « piste présente, champ absent », n'échoue jamais
-  dessus). La correction de la tâche 7 (`wallclock` = instant de capture)
-  n'a donc **pas** pu être vérifiée objectivement par cette méthode
-  précise ; elle reste vérifiée indirectement par la continuité et la
-  régularité des compteurs (§1, mesures #3 et #7) et par la relecture du
-  code de la tâche 7.
-- **Plateforme cliente non privilégiée** : contrairement au spike
-  multi-fenêtres, cette recette tourne sur l'hôte de développement
-  (Debian Linux), pas sur un Chromebook (plateforme cliente privilégiée du
-  cadrage, §6.1). Rien ne suggère un écart de comportement audio entre les
-  deux (Opus/WebRTC est standard), mais ce n'est pas vérifié ici.
+- **Réseau — trois régimes, un seul jamais testé.** Ne pas laisser croire
+  que tout a été mesuré en boucle locale :
+  1. **Boucle hôte↔VM (harnais automatique, §1-§2)** : débit, pertes,
+     gigue, continuité sur 63 s — Chrome sans interface tournant **sur
+     l'hôte lui-même**, média traversant seulement le pont virtuel
+     hôte↔VM, aucun lien radio ni FAI. Gigue 1–3 ms, 0 perte.
+  2. **WiFi local (mesure d'écoute, §3)** : Chromebook réel, sur le réseau
+     WiFi local, page et signaling via Pomerium en `wss://`, média en UDP
+     direct vers la VM. C'est sur ce chemin, plus représentatif que le
+     précédent, qu'a été obtenu le décalage de −10 ms.
+  3. **Internet quelconque, avec latence/perte réelles** : **jamais
+     testé.** Le comportement du FEC in-band, du DTX sous perte, et du
+     tampon de gigue du navigateur sous un réseau dégradé reste
+     entièrement ouvert — hors périmètre de cette tâche (sonde n°4 et
+     livrable du chantier A), du ressort du chantier C (adaptation
+     réseau).
+- **Décalage A/V — mesuré par l'humain (§3, −10 ms), pas par mon harnais.**
+  Ma propre chaîne de mesure automatisée (§1, mesure initiale ; §2) n'a pas
+  pu produire ce chiffre : la **clé** `estimatedPlayoutTimestamp` est
+  absente de l'entrée `inbound-rtp` sur Chrome 150.0.7871.181 / Debian 13
+  Linux headless — vérifié par `Object.keys()` sur les deux pistes, à deux
+  relevés espacés de 6 s, pas seulement déduit d'une valeur
+  `null`/`undefined`. Une clé structurellement absente, sur les deux
+  pistes et de façon répétée, pointe plus fortement vers « champ non
+  implémenté par ce Chrome/cette plateforme » que vers « champ implémenté
+  mais qui attend un RTCP Sender Report pour se peupler » (dans ce second
+  cas, la clé existerait déjà dans l'objet, à `undefined`, en attendant sa
+  valeur). **Cela dit, je ne peux pas exclure avec certitude absolue une
+  troisième explication non testée** : Chrome `--headless=new` tourne sans
+  périphérique de sortie audio réel, et je n'ai pas vérifié si
+  l'estimation de restitution dépend d'un périphérique de sortie
+  effectivement ouvert plutôt que simplement d'un Sender Report reçu. Le
+  code du harnais reste écrit conformément au brief (il fonctionnera
+  dès que/si ce champ devient disponible sur le navigateur utilisé) et
+  gère l'absence proprement. La mesure humaine du §3 comble ce trou par
+  une méthode indépendante (par annulation, sur une mire), avec ses
+  propres réserves (§3 : observateur unique, pas de répétition, ±5 ms,
+  écart de la mire elle-même inclus).
+- **Plateforme cliente — mixte selon la mesure, à ne pas moyenner.** Les
+  mesures automatiques (§1-§2, débit/pertes/gigue/continuité) tournent sur
+  l'hôte de développement (Debian Linux), **pas** sur la plateforme
+  cliente privilégiée du cadrage. La mesure d'écoute (§3), elle, **est**
+  sur cette plateforme : ChromeOS, Chromebook, WiFi — la même que celle du
+  spike multi-fenêtres. La conclusion « le son est audible et synchrone »
+  porte donc directement sur la cible ; les mesures de débit/pertes/gigue
+  ne le font pas, et rien ne garantit qu'elles seraient identiques sur
+  Chromebook (bien que rien ne suggère non plus un écart, Opus/WebRTC
+  étant standard). Et dans les deux cas, l'inférence ne va pas vers
+  Chrome desktop (Windows/macOS/Linux), jamais testé ici — même réserve
+  que celle déjà écrite par le spike multi-fenêtres pour son propre
+  résultat.
 - **Vidéo peu représentative dans les essais purement audio** : avec
   Firefox statique (aucune page en défilement), Desktop Duplication ne
   produit quasiment aucune image neuve (comportement documenté dans

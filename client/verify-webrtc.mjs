@@ -453,8 +453,7 @@ function decrireEstimatedPlayoutTimestamp(entry) {
     if (!entry) return 'n/a (entrée absente)';
     const clePresente = 'estimatedPlayoutTimestamp' in entry;
     if (!clePresente) return 'CLÉ ABSENTE de l\'entrée';
-    const valeur = entry.estimatedPlayoutTimestamp;
-    return valeur == null ? `clé présente, valeur=${valeur}` : `clé présente, valeur=${valeur}`;
+    return `clé présente, valeur=${entry.estimatedPlayoutTimestamp}`;
 }
 
 function printSample(sample) {

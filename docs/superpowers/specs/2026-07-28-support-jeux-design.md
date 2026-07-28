@@ -223,21 +223,21 @@ Bénéficie à tout le produit, pas seulement au jeu.
 - **Capture par processus** : Windows 10 build 19041+ expose le *process
   loopback* (`AUDIOCLIENT_ACTIVATION_PARAMS` / `PROCESS_LOOPBACK`), qui isole
   l'audio d'un seul processus. C'est exactement ce qu'exige le modèle
-  multi-fenêtres. **Sondé le 28/07/2026 (tâche 10 du chantier A) : non
-  déterminé.** Le code compile et lie sur la cible Windows réelle
-  (`agent::wasapi::probe_process_loopback`, gestionnaire de complétion COM
-  `IActivateAudioInterfaceCompletionHandler` via `#[implement]`), mais son
-  exécution sur la VM (build 20348, donc éligible sur le papier) n'a produit
-  ni journal exploitable ni erreur diagnostiquable dans le temps imparti :
-  le processus sonde se termine avec un code de sortie 0 sans qu'aucune ligne
-  de trace n'atteigne `agent.log`, et une invocation synchrone équivalente
-  reste bloquée sans jamais rendre la main — aucun rapport de plantage
-  Windows (WER) ne corrèle avec ces tentatives. Résultat non tranché ; voir
-  `docs/superpowers/plans/2026-07-28-audio-resultats.md` pour le détail. **À
-  reprendre au chantier D**, avec de meilleurs outils de diagnostic côté
-  Windows (débogueur attaché, sortie vers un fichier dédié plutôt que
-  `Tee-Object`/stdout à travers la tâche planifiée) — la valeur de cette
-  sonde reste informative, pas structurante.
+  multi-fenêtres. **Sondé le 28/07/2026 (tâche 10 du chantier A) :
+  l'activation réussit**, mais c'est une réponse partielle à la question
+  posée (spec du chantier A §11, sonde n°4 : « si l'activation réussit **et**
+  si des données arrivent »). Après correction d'un bogue de corruption
+  mémoire trouvé en revue (`PROPVARIANT` libéré via `CoTaskMemFree` sur une
+  adresse de pile — voir `docs/superpowers/plans/2026-07-28-audio-resultats.md`
+  §5 pour le détail), `agent::wasapi::probe_process_loopback` obtient un
+  `IAudioClient` pour un PID donné sur cette VM (build 20348), reproduit deux
+  fois. **Ce qui est acquis** : Windows accepte d'activer une interface
+  `AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK` sur ce build — l'hypothèse
+  d'une indisponibilité de l'API est écartée. **Ce qui reste ouvert** : la
+  sonde n'initialise jamais ce client (`Initialize`, `GetService`,
+  `IAudioCaptureClient::Start`) et ne tente aucune capture — savoir si un
+  octet réel est capturable pour ce processus reste à vérifier **au chantier
+  D**, qui devra construire au-delà de cette sonde d'activation.
 - **Encodage** : Media Foundation n'expose pas d'encodeur Opus. Passer par les
   bindings libopus (crate `opus` ou `audiopus`). 48 kHz stéréo, trames de 10 ms,
   ~128 kbps, mode `RESTRICTED_LOWDELAY`, FEC in-band activé.
