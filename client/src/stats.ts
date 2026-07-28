@@ -17,15 +17,20 @@ interface Snapshot {
 
 export function attachStats(pc: RTCPeerConnection, element: HTMLElement): () => void {
     let previous: Snapshot | undefined;
+    let previousAudio: Snapshot | undefined;
 
     const timer = window.setInterval(async () => {
         const report = await pc.getStats();
         let inbound: RTCInboundRtpStreamStats | undefined;
+        let inboundAudio: RTCInboundRtpStreamStats | undefined;
         let pair: RTCIceCandidatePairStats | undefined;
 
         report.forEach((stat) => {
             if (stat.type === 'inbound-rtp' && (stat as any).kind === 'video') {
                 inbound = stat as RTCInboundRtpStreamStats;
+            }
+            if (stat.type === 'inbound-rtp' && (stat as any).kind === 'audio') {
+                inboundAudio = stat as RTCInboundRtpStreamStats;
             }
             if (stat.type === 'candidate-pair' && (stat as any).nominated) {
                 pair = stat as RTCIceCandidatePairStats;
@@ -51,6 +56,25 @@ export function attachStats(pc: RTCPeerConnection, element: HTMLElement): () => 
         }
         previous = current;
 
+        let audioKbps = 0;
+        if (inboundAudio) {
+            const currentAudio: Snapshot = {
+                framesDecoded: 0,
+                bytesReceived: (inboundAudio as any).bytesReceived ?? 0,
+                timestamp: inboundAudio.timestamp,
+            };
+            if (previousAudio) {
+                const seconds = (currentAudio.timestamp - previousAudio.timestamp) / 1000;
+                if (seconds > 0) {
+                    audioKbps =
+                        ((currentAudio.bytesReceived - previousAudio.bytesReceived) * 8) /
+                        seconds /
+                        1000;
+                }
+            }
+            previousAudio = currentAudio;
+        }
+
         const rttMs = (pair?.currentRoundTripTime ?? 0) * 1000;
         // Latence bout en bout approchée : la moitié de l'aller-retour réseau,
         // plus l'attente en tampon de gigue et le décodage côté navigateur.
@@ -69,6 +93,9 @@ export function attachStats(pc: RTCPeerConnection, element: HTMLElement): () => 
             `tampon ${jitterBufferMs.toFixed(1)} ms`,
             `≈ ${glassToGlassMs.toFixed(1)} ms`,
             `perdues ${(inbound as any).framesDropped ?? 0}`,
+            `audio ${audioKbps.toFixed(0)} kb/s`,
+            `perdus ${(inboundAudio as any)?.packetsLost ?? 0}`,
+            `gigue ${(((inboundAudio as any)?.jitter ?? 0) * 1000).toFixed(1)} ms`,
         ].join('  ·  ');
     }, 1000);
 

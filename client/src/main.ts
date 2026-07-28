@@ -1,6 +1,7 @@
 import { attachInput } from './input';
 import { connectSession } from './webrtc';
 import { attachStats } from './stats';
+import { armerLeSon } from './audio';
 import { encodeResize } from '../../proto/ts/control';
 
 const video = document.querySelector<HTMLVideoElement>('#remote')!;
@@ -39,6 +40,25 @@ connectSession({
         attachInput({ video, channel: session.inputChannel });
         attachStats(session.pc, statsElement);
         video.focus();
+
+        // Le son démarre coupé et s'active au premier geste. Un bandeau ne
+        // s'affiche que si aucun geste n'est venu au bout de quelques
+        // secondes — inutile d'expliquer à qui a déjà cliqué.
+        let bandeau: number | undefined;
+        armerLeSon({
+            media: video,
+            cible: window,
+            surEtat(actif) {
+                if (actif) {
+                    window.clearTimeout(bandeau);
+                    statusElement.dataset.hidden = 'true';
+                } else {
+                    bandeau = window.setTimeout(() => {
+                        setStatus('cliquez pour activer le son');
+                    }, 4000);
+                }
+            },
+        });
 
         // Le redimensionnement reconstruit la chaîne d'encodage côté agent :
         // on n'émet donc qu'une fois le geste terminé, pas à chaque pixel
