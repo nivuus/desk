@@ -1275,9 +1275,19 @@ fn configure_rate_control(transform: &IMFTransform, bitrate: u32) -> Result<()> 
         codec.SetValue(&CODECAPI_AVEncCommonRateControlMode, &mode)?;
         let rate = variant_u32(bitrate);
         codec.SetValue(&CODECAPI_AVEncCommonMeanBitRate, &rate)?;
-        // Pas de groupe d'images fermé : on demande les images clés à la volée.
+        // Pas de groupe d'images fermé : on demande les images clés à la
+        // volée (`H264Encoder::request_keyframe`, câblé depuis
+        // `Event::KeyframeRequest` de str0m dans `transport.rs`). Le retour
+        // de `SetValue` est vérifié plutôt que jeté : un refus silencieux du
+        // pilote laisserait croire le contrat honoré alors qu'un groupe
+        // d'images fermé rendrait les images clés à la demande inopérantes.
         let gop = variant_u32(0);
-        let _ = codec.SetValue(&CODECAPI_AVEncMPVGOPSize, &gop);
+        if let Err(e) = codec.SetValue(&CODECAPI_AVEncMPVGOPSize, &gop) {
+            tracing::warn!(
+                erreur = %e,
+                "réglage CODECAPI_AVEncMPVGOPSize (groupe d'images ouvert) refusé par le pilote"
+            );
+        }
         let low_latency = variant_bool(true);
         let _ = codec.SetValue(&CODECAPI_AVLowLatencyMode, &low_latency);
     }

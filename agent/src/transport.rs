@@ -52,8 +52,22 @@ const ALIVE_CHECK_INTERVAL: Duration = Duration::from_secs(1);
 /// sous Windows (mesure indépendante : dépassement moyen +12,7 ms, jusqu'à
 /// +37 ms ; un délai demandé de 617 µs a été honoré après 31 758 µs — cinq
 /// fois le budget d'une image entière à 60 Hz). `recv_from` consommait ainsi
-/// ~90 % du temps de boucle pendant qu'une capture/encodage capable de
-/// 47-51 im/s en produisait à peine 23-25.
+/// jusqu'à ~90 % du temps de boucle disponible à chaque tour, du temps qui
+/// aurait dû revenir à la capture et à l'encodage.
+///
+/// **Chiffre de comparaison retiré (28/07) :** cette mesure citait à l'origine
+/// un plafond capture/encodage isolé de 47-51 im/s contre un débit de bout en
+/// bout observé de 23-25 im/s. La recette du jalon 1
+/// (`docs/superpowers/plans/2026-07-27-jalon1-recette.md`, « Ce qui a été
+/// appris ») établit que ce chiffre de 47-51 im/s provenait d'un harnais
+/// isolé (`ENCODER_THROUGHPUT_TEST`), qui ne passe pas par `Session::run` et
+/// n'est donc pas comparable à une mesure de bout en bout — et qu'il était de
+/// toute façon périmé : la capture, remesurée depuis en isolation
+/// (`CAPTURE_TEST`), soutient ~90 im/s sur la même VM. Le plafond de débit
+/// réellement établi par la recette se situe côté encodeur matériel
+/// (`METransformNeedInput` n'est accepté qu'à ~30 Hz, voir
+/// `windows_source.rs` et `encode.rs`), sans lien démontré avec l'imprécision
+/// de `recv_from` documentée ci-dessus, qui reste une mesure valide en soi.
 ///
 /// Un socket non bloquant sondé en boucle sans jamais dormir consommerait un
 /// cœur de processeur entier pour rien — inacceptable pour un agent censé
@@ -899,7 +913,19 @@ impl Session {
                 self.dispatch_channel_data(&data, on_input, on_control);
             }
             Event::KeyframeRequest(request) => {
-                tracing::debug!(mid = ?request.mid, "image clé demandée");
+                // Le navigateur demande une image clé, typiquement après une
+                // perte de paquet détectée par le décodeur. Le groupe
+                // d'images de l'encodeur matériel est ouvert (voir
+                // `encode::configure_rate_control`) : sans ce relais, aucune
+                // image clé n'est plus jamais produite après le démarrage, et
+                // la perte corrompt la vidéo jusqu'à reconnexion. Ne mute pas
+                // `Rtc` — seul l'encodeur (côté `VideoSource`) est affecté —
+                // donc ce relais respecte l'invariant de drainage documenté
+                // en tête de fichier même appelé depuis `handle_event`.
+                tracing::debug!(mid = ?request.mid, "image clé demandée par le pair");
+                if let Err(e) = self.source.request_keyframe() {
+                    tracing::warn!(erreur = %e, mid = ?request.mid, "échec de la demande d'image clé");
+                }
             }
             _ => {}
         }
@@ -1244,6 +1270,165 @@ mod tests {
         assert!(
             per_second > 10.0,
             "cadence trop basse : {per_second:.1} images/s (attendu très supérieur à 1/s, la marque du bug de cadence C1)"
+        );
+    }
+
+    /// Preuve d'intégration que `Event::KeyframeRequest` (émis par str0m
+    /// quand le pair envoie un PLI/FIR RTCP — ce que fait un navigateur après
+    /// une perte de paquet détectée par son décodeur) est bien relayé jusqu'à
+    /// `VideoSource::request_keyframe`, sans passer par un mock du trait
+    /// `Event` : le pair local ici est un vrai second `Rtc` str0m, comme dans
+    /// `atteint_la_cadence_video_visee_avec_un_pair_local`.
+    ///
+    /// N'exerce PAS le chemin `WindowsSource`/`H264Encoder::request_keyframe`
+    /// réel (`#![cfg(windows)]`, indisponible sur la machine de compilation
+    /// Linux) : seul le relais `handle_event` → `Session::source` est prouvé
+    /// ici. Le câblage `WindowsSource::request_keyframe` →
+    /// `H264Encoder::request_keyframe` (`SetValue` sur
+    /// `CODECAPI_AVEncVideoForceKeyFrame`) reste vérifié par lecture et par
+    /// la compilation croisée Windows, pas par un test automatisé.
+    #[test]
+    fn relaie_une_demande_d_image_cle_du_pair_vers_la_source() {
+        use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
+        use std::sync::Arc;
+        use std::thread;
+        use str0m::change::SdpAnswer;
+        use str0m::media::{Direction, KeyframeRequestKind, MediaKind};
+
+        /// Enveloppe `FileSource` en comptant les appels à
+        /// `request_keyframe`, seule façon d'observer depuis ce test que le
+        /// relais a bien eu lieu (le compteur est partagé via `Arc` avant que
+        /// la source ne soit déplacée dans `Session`, qui la possède ensuite
+        /// depuis le thread dédié de `Session::run`).
+        struct CountingSource {
+            inner: crate::source::FileSource,
+            keyframe_requests: Arc<AtomicUsize>,
+        }
+
+        impl VideoSource for CountingSource {
+            fn next_frame(&mut self) -> Option<AccessUnit> {
+                self.inner.next_frame()
+            }
+            fn dimensions(&self) -> (u32, u32) {
+                self.inner.dimensions()
+            }
+            fn request_keyframe(&mut self) -> Result<()> {
+                self.keyframe_requests.fetch_add(1, AtomicOrdering::SeqCst);
+                Ok(())
+            }
+        }
+
+        let local_ip: IpAddr = "127.0.0.1".parse().unwrap();
+        let source_path =
+            std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
+        let keyframe_requests = Arc::new(AtomicUsize::new(0));
+        let source = Box::new(CountingSource {
+            inner: crate::source::FileSource::from_path(source_path, 1280, 720, 60)
+                .expect("chargement du flux de test"),
+            keyframe_requests: keyframe_requests.clone(),
+        });
+
+        let mut session = Session::new(source, local_ip).expect("session");
+
+        let peer_socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("socket du pair");
+        let peer_addr = peer_socket.local_addr().unwrap();
+        let mut peer_rtc = Rtc::builder().clear_codecs().enable_h264(true).build(Instant::now());
+        peer_rtc.add_local_candidate(Candidate::host(peer_addr, "udp").unwrap());
+
+        let mut api = peer_rtc.sdp_api();
+        // Recvonly côté pair == la piste vidéo que le navigateur reçoit
+        // réellement de l'agent ; c'est sur ce `mid` que `writer(...)` émettra
+        // le PLI plus bas (str0m nomme cet accès « writer » indépendamment du
+        // sens du média — c'est l'API par laquelle la rétroaction RTCP sort).
+        let video_mid = api.add_media(MediaKind::Video, Direction::RecvOnly, None, None, None);
+        api.add_channel("control".to_string());
+        api.add_channel("input".to_string());
+        let (offer, pending) = api.apply().expect("offre non vide");
+
+        let answer_sdp = session.accept_offer(&offer.to_sdp_string()).expect("offre acceptée");
+        let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("réponse SDP valide");
+        peer_rtc
+            .sdp_api()
+            .accept_answer(pending, answer)
+            .expect("réponse acceptée par le pair");
+
+        thread::spawn(move || {
+            let mut on_input = |_| {};
+            let mut on_control = |_| {};
+            let _ = session.run(&mut on_input, &mut on_control);
+        });
+
+        let hard_deadline = Instant::now() + Duration::from_secs(10);
+        let mut keyframe_requested_at_peer = false;
+
+        loop {
+            let now = Instant::now();
+            if keyframe_requests.load(AtomicOrdering::SeqCst) > 0 {
+                break; // Preuve faite : le relais a atteint la source.
+            }
+            if now >= hard_deadline {
+                panic!(
+                    "délai dépassé : le pair local ne s'est jamais connecté, ou \
+                     Event::KeyframeRequest n'a jamais atteint VideoSource::request_keyframe \
+                     (compteur toujours à 0)"
+                );
+            }
+
+            match peer_rtc.poll_output().expect("poll_output du pair") {
+                Output::Timeout(t) => {
+                    let wait = t
+                        .saturating_duration_since(now)
+                        .min(hard_deadline.saturating_duration_since(now));
+                    if wait.is_zero() {
+                        let _ = peer_rtc.handle_input(Input::Timeout(now));
+                        continue;
+                    }
+                    peer_socket.set_read_timeout(Some(wait)).unwrap();
+                    let mut buffer = vec![0u8; 2000];
+                    match peer_socket.recv_from(&mut buffer) {
+                        Ok((n, source_addr)) => {
+                            if let Ok(contents) = DatagramRecv::try_from(&buffer[..n]) {
+                                let receive = Receive {
+                                    proto: Protocol::Udp,
+                                    source: source_addr,
+                                    destination: peer_addr,
+                                    contents,
+                                };
+                                let _ =
+                                    peer_rtc.handle_input(Input::Receive(Instant::now(), receive));
+                            }
+                        }
+                        Err(_) => {
+                            let _ = peer_rtc.handle_input(Input::Timeout(Instant::now()));
+                        }
+                    }
+                }
+                Output::Transmit(t) => {
+                    let _ = peer_socket.send_to(&t.contents, t.destination);
+                }
+                Output::Event(Event::Connected) => {
+                    if !keyframe_requested_at_peer {
+                        keyframe_requested_at_peer = true;
+                        // Exactement ce que fait un navigateur après une
+                        // perte de paquet détectée par son décodeur : demander
+                        // une image clé via un PLI RTCP. `fb_pli` est vrai par
+                        // défaut pour un codec vidéo dans str0m (voir
+                        // `format::payload_params::PayloadParams::new`), donc
+                        // cette négociation n'a rien de spécial à activer côté
+                        // offre/réponse SDP.
+                        let mut writer = peer_rtc.writer(video_mid).expect("writer vidéo");
+                        writer
+                            .request_keyframe(None, KeyframeRequestKind::Pli)
+                            .expect("PLI négocié par défaut sur un codec vidéo (fb_pli)");
+                    }
+                }
+                Output::Event(_) => {}
+            }
+        }
+
+        assert!(
+            keyframe_requests.load(AtomicOrdering::SeqCst) > 0,
+            "Event::KeyframeRequest du pair n'a jamais atteint VideoSource::request_keyframe"
         );
     }
 }

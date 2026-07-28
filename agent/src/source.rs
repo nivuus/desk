@@ -45,6 +45,23 @@ pub trait VideoSource {
     fn is_alive(&self) -> bool {
         true
     }
+
+    /// Force la production d'une image clé sur la prochaine image produite.
+    ///
+    /// Le groupe d'images de l'encodeur matériel est ouvert (voir
+    /// `encode::configure_rate_control`) : sans appel explicite ici, plus
+    /// aucune image clé n'est jamais reproduite après le démarrage ou un
+    /// redimensionnement, et la moindre perte de paquet corrompt la vidéo
+    /// définitivement jusqu'à reconnexion. Câblé sur `Event::KeyframeRequest`
+    /// de str0m dans `transport.rs`, qui relaie la demande du navigateur
+    /// après une perte détectée côté décodeur.
+    ///
+    /// Par défaut sans effet : `FileSource` rejoue un flux pré-découpé où le
+    /// bouclage lui-même repart déjà sur une image clé (voir
+    /// `group_access_units`) ; une demande de plus n'aurait rien à changer.
+    fn request_keyframe(&mut self) -> Result<()> {
+        Ok(())
+    }
 }
 
 /// Source de test rejouant un fichier H.264 Annex-B en boucle.

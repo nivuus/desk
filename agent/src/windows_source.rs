@@ -231,7 +231,9 @@ impl WindowsSource {
         window::is_window_alive(self.hwnd)
     }
 
-    /// Demande une image clé, par exemple sur requête du navigateur.
+    /// Demande une image clé — notamment sur requête du navigateur, relayée
+    /// depuis `Event::KeyframeRequest` par `transport.rs` via l'implémentation
+    /// `VideoSource::request_keyframe` ci-dessous.
     pub fn request_keyframe(&mut self) -> Result<()> {
         self.encoder.request_keyframe()
     }
@@ -261,14 +263,30 @@ impl WindowsSource {
 /// réessai résolvait systématiquement en 3-5 ms (jamais le budget de 40 ms
 /// atteint, sur des centaines d'images), et réduire le budget de 40 ms à
 /// 2 ms (vingt fois moins) n'a strictement rien changé au débit mesuré côté
-/// navigateur (297/10 s dans les deux cas, contenu identique). Le plafond
-/// réel se situe en amont : `DesktopCapture::next_frame` (donc
-/// `AcquireNextFrame`, non bloquant) ne signale une image neuve qu'à ~30 Hz,
-/// alors que la boucle l'interroge, elle, à 60 Hz exact (mesuré par
-/// comptage — voir aussi `fix-debit-socket-report.md`) : la cadence de
-/// composition/duplication du bureau sur cette VM est la vraie limite,
-/// identique que le contenu change par animation de page ou par défilement
-/// réel piloté à la molette. `SUBMIT_POLL_BUDGET` n'y est pour rien — mais
+/// navigateur (297/10 s dans les deux cas, contenu identique). À ce stade du
+/// diagnostic, le plafond réel était attribué en amont : `DesktopCapture::next_frame`
+/// (donc `AcquireNextFrame`, non bloquant) ne signalait une image neuve qu'à
+/// ~30 Hz, alors que la boucle l'interroge, elle, à 60 Hz exact (mesuré par
+/// comptage — voir aussi `docs/superpowers/plans/fix-debit-socket-report.md`),
+/// ce qui avait fait suspecter la cadence de composition/duplication du
+/// bureau elle-même comme vraie limite.
+///
+/// **Hypothèse écartée depuis**, par la recette du jalon 1
+/// (`docs/superpowers/plans/2026-07-27-jalon1-recette.md`, critère 2) :
+/// mesurée isolément (`CAPTURE_TEST`), la capture soutient ~90 im/s sur cette
+/// même VM — la composition/duplication du bureau n'est pas le goulot. Le
+/// plafond réel se situe côté encodeur matériel : `H264Encoder::submit`, dans
+/// `encode.rs`, ne reçoit de nouvelles demandes d'entrée
+/// (`METransformNeedInput`) qu'à ~30 Hz, alors que le même encodeur, sollicité
+/// en boucle serrée (`ENCODE_TEST`), soutient ~80 im/s — une interaction non
+/// résolue entre le rythme de soumission fixe (16,7 ms) et le rythme propre
+/// du MFT matériel, pas une limite de la capture ni, en tant que telle, du
+/// GPU/pilote NVIDIA (détail des essais qui écartent successivement les
+/// hypothèses concurrentes dans
+/// `docs/superpowers/plans/diagnostic-plafond-debit.md` et
+/// `docs/superpowers/plans/remesure-debit.md`).
+///
+/// `SUBMIT_POLL_BUDGET` n'y est pour rien — mais
 /// comme il ne coûtait donc jamais rien qu'au tout premier démarrage
 /// (jamais revérifié une fois l'encodeur chaud), il est désormais borné à
 /// ce seul cas : sur du matériel où l'encodeur répondrait plus lentement en
@@ -425,5 +443,11 @@ impl VideoSource for WindowsSource {
 
     fn is_alive(&self) -> bool {
         WindowsSource::is_alive(self)
+    }
+
+    /// Relaie vers l'encodeur matériel (voir `WindowsSource::request_keyframe`
+    /// et le commentaire de `VideoSource::request_keyframe`).
+    fn request_keyframe(&mut self) -> Result<()> {
+        WindowsSource::request_keyframe(self)
     }
 }

@@ -370,8 +370,17 @@ async fn main() -> Result<()> {
                 // Bornes réglables : le contrat du brief (120 images, 5 s)
                 // reste la valeur par défaut, mais une mesure du pipeline
                 // RÉEL sur plusieurs centaines d'images demande une fenêtre
-                // plus longue — la source (Desktop Duplication) plafonne vers
-                // 48 im/s, donc 120 images ne durent que 2,5 s.
+                // plus longue.
+                //
+                // Chiffre périmé retiré (28/07) : ce commentaire citait un
+                // plafond de ~48 im/s pour la capture Desktop Duplication.
+                // La recette du jalon 1
+                // (`docs/superpowers/plans/2026-07-27-jalon1-recette.md`,
+                // « Ce qui a été appris ») établit que ce chiffre était
+                // obsolète — remesurée, la capture isolée (`CAPTURE_TEST`)
+                // soutient ~90 im/s, et cette boucle capture+encodage
+                // elle-même (mesurée ici, `ENCODE_TEST`) soutient ~80 im/s.
+                // 120 images durent donc en pratique ~1,5 s, pas 2,5 s.
                 let encode_target: usize = std::env::var("ENCODE_TEST_TARGET")
                     .ok()
                     .and_then(|s| s.parse().ok())
