@@ -13,6 +13,8 @@ mod geometry;
 mod h264;
 mod input;
 mod opus;
+#[cfg(windows)]
+mod pointer_settings;
 mod rebuild;
 mod signaling;
 mod source;
@@ -208,6 +210,17 @@ async fn main() -> Result<()> {
                 .unwrap_or_else(|_| "info".into()),
         )
         .init();
+
+    // Au tout début, avant toute possibilité d'injection d'entrée (les modes
+    // diagnostic ci-dessous n'en injectent pas, mais la session normale plus
+    // bas le fait) : neutraliser l'accélération et la sensibilité pointeur de
+    // la session Windows. Ne fait jamais échouer le démarrage — une visée
+    // dégradée vaut mieux que pas de session.
+    #[cfg(windows)]
+    match pointer_settings::neutraliser() {
+        Ok(rapport) => tracing::info!(rapport, "accélération pointeur neutralisée"),
+        Err(e) => tracing::warn!(erreur = %e, "neutralisation de l'accélération pointeur échouée"),
+    }
 
     let config = config()?;
 
