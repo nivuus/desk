@@ -1,6 +1,7 @@
 mod geometry;
 mod h264;
 mod input;
+mod opus;
 mod rebuild;
 mod signaling;
 mod source;
