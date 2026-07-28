@@ -379,11 +379,36 @@ impl Session {
                         // I5 : source épuisée — clore la session proprement
                         // (chemin `AgentControl::session_end`), pas tuer le
                         // processus. Inatteignable avec `FileSource` (boucle
-                        // à l'infini), mais deviendra réel avec la capture
-                        // Windows (tâche 9/11).
+                        // à l'infini), mais devenu réel avec la capture
+                        // Windows (tâche 11).
                         self.begin_ending("source vidéo épuisée");
                     }
                 }
+                // Tâche 11 : `writer.write()` ne fait qu'empiler l'image dans
+                // la file interne `to_payload` de str0m — c'est
+                // `Rtc::handle_input(Input::Timeout(..))` (via
+                // `Session::handle_timeout`) qui la dépile réellement en
+                // paquets RTP. `poll_output()` seul ne le fait JAMAIS (voir
+                // `session.rs` de str0m : seul `handle_timeout` appelle
+                // `do_payload`). Avec `FileSource`, quasi instantanée, le tour
+                // suivant retombe presque toujours dans la branche (c)
+                // ci-dessous, qui appelle `handle_input(Timeout)` avant la
+                // prochaine image — la file n'a donc jamais le temps de
+                // s'accumuler. `WindowsSource`, elle, prend environ un
+                // intervalle d'image complet (débit réel mesuré : 47-51 im/s,
+                // contre une cadence cible à 60 Hz) : à son retour,
+                // `next_frame_at` est déjà de nouveau dépassé, la branche (b)
+                // se redéclenche aussitôt et la branche (c) n'est jamais
+                // atteinte. La file grossit alors sans jamais se vider,
+                // jusqu'à l'échec `RtcError::WriteWithoutPoll` de str0m
+                // au-delà de 100 entrées (mesuré : session close après
+                // seulement 2 images reçues par le navigateur). On force donc
+                // ici le drainage immédiatement après toute image écrite, sans
+                // attendre que la planification retombe par chance dans la
+                // branche (c).
+                self.rtc
+                    .handle_input(Input::Timeout(Instant::now()))
+                    .map_err(|e| anyhow!("handle_input timeout (drainage vidéo) : {e}"))?;
                 return Ok(Tick::Continue);
             }
         }

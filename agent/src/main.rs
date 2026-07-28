@@ -10,6 +10,8 @@ mod capture;
 mod encode;
 #[cfg(windows)]
 mod window;
+#[cfg(windows)]
+mod windows_source;
 
 use std::net::IpAddr;
 use std::path::PathBuf;
@@ -617,7 +619,23 @@ async fn main() -> Result<()> {
             tracing::info!(?path, "source de test");
             Box::new(FileSource::from_path(path, 1280, 720, 60)?)
         }
-        None => anyhow::bail!("TEST_FILE non défini ; la capture Windows arrive à la tâche 9"),
+        None => {
+            #[cfg(windows)]
+            {
+                let title = std::env::var("WINDOW_TITLE").unwrap_or_else(|_| "firefox".into());
+                let hwnd = window::find_window_by_title(&title)?;
+                let bitrate: u32 = std::env::var("BITRATE")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(12_000_000);
+                tracing::info!(title, bitrate, "capture de la fenêtre Windows");
+                Box::new(windows_source::WindowsSource::new(hwnd, 60, bitrate)?)
+            }
+            #[cfg(not(windows))]
+            {
+                anyhow::bail!("TEST_FILE est requis hors Windows")
+            }
+        }
     };
 
     // `receiver_task`/`sender_task` : conservés par `SignalingHandle` pour ne
