@@ -34,5 +34,15 @@ PROFILE="${1:-release}"
 FLAG=""
 [ "$PROFILE" = "release" ] && FLAG="--release"
 
+# cmake est requis par `audiopus_sys`, qui bâtit libopus depuis la source C
+# vendorée dans le crate. Il n'est pas dans le PATH par défaut de la session
+# WinRM après une installation winget.
+#
+# CMAKE_POLICY_VERSION_MINIMUM=3.5 : le cmake installé par winget (4.0.2) a
+# retiré la compatibilité avec les `cmake_minimum_required` antérieurs à 3.5
+# et refuse net de configurer sans ce filet de sécurité — exactement le
+# CMakeLists.txt vendoré par `audiopus_sys`. Sans cette variable, la
+# configuration échoue avec « Compatibility with CMake < 3.5 has been
+# removed from CMake », alors même que cmake est bien trouvé et sur le PATH.
 node "$ROOT/scripts/winrm.js" \
-    "\$env:Path += ';C:\\Users\\Administrateur\\.cargo\\bin'; Set-Location C:\\dev; cargo build $FLAG 2>&1 | Out-String"
+    "\$env:Path += ';C:\\Users\\Administrateur\\.cargo\\bin;C:\\Program Files\\CMake\\bin'; \$env:CMAKE_POLICY_VERSION_MINIMUM = '3.5'; Set-Location C:\\dev; cargo build $FLAG 2>&1 | Out-String"
