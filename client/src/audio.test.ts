@@ -26,10 +26,33 @@ function faireCible() {
                 ecouteur(new Event(type));
             }
         },
+        /// `new Event(type)` ne porte pas de propriété `key` : Node n'a pas
+        /// de classe `KeyboardEvent` globale (contrairement à un vrai
+        /// navigateur), donc on la simule en l'assignant après coup sur un
+        /// `Event` ordinaire — suffisant, `audio.ts` ne lit que `.type` et
+        /// `.key`.
+        declencherTouche(type: string, touche: string) {
+            const evenement = new Event(type) as Event & { key: string };
+            evenement.key = touche;
+            for (const ecouteur of [...(ecouteurs.get(type) ?? [])]) {
+                ecouteur(evenement);
+            }
+        },
         compte(type: string) {
             return (ecouteurs.get(type) ?? []).length;
         },
     };
+}
+
+/// Un média dont le démutage est systématiquement refusé par le navigateur :
+/// `muted` reste bloqué à `true` quoi qu'on lui assigne.
+function faireMediaRecalcitrant() {
+    const media = {};
+    Object.defineProperty(media, 'muted', {
+        get: () => true,
+        set: () => {},
+    });
+    return media as { muted: boolean };
 }
 
 describe('armerLeSon', () => {
@@ -91,6 +114,64 @@ describe('armerLeSon', () => {
         cible.declencher('pointerdown');
         expect(media.muted).toBe(true);
         expect(cible.compte('pointerdown')).toBe(0);
+    });
+
+    it('un appui sur Shift seul ne démute pas et ne consomme pas l’armement', () => {
+        const media = { muted: true };
+        const cible = faireCible();
+        armerLeSon({ media, cible });
+
+        cible.declencherTouche('keydown', 'Shift');
+        expect(media.muted).toBe(true);
+        // L'armement n'est pas consommé : les écouteurs sont toujours là.
+        expect(cible.compte('keydown')).toBe(1);
+        expect(cible.compte('pointerdown')).toBe(1);
+    });
+
+    it('Control, Alt, Meta et Escape ne valent pas non plus activation', () => {
+        for (const touche of ['Control', 'Alt', 'Meta', 'Escape']) {
+            const media = { muted: true };
+            const cible = faireCible();
+            armerLeSon({ media, cible });
+
+            cible.declencherTouche('keydown', touche);
+            expect(media.muted).toBe(true);
+            expect(cible.compte('keydown')).toBe(1);
+        }
+    });
+
+    it('une touche ordinaire qui suit un modificateur démute bien', () => {
+        const media = { muted: true };
+        const cible = faireCible();
+        armerLeSon({ media, cible });
+
+        cible.declencherTouche('keydown', 'Shift');
+        expect(media.muted).toBe(true);
+
+        cible.declencherTouche('keydown', ' ');
+        expect(media.muted).toBe(false);
+        expect(cible.compte('keydown')).toBe(0);
+        expect(cible.compte('pointerdown')).toBe(0);
+    });
+
+    it('un média dont le démutage est refusé par le navigateur laisse les écouteurs en place', () => {
+        const media = faireMediaRecalcitrant();
+        const cible = faireCible();
+        const surEtat = vi.fn();
+        armerLeSon({ media, cible, surEtat });
+
+        cible.declencher('pointerdown');
+
+        expect(media.muted).toBe(true);
+        expect(cible.compte('pointerdown')).toBe(1);
+        expect(cible.compte('keydown')).toBe(1);
+        // Ne signale pas un succès qui n'a pas eu lieu.
+        expect(surEtat).not.toHaveBeenCalledWith(true);
+
+        // Un geste ultérieur peut retenter — toujours refusé ici, mais la
+        // séquence ne lève pas et les écouteurs restent disponibles.
+        cible.declencher('keydown');
+        expect(cible.compte('pointerdown')).toBe(1);
     });
 
     it('l’annulation après un démutage déjà survenu ne casse rien et laisse le son actif', () => {

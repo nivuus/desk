@@ -73,6 +73,13 @@ export function attachStats(pc: RTCPeerConnection, element: HTMLElement): () => 
                 }
             }
             previousAudio = currentAudio;
+        } else {
+            // Sans ceci, une entrée audio qui disparaît puis revient (piste
+            // renégociée, SSRC changé) calculerait son premier débit après
+            // le retour contre un `previousAudio` périmé : compteurs d'un
+            // autre flux, delta sous-estimé ou carrément négatif si le
+            // nouveau `bytesReceived` repart de zéro.
+            previousAudio = undefined;
         }
 
         const rttMs = (pair?.currentRoundTripTime ?? 0) * 1000;
@@ -85,6 +92,16 @@ export function attachStats(pc: RTCPeerConnection, element: HTMLElement): () => 
         const width = (inbound as any).frameWidth ?? 0;
         const height = (inbound as any).frameHeight ?? 0;
 
+        // `verify-webrtc.mjs` distingue soigneusement une entrée `inbound-rtp`
+        // audio absente (aucune piste négociée, ou pas encore de premier
+        // paquet) d'une piste présente à zéro perte/zéro gigue : les deux ne
+        // doivent pas produire le même texte, sous peine de faire passer une
+        // session sans audio pour une session dont l'audio est simplement
+        // parfait.
+        const audioLine = inboundAudio
+            ? `audio ${audioKbps.toFixed(0)} kb/s  ·  perdus ${(inboundAudio as any).packetsLost ?? 0}  ·  gigue ${(((inboundAudio as any).jitter ?? 0) * 1000).toFixed(1)} ms`
+            : 'audio absente';
+
         element.textContent = [
             `${fps.toFixed(1)} i/s`,
             `${width}×${height}`,
@@ -93,9 +110,7 @@ export function attachStats(pc: RTCPeerConnection, element: HTMLElement): () => 
             `tampon ${jitterBufferMs.toFixed(1)} ms`,
             `≈ ${glassToGlassMs.toFixed(1)} ms`,
             `perdues ${(inbound as any).framesDropped ?? 0}`,
-            `audio ${audioKbps.toFixed(0)} kb/s`,
-            `perdus ${(inboundAudio as any)?.packetsLost ?? 0}`,
-            `gigue ${(((inboundAudio as any)?.jitter ?? 0) * 1000).toFixed(1)} ms`,
+            audioLine,
         ].join('  ·  ');
     }, 1000);
 

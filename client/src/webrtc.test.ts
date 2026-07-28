@@ -9,9 +9,9 @@
 // côté serveur de signaling (commit 31db9f6) : ce fichier vérifie qu'il ne
 // réapparaît pas côté client.
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { parseSignalingMessage, waitForAnswer } from './webrtc';
+import { connectSession, parseSignalingMessage, waitForAnswer } from './webrtc';
 
 describe('parseSignalingMessage', () => {
     it('ignore un message `null` plutôt que de lever une exception', () => {
@@ -104,5 +104,186 @@ describe('waitForAnswer face à des messages malformés', () => {
 
         socket.emitMessage(JSON.stringify({ type: 'answer', sdp: 'ok' }));
         await expect(pending).resolves.toBe('ok');
+    });
+});
+
+// Ces deux tests couvrent un comportement promis par la spec (§10) mais
+// jamais écrit : « l'offre contient un `m=audio` en `recvonly` » et « deux
+// pistes reçues aboutissent dans un seul `MediaStream` ». Le reste du
+// fichier isole `parseSignalingMessage`/`waitForAnswer` justement pour
+// éviter d'avoir à faire tourner un `RTCPeerConnection`/`WebSocket` réels
+// sous Node ; ici, on va jusqu'au bout via des fausses implémentations
+// globales plutôt que de laisser le trou ouvert. Le point testé est ce que
+// `connectSession` DEMANDE au navigateur (transceiver `audio` en
+// `recvonly`, un seul `MediaStream` porteur des deux pistes reçues) — pas la
+// génération SDP elle-même, hors de portée sans moteur WebRTC réel.
+
+/// Point d'accès `RTCPeerConnection` factice. `createOffer` traduit
+/// fidèlement les transceivers demandés en lignes SDP : c'est cette
+/// traduction, fidèle à la demande, que les tests vérifient.
+class FakeRtcPeerConnection {
+    transceivers: Array<{ kind: string; direction?: string }> = [];
+    iceGatheringState = 'complete';
+    connectionState = 'new';
+    localDescription: { type: string; sdp: string } | null = null;
+    private listeners = new Map<string, Set<(event: any) => void>>();
+
+    constructor(_config: unknown) {
+        derniereInstancePc = this;
+    }
+
+    addTransceiver(kind: string, opts?: { direction?: string }): void {
+        this.transceivers.push({ kind, direction: opts?.direction });
+    }
+
+    createDataChannel(label: string, _opts?: unknown) {
+        return {
+            label,
+            readyState: 'open',
+            addEventListener() {},
+            removeEventListener() {},
+            send() {},
+        };
+    }
+
+    addEventListener(type: string, cb: (event: any) => void): void {
+        if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+        this.listeners.get(type)!.add(cb);
+    }
+
+    removeEventListener(type: string, cb: (event: any) => void): void {
+        this.listeners.get(type)?.delete(cb);
+    }
+
+    emit(type: string, event: unknown): void {
+        for (const cb of [...(this.listeners.get(type) ?? [])]) cb(event);
+    }
+
+    async createOffer(): Promise<{ type: 'offer'; sdp: string }> {
+        const lignes = ['v=0'];
+        for (const { kind, direction } of this.transceivers) {
+            lignes.push(`m=${kind} 9 UDP/TLS/RTP/SAVPF 0`);
+            lignes.push(`a=${direction ?? 'sendrecv'}`);
+        }
+        return { type: 'offer', sdp: lignes.join('\r\n') };
+    }
+
+    async setLocalDescription(desc: { type: string; sdp: string }): Promise<void> {
+        this.localDescription = desc;
+    }
+
+    async setRemoteDescription(_desc: unknown): Promise<void> {}
+
+    close(): void {}
+}
+
+/// `MediaStream` factice : juste assez pour prouver que les pistes reçues
+/// s'accumulent dans le même objet plutôt que de se chasser l'une l'autre.
+class FakeMediaStream {
+    private tracks: unknown[] = [];
+    addTrack(track: unknown): void {
+        this.tracks.push(track);
+    }
+    getTracks(): unknown[] {
+        return this.tracks;
+    }
+}
+
+/// `WebSocket` factice qui s'ouvre tout de suite et répond automatiquement
+/// « answer » dès qu'il voit passer une offre, pour que `connectSession`
+/// puisse aller jusqu'au bout sans jamais toucher un vrai réseau.
+class FakeSignalingSocket {
+    private listeners = new Map<string, Set<(event: any) => void>>();
+
+    constructor(_url: string) {
+        queueMicrotask(() => this.emit('open', {}));
+    }
+
+    addEventListener(type: string, cb: (event: any) => void): void {
+        if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+        this.listeners.get(type)!.add(cb);
+    }
+
+    removeEventListener(type: string, cb: (event: any) => void): void {
+        this.listeners.get(type)?.delete(cb);
+    }
+
+    emit(type: string, event: unknown): void {
+        for (const cb of [...(this.listeners.get(type) ?? [])]) cb(event);
+    }
+
+    send(data: string): void {
+        const parsed = JSON.parse(data) as { type?: string };
+        if (parsed.type === 'offer') {
+            queueMicrotask(() => {
+                this.emit('message', {
+                    data: JSON.stringify({ type: 'answer', sdp: 'v=0\r\n' }),
+                });
+            });
+        }
+    }
+
+    close(): void {}
+}
+
+let derniereInstancePc: FakeRtcPeerConnection | undefined;
+
+function fauxVideo(): HTMLVideoElement {
+    return { srcObject: null } as unknown as HTMLVideoElement;
+}
+
+describe('connectSession — négociation promise par la spec §10', () => {
+    afterEach(() => {
+        derniereInstancePc = undefined;
+        vi.unstubAllGlobals();
+    });
+
+    it("l'offre envoyée contient un `m=audio` en `recvonly`", async () => {
+        vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
+        vi.stubGlobal('WebSocket', FakeSignalingSocket);
+        vi.stubGlobal('MediaStream', FakeMediaStream);
+
+        await connectSession({
+            signalingUrl: 'ws://signaling.invalid',
+            sessionId: 'test',
+            video: fauxVideo(),
+        });
+
+        const sdp = derniereInstancePc!.localDescription!.sdp;
+        const lignes = sdp.split('\r\n');
+        const indexAudio = lignes.indexOf('m=audio 9 UDP/TLS/RTP/SAVPF 0');
+        expect(indexAudio).toBeGreaterThanOrEqual(0);
+        expect(lignes[indexAudio + 1]).toBe('a=recvonly');
+    });
+
+    it('deux pistes reçues aboutissent dans un seul MediaStream', async () => {
+        vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
+        vi.stubGlobal('WebSocket', FakeSignalingSocket);
+        vi.stubGlobal('MediaStream', FakeMediaStream);
+
+        const video = fauxVideo();
+        const sessionPromise = connectSession({
+            signalingUrl: 'ws://signaling.invalid',
+            sessionId: 'test',
+            video,
+        });
+
+        // Le listener `track` est câblé avant le premier `await` de
+        // `connectSession` (voir webrtc.ts) : l'instance factice est donc
+        // déjà disponible ici, sans attendre la résolution complète.
+        const pisteVideo = { kind: 'video' } as unknown as MediaStreamTrack;
+        const pisteAudio = { kind: 'audio' } as unknown as MediaStreamTrack;
+        derniereInstancePc!.emit('track', { track: pisteVideo });
+        derniereInstancePc!.emit('track', { track: pisteAudio });
+
+        const flux = video.srcObject as unknown as FakeMediaStream;
+        expect(flux).toBeInstanceOf(FakeMediaStream);
+        expect(flux.getTracks()).toEqual([pisteVideo, pisteAudio]);
+
+        // La seconde piste ne doit pas avoir chassé la première en
+        // réassignant `srcObject` : même objet `flux` avant et après.
+        expect(video.srcObject).toBe(flux);
+
+        await sessionPromise;
     });
 });
