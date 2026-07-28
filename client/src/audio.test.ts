@@ -92,4 +92,17 @@ describe('armerLeSon', () => {
         expect(media.muted).toBe(true);
         expect(cible.compte('pointerdown')).toBe(0);
     });
+
+    it('l’annulation après un démutage déjà survenu ne casse rien et laisse le son actif', () => {
+        // Le geste a déjà tout retiré lui-même (voir le test précédent) :
+        // `annuler()` doit rester un no-op silencieux, pas remuter ni lever.
+        const media = { muted: true };
+        const cible = faireCible();
+        const annuler = armerLeSon({ media, cible });
+        cible.declencher('pointerdown');
+        expect(media.muted).toBe(false);
+
+        expect(() => annuler()).not.toThrow();
+        expect(media.muted).toBe(false);
+    });
 });

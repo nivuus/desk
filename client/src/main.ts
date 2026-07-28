@@ -20,6 +20,19 @@ const sessionId = params.get('session') ?? 'demo';
 const signalingUrl =
     params.get('signaling') ?? `ws://${window.location.hostname}:8080`;
 
+// Minuteur du bandeau audio (« cliquez pour activer le son ») et indicateur
+// de fin de session, partagés entre `onControl` (câblé avant que la promesse
+// de connexion résolve) et le `.then()` où `armerLeSon` est appelée (après).
+// Le bandeau audio est le message le MOINS important de l'interface : il ne
+// doit jamais reprendre la main sur un message terminal comme
+// « session terminée ». D'où `sessionTerminee`, qui coupe le bandeau à la
+// racine plutôt que de le laisser s'afficher puis se faire recouvrir — et qui
+// couvre aussi le cas où `session-end` arrive avant même que `armerLeSon`
+// n'ait été appelée (le minuteur n'existe alors pas encore : `bandeau` reste
+// `undefined`, et `clearTimeout(undefined)` ne fait rien).
+let bandeau: number | undefined;
+let sessionTerminee = false;
+
 connectSession({
     signalingUrl,
     sessionId,
@@ -32,6 +45,8 @@ connectSession({
                 statusElement.dataset.hidden = 'true';
             }, 1500);
         } else if (message.type === 'session-end') {
+            sessionTerminee = true;
+            window.clearTimeout(bandeau);
             setStatus(`session terminée : ${message.reason}`);
         }
     },
@@ -43,17 +58,20 @@ connectSession({
 
         // Le son démarre coupé et s'active au premier geste. Un bandeau ne
         // s'affiche que si aucun geste n'est venu au bout de quelques
-        // secondes — inutile d'expliquer à qui a déjà cliqué.
-        let bandeau: number | undefined;
+        // secondes — inutile d'expliquer à qui a déjà cliqué. Ni le geste ni
+        // le minuteur ne doivent agir une fois la session terminée : voir
+        // `sessionTerminee` ci-dessus.
         armerLeSon({
             media: video,
             cible: window,
             surEtat(actif) {
+                if (sessionTerminee) return;
                 if (actif) {
                     window.clearTimeout(bandeau);
                     statusElement.dataset.hidden = 'true';
                 } else {
                     bandeau = window.setTimeout(() => {
+                        if (sessionTerminee) return;
                         setStatus('cliquez pour activer le son');
                     }, 4000);
                 }
