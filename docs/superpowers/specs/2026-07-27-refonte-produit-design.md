@@ -35,6 +35,12 @@ structurelles :
 4. **Installation d'apps depuis le navigateur** par upload d'installeur.
 5. **Produit multi-tenant** : une VM Windows dédiée par utilisateur.
 6. **Refonte visuelle complète** : direction sobre « produit pro ».
+7. **Jeu vidéo supporté** (ajouté le 28/07/2026) : les jeux, lancés depuis Steam
+   ou tout autre launcher, sont un cas d'usage à part entière. Engagement gradué :
+   confortable partout pour la stratégie, le solo et les indés ; le FPS
+   compétitif n'est confortable que sur bon réseau, la qualité de connexion étant
+   annoncée explicitement à l'utilisateur. Voir
+   `2026-07-28-support-jeux-design.md`.
 
 ## 3. Décisions actées
 
@@ -90,6 +96,14 @@ structurelles :
 - **Capture** : `Windows.Graphics.Capture` ciblée sur la fenêtre de
   l'application (et ses owned windows en v1 pour les popups/menus). Le resize de
   la fenêtre PWA pilote le redimensionnement de la fenêtre Windows.
+  > **Amendement du 28/07/2026 — modèle multi-fenêtres.** L'hypothèse d'une
+  > fenêtre unique par session est abandonnée : **toute fenêtre principale
+  > Windows (« Alt-Tab-able ») ouvre une fenêtre navigateur dédiée**. Steam et le
+  > jeu qu'il lance coexistent donc en deux fenêtres. Le choix du mécanisme de
+  > capture (Windows.Graphics.Capture par fenêtre vs DXGI Desktop Duplication
+  > recadrée, retenue en jalon 1) redevient ouvert, le recadrage supportant mal
+  > le chevauchement de fenêtres. Détail et critère de filtrage :
+  > `2026-07-28-support-jeux-design.md` §4.
 - **Encodage** : Media Foundation, H.264 partout, AV1 si GPU compatible. Débit
   adaptatif piloté par les stats WebRTC.
 - **Input** : injection via `SendInput` (souris, clavier, molette, touch),
@@ -187,6 +201,14 @@ reprise sans perte d'état applicatif.
 5. **⑥ Style** : tokens posés dès le début, appliqué en continu.
 
 Chaque sous-projet suit son propre cycle spec → plan → implémentation.
+
+> **Amendement du 28/07/2026 — chantiers du support jeu.** Quatre chantiers
+> s'intercalent, décrits dans `2026-07-28-support-jeux-design.md` §5 :
+> **A** audio (WASAPI loopback + Opus), **B** input jeu (souris relative +
+> manette ViGEm), **C** adaptation réseau (débit adaptatif, FEC, TURN),
+> **D** multi-fenêtres. A et C bénéficient à tout le produit, pas seulement au
+> jeu. Ordre recommandé : jalon 1 terminé → A+B → C → D, avec levée anticipée du
+> risque « popup blocker » de D.
 
 ## 10. Risques et mitigations
 

@@ -4731,26 +4731,122 @@ git commit -m "feat: injection des entrées souris et clavier par scancodes"
 
 ### Task 13: Redimensionnement et fin de session
 
-Le dernier critère fonctionnel : redimensionner la fenêtre du navigateur redimensionne Firefox côté Windows. Le canal de contrôle transporte la demande ; l'agent la temporise, car un redimensionnement reconstruit toute la chaîne d'encodage et l'utilisateur produit des dizaines d'événements en tirant sur un bord.
+Le dernier critère fonctionnel : redimensionner la fenêtre du navigateur
+redimensionne Firefox côté Windows, et la fermeture de Firefox termine proprement
+la session.
+
+> **Cette tâche a été réécrite pour l'architecture réelle.** Le plan d'origine
+> supposait une boucle `tick()` appelée depuis `main.rs`, qui aurait pu manipuler
+> la source entre deux tours. Ce n'est plus le cas : `Session::run` est une
+> boucle **bloquante** qui **possède** la source, et `queue_control` est privée.
+> Toute la logique doit donc vivre à l'intérieur de `Session`.
+>
+> C'est aussi ce qui protège l'invariant de drainage de str0m, rompu trois fois
+> sur ce projet : `act_on_timeout` n'effectue qu'**une seule** mutation de `Rtc`
+> par appel. Le redimensionnement doit respecter cette règle.
 
 **Files:**
-- Modify: `agent/src/main.rs`, `client/src/main.ts`
+- Modify: `agent/src/source.rs` (extension du trait), `agent/src/windows_source.rs`, `agent/src/transport.rs`, `client/src/main.ts`
+- Test: module `#[cfg(test)]` de `agent/src/source.rs`
 
 **Interfaces:**
-- Consumes: `ClientControl::Resize`, `AgentControl::SessionEnd` (tâche 4), `WindowsSource::resize`, `WindowsSource::is_alive` (tâche 11).
-- Produces: aucune interface nouvelle — câblage de comportements existants.
+- Consumes: `ClientControl::Resize`, `AgentControl::{ready, session_end}` (tâche 4), `WindowsSource::{resize, is_alive}` (tâche 11).
+- Produces :
+  - `VideoSource::resize(&mut self, width: u32, height: u32) -> anyhow::Result<()>` — méthode **par défaut** ne faisant rien, pour que `FileSource` reste inchangée
+  - `VideoSource::is_alive(&self) -> bool` — méthode par défaut renvoyant `true`
+  - Côté TypeScript : émission de `encodeResize` sur le canal de contrôle, temporisée
 
-- [ ] **Step 1: Émettre le redimensionnement depuis le navigateur**
+- [ ] **Step 1: Étendre le trait VideoSource**
 
-Dans `client/src/main.ts`, après `attachInput` :
+Dans `agent/src/source.rs`, ajouter deux méthodes **par défaut** au trait — ainsi
+`FileSource` n'a rien à implémenter et les tests existants restent verts :
+
+```rust
+    /// Redimensionne la source, si elle le permet.
+    ///
+    /// Par défaut sans effet : une source fichier ignore la demande. La source
+    /// Windows, elle, redimensionne la fenêtre et reconstruit sa chaîne.
+    fn resize(&mut self, _width: u32, _height: u32) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    /// Faux quand la source a définitivement disparu — fenêtre fermée, par
+    /// exemple. À distinguer de `is_exhausted`, qui signale l'épuisement d'un
+    /// flux fini.
+    fn is_alive(&self) -> bool {
+        true
+    }
+```
+
+Puis, dans `agent/src/windows_source.rs`, câbler l'implémentation existante :
+
+```rust
+    fn resize(&mut self, width: u32, height: u32) -> anyhow::Result<()> {
+        WindowsSource::resize(self, width, height)
+    }
+
+    fn is_alive(&self) -> bool {
+        WindowsSource::is_alive(self)
+    }
+```
+
+Run: `cargo test -p agent`
+Expected: les 53 tests restent verts sur Linux — l'ajout de méthodes par défaut
+ne casse aucune implémentation existante.
+
+- [ ] **Step 2: Traiter le redimensionnement dans Session**
+
+Le message arrive par le canal de contrôle, donc dans le traitement des données de
+canal. Mais **ne redimensionne pas là** : ce code s'exécute pendant le drainage de
+`poll_output`, et reconstruire la chaîne d'encodage y serait à la fois long et
+risqué pour l'invariant.
+
+Mémorise plutôt la demande dans un champ de `Session`, et applique-la dans
+`act_on_timeout`, comme une étape à part entière — au même titre que les branches
+existantes, avec la même règle d'une seule mutation de `Rtc` par appel.
+
+Ajoute à `Session` :
+
+```rust
+    /// Dernier redimensionnement demandé, pas encore appliqué. On ne garde que
+    /// le plus récent : pendant qu'un utilisateur tire un bord, les demandes
+    /// intermédiaires n'ont aucun intérêt.
+    pending_resize: Option<(u32, u32)>,
+```
+
+Dans le traitement des messages de contrôle, sur réception d'un
+`ClientControl::Resize`, renseigne ce champ au lieu d'agir immédiatement.
+
+Dans `act_on_timeout`, **avant** la branche vidéo, traite la demande en attente :
+applique `self.source.resize(w, h)`, puis mets en file un `AgentControl::ready`
+avec les dimensions réellement obtenues — la fenêtre peut refuser la taille
+demandée, et le client doit connaître la vérité. Un échec de redimensionnement ne
+doit pas terminer la session : journalise et poursuis.
+
+Attention : l'appel `queue_control` ne mute pas `Rtc`, il ne fait qu'empiler. La
+mutation aura lieu au tour suivant, par la branche de contrôle existante.
+L'invariant est donc préservé, mais vérifie-le en relisant `act_on_timeout`.
+
+- [ ] **Step 3: Détecter la disparition de la fenêtre**
+
+Toujours dans `act_on_timeout`, vérifie `self.source.is_alive()`. Quand la fenêtre
+a disparu, amorce une fin de session propre par le mécanisme déjà en place
+(`begin_ending`), avec la raison « fenêtre fermée ». Ce mécanisme met le message
+`session_end` en file et laisse la boucle le transmettre avant de couper — ne
+court-circuite pas ce chemin.
+
+Ce test coûte un appel système à chaque tour de boucle. Ne le fais pas à chaque
+tour : espace-le, par exemple une fois par seconde. Une fenêtre fermée le reste.
+
+- [ ] **Step 4: Émettre le redimensionnement depuis le navigateur**
+
+Dans `client/src/main.ts`, après l'établissement de la session :
 
 ```typescript
 import { encodeResize } from '../../proto/ts/control';
 
-// … dans le .then(session => { … })
-
-// Le redimensionnement reconstruit la chaîne d'encodage côté agent : on
-// n'émet donc qu'une fois le geste terminé, pas à chaque pixel parcouru.
+// Le redimensionnement reconstruit la chaîne d'encodage côté agent : on n'émet
+// donc qu'une fois le geste terminé, pas à chaque pixel parcouru.
 let resizeTimer: number | undefined;
 const observer = new ResizeObserver(() => {
     window.clearTimeout(resizeTimer);
@@ -4764,158 +4860,47 @@ const observer = new ResizeObserver(() => {
 observer.observe(video);
 ```
 
-- [ ] **Step 2: Traiter le redimensionnement dans l'agent**
+Run: `cd client && npx tsc --noEmit`
+Expected: aucune erreur.
 
-Le rappel `on_control` de `main.rs` ne peut pas emprunter la source, déjà déplacée dans `Session`. On passe donc par une variable partagée que la boucle consulte.
-
-Dans `agent/src/main.rs`, avant la boucle :
-
-```rust
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
-
-// Dimensions demandées par le client, empaquetées : largeur << 32 | hauteur.
-// Zéro signifie « aucune demande en attente ».
-let requested_size = Arc::new(AtomicU64::new(0));
-let requested_size_for_callback = Arc::clone(&requested_size);
-
-let mut on_control = move |message: proto::control::ClientControl| match message {
-    proto::control::ClientControl::Resize { width, height, .. } => {
-        tracing::info!(width, height, "redimensionnement demandé");
-        requested_size_for_callback
-            .store(((width as u64) << 32) | height as u64, Ordering::Relaxed);
-    }
-};
-```
-
-Et dans le corps de la boucle, après le `tick` :
-
-```rust
-        // Appliquer une éventuelle demande de redimensionnement.
-        #[cfg(windows)]
-        {
-            let packed = requested_size.swap(0, Ordering::Relaxed);
-            if packed != 0 {
-                let (width, height) = ((packed >> 32) as u32, packed as u32);
-                if let Err(e) = session.resize_source(width, height) {
-                    tracing::warn!(erreur = %e, "redimensionnement échoué");
-                } else if let Some((w, h)) = session.source_dimensions() {
-                    session.queue_control(AgentControl::ready(w, h));
-                }
-            }
-
-            // Fin de session si la fenêtre capturée a disparu.
-            if !session.source_alive() {
-                session.queue_control(AgentControl::session_end("fenêtre fermée"));
-                // Laisser le message partir avant de couper.
-                for _ in 0..50 {
-                    let _ = session.tick(&mut on_input, &mut on_control);
-                }
-                tracing::info!("fenêtre fermée, session terminée");
-                break;
-            }
-        }
-```
-
-- [ ] **Step 3: Exposer la source depuis la session**
-
-`Session` détient la source ; il lui faut trois accès. Ajouter à `agent/src/transport.rs`, dans `impl Session` :
-
-```rust
-    /// Dimensions courantes de la source, si elle en déclare.
-    pub fn source_dimensions(&self) -> Option<(u32, u32)> {
-        Some(self.source.dimensions())
-    }
-
-    /// Redimensionne la source si elle le permet.
-    #[cfg(windows)]
-    pub fn resize_source(&mut self, width: u32, height: u32) -> anyhow::Result<()> {
-        match self.source.as_resizable() {
-            Some(source) => source.resize(width, height),
-            None => Ok(()),
-        }
-    }
-
-    /// Vrai si la source est toujours exploitable.
-    #[cfg(windows)]
-    pub fn source_alive(&self) -> bool {
-        self.source.as_resizable().map_or(true, |s| s.is_alive())
-    }
-```
-
-Cela suppose d'étendre le trait `VideoSource`. Dans `agent/src/source.rs` :
-
-```rust
-/// Source dont la géométrie suit celle demandée par le client.
-#[cfg(windows)]
-pub trait ResizableSource {
-    fn resize(&mut self, width: u32, height: u32) -> anyhow::Result<()>;
-    fn is_alive(&self) -> bool;
-}
-
-pub trait VideoSource {
-    fn next_frame(&mut self) -> Option<AccessUnit>;
-    fn dimensions(&self) -> (u32, u32);
-
-    /// Vue redimensionnable de cette source, si elle en est capable.
-    ///
-    /// La source de test ne l'est pas et renvoie `None` — le reste du code n'a
-    /// donc pas à distinguer les deux cas.
-    #[cfg(windows)]
-    fn as_resizable(&mut self) -> Option<&mut dyn ResizableSource> {
-        None
-    }
-}
-```
-
-Et dans `agent/src/windows_source.rs`, implémenter le trait puis l'exposer :
-
-```rust
-impl crate::source::ResizableSource for WindowsSource {
-    fn resize(&mut self, width: u32, height: u32) -> Result<()> {
-        WindowsSource::resize(self, width, height)
-    }
-
-    fn is_alive(&self) -> bool {
-        WindowsSource::is_alive(self)
-    }
-}
-```
-
-Ajouter dans `impl VideoSource for WindowsSource` :
-
-```rust
-    fn as_resizable(&mut self) -> Option<&mut dyn crate::source::ResizableSource> {
-        Some(self)
-    }
-```
-
-- [ ] **Step 4: Compiler et tester**
+- [ ] **Step 5: Vérifier**
 
 ```bash
-cargo test -p agent
+cargo test -p agent && cargo test -p proto
 cd client && npx tsc --noEmit && cd ..
-./scripts/build-agent.sh
+export WINDOWS_ADMIN_PASSWORD='...' && ./scripts/build-agent.sh
 ```
 
-Expected: tout réussit. Les tests existants doivent rester verts — l'ajout d'une méthode par défaut au trait ne casse pas `FileSource`.
+Expected: 53 tests `agent`, 17 `proto`, TypeScript propre, compilation Windows
+propre.
 
-- [ ] **Step 5: Essai manuel du redimensionnement**
+- [ ] **Step 6: Essai de bout en bout**
 
-Relancer le trio, puis redimensionner la fenêtre du navigateur.
+Monte la chaîne complète, connecte-toi, puis :
 
-Expected: après environ 200 ms d'immobilité, Firefox change de taille côté Windows et l'image se recadre. Chronométrer entre l'arrêt du geste et la stabilisation de l'image : le critère de la spec est **moins de 500 ms**. Consigner la mesure.
+1. **Redimensionne** la fenêtre du navigateur. Après environ 200 ms d'immobilité,
+   Firefox doit changer de taille côté Windows et l'image se recadrer. Relève les
+   nouvelles dimensions côté navigateur par `getStats()` : elles doivent suivre.
+   Chronomètre entre l'arrêt du geste et la stabilisation — la cible est **moins
+   de 500 ms**.
+2. **Vérifie la continuité des horodatages.** Le redimensionnement reconstruit
+   l'encodeur, mais l'horodatage ne doit jamais repartir en arrière, sinon le
+   décodeur du navigateur rejette le flux. Un `framesDecoded` qui repart de zéro
+   ou une image figée après redimensionnement en seraient le signe.
+3. **Ferme Firefox** depuis la VM. Le bandeau du client doit afficher la fin de
+   session, et l'agent se terminer proprement.
 
-Fermer Firefox depuis la VM : le bandeau doit afficher « session terminée : fenêtre fermée ».
+Consigne les mesures : elles alimentent la recette de la tâche 14.
 
-- [ ] **Step 6: Committer**
+- [ ] **Step 7: Committer**
 
 ```bash
-git add agent/src client/src
+git add agent/src/source.rs agent/src/windows_source.rs agent/src/transport.rs client/src/main.ts
 git commit -m "feat: redimensionnement de la fenêtre distante et fin de session"
 ```
 
 ---
+
 
 ### Task 14: Instrumentation et recette du jalon
 
