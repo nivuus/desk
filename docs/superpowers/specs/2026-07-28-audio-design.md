@@ -353,8 +353,21 @@ Chaque chemin de dégradation journalise donc une fois, explicitement.
 - **`transport.rs`** : le test de bouclage str0m existant (`transport.rs:1320`)
   étendu à une piste audio négociée — un paquet écrit côté agent est reçu côté
   pair, avec le PT attendu.
-- **`transport.rs`** : `write_frame` appelle bien `self.capture_instant(unit.pts_90k)`
-  et non `Instant::now()` (non-régression sur §6).
+- **`transport.rs`** : `capture_instant` est vérifiée isolément
+  (`la_session_ancre_l_instant_de_capture_sur_son_origine`, une `clock_origin`
+  dans le passé rend le calcul inconfondable avec `Instant::now()`), et son
+  usage au point d'appel — `write_frame`, ligne ~943 — est vérifié bout en
+  bout par un second test de bouclage str0m
+  (`write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp`) :
+  avec une `clock_origin` décalée de 10 s dans le passé, le `rtp_time` extrapolé
+  par str0m dans le Sender Report RTCP reçu par le pair diffère de ~10 s selon
+  que `write_frame` annonce l'instant de capture ou l'instant d'écriture comme
+  `wallclock` — écart démontré en repassant temporairement la ligne à
+  `Instant::now()` (voir `docs/superpowers/sdd/2026-07-28-audio/derniere-passe-report.md`
+  pour la preuve). `Event::MediaData::network_time` a été écarté : ce champ est
+  documenté par str0m comme l'instant de réception locale, sans rapport avec le
+  `wallclock` émis ; c'est `MediaData::last_sender_info` (alimenté par le SR)
+  qui reflète réellement le comportement de la ligne 943.
 
 ### Côté client
 
