@@ -14,9 +14,11 @@
 //! pourrait, ce qui rend l'invariant structurel plutôt que dépendant de la
 //! discipline de l'appelant.
 //!
-//! `run()` bloque volontairement (lecture UDP synchrone avec échéance) et
-//! doit donc être appelée depuis un thread dédié — `tokio::task::spawn_blocking`
-//! côté `main.rs` — jamais depuis un ouvrier async de tokio.
+//! `run()` bloque volontairement (socket UDP non bloquant, sondé par petites
+//! tranches de sommeil plutôt que par un `recv_from` bloquant à échéance —
+//! voir `RECV_POLL_INTERVAL`) et doit donc être appelée depuis un thread
+//! dédié — `tokio::task::spawn_blocking` côté `main.rs` — jamais depuis un
+//! ouvrier async de tokio.
 
 use std::collections::VecDeque;
 use std::net::{IpAddr, SocketAddr, UdpSocket};
@@ -36,6 +38,28 @@ use crate::source::VideoSource;
 
 /// Cadence d'envoi des images : une toutes les 16,67 ms (~60 Hz).
 const FRAME_INTERVAL: Duration = Duration::from_micros(16_667);
+
+/// Tranche maximale d'une attente sans donnée sur le socket, dans la boucle
+/// de sondage non bloquant d'`act_on_timeout` (branche c).
+///
+/// Remplace `UdpSocket::set_read_timeout`, dont le délai déborde massivement
+/// sous Windows (mesure indépendante : dépassement moyen +12,7 ms, jusqu'à
+/// +37 ms ; un délai demandé de 617 µs a été honoré après 31 758 µs — cinq
+/// fois le budget d'une image entière à 60 Hz). `recv_from` consommait ainsi
+/// ~90 % du temps de boucle pendant qu'une capture/encodage capable de
+/// 47-51 im/s en produisait à peine 23-25.
+///
+/// Un socket non bloquant sondé en boucle sans jamais dormir consommerait un
+/// cœur de processeur entier pour rien — inacceptable pour un agent censé
+/// tourner en arrière-plan. À l'inverse, un unique `sleep` couvrant toute
+/// l'attente reproduirait l'imprécision mesurée (le défaut n'est pas propre à
+/// `recv_from` : c'est la granularité du minuteur Windows sous-jacent). Le
+/// compromis retenu revérifie le socket à intervalles courts et fixes : le
+/// sur-sommeil d'un réveil donné, s'il survient, reste borné à cet intervalle
+/// plutôt qu'à la durée totale de l'attente. 1 ms est nettement plus fin que
+/// l'intervalle d'image (16,67 ms) tout en laissant le fil dormir l'essentiel
+/// du temps.
+const RECV_POLL_INTERVAL: Duration = Duration::from_millis(1);
 
 /// Résultat du traitement d'un événement ou d'un tour de boucle interne.
 enum Tick {
@@ -163,6 +187,79 @@ fn recv_error_backoff(consecutive_errors: u32) -> Duration {
         .min(RECV_ERROR_BACKOFF_MAX)
 }
 
+// `timeBeginPeriod`/`timeEndPeriod` (winmm.dll) sont déclarées à la main :
+// la crate `windows` 0.62 (même avec la fonctionnalité
+// `Win32_Media_Multimedia` activée) ne les génère pas — vérifié par
+// recherche exhaustive dans les sources vendues de la crate, aucune
+// occurrence de `timeBeginPeriod`/`BeginPeriod`. L'API est stable et
+// documentée par Microsoft depuis Windows XP ; la déclarer directement évite
+// de dépendre d'une fonctionnalité absente. (`//`, pas `///` : rustdoc ne
+// documente pas les blocs `extern`, et un tel commentaire s'attacherait de
+// toute façon à l'élément suivant plutôt qu'à celui-ci.)
+#[cfg(windows)]
+#[link(name = "winmm")]
+extern "system" {
+    fn timeBeginPeriod(uperiod: u32) -> u32;
+    fn timeEndPeriod(uperiod: u32) -> u32;
+}
+
+/// Garde RAII appariant `timeBeginPeriod`/`timeEndPeriod` (winmm) pour la
+/// durée de vie d'une `Session`.
+///
+/// Sans cet appel, `std::thread::sleep` sous Windows hérite de la résolution
+/// par défaut du minuteur système — typiquement 15,6 ms tant qu'aucun
+/// processus n'a demandé mieux. Mesuré expérimentalement sur cet agent :
+/// `RECV_POLL_INTERVAL` (1 ms) sans cette garde ne réduisait quasiment pas le
+/// débit (~24 im/s, contre ~23 im/s avant tout correctif) — la boucle de
+/// sondage héritait du même défaut de granularité que celui mesuré sur
+/// `recv_from`, juste déplacé vers `sleep`. Avec la résolution ramenée à
+/// 1 ms, `sleep` honore effectivement des attentes de l'ordre de la
+/// milliseconde. `timeBeginPeriod`/`timeEndPeriod` doivent être appariés
+/// (documentation Microsoft) : cette garde le fait même en cas de retour
+/// anticipé (`?`) ou de panique, jamais par un chemin de code qui pourrait
+/// être sauté.
+///
+/// N'existe que sous Windows : sous Linux (utilisé par les tests), le SDK
+/// n'expose pas `timeBeginPeriod` et le défaut mesuré n'a pas cours.
+#[cfg(windows)]
+struct TimerResolutionGuard;
+
+#[cfg(windows)]
+impl TimerResolutionGuard {
+    fn new() -> Self {
+        // Retour ignoré : `TIMERR_NOERROR` (succès) ou `TIMERR_NOCANDO` (déjà
+        // à la résolution maximale, ou hors bornes) — dans les deux cas, rien
+        // d'exploitable à faire ici ; un échec silencieux dégraderait au pire
+        // vers le comportement précédent (résolution par défaut), jamais vers
+        // une erreur fonctionnelle.
+        unsafe {
+            timeBeginPeriod(1);
+        }
+        Self
+    }
+}
+
+#[cfg(windows)]
+impl Drop for TimerResolutionGuard {
+    fn drop(&mut self) {
+        unsafe {
+            timeEndPeriod(1);
+        }
+    }
+}
+
+/// Sous Linux (tests), aucun équivalent à appeler : la granularité mesurée
+/// est un défaut propre au minuteur Windows.
+#[cfg(not(windows))]
+struct TimerResolutionGuard;
+
+#[cfg(not(windows))]
+impl TimerResolutionGuard {
+    fn new() -> Self {
+        Self
+    }
+}
+
 /// Durée à attendre avant le prochain réveil, bornée par la plus proche de
 /// deux échéances : celle que réclame `Rtc` (`rtc_deadline`) et, si une piste
 /// vidéo est négociée et la session n'est pas en cours de clôture,
@@ -222,6 +319,11 @@ pub struct Session {
     /// première version de ce correctif, reproduisait exactement la
     /// violation qu'il prétendait résoudre.
     video_write_pending_drain: bool,
+    /// Résolution du minuteur Windows abaissée à 1 ms pour la durée de vie de
+    /// la session (voir `TimerResolutionGuard`). Champ jamais lu : sa seule
+    /// raison d'être est de vivre aussi longtemps que `Session` et de
+    /// restaurer la résolution d'origine à la destruction.
+    _timer_resolution: TimerResolutionGuard,
 }
 
 impl Session {
@@ -231,6 +333,13 @@ impl Session {
     pub fn new(source: Box<dyn VideoSource + Send>, local_ip: IpAddr) -> Result<Self> {
         let socket = UdpSocket::bind(SocketAddr::new(local_ip, 0))
             .context("ouverture du socket UDP")?;
+        // Non bloquant une fois pour toutes : `act_on_timeout` ne dépend plus
+        // de `set_read_timeout`, dont le délai déborde massivement sous
+        // Windows (mesuré : dépassement moyen +12,7 ms, jusqu'à +37 ms sur un
+        // délai demandé de 617 µs — voir `poll_recv_or_timeout`). Le rythme
+        // d'attente est désormais entièrement piloté par notre propre boucle
+        // de sondage, indépendante de la précision du minuteur du socket.
+        socket.set_nonblocking(true).context("passage du socket UDP en non bloquant")?;
         let addr = socket.local_addr()?;
         tracing::info!(%addr, "socket UDP de l'agent");
 
@@ -271,6 +380,7 @@ impl Session {
             warned_negotiation: false,
             consecutive_recv_errors: 0,
             video_write_pending_drain: false,
+            _timer_resolution: TimerResolutionGuard::new(),
         };
 
         // `add_local_candidate` est une mutation : on draine avant de rendre
@@ -462,78 +572,109 @@ impl Session {
             return Ok(Tick::Continue);
         }
 
-        self.socket.set_read_timeout(Some(wait))?;
+        // Sonde le socket (non bloquant depuis `Session::new`) par petites
+        // tranches plutôt que de confier l'attente à `set_read_timeout` :
+        // c'est le correctif du défaut mesuré (voir le commentaire de
+        // `RECV_POLL_INTERVAL`). Aucune mutation de `Rtc` ne se produit tant
+        // que cette boucle n'a pas soit reçu un datagramme, soit atteint
+        // `poll_deadline` — une seule mutation en sort, comme l'exige le
+        // docstring de la méthode.
+        let poll_deadline = now + wait;
         let mut buffer = vec![0u8; 2000];
-        match self.socket.recv_from(&mut buffer) {
-            Ok((n, source_addr)) => {
-                // Un tour de boucle sans erreur de réception met fin à une
-                // éventuelle rafale : la prochaine erreur, s'il y en a une,
-                // repart d'une temporisation minimale plutôt que de
-                // poursuivre la croissance entamée par une rafale passée.
-                self.consecutive_recv_errors = 0;
-                let destination = self.socket.local_addr()?;
-                // I2 : un datagramme qui n'est ni STUN, ni DTLS, ni RTP/RTCP
-                // (bruit réseau, sonde de port, paquet vide) fait échouer
-                // cette conversion. Il ne doit pas faire tomber l'agent —
-                // seulement être ignoré.
-                match DatagramRecv::try_from(&buffer[..n]) {
-                    Ok(contents) => {
-                        let receive = Receive {
-                            proto: Protocol::Udp,
-                            source: source_addr,
-                            destination,
-                            contents,
-                        };
+        loop {
+            match self.socket.recv_from(&mut buffer) {
+                Ok((n, source_addr)) => {
+                    // Un tour de boucle sans erreur de réception met fin à
+                    // une éventuelle rafale : la prochaine erreur, s'il y en
+                    // a une, repart d'une temporisation minimale plutôt que
+                    // de poursuivre la croissance entamée par une rafale
+                    // passée.
+                    self.consecutive_recv_errors = 0;
+                    let destination = self.socket.local_addr()?;
+                    // I2 : un datagramme qui n'est ni STUN, ni DTLS, ni
+                    // RTP/RTCP (bruit réseau, sonde de port, paquet vide)
+                    // fait échouer cette conversion. Il ne doit pas faire
+                    // tomber l'agent — seulement être ignoré.
+                    match DatagramRecv::try_from(&buffer[..n]) {
+                        Ok(contents) => {
+                            let receive = Receive {
+                                proto: Protocol::Udp,
+                                source: source_addr,
+                                destination,
+                                contents,
+                            };
+                            self.rtc
+                                .handle_input(Input::Receive(Instant::now(), receive))
+                                .map_err(|e| anyhow!("handle_input receive : {e}"))?;
+                        }
+                        Err(e) => {
+                            tracing::debug!(erreur = %e, "paquet UDP ignoré (non reconnu)");
+                        }
+                    }
+                    return Ok(Tick::Continue);
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    // Pas de donnée disponible pour l'instant : le cas
+                    // courant. N'affecte pas le compteur de rafale (ce n'est
+                    // pas une erreur).
+                    self.consecutive_recv_errors = 0;
+                    let remaining = poll_deadline.saturating_duration_since(Instant::now());
+                    if remaining.is_zero() {
+                        // Échéance atteinte sans donnée : rendre la main à
+                        // `Rtc` via un timeout, exactement comme le faisait
+                        // l'ancien `recv_from` bloquant à l'expiration de
+                        // `set_read_timeout`.
                         self.rtc
-                            .handle_input(Input::Receive(Instant::now(), receive))
-                            .map_err(|e| anyhow!("handle_input receive : {e}"))?;
+                            .handle_input(Input::Timeout(Instant::now()))
+                            .map_err(|e| anyhow!("handle_input timeout : {e}"))?;
+                        return Ok(Tick::Continue);
                     }
-                    Err(e) => {
-                        tracing::debug!(erreur = %e, "paquet UDP ignoré (non reconnu)");
+                    // Ni spin serré (consommerait un cœur entier), ni sommeil
+                    // unique sur toute la durée (reproduirait l'imprécision
+                    // mesurée) : on dort par petites tranches bornées par
+                    // `RECV_POLL_INTERVAL`, en revérifiant le socket à
+                    // chaque réveil. Le sur-sommeil éventuel d'un seul appel
+                    // à `sleep` (même défaut de granularité que celui mesuré
+                    // sur `recv_from`) reste borné à un intervalle de
+                    // sondage, jamais à la totalité de `wait`.
+                    std::thread::sleep(remaining.min(RECV_POLL_INTERVAL));
+                }
+                Err(e) => match classify_recv_error(e.kind()) {
+                    // I2 : erreur de réception transitoire — journalisée,
+                    // pas fatale. Une rafale bouclerait à vide sans cette
+                    // temporisation croissante (voir `recv_error_backoff`) —
+                    // le socket lui-même n'est pas mis en cause, seul le
+                    // rythme de nouvelles tentatives l'est.
+                    RecvErrorAction::RetryWithBackoff => {
+                        self.consecutive_recv_errors =
+                            self.consecutive_recv_errors.saturating_add(1);
+                        let backoff = recv_error_backoff(self.consecutive_recv_errors);
+                        tracing::warn!(
+                            erreur = %e,
+                            consecutives = self.consecutive_recv_errors,
+                            backoff_ms = backoff.as_millis(),
+                            "échec de réception UDP transitoire, ignoré"
+                        );
+                        std::thread::sleep(backoff);
+                        return Ok(Tick::Continue);
                     }
-                }
+                    // Erreur qui n'a aucune raison de se résorber
+                    // d'elle-même : clôture propre de la session (comme I5
+                    // pour une source épuisée), pas boucle indéfinie ni
+                    // panique du processus — seules `Session::new`/
+                    // `accept_offer` justifient de tuer le processus entier
+                    // (voir le commentaire de module).
+                    RecvErrorAction::Fatal => {
+                        tracing::warn!(
+                            erreur = %e,
+                            "échec de réception UDP non transitoire, fin de session"
+                        );
+                        self.begin_ending("échec de réception UDP non transitoire");
+                        return Ok(Tick::Continue);
+                    }
+                },
             }
-            Err(e)
-                if e.kind() == std::io::ErrorKind::WouldBlock
-                    || e.kind() == std::io::ErrorKind::TimedOut =>
-            {
-                // Échéance normale, pas une erreur : n'affecte pas le
-                // compteur de rafale.
-                self.consecutive_recv_errors = 0;
-                self.rtc
-                    .handle_input(Input::Timeout(Instant::now()))
-                    .map_err(|e| anyhow!("handle_input timeout : {e}"))?;
-            }
-            Err(e) => match classify_recv_error(e.kind()) {
-                // I2 : erreur de réception transitoire — journalisée, pas
-                // fatale. `recv_from` renvoyant l'erreur immédiatement (sans
-                // attendre `wait`), une rafale bouclerait à vide sans cette
-                // temporisation croissante (voir `recv_error_backoff`) — le
-                // socket lui-même n'est pas mis en cause, seul le rythme de
-                // nouvelles tentatives l'est.
-                RecvErrorAction::RetryWithBackoff => {
-                    self.consecutive_recv_errors = self.consecutive_recv_errors.saturating_add(1);
-                    let backoff = recv_error_backoff(self.consecutive_recv_errors);
-                    tracing::warn!(
-                        erreur = %e,
-                        consecutives = self.consecutive_recv_errors,
-                        backoff_ms = backoff.as_millis(),
-                        "échec de réception UDP transitoire, ignoré"
-                    );
-                    std::thread::sleep(backoff);
-                }
-                // Erreur qui n'a aucune raison de se résorber d'elle-même :
-                // clôture propre de la session (comme I5 pour une source
-                // épuisée), pas boucle indéfinie ni panique du processus —
-                // seules `Session::new`/`accept_offer` justifient de tuer le
-                // processus entier (voir le commentaire de module).
-                RecvErrorAction::Fatal => {
-                    tracing::warn!(erreur = %e, "échec de réception UDP non transitoire, fin de session");
-                    self.begin_ending("échec de réception UDP non transitoire");
-                }
-            },
         }
-        Ok(Tick::Continue)
     }
 
     /// Sélectionne le type de charge utile H.264 négocié pour `mid`, s'il y
