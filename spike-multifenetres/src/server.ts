@@ -1,6 +1,8 @@
-// Serveur du spike multi-fenêtres. Sert `public/` et relaie deux événements :
-// `fire` (ordre d'ouverture, émis par POST /fire) et `alive` (signal de vie de la
-// fenêtre ouverte, émis par GET /alive). Aucun état persistant.
+// Serveur du spike multi-fenêtres. Sert `public/` et relaie trois événements :
+// `fire` (ordre d'ouverture, émis par POST /fire), `alive` (signal de vie de la
+// fenêtre ouverte, émis par GET /alive) et `bloque` (le service worker rapporte
+// que clients.openWindow() n'a rien ouvert, émis par GET /bloque). Aucun état
+// persistant.
 //
 // Le déclenchement passe délibérément par le réseau et non par un clic dans la
 // page : c'est toute la condition testée — un message serveur n'est pas une
@@ -22,14 +24,26 @@ const TYPES_MIME: Record<string, string> = {
     '.ico': 'image/x-icon',
 };
 
+// Adresse d'écoute. Voir le commentaire sur `listen` plus bas : ce n'est pas un
+// réglage, c'est une garde.
+const HOTE = '127.0.0.1';
+
 export interface SpikeServer {
     port: number;
+    /** Adresse effectivement liée — exposée pour que la garde soit vérifiable. */
+    hote: string;
     close(): Promise<void>;
 }
 
 function estVarianteValide(valeur: unknown): valeur is number {
     return typeof valeur === 'number' && Number.isInteger(valeur) && valeur >= 1 && valeur <= 4;
 }
+
+// Identifiant de passage forgé par la page. Le serveur ne l'interprète pas — il
+// le recopie tel quel dans la diffusion, c'est la page qui tranche. Il le borne
+// tout de même : sans cela n'importe qui pourrait faire diffuser une chaîne
+// arbitrairement longue à tous les clients WebSocket.
+const MOTIF_NONCE = /^[A-Za-z0-9_-]{1,64}$/;
 
 // Lit le corps d'une requête, borné à 4 Kio : le serveur est exposé via Pomerium,
 // et une requête sans fin immobiliserait le process.
@@ -51,11 +65,19 @@ function lireCorps(requete: IncomingMessage): Promise<string> {
 export async function createSpikeServer(port: number): Promise<SpikeServer> {
     const clients = new Set<WebSocket>();
 
-    function diffuser(charge: Record<string, unknown>): void {
+    // Rend le nombre de clients réellement touchés : POST /fire le renvoie à la
+    // page, faute de quoi un socket tombé produirait une mesure silencieusement
+    // vide — un 204 rassurant sans que personne n'ait reçu l'ordre.
+    function diffuser(charge: Record<string, unknown>): number {
         const texte = JSON.stringify({ ...charge, at: Date.now() });
+        let touches = 0;
         for (const client of clients) {
-            if (client.readyState === WebSocket.OPEN) client.send(texte);
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(texte);
+                touches += 1;
+            }
         }
+        return touches;
     }
 
     async function servirFichier(chemin: string, reponse: ServerResponse): Promise<void> {
@@ -81,7 +103,14 @@ export async function createSpikeServer(port: number): Promise<SpikeServer> {
     const http = createServer(async (requete, reponse) => {
         const url = new URL(requete.url ?? '/', `http://${requete.headers.host ?? 'localhost'}`);
 
-        if (requete.method === 'POST' && url.pathname === '/fire') {
+        if (url.pathname === '/fire') {
+            // Contrôle de méthode explicite : une route documentée qui accepte
+            // n'importe quel verbe est une route qu'on peut déclencher par
+            // accident, et un déclenchement accidentel fausse la mesure.
+            if (requete.method !== 'POST') {
+                reponse.writeHead(405, { allow: 'POST' }).end('méthode non autorisée');
+                return;
+            }
             let variante: unknown;
             try {
                 variante = (JSON.parse(await lireCorps(requete)) as { variant?: unknown }).variant;
@@ -93,18 +122,31 @@ export async function createSpikeServer(port: number): Promise<SpikeServer> {
                 reponse.writeHead(400).end('variante invalide');
                 return;
             }
-            diffuser({ type: 'fire', variant: variante });
-            reponse.writeHead(204).end();
+            const touches = diffuser({ type: 'fire', variant: variante });
+            reponse.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+            reponse.end(JSON.stringify({ clients: touches }));
             return;
         }
 
-        if (url.pathname === '/alive') {
+        // `/alive` et `/bloque` ne diffèrent que par le type diffusé : le premier
+        // dit « la fenêtre existe », le second « le service worker n'a rien pu
+        // ouvrir ». Même contrat d'entrée, donc même garde.
+        if (url.pathname === '/alive' || url.pathname === '/bloque') {
+            if (requete.method !== 'GET') {
+                reponse.writeHead(405, { allow: 'GET' }).end('méthode non autorisée');
+                return;
+            }
             const variante = Number(url.searchParams.get('variant'));
             if (!estVarianteValide(variante)) {
                 reponse.writeHead(400).end('variante invalide');
                 return;
             }
-            diffuser({ type: 'alive', variant: variante });
+            const nonce = url.searchParams.get('nonce');
+            if (nonce !== null && !MOTIF_NONCE.test(nonce)) {
+                reponse.writeHead(400).end('nonce invalide');
+                return;
+            }
+            diffuser({ type: url.pathname === '/alive' ? 'alive' : 'bloque', variant: variante, nonce });
             reponse.writeHead(204).end();
             return;
         }
@@ -121,12 +163,19 @@ export async function createSpikeServer(port: number): Promise<SpikeServer> {
         socket.on('error', () => clients.delete(socket));
     });
 
-    await new Promise<void>((resolve) => http.listen(port, resolve));
+    // Liaison explicite à la boucle locale. Le spike tourne sur un poste
+    // délibérément exposé à internet le temps du test, et il n'est censé être
+    // joignable qu'à travers le proxy d'authentification qui l'atteint sur
+    // 127.0.0.1 : écouter sur 0.0.0.0 le rendrait accessible hors du proxy, alors
+    // que le WebSocket n'est soumis à aucun CORS et ne vérifie aucune origine.
+    await new Promise<void>((resolve) => http.listen(port, HOTE, resolve));
     const adresse = http.address();
     const portEffectif = typeof adresse === 'object' && adresse ? adresse.port : port;
+    const hoteEffectif = typeof adresse === 'object' && adresse ? adresse.address : HOTE;
 
     return {
         port: portEffectif,
+        hote: hoteEffectif,
         close(): Promise<void> {
             return new Promise((resolve) => {
                 for (const client of clients) client.terminate();
