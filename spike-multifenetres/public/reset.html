@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Spike — hygiène de l'origin</title>
+    <style>
+        body { font: 16px/1.5 system-ui, sans-serif; max-width: 46rem; margin: 3rem auto; padding: 0 1rem; }
+        pre { background: #f4f4f5; padding: 1rem; border-radius: .5rem; overflow-x: auto; }
+        .vide { color: #71717a; font-style: italic; }
+    </style>
+</head>
+<body>
+    <h1>Étape 0 — hygiène de l'origin</h1>
+    <p>
+        Désenregistre tout service worker et vide tous les caches de
+        <code id="origin"></code>, puis affiche ce qui a été trouvé.
+    </p>
+    <button id="nettoyer">Nettoyer l'origin</button>
+    <h2>Trouvé puis supprimé</h2>
+    <pre id="rapport" class="vide">Pas encore exécuté.</pre>
+    <p>
+        Ensuite : désinstaller manuellement l'ancienne PWA si elle est présente
+        (menu du navigateur → Applications), puis revenir sur <a href="/">la page
+        principale</a>.
+    </p>
+    <script type="module">
+        import { nettoyerOrigin } from './lib/reset-origin.js';
+
+        document.getElementById('origin').textContent = location.origin;
+
+        document.getElementById('nettoyer').addEventListener('click', async () => {
+            const rapport = await nettoyerOrigin({
+                serviceWorker: navigator.serviceWorker,
+                caches: window.caches,
+            });
+            const sortie = document.getElementById('rapport');
+            sortie.classList.remove('vide');
+            sortie.textContent = JSON.stringify(rapport, null, 2);
+            console.log('[spike] hygiène de l\'origin', rapport);
+        });
+    </script>
+</body>
+</html>
