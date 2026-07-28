@@ -40,16 +40,39 @@ nécessaire.
 | 5 | PTS incrémentés d'un tick constant au lieu de suivre l'horloge de capture → dérive et judder | `agent/src/windows_source.rs:310` | Fort |
 | 6 | Jitter buffer du navigateur non neutralisé (`playoutDelayHint`) | client | Moyen |
 
-### Latence atteignable
+### Latence — ce que l'architecture permet
 
-| Réseau | Click-to-photon attendu | Verdict |
+| Réseau | Click-to-photon visé | Verdict |
 |---|---|---|
 | LAN | 20-40 ms | Tout est jouable, FPS compris |
 | Internet faible latence (même pays) | 40-70 ms | Confortable sauf FPS compétitif |
 | Internet dégradé (RTT > 60 ms) | 90 ms+ | Solo, stratégie et indés restent bons ; FPS hors d'atteinte |
 
-Le plafond réel n'est pas technique mais économique : une VM à GPU dédié par
-utilisateur ne se mutualise pas.
+Ces valeurs sont celles **de l'architecture**, attestées par Parsec et Moonlight
+qui l'emploient. Elles ne décrivent pas le pipeline actuel.
+
+### Latence — ce que le pipeline mesure réellement (28/07/2026)
+
+La recette du jalon 1 (`plans/2026-07-27-jalon1-recette.md`) donne les premières
+mesures de bout en bout. Elles sont très loin du compte :
+
+| Grandeur | Mesure | Cible jalon 1 | Écart |
+|---|---|---|---|
+| Débit d'images | ~29,5-30 i/s (6 mesures convergentes) | ≥ 55 i/s | facteur 2 |
+| Latence bout en bout | min 54,1 ms · **médiane 276 ms** · max 1517 ms (12 essais) | < 50 ms | facteur 5 sur la médiane |
+| Redimensionnement | 27/32 sous 500 ms | < 500 ms | non fiable |
+
+Bilan de la recette : **2 critères sur 5 tenus**. L'étage désigné responsable est
+l'encodage, le tampon de gigue aggravant la latence.
+
+**Conséquence directe pour le jeu** : à 30 i/s et 276 ms de latence médiane,
+aucune des quatre familles retenues n'est jouable — pas même la stratégie. Aucun
+des chantiers A à D ne changera cela : ils ajoutent des fonctions à un pipeline
+qui n'atteint pas encore sa propre cible. **Ramener le pipeline à 60 i/s et sous
+50 ms sur LAN est le prérequis de tout le reste** (chantier 0, §8).
+
+Le plafond ultime, lui, n'est pas technique mais économique : une VM à GPU dédié
+par utilisateur ne se mutualise pas.
 
 ---
 
@@ -63,6 +86,7 @@ utilisateur ne se mutualise pas.
 | Tension FPS ⇄ réseau dégradé | **Dégradation gracieuse assumée** | Voir §3 |
 | Modèle de fenêtres | **Une fenêtre principale Windows = une fenêtre navigateur** | Voir §4 — remplace le modèle mono-fenêtre de la spec produit |
 | Filtrage des fenêtres | **Seulement les fenêtres « Alt-Tab-ables »** | Menus, tooltips et dialogues restent composés dans leur fenêtre parente |
+| Plein écran | **Windows maître, sens unique** | L'application décide, le navigateur suit ; le navigateur ne pilote jamais le plein écran côté Windows. Voir §4.1 |
 | Intégration Steam | **Aucune intégration spécifique** | Le modèle multi-fenêtres rend Steam gratuit, et couvre aussi Epic, GOG, itch.io |
 
 ---
@@ -133,6 +157,56 @@ Deux voies, à trancher lors de la spec du chantier D :
    chevauchent jamais sur le bureau virtuel (disposition imposée par l'agent).
    Plus simple mais fragile.
 
+### 4.1 Plein écran
+
+**Décision** : **Windows est maître, dans un sens unique.** Quand une application
+passe en plein écran, la fenêtre navigateur correspondante suit. L'inverse n'existe
+pas : le navigateur ne force jamais la fenêtre Windows en plein écran.
+
+**Détection côté agent.** Trois signaux possibles, à arbitrer à l'implémentation :
+comparaison de `GetWindowRect` avec le rect du moniteur (`MonitorFromWindow` +
+`GetMonitorInfo`), perte des styles de bordure, ou `SHQueryUserNotificationState()`
+qui renvoie `QUNS_RUNNING_D3D_FULL_SCREEN` — c'est le mécanisme par lequel Windows
+supprime lui-même les notifications pendant un jeu. Le déclencheur est le
+`SetWinEventHook` du chantier D (`EVENT_OBJECT_LOCATIONCHANGE`,
+`EVENT_SYSTEM_FOREGROUND`). Nouveau message dans `AgentControl`
+(`proto/src/control.rs:45`).
+
+**Déclenchement côté client — obstacle identique à `window.open()`.**
+`element.requestFullscreen()` exige une activation utilisateur transitoire ; un
+message reçu sur data channel n'en est pas une, l'appel est rejeté. Solution
+retenue : **armement sur le prochain clic**. Le client mémorise la demande et
+entre en plein écran au premier événement pointeur — qui survient de toute façon,
+puisqu'il faut cliquer pour jouer. Coût réel : un clic, imperceptible. Repli si
+insuffisant : bandeau cliquable explicite.
+
+**Conséquences assumées du choix « Windows maître »** :
+
+- L'utilisateur ne peut pas réclamer le plein écran depuis le navigateur ; il
+  passe par les options du jeu. C'est le comportement natif.
+- S'il sort du plein écran côté navigateur (Échap, F11), l'agent ne réagit pas :
+  l'application reste en plein écran Windows, affichée mise à l'échelle dans une
+  fenêtre plus petite. Le `ResizeObserver` existant
+  (`client/src/main.ts:47-53`) transmet malgré tout le nouveau viewport, donc la
+  résolution d'encodage s'ajuste. Dégradation visuelle acceptable, pas de
+  désynchronisation d'état.
+- **Aucune boucle d'oscillation possible**, le sens étant unique. C'est le
+  principal mérite de ce choix face à un miroir bidirectionnel.
+
+**Condition de viabilité — la touche Échap.** En plein écran navigateur, Échap en
+sort, et c'est non-interceptable par conception de la spec Fullscreen. Or Échap
+ouvre le menu pause dans la quasi-totalité des jeux : sans traitement, le joueur
+quitte le plein écran à chaque pause. `navigator.keyboard.lock(['Escape'])`
+(Keyboard Lock) redirige Échap vers la page et impose un appui long pour sortir ;
+l'API n'est disponible qu'en plein écran, cas d'usage pour lequel elle a été
+conçue. Elle est **limitée à Chromium** : sur Firefox et Safari, Échap cassera le
+plein écran. Limite à documenter, pas à corriger.
+
+**Résolution.** Une fenêtre Windows en plein écran adopte la résolution du
+moniteur virtuel. Le « SudoMaker Virtual Display Adapter » doit donc annoncer une
+résolution et une fréquence cohérentes avec le viewport client, faute de quoi
+l'image subit deux mises à l'échelle successives.
+
 ---
 
 ## 5. Décomposition en chantiers
@@ -184,6 +258,9 @@ Bénéficie à tout le produit, pas seulement au jeu.
 - **Clavier** : les raccourcis réservés du navigateur (Ctrl+W, F11, Alt+Tab)
   n'atteignent pas le jeu. La Keyboard Lock API (`navigator.keyboard.lock()`)
   les libère, mais uniquement en plein écran et seulement sur Chromium.
+  **Cette API ne relève pas du confort : elle conditionne la viabilité du plein
+  écran**, Échap étant à la fois la touche de sortie du plein écran navigateur et
+  la touche de menu pause de presque tous les jeux. Voir §4.1.
 - **Curseur** : sous Pointer Lock, le jeu dessine son propre curseur, donc rien à
   faire. Hors Pointer Lock, transmettre la forme du curseur par data channel pour
   un rendu local sans latence.
@@ -218,6 +295,8 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
   `WINEVENT_OUTOFCONTEXT`, nécessitant une pompe de messages dans un thread
   dédié.
 - **Filtrage** : critère « Alt-Tab-able » du §4.
+- **Détection du plein écran** : le même hook alimente la bascule plein écran du
+  §4.1 (`EVENT_OBJECT_LOCATIONCHANGE` + comparaison au rect du moniteur).
 - **Topologie WebRTC** : une `RTCPeerConnection` par fenêtre navigateur plutôt
   qu'une session à N pistes — l'isolation évite qu'une fenêtre en panne
   n'affecte les autres, au prix de N négociations ICE.
@@ -252,30 +331,64 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
 - **DRM et overlay Steam.** L'overlay Steam s'injecte dans le processus du jeu ;
   son interaction avec la capture est à vérifier empiriquement.
 
+### 6.1 Plateformes clientes
+
+Les décisions prises engagent le support navigateur. Récapitulatif :
+
+| Brique | Chromium desktop | **ChromeOS** | Firefox | Safari |
+|---|---|---|---|---|
+| Keyboard Lock — **condition du plein écran** (§4.1) | Oui | **Oui** | Non | Non |
+| Pointer Lock / souris relative (chantier B) | Oui | **Oui** | Oui | Oui |
+| Gamepad API (chantier B) | Oui | **Oui** | Oui | Partiel |
+| Décodage H.264 matériel | Oui | **Oui** | Oui | Oui |
+| PWA multi-fenêtres (chantier D) | Oui | **Meilleur support** | Non | Non |
+| File System Access (pont fichiers) | Oui | **Oui** | Non | Non |
+| `file_handlers` | Oui, mais bridé par l'OS | **Le moins bridé** | Non | Non |
+
+**ChromeOS est la plateforme cliente privilégiée.** Un Chromebook en client léger
+devant une VM à GPU dédié correspond exactement au modèle GeForce Now : toute la
+puissance est distante, le client ne fait que décoder. Les limites y sont
+matérielles et non logicielles — les modèles d'entrée de gamme plafonnent en
+résolution de décodage, et le Wi-Fi est souvent le facteur limitant avant le CPU.
+
+**Sur Firefox et Safari**, le produit reste utilisable pour les applications mais
+le jeu se dégrade : absence de Keyboard Lock (Échap casse le plein écran à chaque
+menu pause, §4.1) et absence de multi-fenêtres (§4). À documenter comme limite
+assumée, pas à corriger.
+
 ---
 
 ## 7. État de départ
 
-Le jalon 1 (`2026-07-27-jalon1-tranche-verticale.md`) couvre les tâches 1 à 12
-d'après l'historique git. Restent :
+**Le jalon 1 est terminé** (tâches 1 à 14) et sa recette est conduite. Le
+pipeline capture, encode, transporte et affiche une fenêtre Windows, avec souris,
+clavier, molette et redimensionnement.
 
-- **Tâche 13** — redimensionnement et fin de session.
-- **Tâche 14** — instrumentation et recette du jalon.
+Mais la recette (`plans/2026-07-27-jalon1-recette.md`) conclut à **2 critères sur
+5 tenus** : la capture par fenêtre et les entrées fonctionnent, le débit d'images,
+la latence et la fiabilité du redimensionnement échouent. Les chiffres sont au §1.
 
-La tâche 14 est un prérequis de fait pour tous les chantiers ci-dessus : elle
-fournit la mesure de latence sans laquelle on optimise à l'aveugle.
+Le jalon a donc rempli son rôle — valider le pari technique et **mesurer** — sans
+atteindre ses cibles de performance. C'est ce constat, et non une intuition, qui
+justifie le chantier 0 du §8.
 
 ---
 
 ## 8. Ordre recommandé
 
-1. **Finir le jalon 1** (tâches 13 et 14) — établit la base de mesure.
-2. **Chantiers A + B** (audio, input jeu) — les deux manques réellement
+0. **Chantier 0 — ramener le pipeline à ses cibles** : 60 i/s et moins de 50 ms
+   sur LAN. **Prérequis absolu.** Tant que la médiane est à 276 ms et le débit à
+   30 i/s (§1), aucun jeu n'est jouable et tout chantier suivant enrichit un
+   pipeline inutilisable. La recette désigne l'encodage comme étage responsable
+   et le tampon de gigue comme aggravant ; ce chantier commence donc par
+   confirmer ce diagnostic avant d'optimiser. Recouvre partiellement le chantier
+   C (pacing des PTS sur horloge réelle, `playoutDelayHint`).
+1. **Chantiers A + B** (audio, input jeu) — les deux manques fonctionnels
    bloquants, indépendants et peu risqués. À leur terme, un jeu est jouable et
    mesurable en conditions réelles.
-3. **Chantier C** (adaptation réseau) — conçu à partir des mesures obtenues en
-   2, plutôt qu'à l'aveugle.
-4. **Chantier D** (multi-fenêtres) — le plus gros. Son risque n°1 (popup
+2. **Chantier C** (adaptation réseau) — conçu à partir des mesures obtenues en
+   1, plutôt qu'à l'aveugle.
+3. **Chantier D** (multi-fenêtres) — le plus gros. Son risque n°1 (popup
    blocker) mérite cependant d'être levé par un test isolé **dès maintenant**,
    avant même les chantiers A et B : une réponse négative changerait le modèle
    produit.

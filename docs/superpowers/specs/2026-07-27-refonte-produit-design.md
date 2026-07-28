@@ -130,6 +130,41 @@ structurelles :
 - Erreurs propres : canal coupé → erreur I/O standard côté Windows, session
   vidéo intacte.
 
+> **Amendement du 28/07/2026 — sélecteur de fichiers Windows.**
+> **Décision : aucune interception en v1.**
+>
+> *Comportement nominal.* Une application appelant `IFileOpenDialog` crée une
+> fenêtre **avec propriétaire**, donc écartée par le critère « Alt-Tab-able »
+> (`2026-07-28-support-jeux-design.md` §4) : elle reste composée dans la fenêtre
+> parente. L'utilisateur y navigue dans le lecteur ProjFS. Le besoin est donc
+> fonctionnellement couvert.
+>
+> *Critère de réexamen.* Instrumenter la latence de listage et de lecture de
+> ProjFS. Le bypass ne se justifie que si le listage d'un dossier volumineux
+> dégrade réellement l'expérience — décision à trancher sur mesure, pas sur
+> intuition.
+>
+> *Voie retenue en cas de réexamen* : détection du dialogue par sa classe de
+> fenêtre (`#32770`), affichage de `showOpenFilePicker()` côté client, repli sur
+> le dialogue Windows si la détection échoue.
+>
+> *Voie écartée définitivement* : hook d'API (`GetOpenFileNameW`,
+> `IFileDialog::Show`) par injection de DLL. C'est la seule approche exhaustive,
+> mais elle est détectée comme malveillante par les anti-cheat et les antivirus —
+> incompatible avec la cible jeu — et inopérante sur les applications à sélecteur
+> propriétaire (Office, Qt, Electron).
+>
+> *Note sur l'activation utilisateur.* Contrairement au plein écran
+> (`2026-07-28-support-jeux-design.md` §4.1) et à `window.open()`, l'activation
+> n'est **pas** un obstacle ici : le clic — ou le `Ctrl+O` — qui ouvre le dialogue
+> est une activation navigateur valide. Mais elle est transitoire (~5 s sur
+> Chromium), ce qui borne le délai dont dispose l'agent pour détecter et signaler.
+>
+> *Gains que ProjFS ne procurera jamais*, à mettre en balance lors du réexamen :
+> accès à tout le poste local au-delà du dossier partagé en début de session, et
+> fluidité native — le dialogue Windows transite par le flux vidéo *et* par le
+> pont fichiers.
+
 ### ④ Gestion d'apps
 
 - **Upload d'installeur** : navigateur → plateforme → agent → exécution dans la
@@ -138,6 +173,46 @@ structurelles :
   changement, plus de polling horaire ni de parsing `.lnk` maison).
 - **Icônes** : extraction Shell native 256×256 par l'agent.
 - Chaque app découverte devient une PWA installable.
+
+> **Amendement du 28/07/2026 — ouverture d'installeurs depuis le poste client.**
+> En complément du dépôt dans le hub, le hub déclare les types installeur
+> (`.msi`, `.bat`, et `.exe` si accepté) dans son `file_handlers`, afin qu'un
+> double-clic sur un installeur du poste client l'envoie directement vers la VM.
+>
+> **Décision : tenter l'enregistrement, avec repli silencieux sur le
+> glisser-déposer.** Le glisser-déposer et `showOpenFilePicker` restent le chemin
+> nominal et doivent fonctionner seuls ; le file handler n'est qu'un raccourci
+> opportuniste. **Aucune fonctionnalité ne doit en dépendre.**
+>
+> Trois obstacles connus, à lever par un test empirique avant tout engagement :
+>
+> 1. La spec File Handling ne définit **pas** de liste noire obligatoire, mais
+>    autorise les navigateurs à ignorer les suffixes dangereux et exige une
+>    confirmation explicite de l'utilisateur. Le comportement réel de Chromium
+>    pour les exécutables est à mesurer, pas à supposer. Support limité à
+>    Chromium et Edge desktop — ni Firefox ni Safari.
+> 2. Sur un poste **Windows**, `.exe` n'est pas une association de fichier au sens
+>    du shell et ne peut pas le devenir. `.msi` et `.bat` sont de vraies
+>    associations mais protégées depuis Windows 8 par le hash `UserChoice`, qui
+>    interdit toute attribution silencieuse — l'utilisateur doit passer par les
+>    Paramètres. L'enregistrement peut donc échouer au niveau de l'OS même si le
+>    navigateur l'accepte.
+> 3. Sur un poste Linux ou macOS, `.exe` n'a aucune association native ; la
+>    fonctionnalité n'y a pas de sens.
+>
+> **ChromeOS est le cas le plus favorable** et le meilleur candidat pour le test
+> empirique : ni hash `UserChoice`, ni shell protégeant les associations —
+> l'OS route nativement les types de fichiers vers les PWA installées, et l'app
+> Fichiers les propose. Un `.exe` y étant inerte, aucune application native ne le
+> revendique, donc aucun conflit. Seule subsiste l'inconnue commune à tout
+> Chromium : le navigateur accepte-t-il d'enregistrer un handler pour un type
+> exécutable ? Le scénario y est de surcroît le plus cohérent — sur un
+> Chromebook, un installeur téléchargé n'a d'autre usage que d'être envoyé vers
+> la VM.
+>
+> Le mécanisme est déjà en place : le code génère des `file_handlers` dynamiques
+> par application (`src/asset.js:82-98`). Seul l'ajout des types installeur au
+> manifest du hub reste à faire.
 
 ### ⑤ Plateforme
 
