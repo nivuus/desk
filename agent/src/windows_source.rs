@@ -44,10 +44,13 @@ pub struct WindowsSource {
     height: u32,
     fps: u32,
     bitrate: u32,
-    /// Horodatage attribué à la prochaine image soumise. Jamais remis à zéro,
-    /// y compris lorsque `resize` reconstruit la chaîne d'encodage : le
-    /// décodeur du navigateur rejetterait un horodatage qui recule.
-    next_pts_90k: u64,
+    /// Origine de l'horloge de présentation. Jamais réinitialisée, y compris
+    /// lorsque `resize` reconstruit la chaîne d'encodage : le décodeur du
+    /// navigateur rejetterait un horodatage qui recule.
+    clock_origin: std::time::Instant,
+    /// Dernier horodatage attribué, pour garantir la stricte croissance même
+    /// si deux captures tombaient dans la même graduation de 1/90000 s.
+    last_pts_90k: Option<u64>,
     /// Vrai après une erreur non récupérable (capture ou encodeur) : rend la
     /// source définitivement épuisée (voir `is_exhausted`), indépendamment
     /// de l'état de la fenêtre. Une fenêtre disparue (`!is_alive()`) est
@@ -59,6 +62,12 @@ pub struct WindowsSource {
     /// démarrage : remis à faux par `resize`, qui reconstruit un encodeur
     /// neuf n'ayant lui non plus encore rien produit.
     encoder_warmed_up: bool,
+    /// Unités d'accès déjà récupérées de l'encodeur mais pas encore rendues à
+    /// l'appelant : `VideoSource::next_frame` n'en rend qu'une par tour, alors
+    /// que le drainage peut en sortir plusieurs (voir `drain_ready_output`).
+    /// Jamais purgée par `resize` : ces unités-là sont valides et déjà
+    /// horodatées, les jeter ne ferait que trouer la vidéo.
+    ready: std::collections::VecDeque<AccessUnit>,
 }
 
 // SÉCURITÉ : les types COM enveloppés ici (`HWND`, `ID3D11Device`,
@@ -99,9 +108,11 @@ impl WindowsSource {
             height,
             fps,
             bitrate,
-            next_pts_90k: 0,
+            clock_origin: std::time::Instant::now(),
+            last_pts_90k: None,
             fatal: false,
             encoder_warmed_up: false,
+            ready: std::collections::VecDeque::new(),
         })
     }
 
@@ -237,6 +248,94 @@ impl WindowsSource {
     pub fn request_keyframe(&mut self) -> Result<()> {
         self.encoder.request_keyframe()
     }
+
+    /// Retire du pipeline tout ce qui est prêt, sans jamais attendre, et rend
+    /// l'unité d'accès la plus ancienne encore en file.
+    ///
+    /// Trois choses dans le même tour, et c'est le point : (1) vider les
+    /// sorties déjà produites, (2) rendre à l'encodeur les entrées que ce
+    /// drainage vient de lui permettre d'accepter, (3) ne rendre qu'une unité
+    /// à l'appelant, les autres attendant les tours suivants.
+    ///
+    /// Sans (1) et (2) dans le même tour, le cycle complet de l'encodeur
+    /// (soumission → production → récupération → nouvelle demande d'entrée)
+    /// ne franchissait qu'une étape par tour de `Session::run` : mesuré à
+    /// `need_input_hz=23` pour `ticks_hz=60` et `captured_hz=46`, soit un
+    /// débit divisé par ~2,6 alors que la capture et l'encodeur avaient tous
+    /// deux la marge nécessaire (`desktop_updates_hz=68`, `ENCODE_TEST` à
+    /// 66 i/s). Voir `H264Encoder::flush_pending_inputs`.
+    ///
+    /// Le drainage est borné : un encodeur qui rendrait de la sortie sans fin
+    /// ne doit pas pouvoir retenir la boucle de transport, qui a aussi ICE,
+    /// RTCP et les canaux de données à servir.
+    fn drain_ready_output(&mut self) -> Option<AccessUnit> {
+        const MAX_DRAIN: usize = 8;
+        for _ in 0..MAX_DRAIN {
+            match self.encoder.poll_output() {
+                Ok(Some(unit)) => {
+                    self.encoder_warmed_up = true;
+                    PRODUCED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    self.ready.push_back(unit);
+                }
+                Ok(None) => break,
+                Err(e) => {
+                    tracing::warn!(erreur = %e, "récupération de l'image encodée échouée");
+                    break;
+                }
+            }
+        }
+        // Les emplacements d'entrée libérés par le drainage ci-dessus sont
+        // réutilisables dès maintenant : ne pas attendre le tour suivant.
+        if let Err(e) = self.encoder.flush_pending_inputs() {
+            tracing::warn!(erreur = %e, "réalimentation de l'encodeur échouée");
+        }
+        self.ready.pop_front()
+    }
+
+    /// Horodatage de présentation de l'image qu'on vient de capturer, lu sur
+    /// une horloge réelle.
+    ///
+    /// **Correction de la latence (28/07).** La version précédente comptait
+    /// les images plutôt que le temps (`next_pts_90k += CLOCK_RATE_HZ / fps`
+    /// à chaque soumission réussie), ce qui suppose une source à cadence
+    /// parfaitement régulière. Celle-ci ne l'est pas et ne peut pas l'être :
+    /// Desktop Duplication ne rend une image que lorsque le bureau change,
+    /// donc les soumissions sont espacées de 16,7 ms, de 33 ms, ou de
+    /// plusieurs secondes sur un écran immobile — alors que le compteur, lui,
+    /// avançait invariablement de 16,7 ms.
+    ///
+    /// La ligne de temps RTP dérivait donc du temps réel sans jamais se
+    /// recaler : à 30 i/s réels elle avançait deux fois trop lentement, et
+    /// après une pause d'écran immobile elle repartait comme si cette pause
+    /// n'avait pas eu lieu. Le récepteur WebRTC calcule sa gigue sur l'écart
+    /// entre l'espacement d'arrivée et l'espacement annoncé par les
+    /// horodatages : un décalage systématiquement positif lui fait gonfler
+    /// sa cible de tampon, image après image, jusqu'à une resynchronisation
+    /// brutale. C'est la signature relevée en recette
+    /// (`docs/superpowers/plans/2026-07-27-jalon1-recette.md`, critère 3) :
+    /// 641,8 → 877,6 → 1164,0 → 1449,9 ms de latence, puis retour net à
+    /// 83,0 ms — sans qu'aucun gel ne soit détecté, ce qui excluait déjà un
+    /// arrêt de la capture ou de l'encodage.
+    ///
+    /// Lire l'horloge à la capture donne au navigateur la ligne de temps
+    /// qu'il attend, quelle que soit la régularité de la source.
+    fn next_pts_90k(&mut self) -> u64 {
+        let elapsed = self.clock_origin.elapsed();
+        // Nanosecondes → 1/90000 s, en 128 bits : `as_nanos() * 90_000`
+        // déborderait un `u64` au bout d'environ 57 heures de session.
+        let pts = (elapsed.as_nanos() * CLOCK_RATE_HZ as u128 / 1_000_000_000) as u64;
+        // Deux captures dans la même graduation (11 µs) ne peuvent pas
+        // arriver au rythme d'un appel par tour de `Session::run`, mais un
+        // horodatage qui ne progresse pas ferait rejeter l'image par le
+        // décodeur : on l'exclut structurellement plutôt que de compter sur
+        // la cadence de l'appelant.
+        let pts = match self.last_pts_90k {
+            Some(last) if pts <= last => last + 1,
+            _ => pts,
+        };
+        self.last_pts_90k = Some(pts);
+        pts
+    }
 }
 
 /// Budget accordé à l'attente de la sortie d'une image **qui vient d'être
@@ -296,6 +395,22 @@ impl WindowsSource {
 const SUBMIT_POLL_BUDGET: std::time::Duration = std::time::Duration::from_millis(40);
 const SUBMIT_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(1);
 
+/// Compteurs du chemin réel (`Session::run`), à l'échelle du processus.
+///
+/// Volontairement des statiques plutôt qu'un champ : `resize` remplace
+/// l'encodeur — donc sa télémétrie — et la question à laquelle ces compteurs
+/// doivent répondre (« où le flux s'arrête-t-il ? ») porte justement sur ce
+/// qu'il advient *après* une reconstruction. Une poignée attachée à
+/// l'encodeur cesserait d'être observée au moment précis qui intéresse.
+///
+/// Le coût est nul en pratique (trois incréments `Relaxed` par tour) et rien
+/// ne les lit sauf le fil de surveillance de `main.rs`, activé par
+/// `SOURCE_TRACE=1`. L'agent étant mono-session (un processus par session),
+/// des statiques ne mélangent pas plusieurs sessions.
+pub static TICKS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+pub static CAPTURED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+pub static PRODUCED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 impl VideoSource for WindowsSource {
     /// Un seul essai de capture par appel, jamais d'attente pour une
     /// nouvelle image — avec un court réessai borné, réservé au tout
@@ -342,6 +457,7 @@ impl VideoSource for WindowsSource {
     /// l'appelant) : la fenêtre a disparu, ou une erreur de capture non
     /// récupérable s'est produite.
     fn next_frame(&mut self) -> Option<AccessUnit> {
+        TICKS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         if self.fatal {
             // Une reconstruction de la chaîne par `resize` a pu échouer au
             // point de ne laisser aucune capture de secours valide non plus
@@ -361,11 +477,14 @@ impl VideoSource for WindowsSource {
         let region = self.region;
         match self.capture_mut().next_frame(region) {
             Ok(Some(frame)) => {
-                let pts = self.next_pts_90k;
+                CAPTURED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                // Horodatage lu sur l'horloge réelle AVANT la soumission :
+                // c'est l'instant de la capture qui date l'image, pas celui
+                // où l'encodeur voudra bien l'accepter (voir `next_pts_90k`).
+                let pts = self.next_pts_90k();
                 if let Err(e) = self.encoder.submit(&frame, pts) {
                     tracing::warn!(erreur = %e, "soumission à l'encodeur échouée");
                 } else {
-                    self.next_pts_90k += CLOCK_RATE_HZ / self.fps.max(1) as u64;
                     submitted = true;
                 }
             }
@@ -383,19 +502,9 @@ impl VideoSource for WindowsSource {
         if !submitted || self.encoder_warmed_up {
             // Soit rien de neuf à capturer ce tour-ci (cas normal), soit
             // l'encodeur a déjà prouvé qu'il répond vite (voir la doc de
-            // `SUBMIT_POLL_BUDGET`) : dans les deux cas, un seul essai,
-            // retour immédiat, jamais d'attente.
-            return match self.encoder.poll_output() {
-                Ok(Some(unit)) => {
-                    self.encoder_warmed_up = true;
-                    Some(unit)
-                }
-                Ok(None) => None,
-                Err(e) => {
-                    tracing::warn!(erreur = %e, "récupération de l'image encodée échouée");
-                    None
-                }
-            };
+            // `SUBMIT_POLL_BUDGET`) : dans les deux cas, aucune attente —
+            // mais on draine tout ce qui est DÉJÀ prêt, sans jamais dormir.
+            return self.drain_ready_output();
         }
 
         // Encodeur pas encore chaud : sa toute première sortie peut mettre
@@ -404,12 +513,11 @@ impl VideoSource for WindowsSource {
         // retarder le tout premier keyframe.
         let deadline = std::time::Instant::now() + SUBMIT_POLL_BUDGET;
         loop {
-            match self.encoder.poll_output() {
-                Ok(Some(unit)) => {
-                    self.encoder_warmed_up = true;
+            match self.drain_ready_output() {
+                Some(unit) => {
                     return Some(unit);
                 }
-                Ok(None) => {
+                None => {
                     if std::time::Instant::now() >= deadline {
                         // Pas encore prête : elle sortira à un appel
                         // suivant. Pas un échec, juste une latence un peu
@@ -417,10 +525,6 @@ impl VideoSource for WindowsSource {
                         return None;
                     }
                     std::thread::sleep(SUBMIT_POLL_INTERVAL);
-                }
-                Err(e) => {
-                    tracing::warn!(erreur = %e, "récupération de l'image encodée échouée");
-                    return None;
                 }
             }
         }

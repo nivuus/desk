@@ -36,8 +36,27 @@ use str0m::{Candidate, Event, IceConnectionState, Input, Output, Rtc};
 use crate::h264::AccessUnit;
 use crate::source::VideoSource;
 
-/// Cadence d'envoi des images : une toutes les 16,67 ms (~60 Hz).
-const FRAME_INTERVAL: Duration = Duration::from_micros(16_667);
+/// Cadence d'interrogation de la source vidéo : une toutes les 10 ms (100 Hz).
+///
+/// Ce n'est PAS la cadence d'émission : `VideoSource::next_frame` ne rend une
+/// unité d'accès que s'il y en a une de prête, et rend `None` sinon (cas
+/// courant et normal, voir `windows_source`). La cadence d'émission réelle est
+/// donc celle de la source, bornée par celle-ci.
+///
+/// **Pourquoi 100 Hz et non 60 (28/07).** À 60 Hz, la capture ne récupérait
+/// que 46 images/s d'un bureau qui, lui, se met à jour à 68,5 Hz — mesuré
+/// directement par `DXGI_OUTDUPL_FRAME_INFO::AccumulatedFrames`
+/// (`desktop_updates_hz` dans la trace `SOURCE_TRACE`). Chaque tour ne peut
+/// remonter qu'une image, quel que soit le nombre de mises à jour que DXGI a
+/// fusionnées entre-temps : interroger une source à 68,5 Hz seulement 60 fois
+/// par seconde en perd mécaniquement une partie. Interroger plus souvent que
+/// la source ne produit lève cette borne sans rien coûter quand il n'y a rien
+/// à prendre — `AcquireNextFrame` est appelée avec un délai NUL, donc un tour
+/// à vide se résume à un aller-retour DXGI immédiat.
+///
+/// Le plafond de 60 im/s visé par le jalon reste, lui, celui du contenu : rien
+/// ici ne fabrique d'images qui n'existent pas.
+const FRAME_INTERVAL: Duration = Duration::from_millis(10);
 
 /// Intervalle minimal entre deux vérifications de `source.is_alive()` dans
 /// `act_on_timeout`. Cet appel coûte un appel système à chaque tour côté

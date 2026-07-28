@@ -82,6 +82,22 @@ const SLOW_CALL: std::time::Duration = std::time::Duration::from_millis(50);
 /// `MF_E_SAMPLEALLOCATOR_EMPTY`. En régime nominal, une itération suffit.
 const MAX_CONVERTER_COLLECTS: usize = 4;
 
+/// Nombre d'échantillons NV12 conservés d'avance, prêts à être remis à
+/// l'encodeur dès qu'il en réclame un.
+///
+/// **C'est le correctif du plafond de débit à ~30 i/s** (voir `submit`). La
+/// capture (Desktop Duplication) et l'encodeur matériel ont deux rythmes
+/// indépendants : garder une image convertie d'avance est ce qui permet de
+/// servir une demande d'entrée arrivée à un tour où le bureau, lui, n'a rien
+/// changé.
+///
+/// Pourquoi 1 et pas davantage : chaque image gardée en attente est une image
+/// affichée avec un tour de retard. À 60 Hz, 1 suffit pour couvrir le
+/// déphasage entre les deux rythmes (au plus un tour d'écart) sans ajouter
+/// plus de 16,7 ms au budget de latence. Au-delà, on n'achèterait plus de
+/// débit, seulement de la latence.
+const MAX_PENDING_NV12: usize = 1;
+
 /// Étapes du chemin chaud, publiées dans `EncoderTelemetry::phase` avant
 /// chaque appel Media Foundation et remises à `PHASE_IDLE` juste après.
 ///
@@ -174,7 +190,24 @@ pub struct EncoderTelemetry {
     pub converter_output_status: AtomicU64,
     /// Entrées refusées par le convertisseur (`MF_E_NOTACCEPTING`).
     pub converter_not_accepting: AtomicU64,
+    /// Échantillons NV12 convertis puis écartés parce qu'une image plus
+    /// récente était disponible avant que l'encodeur ne les réclame (voir
+    /// `MAX_PENDING_NV12`). Attendu proche de zéro en régime nominal : une
+    /// valeur qui monte signifie que l'encodeur ne suit plus la capture.
+    pub dropped_stale_nv12: AtomicU64,
 }
+
+/// Compteurs de diagnostic à l'échelle du processus, doublant deux champs de
+/// `EncoderTelemetry` (voir `SOURCE_TRACE` dans `main.rs`).
+///
+/// Redondants en apparence, mais `EncoderTelemetry` est possédée par
+/// l'encodeur, que `resize` remplace : une poignée prise au démarrage cesse
+/// d'être alimentée dès la première reconstruction — c'est-à-dire dès le
+/// premier redimensionnement demandé par le navigateur, donc dans toutes les
+/// sessions réelles. Ces statiques traversent les reconstructions.
+pub static NEED_INPUT_EVENTS: AtomicU64 = AtomicU64::new(0);
+pub static ENCODER_INPUTS: AtomicU64 = AtomicU64::new(0);
+pub static DROPPED_STALE: AtomicU64 = AtomicU64::new(0);
 
 /// Résultat d'un appel à `ProcessOutput` sur le convertisseur BGRA→NV12 (voir
 /// `H264Encoder::drain_converter_output`).
@@ -410,6 +443,7 @@ impl H264Encoder {
                     self.telemetry
                         .need_input_events
                         .fetch_add(1, Ordering::Relaxed);
+                    NEED_INPUT_EVENTS.fetch_add(1, Ordering::Relaxed);
                     tracing::trace!(
                         pending_input_requests = self.pending_input_requests,
                         "événement METransformNeedInput reçu"
@@ -659,15 +693,44 @@ impl H264Encoder {
         }
     }
 
-    /// Soumet une image capturée si l'encodeur pourrait en avoir besoin.
+    /// Convertit l'image capturée et la remet à l'encodeur dès qu'il en
+    /// réclame une.
     ///
-    /// Ne nourrit le convertisseur que si `pending_nv12` ne contient pas
-    /// déjà de quoi satisfaire toutes les demandes d'entrée en attente —
-    /// convertir une image de plus n'ajouterait que de la latence si
-    /// l'encodeur est déjà servi. Chaque échantillon NV12 disponible (celui
-    /// qui vient d'être produit, ou un plus ancien laissé en file par un
-    /// appel précédent où l'encodeur ne réclamait rien) est ensuite transmis
-    /// à l'encodeur tant que celui-ci en réclame.
+    /// **Correction du plafond de débit à ~30 i/s (28/07).** La version
+    /// précédente ne convertissait l'image que si `pending_nv12` ne suffisait
+    /// pas déjà à satisfaire les demandes d'entrée en attente :
+    ///
+    /// ```ignore
+    /// if (self.pending_nv12.len() as u32) < self.pending_input_requests {
+    ///     self.feed_converter(frame, sample_time, duration)?;
+    /// }
+    /// ```
+    ///
+    /// L'intention (« ne pas convertir d'avance, ce ne serait que de la
+    /// latence ») était juste pour une source qu'on peut réinterroger à
+    /// volonté — elle est fausse pour celle-ci. `AcquireNextFrame` ne signale
+    /// un contenu qu'**une fois** : l'image que ce garde écartait n'était pas
+    /// remise à plus tard, elle était **perdue définitivement**. Au tour
+    /// suivant, quand l'encodeur réclamait enfin une entrée, la capture
+    /// n'avait plus rien à donner (le bureau n'avait pas rechangé), et la
+    /// demande restait en souffrance jusqu'au tour d'après. D'où un
+    /// verrouillage en antiphase à une image tous les deux tours de
+    /// `Session::run` : 60 Hz / 2 = **exactement le plafond de ~30 i/s**
+    /// mesuré de bout en bout, six fois, par les rondes précédentes.
+    ///
+    /// Ce garde explique aussi pourquoi les deux expériences qui auraient dû
+    /// trancher n'ont rien montré : `ENCODER_THROUGHPUT_TEST`/`ENCODE_TEST`
+    /// (`main.rs`) resoumettent **la même texture** en boucle, si bien qu'y
+    /// jeter une image ne coûte rien — d'où les ~80 i/s qui semblaient
+    /// disculper le code et accuser le pilote NVENC ; et forcer la capture à
+    /// 60 Hz (`remesure-debit.md`, étape 3a) n'a pas bougé le débit, les
+    /// captures supplémentaires retombant toutes dans ce même garde.
+    ///
+    /// Le pilotage correct découple les deux rythmes : on convertit
+    /// systématiquement ce que la capture a donné, on n'en garde d'avance que
+    /// `MAX_PENDING_NV12` (la plus récente — une image plus ancienne est
+    /// périmée pour un flux interactif), et on sert les demandes d'entrée
+    /// avec ce qui est prêt.
     pub fn submit(&mut self, frame: &CapturedFrame, pts_90k: u64) -> Result<()> {
         self.telemetry.submit_calls.fetch_add(1, Ordering::Relaxed);
         let t = std::time::Instant::now();
@@ -688,8 +751,19 @@ impl H264Encoder {
         let sample_time = (pts_90k as i64) * 1000 / 9;
         let duration = 10_000_000 / self.fps.max(1) as i64;
 
-        if (self.pending_nv12.len() as u32) < self.pending_input_requests {
-            self.feed_converter(frame, sample_time, duration)?;
+        // Convertir sans condition : l'image ne sera jamais reproposée par la
+        // capture (voir le commentaire de méthode).
+        self.feed_converter(frame, sample_time, duration)?;
+
+        // Ne garder que les plus récentes. `feed_converter` empile en queue,
+        // donc les périmées sont en tête. Les retirer ici plutôt que de
+        // laisser la file croître évite de servir à l'encodeur une image déjà
+        // dépassée au moment où il la réclame — ce serait payer en latence le
+        // débit qu'on vient de gagner.
+        while self.pending_nv12.len() > MAX_PENDING_NV12 {
+            self.pending_nv12.pop_front();
+            self.telemetry.dropped_stale_nv12.fetch_add(1, Ordering::Relaxed);
+            DROPPED_STALE.fetch_add(1, Ordering::Relaxed);
         }
 
         while self.pending_input_requests > 0 {
@@ -706,6 +780,7 @@ impl H264Encoder {
             self.telemetry
                 .encoder_inputs
                 .fetch_add(1, Ordering::Relaxed);
+            ENCODER_INPUTS.fetch_add(1, Ordering::Relaxed);
             let elapsed = t.elapsed();
             if elapsed > SLOW_CALL {
                 tracing::warn!(?elapsed, "ProcessInput de l'encodeur lent");
@@ -802,6 +877,38 @@ impl H264Encoder {
         unit.pts_90k = (sample_time.max(0) as u64) * 9 / 1000;
         self.telemetry.phase.store(PHASE_IDLE, Ordering::Relaxed);
         Ok(Some(unit))
+    }
+
+    /// Remet à l'encodeur les échantillons NV12 déjà prêts, pour chaque
+    /// demande d'entrée qu'il a émise depuis le dernier appel.
+    ///
+    /// Existe pour casser une sérialisation mesurée dans `Session::run` : le
+    /// cycle « soumettre → l'encodeur produit → récupérer la sortie →
+    /// l'encodeur libère un emplacement → il redemande une entrée » ne
+    /// franchissait qu'UNE étape par tour de boucle, puisque `submit` et
+    /// `poll_output` n'étaient appelés qu'une fois chacun par tour de 16,7 ms.
+    /// Le débit s'en trouvait plafonné à la cadence de boucle divisée par le
+    /// nombre d'étapes — mesuré à ~23 Hz pour 60 Hz de boucle, alors que le
+    /// même encodeur soutient 66 Hz sollicité en boucle serrée
+    /// (`ENCODE_TEST`), où ces étapes s'enchaînent en quelques microsecondes.
+    ///
+    /// Appelée après le drainage des sorties : c'est ce drainage qui libère
+    /// les emplacements d'entrée, donc c'est juste après lui que la demande
+    /// correspondante devient disponible.
+    pub fn flush_pending_inputs(&mut self) -> Result<()> {
+        self.drain_events()?;
+        while self.pending_input_requests > 0 {
+            let Some(nv12_sample) = self.pending_nv12.pop_front() else {
+                break;
+            };
+            unsafe { self.transform.ProcessInput(0, &nv12_sample, 0) }
+                .context("soumission différée de l'image NV12 à l'encodeur")?;
+            self.telemetry.encoder_inputs.fetch_add(1, Ordering::Relaxed);
+            ENCODER_INPUTS.fetch_add(1, Ordering::Relaxed);
+            self.pending_input_requests -= 1;
+        }
+        self.publish_state();
+        Ok(())
     }
 
     /// Force la production d'une image clé sur l'image suivante.

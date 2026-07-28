@@ -25,7 +25,12 @@ else
     echo "quota WinRM MaxMemoryPerShellMB déjà suffisant (${CURRENT_SHELL_MB} Mo)" >&2
 fi
 
-PROFILE="${1:-debug}"
+# `release` par défaut : les mesures du jalon 1 (débit ~30 i/s, latence
+# médiane 276 ms) ont toutes été prises sur un binaire `debug`, sans que ce
+# soit un choix — c'était simplement la valeur par défaut de ce script, et
+# `run-agent.sh` lançait le chemin `target\debug` en dur. Passer `debug` en
+# premier argument reste possible pour déboguer.
+PROFILE="${1:-release}"
 FLAG=""
 [ "$PROFILE" = "release" ] && FLAG="--release"
 

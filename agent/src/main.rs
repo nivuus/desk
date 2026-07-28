@@ -680,6 +680,55 @@ async fn main() -> Result<()> {
     } = signaling::run_signaling(&config.signaling_url, &config.session_id).await?;
     let mut session = Session::new(source, config.local_ip)?;
 
+    // Surveillance du chemin réel (`SOURCE_TRACE=1`) : cadence d'appel de
+    // `next_frame`, captures neuves, unités d'accès produites. Contrairement
+    // à `watch_encoder`, ces compteurs survivent à un redimensionnement (qui
+    // remplace l'encodeur, donc sa télémétrie) — c'est justement le cas qu'il
+    // faut pouvoir observer.
+    #[cfg(windows)]
+    let _source_trace = std::env::var("SOURCE_TRACE").is_ok().then(|| {
+        std::thread::spawn(|| {
+            use std::sync::atomic::Ordering::Relaxed;
+            let (mut t0, mut c0, mut p0, mut a0, mut h0, mut ac0) = (0u64, 0u64, 0u64, 0u64, 0u64, 0u64);
+            let (mut ni0, mut ei0, mut ds0) = (0u64, 0u64, 0u64);
+            loop {
+                std::thread::sleep(Duration::from_secs(2));
+                let (t, c, p) = (
+                    windows_source::TICKS.load(Relaxed),
+                    windows_source::CAPTURED.load(Relaxed),
+                    windows_source::PRODUCED.load(Relaxed),
+                );
+                let (a, h, ac) = (
+                    capture::ATTEMPTS.load(Relaxed),
+                    capture::HITS.load(Relaxed),
+                    capture::ACCUMULATED.load(Relaxed),
+                );
+                let (ni, ei, ds) = (
+                    encode::NEED_INPUT_EVENTS.load(Relaxed),
+                    encode::ENCODER_INPUTS.load(Relaxed),
+                    encode::DROPPED_STALE.load(Relaxed),
+                );
+                tracing::info!(
+                    ticks_hz = (t - t0) as f64 / 2.0,
+                    captured_hz = (c - c0) as f64 / 2.0,
+                    produced_hz = (p - p0) as f64 / 2.0,
+                    acquire_hz = (a - a0) as f64 / 2.0,
+                    hits_hz = (h - h0) as f64 / 2.0,
+                    // Mises à jour du bureau réellement survenues, y compris
+                    // celles que DXGI a fusionnées : c'est ce chiffre qui dit
+                    // si la fenêtre produit plus que ce qu'on en récupère.
+                    desktop_updates_hz = (ac - ac0) as f64 / 2.0,
+                    need_input_hz = (ni - ni0) as f64 / 2.0,
+                    encoder_inputs_hz = (ei - ei0) as f64 / 2.0,
+                    dropped_stale_hz = (ds - ds0) as f64 / 2.0,
+                    "cadence de la source (chemin réel)"
+                );
+                (t0, c0, p0, a0, h0, ac0) = (t, c, p, a, h, ac);
+                (ni0, ei0, ds0) = (ni, ei, ds);
+            }
+        })
+    });
+
     let offer = offers
         .recv()
         .await

@@ -12,6 +12,14 @@ TASK_NAME="guacamole-agent"
 USER_NAME="${WINDOWS_ADMIN_USERNAME:-Administrateur}"
 : "${WINDOWS_ADMIN_PASSWORD:?WINDOWS_ADMIN_PASSWORD non défini}"
 
+# Chemin de l'exécutable, assemblé ICI plutôt que dans le heredoc ci-dessous :
+# celui-ci n'est pas entre quotes (il doit interpoler les variables), et un
+# `\$` y est une échappée — écrire `target\${AGENT_PROFILE}` y produisait
+# `target${AGENT_PROFILE}` littéral, séparateur avalé et variable non
+# substituée. Une variable unique, sans antislash devant, n'a pas ce piège :
+# son contenu n'est plus réinterprété une fois substitué.
+AGENT_EXE="C:\\dev\\target\\${AGENT_PROFILE:-release}\\agent.exe"
+
 # Les variables d'environnement passent par un script d'amorçage : schtasks ne
 # permet pas de les transmettre directement.
 cat > /media/vm/dev/run-agent.ps1 <<PS1
@@ -22,6 +30,7 @@ cat > /media/vm/dev/run-agent.ps1 <<PS1
 \$env:WINDOW_TITLE  = '${WINDOW_TITLE:-firefox}'
 ${TEST_FILE:+\$env:TEST_FILE = '$TEST_FILE'}
 ${CAPTURE_TEST:+\$env:CAPTURE_TEST = '$CAPTURE_TEST'}
+${SOURCE_TRACE:+\$env:SOURCE_TRACE = '$SOURCE_TRACE'}
 ${ENCODE_TEST:+\$env:ENCODE_TEST = '$ENCODE_TEST'}
 ${ENCODE_TEST_TARGET:+\$env:ENCODE_TEST_TARGET = '$ENCODE_TEST_TARGET'}
 ${ENCODE_TEST_SECS:+\$env:ENCODE_TEST_SECS = '$ENCODE_TEST_SECS'}
@@ -29,7 +38,7 @@ ${ENCODER_THROUGHPUT_TEST:+\$env:ENCODER_THROUGHPUT_TEST = '$ENCODER_THROUGHPUT_
 ${ENCODER_THROUGHPUT_TARGET:+\$env:ENCODER_THROUGHPUT_TARGET = '$ENCODER_THROUGHPUT_TARGET'}
 ${ENCODER_THROUGHPUT_DEADLINE_SECS:+\$env:ENCODER_THROUGHPUT_DEADLINE_SECS = '$ENCODER_THROUGHPUT_DEADLINE_SECS'}
 ${ENCODER_THROUGHPUT_SUBMIT_HZ:+\$env:ENCODER_THROUGHPUT_SUBMIT_HZ = '$ENCODER_THROUGHPUT_SUBMIT_HZ'}
-& 'C:\dev\target\debug\agent.exe' *>&1 | Tee-Object -FilePath 'C:\dev\agent.log'
+& '${AGENT_EXE}' *>&1 | Tee-Object -FilePath 'C:\dev\agent.log'
 PS1
 
 # -WindowStyle Hidden : sans ce drapeau, la console PowerShell qui héberge

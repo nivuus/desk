@@ -174,6 +174,31 @@ async function main() {
             throw new Error("aucune RTCPeerConnection créée dans la page après 10s — le script client n'a pas démarré");
         }
 
+        // Attendre que la vidéo coule VRAIMENT avant d'ouvrir la fenêtre de
+        // mesure. Sans cela, le relevé 1 est pris pendant la négociation
+        // (ICE, DTLS, premier keyframe) : le delta rapporté couvre alors une
+        // période où le flux n'existait pas encore, et sous-estime le débit
+        // en régime établi d'autant plus que la fenêtre est courte — sur
+        // 10 s, plusieurs secondes de négociation suffisent à faire passer
+        // un débit réel de 55 i/s pour 20 i/s.
+        const videoFlowing = await pollUntil(async () => {
+            const s = await sampleStats(cdp);
+            return s && s.framesDecoded > 0;
+        }, 20_000);
+        if (!videoFlowing) {
+            // Ne PAS interrompre ici : les compteurs qui distinguent « rien
+            // n'arrive » (framesReceived=0, problème de transport) de « ça
+            // arrive mais rien ne se décode » (framesReceived>0,
+            // framesDecoded=0, problème de flux H.264 — typiquement une image
+            // clé manquante) ne sont imprimés que par les relevés ci-dessous.
+            // Sortir avant de les lire, c'est jeter la seule information qui
+            // permette de trancher.
+            console.log('AVERTISSEMENT : aucune image décodée après 20s — relevés pris quand même pour diagnostic');
+        }
+        // Laisser le régime s'établir (premier keyframe absorbé, tampon de
+        // gigue stabilisé) avant de chronométrer.
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
         const first = await sampleStats(cdp);
         console.log('--- Relevé 1 ---');
         printSample(first);

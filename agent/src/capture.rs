@@ -27,6 +27,19 @@ use windows::Win32::Graphics::Dxgi::{
 
 use crate::geometry::Rect;
 
+/// Compteurs de diagnostic de l'acquisition DXGI (voir `SOURCE_TRACE`).
+///
+/// `ACCUMULATED` est la somme de `DXGI_OUTDUPL_FRAME_INFO::AccumulatedFrames`,
+/// c'est-à-dire le nombre de mises à jour du bureau que DXGI a fusionnées dans
+/// les images qu'il nous a rendues. C'est la seule mesure qui distingue les
+/// deux explications d'un `captured_hz` bas : si `ACCUMULATED` est nettement
+/// supérieur à `HITS`, le bureau se met bien à jour vite et c'est nous qui
+/// l'interrogeons trop rarement ; s'il le suit de près, c'est la source
+/// (la fenêtre capturée) qui ne produit pas davantage.
+pub static ATTEMPTS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+pub static HITS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+pub static ACCUMULATED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 /// Une image capturée et recadrée, résidente sur le GPU.
 pub struct CapturedFrame {
     pub texture: ID3D11Texture2D,
@@ -170,8 +183,14 @@ impl DesktopCapture {
         // Attente nulle : la cadence est pilotée par la boucle appelante, pas
         // par un blocage ici.
         self.set_phase(crate::encode::PHASE_CAPTURE_ACQUIRE);
+        ATTEMPTS.fetch_add(1, Ordering::Relaxed);
         let acquired = unsafe { self.duplication.AcquireNextFrame(0, &mut info, &mut resource) };
         self.set_phase(crate::encode::PHASE_CAPTURE);
+
+        if acquired.is_ok() {
+            HITS.fetch_add(1, Ordering::Relaxed);
+            ACCUMULATED.fetch_add(info.AccumulatedFrames as u64, Ordering::Relaxed);
+        }
 
         if let Err(e) = acquired {
             if e.code() == DXGI_ERROR_WAIT_TIMEOUT {
@@ -192,7 +211,28 @@ impl DesktopCapture {
             self.crop(&desktop, region)
         })();
         match cropped {
-            Ok(frame) => Ok(Some(frame)),
+            Ok(frame) => {
+                // Relâcher TOUT DE SUITE, pas au tour suivant.
+                //
+                // `crop` a déjà recopié les pixels dans notre propre texture
+                // (`CopySubresourceRegion` vers `self.target`) : l'image du
+                // bureau ne sert plus à rien passé cette ligne. La garder
+                // jusqu'à l'appel suivant, comme le faisait la version
+                // précédente via le seul `release_frame()` en tête de
+                // fonction, immobilisait la duplication pendant tout
+                // l'intervalle entre deux tours — soit ~16,7 ms sur 16,7 à la
+                // cadence de `Session::run`.
+                //
+                // Mesuré : la même fenêtre Firefox, avec le même contenu,
+                // rendait 74 images/s à `CAPTURE_TEST` (boucle serrée, donc
+                // relâchement toutes les ~2 ms) contre seulement 22 images/s
+                // dans `Session::run` (relâchement toutes les ~16,7 ms). Ce
+                // n'était donc ni la composition du bureau, ni le pilote, ni
+                // la contention GPU avec l'encodeur (`ENCODE_TEST` tient
+                // 66 i/s encodeur compris) : c'était la durée de détention.
+                self.release_frame();
+                Ok(Some(frame))
+            }
             Err(e) => {
                 self.release_frame();
                 Err(e)
