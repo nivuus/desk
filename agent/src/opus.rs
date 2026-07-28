@@ -9,6 +9,10 @@
 //! sous Linux.
 
 use anyhow::{bail, Context, Result};
+// Le `::` initial force la résolution du crate externe `opus`. Ce module s'appelle
+// lui-même `opus` (édition 2021), donc sans le `::`, un `use opus::...` désignerait
+// le module courant, pas le crate externe — d'où la compilation échouerait. Le `::` initial
+// force le parcours de la racine du crate, d'où le crate externe.
 use ::opus::{Application, Bitrate, Channels, Encoder};
 
 /// Fréquence d'échantillonnage de la piste audio, en hertz. C'est aussi la
@@ -143,6 +147,9 @@ mod tests {
         // bruit en rendrait tout autant. On décode en retour et on vérifie
         // que l'énergie reste concentrée sur la fréquence d'origine.
         let mut encodeur = OpusEncoder::new().unwrap();
+        // Contrairement aux `use`, les expressions résolvent le chemin `opus::` en parcourant
+        // d'abord l'arbre des modules du crate courant. N'y trouvant rien nommé `opus`,
+        // elles remontent au prélude (crates externes), d'où le crate `opus`. Pas de `::` requis.
         let mut decodeur =
             opus::Decoder::new(SAMPLE_RATE_HZ, opus::Channels::Stereo).unwrap();
 
