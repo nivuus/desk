@@ -17,6 +17,13 @@ futures-util = "0.3"
 opus = "0.3.1"
 
 [target.'cfg(windows)'.dependencies]
+# Dépendance directe requise par la macro `#[windows::core::implement]`
+# (tâche 10, sonde process loopback) : elle génère du code qui référence
+# `windows_core::...` directement, un chemin non résolu si seul le crate
+# `windows` (qui ne fait que RÉ-EXPORTER `windows_core` sous le nom `core`)
+# est déclaré en dépendance. Version alignée sur celle que verrouille déjà
+# Cargo.lock comme dépendance transitive de `windows`.
+windows-core = "0.62"
 windows = { version = "0.62", features = [
     "Win32_Foundation",
     "Win32_Graphics_Direct3D",

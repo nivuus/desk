@@ -106,6 +106,19 @@ function extractVideoInboundStats(statsEntries) {
     return entry ? entry[1] : null;
 }
 
+/// Pendant audio de `extractVideoInboundStats` (tâche 10 du chantier A) :
+/// rend `bytesReceived`, `packetsReceived`, `packetsLost`, `jitter` et
+/// `estimatedPlayoutTimestamp` de la piste `inbound-rtp` audio — ou `null` si
+/// aucune entrée audio n'existe dans le rapport (ne devrait pas arriver ici :
+/// le client négocie toujours un transceiver audio `recvonly`, cf.
+/// `client/src/webrtc.ts`, même quand l'agent ne dispose d'aucune source
+/// audio réelle — c'est alors `bytesReceived` qui reste à zéro, pas l'entrée
+/// qui disparaît).
+function extractAudioInboundStats(statsEntries) {
+    const entry = statsEntries.find(([, stats]) => stats.type === 'inbound-rtp' && stats.kind === 'audio');
+    return entry ? entry[1] : null;
+}
+
 async function main() {
     const port = 9222 + Math.floor(Math.random() * 1000);
     const userDataDir = await mkdtemp(join(tmpdir(), 'chrome-webrtc-verify-'));
@@ -227,12 +240,78 @@ async function main() {
             width > 0 && height > 0 &&
             width <= PLAUSIBLE_MAX_DIMENSION && height <= PLAUSIBLE_MAX_DIMENSION;
 
+        // --- Audio (tâche 10 du chantier A) ---
+        //
+        // Le client négocie TOUJOURS un transceiver audio `recvonly`
+        // (`client/src/webrtc.ts`), donc une entrée `inbound-rtp` audio existe
+        // dans `getStats()` même quand l'agent n'a aucune source audio réelle
+        // (`TEST_FILE`, recette vidéo pure) — c'est alors `bytesReceived` qui
+        // reste bloqué à zéro sur toute la fenêtre de mesure, pas l'entrée qui
+        // disparaît. On distingue donc « pas de son » (aucun octet reçu ni au
+        // relevé 1 ni au relevé 2 : silence attendu, PAS un échec) de « du son
+        // est arrivé une fois puis plus rien » (compteur figé après avoir
+        // bougé : c'est précisément le faux positif que le brief met en garde
+        // contre — un paquet isolé ne prouve pas un flux).
+        const audioBytesFirst = first.audioStats?.bytesReceived ?? 0;
+        const audioBytesSecond = second.audioStats?.bytesReceived ?? 0;
+        const audioPacketsFirst = first.audioStats?.packetsReceived ?? 0;
+        const audioPacketsSecond = second.audioStats?.packetsReceived ?? 0;
+        const audioBytesDelta = audioBytesSecond - audioBytesFirst;
+        const audioPacketsDelta = audioPacketsSecond - audioPacketsFirst;
+        // Absence honnête : aucun octet observé à aucun des deux relevés.
+        // Sans cette double condition, une session qui démarre tout juste à
+        // recevoir du son entre les deux relevés (bytesFirst=0,
+        // bytesSecond>0, delta>0) serait à tort classée « absente » alors
+        // qu'elle prouve exactement ce qu'on cherche.
+        const audioAbsent = audioBytesFirst === 0 && audioBytesSecond === 0;
+        const audioGrowing = audioBytesDelta > 0 && audioPacketsDelta > 0;
+
+        // Décalage A/V (tâche 7 : le `wallclock` RTCP annonce l'instant de
+        // CAPTURE, pas d'écriture — cette mesure est la seule vérification
+        // objective de cette correction). `estimatedPlayoutTimestamp` est sur
+        // une horloge commune aux deux pistes : leur différence est le
+        // décalage tel que le récepteur le voit. Positif ⇒ l'audio est en
+        // AVANCE sur la vidéo (seuil de gêne ITU-R BT.1359 : 45 ms) ; négatif
+        // ⇒ l'audio est en RETARD (seuil : 125 ms, la gêne d'un retard étant
+        // tolérée presque trois fois plus longtemps que celle d'une avance).
+        let avSkewMs = null;
+        if (!audioAbsent && second.audioStats?.estimatedPlayoutTimestamp != null && second.stats?.estimatedPlayoutTimestamp != null) {
+            avSkewMs = second.audioStats.estimatedPlayoutTimestamp - second.stats.estimatedPlayoutTimestamp;
+        }
+
         console.log('');
         console.log(`connectionState (final) : ${second.connectionState}`);
         console.log(`iceConnectionState (final) : ${second.iceConnectionState}`);
         console.log(`Δ framesDecoded sur ${sampleDelayMs}ms : ${framesDecodedDelta}`);
         console.log(`Δ framesReceived sur ${sampleDelayMs}ms : ${framesReceivedDelta}`);
         console.log(`dimensions plausibles (>0, ≤ ${PLAUSIBLE_MAX_DIMENSION}px) : ${dimensionsOk ? 'OK' : 'ÉCHEC'} (obtenu ${width}x${height})`);
+        console.log('');
+        console.log(`Δ audio bytesReceived sur ${sampleDelayMs}ms : ${audioBytesDelta}`);
+        console.log(`Δ audio packetsReceived sur ${sampleDelayMs}ms : ${audioPacketsDelta}`);
+        console.log(`audio packetsLost (relevé 2) : ${second.audioStats?.packetsLost ?? 'absent'}`);
+        console.log(`audio jitter (relevé 2) : ${(((second.audioStats?.jitter ?? 0)) * 1000).toFixed(1)} ms`);
+        if (audioAbsent) {
+            console.log('audio : aucun octet reçu sur les deux relevés (pas de piste audio active — session vidéo seule, ou silence total).');
+        } else if (audioGrowing) {
+            console.log('audio : bytesReceived et packetsReceived augmentent — PREUVE que l\'audio traverse la chaîne.');
+        } else {
+            console.log('audio : des octets sont arrivés mais les compteurs ont cessé de progresser (figé) — ce n\'est PAS une preuve de flux continu.');
+        }
+        if (avSkewMs === null) {
+            console.log('décalage A/V : non mesurable (pas de piste audio active sur ce relevé).');
+        } else {
+            const sens = avSkewMs > 0 ? 'audio en avance sur la vidéo' : avSkewMs < 0 ? 'audio en retard sur la vidéo' : 'aucun décalage mesuré';
+            // Seuils de gêne ITU-R BT.1359 : 45 ms si l'audio devance l'image,
+            // 125 ms s'il la retarde — le signe compte, l'avance gêne presque
+            // trois fois plus tôt que le retard.
+            const seuil = avSkewMs > 0 ? 45 : 125;
+            const dansLeSeuil = Math.abs(avSkewMs) <= seuil;
+            console.log(
+                `décalage A/V (estimatedPlayoutTimestamp audio − vidéo) : ${avSkewMs.toFixed(1)} ms ` +
+                    `(${sens}) — seuil de gêne ITU-R BT.1359 applicable : ${seuil} ms, ` +
+                    `${dansLeSeuil ? 'dans le seuil' : 'AU-DELÀ DU SEUIL'} (mesure informative, ne conditionne pas le code de sortie)`,
+            );
+        }
 
         if (cdp.consoleLines.length > 0) {
             console.log('\n--- Console de la page ---');
@@ -245,7 +324,24 @@ async function main() {
 
         if (framesDecodedDelta > 0 && framesReceivedDelta > 0 && dimensionsOk) {
             console.log('\nPREUVE : la vidéo traverse la chaîne (framesDecoded et framesReceived augmentent, dimensions plausibles).');
-            exitCode = 0;
+            // La vidéo est prouvée : c'est ici, et seulement ici, que l'audio
+            // peut faire échouer le harnais — et seulement s'il a été VU
+            // (au moins un octet reçu) puis a cessé de progresser. Une
+            // session sans piste audio active (`audioAbsent`) ne fait jamais
+            // échouer le harnais : il sert aussi à la recette vidéo pure
+            // (`TEST_FILE`), qui n'a par construction aucun son à faire
+            // traverser. Le décalage A/V, lui, n'intervient jamais dans ce
+            // choix (voir plus haut : mesure, pas encore critère éprouvé).
+            if (audioAbsent || audioGrowing) {
+                exitCode = 0;
+            } else {
+                console.log(
+                    "\nÉCHEC (audio) : une piste audio a reçu des octets mais bytesReceived/packetsReceived " +
+                        "ont cessé de progresser — un paquet isolé ne prouve pas un flux continu. " +
+                        'Voir chrome://webrtc-internals pour le détail.',
+                );
+                exitCode = 1;
+            }
         } else if (!dimensionsOk) {
             console.log(`\nÉCHEC : dimensions rapportées non plausibles (${width}x${height}). Voir chrome://webrtc-internals pour le détail.`);
             exitCode = 1;
@@ -286,20 +382,37 @@ async function sampleStats(cdp) {
         true,
     );
     const stats = extractVideoInboundStats(raw.entries);
-    return { stats, connectionState: raw.connectionState, iceConnectionState: raw.iceConnectionState };
+    const audioStats = extractAudioInboundStats(raw.entries);
+    return {
+        stats,
+        audioStats,
+        connectionState: raw.connectionState,
+        iceConnectionState: raw.iceConnectionState,
+    };
 }
 
 function printSample(sample) {
     if (!sample.stats) {
         console.log('  aucune entrée inbound-rtp vidéo dans getStats()');
+    } else {
+        const s = sample.stats;
+        console.log(
+            `  framesDecoded=${s.framesDecoded} framesReceived=${s.framesReceived} ` +
+                `frameWidth=${s.frameWidth} frameHeight=${s.frameHeight} ` +
+                `bytesReceived=${s.bytesReceived} packetsReceived=${s.packetsReceived} ` +
+                `packetsLost=${s.packetsLost} keyFramesDecoded=${s.keyFramesDecoded}`,
+        );
+    }
+
+    if (!sample.audioStats) {
+        console.log('  aucune entrée inbound-rtp audio dans getStats()');
         return;
     }
-    const s = sample.stats;
+    const a = sample.audioStats;
     console.log(
-        `  framesDecoded=${s.framesDecoded} framesReceived=${s.framesReceived} ` +
-            `frameWidth=${s.frameWidth} frameHeight=${s.frameHeight} ` +
-            `bytesReceived=${s.bytesReceived} packetsReceived=${s.packetsReceived} ` +
-            `packetsLost=${s.packetsLost} keyFramesDecoded=${s.keyFramesDecoded}`,
+        `  [audio] bytesReceived=${a.bytesReceived} packetsReceived=${a.packetsReceived} ` +
+            `packetsLost=${a.packetsLost} jitter=${((a.jitter ?? 0) * 1000).toFixed(1)}ms ` +
+            `estimatedPlayoutTimestamp=${a.estimatedPlayoutTimestamp ?? 'absent'}`,
     );
 }
 

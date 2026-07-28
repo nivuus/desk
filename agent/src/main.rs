@@ -674,6 +674,24 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
+    // Sonde n°4 de la spec du chantier A : le *process loopback*
+    // (Windows 10 build 19041+) isole l'audio d'un seul processus, ce
+    // qu'exige le modèle multi-fenêtres du chantier D. La VM est en build
+    // 20348, donc éligible sur le papier. RIEN N'EST CONSTRUIT DESSUS ici :
+    // on observe seulement si l'activation réussit, et le résultat est
+    // consigné pour le chantier D.
+    #[cfg(windows)]
+    if let Ok(pid_texte) = std::env::var("PROCESS_LOOPBACK_PROBE") {
+        let pid: u32 = pid_texte
+            .parse()
+            .context("PROCESS_LOOPBACK_PROBE doit être un identifiant de processus")?;
+        match wasapi::probe_process_loopback(pid) {
+            Ok(rapport) => tracing::info!(pid, rapport, "sonde process loopback"),
+            Err(e) => tracing::warn!(pid, erreur = %e, "sonde process loopback échouée"),
+        }
+        return Ok(());
+    }
+
     // Renseigné dans la branche Windows ci-dessous : la fenêtre capturée est
     // aussi celle qui reçoit les entrées injectées (tâche 12). `None` en
     // mode fichier de test (pas de fenêtre Windows à piloter) ou hors

@@ -223,7 +223,21 @@ Bénéficie à tout le produit, pas seulement au jeu.
 - **Capture par processus** : Windows 10 build 19041+ expose le *process
   loopback* (`AUDIOCLIENT_ACTIVATION_PARAMS` / `PROCESS_LOOPBACK`), qui isole
   l'audio d'un seul processus. C'est exactement ce qu'exige le modèle
-  multi-fenêtres. La VM cible est en build 20348, donc éligible — à valider.
+  multi-fenêtres. **Sondé le 28/07/2026 (tâche 10 du chantier A) : non
+  déterminé.** Le code compile et lie sur la cible Windows réelle
+  (`agent::wasapi::probe_process_loopback`, gestionnaire de complétion COM
+  `IActivateAudioInterfaceCompletionHandler` via `#[implement]`), mais son
+  exécution sur la VM (build 20348, donc éligible sur le papier) n'a produit
+  ni journal exploitable ni erreur diagnostiquable dans le temps imparti :
+  le processus sonde se termine avec un code de sortie 0 sans qu'aucune ligne
+  de trace n'atteigne `agent.log`, et une invocation synchrone équivalente
+  reste bloquée sans jamais rendre la main — aucun rapport de plantage
+  Windows (WER) ne corrèle avec ces tentatives. Résultat non tranché ; voir
+  `docs/superpowers/plans/2026-07-28-audio-resultats.md` pour le détail. **À
+  reprendre au chantier D**, avec de meilleurs outils de diagnostic côté
+  Windows (débogueur attaché, sortie vers un fichier dédié plutôt que
+  `Tee-Object`/stdout à travers la tâche planifiée) — la valeur de cette
+  sonde reste informative, pas structurante.
 - **Encodage** : Media Foundation n'expose pas d'encodeur Opus. Passer par les
   bindings libopus (crate `opus` ou `audiopus`). 48 kHz stéréo, trames de 10 ms,
   ~128 kbps, mode `RESTRICTED_LOWDELAY`, FEC in-band activé.
@@ -231,10 +245,16 @@ Bénéficie à tout le produit, pas seulement au jeu.
   type 111 est déjà déclaré (`agent/src/transport.rs:937`).
 - **Synchronisation A/V** : horodatage sur une horloge commune, RTCP Sender
   Reports.
-- **Risque à lever** : la VM dispose-t-elle d'un périphérique de rendu audio ?
-  Elle a un « SudoMaker Virtual Display Adapter » pour l'affichage, rien
-  d'équivalent n'est connu pour le son. Sans périphérique de rendu actif, WASAPI
-  loopback ne produit rien. Un pilote audio virtuel peut être nécessaire.
+- **Risque levé le 28/07/2026 (tâche 10 du chantier A)** : oui, la VM dispose
+  d'un périphérique de rendu audio actif. `Get-CimInstance Win32_SoundDevice`
+  et `Get-PnpDevice -Class AudioEndpoint` relèvent **deux endpoints actifs**
+  (état `OK`) : « Haut-parleurs (Steam Streaming Speakers) », un périphérique
+  **virtuel**, et « HDP-V104 (NVIDIA High Definition Audio) ». Aucun pilote
+  audio virtuel supplémentaire n'a été nécessaire — celui de Steam suffit.
+  Format de mixage réellement relevé par WASAPI (sonde de la tâche 5,
+  reconfirmé à chaque session de la tâche 10) : **48 000 Hz, 2 canaux, 32
+  bits flottant**, conforme à l'hypothèse de conception (aucun
+  rééchantillonneur nécessaire).
 
 ### Chantier B — Input jeu
 
@@ -269,8 +289,21 @@ Bénéficie à tout le produit, pas seulement au jeu.
 
 Imposé par la cible « internet quelconque ». Bénéficie à tout le produit.
 
-- **Pacing des PTS sur horloge réelle** — corrige
-  `agent/src/windows_source.rs:310`, qui incrémente un tick constant et dérive.
+- ~~**Pacing des PTS sur horloge réelle** — corrige
+  `agent/src/windows_source.rs:310`, qui incrémente un tick constant et
+  dérive.~~ **Périmé : corrigé le 28/07/2026** (commit `857af65`, en dehors de
+  ce chantier). Ce qui reste réellement à faire au chantier C n'est donc pas
+  le pacing lui-même, mais l'exploitation de ses conséquences : **le débit
+  adaptatif** ci-dessous (lire les RTCP Receiver Reports pour ajuster le
+  débit d'encodage à chaud — rien de tel n'existe encore, le débit reste fixé
+  par variable d'environnement). Par ailleurs, le chantier A (tâche 7,
+  commit `733558e`) a corrigé un défaut voisin mais distinct : le
+  `wallclock` des RTCP **Sender** Reports annonçait l'instant d'écriture du
+  paquet plutôt que l'instant de capture, ce qui aurait fait annoncer l'audio
+  en avance sur la vidéo de tout le délai d'encodage. Les deux corrections
+  (pacing des PTS, wallclock des Sender Reports) sont indépendantes et
+  toutes deux acquises ; seul le débit adaptatif à partir des **Receiver**
+  Reports reste ouvert.
 - **Débit adaptatif** : lire les RTCP Receiver Reports (perte, jitter) et
   l'estimation de bande passante côté str0m, puis ajuster
   `CODECAPI_AVEncCommonMeanBitRate` à chaud. Le support TWCC / BWE de str0m 0.21
