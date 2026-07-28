@@ -1186,6 +1186,22 @@ mod tests {
         Pt::from(v)
     }
 
+    // -- horloge RTP audio --------------------------------------------------
+    //
+    // `write_audio` (ligne ~1017) construit `MediaTime::new(pts_48k,
+    // Frequency::FORTY_EIGHT_KHZ)` : la fréquence d'horloge RTP du type de
+    // charge utile Opus est câblée en dur ici, séparément de
+    // `opus::SAMPLE_RATE_HZ`, qui documente pourtant explicitement être « la
+    // fréquence d'horloge RTP du type de charge utile Opus ». Rien ne lie ces
+    // deux constantes : modifier l'une sans l'autre compilerait sans
+    // avertissement et produirait des horodatages RTP faux d'un facteur
+    // constant — un défaut de synchronisation silencieux. Ce test échoue si
+    // elles divergent.
+    #[test]
+    fn la_frequence_rtp_audio_correspond_au_taux_d_echantillonnage_opus() {
+        assert_eq!(Frequency::FORTY_EIGHT_KHZ.get(), crate::opus::SAMPLE_RATE_HZ);
+    }
+
     // -- classify_recv_error / recv_error_backoff -------------------------
     //
     // Pas de socket réelle ici : provoquer un WSAECONNRESET déterministe

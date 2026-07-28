@@ -278,18 +278,18 @@ mod tests {
 
         // Première poussée : bien au-delà du plafond
         a.push(&bloc(100, 2000));
-        // Buffer: 4000, plafond: 2880, excédent: 1120
+        // Tampon : 4000, plafond : 2880, excédent : 1120
         // Jetés : 1120
         assert_eq!(a.echantillons_jetes(), 1120,
             "première poussée jette 1120 échantillons (4000 - 2880)");
 
         // Deuxième poussée : de nouveau au-delà, avec valeur différente
         a.push(&bloc(-100, 1600));
-        // Buffer avant: 2880 (100s), après extend: 6080
+        // Tampon avant: 2880 (100s), après extend: 6080
         // Excédent: 3200, jetés cumulativement: 1120 + 3200 = 4320
-        // Buffer reste: 2880 (les -100s les plus récents)
+        // Tampon reste: 2880 (les -100s les plus récents)
         assert_eq!(a.echantillons_jetes(), 4320,
-            "deuxième poussée jette les 3200 anciens (100s) du buffer");
+            "deuxième poussée jette les 3200 anciens (100s) du tampon");
 
         // La trame émise doit contenir les -100s (les plus récents conservés),
         // pas les 100s (les plus anciens, maintenant jetés).

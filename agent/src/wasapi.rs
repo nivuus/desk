@@ -98,7 +98,7 @@ pub struct LoopbackCapture {
 // n'est pas le cas ici : `open()` (ci-dessous) *vérifie*, plutôt que de
 // supposer, que le fil appelant rejoint l'appartement multi-thread (MTA) via
 // `CoInitializeEx(None, COINIT_MULTITHREADED)`, et refuse d'ouvrir si ce fil
-// appartient déjà à une autre apartement (`RPC_E_CHANGED_MODE`).
+// appartient déjà à un autre appartement (`RPC_E_CHANGED_MODE`).
 // `WindowsAudioSource::new` (agent/src/windows_audio.rs) déplace ensuite cet
 // objet, par `move`, vers un fil de capture dédié qui rejoint à son tour
 // cette même MTA avant tout appel COM (voir son commentaire). Un objet créé
@@ -108,7 +108,7 @@ pub struct LoopbackCapture {
 //
 // Cette promesse porte sur le **struct entier, champs futurs compris** : si
 // un futur champ ajoute un `HANDLE` d'événement, un pointeur brut, ou tout
-// autre état lié à un fil précis plutôt qu'à l'apartement, cet `unsafe impl`
+// autre état lié à un fil précis plutôt qu'à l'appartement, cet `unsafe impl`
 // cesserait d'être valide sans que rien ne le signale. Quiconque ajoute un
 // champ à `LoopbackCapture` doit vérifier qu'il reste utilisable depuis
 // n'importe quel fil membre de la MTA avant de le faire — sans quoi ce
@@ -118,7 +118,7 @@ pub struct LoopbackCapture {
 // officiellement prévu par `windows-core` 0.62 pour transporter un objet COM
 // entre fils sans supposer son modèle de threading. Non retenu ici : il exige
 // une résolution (`resolve()`, un `QueryInterface` interne) à chaque
-// récupération, un coût et une complexité inutiles alors que ce process n'a,
+// récupération, un coût et une complexité inutiles alors que ce processus n'a,
 // sous ce plan, aucune STA — la vérification d'`open()` suffit et reste bon
 // marché.
 unsafe impl Send for LoopbackCapture {}

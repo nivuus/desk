@@ -60,15 +60,18 @@ impl WindowsAudioSource {
                 // sortant — alors que `open()` a initialisé COM sur le fil
                 // APPELANT, pas sur celui-ci. Microsoft exige que tout fil
                 // invoquant des méthodes COM ait d'abord rejoint un
-                // appartement. L'omettre « marche » en pratique pour des
-                // objets in-process appelés par vtable directe, ce qui rend le
-                // manquement parfaitement invisible en test de fumée — et
-                // c'est bien ce qui le rend dangereux : rien ne le garantit.
+                // appartement.
                 //
-                // Résultat volontairement ignoré, comme dans `wasapi::open` :
-                // rejoindre la MTA deux fois depuis deux fils distincts est le
-                // fonctionnement normal, et `RPC_E_CHANGED_MODE` signifierait
-                // seulement que ce fil appartient déjà à un autre modèle.
+                // Résultat volontairement ignoré ICI — contrairement à
+                // `wasapi::open`, qui lui **vérifie** son `HRESULT` et refuse
+                // `RPC_E_CHANGED_MODE` (voir son commentaire, dont dépend
+                // `unsafe impl Send for LoopbackCapture`) : ce fil-ci vient
+                // d'être créé par `thread::Builder::spawn` juste au-dessus,
+                // il n'a donc encore rejoint aucun appartement COM, et
+                // `CoInitializeEx` y rend nécessairement `S_OK`. `open()`,
+                // lui, s'exécute sur un fil quelconque — potentiellement
+                // recyclé, potentiellement déjà lié à une STA — d'où la
+                // vérification qui n'a pas lieu d'être répétée ici.
                 //
                 // Symétriquement, PAS de `CoUninitialize` : voir le motif
                 // détaillé dans `wasapi.rs`.
@@ -129,7 +132,17 @@ impl WindowsAudioSource {
 
                     if dernier_rapport.elapsed() >= REPORT_INTERVAL {
                         dernier_rapport = Instant::now();
-                        tracing::debug!(
+                        // `info!`, pas `debug!` : le filtre par défaut
+                        // (`agent/src/main.rs`, `EnvFilter` replié sur
+                        // `"info"` en l'absence de `RUST_LOG`) n'émet jamais
+                        // les journaux `debug!` en exploitation normale. La
+                        // spec (§5, §9) promet des compteurs « journalisés
+                        // périodiquement et jamais silencieux » — un
+                        // enregistrement toutes les `REPORT_INTERVAL` (30 s)
+                        // n'est pas du bruit, et un compteur de rejets muet
+                        // est exactement ce qui rendrait une dégradation
+                        // audio invisible en recette.
+                        tracing::info!(
                             rejetes = ring_fil.rejetes(),
                             complements = assembleur.complements(),
                             echantillons_jetes = assembleur.echantillons_jetes(),
