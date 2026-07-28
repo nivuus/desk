@@ -5055,7 +5055,7 @@ Y consigner également les écarts d'API rencontrés aux tâches 7, 9 et 10 : ce
 
 Ne pas optimiser au hasard. Instrumenter dans cet ordre, en ajoutant des mesures temporaires dans `WindowsSource::next_frame` :
 
-1. **Capture** — compter les images renvoyées par `capture.next_texture()` par seconde. Sous 60, le problème est en amont : la fenêtre est peut-être occluse ou le compositeur limite la cadence.
+1. **Capture** — le mode `CAPTURE_TEST` compte déjà les images sur trois secondes. Référence relevée : ~270 images en 3 s, soit ~90 par seconde. Si tu obtiens nettement moins, l'écran ne change probablement pas assez : Desktop Duplication ne livre une image que sur changement, et Firefox bride son animation quand il perd le focus.
 2. **Encodage** — compter les unités renvoyées par `encoder.poll_output()` par seconde. Un écart avec la capture signale que l'encodeur est saturé : baisser le débit cible, ou vérifier que la MFT matérielle est bien celle qui a été activée (le journal de la tâche 10 le nomme).
 3. **Envoi** — l'envoi est interne à `Session::tick` depuis la tâche 7 : ajouter un compteur dans `Session` incrémenté à chaque écriture réussie, et le journaliser une fois par seconde. Un écart avec l'encodage signale que la boucle n'a pas assez de temps de calcul, ou que la cadence interne bride l'envoi.
 4. **Réception** — comparer `framesDecoded` du navigateur au nombre envoyé. Un écart signale de la perte réseau ou un tampon d'envoi saturé.
