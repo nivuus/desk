@@ -231,9 +231,15 @@ déclarer la piste audio. L'agent ne fait que répondre.
 
 - Client : `pc.addTransceiver('audio', { direction: 'recvonly' })` avant
   `createOffer`.
-- Agent : le PT 111 Opus figure déjà dans la table de candidats
-  (`agent/src/transport.rs:1083`) — **rien à ajouter au SDP**. Il manque
-  seulement de quoi retenir le `mid` : `Event::MediaAdded` ne conserve
+- Agent : **deux choses manquent, pas une.**
+
+  D'abord, `Rtc::builder()` appelle `clear_codecs()` puis n'active
+  explicitement que H.264 : **sans un `enable_opus(true)`, aucun type de charge
+  utile Opus n'est proposé et la piste ne se négocie jamais.** Le PT 111 qui
+  figure à `agent/src/transport.rs:1083` ne contredit pas cela — cette table ne
+  sert qu'à *retrouver* un PT déjà négocié, elle n'en déclare aucun.
+
+  Ensuite, il manque de quoi retenir le `mid` : `Event::MediaAdded` ne conserve
   aujourd'hui que la vidéo (`if media.kind == MediaKind::Video`), ce `if` devient
   un `match` sur les deux genres.
 - Un `select_negotiated_opus_pt` calqué sur `select_negotiated_h264_pt`, avec le
