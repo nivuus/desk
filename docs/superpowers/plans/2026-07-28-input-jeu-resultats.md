@@ -564,18 +564,17 @@ résultats (ms) : 139, 166, 131
 moyenne : 145.3 ms, min=131 max=166
 ```
 
-**Sur les deux essais sans message (2 et 4)** : l'accusé de réception
-confirme que `Cursor.Hide()` a bien été appelé côté Windows dans les deux
-cas — ce n'est donc pas un échec du transport, mais vraisemblablement une
-fenêtre de masquage (1,8 s, choisie pour enchaîner rapidement plusieurs
-essais dans le même script) parfois trop courte pour que l'hystérésis à 3
-échantillons de l'agent (~150 ms, mais soumise à la gigue réelle du
-planificateur Windows) ait le temps de confirmer le changement avant que le
-curseur ne soit réaffiché. C'est une limite de la fenêtre de test choisie
-pour cette mesure (1,8 s), pas une observation sur un masquage de durée
-normale (un jeu qui masque le curseur le fait pour toute une session, pas
-1,8 s) — signalé pour ce que c'est, sans le compter comme une preuve
-supplémentaire ni l'écarter.
+**Sur les deux essais sans message (2 et 4)** : l'accusé de réception établit
+seulement que `Cursor.Hide()` a bien été invoqué côté Windows dans les deux
+cas — il ne dit rien du dernier maillon du chemin de signal, le transport
+jusqu'au client, qui est précisément celui qui ne s'est pas manifesté.
+**La cause de ces deux essais sans message reste donc non établie.** Une
+première hypothèse (fenêtre de masquage de 1,8 s trop courte pour
+l'hystérésis à 3 échantillons de l'agent, ~150 ms) ne résiste pas à l'examen
+arithmétique : 1,8 s représente plus de dix fois cette durée, elle n'explique
+donc pas ce qu'elle prétendait expliquer. Aucune autre hypothèse n'a été
+vérifiée ici — signalé comme une question ouverte, pas comme un incident
+expliqué.
 
 ### Critère et verdict
 
@@ -770,9 +769,12 @@ opérateur humain sur un vrai onglet, pas un navigateur piloté par script).
   Réserve résiduelle sur **cette seconde mesure** : montage artisanal (script
   PowerShell unique, gardé « chaud », pas un déclenchement représentatif d'un
   vrai jeu qui masquerait le curseur pendant toute une session) et 2 essais
-  sur 5 sans résultat exploitable (discutés en §6) — probablement une fenêtre
-  de masquage de test (1,8 s) parfois trop courte pour l'hystérésis de
-  l'agent, pas un défaut du transport.
+  sur 5 sans résultat exploitable (discutés en §6) — la cause de ces deux
+  essais reste **non établie** : l'accusé de réception ne prouve que
+  l'invocation de `Cursor.Hide()` côté Windows, rien sur le dernier maillon
+  (transport jusqu'au client), et l'hypothèse initialement avancée (fenêtre
+  de masquage trop courte pour l'hystérésis) ne tient pas à l'examen
+  arithmétique (1,8 s représente plus de dix fois les ~150 ms invoqués).
 - **Critère agent de la mesure 4 non vérifiable par journal** — voir §5, un
   vrai manque d'observabilité (code mort `#[cfg(not(windows))]`), pas une
   invention comblée par autre chose que la lecture directe du canal
