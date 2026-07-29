@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Sonde — movementX des événements coalescés</title>
+<style>
+  body { font: 14px system-ui; padding: 2rem; }
+  #zone { width: 480px; height: 300px; background: #222; color: #eee; display: grid; place-items: center; cursor: crosshair; }
+  pre { background: #f4f4f4; padding: 1rem; }
+</style>
+<div id="zone">cliquez pour verrouiller le pointeur, puis bougez la souris</div>
+<pre id="sortie">en attente…</pre>
+<script>
+  const zone = document.querySelector('#zone');
+  const sortie = document.querySelector('#sortie');
+  let sommeCoalesces = 0;
+  let sommePrincipaux = 0;
+  let evenements = 0;
+  let coalescesVus = 0;
+
+  zone.addEventListener('click', () => zone.requestPointerLock());
+
+  zone.addEventListener('pointermove', (event) => {
+    if (document.pointerLockElement !== zone) return;
+    evenements += 1;
+    sommePrincipaux += Math.abs(event.movementX);
+    const liste = event.getCoalescedEvents?.() ?? [];
+    coalescesVus += liste.length;
+    for (const e of liste) sommeCoalesces += Math.abs(e.movementX);
+    sortie.textContent =
+      `événements : ${evenements}\n` +
+      `coalescés vus : ${coalescesVus}\n` +
+      `somme |movementX| des principaux : ${sommePrincipaux}\n` +
+      `somme |movementX| des coalescés  : ${sommeCoalesces}\n` +
+      `verdict : ${sommeCoalesces === 0 && coalescesVus > 0 ? 'COALESCÉS INUTILISABLES' : 'coalescés exploitables'}`;
+  });
+</script>

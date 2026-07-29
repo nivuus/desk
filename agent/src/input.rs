@@ -12,6 +12,8 @@ mod win {
     use crate::geometry::{to_virtual_desktop, Rect};
     use anyhow::{anyhow, Context, Result};
     use proto::input::{InputMessage, MouseButton};
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
     use windows::Win32::Foundation::{HWND, POINT, RECT};
     // écart d'API windows-rs 0.62, déjà rencontré dans `window.rs` :
     // `ClientToScreen` vit dans `Win32::Graphics::Gdi` (module gdi32), pas
@@ -34,20 +36,35 @@ mod win {
     /// Windows courante, via `SendInput`.
     pub struct InputInjector {
         hwnd: HWND,
+        /// Renseigné par le fil de sondage du curseur (`cursor.rs`).
+        /// L'agent est SEUL décideur du mode : le client n'a rien à savoir,
+        /// et il n'existe qu'une source de vérité — la seule construction
+        /// correcte sur un canal non ordonné.
+        mode_relatif: Arc<AtomicBool>,
     }
 
     impl InputInjector {
-        pub fn new(hwnd: HWND) -> Self {
-            Self { hwnd }
+        pub fn new(hwnd: HWND, mode_relatif: Arc<AtomicBool>) -> Self {
+            Self { hwnd, mode_relatif }
         }
 
         pub fn inject(&mut self, message: InputMessage) -> Result<()> {
             match message {
                 InputMessage::MouseMove { x, y } => self.move_mouse(x, y),
                 InputMessage::MouseButton { button, pressed, x, y } => {
-                    // Toujours positionner avant de cliquer : le canal n'est pas
-                    // ordonné, le déplacement correspondant a pu se perdre.
-                    self.move_mouse(x, y)?;
+                    // En absolu : toujours positionner avant de cliquer, le
+                    // canal n'étant pas ordonné, le déplacement correspondant
+                    // a pu se perdre.
+                    //
+                    // En RELATIF : surtout pas. Les coordonnées portées par
+                    // le message n'ont plus de sens sous Pointer Lock, et un
+                    // repositionnement absolu téléporterait le curseur à
+                    // chaque tir. Relu à CHAQUE appel (pas capturé une fois à
+                    // la construction) : le mode peut basculer en cours de
+                    // session, au gré du fil de sondage du curseur.
+                    if !self.mode_relatif.load(Ordering::Relaxed) {
+                        self.move_mouse(x, y)?;
+                    }
                     let flags = match (button, pressed) {
                         (MouseButton::Left, true) => MOUSEEVENTF_LEFTDOWN,
                         (MouseButton::Left, false) => MOUSEEVENTF_LEFTUP,
@@ -57,6 +74,21 @@ mod win {
                         (MouseButton::Middle, false) => MOUSEEVENTF_MIDDLEUP,
                     };
                     send_mouse(MOUSEINPUT { dwFlags: flags, ..Default::default() })
+                }
+                InputMessage::MouseMoveRelative { dx, dy } => send_mouse(MOUSEINPUT {
+                    dx: dx as i32,
+                    dy: dy as i32,
+                    dwFlags: MOUSEEVENTF_MOVE,
+                    ..Default::default()
+                }),
+                InputMessage::Gamepad(_) => {
+                    // Ignoré ici, volontairement : `main.rs` intercepte cette
+                    // variante AVANT d'appeler l'injecteur (tâche 10, manette
+                    // virtuelle ViGEmBus) — l'injecteur clavier/souris n'a
+                    // rien à en faire. Un bras muet, sans ce commentaire,
+                    // serait un piège pour la suite : on croirait le message
+                    // traité alors qu'il ne l'a jamais été par ce module.
+                    Ok(())
                 }
                 InputMessage::Wheel { delta_x, delta_y } => {
                     if delta_y != 0 {

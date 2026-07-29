@@ -1,10 +1,20 @@
 mod audio;
 mod clock;
+mod cursor;
 mod frames;
+// Pas de `#[cfg(windows)]` ici : les logiques pures de `gamepad` (tâche 9,
+// ordonnancement des états et limitation des vibrations) n'ont rien de
+// spécifique à Windows et doivent compiler et se tester sur Linux. La sonde
+// `probe`, elle, reste gated à l'intérieur même du fichier
+// (`agent/src/gamepad.rs`), avec ses dépendances `vigem-client` /
+// `anyhow::Context` propres à la sonde.
+mod gamepad;
 mod geometry;
 mod h264;
 mod input;
 mod opus;
+#[cfg(windows)]
+mod pointer_settings;
 mod rebuild;
 mod signaling;
 mod source;
@@ -171,6 +181,39 @@ fn watch_encoder(telemetry: std::sync::Arc<encode::EncoderTelemetry>) -> impl Fn
     }
 }
 
+/// Point de départ et amplitude de la sonde de linéarité (tâche 8, chantier
+/// B), extraits en fonction pure — sans le moindre appel Windows — pour
+/// être testables sur Linux, comme `geometry.rs` ou `cursor::Hysteresis`.
+///
+/// `dx` et `dy` partagent toujours le signe de `pas` (la sonde ne déplace
+/// le curseur que dans un seul quadrant), donc il ne faut de marge que DANS
+/// LE SENS du déplacement, pas des deux côtés : partir à `marge` px du bord
+/// de départ (haut-gauche si `pas` est positif ou nul, bas-droite sinon)
+/// suffit, quelle que soit la résolution, tant que sa plus petite dimension
+/// excède `2 * marge + amplitude.abs()`. En dessous, le clampage aux bords
+/// de l'écran fausserait la mesure : refusé explicitement plutôt que de
+/// laisser un écart silencieusement faux (constaté en pratique : un essai
+/// parti du CENTRE d'un écran 2400×1080 avec une amplitude de 1000 px a
+/// donné `obtenu_y = 539`, signature d'un curseur buté en bas d'écran).
+///
+/// Renvoie `(centre_x, centre_y, amplitude)`.
+fn point_depart_lineaire(
+    largeur: i32,
+    hauteur: i32,
+    pas: i16,
+    repetitions: i32,
+    marge: i32,
+) -> Result<(i32, i32, i32)> {
+    let amplitude = pas as i32 * repetitions;
+    anyhow::ensure!(
+        largeur.min(hauteur) >= 2 * marge + amplitude.abs(),
+        "écran {largeur}x{hauteur} trop petit pour une amplitude de {amplitude} px \
+         (pas={pas}, répétitions={repetitions}) : le clampage fausserait la mesure"
+    );
+    let coord = |dimension: i32| if amplitude >= 0 { marge } else { (dimension - 1 - marge).max(0) };
+    Ok((coord(largeur), coord(hauteur), amplitude))
+}
+
 /// Configuration de l'agent, lue depuis l'environnement.
 struct Config {
     signaling_url: String,
@@ -200,6 +243,34 @@ async fn main() -> Result<()> {
                 .unwrap_or_else(|_| "info".into()),
         )
         .init();
+
+    // Au tout début, avant toute possibilité d'injection d'entrée (les modes
+    // diagnostic ci-dessous n'en injectent pas, mais la session normale plus
+    // bas le fait) : neutraliser l'accélération et la sensibilité pointeur de
+    // la session Windows. Ne fait jamais échouer le démarrage — une visée
+    // dégradée vaut mieux que pas de session.
+    //
+    // `INPUT_LINEARITY_NEUTRALISER=0` saute AUSSI cet appel-ci, et pas
+    // seulement celui, plus bas, propre à la sonde de linéarité.
+    // Correction de la ronde de revue 1 : le réglage SPI que pose
+    // `neutraliser()` vaut pour la SESSION Windows entière, pas pour le
+    // processus qui l'a posé (voir `pointer_settings.rs`) — sauter
+    // uniquement l'appel de la sonde ne suffisait donc pas, puisque cet
+    // appel-ci, plus haut et inconditionnel, avait déjà neutralisé
+    // l'accélération avant même que la sonde ne lise sa propre variable.
+    // La mesure de référence obtenait un écart nul quel que soit l'état
+    // réel de la VM : un artefact garanti par construction, pas une mesure.
+    #[cfg(windows)]
+    if std::env::var("INPUT_LINEARITY_NEUTRALISER").as_deref() != Ok("0") {
+        match pointer_settings::neutraliser() {
+            Ok(rapport) => tracing::info!(rapport, "accélération pointeur neutralisée"),
+            Err(e) => tracing::warn!(erreur = %e, "neutralisation de l'accélération pointeur échouée"),
+        }
+    } else {
+        tracing::warn!(
+            "neutralisation SAUTÉE au démarrage (INPUT_LINEARITY_NEUTRALISER=0, mesure de référence)"
+        );
+    }
 
     let config = config()?;
 
@@ -692,6 +763,107 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
+    // Sonde du chantier B (§11, inconnues n°1 et n°2) : ViGEmBus accepte-t-il
+    // de brancher une manette Xbox 360 virtuelle, et son rappel de
+    // notification restitue-t-il bien les magnitudes de vibration qu'un jeu
+    // demande ? RIEN N'EST CONSTRUIT DESSUS ici : on observe, et le résultat
+    // fige l'API réellement disponible pour la tâche 10.
+    #[cfg(windows)]
+    if std::env::var("VIGEM_PROBE").is_ok() {
+        let secondes: u64 = std::env::var("VIGEM_PROBE_SECS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(20);
+        match crate::gamepad::probe(secondes) {
+            Ok(rapport) => tracing::info!(rapport, "sonde ViGEmBus"),
+            Err(e) => tracing::warn!(erreur = %e, "sonde ViGEmBus échouée"),
+        }
+        return Ok(());
+    }
+
+    // Sonde n°1 de la recette du chantier B : la visée est-elle linéaire
+    // 1:1 ? On injecte une somme connue de déplacements relatifs et on
+    // compare au déplacement réel du curseur.
+    //
+    // `INPUT_LINEARITY_NEUTRALISER=0` saute la neutralisation SPI — ici ET
+    // au tout début de `main()` (voir le commentaire là-bas) : c'est ce qui
+    // rend la mesure démonstrative plutôt que rassurante — l'écart observé
+    // sans neutralisation chiffre ce que la neutralisation apporte. Sauter
+    // seulement l'appel ci-dessous, sans toucher à celui du démarrage,
+    // aurait laissé ce dernier neutraliser la session avant même que la
+    // sonde ne s'exécute (bogue réel de la première version de cette
+    // tâche, corrigé en ronde de revue 1).
+    #[cfg(windows)]
+    if std::env::var("INPUT_LINEARITY_PROBE").is_ok() {
+        use windows::Win32::Foundation::POINT;
+        use windows::Win32::UI::WindowsAndMessaging::{
+            GetCursorPos, GetSystemMetrics, SetCursorPos, SM_CXSCREEN, SM_CYSCREEN,
+        };
+
+        let pas: i16 = std::env::var("INPUT_LINEARITY_PAS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(10);
+        let repetitions: i32 = std::env::var("INPUT_LINEARITY_REPETITIONS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(100);
+
+        if std::env::var("INPUT_LINEARITY_NEUTRALISER").as_deref() != Ok("0") {
+            match pointer_settings::neutraliser() {
+                Ok(rapport) => tracing::info!(rapport, "neutralisation appliquée"),
+                Err(e) => tracing::warn!(erreur = %e, "neutralisation échouée"),
+            }
+        } else {
+            tracing::warn!("neutralisation SAUTÉE (mesure de référence)");
+        }
+
+        // Écart au brief : le point fixe (960, 540) qu'il propose suppose un
+        // écran 1920×1080, jamais vérifié, et son CENTRE s'est révélé
+        // insuffisant à l'essai (voir `point_depart_lineaire`, testée sans
+        // Windows). Remplacé par une lecture réelle de la résolution et un
+        // point de départ biaisé dans le sens du déplacement.
+        const MARGE: i32 = 20;
+        let largeur = unsafe { GetSystemMetrics(SM_CXSCREEN) };
+        let hauteur = unsafe { GetSystemMetrics(SM_CYSCREEN) };
+        let (centre_x, centre_y, amplitude) =
+            point_depart_lineaire(largeur, hauteur, pas, repetitions, MARGE)?;
+        tracing::info!(largeur, hauteur, centre_x, centre_y, amplitude, "point de départ de la sonde");
+        unsafe { SetCursorPos(centre_x, centre_y) }?;
+        std::thread::sleep(std::time::Duration::from_millis(200));
+
+        let mut avant = POINT::default();
+        unsafe { GetCursorPos(&mut avant) }?;
+
+        let injecteur_hwnd = windows::Win32::Foundation::HWND(std::ptr::null_mut());
+        let mode = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
+        let mut injecteur = input::InputInjector::new(injecteur_hwnd, mode);
+        for _ in 0..repetitions {
+            injecteur.inject(proto::input::InputMessage::MouseMoveRelative { dx: pas, dy: pas })?;
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+        std::thread::sleep(std::time::Duration::from_millis(200));
+
+        let mut apres = POINT::default();
+        unsafe { GetCursorPos(&mut apres) }?;
+
+        // Même formule que `point_depart_lineaire` : réutilisée telle
+        // quelle plutôt que recalculée, pour ne pas risquer de la faire
+        // diverger de celle qui a dimensionné le point de départ (revue 1).
+        let attendu = amplitude;
+        let obtenu_x = apres.x - avant.x;
+        let obtenu_y = apres.y - avant.y;
+        tracing::info!(
+            attendu,
+            obtenu_x,
+            obtenu_y,
+            ecart_x = obtenu_x - attendu,
+            ecart_y = obtenu_y - attendu,
+            "sonde de linéarité terminée"
+        );
+        return Ok(());
+    }
+
     // Renseigné dans la branche Windows ci-dessous : la fenêtre capturée est
     // aussi celle qui reçoit les entrées injectées (tâche 12). `None` en
     // mode fichier de test (pas de fenêtre Windows à piloter) ou hors
@@ -897,6 +1069,39 @@ async fn main() -> Result<()> {
         }
     });
 
+    // Fil de sondage du curseur : décide du mode absolu/relatif et de la
+    // forme à afficher. Le drapeau est partagé avec l'injecteur d'entrées,
+    // les messages passent par la session (canal de contrôle).
+    #[cfg_attr(not(windows), allow(unused_variables))]
+    let mode_relatif = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let arret_sondes = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    // `control_tx` n'a de lecteur (`cursor::spawn_probe`) que sous Windows :
+    // même raison que `mode_relatif` ci-dessus, même traitement.
+    #[cfg_attr(not(windows), allow(unused_variables))]
+    let (control_tx, control_rx) = std::sync::mpsc::channel();
+    session.set_control_source(control_rx);
+
+    #[cfg(windows)]
+    let sonde_curseur = cursor::spawn_probe(
+        control_tx.clone(),
+        mode_relatif.clone(),
+        arret_sondes.clone(),
+    );
+
+    // Vrai à ce stade : ViGEmBus n'est sondé qu'au premier état de manette
+    // reçu, et l'échec éventuel enverra un second `Capabilities` à false.
+    // Annoncer l'optimisme évite d'afficher « manette indisponible » à un
+    // utilisateur qui n'en a simplement pas branché.
+    #[cfg(windows)]
+    let _ = control_tx.send(proto::control::AgentControl::capabilities(true));
+
+    // Clone dédiée au fil de transport ci-dessous (`spawn_blocking` est
+    // `move` : il faut lui donner sa propre copie de l'`Arc`, faute de quoi
+    // il capturerait `arret_sondes` en entier et la rendrait indisponible
+    // pour `arret_sondes.store(...)` après `transport.await`, plus bas).
+    #[cfg_attr(not(windows), allow(unused_variables))]
+    let arret_sondes_manette = arret_sondes.clone();
+
     // I6 : `Session::run` bloque volontairement (lecture UDP synchrone bornée
     // par la cadence vidéo et les échéances str0m). L'exécuter sur un ouvrier
     // async de tokio gèlerait les autres tâches de ce processus — ici, la
@@ -907,18 +1112,100 @@ async fn main() -> Result<()> {
         #[cfg(windows)]
         let mut injector = window_hwnd_addr.map(|addr| {
             let hwnd = windows::Win32::Foundation::HWND(addr as *mut core::ffi::c_void);
-            input::InputInjector::new(hwnd)
+            input::InputInjector::new(hwnd, mode_relatif.clone())
         });
 
+        // Branchement paresseux : à la PREMIÈRE réception d'un état de
+        // manette, pas au démarrage — voir le commentaire de
+        // `gamepad::win::VirtualPad`. `pad_indisponible` garantit qu'on ne
+        // retente qu'une fois : au premier échec, on renonce pour le reste
+        // de la session plutôt que de retenter à chaque état reçu.
+        #[cfg(windows)]
+        let mut pad: Option<gamepad::VirtualPad> = None;
+        #[cfg(windows)]
+        let mut pad_indisponible = false;
+        // `gamepad::VirtualPad::connect()` peut dormir jusqu'à 5 s (attente
+        // de l'énumération PnP côté Windows, voir sa documentation) : on ne
+        // l'appelle donc JAMAIS directement ici, cette fermeture tournant
+        // dans la boucle de `Session::run` qui porte aussi vidéo et RTCP
+        // (voir le commentaire sur `spawn_blocking` plus haut). `spawn_connect`
+        // le fait sur un fil séparé ; ce récepteur est sondé sans bloquer.
+        #[cfg(windows)]
+        let mut connexion_manette: Option<std::sync::mpsc::Receiver<anyhow::Result<gamepad::VirtualPad>>> =
+            None;
+
         let mut on_input = |message: proto::input::InputMessage| {
+            #[cfg(windows)]
+            if let proto::input::InputMessage::Gamepad(state) = message {
+                if pad.is_none() && !pad_indisponible {
+                    let rx = connexion_manette.get_or_insert_with(gamepad::spawn_connect);
+                    match rx.try_recv() {
+                        Ok(Ok(mut nouveau)) => {
+                            match gamepad::spawn_rumble(
+                                &mut nouveau,
+                                control_tx.clone(),
+                                arret_sondes_manette.clone(),
+                            ) {
+                                Ok(_) => {}
+                                Err(e) => tracing::warn!(erreur = %e, "vibrations indisponibles"),
+                            }
+                            pad = Some(nouveau);
+                            connexion_manette = None;
+                        }
+                        Ok(Err(e)) => {
+                            // Une seule fois : `pad_indisponible` empêche tout
+                            // nouvel essai, et donc tout second envoi de
+                            // `Capabilities` pour cette session.
+                            pad_indisponible = true;
+                            connexion_manette = None;
+                            tracing::warn!(erreur = %e, "manette virtuelle indisponible");
+                            let _ = control_tx
+                                .send(proto::control::AgentControl::capabilities(false));
+                        }
+                        Err(std::sync::mpsc::TryRecvError::Empty) => {
+                            // Connexion encore en cours (jusqu'à 5 s
+                            // observées) : cet état de manette est perdu,
+                            // sans conséquence — pas grâce à la fréquence de
+                            // sondage du client (cadence sous charge du
+                            // `setInterval(4 ms)` jamais mesurée), mais parce
+                            // qu'il réémet un état complet toutes les 100 ms
+                            // même sans changement jusqu'à ce que la cible
+                            // soit prête (voir `client/src/gamepad.ts`,
+                            // `RAFRAICHISSEMENT_MS`).
+                        }
+                        Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                            pad_indisponible = true;
+                            connexion_manette = None;
+                            tracing::warn!(
+                                "fil de connexion à la manette virtuelle interrompu de façon inattendue"
+                            );
+                            let _ = control_tx
+                                .send(proto::control::AgentControl::capabilities(false));
+                        }
+                    }
+                }
+                if let Some(pad) = pad.as_mut() {
+                    if let Err(e) = pad.apply(&state) {
+                        tracing::warn!(erreur = %e, "application de l'état de manette échouée");
+                    }
+                }
+                return;
+            }
+
+            // Seul journal d'entrée disponible : il était auparavant gardé
+            // par `#[cfg(not(windows))]`, donc mort sur la cible réelle — la
+            // recette du chantier B (mesure 4) a dû s'en passer et
+            // reconstituer la preuve autrement (instrumentation du canal
+            // côté client). Le rendre disponible sous Windows aussi permet
+            // au prochain diagnostic de lire directement `agent.log`.
+            tracing::debug!(?message, "entrée reçue");
+
             #[cfg(windows)]
             if let Some(injector) = injector.as_mut() {
                 if let Err(e) = injector.inject(message) {
                     tracing::warn!(erreur = %e, "injection d'entrée échouée");
                 }
             }
-            #[cfg(not(windows))]
-            tracing::debug!(?message, "entrée reçue");
         };
         let mut on_control = |message| tracing::info!(?message, "contrôle reçu");
         session.run(&mut on_input, &mut on_control)
@@ -940,5 +1227,89 @@ async fn main() -> Result<()> {
         }
     }
 
+    arret_sondes.store(true, std::sync::atomic::Ordering::Relaxed);
+    #[cfg(windows)]
+    let _ = sonde_curseur.join();
+
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::point_depart_lineaire;
+
+    /// Résolution de la VM au moment des mesures (2400×1080) : le centre du
+    /// bureau (1200, 540) ne laisse que 540 px de marge verticale, en dessous
+    /// de l'amplitude de 1000 px que la tâche demande de mesurer — c'est
+    /// exactement le clampage constaté en pratique avant la correction.
+    const LARGEUR_VM: i32 = 2400;
+    const HAUTEUR_VM: i32 = 1080;
+
+    #[test]
+    fn pas_positif_part_pres_du_bord_haut_gauche() {
+        // pas=10, répétitions=100 : amplitude 1000, comme la mesure 2 du
+        // brief.
+        let (x, y, amplitude) =
+            point_depart_lineaire(LARGEUR_VM, HAUTEUR_VM, 10, 100, 20).unwrap();
+        assert_eq!(amplitude, 1000);
+        assert_eq!(x, 20);
+        assert_eq!(y, 20);
+    }
+
+    #[test]
+    fn pas_negatif_part_pres_du_bord_bas_droit() {
+        // Jamais exercé par la sonde telle qu'appelée aujourd'hui (le brief
+        // ne teste que des `pas` positifs), mais la formule doit rester
+        // correcte pour ce cas : c'est justement ce que ce test vérifie.
+        let (x, y, amplitude) =
+            point_depart_lineaire(LARGEUR_VM, HAUTEUR_VM, -10, 100, 20).unwrap();
+        assert_eq!(amplitude, -1000);
+        assert_eq!(x, LARGEUR_VM - 1 - 20);
+        assert_eq!(y, HAUTEUR_VM - 1 - 20);
+    }
+
+    #[test]
+    fn grand_pas_faible_repetition_donne_la_meme_amplitude() {
+        // pas=200, répétitions=5 : amplitude 1000, comme la mesure 3 du
+        // brief — c'est là que l'accélération se verrait si la
+        // neutralisation n'avait pas pris.
+        let (x, y, amplitude) =
+            point_depart_lineaire(LARGEUR_VM, HAUTEUR_VM, 200, 5, 20).unwrap();
+        assert_eq!(amplitude, 1000);
+        assert_eq!(x, 20);
+        assert_eq!(y, 20);
+    }
+
+    #[test]
+    fn refuse_un_ecran_trop_petit_pour_l_amplitude_demandee() {
+        // 100x100 ne laisse aucune place pour une amplitude de 1000 px :
+        // la garde doit refuser plutôt que de laisser le clampage fausser
+        // silencieusement la mesure.
+        let erreur = point_depart_lineaire(100, 100, 200, 5, 20).unwrap_err();
+        assert!(erreur.to_string().contains("trop petit"));
+    }
+
+    #[test]
+    fn accepte_pile_a_la_limite_de_la_marge() {
+        // largeur.min(hauteur) == 2*marge + amplitude exactement : la garde
+        // compare avec `>=`, ce cas limite doit donc passer.
+        let (x, y, amplitude) = point_depart_lineaire(1040, 2000, 10, 100, 20).unwrap();
+        assert_eq!(amplitude, 1000);
+        assert_eq!(x, 20);
+        assert_eq!(y, 20);
+    }
+
+    #[test]
+    fn refuse_juste_sous_la_limite_de_la_marge() {
+        let erreur = point_depart_lineaire(1039, 2000, 10, 100, 20).unwrap_err();
+        assert!(erreur.to_string().contains("trop petit"));
+    }
+
+    #[test]
+    fn amplitude_nulle_ne_demande_aucune_marge_particuliere() {
+        let (x, y, amplitude) = point_depart_lineaire(50, 50, 0, 0, 20).unwrap();
+        assert_eq!(amplitude, 0);
+        assert_eq!(x, 20);
+        assert_eq!(y, 20);
+    }
 }

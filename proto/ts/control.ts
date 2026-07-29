@@ -5,7 +5,13 @@
 // Le champ `v` est obligatoire et vérifié à l'analyse : un message absent de
 // `v`, ou dont la version diffère de CONTROL_VERSION, est rejeté.
 
-export const CONTROL_VERSION = 1;
+export const CONTROL_VERSION = 2;
+
+/** Valeurs de la propriété CSS `cursor` que l'agent sait produire. */
+export type CursorShape =
+    | 'default' | 'text' | 'wait' | 'progress' | 'crosshair' | 'pointer'
+    | 'move' | 'not-allowed' | 'help'
+    | 'ns-resize' | 'ew-resize' | 'nwse-resize' | 'nesw-resize';
 
 export interface ResizeMessage {
     v: number;
@@ -29,7 +35,31 @@ export interface SessionEndMessage {
     reason: string;
 }
 
-export type AgentControl = ReadyMessage | SessionEndMessage;
+export interface PointerMessage {
+    v: number;
+    type: 'pointer';
+    visible: boolean;
+    shape: CursorShape;
+}
+
+export interface RumbleMessage {
+    v: number;
+    type: 'rumble';
+    left: number;
+    right: number;
+}
+
+export interface CapabilitiesMessage {
+    v: number;
+    type: 'capabilities';
+    gamepad: boolean;
+}
+
+export type AgentControl =
+    | ReadyMessage | SessionEndMessage
+    | PointerMessage | RumbleMessage | CapabilitiesMessage;
+
+const TYPES_AGENT = ['ready', 'session-end', 'pointer', 'rumble', 'capabilities'] as const;
 
 export function encodeResize(width: number, height: number): string {
     const message: ResizeMessage = {
@@ -46,7 +76,7 @@ export function parseAgentControl(raw: string): AgentControl {
     if (parsed.v !== CONTROL_VERSION) {
         throw new Error(`version de contrôle non supportée : ${parsed.v}`);
     }
-    if (parsed.type !== 'ready' && parsed.type !== 'session-end') {
+    if (!TYPES_AGENT.includes(parsed.type as (typeof TYPES_AGENT)[number])) {
         throw new Error(`type de contrôle inconnu : ${parsed.type}`);
     }
     return parsed as AgentControl;

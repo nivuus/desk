@@ -1,7 +1,11 @@
 # Chantier B — Input jeu
 
 **Date** : 28 juillet 2026
-**Statut** : Spécification validée, prête à planifier
+**Statut** : Implémenté, recette conduite le 29 juillet 2026 — voir
+`docs/superpowers/plans/2026-07-28-input-jeu-resultats.md` (sur les 5 mesures
+instrumentées : 2 atteintes sans réserve, 2 atteintes avec une réserve
+méthodologique déclarée, 1 partielle ; Steam/TF2/Dota 2 bloqués par une
+authentification à deux facteurs hors de portée d'un agent)
 **Portée** : Rendre les entrées utilisables par un jeu — souris relative, manette
 avec vibration, clavier complet en plein écran — et faire apparaître le curseur,
 aujourd'hui absent du flux.
@@ -118,9 +122,15 @@ Trois messages agent → client s'ajoutent :
 {"type":"capabilities","v":2,"gamepad":true}
 ```
 
-`capabilities` est émis **immédiatement après `ready`**, une seule fois par
-session : le client sait ainsi dès l'ouverture s'il doit annoncer la manette
-comme indisponible.
+`capabilities` est émis **une seule fois par session**, mais PAS après `ready`
+contrairement à ce qu'une lecture naturelle suggérerait : `agent/src/main.rs`
+le pousse dans le `mpsc` de contrôle dès le démarrage du transport, avant
+l'ouverture du canal de données, alors que `ready` n'est ajouté qu'à
+`Event::ChannelOpen`. L'ordre réellement observé est `capabilities`,
+éventuellement un premier `pointer`, puis `ready`. Sans conséquence ici — le
+client (`client/src/main.ts`) traite les types de message indépendamment —
+mais **un client ne doit pas gater son initialisation sur `ready`** : il
+perdrait `capabilities` et le premier `pointer`, émis avant.
 
 `shape` prend l'une des valeurs CSS suivantes, et rien d'autre : `default`,
 `text`, `wait`, `progress`, `crosshair`, `pointer`, `move`, `not-allowed`,
@@ -461,7 +471,52 @@ optimisé le jeu au détriment de l'usage courant.
 
 ---
 
-## 13. Hors périmètre
+## 13. Dette connue
+
+La revue finale a identifié ces points comme réels, sans les faire bloquer la
+fusion : ils sont consignés ici plutôt que corrigés dans l'urgence.
+
+1. **La garde de Pointer Lock côté client n'est couverte par aucun test**
+   (`client/src/input.ts:61`, `if (document.pointerLockElement === video)
+   return;`). C'est pourtant la moitié du dispositif décrit au §5 « Le piège
+   des clics » — l'autre moitié (`agent/src/input.rs`) étant, elle, hors de
+   portée de Vitest de toute façon. `input.ts` est le seul module client à
+   ne pas avoir reçu l'injection de dépendances appliquée à `pointer.ts`,
+   `fullscreen.ts` et `gamepad.ts` : il lit `document` et `window`
+   globalement, ce qui le rend intestable sans DOM réel. Deux lignes
+   ajoutées à `InputOptions` (un `doc` injecté à la place de `document`)
+   suffiraient à aligner ce module sur le patron des trois autres.
+2. **La décision symétrique côté agent** (`agent/src/input.rs:65`, le saut du
+   repositionnement en mode relatif) est du contrôle de flux pur, enfermé
+   dans `#[cfg(windows)]`. C'est le seul comportement de ce chantier dont une
+   régression serait invisible sur Linux (pas de code à compiler), invisible
+   en Vitest (côté client, rien ne dépend de cette décision), et non
+   détectée par la recette (qui mesure la linéarité, pas la présence du
+   saut). Une extraction en logique pure, sur le modèle de `cursor.rs` et
+   `gamepad.rs`, la rendrait testable.
+3. **La discipline « extraire pour tester » a été appliquée à ce qui
+   calcule, pas à ce qui décide.** Sept extractions de ce chantier portent
+   sur de l'arithmétique pure (hystérésis, comparaison de séquence,
+   limitation de débit, clamp, sommation de deltas...), aucune sur une
+   décision de branchement comme les deux ci-dessus. C'est la remarque à
+   porter au chantier suivant : une décision de contrôle de flux mérite la
+   même extraction qu'un calcul, précisément parce qu'elle est plus facile à
+   casser silencieusement qu'un calcul qui produirait un résultat visiblement
+   faux.
+
+**Point de conception non écrit ailleurs, signalé par la revue** : le clic
+qui arme le Pointer Lock est aussi transmis à Windows comme un vrai clic.
+`input.ts:76` (`onPointerDown`) envoie le bouton pressé quoi qu'il arrive ;
+`pointer.ts:95` (`onClick`) ne verrouille qu'ensuite, sur le même événement.
+Dans un FPS, le clic qui reprend la souris **tire aussi**. Ce n'est pas un
+défaut à corriger — l'armement sur clic est le bon mécanisme, faute
+d'activation utilisateur transitoire sur un message reçu par data channel
+(voir §5) — mais le prochain qui touchera à l'un de ces deux fichiers doit
+savoir que les deux effets partent du même geste.
+
+---
+
+## 14. Hors périmètre
 
 - **Pilote d'injection souris en mode noyau** — déjà hors périmètre du cadrage.
 - **Plein écran piloté par Windows** (§4.1 du cadrage) — chantier D, qui apporte

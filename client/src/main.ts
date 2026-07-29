@@ -3,11 +3,15 @@ import { connectSession } from './webrtc';
 import { attachStats } from './stats';
 import { armerLeSon } from './audio';
 import { creerStatut } from './status';
+import { attachPointerAuDOM } from './pointer';
+import { attachGamepadAuDOM } from './gamepad';
+import { attachFullscreenAuDOM } from './fullscreen';
 import { encodeResize } from '../../proto/ts/control';
 
 const video = document.querySelector<HTMLVideoElement>('#remote')!;
 const statusElement = document.querySelector<HTMLDivElement>('#status')!;
 const statsElement = document.querySelector<HTMLDivElement>('#stats')!;
+const fullscreenElement = document.querySelector<HTMLButtonElement>('#fullscreen')!;
 
 // Point d'écriture unique du bandeau de statut : protège un message TERMINAL
 // (fin de session, échec) contre l'écrasement par un message ordinaire
@@ -29,6 +33,15 @@ const signalingUrl =
 // session pour ne pas laisser un minuteur obsolète courir pour rien.
 let bandeau: number | undefined;
 
+// Comme `bandeau` ci-dessus : `onControl` est câblé avant que la promesse de
+// `connectSession` résolve, donc ces variables doivent exister avant l'appel,
+// sous peine d'être dans la zone morte temporelle au premier message reçu.
+let pointeur: ReturnType<typeof attachPointerAuDOM> | undefined;
+let manette: ReturnType<typeof attachGamepadAuDOM> | undefined;
+let detacherPleinEcran: ReturnType<typeof attachFullscreenAuDOM> | undefined;
+let manetteAnnoncee = false;
+let bandeauManette: number | undefined;
+
 connectSession({
     signalingUrl,
     sessionId,
@@ -40,7 +53,29 @@ connectSession({
             setTimeout(() => statut.masquer(), 1500);
         } else if (message.type === 'session-end') {
             window.clearTimeout(bandeau);
+            window.clearTimeout(bandeauManette);
+            // Sans ces trois détachements, le `setInterval` à 4 ms de la
+            // manette (et les écouteurs de pointeur/plein écran) continuent
+            // de tourner après la fin de session — rien d'autre ne les
+            // arrête, la page reste ouverte tant que l'utilisateur ne la
+            // ferme pas lui-même.
+            pointeur?.detacher();
+            manette?.detacher();
+            detacherPleinEcran?.();
             statut.afficher(`session terminée : ${message.reason}`, { terminal: true });
+        } else if (message.type === 'pointer') {
+            pointeur?.surMessagePointeur(message.visible, message.shape);
+        } else if (message.type === 'rumble') {
+            manette?.surVibration(message.left, message.right);
+        } else if (message.type === 'capabilities') {
+            // `gamepad: false` signifie que la machine distante ne peut offrir
+            // AUCUNE manette, pas que le client n'en a pas branché : un
+            // message distinct de celui du bandeau manette ci-dessous, sans
+            // quoi l'utilisateur croirait sa manette en cause.
+            if (!message.gamepad) {
+                statut.afficher('manette indisponible sur cette machine');
+                setTimeout(() => statut.masquer(), 4000);
+            }
         }
     },
 })
@@ -48,6 +83,44 @@ connectSession({
         attachInput({ video, channel: session.inputChannel });
         attachStats(session.pc, statsElement);
         video.focus();
+
+        const envoyer = (payload: Uint8Array): void => {
+            if (session.inputChannel.readyState === 'open') {
+                // Même assertion que dans input.ts : `RTCDataChannel.send`
+                // exige un `Uint8Array<ArrayBuffer>`, or les tampons produits
+                // par `proto/ts/input.ts` sont toujours adossés à un vrai
+                // `ArrayBuffer` en pratique — seul le typage est trop large.
+                session.inputChannel.send(payload as Uint8Array<ArrayBuffer>);
+            }
+        };
+
+        pointeur = attachPointerAuDOM({
+            envoyer,
+            surEchec: () => statut.afficher('cliquez dans l\'image pour prendre la souris'),
+        });
+
+        manette = attachGamepadAuDOM({
+            envoyer,
+            surPresence: (present) => {
+                if (present && !manetteAnnoncee) {
+                    manetteAnnoncee = true;
+                    window.clearTimeout(bandeauManette);
+                    statut.afficher('manette détectée');
+                    setTimeout(() => statut.masquer(), 1500);
+                }
+            },
+        });
+
+        // La Gamepad API n'expose AUCUNE manette avant un appui sur l'une de
+        // ses touches : une manette branchée et silencieuse est indiscernable
+        // d'une absence de manette. On le dit, plutôt que de laisser conclure
+        // à une panne — même patron que le bandeau audio ci-dessous, y compris
+        // le délai : inutile de l'expliquer à qui a déjà appuyé.
+        bandeauManette = window.setTimeout(() => {
+            if (!manetteAnnoncee) statut.afficher('manette : appuyez sur un bouton pour l\'activer');
+        }, 4000);
+
+        detacherPleinEcran = attachFullscreenAuDOM({ bouton: fullscreenElement, cible: document.documentElement });
 
         // Le son démarre coupé et s'active au premier geste. Un bandeau ne
         // s'affiche que si aucun geste n'est venu au bout de quelques

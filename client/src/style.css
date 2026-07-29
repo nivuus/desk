@@ -53,3 +53,33 @@ body {
     font-size: 12px;
     letter-spacing: 0.02em;
 }
+
+#fullscreen {
+    position: fixed;
+    inset-block-end: 12px;
+    inset-inline-end: 12px;
+    z-index: 10;
+    border: 0;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--text);
+    background: rgb(0 0 0 / 0.55);
+    cursor: pointer;
+}
+
+#fullscreen:hover {
+    background: rgb(0 0 0 / 0.75);
+}
+
+/* En plein écran, le bouton ne doit pas rester sous le curseur d'un jeu. */
+#fullscreen[data-actif="true"] {
+    opacity: 0.15;
+    /* Discret ne suffit pas : sans ceci, une zone de ~40×36 px en bas à
+       droite reste dans le flux d'événements et avale les clics destinés au
+       jeu (minimap, boutique...) en mode absolu plein écran. La sortie du
+       plein écran reste possible par appui long sur Échap (Keyboard Lock,
+       voir fullscreen.ts), donc retirer le bouton du flux ne piège personne. */
+    pointer-events: none;
+}
