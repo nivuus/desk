@@ -66,7 +66,7 @@ indépendants ; celui-ci n'en dépend pas.
 | `agent/src/transport.rs` | **Modifier.** Activer le BWE ; récolter `EgressBitrateEstimate` et `MediaEgressStats` ; appliquer les décisions | 9 |
 | `proto/src/control.rs` | **Modifier.** `AgentControl::Link`, `CONTROL_VERSION` = 3 | 10 |
 | `proto/ts/control.ts` | **Modifier.** Miroir TypeScript | 10 |
-| `proto/vectors.json` | **Modifier.** Vecteurs de test partagés à la version 3 | 10 |
+| `proto/ts/control.test.ts` | **Modifier.** Couverture du nouveau message côté TypeScript | 10 |
 | `client/src/webrtc.ts` | **Modifier.** `playoutDelayHint = 0` sur le receiver vidéo | 11 |
 | `client/src/lien.ts` | **Créer.** Traduction de `AgentControl::Link` en texte d'indicateur, testable sans DOM | 11 |
 | `client/src/main.ts` | **Modifier.** Câbler l'indicateur | 11 |
@@ -1767,7 +1767,7 @@ git commit -m "feat(reseau): asservir débit, résolution et FEC à ce que le pa
 **Fichiers :**
 - Modifier : `proto/src/control.rs`
 - Modifier : `proto/ts/control.ts`
-- Modifier : `proto/vectors.json`
+- Modifier : `proto/ts/control.test.ts`
 - Modifier : `agent/src/transport.rs`
 
 **Interfaces :**
@@ -1943,21 +1943,58 @@ export interface LinkMessage {
 
 et ajouter `LinkMessage` à l'union `AgentControl` du même fichier.
 
-- [ ] **Étape 7 : Mettre les vecteurs partagés à jour**
+- [ ] **Étape 7 : Étendre le test du miroir TypeScript**
 
-```bash
-grep -n '"v": *2\|"v":2' proto/vectors.json | head
+> **`proto/vectors.json` ne doit PAS être touché.** Une version antérieure de
+> ce plan demandait d'y porter la version à 3 : c'était faux. Ce fichier
+> appartient entièrement au protocole d'**entrées** — il est consommé par
+> `proto/src/input.rs:323` et `proto/ts/input.test.ts:43`, et son champ
+> `"version"` est le `PROTOCOL_VERSION` des entrées, un numéro **distinct** de
+> `CONTROL_VERSION`. Les deux valent 2 aujourd'hui, ce qui rend la confusion
+> facile et coûteuse : y toucher casserait `input.test.ts:47`
+> (`expect(PROTOCOL_VERSION).toBe(vectors.version)`) pour un protocole que ce
+> chantier ne modifie pas. Le protocole de contrôle n'a pas de fichier de
+> vecteurs ; ses deux miroirs sont vérifiés par leurs tests respectifs.
+
+Le test du miroir est `proto/ts/control.test.ts`. Il référence
+`CONTROL_VERSION` symboliquement et non la valeur littérale, donc il survit au
+passage à 3 sans modification. Y ajouter la couverture du nouveau message, sur
+le modèle exact des cas existants du fichier :
+
+```typescript
+    it("analyse l'état du lien", () => {
+        const message = parseAgentControl(
+            JSON.stringify({
+                type: 'link',
+                v: CONTROL_VERSION,
+                bitrate: 4_000_000,
+                width: 1280,
+                height: 720,
+                quality: 'degradee',
+                adaptation: 'active',
+            }),
+        );
+        expect(message).toEqual({
+            type: 'link',
+            v: CONTROL_VERSION,
+            bitrate: 4_000_000,
+            width: 1280,
+            height: 720,
+            quality: 'degradee',
+            adaptation: 'active',
+        });
+    });
 ```
 
-Porter chaque `v` à 3, et ajouter un vecteur pour le nouveau message, sur le
-modèle exact des vecteurs existants du fichier (mêmes clés, même mise en forme).
+Puis vérifier les deux côtés :
 
 ```bash
 cargo test -p proto && cd client && npm test && cd ..
 ```
 
-Attendu : SUCCÈS des deux côtés. Un échec côté TypeScript sur un vecteur signale
-une divergence entre les deux miroirs — la corriger, ne pas désactiver le test.
+Attendu : SUCCÈS des deux côtés. Si un test des **entrées** échoue, c'est que
+`vectors.json` a été modifié à tort — le restaurer (`git checkout
+proto/vectors.json`) plutôt que d'ajuster le test.
 
 - [ ] **Étape 8 : Émettre le message depuis le transport**
 
@@ -1994,7 +2031,7 @@ branche `a`) avec le nouveau variant, sans quoi la compilation échoue :
 ```bash
 cargo test -p agent && cargo test -p proto
 scripts/build-agent.sh
-git add proto/src/control.rs proto/ts/control.ts proto/vectors.json agent/src/transport.rs
+git add proto/src/control.rs proto/ts/control.ts proto/ts/control.test.ts agent/src/transport.rs
 git commit -m "feat(reseau): message d'état du lien, protocole de contrôle en version 3"
 ```
 
