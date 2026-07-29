@@ -470,6 +470,68 @@ valide sans nouvelle mesure : comme démontré ci-dessus, aucun changement de
 barreau — et donc aucun usage de `DELAI_REMONTEE` — n'est jamais survenu
 sous LAN, avant ou après l'ajustement.
 
+### 4.1 A/B `playoutDelayHint` — l'hypothèse de la revue finale est réfutée
+
+La revue finale de branche a contesté le raisonnement ci-dessus, à juste
+titre : le premier constat (aucun changement de barreau sous LAN) n'innocente
+que le **mécanisme de résolution**, alors que le chantier a rendu **trois**
+choses actives sur LAN. Elle désignait `playoutDelayHint = 0`
+(`client/src/webrtc.ts`) comme le suspect le plus direct — la mesure porte sur
+des images **décodées** par seconde, ce réglage supprime le tampon qui lissait
+la restitution, et la référence pré-chantier (62,6 i/s) avait été prise **avec**
+le tampon par défaut. Deux passages faibles avec une moyenne qui tient est bien
+la signature d'une variance accrue.
+
+**Mesure faite** : douze passages LAN, bras alternés stricts, même contenu,
+même séance, `loadavg` relevé à chaque passage (`/tmp/ab-playout.sh` et sa
+suite ; la bascule se fait par copie de fichier complet, jamais par `sed` sur
+du code source). Chaque passage : agent redémarré, 20 s de molette continue,
+`framesDecoded` lu par `getStats()`.
+
+| Bras | Passages | Débit (i/s) | Étendue |
+| --- | --- | --- | --- |
+| **AVEC** le hint | 1 · 3 · 5 · 7 · 9 · 11 | 56,91 · 56,80 · 56,35 · 56,88 · 57,53 · 56,47 | **1,18** |
+| **SANS** le hint | 2 · 4 · 6 · 8 · 10 · 12 | 33,70 · 56,43 · 62,73 · 63,86 · 61,62 · 57,46 | **30,16** |
+
+`loadavg` (1 min) pendant la séance : 7,00 à 10,96, sans corrélation visible
+avec le bras.
+
+**Ce que la mesure établit.**
+
+1. **L'hypothèse est réfutée, et dans le sens inverse de ce qu'elle prédisait.**
+   Le seul passage sous le seuil de 55 i/s de tout l'A/B — **33,70 i/s, avec
+   528 images jetées et un tampon de gigue à 39,9 ms** — est dans le bras
+   **SANS** le hint. Les six passages AVEC tiennent dans une fourchette de
+   1,18 i/s (56,35 à 57,53) et sont **tous** au-dessus du seuil. Le réglage
+   n'est donc pas la cause des deux passages faibles de la recette.
+
+2. **L'explication par la charge hôte est corroborée par une voie
+   indépendante.** Les deux passages faibles de la recette (50,75 et 54,63)
+   avaient été mesurés à un `loadavg` d'environ 15,5. Cette séance-ci, à un
+   `loadavg` de 7 à 11 et avec le **même code**, ne produit aucun passage
+   faible dans le bras AVEC. C'est exactement ce que la thèse de la contention
+   prédit, et cela remplace l'argument indirect du §4 (une lecture `uptime`
+   unique) par une comparaison à charge différente.
+
+3. **Observation secondaire, à ne pas surinterpréter.** Sans le hint, le débit
+   est plus variable et parfois plus élevé (jusqu'à 63,86 i/s) ; avec, il est
+   resserré autour de 56-57. Le réglage semble donc échanger du débit de pointe
+   contre de la régularité — ce qui est cohérent avec sa nature (supprimer un
+   tampon supprime aussi sa capacité à absorber une rafale). **Six échantillons
+   par bras, une seule machine, une seule séance** : c'est assez pour réfuter
+   l'hypothèse, pas pour fonder une affirmation positive sur la supériorité du
+   hint. Le passage 11 (AVEC) montre d'ailleurs 163 images jetées sans perte de
+   débit, donc les rejets surviennent dans les deux bras.
+
+**Conclusion du §4** : la non-régression LAN est tenue, et l'imputation des
+deux passages faibles à la contention de l'hôte cesse d'être une simple
+explication compatible pour devenir un constat étayé par une mesure à charge
+différente. `playoutDelayHint = 0` est conservé — il est innocenté, et rien
+n'indique qu'il nuise.
+
+`client/src/webrtc.ts` a été rétabli à son état committé en fin
+d'expérience, vérifié par comparaison de fichiers (`RESTAURATION CONFORME`).
+
 ## §5 Réglages ajustés
 
 | Réglage | Valeur avant | Valeur après | Justification |
