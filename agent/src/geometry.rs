@@ -97,6 +97,56 @@ fn clamp_normalized(value: f64) -> i32 {
     value.clamp(0.0, 65535.0) as i32
 }
 
+/// Comme [`to_virtual_desktop`], mais en mappant sur la région **réellement
+/// montrée au client** plutôt que sur la zone client complète.
+///
+/// La distinction n'est pas théorique. La capture encode
+/// `crop_region(window, …)`, c'est-à-dire l'intersection de la fenêtre avec
+/// l'écran ; le navigateur normalise donc ses coordonnées sur cette
+/// intersection. Mapper l'injection sur la zone client entière fait dériver le
+/// pointeur de tout ce qui dépasse : constaté le 29/07/2026 avec une zone
+/// client de 1178 px pour un bureau de 1080, soit 98 px d'erreur au bas de
+/// l'image et zéro en haut.
+///
+/// Les deux fonctions doivent donc rester appelées avec la même région. Rend
+/// `None` quand la fenêtre est entièrement hors de l'écran — il n'y a alors
+/// aucune image, donc aucune coordonnée à convertir.
+pub fn to_virtual_desktop_visible(
+    x: u16,
+    y: u16,
+    window: Rect,
+    desktop: Rect,
+) -> Option<(i32, i32)> {
+    let visible = crop_region(window, desktop.width, desktop.height)?;
+    Some(to_virtual_desktop(x, y, visible, desktop))
+}
+
+/// Borne une taille demandée pour que la fenêtre, dont le coin haut-gauche ne
+/// bouge pas (`SWP_NOMOVE`), tienne entièrement dans le bureau.
+///
+/// Sans ce bornage, un viewport client plus haut que le bureau de la VM
+/// produit une fenêtre qui dépasse : la capture la rogne, l'image prend un
+/// rapport d'aspect que le conteneur du navigateur n'a pas — d'où des bandes
+/// noires — et la partie basse de l'application devient inatteignable.
+///
+/// Le plancher de 2 px n'est pas cosmétique : `crop_region` refuse toute
+/// région plus petite, et une taille nulle ferait échouer la capture.
+pub fn borner_au_bureau(
+    origin_x: i32,
+    origin_y: i32,
+    width: u32,
+    height: u32,
+    desktop_width: u32,
+    desktop_height: u32,
+) -> (u32, u32) {
+    // Une origine négative laisse au contraire PLUS de place vers le bas et la
+    // droite : `max(0)` évite d'en conclure une taille négative, `saturating_sub`
+    // évite de déborder pour une origine au-delà du bureau.
+    let disponible_x = (desktop_width as i64 - origin_x.max(0) as i64).max(2) as u32;
+    let disponible_y = (desktop_height as i64 - origin_y.max(0) as i64).max(2) as u32;
+    (width.min(disponible_x), height.min(disponible_y))
+}
+
 /// Vrai si les deux rectangles ont une intersection non vide (frontières qui
 /// se touchent exclues).
 ///
@@ -244,6 +294,102 @@ mod tests {
     }
 
     const DESKTOP: Rect = Rect { x: 0, y: 0, width: 1920, height: 1080 };
+
+    // --- Cohérence entre la région capturée et la région d'injection ---
+    //
+    // Cas réel relevé le 29/07/2026 : viewport client de 1187 px de haut,
+    // bureau de 1080. La zone client de la fenêtre mesurait 1550×1178 à
+    // l'origine (62, 0), donc 98 px sous l'écran. La capture encodait
+    // 1550×1080 (l'intersection) pendant que l'injection mappait sur 1178 :
+    // le clic dérivait de `t × 98` px, nul en haut, croissant vers le bas.
+
+    #[test]
+    fn le_milieu_de_l_image_vise_le_milieu_de_ce_qui_est_montre() {
+        // Fenêtre débordant de 98 px sous un bureau de 1080.
+        let window = Rect { x: 62, y: 0, width: 1550, height: 1178 };
+        let desktop = Rect { x: 0, y: 0, width: 2400, height: 1080 };
+
+        let (_, y) = to_virtual_desktop_visible(32768, 32768, window, desktop)
+            .expect("la fenêtre est visible");
+
+        // Le milieu de l'image montrée est le pixel écran 540, soit 32768 une
+        // fois normalisé sur le bureau. Mapper sur la zone client complète
+        // donnerait 589 px, soit 35742 — l'écart que voyait l'utilisateur.
+        assert!((y - 32768).abs() <= 40, "y = {y}, attendu ~32768");
+    }
+
+    #[test]
+    fn le_bas_de_l_image_vise_le_bas_de_ce_qui_est_montre() {
+        let window = Rect { x: 62, y: 0, width: 1550, height: 1178 };
+        let desktop = Rect { x: 0, y: 0, width: 2400, height: 1080 };
+
+        let (_, y) = to_virtual_desktop_visible(0, 65535, window, desktop)
+            .expect("la fenêtre est visible");
+
+        assert_eq!(y, 65535, "le bas de l'image doit viser le bas du bureau");
+    }
+
+    #[test]
+    fn l_axe_horizontal_reste_intact_quand_seul_le_bas_deborde() {
+        // La largeur ne déborde pas : le mapping horizontal ne doit pas bouger.
+        let window = Rect { x: 62, y: 0, width: 1550, height: 1178 };
+        let desktop = Rect { x: 0, y: 0, width: 2400, height: 1080 };
+
+        let (avec, _) = to_virtual_desktop_visible(32768, 0, window, desktop).unwrap();
+        let (sans, _) = to_virtual_desktop(32768, 0, window, desktop);
+        assert_eq!(avec, sans);
+    }
+
+    #[test]
+    fn une_fenetre_entierement_visible_est_mappee_a_l_identique() {
+        // Sans débordement, la correction ne doit rien changer : c'est ce qui
+        // rendait le défaut invisible jusqu'ici.
+        let window = Rect { x: 100, y: 50, width: 800, height: 600 };
+        assert_eq!(
+            to_virtual_desktop_visible(12345, 54321, window, DESKTOP),
+            Some(to_virtual_desktop(12345, 54321, window, DESKTOP))
+        );
+    }
+
+    #[test]
+    fn une_fenetre_hors_ecran_ne_produit_aucune_coordonnee() {
+        let window = Rect { x: 5000, y: 0, width: 400, height: 300 };
+        assert_eq!(to_virtual_desktop_visible(0, 0, window, DESKTOP), None);
+    }
+
+    // --- Bornage du redimensionnement ---
+
+    #[test]
+    fn borne_une_hauteur_qui_depasserait_le_bas_du_bureau() {
+        // Le cas réel : 1187 demandés depuis un viewport plus haut que le
+        // bureau de la VM.
+        assert_eq!(borner_au_bureau(62, 0, 1550, 1187, 2400, 1080), (1550, 1080));
+    }
+
+    #[test]
+    fn tient_compte_de_l_origine_de_la_fenetre() {
+        // Fenêtre déjà descendue de 100 px : il ne lui reste que 980.
+        assert_eq!(borner_au_bureau(0, 100, 800, 1187, 2400, 1080), (800, 980));
+    }
+
+    #[test]
+    fn ne_touche_pas_a_une_taille_qui_tient_deja() {
+        assert_eq!(borner_au_bureau(62, 0, 1550, 900, 2400, 1080), (1550, 900));
+    }
+
+    #[test]
+    fn borne_aussi_la_largeur() {
+        assert_eq!(borner_au_bureau(2000, 0, 800, 500, 2400, 1080), (400, 500));
+    }
+
+    #[test]
+    fn une_origine_negative_ne_produit_pas_une_taille_absurde() {
+        // Fenêtre dont le coin haut-gauche est hors écran : le bornage ne doit
+        // ni déborder, ni rendre une taille nulle qui ferait échouer la capture.
+        let (w, h) = borner_au_bureau(-500, -300, 800, 600, 2400, 1080);
+        assert!(w > 0 && h > 0, "taille = {w}x{h}");
+        assert!(w <= 2400 && h <= 1080, "taille = {w}x{h}");
+    }
 
     #[test]
     fn coin_superieur_gauche_d_une_fenetre_a_l_origine() {
