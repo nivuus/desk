@@ -525,3 +525,104 @@ sous LAN, avant ou après l'ajustement.
     et les sorties brutes du rapport de tâche) — seul `adsl` en est
     dépourvu, faute de temps, avec pour seul repère le proxy « ≈ » de
     l'overlay (non équivalent, voir §2).
+
+## §7 Preuve comportementale de C1 (redimensionnement × adaptation)
+
+**Contexte de la mesure.** C1 (revue finale de branche, corrigé au commit
+`3f02545`) n'était vérifié que par lecture de code côté intégration : la
+re-revue de la vague de correction a établi que le câblage de la branche
+`a1` (`Session::act_on_timeout` dans `agent/src/transport.rs`) n'est exercé
+par aucun test automatisé — `VideoSource::resize` est un no-op par défaut
+dans toutes les sources factices des tests, et rien n'y positionne
+`pending_resize`. Cette section est donc la seule preuve comportementale que
+la correction fonctionne réellement, sur la VM, de bout en bout.
+
+**Méthode employée.** Chrome headless piloté par CDP (script jetable dérivé
+du même patron que `client/verify-webrtc.mjs`), utilisant
+`Emulation.setDeviceMetricsOverride` pour imposer une taille de viewport
+précise. `#remote` est stylé `width:100vw;height:100vh`
+(`client/src/style.css`) : changer le viewport par CDP redimensionne donc
+réellement l'élément vidéo observé par le `ResizeObserver` de
+`client/src/main.ts`, qui envoie alors un vrai message de contrôle `Resize`
+sur le canal de données — exactement le chemin qu'emprunterait un
+redimensionnement de fenêtre de navigateur réel. C'est la méthode la plus
+directe disponible : elle exerce le code de production sans le modifier,
+contrairement à un appel direct à l'émission du message de contrôle depuis
+la console de la page. Agent compilé en `release` (`scripts/build-agent.sh`,
+compilation VM propre), lancé avec `RUST_LOG=agent=debug`
+(`scripts/run-agent.sh`), profil réseau `lan` (aucune dégradation posée,
+`tc qdisc show dev internalBridge` → `noqueue`, aucune qdisc active).
+Fenêtre capturée : `firefox` (titre par défaut), session `demo`. Une seule
+session WebRTC continue a porté les trois étapes ci-dessous (connexion,
+puis HAUSSE, puis BAISSE), pour rester dans le cas exact que C1 corrige :
+une adaptation qui doit suivre plusieurs redimensionnements successifs sans
+se figer.
+
+**Relevé, les quatre tailles à chaque étape** (taille demandée = message
+`Resize` reçu par l'agent, `agent: contrôle reçu Resize {...}` ; taille de
+capture agent = `agent::windows_source: chaîne d'encodage reconstruite
+self.width=… self.height=…`, qui est aussi la taille d'encodage initiale
+après un `resize` puisque l'encodeur est reconstruit à la taille pleine de
+la capture ; taille d'encodage agent = la même, sauf si une ligne
+`agent::transport: taille d'encodage changée largeur=… hauteur=…` apparaît
+ensuite — **aucune n'est apparue à aucune étape**, le contrôleur de
+congestion gardant le barreau plein sur ce lien non dégradé (estimation BWE
+observée 16,5–18,8 Mb/s, très au-dessus du plafond de 12 Mb/s) ; taille
+reçue navigateur = `frameWidth`/`frameHeight` de l'entrée `inbound-rtp`
+vidéo de `RTCPeerConnection.getStats()`) :
+
+| Étape | Taille demandée | Taille de capture agent | Taille d'encodage agent | Taille reçue navigateur |
+| --- | --- | --- | --- | --- |
+| État initial | 640×480 | 624×472 | 624×472 (aucun changement séparé) | 624×472 |
+| **HAUSSE** | 1600×900 | 1584×892 | 1584×892 (aucun changement séparé) | 1584×892 |
+| **BAISSE** | 480×360 | 500×352 | 500×352 (aucun changement séparé) | 500×352 |
+
+Les trois colonnes agent/navigateur concordent exactement à chaque étape,
+horodatage à l'appui :
+
+```
+2026-07-29T20:50:39.838652Z  INFO agent: contrôle reçu Resize { version: 3, width: 640, height: 480 }
+2026-07-29T20:50:39.992084Z  INFO agent::windows_source: chaîne d'encodage reconstruite self.width=624 self.height=472
+  → getStats() : frameWidth=624 frameHeight=472, framesDecoded=5
+
+2026-07-29T20:50:46.874668Z  INFO agent: contrôle reçu Resize { version: 3, width: 1600, height: 900 }
+2026-07-29T20:50:47.032184Z  INFO agent::windows_source: chaîne d'encodage reconstruite self.width=1584 self.height=892
+  → getStats() : frameWidth=1584 frameHeight=892, framesDecoded=6
+
+2026-07-29T20:50:50.909983Z  INFO agent: contrôle reçu Resize { version: 3, width: 480, height: 360 }
+2026-07-29T20:50:51.068447Z  INFO agent::windows_source: chaîne d'encodage reconstruite self.width=500 self.height=352
+  → getStats() : frameWidth=500 frameHeight=352, framesDecoded=7
+```
+
+**Écart demandé/obtenu** : ~16 px en largeur et ~8 px en hauteur de moins
+que la taille demandée à chaque étape (640→624, 1600→1584, 480→500 fait
+exception dans l'autre sens — voir ci-dessous). Cohérent avec les bordures
+de la fenêtre Firefox capturée (`window::client_rect_on_screen` lit la zone
+CLIENTE, sous la barre de titre/bordures du système, pas la taille externe
+demandée à `resize_window`) et avec l'alignement pair imposé par
+`WindowsSource::resize` (`width.max(160) & !1`) — sans rapport avec C1, un
+effet de méthode déjà documenté dans le commentaire de `resize()`. Pour
+480×360, `500` dépasse la demande : la fenêtre a une largeur minimale
+propre à Firefox/Windows en dessous de laquelle `resize_window` ne peut pas
+descendre malgré la demande, plancher indépendant du plancher applicatif
+`width.max(160)`.
+
+**Verdict, sans arrondir** : **C1 est comportementalement fermé.** La
+taille encodée suit le redimensionnement du viewport dans les deux sens —
+HAUSSE (624×472 → 1584×892) et BAISSE (1584×892 → 500×352) — sur la même
+session WebRTC continue, ce qui est précisément le cas que corrige `3f02545`
+et que l'ancien code (taille conservée en valeur absolue) aurait échoué à
+la deuxième étape. Aucune ligne `taille d'encodage changée` n'étant apparue,
+la mesure ne dit rien sur l'interaction C1 × congestion (barreau réduit
+puis redimensionnement) — ce cas n'a pas été exercé ici, faute de lien
+dégradé pendant cette session ; il reste couvert uniquement par la lecture
+de code de la re-revue (voir le raisonnement tracé dans le ledger de
+progression, section « RE-REVUE DE LA VAGUE »).
+
+**Moyen employé pour déclencher le redimensionnement** : CDP
+`Emulation.setDeviceMetricsOverride` sur le viewport de la page (pas un
+redimensionnement de fenêtre de navigateur physique — Chrome headless n'a
+pas de fenêtre réelle à redimensionner). Choisi plutôt qu'un appel direct à
+l'émission du message de contrôle depuis la console de la page : cette
+méthode exerce le vrai `ResizeObserver` de production sur le vrai élément
+`#remote`, pas une simulation du message qu'il produit.
