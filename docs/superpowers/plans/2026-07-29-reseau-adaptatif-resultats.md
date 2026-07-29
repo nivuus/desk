@@ -38,9 +38,16 @@ construire côté client pour cette partie.
 récepteur) :
 
 **Côté agent** — `Event::MediaEgressStats.nacks` (str0m), journalisé
-temporairement (voir `agent/src/transport.rs`, retiré après la mesure) :
-compteur passé de 0 à **155** sur la même fenêtre de 25 s, dernière valeur
-stable observée juste après la fin de la charge de test :
+temporairement (voir `agent/src/transport.rs`, retiré après la mesure).
+**Départ non observé à 0** : la piste vidéo a été négociée à
+`12:18:04.247348Z` et la toute première ligne de stats émise, une demi-seconde
+plus tard, affiche déjà `nacks=8` — aucune ligne à `nacks=0` n'existe pour
+cette piste dans le journal (les lignes à `nacks=0` visibles dans le fichier
+appartiennent à la piste audio, dont le compteur NACK est resté nul pendant
+toute la mesure — piste distincte, aucun paquet perdu détecté dessus). Le
+delta strictement mesurable depuis les deux lignes suivantes, les plus
+anciennes et les plus récentes du journal pour cette piste, est donc
+**8 → 155 (Δ147)**, pas 0 → 155 :
 
 ```
 2026-07-29T12:18:04.763226Z  INFO agent::transport: stats sortantes (mesure temporaire) nacks=8 plis=0 rtt=None
@@ -63,9 +70,17 @@ fenêtre de report). La chaîne complète — perte réelle → NACK Chrome → 
 par str0m (`MediaEgressStats.nacks`) → RTX renvoyé → RTX reçu par Chrome — est
 donc démontrée bout en bout, sans aucun code ajouté au projet.
 
-**RTT observé** pendant la charge : 108–192 ms, cohérent avec le profil `4g`
-(60 ms ± 20 ms de délai netem, dans les deux sens ≈ 120–160 ms, plus la latence
-RTCP normale).
+**RTT observé** (piste vidéo, `rtt` de `MediaEgressStats`, mêmes lignes de
+journal que ci-dessus) : minimum et maximum relevés sur les 40 lignes de la
+fenêtre de 25 s :
+
+```
+2026-07-29T12:18:12.766953Z  INFO agent::transport: stats sortantes (mesure temporaire) nacks=57 plis=0 rtt=Some(94.087128ms)
+2026-07-29T12:18:21.769876Z  INFO agent::transport: stats sortantes (mesure temporaire) nacks=97 plis=0 rtt=Some(182.787824ms)
+```
+
+Plage **94–183 ms**, cohérente avec le profil `4g` (60 ms ± 20 ms de délai
+netem, dans les deux sens ≈ 80–160 ms, plus la latence RTCP normale).
 
 ### Question 3 — `transport-wide-cc` est-il négocié ?
 
@@ -127,7 +142,7 @@ consommer les événements `EgressBitrateEstimate`, comme prévu par le design.
 | Question | Réponse | Preuve |
 | --- | --- | --- |
 | Le navigateur émet-il des NACK sous perte réelle ? | **Oui** | `nackCount` 2→155 (+153) sur 25 s sous profil `4g` |
-| L'agent retransmet-il (RTX) ? | **Oui** | `MediaEgressStats.nacks` 0→155 côté agent ; `retransmittedPacketsReceived`=157 côté navigateur |
+| L'agent retransmet-il (RTX) ? | **Oui** | `MediaEgressStats.nacks` 8→155 (Δ147, premier/dernier relevé du journal) côté agent ; `retransmittedPacketsReceived`=157 côté navigateur |
 | `transport-wide-cc` est-il négocié ? | **Oui** | `a=extmap:4 …transport-wide-cc-extensions-01` + `a=rtcp-fb:<pt> transport-cc` sur toutes les pistes, réponse SDP réelle de `str0m` |
 
 **La résilience NACK/RTX et la négociation transport-wide-cc sont déjà
