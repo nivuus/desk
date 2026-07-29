@@ -443,8 +443,19 @@ pub struct Session {
     /// un refus de l'encodeur laisse la décision non appliquée, et il ne faut
     /// pas la retenter à chaque tour.
     encode_size_appliquee: (u32, u32),
+    /// Dernière taille d'encodage dont le refus a été journalisé. Une
+    /// condition permanente ne se journalise pas chaque seconde ; en
+    /// revanche, une NOUVELLE cible refusée est une information neuve.
+    /// Remis à `None` dès qu'un changement de taille réussit, pour qu'un
+    /// refus ultérieur de la même taille soit à nouveau dit.
+    taille_refus_signalee: Option<(u32, u32)>,
     /// Vrai une fois le refus du débit à chaud journalisé.
     refus_debit_signale: bool,
+    /// Débit réellement appliqué par l'encodeur. Distinct de celui décidé :
+    /// un refus du pilote laisse l'encodeur au débit précédent, et annoncer
+    /// au navigateur un débit qu'il n'émet pas serait un mensonge de la même
+    /// famille que celui déjà corrigé sur la qualité (tâche 5).
+    bitrate_applique: u32,
     /// Dernier instant où `source.is_alive()` a été interrogée. Cet appel
     /// coûte un appel système côté Windows (recherche de fenêtre) : on
     /// l'espace plutôt que de le refaire à chaque tour de boucle — une
@@ -557,7 +568,11 @@ impl Session {
             pending_decision: None,
             absence_bwe_signalee: false,
             encode_size_appliquee: dimensions,
+            taille_refus_signalee: None,
             refus_debit_signale: false,
+            // Comme le contrôleur initialise le sien : avant toute décision
+            // appliquée, le débit réel est celui de repli, le plafond.
+            bitrate_applique: plafond_bps,
             last_alive_check: Instant::now(),
             _timer_resolution: TimerResolutionGuard::new(),
         };
@@ -597,8 +612,23 @@ impl Session {
 
     /// Décision d'adaptation actuellement retenue. Alimente le message d'état
     /// du lien envoyé au navigateur (tâche 10).
+    ///
+    /// `encode_size` et `video_bitrate_bps` viennent de ce que le transport a
+    /// RÉELLEMENT réussi à appliquer (`encode_size_appliquee`,
+    /// `bitrate_applique`), pas de ce que le contrôleur a décidé : celui-ci
+    /// reste optimiste par construction (voir `congestion::Controleur`), et
+    /// seul le transport sait si l'encodeur a accepté le dernier réglage.
+    /// Annoncer au navigateur une taille ou un débit que la piste n'émet pas
+    /// serait un mensonge de la même famille que celui déjà corrigé sur
+    /// `qualite` à la tâche 5. Les autres champs (`qualite`, `adaptation`,
+    /// `opus_loss_perc`) restent ceux du contrôleur : aucun mécanisme de
+    /// refus équivalent n'existe pour eux ici.
     pub fn decision_courante(&self) -> congestion::Decision {
-        self.congestion.courant()
+        congestion::Decision {
+            encode_size: self.encode_size_appliquee,
+            video_bitrate_bps: self.bitrate_applique,
+            ..self.congestion.courant()
+        }
     }
 
     /// Boucle de transport : tourne jusqu'à déconnexion ou erreur fatale.
@@ -765,13 +795,16 @@ impl Session {
         // Ne mute jamais `Rtc` — seuls la source vidéo et l'encodeur audio
         // sont touchés — donc cette branche respecte l'invariant de drainage.
         if let Some(decision) = self.pending_decision.take() {
-            if let Err(e) = self.source.set_bitrate(decision.video_bitrate_bps) {
-                // L'encodeur refuse le débit à chaud : on garde le débit
-                // courant et on continue d'adapter par la résolution. Une
-                // seule ligne, pas une par seconde.
-                if !self.refus_debit_signale {
-                    self.refus_debit_signale = true;
-                    tracing::warn!(erreur = %e, "l'encodeur refuse le réglage du débit à chaud");
+            match self.source.set_bitrate(decision.video_bitrate_bps) {
+                Ok(()) => self.bitrate_applique = decision.video_bitrate_bps,
+                Err(e) => {
+                    // L'encodeur refuse le débit à chaud : on garde le débit
+                    // courant et on continue d'adapter par la résolution. Une
+                    // seule ligne, pas une par seconde.
+                    if !self.refus_debit_signale {
+                        self.refus_debit_signale = true;
+                        tracing::warn!(erreur = %e, "l'encodeur refuse le réglage du débit à chaud");
+                    }
                 }
             }
             if decision.encode_size != self.encode_size_appliquee {
@@ -783,15 +816,25 @@ impl Session {
                             "taille d'encodage changée"
                         );
                         self.encode_size_appliquee = decision.encode_size;
+                        // Un refus ultérieur de cette même taille (ou d'une
+                        // autre) redeviendra une information neuve.
+                        self.taille_refus_signalee = None;
                     }
                     Err(e) => {
-                        // On reste au barreau courant. La session vit.
-                        tracing::warn!(
-                            erreur = %e,
-                            largeur = decision.encode_size.0,
-                            hauteur = decision.encode_size.1,
-                            "changement de taille d'encodage refusé, barreau conservé"
-                        );
+                        // On reste au barreau courant. La session vit. Une
+                        // cible DIFFÉRENTE refusée est une information
+                        // neuve ; la même cible répétée à chaque décision
+                        // (une par seconde, potentiellement des heures sous
+                        // congestion soutenue) ne l'est pas.
+                        if self.taille_refus_signalee != Some(decision.encode_size) {
+                            self.taille_refus_signalee = Some(decision.encode_size);
+                            tracing::warn!(
+                                erreur = %e,
+                                largeur = decision.encode_size.0,
+                                hauteur = decision.encode_size.1,
+                                "changement de taille d'encodage refusé, barreau conservé"
+                            );
+                        }
                     }
                 }
             }
@@ -2278,5 +2321,87 @@ mod tests {
         }
 
         assert!(recu, "le message de pointeur n'est jamais parvenu au pair");
+    }
+
+    #[test]
+    fn un_refus_repete_de_set_encode_size_ne_remonte_pas_dans_decision_courante() {
+        // Ronde de correction (revue post-tâche 9) : `Controleur::observer`
+        // reste optimiste par construction — il met à jour `courant.encode_size`
+        // que l'encodeur accepte ou non le changement. Sans la distinction
+        // que ce test vérifie, `decision_courante()` annoncerait au
+        // navigateur (message d'état du lien, tâche 10) une taille que la
+        // piste vidéo n'émet jamais.
+        //
+        // Ce test couvre aussi la déduplication du journal côté refus
+        // (`taille_refus_signalee`) : trois décisions identiques de suite,
+        // comme le ferait le contrôleur une fois par seconde sous
+        // congestion soutenue, ne doivent faire grandir ni changer cette
+        // mémoire au-delà de sa première écriture — compter les lignes de
+        // journal elles-mêmes n'est pas praticable dans ce harnais (aucune
+        // capture de `tracing` n'existe dans ce module).
+        struct SourceRefusant {
+            inner: crate::source::FileSource,
+        }
+
+        impl VideoSource for SourceRefusant {
+            fn next_frame(&mut self) -> Option<AccessUnit> {
+                self.inner.next_frame()
+            }
+            fn dimensions(&self) -> (u32, u32) {
+                self.inner.dimensions()
+            }
+            fn set_encode_size(&mut self, _width: u32, _height: u32) -> anyhow::Result<()> {
+                Err(anyhow!("pilote imaginaire : refuse toujours"))
+            }
+        }
+
+        let local_ip: IpAddr = "127.0.0.1".parse().unwrap();
+        let source_path =
+            std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
+        let source = Box::new(SourceRefusant {
+            inner: crate::source::FileSource::from_path(source_path, 1280, 720, 60)
+                .expect("chargement du flux de test"),
+        });
+
+        let mut session =
+            Session::new(source, local_ip, Instant::now(), 12_000_000).expect("session");
+        let taille_originale = session.encode_size_appliquee;
+        let taille_visee = (640, 360);
+        assert_ne!(taille_visee, taille_originale, "précondition du test");
+
+        let decision = congestion::Decision {
+            video_bitrate_bps: 5_000_000,
+            encode_size: taille_visee,
+            opus_loss_perc: 0,
+            qualite: congestion::Qualite::Degradee,
+            adaptation: congestion::Adaptation::Active,
+        };
+
+        // Trois décisions successives, comme le ferait le contrôleur une
+        // fois par seconde sous congestion soutenue : la même taille
+        // refusée à chaque tour.
+        for _ in 0..3 {
+            session.pending_decision = Some(decision);
+            session
+                .act_on_timeout(Instant::now())
+                .expect("un refus de l'encodeur ne doit jamais faire échouer la session");
+        }
+
+        // Trouvaille 2 : `decision_courante()` doit continuer à rapporter
+        // l'ANCIENNE taille, celle réellement émise — pas celle refusée.
+        assert_eq!(
+            session.decision_courante().encode_size,
+            taille_originale,
+            "un refus de l'encodeur ne doit jamais se refléter dans la décision annoncée"
+        );
+
+        // Trouvaille 1 : la mémoire de dédoublonnage retient la cible
+        // refusée, stable sur les trois tours identiques — c'est elle qui
+        // empêche la répétition du journal à chaque décision.
+        assert_eq!(
+            session.taille_refus_signalee,
+            Some(taille_visee),
+            "la cible refusée doit être mémorisée pour éviter de rejournaliser à chaque tour"
+        );
     }
 }
