@@ -5,7 +5,7 @@
 // Le champ `v` est obligatoire et vérifié à l'analyse : un message absent de
 // `v`, ou dont la version diffère de CONTROL_VERSION, est rejeté.
 
-export const CONTROL_VERSION = 2;
+export const CONTROL_VERSION = 3;
 
 /** Valeurs de la propriété CSS `cursor` que l'agent sait produire. */
 export type CursorShape =
@@ -55,11 +55,24 @@ export interface CapabilitiesMessage {
     gamepad: boolean;
 }
 
+export type LinkQuality = 'bonne' | 'degradee' | 'insuffisante';
+export type LinkAdaptation = 'active' | 'indisponible';
+
+export interface LinkMessage {
+    v: number;
+    type: 'link';
+    bitrate: number;
+    width: number;
+    height: number;
+    quality: LinkQuality;
+    adaptation: LinkAdaptation;
+}
+
 export type AgentControl =
     | ReadyMessage | SessionEndMessage
-    | PointerMessage | RumbleMessage | CapabilitiesMessage;
+    | PointerMessage | RumbleMessage | CapabilitiesMessage | LinkMessage;
 
-const TYPES_AGENT = ['ready', 'session-end', 'pointer', 'rumble', 'capabilities'] as const;
+const TYPES_AGENT = ['ready', 'session-end', 'pointer', 'rumble', 'capabilities', 'link'] as const;
 
 export function encodeResize(width: number, height: number): string {
     const message: ResizeMessage = {

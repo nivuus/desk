@@ -756,6 +756,7 @@ impl Session {
                     AgentControl::Pointer { .. } => "pointer",
                     AgentControl::Rumble { .. } => "rumble",
                     AgentControl::Capabilities { .. } => "capabilities",
+                    AgentControl::Link { .. } => "link",
                 };
                 let json = serde_json::to_string(&message)?;
                 if let Some(mut channel) = self.rtc.channel(id) {
@@ -843,6 +844,30 @@ impl Session {
                     tracing::warn!(erreur = %e, "réglage du taux de perte Opus refusé");
                 }
             }
+            // On annonce `decision_courante()`, pas `decision` : `bitrate` et
+            // `encode_size` doivent refléter ce que l'encodeur a RÉELLEMENT
+            // accepté ci-dessus (`self.bitrate_applique`,
+            // `self.encode_size_appliquee`), pas la cible visée par le
+            // contrôleur — un refus d'encodeur laisserait sinon passer au
+            // navigateur exactement le mensonge que `decision_courante()`
+            // existe pour éviter (voir sa documentation et le test
+            // `un_refus_repete_de_set_encode_size_ne_remonte_pas_dans_decision_courante`).
+            let etat_lien = self.decision_courante();
+            self.queue_control(AgentControl::link(
+                etat_lien.video_bitrate_bps,
+                etat_lien.encode_size,
+                match etat_lien.qualite {
+                    congestion::Qualite::Bonne => proto::control::LinkQuality::Bonne,
+                    congestion::Qualite::Degradee => proto::control::LinkQuality::Degradee,
+                    congestion::Qualite::Insuffisante => proto::control::LinkQuality::Insuffisante,
+                },
+                match etat_lien.adaptation {
+                    congestion::Adaptation::Active => proto::control::LinkAdaptation::Active,
+                    congestion::Adaptation::Indisponible => {
+                        proto::control::LinkAdaptation::Indisponible
+                    }
+                },
+            ));
             return Ok(Tick::Continue);
         }
 

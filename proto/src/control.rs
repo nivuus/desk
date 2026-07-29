@@ -10,7 +10,8 @@ use serde::{Deserialize, Serialize};
 /// Version du protocole de contrôle. Incrémenter à tout changement de format.
 ///
 /// v2 (chantier B) : ajout de `Pointer`, `Rumble` et `Capabilities`.
-pub const CONTROL_VERSION: u8 = 2;
+/// v3 (chantier C) : ajout de `Link`.
+pub const CONTROL_VERSION: u8 = 3;
 
 /// Forme du curseur, exprimée directement dans le vocabulaire de la
 /// propriété CSS `cursor` : le client la pose telle quelle, sans table de
@@ -48,6 +49,36 @@ where
         )));
     }
     Ok(v)
+}
+
+/// Ce que l'utilisateur doit comprendre de l'état du lien.
+///
+/// Trois valeurs et non un booléen : « dégradé » et « insuffisant » sont deux
+/// situations distinctes, et la seconde ne se déduit pas de la première par
+/// une négation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum LinkQuality {
+    /// Pleine résolution, lien confortable.
+    Bonne,
+    /// Résolution réduite pour tenir le lien.
+    Degradee,
+    /// Plancher atteint : le lien ne permet plus le jeu nerveux. C'est
+    /// l'avertissement explicite exigé par le cadrage jeu (§3).
+    Insuffisante,
+}
+
+/// L'agent reçoit-il de quoi s'asservir ?
+///
+/// Indépendant de `LinkQuality` : une session sans estimation de bande
+/// passante peut très bien tourner en `Bonne` sur un lien large.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum LinkAdaptation {
+    Active,
+    /// Aucune estimation ne parvient à l'agent : le débit reste figé au
+    /// plafond configuré. À dire, pas à taire.
+    Indisponible,
 }
 
 /// Message du client web vers l'agent.
@@ -108,6 +139,17 @@ pub enum AgentControl {
         version: u8,
         gamepad: bool,
     },
+    /// État du lien réseau, émis à chaque changement de décision
+    /// d'adaptation — donc rarement, pas à chaque seconde.
+    Link {
+        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        version: u8,
+        bitrate: u32,
+        width: u32,
+        height: u32,
+        quality: LinkQuality,
+        adaptation: LinkAdaptation,
+    },
 }
 
 impl ClientControl {
@@ -139,6 +181,22 @@ impl AgentControl {
     pub fn capabilities(gamepad: bool) -> Self {
         AgentControl::Capabilities { version: CONTROL_VERSION, gamepad }
     }
+
+    pub fn link(
+        bitrate: u32,
+        taille: (u32, u32),
+        quality: LinkQuality,
+        adaptation: LinkAdaptation,
+    ) -> Self {
+        AgentControl::Link {
+            version: CONTROL_VERSION,
+            bitrate,
+            width: taille.0,
+            height: taille.1,
+            quality,
+            adaptation,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -150,13 +208,13 @@ mod tests {
         let json = serde_json::to_string(&ClientControl::resize(1280, 720)).expect("sérialisation");
         // `type` est le tag interne de l'enum : serde l'émet avant les autres
         // champs, y compris `v`, quel que soit leur ordre de déclaration.
-        assert_eq!(json, r#"{"type":"resize","v":2,"width":1280,"height":720}"#);
+        assert_eq!(json, r#"{"type":"resize","v":3,"width":1280,"height":720}"#);
     }
 
     #[test]
     fn deserialise_le_redimensionnement() {
         let msg: ClientControl =
-            serde_json::from_str(r#"{"v":2,"type":"resize","width":800,"height":600}"#)
+            serde_json::from_str(r#"{"v":3,"type":"resize","width":800,"height":600}"#)
                 .expect("désérialisation");
         assert_eq!(msg, ClientControl::resize(800, 600));
     }
@@ -165,11 +223,11 @@ mod tests {
     fn serialise_ready_et_session_end() {
         assert_eq!(
             serde_json::to_string(&AgentControl::ready(1920, 1080)).unwrap(),
-            r#"{"type":"ready","v":2,"width":1920,"height":1080}"#
+            r#"{"type":"ready","v":3,"width":1920,"height":1080}"#
         );
         assert_eq!(
             serde_json::to_string(&AgentControl::session_end("fenêtre fermée")).unwrap(),
-            r#"{"type":"session-end","v":2,"reason":"fenêtre fermée"}"#
+            r#"{"type":"session-end","v":3,"reason":"fenêtre fermée"}"#
         );
     }
 
@@ -197,7 +255,7 @@ mod tests {
     fn serialise_le_message_de_pointeur_en_kebab_case() {
         let json = serde_json::to_string(&AgentControl::pointer(false, CursorShape::NsResize))
             .expect("sérialisation");
-        assert_eq!(json, r#"{"type":"pointer","v":2,"visible":false,"shape":"ns-resize"}"#);
+        assert_eq!(json, r#"{"type":"pointer","v":3,"visible":false,"shape":"ns-resize"}"#);
     }
 
     #[test]
@@ -214,6 +272,38 @@ mod tests {
         let json = serde_json::to_string(&message).expect("sérialisation");
         let relu: AgentControl = serde_json::from_str(&json).expect("désérialisation");
         assert_eq!(message, relu);
+    }
+
+    #[test]
+    fn serialise_l_etat_du_lien() {
+        let json = serde_json::to_string(&AgentControl::link(
+            4_000_000,
+            (1280, 720),
+            LinkQuality::Degradee,
+            LinkAdaptation::Active,
+        ))
+        .expect("sérialisation");
+        assert_eq!(
+            json,
+            r#"{"type":"link","v":3,"bitrate":4000000,"width":1280,"height":720,"quality":"degradee","adaptation":"active"}"#
+        );
+    }
+
+    #[test]
+    fn deserialise_l_etat_du_lien() {
+        let msg: AgentControl = serde_json::from_str(
+            r#"{"type":"link","v":3,"bitrate":1500000,"width":960,"height":540,"quality":"insuffisante","adaptation":"indisponible"}"#,
+        )
+        .expect("désérialisation");
+        assert_eq!(
+            msg,
+            AgentControl::link(
+                1_500_000,
+                (960, 540),
+                LinkQuality::Insuffisante,
+                LinkAdaptation::Indisponible
+            )
+        );
     }
 
     #[test]
