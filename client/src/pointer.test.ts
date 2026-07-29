@@ -10,6 +10,7 @@ import { attachPointer, creerClampReport, sommerDeltas, type CibleVideo, type Ci
 function faireCibleVideo() {
     const ecouteurs = new Map<string, EventListener[]>();
     let pointerLock = false;
+    let permisVerrouiller = false;
     return {
         addEventListener(type: string, ecouteur: EventListener) {
             const liste = ecouteurs.get(type) ?? [];
@@ -21,7 +22,12 @@ function faireCibleVideo() {
             ecouteurs.set(type, liste);
         },
         requestPointerLock() {
-            pointerLock = true;
+            // Simule le comportement réel : le navigateur accepte seulement si une
+            // activation utilisateur transitoire est en cours. Sans activation (test par
+            // défaut), l'appel échoue silencieusement.
+            if (permisVerrouiller) {
+                pointerLock = true;
+            }
         },
         style: { cursor: 'auto' },
         declencher(type: string) {
@@ -49,6 +55,12 @@ function faireCibleVideo() {
         },
         deverrouiller() {
             pointerLock = false;
+        },
+        autoriserVerrouillage() {
+            permisVerrouiller = true;
+        },
+        interdireVerrouillage() {
+            permisVerrouiller = false;
         },
     };
 }
@@ -134,23 +146,31 @@ describe('attachPointer', () => {
         const envoyer = vi.fn();
         const handle = attachPointer({ video: video as any, doc: doc as any, envoyer });
 
-        // Un clic sans armement ne doit pas verrouiller
+        // Un clic sans armement ne doit pas verrouiller (même si permis)
+        video.autoriserVerrouillage();
         video.declencher('click');
         expect(video.estVerrouille()).toBe(false);
     });
 
-    it('arme le verrouillage sur message pointer visible=false', () => {
+    it('arme le verrouillage sur message pointer visible=false, et le clic verrouille', () => {
         const video = faireCibleVideo();
         const doc = faireCibleDocument();
         const envoyer = vi.fn();
         const handle = attachPointer({ video: video as any, doc: doc as any, envoyer });
 
-        // Message de l'agent : passage en mode relatif
+        // D'abord, le navigateur refuse le verrouillage (pas d'activation utilisateur)
+        video.interdireVerrouillage();
         handle.surMessagePointeur(false, 'none');
+        // L'essai gratuit tente de verrouiller mais échoue silencieusement
+        expect(video.estVerrouille()).toBe(false);
 
-        // Le clic suivant doit verrouiller
+        // Maintenant, le navigateur accepte le verrouillage (activation utilisateur
+        // vient d'arriver via le clic)
+        video.autoriserVerrouillage();
         video.declencher('click');
         expect(video.estVerrouille()).toBe(true);
+
+        // Ce test échoue si onClick est vide ou si la condition sur `arme` est cassée.
     });
 
     it('reste armé après une sortie par Échap si l\'agent est toujours en relatif', () => {
@@ -159,18 +179,28 @@ describe('attachPointer', () => {
         const envoyer = vi.fn();
         const handle = attachPointer({ video: video as any, doc: doc as any, envoyer });
 
-        // Armement et verrouillage
+        // Armement : permis de verrouiller dès le départ
+        video.autoriserVerrouillage();
         handle.surMessagePointeur(false, 'none');
-        video.declencher('click');
+        // L'essai gratuit réussit
         expect(video.estVerrouille()).toBe(true);
 
-        // Sortie par Échap : changement de state du document
-        doc.pointerLockElement = null;
+        // Simuler que c'est vraiment verrouillé dans le document
+        doc.pointerLockElement = video as any;
         doc.declencher('pointerlockchange');
 
-        // Le clic suivant doit reverrouiller (reste armé)
+        // Sortie par Échap : le document change d'état
+        doc.pointerLockElement = null;
+        // Mais le test doit aussi refléter que le navigateur a relâché le verrouillage
+        video.deverrouiller();
+        doc.declencher('pointerlockchange');
+
+        // Le module doit rester armé après pointerlockchange si toujours en mode relatif
+        // Donc le clic suivant doit reverrouiller
         video.declencher('click');
         expect(video.estVerrouille()).toBe(true);
+
+        // Ce test échoue si onPointerLockChange désarmait ou si onClick était vide.
     });
 
     it('retire tous les écouteurs lors du détachement', () => {
