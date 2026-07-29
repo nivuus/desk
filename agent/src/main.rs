@@ -434,7 +434,13 @@ async fn main() -> Result<()> {
             // `ProcessInput` de façon confuse.
             if std::env::var("ENCODE_TEST").is_ok() {
                 let mut encoder =
-                    encode::H264Encoder::new(capture.device(), region.width, region.height, 60, 8_000_000)?;
+                    encode::H264Encoder::new(
+                        capture.device(),
+                        (region.width, region.height),
+                        (region.width, region.height),
+                        60,
+                        8_000_000,
+                    )?;
                 encoder.request_keyframe()?;
                 // Même surveillance que la mesure de débit : elle sert ici à
                 // vérifier que des images RÉELLEMENT DISTINCTES traversent le
@@ -564,7 +570,13 @@ async fn main() -> Result<()> {
             // pour ses propres mesures de débit.
             if std::env::var("ENCODER_THROUGHPUT_TEST").is_ok() {
                 let mut encoder =
-                    encode::H264Encoder::new(capture.device(), region.width, region.height, 60, 8_000_000)?;
+                    encode::H264Encoder::new(
+                        capture.device(),
+                        (region.width, region.height),
+                        (region.width, region.height),
+                        60,
+                        8_000_000,
+                    )?;
                 encoder.request_keyframe()?;
 
                 // Une seule image réelle, capturée une fois puis réinjectée
