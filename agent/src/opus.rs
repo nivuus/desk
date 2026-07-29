@@ -41,18 +41,22 @@ const MAX_PACKET_BYTES: usize = 4_000;
 
 /// Encodeur Opus configuré une fois pour toutes.
 ///
-/// **`Application::LowDelay`** (`OPUS_APPLICATION_RESTRICTED_LOWDELAY`) plutôt
-/// que `Audio` ou `Voip` : mesuré sur cette configuration, la latence
-/// algorithmique tombe à 120 échantillons (2,5 ms) contre 312 (6,5 ms) pour
-/// les deux autres modes, **sans rien coûter sur le silence** — DTX y converge
-/// vers 1 octet par trame exactement comme ailleurs.
+/// **`Application::Audio`** est choisi pour rendre possible le FEC in-band.
+/// `OPUS_APPLICATION_RESTRICTED_LOWDELAY` force `MODE_CELT_ONLY`
+/// (`opus/src/opus_encoder.c:1349`), dans lequel `decide_fec` retourne zéro
+/// (`opus/src/opus_encoder.c:721`) — la redondance LBRR n'existe que dans SILK.
+/// Le coût est un pré-délai qui passe de 120 échantillons (2,5 ms) en
+/// `RESTRICTED_LOWDELAY` à 312 (6,5 ms) en `Audio`, mesure établie au
+/// chantier A. Ces 4 ms supplémentaires se comparent aux ~48 ms de latence
+/// vidéo médiane du pipeline — l'audio reste largement en avance sur l'image.
+/// L'arbitrage a été tranché en faveur de la résilience réseau.
 pub struct OpusEncoder {
     inner: Encoder,
 }
 
 impl OpusEncoder {
     pub fn new() -> Result<Self> {
-        let mut inner = Encoder::new(SAMPLE_RATE_HZ, Channels::Stereo, Application::LowDelay)
+        let mut inner = Encoder::new(SAMPLE_RATE_HZ, Channels::Stereo, Application::Audio)
             .context("création de l'encodeur Opus")?;
         inner
             .set_bitrate(Bitrate::Bits(BITRATE_BPS))
@@ -61,13 +65,6 @@ impl OpusEncoder {
         // partir de la suivante. Sur un lien quelconque, c'est ce qui évite
         // les micro-coupures audibles.
         inner.set_inband_fec(true).context("activation du FEC in-band")?;
-        // libopus ne produit de redondance LBRR que si le pourcentage de perte
-        // déclaré est strictement positif. On démarre avec une valeur faible qui
-        // sera probablement ajustée par le contrôleur de transport selon les
-        // conditions du réseau.
-        inner
-            .set_packet_loss_perc(5)
-            .context("réglage du taux de perte initial pour le FEC")?;
         // DTX : le silence numérique retombe à 1 octet par trame en régime
         // établi (mesuré). Sans lui, il coûterait 3 octets — l'encodage à
         // débit variable dépense déjà peu. Le gain est modeste, le coût nul.
