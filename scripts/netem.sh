@@ -27,13 +27,19 @@ case "$profil" in
         ;;
 esac
 
-nettoyer() {
+nettoyer_sans_trap() {
     tc qdisc del dev "$IFACE" root        2>/dev/null || true
     tc qdisc del dev "$IFACE" ingress     2>/dev/null || true
     tc qdisc del dev "$IFB"   root        2>/dev/null || true
 }
 
-nettoyer
+nettoyer_sur_erreur() {
+    echo "Erreur lors de la pose du profil ${profil} — nettoyage d'urgence" >&2
+    nettoyer_sans_trap
+    exit 1
+}
+
+nettoyer_sans_trap  # Nettoyage initial, avant toute pose
 
 # `lan` et `off` sont le même état du réseau — aucune qdisc — mais deux
 # intentions différentes : `lan` est le profil TÉMOIN de la recette, `off`
@@ -43,6 +49,10 @@ if [ "$profil" = "lan" ] || [ "$profil" = "off" ]; then
     echo "profil ${profil} : aucune dégradation posée sur ${IFACE}"
     exit 0
 fi
+
+# Installer le trap pour toute erreur durant la pose : garantir l'atomicité
+# en cas d'échec partiel.
+trap nettoyer_sur_erreur ERR
 
 modprobe ifb numifbs=1
 ip link set dev "$IFB" up
@@ -61,5 +71,8 @@ tc qdisc add dev "$IFB" root netem \
     delay "$latence" "$gigue" distribution normal \
     loss "$perte" \
     rate "$debit"
+
+# Pose réussie — désarmer le trap.
+trap - ERR
 
 echo "profil ${profil} posé sur ${IFACE} et ${IFB} : ${debit}, ${latence} ±${gigue}, perte ${perte}"
