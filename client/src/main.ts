@@ -6,6 +6,7 @@ import { creerStatut } from './status';
 import { attachPointerAuDOM } from './pointer';
 import { attachGamepadAuDOM } from './gamepad';
 import { attachFullscreenAuDOM } from './fullscreen';
+import { texteLien } from './lien';
 import { encodeResize } from '../../proto/ts/control';
 
 const video = document.querySelector<HTMLVideoElement>('#remote')!;
@@ -42,6 +43,12 @@ let detacherPleinEcran: ReturnType<typeof attachFullscreenAuDOM> | undefined;
 let manetteAnnoncee = false;
 let bandeauManette: number | undefined;
 
+// Minuteur du bandeau réseau : seul un message SANS alerte s'auto-masque
+// (même patron que le bandeau « prêt » ci-dessous). Un message d'alerte reste
+// affiché tant que la condition dure ; l'annuler avant d'en armer un nouveau
+// évite qu'un masquage obsolète n'efface un avertissement arrivé entre-temps.
+let bandeauLien: number | undefined;
+
 connectSession({
     signalingUrl,
     sessionId,
@@ -54,6 +61,7 @@ connectSession({
         } else if (message.type === 'session-end') {
             window.clearTimeout(bandeau);
             window.clearTimeout(bandeauManette);
+            window.clearTimeout(bandeauLien);
             // Sans ces trois détachements, le `setInterval` à 4 ms de la
             // manette (et les écouteurs de pointeur/plein écran) continuent
             // de tourner après la fin de session — rien d'autre ne les
@@ -67,6 +75,18 @@ connectSession({
             pointeur?.surMessagePointeur(message.visible, message.shape);
         } else if (message.type === 'rumble') {
             manette?.surVibration(message.left, message.right);
+        } else if (message.type === 'link') {
+            const t = texteLien(message);
+            // Le bandeau de statut protège déjà les messages terminaux : un
+            // avertissement réseau n'écrasera pas une fin de session.
+            statut.afficher(t.resume);
+            window.clearTimeout(bandeauLien);
+            if (!t.alerte) {
+                // Information de routine : elle s'efface d'elle-même, comme
+                // le bandeau « prêt ». Une alerte, elle, reste affichée tant
+                // que la condition dure — pas de minuterie dans ce cas.
+                bandeauLien = window.setTimeout(() => statut.masquer(), 1500);
+            }
         } else if (message.type === 'capabilities') {
             // `gamepad: false` signifie que la machine distante ne peut offrir
             // AUCUNE manette, pas que le client n'en a pas branché : un

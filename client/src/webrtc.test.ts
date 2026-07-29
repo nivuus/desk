@@ -271,10 +271,13 @@ describe('connectSession — négociation promise par la spec §10', () => {
         // Le listener `track` est câblé avant le premier `await` de
         // `connectSession` (voir webrtc.ts) : l'instance factice est donc
         // déjà disponible ici, sans attendre la résolution complète.
+        // `receiver` est toujours présent sur un vrai `RTCTrackEvent` — un
+        // objet nu ici, sans `playoutDelayHint`, imite un navigateur qui ne
+        // supporte pas la propriété (voir l'accès défensif dans webrtc.ts).
         const pisteVideo = { kind: 'video' } as unknown as MediaStreamTrack;
         const pisteAudio = { kind: 'audio' } as unknown as MediaStreamTrack;
-        derniereInstancePc!.emit('track', { track: pisteVideo });
-        derniereInstancePc!.emit('track', { track: pisteAudio });
+        derniereInstancePc!.emit('track', { track: pisteVideo, receiver: {} });
+        derniereInstancePc!.emit('track', { track: pisteAudio, receiver: {} });
 
         const flux = video.srcObject as unknown as FakeMediaStream;
         expect(flux).toBeInstanceOf(FakeMediaStream);

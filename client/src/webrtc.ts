@@ -189,6 +189,20 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
     const flux = new MediaStream();
     pc.addEventListener('track', (event) => {
         flux.addTrack(event.track);
+        // Latence de restitution : demander au navigateur de ne pas
+        // constituer de tampon de gigue au-delà du strict nécessaire.
+        //
+        // Ce n'est pas gratuit — sur un lien qui gigue, ce tampon est ce qui
+        // lisse la restitution, et le raboter échange de la latence contre du
+        // saccadement. Mesuré sous chaque profil netem à la recette.
+        //
+        // Chromium seulement : ailleurs la propriété n'existe pas et
+        // l'affectation est sans effet. D'où l'accès défensif plutôt qu'un
+        // `receiver.playoutDelayHint = 0` direct, qui lèverait en mode strict
+        // sur un objet scellé.
+        if (event.track.kind === 'video' && 'playoutDelayHint' in event.receiver) {
+            (event.receiver as RTCRtpReceiver & { playoutDelayHint: number }).playoutDelayHint = 0;
+        }
         if (options.video.srcObject !== flux) {
             options.video.srcObject = flux;
         }
