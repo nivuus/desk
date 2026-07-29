@@ -30,11 +30,13 @@ use proto::input::InputMessage;
 use str0m::channel::ChannelId;
 use str0m::format::Codec;
 use str0m::media::{Frequency, MediaTime, Mid, Pt};
+use str0m::bwe::Bitrate;
 use str0m::net::{DatagramRecv, Protocol, Receive};
 use str0m::{Candidate, Event, IceConnectionState, Input, Output, Rtc};
 
 use crate::audio::{AudioPacket, AudioSource};
 use crate::clock::instant_from_pts;
+use crate::congestion;
 use crate::h264::{AccessUnit, CLOCK_RATE_HZ};
 use crate::source::VideoSource;
 
@@ -78,6 +80,14 @@ const AUDIO_POLL_INTERVAL: Duration = Duration::from_millis(2);
 /// Windows (recherche de la fenêtre) ; une fenêtre fermée le reste, inutile
 /// de le revérifier à 60 Hz.
 const ALIVE_CHECK_INTERVAL: Duration = Duration::from_secs(1);
+
+/// Estimation de bande passante de départ, avant toute rétroaction du pair.
+///
+/// Compromis mesuré à la tâche 12 : trop bas, le démarrage sur LAN met du
+/// temps à rejoindre le plafond et la recette perd des images par seconde ;
+/// trop haut, le premier instant d'une session sur lien étroit sature avant
+/// la première correction. 2,5 Mb/s est le point de départ, à confirmer.
+const ESTIMATION_INITIALE_BPS: u32 = 2_500_000;
 
 /// Tranche maximale d'une attente sans donnée sur le socket, dans la boucle
 /// de sondage non bloquant d'`act_on_timeout` (branche c).
@@ -412,6 +422,29 @@ pub struct Session {
     /// `act_on_timeout`, jamais depuis `dispatch_channel_data` — voir le
     /// commentaire de ce champ à son point de consommation.
     pending_resize: Option<(u32, u32)>,
+    /// Contrôleur de congestion. Alimenté par `Event::EgressBitrateEstimate`
+    /// et `Event::MediaEgressStats`, tous deux déjà émis par str0m — le
+    /// second l'était même déjà avant ce chantier, et tombait dans le `_ =>
+    /// {}` de `handle_event`.
+    congestion: congestion::Controleur,
+    /// Dernière estimation reçue, en attente d'être confrontée aux
+    /// statistiques. Les deux événements n'arrivent pas ensemble.
+    derniere_estimation_bps: Option<u32>,
+    /// Décision décidée mais pas encore appliquée. Appliquée dans
+    /// `act_on_timeout`, jamais depuis `handle_event` — reconstruire
+    /// l'encodeur pendant le drainage de `poll_output` romprait l'invariant
+    /// de str0m (une seule mutation par appel), exactement comme pour
+    /// `pending_resize`.
+    pending_decision: Option<congestion::Decision>,
+    /// Vrai une fois que l'indisponibilité de l'adaptation a été journalisée.
+    /// Une condition permanente ne se journalise pas chaque seconde.
+    absence_bwe_signalee: bool,
+    /// Taille d'encodage réellement appliquée. Distincte de celle décidée :
+    /// un refus de l'encodeur laisse la décision non appliquée, et il ne faut
+    /// pas la retenter à chaque tour.
+    encode_size_appliquee: (u32, u32),
+    /// Vrai une fois le refus du débit à chaud journalisé.
+    refus_debit_signale: bool,
     /// Dernier instant où `source.is_alive()` a été interrogée. Cet appel
     /// coûte un appel système côté Windows (recherche de fenêtre) : on
     /// l'espace plutôt que de le refaire à chaque tour de boucle — une
@@ -435,6 +468,7 @@ impl Session {
         source: Box<dyn VideoSource + Send>,
         local_ip: IpAddr,
         clock_origin: Instant,
+        plafond_bps: u32,
     ) -> Result<Self> {
         let socket = UdpSocket::bind(SocketAddr::new(local_ip, 0))
             .context("ouverture du socket UDP")?;
@@ -468,8 +502,18 @@ impl Session {
             .clear_codecs()
             .enable_h264(true)
             .enable_opus(true)
+            // Sans cet appel, `Event::EgressBitrateEstimate` n'est JAMAIS
+            // émis et tout l'asservissement reste muet. L'estimation
+            // initiale est volontairement modeste : le sous-système sonde à
+            // la hausse vers `set_desired_bitrate` (posé plus bas), et
+            // partir trop haut ferait saturer le lien avant la première
+            // correction.
+            .enable_bwe(Some(Bitrate::bps(ESTIMATION_INITIALE_BPS as u64)))
             .set_stats_interval(Some(Duration::from_secs(1)))
             .build(Instant::now());
+
+        // Cible que le sondage cherche à atteindre : le plafond configuré.
+        rtc.bwe().set_desired_bitrate(Bitrate::bps(plafond_bps as u64));
 
         // `add_local_candidate` ne renvoie pas de `Result` : elle retourne
         // `Option<&Candidate>` (le candidat précédent s'il était déjà connu).
@@ -500,6 +544,20 @@ impl Session {
             audio_write_pending_drain: false,
             warned_audio_negotiation: false,
             pending_resize: None,
+            congestion: congestion::Controleur::new(
+                congestion::Config {
+                    plafond_bps,
+                    audio_bps: 128_000,
+                    source: dimensions,
+                    fps: 60,
+                },
+                Instant::now(),
+            ),
+            derniere_estimation_bps: None,
+            pending_decision: None,
+            absence_bwe_signalee: false,
+            encode_size_appliquee: dimensions,
+            refus_debit_signale: false,
             last_alive_check: Instant::now(),
             _timer_resolution: TimerResolutionGuard::new(),
         };
@@ -535,6 +593,12 @@ impl Session {
     /// `run()`, seul endroit qui mute la session une fois la boucle démarrée.
     fn queue_control(&mut self, message: AgentControl) {
         self.pending_control.push_back(message);
+    }
+
+    /// Décision d'adaptation actuellement retenue. Alimente le message d'état
+    /// du lien envoyé au navigateur (tâche 10).
+    pub fn decision_courante(&self) -> congestion::Decision {
+        self.congestion.courant()
     }
 
     /// Boucle de transport : tourne jusqu'à déconnexion ou erreur fatale.
@@ -584,10 +648,11 @@ impl Session {
     /// `write_frame` (une mutation) suivi directement de `handle_input`
     /// (une seconde) violerait la même règle.
     ///
-    /// Trois branches supplémentaires (a0bis : drainage d'un message de
-    /// contrôle produit hors boucle vers `pending_control` ; a1, a2 :
-    /// redimensionnement en attente et vérification de la fenêtre) ne
-    /// mutent JAMAIS `Rtc` — elles ne touchent que `self.source` et/ou
+    /// Quatre branches supplémentaires (a0bis : drainage d'un message de
+    /// contrôle produit hors boucle vers `pending_control` ; a0ter :
+    /// décision d'adaptation en attente ; a1, a2 : redimensionnement en
+    /// attente et vérification de la fenêtre) ne mutent JAMAIS `Rtc` — elles
+    /// ne touchent que `self.source`, `self.audio_source` et/ou
     /// `self.pending_control`, au plus en y mettant en file un message de
     /// contrôle (`queue_control`, qui n'empile qu'un `VecDeque`, sans effet
     /// sur `Rtc` avant le tour suivant). Chacune rend quand même la main
@@ -691,6 +756,51 @@ impl Session {
         if self.ending {
             // Message de fin envoyé (file vidée ci-dessus) : terminé.
             return Ok(Tick::Disconnected);
+        }
+
+        // a0ter) Décision d'adaptation en attente. Traitée avant la branche
+        // vidéo et avant le redimensionnement : reconfigurer l'encodeur avec
+        // une image en vol coûterait cette image.
+        //
+        // Ne mute jamais `Rtc` — seuls la source vidéo et l'encodeur audio
+        // sont touchés — donc cette branche respecte l'invariant de drainage.
+        if let Some(decision) = self.pending_decision.take() {
+            if let Err(e) = self.source.set_bitrate(decision.video_bitrate_bps) {
+                // L'encodeur refuse le débit à chaud : on garde le débit
+                // courant et on continue d'adapter par la résolution. Une
+                // seule ligne, pas une par seconde.
+                if !self.refus_debit_signale {
+                    self.refus_debit_signale = true;
+                    tracing::warn!(erreur = %e, "l'encodeur refuse le réglage du débit à chaud");
+                }
+            }
+            if decision.encode_size != self.encode_size_appliquee {
+                match self.source.set_encode_size(decision.encode_size.0, decision.encode_size.1) {
+                    Ok(()) => {
+                        tracing::info!(
+                            largeur = decision.encode_size.0,
+                            hauteur = decision.encode_size.1,
+                            "taille d'encodage changée"
+                        );
+                        self.encode_size_appliquee = decision.encode_size;
+                    }
+                    Err(e) => {
+                        // On reste au barreau courant. La session vit.
+                        tracing::warn!(
+                            erreur = %e,
+                            largeur = decision.encode_size.0,
+                            hauteur = decision.encode_size.1,
+                            "changement de taille d'encodage refusé, barreau conservé"
+                        );
+                    }
+                }
+            }
+            if let Some(audio) = self.audio_source.as_mut() {
+                if let Err(e) = audio.set_packet_loss_perc(decision.opus_loss_perc) {
+                    tracing::warn!(erreur = %e, "réglage du taux de perte Opus refusé");
+                }
+            }
+            return Ok(Tick::Continue);
         }
 
         // a1) Redimensionnement en attente, à traiter avant la branche
@@ -1187,6 +1297,51 @@ impl Session {
                     tracing::warn!(erreur = %e, mid = ?request.mid, "échec de la demande d'image clé");
                 }
             }
+            Event::EgressBitrateEstimate(kind) => {
+                // Les deux variantes portent une estimation ; seule REMB
+                // nomme en plus le `mid` concerné, dont on n'a pas l'usage
+                // avec une piste vidéo unique.
+                let bps = match kind {
+                    str0m::bwe::BweKind::Twcc(b) => b.as_u64(),
+                    str0m::bwe::BweKind::Remb(_, b) => b.as_u64(),
+                    // `BweKind` est `#[non_exhaustive]` côté str0m : une
+                    // variante future retomberait ici plutôt que d'empêcher
+                    // la compilation. Rien à faire de mieux qu'ignorer une
+                    // estimation qu'on ne sait pas encore interpréter.
+                    _ => return Tick::Continue,
+                };
+                self.derniere_estimation_bps = Some(bps as u32);
+            }
+            Event::MediaEgressStats(stats) => {
+                // Seule la piste vidéo alimente la décision : l'audio a un
+                // débit fixe et son budget est déjà retiré par le contrôleur.
+                if Some(stats.mid) != self.video_mid {
+                    return Tick::Continue;
+                }
+                let observation = congestion::Observation {
+                    estimate_bps: self.derniere_estimation_bps,
+                    rtt: stats.rtt,
+                    loss: stats.loss,
+                    at: Instant::now(),
+                };
+                if observation.estimate_bps.is_none() && !self.absence_bwe_signalee {
+                    self.absence_bwe_signalee = true;
+                    tracing::warn!(
+                        "aucune estimation de bande passante reçue : l'adaptation reste \
+                         indisponible et le débit demeure au plafond configuré"
+                    );
+                }
+                tracing::debug!(
+                    estimation = ?observation.estimate_bps,
+                    rtt = ?observation.rtt,
+                    perte = ?observation.loss,
+                    "observation réseau"
+                );
+                if let Some(decision) = self.congestion.observer(observation) {
+                    // Mémorisée, pas appliquée : voir le commentaire du champ.
+                    self.pending_decision = Some(decision);
+                }
+            }
             _ => {}
         }
         Tick::Continue
@@ -1449,7 +1604,7 @@ mod tests {
 
         let avant = Instant::now();
         let origine = avant - Duration::from_secs(10);
-        let session = Session::new(source, local_ip, origine).expect("session");
+        let session = Session::new(source, local_ip, origine, 12_000_000).expect("session");
 
         // Une image capturée 2 s après l'origine porte le PTS 180 000.
         assert_eq!(session.capture_instant(180_000), origine + Duration::from_secs(2));
@@ -1529,7 +1684,7 @@ mod tests {
                 .expect("chargement du flux de test"),
         );
 
-        let mut session = Session::new(source, local_ip, Instant::now()).expect("session");
+        let mut session = Session::new(source, local_ip, Instant::now(), 12_000_000).expect("session");
 
         // Pair « navigateur » minimal : un second `Rtc`, offrant, avec une
         // piste vidéo recvonly et les deux canaux de données.
@@ -1754,7 +1909,7 @@ mod tests {
 
         let avant = Instant::now();
         let origine = avant - Duration::from_secs(10);
-        let mut session = Session::new(source, local_ip, origine).expect("session");
+        let mut session = Session::new(source, local_ip, origine, 12_000_000).expect("session");
 
         let peer_socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("socket du pair");
         let peer_addr = peer_socket.local_addr().unwrap();
@@ -1928,7 +2083,7 @@ mod tests {
             keyframe_requests: keyframe_requests.clone(),
         });
 
-        let mut session = Session::new(source, local_ip, Instant::now()).expect("session");
+        let mut session = Session::new(source, local_ip, Instant::now(), 12_000_000).expect("session");
 
         let peer_socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("socket du pair");
         let peer_addr = peer_socket.local_addr().unwrap();
@@ -2047,7 +2202,7 @@ mod tests {
             crate::source::FileSource::from_path(source_path, 1280, 720, 60)
                 .expect("chargement du flux de test"),
         );
-        let mut session = Session::new(source, local_ip, Instant::now()).expect("session");
+        let mut session = Session::new(source, local_ip, Instant::now(), 12_000_000).expect("session");
 
         let peer_socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("socket du pair");
         let peer_addr = peer_socket.local_addr().unwrap();

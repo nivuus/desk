@@ -33,6 +33,12 @@ pub trait AudioSource {
     /// `None` est le cas courant : la boucle de transport tourne bien plus
     /// vite que les 100 paquets par seconde que produit la capture.
     fn next_packet(&mut self) -> Option<AudioPacket>;
+
+    /// Déclare le taux de perte observé, pour que le FEC in-band Opus
+    /// produise réellement de la redondance. Sans effet par défaut.
+    fn set_packet_loss_perc(&mut self, _perc: i32) -> anyhow::Result<()> {
+        Ok(())
+    }
 }
 
 /// Tampon circulaire borné, partagé entre le fil de capture et la boucle de
