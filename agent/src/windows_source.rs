@@ -7,7 +7,7 @@ use windows::Win32::Foundation::HWND;
 
 use crate::capture::DesktopCapture;
 use crate::encode::H264Encoder;
-use crate::geometry::{crop_region, Rect};
+use crate::geometry::{borner_au_bureau, crop_region, Rect};
 use crate::h264::{AccessUnit, CLOCK_RATE_HZ};
 use crate::rebuild::{rebuild_or_recover, RebuildOutcome};
 use crate::source::VideoSource;
@@ -149,6 +149,28 @@ impl WindowsSource {
     /// (`next_pts_90k` n'est jamais réinitialisé ici).
     pub fn resize(&mut self, width: u32, height: u32) -> Result<()> {
         let (width, height) = (width.max(160) & !1, height.max(120) & !1);
+
+        // Borner à ce que le bureau peut réellement afficher. Un viewport
+        // client plus grand que le bureau de la VM produirait sinon une
+        // fenêtre qui dépasse : `crop_region` la rognerait à la capture,
+        // l'image prendrait un rapport d'aspect que le conteneur du navigateur
+        // n'a pas — d'où des bandes noires — et la partie hors écran de
+        // l'application deviendrait inatteignable. Constaté le 29/07/2026 :
+        // 1187 px demandés pour un bureau de 1080.
+        //
+        // Sans capture vivante ou sans position lisible, on laisse passer la
+        // taille demandée : `crop_region` reste le filet, et un
+        // redimensionnement imparfait vaut mieux qu'un échec.
+        let (width, height) = match (self.capture.as_ref(), window::client_rect_on_screen(self.hwnd))
+        {
+            (Some(capture), Ok(actuel)) => {
+                let (dw, dh) = capture.desktop_size();
+                let (w, h) = borner_au_bureau(actuel.x, actuel.y, width, height, dw, dh);
+                (w & !1, h & !1)
+            }
+            _ => (width, height),
+        };
+
         if (width, height) == (self.width, self.height) {
             return Ok(());
         }

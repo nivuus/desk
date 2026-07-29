@@ -9,7 +9,7 @@
 
 #[cfg(windows)]
 mod win {
-    use crate::geometry::{to_virtual_desktop, Rect};
+    use crate::geometry::{to_virtual_desktop_visible, Rect};
     use anyhow::{anyhow, Context, Result};
     use proto::input::{InputMessage, MouseButton};
     use std::sync::atomic::{AtomicBool, Ordering};
@@ -129,7 +129,18 @@ mod win {
         fn move_mouse(&self, x: u16, y: u16) -> Result<()> {
             let window = self.client_rect_on_screen()?;
             let desktop = virtual_desktop();
-            let (absolute_x, absolute_y) = to_virtual_desktop(x, y, window, desktop);
+            // Sur la région RÉELLEMENT capturée, pas sur la zone client
+            // entière : le navigateur normalise ses coordonnées sur l'image
+            // qu'il reçoit, et cette image est l'intersection de la fenêtre
+            // avec l'écran. Mapper sur la zone client complète fait dériver le
+            // pointeur de tout ce qui dépasse.
+            let Some((absolute_x, absolute_y)) = to_virtual_desktop_visible(x, y, window, desktop)
+            else {
+                // Fenêtre entièrement hors écran : aucune image n'est envoyée,
+                // il n'y a donc aucun point à viser. Ignorer plutôt que
+                // d'injecter au hasard.
+                return Ok(());
+            };
             send_mouse(MOUSEINPUT {
                 dx: absolute_x,
                 dy: absolute_y,
