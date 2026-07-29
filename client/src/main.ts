@@ -77,14 +77,23 @@ connectSession({
             manette?.surVibration(message.left, message.right);
         } else if (message.type === 'link') {
             const t = texteLien(message);
-            // Le bandeau de statut protège déjà les messages terminaux : un
-            // avertissement réseau n'écrasera pas une fin de session.
-            statut.afficher(t.resume);
             window.clearTimeout(bandeauLien);
-            if (!t.alerte) {
+            if (t.alerte) {
+                // `persistant` protège ce message contre le `masquer()` d'une
+                // minuterie VOISINE (bandeau « prêt », « manette détectée »,
+                // etc.) dont ce module n'a — et ne doit pas avoir — à
+                // connaître l'existence. Sans quoi une alerte affichée dans
+                // la fenêtre de tir d'un de ces bandeaux disparaîtrait alors
+                // que le réseau est toujours dégradé. Le bandeau de statut
+                // protège aussi déjà les messages terminaux : un
+                // avertissement réseau n'écrasera pas une fin de session.
+                statut.afficher(t.resume, { persistant: true });
+            } else {
                 // Information de routine : elle s'efface d'elle-même, comme
-                // le bandeau « prêt ». Une alerte, elle, reste affichée tant
-                // que la condition dure — pas de minuterie dans ce cas.
+                // le bandeau « prêt ». Afficher un message ordinaire lève la
+                // persistance d'une alerte précédente (voir status.ts), donc
+                // un retour à `bonne` la fait cesser d'elle-même.
+                statut.afficher(t.resume);
                 bandeauLien = window.setTimeout(() => statut.masquer(), 1500);
             }
         } else if (message.type === 'capabilities') {

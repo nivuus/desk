@@ -27,28 +27,40 @@ export interface OptionsAffichage {
     /// par un message ordinaire. Un second message terminal remplace bien le
     /// premier : c'est la dernière information définitive qui gagne.
     terminal?: boolean;
+    /// Un message PERSISTANT résiste à `masquer()`, mais se laisse remplacer
+    /// par un message suivant. Il sert aux conditions qui durent — un réseau
+    /// dégradé, par exemple : leur affichage ne doit pas être effacé par la
+    /// minuterie d'un bandeau voisin arrivé avant lui, minuterie que
+    /// l'appelant n'a aucun moyen de connaître.
+    persistant?: boolean;
 }
 
 export interface Statut {
     afficher(message: string, options?: OptionsAffichage): void;
-    /// Masque le bandeau — sauf si un message terminal est affiché : il doit
-    /// rester visible jusqu'à ce qu'un autre événement terminal le remplace.
+    /// Masque le bandeau — sauf si un message terminal ou persistant est
+    /// affiché : il doit rester visible jusqu'à ce qu'un autre message le
+    /// remplace.
     masquer(): void;
 }
 
 export function creerStatut(element: CibleStatut): Statut {
     let terminal = false;
+    let persistant = false;
 
     return {
         afficher(message, options) {
             const estTerminal = options?.terminal ?? false;
             if (terminal && !estTerminal) return;
             terminal = terminal || estTerminal;
+            // Réaffecté à chaque appel, contrairement à `terminal` : un
+            // message ordinaire qui suit une alerte lève la persistance —
+            // un retour à un état normal doit pouvoir se masquer à nouveau.
+            persistant = options?.persistant ?? false;
             element.textContent = message;
             element.dataset.hidden = 'false';
         },
         masquer() {
-            if (terminal) return;
+            if (terminal || persistant) return;
             element.dataset.hidden = 'true';
         },
     };
