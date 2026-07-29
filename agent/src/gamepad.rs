@@ -218,11 +218,6 @@ mod win {
     pub struct VirtualPad {
         target: vigem_client::Xbox360Wired<vigem_client::Client>,
         derniere_seq: Option<u16>,
-        // Fil interne de la crate (`spawn_thread`), rempli par
-        // `spawn_rumble`. La documentation de `XRequestNotification::
-        // spawn_thread` recommande explicitement de le joindre après que la
-        // cible a été débranchée — c'est ce que fait `Drop` ci-dessous.
-        fil_vigem: Option<JoinHandle<()>>,
     }
 
     impl VirtualPad {
@@ -287,7 +282,7 @@ mod win {
                 tracing::info!(tentatives, "update() a fini par réussir après attente");
             }
             tracing::info!("manette virtuelle branchée");
-            Ok(Self { target, derniere_seq: None, fil_vigem: None })
+            Ok(Self { target, derniere_seq: None })
         }
 
         /// Applique un état reçu du client à la manette virtuelle.
@@ -323,21 +318,31 @@ mod win {
         }
     }
 
-    /// Débranche explicitement puis joint le fil interne de la crate.
+    /// Débranche explicitement la cible.
     ///
-    /// Vérifié à l'exécution (tâche 10) : `Xbox360Wired::drop` débranche
-    /// déjà tout seul, mais le faire ICI, explicitement, avant de joindre,
-    /// garantit l'ORDRE — c'est le débranchement qui fait sortir `poll()` de
-    /// son attente côté fil interne (`Err(OperationAborted)`), donc il doit
-    /// précéder le `join`. Le débranchement automatique qui suivra (dans le
-    /// `Drop` de `Xbox360Wired`, une fois cette méthode terminée) est alors
-    /// un second appel sans effet, silencieusement ignoré comme le premier.
+    /// `Xbox360Wired::drop` le fait déjà tout seul (vérifié dans le code
+    /// source de la crate, `x360.rs`) : cet appel explicite est donc
+    /// redondant en pratique, mais rend l'intention lisible sans dépendre
+    /// d'un comportement de `Drop` qu'on ne voit pas au site d'appel.
+    ///
+    /// **Pas de `join()` du fil interne de la crate ici** (contrairement à
+    /// une version antérieure de ce code) : `request()`, côté crate,
+    /// ignore le code de retour de son `DeviceIoControl` (`bus.rs`). Si le
+    /// débranchement tombe entre le retour d'un `poll()` et l'appel suivant
+    /// à `request()`, aucune E/S n'est en attente et `poll(true)` (qui
+    /// attend un `GetOverlappedResult` bloquant) ne reçoit jamais
+    /// `ERROR_OPERATION_ABORTED` : joindre ce fil pourrait alors bloquer
+    /// indéfiniment, sans délai de garde ni trace — figeant l'ouvrier
+    /// bloquant qui porte toute la session. Ce fil possède de toute façon
+    /// son propre `Client` dupliqué (`request_notification` appelle
+    /// `try_clone`) : il ne référence rien dans `VirtualPad`, et ne pas le
+    /// joindre ne fuit donc rien au-delà de la vie du processus. Seule la
+    /// sonde de la tâche 1 (cas nominal, un seul essai) a vérifié que le
+    /// débranchement seul suffit à débloquer ce fil ; ce commentaire
+    /// documente pourquoi on ne va pas plus loin.
     impl Drop for VirtualPad {
         fn drop(&mut self) {
             let _ = self.target.unplug();
-            if let Some(fil) = self.fil_vigem.take() {
-                let _ = fil.join();
-            }
         }
     }
 
@@ -361,9 +366,11 @@ mod win {
     ///   notification.
     ///
     /// Arrêt propre : ce fil se termine quand `arret` passe à vrai, quand le
-    /// canal se ferme (ce qui arrive quand `VirtualPad` est abandonné —
-    /// `Drop`, ci-dessus, débranche puis joint le fil interne, ce qui fait
-    /// sortir CELUI-CI de son attente et donc fermer ce canal), ou quand
+    /// canal se ferme (ce qui arrive typiquement peu après que `VirtualPad`
+    /// est abandonné — `Drop`, ci-dessus, débranche la cible, ce qui fait
+    /// SOUVENT sortir le fil interne de la crate de son attente et donc
+    /// fermer ce canal, mais pas garanti à coup sûr selon où ce fil se
+    /// trouve dans sa boucle — voir le commentaire de `Drop`), ou quand
     /// l'envoi vers `tx` échoue (session déjà terminée côté récepteur).
     /// Sur toute sortie autre qu'un échec d'envoi, un dernier
     /// `AgentControl::rumble(0, 0)` est tenté : le client ne doit jamais
@@ -380,13 +387,17 @@ mod win {
             .context("abonnement aux notifications de vibration")?;
 
         let (notif_tx, notif_rx) = mpsc::channel::<vigem_client::XNotification>();
-        // Fil créé et possédé par la crate : simple relais, aucune logique.
-        // Conservé dans `VirtualPad` (et pas discrédité comme `let _ = ...`)
-        // : la documentation de `spawn_thread` recommande de le joindre
-        // après débranchement, `Drop` de `VirtualPad` s'en charge.
-        pad.fil_vigem = Some(requete.spawn_thread(move |_requete, notification| {
+        // Fil créé et possédé par la crate, sur son propre `Client` dupliqué
+        // (`request_notification` appelle `try_clone` en interne) : simple
+        // relais, aucune logique dessus. Son `JoinHandle` est délibérément
+        // abandonné (pas stocké, pas joint) : voir le commentaire de `Drop`
+        // ci-dessus pour pourquoi le joindre serait risqué (blocage
+        // indéfini possible) pour un bénéfice nul (ce fil ne référence rien
+        // dans `VirtualPad`, ne pas le joindre ne fuit rien au-delà de la
+        // vie du processus).
+        let _fil_vigem = requete.spawn_thread(move |_requete, notification| {
             let _ = notif_tx.send(notification);
-        }));
+        });
 
         Ok(std::thread::spawn(move || {
             let mut limiteur = LimiteurVibration::new();
