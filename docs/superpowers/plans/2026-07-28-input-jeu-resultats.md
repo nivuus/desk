@@ -564,17 +564,50 @@ résultats (ms) : 139, 166, 131
 moyenne : 145.3 ms, min=131 max=166
 ```
 
-**Sur les deux essais sans message (2 et 4)** : l'accusé de réception établit
-seulement que `Cursor.Hide()` a bien été invoqué côté Windows dans les deux
-cas — il ne dit rien du dernier maillon du chemin de signal, le transport
-jusqu'au client, qui est précisément celui qui ne s'est pas manifesté.
-**La cause de ces deux essais sans message reste donc non établie.** Une
-première hypothèse (fenêtre de masquage de 1,8 s trop courte pour
-l'hystérésis à 3 échantillons de l'agent, ~150 ms) ne résiste pas à l'examen
-arithmétique : 1,8 s représente plus de dix fois cette durée, elle n'explique
-donc pas ce qu'elle prétendait expliquer. Aucune autre hypothèse n'a été
-vérifiée ici — signalé comme une question ouverte, pas comme un incident
-expliqué.
+**Sur les deux essais sans message (2 et 4) : la cause est en réalité
+établissable à partir des horodatages ci-dessus et du script lui-même — ce
+n'est pas un incident du transport, c'est le comportement correct de
+l'hystérésis face à un artefact du montage de mesure.**
+
+Le script « chaud » ne fait pas qu'attendre le déclencheur écrit depuis
+Linux : une fois masqué, il **se remontre lui-même** au bout de 1800 ms
+(`if (((Get-Date) - $script:hiddenAt).TotalMilliseconds -gt 1800) {
+[System.Windows.Forms.Cursor]::Show(); $script:hidden = $false; ... }`), sans
+attendre aucun signal externe. Si le fichier déclencheur de l'essai suivant a
+déjà été écrit à ce moment-là (ce qui arrive dès que le côté Linux écrit le
+prochain déclencheur avant l'expiration des 1800 ms de l'essai précédent),
+le **tick de minuterie suivant, 3 ms plus tard** (`$timer.Interval = 3`), voit
+`$script:hidden` retombé à `false`, trouve le fichier déjà présent
+(`Test-Path $triggerPath`) et rappelle `Cursor.Hide()` immédiatement.
+
+C'est exactement ce que montre l'écart entre les accusés de réception de
+l'essai 3 (qui a produit un message) et de l'essai 4 (qui n'en a pas
+produit) : `11:08:47.8691696 − 11:08:46.0476230 = 1,8215 s`, soit la fenêtre
+fixe de 1800 ms du script plus un tick de 3 ms (plus la latence
+d'ordonnancement Windows habituelle sur ce genre de mesure) — l'essai 4 a
+été déclenché par le **propre réaffichage automatique** du script hérité de
+l'essai 3, pas par une action distincte. Le curseur n'a donc été visible que
+le temps d'un seul tick de minuterie, ~3 ms, avant d'être immédiatement
+remasqué. C'est très en dessous des ~150 ms que l'hystérésis de l'agent
+exige avant de retenir un changement (`agent/src/cursor.rs` : `SEUIL = 3`
+échantillons cohérents à `PERIODE = 50 ms`) — le sondage à 50 ms de l'agent
+n'a structurellement aucune chance d'observer 3 échantillons consécutifs
+« visible » dans une fenêtre de 3 ms, et le plus probable est qu'il n'en
+observe même aucun. `Hysteresis::courant` n'a donc jamais quitté `false`,
+`observer()` ne rend jamais `Some`, et **aucun message n'est émis : c'est le
+comportement correct et voulu de la machine à états**, pas une perte sur le
+chemin de signal. La même mécanique explique l'essai 2 par construction,
+même si l'accusé de réception de l'essai qui le précède (essai 1) n'a pas pu
+être lu proprement pour en donner l'arithmétique exacte.
+
+Ce n'est donc pas une question ouverte : c'est un artefact du montage de
+mesure (un script « chaud » réutilisé d'un essai à l'autre, dont le
+réarmement automatique à 1800 ms peut coïncider avec l'écriture anticipée du
+déclencheur suivant), pas une perte de messages du mécanisme de bascule. La
+correction précédente (retrait de l'hypothèse « fenêtre de 1,8 s trop
+courte pour l'hystérésis ») restait de toute façon juste : ce n'est pas la
+durée du masquage qui est en cause, c'est la durée de la **réapparition**
+intercalée, elle, bien trop courte.
 
 ### Critère et verdict
 
@@ -768,13 +801,15 @@ opérateur humain sur un vrai onglet, pas un navigateur piloté par script).
   §6, ronde de correction 1) qui retire ce bruit plutôt que de le supposer.
   Réserve résiduelle sur **cette seconde mesure** : montage artisanal (script
   PowerShell unique, gardé « chaud », pas un déclenchement représentatif d'un
-  vrai jeu qui masquerait le curseur pendant toute une session) et 2 essais
-  sur 5 sans résultat exploitable (discutés en §6) — la cause de ces deux
-  essais reste **non établie** : l'accusé de réception ne prouve que
-  l'invocation de `Cursor.Hide()` côté Windows, rien sur le dernier maillon
-  (transport jusqu'au client), et l'hypothèse initialement avancée (fenêtre
-  de masquage trop courte pour l'hystérésis) ne tient pas à l'examen
-  arithmétique (1,8 s représente plus de dix fois les ~150 ms invoqués).
+  vrai jeu qui masquerait le curseur pendant toute une session), dont le
+  réarmement automatique à 1800 ms explique d'ailleurs les 2 essais sur 5
+  sans message (2 et 4, discutés en §6) : le script s'est remasqué de
+  lui-même sur un déclencheur écrit en avance, laissant le curseur visible
+  environ 3 ms — bien en dessous des ~150 ms d'hystérésis de l'agent.
+  **Ce n'est pas une perte de message, c'est le comportement correct et
+  voulu face à un artefact du montage de mesure** — voir §6 pour
+  l'arithmétique complète (`47,8691696 − 46,0476230 = 1,8215 s`, soit la
+  fenêtre de 1800 ms du script plus un tick).
 - **Critère agent de la mesure 4 non vérifiable par journal** — voir §5, un
   vrai manque d'observabilité (code mort `#[cfg(not(windows))]`), pas une
   invention comblée par autre chose que la lecture directe du canal

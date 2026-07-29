@@ -93,7 +93,16 @@ pub enum AgentControl {
         left: u8,
         right: u8,
     },
-    /// Émis une seule fois, immédiatement après `Ready`.
+    /// Émis une seule fois par session, mais PAS après `Ready` en pratique :
+    /// `agent/src/main.rs` pousse ce message dans le canal `mpsc` de contrôle
+    /// dès le démarrage du transport, avant même l'ouverture du canal de
+    /// données — le drainage (`transport.rs::act_on_timeout`) le met donc en
+    /// file avant que `Event::ChannelOpen` n'y ajoute `Ready`. L'ordre réel
+    /// est `Capabilities`, éventuellement un premier `Pointer`, puis `Ready`.
+    /// Sans conséquence aujourd'hui (le client traite les types
+    /// indépendamment, voir `client/src/main.ts`), mais un client qui
+    /// gaterait son initialisation sur `Ready` perdrait ce message et le
+    /// premier `Pointer` : ne pas le faire.
     Capabilities {
         #[serde(rename = "v", deserialize_with = "verifie_version")]
         version: u8,

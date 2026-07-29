@@ -584,9 +584,11 @@ impl Session {
     /// `write_frame` (une mutation) suivi directement de `handle_input`
     /// (une seconde) violerait la même règle.
     ///
-    /// Deux branches supplémentaires (a1, a2 : redimensionnement en attente
-    /// et vérification de la fenêtre) ne mutent JAMAIS `Rtc` — elles ne
-    /// touchent que `self.source` et, au plus, mettent en file un message de
+    /// Trois branches supplémentaires (a0bis : drainage d'un message de
+    /// contrôle produit hors boucle vers `pending_control` ; a1, a2 :
+    /// redimensionnement en attente et vérification de la fenêtre) ne
+    /// mutent JAMAIS `Rtc` — elles ne touchent que `self.source` et/ou
+    /// `self.pending_control`, au plus en y mettant en file un message de
     /// contrôle (`queue_control`, qui n'empile qu'un `VecDeque`, sans effet
     /// sur `Rtc` avant le tour suivant). Chacune rend quand même la main
     /// immédiatement après son action plutôt que d'enchaîner sur la branche
@@ -647,10 +649,28 @@ impl Session {
         if !self.pending_control.is_empty() {
             if let Some(id) = self.control_channel {
                 let message = self.pending_control.pop_front().expect("non vide");
+                // Nom du variant à des fins de journal uniquement : la
+                // recette du chantier B (mesures 3 et 5) a dû contourner
+                // l'observabilité de ce chemin par une instrumentation
+                // client temporaire, faute d'une ligne ici — ce
+                // `tracing::debug!` existe pour que le prochain diagnostic
+                // n'ait plus besoin de ce contournement.
+                let type_message = match &message {
+                    AgentControl::Ready { .. } => "ready",
+                    AgentControl::SessionEnd { .. } => "session-end",
+                    AgentControl::Pointer { .. } => "pointer",
+                    AgentControl::Rumble { .. } => "rumble",
+                    AgentControl::Capabilities { .. } => "capabilities",
+                };
                 let json = serde_json::to_string(&message)?;
                 if let Some(mut channel) = self.rtc.channel(id) {
-                    if let Err(e) = channel.write(false, json.as_bytes()) {
-                        tracing::warn!(erreur = %e, "échec d'écriture sur le canal de contrôle");
+                    match channel.write(false, json.as_bytes()) {
+                        Ok(_) => {
+                            tracing::debug!(type_message, "message de contrôle écrit");
+                        }
+                        Err(e) => {
+                            tracing::warn!(erreur = %e, "échec d'écriture sur le canal de contrôle");
+                        }
                     }
                 }
                 return Ok(Tick::Continue);

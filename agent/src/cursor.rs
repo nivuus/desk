@@ -140,11 +140,24 @@ mod win {
                     Ok((visible, handle)) => {
                         let forme = forme_de(handle, &table);
                         let bascule = hysteresis.observer(visible);
+                        let visible_retenu = hysteresis.courant();
                         let forme_changee = derniere_forme != Some(forme);
 
-                        if bascule.is_some() || forme_changee {
-                            derniere_forme = Some(forme);
-                            let visible_retenu = hysteresis.courant();
+                        // Toujours mémoriser la forme observée, même si elle
+                        // ne cause pas d'émission ci-dessous : sinon, un
+                        // changement survenu pendant que le curseur est
+                        // masqué ne serait jamais annoncé au retour en mode
+                        // visible (le prochain `forme_changee` le comparerait
+                        // à une forme déjà obsolète).
+                        derniere_forme = Some(forme);
+
+                        // Un changement de forme seul ne justifie une émission
+                        // que si le curseur est retenu visible : masqué, le
+                        // client pose `cursor: 'none'` et n'utilise jamais
+                        // `shape` (voir pointer.ts) — un message de forme
+                        // pendant qu'un jeu tourne serait donc pur bruit sur un
+                        // canal fiable, jusqu'à 20 messages par seconde.
+                        if bascule.is_some() || (forme_changee && visible_retenu) {
                             mode_relatif.store(!visible_retenu, Ordering::Relaxed);
                             // Le récepteur est tombé : la session est finie,
                             // ce fil n'a plus de raison d'être.

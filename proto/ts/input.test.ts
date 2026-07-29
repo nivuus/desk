@@ -99,4 +99,18 @@ describe('encodeur du protocole d\'entrée', () => {
     it('borne les deltas relatifs hors plage', () => {
         expect(Array.from(encodeMouseMoveRelative(-40000, 40000))).toEqual([2, 5, 0, 128, 255, 127]);
     });
+
+    it('borne les gâchettes hors plage', () => {
+        const state = encodeGamepadState({
+            seq: 0,
+            buttons: 0,
+            leftTrigger: -10,
+            rightTrigger: 999,
+            thumbLX: 0,
+            thumbLY: 0,
+            thumbRX: 0,
+            thumbRY: 0,
+        });
+        expect(Array.from(state)).toEqual([2, 6, 0, 0, 0, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0]);
+    });
 });

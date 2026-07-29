@@ -1165,8 +1165,13 @@ async fn main() -> Result<()> {
                         Err(std::sync::mpsc::TryRecvError::Empty) => {
                             // Connexion encore en cours (jusqu'à 5 s
                             // observées) : cet état de manette est perdu,
-                            // sans conséquence — le client en réémet un à
-                            // 250 Hz jusqu'à ce que la cible soit prête.
+                            // sans conséquence — pas grâce à la fréquence de
+                            // sondage du client (cadence sous charge du
+                            // `setInterval(4 ms)` jamais mesurée), mais parce
+                            // qu'il réémet un état complet toutes les 100 ms
+                            // même sans changement jusqu'à ce que la cible
+                            // soit prête (voir `client/src/gamepad.ts`,
+                            // `RAFRAICHISSEMENT_MS`).
                         }
                         Err(std::sync::mpsc::TryRecvError::Disconnected) => {
                             pad_indisponible = true;
@@ -1187,14 +1192,20 @@ async fn main() -> Result<()> {
                 return;
             }
 
+            // Seul journal d'entrée disponible : il était auparavant gardé
+            // par `#[cfg(not(windows))]`, donc mort sur la cible réelle — la
+            // recette du chantier B (mesure 4) a dû s'en passer et
+            // reconstituer la preuve autrement (instrumentation du canal
+            // côté client). Le rendre disponible sous Windows aussi permet
+            // au prochain diagnostic de lire directement `agent.log`.
+            tracing::debug!(?message, "entrée reçue");
+
             #[cfg(windows)]
             if let Some(injector) = injector.as_mut() {
                 if let Err(e) = injector.inject(message) {
                     tracing::warn!(erreur = %e, "injection d'entrée échouée");
                 }
             }
-            #[cfg(not(windows))]
-            tracing::debug!(?message, "entrée reçue");
         };
         let mut on_control = |message| tracing::info!(?message, "contrôle reçu");
         session.run(&mut on_input, &mut on_control)

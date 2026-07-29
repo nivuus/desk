@@ -38,6 +38,7 @@ let bandeau: number | undefined;
 // sous peine d'être dans la zone morte temporelle au premier message reçu.
 let pointeur: ReturnType<typeof attachPointerAuDOM> | undefined;
 let manette: ReturnType<typeof attachGamepadAuDOM> | undefined;
+let detacherPleinEcran: ReturnType<typeof attachFullscreenAuDOM> | undefined;
 let manetteAnnoncee = false;
 let bandeauManette: number | undefined;
 
@@ -53,6 +54,14 @@ connectSession({
         } else if (message.type === 'session-end') {
             window.clearTimeout(bandeau);
             window.clearTimeout(bandeauManette);
+            // Sans ces trois détachements, le `setInterval` à 4 ms de la
+            // manette (et les écouteurs de pointeur/plein écran) continuent
+            // de tourner après la fin de session — rien d'autre ne les
+            // arrête, la page reste ouverte tant que l'utilisateur ne la
+            // ferme pas lui-même.
+            pointeur?.detacher();
+            manette?.detacher();
+            detacherPleinEcran?.();
             statut.afficher(`session terminée : ${message.reason}`, { terminal: true });
         } else if (message.type === 'pointer') {
             pointeur?.surMessagePointeur(message.visible, message.shape);
@@ -111,7 +120,7 @@ connectSession({
             if (!manetteAnnoncee) statut.afficher('manette : appuyez sur un bouton pour l\'activer');
         }, 4000);
 
-        attachFullscreenAuDOM({ bouton: fullscreenElement, cible: document.documentElement });
+        detacherPleinEcran = attachFullscreenAuDOM({ bouton: fullscreenElement, cible: document.documentElement });
 
         // Le son démarre coupé et s'active au premier geste. Un bandeau ne
         // s'affiche que si aucun geste n'est venu au bout de quelques

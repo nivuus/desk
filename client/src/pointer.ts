@@ -19,7 +19,12 @@ const MAX_I16 = 32767;
 export interface CibleVideo {
     addEventListener(type: string, ecouteur: EventListener | ((event: PointerEvent) => void)): void;
     removeEventListener(type: string, ecouteur: EventListener | ((event: PointerEvent) => void)): void;
-    requestPointerLock(): void;
+    // Depuis Chrome 111, `requestPointerLock()` renvoie une Promise. Le
+    // typage la déclare `void` à dessein : `verrouiller()` ci-dessous avale
+    // le rejet lui-même (voir son commentaire), pour que ce module reste
+    // utilisable même sur un navigateur antérieur qui renvoie réellement
+    // `void`.
+    requestPointerLock(): void | Promise<void>;
     style: { cursor: string };
 }
 
@@ -89,7 +94,15 @@ export function attachPointer(options: PointerOptions): PointerHandle {
     const verrouiller = (): void => {
         // `requestPointerLock` exige une activation utilisateur transitoire :
         // un message reçu sur data channel n'en est pas une. D'où l'armement.
-        video.requestPointerLock();
+        //
+        // Depuis Chrome 111, l'appel renvoie une Promise qui se rejette
+        // précisément dans ce cas — l'échec est ATTENDU, `onPointerLockError`
+        // et le réarmement prennent déjà le relais. Sans ce `catch`, chaque
+        // bascule en mode relatif produirait une rejection non gérée dans la
+        // console, alors même que le mécanisme fonctionne comme prévu.
+        // `Promise.resolve` enrobe aussi bien un `void` qu'une Promise réelle :
+        // le `catch` reste sans effet sur un navigateur qui ne renvoie rien.
+        void Promise.resolve(video.requestPointerLock()).catch(() => {});
     };
 
     const onClick = (): void => {

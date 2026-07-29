@@ -441,7 +441,12 @@ mod win {
     /// `spawn_blocking` dans `main.rs`). `main.rs` sonde ce récepteur avec
     /// `try_recv()` à chaque état de manette reçu, sans jamais bloquer
     /// dessus ; les états reçus pendant que la connexion est en cours sont
-    /// perdus sans conséquence, le client en réémet à 250 Hz.
+    /// perdus sans conséquence — pas parce que le client sonde à 250 Hz
+    /// (cadence sous charge jamais mesurée, voir `client/src/gamepad.ts`),
+    /// mais parce qu'il réémet un état complet toutes les 100 ms même sans
+    /// changement (`RAFRAICHISSEMENT_MS`) : c'est ce rafraîchissement
+    /// périodique, indépendant de la fréquence de sondage, qui porte la
+    /// garantie d'auto-réparation.
     pub fn spawn_connect() -> mpsc::Receiver<Result<VirtualPad>> {
         let (tx, rx) = mpsc::channel();
         std::thread::spawn(move || {
