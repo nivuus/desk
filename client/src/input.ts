@@ -58,6 +58,10 @@ export function attachInput({ video, channel }: InputOptions): () => void {
     };
 
     const onPointerMove = (event: PointerEvent): void => {
+        // Sous Pointer Lock, `pointer.ts` émet les deltas relatifs : émettre
+        // AUSSI une position absolue téléporterait le curseur Windows entre
+        // deux déplacements relatifs.
+        if (document.pointerLockElement === video) return;
         // getCoalescedEvents restitue les positions intermédiaires que le
         // navigateur a regroupées : le tracé reste fidèle à haute fréquence.
         const events = event.getCoalescedEvents?.() ?? [event];
