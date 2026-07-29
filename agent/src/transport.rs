@@ -89,6 +89,20 @@ const ALIVE_CHECK_INTERVAL: Duration = Duration::from_secs(1);
 /// la première correction. 2,5 Mb/s est le point de départ, à confirmer.
 const ESTIMATION_INITIALE_BPS: u32 = 2_500_000;
 
+/// Durée au-delà de laquelle une estimation de bande passante non renouvelée
+/// est traitée comme absente (I4, revue finale de branche).
+///
+/// `Event::EgressBitrateEstimate` et `Event::MediaEgressStats` n'arrivent pas
+/// ensemble (voir le commentaire du champ `derniere_estimation_bps`) : sans
+/// cette borne, une estimation reçue une seule fois puis plus jamais (TWCC qui
+/// se tarit alors que la session survit) resterait utilisée indéfiniment par
+/// le contrôleur — potentiellement la dernière valeur haute avant l'incident,
+/// ce qui annoncerait « Bonne » sur un lien mort. `MediaEgressStats` arrive
+/// environ une fois par seconde (`set_stats_interval`) : 5 s laisse plusieurs
+/// occasions manquées avant de conclure à l'absence, sans laisser une
+/// estimation figée vivre des dizaines de secondes.
+const EXPIRATION_ESTIMATION: Duration = Duration::from_secs(5);
+
 /// Tranche maximale d'une attente sans donnée sur le socket, dans la boucle
 /// de sondage non bloquant d'`act_on_timeout` (branche c).
 ///
@@ -427,9 +441,15 @@ pub struct Session {
     /// second l'était même déjà avant ce chantier, et tombait dans le `_ =>
     /// {}` de `handle_event`.
     congestion: congestion::Controleur,
-    /// Dernière estimation reçue, en attente d'être confrontée aux
-    /// statistiques. Les deux événements n'arrivent pas ensemble.
-    derniere_estimation_bps: Option<u32>,
+    /// Dernière estimation reçue, avec l'instant de sa réception, en attente
+    /// d'être confrontée aux statistiques. Les deux événements n'arrivent pas
+    /// ensemble.
+    ///
+    /// **Horodatée depuis I4 (revue finale de branche).** Sans l'instant, une
+    /// estimation reçue une seule fois puis plus jamais (TWCC qui se tarit)
+    /// resterait utilisée indéfiniment — voir `EXPIRATION_ESTIMATION`, qui la
+    /// traite comme absente au-delà de son délai.
+    derniere_estimation_bps: Option<(u32, Instant)>,
     /// Décision décidée mais pas encore appliquée. Appliquée dans
     /// `act_on_timeout`, jamais depuis `handle_event` — reconstruire
     /// l'encodeur pendant le drainage de `poll_output` romprait l'invariant
@@ -439,6 +459,22 @@ pub struct Session {
     /// Vrai une fois que l'indisponibilité de l'adaptation a été journalisée.
     /// Une condition permanente ne se journalise pas chaque seconde.
     absence_bwe_signalee: bool,
+    /// Vrai une fois que l'indisponibilité de l'adaptation a été annoncée AU
+    /// NAVIGATEUR (message `Link`). Drapeau distinct d'`absence_bwe_signalee`,
+    /// qui ne couvre que le journal.
+    ///
+    /// **Ajouté pour I2 (revue finale de branche).** Avant ce correctif,
+    /// `Controleur::observer` rendait `None` d'entrée quand aucune estimation
+    /// n'était disponible, donc aucune `pending_decision` n'était jamais
+    /// produite pour ce cas — `Adaptation::Indisponible` n'atteignait jamais
+    /// le navigateur, alors que la spec l'exige nommément (« surtout pas un
+    /// silence qui ressemble à tout va bien »).
+    ///
+    /// Remis à `false` dès qu'une estimation fraîche revient : une
+    /// indisponibilité ultérieure (nouvelle coupure de TWCC, voir I4) est une
+    /// information neuve, à annoncer de nouveau — comme `taille_refus_signalee`
+    /// se remet à `None` dès qu'un changement de taille réussit.
+    indisponibilite_annoncee: bool,
     /// Taille d'encodage réellement appliquée. Distincte de celle décidée :
     /// un refus de l'encodeur laisse la décision non appliquée, et il ne faut
     /// pas la retenter à chaque tour.
@@ -558,8 +594,26 @@ impl Session {
             congestion: congestion::Controleur::new(
                 congestion::Config {
                     plafond_bps,
-                    audio_bps: 128_000,
+                    // Référence `opus::BITRATE_BPS` plutôt qu'une constante
+                    // dupliquée (I5, revue finale de branche) : une valeur en
+                    // dur ici pouvait diverger silencieusement de ce que
+                    // l'encodeur Opus utilise réellement.
+                    audio_bps: crate::opus::BITRATE_BPS as u32,
                     source: dimensions,
+                    // **Délibérément 60, PAS `ENCODER_FPS`** (I5, revue finale
+                    // de branche). `ENCODER_FPS` (défaut 90, voir `main.rs`)
+                    // est la cadence de SOLLICITATION de l'encodeur, pas la
+                    // cadence DÉLIVRÉE — la recette mesure 55 à 63 im/s
+                    // réellement décodées, bien plus proche de 60 que de 90.
+                    // Et surtout : `BPP_MIN` (voir `congestion.rs`) a été
+                    // calibrée avec `fps = 60`. `fps` multiplie directement
+                    // tous les `min_bps` de l'échelle — le faire suivre
+                    // `ENCODER_FPS` multiplierait tous les seuils par 1,5 et
+                    // invaliderait une calibration déjà fragile (reconduite
+                    // sans preuve visuelle, voir le commentaire de
+                    // `BPP_MIN`), sans mesure pour la refaire. `BPP_MIN` et ce
+                    // `fps` sont COUPLÉS et doivent être recalibrés ENSEMBLE,
+                    // jamais l'un sans l'autre.
                     fps: 60,
                 },
                 Instant::now(),
@@ -567,6 +621,7 @@ impl Session {
             derniere_estimation_bps: None,
             pending_decision: None,
             absence_bwe_signalee: false,
+            indisponibilite_annoncee: false,
             encode_size_appliquee: dimensions,
             taille_refus_signalee: None,
             refus_debit_signale: false,
@@ -888,6 +943,39 @@ impl Session {
                     // celles demandées.
                     let (actual_width, actual_height) = self.source.dimensions();
                     self.dimensions = (actual_width, actual_height);
+
+                    // C1 (revue finale de branche). `WindowsSource::resize`
+                    // reconstruit désormais TOUJOURS l'encodeur à la taille
+                    // pleine de la nouvelle capture (voir son commentaire) :
+                    // la taille réellement appliquée vient donc de changer
+                    // par ce seul fait, sans être jamais passée par
+                    // `set_encode_size`. On l'enregistre directement — il n'y
+                    // a rien à « appliquer » ici, c'est déjà fait — plutôt
+                    // que de la laisser transiter par `pending_decision`
+                    // comme le ferait une décision normale du contrôleur.
+                    self.encode_size_appliquee = (actual_width, actual_height);
+                    // Une cible refusée avant ce redimensionnement n'a plus
+                    // cours : la taille encodée vient de changer sous elle.
+                    self.taille_refus_signalee = None;
+
+                    // Le contrôleur doit être reconstruit pour la nouvelle
+                    // taille de source : ses seuils (`min_bps` par barreau)
+                    // sont dérivés de la taille de capture, qui vient de
+                    // changer. Sans cela, l'échelle resterait calibrée pour
+                    // une source qui n'existe plus — et pourrait viser une
+                    // taille d'encodage supérieure à la nouvelle capture.
+                    // `changer_source` conserve le barreau (le NIVEAU de
+                    // réduction), pas la taille absolue ; la décision qui en
+                    // résulte est mémorisée pour que la branche a0ter,
+                    // au tour SUIVANT, la compare à `encode_size_appliquee`
+                    // (celle ci-dessus, la taille pleine) et rappelle
+                    // `set_encode_size` si le barreau conservé exige encore
+                    // une réduction.
+                    let decision = self
+                        .congestion
+                        .changer_source((actual_width, actual_height), Instant::now());
+                    self.pending_decision = Some(decision);
+
                     self.queue_control(AgentControl::ready(actual_width, actual_height));
                 }
                 Err(e) => {
@@ -1378,7 +1466,7 @@ impl Session {
                     // estimation qu'on ne sait pas encore interpréter.
                     _ => return Tick::Continue,
                 };
-                self.derniere_estimation_bps = Some(bps as u32);
+                self.derniere_estimation_bps = Some((bps as u32, Instant::now()));
             }
             Event::MediaEgressStats(stats) => {
                 // Seule la piste vidéo alimente la décision : l'audio a un
@@ -1386,13 +1474,25 @@ impl Session {
                 if Some(stats.mid) != self.video_mid {
                     return Tick::Continue;
                 }
+                // I4 (revue finale de branche) : une estimation reçue une
+                // seule fois puis plus jamais (TWCC qui se tarit alors que la
+                // session survit) est traitée comme absente au-delà
+                // d'`EXPIRATION_ESTIMATION`, plutôt que d'être utilisée
+                // indéfiniment — potentiellement la dernière valeur haute
+                // avant l'incident, ce qui annoncerait « Bonne » sur un lien
+                // mort.
+                let now = Instant::now();
+                let estimate_bps = self.derniere_estimation_bps.and_then(|(bps, at)| {
+                    (now.saturating_duration_since(at) <= EXPIRATION_ESTIMATION).then_some(bps)
+                });
                 let observation = congestion::Observation {
-                    estimate_bps: self.derniere_estimation_bps,
+                    estimate_bps,
                     rtt: stats.rtt,
                     loss: stats.loss,
-                    at: Instant::now(),
+                    at: now,
                 };
-                if observation.estimate_bps.is_none() && !self.absence_bwe_signalee {
+                let absence = observation.estimate_bps.is_none();
+                if absence && !self.absence_bwe_signalee {
                     self.absence_bwe_signalee = true;
                     tracing::warn!(
                         "aucune estimation de bande passante reçue : l'adaptation reste \
@@ -1405,9 +1505,35 @@ impl Session {
                     perte = ?observation.loss,
                     "observation réseau"
                 );
+                // `observer` DOIT être appelé avant de lire `courant()`
+                // ci-dessous : c'est lui qui, dans sa branche sans
+                // estimation, met `courant.adaptation` à jour vers
+                // `Indisponible` (voir son commentaire). Lire `courant()`
+                // avant cet appel rendrait un instantané périmé (encore
+                // `Active`) sur la transition qui nous intéresse le plus.
                 if let Some(decision) = self.congestion.observer(observation) {
                     // Mémorisée, pas appliquée : voir le commentaire du champ.
                     self.pending_decision = Some(decision);
+                }
+                if absence {
+                    // I2 (revue finale de branche) : `Controleur::observer`
+                    // ne produit JAMAIS de décision quand l'estimation
+                    // manque (voir son commentaire, retour anticipé) — sans
+                    // ce relais explicite, `Adaptation::Indisponible`
+                    // n'atteint donc jamais le navigateur, alors que la spec
+                    // l'exige nommément. On pose `self.congestion.courant()`,
+                    // lu APRÈS l'appel ci-dessus : son champ `adaptation` est
+                    // désormais à jour, et le reste (débit, taille) reflète
+                    // la dernière décision réelle — la seule chose de sensé à
+                    // annoncer tant qu'aucune nouvelle donnée n'arrive.
+                    if !self.indisponibilite_annoncee {
+                        self.indisponibilite_annoncee = true;
+                        self.pending_decision = Some(self.congestion.courant());
+                    }
+                } else {
+                    // Une estimation fraîche revient : une indisponibilité
+                    // ultérieure redeviendra une information neuve.
+                    self.indisponibilite_annoncee = false;
                 }
             }
             _ => {}

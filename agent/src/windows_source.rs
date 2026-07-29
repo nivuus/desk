@@ -204,11 +204,23 @@ impl WindowsSource {
         self.capture = None;
         let fps = self.fps;
         let bitrate = self.bitrate;
-        // Taille d'encodage courante, conservée plutôt que réinitialisée à la
-        // taille de capture : un redimensionnement de fenêtre ne doit pas
-        // effacer une réduction de résolution déjà appliquée pour cause de
-        // lien dégradé (tâche 9).
-        let encode = self.encoder.encode_size();
+        // **Correctif C1 (revue finale de branche).** Une première version de
+        // ce chantier conservait ici la taille d'encodage courante
+        // (`self.encoder.encode_size()`) au lieu de repartir de la taille de
+        // capture, dans l'intention de ne pas effacer une réduction de
+        // résolution appliquée pour cause de lien dégradé (tâche 9). C'était
+        // faux : au démarrage, encode == capture, donc dès le PREMIER
+        // redimensionnement de fenêtre, la taille encodée se figeait pour
+        // toute la session — agrandir la fenêtre n'agrandissait plus jamais
+        // le flux, et le contrôleur (dont l'échelle n'était, elle, jamais
+        // reconstruite) pouvait même finir par viser une taille supérieure à
+        // la nouvelle capture. La taille encodée doit donc à nouveau suivre
+        // la fenêtre inconditionnellement ; c'est `Session::act_on_timeout`
+        // (branche a1, `transport.rs`) qui a désormais la charge de
+        // rappliquer, juste après, la réduction que le contrôleur jugerait
+        // encore nécessaire pour la NOUVELLE taille (voir
+        // `congestion::Controleur::changer_source`) — au lieu de la préserver
+        // ici à l'aveugle.
 
         // Un NOUVEAU périphérique D3D11 est créé dans `DesktopCapture::new` :
         // elle pose `SetMultithreadProtected(TRUE)` sur CE périphérique à
@@ -226,7 +238,7 @@ impl WindowsSource {
                 let mut encoder = H264Encoder::new(
                     new_capture.device(),
                     (region.width, region.height),
-                    encode,
+                    (region.width, region.height),
                     fps,
                     bitrate,
                 )?;
@@ -316,7 +328,16 @@ impl WindowsSource {
             anyhow::bail!("source épuisée : taille d'encodage inchangée");
         }
 
+        // Borne haute ajoutée en revue finale de branche (C1) : la
+        // justification qui la rendait jusqu'ici inutile (« l'appelant ne
+        // produit jamais de taille supérieure à la source ») était fausse —
+        // voir le commentaire de `resize` ci-dessus. Un filet, pas LE
+        // correctif : c'est `changer_source` côté contrôleur qui évite
+        // normalement de viser une taille trop grande, mais un appelant futur
+        // (ou un bug de calibration de l'échelle) ne doit pas pouvoir
+        // demander à Media Foundation une sortie plus grande que son entrée.
         let (width, height) = (width.max(2) & !1, height.max(2) & !1);
+        let (width, height) = (width.min(self.width), height.min(self.height));
         if (width, height) == self.encoder.encode_size() {
             return Ok(());
         }

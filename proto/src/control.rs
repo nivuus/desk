@@ -1,6 +1,6 @@
 //! Messages du canal de contrôle (fiable, ordonné, faible débit).
 //!
-//! Format JSON versionné : `{"type":"...","v":2,"...":...}` (`type` sert de tag
+//! Format JSON versionné : `{"type":"...","v":3,"...":...}` (`type` sert de tag
 //! interne à l'enum et est toujours émis en premier par serde). Le champ `v` est
 //! obligatoire et vérifié à la désérialisation : un message sans `v`, ou avec un
 //! `v` différent de [`CONTROL_VERSION`], est rejeté.

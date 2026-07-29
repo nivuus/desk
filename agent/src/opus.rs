@@ -33,7 +33,12 @@ pub const FRAME_SAMPLES: usize = (SAMPLE_RATE_HZ as u64 * FRAME_MS / 1000) as us
 pub const FRAME_INTERLEAVED: usize = FRAME_SAMPLES * CHANNELS;
 
 /// Débit cible, en bits par seconde.
-const BITRATE_BPS: i32 = 128_000;
+///
+/// `pub` depuis la revue finale de branche (I5) : `transport.rs` la référence
+/// pour le budget audio du contrôleur de congestion (`congestion::Config::
+/// audio_bps`), plutôt que de dupliquer `128_000` en dur sans lien avec cette
+/// constante.
+pub const BITRATE_BPS: i32 = 128_000;
 
 /// Borne haute d'un paquet encodé. Une trame de 10 ms à 128 kbps fait ~160
 /// octets ; 4 000 laisse toute la marge nécessaire sans jamais tronquer.
@@ -115,9 +120,10 @@ mod tests {
     /// de Goertzel.
     ///
     /// Insensible au retard : le codec introduit une latence algorithmique
-    /// (120 échantillons mesurés en `LowDelay`), donc une comparaison
-    /// échantillon par échantillon avec l'entrée échouerait pour une raison
-    /// qui n'a rien à voir avec la fidélité.
+    /// (312 échantillons en `Application::Audio`, voir le docstring de
+    /// `OpusEncoder`), donc une comparaison échantillon par échantillon avec
+    /// l'entrée échouerait pour une raison qui n'a rien à voir avec la
+    /// fidélité.
     fn energie_a(pcm: &[i16], freq: f64) -> f64 {
         let n = pcm.len() / CHANNELS;
         let w = 2.0 * std::f64::consts::PI * freq / SAMPLE_RATE_HZ as f64;
@@ -217,7 +223,7 @@ mod tests {
     }
 
     #[test]
-    fn le_pourcentage_de_perte_est_borne_et_relu() {
+    fn le_pourcentage_de_perte_est_borne() {
         let mut enc = OpusEncoder::new().expect("encodeur");
 
         enc.set_packet_loss_perc(0).expect("0 accepté");

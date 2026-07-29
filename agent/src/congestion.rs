@@ -16,8 +16,18 @@ const DIVISEURS: [f32; 4] = [1.0, 1.25, 1.5, 2.0];
 ///
 /// **C'est LE réglage du contrôleur.** La valeur de départ est choisie pour
 /// donner une échelle cohérente sous le plafond de 12 Mb/s en 1080p60 (6,2 →
-/// 4,0 → 2,8 → 1,6 Mb/s), pas mesurée. La tâche 12 la confirme ou la corrige
-/// sur le banc netem, et consigne l'ajustement.
+/// 4,0 → 2,8 → 1,6 Mb/s), pas mesurée.
+///
+/// **Issue réelle (tâche 12, recette netem) :** RECONDUITE, faute de preuve
+/// du contraire — pas confirmée par une inspection visuelle positive. Sous
+/// `adsl` (8 Mb/s), le seuil du barreau plein pour la source captée valait
+/// ≈1,11 Mb/s, largement sous le débit du lien : les descentes observées
+/// venaient de l'instabilité de l'estimation BWE (voir `DELAI_REMONTEE`), pas
+/// d'un seuil mal calibré. Mais le critère qui aurait permis de VALIDER cette
+/// valeur (« l'image en pleine résolution était visiblement acceptable ou
+/// dégradée ») suppose un jugement visuel qui n'a jamais été fait — aucune
+/// capture d'écran n'a été comparée à l'œil. Voir
+/// `docs/superpowers/plans/2026-07-29-reseau-adaptatif-resultats.md`, §5.
 const BPP_MIN: f32 = 0.05;
 
 /// Un barreau de l'échelle : une taille d'encodage et le débit en dessous
@@ -125,6 +135,17 @@ const DELAI_REMONTEE: Duration = Duration::from_secs(20);
 /// Durée minimale entre deux changements de barreau, quelle que soit la
 /// condition. Filet contre un aller-retour rapide autour d'un seuil.
 const SEJOUR_MINIMAL: Duration = Duration::from_secs(5);
+
+/// Durée après la PREMIÈRE estimation pendant laquelle la rampe du BWE ne doit
+/// pas être prise pour une dégradation.
+///
+/// Le sous-système d'estimation part volontairement bas et sonde à la hausse
+/// (voir `ESTIMATION_INITIALE_BPS` côté transport) : pendant cette montée, le
+/// débit disponible est bas sans que le lien le soit. Sans cette fenêtre, toute
+/// session sur une source 1080p annoncerait « Image réduite par le réseau » sur
+/// un lien parfait, en bandeau persistant — mesuré : la rampe atteint 8,7 à
+/// 17,7 Mb/s en 1 à 3 s sur gigabit.
+const DELAI_AMORCAGE: Duration = Duration::from_secs(5);
 
 /// Filtre temporel asymétrique sur un indice de barreau.
 ///
@@ -269,8 +290,17 @@ pub struct Controleur {
     echelle: Echelle,
     hysteresis: Hysteresis,
     courant: Decision,
-    /// Vrai dès la première estimation reçue.
-    estimation_vue: bool,
+    /// Instant de la toute première estimation reçue, `None` tant qu'aucune
+    /// n'est arrivée.
+    ///
+    /// **Repurposé en revue finale de branche (I3+I2).** Ce champ existait
+    /// déjà comme simple booléen (`estimation_vue`), écrit à la première
+    /// estimation mais jamais relu — fossile d'une intention perdue, signalé
+    /// par la revue. Il devient utile en portant l'INSTANT de cette première
+    /// estimation plutôt qu'un simple drapeau : c'est ce qui permet de borner
+    /// `DELAI_AMORCAGE` (voir sa doc), la fenêtre pendant laquelle la rampe du
+    /// BWE ne doit pas être prise pour une dégradation.
+    premiere_estimation_a: Option<Instant>,
 }
 
 impl Controleur {
@@ -288,7 +318,7 @@ impl Controleur {
             echelle,
             hysteresis: Hysteresis::new(0, now),
             courant,
-            estimation_vue: false,
+            premiere_estimation_a: None,
         }
     }
 
@@ -298,14 +328,69 @@ impl Controleur {
         self.courant
     }
 
+    /// Rebâtit l'échelle pour une nouvelle taille de source, en conservant le
+    /// barreau courant.
+    ///
+    /// Appelée quand l'utilisateur redimensionne sa fenêtre : la source change,
+    /// donc les seuils de l'échelle aussi. Sans cela, l'échelle resterait
+    /// calibrée pour une source qui n'existe plus — et pourrait demander une
+    /// taille d'encodage supérieure à la capture.
+    ///
+    /// Le barreau est conservé et non la taille absolue : c'est le NIVEAU de
+    /// réduction qui a du sens, pas le nombre de pixels. Il est borné à la
+    /// longueur de la nouvelle échelle, qui peut être plus courte (voir
+    /// l'invariant d'`Echelle`).
+    pub fn changer_source(&mut self, source: (u32, u32), now: Instant) -> Decision {
+        // Indice du barreau actuellement appliqué, sur l'ANCIENNE échelle —
+        // c'est la taille encodée en place qui porte cette information, il
+        // n'existe pas de champ dédié. `unwrap_or(0)` : si `encode_size` ne
+        // correspond à aucun barreau (ne devrait pas arriver), repartir du
+        // sommet est le choix le plus sûr, jamais celui qui manquerait de
+        // débit.
+        let indice_avant = self
+            .echelle
+            .barreaux()
+            .iter()
+            .position(|b| b.taille == self.courant.encode_size)
+            .unwrap_or(0);
+
+        self.echelle = Echelle::depuis(source, self.config.fps);
+        self.config.source = source;
+
+        // Bornage : la nouvelle échelle peut compter moins de barreaux que
+        // l'ancienne (source minuscule après un rétrécissement extrême, voir
+        // l'invariant d'`Echelle`).
+        let indice = indice_avant.min(self.echelle.barreaux().len() - 1);
+        self.hysteresis = Hysteresis::new(indice, now);
+        self.courant.encode_size = self.echelle.barreaux()[indice].taille;
+
+        self.courant
+    }
+
     pub fn observer(&mut self, o: Observation) -> Option<Decision> {
         let Some(estimate) = o.estimate_bps else {
-            // Sans estimation, rien à asservir. On ne touche à rien et on ne
-            // produit aucune décision : le débit de repli est déjà celui
-            // posé à la construction.
+            // Sans estimation, rien à asservir sur le débit ni la résolution.
+            // L'INDISPONIBILITÉ, elle, doit être reflétée immédiatement :
+            // sans cette ligne, `self.courant.adaptation` resterait figé à
+            // `Active` après une première estimation suivie d'un silence
+            // prolongé (TWCC qui se tarit, voir I4 côté transport), et
+            // `courant()` mentirait sur l'état réel du lien à quiconque
+            // l'interroge pendant ce silence — précisément le trou que la
+            // revue finale de branche a nommé (I2). Seul ce champ bouge ici :
+            // qualité, débit et taille restent ceux de la dernière décision
+            // réelle, il n'y a rien de neuf à en tirer sans estimation.
+            self.courant.adaptation = Adaptation::Indisponible;
             return None;
         };
-        self.estimation_vue = true;
+        if self.premiere_estimation_a.is_none() {
+            self.premiere_estimation_a = Some(o.at);
+        }
+        // Fenêtre d'amorçage : le sous-système BWE part bas et sonde à la
+        // hausse (voir `DELAI_AMORCAGE`) — pendant cette rampe, un débit
+        // disponible bas ne signifie pas un lien dégradé.
+        let en_amorcage = o.at.duration_since(self.premiere_estimation_a.expect(
+            "vient d'être posé si absent",
+        )) < DELAI_AMORCAGE;
 
         // Part vidéo : marge de sécurité, moins le budget audio, borné au
         // plafond. `saturating_sub` : une estimation plus basse que le seul
@@ -316,6 +401,18 @@ impl Controleur {
 
         let vise = self.echelle.barreau_finance(disponible);
         let taille_avant = self.courant.encode_size;
+        let barreau_courant = self
+            .echelle
+            .barreaux()
+            .iter()
+            .position(|b| b.taille == taille_avant)
+            .unwrap_or(0);
+        // Pendant l'amorçage, ne jamais VISER un barreau pire que celui déjà
+        // en place : on nourrit l'hystérésis avec le barreau courant plutôt
+        // qu'avec la cible calculée, pour qu'aucune descente ne s'accumule
+        // sur la rampe du BWE (voir `DELAI_AMORCAGE`). Une cible MEILLEURE
+        // (remontée) reste autorisée sans restriction.
+        let vise = if en_amorcage && vise > barreau_courant { barreau_courant } else { vise };
         if let Some(nouveau) = self.hysteresis.observer(vise, o.at) {
             self.courant.encode_size = self.echelle.barreaux()[nouveau].taille;
         }
@@ -346,10 +443,21 @@ impl Controleur {
         // arrive déjà ne finance plus la résolution encore en place. On
         // compare aussi `disponible` au minimum du barreau appliqué, pas
         // seulement à son indice.
+        //
+        // Pendant l'amorçage (`en_amorcage`), cette dernière comparaison est
+        // désactivée : c'est elle qui, sur une source ≥1080p, faisait
+        // afficher « Image réduite par le réseau » en bandeau persistant dès
+        // la première observation de la rampe du BWE (I3, revue finale de
+        // branche) — le débit disponible y est bas par construction, sans
+        // que le lien le soit. Ce qui reste actif pendant l'amorçage : le
+        // plancher (`Insuffisante`, ci-dessus) si le débit tombe RÉELLEMENT
+        // sous le dernier barreau, et la dégradation par barreau déjà
+        // appliqué (`barreau_applique > 0`) si une réduction a réellement eu
+        // lieu avant l'amorçage.
         let qualite = if disponible < self.echelle.barreaux()[dernier].min_bps {
             Qualite::Insuffisante
         } else if barreau_applique > 0
-            || disponible < self.echelle.barreaux()[barreau_applique].min_bps
+            || (!en_amorcage && disponible < self.echelle.barreaux()[barreau_applique].min_bps)
         {
             Qualite::Degradee
         } else {
@@ -554,6 +662,31 @@ mod tests {
         assert_eq!(h.observer(2, base + Duration::from_millis(7000)), Some(2));
     }
 
+    #[test]
+    fn cibler_un_second_barreau_sans_repasser_par_le_courant_redemarre_le_decompte() {
+        // Trouvaille triviale de la revue finale : ce chemin (branche
+        // `_ => { self.vise = Some((vise, now)); now }` d'`observer`) n'était
+        // exercé par aucun test. On vise d'abord 1, puis on change de cible
+        // vers 2 SANS jamais repasser par le barreau courant (0) entre les
+        // deux — le décompte doit repartir de zéro pour la nouvelle cible, ne
+        // pas se poursuivre depuis la première.
+        let base = t0();
+        let mut h = Hysteresis::new(0, base);
+
+        // Vise 1 : décompte démarré à 0 ms.
+        assert_eq!(h.observer(1, base + Duration::from_millis(500)), None);
+        // Change de cible vers 2 à 1000 ms, sans repasser par 0 : le
+        // décompte pour 2 doit repartir de 1000 ms, pas de 0 ms.
+        assert_eq!(h.observer(2, base + Duration::from_millis(1000)), None);
+        // 1,999 s après ce redémarrage (2999 ms) : si le décompte avait
+        // continué depuis le tout premier `observer` (0 ms), il serait déjà
+        // à 2,999 s et aurait basculé — la preuve que ce n'est pas le cas.
+        assert_eq!(h.observer(2, base + Duration::from_millis(2999)), None);
+        // 2,000 s pile après le redémarrage à 1000 ms : bascule vers 2, la
+        // cible la plus récente — jamais vers 1.
+        assert_eq!(h.observer(2, base + Duration::from_millis(3000)), Some(2));
+    }
+
     fn config() -> Config {
         Config {
             plafond_bps: 12_000_000,
@@ -637,9 +770,16 @@ mod tests {
         let mut c = Controleur::new(config(), base);
         c.observer(obs(Some(9_000_000), None, base + Duration::from_secs(1)));
 
-        // 5 Mb/s : sous le minimum du barreau 0 (6,2 Mb/s). Il faut 2 s.
+        // 5 Mb/s : sous le minimum du barreau 0 (6,2 Mb/s). Il faut 2 s — mais
+        // la toute première estimation date de 1 s ci-dessus, donc les 5 s
+        // suivantes (jusqu'à 6 s) tombent dans `DELAI_AMORCAGE` (I3) : le
+        // contrôleur n'y vise jamais un barreau pire que le courant, la
+        // descente ne peut donc commencer à s'accumuler qu'à partir de 6 s,
+        // pour aboutir à 8 s. La borne du balayage est repoussée en
+        // conséquence (40 -> 80, soit 15,8 s) pour laisser cette marge, sans
+        // quoi ce test daterait d'avant l'amorçage et échouerait à tort.
         let mut derniere = None;
-        for i in 10..40 {
+        for i in 10..80 {
             let at = base + Duration::from_millis(i * 200);
             if let Some(d) = c.observer(obs(Some(5_000_000), None, at)) {
                 derniere = Some(d);
@@ -693,7 +833,14 @@ mod tests {
     fn la_qualite_ne_ment_pas_pendant_la_fenetre_d_hysteresis() {
         let base = t0();
         let mut c = Controleur::new(config(), base);
+        // Amorce le contrôleur puis laisse s'écouler `DELAI_AMORCAGE` (5 s,
+        // voir I3) avant les deux observations qui font l'objet de ce test :
+        // il vérifie un mensonge possible en RÉGIME ÉTABLI, pas pendant la
+        // rampe de démarrage du BWE, que l'amorçage protège maintenant
+        // délibérément (autre test dédié à ce cas : voir
+        // `l_amorcage_ne_declenche_pas_de_fausse_alerte`).
         c.observer(obs(Some(9_000_000), None, base + Duration::from_secs(1)));
+        c.observer(obs(Some(9_000_000), None, base + Duration::from_secs(7)));
 
         // Effondrement à 5 Mb/s, observé une seule fois, moins de 2 s après
         // l'observation précédente : l'hystérésis de descente n'a pas eu le
@@ -701,7 +848,7 @@ mod tests {
         // source. Le débit vidéo, lui, bascule immédiatement (aucune
         // hystérésis ne le protège).
         let d = c
-            .observer(obs(Some(5_000_000), None, base + Duration::from_millis(1500)))
+            .observer(obs(Some(5_000_000), None, base + Duration::from_millis(7500)))
             .expect("le débit a assez bougé pour produire une décision");
 
         assert_eq!(
@@ -713,6 +860,131 @@ mod tests {
             d.qualite,
             Qualite::Bonne,
             "le débit ne finance plus la résolution encore appliquée : la qualité ne doit pas mentir"
+        );
+    }
+
+    #[test]
+    fn l_amorcage_ne_declenche_pas_de_fausse_alerte() {
+        // I3 (revue finale de branche) : sur une source 1920×1080, le barreau
+        // 0 exige 6,22 Mb/s, mais le BWE part volontairement bas
+        // (`ESTIMATION_INITIALE_BPS` = 2,5 Mb/s côté transport) et sonde à la
+        // hausse. Sans fenêtre d'amorçage, la toute première observation
+        // annoncerait « Image réduite par le réseau » sur un lien par ailleurs
+        // parfait.
+        let base = t0();
+        let mut c = Controleur::new(config(), base);
+
+        // Première estimation, basse comme au vrai démarrage du BWE : 2,12 Mb/s
+        // disponibles (2,5 M × 0,9 − 128 k), bien sous le minimum du barreau 0.
+        let d = c
+            .observer(obs(Some(2_500_000), None, base + Duration::from_secs(1)))
+            .expect("le débit a assez bougé depuis le plafond pour produire une décision");
+
+        assert_eq!(
+            d.qualite,
+            Qualite::Bonne,
+            "la rampe de démarrage du BWE ne doit pas être prise pour une dégradation"
+        );
+        assert_eq!(
+            d.encode_size,
+            (1920, 1080),
+            "aucune descente ne doit s'engager pendant l'amorçage"
+        );
+
+        // Une seconde estimation tout aussi basse, encore pendant la fenêtre
+        // d'amorçage (moins de 5 s après la première) : toujours aucune
+        // descente engagée, la qualité reste bonne.
+        let d = c.observer(obs(Some(2_500_000), None, base + Duration::from_secs(3)));
+        if let Some(d) = d {
+            assert_eq!(d.qualite, Qualite::Bonne);
+            assert_eq!(d.encode_size, (1920, 1080));
+        }
+
+        // Après la fenêtre d'amorçage (>= 5 s après la première estimation,
+        // donc >= 6 s depuis `base`), une estimation toujours basse doit,
+        // elle, produire la dégradation normale — l'amorçage ne doit protéger
+        // que la rampe de démarrage, pas masquer un lien réellement mauvais.
+        let mut derniere = None;
+        for i in 30..80 {
+            let at = base + Duration::from_millis(i * 200);
+            if let Some(d) = c.observer(obs(Some(2_500_000), None, at)) {
+                derniere = Some(d);
+            }
+        }
+        let d = derniere.expect("une décision devait tomber une fois l'amorçage terminé");
+        assert_eq!(
+            d.qualite,
+            Qualite::Degradee,
+            "un débit durablement insuffisant hors amorçage doit dégrader normalement"
+        );
+        assert_ne!(d.encode_size, (1920, 1080), "la résolution devait finir par descendre");
+    }
+
+    #[test]
+    fn changer_source_conserve_le_barreau_courant_sur_un_agrandissement() {
+        let base = t0();
+        let mut c = Controleur::new(config(), base);
+        // Simule un barreau 2 déjà appliqué (comme après une dégradation
+        // réseau), sans passer par le délai réel de l'hystérésis : ce test
+        // porte sur `changer_source`, pas sur la façon d'atteindre ce
+        // barreau.
+        c.hysteresis = Hysteresis::new(2, base);
+        c.courant.encode_size = c.echelle.barreaux()[2].taille;
+
+        // Agrandissement de la source (1920×1080 -> 2560×1440).
+        let nouvelle_source = (2560, 1440);
+        let decision = c.changer_source(nouvelle_source, base + Duration::from_secs(1));
+
+        let nouvelle_echelle = Echelle::depuis(nouvelle_source, config().fps);
+        assert_eq!(
+            decision.encode_size,
+            nouvelle_echelle.barreaux()[2].taille,
+            "le barreau 2 doit être conservé, à la taille de la NOUVELLE échelle"
+        );
+        assert_eq!(c.config.source, nouvelle_source, "la source mémorisée doit suivre");
+    }
+
+    #[test]
+    fn changer_source_borne_le_barreau_quand_la_nouvelle_echelle_est_plus_courte() {
+        let base = t0();
+        let mut c = Controleur::new(config(), base);
+        // Barreau 3 (le plus bas de l'échelle nominale 1920×1080) déjà
+        // appliqué.
+        c.hysteresis = Hysteresis::new(3, base);
+        c.courant.encode_size = c.echelle.barreaux()[3].taille;
+        assert_eq!(c.echelle.barreaux().len(), 4, "précondition : 4 barreaux sur la source nominale");
+
+        // Rétrécissement vers une source minuscule dont l'échelle ne compte
+        // qu'un seul barreau (voir `echelle_minuscule_sans_doublons`) :
+        // l'indice 3 n'existe plus, il doit être borné à 0, le seul barreau
+        // disponible — pas paniquer sur un accès hors bornes.
+        let nouvelle_source = (2, 2);
+        let decision = c.changer_source(nouvelle_source, base + Duration::from_secs(1));
+
+        let nouvelle_echelle = Echelle::depuis(nouvelle_source, config().fps);
+        assert_eq!(nouvelle_echelle.barreaux().len(), 1);
+        assert_eq!(decision.encode_size, nouvelle_echelle.barreaux()[0].taille);
+        assert_eq!(decision.encode_size, (2, 2));
+    }
+
+    #[test]
+    fn changer_source_recalcule_les_seuils_min_bps_pour_la_nouvelle_taille() {
+        let base = t0();
+        let mut c = Controleur::new(config(), base);
+
+        let nouvelle_source = (1280, 720);
+        c.changer_source(nouvelle_source, base + Duration::from_secs(1));
+
+        let echelle_attendue = Echelle::depuis(nouvelle_source, config().fps);
+        let echelle_1080p = Echelle::depuis((1920, 1080), config().fps);
+        // Précondition : les deux échelles ont bien des seuils différents,
+        // sans quoi ce test ne prouverait rien.
+        assert_ne!(echelle_attendue.barreaux()[0].min_bps, echelle_1080p.barreaux()[0].min_bps);
+
+        assert_eq!(
+            c.echelle.barreaux()[0].min_bps,
+            echelle_attendue.barreaux()[0].min_bps,
+            "les seuils min_bps doivent suivre la nouvelle taille de source, pas rester ceux de 1920×1080"
         );
     }
 }
