@@ -17,8 +17,8 @@ const MAX_I16 = 32767;
 
 /** Ce dont ce module a besoin d'un élément vidéo. */
 export interface CibleVideo {
-    addEventListener(type: string, ecouteur: EventListener): void;
-    removeEventListener(type: string, ecouteur: EventListener): void;
+    addEventListener(type: string, ecouteur: EventListener | ((event: PointerEvent) => void)): void;
+    removeEventListener(type: string, ecouteur: EventListener | ((event: PointerEvent) => void)): void;
     requestPointerLock(): void;
     style: { cursor: string };
 }

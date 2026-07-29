@@ -5,7 +5,7 @@
 // modules d'armement du projet.
 
 import { describe, expect, it, vi } from 'vitest';
-import { attachPointer, creerClampReport, sommerDeltas, type CibleVideo, type CibleDocument } from './pointer';
+import { attachPointer, creerClampReport, sommerDeltas, type CibleVideo } from './pointer';
 
 function faireCibleVideo() {
     const ecouteurs = new Map<string, EventListener[]>();
@@ -44,7 +44,7 @@ function faireCibleVideo() {
                 event.getCoalescedEvents = () => coalesces;
             }
             for (const ecouteur of [...(ecouteurs.get('pointermove') ?? [])]) {
-                ecouteur(event as EventListener);
+                ecouteur(event as Event);
             }
         },
         compte(type: string) {
@@ -144,7 +144,7 @@ describe('attachPointer', () => {
         const video = faireCibleVideo();
         const doc = faireCibleDocument();
         const envoyer = vi.fn();
-        const handle = attachPointer({ video: video as any, doc: doc as any, envoyer });
+        attachPointer({ video: video as any, doc: doc as any, envoyer });
 
         // Un clic sans armement ne doit pas verrouiller (même si permis)
         video.autoriserVerrouillage();
@@ -160,7 +160,7 @@ describe('attachPointer', () => {
 
         // D'abord, le navigateur refuse le verrouillage (pas d'activation utilisateur)
         video.interdireVerrouillage();
-        handle.surMessagePointeur(false, 'none');
+        handle.surMessagePointeur(false, 'default');
         // L'essai gratuit tente de verrouiller mais échoue silencieusement
         expect(video.estVerrouille()).toBe(false);
 
@@ -181,7 +181,7 @@ describe('attachPointer', () => {
 
         // Armement : permis de verrouiller dès le départ
         video.autoriserVerrouillage();
-        handle.surMessagePointeur(false, 'none');
+        handle.surMessagePointeur(false, 'default');
         // L'essai gratuit réussit
         expect(video.estVerrouille()).toBe(true);
 
@@ -236,7 +236,7 @@ describe('attachPointer', () => {
         const surEchec = vi.fn();
         const handle = attachPointer({ video: video as any, doc: doc as any, envoyer, surEchec });
 
-        handle.surMessagePointeur(false, 'none');
+        handle.surMessagePointeur(false, 'default');
 
         // Première erreur
         doc.declencher('pointerlockerror');
@@ -266,7 +266,7 @@ describe('attachPointer', () => {
         const handle = attachPointer({ video: video as any, doc: doc as any, envoyer });
 
         // Armement et verrouillage
-        handle.surMessagePointeur(false, 'none');
+        handle.surMessagePointeur(false, 'default');
         video.declencher('click');
         doc.pointerLockElement = video as any;
 
