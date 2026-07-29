@@ -107,7 +107,8 @@ impl WindowsSource {
             .ok_or_else(|| anyhow::anyhow!("la fenêtre est hors de l'écran"))?;
         let (width, height) = (region.width, region.height);
 
-        let mut encoder = H264Encoder::new(capture.device(), width, height, fps, bitrate)?;
+        let mut encoder =
+            H264Encoder::new(capture.device(), (width, height), (width, height), fps, bitrate)?;
         encoder.request_keyframe()?;
 
         Ok(Self {
@@ -203,6 +204,11 @@ impl WindowsSource {
         self.capture = None;
         let fps = self.fps;
         let bitrate = self.bitrate;
+        // Taille d'encodage courante, conservée plutôt que réinitialisée à la
+        // taille de capture : un redimensionnement de fenêtre ne doit pas
+        // effacer une réduction de résolution déjà appliquée pour cause de
+        // lien dégradé (tâche 9).
+        let encode = self.encoder.encode_size();
 
         // Un NOUVEAU périphérique D3D11 est créé dans `DesktopCapture::new` :
         // elle pose `SetMultithreadProtected(TRUE)` sur CE périphérique à
@@ -217,8 +223,13 @@ impl WindowsSource {
                 let (dw, dh) = new_capture.desktop_size();
                 let region = crop_region(window_rect, dw, dh)
                     .ok_or_else(|| anyhow::anyhow!("la fenêtre est hors de l'écran"))?;
-                let mut encoder =
-                    H264Encoder::new(new_capture.device(), region.width, region.height, fps, bitrate)?;
+                let mut encoder = H264Encoder::new(
+                    new_capture.device(),
+                    (region.width, region.height),
+                    encode,
+                    fps,
+                    bitrate,
+                )?;
                 encoder.request_keyframe()?;
                 Ok((new_capture, region, encoder))
             },
@@ -280,6 +291,45 @@ impl WindowsSource {
     /// `VideoSource::request_keyframe` ci-dessous.
     pub fn request_keyframe(&mut self) -> Result<()> {
         self.encoder.request_keyframe()
+    }
+
+    /// Reconstruit l'encodeur à une nouvelle taille de sortie, **sans toucher
+    /// à la capture ni à la fenêtre**.
+    ///
+    /// Media Foundation n'autorise pas le changement de résolution en cours
+    /// de route : il faut un encodeur neuf (même contrainte que `resize`, voir
+    /// son commentaire). Mais contrairement à `resize`, la capture DXGI reste
+    /// vivante — c'est l'entrée du convertisseur, elle n'a pas changé. Aucune
+    /// contrainte de duplication DXGI ici, donc aucun besoin de
+    /// `rebuild_or_recover`.
+    ///
+    /// L'horodatage n'est pas réinitialisé : `last_pts_90k` est conservé, le
+    /// décodeur du navigateur rejetterait un retour en arrière.
+    pub fn set_encode_size(&mut self, width: u32, height: u32) -> Result<()> {
+        let (width, height) = (width.max(2) & !1, height.max(2) & !1);
+        if (width, height) == self.encoder.encode_size() {
+            return Ok(());
+        }
+
+        let device = self.capture_mut().device().clone();
+        let mut encoder = H264Encoder::new(
+            &device,
+            (self.width, self.height),
+            (width, height),
+            self.fps,
+            self.bitrate,
+        )?;
+        // Un encodeur neuf doit commencer par une image clé : sans elle, le
+        // décodeur du navigateur n'a aucun point d'entrée dans le nouveau
+        // flux et rend un écran gris jusqu'à la prochaine.
+        encoder.request_keyframe()?;
+
+        self.encoder = encoder;
+        // L'encodeur neuf n'a rien produit : le budget de sondage de
+        // démarrage doit repartir, comme après `resize`.
+        self.encoder_warmed_up = false;
+        tracing::info!(width, height, "taille d'encodage changée sans toucher à la fenêtre");
+        Ok(())
     }
 
     /// Retire du pipeline tout ce qui est prêt, sans jamais attendre, et rend
@@ -625,5 +675,16 @@ impl VideoSource for WindowsSource {
     /// et le commentaire de `VideoSource::request_keyframe`).
     fn request_keyframe(&mut self) -> Result<()> {
         WindowsSource::request_keyframe(self)
+    }
+
+    fn set_bitrate(&mut self, bitrate: u32) -> Result<()> {
+        // Mémorisé même en cas d'échec : c'est ce débit-là qu'une
+        // reconstruction ultérieure de l'encodeur devra reprendre.
+        self.bitrate = bitrate;
+        self.encoder.set_bitrate(bitrate)
+    }
+
+    fn set_encode_size(&mut self, width: u32, height: u32) -> Result<()> {
+        WindowsSource::set_encode_size(self, width, height)
     }
 }

@@ -62,6 +62,26 @@ pub trait VideoSource {
     fn request_keyframe(&mut self) -> Result<()> {
         Ok(())
     }
+
+    /// Change le débit d'encodage sans reconstruire quoi que ce soit.
+    ///
+    /// Sans effet par défaut : une source fichier n'encode rien.
+    fn set_bitrate(&mut self, _bitrate: u32) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    /// Change la taille RÉELLEMENT ENCODÉE, sans toucher à la fenêtre
+    /// capturée.
+    ///
+    /// À ne pas confondre avec `resize`, qui redimensionne la vraie fenêtre
+    /// Windows parce que l'utilisateur a tiré un bord. Ici la fenêtre ne
+    /// bouge pas : seul le flux transporté maigrit, parce que le lien ne
+    /// porte plus la pleine résolution.
+    ///
+    /// Sans effet par défaut.
+    fn set_encode_size(&mut self, _width: u32, _height: u32) -> anyhow::Result<()> {
+        Ok(())
+    }
 }
 
 /// Source de test rejouant un fichier H.264 Annex-B en boucle.
