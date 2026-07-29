@@ -29,6 +29,15 @@ pub struct Barreau {
 }
 
 /// Échelle de résolutions dérivée d'une taille source et d'une cadence.
+///
+/// L'échelle contient **au plus quatre barreaux**, strictement décroissants en
+/// largeur. La troncature au pixel pair (H.264) peut faire converger plusieurs
+/// diviseurs vers la même taille pour les sources minuscules — dans ce cas,
+/// l'échelle les fusionne, tout en garantissant au moins un barreau (le
+/// plancher), ce qui évite les préconditions inutiles en amont (qui ne
+/// garantissent pas une taille source minimale).
+///
+/// Le premier barreau est toujours la taille source (diviseur 1.0).
 #[derive(Debug, Clone)]
 pub struct Echelle {
     barreaux: Vec<Barreau>,
@@ -37,7 +46,7 @@ pub struct Echelle {
 impl Echelle {
     pub fn depuis(source: (u32, u32), fps: u32) -> Self {
         let (sw, sh) = source;
-        let barreaux = DIVISEURS
+        let tous_barreaux: Vec<Barreau> = DIVISEURS
             .iter()
             .map(|d| {
                 // `& !1` : H.264 exige des dimensions paires. La même
@@ -51,6 +60,17 @@ impl Echelle {
                 Barreau { taille: (w, h), min_bps: min_bps as u32 }
             })
             .collect();
+
+        // Éliminer les barreaux dont la taille est identique au précédent.
+        // Cela peut arriver pour les sources minuscules, en raison de la
+        // troncature au pixel pair et du plancher `.max(2)`.
+        let mut barreaux: Vec<Barreau> = Vec::new();
+        for barreau in tous_barreaux {
+            if barreaux.is_empty() || barreau.taille != barreaux.last().unwrap().taille {
+                barreaux.push(barreau);
+            }
+        }
+
         Self { barreaux }
     }
 
@@ -80,7 +100,8 @@ mod tests {
         let echelle = Echelle::depuis((1920, 1080), 60);
         let tailles: Vec<(u32, u32)> = echelle.barreaux().iter().map(|b| b.taille).collect();
 
-        assert_eq!(tailles.len(), 4, "quatre barreaux attendus");
+        // Pour 1920×1080, on attend exactement 4 barreaux (cas nominal).
+        assert_eq!(tailles.len(), 4, "quatre barreaux attendus pour 1920×1080");
         assert_eq!(tailles[0], (1920, 1080), "le premier barreau est la taille source");
         for (i, (w, h)) in tailles.iter().enumerate() {
             assert_eq!(w % 2, 0, "barreau {i} : largeur impaire, refusée par H.264");
@@ -93,6 +114,46 @@ mod tests {
                 tailles
             );
         }
+    }
+
+    #[test]
+    fn echelle_minuscule_sans_doublons() {
+        // Sources où la troncature au pixel pair peut produire des doublons,
+        // sans cette correction. Vérifie que l'échelle élimine les doublons et
+        // reste strictement décroissante.
+
+        // Source 8×8 : les diviseurs 1.5 et 2.0 retomberaient sur (4, 4).
+        let echelle_8x8 = Echelle::depuis((8, 8), 60);
+        let tailles_8x8: Vec<(u32, u32)> =
+            echelle_8x8.barreaux().iter().map(|b| b.taille).collect();
+
+        assert!(tailles_8x8.len() <= 4, "au plus 4 barreaux pour source 8×8");
+        assert_eq!(
+            tailles_8x8[0],
+            (8, 8),
+            "le premier barreau est la taille source (8×8)"
+        );
+        for (i, (w, h)) in tailles_8x8.iter().enumerate() {
+            assert_eq!(w % 2, 0, "barreau {i} : largeur impaire");
+            assert_eq!(h % 2, 0, "barreau {i} : hauteur impaire");
+        }
+        for i in 1..tailles_8x8.len() {
+            assert!(
+                tailles_8x8[i].0 < tailles_8x8[i - 1].0,
+                "barreau {i} pas plus petit que le précédent : {:?}",
+                tailles_8x8
+            );
+        }
+
+        // Source 2×2 : les quatre diviseurs retomberaient tous sur (2, 2).
+        // L'échelle ne doit avoir qu'un seul barreau, le plancher, pas quatre
+        // doublons.
+        let echelle_2x2 = Echelle::depuis((2, 2), 60);
+        let tailles_2x2: Vec<(u32, u32)> =
+            echelle_2x2.barreaux().iter().map(|b| b.taille).collect();
+
+        assert_eq!(tailles_2x2.len(), 1, "source 2×2 : un seul barreau (plancher)");
+        assert_eq!(tailles_2x2[0], (2, 2), "le barreau est le plancher (2, 2)");
     }
 
     #[test]
