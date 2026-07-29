@@ -296,9 +296,21 @@ impl Controleur {
             .min(self.config.plafond_bps);
 
         let vise = self.echelle.barreau_finance(disponible);
+        let taille_avant = self.courant.encode_size;
         if let Some(nouveau) = self.hysteresis.observer(vise, o.at) {
             self.courant.encode_size = self.echelle.barreaux()[nouveau].taille;
         }
+        // Signal correct d'un changement de résolution, capturé avant/après
+        // l'appel à l'hystérésis : depuis que `qualite` peut basculer dès que
+        // le débit s'effondre (avant même que l'hystérésis n'ait bougé la
+        // résolution), le changement de résolution qui arrive *plus tard* ne
+        // fait souvent plus varier ni `qualite` ni `video_bitrate_bps` — sans
+        // ce signal, ce changement de résolution ne remonterait jamais à
+        // l'appelant. Ne pas confondre avec la clause plus bas comparant
+        // `encode_size` au barreau appliqué : elle est toujours fausse par
+        // construction (point relevé en revue, laissé pour la revue finale
+        // de branche) — ce nouveau signal la complète sans la remplacer.
+        let resolution_changee = self.courant.encode_size != taille_avant;
 
         let dernier = self.echelle.barreaux().len() - 1;
         let barreau_applique = self
@@ -308,11 +320,18 @@ impl Controleur {
             .position(|b| b.taille == self.courant.encode_size)
             .unwrap_or(0);
 
-        let qualite = if barreau_applique == dernier
-            && disponible < self.echelle.barreaux()[dernier].min_bps
-        {
+        // `video_bitrate_bps` bascule immédiatement (pas d'hystérésis dessus),
+        // alors que `encode_size` ne bouge qu'après le délai de descente.
+        // Comparer seulement au minimum du barreau *appliqué* laisserait donc
+        // afficher `Bonne` pendant cette fenêtre, alors que le débit qui
+        // arrive déjà ne finance plus la résolution encore en place. On
+        // compare aussi `disponible` au minimum du barreau appliqué, pas
+        // seulement à son indice.
+        let qualite = if disponible < self.echelle.barreaux()[dernier].min_bps {
             Qualite::Insuffisante
-        } else if barreau_applique > 0 {
+        } else if barreau_applique > 0
+            || disponible < self.echelle.barreaux()[barreau_applique].min_bps
+        {
             Qualite::Degradee
         } else {
             Qualite::Bonne
@@ -326,6 +345,7 @@ impl Controleur {
         let debit_change = ecart_relatif(self.courant.video_bitrate_bps, disponible)
             >= ECART_MINIMAL_DEBIT;
         let change = debit_change
+            || resolution_changee
             || qualite != self.courant.qualite
             || perte != self.courant.opus_loss_perc
             || self.courant.adaptation != Adaptation::Active
@@ -648,5 +668,32 @@ mod tests {
             .observer(obs(Some(9_000_000), Some(0.60), base + Duration::from_secs(3)))
             .expect("décision");
         assert_eq!(d.opus_loss_perc, 25);
+    }
+
+    #[test]
+    fn la_qualite_ne_ment_pas_pendant_la_fenetre_d_hysteresis() {
+        let base = t0();
+        let mut c = Controleur::new(config(), base);
+        c.observer(obs(Some(9_000_000), None, base + Duration::from_secs(1)));
+
+        // Effondrement à 5 Mb/s, observé une seule fois, moins de 2 s après
+        // l'observation précédente : l'hystérésis de descente n'a pas eu le
+        // temps de faire descendre la résolution, qui reste donc la taille
+        // source. Le débit vidéo, lui, bascule immédiatement (aucune
+        // hystérésis ne le protège).
+        let d = c
+            .observer(obs(Some(5_000_000), None, base + Duration::from_millis(1500)))
+            .expect("le débit a assez bougé pour produire une décision");
+
+        assert_eq!(
+            d.encode_size,
+            (1920, 1080),
+            "l'hystérésis n'a pas eu le temps de faire descendre la résolution"
+        );
+        assert_ne!(
+            d.qualite,
+            Qualite::Bonne,
+            "le débit ne finance plus la résolution encore appliquée : la qualité ne doit pas mentir"
+        );
     }
 }
