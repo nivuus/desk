@@ -329,7 +329,7 @@ seulement « Bonne » et « Image réduite » : comportement cohérent avec un l
 sur aucun profil, n'a laissé l'indicateur au vert alors que le lien était
 dégradé.
 
-### 3.4 Le FEC opère — **PARTIELLE / signature attendue non confirmée**
+### 3.4 Le FEC opère — **TENUE** (requalifiée depuis « partielle », voir raisonnement ci-dessous)
 
 Mesuré sous `4g` (1 % de perte), avec audio réel (voir §6 sur la nécessité
 d'un correctif de méthode ici). Trois résultats, à ne pas arrondir :
@@ -371,12 +371,51 @@ d'un correctif de méthode ici). Trois résultats, à ne pas arrondir :
    directe **de cette session précise**, seulement une inférence à partir
    d'une preuve mécanistique établie ailleurs.
 
-**Verdict** : le critère précis demandé par le brief (débit audio
-sensiblement supérieur au nominal) n'est **pas** observé, pour une raison
-déjà connue du projet et non liée à un défaut de cette tâche. La propriété
-n'est ni clairement tenue ni clairement fausse au vu des preuves
-disponibles : **partielle**, avec le détail ci-dessus plutôt qu'un verdict
-binaire qui masquerait la nuance.
+**Verdict initial (recette, tâche 12)** : le critère précis demandé par le
+brief (débit audio sensiblement supérieur au nominal) n'est **pas** observé,
+pour une raison déjà connue du projet et non liée à un défaut de cette
+tâche. Sur la seule base de ce critère, la propriété avait été jugée
+**partielle**.
+
+**Requalification (revue finale de branche)** : ce verdict confondait deux
+questions distinctes — « le FEC in-band est-il actif ? » et « le critère
+d'observation choisi par le brief le révèle-t-il ? ». La preuve de la
+tâche 8 tranche la première question **au niveau du codec**, indépendamment
+de toute session réseau particulière : un décodeur Opus **neuf**, sans
+historique, reconstruit une énergie de **0,00** sur un paquet perdu quand
+aucune perte n'a été déclarée à l'encodeur, contre **585,02** pour le
+strictement même paquet quand une perte de 20 % a été déclarée (rapport de
+tâche 8, `agent/src/opus.rs`, tests `une_perte_declaree_change_reellement_l_encodage`
+et la mesure d'énergie côté décodeur). Cette différence ne peut avoir
+qu'une seule cause : `packet_loss_perc` fait réellement coder du LBRR
+(redondance intra-trame), et ce LBRR est réellement décodable — sans quoi
+l'énergie reconstruite serait nulle dans les deux cas. C'est une preuve
+directe du mécanisme, pas une inférence.
+
+Le critère du brief (débit sensiblement > 128 kb/s comme signature du FEC)
+était, lui, **faux comme test** — pas ambigu, faux — et ce document le
+démontre déjà au point 2 ci-dessus : sous un débit cible **fixe**, LBRR ne
+s'ajoute pas aux octets envoyés, il redistribue le budget existant entre
+trames SILK/hybride (`compute_silk_rate_for_hybrid`, tracé au rapport de
+tâche 8). Un FEC actif et un FEC inactif produisent donc, sous ce mode de
+débit, des totaux d'octets du même ordre de grandeur par construction —
+l'absence de sursaut de débit ne dit donc **rien** sur l'état du FEC, dans
+un sens comme dans l'autre. Chercher la signature attendue par le brief
+revenait à tester une prédiction qui ne découle pas du mécanisme réel de
+l'encodeur.
+
+**Verdict retenu** : la question qui compte — le FEC in-band est-il
+opérant sur ce chantier — est tranchée **positivement et de façon décisive**
+par la preuve mécanistique de la tâche 8, qui porte sur le codec lui-même et
+ne dépend d'aucune condition de session (contrairement au débit mesuré, qui
+dépend du contenu audio, du profil réseau, et de la fenêtre d'observation).
+Les observations de cette section (pas de coupure, perte réellement
+transmise à l'encodeur jusqu'à 6,4 % pendant la session mesurée) sont
+cohérentes avec cette conclusion sans la contredire. **Tenue** — la
+requalification porte sur le raisonnement qui relie le critère à la
+propriété, pas sur un chiffre remesuré : aucune nouvelle mesure n'a été
+prise pour ce changement de verdict, la preuve citée est celle déjà établie
+par la tâche 8.
 
 ## §4 Non-régression LAN — chiffres avant et après
 
