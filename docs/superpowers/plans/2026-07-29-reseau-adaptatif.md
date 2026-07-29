@@ -1337,6 +1337,20 @@ implémentation :
     /// L'horodatage n'est pas réinitialisé : `last_pts_90k` est conservé, le
     /// décodeur du navigateur rejetterait un retour en arrière.
     pub fn set_encode_size(&mut self, width: u32, height: u32) -> Result<()> {
+        // La source est définitivement épuisée : `capture` peut valoir `None`
+        // pour de bon (voir le commentaire du champ), et `capture_mut()`
+        // paniquerait. Une panique ici traverserait `spawn_blocking` et
+        // emporterait tout le processus — alors que le transport, lui, sait
+        // quoi faire d'une erreur : il garde le barreau courant et poursuit
+        // la session jusqu'à sa clôture normale. Une `Err` et non un `Ok(())`
+        // feint, qui masquerait une source morte.
+        //
+        // En tête de fonction, avant toute autre chose : le contrôleur
+        // appelle cette méthode depuis une boucle qui tourne chaque seconde.
+        if self.fatal {
+            anyhow::bail!("source épuisée : taille d'encodage inchangée");
+        }
+
         let (width, height) = (width.max(2) & !1, height.max(2) & !1);
         if (width, height) == self.encoder.encode_size() {
             return Ok(());
