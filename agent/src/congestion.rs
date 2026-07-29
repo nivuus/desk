@@ -122,9 +122,6 @@ pub struct Hysteresis {
     vise: Option<(usize, Instant)>,
     /// Instant du dernier changement retenu.
     dernier_changement: Instant,
-    /// Instant de la dernière fois qu'on est revenu au barreau courant ou de
-    /// l'initialisation. Utilisé comme point de référence pour les délais.
-    moment_reference: Instant,
 }
 
 impl Hysteresis {
@@ -136,16 +133,14 @@ impl Hysteresis {
             // démarrage : la toute première adaptation ne doit pas attendre
             // 5 s de plus que sa propre condition.
             dernier_changement: now - SEJOUR_MINIMAL,
-            moment_reference: now,
         }
     }
 
     pub fn observer(&mut self, vise: usize, now: Instant) -> Option<usize> {
         if vise == self.courant {
             // Retour au barreau courant : toute intention de changement en
-            // cours est annulée, et le moment de référence redémarre.
+            // cours est annulée.
             self.vise = None;
-            self.moment_reference = now;
             return None;
         }
 
@@ -155,8 +150,8 @@ impl Hysteresis {
         let depuis = match self.vise {
             Some((precedent, depuis)) if precedent == vise => depuis,
             _ => {
-                self.vise = Some((vise, self.moment_reference));
-                self.moment_reference
+                self.vise = Some((vise, now));
+                now
             }
         };
 
@@ -272,49 +267,69 @@ mod tests {
 
     #[test]
     fn descendre_exige_deux_secondes_sous_le_barreau() {
-        let mut h = Hysteresis::new(0, t0());
+        // Base liée UNE SEULE FOIS : `t0()` rend un instant neuf à chaque
+        // appel, et des assertions posées sur des bornes exactes (2,000 s)
+        // deviendraient instables à quelques microsecondes près.
+        let base = t0();
+        let mut h = Hysteresis::new(0, base);
 
-        // À 1,9 s, pas encore.
-        assert_eq!(h.observer(1, t0() + Duration::from_millis(1900)), None);
-        // À 2,0 s, on descend.
-        assert_eq!(h.observer(1, t0() + Duration::from_millis(2000)), Some(1));
+        // Première observation du barreau 1 : le décompte DÉMARRE ici, il ne
+        // s'est encore rien écoulé.
+        assert_eq!(h.observer(1, base + Duration::from_millis(1900)), None);
+        // 1,999 s après le début du décompte : pas encore.
+        assert_eq!(h.observer(1, base + Duration::from_millis(3899)), None);
+        // 2,000 s pile : on descend.
+        assert_eq!(h.observer(1, base + Duration::from_millis(3900)), Some(1));
     }
 
     #[test]
     fn un_repit_remet_le_compteur_de_descente_a_zero() {
-        let mut h = Hysteresis::new(0, t0());
+        let base = t0();
+        let mut h = Hysteresis::new(0, base);
 
-        assert_eq!(h.observer(1, t0() + Duration::from_millis(1900)), None);
-        // Une seule observation revenue au barreau courant annule la descente.
-        assert_eq!(h.observer(0, t0() + Duration::from_millis(1950)), None);
-        // Le compteur repart de 1950 ms : à 3000 ms il n'y a qu'1,05 s.
-        assert_eq!(h.observer(1, t0() + Duration::from_millis(3000)), None);
-        assert_eq!(h.observer(1, t0() + Duration::from_millis(3960)), Some(1));
+        assert_eq!(h.observer(1, base + Duration::from_millis(1900)), None);
+        // Une seule observation revenue au barreau courant annule le décompte.
+        assert_eq!(h.observer(0, base + Duration::from_millis(1950)), None);
+        // Le décompte repart de zéro à 3000 ms.
+        assert_eq!(h.observer(1, base + Duration::from_millis(3000)), None);
+        // 1,9 s après ce nouveau départ : toujours pas.
+        assert_eq!(h.observer(1, base + Duration::from_millis(4900)), None);
+        // 2,0 s après : cette fois oui.
+        assert_eq!(h.observer(1, base + Duration::from_millis(5000)), Some(1));
     }
 
     #[test]
     fn remonter_exige_dix_secondes_et_non_deux() {
-        // Départ au barreau 1, temps de séjour déjà écoulé.
-        let mut h = Hysteresis::new(1, t0());
-        let depart = t0() + Duration::from_secs(10);
+        let base = t0();
+        // Départ au barreau 1 : `new` place le dernier changement dans le
+        // passé, donc le temps de séjour n'entrave pas ce test.
+        let mut h = Hysteresis::new(1, base);
 
-        assert_eq!(h.observer(0, depart + Duration::from_millis(9900)), None);
-        assert_eq!(h.observer(0, depart + Duration::from_millis(10_000)), Some(0));
+        assert_eq!(h.observer(0, base + Duration::from_millis(2000)), None);
+        // 2,0 s après le début du décompte : une DESCENTE aurait basculé ici.
+        // Une remontée, non — c'est tout l'objet de ce test.
+        assert_eq!(h.observer(0, base + Duration::from_millis(3999)), None);
+        // 9,999 s : toujours pas.
+        assert_eq!(h.observer(0, base + Duration::from_millis(11_999)), None);
+        // 10,000 s pile : on remonte.
+        assert_eq!(h.observer(0, base + Duration::from_millis(12_000)), Some(0));
     }
 
     #[test]
     fn le_temps_de_sejour_bloque_un_second_changement_trop_proche() {
-        let mut h = Hysteresis::new(0, t0());
+        let base = t0();
+        let mut h = Hysteresis::new(0, base);
 
-        // Première descente à 2 s.
-        assert_eq!(h.observer(1, t0() + Duration::from_secs(2)), Some(1));
+        // Première descente : décompte démarré à 0, retenu à 2,0 s.
+        assert_eq!(h.observer(1, base), None);
+        assert_eq!(h.observer(1, base + Duration::from_millis(2000)), Some(1));
 
-        // La condition de descente vers 2 est remplie 2 s plus tard (t = 4 s),
-        // mais le temps de séjour de 5 s depuis le changement l'interdit.
-        assert_eq!(h.observer(2, t0() + Duration::from_secs(4)), None);
-        assert_eq!(h.observer(2, t0() + Duration::from_millis(6900)), None);
-        // À t = 7 s, les 5 s de séjour sont écoulées ET la condition tient
-        // depuis plus de 2 s.
-        assert_eq!(h.observer(2, t0() + Duration::from_secs(7)), Some(2));
+        // La condition de descente vers 2 est remplie 2 s plus tard, mais le
+        // temps de séjour de 5 s depuis le dernier changement l'interdit.
+        assert_eq!(h.observer(2, base + Duration::from_millis(2001)), None);
+        assert_eq!(h.observer(2, base + Duration::from_millis(4001)), None);
+        // À 7,000 s : 5,0 s de séjour écoulées ET la condition tient depuis
+        // 4,999 s. Les deux verrous sont levés.
+        assert_eq!(h.observer(2, base + Duration::from_millis(7000)), Some(2));
     }
 }
