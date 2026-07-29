@@ -61,11 +61,34 @@ impl OpusEncoder {
         // partir de la suivante. Sur un lien quelconque, c'est ce qui évite
         // les micro-coupures audibles.
         inner.set_inband_fec(true).context("activation du FEC in-band")?;
+        // libopus ne produit de redondance LBRR que si le pourcentage de perte
+        // déclaré est strictement positif. On démarre avec une valeur faible qui
+        // sera probablement ajustée par le contrôleur de transport selon les
+        // conditions du réseau.
+        inner
+            .set_packet_loss_perc(5)
+            .context("réglage du taux de perte initial pour le FEC")?;
         // DTX : le silence numérique retombe à 1 octet par trame en régime
         // établi (mesuré). Sans lui, il coûterait 3 octets — l'encodage à
         // débit variable dépense déjà peu. Le gain est modeste, le coût nul.
         inner.set_dtx(true).context("activation du DTX")?;
         Ok(Self { inner })
+    }
+
+    /// Déclare à l'encodeur le taux de perte observé sur le lien, en pour
+    /// cent.
+    ///
+    /// **C'est ce réglage qui rend le FEC in-band opérant.** `set_inband_fec`
+    /// seul ne fait qu'autoriser la redondance LBRR ; libopus ne l'émet que si
+    /// une perte non nulle est déclarée. Sans cet appel, le FEC activé à la
+    /// construction ne produit rien.
+    ///
+    /// La valeur est bornée à [0, 100] : libopus refuse le reste avec une
+    /// erreur opaque, et l'appelant n'a pas à connaître cette borne.
+    pub fn set_packet_loss_perc(&mut self, perc: i32) -> Result<()> {
+        self.inner
+            .set_packet_loss_perc(perc.clamp(0, 100))
+            .context("réglage du taux de perte déclaré à Opus")
     }
 
     /// Encode exactement une trame de 10 ms.
@@ -193,6 +216,54 @@ mod tests {
         assert!(
             queue.iter().all(|&t| t <= 8),
             "en régime établi, une trame de silence doit tenir en quelques octets, obtenu : {queue:?}"
+        );
+    }
+
+    #[test]
+    fn le_pourcentage_de_perte_est_borne_et_relu() {
+        let mut enc = OpusEncoder::new().expect("encodeur");
+
+        enc.set_packet_loss_perc(0).expect("0 accepté");
+        enc.set_packet_loss_perc(25).expect("25 accepté");
+
+        // Hors bornes : borné plutôt que refusé. Le contrôleur borne déjà,
+        // mais cette fonction est publique et ne doit pas laisser passer une
+        // valeur que libopus rejetterait avec une erreur opaque.
+        enc.set_packet_loss_perc(-5).expect("valeur négative bornée");
+        enc.set_packet_loss_perc(300).expect("valeur excessive bornée");
+    }
+
+    #[test]
+    fn une_perte_declaree_grossit_les_paquets_encodes() {
+        // Preuve que le FEC n'est plus inerte : à contenu identique, déclarer
+        // de la perte fait produire des paquets plus gros, la redondance LBRR
+        // étant alors réellement émise.
+        //
+        // Un signal NON silencieux est indispensable : sous DTX, le silence
+        // retombe à 1 octet par trame quoi qu'on déclare, et la mesure ne
+        // montrerait rien.
+        let pcm: Vec<i16> = (0..FRAME_INTERLEAVED)
+            .map(|i| ((i as f32 * 0.05).sin() * 8000.0) as i16)
+            .collect();
+
+        let mut sans = OpusEncoder::new().expect("encodeur");
+        let mut avec = OpusEncoder::new().expect("encodeur");
+        avec.set_packet_loss_perc(20).expect("perte déclarée");
+
+        // On mesure en régime établi : les premières trames ne sont pas
+        // représentatives (l'encodeur converge sur plusieurs dizaines de
+        // trames, constaté au chantier A pour le DTX).
+        let mut total_sans = 0usize;
+        let mut total_avec = 0usize;
+        for _ in 0..100 {
+            total_sans += sans.encode(&pcm).expect("encodage").len();
+            total_avec += avec.encode(&pcm).expect("encodage").len();
+        }
+
+        assert!(
+            total_avec > total_sans,
+            "le FEC ne produit rien : {total_avec} octets avec perte déclarée \
+             contre {total_sans} sans — set_inband_fec seul est inerte"
         );
     }
 }
