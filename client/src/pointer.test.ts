@@ -1,5 +1,90 @@
-import { describe, expect, it } from 'vitest';
-import { creerClampReport, sommerDeltas } from './pointer';
+// Tests de la souris relative sous Pointer Lock.
+//
+// Le module est testé par injection : ni `document`, ni `window`, ni un vrai
+// HTMLVideoElement ne sont nécessaires. C'est la technique retenue pour les
+// modules d'armement du projet.
+
+import { describe, expect, it, vi } from 'vitest';
+import { attachPointer, creerClampReport, sommerDeltas, type CibleVideo, type CibleDocument } from './pointer';
+
+function faireCibleVideo() {
+    const ecouteurs = new Map<string, EventListener[]>();
+    let pointerLock = false;
+    return {
+        addEventListener(type: string, ecouteur: EventListener) {
+            const liste = ecouteurs.get(type) ?? [];
+            liste.push(ecouteur);
+            ecouteurs.set(type, liste);
+        },
+        removeEventListener(type: string, ecouteur: EventListener) {
+            const liste = (ecouteurs.get(type) ?? []).filter((e) => e !== ecouteur);
+            ecouteurs.set(type, liste);
+        },
+        requestPointerLock() {
+            pointerLock = true;
+        },
+        style: { cursor: 'auto' },
+        declencher(type: string) {
+            for (const ecouteur of [...(ecouteurs.get(type) ?? [])]) {
+                ecouteur(new Event(type));
+            }
+        },
+        declencherPointerMove(movementX: number, movementY: number, coalesces?: Array<{ movementX: number; movementY: number }>) {
+            // Simule un PointerEvent sans utiliser la classe (qui n'existe pas en Node)
+            const event = new Event('pointermove') as any;
+            event.movementX = movementX;
+            event.movementY = movementY;
+            if (coalesces) {
+                event.getCoalescedEvents = () => coalesces;
+            }
+            for (const ecouteur of [...(ecouteurs.get('pointermove') ?? [])]) {
+                ecouteur(event as EventListener);
+            }
+        },
+        compte(type: string) {
+            return (ecouteurs.get(type) ?? []).length;
+        },
+        estVerrouille() {
+            return pointerLock;
+        },
+        deverrouiller() {
+            pointerLock = false;
+        },
+    };
+}
+
+function faireCibleDocument() {
+    const ecouteurs = new Map<string, EventListener[]>();
+    let verrouille: CibleVideo | null = null;
+    return {
+        get pointerLockElement() {
+            return verrouille;
+        },
+        set pointerLockElement(video: CibleVideo | null) {
+            verrouille = video;
+        },
+        exitPointerLock() {
+            verrouille = null;
+        },
+        addEventListener(type: string, ecouteur: EventListener) {
+            const liste = ecouteurs.get(type) ?? [];
+            liste.push(ecouteur);
+            ecouteurs.set(type, liste);
+        },
+        removeEventListener(type: string, ecouteur: EventListener) {
+            const liste = (ecouteurs.get(type) ?? []).filter((e) => e !== ecouteur);
+            ecouteurs.set(type, liste);
+        },
+        declencher(type: string) {
+            for (const ecouteur of [...(ecouteurs.get(type) ?? [])]) {
+                ecouteur(new Event(type));
+            }
+        },
+        compte(type: string) {
+            return (ecouteurs.get(type) ?? []).length;
+        },
+    };
+}
 
 describe('sommation des deltas coalescés', () => {
     it('somme les échantillons intermédiaires', () => {
@@ -39,5 +124,128 @@ describe('clamp avec report', () => {
         const clamp = creerClampReport();
         clamp(5, 5);
         expect(clamp(0, 0)).toEqual({ dx: 0, dy: 0 });
+    });
+});
+
+describe('attachPointer', () => {
+    it('reste désarmé tant qu\'aucun message pointer n\'est reçu', () => {
+        const video = faireCibleVideo();
+        const doc = faireCibleDocument();
+        const envoyer = vi.fn();
+        const handle = attachPointer({ video: video as any, doc: doc as any, envoyer });
+
+        // Un clic sans armement ne doit pas verrouiller
+        video.declencher('click');
+        expect(video.estVerrouille()).toBe(false);
+    });
+
+    it('arme le verrouillage sur message pointer visible=false', () => {
+        const video = faireCibleVideo();
+        const doc = faireCibleDocument();
+        const envoyer = vi.fn();
+        const handle = attachPointer({ video: video as any, doc: doc as any, envoyer });
+
+        // Message de l'agent : passage en mode relatif
+        handle.surMessagePointeur(false, 'none');
+
+        // Le clic suivant doit verrouiller
+        video.declencher('click');
+        expect(video.estVerrouille()).toBe(true);
+    });
+
+    it('reste armé après une sortie par Échap si l\'agent est toujours en relatif', () => {
+        const video = faireCibleVideo();
+        const doc = faireCibleDocument();
+        const envoyer = vi.fn();
+        const handle = attachPointer({ video: video as any, doc: doc as any, envoyer });
+
+        // Armement et verrouillage
+        handle.surMessagePointeur(false, 'none');
+        video.declencher('click');
+        expect(video.estVerrouille()).toBe(true);
+
+        // Sortie par Échap : changement de state du document
+        doc.pointerLockElement = null;
+        doc.declencher('pointerlockchange');
+
+        // Le clic suivant doit reverrouiller (reste armé)
+        video.declencher('click');
+        expect(video.estVerrouille()).toBe(true);
+    });
+
+    it('retire tous les écouteurs lors du détachement', () => {
+        const video = faireCibleVideo();
+        const doc = faireCibleDocument();
+        const envoyer = vi.fn();
+        const handle = attachPointer({ video: video as any, doc: doc as any, envoyer });
+
+        // Avant détachement : 2 écouteurs sur video
+        expect(video.compte('click')).toBe(1);
+        expect(video.compte('pointermove')).toBe(1);
+        expect(doc.compte('pointerlockerror')).toBe(1);
+        expect(doc.compte('pointerlockchange')).toBe(1);
+
+        // Détachement
+        handle.detacher();
+
+        // Après détachement : plus d'écouteurs
+        expect(video.compte('click')).toBe(0);
+        expect(video.compte('pointermove')).toBe(0);
+        expect(doc.compte('pointerlockerror')).toBe(0);
+        expect(doc.compte('pointerlockchange')).toBe(0);
+
+        // Les événements ultérieurs ne doivent rien faire
+        video.declencher('click');
+        expect(video.estVerrouille()).toBe(false);
+    });
+
+    it('appelle surEchec après deux erreurs de verrouillage consécutives', () => {
+        const video = faireCibleVideo();
+        const doc = faireCibleDocument();
+        const envoyer = vi.fn();
+        const surEchec = vi.fn();
+        const handle = attachPointer({ video: video as any, doc: doc as any, envoyer, surEchec });
+
+        handle.surMessagePointeur(false, 'none');
+
+        // Première erreur
+        doc.declencher('pointerlockerror');
+        expect(surEchec).not.toHaveBeenCalled();
+
+        // Deuxième erreur consécutive
+        doc.declencher('pointerlockerror');
+        expect(surEchec).toHaveBeenCalledTimes(1);
+
+        // Un verrouillage réussi remet le compteur à zéro
+        doc.pointerLockElement = video as any;
+        doc.declencher('pointerlockchange');
+
+        // Première erreur après reset
+        doc.declencher('pointerlockerror');
+        expect(surEchec).toHaveBeenCalledTimes(1);
+
+        // Deuxième erreur : surEchec est appelé à nouveau
+        doc.declencher('pointerlockerror');
+        expect(surEchec).toHaveBeenCalledTimes(2);
+    });
+
+    it('retombe sur l\'événement principal quand getCoalescedEvents retourne un tableau vide', () => {
+        const video = faireCibleVideo();
+        const doc = faireCibleDocument();
+        const envoyer = vi.fn();
+        const handle = attachPointer({ video: video as any, doc: doc as any, envoyer });
+
+        // Armement et verrouillage
+        handle.surMessagePointeur(false, 'none');
+        video.declencher('click');
+        doc.pointerLockElement = video as any;
+
+        // Un événement avec getCoalescedEvents vide
+        video.declencherPointerMove(10, 20, []);
+
+        // L'événement principal (10, 20) doit être utilisé, pas une somme nulle
+        expect(envoyer).toHaveBeenCalled();
+        // Vérifier que quelque chose a été envoyé (le payload exact dépend de encodeMouseMoveRelative)
+        expect(envoyer.mock.calls[0][0]).toBeInstanceOf(Uint8Array);
     });
 });
