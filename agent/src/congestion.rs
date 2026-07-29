@@ -172,6 +172,187 @@ impl Hysteresis {
     }
 }
 
+/// Part de l'estimation qu'on s'autorise à consommer.
+///
+/// Les 10 % restants laissent la place aux retransmissions RTX et aux paquets
+/// de sondage que le sous-système BWE émet pour tester à la hausse. Viser
+/// 100 % de l'estimation, c'est garantir de la dépasser.
+const MARGE: f32 = 0.9;
+
+/// Écart relatif en dessous duquel on ne reconfigure pas le débit. Sans lui,
+/// une estimation qui frémit ferait écrire l'encodeur à chaque seconde.
+const ECART_MINIMAL_DEBIT: f32 = 0.10;
+
+/// Plafond du pourcentage de perte déclaré à Opus. Au-delà, la redondance
+/// LBRR coûte plus de débit qu'elle n'en sauve.
+const PERTE_MAX_OPUS: i32 = 25;
+
+/// Réglages figés d'une session.
+#[derive(Debug, Clone, Copy)]
+pub struct Config {
+    /// Plafond de débit vidéo, en bits par seconde (variable `BITRATE`).
+    /// Sert aussi de valeur de repli quand aucune estimation n'arrive.
+    pub plafond_bps: u32,
+    /// Budget réservé à la piste audio, retiré de l'estimation.
+    pub audio_bps: u32,
+    /// Taille de la source capturée, sommet de l'échelle.
+    pub source: (u32, u32),
+    pub fps: u32,
+}
+
+/// Ce que le transport observe, une fois par seconde.
+#[derive(Debug, Clone, Copy)]
+pub struct Observation {
+    /// Estimation de bande passante sortante. `None` tant qu'aucune n'est
+    /// arrivée — cas normal au démarrage, cas permanent si TWCC n'est pas
+    /// négocié.
+    pub estimate_bps: Option<u32>,
+    /// Non consommé par la décision : journalisé par `transport.rs` pour que
+    /// la recette dispose du RTT vu par l'agent, à confronter à celui que le
+    /// navigateur rapporte.
+    pub rtt: Option<Duration>,
+    /// Fraction de paquets perdus, entre 0 et 1.
+    pub loss: Option<f32>,
+    pub at: Instant,
+}
+
+/// État du lien tel qu'on l'annonce à l'utilisateur.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Qualite {
+    /// Barreau le plus haut.
+    Bonne,
+    /// Résolution réduite : l'utilisateur doit savoir pourquoi l'image a molli.
+    Degradee,
+    /// Plancher atteint. On ne dégrade plus — on le dit.
+    Insuffisante,
+}
+
+/// Le contrôleur reçoit-il de quoi s'asservir ?
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Adaptation {
+    Active,
+    /// Aucune estimation n'est jamais arrivée. Le débit reste au plafond, et
+    /// ce fait doit être annoncé — un silence ressemblerait à « tout va bien ».
+    Indisponible,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Decision {
+    pub video_bitrate_bps: u32,
+    pub encode_size: (u32, u32),
+    pub opus_loss_perc: i32,
+    pub qualite: Qualite,
+    pub adaptation: Adaptation,
+}
+
+pub struct Controleur {
+    config: Config,
+    echelle: Echelle,
+    hysteresis: Hysteresis,
+    courant: Decision,
+    /// Vrai dès la première estimation reçue.
+    estimation_vue: bool,
+}
+
+impl Controleur {
+    pub fn new(config: Config, now: Instant) -> Self {
+        let echelle = Echelle::depuis(config.source, config.fps);
+        let courant = Decision {
+            video_bitrate_bps: config.plafond_bps,
+            encode_size: echelle.barreaux()[0].taille,
+            opus_loss_perc: 0,
+            qualite: Qualite::Bonne,
+            adaptation: Adaptation::Indisponible,
+        };
+        Self {
+            config,
+            echelle,
+            hysteresis: Hysteresis::new(0, now),
+            courant,
+            estimation_vue: false,
+        }
+    }
+
+    /// Décision actuellement appliquée. Sert au démarrage, avant toute
+    /// observation, et à alimenter le message d'état du lien.
+    pub fn courant(&self) -> Decision {
+        self.courant
+    }
+
+    pub fn observer(&mut self, o: Observation) -> Option<Decision> {
+        let Some(estimate) = o.estimate_bps else {
+            // Sans estimation, rien à asservir. On ne touche à rien et on ne
+            // produit aucune décision : le débit de repli est déjà celui
+            // posé à la construction.
+            return None;
+        };
+        self.estimation_vue = true;
+
+        // Part vidéo : marge de sécurité, moins le budget audio, borné au
+        // plafond. `saturating_sub` : une estimation plus basse que le seul
+        // budget audio ne doit pas déborder.
+        let disponible = ((estimate as f32 * MARGE) as u32)
+            .saturating_sub(self.config.audio_bps)
+            .min(self.config.plafond_bps);
+
+        let vise = self.echelle.barreau_finance(disponible);
+        if let Some(nouveau) = self.hysteresis.observer(vise, o.at) {
+            self.courant.encode_size = self.echelle.barreaux()[nouveau].taille;
+        }
+
+        let dernier = self.echelle.barreaux().len() - 1;
+        let barreau_applique = self
+            .echelle
+            .barreaux()
+            .iter()
+            .position(|b| b.taille == self.courant.encode_size)
+            .unwrap_or(0);
+
+        let qualite = if barreau_applique == dernier
+            && disponible < self.echelle.barreaux()[dernier].min_bps
+        {
+            Qualite::Insuffisante
+        } else if barreau_applique > 0 {
+            Qualite::Degradee
+        } else {
+            Qualite::Bonne
+        };
+
+        let perte = o
+            .loss
+            .map(|l| ((l * 100.0).round() as i32).clamp(0, PERTE_MAX_OPUS))
+            .unwrap_or(self.courant.opus_loss_perc);
+
+        let debit_change = ecart_relatif(self.courant.video_bitrate_bps, disponible)
+            >= ECART_MINIMAL_DEBIT;
+        let change = debit_change
+            || qualite != self.courant.qualite
+            || perte != self.courant.opus_loss_perc
+            || self.courant.adaptation != Adaptation::Active
+            || self.courant.encode_size != self.echelle.barreaux()[barreau_applique].taille;
+
+        if debit_change {
+            self.courant.video_bitrate_bps = disponible;
+        }
+        self.courant.qualite = qualite;
+        self.courant.opus_loss_perc = perte;
+        self.courant.adaptation = Adaptation::Active;
+
+        change.then_some(self.courant)
+    }
+}
+
+/// Écart relatif entre deux débits, rapporté au plus grand des deux pour
+/// rester symétrique — sinon une division par un `avant` nul exploserait, et
+/// une hausse de 1 à 2 ne pèserait pas comme une baisse de 2 à 1.
+fn ecart_relatif(avant: u32, apres: u32) -> f32 {
+    let max = avant.max(apres);
+    if max == 0 {
+        return 0.0;
+    }
+    (avant as f32 - apres as f32).abs() / max as f32
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -332,5 +513,140 @@ mod tests {
         // À 7,000 s : 5,0 s de séjour écoulées ET la condition tient depuis
         // 4,999 s. Les deux verrous sont levés.
         assert_eq!(h.observer(2, base + Duration::from_millis(7000)), Some(2));
+    }
+
+    fn config() -> Config {
+        Config {
+            plafond_bps: 12_000_000,
+            audio_bps: 128_000,
+            source: (1920, 1080),
+            fps: 60,
+        }
+    }
+
+    fn obs(estimate_bps: Option<u32>, loss: Option<f32>, at: Instant) -> Observation {
+        Observation { estimate_bps, rtt: None, loss, at }
+    }
+
+    #[test]
+    fn sans_estimation_le_debit_reste_au_plafond_et_l_adaptation_est_indisponible() {
+        let base = t0();
+        let mut c = Controleur::new(config(), base);
+        let d = c.courant();
+
+        assert_eq!(d.video_bitrate_bps, 12_000_000);
+        assert_eq!(d.encode_size, (1920, 1080));
+        assert_eq!(d.adaptation, Adaptation::Indisponible);
+        assert_eq!(d.qualite, Qualite::Bonne);
+
+        // Cent observations sans estimation ne changent rien et ne
+        // produisent aucune décision.
+        for i in 0..100 {
+            let at = base + Duration::from_millis(i * 100);
+            assert_eq!(c.observer(obs(None, None, at)), None);
+        }
+        assert_eq!(c.courant().adaptation, Adaptation::Indisponible);
+    }
+
+    #[test]
+    fn la_premiere_estimation_rend_l_adaptation_active() {
+        let base = t0();
+        let mut c = Controleur::new(config(), base);
+        let d = c
+            .observer(obs(Some(9_000_000), None, base + Duration::from_secs(1)))
+            .expect("la première estimation doit produire une décision");
+
+        assert_eq!(d.adaptation, Adaptation::Active);
+        // 9 Mb/s × 0,9 − 128 kb/s d'audio = 7,972 Mb/s.
+        assert_eq!(d.video_bitrate_bps, 7_972_000);
+        // 7,97 Mb/s finance encore le barreau 0 (minimum 6,2 Mb/s).
+        assert_eq!(d.encode_size, (1920, 1080));
+        assert_eq!(d.qualite, Qualite::Bonne);
+    }
+
+    #[test]
+    fn le_debit_ne_bouge_pas_pour_moins_de_dix_pour_cent_d_ecart() {
+        let base = t0();
+        let mut c = Controleur::new(config(), base);
+        c.observer(obs(Some(9_000_000), None, base + Duration::from_secs(1)))
+            .expect("première décision");
+
+        // +5 % : sous le seuil, aucune décision.
+        assert_eq!(
+            c.observer(obs(Some(9_450_000), None, base + Duration::from_secs(3))),
+            None
+        );
+        // +20 % : au-delà du seuil, décision produite.
+        assert!(c
+            .observer(obs(Some(10_800_000), None, base + Duration::from_secs(5)))
+            .is_some());
+    }
+
+    #[test]
+    fn le_debit_ne_depasse_jamais_le_plafond() {
+        let base = t0();
+        let mut c = Controleur::new(config(), base);
+        let d = c
+            .observer(obs(Some(80_000_000), None, base + Duration::from_secs(1)))
+            .expect("décision");
+        assert_eq!(d.video_bitrate_bps, 12_000_000, "le plafond BITRATE doit borner");
+    }
+
+    #[test]
+    fn une_contrainte_durable_fait_descendre_un_barreau_et_marque_la_degradation() {
+        let base = t0();
+        let mut c = Controleur::new(config(), base);
+        c.observer(obs(Some(9_000_000), None, base + Duration::from_secs(1)));
+
+        // 5 Mb/s : sous le minimum du barreau 0 (6,2 Mb/s). Il faut 2 s.
+        let mut derniere = None;
+        for i in 10..40 {
+            let at = base + Duration::from_millis(i * 200);
+            if let Some(d) = c.observer(obs(Some(5_000_000), None, at)) {
+                derniere = Some(d);
+            }
+        }
+        let d = derniere.expect("une décision devait tomber");
+        assert_ne!(d.encode_size, (1920, 1080), "la résolution devait descendre");
+        assert_eq!(d.qualite, Qualite::Degradee);
+    }
+
+    #[test]
+    fn sous_le_plancher_la_qualite_est_declaree_insuffisante() {
+        let base = t0();
+        let mut c = Controleur::new(config(), base);
+        c.observer(obs(Some(9_000_000), None, base + Duration::from_secs(1)));
+
+        let mut derniere = None;
+        for i in 10..200 {
+            let at = base + Duration::from_millis(i * 200);
+            if let Some(d) = c.observer(obs(Some(300_000), None, at)) {
+                derniere = Some(d);
+            }
+        }
+        let d = derniere.expect("une décision devait tomber");
+        assert_eq!(d.qualite, Qualite::Insuffisante);
+        // On est descendu au dernier barreau, pas plus bas : la cadence n'est
+        // jamais sacrifiée automatiquement.
+        let echelle = Echelle::depuis((1920, 1080), 60);
+        assert_eq!(d.encode_size, echelle.barreaux().last().unwrap().taille);
+    }
+
+    #[test]
+    fn la_perte_est_convertie_en_pourcentage_et_plafonnee_a_vingt_cinq() {
+        let base = t0();
+        let mut c = Controleur::new(config(), base);
+
+        let d = c
+            .observer(obs(Some(9_000_000), Some(0.03), base + Duration::from_secs(1)))
+            .expect("décision");
+        assert_eq!(d.opus_loss_perc, 3);
+
+        // 60 % de perte : plafonné à 25, au-delà duquel la redondance coûte
+        // plus qu'elle ne sauve.
+        let d = c
+            .observer(obs(Some(9_000_000), Some(0.60), base + Duration::from_secs(3)))
+            .expect("décision");
+        assert_eq!(d.opus_loss_perc, 25);
     }
 }
