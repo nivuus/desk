@@ -219,3 +219,287 @@ sudo scripts/netem.sh off
 scripts/stop-agent.sh
 git checkout agent/src/transport.rs
 ```
+
+---
+
+## §2 Recette par profil (tâche 12)
+
+**Contexte de la mesure** : VM Windows démarrée, agent compilé en `release`
+(recompilé sur la VM au début de cette tâche pour couvrir le changement de
+`transport.rs` de la tâche 10, jamais vérifié sur la VM jusqu'ici — compile
+sans erreur, 3 avertissements `dead_code` préexistants). Contenu vidéo :
+`C:\dev\anim.html` (carré animé en continu, garantit un flux constant).
+Contenu audio (nécessaire uniquement pour la propriété FEC, profil `4g`) :
+lecture en boucle de `C:\Windows\Media\Alarm01.wav` via une tâche planifiée
+dédiée (`audio-loop.ps1`, voir §6) — sans cela, le flux audio capturé par le
+loopback WASAPI système est resté quasi silencieux (≈1 kb/s) pendant toute la
+recette, faussant toute mesure du débit audio. Client de mesure : Chrome
+headless piloté par CDP, deux instruments :
+- `client/recette/probe-link.mjs` (créé pour cette tâche — voir §6) :
+  échantillonne `#status` (texte de l'indicateur) et `#stats` (overlay) toutes
+  les 2 s pendant ~65-75 s, pour observer l'évolution de la résolution/du
+  débit/du texte d'alerte sous profil constant.
+- `client/recette/harness.mjs latency` : latence tactile→photon, méthode du
+  chantier 0.
+
+**Discipline de mesure imposée par un piège découvert en cours de tâche** :
+une tentative de connexion sur un agent déjà utilisé une fois reste bloquée en
+`connectionState=new` indéfiniment (aucune erreur, juste rien ne se passe).
+Il faut redémarrer l'agent (`stop-agent.sh` puis `run-agent.sh`) avant
+**chaque** tentative de connexion, pas seulement une fois par profil comme le
+brief le suggérait. Voir §6 pour le détail.
+
+| Grandeur | `adsl` (8 Mb/s, 30 ms ±5, 0 % perte) | `4g` (10 Mb/s, 60 ms ±20, 1 % perte) | `congestionné` (3 Mb/s, 100 ms ±20, 3 % perte) | `effondrement` (500 kb/s, 150 ms ±30, 5 % perte) |
+| --- | --- | --- | --- | --- |
+| **Estimation BWE atteinte** | 538 210 – 7 056 620 b/s | 454 073 – 6 200 485 b/s | 182 490 – 2 638 438 b/s | 129 931 – 843 808 b/s (dépasse ponctuellement le débit posé — sondage BWE normal, sans effet sur le débit réellement appliqué, voir §3.1) |
+| **Débit d'encodage retenu** (overlay, plage observée) | ≈0,16 – 5,9 Mb/s | ≈0,03 – 1,19 Mb/s | ≈0,02 – 2,56 Mb/s | ≈0,01 – 0,43 Mb/s |
+| **Barreau atteint et instants des changements** (depuis connexion) | 764×484 → **508×322 @ +18,0 s** → **382×242 @ +39,0 s** → **764×484 @ +67,0 s** | Deux trajectoires mesurées, non identiques (voir §3.2) : session A (sans audio) 764×484 → **382×242 @ +12 s** puis stable ; session B (avec audio) 764×484 → **508×322 @ +5,9 s** → **382×242 @ +13,9 s** → **610×386 @ +47,9 s** | 764×484 → **508×322 @ +7,1 s** → **382×242 @ +14,1 s**, stable ensuite | 764×484 → **382×242 @ +4,6 s** (saut direct au plancher), stable ensuite |
+| **Changements de barreau en 60 s** | 2 dans les 60 premières secondes, un 3ᵉ à 67 s (une fenêtre glissante démarrant à t≈8 s en capture 3) | Session A : 1. Session B : 3 dans les 60 premières secondes | 2, tous deux dans les 60 premières secondes, puis stable | 1 |
+| **Latence médiane** (harnais tactile→photon) | **non mesurée** — harnais non exécuté sous ce profil faute de temps (voir §6) ; proxy overlay (« ≈ », non équivalent) : ≈44–58 ms au barreau réduit, jusqu'à ≈460 ms pendant les transitions | 201,0 ms bruts (6/10 essais) — **valeur peu fiable** : l'échantillon contient une lecture négative aberrante (−1518,2 ms, artefact de méthode, voir §6) ; hors cette valeur, médiane des 5 restants = 215,6 ms | 261,8 ms bruts (6/10 essais), même artefact ; hors valeur aberrante (5 restants) = 286,5 ms | 513,7 ms (3/8 essais seulement — faible rendement, cohérent avec un lien à 500 kb/s) |
+| **Débit d'images** | non mesuré en continu (pas de passage `harness.mjs stats` dédié sous ce profil, voir §6) ; lectures ponctuelles de l'overlay 40–92 i/s | non mesuré en continu ; lectures ponctuelles 0–90 i/s (0 pendant les paliers de tampon) | non mesuré en continu ; lectures ponctuelles 0–266 i/s (rafales de rattrapage après vidage de tampon) | non mesuré en continu ; lectures ponctuelles majoritairement à 0 i/s, rafales jusqu'à ≈200 i/s |
+| **Texte de l'indicateur** | `WxH, X Mb/s` (Bonne) ↔ `Image réduite par le réseau — WxH, X Mb/s` (Degradee) ; **jamais** « Réseau insuffisant » | `Image réduite par le réseau — …` ↔ `Réseau insuffisant pour le jeu nerveux — …`, alternance cohérente avec le barreau/débit courant | idem 4g, alternance cohérente, majoritairement « Réseau insuffisant » en fin de fenêtre | **« Réseau insuffisant pour le jeu nerveux »** dès +14 s, reste affiché **sans interruption** jusqu'à la fin de la fenêtre (+68 s) — jamais de retour au vert |
+
+## §3 Verdict sur les quatre propriétés attendues
+
+### 3.1 Le débit suit — **TENUE**
+
+Sur les quatre profils, le débit d'encodage réellement retenu (colonne
+« Débit d'encodage retenu » ci-dessus) est resté sous le plafond posé par
+`netem`, marge comprise, à chaque relevé. La seule valeur qui dépasse le
+débit posé est l'**estimation BWE brute** sous `effondrement` (843 808 b/s
+pour un lien à 500 kb/s) — ce n'est pas une violation de la propriété : le
+sondage à la hausse fait partie du fonctionnement normal d'un algorithme de
+type GCC (il teste la capacité disponible), et `Controleur` n'applique jamais
+l'estimation brute telle quelle (`MARGE` = 0,9, plus le calcul du barreau
+financé) — le débit *appliqué* correspondant, lu à l'overlay au même
+instant, est resté ≤0,43 Mb/s, bien en dessous des 500 kb/s. Distinction
+vérifiée sur les quatre profils, pas seulement supposée.
+
+### 3.2 La résolution descend et remonte sans battre — **PARTIELLE**
+
+**Découverte structurante de cette tâche** : la première mesure sous `adsl`
+(avant tout ajustement) a montré **4 changements de barreau en 49 s**
+(764→508→382→764→508), très au-delà du « au plus deux » attendu. Preuve
+tracée dans le journal de l'agent : une remontée au barreau plein
+(`taille d'encodage changée largeur=764 hauteur=484` à 16:24:09.545Z) est
+suivie, **une seconde plus tard**, d'un effondrement de l'estimation BWE
+d'un facteur ×10 en une seule observation
+(`estimation=Some(6639480)` à 16:24:10 puis `estimation=Some(619982)` à
+16:24:11) — cohérent avec l'image clé que le changement de résolution
+déclenche lui-même, interprétée par l'estimateur comme une surcharge. La
+remontée suivante retombe alors 5,0 s plus tard, pile le plancher
+`SEJOUR_MINIMAL`.
+
+**Correctif appliqué** (voir §5) : `DELAI_REMONTEE` porté de 10 s à 20 s.
+Remesuré sous le même profil `adsl` : **2 changements dans les 60 premières
+secondes** (amélioration nette par rapport aux 4 précédents), mais un
+**3ᵉ change survient à +67 s** — une fenêtre glissante de 60 s démarrant
+juste avant le premier changement (t≈8 s) capture les trois. Sous `4g`,
+deux sessions mesurées donnent des résultats différents : 1 changement dans
+une session, 3 dans l'autre (764→508→382→610 en 48 s). Sous `congestionné`
+et `effondrement`, la propriété est en revanche solidement tenue (2 et 1
+changement respectivement, tous dans les 60 premières secondes, puis stable).
+
+**Verdict, sans arrondir** : le correctif réduit réellement l'oscillation
+(rythme des changements sous `adsl` environ divisé par deux) et la propriété
+est proprement tenue sous les deux profils les plus sévères
+(`congestionné`, `effondrement`). Mais sous `adsl` et `4g` — les profils où
+l'estimation oscille le plus près des seuils de barreau — une lecture stricte
+« aucune fenêtre de 60 s ne doit voir plus de deux changements » n'est **pas**
+systématiquement respectée. D'où **partielle**, pas tenue : le chantier a
+amélioré la situation sans l'avoir complètement résolue, et l'échantillon
+(une à deux sessions par profil) est trop court pour trancher si un nouvel
+allongement de `DELAI_REMONTEE` réglerait le reste ou si la cause (BWE
+perturbé par les images clés du contrôleur lui-même) demande un remède
+différent (voir réserves, §6).
+
+### 3.3 L'indicateur dit vrai — **TENUE**
+
+C'est la propriété la mieux établie par cette recette, et la plus
+importante : sous `effondrement`, l'indicateur affiche « Réseau insuffisant
+pour le jeu nerveux » dès +14 s et **le garde affiché sans interruption
+jusqu'à la fin de la fenêtre observée (+68 s)** — jamais de retour au vert
+pendant que le lien reste saturé. Sous `congestionné`, la même alerte
+apparaît et alterne de façon cohérente avec « Image réduite par le réseau »
+selon que le barreau courant est ou non le plancher de l'échelle. Sous `4g`,
+même comportement. Sous `adsl` — le profil le moins sévère des quatre —
+l'indicateur ne déclenche **jamais** « Réseau insuffisant », alternant
+seulement « Bonne » et « Image réduite » : comportement cohérent avec un lien
+à 8 Mb/s qui n'atteint jamais le plancher de l'échelle. Aucune session,
+sur aucun profil, n'a laissé l'indicateur au vert alors que le lien était
+dégradé.
+
+### 3.4 Le FEC opère — **PARTIELLE / signature attendue non confirmée**
+
+Mesuré sous `4g` (1 % de perte), avec audio réel (voir §6 sur la nécessité
+d'un correctif de méthode ici). Trois résultats, à ne pas arrondir :
+
+1. **Pas de coupure totale** : le flux audio n'a jamais cessé — octets et
+   paquets reçus ont continué de croître sur toute la fenêtre mesurée
+   (25-30 s), sans palier à zéro. Mais « pas de coupure **audible** » n'a
+   **pas été vérifié par une écoute humaine** dans le budget de cette tâche
+   — seul un proxy automatique est disponible : 22 `concealmentEvents` /
+   11 573 `concealedSamples` sur 25 s (≈240 ms d'audio dissimulé au total sur
+   25 s, soit ≈1 % du temps), un taux modeste mais non nul.
+2. **La signature de débit attendue par le brief n'apparaît pas** : débit
+   audio mesuré ≈118,9–120,6 kb/s sur deux relevés de 25-30 s — **au niveau
+   du débit nominal de 128 kb/s, pas sensiblement au-dessus**. Ce résultat
+   n'est PAS attribué à un FEC inopérant : il **corrobore exactement** la
+   découverte de la tâche 8 (« sous un débit cible fixe, LBRR ne s'ajoute
+   pas aux octets, il les redistribue » — `docs/.../2026-07-28-*` et le
+   rapport de tâche 8), qui avait déjà réfuté l'hypothèse d'une inflation de
+   débit comme preuve du FEC. Le brief de cette tâche 12 reprenait
+   pourtant cette hypothèse sans la corriger — écart signalé ici plutôt que
+   silencieusement corrigé.
+3. **`fecPacketsReceived` s'est révélé être la mauvaise métrique** :
+   toujours à 0 sur la session mesurée, malgré 23 paquets perdus. Investigué
+   avant d'écrire une conclusion hâtive : ce compteur `getStats()` mesure une
+   famille de FEC RTP **séparée** (RED/ulpfec, des paquets FEC distincts),
+   pas la redondance encodée **à l'intérieur** de chaque trame Opus (LBRR).
+   Sa valeur nulle ne prouve donc **ni** que le FEC in-band est inactif
+   **ni** qu'il fonctionne — ce n'est simplement pas le bon canal
+   d'observation pour ce mécanisme.
+4. **Ce qui est établi indirectement** : le journal de l'agent montre des
+   valeurs de perte réellement transmises au calcul du taux (`perte` dans
+   les lignes `observation réseau`) allant jusqu'à 6,4 % pendant cette
+   session — largement de quoi déclencher `set_packet_loss_perc` avec une
+   valeur non nulle côté encodeur Opus. Combiné à la preuve **décisive** déjà
+   apportée par la tâche 8 au niveau décodeur (reconstruction LBRR mesurée
+   par énergie : 0,00 sans perte déclarée contre 585,02 avec, sur un
+   décodeur neuf), il y a de bonnes raisons de penser que la redondance a
+   réellement été codée pendant cette session — mais ce n'est pas une preuve
+   directe **de cette session précise**, seulement une inférence à partir
+   d'une preuve mécanistique établie ailleurs.
+
+**Verdict** : le critère précis demandé par le brief (débit audio
+sensiblement supérieur au nominal) n'est **pas** observé, pour une raison
+déjà connue du projet et non liée à un défaut de cette tâche. La propriété
+n'est ni clairement tenue ni clairement fausse au vu des preuves
+disponibles : **partielle**, avec le détail ci-dessus plutôt qu'un verdict
+binaire qui masquerait la nuance.
+
+## §4 Non-régression LAN — chiffres avant et après
+
+**Référence pré-chantier** (`plans/2026-07-28-debit-latence.md`) :
+**62,6 i/s** et médiane **47,9 ms**.
+
+**Après ce chantier** (agent avec `DELAI_REMONTEE` = 20 s, mesuré sur cette
+même VM) :
+
+| Mesure | Valeurs relevées | Seuil | Verdict |
+| --- | --- | --- | --- |
+| Débit (images décodées), 6 passages indépendants, 20-25 s chacun | 50,75 · 54,63 · 55,53 · 55,68 · 56,60 · 62,70 i/s — **moyenne 56,0, médiane 55,6** | ≥ 55 i/s | Tendance centrale au-dessus du seuil ; 2 des 6 passages individuels en dessous |
+| Latence médiane (tactile→photon), 12 essais, 8 exploitables | **48,2 ms** (min 43,2, max 73,1) | < 50 ms | Franchi |
+
+**Verdict, sans arrondir** : la tendance centrale (moyenne et médiane) des
+six mesures de débit franchit le seuil, tout comme la latence. Mais le
+débit n'est **pas** uniformément ≥55 i/s : deux passages sur six (50,75 et
+54,63 i/s) sont en dessous. Deux constats permettent de ne pas imputer cet
+écart au chantier :
+- **Aucun changement de barreau n'a été observé dans aucune des sessions LAN
+  mesurées** (0 ligne `taille d'encodage changée` sur l'ensemble des
+  journaux LAN capturés) — le contrôleur de congestion, `DELAI_REMONTEE`
+  compris, n'est **jamais engagé** sous ce profil : l'estimation BWE reste
+  systématiquement bien au-dessus du plafond de 12 Mb/s (11,6–20,5 Mb/s
+  observés), donc aucun mécanisme de ce chantier ne peut expliquer la
+  variance mesurée.
+- **La machine hôte était sous forte charge** pendant toute la recette :
+  `uptime` a relevé une charge moyenne d'environ **15,5 sur 8 cœurs
+  physiques** (la VM Windows réclame à elle seule 14 vCPU). Cette
+  contention affecte directement la mesure (décodage Chrome et VM se
+  disputent le CPU), ce qui est cohérent avec des passages parfois sous le
+  seuil sans corrélation avec un changement de code.
+
+Le seuil `ESTIMATION_INITIALE_BPS` (2 500 000 b/s) n'a **pas** été ajusté :
+dans les journaux LAN capturés, l'estimation atteint 8,7–17,7 Mb/s dès la
+première ou la deuxième seconde après connexion et dépasse durablement les
+10 Mb/s en moins de 3 s — largement dans la fenêtre de mesure (20-25 s), ce
+qui exclut une convergence trop lente comme explication de la variance
+observée.
+
+**Note de méthode** : la mesure de latence (48,2 ms) a été prise **avant**
+l'ajustement de `DELAI_REMONTEE` et n'a pas été rejouée après. Elle reste
+valide sans nouvelle mesure : comme démontré ci-dessus, aucun changement de
+barreau — et donc aucun usage de `DELAI_REMONTEE` — n'est jamais survenu
+sous LAN, avant ou après l'ajustement.
+
+## §5 Réglages ajustés
+
+| Réglage | Valeur avant | Valeur après | Justification |
+| --- | --- | --- | --- |
+| `DELAI_REMONTEE` (`agent/src/congestion.rs`) | 10 s | **20 s** | Oscillation mesurée sous `adsl` (4 changements de barreau en 49 s), tracée à un effondrement ×10 de l'estimation BWE une seconde après une remontée au barreau plein — cohérent avec le coût de l'image clé que la remontée déclenche elle-même. Doublé pour exiger deux fois plus de temps de confiance avant de reprendre la pleine résolution. Remesuré : oscillation réduite (2 changements dans les 60 premières s au lieu de 4) mais pas éliminée (un 3ᵉ survient à +67 s) — voir §3.2. Test `remonter_exige_dix_secondes_et_non_deux` renommé `remonter_exige_vingt_secondes_et_non_deux` et ses bornes ajustées (19 999 ms → None, 20 000 ms → Some) ; 137/137 tests agent toujours verts, `cargo clippy` propre, recompilation VM vérifiée sans erreur. |
+| `ESTIMATION_INITIALE_BPS` (`agent/src/transport.rs`) | 2 500 000 b/s | **inchangé** | Seuils de non-régression LAN franchis sur la tendance centrale (§4) ; la clause du brief qui déclenche cet ajustement (« en dessous, ne pas continuer ») ne s'applique donc pas. Vérifié tout de même par prudence : l'estimation atteint 8,7–17,7 Mb/s en 1-3 s après connexion sous LAN, loin d'expliquer une quelconque variance de mesure. |
+| `BPP_MIN` (`agent/src/congestion.rs`) | 0,05 | **inchangé** | Aucune preuve contraire mesurée : sous `adsl` (8 Mb/s), le seuil du barreau plein pour la source captée (764×484 à 60 fps) vaut ≈1,11 Mb/s — très en dessous du débit du lien, donc pas la cause des descentes observées (celles-ci proviennent de l'instabilité de l'estimation BWE traitée ci-dessus par `DELAI_REMONTEE`, pas d'un seuil mal calibré). **Réserve honnête** : le critère du brief pour ajuster `BPP_MIN` (« l'image en pleine résolution était visiblement acceptable/dégradée ») suppose un jugement visuel qui n'a pas été fait dans cette tâche — aucune capture d'écran n'a été comparée à l'œil. La valeur est donc reconduite faute de preuve du contraire, pas confirmée par une inspection visuelle positive. `cargo test -p agent congestion` : 15/15, inchangé. |
+
+## §6 Ce que la mesure a coûté
+
+- **Faux départ (≈15 min)** : le serveur de développement Vite tournait
+  depuis 10:28, bien avant que `proto/ts/control.ts` ne soit modifié à
+  17:46 (passage à `CONTROL_VERSION = 3`, tâche 10). La première tentative
+  de vérification a donc échoué avec « version de contrôle non supportée :
+  3 » — un faux négatif, le client servait un bundle figé avec l'ancienne
+  version. Résolu en redémarrant le serveur Vite (`pkill` puis relance sur
+  le port 5173, qui s'était décalé sur 5174 lors d'une première tentative
+  de redémarrage incomplète).
+- **Piège de connexion découvert et documenté** : une tentative de connexion
+  sur un agent déjà utilisé une fois reste bloquée en `connectionState=new`
+  sans jamais échouer explicitement ni réussir. Le brief documentait déjà
+  qu'il fallait un agent neuf par profil ; cette tâche a établi qu'il en
+  faut en réalité un neuf par **tentative de connexion**, y compris entre un
+  passage `probe-link` et un passage `harness latency` sur le même profil.
+  A coûté plusieurs allers-retours avant d'être identifié avec certitude.
+- **La VM s'est arrêtée spontanément une fois**, pendant la mesure du
+  profil `congestionné` — symptôme déjà documenté dans plusieurs rapports
+  de tâches antérieures (7, 9, 12/jalon1) comme récurrent et non
+  investigué. A coûté une session de mesure ratée (deux tentatives de
+  connexion ont échoué en `ICE failed` avant que le diagnostic ne pointe
+  vers `virsh list --all` → « fermé »). Redémarrée sans perte : le profil
+  `netem` posé côté hôte (`internalBridge`/`ifb0`) a survécu au redémarrage
+  de la VM, confirmé par `tc qdisc show`.
+- **Outils jetables créés pour cette tâche**, non requis par le brief mais
+  nécessaires pour obtenir les grandeurs demandées :
+  - `client/recette/probe-link.mjs` — échantillonne `#status` et `#stats`
+    dans le temps (le harnais existant ne lisait que `#stats`, pas le texte
+    de l'indicateur nécessaire à la propriété 3).
+  - `client/recette/fec-check.mjs` — lit directement
+    `fecPacketsReceived`/`concealedSamples`/`concealmentEvents` de l'entrée
+    `inbound-rtp` audio (a permis de découvrir que `fecPacketsReceived` est
+    la mauvaise métrique pour le FEC in-band Opus, voir §3.4).
+  - `audio-loop.ps1` (sur la VM) — lecture en boucle d'un fichier `.wav`
+    système, nécessaire car le contenu vidéo (`anim.html`) ne produit aucun
+    son : sans cette source, le flux audio capturé restait quasi silencieux
+    (~1 kb/s) et rendait toute mesure de la propriété FEC vide de sens.
+    Lancé comme tâche planifiée séparée (`guacamole-audio-loop`),
+    indépendante du cycle agent/Firefox.
+  - `launch-scroll.ps1` (sur la VM) — tenté en premier pour le mode `stats`
+    du harnais existant (défilement à la molette). **Sans effet observé** :
+    0 image décodée sur 15 s malgré 51 messages de molette envoyés,
+    cohérent avec une réserve déjà consignée dans une recette antérieure
+    (`2026-07-27-jalon1-recette.md` : « la molette n'a pas reproduit d'effet
+    visible dans le harnais »). Abandonné au profit de `anim.html`
+    (animation autonome, déjà vérifiée fonctionnelle) pour toutes les
+    mesures de débit d'images de cette tâche — écart au brief qui citait
+    le harnais du chantier 0 sans préciser le contenu, assumé et documenté
+    ici plutôt que silencieusement.
+- **Limite de méthode découverte sur `harness.mjs latency`** : sous les
+  profils dégradés (`4g`, `congestionné`), le tampon de gigue dépasse
+  couramment 200-400 ms, parfois plusieurs secondes. Le harnais suppose une
+  pause de 1,5 s entre essais suffisante pour que l'état se stabilise avant
+  le prochain essai — hypothèse violée sous ces profils : au moins un essai
+  par profil dégradé a produit une latence **négative** (artefact où
+  l'échantillon « avant » d'un essai reflétait encore une transition de
+  couleur de l'essai précédent, encore en vol dans le tampon). Signalé dans
+  les tableaux ci-dessus avec la médiane recalculée hors artefact ; **non
+  corrigé** dans le budget de cette tâche — le harnais reste fiable sous
+  LAN et pour des profils où le tampon reste court.
+- **Détour d'investigation (~20 min)** sur `fecPacketsReceived` avant de
+  comprendre qu'il s'agit d'un compteur RED/ulpfec et non du FEC in-band
+  Opus — voir §3.4.
+- **Étape 5 (passage sur lien réel) non réalisée** : aucun dispositif
+  externe (ChromeOS via Pomerium, partage de connexion mobile) n'était
+  disponible dans cet environnement d'exécution pour cet agent — **non
+  mesuré**, faute d'accès matériel, pas par choix.
+- **Mesures non refaites faute de budget** : débit d'images en régime
+  continu (`harness.mjs stats`) et latence tactile→photon dédiée, sous
+  `adsl` spécifiquement — seules des lectures ponctuelles de l'overlay sont
+  disponibles pour ce profil (voir §2, cellules marquées « non mesuré »).

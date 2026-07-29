@@ -97,12 +97,31 @@ use std::time::{Duration, Instant};
 const DELAI_DESCENTE: Duration = Duration::from_secs(2);
 /// Durée pendant laquelle la condition doit tenir avant de REMONTER.
 ///
-/// Cinq fois plus long que la descente, et c'est délibéré : une estimation
+/// Dix fois plus long que la descente, et c'est délibéré : une estimation
 /// qui oscille autour d'un seuil ferait sinon battre l'encodeur, et chaque
 /// battement coûte une reconstruction du type de sortie et une image clé.
 /// On dégrade vite pour rester fluide, on restaure lentement pour rester
 /// stable.
-const DELAI_REMONTEE: Duration = Duration::from_secs(10);
+///
+/// **Ajusté de 10 s à 20 s à la tâche 12** (recette), après mesure sous le
+/// profil `adsl` (8 Mb/s, 30 ms ±5 ms, sans perte) : 4 changements de barreau
+/// observés en 49 s, alors que la propriété attendue est « au plus deux en
+/// 60 s ». Preuve tracée dans le journal de l'agent : une remontée au
+/// barreau plein (764×242 → 764×484, `taille d'encodage changée` à
+/// 16:24:09.545) est suivie, une seconde plus tard, d'un effondrement de
+/// l'estimation BWE de ×10 en une seule observation
+/// (`estimation=Some(6639480)` à 16:24:10 puis `estimation=Some(619982)` à
+/// 16:24:11) — cohérent avec l'image clé que le changement de résolution
+/// déclenche lui-même, interprétée par l'estimateur comme une surcharge. La
+/// remontée suivante retombe alors immédiatement (5,0 s plus tard, pile le
+/// plancher `SEJOUR_MINIMAL`). Doubler `DELAI_REMONTEE` exige deux fois plus
+/// de temps de confiance avant de reprendre la pleine résolution, ce qui
+/// laisse au réseau (et à l'effet de la propre image clé du contrôleur) le
+/// temps de se stabiliser avant la prochaine tentative. Remesuré après ce
+/// changement (voir le document de résultats, §5) : plus aucune régression
+/// observée sur ce point, mais l'échantillon reste court (une seule
+/// fenêtre) — voir les réserves du document de résultats.
+const DELAI_REMONTEE: Duration = Duration::from_secs(20);
 /// Durée minimale entre deux changements de barreau, quelle que soit la
 /// condition. Filet contre un aller-retour rapide autour d'un seuil.
 const SEJOUR_MINIMAL: Duration = Duration::from_secs(5);
@@ -500,7 +519,7 @@ mod tests {
     }
 
     #[test]
-    fn remonter_exige_dix_secondes_et_non_deux() {
+    fn remonter_exige_vingt_secondes_et_non_deux() {
         let base = t0();
         // Départ au barreau 1 : `new` place le dernier changement dans le
         // passé, donc le temps de séjour n'entrave pas ce test.
@@ -511,10 +530,10 @@ mod tests {
         // ici, le seuil étant atteint. Une remontée, non — c'est tout l'objet
         // de ce test.
         assert_eq!(h.observer(0, base + Duration::from_millis(4000)), None);
-        // 9,999 s : toujours pas.
-        assert_eq!(h.observer(0, base + Duration::from_millis(11_999)), None);
-        // 10,000 s pile : on remonte.
-        assert_eq!(h.observer(0, base + Duration::from_millis(12_000)), Some(0));
+        // 19,999 s : toujours pas (DELAI_REMONTEE = 20 s depuis la tâche 12).
+        assert_eq!(h.observer(0, base + Duration::from_millis(21_999)), None);
+        // 20,000 s pile : on remonte.
+        assert_eq!(h.observer(0, base + Duration::from_millis(22_000)), Some(0));
     }
 
     #[test]
