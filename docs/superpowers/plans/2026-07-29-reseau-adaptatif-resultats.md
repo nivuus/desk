@@ -402,13 +402,21 @@ débit n'est **pas** uniformément ≥55 i/s : deux passages sur six (50,75 et
   compris, n'est **jamais engagé** sous ce profil : l'estimation BWE reste
   systématiquement bien au-dessus du plafond de 12 Mb/s (11,6–20,5 Mb/s
   observés), donc aucun mécanisme de ce chantier ne peut expliquer la
-  variance mesurée.
-- **La machine hôte était sous forte charge** pendant toute la recette :
-  `uptime` a relevé une charge moyenne d'environ **15,5 sur 8 cœurs
-  physiques** (la VM Windows réclame à elle seule 14 vCPU). Cette
-  contention affecte directement la mesure (décodage Chrome et VM se
-  disputent le CPU), ce qui est cohérent avec des passages parfois sous le
-  seuil sans corrélation avec un changement de code.
+  variance mesurée. **Preuve directe**, vérifiable dans les journaux cités.
+- **La machine hôte était sous forte charge** pendant la recette : `uptime`
+  a relevé une charge moyenne d'environ **15,5 sur 8 cœurs physiques** (la
+  VM Windows réclame à elle seule 14 vCPU), ce qui est cohérent avec des
+  passages parfois sous le seuil sans corrélation avec un changement de
+  code. **Preuve indirecte, à pondérer en conséquence** : il s'agit d'une
+  **seule lecture `uptime`**, prise à un instant de la séance et non
+  horodatée précisément, jamais mise en regard de l'instant exact de chacun
+  des deux passages faibles (50,75 et 54,63 i/s) pour confirmer que la
+  charge était effectivement plus haute *pendant ces passages-là* que
+  pendant les quatre autres. Cet argument reste plausible (la charge
+  observée est structurellement présente tout du long, la VM seule dépassant
+  déjà la capacité physique de la machine) mais **n'est pas, contrairement
+  au premier constat, une démonstration** — seulement une explication
+  compatible avec les chiffres.
 
 Le seuil `ESTIMATION_INITIALE_BPS` (2 500 000 b/s) n'a **pas** été ajusté :
 dans les journaux LAN capturés, l'estimation atteint 8,7–17,7 Mb/s dès la
@@ -499,7 +507,21 @@ sous LAN, avant ou après l'ajustement.
   externe (ChromeOS via Pomerium, partage de connexion mobile) n'était
   disponible dans cet environnement d'exécution pour cet agent — **non
   mesuré**, faute d'accès matériel, pas par choix.
-- **Mesures non refaites faute de budget** : débit d'images en régime
-  continu (`harness.mjs stats`) et latence tactile→photon dédiée, sous
-  `adsl` spécifiquement — seules des lectures ponctuelles de l'overlay sont
-  disponibles pour ce profil (voir §2, cellules marquées « non mesuré »).
+- **Mesures non refaites faute de budget, deux lacunes distinctes** (voir
+  §2, cellules marquées « non mesuré ») :
+  - **Débit d'images en régime continu** (`harness.mjs stats`, seule
+    mesure produisant une moyenne soutenue sur plusieurs secondes plutôt
+    que des lectures ponctuelles) : **non mesuré sous aucun des quatre
+    profils dégradés**, pas seulement sous `adsl`. Notable précisément
+    parce que l'instrument fonctionnait de façon démontrée : les six
+    passages LAN de §4, avec le même contenu (`anim.html`), en sont la
+    preuve directe. La lacune vient donc du budget de temps consacré à
+    cette tâche, pas d'une limite technique du harnais ou du contenu de
+    test — seules des lectures ponctuelles de l'overlay (colonne « Débit
+    d'images » de §2) comblent partiellement ce trou, avec une variance
+    bien plus grande qu'une moyenne soutenue ne l'aurait montré.
+  - **Latence tactile→photon dédiée** (`harness.mjs latency`) : celle-ci a
+    bien été mesurée sous `4g`, `congestionné` et `effondrement` (voir §2
+    et les sorties brutes du rapport de tâche) — seul `adsl` en est
+    dépourvu, faute de temps, avec pour seul repère le proxy « ≈ » de
+    l'overlay (non équivalent, voir §2).
