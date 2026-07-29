@@ -2,9 +2,9 @@
 
 **Date** : 28 juillet 2026
 **Statut** : Implémenté, recette conduite le 29 juillet 2026 — voir
-`docs/superpowers/plans/2026-07-28-input-jeu-resultats.md` (4 des 5 mesures
-instrumentées atteintes sans réserve, 2 partielles pour des raisons de
-méthode de mesure documentées, Steam/TF2/Dota 2 bloqués par une
+`docs/superpowers/plans/2026-07-28-input-jeu-resultats.md` (sur les 5 mesures
+instrumentées : 2 atteintes sans réserve, 2 atteintes avec une réserve
+méthodologique déclarée, 1 partielle ; Steam/TF2/Dota 2 bloqués par une
 authentification à deux facteurs hors de portée d'un agent)
 **Portée** : Rendre les entrées utilisables par un jeu — souris relative, manette
 avec vibration, clavier complet en plein écran — et faire apparaître le curseur,

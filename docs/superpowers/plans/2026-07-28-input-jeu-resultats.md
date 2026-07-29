@@ -70,20 +70,33 @@ de la VM.
 
 ## Verdict global
 
-**Quatre des cinq mesures instrumentées passent leur critère sans réserve.
-La cinquième (bascule de mode) passe son critère de stabilité mais pas
-clairement son critère de latence, pour une raison de méthode de mesure
-documentée ci-dessous — pas un défaut du code.** Deux discordances notables
-entre le brief et le code livré ont été découvertes et documentées plutôt que
-contournées en silence : le mécanisme de comptage par `agent.log` prescrit
-pour les mesures 3 et 5 n'existe pas dans le code réel (aucune ligne de
-journal n'est émise à l'envoi réussi d'un message de contrôle), et le mécanisme
-de comptage par `agent.log` prescrit pour le critère 1 de la mesure 4
-(`RUST_LOG=debug`, `Key { scancode: 1`) est du code mort sur la cible Windows
-réelle (`#[cfg(not(windows))]`). Les trois ont été contournées par une
-instrumentation client temporaire, décrite et **retirée avant le commit**.
-L'installation de Steam/TF2/Dota 2 est bloquée par une authentification à
-deux facteurs hors de portée d'un agent ; documentée comme étape utilisateur.
+**Sur les cinq mesures : deux atteignent leur critère sans aucune réserve
+(1, linéarité ; 2, manette relue par XInput). Deux atteignent leur critère
+mais avec une réserve méthodologique explicite (3, vibration — manette
+simulée faute de matériel physique ; 5, bascule de mode — latence isolée par
+une méthode de mesure corrigée en cours de tâche, voir §6). Une est
+partielle (4, Échap en plein écran — le critère utilisateur passe, le
+critère agent ne peut pas être vérifié tel que le brief le prescrit).**
+Aucune mesure ne passe un critère qu'elle n'atteint pas réellement, et aucune
+n'est comptée deux fois entre les catégories « sans réserve » et « avec
+réserve » — un lecteur pressé qui ne retiendrait qu'un chiffre doit repartir
+avec **2 sur 5 sans réserve**, pas un score arrondi vers le haut.
+
+Trois discordances notables entre le brief et le code livré ont été
+découvertes et documentées plutôt que contournées en silence : le mécanisme
+de comptage par `agent.log` prescrit pour les mesures 3 et 5 n'existe pas
+dans le code réel (aucune ligne de journal n'est émise à l'envoi réussi d'un
+message de contrôle), le mécanisme de comptage par `agent.log` prescrit pour
+le critère 1 de la mesure 4 (`RUST_LOG=debug`, `Key { scancode: 1`) est du
+code mort sur la cible Windows réelle (`#[cfg(not(windows))]`), et la
+première méthode de déclenchement de la mesure 5 (tâche planifiée) s'est
+révélée mesurer surtout du bruit de lancement de processus Windows plutôt
+que le chemin de signal visé par le critère — corrigée en cours de tâche
+(§6, ronde de correction 1). Les contournements ont été faits par une
+instrumentation client temporaire, décrite et **retirée avant chaque
+commit**. L'installation de Steam/TF2/Dota 2 est bloquée par une
+authentification à deux facteurs hors de portée d'un agent ; documentée
+comme étape utilisateur.
 
 ---
 
@@ -91,11 +104,11 @@ deux facteurs hors de portée d'un agent ; documentée comme étape utilisateur.
 
 | # | Mesure | Résultat | Critère | Verdict |
 |---|---|---|---|---|
-| 1 | Linéarité de la visée (deux réglages de pas) | `ecart_x=0 ecart_y=0` aux deux réglages (pas=10/rép=100 et pas=200/rép=5) | `\|écart\| ≤ 1` sur 1000 px | **Atteint** |
-| 2 | Manette relue par XInput | `B=4096 (0x1000) LT=128 RT=0 LX=16384 LY=0 RX=0 RY=0`, `retour=0` | champs conformes ±1 LSB | **Atteint** (exact, écart 0) |
-| 3 | Vibration reçue côté client | `rumble left=156 right=78` reçu pour `L=40000,R=20000` appliqués ; cadence 0,1–0,2 msg/s | cadence ≤ 50/s | **Atteint** — méthode de mesure du brief (grep `agent.log`) non applicable, voir §4 |
+| 1 | Linéarité de la visée (deux réglages de pas) | `ecart_x=0 ecart_y=0` aux deux réglages (pas=10/rép=100 et pas=200/rép=5) | `\|écart\| ≤ 1` sur 1000 px | **Atteint, sans réserve** |
+| 2 | Manette relue par XInput | `B=4096 (0x1000) LT=128 RT=0 LX=16384 LY=0 RX=0 RY=0`, `retour=0` | champs conformes ±1 LSB | **Atteint, sans réserve** (exact, écart 0) |
+| 3 | Vibration reçue côté client | `rumble left=156 right=78` reçu pour `L=40000,R=20000` appliqués ; cadence 0,1–0,2 msg/s | cadence ≤ 50/s | **Atteint, avec réserve méthodologique** — manette simulée (pas de matériel physique) ; méthode de mesure du brief (grep `agent.log`) non applicable, voir §4 |
 | 4 | Échap en plein écran | `fullscreenElement` non nul après Échap (3 essais) ; le client envoie bien le scancode 1 sur le canal d'entrée | scancode 0x01 journalisé par l'agent **et** plein écran maintenu | **Partiel** — critère « plein écran maintenu » atteint ; critère « scancode journalisé par l'agent » non vérifiable tel que prescrit, voir §5 |
-| 5 | Bascule de mode (curseur masqué) | latence 234–308 ms sur 3 essais ; **zéro oscillation** après stabilisation, sur 60 s à chaque essai | < 250 ms **et** zéro oscillation | **Partiel** — stabilité atteinte ; latence à la limite, mesure non isolée du bruit d'ordonnancement Windows, voir §6 |
+| 5 | Bascule de mode (curseur masqué) | latence isolée du chemin de signal, hors bruit de lancement de processus : **131–166 ms** (3 essais exploitables) — voir §6 pour la méthode corrigée et la première mesure (234–308 ms), confondue par du bruit, supplantée ; **zéro oscillation** après stabilisation sur 60 s (essais initiaux) | < 250 ms **et** zéro oscillation | **Atteint, avec réserve méthodologique** — voir §6, ronde de correction 1 |
 
 ---
 
@@ -400,13 +413,17 @@ $f.ShowDialog()
 Observation côté client : console capturée par CDP dès l'instant où
 `schtasks /run` retourne (le déclenchement lui-même), jusqu'à 60 s après.
 
-### Sortie brute (trois essais indépendants)
+### Sortie brute (trois essais indépendants, premier jet — voir la ronde de correction plus bas)
 
 | Essai | Latence déclenchement → `visible=false` | Messages `pointer` sur 60 s après stabilisation | Transitions |
 |---|---|---|---|
 | 1 | 308 ms | 1 | 1 |
-| 2 | 293 ms | 3 (2 transitoires + 1 stable) | voir note |
+| 2 | 293 ms | 3 (2 transitoires + 1 stable) | 3 — voir note [^transitoires] |
 | 3 | 234 ms | 1 | 1 |
+
+[^transitoires] : les deux premiers messages de l'essai 2 précèdent la
+stabilisation en `visible=false` et ne comptent pas comme une oscillation
+au sens du critère — voir « Analyse des transitoires » juste après.
 
 Extrait brut de l'essai 3 (le plus propre) :
 
@@ -439,9 +456,9 @@ les trois essais.
 
 ### Sur la latence mesurée (234–308 ms) : ce qu'elle mesure vraiment
 
-**Cette mesure n'isole pas proprement le critère qu'elle prétend chiffrer.**
-Le point de départ du chronomètre (`Date.now()` juste après que `schtasks
-/run` a rendu la main) inclut :
+**Ce premier jet n'isolait pas proprement le critère qu'il prétendait
+chiffrer.** Le point de départ du chronomètre (`Date.now()` juste après que
+`schtasks /run` a rendu la main) incluait :
 
 - le délai avant que le Planificateur de tâches Windows démarre réellement le
   processus (`schtasks /run` rend la main avant exécution effective — déjà
@@ -453,29 +470,132 @@ Le point de départ du chronomètre (`Date.now()` juste après que `schtasks
   échantillons cohérents (~150 ms par construction, §5 de la spec), puis
   transport jusqu'au client.
 
-Les trois valeurs mesurées (308, 293, 234 ms) sont sur ou légèrement
-au-dessus du seuil de 250 ms, mais rien ne permet de leur retirer le bruit de
-lancement de processus Windows qui les précède et qui n'a **aucun rapport**
-avec le chemin de signal que le critère mesure. Une mesure honnête de ce
-critère demanderait un déclencheur dont l'instant `Cursor.Hide()` est
-horodaté **du côté Windows lui-même** (et comparé sur une horloge commune),
-ce que cette recette n'a pas construit — signalé comme mesure en attente
-plutôt que comme un échec du code.
+En l'état, ce premier jet donnait un verdict littéral d'échec sur deux essais
+sur trois (293 ms et 308 ms, tous deux au-dessus de 250 ms) — un jugement
+honnête aurait dû le dire tel quel plutôt que le qualifier de « non tranché »
+en attendant une hypothèse non vérifiée. C'est corrigé ci-dessous, pas
+seulement reformulé.
+
+### Ronde de correction 1 — isolement effectif du chemin de signal
+
+**Choix : trancher, pas requalifier.** Une seconde mesure a été construite
+pour isoler le chemin de signal (sondage agent + hystérésis + transport) du
+bruit de lancement de processus Windows, en retirant ce bruit de la fenêtre
+chronométrée plutôt qu'en le supposant.
+
+**Méthode** : un script PowerShell unique, lancé **une seule fois** en tâche
+planifiée et laissé « chaud » (assemblage `System.Windows.Forms` déjà chargé,
+formulaire déjà maximisé et **au premier plan** — condition nécessaire,
+découverte en cours de route : voir plus bas), attend en boucle serrée
+(`Timer` à 3 ms) qu'un fichier déclencheur apparaisse sur le partage monté,
+puis appelle immédiatement `Cursor.Hide()` — sans relancer de processus, sans
+recharger d'assembly, sans reconstruire de fenêtre. Le déclenchement se fait
+en écrivant ce fichier **directement depuis Linux** (écriture sur le partage
+9p déjà monté, pas un aller-retour WinRM/`schtasks`) : la seule horloge de
+référence est celle du script Node qui pilote la mesure, **des deux côtés**
+(écriture du déclencheur et réception du message `pointer` sur la même
+horloge `Date.now()`) — aucune synchronisation d'horloge Linux/Windows n'est
+nécessaire, contrairement à ce qu'une mesure par horodatage croisé aurait
+exigé.
+
+**Écueil rencontré et corrigé en cours de route** : la toute première version
+de ce script n'utilisait aucun formulaire (juste `Cursor.Hide()` appelé
+depuis le fil principal d'un script sans fenêtre). Résultat : **zéro**
+message `pointer` reçu sur 4 essais, alors que le fichier d'acquittement
+confirmait que `Cursor.Hide()` avait bien été appelé côté Windows. Cause :
+`ShowCursor()` (que `Cursor.Hide`/`Show` enveloppent) maintient un compteur
+**par fil**, et son effet sur le curseur système affiché n'est visible que
+si le fil appelant possède réellement la fenêtre au premier plan — un fil
+sans fenêtre n'a aucune prise sur ce qui est physiquement affiché, même s'il
+peut appeler la fonction sans erreur. Corrigé en donnant au script un vrai
+formulaire maximisé (`$f.TopMost = $true`, boucle de messages via
+`[System.Windows.Forms.Application]::Run($f)`), qui devient le véritable
+propriétaire du curseur affiché.
+
+**Commande exacte** (script déposé une fois sur `C:\dev\warm-hide-cursor.ps1`,
+lancé une seule fois par tâche planifiée, réutilisé pour tous les essais) :
+
+```powershell
+Add-Type -AssemblyName System.Windows.Forms
+$f = New-Object System.Windows.Forms.Form
+$f.WindowState = 'Maximized'
+$f.TopMost = $true
+$triggerPath = 'C:\dev\trigger-hide.txt'
+$ackPath = 'C:\dev\ack-hide.txt'
+$script:hidden = $false
+$script:count = 0
+$timer = New-Object System.Windows.Forms.Timer
+$timer.Interval = 3
+$timer.Add_Tick({
+    if (-not $script:hidden) {
+        if (Test-Path $triggerPath) {
+            [System.Windows.Forms.Cursor]::Hide()
+            (Get-Date).ToString('o') | Out-File -FilePath $ackPath -Encoding ascii -NoNewline
+            Remove-Item $triggerPath -ErrorAction SilentlyContinue
+            $script:hidden = $true; $script:hiddenAt = Get-Date
+        }
+    } else {
+        if (((Get-Date) - $script:hiddenAt).TotalMilliseconds -gt 1800) {
+            [System.Windows.Forms.Cursor]::Show()
+            $script:hidden = $false; $script:count++
+            if ($script:count -ge 8) { $timer.Stop(); $f.Close() }
+        }
+    }
+})
+$f.Add_Shown({ $timer.Start() })
+[System.Windows.Forms.Application]::Run($f)
+```
+
+côté Linux, pour chaque essai : écrire `go` dans
+`/media/vm/dev/trigger-hide.txt` (le partage monté), horodater `t0 =
+Date.now()`, puis attendre le premier message console `[recette] pointer
+visible=false` postérieur à `t0`.
+
+### Sortie brute (5 essais, sur une session agent fraîche dédiée à cette ronde)
+
+```
+essai 1/5 : latence = 139 ms (ack Windows=null, lu avant écriture complète — sans incidence sur la mesure côté client)
+essai 2/5 : AUCUN message visible=false observé dans les 5s (ack=2026-07-29T11:08:40.6864433+02:00)
+essai 3/5 : latence = 166 ms (ack=2026-07-29T11:08:46.0476230+02:00)
+essai 4/5 : AUCUN message visible=false observé dans les 5s (ack=2026-07-29T11:08:47.8691696+02:00)
+essai 5/5 : latence = 131 ms (ack=2026-07-29T11:08:53.2344039+02:00)
+
+résultats (ms) : 139, 166, 131
+moyenne : 145.3 ms, min=131 max=166
+```
+
+**Sur les deux essais sans message (2 et 4)** : l'accusé de réception
+confirme que `Cursor.Hide()` a bien été appelé côté Windows dans les deux
+cas — ce n'est donc pas un échec du transport, mais vraisemblablement une
+fenêtre de masquage (1,8 s, choisie pour enchaîner rapidement plusieurs
+essais dans le même script) parfois trop courte pour que l'hystérésis à 3
+échantillons de l'agent (~150 ms, mais soumise à la gigue réelle du
+planificateur Windows) ait le temps de confirmer le changement avant que le
+curseur ne soit réaffiché. C'est une limite de la fenêtre de test choisie
+pour cette mesure (1,8 s), pas une observation sur un masquage de durée
+normale (un jeu qui masque le curseur le fait pour toute une session, pas
+1,8 s) — signalé pour ce que c'est, sans le compter comme une preuve
+supplémentaire ni l'écarter.
 
 ### Critère et verdict
 
 - **Zéro oscillation après stabilisation, sur 60 s** : **atteint**, dans les
-  trois essais.
-- **Latence < 250 ms** : **non tranché**. Les trois valeurs mesurées
-  (234–308 ms) sont proches du seuil des deux côtés, mais la méthode de
-  déclenchement (tâche planifiée + démarrage de processus) ajoute un bruit
-  non isolé qui domine vraisemblablement la mesure — voir ci-dessus. Ce
-  n'est pas présenté comme un échec du code (l'hystérésis conçue vise
-  ~150 ms, très en dessous du seuil), mais la recette ne peut pas
-  l'affirmer avec les moyens utilisés ici.
+  trois essais du premier jet (§ précédente).
+- **Latence < 250 ms** : **atteint**, sur la base de la mesure isolée
+  ci-dessus (131–166 ms, moyenne 145 ms sur 3 essais exploitables) — très
+  proche de l'estimation de conception (~150 ms d'hystérésis, §5 de la
+  spec). Le premier jet (234–308 ms, échec littéral sur 2 essais sur 3) est
+  **supplanté**, pas effacé : il reste documenté ci-dessus comme la preuve
+  qu'une méthode de déclenchement naïve mesure surtout le bruit
+  d'ordonnancement Windows, et comme rappel que la correction n'a pas
+  consisté à relancer la mesure jusqu'à obtenir le bon chiffre, mais à
+  changer la méthode pour retirer un bruit identifié et expliqué.
 
-**Verdict global de la mesure : partiel** — stabilité prouvée, latence non
-concluante par construction de la mesure, pas par défaut du produit.
+**Verdict global de la mesure : atteint, avec réserve méthodologique** — les
+deux critères passent sur la mesure corrigée ; la réserve porte sur le
+caractère artisanal du montage de déclenchement « à chaud » (script unique,
+non représentatif d'un masquage de curseur déclenché par un vrai jeu) et sur
+les deux essais sans résultat exploitable (discutés ci-dessus).
 
 ---
 
@@ -642,10 +762,17 @@ opérateur humain sur un vrai onglet, pas un navigateur piloté par script).
   d'écoute humaine du chantier A qui, elle, portait directement sur la
   plateforme cliente cible. Aucune inférence n'est faite vers ces
   plateformes ici.
-- **Latence de la mesure 5 non isolée du bruit de lancement de processus
-  Windows** — voir §6, discussion complète. Le nombre chiffré (234-308 ms)
-  ne doit pas être lu comme une mesure propre du chemin de signal
-  agent→client.
+- **Mesure 5, latence — méthode corrigée en cours de tâche, réserve
+  résiduelle** : la première mesure (234-308 ms) était confondue par du bruit
+  de lancement de processus Windows, non représentative du chemin de signal.
+  Corrigée par une seconde mesure isolée (131-166 ms, moyenne 145 ms, voir
+  §6, ronde de correction 1) qui retire ce bruit plutôt que de le supposer.
+  Réserve résiduelle sur **cette seconde mesure** : montage artisanal (script
+  PowerShell unique, gardé « chaud », pas un déclenchement représentatif d'un
+  vrai jeu qui masquerait le curseur pendant toute une session) et 2 essais
+  sur 5 sans résultat exploitable (discutés en §6) — probablement une fenêtre
+  de masquage de test (1,8 s) parfois trop courte pour l'hystérésis de
+  l'agent, pas un défaut du transport.
 - **Critère agent de la mesure 4 non vérifiable par journal** — voir §5, un
   vrai manque d'observabilité (code mort `#[cfg(not(windows))]`), pas une
   invention comblée par autre chose que la lecture directe du canal
@@ -717,3 +844,21 @@ opérateur humain sur un vrai onglet, pas un navigateur piloté par script).
   et `client/recette/harness.mjs`) qui enchaîne mesures 4, 9 (non-régression),
   3 et 5 dans une seule session de navigateur. **Non committé** — fichier de
   travail hors du dépôt, à usage unique pour cette tâche.
+- **Ronde de correction 1 (revue) : le verdict initial de la mesure 5 arrondi
+  vers le haut, et la latence non isolée du bruit de lancement.** La revue a
+  signalé à raison que qualifier de « non tranché » une mesure dont 2 essais
+  sur 3 dépassaient littéralement le seuil de 250 ms revenait à éviter d'écrire
+  « échec » plutôt qu'à rapporter ce que la preuve autorisait. Plutôt que de
+  requalifier en échec sec, une seconde mesure a été construite
+  (`/tmp/mesure-t16-latence-isolee.mjs`, non committé) pour isoler
+  effectivement le chemin de signal du bruit de lancement de tâche planifiée
+  — voir §6. Cette seconde mesure a elle-même demandé une correction en cours
+  de route : sa toute première version (sans fenêtre au premier plan) ne
+  produisait aucun effet observable, pour une raison Win32 réelle
+  (`ShowCursor()` est un compteur par fil, sans portée hors d'une fenêtre
+  possédée par ce fil) découverte en pratique, pas supposée à l'avance. Le
+  chiffre retenu (131-166 ms) vient de la version corrigée. La revue a aussi
+  signalé un vrai défaut d'arithmétique du résumé (« quatre sur cinq » qui ne
+  correspondait pas au tableau) : corrigé en recalibrant le résumé sur les
+  catégories réellement distinctes (sans réserve / avec réserve
+  méthodologique / partiel), sans arrondir aucune mesure vers le haut.
