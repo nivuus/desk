@@ -198,3 +198,52 @@ Préexiste. Ne concerne pas cette implémentation.
 ✅ **Tous les tests passent (7/7)**
 ✅ **Pas de modifications non nécessaires**
 ✅ **Logique de délai asymétrique validée**
+
+---
+
+## Correction supplémentaire (par le coordinateur)
+
+### Problème détecté dans le test d'asymétrie
+
+Le test `remonter_exige_dix_secondes_et_non_deux` contenait une assertion qui ne prouvait **pas réellement** l'asymétrie:
+
+```rust
+assert_eq!(h.observer(0, base + Duration::from_millis(3999)), None);
+// 2,0 s après le début du décompte : une DESCENTE aurait basculé ici.
+// Une remontée, non — c'est tout l'objet de ce test.
+```
+
+**Raison**: À 3999ms depuis `depuis = base + 2000ms`, l'intervalle écoulé est **1999ms < 2000ms = DELAI_DESCENTE**. Donc même une descente n'aurait pas basculé. L'assertion passait pour la "mauvaise" raison (ni descente ni remontée n'auraient basculé), sans réellement prouver l'asymétrie.
+
+### Correction appliquée
+
+Remplacer 3999 par 4000:
+
+```rust
+assert_eq!(h.observer(0, base + Duration::from_millis(4000)), None);
+// 2,0 s pile après le début du décompte : une DESCENTE aurait basculé
+// ici, le seuil étant atteint. Une remontée, non — c'est tout l'objet
+// de ce test.
+```
+
+À 4000ms depuis `depuis`, l'intervalle est **exactement 2000ms = DELAI_DESCENTE**. Donc:
+- Une descente aurait basculé (délai atteint) ✓
+- Une remontée n'a pas basculé (attend 10s) ✓
+- L'asymétrie est **prouvée** ✓
+
+### Sortie des tests après correction
+
+```bash
+$ cargo test -p agent congestion 2>&1
+
+running 7 tests
+test congestion::tests::descendre_exige_deux_secondes_sous_le_barreau ... ok
+test congestion::tests::echelle_minuscule_sans_doublons ... ok
+test congestion::tests::l_echelle_a_quatre_barreaux_decroissants_et_pairs ... ok
+test congestion::tests::le_barreau_finance_est_le_plus_haut_que_le_debit_paie ... ok
+test congestion::tests::le_temps_de_sejour_bloque_un_second_changement_trop_proche ... ok
+test congestion::tests::remonter_exige_dix_secondes_et_non_deux ... ok
+test congestion::tests::un_repit_remet_le_compteur_de_descente_a_zero ... ok
+
+test result: ok. 7 passed; 0 failed
+```

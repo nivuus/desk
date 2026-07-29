@@ -306,9 +306,10 @@ mod tests {
         let mut h = Hysteresis::new(1, base);
 
         assert_eq!(h.observer(0, base + Duration::from_millis(2000)), None);
-        // 2,0 s après le début du décompte : une DESCENTE aurait basculé ici.
-        // Une remontée, non — c'est tout l'objet de ce test.
-        assert_eq!(h.observer(0, base + Duration::from_millis(3999)), None);
+        // 2,0 s pile après le début du décompte : une DESCENTE aurait basculé
+        // ici, le seuil étant atteint. Une remontée, non — c'est tout l'objet
+        // de ce test.
+        assert_eq!(h.observer(0, base + Duration::from_millis(4000)), None);
         // 9,999 s : toujours pas.
         assert_eq!(h.observer(0, base + Duration::from_millis(11_999)), None);
         // 10,000 s pile : on remonte.
