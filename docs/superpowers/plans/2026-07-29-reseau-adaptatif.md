@@ -968,9 +968,16 @@ impl Controleur {
             .min(self.config.plafond_bps);
 
         let vise = self.echelle.barreau_finance(disponible);
+        // Capturé avant/après la bascule : c'est le SEUL signal fiable d'un
+        // changement de résolution effectif. Sans lui, une descente de barreau
+        // qui survient alors que ni le débit ni la qualité n'ont bougé depuis
+        // la dernière décision ne serait jamais notifiée — `observer` rendrait
+        // `None` à l'instant précis où la résolution change.
+        let taille_avant = self.courant.encode_size;
         if let Some(nouveau) = self.hysteresis.observer(vise, o.at) {
             self.courant.encode_size = self.echelle.barreaux()[nouveau].taille;
         }
+        let resolution_changee = self.courant.encode_size != taille_avant;
 
         let dernier = self.echelle.barreaux().len() - 1;
         let barreau_applique = self
@@ -980,11 +987,20 @@ impl Controleur {
             .position(|b| b.taille == self.courant.encode_size)
             .unwrap_or(0);
 
-        let qualite = if barreau_applique == dernier
-            && disponible < self.echelle.barreaux()[dernier].min_bps
-        {
+        // La qualité doit refléter l'ÉTAT RÉEL de l'image, pas seulement le
+        // barreau appliqué. Le débit est réglé immédiatement, alors que
+        // l'hystérésis retarde la résolution de 2 s : pendant cette fenêtre,
+        // un contrôleur qui ne regarderait que `barreau_applique`
+        // annoncerait « Bonne » en encodant du 1080p60 à 142 kb/s — l'inverse
+        // exact de ce que l'indicateur doit dire à l'utilisateur.
+        let qualite = if disponible < self.echelle.barreaux()[dernier].min_bps {
+            // Plus rien n'est finançable, quel que soit le barreau appliqué.
             Qualite::Insuffisante
-        } else if barreau_applique > 0 {
+        } else if barreau_applique > 0
+            || disponible < self.echelle.barreaux()[barreau_applique].min_bps
+        {
+            // Résolution déjà réduite, OU débit qui ne soutient plus la
+            // résolution courante : la dégradation est en cours.
             Qualite::Degradee
         } else {
             Qualite::Bonne
@@ -998,10 +1014,10 @@ impl Controleur {
         let debit_change = ecart_relatif(self.courant.video_bitrate_bps, disponible)
             >= ECART_MINIMAL_DEBIT;
         let change = debit_change
+            || resolution_changee
             || qualite != self.courant.qualite
             || perte != self.courant.opus_loss_perc
-            || self.courant.adaptation != Adaptation::Active
-            || self.courant.encode_size != self.echelle.barreaux()[barreau_applique].taille;
+            || self.courant.adaptation != Adaptation::Active;
 
         if debit_change {
             self.courant.video_bitrate_bps = disponible;
