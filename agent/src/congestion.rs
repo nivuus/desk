@@ -91,6 +91,92 @@ impl Echelle {
     }
 }
 
+use std::time::{Duration, Instant};
+
+/// Durée pendant laquelle la condition doit tenir avant de DESCENDRE.
+const DELAI_DESCENTE: Duration = Duration::from_secs(2);
+/// Durée pendant laquelle la condition doit tenir avant de REMONTER.
+///
+/// Cinq fois plus long que la descente, et c'est délibéré : une estimation
+/// qui oscille autour d'un seuil ferait sinon battre l'encodeur, et chaque
+/// battement coûte une reconstruction du type de sortie et une image clé.
+/// On dégrade vite pour rester fluide, on restaure lentement pour rester
+/// stable.
+const DELAI_REMONTEE: Duration = Duration::from_secs(10);
+/// Durée minimale entre deux changements de barreau, quelle que soit la
+/// condition. Filet contre un aller-retour rapide autour d'un seuil.
+const SEJOUR_MINIMAL: Duration = Duration::from_secs(5);
+
+/// Filtre temporel asymétrique sur un indice de barreau.
+///
+/// Rend `Some(nouvel_indice)` à l'instant précis où un changement est retenu,
+/// et `None` sinon. L'appelant n'a rien à mémoriser.
+///
+/// **À ne pas confondre avec `cursor::Hysteresis`**, qui compte des
+/// observations booléennes consécutives : ici le filtre est temporel,
+/// asymétrique, et porte sur une échelle ordonnée.
+pub struct Hysteresis {
+    courant: usize,
+    /// Barreau visé de façon continue depuis `vise_depuis`, s'il diffère du
+    /// courant.
+    vise: Option<(usize, Instant)>,
+    /// Instant du dernier changement retenu.
+    dernier_changement: Instant,
+    /// Instant de la dernière fois qu'on est revenu au barreau courant ou de
+    /// l'initialisation. Utilisé comme point de référence pour les délais.
+    moment_reference: Instant,
+}
+
+impl Hysteresis {
+    pub fn new(barreau_initial: usize, now: Instant) -> Self {
+        Self {
+            courant: barreau_initial,
+            vise: None,
+            // Placé de façon à ce que le temps de séjour soit déjà écoulé au
+            // démarrage : la toute première adaptation ne doit pas attendre
+            // 5 s de plus que sa propre condition.
+            dernier_changement: now - SEJOUR_MINIMAL,
+            moment_reference: now,
+        }
+    }
+
+    pub fn observer(&mut self, vise: usize, now: Instant) -> Option<usize> {
+        if vise == self.courant {
+            // Retour au barreau courant : toute intention de changement en
+            // cours est annulée, et le moment de référence redémarre.
+            self.vise = None;
+            self.moment_reference = now;
+            return None;
+        }
+
+        // Un barreau visé DIFFÉRENT de celui déjà en cours d'observation
+        // redémarre le décompte : la condition n'a pas « tenu », elle a
+        // changé de cible.
+        let depuis = match self.vise {
+            Some((precedent, depuis)) if precedent == vise => depuis,
+            _ => {
+                self.vise = Some((vise, self.moment_reference));
+                self.moment_reference
+            }
+        };
+
+        // Indices croissants = résolutions décroissantes : viser plus grand
+        // que le courant, c'est descendre.
+        let delai = if vise > self.courant { DELAI_DESCENTE } else { DELAI_REMONTEE };
+        if now.duration_since(depuis) < delai {
+            return None;
+        }
+        if now.duration_since(self.dernier_changement) < SEJOUR_MINIMAL {
+            return None;
+        }
+
+        self.courant = vise;
+        self.vise = None;
+        self.dernier_changement = now;
+        Some(vise)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -174,5 +260,61 @@ mod tests {
         // plancher. Déclarer l'insuffisance est le rôle du contrôleur
         // (tâche 5), pas celui de l'échelle.
         assert_eq!(echelle.barreau_finance(0), barreaux.len() - 1);
+    }
+
+    use std::time::{Duration, Instant};
+
+    /// Instant de référence des tests. Placé loin dans le passé pour que
+    /// toute soustraction de durée reste valide.
+    fn t0() -> Instant {
+        Instant::now() - Duration::from_secs(3600)
+    }
+
+    #[test]
+    fn descendre_exige_deux_secondes_sous_le_barreau() {
+        let mut h = Hysteresis::new(0, t0());
+
+        // À 1,9 s, pas encore.
+        assert_eq!(h.observer(1, t0() + Duration::from_millis(1900)), None);
+        // À 2,0 s, on descend.
+        assert_eq!(h.observer(1, t0() + Duration::from_millis(2000)), Some(1));
+    }
+
+    #[test]
+    fn un_repit_remet_le_compteur_de_descente_a_zero() {
+        let mut h = Hysteresis::new(0, t0());
+
+        assert_eq!(h.observer(1, t0() + Duration::from_millis(1900)), None);
+        // Une seule observation revenue au barreau courant annule la descente.
+        assert_eq!(h.observer(0, t0() + Duration::from_millis(1950)), None);
+        // Le compteur repart de 1950 ms : à 3000 ms il n'y a qu'1,05 s.
+        assert_eq!(h.observer(1, t0() + Duration::from_millis(3000)), None);
+        assert_eq!(h.observer(1, t0() + Duration::from_millis(3960)), Some(1));
+    }
+
+    #[test]
+    fn remonter_exige_dix_secondes_et_non_deux() {
+        // Départ au barreau 1, temps de séjour déjà écoulé.
+        let mut h = Hysteresis::new(1, t0());
+        let depart = t0() + Duration::from_secs(10);
+
+        assert_eq!(h.observer(0, depart + Duration::from_millis(9900)), None);
+        assert_eq!(h.observer(0, depart + Duration::from_millis(10_000)), Some(0));
+    }
+
+    #[test]
+    fn le_temps_de_sejour_bloque_un_second_changement_trop_proche() {
+        let mut h = Hysteresis::new(0, t0());
+
+        // Première descente à 2 s.
+        assert_eq!(h.observer(1, t0() + Duration::from_secs(2)), Some(1));
+
+        // La condition de descente vers 2 est remplie 2 s plus tard (t = 4 s),
+        // mais le temps de séjour de 5 s depuis le changement l'interdit.
+        assert_eq!(h.observer(2, t0() + Duration::from_secs(4)), None);
+        assert_eq!(h.observer(2, t0() + Duration::from_millis(6900)), None);
+        // À t = 7 s, les 5 s de séjour sont écoulées ET la condition tient
+        // depuis plus de 2 s.
+        assert_eq!(h.observer(2, t0() + Duration::from_secs(7)), Some(2));
     }
 }
