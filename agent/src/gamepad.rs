@@ -1,15 +1,19 @@
-//! Manette virtuelle : ce fichier porte deux choses de nature différente.
+//! Manette virtuelle : ce fichier porte trois choses de nature différente.
 //!
 //! - Les logiques pures d'ordonnancement des états reçus (`plus_recent`) et
 //!   de limitation du débit des vibrations (`LimiteurVibration`). Rien n'y
 //!   est spécifique à Windows : elles vivent hors de tout `#[cfg(windows)]`
 //!   et se testent sur cette machine Linux.
-//! - La sonde du chantier B (`probe`, sous `#[cfg(windows)]` plus bas) :
-//!   ViGEmBus est-il utilisable, et son rappel de vibration restitue-t-il
-//!   les magnitudes ? Ce code est temporaire — la tâche 10 le remplace par
-//!   le module ViGEmBus définitif — mais reste nécessaire ici : elle est
-//!   encore appelée par `agent/src/main.rs` (`VIGEM_PROBE`), et la tâche 16
-//!   (recette) prévoit explicitement de la réutiliser.
+//! - Le module ViGEmBus définitif (`win`, sous `#[cfg(windows)]` plus bas,
+//!   tâche 10) : `VirtualPad` branche une manette Xbox 360 virtuelle et lui
+//!   applique les états reçus, `spawn_rumble` relaie ses notifications de
+//!   vibration vers le client via le canal de contrôle.
+//! - La sonde du chantier B (`probe`, tout en bas) : ViGEmBus est-il
+//!   utilisable, et son rappel de vibration restitue-t-il les magnitudes ?
+//!   **Gardée volontairement** malgré l'arrivée du module définitif : elle
+//!   reste appelée par `agent/src/main.rs` (`VIGEM_PROBE`), et la tâche 16
+//!   (recette) prévoit explicitement de la réutiliser pour relire l'état de
+//!   la manette par `XInputGetState`.
 
 use std::time::{Duration, Instant};
 
@@ -164,11 +168,289 @@ mod tests {
     }
 }
 
+/// Manette Xbox 360 virtuelle et relais de ses vibrations.
+///
+/// L'API réelle de `vigem-client` diffère de celle envisagée au brief de
+/// cette tâche sur deux points, tous deux établis empiriquement par la sonde
+/// de la tâche 1 (`probe`, plus bas dans ce fichier — voir aussi
+/// `docs/superpowers/plans/2026-07-28-input-jeu-sondes.md`) :
+///
+/// 1. Il n'existe pas de `notification.wait_timeout(Duration)`. L'usage
+///    prévu par la crate est `request_notification()` puis
+///    `spawn_thread(f)` : ce dernier consomme la requête et fait tourner la
+///    boucle requête/attente sur UN FIL DÉDIÉ créé par la crate elle-même,
+///    en rappelant `f` à chaque notification — sans délai réglable, il
+///    bloque tant qu'aucune notification n'arrive. On relaie donc chaque
+///    notification brute vers un `mpsc` propre à ce module, interrogé lui
+///    avec un délai (`recv_timeout`) pour retrouver un comportement
+///    d'attente bornée et pouvoir vérifier périodiquement l'arrêt demandé.
+/// 2. `wait_ready()` ne garantit pas qu'un `update()` immédiat réussisse :
+///    le bus USB virtuel peut ne pas avoir fini son énumération PnP côté
+///    Windows, et le premier `update()` échoue alors avec `WinError(259)`
+///    (`ERROR_NO_MORE_ITEMS`), une variante que `vigem-client` ne traduit
+///    PAS en `Error::TargetNotReady` (seul `ERROR_DEV_NOT_EXIST` l'est). Une
+///    seule reprise a suffi lors de l'unique mesure de la sonde ; n'ayant
+///    caractérisé ce comportement qu'une fois, on garde ici la même marge
+///    que la sonde (jusqu'à 20 reprises, 250 ms chacune) plutôt que le
+///    minimum observé.
+#[cfg(windows)]
+mod win {
+    use super::{plus_recent, LimiteurVibration, PERIODE_MIN};
+    use anyhow::{Context, Result};
+    use proto::control::AgentControl;
+    use proto::input::GamepadState;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::mpsc::{self, Sender};
+    use std::sync::Arc;
+    use std::thread::JoinHandle;
+    use std::time::{Duration, Instant};
+
+    /// Nombre maximal de REPRISES d'`update()` après `wait_ready()` avant
+    /// d'abandonner (donc 1 + `TENTATIVES_MAX` appels à `update()` au plus
+    /// au total) — même décompte et mêmes valeurs que la sonde de la tâche 1.
+    const TENTATIVES_MAX: u32 = 20;
+    const DELAI_TENTATIVE: Duration = Duration::from_millis(250);
+
+    /// Manette Xbox 360 virtuelle. Branchée à la PREMIÈRE réception d'un
+    /// état, jamais au démarrage : une manette présente en permanence
+    /// perturbe les applications qui réagissent à sa seule présence
+    /// (`main.rs` réalise ce branchement paresseux).
+    pub struct VirtualPad {
+        target: vigem_client::Xbox360Wired<vigem_client::Client>,
+        derniere_seq: Option<u16>,
+        // Fil interne de la crate (`spawn_thread`), rempli par
+        // `spawn_rumble`. La documentation de `XRequestNotification::
+        // spawn_thread` recommande explicitement de le joindre après que la
+        // cible a été débranchée — c'est ce que fait `Drop` ci-dessous.
+        fil_vigem: Option<JoinHandle<()>>,
+    }
+
+    impl VirtualPad {
+        /// Branche la cible et attend qu'elle accepte réellement un état,
+        /// pas seulement que `wait_ready()` le prétende (voir le point 2 du
+        /// commentaire de module). Renvoie une erreur si ViGEmBus est
+        /// absent ou reste indisponible après toutes les reprises :
+        /// `main.rs` traite cet échec comme non bloquant pour la session.
+        ///
+        /// Peut bloquer jusqu'à `TENTATIVES_MAX * DELAI_TENTATIVE` (5 s avec
+        /// les valeurs actuelles) : à appeler hors du fil qui pilote la
+        /// session (voir `spawn_connect` plus bas), jamais directement
+        /// depuis la boucle de `Session::run`.
+        pub fn connect() -> Result<Self> {
+            let client =
+                vigem_client::Client::connect().context("connexion au pilote ViGEmBus")?;
+            let mut target = vigem_client::Xbox360Wired::new(
+                client,
+                vigem_client::TargetId::XBOX360_WIRED,
+            );
+            target
+                .plugin()
+                .context("branchement de la manette virtuelle")?;
+            target
+                .wait_ready()
+                .context("attente de disponibilité")?;
+
+            // État neutre : cette première écriture ne sert qu'à confirmer
+            // que la cible accepte réellement un `update()`, pas à refléter
+            // un état de manette reçu — `derniere_seq` reste `None` après
+            // cet appel, pour ne pas se substituer au premier vrai état.
+            let neutre = vigem_client::XGamepad::default();
+            let mut tentatives = 0u32;
+            loop {
+                match target.update(&neutre) {
+                    Ok(()) => break,
+                    // Uniquement les deux variantes documentées comme
+                    // « pas encore prêt » (voir le commentaire de module) :
+                    // une erreur différente (bus absent, permission refusée,
+                    // etc.) est définitive, retenter ne changerait rien et
+                    // ferait perdre jusqu'à 5 s pour rien.
+                    Err(
+                        e @ (vigem_client::Error::WinError(259)
+                        | vigem_client::Error::TargetNotReady),
+                    ) if tentatives < TENTATIVES_MAX => {
+                        tentatives += 1;
+                        tracing::warn!(
+                            tentative = tentatives,
+                            erreur = ?e,
+                            "update() pas encore prêt, nouvelle tentative"
+                        );
+                        std::thread::sleep(DELAI_TENTATIVE);
+                    }
+                    Err(e) => {
+                        return Err(e).context(
+                            "premier envoi d'état à la manette virtuelle, après toutes les reprises",
+                        )
+                    }
+                }
+            }
+            if tentatives > 0 {
+                tracing::info!(tentatives, "update() a fini par réussir après attente");
+            }
+            tracing::info!("manette virtuelle branchée");
+            Ok(Self { target, derniere_seq: None, fil_vigem: None })
+        }
+
+        /// Applique un état reçu du client à la manette virtuelle.
+        ///
+        /// Rejette les états périmés AVANT d'atteindre le pilote : le canal
+        /// qui transporte les `GamepadState` n'est pas ordonné, un état plus
+        /// ancien arrivé après un plus récent le rétablirait sinon à tort.
+        pub fn apply(&mut self, state: &GamepadState) -> Result<()> {
+            if let Some(courante) = self.derniere_seq {
+                if !plus_recent(state.seq, courante) {
+                    return Ok(());
+                }
+            }
+
+            let gamepad = vigem_client::XGamepad {
+                buttons: vigem_client::XButtons(state.buttons),
+                left_trigger: state.left_trigger,
+                right_trigger: state.right_trigger,
+                thumb_lx: state.thumb_lx,
+                thumb_ly: state.thumb_ly,
+                thumb_rx: state.thumb_rx,
+                thumb_ry: state.thumb_ry,
+            };
+            self.target
+                .update(&gamepad)
+                .context("application de l'état de manette")?;
+            // Enregistré seulement après succès : un `update()` en échec ne
+            // doit pas marquer cette séquence comme traitée, sous peine de
+            // ne plus jamais pouvoir la réappliquer (`plus_recent` la
+            // rejetterait alors comme périmée).
+            self.derniere_seq = Some(state.seq);
+            Ok(())
+        }
+    }
+
+    /// Débranche explicitement puis joint le fil interne de la crate.
+    ///
+    /// Vérifié à l'exécution (tâche 10) : `Xbox360Wired::drop` débranche
+    /// déjà tout seul, mais le faire ICI, explicitement, avant de joindre,
+    /// garantit l'ORDRE — c'est le débranchement qui fait sortir `poll()` de
+    /// son attente côté fil interne (`Err(OperationAborted)`), donc il doit
+    /// précéder le `join`. Le débranchement automatique qui suivra (dans le
+    /// `Drop` de `Xbox360Wired`, une fois cette méthode terminée) est alors
+    /// un second appel sans effet, silencieusement ignoré comme le premier.
+    impl Drop for VirtualPad {
+        fn drop(&mut self) {
+            let _ = self.target.unplug();
+            if let Some(fil) = self.fil_vigem.take() {
+                let _ = fil.join();
+            }
+        }
+    }
+
+    /// Démarre le relais de vibration vers le client, sur son propre fil.
+    ///
+    /// Prend `&mut VirtualPad` (et pas `&VirtualPad` comme envisagé au
+    /// brief) : `request_notification()` exige un accès mutable à la cible
+    /// — conséquence directe de la vraie signature de la crate, pas un choix
+    /// arbitraire.
+    ///
+    /// Deux fils distincts collaborent ici :
+    /// - celui que la crate crée elle-même via `spawn_thread` : il tourne
+    ///   côté pilote et ne fait QUE relayer chaque notification brute dans
+    ///   un canal — jamais de logique dessus, pour ne jamais retarder le
+    ///   rappel du pilote.
+    /// - celui rendu par cette fonction : il lit ce canal avec un délai
+    ///   borné (`recv_timeout`), applique `LimiteurVibration` pour ne pas
+    ///   inonder le canal de contrôle FIABLE vers la session (l'inonder lui
+    ///   ferait accumuler du retard exactement quand le jeu vibre le plus),
+    ///   et vérifie `arret` à chaque réveil pour pouvoir s'arrêter même sans
+    ///   notification.
+    ///
+    /// Arrêt propre : ce fil se termine quand `arret` passe à vrai, quand le
+    /// canal se ferme (ce qui arrive quand `VirtualPad` est abandonné —
+    /// `Drop`, ci-dessus, débranche puis joint le fil interne, ce qui fait
+    /// sortir CELUI-CI de son attente et donc fermer ce canal), ou quand
+    /// l'envoi vers `tx` échoue (session déjà terminée côté récepteur).
+    /// Sur toute sortie autre qu'un échec d'envoi, un dernier
+    /// `AgentControl::rumble(0, 0)` est tenté : le client ne doit jamais
+    /// rester bloqué à faire vibrer une manette physique parce que la fin
+    /// de session est arrivée entre deux notifications.
+    pub fn spawn_rumble(
+        pad: &mut VirtualPad,
+        tx: Sender<AgentControl>,
+        arret: Arc<AtomicBool>,
+    ) -> Result<JoinHandle<()>> {
+        let requete = pad
+            .target
+            .request_notification()
+            .context("abonnement aux notifications de vibration")?;
+
+        let (notif_tx, notif_rx) = mpsc::channel::<vigem_client::XNotification>();
+        // Fil créé et possédé par la crate : simple relais, aucune logique.
+        // Conservé dans `VirtualPad` (et pas discrédité comme `let _ = ...`)
+        // : la documentation de `spawn_thread` recommande de le joindre
+        // après débranchement, `Drop` de `VirtualPad` s'en charge.
+        pad.fil_vigem = Some(requete.spawn_thread(move |_requete, notification| {
+            let _ = notif_tx.send(notification);
+        }));
+
+        Ok(std::thread::spawn(move || {
+            let mut limiteur = LimiteurVibration::new();
+            'relais: while !arret.load(Ordering::Relaxed) {
+                match notif_rx.recv_timeout(PERIODE_MIN) {
+                    Ok(vibration) => {
+                        let etat = (vibration.large_motor, vibration.small_motor);
+                        if let Some((gauche, droite)) = limiteur.observer(Instant::now(), etat) {
+                            if tx.send(AgentControl::rumble(gauche, droite)).is_err() {
+                                return;
+                            }
+                        }
+                    }
+                    Err(mpsc::RecvTimeoutError::Timeout) => {
+                        // Rien reçu dans la fenêtre : occasion de vider un
+                        // état différé par la limitation de débit.
+                        if let Some((gauche, droite)) = limiteur.echu(Instant::now()) {
+                            if tx.send(AgentControl::rumble(gauche, droite)).is_err() {
+                                return;
+                            }
+                        }
+                    }
+                    Err(mpsc::RecvTimeoutError::Disconnected) => break 'relais,
+                }
+            }
+            // Best-effort : le canal de contrôle peut déjà être fermé côté
+            // session (fin normale), auquel cas il n'y a de toute façon plus
+            // personne pour lire ce message.
+            let _ = tx.send(AgentControl::rumble(0, 0));
+        }))
+    }
+
+    /// Lance `VirtualPad::connect()` sur un fil dédié et renvoie un
+    /// récepteur non bloquant.
+    ///
+    /// `connect()` peut dormir jusqu'à 5 s (voir sa documentation) en cas
+    /// d'énumération PnP lente côté Windows. L'appeler directement depuis la
+    /// boucle de `Session::run` figerait vidéo ET audio pendant ce délai :
+    /// cette boucle est dimensionnée sur la cadence vidéo et les échéances
+    /// RTCP, pas sur la latence d'un pilote tiers (voir le commentaire sur
+    /// `spawn_blocking` dans `main.rs`). `main.rs` sonde ce récepteur avec
+    /// `try_recv()` à chaque état de manette reçu, sans jamais bloquer
+    /// dessus ; les états reçus pendant que la connexion est en cours sont
+    /// perdus sans conséquence, le client en réémet à 250 Hz.
+    pub fn spawn_connect() -> mpsc::Receiver<Result<VirtualPad>> {
+        let (tx, rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = tx.send(VirtualPad::connect());
+        });
+        rx
+    }
+}
+
+#[cfg(windows)]
+pub use win::{spawn_connect, spawn_rumble, VirtualPad};
+
 /// Sonde du chantier B : ViGEmBus est-il utilisable, et son rappel de
 /// vibration restitue-t-il les magnitudes ?
 ///
-/// Ce fichier est temporaire : la tâche 10 le remplace par le module
-/// définitif. Il n'existe que pour figer l'API réelle de `vigem-client`.
+/// A initialement servi à figer l'API réelle de `vigem-client` avant que la
+/// tâche 10 n'écrive `win::VirtualPad`/`win::spawn_rumble` ci-dessus. Gardée
+/// après coup, à la demande explicite du brief de la tâche 10 : `main.rs`
+/// l'appelle encore derrière `VIGEM_PROBE`, et la tâche 16 (recette) prévoit
+/// de la réutiliser pour relire l'état de la manette par `XInputGetState`.
 ///
 /// **Écart avec la forme envisagée au départ** : il n'existe pas de
 /// `notification.wait_timeout(Duration)`. L'API réelle (vérifiée sur le

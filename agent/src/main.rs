@@ -1088,6 +1088,20 @@ async fn main() -> Result<()> {
         arret_sondes.clone(),
     );
 
+    // Vrai à ce stade : ViGEmBus n'est sondé qu'au premier état de manette
+    // reçu, et l'échec éventuel enverra un second `Capabilities` à false.
+    // Annoncer l'optimisme évite d'afficher « manette indisponible » à un
+    // utilisateur qui n'en a simplement pas branché.
+    #[cfg(windows)]
+    let _ = control_tx.send(proto::control::AgentControl::capabilities(true));
+
+    // Clone dédiée au fil de transport ci-dessous (`spawn_blocking` est
+    // `move` : il faut lui donner sa propre copie de l'`Arc`, faute de quoi
+    // il capturerait `arret_sondes` en entier et la rendrait indisponible
+    // pour `arret_sondes.store(...)` après `transport.await`, plus bas).
+    #[cfg_attr(not(windows), allow(unused_variables))]
+    let arret_sondes_manette = arret_sondes.clone();
+
     // I6 : `Session::run` bloque volontairement (lecture UDP synchrone bornée
     // par la cadence vidéo et les échéances str0m). L'exécuter sur un ouvrier
     // async de tokio gèlerait les autres tâches de ce processus — ici, la
@@ -1101,7 +1115,78 @@ async fn main() -> Result<()> {
             input::InputInjector::new(hwnd, mode_relatif.clone())
         });
 
+        // Branchement paresseux : à la PREMIÈRE réception d'un état de
+        // manette, pas au démarrage — voir le commentaire de
+        // `gamepad::win::VirtualPad`. `pad_indisponible` garantit qu'on ne
+        // retente qu'une fois : au premier échec, on renonce pour le reste
+        // de la session plutôt que de retenter à chaque état reçu.
+        #[cfg(windows)]
+        let mut pad: Option<gamepad::VirtualPad> = None;
+        #[cfg(windows)]
+        let mut pad_indisponible = false;
+        // `gamepad::VirtualPad::connect()` peut dormir jusqu'à 5 s (attente
+        // de l'énumération PnP côté Windows, voir sa documentation) : on ne
+        // l'appelle donc JAMAIS directement ici, cette fermeture tournant
+        // dans la boucle de `Session::run` qui porte aussi vidéo et RTCP
+        // (voir le commentaire sur `spawn_blocking` plus haut). `spawn_connect`
+        // le fait sur un fil séparé ; ce récepteur est sondé sans bloquer.
+        #[cfg(windows)]
+        let mut connexion_manette: Option<std::sync::mpsc::Receiver<anyhow::Result<gamepad::VirtualPad>>> =
+            None;
+
         let mut on_input = |message: proto::input::InputMessage| {
+            #[cfg(windows)]
+            if let proto::input::InputMessage::Gamepad(state) = message {
+                if pad.is_none() && !pad_indisponible {
+                    let rx = connexion_manette.get_or_insert_with(gamepad::spawn_connect);
+                    match rx.try_recv() {
+                        Ok(Ok(mut nouveau)) => {
+                            match gamepad::spawn_rumble(
+                                &mut nouveau,
+                                control_tx.clone(),
+                                arret_sondes_manette.clone(),
+                            ) {
+                                Ok(_) => {}
+                                Err(e) => tracing::warn!(erreur = %e, "vibrations indisponibles"),
+                            }
+                            pad = Some(nouveau);
+                            connexion_manette = None;
+                        }
+                        Ok(Err(e)) => {
+                            // Une seule fois : `pad_indisponible` empêche tout
+                            // nouvel essai, et donc tout second envoi de
+                            // `Capabilities` pour cette session.
+                            pad_indisponible = true;
+                            connexion_manette = None;
+                            tracing::warn!(erreur = %e, "manette virtuelle indisponible");
+                            let _ = control_tx
+                                .send(proto::control::AgentControl::capabilities(false));
+                        }
+                        Err(std::sync::mpsc::TryRecvError::Empty) => {
+                            // Connexion encore en cours (jusqu'à 5 s
+                            // observées) : cet état de manette est perdu,
+                            // sans conséquence — le client en réémet un à
+                            // 250 Hz jusqu'à ce que la cible soit prête.
+                        }
+                        Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                            pad_indisponible = true;
+                            connexion_manette = None;
+                            tracing::warn!(
+                                "fil de connexion à la manette virtuelle interrompu de façon inattendue"
+                            );
+                            let _ = control_tx
+                                .send(proto::control::AgentControl::capabilities(false));
+                        }
+                    }
+                }
+                if let Some(pad) = pad.as_mut() {
+                    if let Err(e) = pad.apply(&state) {
+                        tracing::warn!(erreur = %e, "application de l'état de manette échouée");
+                    }
+                }
+                return;
+            }
+
             #[cfg(windows)]
             if let Some(injector) = injector.as_mut() {
                 if let Err(e) = injector.inject(message) {
