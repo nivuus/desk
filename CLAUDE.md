@@ -8,6 +8,55 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Guacamole is a Node.js-based remote desktop web application that provides browser-based access to Windows applications via Apache Guacamole protocol (RDP). The system creates isolated sessions for running remote Windows applications with a custom filesystem bridging client and server.
 
+## 📏 Conventions de code
+
+### Taille maximale d'un fichier : 500 lignes
+
+**Un fichier de code source ne doit pas dépasser 500 lignes.** Au-delà, le
+fichier porte plus d'une responsabilité : il faut le découper avant d'y ajouter
+quoi que ce soit.
+
+**Portée** — la règle s'applique au code source écrit à la main :
+`agent/src/`, `client/src/`, `signaling/`, `proto/`, `src/`, `web/`, `scripts/`.
+
+**Exemptions explicites** :
+
+- `docs/` — les plans, specs et recettes sont des journaux d'exécution, longs
+  par nature et non maintenus comme du code.
+- `CLAUDE.md` — ce fichier est un index de connaissances, pas du code.
+- Fichiers générés ou vendorisés : `dist/`, `target/`, `node_modules/`,
+  `*-lock.json`, `Cargo.lock`, `testdata/`.
+
+**Règle d'application** : geler la dette, pas la purger. Aucun **nouveau**
+fichier ne naît au-dessus de 500 lignes, et un fichier déjà au-dessus ne doit
+pas grossir davantage — toute addition substantielle s'accompagne d'une
+extraction. Le découpage rétroactif des fichiers ci-dessous se fait au moment
+où l'on travaille dedans, pas en chantier séparé.
+
+**Dette existante au 30 juillet 2026** (code source uniquement) :
+
+| Fichier | Lignes |
+| --- | --- |
+| `agent/src/transport.rs` | 2558 |
+| `agent/src/encode.rs` | 1480 |
+| `agent/src/main.rs` | 1342 |
+| `agent/src/congestion.rs` | 990 |
+| `agent/src/windows_source.rs` | 721 |
+| `agent/src/gamepad.rs` | 599 |
+| `agent/src/wasapi.rs` | 543 |
+
+`transport.rs` est le cas prioritaire : c'est aussi le fichier que le chantier D
+(multi-fenêtres) devra retoucher pour la répartition de capacité entre flux —
+le découpage y a une valeur réelle, pas seulement de conformité.
+
+**Vérifier l'état** :
+
+```bash
+{ git ls-files; git ls-files --others --exclude-standard; } \
+  | grep -vE 'node_modules|package-lock|Cargo.lock|/dist/|testdata/|^docs/|^CLAUDE.md' \
+  | xargs wc -l 2>/dev/null | sort -rn | awk '$1>500'
+```
+
 ## Development Commands
 
 ### Running the Application
