@@ -1339,6 +1339,7 @@ le chemin GPU en supprimant le recouvrement par construction), avec `PrintWindow
 en repli mesuré pour les fenêtres non-jeu. **Deux mesures sont bloquantes avant
 de spécifier quoi que ce soit** : le plafond de sorties virtuelles (deux clients
 appariés suffiraient) et le plafond d'encodage sur périphériques D3D11 séparés.
+Le relevé Apollo (3413×960) qui fonde cette voie n'a pas de journal joint et n'est pas reproductible sans le propriétaire du poste.
 
 ### Pièges — à connaître avant de toucher à ce terrain
 

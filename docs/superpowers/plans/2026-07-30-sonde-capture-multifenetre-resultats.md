@@ -469,6 +469,8 @@ Raisonnement :
   créneau **borné** de diagnostic RPC mérite d'être budgété — mais pas le chemin
   critique, les deux réparations bon marché étant déjà écartées.
 
+Le relevé Apollo (3413×960) qui fonde cette recommandation n'a pas de journal joint et n'est pas reproductible sans le propriétaire du poste.
+
 ### Ce que ça coûte
 
 - **Une dépendance à un pilote d'affichage indirect tiers** (SudoVDA), et
