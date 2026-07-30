@@ -121,6 +121,11 @@ impl Mires {
     /// Met la mire `dessus` par-dessus la mire `dessous`, en la déplaçant sur
     /// sa place et en la portant au premier plan. C'est la mise en scène de
     /// la porte éliminatoire : la mire recouverte doit rester capturable.
+    ///
+    /// Met aussi à jour `Fenetre.place` du côté déplacé : c'est la seule
+    /// voie exposée (`place()`) pour connaître la position d'une mire, et
+    /// une valeur périmée après recouvrement rendrait la porte éliminatoire
+    /// ininterprétable pour les tâches qui s'appuient dessus (6, 8, 9).
     pub(super) fn recouvrir(&mut self, dessus: u8, dessous: u8) -> Result<()> {
         let cible = self.place(dessous)?;
         let hwnd = self.hwnd(dessus)?;
@@ -136,6 +141,13 @@ impl Mires {
             )
         }
         .context("déplacement d'une mire par-dessus une autre")?;
+
+        let fenetre = self
+            .fenetres
+            .iter_mut()
+            .find(|f| f.id == dessus)
+            .ok_or_else(|| anyhow!("aucune mire n°{dessus}"))?;
+        fenetre.place = cible;
         Ok(())
     }
 
