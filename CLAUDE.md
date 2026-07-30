@@ -33,21 +33,21 @@ pas grossir davantage — toute addition substantielle s'accompagne d'une
 extraction. Le découpage rétroactif des fichiers ci-dessous se fait au moment
 où l'on travaille dedans, pas en chantier séparé.
 
-**Dette existante au 30 juillet 2026** (code source uniquement) :
+**Dette existante** (code source uniquement) :
 
-| Fichier | Lignes |
-| --- | --- |
-| `agent/src/transport.rs` | 2558 |
-| `agent/src/encode.rs` | 1480 |
-| `agent/src/main.rs` | 1342 |
-| `agent/src/congestion.rs` | 990 |
-| `agent/src/windows_source.rs` | 721 |
-| `agent/src/gamepad.rs` | 599 |
-| `agent/src/wasapi.rs` | 543 |
+| Fichier | Lignes | Pourquoi elle reste |
+| --- | --- | --- |
+| `agent/src/encode.rs` | 1480 | `#[cfg(windows)]`, aucun test |
+| `agent/src/windows_source.rs` | 721 | `#[cfg(windows)]`, aucun test |
+| `agent/src/wasapi.rs` | 543 | `#[cfg(windows)]`, aucun test |
 
-`transport.rs` est le cas prioritaire : c'est aussi le fichier que le chantier D
-(multi-fenêtres) devra retoucher pour la répartition de capacité entre flux —
-le découpage y a une valeur réelle, pas seulement de conformité.
+Ces trois modules ne se compilent que sur la VM et ne sont couverts par aucun
+test : les découper se ferait sans filet automatisé. La dette est assumée
+jusqu'à ce qu'ils gagnent des tests — voir
+`docs/superpowers/specs/2026-07-30-dette-taille-fichiers-design.md` §1.
+
+Les quatre fichiers que la suite de tests couvrait ont été résorbés le
+30 juillet 2026 : voir `docs/superpowers/plans/2026-07-30-dette-taille-fichiers.md`.
 
 **Vérifier l'état** :
 
@@ -967,6 +967,12 @@ virsh list --all            # « fermé » = éteinte, « en cours d'exécution 
 # Démarrer, puis attendre que WinRM réponde (~5 à 60 s)
 virsh start Windows
 until timeout 3 bash -c 'echo > /dev/tcp/192.168.3.2/5985' 2>/dev/null; do sleep 5; done
+
+# Puis attendre que le partage de fichiers soit monté : /media/vm se monte
+# après que WinRM répond, pas en même temps — un `scripts/build-agent.sh`
+# lancé dès que le port 5985 répond échoue avec « erreur : /media/vm n'est
+# pas monté » (`scripts/sync-agent.sh`, qui teste le montage, pas le port).
+until mountpoint -q /media/vm; do sleep 5; done
 
 # Arrêter proprement
 virsh shutdown Windows

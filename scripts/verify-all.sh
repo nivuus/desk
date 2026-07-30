@@ -32,13 +32,15 @@ etape "cargo test --workspace"
 cargo test --workspace || echec "cargo test --workspace"
 
 etape "cargo clippy --workspace"
-# Sans -D warnings : le workspace porte 31 avertissements dead_code
-# préexistants (vérifié : identiques avant et après le chantier B), tous dus
-# à du code compilé pour Windows ou par les tests mais invisible à un lint
-# Linux ordinaire (`geometry.rs`, `opus.rs`, `rebuild.rs`, `gamepad.rs`,
-# `cursor.rs`, `transport.rs::set_audio_source`...). Les corriger n'est pas
-# le rôle de ce script ; les masquer avec -D warnings le serait encore
-# moins — on les laisse visibles, sans bloquer sur eux.
+# Sans -D warnings : le workspace porte 33 avertissements dead_code
+# préexistants, mesurés le 30 juillet 2026 (chantier de réduction de la dette
+# de taille des fichiers) — le chiffre de 31 hérité du chantier B n'avait
+# jamais été remesuré depuis. Tous dus à du code compilé pour Windows ou par
+# les tests mais invisible à un lint Linux ordinaire (`geometry.rs`,
+# `opus.rs`, `rebuild.rs`, `gamepad.rs`, `cursor.rs`, `audio.rs`,
+# `diagnostics/entree.rs`, `transport/piste_audio.rs::set_audio_source`...).
+# Les corriger n'est pas le rôle de ce script ; les masquer avec -D warnings
+# le serait encore moins — on les laisse visibles, sans bloquer sur eux.
 cargo clippy --workspace || echec "cargo clippy --workspace"
 
 etape "client : npm test"
