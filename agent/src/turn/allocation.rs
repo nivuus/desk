@@ -50,18 +50,26 @@ pub struct TurnClient {
     serveur: SocketAddr,
     username: String,
     password: String,
-    identifiants: Option<Identifiants>,
-    cle: Option<Vec<u8>>,
+    /// Les cinq champs `pub(super)` ci-dessous sont ceux dont `canaux`, dans un
+    /// module frère, a besoin pour porter le second bloc `impl TurnClient` :
+    /// borné à `turn`, jamais `pub`. Même conduite que
+    /// `congestion::Controleur` vis-à-vis de `congestion::reconfiguration`.
+    pub(super) identifiants: Option<Identifiants>,
+    pub(super) cle: Option<Vec<u8>>,
     etat: Etat,
-    allocation: Option<Allocation>,
+    pub(super) allocation: Option<Allocation>,
     /// Requêtes prêtes à partir, dans l'ordre.
-    sortantes: std::collections::VecDeque<Vec<u8>>,
+    pub(super) sortantes: std::collections::VecDeque<Vec<u8>>,
     maintenant: Instant,
     tentatives: u8,
     /// Compteur d'identifiants de transaction. Un identifiant STUN doit être
     /// imprévisible en usage réel ; ici il doit surtout être UNIQUE, et un
     /// compteur le garantit de façon reproductible en test.
     compteur_trans: u64,
+    /// Canaux liés, du numéro vers le pair.
+    pub(super) canaux: std::collections::HashMap<u16, SocketAddr>,
+    /// Prochain numéro à attribuer, dans la plage normative.
+    pub(super) prochain_canal: u16,
 }
 
 impl TurnClient {
@@ -78,6 +86,8 @@ impl TurnClient {
             maintenant: now,
             tentatives: 0,
             compteur_trans: 0,
+            canaux: std::collections::HashMap::new(),
+            prochain_canal: super::canaux::CANAL_MIN,
         };
         client.emettre_allocation_nue();
         client
@@ -118,7 +128,8 @@ impl TurnClient {
         }
     }
 
-    fn prochain_trans_id(&mut self) -> [u8; 12] {
+    /// `pub(super)` : `canaux::lier_canal` numérote ses deux requêtes avec.
+    pub(super) fn prochain_trans_id(&mut self) -> [u8; 12] {
         self.compteur_trans += 1;
         let mut id = [0u8; 12];
         id[..8].copy_from_slice(&self.compteur_trans.to_be_bytes());
@@ -249,46 +260,11 @@ impl TurnClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::turn::fixtures::{allouee, reponse, serveur, t0, trans_id_de};
     use crate::turn::messages::{
-        ecrire_attribut, xor_adresse, ATTR_ERROR_CODE, ATTR_LIFETIME, ATTR_NONCE, ATTR_REALM,
-        ATTR_XOR_MAPPED_ADDRESS, ATTR_XOR_RELAYED_ADDRESS, MAGIC, METHODE_ALLOCATE, METHODE_REFRESH,
+        ATTR_ERROR_CODE, ATTR_NONCE, ATTR_REALM, METHODE_ALLOCATE, METHODE_REFRESH,
     };
-    use std::time::{Duration, Instant};
-
-    fn t0() -> Instant {
-        Instant::now() - Duration::from_secs(3600)
-    }
-
-    fn serveur() -> SocketAddr {
-        "192.0.2.1:3478".parse().unwrap()
-    }
-
-    /// Fabrique la réponse qu'un serveur produirait, pour piloter le client
-    /// sans réseau. C'est ce qui remplace coturn dans ces tests.
-    fn reponse(
-        methode: u16,
-        classe_succes: bool,
-        trans_id: [u8; 12],
-        attributs: &[(u16, Vec<u8>)],
-    ) -> Vec<u8> {
-        let mut corps = Vec::new();
-        for (type_, valeur) in attributs {
-            ecrire_attribut(&mut corps, *type_, valeur);
-        }
-        // Classe succès = 0b10 → bits 0x0100 ; classe erreur = 0b11 → 0x0110.
-        let type_fil = methode | if classe_succes { 0x0100 } else { 0x0110 };
-        let mut paquet = Vec::new();
-        paquet.extend_from_slice(&type_fil.to_be_bytes());
-        paquet.extend_from_slice(&((corps.len()) as u16).to_be_bytes());
-        paquet.extend_from_slice(&MAGIC);
-        paquet.extend_from_slice(&trans_id);
-        paquet.extend_from_slice(&corps);
-        paquet
-    }
-
-    fn trans_id_de(paquet: &[u8]) -> [u8; 12] {
-        paquet[8..20].try_into().unwrap()
-    }
+    use std::time::Duration;
 
     #[test]
     fn la_premiere_emission_est_une_allocation_nue() {
@@ -332,42 +308,6 @@ mod tests {
         let a = c.allocation().expect("allocation obtenue");
         assert_eq!(a.relayee, "192.0.2.15:50000".parse::<SocketAddr>().unwrap());
         assert_eq!(a.reflexive, Some("203.0.113.4:41234".parse().unwrap()));
-    }
-
-    /// Amène un client jusqu'à l'état alloué, pour les tests qui partent de là.
-    fn allouee() -> TurnClient {
-        let mut c = TurnClient::new(serveur(), "u".into(), "p".into(), t0());
-        let nue = c.poll_transmit().unwrap();
-        let refus = reponse(
-            METHODE_ALLOCATE,
-            false,
-            trans_id_de(&nue),
-            &[
-                (ATTR_ERROR_CODE, vec![0, 0, 4, 1, b'x']),
-                (ATTR_REALM, b"r".to_vec()),
-                (ATTR_NONCE, b"n1".to_vec()),
-            ],
-        );
-        c.handle_packet(&refus).unwrap();
-        let signee = c.poll_transmit().unwrap();
-        let succes = reponse(
-            METHODE_ALLOCATE,
-            true,
-            trans_id_de(&signee),
-            &[
-                (
-                    ATTR_XOR_RELAYED_ADDRESS,
-                    xor_adresse("192.0.2.15:50000".parse().unwrap(), &trans_id_de(&signee)),
-                ),
-                (
-                    ATTR_XOR_MAPPED_ADDRESS,
-                    xor_adresse("203.0.113.4:41234".parse().unwrap(), &trans_id_de(&signee)),
-                ),
-                (ATTR_LIFETIME, 600u32.to_be_bytes().to_vec()),
-            ],
-        );
-        c.handle_packet(&succes).unwrap();
-        c
     }
 
     #[test]

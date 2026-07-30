@@ -21,4 +21,7 @@
 //! devra vraiment voir, au moment où il le consommera.
 
 mod allocation;
+mod canaux;
+#[cfg(test)]
+mod fixtures;
 mod messages;
