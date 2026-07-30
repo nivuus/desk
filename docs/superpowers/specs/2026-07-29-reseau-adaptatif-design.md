@@ -73,7 +73,7 @@ section **amende le §5 C du cadrage jeu**, qui décrivait plusieurs de ces poin
 | Pacing des PTS sur horloge réelle | **Fait** hors chantier (commit `857af65`) |
 | `wallclock` des Sender Reports | **Fait** au chantier A (commit `733558e`) |
 | NACK / RTX | **Probablement déjà négocié** : str0m écrit `a=rtcp-fb nack`, `nack pli` et `a=rtpmap … rtx/90000` dans sa réponse, et Chromium les offre. **À constater par mesure avant de construire quoi que ce soit** — c'est peut-être un non-travail |
-| FEC in-band Opus | **Activé mais inerte.** `opus.rs:63` appelle `set_inband_fec(true)`, mais libopus ne produit de redondance LBRR que si `set_packet_loss_perc()` est > 0. Il vaut 0 et rien ne l'écrit |
+| FEC in-band Opus | **Activé mais inerte** — et le diagnostic de cette ligne était INCOMPLET, voir l'amendement du §5.6 : la cause première n'était pas le pourcentage de perte à zéro, mais `RESTRICTED_LOWDELAY` qui force CELT seul, où LBRR n'existe pas |
 | Support BWE de str0m | **Disponible**, contrairement à ce que le cadrage donnait pour incertain : `RtcConfig::enable_bwe(Option<Bitrate>)`, `Event::EgressBitrateEstimate(BweKind::Twcc \| Remb)`, `Rtc::bwe().set_desired_bitrate()`. Rien n'est câblé (`transport.rs:467` ne l'appelle pas) |
 | Statistiques RTCP | **Déjà émises et jetées.** `set_stats_interval(Some(1 s))` est configuré (`transport.rs:471`), donc `Event::MediaEgressStats` — qui porte `rtt` et la fraction de perte des Receiver Reports — tombe chaque seconde dans le `_ => {}` de `handle_event` (`transport.rs:1191`) |
 
@@ -241,6 +241,29 @@ sondage que le sous-système BWE émet pour tester à la hausse.
 La fraction de perte lissée, en pourcentage, bornée à **[0, 25]**, écrite dans
 `set_packet_loss_perc`. C'est ce qui réveille le FEC in-band aujourd'hui inerte
 (§3.1). Au-delà de 25 %, la redondance coûte plus de débit qu'elle n'en sauve.
+
+> **AMENDEMENT DU 29/07/2026 — ce paragraphe était insuffisant, et le plafond
+> à 25 juste pour la bonne raison.**
+>
+> Alimenter `set_packet_loss_perc` ne suffisait PAS à réveiller le FEC. La cause
+> première était `Application::LowDelay`, choisi au chantier A pour la latence,
+> qui force `MODE_CELT_ONLY` (`opus_encoder.c:1349`) où `decide_fec` retourne 0
+> sans condition (`opus_encoder.c:721`) : LBRR n'existe que dans SILK. Mesuré, la
+> sortie encodée était **bit à bit identique** avec et sans perte déclarée.
+> L'application a été basculée en `Application::Audio` — arbitrage assumé de
+> 4 ms de pré-délai contre la résilience, voir l'amendement de
+> `2026-07-28-audio-design.md`.
+>
+> Le plafond à 25 se trouve confirmé par libopus lui-même :
+> `opus_encoder.c:734` borne l'effet utile par `silk_min(PacketLoss_perc, 25)`.
+> Au-delà, la bibliothèque ignore la valeur.
+>
+> **Et le critère de vérification que ce document sous-entendait était faux** :
+> à débit cible fixe, LBRR ne s'ajoute pas aux octets, il les redistribue
+> (`opus_encoder.c:751`, tables de débit distinctes selon que le FEC est codé).
+> La preuve valable est un décodage, pas une taille : sur un décodeur neuf sans
+> historique, `decode(paquet, sortie, fec=true)` rend 0,00 d'énergie sans perte
+> déclarée contre 585,02 avec.
 
 ### 5.7 Effet de bord du BWE au démarrage — à mesurer, pas à supposer
 

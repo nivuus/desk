@@ -59,7 +59,38 @@ bibliothèque C alors que l'agent ne dépendait jusqu'ici d'aucun code C :
 | --- | --- | --- |
 | Périmètre de capture | Loopback **système** (périphérique de rendu par défaut), plus une **sonde** du process loopback | Le son marche vite ; la sonde lève le risque du multi-fenêtres pour quelques lignes, sans construire l'isolation par processus dont aucun consommateur n'existe avant le chantier D |
 | Déblocage du son côté navigateur | Muet au départ, réactivé au **premier geste** utilisateur | Troisième usage du même ressort d'armement, après la fenêtre (variante 3 du spike) et le plein écran (cadrage jeu §4.1). Coût utilisateur nul : le geste survient de toute façon |
-| Codec | Opus, 48 kHz stéréo, trames de 10 ms, ~128 kbps, `RESTRICTED_LOWDELAY`, FEC in-band, DTX | Media Foundation n'expose pas d'encodeur Opus ; aucun codec que Chrome accepte en WebRTC n'est disponible côté Windows nativement. Valeurs reprises du cadrage jeu §5 A |
+| Codec | Opus, 48 kHz stéréo, trames de 10 ms, ~128 kbps, ~~`RESTRICTED_LOWDELAY`~~ **`Application::Audio`** (voir l'amendement ci-dessous), FEC in-band, DTX | Media Foundation n'expose pas d'encodeur Opus ; aucun codec que Chrome accepte en WebRTC n'est disponible côté Windows nativement. Valeurs reprises du cadrage jeu §5 A |
+
+> **AMENDEMENT DU 29/07/2026 (chantier C, volet 1) — `RESTRICTED_LOWDELAY` et
+> le FEC in-band sont MUTUELLEMENT EXCLUSIFS.** Ce document prescrivait les
+> deux ensemble ; c'était impossible, et le FEC n'a donc jamais rien émis
+> depuis ce chantier.
+>
+> Preuve dans les sources libopus embarquées par `audiopus_sys` :
+> `opus/src/opus_encoder.c:1349` — `if (st->application ==
+> OPUS_APPLICATION_RESTRICTED_LOWDELAY) st->mode = MODE_CELT_ONLY;`
+> `opus/src/opus_encoder.c:721` — `if (!useInBandFEC || PacketLoss_perc == 0 ||
+> mode == MODE_CELT_ONLY) return 0;`
+>
+> La redondance LBRR n'existe que dans SILK. En CELT seul, `set_inband_fec(true)`
+> et `set_packet_loss_perc()` sont inertes par construction : mesuré, la sortie
+> encodée était **bit à bit identique** avec et sans perte déclarée.
+>
+> **Arbitrage tranché en faveur de la résilience** : bascule en
+> `Application::Audio`. Coût accepté, pré-délai de 120 → 312 échantillons
+> (2,5 → 6,5 ms), à comparer aux ~48 ms de latence vidéo médiane du pipeline —
+> l'audio reste largement en avance sur l'image. Motif : la cible produit est un
+> lien internet quelconque, où la perte est la règle.
+>
+> Preuve que le FEC opère désormais, obtenue par décodage et non par taille de
+> paquet : sur un décodeur **neuf sans historique**, `decode(paquet, sortie,
+> fec=true)` rend une énergie de **0,00** quand la perte déclarée vaut 0, et de
+> **585,02** quand elle vaut 20.
+>
+> **Piège de méthode à retenir** : à débit cible fixe, LBRR ne s'AJOUTE pas aux
+> octets, il les REDISTRIBUE (`opus_encoder.c:751`, tables de débit distinctes
+> selon que le FEC est codé). Mesurer une augmentation de taille est donc un
+> test invalide — la sortie *change*, elle ne grossit pas.
 | Microphone (navigateur → VM) | **Hors périmètre** | Le cadrage ne le mentionne pas. Il exigerait une capture navigateur, un décodeur côté agent et un périphérique d'entrée virtuel sous Windows — un chantier à part entière |
 | Horodatage de capture porté jusqu'à `write()` | **Dans le périmètre** | Sans lui la synchro A/V est fausse par construction. Voir §6 |
 
