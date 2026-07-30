@@ -39,7 +39,10 @@ use super::mires::Mires;
 
 /// Non exposée par `windows` 0.62 : `PW_RENDERFULLCONTENT` vaut 2 (WinUser.h).
 /// Seule `PW_CLIENTONLY` (1) est exportée par ce crate à cette version.
-const PW_RENDERFULLCONTENT: PRINT_WINDOW_FLAGS = PRINT_WINDOW_FLAGS(2);
+///
+/// `pub(super)` : la voie `printwindow` du banc (`voies.rs`) réutilise cette
+/// même constante plutôt que de la redéfinir une seconde fois.
+pub(super) const PW_RENDERFULLCONTENT: PRINT_WINDOW_FLAGS = PRINT_WINDOW_FLAGS(2);
 
 pub(super) fn eprouver() -> Result<()> {
     // Panne du banc, pas verdict sur les replis : si le bureau ne peut pas

@@ -42,3 +42,11 @@ executer() {
 executer dxgi MULTIFENETRE_DXGI=1
 executer wgc MULTIFENETRE_WGC=1
 executer replis MULTIFENETRE_REPLIS=1
+
+# Temps 2 : le banc, sur les voies déclarées survivantes par le temps 1.
+# `VOIES` est posée à la main d'après les verdicts — le script n'infère rien.
+for voie in ${VOIES:-}; do
+    for n in 1 2 4 8; do
+        SONDE_SECS=45 executer "banc-$voie-$n" "MULTIFENETRE_BANC=$voie" "MULTIFENETRE_N=$n"
+    done
+done

@@ -9,12 +9,14 @@
 //! processus entier. Les éprouver ensemble ferait perdre les autres avec la
 //! première.
 
+pub(super) mod banc;
 pub(super) mod disponibilite;
 pub(super) mod mires;
 pub(super) mod replis;
+pub(super) mod voies;
 pub(super) mod wgc;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 /// Renvoie `true` si une sonde de ce chantier a tourné.
 pub(super) fn aiguiller() -> Result<bool> {
@@ -33,6 +35,15 @@ pub(super) fn aiguiller() -> Result<bool> {
     // prometteuse (voir le commentaire de tête de `replis.rs`).
     if std::env::var("MULTIFENETRE_REPLIS").is_ok() {
         replis::eprouver()?;
+        return Ok(true);
+    }
+    // Temps 2 : le banc, sur la voie et le nombre de fenêtres demandés.
+    if let Ok(voie) = std::env::var("MULTIFENETRE_BANC") {
+        let nombre: u8 = std::env::var("MULTIFENETRE_N")
+            .unwrap_or_else(|_| "8".to_string())
+            .parse()
+            .context("MULTIFENETRE_N doit être un entier")?;
+        banc::executer(&voie, nombre)?;
         return Ok(true);
     }
     Ok(false)
