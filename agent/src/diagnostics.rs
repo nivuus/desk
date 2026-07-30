@@ -18,6 +18,8 @@ mod audio;
 mod capture;
 mod entree;
 #[cfg(windows)]
+mod multifenetre;
+#[cfg(windows)]
 mod pixels;
 
 /// Renvoie `true` si une sonde a tourné — `main` doit alors s'arrêter là.
@@ -83,6 +85,14 @@ pub(crate) fn aiguiller() -> Result<bool> {
     #[cfg(windows)]
     if std::env::var("INPUT_LINEARITY_PROBE").is_ok() {
         entree::executer_linearite()?;
+        return Ok(true);
+    }
+
+    // Sondes du chantier D (capture multi-fenêtres). Placées en dernier :
+    // elles créent leurs propres fenêtres et n'interfèrent avec aucune des
+    // sondes ci-dessus, mais elles perturbent la disposition du bureau.
+    #[cfg(windows)]
+    if multifenetre::aiguiller()? {
         return Ok(true);
     }
 
