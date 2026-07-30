@@ -69,9 +69,10 @@ résolution) : tout le dimensionnement des voies 2 et 3 en dépend.
    device D3D11 peut-il tenir N `IDXGIOutputDuplication` simultanées ?
 
 3. **Tuilage disjoint sur un bureau unique.** Le bureau peut-il dépasser
-   largement 2400×1080 ? À la résolution actuelle, huit tuiles font 600×270
-   chacune : la voie n'a de sens que si le bureau s'agrandit beaucoup. C'est
-   donc une question de **disponibilité** avant d'être une question de
+   largement 2400×1080 ? À la résolution actuelle, huit tuiles en grille 4×2
+   font **600×540** chacune : jouable pour une fenêtre bureautique, faible
+   pour un jeu. La voie ne devient intéressante que si le bureau s'agrandit ;
+   c'est donc une question de **disponibilité** avant d'être une question de
    performance.
 
 4. **Replis par fenêtre.** `PrintWindow(PW_RENDERFULLCONTENT)` et
