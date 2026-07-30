@@ -4,6 +4,7 @@ mod congestion;
 mod cursor;
 mod demarrage;
 mod diagnostics;
+mod disposition;
 mod frames;
 // Pas de `#[cfg(windows)]` ici : les logiques pures de `gamepad` (tâche 9,
 // ordonnancement des états et limitation des vibrations) n'ont rien de
