@@ -177,13 +177,16 @@ Le tuilage peut survivre comme *heuristique de placement*, jamais comme garantie
 
 **Voie recommandée — un moniteur virtuel par fenêtre.** Le pilote d'affichage
 indirect produit une sortie DXGI réelle et attachée, portée par l'adaptateur qui
-possède NVENC (donc sans copie inter-périphérique), mesurée à 3413×960. Une
-fenêtre par moniteur supprime le recouvrement *par construction* au lieu de le
-discipliner, tout en préservant le chemin GPU. **Deux réserves bloquantes**
-avant de la spécifier : (a) le **plafond de sorties virtuelles simultanées n'est
-pas mesuré** — obstacle matériel, un seul appareil client apparié disponible ;
-si ce plafond vaut 1, tout l'arbitrage bascule ; (b) sa correction d'image sous
-recouvrement est **argumentée par construction, jamais mesurée**.
+possède NVENC (donc sans copie inter-périphérique), mesurée à 3413×960 — seule
+mesure de ce document sans journal joint, prise pendant une session Apollo
+éphémère non reproductible sans le propriétaire du poste (détail et réserve
+dans le document de résultats). Une fenêtre par moniteur supprime le
+recouvrement *par construction* au lieu de le discipliner, tout en préservant
+le chemin GPU. **Deux réserves bloquantes** avant de la spécifier : (a) le
+**plafond de sorties virtuelles simultanées n'est pas mesuré** — obstacle
+matériel, un seul appareil client apparié disponible ; si ce plafond vaut 1,
+tout l'arbitrage bascule ; (b) sa correction d'image sous recouvrement est
+**argumentée par construction, jamais mesurée**.
 
 **Repli mesuré — `PrintWindow(PW_RENDERFULLCONTENT)`.** Contre toute attente,
 cette voie rend l'image **juste** d'une fenêtre D3D **recouverte** : c'est la
@@ -422,10 +425,12 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
   les résolutions et fréquences de rafraîchissement visées. **Relevé le
   30/07/2026** : le pilote existe et est sain (`ROOT\DISPLAY\0003`) mais
   **n'expose aucune sortie DXGI au repos** — il n'en produit une (`\\.\DISPLAY5`,
-  3413×960 mesurés) que pendant une session de streaming Apollo, et **en
-  remplacement** de l'écran physique (`dd_configuration_option =
-  ensure_only_display`). Piège : le champ de résolution de WMI s'est révélé
-  périmé de 68 s ; la source de vérité est `GetDesc`/`DesktopCoordinates`.
+  3413×960 mesurés — relevé sans journal joint, session Apollo non
+  reproductible sans le propriétaire du poste) que pendant une session de
+  streaming Apollo, et **en remplacement** de l'écran physique
+  (`dd_configuration_option = ensure_only_display`). Piège : le champ de
+  résolution de WMI s'est révélé périmé de 68 s ; la source de vérité est
+  `GetDesc`/`DesktopCoordinates`.
 - **Anti-triche.** Certains anti-triche en mode noyau (Riot Vanguard, Easy
   Anti-Cheat selon configuration) **refusent de s'exécuter en machine
   virtuelle**. Valorant est notamment inaccessible par construction. C'est une

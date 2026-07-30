@@ -11,8 +11,10 @@ quand les fenêtres se recouvrent, et à quel coût.
 Tout chiffre cité ici provient d'un journal joint dans
 `docs/superpowers/plans/journaux-sonde-multifenetre/` (fichiers `.log` produits
 par l'agent sur la VM ; les accents y sont corrompus en amont de l'écriture par
-la page de code PowerShell — l'ASCII reste lisible). **Rien n'est reconstitué de
-mémoire, et rien n'est extrapolé au-delà du rang mesuré.**
+la page de code PowerShell — l'ASCII reste lisible), **à une exception près,
+signalée à sa place** (le relevé de la session Apollo, section « Relevé DXGI »
+ci-dessous). **Rien n'est reconstitué de mémoire, et rien n'est extrapolé
+au-delà du rang mesuré.**
 
 ---
 
@@ -28,9 +30,15 @@ mémoire, et rien n'est extrapolé au-delà du rang mesuré.**
    qu'il est censé détecter.
 3. **La capture ne décroche pas jusqu'à 8 fenêtres.** Voie `duplication`, passe
    capture, cadence *par fenêtre* : 80,2 i/s à N=1 ; 99,4 à N=2 ; 98,8 à N=4 ;
-   107,5 à N=8. Toutes les fenêtres d'un même rang sont égales entre elles. Le
-   nombre de fenêtres n'est donc pas, en soi, le facteur limitant de
-   l'acquisition d'images.
+   107,5 à N=8. Toutes les fenêtres d'un même rang sont égales entre elles.
+   **Ce que ce montage établit** : partager une acquisition entre N recadrages
+   d'aire totale fixe ne coûte rien de plus. `disposition::tuiles` découpe le
+   bureau, donc la surface par fenêtre décroît quand N croît (208, 258, 256,
+   248 MP/s de débit de pixels à N = 1, 2, 4, 8 — quasi constant par
+   construction) ; le débit de pixels mesuré ne dit donc rien sur le cas où N
+   fenêtres conserveraient chacune leur propre résolution utile — 8 fenêtres à
+   1280×720 valent 2,8× la surface du bureau mesuré, un montage que ce banc
+   n'a pas exercé.
 4. **`PrintWindow(PW_RENDERFULLCONTENT)` rend l'image *juste* d'une fenêtre D3D
    *recouverte*.** Contre-intuitif — le plan attendait du noir — vérifié en
    revue (recouvrement effectif contrôlé, couleur recalculée, faux positif du
@@ -45,6 +53,12 @@ mémoire, et rien n'est extrapolé au-delà du rang mesuré.**
 
 ## Ce qui reste ouvert
 
+- **Le relevé DXGI de la session Apollo n'a pas de journal joint.** `\\.\DISPLAY5`,
+  3413×960, vient du rapport de tâche 7 et non d'un fichier de
+  `journaux-sonde-multifenetre/` (voir la réserve dans « Relevé DXGI »
+  ci-dessus). La session n'est reproductible qu'avec le propriétaire du poste.
+  C'est le chiffre le moins bien étayé du document, et il fonde pourtant la
+  voie recommandée.
 - **Le plafond de sorties virtuelles simultanées.** Non mesuré : la mesure exige
   un **second appareil client apparié** à Apollo, que le propriétaire du poste
   n'a pas. Obstacle matériel, non technique. C'est la question ouverte la plus
@@ -98,6 +112,17 @@ sorties DXGI relevées  nombre=1
 sortie  adaptateur=NVIDIA GeForce RTX 4070  index_adaptateur=0  index_sortie=0
         nom=\\.\DISPLAY5  attachee=true  x=0 y=0 largeur=3413 hauteur=960
 ```
+
+**Réserve — ce relevé n'a pas de journal joint.** Contrairement à tous les
+autres chiffres de ce document, celui-ci n'est pas tiré d'un fichier de
+`journaux-sonde-multifenetre/` : il vient du rapport de tâche 7, dont le
+relecteur a retrouvé l'entrée correspondante sur la VM (identique à la
+microseconde) sans qu'elle ait jamais été extraite dans un fichier versé. La
+session Apollo qui l'a produite n'est **pas reproductible à volonté** — elle
+exige que le propriétaire du poste relance Apollo — et n'a donc pas été
+rejouée pour combler ce trou. C'est le chiffre le moins bien étayé de ce
+document, et il fonde pourtant la voie recommandée. Reprise en synthèse dans
+« Ce qui reste ouvert ».
 
 Trois faits en découlent, et un piège :
 
@@ -186,9 +211,10 @@ essayer.
 
 - bureau **réel** 2400×1080 → **800×360** par fenêtre. Nettement sous
   1280×720 : pas de fenêtre de jeu à résolution utile ;
-- mode le plus large **annoncé** par WMI 4096×2160 → 1364×720, tout juste
-  au-dessus du seuil — **mais la settabilité de ce mode n'a pas pu être
-  établie** (toutes les tentatives de changement ont échoué avant application).
+- mode le plus large **annoncé** par WMI 4096×2160 → 1364×720 : la largeur
+  dépasse le seuil de 1280, mais la hauteur vaut **exactement** 720, pas
+  au-dessus — **et la settabilité de ce mode n'a pas pu être établie**
+  (toutes les tentatives de changement ont échoué avant application).
 
 **Le défaut structurel.** Un menu contextuel ouvert près d'un bord de tuile
 **déborde sur la tuile voisine**. Mesuré, pas supposé : Bloc-notes posé
@@ -229,16 +255,31 @@ justesse de son image.
 
 Coût mesuré, avec ce rapatriement **non contourné** :
 
+**Ce chiffre est un plancher de cette implémentation, pas du chemin CPU en
+général.** `VoiePrintWindow::prochaine_image` (`voies.rs:296-322`) alloue et
+détruit, **à chaque image**, un DC compatible, un bitmap compatible et leur
+sélection (`GetDC`, `CreateCompatibleDC`, `CreateCompatibleBitmap`,
+`SelectObject`), plus un `vec![0u8; largeur*hauteur*4]` remis à zéro à chaque
+appel (5,2 Mo à N=2). Ces allocations par image ne sont pas ce que la voie
+mesure par construction — hisser ces objets hors de la boucle (les allouer une
+fois à `ouvrir()`, comme la texture GPU l'est déjà) est à faire avant toute
+mesure à N=4/8, pas ici : le vrai chiffre du chemin CPU est meilleur que
+45,0/29,1 i/s.
+
 | N | Passe | Cadence/fenêtre | Unités encodées | `verdicts_faux` |
 | --- | --- | --- | --- | --- |
-| 1 | capture | 45,0 i/s | — | 0 |
-| 1 | capture+encodage | 44,9 i/s | 224 | 0 |
+| 1 | capture | 45,0 i/s | — | — |
+| 1 | capture+encodage | 44,9 i/s | 224 | — |
 | 2 | capture | **29,1 i/s** (les deux fenêtres à l'identique) | — | 0 |
 | 2 | capture+encodage | *non conclue* | 88 (à l'arrêt, pour 176 images) | 0 |
 | 4, 8 | — | **non mesuré** | — | — |
 
-`verdicts_faux = 0` sous recouvrement à N=1 **et** N=2 : la justesse tient au
-banc, pas seulement à la sonde du temps 1.
+`verdicts_faux = 0` sous recouvrement à N=2 seulement : le banc ne pose de
+recouvrement qu'à partir de deux fenêtres (`banc.rs:194`) et ne lit un pixel que
+sur la fenêtre recouverte une fois ce recouvrement posé (`banc.rs:209`) — à N=1
+aucune lecture n'a jamais lieu, et le `—` des lignes N=1 ci-dessus le reflète.
+La justesse mesurée tient donc au banc à N=2, pas à une confirmation
+supplémentaire à N=1.
 
 ---
 
@@ -250,30 +291,37 @@ passe **capture**, cadence **par fenêtre** — journaux
 
 | N | Cadence/fenêtre | `verdicts_faux` | Suite |
 | --- | --- | --- | --- |
-| 1 | **80,2 i/s** | 0 | passe capture+encodage : 75,1 i/s, 369 unités |
+| 1 | **80,2 i/s** | — | passe capture+encodage : 75,1 i/s, 369 unités |
 | 2 | **99,4 i/s** (×2) | **449** | encodage **sauté** (porte de correction) |
 | 4 | **98,8 i/s** (×4) | **449** | encodage **sauté** |
 | 8 | **107,5 i/s** (×8) | **536** | encodage **sauté** |
 
 **Aucun décrochage jusqu'à N=8**, et toutes les fenêtres d'un même rang sont
-égales entre elles. (La cadence *monte* légèrement de N=1 à N=8 : elle est
-gouvernée par le rythme de changement du bureau, non par le nombre de
-recadrages ; à 8 mires animées le bureau change plus souvent.)
+égales entre elles. La cadence *monte* légèrement de N=1 à N=8 ; la cause n'est
+**pas établie**. La passe TÉMOIN (mires qui peignent, rien ne capture) va dans
+le sens contraire de l'explication qu'on serait tenté d'avancer (« plus de
+mires animées ⇒ le bureau change plus souvent ») : elle mesure 7 135 tours/s à
+N=2 contre 2 026 à N=8, donc un bureau qui change *moins* souvent, pas plus, à
+mesure que N croît. Au moins deux autres explications sont plausibles (effet de
+la synchronisation verticale sur la charge GPU totale, artefact de mesure liée
+au recadrage) et aucune n'a été vérifiée. Ne pas répéter la parenthèse causale
+d'origine ailleurs : elle n'est pas soutenue par la mesure.
 
 **Il n'existe aucune mesure d'encodage multi-fenêtres par cette voie** — non par
 oubli, mais **par construction du protocole** : `verdicts_faux > 0` déclenche la
 porte de correction, qui coupe la passe d'encodage. C'est le comportement voulu.
 La seule mesure d'encodage de cette voie est à N=1 (75,1 i/s, 369 unités).
 
-**Deux tableaux de cadences coexistent dans le rapport de la tâche 9. Seuls
-ceux de la « Ronde de correction 1 » — repris ici — sont valides.** Le premier
-mesurait un artefact de famine (une fenêtre à ~100 i/s, les autres sous
-1,3 i/s), corrigé depuis, et n'a pas été marqué comme périmé dans le corps du
-rapport.
+**Avertissement.** Un premier jeu de mesures de cadences, produit avant la
+correction de la famine décrite au piège n°4 ci-dessous, mesurait un artefact
+(une fenêtre à ~100 i/s, les autres sous 1,3 i/s) et non un comportement de la
+voie. Il est **invalide et n'est pas repris ici** : seules les mesures
+produites après correction (« Ronde de correction 1 ») figurent dans ce
+document.
 
 ---
 
-## Plafond NVENC mesuré
+## Plafond d'encodage mesuré (composant du refus non identifié)
 
 **Formulation bornée, à reprendre telle quelle.** Sur un périphérique D3D11
 **unique et partagé**, à 1280×720 / 60 i/s / 8 Mb/s : **8 instances du pipeline
@@ -289,9 +337,26 @@ plafond NVENC atteint — création du suivant refusée  plafond=8
 
 **Ce que la mesure n'établit PAS** : que « la limite de sessions NVENC de cette
 carte est 8 ». Le transform matériel n°9 **s'instancie pourtant sans
-difficulté** — c'est la liaison du type d'entrée qui refuse, sur un périphérique
+difficulté** — c'est une liaison du type d'entrée qui refuse, sur un périphérique
 D3D partagé par neuf clients. Le partage du périphérique est peut-être
 lui-même la contrainte limitante.
+
+**Le composant qui refuse n'est pas identifié.** `H264Encoder::new` enchaîne,
+entre le log `encodeur matériel retenu rang=9` et l'échec, deux appels
+`SetInputType` distincts sans qu'aucun des deux ne portait de `.context()`
+avant cette ronde de correction : `configure_input` sur la MFT H.264
+(`encode.rs:1426-1436`) **puis** `create_color_converter` sur le Video
+Processor MFT (`encode.rs:1153-1222`) — les deux enchaînent un `SetInputType`
+qui peut rendre `MF_E_UNSUPPORTED_D3D_TYPE`, et le HRESULT nu ne dit pas
+lequel a refusé. Un indice temporel penche pour le convertisseur : l'échec
+survient à 27,3 ms quand les rangs réussis prennent ~30 ms chacun — cohérent
+avec un refus plus tôt dans la séquence, mais ce n'est **pas une preuve**.
+Si le refus vient du Video Processor et non de l'encodeur matériel lui-même,
+le plafond serait potentiellement contournable (adapter le convertisseur ou
+s'en passer) et le « budget d'ordre 8 » ci-dessous serait faux dans le bon
+sens. Corrigé dans ce même passage de revue : les deux `SetInputType`
+portent désormais un `.context()` distinct, pour que la prochaine mesure
+désigne le composant fautif.
 
 Vérifié par ailleurs : **aucun des 8 n'est un repli logiciel** (`encodeur
 matériel retenu` × 8, NVIDIA H.264 Encoder MFT).
@@ -420,10 +485,12 @@ Raisonnement :
   l'agent.
 - **Deux chemins de capture à maintenir** si le repli voie 4 est retenu — plus
   la règle qui décide lequel s'applique à quelle fenêtre.
-- **Un budget d'encodeurs de l'ordre de 8** (borné comme dit plus haut) : au
-  delà, il faudra suspendre l'encodage des fenêtres masquées, ce que la spec
-  de conception prévoyait déjà (Page Visibility API), **et** vérifier si un
-  périphérique D3D11 par encodeur déplace ce plafond.
+- **Un plafond d'encodage mesuré à 8, dont le composant fautif n'est pas
+  identifié** (formulation bornée plus haut) : au delà, il faudra suspendre
+  l'encodage des fenêtres masquées, ce que la spec de conception prévoyait
+  déjà (Page Visibility API), **et** vérifier si un périphérique D3D11 par
+  encodeur déplace ce plafond — voire s'il l'annule, si le refus mesuré vient
+  du convertisseur de couleur partagé plutôt que de l'encodeur matériel.
 
 ### Ce qui reste à lever, par ordre d'utilité
 

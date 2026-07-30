@@ -44,6 +44,17 @@ pub(super) trait VoieDeCapture {
     /// `SourceDuplication`, qui documente cette famine telle que mesurée
     /// avant correction). Les voies sans source partagée (`VoiePrintWindow`)
     /// l'ignorent : chaque fenêtre s'y capture indépendamment.
+    ///
+    /// **Contrat de durée de vie, non garanti au-delà d'un appel.** La
+    /// texture portée par le `CapturedFrame` rendu est la texture de
+    /// recadrage PROPRE à cette voie (voir `creer_texture_recadrage`) :
+    /// l'appel suivant à `prochaine_image` sur la MÊME voie l'écrase (par
+    /// `CopySubresourceRegion` ou `UpdateSubresource` selon
+    /// l'implémentation). Elle n'est valide que jusqu'à cet appel suivant.
+    /// Sans effet dans ce banc, synchrone (chaque image est lue ou encodée
+    /// avant l'appel suivant) — mais tout consommateur asynchrone du
+    /// chantier D verrait son image réécrite silencieusement s'il en
+    /// conservait une référence au-delà d'un tour.
     fn prochaine_image(&mut self, tour: u64) -> Result<Option<CapturedFrame>>;
     /// Périphérique D3D11 propriétaire des textures rendues par cette voie.
     /// Le banc en a besoin pour lire un pixel et pour créer l'encodeur : une
