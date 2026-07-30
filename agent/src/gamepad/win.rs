@@ -1,6 +1,30 @@
 //! Le module ViGEmBus définitif : `VirtualPad` branche une manette Xbox 360
 //! virtuelle et lui applique les états reçus, `spawn_rumble` relaie ses
 //! notifications de vibration vers le client via le canal de contrôle.
+//!
+//! L'API réelle de `vigem-client` diffère de celle envisagée au brief de
+//! cette tâche sur deux points, tous deux établis empiriquement par la sonde
+//! `probe` (`gamepad/probe.rs` — voir aussi
+//! `docs/superpowers/plans/2026-07-28-input-jeu-sondes.md`) :
+//!
+//! 1. Il n'existe pas de `notification.wait_timeout(Duration)`. L'usage
+//!    prévu par la crate est `request_notification()` puis
+//!    `spawn_thread(f)` : ce dernier consomme la requête et fait tourner la
+//!    boucle requête/attente sur UN FIL DÉDIÉ créé par la crate elle-même,
+//!    en rappelant `f` à chaque notification — sans délai réglable, il
+//!    bloque tant qu'aucune notification n'arrive. On relaie donc chaque
+//!    notification brute vers un `mpsc` propre à ce module, interrogé lui
+//!    avec un délai (`recv_timeout`) pour retrouver un comportement
+//!    d'attente bornée et pouvoir vérifier périodiquement l'arrêt demandé.
+//! 2. `wait_ready()` ne garantit pas qu'un `update()` immédiat réussisse :
+//!    le bus USB virtuel peut ne pas avoir fini son énumération PnP côté
+//!    Windows, et le premier `update()` échoue alors avec `WinError(259)`
+//!    (`ERROR_NO_MORE_ITEMS`), une variante que `vigem-client` ne traduit
+//!    PAS en `Error::TargetNotReady` (seul `ERROR_DEV_NOT_EXIST` l'est). Une
+//!    seule reprise a suffi lors de l'unique mesure de la sonde ; n'ayant
+//!    caractérisé ce comportement qu'une fois, on garde ici la même marge
+//!    que la sonde (jusqu'à 20 reprises, 250 ms chacune) plutôt que le
+//!    minimum observé.
 
 use super::{plus_recent, LimiteurVibration, PERIODE_MIN};
 use anyhow::{Context, Result};
