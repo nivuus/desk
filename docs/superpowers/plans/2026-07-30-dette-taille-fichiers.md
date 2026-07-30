@@ -13,9 +13,11 @@ Spécification de référence : `docs/superpowers/specs/2026-07-30-dette-taille-
 ## Global Constraints
 
 - **Limite** : 500 lignes par fichier, **tests inline compris**. Aucun fichier produit par ce plan ne doit l'atteindre.
-- **Aucun changement de comportement** : ni signature publique modifiée, ni logique retouchée, ni test ajouté, ni test supprimé, ni test renommé.
+- **Aucun changement de comportement** : ni signature publique modifiée, ni logique retouchée, ni test supprimé, ni test renommé. **Aucun test ajouté non plus — sauf à la tâche 4**, seule tâche qui édite du code, et dans le périmètre étroit que son en-tête définit.
 - **Visibilité au minimum strict** : `pub(super)` d'abord, `pub(crate)` seulement si `pub(super)` ne suffit pas. Jamais `pub`.
-- **Ligne de base à préserver, mesurée le 30 juillet 2026** : `cargo test --workspace` → **142 passés, 0 échec**. `cargo clippy --workspace` → **31 avertissements `dead_code`**, pas un de plus.
+- **Ligne de base à préserver, mesurée le 30 juillet 2026** : `cargo test --workspace` → **142 passés, 0 échec**. `cargo clippy --workspace` → **33 avertissements**, pas un de plus. Tous de la famille « never used / never constructed » — la liste exacte est figée dans `.superpowers/sdd/2026-07-30-dette-taille-fichiers/clippy-baseline.txt`, à comparer par `diff` plutôt qu'à compter : ces avertissements sont précisément ceux qu'un déplacement de module fait bouger.
+
+  Le commentaire de `scripts/verify-all.sh` annonce 31 : ce chiffre datait du chantier B et n'a pas été remesuré depuis. Ne pas le prendre pour référence.
 - **Ordre imposé** : `congestion.rs` → `transport.rs` → `gamepad.rs` → `main.rs`. Croissant en risque de vérification (§3.2 de la spec).
 - **Un fichier traité, au moins un commit.** Aucun commit ne laisse le dépôt rouge. La spec disait « un fichier, un commit » ; le plan s'en écarte sur un point, `transport.rs`, découpé en trois commits (tâches 2, 3, 4). Un commit unique de 2558 lignes réparties sur neuf fichiers ne serait pas relisable, et les tâches 2 et 3 sont des déplacements purs qu'il faut pouvoir approuver sans les mêler à la seule tâche qui édite du code.
 - **Langue** : commentaires, noms de modules et messages de commit en français, comme tout le dépôt.
@@ -195,8 +197,13 @@ Si le nombre est inférieur à 142, un test a été perdu dans un déplacement. 
 
 - [ ] **Step 9 : Vérifier clippy**
 
-Run: `cd /home/mallanic/Projects/Guacamole/agent && cargo clippy --workspace 2>&1 | grep -c '^warning'`
-Expected: pas plus que la référence. Tout avertissement nouveau s'explique — le plus probable est un `dead_code` sur un item devenu visible autrement. Ne pas le masquer par `#[allow]`.
+Run:
+```bash
+cd /home/mallanic/Projects/Guacamole/agent
+cargo clippy --workspace 2>&1 | grep -E '^warning' | sed 's/^warning: //' | sort \
+  | diff - ../.superpowers/sdd/2026-07-30-dette-taille-fichiers/clippy-baseline.txt
+```
+Expected: aucune différence. Tout avertissement nouveau s'explique — le plus probable est un « never used » sur un item devenu visible autrement. Ne pas le masquer par `#[allow]`.
 
 - [ ] **Step 10 : Vérifier les tailles**
 
@@ -469,6 +476,17 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ## Task 4 : `transport.rs` — `evenements.rs`, `controle.rs`, `adaptation.rs`, `tick.rs`
 
 **C'est la seule tâche du plan qui édite du code plutôt que de le déplacer.** `act_on_timeout` fait 445 lignes ; la déplacer telle quelle donnerait un fichier de ~465 sans place pour ses tests. Ses branches descendent donc dans les modules thématiques, et la liste de priorités reste à un seul endroit.
+
+### Exception à l'interdiction d'ajouter des tests
+
+Parce que cette tâche édite, elle est la seule autorisée à ajouter des tests — et seulement sur les branches extraites. Deux cibles précises, que `CLAUDE.md` consigne depuis le chantier C comme des réserves connues et non couvertes :
+
+1. **Les transitions d'`Adaptation`** (`Active` → `Indisponible`) et l'expiration de l'estimation BWE à 5 s : « vérifiées par lecture de code », sans test. Elles vivent dans la branche a0ter, qui descend dans `adaptation.rs`.
+2. **Le câblage de `resize`** (branche a1, qui appelle `Controleur::changer_source`) : « aucun verrou automatisé », le comportement étant prouvé par mesure sur la VM et non protégé contre régression. Cette branche descend aussi dans `adaptation.rs`.
+
+Ajouter ces tests est autorisé, pas obligatoire — si l'échafaudage nécessaire s'avère disproportionné, le dire dans le rapport plutôt que de forcer. **Aucun autre test n'est autorisé nulle part ailleurs dans le plan.**
+
+Conséquence sur la ligne de base : le compte de tests passe de 142 à 142 + N. Tout écart doit s'expliquer par les tests délibérément ajoutés, nommés dans le rapport. Un test qui disparaît reste une faute, à cette tâche comme aux autres.
 
 **Files:**
 - Modify: `agent/src/transport.rs` (~1560 → ~400)
@@ -1115,6 +1133,6 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 Rappel de la spec §6, à relire si la tentation se présente en cours de route :
 
-- **Aucun test écrit.** `main.rs` et `transport.rs` sont sous-testés et leur code va défiler sous les yeux de l'exécutant. Y toucher ferait perdre la seule propriété qui rend le chantier sûr : qu'un test rouge ne peut signifier qu'une chose.
+- **Aucun test écrit, hors l'exception étroite de la tâche 4.** `main.rs` et `transport.rs` sont sous-testés et leur code va défiler sous les yeux de l'exécutant. Y toucher, hors des deux réserves nommées à la tâche 4, ferait perdre la seule propriété qui rend le chantier sûr : qu'un test rouge ne peut signifier qu'une chose.
 - **Aucune amélioration de logique** rencontrée en chemin. Elle se note, elle ne se fait pas ici.
 - **`encode.rs`, `windows_source.rs`, `wasapi.rs`** restent tels quels.

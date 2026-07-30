@@ -197,8 +197,11 @@ Le garde-fou est **`scripts/verify-all.sh`**, pas `cargo test` seul.
 
 1. `cargo test --workspace` → **142 passés, 0 échec**, à l'identique de la ligne
    de base mesurée le 30 juillet 2026 (2,08 s).
-2. `cargo clippy --workspace` → pas plus que les **31 avertissements
-   `dead_code` préexistants**. Ce compteur mérite attention ici précisément :
+2. `cargo clippy --workspace` → pas plus que les **33 avertissements
+   préexistants**, tous de la famille « never used / never constructed »
+   (mesuré le 30 juillet 2026 ; le commentaire de `scripts/verify-all.sh` en
+   annonce 31, chiffre du chantier B jamais remesuré). Ce compteur mérite
+   attention ici précisément :
    déplacer un item privé vers un autre module change sa visibilité, donc ce que
    clippy voit. Tout avertissement nouveau doit être expliqué, jamais absorbé.
 3. `tsc --noEmit` (client puis proto) → inchangé. Ce chantier ne touche pas au
