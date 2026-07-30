@@ -45,7 +45,7 @@ const DELAI_TENTATIVE: Duration = Duration::from_millis(250);
 /// Manette Xbox 360 virtuelle. Branchée à la PREMIÈRE réception d'un
 /// état, jamais au démarrage : une manette présente en permanence
 /// perturbe les applications qui réagissent à sa seule présence
-/// (`main.rs` réalise ce branchement paresseux).
+/// (`demarrage.rs` réalise ce branchement paresseux).
 pub struct VirtualPad {
     target: vigem_client::Xbox360Wired<vigem_client::Client>,
     derniere_seq: Option<u16>,
@@ -56,7 +56,7 @@ impl VirtualPad {
     /// pas seulement que `wait_ready()` le prétende (voir le point 2 du
     /// commentaire de module). Renvoie une erreur si ViGEmBus est
     /// absent ou reste indisponible après toutes les reprises :
-    /// `main.rs` traite cet échec comme non bloquant pour la session.
+    /// `demarrage.rs` traite cet échec comme non bloquant pour la session.
     ///
     /// Peut bloquer jusqu'à `TENTATIVES_MAX * DELAI_TENTATIVE` (5 s avec
     /// les valeurs actuelles) : à appeler hors du fil qui pilote la
@@ -269,7 +269,7 @@ pub fn spawn_rumble(
 /// boucle de `Session::run` figerait vidéo ET audio pendant ce délai :
 /// cette boucle est dimensionnée sur la cadence vidéo et les échéances
 /// RTCP, pas sur la latence d'un pilote tiers (voir le commentaire sur
-/// `spawn_blocking` dans `main.rs`). `main.rs` sonde ce récepteur avec
+/// `spawn_blocking` dans `demarrage.rs`). `demarrage.rs` sonde ce récepteur avec
 /// `try_recv()` à chaque état de manette reçu, sans jamais bloquer
 /// dessus ; les états reçus pendant que la connexion est en cours sont
 /// perdus sans conséquence — pas parce que le client sonde à 250 Hz

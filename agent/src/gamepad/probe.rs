@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 ///
 /// A initialement servi à figer l'API réelle de `vigem-client` avant que la
 /// tâche 10 n'écrive `win::VirtualPad`/`win::spawn_rumble` ci-dessus. Gardée
-/// après coup, à la demande explicite du brief de la tâche 10 : `main.rs`
+/// après coup, à la demande explicite du brief de la tâche 10 : `diagnostics.rs`
 /// l'appelle encore derrière `VIGEM_PROBE`, et la tâche 16 (recette) prévoit
 /// de la réutiliser pour relire l'état de la manette par `XInputGetState`.
 ///

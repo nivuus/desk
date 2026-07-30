@@ -82,7 +82,7 @@ mod win {
                     ..Default::default()
                 }),
                 InputMessage::Gamepad(_) => {
-                    // Ignoré ici, volontairement : `main.rs` intercepte cette
+                    // Ignoré ici, volontairement : `demarrage.rs` intercepte cette
                     // variante AVANT d'appeler l'injecteur (tâche 10, manette
                     // virtuelle ViGEmBus) — l'injecteur clavier/souris n'a
                     // rien à en faire. Un bras muet, sans ce commentaire,

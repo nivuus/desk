@@ -17,7 +17,7 @@
 //! `run()` bloque volontairement (socket UDP non bloquant, sondé par petites
 //! tranches de sommeil plutôt que par un `recv_from` bloquant à échéance —
 //! voir `RECV_POLL_INTERVAL`) et doit donc être appelée depuis un thread
-//! dédié — `tokio::task::spawn_blocking` côté `main.rs` — jamais depuis un
+//! dédié — `tokio::task::spawn_blocking` côté `demarrage.rs` — jamais depuis un
 //! ouvrier async de tokio.
 //!
 //! Ce fichier ne porte plus que l'état de la session et la boucle qui
@@ -293,11 +293,11 @@ impl Session {
                     audio_bps: crate::opus::BITRATE_BPS as u32,
                     source: dimensions,
                     // **Délibérément 60, PAS `ENCODER_FPS`** (I5, revue finale
-                    // de branche). `ENCODER_FPS` (défaut 90, voir `main.rs`)
+                    // de branche). `ENCODER_FPS` (défaut 90, voir `demarrage.rs`)
                     // est la cadence de SOLLICITATION de l'encodeur, pas la
                     // cadence DÉLIVRÉE — la recette mesure 55 à 63 im/s
                     // réellement décodées, bien plus proche de 60 que de 90.
-                    // Et surtout : `BPP_MIN` (voir `congestion.rs`) a été
+                    // Et surtout : `BPP_MIN` (voir `congestion/echelle.rs`) a été
                     // calibrée avec `fps = 60`. `fps` multiplie directement
                     // tous les `min_bps` de l'échelle — le faire suivre
                     // `ENCODER_FPS` multiplierait tous les seuils par 1,5 et

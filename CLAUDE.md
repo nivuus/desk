@@ -972,7 +972,11 @@ until timeout 3 bash -c 'echo > /dev/tcp/192.168.3.2/5985' 2>/dev/null; do sleep
 # après que WinRM répond, pas en même temps — un `scripts/build-agent.sh`
 # lancé dès que le port 5985 répond échoue avec « erreur : /media/vm n'est
 # pas monté » (`scripts/sync-agent.sh`, qui teste le montage, pas le port).
-until mountpoint -q /media/vm; do sleep 5; done
+# `mountpoint -q` ne suffit pas : /media/vm est un montage CIFS
+# (//192.168.3.2/c) dont l'entrée persiste dans la table de montage même VM
+# éteinte et connexion morte — il faut éprouver un ACCÈS réel, pas la seule
+# présence de l'entrée.
+until ls /media/vm/dev >/dev/null 2>&1; do sleep 5; done
 
 # Arrêter proprement
 virsh shutdown Windows
@@ -1022,7 +1026,7 @@ node scripts/winrm.js "(Get-Service Audiosrv | Format-List Name,Status,StartType
 
 ### Relevé de la sonde loopback (tâche 5, 28 juillet 2026)
 
-Sonde `AUDIO_PROBE` (`agent/src/wasapi.rs` + `agent/src/main.rs`), exécutée en
+Sonde `AUDIO_PROBE` (`agent/src/wasapi.rs` + `agent/src/diagnostics/audio.rs`), exécutée en
 session interactive via `scripts/run-agent.sh` (task planifiée `/it`), sur le
 périphérique de rendu par défaut de **cette session** (pas la session 0 de
 WinRM).
@@ -1098,15 +1102,36 @@ réduite par le réseau » qui se déclenche sur toute source ≥ 1080p. **Fixer
 résolution représentative au canevas de recette, et y exercer au moins un
 redimensionnement de fenêtre.**
 
-### Deux réserves connues, non bloquantes
+### Deux réserves connues, closes par le chantier de découpage des fichiers
 
-- Les transitions de `Adaptation` (`Active` → `Indisponible`) et l'expiration de
-  l'estimation BWE à 5 s n'ont **pas de test** : vérifiées par lecture de code.
-- Le câblage de `resize` côté `transport.rs` (branche `a1`, qui appelle
-  `Controleur::changer_source`) n'a **aucun verrou automatisé** :
-  `VideoSource::resize` est un no-op par défaut dans toutes les sources
-  factices, et rien ne positionne `pending_resize` dans les tests. Le
-  comportement est prouvé par mesure sur la VM, pas protégé contre régression.
+Les deux réserves ci-dessous, ouvertes lors du chantier C volet 1, sont
+**fermées** : le chantier de découpage de `transport.rs` (fichiers >500
+lignes) a ajouté exactement deux tests à cet effet, au titre d'une exception
+accordée pour cela — un chantier de découpage n'ajoute normalement pas de
+comportement neuf, celui-ci ferme une dette de test constatée au passage.
+
+- Les transitions de `Adaptation` (`Active` → `Indisponible`) et l'expiration
+  de l'estimation BWE à 5 s sont désormais couvertes par
+  `une_estimation_perimee_bascule_l_adaptation_en_indisponible_et_l_annonce`
+  (`agent/src/transport/adaptation.rs`). Le test fait vieillir une estimation
+  au-delà d'`EXPIRATION_ESTIMATION`, vérifie le basculement en
+  `Adaptation::Indisponible`, que l'absence n'est journalisée qu'une fois, et
+  que la décision est relayée au navigateur sous forme de message `Link`
+  (`AgentControl::Link { adaptation: LinkAdaptation::Indisponible, .. }`) via
+  `act_on_timeout` — puis qu'une estimation fraîche qui revient réarme
+  l'annonce.
+- Le câblage de `resize` (branche `a1` de `act_on_timeout`, désormais en
+  `agent/src/transport/tick.rs`, qui délègue à
+  `agent/src/transport/redimensionnement.rs`, laquelle appelle
+  `Controleur::changer_source`) est désormais couvert par
+  `un_redimensionnement_recalibre_le_controleur_sur_la_taille_obtenue`
+  (`agent/src/transport/redimensionnement.rs`). Le test pose une source
+  factice dont `resize` réussit mais impose un alignement pair (comme une
+  vraie fenêtre Windows), pose un `pending_resize` sur une taille impaire, et
+  vérifie que la session retient les dimensions RÉELLEMENT obtenues (pas
+  celles demandées), que `encode_size_appliquee` suit cette taille obtenue, et
+  qu'un refus de taille antérieur (`taille_refus_signalee`) est effacé par ce
+  redimensionnement.
 
 ### Ce que le chantier D (multi-fenêtres) devra régler
 
@@ -1122,7 +1147,7 @@ plutôt qu'à découvrir à l'exécution.**
 
 ### Réglages du contrôleur, et lequel n'est pas calibré
 
-`agent/src/congestion.rs` : `BPP_MIN` (0,05 bit par pixel et par image) est
+`agent/src/congestion/echelle.rs` : `BPP_MIN` (0,05 bit par pixel et par image) est
 **reconduit faute de preuve du contraire, pas confirmé** — le critère qui
 l'aurait validé suppose un jugement visuel qui n'a jamais été porté. Il est
 **couplé au `fps` de `Config`** (fixé à 60, la cadence délivrée, et non à

@@ -12,7 +12,7 @@
 //! - `gamepad/probe.rs` porte la sonde du chantier B (`probe`) : ViGEmBus
 //!   est-il utilisable, et son rappel de vibration restitue-t-il les
 //!   magnitudes ? **Gardée volontairement** malgré l'arrivée du module
-//!   définitif : elle reste appelée par `agent/src/main.rs`
+//!   définitif : elle reste appelée par `agent/src/diagnostics.rs`
 //!   (`VIGEM_PROBE`), et la tâche 16 (recette) prévoit explicitement de la
 //!   réutiliser pour relire l'état de la manette par `XInputGetState`.
 

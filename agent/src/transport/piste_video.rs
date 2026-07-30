@@ -36,7 +36,7 @@ use crate::h264::{AccessUnit, CLOCK_RATE_HZ};
 /// **Vérifié le 28/07** : sonder 5× plus vite (2 ms) ne change rien au débit
 /// — `produced_hz` reste à 47,5 pour un bureau à 68,5 Hz. La cadence de
 /// sondage n'était donc pas le facteur limitant ; c'était le
-/// `MF_MT_FRAME_RATE` annoncé aux MFT (voir `main.rs`).
+/// `MF_MT_FRAME_RATE` annoncé aux MFT (voir `demarrage.rs`).
 pub(super) const FRAME_INTERVAL: Duration = Duration::from_millis(10);
 
 /// Vue minimale d'un profil de charge utile négocié, indépendante de str0m

@@ -277,7 +277,7 @@ mod tests {
         }));
 
         // La session tourne sur un thread dédié, comme en production (voir
-        // `main.rs` / `tokio::task::spawn_blocking`). Le thread n'est pas
+        // `demarrage.rs` / `tokio::task::spawn_blocking`). Le thread n'est pas
         // rejoint : `Session::run` ne se termine qu'à la détection d'une
         // déconnexion ICE (délai de plusieurs secondes), ce qui ralentirait
         // ce test sans rien y ajouter. Le processus de test se termine de

@@ -9,7 +9,7 @@ mod frames;
 // ordonnancement des états et limitation des vibrations) n'ont rien de
 // spécifique à Windows et doivent compiler et se tester sur Linux. La sonde
 // `probe`, elle, reste gated à l'intérieur même du fichier
-// (`agent/src/gamepad.rs`), avec ses dépendances `vigem-client` /
+// (`agent/src/gamepad/probe.rs`), avec ses dépendances `vigem-client` /
 // `anyhow::Context` propres à la sonde.
 mod gamepad;
 mod geometry;

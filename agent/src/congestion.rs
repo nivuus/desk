@@ -8,6 +8,15 @@
 //! Découpé en quatre sous-modules : `echelle` (les résolutions disponibles),
 //! `hysteresis` (les délais avant changement), `controleur` (l'asservissement
 //! continu) et `reconfiguration` (le changement de taille de source).
+//!
+//! Visibilité entre les quatre : ce qu'un sous-module doit exposer à ses
+//! frères (champs de `Controleur`, constantes d'hystérésis, fonctions
+//! utilitaires de test) est marqué `pub(super)`, jamais `pub` — borné au
+//! module `congestion` et à lui seul, l'extérieur ne voyant que ce que
+//! réexporte `pub use controleur::Controleur`. Un helper niché dans un `mod
+//! tests` privé n'aurait été visible que de son propre sous-arbre, d'où ce
+//! choix chaque fois qu'un détail est partagé entre deux sous-modules
+//! frères.
 
 mod controleur;
 mod echelle;
@@ -53,7 +62,7 @@ pub struct Observation {
     /// arrivée — cas normal au démarrage, cas permanent si TWCC n'est pas
     /// négocié.
     pub estimate_bps: Option<u32>,
-    /// Non consommé par la décision : journalisé par `transport.rs` pour que
+    /// Non consommé par la décision : journalisé par `transport/evenements.rs` pour que
     /// la recette dispose du RTT vu par l'agent, à confronter à celui que le
     /// navigateur rapporte.
     pub rtt: Option<Duration>,

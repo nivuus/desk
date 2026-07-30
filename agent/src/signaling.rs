@@ -22,7 +22,7 @@ pub struct SignalingHandle {
     /// du signaling visible.
     pub closed: watch::Receiver<bool>,
     /// Conservées pour que les deux tâches de fond ne soient pas
-    /// complètement abandonnées : `main.rs` ne les attend pas en
+    /// complètement abandonnées : `demarrage.rs` ne les attend pas en
     /// fonctionnement normal (le transport ne dépend plus du signaling une
     /// fois l'offre/réponse échangée), mais les jeter silencieusement
     /// masquerait un panic éventuel à l'intérieur de l'une d'elles.

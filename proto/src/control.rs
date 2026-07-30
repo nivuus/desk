@@ -125,9 +125,9 @@ pub enum AgentControl {
         right: u8,
     },
     /// Émis une seule fois par session, mais PAS après `Ready` en pratique :
-    /// `agent/src/main.rs` pousse ce message dans le canal `mpsc` de contrôle
+    /// `agent/src/demarrage.rs` pousse ce message dans le canal `mpsc` de contrôle
     /// dès le démarrage du transport, avant même l'ouverture du canal de
-    /// données — le drainage (`transport.rs::act_on_timeout`) le met donc en
+    /// données — le drainage (`transport/tick.rs::act_on_timeout`) le met donc en
     /// file avant que `Event::ChannelOpen` n'y ajoute `Ready`. L'ordre réel
     /// est `Capabilities`, éventuellement un premier `Pointer`, puis `Ready`.
     /// Sans conséquence aujourd'hui (le client traite les types
