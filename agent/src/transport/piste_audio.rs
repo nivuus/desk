@@ -8,6 +8,7 @@ use std::time::Duration;
 use str0m::format::Codec;
 use str0m::media::{Frequency, MediaTime, Mid, Pt};
 
+use super::tick::Tick;
 use super::Session;
 use crate::audio::{AudioPacket, AudioSource};
 
@@ -32,6 +33,32 @@ impl Session {
     pub(super) fn audio_wait_cap(&self) -> Option<Duration> {
         (self.audio_source.is_some() && self.audio_mid.is_some() && !self.ending)
             .then_some(AUDIO_POLL_INTERVAL)
+    }
+
+    /// Branche `a3` de la liste de priorités (voir `tick`) : émet un paquet
+    /// audio si la piste est négociée et qu'un paquet attend.
+    ///
+    /// Pas d'échéance à surveiller ici : le fil de capture dépose dans un
+    /// tampon, il suffit de regarder s'il y a quelque chose. Le réveil
+    /// régulier vient d'`AUDIO_POLL_INTERVAL`, appliqué en branche `c`.
+    ///
+    /// Rend `Some(Tick::Continue)` quand elle a conclu le tour — un paquet
+    /// écrit est une mutation de `Rtc`, qui doit être suivie du drainage
+    /// différé de la branche `a0`. Rend `None` quand il n'y avait rien à
+    /// émettre, et n'a alors rien muté : la liste de priorités peut passer à
+    /// la branche suivante sans rompre l'invariant de drainage.
+    pub(super) fn brancher_audio(&mut self) -> Option<Tick> {
+        let (Some(mid), false) = (self.audio_mid, self.ending) else {
+            return None;
+        };
+        let paquet = self
+            .audio_source
+            .as_mut()
+            .and_then(|source| source.next_packet())?;
+        if self.write_audio(mid, paquet) {
+            self.audio_write_pending_drain = true;
+        }
+        Some(Tick::Continue)
     }
 
     /// Sélectionne le type de charge utile Opus négocié pour `mid`.

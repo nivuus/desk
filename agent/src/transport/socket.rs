@@ -4,6 +4,13 @@
 
 use std::time::{Duration, Instant};
 
+use anyhow::{anyhow, Result};
+use str0m::net::{DatagramRecv, Protocol, Receive};
+use str0m::Input;
+
+use super::tick::Tick;
+use super::Session;
+
 /// Tranche maximale d'une attente sans donnée sur le socket, dans la boucle
 /// de sondage non bloquant d'`act_on_timeout` (branche c).
 ///
@@ -218,6 +225,135 @@ pub(super) fn bounded_wait(
         wait = wait.min(cap);
     }
     wait
+}
+
+impl Session {
+    /// Branche `c` de la liste de priorités (voir `tick`) : rien à émettre ce
+    /// tour-ci, on attend un paquet entrant.
+    ///
+    /// Toujours concluante — elle se termine sur exactement une mutation de
+    /// `Rtc` (`handle_input`, réception ou échéance) ou sur une temporisation
+    /// après erreur de réception, et rend la main dans tous les cas.
+    pub(super) fn brancher_attente(&mut self, deadline: Instant) -> Result<Tick> {
+        // c) Rien à émettre ce tour-ci : attendre un paquet entrant, borné à
+        //    la fois par l'échéance de `Rtc` et par la prochaine échéance
+        //    d'image (voir `bounded_wait` — c'est le correctif de C1).
+        let now = Instant::now();
+        let next_frame_at =
+            (self.video_mid.is_some() && !self.ending).then_some(self.next_frame_at);
+        let wait = bounded_wait(now, deadline, next_frame_at, self.audio_wait_cap());
+
+        if wait.is_zero() {
+            self.rtc
+                .handle_input(Input::Timeout(now))
+                .map_err(|e| anyhow!("handle_input timeout : {e}"))?;
+            return Ok(Tick::Continue);
+        }
+
+        // Sonde le socket (non bloquant depuis `Session::new`) par petites
+        // tranches plutôt que de confier l'attente à `set_read_timeout` :
+        // c'est le correctif du défaut mesuré (voir le commentaire de
+        // `RECV_POLL_INTERVAL`). Aucune mutation de `Rtc` ne se produit tant
+        // que cette boucle n'a pas soit reçu un datagramme, soit atteint
+        // `poll_deadline` — une seule mutation en sort, comme l'exige le
+        // docstring de la méthode.
+        let poll_deadline = now + wait;
+        let mut buffer = vec![0u8; 2000];
+        loop {
+            match self.socket.recv_from(&mut buffer) {
+                Ok((n, source_addr)) => {
+                    // Un tour de boucle sans erreur de réception met fin à
+                    // une éventuelle rafale : la prochaine erreur, s'il y en
+                    // a une, repart d'une temporisation minimale plutôt que
+                    // de poursuivre la croissance entamée par une rafale
+                    // passée.
+                    self.consecutive_recv_errors = 0;
+                    let destination = self.socket.local_addr()?;
+                    // I2 : un datagramme qui n'est ni STUN, ni DTLS, ni
+                    // RTP/RTCP (bruit réseau, sonde de port, paquet vide)
+                    // fait échouer cette conversion. Il ne doit pas faire
+                    // tomber l'agent — seulement être ignoré.
+                    match DatagramRecv::try_from(&buffer[..n]) {
+                        Ok(contents) => {
+                            let receive = Receive {
+                                proto: Protocol::Udp,
+                                source: source_addr,
+                                destination,
+                                contents,
+                            };
+                            self.rtc
+                                .handle_input(Input::Receive(Instant::now(), receive))
+                                .map_err(|e| anyhow!("handle_input receive : {e}"))?;
+                        }
+                        Err(e) => {
+                            tracing::debug!(erreur = %e, "paquet UDP ignoré (non reconnu)");
+                        }
+                    }
+                    return Ok(Tick::Continue);
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    // Pas de donnée disponible pour l'instant : le cas
+                    // courant. N'affecte pas le compteur de rafale (ce n'est
+                    // pas une erreur).
+                    self.consecutive_recv_errors = 0;
+                    let remaining = poll_deadline.saturating_duration_since(Instant::now());
+                    if remaining.is_zero() {
+                        // Échéance atteinte sans donnée : rendre la main à
+                        // `Rtc` via un timeout, exactement comme le faisait
+                        // l'ancien `recv_from` bloquant à l'expiration de
+                        // `set_read_timeout`.
+                        self.rtc
+                            .handle_input(Input::Timeout(Instant::now()))
+                            .map_err(|e| anyhow!("handle_input timeout : {e}"))?;
+                        return Ok(Tick::Continue);
+                    }
+                    // Ni spin serré (consommerait un cœur entier), ni sommeil
+                    // unique sur toute la durée (reproduirait l'imprécision
+                    // mesurée) : on dort par petites tranches bornées par
+                    // `RECV_POLL_INTERVAL`, en revérifiant le socket à
+                    // chaque réveil. Le sur-sommeil éventuel d'un seul appel
+                    // à `sleep` (même défaut de granularité que celui mesuré
+                    // sur `recv_from`) reste borné à un intervalle de
+                    // sondage, jamais à la totalité de `wait`.
+                    std::thread::sleep(remaining.min(RECV_POLL_INTERVAL));
+                }
+                Err(e) => match classify_recv_error(e.kind()) {
+                    // I2 : erreur de réception transitoire — journalisée,
+                    // pas fatale. Une rafale bouclerait à vide sans cette
+                    // temporisation croissante (voir `recv_error_backoff`) —
+                    // le socket lui-même n'est pas mis en cause, seul le
+                    // rythme de nouvelles tentatives l'est.
+                    RecvErrorAction::RetryWithBackoff => {
+                        self.consecutive_recv_errors =
+                            self.consecutive_recv_errors.saturating_add(1);
+                        let backoff = recv_error_backoff(self.consecutive_recv_errors);
+                        tracing::warn!(
+                            erreur = %e,
+                            consecutives = self.consecutive_recv_errors,
+                            backoff_ms = backoff.as_millis(),
+                            "échec de réception UDP transitoire, ignoré"
+                        );
+                        std::thread::sleep(backoff);
+                        return Ok(Tick::Continue);
+                    }
+                    // Erreur qui n'a aucune raison de se résorber
+                    // d'elle-même : clôture propre de la session (comme I5
+                    // pour une source épuisée), pas boucle indéfinie ni
+                    // panique du processus — seules `Session::new`/
+                    // `accept_offer` justifient de tuer le processus entier
+                    // (voir le commentaire de module).
+                    RecvErrorAction::Fatal => {
+                        tracing::warn!(
+                            erreur = %e,
+                            "échec de réception UDP non transitoire, fin de session"
+                        );
+                        self.begin_ending("échec de réception UDP non transitoire");
+                        return Ok(Tick::Continue);
+                    }
+                },
+            }
+        }
+    }
 }
 
 #[cfg(test)]

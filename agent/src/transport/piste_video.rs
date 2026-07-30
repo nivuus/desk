@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 use str0m::format::Codec;
 use str0m::media::{MediaTime, Mid, Pt};
 
+use super::tick::Tick;
 use super::Session;
 use crate::clock::instant_from_pts;
 use crate::h264::{AccessUnit, CLOCK_RATE_HZ};
@@ -83,6 +84,57 @@ pub(super) fn next_frame_deadline(previous: Instant, now: Instant, interval: Dur
 }
 
 impl Session {
+    /// Branche `b` de la liste de priorités (voir `tick`) : émet une image
+    /// vidéo si son échéance est atteinte et la piste négociée.
+    ///
+    /// Rend `Some(Tick::Continue)` quand l'échéance était atteinte — le tour
+    /// est alors conclu, qu'une image ait été écrite ou non : la tentative
+    /// elle-même est l'action du tour, et une écriture réussie est une
+    /// mutation de `Rtc` qui doit être suivie du drainage différé de la
+    /// branche `a0`. Rend `None` quand l'échéance n'est pas atteinte ou que
+    /// la piste n'est pas négociée, sans avoir rien muté.
+    pub(super) fn brancher_video(&mut self) -> Option<Tick> {
+        let mid = self.video_mid?;
+        let now = Instant::now();
+        if now < self.next_frame_at {
+            return None;
+        }
+        self.next_frame_at = next_frame_deadline(self.next_frame_at, now, FRAME_INTERVAL);
+        match self.source.next_frame() {
+            Some(unit) => {
+                // `writer.write()` ne fait qu'empiler l'image dans la file
+                // interne `to_payload` de str0m — c'est
+                // `Rtc::handle_input(Input::Timeout(..))` qui la dépile
+                // réellement en paquets RTP (`do_payload`), jamais
+                // `poll_output()` seul (voir `session.rs` de str0m).
+                // L'appeler ICI serait une seconde mutation dans le même
+                // appel à `act_on_timeout`, sans `poll_output` entre les
+                // deux — exactement la violation que ce mécanisme doit
+                // éviter (ronde de correction 1). On pose donc un drapeau :
+                // la PROCHAINE invocation d'`act_on_timeout` le traite en
+                // priorité absolue (branche `a0`). La file de charge non vide
+                // fait renvoyer une échéance immédiate par `poll_output()`,
+                // donc `run()` rappelle aussitôt.
+                if self.write_frame(mid, unit) {
+                    self.video_write_pending_drain = true;
+                }
+            }
+            None => {
+                // Ronde de correction 1 : l'absence de nouvelle image est le
+                // cas courant et normal d'une capture en direct (bureau
+                // immobile) — pas une fin de session. Seule une source
+                // réellement épuisée (fenêtre fermée, erreur non
+                // récupérable) le justifie, via `VideoSource::is_exhausted`.
+                // `FileSource` ne renvoie jamais `None` et n'atteint donc
+                // jamais ce chemin.
+                if self.source.is_exhausted() {
+                    self.begin_ending("source vidéo épuisée");
+                }
+            }
+        }
+        Some(Tick::Continue)
+    }
+
     /// Sélectionne le type de charge utile H.264 négocié pour `mid`, s'il y
     /// en a un. Appel séparé de `write_frame` pour que l'emprunt sur `self`
     /// via `Rtc::writer` se termine avant tout appel `&mut self` ultérieur

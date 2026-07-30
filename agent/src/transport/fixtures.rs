@@ -9,7 +9,15 @@
 //! avec l'unique test qui les définit, ce ne sont pas des échafaudages
 //! partagés.
 
-use super::*;
+//! Les `use` sont explicites plutôt qu'un `use super::*` : `transport.rs` ne
+//! porte plus que la structure et la boucle, et n'importe donc plus de
+//! lui-même tout ce dont ces échafaudages ont besoin.
+
+use std::net::{IpAddr, SocketAddr, UdpSocket};
+use std::time::{Duration, Instant};
+
+use str0m::net::{DatagramRecv, Protocol, Receive};
+use str0m::{Candidate, Input, Rtc};
 
 /// Adresse locale utilisée par tous les pairs de test (loopback).
 pub(super) fn local_ip() -> IpAddr {
