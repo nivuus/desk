@@ -9,11 +9,17 @@
 //! processus entier. Les éprouver ensemble ferait perdre les autres avec la
 //! première.
 
+pub(super) mod disponibilite;
 pub(super) mod mires;
 
 use anyhow::Result;
 
 /// Renvoie `true` si une sonde de ce chantier a tourné.
 pub(super) fn aiguiller() -> Result<bool> {
+    // Relevé DXGI : quelles sorties existent, laquelle porte le bureau.
+    if std::env::var("MULTIFENETRE_DXGI").is_ok() {
+        disponibilite::relever_dxgi()?;
+        return Ok(true);
+    }
     Ok(false)
 }
