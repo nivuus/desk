@@ -59,6 +59,11 @@ windows = { version = "0.62", features = [
     "Win32_UI_HiDpi",
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_UI_WindowsAndMessaging",
+    "Graphics_Capture",
+    "Graphics_DirectX",
+    "Graphics_DirectX_Direct3D11",
+    "Win32_System_WinRT_Direct3D11",
+    "Win32_System_WinRT_Graphics_Capture",
 ] }
 # Pilote de manette virtuelle. Crate Rust pur : il parle au pilote noyau
 # ViGEmBus par IOCTL, sans SDK C à embarquer. La fonctionnalité

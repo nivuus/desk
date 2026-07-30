@@ -20,7 +20,7 @@ mod entree;
 #[cfg(windows)]
 mod multifenetre;
 #[cfg(windows)]
-mod pixels;
+pub(crate) mod pixels;
 
 /// Renvoie `true` si une sonde a tourné — `main` doit alors s'arrêter là.
 ///

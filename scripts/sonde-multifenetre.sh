@@ -40,3 +40,4 @@ executer() {
 }
 
 executer dxgi MULTIFENETRE_DXGI=1
+executer wgc MULTIFENETRE_WGC=1

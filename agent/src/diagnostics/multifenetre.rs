@@ -11,6 +11,7 @@
 
 pub(super) mod disponibilite;
 pub(super) mod mires;
+pub(super) mod wgc;
 
 use anyhow::Result;
 
@@ -19,6 +20,12 @@ pub(super) fn aiguiller() -> Result<bool> {
     // Relevé DXGI : quelles sorties existent, laquelle porte le bureau.
     if std::env::var("MULTIFENETRE_DXGI").is_ok() {
         disponibilite::relever_dxgi()?;
+        return Ok(true);
+    }
+    // Voie 1 : Windows.Graphics.Capture, re-test honnête (abandonnée au
+    // jalon 1 — voir le commentaire de tête de `wgc.rs`).
+    if std::env::var("MULTIFENETRE_WGC").is_ok() {
+        wgc::eprouver()?;
         return Ok(true);
     }
     Ok(false)
