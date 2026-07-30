@@ -141,21 +141,57 @@ Une fenêtre mérite une fenêtre navigateur si elle est « Alt-Tab-able » :
 Tout le reste (menus déroulants, tooltips, dialogues modaux, splash screens)
 reste composé dans sa fenêtre parente.
 
-### Conséquence technique majeure — décision ouverte
+### Conséquence technique majeure — sondée le 30/07/2026
 
 La capture actuelle utilise **DXGI Desktop Duplication** : elle duplique l'écran
 entier puis recadre la fenêtre. Avec plusieurs fenêtres, deux fenêtres qui se
-chevauchent produisent un recadrage pollué par ce qui est au-dessus.
+chevauchent produisent un recadrage pollué par ce qui est au-dessus. **Mesuré** :
+`verdicts_faux` strictement positif dès N=2 (449 / 449 / 536 à N = 2 / 4 / 8).
 
-Deux voies, à trancher lors de la spec du chantier D :
+Cette section portait une **décision ouverte** entre deux voies. **Les deux
+branches de l'alternative sont démenties par la mesure**, dont le détail, les
+chiffres et les journaux sont dans
+`docs/superpowers/plans/2026-07-30-sonde-capture-multifenetre-resultats.md`.
 
-1. **Revenir à `Windows.Graphics.Capture`** par fenêtre, qui capture le contenu
-   hors-écran indépendamment du chevauchement. C'était le choix initial de la
-   spec produit, abandonné en tâche 9 du jalon 1 (commit `4493b24`) — il faudra
-   comprendre pourquoi avant de revenir dessus.
-2. **Conserver Desktop Duplication** et garantir que les fenêtres ne se
-   chevauchent jamais sur le bureau virtuel (disposition imposée par l'agent).
-   Plus simple mais fragile.
+**Voie écartée n°1 — revenir à `Windows.Graphics.Capture` par fenêtre.**
+C'était le choix initial de la spec produit, abandonné en tâche 9 du jalon 1
+(commit `4493b24`). Raison mesurée de son écartement : sur cette VM,
+`CreateForWindow` échoue en `0x800706BE` (`RPC_S_SERVER_UNAVAILABLE`), reproduit
+trois fois à l'identique sans redémarrage. Les deux réparations bon marché sont
+exclues par la même mesure : `IsSupported()` rend `true` (le `E_OUTOFMEMORY` du
+jalon 1 ne se reproduit plus) **et** le service `CaptureService_5865d` existe et
+tourne. Ni composant absent, ni service arrêté ; la cause profonde reste
+inélucidée. La voie demeure architecturalement la bonne réponse — par fenêtre,
+hors-écran, chemin GPU, sans acrobatie de topologie d'affichage — et mérite un
+créneau **borné** de diagnostic RPC, mais elle n'est pas le chemin critique.
+
+**Voie écartée n°2 — conserver Desktop Duplication en garantissant le
+non-recouvrement** par une disposition en tuiles imposée par l'agent. Raison
+mesurée de son écartement : **la garantie n'existe pas**. Un menu contextuel
+ouvert près d'un bord de tuile déborde de ≈284 px à droite et ≈142 px en bas sur
+les tuiles voisines (mesuré sur capture d'écran, journal joint). C'est Windows
+qui place les menus, et il ne connaît que les frontières de moniteurs **réels** :
+l'agent ne peut pas l'empêcher. S'y ajoute une contrainte de surface — 800×360
+par fenêtre à 8 fenêtres sur le bureau réel 2400×1080, très en deçà de 1280×720.
+Le tuilage peut survivre comme *heuristique de placement*, jamais comme garantie.
+
+**Voie recommandée — un moniteur virtuel par fenêtre.** Le pilote d'affichage
+indirect produit une sortie DXGI réelle et attachée, portée par l'adaptateur qui
+possède NVENC (donc sans copie inter-périphérique), mesurée à 3413×960. Une
+fenêtre par moniteur supprime le recouvrement *par construction* au lieu de le
+discipliner, tout en préservant le chemin GPU. **Deux réserves bloquantes**
+avant de la spécifier : (a) le **plafond de sorties virtuelles simultanées n'est
+pas mesuré** — obstacle matériel, un seul appareil client apparié disponible ;
+si ce plafond vaut 1, tout l'arbitrage bascule ; (b) sa correction d'image sous
+recouvrement est **argumentée par construction, jamais mesurée**.
+
+**Repli mesuré — `PrintWindow(PW_RENDERFULLCONTENT)`.** Contre toute attente,
+cette voie rend l'image **juste** d'une fenêtre D3D **recouverte** : c'est la
+seule à avoir franchi la porte de correction par une mesure directe. Sa limite
+est le **chemin CPU** (`GetDIBits` puis téléversement GPU), éliminatoire pour le
+jeu — 29,1 i/s par fenêtre à deux fenêtres, encodage compris, N=4 et N=8 non
+mesurés. Acceptable en revanche pour les fenêtres de productivité que le modèle
+multi-fenêtres doit porter à côté du jeu.
 
 ### 4.1 Plein écran
 
@@ -339,10 +375,17 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
 - **Topologie WebRTC** : une `RTCPeerConnection` par fenêtre navigateur plutôt
   qu'une session à N pistes — l'isolation évite qu'une fenêtre en panne
   n'affecte les autres, au prix de N négociations ICE.
-- **Budget encodeurs** : les GPU GeForce récents plafonnent les sessions NVENC
-  simultanées (ordre de grandeur : 8 sur Ada, à confirmer pour la RTX 4070).
-  Suspendre l'encodage des fenêtres masquées, piloté par la Page Visibility API
-  côté client — souhaitable en soi, pas seulement comme contournement.
+- **Budget encodeurs — mesuré le 30/07/2026, formulation bornée.** Sur un
+  périphérique D3D11 **unique et partagé**, à 1280×720 / 60 i/s / 8 Mb/s,
+  **8 instances du pipeline Media Foundation complet réussissent ; la 9ᵉ échoue
+  à la liaison du type d'entrée** (`MF_E_UNSUPPORTED_D3D_TYPE`, `0xC00D6D76`).
+  Ce n'est **pas** établi comme « la limite de sessions NVENC de cette carte » :
+  le transform matériel n°9 s'instancie sans difficulté, et le partage d'un
+  unique périphérique est peut-être lui-même la contrainte. Le comportement sur
+  des périphériques D3D11 **séparés** n'est pas mesuré — à lever, il dimensionne
+  le nombre de fenêtres simultanées du produit. Suspendre l'encodage des
+  fenêtres masquées, piloté par la Page Visibility API côté client — souhaitable
+  en soi, pas seulement comme contournement.
 - **Risque n°1 — popup blocker : LEVÉ le 28/07/2026.** Mesuré sur ChromeOS —
   résultats et protocole dans `plans/2026-07-28-spike-multifenetres-resultats.md`.
   Le modèle tient, mais l'hypothèse « une PWA installée a plus de latitude » est
@@ -359,7 +402,13 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
 - **Cycle de vie** : fenêtre Windows fermée → fenêtre navigateur fermée ;
   fenêtre navigateur fermée → `WM_CLOSE` sur la fenêtre Windows (à confirmer
   comme comportement souhaité).
-- **Capture** : trancher la décision ouverte du §4 (WGC vs Desktop Duplication).
+- **Capture** : la décision ouverte du §4 a été sondée le 30/07/2026 — WGC et le
+  non-recouvrement garanti sont **tous deux démentis par la mesure**, voie
+  recommandée « un moniteur virtuel par fenêtre », repli mesuré `PrintWindow`.
+  Voir §4 et `plans/2026-07-30-sonde-capture-multifenetre-resultats.md`.
+  **Deux mesures sont bloquantes avant de spécifier ce chantier** : le plafond
+  de sorties virtuelles simultanées (deux appareils clients appariés suffiraient)
+  et le plafond d'encodage sur périphériques D3D11 séparés.
 
 ---
 
@@ -370,7 +419,13 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
 - **Session interactive.** Steam et les jeux exigent la session 1 ; l'agent y
   tourne déjà (contrainte de frontière de session du jalon 1). Acquis.
 - **Affichage virtuel.** Le « SudoMaker Virtual Display Adapter » doit annoncer
-  les résolutions et fréquences de rafraîchissement visées.
+  les résolutions et fréquences de rafraîchissement visées. **Relevé le
+  30/07/2026** : le pilote existe et est sain (`ROOT\DISPLAY\0003`) mais
+  **n'expose aucune sortie DXGI au repos** — il n'en produit une (`\\.\DISPLAY5`,
+  3413×960 mesurés) que pendant une session de streaming Apollo, et **en
+  remplacement** de l'écran physique (`dd_configuration_option =
+  ensure_only_display`). Piège : le champ de résolution de WMI s'est révélé
+  périmé de 68 s ; la source de vérité est `GetDesc`/`DesktopCoordinates`.
 - **Anti-triche.** Certains anti-triche en mode noyau (Riot Vanguard, Easy
   Anti-Cheat selon configuration) **refusent de s'exécuter en machine
   virtuelle**. Valorant est notamment inaccessible par construction. C'est une
