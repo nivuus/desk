@@ -282,8 +282,14 @@ pub struct H264Encoder {
     /// `awaiting_drain`) : le pilotage s'appuie désormais sur `GetInputStatus`,
     /// qui décrit l'état réel du convertisseur au lieu de le déduire.
     converter_output_pending: bool,
-    width: u32,
-    height: u32,
+    /// Taille des textures BGRA remises par la capture — l'entrée du
+    /// convertisseur.
+    capture: (u32, u32),
+    /// Taille réellement encodée et transportée — la sortie du convertisseur
+    /// et l'entrée de l'encodeur. Peut être plus petite que `capture` : c'est
+    /// le levier de résolution adaptative, et il ne touche pas à la fenêtre
+    /// Windows (contrairement à `WindowsSource::resize`).
+    encode: (u32, u32),
     fps: u32,
     /// Nombre de demandes d'entrée non encore satisfaites.
     pending_input_requests: u32,
@@ -341,8 +347,8 @@ impl Drop for MediaFoundationSession {
 impl H264Encoder {
     pub fn new(
         device: &ID3D11Device,
-        width: u32,
-        height: u32,
+        capture: (u32, u32),
+        encode: (u32, u32),
         fps: u32,
         bitrate: u32,
     ) -> Result<Self> {
@@ -375,8 +381,8 @@ impl H264Encoder {
         }
         .context("partage du périphérique D3D avec l'encodeur")?;
 
-        configure_output(&transform, width, height, fps, bitrate)?;
-        configure_input(&transform, width, height, fps)?;
+        configure_output(&transform, encode.0, encode.1, fps, bitrate)?;
+        configure_input(&transform, encode.0, encode.1, fps)?;
         configure_rate_control(&transform, bitrate)?;
 
         let events: IMFMediaEventGenerator = transform.cast()?;
@@ -388,7 +394,7 @@ impl H264Encoder {
         }
 
         // Convertisseur BGRA→NV12, partageant le même périphérique D3D.
-        let converter = create_color_converter(&device_manager, width, height, fps)?;
+        let converter = create_color_converter(&device_manager, capture, encode, fps)?;
         let converter_stream_info = unsafe { converter.GetOutputStreamInfo(0) }
             .context("interrogation du flux de sortie du convertisseur")?;
         let converter_provides_samples = converter_stream_info.dwFlags
@@ -422,8 +428,8 @@ impl H264Encoder {
             skipped_busy: 0,
             telemetry: Arc::new(EncoderTelemetry::default()),
             _media_foundation: media_foundation,
-            width,
-            height,
+            capture,
+            encode,
             fps,
             pending_input_requests: 0,
             pending_outputs: 0,
@@ -699,7 +705,7 @@ impl H264Encoder {
             pSample: std::mem::ManuallyDrop::new(if self.converter_provides_samples {
                 None
             } else {
-                Some(create_nv12_sample(&self.device, self.width, self.height)?)
+                Some(create_nv12_sample(&self.device, self.encode.0, self.encode.1)?)
             }),
             dwStatus: 0,
             pEvents: std::mem::ManuallyDrop::new(None),
@@ -956,8 +962,27 @@ impl H264Encoder {
         Ok(())
     }
 
-    pub fn dimensions(&self) -> (u32, u32) {
-        (self.width, self.height)
+    /// Change le débit cible sans reconstruire l'encodeur.
+    ///
+    /// `ICodecAPI::SetValue` à chaud est déjà éprouvé sur ce pilote par
+    /// `request_keyframe`, qui écrit `AVEncVideoForceKeyFrame` en cours de
+    /// session sur ce même objet.
+    ///
+    /// Un refus du pilote est rendu à l'appelant plutôt que journalisé ici :
+    /// c'est `WindowsSource` qui sait s'il doit continuer par la résolution
+    /// (voir tâche 7).
+    pub fn set_bitrate(&mut self, bitrate: u32) -> Result<()> {
+        let codec: ICodecAPI = self.transform.cast()?;
+        let rate = variant_u32(bitrate);
+        unsafe { codec.SetValue(&CODECAPI_AVEncCommonMeanBitRate, &rate) }
+            .context("réglage à chaud du débit d'encodage")?;
+        Ok(())
+    }
+
+    /// Taille réellement encodée. Distincte de la taille capturée depuis que
+    /// la résolution s'adapte au lien.
+    pub fn encode_size(&self) -> (u32, u32) {
+        self.encode
     }
 }
 
@@ -1127,8 +1152,8 @@ fn format_subtype(guid: GUID) -> String {
 /// `ProcessOutput` suffit.
 fn create_color_converter(
     device_manager: &IMFDXGIDeviceManager,
-    width: u32,
-    height: u32,
+    capture: (u32, u32),
+    encode: (u32, u32),
     fps: u32,
 ) -> Result<IMFTransform> {
     // Essai (ronde de correction 1/5, investigation du débit) :
@@ -1191,7 +1216,7 @@ fn create_color_converter(
         // Format d'entrée = ce que produit la capture (BGRA, avec alpha) ;
         // `MFVideoFormat_ARGB32` correspond à `DXGI_FORMAT_B8G8R8A8_UNORM`.
         input_type.SetGUID(&MF_MT_SUBTYPE, &MFVideoFormat_ARGB32)?;
-        input_type.SetUINT64(&MF_MT_FRAME_SIZE, pack_u64(width, height))?;
+        input_type.SetUINT64(&MF_MT_FRAME_SIZE, pack_u64(capture.0, capture.1))?;
         input_type.SetUINT64(&MF_MT_FRAME_RATE, pack_u64(fps, 1))?;
         input_type.SetUINT32(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0 as u32)?;
         converter.SetInputType(0, &input_type, 0)?;
@@ -1201,7 +1226,7 @@ fn create_color_converter(
     unsafe {
         output_type.SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Video)?;
         output_type.SetGUID(&MF_MT_SUBTYPE, &MFVideoFormat_NV12)?;
-        output_type.SetUINT64(&MF_MT_FRAME_SIZE, pack_u64(width, height))?;
+        output_type.SetUINT64(&MF_MT_FRAME_SIZE, pack_u64(encode.0, encode.1))?;
         output_type.SetUINT64(&MF_MT_FRAME_RATE, pack_u64(fps, 1))?;
         output_type.SetUINT32(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0 as u32)?;
         converter.SetOutputType(0, &output_type, 0)?;

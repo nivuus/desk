@@ -6,7 +6,7 @@
 
 #![cfg(windows)]
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -34,6 +34,11 @@ pub struct WindowsAudioSource {
     ring: PacketRing,
     arret: Arc<AtomicBool>,
     description: String,
+    /// Taux de perte voulu par le contrôleur de congestion, en pourcentage.
+    /// Lu par le fil de capture avant chaque encodage — voir son commentaire
+    /// dans `new` pour la raison d'être de cet indirection : l'`OpusEncoder`
+    /// lui-même est déplacé dans ce fil et n'est donc pas accessible ici.
+    perte_desiree: Arc<AtomicI32>,
 }
 
 impl WindowsAudioSource {
@@ -49,9 +54,16 @@ impl WindowsAudioSource {
 
         let ring = PacketRing::new(RING_CAPACITY);
         let arret = Arc::new(AtomicBool::new(false));
+        // Pont entre `AudioSource::set_packet_loss_perc` (appelé depuis la
+        // boucle de transport) et l'encodeur Opus, qui vit sur le fil de
+        // capture et n'est donc accessible que depuis lui. Un `Mutex` autour
+        // de l'encodeur serait pris à chaque trame de 10 ms sur ce chemin
+        // chaud ; un entier atomique lu une fois par trame ne coûte rien.
+        let perte_desiree = Arc::new(AtomicI32::new(0));
 
         let ring_fil = ring.clone();
         let arret_fil = Arc::clone(&arret);
+        let perte_desiree_fil = Arc::clone(&perte_desiree);
         std::thread::Builder::new()
             .name("audio-capture".into())
             .spawn(move || {
@@ -81,6 +93,10 @@ impl WindowsAudioSource {
 
                 let mut assembleur = FrameAssembler::new(origin);
                 let mut dernier_rapport = Instant::now();
+                // Dernière valeur effectivement posée sur l'encodeur. Un
+                // appel CTL par trame de 10 ms serait du gaspillage sur ce
+                // chemin chaud : on ne réécrit que lorsque la cible a changé.
+                let mut derniere_perte: i32 = 0;
 
                 while !arret_fil.load(Ordering::Relaxed) {
                     match capture.read() {
@@ -107,6 +123,23 @@ impl WindowsAudioSource {
                     }
 
                     for trame in assembleur.drain_due(Instant::now()) {
+                        let voulue = perte_desiree_fil.load(Ordering::Relaxed);
+                        if voulue != derniere_perte {
+                            match encodeur.set_packet_loss_perc(voulue) {
+                                Ok(()) => derniere_perte = voulue,
+                                Err(e) => {
+                                    // Refus de l'encodeur : on retentera au
+                                    // prochain changement de cible plutôt que
+                                    // de rejouer cet appel à chaque trame.
+                                    derniere_perte = voulue;
+                                    tracing::warn!(
+                                        erreur = %e,
+                                        valeur = voulue,
+                                        "réglage du taux de perte Opus refusé"
+                                    );
+                                }
+                            }
+                        }
                         match encodeur.encode(&trame.pcm) {
                             Ok(data) => ring_fil.push(AudioPacket {
                                 data,
@@ -160,6 +193,7 @@ impl WindowsAudioSource {
             ring,
             arret,
             description,
+            perte_desiree,
         })
     }
 
@@ -172,6 +206,14 @@ impl WindowsAudioSource {
 impl AudioSource for WindowsAudioSource {
     fn next_packet(&mut self) -> Option<AudioPacket> {
         self.ring.pop()
+    }
+
+    fn set_packet_loss_perc(&mut self, perc: i32) -> Result<()> {
+        // Ne fait qu'écrire : c'est le fil de capture qui lit cette valeur et
+        // relaie vers `OpusEncoder::set_packet_loss_perc`, seul détenteur de
+        // l'encodeur (voir le commentaire du champ `perte_desiree`).
+        self.perte_desiree.store(perc, Ordering::Relaxed);
+        Ok(())
     }
 }
 

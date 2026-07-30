@@ -75,4 +75,57 @@ describe('creerStatut', () => {
         expect(element.dataset.hidden).toBe('false');
         expect(element.textContent).toBe('session terminée : fermeture demandée');
     });
+
+    it('masquer() n’efface pas un message persistant affiché', () => {
+        // Cas réel : une alerte réseau (`link`, `alerte: true`) affichée
+        // pendant la fenêtre de tir du minuteur anonyme d'un bandeau voisin
+        // (« prêt », « manette détectée »…) ne doit pas disparaître quand ce
+        // minuteur se déclenche — ce module ne sait rien de son existence.
+        const element = faireCible();
+        const statut = creerStatut(element);
+
+        statut.afficher('Réseau insuffisant pour le jeu nerveux — 1920×1080, 2.0 Mb/s', {
+            persistant: true,
+        });
+        statut.masquer();
+
+        expect(element.dataset.hidden).toBe('false');
+        expect(element.textContent).toBe('Réseau insuffisant pour le jeu nerveux — 1920×1080, 2.0 Mb/s');
+    });
+
+    it('un message ordinaire suivant un persistant lève la persistance : masquer() s’applique de nouveau', () => {
+        // Symétrique du cas ci-dessus : un retour à un état normal (par
+        // exemple `link` avec `alerte: false` après une amélioration du
+        // réseau) doit pouvoir se masquer normalement, sans que l'ancienne
+        // alerte ne le bloque indéfiniment.
+        const element = faireCible();
+        const statut = creerStatut(element);
+
+        statut.afficher('Réseau insuffisant pour le jeu nerveux — 1920×1080, 2.0 Mb/s', {
+            persistant: true,
+        });
+        statut.afficher('1920×1080, 8.0 Mb/s');
+        statut.masquer();
+
+        expect(element.dataset.hidden).toBe('true');
+    });
+
+    it('un message terminal reste prioritaire sur un persistant : la garde terminale n’est pas affaiblie', () => {
+        // Ce test compte particulièrement : `persistant` est un drapeau ajouté
+        // à côté de `terminal`, exactement le genre d'endroit où l'on
+        // affaiblit une garde existante sans le voir.
+        const element = faireCible();
+        const statut = creerStatut(element);
+
+        statut.afficher('session terminée : fermeture demandée', { terminal: true });
+        statut.afficher('Réseau insuffisant pour le jeu nerveux — 1920×1080, 2.0 Mb/s', {
+            persistant: true,
+        });
+
+        expect(element.textContent).toBe('session terminée : fermeture demandée');
+
+        statut.masquer();
+        expect(element.dataset.hidden).toBe('false');
+        expect(element.textContent).toBe('session terminée : fermeture demandée');
+    });
 });

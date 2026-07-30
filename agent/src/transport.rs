@@ -30,11 +30,13 @@ use proto::input::InputMessage;
 use str0m::channel::ChannelId;
 use str0m::format::Codec;
 use str0m::media::{Frequency, MediaTime, Mid, Pt};
+use str0m::bwe::Bitrate;
 use str0m::net::{DatagramRecv, Protocol, Receive};
 use str0m::{Candidate, Event, IceConnectionState, Input, Output, Rtc};
 
 use crate::audio::{AudioPacket, AudioSource};
 use crate::clock::instant_from_pts;
+use crate::congestion;
 use crate::h264::{AccessUnit, CLOCK_RATE_HZ};
 use crate::source::VideoSource;
 
@@ -78,6 +80,28 @@ const AUDIO_POLL_INTERVAL: Duration = Duration::from_millis(2);
 /// Windows (recherche de la fenêtre) ; une fenêtre fermée le reste, inutile
 /// de le revérifier à 60 Hz.
 const ALIVE_CHECK_INTERVAL: Duration = Duration::from_secs(1);
+
+/// Estimation de bande passante de départ, avant toute rétroaction du pair.
+///
+/// Compromis mesuré à la tâche 12 : trop bas, le démarrage sur LAN met du
+/// temps à rejoindre le plafond et la recette perd des images par seconde ;
+/// trop haut, le premier instant d'une session sur lien étroit sature avant
+/// la première correction. 2,5 Mb/s est le point de départ, à confirmer.
+const ESTIMATION_INITIALE_BPS: u32 = 2_500_000;
+
+/// Durée au-delà de laquelle une estimation de bande passante non renouvelée
+/// est traitée comme absente (I4, revue finale de branche).
+///
+/// `Event::EgressBitrateEstimate` et `Event::MediaEgressStats` n'arrivent pas
+/// ensemble (voir le commentaire du champ `derniere_estimation_bps`) : sans
+/// cette borne, une estimation reçue une seule fois puis plus jamais (TWCC qui
+/// se tarit alors que la session survit) resterait utilisée indéfiniment par
+/// le contrôleur — potentiellement la dernière valeur haute avant l'incident,
+/// ce qui annoncerait « Bonne » sur un lien mort. `MediaEgressStats` arrive
+/// environ une fois par seconde (`set_stats_interval`) : 5 s laisse plusieurs
+/// occasions manquées avant de conclure à l'absence, sans laisser une
+/// estimation figée vivre des dizaines de secondes.
+const EXPIRATION_ESTIMATION: Duration = Duration::from_secs(5);
 
 /// Tranche maximale d'une attente sans donnée sur le socket, dans la boucle
 /// de sondage non bloquant d'`act_on_timeout` (branche c).
@@ -412,6 +436,62 @@ pub struct Session {
     /// `act_on_timeout`, jamais depuis `dispatch_channel_data` — voir le
     /// commentaire de ce champ à son point de consommation.
     pending_resize: Option<(u32, u32)>,
+    /// Contrôleur de congestion. Alimenté par `Event::EgressBitrateEstimate`
+    /// et `Event::MediaEgressStats`, tous deux déjà émis par str0m — le
+    /// second l'était même déjà avant ce chantier, et tombait dans le `_ =>
+    /// {}` de `handle_event`.
+    congestion: congestion::Controleur,
+    /// Dernière estimation reçue, avec l'instant de sa réception, en attente
+    /// d'être confrontée aux statistiques. Les deux événements n'arrivent pas
+    /// ensemble.
+    ///
+    /// **Horodatée depuis I4 (revue finale de branche).** Sans l'instant, une
+    /// estimation reçue une seule fois puis plus jamais (TWCC qui se tarit)
+    /// resterait utilisée indéfiniment — voir `EXPIRATION_ESTIMATION`, qui la
+    /// traite comme absente au-delà de son délai.
+    derniere_estimation_bps: Option<(u32, Instant)>,
+    /// Décision décidée mais pas encore appliquée. Appliquée dans
+    /// `act_on_timeout`, jamais depuis `handle_event` — reconstruire
+    /// l'encodeur pendant le drainage de `poll_output` romprait l'invariant
+    /// de str0m (une seule mutation par appel), exactement comme pour
+    /// `pending_resize`.
+    pending_decision: Option<congestion::Decision>,
+    /// Vrai une fois que l'indisponibilité de l'adaptation a été journalisée.
+    /// Une condition permanente ne se journalise pas chaque seconde.
+    absence_bwe_signalee: bool,
+    /// Vrai une fois que l'indisponibilité de l'adaptation a été annoncée AU
+    /// NAVIGATEUR (message `Link`). Drapeau distinct d'`absence_bwe_signalee`,
+    /// qui ne couvre que le journal.
+    ///
+    /// **Ajouté pour I2 (revue finale de branche).** Avant ce correctif,
+    /// `Controleur::observer` rendait `None` d'entrée quand aucune estimation
+    /// n'était disponible, donc aucune `pending_decision` n'était jamais
+    /// produite pour ce cas — `Adaptation::Indisponible` n'atteignait jamais
+    /// le navigateur, alors que la spec l'exige nommément (« surtout pas un
+    /// silence qui ressemble à tout va bien »).
+    ///
+    /// Remis à `false` dès qu'une estimation fraîche revient : une
+    /// indisponibilité ultérieure (nouvelle coupure de TWCC, voir I4) est une
+    /// information neuve, à annoncer de nouveau — comme `taille_refus_signalee`
+    /// se remet à `None` dès qu'un changement de taille réussit.
+    indisponibilite_annoncee: bool,
+    /// Taille d'encodage réellement appliquée. Distincte de celle décidée :
+    /// un refus de l'encodeur laisse la décision non appliquée, et il ne faut
+    /// pas la retenter à chaque tour.
+    encode_size_appliquee: (u32, u32),
+    /// Dernière taille d'encodage dont le refus a été journalisé. Une
+    /// condition permanente ne se journalise pas chaque seconde ; en
+    /// revanche, une NOUVELLE cible refusée est une information neuve.
+    /// Remis à `None` dès qu'un changement de taille réussit, pour qu'un
+    /// refus ultérieur de la même taille soit à nouveau dit.
+    taille_refus_signalee: Option<(u32, u32)>,
+    /// Vrai une fois le refus du débit à chaud journalisé.
+    refus_debit_signale: bool,
+    /// Débit réellement appliqué par l'encodeur. Distinct de celui décidé :
+    /// un refus du pilote laisse l'encodeur au débit précédent, et annoncer
+    /// au navigateur un débit qu'il n'émet pas serait un mensonge de la même
+    /// famille que celui déjà corrigé sur la qualité (tâche 5).
+    bitrate_applique: u32,
     /// Dernier instant où `source.is_alive()` a été interrogée. Cet appel
     /// coûte un appel système côté Windows (recherche de fenêtre) : on
     /// l'espace plutôt que de le refaire à chaque tour de boucle — une
@@ -435,6 +515,7 @@ impl Session {
         source: Box<dyn VideoSource + Send>,
         local_ip: IpAddr,
         clock_origin: Instant,
+        plafond_bps: u32,
     ) -> Result<Self> {
         let socket = UdpSocket::bind(SocketAddr::new(local_ip, 0))
             .context("ouverture du socket UDP")?;
@@ -468,8 +549,18 @@ impl Session {
             .clear_codecs()
             .enable_h264(true)
             .enable_opus(true)
+            // Sans cet appel, `Event::EgressBitrateEstimate` n'est JAMAIS
+            // émis et tout l'asservissement reste muet. L'estimation
+            // initiale est volontairement modeste : le sous-système sonde à
+            // la hausse vers `set_desired_bitrate` (posé plus bas), et
+            // partir trop haut ferait saturer le lien avant la première
+            // correction.
+            .enable_bwe(Some(Bitrate::bps(ESTIMATION_INITIALE_BPS as u64)))
             .set_stats_interval(Some(Duration::from_secs(1)))
             .build(Instant::now());
+
+        // Cible que le sondage cherche à atteindre : le plafond configuré.
+        rtc.bwe().set_desired_bitrate(Bitrate::bps(plafond_bps as u64));
 
         // `add_local_candidate` ne renvoie pas de `Result` : elle retourne
         // `Option<&Candidate>` (le candidat précédent s'il était déjà connu).
@@ -500,6 +591,43 @@ impl Session {
             audio_write_pending_drain: false,
             warned_audio_negotiation: false,
             pending_resize: None,
+            congestion: congestion::Controleur::new(
+                congestion::Config {
+                    plafond_bps,
+                    // Référence `opus::BITRATE_BPS` plutôt qu'une constante
+                    // dupliquée (I5, revue finale de branche) : une valeur en
+                    // dur ici pouvait diverger silencieusement de ce que
+                    // l'encodeur Opus utilise réellement.
+                    audio_bps: crate::opus::BITRATE_BPS as u32,
+                    source: dimensions,
+                    // **Délibérément 60, PAS `ENCODER_FPS`** (I5, revue finale
+                    // de branche). `ENCODER_FPS` (défaut 90, voir `main.rs`)
+                    // est la cadence de SOLLICITATION de l'encodeur, pas la
+                    // cadence DÉLIVRÉE — la recette mesure 55 à 63 im/s
+                    // réellement décodées, bien plus proche de 60 que de 90.
+                    // Et surtout : `BPP_MIN` (voir `congestion.rs`) a été
+                    // calibrée avec `fps = 60`. `fps` multiplie directement
+                    // tous les `min_bps` de l'échelle — le faire suivre
+                    // `ENCODER_FPS` multiplierait tous les seuils par 1,5 et
+                    // invaliderait une calibration déjà fragile (reconduite
+                    // sans preuve visuelle, voir le commentaire de
+                    // `BPP_MIN`), sans mesure pour la refaire. `BPP_MIN` et ce
+                    // `fps` sont COUPLÉS et doivent être recalibrés ENSEMBLE,
+                    // jamais l'un sans l'autre.
+                    fps: 60,
+                },
+                Instant::now(),
+            ),
+            derniere_estimation_bps: None,
+            pending_decision: None,
+            absence_bwe_signalee: false,
+            indisponibilite_annoncee: false,
+            encode_size_appliquee: dimensions,
+            taille_refus_signalee: None,
+            refus_debit_signale: false,
+            // Comme le contrôleur initialise le sien : avant toute décision
+            // appliquée, le débit réel est celui de repli, le plafond.
+            bitrate_applique: plafond_bps,
             last_alive_check: Instant::now(),
             _timer_resolution: TimerResolutionGuard::new(),
         };
@@ -535,6 +663,27 @@ impl Session {
     /// `run()`, seul endroit qui mute la session une fois la boucle démarrée.
     fn queue_control(&mut self, message: AgentControl) {
         self.pending_control.push_back(message);
+    }
+
+    /// Décision d'adaptation actuellement retenue. Alimente le message d'état
+    /// du lien envoyé au navigateur (tâche 10).
+    ///
+    /// `encode_size` et `video_bitrate_bps` viennent de ce que le transport a
+    /// RÉELLEMENT réussi à appliquer (`encode_size_appliquee`,
+    /// `bitrate_applique`), pas de ce que le contrôleur a décidé : celui-ci
+    /// reste optimiste par construction (voir `congestion::Controleur`), et
+    /// seul le transport sait si l'encodeur a accepté le dernier réglage.
+    /// Annoncer au navigateur une taille ou un débit que la piste n'émet pas
+    /// serait un mensonge de la même famille que celui déjà corrigé sur
+    /// `qualite` à la tâche 5. Les autres champs (`qualite`, `adaptation`,
+    /// `opus_loss_perc`) restent ceux du contrôleur : aucun mécanisme de
+    /// refus équivalent n'existe pour eux ici.
+    pub fn decision_courante(&self) -> congestion::Decision {
+        congestion::Decision {
+            encode_size: self.encode_size_appliquee,
+            video_bitrate_bps: self.bitrate_applique,
+            ..self.congestion.courant()
+        }
     }
 
     /// Boucle de transport : tourne jusqu'à déconnexion ou erreur fatale.
@@ -584,10 +733,11 @@ impl Session {
     /// `write_frame` (une mutation) suivi directement de `handle_input`
     /// (une seconde) violerait la même règle.
     ///
-    /// Trois branches supplémentaires (a0bis : drainage d'un message de
-    /// contrôle produit hors boucle vers `pending_control` ; a1, a2 :
-    /// redimensionnement en attente et vérification de la fenêtre) ne
-    /// mutent JAMAIS `Rtc` — elles ne touchent que `self.source` et/ou
+    /// Quatre branches supplémentaires (a0bis : drainage d'un message de
+    /// contrôle produit hors boucle vers `pending_control` ; a0ter :
+    /// décision d'adaptation en attente ; a1, a2 : redimensionnement en
+    /// attente et vérification de la fenêtre) ne mutent JAMAIS `Rtc` — elles
+    /// ne touchent que `self.source`, `self.audio_source` et/ou
     /// `self.pending_control`, au plus en y mettant en file un message de
     /// contrôle (`queue_control`, qui n'empile qu'un `VecDeque`, sans effet
     /// sur `Rtc` avant le tour suivant). Chacune rend quand même la main
@@ -661,6 +811,7 @@ impl Session {
                     AgentControl::Pointer { .. } => "pointer",
                     AgentControl::Rumble { .. } => "rumble",
                     AgentControl::Capabilities { .. } => "capabilities",
+                    AgentControl::Link { .. } => "link",
                 };
                 let json = serde_json::to_string(&message)?;
                 if let Some(mut channel) = self.rtc.channel(id) {
@@ -693,6 +844,88 @@ impl Session {
             return Ok(Tick::Disconnected);
         }
 
+        // a0ter) Décision d'adaptation en attente. Traitée avant la branche
+        // vidéo et avant le redimensionnement : reconfigurer l'encodeur avec
+        // une image en vol coûterait cette image.
+        //
+        // Ne mute jamais `Rtc` — seuls la source vidéo et l'encodeur audio
+        // sont touchés — donc cette branche respecte l'invariant de drainage.
+        if let Some(decision) = self.pending_decision.take() {
+            match self.source.set_bitrate(decision.video_bitrate_bps) {
+                Ok(()) => self.bitrate_applique = decision.video_bitrate_bps,
+                Err(e) => {
+                    // L'encodeur refuse le débit à chaud : on garde le débit
+                    // courant et on continue d'adapter par la résolution. Une
+                    // seule ligne, pas une par seconde.
+                    if !self.refus_debit_signale {
+                        self.refus_debit_signale = true;
+                        tracing::warn!(erreur = %e, "l'encodeur refuse le réglage du débit à chaud");
+                    }
+                }
+            }
+            if decision.encode_size != self.encode_size_appliquee {
+                match self.source.set_encode_size(decision.encode_size.0, decision.encode_size.1) {
+                    Ok(()) => {
+                        tracing::info!(
+                            largeur = decision.encode_size.0,
+                            hauteur = decision.encode_size.1,
+                            "taille d'encodage changée"
+                        );
+                        self.encode_size_appliquee = decision.encode_size;
+                        // Un refus ultérieur de cette même taille (ou d'une
+                        // autre) redeviendra une information neuve.
+                        self.taille_refus_signalee = None;
+                    }
+                    Err(e) => {
+                        // On reste au barreau courant. La session vit. Une
+                        // cible DIFFÉRENTE refusée est une information
+                        // neuve ; la même cible répétée à chaque décision
+                        // (une par seconde, potentiellement des heures sous
+                        // congestion soutenue) ne l'est pas.
+                        if self.taille_refus_signalee != Some(decision.encode_size) {
+                            self.taille_refus_signalee = Some(decision.encode_size);
+                            tracing::warn!(
+                                erreur = %e,
+                                largeur = decision.encode_size.0,
+                                hauteur = decision.encode_size.1,
+                                "changement de taille d'encodage refusé, barreau conservé"
+                            );
+                        }
+                    }
+                }
+            }
+            if let Some(audio) = self.audio_source.as_mut() {
+                if let Err(e) = audio.set_packet_loss_perc(decision.opus_loss_perc) {
+                    tracing::warn!(erreur = %e, "réglage du taux de perte Opus refusé");
+                }
+            }
+            // On annonce `decision_courante()`, pas `decision` : `bitrate` et
+            // `encode_size` doivent refléter ce que l'encodeur a RÉELLEMENT
+            // accepté ci-dessus (`self.bitrate_applique`,
+            // `self.encode_size_appliquee`), pas la cible visée par le
+            // contrôleur — un refus d'encodeur laisserait sinon passer au
+            // navigateur exactement le mensonge que `decision_courante()`
+            // existe pour éviter (voir sa documentation et le test
+            // `un_refus_repete_de_set_encode_size_ne_remonte_pas_dans_decision_courante`).
+            let etat_lien = self.decision_courante();
+            self.queue_control(AgentControl::link(
+                etat_lien.video_bitrate_bps,
+                etat_lien.encode_size,
+                match etat_lien.qualite {
+                    congestion::Qualite::Bonne => proto::control::LinkQuality::Bonne,
+                    congestion::Qualite::Degradee => proto::control::LinkQuality::Degradee,
+                    congestion::Qualite::Insuffisante => proto::control::LinkQuality::Insuffisante,
+                },
+                match etat_lien.adaptation {
+                    congestion::Adaptation::Active => proto::control::LinkAdaptation::Active,
+                    congestion::Adaptation::Indisponible => {
+                        proto::control::LinkAdaptation::Indisponible
+                    }
+                },
+            ));
+            return Ok(Tick::Continue);
+        }
+
         // a1) Redimensionnement en attente, à traiter avant la branche
         // vidéo. `self.source.resize()` ne mute jamais `Rtc` (elle
         // reconstruit uniquement la source vidéo, pas la session WebRTC),
@@ -710,6 +943,39 @@ impl Session {
                     // celles demandées.
                     let (actual_width, actual_height) = self.source.dimensions();
                     self.dimensions = (actual_width, actual_height);
+
+                    // C1 (revue finale de branche). `WindowsSource::resize`
+                    // reconstruit désormais TOUJOURS l'encodeur à la taille
+                    // pleine de la nouvelle capture (voir son commentaire) :
+                    // la taille réellement appliquée vient donc de changer
+                    // par ce seul fait, sans être jamais passée par
+                    // `set_encode_size`. On l'enregistre directement — il n'y
+                    // a rien à « appliquer » ici, c'est déjà fait — plutôt
+                    // que de la laisser transiter par `pending_decision`
+                    // comme le ferait une décision normale du contrôleur.
+                    self.encode_size_appliquee = (actual_width, actual_height);
+                    // Une cible refusée avant ce redimensionnement n'a plus
+                    // cours : la taille encodée vient de changer sous elle.
+                    self.taille_refus_signalee = None;
+
+                    // Le contrôleur doit être reconstruit pour la nouvelle
+                    // taille de source : ses seuils (`min_bps` par barreau)
+                    // sont dérivés de la taille de capture, qui vient de
+                    // changer. Sans cela, l'échelle resterait calibrée pour
+                    // une source qui n'existe plus — et pourrait viser une
+                    // taille d'encodage supérieure à la nouvelle capture.
+                    // `changer_source` conserve le barreau (le NIVEAU de
+                    // réduction), pas la taille absolue ; la décision qui en
+                    // résulte est mémorisée pour que la branche a0ter,
+                    // au tour SUIVANT, la compare à `encode_size_appliquee`
+                    // (celle ci-dessus, la taille pleine) et rappelle
+                    // `set_encode_size` si le barreau conservé exige encore
+                    // une réduction.
+                    let decision = self
+                        .congestion
+                        .changer_source((actual_width, actual_height), Instant::now());
+                    self.pending_decision = Some(decision);
+
                     self.queue_control(AgentControl::ready(actual_width, actual_height));
                 }
                 Err(e) => {
@@ -1187,6 +1453,89 @@ impl Session {
                     tracing::warn!(erreur = %e, mid = ?request.mid, "échec de la demande d'image clé");
                 }
             }
+            Event::EgressBitrateEstimate(kind) => {
+                // Les deux variantes portent une estimation ; seule REMB
+                // nomme en plus le `mid` concerné, dont on n'a pas l'usage
+                // avec une piste vidéo unique.
+                let bps = match kind {
+                    str0m::bwe::BweKind::Twcc(b) => b.as_u64(),
+                    str0m::bwe::BweKind::Remb(_, b) => b.as_u64(),
+                    // `BweKind` est `#[non_exhaustive]` côté str0m : une
+                    // variante future retomberait ici plutôt que d'empêcher
+                    // la compilation. Rien à faire de mieux qu'ignorer une
+                    // estimation qu'on ne sait pas encore interpréter.
+                    _ => return Tick::Continue,
+                };
+                self.derniere_estimation_bps = Some((bps as u32, Instant::now()));
+            }
+            Event::MediaEgressStats(stats) => {
+                // Seule la piste vidéo alimente la décision : l'audio a un
+                // débit fixe et son budget est déjà retiré par le contrôleur.
+                if Some(stats.mid) != self.video_mid {
+                    return Tick::Continue;
+                }
+                // I4 (revue finale de branche) : une estimation reçue une
+                // seule fois puis plus jamais (TWCC qui se tarit alors que la
+                // session survit) est traitée comme absente au-delà
+                // d'`EXPIRATION_ESTIMATION`, plutôt que d'être utilisée
+                // indéfiniment — potentiellement la dernière valeur haute
+                // avant l'incident, ce qui annoncerait « Bonne » sur un lien
+                // mort.
+                let now = Instant::now();
+                let estimate_bps = self.derniere_estimation_bps.and_then(|(bps, at)| {
+                    (now.saturating_duration_since(at) <= EXPIRATION_ESTIMATION).then_some(bps)
+                });
+                let observation = congestion::Observation {
+                    estimate_bps,
+                    rtt: stats.rtt,
+                    loss: stats.loss,
+                    at: now,
+                };
+                let absence = observation.estimate_bps.is_none();
+                if absence && !self.absence_bwe_signalee {
+                    self.absence_bwe_signalee = true;
+                    tracing::warn!(
+                        "aucune estimation de bande passante reçue : l'adaptation reste \
+                         indisponible et le débit demeure au plafond configuré"
+                    );
+                }
+                tracing::debug!(
+                    estimation = ?observation.estimate_bps,
+                    rtt = ?observation.rtt,
+                    perte = ?observation.loss,
+                    "observation réseau"
+                );
+                // `observer` DOIT être appelé avant de lire `courant()`
+                // ci-dessous : c'est lui qui, dans sa branche sans
+                // estimation, met `courant.adaptation` à jour vers
+                // `Indisponible` (voir son commentaire). Lire `courant()`
+                // avant cet appel rendrait un instantané périmé (encore
+                // `Active`) sur la transition qui nous intéresse le plus.
+                if let Some(decision) = self.congestion.observer(observation) {
+                    // Mémorisée, pas appliquée : voir le commentaire du champ.
+                    self.pending_decision = Some(decision);
+                }
+                if absence {
+                    // I2 (revue finale de branche) : `Controleur::observer`
+                    // ne produit JAMAIS de décision quand l'estimation
+                    // manque (voir son commentaire, retour anticipé) — sans
+                    // ce relais explicite, `Adaptation::Indisponible`
+                    // n'atteint donc jamais le navigateur, alors que la spec
+                    // l'exige nommément. On pose `self.congestion.courant()`,
+                    // lu APRÈS l'appel ci-dessus : son champ `adaptation` est
+                    // désormais à jour, et le reste (débit, taille) reflète
+                    // la dernière décision réelle — la seule chose de sensé à
+                    // annoncer tant qu'aucune nouvelle donnée n'arrive.
+                    if !self.indisponibilite_annoncee {
+                        self.indisponibilite_annoncee = true;
+                        self.pending_decision = Some(self.congestion.courant());
+                    }
+                } else {
+                    // Une estimation fraîche revient : une indisponibilité
+                    // ultérieure redeviendra une information neuve.
+                    self.indisponibilite_annoncee = false;
+                }
+            }
             _ => {}
         }
         Tick::Continue
@@ -1449,7 +1798,7 @@ mod tests {
 
         let avant = Instant::now();
         let origine = avant - Duration::from_secs(10);
-        let session = Session::new(source, local_ip, origine).expect("session");
+        let session = Session::new(source, local_ip, origine, 12_000_000).expect("session");
 
         // Une image capturée 2 s après l'origine porte le PTS 180 000.
         assert_eq!(session.capture_instant(180_000), origine + Duration::from_secs(2));
@@ -1529,7 +1878,7 @@ mod tests {
                 .expect("chargement du flux de test"),
         );
 
-        let mut session = Session::new(source, local_ip, Instant::now()).expect("session");
+        let mut session = Session::new(source, local_ip, Instant::now(), 12_000_000).expect("session");
 
         // Pair « navigateur » minimal : un second `Rtc`, offrant, avec une
         // piste vidéo recvonly et les deux canaux de données.
@@ -1754,7 +2103,7 @@ mod tests {
 
         let avant = Instant::now();
         let origine = avant - Duration::from_secs(10);
-        let mut session = Session::new(source, local_ip, origine).expect("session");
+        let mut session = Session::new(source, local_ip, origine, 12_000_000).expect("session");
 
         let peer_socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("socket du pair");
         let peer_addr = peer_socket.local_addr().unwrap();
@@ -1928,7 +2277,7 @@ mod tests {
             keyframe_requests: keyframe_requests.clone(),
         });
 
-        let mut session = Session::new(source, local_ip, Instant::now()).expect("session");
+        let mut session = Session::new(source, local_ip, Instant::now(), 12_000_000).expect("session");
 
         let peer_socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("socket du pair");
         let peer_addr = peer_socket.local_addr().unwrap();
@@ -2047,7 +2396,7 @@ mod tests {
             crate::source::FileSource::from_path(source_path, 1280, 720, 60)
                 .expect("chargement du flux de test"),
         );
-        let mut session = Session::new(source, local_ip, Instant::now()).expect("session");
+        let mut session = Session::new(source, local_ip, Instant::now(), 12_000_000).expect("session");
 
         let peer_socket = UdpSocket::bind(SocketAddr::new(local_ip, 0)).expect("socket du pair");
         let peer_addr = peer_socket.local_addr().unwrap();
@@ -2123,5 +2472,87 @@ mod tests {
         }
 
         assert!(recu, "le message de pointeur n'est jamais parvenu au pair");
+    }
+
+    #[test]
+    fn un_refus_repete_de_set_encode_size_ne_remonte_pas_dans_decision_courante() {
+        // Ronde de correction (revue post-tâche 9) : `Controleur::observer`
+        // reste optimiste par construction — il met à jour `courant.encode_size`
+        // que l'encodeur accepte ou non le changement. Sans la distinction
+        // que ce test vérifie, `decision_courante()` annoncerait au
+        // navigateur (message d'état du lien, tâche 10) une taille que la
+        // piste vidéo n'émet jamais.
+        //
+        // Ce test couvre aussi la déduplication du journal côté refus
+        // (`taille_refus_signalee`) : trois décisions identiques de suite,
+        // comme le ferait le contrôleur une fois par seconde sous
+        // congestion soutenue, ne doivent faire grandir ni changer cette
+        // mémoire au-delà de sa première écriture — compter les lignes de
+        // journal elles-mêmes n'est pas praticable dans ce harnais (aucune
+        // capture de `tracing` n'existe dans ce module).
+        struct SourceRefusant {
+            inner: crate::source::FileSource,
+        }
+
+        impl VideoSource for SourceRefusant {
+            fn next_frame(&mut self) -> Option<AccessUnit> {
+                self.inner.next_frame()
+            }
+            fn dimensions(&self) -> (u32, u32) {
+                self.inner.dimensions()
+            }
+            fn set_encode_size(&mut self, _width: u32, _height: u32) -> anyhow::Result<()> {
+                Err(anyhow!("pilote imaginaire : refuse toujours"))
+            }
+        }
+
+        let local_ip: IpAddr = "127.0.0.1".parse().unwrap();
+        let source_path =
+            std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
+        let source = Box::new(SourceRefusant {
+            inner: crate::source::FileSource::from_path(source_path, 1280, 720, 60)
+                .expect("chargement du flux de test"),
+        });
+
+        let mut session =
+            Session::new(source, local_ip, Instant::now(), 12_000_000).expect("session");
+        let taille_originale = session.encode_size_appliquee;
+        let taille_visee = (640, 360);
+        assert_ne!(taille_visee, taille_originale, "précondition du test");
+
+        let decision = congestion::Decision {
+            video_bitrate_bps: 5_000_000,
+            encode_size: taille_visee,
+            opus_loss_perc: 0,
+            qualite: congestion::Qualite::Degradee,
+            adaptation: congestion::Adaptation::Active,
+        };
+
+        // Trois décisions successives, comme le ferait le contrôleur une
+        // fois par seconde sous congestion soutenue : la même taille
+        // refusée à chaque tour.
+        for _ in 0..3 {
+            session.pending_decision = Some(decision);
+            session
+                .act_on_timeout(Instant::now())
+                .expect("un refus de l'encodeur ne doit jamais faire échouer la session");
+        }
+
+        // Trouvaille 2 : `decision_courante()` doit continuer à rapporter
+        // l'ANCIENNE taille, celle réellement émise — pas celle refusée.
+        assert_eq!(
+            session.decision_courante().encode_size,
+            taille_originale,
+            "un refus de l'encodeur ne doit jamais se refléter dans la décision annoncée"
+        );
+
+        // Trouvaille 1 : la mémoire de dédoublonnage retient la cible
+        // refusée, stable sur les trois tours identiques — c'est elle qui
+        // empêche la répétition du journal à chaque décision.
+        assert_eq!(
+            session.taille_refus_signalee,
+            Some(taille_visee),
+            "la cible refusée doit être mémorisée pour éviter de rejournaliser à chaque tour"
+        );
     }
 }

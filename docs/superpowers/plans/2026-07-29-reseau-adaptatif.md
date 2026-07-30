@@ -66,7 +66,7 @@ indépendants ; celui-ci n'en dépend pas.
 | `agent/src/transport.rs` | **Modifier.** Activer le BWE ; récolter `EgressBitrateEstimate` et `MediaEgressStats` ; appliquer les décisions | 9 |
 | `proto/src/control.rs` | **Modifier.** `AgentControl::Link`, `CONTROL_VERSION` = 3 | 10 |
 | `proto/ts/control.ts` | **Modifier.** Miroir TypeScript | 10 |
-| `proto/vectors.json` | **Modifier.** Vecteurs de test partagés à la version 3 | 10 |
+| `proto/ts/control.test.ts` | **Modifier.** Couverture du nouveau message côté TypeScript | 10 |
 | `client/src/webrtc.ts` | **Modifier.** `playoutDelayHint = 0` sur le receiver vidéo | 11 |
 | `client/src/lien.ts` | **Créer.** Traduction de `AgentControl::Link` en texte d'indicateur, testable sans DOM | 11 |
 | `client/src/main.ts` | **Modifier.** Câbler l'indicateur | 11 |
@@ -492,56 +492,93 @@ Ajouter dans le module `tests` de `agent/src/congestion.rs` :
 
     /// Instant de référence des tests. Placé loin dans le passé pour que
     /// toute soustraction de durée reste valide.
+    ///
+    /// **Rend un instant DIFFÉRENT à chaque appel.** Chaque test doit donc le
+    /// lier une seule fois (`let base = t0();`) et n'employer que `base`
+    /// ensuite : avec des assertions posées sur des bornes exactes, une dérive
+    /// de quelques microsecondes entre deux appels suffirait à faire basculer
+    /// une comparaison et à rendre le test instable.
     fn t0() -> Instant {
         Instant::now() - Duration::from_secs(3600)
     }
 
+    // NOTE SUR LES CHRONOLOGIES CI-DESSOUS.
+    // Le décompte démarre à la PREMIÈRE OBSERVATION du barreau visé, pas à la
+    // construction : on n'a aucune preuve que la condition tenait avant qu'on
+    // l'observe. Donc `observer(1, base + 1900ms)` sur une hystérésis neuve
+    // rend `None` avec ZÉRO seconde écoulée, et le seuil n'est atteint qu'à
+    // `base + 3900ms`. Un premier jet de ce plan avait écrit ces quatre
+    // chronologies comme si le décompte partait de la construction : trois
+    // d'entre elles étaient alors impossibles à satisfaire avec le code
+    // ci-dessous, qui est pourtant correct.
+
     #[test]
     fn descendre_exige_deux_secondes_sous_le_barreau() {
-        let mut h = Hysteresis::new(0, t0());
+        let base = t0();
+        let mut h = Hysteresis::new(0, base);
 
-        // À 1,9 s, pas encore.
-        assert_eq!(h.observer(1, t0() + Duration::from_millis(1900)), None);
-        // À 2,0 s, on descend.
-        assert_eq!(h.observer(1, t0() + Duration::from_millis(2000)), Some(1));
+        // Première observation du barreau 1 : le décompte DÉMARRE ici, il ne
+        // s'est encore rien écoulé.
+        assert_eq!(h.observer(1, base + Duration::from_millis(1900)), None);
+        // 1,999 s après le début du décompte : pas encore.
+        assert_eq!(h.observer(1, base + Duration::from_millis(3899)), None);
+        // 2,000 s pile : on descend.
+        assert_eq!(h.observer(1, base + Duration::from_millis(3900)), Some(1));
     }
 
     #[test]
     fn un_repit_remet_le_compteur_de_descente_a_zero() {
-        let mut h = Hysteresis::new(0, t0());
+        let base = t0();
+        let mut h = Hysteresis::new(0, base);
 
-        assert_eq!(h.observer(1, t0() + Duration::from_millis(1900)), None);
-        // Une seule observation revenue au barreau courant annule la descente.
-        assert_eq!(h.observer(0, t0() + Duration::from_millis(1950)), None);
-        // Le compteur repart de 1950 ms : à 3000 ms il n'y a qu'1,05 s.
-        assert_eq!(h.observer(1, t0() + Duration::from_millis(3000)), None);
-        assert_eq!(h.observer(1, t0() + Duration::from_millis(3960)), Some(1));
+        assert_eq!(h.observer(1, base + Duration::from_millis(1900)), None);
+        // Une seule observation revenue au barreau courant annule le décompte.
+        assert_eq!(h.observer(0, base + Duration::from_millis(1950)), None);
+        // Le décompte repart de zéro à 3000 ms.
+        assert_eq!(h.observer(1, base + Duration::from_millis(3000)), None);
+        // 1,9 s après ce nouveau départ : toujours pas.
+        assert_eq!(h.observer(1, base + Duration::from_millis(4900)), None);
+        // 2,0 s après : cette fois oui.
+        assert_eq!(h.observer(1, base + Duration::from_millis(5000)), Some(1));
     }
 
     #[test]
     fn remonter_exige_dix_secondes_et_non_deux() {
-        // Départ au barreau 1, temps de séjour déjà écoulé.
-        let mut h = Hysteresis::new(1, t0());
-        let depart = t0() + Duration::from_secs(10);
+        let base = t0();
+        // Départ au barreau 1 : `new` place le dernier changement dans le
+        // passé, donc le temps de séjour n'entrave pas ce test.
+        let mut h = Hysteresis::new(1, base);
 
-        assert_eq!(h.observer(0, depart + Duration::from_millis(9900)), None);
-        assert_eq!(h.observer(0, depart + Duration::from_millis(10_000)), Some(0));
+        assert_eq!(h.observer(0, base + Duration::from_millis(2000)), None);
+        // 2,000 s PILE après le début du décompte : une DESCENTE aurait
+        // basculé ici, le seuil étant atteint. Une remontée, non — c'est tout
+        // l'objet de ce test. La valeur exacte compte : à 1,999 s l'assertion
+        // passerait pour la banale raison « pas encore écoulé », sans rien
+        // démontrer de l'asymétrie.
+        assert_eq!(h.observer(0, base + Duration::from_millis(4000)), None);
+        // 9,999 s : toujours pas.
+        assert_eq!(h.observer(0, base + Duration::from_millis(11_999)), None);
+        // 10,000 s pile : on remonte.
+        assert_eq!(h.observer(0, base + Duration::from_millis(12_000)), Some(0));
     }
 
     #[test]
     fn le_temps_de_sejour_bloque_un_second_changement_trop_proche() {
-        let mut h = Hysteresis::new(0, t0());
+        let base = t0();
+        let mut h = Hysteresis::new(0, base);
 
-        // Première descente à 2 s.
-        assert_eq!(h.observer(1, t0() + Duration::from_secs(2)), Some(1));
+        // Première descente : décompte démarré à 0, retenu à 2,0 s.
+        assert_eq!(h.observer(1, base), None);
+        assert_eq!(h.observer(1, base + Duration::from_millis(2000)), Some(1));
 
-        // La condition de descente vers 2 est remplie 2 s plus tard (t = 4 s),
-        // mais le temps de séjour de 5 s depuis le changement l'interdit.
-        assert_eq!(h.observer(2, t0() + Duration::from_secs(4)), None);
-        assert_eq!(h.observer(2, t0() + Duration::from_millis(6900)), None);
-        // À t = 7 s, les 5 s de séjour sont écoulées ET la condition tient
-        // depuis plus de 2 s.
-        assert_eq!(h.observer(2, t0() + Duration::from_secs(7)), Some(2));
+        // Décompte vers le barreau 2 démarré à 2001 ms.
+        assert_eq!(h.observer(2, base + Duration::from_millis(2001)), None);
+        // 2,0 s écoulées, donc la condition de descente est remplie — mais le
+        // temps de séjour (2,001 s depuis le dernier changement) l'interdit.
+        assert_eq!(h.observer(2, base + Duration::from_millis(4001)), None);
+        // À 7,000 s : 5,0 s de séjour écoulées ET la condition tient depuis
+        // 4,999 s. Les deux verrous sont levés.
+        assert_eq!(h.observer(2, base + Duration::from_millis(7000)), Some(2));
     }
 ```
 
@@ -931,9 +968,16 @@ impl Controleur {
             .min(self.config.plafond_bps);
 
         let vise = self.echelle.barreau_finance(disponible);
+        // Capturé avant/après la bascule : c'est le SEUL signal fiable d'un
+        // changement de résolution effectif. Sans lui, une descente de barreau
+        // qui survient alors que ni le débit ni la qualité n'ont bougé depuis
+        // la dernière décision ne serait jamais notifiée — `observer` rendrait
+        // `None` à l'instant précis où la résolution change.
+        let taille_avant = self.courant.encode_size;
         if let Some(nouveau) = self.hysteresis.observer(vise, o.at) {
             self.courant.encode_size = self.echelle.barreaux()[nouveau].taille;
         }
+        let resolution_changee = self.courant.encode_size != taille_avant;
 
         let dernier = self.echelle.barreaux().len() - 1;
         let barreau_applique = self
@@ -943,11 +987,20 @@ impl Controleur {
             .position(|b| b.taille == self.courant.encode_size)
             .unwrap_or(0);
 
-        let qualite = if barreau_applique == dernier
-            && disponible < self.echelle.barreaux()[dernier].min_bps
-        {
+        // La qualité doit refléter l'ÉTAT RÉEL de l'image, pas seulement le
+        // barreau appliqué. Le débit est réglé immédiatement, alors que
+        // l'hystérésis retarde la résolution de 2 s : pendant cette fenêtre,
+        // un contrôleur qui ne regarderait que `barreau_applique`
+        // annoncerait « Bonne » en encodant du 1080p60 à 142 kb/s — l'inverse
+        // exact de ce que l'indicateur doit dire à l'utilisateur.
+        let qualite = if disponible < self.echelle.barreaux()[dernier].min_bps {
+            // Plus rien n'est finançable, quel que soit le barreau appliqué.
             Qualite::Insuffisante
-        } else if barreau_applique > 0 {
+        } else if barreau_applique > 0
+            || disponible < self.echelle.barreaux()[barreau_applique].min_bps
+        {
+            // Résolution déjà réduite, OU débit qui ne soutient plus la
+            // résolution courante : la dégradation est en cours.
             Qualite::Degradee
         } else {
             Qualite::Bonne
@@ -961,10 +1014,10 @@ impl Controleur {
         let debit_change = ecart_relatif(self.courant.video_bitrate_bps, disponible)
             >= ECART_MINIMAL_DEBIT;
         let change = debit_change
+            || resolution_changee
             || qualite != self.courant.qualite
             || perte != self.courant.opus_loss_perc
-            || self.courant.adaptation != Adaptation::Active
-            || self.courant.encode_size != self.echelle.barreaux()[barreau_applique].taille;
+            || self.courant.adaptation != Adaptation::Active;
 
         if debit_change {
             self.courant.video_bitrate_bps = disponible;
@@ -1284,6 +1337,20 @@ implémentation :
     /// L'horodatage n'est pas réinitialisé : `last_pts_90k` est conservé, le
     /// décodeur du navigateur rejetterait un retour en arrière.
     pub fn set_encode_size(&mut self, width: u32, height: u32) -> Result<()> {
+        // La source est définitivement épuisée : `capture` peut valoir `None`
+        // pour de bon (voir le commentaire du champ), et `capture_mut()`
+        // paniquerait. Une panique ici traverserait `spawn_blocking` et
+        // emporterait tout le processus — alors que le transport, lui, sait
+        // quoi faire d'une erreur : il garde le barreau courant et poursuit
+        // la session jusqu'à sa clôture normale. Une `Err` et non un `Ok(())`
+        // feint, qui masquerait une source morte.
+        //
+        // En tête de fonction, avant toute autre chose : le contrôleur
+        // appelle cette méthode depuis une boucle qui tourne chaque seconde.
+        if self.fatal {
+            anyhow::bail!("source épuisée : taille d'encodage inchangée");
+        }
+
         let (width, height) = (width.max(2) & !1, height.max(2) & !1);
         if (width, height) == self.encoder.encode_size() {
             return Ok(());
@@ -1767,7 +1834,7 @@ git commit -m "feat(reseau): asservir débit, résolution et FEC à ce que le pa
 **Fichiers :**
 - Modifier : `proto/src/control.rs`
 - Modifier : `proto/ts/control.ts`
-- Modifier : `proto/vectors.json`
+- Modifier : `proto/ts/control.test.ts`
 - Modifier : `agent/src/transport.rs`
 
 **Interfaces :**
@@ -1943,21 +2010,58 @@ export interface LinkMessage {
 
 et ajouter `LinkMessage` à l'union `AgentControl` du même fichier.
 
-- [ ] **Étape 7 : Mettre les vecteurs partagés à jour**
+- [ ] **Étape 7 : Étendre le test du miroir TypeScript**
 
-```bash
-grep -n '"v": *2\|"v":2' proto/vectors.json | head
+> **`proto/vectors.json` ne doit PAS être touché.** Une version antérieure de
+> ce plan demandait d'y porter la version à 3 : c'était faux. Ce fichier
+> appartient entièrement au protocole d'**entrées** — il est consommé par
+> `proto/src/input.rs:323` et `proto/ts/input.test.ts:43`, et son champ
+> `"version"` est le `PROTOCOL_VERSION` des entrées, un numéro **distinct** de
+> `CONTROL_VERSION`. Les deux valent 2 aujourd'hui, ce qui rend la confusion
+> facile et coûteuse : y toucher casserait `input.test.ts:47`
+> (`expect(PROTOCOL_VERSION).toBe(vectors.version)`) pour un protocole que ce
+> chantier ne modifie pas. Le protocole de contrôle n'a pas de fichier de
+> vecteurs ; ses deux miroirs sont vérifiés par leurs tests respectifs.
+
+Le test du miroir est `proto/ts/control.test.ts`. Il référence
+`CONTROL_VERSION` symboliquement et non la valeur littérale, donc il survit au
+passage à 3 sans modification. Y ajouter la couverture du nouveau message, sur
+le modèle exact des cas existants du fichier :
+
+```typescript
+    it("analyse l'état du lien", () => {
+        const message = parseAgentControl(
+            JSON.stringify({
+                type: 'link',
+                v: CONTROL_VERSION,
+                bitrate: 4_000_000,
+                width: 1280,
+                height: 720,
+                quality: 'degradee',
+                adaptation: 'active',
+            }),
+        );
+        expect(message).toEqual({
+            type: 'link',
+            v: CONTROL_VERSION,
+            bitrate: 4_000_000,
+            width: 1280,
+            height: 720,
+            quality: 'degradee',
+            adaptation: 'active',
+        });
+    });
 ```
 
-Porter chaque `v` à 3, et ajouter un vecteur pour le nouveau message, sur le
-modèle exact des vecteurs existants du fichier (mêmes clés, même mise en forme).
+Puis vérifier les deux côtés :
 
 ```bash
 cargo test -p proto && cd client && npm test && cd ..
 ```
 
-Attendu : SUCCÈS des deux côtés. Un échec côté TypeScript sur un vecteur signale
-une divergence entre les deux miroirs — la corriger, ne pas désactiver le test.
+Attendu : SUCCÈS des deux côtés. Si un test des **entrées** échoue, c'est que
+`vectors.json` a été modifié à tort — le restaurer (`git checkout
+proto/vectors.json`) plutôt que d'ajuster le test.
 
 - [ ] **Étape 8 : Émettre le message depuis le transport**
 
@@ -1994,7 +2098,7 @@ branche `a`) avec le nouveau variant, sans quoi la compilation échoue :
 ```bash
 cargo test -p agent && cargo test -p proto
 scripts/build-agent.sh
-git add proto/src/control.rs proto/ts/control.ts proto/vectors.json agent/src/transport.rs
+git add proto/src/control.rs proto/ts/control.ts proto/ts/control.test.ts agent/src/transport.rs
 git commit -m "feat(reseau): message d'état du lien, protocole de contrôle en version 3"
 ```
 

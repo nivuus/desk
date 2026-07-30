@@ -1,5 +1,6 @@
 mod audio;
 mod clock;
+mod congestion;
 mod cursor;
 mod frames;
 // Pas de `#[cfg(windows)]` ici : les logiques pures de `gamepad` (tâche 9,
@@ -433,7 +434,13 @@ async fn main() -> Result<()> {
             // `ProcessInput` de façon confuse.
             if std::env::var("ENCODE_TEST").is_ok() {
                 let mut encoder =
-                    encode::H264Encoder::new(capture.device(), region.width, region.height, 60, 8_000_000)?;
+                    encode::H264Encoder::new(
+                        capture.device(),
+                        (region.width, region.height),
+                        (region.width, region.height),
+                        60,
+                        8_000_000,
+                    )?;
                 encoder.request_keyframe()?;
                 // Même surveillance que la mesure de débit : elle sert ici à
                 // vérifier que des images RÉELLEMENT DISTINCTES traversent le
@@ -563,7 +570,13 @@ async fn main() -> Result<()> {
             // pour ses propres mesures de débit.
             if std::env::var("ENCODER_THROUGHPUT_TEST").is_ok() {
                 let mut encoder =
-                    encode::H264Encoder::new(capture.device(), region.width, region.height, 60, 8_000_000)?;
+                    encode::H264Encoder::new(
+                        capture.device(),
+                        (region.width, region.height),
+                        (region.width, region.height),
+                        60,
+                        8_000_000,
+                    )?;
                 encoder.request_keyframe()?;
 
                 // Une seule image réelle, capturée une fois puis réinjectée
@@ -886,6 +899,20 @@ async fn main() -> Result<()> {
     // qu'aucune durée d'initialisation ne les décale l'une de l'autre.
     let clock_origin = std::time::Instant::now();
 
+    // Plafond de débit vidéo, en bits par seconde. Lu depuis `BITRATE` dans
+    // la branche Windows ci-dessous (seule branche où l'environnement a un
+    // sens — la source de test ne pilote pas d'encodeur matériel) ; sinon la
+    // valeur par défaut. Remonté ici, hors de cette branche, pour que
+    // `Session::new` reçoive le même plafond que celui appliqué à
+    // l'encodeur, sans le relire une seconde fois depuis l'environnement.
+    // `mut` n'est utile que dans la branche `#[cfg(windows)]` ci-dessous :
+    // sur l'hôte de test (Linux, toujours `TEST_FILE`), la valeur ne varie
+    // jamais, d'où l'`allow` — inutile de découper la déclaration par cfg
+    // pour une valeur qui reste de toute façon lue plus bas sur les deux
+    // plateformes.
+    #[allow(unused_mut)]
+    let mut bitrate: u32 = 12_000_000;
+
     let source: Box<dyn VideoSource + Send> = match &config.test_file {
         Some(path) => {
             tracing::info!(?path, "source de test");
@@ -897,7 +924,7 @@ async fn main() -> Result<()> {
                 let title = std::env::var("WINDOW_TITLE").unwrap_or_else(|_| "firefox".into());
                 let hwnd = window::find_window_by_title(&title)?;
                 window_hwnd_addr = Some(hwnd.0 as isize);
-                let bitrate: u32 = std::env::var("BITRATE")
+                bitrate = std::env::var("BITRATE")
                     .ok()
                     .and_then(|v| v.parse().ok())
                     .unwrap_or(12_000_000);
@@ -940,7 +967,7 @@ async fn main() -> Result<()> {
         receiver_task: _,
         sender_task: _,
     } = signaling::run_signaling(&config.signaling_url, &config.session_id).await?;
-    let mut session = Session::new(source, config.local_ip, clock_origin)?;
+    let mut session = Session::new(source, config.local_ip, clock_origin, bitrate)?;
 
     // Source audio : son absence ne compromet jamais la session vidéo. Sur une
     // source de test (TEST_FILE), il n'y a rien à capter. Hors Windows, il n'y
