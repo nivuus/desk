@@ -55,16 +55,18 @@ impl Session {
         if transmit.source != allocation.relayee {
             return None;
         }
-        // Le pair peut n'avoir pas encore de canal : le lier à la volée. Le
-        // tout premier paquet vers un pair neuf part alors en direct et sera
-        // probablement perdu — ICE réémet ses contrôles de connectivité, donc
-        // ce n'est pas un trou, seulement un aller-retour de retard.
-        if turn
-            .encapsuler(transmit.destination, &transmit.contents)
-            .is_none()
-        {
-            turn.lier_canal(transmit.destination);
+        // Cas courant, sur le chemin média : le canal est déjà lié, une seule
+        // encapsulation a lieu. Le plan encapsulait une première fois pour
+        // TESTER puis une seconde pour produire — soit une trame complète
+        // construite puis jetée à chaque paquet, 60 fois par seconde.
+        if let Some(trame) = turn.encapsuler(transmit.destination, &transmit.contents) {
+            return Some(trame);
         }
+        // Pair encore sans canal : le lier à la volée. Le tout premier paquet
+        // vers un pair neuf part alors en direct et sera probablement perdu —
+        // ICE réémet ses contrôles de connectivité, donc ce n'est pas un trou,
+        // seulement un aller-retour de retard.
+        turn.lier_canal(transmit.destination);
         turn.encapsuler(transmit.destination, &transmit.contents)
     }
 
