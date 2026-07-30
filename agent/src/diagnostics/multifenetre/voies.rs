@@ -10,7 +10,7 @@ use windows::Win32::Foundation::HWND;
 use windows::Win32::Graphics::Direct3D::{D3D_DRIVER_TYPE_HARDWARE, D3D_FEATURE_LEVEL_11_0};
 use windows::Win32::Graphics::Direct3D11::{
     D3D11CreateDevice, ID3D11Device, ID3D11DeviceContext, ID3D11Texture2D,
-    D3D11_BIND_RENDER_TARGET, D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_SDK_VERSION,
+    D3D11_BIND_RENDER_TARGET, D3D11_BOX, D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_SDK_VERSION,
     D3D11_TEXTURE2D_DESC, D3D11_USAGE_DEFAULT,
 };
 use windows::Win32::Graphics::Dxgi::Common::{DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_SAMPLE_DESC};
@@ -32,36 +32,143 @@ pub(super) trait VoieDeCapture {
     /// ignorent.
     fn ouvrir(&mut self, hwnd: HWND, region: Rect) -> Result<()>;
     /// Rend l'image suivante, ou `None` si aucune n'est disponible.
-    fn prochaine_image(&mut self) -> Result<Option<CapturedFrame>>;
+    ///
+    /// `tour` identifie le tick courant du banc (voir `Mires::trame`, dont
+    /// le banc lit la valeur après chaque `peindre()`). Les voies qui
+    /// partagent une source unique entre plusieurs fenêtres (voir
+    /// `SourceDuplication`) s'en servent pour n'acquérir cette source
+    /// qu'UNE FOIS par tour, quel que soit le nombre de voies qui la
+    /// recadrent ensuite — sans quoi la première voie interrogée dans un
+    /// tour consomme le seul changement que la source signale, et les
+    /// suivantes ne récoltent plus rien (voir le commentaire de
+    /// `SourceDuplication`, qui documente cette famine telle que mesurée
+    /// avant correction). Les voies sans source partagée (`VoiePrintWindow`)
+    /// l'ignorent : chaque fenêtre s'y capture indépendamment.
+    fn prochaine_image(&mut self, tour: u64) -> Result<Option<CapturedFrame>>;
     /// Périphérique D3D11 propriétaire des textures rendues par cette voie.
     /// Le banc en a besoin pour lire un pixel et pour créer l'encodeur : une
     /// texture ne se lit pas depuis un autre périphérique que le sien.
     fn device(&self) -> ID3D11Device;
 }
 
-/// Voie de référence : Desktop Duplication du bureau, recadrée sur la fenêtre.
-/// C'est le comportement de production actuel — celui dont on sait déjà qu'il
-/// se pollue au recouvrement. Il sert d'étalon : une voie qui ne fait pas
-/// mieux que lui n'apporte rien, et s'il ne se polluait PAS au banc, ce
-/// serait le banc qu'il faudrait suspecter.
+/// Alloue une texture D3D11 de destination pour un recadrage : format et
+/// usage attendus par l'encodeur (`encode.rs::feed_converter`, qui enveloppe
+/// la texture via `MFCreateDXGISurfaceBuffer` en BGRA non-sRGB).
 ///
-/// **Une seule duplication pour toutes les fenêtres.** DXGI n'accorde qu'un
-/// nombre très limité de duplications concurrentes d'une même sortie ;
-/// en ouvrir une par fenêtre échouerait dès la deuxième. C'est d'ailleurs
-/// fidèle à la production : une duplication, N recadrages.
+/// Chaque voie possède la SIENNE, jamais une texture partagée avec une autre
+/// voie ni la texture interne à `DesktopCapture` (`next_frame` réutilise un
+/// seul emplacement, quel que soit l'appelant : le confier tel quel à N
+/// voies de même taille — le cas courant ici, `disposition::tuiles` produit
+/// des places uniformes — ferait que le recadrage de la voie suivante
+/// écrase celui de la précédente avant qu'elle l'ait consommé, silencieusement,
+/// puisque `ID3D11Texture2D::clone()` ne copie pas le contenu, seulement la
+/// référence COM).
+fn creer_texture_recadrage(device: &ID3D11Device, region: Rect) -> Result<ID3D11Texture2D> {
+    let desc = D3D11_TEXTURE2D_DESC {
+        Width: region.width,
+        Height: region.height,
+        MipLevels: 1,
+        ArraySize: 1,
+        Format: DXGI_FORMAT_B8G8R8A8_UNORM,
+        SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
+        Usage: D3D11_USAGE_DEFAULT,
+        BindFlags: D3D11_BIND_RENDER_TARGET.0 as u32,
+        CPUAccessFlags: 0,
+        MiscFlags: 0,
+    };
+    let mut texture = None;
+    unsafe { device.CreateTexture2D(&desc, None, Some(&mut texture)) }
+        .context("allocation d'une texture de recadrage")?;
+    texture.ok_or_else(|| anyhow!("texture de recadrage absente"))
+}
+
+/// État partagé entre toutes les instances `VoieDuplication` d'un même banc :
+/// LA duplication DXGI (une seule par sortie — mesuré, pas supposé : la
+/// deuxième `DuplicateOutput` échoue en `0x80070057`, voir
+/// `banc::executer`), et le cache de l'image de bureau du tour courant.
+///
+/// **Ronde de correction 1.** La première version de ce fichier faisait
+/// appeler `next_frame(region)` — acquisition + recadrage + relâchement en
+/// un seul appel — une fois PAR VOIE et par tour. Mesuré : à N≥2, une seule
+/// fenêtre restait nourrie (~100 i/s) et toutes les autres tombaient sous
+/// 1,3 i/s, quel que soit N. Cause : `AcquireNextFrame` ne signale un
+/// changement de bureau qu'UNE fois ; la première voie de la boucle du banc
+/// à l'appeler après un changement consomme ce signal et relâche aussitôt
+/// l'image ; les voies suivantes, appelées à la microseconde suivante dans
+/// le MÊME tour, ne trouvent plus rien de neuf. Ce n'était pas Desktop
+/// Duplication qui se dégradait avec N, mais l'architecture de mesure : la
+/// disputer voie par voie plutôt que l'amorcer une fois pour toutes.
+///
+/// Le correctif : `amorcer` n'appelle `next_frame` qu'une fois par valeur de
+/// `tour`, sur le bureau ENTIER ; chaque voie fait ensuite son propre
+/// sous-recadrage GPU (`CopySubresourceRegion`, bon marché) depuis cette
+/// image commune vers SA texture. Toutes les voies d'un même tour reçoivent
+/// ainsi la même fraîcheur — soit toutes une image neuve, soit toutes rien,
+/// jamais une seule sur N.
+pub(super) struct SourceDuplication {
+    capture: DesktopCapture,
+    bureau: Rect,
+    contexte: ID3D11DeviceContext,
+    /// Numéro de tour pour lequel `dernier_bureau` a été amorcé. `None`
+    /// avant le premier appel.
+    dernier_tour: Option<u64>,
+    /// Image de bureau entière amorcée pour `dernier_tour`. `None` si le
+    /// bureau n'avait rien de neuf à cet instant — le cas courant, pas une
+    /// erreur : `DesktopCapture::next_frame` ne rend une image que lorsque
+    /// le bureau a changé depuis le dernier appel.
+    dernier_bureau: Option<CapturedFrame>,
+}
+
+impl SourceDuplication {
+    /// Amorce le bureau entier pour `tour`, une seule fois par valeur de
+    /// `tour` quel que soit le nombre de voies qui appellent cette méthode.
+    fn amorcer(&mut self, tour: u64) -> Result<()> {
+        if self.dernier_tour == Some(tour) {
+            return Ok(());
+        }
+        self.dernier_bureau = self.capture.next_frame(self.bureau)?;
+        self.dernier_tour = Some(tour);
+        Ok(())
+    }
+}
+
+/// Voie de référence : Desktop Duplication du bureau, recadrée sur la
+/// fenêtre. C'est le comportement de production actuel — celui dont on sait
+/// déjà qu'il se pollue au recouvrement. Il sert d'étalon : une voie qui ne
+/// fait pas mieux que lui n'apporte rien, et s'il ne se polluait PAS au
+/// banc, ce serait le banc qu'il faudrait suspecter.
+///
+/// N'est PAS fidèle à la production au sens strict : la production
+/// aujourd'hui ne capture qu'UNE fenêtre par session (voir `CLAUDE.md`,
+/// « Known Constraints »). Le partage d'une seule duplication entre N
+/// recadrages, mesuré et corrigé ici (voir `SourceDuplication`), est un
+/// comportement que le chantier D devra construire, pas un qui existe déjà.
 pub(super) struct VoieDuplication {
-    capture: Rc<RefCell<DesktopCapture>>,
+    source: Rc<RefCell<SourceDuplication>>,
     region: Rect,
+    /// Texture propre à cette voie (voir `creer_texture_recadrage`), allouée
+    /// à `ouvrir()`.
+    texture: Option<ID3D11Texture2D>,
 }
 
 impl VoieDuplication {
     /// Crée la duplication partagée, une fois pour tout le banc.
-    pub(super) fn partagee() -> Result<Rc<RefCell<DesktopCapture>>> {
-        Ok(Rc::new(RefCell::new(DesktopCapture::new()?)))
+    pub(super) fn partagee() -> Result<Rc<RefCell<SourceDuplication>>> {
+        let capture = DesktopCapture::new()?;
+        let (largeur, hauteur) = capture.desktop_size();
+        let contexte = unsafe { capture.device().GetImmediateContext() }
+            .context("contexte immédiat pour les sous-recadrages partagés")?;
+        Ok(Rc::new(RefCell::new(SourceDuplication {
+            capture,
+            bureau: Rect { x: 0, y: 0, width: largeur, height: hauteur },
+            contexte,
+            dernier_tour: None,
+            dernier_bureau: None,
+        })))
     }
 
-    pub(super) fn nouvelle(capture: Rc<RefCell<DesktopCapture>>) -> Self {
-        Self { capture, region: Rect { x: 0, y: 0, width: 0, height: 0 } }
+    pub(super) fn nouvelle(source: Rc<RefCell<SourceDuplication>>) -> Self {
+        Self { source, region: Rect { x: 0, y: 0, width: 0, height: 0 }, texture: None }
     }
 }
 
@@ -72,11 +179,42 @@ impl VoieDeCapture for VoieDuplication {
 
     fn ouvrir(&mut self, _hwnd: HWND, region: Rect) -> Result<()> {
         self.region = region;
+        let device = self.source.borrow().capture.device().clone();
+        self.texture = Some(creer_texture_recadrage(&device, region)?);
         Ok(())
     }
 
-    fn prochaine_image(&mut self) -> Result<Option<CapturedFrame>> {
-        self.capture.borrow_mut().next_frame(self.region)
+    fn prochaine_image(&mut self, tour: u64) -> Result<Option<CapturedFrame>> {
+        let mut source = self.source.borrow_mut();
+        source.amorcer(tour)?;
+        let Some(bureau) = source.dernier_bureau.as_ref() else {
+            return Ok(None);
+        };
+
+        let texture = self
+            .texture
+            .as_ref()
+            .ok_or_else(|| anyhow!("texture de recadrage non ouverte (ouvrir() jamais appelée)"))?;
+        // Sous-recadrage GPU, bon marché, depuis l'image de bureau commune
+        // déjà amorcée par `SourceDuplication::amorcer` — pas un nouvel
+        // `AcquireNextFrame`.
+        let box_ = D3D11_BOX {
+            left: self.region.x.max(0) as u32,
+            top: self.region.y.max(0) as u32,
+            front: 0,
+            right: self.region.x.max(0) as u32 + self.region.width,
+            bottom: self.region.y.max(0) as u32 + self.region.height,
+            back: 1,
+        };
+        unsafe {
+            source.contexte.CopySubresourceRegion(texture, 0, 0, 0, 0, &bureau.texture, 0, Some(&box_));
+        }
+
+        Ok(Some(CapturedFrame {
+            texture: texture.clone(),
+            width: self.region.width,
+            height: self.region.height,
+        }))
     }
 
     fn device(&self) -> ID3D11Device {
@@ -84,7 +222,7 @@ impl VoieDeCapture for VoieDuplication {
         // cloner ne duplique pas le périphérique, il incrémente un compteur.
         // Rendre une valeur plutôt qu'une référence évite au banc de tenir un
         // emprunt sur la voie pendant qu'il l'appelle.
-        self.capture.borrow().device().clone()
+        self.source.borrow().capture.device().clone()
     }
 }
 
@@ -98,12 +236,14 @@ impl VoieDeCapture for VoieDuplication {
 ///
 /// Contrairement à `VoieDuplication`, chaque instance ne se dispute aucune
 /// ressource limitée en nombre : `PrintWindow` s'adresse directement à un
-/// HWND, sans le plafond de duplications concurrentes de DXGI. Le
-/// périphérique D3D11 est néanmoins créé une seule fois pour tout le banc et
-/// cloné dans chaque voie (un clone COM n'incrémente qu'un compteur de
-/// références) : huit périphériques indépendants n'apporteraient rien et
-/// compliqueraient la cohérence avec l'encodeur, qui doit tourner sur LE
-/// périphérique de sa voie.
+/// HWND, sans le plafond d'UNE seule duplication DXGI par sortie. Pas de
+/// `SourceDuplication` équivalente ici, et `prochaine_image` ignore son
+/// paramètre `tour` : chaque fenêtre se capture indépendamment, il n'y a
+/// rien à amortir entre voies. Le périphérique D3D11 est néanmoins créé une
+/// seule fois pour tout le banc et cloné dans chaque voie (un clone COM
+/// n'incrémente qu'un compteur de références) : huit périphériques
+/// indépendants n'apporteraient rien et compliqueraient la cohérence avec
+/// l'encodeur, qui doit tourner sur LE périphérique de sa voie.
 pub(super) struct VoiePrintWindow {
     device: ID3D11Device,
     context: ID3D11DeviceContext,
@@ -164,26 +304,11 @@ impl VoieDeCapture for VoiePrintWindow {
     fn ouvrir(&mut self, hwnd: HWND, region: Rect) -> Result<()> {
         self.hwnd = hwnd;
         self.region = region;
-        let desc = D3D11_TEXTURE2D_DESC {
-            Width: region.width,
-            Height: region.height,
-            MipLevels: 1,
-            ArraySize: 1,
-            Format: DXGI_FORMAT_B8G8R8A8_UNORM,
-            SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
-            Usage: D3D11_USAGE_DEFAULT,
-            BindFlags: D3D11_BIND_RENDER_TARGET.0 as u32,
-            CPUAccessFlags: 0,
-            MiscFlags: 0,
-        };
-        let mut texture = None;
-        unsafe { self.device.CreateTexture2D(&desc, None, Some(&mut texture)) }
-            .context("allocation de la texture de téléversement printwindow")?;
-        self.texture = texture;
+        self.texture = Some(creer_texture_recadrage(&self.device, region)?);
         Ok(())
     }
 
-    fn prochaine_image(&mut self) -> Result<Option<CapturedFrame>> {
+    fn prochaine_image(&mut self, _tour: u64) -> Result<Option<CapturedFrame>> {
         let (largeur, hauteur) = (self.region.width, self.region.height);
 
         // Capture GDI dans un DC mémoire, comme au temps 1 (`replis.rs`) :

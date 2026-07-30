@@ -182,6 +182,12 @@ fn passe_capture(
     while debut.elapsed() < DUREE_PASSE {
         mires.peindre()?;
         mires.pomper();
+        // Identifie ce tick pour les voies à source partagée
+        // (`VoieDuplication`/`SourceDuplication`) : leur permet de
+        // n'acquérir cette source qu'une fois par tour, quel que soit le
+        // nombre de voies qui la recadrent ensuite — voir le commentaire de
+        // tête de `SourceDuplication` (`voies.rs`).
+        let tour = mires.trame();
 
         // Mise en scène de la porte éliminatoire : la dernière mire vient
         // recouvrir la première.
@@ -192,7 +198,7 @@ fn passe_capture(
         }
 
         for (id, voie) in voies.iter_mut().enumerate() {
-            let Some(image) = voie.prochaine_image()? else {
+            let Some(image) = voie.prochaine_image(tour)? else {
                 continue;
             };
             compteurs.images[id] += 1;
