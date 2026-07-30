@@ -285,6 +285,18 @@ n'arrive (§8).
 
 ## 6. Volet 2 — Client TURN et routage
 
+> **AMENDEMENT DU 30/07/2026 — volet réalisé, et `turn.rs` n'est pas un
+> fichier.** Ce document et son plan parlent partout d'un `agent/src/turn.rs`
+> d'un seul tenant. Le cumul des tâches 3 à 5 y aurait mis ≈1 000 lignes, pour
+> une limite à 500 posée entre-temps (`CLAUDE.md`). Le module est donc un
+> répertoire, découpé sur les frontières du protocole que ce document lui-même
+> distingue : `turn/messages.rs` (sérialisation, §6.1), `turn/allocation.rs`
+> (machine à états, §6.2), `turn/canaux.rs` (ChannelData et démultiplexage),
+> plus `turn/fixtures.rs` pour les échafaudages de test partagés. Le routage et
+> l'allocation côté transport vivent dans `transport/relais.rs`, pour la même
+> raison. Résultats de recette :
+> `docs/superpowers/plans/2026-07-29-traversee-nat-resultats.md`.
+
 ### 6.1 Partage du travail
 
 `turn.rs` **sérialise lui-même** les quatre requêtes dont il a besoin (Allocate,

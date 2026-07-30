@@ -1157,6 +1157,135 @@ pendant la recette pour réduire une oscillation, améliorée sans être élimin
 
 ---
 
+## 🌐 Chantier C volet 2 — traversée NAT (30 juillet 2026)
+
+Recette complète : `docs/superpowers/plans/2026-07-29-traversee-nat-resultats.md`.
+
+L'agent est un client TURN à part entière (`agent/src/turn/`) : il alloue un
+relais **avant** de répondre à l'offre, publie le candidat relayé et le candidat
+réflexif, encapsule en ChannelData ce qui doit passer par le relais, et
+rafraîchit son bail. Le signaling délivre aux deux pairs des identifiants
+éphémères (`signaling/src/ice.ts`) dérivés d'un secret qui ne quitte jamais le
+serveur. Mesuré : le média traverse un relais réel pour **≈2 ms de RTT en plus**
+(2,0 → 4,0 ms), sans perte de cadence.
+
+### Lancer coturn : deux fichiers compose, pas un
+
+`docker-compose.yml` est **gitignoré** (il porte les mots de passe Windows du
+Guacamole historique en clair). Le relais vit donc dans un fichier séparé et
+versionné, sans aucun secret :
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.coturn.yml up -d coturn
+docker compose -f docker-compose.yml -f docker-compose.coturn.yml logs coturn
+```
+
+Variables à poser dans `.env` : `TURN_SECRET` (`openssl rand -hex 32`),
+`TURN_REALM`, `TURN_EXTERNAL_IP`, et `TURN_URL` (lue par le **signaling**, sans
+laquelle il n'annonce aucun relais et le journalise).
+
+**coturn écoute sur toutes les interfaces de l'hôte, dont l'adresse publique** —
+constaté (`UDP listener opened on: 90.87.35.18:3478`). L'accès est authentifié et
+les identifiants expirent, mais c'est un relais joignable depuis Internet : à
+restreindre (`--listening-ip` ou pare-feu) avant tout déploiement durable.
+
+### Le signaling doit être relancé AVEC l'environnement
+
+Piège rencontré : un serveur de signaling tournait depuis 36 h sans les variables
+TURN, et les sessions ne recevaient donc aucune configuration ICE — sans que rien
+ne le signale côté client. Vérifier l'environnement du processus **qui écoute
+réellement**, pas de celui qu'on croit avoir lancé :
+
+```bash
+P=$(ss -ltnp | grep ':8080 ' | grep -o 'pid=[0-9]*' | cut -d= -f2 | head -1)
+tr '\0' '\n' < /proc/$P/environ | grep ^TURN_URL=
+```
+
+### Relever PAR OÙ passe le flux, pas seulement qu'il passe
+
+`client/verify-webrtc.mjs` prouve que le média traverse, jamais par quel chemin.
+`client/recette/paire-candidats.mjs` relève la paire de candidats réellement
+employée, le type des deux candidats, le RTT et le débit :
+
+```bash
+node client/recette/paire-candidats.mjs 'http://127.0.0.1:5174/?session=demo' 10000
+FORCER_RELAIS=1 node client/recette/paire-candidats.mjs   # iceTransportPolicy 'relay'
+```
+
+`FORCER_RELAIS` intercepte le constructeur `RTCPeerConnection` dans la page :
+aucune modification du code client à committer puis retirer.
+
+### `relay ↔ relay` est inatteignable en laboratoire — ce n'est pas un défaut
+
+Sur un pont où les deux pairs se voient, la paire nominée est toujours
+`relay ↔ host` : pour que le relais de l'agent fonctionne, coturn doit pouvoir
+joindre l'agent, et cette même joignabilité valide la paire `host`, prioritaire
+en ICE. Des règles de pare-feu Windows bloquant l'UDP direct n'y changent rien
+(le trafic relayé arrive depuis la plage de relais, donc autorisé). **Prouver le
+chemin relayé côté agent pour le média exige deux réseaux réellement distincts.**
+Le chemin d'encapsulation est en revanche exercé et prouvé pour les contrôles de
+connectivité ICE (`CREATE_PERMISSION` et `CHANNEL_BIND` acceptés par coturn).
+
+### Trois objets TURN expirent, pas un seul
+
+Le bail de l'**allocation** (600 s) n'est pas le seul minuteur. Une
+**permission** dure 300 s (RFC 5766 §8) et une **liaison de canal** 600 s (§11).
+Passé ces délais, le serveur cesse de relayer **sans rien annoncer** — ni erreur,
+ni message : une session relayée mourrait d'un silence au bout de 5 minutes.
+
+Le plan du chantier ne prévoyait que le bail. `agent/src/turn/canaux.rs`
+réaffirme désormais chaque liaison à 150 s (moitié de la permission, la plus
+courte des trois durées). Toute évolution du client TURN doit préserver ces
+**trois** rafraîchissements.
+
+**Piège lié, qui a coûté une seconde mesure** : `handle_packet` reconduisait le
+bail à *chaque* réponse de succès du serveur. Or ni `CreatePermission` ni
+`ChannelBind` n'en portent — leurs réponses, arrivant toutes les 150 s,
+repoussaient sans fin un rafraîchissement dû à 300 s, et l'allocation mourait à
+600 s. Seules les réponses à `Allocate` et `Refresh` reconduisent un bail : la
+méthode se lit avec `messages::methode_de`, qui défait l'entrelacement
+classe/méthode de la RFC 5389 §6.
+
+Trois traces `info` rendent tout cela observable (`état du client TURN` une fois
+par minute, émission du bail, réaffirmation d'un canal) : c'est par elles que le
+diagnostic a été fait, elles sont rares par construction — ne pas les retirer.
+
+### Une page Chrome sans interface gèle au bout de 5 minutes
+
+Piège de recette, coûteux : deux sessions de 11 minutes se sont interrompues à
+331 s et 340 s — soit 300 s plus le délai de révocation du consentement ICE. Ce
+n'était ni le produit ni le relais (la session **directe** tombait pareil), mais
+Chrome qui gèle une page jamais mise au premier plan.
+
+Toute mesure de plus de 5 minutes doit lancer Chrome avec
+`--disable-background-timer-throttling`,
+`--disable-backgrounding-occluded-windows` et
+`--disable-renderer-backgrounding` (posées dans
+`client/recette/paire-candidats.mjs` ; `client/verify-webrtc.mjs` ne les a pas,
+ses mesures ne dépassant pas 25 s).
+
+**Leçon de méthode :** le délai collait si bien au minuteur des permissions TURN
+que la cause a d'abord été imputée au relais, à tort. Une mesure témoin sur le
+chemin *sans* la fonctionnalité suspecte coûte dix minutes et évite une
+conclusion fausse.
+
+### Ne jamais tracer par paquet dans la boucle de transport
+
+Une session relayée a échoué à s'établir uniquement parce que le binaire portait
+encore une trace `tracing::info!` par `Transmit` — 18 619 lignes en quelques
+secondes, écrites sur un partage CIFS depuis la boucle. **La mesure détruisait ce
+qu'elle mesurait.** Compter ou échantillonner, jamais tracer par paquet.
+
+### Réserve connue : pas d'appariement des transactions
+
+`TurnClient::handle_packet` (`agent/src/turn/allocation.rs`) accepte la réponse
+du serveur sans vérifier que son identifiant de transaction apparie la requête en
+cours. Les `trans_id` sont retenus dans `Etat` — c'est là que l'appariement se
+brancherait — mais jamais relus. Une réponse tardive ou rejouée fait donc avancer
+la machine à états.
+
+---
+
 ## 🚀 Commandes de Développement Essentielles
 
 ### Build & Run
