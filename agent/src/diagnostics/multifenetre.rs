@@ -12,6 +12,7 @@
 pub(super) mod banc;
 pub(super) mod disponibilite;
 pub(super) mod mires;
+pub(super) mod nvenc;
 pub(super) mod replis;
 pub(super) mod voies;
 pub(super) mod wgc;
@@ -44,6 +45,11 @@ pub(super) fn aiguiller() -> Result<bool> {
             .parse()
             .context("MULTIFENETRE_N doit être un entier")?;
         banc::executer(&voie, nombre)?;
+        return Ok(true);
+    }
+    // Task 10 : le plafond d'encodeurs H.264 matériels simultanés.
+    if std::env::var("MULTIFENETRE_NVENC").is_ok() {
+        nvenc::plafond()?;
         return Ok(true);
     }
     Ok(false)
