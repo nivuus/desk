@@ -21,7 +21,7 @@ pub(super) const MAGIC: [u8; 4] = [0x21, 0x12, 0xA4, 0x42];
 pub(super) const METHODE_ALLOCATE: u16 = 0x0003;
 pub(super) const METHODE_REFRESH: u16 = 0x0004;
 const METHODE_CREATE_PERMISSION: u16 = 0x0008;
-const METHODE_CHANNEL_BIND: u16 = 0x0009;
+pub(super) const METHODE_CHANNEL_BIND: u16 = 0x0009;
 
 // Attributs employés. `REQUESTED_TRANSPORT` est celui qui manque à
 // `is::stun` et qui motive tout ce sérialiseur.
@@ -188,6 +188,21 @@ pub fn encoder_requete(
     let empreinte = sha1_hmac(cle, &[&paquet]);
     ecrire_attribut(&mut paquet, ATTR_MESSAGE_INTEGRITY, &empreinte);
     paquet
+}
+
+/// Méthode d'un message STUN, extraite de son type sur le fil.
+///
+/// Le type mêle méthode et classe : les bits de classe (0x0100 et 0x0010) sont
+/// intercalés dans les bits de méthode (RFC 5389 §6). Les retirer redonne la
+/// méthode, seule façon de savoir à QUELLE requête une réponse répond — et donc
+/// si elle porte un bail (`Allocate`, `Refresh`) ou non (`CreatePermission`,
+/// `ChannelBind`).
+pub(super) fn methode_de(paquet: &[u8]) -> Option<u16> {
+    if paquet.len() < 2 {
+        return None;
+    }
+    let type_fil = u16::from_be_bytes([paquet[0], paquet[1]]);
+    Some((type_fil & 0x000F) | ((type_fil & 0x00E0) >> 1) | ((type_fil & 0x3E00) >> 2))
 }
 
 /// Écrit un attribut TLV, complété à un multiple de 4 octets.

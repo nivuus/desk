@@ -6,9 +6,12 @@
 //! compris le nonce périmé, contre des réponses fabriquées — sans coturn.
 
 use std::net::SocketAddr;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
-use super::messages::{cle_longue_duree, encoder_requete, Identifiants, Requete, BAIL_DEMANDE_S};
+use super::messages::{
+    cle_longue_duree, encoder_requete, methode_de, Identifiants, Requete, BAIL_DEMANDE_S,
+    METHODE_ALLOCATE, METHODE_REFRESH,
+};
 
 /// Ce qu'une allocation réussie procure.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,6 +72,8 @@ pub struct TurnClient {
     /// imprévisible en usage réel ; ici il doit surtout être UNIQUE, et un
     /// compteur le garantit de façon reproductible en test.
     compteur_trans: u64,
+    /// Instant du dernier relevé de diagnostic (voir `avancer`).
+    dernier_releve: Instant,
     /// Canaux liés, du numéro vers la liaison (pair servi et échéance de
     /// réaffirmation).
     pub(super) canaux: std::collections::HashMap<u16, super::canaux::Canal>,
@@ -90,6 +95,7 @@ impl TurnClient {
             maintenant: now,
             tentatives: 0,
             compteur_trans: 0,
+            dernier_releve: now,
             canaux: std::collections::HashMap::new(),
             prochain_canal: super::canaux::CANAL_MIN,
         };
@@ -141,6 +147,31 @@ impl TurnClient {
     /// rafraîchissement du bail, et les liaisons de canal à réaffirmer.
     pub fn avancer(&mut self, now: Instant) {
         self.maintenant = now;
+
+        // Relevé périodique de diagnostic : une ligne par minute, qui dit ce
+        // que la machine à états croit devoir faire. Sans elle, un bail non
+        // rafraîchi ne se constate qu'après coup, dans les journaux du serveur.
+        if now.saturating_duration_since(self.dernier_releve) >= Duration::from_secs(60) {
+            self.dernier_releve = now;
+            let etat = match self.etat {
+                Etat::Repos => "repos",
+                Etat::AttenteRefus { .. } => "attente-refus",
+                Etat::AttenteAllocation { .. } => "attente-allocation",
+                Etat::Allouee { .. } => "allouée",
+                Etat::AttenteRefresh { .. } => "attente-refresh",
+                Etat::Abandonnee => "abandonnée",
+            };
+            let dans_s = self
+                .poll_timeout()
+                .map(|e| e.saturating_duration_since(now).as_secs() as i64)
+                .unwrap_or(-1);
+            tracing::info!(
+                etat,
+                prochaine_echeance_s = dans_s,
+                canaux = self.canaux.len(),
+                "état du client TURN"
+            );
+        }
         if let Etat::Allouee { echeance_refresh } = self.etat {
             if now >= echeance_refresh {
                 self.emettre_refresh(echeance_refresh);
@@ -181,8 +212,14 @@ impl TurnClient {
 
     fn emettre_refresh(&mut self, echeance_refresh: Instant) {
         let (Some(ids), Some(cle)) = (self.identifiants.clone(), self.cle.clone()) else {
+            tracing::warn!("rafraîchissement du bail TURN impossible : identifiants absents");
             return;
         };
+        // Une ligne toutes les 300 s : assez rare pour être journalisée en
+        // `info`, et c'est la seule trace qui dise si le bail est réellement
+        // entretenu (la recette du 30/07/2026 a passé une heure à le déduire
+        // des journaux de coturn, faute de cette ligne).
+        tracing::info!("rafraîchissement du bail TURN émis");
         let trans_id = self.prochain_trans_id();
         self.sortantes.push_back(encoder_requete(
             &Requete::Refresh {
@@ -219,13 +256,28 @@ impl TurnClient {
             });
             self.tentatives = 0;
         }
-        let bail = message.lifetime().unwrap_or(BAIL_DEMANDE_S);
-        // Rafraîchir à la MOITIÉ du bail : une seule perte de paquet ne doit
-        // pas suffire à perdre l'allocation.
-        let echeance = self.maintenant + std::time::Duration::from_secs((bail / 2).max(1) as u64);
-        self.etat = Etat::Allouee {
-            echeance_refresh: echeance,
-        };
+
+        // Seules les réponses à `Allocate` et `Refresh` portent un bail. Une
+        // réponse à `CreatePermission` ou `ChannelBind` n'en porte aucun, et la
+        // traiter comme telle repousserait le rafraîchissement de 300 s à
+        // chaque fois — au point qu'il ne parte jamais et que l'allocation
+        // expire. Constaté à la recette du 30/07/2026, une fois les liaisons de
+        // canal réaffirmées périodiquement : leurs réponses, arrivant toutes
+        // les 150 s, repoussaient indéfiniment une échéance à 300 s.
+        let porte_un_bail = matches!(
+            methode_de(data),
+            Some(METHODE_ALLOCATE) | Some(METHODE_REFRESH)
+        );
+        if porte_un_bail {
+            let bail = message.lifetime().unwrap_or(BAIL_DEMANDE_S);
+            // Rafraîchir à la MOITIÉ du bail : une seule perte de paquet ne
+            // doit pas suffire à perdre l'allocation.
+            let echeance =
+                self.maintenant + std::time::Duration::from_secs((bail / 2).max(1) as u64);
+            self.etat = Etat::Allouee {
+                echeance_refresh: echeance,
+            };
+        }
         Ok(None)
     }
 
@@ -284,7 +336,8 @@ mod tests {
     use super::*;
     use crate::turn::fixtures::{allouee, reponse, serveur, t0, trans_id_de};
     use crate::turn::messages::{
-        sha1_hmac, ATTR_ERROR_CODE, ATTR_NONCE, ATTR_REALM, METHODE_ALLOCATE, METHODE_REFRESH,
+        sha1_hmac, ATTR_ERROR_CODE, ATTR_NONCE, ATTR_REALM, METHODE_ALLOCATE, METHODE_CHANNEL_BIND,
+        METHODE_REFRESH,
     };
     use std::time::Duration;
 
@@ -364,6 +417,30 @@ mod tests {
             c.allocation().is_some(),
             "l'allocation ne doit pas être perdue"
         );
+    }
+
+    #[test]
+    fn une_reponse_a_channel_bind_ne_repousse_pas_l_echeance_du_bail() {
+        // Trouvaille de la recette du 30/07/2026, obtenue par un relevé d'état
+        // périodique : l'allocation de l'agent expirait à 600 s sans avoir été
+        // rafraîchie. `handle_packet` reposait l'échéance du bail à CHAQUE
+        // réponse de succès du serveur — or les réponses à `CreatePermission`
+        // et `ChannelBind` ne portent aucun bail. Dès que les liaisons de canal
+        // ont été réaffirmées périodiquement, leurs réponses ont repoussé le
+        // rafraîchissement du bail à l'infini, et l'allocation est morte.
+        let mut c = allouee();
+
+        // Réponse de succès à un ChannelBind : ni LIFETIME, ni adresse relayée.
+        let reponse_bind = reponse(METHODE_CHANNEL_BIND, true, [9u8; 12], &[]);
+        c.avancer(t0() + Duration::from_secs(200));
+        c.handle_packet(&reponse_bind).expect("réponse traitée");
+
+        // L'échéance du bail reste celle posée par l'allocation : 300 s.
+        c.avancer(t0() + Duration::from_secs(300));
+        let paquet = c
+            .poll_transmit()
+            .expect("le rafraîchissement du bail doit partir malgré la réponse intercalée");
+        assert_eq!(&paquet[0..2], &[0x00, 0x04], "Refresh attendu");
     }
 
     #[test]

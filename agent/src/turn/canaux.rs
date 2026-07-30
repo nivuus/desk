@@ -129,7 +129,10 @@ impl TurnClient {
             .map(|(numero, c)| (*numero, c.pair))
             .collect();
         for (canal, pair) in echus {
-            tracing::debug!(canal, %pair, "rafraîchissement de la liaison de canal TURN");
+            // `info` et non `debug`, pour la même raison que le bail : une
+            // ligne toutes les 150 s par canal, et c'est la seule preuve
+            // observable que le relais reste entretenu.
+            tracing::info!(canal, %pair, "réaffirmation d'une liaison de canal TURN");
             self.emettre_liaison(canal, pair);
         }
     }
