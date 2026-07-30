@@ -383,13 +383,9 @@ pub fn enumerer_sorties() -> Result<Vec<SortieDxgi>> {
     Ok(sorties)
 }
 
-/// Trouve l'adaptateur et la sortie qui composent le bureau.
-fn find_desktop_output(factory: &IDXGIFactory1) -> Result<(IDXGIAdapter1, IDXGIOutput1)> {
-    ouvrir_sortie(factory, None)
-}
-
-/// Ouvre une sortie précise, ou la première attachée au bureau si `cible` est
-/// `None` (comportement historique de `find_desktop_output`).
+/// Ouvre une sortie précise, ou — si `cible` est `None` — trouve et ouvre
+/// l'adaptateur et la sortie qui composent le bureau (comportement historique
+/// de l'ancienne `find_desktop_output`, désormais fondue ici).
 fn ouvrir_sortie(
     factory: &IDXGIFactory1,
     cible: Option<(u32, u32)>,
