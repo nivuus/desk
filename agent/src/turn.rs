@@ -10,9 +10,12 @@
 //! (0x0019), sans lequel un serveur conforme refuse toute allocation en 400.
 //!
 //! Découpé en sous-modules suivant les frontières du protocole : `messages`
-//! (sérialisation des requêtes et dérivation des clés). Même raison d'être que
-//! le découpage de `congestion` et de `transport` : la limite de 500 lignes par
-//! fichier de `CLAUDE.md`.
+//! (sérialisation des requêtes et dérivation des clés), `allocation` (la machine
+//! à états, du refus 401 au rafraîchissement du bail), `canaux` (démultiplexage
+//! STUN/données et encapsulation ChannelData), `fixtures` (les échafaudages que
+//! les tests des deux précédents partagent). Même raison d'être que le découpage
+//! de `congestion` et de `transport` : la limite de 500 lignes par fichier de
+//! `CLAUDE.md`, qu'un module d'un seul tenant aurait doublée.
 //!
 //! Visibilité : `messages` est un module privé, donc ce qu'il déclare `pub`
 //! reste borné au sous-arbre de `turn` — accessible à ses frères
