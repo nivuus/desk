@@ -69,8 +69,9 @@ pub struct TurnClient {
     /// imprévisible en usage réel ; ici il doit surtout être UNIQUE, et un
     /// compteur le garantit de façon reproductible en test.
     compteur_trans: u64,
-    /// Canaux liés, du numéro vers le pair.
-    pub(super) canaux: std::collections::HashMap<u16, SocketAddr>,
+    /// Canaux liés, du numéro vers la liaison (pair servi et échéance de
+    /// réaffirmation).
+    pub(super) canaux: std::collections::HashMap<u16, super::canaux::Canal>,
     /// Prochain numéro à attribuer, dans la plage normative.
     pub(super) prochain_canal: u16,
 }
@@ -111,17 +112,33 @@ impl TurnClient {
 
     /// Instant du prochain réveil utile, pour que l'appelant ne dorme pas
     /// au-delà.
+    ///
+    /// Deux échéances concourent : le bail de l'allocation et la plus proche
+    /// liaison de canal à réaffirmer. La seconde tombe bien plus souvent (150 s
+    /// contre 300 s), et l'oublier ici ferait dépendre le maintien du relais de
+    /// la cadence média.
     pub fn poll_timeout(&self) -> Option<Instant> {
-        match self.etat {
+        let bail = match self.etat {
             Etat::Allouee { echeance_refresh }
             | Etat::AttenteRefresh {
                 echeance_refresh, ..
             } => Some(echeance_refresh),
             _ => None,
+        };
+        match (bail, self.prochaine_echeance_canal()) {
+            (Some(a), Some(b)) => Some(a.min(b)),
+            (a, b) => a.or(b),
         }
     }
 
-    /// Fait avancer l'horloge interne, et émet le rafraîchissement s'il est dû.
+    /// Instant courant de l'horloge interne. `pub(super)` : `canaux` en a besoin
+    /// pour dater l'échéance d'une liaison qu'il vient d'émettre.
+    pub(super) fn maintenant(&self) -> Instant {
+        self.maintenant
+    }
+
+    /// Fait avancer l'horloge interne, et émet ce qui est dû : le
+    /// rafraîchissement du bail, et les liaisons de canal à réaffirmer.
     pub fn avancer(&mut self, now: Instant) {
         self.maintenant = now;
         if let Etat::Allouee { echeance_refresh } = self.etat {
@@ -129,6 +146,9 @@ impl TurnClient {
                 self.emettre_refresh(echeance_refresh);
             }
         }
+        // Indépendant de l'état du bail : une permission expire pour son propre
+        // compte, y compris pendant qu'on attend la réponse à un `Refresh`.
+        self.rafraichir_canaux(now);
     }
 
     /// `pub(super)` : `canaux::lier_canal` numérote ses deux requêtes avec.

@@ -7,6 +7,7 @@
 //! par fichier.
 
 use std::net::SocketAddr;
+use std::time::{Duration, Instant};
 
 use super::allocation::TurnClient;
 use super::messages::{encoder_requete, Requete};
@@ -14,6 +15,25 @@ use super::messages::{encoder_requete, Requete};
 /// Premier numéro de canal de la plage normative (RFC 5766 §2.5).
 pub(super) const CANAL_MIN: u16 = 0x4000;
 const CANAL_MAX: u16 = 0x7FFF;
+
+/// Délai entre deux rafraîchissements d'une liaison de canal.
+///
+/// Une permission dure 300 s (RFC 5766 §8), un canal 600 s (§11) : c'est la
+/// permission, la plus courte, qui commande. On réémet à la MOITIÉ de sa durée,
+/// pour la même raison que le bail de l'allocation — une seule perte de paquet
+/// ne doit pas suffire à perdre le relais.
+///
+/// Sans ce rafraîchissement, une session relayée meurt vers 300 s : constaté à
+/// la recette du 30/07/2026 (chute à 340 s, alors que le bail de l'allocation
+/// était bien rafraîchi).
+const PERIODE_RAFRAICHISSEMENT: Duration = Duration::from_secs(150);
+
+/// Une liaison de canal vivante : le pair qu'elle sert, et l'instant où elle
+/// doit être réaffirmée auprès du serveur.
+pub(super) struct Canal {
+    pub(super) pair: SocketAddr,
+    echeance: Instant,
+}
 
 /// Vrai si ce datagramme est une trame ChannelData plutôt qu'un message STUN.
 ///
@@ -38,12 +58,7 @@ impl TurnClient {
     pub fn lier_canal(&mut self, pair: SocketAddr) -> Option<u16> {
         // Aucune allocation : il n'y a rien à quoi lier un canal.
         self.allocation?;
-        if let Some(canal) = self
-            .canaux
-            .iter()
-            .find(|(_, p)| **p == pair)
-            .map(|(c, _)| *c)
-        {
+        if let Some(canal) = self.canal_de(pair) {
             return Some(canal);
         }
         if self.prochain_canal > CANAL_MAX {
@@ -53,6 +68,30 @@ impl TurnClient {
         let canal = self.prochain_canal;
         self.prochain_canal += 1;
 
+        self.emettre_liaison(canal, pair)?;
+        Some(canal)
+    }
+
+    /// Numéro du canal servant ce pair, s'il en existe un.
+    fn canal_de(&self, pair: SocketAddr) -> Option<u16> {
+        self.canaux
+            .iter()
+            .find(|(_, c)| c.pair == pair)
+            .map(|(numero, _)| *numero)
+    }
+
+    /// Émet `CreatePermission` puis `ChannelBind` pour ce couple, et (re)pose
+    /// l'échéance de rafraîchissement.
+    ///
+    /// `CreatePermission` d'abord, `ChannelBind` ensuite : la seconde implique
+    /// la première côté serveur, mais les émettre toutes deux évite une fenêtre
+    /// pendant laquelle le serveur jetterait nos paquets si le `ChannelBind` se
+    /// perdait.
+    ///
+    /// Sert aussi bien à la première liaison qu'à son rafraîchissement : le
+    /// serveur traite les deux de la même façon, ce qui est précisément ce que
+    /// la RFC prévoit pour prolonger une liaison.
+    fn emettre_liaison(&mut self, canal: u16, pair: SocketAddr) -> Option<()> {
         let (ids, cle) = (self.identifiants.clone()?, self.cle.clone()?);
         let trans_permission = self.prochain_trans_id();
         self.sortantes.push_back(encoder_requete(
@@ -67,8 +106,38 @@ impl TurnClient {
             Some((&ids, &cle)),
         ));
 
-        self.canaux.insert(canal, pair);
-        Some(canal)
+        self.canaux.insert(
+            canal,
+            Canal {
+                pair,
+                echeance: self.maintenant() + PERIODE_RAFRAICHISSEMENT,
+            },
+        );
+        Some(())
+    }
+
+    /// Réaffirme les liaisons dont l'échéance est atteinte.
+    ///
+    /// Appelée par `avancer`, au même titre que le rafraîchissement du bail :
+    /// une permission expirée fait taire le relais sans rien annoncer, et la
+    /// session meurt d'un silence.
+    pub(super) fn rafraichir_canaux(&mut self, now: Instant) {
+        let echus: Vec<(u16, SocketAddr)> = self
+            .canaux
+            .iter()
+            .filter(|(_, c)| now >= c.echeance)
+            .map(|(numero, c)| (*numero, c.pair))
+            .collect();
+        for (canal, pair) in echus {
+            tracing::debug!(canal, %pair, "rafraîchissement de la liaison de canal TURN");
+            self.emettre_liaison(canal, pair);
+        }
+    }
+
+    /// Échéance de rafraîchissement la plus proche, pour que l'appelant ne
+    /// dorme pas au-delà.
+    pub(super) fn prochaine_echeance_canal(&self) -> Option<Instant> {
+        self.canaux.values().map(|c| c.echeance).min()
     }
 
     /// Enveloppe une charge utile pour le pair donné.
@@ -78,11 +147,7 @@ impl TurnClient {
     ///
     /// Aucun remplissage : la RFC 5766 §11.5 ne l'exige pas sur UDP.
     pub fn encapsuler(&self, pair: SocketAddr, charge: &[u8]) -> Option<Vec<u8>> {
-        let canal = self
-            .canaux
-            .iter()
-            .find(|(_, p)| **p == pair)
-            .map(|(c, _)| *c)?;
+        let canal = self.canal_de(pair)?;
         let mut trame = Vec::with_capacity(4 + charge.len());
         trame.extend_from_slice(&canal.to_be_bytes());
         trame.extend_from_slice(&(charge.len() as u16).to_be_bytes());
@@ -105,7 +170,7 @@ impl TurnClient {
         if trame.len() < 4 + longueur {
             return None;
         }
-        let pair = *self.canaux.get(&canal)?;
+        let pair = self.canaux.get(&canal)?.pair;
         Some((pair, &trame[4..4 + longueur]))
     }
 }
@@ -113,7 +178,8 @@ impl TurnClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::turn::fixtures::allouee;
+    use crate::turn::fixtures::{allouee, t0};
+    use std::time::Duration;
 
     #[test]
     fn le_premier_octet_departage_stun_de_channel_data() {
@@ -179,6 +245,43 @@ mod tests {
                 "canal {canal:#x} hors de la plage 0x4000-0x7FFF"
             );
         }
+    }
+
+    #[test]
+    fn un_canal_lie_est_rafraichi_avant_l_expiration_de_la_permission() {
+        // Trouvaille de la recette du 30/07/2026 : une session relayée tombait
+        // au bout de ~340 s. Une permission TURN dure 300 s (RFC 5766 §8) et un
+        // canal 600 s (§11) ; sans réémission, le serveur cesse de relayer nos
+        // paquets et la session meurt — alors que le bail de l'allocation, lui,
+        // était bien rafraîchi.
+        let mut c = allouee();
+        let pair: SocketAddr = "203.0.113.9:6000".parse().unwrap();
+        let canal = c.lier_canal(pair).expect("canal attribué");
+        while c.poll_transmit().is_some() {}
+
+        // À la moitié de la durée d'une permission, comme pour le bail : une
+        // seule perte de paquet ne doit pas suffire à perdre le relais.
+        c.avancer(t0() + Duration::from_secs(150));
+
+        let premier = c
+            .poll_transmit()
+            .expect("CreatePermission de rafraîchissement attendu");
+        assert_eq!(&premier[0..2], &[0x00, 0x08], "CreatePermission");
+        let second = c
+            .poll_transmit()
+            .expect("ChannelBind de rafraîchissement attendu");
+        assert_eq!(&second[0..2], &[0x00, 0x09], "ChannelBind");
+
+        // Le MÊME canal, pas un nouveau : un rafraîchissement prolonge la
+        // liaison existante, il n'en crée pas une seconde.
+        let message = is::stun::StunMessage::parse(&second).expect("relue");
+        assert_eq!(message.channel_number(), Some(canal));
+        assert_eq!(message.xor_peer_address(), Some(pair));
+
+        // Et pas de rafale : rien de plus avant l'échéance suivante.
+        assert!(c.poll_transmit().is_none(), "un seul rafraîchissement par échéance");
+        c.avancer(t0() + Duration::from_secs(151));
+        assert!(c.poll_transmit().is_none(), "pas de réémission à chaque tour");
     }
 
     #[test]
