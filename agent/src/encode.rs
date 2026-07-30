@@ -35,7 +35,7 @@
 //!
 //! Ces conclusions ne sont pas déduites du code mais mesurées : le chemin
 //! chaud publie son étape courante et ses compteurs dans `EncoderTelemetry`,
-//! qu'un fil de surveillance journalise chaque seconde (voir `main.rs`,
+//! qu'un fil de surveillance journalise chaque seconde (voir `diagnostics/capture.rs`,
 //! `ENCODER_THROUGHPUT_TEST`). Le débit mesuré est consigné dans le rapport
 //! de tâche.
 
@@ -119,7 +119,7 @@ pub const PHASE_POLL_DRAIN_EVENTS: u64 = 5;
 pub const PHASE_ENCODER_PROCESS_OUTPUT: u64 = 6;
 pub const PHASE_ENCODER_READ_BUFFER: u64 = 7;
 /// Hors encodeur : l'appelant est dans l'acquisition d'image. Posée depuis la
-/// boucle de diagnostic (`main.rs`) pour que le fil de surveillance distingue
+/// boucle de diagnostic (`diagnostics/capture.rs`) pour que le fil de surveillance distingue
 /// « bloqué dans l'encodeur » de « bloqué dans la capture » — sans quoi les
 /// deux se ressemblent : compteurs figés, étape au repos.
 pub const PHASE_CAPTURE: u64 = 8;
@@ -202,7 +202,7 @@ pub struct EncoderTelemetry {
 }
 
 /// Compteurs de diagnostic à l'échelle du processus, doublant deux champs de
-/// `EncoderTelemetry` (voir `SOURCE_TRACE` dans `main.rs`).
+/// `EncoderTelemetry` (voir `SOURCE_TRACE` dans `demarrage.rs`).
 ///
 /// Redondants en apparence, mais `EncoderTelemetry` est possédée par
 /// l'encodeur, que `resize` remplace : une poignée prise au démarrage cesse
@@ -756,7 +756,7 @@ impl H264Encoder {
     ///
     /// Ce garde explique aussi pourquoi les deux expériences qui auraient dû
     /// trancher n'ont rien montré : `ENCODER_THROUGHPUT_TEST`/`ENCODE_TEST`
-    /// (`main.rs`) resoumettent **la même texture** en boucle, si bien qu'y
+    /// (`diagnostics/capture.rs`) resoumettent **la même texture** en boucle, si bien qu'y
     /// jeter une image ne coûte rien — d'où les ~80 i/s qui semblaient
     /// disculper le code et accuser le pilote NVENC ; et forcer la capture à
     /// 60 Hz (`remesure-debit.md`, étape 3a) n'a pas bougé le débit, les
@@ -1446,7 +1446,7 @@ fn configure_rate_control(transform: &IMFTransform, bitrate: u32) -> Result<()> 
         codec.SetValue(&CODECAPI_AVEncCommonMeanBitRate, &rate)?;
         // Pas de groupe d'images fermé : on demande les images clés à la
         // volée (`H264Encoder::request_keyframe`, câblé depuis
-        // `Event::KeyframeRequest` de str0m dans `transport.rs`). Le retour
+        // `Event::KeyframeRequest` de str0m dans `transport/evenements.rs`). Le retour
         // de `SetValue` est vérifié plutôt que jeté : un refus silencieux du
         // pilote laisserait croire le contrat honoré alors qu'un groupe
         // d'images fermé rendrait les images clés à la demande inopérantes.

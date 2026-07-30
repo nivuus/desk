@@ -44,7 +44,7 @@ pub struct WindowsSource {
     height: u32,
     fps: u32,
     bitrate: u32,
-    /// Origine d'horloge **de la session**, imposée par `main.rs` et partagée
+    /// Origine d'horloge **de la session**, imposée par `demarrage.rs` et partagée
     /// avec la source audio. C'est cette origine commune qui rend les deux
     /// lignes de temps comparables, donc la synchro A/V exacte. La créer ici
     /// la décalerait de la durée d'initialisation de l'autre source.
@@ -79,7 +79,7 @@ pub struct WindowsSource {
 // `IMFTransform`...) ne sont pas `Send` par défaut dans windows-rs, mais
 // `Session` (voir `transport.rs`) exige `Box<dyn VideoSource + Send>` pour
 // finir sur le fil dédié de `Session::run` (`tokio::task::spawn_blocking`,
-// voir `main.rs`). Ce transfert n'est PAS un unique déplacement littéral :
+// voir `demarrage.rs`). Ce transfert n'est PAS un unique déplacement littéral :
 // entre sa construction et cette remise à `spawn_blocking`, l'objet est
 // porté par une tâche `#[tokio::main]` (ordonnanceur multi-fils par défaut)
 // qui franchit plusieurs `.await` (réception de l'offre, envoi de la
@@ -216,7 +216,7 @@ impl WindowsSource {
         // reconstruite) pouvait même finir par viser une taille supérieure à
         // la nouvelle capture. La taille encodée doit donc à nouveau suivre
         // la fenêtre inconditionnellement ; c'est `Session::act_on_timeout`
-        // (branche a1, `transport.rs`) qui a désormais la charge de
+        // (branche a1, `transport/tick.rs`) qui a désormais la charge de
         // rappliquer, juste après, la réduction que le contrôleur jugerait
         // encore nécessaire pour la NOUVELLE taille (voir
         // `congestion::Controleur::changer_source`) — au lieu de la préserver
@@ -299,7 +299,7 @@ impl WindowsSource {
     }
 
     /// Demande une image clé — notamment sur requête du navigateur, relayée
-    /// depuis `Event::KeyframeRequest` par `transport.rs` via l'implémentation
+    /// depuis `Event::KeyframeRequest` par `transport/evenements.rs` via l'implémentation
     /// `VideoSource::request_keyframe` ci-dessous.
     pub fn request_keyframe(&mut self) -> Result<()> {
         self.encoder.request_keyframe()
@@ -530,7 +530,7 @@ const SUBMIT_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_mill
 /// l'encodeur cesserait d'être observée au moment précis qui intéresse.
 ///
 /// Le coût est nul en pratique (trois incréments `Relaxed` par tour) et rien
-/// ne les lit sauf le fil de surveillance de `main.rs`, activé par
+/// ne les lit sauf le fil de surveillance de `demarrage.rs`, activé par
 /// `SOURCE_TRACE=1`. L'agent étant mono-session (un processus par session),
 /// des statiques ne mélangent pas plusieurs sessions.
 pub static TICKS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);

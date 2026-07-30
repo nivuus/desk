@@ -26,7 +26,7 @@ pub trait VideoSource {
     /// `FileSource`, qui boucle indéfiniment et ne renvoie jamais `None`, et
     /// le cas nominal de `WindowsSource` tant que la fenêtre capturée existe
     /// — un bureau immobile ne doit jamais, à lui seul, clore la session
-    /// (voir `transport.rs`).
+    /// (voir `transport/piste_video.rs`).
     fn is_exhausted(&self) -> bool {
         false
     }
@@ -53,7 +53,7 @@ pub trait VideoSource {
     /// aucune image clé n'est jamais reproduite après le démarrage ou un
     /// redimensionnement, et la moindre perte de paquet corrompt la vidéo
     /// définitivement jusqu'à reconnexion. Câblé sur `Event::KeyframeRequest`
-    /// de str0m dans `transport.rs`, qui relaie la demande du navigateur
+    /// de str0m dans `transport/evenements.rs`, qui relaie la demande du navigateur
     /// après une perte détectée côté décodeur.
     ///
     /// Par défaut sans effet : `FileSource` rejoue un flux pré-découpé où le

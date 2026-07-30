@@ -1,7 +1,7 @@
 //! Correspondance entre horodatages de présentation et instants réels.
 //!
 //! Les deux médias ont des horloges de fréquences différentes — 90 kHz pour la
-//! vidéo, 48 kHz pour l'audio — mais **une seule origine**, créée dans `main.rs`
+//! vidéo, 48 kHz pour l'audio — mais **une seule origine**, créée dans `demarrage.rs`
 //! et passée aux deux sources. C'est cette origine commune qui rend les RTCP
 //! Sender Reports cohérents entre les deux pistes, et donc la synchro A/V
 //! exacte par construction plutôt que par chance.
