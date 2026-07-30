@@ -373,15 +373,8 @@ impl Session {
                     }
                 }
                 Output::Transmit(transmit) => {
-                    // INSTRUMENTATION TEMPORAIRE (tâche 6, étape 1) : sert à
-                    // constater ce que str0m nomme comme `source` pour un
-                    // paquet qui doit passer par le relais. À retirer une fois
-                    // le prédicat de `route_relayee` figé.
-                    tracing::info!(
-                        source = %transmit.source,
-                        destination = %transmit.destination,
-                        "transmit"
-                    );
+                    // Route vers le socket direct ou vers le relais TURN selon
+                    // la source que str0m indique. Corps dans `relais`.
                     self.envoyer(&transmit);
                 }
                 Output::Event(event) => {

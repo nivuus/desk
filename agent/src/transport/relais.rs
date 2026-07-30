@@ -46,7 +46,12 @@ impl Session {
         let allocation = turn.allocation()?;
         // str0m nomme comme source l'adresse du candidat local employé, donc
         // l'adresse relayée pour un paquet qui doit passer par le relais.
-        // Constaté sur session réelle (tâche 6, étape 1), pas supposé.
+        //
+        // CONSTATÉ, pas supposé (tâche 6, étape 1) : sur une session réelle du
+        // 30/07/2026, les `Transmit` portaient deux sources distinctes —
+        // `192.168.3.2:60303` (le socket local de la VM) pour le chemin direct,
+        // et `192.168.3.1:49183` pour le chemin relayé, une adresse de la plage
+        // de relais de coturn (49160-49200), donc l'adresse relayée elle-même.
         if transmit.source != allocation.relayee {
             return None;
         }
