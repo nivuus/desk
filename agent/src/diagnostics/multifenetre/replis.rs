@@ -1,12 +1,15 @@
 //! Voie 4 : les replis par fenêtre, sondés en dernier parce qu'ils sont les
 //! moins prometteurs.
 //!
-//! `PrintWindow(PW_RENDERFULLCONTENT)` passe par GDI et rend typiquement du
-//! noir sur une fenêtre D3D — c'est précisément ce que cette sonde vérifie,
-//! sur une mire peinte en D3D11 et non en GDI. Il rapatrie de surcroît les
-//! pixels en mémoire centrale : même correct, il tomberait sur la porte
-//! « chemin GPU » de la spec §5. On le sonde pour le CONSIGNER, pas dans
-//! l'espoir de le retenir.
+//! `PrintWindow(PW_RENDERFULLCONTENT)` passe par GDI, ce qui le fait
+//! généralement échouer (image noire) sur le contenu D3D des fenêtres —
+//! c'est ce que cette sonde vérifie, sur une mire peinte en D3D11 et non en
+//! GDI. **Mesuré sur cette VM : ce n'est PAS le cas** — la mire recouverte
+//! est rendue correctement (`verdict=Juste`, pixel exact), probablement
+//! grâce au modèle de présentation flip de la swapchain de la mire. Il
+//! rapatrie néanmoins les pixels en mémoire centrale : même l'image
+//! correcte tombe sur la porte « chemin GPU » de la spec §5. On le sonde
+//! pour le CONSIGNER, pas dans l'espoir de le retenir.
 //!
 //! `DwmGetDxSharedSurface` n'est pas documentée : elle est résolue
 //! dynamiquement dans user32.dll, et son absence est un résultat, pas une
