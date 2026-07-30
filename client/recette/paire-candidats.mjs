@@ -144,6 +144,16 @@ async function main() {
             '--disable-gpu',
             '--autoplay-policy=no-user-gesture-required',
             '--disable-features=WebRtcHideLocalIpsWithMdns',
+            // Sans ces trois options, Chrome gèle la page au bout de 5 minutes
+            // (elle n'est jamais au premier plan en mode sans interface) : le
+            // trafic ICE cesse, le pair révoque le consentement ~30 s plus tard
+            // et la session tombe. Constaté à la recette du 30/07/2026 — deux
+            // sessions de 11 minutes interrompues à 331 s et 340 s, l'une
+            // relayée l'autre directe, ce qui a d'abord été imputé à tort au
+            // relais. Toute mesure de plus de 5 minutes en a besoin.
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding',
             'about:blank',
         ],
         { stdio: 'ignore' },
