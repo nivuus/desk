@@ -13,6 +13,7 @@ mod frames;
 // `anyhow::Context` propres à la sonde.
 mod gamepad;
 mod geometry;
+mod mire;
 mod h264;
 mod input;
 mod opus;
