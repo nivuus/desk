@@ -1,6 +1,14 @@
 //! Aiguillage des modes diagnostic, tous activés par variable
-//! d'environnement. Aucun n'injecte d'entrée ni n'ouvre de session : ils
-//! observent et consignent.
+//! d'environnement. Aucun n'ouvre de session WebRTC : ils observent et
+//! consignent, ils ne construisent rien.
+//!
+//! « Observer » ne veut pas dire « sans effet » pour autant : deux sondes
+//! perturbent délibérément l'état de la session Windows, parce que c'est le
+//! seul moyen d'obtenir la mesure. `INPUT_LINEARITY_PROBE` injecte de vrais
+//! déplacements de souris et repositionne le curseur (`SetCursorPos`), et
+//! `CAPTURE_TEST` déplace la fenêtre observée d'un pixel en boucle
+//! (`SetWindowPos`) pour forcer la recomposition du bureau. Ne pas les
+//! lancer sur une session dont on veut préserver l'état.
 
 use anyhow::Result;
 

@@ -1,5 +1,12 @@
 //! Mode diagnostic `CAPTURE_TEST` : vérifie le repérage d'une fenêtre par
 //! fragment de titre, puis que la capture en restitue bien le contenu.
+//!
+//! Deux mesures facultatives s'y greffent, actives seulement si
+//! `CAPTURE_TEST` l'est déjà — elles réutilisent sa fenêtre et sa capture :
+//! `ENCODE_TEST`, qui encode des images réellement capturées (débit du
+//! chemin complet capture+encodage), et `ENCODER_THROUGHPUT_TEST`, qui
+//! réinjecte une seule texture en boucle pour isoler le débit du pipeline
+//! conversion+encodage de celui de la source.
 
 use std::time::Duration;
 
