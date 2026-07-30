@@ -264,7 +264,7 @@ mod tests {
         assert_eq!(session.capture_instant(0), origine);
     }
 
-    /// Filet de non-régression sur LA correction de ce chantier (ligne ~943) :
+    /// Filet de non-régression sur LA correction de ce chantier (dans `write_frame`) :
     /// si `write_frame` redevenait `Instant::now()` au lieu de
     /// `self.capture_instant(unit.pts_90k)`, aucun test existant ne le
     /// détecterait — `la_session_ancre_l_instant_de_capture_sur_son_origine`
@@ -303,7 +303,7 @@ mod tests {
     ///
     /// Démonstration de l'efficacité du filet (revue finale, voir le rapport
     /// de tâche pour la sortie complète) : en remplaçant temporairement
-    /// `self.capture_instant(unit.pts_90k)` par `Instant::now()` ligne 943,
+    /// `self.capture_instant(unit.pts_90k)` par `Instant::now()` dans `write_frame`,
     /// ce test échoue avec un écart mesuré proche de 0 s au lieu de ~10 s.
     #[test]
     fn write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp() {
@@ -408,7 +408,7 @@ mod tests {
             ecart > 3.0,
             "écart de {ecart:.3} s trop faible (attendu ≈ 10 s) : write_frame semble annoncer \
              l'instant d'ÉCRITURE plutôt que l'instant de CAPTURE comme wallclock RTCP — \
-             régression sur la correction centrale du chantier (transport.rs:943)"
+             régression sur la correction centrale du chantier (dans `write_frame`)"
         );
     }
 }
