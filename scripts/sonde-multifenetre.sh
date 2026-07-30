@@ -41,3 +41,4 @@ executer() {
 
 executer dxgi MULTIFENETRE_DXGI=1
 executer wgc MULTIFENETRE_WGC=1
+executer replis MULTIFENETRE_REPLIS=1

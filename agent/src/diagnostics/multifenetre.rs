@@ -11,6 +11,7 @@
 
 pub(super) mod disponibilite;
 pub(super) mod mires;
+pub(super) mod replis;
 pub(super) mod wgc;
 
 use anyhow::Result;
@@ -26,6 +27,12 @@ pub(super) fn aiguiller() -> Result<bool> {
     // jalon 1 — voir le commentaire de tête de `wgc.rs`).
     if std::env::var("MULTIFENETRE_WGC").is_ok() {
         wgc::eprouver()?;
+        return Ok(true);
+    }
+    // Voie 4 : les replis par fenêtre, sondés en dernier — la moins
+    // prometteuse (voir le commentaire de tête de `replis.rs`).
+    if std::env::var("MULTIFENETRE_REPLIS").is_ok() {
+        replis::eprouver()?;
         return Ok(true);
     }
     Ok(false)
