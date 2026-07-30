@@ -28,7 +28,9 @@ const METHODE_CHANNEL_BIND: u16 = 0x0009;
 const ATTR_USERNAME: u16 = 0x0006;
 const ATTR_MESSAGE_INTEGRITY: u16 = 0x0008;
 /// Lu par `is::stun`, jamais écrit par nous : sert aux réponses simulées de
-/// `allocation`.
+/// `allocation`, d'où le `#[cfg(test)]` — sans lui la constante serait du code
+/// mort dans le binaire.
+#[cfg(test)]
 pub(super) const ATTR_ERROR_CODE: u16 = 0x0009;
 const ATTR_CHANNEL_NUMBER: u16 = 0x000C;
 pub(super) const ATTR_LIFETIME: u16 = 0x000D;
@@ -37,8 +39,10 @@ pub(super) const ATTR_REALM: u16 = 0x0014;
 pub(super) const ATTR_NONCE: u16 = 0x0015;
 /// Adresse relayée que le serveur accorde, et adresse réflexive qu'il observe.
 /// Comme `ATTR_ERROR_CODE` : lues par `is::stun`, écrites seulement en test.
+#[cfg(test)]
 pub(super) const ATTR_XOR_RELAYED_ADDRESS: u16 = 0x0016;
 const ATTR_REQUESTED_TRANSPORT: u16 = 0x0019;
+#[cfg(test)]
 pub(super) const ATTR_XOR_MAPPED_ADDRESS: u16 = 0x0020;
 
 /// Numéro de protocole d'IANA pour UDP, valeur du champ `REQUESTED-TRANSPORT`.
@@ -51,10 +55,14 @@ pub const BAIL_DEMANDE_S: u32 = 600;
 
 /// Identifiants longue durée, tels que le serveur les impose dans sa
 /// réponse 401.
+///
+/// Le mot de passe n'y figure pas, contrairement à ce que prévoyait le plan :
+/// il ne va JAMAIS sur le fil, il ne sert qu'à dériver la clé d'intégrité
+/// (`cle_longue_duree`), que `encoder_requete` reçoit séparément. Un champ que
+/// rien ne relit, et qui porte un secret, n'a pas sa place ici.
 #[derive(Debug, Clone)]
 pub struct Identifiants {
     pub username: String,
-    pub password: String,
     pub realm: String,
     pub nonce: String,
 }
@@ -280,11 +288,10 @@ mod tests {
         // vrai serveur.
         let ids = Identifiants {
             username: "user".into(),
-            password: "pass".into(),
             realm: "example.org".into(),
             nonce: "abcdef".into(),
         };
-        let cle = cle_longue_duree(&ids.username, &ids.realm, &ids.password);
+        let cle = cle_longue_duree(&ids.username, &ids.realm, "pass");
         let paquet = encoder_requete(&Requete::AllocateSigne, [3u8; 12], Some((&ids, &cle)));
 
         let message = is::stun::StunMessage::parse(&paquet).expect("relu par is::stun");
@@ -301,11 +308,10 @@ mod tests {
     fn une_permission_porte_l_adresse_du_pair_en_xor() {
         let ids = Identifiants {
             username: "u".into(),
-            password: "p".into(),
             realm: "r".into(),
             nonce: "n".into(),
         };
-        let cle = cle_longue_duree(&ids.username, &ids.realm, &ids.password);
+        let cle = cle_longue_duree(&ids.username, &ids.realm, "p");
         let pair: std::net::SocketAddr = "203.0.113.7:5000".parse().unwrap();
         let paquet = encoder_requete(
             &Requete::CreatePermission { pair },
@@ -324,11 +330,10 @@ mod tests {
     fn un_channel_bind_porte_le_numero_et_l_adresse() {
         let ids = Identifiants {
             username: "u".into(),
-            password: "p".into(),
             realm: "r".into(),
             nonce: "n".into(),
         };
-        let cle = cle_longue_duree(&ids.username, &ids.realm, &ids.password);
+        let cle = cle_longue_duree(&ids.username, &ids.realm, "p");
         let pair: std::net::SocketAddr = "198.51.100.9:1234".parse().unwrap();
         let paquet = encoder_requete(
             &Requete::ChannelBind { canal: 0x4000, pair },

@@ -36,9 +36,8 @@ impl TurnClient {
     /// Rend `None` si aucune allocation n'est en place, ou si la plage de
     /// canaux est épuisée.
     pub fn lier_canal(&mut self, pair: SocketAddr) -> Option<u16> {
-        if self.allocation.is_none() {
-            return None;
-        }
+        // Aucune allocation : il n'y a rien à quoi lier un canal.
+        self.allocation?;
         if let Some(canal) = self
             .canaux
             .iter()

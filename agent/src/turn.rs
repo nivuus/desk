@@ -15,13 +15,15 @@
 //! fichier de `CLAUDE.md`.
 //!
 //! Visibilité : `messages` est un module privé, donc ce qu'il déclare `pub`
-//! reste borné au sous-arbre de `turn` — accessible à ses futurs frères
-//! (`allocation`, `canaux`) par `super::messages`, invisible à l'extérieur.
-//! Les réexports `pub use` n'apparaîtront ici que pour ce que le transport
-//! devra vraiment voir, au moment où il le consommera.
+//! reste borné au sous-arbre de `turn` — accessible à ses frères
+//! (`allocation`, `canaux`) par `super::messages`, invisible à l'extérieur. Le
+//! transport ne voit que les deux réexports ci-dessous.
 
 mod allocation;
 mod canaux;
 #[cfg(test)]
 mod fixtures;
 mod messages;
+
+pub use allocation::TurnClient;
+pub use canaux::est_channel_data;

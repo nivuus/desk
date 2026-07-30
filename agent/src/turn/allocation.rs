@@ -8,9 +8,7 @@
 use std::net::SocketAddr;
 use std::time::Instant;
 
-use super::messages::{
-    cle_longue_duree, encoder_requete, sha1_hmac, Identifiants, Requete, BAIL_DEMANDE_S,
-};
+use super::messages::{cle_longue_duree, encoder_requete, Identifiants, Requete, BAIL_DEMANDE_S};
 
 /// Ce qu'une allocation réussie procure.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,6 +25,11 @@ pub struct Allocation {
 /// continue sans relais : c'est une dégradation, pas une panne.
 const TENTATIVES_MAX: u8 = 5;
 
+/// Les `trans_id` retenus ici ne sont **pas relus** : `handle_packet` accepte
+/// la réponse du serveur sans vérifier qu'elle apparie la requête en cours.
+/// Le champ est conservé parce que c'est là que l'appariement se brancherait —
+/// réserve consignée dans la recette, pas oubli.
+#[allow(dead_code)]
 enum Etat {
     /// Rien n'est encore parti.
     Repos,
@@ -219,7 +222,6 @@ impl TurnClient {
                 };
                 self.identifiants = Some(Identifiants {
                     username: self.username.clone(),
-                    password: self.password.clone(),
                     realm: realm.to_string(),
                     nonce: nonce.to_string(),
                 });
@@ -262,7 +264,7 @@ mod tests {
     use super::*;
     use crate::turn::fixtures::{allouee, reponse, serveur, t0, trans_id_de};
     use crate::turn::messages::{
-        ATTR_ERROR_CODE, ATTR_NONCE, ATTR_REALM, METHODE_ALLOCATE, METHODE_REFRESH,
+        sha1_hmac, ATTR_ERROR_CODE, ATTR_NONCE, ATTR_REALM, METHODE_ALLOCATE, METHODE_REFRESH,
     };
     use std::time::Duration;
 
