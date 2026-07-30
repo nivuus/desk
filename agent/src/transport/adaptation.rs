@@ -39,7 +39,7 @@ pub(super) const ESTIMATION_INITIALE_BPS: u32 = 2_500_000;
 /// environ une fois par seconde (`set_stats_interval`) : 5 s laisse plusieurs
 /// occasions manquées avant de conclure à l'absence, sans laisser une
 /// estimation figée vivre des dizaines de secondes.
-pub(super) const EXPIRATION_ESTIMATION: Duration = Duration::from_secs(5);
+const EXPIRATION_ESTIMATION: Duration = Duration::from_secs(5);
 
 impl Session {
     /// Décision d'adaptation actuellement retenue. Alimente le message d'état

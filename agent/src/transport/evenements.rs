@@ -165,7 +165,7 @@ impl Session {
         Tick::Continue
     }
 
-    pub(super) fn dispatch_channel_data(
+    fn dispatch_channel_data(
         &mut self,
         data: &str0m::channel::ChannelData,
         on_input: &mut impl FnMut(InputMessage),

@@ -48,18 +48,31 @@ impl Session {
     }
 
     /// Branche `a` de la liste de priorités (voir `tick`) : émet le premier
-    /// message de contrôle en file. Appelée uniquement quand la file n'est
-    /// pas vide.
+    /// message de contrôle en file.
     ///
     /// Rend `Some(Tick::Continue)` après avoir écrit un message — l'écriture
     /// sur le canal est une mutation de `Rtc`, qui conclut donc le tour.
     /// Rend `Some(Tick::Disconnected)` quand la session se clôt sans pouvoir
     /// en informer le navigateur. Rend `None` — sans avoir muté `Rtc` — quand
-    /// le canal n'est pas encore ouvert et que la session n'est pas en
-    /// clôture : le message reste en file, on retente au tour suivant, et la
-    /// liste de priorités peut passer à la branche suivante sans rompre
-    /// l'invariant de drainage.
+    /// la file est vide, ou que le canal n'est pas encore ouvert alors que la
+    /// session n'est pas en clôture : le message reste alors en file, on
+    /// retente au tour suivant, et la liste de priorités peut passer à la
+    /// branche suivante sans rompre l'invariant de drainage.
     pub(super) fn brancher_controle_en_file(&mut self) -> Result<Option<Tick>> {
+        // Le test de vacuité est ICI et non chez l'appelant : c'est lui qui
+        // garantit le `expect` du `pop_front` plus bas. Une précondition
+        // laissée dans `tick` serait tenue par convention, alors qu'elle l'est
+        // par construction tant qu'elle reste dans la méthode qu'elle protège.
+        //
+        // Il précède le test du canal : sur une file VIDE, il n'y a rien à
+        // annoncer au navigateur, donc rien à regretter de ne pas pouvoir lui
+        // envoyer — l'avertissement du `else` plus bas n'aurait pas lieu
+        // d'être. La clôture d'une session sans rien en file est traitée par
+        // le `if self.ending` de `tick`, juste après cette branche.
+        if self.pending_control.is_empty() {
+            return Ok(None);
+        }
+
         let Some(id) = self.control_channel else {
             if self.ending {
                 // Fin de session demandée mais canal de contrôle

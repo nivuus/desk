@@ -96,14 +96,13 @@ impl Session {
             return Ok(tick);
         }
 
-        // a) Un message de contrôle est en attente. Corps dans `controle` :
-        //    la branche ne laisse passer (`None`) que sans avoir muté `Rtc`,
-        //    quand le canal n'est pas encore ouvert et que la session n'est
-        //    pas en clôture — le message reste alors en file.
-        if !self.pending_control.is_empty() {
-            if let Some(tick) = self.brancher_controle_en_file()? {
-                return Ok(tick);
-            }
+        // a) Un message de contrôle est en attente. Corps dans `controle`,
+        //    test de vacuité compris : la branche ne laisse passer (`None`)
+        //    que sans avoir muté `Rtc` — file vide, ou canal pas encore
+        //    ouvert alors que la session n'est pas en clôture, auquel cas le
+        //    message reste en file.
+        if let Some(tick) = self.brancher_controle_en_file()? {
+            return Ok(tick);
         }
 
         if self.ending {
@@ -197,7 +196,7 @@ mod tests {
         /// Source audio de test : rend un paquet toutes les 10 ms au plus
         /// tôt, avec un `pts_48k` qui avance de 480 (une trame de 10 ms) à
         /// chaque paquet rendu — comme le ferait `WindowsAudioSource`
-        /// (`PacketRing` alimenté par un fil de capture paçé, jamais
+        /// (`PacketRing` alimenté par un fil de capture cadencé, jamais
         /// disponible en continu). La charge utile n'a pas besoin d'être un
         /// Opus valide : ce test vérifie que la `Session` ACHEMINE les
         /// paquets jusqu'au pair, pas ce qu'un décodeur en ferait.

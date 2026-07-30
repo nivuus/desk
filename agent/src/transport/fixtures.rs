@@ -8,8 +8,8 @@
 //! `DummyAudioSource`, `CountingSource` et `SourceRefusant` restent chacune
 //! avec l'unique test qui les définit, ce ne sont pas des échafaudages
 //! partagés.
-
-//! Les `use` sont explicites plutôt qu'un `use super::*` : `transport.rs` ne
+//!
+//! Les `use` y sont explicites plutôt qu'un `use super::*` : `transport.rs` ne
 //! porte plus que la structure et la boucle, et n'importe donc plus de
 //! lui-même tout ce dont ces échafaudages ont besoin.
 
