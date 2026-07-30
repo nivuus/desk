@@ -1,0 +1,43 @@
+# Relais TURN : joindre le pair même derrière un NAT symétrique des deux côtés.
+#
+# Fichier séparé du `docker-compose.yml` principal, et versionné, parce que ce
+# dernier ne l'est pas : il porte les mots de passe Windows du Guacamole legacy
+# en clair (voir `.gitignore`). Ici aucun secret n'apparaît — le secret partagé
+# avec coturn est lu depuis `.env`, lui-même ignoré par git.
+#
+# Lancement :
+#   docker compose -f docker-compose.yml -f docker-compose.coturn.yml up -d coturn
+#
+# Journal :
+#   docker compose -f docker-compose.yml -f docker-compose.coturn.yml logs coturn
+
+services:
+  coturn:
+    image: coturn/coturn:4.6
+    # Le mode réseau hôte est indispensable : coturn alloue des ports de relais
+    # dans une plage étendue, et les publier un par un à travers le NAT de
+    # Docker ne fonctionne pas.
+    network_mode: host
+    restart: unless-stopped
+    command:
+      - --listening-port=3478
+      - --fingerprint
+      # Identifiants éphémères dérivés d'un secret partagé : le signaling en
+      # fabrique pour chaque session, coturn les vérifie sans base d'usagers.
+      - --use-auth-secret
+      - --static-auth-secret=${TURN_SECRET}
+      - --realm=${TURN_REALM}
+      - --min-port=49160
+      - --max-port=49200
+      # Sans cette option, coturn refuse de démarrer s'il ne parvient pas à
+      # déterminer son adresse externe. En déploiement local elle vaut
+      # l'adresse de l'hôte ; en production, l'adresse publique.
+      - --external-ip=${TURN_EXTERNAL_IP}
+      - --no-tls
+      - --no-dtls
+      - --no-cli
+      # Journal en clair sur la sortie standard : sans cela coturn écrit dans
+      # un fichier interne au conteneur, invisible à `docker compose logs`, et
+      # le diagnostic des tâches 4 et 9 devient aveugle.
+      - --log-file=stdout
+      - --verbose

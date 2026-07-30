@@ -241,7 +241,14 @@ impl Session {
         let now = Instant::now();
         let next_frame_at =
             (self.video_mid.is_some() && !self.ending).then_some(self.next_frame_at);
-        let wait = bounded_wait(now, deadline, next_frame_at, self.audio_wait_cap());
+        let mut wait = bounded_wait(now, deadline, next_frame_at, self.audio_wait_cap());
+        // Ne jamais dormir au-delà du rafraîchissement du bail TURN. La cadence
+        // média borne aujourd'hui l'attente bien en deçà des 300 s d'un
+        // demi-bail, mais en dépendre serait s'appuyer sur un hasard : une
+        // session sans piste vidéo négociée attendrait l'échéance de `Rtc`.
+        if let Some(echeance_turn) = self.turn.as_ref().and_then(|t| t.poll_timeout()) {
+            wait = wait.min(echeance_turn.saturating_duration_since(now));
+        }
 
         if wait.is_zero() {
             self.rtc
@@ -268,6 +275,20 @@ impl Session {
                     // de poursuivre la croissance entamée par une rafale
                     // passée.
                     self.consecutive_recv_errors = 0;
+
+                    // Paquet venu du serveur TURN : il ne passe pas par le
+                    // chemin ordinaire. `traiter_paquet_turn` en fait soit un
+                    // message de service pour la machine à états, soit une
+                    // charge relayée présentée à str0m comme venant du pair.
+                    if self
+                        .turn
+                        .as_ref()
+                        .is_some_and(|t| t.serveur() == source_addr)
+                    {
+                        self.traiter_paquet_turn(&buffer[..n])?;
+                        return Ok(Tick::Continue);
+                    }
+
                     let destination = self.socket.local_addr()?;
                     // I2 : un datagramme qui n'est ni STUN, ni DTLS, ni
                     // RTP/RTCP (bruit réseau, sonde de port, paquet vide)

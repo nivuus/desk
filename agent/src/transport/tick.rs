@@ -158,6 +158,16 @@ impl Session {
             return Ok(tick);
         }
 
+        // b0) Requête TURN en attente d'émission (allocation, rafraîchissement
+        //     du bail, permission, liaison de canal). Ne mute jamais `Rtc` :
+        //     c'est un échange avec le serveur de relais, invisible de str0m.
+        //     Placée juste avant l'attente pour que le rafraîchissement du
+        //     bail ne dépende pas de l'arrivée d'un paquet. Corps dans
+        //     `relais`.
+        if let Some(tick) = self.emettre_requete_turn() {
+            return Ok(tick);
+        }
+
         // c) Rien à émettre : attendre un paquet entrant, borné à la fois
         //    par l'échéance de `Rtc` et par les prochaines échéances de
         //    média. Corps dans `socket`.

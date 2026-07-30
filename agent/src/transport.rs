@@ -53,6 +53,7 @@ mod evenements;
 mod piste_audio;
 mod piste_video;
 mod redimensionnement;
+mod relais;
 mod socket;
 mod tick;
 
@@ -189,6 +190,9 @@ pub struct Session {
     /// l'espace plutôt que de le refaire à chaque tour de boucle — une
     /// fenêtre fermée le reste (voir `ALIVE_CHECK_INTERVAL`).
     last_alive_check: Instant,
+    /// Client TURN, absent tant qu'aucun relais n'est configuré ou alloué.
+    /// Son absence rend tout le chemin relayé inerte.
+    pub(super) turn: Option<crate::turn::TurnClient>,
     /// Résolution du minuteur Windows abaissée à 1 ms pour la durée de vie de
     /// la session (voir `TimerResolutionGuard`). Champ jamais lu : sa seule
     /// raison d'être est de vivre aussi longtemps que `Session` et de
@@ -321,6 +325,7 @@ impl Session {
             // appliquée, le débit réel est celui de repli, le plafond.
             bitrate_applique: plafond_bps,
             last_alive_check: Instant::now(),
+            turn: None,
             _timer_resolution: TimerResolutionGuard::new(),
         };
 
@@ -368,12 +373,9 @@ impl Session {
                     }
                 }
                 Output::Transmit(transmit) => {
-                    // I2 : une erreur d'envoi transitoire (ex. ENETUNREACH,
-                    // le pair a fermé son port) ne doit pas terminer la
-                    // session — seulement être journalisée.
-                    if let Err(e) = self.socket.send_to(&transmit.contents, transmit.destination) {
-                        tracing::warn!(erreur = %e, "échec d'envoi UDP, ignoré");
-                    }
+                    // Route vers le socket direct ou vers le relais TURN selon
+                    // la source que str0m indique. Corps dans `relais`.
+                    self.envoyer(&transmit);
                 }
                 Output::Event(event) => {
                     if let Tick::Disconnected = self.handle_event(event, on_input, on_control) {
@@ -393,9 +395,10 @@ impl Session {
             match self.rtc.poll_output().map_err(|e| anyhow!("poll_output : {e}"))? {
                 Output::Timeout(_) => return Ok(()),
                 Output::Transmit(transmit) => {
-                    if let Err(e) = self.socket.send_to(&transmit.contents, transmit.destination) {
-                        tracing::warn!(erreur = %e, "échec d'envoi UDP, ignoré");
-                    }
+                    // Même point d'émission unique que `run` : un paquet émis
+                    // pendant un drainage doit passer par le relais si c'est
+                    // par là qu'il doit sortir.
+                    self.envoyer(&transmit);
                 }
                 Output::Event(event) => {
                     if let Tick::Disconnected = self.handle_event(event, &mut |_| {}, &mut |_| {}) {

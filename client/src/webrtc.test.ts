@@ -45,6 +45,19 @@ describe('parseSignalingMessage', () => {
         });
         expect(parseSignalingMessage('{"type": "peer-gone"}')).toEqual({ type: 'peer-gone' });
     });
+
+    it('reconnaît la configuration ICE', () => {
+        const message = parseSignalingMessage(
+            JSON.stringify({
+                type: 'ice-config',
+                iceServers: [{ urls: 'turn:x:3478', username: 'u', credential: 'c' }],
+            }),
+        );
+        expect(message).toEqual({
+            type: 'ice-config',
+            iceServers: [{ urls: 'turn:x:3478', username: 'u', credential: 'c' }],
+        });
+    });
 });
 
 /// Faux socket minimal : `waitForAnswer` n'utilise que
@@ -213,7 +226,18 @@ class FakeSignalingSocket {
     }
 
     send(data: string): void {
-        const parsed = JSON.parse(data) as { type?: string };
+        const parsed = JSON.parse(data) as { type?: string; role?: string };
+        // Configuration ICE vide, émise dès la déclaration de rôle, comme le
+        // fait le serveur de signaling quand aucun relais n'est déployé.
+        // Sans elle, `connectSession` patienterait 2 s (le délai
+        // d'`attendreConfigIce`) avant de construire la connexion.
+        if (parsed.role === 'client') {
+            queueMicrotask(() => {
+                this.emit('message', {
+                    data: JSON.stringify({ type: 'ice-config', iceServers: [] }),
+                });
+            });
+        }
         if (parsed.type === 'offer') {
             queueMicrotask(() => {
                 this.emit('message', {
@@ -262,15 +286,19 @@ describe('connectSession — négociation promise par la spec §10', () => {
         vi.stubGlobal('MediaStream', FakeMediaStream);
 
         const video = fauxVideo();
-        const sessionPromise = connectSession({
+        // La session est attendue AVANT d'émettre les pistes : depuis que la
+        // configuration ICE doit être reçue pour construire la connexion, la
+        // `RTCPeerConnection` naît après le premier `await` de
+        // `connectSession`, et l'instance factice n'existe donc pas encore au
+        // retour de l'appel. Le listener `track` est câblé juste après sa
+        // construction, bien avant la résolution — l'émettre ici l'atteint
+        // aussi sûrement qu'avant.
+        await connectSession({
             signalingUrl: 'ws://signaling.invalid',
             sessionId: 'test',
             video,
         });
 
-        // Le listener `track` est câblé avant le premier `await` de
-        // `connectSession` (voir webrtc.ts) : l'instance factice est donc
-        // déjà disponible ici, sans attendre la résolution complète.
         // `receiver` est toujours présent sur un vrai `RTCTrackEvent` — un
         // objet nu ici, sans `playoutDelayHint`, imite un navigateur qui ne
         // supporte pas la propriété (voir l'accès défensif dans webrtc.ts).
@@ -286,7 +314,5 @@ describe('connectSession — négociation promise par la spec §10', () => {
         // La seconde piste ne doit pas avoir chassé la première en
         // réassignant `srcObject` : même objet `flux` avant et après.
         expect(video.srcObject).toBe(flux);
-
-        await sessionPromise;
     });
 });

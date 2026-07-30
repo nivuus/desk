@@ -3,6 +3,7 @@
 // (jalon 1, réseau local).
 
 import { WebSocket, WebSocketServer } from 'ws';
+import { configurationIce } from './ice';
 
 type Role = 'agent' | 'client';
 
@@ -101,6 +102,26 @@ export function createSignalingServer(port: number): SignalingServer {
                 sessionId = declaredSession;
                 session[declaredRole] = socket;
                 sessions.set(declaredSession, session);
+
+                // Configuration ICE : envoyée à CHAQUE pair dès qu'il se
+                // déclare, agent comme client. Les deux en ont besoin — le
+                // relais TURN n'est utile que si les deux extrémités peuvent
+                // l'employer.
+                //
+                // `Date.now()` est lu ici et non dans `configurationIce` :
+                // cette dernière reste ainsi une fonction pure, testable
+                // avec un instant fixé.
+                const ice = configurationIce(process.env, declaredSession, Date.now());
+                if (ice) {
+                    send(socket, { type: 'ice-config', ...ice });
+                } else {
+                    // Trace explicite : une session sans relais qui échoue à
+                    // se connecter depuis l'extérieur doit pouvoir être
+                    // diagnostiquée sans relire le code.
+                    console.warn(
+                        'aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais',
+                    );
+                }
                 return;
             }
 

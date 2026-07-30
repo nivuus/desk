@@ -102,6 +102,7 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
         mut offers,
         answers,
         mut closed,
+        ice_config,
         receiver_task: _,
         sender_task: _,
     } = signaling::run_signaling(&config.signaling_url, &config.session_id).await?;
@@ -213,6 +214,30 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
         .await
         .context("le signaling s'est fermé avant l'offre")?;
     tracing::info!("offre reçue");
+
+    // Le client web n'a pas de trickle ICE : il envoie UNE offre après
+    // collecte complète et attend UNE réponse. Le candidat relayé doit donc
+    // exister AVANT que la réponse ne soit produite — après, il n'y a plus
+    // aucun moyen de le transmettre.
+    //
+    // Borné à 2 s : très en deçà des 15 s au bout desquelles le client
+    // abandonne (`ANSWER_TIMEOUT_MS` de `client/src/webrtc.ts`), et suffisant
+    // pour les deux aller-retours d'une allocation authentifiée (Allocate nu →
+    // 401 → Allocate signé).
+    // Pleinement qualifié : l'import de `Duration` en tête de fichier est
+    // conditionné à Windows, et cette séquence-ci est commune aux deux cibles.
+    const DELAI_ALLOCATION: std::time::Duration = std::time::Duration::from_secs(2);
+
+    if let Some(config) = ice_config.borrow().clone() {
+        match session.allouer_relais(config, DELAI_ALLOCATION) {
+            Ok(()) => tracing::info!("relais TURN alloué avant la réponse SDP"),
+            Err(e) => tracing::warn!(
+                erreur = %e,
+                "allocation TURN impossible : la session continue sans relais"
+            ),
+        }
+    }
+
     let answer = session.accept_offer(&offer)?;
     answers.send(answer).await?;
     tracing::info!("réponse envoyée");

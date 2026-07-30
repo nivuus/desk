@@ -31,7 +31,8 @@ const ANSWER_TIMEOUT_MS = 15_000;
 type SignalingMessage =
     | { type: 'answer'; sdp: string }
     | { type: 'error'; reason?: string }
-    | { type: 'peer-gone' };
+    | { type: 'peer-gone' }
+    | { type: 'ice-config'; iceServers: RTCIceServer[] };
 
 /// Parse et valide un message de signaling brut.
 ///
@@ -61,7 +62,7 @@ export function parseSignalingMessage(raw: string): SignalingMessage | undefined
         return undefined;
     }
     const { type } = parsed as Record<string, unknown>;
-    if (type === 'answer' || type === 'error' || type === 'peer-gone') {
+    if (type === 'answer' || type === 'error' || type === 'peer-gone' || type === 'ice-config') {
         return parsed as SignalingMessage;
     }
     return undefined;
@@ -155,10 +156,48 @@ function waitForIceGathering(pc: RTCPeerConnection): Promise<void> {
     });
 }
 
+/// Attend la configuration ICE du signaling, au plus `delaiMs`.
+///
+/// Rend un tableau VIDE en cas d'absence : c'est le cas normal d'un
+/// déploiement sans relais, pas une erreur. Le message est retiré du flux
+/// pour ne pas être confondu plus tard avec une réponse SDP.
+function attendreConfigIce(socket: WebSocket, delaiMs: number): Promise<RTCIceServer[]> {
+    return new Promise((resolve) => {
+        const finir = (serveurs: RTCIceServer[]) => {
+            socket.removeEventListener('message', onMessage);
+            clearTimeout(timer);
+            resolve(serveurs);
+        };
+        const onMessage = (event: MessageEvent) => {
+            const message = parseSignalingMessage(String(event.data));
+            if (message?.type === 'ice-config') finir(message.iceServers);
+        };
+        const timer = setTimeout(() => finir([]), delaiMs);
+        socket.addEventListener('message', onMessage);
+    });
+}
+
 export async function connectSession(options: SessionOptions): Promise<SessionHandle> {
     const status = options.onStatus ?? (() => {});
-    // Réseau local : aucun serveur STUN/TURN nécessaire au jalon 1.
-    const pc = new RTCPeerConnection({ iceServers: [] });
+
+    // Le socket s'ouvre AVANT la `RTCPeerConnection`, contrairement au jalon 1 :
+    // les serveurs ICE ne sont connus qu'une fois la configuration reçue du
+    // signaling, et `RTCPeerConnection` les veut à la construction.
+    const socket = new WebSocket(options.signalingUrl);
+    await new Promise<void>((resolve, reject) => {
+        socket.addEventListener('open', () => resolve(), { once: true });
+        socket.addEventListener('error', () => reject(new Error('signaling injoignable')), {
+            once: true,
+        });
+    });
+    socket.send(JSON.stringify({ role: 'client', session: options.sessionId }));
+
+    // La configuration ICE arrive juste après la déclaration de rôle, ou
+    // jamais si aucun relais n'est déployé. On l'attend brièvement plutôt que
+    // de bloquer : une session en réseau local doit continuer à s'établir
+    // sans relais, exactement comme avant ce chantier.
+    const iceServers = await attendreConfigIce(socket, 2000);
+    const pc = new RTCPeerConnection({ iceServers });
 
     pc.addTransceiver('video', { direction: 'recvonly' });
     // Le navigateur est l'offrant : c'est lui qui doit déclarer la piste
@@ -212,15 +251,6 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
     pc.addEventListener('connectionstatechange', () => {
         status(`connexion : ${pc.connectionState}`);
     });
-
-    const socket = new WebSocket(options.signalingUrl);
-    await new Promise<void>((resolve, reject) => {
-        socket.addEventListener('open', () => resolve(), { once: true });
-        socket.addEventListener('error', () => reject(new Error('signaling injoignable')), {
-            once: true,
-        });
-    });
-    socket.send(JSON.stringify({ role: 'client', session: options.sessionId }));
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);

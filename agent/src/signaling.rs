@@ -9,6 +9,15 @@ use tokio::sync::{mpsc, watch};
 use tokio::task::JoinHandle;
 use tokio_tungstenite::tungstenite::Message;
 
+/// Ce que le signaling nous dit du relais à employer.
+#[derive(Debug, Clone)]
+pub struct ConfigIce {
+    /// Adresse du serveur TURN, extraite de l'URL `turn:hôte:port`.
+    pub serveur: std::net::SocketAddr,
+    pub username: String,
+    pub credential: String,
+}
+
 pub struct SignalingHandle {
     /// Offres SDP reçues du navigateur.
     pub offers: mpsc::Receiver<String>,
@@ -21,6 +30,11 @@ pub struct SignalingHandle {
     /// relecture du canal `offers` après la première ne rendaient une chute
     /// du signaling visible.
     pub closed: watch::Receiver<bool>,
+    /// Configuration ICE délivrée par le serveur juste après la déclaration
+    /// de rôle. `watch` plutôt que `mpsc` : c'est un ÉTAT, dont seule la
+    /// dernière valeur compte, et l'appelant doit pouvoir le lire même s'il
+    /// arrive après l'émission.
+    pub ice_config: watch::Receiver<Option<ConfigIce>>,
     /// Conservées pour que les deux tâches de fond ne soient pas
     /// complètement abandonnées : `demarrage.rs` ne les attend pas en
     /// fonctionnement normal (le transport ne dépend plus du signaling une
@@ -53,6 +67,7 @@ pub async fn run_signaling(url: &str, session: &str) -> Result<SignalingHandle> 
     // aperçoit et se termine à son tour au lieu de rester bloquée
     // indéfiniment (voir les deux `select!` ci-dessous).
     let (closed_tx, closed_rx) = watch::channel(false);
+    let (ice_tx, ice_config) = watch::channel::<Option<ConfigIce>>(None);
     let closed_tx_sender_side = closed_tx.clone();
     let closed_rx_sender_side = closed_rx.clone();
 
@@ -99,6 +114,17 @@ pub async fn run_signaling(url: &str, session: &str) -> Result<SignalingHandle> 
                         }
                     }
                 }
+                Some("ice-config") => {
+                    match analyser_config_ice(&parsed) {
+                        Some(config) => {
+                            tracing::info!(serveur = %config.serveur, "configuration TURN reçue");
+                            let _ = ice_tx.send(Some(config));
+                        }
+                        None => tracing::warn!(
+                            "configuration ICE reçue mais inexploitable : session sans relais"
+                        ),
+                    }
+                }
                 Some("peer-gone") => tracing::info!("le client s'est déconnecté"),
                 Some("error") => {
                     tracing::error!(raison = %parsed["reason"], "erreur de signaling")
@@ -138,5 +164,41 @@ pub async fn run_signaling(url: &str, session: &str) -> Result<SignalingHandle> 
         }
     });
 
-    Ok(SignalingHandle { offers, answers, closed: closed_rx, receiver_task, sender_task })
+    Ok(SignalingHandle {
+        offers,
+        answers,
+        closed: closed_rx,
+        ice_config,
+        receiver_task,
+        sender_task,
+    })
+}
+
+/// Extrait la première entrée TURN exploitable d'un message `ice-config`.
+///
+/// Résout le nom d'hôte : `Candidate::relayed` et le socket UDP veulent une
+/// `SocketAddr`, pas une URL. Une résolution qui échoue rend `None` — session
+/// sans relais plutôt que session sans démarrage.
+fn analyser_config_ice(message: &serde_json::Value) -> Option<ConfigIce> {
+    use std::net::ToSocketAddrs;
+
+    let serveurs = message["iceServers"].as_array()?;
+    for entree in serveurs {
+        let urls = entree["urls"].as_str()?;
+        // Forme attendue : `turn:hôte:port`. On ignore les entrées `stun:` —
+        // l'adresse réflexive nous vient de la réponse Allocate elle-même.
+        let Some(reste) = urls.strip_prefix("turn:") else {
+            continue;
+        };
+        let Ok(mut adresses) = reste.to_socket_addrs() else {
+            continue;
+        };
+        let serveur = adresses.next()?;
+        return Some(ConfigIce {
+            serveur,
+            username: entree["username"].as_str()?.to_string(),
+            credential: entree["credential"].as_str()?.to_string(),
+        });
+    }
+    None
 }
