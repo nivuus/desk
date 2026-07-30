@@ -20,4 +20,5 @@
 //! Les réexports `pub use` n'apparaîtront ici que pour ce que le transport
 //! devra vraiment voir, au moment où il le consommera.
 
+mod allocation;
 mod messages;

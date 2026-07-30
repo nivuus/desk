@@ -8,13 +8,18 @@ use std::net::SocketAddr;
 
 use hmac::{Hmac, Mac};
 
+// Constantes de protocole visibles de tout le module `turn` : la machine à
+// états (`allocation`) en a besoin pour fabriquer, dans ses tests, les
+// réponses qu'un serveur produirait. `pub(super)` et non `pub` — elles ne
+// sortent pas de `turn`.
+
 /// Cookie magique STUN (RFC 5389 §6).
-const MAGIC: [u8; 4] = [0x21, 0x12, 0xA4, 0x42];
+pub(super) const MAGIC: [u8; 4] = [0x21, 0x12, 0xA4, 0x42];
 
 // Méthodes TURN. Classe « requête » valant 0b00, le type sur le fil est la
 // méthode elle-même.
-const METHODE_ALLOCATE: u16 = 0x0003;
-const METHODE_REFRESH: u16 = 0x0004;
+pub(super) const METHODE_ALLOCATE: u16 = 0x0003;
+pub(super) const METHODE_REFRESH: u16 = 0x0004;
 const METHODE_CREATE_PERMISSION: u16 = 0x0008;
 const METHODE_CHANNEL_BIND: u16 = 0x0009;
 
@@ -22,12 +27,19 @@ const METHODE_CHANNEL_BIND: u16 = 0x0009;
 // `is::stun` et qui motive tout ce sérialiseur.
 const ATTR_USERNAME: u16 = 0x0006;
 const ATTR_MESSAGE_INTEGRITY: u16 = 0x0008;
+/// Lu par `is::stun`, jamais écrit par nous : sert aux réponses simulées de
+/// `allocation`.
+pub(super) const ATTR_ERROR_CODE: u16 = 0x0009;
 const ATTR_CHANNEL_NUMBER: u16 = 0x000C;
-const ATTR_LIFETIME: u16 = 0x000D;
+pub(super) const ATTR_LIFETIME: u16 = 0x000D;
 const ATTR_XOR_PEER_ADDRESS: u16 = 0x0012;
-const ATTR_REALM: u16 = 0x0014;
-const ATTR_NONCE: u16 = 0x0015;
+pub(super) const ATTR_REALM: u16 = 0x0014;
+pub(super) const ATTR_NONCE: u16 = 0x0015;
+/// Adresse relayée que le serveur accorde, et adresse réflexive qu'il observe.
+/// Comme `ATTR_ERROR_CODE` : lues par `is::stun`, écrites seulement en test.
+pub(super) const ATTR_XOR_RELAYED_ADDRESS: u16 = 0x0016;
 const ATTR_REQUESTED_TRANSPORT: u16 = 0x0019;
+pub(super) const ATTR_XOR_MAPPED_ADDRESS: u16 = 0x0020;
 
 /// Numéro de protocole d'IANA pour UDP, valeur du champ `REQUESTED-TRANSPORT`.
 const TRANSPORT_UDP: u8 = 17;
@@ -171,7 +183,9 @@ pub fn encoder_requete(
 }
 
 /// Écrit un attribut TLV, complété à un multiple de 4 octets.
-fn ecrire_attribut(sortie: &mut Vec<u8>, type_: u16, valeur: &[u8]) {
+///
+/// `pub(super)` : `allocation` s'en sert pour fabriquer ses réponses de test.
+pub(super) fn ecrire_attribut(sortie: &mut Vec<u8>, type_: u16, valeur: &[u8]) {
     sortie.extend_from_slice(&type_.to_be_bytes());
     sortie.extend_from_slice(&(valeur.len() as u16).to_be_bytes());
     sortie.extend_from_slice(valeur);
@@ -188,7 +202,9 @@ fn ecrire_attribut(sortie: &mut Vec<u8>, type_: u16, valeur: &[u8]) {
 /// Le port est masqué par les 16 bits de poids fort du cookie magique ;
 /// l'adresse par le cookie entier en IPv4, ou par cookie ‖ identifiant de
 /// transaction en IPv6.
-fn xor_adresse(addr: SocketAddr, trans_id: &[u8; 12]) -> Vec<u8> {
+///
+/// `pub(super)` : `allocation` s'en sert pour fabriquer ses réponses de test.
+pub(super) fn xor_adresse(addr: SocketAddr, trans_id: &[u8; 12]) -> Vec<u8> {
     let mut sortie = vec![0u8, 0];
     let port = addr.port() ^ u16::from_be_bytes([MAGIC[0], MAGIC[1]]);
     match addr {
