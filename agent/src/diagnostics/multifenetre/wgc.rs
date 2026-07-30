@@ -35,7 +35,10 @@ pub(super) fn eprouver() -> Result<()> {
     let supporte = match GraphicsCaptureSession::IsSupported() {
         Ok(valeur) => valeur,
         Err(erreur) => {
-            tracing::error!(%erreur, "verdict WGC : ÉLIMINÉE — IsSupported a échoué");
+            tracing::error!(
+                causes = %causes(erreur),
+                "verdict WGC : ÉLIMINÉE — IsSupported a échoué"
+            );
             return Ok(());
         }
     };
@@ -75,7 +78,7 @@ pub(super) fn eprouver() -> Result<()> {
         Ok(paire) => paire,
         Err(erreur) => {
             tracing::error!(
-                %erreur,
+                causes = %causes(erreur),
                 "verdict WGC : ÉLIMINÉE — la préparation de la capture a échoué"
             );
             return Ok(());
@@ -165,4 +168,26 @@ fn preparer_session(
     session.StartCapture().context("démarrage de la capture")?;
 
     Ok((pool, session))
+}
+
+/// Joint la chaîne complète des causes d'une erreur sur une seule ligne de
+/// journal (« cause la plus externe : cause suivante : … »).
+///
+/// `Display` sur une erreur enveloppée par `.context(...)` ne montre que le
+/// message de contexte le plus externe : la ronde de correction 2 a
+/// constaté sur le journal persisté que le HRESULT natif (`0x800706BE`) en
+/// disparaissait entièrement dès lors que l'échec était rattrapé ici plutôt
+/// que remonté jusqu'à `main()` (qui, lui, affiche la chaîne complète via
+/// `Debug`). `impl Into<anyhow::Error>` accepte aussi bien une erreur déjà
+/// enveloppée par `anyhow` (comme celle de `preparer_session`, où la
+/// conversion est l'identité) qu'une erreur `windows::core::Error` brute et
+/// jamais enveloppée (comme celle d'`IsSupported()`) — la même fonction sert
+/// donc aux deux verdicts sans dupliquer la logique de jonction.
+fn causes(erreur: impl Into<anyhow::Error>) -> String {
+    erreur
+        .into()
+        .chain()
+        .map(|cause| cause.to_string())
+        .collect::<Vec<_>>()
+        .join(" : ")
 }
