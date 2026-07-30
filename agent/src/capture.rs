@@ -357,6 +357,7 @@ pub fn enumerer_sorties() -> Result<Vec<SortieDxgi>> {
             Err(_) => "<inconnu>".to_string(),
         };
         let mut index_sortie = 0u32;
+        let nombre_avant = sorties.len();
         while let Ok(output) = unsafe { adapter.EnumOutputs(index_sortie) } {
             if let Ok(desc) = unsafe { output.GetDesc() } {
                 let r = desc.DesktopCoordinates;
@@ -377,6 +378,18 @@ pub fn enumerer_sorties() -> Result<Vec<SortieDxgi>> {
                 });
             }
             index_sortie += 1;
+        }
+        if sorties.len() == nombre_avant {
+            // Un adaptateur sans aucune sortie ne produit jamais de
+            // `SortieDxgi` : sans cette trace, il resterait invisible du
+            // relevé, qui ne journalise aujourd'hui que par sortie. C'est
+            // précisément l'angle mort où se cacherait un adaptateur
+            // d'affichage virtuel présent mais inactif.
+            tracing::info!(
+                adaptateur = %adaptateur,
+                index_adaptateur,
+                "adaptateur DXGI sans sortie"
+            );
         }
         index_adaptateur += 1;
     }

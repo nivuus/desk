@@ -32,7 +32,11 @@ executer() {
     sleep "$secs"
     cp /media/vm/dev/agent.log "$JOURNAUX/$nom.log" 2>/dev/null \
         || echo "AUCUN JOURNAL — la sonde a-t-elle planté au démarrage ?"
-    tail -30 "$JOURNAUX/$nom.log" 2>/dev/null || true
+    # Le journal sort de PowerShell en UTF-16LE : sans ce décodage, chaque
+    # caractère ASCII s'affiche espacé d'un octet nul (« t e x t » au lieu de
+    # « text »), rendant `tail` illisible sur tout le journal, pas seulement
+    # sur les accents.
+    iconv -f UTF-16LE -t UTF-8 "$JOURNAUX/$nom.log" 2>/dev/null | tail -30 || true
 }
 
 executer dxgi MULTIFENETRE_DXGI=1
