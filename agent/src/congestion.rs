@@ -15,8 +15,6 @@ mod hysteresis;
 mod reconfiguration;
 
 pub use controleur::Controleur;
-pub use echelle::{Barreau, Echelle};
-pub use hysteresis::Hysteresis;
 
 use std::time::{Duration, Instant};
 
