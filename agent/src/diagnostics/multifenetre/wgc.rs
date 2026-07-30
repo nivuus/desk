@@ -48,6 +48,11 @@ pub(super) fn eprouver() -> Result<()> {
     // Deux mires côte à côte : celle du dessous est la fenêtre observée, celle
     // du dessus viendra la recouvrir. C'est le seul test qui distingue WGC
     // d'un recadrage de bureau.
+    //
+    // Panne du banc, pas verdict sur WGC : si le bureau ne peut pas être
+    // découpé en deux places ou si les fenêtres de mire ne s'ouvrent pas,
+    // aucune mesure n'est possible — ce n'est pas WGC qui est en cause. Ces
+    // échecs restent donc propagés par `?`, contrairement à ce qui suit.
     let capture = crate::capture::DesktopCapture::new()?;
     let (largeur, hauteur) = capture.desktop_size();
     let places = disposition::tuiles(
@@ -59,29 +64,27 @@ pub(super) fn eprouver() -> Result<()> {
     mires.peindre()?;
     mires.pomper();
 
-    let dxgi: IDXGIDevice = capture.device().cast().context("IDXGIDevice")?;
-    let winrt = unsafe { CreateDirect3D11DeviceFromDXGIDevice(&dxgi) }
-        .context("périphérique WinRT depuis le périphérique DXGI")?;
-    let winrt: IDirect3DDevice = winrt.cast().context("IDirect3DDevice")?;
-
-    let interop = windows::core::factory::<GraphicsCaptureItem, IGraphicsCaptureItemInterop>()
-        .context("fabrique d'interop GraphicsCaptureItem")?;
-    let item: GraphicsCaptureItem = unsafe { interop.CreateForWindow(mires.hwnd(0)?) }
-        .context("CreateForWindow sur la mire observée")?;
-    tracing::info!("CreateForWindow a réussi — le service de capture a répondu");
-
-    let pool = Direct3D11CaptureFramePool::CreateFreeThreaded(
-        &winrt,
-        DirectXPixelFormat::B8G8R8A8UIntNormalized,
-        2,
-        item.Size()?,
-    )
-    .context("création du pool de trames")?;
-    let session = pool.CreateCaptureSession(&item).context("session de capture")?;
-    session.StartCapture().context("démarrage de la capture")?;
+    // À partir d'ici, tout échec EST un résultat de mesure sur WGC : la
+    // ronde de correction 1 a constaté qu'un échec de `CreateForWindow`
+    // remontait par `?` jusqu'à `main()` sans jamais prononcer l'un des
+    // messages « verdict WGC : … » ci-dessous — un lecteur du journal ne
+    // pouvait pas s'y fier pour trouver le verdict. `preparer_session`
+    // isole donc toute la zone de mesure, et son échec devient ici un
+    // verdict ÉLIMINÉE journalisé, plutôt qu'une erreur propagée.
+    let (pool, _session) = match preparer_session(&capture, &mires) {
+        Ok(paire) => paire,
+        Err(erreur) => {
+            tracing::error!(
+                %erreur,
+                "verdict WGC : ÉLIMINÉE — la préparation de la capture a échoué"
+            );
+            return Ok(());
+        }
+    };
 
     // Recouvrement : la mire 1 passe par-dessus la mire 0. WGC doit continuer
-    // de rendre la mire 0 — c'est toute la question.
+    // de rendre la mire 0 — c'est toute la question. Un échec ici
+    // (`SetWindowPos`) reste une panne du banc, indépendante de WGC.
     mires.recouvrir(1, 0)?;
 
     let mut recues = 0usize;
@@ -121,4 +124,45 @@ pub(super) fn eprouver() -> Result<()> {
         (false, _) => tracing::error!("verdict WGC : ÉLIMINÉE — aucune trame en 8 s"),
     }
     Ok(())
+}
+
+/// Prépare la session de capture WGC proprement dite : périphérique WinRT
+/// depuis le périphérique DXGI partagé, interop `GraphicsCaptureItem`,
+/// `CreateForWindow`, pool de trames, session, démarrage.
+///
+/// Isolée dans sa propre fonction pour que `eprouver` puisse convertir tout
+/// échec d'ici en verdict ÉLIMINÉE plutôt qu'en erreur propagée : c'est la
+/// zone de mesure proprement dite (ce que WGC sait ou ne sait pas faire),
+/// alors que ce qui l'entoure dans `eprouver` (ouverture des mires,
+/// recouvrement) reste une panne du banc si ça échoue.
+///
+/// Rend la session avec le pool : `GraphicsCaptureSession` doit rester en vie
+/// pendant toute la capture (l'appelant la garde liée, même sans plus jamais
+/// s'en servir directement) — la laisser retomber ici y mettrait fin.
+fn preparer_session(
+    capture: &crate::capture::DesktopCapture,
+    mires: &Mires,
+) -> Result<(Direct3D11CaptureFramePool, GraphicsCaptureSession)> {
+    let dxgi: IDXGIDevice = capture.device().cast().context("IDXGIDevice")?;
+    let winrt = unsafe { CreateDirect3D11DeviceFromDXGIDevice(&dxgi) }
+        .context("périphérique WinRT depuis le périphérique DXGI")?;
+    let winrt: IDirect3DDevice = winrt.cast().context("IDirect3DDevice")?;
+
+    let interop = windows::core::factory::<GraphicsCaptureItem, IGraphicsCaptureItemInterop>()
+        .context("fabrique d'interop GraphicsCaptureItem")?;
+    let item: GraphicsCaptureItem = unsafe { interop.CreateForWindow(mires.hwnd(0)?) }
+        .context("CreateForWindow sur la mire observée")?;
+    tracing::info!("CreateForWindow a réussi — le service de capture a répondu");
+
+    let pool = Direct3D11CaptureFramePool::CreateFreeThreaded(
+        &winrt,
+        DirectXPixelFormat::B8G8R8A8UIntNormalized,
+        2,
+        item.Size()?,
+    )
+    .context("création du pool de trames")?;
+    let session = pool.CreateCaptureSession(&item).context("session de capture")?;
+    session.StartCapture().context("démarrage de la capture")?;
+
+    Ok((pool, session))
 }
