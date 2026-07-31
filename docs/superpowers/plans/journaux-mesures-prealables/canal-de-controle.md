@@ -197,9 +197,22 @@ des en-têtes SudoVDA sous `third-party/sudovda/` :
   `https://github.com/ClassicOldSong/Apollo/blob/master/src/platform/windows/virtual_display.cpp`
 
 Dernière modification connue de `sudovda-ioctl.h` dans Apollo : commit
-`fd037c48` du 2024-09-08 (« Update driver »), signé et vérifié par GitHub.
-**Ce fait est lu en amont** ; il ne dit rien en soi sur la version installée
-sur cette VM (07/2025) — c'est le §5.3 qui referme cet écart.
+`fd037c48` du 2024-09-08 (« Update driver »), signé et vérifié par GitHub —
+soit environ onze mois avant le pilote installé ici (`DriverVer =
+07/14/2025, 1.10.9.289`). **Ce fait est lu en amont.**
+
+La vérification par octets du §5.3 referme une partie de cet écart, mais une
+partie **seulement**. Ce qu'elle établit, dans le binaire réellement installé
+sur cette VM : le GUID d'interface `SUVDA_INTERFACE_GUID` et 2 des 6 codes
+IOCTL (`IOCTL_ADD_VIRTUAL_DISPLAY`, `IOCTL_GET_WATCHDOG`) — trois constantes
+numériques isolées, qui n'ont aucune raison de changer tant que le contrat
+externe du pilote reste rétrocompatible. Ce qu'elle **n'établit pas** :
+la disposition des structures de tampon du §5.2 (ordre des champs, tailles,
+présence de champs ajoutés). Rien, dans cette vérification, n'exclut qu'un
+champ ait été ajouté ou réordonné dans `VIRTUAL_DISPLAY_ADD_PARAMS` ou une
+autre structure entre septembre 2024 et juillet 2025 sans que le GUID ni les
+codes IOCTL n'aient eux-mêmes besoin de changer. Cette réserve est reprise
+telle quelle au §5.2 et au verdict du §6 — c'est là que la tâche 5 la lira.
 
 ### 5.2 GUID, hardware ID, IOCTL, structures (lu en amont, texte intégral)
 
@@ -279,6 +292,20 @@ alignement naturel MSVC/x64 par défaut. Tailles/dispositions dérivées (voir
 octets, alignement 4). `LUID` = `{ DWORD LowPart; LONG HighPart; }` (8 octets,
 alignement 4).
 
+> **Réserve sur cette section entière — lue en amont, non confirmée par
+> octets.** Le §5.3 confirme, dans le binaire `SudoVDA.dll` réellement
+> installé sur cette VM, le GUID d'interface et 2 des 6 codes IOCTL — trois
+> constantes numériques isolées. Il ne confirme **rien** sur la disposition
+> ci-dessus : ni l'ordre des champs, ni leurs tailles, ni l'absence de champ
+> ajouté depuis. Ces structures proviennent d'un en-tête dont la dernière
+> modification connue (2024-09-08) précède d'environ onze mois le pilote
+> installé (`DriverVer 07/14/2025`, `1.10.9.289`). **La tâche 5 doit traiter
+> ces structures comme une lecture amont non confirmée localement** — pas
+> comme un fait vérifié au même titre que le GUID ou les deux codes IOCTL du
+> §5.3. Voir la fin du §5.3 pour une piste bon marché de confirmation
+> empirique avant d'engager le tampon le plus riche
+> (`VIRTUAL_DISPLAY_ADD_PARAMS`, 56 octets).
+
 ### 5.3 Vérification croisée sur le binaire local (fait local — pas seulement lu)
 
 Le GUID d'interface et deux codes IOCTL calculés à partir des macros
@@ -326,6 +353,26 @@ Le GUID de classe standard `{4D36E968-E325-11CE-BFC1-08002BE10318}` n'a en
 revanche **pas** été retrouvé en octets bruts dans la DLL — attendu : ce GUID
 sert à l'installation (INF, `nefconc.exe`), pas au dialogue runtime avec le
 pilote, il n'a pas de raison d'être compilé dans le corps de `SudoVDA.dll`.
+
+**Suggestion pour la tâche 5 — vérifier le contrat de bout en bout à bon
+marché, avant d'engager les structures riches.** Ceci est une piste, pas une
+certitude : elle n'a pas été exécutée dans cette tâche (qui ne produit pas de
+code et n'appelle pas le pilote). Parmi les six IOCTL, `IOCTL_GET_PROTOCOL_VERSION`
+a le tampon le plus simple possible — entrée nulle (`nullptr`, 0 octet),
+sortie de 4 octets seulement (`SUVDA_PROTOCAL_VERSION` : `Major`, `Minor`,
+`Incremental`, `TestBuild`, chacun 1 octet). Un premier appel réel à ce code,
+sur le device ouvert via `SUVDA_INTERFACE_GUID` (confirmé §5.3), donnerait une
+confirmation de bout en bout distincte de la lecture amont : que l'appel
+réussisse et rende exactement 4 octets serait déjà un signal fort ; que
+`Major` vaille `0` (valeur documentée en amont, `VDAProtocolVersion = {0, 2,
+1, true}`) le renforcerait encore, sans le prouver de manière absolue — une
+coïncidence sur un seul octet reste possible, ce qu'une correspondance GUID
+sur 16 octets (§5.3) exclut, mais pas un octet isolé. `IOCTL_GET_WATCHDOG`
+(sortie 8 octets, deux `UINT`) est une deuxième piste du même ordre, un cran
+plus riche. Réussir ces deux appels — sans effet de bord observable sur le
+bureau, contrairement à `IOCTL_ADD_VIRTUAL_DISPLAY` — avant d'engager le
+tampon d'entrée le plus riche (`VIRTUAL_DISPLAY_ADD_PARAMS`, 56 octets)
+donnerait une base empirique à coût très faible pour la suite.
 
 ### 5.4 Corroboration indépendante : les chaînes de `sunshine.exe` local sont le texte exact du source amont
 
@@ -405,6 +452,19 @@ ce qui est la voie la plus sûre pour des appels synchrones).
 
 ## 6. Verdict formel — forme B
 
+> **Réserve à lire avant d'écrire du code sur ces tampons.** Seuls le GUID
+> d'interface et les codes `IOCTL_ADD_VIRTUAL_DISPLAY` /
+> `IOCTL_GET_WATCHDOG` sont confirmés par octets dans le binaire
+> `SudoVDA.dll` installé sur cette VM (§5.3). **La disposition des
+> structures ci-dessous — y compris `VIRTUAL_DISPLAY_ADD_PARAMS`, le tampon
+> le plus riche — reste une lecture amont non confirmée localement**, avec un
+> en-tête dont la dernière modification connue (2024-09) précède d'environ
+> onze mois le pilote installé (`DriverVer 07/14/2025`). Rien ne garantit
+> qu'aucun champ n'a été ajouté ou réordonné entre ces deux dates. Voir la
+> fin du §5.3 pour une piste bon marché de confirmation empirique
+> (`IOCTL_GET_PROTOCOL_VERSION` puis `IOCTL_GET_WATCHDOG`, tampons simples,
+> sans effet de bord) avant d'engager `IOCTL_ADD_VIRTUAL_DISPLAY`.
+
 - **GUID d'interface de périphérique** (à passer à `SetupDiGetClassDevs` /
   l'équivalent Rust `windows-rs` `CM_Get_Device_Interface_List` ou
   `SetupDiGetClassDevs`) :
@@ -446,6 +506,14 @@ ce qui est la voie la plus sûre pour des appels synchrones).
 
 ## 7. Ce que la tâche 5 doit encore décider (hors périmètre de cette reconnaissance)
 
+- **Disposition des tampons non confirmée par octets**, au-delà du GUID et
+  des 2 codes IOCTL du §5.3 : les structures du §5.2 sont une lecture amont
+  non confirmée localement, avec l'écart de version non résolu décrit au
+  §5.1. Avant d'implémenter `IOCTL_ADD_VIRTUAL_DISPLAY` (le tampon d'entrée
+  le plus riche, 56 octets), il est recommandé — sans certitude que ce soit
+  nécessaire ni suffisant — de valider empiriquement `IOCTL_GET_PROTOCOL_VERSION`
+  puis `IOCTL_GET_WATCHDOG` (tampons de sortie simples, 4 et 8 octets, sans
+  effet de bord observable) ; détail de cette piste en fin de §5.3.
 - La traduction `#[repr(C)]` Rust des structures ci-dessus (tailles/offsets
   donnés en §5.2 pour vérification, pas de définition Rust fournie ici — ce
   n'est pas une reconnaissance de l'API Rust `windows`, mais de l'ABI C
