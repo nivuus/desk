@@ -89,6 +89,26 @@ pub fn verdict(attendu: u8, pixel: (u8, u8, u8)) -> Verdict {
     }
 }
 
+/// Quelle voie est contrôlée au tour `tour`, parmi `nombre` voies.
+///
+/// Le montage multi-sorties supprime le recouvrement — une fenêtre par
+/// sortie, rien ne peut en cacher une autre — donc la porte éliminatoire du
+/// banc mono-sortie n'a plus d'objet. Le risque devient l'appariement : que la
+/// voie *i* capture en réalité la sortie *j*, ou du noir.
+///
+/// Contrôler les N voies à chaque tour le détecterait, mais ferait croître le
+/// coût CPU du contrôle avec N : la cadence relevée à N=8 intégrerait huit
+/// fois ce coût et ne serait comparable à rien — l'erreur déjà payée au
+/// chantier précédent, où la portée de la lecture de pixel a changé en cours
+/// de route. La rotation couvre toutes les voies pour **une** lecture par
+/// tour, quel que soit N.
+pub fn voie_controlee(tour: u64, nombre: usize) -> Option<usize> {
+    if nombre == 0 {
+        return None;
+    }
+    Some((tour % nombre as u64) as usize)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -135,5 +155,42 @@ mod tests {
         // Le fond du bureau, une console PowerShell : ni une mire, ni du noir.
         assert_eq!(verdict(0, (255, 255, 255)), Verdict::Inconnue);
         assert_eq!(identifier((1, 36, 86)), None);
+    }
+
+    /// La propriété qui compte : sur k·N tours, chaque voie est contrôlée
+    /// exactement k fois. Un contrôle qui favoriserait une voie laisserait
+    /// les autres non couvertes, et c'est précisément l'appariement croisé
+    /// entre sorties que ce montage doit détecter.
+    #[test]
+    fn la_rotation_controle_chaque_voie_le_meme_nombre_de_fois() {
+        for nombre in 1..=8usize {
+            let mut comptes = vec![0usize; nombre];
+            for tour in 0..(nombre as u64 * 7) {
+                let voie = voie_controlee(tour, nombre).expect("nombre non nul");
+                comptes[voie] += 1;
+            }
+            assert!(
+                comptes.iter().all(|compte| *compte == 7),
+                "nombre = {nombre}, comptes = {comptes:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn la_rotation_ne_designe_jamais_une_voie_inexistante() {
+        for nombre in 1..=8usize {
+            for tour in 0..100u64 {
+                let voie = voie_controlee(tour, nombre).expect("nombre non nul");
+                assert!(voie < nombre, "voie {voie} hors des {nombre} voies");
+            }
+        }
+    }
+
+    /// Zéro voie n'est pas une erreur d'appelant à signaler par panique : le
+    /// banc doit pouvoir demander sans savoir, et ne rien contrôler.
+    #[test]
+    fn sans_voie_il_n_y_a_rien_a_controler() {
+        assert_eq!(voie_controlee(0, 0), None);
+        assert_eq!(voie_controlee(42, 0), None);
     }
 }

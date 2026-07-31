@@ -131,6 +131,47 @@ pub fn vers_texture(region: Rect, sortie: Rect, facteur: (f64, f64)) -> Rect {
     }
 }
 
+/// La place plein cadre de chaque sortie, exprimée dans le repère de SA
+/// texture.
+///
+/// Le montage « une fenêtre par sortie » du chantier D pose une fenêtre qui
+/// couvre toute sa sortie ; la région à recadrer est donc toute la texture.
+/// Le calcul n'en est pas trivial pour autant : chaque sortie porte son propre
+/// facteur d'échelle DPI, et appliquer à toutes celui de la première décalerait
+/// silencieusement les recadrages des autres. Le banc mono-sortie n'avait qu'un
+/// facteur à connaître ; celui-ci en a N.
+///
+/// `sorties` porte les rectangles annoncés par DXGI
+/// (`DXGI_OUTPUT_DESC::DesktopCoordinates`), `textures` les dimensions
+/// réellement rendues par l'acquisition de chacune, dans le même ordre.
+pub fn places_texture_par_sortie(
+    sorties: &[Rect],
+    textures: &[(u32, u32)],
+) -> Result<Vec<Rect>> {
+    anyhow::ensure!(
+        sorties.len() == textures.len(),
+        "{} sorties pour {} textures : l'appariement serait arbitraire",
+        sorties.len(),
+        textures.len()
+    );
+    sorties
+        .iter()
+        .zip(textures)
+        .enumerate()
+        .map(|(index, (sortie, texture))| {
+            let facteur = facteur_echelle((sortie.width, sortie.height), *texture)
+                .with_context(|| {
+                    format!(
+                        "sortie {index} annoncée {}x{} : dimension nulle, aucun facteur \
+                         d'échelle n'a de sens",
+                        sortie.width, sortie.height
+                    )
+                })?;
+            Ok(vers_texture(*sortie, *sortie, facteur))
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -275,5 +316,49 @@ mod tests {
             vers_texture(region, sortie, (1.5, 1.5)),
             Rect { x: 150, y: 150, width: 300, height: 300 }
         );
+    }
+
+    /// Le piège que cette fonction existe pour éviter : appliquer à toutes les
+    /// sorties le facteur d'échelle de la première. Deux sorties virtuelles
+    /// peuvent porter deux DPI différents, et un recadrage calculé au mauvais
+    /// facteur est décalé sans que rien ne le signale.
+    #[test]
+    fn chaque_sortie_est_convertie_avec_son_propre_facteur() {
+        let sorties = vec![
+            Rect { x: 0, y: 0, width: 1280, height: 720 },
+            Rect { x: 1280, y: 0, width: 853, height: 480 },
+        ];
+        let textures = vec![(1280, 720), (1280, 720)];
+        let places = places_texture_par_sortie(&sorties, &textures).unwrap();
+        assert_eq!(places[0], Rect { x: 0, y: 0, width: 1280, height: 720 });
+        // Facteur 1280/853 ≈ 1,5 : la seconde sortie couvre TOUTE sa texture.
+        // C'est le test qui compte : avec le facteur de la sortie 0 (l'unité),
+        // on obtiendrait 853×480 dans un coin d'une texture 1280×720.
+        assert_eq!(places[1], Rect { x: 0, y: 0, width: 1280, height: 720 });
+    }
+
+    /// Chaque place est ramenée à l'origine de SA texture : c'est ce qui
+    /// distingue N sorties de N tuiles sur une sortie.
+    #[test]
+    fn une_sortie_decalee_dans_le_bureau_virtuel_part_de_l_origine_de_sa_texture() {
+        let sorties = vec![Rect { x: 3840, y: 200, width: 1280, height: 720 }];
+        let places = places_texture_par_sortie(&sorties, &[(1280, 720)]).unwrap();
+        assert_eq!(places[0], Rect { x: 0, y: 0, width: 1280, height: 720 });
+    }
+
+    #[test]
+    fn un_desaccord_de_longueur_est_refuse() {
+        let sorties = vec![Rect { x: 0, y: 0, width: 1280, height: 720 }];
+        assert!(places_texture_par_sortie(&sorties, &[]).is_err());
+        assert!(places_texture_par_sortie(&[], &[(1280, 720)]).is_err());
+    }
+
+    /// Une annonce dégénérée ne donne aucun facteur (`facteur_echelle` rend
+    /// `None`) : le refus doit ressortir, pas un facteur unité silencieux qui
+    /// décalerait tous les recadrages de cette sortie.
+    #[test]
+    fn une_sortie_degeneree_est_refusee_plutot_que_supposee_a_l_unite() {
+        let sorties = vec![Rect { x: 0, y: 0, width: 0, height: 720 }];
+        assert!(places_texture_par_sortie(&sorties, &[(1280, 720)]).is_err());
     }
 }
