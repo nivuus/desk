@@ -7,3 +7,4 @@
 //! testés sur l'hôte.
 
 pub mod fenetres;
+pub mod table;
