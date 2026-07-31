@@ -111,9 +111,10 @@ pub(super) fn aiguiller() -> Result<bool> {
         capture_virtuelle::capturer_sur_virtuelle(nombre)?;
         return Ok(true);
     }
-    // Task 10 : le plafond d'encodeurs H.264 matériels simultanés.
-    if std::env::var("MULTIFENETRE_NVENC").is_ok() {
-        nvenc::plafond()?;
+    // Mesure ② : le plafond d'encodeurs, sur périphérique partagé (la mesure
+    // de la sonde) ou sur périphériques séparés (la question qu'elle laisse).
+    if let Ok(mode) = std::env::var("MULTIFENETRE_NVENC") {
+        nvenc::plafond(&mode)?;
         return Ok(true);
     }
     Ok(false)

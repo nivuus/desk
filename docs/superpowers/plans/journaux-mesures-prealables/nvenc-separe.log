@@ -1,0 +1,30 @@
+[2m2026-07-31T11:52:05.997621Z[0m [32m INFO[0m [2magent[0m[2m:[0m accélération pointeur neutralisée [3mrapport[0m[2m=[0m"seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+[2m2026-07-31T11:52:05.997657Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m plafond d'encodeurs : mode retenu [3mmode[0m[2m=[0m"separe"
+[2m2026-07-31T11:52:06.091214Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-07-31T11:52:06.152457Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-07-31T11:52:06.152909Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m encodeur créé [3mrang[0m[2m=[0m1 [3mmode[0m[2m=[0m"separe"
+[2m2026-07-31T11:52:06.170534Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-07-31T11:52:06.219203Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-07-31T11:52:06.219532Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m encodeur créé [3mrang[0m[2m=[0m2 [3mmode[0m[2m=[0m"separe"
+[2m2026-07-31T11:52:06.237666Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-07-31T11:52:06.287457Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-07-31T11:52:06.287768Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m encodeur créé [3mrang[0m[2m=[0m3 [3mmode[0m[2m=[0m"separe"
+[2m2026-07-31T11:52:06.307155Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-07-31T11:52:06.359492Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-07-31T11:52:06.359825Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m encodeur créé [3mrang[0m[2m=[0m4 [3mmode[0m[2m=[0m"separe"
+[2m2026-07-31T11:52:06.377615Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-07-31T11:52:06.426727Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-07-31T11:52:06.427088Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m encodeur créé [3mrang[0m[2m=[0m5 [3mmode[0m[2m=[0m"separe"
+[2m2026-07-31T11:52:06.445826Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-07-31T11:52:06.494311Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-07-31T11:52:06.494584Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m encodeur créé [3mrang[0m[2m=[0m6 [3mmode[0m[2m=[0m"separe"
+[2m2026-07-31T11:52:06.514331Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-07-31T11:52:06.562317Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-07-31T11:52:06.562609Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m encodeur créé [3mrang[0m[2m=[0m7 [3mmode[0m[2m=[0m"separe"
+[2m2026-07-31T11:52:06.579826Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-07-31T11:52:06.627775Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-07-31T11:52:06.628023Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m encodeur créé [3mrang[0m[2m=[0m8 [3mmode[0m[2m=[0m"separe"
+[2m2026-07-31T11:52:06.645611Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-07-31T11:52:06.678815Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m plafond d'encodeurs atteint — création du suivant refusée [3mplafond[0m[2m=[0m8 [3mmode[0m[2m=[0m"separe" [3mcauses[0m[2m=[0mconfiguration du type de sortie de l'encodeur H.264 (transform matériel) : Le type d’entrée n’est pas pris en charge pour le périphérique D3D. (0xC00D6D76)
+[2m2026-07-31T11:52:06.678832Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m relâchement des encodeurs et des périphériques [3mencodeurs[0m[2m=[0m8 [3mperipheriques[0m[2m=[0m9
+[2m2026-07-31T11:52:06.776988Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m relâchement terminé — le processus a survécu à la destruction

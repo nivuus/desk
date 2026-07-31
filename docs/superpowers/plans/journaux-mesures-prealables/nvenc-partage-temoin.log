@@ -1,0 +1,33 @@
+[2m2026-07-31T11:51:50.646759Z[0m [32m INFO[0m [2magent[0m[2m:[0m accélération pointeur neutralisée [3mrapport[0m[2m=[0m"seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+[2m2026-07-31T11:51:50.648509Z[0m [32m INFO[0m [2magent::capture[0m[2m:[0m sortie retenue pour la duplication [3madaptateur[0m[2m=[0mNVIDIA GeForce RTX 4070 [3mindex_adaptateur[0m[2m=[0m0 [3mindex_sortie[0m[2m=[0m0 [3mattachee[0m[2m=[0mtrue
+[2m2026-07-31T11:51:50.739884Z[0m [32m INFO[0m [2magent::capture[0m[2m:[0m protection multi-fils activée sur le contexte immédiat D3D11 [3mprotection_precedente[0m[2m=[0mfalse
+[2m2026-07-31T11:51:50.740197Z[0m [32m INFO[0m [2magent::capture[0m[2m:[0m duplication de sortie établie [3mdesktop_width[0m[2m=[0m2400 [3mdesktop_height[0m[2m=[0m1080
+[2m2026-07-31T11:51:50.740216Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m plafond d'encodeurs : mode retenu [3mmode[0m[2m=[0m"partage"
+[2m2026-07-31T11:51:50.741057Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-07-31T11:51:50.801630Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-07-31T11:51:50.801952Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m encodeur créé [3mrang[0m[2m=[0m1 [3mmode[0m[2m=[0m"partage"
+[2m2026-07-31T11:51:50.801982Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-07-31T11:51:50.831292Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-07-31T11:51:50.831554Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m encodeur créé [3mrang[0m[2m=[0m2 [3mmode[0m[2m=[0m"partage"
+[2m2026-07-31T11:51:50.831588Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-07-31T11:51:50.867547Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-07-31T11:51:50.867858Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m encodeur créé [3mrang[0m[2m=[0m3 [3mmode[0m[2m=[0m"partage"
+[2m2026-07-31T11:51:50.867887Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-07-31T11:51:50.898257Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-07-31T11:51:50.898575Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m encodeur créé [3mrang[0m[2m=[0m4 [3mmode[0m[2m=[0m"partage"
+[2m2026-07-31T11:51:50.898605Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-07-31T11:51:50.927853Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-07-31T11:51:50.928108Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m encodeur créé [3mrang[0m[2m=[0m5 [3mmode[0m[2m=[0m"partage"
+[2m2026-07-31T11:51:50.928136Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-07-31T11:51:50.956786Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-07-31T11:51:50.957086Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m encodeur créé [3mrang[0m[2m=[0m6 [3mmode[0m[2m=[0m"partage"
+[2m2026-07-31T11:51:50.957115Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-07-31T11:51:50.985457Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-07-31T11:51:50.985810Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m encodeur créé [3mrang[0m[2m=[0m7 [3mmode[0m[2m=[0m"partage"
+[2m2026-07-31T11:51:50.985841Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-07-31T11:51:51.015363Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-07-31T11:51:51.015732Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m encodeur créé [3mrang[0m[2m=[0m8 [3mmode[0m[2m=[0m"partage"
+[2m2026-07-31T11:51:51.015768Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-07-31T11:51:51.044997Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m plafond d'encodeurs atteint — création du suivant refusée [3mplafond[0m[2m=[0m8 [3mmode[0m[2m=[0m"partage" [3mcauses[0m[2m=[0mconfiguration du type de sortie de l'encodeur H.264 (transform matériel) : Le type d’entrée n’est pas pris en charge pour le périphérique D3D. (0xC00D6D76)
+[2m2026-07-31T11:51:51.045017Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m relâchement des encodeurs et des périphériques [3mencodeurs[0m[2m=[0m8 [3mperipheriques[0m[2m=[0m0
+[2m2026-07-31T11:51:51.066516Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::nvenc[0m[2m:[0m relâchement terminé — le processus a survécu à la destruction
