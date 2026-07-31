@@ -281,6 +281,34 @@ pub(super) struct VoiePrintWindow {
     texture: Option<ID3D11Texture2D>,
 }
 
+/// Crée un périphérique D3D11 matériel avec le support BGRA.
+///
+/// `pub(super)` parce que `paralleles.rs` en a besoin pour ses mires : il ne
+/// peut pas emprunter celui d'une `DesktopCapture` provisoire, DXGI
+/// n'autorisant qu'UNE duplication par sortie — la provisoire ferait échouer
+/// la vraie en 0x80070057.
+pub(super) fn creer_device() -> Result<(ID3D11Device, ID3D11DeviceContext)> {
+    let mut device: Option<ID3D11Device> = None;
+    let mut context: Option<ID3D11DeviceContext> = None;
+    unsafe {
+        D3D11CreateDevice(
+            None,
+            D3D_DRIVER_TYPE_HARDWARE,
+            Default::default(),
+            D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+            Some(&[D3D_FEATURE_LEVEL_11_0]),
+            D3D11_SDK_VERSION,
+            Some(&mut device),
+            None,
+            Some(&mut context),
+        )
+    }
+    .context("périphérique D3D11 pour la voie printwindow")?;
+    let device = device.ok_or_else(|| anyhow!("périphérique D3D11 absent"))?;
+    let context = context.ok_or_else(|| anyhow!("contexte D3D11 absent"))?;
+    Ok((device, context))
+}
+
 impl VoiePrintWindow {
     /// Crée le périphérique D3D11 partagé, une fois pour tout le banc.
     ///
@@ -289,25 +317,7 @@ impl VoiePrintWindow {
     /// qui porte le GPU réel de la VM, seul capable d'héberger ensuite
     /// l'encodeur matériel.
     pub(super) fn partagee() -> Result<(ID3D11Device, ID3D11DeviceContext)> {
-        let mut device: Option<ID3D11Device> = None;
-        let mut context: Option<ID3D11DeviceContext> = None;
-        unsafe {
-            D3D11CreateDevice(
-                None,
-                D3D_DRIVER_TYPE_HARDWARE,
-                Default::default(),
-                D3D11_CREATE_DEVICE_BGRA_SUPPORT,
-                Some(&[D3D_FEATURE_LEVEL_11_0]),
-                D3D11_SDK_VERSION,
-                Some(&mut device),
-                None,
-                Some(&mut context),
-            )
-        }
-        .context("périphérique D3D11 pour la voie printwindow")?;
-        let device = device.ok_or_else(|| anyhow!("périphérique D3D11 absent"))?;
-        let context = context.ok_or_else(|| anyhow!("contexte D3D11 absent"))?;
-        Ok((device, context))
+        creer_device()
     }
 
     pub(super) fn nouvelle(device: ID3D11Device, context: ID3D11DeviceContext) -> Self {

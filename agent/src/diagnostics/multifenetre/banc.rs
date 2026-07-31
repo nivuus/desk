@@ -17,7 +17,7 @@
 //! chantier NAT, une trace par paquet écrite sur le partage CIFS a détruit la
 //! session qu'elle mesurait.
 
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use anyhow::{Context, Result};
 
@@ -25,58 +25,9 @@ use crate::disposition;
 use crate::geometry::Rect;
 use crate::mire;
 
+use super::compteurs::{self, Compteurs, DUREE_PASSE, PERIODE_JOURNAL};
 use super::mires::Mires;
 use super::voies::{VoieDeCapture, VoieDuplication, VoiePrintWindow};
-
-/// Durée de chaque passe.
-const DUREE_PASSE: Duration = Duration::from_secs(10);
-/// Cadence de journalisation des compteurs.
-const PERIODE_JOURNAL: Duration = Duration::from_secs(1);
-
-/// Décompte des verdicts rendus sur la mire 0, par NATURE et non en bloc.
-///
-/// Un simple compte de « faux » ne suffit pas à la mesure ③ : une image NOIRE
-/// et une image portant la mire du DESSUS sont deux résultats opposés. La
-/// première dirait que Windows ne compose pas une sortie virtuelle sans écran
-/// attaché — et l'hypothèse fondatrice de la voie « un moniteur virtuel par
-/// fenêtre » tomberait. La seconde dirait qu'il la compose parfaitement, et que
-/// c'est la duplication qui ne sait pas défaire un recouvrement — ce qu'on
-/// savait déjà du bureau physique. Les confondre sous un même compteur rendrait
-/// la mesure ininterprétable.
-#[derive(Default, Debug)]
-struct Verdicts {
-    justes: u64,
-    voisines: u64,
-    noires: u64,
-    inconnues: u64,
-}
-
-impl Verdicts {
-    fn compter(&mut self, verdict: mire::Verdict) {
-        match verdict {
-            mire::Verdict::Juste => self.justes += 1,
-            mire::Verdict::Voisine(_) => self.voisines += 1,
-            mire::Verdict::Noire => self.noires += 1,
-            mire::Verdict::Inconnue => self.inconnues += 1,
-        }
-    }
-
-    fn faux(&self) -> u64 {
-        self.voisines + self.noires + self.inconnues
-    }
-}
-
-struct Compteurs {
-    images: Vec<u64>,
-    unites: Vec<u64>,
-    /// Verdicts rendus AVANT que le recouvrement ne soit posé : la mire 0 est
-    /// alors dégagée, et c'est la seule fenêtre du banc où se lise « cette voie
-    /// capture-t-elle simplement cette fenêtre ». Sur le bureau physique la
-    /// réponse allait de soi ; sur une sortie virtuelle, c'est la question.
-    avant_recouvrement: Verdicts,
-    /// Verdicts rendus une fois la mire 0 recouverte : la porte éliminatoire.
-    apres_recouvrement: Verdicts,
-}
 
 /// `sortie` désigne la sortie DXGI à mesurer (`index_adaptateur`,
 /// `index_sortie`), ou `None` pour la sortie qui porte le bureau — le
@@ -151,11 +102,11 @@ pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<(u32, u32)>) -
     // avant que la voie « duplication » n'ouvre la sienne.
     drop(capture);
 
-    passe_temoin(&mut mires)?;
+    compteurs::passe_temoin(&mut mires)?;
     let (mut voies, regions) =
         ouvrir_voies(nom_voie, nombre, &mires, &places, &places_texture, sortie)?;
     let compteurs = passe_capture(&mut mires, &mut voies, &regions, false)?;
-    journaliser("capture", nom_voie, nombre, &compteurs);
+    compteurs::journaliser("capture", nom_voie, nombre, &compteurs);
     if compteurs.apres_recouvrement.faux() > 0 {
         tracing::error!(
             voie = nom_voie,
@@ -168,7 +119,7 @@ pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<(u32, u32)>) -
         return Ok(());
     }
     let compteurs = passe_capture(&mut mires, &mut voies, &regions, true)?;
-    journaliser("capture+encodage", nom_voie, nombre, &compteurs);
+    compteurs::journaliser("capture+encodage", nom_voie, nombre, &compteurs);
     // Le second suspect, après les encodeurs : la source de duplication que
     // toutes les voies partagent. Tracé séparément pour que le journal
     // distingue « mort aux encodeurs » de « mort à la duplication ».
@@ -234,25 +185,6 @@ fn ouvrir_voies(
     Ok((voies, regions))
 }
 
-/// Passe témoin : les mires peignent, rien ne capture.
-fn passe_temoin(mires: &mut Mires) -> Result<()> {
-    let debut = Instant::now();
-    let mut trames = 0u64;
-    while debut.elapsed() < DUREE_PASSE {
-        mires.peindre()?;
-        mires.pomper();
-        trames += 1;
-    }
-    let secondes = debut.elapsed().as_secs_f64();
-    tracing::info!(
-        mires = mires.nombre(),
-        trames,
-        cadence = trames as f64 / secondes,
-        "passe TÉMOIN — cadence de peinture sans capture"
-    );
-    Ok(())
-}
-
 /// `regions` porte, voie par voie, les dimensions que ses images auront —
 /// celles retenues par `ouvrir_voies`, et non celles des fenêtres : sur une
 /// sortie mise à l'échelle, la voie `duplication` rend des images aux
@@ -265,12 +197,7 @@ fn passe_capture(
     avec_encodage: bool,
 ) -> Result<Compteurs> {
     let nombre = voies.len();
-    let mut compteurs = Compteurs {
-        images: vec![0; nombre],
-        unites: vec![0; nombre],
-        avant_recouvrement: Verdicts::default(),
-        apres_recouvrement: Verdicts::default(),
-    };
+    let mut compteurs = Compteurs::nouveaux(nombre);
     let mut encodeurs: Vec<crate::encode::H264Encoder> = Vec::new();
     if avec_encodage {
         for id in 0..nombre {
@@ -351,16 +278,7 @@ fn passe_capture(
             // sous recouvrement » qu'une sortie parfaitement composée, et l'on
             // conclurait au mauvais défaut.
             if id == 0 {
-                let appareil = voie.device();
-                let (r, g, b, _a) = crate::diagnostics::pixels::read_pixel(
-                    &appareil,
-                    &image.texture,
-                    image.width,
-                    image.height,
-                    image.width / 2,
-                    image.height / 2,
-                )?;
-                let verdict = mire::verdict(0, (r, g, b));
+                let verdict = compteurs::lire_verdict(voie.as_mut(), &image, 0)?;
                 if recouvert {
                     compteurs.apres_recouvrement.compter(verdict);
                 } else {
@@ -405,20 +323,4 @@ fn passe_capture(
         tracing::info!("libération des encodeurs : terminée");
     }
     Ok(compteurs)
-}
-
-fn journaliser(passe: &str, voie: &str, nombre: u8, compteurs: &Compteurs) {
-    let secondes = DUREE_PASSE.as_secs_f64();
-    let cadences: Vec<f64> = compteurs.images.iter().map(|n| *n as f64 / secondes).collect();
-    tracing::info!(
-        passe,
-        voie,
-        nombre,
-        ?cadences,
-        unites = ?compteurs.unites,
-        verdicts_faux = compteurs.apres_recouvrement.faux(),
-        mire0_avant_recouvrement = ?compteurs.avant_recouvrement,
-        mire0_apres_recouvrement = ?compteurs.apres_recouvrement,
-        "passe terminée"
-    );
 }

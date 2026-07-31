@@ -11,6 +11,7 @@
 
 pub(super) mod banc;
 pub(super) mod capture_virtuelle;
+pub(super) mod compteurs;
 pub(super) mod contrat;
 pub(super) mod disponibilite;
 pub(super) mod mires;
