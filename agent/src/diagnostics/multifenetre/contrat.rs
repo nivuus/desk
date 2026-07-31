@@ -38,14 +38,18 @@ const VERSION_AMONT: VersionProtocole =
 ///
 /// Ce qu'un succès n'établit PAS. D'abord, rien sur
 /// `VIRTUAL_DISPLAY_ADD_PARAMS`, dont les 56 octets d'entrée restent une
-/// lecture amont non confirmée. Ensuite — et c'est plus subtil — **rien ne
-/// prouve l'ORDRE des champs**. Une taille rendue ne dit rien des offsets ; et
-/// les deux structures éprouvées sont hors d'atteinte d'un tel test : `Veille`
-/// rend deux valeurs identiques (`delai` = `decompte`), donc l'ordre de ses
-/// deux champs est structurellement indiscernable, et les quatre octets de
-/// version `{0, 2, 1, 1}` comportent une répétition, donc une permutation des
-/// deux derniers champs passerait aussi. La coïncidence est une corroboration
-/// forte, pas une preuve d'agencement.
+/// lecture amont non confirmée. Ensuite, l'ORDRE des champs n'est éprouvé que
+/// PARTIELLEMENT, et inégalement selon la structure :
+///
+/// - une taille rendue, elle, ne dit jamais rien des offsets ;
+/// - `VersionProtocole` est en revanche bien contrainte par la comparaison des
+///   quatre octets : sur les 24 permutations de `{0, 2, 1, 1}`, 22 donnent un
+///   quadruplet différent et seraient donc détectées. Seule celle qui échange
+///   les deux derniers champs — `increment` et `version_de_test`, tous deux à
+///   `1` — passerait inaperçue ;
+/// - `Veille` est la seule à être hors d'atteinte d'un tel test : elle rend
+///   `delai` = `decompte`, deux valeurs identiques, donc l'ordre de ses deux
+///   champs est structurellement indiscernable.
 pub(super) fn valider_contrat() -> Result<()> {
     let pilote = ouvrir_pilote()?;
     tracing::info!("périphérique SudoVDA ouvert — le GUID d'interface est le bon");
@@ -87,9 +91,14 @@ pub(super) fn valider_contrat() -> Result<()> {
         tailles_conformes,
         version_conforme,
         conforme = tailles_conformes && version_conforme,
-        "verdict : les tailles rendues (4 et 8) sont confrontées aux tailles \
-         supposées, et les quatre octets de version à la constante amont \
-         {{0, 2, 1, true}} — l'ordre des champs, lui, n'est pas testé"
+        // Les tailles chiffrées ici sont les SUPPOSÉES, pas les rendues : ce
+        // message est constant, il sera émis à l'identique quand
+        // `tailles_conformes` vaut `false`. Y annoncer « les tailles rendues
+        // (4 et 8) » affirmerait alors exactement ce que le verdict dément.
+        "verdict : les tailles rendues sont confrontées aux tailles supposées \
+         (4 et 8), et les quatre octets de version à la constante amont \
+         {{0, 2, 1, true}} — l'ordre des champs, lui, n'est testé que \
+         partiellement"
     );
     Ok(())
 }

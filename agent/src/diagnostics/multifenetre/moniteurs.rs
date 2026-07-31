@@ -46,21 +46,16 @@ use std::sync::Mutex;
 
 use anyhow::{Context, Result};
 use windows::core::{GUID, PCWSTR};
-use windows::Win32::Devices::DeviceAndDriverInstallation::{
-    SetupDiDestroyDeviceInfoList, SetupDiEnumDeviceInterfaces, SetupDiGetClassDevsW,
-    SetupDiGetDeviceInterfaceDetailW, DIGCF_DEVICEINTERFACE, DIGCF_PRESENT, HDEVINFO,
-    SP_DEVICE_INTERFACE_DATA, SP_DEVICE_INTERFACE_DETAIL_DATA_W,
-};
 use windows::Win32::Foundation::{CloseHandle, GENERIC_READ, GENERIC_WRITE, HANDLE};
 use windows::Win32::Storage::FileSystem::{
     CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
 };
 use windows::Win32::System::IO::DeviceIoControl;
 
+use super::peripherique::chemin_du_peripherique;
 use super::sudovda::{
     en_champ_14, DemandeAjout, DemandeRetrait, SortieAjoutee, Veille, VersionProtocole,
-    INTERFACE_PILOTE, IOCTL_AJOUTER_SORTIE, IOCTL_LIRE_VEILLE, IOCTL_LIRE_VERSION_PROTOCOLE,
-    IOCTL_RETIRER_SORTIE,
+    IOCTL_AJOUTER_SORTIE, IOCTL_LIRE_VEILLE, IOCTL_LIRE_VERSION_PROTOCOLE, IOCTL_RETIRER_SORTIE,
 };
 use crate::moniteurs_virtuels::{IdSortie, PiloteAffichageVirtuel};
 
@@ -76,16 +71,32 @@ use crate::moniteurs_virtuels::{IdSortie, PiloteAffichageVirtuel};
 const GABARIT_GUID_MONITEUR: u128 = 0x9c4a_1f6e_2b73_4d51_9e08_6775_4143_0000;
 
 /// Tout ce que le pilote doit retenir entre deux appels, sous un verrou
-/// unique.
+/// unique — le compteur et les deux listes ne servent qu'un seul invariant
+/// (« toute sortie créée a un GUID connu tant qu'elle n'est pas retirée »), et
+/// deux verrous pour un invariant seraient un piège gratuit.
 ///
-/// Le compteur et la table ne servent qu'un seul invariant — « chaque sortie
-/// vivante a un GUID connu, et deux sorties n'ont jamais le même » — donc un
-/// seul verrou. Deux verrous pour un invariant seraient un piège gratuit.
+/// **Deux listes en revanche, et non une**, parce que ce sont deux rôles et
+/// deux durées de vie.
+///
+/// Une entrée d'`apparies` sert à **traduire un identifiant en GUID**. Une
+/// entrée d'`a_purger` sert à **se souvenir d'un retrait dû**. Confondre les
+/// deux fait qu'une sortie dont le retrait a échoué reste indexée par un
+/// identifiant que le pilote peut réattribuer : un `detruire` ultérieur
+/// apparierait alors l'entrée périmée, enverrait le mauvais GUID, et la sortie
+/// vivante ne serait jamais détruite. Un identifiant qu'on ne peut plus honorer
+/// doit donc quitter `apparies`, sans que le GUID soit perdu pour autant.
 #[derive(Default)]
 struct EtatSorties {
-    /// Le trait rend un `IdSortie` (`u32`) alors que le pilote retire par
-    /// GUID : il faut donc retenir l'appariement.
+    /// Sorties vivantes dont l'identifiant est FIABLE — c'est-à-dire rendu par
+    /// un tampon de sortie de la bonne taille. Le trait rend un `IdSortie`
+    /// (`u32`) alors que le pilote retire par GUID : c'est ici que se fait la
+    /// traduction, et rien d'autre n'a le droit d'y figurer.
     apparies: Vec<(IdSortie, GUID)>,
+    /// GUID de sorties dont la création a réussi et dont le retrait est DÛ,
+    /// sans qu'aucun identifiant fiable ne permette de les redemander. Jamais
+    /// consultée par `detruire` : elle ne sert qu'à ne pas perdre la trace de
+    /// ce qui doit être purgé — voir la tâche 7.
+    a_purger: Vec<GUID>,
     /// Compteur des GUID attribués.
     compteur: u16,
 }
@@ -138,94 +149,6 @@ pub(super) fn ouvrir_pilote() -> Result<PiloteParIoctl> {
     Ok(PiloteParIoctl { peripherique, etat: Mutex::new(EtatSorties::default()) })
 }
 
-/// Libère la liste d'informations de périphériques sur TOUS les chemins, y
-/// compris les sorties en erreur — SetupAPI ne pardonne pas les fuites de
-/// `HDEVINFO`, et il y a quatre `?` entre son ouverture et sa fermeture.
-struct ListeDePeripheriques(HDEVINFO);
-
-impl Drop for ListeDePeripheriques {
-    fn drop(&mut self) {
-        let _ = unsafe { SetupDiDestroyDeviceInfoList(self.0) };
-    }
-}
-
-/// Résout le chemin `\\?\…` du périphérique qui expose `INTERFACE_PILOTE`.
-fn chemin_du_peripherique() -> Result<Vec<u16>> {
-    let liste = ListeDePeripheriques(
-        unsafe {
-            SetupDiGetClassDevsW(
-                Some(&INTERFACE_PILOTE),
-                PCWSTR::null(),
-                None,
-                DIGCF_PRESENT | DIGCF_DEVICEINTERFACE,
-            )
-        }
-        .context("énumération des périphériques exposant l'interface SudoVDA")?,
-    );
-
-    // Index 0 : le pilote n'expose qu'une instance de cette interface (un seul
-    // device node `ROOT\DISPLAY\0003`). Si un jour il y en avait plusieurs, ce
-    // serait un fait à relever avant de choisir — pas à trancher en silence.
-    let mut interface = SP_DEVICE_INTERFACE_DATA {
-        cbSize: std::mem::size_of::<SP_DEVICE_INTERFACE_DATA>() as u32,
-        ..Default::default()
-    };
-    unsafe { SetupDiEnumDeviceInterfaces(liste.0, None, &INTERFACE_PILOTE, 0, &mut interface) }
-        .context(
-            "aucun périphérique ne présente l'interface SudoVDA — pilote absent, \
-             désactivé, ou device node non créé",
-        )?;
-
-    // Patron imposé par SetupAPI : un premier appel pour la taille (qui échoue
-    // toujours en `ERROR_INSUFFICIENT_BUFFER`, d'où l'erreur ignorée), un
-    // second pour le contenu.
-    let mut requis = 0u32;
-    let _ = unsafe {
-        SetupDiGetDeviceInterfaceDetailW(liste.0, &interface, None, 0, Some(&mut requis), None)
-    };
-    let entete = std::mem::size_of::<SP_DEVICE_INTERFACE_DETAIL_DATA_W>();
-    anyhow::ensure!(
-        requis as usize > entete,
-        "taille de détail d'interface aberrante ({requis} octets)"
-    );
-
-    // Tampon en `u32` et non en `u8` : `SP_DEVICE_INTERFACE_DETAIL_DATA_W`
-    // s'aligne sur 4, et `Vec<u8>` ne garantit que 1. Le `cbSize` à écrire est
-    // celui de l'en-tête seul (8 sur x64), jamais celui du tampon — c'est la
-    // convention de SetupAPI, contre-intuitive et source classique de
-    // `ERROR_INVALID_USER_BUFFER`.
-    let mut tampon = vec![0u32; requis.div_ceil(4) as usize];
-    let detail = tampon.as_mut_ptr() as *mut SP_DEVICE_INTERFACE_DETAIL_DATA_W;
-    unsafe { (*detail).cbSize = entete as u32 };
-    unsafe {
-        SetupDiGetDeviceInterfaceDetailW(liste.0, &interface, Some(detail), requis, None, None)
-    }
-    .context("lecture du chemin du périphérique SudoVDA")?;
-
-    // `DevicePath` est déclaré `[u16; 1]` mais se prolonge jusqu'au NUL au-delà
-    // de la fin nominale de la structure : c'est un tableau de longueur
-    // variable à la mode C, il faut le lire à la main.
-    //
-    // Le nombre d'unités lisibles se compte depuis l'OFFSET de `DevicePath`
-    // (4 octets, juste après `cbSize`) et NON depuis `entete` (8 octets, qui
-    // inclut le remplissage d'alignement de fin de structure). L'écart est
-    // d'exactement deux octets, soit une unité UTF-16 : partir d'`entete`
-    // amputait le chemin de son terminateur nul et faisait échouer la
-    // résolution — constaté à la première exécution réelle de la sonde.
-    let offset_chemin = std::mem::offset_of!(SP_DEVICE_INTERFACE_DETAIL_DATA_W, DevicePath);
-    let debut = unsafe { (*detail).DevicePath.as_ptr() };
-    let maximum = (requis as usize - offset_chemin) / 2;
-    let mut chemin = Vec::with_capacity(maximum);
-    for decalage in 0..maximum {
-        let unite = unsafe { *debut.add(decalage) };
-        chemin.push(unite);
-        if unite == 0 {
-            return Ok(chemin);
-        }
-    }
-    anyhow::bail!("chemin de périphérique SudoVDA sans terminateur nul");
-}
-
 impl PiloteParIoctl {
     /// Accès à l'état, **sans paniquer sur un verrou empoisonné**.
     ///
@@ -239,6 +162,14 @@ impl PiloteParIoctl {
     /// insertion interrompue par la panique y manque.
     fn etat(&self) -> std::sync::MutexGuard<'_, EtatSorties> {
         self.etat.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
+    }
+
+    /// Efface toute trace de ce GUID : la sortie n'existe plus, ni retrait dû
+    /// ni appariement ne doivent lui survivre.
+    fn oublier(&self, guid_moniteur: GUID) {
+        let mut etat = self.etat();
+        etat.a_purger.retain(|connu| *connu != guid_moniteur);
+        etat.apparies.retain(|(_, connu)| *connu != guid_moniteur);
     }
 
     /// Retire du pilote la sortie portant ce GUID.
@@ -326,6 +257,9 @@ impl PiloteParIoctl {
 
 impl PiloteAffichageVirtuel for PiloteParIoctl {
     fn creer(&self, largeur: u32, hauteur: u32, hertz: u32) -> Result<IdSortie> {
+        // Ce verrou est tenu pendant le `DeviceIoControl` d'ajout, un appel
+        // noyau bloquant : sans conséquence tant que la montée en N reste
+        // séquentielle, à revoir si elle cesse de l'être.
         let mut etat = self.etat();
         etat.compteur = etat.compteur.wrapping_add(1);
         let numero = etat.compteur;
@@ -356,31 +290,34 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
         // À PARTIR D'ICI LA SORTIE EXISTE. Tout chemin d'échec sous cette ligne
         // doit donc défaire ce qui vient d'être fait, ou au minimum laisser le
         // GUID connu — sans quoi le moniteur survit au processus sans qu'aucun
-        // code du projet ne puisse le retirer. L'appariement est enregistré
-        // AVANT toute vérification pour cette raison : le GUID est le nôtre,
-        // il est valide même quand le tampon de sortie est illisible.
-        let id = ajoutee.identifiant_cible;
-        etat.apparies.push((id, guid_moniteur));
+        // code du projet ne puisse le retirer.
+        //
+        // Le GUID est retenu AVANT toute vérification, et dans `a_purger` et
+        // non `apparies` : à cet instant on sait qu'une sortie existe, mais on
+        // ne sait pas encore la DÉSIGNER — `identifiant_cible` ne vaut quelque
+        // chose que si le tampon de sortie fait la taille attendue. Toute
+        // sortie créée entre donc d'abord par la liste des retraits dus, et
+        // n'en sort que pour être appariée à un identifiant fiable, ou parce
+        // qu'elle a été retirée.
+        etat.a_purger.push(guid_moniteur);
         drop(etat);
 
-        // Le chemin d'échec le plus probable de ce module, et il fuyait :
-        // `VIRTUAL_DISPLAY_ADD_OUT` est justement la structure que la
-        // reconnaissance déclare non confirmée. Si son compte d'octets diffère,
-        // `identifiant_cible` peut valoir n'importe quoi — l'appelant ne pourra
-        // donc jamais nous redemander cette sortie par son identifiant, et la
-        // garde `Sorties` ne l'enregistrera pas non plus puisque nous rendons
-        // `Err`. On la retire donc NOUS-MÊMES, tant que le GUID est encore
-        // connu, plutôt que de la laisser derrière nous.
+        // Le chemin d'échec le plus probable de ce module : `VIRTUAL_DISPLAY_ADD_OUT`
+        // est justement la structure que la reconnaissance déclare non
+        // confirmée. Si son compte d'octets diffère, `identifiant_cible` peut
+        // valoir n'importe quoi — l'appelant ne pourra donc jamais nous
+        // redemander cette sortie par son identifiant, et la garde `Sorties`
+        // ne l'enregistrera pas non plus puisque nous rendons `Err`. On la
+        // retire donc NOUS-MÊMES, tant que le GUID est connu.
         let attendus = std::mem::size_of::<SortieAjoutee>();
         if rendus as usize != attendus {
             let retrait = self.retirer_par_guid(
                 guid_moniteur,
                 "retrait de la sortie créée avec un tampon de sortie illisible",
             );
-            let mut etat = self.etat();
             match retrait {
                 Ok(()) => {
-                    etat.apparies.retain(|(_, connu)| *connu != guid_moniteur);
+                    self.oublier(guid_moniteur);
                     anyhow::bail!(
                         "le pilote a rendu {rendus} octets pour une sortie créée, \
                          {attendus} attendus — la disposition supposée de \
@@ -388,9 +325,11 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
                     );
                 }
                 Err(erreur) => {
-                    // L'appariement reste en table à dessein : c'est la seule
-                    // trace du GUID à retirer, et la purge de la tâche 7 en a
-                    // besoin.
+                    // Le GUID reste dans `a_purger` à dessein : c'est la seule
+                    // trace de ce qu'il faut retirer. Il n'entre PAS dans
+                    // `apparies` — un identifiant douteux qui y figurerait
+                    // pourrait apparier un `detruire` ultérieur et lui faire
+                    // retirer la mauvaise sortie.
                     tracing::error!(
                         guid = ?guid_moniteur,
                         %erreur,
@@ -406,6 +345,14 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
                 }
             }
         }
+
+        // Le compte d'octets est bon : l'identifiant est fiable. La sortie
+        // passe de « retrait dû » à « appariée ».
+        let id = ajoutee.identifiant_cible;
+        let mut etat = self.etat();
+        etat.a_purger.retain(|connu| *connu != guid_moniteur);
+        etat.apparies.push((id, guid_moniteur));
+        drop(etat);
 
         tracing::info!(
             id,
@@ -433,19 +380,54 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
         let (_, guid_moniteur) = etat.apparies[rang];
         drop(etat);
 
-        // L'appariement n'est retiré de la table qu'APRÈS un retrait réussi, et
-        // non avant : sur échec, le GUID reste la seule prise que le projet ait
-        // sur ce moniteur, et l'oublier le rendrait irrécupérable. Le garder
-        // laisse une nouvelle tentative possible.
-        self.retirer_par_guid(guid_moniteur, &format!("destruction de la sortie {id}"))?;
-        self.etat().apparies.retain(|(_, connu)| *connu != guid_moniteur);
-        tracing::info!(id, "sortie virtuelle détruite");
-        Ok(())
+        // L'appariement n'est retiré qu'APRÈS l'appel, jamais avant : sur
+        // échec, le GUID est la seule prise que le projet ait sur ce moniteur,
+        // et l'oublier le rendrait irrécupérable.
+        match self.retirer_par_guid(guid_moniteur, &format!("destruction de la sortie {id}")) {
+            Ok(()) => {
+                self.oublier(guid_moniteur);
+                tracing::info!(id, "sortie virtuelle détruite");
+                Ok(())
+            }
+            Err(erreur) => {
+                // Le GUID change de liste plutôt que d'être oublié ou laissé
+                // en place. Le laisser dans `apparies` serait le vrai danger :
+                // un pilote d'affichage réattribue couramment ses identifiants
+                // de cible, et cette entrée périmée apparierait alors un
+                // `detruire` ultérieur portant le même identifiant — le
+                // mauvais GUID partirait au pilote, et la sortie vivante ne
+                // serait jamais détruite. Le retrait reste dû, il n'est
+                // simplement plus adressable par identifiant.
+                let mut etat = self.etat();
+                etat.apparies.retain(|(_, connu)| *connu != guid_moniteur);
+                etat.a_purger.push(guid_moniteur);
+                drop(etat);
+                tracing::error!(
+                    id,
+                    guid = ?guid_moniteur,
+                    %erreur,
+                    "sortie virtuelle NON détruite — purge manuelle requise"
+                );
+                Err(erreur)
+            }
+        }
     }
 }
 
 impl Drop for PiloteParIoctl {
     fn drop(&mut self) {
+        // Dernière occasion de dire ce qui reste dû. Fermer le périphérique ne
+        // retire rien : une sortie virtuelle survit au processus. Ces GUID sont
+        // ce qu'une purge — celle de la tâche 7, ou un humain — devra viser.
+        let restants = self.etat().a_purger.clone();
+        if !restants.is_empty() {
+            tracing::error!(
+                nombre = restants.len(),
+                guids = ?restants,
+                "sorties virtuelles créées et NON retirées — elles survivent à ce \
+                 processus, purge requise"
+            );
+        }
         let _ = unsafe { CloseHandle(self.peripherique) };
     }
 }
