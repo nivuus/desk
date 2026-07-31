@@ -37,7 +37,7 @@ où l'on travaille dedans, pas en chantier séparé.
 
 | Fichier | Lignes | Pourquoi elle reste |
 | --- | --- | --- |
-| `agent/src/encode.rs` | 1502 | `#[cfg(windows)]`, aucun test |
+| `agent/src/encode.rs` | 1536 | `#[cfg(windows)]`, aucun test |
 | `agent/src/windows_source.rs` | 721 | `#[cfg(windows)]`, aucun test |
 | `agent/src/wasapi.rs` | 543 | `#[cfg(windows)]`, aucun test |
 
