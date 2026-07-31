@@ -18,6 +18,7 @@ pub(super) mod mires;
 pub(super) mod moniteurs;
 pub(super) mod montee;
 pub(super) mod nvenc;
+pub(super) mod paralleles;
 pub(super) mod peripherique;
 pub(super) mod purge;
 pub(super) mod replis;
@@ -128,6 +129,17 @@ pub(super) fn aiguiller() -> Result<bool> {
         let nombre: u8 =
             texte.parse().context("MULTIFENETRE_VDD_CAPTURE doit être un entier (nombre de mires)")?;
         capture_virtuelle::capturer_sur_virtuelle(nombre)?;
+        return Ok(true);
+    }
+    // La mesure de ce chantier : N sorties virtuelles, une fenêtre et une
+    // duplication DXGI chacune — l'arrangement que la voie recommandée
+    // propose réellement. Elle crée des sorties, donc elle passe après
+    // `MULTIFENETRE_VDD_PURGE`.
+    if let Ok(texte) = std::env::var("MULTIFENETRE_VDD_PARALLELE") {
+        let nombre: u8 = texte
+            .parse()
+            .context("MULTIFENETRE_VDD_PARALLELE doit être un entier (nombre de sorties)")?;
+        paralleles::mesurer(nombre)?;
         return Ok(true);
     }
     // Mesure ② : le plafond d'encodeurs, sur périphérique partagé (la mesure
