@@ -561,6 +561,12 @@ motif que ce chantier n'a mesuré que des facteurs unitaires.
 
 ### Le défaut ouvert : la passe d'encodage tue le processus
 
+> ✅ **Ce défaut a depuis été diagnostiqué et corrigé (31/07/2026).** Toute cette
+> section est conservée telle qu'écrite ; sa conclusion porte la note détaillée,
+> et l'un de ses énoncés — le caractère déterministe suggéré par « les deux
+> exécutions » — est **faux**. Lire la note avant de reprendre quoi que ce soit
+> d'ici.
+
 **Bornage exact, à ne pas élargir.** À N=1 il n'y a pas de recouvrement, la
 porte de correction laisse passer, et la passe d'**encodage** s'exécute — pour
 la première fois de l'histoire de ce banc sur la voie `duplication`, la porte
@@ -603,6 +609,30 @@ Ce que les témoins bornent :
 boucle, sur la voie `duplication`, quelle que soit la sortie capturée, après un
 encodage réel. Quel appel exactement le provoque — libération des encodeurs, de
 la duplication, ou leur ordre relatif — reste entièrement ouvert.
+
+> ✅ **Note postérieure (31/07/2026) — cette conclusion est dépassée : le défaut
+> A depuis été diagnostiqué ET corrigé.**
+> Voir `2026-07-31-duplications-paralleles-resultats.md` §7. En trois points, et
+> chacun corrige quelque chose que la section ci-dessus laisse croire :
+>
+> - **il est intermittent, pas déterministe** — 2 plantages sur 6 exécutions du
+>   cas comparable ; le bornage ci-dessus dit « les deux exécutions » sans dire
+>   combien avaient passé, et un rapport antérieur avait enchaîné **quatre
+>   exécutions propres sur un binaire non corrigé** ;
+> - **l'appel qui provoque la faute est désigné**, avec sa pile symbolisée deux
+>   fois identique : la MFT NVIDIA a un élément de travail encore en vol quand on
+>   relâche l'encodeur, et il entre dans un verrou qui n'existe plus
+>   (`RtlEnterCriticalSection`, chemin contendu, `DebugInfo` nul, **sur un fil de
+>   pool et non sur le fil principal**). La question « libération des encodeurs,
+>   de la duplication, ou leur ordre relatif » était donc mal posée : aucun
+>   ordonnancement du fil principal ne pouvait la trancher ;
+> - **`MFShutdown`, qu'un premier diagnostic a accusé, a été réfuté par la
+>   mesure** — retiré entièrement du chemin, la faute revient (1 sur 5).
+>
+> Correctif : une file de travail Media Foundation **sérialisée par encodeur**
+> imposée à la MFT, avec dépôt d'une sentinelle avant tout relâchement —
+> **0 récidive sur 20 exécutions contre 2 sur 6**, ce qui **n'est pas une preuve
+> d'absence**. Deux risques restent ouverts et assumés (§7.5 du document cité).
 
 **Conséquence opérationnelle** : la garde ne court pas, donc la sortie virtuelle
 **survit au processus**. C'est ce qui a produit l'orpheline réelle du chantier,

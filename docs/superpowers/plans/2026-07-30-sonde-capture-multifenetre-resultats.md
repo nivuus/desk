@@ -39,6 +39,14 @@ au-delà du rang mesuré.**
    fenêtres conserveraient chacune leur propre résolution utile — 8 fenêtres à
    1280×720 valent 2,8× la surface du bureau mesuré, un montage que ce banc
    n'a pas exercé.
+   > ✅ **Note postérieure (31/07/2026)** : **ce montage a depuis été exercé** —
+   > 8 sorties virtuelles de 1280×720 chacune, aire totale 7,37 Mpx, une
+   > duplication DXGI par sortie, **90,1 i/s par fenêtre en capture+encodage et
+   > zéro verdict faux** (`2026-07-31-duplications-paralleles-resultats.md`). Ce
+   > résultat appartient à sa propre série et **ne se compare pas** aux chiffres
+   > ci-dessus : les deux bancs ne mesurent pas la même chose, et un débit de
+   > pixels dérivant d'une cadence, l'incommensurabilité vaut aussi pour lui.
+   > Une exécution par rang, donc aucun taux ; rien au-delà de 8 sorties.
 4. **`PrintWindow(PW_RENDERFULLCONTENT)` rend l'image *juste* d'une fenêtre D3D
    *recouverte*.** Contre-intuitif — le plan attendait du noir — vérifié en
    revue (recouvrement effectif contrôlé, couleur recalculée, faux positif du

@@ -1695,6 +1695,15 @@ d'absence, et l'énoncé porte toujours son nombre d'exécutions.*
   qu'on lit : traiter le chapitre de détail en laissant le sommaire intact laisse
   le lecteur repartir avec une tâche déjà faite. Balayer sur les formules
   (« encore due », « non diagnostiqué », « jamais expliqué »…).
+  **Corollaire, payé une ronde plus tard : chercher par le SENS, pas par la
+  formule.** Ce balayage cherchait « **non** diagnostiqué » ; la phrase qui a
+  survécu disait « **pas** diagnostiqué », et c'était la conclusion d'une section
+  entière, contredisant l'encadré posé soixante lignes plus haut. Une négation se
+  dit de plusieurs façons, et **c'est celle qu'on n'a pas listée qui survit** :
+  balayer sur la *chose niée* (un diagnostic, une mesure, une explication) en
+  énumérant les tournures — « pas / non / jamais / seulement localisé / sans
+  explication / reste ouvert / n'est établi par rien ». Et **annoter
+  l'affirmation elle-même, pas sa voisine**.
 - **Une clé de lecture posée dans le code doit être vérifiée contre le journal
   avant d'être recopiée.** Le commentaire de `passes.rs` expliquait le rapport
   `unites`/`images` par un ratio 90/60 qui prédisait 600 unités là où le journal
