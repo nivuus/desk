@@ -315,11 +315,24 @@ toujours avant que le navigateur n'ouvre la page.
 navigateur, image juste dans chacune, clavier et souris arrivant dans la bonne,
 son dans la porteuse.
 
-**Point à vérifier dès la première tâche du plan — l'injection d'entrée.**
+**Point à confirmer dès la première tâche du plan — l'injection d'entrée.**
 `SendInput` en absolu normalise sur l'écran **primaire** sauf à passer
-`MOUSEEVENTF_VIRTUALDESK`. Une fenêtre posée sur un moniteur virtuel est hors de
-cet espace. Si le drapeau ne suffit pas, l'input relatif — déjà implémenté pour
-le jeu au chantier B — est le repli.
+`MOUSEEVENTF_VIRTUALDESK`, et une fenêtre posée sur un moniteur virtuel est hors
+de cet espace.
+
+**Vérification faite le 1ᵉʳ août 2026 : le code y est déjà préparé.** `input.rs`
+pose ce drapeau (l. 147, `MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE |
+MOUSEEVENTF_VIRTUALDESK`) et calcule ses coordonnées sur les métriques du bureau
+**virtuel** (`SM_XVIRTUALSCREEN`, `SM_YVIRTUALSCREEN`, `SM_CXVIRTUALSCREEN`,
+`SM_CYVIRTUALSCREEN`, l. 172-175), non sur l'écran primaire. Il n'y a donc rien
+à implémenter.
+
+Ce qui reste à établir est plus étroit, et ne se déduit d'aucune lecture de
+code : **que le bureau virtuel s'étende bien pour inclure une sortie virtuelle**,
+et que le pointeur y arrive. Une sonde courte suffit — injecter un mouvement
+absolu vers le centre d'une sortie virtuelle et relire `GetCursorPos`. Si le
+résultat dément, l'input relatif — déjà implémenté pour le jeu au chantier B —
+est le repli.
 
 ---
 
@@ -351,7 +364,9 @@ le jeu au chantier B — est le repli.
   pas d'avance.
 - **Le vivier de 10 sorties est-il partagé avec Apollo ?** Non mesuré en
   concurrence. Le refus peut donc tomber avant la 11ᵉ.
-- **L'injection d'entrée sur un moniteur virtuel n'est pas éprouvée** (§7).
+- **L'injection d'entrée sur un moniteur virtuel n'est pas éprouvée** — mais le
+  code y est déjà préparé et il n'y a rien à écrire : seule reste à confirmer
+  l'extension du bureau virtuel à une sortie virtuelle (§7).
 - **Le placement d'une fenêtre sur une sortie virtuelle n'a jamais été fait par
   notre code.** Les mesures posaient les fenêtres par le banc, dans des
   conditions qu'il maîtrisait ; une application réelle peut se replacer, se
