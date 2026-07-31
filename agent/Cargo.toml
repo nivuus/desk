@@ -42,6 +42,7 @@ md-5 = "0.10"
 # Cargo.lock comme dépendance transitive de `windows`.
 windows-core = "0.62"
 windows = { version = "0.62", features = [
+    "Win32_Devices_DeviceAndDriverInstallation",
     "Win32_Foundation",
     "Win32_Graphics_Direct3D",
     "Win32_Graphics_Direct3D11",
@@ -51,9 +52,15 @@ windows = { version = "0.62", features = [
     "Win32_Media_Audio",
     "Win32_Media_MediaFoundation",
     "Win32_Media_Multimedia",
+    # `CreateFileW` est gardée derrière `Win32_Security` dans windows-rs 0.62 :
+    # sa signature mentionne `SECURITY_ATTRIBUTES`, même quand on lui passe
+    # `None`. Sans cette fonctionnalité, l'import ne résout pas.
+    "Win32_Security",
+    "Win32_Storage_FileSystem",
     "Win32_Storage_Xps",
     "Win32_System_Com",
     "Win32_System_Com_StructuredStorage",
+    "Win32_System_IO",
     "Win32_System_LibraryLoader",
     "Win32_System_Ole",
     "Win32_System_Threading",

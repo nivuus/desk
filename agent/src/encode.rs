@@ -387,10 +387,19 @@ impl H264Encoder {
 
         let events: IMFMediaEventGenerator = transform.cast()?;
 
+        // `NOTIFY_BEGIN_STREAMING` est le point où une MFT matérielle réserve
+        // ses ressources de session GPU : candidat au refus quand plusieurs
+        // encodeurs coexistent, à ne pas confondre avec les deux autres.
         unsafe {
-            transform.ProcessMessage(MFT_MESSAGE_COMMAND_FLUSH, 0)?;
-            transform.ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0)?;
-            transform.ProcessMessage(MFT_MESSAGE_NOTIFY_START_OF_STREAM, 0)?;
+            transform
+                .ProcessMessage(MFT_MESSAGE_COMMAND_FLUSH, 0)
+                .context("purge initiale de l'encodeur H.264 (transform matériel)")?;
+            transform
+                .ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0)
+                .context("démarrage du flux de l'encodeur H.264 (transform matériel)")?;
+            transform
+                .ProcessMessage(MFT_MESSAGE_NOTIFY_START_OF_STREAM, 0)
+                .context("début de flux de l'encodeur H.264 (transform matériel)")?;
         }
 
         // Convertisseur BGRA→NV12, partageant le même périphérique D3D.
@@ -412,8 +421,10 @@ impl H264Encoder {
         // `0x80070057`) : le contrat documenté (ne jamais fournir de tampon
         // quand ce drapeau est positionné) doit être respecté, il n'y a pas
         // de contournement possible ici.
-        unsafe { converter.ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0) }?;
-        unsafe { converter.ProcessMessage(MFT_MESSAGE_NOTIFY_START_OF_STREAM, 0) }?;
+        unsafe { converter.ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0) }
+            .context("démarrage du flux du convertisseur de couleur (Video Processor MFT)")?;
+        unsafe { converter.ProcessMessage(MFT_MESSAGE_NOTIFY_START_OF_STREAM, 0) }
+            .context("début de flux du convertisseur de couleur (Video Processor MFT)")?;
 
         Ok(Self {
             transform,
@@ -1231,7 +1242,9 @@ fn create_color_converter(
         output_type.SetUINT64(&MF_MT_FRAME_SIZE, pack_u64(encode.0, encode.1))?;
         output_type.SetUINT64(&MF_MT_FRAME_RATE, pack_u64(fps, 1))?;
         output_type.SetUINT32(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0 as u32)?;
-        converter.SetOutputType(0, &output_type, 0)?;
+        converter.SetOutputType(0, &output_type, 0).context(
+            "configuration du type de sortie du convertisseur de couleur (Video Processor MFT)",
+        )?;
     }
 
     Ok(converter)
@@ -1291,7 +1304,8 @@ fn find_hardware_video_processor() -> Result<IMFTransform> {
         unsafe { CoTaskMemFree(Some(name_ptr.0 as *const _)) };
     }
 
-    let transform: IMFTransform = unsafe { first.ActivateObject() }?;
+    let transform: IMFTransform = unsafe { first.ActivateObject() }
+        .context("activation du convertisseur vidéo matériel (ActivateObject)")?;
     unsafe { CoTaskMemFree(Some(activates as *const _)) };
     Ok(transform)
 }
@@ -1397,7 +1411,8 @@ fn find_hardware_encoder() -> Result<IMFTransform> {
         unsafe { CoTaskMemFree(Some(name_ptr.0 as *const _)) };
     }
 
-    let transform: IMFTransform = unsafe { first.ActivateObject() }?;
+    let transform: IMFTransform = unsafe { first.ActivateObject() }
+        .context("activation de l'encodeur H.264 matériel (ActivateObject)")?;
     unsafe { CoTaskMemFree(Some(activates as *const _)) };
     Ok(transform)
 }
@@ -1420,7 +1435,9 @@ fn configure_output(
         media_type.SetUINT32(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0 as u32)?;
         // Baseline évite les images B : ordre de décodage = ordre d'affichage.
         media_type.SetUINT32(&MF_MT_MPEG2_PROFILE, eAVEncH264VProfile_Base.0 as u32)?;
-        transform.SetOutputType(0, &media_type, 0)?;
+        transform
+            .SetOutputType(0, &media_type, 0)
+            .context("configuration du type de sortie de l'encodeur H.264 (transform matériel)")?;
     }
     Ok(())
 }
@@ -1479,6 +1496,7 @@ fn share_device(device: &ID3D11Device) -> Result<IMFDXGIDeviceManager> {
         MFCreateDXGIDeviceManager(&mut token, &mut manager)?;
     }
     let manager = manager.ok_or_else(|| anyhow!("gestionnaire DXGI absent"))?;
-    unsafe { manager.ResetDevice(device, token)? };
+    unsafe { manager.ResetDevice(device, token) }
+        .context("liaison du périphérique D3D11 au gestionnaire DXGI")?;
     Ok(manager)
 }

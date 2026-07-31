@@ -15,6 +15,7 @@ mod frames;
 mod gamepad;
 mod geometry;
 mod mire;
+mod moniteurs_virtuels;
 mod h264;
 mod input;
 mod opus;

@@ -37,7 +37,7 @@ où l'on travaille dedans, pas en chantier séparé.
 
 | Fichier | Lignes | Pourquoi elle reste |
 | --- | --- | --- |
-| `agent/src/encode.rs` | 1480 | `#[cfg(windows)]`, aucun test |
+| `agent/src/encode.rs` | 1502 | `#[cfg(windows)]`, aucun test |
 | `agent/src/windows_source.rs` | 721 | `#[cfg(windows)]`, aucun test |
 | `agent/src/wasapi.rs` | 543 | `#[cfg(windows)]`, aucun test |
 
@@ -1295,7 +1295,10 @@ corrompus en amont par la page de code PowerShell. **Encodages mixtes, pas
 tous UTF-8** : `dxgi.log`, `wgc.log`, `replis.log` et `nvenc.log` sont en
 **UTF-16LE** (`iconv -f UTF-16LE -t UTF-8 fichier.log` pour les lire ou les
 `grep` — un `grep` direct dessus ne trouve rien) ; les journaux `banc-*.log`
-sont en UTF-8 (avec BOM).
+sont en UTF-8 (avec BOM). **Cette conversion ne concerne QUE ce répertoire** :
+`scripts/run-agent.sh` a été corrigé le 31 juillet 2026 et les journaux de
+`journaux-mesures-prealables/` sont tous en UTF-8 sans BOM, accents intacts,
+`grep`-ables tels quels.
 
 Chantier de **mesure sans livrable produit** : trancher, avant de spécifier le
 chantier D, quelle voie de capture rend une image correcte **par fenêtre** quand
@@ -1334,12 +1337,45 @@ Video Processor MFT du convertisseur de couleur) et rien n'indiquait lequel
 refusait — corrigé par un `.context()` distinct sur chacun
 (`agent/src/encode.rs`), pour que la prochaine mesure tranche.
 
+> ⚠️ **Corrigé le 31 juillet 2026 : ce n'était aucun de ces deux
+> `SetInputType`.** La mesure ② du chantier de mesures préalables (rapport
+> `task-9-report.md`, journaux `docs/superpowers/plans/journaux-mesures-prealables/nvenc-*.log`)
+> a relevé une chaîne de causes **nue** avec ces deux contextes déjà en place :
+> l'appel fautif était un `?` sans contexte, à savoir **`SetOutputType` de
+> l'encodeur H.264**. Le libellé de `MF_E_UNSUPPORTED_D3D_TYPE` parle du type
+> d'**entrée** alors que l'appel refusé règle le type de **sortie** — c'est très
+> probablement ce libellé qui avait égaré l'attribution ci-dessus. **Ne pas se
+> fier au texte de ce HRESULT pour désigner un appel.** Dix appels du chemin de
+> construction portent désormais un contexte distinct.
+
+**Le plafond ne vient pas du partage du périphérique** (mesure ② du même
+chantier) : avec **un périphérique D3D11 neuf par encodeur**, le plafond reste
+**8**, refus au même `SetOutputType`. Cette attribution causale porte une
+réserve : **comparaison à deux variables confondues**, le mode séparé n'ouvrant
+aucune duplication DXGI là où le mode partagé en ouvre une — il faudrait une
+coïncidence pour que deux effets se compensent exactement, mais le témoin propre
+(mode séparé *avec* duplication) n'a pas été exercé. Sous cette réserve, séparer
+les périphériques ne fait gagner aucune fenêtre — et le coût correspondant
+(partager des textures entre le périphérique de capture et ceux des encodeurs)
+n'a donc pas à être payé. Ce que la mesure **ne** dit **pas** non plus : quelle
+couche impose ce plafond (NVENC, pilote, Media Foundation, ou virtualisation),
+s'il tient à d'autres résolutions ou débits, et si 8 encodeurs tiennent la
+cadence *ensemble* — aucune image n'a été soumise, seule la **construction** est
+mesurée. Enfin, détruire un encodeur n'a **pas** été montré libérer la place :
+la mise en sommeil des fenêtres masquées reste à éprouver par une séquence
+« créer 8 → en détruire 1 → tenter un 9ᵉ ».
+
 **Voie recommandée** : le moniteur virtuel par fenêtre (seule voie qui préserve
 le chemin GPU en supprimant le recouvrement par construction), avec `PrintWindow`
-en repli mesuré pour les fenêtres non-jeu. **Deux mesures sont bloquantes avant
-de spécifier quoi que ce soit** : le plafond de sorties virtuelles (deux clients
-appariés suffiraient) et le plafond d'encodage sur périphériques D3D11 séparés.
-Le relevé Apollo (3413×960) qui fonde cette voie n'a pas de journal joint et n'est pas reproductible sans le propriétaire du poste.
+en repli mesuré pour les fenêtres non-jeu. Le relevé Apollo (3413×960) qui fonde
+cette voie n'a pas de journal joint et n'est pas reproductible sans le
+propriétaire du poste.
+
+> ✅ **Les deux mesures que cette sonde déclarait bloquantes ont été prises le
+> 31 juillet 2026** (plafond de sorties virtuelles, plafond d'encodage sur
+> périphériques séparés) — voir la section suivante. Le chantier D est
+> spécifiable. Le repli `PrintWindow`, lui, **recule** : mesuré à N=4 et N=8, il
+> ne tient pas la cible de 8 fenêtres.
 
 ### Pièges — à connaître avant de toucher à ce terrain
 
@@ -1372,6 +1408,127 @@ Le relevé Apollo (3413×960) qui fonde cette voie n'a pas de journal joint et n
   quasiment toutes porté sur des **rapports qui affirmaient au-delà de leur
   relevé**, jamais sur des bugs. Sur un chantier de mesure, le coût est dans la
   discipline de l'énoncé, pas dans le code.
+
+---
+
+## 📐 Mesures préalables au chantier D (31 juillet 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-07-31-mesures-prealables-chantier-d-resultats.md`.
+Journaux : `docs/superpowers/plans/journaux-mesures-prealables/` — **tous en
+UTF-8 sans BOM, accents intacts, aucune conversion nécessaire** (contrairement
+à ceux de la sonde ci-dessus). Le document de reconnaissance du canal de
+contrôle du pilote y vit aussi : `canal-de-controle.md`.
+
+Second **chantier de mesure sans livrable produit** : lever les quatre inconnues
+que la sonde ci-dessus laissait ouvertes. **Les quatre sont levées, chacune avec
+son journal versé** — la faiblesse que la sonde avait laissée sur son propre
+chiffre fondateur. **Le chantier D est spécifiable.**
+
+### Les quatre chiffres
+
+| # | Résultat | Journal |
+| --- | --- | --- |
+| ① | **Plafond de sorties virtuelles = 10.** Refus du pilote à la 11ᵉ création (IOCTL `0x00222000`, `0x80070044` / `ERROR_TOO_MANY_NAMES`), **prouvé par identité** — les onze sorties sont énumérées nommément par la ligne de refus (liste mémorisée au relevé qui précède, ouvert 0,673 ms plus tôt, **pas** une relecture fraîche : le libellé du journal suggère le contraire). Cible du chantier D = 8 : la voie tient avec 2 de marge | `moniteurs-montee-en-n.log` |
+| ② | **Plafond d'encodage = 8, inchangé sur périphériques D3D11 séparés.** 9 périphériques distincts et vivants côté mode `separe`, même rang refusé. **Le partage du périphérique n'était donc pas la contrainte** | `nvenc-partage-temoin.log`, `nvenc-separe.log` |
+| ③ | **Windows compose bien sur un moniteur virtuel sans écran physique**, et Desktop Duplication en rend l'image exacte : 900/900 verdicts justes, **zéro image noire**, 90,0 i/s/fenêtre. L'hypothèse fondatrice de la voie recommandée tient | `moniteurs-capture.log`, `moniteurs-capture-n1-encodage.log` |
+| ④ | **`PrintWindow` ne tient pas l'échelle** : 17,6 i/s/fenêtre à N=4, **8,8 à N=8** (17,2 et 8,8 avec l'encodage). Recollé aux deux rangs de la sonde, le débit de pixels décroît **sur les quatre rangs sans palier** : **116,64 → 75,43 → 45,62 → 20,28 MP/s**, à opposer aux 208–258 MP/s quasi constants de `duplication` | `printwindow-n4.log`, `printwindow-n8.log` ; N=1 et N=2 : `journaux-sonde-multifenetre/banc-printwindow-{1,2}.log` |
+
+**Acquis d'outillage** : notre code **commande le pilote SudoVDA lui-même** (canal
+IOCTL, `canal-de-controle.md`) — plus besoin d'une session Apollo pour faire
+paraître une sortie virtuelle ; une **purge autonome** rattrape les sorties
+orphelines, éprouvée sur un état réellement sale (8 orphelines, constat et
+confirmation par des processus tiers).
+
+### Ce que ces mesures NE disent pas
+
+- **L'arrangement que la voie recommandée propose réellement n'est pas mesuré** :
+  N sorties virtuelles, **une fenêtre chacune**, donc **N duplications DXGI de
+  front**. Le banc a posé N fenêtres sur **UNE** sortie. DXGI n'autorisant
+  qu'une duplication par sortie, la question est réelle — c'est la mesure
+  suivante, courte, et elle dimensionne la voie.
+- **La comparaison des deux modes d'encodage porte sur DEUX variables
+  confondues** : le mode `separe` n'ouvre aucune duplication DXGI là où
+  `partage` en ouvre une. Le témoin propre n'a pas été exercé.
+- **La couche qui impose le plafond de 8 n'est pas identifiée**, aucune image
+  n'a été soumise (seule la *création* est mesurée), et **détruire un encodeur
+  n'a pas été montré libérer la place** — la mise en sommeil des fenêtres
+  masquées repose donc sur une conjecture.
+- **La cause du refus à la 11ᵉ sortie n'est pas isolée**, et on ignore si le
+  vivier de 10 est global au pilote ou par client (Apollo pingue le même
+  pilote). **L'unité du chien de garde (`delai = 3`) reste inconnue : aucune
+  unité n'est exclue, pas même la seconde.**
+
+### ⚠️ Défaut ouvert, non diagnostiqué
+
+**La passe d'encodage du banc tue le processus, sur la voie `duplication`.**
+Bornage exact, à ne pas élargir :
+
+- **à la SORTIE de la boucle, pas pendant** — les deux exécutions écrivent leur
+  dixième et dernière ligne périodique à début + 10,00 s, et le bilan n'est
+  jamais atteint. Cela désigne la **libération** du `Vec<H264Encoder>` et de la
+  duplication, **pas** la soumission d'images ;
+- **quelle que soit la sortie capturée** : le même banc sur le **bureau
+  physique** meurt au même endroit — la sortie virtuelle est hors de cause ;
+- **pas sur `printwindow`** : `printwindow-n4.log` et `printwindow-n8.log`
+  portent tous deux leur ligne `passe terminée passe="capture+encodage"` ;
+- **un encodage doit probablement avoir réellement eu lieu** : la mesure ②
+  forme le couple duplication + encodeurs et **survit** à la destruction de ses
+  8 encodeurs — mais sans avoir jamais soumis d'image.
+
+Conséquence : la garde ne court pas, donc **la sortie virtuelle survit au
+processus** (`MULTIFENETRE_VDD_PURGE=1` pour la retirer).
+
+### Pièges neufs — à connaître avant de toucher à ce terrain
+
+- **Un journal PowerShell lisible demande DEUX réglages, pas un.** Le mojibake
+  des journaux de la sonde ne venait pas seulement de `Tee-Object` en UTF-16LE,
+  mais AUSSI de `[Console]::OutputEncoding` resté sur la page de code OEM, qui
+  abîmait les accents **en lisant** la sortie du processus enfant, avant même
+  l'écriture. Le `StreamWriter` règle l'écriture, `[Console]::OutputEncoding` la
+  lecture. Symptôme : un `grep` sur un mot accentué rend 0 quand le même `grep`
+  sur sa partie ASCII rend 1. *(Ne pas remplacer `Tee-Object` par
+  `Out-File -Encoding utf8` : il replie les lignes à la largeur de console.)*
+- **Ne jamais se fier au texte d'un HRESULT pour désigner un appel.** Voir le
+  bloc de correction d'attribution ci-dessus : dix annotations de contexte ont
+  été nécessaires pour savoir quel appel refusait le 9ᵉ encodeur.
+- **Un compteur ne suffit pas quand un tiers agit sur le système.** Apollo peut
+  ajouter une sortie à tout instant : une addition externe compense exactement
+  un retrait, et un contrôle par cardinal passe alors qu'une sortie a disparu.
+  **Comparer des ensembles de noms, jamais des nombres.**
+- **Le contrôle qui vaut se fait depuis un processus NEUF.** Le processus
+  mesureur est juge et partie, et une sortie virtuelle lui survit.
+- **Un plantage à la destruction se lit comme un plafond.** Instrumenter la
+  sortie autant que l'entrée (deux traces encadrant le relâchement).
+- **Modifier le banc rend les mesures antérieures non comparables** — et il faut
+  le dire : la lecture de pixel a changé de portée en cours de chantier, les
+  cadences `printwindow` viennent d'un banc qui relisait deux fois moins. Risque
+  borné par un témoin, **borné n'est pas nul**.
+- **Un compte de créations obtenu par minutage est un artefact de minutage.**
+  L'épreuve de salissure a produit 8 sorties, pas 10, parce que le `sleep` de
+  l'hôte ne mesure pas le temps de vie de l'agent. Le plafond reste 10.
+- **Le mode de défaillance dominant reste l'énoncé, pas le code** — comme pour
+  la sonde. Sur tout le chantier, **un seul** point a vu le code contredire son
+  rapport ; tout le reste était des phrases qui affirmaient au-delà du relevé.
+
+### Variables d'environnement du banc et des sondes
+
+Un processus par voie (ces API échouent par **plantage du processus**, pas par
+code d'erreur).
+
+| Variable | Effet |
+| --- | --- |
+| `MULTIFENETRE_DXGI=1` | Relève la topologie DXGI et sort — le contrôle d'état depuis un processus neuf |
+| `MULTIFENETRE_WGC=1` | Sonde `Windows.Graphics.Capture` (voie éliminée) |
+| `MULTIFENETRE_REPLIS=1` | Sonde les voies de repli |
+| `MULTIFENETRE_BANC=duplication\|printwindow` + `MULTIFENETRE_N=1..8` | Le banc de cadence |
+| `MULTIFENETRE_SORTIE=<adaptateur:sortie>` | Force la sortie DXGI capturée par le banc |
+| `MULTIFENETRE_CONTRAT=1` | Éprouve le contrat IOCTL du pilote (deux tampons simples, sans effet de bord) |
+| `MULTIFENETRE_VDD=1` | **Mesure ①** — montée en N de sorties virtuelles jusqu'au refus |
+| `MULTIFENETRE_VDD_VEILLE=<secondes>` | Épreuve du chien de garde : une sortie, aucun ping, relevé à 1 Hz |
+| `MULTIFENETRE_VDD_PURGE=1` | **Purge autonome** des sorties orphelines |
+| `MULTIFENETRE_VDD_CAPTURE=1` | **Mesure ③** — crée une sortie virtuelle et y lance le banc |
+| `MULTIFENETRE_NVENC=partage\|separe` | **Mesure ②** — plafond d'encodeurs, périphérique D3D11 partagé ou un par encodeur |
 
 ---
 

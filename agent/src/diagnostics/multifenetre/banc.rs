@@ -33,27 +33,109 @@ const DUREE_PASSE: Duration = Duration::from_secs(10);
 /// Cadence de journalisation des compteurs.
 const PERIODE_JOURNAL: Duration = Duration::from_secs(1);
 
+/// Décompte des verdicts rendus sur la mire 0, par NATURE et non en bloc.
+///
+/// Un simple compte de « faux » ne suffit pas à la mesure ③ : une image NOIRE
+/// et une image portant la mire du DESSUS sont deux résultats opposés. La
+/// première dirait que Windows ne compose pas une sortie virtuelle sans écran
+/// attaché — et l'hypothèse fondatrice de la voie « un moniteur virtuel par
+/// fenêtre » tomberait. La seconde dirait qu'il la compose parfaitement, et que
+/// c'est la duplication qui ne sait pas défaire un recouvrement — ce qu'on
+/// savait déjà du bureau physique. Les confondre sous un même compteur rendrait
+/// la mesure ininterprétable.
+#[derive(Default, Debug)]
+struct Verdicts {
+    justes: u64,
+    voisines: u64,
+    noires: u64,
+    inconnues: u64,
+}
+
+impl Verdicts {
+    fn compter(&mut self, verdict: mire::Verdict) {
+        match verdict {
+            mire::Verdict::Juste => self.justes += 1,
+            mire::Verdict::Voisine(_) => self.voisines += 1,
+            mire::Verdict::Noire => self.noires += 1,
+            mire::Verdict::Inconnue => self.inconnues += 1,
+        }
+    }
+
+    fn faux(&self) -> u64 {
+        self.voisines + self.noires + self.inconnues
+    }
+}
+
 struct Compteurs {
     images: Vec<u64>,
     unites: Vec<u64>,
-    verdicts_faux: u64,
+    /// Verdicts rendus AVANT que le recouvrement ne soit posé : la mire 0 est
+    /// alors dégagée, et c'est la seule fenêtre du banc où se lise « cette voie
+    /// capture-t-elle simplement cette fenêtre ». Sur le bureau physique la
+    /// réponse allait de soi ; sur une sortie virtuelle, c'est la question.
+    avant_recouvrement: Verdicts,
+    /// Verdicts rendus une fois la mire 0 recouverte : la porte éliminatoire.
+    apres_recouvrement: Verdicts,
 }
 
-pub(super) fn executer(nom_voie: &str, nombre: u8) -> Result<()> {
+/// `sortie` désigne la sortie DXGI à mesurer (`index_adaptateur`,
+/// `index_sortie`), ou `None` pour la sortie qui porte le bureau — le
+/// comportement d'origine, inchangé.
+pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<(u32, u32)>) -> Result<()> {
     anyhow::ensure!(
         nombre >= 1 && nombre <= mire::MIRES_MAX,
         "MULTIFENETRE_N doit valoir 1 à {}",
         mire::MIRES_MAX
     );
 
-    let capture = crate::capture::DesktopCapture::new()?;
-    let (largeur, hauteur) = capture.desktop_size();
-    let places = disposition::tuiles(
-        Rect { x: 0, y: 0, width: largeur, height: hauteur },
-        nombre as u32,
+    let capture = match sortie {
+        Some((adaptateur, index)) => crate::capture::DesktopCapture::sur_sortie(adaptateur, index)?,
+        None => crate::capture::DesktopCapture::new()?,
+    };
+    let (texture_largeur, texture_hauteur) = capture.desktop_size();
+
+    // Le rectangle où vivent les FENÊTRES : les coordonnées du bureau virtuel,
+    // telles que `DXGI_OUTPUT_DESC::DesktopCoordinates` les donne. Sans sortie
+    // désignée, c'est le bureau à l'origine — le comportement d'avant.
+    let bureau = match sortie {
+        Some((adaptateur, index)) => crate::capture::enumerer_sorties()?
+            .into_iter()
+            .find(|s| s.index_adaptateur == adaptateur && s.index_sortie == index)
+            .map(|s| s.rect)
+            .with_context(|| format!("sortie {adaptateur}:{index} absente de l'énumération"))?,
+        None => Rect { x: 0, y: 0, width: texture_largeur, height: texture_hauteur },
+    };
+    let facteur = crate::moniteurs_virtuels::facteur_echelle(
+        (bureau.width, bureau.height),
+        (texture_largeur, texture_hauteur),
     )
-    .with_context(|| format!("{nombre} places sur un bureau {largeur}x{hauteur}"))?;
-    tracing::info!(voie = nom_voie, nombre, ?places, "banc : disposition retenue");
+    .unwrap_or((1.0, 1.0));
+    tracing::info!(
+        bureau_x = bureau.x,
+        bureau_y = bureau.y,
+        bureau_largeur = bureau.width,
+        bureau_hauteur = bureau.height,
+        texture_largeur,
+        texture_hauteur,
+        facteur_horizontal = facteur.0,
+        facteur_vertical = facteur.1,
+        "banc : coordonnées de fenêtre et de texture"
+    );
+
+    let places = disposition::tuiles(bureau, nombre as u32).with_context(|| {
+        format!("{nombre} places sur un bureau {}x{}", bureau.width, bureau.height)
+    })?;
+    let places_texture: Vec<Rect> = places
+        .iter()
+        .map(|place| crate::moniteurs_virtuels::vers_texture(*place, bureau, facteur))
+        .collect();
+    tracing::info!(
+        voie = nom_voie,
+        nombre,
+        ?places,
+        ?places_texture,
+        "banc : disposition retenue"
+    );
 
     let mut mires = Mires::ouvrir(capture.device(), &places)?;
 
@@ -70,59 +152,80 @@ pub(super) fn executer(nom_voie: &str, nombre: u8) -> Result<()> {
     drop(capture);
 
     passe_temoin(&mut mires)?;
-    let mut voies = ouvrir_voies(nom_voie, nombre, &mires, &places)?;
-    let compteurs = passe_capture(&mut mires, &mut voies, false)?;
+    let (mut voies, regions) =
+        ouvrir_voies(nom_voie, nombre, &mires, &places, &places_texture, sortie)?;
+    let compteurs = passe_capture(&mut mires, &mut voies, &regions, false)?;
     journaliser("capture", nom_voie, nombre, &compteurs);
-    if compteurs.verdicts_faux > 0 {
+    if compteurs.apres_recouvrement.faux() > 0 {
         tracing::error!(
             voie = nom_voie,
-            verdicts_faux = compteurs.verdicts_faux,
+            verdicts_faux = compteurs.apres_recouvrement.faux(),
+            noires = compteurs.apres_recouvrement.noires,
+            voisines = compteurs.apres_recouvrement.voisines,
+            inconnues = compteurs.apres_recouvrement.inconnues,
             "verdict : ÉLIMINÉE sous recouvrement — la passe d'encodage est sautée"
         );
         return Ok(());
     }
-    let compteurs = passe_capture(&mut mires, &mut voies, true)?;
+    let compteurs = passe_capture(&mut mires, &mut voies, &regions, true)?;
     journaliser("capture+encodage", nom_voie, nombre, &compteurs);
     Ok(())
 }
 
+/// Deux dispositions, et elles ne sont pas interchangeables :
+/// `places_fenetres` est en coordonnées du bureau virtuel — c'est là que sont
+/// les fenêtres, et `PrintWindow` travaille sur la fenêtre elle-même ;
+/// `places_texture` est en coordonnées de la texture dupliquée — c'est là que
+/// recadre `CopySubresourceRegion`. Elles ne coïncident que si la sortie n'est
+/// pas mise à l'échelle, ce qui est le cas du bureau physique mais pas
+/// nécessairement d'une sortie virtuelle (facteur 1,5 relevé par la sonde).
+///
+/// Rend aussi la région RETENUE par voie, celle dont chaque image portera les
+/// dimensions. La passe d'encodage en a besoin telle quelle : dimensionner
+/// l'encodeur sur la place de la fenêtre alors que la voie `duplication` rend
+/// une image aux dimensions de la texture ferait diverger les deux dès que le
+/// facteur d'échelle diffère de 1.
 fn ouvrir_voies(
     nom_voie: &str,
     nombre: u8,
     mires: &Mires,
-    places: &[Rect],
-) -> Result<Vec<Box<dyn VoieDeCapture>>> {
+    places_fenetres: &[Rect],
+    places_texture: &[Rect],
+    sortie: Option<(u32, u32)>,
+) -> Result<(Vec<Box<dyn VoieDeCapture>>, Vec<Rect>)> {
     // Ce que la voie partage entre ses N flux est décidé ICI, une fois : la
     // duplication n'accepte pas d'être ouverte N fois sur la même sortie, et
     // le périphérique D3D11 de la voie printwindow n'a besoin d'exister
     // qu'une fois.
     let mut voies: Vec<Box<dyn VoieDeCapture>> = Vec::new();
-    match nom_voie {
+    let regions: Vec<Rect> = match nom_voie {
         "duplication" => {
-            let partagee = VoieDuplication::partagee()?;
+            let partagee = VoieDuplication::partagee_sur(sortie)?;
             for id in 0..nombre {
                 let mut voie: Box<dyn VoieDeCapture> =
                     Box::new(VoieDuplication::nouvelle(partagee.clone()));
-                voie.ouvrir(mires.hwnd(id)?, places[id as usize])?;
+                voie.ouvrir(mires.hwnd(id)?, places_texture[id as usize])?;
                 voies.push(voie);
             }
+            places_texture[..nombre as usize].to_vec()
         }
         "printwindow" => {
             let (device, contexte) = VoiePrintWindow::partagee()?;
             for id in 0..nombre {
                 let mut voie: Box<dyn VoieDeCapture> =
                     Box::new(VoiePrintWindow::nouvelle(device.clone(), contexte.clone()));
-                voie.ouvrir(mires.hwnd(id)?, places[id as usize])?;
+                voie.ouvrir(mires.hwnd(id)?, places_fenetres[id as usize])?;
                 voies.push(voie);
             }
+            places_fenetres[..nombre as usize].to_vec()
         }
         autre => {
             anyhow::bail!(
                 "voie « {autre} » inconnue du banc — voies câblées : duplication, printwindow"
             )
         }
-    }
-    Ok(voies)
+    };
+    Ok((voies, regions))
 }
 
 /// Passe témoin : les mires peignent, rien ne capture.
@@ -144,21 +247,28 @@ fn passe_temoin(mires: &mut Mires) -> Result<()> {
     Ok(())
 }
 
+/// `regions` porte, voie par voie, les dimensions que ses images auront —
+/// celles retenues par `ouvrir_voies`, et non celles des fenêtres : sur une
+/// sortie mise à l'échelle, la voie `duplication` rend des images aux
+/// dimensions de la TEXTURE, qu'un encodeur dimensionné sur la fenêtre
+/// refuserait.
 fn passe_capture(
     mires: &mut Mires,
     voies: &mut [Box<dyn VoieDeCapture>],
+    regions: &[Rect],
     avec_encodage: bool,
 ) -> Result<Compteurs> {
     let nombre = voies.len();
     let mut compteurs = Compteurs {
         images: vec![0; nombre],
         unites: vec![0; nombre],
-        verdicts_faux: 0,
+        avant_recouvrement: Verdicts::default(),
+        apres_recouvrement: Verdicts::default(),
     };
     let mut encodeurs: Vec<crate::encode::H264Encoder> = Vec::new();
     if avec_encodage {
         for id in 0..nombre {
-            let place = mires.place(id as u8)?;
+            let place = regions[id];
             // Un encodeur par fenêtre, sur le périphérique de SA voie : une
             // texture ne se soumet pas à un encodeur bâti sur un autre
             // périphérique D3D11.
@@ -203,10 +313,20 @@ fn passe_capture(
             };
             compteurs.images[id] += 1;
 
-            // La vérification ne porte QUE sur la fenêtre recouverte, et
-            // seulement une fois le recouvrement posé : ailleurs elle
-            // n'apprendrait rien et coûterait une copie CPU par image.
-            if recouvert && id == 0 {
+            // La vérification ne porte QUE sur la mire 0 — ailleurs elle
+            // coûterait une copie CPU par image sans rien apprendre — mais elle
+            // porte sur TOUTE la passe, avant comme après le recouvrement.
+            //
+            // Elle ne courait auparavant qu'une fois le recouvrement posé :
+            // sur le bureau physique, qu'une fenêtre dégagée soit capturée
+            // juste allait de soi, et seul le recouvrement était en question.
+            // La mesure ③ renverse cela — sur une sortie virtuelle SANS écran
+            // attaché, que Windows compose seulement quelque chose est
+            // l'hypothèse à éprouver. Sans le relevé d'avant recouvrement, une
+            // sortie qui ne rendrait que du noir donnerait le même « éliminée
+            // sous recouvrement » qu'une sortie parfaitement composée, et l'on
+            // conclurait au mauvais défaut.
+            if id == 0 {
                 let appareil = voie.device();
                 let (r, g, b, _a) = crate::diagnostics::pixels::read_pixel(
                     &appareil,
@@ -216,8 +336,11 @@ fn passe_capture(
                     image.width / 2,
                     image.height / 2,
                 )?;
-                if mire::verdict(0, (r, g, b)) != mire::Verdict::Juste {
-                    compteurs.verdicts_faux += 1;
+                let verdict = mire::verdict(0, (r, g, b));
+                if recouvert {
+                    compteurs.apres_recouvrement.compter(verdict);
+                } else {
+                    compteurs.avant_recouvrement.compter(verdict);
                 }
             }
 
@@ -234,7 +357,9 @@ fn passe_capture(
             tracing::info!(
                 images = ?compteurs.images,
                 unites = ?compteurs.unites,
-                verdicts_faux = compteurs.verdicts_faux,
+                verdicts_faux = compteurs.apres_recouvrement.faux(),
+                avant = ?compteurs.avant_recouvrement,
+                apres = ?compteurs.apres_recouvrement,
                 "banc en cours"
             );
             prochain_journal += PERIODE_JOURNAL;
@@ -252,7 +377,9 @@ fn journaliser(passe: &str, voie: &str, nombre: u8, compteurs: &Compteurs) {
         nombre,
         ?cadences,
         unites = ?compteurs.unites,
-        verdicts_faux = compteurs.verdicts_faux,
+        verdicts_faux = compteurs.apres_recouvrement.faux(),
+        mire0_avant_recouvrement = ?compteurs.avant_recouvrement,
+        mire0_apres_recouvrement = ?compteurs.apres_recouvrement,
         "passe terminée"
     );
 }

@@ -54,8 +54,34 @@ ${MULTIFENETRE_WGC:+\$env:MULTIFENETRE_WGC = '$MULTIFENETRE_WGC'}
 ${MULTIFENETRE_REPLIS:+\$env:MULTIFENETRE_REPLIS = '$MULTIFENETRE_REPLIS'}
 ${MULTIFENETRE_BANC:+\$env:MULTIFENETRE_BANC = '$MULTIFENETRE_BANC'}
 ${MULTIFENETRE_N:+\$env:MULTIFENETRE_N = '$MULTIFENETRE_N'}
+${MULTIFENETRE_SORTIE:+\$env:MULTIFENETRE_SORTIE = '$MULTIFENETRE_SORTIE'}
 ${MULTIFENETRE_NVENC:+\$env:MULTIFENETRE_NVENC = '$MULTIFENETRE_NVENC'}
-& '${AGENT_EXE}' *>&1 | Tee-Object -FilePath 'C:\dev\agent.log'
+${MULTIFENETRE_CONTRAT:+\$env:MULTIFENETRE_CONTRAT = '$MULTIFENETRE_CONTRAT'}
+${MULTIFENETRE_VDD:+\$env:MULTIFENETRE_VDD = '$MULTIFENETRE_VDD'}
+${MULTIFENETRE_VDD_VEILLE:+\$env:MULTIFENETRE_VDD_VEILLE = '$MULTIFENETRE_VDD_VEILLE'}
+${MULTIFENETRE_VDD_PURGE:+\$env:MULTIFENETRE_VDD_PURGE = '$MULTIFENETRE_VDD_PURGE'}
+${MULTIFENETRE_VDD_CAPTURE:+\$env:MULTIFENETRE_VDD_CAPTURE = '$MULTIFENETRE_VDD_CAPTURE'}
+# Le StreamWriter ci-dessous règle l'ÉCRITURE du fichier en UTF-8, mais pas la
+# LECTURE de la sortie de l'enfant : PowerShell décode le flux d'agent.exe
+# selon \$OutputEncoding / [Console]::OutputEncoding, qui vaut par défaut la
+# page de code OEM de la console (CP850/CP437), alors que agent.exe écrit de
+# l'UTF-8 — sans ce réglage, les caractères accentués ressortent en mojibake
+# même une fois le fichier réécrit proprement. Les deux réglages sont
+# nécessaires : celui-ci pour la lecture, le StreamWriter pour l'écriture.
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding(\$false)
+
+# UTF-8 SANS BOM, et sans le retour à la ligne que \`Out-File\` insère à la
+# largeur de console : \`Tee-Object\` (PS 5.1) écrit en UTF-16LE et n'a pas de
+# paramètre -Encoding, ce qui rendait les journaux de la sonde précédente
+# illisibles au \`grep\`. \`Out-File -Encoding utf8\` corrigerait l'encodage mais
+# reformaterait les lignes longues. Un StreamWriter explicite ne fait ni l'un
+# ni l'autre.
+\$flux = New-Object System.IO.StreamWriter('C:\dev\agent.log', \$false, (New-Object System.Text.UTF8Encoding(\$false)))
+try {
+  & '${AGENT_EXE}' *>&1 | ForEach-Object { \$flux.WriteLine([string]\$_); \$flux.Flush() }
+} finally {
+  \$flux.Close()
+}
 PS1
 
 # -WindowStyle Hidden : sans ce drapeau, la console PowerShell qui héberge
@@ -65,7 +91,7 @@ PS1
 # console — bleu PowerShell #012456 — au lieu du contenu de la fenêtre
 # ciblée, sur la totalité de la zone échantillonnée). Masquer la console
 # n'affecte ni la session (toujours 1, toujours interactive) ni la sortie
-# (toujours redirigée vers agent.log via Tee-Object).
+# (toujours redirigée vers agent.log par le StreamWriter UTF-8 ci-dessus).
 node "$ROOT/scripts/winrm.js" \
     "schtasks /delete /tn $TASK_NAME /f 2>\$null; \
      schtasks /create /tn $TASK_NAME /f /it /ru '$USER_NAME' /rp '$WINDOWS_ADMIN_PASSWORD' \

@@ -163,9 +163,23 @@ pub(super) struct VoieDuplication {
 }
 
 impl VoieDuplication {
-    /// Crée la duplication partagée, une fois pour tout le banc.
-    pub(super) fn partagee() -> Result<Rc<RefCell<SourceDuplication>>> {
-        let capture = DesktopCapture::new()?;
+    /// Crée la duplication partagée, une fois pour tout le banc, sur la sortie
+    /// DXGI désignée — ou sur celle du bureau si aucune ne l'est.
+    ///
+    /// Le bureau retourné par `desktop_size()` est celui de CETTE sortie, dans
+    /// ses dimensions de MODE — c'est-à-dire les dimensions physiques, là où
+    /// `DXGI_OUTPUT_DESC::DesktopCoordinates` donne les dimensions mises à
+    /// l'échelle par le DPI. Les régions passées à `ouvrir()` doivent donc être
+    /// exprimées dans le repère de la texture, pas dans celui des fenêtres :
+    /// voir `moniteurs_virtuels::vers_texture`, dont `banc::executer` se sert
+    /// pour convertir.
+    pub(super) fn partagee_sur(
+        sortie: Option<(u32, u32)>,
+    ) -> Result<Rc<RefCell<SourceDuplication>>> {
+        let capture = match sortie {
+            Some((adaptateur, index)) => DesktopCapture::sur_sortie(adaptateur, index)?,
+            None => DesktopCapture::new()?,
+        };
         let (largeur, hauteur) = capture.desktop_size();
         let contexte = unsafe { capture.device().GetImmediateContext() }
             .context("contexte immédiat pour les sous-recadrages partagés")?;
