@@ -313,7 +313,7 @@ Dans `agent/src/mire.rs`, à la fin du module `#[cfg(test)] mod tests` (le crée
 - [ ] **Step 2: Lancer les tests pour les voir échouer**
 
 ```bash
-cd agent && cargo test --lib mire:: 2>&1 | tail -20
+cd agent && cargo test mire:: 2>&1 | tail -20
 ```
 
 Attendu : ÉCHEC de compilation, `cannot find function 'voie_controlee' in this scope`.
@@ -347,7 +347,7 @@ pub fn voie_controlee(tour: u64, nombre: usize) -> Option<usize> {
 - [ ] **Step 4: Lancer les tests pour les voir passer**
 
 ```bash
-cd agent && cargo test --lib mire:: 2>&1 | tail -20
+cd agent && cargo test mire:: 2>&1 | tail -20
 ```
 
 Attendu : `test result: ok`, trois tests neufs passants.
@@ -405,7 +405,7 @@ Dans le `mod tests` de `agent/src/moniteurs_virtuels.rs` :
 - [ ] **Step 6: Lancer les tests pour les voir échouer**
 
 ```bash
-cd agent && cargo test --lib moniteurs_virtuels:: 2>&1 | tail -20
+cd agent && cargo test moniteurs_virtuels:: 2>&1 | tail -20
 ```
 
 Attendu : ÉCHEC de compilation, `cannot find function 'places_texture_par_sortie'`.
@@ -460,7 +460,7 @@ pub fn places_texture_par_sortie(
 - [ ] **Step 8: Lancer toute la suite**
 
 ```bash
-cd agent && cargo test --lib 2>&1 | tail -20
+cd agent && cargo test 2>&1 | tail -20
 ```
 
 Attendu : `test result: ok`, aucun test antérieur cassé.
