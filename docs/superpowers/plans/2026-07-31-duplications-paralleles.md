@@ -370,9 +370,10 @@ Dans le `mod tests` de `agent/src/moniteurs_virtuels.rs` :
         let textures = vec![(1280, 720), (1280, 720)];
         let places = places_texture_par_sortie(&sorties, &textures).unwrap();
         assert_eq!(places[0], Rect { x: 0, y: 0, width: 1280, height: 720 });
-        // Facteur 1280/853 ≈ 1,5 : la seconde sortie couvre TOUTE sa texture,
-        // pas 853×480 d'un coin.
-        assert_eq!(places[1], Rect { x: 0, y: 0, width: 1500, height: 720 });
+        // Facteur 1280/853 ≈ 1,5 : la seconde sortie couvre TOUTE sa texture.
+        // C'est le test qui compte : avec le facteur de la sortie 0 (l'unité),
+        // on obtiendrait 853×480 dans un coin d'une texture 1280×720.
+        assert_eq!(places[1], Rect { x: 0, y: 0, width: 1280, height: 720 });
     }
 
     /// Chaque place est ramenée à l'origine de SA texture : c'est ce qui
