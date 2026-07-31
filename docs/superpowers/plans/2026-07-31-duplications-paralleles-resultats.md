@@ -449,6 +449,40 @@ cela ne prouve pas.
    convertisseur, retirée depuis, et le départage n'a pas été fait — que le gel
    ait disparu avec cette file ne prouve pas qu'il en venait.
 
+   **Ce risque est PRÉSENT, pas différé au chantier D.** Une première rédaction
+   de cette section le décrivait comme « un gel à la fermeture d'une fenêtre »,
+   ce qui le renvoyait au multi-fenêtres à venir. C'est faux :
+   `Drop for H264Encoder` s'exécute **déjà, en production mono-fenêtre**, à
+   chaque remplacement de l'encodeur de la session —
+   `WindowsSource::set_encode_size`, appelé par `transport::adaptation` à
+   **chaque changement de barreau** de l'adaptation réseau, et
+   `WindowsSource::resize` au redimensionnement de la fenêtre. Les deux tournent
+   sur le fil unique de `Session::run` (`tokio::task::spawn_blocking`) : un gel
+   y figerait la **session entière** — capture, encodage, RTP, ICE — sans
+   reprise.
+
+   **Borne du pire cas, par destruction d'encodeur.** La partie bornée vaut au
+   plus `2 × DELAI_BARRIERE + 2 × DELAI_ARRET_MFT` = **8 s** (deux barrières,
+   plus une attente de confirmation d'arrêt par MFT) ; sur les machines
+   éprouvées, le convertisseur n'expose pas `IMFShutdown` et sa confirmation ne
+   court pas, ce qui ramène cette part à **6 s**. **Le total n'est borné par
+   rien** : ni les quatre `ProcessMessage`, ni les deux `Shutdown()`. Le nominal
+   relevé est sans commune mesure — 0,5 ms par encodeur, 4,0 ms pour huit
+   détruits d'affilée, `attente_ms=0` partout (`paralleles-n8.log`) — **mais un
+   nominal n'est pas une borne.** Avant cette branche, ce `Drop` n'envoyait que
+   quatre `ProcessMessage` : l'arbitrage a bel et bien allongé le pire cas de ce
+   chemin de production.
+
+   **La mitigation est l'observabilité, et elle doit valoir en exploitation.**
+   Les deux traces qui encadrent l'appel étaient en `debug!` alors que
+   `scripts/run-agent.sh` fixe `RUST_LOG=info` : la mitigation écrite n'existait
+   pas là où elle compte — vérifié, `paralleles-n8.log` (info) ne porte aucune
+   ligne `agent::encode::arret`, les journaux `2ter-*` (debug) en portent. Elles
+   sont **passées à `info!`** en revue finale de branche (deux lignes par
+   destruction d'encodeur, jamais par trame). *C'est le seul changement de code
+   de production de cette revue, et il ne touche qu'un niveau de journalisation
+   — il est postérieur au binaire mesuré.*
+
    **Le retirer n'est pas une option** : sans lui, la faute revient **2 fois sur
    5**, barrière pourtant franchie (`2ter-recidive-barriere-seule-agent.log`).
    Arrêt et barrière ne sont donc pas redondants — chacun retiré séparément

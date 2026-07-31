@@ -1334,6 +1334,16 @@ recouvrement (`verdicts_faux` = 449 / 449 / 536 à N = 2/4/8), ce qui **coupe la
 passe d'encodage** — il n'existe donc aucune mesure d'encodage multi-fenêtres
 par cette voie, par construction du protocole.
 
+> ✅ **Note du 31 juillet 2026 — les deux réserves du paragraphe ci-dessus sont
+> levées** par le chantier des duplications parallèles (section « N duplications
+> DXGI de front » plus bas). **Le cas « N fenêtres gardant chacune leur
+> résolution utile » a été exercé** : 8 sorties de 1280×720, aire totale
+> multipliée par 8 (0,92 → 7,37 Mpx), cadence par fenêtre inchangée (90,1 i/s).
+> Et **des mesures d'encodage multi-fenêtres existent désormais** — quatre rangs,
+> jusqu'à N=8, zéro verdict faux. Ce montage-là n'a pas de recouvrement (une
+> fenêtre par sortie), donc pas de porte éliminatoire : ce n'est pas le montage à
+> aire fixe ci-dessus, et **les deux séries ne se comparent d'aucun chiffre**.
+
 **Plafond d'encodage, formulation bornée, composant du refus non identifié** :
 sur un périphérique D3D11 **unique et partagé**, à 720p/60/8 Mb/s, 8 instances
 du pipeline Media Foundation réussissent, la 9ᵉ échoue à la **liaison du type
@@ -1371,6 +1381,19 @@ cadence *ensemble* — aucune image n'a été soumise, seule la **construction**
 mesurée. Enfin, détruire un encodeur n'a **pas** été montré libérer la place :
 la mise en sommeil des fenêtres masquées reste à éprouver par une séquence
 « créer 8 → en détruire 1 → tenter un 9ᵉ ».
+
+> ✅ **Note du 31 juillet 2026 — « si 8 encodeurs tiennent la cadence ensemble »
+> est répondu : ils la tiennent.** Huit encodeurs alimentés de front pendant
+> 10 s rendent **90,1 i/s par fenêtre** en capture+encodage, zéro verdict faux
+> (chantier des duplications parallèles, section plus bas). Portée exacte : sur
+> **huit périphériques D3D11 distincts**, 1280×720 à 60 Hz et 8 Mb/s, **une**
+> exécution par rang, unités H.264 comptées et jamais décodées. Le montage de la
+> mesure ② — **périphérique unique partagé** — n'a, lui, toujours jamais été
+> alimenté. **Les autres réserves de ce paragraphe restent entières** : la couche
+> qui impose le plafond de 8 n'est pas identifiée, rien n'est su d'autres
+> résolutions ou débits, et la mise en sommeil des fenêtres masquées demeure une
+> conjecture — « créer 8 → en détruire 1 → tenter un 9ᵉ » n'a toujours pas été
+> jouée.
 
 **Voie recommandée** : le moniteur virtuel par fenêtre (seule voie qui préserve
 le chemin GPU en supprimant le recouvrement par construction), avec `PrintWindow`
@@ -1462,6 +1485,11 @@ confirmation par des processus tiers).
   n'a été soumise (seule la *création* est mesurée), et **détruire un encodeur
   n'a pas été montré libérer la place** — la mise en sommeil des fenêtres
   masquées repose donc sur une conjecture.
+  ✅ **Des images ont depuis été soumises** (31 juillet 2026) : 8 encodeurs
+  alimentés ensemble tiennent 90,1 i/s par fenêtre — mais sur huit
+  périphériques D3D11 **distincts**, pas sur le périphérique unique partagé de
+  cette mesure-ci. **La couche du plafond et la mise en sommeil restent, elles,
+  entièrement ouvertes.**
 - **La cause du refus à la 11ᵉ sortie n'est pas isolée**, et on ignore si le
   vivier de 10 est global au pilote ou par client (Apollo pingue le même
   pilote). **L'unité du chien de garde (`delai = 3`) reste inconnue : aucune
@@ -1589,6 +1617,19 @@ sémantique de `SetMultithreadProtected`, aucun relevé de huit pointeurs
 distincts), topologie rendue **nom pour nom** à son état de départ, zéro
 `ERROR`, zéro `WARN`, **aucun rang rejoué**.
 
+Deux réserves que ce tableau ne porte pas, et qu'il ne faut pas perdre en le
+recopiant (§6 des résultats) :
+
+- **la restauration « nom pour nom » n'est pas une preuve d'absence d'effet
+  résiduel** — elle porte sur l'ensemble des **noms** de sorties attachées, et
+  sur rien d'autre : ni mémoire, ni état du pilote, ni ressources DXGI ;
+- **la fraîcheur du binaire mesuré n'est adossée à aucune pièce versée.** La
+  sortie de `scripts/build-agent.sh` a été recopiée d'un terminal, jamais
+  capturée dans un fichier. Vérifiable depuis le dépôt, et rien de plus :
+  `git status --porcelain agent/ scripts/` vide à `db8cc85`, et la date du
+  binaire sur la VM antérieure de 1 min 40 s à l'horodatage du commit —
+  **cohérent** avec un binaire bâti sur ces sources, sans le prouver.
+
 ### Ce que ce montage a de neuf : l'aire croît avec N
 
 **Tous les bancs antérieurs de ce projet mesuraient à aire totale fixe.**
@@ -1636,6 +1677,19 @@ d'absence, et l'énoncé porte toujours son nombre d'exécutions.*
   aussi une file au convertisseur, retirée depuis, et le départage n'a pas été
   fait. **Le retirer n'est pas une option** : sans lui la faute revient 2 fois
   sur 5, barrière pourtant franchie. Arrêt et barrière ne sont pas redondants.
+
+  ⚠️ **Ce risque est PRÉSENT, pas réservé au chantier D.**
+  `Drop for H264Encoder` court **déjà en production mono-fenêtre** : à chaque
+  changement de barreau de l'adaptation réseau (`set_encode_size`) et à chaque
+  redimensionnement (`resize`), sur le fil unique de `Session::run`
+  (`spawn_blocking`) — un gel y figerait la session entière. **Borne du pire
+  cas par destruction d'encodeur** : `2 × DELAI_BARRIERE + 2 × DELAI_ARRET_MFT`
+  = **8 s** de partie bornée (6 s sur les machines éprouvées, le convertisseur
+  n'exposant pas `IMFShutdown`), **et rien ne borne le total** — ni les quatre
+  `ProcessMessage`, ni les deux `Shutdown()`. Nominal relevé : 0,5 ms par
+  encodeur, 4,0 ms pour huit. Les deux traces qui encadrent l'appel sont en
+  **`info!`** et non `debug!` — l'exploitation tourne en `RUST_LOG=info`, et une
+  mitigation muette n'en est pas une. **Ne pas les redescendre.**
 - **Le convertisseur de couleur n'est couvert par rien.** Sans effet tant qu'il
   retombe sur `CLSID_VideoProcessorMFT` (synchrone), mais **sur un hôte doté d'un
   Video Processor matériel ce serait une MFT matérielle sans barrière** —

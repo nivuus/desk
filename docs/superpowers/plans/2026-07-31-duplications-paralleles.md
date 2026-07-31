@@ -1,5 +1,14 @@
 # N duplications DXGI de front sur N sorties virtuelles — plan d'implémentation
 
+> ✅ **PLAN EXÉCUTÉ, toutes tâches closes** (31 juillet 2026 ; les 53 cases ont
+> été cochées en revue finale de branche). Résultats :
+> `2026-07-31-duplications-paralleles-resultats.md` — **voie reçue**, 90,1 i/s
+> par fenêtre en capture+encodage à N=8, zéro verdict faux, une exécution par
+> rang. Le défaut hérité décrit ci-dessous **au présent** (« la passe d'encodage
+> tue le processus », tâches 1 et 2) est **diagnostiqué et corrigé** :
+> `agent/src/encode/arret.rs`. Ce document décrit l'état d'avant — c'est un
+> plan, pas un compte rendu.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Mesurer si N sorties virtuelles portant chacune une fenêtre, une duplication DXGI et un encodeur H.264 tiennent 60 i/s par fenêtre jusqu'à N=8 — l'arrangement que la voie recommandée du chantier D propose réellement et que rien n'a exercé.
@@ -57,7 +66,7 @@
 
 **Ne pas déduire, désigner.** La leçon du chantier précédent est explicite : instrumenter la sortie autant que l'entrée, deux traces encadrant chaque relâchement.
 
-- [ ] **Step 1: Démarrer la VM et charger l'environnement**
+- [x] **Step 1: Démarrer la VM et charger l'environnement**
 
 ```bash
 virsh list --all
@@ -69,7 +78,7 @@ set -a && source .env && set +a
 
 Attendu : `/media/vm/dev` listable. `mountpoint -q` ne suffit pas — l'entrée CIFS persiste VM éteinte.
 
-- [ ] **Step 2: Rendre la libération des encodeurs explicite et tracée**
+- [x] **Step 2: Rendre la libération des encodeurs explicite et tracée**
 
 Dans `agent/src/diagnostics/multifenetre/banc.rs`, à la fin de `passe_capture`, juste avant `Ok(compteurs)` :
 
@@ -91,7 +100,7 @@ Dans `agent/src/diagnostics/multifenetre/banc.rs`, à la fin de `passe_capture`,
     Ok(compteurs)
 ```
 
-- [ ] **Step 3: Tracer aussi le relâchement des voies, qui suit**
+- [x] **Step 3: Tracer aussi le relâchement des voies, qui suit**
 
 Dans `executer`, remplacer la fin (à partir de l'appel de la seconde `passe_capture`) par :
 
@@ -107,7 +116,7 @@ Dans `executer`, remplacer la fin (à partir de l'appel de la seconde `passe_cap
     Ok(())
 ```
 
-- [ ] **Step 4: Compiler sur la VM**
+- [x] **Step 4: Compiler sur la VM**
 
 ```bash
 scripts/build-agent.sh
@@ -115,7 +124,7 @@ scripts/build-agent.sh
 
 Attendu : compilation réussie. En cas de `STATUS_STACK_BUFFER_OVERRUN (0xc0000409)`, c'est le quota WinRM — le script le relève lui-même, relancer.
 
-- [ ] **Step 5: Reproduire sur le cas minimal**
+- [x] **Step 5: Reproduire sur le cas minimal**
 
 Le cas minimal n'exige **aucune** sortie virtuelle : le défaut se reproduit sur le bureau physique.
 
@@ -128,11 +137,11 @@ grep -n "libération\|passe terminée" /media/vm/dev/agent.log
 
 Attendu : la dernière ligne `libération d'un encodeur : avant` **sans** son `après` correspondant désigne l'encodeur fautif ; ou bien tous les encodeurs passent et c'est `libération des voies de capture : avant` qui reste orpheline.
 
-- [ ] **Step 6: Consigner le point désigné**
+- [x] **Step 6: Consigner le point désigné**
 
 Écrire dans `/tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/*/scratchpad/defaut-liberation-constat.md` : la dernière ligne écrite, la première absente, et laquelle des trois hypothèses de la spec §5 elle accrédite. **Ne rien conclure au-delà** : le journal dit *où*, pas *pourquoi*.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add agent/src/diagnostics/multifenetre/banc.rs
@@ -197,17 +206,17 @@ Ajouter `MFT_MESSAGE_COMMAND_DRAIN` aux imports `windows::Win32::Media::MediaFou
 
 **(c) `MFShutdown` court trop tôt parce qu'il court N fois.** `MediaFoundationSession` est un champ **par encodeur** (`encode.rs:312`) : N encodeurs appellent `MFStartup` N fois et `MFShutdown` N fois. Le compte est apparié, mais la destruction du premier encodeur décrémente pendant que N-1 encodeurs vivent encore. Correctif : ne pas toucher au comptage — le rendre **explicite et unique** au niveau du banc en construisant les encodeurs et en les détruisant tous ensemble, ce que la tâche 1 a déjà rendu vrai. Si le journal accrédite cette piste, le vrai correctif est produit et sort du périmètre de ce chantier : le noter dans le document de résultats comme **dette désignée**, et poser le contournement minimal (une `MediaFoundationSession` unique hissée hors des encodeurs) en le documentant comme tel.
 
-- [ ] **Step 1: Appliquer le correctif désigné par la tâche 1**
+- [x] **Step 1: Appliquer le correctif désigné par la tâche 1**
 
 Un seul des trois ci-dessus. Le commentaire du correctif cite la ligne de journal qui l'a désigné.
 
-- [ ] **Step 2: Compiler**
+- [x] **Step 2: Compiler**
 
 ```bash
 scripts/build-agent.sh
 ```
 
-- [ ] **Step 3: Vérifier sur le cas minimal**
+- [x] **Step 3: Vérifier sur le cas minimal**
 
 ```bash
 MULTIFENETRE_BANC=duplication MULTIFENETRE_N=1 RUST_LOG=info scripts/run-agent.sh
@@ -217,7 +226,7 @@ grep -n "passe terminée\|libération" /media/vm/dev/agent.log
 
 Attendu, et c'est le critère : la ligne `passe terminée passe="capture+encodage"` est présente, précédée de `libération des encodeurs : terminée` et suivie de `libération des voies de capture : après`. Le processus rend la main.
 
-- [ ] **Step 4: Vérifier à N=2, où le défaut coûtait le plus**
+- [x] **Step 4: Vérifier à N=2, où le défaut coûtait le plus**
 
 ```bash
 MULTIFENETRE_BANC=duplication MULTIFENETRE_N=2 RUST_LOG=info scripts/run-agent.sh
@@ -227,7 +236,7 @@ grep -n "passe terminée" /media/vm/dev/agent.log
 
 Attendu : la passe `capture` journalise son bilan. La passe `capture+encodage` est **sautée** — la porte éliminatoire coupe sous recouvrement sur cette voie (`verdicts_faux > 0`), c'est le comportement connu et attendu, pas une régression.
 
-- [ ] **Step 5: Verser le journal**
+- [x] **Step 5: Verser le journal**
 
 ```bash
 mkdir -p docs/superpowers/plans/journaux-duplications-paralleles
@@ -237,7 +246,7 @@ file docs/superpowers/plans/journaux-duplications-paralleles/*.log
 
 Attendu : `UTF-8 Unicode text`, sans BOM. Si le fichier ressort en `ISO-8859` ou avec du mojibake sur les accents, les réglages d'encodage de `run-agent.sh` ont été défaits — les rétablir avant de continuer.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add agent/src/encode.rs docs/superpowers/plans/journaux-duplications-paralleles/
@@ -267,7 +276,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 **Pourquoi ces deux-là et pas ailleurs.** `diagnostics::multifenetre` est tout entier `#[cfg(windows)]` (`diagnostics.rs:20-21`) : rien de ce qui y vit ne peut être testé sur l'hôte. `mire.rs` et `moniteurs_virtuels.rs` sont hors `#[cfg(windows)]`, délibérément et pour cette raison exacte (voir le commentaire de tête de `moniteurs_virtuels.rs`).
 
-- [ ] **Step 1: Écrire les tests de la rotation, qui échouent**
+- [x] **Step 1: Écrire les tests de la rotation, qui échouent**
 
 Dans `agent/src/mire.rs`, à la fin du module `#[cfg(test)] mod tests` (le créer s'il n'existe pas, avec `use super::*;`) :
 
@@ -310,7 +319,7 @@ Dans `agent/src/mire.rs`, à la fin du module `#[cfg(test)] mod tests` (le crée
     }
 ```
 
-- [ ] **Step 2: Lancer les tests pour les voir échouer**
+- [x] **Step 2: Lancer les tests pour les voir échouer**
 
 ```bash
 cd agent && cargo test mire:: 2>&1 | tail -20
@@ -318,7 +327,7 @@ cd agent && cargo test mire:: 2>&1 | tail -20
 
 Attendu : ÉCHEC de compilation, `cannot find function 'voie_controlee' in this scope`.
 
-- [ ] **Step 3: Écrire l'implémentation minimale**
+- [x] **Step 3: Écrire l'implémentation minimale**
 
 Dans `agent/src/mire.rs`, après `verdict` :
 
@@ -344,7 +353,7 @@ pub fn voie_controlee(tour: u64, nombre: usize) -> Option<usize> {
 }
 ```
 
-- [ ] **Step 4: Lancer les tests pour les voir passer**
+- [x] **Step 4: Lancer les tests pour les voir passer**
 
 ```bash
 cd agent && cargo test mire:: 2>&1 | tail -20
@@ -352,7 +361,7 @@ cd agent && cargo test mire:: 2>&1 | tail -20
 
 Attendu : `test result: ok`, trois tests neufs passants.
 
-- [ ] **Step 5: Écrire les tests des places par sortie, qui échouent**
+- [x] **Step 5: Écrire les tests des places par sortie, qui échouent**
 
 Dans le `mod tests` de `agent/src/moniteurs_virtuels.rs` :
 
@@ -402,7 +411,7 @@ Dans le `mod tests` de `agent/src/moniteurs_virtuels.rs` :
     }
 ```
 
-- [ ] **Step 6: Lancer les tests pour les voir échouer**
+- [x] **Step 6: Lancer les tests pour les voir échouer**
 
 ```bash
 cd agent && cargo test moniteurs_virtuels:: 2>&1 | tail -20
@@ -410,7 +419,7 @@ cd agent && cargo test moniteurs_virtuels:: 2>&1 | tail -20
 
 Attendu : ÉCHEC de compilation, `cannot find function 'places_texture_par_sortie'`.
 
-- [ ] **Step 7: Écrire l'implémentation**
+- [x] **Step 7: Écrire l'implémentation**
 
 Dans `agent/src/moniteurs_virtuels.rs`, après `vers_texture` :
 
@@ -457,7 +466,7 @@ pub fn places_texture_par_sortie(
 }
 ```
 
-- [ ] **Step 8: Lancer toute la suite**
+- [x] **Step 8: Lancer toute la suite**
 
 ```bash
 cd agent && cargo test 2>&1 | tail -20
@@ -465,7 +474,7 @@ cd agent && cargo test 2>&1 | tail -20
 
 Attendu : `test result: ok`, aucun test antérieur cassé.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add agent/src/mire.rs agent/src/moniteurs_virtuels.rs
@@ -503,7 +512,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 **Remaniement pur.** Aucun comportement ne change. Le contrôle est que le banc mono-sortie rend les mêmes chiffres qu'avant.
 
-- [ ] **Step 1: Créer `compteurs.rs` avec ce qui migre**
+- [x] **Step 1: Créer `compteurs.rs` avec ce qui migre**
 
 Créer `agent/src/diagnostics/multifenetre/compteurs.rs` avec en tête :
 
@@ -540,7 +549,7 @@ impl Compteurs {
 
 `passe_temoin` et `journaliser` lisent `DUREE_PASSE` directement, comme aujourd'hui : les deux protocoles mesurent sur la même durée, et un paramètre que les deux appelants rempliraient toujours avec la même constante serait un réglage qui n'existe pas.
 
-- [ ] **Step 2: Y déplacer aussi la lecture de verdict**
+- [x] **Step 2: Y déplacer aussi la lecture de verdict**
 
 La lecture de pixel est identique dans les deux protocoles ; seul diffère *quelle* voie est lue. Ajouter à `compteurs.rs` :
 
@@ -568,13 +577,13 @@ pub(super) fn lire_verdict(
 }
 ```
 
-- [ ] **Step 3: Déclarer le module et adapter `banc.rs`**
+- [x] **Step 3: Déclarer le module et adapter `banc.rs`**
 
 Dans `agent/src/diagnostics/multifenetre.rs`, ajouter `pub(super) mod compteurs;` en respectant l'ordre alphabétique (après `mod capture_virtuelle;`).
 
 Dans `banc.rs` : retirer ce qui a migré, ajouter `use super::compteurs::{self, Compteurs, DUREE_PASSE, PERIODE_JOURNAL};`, remplacer la construction manuelle de `Compteurs` par `Compteurs::nouveaux(nombre)`, remplacer le bloc de lecture de pixel de `passe_capture` par un appel à `compteurs::lire_verdict(voie.as_mut(), &image, 0)`, et passer `DUREE_PASSE` aux deux fonctions déplacées.
 
-- [ ] **Step 4: Exposer un constructeur de périphérique dans `voies.rs`**
+- [x] **Step 4: Exposer un constructeur de périphérique dans `voies.rs`**
 
 `paralleles.rs` doit donner un périphérique D3D11 à `Mires::ouvrir` sans ouvrir de `DesktopCapture` provisoire — DXGI n'autorisant qu'une duplication par sortie, une capture provisoire ferait échouer la vraie en `0x80070057`. Extraire de `VoiePrintWindow::partagee` la création du périphérique :
 
@@ -592,7 +601,7 @@ pub(super) fn creer_device() -> Result<(ID3D11Device, ID3D11DeviceContext)> {
 
 Faire appeler `creer_device()` par `VoiePrintWindow::partagee`.
 
-- [ ] **Step 5: Compiler et vérifier les tailles**
+- [x] **Step 5: Compiler et vérifier les tailles**
 
 ```bash
 cd agent && cargo check 2>&1 | tail -20
@@ -601,7 +610,7 @@ wc -l src/diagnostics/multifenetre/banc.rs src/diagnostics/multifenetre/compteur
 
 Attendu : compilation propre ; `banc.rs` sous 300 lignes, `compteurs.rs` sous 200.
 
-- [ ] **Step 6: Vérifier que le banc rend les mêmes chiffres qu'avant**
+- [x] **Step 6: Vérifier que le banc rend les mêmes chiffres qu'avant**
 
 ```bash
 scripts/build-agent.sh
@@ -612,7 +621,7 @@ grep -n "passe terminée\|verdict :" /media/vm/dev/agent.log
 
 Attendu : la passe `capture` journalise des cadences du même ordre que celles connues (≈99 i/s par fenêtre à N=2 sur le bureau physique) et la porte éliminatoire coupe toujours sous recouvrement. Un remaniement qui changerait ces chiffres n'en serait pas un.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add agent/src/diagnostics/multifenetre/
@@ -640,7 +649,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 **Le squelette, dans l'ordre imposé par la spec §3.**
 
-- [ ] **Step 1: Écrire l'en-tête et la séquence de création**
+- [x] **Step 1: Écrire l'en-tête et la séquence de création**
 
 Créer `agent/src/diagnostics/multifenetre/paralleles.rs` :
 
@@ -743,7 +752,7 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
 }
 ```
 
-- [ ] **Step 2: Écrire la désignation des sorties neuves**
+- [x] **Step 2: Écrire la désignation des sorties neuves**
 
 ```rust
 /// Retrouve les `nombre` sorties que cette sonde vient de créer, par
@@ -790,7 +799,7 @@ fn designer_sorties_neuves(
 }
 ```
 
-- [ ] **Step 3: Écrire l'ouverture des N duplications — le cœur de la question posée**
+- [x] **Step 3: Écrire l'ouverture des N duplications — le cœur de la question posée**
 
 ```rust
 /// Ouvre une duplication DXGI par sortie.
@@ -859,7 +868,7 @@ fn ouvrir_duplications(
     }
 ```
 
-- [ ] **Step 4: Écrire les passes, avec ping et rotation**
+- [x] **Step 4: Écrire les passes, avec ping et rotation**
 
 ```rust
 fn passe_capture(
@@ -955,7 +964,7 @@ fn passe_capture(
 
 `Compteurs` porte deux jeux de verdicts (avant/après recouvrement) hérités du protocole mono-sortie ; ici seul `apres_recouvrement` est alimenté, et `journaliser` l'affiche sous son nom. Si cette asymétrie gêne à la lecture du journal, renommer les deux champs en `avant`/`pendant` **dans la même tâche**, en adaptant `banc.rs` — pas d'alias, pas de champ mort.
 
-- [ ] **Step 5: Écrire `executer_passes` et `constater_survie`**
+- [x] **Step 5: Écrire `executer_passes` et `constater_survie`**
 
 ```rust
 /// Les trois passes, dans l'ordre.
@@ -1042,7 +1051,7 @@ fn constater_survie(virtuelles: &[SortieDxgi]) {
 }
 ```
 
-- [ ] **Step 6: Aiguiller la variable**
+- [x] **Step 6: Aiguiller la variable**
 
 Dans `agent/src/diagnostics/multifenetre.rs`, **après** le bloc `MULTIFENETRE_VDD_PURGE` (cette sonde crée des sorties, une purge demandée ne doit jamais être supplantée) et près de `MULTIFENETRE_VDD_CAPTURE` :
 
@@ -1062,7 +1071,7 @@ Dans `agent/src/diagnostics/multifenetre.rs`, **après** le bloc `MULTIFENETRE_V
 
 Et `pub(super) mod paralleles;` dans la liste des modules.
 
-- [ ] **Step 7: Transmettre la variable à la VM**
+- [x] **Step 7: Transmettre la variable à la VM**
 
 Dans `scripts/run-agent.sh`, après la ligne `MULTIFENETRE_VDD_CAPTURE` :
 
@@ -1070,7 +1079,7 @@ Dans `scripts/run-agent.sh`, après la ligne `MULTIFENETRE_VDD_CAPTURE` :
 ${MULTIFENETRE_VDD_PARALLELE:+\$env:MULTIFENETRE_VDD_PARALLELE = '$MULTIFENETRE_VDD_PARALLELE'}
 ```
 
-- [ ] **Step 8: Compiler et vérifier la taille**
+- [x] **Step 8: Compiler et vérifier la taille**
 
 ```bash
 cd agent && cargo check 2>&1 | tail -20
@@ -1080,7 +1089,7 @@ wc -l src/diagnostics/multifenetre/paralleles.rs
 
 Attendu : compilation propre, pas d'avertissement neuf, fichier sous 500 lignes. S'il approche, séparer le pilote des sorties (création, désignation, survie) de la boucle de passes, comme la spec §6 le prévoit.
 
-- [ ] **Step 9: Épreuve à N=1 avant toute mesure**
+- [x] **Step 9: Épreuve à N=1 avant toute mesure**
 
 ```bash
 scripts/build-agent.sh
@@ -1091,7 +1100,7 @@ grep -n "sortie virtuelle\|duplication ouverte\|passe terminée\|état initial" 
 
 Attendu : une sortie créée, une duplication ouverte, trois passes journalisées, `état initial restauré`. À N=1 ce montage doit retrouver l'ordre de grandeur de la mesure ③ (90,0 i/s par fenêtre) : un écart franc désignerait le banc, pas la voie.
 
-- [ ] **Step 10: Contrôler depuis un processus neuf**
+- [x] **Step 10: Contrôler depuis un processus neuf**
 
 ```bash
 MULTIFENETRE_DXGI=1 RUST_LOG=info scripts/run-agent.sh
@@ -1101,7 +1110,7 @@ grep -n "sortie" /media/vm/dev/agent.log
 
 Attendu : aucune sortie virtuelle résiduelle. Le processus mesureur est juge et partie ; ce relevé-ci est le contrôle qui vaut.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add agent/src/diagnostics/multifenetre/ scripts/run-agent.sh
@@ -1126,7 +1135,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 **Un processus par rang**, avec purge et contrôle neuf entre chacun.
 
-- [ ] **Step 1: Vérifier l'état de départ, depuis un processus neuf**
+- [x] **Step 1: Vérifier l'état de départ, depuis un processus neuf**
 
 ```bash
 set -a && source .env && set +a
@@ -1137,7 +1146,7 @@ grep -c "sortie" /media/vm/dev/agent.log
 
 Attendu : aucune sortie virtuelle avant de commencer. Noter les **noms** des sorties présentes — c'est la référence de tous les contrôles qui suivent, et Apollo peut la changer sous nos pieds.
 
-- [ ] **Step 2: Prendre les quatre rangs**
+- [x] **Step 2: Prendre les quatre rangs**
 
 Pour chaque `N` dans 1, 2, 4, 8, **dans cet ordre** :
 
@@ -1154,11 +1163,11 @@ done
 
 Attendu par rang : `N sorties virtuelles créées`, `N duplications ouvertes`, trois lignes `passe terminée`, `état initial restauré`. **Si une duplication est refusée**, le rang s'arrête là et c'est le résultat : ne pas retenter, ne pas contourner, verser le journal et passer à la rédaction.
 
-- [ ] **Step 3: Contrôler les encodages, dont le plafond connu est 8**
+- [x] **Step 3: Contrôler les encodages, dont le plafond connu est 8**
 
 À N=8, la passe capture+encodage construit 8 encodeurs — exactement le plafond mesuré au chantier précédent, refus au 9ᵉ sur `SetOutputType`. Si un encodeur est refusé ici alors que 8 passaient à 720p sur un périphérique unique, c'est un **fait neuf** : le relever tel quel, avec le rang et le contexte de l'appel, sans l'expliquer.
 
-- [ ] **Step 4: Vérifier l'encodage des journaux**
+- [x] **Step 4: Vérifier l'encodage des journaux**
 
 ```bash
 file docs/superpowers/plans/journaux-duplications-paralleles/*.log
@@ -1167,7 +1176,7 @@ grep -c "libération" docs/superpowers/plans/journaux-duplications-paralleles/pa
 
 Attendu : `UTF-8 Unicode text` pour les quatre, accents intacts, `grep` sur un mot accentué non vide.
 
-- [ ] **Step 5: Contrôle final depuis un processus neuf**
+- [x] **Step 5: Contrôle final depuis un processus neuf**
 
 ```bash
 MULTIFENETRE_DXGI=1 RUST_LOG=info scripts/run-agent.sh && sleep 30
@@ -1176,7 +1185,7 @@ grep -n "sortie" /media/vm/dev/agent.log
 
 Attendu : l'ensemble des noms est identique à celui du Step 1.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add docs/superpowers/plans/journaux-duplications-paralleles/
@@ -1200,31 +1209,31 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 **La discipline d'énoncé est le livrable.** Sur les deux chantiers de mesure précédents, la quasi-totalité des rondes de correction ont porté sur des **rapports qui affirmaient au-delà de leur relevé**, jamais sur des bugs. Chaque chiffre du rapport cite le journal et la ligne d'où il vient.
 
-- [ ] **Step 1: Écrire le tableau des cadences**
+- [x] **Step 1: Écrire le tableau des cadences**
 
 Un rang par ligne : N, cadence par fenêtre en capture, en capture+encodage, débit de pixels total (N × 1280 × 720 × cadence), unités encodées, verdicts par nature. Recoller la colonne « débit de pixels » aux quatre rangs de `duplication` de la sonde (208–258 MP/s à aire fixe) **en signalant que les deux séries ne mesurent pas la même chose** : celle-ci fait croître l'aire avec N, celle-là non.
 
-- [ ] **Step 2: Prononcer le critère de réception**
+- [x] **Step 2: Prononcer le critère de réception**
 
 Reçue si, à N=8 : ≥ 60 i/s par fenêtre en capture+encodage **et** zéro verdict faux. Écrire le verdict en une phrase, puis les chiffres qui le fondent. Si le critère n'est pas tenu, dire **de combien** et sur quel rang il décroche — un refus chiffré vaut mieux qu'un refus qualitatif.
 
-- [ ] **Step 3: Écrire la section « Ce que cette mesure n'établit pas »**
+- [x] **Step 3: Écrire la section « Ce que cette mesure n'établit pas »**
 
 Reprendre la spec §4 : rien au-delà de 8 sorties, rien d'autres résolutions ou débits, rien de la latence, rien du comportement quand Apollo consomme le même vivier, rien de la couche qui imposerait un plafond, rien de la mise en sommeil des fenêtres masquées. Y ajouter toute réserve née pendant l'exécution.
 
-- [ ] **Step 4: Consigner le sort du défaut hérité**
+- [x] **Step 4: Consigner le sort du défaut hérité**
 
 Ce qui a été désigné par la tâche 1, ce qui a été corrigé par la tâche 2, et ce qui reste — notamment si l'hypothèse (c) s'est vérifiée, auquel cas la dette `MediaFoundationSession` par encodeur est à nommer explicitement comme portée au chantier D.
 
-- [ ] **Step 5: Mettre à jour `CLAUDE.md`**
+- [x] **Step 5: Mettre à jour `CLAUDE.md`**
 
 Ajouter une section datée après « Mesures préalables au chantier D », sur le modèle des précédentes : les chiffres, les pièges neufs, ce que la mesure ne dit pas, et la variable d'environnement `MULTIFENETRE_VDD_PARALLELE` dans le tableau existant. Corriger la phrase de la section « Mesures préalables » qui déclare cette mesure due.
 
-- [ ] **Step 6: Mettre à jour la spec du chantier D**
+- [x] **Step 6: Mettre à jour la spec du chantier D**
 
 Dans `docs/superpowers/specs/2026-07-28-support-jeux-design.md` §5 D, remplacer le paragraphe « Une mesure reste due avant de dimensionner la voie » par le résultat obtenu. Si la voie est reçue, le dire sans en élargir la portée ; si elle tombe, dire ce qui la remplace n'est **pas** tranché par cette mesure.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add docs/ CLAUDE.md

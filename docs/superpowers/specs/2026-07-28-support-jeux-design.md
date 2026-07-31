@@ -418,7 +418,14 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
   identifiée** (NVENC, pilote NVIDIA, Media Foundation, ou virtualisation) ; rien
   ne dit qu'il tienne à d'autres résolutions ou débits ; et **aucune image n'a
   été soumise** — seule la *construction* est mesurée, pas la tenue en cadence de
-  8 flux ensemble. Réserve de méthode : la comparaison partagé/séparé porte sur
+  8 flux ensemble.
+  ✅ **Sur ce dernier point (31/07/2026) : 8 flux ensemble tiennent bien la
+  cadence** — 90,1 i/s par fenêtre en capture+encodage, zéro verdict faux
+  (`plans/2026-07-31-duplications-paralleles-resultats.md` §3.2), mais sur huit
+  périphériques D3D11 **distincts** et à 1280×720/60/8 Mb/s, une exécution par
+  rang. Le montage de la mesure ② — périphérique unique partagé — n'a, lui,
+  toujours pas été alimenté, et **les autres réserves de ce paragraphe restent
+  entières**. Réserve de méthode : la comparaison partagé/séparé porte sur
   **deux variables confondues**, le mode séparé n'ouvrant aucune duplication
   DXGI ; le témoin propre n'a pas été exercé.
 
@@ -516,10 +523,27 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
   tout relâchement — **0 récidive sur 20 exécutions contre 2 sur 6**, ce qui
   **n'est pas une preuve d'absence**.
 
+  **Fait acquis, réutilisable par ce chantier — à ne pas redécouvrir** :
+  `IMFShutdown::Shutdown` rendant `MFSHUTDOWN_COMPLETED` **ne prouve pas**
+  l'absence d'élément de travail en vol concernant la MFT. Mesuré : la MFT rend
+  cet état en `attente_ms=0` et la faute revient quand même (1 récidive sur 10).
+  Toute logique de fermeture de fenêtre qui s'appuierait sur cette confirmation
+  seule serait fausse — c'est le **couple** arrêt + barrière sur file sérialisée
+  qui traite le cas, et chacun des deux retiré séparément laisse la faute
+  revenir.
+
   **Deux risques restent ouverts et assumés** : `IMFShutdown::Shutdown` est non
   borné dans un `Drop` et un gel y a été **observé** (1 fois sur 6 à N=4, cause
   non attribuée) — le retirer n'est pas une option, sans lui la faute revient
-  2 fois sur 5 ; et le convertisseur de couleur n'est couvert par rien, ce qui
+  2 fois sur 5. ⚠️ **Et ce risque est PRÉSENT, pas propre à ce chantier** :
+  `Drop for H264Encoder` court déjà en production mono-fenêtre, à chaque
+  changement de barreau de l'adaptation réseau (`set_encode_size`) et à chaque
+  redimensionnement (`resize`), sur le fil unique de `Session::run` — un gel y
+  figerait la session entière. Partie bornée du pire cas : **8 s** par
+  destruction d'encodeur (6 s sur les machines éprouvées) ; **le total n'est
+  borné par rien**. La mitigation est l'observabilité : les deux traces qui
+  encadrent l'appel sont en `info!`, **ne pas les redescendre en `debug!`**.
+  Enfin, le convertisseur de couleur n'est couvert par rien, ce qui
   ne coûte rien tant qu'il retombe sur une MFT synchrone, mais **serait une MFT
   matérielle sans barrière sur un hôte doté d'un Video Processor matériel** —
   configuration qu'aucune machine éprouvée n'expose, donc non mesurée. Enfin,

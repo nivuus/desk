@@ -61,6 +61,31 @@ au-delà du rang mesuré.**
 
 ## Ce qui reste ouvert
 
+> ✅ **Note du 31 juillet 2026 — CINQ des huit points ci-dessous sont LEVÉS.**
+> Les énoncés d'origine restent entiers en dessous ; voici ce qui a changé, et
+> par quoi :
+>
+> - **le plafond de sorties virtuelles** — mesuré à **10**, et **sans Apollo** :
+>   notre code commande le pilote SudoVDA directement, l'obstacle matériel
+>   invoqué ci-dessous n'en était pas un
+>   (`2026-07-31-mesures-prealables-chantier-d-resultats.md`, mesure ①) ;
+> - **le plafond d'encodage sur périphériques D3D11 séparés** — mesuré : il
+>   reste **8**, inchangé (mesure ②, sous réserve de deux variables confondues) ;
+> - **la correction d'image de la voie 2** — mesurée, plus « argumentée par
+>   construction » : 900/900 verdicts justes sur sortie virtuelle (mesure ③),
+>   puis zéro verdict faux jusqu'à N=8 sur N sorties de front
+>   (`2026-07-31-duplications-paralleles-resultats.md`) ;
+> - **`printwindow` à N=4 et N=8** — mesuré, et **le repli ne tient pas
+>   l'échelle** : 17,6 puis 8,8 i/s par fenêtre (mesure ④) ;
+> - **le relevé Apollo sans journal joint** — il ne fonde plus la voie
+>   recommandée, la mesure ③ l'ayant établie sur pièces ; le relevé lui-même
+>   reste sans journal.
+>
+> **Restent ouverts** : la résolution réellement settable du bureau,
+> `DwmGetDxSharedSurface`, et — nées depuis — la couche qui impose le plafond
+> de 8, la mise en sommeil des fenêtres masquées, et le témoin propre de la
+> mesure ②.
+
 - **Le relevé DXGI de la session Apollo n'a pas de journal joint.** `\\.\DISPLAY5`,
   3413×960, vient du rapport de tâche 7 et non d'un fichier de
   `journaux-sonde-multifenetre/` (voir la réserve dans « Relevé DXGI »
@@ -320,6 +345,14 @@ oubli, mais **par construction du protocole** : `verdicts_faux > 0` déclenche l
 porte de correction, qui coupe la passe d'encodage. C'est le comportement voulu.
 La seule mesure d'encodage de cette voie est à N=1 (75,1 i/s, 369 unités).
 
+> ✅ **Précision du 31 juillet 2026** : cet énoncé reste **exact pour ce
+> montage-ci** — N fenêtres se recouvrant sur UNE sortie, à aire totale fixe. Il
+> **existe** depuis des mesures d'encodage multi-fenêtres sur l'autre montage,
+> celui de la voie recommandée : N sorties virtuelles d'une fenêtre chacune,
+> donc sans recouvrement et sans porte éliminatoire — 90,1 i/s par fenêtre
+> jusqu'à N=8 (`2026-07-31-duplications-paralleles-resultats.md`). ⚠️ **Les deux
+> séries ne se comparent d'AUCUN chiffre** : aire fixe contre aire croissante.
+
 **Avertissement.** Un premier jeu de mesures de cadences, produit avant la
 correction de la famine décrite au piège n°4 ci-dessous, mesurait un artefact
 (une fenêtre à ~100 i/s, les autres sous 1,3 i/s) et non un comportement de la
@@ -349,6 +382,16 @@ difficulté** — c'est une liaison du type d'entrée qui refuse, sur un périph
 D3D partagé par neuf clients. Le partage du périphérique est peut-être
 lui-même la contrainte limitante.
 
+> ✅ **Note postérieure (31/07/2026) — RÉFUTÉ** : ce n'est **pas** le partage du
+> périphérique. Avec **un périphérique D3D11 neuf par encodeur** (9 périphériques
+> distincts et vivants), le plafond reste **8**, refus au même rang — mesure ② de
+> `2026-07-31-mesures-prealables-chantier-d-resultats.md`, journaux
+> `journaux-mesures-prealables/nvenc-separe.log` et `nvenc-partage-temoin.log`.
+> Réserve à conserver : la comparaison porte sur **deux variables confondues**,
+> le mode séparé n'ouvrant aucune duplication DXGI là où le mode partagé en
+> ouvre une ; le témoin propre n'a pas été exercé. Ce qui reste ouvert, en
+> revanche : **quelle couche** impose ce plafond de 8.
+
 **Le composant qui refuse n'est pas identifié.** `H264Encoder::new` enchaîne,
 entre le log `encodeur matériel retenu rang=9` et l'échec, deux appels
 `SetInputType` distincts sans qu'aucun des deux ne portait de `.context()`
@@ -365,6 +408,19 @@ s'en passer) et le « budget d'ordre 8 » ci-dessous serait faux dans le bon
 sens. Corrigé dans ce même passage de revue : les deux `SetInputType`
 portent désormais un `.context()` distinct, pour que la prochaine mesure
 désigne le composant fautif.
+
+> ✅ **Note postérieure (31/07/2026) — RÉFUTÉ, ce n'était aucun de ces deux
+> `SetInputType`.** La mesure ② a relevé la chaîne de causes **nue**, ces deux
+> contextes déjà en place : l'appel refusé est **`SetOutputType` de l'encodeur
+> H.264**, qui n'en portait aucun
+> (`2026-07-31-mesures-prealables-chantier-d-resultats.md`, journaux
+> `journaux-mesures-prealables/nvenc-*.log`). Le libellé de
+> `MF_E_UNSUPPORTED_D3D_TYPE` parle du type d'**entrée** alors que l'appel réglait
+> le type de **sortie** : c'est très probablement lui qui a égaré l'attribution
+> ci-dessus. **Ne jamais se fier au texte d'un HRESULT pour désigner un appel** —
+> dix appels du chemin de construction portent désormais un contexte distinct.
+> L'hypothèse « si le refus venait du Video Processor, le plafond serait
+> contournable » tombe donc avec elle : le refus vient de l'encodeur H.264.
 
 Vérifié par ailleurs : **aucun des 8 n'est un repli logiciel** (`encodeur
 matériel retenu` × 8, NVIDIA H.264 Encoder MFT).
