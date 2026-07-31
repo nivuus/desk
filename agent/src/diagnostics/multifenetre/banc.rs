@@ -169,6 +169,12 @@ pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<(u32, u32)>) -
     }
     let compteurs = passe_capture(&mut mires, &mut voies, &regions, true)?;
     journaliser("capture+encodage", nom_voie, nombre, &compteurs);
+    // Le second suspect, après les encodeurs : la source de duplication que
+    // toutes les voies partagent. Tracé séparément pour que le journal
+    // distingue « mort aux encodeurs » de « mort à la duplication ».
+    tracing::info!("libération des voies de capture : avant");
+    drop(voies);
+    tracing::info!("libération des voies de capture : après");
     Ok(())
 }
 
@@ -364,6 +370,21 @@ fn passe_capture(
             );
             prochain_journal += PERIODE_JOURNAL;
         }
+    }
+
+    // Libération EXPLICITE et tracée, une par une. Le défaut hérité tue le
+    // processus ici — au relâchement, pas à la soumission — et un `Vec`
+    // détruit implicitement ne dirait pas lequel de ses éléments a tué.
+    // Ces traces sont rares par construction (une par encodeur, une fois par
+    // passe) : elles ne violent pas la règle « aucune trace par trame ».
+    if !encodeurs.is_empty() {
+        tracing::info!(nombre = encodeurs.len(), "libération des encodeurs : début");
+        for (id, encodeur) in encodeurs.drain(..).enumerate() {
+            tracing::info!(id, "libération d'un encodeur : avant");
+            drop(encodeur);
+            tracing::info!(id, "libération d'un encodeur : après");
+        }
+        tracing::info!("libération des encodeurs : terminée");
     }
     Ok(compteurs)
 }
