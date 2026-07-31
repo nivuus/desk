@@ -3,26 +3,18 @@
 //! Séparé d'`encode.rs` (déjà en dette de taille, voir `CLAUDE.md`) plutôt
 //! qu'ajouté dedans.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
 use windows::core::{implement, Interface, Ref};
 use windows::Win32::Foundation::E_NOTIMPL;
 use windows::Win32::Media::MediaFoundation::{
-    IMFAsyncCallback, IMFAsyncCallback_Impl, IMFAsyncResult, IMFRealTimeClientEx, IMFShutdown,
-    IMFTransform, MFAllocateSerialWorkQueue, MFPutWorkItem, MFUnlockWorkQueue,
-    MFASYNC_CALLBACK_QUEUE_MULTITHREADED, MFSHUTDOWN_COMPLETED, MFT_MESSAGE_NOTIFY_END_OF_STREAM,
+    IMFAsyncCallback, IMFAsyncCallback_Impl, IMFAsyncResult, IMFRealTimeClientEx, IMFTransform,
+    MFAllocateSerialWorkQueue, MFPutWorkItem, MFUnlockWorkQueue,
+    MFASYNC_CALLBACK_QUEUE_MULTITHREADED, MFT_MESSAGE_NOTIFY_END_OF_STREAM,
     MFT_MESSAGE_NOTIFY_END_STREAMING, MFT_MESSAGE_TYPE,
 };
-
-/// Garde-fou de l'attente d'arrêt d'une MFT.
-///
-/// L'attente porte sur une CONDITION OBSERVABLE
-/// (`IMFShutdown::GetShutdownStatus`), pas sur une durée : ce délai n'est là
-/// que pour ne pas bloquer indéfiniment la fermeture d'une fenêtre si une MFT
-/// ne confirmait jamais son arrêt. Le franchir est journalisé — ce n'est pas
-/// un chemin silencieux.
-const DELAI_ARRET_MFT: Duration = Duration::from_secs(2);
 
 /// Met au repos les deux MFT d'un encodeur, dans l'ordre, avant que leurs
 /// références COM ne soient relâchées.
@@ -32,14 +24,15 @@ const DELAI_ARRET_MFT: Duration = Duration::from_secs(2);
 /// `RtlEnterCriticalSection` dans du code de `nvEncMFTH264x.dll` exécuté sous
 /// `CSerialWorkQueue::QueueItem::ExecuteWorkItem`, c'est-à-dire **sur un fil de
 /// la file de travail Media Foundation**, sur une section critique dont le
-/// `DebugInfo` vaut `NULL` — pendant que le fil principal est dans
-/// `MFShutdown` → `RtwqShutdown` → `CPlatform::FinalShutdown`. La MFT a donc
-/// encore un élément de travail en vol quand nous détruisons l'encodeur.
+/// `DebugInfo` vaut `NULL`. La MFT a donc encore un élément de travail en vol
+/// quand nous détruisons l'encodeur.
 ///
-/// La position du fil principal, elle, s'est révélée fortuite : retirer
-/// `MFShutdown` du chemin n'a pas empêché la faute (voir
-/// `super::demarrer_media_foundation`). Ce qui la traite est la barrière de
-/// `FileEncodeur`, plus bas.
+/// Dans les deux vidages de 2bis, le fil principal était simultanément dans
+/// `MFShutdown` → `RtwqShutdown` → `CPlatform::FinalShutdown`. Retirer
+/// `MFShutdown` du chemin n'a PAS empêché la faute : cet appel n'est donc pas
+/// **nécessaire** à la faute (voir `super::demarrer_media_foundation` pour la
+/// portée exacte de ce relevé). Ce qui la traite est la barrière de `FileMft`,
+/// plus bas.
 ///
 /// L'amont (le convertisseur) est mis au repos avant l'aval (l'encodeur) : il
 /// ne doit plus rien produire pendant qu'on arrête celui qui consomme.
@@ -50,8 +43,9 @@ const DELAI_ARRET_MFT: Duration = Duration::from_secs(2);
 /// s'exécutent qu'à la destruction d'un encodeur, jamais par trame.
 pub(super) fn mettre_au_repos(
     convertisseur: &IMFTransform,
+    file_convertisseur: &FileMft,
     encodeur: &IMFTransform,
-    file: &FileEncodeur,
+    file_encodeur: &FileMft,
 ) {
     // Fin de flux : inchangé, c'est ce que faisait déjà `Drop`.
     message(convertisseur, "convertisseur", "END_OF_STREAM", MFT_MESSAGE_NOTIFY_END_OF_STREAM);
@@ -59,34 +53,37 @@ pub(super) fn mettre_au_repos(
     message(encodeur, "encodeur", "END_OF_STREAM", MFT_MESSAGE_NOTIFY_END_OF_STREAM);
     message(encodeur, "encodeur", "END_STREAMING", MFT_MESSAGE_NOTIFY_END_STREAMING);
 
-    // DEUX MESSAGES DÉLIBÉRÉMENT ABSENTS, et ce n'est pas un oubli.
+    // TROIS APPELS DÉLIBÉRÉMENT ABSENTS, et ce n'est pas un oubli.
     //
-    // `MFT_MESSAGE_COMMAND_FLUSH` et `MFT_MESSAGE_SET_D3D_MANAGER` à zéro
-    // (deux pistes du brief) ont été posés ici, puis retirés sur relevé : avec
-    // eux, à N = 4 encodeurs, **une exécution sur quatre s'est bloquée sans
-    // retour** dans ce bloc, juste après que l'encodeur n°0 a confirmé son
-    // arrêt et pendant la destruction du n°1 (journal arrêté sur « libération
-    // d'un encodeur : avant id=1 », processus encore vivant treize minutes
-    // plus tard). Le blocage est **borné à ce bloc** : la trace suivante n'a
-    // jamais été écrite. Les deux fins de flux ci-dessus, elles, précèdent ce
-    // chantier et n'ont jamais bloqué. Restaient donc ces deux messages-là.
+    // 1 et 2. `MFT_MESSAGE_COMMAND_FLUSH` et `MFT_MESSAGE_SET_D3D_MANAGER` à
+    //    zéro (deux pistes du brief 2ter) ont été posés ici, puis retirés sur
+    //    relevé : avec eux, à N = 4 encodeurs, **une exécution sur quatre s'est
+    //    bloquée sans retour** dans ce bloc, juste après la mise au repos de
+    //    l'encodeur n°0 et pendant celle du n°1 (journal arrêté sur
+    //    « libération d'un encodeur : avant id=1 », processus encore vivant
+    //    treize minutes plus tard, `Responding: True`). Le blocage est **borné
+    //    à ce bloc** : la trace suivante n'a jamais été écrite. Les deux fins
+    //    de flux ci-dessus, elles, précèdent ce chantier et n'ont jamais
+    //    bloqué. Preuve versée :
+    //    `docs/superpowers/plans/journaux-duplications-paralleles/2ter-blocage-n4-flush-setd3dmanager.log`.
+    //    NON établi : lequel des deux bloquait, ni pourquoi.
     //
-    // Sans eux : 22 exécutions à N = 4, aucun blocage.
-    //
-    // Ce qui n'est PAS établi : lequel des deux bloquait, ni pourquoi. On sait
-    // seulement que le blocage est dans ce bloc et qu'il a disparu avec eux —
-    // un blocage à la fermeture d'une fenêtre serait pire que le plantage
-    // qu'on corrige.
+    // 3. `IMFShutdown::Shutdown` (piste n°1 du brief, la MFT l'expose bien).
+    //    Mesuré INSUFFISANT : il rend `MFSHUTDOWN_COMPLETED` en 0 ms et la
+    //    faute survient quand même — 1 récidive sur 10 exécutions, pile et
+    //    décalage identiques, la dernière ligne du journal avant la mort étant
+    //    justement la confirmation d'arrêt (preuve versée :
+    //    `2ter-recidive-apres-imfshutdown-pile.log`). **`MFSHUTDOWN_COMPLETED`
+    //    d'une MFT ne prouve pas l'absence d'élément de travail en vol la
+    //    concernant** — c'est le fait à retenir de cette tentative. Retiré
+    //    parce qu'il n'apporte rien de mesurable et que `Shutdown()` n'est
+    //    borné par RIEN : un appel de mise au repos sur ce chemin a déjà
+    //    bloqué treize minutes (point 1 ci-dessus), et un gel à la fermeture
+    //    d'une fenêtre serait pire que le plantage qu'on corrige.
 
     // Barrière : plus rien de ce qui était déjà en file ne court encore.
-    file.barriere("après END_STREAMING");
-
-    // Arrêt explicite, avec attente BORNÉE sur une condition OBSERVABLE.
-    arreter(convertisseur, "convertisseur");
-    arreter(encodeur, "encodeur");
-
-    // Seconde barrière : l'arrêt lui-même peut avoir déposé du travail.
-    file.barriere("après IMFShutdown");
+    file_convertisseur.barriere("convertisseur", "après END_STREAMING");
+    file_encodeur.barriere("encodeur", "après END_STREAMING");
 }
 
 /// Envoie un message à une MFT en encadrant l'appel de deux traces : un appel
@@ -97,152 +94,131 @@ fn message(mft: &IMFTransform, quoi: &'static str, nom: &'static str, message: M
     tracing::debug!(mft = quoi, message = nom, refuse = issue.is_err(), "mise au repos : après");
 }
 
-/// Demande à une MFT d'arrêter ses files de travail, et attend qu'elle le
-/// confirme.
-///
-/// Relâcher nos références COM ne suffit pas à faire disparaître les fils
-/// d'une MFT matérielle asynchrone. `IMFShutdown::Shutdown` est le mécanisme
-/// documenté par lequel un client de MFT obtient cet arrêt — c'est ce que fait
-/// le pipeline Media Foundation lui-même, via `MFShutdownObject`, quand il
-/// démonte un nœud de topologie. On l'appelle ici directement plutôt que par
-/// `MFShutdownObject` pour deux raisons : savoir, et pouvoir journaliser, si
-/// la MFT expose seulement cette interface (`MFShutdownObject` rend `S_OK`
-/// sans rien dire quand elle l'ignore), et pouvoir attendre la confirmation
-/// par `GetShutdownStatus`.
-///
-/// Ce que cette fonction n'établit pas : rien ici ne prouve QUI détruit la
-/// section critique de la trace ci-dessus, ni quand. Voir le rapport 2ter.
-fn arreter(mft: &IMFTransform, quoi: &'static str) {
-    let arret: IMFShutdown = match mft.cast() {
-        Ok(arret) => arret,
-        Err(err) => {
-            // Relevé, pas supposé : si l'interface manque, le journal le dit,
-            // et l'on sait que ce chemin n'a rien arrêté du tout.
-            tracing::debug!(
-                mft = quoi,
-                erreur = %err,
-                "MFT sans IMFShutdown : aucun arrêt explicite possible"
-            );
-            return;
-        }
-    };
-
-    tracing::debug!(mft = quoi, "IMFShutdown::Shutdown : avant");
-    if let Err(err) = unsafe { arret.Shutdown() } {
-        tracing::warn!(mft = quoi, erreur = %err, "IMFShutdown::Shutdown refusé");
-        return;
-    }
-
-    let debut = Instant::now();
-    loop {
-        match unsafe { arret.GetShutdownStatus() } {
-            Ok(statut) if statut == MFSHUTDOWN_COMPLETED => {
-                tracing::info!(
-                    mft = quoi,
-                    attente_ms = debut.elapsed().as_millis() as u64,
-                    "arrêt de la MFT confirmé"
-                );
-                return;
-            }
-            // `MFSHUTDOWN_INITIATED` : l'arrêt court encore, on repasse.
-            Ok(_) => {}
-            Err(err) => {
-                // La méthode est facultative en pratique ; on ne peut alors
-                // pas confirmer, et on le dit au lieu de le taire.
-                tracing::info!(
-                    mft = quoi,
-                    erreur = %err,
-                    "GetShutdownStatus indisponible : arrêt demandé mais non confirmable"
-                );
-                return;
-            }
-        }
-        if debut.elapsed() >= DELAI_ARRET_MFT {
-            tracing::warn!(
-                mft = quoi,
-                delai_ms = DELAI_ARRET_MFT.as_millis() as u64,
-                "arrêt de la MFT non confirmé dans le délai"
-            );
-            return;
-        }
-        std::thread::sleep(Duration::from_millis(1));
-    }
-}
-
-/// Délai maximal d'attente d'une barrière de file de travail.
+/// Garde-fou de l'attente d'une barrière de file de travail.
 ///
 /// La barrière porte sur une CONDITION OBSERVABLE (notre propre élément de
 /// travail a-t-il été exécuté), pas sur une durée. Ce délai n'est qu'un
-/// garde-fou, et le franchir est journalisé.
+/// garde-fou contre une file qui ne dépêcherait plus rien ; le franchir est
+/// journalisé en `error` et **change le comportement de `Drop`** (voir
+/// `Drop for FileMft`).
 const DELAI_BARRIERE: Duration = Duration::from_secs(2);
 
-/// File de travail Media Foundation **sérialisée** dédiée à un encodeur, et
-/// imposée à sa MFT.
+/// File de travail Media Foundation **sérialisée** dédiée à UNE MFT, et
+/// imposée à elle.
 ///
 /// **Pourquoi.** La faute relevée par la tâche 2bis s'exécute sous
-/// `CSerialWorkQueue::QueueItem::ExecuteWorkItem` : un élément de travail de
-/// la MFT NVIDIA court encore quand nous relâchons l'encodeur. Deux tentatives
-/// mesurées ici n'y ont rien changé — `IMFShutdown::Shutdown` a rendu
-/// `MFSHUTDOWN_COMPLETED` et la faute est survenue quand même (1 récidive sur
-/// 10 exécutions), et retirer `MFShutdown` du chemin ne l'a pas empêchée non
-/// plus (1 récidive sur 5, même pile, désormais APRÈS la libération complète
-/// de l'encodeur). Aucun des deux mécanismes n'attend donc ces éléments.
+/// `CSerialWorkQueue::QueueItem::ExecuteWorkItem` : un élément de travail de la
+/// MFT NVIDIA court encore quand nous relâchons l'encodeur. Deux mécanismes
+/// documentés ont été mesurés incapables de l'empêcher — `IMFShutdown::Shutdown`
+/// (1 récidive sur 10) et le retrait de `MFShutdown` (1 récidive sur 5).
 ///
-/// `IMFRealTimeClientEx::SetWorkQueueEx` permet au client de DICTER à la MFT
-/// la file sur laquelle elle déposera son travail asynchrone — relevé : cette
-/// MFT expose bien l'interface. En lui imposant une file **sérialisée**, dont
-/// la sémantique est d'exécuter un élément à la fois dans l'ordre de dépôt, on
-/// obtient une barrière réelle : déposer notre propre élément et attendre
-/// qu'il s'exécute prouve que tout ce qui était déposé avant a fini.
+/// `IMFRealTimeClientEx::SetWorkQueueEx` permet au client de DICTER à la MFT la
+/// file sur laquelle elle déposera son travail asynchrone — relevé : les deux
+/// MFT de l'encodeur exposent l'interface. En lui imposant une file
+/// **sérialisée**, dont la sémantique est d'exécuter un élément à la fois dans
+/// l'ordre de dépôt, on vise une barrière : déposer notre propre élément et
+/// attendre qu'il s'exécute.
 ///
 /// C'est une attente **bornée sur une condition observable**, pas un délai.
 ///
-/// Ce que cela ne garantit pas : que la MFT n'utilise QUE cette file. Si elle
-/// en garde une autre pour son compte, la barrière ne la couvre pas — et la
-/// mesure est le seul juge.
-pub(super) struct FileEncodeur {
+/// # Mode d'échec résiduel identifié — imbrication de files sérialisées
+///
+/// **Ce n'est pas une réserve de style, c'est le mécanisme précis par lequel
+/// cette barrière pourrait ne rien barrer.** L'implémentation idiomatique de
+/// `SetWorkQueueEx` dans un objet Media Foundation est
+/// `MFAllocateSerialWorkQueue(file_du_client, &sa_propre_file)` : l'objet
+/// empile SA file sérialisée sur la nôtre, ses éléments attendent chez lui et
+/// ne sont dépêchés vers nous **qu'un à la fois**. Notre sentinelle, déposée
+/// directement sur notre file, serait alors ordonnancée derrière **un seul**
+/// de ses éléments, pas derrière tous — et la barrière ne serait qu'une
+/// réduction de fenêtre, pas une garantie.
+///
+/// L'indice qui rend l'hypothèse sérieuse : la pile d'AVANT correctif porte
+/// déjà des cadres `CSerialWorkQueue` alors qu'aucune file sérialisée n'était
+/// allouée par nous — la MFT en avait donc déjà une à elle.
+///
+/// Ce qui est mesuré, et qui ne tranche que la moitié de la question :
+/// bloquer notre file pendant l'encodage **arrête l'encodeur** (épreuve
+/// `MULTIFENETRE_EPREUVE_FILE_MS`, voir le rapport 2ter). Le travail de la MFT
+/// transite donc bien par notre file — mais cela reste vrai que l'imbrication
+/// existe ou non, puisque bloquer la file cible bloque aussi la file empilée
+/// dessus. **Ce qui départagerait** : symboliser une récidive survenant malgré
+/// la barrière, ou observer la file interne de la MFT (aucune API ne
+/// l'expose).
+pub(super) struct FileMft {
     /// `None` si l'allocation ou l'imposition à la MFT a échoué : on continue
     /// alors sans barrière plutôt que de refuser de construire l'encodeur.
     id: Option<u32>,
+    /// Vrai si une barrière n'a pas été franchie dans le délai. La file porte
+    /// alors, au minimum, notre sentinelle non exécutée : la rendre serait
+    /// pire que la garder (voir `Drop`).
+    compromise: AtomicBool,
 }
 
-impl FileEncodeur {
-    /// Alloue une file sérialisée et l'impose à la MFT. À appeler **avant**
-    /// tout démarrage de flux.
-    pub(super) fn imposer(encodeur: &IMFTransform) -> Self {
-        let client = match encodeur.cast::<IMFRealTimeClientEx>() {
-            Ok(client) => client,
-            Err(err) => {
-                tracing::warn!(erreur = %err, "MFT sans IMFRealTimeClientEx : pas de barrière de file");
-                return Self { id: None };
-            }
-        };
-        let id = match unsafe { MFAllocateSerialWorkQueue(MFASYNC_CALLBACK_QUEUE_MULTITHREADED) } {
-            Ok(id) => id,
+impl FileMft {
+    /// Alloue une file sérialisée, **sans encore la confier à quiconque**.
+    ///
+    /// Séparé de `confier` pour une raison de durée de vie, pas de style : les
+    /// variables locales sont détruites dans l'ordre **inverse** de leur
+    /// déclaration. En allouant ici, avant que la MFT n'existe, la `FileMft`
+    /// est la locale la plus ancienne et donc la **dernière** détruite si la
+    /// construction de l'encodeur échoue plus loin sur un `?` — la file n'est
+    /// alors rendue qu'après le relâchement de la MFT qui la détient. L'ordre
+    /// inverse (allouer après la MFT) rendait la file en premier, exactement
+    /// l'inversion que l'ordre des champs de `H264Encoder` est conçu pour
+    /// éviter. Ce chemin n'est pas théorique : `windows_source.rs` traite
+    /// l'échec de construction d'un encodeur et poursuit la session.
+    ///
+    /// Exige que Media Foundation soit démarré.
+    pub(super) fn allouer() -> Self {
+        match unsafe { MFAllocateSerialWorkQueue(MFASYNC_CALLBACK_QUEUE_MULTITHREADED) } {
+            Ok(id) => Self { id: Some(id), compromise: AtomicBool::new(false) },
             Err(err) => {
                 tracing::warn!(erreur = %err, "allocation de file sérialisée refusée");
-                return Self { id: None };
+                Self { id: None, compromise: AtomicBool::new(false) }
+            }
+        }
+    }
+
+    /// Impose la file à une MFT. À appeler **avant** tout démarrage de flux.
+    pub(super) fn confier(&mut self, mft: &IMFTransform, quoi: &'static str) {
+        let Some(id) = self.id else { return };
+        let client = match mft.cast::<IMFRealTimeClientEx>() {
+            Ok(client) => client,
+            Err(err) => {
+                tracing::warn!(mft = quoi, erreur = %err, "MFT sans IMFRealTimeClientEx : pas de barrière");
+                self.rendre();
+                return;
             }
         };
         // Priorité 0 : la priorité de base des éléments, pas un réglage de
         // temps réel — on ne demande aucun privilège d'ordonnancement.
         if let Err(err) = unsafe { client.SetWorkQueueEx(id, 0) } {
-            tracing::warn!(erreur = %err, file = id, "la MFT refuse la file imposée");
-            let _ = unsafe { MFUnlockWorkQueue(id) };
-            return Self { id: None };
+            tracing::warn!(mft = quoi, erreur = %err, file = id, "la MFT refuse la file imposée");
+            self.rendre();
+            return;
         }
-        tracing::info!(file = id, "file de travail sérialisée imposée à l'encodeur");
-        Self { id: Some(id) }
+        tracing::info!(mft = quoi, file = id, "file de travail sérialisée imposée");
+    }
+
+    /// Rend la file immédiatement, quand personne ne la détient encore.
+    fn rendre(&mut self) {
+        if let Some(id) = self.id.take() {
+            let _ = unsafe { MFUnlockWorkQueue(id) };
+        }
     }
 
     /// Attend que tout ce qui était déposé sur la file avant cet appel ait fini
     /// de s'exécuter.
-    fn barriere(&self, quand: &'static str) {
+    fn barriere(&self, quoi: &'static str, quand: &'static str) {
         let Some(id) = self.id else { return };
         let fait = Arc::new((Mutex::new(false), Condvar::new()));
         let rappel: IMFAsyncCallback = Sentinelle { fait: fait.clone() }.into();
         if let Err(err) = unsafe { MFPutWorkItem(id, &rappel, None) } {
-            tracing::warn!(erreur = %err, quand, "dépôt de la sentinelle refusé");
+            // La file ne dépêche plus : notre sentinelle n'y est pas, mais le
+            // travail de la MFT, lui, peut y être resté.
+            tracing::error!(mft = quoi, erreur = %err, quand, "dépôt de la sentinelle refusé : file NON barrée");
+            self.compromise.store(true, Ordering::SeqCst);
             return;
         }
         let debut = Instant::now();
@@ -254,25 +230,61 @@ impl FileEncodeur {
                 .unwrap_or_else(|e| e.into_inner());
             pose = garde;
             if !*pose && issue.timed_out() {
-                tracing::warn!(
+                // On ne peut pas refuser de poursuivre : `Drop` doit finir. Ce
+                // qu'on peut faire, c'est ne pas AGGRAVER — voir `Drop`.
+                tracing::error!(
+                    mft = quoi,
                     quand,
                     delai_ms = DELAI_BARRIERE.as_millis() as u64,
-                    "barrière de file non franchie dans le délai"
+                    "barrière non franchie : les références COM vont être relâchées avec du \
+                     travail possiblement encore en file — c'est le défaut d'origine, non barré"
                 );
+                self.compromise.store(true, Ordering::SeqCst);
                 return;
             }
         }
-        tracing::debug!(quand, attente_ms = debut.elapsed().as_millis() as u64, "barrière franchie");
+        tracing::debug!(
+            mft = quoi,
+            quand,
+            attente_ms = debut.elapsed().as_millis() as u64,
+            "barrière franchie"
+        );
+    }
+
+    /// Occupe la file pendant `duree`, pour éprouver si le travail de la MFT y
+    /// transite réellement (voir le mode d'échec résiduel documenté plus haut).
+    ///
+    /// Sonde de mesure, appelée seulement sous variable d'environnement. Rend
+    /// la main immédiatement : c'est la file qui reste occupée.
+    pub(super) fn bloquer(&self, duree: Duration) {
+        let Some(id) = self.id else {
+            tracing::warn!("épreuve de file demandée mais aucune file imposée");
+            return;
+        };
+        let rappel: IMFAsyncCallback = Bouchon { duree }.into();
+        match unsafe { MFPutWorkItem(id, &rappel, None) } {
+            Ok(()) => tracing::info!(file = id, duree_ms = duree.as_millis() as u64, "épreuve : file bouchée"),
+            Err(err) => tracing::warn!(erreur = %err, "épreuve : dépôt du bouchon refusé"),
+        }
     }
 }
 
-impl Drop for FileEncodeur {
+impl Drop for FileMft {
     fn drop(&mut self) {
-        // Déclaré DERNIER champ de `H264Encoder` : la file n'est rendue
-        // qu'après le relâchement de la MFT qui s'en sert.
-        if let Some(id) = self.id {
-            let _ = unsafe { MFUnlockWorkQueue(id) };
+        let Some(id) = self.id else { return };
+        if self.compromise.load(Ordering::SeqCst) {
+            // Rendre une file dont des éléments n'ont pas été dépêchés
+            // ajouterait un défaut à celui qu'on n'a pas su éviter. On la
+            // garde : une file fuitée coûte quelques octets pour la vie du
+            // processus, un déverrouillage à éléments pendants coûte un
+            // plantage.
+            tracing::error!(file = id, "file compromise : NON rendue, délibérément fuitée");
+            return;
         }
+        // Champ déclaré en dernier dans `H264Encoder`, et locale déclarée en
+        // premier dans `H264Encoder::new` : dans les deux cas la file n'est
+        // rendue qu'après le relâchement de la MFT qui s'en sert.
+        let _ = unsafe { MFUnlockWorkQueue(id) };
     }
 }
 
@@ -294,6 +306,24 @@ impl IMFAsyncCallback_Impl for Sentinelle_Impl {
         let (verrou, signal) = &*self.fait;
         *verrou.lock().unwrap_or_else(|e| e.into_inner()) = true;
         signal.notify_one();
+        Ok(())
+    }
+}
+
+/// Élément de travail qui occupe la file : instrument de l'épreuve, jamais
+/// déposé en exploitation.
+#[implement(IMFAsyncCallback)]
+struct Bouchon {
+    duree: Duration,
+}
+
+impl IMFAsyncCallback_Impl for Bouchon_Impl {
+    fn GetParameters(&self, _drapeaux: *mut u32, _file: *mut u32) -> windows::core::Result<()> {
+        Err(E_NOTIMPL.into())
+    }
+
+    fn Invoke(&self, _resultat: Ref<IMFAsyncResult>) -> windows::core::Result<()> {
+        std::thread::sleep(self.duree);
         Ok(())
     }
 }

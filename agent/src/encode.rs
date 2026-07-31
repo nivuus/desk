@@ -305,13 +305,14 @@ pub struct H264Encoder {
     /// Compteurs et étape courante, lisibles depuis un autre fil (voir
     /// `EncoderTelemetry`).
     telemetry: Arc<EncoderTelemetry>,
-    /// File de travail sérialisée imposée à la MFT, et barrière de sa mise au
-    /// repos (voir `arret::FileEncodeur`).
+    /// Files de travail sérialisées imposées aux deux MFT, et barrières de
+    /// leur mise au repos (voir `arret::FileMft`).
     ///
-    /// **Déclaré en dernier volontairement** : les champs sont détruits dans
+    /// **Déclarées en dernier volontairement** : les champs sont détruits dans
     /// l'ordre de déclaration, après l'exécution de `Drop for H264Encoder`.
-    /// La file ne doit être rendue qu'une fois la MFT relâchée.
-    file: arret::FileEncodeur,
+    /// Une file ne doit être rendue qu'une fois relâchée la MFT qui la détient.
+    file_convertisseur: arret::FileMft,
+    file_encodeur: arret::FileMft,
 }
 
 /// Démarre Media Foundation, UNE SEULE FOIS pour la vie du processus, et ne
@@ -324,13 +325,17 @@ pub struct H264Encoder {
 /// `MFShutdown` → `RtwqShutdown` → `CPlatform::FinalShutdown` pendant qu'un
 /// élément de travail de la MFT NVIDIA courait encore.
 ///
-/// **`MFShutdown` n'était pourtant PAS en cause, et c'est mesuré ici** : avec
-/// cet appel entièrement retiré du chemin, la faute est revenue, pile
-/// identique, décalage identique, désormais APRÈS la libération complète de
-/// l'encodeur (1 récidive sur 5 exécutions). Le fil principal se trouvait dans
-/// `MFShutdown` par coïncidence de minutage, pas par causalité. La barrière de
-/// `arret::FileEncodeur` est ce qui traite la course ; ce changement-ci ne la
-/// traite pas.
+/// **`MFShutdown` n'est pourtant PAS nécessaire à la faute, et c'est mesuré
+/// ici** : avec cet appel entièrement retiré du chemin, la faute est revenue,
+/// pile identique, décalage identique, et cette fois APRÈS la libération
+/// complète de l'encodeur (1 récidive sur 5 exécutions).
+///
+/// Portée exacte de ce relevé, à ne pas dépasser : il établit que la faute
+/// **peut survenir sans** `MFShutdown`, donc que cet appel n'en est pas une
+/// condition nécessaire. Il n'établit PAS que sa présence dans les deux
+/// vidages de 2bis était inerte — deux chemins menant au même symptôme peuvent
+/// coexister. La barrière de `arret::FileMft` est ce qui traite la course ; ce
+/// changement-ci ne la traite pas.
 ///
 /// **Pourquoi le garder malgré tout.** Aucun processus ne gagne rien à arrêter
 /// Media Foundation : `MFShutdown` ne sert qu'à rendre des ressources juste
@@ -360,6 +365,14 @@ impl H264Encoder {
         bitrate: u32,
     ) -> Result<Self> {
         demarrer_media_foundation()?;
+
+        // Allouées ICI, avant toute MFT : les locales sont détruites dans
+        // l'ordre INVERSE de déclaration, donc ces deux-là le sont en dernier
+        // si un `?` plus bas interrompt la construction. Une file rendue avant
+        // la MFT qui la détient serait exactement l'inversion que l'ordre des
+        // champs ci-dessus évite. Voir `arret::FileMft::allouer`.
+        let mut file_convertisseur = arret::FileMft::allouer();
+        let mut file_encodeur = arret::FileMft::allouer();
 
         let transform = find_hardware_encoder()?;
         let attributes = unsafe { transform.GetAttributes() }?;
@@ -395,8 +408,8 @@ impl H264Encoder {
 
         // AVANT tout démarrage de flux : imposer à la MFT la file sur laquelle
         // elle déposera son travail asynchrone, seul moyen d'obtenir plus tard
-        // une barrière sur ce travail (voir `arret::FileEncodeur`).
-        let file = arret::FileEncodeur::imposer(&transform);
+        // une barrière sur ce travail (voir `arret::FileMft`).
+        file_encodeur.confier(&transform, "encodeur");
 
         // `NOTIFY_BEGIN_STREAMING` est le point où une MFT matérielle réserve
         // ses ressources de session GPU : candidat au refus quand plusieurs
@@ -432,6 +445,16 @@ impl H264Encoder {
         // `0x80070057`) : le contrat documenté (ne jamais fournir de tampon
         // quand ce drapeau est positionné) doit être respecté, il n'y a pas
         // de contournement possible ici.
+        // Le convertisseur reçoit le même traitement que l'encodeur, et pour
+        // une raison qui ne se voit pas sur cette VM : `create_color_converter`
+        // tente d'abord `find_hardware_video_processor()` et ne retombe sur
+        // `CLSID_VideoProcessorMFT` qu'en cas d'échec d'énumération. Ici c'est
+        // toujours le repli logiciel qui sort — mais sur un hôte où un Video
+        // Processor MATÉRIEL est enregistré, ce serait une MFT matérielle avec
+        // son propre travail asynchrone, et la laisser sans file imposée la
+        // laisserait sans barrière.
+        file_convertisseur.confier(&converter, "convertisseur");
+
         unsafe { converter.ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0) }
             .context("démarrage du flux du convertisseur de couleur (Video Processor MFT)")?;
         unsafe { converter.ProcessMessage(MFT_MESSAGE_NOTIFY_START_OF_STREAM, 0) }
@@ -449,7 +472,8 @@ impl H264Encoder {
             converter_output_pending: false,
             skipped_busy: 0,
             telemetry: Arc::new(EncoderTelemetry::default()),
-            file,
+            file_convertisseur,
+            file_encodeur,
             capture,
             encode,
             fps,
@@ -482,6 +506,17 @@ impl H264Encoder {
     }
 
     /// Draine les événements disponibles sans bloquer.
+    /// Occupe la file de travail imposée à la MFT encodeur pendant `duree`.
+    ///
+    /// **Sonde de mesure, jamais appelée en exploitation** : elle éprouve si le
+    /// travail asynchrone de la MFT transite réellement par la file qu'on lui
+    /// impose. Si oui, la boucher doit arrêter l'encodeur ; si l'encodeur
+    /// continue, la barrière de `arret::FileMft` ne barre rien et il faut le
+    /// savoir. Voir le mode d'échec résiduel documenté sur `arret::FileMft`.
+    pub fn eprouver_file(&self, duree: std::time::Duration) {
+        self.file_encodeur.bloquer(duree);
+    }
+
     fn drain_events(&mut self) -> Result<()> {
         loop {
             // MF_EVENT_FLAG_NO_WAIT : renvoie immédiatement s'il n'y a rien.
@@ -1020,7 +1055,12 @@ impl Drop for H264Encoder {
         // ne demandait jamais à la MFT matérielle de cesser ses traitements
         // asynchrones, et c'est la course que la tâche 2bis a relevée. Voir
         // `arret::mettre_au_repos` pour le détail et le relevé qui le motive.
-        arret::mettre_au_repos(&self.converter, &self.transform, &self.file);
+        arret::mettre_au_repos(
+            &self.converter,
+            &self.file_convertisseur,
+            &self.transform,
+            &self.file_encodeur,
+        );
 
         // `MFShutdown` n'est appelé nulle part, et c'est délibéré : voir
         // `demarrer_media_foundation`.

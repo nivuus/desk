@@ -292,6 +292,11 @@ fn passe_capture(
     let debut = Instant::now();
     let mi_parcours = debut + DUREE_PASSE / 2;
     let mut recouvert = false;
+    let epreuve_file_ms: Option<u64> = std::env::var("MULTIFENETRE_EPREUVE_FILE_MS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .filter(|ms| *ms > 0);
+    let mut eprouve = false;
     let mut prochain_journal = debut + PERIODE_JOURNAL;
     let mut pts = vec![0u64; nombre];
 
@@ -304,6 +309,19 @@ fn passe_capture(
         // nombre de voies qui la recadrent ensuite — voir le commentaire de
         // tête de `SourceDuplication` (`voies.rs`).
         let tour = mires.trame();
+
+        // Épreuve de la file imposée à la MFT (`MULTIFENETRE_EPREUVE_FILE_MS`) :
+        // on bouche la file au milieu de la passe et l'on regarde si les
+        // `unites` du journal périodique s'effondrent. C'est la seule mesure
+        // qui dise si le travail de la MFT transite par cette file — donc si
+        // la barrière de mise au repos porte sur quoi que ce soit. Hors
+        // variable, ce bloc n'existe pas à l'exécution.
+        if !eprouve && Instant::now() >= mi_parcours {
+            if let (Some(ms), Some(encodeur)) = (epreuve_file_ms, encodeurs.first()) {
+                encodeur.eprouver_file(std::time::Duration::from_millis(ms));
+                eprouve = true;
+            }
+        }
 
         // Mise en scène de la porte éliminatoire : la dernière mire vient
         // recouvrir la première.
