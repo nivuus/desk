@@ -1,0 +1,5 @@
+2026-07-31T22:37:15.941788Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T22:37:15.941818Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T22:37:15.941828Z  INFO agent::diagnostics::multifenetre::disponibilite: sorties DXGI relevAces nombre=1
+2026-07-31T22:37:15.941830Z  INFO agent::diagnostics::multifenetre::disponibilite: sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 nom=\\.\DISPLAY1 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T22:37:15.941833Z  INFO agent::diagnostics::multifenetre::disponibilite: verdict : 1 sortie(s) attachAce(s) au bureau ?" la voie A. un moniteur par fenA&tre A/ exige d'en obtenir 8 attachees=1

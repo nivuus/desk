@@ -1,0 +1,55 @@
+sources synchronisées vers /media/vm/dev
+quota WinRM MaxMemoryPerShellMB déjà suffisant (4096 Mo)
+cargo :    Compiling agent v0.1.0 (C:\dev\agent)
+Au caract
+re Ligne:1 : 148
++ ... IMUM = '3.5'; Set-Location C:\dev; cargo build --release 2>&1 | Out-S ...
++                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling agent v0.1.0 (C:\dev\agent):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+warning: method `nom` is never used
+  --> agent\src\diagnostics\multifenetre\voies.rs:29:8
+   |
+28 | pub(super) trait VoieDeCapture {
+   |                  ------------- method in this trait
+29 |     fn nom(&self) -> &'static str;
+   |        ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `nombre` is never used
+  --> agent\src\moniteurs_virtuels.rs:57:12
+   |
+43 | impl<'p> Sorties<'p> {
+   | -------------------- method in this implementation
+...
+57 |     pub fn nombre(&self) -> usize {
+   |            ^^^^^^
+
+warning: field `capture` is never read
+   --> agent\src\encode.rs:289:5
+    |
+253 | pub struct H264Encoder {
+    |            ----------- field in this struct
+...
+289 |     capture: (u32, u32),
+    |     ^^^^^^^
+
+warning: function `client_size` is never used
+  --> agent\src\window.rs:79:8
+   |
+79 | pub fn client_size(hwnd: HWND) -> Result<(u32, u32)> {
+   |        ^^^^^^^^^^^
+
+warning: method `hwnd` is never used
+   --> agent\src\windows_source.rs:131:12
+    |
+ 98 | impl WindowsSource {
+    | ------------------ method in this implementation
+...
+131 |     pub fn hwnd(&self) -> HWND {
+    |            ^^^^
+
+warning: `agent` (bin "agent") generated 5 warnings
+    Finished `release` profile [optimized] target(s) in 7.94s
