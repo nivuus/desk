@@ -1,0 +1,101 @@
+2026-07-31T17:59:56.956316Z  INFO agent::diagnostics::exceptions: filtre d'exception installé chemin="C:\\dev\\exceptions.log" modules=33 fil_principal=12312
+2026-07-31T17:59:56.956720Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-07-31T17:59:56.958397Z  INFO agent::capture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true
+2026-07-31T17:59:57.052986Z  INFO agent::capture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-07-31T17:59:57.053294Z  INFO agent::capture: duplication de sortie établie desktop_width=2400 desktop_height=1080
+2026-07-31T17:59:57.053310Z  INFO agent::diagnostics::multifenetre::banc: banc : coordonnées de fenêtre et de texture bureau_x=0 bureau_y=0 bureau_largeur=2400 bureau_hauteur=1080 texture_largeur=2400 texture_hauteur=1080 facteur_horizontal=1.0 facteur_vertical=1.0
+2026-07-31T17:59:57.053326Z  INFO agent::diagnostics::multifenetre::banc: banc : disposition retenue voie="printwindow" nombre=4 places=[Rect { x: 0, y: 0, width: 1200, height: 540 }, Rect { x: 1200, y: 0, width: 1200, height: 540 }, Rect { x: 0, y: 540, width: 1200, height: 540 }, Rect { x: 1200, y: 540, width: 1200, height: 540 }] places_texture=[Rect { x: 0, y: 0, width: 1200, height: 540 }, Rect { x: 1200, y: 0, width: 1200, height: 540 }, Rect { x: 0, y: 540, width: 1200, height: 540 }, Rect { x: 1200, y: 540, width: 1200, height: 540 }]
+2026-07-31T18:00:07.061038Z  INFO agent::diagnostics::multifenetre::banc: passe TÉMOIN — cadence de peinture sans capture mires=4 trames=37031 cadence=3703.068301735337
+2026-07-31T18:00:08.086764Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[18, 18, 18, 18] unites=[0, 0, 0, 0] verdicts_faux=0 avant=Verdicts { justes: 18, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:09.086704Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[36, 36, 36, 36] unites=[0, 0, 0, 0] verdicts_faux=0 avant=Verdicts { justes: 36, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:10.086776Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[54, 54, 54, 54] unites=[0, 0, 0, 0] verdicts_faux=0 avant=Verdicts { justes: 54, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:11.086906Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[72, 72, 72, 72] unites=[0, 0, 0, 0] verdicts_faux=0 avant=Verdicts { justes: 72, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:12.086905Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[90, 90, 90, 90] unites=[0, 0, 0, 0] verdicts_faux=0 avant=Verdicts { justes: 90, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:12.088174Z  INFO agent::diagnostics::multifenetre::banc: recouvrement posé : la mire 0 est sous la mire 3
+2026-07-31T18:00:13.120976Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[108, 108, 108, 108] unites=[0, 0, 0, 0] verdicts_faux=0 avant=Verdicts { justes: 90, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 18, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:14.087682Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[125, 125, 125, 125] unites=[0, 0, 0, 0] verdicts_faux=0 avant=Verdicts { justes: 90, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 35, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:15.120982Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[143, 143, 143, 143] unites=[0, 0, 0, 0] verdicts_faux=0 avant=Verdicts { justes: 90, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 53, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:16.121296Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[161, 161, 161, 161] unites=[0, 0, 0, 0] verdicts_faux=0 avant=Verdicts { justes: 90, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 71, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:17.131809Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[178, 178, 178, 178] unites=[0, 0, 0, 0] verdicts_faux=0 avant=Verdicts { justes: 90, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 88, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:17.131839Z  INFO agent::diagnostics::multifenetre::banc: passe terminée passe="capture" voie="printwindow" nombre=4 cadences=[17.8, 17.8, 17.8, 17.8] unites=[0, 0, 0, 0] verdicts_faux=0 mire0_avant_recouvrement=Verdicts { justes: 90, voisines: 0, noires: 0, inconnues: 0 } mire0_apres_recouvrement=Verdicts { justes: 88, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:17.132598Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-07-31T18:00:17.209349Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=393218
+2026-07-31T18:00:17.213518Z DEBUG agent::encode: aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT erreur=aucun convertisseur vidéo matériel enregistré
+2026-07-31T18:00:17.214200Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-07-31T18:00:17.214215Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="convertisseur" file=327681
+2026-07-31T18:00:17.214723Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-07-31T18:00:17.243280Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=655367
+2026-07-31T18:00:17.243327Z DEBUG agent::encode: aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT erreur=aucun convertisseur vidéo matériel enregistré
+2026-07-31T18:00:17.243484Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-07-31T18:00:17.243492Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="convertisseur" file=589830
+2026-07-31T18:00:17.243792Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-07-31T18:00:17.274773Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=851979
+2026-07-31T18:00:17.274815Z DEBUG agent::encode: aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT erreur=aucun convertisseur vidéo matériel enregistré
+2026-07-31T18:00:17.274969Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-07-31T18:00:17.274976Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="convertisseur" file=786442
+2026-07-31T18:00:17.275225Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-07-31T18:00:17.309192Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=1048591
+2026-07-31T18:00:17.309245Z DEBUG agent::encode: aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT erreur=aucun convertisseur vidéo matériel enregistré
+2026-07-31T18:00:17.309424Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-07-31T18:00:17.309432Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="convertisseur" file=983054
+2026-07-31T18:00:18.364261Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[19, 19, 19, 19] unites=[9, 9, 9, 9] verdicts_faux=0 avant=Verdicts { justes: 19, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:19.364534Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[37, 37, 37, 37] unites=[18, 18, 18, 18] verdicts_faux=0 avant=Verdicts { justes: 37, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:20.364736Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[55, 55, 55, 55] unites=[27, 27, 27, 27] verdicts_faux=0 avant=Verdicts { justes: 55, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:21.364793Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[73, 73, 73, 73] unites=[36, 36, 36, 36] verdicts_faux=0 avant=Verdicts { justes: 73, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:22.309943Z  INFO agent::diagnostics::multifenetre::banc: recouvrement posé : la mire 0 est sous la mire 3
+2026-07-31T18:00:22.364661Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[91, 91, 91, 91] unites=[45, 45, 45, 45] verdicts_faux=0 avant=Verdicts { justes: 90, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 1, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:23.321134Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[107, 107, 107, 107] unites=[53, 53, 53, 53] verdicts_faux=0 avant=Verdicts { justes: 90, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 17, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:24.353655Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[124, 124, 124, 124] unites=[62, 62, 62, 62] verdicts_faux=0 avant=Verdicts { justes: 90, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 34, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:25.332136Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[140, 140, 140, 140] unites=[70, 70, 70, 70] verdicts_faux=0 avant=Verdicts { justes: 90, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 50, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:26.365445Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[157, 157, 157, 157] unites=[78, 78, 78, 78] verdicts_faux=0 avant=Verdicts { justes: 90, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 67, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:27.343494Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[173, 173, 173, 173] unites=[86, 86, 86, 86] verdicts_faux=0 avant=Verdicts { justes: 90, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 83, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T18:00:27.343519Z  INFO agent::diagnostics::multifenetre::banc: libération des encodeurs : début nombre=4
+2026-07-31T18:00:27.343522Z  INFO agent::diagnostics::multifenetre::banc: libération d'un encodeur : avant id=0
+2026-07-31T18:00:27.343531Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_OF_STREAM
+2026-07-31T18:00:27.343535Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_OF_STREAM refuse=false
+2026-07-31T18:00:27.343537Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_STREAMING
+2026-07-31T18:00:27.343540Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_STREAMING refuse=false
+2026-07-31T18:00:27.343541Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_OF_STREAM
+2026-07-31T18:00:27.343545Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_OF_STREAM refuse=false
+2026-07-31T18:00:27.343547Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_STREAMING
+2026-07-31T18:00:27.343548Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_STREAMING refuse=false
+2026-07-31T18:00:27.343674Z DEBUG agent::encode::arret: barrière franchie mft="convertisseur" quand="après END_STREAMING" attente_ms=0
+2026-07-31T18:00:27.343700Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après END_STREAMING" attente_ms=0
+2026-07-31T18:00:27.343706Z DEBUG agent::encode::arret: MFT sans IMFShutdown : pas d'arrêt explicite mft="convertisseur" erreur=Cette interface n’est pas prise en charge (0x80004002)
+2026-07-31T18:00:27.343819Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-07-31T18:00:27.344208Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-07-31T18:00:27.344215Z DEBUG agent::encode::arret: arrêt de la MFT confirmé mft="encodeur" attente_ms=0
+2026-07-31T18:00:27.344229Z DEBUG agent::encode::arret: barrière franchie mft="convertisseur" quand="après IMFShutdown" attente_ms=0
+2026-07-31T18:00:27.344237Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après IMFShutdown" attente_ms=0
+2026-07-31T18:00:27.344291Z  INFO agent::diagnostics::multifenetre::banc: libération d'un encodeur : après id=0
+2026-07-31T18:00:27.344296Z  INFO agent::diagnostics::multifenetre::banc: libération d'un encodeur : avant id=1
+2026-07-31T18:00:27.344298Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_OF_STREAM
+2026-07-31T18:00:27.344300Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_OF_STREAM refuse=false
+2026-07-31T18:00:27.344302Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_STREAMING
+2026-07-31T18:00:27.344304Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_STREAMING refuse=false
+2026-07-31T18:00:27.344305Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_OF_STREAM
+2026-07-31T18:00:27.344310Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_OF_STREAM refuse=false
+2026-07-31T18:00:27.344311Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_STREAMING
+2026-07-31T18:00:27.344314Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_STREAMING refuse=false
+2026-07-31T18:00:27.344325Z DEBUG agent::encode::arret: barrière franchie mft="convertisseur" quand="après END_STREAMING" attente_ms=0
+2026-07-31T18:00:27.344334Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après END_STREAMING" attente_ms=0
+2026-07-31T18:00:27.344339Z DEBUG agent::encode::arret: MFT sans IMFShutdown : pas d'arrêt explicite mft="convertisseur" erreur=Cette interface n’est pas prise en charge (0x80004002)
+2026-07-31T18:00:27.344347Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-07-31T18:00:27.347009Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-07-31T18:00:27.347019Z DEBUG agent::encode::arret: arrêt de la MFT confirmé mft="encodeur" attente_ms=0
+2026-07-31T18:00:27.347039Z DEBUG agent::encode::arret: barrière franchie mft="convertisseur" quand="après IMFShutdown" attente_ms=0
+2026-07-31T18:00:27.347052Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après IMFShutdown" attente_ms=0
+2026-07-31T18:00:27.347086Z  INFO agent::diagnostics::multifenetre::banc: libération d'un encodeur : après id=1
+2026-07-31T18:00:27.347090Z  INFO agent::diagnostics::multifenetre::banc: libération d'un encodeur : avant id=2
+2026-07-31T18:00:27.347092Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_OF_STREAM
+2026-07-31T18:00:27.347095Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_OF_STREAM refuse=false
+2026-07-31T18:00:27.347097Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_STREAMING
+2026-07-31T18:00:27.347099Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_STREAMING refuse=false
+2026-07-31T18:00:27.347101Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_OF_STREAM
+2026-07-31T18:00:27.347104Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_OF_STREAM refuse=false
+2026-07-31T18:00:27.347106Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_STREAMING
+2026-07-31T18:00:27.347108Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_STREAMING refuse=false
+2026-07-31T18:00:27.347118Z DEBUG agent::encode::arret: barrière franchie mft="convertisseur" quand="après END_STREAMING" attente_ms=0
+2026-07-31T18:00:27.347185Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après END_STREAMING" attente_ms=0
+2026-07-31T18:00:27.347190Z DEBUG agent::encode::arret: MFT sans IMFShutdown : pas d'arrêt explicite mft="convertisseur" erreur=Cette interface n’est pas prise en charge (0x80004002)
+2026-07-31T18:00:27.347197Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"

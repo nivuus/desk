@@ -1,0 +1,58 @@
+=== exception (première chance) ===
+code=0xc0000005 adresse=0x00007ff86b439daa (ntdll.dll+0x19daa)
+fil=13344 (fil principal=12876)
+violation d'accès : écriture à l'adresse 0x0000000000000024
+registres : rip=0x00007ff86b439daa rsp=0x0000006d74eef450 rbp=0x0000006d74eef509
+            rax=0x0000000000000000 rcx=0x0000000000000000 rdx=0x00000000fffffffe rbx=0xffffffffffffffff
+            r8 =0x0000000000000000 r9 =0x00007ff86b58f398 r12=0x0000000000000000 r13=0x0000025a9565c930
+            r14=0x0000025a9565c938 r15=0x0000000000000000 rsi=0x0000000000000000 rdi=0x00000000fffffffe
+pile (16 cadres, du plus récent au plus ancien) :
+  #00 0x00007ff6411db384  agent.exe+0xcb384
+  #01 0x00007ff6411dad9d  agent.exe+0xcad9d
+  #02 0x00007ff86b49bfe2  ntdll.dll+0x7bfe2
+  #03 0x00007ff86b451722  ntdll.dll+0x31722
+  #04 0x00007ff86b4c42ee  ntdll.dll+0xa42ee
+  #05 0x00007ff86b439daa  ntdll.dll+0x19daa
+  #06 0x00007ff86b4374c2  ntdll.dll+0x174c2
+  #07 0x00007ff820d8735d  <hors module>
+  #08 0x00007ff820d834ac  <hors module>
+  #09 0x00007ff84c96bdca  RTWorkQ.DLL+0xbdca
+  #10 0x00007ff84c96b8b9  RTWorkQ.DLL+0xb8b9
+  #11 0x00007ff84c968e91  RTWorkQ.DLL+0x8e91
+  #12 0x00007ff86b48958a  ntdll.dll+0x6958a
+  #13 0x00007ff86b42bb26  ntdll.dll+0xbb26
+  #14 0x00007ff86a3d4cb0  KERNEL32.DLL+0x14cb0
+  #15 0x00007ff86b49edeb  ntdll.dll+0x7edeb
+=== fin ===
+=== exception (NON GÉRÉE — fatale) ===
+code=0xc0000005 adresse=0x00007ff86b439daa (ntdll.dll+0x19daa)
+fil=13344 (fil principal=12876)
+violation d'accès : écriture à l'adresse 0x0000000000000024
+registres : rip=0x00007ff86b439daa rsp=0x0000006d74eef450 rbp=0x0000006d74eef509
+            rax=0x0000000000000000 rcx=0x0000000000000000 rdx=0x00000000fffffffe rbx=0xffffffffffffffff
+            r8 =0x0000000000000000 r9 =0x00007ff86b58f398 r12=0x0000000000000000 r13=0x0000025a9565c930
+            r14=0x0000025a9565c938 r15=0x0000000000000000 rsi=0x0000000000000000 rdi=0x00000000fffffffe
+pile (22 cadres, du plus récent au plus ancien) :
+  #00 0x00007ff6411db384  agent.exe+0xcb384
+  #01 0x00007ff6411dad0c  agent.exe+0xcad0c
+  #02 0x00007ff868ba05bd  KERNELBASE.dll+0xb05bd
+  #03 0x00007ff86b53c43b  ntdll.dll+0x11c43b
+  #04 0x00007ff86b53cf52  ntdll.dll+0x11cf52
+  #05 0x00007ff86b4c7e0e  ntdll.dll+0xa7e0e
+  #06 0x00007ff86b4af1d6  ntdll.dll+0x8f1d6
+  #07 0x00007ff86b4bfed6  ntdll.dll+0x9fed6
+  #08 0x00007ff86b4c52ef  ntdll.dll+0xa52ef
+  #09 0x00007ff86b45192e  ntdll.dll+0x3192e
+  #10 0x00007ff86b4c42ee  ntdll.dll+0xa42ee
+  #11 0x00007ff86b439daa  ntdll.dll+0x19daa
+  #12 0x00007ff86b4374c2  ntdll.dll+0x174c2
+  #13 0x00007ff820d8735d  <hors module>
+  #14 0x00007ff820d834ac  <hors module>
+  #15 0x00007ff84c96bdca  RTWorkQ.DLL+0xbdca
+  #16 0x00007ff84c96b8b9  RTWorkQ.DLL+0xb8b9
+  #17 0x00007ff84c968e91  RTWorkQ.DLL+0x8e91
+  #18 0x00007ff86b48958a  ntdll.dll+0x6958a
+  #19 0x00007ff86b42bb26  ntdll.dll+0xbb26
+  #20 0x00007ff86a3d4cb0  KERNEL32.DLL+0x14cb0
+  #21 0x00007ff86b49edeb  ntdll.dll+0x7edeb
+=== fin ===

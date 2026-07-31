@@ -1,5 +1,15 @@
 # N duplications DXGI de front sur N sorties virtuelles — conception
 
+> ✅ **Note du 31 juillet 2026, postérieure à ce document — CE CHANTIER EST
+> EXÉCUTÉ.** Ce qui suit décrit l'état **d'avant**, et le reste : c'est une
+> conception, pas un compte rendu. Les résultats sont dans
+> `plans/2026-07-31-duplications-paralleles-resultats.md`. En deux lignes : la
+> **voie est reçue** (90,1 i/s par fenêtre en capture+encodage à N=8, zéro
+> verdict faux, huit duplications de front — une exécution par rang, donc aucun
+> taux), et le défaut hérité du §5 est **diagnostiqué et corrigé**. Toute phrase
+> de ce document qui dit « n'a jamais été mesuré », « reste dû » ou « n'est pas
+> diagnostiqué » est à lire au passé.
+
 > Troisième chantier de mesure de la série, dans la lignée de la sonde de
 > capture multi-fenêtres (`plans/2026-07-30-sonde-capture-multifenetre-resultats.md`)
 > et des mesures préalables (`plans/2026-07-31-mesures-prealables-chantier-d-resultats.md`).
@@ -136,6 +146,22 @@ dépasse pas :
   libère la place reste une conjecture non éprouvée, hors périmètre ici.
 
 ## 5. Le défaut ouvert hérité — traité en premier, comme défaut produit
+
+> ✅ **Note du 31 juillet 2026 — DÉFAUT DIAGNOSTIQUÉ ET CORRIGÉ**, et
+> **les trois hypothèses ci-dessous sont TOUTES FAUSSES** : ne pas les
+> reprendre. Aucune n'était la bonne parce que la question était mal posée —
+> elles cherchaient toutes un **ordre de destruction sur le fil principal**, or
+> la faute s'exécute sur un **fil de pool** : la MFT NVIDIA gardait un élément
+> de travail en vol quand on relâchait l'encodeur
+> (`RtlEnterCriticalSection` sous `CSerialWorkQueue::QueueItem::ExecuteWorkItem`,
+> `DebugInfo` nul). `MFShutdown`, que le diagnostic a d'abord accusé, a été
+> **réfuté par la mesure**. Le défaut était en outre **intermittent** (2
+> plantages sur 6 exécutions), pas déterministe comme ce paragraphe le laisse
+> croire. Correctif : `agent/src/encode/arret.rs` — file de travail sérialisée
+> par encodeur, sentinelle attendue avant relâchement, plus
+> `IMFShutdown::Shutdown` ; **0 récidive sur 20 exécutions** du cas comparable,
+> *ce qui n'est pas une preuve d'absence*. Détail en
+> `plans/2026-07-31-duplications-paralleles-resultats.md` §7.
 
 Les mesures préalables laissent un défaut **localisé, non diagnostiqué** : sur
 la voie `duplication`, la passe d'encodage **tue le processus à la SORTIE de sa

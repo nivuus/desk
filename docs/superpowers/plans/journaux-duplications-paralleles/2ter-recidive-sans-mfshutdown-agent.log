@@ -1,0 +1,53 @@
+2026-07-31T16:40:54.951630Z  INFO agent::diagnostics::exceptions: filtre d'exception installé chemin="C:\\dev\\exceptions.log" modules=33 fil_principal=12224
+2026-07-31T16:40:54.952128Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-07-31T16:40:54.954028Z  INFO agent::capture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true
+2026-07-31T16:40:55.048354Z  INFO agent::capture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-07-31T16:40:55.048684Z  INFO agent::capture: duplication de sortie établie desktop_width=2400 desktop_height=1080
+2026-07-31T16:40:55.048698Z  INFO agent::diagnostics::multifenetre::banc: banc : coordonnées de fenêtre et de texture bureau_x=0 bureau_y=0 bureau_largeur=2400 bureau_hauteur=1080 texture_largeur=2400 texture_hauteur=1080 facteur_horizontal=1.0 facteur_vertical=1.0
+2026-07-31T16:40:55.048715Z  INFO agent::diagnostics::multifenetre::banc: banc : disposition retenue voie="duplication" nombre=1 places=[Rect { x: 0, y: 0, width: 2400, height: 1080 }] places_texture=[Rect { x: 0, y: 0, width: 2400, height: 1080 }]
+2026-07-31T16:41:05.053479Z  INFO agent::diagnostics::multifenetre::banc: passe TÉMOIN — cadence de peinture sans capture mires=1 trames=1064 cadence=106.3919812363742
+2026-07-31T16:41:05.053698Z  INFO agent::capture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true
+2026-07-31T16:41:05.082101Z  INFO agent::capture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-07-31T16:41:05.082342Z  INFO agent::capture: duplication de sortie établie desktop_width=2400 desktop_height=1080
+2026-07-31T16:41:06.087585Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[51] unites=[0] verdicts_faux=0 avant=Verdicts { justes: 51, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:07.087685Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[99] unites=[0] verdicts_faux=0 avant=Verdicts { justes: 99, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:08.089310Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[162] unites=[0] verdicts_faux=0 avant=Verdicts { justes: 162, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:09.089874Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[238] unites=[0] verdicts_faux=0 avant=Verdicts { justes: 238, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:10.090145Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[328] unites=[0] verdicts_faux=0 avant=Verdicts { justes: 328, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:11.090492Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[414] unites=[0] verdicts_faux=0 avant=Verdicts { justes: 414, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:12.090001Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[503] unites=[0] verdicts_faux=0 avant=Verdicts { justes: 503, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:13.090030Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[593] unites=[0] verdicts_faux=0 avant=Verdicts { justes: 593, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:14.089642Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[682] unites=[0] verdicts_faux=0 avant=Verdicts { justes: 682, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:15.089966Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[772] unites=[0] verdicts_faux=0 avant=Verdicts { justes: 772, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:15.089989Z  INFO agent::diagnostics::multifenetre::banc: passe terminée passe="capture" voie="duplication" nombre=1 cadences=[77.2] unites=[0] verdicts_faux=0 mire0_avant_recouvrement=Verdicts { justes: 772, voisines: 0, noires: 0, inconnues: 0 } mire0_apres_recouvrement=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:15.090733Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-07-31T16:41:15.168387Z DEBUG agent::encode: aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT erreur=aucun convertisseur vidéo matériel enregistré
+2026-07-31T16:41:15.169086Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-07-31T16:41:16.176459Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[58] unites=[29] verdicts_faux=0 avant=Verdicts { justes: 58, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:17.174966Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[114] unites=[57] verdicts_faux=0 avant=Verdicts { justes: 114, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:18.178334Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[173] unites=[86] verdicts_faux=0 avant=Verdicts { justes: 173, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:19.178882Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[249] unites=[124] verdicts_faux=0 avant=Verdicts { justes: 249, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:20.179677Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[337] unites=[168] verdicts_faux=0 avant=Verdicts { justes: 337, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:21.179051Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[426] unites=[213] verdicts_faux=0 avant=Verdicts { justes: 426, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:22.171864Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[515] unites=[256] verdicts_faux=0 avant=Verdicts { justes: 515, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:23.179300Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[605] unites=[301] verdicts_faux=0 avant=Verdicts { justes: 605, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:24.179275Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[694] unites=[346] verdicts_faux=0 avant=Verdicts { justes: 694, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:25.176329Z  INFO agent::diagnostics::multifenetre::banc: banc en cours images=[763] unites=[379] verdicts_faux=0 avant=Verdicts { justes: 763, voisines: 0, noires: 0, inconnues: 0 } apres=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:25.176350Z  INFO agent::diagnostics::multifenetre::banc: libération des encodeurs : début nombre=1
+2026-07-31T16:41:25.176353Z  INFO agent::diagnostics::multifenetre::banc: libération d'un encodeur : avant id=0
+2026-07-31T16:41:25.176362Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_OF_STREAM
+2026-07-31T16:41:25.176366Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_OF_STREAM refuse=false
+2026-07-31T16:41:25.176368Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_STREAMING
+2026-07-31T16:41:25.176370Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_STREAMING refuse=false
+2026-07-31T16:41:25.176372Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_OF_STREAM
+2026-07-31T16:41:25.176375Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_OF_STREAM refuse=false
+2026-07-31T16:41:25.176376Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_STREAMING
+2026-07-31T16:41:25.176378Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_STREAMING refuse=false
+2026-07-31T16:41:25.176380Z DEBUG agent::encode::arret: MFT sans IMFShutdown : aucun arrêt explicite possible mft="convertisseur" erreur=Cette interface n’est pas prise en charge (0x80004002)
+2026-07-31T16:41:25.176485Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-07-31T16:41:25.178983Z  INFO agent::encode::arret: arrêt de la MFT confirmé mft="encodeur" attente_ms=0
+2026-07-31T16:41:25.179035Z  INFO agent::diagnostics::multifenetre::banc: libération d'un encodeur : après id=0
+2026-07-31T16:41:25.179039Z  INFO agent::diagnostics::multifenetre::banc: libération des encodeurs : terminée
+2026-07-31T16:41:25.179043Z  INFO agent::diagnostics::multifenetre::banc: passe terminée passe="capture+encodage" voie="duplication" nombre=1 cadences=[76.3] unites=[379] verdicts_faux=0 mire0_avant_recouvrement=Verdicts { justes: 763, voisines: 0, noires: 0, inconnues: 0 } mire0_apres_recouvrement=Verdicts { justes: 0, voisines: 0, noires: 0, inconnues: 0 }
+2026-07-31T16:41:25.179052Z  INFO agent::diagnostics::multifenetre::banc: libération des voies de capture : avant
+2026-07-31T16:41:25.179075Z  INFO agent::diagnostics::multifenetre::banc: libération des voies de capture : après

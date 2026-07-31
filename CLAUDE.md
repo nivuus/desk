@@ -37,9 +37,23 @@ où l'on travaille dedans, pas en chantier séparé.
 
 | Fichier | Lignes | Pourquoi elle reste |
 | --- | --- | --- |
-| `agent/src/encode.rs` | 1502 | `#[cfg(windows)]`, aucun test |
+| `agent/src/encode.rs` | 1536 | `#[cfg(windows)]`, aucun test |
 | `agent/src/windows_source.rs` | 721 | `#[cfg(windows)]`, aucun test |
 | `agent/src/wasapi.rs` | 543 | `#[cfg(windows)]`, aucun test |
+
+> `encode.rs` est passé de 1502 à 1536 lignes le 31 juillet 2026 (correctif de
+> libération des encodeurs). **Cette croissance de +34 est régulière au regard
+> de la règle ci-dessus** : l'addition s'est accompagnée de son extraction —
+> l'essentiel de la logique neuve vit dans `agent/src/encode/arret.rs`, et seul
+> le câblage est resté dans `encode.rs`.
+>
+> ⚠️ **`arret.rs` est à 500 lignes exactement : sa marge est NULLE.** Il en
+> faisait 457 à sa création ; la revue finale de branche l'a porté à 500 en y
+> inscrivant la portée présente et la borne du pire cas de `Drop`, et a dû
+> resserrer sa propre rédaction pour ne pas franchir le plafond. **Toute
+> addition future à ce fichier appelle une extraction, jamais une compression
+> supplémentaire** — la compression y a déjà été jouée, et elle ne l'est qu'une
+> fois.
 
 Ces trois modules ne se compilent que sur la VM et ne sont couverts par aucun
 test : les découper se ferait sans filet automatisé. La dette est assumée
@@ -1327,6 +1341,16 @@ recouvrement (`verdicts_faux` = 449 / 449 / 536 à N = 2/4/8), ce qui **coupe la
 passe d'encodage** — il n'existe donc aucune mesure d'encodage multi-fenêtres
 par cette voie, par construction du protocole.
 
+> ✅ **Note du 31 juillet 2026 — les deux réserves du paragraphe ci-dessus sont
+> levées** par le chantier des duplications parallèles (section « N duplications
+> DXGI de front » plus bas). **Le cas « N fenêtres gardant chacune leur
+> résolution utile » a été exercé** : 8 sorties de 1280×720, aire totale
+> multipliée par 8 (0,92 → 7,37 Mpx), cadence par fenêtre inchangée (90,1 i/s).
+> Et **des mesures d'encodage multi-fenêtres existent désormais** — quatre rangs,
+> jusqu'à N=8, zéro verdict faux. Ce montage-là n'a pas de recouvrement (une
+> fenêtre par sortie), donc pas de porte éliminatoire : ce n'est pas le montage à
+> aire fixe ci-dessus, et **les deux séries ne se comparent d'aucun chiffre**.
+
 **Plafond d'encodage, formulation bornée, composant du refus non identifié** :
 sur un périphérique D3D11 **unique et partagé**, à 720p/60/8 Mb/s, 8 instances
 du pipeline Media Foundation réussissent, la 9ᵉ échoue à la **liaison du type
@@ -1364,6 +1388,19 @@ cadence *ensemble* — aucune image n'a été soumise, seule la **construction**
 mesurée. Enfin, détruire un encodeur n'a **pas** été montré libérer la place :
 la mise en sommeil des fenêtres masquées reste à éprouver par une séquence
 « créer 8 → en détruire 1 → tenter un 9ᵉ ».
+
+> ✅ **Note du 31 juillet 2026 — « si 8 encodeurs tiennent la cadence ensemble »
+> est répondu : ils la tiennent.** Huit encodeurs alimentés de front pendant
+> 10 s rendent **90,1 i/s par fenêtre** en capture+encodage, zéro verdict faux
+> (chantier des duplications parallèles, section plus bas). Portée exacte : sur
+> **huit périphériques D3D11 distincts**, 1280×720 à 60 Hz et 8 Mb/s, **une**
+> exécution par rang, unités H.264 comptées et jamais décodées. Le montage de la
+> mesure ② — **périphérique unique partagé** — n'a, lui, toujours jamais été
+> alimenté. **Les autres réserves de ce paragraphe restent entières** : la couche
+> qui impose le plafond de 8 n'est pas identifiée, rien n'est su d'autres
+> résolutions ou débits, et la mise en sommeil des fenêtres masquées demeure une
+> conjecture — « créer 8 → en détruire 1 → tenter un 9ᵉ » n'a toujours pas été
+> jouée.
 
 **Voie recommandée** : le moniteur virtuel par fenêtre (seule voie qui préserve
 le chemin GPU en supprimant le recouvrement par construction), avec `PrintWindow`
@@ -1442,11 +1479,12 @@ confirmation par des processus tiers).
 
 ### Ce que ces mesures NE disent pas
 
-- **L'arrangement que la voie recommandée propose réellement n'est pas mesuré** :
-  N sorties virtuelles, **une fenêtre chacune**, donc **N duplications DXGI de
-  front**. Le banc a posé N fenêtres sur **UNE** sortie. DXGI n'autorisant
-  qu'une duplication par sortie, la question est réelle — c'est la mesure
-  suivante, courte, et elle dimensionne la voie.
+- **L'arrangement que la voie recommandée propose réellement n'est pas mesuré
+  ICI** : N sorties virtuelles, **une fenêtre chacune**, donc **N duplications
+  DXGI de front**. Le banc de ce chantier a posé N fenêtres sur **UNE** sortie.
+  DXGI n'autorisant qu'une duplication par sortie, la question était réelle.
+  ✅ **Elle a été mesurée le 31 juillet 2026 — voie reçue à N=8** : voir la
+  section « N duplications DXGI de front » ci-dessous.
 - **La comparaison des deux modes d'encodage porte sur DEUX variables
   confondues** : le mode `separe` n'ouvre aucune duplication DXGI là où
   `partage` en ouvre une. Le témoin propre n'a pas été exercé.
@@ -1454,12 +1492,28 @@ confirmation par des processus tiers).
   n'a été soumise (seule la *création* est mesurée), et **détruire un encodeur
   n'a pas été montré libérer la place** — la mise en sommeil des fenêtres
   masquées repose donc sur une conjecture.
+  ✅ **Des images ont depuis été soumises** (31 juillet 2026) : 8 encodeurs
+  alimentés ensemble tiennent 90,1 i/s par fenêtre — mais sur huit
+  périphériques D3D11 **distincts**, pas sur le périphérique unique partagé de
+  cette mesure-ci. **La couche du plafond et la mise en sommeil restent, elles,
+  entièrement ouvertes.**
 - **La cause du refus à la 11ᵉ sortie n'est pas isolée**, et on ignore si le
   vivier de 10 est global au pilote ou par client (Apollo pingue le même
   pilote). **L'unité du chien de garde (`delai = 3`) reste inconnue : aucune
   unité n'est exclue, pas même la seconde.**
 
-### ⚠️ Défaut ouvert, non diagnostiqué
+### ⚠️ Défaut alors ouvert — depuis diagnostiqué et corrigé (31 juillet 2026)
+
+> ✅ **Ce défaut est traité** : diagnostic, réfutation de `MFShutdown` et
+> correctif au chantier « N duplications DXGI de front » ci-dessous, §7 de
+> `docs/superpowers/plans/2026-07-31-duplications-paralleles-resultats.md`.
+>
+> ⚠️ **Et le bornage ci-dessous porte une erreur à ne pas reprendre : il laisse
+> croire à un défaut DÉTERMINISTE.** « Les deux exécutions » ne dit pas combien
+> avaient passé. Il est **intermittent** — 2 plantages sur 6 exécutions du cas
+> comparable, et un rapport antérieur avait eu **quatre exécutions propres
+> d'affilée sur un binaire non corrigé**. Un défaut intermittent qu'on croit
+> déterministe se déclare « corrigé » à la première exécution qui passe.
 
 **La passe d'encodage du banc tue le processus, sur la voie `duplication`.**
 Bornage exact, à ne pas élargir :
@@ -1529,6 +1583,198 @@ code d'erreur).
 | `MULTIFENETRE_VDD_PURGE=1` | **Purge autonome** des sorties orphelines |
 | `MULTIFENETRE_VDD_CAPTURE=1` | **Mesure ③** — crée une sortie virtuelle et y lance le banc |
 | `MULTIFENETRE_NVENC=partage\|separe` | **Mesure ②** — plafond d'encodeurs, périphérique D3D11 partagé ou un par encodeur |
+| `MULTIFENETRE_VDD_PARALLELE=<1..8>` | **Chantier des duplications parallèles** — N sorties virtuelles × 1 fenêtre × 1 duplication DXGI × 1 encodeur, trois passes (témoin, capture, capture+encodage), contrôle d'image **en rotation**, chien de garde pingué à 1 Hz |
+| `MULTIFENETRE_EPREUVE_FILE_MS=<ms>` | Bouche la file de travail sérialisée imposée à la MFT pendant la passe — c'est l'épreuve qui montre que la barrière n'est pas un placebo |
+| `AGENT_TRACE_EXCEPTIONS=1` | Arme le filtre d'exception (pile symbolisable de la faute, journal séparé d'`agent.log`). Inerte sans la variable. `…_FICHIER` en change la destination ; `…_AUTOTEST=1` **tue délibérément le processus** pour éprouver l'instrument |
+
+---
+
+## 🖥️🖥️ N duplications DXGI de front sur N sorties virtuelles (31 juillet 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-07-31-duplications-paralleles-resultats.md`.
+Conception : `docs/superpowers/specs/2026-07-31-duplications-paralleles-design.md`.
+Journaux : `docs/superpowers/plans/journaux-duplications-paralleles/` — **tous en
+UTF-8**, accents `grep`-ables tels quels.
+
+Troisième **chantier de mesure**, qui prend la seule mesure que les mesures
+préalables laissaient due : **l'arrangement que la voie recommandée du chantier D
+propose réellement** — une sortie virtuelle par fenêtre, une duplication DXGI par
+sortie, un encodeur par sortie. Tout ce qui avait été mesuré jusque-là l'avait été
+sur un montage qui n'est pas celui-là.
+
+### Le résultat : **voie REÇUE**
+
+Le critère posé d'avance était : à N=8, **≥ 60 i/s par fenêtre en
+capture+encodage et aucun verdict faux**.
+
+| N | cadence/fenêtre, capture+encodage | verdicts faux | aire totale | débit de pixels **calculé** |
+| --- | --- | --- | --- | --- |
+| 1 | 90,1 i/s (`paralleles-n1.log:55`) | 0 | 0,92 Mpx | 83,0 MP/s |
+| 2 | 90,1 i/s (`paralleles-n2.log:68`) | 0 | 1,84 Mpx | 166,1 MP/s |
+| 4 | 90,1 i/s (`paralleles-n4.log:94`) | 0 | 3,69 Mpx | 332,1 MP/s |
+| **8** | **90,1 i/s** (`paralleles-n8.log:146`) | **0** | **7,37 Mpx** | **664,3 MP/s** |
+
+**90,1 i/s exactement sur les quinze voies des quatre rangs** en capture+encodage
+(90,0–90,1 en capture nue), soit **1,50 fois le seuil** au rang du critère. Huit
+duplications ouvertes de front (`paralleles-n8.log:78`), huit encodeurs matériels
+NVENC construits sans refus (l. 93 à 114), huit périphériques D3D11 tenus pour
+distincts (l. 47 à 75, tous `protection_precedente=false` — **inférence** sur la
+sémantique de `SetMultithreadProtected`, aucun relevé de huit pointeurs
+distincts), topologie rendue **nom pour nom** à son état de départ, zéro
+`ERROR`, zéro `WARN`, **aucun rang rejoué**.
+
+Deux réserves que ce tableau ne porte pas, et qu'il ne faut pas perdre en le
+recopiant (§6 des résultats) :
+
+- **la restauration « nom pour nom » n'est pas une preuve d'absence d'effet
+  résiduel** — elle porte sur l'ensemble des **noms** de sorties attachées, et
+  sur rien d'autre : ni mémoire, ni état du pilote, ni ressources DXGI ;
+- **la fraîcheur du binaire mesuré n'est adossée à aucune pièce versée.** La
+  sortie de `scripts/build-agent.sh` a été recopiée d'un terminal, jamais
+  capturée dans un fichier. Vérifiable depuis le dépôt, et rien de plus :
+  `git status --porcelain agent/ scripts/` vide à `db8cc85`, et la date du
+  binaire sur la VM antérieure de 1 min 40 s à l'horodatage du commit —
+  **cohérent** avec un binaire bâti sur ces sources, sans le prouver.
+
+### Ce que ce montage a de neuf : l'aire croît avec N
+
+**Tous les bancs antérieurs de ce projet mesuraient à aire totale fixe.**
+`disposition::tuiles` découpe le bureau : le débit de pixels y est quasi constant
+*par construction*, et le nombre de fenêtres n'y est **pas prouvé neutre en
+soi**. Ici chaque fenêtre a sa sortie de 1280×720, facteur d'échelle 1 (pas de
+piège DPI). **Le fait de ce chantier se lit entièrement dans sa propre série** :
+l'aire totale est multipliée par 8 de N=1 à N=8 (0,92 → 7,37 Mpx, **relevé**) et
+la cadence par fenêtre ne bouge pas (90,1 i/s aux quatre rangs, **relevé**) ; le
+débit de pixels correspondant, **calculé**, va de 83,0 à 664,3 MP/s.
+
+⚠️ **Ne rapprocher les deux séries d'AUCUN chiffre**, ni cadence ni débit — la
+sonde partage *une* acquisition entre N recadrages d'aire fixe, celle-ci ouvre
+*N* acquisitions sur N surfaces constantes. Un débit étant le produit d'une
+cadence par une aire, deux séries incommensurables sur les cadences le restent
+sur les débits. *(Une première rédaction de cette section affirmait « le débit
+passe de 248–258 à 664 MP/s sans que la cadence bouge » : 248–258 vient de la
+sonde et non de cette série, la cadence bouge bel et bien d'une série à l'autre
+— 107,5 → 90,1 i/s —, et la borne basse de la sonde à N=1, 208 MP/s, était
+écartée sans le dire.)*
+
+### Le défaut de libération des encodeurs : corrigé, et deux risques assumés
+
+**Il n'était pas déterministe mais intermittent** (2/6). **`MFShutdown` n'était
+pas en cause** : retiré entièrement du chemin, la faute revient (1/5) — sa
+présence dans les deux premières piles était fortuite. La faute réelle : **la MFT
+NVIDIA a un élément de travail encore en vol** quand on relâche l'encodeur, et il
+entre dans un verrou qui n'existe plus (`RtlEnterCriticalSection`, chemin
+contendu, `DebugInfo` nul, sur un fil de pool `CSerialWorkQueue`).
+
+**Correctif** (`agent/src/encode/arret.rs`) : une file de travail Media Foundation
+**sérialisée par encodeur** imposée à la MFT (`IMFRealTimeClientEx::SetWorkQueueEx`),
+puis dépôt d'une **sentinelle** attendue avant tout relâchement — une attente
+**bornée sur une condition observable**, pas un délai. Que le travail de la MFT
+transite bien par cette file est éprouvé : boucher la file 3 000 ms arrête
+l'encodage net pendant exactement cette durée, la capture continuant.
+**0 récidive sur 20 exécutions contre 2 sur 6** — *ce n'est pas une preuve
+d'absence, et l'énoncé porte toujours son nombre d'exécutions.*
+
+**Deux risques ouverts et assumés** :
+
+- **`IMFShutdown::Shutdown` est non borné dans un `Drop`, et un gel y a été
+  OBSERVÉ** (1 fois sur 6 à N=4, processus vivant treize minutes plus tard,
+  `2ter-gel-n4-shutdown.log`). **Cause non attribuée** — l'exécution portait
+  aussi une file au convertisseur, retirée depuis, et le départage n'a pas été
+  fait. **Le retirer n'est pas une option** : sans lui la faute revient 2 fois
+  sur 5, barrière pourtant franchie. Arrêt et barrière ne sont pas redondants.
+
+  ⚠️ **Ce risque est PRÉSENT, pas réservé au chantier D.**
+  `Drop for H264Encoder` court **déjà en production mono-fenêtre** : à chaque
+  changement de barreau de l'adaptation réseau (`set_encode_size`) et à chaque
+  redimensionnement (`resize`), sur le fil unique de `Session::run`
+  (`spawn_blocking`) — un gel y figerait la session entière. **Borne du pire
+  cas par destruction d'encodeur** : `2 × DELAI_BARRIERE + 2 × DELAI_ARRET_MFT`
+  = **8 s** de partie bornée (6 s sur les machines éprouvées, le convertisseur
+  n'exposant pas `IMFShutdown`), **et rien ne borne le total** — ni les quatre
+  `ProcessMessage`, ni les deux `Shutdown()`. Nominal relevé : 0,5 ms par
+  encodeur, 4,0 ms pour huit. Les deux traces qui encadrent l'appel sont en
+  **`info!`** et non `debug!` — l'exploitation tourne en `RUST_LOG=info`, et une
+  mitigation muette n'en est pas une. **Ne pas les redescendre.**
+- **Le convertisseur de couleur n'est couvert par rien.** Sans effet tant qu'il
+  retombe sur `CLSID_VideoProcessorMFT` (synchrone), mais **sur un hôte doté d'un
+  Video Processor matériel ce serait une MFT matérielle sans barrière** —
+  configuration qu'aucune machine éprouvée n'expose, donc **non mesurée**.
+
+### Ce que cette mesure NE dit pas
+
+- **Une exécution par rang, donc AUCUN taux** — ni fréquence d'échec, ni
+  variabilité des cadences. Le gel de `Shutdown` vu 1/6 à N=4 n'est ni observé ni
+  exclu par une exécution unique à N=4.
+- **Rien au-delà de 8 sorties, rien entre 4 et 8** : **8 est ce qui a été demandé
+  et obtenu, PAS une limite trouvée.** Le plafond de duplications simultanées
+  n'est pas mesuré (le vivier de sorties est de 10 : un rang 9 ou 10 serait
+  mesurable, il ne l'a pas été).
+- **Rien de la latence**, rien d'autres résolutions ou débits (1280×720@60,
+  8 Mb/s, passes de 10 s), rien sur une durée longue.
+- **La justesse est ÉCHANTILLONNÉE** : contrôle en rotation, une voie par tour,
+  soit **~113 lectures par voie à N=8**, pas 901. « Zéro verdict faux » vaut sur
+  les 901 lectures effectuées, pas sur les 7 208 images capturées.
+- **Les débits de pixels sont CALCULÉS**, pas relevés (le banc journalise des
+  cadences et des images, jamais des pixels).
+- **Les mires ne sont pas des applications** : D3D11 plein cadre, sans occlusion,
+  sans interaction, sans redimensionnement.
+- **Aucune unité H.264 n'a été décodée ni regardée.**
+- **Ce qui borne la cadence à ~90 i/s n'est pas mesuré** — un plafond juste
+  au-dessus et un plafond très au-dessus se liraient pareil ici.
+- **Rien du comportement quand Apollo consomme le même vivier de 10.**
+- **Le cas d'exploitation réel n'est pas couvert** : le banc crée ses N encodeurs
+  d'un coup et les détruit d'affilée à la fin, **jamais un seul pendant que les
+  autres encodent** — ce que fera pourtant la fermeture d'une fenêtre.
+- **La mise en sommeil des fenêtres masquées reste une conjecture** : « créer 8 →
+  en détruire 1 → tenter un 9ᵉ » n'a pas été jouée.
+
+### Pièges neufs — à connaître avant de toucher à ce terrain
+
+- **Ne jamais se fier à la pile du fil principal pour désigner une cause.** Elle
+  montrait `MFShutdown` dans les deux vidages ; coïncidence de minutage. Ce qui
+  tranche est de **retirer la variable suspecte et de voir si le symptôme
+  survit** — cela a coûté une campagne entière.
+- **`MFSHUTDOWN_COMPLETED` ne veut pas dire « plus rien en vol ».** Une MFT rend
+  cet état en `attente_ms=0` et fait planter le processus quelques instants plus
+  tard. Fait acquis, réutilisable.
+- **Un défaut intermittent qu'on croit déterministe se déclare corrigé à la
+  première exécution qui passe.** Mesurer le taux **avant** de corriger, et lui
+  opposer une campagne d'un ordre de grandeur au-dessus.
+- **Ne pas totaliser des exécutions qui n'exercent pas la même chose** : seule la
+  ligne comparable s'oppose à la référence ; un agrégat est un nombre sans
+  référent.
+- **Ne pas utiliser `git add -A` dans un arbre partagé** — un `git add -A
+  agent/src` a emporté dans un commit le travail concurrent d'une autre tâche,
+  sans sa déclaration de module : le commit ne compilait pas. **Nommer les
+  fichiers.**
+- **Un banc à aire fixe et un banc à aire croissante ne se comparent pas.** Les
+  deux séries existent désormais dans ce dépôt.
+- **Corriger une affirmation réfutée exige de la CHERCHER, pas de la corriger là
+  où on nous l'a montrée.** Les documents longs ont un sommaire, et c'est lui
+  qu'on lit : traiter le chapitre de détail en laissant le sommaire intact laisse
+  le lecteur repartir avec une tâche déjà faite. Balayer sur les formules
+  (« encore due », « non diagnostiqué », « jamais expliqué »…).
+  **Corollaire, payé une ronde plus tard : chercher par le SENS, pas par la
+  formule.** Ce balayage cherchait « **non** diagnostiqué » ; la phrase qui a
+  survécu disait « **pas** diagnostiqué », et c'était la conclusion d'une section
+  entière, contredisant l'encadré posé soixante lignes plus haut. Une négation se
+  dit de plusieurs façons, et **c'est celle qu'on n'a pas listée qui survit** :
+  balayer sur la *chose niée* (un diagnostic, une mesure, une explication) en
+  énumérant les tournures — « pas / non / jamais / seulement localisé / sans
+  explication / reste ouvert / n'est établi par rien ». Et **annoter
+  l'affirmation elle-même, pas sa voisine**.
+- **Une clé de lecture posée dans le code doit être vérifiée contre le journal
+  avant d'être recopiée.** Le commentaire de `passes.rs` expliquait le rapport
+  `unites`/`images` par un ratio 90/60 qui prédisait 600 unités là où le journal
+  en montrait **450** — la fermeture arithmétique était juste
+  (`images = unites + nv12_ecartees + au plus 1 en vol`, vérifiée aux quatre
+  rangs), **l'attribution causale ne l'était pas**. Reformulée en constat ; la
+  cause du rapport d'un demi **n'est pas établie**.
+- **Corollaire à retenir pour le chantier D** : les 90,1 i/s sont une cadence de
+  **capture**, pas d'unités H.264 délivrées — ce montage rend **45 unités par
+  seconde et par fenêtre**.
 
 ---
 

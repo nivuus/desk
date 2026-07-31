@@ -23,37 +23,53 @@
 //! rien à capturer. Cette sonde crée la sortie **et** fait tourner le banc
 //! dessus sans jamais rendre la main.
 //!
-//! # Piège : à `nombre = 1`, cette sonde LAISSE une sortie orpheline
+//! # Le piège que cette sonde a révélé — CORRIGÉ le 31 juillet 2026
+//!
+//! ✅ **Ce qui suit est un récit au PASSÉ.** Le défaut décrit ici a été
+//! diagnostiqué et corrigé par le chantier des duplications parallèles
+//! (`agent/src/encode/arret.rs`, commits `486e182` / `beb3114`,
+//! `docs/superpowers/plans/2026-07-31-duplications-paralleles-resultats.md`
+//! §7). Il n'était pas déterministe mais **intermittent** (2 plantages sur 6
+//! exécutions) ; sa cause : la MFT NVIDIA gardait un élément de travail en vol
+//! quand on relâchait l'encodeur. Depuis le correctif : **0 récidive sur 20
+//! exécutions** du cas comparable — *ce qui n'est pas une preuve d'absence*.
+//! Ne pas relire les paragraphes ci-dessous comme l'état courant du code.
 //!
 //! Sans recouvrement à mettre en scène, la porte éliminatoire du banc laisse
-//! passer et la passe d'encodage s'exécute — or **elle emporte le processus**.
+//! passer et la passe d'encodage s'exécute — or, avant le correctif, **elle
+//! emportait le processus**, ce qui laissait une sortie virtuelle orpheline.
 //!
-//! **Où exactement, car cela oriente le diagnostic : à la SORTIE de la boucle,
-//! pas pendant.** Les deux exécutions du 31 juillet 2026 écrivent leur dixième
-//! et DERNIÈRE ligne périodique à `debut + 10,00 s`, soit l'instant même où
-//! `while debut.elapsed() < DUREE_PASSE` cesse d'être vrai : la boucle a tourné
-//! entière, et `journaliser` n'est jamais atteint. Ce qui court entre les deux
-//! est la destruction du `Vec<H264Encoder>` local à `passe_capture`. Chercher
-//! du côté de `submit`/`poll_output` serait chercher au mauvais endroit.
+//! **Où exactement, car c'est ce qui a orienté le diagnostic : à la SORTIE de
+//! la boucle, pas pendant.** Les deux exécutions du 31 juillet 2026 écrivaient
+//! leur dixième et DERNIÈRE ligne périodique à `debut + 10,00 s`, soit
+//! l'instant même où `while debut.elapsed() < DUREE_PASSE` cessait d'être vrai :
+//! la boucle avait tourné entière, et `journaliser` n'était jamais atteint. Ce
+//! qui courait entre les deux est la destruction du `Vec<H264Encoder>` local à
+//! `passe_capture`. Chercher du côté de `submit`/`poll_output` aurait été
+//! chercher au mauvais endroit — et ce bornage est ce qui a fait gagner la
+//! campagne de diagnostic.
 //!
-//! **Ce n'est ni la sortie virtuelle, ni l'encodeur seul — c'est le couple.**
-//! Le même banc sur le bureau physique
-//! (`MULTIFENETRE_BANC=duplication MULTIFENETRE_N=1`) meurt au même endroit :
-//! la sortie virtuelle est hors de cause. Et `printwindow-n4.log` comme
+//! **Ce n'était ni la sortie virtuelle, ni l'encodeur seul — c'était le
+//! couple.** Le même banc sur le bureau physique
+//! (`MULTIFENETRE_BANC=duplication MULTIFENETRE_N=1`) mourait au même endroit :
+//! la sortie virtuelle était hors de cause. Et `printwindow-n4.log` comme
 //! `printwindow-n8.log` portent leur ligne `passe terminée
 //! passe="capture+encodage"` : sur la voie `printwindow`, la passe d'encodage
-//! va à son terme et le processus survit. Le défaut est donc dans le couple
-//! « voie **duplication** + encodeur H.264 », et dans lui seul.
+//! allait à son terme et le processus survivait. Le défaut était donc dans le
+//! couple « voie **duplication** + encodeur H.264 », et dans lui seul.
 //!
-//! Il n'avait jamais été vu parce que sur cette voie la porte éliminatoire
-//! coupait toujours avant la passe d'encodage — voir `CLAUDE.md`, « il n'existe
-//! donc aucune mesure d'encodage multi-fenêtres par cette voie, par
-//! construction du protocole ».
+//! Il n'avait jamais été vu avant, parce que sur cette voie la porte
+//! éliminatoire coupait toujours avant la passe d'encodage : c'est pourquoi
+//! aucune mesure d'encodage multi-fenêtres par cette voie n'existait alors.
+//! **Il en existe depuis** — les quatre rangs du chantier des duplications
+//! parallèles, dont N=8 avec huit encodeurs détruits d'affilée en 4,0 ms.
 //!
-//! Conséquence pratique : la garde ne court pas, la sortie virtuelle survit au
-//! processus. Rattraper avec `MULTIFENETRE_VDD_PURGE=1`, éprouvé sur exactement
-//! cet état. La mesure ③ elle-même se prend à `nombre = 2`, où le verdict de
-//! recouvrement coupe avant la passe d'encodage et où la garde court.
+//! Conséquence pratique **de l'époque** : la garde ne courait pas et la sortie
+//! virtuelle survivait au processus ; `MULTIFENETRE_VDD_PURGE=1` rattrape cet
+//! état, éprouvé sur exactement lui. La purge reste utile — un plantage,
+//! quelle qu'en soit la cause, laisse toujours la garde muette. La mesure ③
+//! elle-même se prend à `nombre = 2`, où le verdict de recouvrement coupe avant
+//! la passe d'encodage et où la garde court.
 
 use anyhow::{anyhow, Result};
 

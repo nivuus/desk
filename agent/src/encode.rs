@@ -43,7 +43,7 @@
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use anyhow::{anyhow, bail, Context, Result};
 use windows::core::{Interface, PWSTR, GUID};
@@ -63,6 +63,8 @@ use windows::Win32::System::Variant::{VARIANT, VARIANT_0, VARIANT_0_0, VARIANT_0
 
 use crate::capture::CapturedFrame;
 use crate::h264::{group_access_units, AccessUnit};
+
+mod arret;
 
 /// Identifiants d'événements des MFT asynchrones (repris des constantes
 /// fournies par le crate plutôt que dupliqués en dur, comme suggéré par le
@@ -303,44 +305,54 @@ pub struct H264Encoder {
     /// Compteurs et étape courante, lisibles depuis un autre fil (voir
     /// `EncoderTelemetry`).
     telemetry: Arc<EncoderTelemetry>,
-    /// Initialisation de Media Foundation, appariée par RAII.
+    /// File de travail sérialisée imposée à la MFT encodeur, et barrière de sa
+    /// mise au repos (voir `arret::FileMft` ; le convertisseur n'en a pas, et
+    /// `arret::mettre_au_repos` dit pourquoi).
     ///
-    /// **Déclaré en dernier volontairement** : les champs sont détruits dans
+    /// **Déclarée en dernier volontairement** : les champs sont détruits dans
     /// l'ordre de déclaration, après l'exécution de `Drop for H264Encoder`.
-    /// `MFShutdown` doit venir après la libération des MFT et du gestionnaire
-    /// DXGI, pas avant.
-    _media_foundation: MediaFoundationSession,
+    /// La file ne doit être rendue qu'une fois relâchée la MFT qui la détient.
+    file_encodeur: arret::FileMft,
 }
 
-/// Garde RAII sur l'initialisation de Media Foundation.
+/// Démarre Media Foundation, UNE SEULE FOIS pour la vie du processus, et ne
+/// l'arrête JAMAIS.
 ///
-/// `MFStartup` et `MFShutdown` doivent être appariés. Les placer
-/// respectivement en tête de `H264Encoder::new` et dans `Drop for H264Encoder`
-/// ne les apparie **que si la construction réussit** : entre les deux, une
-/// douzaine de `?` peuvent sortir sans que l'objet n'existe jamais — donc sans
-/// que `Drop` ne s'exécute, donc sans `MFShutdown`. Chaque échec de
-/// construction fuyait un appel.
+/// **Ce que cela remplace.** Une garde RAII appariait `MFStartup` et
+/// `MFShutdown` sur la vie de chaque `H264Encoder` : détruire le dernier
+/// encodeur démontait donc toute la plateforme Media Foundation. C'est
+/// l'instant où la tâche 2bis avait relevé la faute — fil principal dans
+/// `MFShutdown` → `RtwqShutdown` → `CPlatform::FinalShutdown` pendant qu'un
+/// élément de travail de la MFT NVIDIA courait encore.
 ///
-/// Latent tant qu'aucune reprise n'existe (un échec de construction terminait
-/// le processus), mais la tâche 11 en introduira : reconstruction de
-/// l'encodeur au redimensionnement, reprise après erreur. Une garde règle le
-/// problème pour tous les chemins de sortie, présents et à venir, sans avoir à
-/// se souvenir d'en ajouter un à chaque nouveau `?`.
-struct MediaFoundationSession;
-
-impl MediaFoundationSession {
-    fn start() -> Result<Self> {
-        unsafe { MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET) }
-            .context("démarrage de Media Foundation")?;
-        Ok(Self)
-    }
-}
-
-impl Drop for MediaFoundationSession {
-    fn drop(&mut self) {
-        unsafe {
-            let _ = MFShutdown();
-        }
+/// **`MFShutdown` n'est pourtant PAS nécessaire à la faute, et c'est mesuré
+/// ici** : avec cet appel entièrement retiré du chemin, la faute est revenue,
+/// pile identique, décalage identique, et cette fois APRÈS la libération
+/// complète de l'encodeur (1 récidive sur 5 exécutions).
+///
+/// Portée exacte de ce relevé, à ne pas dépasser : il établit que la faute
+/// **peut survenir sans** `MFShutdown`, donc que cet appel n'en est pas une
+/// condition nécessaire. Il n'établit PAS que sa présence dans les deux
+/// vidages de 2bis était inerte — deux chemins menant au même symptôme peuvent
+/// coexister. La barrière de `arret::FileMft` est ce qui traite la course ; ce
+/// changement-ci ne la traite pas.
+///
+/// **Pourquoi le garder malgré tout.** Aucun processus ne gagne rien à arrêter
+/// Media Foundation : `MFShutdown` ne sert qu'à rendre des ressources juste
+/// avant de mourir, et le système les reprend de toute façon à la fin du
+/// processus. En contrepartie, plus aucune destruction d'encodeur ne démonte
+/// puis ne remonte la plateforme — ce qui compte pour le chantier à venir, où
+/// fermer une fenêtre détruira son encodeur pendant que d'autres continuent
+/// d'encoder.
+fn demarrer_media_foundation() -> Result<()> {
+    static DEMARRAGE: OnceLock<std::result::Result<(), String>> = OnceLock::new();
+    match DEMARRAGE.get_or_init(|| {
+        unsafe { MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET) }.map_err(|err| err.to_string())
+    }) {
+        Ok(()) => Ok(()),
+        // Un échec est mémorisé : le réessayer à chaque encodeur ne ferait que
+        // répéter la même panne, et `MFStartup` n'est pas un appel à retenter.
+        Err(message) => bail!("démarrage de Media Foundation : {message}"),
     }
 }
 
@@ -352,8 +364,14 @@ impl H264Encoder {
         fps: u32,
         bitrate: u32,
     ) -> Result<Self> {
-        // À partir d'ici, tout `?` relâche Media Foundation par la garde.
-        let media_foundation = MediaFoundationSession::start()?;
+        demarrer_media_foundation()?;
+
+        // Allouée ICI, avant toute MFT : les locales sont détruites dans
+        // l'ordre INVERSE de déclaration, donc celle-ci l'est en dernier si un
+        // `?` plus bas interrompt la construction. Une file rendue avant la MFT
+        // qui la détient serait exactement l'inversion que l'ordre des champs
+        // ci-dessus évite. Voir `arret::FileMft::allouer`.
+        let mut file_encodeur = arret::FileMft::allouer();
 
         let transform = find_hardware_encoder()?;
         let attributes = unsafe { transform.GetAttributes() }?;
@@ -386,6 +404,11 @@ impl H264Encoder {
         configure_rate_control(&transform, bitrate)?;
 
         let events: IMFMediaEventGenerator = transform.cast()?;
+
+        // AVANT tout démarrage de flux : imposer à la MFT la file sur laquelle
+        // elle déposera son travail asynchrone, seul moyen d'obtenir plus tard
+        // une barrière sur ce travail (voir `arret::FileMft`).
+        file_encodeur.confier(&transform, "encodeur");
 
         // `NOTIFY_BEGIN_STREAMING` est le point où une MFT matérielle réserve
         // ses ressources de session GPU : candidat au refus quand plusieurs
@@ -438,7 +461,7 @@ impl H264Encoder {
             converter_output_pending: false,
             skipped_busy: 0,
             telemetry: Arc::new(EncoderTelemetry::default()),
-            _media_foundation: media_foundation,
+            file_encodeur,
             capture,
             encode,
             fps,
@@ -468,6 +491,17 @@ impl H264Encoder {
             self.converter_output_pending as u64,
             Ordering::Relaxed,
         );
+    }
+
+    /// Occupe la file de travail imposée à la MFT encodeur pendant `duree`.
+    ///
+    /// **Sonde de mesure, jamais appelée en exploitation** : elle éprouve si le
+    /// travail asynchrone de la MFT transite réellement par la file qu'on lui
+    /// impose. Si oui, la boucher doit arrêter l'encodeur ; si l'encodeur
+    /// continue, la barrière de `arret::FileMft` ne barre rien et il faut le
+    /// savoir. Voir le mode d'échec résiduel documenté sur `arret::FileMft`.
+    pub fn eprouver_file(&self, duree: std::time::Duration) {
+        self.file_encodeur.bloquer(duree);
     }
 
     /// Draine les événements disponibles sans bloquer.
@@ -1005,15 +1039,15 @@ impl Drop for H264Encoder {
                 "images renoncées faute de confirmation du convertisseur (diagnostic)"
             );
         }
-        unsafe {
-            let _ = self.converter.ProcessMessage(MFT_MESSAGE_NOTIFY_END_OF_STREAM, 0);
-            let _ = self.converter.ProcessMessage(MFT_MESSAGE_NOTIFY_END_STREAMING, 0);
-            let _ = self.transform.ProcessMessage(MFT_MESSAGE_NOTIFY_END_OF_STREAM, 0);
-            let _ = self.transform.ProcessMessage(MFT_MESSAGE_NOTIFY_END_STREAMING, 0);
-        }
-        // `MFShutdown` n'est plus appelé ici : il l'est par la destruction de
-        // `_media_foundation`, qui a lieu après ce corps ET après celle des
-        // MFT (dernier champ déclaré — voir son commentaire).
+        // Mise au repos AVANT le relâchement des références COM : rien
+        // ne demandait jamais à la MFT matérielle de cesser ses traitements
+        // asynchrones, et c'est la course que la tâche 2bis a relevée. Voir
+        // `arret::mettre_au_repos` pour le détail et le relevé qui le motive.
+        arret::mettre_au_repos(&self.converter, &self.transform, &self.file_encodeur);
+
+        // `MFShutdown` n'est appelé nulle part, et c'est délibéré : voir
+        // `demarrer_media_foundation`. La ligne ci-dessous est INERTE (emprunt
+        // aussitôt jeté, zéro code machine) : à retirer hors branche de mesure.
         let _ = &self.device_manager;
     }
 }

@@ -110,16 +110,53 @@ correction correspondant.
 
 ## Ce qui reste ouvert
 
+> ✅ **Note du 31 juillet 2026, postérieure à ce document — les deux premiers
+> points ci-dessous sont LEVÉS**, par
+> `2026-07-31-duplications-paralleles-resultats.md`. Les énoncés d'origine sont
+> conservés intacts en dessous ; ce qui a changé :
+>
+> - **le défaut de libération est diagnostiqué et corrigé**, et il n'était pas
+>   déterministe comme « jamais expliqué » et le bornage du §Mesure ③ le
+>   laissent croire, mais **intermittent** (2 plantages sur 6 exécutions). La
+>   cause : la MFT NVIDIA a un élément de travail encore en vol quand on relâche
+>   l'encodeur. `MFShutdown`, d'abord accusé, a été **réfuté par la mesure** ;
+> - **l'arrangement de la voie recommandée est mesuré, et la voie est reçue** :
+>   90,1 i/s par fenêtre en capture+encodage à N=8, zéro verdict faux, huit
+>   duplications ouvertes de front. **Une exécution par rang, donc aucun taux**,
+>   et **rien au-delà de 8 sorties**.
+>
+> Cette liste compte **neuf** points, dont **trois sont levés** : les deux
+> ci-dessus, plus « Aucune image n'a été soumise aux 8 encodeurs ». Chacun des
+> trois porte sa propre note ✅ à sa place dans la liste — c'est là qu'il faut
+> la lire, pas ici. Les **six** autres **restent ouverts**.
+>
+> *(Une première rédaction de cette note annonçait « les trois autres points
+> restent ouverts » pour une liste de neuf : compte faux, corrigé en revue
+> finale de la branche des duplications parallèles.)*
+
 - **Un défaut ouvert et non diagnostiqué : la passe d'encodage du banc tue le
   processus**, sur la voie `duplication`. Localisé, jamais expliqué — bornage
   exact au §Mesure ③. C'est la seule réserve de ce chantier qui porte sur un
   comportement du code plutôt que sur la portée d'un relevé.
+  > ✅ **Note postérieure (31/07/2026) — LEVÉ** : diagnostiqué et corrigé
+  > (`2026-07-31-duplications-paralleles-resultats.md` §7,
+  > `agent/src/encode/arret.rs`). Il n'était pas déterministe mais
+  > **intermittent** (2 plantages sur 6 exécutions) ; cause : la MFT NVIDIA
+  > gardait un élément de travail en vol au relâchement de l'encodeur.
+  > `MFShutdown`, d'abord accusé, a été **réfuté par la mesure**. Après
+  > correctif : **0 récidive sur 20 exécutions** du cas comparable — *ce n'est
+  > pas une preuve d'absence*.
 - **L'arrangement que la voie recommandée propose réellement n'est pas
   mesuré.** La mesure ③ a posé N fenêtres sur **une** sortie virtuelle. La voie 2
   promet **une** fenêtre par sortie, donc **N sorties virtuelles et N duplications
   DXGI ouvertes de front**. Que N duplications simultanées tiennent — en cadence,
   en mémoire, et vis-à-vis de la règle « une seule duplication par sortie » — n'est
   établi par rien ici. C'est la mesure suivante, et elle est courte.
+  > ✅ **Note postérieure (31/07/2026) — LEVÉ** : montage exercé, **voie reçue**
+  > — 90,1 i/s par fenêtre en capture+encodage à N=8, zéro verdict faux, huit
+  > duplications ouvertes de front
+  > (`2026-07-31-duplications-paralleles-resultats.md`). **Une exécution par
+  > rang, donc aucun taux**, et **rien au-delà de 8 sorties**.
 - **La comparaison des deux modes d'encodage porte sur deux variables
   confondues** : le mode `separe` n'ouvre aucune duplication DXGI là où le mode
   `partage` en ouvre une. Le témoin propre — mode séparé **avec** duplication —
@@ -133,6 +170,14 @@ correction correspondant.
 - **Aucune image n'a été soumise aux 8 encodeurs.** La mesure ② porte sur la
   **création** de sessions, jamais sur leur fonctionnement : rien ne dit que 8
   encodeurs tiennent la cadence ensemble.
+  > ✅ **Note postérieure (31/07/2026) — LEVÉ** : huit encodeurs ont été
+  > **alimentés ensemble** pendant 10 s et ont tenu **90,1 i/s par fenêtre**,
+  > zéro verdict faux
+  > (`2026-07-31-duplications-paralleles-resultats.md` §3.2). Portée exacte, à
+  > ne pas élargir : **huit périphériques D3D11 distincts** (un par sortie
+  > virtuelle), 1280×720 à 60 Hz et 8 Mb/s, **une** exécution par rang, et
+  > aucune unité H.264 décodée ni regardée. Le montage de la mesure ② —
+  > périphérique unique partagé — n'a, lui, toujours jamais été alimenté.
 - **La cause du refus à la 11ᵉ sortie n'est pas isolée** — borne codée dans
   SudoVDA, imposée par IddCx/Windows, ou fonction de la configuration
   d'adaptateur. Et **on ignore si le vivier de 10 est global au pilote ou par
@@ -428,6 +473,11 @@ n'est donc ni l'énumération ni l'activation de la MFT qui plafonne.
   n'a été éprouvée.
 - **Aucune image n'a été encodée.** La mesure porte sur la **création**. Que 8
   encodeurs se construisent ne prouve pas qu'ils tiennent la cadence ensemble.
+  > ✅ **Note postérieure (31/07/2026)** : la seconde phrase est **répondue par
+  > ailleurs** — 8 encodeurs alimentés ensemble tiennent 90,1 i/s par fenêtre
+  > (`2026-07-31-duplications-paralleles-resultats.md` §3.2). Mais sur **huit
+  > périphériques D3D11 distincts**, pas sur le périphérique unique partagé de
+  > CETTE mesure : la première phrase, elle, reste exacte pour la mesure ②.
 - **Que détruire un encodeur libère la place est une conjecture.** Aucune des
   trois exécutions n'exerce de destruction en cours de route. La mesure qui
   trancherait est courte : créer 8, en détruire un, tenter un 9ᵉ. Variante
@@ -544,6 +594,12 @@ motif que ce chantier n'a mesuré que des facteurs unitaires.
 
 ### Le défaut ouvert : la passe d'encodage tue le processus
 
+> ✅ **Ce défaut a depuis été diagnostiqué et corrigé (31/07/2026).** Toute cette
+> section est conservée telle qu'écrite ; sa conclusion porte la note détaillée,
+> et l'un de ses énoncés — le caractère déterministe suggéré par « les deux
+> exécutions » — est **faux**. Lire la note avant de reprendre quoi que ce soit
+> d'ici.
+
 **Bornage exact, à ne pas élargir.** À N=1 il n'y a pas de recouvrement, la
 porte de correction laisse passer, et la passe d'**encodage** s'exécute — pour
 la première fois de l'histoire de ce banc sur la voie `duplication`, la porte
@@ -587,11 +643,43 @@ boucle, sur la voie `duplication`, quelle que soit la sortie capturée, après u
 encodage réel. Quel appel exactement le provoque — libération des encodeurs, de
 la duplication, ou leur ordre relatif — reste entièrement ouvert.
 
+> ✅ **Note postérieure (31/07/2026) — cette conclusion est dépassée : le défaut
+> A depuis été diagnostiqué ET corrigé.**
+> Voir `2026-07-31-duplications-paralleles-resultats.md` §7. En trois points, et
+> chacun corrige quelque chose que la section ci-dessus laisse croire :
+>
+> - **il est intermittent, pas déterministe** — 2 plantages sur 6 exécutions du
+>   cas comparable ; le bornage ci-dessus dit « les deux exécutions » sans dire
+>   combien avaient passé, et un rapport antérieur avait enchaîné **quatre
+>   exécutions propres sur un binaire non corrigé** ;
+> - **l'appel qui provoque la faute est désigné**, avec sa pile symbolisée deux
+>   fois identique : la MFT NVIDIA a un élément de travail encore en vol quand on
+>   relâche l'encodeur, et il entre dans un verrou qui n'existe plus
+>   (`RtlEnterCriticalSection`, chemin contendu, `DebugInfo` nul, **sur un fil de
+>   pool et non sur le fil principal**). La question « libération des encodeurs,
+>   de la duplication, ou leur ordre relatif » était donc mal posée : aucun
+>   ordonnancement du fil principal ne pouvait la trancher ;
+> - **`MFShutdown`, qu'un premier diagnostic a accusé, a été réfuté par la
+>   mesure** — retiré entièrement du chemin, la faute revient (1 sur 5).
+>
+> Correctif : une file de travail Media Foundation **sérialisée par encodeur**
+> imposée à la MFT, avec dépôt d'une sentinelle avant tout relâchement —
+> **0 récidive sur 20 exécutions contre 2 sur 6**, ce qui **n'est pas une preuve
+> d'absence**. Deux risques restent ouverts et assumés (§7.5 du document cité).
+
 **Conséquence opérationnelle** : la garde ne court pas, donc la sortie virtuelle
 **survit au processus**. C'est ce qui a produit l'orpheline réelle du chantier,
 constatée depuis un processus neuf (`topologie relevée moment="avant purge"
 nombre=2`) et retirée par la purge (`retirees=1 avant=2 apres=1`,
 `moniteurs-capture-purge-orpheline.log`).
+
+> ✅ **Note postérieure (31/07/2026)** : au passé — le plantage qui empêchait la
+> garde de courir est corrigé (§7 de
+> `2026-07-31-duplications-paralleles-resultats.md`). Ce qui **reste vrai en
+> propre**, et pourquoi la purge n'est pas devenue inutile : une sortie
+> virtuelle survit toujours à un processus qui meurt, quelle qu'en soit la
+> cause — la garde `Sorties` est un RAII, et aucun RAII ne court sur un
+> `0xc0000005`.
 
 ### Ce que la mesure n'isole pas
 
@@ -602,6 +690,10 @@ nombre=2`) et retirée par la purge (`retirees=1 avant=2 apres=1`,
   seule duplication par sortie** : la question porte donc sur N duplications sur
   N sorties distinctes, un montage jamais exercé. **C'est la mesure suivante, et
   elle est bloquante pour dimensionner la voie recommandée.**
+  > ✅ **Note postérieure (31/07/2026)** : ce montage a depuis été exercé et la
+  > voie est reçue — 90,1 i/s par fenêtre en capture+encodage à N=8, zéro
+  > verdict faux (`2026-07-31-duplications-paralleles-resultats.md`). Une
+  > exécution par rang, donc aucun taux ; rien au-delà de 8 sorties.
 - **La cadence de 90,0 i/s n'est pas expliquée.** Identique à N=1 et N=2,
   parfaitement régulière, alors que la sortie a été créée à 60 Hz. Le témoin qui
   vaut n'est pas celui de la sonde précédente (autre jour, autre code) mais celui
@@ -615,6 +707,15 @@ nombre=2`) et retirée par la purge (`retirees=1 avant=2 apres=1`,
   H.264 du run N=1 ont bien été produites depuis des textures capturées sur
   `\\.\DISPLAY5` — ce qui *indique* que NVENC accepte de telles textures — mais
   la passe n'est pas allée à son terme, et aucun chiffre d'encodage n'est publié.
+  > ✅ **Note postérieure (31/07/2026) — RÉFUTÉ, et c'était le point parqué
+  > « pour la vague finale »** : le défaut qui coupait ces passes est corrigé, et
+  > des chiffres d'encodage sur sortie virtuelle sont **publiés aux quatre
+  > rangs** — 450 unités H.264 par encodeur à N = 1, 2, 4 et 8, et 90,1 i/s par
+  > fenêtre en capture+encodage
+  > (`2026-07-31-duplications-paralleles-resultats.md` §3.2 ;
+  > `journaux-duplications-paralleles/paralleles-n8.log:146`). Ce qui reste vrai
+  > de l'énoncé d'origine : les unités sont **comptées**, jamais décodées ni
+  > regardées.
 
 ---
 
@@ -825,6 +926,12 @@ mesures et non sur une construction.** Trois choses ont changé :
   choisir, puisque rien ne dit encore que détruire un encodeur libère la place.
 - **Une mesure encore due avant de dimensionner**, et une seule : N duplications
   DXGI de front sur N sorties virtuelles (voir ci-dessous).
+  > ✅ **Prise le 31 juillet 2026, et la voie est reçue** — 90,1 i/s par fenêtre
+  > en capture+encodage à N=8, zéro verdict faux, aire totale 7,37 Mpx :
+  > `2026-07-31-duplications-paralleles-resultats.md`. Le défaut de libération
+  > des encodeurs (point suivant de la liste ci-dessous) y est diagnostiqué et
+  > corrigé — il était **intermittent**, non déterministe, et `MFShutdown` n'en
+  > était pas la cause.
 
 ### Le repli : `PrintWindow` recule de « repli du produit » à « repli des petites configurations »
 
@@ -867,11 +974,17 @@ possible doit être fermé avant qu'on le retienne ou l'écarte pour de bon.
    virtuelle l'est aussi (mesure ③) ; il reste à les composer. La règle « une
    seule duplication ouverte par sortie » rend la question réelle et non
    formelle. Coût : une demi-journée avec le banc existant.
+   > ✅ **Note postérieure (31/07/2026)** : **levée, voie reçue à N=8** —
+   > `2026-07-31-duplications-paralleles-resultats.md`.
 2. **Le plantage de la passe d'encodage sur la voie `duplication`.** Localisé,
    non diagnostiqué, et il **laisse des sorties orphelines** — donc il gêne les
    mesures autant qu'il menacerait le produit. À reprendre avec le bornage du
    §Mesure ③ comme point de départ : à la sortie de boucle, sur la libération,
    après un encodage réel.
+   > ✅ **Note postérieure (31/07/2026)** : **diagnostiqué et corrigé** (même
+   > document, §7). Il était **intermittent** (2 plantages sur 6 exécutions) et
+   > non déterministe, et `MFShutdown` — que le diagnostic a d'abord accusé — a
+   > été **réfuté par la mesure**.
 3. **La séquence « créer 8 → en détruire 1 → tenter un 9ᵉ ».** Une heure, et
    elle décide du mécanisme de mise en sommeil des fenêtres masquées. Variante
    au passage : cesser d'alimenter un encodeur sans le détruire.
@@ -879,6 +992,11 @@ possible doit être fermé avant qu'on le retienne ou l'écarte pour de bon.
    ouverte, pour fermer la comparaison à deux variables.
 5. **8 encodeurs alimentés ensemble**, pour savoir s'ils tiennent la cadence —
    la mesure ② ne porte que sur la création.
+   > ✅ **Note postérieure (31/07/2026)** : **fait, ils tiennent** — 90,1 i/s
+   > par fenêtre en capture+encodage à N=8, zéro verdict faux
+   > (`2026-07-31-duplications-paralleles-resultats.md` §3.2). Sur **huit
+   > périphériques D3D11 distincts**, pas sur le périphérique unique partagé de
+   > la mesure ② : ce montage-là reste, lui, jamais alimenté.
 6. **Le chien de garde en isolement** (`ApolloService` arrêté), si une
    exploitation durable des sorties virtuelles est engagée.
 7. **Un créneau borné sur `0x800706BE`** (voie `Windows.Graphics.Capture`), et

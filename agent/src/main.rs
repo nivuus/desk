@@ -75,6 +75,13 @@ async fn main() -> Result<()> {
         )
         .init();
 
+    // Diagnostic (chantier duplications-parallèles, tâche 2bis) : posé AVANT
+    // tout le reste, pour qu'aucune faute ne puisse survenir avant lui.
+    // Inerte sans `AGENT_TRACE_EXCEPTIONS`, et le gestionnaire ne s'exécute
+    // qu'au moment d'une violation d'accès — jamais sur le chemin nominal.
+    #[cfg(windows)]
+    diagnostics::exceptions::installer();
+
     // Au tout début, avant toute possibilité d'injection d'entrée (les modes
     // diagnostic de `diagnostics::aiguiller` n'en injectent pas, mais la
     // session normale plus bas le fait) : neutraliser l'accélération et la
