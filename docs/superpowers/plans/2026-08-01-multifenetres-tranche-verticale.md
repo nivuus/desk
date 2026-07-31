@@ -30,7 +30,10 @@
 
 | Fichier | Responsabilité |
 | --- | --- |
-| `agent/src/superviseur.rs` | orchestration, mince : assemble les sous-modules et tient la boucle |
+| `agent/src/superviseur.rs` | assemblage seul — il n'a ni boucle ni décision |
+| `agent/src/superviseur/boucle.rs` | la boucle et l'exécution des effets rendus par la table |
+| `agent/src/superviseur/lanceur.rs` | lancement et contrôle de vie d'un processus Windows |
+| `agent/src/superviseur/signalisation.rs` | connexion à la session de contrôle du signaling |
 | `agent/src/superviseur/fenetres.rs` | critère « Alt-Tab-able », logique pure |
 | `agent/src/superviseur/table.rs` | machine à états fenêtre → sortie → enfant, logique pure |
 | `agent/src/superviseur/hook.rs` | `SetWinEventHook` et pompe de messages, glue Windows |
@@ -450,11 +453,13 @@ Le cœur décisionnel : où en est chaque fenêtre, quelle sortie lui est attrib
   - `Table::nouvelle(capacite: usize) -> Table`
   - `Table::fenetre_apparue(&mut self, id: IdFenetre, titre: String) -> Vec<Effet>`
   - `Table::viewport_recu(&mut self, session: &IdSession, largeur: u32, hauteur: u32) -> Vec<Effet>`
-  - `Table::sortie_creee(&mut self, session: &IdSession, sortie: u32) -> Vec<Effet>`
+  - `Table::sortie_creee(&mut self, session: &IdSession, sortie_pilote: u32, dxgi: (u32, u32)) -> Vec<Effet>`
+  - `Table::sortie_dxgi_de(&self, session: &IdSession) -> Option<(u32, u32)>`
   - `Table::fenetre_disparue(&mut self, id: IdFenetre) -> Vec<Effet>`
   - `Table::enfant_mort(&mut self, session: &IdSession) -> Vec<Effet>`
   - `Table::etat(&self, session: &IdSession) -> Option<&Etat>`
-  - `Effet::{AnnoncerOuverture, CreerSortie, LancerEnfant, TuerEnfant, DetruireSortie, AnnoncerFermeture, AnnoncerRefus}`
+  - `Table::sessions_vivantes(&self) -> Vec<IdSession>`
+  - `Effet::{AnnoncerOuverture, CreerSortie, LancerEnfant, TuerEnfant, DetruireSortie, AnnoncerFermeture, AnnoncerRefus}` — `LancerEnfant` porte `index_adaptateur`/`index_sortie` (position DXGI, ce que l'enfant capture) et `DetruireSortie` porte `sortie_pilote` **et** `dxgi` (le pilote ne retire que par son propre identifiant)
 
 - [ ] **Step 1: Écrire les tests qui échouent**
 
@@ -509,13 +514,18 @@ mod tests {
         let mut t = table();
         let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
         t.viewport_recu(&session, 1600, 900);
-        let effets = t.sortie_creee(&session, 4);
+        // Deux identifiants distincts, et c'est le fond du sujet : `7` est
+        // l'identifiant que le PILOTE a rendu, `(0, 4)` la position de la
+        // même sortie dans l'énumération DXGI. Le pilote ne détruit que par
+        // le premier ; l'enfant ne sait capturer que par le second.
+        let effets = t.sortie_creee(&session, 7, (0, 4));
         assert_eq!(
             effets,
             vec![Effet::LancerEnfant {
                 session: session.clone(),
                 fenetre: IdFenetre(1),
-                sortie: 4,
+                index_adaptateur: 0,
+                index_sortie: 4,
                 // La première fenêtre porte le son : le loopback WASAPI capte
                 // toute la session Windows, deux porteurs feraient entendre
                 // deux fois le même son.
@@ -523,6 +533,7 @@ mod tests {
             }]
         );
         assert_eq!(t.etat(&session), Some(&Etat::Vivante));
+        assert_eq!(t.sortie_dxgi_de(&session), Some((0, 4)));
     }
 
     #[test]
@@ -530,17 +541,18 @@ mod tests {
         let mut t = table();
         let a = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
         t.viewport_recu(&a, 1600, 900);
-        t.sortie_creee(&a, 4);
+        t.sortie_creee(&a, 7, (0, 4));
 
         let b = session_annoncee(&t.fenetre_apparue(IdFenetre(2), "B".into()));
         t.viewport_recu(&b, 1280, 720);
-        let effets = t.sortie_creee(&b, 5);
+        let effets = t.sortie_creee(&b, 8, (0, 5));
         assert_eq!(
             effets,
             vec![Effet::LancerEnfant {
                 session: b,
                 fenetre: IdFenetre(2),
-                sortie: 5,
+                index_adaptateur: 0,
+                index_sortie: 5,
                 audio: false,
             }]
         );
@@ -551,14 +563,15 @@ mod tests {
         let mut t = table();
         let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
         t.viewport_recu(&session, 1600, 900);
-        t.sortie_creee(&session, 4);
+        t.sortie_creee(&session, 7, (0, 4));
 
         let effets = t.fenetre_disparue(IdFenetre(1));
         assert_eq!(
             effets,
             vec![
                 Effet::TuerEnfant { session: session.clone() },
-                Effet::DetruireSortie { sortie: 4 },
+                // L'identifiant du PILOTE, seul avec lequel il sait retirer.
+                Effet::DetruireSortie { sortie_pilote: 7, dxgi: (0, 4) },
                 Effet::AnnoncerFermeture { session: session.clone() },
             ]
         );
@@ -573,17 +586,33 @@ mod tests {
         let mut t = table();
         let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
         t.viewport_recu(&session, 1600, 900);
-        t.sortie_creee(&session, 4);
+        t.sortie_creee(&session, 7, (0, 4));
 
         let effets = t.enfant_mort(&session);
         assert_eq!(
             effets,
             vec![
-                Effet::DetruireSortie { sortie: 4 },
+                Effet::DetruireSortie { sortie_pilote: 7, dxgi: (0, 4) },
                 Effet::AnnoncerFermeture { session: session.clone() },
             ]
         );
         assert_eq!(t.etat(&session), None);
+    }
+
+    #[test]
+    fn une_fenetre_qui_disparait_avant_sa_sortie_ne_demande_aucune_destruction() {
+        // Fermée pendant qu'on attendait son viewport : aucune sortie
+        // n'existe, et demander d'en détruire une ferait échouer le pilote.
+        let mut t = table();
+        let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
+        let effets = t.fenetre_disparue(IdFenetre(1));
+        assert_eq!(
+            effets,
+            vec![
+                Effet::TuerEnfant { session: session.clone() },
+                Effet::AnnoncerFermeture { session },
+            ]
+        );
     }
 
     #[test]
@@ -592,7 +621,7 @@ mod tests {
         for n in 1..=2u64 {
             let s = session_annoncee(&t.fenetre_apparue(IdFenetre(n), format!("F{n}")));
             t.viewport_recu(&s, 1280, 720);
-            t.sortie_creee(&s, n as u32);
+            t.sortie_creee(&s, n as u32, (0, n as u32));
         }
         let effets = t.fenetre_apparue(IdFenetre(3), "F3".into());
         assert_eq!(
@@ -609,7 +638,7 @@ mod tests {
         let mut t = Table::nouvelle(1);
         let a = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
         t.viewport_recu(&a, 1280, 720);
-        t.sortie_creee(&a, 4);
+        t.sortie_creee(&a, 7, (0, 4));
         assert!(matches!(
             t.fenetre_apparue(IdFenetre(2), "B".into()).as_slice(),
             [Effet::AnnoncerRefus { .. }]
@@ -627,21 +656,22 @@ mod tests {
         let mut t = table();
         let a = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
         t.viewport_recu(&a, 1280, 720);
-        t.sortie_creee(&a, 4);
+        t.sortie_creee(&a, 7, (0, 4));
         let b = session_annoncee(&t.fenetre_apparue(IdFenetre(2), "B".into()));
         t.viewport_recu(&b, 1280, 720);
-        t.sortie_creee(&b, 5);
+        t.sortie_creee(&b, 8, (0, 5));
 
         t.fenetre_disparue(IdFenetre(1));
         let c = session_annoncee(&t.fenetre_apparue(IdFenetre(3), "C".into()));
         t.viewport_recu(&c, 1280, 720);
-        let effets = t.sortie_creee(&c, 6);
+        let effets = t.sortie_creee(&c, 9, (0, 6));
         assert_eq!(
             effets,
             vec![Effet::LancerEnfant {
                 session: c,
                 fenetre: IdFenetre(3),
-                sortie: 6,
+                index_adaptateur: 0,
+                index_sortie: 6,
                 audio: false,
             }],
             "aucune redésignation du son en D1"
@@ -735,9 +765,24 @@ pub enum Etat {
 pub enum Effet {
     AnnoncerOuverture { session: IdSession, titre: String },
     CreerSortie { session: IdSession, largeur: u32, hauteur: u32 },
-    LancerEnfant { session: IdSession, fenetre: IdFenetre, sortie: u32, audio: bool },
+    LancerEnfant {
+        session: IdSession,
+        fenetre: IdFenetre,
+        index_adaptateur: u32,
+        index_sortie: u32,
+        audio: bool,
+    },
     TuerEnfant { session: IdSession },
-    DetruireSortie { sortie: u32 },
+    /// `sortie_pilote` est **l'identifiant du PILOTE**, pas l'index DXGI : le
+    /// pilote ne sait retirer une sortie que par ce qu'il a lui-même rendu à
+    /// la création ; lui présenter un index DXGI ne détruirait rien, ou
+    /// détruirait la sortie d'autrui. Les deux identifiants désignent la même
+    /// sortie et n'ont aucune relation calculable — d'où les deux champs.
+    ///
+    /// `dxgi` accompagne la destruction parce que l'entrée a déjà quitté la
+    /// table quand cet effet est rendu : sans lui, l'appelant ne pourrait
+    /// plus savoir quelle place DXGI redevient libre.
+    DetruireSortie { sortie_pilote: u32, dxgi: (u32, u32) },
     AnnoncerFermeture { session: IdSession },
     AnnoncerRefus { titre: String, motif: String },
 }
@@ -746,7 +791,11 @@ pub enum Effet {
 struct Entree {
     fenetre: IdFenetre,
     etat: Etat,
-    sortie: Option<u32>,
+    /// Identifiant rendu par le pilote à la création, pour la destruction.
+    sortie_pilote: Option<u32>,
+    /// Position de la même sortie dans l'énumération DXGI, pour la capture
+    /// et le placement.
+    dxgi: Option<(u32, u32)>,
     audio: bool,
 }
 
@@ -803,7 +852,13 @@ impl Table {
         self.audio_libre = false;
         self.entrees.insert(
             session.clone(),
-            Entree { fenetre, etat: Etat::AttendLeViewport, sortie: None, audio },
+            Entree {
+                fenetre,
+                etat: Etat::AttendLeViewport,
+                sortie_pilote: None,
+                dxgi: None,
+                audio,
+            },
         );
         vec![Effet::AnnoncerOuverture { session, titre }]
     }
@@ -821,7 +876,16 @@ impl Table {
         vec![Effet::CreerSortie { session: session.clone(), largeur, hauteur }]
     }
 
-    pub fn sortie_creee(&mut self, session: &IdSession, sortie: u32) -> Vec<Effet> {
+    /// `sortie_pilote` est ce que le pilote a rendu à la création (il ne sait
+    /// détruire que par là) ; `dxgi` est la position de la même sortie dans
+    /// l'énumération DXGI (l'enfant ne sait capturer que par là). Aucune
+    /// relation calculable entre les deux : les deux sont retenus.
+    pub fn sortie_creee(
+        &mut self,
+        session: &IdSession,
+        sortie_pilote: u32,
+        dxgi: (u32, u32),
+    ) -> Vec<Effet> {
         let Some(entree) = self.entrees.get_mut(session) else {
             return Vec::new();
         };
@@ -829,13 +893,32 @@ impl Table {
             return Vec::new();
         }
         entree.etat = Etat::Vivante;
-        entree.sortie = Some(sortie);
+        entree.sortie_pilote = Some(sortie_pilote);
+        entree.dxgi = Some(dxgi);
         vec![Effet::LancerEnfant {
             session: session.clone(),
             fenetre: entree.fenetre,
-            sortie,
+            index_adaptateur: dxgi.0,
+            index_sortie: dxgi.1,
             audio: entree.audio,
         }]
+    }
+
+    /// Position DXGI de la sortie d'une session, pour le contrôle périodique
+    /// de placement.
+    pub fn sortie_dxgi_de(&self, session: &IdSession) -> Option<(u32, u32)> {
+        self.entrees.get(session).and_then(|e| e.dxgi)
+    }
+
+    /// Sessions dont l'enfant tourne, pour le contrôle périodique de
+    /// placement. Rendues par valeur : l'appelant mute la table pendant
+    /// qu'il les parcourt.
+    pub fn sessions_vivantes(&self) -> Vec<IdSession> {
+        self.entrees
+            .iter()
+            .filter(|(_, e)| e.etat == Etat::Vivante)
+            .map(|(s, _)| s.clone())
+            .collect()
     }
 
     pub fn fenetre_disparue(&mut self, fenetre: IdFenetre) -> Vec<Effet> {
@@ -849,8 +932,17 @@ impl Table {
         };
         let entree = self.entrees.remove(&session).expect("trouvée à l'instant");
         let mut effets = vec![Effet::TuerEnfant { session: session.clone() }];
-        if let Some(sortie) = entree.sortie {
-            effets.push(Effet::DetruireSortie { sortie });
+        // Rien à détruire si la fenêtre s'est fermée avant que sa sortie
+        // n'existe : demander au pilote de retirer une sortie qu'il n'a
+        // jamais créée ne ferait qu'une erreur de plus au journal.
+        if let Some(sortie_pilote) = entree.sortie_pilote {
+            effets.push(Effet::DetruireSortie {
+                sortie_pilote,
+                // `dxgi` est toujours renseigne quand `sortie_pilote` l'est :
+                // `sortie_creee` pose les deux ensemble, jamais l'un sans
+                // l'autre. Le repli n'est donc pas atteignable.
+                dxgi: entree.dxgi.unwrap_or((0, 0)),
+            });
         }
         effets.push(Effet::AnnoncerFermeture { session });
         effets
@@ -864,8 +956,14 @@ impl Table {
             return Vec::new();
         };
         let mut effets = Vec::new();
-        if let Some(sortie) = entree.sortie {
-            effets.push(Effet::DetruireSortie { sortie });
+        if let Some(sortie_pilote) = entree.sortie_pilote {
+            effets.push(Effet::DetruireSortie {
+                sortie_pilote,
+                // `dxgi` est toujours renseigne quand `sortie_pilote` l'est :
+                // `sortie_creee` pose les deux ensemble, jamais l'un sans
+                // l'autre. Le repli n'est donc pas atteignable.
+                dxgi: entree.dxgi.unwrap_or((0, 0)),
+            });
         }
         effets.push(Effet::AnnoncerFermeture { session: session.clone() });
         effets
@@ -878,7 +976,7 @@ Ajouter `pub mod table;` dans `agent/src/superviseur.rs`.
 - [ ] **Step 4: Lancer les tests et vérifier qu'ils passent**
 
 Run: `cargo test -p agent superviseur::table`
-Expected: PASS, 12 tests.
+Expected: PASS, 13 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -968,12 +1066,114 @@ scripts/build-agent.sh 2>&1 | tee /tmp/build-tache4.log
 
 Expected: le même nombre de tests qu'au step 1, et une compilation Windows sans erreur. Un déplacement qui change un compte de tests n'est pas un déplacement.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Commit du déplacement, seul**
 
 ```bash
 git add agent/src/moniteurs_virtuels.rs agent/src/moniteurs_virtuels/ \
         agent/src/diagnostics/multifenetre.rs agent/src/diagnostics/multifenetre/
 git commit -m "refactor(d1): promouvoir le pilote d'affichage virtuel hors de diagnostics"
+```
+
+Le déplacement est commité **seul**, avant l'ajout de comportement qui suit : c'est ce qui rend son absence d'effet relisible.
+
+- [ ] **Step 7: Écrire le test de la libération à chaud**
+
+`Sorties` ne sait aujourd'hui que créer et tout détruire à sa destruction. D1 a besoin de rendre une sortie **pendant** l'exécution : sans cela le vivier se consomme à chaque ouverture de fenêtre et non par fenêtre simultanée — ouvrir et fermer une application onze fois épuiserait les dix sorties du pilote, et plus aucune fenêtre ne pourrait s'ouvrir, avec un symptôme sans rapport visible avec sa cause.
+
+Dans le module de tests existant de `agent/src/moniteurs_virtuels.rs`, ajouter :
+
+```rust
+    #[test]
+    fn detruire_rend_la_sortie_au_pilote_et_l_oublie() {
+        let pilote = PiloteFactice::default();
+        let mut sorties = Sorties::nouvelles(&pilote);
+        let a = sorties.creer(1280, 720, 60).unwrap();
+        let b = sorties.creer(1600, 900, 60).unwrap();
+
+        sorties.detruire(a).unwrap();
+        assert_eq!(*pilote.detruites.borrow(), vec![a]);
+        assert_eq!(sorties.nombre(), 1);
+
+        // La garde ne doit pas redétruire `a` : le pilote refuserait, et le
+        // journal accuserait une purge due qui n'existe pas.
+        drop(sorties);
+        assert_eq!(*pilote.detruites.borrow(), vec![a, b]);
+    }
+
+    #[test]
+    fn detruire_une_sortie_inconnue_echoue_sans_rien_toucher() {
+        let pilote = PiloteFactice::default();
+        let mut sorties = Sorties::nouvelles(&pilote);
+        let a = sorties.creer(1280, 720, 60).unwrap();
+
+        assert!(sorties.detruire(a + 1000).is_err());
+        assert!(pilote.detruites.borrow().is_empty());
+        assert_eq!(sorties.nombre(), 1, "la sortie légitime reste tenue");
+    }
+
+    #[test]
+    fn une_destruction_refusee_par_le_pilote_ne_fait_pas_oublier_la_sortie() {
+        // Le GUID est la seule prise du projet sur ce moniteur : l'oublier
+        // sur échec le rendrait irrécupérable, et la garde ne le retenterait
+        // jamais.
+        let pilote = PiloteFactice::default();
+        let mut sorties = Sorties::nouvelles(&pilote);
+        let a = sorties.creer(1280, 720, 60).unwrap();
+        *pilote.refuse_les_destructions.borrow_mut() = true;
+
+        assert!(sorties.detruire(a).is_err());
+        assert_eq!(sorties.nombre(), 1, "la sortie reste due tant qu'elle n'est pas rendue");
+    }
+```
+
+Le `PiloteFactice` du fichier doit gagner ce que ces tests lisent — s'il n'a pas déjà `detruites` et `refuse_les_destructions`, les ajouter en `RefCell`, sur le modèle de ses champs existants, et faire échouer `detruire` quand le drapeau est levé.
+
+- [ ] **Step 8: Vérifier que les tests échouent**
+
+Run: `cargo test -p agent moniteurs_virtuels`
+Expected: FAIL — `no method named detruire found for struct Sorties`.
+
+- [ ] **Step 9: Écrire la libération**
+
+Dans `agent/src/moniteurs_virtuels.rs`, sur `impl Sorties` :
+
+```rust
+    /// Rend une sortie au pilote **pendant** l'exécution, et cesse de la
+    /// tenir.
+    ///
+    /// Sans cette méthode, une sortie n'est rendue qu'à la destruction de la
+    /// garde, c'est-à-dire à l'arrêt du superviseur : le vivier du pilote
+    /// (dix sorties, mesuré) se consommerait alors à chaque OUVERTURE de
+    /// fenêtre et non par fenêtre simultanée, et une dizaine
+    /// d'ouvertures-fermetures suffirait à bloquer toute nouvelle fenêtre.
+    ///
+    /// Sur refus du pilote, la sortie **reste tenue** : elle est encore due,
+    /// et la garde la retentera à la destruction. L'oublier ici la rendrait
+    /// irrécupérable — le pilote ne retire que par un GUID dont lui seul et
+    /// `PiloteParIoctl` gardent la trace.
+    pub fn detruire(&mut self, id: IdSortie) -> Result<()> {
+        let rang = self
+            .creees
+            .iter()
+            .position(|connu| *connu == id)
+            .with_context(|| format!("sortie {id} non tenue par cette garde — rien à rendre"))?;
+        self.pilote.detruire(id)?;
+        self.creees.remove(rang);
+        Ok(())
+    }
+```
+
+- [ ] **Step 10: Vérifier que les tests passent, et commiter**
+
+```bash
+cargo test -p agent moniteurs_virtuels
+```
+
+Expected: PASS, dont les trois nouveaux.
+
+```bash
+git add agent/src/moniteurs_virtuels.rs
+git commit -m "feat(d1): rendre une sortie virtuelle au pilote pendant l'execution"
 ```
 
 ---
@@ -2784,37 +2984,158 @@ mod tests {
 }
 ```
 
-- [ ] **Step 4: Écrire la boucle du superviseur**
+- [ ] **Step 4: Écrire le lanceur de processus**
 
-Dans `agent/src/superviseur.rs`, sous les déclarations de modules :
+**Trois fichiers, pas un.** La boucle, le lanceur et l'assemblage font ensemble bien plus de 500 lignes, et la contrainte globale interdit qu'un nouveau fichier naisse au-dessus de ce plafond. Les frontières sont donc posées ici, à l'écriture — pas après coup.
+
+Créer `agent/src/superviseur/lanceur.rs` :
+
+```rust
+//! Lancement d'un processus agent par fenêtre, et contrôle de sa vie.
+//!
+//! Séparé de `boucle.rs` : c'est la seule partie du superviseur qui parle de
+//! processus Windows, et elle satisfait un trait dont `enfants.rs` porte les
+//! tests avec un lanceur factice.
+
+#![cfg(windows)]
+
+use anyhow::{Context, Result};
+
+use super::enfants::{Consigne, Lanceur};
+
+pub struct LanceurDeProcessus {
+    pub executable: std::path::PathBuf,
+    pub signaling_url: String,
+    pub local_ip: String,
+}
+
+impl Lanceur for LanceurDeProcessus {
+    fn lancer(&self, consigne: &Consigne) -> Result<u32> {
+        let enfant = std::process::Command::new(&self.executable)
+            .env("SESSION_ID", &consigne.session.0)
+            .env("SIGNALING_URL", &self.signaling_url)
+            .env("LOCAL_IP", &self.local_ip)
+            .env("FENETRE_HWND", format!("{:#x}", consigne.fenetre))
+            .env(
+                "SORTIE_DXGI",
+                format!("{}:{}", consigne.index_adaptateur, consigne.index_sortie),
+            )
+            .env("AUDIO", if consigne.audio { "1" } else { "0" })
+            // Surtout PAS `SUPERVISEUR` : un enfant qui hériterait de la
+            // variable se prendrait pour un superviseur et lancerait ses
+            // propres enfants, indéfiniment.
+            .env_remove("SUPERVISEUR")
+            .spawn()
+            .with_context(|| format!("lancement de l'enfant {}", consigne.session.0))?;
+        Ok(enfant.id())
+    }
+
+    fn est_vivant(&self, pid: u32) -> bool {
+        // `OpenProcess` sur un PID mort échoue : c'est le contrôle le moins
+        // cher qui ne dépende pas d'avoir gardé le `Child`.
+        use windows::Win32::Foundation::CloseHandle;
+        use windows::Win32::System::Threading::{
+            GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
+        };
+        unsafe {
+            let Ok(handle) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) else {
+                return false;
+            };
+            let mut code = 0u32;
+            let vivant = GetExitCodeProcess(handle, &mut code).is_ok()
+                // 259 = STILL_ACTIVE.
+                && code == 259;
+            let _ = CloseHandle(handle);
+            vivant
+        }
+    }
+
+    fn tuer(&self, pid: u32) -> Result<()> {
+        use windows::Win32::Foundation::CloseHandle;
+        use windows::Win32::System::Threading::{OpenProcess, TerminateProcess, PROCESS_TERMINATE};
+        unsafe {
+            let handle = OpenProcess(PROCESS_TERMINATE, false, pid)
+                .with_context(|| format!("ouverture du processus {pid} pour le terminer"))?;
+            let issue = TerminateProcess(handle, 1);
+            let _ = CloseHandle(handle);
+            issue.with_context(|| format!("terminaison du processus {pid}"))?;
+        }
+        Ok(())
+    }
+}
+```
+
+- [ ] **Step 4bis: Écrire l'assemblage**
+
+Dans `agent/src/superviseur.rs`, sous les déclarations de modules — et **rien de plus** : ce fichier assemble, il ne décide pas.
 
 ```rust
 #[cfg(windows)]
+pub mod boucle;
+#[cfg(windows)]
+pub mod lanceur;
+
+#[cfg(windows)]
 pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
-    win::executer(config).await
+    use anyhow::Context;
+
+    // Purger AVANT tout : une exécution précédente tuée net a pu laisser des
+    // sorties, et elles occupent le vivier de dix.
+    if let Err(erreur) = crate::moniteurs_virtuels::purge::purger() {
+        tracing::warn!(%erreur, "purge des sorties orphelines incomplète au démarrage");
+    }
+
+    let pilote = crate::moniteurs_virtuels::pilote::ouvrir_pilote()
+        .context("ouverture du pilote d'affichage virtuel")?;
+    let lanceur = lanceur::LanceurDeProcessus {
+        executable: std::env::current_exe().context("chemin de l'exécutable")?,
+        signaling_url: config.signaling_url.clone(),
+        local_ip: config.local_ip.to_string(),
+    };
+    let (rx_shell, envoyer) = signalisation::connecter(
+        &config.signaling_url,
+        protocole::SESSION_DE_CONTROLE,
+    )
+    .await?;
+
+    let (tx_hook, rx_hook) = std::sync::mpsc::channel();
+    let _garde_hook = hook::poser(tx_hook).context("pose du hook de détection")?;
+
+    boucle::tourner(&pilote, &lanceur, rx_hook, rx_shell, envoyer)
 }
 
 #[cfg(not(windows))]
 pub async fn executer(_config: crate::Config) -> anyhow::Result<()> {
     anyhow::bail!("le mode superviseur n'existe que sur Windows")
 }
+```
 
-#[cfg(windows)]
-mod win {
-    use anyhow::{Context, Result};
+- [ ] **Step 4ter: Écrire la boucle**
 
-    use super::enfants::{Consigne, Enfants, Lanceur};
-    use super::protocole::{DepuisLaShell, VersLaShell, SESSION_DE_CONTROLE};
-    use super::table::{Effet, IdFenetre, IdSession, Table};
-    use super::{hook, placement};
-    use crate::capture::enumerer_sorties;
-    use crate::moniteurs_virtuels::pilote::ouvrir_pilote;
-    use crate::moniteurs_virtuels::{PiloteAffichageVirtuel, Sorties};
+Créer `agent/src/superviseur/boucle.rs` :
 
-    /// Capacité retenue : le pilote refuse la 11ᵉ sortie (mesuré), et Apollo
-    /// puise au même vivier sans qu'on sache combien il en prend. Huit est la
-    /// cible du chantier, avec deux de marge assumée.
-    const CAPACITE: usize = 8;
+```rust
+//! La boucle du superviseur : elle consomme les événements, fait avancer la
+//! table, et exécute les effets que celle-ci rend.
+//!
+//! Aucune décision ici — la table décide, cette boucle agit. C'est ce qui
+//! rend les règles éprouvables sans Windows, et ce fichier lisible.
+
+#![cfg(windows)]
+
+use anyhow::{Context, Result};
+
+use super::enfants::{Consigne, Enfants, Lanceur};
+use super::protocole::{DepuisLaShell, VersLaShell};
+use super::table::{Effet, IdSession, Table};
+use super::placement;
+use crate::capture::enumerer_sorties;
+use crate::moniteurs_virtuels::{pilote::PiloteParIoctl, Sorties};
+
+/// Capacité retenue : le pilote refuse la 11ᵉ sortie (mesuré), et Apollo puise
+/// au même vivier sans qu'on sache combien il en prend. Huit est la cible du
+/// chantier, avec deux de marge assumée.
+const CAPACITE: usize = 8;
 
     /// Cadence du battement du chien de garde du pilote. Le pilote retire les
     /// sorties d'un client qui cesse de pinguer ; l'unité de son délai n'est
@@ -2828,283 +3149,216 @@ mod win {
     /// gratuit — il ne doit pas courir à chaque tour de boucle.
     const PERIODE_PLACEMENT: std::time::Duration = std::time::Duration::from_secs(1);
 
-    struct LanceurDeProcessus {
-        executable: std::path::PathBuf,
-        signaling_url: String,
-        local_ip: String,
+pub fn tourner(
+    pilote: &PiloteParIoctl,
+    lanceur: &dyn Lanceur,
+    rx_hook: std::sync::mpsc::Receiver<super::hook::EvenementFenetre>,
+    rx_shell: std::sync::mpsc::Receiver<DepuisLaShell>,
+    envoyer: impl Fn(&VersLaShell),
+) -> Result<()> {
+    let mut sorties = Sorties::nouvelles(pilote);
+    let mut enfants = Enfants::nouveaux(lanceur);
+    let mut table = Table::nouvelle(CAPACITE);
+    // Sorties DXGI deja attribuees, pour que deux fenetres au meme viewport
+    // ne se voient pas donner la meme. La table porte deja la correspondance
+    // session -> sortie ; ceci n'est que l'ensemble des sorties occupees.
+    let mut prises: Vec<(u32, u32)> = Vec::new();
+
+    // Les fenetres deja ouvertes : le hook ne rapporte que les changements.
+    let mut effets = Vec::new();
+    for (fenetre, titre) in super::hook::enumerer_existantes() {
+        effets.extend(table.fenetre_apparue(fenetre, titre));
     }
 
-    impl Lanceur for LanceurDeProcessus {
-        fn lancer(&self, consigne: &Consigne) -> Result<u32> {
-            let enfant = std::process::Command::new(&self.executable)
-                .env("SESSION_ID", &consigne.session.0)
-                .env("SIGNALING_URL", &self.signaling_url)
-                .env("LOCAL_IP", &self.local_ip)
-                .env("FENETRE_HWND", format!("{:#x}", consigne.fenetre))
-                .env(
-                    "SORTIE_DXGI",
-                    format!("{}:{}", consigne.index_adaptateur, consigne.index_sortie),
-                )
-                .env("AUDIO", if consigne.audio { "1" } else { "0" })
-                // Surtout PAS `SUPERVISEUR` : un enfant qui hériterait de la
-                // variable se prendrait pour un superviseur et lancerait ses
-                // propres enfants, indéfiniment.
-                .env_remove("SUPERVISEUR")
-                .spawn()
-                .with_context(|| format!("lancement de l'enfant {}", consigne.session.0))?;
-            Ok(enfant.id())
-        }
-
-        fn est_vivant(&self, pid: u32) -> bool {
-            // `OpenProcess` sur un PID mort échoue : c'est le contrôle le
-            // moins cher qui ne dépende pas d'avoir gardé le `Child`.
-            use windows::Win32::Foundation::CloseHandle;
-            use windows::Win32::System::Threading::{
-                GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
-            };
-            unsafe {
-                let Ok(handle) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) else {
-                    return false;
-                };
-                let mut code = 0u32;
-                let vivant = GetExitCodeProcess(handle, &mut code).is_ok()
-                    // 259 = STILL_ACTIVE.
-                    && code == 259;
-                let _ = CloseHandle(handle);
-                vivant
-            }
-        }
-
-        fn tuer(&self, pid: u32) -> Result<()> {
-            use windows::Win32::Foundation::CloseHandle;
-            use windows::Win32::System::Threading::{OpenProcess, TerminateProcess, PROCESS_TERMINATE};
-            unsafe {
-                let handle = OpenProcess(PROCESS_TERMINATE, false, pid)
-                    .with_context(|| format!("ouverture du processus {pid} pour le terminer"))?;
-                let issue = TerminateProcess(handle, 1);
-                let _ = CloseHandle(handle);
-                issue.with_context(|| format!("terminaison du processus {pid}"))?;
-            }
-            Ok(())
-        }
-    }
-
-    pub async fn executer(config: crate::Config) -> Result<()> {
-        // Purger AVANT tout : une exécution précédente tuée net a pu laisser
-        // des sorties, et elles occupent le vivier de 10.
-        if let Err(erreur) = crate::moniteurs_virtuels::purge::purger() {
-            tracing::warn!(%erreur, "purge des sorties orphelines incomplète au démarrage");
-        }
-
-        let pilote = ouvrir_pilote().context("ouverture du pilote d'affichage virtuel")?;
-        let mut sorties = Sorties::nouvelles(&pilote);
-        let lanceur = LanceurDeProcessus {
-            executable: std::env::current_exe().context("chemin de l'exécutable")?,
-            signaling_url: config.signaling_url.clone(),
-            local_ip: config.local_ip.to_string(),
-        };
-        let mut enfants = Enfants::nouveaux(&lanceur);
-        let mut table = Table::nouvelle(CAPACITE);
-        // Sorties DXGI déjà attribuées, pour que deux fenêtres au même
-        // viewport ne se voient pas donner la même.
-        let mut prises: Vec<(u32, u32)> = Vec::new();
-        // Correspondance session → sortie DXGI, pour libérer la bonne.
-        let mut sorties_par_session: std::collections::HashMap<IdSession, (u32, u32)> =
-            std::collections::HashMap::new();
-
-        let (tx_hook, rx_hook) = std::sync::mpsc::channel();
-        let _garde_hook = hook::poser(tx_hook).context("pose du hook de détection")?;
-
-        let (tx_shell, rx_shell, envoyer) =
-            super::signalisation::connecter(&config.signaling_url, SESSION_DE_CONTROLE).await?;
-        drop(tx_shell);
-
-        // Les fenêtres déjà ouvertes : le hook ne rapporte que les
-        // changements.
-        let mut effets = Vec::new();
-        for (fenetre, titre) in hook::enumerer_existantes() {
-            effets.extend(table.fenetre_apparue(fenetre, titre));
-        }
-
-        let mut dernier_ping = std::time::Instant::now();
-        let mut dernier_controle_placement = std::time::Instant::now();
-        loop {
-            // 1. Exécuter les effets en attente.
-            let a_faire = std::mem::take(&mut effets);
-            for effet in a_faire {
-                match effet {
-                    Effet::AnnoncerOuverture { session, titre } => {
-                        envoyer(&VersLaShell::FenetreOuverte {
-                            session: session.0.clone(),
-                            titre,
-                        });
-                    }
-                    Effet::CreerSortie { session, largeur, hauteur } => {
-                        match sorties.creer(largeur, hauteur, 60) {
-                            Ok(_id) => {
-                                // Laisser Windows rattacher la sortie avant
-                                // de l'énumérer : elle n'apparaît pas
-                                // instantanément dans la topologie DXGI.
-                                std::thread::sleep(std::time::Duration::from_millis(1500));
-                                let toutes = enumerer_sorties()?;
-                                match placement::sortie_par_dimensions(
-                                    &toutes, largeur, hauteur, &prises,
-                                ) {
-                                    Some(cible) => {
-                                        prises.push((cible.index_adaptateur, cible.index_sortie));
-                                        sorties_par_session.insert(
-                                            session.clone(),
-                                            (cible.index_adaptateur, cible.index_sortie),
+    let mut dernier_ping = std::time::Instant::now();
+    let mut dernier_controle_placement = std::time::Instant::now();
+    loop {
+        // 1. Exécuter les effets en attente.
+        let a_faire = std::mem::take(&mut effets);
+        for effet in a_faire {
+            match effet {
+                Effet::AnnoncerOuverture { session, titre } => {
+                    envoyer(&VersLaShell::FenetreOuverte {
+                        session: session.0.clone(),
+                        titre,
+                    });
+                }
+                Effet::CreerSortie { session, largeur, hauteur } => {
+                    match sorties.creer(largeur, hauteur, 60) {
+                        Ok(id_pilote) => {
+                            // Laisser Windows rattacher la sortie avant
+                            // de l'énumérer : elle n'apparaît pas
+                            // instantanément dans la topologie DXGI.
+                            std::thread::sleep(std::time::Duration::from_millis(1500));
+                            let toutes = enumerer_sorties()?;
+                            match placement::sortie_par_dimensions(
+                                &toutes, largeur, hauteur, &prises,
+                            ) {
+                                Some(cible) => {
+                                    prises.push((cible.index_adaptateur, cible.index_sortie));
+                                    // Les DEUX identifiants : celui du
+                                    // pilote pour la destruction, la
+                                    // position DXGI pour la capture.
+                                    effets.extend(table.sortie_creee(
+                                        &session,
+                                        id_pilote,
+                                        (cible.index_adaptateur, cible.index_sortie),
+                                    ));
+                                    // Poser la fenêtre dessus avant que
+                                    // l'enfant ne capture.
+                                    if let Some(Effet::LancerEnfant { fenetre, .. }) =
+                                        effets.last().cloned()
+                                    {
+                                        let hwnd = windows::Win32::Foundation::HWND(
+                                            fenetre.0 as *mut core::ffi::c_void,
                                         );
-                                        effets.extend(table.sortie_creee(
-                                            &session,
-                                            cible.index_sortie,
-                                        ));
-                                        // Poser la fenêtre dessus avant que
-                                        // l'enfant ne capture.
-                                        if let Some(Effet::LancerEnfant { fenetre, .. }) =
-                                            effets.last().cloned()
+                                        if let Err(erreur) =
+                                            placement::poser(hwnd, &cible.rect)
                                         {
-                                            let hwnd = windows::Win32::Foundation::HWND(
-                                                fenetre.0 as *mut core::ffi::c_void,
-                                            );
-                                            if let Err(erreur) =
-                                                placement::poser(hwnd, &cible.rect)
-                                            {
-                                                tracing::warn!(%erreur, "placement de la fenêtre échoué");
-                                            }
+                                            tracing::warn!(%erreur, "placement de la fenêtre échoué");
                                         }
                                     }
-                                    None => {
-                                        tracing::error!(
-                                            session = %session.0, largeur, hauteur,
-                                            "sortie créée mais introuvable dans la topologie DXGI"
-                                        );
-                                        envoyer(&VersLaShell::FenetreFermee {
-                                            session: session.0.clone(),
-                                        });
-                                    }
+                                }
+                                None => {
+                                    tracing::error!(
+                                        session = %session.0, largeur, hauteur,
+                                        "sortie créée mais introuvable dans la topologie DXGI"
+                                    );
+                                    envoyer(&VersLaShell::FenetreFermee {
+                                        session: session.0.clone(),
+                                    });
                                 }
                             }
-                            Err(erreur) => {
-                                tracing::error!(session = %session.0, %erreur, "création de sortie refusée");
-                                envoyer(&VersLaShell::Refus {
-                                    titre: session.0.clone(),
-                                    motif: format!("{erreur}"),
-                                });
-                            }
                         }
-                    }
-                    Effet::LancerEnfant { session, fenetre, sortie: _, audio } => {
-                        let (adaptateur, index) = sorties_par_session
-                            .get(&session)
-                            .copied()
-                            .unwrap_or((0, 0));
-                        if let Err(erreur) = enfants.lancer(Consigne {
-                            session: session.clone(),
-                            fenetre: fenetre.0,
-                            index_adaptateur: adaptateur,
-                            index_sortie: index,
-                            audio,
-                        }) {
-                            tracing::error!(session = %session.0, %erreur, "lancement de l'enfant échoué");
-                            effets.extend(table.enfant_mort(&session));
+                        Err(erreur) => {
+                            tracing::error!(session = %session.0, %erreur, "création de sortie refusée");
+                            envoyer(&VersLaShell::Refus {
+                                titre: session.0.clone(),
+                                motif: format!("{erreur}"),
+                            });
                         }
-                    }
-                    Effet::TuerEnfant { session } => enfants.tuer(&session),
-                    Effet::DetruireSortie { sortie: _ } => {
-                        // La table désigne par index DXGI, le pilote par son
-                        // propre identifiant : c'est `Sorties` qui détient la
-                        // correspondance, et elle détruit tout à sa
-                        // destruction. En D1, une sortie n'est réellement
-                        // rendue qu'à l'arrêt du superviseur — limite connue,
-                        // à lever en D2 avec le reste du cycle de vie.
-                        tracing::info!("sortie marquée libre (rendue au pilote à l'arrêt)");
-                    }
-                    Effet::AnnoncerFermeture { session } => {
-                        if let Some(paire) = sorties_par_session.remove(&session) {
-                            prises.retain(|p| *p != paire);
-                        }
-                        envoyer(&VersLaShell::FenetreFermee { session: session.0 });
-                    }
-                    Effet::AnnoncerRefus { titre, motif } => {
-                        envoyer(&VersLaShell::Refus { titre, motif });
                     }
                 }
-            }
-
-            // 2. Battre le chien de garde du pilote.
-            if dernier_ping.elapsed() >= PERIODE_PING {
-                if let Err(erreur) = pilote.pinguer() {
-                    tracing::warn!(%erreur, "ping du chien de garde du pilote échoué");
+                Effet::LancerEnfant {
+                    session,
+                    fenetre,
+                    index_adaptateur,
+                    index_sortie,
+                    audio,
+                } => {
+                    if let Err(erreur) = enfants.lancer(Consigne {
+                        session: session.clone(),
+                        fenetre: fenetre.0,
+                        index_adaptateur,
+                        index_sortie,
+                        audio,
+                    }) {
+                        tracing::error!(session = %session.0, %erreur, "lancement de l'enfant échoué");
+                        effets.extend(table.enfant_mort(&session));
+                    }
                 }
-                dernier_ping = std::time::Instant::now();
-            }
-
-            // 3. Événements de fenêtres.
-            while let Ok(evenement) = rx_hook.try_recv() {
-                effets.extend(match evenement {
-                    hook::EvenementFenetre::Apparue { fenetre, titre } => {
-                        table.fenetre_apparue(fenetre, titre)
+                Effet::TuerEnfant { session } => enfants.tuer(&session),
+                Effet::DetruireSortie { sortie_pilote, dxgi } => {
+                    // Rendue MAINTENANT, pas à l'arrêt du superviseur : le
+                    // vivier du pilote se consomme à chaque ouverture de
+                    // fenêtre, et une dizaine d'ouvertures-fermetures
+                    // suffirait sinon à bloquer toute nouvelle fenêtre.
+                    match sorties.detruire(sortie_pilote) {
+                        Ok(()) => tracing::info!(sortie_pilote, "sortie virtuelle rendue au pilote"),
+                        Err(erreur) => tracing::error!(
+                            sortie_pilote, %erreur,
+                            "sortie virtuelle NON rendue — la garde la retentera à l'arrêt"
+                        ),
                     }
-                    hook::EvenementFenetre::Disparue { fenetre } => {
-                        table.fenetre_disparue(fenetre)
-                    }
-                });
+                    // La place DXGI se libère dans les deux cas : si le
+                    // pilote a refusé, la sortie ne sera de toute façon plus
+                    // attribuée à personne, et `sortie_par_dimensions`
+                    // exigera qu'elle soit encore attachée.
+                    prises.retain(|p| *p != dxgi);
+                }
+                Effet::AnnoncerFermeture { session } => {
+                    envoyer(&VersLaShell::FenetreFermee { session: session.0 });
+                }
+                Effet::AnnoncerRefus { titre, motif } => {
+                    envoyer(&VersLaShell::Refus { titre, motif });
+                }
             }
+        }
 
-            // 4. Messages de la shell.
-            while let Ok(message) = rx_shell.try_recv() {
-                let DepuisLaShell::Viewport { session, largeur, hauteur } = message;
-                effets.extend(table.viewport_recu(&IdSession(session), largeur, hauteur));
+        // 2. Battre le chien de garde du pilote.
+        if dernier_ping.elapsed() >= PERIODE_PING {
+            if let Err(erreur) = pilote.pinguer() {
+                tracing::warn!(%erreur, "ping du chien de garde du pilote échoué");
             }
+            dernier_ping = std::time::Instant::now();
+        }
 
-            // 5. Enfants morts d'eux-mêmes.
-            for session in enfants.morts() {
-                effets.extend(table.enfant_mort(&session));
-            }
+        // 3. Événements de fenêtres.
+        while let Ok(evenement) = rx_hook.try_recv() {
+            effets.extend(match evenement {
+                hook::EvenementFenetre::Apparue { fenetre, titre } => {
+                    table.fenetre_apparue(fenetre, titre)
+                }
+                hook::EvenementFenetre::Disparue { fenetre } => {
+                    table.fenetre_disparue(fenetre)
+                }
+            });
+        }
 
-            // 6. Les fenêtres sont-elles encore sur leur sortie ?
-            //
-            // Une application peut se déplacer ou se retailler d'elle-même,
-            // et une fenêtre qui déborde de sa sortie donne une capture
-            // tronquée sans que rien ne le signale. Le contrôle est
-            // PÉRIODIQUE et non branché sur `EVENT_OBJECT_LOCATIONCHANGE` :
-            // cet événement se déclenche à chaque pixel de déplacement, sur
-            // toutes les fenêtres du bureau, et noierait le canal du hook
-            // pour un besoin qui tolère très bien une seconde de retard.
-            if dernier_controle_placement.elapsed() >= PERIODE_PLACEMENT {
-                dernier_controle_placement = std::time::Instant::now();
-                let toutes = enumerer_sorties().unwrap_or_default();
-                for (session, (adaptateur, index)) in &sorties_par_session {
-                    let Some(cible) = toutes
-                        .iter()
-                        .find(|s| s.index_adaptateur == *adaptateur && s.index_sortie == *index)
-                    else {
-                        continue;
-                    };
-                    let Some(fenetre) = table.fenetre_de(session) else { continue };
-                    let hwnd = windows::Win32::Foundation::HWND(
-                        fenetre.0 as *mut core::ffi::c_void,
+        // 4. Messages de la shell.
+        while let Ok(message) = rx_shell.try_recv() {
+            let DepuisLaShell::Viewport { session, largeur, hauteur } = message;
+            effets.extend(table.viewport_recu(&IdSession(session), largeur, hauteur));
+        }
+
+        // 5. Enfants morts d'eux-mêmes.
+        for session in enfants.morts() {
+            effets.extend(table.enfant_mort(&session));
+        }
+
+        // 6. Les fenêtres sont-elles encore sur leur sortie ?
+        //
+        // Une application peut se déplacer ou se retailler d'elle-même,
+        // et une fenêtre qui déborde de sa sortie donne une capture
+        // tronquée sans que rien ne le signale. Le contrôle est
+        // PÉRIODIQUE et non branché sur `EVENT_OBJECT_LOCATIONCHANGE` :
+        // cet événement se déclenche à chaque pixel de déplacement, sur
+        // toutes les fenêtres du bureau, et noierait le canal du hook
+        // pour un besoin qui tolère très bien une seconde de retard.
+        if dernier_controle_placement.elapsed() >= PERIODE_PLACEMENT {
+            dernier_controle_placement = std::time::Instant::now();
+            let toutes = enumerer_sorties().unwrap_or_default();
+            for session in table.sessions_vivantes() {
+                let Some((adaptateur, index)) = table.sortie_dxgi_de(&session) else {
+                    continue;
+                };
+                let Some(cible) = toutes
+                    .iter()
+                    .find(|s| s.index_adaptateur == adaptateur && s.index_sortie == index)
+                else {
+                    continue;
+                };
+                let Some(fenetre) = table.fenetre_de(&session) else { continue };
+                let hwnd = windows::Win32::Foundation::HWND(
+                    fenetre.0 as *mut core::ffi::c_void,
+                );
+                let Ok(actuel) = placement::rectangle_de(hwnd) else { continue };
+                if placement::doit_etre_replacee(&actuel, &cible.rect) {
+                    tracing::info!(
+                        session = %session.0,
+                        de = format!("{}x{}+{}+{}", actuel.width, actuel.height, actuel.x, actuel.y),
+                        vers = format!("{}x{}+{}+{}", cible.rect.width, cible.rect.height, cible.rect.x, cible.rect.y),
+                        "fenêtre sortie de sa sortie, replacement"
                     );
-                    let Ok(actuel) = placement::rectangle_de(hwnd) else { continue };
-                    if placement::doit_etre_replacee(&actuel, &cible.rect) {
-                        tracing::info!(
-                            session = %session.0,
-                            de = format!("{}x{}+{}+{}", actuel.width, actuel.height, actuel.x, actuel.y),
-                            vers = format!("{}x{}+{}+{}", cible.rect.width, cible.rect.height, cible.rect.x, cible.rect.y),
-                            "fenêtre sortie de sa sortie, replacement"
-                        );
-                        if let Err(erreur) = placement::poser(hwnd, &cible.rect) {
-                            tracing::warn!(session = %session.0, %erreur, "replacement échoué");
-                        }
+                    if let Err(erreur) = placement::poser(hwnd, &cible.rect) {
+                        tracing::warn!(session = %session.0, %erreur, "replacement échoué");
                     }
                 }
             }
+        }
 
-            if effets.is_empty() {
-                std::thread::sleep(std::time::Duration::from_millis(100));
-            }
+        if effets.is_empty() {
+            std::thread::sleep(std::time::Duration::from_millis(100));
         }
     }
 }
