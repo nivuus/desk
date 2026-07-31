@@ -11,13 +11,17 @@ lever les quatre inconnues que la sonde de capture multi-fenêtres du
 Il s'appuie sur son prédécesseur, dont il ne répète pas les résultats :
 `docs/superpowers/plans/2026-07-30-sonde-capture-multifenetre-resultats.md`.
 
-**Discipline d'énoncé.** Tout chiffre cité ici provient d'un journal versé dans
-`docs/superpowers/plans/journaux-mesures-prealables/`, **nommé à sa place**.
-Les vingt journaux sont en **UTF-8** — c'était la tâche 1 du chantier, et il ne
-faut donc **pas** leur appliquer la conversion `iconv` que réclament ceux de la
-sonde précédente. **Deux relevés seulement n'ont pas de journal versé** : ils
-sont signalés là où ils apparaissent, et repris dans « Ce qui reste ouvert ».
-Rien n'est reconstitué de mémoire, rien n'est extrapolé au-delà du rang mesuré.
+**Discipline d'énoncé.** Tout chiffre cité ici provient d'un journal versé,
+**nommé à sa place**. `docs/superpowers/plans/journaux-mesures-prealables/`
+contient **19 fichiers `.log`**, tous en **UTF-8** — c'était la tâche 1 du
+chantier — plus `canal-de-controle.md`, qui est un document de reconnaissance et
+non un journal. Il ne faut donc **pas** appliquer à ces `.log` la conversion
+`iconv` que réclament certains de la sonde précédente. Les quelques chiffres
+repris de cette sonde nomment ses journaux à elle
+(`journaux-sonde-multifenetre/`). **Deux relevés seulement n'ont pas de journal
+versé** : ils sont signalés là où ils apparaissent, et repris dans « Ce qui
+reste ouvert ». Rien n'est reconstitué de mémoire, rien n'est extrapolé au-delà
+du rang mesuré.
 
 Cette discipline n'est pas un ornement. La sonde précédente a passé onze rondes
 de revue à corriger des rapports qui concluaient au-delà de leur relevé, jamais
@@ -35,7 +39,8 @@ Les quatre chiffres, chacun avec son journal.
    refusée.** Mesure ①. Refus du pilote sur `IOCTL_ADD_VIRTUAL_DISPLAY`
    (`0x00222000`) en `0x80070044` (`ERROR_TOO_MANY_NAMES`). Preuve par
    **identité** et non par cardinal : la ligne de refus énumère nommément les
-   onze sorties encore présentes à cet instant.
+   onze sorties présentes — au relevé qui précède immédiatement le refus, à
+   **0,5 ms** près, et non par une relecture prise au moment même (voir §Mesure ①).
    Journal : `moniteurs-montee-en-n.log`.
    **La cible du chantier D étant 8 fenêtres, la voie recommandée par la sonde
    tient, avec 2 de marge.**
@@ -58,12 +63,15 @@ Les quatre chiffres, chacun avec son journal.
    C'était **l'hypothèse fondatrice** de la voie recommandée, jusqu'ici garantie
    « par construction » et jamais vérifiée. Elle tient.
 
-4. **`PrintWindow` ne tient pas l'échelle : 17,2 i/s par fenêtre à N=4, 8,8 à
-   N=8.** Mesure ④. Passe capture+encodage menée à son terme,
-   `verdicts_faux = 0` aux deux rangs.
+4. **`PrintWindow` ne tient pas l'échelle : 17,6 i/s par fenêtre à N=4, 8,8 à
+   N=8** (17,2 et 8,8 avec l'encodage, passe menée à son terme,
+   `verdicts_faux = 0` aux deux rangs).
    Journaux : `printwindow-n4.log`, `printwindow-n8.log`.
-   Décroissance **monotone du débit de pixels** (44,58 puis 20,28 MP/s), sans le
-   palier qu'affiche la voie `duplication`.
+   Recollés aux deux rangs mesurés par la sonde précédente
+   (`banc-printwindow-1.log`, `banc-printwindow-2.log`), les quatre points
+   donnent une décroissance **monotone du débit de pixels sur toute la plage** —
+   **116,64 → 75,43 → 45,62 → 20,28 MP/s**, une division par 5,8 — sans le
+   palier qu'affiche la voie `duplication` (208–258 MP/s quasi constants).
 
 Trois acquis d'outillage viennent en plus des quatre chiffres, et ils
 conditionnent la spécifiabilité autant qu'eux :
@@ -134,14 +142,21 @@ correction correspondant.
   inconnue** — **aucune unité n'est exclue, pas même la seconde**. Voir le
   §Mesure ① : la mesure du plafond ne dépend pas de cette inconnue, mais une
   exploitation durable des sorties virtuelles, elle, en dépendra.
-- **Deux relevés de ce chantier n'ont pas de journal versé** :
-  - la sonde de contrat de la tâche 5 (`MULTIFENETRE_CONTRAT`) — version de
+- **Deux relevés cités dans ce document n'ont pas de journal versé** :
+  - **la sonde de contrat de la tâche 5** (`MULTIFENETRE_CONTRAT`) — version de
     protocole `{majeure 0, mineure 2, increment 1, version de test}` et watchdog
     `delai=3 decompte=3` — est citée depuis `/media/vm/dev/agent.log`, jamais
-    extraite dans un fichier versé. Les deux valeurs de watchdog sont toutefois
-    reproduites, elles, dans `moniteurs-chien-de-garde.log` ;
-  - le facteur d'échelle 1,0 et les coordonnées de texture de la mesure ③
-    figurent bien dans `moniteurs-capture.log` — ce point-là est couvert.
+    extraite dans un fichier versé. Atténuation : les deux valeurs de watchdog
+    sont, elles, reproduites dans `moniteurs-chien-de-garde.log` ;
+  - **le relevé Apollo de 3413×960 contre 5120×1440**, hérité de la sonde
+    précédente, qui le signalait déjà comme son seul chiffre sans pièce et comme
+    non reproductible sans le propriétaire du poste. Il ne fonde plus rien ici —
+    la voie ne repose plus sur lui — mais il **sert d'unique contre-exemple** à
+    l'énoncé du facteur d'échelle de la mesure ③ (« la borne est *cette
+    résolution-là*, pas *cette VM* »). Sa réserve l'accompagne à cet endroit.
+
+  *(Le facteur d'échelle 1,0 et les coordonnées de texture de la mesure ③,
+  eux, figurent bien dans `moniteurs-capture.log` : ce point est couvert.)*
 - **La disposition des structures du contrat IOCTL reste une lecture amont.**
   Le GUID d'interface et 2 des 6 codes IOCTL sont confirmés **par octets** dans
   le `SudoVDA.dll` installé (md5 `200ec71b297ca42469652256c4fa896b`, offsets
@@ -154,9 +169,12 @@ correction correspondant.
   gagné en cours de chantier une relecture de pixel qui court sur toute la passe
   et non plus seulement après recouvrement — voir le §Mesure ④ pour le bornage
   du risque.
-- **Le plafond de 10 n'est éprouvé qu'en création.** Les dix sorties ont vécu
-  27 s. Rien n'est établi sur leur tenue dans la durée, ni sur ce que Windows
-  fait d'un bureau à onze écrans réellement utilisé.
+- **Le plafond de 10 n'est éprouvé qu'en création.** La première sortie a vécu
+  **au moins 27 s** — le journal la donne créée à 10:05:41,947 (confirmation
+  DXGI) et la dernière destruction tombe à 10:06:09,019 ; comptée depuis l'IOCTL
+  de création qui la précède (10:05:38,945) la durée est de 30,1 s. Rien n'est
+  établi sur leur tenue au-delà, ni sur ce que Windows fait d'un bureau à onze
+  écrans réellement utilisé.
 
 ---
 
@@ -183,11 +201,18 @@ code commande le pilote directement.*
           causes=création d'une sortie 1280x720@60 (IOCTL 0x00222000) :
                  La limite de nom pour la carte réseau de l'ordinateur local
                  a été dépassée. (0x80070044)
-          presentes=[DISPLAY1, DISPLAY5, DISPLAY6, DISPLAY7, DISPLAY8, DISPLAY9,
-                     DISPLAY10, DISPLAY11, DISPLAY12, DISPLAY13, DISPLAY14]
+          presentes=["\\.\DISPLAY1", "\\.\DISPLAY10", "\\.\DISPLAY11",
+                     "\\.\DISPLAY12", "\\.\DISPLAY13", "\\.\DISPLAY14",
+                     "\\.\DISPLAY5", "\\.\DISPLAY6", "\\.\DISPLAY7",
+                     "\\.\DISPLAY8", "\\.\DISPLAY9"]
 10:06:09  (dix destructions, en ordre inverse, toutes réussies)
 10:06:12  état initial restauré — mêmes sorties, nommément noms=["\\.\DISPLAY1"]
 ```
+
+*(Le champ `presentes` est reproduit dans l'ordre du journal — un tri
+lexicographique, où `DISPLAY10` précède `DISPLAY5`. Onze noms, un seul écran
+physique et dix sorties virtuelles. Les horodatages sont tronqués à la seconde
+et les lignes de topologie détaillée élidées ; tout le reste est verbatim.)*
 
 Le libellé français que Windows attache à `0x80070044` parle de cartes réseau :
 c'est le texte standard de l'erreur Win32 68 `ERROR_TOO_MANY_NAMES`, sans
@@ -230,6 +255,18 @@ a été créée à 10:05:41,947 et elle est encore là à 10:06:08,965, soit
 **27,0 secondes plus tard**. Cet argument ne dépend d'aucune hypothèse sur
 l'unité de `delai`, ni sur l'efficacité du ping, ni sur ce que fait Apollo.
 
+**Une nuance sur cette liste, qu'il faut écrire.** Le champ `presentes` de la
+ligne de refus n'est **pas une relecture prise au moment du refus** :
+`montee.rs:346-353` y journalise la liste mémorisée au relevé précédent, et le
+libellé de la ligne le laisse pourtant croire. L'écart réel se lit dans le
+journal — le relevé de topologie « après création 10 » est horodaté
+10:06:08,964164, la ligne `sortie virtuelle créée rang=10` 10:06:08,964362, et
+le refus 10:06:08,964837 : **0,5 ms**. À cette échelle la conclusion tient
+largement, et la borne des 27 s ci-dessus s'appuie de toute façon sur les
+relevés de topologie eux-mêmes, qui sont frais. Mais c'est un libellé de journal
+qui promet plus que ce qu'il porte, et il est reporté comme tel au tri des points
+reportés.
+
 L'épreuve dédiée (`moniteurs-chien-de-garde.log`, `MULTIFENETRE_VDD_VEILLE=180`,
 une sortie créée, **aucun ping de notre part**, relevé à 1 Hz) n'établit rien de
 plus que ceci : **rien n'a été retiré en 180 s sur CETTE VM, Apollo pinguant le
@@ -263,7 +300,8 @@ fois. Deux réserves qui interdisent d'en faire une preuve :
 - **L'unité de `delai`**, et le sort d'un client seul et muet. La seule voie
   d'isolement serait d'arrêter `ApolloService`, écartée : Apollo pilote la
   configuration d'affichage de cette VM, et la mesure du plafond n'en dépend pas.
-- **La tenue dans la durée.** Créées puis détruites en 27 s.
+- **La tenue dans la durée.** Créées puis détruites en **au moins 27 s**
+  (30,1 s si l'on compte depuis le premier IOCTL de création).
 - **Ce que valent ces dix sorties une fois capturées** — c'est la mesure ③, et
   elle n'a porté que sur **une** d'entre elles.
 
@@ -483,13 +521,21 @@ Et `moniteurs-capture-n1-encodage.log`, N=1, passe de capture entière :
 Le facteur vaut **1,0**, `DesktopCoordinates` et dimensions de mode coïncidant.
 **Écrire « le piège DPI ne se présente pas sur cette VM » serait faux** : il s'y
 est présenté, ailleurs — le relevé Apollo de la sonde précédente donnait
-3413×960 contre 5120×1440 sur cette même machine. Les deux mesures sont
-commensurables et ne se contredisent pas : elles portent sur **deux sorties
-différentes**. L'énoncé juste est donc : *le piège ne se présente pas sur une
-sortie créée par CE pilote à 1280×720*. Rien n'est dit d'une sortie créée à
-5120×1440, résolution à laquelle Windows applique volontiers 150 %. Le chemin de
-conversion reste nécessaire ; il n'a simplement pas eu de travail d'échelle à
-faire ici.
+3413×960 contre 5120×1440 sur cette même machine.
+
+> ⚠️ **Ce relevé Apollo n'a pas de journal joint** — la sonde précédente le
+> signalait déjà comme son seul chiffre sans pièce, et sa session n'est pas
+> reproductible sans le propriétaire du poste. C'est le **seul** contre-exemple
+> dont on dispose ici, et il est donc à la fois nécessaire à la borne ci-dessous
+> et moins bien étayé que tout le reste de ce document.
+
+Les deux mesures sont commensurables et ne se contredisent pas : elles portent
+sur **deux sorties différentes**. L'énoncé juste est donc : *le piège ne se
+présente pas sur une sortie créée par CE pilote à 1280×720*. Rien n'est dit
+d'une sortie créée à 5120×1440, résolution à laquelle Windows applique
+volontiers 150 %. Le chemin de conversion reste nécessaire ; il n'a simplement
+pas eu de travail d'échelle à faire ici — et il aurait tort d'être retiré au
+motif que ce chantier n'a mesuré que des facteurs unitaires.
 
 ### Le défaut ouvert : la passe d'encodage tue le processus
 
@@ -590,33 +636,44 @@ passe terminée passe="capture+encodage"  voie="printwindow" nombre=8
 ```
 
 `verdicts_faux = 0` aux deux rangs : **la passe d'encodage n'a pas été sautée**,
-et les cadences publiées sont donc celles du pipeline complet, pas d'un repli sur
-la seule capture.
+et le pipeline complet a donc bien tourné — contrairement à N=2 chez la sonde
+précédente, où cette passe n'avait pas été conclue.
 
-Conversion en débit de pixels — cadence par fenêtre × surface de la place × N :
+Conversion en débit de pixels — cadence par fenêtre × surface de la place × N.
+**Les quatre rangs ont un journal**, ceux de N=1 et N=2 venant de la sonde
+précédente (`journaux-sonde-multifenetre/`, UTF-8, `grep`-ables sans conversion) :
 
-| N | i/s / fenêtre | Place | MP/s total | Journal |
-| --- | --- | --- | --- | --- |
-| 1 | 45,0 | 2400×1080 | *(non calculé)* | sonde précédente |
-| 2 | 29,1 | 1200×1080 | *(non calculé)* | sonde précédente |
-| **4** | **17,2** | 1200×540 | **44,58** | `printwindow-n4.log` |
-| **8** | **8,8** | 800×360 | **20,28** | `printwindow-n8.log` |
-| — | — | — | 208–258 | voie `duplication`, sonde précédente |
+| N | i/s, passe `capture` | i/s, passe `capture+encodage` | Place | **MP/s** (passe `capture`) | Journal |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 45,0 | 44,9 (224 unités) | 2400×1080 | **116,64** | `banc-printwindow-1.log` |
+| 2 | 29,1 | *non conclue* | 1200×1080 | **75,43** | `banc-printwindow-2.log` |
+| 4 | 17,6 | 17,2 (86 unités ×4) | 1200×540 | **45,62** | `printwindow-n4.log` |
+| 8 | 8,8 | 8,8 (44 unités ×8) | 800×360 | **20,28** | `printwindow-n8.log` |
+| — | — | — | — | 208–258 | voie `duplication`, sonde précédente |
 
-*(Les MP/s de N=1 et N=2 ne sont pas calculés : les dimensions de place de ces
-deux points n'ont pas été retrouvées dans les journaux de la sonde précédente.
-Seules leurs valeurs en i/s sont reprises telles quelles.)*
+**Le MP/s est calculé sur la passe `capture`**, seule passe conclue aux quatre
+rangs — la passe `capture+encodage` n'a pas été menée à son terme à N=2, et une
+série qui mêlerait les deux ne serait pas comparable. Sur la passe
+`capture+encodage`, là où elle est conclue, les chiffres sont **44,58 MP/s à
+N=4** et **20,28 à N=8** : ce sont ceux qu'avait publiés la mesure ④, et ils ne
+changent ni la forme de la courbe ni la conclusion.
 
 ### Ce que le relevé autorise à conclure
 
-- **La cadence par fenêtre décroît de façon monotone** : 45,0 → 29,1 → 17,2 →
-  8,8. À N=8 le repli délivre moins de 9 images par seconde et par fenêtre.
-- **Le débit de pixels décroît aussi**, 44,58 → 20,28 MP/s entre N=4 et N=8.
-  **C'est le fait qui distingue cette voie de la voie `duplication`**, dont le
-  débit de pixels restait quasi constant (208–258 MP/s) sur toute la plage :
-  chez `duplication`, partager une acquisition entre N recadrages d'aire totale
-  fixe ne coûtait rien de plus ; chez `printwindow`, ce n'est pas le cas.
-  **Aucun signe de palier sur la plage mesurée.**
+- **La cadence par fenêtre décroît de façon monotone sur quatre rangs** :
+  45,0 → 29,1 → 17,6 → 8,8 (passe `capture`). À N=8 le repli délivre moins de
+  9 images par seconde et par fenêtre.
+- **Le débit de pixels décroît lui aussi, sur les quatre rangs et sans palier** :
+  **116,64 → 75,43 → 45,62 → 20,28 MP/s**, soit une division par 5,8 entre N=1
+  et N=8. **C'est le fait qui distingue cette voie de la voie `duplication`**,
+  dont le débit de pixels restait quasi constant (208–258 MP/s) sur la même
+  plage : chez `duplication`, partager une acquisition entre N recadrages d'aire
+  totale fixe ne coûtait rien de plus ; chez `printwindow`, chaque fenêtre coûte
+  sa propre traversée du chemin CPU. **Aucun signe de palier.**
+  *(La surface totale des places est constante à 2 592 000 px aux rangs 1, 2 et
+  4 — le bureau entier — et de 2 304 000 px à N=8, la grille 3×3 laissant une
+  case inutilisée. Le débit de pixels et la cadence par fenêtre chutent donc
+  ensemble, ce qui n'aurait pas été le cas si l'aire totale avait varié.)*
 
 ### Ce que le relevé n'autorise pas
 
@@ -760,8 +817,10 @@ mesures et non sur une construction.** Trois choses ont changé :
 La sonde le retenait pour les fenêtres non-jeu, sur la foi de 29,1 i/s par
 fenêtre à N=2, en signalant que N=4 et N=8 n'étaient pas mesurés et en
 interdisant d'extrapoler. **La mesure ④ dit que l'extrapolation aurait été
-fausse** : 17,2 i/s à N=4 et **8,8 i/s à N=8**, avec un débit de pixels qui
-décroît au lieu de plafonner.
+fausse** : 17,6 i/s à N=4 et **8,8 i/s à N=8**. Et une fois les quatre rangs
+recollés, l'argument ne repose plus sur deux points mais sur une série
+complète : **116,64 → 75,43 → 45,62 → 20,28 MP/s**, décroissance monotone sans
+palier, à surface totale pourtant constante sur les trois premiers rangs.
 
 **Ce que cela fait au statut du repli** : à la cible de 8 fenêtres du chantier D,
 `PrintWindow` délivre moins de 9 images par seconde et par fenêtre. C'est en deçà
@@ -774,7 +833,7 @@ Il n'est pas pour autant à jeter, et il faut être juste avec le relevé :
   mesurée directement** (résultat contre-intuitif de la sonde, obtenu sur une
   mire peinte en D3D11) ;
 - **à N=2 il reste parfaitement utilisable** (29,1 i/s), et à N=4 il reste
-  discutable (17,2 i/s) pour une fenêtre statique ;
+  discutable (17,6 i/s, 17,2 avec l'encodage) pour une fenêtre statique ;
 - **le chiffre mesuré est un plancher de l'implémentation**, qui alloue et
   détruit ses ressources GDI à chaque image. Hisser ces allocations hors de la
   boucle est un travail d'une heure, jamais fait, et il précéderait toute
@@ -846,6 +905,7 @@ chantier. Voici le tri.
 | `noms_attaches` / `manquants` sont pures et testables mais vivent sous `cfg(windows)` | `montee.rs` | Aucun test ne les couvre depuis Linux, alors que ce sont exactement les fonctions qui décident si une sortie a paru ou disparu. Le chantier D s'appuiera dessus |
 | `vers_texture` soustrait deux `i32` bruts avant conversion | `moniteurs_virtuels.rs` | `geometry.rs` documente pourquoi ce calcul passe par `i64` dans ce projet. Risque réel quasi nul aux résolutions actuelles, mais c'est une incohérence de convention dans du code que le chantier D va reprendre |
 | Angle mort du contrôle par rang : si notre sortie ne paraît pas **et** qu'une sortie externe paraît au même tour, le contrôle passe en attribuant au pilote un nom qui n'est pas le nôtre | `montee.rs:356-366` | Rien ne relie l'identifiant rendu par l'IOCTL au nom DXGI. Sur une VM où Apollo peut ajouter une sortie à tout instant, c'est un faux positif possible |
+| `presentes` journalise la liste mémorisée au relevé précédent, pas une relecture fraîche — et son libellé suggère le contraire | `montee.rs:346-353` | L'écart mesuré n'est que de 0,5 ms et la conclusion tient (§Mesure ①), mais c'est **le champ sur lequel repose la preuve par identité du chiffre pivot**. Un libellé qui promet plus qu'il ne porte se recopie : la première rédaction de ce document l'a fait. Correction d'une ligne |
 
 ### Peuvent rester
 
@@ -857,6 +917,7 @@ chantier. Voici le tri.
 | La trace de protection multi-fils des périphériques autonomes est en `debug!` | Sa pose n'est attestée par aucun relevé versé. Sans conséquence tant qu'aucune image n'est soumise sur ces périphériques ; à reprendre s'ils servent un jour |
 | `MULTIFENETRE_SORTIE` n'est exercée par aucun journal versé | Variable de confort pour rejouer le banc à la main. `analyser_designation` est couverte par un test unitaire |
 | Provenance du pointeur de chemin SetupAPI ; `commander` est une `fn` sûre qui déréférence des pointeurs bruts ; première erreur SetupAPI avalée ; justification des droits d'accès un peu appuyée | Points de forme sur du code `#[cfg(windows)]` éprouvé en conditions réelles (dix créations, dix destructions, une purge de huit) |
+| Journalisation faite **avant** la vérification du compte d'octets rendus par le pilote | Une réponse de taille inattendue est donc tracée comme si elle était valide, puis rejetée. L'ordre est trompeur à la lecture d'un journal, mais la vérification a bien lieu et rien de faux n'est retenu — à corriger si ce chemin gagne des appels dont la sortie est exploitée sans contrôle |
 | Journaux versés en mode `100755`, fins de ligne CRLF héritées de la VM | Cosmétique |
 | Chaque rejeu de sonde écrase les journaux précédents sans archivage | Les journaux qui comptent sont versés au dépôt ; l'archivage automatique serait de l'outillage pour l'outillage |
 | Le second commit de la tâche 1 dépasse la portée littérale du brief | Autorisation tracée dans le rapport et le corps du commit — informatif, pas un défaut |

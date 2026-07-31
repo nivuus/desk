@@ -456,9 +456,11 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
   (il a posé N fenêtres sur **une** sortie). DXGI n'autorisant qu'une seule
   duplication par sortie, la question est réelle.
 
-  **Le repli `PrintWindow` recule** : mesuré à N=4 et N=8, il rend 17,2 puis
-  **8,8 i/s par fenêtre**, avec un débit de pixels qui décroît au lieu de
-  plafonner. Il ne tient pas la cible de 8 fenêtres ; il reste un repli **pour
+  **Le repli `PrintWindow` recule** : mesuré à N=4 et N=8, il rend 17,6 puis
+  **8,8 i/s par fenêtre**. Recollé aux deux rangs de la sonde, son débit de
+  pixels décroît **sur les quatre rangs sans palier** — 116,64 → 75,43 → 45,62
+  → 20,28 MP/s, une division par 5,8 — là où `duplication` restait quasi
+  constante. Il ne tient pas la cible de 8 fenêtres ; il reste un repli **pour
   deux à quatre fenêtres** et pour les cas où la voie principale ne s'applique
   pas. Réserve : le chiffre est un plancher de l'implémentation actuelle, qui
   réalloue ses ressources GDI à chaque image.
@@ -494,9 +496,12 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
   détruit et purge ses propres sorties : **dix créations et dix destructions
   éprouvées**, sorties DXGI réelles, attachées, portées par l'adaptateur qui
   possède NVENC. La sortie créée par notre code à 1280×720 ne présente **aucun
-  facteur d'échelle** (1,0) — mais le piège DPI 1,5 s'est bien présenté sur
-  cette VM sur la sortie 5120×1440 d'Apollo : la borne est *cette résolution-là*,
-  pas *cette VM*. Une sortie virtuelle **survit au processus qui l'a créée** :
+  facteur d'échelle** (1,0, journal `moniteurs-capture.log`) — mais le piège
+  DPI 1,5 s'est bien présenté sur cette VM sur la sortie 5120×1440 d'Apollo
+  (**le même relevé sans journal joint que ci-dessus**, non reproductible sans
+  le propriétaire du poste) : la borne est donc *cette résolution-là*, pas
+  *cette VM*, et le chemin de conversion reste nécessaire.
+  Une sortie virtuelle **survit au processus qui l'a créée** :
   une purge autonome est nécessaire, elle existe, et elle a déjà servi en
   conditions réelles. Le pilote porte un **chien de garde d'unité inconnue**
   (`delai = 3`) : aucune unité n'est exclue, pas même la seconde — une
