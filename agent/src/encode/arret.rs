@@ -10,10 +10,10 @@ use std::time::{Duration, Instant};
 use windows::core::{implement, Interface, Ref};
 use windows::Win32::Foundation::E_NOTIMPL;
 use windows::Win32::Media::MediaFoundation::{
-    IMFAsyncCallback, IMFAsyncCallback_Impl, IMFAsyncResult, IMFRealTimeClientEx, IMFTransform,
-    MFAllocateSerialWorkQueue, MFPutWorkItem, MFUnlockWorkQueue,
-    MFASYNC_CALLBACK_QUEUE_MULTITHREADED, MFT_MESSAGE_NOTIFY_END_OF_STREAM,
-    MFT_MESSAGE_NOTIFY_END_STREAMING, MFT_MESSAGE_TYPE,
+    IMFAsyncCallback, IMFAsyncCallback_Impl, IMFAsyncResult, IMFRealTimeClientEx, IMFShutdown,
+    IMFTransform, MFAllocateSerialWorkQueue, MFPutWorkItem, MFUnlockWorkQueue,
+    MFASYNC_CALLBACK_QUEUE_MULTITHREADED, MFSHUTDOWN_COMPLETED,
+    MFT_MESSAGE_NOTIFY_END_OF_STREAM, MFT_MESSAGE_NOTIFY_END_STREAMING, MFT_MESSAGE_TYPE,
 };
 
 /// Met au repos les deux MFT d'un encodeur, dans l'ordre, avant que leurs
@@ -31,8 +31,12 @@ use windows::Win32::Media::MediaFoundation::{
 /// `MFShutdown` → `RtwqShutdown` → `CPlatform::FinalShutdown`. Retirer
 /// `MFShutdown` du chemin n'a PAS empêché la faute : cet appel n'est donc pas
 /// **nécessaire** à la faute (voir `super::demarrer_media_foundation` pour la
-/// portée exacte de ce relevé). Ce qui la traite est la barrière de `FileMft`,
-/// plus bas.
+/// portée exacte de ce relevé).
+///
+/// Ce qui la traite est le COUPLE arrêt + barrière, et il a fallu retirer
+/// chacun des deux séparément pour l'établir : l'arrêt seul laisse la faute
+/// revenir (1 sur 10), la barrière seule aussi (2 sur 5). Ni l'un ni l'autre
+/// n'est redondant — voir `arreter` et `FileMft`.
 ///
 /// L'amont (le convertisseur) est mis au repos avant l'aval (l'encodeur) : il
 /// ne doit plus rien produire pendant qu'on arrête celui qui consomme.
@@ -53,37 +57,127 @@ pub(super) fn mettre_au_repos(
     message(encodeur, "encodeur", "END_OF_STREAM", MFT_MESSAGE_NOTIFY_END_OF_STREAM);
     message(encodeur, "encodeur", "END_STREAMING", MFT_MESSAGE_NOTIFY_END_STREAMING);
 
-    // TROIS APPELS DÉLIBÉRÉMENT ABSENTS, et ce n'est pas un oubli.
+    // DEUX MESSAGES DÉLIBÉRÉMENT ABSENTS, et ce n'est pas un oubli.
     //
-    // 1 et 2. `MFT_MESSAGE_COMMAND_FLUSH` et `MFT_MESSAGE_SET_D3D_MANAGER` à
-    //    zéro (deux pistes du brief 2ter) ont été posés ici, puis retirés sur
-    //    relevé : avec eux, à N = 4 encodeurs, **une exécution sur quatre s'est
-    //    bloquée sans retour** dans ce bloc, juste après la mise au repos de
-    //    l'encodeur n°0 et pendant celle du n°1 (journal arrêté sur
-    //    « libération d'un encodeur : avant id=1 », processus encore vivant
-    //    treize minutes plus tard, `Responding: True`). Le blocage est **borné
-    //    à ce bloc** : la trace suivante n'a jamais été écrite. Les deux fins
-    //    de flux ci-dessus, elles, précèdent ce chantier et n'ont jamais
-    //    bloqué. Preuve versée :
-    //    `docs/superpowers/plans/journaux-duplications-paralleles/2ter-blocage-n4-flush-setd3dmanager.log`.
-    //    NON établi : lequel des deux bloquait, ni pourquoi.
-    //
-    // 3. `IMFShutdown::Shutdown` (piste n°1 du brief, la MFT l'expose bien).
-    //    Mesuré INSUFFISANT : il rend `MFSHUTDOWN_COMPLETED` en 0 ms et la
-    //    faute survient quand même — 1 récidive sur 10 exécutions, pile et
-    //    décalage identiques, la dernière ligne du journal avant la mort étant
-    //    justement la confirmation d'arrêt (preuve versée :
-    //    `2ter-recidive-apres-imfshutdown-pile.log`). **`MFSHUTDOWN_COMPLETED`
-    //    d'une MFT ne prouve pas l'absence d'élément de travail en vol la
-    //    concernant** — c'est le fait à retenir de cette tentative. Retiré
-    //    parce qu'il n'apporte rien de mesurable et que `Shutdown()` n'est
-    //    borné par RIEN : un appel de mise au repos sur ce chemin a déjà
-    //    bloqué treize minutes (point 1 ci-dessus), et un gel à la fermeture
-    //    d'une fenêtre serait pire que le plantage qu'on corrige.
+    // `MFT_MESSAGE_COMMAND_FLUSH` et `MFT_MESSAGE_SET_D3D_MANAGER` à zéro
+    // (deux pistes du brief 2ter) ont été posés ici, puis retirés sur relevé :
+    // avec eux, à N = 4 encodeurs, **une exécution sur quatre s'est bloquée
+    // sans retour** dans ce bloc, juste après la mise au repos de l'encodeur
+    // n°0 et pendant celle du n°1 (journal arrêté sur « libération d'un
+    // encodeur : avant id=1 », processus encore vivant treize minutes plus
+    // tard, `Responding: True`). Le blocage est **borné à ce bloc** : la trace
+    // suivante n'a jamais été écrite. Les deux fins de flux ci-dessus, elles,
+    // précèdent ce chantier et n'ont jamais bloqué. Preuve versée :
+    // `docs/superpowers/plans/journaux-duplications-paralleles/2ter-blocage-n4-flush-setd3dmanager.log`.
+    // NON établi : lequel des deux bloquait, ni pourquoi.
 
     // Barrière : plus rien de ce qui était déjà en file ne court encore.
     file_convertisseur.barriere("convertisseur", "après END_STREAMING");
     file_encodeur.barriere("encodeur", "après END_STREAMING");
+
+    // Arrêt explicite des MFT, puis SECONDE barrière : l'arrêt lui-même dépose
+    // du travail sur la file, et c'est précisément ce travail-là qu'il faut
+    // attendre. Voir `arreter` pour ce qui rend ces deux appels nécessaires.
+    arreter(convertisseur, "convertisseur");
+    arreter(encodeur, "encodeur");
+
+    file_convertisseur.barriere("convertisseur", "après IMFShutdown");
+    file_encodeur.barriere("encodeur", "après IMFShutdown");
+}
+
+/// Garde-fou de l'attente de confirmation d'arrêt d'une MFT.
+const DELAI_ARRET_MFT: Duration = Duration::from_secs(2);
+
+/// Demande à une MFT d'arrêter ses files de travail, et attend qu'elle le
+/// confirme.
+///
+/// `IMFShutdown::Shutdown` est le mécanisme documenté par lequel un client de
+/// MFT obtient cet arrêt — c'est ce que fait le pipeline Media Foundation
+/// lui-même, via `MFShutdownObject`, quand il démonte un nœud de topologie. On
+/// l'appelle directement plutôt que par `MFShutdownObject` pour savoir, et
+/// pouvoir journaliser, si la MFT expose seulement cette interface
+/// (`MFShutdownObject` rend `S_OK` sans rien dire quand elle l'ignore), et pour
+/// pouvoir attendre la confirmation par `GetShutdownStatus`.
+///
+/// # Deux relevés qui se contredisent en apparence, et ce qu'ils disent
+///
+/// 1. **Seul, cet appel ne suffit pas.** Il rend `MFSHUTDOWN_COMPLETED` en 0 ms
+///    et la faute survient quand même : 1 récidive sur 10 exécutions, la
+///    dernière ligne du journal avant la mort étant justement la confirmation
+///    d'arrêt (`2ter-recidive-apres-imfshutdown-pile.log`).
+///    **`MFSHUTDOWN_COMPLETED` d'une MFT ne prouve donc pas l'absence
+///    d'élément de travail en vol la concernant.**
+/// 2. **Mais il est nécessaire.** Retiré du chemin en laissant la barrière
+///    seule, la faute est revenue **2 fois sur 5 exécutions**, pile et décalage
+///    identiques, alors même que la barrière avait été franchie
+///    (`2ter-r1-barriere-seule-*` du rapport). Barrière et arrêt ne sont pas
+///    redondants : l'arrêt fait cesser la MFT, la barrière attend ce qu'il
+///    laisse derrière lui. C'est pourquoi la seconde barrière suit cet appel.
+///
+/// # Ce que cet appel coûte comme risque, et pourquoi il reste
+///
+/// `Shutdown()` n'est borné par RIEN — le garde-fou ci-dessous ne borne que la
+/// boucle de confirmation qui suit. Un appel non borné dans un `Drop` est un
+/// gel potentiel à la fermeture d'une fenêtre, ce qui serait pire que le
+/// plantage qu'on corrige. Il reste malgré tout, faute d'alternative sûre :
+/// le déporter sur un autre fil exigerait de faire traverser une interface COM
+/// à une frontière d'appartement (le fil principal est dans un STA — cadres
+/// `ClassicSTAThreadWaitForHandles` du vidage 2bis), ce qui échangerait un
+/// risque contre un défaut certain. Ce qui borne le risque en pratique :
+/// l'appel est encadré de deux traces `debug`, le seul blocage jamais observé
+/// sur ce chemin venait de deux messages désormais retirés, et `Shutdown()`
+/// est rentré en moins d'une milliseconde sur chacune des exécutions relevées.
+fn arreter(mft: &IMFTransform, quoi: &'static str) {
+    let arret: IMFShutdown = match mft.cast() {
+        Ok(arret) => arret,
+        Err(err) => {
+            // Relevé, pas supposé : si l'interface manque, le journal le dit,
+            // et l'on sait que ce chemin n'a rien arrêté du tout. C'est le cas
+            // du convertisseur logiciel sur cette VM (`0x80004002`).
+            tracing::debug!(mft = quoi, erreur = %err, "MFT sans IMFShutdown : pas d'arrêt explicite");
+            return;
+        }
+    };
+
+    tracing::debug!(mft = quoi, "IMFShutdown::Shutdown : avant");
+    if let Err(err) = unsafe { arret.Shutdown() } {
+        tracing::warn!(mft = quoi, erreur = %err, "IMFShutdown::Shutdown refusé");
+        return;
+    }
+    tracing::debug!(mft = quoi, "IMFShutdown::Shutdown : après");
+
+    let debut = Instant::now();
+    loop {
+        match unsafe { arret.GetShutdownStatus() } {
+            Ok(statut) if statut == MFSHUTDOWN_COMPLETED => {
+                tracing::debug!(
+                    mft = quoi,
+                    attente_ms = debut.elapsed().as_millis() as u64,
+                    "arrêt de la MFT confirmé"
+                );
+                return;
+            }
+            // `MFSHUTDOWN_INITIATED` : l'arrêt court encore, on repasse.
+            Ok(_) => {}
+            Err(err) => {
+                tracing::debug!(
+                    mft = quoi,
+                    erreur = %err,
+                    "GetShutdownStatus indisponible : arrêt demandé mais non confirmable"
+                );
+                return;
+            }
+        }
+        if debut.elapsed() >= DELAI_ARRET_MFT {
+            tracing::warn!(
+                mft = quoi,
+                delai_ms = DELAI_ARRET_MFT.as_millis() as u64,
+                "arrêt de la MFT non confirmé dans le délai : on relâche quand même"
+            );
+            return;
+        }
+        std::thread::sleep(Duration::from_millis(1));
+    }
 }
 
 /// Envoie un message à une MFT en encadrant l'appel de deux traces : un appel
