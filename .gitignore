@@ -4,6 +4,7 @@ src/dist/
 core.*
 .env
 *.log
+!docs/superpowers/plans/**/*.log
 target/
 client/dist/
 signaling/dist/

@@ -18,7 +18,7 @@ use crate::{capture, geometry};
 /// recadrage capture bien le contenu de la fenêtre, et pas juste des
 /// dimensions qui auraient l'air correctes sans l'être (voir l'appelant).
 /// Renvoie `(r, g, b, a)`.
-pub(super) fn read_pixel(
+pub(crate) fn read_pixel(
     device: &windows::Win32::Graphics::Direct3D11::ID3D11Device,
     texture: &windows::Win32::Graphics::Direct3D11::ID3D11Texture2D,
     width: u32,

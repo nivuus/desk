@@ -64,14 +64,30 @@ pub struct DesktopCapture {
 
 impl DesktopCapture {
     pub fn new() -> Result<Self> {
+        Self::ouvrir(None)
+    }
+
+    /// Duplique une sortie DXGI précise, désignée par ses index
+    /// d'énumération (voir `enumerer_sorties`).
+    ///
+    /// Ajouté pour la voie « un moniteur virtuel par fenêtre » de la sonde
+    /// multi-fenêtres : elle duplique N sorties distinctes, là où `new()` ne
+    /// sait ouvrir que la première attachée au bureau.
+    pub fn sur_sortie(index_adaptateur: u32, index_sortie: u32) -> Result<Self> {
+        Self::ouvrir(Some((index_adaptateur, index_sortie)))
+    }
+
+    fn ouvrir(cible: Option<(u32, u32)>) -> Result<Self> {
         let factory: IDXGIFactory1 =
             unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI")?;
 
-        // On retient le premier adaptateur possédant une sortie attachée au
-        // bureau : c'est celui qui compose l'écran, et donc le seul duplicable.
-        // Sur la VM cible c'est la RTX 4070, ce qui donne du même coup le bon
-        // périphérique pour l'encodeur matériel de la tâche 10.
-        let (adapter, output) = find_desktop_output(&factory)?;
+        // Sans cible (`new()`), on retient le premier adaptateur possédant une
+        // sortie attachée au bureau : c'est celui qui compose l'écran, et donc
+        // le seul duplicable. Sur la VM cible c'est la RTX 4070, ce qui donne
+        // du même coup le bon périphérique pour l'encodeur matériel de la
+        // tâche 10. Avec une cible (`sur_sortie`), c'est celle-ci qui est
+        // ouverte telle quelle.
+        let (adapter, output) = ouvrir_sortie(&factory, cible)?;
 
         let mut device: Option<ID3D11Device> = None;
         let mut context: Option<ID3D11DeviceContext> = None;
@@ -309,29 +325,119 @@ impl Drop for DesktopCapture {
     }
 }
 
-/// Trouve l'adaptateur et la sortie qui composent le bureau.
-fn find_desktop_output(factory: &IDXGIFactory1) -> Result<(IDXGIAdapter1, IDXGIOutput1)> {
-    let mut index = 0;
-    while let Ok(adapter) = unsafe { factory.EnumAdapters1(index) } {
-        index += 1;
-        let mut out_index = 0;
-        while let Ok(output) = unsafe { adapter.EnumOutputs(out_index) } {
-            out_index += 1;
+/// Ce qu'on sait d'une sortie DXGI, sans en dupliquer quoi que ce soit.
+#[derive(Debug, Clone)]
+pub struct SortieDxgi {
+    pub index_adaptateur: u32,
+    pub index_sortie: u32,
+    pub adaptateur: String,
+    pub nom_sortie: String,
+    pub attachee_au_bureau: bool,
+    /// Position et dimensions dans les coordonnées du bureau virtuel.
+    pub rect: crate::geometry::Rect,
+}
+
+/// Énumère toutes les sorties de tous les adaptateurs.
+///
+/// Sert au relevé du temps 1 de la sonde multi-fenêtres : deux documents du
+/// dépôt se contredisent sur l'adaptateur qui pilote réellement le bureau
+/// (`plans/fix-debit-socket-report.md:163` contre le commit `4493b24`), et
+/// c'est ce relevé qui tranche.
+pub fn enumerer_sorties() -> Result<Vec<SortieDxgi>> {
+    let factory: IDXGIFactory1 =
+        unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI")?;
+    let mut sorties = Vec::new();
+    let mut index_adaptateur = 0u32;
+    while let Ok(adapter) = unsafe { factory.EnumAdapters1(index_adaptateur) } {
+        let adaptateur = match unsafe { adapter.GetDesc1() } {
+            Ok(desc) => String::from_utf16_lossy(&desc.Description)
+                .trim_end_matches('\0')
+                .trim()
+                .to_string(),
+            Err(_) => "<inconnu>".to_string(),
+        };
+        let mut index_sortie = 0u32;
+        let nombre_avant = sorties.len();
+        while let Ok(output) = unsafe { adapter.EnumOutputs(index_sortie) } {
+            if let Ok(desc) = unsafe { output.GetDesc() } {
+                let r = desc.DesktopCoordinates;
+                sorties.push(SortieDxgi {
+                    index_adaptateur,
+                    index_sortie,
+                    adaptateur: adaptateur.clone(),
+                    nom_sortie: String::from_utf16_lossy(&desc.DeviceName)
+                        .trim_end_matches('\0')
+                        .to_string(),
+                    attachee_au_bureau: desc.AttachedToDesktop.as_bool(),
+                    rect: crate::geometry::Rect {
+                        x: r.left,
+                        y: r.top,
+                        width: (r.right - r.left).max(0) as u32,
+                        height: (r.bottom - r.top).max(0) as u32,
+                    },
+                });
+            }
+            index_sortie += 1;
+        }
+        if sorties.len() == nombre_avant {
+            // Un adaptateur sans aucune sortie ne produit jamais de
+            // `SortieDxgi` : sans cette trace, il resterait invisible du
+            // relevé, qui ne journalise aujourd'hui que par sortie. C'est
+            // précisément l'angle mort où se cacherait un adaptateur
+            // d'affichage virtuel présent mais inactif.
+            tracing::info!(
+                adaptateur = %adaptateur,
+                index_adaptateur,
+                "adaptateur DXGI sans sortie"
+            );
+        }
+        index_adaptateur += 1;
+    }
+    Ok(sorties)
+}
+
+/// Ouvre une sortie précise, ou — si `cible` est `None` — trouve et ouvre
+/// l'adaptateur et la sortie qui composent le bureau (comportement historique
+/// de l'ancienne `find_desktop_output`, désormais fondue ici).
+fn ouvrir_sortie(
+    factory: &IDXGIFactory1,
+    cible: Option<(u32, u32)>,
+) -> Result<(IDXGIAdapter1, IDXGIOutput1)> {
+    let mut index_adaptateur = 0u32;
+    while let Ok(adapter) = unsafe { factory.EnumAdapters1(index_adaptateur) } {
+        let mut index_sortie = 0u32;
+        while let Ok(output) = unsafe { adapter.EnumOutputs(index_sortie) } {
             let desc = match unsafe { output.GetDesc() } {
                 Ok(desc) => desc,
-                Err(_) => continue,
+                Err(_) => {
+                    index_sortie += 1;
+                    continue;
+                }
             };
-            if desc.AttachedToDesktop.as_bool() {
+            let retenue = match cible {
+                Some((a, s)) => a == index_adaptateur && s == index_sortie,
+                None => desc.AttachedToDesktop.as_bool(),
+            };
+            if retenue {
                 let name = match unsafe { adapter.GetDesc1() } {
                     Ok(adapter_desc) => String::from_utf16_lossy(&adapter_desc.Description)
                         .trim_end_matches('\0')
                         .to_string(),
                     Err(_) => "<inconnu>".to_string(),
                 };
-                tracing::info!(adaptateur = %name, "sortie attachée au bureau retenue");
+                tracing::info!(
+                    adaptateur = %name, index_adaptateur, index_sortie,
+                    attachee = desc.AttachedToDesktop.as_bool(),
+                    "sortie retenue pour la duplication"
+                );
                 return Ok((adapter.clone(), output.cast()?));
             }
+            index_sortie += 1;
         }
+        index_adaptateur += 1;
     }
-    bail!("aucune sortie attachée au bureau : la session est-elle interactive ?")
+    match cible {
+        Some((a, s)) => bail!("aucune sortie DXGI à l'index adaptateur {a}, sortie {s}"),
+        None => bail!("aucune sortie attachée au bureau : la session est-elle interactive ?"),
+    }
 }

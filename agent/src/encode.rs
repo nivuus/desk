@@ -1219,7 +1219,9 @@ fn create_color_converter(
         input_type.SetUINT64(&MF_MT_FRAME_SIZE, pack_u64(capture.0, capture.1))?;
         input_type.SetUINT64(&MF_MT_FRAME_RATE, pack_u64(fps, 1))?;
         input_type.SetUINT32(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0 as u32)?;
-        converter.SetInputType(0, &input_type, 0)?;
+        converter
+            .SetInputType(0, &input_type, 0)
+            .context("configuration du type d'entrée du convertisseur de couleur (Video Processor MFT)")?;
     }
 
     let output_type = unsafe { MFCreateMediaType() }?;
@@ -1431,7 +1433,9 @@ fn configure_input(transform: &IMFTransform, width: u32, height: u32, fps: u32) 
         media_type.SetUINT64(&MF_MT_FRAME_SIZE, pack_u64(width, height))?;
         media_type.SetUINT64(&MF_MT_FRAME_RATE, pack_u64(fps, 1))?;
         media_type.SetUINT32(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0 as u32)?;
-        transform.SetInputType(0, &media_type, 0)?;
+        transform
+            .SetInputType(0, &media_type, 0)
+            .context("configuration du type d'entrée de l'encodeur H.264 (transform matériel)")?;
     }
     Ok(())
 }

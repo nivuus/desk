@@ -1286,6 +1286,95 @@ la machine à états.
 
 ---
 
+## 🪟 Sonde de capture multi-fenêtres (30 juillet 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-07-30-sonde-capture-multifenetre-resultats.md`.
+Journaux bruts : `docs/superpowers/plans/journaux-sonde-multifenetre/`, accents
+corrompus en amont par la page de code PowerShell. **Encodages mixtes, pas
+tous UTF-8** : `dxgi.log`, `wgc.log`, `replis.log` et `nvenc.log` sont en
+**UTF-16LE** (`iconv -f UTF-16LE -t UTF-8 fichier.log` pour les lire ou les
+`grep` — un `grep` direct dessus ne trouve rien) ; les journaux `banc-*.log`
+sont en UTF-8 (avec BOM).
+
+Chantier de **mesure sans livrable produit** : trancher, avant de spécifier le
+chantier D, quelle voie de capture rend une image correcte **par fenêtre** quand
+les fenêtres se recouvrent. Le banc vit dans
+`agent/src/diagnostics/multifenetre/`, piloté par variables d'environnement
+(`MULTIFENETRE_DXGI`, `_WGC`, `_REPLIS`, `_BANC` + `MULTIFENETRE_N`).
+
+### Ce qui est mesuré — aucune voie n'est simplement viable
+
+| Voie | Verdict |
+| --- | --- |
+| `Windows.Graphics.Capture` | **ÉLIMINÉE** — `CreateForWindow` en `0x800706BE` (`RPC_S_SERVER_UNAVAILABLE`), 3 reproductions. `IsSupported()` rend `true` et le service `CaptureService_5865d` tourne : ni composant absent, ni service arrêté |
+| Un moniteur virtuel par fenêtre | **CONDITIONNELLE** — mécanisme établi, sortie DXGI réelle 3413×960 sur l'adaptateur qui porte NVENC (relevé sans journal joint — session Apollo non reproductible sans le propriétaire du poste) ; **plafond non mesuré** (un seul client Apollo apparié) |
+| Tuilage disjoint | **CONDITIONNELLE** — 800×360 à 8 fenêtres, et surtout : **les menus débordent** de ≈284 px sur la tuile voisine. La voie censée garantir le non-recouvrement ne le garantit pas |
+| `PrintWindow(PW_RENDERFULLCONTENT)` | **CONDITIONNELLE** — rend l'image **juste** d'une fenêtre D3D **recouverte** (contre-intuitif, vérifié) ; limite = **chemin CPU**, 29,1 i/s/fenêtre à N=2 |
+
+**La capture ne décroche pas jusqu'à 8 fenêtres** (voie `duplication`, cadence
+par fenêtre : 80,2 / 99,4 / 98,8 / 107,5 i/s à N = 1 / 2 / 4 / 8, toutes égales
+entre elles) — **mais à aire totale fixe** : `disposition::tuiles` découpe le
+bureau, donc la surface par fenêtre décroît quand N croît (débit de pixels
+quasi constant, ~208-258 MP/s, par construction). Ce montage ne dit rien du cas
+où N fenêtres garderaient chacune sa résolution utile (8×1280×720 = 2,8× le
+bureau mesuré) : le nombre de fenêtres n'est pas prouvé neutre en soi. Le banc
+est validé par le fait que la voie de production **se pollue bien** sous
+recouvrement (`verdicts_faux` = 449 / 449 / 536 à N = 2/4/8), ce qui **coupe la
+passe d'encodage** — il n'existe donc aucune mesure d'encodage multi-fenêtres
+par cette voie, par construction du protocole.
+
+**Plafond d'encodage, formulation bornée, composant du refus non identifié** :
+sur un périphérique D3D11 **unique et partagé**, à 720p/60/8 Mb/s, 8 instances
+du pipeline Media Foundation réussissent, la 9ᵉ échoue à la **liaison du type
+d'entrée** (`MF_E_UNSUPPORTED_D3D_TYPE`). Ce n'est **pas** « la limite NVENC de
+cette carte » — le transform n°9 s'instancie sans peine. Deux appels
+`SetInputType` s'enchaînent entre le succès et l'échec (encodeur H.264 puis
+Video Processor MFT du convertisseur de couleur) et rien n'indiquait lequel
+refusait — corrigé par un `.context()` distinct sur chacun
+(`agent/src/encode.rs`), pour que la prochaine mesure tranche.
+
+**Voie recommandée** : le moniteur virtuel par fenêtre (seule voie qui préserve
+le chemin GPU en supprimant le recouvrement par construction), avec `PrintWindow`
+en repli mesuré pour les fenêtres non-jeu. **Deux mesures sont bloquantes avant
+de spécifier quoi que ce soit** : le plafond de sorties virtuelles (deux clients
+appariés suffiraient) et le plafond d'encodage sur périphériques D3D11 séparés.
+Le relevé Apollo (3413×960) qui fonde cette voie n'a pas de journal joint et n'est pas reproductible sans le propriétaire du poste.
+
+### Pièges — à connaître avant de toucher à ce terrain
+
+- **Animer les mires.** Desktop Duplication n'émet une trame **qu'au changement
+  du bureau**. Une mire immobile fait rendre `WAIT_TIMEOUT` à toutes les
+  acquisitions : on mesure zéro image et on conclut à tort à une panne.
+- **Peindre en D3D11, jamais en GDI.** `PrintWindow` sait faire redessiner une
+  fenêtre par `WM_PRINT` : sur une mire GDI il rendrait toujours une image
+  juste, et la voie 4 serait **validée à tort**. Le banc peint par chaîne
+  d'échange D3D11 (`mires.rs`), et c'est ce qui donne son poids au résultat.
+- **Un processus par voie.** Ces API échouent par **plantage du processus**
+  (`0xc0000005` vu au jalon 1), pas par code d'erreur : une sonde monolithique
+  perd toutes les mesures déjà faites.
+- **DXGI n'autorise qu'UNE seule duplication ouverte par sortie** — exactement
+  une, pas « un nombre très limité ». Un `DesktopCapture` provisoire laissé en
+  vie fait échouer la suivante en `0x80070057`.
+- **Ne pas refondre acquisition et recadrage dans le trait `VoieDeCapture`.**
+  C'est la lacune du plan initial : la première voie du tour consommait
+  l'`AcquireNextFrame`, les autres récoltaient `WAIT_TIMEOUT` — **famine dès
+  deux fenêtres**, et le plan désignait ce trait comme la couture destinée au
+  chantier D : la lacune serait allée en production. Corrigé : acquisition
+  mutualisée une fois par tour (`SourceDuplication::amorcer`), **une texture de
+  destination par voie** (sans quoi les voies s'écrasent mutuellement).
+- **WMI ment sur la résolution** : champ vu périmé de 68 s. Source de vérité =
+  `GetDesc`/`DesktopCoordinates`. Corollaire : la sortie virtuelle est annoncée
+  5120×1440 par WMI mais mesurée **3413×960** (rapport 1,5 = DPI 150 %) — si un
+  recadrage est calculé sur le rectangle virtualisé alors que la texture est aux
+  dimensions physiques, il sera décalé d'un facteur 1,5.
+- **Leçon de méthode** : les onze rondes de correction de ce chantier ont
+  quasiment toutes porté sur des **rapports qui affirmaient au-delà de leur
+  relevé**, jamais sur des bugs. Sur un chantier de mesure, le coût est dans la
+  discipline de l'énoncé, pas dans le code.
+
+---
+
 ## 🚀 Commandes de Développement Essentielles
 
 ### Build & Run
