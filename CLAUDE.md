@@ -44,9 +44,16 @@ où l'on travaille dedans, pas en chantier séparé.
 > `encode.rs` est passé de 1502 à 1536 lignes le 31 juillet 2026 (correctif de
 > libération des encodeurs). **Cette croissance de +34 est régulière au regard
 > de la règle ci-dessus** : l'addition s'est accompagnée de son extraction —
-> l'essentiel de la logique neuve vit dans `agent/src/encode/arret.rs`
-> (457 lignes, **sous** la limite), et seul le câblage est resté dans
-> `encode.rs`.
+> l'essentiel de la logique neuve vit dans `agent/src/encode/arret.rs`, et seul
+> le câblage est resté dans `encode.rs`.
+>
+> ⚠️ **`arret.rs` est à 500 lignes exactement : sa marge est NULLE.** Il en
+> faisait 457 à sa création ; la revue finale de branche l'a porté à 500 en y
+> inscrivant la portée présente et la borne du pire cas de `Drop`, et a dû
+> resserrer sa propre rédaction pour ne pas franchir le plafond. **Toute
+> addition future à ce fichier appelle une extraction, jamais une compression
+> supplémentaire** — la compression y a déjà été jouée, et elle ne l'est qu'une
+> fois.
 
 Ces trois modules ne se compilent que sur la VM et ne sont couverts par aucun
 test : les découper se ferait sans filet automatisé. La dette est assumée
