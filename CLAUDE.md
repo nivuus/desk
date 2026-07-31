@@ -37,7 +37,7 @@ où l'on travaille dedans, pas en chantier séparé.
 
 | Fichier | Lignes | Pourquoi elle reste |
 | --- | --- | --- |
-| `agent/src/encode.rs` | 1480 | `#[cfg(windows)]`, aucun test |
+| `agent/src/encode.rs` | 1502 | `#[cfg(windows)]`, aucun test |
 | `agent/src/windows_source.rs` | 721 | `#[cfg(windows)]`, aucun test |
 | `agent/src/wasapi.rs` | 543 | `#[cfg(windows)]`, aucun test |
 
@@ -1333,6 +1333,30 @@ cette carte » — le transform n°9 s'instancie sans peine. Deux appels
 Video Processor MFT du convertisseur de couleur) et rien n'indiquait lequel
 refusait — corrigé par un `.context()` distinct sur chacun
 (`agent/src/encode.rs`), pour que la prochaine mesure tranche.
+
+> ⚠️ **Corrigé le 31 juillet 2026 : ce n'était aucun de ces deux
+> `SetInputType`.** La mesure ② du chantier de mesures préalables (rapport
+> `task-9-report.md`, journaux `docs/superpowers/plans/journaux-mesures-prealables/nvenc-*.log`)
+> a relevé une chaîne de causes **nue** avec ces deux contextes déjà en place :
+> l'appel fautif était un `?` sans contexte, à savoir **`SetOutputType` de
+> l'encodeur H.264**. Le libellé de `MF_E_UNSUPPORTED_D3D_TYPE` parle du type
+> d'**entrée** alors que l'appel refusé règle le type de **sortie** — c'est très
+> probablement ce libellé qui avait égaré l'attribution ci-dessus. **Ne pas se
+> fier au texte de ce HRESULT pour désigner un appel.** Dix appels du chemin de
+> construction portent désormais un contexte distinct.
+
+**Le plafond ne vient pas du partage du périphérique** (mesure ② du même
+chantier) : avec **un périphérique D3D11 neuf par encodeur**, le plafond reste
+**8**, refus au même `SetOutputType`. Séparer les périphériques ne fait gagner
+aucune fenêtre — et le coût correspondant (partager des textures entre le
+périphérique de capture et ceux des encodeurs) n'a donc pas à être payé. Ce que
+la mesure **ne** dit **pas** : quelle couche impose ce plafond (NVENC, pilote,
+Media Foundation, ou virtualisation), s'il tient à d'autres résolutions ou
+débits, et si 8 encodeurs tiennent la cadence *ensemble* — aucune image n'a été
+soumise, seule la **construction** est mesurée. Enfin, détruire un encodeur
+n'a **pas** été montré libérer la place : la mise en sommeil des fenêtres
+masquées reste à éprouver par une séquence « créer 8 → en détruire 1 → tenter
+un 9ᵉ ».
 
 **Voie recommandée** : le moniteur virtuel par fenêtre (seule voie qui préserve
 le chemin GPU en supprimant le recouvrement par construction), avec `PrintWindow`
