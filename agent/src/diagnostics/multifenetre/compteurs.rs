@@ -20,7 +20,7 @@ use crate::capture::CapturedFrame;
 use crate::mire;
 
 use super::mires::Mires;
-use super::moniteurs::PiloteParIoctl;
+use crate::moniteurs_virtuels::pilote::PiloteParIoctl;
 use super::voies::VoieDeCapture;
 
 /// Durée de chaque passe.

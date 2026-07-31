@@ -120,9 +120,9 @@ pub(super) struct DemandeRetrait {
 /// muet.
 #[repr(C)]
 #[derive(Default)]
-pub(super) struct Veille {
-    pub(super) delai: u32,
-    pub(super) decompte: u32,
+pub(crate) struct Veille {
+    pub(crate) delai: u32,
+    pub(crate) decompte: u32,
 }
 
 /// Tampon de sortie de `IOCTL_LIRE_VERSION_PROTOCOLE`
@@ -130,11 +130,11 @@ pub(super) struct Veille {
 /// `bool` MSVC en occupe un seul.
 #[repr(C)]
 #[derive(Default, PartialEq, Eq)]
-pub(super) struct VersionProtocole {
-    pub(super) majeure: u8,
-    pub(super) mineure: u8,
-    pub(super) increment: u8,
-    pub(super) version_de_test: u8,
+pub(crate) struct VersionProtocole {
+    pub(crate) majeure: u8,
+    pub(crate) mineure: u8,
+    pub(crate) increment: u8,
+    pub(crate) version_de_test: u8,
 }
 
 // Les tailles sont la seule partie du contrat amont qu'on puisse vérifier sans

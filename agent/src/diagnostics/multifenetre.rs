@@ -15,15 +15,14 @@ pub(super) mod compteurs;
 pub(super) mod contrat;
 pub(super) mod disponibilite;
 pub(super) mod mires;
-pub(super) mod moniteurs;
-pub(super) mod montee;
+// `pub(crate)` et non `pub(super)` : `moniteurs_virtuels::purge` (production,
+// promue hors de cet arbre à la tâche 4) lit encore `relever_topologie`,
+// `DELAI_TOPOLOGIE` et `PLAFOND_RECHERCHE` d'ici.
+pub(crate) mod montee;
 pub(super) mod nvenc;
 pub(super) mod paralleles;
-pub(super) mod peripherique;
 pub(super) mod pointeur_virtuel;
-pub(super) mod purge;
 pub(super) mod replis;
-pub(super) mod sudovda;
 pub(super) mod voies;
 pub(super) mod wgc;
 
@@ -104,7 +103,7 @@ pub(super) fn aiguiller() -> Result<bool> {
     // dessous, qui en crée une elle aussi : si les deux variables sont
     // posées, une mesure ne doit jamais l'emporter sur une purge demandée.
     if sonde_demandee("MULTIFENETRE_VDD_PURGE") {
-        purge::purger()?;
+        crate::moniteurs_virtuels::purge::purger()?;
         return Ok(true);
     }
     // Tâche 1 du chantier D1 : le bureau virtuel s'étend-il jusqu'à une

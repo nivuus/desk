@@ -44,13 +44,13 @@ use windows::Win32::Storage::FileSystem::{
 };
 use windows::Win32::System::IO::DeviceIoControl;
 
-use super::peripherique::chemin_du_peripherique;
-use super::sudovda::{
+use crate::moniteurs_virtuels::peripherique::chemin_du_peripherique;
+use crate::moniteurs_virtuels::sudovda::{
     en_champ_14, DemandeAjout, DemandeRetrait, SortieAjoutee, Veille, VersionProtocole,
     IOCTL_AJOUTER_SORTIE, IOCTL_LIRE_VEILLE, IOCTL_LIRE_VERSION_PROTOCOLE, IOCTL_PINGUER,
     IOCTL_RETIRER_SORTIE,
 };
-use crate::moniteurs_virtuels::{IdSortie, PiloteAffichageVirtuel};
+use super::{IdSortie, PiloteAffichageVirtuel};
 
 /// Gabarit du GUID que nous attribuons à chaque sortie créée : les 16 bits de
 /// poids faible portent un compteur, le reste est une constante arbitraire
@@ -102,7 +102,7 @@ struct EtatSorties {
     compteur: u16,
 }
 
-pub(super) struct PiloteParIoctl {
+pub(crate) struct PiloteParIoctl {
     peripherique: HANDLE,
     /// Un `Mutex` et non un `RefCell` parce que `creer(&self, …)` doit rester
     /// utilisable depuis un contexte partagé. Voir `etat()` pour la seule
@@ -114,7 +114,7 @@ pub(super) struct PiloteParIoctl {
 ///
 /// Type concret et non `impl Trait` : les tâches suivantes en prennent une
 /// référence, que Rust coerce vers `&dyn PiloteAffichageVirtuel`.
-pub(super) fn ouvrir_pilote() -> Result<PiloteParIoctl> {
+pub(crate) fn ouvrir_pilote() -> Result<PiloteParIoctl> {
     let chemin = chemin_du_peripherique()?;
     // POURQUOI PAS `FILE_FLAG_OVERLAPPED`, contrairement au client amont.
     //
@@ -242,7 +242,7 @@ impl PiloteParIoctl {
 
     /// Version de protocole annoncée par le pilote installé. Sans effet de
     /// bord — le tampon le plus simple des six.
-    pub(super) fn version_protocole(&self) -> Result<(VersionProtocole, u32)> {
+    pub(crate) fn version_protocole(&self) -> Result<(VersionProtocole, u32)> {
         let mut version = VersionProtocole::default();
         let rendus = self.commander(
             IOCTL_LIRE_VERSION_PROTOCOLE,
@@ -271,13 +271,13 @@ impl PiloteParIoctl {
     /// deux seuls appelants de ce module sont séquentiels par construction et
     /// n'ont besoin que de ponctuer leurs attentes. On expose le battement,
     /// l'appelant tient la cadence.
-    pub(super) fn pinguer(&self) -> Result<()> {
+    pub(crate) fn pinguer(&self) -> Result<()> {
         self.commander(IOCTL_PINGUER, None, None, "ping du chien de garde du pilote")?;
         Ok(())
     }
 
     /// Délai et décompte du chien de garde du pilote. Sans effet de bord.
-    pub(super) fn veille(&self) -> Result<(Veille, u32)> {
+    pub(crate) fn veille(&self) -> Result<(Veille, u32)> {
         let mut veille = Veille::default();
         let rendus = self.commander(
             IOCTL_LIRE_VEILLE,

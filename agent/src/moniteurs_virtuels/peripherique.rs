@@ -13,7 +13,7 @@ use windows::Win32::Devices::DeviceAndDriverInstallation::{
     SP_DEVICE_INTERFACE_DATA, SP_DEVICE_INTERFACE_DETAIL_DATA_W,
 };
 
-use super::sudovda::INTERFACE_PILOTE;
+use crate::moniteurs_virtuels::sudovda::INTERFACE_PILOTE;
 
 /// Libère la liste d'informations de périphériques sur TOUS les chemins, y
 /// compris les sorties en erreur — SetupAPI ne pardonne pas les fuites de

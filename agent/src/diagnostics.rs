@@ -19,8 +19,12 @@ mod capture;
 mod entree;
 #[cfg(windows)]
 pub(crate) mod exceptions;
+// `pub(crate)` et non privé : `moniteurs_virtuels::purge` (production, promue
+// hors de cet arbre) lit encore `multifenetre::montee` pour la topologie DXGI
+// et le plafond de recherche — seul lien restant dans ce sens, assumé, voir
+// le commentaire de `moniteurs_virtuels/purge.rs`.
 #[cfg(windows)]
-mod multifenetre;
+pub(crate) mod multifenetre;
 #[cfg(windows)]
 pub(crate) mod pixels;
 

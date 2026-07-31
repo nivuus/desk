@@ -16,8 +16,8 @@
 
 use anyhow::Result;
 
-use super::moniteurs::ouvrir_pilote;
-use super::sudovda::{Veille, VersionProtocole};
+use crate::moniteurs_virtuels::pilote::ouvrir_pilote;
+use crate::moniteurs_virtuels::sudovda::{Veille, VersionProtocole};
 
 /// `VDAProtocolVersion = { 0, 2, 1, true }`, la constante de l'en-tête amont de
 /// septembre 2024.

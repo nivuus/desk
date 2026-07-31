@@ -17,7 +17,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
     SM_YVIRTUALSCREEN,
 };
 
-use super::moniteurs::ouvrir_pilote;
+use crate::moniteurs_virtuels::pilote::ouvrir_pilote;
 use crate::capture::enumerer_sorties;
 use crate::moniteurs_virtuels::Sorties;
 

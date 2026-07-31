@@ -71,7 +71,7 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
     let connues: HashSet<String> =
         avant.iter().map(|sortie| sortie.nom_sortie.clone()).collect();
 
-    let pilote = super::moniteurs::ouvrir_pilote()?;
+    let pilote = crate::moniteurs_virtuels::pilote::ouvrir_pilote()?;
     let (largeur, hauteur, hertz) = RESOLUTION;
 
     // Portée explicite de la garde : les sorties doivent être détruites AVANT
@@ -114,7 +114,7 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
 
     // Second essai des retraits que la garde n'a pas obtenus : dernière chance
     // de CE processus, au-delà seule la purge inter-processus les atteindra.
-    let rejoues = super::purge::rejouer_purge_due(&pilote);
+    let rejoues = crate::moniteurs_virtuels::purge::rejouer_purge_due(&pilote);
     if rejoues > 0 {
         tracing::info!(rejoues, "retraits dus rejoués avec succès après la garde");
     }

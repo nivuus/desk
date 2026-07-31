@@ -58,11 +58,19 @@
 
 use anyhow::Result;
 
-use super::moniteurs::{guid_pour, ouvrir_pilote, PiloteParIoctl};
-use super::montee::{relever_topologie, DELAI_TOPOLOGIE, PLAFOND_RECHERCHE};
+use crate::moniteurs_virtuels::pilote::{guid_pour, ouvrir_pilote, PiloteParIoctl};
+// Ce module reste consommateur de `diagnostics::multifenetre::montee`, qui
+// n'est pas promu par cette tâche : `relever_topologie` et les deux constantes
+// ci-dessous sont des concepts de mesure (topologie DXGI avant/après, plafond
+// de recherche de la montée en N), pas du chemin de production. `purger()`
+// elle-même reste une sonde (`MULTIFENETRE_VDD_PURGE`) exposée par
+// `moniteurs_virtuels::purge` pour que le superviseur de production puisse
+// aussi l'invoquer en rattrapage — sa dépendance vers `diagnostics/` est donc
+// assumée, dans le sens inverse de celle que cette tâche corrige.
+use crate::diagnostics::multifenetre::montee::{relever_topologie, DELAI_TOPOLOGIE, PLAFOND_RECHERCHE};
 
 /// Sonde `MULTIFENETRE_VDD_PURGE`.
-pub(super) fn purger() -> Result<()> {
+pub(crate) fn purger() -> Result<()> {
     // `relever_topologie` journalise déjà `topologie relevée moment="avant
     // purge" nombre=…` — un second message ici ferait doublon.
     let avant = relever_topologie("avant purge")?;
@@ -132,7 +140,7 @@ pub(super) fn purger() -> Result<()> {
 /// — mais assez proche pour partager le même geste (tenter, traiter un refus
 /// comme une issue possible), d'où sa place ici plutôt que dans
 /// `moniteurs.rs`, qui n'a plus la place sous le plafond de 500 lignes.
-pub(super) fn rejouer_purge_due(pilote: &PiloteParIoctl) -> usize {
+pub(crate) fn rejouer_purge_due(pilote: &PiloteParIoctl) -> usize {
     let mut reussis = 0usize;
     for guid_moniteur in pilote.a_purger() {
         match pilote.retirer_par_guid(guid_moniteur, "retrait rejoué d'un retrait dû") {

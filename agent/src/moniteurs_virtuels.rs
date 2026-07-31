@@ -4,14 +4,29 @@
 //!
 //! Ce module ne contient QUE de la logique pure : le trait que doit remplir
 //! un pilote, la garde qui détruit ce qui a été créé, et les conversions de
-//! coordonnées. La glue Windows vit dans
-//! `diagnostics/multifenetre/moniteurs.rs`.
+//! coordonnées. La glue Windows vit dans les sous-modules `pilote`,
+//! `sudovda`, `peripherique` et `purge`, promus depuis
+//! `diagnostics/multifenetre/` au sous-bloc D1.
 //!
 //! Il n'est PAS sous `#[cfg(windows)]`, délibérément : une sortie virtuelle
 //! survit au processus, donc la garde ci-dessous est le seul rempart contre
 //! une VM laissée avec des moniteurs fantômes — c'est exactement le genre de
 //! code qui doit avoir des tests, et ils ne tourneraient pas sous
 //! `#[cfg(windows)]`.
+
+// Glue Windows du pilote SudoVDA, promue depuis `diagnostics/multifenetre/`
+// au sous-bloc D1 : ce n'est plus de l'outillage de mesure, c'est le chemin
+// par lequel le produit fait paraître ses sorties. Le module parent reste
+// hors `#[cfg(windows)]` — c'est ce qui permet à sa garde `Sorties` d'avoir
+// des tests, et cette raison n'a pas changé.
+#[cfg(windows)]
+pub mod peripherique;
+#[cfg(windows)]
+pub mod pilote;
+#[cfg(windows)]
+pub mod purge;
+#[cfg(windows)]
+pub mod sudovda;
 
 use anyhow::{Context, Result};
 
