@@ -47,7 +47,6 @@ use windows::Win32::Media::MediaFoundation::{
 /// s'exécutent qu'à la destruction d'un encodeur, jamais par trame.
 pub(super) fn mettre_au_repos(
     convertisseur: &IMFTransform,
-    file_convertisseur: &FileMft,
     encodeur: &IMFTransform,
     file_encodeur: &FileMft,
 ) {
@@ -71,8 +70,29 @@ pub(super) fn mettre_au_repos(
     // `docs/superpowers/plans/journaux-duplications-paralleles/2ter-blocage-n4-flush-setd3dmanager.log`.
     // NON établi : lequel des deux bloquait, ni pourquoi.
 
+    // LE CONVERTISSEUR N'A PAS DE FILE IMPOSÉE, et c'est un arbitrage mesuré,
+    // pas un oubli. La revue a raison sur le principe : `create_color_converter`
+    // tente d'abord `find_hardware_video_processor()`, et sur un hôte où un
+    // Video Processor MATÉRIEL est enregistré, le convertisseur serait une MFT
+    // matérielle avec son propre travail asynchrone, que rien ici ne couvre.
+    // Sur cette VM c'est toujours le repli logiciel qui sort, donc une MFT
+    // synchrone.
+    //
+    // Lui imposer une file et une barrière a été fait, puis retiré : dans cette
+    // forme (8 files sérialisées à N = 4 au lieu de 4), une exécution sur six à
+    // N = 4 s'est **figée dans `IMFShutdown::Shutdown` de l'encodeur**, trace
+    // « Shutdown : avant » écrite, « après » jamais
+    // (`2ter-gel-n4-shutdown.log`). La forme sans file au convertisseur avait,
+    // elle, passé 16 exécutions à N = 4 sans gel. Couvrir un cas qui n'existe
+    // sur aucune machine éprouvée, au prix d'un gel observé sur celle qu'on
+    // éprouve, est un mauvais échange.
+    //
+    // NON établi : que la file du convertisseur soit la CAUSE de ce gel. C'est
+    // la seule différence structurelle entre les deux formes, et le gel n'est
+    // apparu qu'avec elle — sur six exécutions. `Shutdown()` peut aussi bien
+    // porter ce risque en propre (voir `arreter`).
+
     // Barrière : plus rien de ce qui était déjà en file ne court encore.
-    file_convertisseur.barriere("convertisseur", "après END_STREAMING");
     file_encodeur.barriere("encodeur", "après END_STREAMING");
 
     // Arrêt explicite des MFT, puis SECONDE barrière : l'arrêt lui-même dépose
@@ -81,7 +101,6 @@ pub(super) fn mettre_au_repos(
     arreter(convertisseur, "convertisseur");
     arreter(encodeur, "encodeur");
 
-    file_convertisseur.barriere("convertisseur", "après IMFShutdown");
     file_encodeur.barriere("encodeur", "après IMFShutdown");
 }
 

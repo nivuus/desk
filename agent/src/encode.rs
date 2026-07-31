@@ -305,13 +305,13 @@ pub struct H264Encoder {
     /// Compteurs et étape courante, lisibles depuis un autre fil (voir
     /// `EncoderTelemetry`).
     telemetry: Arc<EncoderTelemetry>,
-    /// Files de travail sérialisées imposées aux deux MFT, et barrières de
-    /// leur mise au repos (voir `arret::FileMft`).
+    /// File de travail sérialisée imposée à la MFT encodeur, et barrière de sa
+    /// mise au repos (voir `arret::FileMft` ; le convertisseur n'en a pas, et
+    /// `arret::mettre_au_repos` dit pourquoi).
     ///
-    /// **Déclarées en dernier volontairement** : les champs sont détruits dans
+    /// **Déclarée en dernier volontairement** : les champs sont détruits dans
     /// l'ordre de déclaration, après l'exécution de `Drop for H264Encoder`.
-    /// Une file ne doit être rendue qu'une fois relâchée la MFT qui la détient.
-    file_convertisseur: arret::FileMft,
+    /// La file ne doit être rendue qu'une fois relâchée la MFT qui la détient.
     file_encodeur: arret::FileMft,
 }
 
@@ -371,7 +371,6 @@ impl H264Encoder {
         // si un `?` plus bas interrompt la construction. Une file rendue avant
         // la MFT qui la détient serait exactement l'inversion que l'ordre des
         // champs ci-dessus évite. Voir `arret::FileMft::allouer`.
-        let mut file_convertisseur = arret::FileMft::allouer();
         let mut file_encodeur = arret::FileMft::allouer();
 
         let transform = find_hardware_encoder()?;
@@ -445,16 +444,6 @@ impl H264Encoder {
         // `0x80070057`) : le contrat documenté (ne jamais fournir de tampon
         // quand ce drapeau est positionné) doit être respecté, il n'y a pas
         // de contournement possible ici.
-        // Le convertisseur reçoit le même traitement que l'encodeur, et pour
-        // une raison qui ne se voit pas sur cette VM : `create_color_converter`
-        // tente d'abord `find_hardware_video_processor()` et ne retombe sur
-        // `CLSID_VideoProcessorMFT` qu'en cas d'échec d'énumération. Ici c'est
-        // toujours le repli logiciel qui sort — mais sur un hôte où un Video
-        // Processor MATÉRIEL est enregistré, ce serait une MFT matérielle avec
-        // son propre travail asynchrone, et la laisser sans file imposée la
-        // laisserait sans barrière.
-        file_convertisseur.confier(&converter, "convertisseur");
-
         unsafe { converter.ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0) }
             .context("démarrage du flux du convertisseur de couleur (Video Processor MFT)")?;
         unsafe { converter.ProcessMessage(MFT_MESSAGE_NOTIFY_START_OF_STREAM, 0) }
@@ -472,7 +461,6 @@ impl H264Encoder {
             converter_output_pending: false,
             skipped_busy: 0,
             telemetry: Arc::new(EncoderTelemetry::default()),
-            file_convertisseur,
             file_encodeur,
             capture,
             encode,
@@ -1055,12 +1043,7 @@ impl Drop for H264Encoder {
         // ne demandait jamais à la MFT matérielle de cesser ses traitements
         // asynchrones, et c'est la course que la tâche 2bis a relevée. Voir
         // `arret::mettre_au_repos` pour le détail et le relevé qui le motive.
-        arret::mettre_au_repos(
-            &self.converter,
-            &self.file_convertisseur,
-            &self.transform,
-            &self.file_encodeur,
-        );
+        arret::mettre_au_repos(&self.converter, &self.transform, &self.file_encodeur);
 
         // `MFShutdown` n'est appelé nulle part, et c'est délibéré : voir
         // `demarrer_media_foundation`.

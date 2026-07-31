@@ -17,7 +17,7 @@
 //! chantier NAT, une trace par paquet écrite sur le partage CIFS a détruit la
 //! session qu'elle mesurait.
 
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use anyhow::{Context, Result};
 
@@ -25,58 +25,9 @@ use crate::disposition;
 use crate::geometry::Rect;
 use crate::mire;
 
+use super::compteurs::{self, Compteurs, DUREE_PASSE, PERIODE_JOURNAL};
 use super::mires::Mires;
 use super::voies::{VoieDeCapture, VoieDuplication, VoiePrintWindow};
-
-/// Durée de chaque passe.
-const DUREE_PASSE: Duration = Duration::from_secs(10);
-/// Cadence de journalisation des compteurs.
-const PERIODE_JOURNAL: Duration = Duration::from_secs(1);
-
-/// Décompte des verdicts rendus sur la mire 0, par NATURE et non en bloc.
-///
-/// Un simple compte de « faux » ne suffit pas à la mesure ③ : une image NOIRE
-/// et une image portant la mire du DESSUS sont deux résultats opposés. La
-/// première dirait que Windows ne compose pas une sortie virtuelle sans écran
-/// attaché — et l'hypothèse fondatrice de la voie « un moniteur virtuel par
-/// fenêtre » tomberait. La seconde dirait qu'il la compose parfaitement, et que
-/// c'est la duplication qui ne sait pas défaire un recouvrement — ce qu'on
-/// savait déjà du bureau physique. Les confondre sous un même compteur rendrait
-/// la mesure ininterprétable.
-#[derive(Default, Debug)]
-struct Verdicts {
-    justes: u64,
-    voisines: u64,
-    noires: u64,
-    inconnues: u64,
-}
-
-impl Verdicts {
-    fn compter(&mut self, verdict: mire::Verdict) {
-        match verdict {
-            mire::Verdict::Juste => self.justes += 1,
-            mire::Verdict::Voisine(_) => self.voisines += 1,
-            mire::Verdict::Noire => self.noires += 1,
-            mire::Verdict::Inconnue => self.inconnues += 1,
-        }
-    }
-
-    fn faux(&self) -> u64 {
-        self.voisines + self.noires + self.inconnues
-    }
-}
-
-struct Compteurs {
-    images: Vec<u64>,
-    unites: Vec<u64>,
-    /// Verdicts rendus AVANT que le recouvrement ne soit posé : la mire 0 est
-    /// alors dégagée, et c'est la seule fenêtre du banc où se lise « cette voie
-    /// capture-t-elle simplement cette fenêtre ». Sur le bureau physique la
-    /// réponse allait de soi ; sur une sortie virtuelle, c'est la question.
-    avant_recouvrement: Verdicts,
-    /// Verdicts rendus une fois la mire 0 recouverte : la porte éliminatoire.
-    apres_recouvrement: Verdicts,
-}
 
 /// `sortie` désigne la sortie DXGI à mesurer (`index_adaptateur`,
 /// `index_sortie`), ou `None` pour la sortie qui porte le bureau — le
