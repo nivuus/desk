@@ -26,15 +26,29 @@
 //! # Piège : à `nombre = 1`, cette sonde LAISSE une sortie orpheline
 //!
 //! Sans recouvrement à mettre en scène, la porte éliminatoire du banc laisse
-//! passer et la passe d'encodage s'exécute — or **elle emporte le processus**,
-//! une seconde ou deux avant sa fin. Mesuré le 31 juillet 2026, deux fois, et
-//! **pas seulement sur une sortie virtuelle** : le même banc lancé sur le
-//! bureau physique (`MULTIFENETRE_BANC=duplication MULTIFENETRE_N=1`) meurt au
-//! même endroit. Le défaut est donc dans le couple « voie duplication +
-//! encodeur H.264 », pas dans la sortie virtuelle. Il n'avait jamais été vu
-//! parce que sur cette voie la porte éliminatoire coupait toujours avant la
-//! passe d'encodage — voir `CLAUDE.md`, « il n'existe donc aucune mesure
-//! d'encodage multi-fenêtres par cette voie, par construction du protocole ».
+//! passer et la passe d'encodage s'exécute — or **elle emporte le processus**.
+//!
+//! **Où exactement, car cela oriente le diagnostic : à la SORTIE de la boucle,
+//! pas pendant.** Les deux exécutions du 31 juillet 2026 écrivent leur dixième
+//! et DERNIÈRE ligne périodique à `debut + 10,00 s`, soit l'instant même où
+//! `while debut.elapsed() < DUREE_PASSE` cesse d'être vrai : la boucle a tourné
+//! entière, et `journaliser` n'est jamais atteint. Ce qui court entre les deux
+//! est la destruction du `Vec<H264Encoder>` local à `passe_capture`. Chercher
+//! du côté de `submit`/`poll_output` serait chercher au mauvais endroit.
+//!
+//! **Ce n'est ni la sortie virtuelle, ni l'encodeur seul — c'est le couple.**
+//! Le même banc sur le bureau physique
+//! (`MULTIFENETRE_BANC=duplication MULTIFENETRE_N=1`) meurt au même endroit :
+//! la sortie virtuelle est hors de cause. Et `printwindow-n4.log` comme
+//! `printwindow-n8.log` portent leur ligne `passe terminée
+//! passe="capture+encodage"` : sur la voie `printwindow`, la passe d'encodage
+//! va à son terme et le processus survit. Le défaut est donc dans le couple
+//! « voie **duplication** + encodeur H.264 », et dans lui seul.
+//!
+//! Il n'avait jamais été vu parce que sur cette voie la porte éliminatoire
+//! coupait toujours avant la passe d'encodage — voir `CLAUDE.md`, « il n'existe
+//! donc aucune mesure d'encodage multi-fenêtres par cette voie, par
+//! construction du protocole ».
 //!
 //! Conséquence pratique : la garde ne court pas, la sortie virtuelle survit au
 //! processus. Rattraper avec `MULTIFENETRE_VDD_PURGE=1`, éprouvé sur exactement
