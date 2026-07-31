@@ -16,6 +16,7 @@ pub(super) mod mires;
 pub(super) mod moniteurs;
 pub(super) mod nvenc;
 pub(super) mod replis;
+pub(super) mod sudovda;
 pub(super) mod voies;
 pub(super) mod wgc;
 

@@ -16,18 +16,36 @@
 
 use anyhow::Result;
 
-use super::moniteurs::{ouvrir_pilote, Veille, VersionProtocole};
+use super::moniteurs::ouvrir_pilote;
+use super::sudovda::{Veille, VersionProtocole};
+
+/// `VDAProtocolVersion = { 0, 2, 1, true }`, la constante de l'en-tête amont de
+/// septembre 2024.
+///
+/// Elle est confrontée au relevé, et non seulement journalisée à côté : sans
+/// cette comparaison, `conforme` ne porterait que des TAILLES, et une taille ne
+/// dit rien du contenu. C'est le seul élément du relevé qui corrobore autre
+/// chose qu'un dimensionnement.
+const VERSION_AMONT: VersionProtocole =
+    VersionProtocole { majeure: 0, mineure: 2, increment: 1, version_de_test: 1 };
 
 /// Ce qu'un succès établit : que le GUID d'interface ouvre bien un périphérique
 /// vivant, que la formule `CTL_CODE` employée pour les quatre codes NON
 /// confirmés par octets est la bonne (`IOCTL_LIRE_VERSION_PROTOCOLE` en fait
-/// partie), et que le pilote rend exactement le nombre d'octets que suppose la
-/// traduction `#[repr(C)]` de ces deux structures.
+/// partie), que le pilote rend exactement le nombre d'octets que suppose la
+/// traduction `#[repr(C)]` de ces deux structures, et que les quatre octets de
+/// version coïncident avec la constante amont.
 ///
-/// Ce qu'un succès n'établit PAS : rien sur `VIRTUAL_DISPLAY_ADD_PARAMS`, dont
-/// les 56 octets d'entrée restent une lecture amont non confirmée. Un tampon
-/// d'entrée mal formé n'est d'ailleurs pas du même ordre de risque qu'un tampon
-/// de sortie mal dimensionné : c'est le pilote qui le lira.
+/// Ce qu'un succès n'établit PAS. D'abord, rien sur
+/// `VIRTUAL_DISPLAY_ADD_PARAMS`, dont les 56 octets d'entrée restent une
+/// lecture amont non confirmée. Ensuite — et c'est plus subtil — **rien ne
+/// prouve l'ORDRE des champs**. Une taille rendue ne dit rien des offsets ; et
+/// les deux structures éprouvées sont hors d'atteinte d'un tel test : `Veille`
+/// rend deux valeurs identiques (`delai` = `decompte`), donc l'ordre de ses
+/// deux champs est structurellement indiscernable, et les quatre octets de
+/// version `{0, 2, 1, 1}` comportent une répétition, donc une permutation des
+/// deux derniers champs passerait aussi. La coïncidence est une corroboration
+/// forte, pas une preuve d'agencement.
 pub(super) fn valider_contrat() -> Result<()> {
     let pilote = ouvrir_pilote()?;
     tracing::info!("périphérique SudoVDA ouvert — le GUID d'interface est le bon");
@@ -53,16 +71,25 @@ pub(super) fn valider_contrat() -> Result<()> {
     );
 
     // Le verdict est énoncé ici plutôt que laissé à la lecture du journal : ce
-    // qui compte n'est pas que les appels aient réussi, mais que les comptes
-    // d'octets rendus correspondent aux tailles supposées. Un pilote qui aurait
-    // gagné un champ depuis l'en-tête amont réussirait l'appel tout en rendant
-    // un compte différent.
-    let conforme = rendus_version as usize == std::mem::size_of::<VersionProtocole>()
+    // qui compte n'est pas que les appels aient réussi, mais que ce qu'ils
+    // rendent corresponde à ce qu'on suppose. Un pilote ayant gagné un champ
+    // depuis l'en-tête amont réussirait l'appel tout en rendant un compte
+    // différent.
+    //
+    // Les deux critères sont énoncés SÉPARÉMENT, et le message dit exactement
+    // ce que chacun teste — ni plus. Faire porter à un seul booléen le mot
+    // « disposition » alors qu'il ne compare que des tailles serait affirmer
+    // au-delà du relevé.
+    let tailles_conformes = rendus_version as usize == std::mem::size_of::<VersionProtocole>()
         && rendus_veille as usize == std::mem::size_of::<Veille>();
+    let version_conforme = version == VERSION_AMONT;
     tracing::info!(
-        conforme,
-        "verdict : les deux tampons de sortie simples {} la disposition lue en amont",
-        if conforme { "confirment" } else { "CONTREDISENT" }
+        tailles_conformes,
+        version_conforme,
+        conforme = tailles_conformes && version_conforme,
+        "verdict : les tailles rendues (4 et 8) sont confrontées aux tailles \
+         supposées, et les quatre octets de version à la constante amont \
+         {{0, 2, 1, true}} — l'ordre des champs, lui, n'est pas testé"
     );
     Ok(())
 }

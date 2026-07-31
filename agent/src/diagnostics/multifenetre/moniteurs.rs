@@ -57,134 +57,45 @@ use windows::Win32::Storage::FileSystem::{
 };
 use windows::Win32::System::IO::DeviceIoControl;
 
-use crate::moniteurs_virtuels::{IdSortie, PiloteAffichageVirtuel};
-
-/// Interface de périphérique de SudoVDA — **confirmée par présence d'octets**
-/// dans le `SudoVDA.dll` installé sur cette VM (canal-de-controle.md §5.3).
-/// À ne pas confondre avec le GUID de classe `{4D36E968-…}`, qui est la classe
-/// `Display` standard de Windows et ne sert qu'à l'installation.
-const INTERFACE_PILOTE: GUID = GUID::from_u128(0xe5bc_c234_1e0c_418a_a0d4_ef8b_7501_414d);
-
-// `CTL_CODE(FILE_DEVICE_UNKNOWN = 0x22, fonction, METHOD_BUFFERED = 0,
-// FILE_ANY_ACCESS = 0)` = `(0x22 << 16) | (fonction << 2)`. Les deux codes
-// marqués « confirmé » ont été retrouvés en octets dans la DLL installée ; les
-// autres proviennent de la même macro appliquée au même en-tête amont.
-//
-// Les deux codes que ce module n'emploie pas (`IOCTL_SET_RENDER_ADAPTER`
-// `0x0022_2008`, `IOCTL_DRIVER_PING` `0x0022_2220`) ne sont volontairement pas
-// déclarés : une constante inutilisée est un avertissement de compilation, et
-// une constante non employée n'est de toute façon éprouvée par rien.
-
-/// Confirmé par octets (offset 16316 de la DLL locale).
-const IOCTL_AJOUTER_SORTIE: u32 = 0x0022_2000;
-/// Non confirmé par octets — même macro, même en-tête amont.
-const IOCTL_RETIRER_SORTIE: u32 = 0x0022_2004;
-/// Confirmé par octets (offset 16284 de la DLL locale).
-const IOCTL_LIRE_VEILLE: u32 = 0x0022_200C;
-/// Non confirmé par octets — c'est le tampon le plus simple des six, donc le
-/// premier que `valider_contrat()` éprouve.
-const IOCTL_LIRE_VERSION_PROTOCOLE: u32 = 0x0022_23FC;
-
-/// Tampon d'entrée de `IOCTL_AJOUTER_SORTIE` (`VIRTUAL_DISPLAY_ADD_PARAMS`).
-///
-/// Aucun `#pragma pack` en amont : alignement naturel MSVC/x64, soit 4 ici.
-/// Offsets attendus : 0, 4, 8, 12, 28, 42 — total 56 octets, vérifié par
-/// l'assertion de compilation plus bas.
-///
-/// Aucun de ces champs n'est jamais relu depuis Rust —
-/// le seul lecteur est le pilote, à l'autre bout du `DeviceIoControl`. Les
-/// retirer pour faire taire le lint reviendrait à changer la disposition du
-/// tampon, c'est-à-dire à casser exactement ce que cette structure décrit.
-#[repr(C)]
-struct DemandeAjout {
-    largeur: u32,
-    hauteur: u32,
-    hertz: u32,
-    /// Choisi par NOUS, pas rendu par le pilote : c'est la clé de retrait.
-    guid_moniteur: GUID,
-    nom_peripherique: [u8; 14],
-    numero_serie: [u8; 14],
-}
-
-/// Tampon de sortie de `IOCTL_AJOUTER_SORTIE` (`VIRTUAL_DISPLAY_ADD_OUT`).
-///
-/// `LUID` Win32 = `{ DWORD LowPart; LONG HighPart; }`, 8 octets alignés sur 4 —
-/// écrit en deux champs plutôt qu'en `windows::Win32::Foundation::LUID` pour
-/// que la disposition qu'on suppose soit lisible ici, là où elle est en jeu.
-#[repr(C)]
-#[derive(Default)]
-struct SortieAjoutee {
-    adaptateur_bas: u32,
-    adaptateur_haut: i32,
-    /// C'est lui qui devient l'`IdSortie` du trait.
-    identifiant_cible: u32,
-}
-
-/// Tampon d'entrée de `IOCTL_RETIRER_SORTIE`
-/// (`VIRTUAL_DISPLAY_REMOVE_PARAMS`) : le pilote retire par le GUID que le
-/// client a choisi à l'ajout, pas par l'identifiant qu'il a rendu.
-///
-/// Ses champs ne sont pas davantage relus depuis Rust — même raison que
-/// `DemandeAjout`.
-#[repr(C)]
-struct DemandeRetrait {
-    guid_moniteur: GUID,
-}
-
-/// Tampon de sortie de `IOCTL_LIRE_VEILLE`
-/// (`VIRTUAL_DISPLAY_GET_WATCHDOG_OUT`).
-///
-/// L'en-tête amont ne documente AUCUNE unité pour ces deux `UINT` — ni le nom
-/// des champs (`Timeout`, `Countdown`) ni un commentaire ne la donnent. On ne
-/// la suppose donc pas ici : la sonde relève les nombres bruts, et c'est à la
-/// tâche qui devra pinguer d'établir la cadence par la mesure.
-#[repr(C)]
-#[derive(Default)]
-pub(super) struct Veille {
-    pub(super) delai: u32,
-    pub(super) decompte: u32,
-}
-
-/// Tampon de sortie de `IOCTL_LIRE_VERSION_PROTOCOLE`
-/// (`SUVDA_PROTOCAL_VERSION`, orthographe d'origine). Quatre octets : le
-/// `bool` MSVC en occupe un seul.
-#[repr(C)]
-#[derive(Default)]
-pub(super) struct VersionProtocole {
-    pub(super) majeure: u8,
-    pub(super) mineure: u8,
-    pub(super) increment: u8,
-    pub(super) version_de_test: u8,
-}
-
-// Les tailles sont la seule partie du contrat amont qu'on puisse vérifier sans
-// la VM. Un champ oublié ou un type mal traduit ferait échouer la compilation
-// ici plutôt que de partir en tampon mal formé vers un pilote noyau.
-const _: () = {
-    assert!(std::mem::size_of::<DemandeAjout>() == 56);
-    assert!(std::mem::size_of::<SortieAjoutee>() == 12);
-    assert!(std::mem::size_of::<DemandeRetrait>() == 16);
-    assert!(std::mem::size_of::<Veille>() == 8);
-    assert!(std::mem::size_of::<VersionProtocole>() == 4);
+use super::sudovda::{
+    en_champ_14, DemandeAjout, DemandeRetrait, SortieAjoutee, Veille, VersionProtocole,
+    INTERFACE_PILOTE, IOCTL_AJOUTER_SORTIE, IOCTL_LIRE_VEILLE, IOCTL_LIRE_VERSION_PROTOCOLE,
+    IOCTL_RETIRER_SORTIE,
 };
+use crate::moniteurs_virtuels::{IdSortie, PiloteAffichageVirtuel};
 
 /// Gabarit du GUID que nous attribuons à chaque sortie créée : les 16 bits de
 /// poids faible portent un compteur, le reste est une constante arbitraire
 /// choisie ici. Le GUID n'a besoin que d'être unique et reconnaissable — s'il
 /// traîne un jour dans l'état du pilote, on saura d'où il vient.
+///
+/// Le compteur repart de zéro à chaque exécution, et c'est un choix assumé :
+/// deux exécutions attribuent donc les mêmes GUID. C'est ce déterminisme qui
+/// donnera à la purge de la tâche 7 un motif reconnaissable pour retrouver nos
+/// sorties orphelines, qu'aucune table en mémoire ne peut plus désigner.
 const GABARIT_GUID_MONITEUR: u128 = 0x9c4a_1f6e_2b73_4d51_9e08_6775_4143_0000;
+
+/// Tout ce que le pilote doit retenir entre deux appels, sous un verrou
+/// unique.
+///
+/// Le compteur et la table ne servent qu'un seul invariant — « chaque sortie
+/// vivante a un GUID connu, et deux sorties n'ont jamais le même » — donc un
+/// seul verrou. Deux verrous pour un invariant seraient un piège gratuit.
+#[derive(Default)]
+struct EtatSorties {
+    /// Le trait rend un `IdSortie` (`u32`) alors que le pilote retire par
+    /// GUID : il faut donc retenir l'appariement.
+    apparies: Vec<(IdSortie, GUID)>,
+    /// Compteur des GUID attribués.
+    compteur: u16,
+}
 
 pub(super) struct PiloteParIoctl {
     peripherique: HANDLE,
-    /// Le trait rend un `IdSortie` (`u32`) alors que le pilote retire par
-    /// GUID : il faut donc retenir l'appariement. Un `Mutex` et non un
-    /// `RefCell` parce que `creer(&self, …)` doit rester utilisable depuis un
-    /// contexte partagé, et parce que la garde `Sorties` peut détruire depuis
-    /// le déroulement d'une panique.
-    apparies: Mutex<Vec<(IdSortie, GUID)>>,
-    /// Compteur des GUID attribués. Sous le même `Mutex` que la table : deux
-    /// verrous pour un seul invariant seraient un piège gratuit.
-    compteur: Mutex<u16>,
+    /// Un `Mutex` et non un `RefCell` parce que `creer(&self, …)` doit rester
+    /// utilisable depuis un contexte partagé. Voir `etat()` pour la seule
+    /// subtilité qu'il introduit.
+    etat: Mutex<EtatSorties>,
 }
 
 /// Ouvre le périphérique du pilote d'affichage virtuel.
@@ -224,11 +135,7 @@ pub(super) fn ouvrir_pilote() -> Result<PiloteParIoctl> {
         )
     }
     .context("ouverture du périphérique du pilote d'affichage virtuel (SudoVDA)")?;
-    Ok(PiloteParIoctl {
-        peripherique,
-        apparies: Mutex::new(Vec::new()),
-        compteur: Mutex::new(0),
-    })
+    Ok(PiloteParIoctl { peripherique, etat: Mutex::new(EtatSorties::default()) })
 }
 
 /// Libère la liste d'informations de périphériques sur TOUS les chemins, y
@@ -320,6 +227,38 @@ fn chemin_du_peripherique() -> Result<Vec<u16>> {
 }
 
 impl PiloteParIoctl {
+    /// Accès à l'état, **sans paniquer sur un verrou empoisonné**.
+    ///
+    /// `Sorties::drop` appelle `detruire` pendant le déroulement d'une panique
+    /// et rattrape les `Err` — mais pas les paniques. Si la panique s'est
+    /// produite alors que `creer` tenait ce verrou, celui-ci est empoisonné :
+    /// un `.expect(…)` paniquerait ici, dans un `Drop`, ce qui abrège le
+    /// processus (`abort`) et laisserait les sorties restantes non détruites.
+    /// C'est précisément le scénario que ce module doit couvrir, pas
+    /// aggraver. `into_inner` rend la table telle quelle : au pire, une
+    /// insertion interrompue par la panique y manque.
+    fn etat(&self) -> std::sync::MutexGuard<'_, EtatSorties> {
+        self.etat.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
+    }
+
+    /// Retire du pilote la sortie portant ce GUID.
+    ///
+    /// Extrait de `detruire` parce que `creer` doit pouvoir l'appeler aussi,
+    /// sur son chemin d'échec — là où aucun `IdSortie` fiable n'existe.
+    fn retirer_par_guid(&self, guid_moniteur: GUID, quoi: &str) -> Result<()> {
+        let demande = DemandeRetrait { guid_moniteur };
+        self.commander(
+            IOCTL_RETIRER_SORTIE,
+            Some((
+                &demande as *const _ as *const _,
+                std::mem::size_of::<DemandeRetrait>() as u32,
+            )),
+            None,
+            quoi,
+        )?;
+        Ok(())
+    }
+
     /// Un appel `DeviceIoControl` synchrone, avec vérification du nombre
     /// d'octets rendus.
     ///
@@ -385,25 +324,11 @@ impl PiloteParIoctl {
     }
 }
 
-/// Copie une désignation ASCII dans un champ `CHAR[14]`, terminée par un NUL.
-///
-/// Tronque à 13 caractères utiles plutôt que de refuser : ces deux champs sont
-/// cosmétiques (Apollo y met le nom et l'identifiant du client), et faire
-/// échouer une création de moniteur pour un nom trop long serait absurde.
-fn en_champ_14(texte: &str) -> [u8; 14] {
-    let mut champ = [0u8; 14];
-    for (place, octet) in champ.iter_mut().zip(texte.bytes()).take(13) {
-        *place = octet;
-    }
-    champ
-}
-
 impl PiloteAffichageVirtuel for PiloteParIoctl {
     fn creer(&self, largeur: u32, hauteur: u32, hertz: u32) -> Result<IdSortie> {
-        let mut apparies = self.apparies.lock().expect("table des sorties empoisonnée");
-        let mut compteur = self.compteur.lock().expect("compteur des sorties empoisonné");
-        *compteur = compteur.wrapping_add(1);
-        let numero = *compteur;
+        let mut etat = self.etat();
+        etat.compteur = etat.compteur.wrapping_add(1);
+        let numero = etat.compteur;
         let guid_moniteur = GUID::from_u128(GABARIT_GUID_MONITEUR | u128::from(numero));
 
         let demande = DemandeAjout {
@@ -427,14 +352,61 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
             )),
             &format!("création d'une sortie {largeur}x{hauteur}@{hertz}"),
         )?;
-        anyhow::ensure!(
-            rendus as usize == std::mem::size_of::<SortieAjoutee>(),
-            "le pilote a rendu {rendus} octets pour une sortie créée, {} attendus — \
-             la disposition supposée de VIRTUAL_DISPLAY_ADD_OUT est fausse",
-            std::mem::size_of::<SortieAjoutee>()
-        );
 
+        // À PARTIR D'ICI LA SORTIE EXISTE. Tout chemin d'échec sous cette ligne
+        // doit donc défaire ce qui vient d'être fait, ou au minimum laisser le
+        // GUID connu — sans quoi le moniteur survit au processus sans qu'aucun
+        // code du projet ne puisse le retirer. L'appariement est enregistré
+        // AVANT toute vérification pour cette raison : le GUID est le nôtre,
+        // il est valide même quand le tampon de sortie est illisible.
         let id = ajoutee.identifiant_cible;
+        etat.apparies.push((id, guid_moniteur));
+        drop(etat);
+
+        // Le chemin d'échec le plus probable de ce module, et il fuyait :
+        // `VIRTUAL_DISPLAY_ADD_OUT` est justement la structure que la
+        // reconnaissance déclare non confirmée. Si son compte d'octets diffère,
+        // `identifiant_cible` peut valoir n'importe quoi — l'appelant ne pourra
+        // donc jamais nous redemander cette sortie par son identifiant, et la
+        // garde `Sorties` ne l'enregistrera pas non plus puisque nous rendons
+        // `Err`. On la retire donc NOUS-MÊMES, tant que le GUID est encore
+        // connu, plutôt que de la laisser derrière nous.
+        let attendus = std::mem::size_of::<SortieAjoutee>();
+        if rendus as usize != attendus {
+            let retrait = self.retirer_par_guid(
+                guid_moniteur,
+                "retrait de la sortie créée avec un tampon de sortie illisible",
+            );
+            let mut etat = self.etat();
+            match retrait {
+                Ok(()) => {
+                    etat.apparies.retain(|(_, connu)| *connu != guid_moniteur);
+                    anyhow::bail!(
+                        "le pilote a rendu {rendus} octets pour une sortie créée, \
+                         {attendus} attendus — la disposition supposée de \
+                         VIRTUAL_DISPLAY_ADD_OUT est fausse ; la sortie a été retirée"
+                    );
+                }
+                Err(erreur) => {
+                    // L'appariement reste en table à dessein : c'est la seule
+                    // trace du GUID à retirer, et la purge de la tâche 7 en a
+                    // besoin.
+                    tracing::error!(
+                        guid = ?guid_moniteur,
+                        %erreur,
+                        "sortie virtuelle NON retirée après un tampon illisible — \
+                         purge manuelle requise"
+                    );
+                    anyhow::bail!(
+                        "le pilote a rendu {rendus} octets pour une sortie créée, \
+                         {attendus} attendus — la disposition supposée de \
+                         VIRTUAL_DISPLAY_ADD_OUT est fausse, ET son retrait a \
+                         échoué : {erreur}"
+                    );
+                }
+            }
+        }
+
         tracing::info!(
             id,
             adaptateur_bas = ajoutee.adaptateur_bas,
@@ -445,32 +417,28 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
             hertz,
             "sortie virtuelle créée"
         );
-        apparies.push((id, guid_moniteur));
         Ok(id)
     }
 
     fn detruire(&self, id: IdSortie) -> Result<()> {
-        let mut apparies = self.apparies.lock().expect("table des sorties empoisonnée");
+        let etat = self.etat();
         // Refuser plutôt que deviner : le pilote retire par GUID, et fabriquer
         // un GUID au jugé détruirait au mieux rien, au pire la sortie d'un
         // autre client (Apollo en attribue aussi).
-        let rang = apparies
+        let rang = etat
+            .apparies
             .iter()
             .position(|(connu, _)| *connu == id)
             .with_context(|| format!("sortie {id} inconnue de ce pilote — rien à détruire"))?;
-        let (_, guid_moniteur) = apparies.remove(rang);
-        drop(apparies);
+        let (_, guid_moniteur) = etat.apparies[rang];
+        drop(etat);
 
-        let demande = DemandeRetrait { guid_moniteur };
-        self.commander(
-            IOCTL_RETIRER_SORTIE,
-            Some((
-                &demande as *const _ as *const _,
-                std::mem::size_of::<DemandeRetrait>() as u32,
-            )),
-            None,
-            &format!("destruction de la sortie {id}"),
-        )?;
+        // L'appariement n'est retiré de la table qu'APRÈS un retrait réussi, et
+        // non avant : sur échec, le GUID reste la seule prise que le projet ait
+        // sur ce moniteur, et l'oublier le rendrait irrécupérable. Le garder
+        // laisse une nouvelle tentative possible.
+        self.retirer_par_guid(guid_moniteur, &format!("destruction de la sortie {id}"))?;
+        self.etat().apparies.retain(|(_, connu)| *connu != guid_moniteur);
         tracing::info!(id, "sortie virtuelle détruite");
         Ok(())
     }
