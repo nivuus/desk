@@ -107,14 +107,17 @@ pub(super) struct DemandeRetrait {
 /// des champs (`Timeout`, `Countdown`) ni un commentaire ne la donnent. On ne
 /// la suppose donc pas ici : la sonde relève les nombres bruts.
 ///
-/// **Ce que l'épreuve de `montee.rs` a établi, et ce qu'elle n'a pas établi.**
-/// Relevé une fois par seconde pendant 180 s, `decompte` ne décroît PAS d'une
-/// unité par seconde : il oscille entre 2 et 3 par paliers de plusieurs
-/// dizaines de secondes, et n'approche jamais de zéro. L'unité de `delai`
-/// reste donc inconnue — la seule chose exclue est « secondes restantes avant
-/// retrait ». L'épreuve n'isole pas non plus le compteur : Apollo tourne sur
-/// cette VM et pingue le même pilote, donc ces paliers peuvent être ses pings
-/// à lui. Voir `montee.rs`.
+/// **Ce que l'épreuve de `montee.rs` a relevé — et pourquoi elle ne conclut
+/// rien sur l'unité.** Lu une fois par seconde pendant 180 s pendant lesquelles
+/// nous n'avons jamais pingué, `decompte` oscille entre 2 et 3 par paliers de
+/// plusieurs dizaines de secondes, et aucune sortie n'a été retirée.
+///
+/// **Cela n'exclut aucune unité, pas même la seconde.** Apollo tourne sur cette
+/// VM et pingue le même pilote à une cadence de l'ordre de la seconde : un
+/// `Timeout` de trois SECONDES réarmé par autrui se lirait exactement ainsi,
+/// 2 ou 3 sans jamais approcher de zéro. L'unité de ces deux `UINT` reste donc
+/// entièrement inconnue, et rien n'est établi sur le sort d'un client seul et
+/// muet.
 #[repr(C)]
 #[derive(Default)]
 pub(super) struct Veille {
