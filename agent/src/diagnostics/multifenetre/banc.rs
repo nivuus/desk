@@ -102,7 +102,13 @@ pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<(u32, u32)>) -
     // avant que la voie « duplication » n'ouvre la sienne.
     drop(capture);
 
-    compteurs::passe_temoin(&mut mires)?;
+    // `None` : ce protocole ne détient aucun pilote — il reçoit une sortie
+    // déjà là et n'a pas de quoi battre son chien de garde. Comportement
+    // INCHANGÉ par la ronde 1, y compris son risque connu : appelé par
+    // `capture_virtuelle.rs`, le banc tourne sans un seul ping sur une sortie
+    // virtuelle, ce que l'en-tête de ce module-là signale déjà et rattrape
+    // après coup par un contrôle de survie.
+    compteurs::passe_temoin(&mut mires, None)?;
     let (mut voies, regions) =
         ouvrir_voies(nom_voie, nombre, &mires, &places, &places_texture, sortie)?;
     let compteurs = passe_capture(&mut mires, &mut voies, &regions, false)?;

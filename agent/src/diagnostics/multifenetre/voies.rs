@@ -131,14 +131,14 @@ pub(super) struct SourceDuplication {
 }
 
 impl SourceDuplication {
-    /// Amorce le bureau entier pour `tour`, une seule fois par valeur de
-    /// `tour` quel que soit le nombre de voies qui appellent cette méthode.
     /// Dimensions de la TEXTURE que rend l'acquisition de cette sortie — pas
     /// celles annoncées par DXGI, dont elles peuvent différer d'un facteur DPI.
     pub(super) fn dimensions_bureau(&self) -> (u32, u32) {
         (self.bureau.width, self.bureau.height)
     }
 
+    /// Amorce le bureau entier pour `tour`, une seule fois par valeur de
+    /// `tour` quel que soit le nombre de voies qui appellent cette méthode.
     fn amorcer(&mut self, tour: u64) -> Result<()> {
         if self.dernier_tour == Some(tour) {
             return Ok(());
