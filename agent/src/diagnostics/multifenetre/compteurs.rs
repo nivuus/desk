@@ -55,8 +55,14 @@ pub(super) struct Garde<'p> {
 
 impl<'p> Garde<'p> {
     /// À construire juste après le dernier ping connu — typiquement au retour
-    /// d'`attendre_en_pinguant` — pour que la couture entre les deux soit
-    /// comptée, et non offerte.
+    /// d'`attendre_en_pinguant`.
+    ///
+    /// **Précision d'énoncé, corrigée en revue finale** : `dernier` est posé à
+    /// `Instant::now()` ICI, donc la couture entre le dernier ping réel et
+    /// cette construction **échappe au compteur** — elle n'est pas *comptée*,
+    /// elle est rendue *négligeable* par l'adjacence des deux appels (66 µs au
+    /// relevé du chantier des duplications parallèles). Compter cette couture
+    /// exigerait qu'`attendre_en_pinguant` rende l'instant de son dernier ping.
     pub(super) fn nouvelle(pilote: &'p PiloteParIoctl) -> Self {
         Self { pilote, dernier: Instant::now(), intervalle_max: Duration::ZERO }
     }

@@ -41,10 +41,33 @@ use windows::Win32::Media::MediaFoundation::{
 /// L'amont (le convertisseur) est mis au repos avant l'aval (l'encodeur) : il
 /// ne doit plus rien produire pendant qu'on arrête celui qui consomme.
 ///
-/// Chaque étape se journalise en `debug` (donc muette en exploitation, où
-/// `RUST_LOG=info`) : ces appels peuvent bloquer sans rendre la main, et la
-/// dernière ligne écrite est alors le seul moyen de savoir lequel. Elles ne
-/// s'exécutent qu'à la destruction d'un encodeur, jamais par trame.
+/// Chaque étape se journalise : ces appels peuvent bloquer sans rendre la
+/// main, et la dernière ligne écrite est alors le seul moyen de savoir lequel.
+/// Elles ne courent qu'à la destruction d'un encodeur, jamais par trame. Le
+/// détail est en `debug`, mais les deux traces qui encadrent
+/// `IMFShutdown::Shutdown` — seul appel dont un gel a été OBSERVÉ — sont en
+/// `info`, donc lisibles sous le `RUST_LOG=info` de `scripts/run-agent.sh` :
+/// une mitigation muette en exploitation n'en est pas une.
+///
+/// # Quand cette séquence court, et ce qu'elle coûte au pire
+///
+/// **Ce n'est pas un chemin réservé au multi-fenêtres à venir : il court
+/// AUJOURD'HUI, en production mono-fenêtre.** `Drop for H264Encoder` s'exécute
+/// à chaque remplacement de l'encodeur de la session — `set_encode_size`,
+/// appelé par `transport::adaptation` à **chaque changement de barreau** du
+/// réseau, et `resize` / la reconstruction de chaîne au redimensionnement (les
+/// deux dans `windows_source.rs`). Tous deux tournent sur le fil unique de
+/// `Session::run` (`spawn_blocking`) : ce qui bloque ici fige la session
+/// **entière** — capture, encodage, RTP, ICE — sans reprise.
+///
+/// **Borne du pire cas, par destruction d'encodeur** : la partie bornée vaut au
+/// plus `2 × DELAI_BARRIERE + 2 × DELAI_ARRET_MFT` = **8 s** (deux barrières,
+/// plus une confirmation d'arrêt par MFT), ramenés à **6 s** là où le
+/// convertisseur n'expose pas `IMFShutdown`. **Le total n'est borné par rien
+/// pour autant** : ni les quatre `ProcessMessage`, ni les deux
+/// `IMFShutdown::Shutdown` (voir `arreter`). Nominal relevé, sans commune
+/// mesure : 0,5 ms par encodeur, 4,0 ms pour huit d'affilée, `attente_ms=0`
+/// partout (`paralleles-n8.log`) — **mais un nominal n'est pas une borne**.
 pub(super) fn mettre_au_repos(
     convertisseur: &IMFTransform,
     encodeur: &IMFTransform,
@@ -137,9 +160,11 @@ const DELAI_ARRET_MFT: Duration = Duration::from_secs(2);
 /// # Ce que cet appel coûte comme risque, et pourquoi il reste
 ///
 /// `Shutdown()` n'est borné par RIEN — le garde-fou ci-dessous ne borne que la
-/// boucle de confirmation qui suit. Un appel non borné dans un `Drop` est un
-/// gel à la fermeture d'une fenêtre, ce qui serait pire que le plantage qu'on
-/// corrige.
+/// boucle de confirmation qui suit. Un appel non borné dans un `Drop` gèle la
+/// session entière, ce qui serait pire que le plantage qu'on corrige. **Et ce
+/// n'est pas un risque différé au multi-fenêtres** : ce `Drop` court déjà en
+/// production mono-fenêtre — voir `mettre_au_repos`, qui nomme les deux chemins
+/// et écrit la borne du pire cas.
 ///
 /// **Et ce gel a été OBSERVÉ, dans cet appel précis.** À N = 4, une exécution
 /// s'est arrêtée sur `IMFShutdown::Shutdown : avant mft="encodeur"` (id=2,
@@ -159,8 +184,10 @@ const DELAI_ARRET_MFT: Duration = Duration::from_secs(2);
 /// d'appartement (le fil principal est dans un STA — cadres
 /// `ClassicSTAThreadWaitForHandles` du vidage 2bis), ce qui échangerait un
 /// risque contre un défaut certain. Ce qui reste acquis, et rien de plus :
-/// l'appel est encadré de deux traces `debug`, de sorte qu'un gel se lit dans
-/// le journal au lieu de rester muet — c'est ainsi que celui-ci a été vu.
+/// l'appel est encadré de deux traces **`info`** — et non `debug`, sans quoi la
+/// mitigation serait muette sous le `RUST_LOG=info` de l'exploitation —, de
+/// sorte qu'un gel se lit au lieu de rester muet ; c'est ainsi que celui-ci a
+/// été vu.
 fn arreter(mft: &IMFTransform, quoi: &'static str) {
     let arret: IMFShutdown = match mft.cast() {
         Ok(arret) => arret,
@@ -173,12 +200,15 @@ fn arreter(mft: &IMFTransform, quoi: &'static str) {
         }
     };
 
-    tracing::debug!(mft = quoi, "IMFShutdown::Shutdown : avant");
+    // `info` et non `debug` : seule mitigation du seul appel non borné, et
+    // l'exploitation tourne en `RUST_LOG=info`. Deux lignes par destruction
+    // d'encodeur, jamais par trame. NE PAS REDESCENDRE.
+    tracing::info!(mft = quoi, "IMFShutdown::Shutdown : avant");
     if let Err(err) = unsafe { arret.Shutdown() } {
         tracing::warn!(mft = quoi, erreur = %err, "IMFShutdown::Shutdown refusé");
         return;
     }
-    tracing::debug!(mft = quoi, "IMFShutdown::Shutdown : après");
+    tracing::info!(mft = quoi, "IMFShutdown::Shutdown : après");
 
     let debut = Instant::now();
     loop {
@@ -276,6 +306,14 @@ const DELAI_BARRIERE: Duration = Duration::from_secs(2);
 pub(super) struct FileMft {
     /// `None` si l'allocation ou l'imposition à la MFT a échoué : on continue
     /// alors sans barrière plutôt que de refuser de construire l'encodeur.
+    ///
+    /// **Ce que vaut alors l'encodeur** : la configuration « arrêt seul »,
+    /// **mesurée à 1 récidive sur 10** — le défaut d'origine, atténué mais
+    /// présent. Pas silencieux pour autant : les trois chemins qui mènent ici
+    /// journalisent un `warn!` (`allouer`, puis les deux échecs de `confier`)
+    /// et le cas nominal un `info!` — un journal dit donc, encodeur par
+    /// encodeur, lequel est protégé. Le relâchement, lui, ne le redit pas :
+    /// `barriere` rend la main sans un mot si la file manque.
     id: Option<u32>,
     /// Vrai si une barrière n'a pas été franchie dans le délai. La file porte
     /// alors, au minimum, notre sentinelle non exécutée : la rendre serait
@@ -403,9 +441,14 @@ impl Drop for FileMft {
         if self.compromise.load(Ordering::SeqCst) {
             // Rendre une file dont des éléments n'ont pas été dépêchés
             // ajouterait un défaut à celui qu'on n'a pas su éviter. On la
-            // garde : une file fuitée coûte quelques octets pour la vie du
-            // processus, un déverrouillage à éléments pendants coûte un
-            // plantage.
+            // garde : un déverrouillage à éléments pendants coûte un plantage.
+            //
+            // CE QUE LA FUITE COÛTE, sans le minimiser : pas « quelques
+            // octets » mais un objet de plateforme adossé au pool de fils de
+            // RTWorkQ, enregistré pour la vie du processus. Chaque expiration
+            // en fuite une définitivement, et rien ne les compte ni ne les
+            // plafonne : arbitrage à rouvrir si ces `error!` cessaient d'être
+            // exceptionnels — aucune expiration observée à ce jour.
             tracing::error!(file = id, "file compromise : NON rendue, délibérément fuitée");
             return;
         }

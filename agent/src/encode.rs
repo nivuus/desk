@@ -493,7 +493,6 @@ impl H264Encoder {
         );
     }
 
-    /// Draine les événements disponibles sans bloquer.
     /// Occupe la file de travail imposée à la MFT encodeur pendant `duree`.
     ///
     /// **Sonde de mesure, jamais appelée en exploitation** : elle éprouve si le
@@ -505,6 +504,7 @@ impl H264Encoder {
         self.file_encodeur.bloquer(duree);
     }
 
+    /// Draine les événements disponibles sans bloquer.
     fn drain_events(&mut self) -> Result<()> {
         loop {
             // MF_EVENT_FLAG_NO_WAIT : renvoie immédiatement s'il n'y a rien.
@@ -1046,11 +1046,11 @@ impl Drop for H264Encoder {
         arret::mettre_au_repos(&self.converter, &self.transform, &self.file_encodeur);
 
         // `MFShutdown` n'est appelé nulle part, et c'est délibéré : voir
-        // `demarrer_media_foundation`.
+        // `demarrer_media_foundation`. La ligne ci-dessous est INERTE (emprunt
+        // aussitôt jeté, zéro code machine) : à retirer hors branche de mesure.
         let _ = &self.device_manager;
     }
 }
-
 
 /// Reprend possession de l'échantillon (et des événements) qu'un MFT vient de
 /// déposer dans un `MFT_OUTPUT_DATA_BUFFER`, en laissant la structure vide.

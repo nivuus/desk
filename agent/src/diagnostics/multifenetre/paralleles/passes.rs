@@ -289,7 +289,11 @@ pub(super) fn executer_passes(garde: &mut Garde<'_>, virtuelles: &[SortieDxgi]) 
     compteurs::journaliser("capture+encodage", "duplication-parallele", nombre, &releve);
     constater_survie("capture+encodage", virtuelles);
 
-    // Second suspect du défaut hérité, après les encodeurs : les duplications.
+    // Les duplications étaient le second suspect du défaut hérité, après les
+    // encodeurs. Le défaut est depuis désigné par sa pile (un élément de
+    // travail de la MFT encore en vol, `encode::arret`) et corrigé : ces deux
+    // traces ne cherchent plus un coupable, elles bornent le relâchement — un
+    // plantage ici resterait autrement muet.
     tracing::info!("libération des voies de capture : avant");
     drop(voies);
     tracing::info!("libération des voies de capture : après");

@@ -314,9 +314,13 @@ fn passe_capture(
         }
     }
 
-    // Libération EXPLICITE et tracée, une par une. Le défaut hérité tue le
+    // Libération EXPLICITE et tracée, une par une. Le défaut hérité tuait le
     // processus ici — au relâchement, pas à la soumission — et un `Vec`
-    // détruit implicitement ne dirait pas lequel de ses éléments a tué.
+    // détruit implicitement n'aurait pas dit lequel de ses éléments avait tué.
+    // ✅ Ce défaut est diagnostiqué et corrigé depuis le 31 juillet 2026
+    // (`encode::arret`, 0 récidive sur 20 exécutions du cas comparable) ; ces
+    // traces restent, parce que c'est par elles qu'on l'a vu et que rien ne
+    // prouve son absence.
     // Ces traces sont rares par construction (une par encodeur, une fois par
     // passe) : elles ne violent pas la règle « aucune trace par trame ».
     if !encodeurs.is_empty() {

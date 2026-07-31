@@ -3,8 +3,14 @@
 //! **C'est l'arrangement que la voie recommandée du chantier D propose
 //! réellement**, et que rien n'avait exercé : le banc de la sonde et la mesure
 //! ③ ont tous deux posé N fenêtres sur UNE sortie. DXGI n'autorisant qu'une
-//! duplication par sortie, N duplications de front est une question ouverte,
+//! duplication par sortie, N duplications de front était une question ouverte,
 //! pas un détail d'implémentation.
+//!
+//! ✅ **Elle ne l'est plus, et c'est ce module qui l'a fermée** (31 juillet
+//! 2026) : la voie est **reçue** — 90,1 i/s par fenêtre en capture+encodage
+//! jusqu'à N=8, zéro verdict faux, huit duplications ouvertes de front
+//! (`docs/superpowers/plans/2026-07-31-duplications-paralleles-resultats.md`).
+//! **Une exécution par rang, donc aucun taux**, et rien au-delà de 8 sorties.
 //!
 //! Second écart avec tout ce qui précède : chaque sortie fait 1280×720, donc
 //! **l'aire totale croît avec N**. Les cadences de la sonde étaient prises à
@@ -24,8 +30,9 @@
 //! Sorties` les détruit à la sortie de portée, y compris pendant le déroulement
 //! d'une panique — mais **pas sur un plantage du processus** : ces API
 //! échouent en `0xc0000005`, et la passe d'encodage de la voie `duplication`
-//! avait précisément ce défaut jusqu'au 30 juillet 2026
-//! (`capture_virtuelle.rs`, section « Piège »). Un plantage laisserait donc
+//! avait précisément ce défaut jusqu'à sa correction le 31 juillet 2026, par
+//! ce chantier même (`capture_virtuelle.rs`, section « Le piège que cette
+//! sonde a révélé » ; correctif dans `encode::arret`). Un plantage laisserait
 //! **8 des 10 sorties** derrière lui, et l'exécution suivante échouerait à en
 //! créer 8 sans que la cause soit lisible.
 //!
@@ -82,8 +89,10 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
         let apres = relever_topologie("après création")?;
         let virtuelles = designer_sorties_neuves(&apres, &connues, nombre)?;
         // Construite juste après `attendre_en_pinguant`, donc juste après le
-        // dernier ping connu : la couture entre les deux est COMPTÉE dans
-        // l'intervalle maximal, et non offerte.
+        // dernier ping connu. La couture entre les deux n'est PAS comptée dans
+        // l'intervalle maximal — `Garde::nouvelle` pose son origine à sa propre
+        // construction —, elle est rendue négligeable par l'adjacence des deux
+        // appels : 66 µs au relevé. Voir `compteurs::Garde::nouvelle`.
         let mut garde = compteurs::Garde::nouvelle(&pilote);
         garde.battre()?;
         let issue = passes::executer_passes(&mut garde, &virtuelles);

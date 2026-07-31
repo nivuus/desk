@@ -89,11 +89,14 @@ pub(super) fn plafond(mode: &str) -> Result<()> {
 
     let issue = chercher(mode, partage.as_ref(), &mut peripheriques, &mut encodeurs);
 
-    // La passe d'encodage du banc tue le processus À LA SORTIE de sa boucle,
-    // donc à la DESTRUCTION des encodeurs, pas à leur alimentation. Ici rien
-    // n'est encodé, mais la destruction a bien lieu : ces deux traces
-    // encadrent le relâchement pour qu'un plantage à cet endroit se lise
-    // comme tel, et ne se confonde jamais avec un plafond — « le processus
+    // La passe d'encodage du banc tuait le processus À LA SORTIE de sa boucle,
+    // donc à la DESTRUCTION des encodeurs, pas à leur alimentation. ✅ Défaut
+    // diagnostiqué et corrigé le 31 juillet 2026 (`encode::arret` : la MFT
+    // NVIDIA gardait un élément de travail en vol au relâchement) — 0 récidive
+    // sur 20 exécutions du cas comparable, ce qui n'est pas une preuve
+    // d'absence. Ici rien n'est encodé, mais la destruction a bien lieu : ces
+    // deux traces encadrent le relâchement pour qu'un plantage à cet endroit se
+    // lise comme tel, et ne se confonde jamais avec un plafond — « le processus
     // meurt » et « la création est refusée » sont deux modes d'échec
     // distincts.
     tracing::info!(
