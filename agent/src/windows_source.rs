@@ -2,7 +2,7 @@
 
 #![cfg(windows)]
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use windows::Win32::Foundation::HWND;
 
 use crate::capture::DesktopCapture;
@@ -12,6 +12,10 @@ use crate::h264::{AccessUnit, CLOCK_RATE_HZ};
 use crate::rebuild::{rebuild_or_recover, RebuildOutcome};
 use crate::source::VideoSource;
 use crate::window;
+// Le calcul de région d'une sortie DXGI entière est pur et vit hors de ce
+// fichier (donc hors `#[cfg(windows)]`) pour être testable sur l'hôte — voir
+// sa déclaration `#[path]` dans `main.rs`.
+use crate::windows_source_sortie as sortie;
 
 pub struct WindowsSource {
     hwnd: HWND,
@@ -111,7 +115,75 @@ impl WindowsSource {
             H264Encoder::new(capture.device(), (width, height), (width, height), fps, bitrate)?;
         encoder.request_keyframe()?;
 
-        Ok(Self {
+        Ok(Self::depuis_pieces(
+            hwnd,
+            capture,
+            encoder,
+            region,
+            width,
+            height,
+            fps,
+            bitrate,
+            clock_origin,
+        ))
+    }
+
+    /// Construit une source capturant une sortie DXGI **entière**.
+    ///
+    /// Mode du sous-bloc D1 : la fenêtre a sa propre sortie virtuelle, il n'y
+    /// a donc plus rien à recadrer ni aucune fenêtre à suivre. `hwnd` reste
+    /// renseigné — l'injection d'entrée et le contrôle de vie en ont besoin —
+    /// mais il ne sert plus au calcul de la région.
+    pub fn sur_sortie(
+        hwnd: HWND,
+        index_adaptateur: u32,
+        index_sortie: u32,
+        fps: u32,
+        bitrate: u32,
+        clock_origin: std::time::Instant,
+    ) -> Result<Self> {
+        let capture = DesktopCapture::sur_sortie(index_adaptateur, index_sortie)?;
+        let (dw, dh) = capture.desktop_size();
+        let region = sortie::region_de_sortie(dw, dh).with_context(|| {
+            format!("sortie {index_adaptateur}:{index_sortie} de dimensions inexploitables ({dw}x{dh})")
+        })?;
+        let (width, height) = (region.width, region.height);
+
+        let mut encoder =
+            H264Encoder::new(capture.device(), (width, height), (width, height), fps, bitrate)?;
+        encoder.request_keyframe()?;
+
+        Ok(Self::depuis_pieces(
+            hwnd,
+            capture,
+            encoder,
+            region,
+            width,
+            height,
+            fps,
+            bitrate,
+            clock_origin,
+        ))
+    }
+
+    /// Assemblage final, partagé par les deux constructeurs.
+    ///
+    /// Extrait pour que `new` (capture du bureau + recadrage de la fenêtre) et
+    /// `sur_sortie` (capture d'une sortie entière) ne divergent pas sur
+    /// l'initialisation des champs — ils ne diffèrent que par la façon
+    /// d'obtenir la capture, l'encodeur et la région.
+    fn depuis_pieces(
+        hwnd: HWND,
+        capture: DesktopCapture,
+        encoder: H264Encoder,
+        region: Rect,
+        width: u32,
+        height: u32,
+        fps: u32,
+        bitrate: u32,
+        clock_origin: std::time::Instant,
+    ) -> Self {
+        Self {
             hwnd,
             capture: Some(capture),
             region,
@@ -125,7 +197,7 @@ impl WindowsSource {
             fatal: false,
             encoder_warmed_up: false,
             ready: std::collections::VecDeque::new(),
-        })
+        }
     }
 
     pub fn hwnd(&self) -> HWND {

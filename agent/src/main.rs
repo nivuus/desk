@@ -30,6 +30,11 @@ mod superviseur;
 mod source;
 mod transport;
 mod turn;
+// Le calcul de région est pur et doit être testable sur l'hôte : il est donc
+// déclaré indépendamment du reste de `windows_source`, qui ne compile que sur
+// Windows.
+#[path = "windows_source/sortie.rs"]
+mod windows_source_sortie;
 
 #[cfg(windows)]
 mod capture;
