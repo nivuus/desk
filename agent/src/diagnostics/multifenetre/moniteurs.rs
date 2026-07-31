@@ -26,21 +26,13 @@
 //! `IOCTL_ADD_VIRTUAL_DISPLAY` et ses 56 octets d'entrée. Sans cela, un
 //! contrat faux et une mesure ratée seraient indiscernables.
 //!
-//! **Le watchdog n'est pas armé ici.** Le pilote expose `IOCTL_DRIVER_PING` et
-//! `IOCTL_GET_WATCHDOG` : un client qui cesse de pinguer voit ses sorties
-//! retirées. Ce module ne pingue pas — il n'en a pas besoin, ne créant rien de
-//! durable — mais la sonde de `contrat.rs` relève le délai réel, pour que la
-//! tâche qui tiendra N sorties vivantes sache à quelle cadence pinguer.
-
-// La création et la destruction de sorties n'ont PAS ENCORE de consommateur :
-// la sonde de `contrat.rs` n'appelle délibérément que les deux IOCTL sans effet
-// de bord, et c'est la tâche suivante (montée en N) qui exercera
-// `PiloteAffichageVirtuel`. Sans cet `allow`, le cœur de ce module — les codes
-// IOCTL d'ajout et de retrait, la table d'appariement, le gabarit de GUID —
-// ressort en avertissements « never used » qui noieraient les vrais.
-// **À RETIRER dès que la montée en N appelle `creer`/`detruire`** : à partir de
-// là, un « never used » dans ce module redevient un signal.
-#![allow(dead_code)]
+//! **Le chien de garde est ici COMMANDABLE, pas armé.** Le pilote expose
+//! `IOCTL_DRIVER_PING` et `IOCTL_GET_WATCHDOG` : un client qui cesse de
+//! pinguer voit ses sorties retirées. Ce module rend les deux disponibles
+//! (`pinguer`, `veille`) mais ne lance aucune cadence de lui-même — c'est
+//! l'appelant qui tient des sorties vivantes, donc c'est à lui de battre. Voir
+//! `montee.rs`, qui pingue et qui a mesuré ce que ce chien de garde fait
+//! réellement.
 
 use std::sync::Mutex;
 
@@ -55,7 +47,8 @@ use windows::Win32::System::IO::DeviceIoControl;
 use super::peripherique::chemin_du_peripherique;
 use super::sudovda::{
     en_champ_14, DemandeAjout, DemandeRetrait, SortieAjoutee, Veille, VersionProtocole,
-    IOCTL_AJOUTER_SORTIE, IOCTL_LIRE_VEILLE, IOCTL_LIRE_VERSION_PROTOCOLE, IOCTL_RETIRER_SORTIE,
+    IOCTL_AJOUTER_SORTIE, IOCTL_LIRE_VEILLE, IOCTL_LIRE_VERSION_PROTOCOLE, IOCTL_PINGUER,
+    IOCTL_RETIRER_SORTIE,
 };
 use crate::moniteurs_virtuels::{IdSortie, PiloteAffichageVirtuel};
 
@@ -248,7 +241,27 @@ impl PiloteParIoctl {
         Ok((version, rendus))
     }
 
-    /// Délai et décompte du watchdog du pilote. Sans effet de bord.
+    /// Réarme le chien de garde du pilote pour CE handle.
+    ///
+    /// Ni entrée ni sortie : c'est le seul des six IOCTL dont les deux tampons
+    /// soient vides, donc le seul dont aucune disposition supposée ne puisse
+    /// être fausse.
+    ///
+    /// **Pourquoi ce battement n'est pas lancé ici, dans un fil interne.** Le
+    /// pilote associe vraisemblablement son chien de garde au *file object*
+    /// ouvert par `CreateFile` — c'est ce que fait le client amont, qui pingue
+    /// sur le handle même dont il s'est servi pour ajouter ses sorties. Pinguer
+    /// depuis un second handle ne sauverait donc rien. Un fil interne devrait
+    /// alors partager CE handle, ce qui obligerait à le rendre `Send` ; or les
+    /// deux seuls appelants de ce module sont séquentiels par construction et
+    /// n'ont besoin que de ponctuer leurs attentes. On expose le battement,
+    /// l'appelant tient la cadence.
+    pub(super) fn pinguer(&self) -> Result<()> {
+        self.commander(IOCTL_PINGUER, None, None, "ping du chien de garde du pilote")?;
+        Ok(())
+    }
+
+    /// Délai et décompte du chien de garde du pilote. Sans effet de bord.
     pub(super) fn veille(&self) -> Result<(Veille, u32)> {
         let mut veille = Veille::default();
         let rendus = self.commander(

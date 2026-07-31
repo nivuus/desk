@@ -26,7 +26,7 @@ pub(super) fn plafond() -> Result<()> {
             Err(erreur) => {
                 tracing::info!(
                     plafond = rang - 1,
-                    causes = %causes(erreur),
+                    causes = %super::causes(erreur),
                     "plafond NVENC atteint — création du suivant refusée"
                 );
                 return Ok(());
@@ -38,18 +38,4 @@ pub(super) fn plafond() -> Result<()> {
         "aucun plafond atteint sous {PLAFOND_RECHERCHE} encodeurs"
     );
     Ok(())
-}
-
-/// Chaîne complète des causes d'une erreur, du contexte le plus englobant au
-/// HRESULT sous-jacent — sans cela, une erreur contextualisée par
-/// `H264Encoder::new` (ex. `.context("partage du périphérique D3D avec
-/// l'encodeur")`) n'afficherait que ce contexte et perdrait le code d'erreur
-/// natif. Voir le défaut équivalent corrigé à la tâche 6.
-fn causes(erreur: impl Into<anyhow::Error>) -> String {
-    erreur
-        .into()
-        .chain()
-        .map(|cause| cause.to_string())
-        .collect::<Vec<_>>()
-        .join(" : ")
 }

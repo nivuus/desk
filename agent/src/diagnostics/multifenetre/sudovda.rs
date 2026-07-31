@@ -17,11 +17,6 @@
 //! `Veille` (8 o.), ainsi que les quatre octets de version eux-mêmes. L'ORDRE
 //! des champs, lui, n'est éprouvé nulle part.
 
-// Même raison que dans `moniteurs.rs` : cette ABI décrit toute la surface du
-// pilote, dont la montée en N ne consomme pas encore tout.
-// À RETIRER en même temps que celui de `moniteurs.rs`.
-#![allow(dead_code)]
-
 use windows::core::GUID;
 
 /// Interface de périphérique de SudoVDA — **confirmée par présence d'octets**
@@ -35,10 +30,10 @@ pub(super) const INTERFACE_PILOTE: GUID = GUID::from_u128(0xe5bc_c234_1e0c_418a_
 // marqués « confirmé » ont été retrouvés en octets dans la DLL installée ; les
 // autres proviennent de la même macro appliquée au même en-tête amont.
 //
-// Les deux codes que ce module n'emploie pas (`IOCTL_SET_RENDER_ADAPTER`
-// `0x0022_2008`, `IOCTL_DRIVER_PING` `0x0022_2220`) ne sont volontairement pas
-// déclarés : une constante inutilisée est un avertissement de compilation, et
-// une constante non employée n'est de toute façon éprouvée par rien.
+// Le seul code que ce module n'emploie pas (`IOCTL_SET_RENDER_ADAPTER`
+// `0x0022_2008`) n'est volontairement pas déclaré : une constante inutilisée
+// est un avertissement de compilation, et une constante non employée n'est de
+// toute façon éprouvée par rien.
 
 /// Confirmé par octets (offset 16316 de la DLL locale).
 pub(super) const IOCTL_AJOUTER_SORTIE: u32 = 0x0022_2000;
@@ -49,6 +44,11 @@ pub(super) const IOCTL_LIRE_VEILLE: u32 = 0x0022_200C;
 /// Non confirmé par octets — c'est le tampon le plus simple des six, donc le
 /// premier que `valider_contrat()` éprouve.
 pub(super) const IOCTL_LIRE_VERSION_PROTOCOLE: u32 = 0x0022_23FC;
+/// Non confirmé par octets. Ni entrée ni sortie : le seul des six dont les deux
+/// tampons soient vides, donc le seul dont la disposition ne puisse pas être
+/// fausse. Il réarme le chien de garde du pilote, qui retire les sorties d'un
+/// client devenu muet — voir `Veille` ci-dessous et `montee.rs`.
+pub(super) const IOCTL_PINGUER: u32 = 0x0022_2220;
 
 /// Tampon d'entrée de `IOCTL_AJOUTER_SORTIE` (`VIRTUAL_DISPLAY_ADD_PARAMS`).
 ///
@@ -60,6 +60,9 @@ pub(super) const IOCTL_LIRE_VERSION_PROTOCOLE: u32 = 0x0022_23FC;
 /// le seul lecteur est le pilote, à l'autre bout du `DeviceIoControl`. Les
 /// retirer pour faire taire le lint reviendrait à changer la disposition du
 /// tampon, c'est-à-dire à casser exactement ce que cette structure décrit.
+/// D'où l'`allow` ci-dessous, qui est PERMANENT et non un provisoire daté :
+/// aucun consommateur futur ne relira jamais ces champs.
+#[allow(dead_code)]
 #[repr(C)]
 pub(super) struct DemandeAjout {
     pub(super) largeur: u32,
@@ -90,7 +93,8 @@ pub(super) struct SortieAjoutee {
 /// client a choisi à l'ajout, pas par l'identifiant qu'il a rendu.
 ///
 /// Ses champs ne sont pas davantage relus depuis Rust — même raison que
-/// `DemandeAjout`.
+/// `DemandeAjout`, `allow` permanent compris.
+#[allow(dead_code)]
 #[repr(C)]
 pub(super) struct DemandeRetrait {
     pub(super) guid_moniteur: GUID,
@@ -101,8 +105,16 @@ pub(super) struct DemandeRetrait {
 ///
 /// L'en-tête amont ne documente AUCUNE unité pour ces deux `UINT` — ni le nom
 /// des champs (`Timeout`, `Countdown`) ni un commentaire ne la donnent. On ne
-/// la suppose donc pas ici : la sonde relève les nombres bruts, et c'est à la
-/// tâche qui devra pinguer d'établir la cadence par la mesure.
+/// la suppose donc pas ici : la sonde relève les nombres bruts.
+///
+/// **Ce que l'épreuve de `montee.rs` a établi, et ce qu'elle n'a pas établi.**
+/// Relevé une fois par seconde pendant 180 s, `decompte` ne décroît PAS d'une
+/// unité par seconde : il oscille entre 2 et 3 par paliers de plusieurs
+/// dizaines de secondes, et n'approche jamais de zéro. L'unité de `delai`
+/// reste donc inconnue — la seule chose exclue est « secondes restantes avant
+/// retrait ». L'épreuve n'isole pas non plus le compteur : Apollo tourne sur
+/// cette VM et pingue le même pilote, donc ces paliers peuvent être ses pings
+/// à lui. Voir `montee.rs`.
 #[repr(C)]
 #[derive(Default)]
 pub(super) struct Veille {

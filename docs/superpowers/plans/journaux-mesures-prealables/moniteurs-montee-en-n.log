@@ -1,0 +1,137 @@
+2026-07-31T09:45:38.602437Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-07-31T09:45:38.604527Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:45:38.604558Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:45:38.604568Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant toute création" nombre=1 attachees=1
+2026-07-31T09:45:38.604576Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant toute création" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T09:45:38.605557Z  INFO agent::diagnostics::multifenetre::montee: chien de garde armé pour toute la durée de la montée delai=3 decompte=3 cadence_ping_s=1
+2026-07-31T09:45:38.605674Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle créée id=260 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430001 largeur=1280 hauteur=720 hertz=60
+2026-07-31T09:45:41.607275Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:45:41.607306Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:45:41.607314Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après création 1" nombre=2 attachees=2
+2026-07-31T09:45:41.607318Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 1" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T09:45:41.607323Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 1" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:41.607326Z  INFO agent::diagnostics::multifenetre::montee: sortie virtuelle créée rang=1 id=260 sorties_dxgi=2 attachees=2
+2026-07-31T09:45:41.607724Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle créée id=261 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430002 largeur=1280 hauteur=720 hertz=60
+2026-07-31T09:45:44.609253Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:45:44.609284Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:45:44.609293Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après création 2" nombre=3 attachees=3
+2026-07-31T09:45:44.609296Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 2" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T09:45:44.609301Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 2" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:44.609304Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 2" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:44.609307Z  INFO agent::diagnostics::multifenetre::montee: sortie virtuelle créée rang=2 id=261 sorties_dxgi=3 attachees=3
+2026-07-31T09:45:44.609714Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle créée id=262 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430003 largeur=1280 hauteur=720 hertz=60
+2026-07-31T09:45:47.611256Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:45:47.611287Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:45:47.611295Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après création 3" nombre=4 attachees=4
+2026-07-31T09:45:47.611299Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 3" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T09:45:47.611304Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 3" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:47.611307Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 3" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:47.611309Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 3" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:47.611312Z  INFO agent::diagnostics::multifenetre::montee: sortie virtuelle créée rang=3 id=262 sorties_dxgi=4 attachees=4
+2026-07-31T09:45:47.611678Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle créée id=263 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-07-31T09:45:50.612792Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:45:50.612823Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:45:50.612831Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après création 4" nombre=5 attachees=5
+2026-07-31T09:45:50.612834Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 4" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T09:45:50.612839Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 4" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:50.612842Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 4" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:50.612845Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 4" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:50.612847Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 4" nom=\\.\DISPLAY8 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 attachee=true x=6240 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:50.612850Z  INFO agent::diagnostics::multifenetre::montee: sortie virtuelle créée rang=4 id=263 sorties_dxgi=5 attachees=5
+2026-07-31T09:45:50.613233Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle créée id=264 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430005 largeur=1280 hauteur=720 hertz=60
+2026-07-31T09:45:53.615492Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:45:53.615523Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:45:53.615532Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après création 5" nombre=6 attachees=6
+2026-07-31T09:45:53.615536Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 5" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T09:45:53.615541Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 5" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:53.615543Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 5" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:53.615546Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 5" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:53.615549Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 5" nom=\\.\DISPLAY8 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 attachee=true x=6240 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:53.615552Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 5" nom=\\.\DISPLAY9 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=5 attachee=true x=7520 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:53.615555Z  INFO agent::diagnostics::multifenetre::montee: sortie virtuelle créée rang=5 id=264 sorties_dxgi=6 attachees=6
+2026-07-31T09:45:53.615772Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle créée id=265 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430006 largeur=1280 hauteur=720 hertz=60
+2026-07-31T09:45:56.617174Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:45:56.617206Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:45:56.617215Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après création 6" nombre=7 attachees=7
+2026-07-31T09:45:56.617218Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 6" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T09:45:56.617223Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 6" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:56.617226Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 6" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:56.617228Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 6" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:56.617231Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 6" nom=\\.\DISPLAY8 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 attachee=true x=6240 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:56.617234Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 6" nom=\\.\DISPLAY9 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=5 attachee=true x=7520 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:56.617236Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 6" nom=\\.\DISPLAY10 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=6 attachee=true x=8800 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:56.617241Z  INFO agent::diagnostics::multifenetre::montee: sortie virtuelle créée rang=6 id=265 sorties_dxgi=7 attachees=7
+2026-07-31T09:45:56.617673Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle créée id=256 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430007 largeur=1280 hauteur=720 hertz=60
+2026-07-31T09:45:59.619255Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:45:59.619287Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:45:59.619295Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après création 7" nombre=8 attachees=8
+2026-07-31T09:45:59.619299Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 7" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T09:45:59.619304Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 7" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:59.619307Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 7" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:59.619309Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 7" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:59.619312Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 7" nom=\\.\DISPLAY8 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 attachee=true x=6240 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:59.619314Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 7" nom=\\.\DISPLAY9 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=5 attachee=true x=7520 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:59.619317Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 7" nom=\\.\DISPLAY10 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=6 attachee=true x=8800 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:59.619319Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 7" nom=\\.\DISPLAY11 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=7 attachee=true x=10080 y=0 largeur=1280 hauteur=720
+2026-07-31T09:45:59.619323Z  INFO agent::diagnostics::multifenetre::montee: sortie virtuelle créée rang=7 id=256 sorties_dxgi=8 attachees=8
+2026-07-31T09:45:59.619885Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle créée id=257 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430008 largeur=1280 hauteur=720 hertz=60
+2026-07-31T09:46:02.621713Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:46:02.621751Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:46:02.621761Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après création 8" nombre=9 attachees=9
+2026-07-31T09:46:02.621765Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 8" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T09:46:02.621770Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 8" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:02.621774Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 8" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:02.621776Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 8" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:02.621779Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 8" nom=\\.\DISPLAY8 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 attachee=true x=6240 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:02.621782Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 8" nom=\\.\DISPLAY9 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=5 attachee=true x=7520 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:02.621785Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 8" nom=\\.\DISPLAY10 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=6 attachee=true x=8800 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:02.621787Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 8" nom=\\.\DISPLAY11 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=7 attachee=true x=10080 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:02.621790Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 8" nom=\\.\DISPLAY12 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=8 attachee=true x=11360 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:02.621987Z  INFO agent::diagnostics::multifenetre::montee: sortie virtuelle créée rang=8 id=257 sorties_dxgi=9 attachees=9
+2026-07-31T09:46:02.622382Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle créée id=258 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430009 largeur=1280 hauteur=720 hertz=60
+2026-07-31T09:46:05.623675Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:46:05.623707Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:46:05.623715Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après création 9" nombre=10 attachees=10
+2026-07-31T09:46:05.623719Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 9" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T09:46:05.623724Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 9" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:05.623726Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 9" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:05.623729Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 9" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:05.623731Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 9" nom=\\.\DISPLAY8 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 attachee=true x=6240 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:05.623734Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 9" nom=\\.\DISPLAY9 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=5 attachee=true x=7520 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:05.623736Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 9" nom=\\.\DISPLAY10 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=6 attachee=true x=8800 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:05.623739Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 9" nom=\\.\DISPLAY11 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=7 attachee=true x=10080 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:05.623742Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 9" nom=\\.\DISPLAY12 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=8 attachee=true x=11360 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:05.623947Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 9" nom=\\.\DISPLAY13 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=9 attachee=true x=12640 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:05.623963Z  INFO agent::diagnostics::multifenetre::montee: sortie virtuelle créée rang=9 id=258 sorties_dxgi=10 attachees=10
+2026-07-31T09:46:05.624391Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle créée id=259 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-67754143000A largeur=1280 hauteur=720 hertz=60
+2026-07-31T09:46:08.625471Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:46:08.625504Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:46:08.625513Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après création 10" nombre=11 attachees=11
+2026-07-31T09:46:08.625517Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 10" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T09:46:08.625522Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 10" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:08.625527Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 10" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:08.625530Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 10" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:08.625534Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 10" nom=\\.\DISPLAY8 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 attachee=true x=6240 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:08.625537Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 10" nom=\\.\DISPLAY9 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=5 attachee=true x=7520 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:08.625540Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 10" nom=\\.\DISPLAY10 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=6 attachee=true x=8800 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:08.625543Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 10" nom=\\.\DISPLAY11 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=7 attachee=true x=10080 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:08.625546Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 10" nom=\\.\DISPLAY12 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=8 attachee=true x=11360 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:08.625548Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 10" nom=\\.\DISPLAY13 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=9 attachee=true x=12640 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:08.625551Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après création 10" nom=\\.\DISPLAY14 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=10 attachee=true x=13920 y=0 largeur=1280 hauteur=720
+2026-07-31T09:46:08.625554Z  INFO agent::diagnostics::multifenetre::montee: sortie virtuelle créée rang=10 id=259 sorties_dxgi=11 attachees=11
+2026-07-31T09:46:08.626055Z  INFO agent::diagnostics::multifenetre::montee: plafond de sorties virtuelles atteint — le pilote refuse la suivante plafond=10 causes=création d'une sortie 1280x720@60 (IOCTL 0x00222000) : La limite de nom pour la carte réseau de l’ordinateur local a été dépassée. (0x80070044)
+2026-07-31T09:46:08.631538Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle détruite id=259
+2026-07-31T09:46:08.636605Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle détruite id=258
+2026-07-31T09:46:08.642055Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle détruite id=257
+2026-07-31T09:46:08.647380Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle détruite id=256
+2026-07-31T09:46:08.652636Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle détruite id=265
+2026-07-31T09:46:08.657871Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle détruite id=264
+2026-07-31T09:46:08.662976Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle détruite id=263
+2026-07-31T09:46:08.668190Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle détruite id=262
+2026-07-31T09:46:08.673748Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle détruite id=261
+2026-07-31T09:46:08.681297Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle détruite id=260
+2026-07-31T09:46:11.682216Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:46:11.682247Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:46:11.682256Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après destruction" nombre=1 attachees=1
+2026-07-31T09:46:11.682259Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après destruction" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T09:46:11.682265Z  INFO agent::diagnostics::multifenetre::montee: état initial restauré arret="refus du pilote" total=1 attachees=1

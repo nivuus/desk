@@ -1,0 +1,550 @@
+2026-07-31T09:41:37.332313Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-07-31T09:41:37.334336Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:37.334376Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:37.334390Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création" nombre=1 attachees=1
+2026-07-31T09:41:37.334402Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T09:41:37.335356Z  INFO agent::diagnostics::multifenetre::montee: chien de garde avant création — l'épreuve qui suit ne pingue JAMAIS delai=3 decompte=3 duree_epreuve_s=180
+2026-07-31T09:41:37.335517Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle créée id=259 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430001 largeur=1280 hauteur=720 hertz=60
+2026-07-31T09:41:38.336584Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:38.336616Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:38.336625Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=1 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:39.337602Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:39.337631Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:39.337640Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=2 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:40.338665Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:40.338695Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:40.338703Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=3 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:41.339746Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:41.339776Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:41.339784Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=4 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:42.340919Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:42.340949Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:42.340956Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=5 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:43.342026Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:43.342058Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:43.342066Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=6 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:44.342813Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:44.342845Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:44.342853Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=7 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:45.344009Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:45.344039Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:45.344047Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=8 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:46.344975Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:46.345006Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:46.345014Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=9 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:47.345588Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:47.345617Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:47.345625Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=10 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:48.346567Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:48.346596Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:48.346603Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=11 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:49.347735Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:49.347765Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:49.347772Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=12 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:50.353355Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:50.353386Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:50.353394Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=13 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:51.354457Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:51.354487Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:51.354495Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=14 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:52.355542Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:52.355574Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:52.355582Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=15 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:53.356654Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:53.356684Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:53.356693Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=16 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:54.357758Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:54.357788Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:54.357796Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=17 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:55.358941Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:55.358971Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:55.358979Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=18 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:56.359736Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:56.359766Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:56.359774Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=19 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:57.360908Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:57.360941Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:57.360950Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=20 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:58.361921Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:58.361952Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:58.361960Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=21 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:41:59.362916Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:41:59.362946Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:41:59.362954Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=22 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:42:00.363718Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:00.363748Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:00.363757Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=23 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:42:01.364776Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:01.364806Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:01.364814Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=24 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:42:02.365874Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:02.365904Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:02.365912Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=25 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:42:03.366691Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:03.366721Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:03.366729Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=26 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:42:04.367659Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:04.367690Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:04.367697Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=27 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:42:05.368649Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:05.368679Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:05.368686Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=28 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:42:06.369688Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:06.369718Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:06.369726Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=29 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:42:07.370663Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:07.370692Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:07.370699Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=30 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:42:08.371798Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:08.371829Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:08.371837Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=31 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:09.372827Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:09.372858Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:09.372865Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=32 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:10.374004Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:10.374034Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:10.374043Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=33 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:11.375050Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:11.375080Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:11.375088Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=34 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:12.376096Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:12.376126Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:12.376134Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=35 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:13.377220Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:13.377252Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:13.377261Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=36 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:14.378263Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:14.378295Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:14.378303Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=37 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:15.379144Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:15.379173Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:15.379181Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=38 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:16.380177Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:16.380207Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:16.380215Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=39 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:17.381200Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:17.381229Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:17.381237Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=40 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:18.382298Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:18.382328Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:18.382337Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=41 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:19.383246Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:19.383277Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:19.383285Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=42 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:20.384090Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:20.384120Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:20.384128Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=43 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:21.384891Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:21.384923Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:21.384930Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=44 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:22.385997Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:22.386027Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:22.386034Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=45 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:23.386763Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:23.386792Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:23.386799Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=46 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:24.387791Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:24.387820Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:24.387828Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=47 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:25.388716Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:25.388746Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:25.388754Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=48 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:26.389267Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:26.389297Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:26.389305Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=49 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:27.390106Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:27.390135Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:27.390143Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=50 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:28.391227Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:28.391256Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:28.391263Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=51 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:29.392431Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:29.392462Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:29.392470Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=52 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:30.393459Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:30.393489Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:30.393497Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=53 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:31.394220Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:31.394250Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:31.394258Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=54 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:32.395370Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:32.395400Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:32.395407Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=55 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:33.396286Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:33.396316Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:33.396323Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=56 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:34.397135Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:34.397166Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:34.397174Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=57 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:35.398065Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:35.398096Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:35.398104Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=58 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:36.399147Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:36.399178Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:36.399185Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=59 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:37.399888Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:37.399918Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:37.399926Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=60 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:38.400735Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:38.400765Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:38.400772Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=61 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:39.402034Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:39.402066Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:39.402074Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=62 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:40.403147Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:40.403178Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:40.403187Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=63 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:41.404070Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:41.404101Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:41.404109Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=64 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:42.405193Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:42.405223Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:42.405230Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=65 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:43.406036Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:43.406066Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:43.406074Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=66 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:44.407000Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:44.407029Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:44.407038Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=67 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:45.408080Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:45.408110Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:45.408118Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=68 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:46.409108Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:46.409139Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:46.409147Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=69 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:47.410065Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:47.410096Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:47.410105Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=70 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:48.411125Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:48.411157Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:48.411166Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=71 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:49.412006Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:49.412036Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:49.412044Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=72 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:50.412769Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:50.412799Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:50.412807Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=73 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:51.413578Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:51.413607Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:51.413614Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=74 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:52.414624Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:52.414653Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:52.414660Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=75 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:53.415576Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:53.415606Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:53.415613Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=76 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:54.416788Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:54.416819Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:54.416827Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=77 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:55.417604Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:55.417635Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:55.417643Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=78 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:56.418499Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:56.418531Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:56.418539Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=79 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:57.419514Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:57.419545Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:57.419552Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=80 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:58.420548Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:58.420580Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:58.420588Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=81 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:42:59.421289Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:42:59.421320Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:42:59.421328Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=82 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:00.421951Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:00.421981Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:00.421988Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=83 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:01.423132Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:01.423161Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:01.423169Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=84 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:02.424234Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:02.424263Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:02.424270Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=85 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:03.425265Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:03.425295Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:03.425303Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=86 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:04.426398Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:04.426429Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:04.426436Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=87 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:05.427424Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:05.427456Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:05.427464Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=88 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:06.428505Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:06.428535Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:06.428543Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=89 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:07.429506Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:07.429537Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:07.429544Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=90 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:08.430665Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:08.430696Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:08.430704Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=91 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:09.431807Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:09.431837Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:09.431845Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=92 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:10.432729Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:10.432759Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:10.432767Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=93 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:11.433750Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:11.433780Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:11.433788Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=94 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:12.434601Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:12.434630Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:12.434638Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=95 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:13.435708Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:13.435738Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:13.435745Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=96 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:14.436798Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:14.436828Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:14.436835Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=97 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:15.437843Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:15.437874Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:15.437883Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=98 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:16.438651Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:16.438682Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:16.438690Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=99 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:17.439868Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:17.439898Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:17.439906Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=100 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:18.440985Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:18.441015Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:18.441022Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=101 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:19.441849Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:19.441882Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:19.441890Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=102 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:20.442742Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:20.442772Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:20.442780Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=103 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:21.443596Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:21.443625Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:21.443633Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=104 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:22.444788Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:22.444817Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:22.444826Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=105 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:43:23.445562Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:23.445592Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:23.445600Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=106 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:24.446473Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:24.446503Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:24.446511Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=107 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:25.447351Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:25.447381Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:25.447389Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=108 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:26.448415Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:26.448444Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:26.448452Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=109 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:27.449480Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:27.449511Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:27.449518Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=110 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:28.450320Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:28.450350Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:28.450358Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=111 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:29.451327Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:29.451357Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:29.451364Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=112 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:30.452307Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:30.452337Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:30.452346Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=113 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:31.453136Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:31.453169Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:31.453177Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=114 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:32.453860Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:32.453890Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:32.453898Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=115 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:33.454660Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:33.454690Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:33.454698Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=116 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:34.455603Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:34.455633Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:34.455642Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=117 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:35.456822Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:35.456851Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:35.456859Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=118 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:36.458060Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:36.458089Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:36.458097Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=119 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:37.459137Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:37.459169Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:37.459177Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=120 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:38.460323Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:38.460354Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:38.460362Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=121 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:39.461363Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:39.461394Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:39.461403Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=122 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:40.462467Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:40.462497Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:40.462505Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=123 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:41.463515Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:41.463547Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:41.463555Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=124 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:42.464522Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:42.464553Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:42.464563Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=125 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:43.465382Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:43.465413Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:43.465422Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=126 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:44.466543Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:44.466575Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:44.466583Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=127 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:45.467655Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:45.467685Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:45.467694Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=128 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:46.468717Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:46.468748Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:46.468757Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=129 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:47.469795Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:47.469827Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:47.469835Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=130 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:48.470933Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:48.470964Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:48.470972Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=131 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:49.471826Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:49.471857Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:49.471865Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=132 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:50.473077Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:50.473109Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:50.473117Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=133 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:51.474262Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:51.474293Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:51.474301Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=134 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:52.475148Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:52.475179Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:52.475187Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=135 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:53.476401Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:53.476431Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:53.476439Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=136 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:54.477209Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:54.477238Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:54.477246Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=137 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:55.478069Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:55.478099Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:55.478107Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=138 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:56.478865Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:56.478895Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:56.478904Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=139 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:57.479895Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:57.479925Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:57.479934Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=140 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:58.480741Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:58.480772Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:58.480781Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=141 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:43:59.481736Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:43:59.481765Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:43:59.481774Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=142 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:00.482598Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:00.482629Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:00.482638Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=143 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:01.483573Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:01.483604Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:01.483612Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=144 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:02.484575Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:02.484606Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:02.484614Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=145 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:03.485477Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:03.485508Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:03.485517Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=146 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:04.486026Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:04.486055Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:04.486063Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=147 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:05.486869Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:05.486900Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:05.486908Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=148 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:06.488161Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:06.488191Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:06.488200Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=149 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:07.489136Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:07.489166Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:07.489174Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=150 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:08.490399Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:08.490430Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:08.490438Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=151 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:09.491497Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:09.491527Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:09.491535Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=152 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:10.492328Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:10.492357Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:10.492365Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=153 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:11.493405Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:11.493435Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:11.493443Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=154 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:12.494553Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:12.494584Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:12.494593Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=155 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:13.495779Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:13.495810Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:13.495819Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=156 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:14.496528Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:14.496559Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:14.496568Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=157 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:15.497246Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:15.497276Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:15.497285Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=158 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:16.498024Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:16.498053Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:16.498061Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=159 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:17.498849Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:17.498879Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:17.498888Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=160 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:18.499716Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:18.499745Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:18.499754Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=161 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:19.500677Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:19.500709Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:19.500717Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=162 id=259 delai=3 decompte=2 attachees=2
+2026-07-31T09:44:20.501871Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:20.501900Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:20.501908Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=163 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:44:21.502851Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:21.502883Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:21.502891Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=164 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:44:22.503708Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:22.503739Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:22.503747Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=165 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:44:23.504827Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:23.504857Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:23.504866Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=166 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:44:24.505990Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:24.506020Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:24.506028Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=167 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:44:25.506770Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:25.506800Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:25.506809Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=168 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:44:26.508073Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:26.508104Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:26.508113Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=169 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:44:27.509020Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:27.509050Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:27.509058Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=170 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:44:28.510138Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:28.510168Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:28.510176Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=171 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:44:29.511105Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:29.511134Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:29.511143Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=172 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:44:30.512050Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:30.512081Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:30.512089Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=173 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:44:31.513186Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:31.513216Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:31.513224Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=174 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:44:32.514053Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:32.514083Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:32.514091Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=175 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:44:33.514782Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:33.514812Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:33.514820Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=176 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:44:34.516047Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:34.516076Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:34.516085Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=177 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:44:35.516986Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:35.517017Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:35.517026Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=178 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:44:36.518065Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:36.518096Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:36.518105Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=179 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:44:37.519087Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T09:44:37.519118Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T09:44:37.519126Z  INFO agent::diagnostics::multifenetre::montee: épreuve sans ping seconde=180 id=259 delai=3 decompte=3 attachees=2
+2026-07-31T09:44:37.519131Z  INFO agent::diagnostics::multifenetre::montee: sans un seul ping, la sortie a survécu à toute l'épreuve — le délai annoncé n'est donc pas un nombre de secondes au bout desquelles une sortie est retirée duree_epreuve_s=180 delai_annonce=3 decomptes=[2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+2026-07-31T09:44:37.519489Z  INFO agent::diagnostics::multifenetre::montee: IOCTL_DRIVER_PING accepté par le pilote — le code non confirmé par octets est le bon decompte_apres_ping=Some(3)
+2026-07-31T09:44:37.528793Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle détruite id=259

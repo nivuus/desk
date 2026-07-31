@@ -14,6 +14,7 @@ pub(super) mod contrat;
 pub(super) mod disponibilite;
 pub(super) mod mires;
 pub(super) mod moniteurs;
+pub(super) mod montee;
 pub(super) mod nvenc;
 pub(super) mod peripherique;
 pub(super) mod replis;
@@ -62,10 +63,40 @@ pub(super) fn aiguiller() -> Result<bool> {
         contrat::valider_contrat()?;
         return Ok(true);
     }
+    // Mesure ① — l'épreuve du chien de garde, préalable à la montée en N.
+    // Elle passe AVANT `MULTIFENETRE_VDD` dans cet aiguillage parce qu'elle en
+    // est la condition de validité : le pilote annonce `delai = 3` d'unité non
+    // documentée, et si cette unité est la seconde, une montée en N sans ping
+    // mesurerait le plafond du chien de garde et non celui du pilote.
+    if std::env::var("MULTIFENETRE_VDD_VEILLE").is_ok() {
+        montee::eprouver_chien_de_garde()?;
+        return Ok(true);
+    }
+    // Mesure ① de la spec : combien de sorties virtuelles simultanées ce
+    // pilote accepte. Sans ce chiffre, la voie « un moniteur virtuel par
+    // fenêtre » n'est pas spécifiable.
+    if std::env::var("MULTIFENETRE_VDD").is_ok() {
+        montee::monter_en_n()?;
+        return Ok(true);
+    }
     // Task 10 : le plafond d'encodeurs H.264 matériels simultanés.
     if std::env::var("MULTIFENETRE_NVENC").is_ok() {
         nvenc::plafond()?;
         return Ok(true);
     }
     Ok(false)
+}
+
+/// Chaîne complète des causes d'une erreur, du contexte le plus englobant au
+/// HRESULT sous-jacent — sans cela, une erreur contextualisée par
+/// `H264Encoder::new` (ex. `.context("partage du périphérique D3D avec
+/// l'encodeur")`) n'afficherait que ce contexte et perdrait le code d'erreur
+/// natif. Voir le défaut équivalent corrigé à la tâche 6 de la sonde.
+pub(super) fn causes(erreur: impl Into<anyhow::Error>) -> String {
+    erreur
+        .into()
+        .chain()
+        .map(|cause| cause.to_string())
+        .collect::<Vec<_>>()
+        .join(" : ")
 }
