@@ -55,6 +55,7 @@ ${MULTIFENETRE_REPLIS:+\$env:MULTIFENETRE_REPLIS = '$MULTIFENETRE_REPLIS'}
 ${MULTIFENETRE_BANC:+\$env:MULTIFENETRE_BANC = '$MULTIFENETRE_BANC'}
 ${MULTIFENETRE_N:+\$env:MULTIFENETRE_N = '$MULTIFENETRE_N'}
 ${MULTIFENETRE_NVENC:+\$env:MULTIFENETRE_NVENC = '$MULTIFENETRE_NVENC'}
+${MULTIFENETRE_CONTRAT:+\$env:MULTIFENETRE_CONTRAT = '$MULTIFENETRE_CONTRAT'}
 # Le StreamWriter ci-dessous règle l'ÉCRITURE du fichier en UTF-8, mais pas la
 # LECTURE de la sortie de l'enfant : PowerShell décode le flux d'agent.exe
 # selon \$OutputEncoding / [Console]::OutputEncoding, qui vaut par défaut la
