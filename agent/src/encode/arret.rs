@@ -129,7 +129,8 @@ const DELAI_ARRET_MFT: Duration = Duration::from_secs(2);
 /// 2. **Mais il est nécessaire.** Retiré du chemin en laissant la barrière
 ///    seule, la faute est revenue **2 fois sur 5 exécutions**, pile et décalage
 ///    identiques, alors même que la barrière avait été franchie
-///    (`2ter-r1-barriere-seule-*` du rapport). Barrière et arrêt ne sont pas
+///    (`2ter-recidive-barriere-seule-agent.log` et `…-pile.log`). Barrière et
+///    arrêt ne sont pas
 ///    redondants : l'arrêt fait cesser la MFT, la barrière attend ce qu'il
 ///    laisse derrière lui. C'est pourquoi la seconde barrière suit cet appel.
 ///
@@ -137,15 +138,29 @@ const DELAI_ARRET_MFT: Duration = Duration::from_secs(2);
 ///
 /// `Shutdown()` n'est borné par RIEN — le garde-fou ci-dessous ne borne que la
 /// boucle de confirmation qui suit. Un appel non borné dans un `Drop` est un
-/// gel potentiel à la fermeture d'une fenêtre, ce qui serait pire que le
-/// plantage qu'on corrige. Il reste malgré tout, faute d'alternative sûre :
-/// le déporter sur un autre fil exigerait de faire traverser une interface COM
-/// à une frontière d'appartement (le fil principal est dans un STA — cadres
+/// gel à la fermeture d'une fenêtre, ce qui serait pire que le plantage qu'on
+/// corrige.
+///
+/// **Et ce gel a été OBSERVÉ, dans cet appel précis.** À N = 4, une exécution
+/// s'est arrêtée sur `IMFShutdown::Shutdown : avant mft="encodeur"` (id=2,
+/// 18:00:27,347197) sans jamais écrire son `après`, processus encore vivant
+/// treize minutes plus tard :
+/// `docs/superpowers/plans/journaux-duplications-paralleles/2ter-gel-n4-shutdown.log`.
+/// Ce n'est donc pas un risque théorique.
+///
+/// **La cause n'est PAS attribuée.** Cette exécution portait aussi une file
+/// imposée au convertisseur, retirée depuis (voir `mettre_au_repos`) ; le
+/// départage entre les deux n'a pas été fait, et six exécutions ne l'auraient
+/// pas permis. Que le gel ait disparu avec cette file ne prouve pas qu'il
+/// venait d'elle.
+///
+/// L'appel reste malgré tout, faute d'alternative sûre : le déporter sur un
+/// autre fil exigerait de faire traverser une interface COM à une frontière
+/// d'appartement (le fil principal est dans un STA — cadres
 /// `ClassicSTAThreadWaitForHandles` du vidage 2bis), ce qui échangerait un
-/// risque contre un défaut certain. Ce qui borne le risque en pratique :
-/// l'appel est encadré de deux traces `debug`, le seul blocage jamais observé
-/// sur ce chemin venait de deux messages désormais retirés, et `Shutdown()`
-/// est rentré en moins d'une milliseconde sur chacune des exécutions relevées.
+/// risque contre un défaut certain. Ce qui reste acquis, et rien de plus :
+/// l'appel est encadré de deux traces `debug`, de sorte qu'un gel se lit dans
+/// le journal au lieu de rester muet — c'est ainsi que celui-ci a été vu.
 fn arreter(mft: &IMFTransform, quoi: &'static str) {
     let arret: IMFShutdown = match mft.cast() {
         Ok(arret) => arret,

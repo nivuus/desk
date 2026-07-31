@@ -366,11 +366,11 @@ impl H264Encoder {
     ) -> Result<Self> {
         demarrer_media_foundation()?;
 
-        // Allouées ICI, avant toute MFT : les locales sont détruites dans
-        // l'ordre INVERSE de déclaration, donc ces deux-là le sont en dernier
-        // si un `?` plus bas interrompt la construction. Une file rendue avant
-        // la MFT qui la détient serait exactement l'inversion que l'ordre des
-        // champs ci-dessus évite. Voir `arret::FileMft::allouer`.
+        // Allouée ICI, avant toute MFT : les locales sont détruites dans
+        // l'ordre INVERSE de déclaration, donc celle-ci l'est en dernier si un
+        // `?` plus bas interrompt la construction. Une file rendue avant la MFT
+        // qui la détient serait exactement l'inversion que l'ordre des champs
+        // ci-dessus évite. Voir `arret::FileMft::allouer`.
         let mut file_encodeur = arret::FileMft::allouer();
 
         let transform = find_hardware_encoder()?;
