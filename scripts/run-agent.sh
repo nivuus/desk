@@ -55,6 +55,15 @@ ${MULTIFENETRE_REPLIS:+\$env:MULTIFENETRE_REPLIS = '$MULTIFENETRE_REPLIS'}
 ${MULTIFENETRE_BANC:+\$env:MULTIFENETRE_BANC = '$MULTIFENETRE_BANC'}
 ${MULTIFENETRE_N:+\$env:MULTIFENETRE_N = '$MULTIFENETRE_N'}
 ${MULTIFENETRE_NVENC:+\$env:MULTIFENETRE_NVENC = '$MULTIFENETRE_NVENC'}
+# Le StreamWriter ci-dessous règle l'ÉCRITURE du fichier en UTF-8, mais pas la
+# LECTURE de la sortie de l'enfant : PowerShell décode le flux d'agent.exe
+# selon \$OutputEncoding / [Console]::OutputEncoding, qui vaut par défaut la
+# page de code OEM de la console (CP850/CP437), alors que agent.exe écrit de
+# l'UTF-8 — sans ce réglage, les caractères accentués ressortent en mojibake
+# même une fois le fichier réécrit proprement. Les deux réglages sont
+# nécessaires : celui-ci pour la lecture, le StreamWriter pour l'écriture.
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding(\$false)
+
 # UTF-8 SANS BOM, et sans le retour à la ligne que \`Out-File\` insère à la
 # largeur de console : \`Tee-Object\` (PS 5.1) écrit en UTF-16LE et n'a pas de
 # paramètre -Encoding, ce qui rendait les journaux de la sonde précédente
