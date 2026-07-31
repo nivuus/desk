@@ -20,6 +20,7 @@ pub(super) mod montee;
 pub(super) mod nvenc;
 pub(super) mod paralleles;
 pub(super) mod peripherique;
+pub(super) mod pointeur_virtuel;
 pub(super) mod purge;
 pub(super) mod replis;
 pub(super) mod sudovda;
@@ -104,6 +105,13 @@ pub(super) fn aiguiller() -> Result<bool> {
     // posées, une mesure ne doit jamais l'emporter sur une purge demandée.
     if sonde_demandee("MULTIFENETRE_VDD_PURGE") {
         purge::purger()?;
+        return Ok(true);
+    }
+    // Tâche 1 du chantier D1 : le bureau virtuel s'étend-il jusqu'à une
+    // sortie virtuelle, et le pointeur y arrive-t-il ? Crée une sortie, donc
+    // passe après `MULTIFENETRE_VDD_PURGE`.
+    if std::env::var("MULTIFENETRE_POINTEUR").is_ok() {
+        pointeur_virtuel::sonder()?;
         return Ok(true);
     }
     // Mesure ① — l'épreuve du chien de garde, préalable à la montée en N.

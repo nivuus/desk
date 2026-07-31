@@ -1,0 +1,24 @@
+2026-07-31T22:35:55.433525Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-07-31T22:35:55.433631Z  INFO agent::diagnostics::multifenetre::pointeur_virtuel: bureau virtuel AVANT création de la sortie x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T22:35:55.434760Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle créée id=265 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430001 largeur=1280 hauteur=720 hertz=60
+2026-07-31T22:35:58.435346Z  INFO agent::diagnostics::multifenetre::pointeur_virtuel: bureau virtuel APRÈS création de la sortie id=265 x=0 y=0 largeur=3680 hauteur=1080 elargi=true
+2026-07-31T22:35:58.440179Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T22:35:58.440213Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T22:35:58.440222Z  INFO agent::diagnostics::multifenetre::pointeur_virtuel: sortie DXGI énumérée adaptateur=NVIDIA GeForce RTX 4070 nom=\\.\DISPLAY1 attachee=true x=0 y=0 l=2400 h=1080
+2026-07-31T22:35:58.440226Z  INFO agent::diagnostics::multifenetre::pointeur_virtuel: sortie DXGI énumérée adaptateur=NVIDIA GeForce RTX 4070 nom=\\.\DISPLAY5 attachee=true x=2400 y=0 l=1280 h=720
+2026-07-31T22:35:58.440967Z  INFO agent::diagnostics::multifenetre::pointeur_virtuel: injection absolue vers le centre de la sortie virtuelle envoyes=1 vise_x=3040 vise_y=360 obtenu_x=3039 obtenu_y=359 ecart_x=1 ecart_y=1 verdict="ATTEINTE"
+2026-07-31T22:35:58.449097Z  INFO agent::diagnostics::multifenetre::moniteurs: sortie virtuelle détruite id=265
+
+--- contrôle : purge depuis un processus neuf (MULTIFENETRE_VDD_PURGE=1) ---
+2026-07-31T22:37:02.314627Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-07-31T22:37:02.316514Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=1 attachees=1
+2026-07-31T22:37:02.316521Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T22:37:05.318367Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-07-31T22:37:05.318375Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T22:37:05.318380Z  INFO agent::diagnostics::multifenetre::purge: purge terminée retirees=0 avant=1 apres=1
+
+--- contrôle : topologie DXGI depuis un second processus neuf (MULTIFENETRE_DXGI=1) ---
+2026-07-31T22:37:15.940092Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-07-31T22:37:15.941828Z  INFO agent::diagnostics::multifenetre::disponibilite: sorties DXGI relevées nombre=1
+2026-07-31T22:37:15.941830Z  INFO agent::diagnostics::multifenetre::disponibilite: sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 nom=\.\DISPLAY1 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T22:37:15.941833Z  INFO agent::diagnostics::multifenetre::disponibilite: verdict : 1 sortie(s) attachée(s) au bureau — la voie « un moniteur par fenêtre » exige d'en obtenir 8 attachees=1
