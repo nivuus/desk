@@ -182,19 +182,31 @@ mesure de ce document sans journal joint, prise pendant une session Apollo
 éphémère non reproductible sans le propriétaire du poste (détail et réserve
 dans le document de résultats). Une fenêtre par moniteur supprime le
 recouvrement *par construction* au lieu de le discipliner, tout en préservant
-le chemin GPU. **Deux réserves bloquantes** avant de la spécifier : (a) le
-**plafond de sorties virtuelles simultanées n'est pas mesuré** — obstacle
-matériel, un seul appareil client apparié disponible ; si ce plafond vaut 1,
-tout l'arbitrage bascule ; (b) sa correction d'image sous recouvrement est
-**argumentée par construction, jamais mesurée**.
+le chemin GPU. Les **deux réserves bloquantes** qui interdisaient de la
+spécifier **sont levées** (31/07/2026,
+`plans/2026-07-31-mesures-prealables-chantier-d-resultats.md`) : (a) le
+**plafond de sorties virtuelles simultanées vaut 10**, le pilote refusant la
+11ᵉ création en `ERROR_TOO_MANY_NAMES`, preuve par identité des onze sorties
+présentes au refus — pour une cible de 8 fenêtres, **la voie tient avec 2 de
+marge**, et notre code commande désormais le pilote lui-même sans dépendre
+d'Apollo ; (b) sa correction d'image **est mesurée** et non plus seulement
+argumentée par construction — Windows compose bien des fenêtres sur un moniteur
+virtuel sans écran physique, dont Desktop Duplication rend l'image exacte
+(900/900 verdicts justes, zéro image noire, 90,0 i/s par fenêtre). **Une mesure
+reste due avant de dimensionner la voie, sans bloquer sa spécification** : N
+duplications DXGI **de front** sur N sorties virtuelles, arrangement que le banc
+n'a pas exercé. Détail et réserves en §5 et §6.
 
 **Repli mesuré — `PrintWindow(PW_RENDERFULLCONTENT)`.** Contre toute attente,
 cette voie rend l'image **juste** d'une fenêtre D3D **recouverte** : c'est la
 seule à avoir franchi la porte de correction par une mesure directe. Sa limite
 est le **chemin CPU** (`GetDIBits` puis téléversement GPU), éliminatoire pour le
-jeu — 29,1 i/s par fenêtre à deux fenêtres, encodage compris, N=4 et N=8 non
-mesurés. Acceptable en revanche pour les fenêtres de productivité que le modèle
-multi-fenêtres doit porter à côté du jeu.
+jeu — 29,1 i/s par fenêtre à deux fenêtres, **passe `capture` seule** (la passe
+`capture+encodage` n'a pas été conclue à ce rang). N=4 et N=8 ont depuis été
+mesurés : **17,6 puis 8,8 i/s par fenêtre**, sans palier — voir §5. La voie ne
+tient donc pas la cible de 8 fenêtres ; elle reste acceptable pour les fenêtres
+de productivité que le modèle multi-fenêtres doit porter à côté du jeu, et pour
+les cas où la voie principale ne s'applique pas.
 
 ### 4.1 Plein écran
 

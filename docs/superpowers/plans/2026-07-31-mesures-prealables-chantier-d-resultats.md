@@ -40,7 +40,8 @@ Les quatre chiffres, chacun avec son journal.
    (`0x00222000`) en `0x80070044` (`ERROR_TOO_MANY_NAMES`). Preuve par
    **identité** et non par cardinal : la ligne de refus énumère nommément les
    onze sorties présentes — au relevé qui précède immédiatement le refus, à
-   **0,5 ms** près, et non par une relecture prise au moment même (voir §Mesure ①).
+   **0,673 ms** près, et non par une relecture prise au moment même (voir
+   §Mesure ①).
    Journal : `moniteurs-montee-en-n.log`.
    **La cible du chantier D étant 8 fenêtres, la voie recommandée par la sonde
    tient, avec 2 de marge.**
@@ -259,9 +260,13 @@ l'unité de `delai`, ni sur l'efficacité du ping, ni sur ce que fait Apollo.
 ligne de refus n'est **pas une relecture prise au moment du refus** :
 `montee.rs:346-353` y journalise la liste mémorisée au relevé précédent, et le
 libellé de la ligne le laisse pourtant croire. L'écart réel se lit dans le
-journal — le relevé de topologie « après création 10 » est horodaté
-10:06:08,964164, la ligne `sortie virtuelle créée rang=10` 10:06:08,964362, et
-le refus 10:06:08,964837 : **0,5 ms**. À cette échelle la conclusion tient
+journal, et il se compte **depuis le début du relevé mémorisé**, seul instant
+où son contenu est celui qui sera recopié : le relevé de topologie « après
+création 10 » s'ouvre à 10:06:08,964164 et le refus tombe à 10:06:08,964837,
+soit **0,673 ms**. (La ligne `sortie virtuelle créée rang=10`, horodatée
+10:06:08,964362, est émise *après* que ce relevé était terminé : la prendre
+pour repère resserrerait l'écart à 0,5 ms, dans le sens flatteur, en mesurant
+autre chose que ce que le champ porte.) À cette échelle la conclusion tient
 largement, et la borne des 27 s ci-dessus s'appuie de toute façon sur les
 relevés de topologie eux-mêmes, qui sont frais. Mais c'est un libellé de journal
 qui promet plus que ce qu'il porte, et il est reporté comme tel au tri des points
@@ -641,7 +646,9 @@ précédente, où cette passe n'avait pas été conclue.
 
 Conversion en débit de pixels — cadence par fenêtre × surface de la place × N.
 **Les quatre rangs ont un journal**, ceux de N=1 et N=2 venant de la sonde
-précédente (`journaux-sonde-multifenetre/`, UTF-8, `grep`-ables sans conversion) :
+précédente (`journaux-sonde-multifenetre/` ; les `banc-*.log` y sont en UTF-8 et
+`grep`-ables sans conversion — mais **pas** les autres fichiers du répertoire,
+dont `dxgi.log`, `wgc.log`, `replis.log` et `nvenc.log`, en UTF-16LE) :
 
 | N | i/s, passe `capture` | i/s, passe `capture+encodage` | Place | **MP/s** (passe `capture`) | Journal |
 | --- | --- | --- | --- | --- | --- |
@@ -649,7 +656,7 @@ précédente (`journaux-sonde-multifenetre/`, UTF-8, `grep`-ables sans conversio
 | 2 | 29,1 | *non conclue* | 1200×1080 | **75,43** | `banc-printwindow-2.log` |
 | 4 | 17,6 | 17,2 (86 unités ×4) | 1200×540 | **45,62** | `printwindow-n4.log` |
 | 8 | 8,8 | 8,8 (44 unités ×8) | 800×360 | **20,28** | `printwindow-n8.log` |
-| — | — | — | — | 208–258 | voie `duplication`, sonde précédente |
+| — | — | — | — | 208–258 | voie `duplication`, sonde précédente : `journaux-sonde-multifenetre/banc-duplication-{1,2,4,8}.log` |
 
 **Le MP/s est calculé sur la passe `capture`**, seule passe conclue aux quatre
 rangs — la passe `capture+encodage` n'a pas été menée à son terme à N=2, et une
@@ -674,6 +681,13 @@ changent ni la forme de la courbe ni la conclusion.
   4 — le bureau entier — et de 2 304 000 px à N=8, la grille 3×3 laissant une
   case inutilisée. Le débit de pixels et la cadence par fenêtre chutent donc
   ensemble, ce qui n'aurait pas été le cas si l'aire totale avait varié.)*
+  *(Et la comparaison avec `duplication` est **à protocole identique**, pas
+  seulement à aire comparable : ses 208–258 MP/s sortent **eux aussi de la passe
+  `capture`**, ses passes d'encodage ayant été coupées par `verdicts_faux > 0`
+  aux rangs 2, 4 et 8 — `banc-duplication-{2,4,8}.log` portent le verdict
+  « ÉLIMINÉE sous recouvrement — la passe d'encodage est sautée ». Les deux
+  séries mises en regard mesurent donc la même chose, ce qui est un argument
+  plus fort que celui d'abord publié ici.)*
 
 ### Ce que le relevé n'autorise pas
 
@@ -884,16 +898,17 @@ possible doit être fermé avant qu'on le retienne ou l'écarte pour de bon.
 - **Le décompte des verdicts par nature** ajouté au banc, et la vérification
   **avant** recouvrement. Sans eux, la mesure ③ n'aurait pas pu distinguer ses
   propres issues.
-- **Le protocole des points reportés** ci-dessous : quatre d'entre eux sont des
+- **Le protocole des points reportés** ci-dessous : huit d'entre eux sont des
   dettes de code réelles.
 
 ---
 
 ## Points reportés — triés
 
-Le chantier a laissé quinze points `minor (deferred)` au journal de bord. Les
-taire serait contraire à sa règle ; les traiter tous relèverait d'un autre
-chantier. Voici le tri.
+Le chantier a laissé **dix-neuf points reportés** : ceux marqués
+`minor (deferred)` à son journal de bord, plus ceux relevés en revue et non
+traités sur-le-champ. Les taire serait contraire à sa règle ; les traiter tous
+relèverait d'un autre chantier. Voici le tri — huit d'un côté, onze de l'autre.
 
 ### À traiter par le chantier D — ce sont des dettes de code réelles
 
@@ -905,7 +920,8 @@ chantier. Voici le tri.
 | `noms_attaches` / `manquants` sont pures et testables mais vivent sous `cfg(windows)` | `montee.rs` | Aucun test ne les couvre depuis Linux, alors que ce sont exactement les fonctions qui décident si une sortie a paru ou disparu. Le chantier D s'appuiera dessus |
 | `vers_texture` soustrait deux `i32` bruts avant conversion | `moniteurs_virtuels.rs` | `geometry.rs` documente pourquoi ce calcul passe par `i64` dans ce projet. Risque réel quasi nul aux résolutions actuelles, mais c'est une incohérence de convention dans du code que le chantier D va reprendre |
 | Angle mort du contrôle par rang : si notre sortie ne paraît pas **et** qu'une sortie externe paraît au même tour, le contrôle passe en attribuant au pilote un nom qui n'est pas le nôtre | `montee.rs:356-366` | Rien ne relie l'identifiant rendu par l'IOCTL au nom DXGI. Sur une VM où Apollo peut ajouter une sortie à tout instant, c'est un faux positif possible |
-| `presentes` journalise la liste mémorisée au relevé précédent, pas une relecture fraîche — et son libellé suggère le contraire | `montee.rs:346-353` | L'écart mesuré n'est que de 0,5 ms et la conclusion tient (§Mesure ①), mais c'est **le champ sur lequel repose la preuve par identité du chiffre pivot**. Un libellé qui promet plus qu'il ne porte se recopie : la première rédaction de ce document l'a fait. Correction d'une ligne |
+| `presentes` journalise la liste mémorisée au relevé précédent, pas une relecture fraîche — et son libellé suggère le contraire | `montee.rs:346-353` | L'écart mesuré n'est que de 0,673 ms et la conclusion tient (§Mesure ①), mais c'est **le champ sur lequel repose la preuve par identité du chiffre pivot**. Un libellé qui promet plus qu'il ne porte se recopie : la première rédaction de ce document l'a fait. Correction d'une ligne |
+| Le banc est aiguillé **avant** la purge | `multifenetre.rs:74` (banc) devant `:103` (purge) | Poser `MULTIFENETRE_BANC=…` **et** `MULTIFENETRE_VDD_PURGE=1` fait tourner le banc **sans purger**, donc sur une topologie éventuellement polluée, et rien au journal ne dit qu'une purge avait été demandée. Le commentaire de la branche de purge se croit pourtant « placée avant TOUTE sonde qui crée des sorties » : vrai des sondes `VDD*`, faux du banc. Purger puis mesurer est l'enchaînement naturel après le plantage documenté de la mesure ③, et le chantier D réutilisera ces sondes |
 
 ### Peuvent rester
 
