@@ -1,0 +1,57 @@
+=== exception (première chance) ===
+code=0xc0000005 adresse=0x00007ff6411dc11e (agent.exe+0xcc11e)
+fil=14096 (fil principal=14096)
+violation d'accès : écriture à l'adresse 0x0000000000000024
+registres : rip=0x00007ff6411dc11e rsp=0x00000055a90ebcf0 rbp=0x00000055a90ebd70
+            rax=0x000002086b687d18 rcx=0x00007ff641895cb8 rdx=0x0000000000000001 rbx=0x0000000000000031
+            r8 =0x0000000000000000 r9 =0x00007ff842dadb2e r12=0x00007ff86a040000 r13=0x00000055a90ebd20
+            r14=0x0000000000031000 r15=0x0000000000000021 rsi=0x00007ff64188b3b8 rdi=0x0000000000000280
+pile (17 cadres, du plus récent au plus ancien) :
+  #00 0x00007ff6411db384  agent.exe+0xcb384
+  #01 0x00007ff6411dad9d  agent.exe+0xcad9d
+  #02 0x00007ff86b49bfe2  ntdll.dll+0x7bfe2
+  #03 0x00007ff86b451722  ntdll.dll+0x31722
+  #04 0x00007ff86b4c42ee  ntdll.dll+0xa42ee
+  #05 0x00007ff6411dc11e  agent.exe+0xcc11e
+  #06 0x00007ff6411b0d88  agent.exe+0xa0d88
+  #07 0x00007ff64114b719  agent.exe+0x3b719
+  #08 0x00007ff64115f50d  agent.exe+0x4f50d
+  #09 0x00007ff64114c9ec  agent.exe+0x3c9ec
+  #10 0x00007ff6411240c6  agent.exe+0x140c6
+  #11 0x00007ff64116f8ca  agent.exe+0x5f8ca
+  #12 0x00007ff64157e8a0  agent.exe+0x46e8a0
+  #13 0x00007ff64114fb1c  agent.exe+0x3fb1c
+  #14 0x00007ff64169753c  agent.exe+0x58753c
+  #15 0x00007ff86a3d4cb0  KERNEL32.DLL+0x14cb0
+  #16 0x00007ff86b49edeb  ntdll.dll+0x7edeb
+=== fin ===
+=== exception (NON GÉRÉE — fatale) ===
+code=0xc0000005 adresse=0x00007ff6411dc11e (agent.exe+0xcc11e)
+fil=14096 (fil principal=14096)
+violation d'accès : écriture à l'adresse 0x0000000000000024
+registres : rip=0x00007ff6411dc11e rsp=0x00000055a90ebcf0 rbp=0x00000055a90ebd70
+            rax=0x000002086b687d18 rcx=0x00007ff641895cb8 rdx=0x0000000000000001 rbx=0x0000000000000031
+            r8 =0x0000000000000000 r9 =0x00007ff842dadb2e r12=0x00007ff86a040000 r13=0x00000055a90ebd20
+            r14=0x0000000000031000 r15=0x0000000000000021 rsi=0x00007ff64188b3b8 rdi=0x0000000000000280
+pile (20 cadres, du plus récent au plus ancien) :
+  #00 0x00007ff6411db384  agent.exe+0xcb384
+  #01 0x00007ff6411dad0c  agent.exe+0xcad0c
+  #02 0x00007ff868ba05bd  KERNELBASE.dll+0xb05bd
+  #03 0x00007ff86b4c94d5  ntdll.dll+0xa94d5
+  #04 0x00007ff86b4af1d6  ntdll.dll+0x8f1d6
+  #05 0x00007ff86b4c52ef  ntdll.dll+0xa52ef
+  #06 0x00007ff86b45192e  ntdll.dll+0x3192e
+  #07 0x00007ff86b4c42ee  ntdll.dll+0xa42ee
+  #08 0x00007ff6411dc11e  agent.exe+0xcc11e
+  #09 0x00007ff6411b0d88  agent.exe+0xa0d88
+  #10 0x00007ff64114b719  agent.exe+0x3b719
+  #11 0x00007ff64115f50d  agent.exe+0x4f50d
+  #12 0x00007ff64114c9ec  agent.exe+0x3c9ec
+  #13 0x00007ff6411240c6  agent.exe+0x140c6
+  #14 0x00007ff64116f8ca  agent.exe+0x5f8ca
+  #15 0x00007ff64157e8a0  agent.exe+0x46e8a0
+  #16 0x00007ff64114fb1c  agent.exe+0x3fb1c
+  #17 0x00007ff64169753c  agent.exe+0x58753c
+  #18 0x00007ff86a3d4cb0  KERNEL32.DLL+0x14cb0
+  #19 0x00007ff86b49edeb  ntdll.dll+0x7edeb
+=== fin ===

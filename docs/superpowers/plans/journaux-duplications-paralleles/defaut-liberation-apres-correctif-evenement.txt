@@ -1,0 +1,13 @@
+Nom de l'application dfaillante agent.exe, version : 0.0.0.0, horodatage : 0x6a6cb379
+Nom du module dfaillant : ntdll.dll, version : 10.0.20348.5386, horodatage : 0x534da4b0
+Code d'exception : 0xc0000005
+Dcalage d'erreur : 0x0000000000019daa
+ID du processus dfaillant : 0x3028
+Heure de dbut de l'application dfaillante : 0x01dd20faaf2dbe40
+Chemin d'acc
+s de l'application dfaillante : C:\dev\target\release\agent.exe
+Chemin d'acc
+s du module dfaillant: C:\Windows\SYSTEM32\ntdll.dll
+ID de rapport : fa17da94-2708-4fd8-807d-3434a12c7bb5
+Nom complet du package dfaillant: 
+ID de l'application relative au package dfaillant:
