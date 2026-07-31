@@ -10,6 +10,7 @@
 //! première.
 
 pub(super) mod banc;
+pub(super) mod capture_virtuelle;
 pub(super) mod contrat;
 pub(super) mod disponibilite;
 pub(super) mod mires;
@@ -45,12 +46,23 @@ pub(super) fn aiguiller() -> Result<bool> {
         return Ok(true);
     }
     // Temps 2 : le banc, sur la voie et le nombre de fenêtres demandés.
+    //
+    // `MULTIFENETRE_SORTIE` (« adaptateur:sortie ») désigne une sortie DXGI
+    // autre que celle du bureau. Absente, le banc mesure le bureau — son
+    // comportement d'origine. Elle sert à rejouer À LA MAIN le banc sur une
+    // sortie que l'on sait vivante ; la mesure ③, elle, passe par
+    // `MULTIFENETRE_VDD_CAPTURE`, la sortie virtuelle ne survivant pas au
+    // processus qui la crée.
     if let Ok(voie) = std::env::var("MULTIFENETRE_BANC") {
         let nombre: u8 = std::env::var("MULTIFENETRE_N")
             .unwrap_or_else(|_| "8".to_string())
             .parse()
             .context("MULTIFENETRE_N doit être un entier")?;
-        banc::executer(&voie, nombre)?;
+        let sortie = match std::env::var("MULTIFENETRE_SORTIE") {
+            Ok(designation) => Some(crate::moniteurs_virtuels::analyser_designation(&designation)?),
+            Err(_) => None,
+        };
+        banc::executer(&voie, nombre, sortie)?;
         return Ok(true);
     }
     // Mesure ① — validation du contrat du pilote d'affichage virtuel, avant
@@ -88,6 +100,15 @@ pub(super) fn aiguiller() -> Result<bool> {
     // fenêtre » n'est pas spécifiable.
     if std::env::var("MULTIFENETRE_VDD").is_ok() {
         montee::monter_en_n()?;
+        return Ok(true);
+    }
+    // Mesure ③ : la correction d'image sur la sortie virtuelle, jamais mesurée
+    // par la sonde — la voie 2 n'y était garantie que « par construction ».
+    // Elle crée une sortie, donc elle passe après `MULTIFENETRE_VDD_PURGE`.
+    if let Ok(texte) = std::env::var("MULTIFENETRE_VDD_CAPTURE") {
+        let nombre: u8 =
+            texte.parse().context("MULTIFENETRE_VDD_CAPTURE doit être un entier (nombre de mires)")?;
+        capture_virtuelle::capturer_sur_virtuelle(nombre)?;
         return Ok(true);
     }
     // Task 10 : le plafond d'encodeurs H.264 matériels simultanés.

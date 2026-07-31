@@ -74,7 +74,11 @@ pub(super) const PLAFOND_RECHERCHE: usize = 16;
 
 /// Résolution demandée à chaque sortie : celle que le chantier D vise par
 /// fenêtre, pas celle du bureau.
-const RESOLUTION: (u32, u32, u32) = (1280, 720, 60);
+///
+/// `pub(super)` : `capture_virtuelle.rs` crée SA sortie à la même résolution
+/// que celle dont la montée en N a mesuré le plafond — deux mesures du même
+/// chantier qui divergeraient sur ce point ne seraient plus comparables.
+pub(super) const RESOLUTION: (u32, u32, u32) = (1280, 720, 60);
 
 /// Un pilote d'affichage indirect ne publie pas sa sortie dans l'instant :
 /// Windows reconfigure sa topologie d'affichage. Interroger DXGI trop tôt
@@ -135,7 +139,10 @@ pub(super) fn relever_topologie(moment: &str) -> Result<Vec<SortieDxgi>> {
 
 /// Noms des sorties attachées au bureau, triés — donc comparables comme des
 /// ensembles, l'ordre d'énumération de DXGI n'ayant aucune signification.
-fn noms_attaches(sorties: &[SortieDxgi]) -> Vec<String> {
+///
+/// `pub(super)` : `capture_virtuelle.rs` compare les mêmes ensembles avant et
+/// après sa mesure.
+pub(super) fn noms_attaches(sorties: &[SortieDxgi]) -> Vec<String> {
     let mut noms: Vec<String> = sorties
         .iter()
         .filter(|s| s.attachee_au_bureau)
@@ -155,7 +162,7 @@ fn manquants(reference: &[String], observes: &[String]) -> Vec<String> {
 /// Un `sleep` nu laisserait le pilote libre de retirer nos sorties pendant
 /// l'attente de reconfiguration. Que ce battement l'en empêche réellement n'est
 /// pas établi — c'est une précaution, dont le coût est nul.
-fn attendre_en_pinguant(pilote: &PiloteParIoctl, duree: Duration) -> Result<()> {
+pub(super) fn attendre_en_pinguant(pilote: &PiloteParIoctl, duree: Duration) -> Result<()> {
     let debut = Instant::now();
     loop {
         pilote.pinguer()?;
