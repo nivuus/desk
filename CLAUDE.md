@@ -1347,16 +1347,20 @@ refusait — corrigé par un `.context()` distinct sur chacun
 
 **Le plafond ne vient pas du partage du périphérique** (mesure ② du même
 chantier) : avec **un périphérique D3D11 neuf par encodeur**, le plafond reste
-**8**, refus au même `SetOutputType`. Séparer les périphériques ne fait gagner
-aucune fenêtre — et le coût correspondant (partager des textures entre le
-périphérique de capture et ceux des encodeurs) n'a donc pas à être payé. Ce que
-la mesure **ne** dit **pas** : quelle couche impose ce plafond (NVENC, pilote,
-Media Foundation, ou virtualisation), s'il tient à d'autres résolutions ou
-débits, et si 8 encodeurs tiennent la cadence *ensemble* — aucune image n'a été
-soumise, seule la **construction** est mesurée. Enfin, détruire un encodeur
-n'a **pas** été montré libérer la place : la mise en sommeil des fenêtres
-masquées reste à éprouver par une séquence « créer 8 → en détruire 1 → tenter
-un 9ᵉ ».
+**8**, refus au même `SetOutputType`. Cette attribution causale porte une
+réserve : **comparaison à deux variables confondues**, le mode séparé n'ouvrant
+aucune duplication DXGI là où le mode partagé en ouvre une — il faudrait une
+coïncidence pour que deux effets se compensent exactement, mais le témoin propre
+(mode séparé *avec* duplication) n'a pas été exercé. Sous cette réserve, séparer
+les périphériques ne fait gagner aucune fenêtre — et le coût correspondant
+(partager des textures entre le périphérique de capture et ceux des encodeurs)
+n'a donc pas à être payé. Ce que la mesure **ne** dit **pas** non plus : quelle
+couche impose ce plafond (NVENC, pilote, Media Foundation, ou virtualisation),
+s'il tient à d'autres résolutions ou débits, et si 8 encodeurs tiennent la
+cadence *ensemble* — aucune image n'a été soumise, seule la **construction** est
+mesurée. Enfin, détruire un encodeur n'a **pas** été montré libérer la place :
+la mise en sommeil des fenêtres masquées reste à éprouver par une séquence
+« créer 8 → en détruire 1 → tenter un 9ᵉ ».
 
 **Voie recommandée** : le moniteur virtuel par fenêtre (seule voie qui préserve
 le chemin GPU en supprimant le recouvrement par construction), avec `PrintWindow`
