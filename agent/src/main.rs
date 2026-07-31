@@ -23,6 +23,10 @@ mod opus;
 mod pointer_settings;
 mod rebuild;
 mod signaling;
+// Pas de `#[cfg(windows)]` ici : la logique pure de `superviseur` (tâche 2)
+// décide quelles fenêtres méritent d'exister côté navigateur, et doit se
+// compiler et se tester sur Linux sans dépendance à l'API Windows.
+mod superviseur;
 mod source;
 mod transport;
 mod turn;
