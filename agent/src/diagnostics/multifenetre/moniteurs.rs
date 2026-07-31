@@ -166,6 +166,12 @@ impl PiloteParIoctl {
 
     /// Efface toute trace de ce GUID : la sortie n'existe plus, ni retrait dû
     /// ni appariement ne doivent lui survivre.
+    ///
+    /// Indexer par GUID suppose leur UNICITÉ, et c'est le compteur `u16` de
+    /// `EtatSorties` qui la porte : elle tient tant qu'une même instance de
+    /// pilote crée moins de 65 536 sorties, au-delà de quoi `wrapping_add`
+    /// rejouerait un GUID déjà attribué. Hors d'atteinte de ce chantier, mais
+    /// l'invariant est ici, là où on s'y fie.
     fn oublier(&self, guid_moniteur: GUID) {
         let mut etat = self.etat();
         etat.a_purger.retain(|connu| *connu != guid_moniteur);
@@ -419,11 +425,28 @@ impl Drop for PiloteParIoctl {
         // Dernière occasion de dire ce qui reste dû. Fermer le périphérique ne
         // retire rien : une sortie virtuelle survit au processus. Ces GUID sont
         // ce qu'une purge — celle de la tâche 7, ou un humain — devra viser.
-        let restants = self.etat().a_purger.clone();
-        if !restants.is_empty() {
+        //
+        // LES DEUX listes sont dues ici, pas seulement `a_purger`. La
+        // distinction qui les sépare — « une entrée d'`apparies` reste
+        // redemandable par identifiant » — cesse d'avoir un sens au moment
+        // précis où le processus se termine : plus personne ne redemandera
+        // rien. Un appelant qui emploie `creer` sans passer par la garde
+        // `Sorties`, ou dont la garde a été neutralisée, laisserait sinon N
+        // moniteurs derrière lui dans le silence total.
+        //
+        // Les deux origines sont distinguées parce qu'elles ne diagnostiquent
+        // pas la même chose : un GUID d'`apparies` accuse un appelant qui n'a
+        // pas utilisé la garde, un GUID d'`a_purger` accuse un retrait que le
+        // pilote a refusé.
+        let etat = self.etat();
+        let apparies: Vec<GUID> = etat.apparies.iter().map(|(_, guid)| *guid).collect();
+        let a_purger = etat.a_purger.clone();
+        drop(etat);
+        if !apparies.is_empty() || !a_purger.is_empty() {
             tracing::error!(
-                nombre = restants.len(),
-                guids = ?restants,
+                nombre = apparies.len() + a_purger.len(),
+                guids_jamais_detruits = ?apparies,
+                guids_dont_le_retrait_a_echoue = ?a_purger,
                 "sorties virtuelles créées et NON retirées — elles survivent à ce \
                  processus, purge requise"
             );
