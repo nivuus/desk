@@ -1,0 +1,14 @@
+2026-07-31T10:45:24.554909Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-07-31T10:45:24.556813Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-07-31T10:45:24.556840Z  INFO agent::capture: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-07-31T10:45:24.556851Z  INFO agent::diagnostics::multifenetre::disponibilite: sorties DXGI relevées nombre=9
+2026-07-31T10:45:24.556853Z  INFO agent::diagnostics::multifenetre::disponibilite: sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 nom=\\.\DISPLAY1 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-07-31T10:45:24.556857Z  INFO agent::diagnostics::multifenetre::disponibilite: sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom=\\.\DISPLAY5 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-07-31T10:45:24.556860Z  INFO agent::diagnostics::multifenetre::disponibilite: sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom=\\.\DISPLAY6 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-07-31T10:45:24.556862Z  INFO agent::diagnostics::multifenetre::disponibilite: sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom=\\.\DISPLAY7 attachee=true x=4960 y=0 largeur=1280 hauteur=720
+2026-07-31T10:45:24.556864Z  INFO agent::diagnostics::multifenetre::disponibilite: sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 nom=\\.\DISPLAY8 attachee=true x=6240 y=0 largeur=1280 hauteur=720
+2026-07-31T10:45:24.556866Z  INFO agent::diagnostics::multifenetre::disponibilite: sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=5 nom=\\.\DISPLAY9 attachee=true x=7520 y=0 largeur=1280 hauteur=720
+2026-07-31T10:45:24.556869Z  INFO agent::diagnostics::multifenetre::disponibilite: sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=6 nom=\\.\DISPLAY10 attachee=true x=8800 y=0 largeur=1280 hauteur=720
+2026-07-31T10:45:24.556871Z  INFO agent::diagnostics::multifenetre::disponibilite: sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=7 nom=\\.\DISPLAY11 attachee=true x=10080 y=0 largeur=1280 hauteur=720
+2026-07-31T10:45:24.556873Z  INFO agent::diagnostics::multifenetre::disponibilite: sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=8 nom=\\.\DISPLAY12 attachee=true x=11360 y=0 largeur=1280 hauteur=720
+2026-07-31T10:45:24.556875Z  INFO agent::diagnostics::multifenetre::disponibilite: verdict : 9 sortie(s) attachée(s) au bureau — la voie « un moniteur par fenêtre » exige d'en obtenir 8 attachees=9

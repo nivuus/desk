@@ -302,6 +302,13 @@ pub(super) fn eprouver_chien_de_garde() -> Result<()> {
     // La garde détruit ici. Si le chien de garde a déjà retiré la sortie, le
     // retrait échouera et sera journalisé en erreur : c'est attendu dans ce
     // cas-là, et ce n'est pas une fuite — la sortie n'existe plus.
+    //
+    // Ce GUID rejoint alors `a_purger`, et volontairement PAS rejoué par
+    // `purge::rejouer_purge_due` ici (contrairement à `monter_en_n`) : un
+    // rejeu échouerait pour la même raison que le premier essai — la sortie
+    // n'existe déjà plus, ce n'est pas un retrait qu'un second essai
+    // sauverait. Le laisser dans `a_purger` documente le fait sans promettre
+    // une guérison qu'aucun rejeu ne peut apporter.
     Ok(())
 }
 

@@ -64,6 +64,16 @@ pub(super) fn aiguiller() -> Result<bool> {
         contrat::valider_contrat()?;
         return Ok(true);
     }
+    // Rattrapage : détruit les sorties virtuelles laissées par une exécution
+    // tuée net, que la garde de `moniteurs_virtuels::Sorties` ne peut pas
+    // couvrir. Placée avant TOUTE sonde qui crée des sorties — pas seulement
+    // `MULTIFENETRE_VDD`, mais aussi `MULTIFENETRE_VDD_VEILLE` juste en
+    // dessous, qui en crée une elle aussi : si les deux variables sont
+    // posées, une mesure ne doit jamais l'emporter sur une purge demandée.
+    if std::env::var("MULTIFENETRE_VDD_PURGE").is_ok() {
+        purge::purger()?;
+        return Ok(true);
+    }
     // Mesure ① — l'épreuve du chien de garde, préalable à la montée en N.
     // Elle passe AVANT `MULTIFENETRE_VDD` dans cet aiguillage parce qu'elle en
     // est la condition de validité : le pilote annonce `delai = 3` d'unité non
@@ -71,14 +81,6 @@ pub(super) fn aiguiller() -> Result<bool> {
     // mesurerait le plafond du chien de garde et non celui du pilote.
     if std::env::var("MULTIFENETRE_VDD_VEILLE").is_ok() {
         montee::eprouver_chien_de_garde()?;
-        return Ok(true);
-    }
-    // Rattrapage : détruit les sorties virtuelles laissées par une exécution
-    // tuée net, que la garde de `moniteurs_virtuels::Sorties` ne peut pas
-    // couvrir. Placée avant la montée en N : si les deux variables sont
-    // posées, on purge.
-    if std::env::var("MULTIFENETRE_VDD_PURGE").is_ok() {
-        purge::purger()?;
         return Ok(true);
     }
     // Mesure ① de la spec : combien de sorties virtuelles simultanées ce

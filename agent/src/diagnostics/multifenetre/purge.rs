@@ -45,9 +45,16 @@
 //!   — le gabarit est une constante arbitraire choisie ici ; s'il change un
 //!   jour, les sorties de l'ancien gabarit deviennent invisibles à cette
 //!   purge, exactement comme elles le seraient à l'ancien code lui-même ;
-//!   - un compteur qui aurait dépassé `PLAFOND_RECHERCHE` avant de mourir —
+//! - un compteur qui aurait dépassé `PLAFOND_RECHERCHE` avant de mourir —
 //!   hors d'atteinte tant que ce plafond dépasse ce que le pilote accepte
-//!   (10, mesuré à la tâche 6), mais pas une garantie au-delà.
+//!   (10, mesuré à la tâche 6), mais pas une garantie au-delà ;
+//! - deux instances de `PiloteParIoctl` ouvertes en parallèle (deux
+//!   processus vivants à la fois, ou un même processus qui rouvrirait le
+//!   périphérique) : `EtatSorties::compteur` repart de zéro par INSTANCE, pas
+//!   par processus ni par pilote physique — les deux attribueraient donc les
+//!   mêmes GUID, et cette purge ne retire qu'un seul retrait par numéro, pas
+//!   deux. Dette antérieure à cette tâche, mais qui borne ce que la liste
+//!   ci-dessus prétend couvrir.
 
 use anyhow::Result;
 
@@ -56,38 +63,54 @@ use super::montee::{relever_topologie, DELAI_TOPOLOGIE, PLAFOND_RECHERCHE};
 
 /// Sonde `MULTIFENETRE_VDD_PURGE`.
 pub(super) fn purger() -> Result<()> {
+    // `relever_topologie` journalise déjà `topologie relevée moment="avant
+    // purge" nombre=…` — un second message ici ferait doublon.
     let avant = relever_topologie("avant purge")?;
-    tracing::info!(nombre = avant.len(), "topologie avant purge");
 
     let pilote = ouvrir_pilote()?;
     let mut retirees = 0usize;
     for numero in 1..=PLAFOND_RECHERCHE as u16 {
         let guid = guid_pour(numero);
-        if pilote.retirer_par_guid(guid, "retrait déterministe (purge inter-processus)").is_ok() {
-            retirees += 1;
-            tracing::info!(numero, guid = ?guid, "sortie virtuelle retirée par la purge");
+        match pilote.retirer_par_guid(guid, "retrait déterministe (purge inter-processus)") {
+            Ok(()) => {
+                retirees += 1;
+                tracing::info!(numero, guid = ?guid, "sortie virtuelle retirée par la purge");
+            }
+            Err(erreur) => {
+                // En `debug`, pas silencieux : sur `PLAFOND_RECHERCHE`
+                // essais, la grande majorité vise un GUID que personne n'a
+                // jamais attribué, et c'est l'issue attendue — un `info` ou
+                // `warn` par essai noierait le signal utile. Mais l'absence
+                // TOTALE de trace est ce que I1 reprochait : sans elle,
+                // l'affirmation du commentaire de tête (« indiscernable
+                // d'un GUID tenu par un processus vivant ») n'était vérifiable
+                // par personne, y compris nous. Le code d'erreur reste ici,
+                // consultable a posteriori.
+                tracing::debug!(numero, guid = ?guid, %erreur, "retrait refusé (GUID jamais attribué, ou échec réel — indiscernable côté code de retour)");
+            }
         }
-        // Un refus n'est PAS journalisé individuellement : sur
-        // `PLAFOND_RECHERCHE` essais, la grande majorité vise un GUID que
-        // personne n'a jamais attribué, et c'est l'issue attendue — un
-        // journal d'erreurs par essai noierait le signal utile.
     }
-
-    // Ferme la même dette que `montee::monter_en_n` : si CE processus de
-    // purge a lui-même laissé un retrait dû (son propre `retirer_par_guid`
-    // a échoué au lieu de simplement refuser), on le rejoue avant de
-    // conclure plutôt que de le laisser filer avec le processus.
-    let rejoues = rejouer_purge_due(&pilote);
 
     std::thread::sleep(DELAI_TOPOLOGIE);
     let apres = relever_topologie("après purge")?;
-    tracing::info!(
-        retirees,
-        rejoues,
-        avant = avant.len(),
-        apres = apres.len(),
-        "purge terminée"
-    );
+
+    // Verdict explicite : sans lui, un handle ou un IOCTL cassé produirait
+    // silencieusement `retirees=0` et un `Ok(())` — la sonde dont le métier
+    // EST de restaurer serait alors la seule à ne rien juger, alors que
+    // `monter_en_n` (montee.rs) en émet un dans le cas symétrique.
+    let attendu = avant.len().saturating_sub(retirees);
+    if apres.len() == attendu {
+        tracing::info!(retirees, avant = avant.len(), apres = apres.len(), "purge terminée");
+    } else {
+        tracing::error!(
+            retirees,
+            avant = avant.len(),
+            apres = apres.len(),
+            attendu,
+            "purge terminée SANS retrouver le compte attendu — topologie non \
+             conforme à ce que la purge a retiré"
+        );
+    }
     Ok(())
 }
 
@@ -96,13 +119,19 @@ pub(super) fn purger() -> Result<()> {
 /// n'était relue par personne, un retrait raté restait donc irrécupérable
 /// pour le reste de l'exécution alors même que son GUID était connu.
 ///
-/// Distincte de `purger()` ci-dessus, qui régénère des GUID pour un
-/// processus qui n'existe PLUS, mais assez proche pour partager le même
-/// geste — tenter `retirer_par_guid`, traiter un refus comme une issue
-/// possible — d'où sa place ici plutôt que dans `moniteurs.rs`, qui n'a plus
-/// la place pour l'accueillir sous le plafond de 500 lignes. Appelée aussi
-/// par `montee::monter_en_n`, où elle rejoue les retraits que la garde
-/// `Sorties` a laissés dus AVANT que `pilote` ne parte à son tour.
+/// **N'est PAS appelée par `purger()` ci-dessus.** `a_purger` n'est
+/// alimentée que par `creer` et `detruire` (`moniteurs.rs`) ; `purger()`
+/// n'appelle ni l'un ni l'autre — elle passe exclusivement par
+/// `retirer_par_guid`, qui ne touche à aucune table. `pilote.a_purger()` y
+/// serait donc TOUJOURS vide : l'appeler là n'aurait rien fermé, seulement
+/// simulé une fermeture. La seule utilisatrice réelle est
+/// `montee::monter_en_n`, où elle rejoue, juste après que la garde `Sorties`
+/// a fini de détruire et AVANT que `pilote` ne parte à son tour, les
+/// retraits qu'elle a laissés dus. Distincte de `purger()` par ce qu'elle
+/// vise — un état encore vivant en mémoire, pas un état régénéré par calcul
+/// — mais assez proche pour partager le même geste (tenter, traiter un refus
+/// comme une issue possible), d'où sa place ici plutôt que dans
+/// `moniteurs.rs`, qui n'a plus la place sous le plafond de 500 lignes.
 pub(super) fn rejouer_purge_due(pilote: &PiloteParIoctl) -> usize {
     let mut reussis = 0usize;
     for guid_moniteur in pilote.a_purger() {
