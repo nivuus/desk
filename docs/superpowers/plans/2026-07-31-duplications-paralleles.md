@@ -492,8 +492,8 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Produces, tous en `pub(super)` :
   - `struct Verdicts { justes: u64, voisines: u64, noires: u64, inconnues: u64 }` avec `compter(&mut self, mire::Verdict)` et `faux(&self) -> u64`
   - `struct Compteurs { images: Vec<u64>, unites: Vec<u64>, avant_recouvrement: Verdicts, apres_recouvrement: Verdicts }` avec `nouveaux(nombre: usize) -> Self`
-  - `fn passe_temoin(mires: &mut Mires, duree: Duration) -> Result<()>`
-  - `fn journaliser(passe: &str, voie: &str, nombre: u8, duree: Duration, compteurs: &Compteurs)`
+  - `fn passe_temoin(mires: &mut Mires) -> Result<()>`
+  - `fn journaliser(passe: &str, voie: &str, nombre: u8, compteurs: &Compteurs)`
   - `fn lire_verdict(voie: &mut dyn VoieDeCapture, image: &CapturedFrame, attendu: u8) -> Result<mire::Verdict>`
   - `const DUREE_PASSE: Duration`, `const PERIODE_JOURNAL: Duration`
   - `voies::creer_device() -> Result<(ID3D11Device, ID3D11DeviceContext)>`
@@ -537,7 +537,7 @@ impl Compteurs {
 }
 ```
 
-`passe_temoin` et `journaliser` prennent la durée en paramètre plutôt que de lire la constante, pour que les deux protocoles restent libres de la leur (ils utiliseront la même — mais un paramètre le rend visible, là qu'une constante partagée le rendrait implicite).
+`passe_temoin` et `journaliser` lisent `DUREE_PASSE` directement, comme aujourd'hui : les deux protocoles mesurent sur la même durée, et un paramètre que les deux appelants rempliraient toujours avec la même constante serait un réglage qui n'existe pas.
 
 - [ ] **Step 2: Y déplacer aussi la lecture de verdict**
 
@@ -978,7 +978,7 @@ fn executer_passes(
     let places_bureau: Vec<Rect> = virtuelles.iter().map(|sortie| sortie.rect).collect();
     let mut mires = super::mires::Mires::ouvrir(&device, &places_bureau)?;
 
-    compteurs::passe_temoin(&mut mires, DUREE_PASSE)?;
+    compteurs::passe_temoin(&mut mires)?;
 
     let (mut voies, places_texture) = ouvrir_duplications(virtuelles, &mires)?;
     tracing::info!(
@@ -990,16 +990,10 @@ fn executer_passes(
 
     let nombre = voies.len() as u8;
     let releve = passe_capture(pilote, &mut mires, &mut voies, false)?;
-    compteurs::journaliser("capture", "duplication-parallele", nombre, DUREE_PASSE, &releve);
+    compteurs::journaliser("capture", "duplication-parallele", nombre, &releve);
 
     let releve = passe_capture(pilote, &mut mires, &mut voies, true)?;
-    compteurs::journaliser(
-        "capture+encodage",
-        "duplication-parallele",
-        nombre,
-        DUREE_PASSE,
-        &releve,
-    );
+    compteurs::journaliser("capture+encodage", "duplication-parallele", nombre, &releve);
 
     // Second suspect du défaut hérité, après les encodeurs : les duplications.
     tracing::info!("libération des voies de capture : avant");
