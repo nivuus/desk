@@ -197,14 +197,22 @@ fn passe_capture(
     // Ces traces sont rares par construction (une par encodeur, une fois par
     // passe) : elles ne violent pas la règle « aucune trace par trame ».
     if !encodeurs.is_empty() {
-        // Clé de lecture des `unites`, relevée AVANT la libération. Les
-        // encodeurs sont bâtis à 60 i/s et nourris à ~90 : l'écart part dans
-        // `dropped_stale_nv12` (une image convertie puis écartée parce qu'une
-        // plus récente est arrivée avant que l'encodeur ne la réclame), d'où
-        // des `unites` voisines de la moitié des `images`. Sans ce relevé, la
-        // tâche 7 lirait ce rapport 1/2 sans clé et pourrait l'imputer au
-        // parallélisme, alors qu'il vient du rapport 90/60 et qu'il est
-        // identique sur le banc mono-sortie.
+        // Clé de lecture des `unites`, relevée AVANT la libération. CONSTAT, et
+        // rien de plus : le reste des `images` part dans `dropped_stale_nv12`
+        // (une image convertie puis écartée parce qu'une plus récente est
+        // arrivée avant que l'encodeur ne la réclame). Ce relevé ferme
+        // l'arithmétique — `images = unites + nv12_ecartees + au plus 1 en vol`
+        // — donc aucune image ne disparaît sans être comptée, et il montre que
+        // le rapport est le MÊME aux quatre rangs : il ne vient pas du
+        // parallélisme.
+        //
+        // Ne PAS attribuer ce rapport au ratio entre les 60 i/s de
+        // configuration et les ~90 i/s soumis : les journaux le réfutent. Un
+        // rapport 90/60 prédirait 600 unités pour 900 images ; les lignes
+        // périodiques en montrent 45 par seconde pour 90 images, soit
+        // exactement la moitié, linéaire sur les dix intervalles
+        // (`paralleles-n1.log:40-49`). La cause de ce rapport d'un demi n'est
+        // PAS établie, et cette mesure n'en a pas besoin.
         let ecartees: Vec<u64> = encodeurs
             .iter()
             .map(|encodeur| {

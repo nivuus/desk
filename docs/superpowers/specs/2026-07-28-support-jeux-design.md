@@ -462,11 +462,28 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
     noire, 90,0 i/s par fenêtre). Elle n'était jusqu'ici garantie que « par
     construction ».
 
-  **Une mesure reste due avant de dimensionner la voie, mais elle ne bloque plus
-  la spécification** : N duplications DXGI **de front** sur N sorties virtuelles
-  — l'arrangement que la voie propose réellement, et que le banc n'a pas exercé
-  (il a posé N fenêtres sur **une** sortie). DXGI n'autorisant qu'une seule
-  duplication par sortie, la question est réelle.
+  **La mesure qui restait due est prise** (31/07/2026,
+  `plans/2026-07-31-duplications-paralleles-resultats.md`) : N duplications DXGI
+  **de front** sur N sorties virtuelles — l'arrangement que la voie propose
+  réellement, que rien n'avait exercé jusque-là (le banc posait N fenêtres sur
+  **une** sortie, et DXGI n'autorise qu'une duplication par sortie).
+
+  **Reçue.** Aux quatre rangs N = 1, 2, 4, 8, une sortie virtuelle par fenêtre à
+  1280×720, une duplication et un encodeur par sortie : **90,1 i/s par fenêtre en
+  capture+encodage**, identique aux quinze voies des quatre rangs, avec **zéro
+  verdict faux**. À N=8 — le rang du critère de réception, qui exigeait ≥ 60 i/s
+  et aucun verdict faux — c'est **1,50 fois le seuil**. Et, pour la première fois
+  sur ce projet, **l'aire totale croît avec N** (7,37 Mpx à N=8, contre une aire
+  fixe sur tous les bancs antérieurs) : le débit de pixels capturé passe de
+  248–258 MP/s à **664 MP/s calculés sans que la cadence par fenêtre bouge**.
+
+  **Portée exacte, à ne pas élargir** : **une exécution par rang, donc aucun
+  taux** ; **rien au-delà de 8 sorties — 8 est ce qui a été demandé et obtenu,
+  pas une limite trouvée** ; rien de la latence ; justesse **échantillonnée**
+  (contrôle en rotation, ~113 lectures par voie à N=8, pas 901) ; débits de
+  pixels **calculés**, non relevés ; mires D3D11 plein cadre et **non des
+  applications réelles** ; aucune unité H.264 décodée ; et rien du comportement
+  quand Apollo consomme le même vivier de 10.
 
   **Le repli `PrintWindow` recule** : mesuré à N=4 et N=8, il rend 17,6 puis
   **8,8 i/s par fenêtre**. Recollé aux deux rangs de la sonde, son débit de
@@ -477,11 +494,29 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
   pas. Réserve : le chiffre est un plancher de l'implémentation actuelle, qui
   réalloue ses ressources GDI à chaque image.
 
-  **Défaut ouvert, hérité** : la passe d'encodage du banc **tue le processus** sur
-  la voie `duplication`, à la **sortie** de sa boucle (donc à la libération des
-  encodeurs, pas à la soumission d'images), après un encodage réel, quelle que
-  soit la sortie capturée. Elle laisse alors une sortie virtuelle orpheline.
-  Localisé, non diagnostiqué.
+  **Le défaut de libération des encodeurs est diagnostiqué et corrigé**
+  (31/07/2026, même document, §7). Il n'était **pas déterministe** comme les
+  documents le décrivaient, mais **intermittent** : 2 plantages sur 6 exécutions
+  du cas comparable. La faute : la MFT NVIDIA a encore un élément de travail en
+  vol quand on relâche l'encodeur, et cet élément entre dans un verrou qui
+  n'existe plus — pile symbolisée, deux fois identique, sur un fil de pool.
+  `MFShutdown`, d'abord accusé, a été **réfuté par la mesure** : retiré
+  entièrement du chemin, la faute revient. Correctif : une file de travail
+  Media Foundation **sérialisée par encodeur** imposée à la MFT
+  (`IMFRealTimeClientEx::SetWorkQueueEx`), avec dépôt d'une sentinelle avant
+  tout relâchement — **0 récidive sur 20 exécutions contre 2 sur 6**, ce qui
+  **n'est pas une preuve d'absence**.
+
+  **Deux risques restent ouverts et assumés** : `IMFShutdown::Shutdown` est non
+  borné dans un `Drop` et un gel y a été **observé** (1 fois sur 6 à N=4, cause
+  non attribuée) — le retirer n'est pas une option, sans lui la faute revient
+  2 fois sur 5 ; et le convertisseur de couleur n'est couvert par rien, ce qui
+  ne coûte rien tant qu'il retombe sur une MFT synchrone, mais **serait une MFT
+  matérielle sans barrière sur un hôte doté d'un Video Processor matériel** —
+  configuration qu'aucune machine éprouvée n'expose, donc non mesurée. Enfin,
+  **le cas d'exploitation réel n'est pas couvert** : le banc détruit ses
+  encodeurs d'affilée à la fin, jamais un seul pendant que les autres encodent —
+  ce que fera pourtant la fermeture d'une fenêtre.
 
 ---
 

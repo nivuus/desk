@@ -825,6 +825,12 @@ mesures et non sur une construction.** Trois choses ont changé :
   choisir, puisque rien ne dit encore que détruire un encodeur libère la place.
 - **Une mesure encore due avant de dimensionner**, et une seule : N duplications
   DXGI de front sur N sorties virtuelles (voir ci-dessous).
+  > ✅ **Prise le 31 juillet 2026, et la voie est reçue** — 90,1 i/s par fenêtre
+  > en capture+encodage à N=8, zéro verdict faux, aire totale 7,37 Mpx :
+  > `2026-07-31-duplications-paralleles-resultats.md`. Le défaut de libération
+  > des encodeurs (point suivant de la liste ci-dessous) y est diagnostiqué et
+  > corrigé — il était **intermittent**, non déterministe, et `MFShutdown` n'en
+  > était pas la cause.
 
 ### Le repli : `PrintWindow` recule de « repli du produit » à « repli des petites configurations »
 
@@ -861,13 +867,20 @@ possible doit être fermé avant qu'on le retienne ou l'écarte pour de bon.
 
 ### Ce qui reste à lever, par ordre d'utilité
 
-1. **N duplications DXGI de front sur N sorties virtuelles.** *La seule mesure
+1. **N duplications DXGI de front sur N sorties virtuelles.** ✅ **Levée le
+   31 juillet 2026, voie reçue à N=8** —
+   `2026-07-31-duplications-paralleles-resultats.md`. *(Énoncé d'origine
+   ci-dessous.)* *La seule mesure
    encore bloquante pour dimensionner la voie 2.* Tout est en place : la
    création de N sorties est éprouvée (mesure ①), la capture d'une sortie
    virtuelle l'est aussi (mesure ③) ; il reste à les composer. La règle « une
    seule duplication ouverte par sortie » rend la question réelle et non
    formelle. Coût : une demi-journée avec le banc existant.
-2. **Le plantage de la passe d'encodage sur la voie `duplication`.** Localisé,
+2. **Le plantage de la passe d'encodage sur la voie `duplication`.** ✅
+   **Diagnostiqué et corrigé le 31 juillet 2026** (même document, §7) : il était
+   **intermittent** (2/6) et non déterministe, et `MFShutdown` — que le
+   diagnostic a d'abord accusé — a été **réfuté par la mesure**. *(Énoncé
+   d'origine ci-dessous.)* Localisé,
    non diagnostiqué, et il **laisse des sorties orphelines** — donc il gêne les
    mesures autant qu'il menacerait le produit. À reprendre avec le bornage du
    §Mesure ③ comme point de départ : à la sortie de boucle, sur la libération,
