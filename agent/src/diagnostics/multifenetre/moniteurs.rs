@@ -63,6 +63,14 @@ use crate::moniteurs_virtuels::{IdSortie, PiloteAffichageVirtuel};
 /// sorties orphelines, qu'aucune table en mémoire ne peut plus désigner.
 const GABARIT_GUID_MONITEUR: u128 = 0x9c4a_1f6e_2b73_4d51_9e08_6775_4143_0000;
 
+/// GUID attribué au n-ième moniteur créé par CE gabarit, pour un `numero`
+/// donné — extrait de `creer()` pour que `purge.rs` calcule EXACTEMENT la
+/// même suite sans état vivant : c'est ce déterminisme qui permet à une
+/// purge inter-processus de retrouver les GUID d'une exécution tuée net.
+pub(super) fn guid_pour(numero: u16) -> GUID {
+    GUID::from_u128(GABARIT_GUID_MONITEUR | u128::from(numero))
+}
+
 /// Tout ce que le pilote doit retenir entre deux appels, sous un verrou
 /// unique — le compteur et les deux listes ne servent qu'un seul invariant
 /// (« toute sortie créée a un GUID connu tant qu'elle n'est pas retirée »), et
@@ -165,7 +173,10 @@ impl PiloteParIoctl {
     /// pilote crée moins de 65 536 sorties, au-delà de quoi `wrapping_add`
     /// rejouerait un GUID déjà attribué. Hors d'atteinte de ce chantier, mais
     /// l'invariant est ici, là où on s'y fie.
-    fn oublier(&self, guid_moniteur: GUID) {
+    ///
+    /// `pub(super)` : `purge::rejouer_purge_due` l'appelle après un retrait
+    /// réussi, pour la même raison que `detruire` l'appelle ici.
+    pub(super) fn oublier(&self, guid_moniteur: GUID) {
         let mut etat = self.etat();
         etat.a_purger.retain(|connu| *connu != guid_moniteur);
         etat.apparies.retain(|(_, connu)| *connu != guid_moniteur);
@@ -175,7 +186,11 @@ impl PiloteParIoctl {
     ///
     /// Extrait de `detruire` parce que `creer` doit pouvoir l'appeler aussi,
     /// sur son chemin d'échec — là où aucun `IdSortie` fiable n'existe.
-    fn retirer_par_guid(&self, guid_moniteur: GUID, quoi: &str) -> Result<()> {
+    ///
+    /// `pub(super)` : c'est aussi la porte par laquelle `purge.rs` retire des
+    /// sorties que ce processus n'a jamais créées — un GUID régénéré par
+    /// `guid_pour`, hors de `apparies` et `a_purger`.
+    pub(super) fn retirer_par_guid(&self, guid_moniteur: GUID, quoi: &str) -> Result<()> {
         let demande = DemandeRetrait { guid_moniteur };
         self.commander(
             IOCTL_RETIRER_SORTIE,
@@ -272,6 +287,15 @@ impl PiloteParIoctl {
         )?;
         Ok((veille, rendus))
     }
+
+    /// Instantané des GUID dont un retrait précédent a échoué et reste dû.
+    ///
+    /// `pub(super)` pour `purge::rejouer_purge_due`, qui referme la dette
+    /// laissée par la tâche 5 : sans lecteur, `a_purger` ne servait qu'à
+    /// journaliser un retrait raté, jamais à le retenter.
+    pub(super) fn a_purger(&self) -> Vec<GUID> {
+        self.etat().a_purger.clone()
+    }
 }
 
 impl PiloteAffichageVirtuel for PiloteParIoctl {
@@ -282,7 +306,7 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
         let mut etat = self.etat();
         etat.compteur = etat.compteur.wrapping_add(1);
         let numero = etat.compteur;
-        let guid_moniteur = GUID::from_u128(GABARIT_GUID_MONITEUR | u128::from(numero));
+        let guid_moniteur = guid_pour(numero);
 
         let demande = DemandeAjout {
             largeur,

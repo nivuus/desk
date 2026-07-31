@@ -17,6 +17,7 @@ pub(super) mod moniteurs;
 pub(super) mod montee;
 pub(super) mod nvenc;
 pub(super) mod peripherique;
+pub(super) mod purge;
 pub(super) mod replis;
 pub(super) mod sudovda;
 pub(super) mod voies;
@@ -70,6 +71,14 @@ pub(super) fn aiguiller() -> Result<bool> {
     // mesurerait le plafond du chien de garde et non celui du pilote.
     if std::env::var("MULTIFENETRE_VDD_VEILLE").is_ok() {
         montee::eprouver_chien_de_garde()?;
+        return Ok(true);
+    }
+    // Rattrapage : détruit les sorties virtuelles laissées par une exécution
+    // tuée net, que la garde de `moniteurs_virtuels::Sorties` ne peut pas
+    // couvrir. Placée avant la montée en N : si les deux variables sont
+    // posées, on purge.
+    if std::env::var("MULTIFENETRE_VDD_PURGE").is_ok() {
+        purge::purger()?;
         return Ok(true);
     }
     // Mesure ① de la spec : combien de sorties virtuelles simultanées ce
