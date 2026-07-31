@@ -18,6 +18,8 @@ mod audio;
 mod capture;
 mod entree;
 #[cfg(windows)]
+pub(crate) mod exceptions;
+#[cfg(windows)]
 mod multifenetre;
 #[cfg(windows)]
 pub(crate) mod pixels;

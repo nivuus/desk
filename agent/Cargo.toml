@@ -60,6 +60,15 @@ windows = { version = "0.62", features = [
     "Win32_Storage_Xps",
     "Win32_System_Com",
     "Win32_System_Com_StructuredStorage",
+    # Filtre d'exception de `diagnostics::exceptions` : `EXCEPTION_POINTERS` et
+    # `CONTEXT` vivent dans `Diagnostics_Debug` mais sont gardés derrière
+    # `System_Kernel` (ils y référencent `FLOATING_SAVE_AREA`) — les deux
+    # fonctionnalités sont nécessaires, pas l'une ou l'autre. `ToolHelp` sert
+    # à photographier la table des modules à l'installation, pour situer les
+    # adresses de retour en `module+décalage` sans allouer au moment de la faute.
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_Kernel",
     "Win32_System_IO",
     "Win32_System_LibraryLoader",
     "Win32_System_Ole",

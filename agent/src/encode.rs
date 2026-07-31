@@ -337,17 +337,10 @@ impl MediaFoundationSession {
 }
 
 impl Drop for MediaFoundationSession {
-    // Instrumentation diagnostic (chantier duplications-parallèles, ronde 2) :
-    // dernier champ détruit de `H264Encoder` (voir son commentaire de champ),
-    // donc dernier suspect de la chaîne si « corps de Drop terminé » de
-    // `Drop for H264Encoder` s'écrit mais que la mort survient quand même
-    // avant le retour à `banc.rs`.
     fn drop(&mut self) {
-        tracing::info!("Drop MediaFoundationSession : MFShutdown : avant");
         unsafe {
             let _ = MFShutdown();
         }
-        tracing::info!("Drop MediaFoundationSession : MFShutdown : après");
     }
 }
 
@@ -1005,15 +998,6 @@ impl H264Encoder {
 }
 
 impl Drop for H264Encoder {
-    // Instrumentation diagnostic (chantier duplications-parallèles, ronde 2) :
-    // la tâche 1 a désigné cette destruction comme le point où le processus
-    // meurt (trace « libération d'un encodeur : avant id=0 » de
-    // `agent/src/diagnostics/multifenetre/banc.rs`, jamais suivie de son
-    // « après »), mais sans dire QUELLE étape à l'intérieur. Chaque étape
-    // reçoit sa propre paire de traces « avant »/« après », prise séparément
-    // (pas un bloc `unsafe` global), pour qu'une mort au milieu du corps
-    // désigne l'étape exacte au lieu de tout le corps. Traces par
-    // destruction d'encodeur, pas par trame — conforme à la règle du projet.
     fn drop(&mut self) {
         if self.skipped_busy > 0 {
             tracing::debug!(
@@ -1021,43 +1005,16 @@ impl Drop for H264Encoder {
                 "images renoncées faute de confirmation du convertisseur (diagnostic)"
             );
         }
-        tracing::info!("Drop H264Encoder : converter END_OF_STREAM : avant");
         unsafe {
             let _ = self.converter.ProcessMessage(MFT_MESSAGE_NOTIFY_END_OF_STREAM, 0);
-        }
-        tracing::info!("Drop H264Encoder : converter END_OF_STREAM : après");
-
-        tracing::info!("Drop H264Encoder : converter END_STREAMING : avant");
-        unsafe {
             let _ = self.converter.ProcessMessage(MFT_MESSAGE_NOTIFY_END_STREAMING, 0);
-        }
-        tracing::info!("Drop H264Encoder : converter END_STREAMING : après");
-
-        tracing::info!("Drop H264Encoder : transform END_OF_STREAM : avant");
-        unsafe {
             let _ = self.transform.ProcessMessage(MFT_MESSAGE_NOTIFY_END_OF_STREAM, 0);
-        }
-        tracing::info!("Drop H264Encoder : transform END_OF_STREAM : après");
-
-        tracing::info!("Drop H264Encoder : transform END_STREAMING : avant");
-        unsafe {
             let _ = self.transform.ProcessMessage(MFT_MESSAGE_NOTIFY_END_STREAMING, 0);
         }
-        tracing::info!("Drop H264Encoder : transform END_STREAMING : après");
-
         // `MFShutdown` n'est plus appelé ici : il l'est par la destruction de
         // `_media_foundation`, qui a lieu après ce corps ET après celle des
         // MFT (dernier champ déclaré — voir son commentaire).
         let _ = &self.device_manager;
-
-        // La plus importante des traces de cette instrumentation : les
-        // champs de la structure (transform, events, device_manager,
-        // converter, device, _media_foundation en dernier) se détruisent
-        // APRÈS cette ligne, dans l'ordre de déclaration. Si elle part mais
-        // que « libération d'un encodeur : après » de `banc.rs` n'arrive
-        // jamais, la mort est dans un `Release()` COM implicite ou dans
-        // `MFShutdown` — pas dans un appel écrit dans ce corps.
-        tracing::info!("Drop H264Encoder : corps de Drop terminé");
     }
 }
 
