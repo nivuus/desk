@@ -192,10 +192,16 @@ marge**, et notre code commande désormais le pilote lui-même sans dépendre
 d'Apollo ; (b) sa correction d'image **est mesurée** et non plus seulement
 argumentée par construction — Windows compose bien des fenêtres sur un moniteur
 virtuel sans écran physique, dont Desktop Duplication rend l'image exacte
-(900/900 verdicts justes, zéro image noire, 90,0 i/s par fenêtre). **Une mesure
-reste due avant de dimensionner la voie, sans bloquer sa spécification** : N
-duplications DXGI **de front** sur N sorties virtuelles, arrangement que le banc
-n'a pas exercé. Détail et réserves en §5 et §6.
+(900/900 verdicts justes, zéro image noire, 90,0 i/s par fenêtre).
+
+**La mesure qui restait due — N duplications DXGI de front sur N sorties
+virtuelles, l'arrangement que la voie propose réellement — a été prise le
+31/07/2026** (`plans/2026-07-31-duplications-paralleles-resultats.md`), **et la
+voie est reçue** : 90,1 i/s par fenêtre en capture+encodage à N=8, zéro verdict
+faux, contre un critère de 60 i/s posé d'avance. **Portée exacte** : une
+exécution par rang donc aucun taux, et **rien au-delà de 8 sorties — 8 est ce
+qui a été demandé et obtenu, pas une limite trouvée**. Détail et réserves en §5
+et §6.
 
 **Repli mesuré — `PrintWindow(PW_RENDERFULLCONTENT)`.** Contre toute attente,
 cette voie rend l'image **juste** d'une fenêtre D3D **recouverte** : c'est la
@@ -473,9 +479,12 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
   capture+encodage**, identique aux quinze voies des quatre rangs, avec **zéro
   verdict faux**. À N=8 — le rang du critère de réception, qui exigeait ≥ 60 i/s
   et aucun verdict faux — c'est **1,50 fois le seuil**. Et, pour la première fois
-  sur ce projet, **l'aire totale croît avec N** (7,37 Mpx à N=8, contre une aire
-  fixe sur tous les bancs antérieurs) : le débit de pixels capturé passe de
-  248–258 MP/s à **664 MP/s calculés sans que la cadence par fenêtre bouge**.
+  sur ce projet, **l'aire totale croît avec N** (0,92 → 7,37 Mpx de N=1 à N=8,
+  contre une aire fixe sur tous les bancs antérieurs) **sans que la cadence par
+  fenêtre bouge** — le débit de pixels correspondant, **calculé**, va de 83,0 à
+  664,3 MP/s. *(Ce constat vaut à l'intérieur de cette série et n'est rapproché
+  d'aucune autre : les bancs à aire fixe ne lui sont commensurables ni sur les
+  cadences ni sur les débits, qui en dérivent.)*
 
   **Portée exacte, à ne pas élargir** : **une exécution par rang, donc aucun
   taux** ; **rien au-delà de 8 sorties — 8 est ce qui a été demandé et obtenu,

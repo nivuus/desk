@@ -122,10 +122,27 @@ explicitement** :
   surface constante : son débit de pixels croît en N par construction, et c'est
   sa **cadence** qui est le fait mesuré.
 
-Le rapprochement utile n'est donc pas une comparaison de cadences, mais celui-ci
-et lui seul : **le débit de pixels capturé passe de 248–258 MP/s à 664,3 MP/s
-sans que la cadence par fenêtre bouge**. C'est un fait relevé sur ce montage-ci ;
-il n'établit pas où la voie s'arrête (§6).
+**Aucun rapprochement chiffré n'est donc tiré de ce tableau — ni sur les
+cadences, ni sur les débits.** Un débit de pixels est le produit d'une cadence
+par une aire : si les deux séries ne sont pas commensurables sur les cadences,
+elles ne le sont pas davantage sur un nombre qui en dérive. Le tableau est là
+pour **situer les deux montages l'un par rapport à l'autre**, pas pour les
+comparer.
+
+*(Rédaction antérieure retirée : elle annonçait « le débit passe de 248–258 MP/s
+à 664,3 MP/s sans que la cadence bouge » comme un fait de ce montage. C'était
+faux à trois titres — 248–258 MP/s vient de la **sonde**, la série de ce chantier
+allant de 83,0 à 664,3 ; la cadence, d'une série à l'autre, **bouge** de 107,5 à
+90,1 i/s ; et la borne basse de la sonde, 208 MP/s à N=1, était écartée sans le
+dire. C'est exactement la comparaison inter-séries que les deux puces ci-dessus
+interdisent.)*
+
+Le fait de ce chantier, lui, se lit **entièrement dans sa propre colonne** et
+n'a besoin d'aucune autre série : **l'aire totale est multipliée par 8 de N=1 à
+N=8 — 0,92 → 7,37 Mpx, relevé — et la cadence par fenêtre ne bouge pas** (90,1
+i/s aux quatre rangs en capture+encodage, relevé). Le débit de pixels
+correspondant, **calculé**, passe de 83,0 à 664,3 MP/s. Cela n'établit pas où la
+voie s'arrête (§6).
 
 ### 3.5 Passe témoin — la source ne décroche pas
 
@@ -164,7 +181,10 @@ ligne `duplication REFUSÉE` dans aucun des quatre journaux.
 19:38:05.343789. Aucun `MF_E_UNSUPPORTED_D3D_TYPE`, aucune ligne `ERROR` ni
 `WARN` dans aucun des quatre journaux.
 
-**Huit périphériques D3D11 distincts, relevés et non inférés du code.** Huit
+**Huit périphériques D3D11 distincts — inférence adossée au journal, non lecture
+du seul code.** C'est bien une **inférence**, et elle est déroulée ci-dessous
+pour pouvoir être contestée : aucun relevé ne montre huit pointeurs de
+périphérique distincts. Ce qui est relevé, ce sont huit
 lignes `protection multi-fils activée sur le contexte immédiat D3D11`,
 `paralleles-n8.log:47/51/55/59/63/67/71/75`, **toutes avec
 `protection_precedente=false`**. Ce champ est la valeur *retournée* par
@@ -193,8 +213,8 @@ les cinq purges (départ, avant chaque rang, finale) rendent toutes
 laissé de sortie derrière lui.**
 
 **Aucun rang n'a été rejoué.** Chaque rang est une exécution unique, prise du
-premier coup. Aucun des cinq incidents prévus par le protocole (refus de
-`DuplicateOutput`, verdict `Voisine`, gel à la libération, plantage) ne s'est
+premier coup. Aucun des **quatre** incidents prévus par le protocole — refus de
+`DuplicateOutput`, verdict `Voisine`, gel à la libération, plantage — ne s'est
 produit.
 
 ---
@@ -336,7 +356,13 @@ Toute la campagne de vérification en découle.
 
 ### 7.2 La faute, désignée par sa pile
 
-Deux plantages capturés avec leur pile symbolisée, **identiques** :
+Deux plantages capturés avec leur pile, **identiques cadre pour cadre**. Le bloc
+ci-dessous n'est **pas** un extrait verbatim : il **fusionne deux pièces** — les
+cadres `module+décalage` viennent des journaux bruts
+(`2bis-plantage-{1,2}-pile-exception.log`, qui portent `<hors module>` et **aucun
+nom de symbole** pour `#07` et `#08`), les noms de symboles viennent de la
+symbolisation hors ligne (`2bis-symbolisation.md`). Les valeurs des deux pièces
+sont exactes ; leur juxtaposition est le fait de ce document.
 
 ```
 #05 ntdll.dll+0x19daa   RtlpEnterCriticalSectionContended+0x1da   <== FAUTE
@@ -475,6 +501,12 @@ nécessaires ; et lequel de `MFT_MESSAGE_COMMAND_FLUSH` ou de
   ne se comparent pas.** Les deux séries de ce projet existent maintenant ; les
   confondre ferait conclure à un décrochage ou à un gain qui n'est ni l'un ni
   l'autre.
+- **Corriger une affirmation réfutée exige de la CHERCHER, pas de la corriger là
+  où on nous l'a montrée.** Les documents longs ont un sommaire, et c'est lui
+  qu'on lit : traiter le chapitre de détail en laissant le sommaire intact laisse
+  le lecteur repartir avec une tâche déjà faite. Un balayage sur les formules
+  (« encore due », « non diagnostiqué », « jamais expliqué »…) en a trouvé
+  **trois** de plus, dans les deux endroits les plus exposés.
 - **Une clé de lecture posée dans le code doit être vérifiée contre le journal
   avant d'être recopiée.** Le commentaire de `passes.rs` expliquait le rapport
   `unites`/`images` par un ratio 90/60 qui prédisait 600 unités là où le journal
@@ -529,11 +561,14 @@ ici a été converti puis écarté.
   1280×720 par fenêtre, avec 50 % de marge sur la cible de 60 i/s et sans
   appariement croisé détecté. C'était la dernière mesure que les mesures
   préalables déclaraient due.
-- **Le débit de pixels capturé n'est pas le facteur limitant à 664 MP/s** sur
-  cette machine.
-- **Le chemin de destruction d'un encodeur ne tue plus le processus** — sous les
-  réserves du §7.5, et sans que le cas d'exploitation réel (fermer une fenêtre
-  pendant que les autres encodent) soit couvert.
+- **La cadence n'a pas fléchi à 664,3 MP/s calculés** sur cette machine. Cela ne
+  désigne aucun facteur limitant : ce qui borne la cadence à ~90 i/s n'est pas
+  mesuré (§6).
+- **Le chemin de destruction d'un encodeur n'a plus tué le processus** sur les
+  20 exécutions du cas comparable ni sur les quatre rangs de ce chantier — ce
+  qui n'est pas une preuve d'absence, sous les réserves du §7.5, et sans que le
+  cas d'exploitation réel (fermer une fenêtre pendant que les autres encodent)
+  soit couvert.
 
 **Ce qu'il doit encore mesurer ou décider** : le plafond réel de duplications ;
 la mise en sommeil des fenêtres masquées, dont le mécanisme repose toujours sur

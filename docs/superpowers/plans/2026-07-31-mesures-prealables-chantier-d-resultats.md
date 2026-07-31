@@ -110,6 +110,23 @@ correction correspondant.
 
 ## Ce qui reste ouvert
 
+> ✅ **Note du 31 juillet 2026, postérieure à ce document — les deux premiers
+> points ci-dessous sont LEVÉS**, par
+> `2026-07-31-duplications-paralleles-resultats.md`. Les énoncés d'origine sont
+> conservés intacts en dessous ; ce qui a changé :
+>
+> - **le défaut de libération est diagnostiqué et corrigé**, et il n'était pas
+>   déterministe comme « jamais expliqué » et le bornage du §Mesure ③ le
+>   laissent croire, mais **intermittent** (2 plantages sur 6 exécutions). La
+>   cause : la MFT NVIDIA a un élément de travail encore en vol quand on relâche
+>   l'encodeur. `MFShutdown`, d'abord accusé, a été **réfuté par la mesure** ;
+> - **l'arrangement de la voie recommandée est mesuré, et la voie est reçue** :
+>   90,1 i/s par fenêtre en capture+encodage à N=8, zéro verdict faux, huit
+>   duplications ouvertes de front. **Une exécution par rang, donc aucun taux**,
+>   et **rien au-delà de 8 sorties**.
+>
+> Les trois autres points de cette liste **restent ouverts**.
+
 - **Un défaut ouvert et non diagnostiqué : la passe d'encodage du banc tue le
   processus**, sur la voie `duplication`. Localisé, jamais expliqué — bornage
   exact au §Mesure ③. C'est la seule réserve de ce chantier qui porte sur un
@@ -602,6 +619,10 @@ nombre=2`) et retirée par la purge (`retirees=1 avant=2 apres=1`,
   seule duplication par sortie** : la question porte donc sur N duplications sur
   N sorties distinctes, un montage jamais exercé. **C'est la mesure suivante, et
   elle est bloquante pour dimensionner la voie recommandée.**
+  > ✅ **Note postérieure (31/07/2026)** : ce montage a depuis été exercé et la
+  > voie est reçue — 90,1 i/s par fenêtre en capture+encodage à N=8, zéro
+  > verdict faux (`2026-07-31-duplications-paralleles-resultats.md`). Une
+  > exécution par rang, donc aucun taux ; rien au-delà de 8 sorties.
 - **La cadence de 90,0 i/s n'est pas expliquée.** Identique à N=1 et N=2,
   parfaitement régulière, alors que la sortie a été créée à 60 Hz. Le témoin qui
   vaut n'est pas celui de la sonde précédente (autre jour, autre code) mais celui
@@ -867,24 +888,23 @@ possible doit être fermé avant qu'on le retienne ou l'écarte pour de bon.
 
 ### Ce qui reste à lever, par ordre d'utilité
 
-1. **N duplications DXGI de front sur N sorties virtuelles.** ✅ **Levée le
-   31 juillet 2026, voie reçue à N=8** —
-   `2026-07-31-duplications-paralleles-resultats.md`. *(Énoncé d'origine
-   ci-dessous.)* *La seule mesure
+1. **N duplications DXGI de front sur N sorties virtuelles.** *La seule mesure
    encore bloquante pour dimensionner la voie 2.* Tout est en place : la
    création de N sorties est éprouvée (mesure ①), la capture d'une sortie
    virtuelle l'est aussi (mesure ③) ; il reste à les composer. La règle « une
    seule duplication ouverte par sortie » rend la question réelle et non
    formelle. Coût : une demi-journée avec le banc existant.
-2. **Le plantage de la passe d'encodage sur la voie `duplication`.** ✅
-   **Diagnostiqué et corrigé le 31 juillet 2026** (même document, §7) : il était
-   **intermittent** (2/6) et non déterministe, et `MFShutdown` — que le
-   diagnostic a d'abord accusé — a été **réfuté par la mesure**. *(Énoncé
-   d'origine ci-dessous.)* Localisé,
+   > ✅ **Note postérieure (31/07/2026)** : **levée, voie reçue à N=8** —
+   > `2026-07-31-duplications-paralleles-resultats.md`.
+2. **Le plantage de la passe d'encodage sur la voie `duplication`.** Localisé,
    non diagnostiqué, et il **laisse des sorties orphelines** — donc il gêne les
    mesures autant qu'il menacerait le produit. À reprendre avec le bornage du
    §Mesure ③ comme point de départ : à la sortie de boucle, sur la libération,
    après un encodage réel.
+   > ✅ **Note postérieure (31/07/2026)** : **diagnostiqué et corrigé** (même
+   > document, §7). Il était **intermittent** (2 plantages sur 6 exécutions) et
+   > non déterministe, et `MFShutdown` — que le diagnostic a d'abord accusé — a
+   > été **réfuté par la mesure**.
 3. **La séquence « créer 8 → en détruire 1 → tenter un 9ᵉ ».** Une heure, et
    elle décide du mécanisme de mise en sommeil des fenêtres masquées. Variante
    au passage : cesser d'alimenter un encodeur sans le détruire.

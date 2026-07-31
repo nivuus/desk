@@ -41,6 +41,13 @@ où l'on travaille dedans, pas en chantier séparé.
 | `agent/src/windows_source.rs` | 721 | `#[cfg(windows)]`, aucun test |
 | `agent/src/wasapi.rs` | 543 | `#[cfg(windows)]`, aucun test |
 
+> `encode.rs` est passé de 1502 à 1536 lignes le 31 juillet 2026 (correctif de
+> libération des encodeurs). **Cette croissance de +34 est régulière au regard
+> de la règle ci-dessus** : l'addition s'est accompagnée de son extraction —
+> l'essentiel de la logique neuve vit dans `agent/src/encode/arret.rs`
+> (457 lignes, **sous** la limite), et seul le câblage est resté dans
+> `encode.rs`.
+
 Ces trois modules ne se compilent que sur la VM et ne sont couverts par aucun
 test : les découper se ferait sans filet automatisé. La dette est assumée
 jusqu'à ce qu'ils gagnent des tests — voir
@@ -1576,9 +1583,11 @@ capture+encodage et aucun verdict faux**.
 **90,1 i/s exactement sur les quinze voies des quatre rangs** en capture+encodage
 (90,0–90,1 en capture nue), soit **1,50 fois le seuil** au rang du critère. Huit
 duplications ouvertes de front (`paralleles-n8.log:78`), huit encodeurs matériels
-NVENC construits sans refus (l. 93 à 114), huit périphériques D3D11 distincts
-(l. 47 à 75, tous `protection_precedente=false`), topologie rendue **nom pour
-nom** à son état de départ, zéro `ERROR`, zéro `WARN`, **aucun rang rejoué**.
+NVENC construits sans refus (l. 93 à 114), huit périphériques D3D11 tenus pour
+distincts (l. 47 à 75, tous `protection_precedente=false` — **inférence** sur la
+sémantique de `SetMultithreadProtected`, aucun relevé de huit pointeurs
+distincts), topologie rendue **nom pour nom** à son état de départ, zéro
+`ERROR`, zéro `WARN`, **aucun rang rejoué**.
 
 ### Ce que ce montage a de neuf : l'aire croît avec N
 
@@ -1586,13 +1595,20 @@ nom** à son état de départ, zéro `ERROR`, zéro `WARN`, **aucun rang rejoué
 `disposition::tuiles` découpe le bureau : le débit de pixels y est quasi constant
 *par construction*, et le nombre de fenêtres n'y est **pas prouvé neutre en
 soi**. Ici chaque fenêtre a sa sortie de 1280×720, facteur d'échelle 1 (pas de
-piège DPI). Le fait relevé : **le débit de pixels capturé passe de 248–258 MP/s
-(sonde, aire fixe) à 664 MP/s sans que la cadence par fenêtre bouge.**
+piège DPI). **Le fait de ce chantier se lit entièrement dans sa propre série** :
+l'aire totale est multipliée par 8 de N=1 à N=8 (0,92 → 7,37 Mpx, **relevé**) et
+la cadence par fenêtre ne bouge pas (90,1 i/s aux quatre rangs, **relevé**) ; le
+débit de pixels correspondant, **calculé**, va de 83,0 à 664,3 MP/s.
 
-⚠️ Les deux séries **ne se comparent pas terme à terme** — la sonde partage *une*
-acquisition entre N recadrages d'aire fixe, celle-ci ouvre *N* acquisitions sur N
-surfaces constantes. Les confondre ferait conclure à un décrochage ou à un gain
-qui n'est ni l'un ni l'autre.
+⚠️ **Ne rapprocher les deux séries d'AUCUN chiffre**, ni cadence ni débit — la
+sonde partage *une* acquisition entre N recadrages d'aire fixe, celle-ci ouvre
+*N* acquisitions sur N surfaces constantes. Un débit étant le produit d'une
+cadence par une aire, deux séries incommensurables sur les cadences le restent
+sur les débits. *(Une première rédaction de cette section affirmait « le débit
+passe de 248–258 à 664 MP/s sans que la cadence bouge » : 248–258 vient de la
+sonde et non de cette série, la cadence bouge bel et bien d'une série à l'autre
+— 107,5 → 90,1 i/s —, et la borne basse de la sonde à N=1, 208 MP/s, était
+écartée sans le dire.)*
 
 ### Le défaut de libération des encodeurs : corrigé, et deux risques assumés
 
@@ -1674,6 +1690,11 @@ d'absence, et l'énoncé porte toujours son nombre d'exécutions.*
   fichiers.**
 - **Un banc à aire fixe et un banc à aire croissante ne se comparent pas.** Les
   deux séries existent désormais dans ce dépôt.
+- **Corriger une affirmation réfutée exige de la CHERCHER, pas de la corriger là
+  où on nous l'a montrée.** Les documents longs ont un sommaire, et c'est lui
+  qu'on lit : traiter le chapitre de détail en laissant le sommaire intact laisse
+  le lecteur repartir avec une tâche déjà faite. Balayer sur les formules
+  (« encore due », « non diagnostiqué », « jamais expliqué »…).
 - **Une clé de lecture posée dans le code doit être vérifiée contre le journal
   avant d'être recopiée.** Le commentaire de `passes.rs` expliquait le rapport
   `unites`/`images` par un ratio 90/60 qui prédisait 600 unités là où le journal
