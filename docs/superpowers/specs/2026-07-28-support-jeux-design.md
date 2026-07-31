@@ -378,17 +378,39 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
 - **Topologie WebRTC** : une `RTCPeerConnection` par fenêtre navigateur plutôt
   qu'une session à N pistes — l'isolation évite qu'une fenêtre en panne
   n'affecte les autres, au prix de N négociations ICE.
-- **Budget encodeurs — mesuré le 30/07/2026, formulation bornée.** Sur un
-  périphérique D3D11 **unique et partagé**, à 1280×720 / 60 i/s / 8 Mb/s,
-  **8 instances du pipeline Media Foundation complet réussissent ; la 9ᵉ échoue
-  à la liaison du type d'entrée** (`MF_E_UNSUPPORTED_D3D_TYPE`, `0xC00D6D76`).
-  Ce n'est **pas** établi comme « la limite de sessions NVENC de cette carte » :
-  le transform matériel n°9 s'instancie sans difficulté, et le partage d'un
-  unique périphérique est peut-être lui-même la contrainte. Le comportement sur
-  des périphériques D3D11 **séparés** n'est pas mesuré — à lever, il dimensionne
-  le nombre de fenêtres simultanées du produit. Suspendre l'encodage des
-  fenêtres masquées, piloté par la Page Visibility API côté client — souhaitable
-  en soi, pas seulement comme contournement.
+- **Budget encodeurs — 8, mesuré le 30/07/2026 puis reconfirmé le 31/07/2026,
+  formulation bornée.** À 1280×720 / 60 i/s / 8 Mb/s (Baseline, CBR, NV12),
+  **8 instances du pipeline Media Foundation complet réussissent, la 9ᵉ est
+  refusée — que les encodeurs partagent un unique périphérique D3D11 ou qu'ils
+  en aient chacun un neuf.** Séparer les périphériques ne fait donc gagner
+  aucune fenêtre : **le partage n'était pas la contrainte**, et le coût
+  correspondant (partager des textures entre le périphérique de capture et ceux
+  des encodeurs) n'a pas à être payé.
+
+  **Attribution corrigée** : le refus est rendu par **`SetOutputType` de la MFT
+  NVIDIA** (`MF_E_UNSUPPORTED_D3D_TYPE`, `0xC00D6D76`), et non par « la liaison
+  du type d'entrée » comme l'énonçait la version précédente de cette puce. Le
+  libellé Windows de ce HRESULT parle du type d'**entrée** alors que l'appel
+  refusé règle la **sortie** — **ne pas se fier au texte d'un HRESULT pour
+  désigner un appel**.
+
+  **Ce que la mesure n'établit pas**, et qu'il ne faut donc pas écrire : ce n'est
+  pas « la limite de sessions NVENC de cette carte » (le transform matériel n°9
+  s'instancie sans difficulté) ; **la couche qui impose le plafond n'est pas
+  identifiée** (NVENC, pilote NVIDIA, Media Foundation, ou virtualisation) ; rien
+  ne dit qu'il tienne à d'autres résolutions ou débits ; et **aucune image n'a
+  été soumise** — seule la *construction* est mesurée, pas la tenue en cadence de
+  8 flux ensemble. Réserve de méthode : la comparaison partagé/séparé porte sur
+  **deux variables confondues**, le mode séparé n'ouvrant aucune duplication
+  DXGI ; le témoin propre n'a pas été exercé.
+
+  **Conséquence** : suspendre l'encodage des fenêtres masquées (Page Visibility
+  API côté client) passe d'optimisation souhaitable à **condition de viabilité**
+  au-delà de huit fenêtres. Le mécanisme reste à choisir : **que détruire un
+  encodeur libère la place est une conjecture non éprouvée** — la séquence
+  « créer 8 → en détruire 1 → tenter un 9ᵉ » n'a jamais été jouée.
+  Journaux : `plans/journaux-mesures-prealables/nvenc-partage-temoin.log`,
+  `nvenc-separe.log`.
 - **Risque n°1 — popup blocker : LEVÉ le 28/07/2026.** Mesuré sur ChromeOS —
   résultats et protocole dans `plans/2026-07-28-spike-multifenetres-resultats.md`.
   Le modèle tient, mais l'hypothèse « une PWA installée a plus de latitude » est
@@ -409,9 +431,43 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
   non-recouvrement garanti sont **tous deux démentis par la mesure**, voie
   recommandée « un moniteur virtuel par fenêtre », repli mesuré `PrintWindow`.
   Voir §4 et `plans/2026-07-30-sonde-capture-multifenetre-resultats.md`.
-  **Deux mesures sont bloquantes avant de spécifier ce chantier** : le plafond
-  de sorties virtuelles simultanées (deux appareils clients appariés suffiraient)
-  et le plafond d'encodage sur périphériques D3D11 séparés.
+
+  **Les deux mesures qui bloquaient la spécification de ce chantier sont
+  prises** (31/07/2026, `plans/2026-07-31-mesures-prealables-chantier-d-resultats.md`) :
+
+  - **Plafond de sorties virtuelles = 10**, refus du pilote à la 11ᵉ création
+    (`ERROR_TOO_MANY_NAMES`), preuve par identité des onze sorties présentes au
+    refus. Pour une cible de 8 fenêtres, **la voie tient avec 2 de marge** — mais
+    le vivier est peut-être partagé avec Apollo, qui n'en consommait aucune
+    pendant la mesure. Le produit **commande désormais le pilote lui-même** (IOCTL
+    SudoVDA), sans dépendre du démarrage d'une session Apollo, et sait purger ses
+    sorties orphelines.
+  - **Plafond d'encodage sur périphériques séparés : inchangé, 8** — voir la puce
+    « Budget encodeurs ».
+  - **L'hypothèse fondatrice de la voie est vérifiée** : Windows compose bien des
+    fenêtres sur un moniteur virtuel **sans écran physique**, et Desktop
+    Duplication en rend l'image exacte (900/900 verdicts justes, zéro image
+    noire, 90,0 i/s par fenêtre). Elle n'était jusqu'ici garantie que « par
+    construction ».
+
+  **Une mesure reste due avant de dimensionner la voie, mais elle ne bloque plus
+  la spécification** : N duplications DXGI **de front** sur N sorties virtuelles
+  — l'arrangement que la voie propose réellement, et que le banc n'a pas exercé
+  (il a posé N fenêtres sur **une** sortie). DXGI n'autorisant qu'une seule
+  duplication par sortie, la question est réelle.
+
+  **Le repli `PrintWindow` recule** : mesuré à N=4 et N=8, il rend 17,2 puis
+  **8,8 i/s par fenêtre**, avec un débit de pixels qui décroît au lieu de
+  plafonner. Il ne tient pas la cible de 8 fenêtres ; il reste un repli **pour
+  deux à quatre fenêtres** et pour les cas où la voie principale ne s'applique
+  pas. Réserve : le chiffre est un plancher de l'implémentation actuelle, qui
+  réalloue ses ressources GDI à chaque image.
+
+  **Défaut ouvert, hérité** : la passe d'encodage du banc **tue le processus** sur
+  la voie `duplication`, à la **sortie** de sa boucle (donc à la libération des
+  encodeurs, pas à la soumission d'images), après un encodage réel, quelle que
+  soit la sortie capturée. Elle laisse alors une sortie virtuelle orpheline.
+  Localisé, non diagnostiqué.
 
 ---
 
@@ -431,6 +487,20 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
   (`dd_configuration_option = ensure_only_display`). Piège : le champ de
   résolution de WMI s'est révélé périmé de 68 s ; la source de vérité est
   `GetDesc`/`DesktopCoordinates`.
+
+  **Mis à jour le 31/07/2026 — la dépendance à Apollo est levée.** Le canal de
+  contrôle du pilote est identifié (IOCTL sur le GUID d'interface SudoVDA,
+  `plans/journaux-mesures-prealables/canal-de-controle.md`) et notre code crée,
+  détruit et purge ses propres sorties : **dix créations et dix destructions
+  éprouvées**, sorties DXGI réelles, attachées, portées par l'adaptateur qui
+  possède NVENC. La sortie créée par notre code à 1280×720 ne présente **aucun
+  facteur d'échelle** (1,0) — mais le piège DPI 1,5 s'est bien présenté sur
+  cette VM sur la sortie 5120×1440 d'Apollo : la borne est *cette résolution-là*,
+  pas *cette VM*. Une sortie virtuelle **survit au processus qui l'a créée** :
+  une purge autonome est nécessaire, elle existe, et elle a déjà servi en
+  conditions réelles. Le pilote porte un **chien de garde d'unité inconnue**
+  (`delai = 3`) : aucune unité n'est exclue, pas même la seconde — une
+  exploitation durable devra le pinguer.
 - **Anti-triche.** Certains anti-triche en mode noyau (Riot Vanguard, Easy
   Anti-Cheat selon configuration) **refusent de s'exécuter en machine
   virtuelle**. Valorant est notamment inaccessible par construction. C'est une
