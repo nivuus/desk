@@ -1,0 +1,162 @@
+2026-07-31T18:30:22.586126Z  INFO agent::diagnostics::exceptions: filtre d'exception installé chemin="C:\\dev\\exceptions.log" modules=33 fil_principal=6016
+2026-07-31T18:30:22.586660Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-07-31T18:30:22.589360Z  INFO agent::capture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true
+2026-07-31T18:30:22.691643Z  INFO agent::capture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-07-31T18:30:22.691947Z  INFO agent::capture: duplication de sortie établie desktop_width=2400 desktop_height=1080
+2026-07-31T18:30:22.691966Z  INFO agent::diagnostics::multifenetre::nvenc: plafond d'encodeurs : mode retenu mode="partage"
+2026-07-31T18:30:22.692828Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-07-31T18:30:22.758026Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=327681
+2026-07-31T18:30:22.762064Z DEBUG agent::encode: aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT erreur=aucun convertisseur vidéo matériel enregistré
+2026-07-31T18:30:22.762849Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-07-31T18:30:22.763215Z  INFO agent::diagnostics::multifenetre::nvenc: encodeur créé rang=1 mode="partage"
+2026-07-31T18:30:22.763247Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-07-31T18:30:22.792492Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=524293
+2026-07-31T18:30:22.792531Z DEBUG agent::encode: aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT erreur=aucun convertisseur vidéo matériel enregistré
+2026-07-31T18:30:22.792682Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-07-31T18:30:22.792925Z  INFO agent::diagnostics::multifenetre::nvenc: encodeur créé rang=2 mode="partage"
+2026-07-31T18:30:22.792953Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-07-31T18:30:22.826509Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=655368
+2026-07-31T18:30:22.826555Z DEBUG agent::encode: aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT erreur=aucun convertisseur vidéo matériel enregistré
+2026-07-31T18:30:22.826743Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-07-31T18:30:22.826997Z  INFO agent::diagnostics::multifenetre::nvenc: encodeur créé rang=3 mode="partage"
+2026-07-31T18:30:22.827038Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-07-31T18:30:22.857696Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=786443
+2026-07-31T18:30:22.857738Z DEBUG agent::encode: aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT erreur=aucun convertisseur vidéo matériel enregistré
+2026-07-31T18:30:22.857897Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-07-31T18:30:22.858165Z  INFO agent::diagnostics::multifenetre::nvenc: encodeur créé rang=4 mode="partage"
+2026-07-31T18:30:22.858195Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-07-31T18:30:22.888543Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=917518
+2026-07-31T18:30:22.888589Z DEBUG agent::encode: aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT erreur=aucun convertisseur vidéo matériel enregistré
+2026-07-31T18:30:22.888762Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-07-31T18:30:22.889048Z  INFO agent::diagnostics::multifenetre::nvenc: encodeur créé rang=5 mode="partage"
+2026-07-31T18:30:22.889086Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-07-31T18:30:22.919280Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=1048593
+2026-07-31T18:30:22.919323Z DEBUG agent::encode: aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT erreur=aucun convertisseur vidéo matériel enregistré
+2026-07-31T18:30:22.919478Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-07-31T18:30:22.919712Z  INFO agent::diagnostics::multifenetre::nvenc: encodeur créé rang=6 mode="partage"
+2026-07-31T18:30:22.919741Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-07-31T18:30:22.950410Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=1179668
+2026-07-31T18:30:22.950454Z DEBUG agent::encode: aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT erreur=aucun convertisseur vidéo matériel enregistré
+2026-07-31T18:30:22.950614Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-07-31T18:30:22.950860Z  INFO agent::diagnostics::multifenetre::nvenc: encodeur créé rang=7 mode="partage"
+2026-07-31T18:30:22.950889Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-07-31T18:30:22.981259Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=1310743
+2026-07-31T18:30:22.981300Z DEBUG agent::encode: aucun convertisseur vidéo matériel énuméré, repli sur CLSID_VideoProcessorMFT erreur=aucun convertisseur vidéo matériel enregistré
+2026-07-31T18:30:22.981458Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-07-31T18:30:22.981750Z  INFO agent::diagnostics::multifenetre::nvenc: encodeur créé rang=8 mode="partage"
+2026-07-31T18:30:22.981779Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-07-31T18:30:23.009416Z  INFO agent::diagnostics::multifenetre::nvenc: plafond d'encodeurs atteint — création du suivant refusée plafond=8 mode="partage" causes=configuration du type de sortie de l'encodeur H.264 (transform matériel) : Le type d’entrée n’est pas pris en charge pour le périphérique D3D. (0xC00D6D76)
+2026-07-31T18:30:23.009432Z  INFO agent::diagnostics::multifenetre::nvenc: relâchement des encodeurs et des périphériques encodeurs=8 peripheriques=0
+2026-07-31T18:30:23.009440Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_OF_STREAM
+2026-07-31T18:30:23.009445Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_OF_STREAM refuse=false
+2026-07-31T18:30:23.009447Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_STREAMING
+2026-07-31T18:30:23.009449Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_STREAMING refuse=false
+2026-07-31T18:30:23.009451Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_OF_STREAM
+2026-07-31T18:30:23.009455Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_OF_STREAM refuse=false
+2026-07-31T18:30:23.009457Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_STREAMING
+2026-07-31T18:30:23.009459Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_STREAMING refuse=false
+2026-07-31T18:30:23.009483Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après END_STREAMING" attente_ms=0
+2026-07-31T18:30:23.009490Z DEBUG agent::encode::arret: MFT sans IMFShutdown : pas d'arrêt explicite mft="convertisseur" erreur=Cette interface n’est pas prise en charge (0x80004002)
+2026-07-31T18:30:23.009500Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-07-31T18:30:23.010022Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-07-31T18:30:23.010034Z DEBUG agent::encode::arret: arrêt de la MFT confirmé mft="encodeur" attente_ms=0
+2026-07-31T18:30:23.010057Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après IMFShutdown" attente_ms=0
+2026-07-31T18:30:23.010102Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_OF_STREAM
+2026-07-31T18:30:23.010107Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_OF_STREAM refuse=false
+2026-07-31T18:30:23.010110Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_STREAMING
+2026-07-31T18:30:23.010112Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_STREAMING refuse=false
+2026-07-31T18:30:23.010115Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_OF_STREAM
+2026-07-31T18:30:23.010118Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_OF_STREAM refuse=false
+2026-07-31T18:30:23.010120Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_STREAMING
+2026-07-31T18:30:23.010122Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_STREAMING refuse=false
+2026-07-31T18:30:23.010130Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après END_STREAMING" attente_ms=0
+2026-07-31T18:30:23.010135Z DEBUG agent::encode::arret: MFT sans IMFShutdown : pas d'arrêt explicite mft="convertisseur" erreur=Cette interface n’est pas prise en charge (0x80004002)
+2026-07-31T18:30:23.010145Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-07-31T18:30:23.010547Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-07-31T18:30:23.010559Z DEBUG agent::encode::arret: arrêt de la MFT confirmé mft="encodeur" attente_ms=0
+2026-07-31T18:30:23.010572Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après IMFShutdown" attente_ms=0
+2026-07-31T18:30:23.010612Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_OF_STREAM
+2026-07-31T18:30:23.010617Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_OF_STREAM refuse=false
+2026-07-31T18:30:23.010619Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_STREAMING
+2026-07-31T18:30:23.010621Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_STREAMING refuse=false
+2026-07-31T18:30:23.010623Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_OF_STREAM
+2026-07-31T18:30:23.010627Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_OF_STREAM refuse=false
+2026-07-31T18:30:23.010629Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_STREAMING
+2026-07-31T18:30:23.010631Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_STREAMING refuse=false
+2026-07-31T18:30:23.010641Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après END_STREAMING" attente_ms=0
+2026-07-31T18:30:23.010646Z DEBUG agent::encode::arret: MFT sans IMFShutdown : pas d'arrêt explicite mft="convertisseur" erreur=Cette interface n’est pas prise en charge (0x80004002)
+2026-07-31T18:30:23.010655Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-07-31T18:30:23.011066Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-07-31T18:30:23.011075Z DEBUG agent::encode::arret: arrêt de la MFT confirmé mft="encodeur" attente_ms=0
+2026-07-31T18:30:23.011118Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après IMFShutdown" attente_ms=0
+2026-07-31T18:30:23.011148Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_OF_STREAM
+2026-07-31T18:30:23.011152Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_OF_STREAM refuse=false
+2026-07-31T18:30:23.011155Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_STREAMING
+2026-07-31T18:30:23.011157Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_STREAMING refuse=false
+2026-07-31T18:30:23.011159Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_OF_STREAM
+2026-07-31T18:30:23.011161Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_OF_STREAM refuse=false
+2026-07-31T18:30:23.011163Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_STREAMING
+2026-07-31T18:30:23.011166Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_STREAMING refuse=false
+2026-07-31T18:30:23.011176Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après END_STREAMING" attente_ms=0
+2026-07-31T18:30:23.011180Z DEBUG agent::encode::arret: MFT sans IMFShutdown : pas d'arrêt explicite mft="convertisseur" erreur=Cette interface n’est pas prise en charge (0x80004002)
+2026-07-31T18:30:23.011186Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-07-31T18:30:23.011578Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-07-31T18:30:23.011586Z DEBUG agent::encode::arret: arrêt de la MFT confirmé mft="encodeur" attente_ms=0
+2026-07-31T18:30:23.011600Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après IMFShutdown" attente_ms=0
+2026-07-31T18:30:23.011625Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_OF_STREAM
+2026-07-31T18:30:23.011627Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_OF_STREAM refuse=false
+2026-07-31T18:30:23.011629Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_STREAMING
+2026-07-31T18:30:23.011632Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_STREAMING refuse=false
+2026-07-31T18:30:23.011634Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_OF_STREAM
+2026-07-31T18:30:23.011636Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_OF_STREAM refuse=false
+2026-07-31T18:30:23.011638Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_STREAMING
+2026-07-31T18:30:23.011640Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_STREAMING refuse=false
+2026-07-31T18:30:23.011666Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après END_STREAMING" attente_ms=0
+2026-07-31T18:30:23.011671Z DEBUG agent::encode::arret: MFT sans IMFShutdown : pas d'arrêt explicite mft="convertisseur" erreur=Cette interface n’est pas prise en charge (0x80004002)
+2026-07-31T18:30:23.011677Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-07-31T18:30:23.012061Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-07-31T18:30:23.012069Z DEBUG agent::encode::arret: arrêt de la MFT confirmé mft="encodeur" attente_ms=0
+2026-07-31T18:30:23.012081Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après IMFShutdown" attente_ms=0
+2026-07-31T18:30:23.012108Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_OF_STREAM
+2026-07-31T18:30:23.012110Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_OF_STREAM refuse=false
+2026-07-31T18:30:23.012112Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_STREAMING
+2026-07-31T18:30:23.012114Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_STREAMING refuse=false
+2026-07-31T18:30:23.012116Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_OF_STREAM
+2026-07-31T18:30:23.012118Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_OF_STREAM refuse=false
+2026-07-31T18:30:23.012120Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_STREAMING
+2026-07-31T18:30:23.012122Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_STREAMING refuse=false
+2026-07-31T18:30:23.012165Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après END_STREAMING" attente_ms=0
+2026-07-31T18:30:23.012170Z DEBUG agent::encode::arret: MFT sans IMFShutdown : pas d'arrêt explicite mft="convertisseur" erreur=Cette interface n’est pas prise en charge (0x80004002)
+2026-07-31T18:30:23.012176Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-07-31T18:30:23.012479Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-07-31T18:30:23.012485Z DEBUG agent::encode::arret: arrêt de la MFT confirmé mft="encodeur" attente_ms=0
+2026-07-31T18:30:23.012499Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après IMFShutdown" attente_ms=0
+2026-07-31T18:30:23.012522Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_OF_STREAM
+2026-07-31T18:30:23.012525Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_OF_STREAM refuse=false
+2026-07-31T18:30:23.012528Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_STREAMING
+2026-07-31T18:30:23.012529Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_STREAMING refuse=false
+2026-07-31T18:30:23.012531Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_OF_STREAM
+2026-07-31T18:30:23.012539Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_OF_STREAM refuse=false
+2026-07-31T18:30:23.012541Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_STREAMING
+2026-07-31T18:30:23.012543Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_STREAMING refuse=false
+2026-07-31T18:30:23.012553Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après END_STREAMING" attente_ms=0
+2026-07-31T18:30:23.012556Z DEBUG agent::encode::arret: MFT sans IMFShutdown : pas d'arrêt explicite mft="convertisseur" erreur=Cette interface n’est pas prise en charge (0x80004002)
+2026-07-31T18:30:23.012561Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-07-31T18:30:23.012907Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-07-31T18:30:23.012915Z DEBUG agent::encode::arret: arrêt de la MFT confirmé mft="encodeur" attente_ms=0
+2026-07-31T18:30:23.012960Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après IMFShutdown" attente_ms=0
+2026-07-31T18:30:23.012988Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_OF_STREAM
+2026-07-31T18:30:23.012992Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_OF_STREAM refuse=false
+2026-07-31T18:30:23.012995Z DEBUG agent::encode::arret: mise au repos : avant mft="convertisseur" END_STREAMING
+2026-07-31T18:30:23.012997Z DEBUG agent::encode::arret: mise au repos : après mft="convertisseur" END_STREAMING refuse=false
+2026-07-31T18:30:23.012999Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_OF_STREAM
+2026-07-31T18:30:23.013001Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_OF_STREAM refuse=false
+2026-07-31T18:30:23.013003Z DEBUG agent::encode::arret: mise au repos : avant mft="encodeur" END_STREAMING
+2026-07-31T18:30:23.013005Z DEBUG agent::encode::arret: mise au repos : après mft="encodeur" END_STREAMING refuse=false
+2026-07-31T18:30:23.013015Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après END_STREAMING" attente_ms=0
+2026-07-31T18:30:23.013019Z DEBUG agent::encode::arret: MFT sans IMFShutdown : pas d'arrêt explicite mft="convertisseur" erreur=Cette interface n’est pas prise en charge (0x80004002)
+2026-07-31T18:30:23.013029Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-07-31T18:30:23.013593Z DEBUG agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-07-31T18:30:23.013602Z DEBUG agent::encode::arret: arrêt de la MFT confirmé mft="encodeur" attente_ms=0
+2026-07-31T18:30:23.013650Z DEBUG agent::encode::arret: barrière franchie mft="encodeur" quand="après IMFShutdown" attente_ms=0
+2026-07-31T18:30:23.030528Z  INFO agent::diagnostics::multifenetre::nvenc: relâchement terminé — le processus a survécu à la destruction
