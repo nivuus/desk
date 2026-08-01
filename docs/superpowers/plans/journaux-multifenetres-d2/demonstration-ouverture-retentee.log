@@ -1,0 +1,474 @@
+[    0.0s] chrome lancé pid=1595527 port=9982 profil=/tmp/user/0/chrome-d2-CMBaiu
+[    0.8s] identité du navigateur : pid écoutant=1595527 pid lancé=1595527 version=Chrome/150.0.7871.181 profil déclaré=n/a
+[    0.8s] + page attachée  session=4AB560C7 url=about:blank
+[    0.9s] + page attachée  session=3B5AC322 url=http://192.168.3.1:5173/shell.html
+[    0.9s] shell demandée http://192.168.3.1:5173/shell.html
+[    3.9s] statut shell : bureau connecté
+[    3.9s] >>> lancement du superviseur (SUPERVISEUR=1)
+[    4.4s] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[    7.5s] + page attachée  session=F2821923 url=
+[   28.4s] ÉTAT SHELL (k=1 — fenêtre préexistante) liste=[fenetre-1.txt - Bloc-notes — ouverte ] statut="bureau connecté"
+[   28.4s]   pages d'application ouvertes (1) : http://192.168.3.1:5173/?session=w-1
+[   28.4s] STATS (k=1) {
+ "http://192.168.3.1:5173/?session=w-1": {
+  "etat": "connected",
+  "images": 1,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 262340,
+  "octetsA": 1960,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ }
+}
+[   28.4s] MARQUEURS (k=1) {"lignes":57,"cloture":0,"reouverture":0,"mutex_abandonne":0,"duplication_refusee":0,"ouverture_reessayee":0,"ouverture_abandonnee":0,"sortie_creee":1,"sortie_rendue":0,"enfant_lance":1,"enfant_termine":0,"enfant_mort_seul":0,"premier_plan_obtenu":0,"premier_plan_refuse":0}
+[   28.4s] >>> ÉTAPE : Bloc-notes 2  (pages d'application avant = 1)
+[   28.4s] MARQUEURS (avant Bloc-notes 2) {"lignes":57,"cloture":0,"reouverture":0,"mutex_abandonne":0,"duplication_refusee":0,"ouverture_reessayee":0,"ouverture_abandonnee":0,"sortie_creee":1,"sortie_rendue":0,"enfant_lance":1,"enfant_termine":0,"enfant_mort_seul":0,"premier_plan_obtenu":0,"premier_plan_refuse":0}
+[   29.0s] + page attachée  session=2EF07CB6 url=
+[   29.1s] + page attachée  session=3B727729 url=
+[   29.1s] - page détachée   session=2EF07CB6 url=
+[   34.0s]    … t+5s  pages=2
+[   39.0s]    … t+10s  pages=2
+[   44.0s]    … t+15s  pages=2
+[   49.0s]    … t+20s  pages=2
+[   54.1s]    … t+25s  pages=2
+[   59.1s]    … t+30s  pages=2
+[   64.1s]    … t+35s  pages=2
+[   64.1s] MARQUEURS (après Bloc-notes 2) {"lignes":106,"cloture":0,"reouverture":1,"mutex_abandonne":1,"duplication_refusee":0,"ouverture_reessayee":0,"ouverture_abandonnee":0,"sortie_creee":2,"sortie_rendue":0,"enfant_lance":2,"enfant_termine":0,"enfant_mort_seul":0,"premier_plan_obtenu":0,"premier_plan_refuse":0}
+[   64.1s] ÉTAT SHELL (après Bloc-notes 2) liste=[fenetre-1.txt - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[   64.1s]   pages d'application ouvertes (2) : http://192.168.3.1:5173/?session=w-1 , http://192.168.3.1:5173/?session=w-3
+[   64.1s] STATS (après Bloc-notes 2) {
+ "http://192.168.3.1:5173/?session=w-1": {
+  "etat": "connected",
+  "images": 7,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 584490,
+  "octetsA": 5706,
+  "rtt": 0.001,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-3": {
+  "etat": "connected",
+  "images": 7,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 319849,
+  "octetsA": null,
+  "rtt": 0.001,
+  "viewport": "1280x720"
+ }
+}
+[   64.1s] RELEVÉ Bloc-notes 2 : pages 1 -> 2, clôtures 0 -> 0, réouvertures 0 -> 1, duplication refusée (0x887A0022) 0 -> 0, ouvertures réessayées 0 -> 0, ouvertures abandonnées 0 -> 0
+[   64.1s] >>> ÉTAPE : Bloc-notes 3  (pages d'application avant = 2)
+[   64.1s] MARQUEURS (avant Bloc-notes 3) {"lignes":106,"cloture":0,"reouverture":1,"mutex_abandonne":1,"duplication_refusee":0,"ouverture_reessayee":0,"ouverture_abandonnee":0,"sortie_creee":2,"sortie_rendue":0,"enfant_lance":2,"enfant_termine":0,"enfant_mort_seul":0,"premier_plan_obtenu":0,"premier_plan_refuse":0}
+[   64.6s] + page attachée  session=4D767B41 url=
+[   64.7s] - page détachée   session=4D767B41 url=
+[   64.7s] + page attachée  session=E316EB5D url=
+[   69.5s]    … t+5s  pages=3
+[   74.5s]    … t+10s  pages=3
+[   79.5s]    … t+15s  pages=3
+[   84.6s]    … t+20s  pages=3
+[   89.6s]    … t+25s  pages=3
+[   94.6s]    … t+30s  pages=3
+[   99.6s]    … t+35s  pages=3
+[   99.6s] MARQUEURS (après Bloc-notes 3) {"lignes":159,"cloture":0,"reouverture":3,"mutex_abandonne":3,"duplication_refusee":0,"ouverture_reessayee":0,"ouverture_abandonnee":0,"sortie_creee":3,"sortie_rendue":0,"enfant_lance":3,"enfant_termine":0,"enfant_mort_seul":0,"premier_plan_obtenu":0,"premier_plan_refuse":0}
+[   99.6s] ÉTAT SHELL (après Bloc-notes 3) liste=[fenetre-1.txt - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[   99.6s]   pages d'application ouvertes (3) : http://192.168.3.1:5173/?session=w-1 , http://192.168.3.1:5173/?session=w-3 , http://192.168.3.1:5173/?session=w-5
+[   99.6s] STATS (après Bloc-notes 3) {
+ "http://192.168.3.1:5173/?session=w-1": {
+  "etat": "connected",
+  "images": 14,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 637886,
+  "octetsA": 9429,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-3": {
+  "etat": "connected",
+  "images": 18,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 662220,
+  "octetsA": null,
+  "rtt": 0.001,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-5": {
+  "etat": "connected",
+  "images": 7,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 405166,
+  "octetsA": null,
+  "rtt": 0.001,
+  "viewport": "1280x720"
+ }
+}
+[   99.6s] RELEVÉ Bloc-notes 3 : pages 2 -> 3, clôtures 0 -> 0, réouvertures 1 -> 3, duplication refusée (0x887A0022) 0 -> 0, ouvertures réessayées 0 -> 0, ouvertures abandonnées 0 -> 0
+[   99.6s] >>> ÉTAPE : Bloc-notes 4  (pages d'application avant = 3)
+[   99.6s] MARQUEURS (avant Bloc-notes 4) {"lignes":159,"cloture":0,"reouverture":3,"mutex_abandonne":3,"duplication_refusee":0,"ouverture_reessayee":0,"ouverture_abandonnee":0,"sortie_creee":3,"sortie_rendue":0,"enfant_lance":3,"enfant_termine":0,"enfant_mort_seul":0,"premier_plan_obtenu":0,"premier_plan_refuse":0}
+[  100.0s] + page attachée  session=8081FE57 url=
+[  100.1s] - page détachée   session=8081FE57 url=http://192.168.3.1:5173/?session=w-6
+[  100.2s] + page attachée  session=D82CF339 url=
+[  105.0s]    … t+5s  pages=4
+[  110.0s]    … t+10s  pages=4
+[  115.0s]    … t+15s  pages=4
+[  120.0s]    … t+20s  pages=4
+[  125.0s]    … t+25s  pages=4
+[  130.0s]    … t+30s  pages=4
+[  135.0s]    … t+35s  pages=4
+[  135.0s] MARQUEURS (après Bloc-notes 4) {"lignes":215,"cloture":0,"reouverture":6,"mutex_abandonne":6,"duplication_refusee":0,"ouverture_reessayee":0,"ouverture_abandonnee":0,"sortie_creee":4,"sortie_rendue":0,"enfant_lance":4,"enfant_termine":0,"enfant_mort_seul":0,"premier_plan_obtenu":0,"premier_plan_refuse":0}
+[  135.0s] ÉTAT SHELL (après Bloc-notes 4) liste=[fenetre-1.txt - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[  135.0s]   pages d'application ouvertes (4) : http://192.168.3.1:5173/?session=w-1 , http://192.168.3.1:5173/?session=w-3 , http://192.168.3.1:5173/?session=w-5 , http://192.168.3.1:5173/?session=w-7
+[  135.0s] STATS (après Bloc-notes 4) {
+ "http://192.168.3.1:5173/?session=w-1": {
+  "etat": "connected",
+  "images": 22,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 641961,
+  "octetsA": 13144,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-3": {
+  "etat": "connected",
+  "images": 27,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 995523,
+  "octetsA": null,
+  "rtt": 0.003,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-5": {
+  "etat": "connected",
+  "images": 16,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 730573,
+  "octetsA": null,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-7": {
+  "etat": "connected",
+  "images": 7,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 405089,
+  "octetsA": null,
+  "rtt": 0.003,
+  "viewport": "1280x720"
+ }
+}
+[  135.0s] RELEVÉ Bloc-notes 4 : pages 3 -> 4, clôtures 0 -> 0, réouvertures 3 -> 6, duplication refusée (0x887A0022) 0 -> 0, ouvertures réessayées 0 -> 0, ouvertures abandonnées 0 -> 0
+[  135.0s] >>> ÉTAPE : Bloc-notes 5  (pages d'application avant = 4)
+[  135.0s] MARQUEURS (avant Bloc-notes 5) {"lignes":215,"cloture":0,"reouverture":6,"mutex_abandonne":6,"duplication_refusee":0,"ouverture_reessayee":0,"ouverture_abandonnee":0,"sortie_creee":4,"sortie_rendue":0,"enfant_lance":4,"enfant_termine":0,"enfant_mort_seul":0,"premier_plan_obtenu":0,"premier_plan_refuse":0}
+[  135.5s] + page attachée  session=01A96E18 url=
+[  135.6s] - page détachée   session=01A96E18 url=
+[  135.6s] + page attachée  session=7D7C8DB5 url=
+[  139.1s] - page détachée   session=7D7C8DB5 url=http://192.168.3.1:5173/?session=w-9
+[  139.7s] + page attachée  session=2BA7DF50 url=
+[  140.4s]    … t+5s  pages=5
+[  143.4s] - page détachée   session=2BA7DF50 url=http://192.168.3.1:5173/?session=w-10
+[  143.7s] + page attachée  session=1B609D4F url=
+[  145.4s]    … t+10s  pages=5
+[  147.4s] - page détachée   session=1B609D4F url=http://192.168.3.1:5173/?session=w-11
+[  147.8s] + page attachée  session=380DB1DD url=
+[  150.4s]    … t+15s  pages=5
+[  151.5s] - page détachée   session=380DB1DD url=http://192.168.3.1:5173/?session=w-12
+[  155.4s]    … t+20s  pages=4
+[  160.4s]    … t+25s  pages=4
+[  165.4s]    … t+30s  pages=4
+[  170.4s]    … t+35s  pages=4
+[  170.4s] MARQUEURS (après Bloc-notes 5) {"lignes":452,"cloture":0,"reouverture":38,"mutex_abandonne":38,"duplication_refusee":4,"ouverture_reessayee":80,"ouverture_abandonnee":4,"sortie_creee":8,"sortie_rendue":4,"enfant_lance":8,"enfant_termine":4,"enfant_mort_seul":4,"premier_plan_obtenu":0,"premier_plan_refuse":0}
+[  170.5s] ÉTAT SHELL (après Bloc-notes 5) liste=[fenetre-1.txt - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="« Sans titre - Bloc-notes » n'a pas pu s'ouvrir : la session n'a pas tenu après 3 tentatives."
+[  170.5s]   pages d'application ouvertes (4) : http://192.168.3.1:5173/?session=w-1 , http://192.168.3.1:5173/?session=w-3 , http://192.168.3.1:5173/?session=w-5 , http://192.168.3.1:5173/?session=w-7
+[  170.5s] STATS (après Bloc-notes 5) {
+ "http://192.168.3.1:5173/?session=w-1": {
+  "etat": "connected",
+  "images": 71,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 664363,
+  "octetsA": 16859,
+  "rtt": 0.001,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-3": {
+  "etat": "connected",
+  "images": 75,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 1073747,
+  "octetsA": null,
+  "rtt": 0.001,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-5": {
+  "etat": "connected",
+  "images": 62,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 975861,
+  "octetsA": null,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-7": {
+  "etat": "connected",
+  "images": 48,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 656097,
+  "octetsA": null,
+  "rtt": 0.003,
+  "viewport": "1280x720"
+ }
+}
+[  170.5s] RELEVÉ Bloc-notes 5 : pages 4 -> 4, clôtures 0 -> 0, réouvertures 6 -> 38, duplication refusée (0x887A0022) 0 -> 4, ouvertures réessayées 0 -> 80, ouvertures abandonnées 0 -> 4
+[  170.5s] >>> ÉTAPE : FERMETURE réelle du Bloc-notes 2  (pages d'application avant = 4)
+[  170.5s] MARQUEURS (avant FERMETURE réelle du Bloc-notes 2) {"lignes":452,"cloture":0,"reouverture":38,"mutex_abandonne":38,"duplication_refusee":4,"ouverture_reessayee":80,"ouverture_abandonnee":4,"sortie_creee":8,"sortie_rendue":4,"enfant_lance":8,"enfant_termine":4,"enfant_mort_seul":4,"premier_plan_obtenu":0,"premier_plan_refuse":0}
+[  171.0s] + page attachée  session=6A65DD32 url=
+[  171.1s] - page détachée   session=6A65DD32 url=
+[  171.2s] - page détachée   session=3B727729 url=http://192.168.3.1:5173/?session=w-3
+[  175.9s]    … t+5s  pages=3
+[  180.9s]    … t+10s  pages=3
+[  185.9s]    … t+15s  pages=3
+[  190.9s]    … t+20s  pages=3
+[  195.9s]    … t+25s  pages=3
+[  200.9s]    … t+30s  pages=3
+[  205.9s]    … t+35s  pages=3
+[  205.9s] MARQUEURS (après FERMETURE réelle du Bloc-notes 2) {"lignes":465,"cloture":1,"reouverture":41,"mutex_abandonne":41,"duplication_refusee":4,"ouverture_reessayee":80,"ouverture_abandonnee":4,"sortie_creee":8,"sortie_rendue":5,"enfant_lance":8,"enfant_termine":4,"enfant_mort_seul":4,"premier_plan_obtenu":0,"premier_plan_refuse":0}
+[  205.9s] ÉTAT SHELL (après FERMETURE réelle du Bloc-notes 2) liste=[fenetre-1.txt - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="« Sans titre - Bloc-notes » n'a pas pu s'ouvrir : la session n'a pas tenu après 3 tentatives."
+[  205.9s]   pages d'application ouvertes (3) : http://192.168.3.1:5173/?session=w-1 , http://192.168.3.1:5173/?session=w-5 , http://192.168.3.1:5173/?session=w-7
+[  206.0s] STATS (après FERMETURE réelle du Bloc-notes 2) {
+ "http://192.168.3.1:5173/?session=w-1": {
+  "etat": "connected",
+  "images": 77,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 667951,
+  "octetsA": 20581,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-5": {
+  "etat": "connected",
+  "images": 69,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 979987,
+  "octetsA": null,
+  "rtt": 0.001,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-7": {
+  "etat": "connected",
+  "images": 54,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 661818,
+  "octetsA": null,
+  "rtt": 0.003,
+  "viewport": "1280x720"
+ }
+}
+[  206.0s] RELEVÉ FERMETURE réelle du Bloc-notes 2 : pages 4 -> 3, clôtures 0 -> 1, réouvertures 38 -> 41, duplication refusée (0x887A0022) 4 -> 4, ouvertures réessayées 80 -> 80, ouvertures abandonnées 4 -> 4
+[  206.0s] >>> ÉTAPE : Bloc-notes 6 (après la fermeture)  (pages d'application avant = 3)
+[  206.0s] MARQUEURS (avant Bloc-notes 6 (après la fermeture)) {"lignes":465,"cloture":1,"reouverture":41,"mutex_abandonne":41,"duplication_refusee":4,"ouverture_reessayee":80,"ouverture_abandonnee":4,"sortie_creee":8,"sortie_rendue":5,"enfant_lance":8,"enfant_termine":4,"enfant_mort_seul":4,"premier_plan_obtenu":0,"premier_plan_refuse":0}
+[  206.7s] + page attachée  session=042DD375 url=
+[  206.8s] - page détachée   session=042DD375 url=
+[  206.9s] + page attachée  session=BB34530C url=
+[  211.6s]    … t+5s  pages=4
+[  216.6s]    … t+10s  pages=4
+[  221.7s]    … t+15s  pages=4
+[  226.7s]    … t+20s  pages=4
+[  231.7s]    … t+25s  pages=4
+[  236.7s]    … t+30s  pages=4
+[  241.7s]    … t+35s  pages=4
+[  241.7s] MARQUEURS (après Bloc-notes 6 (après la fermeture)) {"lignes":520,"cloture":1,"reouverture":44,"mutex_abandonne":44,"duplication_refusee":4,"ouverture_reessayee":80,"ouverture_abandonnee":4,"sortie_creee":9,"sortie_rendue":5,"enfant_lance":9,"enfant_termine":4,"enfant_mort_seul":4,"premier_plan_obtenu":0,"premier_plan_refuse":0}
+[  241.7s] ÉTAT SHELL (après Bloc-notes 6 (après la fermeture)) liste=[fenetre-1.txt - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="« Sans titre - Bloc-notes » n'a pas pu s'ouvrir : la session n'a pas tenu après 3 tentatives."
+[  241.7s]   pages d'application ouvertes (4) : http://192.168.3.1:5173/?session=w-1 , http://192.168.3.1:5173/?session=w-5 , http://192.168.3.1:5173/?session=w-7 , http://192.168.3.1:5173/?session=w-15
+[  241.7s] STATS (après Bloc-notes 6 (après la fermeture)) {
+ "http://192.168.3.1:5173/?session=w-1": {
+  "etat": "connected",
+  "images": 84,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 671537,
+  "octetsA": 24330,
+  "rtt": 0.001,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-5": {
+  "etat": "connected",
+  "images": 78,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 1313033,
+  "octetsA": null,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-7": {
+  "etat": "connected",
+  "images": 62,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 665330,
+  "octetsA": null,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-15": {
+  "etat": "connected",
+  "images": 7,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 364657,
+  "octetsA": null,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ }
+}
+[  241.7s] RELEVÉ Bloc-notes 6 (après la fermeture) : pages 3 -> 4, clôtures 1 -> 1, réouvertures 41 -> 44, duplication refusée (0x887A0022) 4 -> 4, ouvertures réessayées 80 -> 80, ouvertures abandonnées 4 -> 4
+[  241.7s] >>> ÉTAT FINAL — le critère se lit ici
+[  241.7s] ÉTAT SHELL (FIN) liste=[fenetre-1.txt - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="« Sans titre - Bloc-notes » n'a pas pu s'ouvrir : la session n'a pas tenu après 3 tentatives."
+[  241.7s]   pages d'application ouvertes (4) : http://192.168.3.1:5173/?session=w-1 , http://192.168.3.1:5173/?session=w-5 , http://192.168.3.1:5173/?session=w-7 , http://192.168.3.1:5173/?session=w-15
+[  241.7s] STATS (FIN) {
+ "http://192.168.3.1:5173/?session=w-1": {
+  "etat": "connected",
+  "images": 84,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 671537,
+  "octetsA": 24330,
+  "rtt": 0.001,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-5": {
+  "etat": "connected",
+  "images": 78,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 1313033,
+  "octetsA": null,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-7": {
+  "etat": "connected",
+  "images": 62,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 665330,
+  "octetsA": null,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-15": {
+  "etat": "connected",
+  "images": 7,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 364657,
+  "octetsA": null,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ }
+}
+[  241.7s] MARQUEURS (FIN) {"lignes":520,"cloture":1,"reouverture":44,"mutex_abandonne":44,"duplication_refusee":4,"ouverture_reessayee":80,"ouverture_abandonnee":4,"sortie_creee":9,"sortie_rendue":5,"enfant_lance":9,"enfant_termine":4,"enfant_mort_seul":4,"premier_plan_obtenu":0,"premier_plan_refuse":0}
+[  242.1s] + page attachée  session=9C724814 url=
+[  242.2s] - page détachée   session=9C724814 url=http://192.168.3.1:5173/?session=w-16
+[  248.1s] --- fenêtres VM (FIN) ---
+4032	notepad	0x30022c	1280x720+0+0	fenetre-5.txt - Bloc-notes
+9860	notepad	0x4500d0	1280x720+3680+0	fenetre-6.txt - Bloc-notes
+11888	notepad	0x8a00d4	1280x720+4960+0	fenetre-3.txt - Bloc-notes
+16472	notepad	0x7f01e4	1280x720+6240+0	fenetre-4.txt - Bloc-notes
+20248	notepad	0x16012e	1280x720+2400+0	fenetre-1.txt - Bloc-notes
+[  248.1s] SYNTHÈSE [
+ {
+  "quoi": "Bloc-notes 2",
+  "pages": "1->2",
+  "cloture": "0->0",
+  "reouverture": "0->1",
+  "refus_duplication": "0->0",
+  "ouverture_reessayee": "0->0",
+  "ouverture_abandonnee": "0->0"
+ },
+ {
+  "quoi": "Bloc-notes 3",
+  "pages": "2->3",
+  "cloture": "0->0",
+  "reouverture": "1->3",
+  "refus_duplication": "0->0",
+  "ouverture_reessayee": "0->0",
+  "ouverture_abandonnee": "0->0"
+ },
+ {
+  "quoi": "Bloc-notes 4",
+  "pages": "3->4",
+  "cloture": "0->0",
+  "reouverture": "3->6",
+  "refus_duplication": "0->0",
+  "ouverture_reessayee": "0->0",
+  "ouverture_abandonnee": "0->0"
+ },
+ {
+  "quoi": "Bloc-notes 5",
+  "pages": "4->4",
+  "cloture": "0->0",
+  "reouverture": "6->38",
+  "refus_duplication": "0->4",
+  "ouverture_reessayee": "0->80",
+  "ouverture_abandonnee": "0->4"
+ },
+ {
+  "quoi": "FERMETURE réelle du Bloc-notes 2",
+  "pages": "4->3",
+  "cloture": "0->1",
+  "reouverture": "38->41",
+  "refus_duplication": "4->4",
+  "ouverture_reessayee": "80->80",
+  "ouverture_abandonnee": "4->4"
+ },
+ {
+  "quoi": "Bloc-notes 6 (après la fermeture)",
+  "pages": "3->4",
+  "cloture": "1->1",
+  "reouverture": "41->44",
+  "refus_duplication": "4->4",
+  "ouverture_reessayee": "80->80",
+  "ouverture_abandonnee": "4->4"
+ }
+]
+[  248.1s] >>> CLAVIER (hors critère, après relevé) : frappe dans chaque page
+[  248.1s]    frappe "PAGE1" dans http://192.168.3.1:5173/?session=w-1
+[  251.1s]    frappe "PAGE2" dans http://192.168.3.1:5173/?session=w-5
+[  254.2s]    frappe "PAGE3" dans http://192.168.3.1:5173/?session=w-7
+[  257.2s]    frappe "PAGE4" dans http://192.168.3.1:5173/?session=w-15
+[  263.3s] MARQUEURS (après clavier) {"lignes":525,"cloture":1,"reouverture":44,"mutex_abandonne":44,"duplication_refusee":4,"ouverture_reessayee":80,"ouverture_abandonnee":4,"sortie_creee":9,"sortie_rendue":5,"enfant_lance":9,"enfant_termine":4,"enfant_mort_seul":4,"premier_plan_obtenu":4,"premier_plan_refuse":0}
+[  263.7s] + page attachée  session=31E01063 url=
+[  263.8s] - page détachée   session=31E01063 url=
+[  270.6s] --- relecture WM_GETTEXT des Bloc-notes ---
+fenetre au premier plan : Administrateur : C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE
+4032	fenetre-5.txt - Bloc-notes	contenu=[contenu de la fenetre 5 / ]
+9860	*fenetre-6.txt - Bloc-notes	contenu=[pagecontenu de la fenetre 6 / ]
+11888	*fenetre-3.txt - Bloc-notes	contenu=[pagecontenu de la fenetre 3 / ]
+16472	*fenetre-4.txt - Bloc-notes	contenu=[pagecontenu de la fenetre 4 / ]
+20248	*fenetre-1.txt - Bloc-notes	contenu=[pagecontenu de la fenetre 1 / ]
+[  270.6s] >>> CAPTURES (fin de séquence seulement — piège 3)
+[  290.6s]    capture impossible pour about:blank: Error: capture non rendue en 20 s
+[  291.0s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/ecebb0d5-b8a9-404c-a078-652572f86f2e/scratchpad/recette/captures/fin-2-shell.png  (http://192.168.3.1:5173/shell.html)
+[  291.1s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/ecebb0d5-b8a9-404c-a078-652572f86f2e/scratchpad/recette/captures/fin-3-app.png  (http://192.168.3.1:5173/?session=w-1)
+[  291.2s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/ecebb0d5-b8a9-404c-a078-652572f86f2e/scratchpad/recette/captures/fin-4-app.png  (http://192.168.3.1:5173/?session=w-5)
+[  291.3s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/ecebb0d5-b8a9-404c-a078-652572f86f2e/scratchpad/recette/captures/fin-5-app.png  (http://192.168.3.1:5173/?session=w-7)
+[  291.4s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/ecebb0d5-b8a9-404c-a078-652572f86f2e/scratchpad/recette/captures/fin-6-app.png  (http://192.168.3.1:5173/?session=w-15)
+[  291.4s] ÉTAT SHELL (APRÈS CAPTURES (hors critère)) liste=[fenetre-1.txt - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="« Sans titre - Bloc-notes » n'a pas pu s'ouvrir : la session n'a pas tenu après 3 tentatives."
+[  291.4s]   pages d'application ouvertes (4) : http://192.168.3.1:5173/?session=w-1 , http://192.168.3.1:5173/?session=w-5 , http://192.168.3.1:5173/?session=w-7 , http://192.168.3.1:5173/?session=w-15
+[  291.4s] MARQUEURS (APRÈS CAPTURES (hors critère)) {"lignes":526,"cloture":1,"reouverture":44,"mutex_abandonne":44,"duplication_refusee":4,"ouverture_reessayee":80,"ouverture_abandonnee":4,"sortie_creee":9,"sortie_rendue":5,"enfant_lance":9,"enfant_termine":4,"enfant_mort_seul":4,"premier_plan_obtenu":4,"premier_plan_refuse":0}

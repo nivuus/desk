@@ -17,6 +17,14 @@
 /// relâcher l'`IDXGIOutputDuplication` et en créer une nouvelle.
 pub const ACCES_PERDU: i32 = 0x887A0026u32 as i32;
 
+/// `DXGI_ERROR_NOT_CURRENTLY_AVAILABLE`. Rendu par `DuplicateOutput` quand la
+/// sortie ne peut pas être dupliquée **à cet instant**. Deux causes très
+/// différentes se présentent sous ce même code, et le code ne les distingue
+/// pas : une reconfiguration de topologie en cours — passagère —, et un plafond
+/// de duplications concurrentes — durable. C'est pourquoi la fenêtre de
+/// réessai est courte et son abandon bruyant.
+pub const NON_DISPONIBLE: i32 = 0x887A0022u32 as i32;
+
 /// `DXGI_ERROR_DEVICE_REMOVED`. Le périphérique lui-même est perdu : rouvrir
 /// la seule duplication ne servirait à rien. Reste définitif.
 pub const DEVICE_REMOVED: i32 = 0x887A0005u32 as i32;
@@ -52,8 +60,24 @@ pub const DUREE_FENETRE_REPRISE: std::time::Duration = std::time::Duration::from
 /// trace émise à la cadence de la boucle de capture.
 pub const PAS_REPRISE: std::time::Duration = std::time::Duration::from_millis(150);
 
+/// Durée pendant laquelle l'ouverture d'une duplication est retentée.
+///
+/// **Plus courte que `DUREE_FENETRE_REPRISE`**, et pour une raison de
+/// diagnostic : quand la cause est un plafond de concurrence, patienter
+/// davantage ne change pas le résultat et retarde la lecture. Trois secondes
+/// couvrent la reconfiguration de topologie que le dépôt admet par ailleurs
+/// (`DELAI_TOPOLOGIE`).
+///
+/// **Majorante et non calibrée**, comme `DUREE_FENETRE_REPRISE`.
+pub const DUREE_FENETRE_OUVERTURE: std::time::Duration = std::time::Duration::from_secs(3);
+
 pub fn est_acces_perdu(code: i32) -> bool {
     code == ACCES_PERDU
+}
+
+/// Vrai si un échec d'ouverture de duplication mérite d'être retenté.
+pub fn est_ouverture_retentable(code: i32) -> bool {
+    code == NON_DISPONIBLE || code == ACCES_PERDU
 }
 
 /// Ce que la fenêtre demande à l'appelant de faire, maintenant.
@@ -131,6 +155,36 @@ mod tests {
         assert!(!est_acces_perdu(ATTENTE_EXPIREE), "attente expirée n'est même pas un échec");
         assert!(!est_acces_perdu(0), "S_OK");
         assert!(!est_acces_perdu(0x80070057u32 as i32), "E_INVALIDARG");
+    }
+
+    /// `DXGI_ERROR_NOT_CURRENTLY_AVAILABLE` dit dans son propre libellé que la
+    /// ressource « pourra l'être ultérieurement ». C'est ce que rend une
+    /// `DuplicateOutput` tentée pendant que Windows reconfigure sa topologie —
+    /// le cas nominal quand une autre fenêtre s'ouvre au même instant.
+    #[test]
+    fn une_ouverture_est_retentable_sur_indisponibilite_ou_perte_d_acces() {
+        assert!(est_ouverture_retentable(NON_DISPONIBLE));
+        assert!(est_ouverture_retentable(ACCES_PERDU));
+    }
+
+    /// Un périphérique perdu ne reviendra pas, et un argument invalide n'est
+    /// pas une question de patience : les retenter ne ferait que retarder le
+    /// diagnostic de trois secondes.
+    #[test]
+    fn une_ouverture_n_est_pas_retentable_sur_une_panne_franche() {
+        assert!(!est_ouverture_retentable(DEVICE_REMOVED));
+        assert!(!est_ouverture_retentable(0x80070057u32 as i32), "E_INVALIDARG");
+        assert!(!est_ouverture_retentable(0), "S_OK");
+    }
+
+    /// La fenêtre d'ouverture est plus COURTE que celle de la capture, et c'est
+    /// délibéré : un échec durable à l'ouverture doit se lire vite, la vraie
+    /// cause pouvant être un plafond de concurrence que nulle patience ne
+    /// franchit.
+    #[test]
+    fn la_fenetre_d_ouverture_est_plus_courte_que_celle_de_la_capture() {
+        assert!(DUREE_FENETRE_OUVERTURE < DUREE_FENETRE_REPRISE);
+        assert!(DUREE_FENETRE_OUVERTURE >= std::time::Duration::from_secs(2));
     }
 
     /// Une base d'instants qui ne lit pas l'horloge du système : le type sous

@@ -1,0 +1,15 @@
+[2m2026-08-01T21:08:37.328127Z[0m [32m INFO[0m [2magent[0m[2m:[0m accélération pointeur neutralisée [3mrapport[0m[2m=[0m"seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+[2m2026-08-01T21:08:37.329996Z[0m [32m INFO[0m [2magent::capture::ouverture[0m[2m:[0m sortie retenue pour la duplication [3madaptateur[0m[2m=[0mNVIDIA GeForce RTX 4070 [3mindex_adaptateur[0m[2m=[0m0 [3mindex_sortie[0m[2m=[0m0 [3mnom_sortie[0m[2m=[0m\\.\DISPLAY1 [3mattachee[0m[2m=[0mtrue
+[2m2026-08-01T21:08:37.423390Z[0m [32m INFO[0m [2magent::capture::ouverture[0m[2m:[0m protection multi-fils activée sur le contexte immédiat D3D11 [3mprotection_precedente[0m[2m=[0mfalse
+[2m2026-08-01T21:08:37.423702Z[0m [32m INFO[0m [2magent::capture[0m[2m:[0m duplication de sortie établie [3mdesktop_width[0m[2m=[0m2400 [3mdesktop_height[0m[2m=[0m1080
+[2m2026-08-01T21:08:37.423719Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::banc[0m[2m:[0m banc : coordonnées de fenêtre et de texture [3mbureau_x[0m[2m=[0m0 [3mbureau_y[0m[2m=[0m0 [3mbureau_largeur[0m[2m=[0m2400 [3mbureau_hauteur[0m[2m=[0m1080 [3mtexture_largeur[0m[2m=[0m2400 [3mtexture_hauteur[0m[2m=[0m1080 [3mfacteur_horizontal[0m[2m=[0m1.0 [3mfacteur_vertical[0m[2m=[0m1.0
+[2m2026-08-01T21:08:37.423747Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::banc[0m[2m:[0m banc : disposition retenue [3mvoie[0m[2m=[0m"duplication" [3mnombre[0m[2m=[0m1 [3mplaces[0m[2m=[0m[Rect { x: 0, y: 0, width: 2400, height: 1080 }] [3mplaces_texture[0m[2m=[0m[Rect { x: 0, y: 0, width: 2400, height: 1080 }]
+[2m2026-08-01T21:08:37.428103Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::banc[0m[2m:[0m épreuve downcast : duplication d'amorçage VOLONTAIREMENT gardée vivante
+[2m2026-08-01T21:08:47.431742Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::compteurs[0m[2m:[0m passe TÉMOIN — cadence de peinture sans capture [3mmires[0m[2m=[0m1 [3mtrames[0m[2m=[0m923 [3mcadence[0m[2m=[0m92.2668236182316
+[2m2026-08-01T21:08:47.431955Z[0m [32m INFO[0m [2magent::capture::ouverture[0m[2m:[0m sortie retenue pour la duplication [3madaptateur[0m[2m=[0mNVIDIA GeForce RTX 4070 [3mindex_adaptateur[0m[2m=[0m0 [3mindex_sortie[0m[2m=[0m0 [3mnom_sortie[0m[2m=[0m\\.\DISPLAY1 [3mattachee[0m[2m=[0mtrue
+[2m2026-08-01T21:08:47.459758Z[0m [32m INFO[0m [2magent::capture::ouverture[0m[2m:[0m protection multi-fils activée sur le contexte immédiat D3D11 [3mprotection_precedente[0m[2m=[0mfalse
+[2m2026-08-01T21:08:47.460422Z[0m [31mERROR[0m [2magent::capture::ouverture[0m[2m:[0m ouverture de la duplication abandonnée [3mhresult[0m[2m=[0m"0x80070057" [3mattendu_ms[0m[2m=[0m0 [3mcible[0m[2m=[0mBureau
+Error: duplication de la sortie écran
+System.Management.Automation.RemoteException
+Caused by:
+    Paramètre incorrect. (0x80070057)
