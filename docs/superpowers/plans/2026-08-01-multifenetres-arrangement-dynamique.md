@@ -2335,6 +2335,252 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ---
 
+## Tâche 11 bis : donner une reprise à l'ouverture initiale de la duplication
+
+> **Tâche née de la démonstration.** La tâche 11 a démontré la réparation du
+> défaut central de D1 en conditions de produit — 44 réouvertures, aucune
+> session perdue — et révélé au passage un défaut que le banc ne pouvait pas
+> voir : **l'ouverture initiale d'une duplication n'a aucune reprise**, alors
+> que la reprise en cours de capture, elle, en a une.
+
+### Ce que le relevé montre
+
+Quand un enfant démarre pendant qu'une autre fenêtre s'ouvre, sa toute première
+`DuplicateOutput` tombe en pleine reconfiguration de topologie et échoue. Il
+meurt aussitôt. Le superviseur le compense en le relançant — ce qui **détruit
+puis recrée sa sortie virtuelle**, donc abandonne à nouveau le mutex de toutes
+les duplications déjà ouvertes.
+
+**32 des 44 réouvertures du passage viennent de cette seule étape ratée.** La
+compensation coûte plus qu'elle ne répare : elle transforme un échec d'ouverture
+en perturbation pour les voisines.
+
+Le HRESULT le dit lui-même : `DXGI_ERROR_NOT_CURRENTLY_AVAILABLE` signifie que
+la ressource « pourra l'être ultérieurement ». On ne l'écoute pas.
+
+⚠️ **Cette tâche ne lèvera probablement PAS le plafond de quatre fenêtres.** La
+5ᵉ duplication est refusée alors que quatre sont tenues, et fermer une fenêtre
+puis en rouvrir une réussit : cela désigne une limite de **concurrence**, que
+nulle patience ne franchit. L'objet de cette tâche est de supprimer les
+perturbations inutiles, pas de gagner une fenêtre. **Ne pas présenter le
+résultat comme une tentative de lever le plafond.**
+
+**Files:**
+- Modify: `agent/src/capture.rs` (`ouvrir`)
+- Modify: `agent/src/capture/reprise.rs` (constantes de l'ouverture)
+- Test: `agent/src/capture/reprise.rs`
+
+**Interfaces:**
+- Consumes: `FenetreDeReprise`, `Tentative`, `est_acces_perdu`.
+- Produces :
+  - `pub const NON_DISPONIBLE: i32` = `0x887A0022u32 as i32` (`DXGI_ERROR_NOT_CURRENTLY_AVAILABLE`)
+  - `pub const DUREE_FENETRE_OUVERTURE: std::time::Duration` = 3 s
+  - `pub fn est_ouverture_retentable(code: i32) -> bool`
+
+### Deux différences avec la reprise en cours de capture, à ne pas confondre
+
+1. **Ici, bloquer est LÉGITIME.** `ouvrir` court au démarrage du processus
+   enfant, avant toute boucle de capture : il n'y a ni keyframe à servir, ni
+   adaptation réseau à traiter, ni redimensionnement en attente. On peut donc
+   dormir entre deux tentatives, là où `next_frame` ne le pouvait pas. C'est
+   l'inverse de l'arbitrage du §3.4 de la spec, et pour une raison qui tient au
+   contexte d'appel, pas au goût.
+2. **La fenêtre est plus courte** — 3 s contre 8 — parce qu'un échec durable
+   doit se lire vite : quand la vraie cause est un plafond de concurrence,
+   patienter huit secondes ne fait que retarder un diagnostic sans rien changer
+   au résultat.
+
+- [ ] **Étape 1 : écrire les tests qui échouent**
+
+Dans `agent/src/capture/reprise.rs` :
+
+```rust
+    /// `DXGI_ERROR_NOT_CURRENTLY_AVAILABLE` dit dans son propre libellé que la
+    /// ressource « pourra l'être ultérieurement ». C'est ce que rend une
+    /// `DuplicateOutput` tentée pendant que Windows reconfigure sa topologie —
+    /// le cas nominal quand une autre fenêtre s'ouvre au même instant.
+    #[test]
+    fn une_ouverture_est_retentable_sur_indisponibilite_ou_perte_d_acces() {
+        assert!(est_ouverture_retentable(NON_DISPONIBLE));
+        assert!(est_ouverture_retentable(ACCES_PERDU));
+    }
+
+    /// Un périphérique perdu ne reviendra pas, et un argument invalide n'est
+    /// pas une question de patience : les retenter ne ferait que retarder le
+    /// diagnostic de trois secondes.
+    #[test]
+    fn une_ouverture_n_est_pas_retentable_sur_une_panne_franche() {
+        assert!(!est_ouverture_retentable(DEVICE_REMOVED));
+        assert!(!est_ouverture_retentable(0x80070057u32 as i32), "E_INVALIDARG");
+        assert!(!est_ouverture_retentable(0), "S_OK");
+    }
+
+    /// La fenêtre d'ouverture est plus COURTE que celle de la capture, et c'est
+    /// délibéré : un échec durable à l'ouverture doit se lire vite, la vraie
+    /// cause pouvant être un plafond de concurrence que nulle patience ne
+    /// franchit.
+    #[test]
+    fn la_fenetre_d_ouverture_est_plus_courte_que_celle_de_la_capture() {
+        assert!(DUREE_FENETRE_OUVERTURE < DUREE_FENETRE_REPRISE);
+        assert!(DUREE_FENETRE_OUVERTURE >= std::time::Duration::from_secs(2));
+    }
+```
+
+- [ ] **Étape 2 : lancer les tests pour les voir échouer**
+
+Run: `cargo test --manifest-path agent/Cargo.toml capture_reprise`
+Expected: échec de compilation — `NON_DISPONIBLE`, `DUREE_FENETRE_OUVERTURE` et `est_ouverture_retentable` n'existent pas.
+
+- [ ] **Étape 3 : écrire l'implémentation**
+
+```rust
+/// `DXGI_ERROR_NOT_CURRENTLY_AVAILABLE`. Rendu par `DuplicateOutput` quand la
+/// sortie ne peut pas être dupliquée **à cet instant**. Deux causes très
+/// différentes se présentent sous ce même code, et le code ne les distingue
+/// pas : une reconfiguration de topologie en cours — passagère —, et un plafond
+/// de duplications concurrentes — durable. C'est pourquoi la fenêtre de
+/// réessai est courte et son abandon bruyant.
+pub const NON_DISPONIBLE: i32 = 0x887A0022u32 as i32;
+
+/// Durée pendant laquelle l'ouverture d'une duplication est retentée.
+///
+/// **Plus courte que `DUREE_FENETRE_REPRISE`**, et pour une raison de
+/// diagnostic : quand la cause est un plafond de concurrence, patienter
+/// davantage ne change pas le résultat et retarde la lecture. Trois secondes
+/// couvrent la reconfiguration de topologie que le dépôt admet par ailleurs
+/// (`DELAI_TOPOLOGIE`).
+///
+/// **Majorante et non calibrée**, comme `DUREE_FENETRE_REPRISE`.
+pub const DUREE_FENETRE_OUVERTURE: std::time::Duration = std::time::Duration::from_secs(3);
+
+/// Vrai si un échec d'ouverture de duplication mérite d'être retenté.
+pub fn est_ouverture_retentable(code: i32) -> bool {
+    code == NON_DISPONIBLE || code == ACCES_PERDU
+}
+```
+
+Dans `agent/src/capture.rs`, la construction retente l'appel à `dupliquer`, et
+**lui seul** — pas la création du périphérique, ni la résolution de la sortie,
+qui n'ont aucune raison d'être transitoires :
+
+```rust
+        // Retenter la SEULE duplication, et sur place.
+        //
+        // Bloquer est légitime ici, à la différence de `next_frame` : `ouvrir`
+        // court au démarrage du processus enfant, avant toute boucle de
+        // capture — ni keyframe à servir, ni adaptation réseau, ni
+        // redimensionnement en attente.
+        //
+        // Sans ce réessai, une première `DuplicateOutput` tombée pendant que
+        // Windows reconfigure sa topologie tuait l'enfant, que le superviseur
+        // relançait en DÉTRUISANT puis RECRÉANT sa sortie — abandonnant du même
+        // coup le mutex de toutes les duplications déjà ouvertes. La
+        // compensation coûtait plus que la panne : 32 des 44 réouvertures du
+        // relevé du 1ᵉʳ août 2026 venaient de cette seule étape.
+        let debut = std::time::Instant::now();
+        let (duplication, desktop_width, desktop_height) = loop {
+            match dupliquer(&device, &output) {
+                Ok(rendu) => break rendu,
+                Err(erreur) => {
+                    let code = erreur
+                        .downcast_ref::<windows::core::Error>()
+                        .map(|e| e.code().0);
+                    let retentable =
+                        code.is_some_and(crate::capture_reprise::est_ouverture_retentable);
+                    if !retentable
+                        || debut.elapsed() >= crate::capture_reprise::DUREE_FENETRE_OUVERTURE
+                    {
+                        // Bruyant à dessein : c'est ici que se lit un plafond
+                        // de duplications concurrentes, indiscernable d'une
+                        // reconfiguration par le seul HRESULT.
+                        tracing::error!(
+                            hresult = code.map(|c| format!("{c:#010x}")),
+                            attendu_ms = debut.elapsed().as_millis() as u64,
+                            cible = ?cible,
+                            "ouverture de la duplication abandonnée"
+                        );
+                        return Err(erreur);
+                    }
+                    tracing::info!(
+                        hresult = code.map(|c| format!("{c:#010x}")),
+                        cible = ?cible,
+                        "duplication indisponible à l'ouverture, nouvel essai"
+                    );
+                    std::thread::sleep(crate::capture_reprise::PAS_REPRISE);
+                }
+            }
+        };
+```
+
+⚠️ **`dupliquer` rend une `anyhow::Error`** issue d'un `.context(…)` sur une
+`windows::core::Error`. Le `downcast_ref` ci-dessus en dépend : si le code ne
+peut pas être lu, `retentable` vaut `false` et l'ouverture échoue sans réessai —
+**dégradation sûre, jamais une boucle**. Vérifie que le `downcast_ref` fonctionne
+réellement sur la chaîne d'erreur telle qu'elle est construite ; s'il rend
+toujours `None`, le réessai ne se déclencherait jamais et la tâche serait
+inopérante **sans que rien ne le signale**. Dis dans ton rapport comment tu t'en
+es assuré.
+
+- [ ] **Étape 4 : vérifier l'hôte, puis compiler sur la VM**
+
+Run: `cargo test --manifest-path agent/Cargo.toml`
+Expected: 268 + 3 = **271** tests passés.
+
+```bash
+git add agent/src/capture.rs agent/src/capture/reprise.rs
+scripts/build-agent.sh
+```
+
+- [ ] **Étape 5 : une exécution de vérification, courte**
+
+Rejouer **une** montée jusqu'à quatre fenêtres, dans les conditions de la
+tâche 11 (navigateur avant superviseur, `--disable-popup-blocking`, aucune
+capture CDP pendant la séquence, `Get-Process agent` vérifié avant).
+
+**Ce qui est attendu, et qui est le seul objet de cette exécution** : le nombre
+de lignes `accès à la duplication perdu, réouverture` **chute nettement** — les
+32 imputables aux ouvertures ratées disparaissent —, et **aucune session ne
+meurt**. Relever aussi les lignes `duplication indisponible à l'ouverture,
+nouvel essai` : elles sont la preuve que le réessai travaille.
+
+⚠️ **Le plafond de quatre reste attendu.** S'il tombe encore en `0x887A0022`
+après trois secondes de réessais, c'est la confirmation qu'il s'agit d'une
+limite de concurrence et non d'un transitoire — **un résultat, pas un échec**.
+
+Journal versé sous `docs/superpowers/plans/journaux-multifenetres-d2/demonstration-ouverture-retentee.log`.
+
+- [ ] **Étape 6 : commit**
+
+```bash
+git add agent/src/capture.rs agent/src/capture/reprise.rs \
+        docs/superpowers/plans/journaux-multifenetres-d2/
+git commit -m "fix(d2): retenter l'ouverture initiale d'une duplication
+
+La reprise en cours de capture existait ; l'ouverture INITIALE, non. Un enfant
+qui demarrait pendant qu'une autre fenetre s'ouvrait voyait sa premiere
+DuplicateOutput tomber en pleine reconfiguration de topologie, et mourait. Le
+superviseur le compensait en le relancant, ce qui DETRUISAIT puis RECREAIT sa
+sortie virtuelle — abandonnant a nouveau le mutex de toutes les duplications
+deja ouvertes.
+
+La compensation coutait plus que la panne : 32 des 44 reouvertures du releve du
+1er aout 2026 venaient de cette seule etape.
+
+DXGI_ERROR_NOT_CURRENTLY_AVAILABLE dit lui-meme que la ressource « pourra
+l'etre ulterieurement ». On l'ecoute desormais, trois secondes durant.
+
+Bloquer est legitime ici, a la difference de next_frame : `ouvrir` court au
+demarrage de l'enfant, avant toute boucle de capture.
+
+Ceci ne leve PAS le plafond de quatre fenetres : la 5e duplication est refusee
+alors que quatre sont tenues, et fermer puis rouvrir reussit — c'est une limite
+de concurrence, que nulle patience ne franchit.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+```
+
+---
+
 ## Tâche 12 : le rapport, et les documents qu'il faut accorder
 
 **Files:**
