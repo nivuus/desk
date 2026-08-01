@@ -29,7 +29,21 @@ pub enum Etat {
     AttendLaSortie,
     /// L'enfant tourne.
     Vivante,
+    /// L'enfant est mort et la sortie a été rendue, mais **la fenêtre Windows
+    /// est toujours là**. Le contrôle périodique la reproposera.
+    ///
+    /// Sans cet état, `enfant_mort` retirait purement l'entrée : plus rien ne
+    /// rappelait la fenêtre sauf un `SHOW` fortuit de Windows, et la shell
+    /// restait vide devant des applications bien vivantes (recette D1 §3.3).
+    SansSession,
 }
+
+/// Relances tolérées pour une même fenêtre avant abandon.
+///
+/// Le garde-fou de l'emballement relevé en recette D1 : une fenêtre dont
+/// l'enfant meurt systématiquement produirait sinon `w-5, w-6, w-7, w-8…`
+/// jusqu'à épuiser le vivier de sorties du pilote.
+pub const RELANCES_MAX: u32 = 3;
 
 /// Ce que la table demande au monde extérieur de faire. Le superviseur les
 /// exécute dans l'ordre rendu.
@@ -81,6 +95,10 @@ struct Entree {
     /// placement. Stable, contrairement à une position d'énumération.
     nom_sortie: Option<String>,
     audio: bool,
+    /// Nombre de fois où cette fenêtre a déjà été relancée après la mort de
+    /// son enfant. Le garde-fou de `relancer_les_orphelines` (`RELANCES_MAX`)
+    /// s'appuie dessus pour abandonner plutôt que de relancer sans fin.
+    relances: u32,
 }
 
 pub struct Table {
@@ -164,6 +182,7 @@ impl Table {
                 sortie_pilote: None,
                 nom_sortie: None,
                 audio,
+                relances: 0,
             },
         );
         vec![Effet::AnnoncerOuverture { session, titre }]
@@ -262,20 +281,75 @@ impl Table {
         // Pas de `TuerEnfant` : il est déjà mort. Mais sa sortie, elle, ne
         // s'est pas détruite toute seule — une sortie virtuelle survit au
         // processus qui l'a créée.
-        let Some(entree) = self.entrees.remove(session) else {
+        //
+        // L'entrée n'est PAS retirée : la fenêtre Windows, elle, est toujours
+        // là (sauf coïncidence avec sa fermeture, traitée ailleurs par
+        // `fenetre_disparue`). Elle bascule en `SansSession` pour que le
+        // contrôle périodique la retrouve et la reproposera via
+        // `relancer_les_orphelines` — sans quoi rien ne rappelait plus la
+        // fenêtre, sauf un `SHOW` fortuit de Windows (recette D1 §3.3).
+        let Some(entree) = self.entrees.get_mut(session) else {
             return Vec::new();
         };
+        entree.etat = Etat::SansSession;
         let mut effets = Vec::new();
-        if let Some(sortie_pilote) = entree.sortie_pilote {
+        // Effacés pour qu'une seconde mort ne redemande pas deux fois la
+        // même destruction — la sortie ne sera rendue qu'ici, une fois.
+        if let Some(sortie_pilote) = entree.sortie_pilote.take() {
             effets.push(Effet::DetruireSortie {
                 sortie_pilote,
                 // `nom_sortie` est toujours renseigné quand `sortie_pilote`
                 // l'est : `sortie_creee` pose les deux ensemble, jamais l'un
                 // sans l'autre. Le repli n'est donc pas atteignable.
-                nom_sortie: entree.nom_sortie.clone().unwrap_or_default(),
+                nom_sortie: entree.nom_sortie.take().unwrap_or_default(),
             });
         }
         effets.push(Effet::AnnoncerFermeture { session: session.clone() });
+        effets
+    }
+
+    /// Repropose les fenêtres dont la session est morte mais qui existent
+    /// toujours côté Windows. Appelée par le contrôle périodique du
+    /// superviseur.
+    ///
+    /// L'entrée change d'identifiant de session à chaque relance — un
+    /// identifiant réutilisé apparierait un message tardif du navigateur à
+    /// la mauvaise fenêtre — donc chaque orpheline est retirée puis
+    /// réinsérée sous une session neuve, `relances` et `audio` reportés.
+    /// `self.compteur` continue de croître sans jamais reculer.
+    pub fn relancer_les_orphelines(&mut self) -> Vec<Effet> {
+        let orphelines: Vec<IdSession> = self
+            .entrees
+            .iter()
+            .filter(|(_, e)| e.etat == Etat::SansSession)
+            .map(|(s, _)| s.clone())
+            .collect();
+        let mut effets = Vec::new();
+        for ancienne in orphelines {
+            let entree = self.entrees.remove(&ancienne).expect("relevée à l'instant");
+            if entree.relances >= RELANCES_MAX {
+                effets.push(Effet::AnnoncerRefus {
+                    titre: entree.titre,
+                    motif: format!("la session n'a pas tenu après {RELANCES_MAX} tentatives"),
+                });
+                continue;
+            }
+            self.compteur += 1;
+            let session = IdSession(format!("w-{}", self.compteur));
+            self.entrees.insert(
+                session.clone(),
+                Entree {
+                    fenetre: entree.fenetre,
+                    titre: entree.titre.clone(),
+                    etat: Etat::AttendLeViewport,
+                    sortie_pilote: None,
+                    nom_sortie: None,
+                    audio: entree.audio,
+                    relances: entree.relances + 1,
+                },
+            );
+            effets.push(Effet::AnnoncerOuverture { session, titre: entree.titre });
+        }
         effets
     }
 }

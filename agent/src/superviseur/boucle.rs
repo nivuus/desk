@@ -193,6 +193,10 @@ pub fn tourner(
         if dernier_controle_placement.elapsed() >= PERIODE_PLACEMENT {
             dernier_controle_placement = std::time::Instant::now();
             controler_le_placement(&table);
+            // 7. Fenêtres dont l'enfant est mort mais qui existent toujours
+            // côté Windows : on les repropose plutôt que de les laisser
+            // disparaître de la shell (voir `Etat::SansSession`).
+            effets.extend(table.relancer_les_orphelines());
         }
 
         if effets.is_empty() {
