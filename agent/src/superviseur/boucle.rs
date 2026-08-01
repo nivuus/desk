@@ -180,14 +180,6 @@ pub fn tourner(
     }
 }
 
-/// Crée la sortie virtuelle d'une session, l'apparie à sa place DXGI, y pose
-/// la fenêtre, et rend les effets à enchaîner.
-///
-/// Extrait de la boucle pour une raison de fond : **tout chemin d'échec sous
-/// la création doit défaire la sortie**. Une sortie créée que la topologie
-/// DXGI ne rend pas resterait sinon tenue jusqu'à l'arrêt du superviseur, et
-/// l'entrée de la table resterait éternellement en `AttendLaSortie` — une
-/// fenêtre morte-vivante et une place perdue dans un vivier de dix.
 /// Ce qu'une demande de sortie porte. Un `struct` plutôt que quatre
 /// paramètres : le titre est venu s'ajouter (il est ce qu'un refus dit à
 /// l'utilisateur) et la liste d'arguments passait le seuil du lisible.
@@ -198,6 +190,14 @@ struct Demande {
     hauteur: u32,
 }
 
+/// Crée la sortie virtuelle d'une session, l'apparie à sa place DXGI, y pose
+/// la fenêtre, et rend les effets à enchaîner.
+///
+/// Extrait de la boucle pour une raison de fond : **tout chemin d'échec sous
+/// la création doit défaire la sortie**. Une sortie créée que la topologie
+/// DXGI ne rend pas resterait sinon tenue jusqu'à l'arrêt du superviseur, et
+/// l'entrée de la table resterait éternellement en `AttendLaSortie` — une
+/// fenêtre morte-vivante et une place perdue dans un vivier de dix.
 fn creer_sortie(
     pilote: &PiloteParIoctl,
     sorties: &mut Sorties<'_>,

@@ -96,9 +96,18 @@ impl LanceurDeProcessus {
         })
     }
 
-    /// Accès à la table sans paniquer sur un verrou empoisonné : ce chemin
-    /// court aussi depuis `Drop`, où une panique abrégerait le processus et
-    /// laisserait les enfants sans personne pour les compter.
+    /// Accès à la table sans paniquer sur un verrou empoisonné.
+    ///
+    /// Le verrou s'empoisonne dès qu'une panique traverse un porteur — et il y
+    /// en a un : `lancer` peut paniquer entre le `spawn` et l'insertion. Après
+    /// quoi un `.expect(…)` ferait paniquer **tous** les appels suivants,
+    /// c'est-à-dire `est_vivant` et `tuer` : le superviseur perdrait d'un coup
+    /// la capacité de constater une mort et celle de mettre à mort. Le job
+    /// object rattraperait les enfants à la fin, mais bien plus tard et sans
+    /// que rien ne l'explique. `into_inner` rend la table telle quelle : au
+    /// pire une insertion interrompue y manque.
+    ///
+    /// (`Drop` ne passe PAS par ici : il ne touche que le handle de job.)
     fn enfants(&self) -> std::sync::MutexGuard<'_, HashMap<u32, std::process::Child>> {
         self.enfants.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
     }
