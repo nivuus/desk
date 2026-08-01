@@ -18,32 +18,6 @@ use crate::geometry::Rect;
 // même type sous `crate::capture::SortieDxgi` pour le code Windows.
 use crate::sortie_dxgi::SortieDxgi;
 
-/// Sortie DXGI correspondant à des dimensions demandées, parmi celles qui ne
-/// sont pas déjà attribuées.
-///
-/// L'égalité des dimensions est **exacte** : un appariement approximatif
-/// masquerait le piège du facteur d'échelle décrit en tête de module.
-///
-/// `deja_prises` désigne par NOM DXGI (`\\.\DISPLAYn`), stable, et non plus
-/// par un couple d'index d'énumération — positionnel, il change dès qu'une
-/// sortie apparaît ou disparaît.
-pub fn sortie_par_dimensions(
-    sorties: &[SortieDxgi],
-    largeur: u32,
-    hauteur: u32,
-    deja_prises: &[String],
-) -> Option<SortieDxgi> {
-    sorties
-        .iter()
-        .find(|s| {
-            s.attachee_au_bureau
-                && s.rect.width == largeur
-                && s.rect.height == hauteur
-                && !deja_prises.contains(&s.nom_sortie)
-        })
-        .cloned()
-}
-
 /// Tolérance de position et de taille, en pixels, avant de replacer.
 ///
 /// Les bordures invisibles de DWM décalent couramment `GetWindowRect` de
@@ -55,7 +29,42 @@ pub fn sortie_par_dimensions(
 /// plein cadre est invisible, là où un replacement en boucle ne l'est pas. (Le
 /// commentaire disait « un ou deux pixels » face à une constante à 4 ; c'est le
 /// texte qui était en retard, la constante est celle qu'on veut.)
+///
+/// Cette même tolérance sert désormais aussi à l'appariement d'une sortie
+/// fraîchement créée (`sortie_par_dimensions`) : elle doit être déclarée avant
+/// cette fonction dans le fichier.
 const TOLERANCE_PX: i64 = 4;
+
+/// Sortie DXGI correspondant à des dimensions demandées, parmi celles qui ne
+/// sont pas déjà attribuées.
+///
+/// **Tolérante de `TOLERANCE_PX`, et pas davantage.** L'égalité stricte était
+/// le choix initial, pour ne pas masquer le facteur d'échelle décrit en tête de
+/// module ; la recette D1 a montré qu'elle rendait l'ouverture impossible sur
+/// une course de rattachement de quelques pixels (1280×713 rendue 1280×720).
+/// La tolérance retenue est celle du replacement — quatre pixels — très loin
+/// du facteur 1,5 qui reste, lui, refusé.
+///
+/// `deja_prises` désigne par NOM DXGI (`\\.\DISPLAYn`), stable, et non plus
+/// par un couple d'index d'énumération — positionnel, il change dès qu'une
+/// sortie apparaît ou disparaît.
+pub fn sortie_par_dimensions(
+    sorties: &[SortieDxgi],
+    largeur: u32,
+    hauteur: u32,
+    deja_prises: &[String],
+) -> Option<SortieDxgi> {
+    let proche = |a: u32, b: u32| (a as i64 - b as i64).abs() <= TOLERANCE_PX;
+    sorties
+        .iter()
+        .find(|s| {
+            s.attachee_au_bureau
+                && proche(s.rect.width, largeur)
+                && proche(s.rect.height, hauteur)
+                && !deja_prises.contains(&s.nom_sortie)
+        })
+        .cloned()
+}
 
 /// Vrai si la fenêtre a quitté sa sortie ou changé de taille au point qu'il
 /// faille la remettre en place.
@@ -193,6 +202,50 @@ mod tests {
         // approximatif rendrait ce piège invisible.
         let toutes = vec![sortie(0, 1, 2400, 1067, 600, true)];
         assert!(sortie_par_dimensions(&toutes, 1600, 900, &[]).is_none());
+    }
+
+    /// §3.1 de la recette D1 : une sortie créée à 1280×713 a été rendue par
+    /// DXGI à 1280×720 une fois, puis à 1280×713 l'essai suivant. L'égalité
+    /// stricte rendait alors l'ouverture de la fenêtre impossible.
+    #[test]
+    fn un_ecart_dans_la_tolerance_apparie_quand_meme() {
+        let sorties = vec![sortie_nommee("\\\\.\\DISPLAY7", 1280, 717)];
+        let trouvee = sortie_par_dimensions(&sorties, 1280, 720, &[]);
+        assert_eq!(trouvee.map(|s| s.nom_sortie), Some("\\\\.\\DISPLAY7".into()));
+    }
+
+    /// La tolérance ne doit pas avaler le facteur DPI de 1,5 que le dépôt a
+    /// relevé sur une sortie virtuelle : c'est le piège que l'égalité stricte
+    /// protégeait, et qu'il faut continuer de voir échouer.
+    #[test]
+    fn un_facteur_d_echelle_n_apparie_pas() {
+        let sorties = vec![sortie_nommee("\\\\.\\DISPLAY7", 1920, 1080)];
+        assert!(sortie_par_dimensions(&sorties, 1280, 720, &[]).is_none());
+    }
+
+    #[test]
+    fn une_sortie_deja_prise_est_ignoree() {
+        let sorties = vec![
+            sortie_nommee("\\\\.\\DISPLAY7", 1280, 720),
+            sortie_nommee("\\\\.\\DISPLAY8", 1280, 720),
+        ];
+        let trouvee =
+            sortie_par_dimensions(&sorties, 1280, 720, &["\\\\.\\DISPLAY7".to_string()]);
+        assert_eq!(trouvee.map(|s| s.nom_sortie), Some("\\\\.\\DISPLAY8".into()));
+    }
+
+    // Distinct de `sortie` ci-dessus (qui fixe `nom_sortie` à partir de
+    // `index_sortie`) : ces trois tests veulent un nom explicite pour vérifier
+    // l'identité de la sortie appariée, pas seulement son existence.
+    fn sortie_nommee(nom: &str, largeur: u32, hauteur: u32) -> SortieDxgi {
+        SortieDxgi {
+            index_adaptateur: 0,
+            index_sortie: 0,
+            adaptateur: "essai".into(),
+            nom_sortie: nom.into(),
+            attachee_au_bureau: true,
+            rect: Rect { x: 0, y: 0, width: largeur, height: hauteur },
+        }
     }
 
     #[test]

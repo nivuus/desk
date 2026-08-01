@@ -13,7 +13,7 @@ use super::hook;
 use super::placement;
 use super::protocole::{DepuisLaShell, VersLaShell};
 use super::table::{Effet, IdSession, Table};
-use crate::capture::enumerer_sorties_silencieux;
+use crate::capture::{enumerer_sorties_silencieux, SortieDxgi};
 // `relever_topologie` plutôt qu'`enumerer_sorties` sur le chemin de création :
 // elle journalise la topologie sortie par sortie, et c'est ce relevé qui rend
 // diagnosticable un appariement qui échoue. Le contrôle périodique de
@@ -45,9 +45,19 @@ const PERIODE_PING: std::time::Duration = std::time::Duration::from_millis(500);
 /// doit pas courir à chaque tour de boucle.
 const PERIODE_PLACEMENT: std::time::Duration = std::time::Duration::from_secs(1);
 
-/// Délai laissé à Windows pour rattacher une sortie fraîchement créée avant de
-/// l'énumérer : elle n'apparaît pas instantanément dans la topologie DXGI.
-const DELAI_RATTACHEMENT: std::time::Duration = std::time::Duration::from_millis(1500);
+/// Temps maximal laissé à Windows pour rattacher une sortie fraîchement créée.
+///
+/// **Une borne, pas une durée d'attente.** La version précédente dormait 1500 ms
+/// plats, et la recette D1 a montré que ce n'était pas toujours assez : la
+/// sortie n'était pas encore dans la topologie quand on l'y cherchait, et la
+/// fenêtre ne s'ouvrait jamais. On attend désormais le FAIT — qu'une sortie
+/// neuve apparaisse — et cette constante ne fait qu'empêcher d'attendre
+/// indéfiniment.
+const LIMITE_RATTACHEMENT: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// Pas de scrutation plus serrée : chaque tour énumère toutes les sorties DXGI,
+/// ce qui n'est pas gratuit.
+const PAS_RATTACHEMENT: std::time::Duration = std::time::Duration::from_millis(100);
 
 pub fn tourner(
     pilote: &PiloteParIoctl,
@@ -242,29 +252,10 @@ fn creer_sortie(
         }
     };
 
-    // Laisser Windows rattacher la sortie avant de l'énumérer — SANS cesser de
-    // battre le chien de garde. Le délai du chien de garde vaut 3 dans une
-    // unité INCONNUE dont la seconde n'est pas exclue, et l'étape de ping de la
-    // boucle est HORS du parcours des effets : un lot de huit `CreerSortie`
-    // enchaînerait sinon huit attentes plates, soit douze secondes
-    // consécutives sans un seul ping — et le pilote retire les sorties d'un
-    // client qui cesse de pinguer, y compris celles qu'on vient de créer.
-    attendre_en_pinguant(pilote, DELAI_RATTACHEMENT);
-
-    // Une énumération qui échoue n'est PAS fatale au superviseur : les autres
-    // fenêtres tournent, et rien ne dit que le prochain essai échouera aussi.
-    let toutes = match relever_topologie("après création de sortie") {
-        Ok(toutes) => toutes,
-        Err(erreur) => {
-            tracing::error!(session = %session.0, %erreur, "topologie DXGI illisible");
-            Vec::new()
-        }
-    };
-    let apparues: Vec<_> = toutes
-        .iter()
-        .filter(|s| s.attachee_au_bureau && !avant.contains(&s.nom_sortie))
-        .cloned()
-        .collect();
+    // Attend le FAIT — qu'une sortie neuve apparaisse dans la topologie DXGI —
+    // plutôt qu'un délai plat, tout en continuant de battre le chien de garde
+    // du pilote (voir la doc d'`attendre_une_sortie_neuve`).
+    let apparues = attendre_une_sortie_neuve(pilote, &avant, LIMITE_RATTACHEMENT);
 
     let Some(cible) = placement::sortie_par_dimensions(&apparues, largeur, hauteur, prises) else {
         // Journaliser les CANDIDATS, pas seulement la demande. L'égalité de
@@ -338,18 +329,46 @@ fn rendre_sans_apparier(sorties: &mut Sorties<'_>, id_pilote: u32) {
     }
 }
 
-/// Attend en battant le chien de garde du pilote, jamais par un `sleep` plat.
-fn attendre_en_pinguant(pilote: &PiloteParIoctl, duree: std::time::Duration) {
-    let jusqua = std::time::Instant::now() + duree;
+/// Attend qu'une sortie neuve apparaisse dans la topologie, sans cesser de
+/// battre le chien de garde.
+///
+/// Le battement n'est pas un détail : le pilote retire les sorties d'un client
+/// qui cesse de pinguer, **y compris celles qu'on vient de créer**, et l'étape
+/// de ping de la boucle est hors du parcours des effets.
+///
+/// **`enumerer_sorties_silencieux`, jamais `relever_topologie`, dans cette
+/// boucle.** À 10 Hz, `relever_topologie` journaliserait une ligne par sortie
+/// DXGI existante à chaque tour — le dépôt a déjà payé deux fois pour une
+/// trace émise à la cadence d'une boucle (chantier TURN, correctif I2 de D1).
+/// Le relevé nommé et journalisé reste fait une fois avant et, en cas
+/// d'échec, dans le journal des candidats de l'appelant.
+fn attendre_une_sortie_neuve(
+    pilote: &PiloteParIoctl,
+    avant: &[String],
+    limite: std::time::Duration,
+) -> Vec<SortieDxgi> {
+    let echeance = std::time::Instant::now() + limite;
     loop {
         if let Err(erreur) = pilote.pinguer() {
-            tracing::warn!(%erreur, "ping du chien de garde échoué pendant l'attente");
+            tracing::warn!(%erreur, "ping du chien de garde pendant l'attente de rattachement");
         }
-        let restant = jusqua.saturating_duration_since(std::time::Instant::now());
-        if restant.is_zero() {
-            return;
+        let toutes = enumerer_sorties_silencieux().unwrap_or_default();
+        let apparues: Vec<_> = toutes
+            .iter()
+            .filter(|s| s.attachee_au_bureau && !avant.contains(&s.nom_sortie))
+            .cloned()
+            .collect();
+        if !apparues.is_empty() {
+            return apparues;
         }
-        std::thread::sleep(PERIODE_PING.min(restant));
+        if std::time::Instant::now() >= echeance {
+            tracing::error!(
+                limite_ms = limite.as_millis() as u64,
+                "aucune sortie neuve n'est apparue dans la limite"
+            );
+            return Vec::new();
+        }
+        std::thread::sleep(PAS_RATTACHEMENT);
     }
 }
 
