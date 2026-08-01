@@ -83,7 +83,7 @@ pub(super) fn capture_center_pixel(
 ) -> Result<(u32, u32, u8, u8, u8, u8)> {
     let deadline = std::time::Instant::now() + timeout;
     while std::time::Instant::now() < deadline {
-        if let Some(frame) = capture.next_frame(region)? {
+        if let Some(frame) = capture.next_frame(region).map_err(|e| anyhow::anyhow!("{e}"))? {
             let (r, g, b, a) = read_pixel(
                 capture.device(),
                 &frame.texture,

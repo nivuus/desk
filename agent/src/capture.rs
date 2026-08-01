@@ -21,8 +21,8 @@ use windows::Win32::Graphics::Direct3D11::{
 };
 use windows::Win32::Graphics::Dxgi::Common::{DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_SAMPLE_DESC};
 use windows::Win32::Graphics::Dxgi::{
-    CreateDXGIFactory1, IDXGIAdapter1, IDXGIFactory1, IDXGIOutput1, IDXGIOutputDuplication,
-    IDXGIResource, DXGI_ERROR_WAIT_TIMEOUT, DXGI_OUTDUPL_FRAME_INFO,
+    CreateDXGIFactory1, IDXGIFactory1, IDXGIOutputDuplication, IDXGIResource,
+    DXGI_ERROR_WAIT_TIMEOUT, DXGI_OUTDUPL_FRAME_INFO,
 };
 
 use crate::geometry::Rect;
@@ -45,6 +45,29 @@ pub struct CapturedFrame {
     pub texture: ID3D11Texture2D,
     pub width: u32,
     pub height: u32,
+}
+
+/// Pourquoi une acquisition d'image a échoué, une fois les reprises épuisées.
+///
+/// `AccesPerdu` ne remonte pas à la première perte : `next_frame` tente de se
+/// rouvrir d'abord (voir `BudgetReprises`). Le recevoir signifie « je n'ai pas
+/// pu revenir », pas « l'accès vient d'être perdu ».
+pub enum EchecAcquisition {
+    AccesPerdu,
+    Panne(anyhow::Error),
+}
+
+impl std::fmt::Display for EchecAcquisition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::AccesPerdu => write!(
+                f,
+                "accès à la duplication perdu et non repris après {} tentatives",
+                crate::capture_reprise::REPRISES_MAX
+            ),
+            Self::Panne(e) => write!(f, "{e:#}"),
+        }
+    }
 }
 
 /// Ce que cette duplication couvre — et donc ce qu'il faut rouvrir après une
@@ -72,6 +95,9 @@ pub struct DesktopCapture {
     /// à l'instant où l'accès est perdu, la topologie a déjà changé et rien
     /// dans les objets DXGI encore détenus ne dit ce qu'on capturait.
     cible: CibleCapture,
+    /// Reprises consécutives déjà accordées à cette capture (voir
+    /// `next_frame`) : une rafale de pertes d'accès ne doit pas s'éterniser.
+    budget: crate::capture_reprise::BudgetReprises,
     desktop_width: u32,
     desktop_height: u32,
     /// Texture de destination, réallouée seulement quand la taille change.
@@ -171,6 +197,7 @@ impl DesktopCapture {
             context,
             duplication,
             cible,
+            budget: crate::capture_reprise::BudgetReprises::nouveau(),
             desktop_width,
             desktop_height,
             target: None,
@@ -238,11 +265,54 @@ impl DesktopCapture {
         (self.desktop_width, self.desktop_height)
     }
 
-    /// Acquiert l'image suivante et la recadre sur `region`.
+    /// Acquiert l'image suivante et la recadre sur `region`, **en se rouvrant
+    /// si DXGI lui a révoqué l'accès**.
+    ///
+    /// La reprise est ici, et non chez l'appelant, à dessein : le banc
+    /// multi-fenêtres capture par cette fonction sans passer par
+    /// `WindowsSource` (`diagnostics/multifenetre/voies.rs`). Une reprise logée
+    /// plus haut laisserait le banc hors du chemin de production, et la mesure
+    /// qui doit valider cette voie ne vaudrait rien.
+    pub fn next_frame(
+        &mut self,
+        region: Rect,
+    ) -> std::result::Result<Option<CapturedFrame>, EchecAcquisition> {
+        loop {
+            match self.tenter_acquisition(region) {
+                Ok(issue) => {
+                    self.budget.succes();
+                    return Ok(issue);
+                }
+                Err(EchecAcquisition::AccesPerdu) => {
+                    if !self.budget.consommer() {
+                        return Err(EchecAcquisition::AccesPerdu);
+                    }
+                    // `info!` et non `debug!` : l'exploitation tourne en
+                    // RUST_LOG=info, et une mitigation muette n'en est pas une.
+                    // Rare par construction — une reprise correspond à un
+                    // remaniement de la topologie d'affichage.
+                    tracing::info!(
+                        tentative = self.budget.consommees(),
+                        cible = ?self.cible,
+                        "accès à la duplication perdu, réouverture"
+                    );
+                    if let Err(erreur) = self.rouvrir() {
+                        return Err(EchecAcquisition::Panne(erreur));
+                    }
+                }
+                Err(panne) => return Err(panne),
+            }
+        }
+    }
+
+    /// Acquiert l'image suivante et la recadre sur `region`, sans reprise.
     ///
     /// Renvoie `Ok(None)` si aucune image nouvelle n'est disponible — cas
     /// courant et normal : le bureau ne change pas à chaque appel.
-    pub fn next_frame(&mut self, region: Rect) -> Result<Option<CapturedFrame>> {
+    fn tenter_acquisition(
+        &mut self,
+        region: Rect,
+    ) -> std::result::Result<Option<CapturedFrame>, EchecAcquisition> {
         self.release_frame();
 
         let mut info = DXGI_OUTDUPL_FRAME_INFO::default();
@@ -263,7 +333,13 @@ impl DesktopCapture {
             if e.code() == DXGI_ERROR_WAIT_TIMEOUT {
                 return Ok(None);
             }
-            return Err(anyhow!("acquisition d'image : {e}"));
+            // Classer sur le CODE, jamais sur le texte du message : `CLAUDE.md`
+            // porte le précédent d'un libellé Windows qui a fait attribuer un
+            // refus au mauvais appel pendant tout un chantier.
+            if crate::capture_reprise::est_acces_perdu(e.code().0) {
+                return Err(EchecAcquisition::AccesPerdu);
+            }
+            return Err(EchecAcquisition::Panne(anyhow!("acquisition d'image : {e}")));
         }
         self.frame_held = true;
 
@@ -272,7 +348,7 @@ impl DesktopCapture {
         // ultérieure. `release_frame` en tête de la prochaine itération ne
         // couvre pas le cas d'une erreur qui remonte et arrête la boucle,
         // ni celui d'un appelant qui réessaie après avoir avalé l'erreur.
-        let cropped = (|| {
+        let cropped: Result<CapturedFrame> = (|| {
             let resource = resource.ok_or_else(|| anyhow!("ressource d'image absente"))?;
             let desktop: ID3D11Texture2D = resource.cast()?;
             self.crop(&desktop, region)
@@ -302,7 +378,7 @@ impl DesktopCapture {
             }
             Err(e) => {
                 self.release_frame();
-                Err(e)
+                Err(EchecAcquisition::Panne(e))
             }
         }
     }
@@ -392,69 +468,9 @@ pub use crate::sortie_dxgi::SortieDxgi;
 mod enumeration;
 pub use enumeration::{enumerer_sorties, enumerer_sorties_silencieux};
 
-/// Ouvre une sortie désignée par son nom, ou — pour `CibleCapture::Bureau` —
-/// trouve et ouvre la sortie qui compose le bureau.
-fn ouvrir_sortie(
-    factory: &IDXGIFactory1,
-    cible: &CibleCapture,
-) -> Result<(IDXGIAdapter1, IDXGIOutput1)> {
-    let mut index_adaptateur = 0u32;
-    while let Ok(adapter) = unsafe { factory.EnumAdapters1(index_adaptateur) } {
-        let mut index_sortie = 0u32;
-        while let Ok(output) = unsafe { adapter.EnumOutputs(index_sortie) } {
-            let desc = match unsafe { output.GetDesc() } {
-                Ok(desc) => desc,
-                Err(_) => {
-                    index_sortie += 1;
-                    continue;
-                }
-            };
-            let nom = String::from_utf16_lossy(&desc.DeviceName)
-                .trim_end_matches('\0')
-                .to_string();
-            let retenue = match cible {
-                CibleCapture::Sortie(vise) => &nom == vise,
-                CibleCapture::Bureau => desc.AttachedToDesktop.as_bool(),
-            };
-            if retenue {
-                let name = match unsafe { adapter.GetDesc1() } {
-                    Ok(adapter_desc) => String::from_utf16_lossy(&adapter_desc.Description)
-                        .trim_end_matches('\0')
-                        .to_string(),
-                    Err(_) => "<inconnu>".to_string(),
-                };
-                tracing::info!(
-                    adaptateur = %name, index_adaptateur, index_sortie, nom_sortie = %nom,
-                    attachee = desc.AttachedToDesktop.as_bool(),
-                    "sortie retenue pour la duplication"
-                );
-                return Ok((adapter.clone(), output.cast()?));
-            }
-            index_sortie += 1;
-        }
-        index_adaptateur += 1;
-    }
-    match cible {
-        CibleCapture::Sortie(nom) => bail!("aucune sortie DXGI nommée {nom}"),
-        CibleCapture::Bureau => {
-            bail!("aucune sortie attachée au bureau : la session est-elle interactive ?")
-        }
-    }
-}
-
-/// Duplique la sortie et lit ses dimensions. Le seul morceau d'`ouvrir` que
-/// `rouvrir` refait.
-///
-/// écart d'API windows-rs 0.62 : `GetDesc` ne prend plus de paramètre de
-/// sortie ; elle renvoie directement la structure (par valeur pour
-/// `IDXGIOutputDuplication`, dans un `Result` pour `IDXGIOutput1` et
-/// `IDXGIAdapter1`, ces deux dernières pouvant échouer).
-fn dupliquer(
-    device: &ID3D11Device,
-    output: &IDXGIOutput1,
-) -> Result<(IDXGIOutputDuplication, u32, u32)> {
-    let duplication =
-        unsafe { output.DuplicateOutput(device) }.context("duplication de la sortie écran")?;
-    let desc = unsafe { duplication.GetDesc() };
-    Ok((duplication, desc.ModeDesc.Width, desc.ModeDesc.Height))
-}
+// `ouvrir_sortie` et `dupliquer` vivent dans ce module enfant, extrait à la
+// tâche 3 du sous-bloc D2 pour ramener ce fichier sous le plafond de 500
+// lignes (`CLAUDE.md`) après l'ajout d'`EchecAcquisition` et de la reprise
+// dans `next_frame` — voir l'en-tête de `capture/ouverture.rs`.
+mod ouverture;
+use ouverture::{dupliquer, ouvrir_sortie};

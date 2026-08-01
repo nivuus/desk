@@ -143,7 +143,10 @@ impl SourceDuplication {
         if self.dernier_tour == Some(tour) {
             return Ok(());
         }
-        self.dernier_bureau = self.capture.next_frame(self.bureau)?;
+        self.dernier_bureau = self
+            .capture
+            .next_frame(self.bureau)
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
         self.dernier_tour = Some(tour);
         Ok(())
     }

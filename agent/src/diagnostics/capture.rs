@@ -150,7 +150,7 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
         let mut captured = 0;
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
         while std::time::Instant::now() < deadline {
-            if let Some(frame) = capture.next_frame(region)? {
+            if let Some(frame) = capture.next_frame(region).map_err(|e| anyhow::anyhow!("{e}"))? {
                 captured += 1;
                 if captured == 1 {
                     tracing::info!(frame.width, frame.height, "première image capturée");
@@ -227,7 +227,7 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
                 phase
                     .phase
                     .store(encode::PHASE_CAPTURE, std::sync::atomic::Ordering::Relaxed);
-                let acquired = capture.next_frame(region)?;
+                let acquired = capture.next_frame(region).map_err(|e| anyhow::anyhow!("{e}"))?;
                 phase
                     .phase
                     .store(encode::PHASE_IDLE, std::sync::atomic::Ordering::Relaxed);
@@ -325,7 +325,7 @@ pub(super) fn executer(fragment: &str) -> Result<()> {
             // ferait attendre indéfiniment sans la moindre trace.
             let frame_deadline = std::time::Instant::now() + Duration::from_secs(10);
             let frame = loop {
-                if let Some(frame) = capture.next_frame(region)? {
+                if let Some(frame) = capture.next_frame(region).map_err(|e| anyhow::anyhow!("{e}"))? {
                     break frame;
                 }
                 anyhow::ensure!(
