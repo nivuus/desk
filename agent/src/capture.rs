@@ -47,50 +47,12 @@ pub struct CapturedFrame {
     pub height: u32,
 }
 
-/// Pourquoi une acquisition d'image a échoué, une fois les reprises épuisées.
-///
-/// `AccesPerdu` ne remonte pas à la première perte : `next_frame` tente de se
-/// rouvrir d'abord (voir `FenetreDeReprise`). Le recevoir signifie « je n'ai
-/// pas pu revenir dans le délai imparti », pas « l'accès vient d'être perdu ».
-pub enum EchecAcquisition {
-    AccesPerdu,
-    Panne(anyhow::Error),
-}
-
-impl std::fmt::Display for EchecAcquisition {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::AccesPerdu => write!(
-                f,
-                "accès à la duplication perdu et non repris en {:?}",
-                crate::capture_reprise::DUREE_FENETRE_REPRISE
-            ),
-            Self::Panne(e) => write!(f, "{e:#}"),
-        }
-    }
-}
-
-/// Ce que cette duplication couvre — et donc ce qu'il faut rouvrir après une
-/// perte d'accès.
-///
-/// **Un nom de sortie, jamais un index.** `(index_adaptateur, index_sortie)`
-/// est positionnel : il change dès qu'une sortie apparaît ou disparaît. Or
-/// c'est exactement ce qui vient de se produire quand on rouvre. `\\.\DISPLAYn`
-/// est stable.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CibleCapture {
-    /// La sortie qui compose le bureau, quelle qu'elle soit — comportement de
-    /// `DesktopCapture::new()`. Résolue à chaque ouverture, donc une
-    /// réouverture peut légitimement tomber sur une autre sortie.
-    Bureau,
-    /// Une sortie précise, désignée par son nom.
-    Sortie(String),
-}
-
 pub struct DesktopCapture {
     device: ID3D11Device,
     context: ID3D11DeviceContext,
-    duplication: IDXGIOutputDuplication,
+    /// `None` seulement pendant `rouvrir`, entre le relâchement de l'ancienne
+    /// duplication et l'acquisition de la neuve — voir `duplication()`.
+    duplication: Option<IDXGIOutputDuplication>,
     /// Ce qu'il faut rouvrir après une perte d'accès. Retenu à l'ouverture :
     /// à l'instant où l'accès est perdu, la topologie a déjà changé et rien
     /// dans les objets DXGI encore détenus ne dit ce qu'on capturait.
@@ -195,7 +157,7 @@ impl DesktopCapture {
         Ok(Self {
             device,
             context,
-            duplication,
+            duplication: Some(duplication),
             cible,
             fenetre: crate::capture_reprise::FenetreDeReprise::nouvelle(),
             desktop_width,
@@ -218,15 +180,26 @@ impl DesktopCapture {
     /// en créer un neuf obligerait à détruire l'encodeur, donc à emprunter
     /// `Drop for H264Encoder`, dont le pire cas est borné à 8 s et où un gel a
     /// déjà été observé (`CLAUDE.md`). Une reprise censée passer inaperçue ne
-    /// peut pas payer ce prix.
+    /// peut pas payer ce prix. La protection multifil posée sur le contexte à
+    /// l'ouverture n'est pas rejouée : elle porte sur le contexte immédiat,
+    /// qu'on conserve.
     ///
-    /// La protection multifil posée sur le contexte à l'ouverture n'est pas
-    /// rejouée : elle porte sur le contexte immédiat, qu'on conserve.
+    /// **L'ancienne duplication est relâchée AVANT que la neuve ne soit
+    /// demandée, et l'ordre est le fond de cette méthode.** DXGI n'autorise
+    /// qu'**une** duplication par sortie. La version précédente appelait
+    /// `dupliquer()` alors que `self.duplication` détenait encore l'objet
+    /// périmé : l'appel réussissait — 378 fois sur 378 au relevé du
+    /// 1ᵉʳ août 2026 — et rendait une duplication **mort-née**, qui refusait
+    /// aussitôt toute acquisition. Huit secondes de réessais toutes les 150 ms
+    /// n'en sortaient jamais.
     pub fn rouvrir(&mut self) -> Result<()> {
-        // Relâcher l'image éventuellement détenue AVANT de lâcher la
-        // duplication : `release_frame` appelle `ReleaseFrame` sur l'objet
-        // qu'on est en train de remplacer.
+        // L'image détenue d'abord : `release_frame` appelle `ReleaseFrame` sur
+        // la duplication qu'on s'apprête à relâcher.
         self.release_frame();
+
+        // PUIS la duplication elle-même, et c'est cette ligne qui compte.
+        // `None` la fait relâcher ici, pas à l'affectation d'après.
+        self.duplication = None;
 
         let factory: IDXGIFactory1 =
             unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI (réouverture)")?;
@@ -237,10 +210,19 @@ impl DesktopCapture {
         // Les dimensions peuvent avoir changé : la texture de destination est
         // dimensionnée sur la RÉGION demandée par l'appelant, pas sur celles-ci,
         // mais `desktop_size()` est lue ailleurs et doit rester juste.
-        self.duplication = duplication;
+        self.duplication = Some(duplication);
         self.desktop_width = largeur;
         self.desktop_height = hauteur;
         Ok(())
+    }
+
+    /// La duplication courante. Absente seulement pendant `rouvrir`, entre le
+    /// relâchement et l'acquisition — état qui ne s'échappe jamais de cette
+    /// méthode.
+    fn duplication(&self) -> Result<&IDXGIOutputDuplication> {
+        self.duplication
+            .as_ref()
+            .ok_or_else(|| anyhow!("duplication absente hors d'une réouverture"))
     }
 
     pub fn cible(&self) -> &CibleCapture {
@@ -282,7 +264,7 @@ impl DesktopCapture {
                 self.fenetre.succes();
                 Ok(issue)
             }
-            Err(EchecAcquisition::AccesPerdu) => {
+            Err(EchecAcquisition::AccesPerdu(code_perdu)) => {
                 // Pas de boucle interne, et c'est le point de conception :
                 // cette fonction est appelée depuis la boucle de
                 // `Session::run`, et y dormir plusieurs secondes suspendrait
@@ -296,9 +278,15 @@ impl DesktopCapture {
                         // RUST_LOG=info, et une mitigation muette n'en est pas
                         // une (même règle que `encode/arret.rs`, `CLAUDE.md`
                         // — ne pas les redescendre).
+                        //
+                        // Le HRESULT nu, et non seulement inféré à la lecture
+                        // du code (comme a dû le faire le rapport de la
+                        // mesure du 1ᵉʳ août 2026) : c'est la seule pièce qui
+                        // dit CE QUI a été perdu.
                         tracing::info!(
                             tentative = self.fenetre.tentatives(),
                             cible = ?self.cible,
+                            hresult = format!("{code_perdu:#010x}"),
                             "accès à la duplication perdu, réouverture"
                         );
                         if let Err(erreur) = self.rouvrir() {
@@ -316,7 +304,7 @@ impl DesktopCapture {
                     }
                     crate::capture_reprise::Tentative::Patienter => Ok(None),
                     crate::capture_reprise::Tentative::Expiree => {
-                        Err(EchecAcquisition::AccesPerdu)
+                        Err(EchecAcquisition::AccesPerdu(code_perdu))
                     }
                 }
             }
@@ -340,7 +328,8 @@ impl DesktopCapture {
         // par un blocage ici.
         self.set_phase(crate::encode::PHASE_CAPTURE_ACQUIRE);
         ATTEMPTS.fetch_add(1, Ordering::Relaxed);
-        let acquired = unsafe { self.duplication.AcquireNextFrame(0, &mut info, &mut resource) };
+        let duplication = self.duplication().map_err(EchecAcquisition::Panne)?;
+        let acquired = unsafe { duplication.AcquireNextFrame(0, &mut info, &mut resource) };
         self.set_phase(crate::encode::PHASE_CAPTURE);
 
         if acquired.is_ok() {
@@ -356,7 +345,7 @@ impl DesktopCapture {
             // porte le précédent d'un libellé Windows qui a fait attribuer un
             // refus au mauvais appel pendant tout un chantier.
             if crate::capture_reprise::est_acces_perdu(e.code().0) {
-                return Err(EchecAcquisition::AccesPerdu);
+                return Err(EchecAcquisition::AccesPerdu(e.code().0));
             }
             return Err(EchecAcquisition::Panne(anyhow!("acquisition d'image : {e}")));
         }
@@ -457,8 +446,15 @@ impl DesktopCapture {
     fn release_frame(&mut self) {
         if self.frame_held {
             self.set_phase(crate::encode::PHASE_CAPTURE_RELEASE);
-            // Un échec ici n'est pas récupérable et ne doit pas masquer la suite.
-            let _ = unsafe { self.duplication.ReleaseFrame() };
+            // `frame_held` n'est vrai qu'après une acquisition réussie sur une
+            // duplication alors présente : `self.duplication` l'est donc aussi
+            // ici. Le `if let` reste défensif plutôt que d'employer l'aide qui
+            // panique par message — cette méthode tourne aussi dans `Drop`, où
+            // il ne faut rien faire remonter.
+            if let Some(duplication) = self.duplication.as_ref() {
+                // Un échec ici n'est pas récupérable et ne doit pas masquer la suite.
+                let _ = unsafe { duplication.ReleaseFrame() };
+            }
             self.set_phase(crate::encode::PHASE_CAPTURE);
             self.frame_held = false;
         }
@@ -493,3 +489,12 @@ pub use enumeration::{enumerer_sorties, enumerer_sorties_silencieux};
 // dans `next_frame` — voir l'en-tête de `capture/ouverture.rs`.
 mod ouverture;
 use ouverture::{dupliquer, ouvrir_sortie};
+
+// `EchecAcquisition` et `CibleCapture` vivent dans ce module enfant, extrait à
+// la tâche 6 quater du sous-bloc D2 : `EchecAcquisition` portant désormais le
+// HRESULT nu de l'échec repoussait de nouveau ce fichier au-dessus du plafond
+// de 500 lignes (`CLAUDE.md`) — voir l'en-tête de `capture/echec.rs`.
+// Réexportés ici : `capture/ouverture.rs` continue de résoudre
+// `super::CibleCapture` sans changement.
+mod echec;
+pub use echec::{CibleCapture, EchecAcquisition};
