@@ -14,6 +14,12 @@ use super::placement;
 use super::protocole::{DepuisLaShell, VersLaShell};
 use super::table::{Effet, IdSession, Table};
 use crate::capture::enumerer_sorties;
+// `relever_topologie` plutôt qu'`enumerer_sorties` sur le chemin de création :
+// elle journalise la topologie sortie par sortie, et c'est ce relevé qui rend
+// diagnosticable un appariement qui échoue. Le contrôle périodique de
+// placement, lui, garde `enumerer_sorties` — il court chaque seconde et ne doit
+// rien journaliser.
+use crate::diagnostics::multifenetre::montee::{noms_attaches, relever_topologie};
 use crate::moniteurs_virtuels::{pilote::PiloteParIoctl, Sorties};
 
 /// Capacité retenue : le pilote refuse la 11ᵉ sortie (mesuré), et Apollo puise
@@ -68,16 +74,14 @@ pub fn tourner(
                 Effet::AnnoncerOuverture { session, titre } => {
                     envoyer(&VersLaShell::FenetreOuverte { session: session.0.clone(), titre });
                 }
-                Effet::CreerSortie { session, largeur, hauteur } => {
+                Effet::CreerSortie { session, titre, largeur, hauteur } => {
                     effets.extend(creer_sortie(
                         pilote,
                         &mut sorties,
                         &mut table,
                         &mut prises,
                         &envoyer,
-                        session,
-                        largeur,
-                        hauteur,
+                        Demande { session, titre, largeur, hauteur },
                     ));
                     // `creer_sortie` a battu le chien de garde pendant son
                     // attente de rattachement : ne pas le recompter en retard.
@@ -184,75 +188,129 @@ pub fn tourner(
 /// DXGI ne rend pas resterait sinon tenue jusqu'à l'arrêt du superviseur, et
 /// l'entrée de la table resterait éternellement en `AttendLaSortie` — une
 /// fenêtre morte-vivante et une place perdue dans un vivier de dix.
+/// Ce qu'une demande de sortie porte. Un `struct` plutôt que quatre
+/// paramètres : le titre est venu s'ajouter (il est ce qu'un refus dit à
+/// l'utilisateur) et la liste d'arguments passait le seuil du lisible.
+struct Demande {
+    session: IdSession,
+    titre: String,
+    largeur: u32,
+    hauteur: u32,
+}
+
 fn creer_sortie(
     pilote: &PiloteParIoctl,
     sorties: &mut Sorties<'_>,
     table: &mut Table,
     prises: &mut Vec<(u32, u32)>,
     envoyer: &impl Fn(&VersLaShell),
-    session: IdSession,
-    largeur: u32,
-    hauteur: u32,
+    demande: Demande,
 ) -> Vec<Effet> {
+    let Demande { session, titre, largeur, hauteur } = demande;
+
+    // Relevé AVANT création, et c'est la pièce maîtresse de l'appariement.
+    //
+    // `sortie_par_dimensions` ne filtre que sur « attachée, aux bonnes
+    // dimensions, pas déjà prise » : rien n'y exclut les sorties PRÉEXISTANTES.
+    // Or le viewport annoncé par le navigateur peut parfaitement égaler la
+    // résolution d'un moniteur physique — c'est même le cas banal en plein
+    // écran. Sans ce relevé, la fenêtre serait posée sur l'écran RÉEL de la VM
+    // et la sortie virtuelle qu'on vient de créer deviendrait orpheline. On
+    // n'apparie donc que parmi les sorties APPARUES, et le dépôt a déjà écrit
+    // la doctrine : comparer des ensembles de NOMS, jamais des nombres.
+    let avant = match relever_topologie("avant création de sortie") {
+        Ok(avant) => noms_attaches(&avant),
+        Err(erreur) => {
+            tracing::error!(session = %session.0, %erreur, "topologie DXGI illisible avant création");
+            envoyer(&VersLaShell::Refus {
+                titre: titre.clone(),
+                motif: "topologie d'affichage illisible".into(),
+            });
+            // Aucune sortie n'a été créée : rien à rendre. Mais l'entrée reste
+            // en `AttendLaSortie` sans la sortie qu'elle attend, et sa place
+            // dans la capacité resterait comptée.
+            return table.enfant_mort(&session);
+        }
+    };
+
     let id_pilote = match sorties.creer(largeur, hauteur, 60) {
         Ok(id) => id,
         Err(erreur) => {
             tracing::error!(session = %session.0, %erreur, "création de sortie refusée");
-            envoyer(&VersLaShell::Refus {
-                titre: session.0.clone(),
-                motif: format!("{erreur}"),
-            });
-            // La table garde son entrée en `AttendLaSortie` sans la sortie
-            // qu'elle attend : la retirer, sinon la place reste comptée.
+            envoyer(&VersLaShell::Refus { titre, motif: format!("{erreur}") });
             return table.enfant_mort(&session);
         }
     };
 
     // Laisser Windows rattacher la sortie avant de l'énumérer — SANS cesser de
-    // battre le chien de garde. Un `sleep` plat de 1,5 s serait le plus long
-    // silence de tout le superviseur, et le délai du chien de garde vaut 3
-    // dans une unité INCONNUE dont la seconde n'est pas exclue : un client qui
-    // cesse de pinguer voit ses sorties retirées, y compris celle qu'on vient
-    // de créer.
-    let jusqua = std::time::Instant::now() + DELAI_RATTACHEMENT;
-    while std::time::Instant::now() < jusqua {
-        if let Err(erreur) = pilote.pinguer() {
-            tracing::warn!(%erreur, "ping du chien de garde échoué pendant le rattachement");
-        }
-        std::thread::sleep(PERIODE_PING.min(jusqua.saturating_duration_since(std::time::Instant::now())));
-    }
+    // battre le chien de garde. Le délai du chien de garde vaut 3 dans une
+    // unité INCONNUE dont la seconde n'est pas exclue, et l'étape de ping de la
+    // boucle est HORS du parcours des effets : un lot de huit `CreerSortie`
+    // enchaînerait sinon huit attentes plates, soit douze secondes
+    // consécutives sans un seul ping — et le pilote retire les sorties d'un
+    // client qui cesse de pinguer, y compris celles qu'on vient de créer.
+    attendre_en_pinguant(pilote, DELAI_RATTACHEMENT);
 
     // Une énumération qui échoue n'est PAS fatale au superviseur : les autres
     // fenêtres tournent, et rien ne dit que le prochain essai échouera aussi.
-    let toutes = match enumerer_sorties() {
+    let toutes = match relever_topologie("après création de sortie") {
         Ok(toutes) => toutes,
         Err(erreur) => {
             tracing::error!(session = %session.0, %erreur, "topologie DXGI illisible");
             Vec::new()
         }
     };
+    let apparues: Vec<_> = toutes
+        .iter()
+        .filter(|s| s.attachee_au_bureau && !avant.contains(&s.nom_sortie))
+        .cloned()
+        .collect();
 
-    let Some(cible) = placement::sortie_par_dimensions(&toutes, largeur, hauteur, prises) else {
+    let Some(cible) = placement::sortie_par_dimensions(&apparues, largeur, hauteur, prises) else {
+        // Journaliser les CANDIDATS, pas seulement la demande. L'égalité de
+        // dimensions est exacte à dessein, et `CLAUDE.md` documente une sortie
+        // virtuelle déjà vue à un facteur DPI de 1,5 de ce qui était demandé :
+        // si l'hôte applique une mise à l'échelle, AUCUNE fenêtre ne s'ouvrira
+        // jamais, et un journal qui ne redirait que la demande laisserait ce
+        // diagnostic entièrement à faire.
         tracing::error!(
-            session = %session.0, largeur, hauteur,
+            session = %session.0,
+            demande = format!("{largeur}x{hauteur}"),
+            apparues = ?apparues
+                .iter()
+                .map(|s| format!("{} {}x{}", s.nom_sortie, s.rect.width, s.rect.height))
+                .collect::<Vec<_>>(),
             "sortie créée mais introuvable dans la topologie DXGI — elle est rendue au pilote"
         );
-        // La rendre TOUT DE SUITE : personne ne la réclamera jamais, et le
-        // vivier n'en compte que dix.
-        if let Err(erreur) = sorties.detruire(id_pilote) {
-            tracing::error!(id_pilote, %erreur, "sortie orpheline NON rendue — la garde la retentera");
-        }
+        rendre_sans_apparier(sorties, id_pilote);
+        envoyer(&VersLaShell::Refus {
+            titre,
+            motif: "la sortie créée est introuvable dans la topologie d'affichage".into(),
+        });
         return table.enfant_mort(&session);
     };
 
-    prises.push((cible.index_adaptateur, cible.index_sortie));
+    let place = (cible.index_adaptateur, cible.index_sortie);
+    prises.push(place);
     // Les DEUX identifiants : celui du pilote pour la destruction, la
     // position DXGI pour la capture. Aucune relation calculable entre eux.
-    let suite = table.sortie_creee(
-        &session,
-        id_pilote,
-        (cible.index_adaptateur, cible.index_sortie),
-    );
+    let suite = table.sortie_creee(&session, id_pilote, place);
+
+    // Une table qui n'a rien à dire de cette sortie ne la retient nulle part :
+    // `id_pilote` ne serait plus connu de personne (ni de la table, ni d'un
+    // effet à venir), une place perdue sur dix, et `place` resterait bloquée
+    // dans `prises` à jamais. Le cas n'est pas atteignable avec l'ordonnancement
+    // actuel de la boucle — mais cet ordonnancement n'est déclaré porteur nulle
+    // part, et il suffira qu'une étape s'insère un jour.
+    if suite.is_empty() {
+        tracing::error!(
+            session = %session.0, id_pilote,
+            "la table n'attendait plus cette sortie — elle est rendue au pilote"
+        );
+        rendre_sans_apparier(sorties, id_pilote);
+        prises.retain(|p| *p != place);
+        return Vec::new();
+    }
 
     // Poser la fenêtre dessus avant que l'enfant ne capture. On lit la fenêtre
     // dans les effets que la table VIENT de rendre, et non dans la file
@@ -267,6 +325,34 @@ fn creer_sortie(
     suite
 }
 
+/// Rend au pilote une sortie qui n'a jamais été appariée à une session.
+///
+/// Rien à retirer de `prises` : par construction, aucun de ces chemins n'y a
+/// inscrit quoi que ce soit — ou l'appelant s'en charge.
+fn rendre_sans_apparier(sorties: &mut Sorties<'_>, id_pilote: u32) {
+    if let Err(erreur) = sorties.detruire(id_pilote) {
+        tracing::error!(
+            id_pilote, %erreur,
+            "sortie orpheline NON rendue — la garde la retentera à l'arrêt"
+        );
+    }
+}
+
+/// Attend en battant le chien de garde du pilote, jamais par un `sleep` plat.
+fn attendre_en_pinguant(pilote: &PiloteParIoctl, duree: std::time::Duration) {
+    let jusqua = std::time::Instant::now() + duree;
+    loop {
+        if let Err(erreur) = pilote.pinguer() {
+            tracing::warn!(%erreur, "ping du chien de garde échoué pendant l'attente");
+        }
+        let restant = jusqua.saturating_duration_since(std::time::Instant::now());
+        if restant.is_zero() {
+            return;
+        }
+        std::thread::sleep(PERIODE_PING.min(restant));
+    }
+}
+
 /// Rend une sortie au pilote et libère sa place DXGI.
 fn rendre_la_sortie(
     sorties: &mut Sorties<'_>,
@@ -275,16 +361,26 @@ fn rendre_la_sortie(
     dxgi: (u32, u32),
 ) {
     match sorties.detruire(sortie_pilote) {
-        Ok(()) => tracing::info!(sortie_pilote, "sortie virtuelle rendue au pilote"),
+        Ok(()) => {
+            tracing::info!(sortie_pilote, "sortie virtuelle rendue au pilote");
+            prises.retain(|p| *p != dxgi);
+        }
+        // La place DXGI reste RÉSERVÉE sur échec, et c'est le point de fond.
+        //
+        // Un refus de destruction signifie très probablement que la sortie
+        // existe toujours — et qu'elle reste donc attachée au bureau. Libérer
+        // sa place la rendrait à nouveau candidate : une fenêtre ultérieure de
+        // mêmes dimensions pourrait s'y voir posée pendant que la table
+        // retiendrait l'`id_pilote` de la sortie NEUVE, laquelle ne servirait
+        // jamais et serait détruite à tort à la fermeture — l'ancienne restant
+        // orpheline. Garder la place réservée coûte au pire une place DXGI
+        // jusqu'à l'arrêt ; la libérer coûte une confusion d'identité.
         Err(erreur) => tracing::error!(
-            sortie_pilote, %erreur,
-            "sortie virtuelle NON rendue — la garde la retentera à l'arrêt"
+            sortie_pilote, ?dxgi, %erreur,
+            "sortie virtuelle NON rendue — la garde la retentera à l'arrêt, \
+             et sa place DXGI reste réservée d'ici là"
         ),
     }
-    // La place DXGI se libère dans les deux cas : si le pilote a refusé, la
-    // sortie ne sera de toute façon plus attribuée à personne, et
-    // `sortie_par_dimensions` exigera qu'elle soit encore attachée.
-    prises.retain(|p| *p != dxgi);
 }
 
 /// Remet sur sa sortie toute fenêtre qui en est partie.

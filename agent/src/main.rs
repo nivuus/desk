@@ -97,7 +97,11 @@ fn config() -> Result<Config> {
             .parse()
             .context("LOCAL_IP n'est pas une adresse IP valide")?,
         test_file: std::env::var("TEST_FILE").ok().map(PathBuf::from),
-        superviseur: std::env::var("SUPERVISEUR").is_ok(),
+        // `SUPERVISEUR=0` DÉSACTIVE le mode, comme `AUDIO=0` désactive le son.
+        // Une simple présence (`is_ok()`) ferait qu'écrire `SUPERVISEUR=0`
+        // pour le couper l'activerait — piège d'exploitation d'autant plus
+        // sûr que la variable voisine, elle, se lit bien ainsi.
+        superviseur: matches!(std::env::var("SUPERVISEUR").as_deref(), Ok(v) if v != "0"),
         fenetre_hwnd: std::env::var("FENETRE_HWND").ok().and_then(|v| {
             let v = v.trim();
             match v.strip_prefix("0x") {

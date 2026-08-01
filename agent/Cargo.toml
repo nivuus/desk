@@ -74,6 +74,10 @@ windows = { version = "0.62", features = [
     "Win32_System_Diagnostics_ToolHelp",
     "Win32_System_Kernel",
     "Win32_System_IO",
+    # Job Object des enfants du superviseur : `KILL_ON_JOB_CLOSE` fait mourir
+    # les N processus agent avec le superviseur, y compris si celui-ci est tué
+    # net — aucun code en espace utilisateur ne couvre ce cas.
+    "Win32_System_JobObjects",
     "Win32_System_LibraryLoader",
     "Win32_System_Ole",
     "Win32_System_Threading",

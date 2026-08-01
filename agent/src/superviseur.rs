@@ -33,12 +33,18 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
 
     // TOUT le reste court sur un fil bloquant, et pas sur un ouvrier async.
     //
-    // Deux raisons, et la seconde est contraignante. D'abord `boucle::tourner`
-    // ne rend jamais la main : la tenir sur un ouvrier tokio y gèlerait les
-    // deux tâches d'émission et de réception ouvertes ci-dessus, c'est-à-dire
-    // le lien avec la page-shell. Ensuite `PiloteParIoctl` (un `HANDLE`) et
-    // `Hook` (un `HWINEVENTHOOK`) ne sont pas `Send` : ils ne peuvent pas être
-    // créés ici puis déplacés là-bas — ils doivent naître SUR ce fil.
+    // Une seule raison, et elle suffit : `boucle::tourner` ne rend JAMAIS la
+    // main. La tenir sur un ouvrier tokio y gèlerait les deux tâches
+    // d'émission et de réception ouvertes ci-dessus, c'est-à-dire le lien avec
+    // la page-shell.
+    //
+    // Ce n'est PAS une contrainte de compilation : `PiloteParIoctl` (un
+    // `HANDLE`) et `Hook` (un `HWINEVENTHOOK`) ne sont certes pas `Send`, mais
+    // les créer dans le contexte async compilerait — ils naîtraient après le
+    // dernier `.await`, et le futur de `main` sous `block_on` ne porte aucune
+    // borne `Send`. C'est un choix d'exécution, pas une obligation du type
+    // système ; qu'ils naissent ici les fait simplement vivre sur le fil même
+    // qui les emploie.
     tokio::task::spawn_blocking(move || {
         // Purger AVANT tout : une exécution précédente tuée net a pu laisser
         // des sorties, et elles occupent le vivier de dix.
@@ -48,11 +54,11 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
 
         let pilote = crate::moniteurs_virtuels::pilote::ouvrir_pilote()
             .context("ouverture du pilote d'affichage virtuel")?;
-        let lanceur = lanceur::LanceurDeProcessus {
-            executable: std::env::current_exe().context("chemin de l'exécutable")?,
+        let lanceur = lanceur::LanceurDeProcessus::nouveau(
+            std::env::current_exe().context("chemin de l'exécutable")?,
             signaling_url,
             local_ip,
-        };
+        )?;
 
         let (tx_hook, rx_hook) = std::sync::mpsc::channel();
         // La garde vit jusqu'à la fin de cette fermeture : la lâcher retirerait

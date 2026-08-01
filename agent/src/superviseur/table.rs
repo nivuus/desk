@@ -36,7 +36,11 @@ pub enum Etat {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Effet {
     AnnoncerOuverture { session: IdSession, titre: String },
-    CreerSortie { session: IdSession, largeur: u32, hauteur: u32 },
+    /// `titre` accompagne la demande parce que le refus qui peut en découler
+    /// s'affiche à un humain. Sans lui, l'appelant n'a que l'identifiant de
+    /// session sous la main et la page-shell annonce « *« w-3 » n'a pas pu
+    /// s'ouvrir* » — un message qui ne désigne rien pour l'utilisateur.
+    CreerSortie { session: IdSession, titre: String, largeur: u32, hauteur: u32 },
     LancerEnfant {
         session: IdSession,
         fenetre: IdFenetre,
@@ -62,6 +66,11 @@ pub enum Effet {
 #[derive(Debug)]
 struct Entree {
     fenetre: IdFenetre,
+    /// Retenu pour la seule raison qu'un refus de sortie doit se dire à un
+    /// humain (voir `Effet::CreerSortie`). Il n'est PAS un identifiant : le
+    /// titre d'une fenêtre change au cours de sa vie, c'est `IdSession` qui
+    /// désigne.
+    titre: String,
     etat: Etat,
     /// Identifiant rendu par le pilote à la création, pour la destruction.
     sortie_pilote: Option<u32>,
@@ -147,6 +156,7 @@ impl Table {
             session.clone(),
             Entree {
                 fenetre,
+                titre: titre.clone(),
                 etat: Etat::AttendLeViewport,
                 sortie_pilote: None,
                 dxgi: None,
@@ -166,7 +176,12 @@ impl Table {
             return Vec::new();
         }
         entree.etat = Etat::AttendLaSortie;
-        vec![Effet::CreerSortie { session: session.clone(), largeur, hauteur }]
+        vec![Effet::CreerSortie {
+            session: session.clone(),
+            titre: entree.titre.clone(),
+            largeur,
+            hauteur,
+        }]
     }
 
     /// `sortie_pilote` est ce que le pilote a rendu à la création (il ne sait

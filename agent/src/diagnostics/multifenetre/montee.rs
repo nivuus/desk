@@ -146,9 +146,11 @@ pub(crate) fn relever_topologie(moment: &str) -> Result<Vec<SortieDxgi>> {
 /// Noms des sorties attachées au bureau, triés — donc comparables comme des
 /// ensembles, l'ordre d'énumération de DXGI n'ayant aucune signification.
 ///
-/// `pub(super)` : `capture_virtuelle.rs` compare les mêmes ensembles avant et
-/// après sa mesure.
-pub(super) fn noms_attaches(sorties: &[SortieDxgi]) -> Vec<String> {
+/// `pub(crate)` : `capture_virtuelle.rs` compare les mêmes ensembles avant et
+/// après sa mesure, et `superviseur::boucle` (production) n'apparie une sortie
+/// fraîchement créée que parmi les noms APPARUS — sans quoi il poserait la
+/// fenêtre sur un moniteur préexistant de mêmes dimensions.
+pub(crate) fn noms_attaches(sorties: &[SortieDxgi]) -> Vec<String> {
     let mut noms: Vec<String> = sorties
         .iter()
         .filter(|s| s.attachee_au_bureau)

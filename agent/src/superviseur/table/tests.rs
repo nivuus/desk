@@ -34,7 +34,14 @@ fn le_viewport_declenche_la_creation_de_la_sortie() {
     let effets = t.viewport_recu(&session, 1600, 900);
     assert_eq!(
         effets,
-        vec![Effet::CreerSortie { session: session.clone(), largeur: 1600, hauteur: 900 }]
+        vec![Effet::CreerSortie {
+            session: session.clone(),
+            // Le titre suit la demande : un refus de sortie s'affiche à un
+            // humain, et « w-1 » ne lui désigne rien.
+            titre: "Bloc-notes".into(),
+            largeur: 1600,
+            hauteur: 900,
+        }]
     );
     assert_eq!(t.etat(&session), Some(&Etat::AttendLaSortie));
 }
