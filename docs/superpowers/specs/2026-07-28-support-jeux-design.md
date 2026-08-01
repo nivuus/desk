@@ -468,7 +468,10 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
 > évité ni expliqué — mais la duplication est **relâchée puis rouverte** dans une
 > fenêtre de reprise bornée en durée. Relevé : **44** pertes d'accès
 > `0x887A0026` encaissées, **aucune session perdue**, montées 1→2, 2→3, 3→4
-> propres, **une seule** clôture de session et elle était **sollicitée**. Les
+> propres, **une seule** clôture de session et elle était **sollicitée**.
+> **La réserve « ces quatre fenêtres PRÉEXISTAIENT au démarrage du
+> superviseur » est donc LEVÉE** : les fenêtres de D2 sont ouvertes pendant que
+> d'autres capturent. Les
 > **trois défauts de moindre portée** énumérés ci-dessus sont corrigés eux aussi
 > (nom DXGI au lieu de l'index positionnel ; garde `sur_sortie` dans `resize` ;
 > viewport arrondi en pair et appariement tolérant à 4 px). **Et la destruction

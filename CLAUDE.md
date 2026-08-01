@@ -1832,7 +1832,8 @@ d'absence, et l'énoncé porte toujours son nombre d'exécutions.*
 ## 🪟🌐 Sous-bloc D1 — tranche verticale multi-fenêtres (1ᵉʳ août 2026)
 
 > ✅ **À LIRE AVANT CETTE SECTION — le sous-bloc D2, le même jour, a réparé le
-> défaut bloquant de D1 et fermé quatre de ses sept points de suite.** Les
+> défaut bloquant de D1, et les SEPT points de suite de son §9 sont clos**
+> (cinq par D2, deux par le correctif final de branche `e9691eb`). Les
 > affirmations ci-dessous restent le relevé **de D1**, mais celles qui portent
 > sur ce qui est possible aujourd'hui sont annotées une à une. Verdict à jour :
 > section « Sous-bloc D2 » plus bas.

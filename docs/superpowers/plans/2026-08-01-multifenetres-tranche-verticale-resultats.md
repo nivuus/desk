@@ -28,13 +28,15 @@ comme ceux des chantiers précédents) :
 ## 0. Le verdict en une phrase
 
 > ✅ **À LIRE AVANT CE RAPPORT — le sous-bloc D2, le 1ᵉʳ août 2026, a réparé le
-> défaut central de D1 et clos quatre des sept points de son §9.**
+> défaut central de D1, et LES SEPT points du §9 sont clos** (cinq par D2, deux
+> par le correctif final de branche `e9691eb` qui l'a précédé).
 > `2026-08-01-multifenetres-arrangement-dynamique-resultats.md`. Ce rapport-ci
 > reste le relevé exact de D1 et n'est réfuté nulle part ; mais **ses
 > affirmations sur ce qui est possible ne décrivent plus le dépôt**, et elles
-> sont annotées une à une (§0, §2 point 2, §3.3, §7, §9). ⚠️ **D2 n'est pas reçu
-> pour autant** : son critère exigeait cinq fenêtres simultanées et on en
-> atteint quatre.
+> sont annotées une à une : **§0** (deux fois), **§2** (table des huit points),
+> **§3.3**, **§3.5** (le clavier), **§6** (trois puces), **§7** (le piège de la
+> capture CDP) et **§9**. ⚠️ **D2 n'est pas reçu pour autant** : son critère
+> exigeait cinq fenêtres simultanées et on en atteint quatre.
 
 **Le cœur de D1 marche, et il ne tient pas.** Une page-shell ouvre bien une
 fenêtre navigateur par fenêtre Windows, chacune sur sa propre sortie
@@ -353,6 +355,20 @@ d'exploitation non écrite.
 
 ### 3.5 Le clavier n'atteint pas la fenêtre visée — cause non départagée
 
+> ✅ **Traité par D2, et le clavier atteint désormais chaque fenêtre
+> séparément.** Le **second** point ci-dessous — celui que ce chapitre déclare
+> structurel — est réglé : `SetForegroundWindow` est posé avant chaque
+> injection, son retour vérifié (`premier plan obtenu` = **4**,
+> `SetForegroundWindow refusé` = **0**), et les quatre Bloc-notes qui ont une
+> session ont reçu **chacun sa propre frappe**, pas le cumul (relecture
+> `WM_GETTEXT`) ; la cinquième, sans session, n'a rien reçu.
+> ⚠️ **Portée exacte, à ne pas élargir** : une frappe par fenêtre, sonde
+> **séquentielle**, aucune frappe concurrente. **`SendInput` reste global à la
+> session Windows** — ce relevé ne dit rien de deux utilisateurs frappant en même
+> temps. **Le premier point ci-dessous n'est toujours pas départagé** : D2 a
+> imposé le viewport par CDP et n'a pas exercé de clic.
+> `2026-08-01-multifenetres-arrangement-dynamique-resultats.md` §2.3.
+
 Les deux Bloc-notes sont restés vides. Deux explications sont visibles dans le
 code, **et la mesure ne permet pas de choisir** :
 
@@ -463,6 +479,11 @@ pour qu'aucune ne soit lue comme une découverte de cette recette :
 - **Le son n'a pas été entendu**, seulement compté en octets reçus (§2).
 - **Le clavier et la souris ne sont pas démontrés**, ni en bien ni en mal
   (§3.5).
+  ✅ **Le CLAVIER l'est depuis D2** : quatre fenêtres, chacune sa propre frappe
+  (⚠️ portée exacte au §3.5 ci-dessus — une frappe par fenêtre, sonde
+  séquentielle, `SendInput` toujours global à la session Windows).
+  ⚠️ **La SOURIS ne l'est toujours pas** : D2 n'a exercé ni clic, ni
+  déplacement, ni redimensionnement de fenêtre.
 - **Rien du comportement quand Apollo/Sunshine consomme le même vivier de
   sorties** — le service tournait pendant toute la recette, et n'a été vu tenir
   aucune sortie ; rien ne dit ce qui se passerait s'il en tenait.
