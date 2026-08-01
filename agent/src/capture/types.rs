@@ -1,13 +1,16 @@
-//! Les deux types purs de `capture.rs` qui ne touchent à aucun champ privé de
-//! `DesktopCapture` : pourquoi une acquisition échoue, et ce qu'une
-//! duplication couvre.
+//! Les types purs de `capture.rs` qui ne touchent à aucun champ privé de
+//! `DesktopCapture` : pourquoi une acquisition échoue, ce qu'une duplication
+//! couvre, et comment lire une duplication qui peut être absente.
 //!
 //! Extrait à la tâche 6 quater du sous-bloc D2 : `EchecAcquisition` portant
 //! désormais le HRESULT nu de l'échec qui a motivé la réouverture (et sa
 //! documentation associée), le fichier parent dépassait le plafond de 500
 //! lignes (`CLAUDE.md`). Même raison d'extraction que `capture/ouverture.rs` :
-//! aucun de ces deux types n'a besoin d'être dans le fichier qui définit
-//! `DesktopCapture`.
+//! aucun de ces types n'a besoin d'être dans le fichier qui définit
+//! `DesktopCapture`. Renommé `types.rs` (et non plus `echec.rs`) en relecture
+//! de la même tâche : `CibleCapture` n'est pas un échec.
+
+use windows::Win32::Graphics::Dxgi::IDXGIOutputDuplication;
 
 /// Pourquoi une acquisition d'image a échoué, une fois les reprises épuisées.
 ///
@@ -52,4 +55,24 @@ pub enum CibleCapture {
     Bureau,
     /// Une sortie précise, désignée par son nom.
     Sortie(String),
+}
+
+/// Lit la duplication si elle est présente, ou l'échec qui correspond à son
+/// absence.
+///
+/// **Correctif de relecture, tâche 6 quater.** `rouvrir()` pose `None` puis
+/// peut sortir en erreur sur l'un de ses trois appels externes (fabrique DXGI,
+/// résolution de la sortie, duplication elle-même) : dans ce cas `None`
+/// PERSISTE au-delà de `rouvrir()`, jusqu'à la tentative suivante — un
+/// commentaire antérieur affirmait le contraire, à tort. Rendre
+/// `AccesPerdu(dernier_code_perdu)` plutôt qu'une `Panne` est ce qui permet à
+/// `next_frame` de retenter la réouverture au lieu de déclarer la source
+/// épuisée sur un échec qui n'a rien de définitif : une absence de duplication
+/// hors de `rouvrir()` n'est donc plus, depuis ce correctif, un défaut de
+/// programmation — c'est un état normal de la fenêtre de reprise.
+pub(super) fn lire(
+    duplication: &Option<IDXGIOutputDuplication>,
+    dernier_code_perdu: i32,
+) -> std::result::Result<&IDXGIOutputDuplication, EchecAcquisition> {
+    duplication.as_ref().ok_or(EchecAcquisition::AccesPerdu(dernier_code_perdu))
 }

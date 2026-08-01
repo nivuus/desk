@@ -50,9 +50,12 @@ pub struct CapturedFrame {
 pub struct DesktopCapture {
     device: ID3D11Device,
     context: ID3D11DeviceContext,
-    /// `None` seulement pendant `rouvrir`, entre le relâchement de l'ancienne
-    /// duplication et l'acquisition de la neuve — voir `duplication()`.
+    /// Posée à `None` par `rouvrir`, et PEUT y rester si sa réouverture
+    /// échoue : plus un défaut, voir `duplication()` et `types::lire`.
     duplication: Option<IDXGIOutputDuplication>,
+    /// Dernier HRESULT de perte d'accès, lu par `duplication()` si le champ
+    /// ci-dessus est `None`.
+    dernier_code_perdu: i32,
     /// Ce qu'il faut rouvrir après une perte d'accès. Retenu à l'ouverture :
     /// à l'instant où l'accès est perdu, la topologie a déjà changé et rien
     /// dans les objets DXGI encore détenus ne dit ce qu'on capturait.
@@ -158,6 +161,7 @@ impl DesktopCapture {
             device,
             context,
             duplication: Some(duplication),
+            dernier_code_perdu: 0,
             cible,
             fenetre: crate::capture_reprise::FenetreDeReprise::nouvelle(),
             desktop_width,
@@ -216,13 +220,9 @@ impl DesktopCapture {
         Ok(())
     }
 
-    /// La duplication courante. Absente seulement pendant `rouvrir`, entre le
-    /// relâchement et l'acquisition — état qui ne s'échappe jamais de cette
-    /// méthode.
-    fn duplication(&self) -> Result<&IDXGIOutputDuplication> {
-        self.duplication
-            .as_ref()
-            .ok_or_else(|| anyhow!("duplication absente hors d'une réouverture"))
+    /// La duplication courante, ou le dernier HRESULT perdu si absente — voir `types::lire`.
+    fn duplication(&self) -> std::result::Result<&IDXGIOutputDuplication, EchecAcquisition> {
+        types::lire(&self.duplication, self.dernier_code_perdu)
     }
 
     pub fn cible(&self) -> &CibleCapture {
@@ -293,7 +293,11 @@ impl DesktopCapture {
                             // Un échec de réouverture n'est PAS définitif : la
                             // sortie peut n'être pas encore réapparue dans la
                             // topologie. On le dit et on laisse la fenêtre
-                            // courir — c'est elle qui tranchera.
+                            // courir — c'est elle qui tranchera. VRAI depuis
+                            // le correctif de relecture de la tâche 6 quater
+                            // (`types::lire`) seulement : avant lui, l'appel
+                            // suivant trouvait `self.duplication` à `None` et
+                            // rompait la fenêtre en panne malgré ce texte.
                             tracing::info!(
                                 erreur = %erreur,
                                 cible = ?self.cible,
@@ -328,7 +332,7 @@ impl DesktopCapture {
         // par un blocage ici.
         self.set_phase(crate::encode::PHASE_CAPTURE_ACQUIRE);
         ATTEMPTS.fetch_add(1, Ordering::Relaxed);
-        let duplication = self.duplication().map_err(EchecAcquisition::Panne)?;
+        let duplication = self.duplication()?;
         let acquired = unsafe { duplication.AcquireNextFrame(0, &mut info, &mut resource) };
         self.set_phase(crate::encode::PHASE_CAPTURE);
 
@@ -345,6 +349,7 @@ impl DesktopCapture {
             // porte le précédent d'un libellé Windows qui a fait attribuer un
             // refus au mauvais appel pendant tout un chantier.
             if crate::capture_reprise::est_acces_perdu(e.code().0) {
+                self.dernier_code_perdu = e.code().0;
                 return Err(EchecAcquisition::AccesPerdu(e.code().0));
             }
             return Err(EchecAcquisition::Panne(anyhow!("acquisition d'image : {e}")));
@@ -446,11 +451,8 @@ impl DesktopCapture {
     fn release_frame(&mut self) {
         if self.frame_held {
             self.set_phase(crate::encode::PHASE_CAPTURE_RELEASE);
-            // `frame_held` n'est vrai qu'après une acquisition réussie sur une
-            // duplication alors présente : `self.duplication` l'est donc aussi
-            // ici. Le `if let` reste défensif plutôt que d'employer l'aide qui
-            // panique par message — cette méthode tourne aussi dans `Drop`, où
-            // il ne faut rien faire remonter.
+            // Défensif plutôt que `duplication()` (qui rend un `Result`) :
+            // cette méthode tourne aussi dans `Drop`, où rien ne doit remonter.
             if let Some(duplication) = self.duplication.as_ref() {
                 // Un échec ici n'est pas récupérable et ne doit pas masquer la suite.
                 let _ = unsafe { duplication.ReleaseFrame() };
@@ -490,11 +492,9 @@ pub use enumeration::{enumerer_sorties, enumerer_sorties_silencieux};
 mod ouverture;
 use ouverture::{dupliquer, ouvrir_sortie};
 
-// `EchecAcquisition` et `CibleCapture` vivent dans ce module enfant, extrait à
-// la tâche 6 quater du sous-bloc D2 : `EchecAcquisition` portant désormais le
-// HRESULT nu de l'échec repoussait de nouveau ce fichier au-dessus du plafond
-// de 500 lignes (`CLAUDE.md`) — voir l'en-tête de `capture/echec.rs`.
-// Réexportés ici : `capture/ouverture.rs` continue de résoudre
+// `EchecAcquisition`, `CibleCapture` et l'aide `lire` vivent dans ce module
+// enfant, extrait à la tâche 6 quater du sous-bloc D2 — voir l'en-tête de
+// `capture/types.rs`. `capture/ouverture.rs` continue de résoudre
 // `super::CibleCapture` sans changement.
-mod echec;
-pub use echec::{CibleCapture, EchecAcquisition};
+mod types;
+pub use types::{CibleCapture, EchecAcquisition};
