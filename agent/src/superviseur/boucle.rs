@@ -196,7 +196,7 @@ pub fn tourner(
             // 7. Fenêtres dont l'enfant est mort mais qui existent toujours
             // côté Windows : on les repropose plutôt que de les laisser
             // disparaître de la shell (voir `Etat::SansSession`).
-            effets.extend(table.relancer_les_orphelines());
+            effets.extend(table.relancer_les_orphelines(std::time::Instant::now()));
         }
 
         if effets.is_empty() {
@@ -220,9 +220,17 @@ struct Demande {
 ///
 /// Extrait de la boucle pour une raison de fond : **tout chemin d'échec sous
 /// la création doit défaire la sortie**. Une sortie créée que la topologie
-/// DXGI ne rend pas resterait sinon tenue jusqu'à l'arrêt du superviseur, et
-/// l'entrée de la table resterait éternellement en `AttendLaSortie` — une
-/// fenêtre morte-vivante et une place perdue dans un vivier de dix.
+/// DXGI ne rend pas resterait sinon tenue jusqu'à l'arrêt du superviseur.
+///
+/// Chaque chemin d'échec appelle `table.enfant_mort`, qui sort l'entrée
+/// d'`AttendLaSortie`. **Depuis la tâche 10, cet appel ne libère plus la
+/// place dans la capacité** : l'entrée bascule en `Etat::SansSession` et le
+/// contrôle périodique la relance, jusqu'à `RELANCES_MAX` fois (voir
+/// `superviseur::table`). Conséquence à connaître : une fenêtre dont la
+/// création de sortie échoue systématiquement fait donc envoyer jusqu'à
+/// `RELANCES_MAX + 1` `VersLaShell::Refus` à la page-shell — un par tentative
+/// avortée, plus l'abandon final — et non plus un seul comme avant cette
+/// tâche.
 fn creer_sortie(
     pilote: &PiloteParIoctl,
     sorties: &mut Sorties<'_>,
@@ -251,9 +259,11 @@ fn creer_sortie(
                 titre: titre.clone(),
                 motif: "topologie d'affichage illisible".into(),
             });
-            // Aucune sortie n'a été créée : rien à rendre. Mais l'entrée reste
-            // en `AttendLaSortie` sans la sortie qu'elle attend, et sa place
-            // dans la capacité resterait comptée.
+            // Aucune sortie n'a été créée : rien à rendre au pilote. Mais
+            // l'entrée doit sortir d'`AttendLaSortie` — `enfant_mort` la
+            // bascule en `SansSession` (sa place reste comptée, voir la doc
+            // de cette fonction) plutôt que de la retirer : le contrôle
+            // périodique la relancera.
             return table.enfant_mort(&session);
         }
     };

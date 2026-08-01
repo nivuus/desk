@@ -43,7 +43,47 @@ pub enum Etat {
 /// Le garde-fou de l'emballement relevé en recette D1 : une fenêtre dont
 /// l'enfant meurt systématiquement produirait sinon `w-5, w-6, w-7, w-8…`
 /// jusqu'à épuiser le vivier de sorties du pilote.
+///
+/// **Ce compteur ne redescend jamais à zéro**, y compris quand une relance
+/// atteint `Vivante` : il mesure les morts cumulées sur toute la vie de la
+/// fenêtre, pas les échecs consécutifs. Une fenêtre qui vit dix minutes puis
+/// meurt trois fois de suite plus tard est abandonnée à la troisième — pas
+/// « trois échecs d'affilée » au sens strict. Choix conservateur, hérité tel
+/// quel du brief de la tâche 10.
+///
+/// **Corollaire non corrigé, à documenter seulement** : un cycle `HIDE`/`SHOW`
+/// (fenêtre réduite puis restaurée) fait quitter puis rejoindre la table par
+/// `fenetre_disparue`/`fenetre_apparue`, donc repart à `relances = 0`. Le
+/// garde-fou reste borné à chaque cycle pris isolément (jamais plus de 3
+/// relances par cycle), donc aucune fuite — seulement une remise à zéro dont
+/// il faut avoir conscience si l'on cherchait à borner le nombre total de
+/// morts d'une fenêtre sur sa vie entière.
 pub const RELANCES_MAX: u32 = 3;
+
+/// Temps toléré, en attente d'un viewport, avant qu'une fenêtre relancée ne
+/// soit abandonnée.
+///
+/// **Régression que ce délai corrige** : avant la tâche 10, un enfant mort
+/// libérait sa place dans `entrees` immédiatement (`enfant_mort` retirait
+/// l'entrée). Depuis, une fenêtre relancée reste `AttendLeViewport` — et si
+/// la page-shell ne répond jamais (pop-up bloqué, shell déconnectée :
+/// `CLAUDE.md` documente nommément ce cas pour la recette du sous-bloc D1),
+/// plus rien ne fait progresser cette entrée : ni `SansSession` (elle ne l'est
+/// plus), ni `Vivante` (elle ne l'atteindra jamais). Sans ce délai, sa place
+/// serait perdue pour la durée de vie du superviseur.
+///
+/// **Majorante et non calibrée** — même aveu que `DUREE_FENETRE_REPRISE`
+/// (`agent/src/capture/reprise.rs`) : aucune mesure n'a établi combien de
+/// temps une page-shell peut légitimement mettre à répondre. Trente secondes
+/// couvrent largement un rechargement de page ou une reconnexion réseau, sans
+/// bloquer indéfiniment une place sur un vivier de huit.
+///
+/// **Portée volontairement limitée aux entrées RELANCÉES** (voir
+/// `Entree::attente_depuis`) : une entrée issue de la détection initiale
+/// (`fenetre_apparue`) porte le même risque en théorie, mais cette fonction
+/// reste pure et ne reçoit aucun instant — l'étendre à elle changerait sa
+/// signature et tous ses appelants, hors du périmètre de ce correctif.
+pub const DELAI_ATTENTE_VIEWPORT_MAX: std::time::Duration = std::time::Duration::from_secs(30);
 
 /// Ce que la table demande au monde extérieur de faire. Le superviseur les
 /// exécute dans l'ordre rendu.
@@ -99,6 +139,16 @@ struct Entree {
     /// son enfant. Le garde-fou de `relancer_les_orphelines` (`RELANCES_MAX`)
     /// s'appuie dessus pour abandonner plutôt que de relancer sans fin.
     relances: u32,
+    /// Instant où cette entrée est entrée en `AttendLeViewport` À LA SUITE
+    /// D'UNE RELANCE — `None` pour une entrée issue de `fenetre_apparue`, qui
+    /// reste une fonction pure sans horloge. C'est le garde-fou du second
+    /// risque de capacité de la tâche 10 : sans lui, une fenêtre relancée
+    /// dont la page-shell ne répond plus jamais resterait `AttendLeViewport`
+    /// pour toujours, ni `SansSession` ni `Vivante`, place perdue jusqu'à
+    /// l'arrêt du superviseur. Effacé dès que le viewport arrive
+    /// (`viewport_recu`) : passé ce point, l'entrée n'attend plus le
+    /// navigateur.
+    attente_depuis: Option<std::time::Instant>,
 }
 
 pub struct Table {
@@ -112,6 +162,14 @@ pub struct Table {
     /// mauvaise fenêtre.
     compteur: u64,
     /// Vrai tant qu'aucune fenêtre ne porte le son.
+    ///
+    /// **Défaut préexistant, hors périmètre de la tâche 10, à documenter
+    /// seulement** : ce champ ne redevient jamais vrai une fois une porteuse
+    /// désignée (`le_son_repasse_a_personne_tant_que_d2_ne_le_redesigne_pas`).
+    /// Ce n'est pas une régression — l'ancien `enfant_mort` perdait déjà le
+    /// son dès la première mort de la fenêtre porteuse — mais le chemin
+    /// d'abandon de `relancer_les_orphelines` (au-delà de `RELANCES_MAX`) en
+    /// est une occasion de plus, silencieuse comme les autres.
     audio_libre: bool,
 }
 
@@ -183,6 +241,7 @@ impl Table {
                 nom_sortie: None,
                 audio,
                 relances: 0,
+                attente_depuis: None,
             },
         );
         vec![Effet::AnnoncerOuverture { session, titre }]
@@ -198,6 +257,10 @@ impl Table {
             return Vec::new();
         }
         entree.etat = Etat::AttendLaSortie;
+        // Passé ce point, l'entrée n'attend plus le navigateur : le
+        // garde-fou de staleness de `relancer_les_orphelines` ne la concerne
+        // plus.
+        entree.attente_depuis = None;
         vec![Effet::CreerSortie {
             session: session.clone(),
             titre: entree.titre.clone(),
@@ -309,15 +372,25 @@ impl Table {
     }
 
     /// Repropose les fenêtres dont la session est morte mais qui existent
-    /// toujours côté Windows. Appelée par le contrôle périodique du
+    /// toujours côté Windows, et abandonne les entrées figées trop longtemps
+    /// en attente d'un viewport. Appelée par le contrôle périodique du
     /// superviseur.
     ///
-    /// L'entrée change d'identifiant de session à chaque relance — un
-    /// identifiant réutilisé apparierait un message tardif du navigateur à
-    /// la mauvaise fenêtre — donc chaque orpheline est retirée puis
-    /// réinsérée sous une session neuve, `relances` et `audio` reportés.
-    /// `self.compteur` continue de croître sans jamais reculer.
-    pub fn relancer_les_orphelines(&mut self) -> Vec<Effet> {
+    /// **Ne lit aucune horloge** : `maintenant` est reçu en argument, sur le
+    /// modèle de `FenetreDeReprise` (`agent/src/capture/reprise.rs`) — c'est
+    /// ce qui garde cette table éprouvable sur l'hôte Linux.
+    ///
+    /// Deux garde-fous indépendants, tous deux nécessaires :
+    /// - `RELANCES_MAX` borne le nombre de fois où une fenêtre dont l'ENFANT
+    ///   meurt est relancée (l'entrée change d'identifiant de session à
+    ///   chaque relance — un identifiant réutilisé apparierait un message
+    ///   tardif du navigateur à la mauvaise fenêtre — donc chaque orpheline
+    ///   est retirée puis réinsérée sous une session neuve, `relances` et
+    ///   `audio` reportés ; `self.compteur` continue de croître sans jamais
+    ///   reculer) ;
+    /// - `DELAI_ATTENTE_VIEWPORT_MAX` borne le temps passé en `AttendLeViewport`
+    ///   après une relance, si la PAGE-SHELL, elle, ne répond jamais.
+    pub fn relancer_les_orphelines(&mut self, maintenant: std::time::Instant) -> Vec<Effet> {
         let orphelines: Vec<IdSession> = self
             .entrees
             .iter()
@@ -346,10 +419,36 @@ impl Table {
                     nom_sortie: None,
                     audio: entree.audio,
                     relances: entree.relances + 1,
+                    attente_depuis: Some(maintenant),
                 },
             );
             effets.push(Effet::AnnoncerOuverture { session, titre: entree.titre });
         }
+
+        // Second garde-fou : une entrée relancée dont la page-shell ne
+        // répond jamais reste `AttendLeViewport` — ni `SansSession` (elle ne
+        // l'est plus), ni `Vivante` (elle ne l'atteindra jamais) — et ne
+        // serait donc JAMAIS relevée par le filtre ci-dessus. `attente_depuis`
+        // est `None` pour une entrée issue de `fenetre_apparue` : elle n'est
+        // délibérément pas concernée (voir la doc de `DELAI_ATTENTE_VIEWPORT_MAX`).
+        let figees: Vec<IdSession> = self
+            .entrees
+            .iter()
+            .filter(|(_, e)| {
+                e.etat == Etat::AttendLeViewport
+                    && e.attente_depuis
+                        .is_some_and(|depuis| maintenant.duration_since(depuis) > DELAI_ATTENTE_VIEWPORT_MAX)
+            })
+            .map(|(s, _)| s.clone())
+            .collect();
+        for figee in figees {
+            let entree = self.entrees.remove(&figee).expect("relevée à l'instant");
+            effets.push(Effet::AnnoncerRefus {
+                titre: entree.titre,
+                motif: "la page-shell n'a jamais répondu après la relance".into(),
+            });
+        }
+
         effets
     }
 }
@@ -363,3 +462,10 @@ impl Table {
 #[cfg(test)]
 #[path = "table/tests.rs"]
 mod tests;
+
+// Tests de la tâche 10 (relance après mort d'enfant), extraits dans un
+// second fichier voisin : leur ajout dans `tests.rs` en aurait fait franchir
+// le plafond de 500 lignes du projet. Voir la doc en tête de ce fichier.
+#[cfg(test)]
+#[path = "table/tests_relance.rs"]
+mod tests_relance;
