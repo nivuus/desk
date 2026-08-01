@@ -407,9 +407,9 @@ si les sorties ont été rendues par le superviseur, par la garde, ou reprises p
 le chien de garde du pilote faute de ping.
 
 Deux Bloc-notes, un explorateur et un Firefox restent ouverts sur la VM, aux
-positions où le dernier replacement les a laissés. Les tâches planifiées créées
-pour la recette (`listefen`, `lirenotepad`, `lirenotepad2`, `eveil`, `diag*`)
-n'ont pas été supprimées.
+positions où le dernier replacement les a laissés. Les neuf tâches planifiées
+créées pour la recette — dont `guacamole-agent` — **ont été supprimées, et leur
+absence contrôlée** ; les scripts `.ps1` jetables restent dans `C:\dev`.
 
 ---
 
