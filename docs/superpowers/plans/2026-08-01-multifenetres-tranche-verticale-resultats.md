@@ -27,6 +27,15 @@ comme ceux des chantiers précédents) :
 
 ## 0. Le verdict en une phrase
 
+> ✅ **À LIRE AVANT CE RAPPORT — le sous-bloc D2, le 1ᵉʳ août 2026, a réparé le
+> défaut central de D1 et clos quatre des sept points de son §9.**
+> `2026-08-01-multifenetres-arrangement-dynamique-resultats.md`. Ce rapport-ci
+> reste le relevé exact de D1 et n'est réfuté nulle part ; mais **ses
+> affirmations sur ce qui est possible ne décrivent plus le dépôt**, et elles
+> sont annotées une à une (§0, §2 point 2, §3.3, §7, §9). ⚠️ **D2 n'est pas reçu
+> pour autant** : son critère exigeait cinq fenêtres simultanées et on en
+> atteint quatre.
+
 **Le cœur de D1 marche, et il ne tient pas.** Une page-shell ouvre bien une
 fenêtre navigateur par fenêtre Windows, chacune sur sa propre sortie
 d'affichage virtuelle, chacune capturée et encodée par son propre processus,
@@ -41,6 +50,13 @@ sont celles que l'énumération initiale trouve. **Le cas produit — un
 utilisateur ouvre une application — a été tenté deux fois et a échoué deux
 fois.** Ce que D1 sait faire aujourd'hui, c'est prendre un bureau tel qu'il est
 et l'éclater en fenêtres navigateur ; il ne sait pas en accueillir une de plus.
+
+> ✅ **D2 sait en accueillir une de plus** : montées 1→2, 2→3 et 3→4 propres, en
+> conditions de produit, sur de vraies applications. **La restriction « fenêtres
+> préexistantes » est levée.** Ce qui la remplace est un plafond de **quatre**
+> fenêtres simultanées, d'une autre nature — la 5ᵉ duplication DXGI, dans un 5ᵉ
+> processus, est refusée en `0x887A0022`, et **la couche qui l'impose n'est pas
+> identifiée**.
 
 La démonstration bout en bout du brief n'est donc **pas** obtenue. Sur ses huit
 points : **2 obtenus** (1 et 5), **2 partiels** (4 et 8), **4 non obtenus**
@@ -113,6 +129,18 @@ l'agent démarrait en mode mono-fenêtre. Ligne ajoutée sur le modèle des
 ---
 
 ## 2. Le déroulé point par point, avec son issue réellement observée
+
+> ✅ **Trois issues de cette table ont changé depuis le sous-bloc D2**
+> (`2026-08-01-multifenetres-arrangement-dynamique-resultats.md`), et la table
+> ci-dessous reste celle de D1 :
+> **point 2** — obtenu, montées 1→2, 2→3, 3→4 propres et aucune session tuée ;
+> **point 3** — obtenu, chacune des quatre fenêtres a reçu **sa propre** frappe
+> (⚠️ portée exacte : une frappe par fenêtre, sonde séquentielle, aucune frappe
+> concurrente, et **`SendInput` reste global à la session Windows**) ;
+> **point 6** — exercé, fermer l'application ferme **sa** session et elle seule
+> (une clôture, à 0,7 s du `WM_CLOSE`).
+> **Les points 4, 7 et 8 restent, eux, non exercés ou partiels** : D2 n'a exercé
+> ni clic, ni déplacement, ni redimensionnement de fenêtre.
 
 | # | Point du brief | Issue observée |
 | --- | --- | --- |
@@ -217,6 +245,21 @@ Trois conséquences observées :
   nouvelles sessions, donc de nouvelles sorties, donc §3.3.
 
 ### 3.3 Créer une sortie virtuelle tue toutes les captures en cours — le défaut central
+
+> ✅ **RÉPARÉ par le sous-bloc D2, le 1ᵉʳ août 2026**
+> (`2026-08-01-multifenetres-arrangement-dynamique-resultats.md`). Ce qui suit
+> reste le relevé exact de D1 ; **il ne décrit plus le comportement du dépôt.**
+> Le mutex est toujours abandonné — il n'est ni évité ni expliqué — mais la
+> duplication est désormais **relâchée puis rouverte** dans une fenêtre de
+> reprise bornée en durée, et la session survit. Relevé en conditions de
+> produit : **44** pertes d'accès `0x887A0026`, **aucune session perdue**,
+> montées 1→2, 2→3, 3→4 propres, une seule `clôture de session amorcée` et elle
+> était **sollicitée**. La cause du défaut n'était pas celle qu'on cherchait :
+> `rouvrir()` demandait une seconde duplication de la même sortie **sans avoir
+> relâché la première**, ce qu'il a fallu **trois mesures dont deux réfutations**
+> pour établir. ⚠️ **Un plafond distinct apparaît à quatre fenêtres
+> simultanées** (5ᵉ duplication refusée en `0x887A0022`, **couche non
+> identifiée**), et D2 n'est donc **pas reçu** au sens de son critère.
 
 C'est le défaut qui empêche la démonstration d'exister.
 
@@ -392,8 +435,13 @@ pour qu'aucune ne soit lue comme une découverte de cette recette :
 - **Le cas produit n'est pas couvert** : les quatre fenêtres tenues
   simultanément **préexistaient au démarrage du superviseur**. Aucune fenêtre
   ouverte pendant une session n'a jamais abouti — deux tentatives, deux échecs.
+  ✅ **Couvert par D2** : trois montées réussies (1→2, 2→3, 3→4) sur des fenêtres
+  ouvertes pendant que d'autres capturaient.
 - **La destruction d'une sortie virtuelle n'est pas mise en cause, faute
   d'avoir été exercée** pendant qu'une duplication était ouverte (§3.3).
+  ✅ **Exercée par D2** : elle abandonne le mutex **elle aussi** (destruction,
+  puis deux pertes d'accès à +22 et +25 ms, **aucune création intercalée**), et
+  la reprise l'encaisse.
 - **Aucune mesure de cadence ni de latence.** Les `framesDecoded` relevés (4 à
   29 images cumulées à t+29 s) ne mesurent rien : les contenus capturés sont
   statiques, et Desktop Duplication n'émet une trame qu'au changement du bureau.
@@ -471,6 +519,12 @@ pour qu'aucune ne soit lue comme une découverte de cette recette :
   crée une session, qui crée une sortie, qui tue toutes les captures.
   **L'instrument détruisait ce qu'il mesurait** — c'est la même leçon que la
   trace par paquet du chantier TURN, sous une autre forme.
+  ⚠️ **Depuis D2, le dernier maillon ne tue plus rien** (la reprise l'encaisse),
+  **mais la chaîne demeure entière jusque-là** : une capture CDP provoque
+  toujours un `Resize`, donc un `SHOW`, donc une session et une sortie de plus.
+  **La contrainte de protocole tient**, et une seconde raison s'y est ajoutée :
+  toute évaluation CDP sur une page portant un flux WebRTC actif peut **ne
+  jamais rendre**.
 - **Le journal de l'agent porte tout, superviseur et enfants confondus.** Les
   enfants héritent de la sortie standard du superviseur : `agent.log` mêle N+1
   processus sans les distinguer, et rien dans la ligne ne dit de quel enfant
@@ -510,6 +564,24 @@ absence contrôlée** ; les scripts `.ps1` jetables restent dans `C:\dev`.
 ---
 
 ## 9. Ce qu'il faut régler avant que D1 soit démontrable
+
+> ✅ **LES SEPT POINTS SONT CLOS — ne repartir d'aucun d'eux comme s'il était
+> ouvert.** Le sous-bloc D2 (1ᵉʳ août 2026,
+> `2026-08-01-multifenetres-arrangement-dynamique-resultats.md`) a traité les
+> points **1, 2, 4, 5 et 7** ; les points **3** et **6** avaient déjà été
+> refermés par le correctif final de branche `e9691eb`, ce que la conception de
+> D2 relève par lecture du code (§1 de
+> `specs/2026-08-01-multifenetres-arrangement-dynamique-design.md`).
+>
+> ⚠️ **Ce que cette clôture ne dit PAS.** D2 **n'est pas reçu** au sens de son
+> propre critère : il exigeait cinq fenêtres simultanées, on en atteint
+> **quatre** — la 5ᵉ duplication DXGI, dans un 5ᵉ processus, est refusée en
+> `0x887A0022`, par une limite de concurrence dont **la couche n'est pas
+> identifiée** et dont **rien n'établit que 4 soit une borne du système**. Et
+> une liste neuve a pris la place de celle-ci, au §7 des résultats de D2, dont
+> le premier point : **le superviseur détruit puis recrée la sortie virtuelle à
+> chaque relance d'enfant**, ce qui est la vraie cause des perturbations
+> résiduelles.
 
 Par ordre de blocage, sans préjuger des solutions :
 

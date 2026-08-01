@@ -7,6 +7,24 @@
 > reçu** — `plans/2026-08-01-multifenetres-tranche-verticale-resultats.md`.
 > D2 lève ce qui l'en empêche, et rien d'autre.
 
+> ⚠️ **Verdict d'exécution, 1ᵉʳ août 2026 — il est DOUBLE.**
+> `plans/2026-08-01-multifenetres-arrangement-dynamique-resultats.md`.
+> **① Le défaut central du §3 est réparé, et démontré réparé en conditions de
+> produit** : 44 pertes d'accès `0x887A0026` encaissées, **aucune session
+> perdue**, montées 1→2, 2→3, 3→4 propres, une seule clôture de session et elle
+> était sollicitée. La cause n'était pas celle que ce document soupçonnait —
+> `rouvrir()` demandait une seconde duplication de la même sortie **sans avoir
+> relâché la première** —, et il a fallu **trois mesures dont deux réfutations**
+> pour l'établir ; le §3.4 a été réécrit en cours de route, après la première.
+> **② Le critère de réception du §2.2 n'est PAS atteint** : il exige **cinq**
+> fenêtres simultanées, on en atteint **quatre**. La 5ᵉ duplication DXGI, dans
+> un 5ᵉ processus, est refusée en `0x887A0022`, par une limite de concurrence
+> qui **résiste à trois secondes de patience explicite** ; **la couche qui
+> l'impose n'est pas identifiée**, et **rien n'établit que 4 soit une borne du
+> système**. **D2 n'est donc pas reçu au sens de son critère, et répare pourtant
+> ce pour quoi il existait.** La voie de repli du §8 (sérialisation
+> superviseur→enfants) n'a **jamais été implémentée** et reste disponible.
+
 ## 1. Ce que D1 a laissé, et ce qui reste vraiment ouvert
 
 D1 a démontré, en session réelle et sur de vraies applications, une fenêtre

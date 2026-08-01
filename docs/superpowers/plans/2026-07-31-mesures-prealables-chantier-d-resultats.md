@@ -130,6 +130,12 @@ correction correspondant.
 >   que d'autres capturent, et la création de sa sortie tue toutes les sessions
 >   en cours (`0x887A0026`) —
 >   `2026-08-01-multifenetres-tranche-verticale-resultats.md`.
+>   ✅ **Cet ordre-là passe depuis le sous-bloc D2** (1ᵉʳ août 2026,
+>   `2026-08-01-multifenetres-arrangement-dynamique-resultats.md`) : le mutex est
+>   toujours abandonné, mais la reprise l'encaisse et **aucune session n'en
+>   meurt**. ⚠️ En **processus distincts**, la **5ᵉ** duplication est en revanche
+>   refusée (`0x887A0022`) — plafond observé à **4**, dont **la couche n'est pas
+>   identifiée**. **Ne pas transposer le 8 au multi-processus.**
 >
 > Cette liste compte **neuf** points, dont **trois sont levés** : les deux
 > ci-dessus, plus « Aucune image n'a été soumise aux 8 encodeurs ». Chacun des
@@ -166,6 +172,12 @@ correction correspondant.
   > produit, et cet ordre-là échoue — la création d'une sortie pendant que
   > d'autres capturent tue toutes les sessions (`0x887A0026`).
   > `2026-08-01-multifenetres-tranche-verticale-resultats.md`.
+  > ✅ **Cet ordre-là passe depuis le sous-bloc D2** (1ᵉʳ août 2026,
+  > `2026-08-01-multifenetres-arrangement-dynamique-resultats.md`) : le mutex est
+  > toujours abandonné, mais la reprise l'encaisse et **aucune session n'en
+  > meurt**. ⚠️ En **processus distincts**, la **5ᵉ** duplication est en revanche
+  > refusée (`0x887A0022`) — plafond observé à **4**, dont **la couche n'est pas
+  > identifiée**. **Ne pas transposer le 8 au multi-processus.**
   > (`2026-07-31-duplications-paralleles-resultats.md`). **Une exécution par
   > rang, donc aucun taux**, et **rien au-delà de 8 sorties**.
 - **La comparaison des deux modes d'encodage porte sur deux variables
@@ -710,6 +722,12 @@ nombre=2`) et retirée par la purge (`retirees=1 avant=2 apres=1`,
   > produit, et cet ordre-là échoue — la création d'une sortie pendant que
   > d'autres capturent tue toutes les sessions (`0x887A0026`).
   > `2026-08-01-multifenetres-tranche-verticale-resultats.md`.
+  > ✅ **Cet ordre-là passe depuis le sous-bloc D2** (1ᵉʳ août 2026,
+  > `2026-08-01-multifenetres-arrangement-dynamique-resultats.md`) : le mutex est
+  > toujours abandonné, mais la reprise l'encaisse et **aucune session n'en
+  > meurt**. ⚠️ En **processus distincts**, la **5ᵉ** duplication est en revanche
+  > refusée (`0x887A0022`) — plafond observé à **4**, dont **la couche n'est pas
+  > identifiée**. **Ne pas transposer le 8 au multi-processus.**
 - **La cadence de 90,0 i/s n'est pas expliquée.** Identique à N=1 et N=2,
   parfaitement régulière, alors que la sortie a été créée à 60 Hz. Le témoin qui
   vaut n'est pas celui de la sonde précédente (autre jour, autre code) mais celui
@@ -950,6 +968,12 @@ mesures et non sur une construction.** Trois choses ont changé :
   > produit, et cet ordre-là échoue — la création d'une sortie pendant que
   > d'autres capturent tue toutes les sessions (`0x887A0026`).
   > `2026-08-01-multifenetres-tranche-verticale-resultats.md`.
+  > ✅ **Cet ordre-là passe depuis le sous-bloc D2** (1ᵉʳ août 2026,
+  > `2026-08-01-multifenetres-arrangement-dynamique-resultats.md`) : le mutex est
+  > toujours abandonné, mais la reprise l'encaisse et **aucune session n'en
+  > meurt**. ⚠️ En **processus distincts**, la **5ᵉ** duplication est en revanche
+  > refusée (`0x887A0022`) — plafond observé à **4**, dont **la couche n'est pas
+  > identifiée**. **Ne pas transposer le 8 au multi-processus.**
   > des encodeurs (point suivant de la liste ci-dessous) y est diagnostiqué et
   > corrigé — il était **intermittent**, non déterministe, et `MFShutdown` n'en
   > était pas la cause.
@@ -1002,6 +1026,12 @@ possible doit être fermé avant qu'on le retienne ou l'écarte pour de bon.
    > produit, et cet ordre-là échoue — la création d'une sortie pendant que
    > d'autres capturent tue toutes les sessions (`0x887A0026`).
    > `2026-08-01-multifenetres-tranche-verticale-resultats.md`.
+   > ✅ **Cet ordre-là passe depuis le sous-bloc D2** (1ᵉʳ août 2026,
+   > `2026-08-01-multifenetres-arrangement-dynamique-resultats.md`) : le mutex est
+   > toujours abandonné, mais la reprise l'encaisse et **aucune session n'en
+   > meurt**. ⚠️ En **processus distincts**, la **5ᵉ** duplication est en revanche
+   > refusée (`0x887A0022`) — plafond observé à **4**, dont **la couche n'est pas
+   > identifiée**. **Ne pas transposer le 8 au multi-processus.**
 2. **Le plantage de la passe d'encodage sur la voie `duplication`.** Localisé,
    non diagnostiqué, et il **laisse des sorties orphelines** — donc il gêne les
    mesures autant qu'il menacerait le produit. À reprendre avec le bornage du

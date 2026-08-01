@@ -188,6 +188,24 @@ sous-bloc. Ce qui reste à prouver, c'est que l'ensemble s'assemble.
 > DXGI déjà ouvertes, donc toute nouvelle fenêtre tue toutes les sessions en
 > cours. Sept points à régler sont listés au §9 des résultats.
 
+> ✅ **Sous-bloc D2, 1ᵉʳ août 2026 — le défaut central ci-dessus est réparé, et
+> quatre des sept points du §9 sont clos.**
+> `plans/2026-08-01-multifenetres-arrangement-dynamique-resultats.md`.
+> « Toute nouvelle fenêtre tue toutes les sessions en cours » **ne décrit plus
+> le dépôt** : le mutex est toujours abandonné — ni évité ni expliqué — mais la
+> duplication est relâchée puis rouverte dans une fenêtre de reprise. Relevé en
+> conditions de produit : **44** pertes d'accès `0x887A0026`, **aucune session
+> perdue**, montées 1→2, 2→3, 3→4 propres. La restriction « ces quatre fenêtres
+> PRÉEXISTAIENT » est **levée**. Points du §9 clos : **1** (le défaut central),
+> **2** (nom DXGI au lieu de l'index), **4** (viewport pair + appariement
+> tolérant), **5** (premier plan avant injection clavier) — les points 3, 6 et 7
+> l'étaient déjà avant D2 ou l'ont été par son correctif de table.
+>
+> ⚠️ **D2 n'est pas reçu pour autant** : son critère exigeait **cinq** fenêtres
+> simultanées et on en atteint **quatre**, la 5ᵉ duplication DXGI dans un 5ᵉ
+> processus étant refusée en `0x887A0022`. **La couche qui impose ce plafond
+> n'est pas identifiée**, et **rien n'établit que 4 soit une borne du système**.
+
 ---
 
 ## 4. Architecture

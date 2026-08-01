@@ -56,12 +56,13 @@ où l'on travaille dedans, pas en chantier séparé.
 > fois.
 
 > ⚠️ **`agent/src/capture.rs` est à 485 lignes : sa marge est de 15 lignes**
-> (1ᵉʳ août 2026, fin du sous-bloc D2). Il avait atteint **exactement 500** en
-> cours de sous-bloc, et n'est redescendu que parce qu'une tâche ultérieure a
-> extrait `creer_peripherique` vers `capture/ouverture.rs`. **Toute addition
-> future à ce fichier appelle une extraction** — les modules enfants
+> (1ᵉʳ août 2026, fin du sous-bloc D2). Il a atteint **exactement 500** en cours
+> de sous-bloc ; une extraction vers `capture/ouverture.rs` l'a fait retomber à
+> **453**, puis une ronde de correction lui a **rendu 32 lignes**. **Toute
+> addition future à ce fichier appelle une extraction** — les modules enfants
 > `capture/reprise.rs`, `capture/ouverture.rs` et `capture/types.rs` existent
-> déjà et sont le bon endroit.
+> déjà et sont le bon endroit. **Leçon du chiffre : la marge regagnée par une
+> extraction se reperd à la ronde suivante si on la traite comme acquise.**
 
 Ces trois modules ne se compilent que sur la VM et ne sont couverts par aucun
 test : les découper se ferait sans filet automatisé. La dette est assumée
@@ -2101,9 +2102,18 @@ lent n'a été observé** — **ne pas la réduire sur la foi de ce seul relevé
    échecs n'était un transitoire** (quatre séquences, fenêtre entière courue,
    zéro reprise réussie). Aucun réessai ne peut rien contre cette cause-là.
    **C'est la première chose à corriger.**
+   ⚠️ **Les « 44 avant / 44 après » sont des comptes ARRÊTÉS à la fin de la
+   séquence de critère, pas des totaux de fichier.** Le journal versé de la
+   seconde exécution va plus loin (phase clavier, captures, arrêt) et porte
+   **50** réouvertures en fin de fichier ; le 44 comparable s'y relit par une
+   borne temporelle explicite. Ne jamais opposer un total de fichier à un compte
+   fenêtré.
 2. **Identifier la couche du plafond de quatre.** Ce n'est ni le plafond de
-   sorties virtuelles (10 : neuf créées sans un refus du pilote), ni celui des
-   encodeurs NVENC (8 : la mort survient **avant** tout encodeur). Le
+   sorties virtuelles (10 : `création de sortie refusée` = **0** sur tout le
+   passage — les neuf créations y sont **successives**, pas simultanées, et ne
+   borneraient rien par elles-mêmes), ni celui des encodeurs NVENC (8 : la mort
+   survient **avant** tout encodeur, et **aucune pièce de D2 ne compte
+   d'encodeurs**). Le
    rapprochement avec les **8 duplications d'un seul processus** du 31 juillet
    est une **INFÉRENCE** — rien ici ne l'établit. Fermer une fenêtre puis en
    rouvrir une réussit : la place libérée suffit.

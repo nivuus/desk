@@ -18,7 +18,7 @@ distant sont mutilées (§5).
 | `reprise-n{1,2,4}.log` | **1ᵉʳ tirage** du banc — réfuté |
 | `reprise-recalibree-n{1,2,4}.log` | **2ᵉ tirage** — réfuté une seconde fois |
 | `reprise-relachee-n{1,2,4}.log` | **3ᵉ tirage** — reçu aux trois rangs |
-| `topologie-{,recalibree-,relachee-}{avant,apres}-n*.log` | Contrôles d'absence de fuite, **depuis un processus neuf** |
+| `topologie-{,recalibree-,relachee-}avant-n1.log` et `…-apres-n{1,2,4}.log` | Contrôles d'absence de fuite, **depuis un processus neuf** — **un** relevé « avant » et **trois** « après » par tirage, soit 12 pièces : les relevés « après » d'un rang servent de « avant » du rang suivant, la séquence étant ininterrompue |
 | `construction-recalibree.log`, `build-agent.log`, `build-agent-11bis.log`, `fraicheur-binaire-11bis.log` | Fraîcheur des binaires mesurés |
 | `demonstration-D-blocs-notes.log` + `agent-D.log` | **Le passage décisif** de la démonstration bout en bout |
 | `demonstration-C-applications-variees.log` + `agent-C.log` | Applications variées, mêmes conclusions |
@@ -278,6 +278,16 @@ sur les huit marqueurs que les deux exécutions partagent (`clôture`,
 `réouverture`, `0x887a0026`, `0x887A0022`, `sortie virtuelle créée`,
 `enfant lancé`, `enfant mort de lui-même`, plafond de fenêtres) — **identiques**.
 
+> ⚠️ **Les deux « 44 » sont des comptes ARRÊTÉS À LA FIN DE LA SÉQUENCE DE
+> CRITÈRE, et un seul des deux journaux versés s'arrête là.** Celui de la
+> tâche 11 bis a été copié **après** la phase clavier, les captures et l'arrêt :
+> il porte **50** réouvertures et **8** `enfant mort de lui-même` en fin de
+> fichier. Le 44 comparable s'y relit par une borne temporelle explicite :
+> `awk -F'Z' '$1 < "2026-08-01T21:15:20"' plat.log | grep -c "accès à la
+> duplication perdu, réouverture"` → **44**. **« Identiques » porte donc sur deux
+> comptages fenêtrés au même événement, pas sur deux totaux de fichier** — et
+> les deux fichiers, eux, ne s'arrêtent pas au même endroit.
+
 **Pourquoi, et c'est le fait neuf** : **aucun** des échecs d'ouverture observés
 n'était un transitoire. Les quatre séquences de réessai ont couru leur fenêtre
 **entière** puis renoncé — **zéro reprise réussie sur quatre** — et aux étapes 1
@@ -325,7 +335,10 @@ antérieure de ce dépôt n'avait éprouvé cela.**
 **Ce que ce plafond n'est pas, et ce qu'on ignore** :
 
 - **ce n'est pas le plafond de sorties virtuelles** (10, mesuré le 31 juillet) :
-  9 sorties ont été créées dans D **sans un seul refus du pilote** ;
+  `création de sortie refusée` (pilote) vaut **0** sur tout le passage D.
+  *(Les 9 `sortie virtuelle créée` du même passage sont des créations
+  **successives** et non simultanées : elles ne bornent rien par elles-mêmes.
+  C'est le zéro refus qui porte l'argument.)* ;
 - **ce n'est pas le plafond d'encodeurs NVENC** (8, mesuré le 31 juillet) : la
   mort survient à l'ouverture de la duplication, **avant tout encodeur** ;
 - **le chantier du 31 juillet a tenu 8 duplications de front — mais dans un seul
@@ -402,9 +415,12 @@ et que ce sous-bloc en porte trois exemples de plus :
 - **Rien de la latence, de la cadence, ni de la durée.** Session la plus longue
   ≈ **4 min 30 s** (`w-1` du passage D). RTT relevés ponctuellement seulement.
 - **Rien du plafond d'encodeurs en multi-processus**, que D1 devait relever et
-  n'a pas approché : la mort survient avant tout encodeur, et le maximum
-  construit de front reste **4**, dans 4 processus. Le **8** connu reste un
-  chiffre de **processus unique**.
+  n'a pas approché — et **D2 ne l'approche pas davantage, pour une raison
+  différente** : la mort survient désormais à l'ouverture de la duplication,
+  **avant tout encodeur**. ⚠️ **Aucune pièce de D2 ne compte d'encodeurs** : le
+  « 4 encodeurs NVENC construits de front dans 4 processus, aucun refus » est le
+  relevé **de D1**, pas de ce sous-bloc. Le **8** connu reste, lui, un chiffre de
+  **processus unique**.
 - **Une seule application réelle au passage décisif** (Bloc-notes ×5). Le passage
   C ajoute Paint, WordPad et l'Explorateur, mais son compte de fenêtres n'est pas
   contrôlé — **Paint ouvre deux fenêtres éligibles**.
@@ -616,7 +632,11 @@ Commande de `CLAUDE.md`, à la fin du sous-bloc :
 modules enfants (`capture/reprise.rs`, `capture/ouverture.rs`, `capture/types.rs`,
 `superviseur/table/tests_relance.rs`, `windows_source/redimensionnement.rs`).
 
-⚠️ **`agent/src/capture.rs` est à 485 lignes : sa marge est de 15 lignes.** Il
-avait atteint **exactement 500** en tâche 6 quater, et n'est redescendu que parce
-que la tâche 11 bis a extrait `creer_peripherique` vers `capture/ouverture.rs`.
+⚠️ **`agent/src/capture.rs` est à 485 lignes : sa marge est de 15 lignes.** Son
+histoire, puisqu'elle se lit mal du seul chiffre final : il a atteint
+**exactement 500** en tâche 6 quater ; la tâche 11 bis l'a fait retomber à
+**453** en extrayant la boucle de réessai puis `creer_peripherique` vers
+`capture/ouverture.rs` ; **la ronde de correction de cette même tâche lui a
+ensuite rendu 32 lignes** (la durée de fenêtre portée au point d'appel, et les
+énoncés qu'il fallait accorder), d'où les 485 d'aujourd'hui.
 **Toute addition future à ce fichier appelle une extraction.**

@@ -21,6 +21,21 @@
 > **tue toutes les sessions en cours**. La voie tient donc à arrangement figé,
 > et s'effondre dès qu'une fenêtre s'ouvre.
 
+> ✅ **Cette dernière phrase n'est plus vraie depuis le sous-bloc D2**
+> (1ᵉʳ août 2026,
+> `plans/2026-08-01-multifenetres-arrangement-dynamique-resultats.md`).
+> L'abandon du mutex se produit toujours — il n'est ni évité ni expliqué — mais
+> il est désormais **encaissé** : la duplication est relâchée puis rouverte dans
+> une fenêtre de reprise bornée en durée. Relevé en conditions de produit :
+> **44** pertes d'accès `0x887A0026`, **aucune session perdue**, montées 1→2,
+> 2→3, 3→4 propres, une seule clôture de session et elle était sollicitée.
+> ⚠️ **Ce qui reste vrai de la portée resserrée ci-dessus** : cette mesure-ci
+> tient 8 duplications de front dans **un seul processus** ; en **processus
+> distincts** — l'arrangement du produit — la **5ᵉ** est refusée
+> (`0x887A0022`), par un plafond dont **la couche n'est pas identifiée**. Que la
+> différence tienne au multi-processus est une **inférence** : rien ne rapproche
+> formellement les deux montages.
+
 > Troisième chantier de mesure de la série, dans la lignée de la sonde de
 > capture multi-fenêtres (`plans/2026-07-30-sonde-capture-multifenetre-resultats.md`)
 > et des mesures préalables (`plans/2026-07-31-mesures-prealables-chantier-d-resultats.md`).

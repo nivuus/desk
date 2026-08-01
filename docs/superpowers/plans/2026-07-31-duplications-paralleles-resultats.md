@@ -32,6 +32,23 @@ Le critère posé d'avance par la conception (§4) est :
 > **tue toutes les sessions en cours**. La voie tient donc à arrangement figé,
 > et s'effondre dès qu'une fenêtre s'ouvre.
 
+> ✅ **Cette dernière phrase n'est plus vraie depuis le sous-bloc D2**
+> (1ᵉʳ août 2026,
+> `2026-08-01-multifenetres-arrangement-dynamique-resultats.md`). L'abandon du
+> mutex se produit toujours — il n'est ni évité ni expliqué — mais il est
+> désormais **encaissé** : la duplication est relâchée puis rouverte dans une
+> fenêtre de reprise bornée en durée. Relevé en conditions de produit : **44**
+> pertes d'accès `0x887A0026`, **aucune session perdue**, montées 1→2, 2→3, 3→4
+> propres, une seule clôture de session et elle était sollicitée.
+> ⚠️ **Ce qui reste vrai de la portée resserrée ci-dessus, et qui touche
+> directement le chiffre de réception de ce rapport** : les 8 duplications
+> ci-dessous sont tenues dans **un seul processus**. En **processus distincts**
+> — l'arrangement du produit — la **5ᵉ** est refusée (`0x887A0022`), et le
+> plafond observé est **4**. **La couche qui l'impose n'est pas identifiée**, et
+> que la différence tienne au multi-processus est une **inférence** : rien ne
+> rapproche formellement les deux montages. **Ne pas transposer le 8 ci-dessous
+> à une exploitation multi-processus.**
+
 À N=8, huit duplications DXGI ouvertes **de front** sur huit sorties virtuelles
 distinctes rendent **90,1 i/s par fenêtre en capture+encodage** —
 `paralleles-n8.log:146`, `cadences=[90.1, 90.1, 90.1, 90.1, 90.1, 90.1, 90.1,
