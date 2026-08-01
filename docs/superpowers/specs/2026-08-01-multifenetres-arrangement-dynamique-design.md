@@ -260,6 +260,17 @@ Trois retouches :
 actuelle : le banc ne survit pas à un remaniement de topologie et n'a rien à
 gagner au changement.
 
+> ⚠️ **Décision DÉPASSÉE à l'exécution — la variable a changé de forme.** Elle ne
+> pouvait pas ne pas changer : le point 1 ci-dessus fait de
+> `DesktopCapture::sur_sortie` une fonction qui prend un **nom** DXGI et ne
+> prend plus d'index, et le banc passe la valeur de `MULTIFENETRE_SORTIE`
+> directement à cette fonction. « Garder sa forme actuelle » aurait exigé de
+> conserver en plus, pour le seul banc, la résolution par couple d'index que le
+> point 1 supprime. `MULTIFENETRE_SORTIE` attend donc désormais un nom
+> `\\.\DISPLAYn` (`diagnostics/multifenetre.rs`, `diagnostics/multifenetre/banc.rs`),
+> comme `SORTIE_DXGI`. Le raisonnement de la décision reste juste — le banc n'y
+> gagne rien — il ne tenait simplement pas compte du coût du *maintien*.
+
 ## 5. Les trois défauts d'accompagnement
 
 ### 5.1 Apparier une sortie fraîchement créée

@@ -285,12 +285,16 @@ fn creer_sortie(
     let apparues = attendre_une_sortie_neuve(pilote, &avant, LIMITE_RATTACHEMENT);
 
     let Some(cible) = placement::sortie_par_dimensions(&apparues, largeur, hauteur, prises) else {
-        // Journaliser les CANDIDATS, pas seulement la demande. L'égalité de
-        // dimensions est exacte à dessein, et `CLAUDE.md` documente une sortie
-        // virtuelle déjà vue à un facteur DPI de 1,5 de ce qui était demandé :
-        // si l'hôte applique une mise à l'échelle, AUCUNE fenêtre ne s'ouvrira
-        // jamais, et un journal qui ne redirait que la demande laisserait ce
-        // diagnostic entièrement à faire.
+        // Journaliser les CANDIDATS, pas seulement la demande. L'appariement
+        // par dimensions tolère `placement::TOLERANCE_PX` (quatre pixels, la
+        // tolérance du replacement) et rien de plus : l'égalité stricte était
+        // le choix initial, la recette D1 a montré qu'elle rendait l'ouverture
+        // impossible sur une course de rattachement de quelques pixels
+        // (1280×713 rendue 1280×720). Le facteur DPI de 1,5 que `CLAUDE.md`
+        // documente sur une sortie virtuelle reste, lui, très loin de cette
+        // tolérance, donc toujours refusé : si l'hôte applique une mise à
+        // l'échelle, AUCUNE fenêtre ne s'ouvrira jamais, et un journal qui ne
+        // redirait que la demande laisserait ce diagnostic entièrement à faire.
         tracing::error!(
             session = %session.0,
             demande = format!("{largeur}x{hauteur}"),

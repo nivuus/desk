@@ -560,6 +560,37 @@ du 31 juillet est une **inférence**, que rien dans ce sous-bloc n'établit.
 
 C'est le point bloquant pour la cible de **huit** fenêtres du chantier D.
 
+### 7.2 bis Le produit de §7.1 et §7.2 — `CAPACITE = 8` face à un plafond de 4
+
+Les deux sections précédentes nomment chacune leur objet ; **leur produit n'était
+écrit nulle part**, et c'est lui qui se paie en exploitation. Aucune tâche ne
+pouvait le voir seule : le plafond de 4 vient de la tâche 11, la relance de la
+tâche 10.
+
+`CAPACITE = 8` (`agent/src/superviseur/boucle.rs`) est désormais connu
+**supérieur au plafond mesuré de 4**. Le superviseur accepte donc quatre fenêtres
+(la 5ᵉ à la 8ᵉ) dont on sait qu'aucune ne peut aboutir. L'enchaînement, dérivé du
+code et confirmé par `agent-ouverture-retentee.log` :
+
+1. la 5ᵉ fenêtre échoue après ses ~3 s de réessais à l'ouverture ;
+2. son enfant meurt, le superviseur la relance jusqu'à `RELANCES_MAX = 3` fois —
+   soit **quatre tentatives** au total, l'originale plus les trois relances ;
+3. **chaque tentative détruit puis recrée une sortie virtuelle**, et c'est
+   exactement la recréation que le §7.1 identifie comme la vraie cause des
+   réouvertures parasites infligées aux sessions **saines**.
+
+Les fenêtres 5 à 8 déclenchent donc **jusqu'à 16 cycles création/destruction**
+(4 fenêtres × 4 tentatives, **dérivé du code**), et de l'ordre de **128 abandons
+de mutex** sur les sessions qui fonctionnent (16 recréations × les duplications
+alors ouvertes — **ordre de grandeur, pas un relevé** : aucune exécution de ce
+sous-bloc n'a dépassé 4 fenêtres). **Pour zéro chance de succès.**
+
+**Rien n'a été changé en fin de branche** : baisser `CAPACITE`, ou refuser d'avance
+au-delà du plafond, est une décision de **conception** que la revue finale n'est
+pas le moment de prendre — et le remède réel est celui du §7.1, qui supprime la
+recréation elle-même. Ce paragraphe existe pour que ce coût soit **lu** avant
+d'être découvert en exploitation.
+
 ### 7.3 Une fuite de capacité reste ouverte
 
 Une fenêtre **neuve** dont la page-shell ne répond **jamais** reste en
@@ -581,13 +612,15 @@ calibré**) a été volontairement borné aux entrées **relancées**, pour ne p
 - `agent/src/capture/types.rs` héberge `CibleCapture`, qui n'est pas un échec.
   Le fichier a déjà été renommé (`echec.rs` → `types.rs`) ; le rangement reste
   approximatif.
-- `agent/src/capture/reprise/passes.rs` (banc) — le message d'échec de peinture
-  affirme que « les mires ne changent plus, DONC le bureau non plus, donc le
-  compte d'images cesse d'avancer ». `Mires::peindre` échoue au premier `Present`
-  fautif **après** avoir présenté les précédentes : rien ne garantit que la
-  duplication cesse d'émettre pour ces voies. Formulation juste : « la peinture
-  est partielle ou nulle à partir d'ici, le compte d'images ne mesure plus la
-  capture ».
+- ~~`agent/src/diagnostics/multifenetre/reprise/passes.rs` (banc) — le message
+  d'échec de peinture affirme que « les mires ne changent plus, DONC le bureau
+  non plus, donc le compte d'images cesse d'avancer ». `Mires::peindre` échoue au
+  premier `Present` fautif **après** avoir présenté les précédentes : rien ne
+  garantit que la duplication cesse d'émettre pour ces voies. Formulation
+  juste : « la peinture est partielle ou nulle à partir d'ici, le compte d'images
+  ne mesure plus la capture ».~~ ✅ **Appliqué en revue finale** — et le chemin
+  cité ici était faux : `agent/src/capture/reprise/passes.rs` n'existe pas, le
+  fichier vit sous `diagnostics/multifenetre/`.
 - **`rouvrir` en mode `CibleCapture::Bureau` peut résoudre une sortie portée par
   un autre adaptateur que `self.device`**, et `DuplicateOutput` la refuserait.
   Adjugé non bloquant : l'issue est alors `Panne`, c'est-à-dire le comportement

@@ -58,8 +58,11 @@ pub struct DesktopCapture {
     /// à l'instant où l'accès est perdu, la topologie a déjà changé et rien
     /// dans les objets DXGI encore détenus ne dit ce qu'on capturait.
     cible: CibleCapture,
-    /// Fenêtre de reprise en cours pour cette capture (voir `next_frame`) :
-    /// une perte d'accès qui persiste au-delà de sa durée est définitive.
+    /// Fenêtre de reprise en cours (voir `next_frame`) : « ouverte à la
+    /// première perte d'accès et **refermée par le premier succès** »
+    /// (`capture::reprise`). `succes()` étant appelée sur `Ok(None)`, toute
+    /// acquisition non refusée la referme — la durée court donc depuis le
+    /// DERNIER refus. Est définitive une perte ININTERROMPUE au-delà d'elle.
     fenetre: crate::capture_reprise::FenetreDeReprise,
     desktop_width: u32,
     desktop_height: u32,
@@ -309,11 +312,19 @@ impl DesktopCapture {
 
         let mut info = DXGI_OUTDUPL_FRAME_INFO::default();
         let mut resource: Option<IDXGIResource> = None;
+        ATTEMPTS.fetch_add(1, Ordering::Relaxed);
+        // `duplication()` D'ABORD, la phase ENSUITE — et non l'inverse. Ce `?`
+        // sort de la fonction à chaque tour de la fenêtre de reprise (jusqu'à
+        // `DUREE_FENETRE_REPRISE`, 8 s), sans jamais atteindre le retour à
+        // `PHASE_CAPTURE` posé après l'acquisition : le fil de surveillance
+        // journalisait `étape = capture/AcquireNextFrame` pendant ces 8 s alors
+        // que l'appel n'était pas fait une seule fois. Ce dépôt a déjà perdu
+        // une campagne à attribuer un blocage au mauvais appel — une étape
+        // publiée ne doit désigner que du code réellement en cours.
+        let duplication = self.duplication()?;
         // Attente nulle : la cadence est pilotée par la boucle appelante, pas
         // par un blocage ici.
         self.set_phase(crate::encode::PHASE_CAPTURE_ACQUIRE);
-        ATTEMPTS.fetch_add(1, Ordering::Relaxed);
-        let duplication = self.duplication()?;
         let acquired = unsafe { duplication.AcquireNextFrame(0, &mut info, &mut resource) };
         self.set_phase(crate::encode::PHASE_CAPTURE);
 

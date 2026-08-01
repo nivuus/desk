@@ -85,33 +85,55 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
     // celui-ci décrirait un état transitoire.
     let issue = {
         let mut sorties = crate::moniteurs_virtuels::Sorties::nouvelles(&pilote);
-        for rang in 1..=nombre {
-            let id = sorties
-                .creer(largeur, hauteur, hertz)
-                .with_context(|| format!("création de la sortie virtuelle n°{rang}"))?;
-            tracing::info!(rang, id, "sortie virtuelle créée");
-        }
-        attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
+        // CLÔTURE et non bloc nu : les `?` de la préparation doivent sortir
+        // d'ICI, pas de `mesurer`.
+        //
+        // Ils en sortaient, et sautaient du même coup le rattrapage de purge
+        // placé plus bas — c'est-à-dire précisément sur les chemins où la
+        // création ou la topologie a dérapé, **ceux où un retrait a le plus de
+        // chances d'avoir été refusé dans le `Drop` de la garde**. Sur un
+        // vivier de dix sorties, une place ainsi perdue l'est jusqu'au
+        // redémarrage de la machine. La garde RAII, elle, était et reste
+        // correcte : elle court sur tous les chemins, y compris la panique.
+        (|| -> Result<()> {
+            for rang in 1..=nombre {
+                let id = sorties
+                    .creer(largeur, hauteur, hertz)
+                    .with_context(|| format!("création de la sortie virtuelle n°{rang}"))?;
+                tracing::info!(rang, id, "sortie virtuelle créée");
+            }
+            attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
 
-        let apres = relever_topologie("après création")?;
-        let virtuelles = designer_sorties_neuves(&apres, &connues, nombre)?;
-        // Construite juste après `attendre_en_pinguant`, donc juste après le
-        // dernier ping connu (voir `compteurs::Garde::nouvelle`).
-        let mut garde = compteurs::Garde::nouvelle(&pilote);
-        garde.battre()?;
-        let issue = passes::eprouver(&mut garde, &mut sorties, &virtuelles, &connues);
-        tracing::info!(
-            intervalle_ping_max_ms = garde.intervalle_max().as_millis() as u64,
-            "chien de garde : plus grand écart entre deux battements sur toute la mesure"
-        );
-        // Constat du CHEMIN D'ERREUR : `eprouver` contrôle déjà l'état après sa
-        // perturbation, mais un `?` en sort sans passer par ce contrôle.
-        constater_places("bilan", &virtuelles, &connues);
-        issue
+            let apres = relever_topologie("après création")?;
+            let virtuelles = designer_sorties_neuves(&apres, &connues, nombre)?;
+            // Construite juste après `attendre_en_pinguant`, donc juste après le
+            // dernier ping connu (voir `compteurs::Garde::nouvelle`).
+            let mut garde = compteurs::Garde::nouvelle(&pilote);
+            garde.battre()?;
+            let issue = passes::eprouver(&mut garde, &mut sorties, &virtuelles, &connues);
+            tracing::info!(
+                intervalle_ping_max_ms = garde.intervalle_max().as_millis() as u64,
+                "chien de garde : plus grand écart entre deux battements sur toute la mesure"
+            );
+            // Appel INCONDITIONNEL, sur l'issue d'`eprouver` quelle qu'elle
+            // soit. Il redouble le contrôle qu'`eprouver` fait déjà après sa
+            // perturbation, et le porte aux chemins où `eprouver` a rendu une
+            // erreur avant d'y arriver.
+            //
+            // ⚠️ Ce que cela implique à lire : si l'épreuve a échoué AVANT que la
+            // perturbatrice ne soit créée, la mise en garde « aucune sortie
+            // tierce » de `constater_tierces` porte sur un IOCTL qui n'a jamais
+            // été émis. Elle est libellée au moment « après perturbation » et ne
+            // s'applique donc pas au moment « bilan » — mais un lecteur pressé
+            // pourrait l'y lire, et c'est ce paragraphe qui l'en empêche.
+            constater_places("bilan", &virtuelles, &connues);
+            issue
+        })()
     };
 
     // Second essai des retraits que la garde n'a pas obtenus : dernière chance
     // de CE processus, au-delà seule la purge inter-processus les atteindra.
+    // Court désormais sur les chemins d'ERREUR aussi (voir la clôture ci-dessus).
     let rejoues = crate::moniteurs_virtuels::purge::rejouer_purge_due(&pilote);
     if rejoues > 0 {
         tracing::info!(rejoues, "retraits dus rejoués avec succès après la garde");

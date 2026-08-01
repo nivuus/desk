@@ -147,9 +147,14 @@ impl WindowsSource {
         // `congestion::Controleur::changer_source`) — au lieu de la préserver
         // ici à l'aveugle.
 
-        // Un NOUVEAU périphérique D3D11 est créé dans `DesktopCapture::new` :
-        // elle pose `SetMultithreadProtected(TRUE)` sur CE périphérique à
-        // chaque appel (voir capture.rs, champ `context`/`multithread`) — la
+        // Un NOUVEAU périphérique D3D11 est créé par l'ouverture appelée juste
+        // en dessous — `DesktopCapture::new_sans_attente`, et non plus
+        // `DesktopCapture::new` : ce chemin court sur le fil bloquant de
+        // `Session::run`, où la fenêtre de réessai de trois secondes
+        // suspendrait du même coup les demandes de keyframe et l'adaptation
+        // réseau. Les deux passent par `DesktopCapture::ouvrir`, qui pose
+        // `SetMultithreadProtected(TRUE)` sur CE périphérique à chaque appel
+        // (`capture/ouverture.rs::creer_peripherique`, local `multithread`) — la
         // protection est donc reconstruite avec lui, pas seulement héritée de
         // l'ancien périphérique qui vient d'être libéré. Sans cela le
         // blocage intermittent d'`AcquireNextFrame` documenté à la tâche 10

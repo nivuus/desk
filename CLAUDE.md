@@ -1611,7 +1611,7 @@ code d'erreur).
 | `MULTIFENETRE_WGC=1` | Sonde `Windows.Graphics.Capture` (voie éliminée) |
 | `MULTIFENETRE_REPLIS=1` | Sonde les voies de repli |
 | `MULTIFENETRE_BANC=duplication\|printwindow` + `MULTIFENETRE_N=1..8` | Le banc de cadence |
-| `MULTIFENETRE_SORTIE=<adaptateur:sortie>` | Force la sortie DXGI capturée par le banc |
+| `MULTIFENETRE_SORTIE=<\\.\DISPLAYn>` | Force la sortie DXGI capturée par le banc. **Un NOM, plus un couple d'index** depuis D2 : `DesktopCapture::sur_sortie` résout par nom (les index sont positionnels). Un `0:1` récolte « aucune sortie DXGI nommée 0:1 » |
 | `MULTIFENETRE_CONTRAT=1` | Éprouve le contrat IOCTL du pilote (deux tampons simples, sans effet de bord) |
 | `MULTIFENETRE_VDD=1` | **Mesure ①** — montée en N de sorties virtuelles jusqu'au refus |
 | `MULTIFENETRE_VDD_VEILLE=<secondes>` | Épreuve du chien de garde : une sortie, aucun ping, relevé à 1 Hz |
@@ -2118,6 +2118,22 @@ lent n'a été observé** — **ne pas la réduire sur la foi de ce seul relevé
    rapprochement avec les **8 duplications d'un seul processus** du 31 juillet
    est une **INFÉRENCE** — rien ici ne l'établit. Fermer une fenêtre puis en
    rouvrir une réussit : la place libérée suffit.
+   ⚠️ **Le PRODUIT des points 1 et 2 n'est écrit nulle part ailleurs, et c'est
+   lui qui coûte.** `CAPACITE = 8` (`superviseur/boucle.rs`) est désormais connu
+   **supérieur au plafond mesuré de 4** : le superviseur accepte donc quatre
+   fenêtres qui ne peuvent pas aboutir. Chacune échoue au bout de ses
+   `RELANCES_MAX = 3` relances, soit **quatre tentatives** (l'originale plus
+   trois) ; et chaque tentative **détruit puis recrée** une sortie virtuelle —
+   la recréation étant précisément ce que le point 1 identifie comme la cause
+   des réouvertures parasites infligées aux sessions **saines**. Les fenêtres 5
+   à 8 déclenchent ainsi **jusqu'à 16 cycles création/destruction**, et de
+   l'ordre de **128 abandons de mutex** sur les sessions qui fonctionnent —
+   **pour zéro chance de succès**. Le 16 se dérive du code (4 fenêtres × 4
+   tentatives) ; le 128 est un **ordre de grandeur** (16 recréations × les
+   duplications alors ouvertes), **pas un relevé** : aucune exécution de D2 n'a
+   dépassé 4 fenêtres. **Ni `CAPACITE` ni le comportement n'ont été changés en
+   fin de branche** — ce serait une décision de conception, et le remède réel
+   est celui du point 1.
 3. **Une fuite de capacité reste ouverte** pour une fenêtre **neuve** dont la
    page-shell ne répond **jamais** : ni relancée ni abandonnée, elle consomme sa
    place indéfiniment. **Défaut préexistant, pas introduit par D2** ; le

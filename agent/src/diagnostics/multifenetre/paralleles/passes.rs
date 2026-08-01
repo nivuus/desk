@@ -33,9 +33,16 @@ use crate::mire;
 /// la retenter, et ne jamais la remplacer par un message reconstruit — la chaîne
 /// de causes porte le HRESULT, qui est le fond de la réponse.
 ///
-/// Le chien de garde est battu à chaque rang : à N=8 cette boucle ouvre huit
-/// duplications, et le temps qu'elle prend s'ajouterait sinon au trou de la
-/// passe témoin.
+/// Le chien de garde est battu à chaque rang, **avant** la sollicitation : à
+/// N=8 cette boucle ouvre huit duplications, et le temps qu'elle prend
+/// s'ajouterait sinon au trou de la passe témoin.
+///
+/// **Ce que ce battement borne, et ce qu'il ne borne plus.** Il raisonnait sur
+/// une ouverture instantanée ; depuis la tâche 11 bis, `partagee_sur` passe par
+/// `DesktopCapture::sur_sortie`, qui retente pendant `DUREE_FENETRE_OUVERTURE`
+/// et peut donc **bloquer jusqu'à 3 s** sans qu'on puisse pinguer pendant ce
+/// temps. Battre juste avant borne le trou à la durée d'UN rang — pas à zéro,
+/// et 3 s reste du même ordre que le `delai = 3` du pilote, d'unité inconnue.
 fn ouvrir_duplications(
     garde: &mut Garde<'_>,
     virtuelles: &[SortieDxgi],

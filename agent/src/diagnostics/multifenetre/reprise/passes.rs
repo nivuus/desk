@@ -238,8 +238,17 @@ fn journaliser_cle_de_lecture() {
 /// n'ait été éprouvé. Les deux boucles ne diraient pas la même chose du même
 /// HRESULT : les partager forcerait à choisir un des deux énoncés.
 ///
-/// Le chien de garde est battu à chaque rang : ouvrir k duplications prend un
-/// temps qui s'ajouterait sinon au dernier trou de ping.
+/// Le chien de garde est battu à chaque rang, **avant** la sollicitation : le
+/// temps d'ouvrir k duplications s'ajouterait sinon au dernier trou de ping.
+///
+/// **Ce que ce battement borne, et ce qu'il ne borne plus.** Il raisonnait sur
+/// une ouverture instantanée ; depuis la tâche 11 bis, `partagee_sur` passe par
+/// `DesktopCapture::sur_sortie`, qui retente pendant `DUREE_FENETRE_OUVERTURE`
+/// et peut donc **bloquer jusqu'à 3 s** sans qu'on puisse pinguer pendant ce
+/// temps. Battre juste avant remet le compteur à zéro et borne le trou à la
+/// durée d'UN rang — il ne l'annule pas, et 3 s reste du même ordre que le
+/// `delai = 3` du pilote, d'unité inconnue. C'est la borne atteignable sans
+/// changer la sémantique d'ouverture.
 fn ouvrir_duplications(
     garde: &mut Garde<'_>,
     virtuelles: &[SortieDxgi],
@@ -357,12 +366,20 @@ fn passe(
                 peinture_signalee = true;
                 tracing::error!(
                     causes = %super::super::causes(erreur),
-                    "peinture des mires perdue — la passe continue en mode DÉGRADÉ. Les mires ne \
-                     changent plus, donc le bureau non plus : les acquisitions ne trouveront plus \
-                     rien de neuf et le compte d'images cesse d'avancer. La CADENCE et le compte \
-                     d'images de cette passe sont INEXPLOITABLES à partir d'ici — ni justes, ni \
-                     « sous-estimés » d'un facteur connu. Ce qui reste valable : les morts de \
-                     voies, `next_frame` continuant d'être appelée à chaque tour"
+                    // Ce message affirmait « les mires ne changent plus, DONC le
+                    // bureau non plus, donc le compte d'images cesse
+                    // d'avancer » — au-delà de son relevé. `Mires::peindre`
+                    // échoue au premier `Present` fautif, APRÈS avoir présenté
+                    // les précédentes : rien ne garantit que la duplication
+                    // cesse d'émettre pour ces voies-là. La peinture est
+                    // partielle OU nulle, et c'est tout ce qu'on en sait.
+                    "peinture des mires perdue — la passe continue en mode DÉGRADÉ. La peinture \
+                     est PARTIELLE ou NULLE à partir d'ici : `peindre` échoue au premier \
+                     `Present` fautif, après avoir présenté les mires précédentes, et rien ne dit \
+                     lesquelles changent encore. La CADENCE et le compte d'images de cette passe \
+                     ne mesurent donc plus la capture — ni justes, ni « sous-estimés » d'un \
+                     facteur connu. Ce qui reste valable : les morts de voies, `next_frame` \
+                     continuant d'être appelée à chaque tour"
                 );
             }
         }

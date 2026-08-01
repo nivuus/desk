@@ -84,10 +84,42 @@ pub(super) fn sonder(
     }
 
     for &id in perdues {
+        // Battre AVANT la sollicitation, et pas seulement après.
+        //
+        // `DesktopCapture::sur_sortie` retente sa duplication pendant
+        // `DUREE_FENETRE_OUVERTURE` : elle **bloque jusqu'à 3 s** et ne peut
+        // pas être pinguée pendant ce temps. Le seul battement de cette boucle
+        // était celui qui suit la sollicitation, et la branche d'échec le
+        // SAUTAIT par son `continue` : sur huit voies perdues — le cas nominal
+        // de cette sonde — c'étaient huit fois 3 s bout à bout, soit ~24 s sans
+        // un ping, là où `compteurs::CADENCE_PING` vaut 1 s précisément parce
+        // que le `delai = 3` du pilote est d'unité INCONNUE, la seconde non
+        // exclue. Le pilote aurait repris ses sorties SOUS la sonde, et la
+        // sonde qui sert à départager deux réfutations serait devenue
+        // inimputable sans que rien ne le dise.
+        //
+        // Remettre le compteur à zéro juste avant le blocage borne le trou à la
+        // durée d'UN `sur_sortie` (~3 s), quel que soit le chemin pris ensuite :
+        // le `continue` repasse par ici. Les 3 s elles-mêmes restent
+        // irréductibles sans changer la sémantique d'ouverture — ce que la revue
+        // finale n'est pas le moment de faire.
+        if let Err(erreur) = garde.battre_si_du() {
+            tracing::error!(
+                voie = id,
+                causes = %super::super::causes(erreur),
+                "sonde post-mortem : chien de garde perdu avant de solliciter cette voie — le \
+                 pilote peut avoir repris ses sorties, ce qui suit n'est plus imputable"
+            );
+            return;
+        }
         let nom = virtuelles[id].nom_sortie.as_str();
         let mut capture = match DesktopCapture::sur_sortie(nom) {
             Ok(capture) => capture,
             Err(erreur) => {
+                // Battu ici AUSSI, et pas seulement au tour suivant : la trace
+                // ci-dessous n'est pas gratuite, et le `continue` ne doit
+                // laisser aucun chemin sans battement.
+                let _ = garde.battre_si_du();
                 tracing::error!(
                     voie = id,
                     nom_sortie = nom,
@@ -137,9 +169,16 @@ pub(super) fn sonder(
             Ok(true) => tracing::info!(
                 voie = id,
                 nom_sortie = nom,
+                // Ce message nommait « 3 tentatives en rafale et sans délai » —
+                // le calibrage d'AVANT la tâche 6 bis, que le commentaire de
+                // tête de ce fichier déclare pourtant corrigé deux écrans plus
+                // haut. Ce qui n'a pas suffi, désormais, c'est la FENÊTRE de
+                // reprise ; sa durée est donc journalisée au lieu d'être dite.
+                fenetre_reprise_ms =
+                    crate::capture_reprise::DUREE_FENETRE_REPRISE.as_millis() as u64,
                 "sonde post-mortem : la sortie se REDUPLIQUAIT et rendait une image une fois la \
                  topologie stabilisée — la mort de cette voie ne réfute PAS la reprise, elle \
-                 dit que 3 tentatives en rafale et sans délai ne suffisaient pas"
+                 dit que la fenêtre de reprise n'a pas suffi sur ce remaniement de topologie"
             ),
             // Le silence a deux causes possibles, et une seule est un
             // résultat : les nommer séparément est tout l'objet du suivi de
