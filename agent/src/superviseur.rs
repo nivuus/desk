@@ -6,6 +6,7 @@
 //! navigateur) et `table` (où en est chacune), tous deux en logique pure et
 //! testés sur l'hôte.
 
+pub mod enfants;
 pub mod fenetres;
 #[cfg(windows)]
 pub mod hook;
