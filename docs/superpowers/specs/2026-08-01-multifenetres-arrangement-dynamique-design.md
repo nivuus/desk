@@ -115,8 +115,8 @@ Ce n'est pas indifférent : le banc de diagnostic multi-fenêtres capture par
 passer par `WindowsSource`. Une reprise logée chez l'appelant laisserait donc le
 banc en dehors du chemin de production — et l'étape 1 de la recette (§6.1), qui
 est un point d'arrêt, ne prouverait rien de ce qui tournera réellement.
-`EchecAcquisition::AccesPerdu` n'atteint l'appelant qu'une fois le budget
-épuisé, et vaut alors « je n'ai pas pu revenir ».
+`EchecAcquisition::AccesPerdu` n'atteint l'appelant qu'une fois la fenêtre de
+reprise expirée (§3.4), et vaut alors « je n'ai pas pu revenir ».
 
 ### 3.3 La reconstruction est étroite — c'est le point de conception qui compte
 
@@ -135,27 +135,80 @@ Si c'est le périphérique lui-même qui est perdu, DXGI rend un code **distinct
 (`DXGI_ERROR_DEVICE_REMOVED`), qui reste classé `Panne` et donc fatal. La
 distinction est faite par le code, pas par nous.
 
-### 3.4 Un budget borné, remis à zéro par le succès
+### 3.4 Une fenêtre de reprise bornée en DURÉE, non bloquante
 
-Un nombre maximal de reprises **consécutives**, porté par `DesktopCapture` et
-remis à zéro dès qu'une image passe. Le compteur mesure une rafale, pas une
-usure.
+> ⚠️ **Cette section a été réécrite le 1ᵉʳ août 2026, après mesure.** Sa
+> première rédaction posait « un nombre maximal de reprises **consécutives** »,
+> et le plan en avait tiré `REPRISES_MAX = 3` sans délai. **La mesure du §6.1 a
+> réfuté ce calibrage**, sans réfuter la voie : voir l'encadré de relevé
+> ci-dessous. Le défaut était dans cette spec, pas dans son implémentation.
 
-Épuisé, la source se déclare épuisée comme aujourd'hui. Il en va de même si la
-sortie n'existe plus au moment de rouvrir : c'est le cas légitime de la fenêtre
-qu'on vient de fermer, et ce n'est pas une panne.
+**Ce que la mesure a relevé** (banc `MULTIFENETRE_REPRISE`, rangs 1, 2 et 4,
+une exécution chacun — donc aucun taux ; journaux
+`plans/journaux-multifenetres-d2/reprise-n{1,2,4}.log`) :
 
-Une trace `info!` par reprise — rare par construction, et c'est par elle que le
-diagnostic se fera si la reprise se met à boucler. Aucune trace par image, ni
-par tentative d'acquisition : la leçon du chantier TURN vaut ici aussi.
+- créer une sortie rend `ACCESS_LOST` sur **toutes** les duplications ouvertes,
+  ce qui reproduit le défaut central de D1 ;
+- **`rouvrir()` réussit** — la duplication est bien reconstruite ;
+- **mais elle rend aussitôt `ACCESS_LOST` à son tour**, et ce tant que Windows
+  n'a pas fini de reconfigurer sa topologie ;
+- les trois tentatives sans délai sont donc brûlées en **14 à 21 ms**, et les
+  voies meurent 66 à 232 ms après la perturbation, aux trois rangs, 0 survivante
+  sur 7 ;
+- **7 sondes post-mortem sur 7** rapportent que la même sortie se rouvre et rend
+  une image une fois la topologie stabilisée.
+
+**Le budget comptait des tentatives là où le phénomène a une durée.** C'est la
+seule chose que la mesure corrige.
+
+**La forme retenue.** Une **fenêtre de reprise**, portée par `DesktopCapture`,
+ouverte à la première perte d'accès et fermée par le premier succès :
+
+- tant que la fenêtre court, `next_frame` retente `rouvrir` **au plus une fois
+  par pas d'attente**, puis rend `Ok(None)` — « rien de neuf », le cas le plus
+  banal de cette API ;
+- **elle ne bloque jamais.** La reprise s'étale sur plusieurs appels au lieu de
+  dormir dans un seul. C'est ce qui distingue cette forme d'un simple « plus de
+  tentatives, avec délai » : `next_frame` est appelée depuis la boucle de
+  `Session::run`, et l'y bloquer trois secondes suspendrait du même coup les
+  demandes de keyframe, les changements de barreau de l'adaptation réseau et le
+  traitement des redimensionnements ;
+- à l'expiration, et alors seulement, `EchecAcquisition::AccesPerdu` remonte à
+  l'appelant, qui déclare la source épuisée comme aujourd'hui.
+
+**Deux valeurs, et ce qui les fonde** : la fenêtre doit couvrir largement les
+**3 s** que ce dépôt admet déjà pour qu'une topologie se stabilise
+(`DELAI_TOPOLOGIE`), et le pas d'attente doit être petit devant elle pour ne pas
+retarder la reprise réelle. ⚠️ **Le seuil réel n'est pas mesuré** : on sait que
+~20 ms ne suffisent pas et que 3 s suffisent, rien entre les deux. Les valeurs
+retenues sont donc **majorantes et non calibrées**, et il faut le dire partout
+où elles apparaissent.
+
+**La fenêtre se ferme sur un succès d'acquisition, `Ok(None)` compris** — c'est-
+à-dire dès que `AcquireNextFrame` cesse de refuser, même sans image neuve. La
+première rédaction disait « dès qu'une image passe », ce qui était trop étroit :
+un bureau immobile ne produit aucune image pendant de longues périodes, et une
+fenêtre qui ne se refermerait que sur une image livrée transformerait des pertes
+d'accès rares et sans rapport entre elles en une usure.
+
+Reste inchangé : si la sortie n'existe plus au moment de rouvrir, ce n'est pas
+une panne mais le cas légitime de la fenêtre qu'on vient de fermer.
+
+Une trace `info!` par tentative de réouverture — rare par construction, et c'est
+par elle que le diagnostic se fera. **Aucune trace par image ni par tentative
+d'acquisition** : la leçon du chantier TURN vaut ici aussi, et le pas d'attente
+est précisément ce qui borne le débit de cette trace.
 
 ### 3.5 Où ce code vit
 
 `capture.rs` est à 463 lignes et `windows_source.rs` à 648 (dette gelée,
 `CLAUDE.md`). La reprise vit donc dans un module enfant `capture/reprise.rs`.
 
-Le classificateur (d'un code d'erreur vers `EchecAcquisition`) et le budget
-(compteur, seuil, remise à zéro) y sont des **fonctions et types purs**,
+Le classificateur (d'un code d'erreur vers `EchecAcquisition`) et la fenêtre de
+reprise (ouverture, pas d'attente, expiration, fermeture sur succès) y sont des
+**fonctions et types purs** — la fenêtre raisonne sur des instants qu'on lui
+passe, elle ne lit aucune horloge elle-même, sans quoi elle ne serait pas
+testable —,
 au-dessus du `#[cfg(windows)]`, donc testables sur l'hôte Linux — c'est le
 motif déjà employé par `windows_source/sortie.rs`, et la seule part de ce
 chantier qu'un test automatisé peut couvrir.
@@ -305,8 +358,9 @@ Linux :
 - la classification d'un code d'erreur en `EchecAcquisition` — dont le cas
   `DXGI_ERROR_ACCESS_LOST`, le cas `DXGI_ERROR_DEVICE_REMOVED` qui doit rester
   fatal, et le cas `WAIT_TIMEOUT` qui ne doit pas devenir un échec ;
-- le budget de reprise : consommation, remise à zéro par un succès,
-  épuisement ;
+- la fenêtre de reprise : ouverture à la première perte, respect du pas
+  d'attente, expiration au bout de la durée, fermeture par un succès — dont le
+  cas `Ok(None)`, qui doit la fermer aussi ;
 - l'appariement tolérant : une sortie à ±4 px apparie, au-delà non ;
 - l'arrondi pair du viewport, côté client (`client/src/main.ts`, suite `vitest`
   existante) ;
@@ -334,10 +388,16 @@ réserve** : c'est la voie de repli si l'étape 1 de la recette réfute la repri
 ## 9. Risques assumés
 
 - **Une reprise peut échouer à son tour** si la topologie bouge encore pendant
-  la reconstruction — deux fenêtres ouvertes coup sur coup. Le budget du §3.4
-  couvre les rafales courtes ; une rafale suffisamment serrée l'épuisera. C'est
-  une limite, et elle sera dite dans le rapport plutôt que découverte par un
-  utilisateur.
+  la reconstruction — deux fenêtres ouvertes coup sur coup. La fenêtre du §3.4
+  se referme sur le premier succès et se rouvre à la perte suivante : deux
+  remaniements espacés sont donc couverts. Ce qui ne l'est pas, c'est un
+  remaniement **continu** plus long que la fenêtre elle-même. C'est une limite,
+  et elle sera dite dans le rapport plutôt que découverte par un utilisateur.
+- **Le seuil réel de stabilisation de la topologie n'est PAS mesuré** : la
+  mesure du §6.1 établit que ~20 ms ne suffisent pas et que 3 s suffisent, rien
+  entre les deux. La durée de fenêtre retenue est **majorante et non calibrée**,
+  au même titre que `BPP_MIN` l'est pour le contrôleur de congestion de ce
+  dépôt.
 - **Le premier plan peut ne pas suffire au clavier** (§5.2), et D2 ne s'engage
   pas à le faire fonctionner — seulement à le tenter et à rendre compte.
 - **Cinq fenêtres est ce que la recette exercera**, pas un plafond mesuré.
