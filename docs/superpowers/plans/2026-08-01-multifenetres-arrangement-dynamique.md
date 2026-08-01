@@ -1452,6 +1452,215 @@ mesurer, on ne saura toujours pas où est le seuil.
 
 ---
 
+## Tâche 6 quater : le témoin qui départage — relâcher avant d'acquérir
+
+> **Tâche née de la seconde réfutation.** La tâche 6 ter a montré que la fenêtre
+> de 8 s est consommée entière — 54 tentatives par voie, le maximum théorique —
+> sans qu'une seule acquisition passe, aux trois rangs, avec **0 échec de
+> `rouvrir()` sur 378 tentatives**. Le délai est donc écarté. Trois variables
+> séparaient encore la reprise (qui échoue) de la sonde post-mortem (qui
+> réussit 7/7). Cette tâche en isole une.
+
+### Ce que la relecture du code a trouvé, et pourquoi c'est le suspect n°1
+
+`agent/src/capture.rs:235` appelle `dupliquer(&self.device, &output)` **alors que
+`self.duplication` détient encore l'ancienne duplication** : elle n'est remplacée
+qu'à la ligne 240, donc relâchée seulement à cet instant.
+
+Or **DXGI n'autorise qu'une duplication par sortie** — le dépôt le sait et
+`CLAUDE.md` le porte noir sur blanc : « *DXGI n'autorise qu'UNE seule duplication
+ouverte par sortie — exactement une, pas « un nombre très limité ». Un
+`DesktopCapture` provisoire laissé en vie fait échouer la suivante.* »
+
+On demande donc une seconde duplication de la même sortie sans avoir relâché la
+première. Le relevé est cohérent avec cette lecture : l'appel **réussit** (378
+sur 378) et ce qu'il rend est **mort-né**.
+
+C'est une hypothèse, **pas un fait**. Mais elle a trois propriétés qui la font
+passer devant celle du périphérique :
+
+1. elle explique le relevé sans rien supposer d'autre ;
+2. **relâcher avant d'acquérir est correct indépendamment du résultat** — la
+   version actuelle viole une contrainte documentée de DXGI ;
+3. elle ne coûte rien, là où reconstruire le périphérique obligerait à détruire
+   l'encodeur qui y est lié, dont le pire cas est borné à 8 s avec un gel
+   observé 1 fois sur 6.
+
+**Files:**
+- Modify: `agent/src/capture.rs` (champ `duplication`, `rouvrir`, `next_frame`)
+- Modify: `agent/src/capture/ouverture.rs` si le constructeur en dépend
+
+**Interfaces:**
+- Consumes: `FenetreDeReprise`, `Tentative`, `est_acces_perdu` (inchangés).
+- Produces : aucune interface publique neuve. `DesktopCapture::rouvrir` garde
+  sa signature ; c'est son ordre d'opérations qui change.
+
+- [ ] **Étape 1 : relâcher explicitement avant d'acquérir**
+
+Le champ devient `duplication: Option<IDXGIOutputDuplication>`, seul moyen en
+Rust de **relâcher** un objet COM détenu par un champ sans le remplacer par un
+autre au même instant.
+
+```rust
+    /// Reconstruit la duplication après une perte d'accès, en conservant le
+    /// périphérique D3D11 (voir la doc de cette méthode pour le pourquoi).
+    ///
+    /// **L'ancienne duplication est relâchée AVANT que la neuve ne soit
+    /// demandée, et l'ordre est le fond de cette méthode.** DXGI n'autorise
+    /// qu'**une** duplication par sortie. La version précédente appelait
+    /// `dupliquer()` alors que `self.duplication` détenait encore l'objet
+    /// périmé : l'appel réussissait — 378 fois sur 378 au relevé du
+    /// 1ᵉʳ août 2026 — et rendait une duplication **mort-née**, qui refusait
+    /// aussitôt toute acquisition. Huit secondes de réessais toutes les 150 ms
+    /// n'en sortaient jamais.
+    pub fn rouvrir(&mut self) -> Result<()> {
+        // L'image détenue d'abord : `release_frame` appelle `ReleaseFrame` sur
+        // la duplication qu'on s'apprête à relâcher.
+        self.release_frame();
+
+        // PUIS la duplication elle-même, et c'est cette ligne qui compte.
+        // `None` la fait relâcher ici, pas à l'affectation d'après.
+        self.duplication = None;
+
+        let factory: IDXGIFactory1 =
+            unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI (réouverture)")?;
+        let (_adapter, output) = ouvrir_sortie(&factory, &self.cible)
+            .context("résolution de la sortie à rouvrir")?;
+        let (duplication, largeur, hauteur) = dupliquer(&self.device, &output)?;
+
+        self.duplication = Some(duplication);
+        self.desktop_width = largeur;
+        self.desktop_height = hauteur;
+        Ok(())
+    }
+```
+
+⚠️ **Le champ devenant `Option`, tous ses usages doivent le déballer.** Un
+`DesktopCapture` dont la duplication vaut `None` n'existe que le temps de
+`rouvrir` : un accès qui la trouve absente est un défaut de programmation, pas
+un cas d'exploitation. Emploie une aide privée qui le dit :
+
+```rust
+    /// La duplication courante. Absente seulement pendant `rouvrir`, entre le
+    /// relâchement et l'acquisition — état qui ne s'échappe jamais de cette
+    /// méthode.
+    fn duplication(&self) -> Result<&IDXGIOutputDuplication> {
+        self.duplication
+            .as_ref()
+            .ok_or_else(|| anyhow!("duplication absente hors d'une réouverture"))
+    }
+```
+
+- [ ] **Étape 2 : journaliser le HRESULT NU de l'échec d'acquisition**
+
+**Le journal ne l'imprime nulle part**, et le rapport de la tâche 6 ter a dû
+**inférer** que l'erreur était `0x887A0026` en relisant le code. Sur une mesure
+qui décide de la poursuite d'un chantier, une chaîne de causes inférée ne vaut
+pas une chaîne relevée.
+
+Sur le chemin `Tentative::Rouvrir` de `next_frame`, la trace existante gagne le
+code nu de l'échec qui a motivé la réouverture :
+
+```rust
+                        tracing::info!(
+                            tentative = self.fenetre.tentatives(),
+                            cible = ?self.cible,
+                            hresult = format!("{:#010x}", code_perdu),
+                            "accès à la duplication perdu, réouverture"
+                        );
+```
+
+où `code_perdu` est le `i32` rendu par `e.code().0` dans `tenter_acquisition`,
+remonté avec le variant. Fais-le porter par `EchecAcquisition::AccesPerdu(i32)`
+plutôt que par un champ de la structure : l'information appartient à l'échec.
+
+⚠️ **Le `Display` de `EchecAcquisition` doit alors montrer ce code lui aussi** —
+c'est lui que `windows_source` journalise en déclarant la source épuisée, et
+c'est la dernière ligne qu'un lecteur verra.
+
+- [ ] **Étape 3 : vérifier l'hôte, puis compiler sur la VM**
+
+Run: `cargo test --manifest-path agent/Cargo.toml`
+Expected: 259 tests passés. Les tests de `FenetreDeReprise` sont purs et ne
+voient pas ce changement ; si l'un d'eux casse, c'est que le variant a changé de
+forme sans que son test suive.
+
+```bash
+git add agent/src/capture.rs agent/src/capture/ouverture.rs
+scripts/build-agent.sh
+```
+Expected: compilation sans erreur.
+
+- [ ] **Étape 4 : commit**
+
+```bash
+git add agent/src/capture.rs agent/src/capture/ouverture.rs
+git commit -m "fix(d2): relacher la duplication AVANT d'en demander une neuve
+
+DXGI n'autorise qu'UNE duplication par sortie. `rouvrir` appelait pourtant
+`dupliquer()` alors que le champ detenait encore l'objet perime, relache
+seulement a l'affectation suivante. L'appel reussissait — 378 fois sur 378 au
+releve du 1er aout 2026 — et rendait une duplication MORT-NEE, qui refusait
+aussitot toute acquisition : huit secondes de reessais toutes les 150 ms n'en
+sortaient jamais, aux trois rangs.
+
+C'est l'explication la plus economique des deux refutations, et elle vaut
+correction independamment du resultat : acquerir sans avoir relache viole une
+contrainte documentee de DXGI que ce depot porte deja dans CLAUDE.md.
+
+Le champ devient Option, seul moyen en Rust de relacher un objet COM detenu par
+un champ sans le remplacer au meme instant. L'etat None ne s'echappe jamais de
+`rouvrir`.
+
+Au passage, le HRESULT nu de l'echec d'acquisition est journalise : le rapport
+de la mesure precedente a du l'INFERER en relisant le code, faute qu'il soit
+ecrit nulle part.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+```
+
+---
+
+## Tâche 6 quinquies : rejouer la mesure, et lire le témoin
+
+Rejouer **intégralement** le protocole de la tâche 6, rangs 1, 2 et 4, sur le
+binaire corrigé. Journaux versés sous `reprise-relachee-n{1,2,4}.log`, **à côté**
+des deux séries précédentes et sans les remplacer : les trois se lisent
+ensemble.
+
+Le critère de réception est **inchangé et non déplaçable** : aux trois rangs,
+chaque voie rend encore des images après la perturbation, aucun verdict faux
+après perturbation, au moins une reprise observée. Et `verdicts_faux = 0` ne
+compte que **s'il y a eu des lectures** — le piège s'est réalisé deux fois.
+
+**Ce que ce tirage doit relever, et qui n'existait dans aucun des deux
+précédents :**
+
+- **le HRESULT nu** de chaque échec d'acquisition ayant motivé une réouverture,
+  désormais journalisé. Si le code n'est **pas** `0x887A0026`, tout ce qui
+  précède est à relire : les deux rapports antérieurs l'avaient inféré ;
+- **le nombre de tentatives par voie**. Au tirage précédent il valait 54, le
+  maximum théorique, sur les sept voies. **Un nombre petit — une ou deux — est
+  le signe attendu si l'hypothèse porte** ;
+- **le délai entre la perturbation et la première image de la passe B**, qui
+  n'a jamais pu être mesuré, faute d'image. C'est lui qui dira si la fenêtre de
+  8 s est très surdimensionnée.
+
+**Trois issues, et il faut les distinguer dans le rapport :**
+
+1. **Reçu** — l'hypothèse du relâchement portait. Le dire, et dire du même coup
+   que la piste du périphérique D3D11 devient **sans objet**, non pas réfutée.
+2. **Refusé, mais les tentatives par voie ont chuté** — l'hypothèse porte en
+   partie ; il reste une seconde cause, et la piste du périphérique redevient
+   la suivante à départager.
+3. **Refusé à l'identique** — 54 tentatives par voie de nouveau : l'hypothèse ne
+   portait pas, et c'est le périphérique conservé qu'il faut mettre en cause.
+   ⚠️ **Ne pas enchaîner sur cette correction sans en référer** : elle oblige à
+   détruire l'encodeur lié au périphérique, dont le pire cas est borné à 8 s
+   avec un gel déjà observé.
+
+---
+
 ## Tâche 7 : appariement tolérant et attente sur condition observable
 
 **Files:**
