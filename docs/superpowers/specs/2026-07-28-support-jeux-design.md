@@ -386,6 +386,39 @@ Imposé par la cible « internet quelconque ». Bénéficie à tout le produit.
 
 Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
 
+> 🧪 **Sous-bloc D1 exécuté et éprouvé le 1ᵉʳ août 2026 — résultats :
+> `plans/2026-08-01-multifenetres-tranche-verticale-resultats.md`.** Première
+> exécution réelle du modèle, et donc **premier verdict qui ne vienne ni d'un
+> banc ni du compilateur**.
+>
+> **Ce que D1 a réglé, et qui est vérifié en session réelle** : le superviseur
+> détecte les fenêtres Windows, crée une sortie virtuelle par fenêtre **à la
+> taille annoncée par le navigateur**, y pose la fenêtre, lance un enfant qui la
+> capture, et la page-shell ouvre **une fenêtre navigateur par fenêtre
+> Windows** ; chacune affiche **son** application et elle seule, plein cadre,
+> à 1280×720. **Vérifié jusqu'à quatre fenêtres simultanées**, sur de vraies
+> applications (Bloc-notes, Explorateur, Firefox) et non des mires. L'audio est
+> bien porté par **une seule** fenêtre. Aucune sortie virtuelle n'a fuité, sur
+> trois contrôles depuis un processus neuf.
+>
+> **Ce qui reste à régler, et qui bloque la démonstration bout en bout** :
+> **créer une sortie virtuelle fait abandonner le mutex des duplications DXGI
+> déjà ouvertes** (`0x887A0026`), donc **toute nouvelle fenêtre tue toutes les
+> sessions en cours** — reproduit sur quatre exécutions. Trois défauts de
+> moindre portée l'accompagnent : l'index `(adaptateur, sortie)` est positionnel
+> et n'est pas un identifiant utilisable pour désigner une sortie à un enfant ;
+> le chemin de redimensionnement de l'enfant ignore le mode « sortie DXGI
+> entière » et retombe sur une capture du bureau ; une hauteur de viewport
+> impaire — le cas banal — rend l'appariement impossible.
+>
+> **Ce que D1 n'a PAS relevé alors qu'il le devait** : le **plafond d'encodeurs
+> en multi-processus** (voir la puce « Budget encodeurs » et le §9 de la
+> conception D1). Il n'a pas été approché — 4 encodeurs NVENC construits de
+> front dans 4 processus, aucun refus, 6 sorties virtuelles attachées
+> simultanément sans refus du pilote non plus. **La question reste donc
+> entièrement ouverte.** De même, l'injection **clavier** n'est ni démontrée ni
+> réfutée, et rien de la latence ni de la cadence n'a été mesuré.
+
 - **Détection** : `SetWinEventHook` sur `EVENT_OBJECT_SHOW`, `EVENT_OBJECT_HIDE`
   et `EVENT_OBJECT_DESTROY`, filtré sur `idObject == OBJID_WINDOW`. Hook global
   `WINEVENT_OUTOFCONTEXT`, nécessitant une pompe de messages dans un thread
@@ -436,6 +469,15 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
   « créer 8 → en détruire 1 → tenter un 9ᵉ » n'a jamais été jouée.
   Journaux : `plans/journaux-mesures-prealables/nvenc-partage-temoin.log`,
   `nvenc-separe.log`.
+
+  ⚠️ **Ce chiffre de 8 reste un chiffre de PROCESSUS UNIQUE.** Le sous-bloc D1,
+  qui devait le relever en multi-processus (un encodeur par processus enfant),
+  **n'y est pas parvenu** : ses sessions meurent avant d'atteindre le rang utile
+  (voir l'encadré D1 en tête de ce chantier). Ce qui est observé en
+  multi-processus le 1ᵉʳ août 2026 : **4 encodeurs NVENC construits de front
+  dans 4 processus distincts, sans un seul refus**. **La question « par
+  processus ou global ? » reste donc entièrement ouverte**, et rien n'autorise à
+  transposer le 8 tel quel.
 - **Risque n°1 — popup blocker : LEVÉ le 28/07/2026.** Mesuré sur ChromeOS —
   résultats et protocole dans `plans/2026-07-28-spike-multifenetres-resultats.md`.
   Le modèle tient, mais l'hypothèse « une PWA installée a plus de latitude » est
@@ -654,6 +696,13 @@ justifie le chantier 0 du §8.
    blocker) a été levé par un test isolé le 28/07/2026, avant les chantiers A et
    B comme prévu : le modèle produit est confirmé, par la permission pop-up du
    site et non par le statut de PWA installée (§5 D).
+   **Son sous-bloc D1 (tranche verticale) a été construit et exécuté le
+   1ᵉʳ août 2026** : une fenêtre navigateur par fenêtre Windows, sur sa propre
+   sortie virtuelle, dans son propre processus — **acquis jusqu'à quatre
+   fenêtres simultanées**, mais **l'arrangement ne survit pas à l'ouverture
+   d'une fenêtre de plus**, et le plafond d'encodeurs en multi-processus n'a pas
+   pu être relevé. Détail et suite à donner : encadré D1 du §5 D et
+   `plans/2026-08-01-multifenetres-tranche-verticale-resultats.md`.
 
 Cet ordre est une recommandation, pas un engagement. L'argument pour remonter D
 en premier existe : il change la capture, et A/B/C construits sur une hypothèse

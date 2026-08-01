@@ -1,0 +1,225 @@
+[   0.7s] + page attachée  session=09FF44BC url=about:blank
+[   0.7s] + page attachée  session=145CAB57 url=http://192.168.3.1:5173/shell.html
+[   0.7s] shell demandée http://192.168.3.1:5173/shell.html EF0673EB58F27D8B4B7DA8D38AD9C319
+[   3.7s] statut shell : bureau connecté
+[   3.7s] >>> lancement du superviseur
+[   4.3s] run-agent.sh stdout : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   6.8s] ÉTAT SHELL (t+2.5s) liste=[] statut="bureau connecté"
+[   6.8s]   pages ouvertes : about:blank , http://192.168.3.1:5173/shell.html
+[   7.4s] + page attachée  session=77CD3810 url=
+[   7.5s] + page attachée  session=F430D028 url=
+[   7.6s] + page attachée  session=DEA48CE4 url=
+[   7.6s] + page attachée  session=A684513D url=
+[  29.3s] ÉTAT SHELL (POINT 1 — fenêtres préexistantes) liste=[Ce PC — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | encode-test — Mozilla Firefox — ouverte ] statut="bureau connecté"
+[  29.3s]   pages ouvertes : about:blank , http://192.168.3.1:5173/shell.html , http://192.168.3.1:5173/?session=w-1 , http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-3 , http://192.168.3.1:5173/?session=w-4
+[  29.3s] STATS (POINT 1) {
+ "about:blank": {
+  "pc": null
+ },
+ "http://192.168.3.1:5173/?session=w-1": {
+  "etat": "connected",
+  "images": 7,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 138855,
+  "audio": {
+   "energie": 0,
+   "octets": 1592,
+   "samples": 704160
+  },
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-2": {
+  "etat": "connected",
+  "images": 6,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 139105,
+  "audio": null,
+  "rtt": 0.001,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-3": {
+  "etat": "connected",
+  "images": 4,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 137840,
+  "audio": null,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-4": {
+  "etat": "connected",
+  "images": 26,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 85805,
+  "audio": null,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ }
+}
+[  29.3s] >>> POINT 2 SAUTÉ volontairement (SANS_NOUVELLE_FENETRE) : ce passage vise les points 3/4/5/7/8 sur un arrangement STABLE
+[  29.3s] >>> POINT 5 : lecture d’un son sur la VM
+[  29.4s] STATS (POINT 5 avant son) {
+ "about:blank": {
+  "pc": null
+ },
+ "http://192.168.3.1:5173/?session=w-1": {
+  "etat": "connected",
+  "images": 7,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 138855,
+  "audio": {
+   "energie": 0,
+   "octets": 1592,
+   "samples": 704160
+  },
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-2": {
+  "etat": "connected",
+  "images": 6,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 139105,
+  "audio": null,
+  "rtt": 0.001,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-3": {
+  "etat": "connected",
+  "images": 4,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 137840,
+  "audio": null,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-4": {
+  "etat": "connected",
+  "images": 26,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 85805,
+  "audio": null,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ }
+}
+[  29.9s] + page attachée  session=78C32206 url=
+[  30.0s] - page détachée   session=78C32206 url=
+[  38.8s] STATS (POINT 5 après son) {
+ "about:blank": {
+  "pc": null
+ },
+ "http://192.168.3.1:5173/?session=w-1": {
+  "etat": "connected",
+  "images": 9,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 231814,
+  "audio": {
+   "energie": 0,
+   "octets": 61302,
+   "samples": 1160640
+  },
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-2": {
+  "etat": "connected",
+  "images": 6,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 228865,
+  "audio": null,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-3": {
+  "etat": "connected",
+  "images": 4,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 227600,
+  "audio": null,
+  "rtt": 0.001,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-4": {
+  "etat": "connected",
+  "images": 26,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 111611,
+  "audio": null,
+  "rtt": 0.003,
+  "viewport": "1280x720"
+ }
+}
+[  38.8s] DELTA AUDIO : {"about:blank":{"energieAvant":null,"energieApres":null,"delta":null,"octetsDelta":null,"pisteAudio":"non"},"http://192.168.3.1:5173/?session=w-1":{"energieAvant":0,"energieApres":0,"delta":0,"octetsDelta":59710,"pisteAudio":"oui"},"http://192.168.3.1:5173/?session=w-2":{"energieAvant":null,"energieApres":null,"delta":null,"octetsDelta":null,"pisteAudio":"non"},"http://192.168.3.1:5173/?session=w-3":{"energieAvant":null,"energieApres":null,"delta":null,"octetsDelta":null,"pisteAudio":"non"},"http://192.168.3.1:5173/?session=w-4":{"energieAvant":null,"energieApres":null,"delta":null,"octetsDelta":null,"pisteAudio":"non"}}
+[  38.8s] >>> POINT 3 : frappe clavier dans la fenêtre du Bloc-notes
+[  38.8s]    frappe "PAGE1" dans about:blank
+[  42.1s]    frappe "PAGE2" dans http://192.168.3.1:5173/?session=w-1
+[  45.3s]    frappe "PAGE3" dans http://192.168.3.1:5173/?session=w-2
+[  48.6s]    frappe "PAGE4" dans http://192.168.3.1:5173/?session=w-3
+[  51.8s]    frappe "PAGE5" dans http://192.168.3.1:5173/?session=w-4
+[  58.6s] + page attachée  session=ACA526EC url=
+[  58.7s] - page détachée   session=ACA526EC url=
+[  63.5s] --- fenêtres VM (après frappe) ---
+11440	explorer	0xd7018e	1280x720+2400+0	Ce PC
+2848	firefox	0x3c00e8	1280x720+3680+0	encode-test — Mozilla Firefox
+12196	notepad	0x30246	1280x720+4960+0	Sans titre - Bloc-notes
+12416	notepad	0xe011c	1280x720+6240+0	Sans titre - Bloc-notes
+[  63.6s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/b24a1a5a-167f-4286-98f7-e73ff7946fd6/scratchpad/recette/captures/f-point3-1-app.png  (about:blank)
+[  63.9s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/b24a1a5a-167f-4286-98f7-e73ff7946fd6/scratchpad/recette/captures/f-point3-2-shell.png  (http://192.168.3.1:5173/shell.html)
+[  64.0s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/b24a1a5a-167f-4286-98f7-e73ff7946fd6/scratchpad/recette/captures/f-point3-3-app.png  (http://192.168.3.1:5173/?session=w-1)
+[  64.1s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/b24a1a5a-167f-4286-98f7-e73ff7946fd6/scratchpad/recette/captures/f-point3-4-app.png  (http://192.168.3.1:5173/?session=w-2)
+[  64.2s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/b24a1a5a-167f-4286-98f7-e73ff7946fd6/scratchpad/recette/captures/f-point3-5-app.png  (http://192.168.3.1:5173/?session=w-3)
+[  64.4s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/b24a1a5a-167f-4286-98f7-e73ff7946fd6/scratchpad/recette/captures/f-point3-6-app.png  (http://192.168.3.1:5173/?session=w-4)
+[  64.4s] >>> POINT 6 SAUTÉ volontairement (SANS_NOUVELLE_FENETRE)
+[  64.4s] >>> POINT 7 : fermeture de la PAGE about:blank
+[  64.4s] - page détachée   session=09FF44BC url=about:blank
+[  64.6s] + page attachée  session=E8AEB068 url=
+[  64.7s] + page attachée  session=A2AF574B url=
+[  67.9s] - page détachée   session=DEA48CE4 url=http://192.168.3.1:5173/?session=w-3
+[  67.9s] - page détachée   session=77CD3810 url=http://192.168.3.1:5173/?session=w-1
+[  67.9s] - page détachée   session=F430D028 url=http://192.168.3.1:5173/?session=w-2
+[  67.9s] - page détachée   session=A684513D url=http://192.168.3.1:5173/?session=w-4
+[  68.1s] - page détachée   session=E8AEB068 url=http://192.168.3.1:5173/?session=w-7
+[  68.1s] - page détachée   session=A2AF574B url=http://192.168.3.1:5173/?session=w-8
+[  68.4s] ÉTAT SHELL (POINT 7 — après fermeture de la page) liste=[] statut="bureau connecté"
+[  68.4s]   pages ouvertes : http://192.168.3.1:5173/shell.html
+[  69.0s] + page attachée  session=5BDD0BAF url=
+[  69.1s] - page détachée   session=5BDD0BAF url=
+[  73.9s] --- fenêtres VM (après fermeture de la page navigateur) ---
+11440	explorer	0xd7018e	1280x720+0+0	Ce PC
+2848	firefox	0x3c00e8	1280x720+0+0	encode-test — Mozilla Firefox
+12196	notepad	0x30246	1280x720+0+0	Sans titre - Bloc-notes
+12416	notepad	0xe011c	1280x720+0+0	Sans titre - Bloc-notes
+[  73.9s]    clic sur « Rouvrir »
+[  81.9s] ÉTAT SHELL (POINT 7 — après Rouvrir) liste=[] statut="bureau connecté"
+[  81.9s]   pages ouvertes : http://192.168.3.1:5173/shell.html
+[  81.9s] STATS (POINT 7 après Rouvrir) {}
+[  81.9s] >>> POINT 8 : déplacement d’une fenêtre Windows hors de sa sortie
+[  82.5s] + page attachée  session=1475F149 url=
+[  82.5s] - page détachée   session=1475F149 url=
+[  94.9s] + page attachée  session=AF03D4F1 url=
+[  94.9s] - page détachée   session=AF03D4F1 url=
+[  97.1s] + page attachée  session=B782F80E url=
+[  97.1s] - page détachée   session=B782F80E url=
+[  99.8s] --- fenêtres VM (après déplacement forcé) ---
+11440	explorer	0xd7018e	1280x720+0+0	Ce PC
+2848	firefox	0x3c00e8	700x500+10+10	encode-test — Mozilla Firefox
+12196	notepad	0x30246	700x500+10+10	Sans titre - Bloc-notes
+12416	notepad	0xe011c	700x500+10+10	Sans titre - Bloc-notes
+[  99.9s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/b24a1a5a-167f-4286-98f7-e73ff7946fd6/scratchpad/recette/captures/f-point8-1-shell.png  (http://192.168.3.1:5173/shell.html)
+[  99.9s] STATS (POINT 8) {}
+[  99.9s] ÉTAT SHELL (FIN) liste=[] statut="bureau connecté"
+[  99.9s]   pages ouvertes : http://192.168.3.1:5173/shell.html

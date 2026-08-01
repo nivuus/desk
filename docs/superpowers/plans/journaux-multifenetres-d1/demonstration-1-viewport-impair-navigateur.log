@@ -1,0 +1,73 @@
+[   0.5s] + page attachée  session=5ABB97C7 url=about:blank
+[   0.6s] + page attachée  session=86A716F0 url=http://192.168.3.1:5173/shell.html
+[   0.6s] shell demandée http://192.168.3.1:5173/shell.html F0C61C897DE84F1773AD129935C034A2
+[   3.6s] statut shell : bureau connecté
+[   3.6s] >>> lancement du superviseur
+[   4.0s] run-agent.sh stdout : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   6.5s] ÉTAT SHELL (t+2.5s) liste=[] statut="bureau connecté"
+[   6.5s]   pages ouvertes : about:blank , http://192.168.3.1:5173/shell.html
+[   7.2s] + page attachée  session=9D574CC6 url=
+[   7.2s] + page attachée  session=030301EA url=
+[   9.0s] ÉTAT SHELL (POINT 1 — fenêtres préexistantes) liste=[Ce PC — ouverte  | encode-test — Mozilla Firefox — ouverte ] statut="bureau connecté"
+[   9.0s]   pages ouvertes : about:blank , http://192.168.3.1:5173/shell.html , http://192.168.3.1:5173/?session=w-1 , http://192.168.3.1:5173/?session=w-2
+[   9.0s] STATS (POINT 1) {
+ "about:blank": {
+  "pc": null
+ },
+ "http://192.168.3.1:5173/?session=w-1": {
+  "pc": null
+ },
+ "http://192.168.3.1:5173/?session=w-2": {
+  "pc": null
+ }
+}
+[   9.8s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/b24a1a5a-167f-4286-98f7-e73ff7946fd6/scratchpad/recette/captures/point1-1-app.png  (about:blank)
+[  10.6s] - page détachée   session=030301EA url=http://192.168.3.1:5173/?session=w-2
+[  10.8s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/b24a1a5a-167f-4286-98f7-e73ff7946fd6/scratchpad/recette/captures/point1-2-shell.png  (http://192.168.3.1:5173/shell.html)
+[  10.9s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/b24a1a5a-167f-4286-98f7-e73ff7946fd6/scratchpad/recette/captures/point1-3-app.png  (http://192.168.3.1:5173/?session=w-1)
+[  10.9s] >>> POINT 2 : ouverture du Bloc-notes sur la VM
+[  11.5s] + page attachée  session=2EB26E66 url=
+[  11.7s] - page détachée   session=2EB26E66 url=
+[  11.7s] + page attachée  session=B14E918F url=
+[  11.8s] + page attachée  session=EF15AD68 url=
+[  11.8s] + page attachée  session=F1DEF45F url=
+[  16.6s] - page détachée   session=9D574CC6 url=http://192.168.3.1:5173/?session=w-1
+[  16.7s] - page détachée   session=B14E918F url=http://192.168.3.1:5173/?session=w-4
+[  16.8s] - page détachée   session=F1DEF45F url=http://192.168.3.1:5173/?session=w-6
+[  16.8s] - page détachée   session=EF15AD68 url=http://192.168.3.1:5173/?session=w-5
+[  21.4s] ÉTAT SHELL (p2 t+10s) liste=[] statut="« encode-test — Mozilla Firefox » n'a pas pu s'ouvrir : la sortie créée est introuvable dans la topologie d'affichage."
+[  21.4s]   pages ouvertes : about:blank , http://192.168.3.1:5173/shell.html
+[  31.4s] ÉTAT SHELL (p2 t+20s) liste=[] statut="« encode-test — Mozilla Firefox » n'a pas pu s'ouvrir : la sortie créée est introuvable dans la topologie d'affichage."
+[  31.4s]   pages ouvertes : about:blank , http://192.168.3.1:5173/shell.html
+[  41.4s] ÉTAT SHELL (p2 t+30s) liste=[] statut="« encode-test — Mozilla Firefox » n'a pas pu s'ouvrir : la sortie créée est introuvable dans la topologie d'affichage."
+[  41.4s]   pages ouvertes : about:blank , http://192.168.3.1:5173/shell.html
+[  51.4s] ÉTAT SHELL (p2 t+40s) liste=[] statut="« encode-test — Mozilla Firefox » n'a pas pu s'ouvrir : la sortie créée est introuvable dans la topologie d'affichage."
+[  51.4s]   pages ouvertes : about:blank , http://192.168.3.1:5173/shell.html
+[  51.5s] ÉTAT SHELL (POINT 2 — après ouverture du Bloc-notes) liste=[] statut="« encode-test — Mozilla Firefox » n'a pas pu s'ouvrir : la sortie créée est introuvable dans la topologie d'affichage."
+[  51.5s]   pages ouvertes : about:blank , http://192.168.3.1:5173/shell.html
+[  52.0s] + page attachée  session=50106F09 url=
+[  52.1s] - page détachée   session=50106F09 url=
+[  56.9s] --- fenêtres VM (après ouverture Bloc-notes) ---
+11440	explorer	0xd7018e	1280x713+0+0	Ce PC
+2848	firefox	0x3c00e8	780x492+56+0	encode-test — Mozilla Firefox
+12416	notepad	0xe011c	1280x713+0+0	Sans titre - Bloc-notes
+[  56.9s] STATS (POINT 2) {
+ "about:blank": {
+  "pc": null
+ }
+}
+[ 292.6s] + page attachée  session=C61A194A url=
+[ 292.7s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/b24a1a5a-167f-4286-98f7-e73ff7946fd6/scratchpad/recette/captures/point2-1-app.png  (about:blank)
+[ 292.7s] + page attachée  session=BF9D2C1D url=
+[ 292.8s] - page détachée   session=C61A194A url=
+[ 292.8s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/b24a1a5a-167f-4286-98f7-e73ff7946fd6/scratchpad/recette/captures/point2-2-shell.png  (http://192.168.3.1:5173/shell.html)
+[ 292.8s] - page détachée   session=BF9D2C1D url=
+[ 292.8s]    capture impossible pour : Error: {"code":-32001,"message":"Session with given id not found."}
+[ 292.8s] >>> POINT 3 : frappe clavier dans la fenêtre du Bloc-notes
+[ 292.8s]    frappe "PAGE1" dans about:blank
+[ 299.7s] + page attachée  session=FB160936 url=
+[ 299.8s] - page détachée   session=FB160936 url=
+[ 304.6s] --- fenêtres VM (après frappe) ---
+11440	explorer	0xd7018e	1280x713+0+0	Ce PC
+2848	firefox	0x3c00e8	780x492+56+0	encode-test — Mozilla Firefox
+12416	notepad	0xe011c	1280x713+0+0	Sans titre - Bloc-notes

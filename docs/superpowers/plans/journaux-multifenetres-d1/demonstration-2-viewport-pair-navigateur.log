@@ -1,0 +1,91 @@
+[   0.7s] + page attachée  session=C207002B url=about:blank
+[   0.7s] + page attachée  session=C1319686 url=http://192.168.3.1:5173/shell.html
+[   0.7s] shell demandée http://192.168.3.1:5173/shell.html 86E3AC3D36B17B40B915F50FC8AD70DE
+[   3.7s] statut shell : bureau connecté
+[   3.7s] >>> lancement du superviseur
+[   4.2s] run-agent.sh stdout : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   6.7s] ÉTAT SHELL (t+2.5s) liste=[] statut="bureau connecté"
+[   6.7s]   pages ouvertes : about:blank , http://192.168.3.1:5173/shell.html
+[   7.4s] + page attachée  session=14300B00 url=
+[   7.4s] + page attachée  session=16534D70 url=
+[   7.5s] + page attachée  session=E9412A9F url=
+[  29.3s] ÉTAT SHELL (POINT 1 — fenêtres préexistantes) liste=[Sans titre - Bloc-notes — ouverte  | Ce PC — ouverte  | encode-test — Mozilla Firefox — ouverte ] statut="bureau connecté"
+[  29.3s]   pages ouvertes : about:blank , http://192.168.3.1:5173/shell.html , http://192.168.3.1:5173/?session=w-1 , http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-3
+[  29.3s] STATS (POINT 1) {
+ "about:blank": {
+  "pc": null
+ },
+ "http://192.168.3.1:5173/?session=w-1": {
+  "etat": "connected",
+  "images": 7,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 228240,
+  "audio": {
+   "energie": 0,
+   "octets": 1763,
+   "samples": 788160
+  },
+  "rtt": 0.003,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-2": {
+  "etat": "connected",
+  "images": 6,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 184754,
+  "audio": null,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ },
+ "http://192.168.3.1:5173/?session=w-3": {
+  "etat": "connected",
+  "images": 29,
+  "l": 1280,
+  "h": 720,
+  "octetsV": 126697,
+  "audio": null,
+  "rtt": 0.002,
+  "viewport": "1280x720"
+ }
+}
+[  29.8s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/b24a1a5a-167f-4286-98f7-e73ff7946fd6/scratchpad/recette/captures/b-point1-1-app.png  (about:blank)
+[  29.9s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/b24a1a5a-167f-4286-98f7-e73ff7946fd6/scratchpad/recette/captures/b-point1-2-shell.png  (http://192.168.3.1:5173/shell.html)
+[  30.0s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/b24a1a5a-167f-4286-98f7-e73ff7946fd6/scratchpad/recette/captures/b-point1-3-app.png  (http://192.168.3.1:5173/?session=w-1)
+[  30.1s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/b24a1a5a-167f-4286-98f7-e73ff7946fd6/scratchpad/recette/captures/b-point1-4-app.png  (http://192.168.3.1:5173/?session=w-2)
+[  30.2s]    capture /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/b24a1a5a-167f-4286-98f7-e73ff7946fd6/scratchpad/recette/captures/b-point1-5-app.png  (http://192.168.3.1:5173/?session=w-3)
+[  30.2s] >>> POINT 2 : ouverture du Bloc-notes sur la VM
+[  30.7s] + page attachée  session=25705BCE url=
+[  30.8s] + page attachée  session=47661165 url=
+[  30.9s] + page attachée  session=88DFEF3B url=
+[  30.9s] + page attachée  session=195D3983 url=
+[  31.0s] - page détachée   session=88DFEF3B url=
+[  35.7s] - page détachée   session=16534D70 url=http://192.168.3.1:5173/?session=w-2
+[  35.7s] - page détachée   session=14300B00 url=http://192.168.3.1:5173/?session=w-1
+[  35.7s] - page détachée   session=E9412A9F url=http://192.168.3.1:5173/?session=w-3
+[  35.9s] - page détachée   session=47661165 url=http://192.168.3.1:5173/?session=w-5
+[  35.9s] - page détachée   session=25705BCE url=http://192.168.3.1:5173/?session=w-4
+[  35.9s] - page détachée   session=195D3983 url=http://192.168.3.1:5173/?session=w-7
+[  40.7s] ÉTAT SHELL (p2 t+10s) liste=[] statut="bureau connecté"
+[  40.7s]   pages ouvertes : about:blank , http://192.168.3.1:5173/shell.html
+[  50.7s] ÉTAT SHELL (p2 t+20s) liste=[] statut="bureau connecté"
+[  50.7s]   pages ouvertes : about:blank , http://192.168.3.1:5173/shell.html
+[  60.8s] ÉTAT SHELL (p2 t+30s) liste=[] statut="bureau connecté"
+[  60.8s]   pages ouvertes : about:blank , http://192.168.3.1:5173/shell.html
+[  70.8s] ÉTAT SHELL (p2 t+40s) liste=[] statut="bureau connecté"
+[  70.8s]   pages ouvertes : about:blank , http://192.168.3.1:5173/shell.html
+[  70.8s] ÉTAT SHELL (POINT 2 — après ouverture du Bloc-notes) liste=[] statut="bureau connecté"
+[  70.8s]   pages ouvertes : about:blank , http://192.168.3.1:5173/shell.html
+[  71.3s] + page attachée  session=F7190A97 url=
+[  71.4s] - page détachée   session=F7190A97 url=
+[  76.2s] --- fenêtres VM (après ouverture Bloc-notes) ---
+11440	explorer	0xd7018e	1280x720+0+0	Ce PC
+2848	firefox	0x3c00e8	1280x720+0+0	encode-test — Mozilla Firefox
+12196	notepad	0x30246	1280x720+0+0	Sans titre - Bloc-notes
+12416	notepad	0xe011c	1280x720+0+0	Sans titre - Bloc-notes
+[  76.2s] STATS (POINT 2) {
+ "about:blank": {
+  "pc": null
+ }
+}

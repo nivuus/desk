@@ -28,6 +28,7 @@ cat > /media/vm/dev/run-agent.ps1 <<PS1
 \$env:LOCAL_IP      = '${LOCAL_IP:-192.168.3.2}'
 \$env:RUST_LOG      = '${RUST_LOG:-info}'
 \$env:WINDOW_TITLE  = '${WINDOW_TITLE:-firefox}'
+${SUPERVISEUR:+\$env:SUPERVISEUR = '$SUPERVISEUR'}
 ${TEST_FILE:+\$env:TEST_FILE = '$TEST_FILE'}
 ${CAPTURE_TEST:+\$env:CAPTURE_TEST = '$CAPTURE_TEST'}
 ${SOURCE_TRACE:+\$env:SOURCE_TRACE = '$SOURCE_TRACE'}
