@@ -109,6 +109,15 @@ pub enum EchecAcquisition {
 
 `next_frame` rend `Result<Option<CapturedFrame>, EchecAcquisition>`.
 
+**La reprise est tentée par `next_frame` elle-même**, et non par son appelant.
+Ce n'est pas indifférent : le banc de diagnostic multi-fenêtres capture par
+`DesktopCapture::next_frame` (`diagnostics/multifenetre/voies.rs:146`), sans
+passer par `WindowsSource`. Une reprise logée chez l'appelant laisserait donc le
+banc en dehors du chemin de production — et l'étape 1 de la recette (§6.1), qui
+est un point d'arrêt, ne prouverait rien de ce qui tournera réellement.
+`EchecAcquisition::AccesPerdu` n'atteint l'appelant qu'une fois le budget
+épuisé, et vaut alors « je n'ai pas pu revenir ».
+
 ### 3.3 La reconstruction est étroite — c'est le point de conception qui compte
 
 `DesktopCapture::rouvrir` ne refait **que** l'`IDXGIOutputDuplication` : elle
@@ -128,8 +137,9 @@ distinction est faite par le code, pas par nous.
 
 ### 3.4 Un budget borné, remis à zéro par le succès
 
-Un nombre maximal de reprises **consécutives**, remis à zéro dès qu'une image
-passe. Le compteur mesure une rafale, pas une usure.
+Un nombre maximal de reprises **consécutives**, porté par `DesktopCapture` et
+remis à zéro dès qu'une image passe. Le compteur mesure une rafale, pas une
+usure.
 
 Épuisé, la source se déclare épuisée comme aujourd'hui. Il en va de même si la
 sortie n'existe plus au moment de rouvrir : c'est le cas légitime de la fenêtre
