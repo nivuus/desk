@@ -25,6 +25,17 @@ use crate::capture::{enumerer_sorties_silencieux, SortieDxgi};
 // dépourvu de sortie, soit deux lignes par seconde indéfiniment sur cette VM,
 // écrites sur un partage CIFS. La variante silencieuse existe pour ce seul
 // appelant ; toute nouvelle boucle périodique doit l'employer aussi.
+//
+// **Nuance apportée à la tâche 7** : le chemin de création comporte
+// maintenant une troisième étape, la scrutation d'`attendre_une_sortie_neuve`
+// — et ELLE emploie `enumerer_sorties_silencieux`, pas `relever_topologie`,
+// bien qu'elle reste sur le chemin de création. Ce n'est pas une entorse à la
+// règle ci-dessus : cette étape tourne à 10 Hz, jusqu'à 5 s, et
+// `relever_topologie` journalisant une ligne par sortie à CHAQUE appel, ce
+// serait le même défaut que celui que le correctif I2 a corrigé, rejoué à une
+// cadence pire. Le relevé nommé et journalisé reste fait une fois avant la
+// création, et une fois de plus si l'attente expire (voir la doc
+// d'`attendre_une_sortie_neuve`) — jamais à chaque tour de la scrutation.
 use crate::diagnostics::multifenetre::montee::{noms_attaches, relever_topologie};
 use crate::moniteurs_virtuels::{pilote::PiloteParIoctl, Sorties};
 
@@ -336,12 +347,25 @@ fn rendre_sans_apparier(sorties: &mut Sorties<'_>, id_pilote: u32) {
 /// qui cesse de pinguer, **y compris celles qu'on vient de créer**, et l'étape
 /// de ping de la boucle est hors du parcours des effets.
 ///
-/// **`enumerer_sorties_silencieux`, jamais `relever_topologie`, dans cette
-/// boucle.** À 10 Hz, `relever_topologie` journaliserait une ligne par sortie
-/// DXGI existante à chaque tour — le dépôt a déjà payé deux fois pour une
-/// trace émise à la cadence d'une boucle (chantier TURN, correctif I2 de D1).
-/// Le relevé nommé et journalisé reste fait une fois avant et, en cas
-/// d'échec, dans le journal des candidats de l'appelant.
+/// **`enumerer_sorties_silencieux`, jamais `relever_topologie`, DANS LA
+/// SCRUTATION.** À 10 Hz, `relever_topologie` journaliserait une ligne par
+/// sortie DXGI existante à chaque tour — le dépôt a déjà payé deux fois pour
+/// une trace émise à la cadence d'une boucle (chantier TURN, correctif I2 de
+/// D1). Le relevé nommé et journalisé reste fait une fois avant l'appel
+/// (`creer_sortie`), et — depuis la relecture de cette fonction — une fois de
+/// plus SEULEMENT si l'attente expire, juste avant de rendre le vecteur vide.
+///
+/// **Ce relevé d'expiration n'est pas cosmétique.** Sans lui, un échec ne
+/// laisse au journal que le relevé d'AVANT création (qui ne peut par
+/// construction pas montrer la sortie neuve) et le journal des « candidats »
+/// de l'appelant, qui ne liste que les sorties déjà filtrées `attachee_au_
+/// bureau && nouvelles` — vide par construction si la sortie n'a jamais été
+/// attachée. Deux pannes distinctes se confondaient alors sous un même
+/// journal : « la sortie est apparue mais Windows n'y a jamais rien composé »
+/// (le refus que la sonde multi-fenêtres nomme déjà) contre « elle n'est
+/// jamais apparue du tout ». Le relevé complet et nommé — toutes les sorties,
+/// attachées et non attachées — tranche entre les deux, et ne coûte rien en
+/// régime normal : il ne s'exécute que sur le chemin d'échec.
 fn attendre_une_sortie_neuve(
     pilote: &PiloteParIoctl,
     avant: &[String],
@@ -366,6 +390,12 @@ fn attendre_une_sortie_neuve(
                 limite_ms = limite.as_millis() as u64,
                 "aucune sortie neuve n'est apparue dans la limite"
             );
+            // Relevé complet, nommé, UNE fois — sur ce seul chemin d'échec.
+            // C'est ici, et seulement ici, que ce diagnostic vaut : voir la
+            // doc de la fonction.
+            if let Err(erreur) = relever_topologie("attente de rattachement expirée") {
+                tracing::error!(%erreur, "topologie DXGI illisible au moment de l'expiration");
+            }
             return Vec::new();
         }
         std::thread::sleep(PAS_RATTACHEMENT);
