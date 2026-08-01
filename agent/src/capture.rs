@@ -291,6 +291,11 @@ impl DesktopCapture {
                 // La reprise s'étale donc sur plusieurs appels.
                 match self.fenetre.tenter(std::time::Instant::now()) {
                     crate::capture_reprise::Tentative::Rouvrir => {
+                        // `info!` et non `debug!`, pour les deux traces de
+                        // cette branche : l'exploitation tourne en
+                        // RUST_LOG=info, et une mitigation muette n'en est pas
+                        // une (même règle que `encode/arret.rs`, `CLAUDE.md`
+                        // — ne pas les redescendre).
                         tracing::info!(
                             tentative = self.fenetre.tentatives(),
                             cible = ?self.cible,

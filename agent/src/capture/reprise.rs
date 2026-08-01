@@ -45,7 +45,9 @@ pub const DUREE_FENETRE_REPRISE: std::time::Duration = std::time::Duration::from
 ///
 /// Petit devant la fenêtre, pour ne pas retarder la reprise réelle ; assez
 /// grand pour que la trace `info!` de chaque tentative reste rare — au plus
-/// ~6 lignes par seconde et par source, contre une par appel de `next_frame`
+/// ~7 tentatives par seconde et par source (1000 ms / 150 ms), soit jusqu'à
+/// ~13 lignes par seconde quand chaque réouverture échoue (une ligne de
+/// tentative, une ligne d'échec), contre une par appel de `next_frame`
 /// (~90/s) si le pas n'existait pas. Le dépôt a déjà payé deux fois pour une
 /// trace émise à la cadence de la boucle de capture.
 pub const PAS_REPRISE: std::time::Duration = std::time::Duration::from_millis(150);

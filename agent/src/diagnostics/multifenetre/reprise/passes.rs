@@ -213,13 +213,19 @@ fn journaliser_cle_de_lecture() {
          perturbatrice ATTACHÉE, rien n'a pu perturber"
     );
     tracing::info!(
-        "clé de lecture n°2 — des voies mortes ne réfutent PAS la reprise à elles seules. Le \
-         budget est de 3 réouvertures CONSÉCUTIVES et SANS DÉLAI, quand le dépôt attend par \
-         ailleurs 3 s (DELAI_TOPOLOGIE) qu'une topologie se stabilise : une rafale peut épuiser \
-         le budget, et une réouverture peut échouer à retrouver la sortie sans même consommer le \
-         budget ni écrire de ligne. C'est ce que départage la « sonde post-mortem », qui retente \
-         UNE fois la topologie stabilisée. Ventiler les reprises par voie avec le champ `cible` \
-         des lignes de réouverture, à rapprocher du `nom_sortie` des lignes de mort"
+        "clé de lecture n°2 — des voies mortes ne réfutent PAS la reprise à elles seules. La \
+         reprise est désormais une FENÊTRE de DUREE_FENETRE_REPRISE (8 s), retentée au plus \
+         toutes les PAS_REPRISE (150 ms) ; l'expiration se compte depuis l'OUVERTURE de la \
+         fenêtre, pas depuis la dernière tentative, et tout succès d'acquisition — « rien de \
+         neuf » compris — la referme. Une réouverture qui échoue à retrouver la sortie n'est PLUS \
+         définitive : elle consomme une tentative ET écrit désormais sa propre ligne d'échec, la \
+         fenêtre continuant de courir. Sur une fenêtre pleine, jusqu'à 54 tentatives sont \
+         possibles (8000 ms / 150 ms), chacune pouvant poser jusqu'à deux lignes (tentative puis \
+         échec) : voir plusieurs dizaines de lignes de réouverture pour UNE SEULE voie morte n'est \
+         donc PAS un emballement, c'est la fenêtre qui court normalement jusqu'à expiration. C'est \
+         ce que départage la « sonde post-mortem », qui retente UNE fois la topologie stabilisée. \
+         Ventiler les reprises par voie avec le champ `cible` des lignes de réouverture, à \
+         rapprocher du `nom_sortie` des lignes de mort"
     );
 }
 

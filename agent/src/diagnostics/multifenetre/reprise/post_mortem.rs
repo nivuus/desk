@@ -22,26 +22,40 @@ use crate::geometry::Rect;
 /// silence sur une duplication parfaitement vivante.
 const DUREE_SONDE_IMAGE: Duration = Duration::from_millis(500);
 
-/// Retente **une seule fois**, la topologie stabilisée, ce que les voies mortes
-/// n'ont pas réussi en rafale.
+/// Retente **une seule fois**, la topologie stabilisée, ce qu'une voie n'a pas
+/// réussi à rétablir dans sa fenêtre de reprise (`FenetreDeReprise`,
+/// `DUREE_FENETRE_REPRISE` = 8 s, `PAS_REPRISE` = 150 ms — voir
+/// `capture::reprise`).
 ///
-/// **Sans elle, le point d'arrêt du chantier peut être déclenché par un défaut
-/// de calibrage.** `next_frame` accorde 3 réouvertures CONSÉCUTIVES et SANS
-/// AUCUN DÉLAI (`AcquireNextFrame(0, …)` puis `rouvrir()` immédiat), là où le
-/// dépôt attend par ailleurs `DELAI_TOPOLOGIE` = 3 s qu'une topologie se
-/// stabilise. La perturbation tombe juste avant le premier `AcquireNextFrame`
-/// de la passe B, c'est-à-dire au moment le plus instable. Deux chemins tuent
-/// alors une voie en quelques millisecondes sans rien réfuter :
+/// **Née d'un défaut de calibrage, corrigé depuis (tâche 6 bis) — la sonde
+/// reste utile.** Avant correction, `next_frame` n'accordait que 3
+/// réouvertures CONSÉCUTIVES et SANS AUCUN DÉLAI (`AcquireNextFrame(0, …)`
+/// puis `rouvrir()` immédiat), épuisées en 14 à 21 ms là où le dépôt attend
+/// par ailleurs `DELAI_TOPOLOGIE` = 3 s qu'une topologie se stabilise : le
+/// point d'arrêt du chantier avait été déclenché par ce sous-calibrage, pas
+/// par une reprise réellement impossible. La fenêtre de 8 s couvre cette
+/// durée au double, mais reste une MAJORANTE non calibrée (`CLAUDE.md`) :
+/// rien n'exclut qu'une topologie particulièrement lente échappe aussi aux
+/// 8 s.
 ///
-/// - trois `DXGI_ERROR_ACCESS_LOST` d'affilée pendant le remaniement ;
-/// - une réouverture qui ne retrouve pas `\\.\DISPLAYn` le temps du remaniement
-///   — et là **le budget n'est même pas consommé, et aucune ligne de
-///   réouverture n'est écrite**.
+/// Cette sonde reste donc la ligne qui sépare « la reprise est impossible sur
+/// ce matériel » de « la fenêtre de reprise ne suffisait pas ». La
+/// perturbation tombe juste avant le premier `AcquireNextFrame` de la passe
+/// B, c'est-à-dire au moment le plus instable, et une voie peut mourir dans
+/// sa fenêtre de reprise sans que la reprise elle-même soit réfutée :
+///
+/// - la fenêtre de 8 s peut expirer alors que la topologie ne s'est toujours
+///   pas stabilisée ;
+/// - une réouverture peut échouer à retrouver `\\.\DISPLAYn` plusieurs fois de
+///   suite le temps du remaniement — chaque échec consomme désormais une
+///   tentative ET écrit sa propre ligne (« réouverture de la duplication
+///   échouée … »), sans que cela soit définitif : seule l'expiration de la
+///   fenêtre entière l'est.
 ///
 /// Dans les deux cas le bilan montre `voies_vivantes_apres = 0`, dont la
-/// lecture naturelle est « voie A réfutée ». Une ligne doit suffire à séparer
-/// « la reprise est impossible sur ce matériel » de « trois tentatives en
-/// rafale ne suffisaient pas », et c'est celle que cette sonde écrit.
+/// lecture naturelle est « voie réfutée ». Une ligne doit suffire à séparer
+/// « la reprise est impossible sur ce matériel » de « la fenêtre ne
+/// suffisait pas », et c'est celle que cette sonde écrit.
 ///
 /// N'échoue jamais : c'est un diagnostic, pas une mesure. Elle suppose les
 /// duplications du banc déjà relâchées (voir son appelant).
