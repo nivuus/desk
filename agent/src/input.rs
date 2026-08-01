@@ -28,8 +28,8 @@ mod win {
         MOUSEEVENTF_WHEEL, MOUSEINPUT,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
-        GetClientRect, GetSystemMetrics, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN,
-        SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN,
+        GetClientRect, GetForegroundWindow, GetSystemMetrics, SetForegroundWindow,
+        SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN,
     };
 
     /// Injecte les messages d'entrée reçus du navigateur dans la session
@@ -41,11 +41,14 @@ mod win {
         /// et il n'existe qu'une source de vérité — la seule construction
         /// correcte sur un canal non ordonné.
         mode_relatif: Arc<AtomicBool>,
+        /// Dernier résultat connu de `SetForegroundWindow`, pour ne journaliser
+        /// qu'au basculement et non à chaque frappe.
+        premier_plan_obtenu: bool,
     }
 
     impl InputInjector {
         pub fn new(hwnd: HWND, mode_relatif: Arc<AtomicBool>) -> Self {
-            Self { hwnd, mode_relatif }
+            Self { hwnd, mode_relatif, premier_plan_obtenu: false }
         }
 
         pub fn inject(&mut self, message: InputMessage) -> Result<()> {
@@ -108,6 +111,7 @@ mod win {
                     Ok(())
                 }
                 InputMessage::Key { scancode, pressed, extended } => {
+                    self.au_premier_plan();
                     let mut flags = KEYEVENTF_SCANCODE;
                     if !pressed {
                         flags |= KEYEVENTF_KEYUP;
@@ -123,6 +127,41 @@ mod win {
                         dwExtraInfo: 0,
                     })
                 }
+            }
+        }
+
+        /// Porte la fenêtre de cette session au premier plan avant d'injecter
+        /// du clavier.
+        ///
+        /// **Nécessaire et probablement pas suffisant.** `SendInput` est global
+        /// à la session Windows : il n'adresse personne, il alimente la file
+        /// d'entrée de la fenêtre active. Sans cet appel, toutes les sessions
+        /// tapent dans la même fenêtre — celle qui se trouve au premier plan.
+        /// Avec, deux sessions qui tapent en même temps se le disputent. La
+        /// réponse structurelle est ailleurs (injection ciblée par messages, ou
+        /// un pilote) et reste hors périmètre du sous-bloc D2.
+        ///
+        /// **Le retour est vérifié.** `SetForegroundWindow` échoue
+        /// silencieusement quand le processus appelant n'a pas le droit de
+        /// voler le focus : sans cette trace, on ne saurait pas distinguer « le
+        /// premier plan n'a pas suffi » de « le premier plan n'a jamais été
+        /// donné ». Journalisé une fois par basculement et non par frappe — un
+        /// journal par touche noierait le canal.
+        fn au_premier_plan(&mut self) {
+            if unsafe { GetForegroundWindow() } == self.hwnd {
+                return;
+            }
+            let obtenu = unsafe { SetForegroundWindow(self.hwnd) }.as_bool();
+            if obtenu != self.premier_plan_obtenu {
+                if obtenu {
+                    tracing::info!(hwnd = ?self.hwnd, "premier plan obtenu avant injection clavier");
+                } else {
+                    tracing::warn!(
+                        hwnd = ?self.hwnd,
+                        "SetForegroundWindow refusé — le clavier ira à la fenêtre active"
+                    );
+                }
+                self.premier_plan_obtenu = obtenu;
             }
         }
 
