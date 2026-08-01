@@ -7,4 +7,6 @@
 //! testés sur l'hôte.
 
 pub mod fenetres;
+#[cfg(windows)]
+pub mod hook;
 pub mod table;

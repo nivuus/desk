@@ -1,0 +1,38 @@
+[2m2026-08-01T07:59:24.257366Z[0m [32m INFO[0m [2magent[0m[2m:[0m accélération pointeur neutralisée [3mrapport[0m[2m=[0m"seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+[2m2026-08-01T07:59:24.257549Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m fenêtre déjà ouverte [3mid[0m[2m=[0m14090638 [3mtitre[0m[2m=[0m"Ce PC"
+[2m2026-08-01T07:59:24.257558Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m fenêtre déjà ouverte [3mid[0m[2m=[0m3932392 [3mtitre[0m[2m=[0m"encode-test — Mozilla Firefox"
+[2m2026-08-01T07:59:24.257711Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m hook posé — ouvrez et fermez des fenêtres pendant 60 s
+[2m2026-08-01T07:59:24.616375Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(131550) }
+[2m2026-08-01T07:59:31.962277Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mApparue { fenetre: IdFenetre(197086), titre: "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.EXE" }
+[2m2026-08-01T07:59:31.996670Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(197086) }
+[2m2026-08-01T07:59:32.145389Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mApparue { fenetre: IdFenetre(852252), titre: "Sans titre\u{a0}- Bloc-notes" }
+[2m2026-08-01T07:59:39.958532Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(131632) }
+[2m2026-08-01T07:59:39.960904Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(131632) }
+[2m2026-08-01T07:59:45.046006Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(197168) }
+[2m2026-08-01T07:59:45.046273Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(197168) }
+[2m2026-08-01T07:59:47.084890Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(131648) }
+[2m2026-08-01T07:59:47.084951Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(131622) }
+[2m2026-08-01T07:59:47.085018Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(197040) }
+[2m2026-08-01T07:59:47.085157Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(197040) }
+[2m2026-08-01T07:59:47.085172Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(524690) }
+[2m2026-08-01T07:59:47.085197Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(196996) }
+[2m2026-08-01T07:59:47.085225Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(459054) }
+[2m2026-08-01T07:59:47.085257Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(459054) }
+[2m2026-08-01T07:59:47.085271Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(852252) }
+[2m2026-08-01T07:59:47.085327Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(852252) }
+[2m2026-08-01T07:59:47.085358Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(2752768) }
+[2m2026-08-01T07:59:47.086542Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(197098) }
+[2m2026-08-01T07:59:47.086555Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(131584) }
+[2m2026-08-01T07:59:47.088049Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(197326) }
+[2m2026-08-01T07:59:47.088694Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(131630) }
+[2m2026-08-01T07:59:47.091836Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(131646) }
+[2m2026-08-01T07:59:47.091863Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(131642) }
+[2m2026-08-01T07:59:47.091907Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(262674) }
+[2m2026-08-01T07:59:47.091936Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(131640) }
+[2m2026-08-01T07:59:47.091945Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(197134) }
+[2m2026-08-01T07:59:47.091949Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(197086) }
+[2m2026-08-01T07:59:54.677937Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(131548) }
+[2m2026-08-01T07:59:55.023609Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(131554) }
+[2m2026-08-01T07:59:55.198218Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(131560) }
+[2m2026-08-01T07:59:55.198380Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(131552) }
+[2m2026-08-01T07:59:55.198393Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre[0m[2m:[0m événement de fenêtre [3mevenement[0m[2m=[0mDisparue { fenetre: IdFenetre(131566) }

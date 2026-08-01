@@ -155,6 +155,36 @@ pub(super) fn aiguiller() -> Result<bool> {
         nvenc::plafond(&mode)?;
         return Ok(true);
     }
+    // Tâche 6 du chantier D1 : le hook de détection des fenêtres
+    // (`SetWinEventHook`), éprouvé en dehors des descriptions factices de
+    // `fenetres` — la seule façon de savoir si le filtre tient sur de vraies
+    // fenêtres Windows (menus, boîtes de dialogue) et si la pompe de
+    // messages fait bien vivre le rappel `WINEVENT_OUTOFCONTEXT`. `sonde_demandee`
+    // et non la présence seule : cette sonde ne survit pas au processus (la
+    // garde `Hook` retire le hook au retour de cette branche), mais le
+    // patron du fichier n'admet aucune exception.
+    if sonde_demandee("SUPERVISEUR_HOOK") {
+        // Pas de `#[cfg(windows)]` ici : ce module entier est déjà posé
+        // derrière `#[cfg(windows)]` dans `diagnostics.rs`.
+        let (tx, rx) = std::sync::mpsc::channel();
+        for (fenetre, titre) in crate::superviseur::hook::enumerer_existantes() {
+            tracing::info!(id = fenetre.0, titre, "fenêtre déjà ouverte");
+        }
+        let _garde = crate::superviseur::hook::poser(tx)?;
+        tracing::info!("hook posé — ouvrez et fermez des fenêtres pendant 60 s");
+        let fin = std::time::Instant::now() + std::time::Duration::from_secs(60);
+        while std::time::Instant::now() < fin {
+            match rx.recv_timeout(std::time::Duration::from_millis(500)) {
+                Ok(evenement) => tracing::info!(?evenement, "événement de fenêtre"),
+                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
+                Err(e) => {
+                    tracing::warn!(erreur = %e, "canal du hook rompu");
+                    break;
+                }
+            }
+        }
+        return Ok(true);
+    }
     Ok(false)
 }
 
