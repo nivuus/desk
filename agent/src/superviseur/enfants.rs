@@ -26,6 +26,23 @@ pub struct Consigne {
 }
 
 pub trait Lanceur {
+    /// Démarre un processus agent pour cette fenêtre.
+    ///
+    /// Retourne le PID du processus démarré. Le **contrat est atomique** :
+    /// `Err` signifie qu'aucun processus n'a été démarré. Violer ce contrat
+    /// — c'est-à-dire retourner `Err` *après* avoir réellement lancé l'enfant,
+    /// par exemple en cas d'échec d'un post-traitement ou d'une attente de signal
+    /// de disponibilité — laisse le processus tourner sans être suivi. Il devient
+    /// **intraçable** : ni `morts()` ni `tuer()` ne pourront le retrouver.
+    /// L'enfant occupe une sortie d'affichage virtuelle qui restera **captive**
+    /// jusqu'à l'arrêt du superviseur, et le vivier limité à dix sorties du
+    /// pilote se vide inutilement.
+    ///
+    /// **Si l'implémentation ne peut pas tenir ce contrat** — en particulier si
+    /// le post-traitement après le lancement peut échouer — elle doit
+    /// **tuer elle-même le processus qu'elle vient de démarrer avant de
+    /// rendre `Err`**, de sorte qu'aucun enfant ne reste en vie en cas
+    /// d'erreur.
     fn lancer(&self, consigne: &Consigne) -> Result<u32>;
     fn est_vivant(&self, pid: u32) -> bool;
     fn tuer(&self, pid: u32) -> Result<()>;
@@ -128,6 +145,23 @@ mod tests {
         }
     }
 
+    /// Lanceur qui échoue immédiatement, sans démarrer aucun processus.
+    /// Utilisé pour tester qu'une erreur du lanceur ne laisse rien dans la
+    /// comptabilité.
+    struct LanceurEchec;
+
+    impl Lanceur for LanceurEchec {
+        fn lancer(&self, _consigne: &Consigne) -> anyhow::Result<u32> {
+            Err(anyhow::anyhow!("lancement simulé échoué"))
+        }
+        fn est_vivant(&self, _pid: u32) -> bool {
+            false
+        }
+        fn tuer(&self, _pid: u32) -> anyhow::Result<()> {
+            Ok(())
+        }
+    }
+
     fn consigne(session: &str, audio: bool) -> Consigne {
         Consigne {
             session: IdSession(session.into()),
@@ -198,6 +232,22 @@ mod tests {
         let mut enfants = Enfants::nouveaux(&lanceur);
         enfants.lancer(consigne("w-1", true)).unwrap();
         enfants.tuer(&IdSession("w-1".into()));
+        assert!(enfants.morts().is_empty());
+    }
+
+    #[test]
+    fn lancer_echoue_ne_laisse_rien_dans_la_comptabilite() {
+        // Contrat atomique du trait Lanceur : Err ⇒ aucun processus ne tourne.
+        // Si ce contrat est violé — lancer échoue après avoir réellement
+        // démarré l'enfant — l'enfant devient intraçable, la sortie virtuelle
+        // qui l'occupe reste captive, et le vivier de dix du pilote se vide
+        // inutilement. Ce test fixe le contrat : une erreur de lancement ne
+        // doit laisser aucune trace.
+        let lanceur = LanceurEchec;
+        let mut enfants = Enfants::nouveaux(&lanceur);
+        let err = enfants.lancer(consigne("w-1", true));
+        assert!(err.is_err());
+        // Aucune session enregistrée.
         assert!(enfants.morts().is_empty());
     }
 }
