@@ -1408,6 +1408,12 @@ en repli mesuré pour les fenêtres non-jeu. Le relevé Apollo (3413×960) qui f
 cette voie n'a pas de journal joint et n'est pas reproductible sans le
 propriétaire du poste.
 
+> ⚠️ **Recommandée, et éprouvée le 1ᵉʳ août 2026 en conditions de produit
+> (sous-bloc D1) : elle tient à arrangement FIGÉ et s'effondre dès qu'une
+> fenêtre s'ouvre.** Créer une sortie virtuelle fait abandonner le mutex des
+> duplications DXGI déjà ouvertes, donc tue toutes les captures en cours. Voir
+> la section « Sous-bloc D1 » plus bas.
+
 > ✅ **Les deux mesures que cette sonde déclarait bloquantes ont été prises le
 > 31 juillet 2026** (plafond de sorties virtuelles, plafond d'encodage sur
 > périphériques séparés) — voir la section suivante. Le chantier D est
@@ -1485,6 +1491,10 @@ confirmation par des processus tiers).
   DXGI n'autorisant qu'une duplication par sortie, la question était réelle.
   ✅ **Elle a été mesurée le 31 juillet 2026 — voie reçue à N=8** : voir la
   section « N duplications DXGI de front » ci-dessous.
+  ⚠️ **Mais dans un ORDRE que le produit n'a pas** : le banc créait ses N sorties
+  avant d'ouvrir la moindre duplication. Le sous-bloc D1 a exercé l'ordre réel
+  (une fenêtre s'ouvre pendant que d'autres capturent) et il échoue — voir la
+  section « Sous-bloc D1 ».
 - **La comparaison des deux modes d'encodage porte sur DEUX variables
   confondues** : le mode `separe` n'ouvre aucune duplication DXGI là où
   `partage` en ouvre une. Le témoin propre n'a pas été exercé.
@@ -1604,6 +1614,13 @@ sortie, un encodeur par sortie. Tout ce qui avait été mesuré jusque-là l'ava
 sur un montage qui n'est pas celui-là.
 
 ### Le résultat : **voie REÇUE**
+
+> ⚠️ **Reçue par ce banc, et par lui seul.** Il crée ses N sorties virtuelles
+> **avant** d'ouvrir la moindre duplication. Le sous-bloc D1 (1ᵉʳ août 2026) a
+> exercé l'ordre du produit — une fenêtre s'ouvre alors que d'autres capturent —
+> et **il échoue** : la création de la sortie fait abandonner le mutex des
+> duplications ouvertes et tue toutes les sessions. Rien ci-dessous n'est
+> réfuté ; c'est la portée qui est plus étroite qu'il n'y paraît.
 
 Le critère posé d'avance était : à N=8, **≥ 60 i/s par fenêtre en
 capture+encodage et aucun verdict faux**.
@@ -1785,7 +1802,12 @@ Résultats complets :
 Conception : `docs/superpowers/specs/2026-08-01-multifenetres-tranche-verticale-design.md`.
 Journaux : `docs/superpowers/plans/journaux-multifenetres-d1/` — **UTF-8 sans
 BOM**, avec les séquences ANSI de `tracing` comme les journaux des chantiers
-précédents (`sed 's/\x1b\[[0-9;]*m//g'` pour les lire à plat).
+précédents (`sed 's/\x1b\[[0-9;]*m//g'` pour les lire à plat). Le répertoire porte
+aussi les pièces qui ne sont pas des journaux d'agent : les captures d'écran des
+fenêtres navigateur, la relecture `WM_GETTEXT` des Bloc-notes, l'environnement
+du signaling, le relevé des veilles prolongées, et **l'instrument lui-même**
+(`pilote-recette.mjs`, versé dans son état final, celui de la dernière
+exécution).
 
 **Premier chantier de PRODUIT du modèle multi-fenêtres**, et première exécution
 réelle : jusqu'ici la seule preuve était le compilateur et les tests des parties
@@ -1800,7 +1822,11 @@ fenêtre Windows.
 Windows, chacune sur sa sortie virtuelle, chacune capturée et encodée par **son
 propre processus**, chacune montrant **son** application et elle seule, plein
 cadre à 1280×720, RTT 1–3 ms — **jusqu'à quatre simultanées**, sur de vraies
-applications (Bloc-notes, Explorateur, Firefox) et non des mires. Le son est
+applications (Bloc-notes, Explorateur, Firefox) et non des mires.
+⚠️ **Ces quatre fenêtres PRÉEXISTAIENT au démarrage du superviseur** : ce sont
+celles que l'énumération initiale trouve. **Le cas produit — un utilisateur
+ouvre une application — a été tenté deux fois et a échoué deux fois.** D1 sait
+éclater un bureau tel qu'il est ; il ne sait pas en accueillir une de plus. Le son est
 porté par **une seule** fenêtre (+59 710 octets RTP audio en 9,4 s sur elle
 seule, les trois autres sessions n'ayant aucune piste audio). Aucune sortie n'a
 fuité : ensemble des **noms** de sorties identique au départ aux trois contrôles
@@ -1810,8 +1836,14 @@ depuis un processus neuf, superviseur pourtant tué net à chaque fois.
 duplications DXGI déjà ouvertes** (`0x887A0026`, « Le mutex indexé a été
 abandonné »). Toute nouvelle fenêtre tue donc **toutes** les sessions en cours,
 et l'emballement qui suit vide la page-shell alors que les applications Windows
-sont toujours là. **Reproduit sur quatre exécutions sur quatre.** D1 **n'est pas
-reçu**.
+sont toujours là. **Reproduit sur trois exécutions versées sur trois, plus une
+quatrième dont les journaux ne sont pas joints.** La correspondance est exacte :
+sur les trois journaux, **9 créations de sortie sans duplication ouverte → 0
+erreur**, et **4 créations avec duplications ouvertes → 9 erreurs, soit une par
+duplication ouverte à chaque fois** (1, 1, 3, 4). ⚠️ **La DESTRUCTION d'une
+sortie n'est pas mise en cause : le cas n'a jamais été exercé** — les
+dix-sept destructions des trois journaux tombent toutes hors de toute
+duplication ouverte. D1 **n'est pas reçu**.
 
 ### Quatre défauts à connaître avant de toucher à ce terrain
 
@@ -1858,10 +1890,15 @@ reçu**.
 la même minute.** Ce n'est pas une minuterie d'inactivité (`STANDBYIDLE` et
 `HIBERNATEIDLE` sont à 0) : le journal Windows nomme l'initiateur,
 `\Windows\System32\shutdown.exe` (Kernel-Power **187**), pour une transition de
-type hibernation (Kernel-Power **42**). **Le déclencheur exact n'est pas
-identifié** — la seule tâche planifiée appelant `shutdown` est désactivée depuis
-avril 2025 ; `sunshine`/`sunshinesvc` tournent et sont des suspects non
-éprouvés. **Ne rien lancer de long après la minute :35 de chaque heure.**
+type hibernation (Kernel-Power **42**). Relevé versé :
+`journaux-multifenetres-d1/veille-prolongee-vm.txt`.
+⚠️ **Le motif horaire n'est PAS établi** : le même relevé porte une
+**troisième** hibernation à 08:29:50 UTC, qui ne tombe ni sur la minute :40 ni
+sur l'intervalle d'une heure. **Le déclencheur exact n'est pas identifié** — la
+seule tâche planifiée appelant `shutdown` est désactivée depuis avril 2025 ;
+`sunshine`/`sunshinesvc` tournent et sont des suspects **non éprouvés**. La
+seule règle prudente : **vérifier que la VM a survécu après toute séquence
+longue**, plutôt que de se fier à une fenêtre horaire.
 
 ```bash
 # Symptômes : /media/vm répond « L'hôte cible est arrêté ou en panne »,

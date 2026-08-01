@@ -203,6 +203,18 @@ exécution par rang donc aucun taux, et **rien au-delà de 8 sorties — 8 est c
 qui a été demandé et obtenu, pas une limite trouvée**. Détail et réserves en §5
 et §6.
 
+> ⚠️ **Réserve ajoutée le 1ᵉʳ août 2026, après la première exécution en
+> conditions de produit (sous-bloc D1,
+> `plans/2026-08-01-multifenetres-tranche-verticale-resultats.md`).** Cette
+> mesure n'est **pas réfutée** — le banc créait ses N sorties virtuelles
+> **avant** d'ouvrir la moindre duplication, et dans cet ordre-là tout tient.
+> **Mais ce n'est pas l'ordre du produit.** En exploitation, une fenêtre
+> s'ouvre alors que d'autres capturent déjà : la création de sa sortie fait
+> alors abandonner le mutex des duplications ouvertes (`0x887A0026`) et **tue
+> toutes les sessions en cours**. La voie tient donc à arrangement figé, et
+> s'effondre dès qu'une fenêtre s'ouvre. À corriger avant de la déclarer
+> viable en production.
+
 **Repli mesuré — `PrintWindow(PW_RENDERFULLCONTENT)`.** Contre toute attente,
 cette voie rend l'image **juste** d'une fenêtre D3D **recouverte** : c'est la
 seule à avoir franchi la porte de correction par une mesure directe. Sa limite
@@ -397,14 +409,19 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
 > capture, et la page-shell ouvre **une fenêtre navigateur par fenêtre
 > Windows** ; chacune affiche **son** application et elle seule, plein cadre,
 > à 1280×720. **Vérifié jusqu'à quatre fenêtres simultanées**, sur de vraies
-> applications (Bloc-notes, Explorateur, Firefox) et non des mires. L'audio est
+> applications (Bloc-notes, Explorateur, Firefox) et non des mires — mais
+> ⚠️ **ces quatre fenêtres PRÉEXISTAIENT au démarrage du superviseur** : le cas
+> produit, un utilisateur qui ouvre une application, a été tenté deux fois et a
+> échoué deux fois. L'audio est
 > bien porté par **une seule** fenêtre. Aucune sortie virtuelle n'a fuité, sur
 > trois contrôles depuis un processus neuf.
 >
 > **Ce qui reste à régler, et qui bloque la démonstration bout en bout** :
 > **créer une sortie virtuelle fait abandonner le mutex des duplications DXGI
 > déjà ouvertes** (`0x887A0026`), donc **toute nouvelle fenêtre tue toutes les
-> sessions en cours** — reproduit sur quatre exécutions. Trois défauts de
+> sessions en cours** — reproduit sur **trois exécutions versées sur trois**,
+> plus une quatrième dont les journaux ne sont pas joints. *(La destruction
+> d'une sortie n'est, elle, pas mise en cause : le cas n'a pas été exercé.)* Trois défauts de
 > moindre portée l'accompagnent : l'index `(adaptateur, sortie)` est positionnel
 > et n'est pas un identifiant utilisable pour désigner une sortie à un enfant ;
 > le chemin de redimensionnement de l'enfant ignore le mode « sortie DXGI

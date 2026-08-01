@@ -1,0 +1,17 @@
+# Environnement du processus qui ÉCOUTE réellement sur :8080 — c'est-à-dire le
+# signaling qui a servi les trois exécutions versées. Relevé le
+# 2026-08-01T13:27:57+02:00 sur ce processus-là, démarré à 11:36:44 et jamais
+# redémarré depuis : il précède les trois exécutions (12:17, 12:28 et 12:58,
+# heure hôte). Le brief exigeait de prouver l'environnement sur le processus
+# qui écoute, et non sur celui qu'on croit avoir lancé.
+
+$ ss -ltnp | grep ':8080 '
+LISTEN 0 511 *:8080 *:* users:(("MainThread",pid=3433673,fd=31))
+
+$ ps -o pid,lstart,cmd -p 3433673 --no-headers
+3433673 sam. août  1 11:36:44 2026 /root/.nvm/versions/node/v24.9.0/bin/node --require /home/mallanic/Projects/Guacamole/signaling/node_modules/tsx/dist/preflight.cjs --import file:///home/mallanic/Projects/Guacamole/signaling/node_modules/tsx/dist/loader.mjs src/index.ts
+
+$ tr '\0' '\n' < /proc/3433673/environ | grep -E '^TURN|^SIGNALING|^PORT'
+(aucune sortie : aucune variable TURN ni SIGNALING dans l'environnement de ce
+ processus — aucun relais n'est annoncé aux pairs, les sessions sont directes
+ sur le lien local)

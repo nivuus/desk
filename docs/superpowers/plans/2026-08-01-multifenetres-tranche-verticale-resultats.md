@@ -6,7 +6,22 @@
 1ᵉʳ août à 11:37:39 (heure hôte) depuis l'arbre de `484310f`
 (`journaux-multifenetres-d1/compilation-tache13.log`).
 
-Journaux bruts : `docs/superpowers/plans/journaux-multifenetres-d1/`.
+Pièces versées, toutes dans `docs/superpowers/plans/journaux-multifenetres-d1/`
+(UTF-8 sans BOM ; les journaux d'agent portent les séquences ANSI de `tracing`,
+comme ceux des chantiers précédents) :
+
+| Pièce | Ce qu'elle porte |
+| --- | --- |
+| `compilation-tache13.log` | La construction du binaire mesuré |
+| `demonstration-{1,2,3}-*-agent.log` | Le journal de l'agent des trois exécutions exploitées (superviseur **et** enfants mêlés) |
+| `demonstration-{1,2,3}-*-navigateur.log` | Le journal du pilote de recette, côté navigateur |
+| `demonstration-2-fenetre-{bloc-notes,explorateur,firefox}.png` | Le point 1 : trois fenêtres navigateur, trois applications distinctes |
+| `demonstration-3-verrouillage-pointeur-non-accorde.png` | Le point 4 : le bandeau de verrouillage du pointeur resté affiché (son nom d'origine, `f-point3-5-app.png`, est tracé à la l. 184 du journal navigateur de F) |
+| `demonstration-relecture-bloc-notes.txt` | Le point 3 : la relecture `WM_GETTEXT` des deux Bloc-notes, vides |
+| `environnement-signaling.txt` | L'environnement du processus qui écoute réellement sur `:8080` |
+| `veille-prolongee-vm.txt` | Les mises en veille prolongée de la VM, et ce qu'elles excluent |
+| `topologie-*.log`, `purge-finale.log` | Les contrôles d'absence de fuite, depuis un processus neuf |
+| `pilote-recette.mjs`, `pilote-vm-it.sh` | L'instrument, dans son **état final** (celui de F) |
 
 ---
 
@@ -18,16 +33,26 @@ d'affichage virtuelle, chacune capturée et encodée par son propre processus,
 chacune montrant **son** application et elle seule — **jusqu'à quatre
 simultanément, vérifié**. Mais l'arrangement est détruit **à chaque fois qu'une
 sortie virtuelle est créée**, c'est-à-dire à chaque nouvelle fenêtre : toutes
-les sessions déjà en cours meurent ensemble. La démonstration bout en bout du
-brief n'est donc **pas** obtenue ; ses points 1, 4 (partiellement) et 5 le sont,
-les points 2, 3, 6, 7 et 8 ne le sont pas.
+les sessions déjà en cours meurent ensemble.
+
+⚠️ **Et il faut lire ce « jusqu'à quatre » avec sa réserve, qui en change le
+sens : ces quatre fenêtres PRÉEXISTAIENT au démarrage du superviseur.** Elles
+sont celles que l'énumération initiale trouve. **Le cas produit — un
+utilisateur ouvre une application — a été tenté deux fois et a échoué deux
+fois.** Ce que D1 sait faire aujourd'hui, c'est prendre un bureau tel qu'il est
+et l'éclater en fenêtres navigateur ; il ne sait pas en accueillir une de plus.
+
+La démonstration bout en bout du brief n'est donc **pas** obtenue. Sur ses huit
+points : **2 obtenus** (1 et 5), **2 partiels** (4 et 8), **4 non obtenus**
+(2, 3, 6 et 7).
 
 ---
 
 ## 1. Ce qui a été exécuté, et ce qui a été écarté
 
-Six exécutions du scénario ont été lancées. **Trois sont exploitées**, et ce
-sont les seules dont les journaux sont versés.
+Huit exécutions du scénario ont été lancées — les six qui portent un numéro
+ci-dessous, plus deux écartées avant d'avoir rien produit. **Trois sont
+exploitées**, et ce sont les seules dont les journaux sont versés.
 
 | # | Superviseur démarré (UTC) | Ce qu'elle vaut |
 | --- | --- | --- |
@@ -67,7 +92,13 @@ résultats :
 Le signaling a été relancé **sans variable TURN** (`coturn` n'était pas
 démarré) : toutes les sessions sont directes sur le lien local. Vérifié sur
 l'environnement du processus qui écoute réellement, pas sur celui qu'on croit
-avoir lancé.
+avoir lancé — `environnement-signaling.txt` porte le relevé : le processus qui
+tient `:8080` a démarré à 11:36:44, avant les trois exécutions, et son
+environnement ne contient aucune variable `TURN`.
+
+L'instrument lui-même est versé (`pilote-recette.mjs`, `pilote-vm-it.sh`), avec
+la réserve qui compte : **il a été modifié entre les exécutions**, et son état
+versé est celui de F.
 
 ### Un correctif d'outillage a été nécessaire pour que la tâche démarre
 
@@ -85,12 +116,12 @@ l'agent démarrait en mode mono-fenêtre. Ligne ajoutée sur le modèle des
 | --- | --- | --- |
 | 1 | La page-shell liste les fenêtres déjà ouvertes et en ouvre une par fenêtre | ✅ **OBTENU.** B : 3 fenêtres listées, 3 fenêtres navigateur ouvertes, 3 sessions `connected` à 1280×720, RTT 2–3 ms. F : **4** fenêtres, 4 sessions simultanées. Chaque fenêtre navigateur montre son application et **elle seule**, plein cadre (captures §2.1) |
 | 2 | Ouvrir le Bloc-notes → une nouvelle fenêtre navigateur s'ouvre, montrant le Bloc-notes et lui seul | ❌ **NON OBTENU.** La fenêtre est bien détectée et une session lui est bien créée, mais la création de sa sortie virtuelle **tue toutes les sessions en cours**, la sienne comprise (§3.3). Exercé dans A et B, même issue |
-| 3 | Taper au clavier dans la fenêtre du Bloc-notes → le texte y apparaît, et pas ailleurs | ❌ **NON OBTENU.** Frappe émise dans les 4 pages de F ; relecture du contrôle d'édition des **deux** Bloc-notes par `WM_GETTEXT` : les deux sont **vides**, et aucun titre ne porte l'astérisque de modification. Cause non départagée (§3.5) |
-| 4 | Cliquer et déplacer la souris dans chaque fenêtre → le pointeur agit dans la bonne | ⚠️ **PARTIEL, et par le négatif.** Le clic synthétique est consommé par la demande de verrouillage du pointeur (bandeau « cliquez dans l'image pour prendre la souris » visible sur la capture `f-point3-5`), qui exige une activation utilisateur qu'un clic CDP ne fournit pas en mode sans interface. **Aucun mouvement de pointeur n'a donc été porté jusqu'à la VM.** Ce que la mesure établit tout de même : les quatre fenêtres Windows sont bien posées chacune sur sa sortie, à `+2400`, `+3680`, `+4960`, `+6240` (relevé F, « fenêtres VM après frappe ») — la géométrie sur laquelle le calcul de pointeur s'appuie est donc juste |
-| 5 | Jouer un son sur la VM → le son sort **d'une seule** fenêtre navigateur | ✅ **OBTENU, avec une réserve de méthode.** Sur les 4 sessions de F, **une seule** porte une piste audio (`w-1`) ; les trois autres n'en ont aucune (`audio: null`), et l'agent le dit de son côté : `audio activé` une fois, `son désactivé sur cet enfant : une seule fenêtre le porte` trois fois. Pendant les quatre `Windows Ding.wav`, les octets RTP audio de `w-1` passent de 1 592 à 61 302, soit **+59 710 octets en 9,4 s**, contre ~1,6 ko sur les 26 s de silence qui précèdent. **Réserve** : `totalAudioEnergy` reste à 0 — la page n'a jamais reçu de geste utilisateur, son `AudioContext` est resté suspendu. **Le son est arrivé, il n'a pas été joué** : c'est prouvé par le débit reçu, pas par une écoute |
+| 3 | Taper au clavier dans la fenêtre du Bloc-notes → le texte y apparaît, et pas ailleurs | ❌ **NON OBTENU.** Frappe émise dans les 4 pages de F ; relecture du contrôle d'édition des **deux** Bloc-notes par `WM_GETTEXT` : les deux sont **vides**, et aucun titre ne porte l'astérisque de modification (`demonstration-relecture-bloc-notes.txt`, qui porte aussi la même relecture après l'exécution D). Cause non départagée (§3.5) |
+| 4 | Cliquer et déplacer la souris dans chaque fenêtre → le pointeur agit dans la bonne | ⚠️ **PARTIEL, et par le négatif.** Le clic synthétique est consommé par la demande de verrouillage du pointeur (bandeau « cliquez dans l'image pour prendre la souris » visible sur `demonstration-3-verrouillage-pointeur-non-accorde.png`), qui exige une activation utilisateur qu'un clic CDP ne fournit pas en mode sans interface. **Aucun mouvement de pointeur n'a donc été porté jusqu'à la VM.** Ce que la mesure établit tout de même : les quatre fenêtres Windows sont bien posées chacune sur sa sortie, à `+2400`, `+3680`, `+4960`, `+6240` (relevé F, « fenêtres VM après frappe ») — la géométrie sur laquelle le calcul de pointeur s'appuie est donc juste |
+| 5 | Jouer un son sur la VM → le son sort **d'une seule** fenêtre navigateur | ✅ **OBTENU, avec une réserve de méthode.** Sur les 4 sessions de F, **une seule** porte une piste audio (`w-1`) ; les trois autres n'en ont aucune (`audio: null`), et l'agent le dit de son côté : `audio activé` une fois, `son désactivé sur cet enfant : une seule fenêtre le porte` trois fois. Pendant les quatre `Windows Ding.wav` (`pilote-recette.mjs`, `1..4 | … Media.SoundPlayer … PlaySync()`), les octets RTP audio de `w-1` passent de 1 592 à 61 302, soit **+59 710 octets en 9,4 s**. Avant cela, la piste n'avait accumulé que 1 592 octets. ⚠️ **Sur quelle durée : ≈15 s, et non 26.** Le pilote horodate en secondes depuis son propre démarrage, l'agent en UTC ; en recalant les deux (première ligne d'agent `10:58:46.45` ↔ `t≈4,3 s` du pilote, `audio activé` `10:58:56.547` ↔ `t≈14,4 s`, première lecture à `t=29,3 s`), la piste audio de `w-1` n'a vécu que **≈15 s** avant la lecture. Une première rédaction écrivait 26 s, ce qui surévaluait la fenêtre de comparaison d'une dizaine de secondes. Les débits qui en découlent : **≈106 octets/s avant, ≈6 350 octets/s pendant**, soit un facteur ≈60 — la conclusion est inchangée, et elle ne porte que sur `w-1`, les trois autres sessions n'ayant aucune piste audio à compter. **Réserve** : `totalAudioEnergy` reste à 0 — la page n'a jamais reçu de geste utilisateur, son `AudioContext` est resté suspendu. **Le son est arrivé, il n'a pas été joué** : c'est prouvé par le débit reçu, pas par une écoute |
 | 6 | Fermer le Bloc-notes sur la VM → sa fenêtre navigateur se ferme | ❌ **NON EXERCÉ.** Aucune exécution n'a atteint ce point avec une session vivante |
 | 7 | Fermer une page navigateur → l'application reste ouverte, la shell la liste « fermée », « Rouvrir » la ramène | ❌ **NON EXERCÉ.** Dans F, le pilote a fermé la mauvaise page (`about:blank`) — défaut de mon script, pas du produit — et l'arrangement s'était de toute façon effondré 3 s plus tôt. Ce qui est tout de même observé : **les 4 applications Windows sont restées ouvertes** après la mort de leurs sessions (relevé « fenêtres VM après fermeture de la page navigateur ») |
-| 8 | Déplacer une fenêtre hors de sa sortie → le superviseur la replace dans la seconde | ⚠️ **PARTIEL.** Le mécanisme **fonctionne et il est visible** : `fenêtre sortie de sa sortie, replacement session=w-1 de="160x668+2400+0" vers="1280x720+2400+0"` (B) et cinq occurrences analogues dans A et B. Mais il n'a **jamais** été déclenché par un déplacement délibéré sur une session vivante : à chaque fois il rattrapait une fenêtre que le chemin de redimensionnement de l'enfant venait de rétrécir (§3.2). Le déplacement forcé du point 8 de F s'est produit alors qu'aucune session ne vivait |
+| 8 | Déplacer une fenêtre hors de sa sortie → le superviseur la replace dans la seconde | ⚠️ **PARTIEL.** Le mécanisme **fonctionne et il est visible** : `fenêtre sortie de sa sortie, replacement session=w-1 de="160x668+2400+0" vers="1280x720+2400+0"` (B). **Sept occurrences en tout dans A et B** (2 + 5), et six de plus dans F. Mais il n'a **jamais** été déclenché par un déplacement délibéré sur une session vivante : à chaque fois il rattrapait une fenêtre que le chemin de redimensionnement de l'enfant venait de rétrécir (§3.2). Le déplacement forcé du point 8 de F s'est produit alors qu'aucune session ne vivait |
 
 ### 2.1 La pièce du point 1
 
@@ -161,7 +192,7 @@ WARN  agent::windows_source: reconstruction de la chaîne d'encodage échouée,
 WARN  agent::transport::redimensionnement: échec du redimensionnement, ignoré
       erreur=la fenêtre est hors de l'écran width=1280 height=720
 ```
-*(`demonstration-2-viewport-pair-agent.log`, vers 10:28:22.9)*
+*(`demonstration-2-viewport-pair-agent.log:117,123,124,125` — **quatre lignes non contiguës**, entre `10:28:22.802866` et `10:28:22.909242`. Les cinq lignes sautées sont des traces de contexte D3D11 ; l'une d'elles, l. 120, répète mot pour mot la l. 123 — la reconstruction ouvre deux duplications successives du bureau avant d'échouer.)*
 
 Trois conséquences observées :
 
@@ -187,8 +218,8 @@ Trois conséquences observées :
 
 C'est le défaut qui empêche la démonstration d'exister.
 
-Dès qu'une sortie virtuelle est créée (ou détruite), DXGI abandonne le mutex
-partagé des duplications **déjà ouvertes**. Chaque enfant vivant le voit ainsi :
+Dès qu'une sortie virtuelle est **créée**, DXGI abandonne le mutex partagé des
+duplications **déjà ouvertes**. Chaque enfant vivant le voit ainsi :
 
 ```
 ERROR agent::windows_source: capture interrompue, source déclarée épuisée
@@ -196,10 +227,34 @@ ERROR agent::windows_source: capture interrompue, source déclarée épuisée
 INFO  agent::transport::controle: clôture de session amorcée reason="source vidéo épuisée"
 ```
 
-et se termine. Dans F, les **quatre** enfants meurent dans les 8 ms
-(`demonstration-3-arrangement-stable-agent.log:343,345,347,349`) au moment où
-la 5ᵉ sortie est créée. Reproduit dans A, B, C et F : **quatre exécutions sur
-quatre**.
+et se termine. Dans F, la 5ᵉ sortie est créée à `10:59:46.881246`
+(`demonstration-3-arrangement-stable-agent.log:342`) et les **quatre** enfants
+meurent 49,1 ms plus tard, en **8,28 ms** (l. 343, 345, 347 et 349 :
+`.930364`, `.935785`, `.936764`, `.938648`), chacun suivi de sa `clôture de
+session amorcée`.
+
+**La correspondance est exacte, et c'est ce qui fait la preuve.** Sur les trois
+journaux versés :
+
+| | créations de sortie | erreurs `0x887A0026` |
+| --- | --- | --- |
+| **Aucune duplication ouverte** (avant le lancement du premier enfant) | 9 (A : 2, B : 3, F : 4) | **0** |
+| **Duplications ouvertes** | 4 (A : 2, B : 1, F : 1) | **9** — soit `1, 1, 3, 4`, **exactement le nombre de duplications ouvertes à chaque fois** |
+
+Le témoin négatif est donc dans les mêmes journaux : créer une sortie **avant**
+qu'une duplication n'existe ne produit rien.
+
+⚠️ **La destruction, elle, n'est PAS mise en cause : le cas n'a jamais été
+exercé.** Les **17** destructions des trois journaux tombent toutes hors de
+toute duplication ouverte — en A, `sortie virtuelle détruite id=264` survient 1,6 s
+avant le lancement du premier enfant ; en B et F, toutes les destructions
+tombent 3,0 à 4,5 s **après** que tous les enfants sont déjà morts. Une
+première rédaction écrivait « créée (ou détruite) » : **cette parenthèse
+doublait la portée du défaut sans la moindre preuve**, et elle est retirée.
+Que la destruction ait ou non le même effet reste ouvert.
+
+Reproduit dans **trois exécutions versées sur trois** (A, B, F), plus une
+quatrième (C) dont les journaux ne sont pas joints — voir §1.
 
 S'ensuit un emballement, lui aussi reproduit à chaque fois :
 
@@ -242,7 +297,7 @@ code, **et la mesure ne permet pas de choisir** :
 - côté navigateur, le premier clic sur l'image est consommé par
   `requestPointerLock` (`client/src/pointer.ts:95-105`), qui exige une
   activation utilisateur transitoire qu'un `Input.dispatchMouseEvent` de CDP ne
-  fournit pas — la capture `f-point3-5` montre le bandeau resté affiché ;
+  fournit pas — `demonstration-3-verrouillage-pointeur-non-accorde.png` montre le bandeau resté affiché ;
 - côté agent, l'injection passe par `SendInput` (`agent/src/input.rs:197`), qui
   est **globale à la session Windows** : le clavier va à la fenêtre au premier
   plan, quelle qu'elle soit. Aucun `SetForegroundWindow` n'est fait sur la
@@ -298,8 +353,11 @@ pour qu'aucune ne soit lue comme une découverte de cette recette :
   qui se contredit lui-même trente lignes plus haut (l. 3262, « Rendue
   MAINTENANT, pas à l'arrêt du superviseur »). La tâche 12 a câblé
   `DetruireSortie` sur `Sorties::detruire` dans le tour même, et la recette le
-  montre à l'œuvre : `sortie virtuelle rendue au pilote sortie_pilote=259`,
-  plusieurs occurrences dans A et B ;
+  montre à l'œuvre : `sortie virtuelle rendue au pilote sortie_pilote=259` en B
+  et en F (A porte 256, 257, 262 et 263) — **16 rendus** en tout sur les trois
+  journaux, pour **17 destructions** côté pilote : l'écart d'une unité est la
+  sortie que A rend par `rendre_sans_apparier`, chemin qui ne journalise pas ce
+  message ;
 - **plein écran** (D4) et **mise en sommeil des fenêtres masquées** (D5) : hors
   périmètre, non exercés ;
 - **audio par fenêtre** (loopback de processus, D3) : hors périmètre. Ce que D1
@@ -309,13 +367,22 @@ pour qu'aucune ne soit lue comme une découverte de cette recette :
 
 ## 6. Ce que cette démonstration n'établit pas
 
+- **Le plafond d'encodeurs en multi-processus n'est PAS relevé** — c'était
+  pourtant le chiffre attendu de cette recette, et c'est ici qu'un lecteur
+  pressé le cherchera. Il n'a pas été approché : voir §4.
+- **Le cas produit n'est pas couvert** : les quatre fenêtres tenues
+  simultanément **préexistaient au démarrage du superviseur**. Aucune fenêtre
+  ouverte pendant une session n'a jamais abouti — deux tentatives, deux échecs.
+- **La destruction d'une sortie virtuelle n'est pas mise en cause, faute
+  d'avoir été exercée** pendant qu'une duplication était ouverte (§3.3).
 - **Aucune mesure de cadence ni de latence.** Les `framesDecoded` relevés (4 à
   29 images cumulées à t+29 s) ne mesurent rien : les contenus capturés sont
   statiques, et Desktop Duplication n'émet une trame qu'au changement du bureau.
   Le RTT de 1 à 3 ms est celui de la paire ICE, pas la latence de bout en bout.
 - **Une seule exécution exploitée par configuration.** Aucun taux, aucune
-  variabilité. Les défauts §3.1 à §3.3 sont eux reproduits sur trois ou quatre
-  exécutions, ce qui est dit à chaque fois.
+  variabilité. Le défaut central du §3.3 est, lui, reproduit sur **trois
+  exécutions versées sur trois**, plus une quatrième dont les journaux ne sont
+  pas joints.
 - **Quatre fenêtres au plus, jamais huit.** La cible du chantier n'est pas
   approchée.
 - **Trois applications seulement** — Bloc-notes, Explorateur, Firefox — toutes
@@ -342,17 +409,22 @@ pour qu'aucune ne soit lue comme une découverte de cette recette :
 
 - **La VM se met en veille prolongée toute seule, et elle l'a fait deux fois en
   pleine mesure.** Les deux extinctions sont horodatées **09:40:09 et 10:40:10
-  UTC**, à une heure d'intervalle **à la même minute**. Ce n'est pas une
-  minuterie d'inactivité (`STANDBYIDLE` et `HIBERNATEIDLE` sont tous deux à 0) :
-  le journal Windows nomme l'initiateur, `\Windows\System32\shutdown.exe`
-  (Kernel-Power 187), pour une transition de type hibernation (Kernel-Power 42).
-  Le déclencheur exact **n'a pas été identifié** — la seule tâche planifiée qui
-  appelle `shutdown` est désactivée depuis avril 2025 ; `sunshine` et
-  `sunshinesvc` tournent sur la VM et sont les suspects non éprouvés.
-  **Conséquence pratique : ne rien lancer de plus long que quelques minutes
-  après la minute :35 de chaque heure.** Symptôme côté hôte : `/media/vm`
-  répond « L'hôte cible est arrêté ou en panne », `virsh list --all` dit
-  « fermé », et `scripts/run-agent.sh` échoue en écrivant son `.ps1`.
+  UTC**, à une heure d'intervalle et à la même minute. Ce n'est pas une
+  minuterie d'inactivité (`STANDBYIDLE` et `HIBERNATEIDLE` sont tous deux à 0,
+  relevé dans `veille-prolongee-vm.txt`) : le journal Windows nomme
+  l'initiateur, `\Windows\System32\shutdown.exe` (Kernel-Power 187), pour une
+  transition de type hibernation (Kernel-Power 42).
+  ⚠️ **Le motif horaire n'est PAS établi pour autant, et il ne faut pas
+  l'écrire** : le même relevé porte une **troisième** hibernation, antérieure à
+  la recette, à 08:29:50 UTC — qui ne tombe ni sur la minute :40, ni sur
+  l'intervalle d'une heure. Le déclencheur exact **n'est pas identifié** : la
+  seule tâche planifiée qui appelle `shutdown` est désactivée depuis avril 2025,
+  et `sunshine`/`sunshinesvc` tournent sur la VM sans qu'aucune mesure ne les
+  mette en cause. La seule règle prudente que ces trois points autorisent est
+  donc : **ne pas lancer de séquence longue sans vérifier ensuite que la VM a
+  survécu**. Symptôme côté hôte : `/media/vm` répond « L'hôte cible est arrêté
+  ou en panne », `virsh list --all` dit « fermé », et `scripts/run-agent.sh`
+  échoue en écrivant son `.ps1`.
 - **Un agent survit à l'hibernation de la VM.** Le superviseur de l'exécution D
   écrivait encore dans `agent.log` après la reprise. `run-agent.sh` ne tue pas
   l'agent existant : il recrée la tâche planifiée et la lance. **Vérifier

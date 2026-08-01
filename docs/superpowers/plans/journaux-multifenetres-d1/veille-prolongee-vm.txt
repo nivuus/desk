@@ -1,0 +1,59 @@
+# Kernel-Power : les mises en veille prolongee de la VM.
+# Horodatages en heure LOCALE de la VM (UTC+2). Les deux qui ont
+# interrompu la recette : 11:40:04 et 12:40:04 local, soit 09:40:04
+# et 10:40:04 UTC. Une TROISIEME, ANTERIEURE a la recette, figure a
+# 10:29:50 local : elle ne tombe PAS sur la minute :40, donc le motif
+# horaire n'est pas etabli et le declencheur reste non identifie.
+# ID 42 = entree en veille, 187 = processus initiateur, 107 = reprise.
+# (Les libelles Windows de ces ID ne sont pas installes sur cette VM ;
+#  les parametres bruts suivent le texte d'excuse, et ce sont eux qui
+#  portent l'information : pour 187, le chemin de l'initiateur.)
+
+01/08/2026 12:40:08  ID=107  La description de l'ID d'événement '107' dans la source 'Microsoft-Windows-Kernel-Power' est introuvable. L'ordinateur local ne dispose peut-être pas des informations du Registre ou des fichiers DLL nécessaires à l'affichage du message, ou vous n'êtes peut-être pas autorisé à y accéder. Les informations suivantes ont trait à l'événement :'5', '5', '5', '1601-01-01T00:00:00.0000000Z', '1601-01-01T00:00:00.0000000Z', '0', '0'
+
+01/08/2026 12:40:05  ID=42  La description de l'ID d'événement '42' dans la source 'Microsoft-Windows-Kernel-Power' est introuvable. L'ordinateur local ne dispose peut-être pas des informations du Registre ou des fichiers DLL nécessaires à l'affichage du message, ou vous n'êtes peut-être pas autorisé à y accéder. Les informations suivantes ont trait à l'événement :'5', '5', '4', '0', '0'
+
+01/08/2026 12:40:04  ID=187  La description de l'ID d'événement '187' dans la source 'Microsoft-Windows-Kernel-Power' est introuvable. L'ordinateur local ne dispose peut-être pas des informations du Registre ou des fichiers DLL nécessaires à l'affichage du message, ou vous n'êtes peut-être pas autorisé à y accéder. Les informations suivantes ont trait à l'événement :'53', '\Device\HarddiskVolume3\Windows\System32\shutdown.exe', '3', '2'
+
+01/08/2026 11:40:08  ID=107  La description de l'ID d'événement '107' dans la source 'Microsoft-Windows-Kernel-Power' est introuvable. L'ordinateur local ne dispose peut-être pas des informations du Registre ou des fichiers DLL nécessaires à l'affichage du message, ou vous n'êtes peut-être pas autorisé à y accéder. Les informations suivantes ont trait à l'événement :'5', '5', '5', '1601-01-01T00:00:00.0000000Z', '1601-01-01T00:00:00.0000000Z', '0', '0'
+
+01/08/2026 11:40:04  ID=42  La description de l'ID d'événement '42' dans la source 'Microsoft-Windows-Kernel-Power' est introuvable. L'ordinateur local ne dispose peut-être pas des informations du Registre ou des fichiers DLL nécessaires à l'affichage du message, ou vous n'êtes peut-être pas autorisé à y accéder. Les informations suivantes ont trait à l'événement :'5', '5', '4', '0', '0'
+
+01/08/2026 11:40:04  ID=187  La description de l'ID d'événement '187' dans la source 'Microsoft-Windows-Kernel-Power' est introuvable. L'ordinateur local ne dispose peut-être pas des informations du Registre ou des fichiers DLL nécessaires à l'affichage du message, ou vous n'êtes peut-être pas autorisé à y accéder. Les informations suivantes ont trait à l'événement :'53', '\Device\HarddiskVolume3\Windows\System32\shutdown.exe', '3', '2'
+
+01/08/2026 10:29:53  ID=107  La description de l'ID d'événement '107' dans la source 'Microsoft-Windows-Kernel-Power' est introuvable. L'ordinateur local ne dispose peut-être pas des informations du Registre ou des fichiers DLL nécessaires à l'affichage du message, ou vous n'êtes peut-être pas autorisé à y accéder. Les informations suivantes ont trait à l'événement :'5', '5', '5', '1601-01-01T00:00:00.0000000Z', '1601-01-01T00:00:00.0000000Z', '0', '0'
+
+01/08/2026 10:29:50  ID=42  La description de l'ID d'événement '42' dans la source 'Microsoft-Windows-Kernel-Power' est introuvable. L'ordinateur local ne dispose peut-être pas des informations du Registre ou des fichiers DLL nécessaires à l'affichage du message, ou vous n'êtes peut-être pas autorisé à y accéder. Les informations suivantes ont trait à l'événement :'5', '5', '4', '0', '0'
+
+# Minuteries d'inactivite : les deux sont a ZERO, donc desarmees.
+
+GUID du mode de gestion de l’alimentation : 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c  (Performances élevées)
+  Alias de GUID : SCHEME_MIN
+  GUID du sous-groupe : 238c9fa8-0aad-41ed-83f4-97be242c8f20  (Veille)
+    Alias de GUID : SUB_SLEEP
+    GUID du paramètre d’alimentation : 29f6c1db-86da-48c5-9fdb-f2b67b1f44da  (Veille après)
+      Alias de GUID : STANDBYIDLE
+      Valeur minimale possible : 0x00000000
+      Valeur maximale possible : 0xffffffff
+      Incrément possible des paramètres : 0x00000001
+      Unités possibles des paramètres : secondes
+    Index actuel du paramètre de courant alternatif : 0x00000000
+    Index actuel du paramètre de courant continu : 0x00000000
+
+
+GUID du mode de gestion de l’alimentation : 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c  (Performances élevées)
+  Alias de GUID : SCHEME_MIN
+  GUID du sous-groupe : 238c9fa8-0aad-41ed-83f4-97be242c8f20  (Veille)
+    Alias de GUID : SUB_SLEEP
+    GUID du paramètre d’alimentation : 9d7815a6-7ee4-497e-8888-515a05f02364  (Mettre en veille prolongée après)
+      Alias de GUID : HIBERNATEIDLE
+      Valeur minimale possible : 0x00000000
+      Valeur maximale possible : 0xffffffff
+      Incrément possible des paramètres : 0x00000001
+      Unités possibles des paramètres : secondes
+    Index actuel du paramètre de courant alternatif : 0x00000000
+    Index actuel du paramètre de courant continu : 0x00000000
+
+
+# Seule tache planifiee appelant shutdown, avec son etat :
+\Extinction si inactif => shutdown /s /f /t 0 [etat=Disabled] [derniere execution=28/04/2025 21:22:22]
