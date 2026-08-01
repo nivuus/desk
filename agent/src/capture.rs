@@ -50,8 +50,8 @@ pub struct CapturedFrame {
 /// Pourquoi une acquisition d'image a échoué, une fois les reprises épuisées.
 ///
 /// `AccesPerdu` ne remonte pas à la première perte : `next_frame` tente de se
-/// rouvrir d'abord (voir `BudgetReprises`). Le recevoir signifie « je n'ai pas
-/// pu revenir », pas « l'accès vient d'être perdu ».
+/// rouvrir d'abord (voir `FenetreDeReprise`). Le recevoir signifie « je n'ai
+/// pas pu revenir dans le délai imparti », pas « l'accès vient d'être perdu ».
 pub enum EchecAcquisition {
     AccesPerdu,
     Panne(anyhow::Error),
@@ -62,8 +62,8 @@ impl std::fmt::Display for EchecAcquisition {
         match self {
             Self::AccesPerdu => write!(
                 f,
-                "accès à la duplication perdu et non repris après {} tentatives",
-                crate::capture_reprise::REPRISES_MAX
+                "accès à la duplication perdu et non repris en {:?}",
+                crate::capture_reprise::DUREE_FENETRE_REPRISE
             ),
             Self::Panne(e) => write!(f, "{e:#}"),
         }
@@ -95,9 +95,9 @@ pub struct DesktopCapture {
     /// à l'instant où l'accès est perdu, la topologie a déjà changé et rien
     /// dans les objets DXGI encore détenus ne dit ce qu'on capturait.
     cible: CibleCapture,
-    /// Reprises consécutives déjà accordées à cette capture (voir
-    /// `next_frame`) : une rafale de pertes d'accès ne doit pas s'éterniser.
-    budget: crate::capture_reprise::BudgetReprises,
+    /// Fenêtre de reprise en cours pour cette capture (voir `next_frame`) :
+    /// une perte d'accès qui persiste au-delà de sa durée est définitive.
+    fenetre: crate::capture_reprise::FenetreDeReprise,
     desktop_width: u32,
     desktop_height: u32,
     /// Texture de destination, réallouée seulement quand la taille change.
@@ -197,7 +197,7 @@ impl DesktopCapture {
             context,
             duplication,
             cible,
-            budget: crate::capture_reprise::BudgetReprises::nouveau(),
+            fenetre: crate::capture_reprise::FenetreDeReprise::nouvelle(),
             desktop_width,
             desktop_height,
             target: None,
@@ -277,31 +277,45 @@ impl DesktopCapture {
         &mut self,
         region: Rect,
     ) -> std::result::Result<Option<CapturedFrame>, EchecAcquisition> {
-        loop {
-            match self.tenter_acquisition(region) {
-                Ok(issue) => {
-                    self.budget.succes();
-                    return Ok(issue);
-                }
-                Err(EchecAcquisition::AccesPerdu) => {
-                    if !self.budget.consommer() {
-                        return Err(EchecAcquisition::AccesPerdu);
-                    }
-                    // `info!` et non `debug!` : l'exploitation tourne en
-                    // RUST_LOG=info, et une mitigation muette n'en est pas une.
-                    // Rare par construction — une reprise correspond à un
-                    // remaniement de la topologie d'affichage.
-                    tracing::info!(
-                        tentative = self.budget.consommees(),
-                        cible = ?self.cible,
-                        "accès à la duplication perdu, réouverture"
-                    );
-                    if let Err(erreur) = self.rouvrir() {
-                        return Err(EchecAcquisition::Panne(erreur));
-                    }
-                }
-                Err(panne) => return Err(panne),
+        match self.tenter_acquisition(region) {
+            Ok(issue) => {
+                self.fenetre.succes();
+                Ok(issue)
             }
+            Err(EchecAcquisition::AccesPerdu) => {
+                // Pas de boucle interne, et c'est le point de conception :
+                // cette fonction est appelée depuis la boucle de
+                // `Session::run`, et y dormir plusieurs secondes suspendrait
+                // du même coup les demandes de keyframe, les changements de
+                // barreau de l'adaptation réseau et les redimensionnements.
+                // La reprise s'étale donc sur plusieurs appels.
+                match self.fenetre.tenter(std::time::Instant::now()) {
+                    crate::capture_reprise::Tentative::Rouvrir => {
+                        tracing::info!(
+                            tentative = self.fenetre.tentatives(),
+                            cible = ?self.cible,
+                            "accès à la duplication perdu, réouverture"
+                        );
+                        if let Err(erreur) = self.rouvrir() {
+                            // Un échec de réouverture n'est PAS définitif : la
+                            // sortie peut n'être pas encore réapparue dans la
+                            // topologie. On le dit et on laisse la fenêtre
+                            // courir — c'est elle qui tranchera.
+                            tracing::info!(
+                                erreur = %erreur,
+                                cible = ?self.cible,
+                                "réouverture de la duplication échouée, la fenêtre de reprise court toujours"
+                            );
+                        }
+                        Ok(None)
+                    }
+                    crate::capture_reprise::Tentative::Patienter => Ok(None),
+                    crate::capture_reprise::Tentative::Expiree => {
+                        Err(EchecAcquisition::AccesPerdu)
+                    }
+                }
+            }
+            Err(panne) => Err(panne),
         }
     }
 
