@@ -179,11 +179,9 @@ impl VoieDuplication {
     /// exprimées dans le repère de la texture, pas dans celui des fenêtres :
     /// voir `moniteurs_virtuels::vers_texture`, dont `banc::executer` se sert
     /// pour convertir.
-    pub(super) fn partagee_sur(
-        sortie: Option<(u32, u32)>,
-    ) -> Result<Rc<RefCell<SourceDuplication>>> {
+    pub(super) fn partagee_sur(sortie: Option<&str>) -> Result<Rc<RefCell<SourceDuplication>>> {
         let capture = match sortie {
-            Some((adaptateur, index)) => DesktopCapture::sur_sortie(adaptateur, index)?,
+            Some(nom) => DesktopCapture::sur_sortie(nom)?,
             None => DesktopCapture::new()?,
         };
         let (largeur, hauteur) = capture.desktop_size();

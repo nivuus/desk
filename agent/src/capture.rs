@@ -47,10 +47,31 @@ pub struct CapturedFrame {
     pub height: u32,
 }
 
+/// Ce que cette duplication couvre — et donc ce qu'il faut rouvrir après une
+/// perte d'accès.
+///
+/// **Un nom de sortie, jamais un index.** `(index_adaptateur, index_sortie)`
+/// est positionnel : il change dès qu'une sortie apparaît ou disparaît. Or
+/// c'est exactement ce qui vient de se produire quand on rouvre. `\\.\DISPLAYn`
+/// est stable.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CibleCapture {
+    /// La sortie qui compose le bureau, quelle qu'elle soit — comportement de
+    /// `DesktopCapture::new()`. Résolue à chaque ouverture, donc une
+    /// réouverture peut légitimement tomber sur une autre sortie.
+    Bureau,
+    /// Une sortie précise, désignée par son nom.
+    Sortie(String),
+}
+
 pub struct DesktopCapture {
     device: ID3D11Device,
     context: ID3D11DeviceContext,
     duplication: IDXGIOutputDuplication,
+    /// Ce qu'il faut rouvrir après une perte d'accès. Retenu à l'ouverture :
+    /// à l'instant où l'accès est perdu, la topologie a déjà changé et rien
+    /// dans les objets DXGI encore détenus ne dit ce qu'on capturait.
+    cible: CibleCapture,
     desktop_width: u32,
     desktop_height: u32,
     /// Texture de destination, réallouée seulement quand la taille change.
@@ -64,30 +85,31 @@ pub struct DesktopCapture {
 
 impl DesktopCapture {
     pub fn new() -> Result<Self> {
-        Self::ouvrir(None)
+        Self::ouvrir(CibleCapture::Bureau)
     }
 
-    /// Duplique une sortie DXGI précise, désignée par ses index
-    /// d'énumération (voir `enumerer_sorties`).
+    /// Duplique une sortie DXGI précise, désignée par son nom
+    /// (`\\.\DISPLAYn`, tel que `enumerer_sorties` le rend).
     ///
-    /// Ajouté pour la voie « un moniteur virtuel par fenêtre » de la sonde
-    /// multi-fenêtres : elle duplique N sorties distinctes, là où `new()` ne
-    /// sait ouvrir que la première attachée au bureau.
-    pub fn sur_sortie(index_adaptateur: u32, index_sortie: u32) -> Result<Self> {
-        Self::ouvrir(Some((index_adaptateur, index_sortie)))
+    /// **Par le nom et non par des index d'énumération** : ceux-ci sont
+    /// positionnels et changent dès qu'une sortie apparaît ou disparaît — ce
+    /// qui est le cas nominal en multi-fenêtres, où le superviseur crée une
+    /// sortie par ouverture de fenêtre.
+    pub fn sur_sortie(nom: &str) -> Result<Self> {
+        Self::ouvrir(CibleCapture::Sortie(nom.to_string()))
     }
 
-    fn ouvrir(cible: Option<(u32, u32)>) -> Result<Self> {
+    fn ouvrir(cible: CibleCapture) -> Result<Self> {
         let factory: IDXGIFactory1 =
             unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI")?;
 
-        // Sans cible (`new()`), on retient le premier adaptateur possédant une
-        // sortie attachée au bureau : c'est celui qui compose l'écran, et donc
-        // le seul duplicable. Sur la VM cible c'est la RTX 4070, ce qui donne
-        // du même coup le bon périphérique pour l'encodeur matériel de la
-        // tâche 10. Avec une cible (`sur_sortie`), c'est celle-ci qui est
-        // ouverte telle quelle.
-        let (adapter, output) = ouvrir_sortie(&factory, cible)?;
+        // Sans cible (`new()`, `CibleCapture::Bureau`), on retient le premier
+        // adaptateur possédant une sortie attachée au bureau : c'est celui qui
+        // compose l'écran, et donc le seul duplicable. Sur la VM cible c'est la
+        // RTX 4070, ce qui donne du même coup le bon périphérique pour
+        // l'encodeur matériel de la tâche 10. Avec une cible
+        // (`CibleCapture::Sortie`), c'est celle-ci qui est ouverte telle quelle.
+        let (adapter, output) = ouvrir_sortie(&factory, &cible)?;
 
         let mut device: Option<ID3D11Device> = None;
         let mut context: Option<ID3D11DeviceContext> = None;
@@ -141,22 +163,14 @@ impl DesktopCapture {
             "protection multi-fils activée sur le contexte immédiat D3D11"
         );
 
-        let duplication = unsafe { output.DuplicateOutput(&device) }
-            .context("duplication de la sortie écran")?;
-
-        // écart d'API windows-rs 0.62 : `GetDesc` ne prend plus de paramètre
-        // de sortie ; elle renvoie directement la structure (par valeur pour
-        // `IDXGIOutputDuplication`, dans un `Result` pour `IDXGIOutput1` et
-        // `IDXGIAdapter1` juste plus bas, ces deux dernières pouvant échouer).
-        let desc = unsafe { duplication.GetDesc() };
-        let desktop_width = desc.ModeDesc.Width;
-        let desktop_height = desc.ModeDesc.Height;
+        let (duplication, desktop_width, desktop_height) = dupliquer(&device, &output)?;
         tracing::info!(desktop_width, desktop_height, "duplication de sortie établie");
 
         Ok(Self {
             device,
             context,
             duplication,
+            cible,
             desktop_width,
             desktop_height,
             target: None,
@@ -167,6 +181,43 @@ impl DesktopCapture {
 
     pub fn device(&self) -> &ID3D11Device {
         &self.device
+    }
+
+    /// Reconstruit la duplication après une perte d'accès, **en conservant le
+    /// périphérique D3D11**.
+    ///
+    /// Ce n'est pas une économie, c'est une nécessité. L'encodeur H.264 est lié
+    /// à ce périphérique par l'`IMFDXGIDeviceManager` (`encode::share_device`) :
+    /// en créer un neuf obligerait à détruire l'encodeur, donc à emprunter
+    /// `Drop for H264Encoder`, dont le pire cas est borné à 8 s et où un gel a
+    /// déjà été observé (`CLAUDE.md`). Une reprise censée passer inaperçue ne
+    /// peut pas payer ce prix.
+    ///
+    /// La protection multifil posée sur le contexte à l'ouverture n'est pas
+    /// rejouée : elle porte sur le contexte immédiat, qu'on conserve.
+    pub fn rouvrir(&mut self) -> Result<()> {
+        // Relâcher l'image éventuellement détenue AVANT de lâcher la
+        // duplication : `release_frame` appelle `ReleaseFrame` sur l'objet
+        // qu'on est en train de remplacer.
+        self.release_frame();
+
+        let factory: IDXGIFactory1 =
+            unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI (réouverture)")?;
+        let (_adapter, output) = ouvrir_sortie(&factory, &self.cible)
+            .context("résolution de la sortie à rouvrir")?;
+        let (duplication, largeur, hauteur) = dupliquer(&self.device, &output)?;
+
+        // Les dimensions peuvent avoir changé : la texture de destination est
+        // dimensionnée sur la RÉGION demandée par l'appelant, pas sur celles-ci,
+        // mais `desktop_size()` est lue ailleurs et doit rester juste.
+        self.duplication = duplication;
+        self.desktop_width = largeur;
+        self.desktop_height = hauteur;
+        Ok(())
+    }
+
+    pub fn cible(&self) -> &CibleCapture {
+        &self.cible
     }
 
     /// Branche le marqueur d'étape partagé avec le fil de surveillance.
@@ -332,96 +383,20 @@ impl Drop for DesktopCapture {
 // au type portable pour tout le code qui, lui, ne compile que sous Windows.
 pub use crate::sortie_dxgi::SortieDxgi;
 
-/// Énumère toutes les sorties de tous les adaptateurs, **en journalisant** les
-/// adaptateurs dépourvus de sortie.
-///
-/// Sert au relevé du temps 1 de la sonde multi-fenêtres : deux documents du
-/// dépôt se contredisent sur l'adaptateur qui pilote réellement le bureau
-/// (`plans/fix-debit-socket-report.md:163` contre le commit `4493b24`), et
-/// c'est ce relevé qui tranche.
-///
-/// **Réservée aux relevés ponctuels.** Pour un appel répété — le contrôle de
-/// placement du superviseur court à 1 Hz — voir `enumerer_sorties_silencieux`.
-pub fn enumerer_sorties() -> Result<Vec<SortieDxgi>> {
-    enumerer(true)
-}
+// `enumerer_sorties`, `enumerer_sorties_silencieux` et le reste de
+// l'énumération DXGI vivent dans ce module enfant, extrait à la tâche 2 du
+// sous-bloc D2 pour ramener ce fichier sous le plafond de 500 lignes
+// (`CLAUDE.md`) — voir l'en-tête de `capture/enumeration.rs`. Réexportées ici
+// pour que `crate::capture::enumerer_sorties` reste valide sans toucher à un
+// seul appelant.
+mod enumeration;
+pub use enumeration::{enumerer_sorties, enumerer_sorties_silencieux};
 
-/// La même énumération, **sans une ligne de journal**.
-///
-/// **Correctif I2 de la revue finale de branche.** Le contrôle périodique de
-/// `superviseur::boucle` appelait `enumerer_sorties`, dont le `tracing::info!`
-/// par adaptateur sans sortie est inconditionnel : deux lignes par seconde,
-/// indéfiniment, écrites sur un partage CIFS — 1220 lignes relevées dans un
-/// journal de recette de cette branche. Le dépôt a déjà payé pour ce mode de
-/// défaillance (« la mesure détruisait ce qu'elle mesurait », `CLAUDE.md`).
-///
-/// Une variante plutôt qu'une rétrogradation en `debug!` : la trace a une
-/// valeur réelle pour les sondes, qui la relèvent une fois — c'est
-/// précisément l'angle mort où se cacherait un adaptateur d'affichage virtuel
-/// présent mais inactif.
-pub fn enumerer_sorties_silencieux() -> Result<Vec<SortieDxgi>> {
-    enumerer(false)
-}
-
-fn enumerer(journaliser: bool) -> Result<Vec<SortieDxgi>> {
-    let factory: IDXGIFactory1 =
-        unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI")?;
-    let mut sorties = Vec::new();
-    let mut index_adaptateur = 0u32;
-    while let Ok(adapter) = unsafe { factory.EnumAdapters1(index_adaptateur) } {
-        let adaptateur = match unsafe { adapter.GetDesc1() } {
-            Ok(desc) => String::from_utf16_lossy(&desc.Description)
-                .trim_end_matches('\0')
-                .trim()
-                .to_string(),
-            Err(_) => "<inconnu>".to_string(),
-        };
-        let mut index_sortie = 0u32;
-        let nombre_avant = sorties.len();
-        while let Ok(output) = unsafe { adapter.EnumOutputs(index_sortie) } {
-            if let Ok(desc) = unsafe { output.GetDesc() } {
-                let r = desc.DesktopCoordinates;
-                sorties.push(SortieDxgi {
-                    index_adaptateur,
-                    index_sortie,
-                    adaptateur: adaptateur.clone(),
-                    nom_sortie: String::from_utf16_lossy(&desc.DeviceName)
-                        .trim_end_matches('\0')
-                        .to_string(),
-                    attachee_au_bureau: desc.AttachedToDesktop.as_bool(),
-                    rect: crate::geometry::Rect {
-                        x: r.left,
-                        y: r.top,
-                        width: (r.right - r.left).max(0) as u32,
-                        height: (r.bottom - r.top).max(0) as u32,
-                    },
-                });
-            }
-            index_sortie += 1;
-        }
-        if journaliser && sorties.len() == nombre_avant {
-            // Un adaptateur sans aucune sortie ne produit jamais de
-            // `SortieDxgi` : sans cette trace, il resterait invisible du
-            // relevé, qui ne journalise aujourd'hui que par sortie. C'est
-            // précisément l'angle mort où se cacherait un adaptateur
-            // d'affichage virtuel présent mais inactif.
-            tracing::info!(
-                adaptateur = %adaptateur,
-                index_adaptateur,
-                "adaptateur DXGI sans sortie"
-            );
-        }
-        index_adaptateur += 1;
-    }
-    Ok(sorties)
-}
-
-/// Ouvre une sortie précise, ou — si `cible` est `None` — trouve et ouvre
-/// l'adaptateur et la sortie qui composent le bureau (comportement historique
-/// de l'ancienne `find_desktop_output`, désormais fondue ici).
+/// Ouvre une sortie désignée par son nom, ou — pour `CibleCapture::Bureau` —
+/// trouve et ouvre la sortie qui compose le bureau.
 fn ouvrir_sortie(
     factory: &IDXGIFactory1,
-    cible: Option<(u32, u32)>,
+    cible: &CibleCapture,
 ) -> Result<(IDXGIAdapter1, IDXGIOutput1)> {
     let mut index_adaptateur = 0u32;
     while let Ok(adapter) = unsafe { factory.EnumAdapters1(index_adaptateur) } {
@@ -434,9 +409,12 @@ fn ouvrir_sortie(
                     continue;
                 }
             };
+            let nom = String::from_utf16_lossy(&desc.DeviceName)
+                .trim_end_matches('\0')
+                .to_string();
             let retenue = match cible {
-                Some((a, s)) => a == index_adaptateur && s == index_sortie,
-                None => desc.AttachedToDesktop.as_bool(),
+                CibleCapture::Sortie(vise) => &nom == vise,
+                CibleCapture::Bureau => desc.AttachedToDesktop.as_bool(),
             };
             if retenue {
                 let name = match unsafe { adapter.GetDesc1() } {
@@ -446,7 +424,7 @@ fn ouvrir_sortie(
                     Err(_) => "<inconnu>".to_string(),
                 };
                 tracing::info!(
-                    adaptateur = %name, index_adaptateur, index_sortie,
+                    adaptateur = %name, index_adaptateur, index_sortie, nom_sortie = %nom,
                     attachee = desc.AttachedToDesktop.as_bool(),
                     "sortie retenue pour la duplication"
                 );
@@ -457,7 +435,26 @@ fn ouvrir_sortie(
         index_adaptateur += 1;
     }
     match cible {
-        Some((a, s)) => bail!("aucune sortie DXGI à l'index adaptateur {a}, sortie {s}"),
-        None => bail!("aucune sortie attachée au bureau : la session est-elle interactive ?"),
+        CibleCapture::Sortie(nom) => bail!("aucune sortie DXGI nommée {nom}"),
+        CibleCapture::Bureau => {
+            bail!("aucune sortie attachée au bureau : la session est-elle interactive ?")
+        }
     }
+}
+
+/// Duplique la sortie et lit ses dimensions. Le seul morceau d'`ouvrir` que
+/// `rouvrir` refait.
+///
+/// écart d'API windows-rs 0.62 : `GetDesc` ne prend plus de paramètre de
+/// sortie ; elle renvoie directement la structure (par valeur pour
+/// `IDXGIOutputDuplication`, dans un `Result` pour `IDXGIOutput1` et
+/// `IDXGIAdapter1`, ces deux dernières pouvant échouer).
+fn dupliquer(
+    device: &ID3D11Device,
+    output: &IDXGIOutput1,
+) -> Result<(IDXGIOutputDuplication, u32, u32)> {
+    let duplication =
+        unsafe { output.DuplicateOutput(device) }.context("duplication de la sortie écran")?;
+    let desc = unsafe { duplication.GetDesc() };
+    Ok((duplication, desc.ModeDesc.Width, desc.ModeDesc.Height))
 }

@@ -71,22 +71,23 @@ pub(super) fn aiguiller() -> Result<bool> {
     }
     // Temps 2 : le banc, sur la voie et le nombre de fenêtres demandés.
     //
-    // `MULTIFENETRE_SORTIE` (« adaptateur:sortie ») désigne une sortie DXGI
-    // autre que celle du bureau. Absente, le banc mesure le bureau — son
-    // comportement d'origine. Elle sert à rejouer À LA MAIN le banc sur une
-    // sortie que l'on sait vivante ; la mesure ③, elle, passe par
-    // `MULTIFENETRE_VDD_CAPTURE`, la sortie virtuelle ne survivant pas au
+    // `MULTIFENETRE_SORTIE` (un nom de sortie DXGI, `\\.\DISPLAYn`) désigne
+    // une sortie autre que celle du bureau. Absente, le banc mesure le
+    // bureau — son comportement d'origine. Elle sert à rejouer À LA MAIN le
+    // banc sur une sortie que l'on sait vivante ; la mesure ③, elle, passe
+    // par `MULTIFENETRE_VDD_CAPTURE`, la sortie virtuelle ne survivant pas au
     // processus qui la crée.
+    //
+    // Un nom, plus un couple d'index `adaptateur:sortie` : c'est le même
+    // changement que `SORTIE_DXGI` (`main.rs`), pour la même raison — les
+    // index sont positionnels et `DesktopCapture::sur_sortie` n'en prend plus.
     if let Ok(voie) = std::env::var("MULTIFENETRE_BANC") {
         let nombre: u8 = std::env::var("MULTIFENETRE_N")
             .unwrap_or_else(|_| "8".to_string())
             .parse()
             .context("MULTIFENETRE_N doit être un entier")?;
-        let sortie = match std::env::var("MULTIFENETRE_SORTIE") {
-            Ok(designation) => Some(crate::moniteurs_virtuels::analyser_designation(&designation)?),
-            Err(_) => None,
-        };
-        banc::executer(&voie, nombre, sortie)?;
+        let sortie = std::env::var("MULTIFENETRE_SORTIE").ok();
+        banc::executer(&voie, nombre, sortie.as_deref())?;
         return Ok(true);
     }
     // Mesure ① — validation du contrat du pilote d'affichage virtuel, avant

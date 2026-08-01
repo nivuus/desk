@@ -154,16 +154,15 @@ impl WindowsSource {
     /// mais il ne sert plus au calcul de la région.
     pub fn sur_sortie(
         hwnd: HWND,
-        index_adaptateur: u32,
-        index_sortie: u32,
+        nom_sortie: &str,
         fps: u32,
         bitrate: u32,
         clock_origin: std::time::Instant,
     ) -> Result<Self> {
-        let capture = DesktopCapture::sur_sortie(index_adaptateur, index_sortie)?;
+        let capture = DesktopCapture::sur_sortie(nom_sortie)?;
         let (dw, dh) = capture.desktop_size();
         let region = region_de_sortie(dw, dh).with_context(|| {
-            format!("sortie {index_adaptateur}:{index_sortie} de dimensions inexploitables ({dw}x{dh})")
+            format!("sortie {nom_sortie} de dimensions inexploitables ({dw}x{dh})")
         })?;
         let (width, height) = (region.width, region.height);
 

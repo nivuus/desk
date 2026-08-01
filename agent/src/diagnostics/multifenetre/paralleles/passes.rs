@@ -45,8 +45,7 @@ fn ouvrir_duplications(
     let mut textures = Vec::new();
     for (rang, sortie) in virtuelles.iter().enumerate() {
         garde.battre()?;
-        let designation = (sortie.index_adaptateur, sortie.index_sortie);
-        match VoieDuplication::partagee_sur(Some(designation)) {
+        match VoieDuplication::partagee_sur(Some(&sortie.nom_sortie)) {
             Ok(source) => {
                 let dimensions = source.borrow().dimensions_bureau();
                 tracing::info!(

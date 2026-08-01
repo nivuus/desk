@@ -101,7 +101,6 @@ pub(super) fn capturer_sur_virtuelle(nombre: u8) -> Result<()> {
 
         let apres = relever_topologie("après création")?;
         let virtuelle = designer_sortie_neuve(&apres, &connues, id)?;
-        let designation = (virtuelle.index_adaptateur, virtuelle.index_sortie);
         let nom_virtuelle = virtuelle.nom_sortie.clone();
 
         // Le facteur d'échelle est relevé et appliqué par le banc lui-même
@@ -110,7 +109,7 @@ pub(super) fn capturer_sur_virtuelle(nombre: u8) -> Result<()> {
         // sortie, or DXGI n'en autorise qu'UNE — celle du banc échouerait
         // alors en 0x80070057.
         pilote.pinguer()?;
-        let issue = super::banc::executer("duplication", nombre, Some(designation));
+        let issue = super::banc::executer("duplication", nombre, Some(&nom_virtuelle));
 
         // Le banc ne pingue pas : il tourne trente secondes en boucle serrée.
         // Si le chien de garde avait retiré la sortie en cours de route, la

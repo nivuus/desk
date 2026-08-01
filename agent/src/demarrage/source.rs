@@ -69,19 +69,17 @@ pub(super) fn construire(
         .and_then(|v| v.parse().ok())
         .unwrap_or(90);
 
-    let source: Box<dyn VideoSource + Send> = match config.sortie_dxgi {
-        Some((adaptateur, sortie)) => {
+    let source: Box<dyn VideoSource + Send> = match &config.sortie_dxgi {
+        Some(nom_sortie) => {
             tracing::info!(
-                adaptateur,
-                sortie,
+                nom_sortie = %nom_sortie,
                 bitrate,
                 fps,
                 "capture d'une sortie DXGI entière (mode multi-fenêtres)"
             );
             Box::new(windows_source::WindowsSource::sur_sortie(
                 hwnd,
-                adaptateur,
-                sortie,
+                nom_sortie,
                 fps,
                 bitrate,
                 clock_origin,

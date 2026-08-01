@@ -29,10 +29,10 @@ use super::compteurs::{self, Compteurs, DUREE_PASSE, PERIODE_JOURNAL};
 use super::mires::Mires;
 use super::voies::{VoieDeCapture, VoieDuplication, VoiePrintWindow};
 
-/// `sortie` désigne la sortie DXGI à mesurer (`index_adaptateur`,
-/// `index_sortie`), ou `None` pour la sortie qui porte le bureau — le
-/// comportement d'origine, inchangé.
-pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<(u32, u32)>) -> Result<()> {
+/// `sortie` désigne la sortie DXGI à mesurer par son nom (`\\.\DISPLAYn`), ou
+/// `None` pour la sortie qui porte le bureau — le comportement d'origine,
+/// inchangé.
+pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<&str>) -> Result<()> {
     anyhow::ensure!(
         nombre >= 1 && nombre <= mire::MIRES_MAX,
         "MULTIFENETRE_N doit valoir 1 à {}",
@@ -40,7 +40,7 @@ pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<(u32, u32)>) -
     );
 
     let capture = match sortie {
-        Some((adaptateur, index)) => crate::capture::DesktopCapture::sur_sortie(adaptateur, index)?,
+        Some(nom) => crate::capture::DesktopCapture::sur_sortie(nom)?,
         None => crate::capture::DesktopCapture::new()?,
     };
     let (texture_largeur, texture_hauteur) = capture.desktop_size();
@@ -49,11 +49,11 @@ pub(super) fn executer(nom_voie: &str, nombre: u8, sortie: Option<(u32, u32)>) -
     // telles que `DXGI_OUTPUT_DESC::DesktopCoordinates` les donne. Sans sortie
     // désignée, c'est le bureau à l'origine — le comportement d'avant.
     let bureau = match sortie {
-        Some((adaptateur, index)) => crate::capture::enumerer_sorties()?
+        Some(nom) => crate::capture::enumerer_sorties()?
             .into_iter()
-            .find(|s| s.index_adaptateur == adaptateur && s.index_sortie == index)
+            .find(|s| s.nom_sortie == nom)
             .map(|s| s.rect)
-            .with_context(|| format!("sortie {adaptateur}:{index} absente de l'énumération"))?,
+            .with_context(|| format!("sortie {nom} absente de l'énumération"))?,
         None => Rect { x: 0, y: 0, width: texture_largeur, height: texture_hauteur },
     };
     let facteur = crate::moniteurs_virtuels::facteur_echelle(
@@ -154,7 +154,7 @@ fn ouvrir_voies(
     mires: &Mires,
     places_fenetres: &[Rect],
     places_texture: &[Rect],
-    sortie: Option<(u32, u32)>,
+    sortie: Option<&str>,
 ) -> Result<(Vec<Box<dyn VoieDeCapture>>, Vec<Rect>)> {
     // Ce que la voie partage entre ses N flux est décidé ICI, une fois : la
     // duplication n'accepte pas d'être ouverte N fois sur la même sortie, et
