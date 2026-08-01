@@ -91,10 +91,19 @@ pub(super) fn sonder(
         // Les mires peignent pendant la sollicitation : sans changement du
         // bureau, une duplication vivante ne rendrait rien et la sonde
         // conclurait au silence à tort.
+        //
+        // D'où le suivi de l'échec de peinture, et non un `let _ =` : une
+        // peinture morte produit EXACTEMENT le symptôme « aucune image », et
+        // le rendre sous un libellé de résultat ferait passer une panne de
+        // l'instrument pour une mesure. C'est la classe de défaut que ce banc
+        // traque partout ailleurs.
         let mut issue = Ok(false);
+        let mut peinture_perdue = false;
         let debut = Instant::now();
         while debut.elapsed() < DUREE_SONDE_IMAGE {
-            let _ = mires.peindre();
+            if mires.peindre().is_err() {
+                peinture_perdue = true;
+            }
             mires.pomper();
             match capture.next_frame(region) {
                 Ok(Some(_)) => {
@@ -118,12 +127,24 @@ pub(super) fn sonder(
                  topologie stabilisée — la mort de cette voie ne réfute PAS la reprise, elle \
                  dit que 3 tentatives en rafale et sans délai ne suffisaient pas"
             ),
+            // Le silence a deux causes possibles, et une seule est un
+            // résultat : les nommer séparément est tout l'objet du suivi de
+            // `peinture_perdue`.
+            Ok(false) if peinture_perdue => tracing::error!(
+                voie = id,
+                nom_sortie = nom,
+                duree_ms = DUREE_SONDE_IMAGE.as_millis() as u64,
+                "sonde post-mortem SANS VALEUR sur cette voie : la peinture des mires a échoué \
+                 pendant la sollicitation, donc le bureau n'a pas changé. « Aucune image » est \
+                 ici une panne de l'INSTRUMENT et ne dit rien de la duplication"
+            ),
             Ok(false) => tracing::warn!(
                 voie = id,
                 nom_sortie = nom,
                 duree_ms = DUREE_SONDE_IMAGE.as_millis() as u64,
-                "sonde post-mortem : duplication rouverte, mais AUCUNE image dans le délai — \
-                 ni une réfutation ni une confirmation, la duplication existe sans rien rendre"
+                "sonde post-mortem : duplication rouverte, mires peintes, mais AUCUNE image \
+                 dans le délai — ni une réfutation ni une confirmation, la duplication existe \
+                 sans rien rendre"
             ),
             Err(causes) => tracing::error!(
                 voie = id,

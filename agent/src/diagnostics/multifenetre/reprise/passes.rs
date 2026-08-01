@@ -142,6 +142,16 @@ pub(super) fn eprouver(
     tracing::info!("libération des voies de capture : avant");
     drop(voies);
     tracing::info!("libération des voies de capture : après");
+    // Borne de comptage, émise INCONDITIONNELLEMENT pour que la commande de la
+    // clé de lecture n°1 vaille dans tous les cas. La sonde post-mortem capture
+    // elle aussi par `next_frame`, qui pose la même trace de réouverture : sans
+    // cette borne, un `grep -c` global mélangerait les reprises DE LA MESURE et
+    // celles de la sonde, qui lui sont postérieures et ne prouvent rien de la
+    // perturbation.
+    tracing::info!(
+        "borne de comptage des reprises — au-dessus de cette ligne, les lignes de réouverture \
+         appartiennent à la MESURE ; en dessous, à la sonde post-mortem et aux clés de lecture"
+    );
     if !passe_b.perdues.is_empty() {
         super::post_mortem::sonder(garde, &mut mires, virtuelles, &passe_b.perdues);
     }
@@ -164,6 +174,16 @@ pub(super) fn eprouver(
         passe_apres_degradee = passe_b.degradee,
         "bilan de la reprise"
     );
+    if passe_a.degradee || passe_b.degradee {
+        tracing::error!(
+            passe_avant_degradee = passe_a.degradee,
+            passe_apres_degradee = passe_b.degradee,
+            "une passe au moins a tourné en mode DÉGRADÉ — dans ce bilan, `images_*`, les \
+             cadences et les `verdicts_faux_*` de la ou des passes concernées sont \
+             INEXPLOITABLES, et `voies_vivantes_apres` ne se lit qu'avec `voies_perdues_apres`. \
+             Voir la ligne d'erreur qui nomme ce qui a été perdu"
+        );
+    }
     journaliser_cle_de_lecture();
     Ok(())
 }
@@ -182,11 +202,15 @@ pub(super) fn eprouver(
 /// rapprocher du `nom_sortie` des lignes de mort.
 fn journaliser_cle_de_lecture() {
     tracing::info!(
-        "clé de lecture n°1 — ce bilan ne vaut QUE si la perturbation a perturbé : \
-         `grep -c \"accès à la duplication perdu, réouverture\"` sur ce journal. ZÉRO ligne \
-         signifie qu'aucune duplication n'a perdu son accès, donc que ce banc n'a RIEN éprouvé, \
-         et son bilan ne se lit alors PAS comme un succès de la reprise. Contrôler aussi la \
-         ligne « sorties tierces relevées » : sans perturbatrice ATTACHÉE, rien n'a pu perturber"
+        "clé de lecture n°1 — ce bilan ne vaut QUE si la perturbation a perturbé. Compter les \
+         reprises DE LA MESURE, et elles seules : \
+         `sed '/borne de comptage des reprises/q' <journal> | grep -c \"perdu, réouverture\"`. \
+         Un `grep -c` sur le journal ENTIER serait faux dans le sens dangereux : il compterait \
+         aussi les réouvertures de la sonde post-mortem, postérieures à la mesure, plus cette \
+         clé de lecture elle-même. ZÉRO ligne signifie qu'aucune duplication n'a perdu son \
+         accès, donc que ce banc n'a RIEN éprouvé, et son bilan ne se lit alors PAS comme un \
+         succès de la reprise. Contrôler aussi la ligne « sorties tierces relevées » : sans \
+         perturbatrice ATTACHÉE, rien n'a pu perturber"
     );
     tracing::info!(
         "clé de lecture n°2 — des voies mortes ne réfutent PAS la reprise à elles seules. Le \
@@ -265,7 +289,11 @@ fn ouvrir_duplications(
 ///   (`read_pixel` sur une texture qui vient d'être rouverte) — signalés une
 ///   fois, la passe continue en mode dégradé. Un `?` là ferait sortir
 ///   `eprouver` sans jamais émettre le bilan, c'est-à-dire perdrait la mesure
-///   au moment précis où elle devient intéressante.
+///   au moment précis où elle devient intéressante. **Ce que le mode dégradé
+///   coûte est nommé, pas minimisé** : peinture perdue rend le compte d'images
+///   et la cadence inexploitables (le bureau ne change plus) ; lecture perdue
+///   rend les verdicts inexploitables. Dans les deux cas les MORTS DE VOIES
+///   restent valables, et c'est ce dont dépend le point d'arrêt.
 ///
 /// Seul le chien de garde reste fatal : sans lui le pilote peut reprendre ses
 /// sorties sous la mesure, et plus rien de ce qui suivrait ne serait imputable.
@@ -291,24 +319,48 @@ fn passe(
     let mut vivantes = vec![true; nombre];
     let mut peinture_signalee = false;
     let mut lecture_signalee = false;
+    // Le numéro de tour est tenu ICI, et non lu sur `Mires::trame`.
+    //
+    // **Ce n'est pas un détail de style, c'est ce qui empêche un faux
+    // POSITIF sur `voies_vivantes_apres`.** `Mires::peindre` n'incrémente sa
+    // trame qu'après avoir présenté toutes ses fenêtres : un échec la laisse
+    // FIGÉE. Une passe qui lirait `mires.trame()` rappellerait alors
+    // `prochaine_image` avec le même `tour`, où `SourceDuplication::amorcer`
+    // court-circuite — plus aucun appel à `next_frame`. Deux conséquences,
+    // toutes deux fausses dans le sens dangereux : la dernière image amorcée
+    // serait recomptée à chaque itération de la boucle serrée (`images`
+    // s'emballe au lieu de se figer), et surtout **une voie réellement morte
+    // ne pourrait plus l'apprendre** — jamais marquée perdue, comptée vivante
+    // au bilan, et jamais sondée par la sonde post-mortem. Un compteur local
+    // avance quoi qu'il arrive : `next_frame` continue d'être appelée, donc
+    // les morts restent détectées, et un bureau qui ne change plus rend
+    // simplement `Ok(None)`.
+    //
+    // Rien ne dépend de l'égalité entre ce compteur et la trame peinte :
+    // `amorcer` n'en fait qu'une clé de cache, `mire::voie_controlee` une
+    // rotation, et `mire::verdict` accepte les deux parités de vert.
+    let mut tour: u64 = 0;
 
     let debut = Instant::now();
     let mut prochain_journal = debut + PERIODE_JOURNAL;
 
     while debut.elapsed() < DUREE_PASSE {
+        tour += 1;
         if let Err(erreur) = mires.peindre() {
             if !peinture_signalee {
                 peinture_signalee = true;
                 tracing::error!(
                     causes = %super::super::causes(erreur),
-                    "peinture des mires perdue — la passe continue en mode DÉGRADÉ : le numéro \
-                     de trame n'avance plus, donc les acquisitions ne trouveront plus rien de \
-                     neuf. Les images comptées à partir d'ici ne mesurent plus la capture"
+                    "peinture des mires perdue — la passe continue en mode DÉGRADÉ. Les mires ne \
+                     changent plus, donc le bureau non plus : les acquisitions ne trouveront plus \
+                     rien de neuf et le compte d'images cesse d'avancer. La CADENCE et le compte \
+                     d'images de cette passe sont INEXPLOITABLES à partir d'ici — ni justes, ni \
+                     « sous-estimés » d'un facteur connu. Ce qui reste valable : les morts de \
+                     voies, `next_frame` continuant d'être appelée à chaque tour"
                 );
             }
         }
         mires.pomper();
-        let tour = mires.trame();
         // La voie contrôlée à ce tour, et elle seule : une lecture par tour
         // quel que soit k (voir `mire::voie_controlee`).
         let controlee = mire::voie_controlee(tour, nombre);
