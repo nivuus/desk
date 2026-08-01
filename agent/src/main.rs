@@ -41,6 +41,12 @@ mod turn;
 #[path = "windows_source/sortie.rs"]
 mod windows_source_sortie;
 
+// Même montage, et pour la même raison : la classification des échecs
+// d'acquisition et le budget de reprises sont purs et doivent se tester sur
+// l'hôte, alors que `capture.rs` est `#![cfg(windows)]` dans son ensemble.
+#[path = "capture/reprise.rs"]
+mod capture_reprise;
+
 #[cfg(windows)]
 mod capture;
 #[cfg(windows)]
