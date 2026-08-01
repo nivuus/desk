@@ -23,11 +23,15 @@ use crate::sortie_dxgi::SortieDxgi;
 ///
 /// L'égalité des dimensions est **exacte** : un appariement approximatif
 /// masquerait le piège du facteur d'échelle décrit en tête de module.
+///
+/// `deja_prises` désigne par NOM DXGI (`\\.\DISPLAYn`), stable, et non plus
+/// par un couple d'index d'énumération — positionnel, il change dès qu'une
+/// sortie apparaît ou disparaît.
 pub fn sortie_par_dimensions(
     sorties: &[SortieDxgi],
     largeur: u32,
     hauteur: u32,
-    deja_prises: &[(u32, u32)],
+    deja_prises: &[String],
 ) -> Option<SortieDxgi> {
     sorties
         .iter()
@@ -35,7 +39,7 @@ pub fn sortie_par_dimensions(
             s.attachee_au_bureau
                 && s.rect.width == largeur
                 && s.rect.height == hauteur
-                && !deja_prises.contains(&(s.index_adaptateur, s.index_sortie))
+                && !deja_prises.contains(&s.nom_sortie)
         })
         .cloned()
 }
@@ -170,14 +174,16 @@ mod tests {
             sortie(0, 1, 2400, 1600, 900, true),
             sortie(0, 2, 4000, 1600, 900, true),
         ];
-        let trouvee = sortie_par_dimensions(&toutes, 1600, 900, &[(0, 1)]).unwrap();
+        let deja_prises = vec!["\\\\.\\DISPLAY1".to_string()];
+        let trouvee = sortie_par_dimensions(&toutes, 1600, 900, &deja_prises).unwrap();
         assert_eq!((trouvee.index_adaptateur, trouvee.index_sortie), (0, 2));
     }
 
     #[test]
     fn ne_trouve_rien_quand_toutes_sont_prises() {
         let toutes = vec![sortie(0, 1, 2400, 1600, 900, true)];
-        assert!(sortie_par_dimensions(&toutes, 1600, 900, &[(0, 1)]).is_none());
+        let deja_prises = vec!["\\\\.\\DISPLAY1".to_string()];
+        assert!(sortie_par_dimensions(&toutes, 1600, 900, &deja_prises).is_none());
     }
 
     #[test]

@@ -61,8 +61,9 @@ pub fn tourner(
     let mut table = Table::nouvelle(CAPACITE);
     // Sorties DXGI déjà attribuées, pour que deux fenêtres au même viewport ne
     // se voient pas donner la même. La table porte déjà la correspondance
-    // session -> sortie ; ceci n'est que l'ensemble des sorties occupées.
-    let mut prises: Vec<(u32, u32)> = Vec::new();
+    // session -> sortie ; ceci n'est que l'ensemble des sorties occupées, par
+    // leur nom DXGI (stable), et non plus par un couple d'index (positionnel).
+    let mut prises: Vec<String> = Vec::new();
 
     // Les fenêtres déjà ouvertes : le hook ne rapporte que les changements.
     let mut effets = Vec::new();
@@ -93,18 +94,11 @@ pub fn tourner(
                     // attente de rattachement : ne pas le recompter en retard.
                     dernier_ping = std::time::Instant::now();
                 }
-                Effet::LancerEnfant {
-                    session,
-                    fenetre,
-                    index_adaptateur,
-                    index_sortie,
-                    audio,
-                } => {
+                Effet::LancerEnfant { session, fenetre, nom_sortie, audio } => {
                     if let Err(erreur) = enfants.lancer(Consigne {
                         session: session.clone(),
                         fenetre: fenetre.0,
-                        index_adaptateur,
-                        index_sortie,
+                        nom_sortie,
                         audio,
                     }) {
                         tracing::error!(session = %session.0, %erreur, "lancement de l'enfant échoué");
@@ -116,12 +110,12 @@ pub fn tourner(
                     }
                 }
                 Effet::TuerEnfant { session } => enfants.tuer(&session),
-                Effet::DetruireSortie { sortie_pilote, dxgi } => {
+                Effet::DetruireSortie { sortie_pilote, nom_sortie } => {
                     // Rendue MAINTENANT, pas à l'arrêt du superviseur : le
                     // vivier du pilote se consomme à chaque ouverture de
                     // fenêtre, et une dizaine d'ouvertures-fermetures
                     // suffirait sinon à bloquer toute nouvelle fenêtre.
-                    rendre_la_sortie(&mut sorties, &mut prises, sortie_pilote, dxgi);
+                    rendre_la_sortie(&mut sorties, &mut prises, sortie_pilote, nom_sortie);
                 }
                 Effet::AnnoncerFermeture { session } => {
                     envoyer(&VersLaShell::FenetreFermee { session: session.0 });
@@ -208,7 +202,7 @@ fn creer_sortie(
     pilote: &PiloteParIoctl,
     sorties: &mut Sorties<'_>,
     table: &mut Table,
-    prises: &mut Vec<(u32, u32)>,
+    prises: &mut Vec<String>,
     envoyer: &impl Fn(&VersLaShell),
     demande: Demande,
 ) -> Vec<Effet> {
@@ -296,15 +290,15 @@ fn creer_sortie(
         return table.enfant_mort(&session);
     };
 
-    let place = (cible.index_adaptateur, cible.index_sortie);
-    prises.push(place);
-    // Les DEUX identifiants : celui du pilote pour la destruction, la
-    // position DXGI pour la capture. Aucune relation calculable entre eux.
-    let suite = table.sortie_creee(&session, id_pilote, place);
+    let nom = cible.nom_sortie.clone();
+    prises.push(nom.clone());
+    // Les DEUX identifiants : celui du pilote pour la destruction, le nom
+    // DXGI pour la capture. Aucune relation calculable entre eux.
+    let suite = table.sortie_creee(&session, id_pilote, nom);
 
     // Une table qui n'a rien à dire de cette sortie ne la retient nulle part :
     // `id_pilote` ne serait plus connu de personne (ni de la table, ni d'un
-    // effet à venir), une place perdue sur dix, et `place` resterait bloquée
+    // effet à venir), une place perdue sur dix, et le nom resterait bloqué
     // dans `prises` à jamais. Le cas n'est pas atteignable avec l'ordonnancement
     // actuel de la boucle — mais cet ordonnancement n'est déclaré porteur nulle
     // part, et il suffira qu'une étape s'insère un jour.
@@ -314,7 +308,7 @@ fn creer_sortie(
             "la table n'attendait plus cette sortie — elle est rendue au pilote"
         );
         rendre_sans_apparier(sorties, id_pilote);
-        prises.retain(|p| *p != place);
+        prises.retain(|p| *p != cible.nom_sortie);
         return Vec::new();
     }
 
@@ -362,14 +356,14 @@ fn attendre_en_pinguant(pilote: &PiloteParIoctl, duree: std::time::Duration) {
 /// Rend une sortie au pilote et libère sa place DXGI.
 fn rendre_la_sortie(
     sorties: &mut Sorties<'_>,
-    prises: &mut Vec<(u32, u32)>,
+    prises: &mut Vec<String>,
     sortie_pilote: u32,
-    dxgi: (u32, u32),
+    nom_sortie: String,
 ) {
     match sorties.detruire(sortie_pilote) {
         Ok(()) => {
             tracing::info!(sortie_pilote, "sortie virtuelle rendue au pilote");
-            prises.retain(|p| *p != dxgi);
+            prises.retain(|p| *p != nom_sortie);
         }
         // La place DXGI reste RÉSERVÉE sur échec, et c'est le point de fond.
         //
@@ -382,7 +376,7 @@ fn rendre_la_sortie(
         // orpheline. Garder la place réservée coûte au pire une place DXGI
         // jusqu'à l'arrêt ; la libérer coûte une confusion d'identité.
         Err(erreur) => tracing::error!(
-            sortie_pilote, ?dxgi, %erreur,
+            sortie_pilote, %nom_sortie, %erreur,
             "sortie virtuelle NON rendue — la garde la retentera à l'arrêt, \
              et sa place DXGI reste réservée d'ici là"
         ),
@@ -393,13 +387,10 @@ fn rendre_la_sortie(
 fn controler_le_placement(table: &Table) {
     let toutes = enumerer_sorties_silencieux().unwrap_or_default();
     for session in table.sessions_vivantes() {
-        let Some((adaptateur, index)) = table.sortie_dxgi_de(&session) else {
+        let Some(nom) = table.nom_sortie_de(&session) else {
             continue;
         };
-        let Some(cible) = toutes
-            .iter()
-            .find(|s| s.index_adaptateur == adaptateur && s.index_sortie == index)
-        else {
+        let Some(cible) = toutes.iter().find(|s| s.nom_sortie == nom) else {
             continue;
         };
         let Some(fenetre) = table.fenetre_de(&session) else { continue };

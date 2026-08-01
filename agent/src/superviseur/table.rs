@@ -44,21 +44,24 @@ pub enum Effet {
     LancerEnfant {
         session: IdSession,
         fenetre: IdFenetre,
-        index_adaptateur: u32,
-        index_sortie: u32,
+        /// Nom DXGI de la sortie (`\\.\DISPLAYn`), **et non un couple
+        /// d'index** : ceux-ci sont positionnels, l'enfant les résout à son
+        /// démarrage — donc plus tard — et une sortie apparue ou disparue
+        /// entre-temps le fait capturer autre chose, ou échouer.
+        nom_sortie: String,
         audio: bool,
     },
     TuerEnfant { session: IdSession },
-    /// `sortie_pilote` est **l'identifiant du PILOTE**, pas l'index DXGI : le
+    /// `sortie_pilote` est **l'identifiant du PILOTE**, pas le nom DXGI : le
     /// pilote ne sait retirer une sortie que par ce qu'il a lui-même rendu à
-    /// la création ; lui présenter un index DXGI ne détruirait rien, ou
+    /// la création ; lui présenter un nom DXGI ne détruirait rien, ou
     /// détruirait la sortie d'autrui. Les deux identifiants désignent la même
     /// sortie et n'ont aucune relation calculable — d'où les deux champs.
     ///
-    /// `dxgi` accompagne la destruction parce que l'entrée a déjà quitté la
-    /// table quand cet effet est rendu : sans lui, l'appelant ne pourrait
-    /// plus savoir quelle place DXGI redevient libre.
-    DetruireSortie { sortie_pilote: u32, dxgi: (u32, u32) },
+    /// `nom_sortie` accompagne la destruction parce que l'entrée a déjà
+    /// quitté la table quand cet effet est rendu : sans lui, l'appelant ne
+    /// pourrait plus savoir quelle place DXGI redevient libre.
+    DetruireSortie { sortie_pilote: u32, nom_sortie: String },
     AnnoncerFermeture { session: IdSession },
     AnnoncerRefus { titre: String, motif: String },
 }
@@ -74,9 +77,9 @@ struct Entree {
     etat: Etat,
     /// Identifiant rendu par le pilote à la création, pour la destruction.
     sortie_pilote: Option<u32>,
-    /// Position de la même sortie dans l'énumération DXGI, pour la capture
-    /// et le placement.
-    dxgi: Option<(u32, u32)>,
+    /// Nom DXGI (`\\.\DISPLAYn`) de la même sortie, pour la capture et le
+    /// placement. Stable, contrairement à une position d'énumération.
+    nom_sortie: Option<String>,
     audio: bool,
 }
 
@@ -159,7 +162,7 @@ impl Table {
                 titre: titre.clone(),
                 etat: Etat::AttendLeViewport,
                 sortie_pilote: None,
-                dxgi: None,
+                nom_sortie: None,
                 audio,
             },
         );
@@ -185,14 +188,14 @@ impl Table {
     }
 
     /// `sortie_pilote` est ce que le pilote a rendu à la création (il ne sait
-    /// détruire que par là) ; `dxgi` est la position de la même sortie dans
-    /// l'énumération DXGI (l'enfant ne sait capturer que par là). Aucune
-    /// relation calculable entre les deux : les deux sont retenus.
+    /// détruire que par là) ; `nom_sortie` est le nom DXGI de la même sortie
+    /// (l'enfant ne sait capturer que par là). Aucune relation calculable
+    /// entre les deux : les deux sont retenus.
     pub fn sortie_creee(
         &mut self,
         session: &IdSession,
         sortie_pilote: u32,
-        dxgi: (u32, u32),
+        nom_sortie: String,
     ) -> Vec<Effet> {
         let Some(entree) = self.entrees.get_mut(session) else {
             return Vec::new();
@@ -202,20 +205,19 @@ impl Table {
         }
         entree.etat = Etat::Vivante;
         entree.sortie_pilote = Some(sortie_pilote);
-        entree.dxgi = Some(dxgi);
+        entree.nom_sortie = Some(nom_sortie.clone());
         vec![Effet::LancerEnfant {
             session: session.clone(),
             fenetre: entree.fenetre,
-            index_adaptateur: dxgi.0,
-            index_sortie: dxgi.1,
+            nom_sortie,
             audio: entree.audio,
         }]
     }
 
-    /// Position DXGI de la sortie d'une session, pour le contrôle périodique
-    /// de placement.
-    pub fn sortie_dxgi_de(&self, session: &IdSession) -> Option<(u32, u32)> {
-        self.entrees.get(session).and_then(|e| e.dxgi)
+    /// Nom de la sortie d'une session, pour le contrôle périodique de
+    /// placement.
+    pub fn nom_sortie_de(&self, session: &IdSession) -> Option<&str> {
+        self.entrees.get(session).and_then(|e| e.nom_sortie.as_deref())
     }
 
     /// Sessions dont l'enfant tourne, pour le contrôle périodique de
@@ -246,10 +248,10 @@ impl Table {
         if let Some(sortie_pilote) = entree.sortie_pilote {
             effets.push(Effet::DetruireSortie {
                 sortie_pilote,
-                // `dxgi` est toujours renseigne quand `sortie_pilote` l'est :
-                // `sortie_creee` pose les deux ensemble, jamais l'un sans
-                // l'autre. Le repli n'est donc pas atteignable.
-                dxgi: entree.dxgi.unwrap_or((0, 0)),
+                // `nom_sortie` est toujours renseigné quand `sortie_pilote`
+                // l'est : `sortie_creee` pose les deux ensemble, jamais l'un
+                // sans l'autre. Le repli n'est donc pas atteignable.
+                nom_sortie: entree.nom_sortie.clone().unwrap_or_default(),
             });
         }
         effets.push(Effet::AnnoncerFermeture { session });
@@ -267,10 +269,10 @@ impl Table {
         if let Some(sortie_pilote) = entree.sortie_pilote {
             effets.push(Effet::DetruireSortie {
                 sortie_pilote,
-                // `dxgi` est toujours renseigne quand `sortie_pilote` l'est :
-                // `sortie_creee` pose les deux ensemble, jamais l'un sans
-                // l'autre. Le repli n'est donc pas atteignable.
-                dxgi: entree.dxgi.unwrap_or((0, 0)),
+                // `nom_sortie` est toujours renseigné quand `sortie_pilote`
+                // l'est : `sortie_creee` pose les deux ensemble, jamais l'un
+                // sans l'autre. Le repli n'est donc pas atteignable.
+                nom_sortie: entree.nom_sortie.clone().unwrap_or_default(),
             });
         }
         effets.push(Effet::AnnoncerFermeture { session: session.clone() });
