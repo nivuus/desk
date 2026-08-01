@@ -1,0 +1,11 @@
+=== construction du binaire recalibre, releve du 2026-08-01T19:10:10+02:00 ===
+--- git HEAD ---
+301f1560c077cdc7ebf321e5e4e02a1a0a46aeac 2026-08-01T19:04:53+02:00 fix(d2): accorder les commentaires et le journal du banc au nouveau calibrage
+--- git status agent/ scripts/ (vide = arbre propre) ---
+--- scripts/build-agent.sh ---
+209 |     pub fn hwnd(&self) -> HWND {
+    |            ^^^^
+
+warning: `agent` (bin "agent") generated 9 warnings
+    Finished `release` profile [optimized] target(s) in 0.11s--- date du binaire sur la VM ---
+-rwxr-xr-x 2 root root 8677888 2026-08-01 19:04:38.164929400 +0200 /media/vm/dev/target/release/agent.exe
