@@ -1,0 +1,5 @@
+[    0.0s] chrome lancé pid=1356492 port=9982 profil=/tmp/user/0/chrome-d2-t6XMR3
+[    0.5s] identité du navigateur : pid écoutant=1345810 pid lancé=1356492 version=Chrome/150.0.7871.181 profil déclaré=n/a
+ERREUR FATALE Error: le port 9982 est tenu par le pid 1345810, pas par notre Chrome (1356492)
+    at main (file:///tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/ecebb0d5-b8a9-404c-a078-652572f86f2e/scratchpad/recette/pilote-recette-d2.mjs:186:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)

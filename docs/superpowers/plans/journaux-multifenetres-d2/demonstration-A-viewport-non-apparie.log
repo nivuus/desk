@@ -1,0 +1,38 @@
+[    0.0s] chrome lancé pid=1345810 port=9982 profil=/tmp/user/0/chrome-d2-qMZEO1
+[    0.8s] identité du navigateur : pid écoutant=1345810 pid lancé=1345810 version=Chrome/150.0.7871.181 profil déclaré=n/a
+[    0.9s] + page attachée  session=C6B28B8D url=about:blank
+[    0.9s] + page attachée  session=DB904431 url=http://192.168.3.1:5173/shell.html
+[    0.9s] shell demandée http://192.168.3.1:5173/shell.html
+[    3.9s] statut shell : bureau connecté
+[    3.9s] >>> lancement du superviseur (SUPERVISEUR=1)
+[    4.4s] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[    7.6s] + page attachée  session=DBCBA8D2 url=
+[    8.0s] - page détachée   session=DBCBA8D2 url=http://192.168.3.1:5173/?session=w-1
+[    8.6s] + page attachée  session=5E6F60C5 url=
+[    8.9s] - page détachée   session=5E6F60C5 url=http://192.168.3.1:5173/?session=w-2
+[    9.7s] + page attachée  session=28AD492F url=
+[   10.0s] - page détachée   session=28AD492F url=http://192.168.3.1:5173/?session=w-3
+[   10.7s] + page attachée  session=0B7BD27C url=
+[   11.0s] - page détachée   session=0B7BD27C url=http://192.168.3.1:5173/?session=w-4
+[   26.4s] ÉTAT SHELL (k=1 — fenêtre préexistante) liste=[] statut="« fenetre-1.txt - Bloc-notes » n'a pas pu s'ouvrir : la session n'a pas tenu après 3 tentatives."
+[   26.4s]   pages d'application ouvertes (1) : about:blank
+[   26.4s] STATS (k=1) {
+ "about:blank": {
+  "pc": null
+ }
+}
+[   26.4s] MARQUEURS (k=1) {"lignes":40,"cloture":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":4,"sortie_rendue":0,"enfant_lance":0,"enfant_termine":0,"enfant_mort_seul":0,"premier_plan_obtenu":0,"premier_plan_refuse":0}
+[   26.4s] >>> OUVERTURE d'une application de plus : Bloc-notes (fenetre-2.txt)  (pages avant = 1)
+[   26.5s] MARQUEURS (avant Bloc-notes (fenetre-2.txt)) {"lignes":40,"cloture":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":4,"sortie_rendue":0,"enfant_lance":0,"enfant_termine":0,"enfant_mort_seul":0,"premier_plan_obtenu":0,"premier_plan_refuse":0}
+[   27.0s] + page attachée  session=114864CF url=
+[   27.1s] - page détachée   session=114864CF url=http://192.168.3.1:5173/?session=w-5
+[   27.2s] + page attachée  session=6C67116D url=
+[   27.5s] - page détachée   session=6C67116D url=http://192.168.3.1:5173/?session=w-6
+[   27.8s] + page attachée  session=81DFD48F url=
+[   28.1s] - page détachée   session=81DFD48F url=http://192.168.3.1:5173/?session=w-7
+[   28.9s] + page attachée  session=2A4F35FD url=
+[   29.1s] - page détachée   session=2A4F35FD url=http://192.168.3.1:5173/?session=w-8
+[   29.9s] + page attachée  session=CC71F033 url=
+[   30.1s] - page détachée   session=CC71F033 url=http://192.168.3.1:5173/?session=w-9
+[   32.0s]    … t+5s  pages=1
+[   37.0s]    … t+10s  pages=1
