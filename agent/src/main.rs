@@ -65,6 +65,26 @@ struct Config {
     session_id: String,
     local_ip: IpAddr,
     test_file: Option<PathBuf>,
+    /// Vrai en mode superviseur : ce processus ne capture rien, il détecte les
+    /// fenêtres et lance un enfant par fenêtre.
+    superviseur: bool,
+    /// `HWND` de la fenêtre à capturer, en décimal ou hexadécimal préfixé
+    /// `0x`. Posé par le superviseur sur ses enfants ; absent, l'agent
+    /// retombe sur la recherche par titre (`WINDOW_TITLE`), c'est-à-dire sur
+    /// le comportement mono-fenêtre d'avant ce sous-bloc.
+    ///
+    /// Les trois champs qui suivent ne sont lus que par la branche Windows de
+    /// `demarrage` : sur l'hôte Linux ils sont morts par construction, et
+    /// l'`allow` le dit plutôt que de laisser un avertissement s'installer.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    fenetre_hwnd: Option<u64>,
+    /// Sortie DXGI à capturer, sous la forme `adaptateur:sortie`. Absente,
+    /// l'agent capture le bureau et recadre la fenêtre.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    sortie_dxgi: Option<(u32, u32)>,
+    /// Faux sur les enfants qui ne portent pas le son.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    audio: bool,
 }
 
 fn config() -> Result<Config> {
@@ -77,6 +97,22 @@ fn config() -> Result<Config> {
             .parse()
             .context("LOCAL_IP n'est pas une adresse IP valide")?,
         test_file: std::env::var("TEST_FILE").ok().map(PathBuf::from),
+        superviseur: std::env::var("SUPERVISEUR").is_ok(),
+        fenetre_hwnd: std::env::var("FENETRE_HWND").ok().and_then(|v| {
+            let v = v.trim();
+            match v.strip_prefix("0x") {
+                Some(hexa) => u64::from_str_radix(hexa, 16).ok(),
+                None => v.parse().ok(),
+            }
+        }),
+        sortie_dxgi: std::env::var("SORTIE_DXGI").ok().and_then(|v| {
+            let (a, s) = v.split_once(':')?;
+            Some((a.trim().parse().ok()?, s.trim().parse().ok()?))
+        }),
+        // Le son est actif par défaut : c'est le comportement mono-fenêtre
+        // d'avant ce sous-bloc, qu'un agent lancé à la main doit retrouver.
+        // Seul le superviseur le coupe, sur les enfants non porteurs.
+        audio: std::env::var("AUDIO").as_deref() != Ok("0"),
     })
 }
 
@@ -131,6 +167,14 @@ async fn main() -> Result<()> {
     // c'est cet ordre que la sonde de linéarité suppose (voir `diagnostics`).
     if diagnostics::aiguiller()? {
         return Ok(());
+    }
+
+    // Le mode superviseur ne capture rien : il détecte les fenêtres et lance
+    // un enfant par fenêtre. Ses enfants n'héritent JAMAIS de `SUPERVISEUR`
+    // (voir `superviseur::lanceur`), sans quoi chacun se prendrait pour un
+    // superviseur et lancerait les siens, indéfiniment.
+    if config.superviseur {
+        return superviseur::executer(config).await;
     }
 
     demarrage::executer(config).await

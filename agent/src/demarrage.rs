@@ -11,7 +11,12 @@ use crate::source::{FileSource, VideoSource};
 use crate::transport::Session;
 use crate::Config;
 #[cfg(windows)]
-use crate::{capture, cursor, encode, gamepad, input, window, windows_audio, windows_source};
+use crate::{capture, cursor, encode, gamepad, input, windows_audio, windows_source};
+
+/// Construction de la source vidéo Windows, extraite pour tenir le plafond de
+/// 500 lignes de ce fichier — voir son commentaire de tête.
+#[cfg(windows)]
+mod source;
 
 pub(crate) async fn executer(config: Config) -> Result<()> {
     // Renseigné dans la branche Windows ci-dessous : la fenêtre capturée est
@@ -59,32 +64,10 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
         None => {
             #[cfg(windows)]
             {
-                let title = std::env::var("WINDOW_TITLE").unwrap_or_else(|_| "firefox".into());
-                let hwnd = window::find_window_by_title(&title)?;
-                window_hwnd_addr = Some(hwnd.0 as isize);
-                bitrate = std::env::var("BITRATE")
-                    .ok()
-                    .and_then(|v| v.parse().ok())
-                    .unwrap_or(12_000_000);
-                // 90 et non 60 : cette valeur n'est pas une cadence cible, c'est
-                // le `MF_MT_FRAME_RATE` annoncé aux deux MFT — et le Video
-                // Processor s'en sert comme cadence de SORTIE, qu'il tient en
-                // rejouant la dernière image convertie quand rien de neuf ne
-                // lui est arrivé. Annoncer 60 plafonnait donc tout le pipeline
-                // à 60 sorties/s pour un bureau qui en produit 68,5, d'où
-                // 47,5 images/s encodées et ~44 i/s au navigateur.
-                //
-                // Mesuré (bureau à 68,5 Hz) : 60 → 44,3 i/s · 75 → 53,1 ·
-                // 90 → 58,5 · 120 → 63,0. Au-delà de 90, le gain est du
-                // rejeu : à 120, les images NEUVES converties retombent de 62
-                // à 54/s parce que le convertisseur, occupé à tenir sa cadence
-                // déclarée, refuse davantage d'entrées.
-                let fps: u32 = std::env::var("ENCODER_FPS")
-                    .ok()
-                    .and_then(|v| v.parse().ok())
-                    .unwrap_or(90);
-                tracing::info!(title, bitrate, fps, "capture de la fenêtre Windows");
-                Box::new(windows_source::WindowsSource::new(hwnd, fps, bitrate, clock_origin)?)
+                let construite = source::construire(&config, clock_origin)?;
+                window_hwnd_addr = Some(construite.hwnd_addr);
+                bitrate = construite.bitrate;
+                construite.source
             }
             #[cfg(not(windows))]
             {
@@ -113,8 +96,13 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     // a pas de WASAPI. Et si le loopback refuse de s'ouvrir — pas de
     // périphérique de rendu par défaut, format de mixage non supporté — on
     // journalise et la session continue, muette.
+    //
+    // `config.audio` en plus : en multi-fenêtres, une seule fenêtre porte le
+    // son (la table le réserve à la première détectée). Sans cette garde, huit
+    // enfants ouvriraient huit captures loopback du MÊME périphérique et le
+    // navigateur recevrait le son en huit exemplaires.
     #[cfg(windows)]
-    if config.test_file.is_none() {
+    if config.test_file.is_none() && config.audio {
         match windows_audio::WindowsAudioSource::new(clock_origin) {
             Ok(source_audio) => {
                 tracing::info!(format = source_audio.description(), "audio activé");
@@ -124,6 +112,10 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                 tracing::warn!(erreur = %e, "audio indisponible, la session continue sans son");
             }
         }
+    }
+    #[cfg(windows)]
+    if !config.audio {
+        tracing::info!("son désactivé sur cet enfant : une seule fenêtre le porte");
     }
 
     // Surveillance du chemin réel (`SOURCE_TRACE=1`) : cadence d'appel de
