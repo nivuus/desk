@@ -25,6 +25,17 @@ function nextMessage(ws: WebSocket): Promise<any> {
     });
 }
 
+// Ferme le socket et attend que le serveur ait traité l'évènement `close`
+// (le handler `close` du serveur est synchrone mais s'exécute après un aller-
+// retour réseau local ; le petit délai laisse cet aller-retour se terminer
+// avant que le test n'interroge l'état côté serveur via une nouvelle connexion).
+function closeAndWait(ws: WebSocket): Promise<void> {
+    return new Promise((resolve) => {
+        ws.once('close', () => setTimeout(resolve, 50));
+        ws.close();
+    });
+}
+
 beforeEach(() => {
     server = createSignalingServer(0);
 });
@@ -172,5 +183,73 @@ describe('serveur de signaling', () => {
         client.close();
         agentTemoin.close();
         clientTemoin.close();
+    });
+
+    // Sous-bloc D1 : la session de contrôle réutilise les rôles agent/client
+    // existants, sur un session_id réservé, pour dialoguer entre le
+    // superviseur et la page « bureau » du navigateur.
+    it('relaie les messages de la session de contrôle entre superviseur et shell', async () => {
+        const agent = await connect('agent', 'bureau');
+        const client = await connect('client', 'bureau');
+
+        agent.send(JSON.stringify({ type: 'fenetre-ouverte', session: 'w-1', titre: 'Bloc-notes' }));
+        expect(await nextMessage(client)).toEqual({
+            type: 'fenetre-ouverte',
+            session: 'w-1',
+            titre: 'Bloc-notes',
+        });
+
+        client.send(JSON.stringify({ type: 'viewport', session: 'w-1', largeur: 1600, hauteur: 900 }));
+        expect(await nextMessage(agent)).toEqual({
+            type: 'viewport',
+            session: 'w-1',
+            largeur: 1600,
+            hauteur: 900,
+        });
+
+        agent.close();
+        client.close();
+    });
+
+    // Le cas de D1 : la page ouvre sa connexion et envoie son offre AVANT que
+    // le superviseur n'ait lancé son enfant (c'est le viewport de cette page
+    // qui décide de la taille de la sortie virtuelle, donc rien ne peut être
+    // lancé plus tôt). Sans mémorisation, l'offre tombait dans le vide et la
+    // session ne s'établissait jamais.
+    it("délivre à l'agent l'offre arrivée avant lui", async () => {
+        const client = await connect('client', 'w-tardive');
+        client.send(JSON.stringify({ type: 'offer', sdp: 'v=0 offre-du-client' }));
+
+        // L'agent arrive après coup.
+        const agent = await connect('agent', 'w-tardive');
+        expect(await nextMessage(agent)).toEqual({ type: 'offer', sdp: 'v=0 offre-du-client' });
+
+        agent.close();
+        client.close();
+    });
+
+    it('ne délivre que la dernière offre, pas toutes celles reçues', async () => {
+        const client = await connect('client', 'w-rejeu');
+        client.send(JSON.stringify({ type: 'offer', sdp: 'v=0 premiere' }));
+        client.send(JSON.stringify({ type: 'offer', sdp: 'v=0 seconde' }));
+
+        const agent = await connect('agent', 'w-rejeu');
+        expect(await nextMessage(agent)).toEqual({ type: 'offer', sdp: 'v=0 seconde' });
+
+        agent.close();
+        client.close();
+    });
+
+    // Sans cet oubli, un agent qui se reconnecterait sur un identifiant
+    // réutilisé recevrait l'offre d'une session morte.
+    it("oublie l'offre mémorisée quand la session se vide", async () => {
+        const client = await connect('client', 'w-videe');
+        client.send(JSON.stringify({ type: 'offer', sdp: 'v=0 perimee' }));
+        await closeAndWait(client);
+
+        const agent = await connect('agent', 'w-videe');
+        await expect(nextMessage(agent)).rejects.toThrow(/aucun message/);
+
+        agent.close();
     });
 });

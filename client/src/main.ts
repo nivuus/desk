@@ -26,6 +26,27 @@ const sessionId = params.get('session') ?? 'demo';
 const signalingUrl =
     params.get('signaling') ?? `ws://${window.location.hostname}:8080`;
 
+// Annonce du viewport à la page-shell qui nous a ouverts.
+//
+// C'est cette taille qui décide de la résolution de la sortie virtuelle, donc
+// de la résolution native du flux : rien ne peut être créé côté agent avant
+// qu'elle soit connue. L'annonce part donc AVANT toute connexion WebRTC.
+//
+// `window.opener` est nul quand la page est ouverte à la main (essais,
+// rechargement direct) : dans ce cas l'agent tourne déjà et il n'y a rien à
+// demander — on ne fait rien plutôt que d'échouer.
+if (window.opener && !window.opener.closed) {
+    window.opener.postMessage(
+        {
+            type: 'viewport',
+            session: sessionId,
+            largeur: Math.round(window.innerWidth),
+            hauteur: Math.round(window.innerHeight),
+        },
+        window.location.origin,
+    );
+}
+
 // Minuteur du bandeau audio (« cliquez pour activer le son »), partagé entre
 // `onControl` (câblé avant que la promesse de connexion résolve) et le
 // `.then()` où `armerLeSon` est appelée (après). Il n'a plus besoin d'être

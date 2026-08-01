@@ -15,14 +15,18 @@ pub(super) mod compteurs;
 pub(super) mod contrat;
 pub(super) mod disponibilite;
 pub(super) mod mires;
-pub(super) mod moniteurs;
-pub(super) mod montee;
+// `pub(crate)` et non `pub(super)` : deux consommateurs de PRODUCTION lisent
+// encore ici. `moniteurs_virtuels::purge` (promue hors de cet arbre à la
+// tâche 4) y prend `relever_topologie` et `DELAI_TOPOLOGIE` ;
+// `superviseur::boucle` y prend `relever_topologie` et `noms_attaches`,
+// c'est-à-dire l'APPARIEMENT d'une sortie fraîchement créée à sa place DXGI —
+// la pièce centrale du montage. `PLAFOND_RECHERCHE` a en revanche cessé d'être
+// emprunté : il vit désormais dans `moniteurs_virtuels::numeros` (correctif I1).
+pub(crate) mod montee;
 pub(super) mod nvenc;
 pub(super) mod paralleles;
-pub(super) mod peripherique;
-pub(super) mod purge;
+pub(super) mod pointeur_virtuel;
 pub(super) mod replis;
-pub(super) mod sudovda;
 pub(super) mod voies;
 pub(super) mod wgc;
 
@@ -103,7 +107,14 @@ pub(super) fn aiguiller() -> Result<bool> {
     // dessous, qui en crée une elle aussi : si les deux variables sont
     // posées, une mesure ne doit jamais l'emporter sur une purge demandée.
     if sonde_demandee("MULTIFENETRE_VDD_PURGE") {
-        purge::purger()?;
+        crate::moniteurs_virtuels::purge::purger()?;
+        return Ok(true);
+    }
+    // Tâche 1 du chantier D1 : le bureau virtuel s'étend-il jusqu'à une
+    // sortie virtuelle, et le pointeur y arrive-t-il ? Crée une sortie, donc
+    // passe après `MULTIFENETRE_VDD_PURGE`.
+    if std::env::var("MULTIFENETRE_POINTEUR").is_ok() {
+        pointeur_virtuel::sonder()?;
         return Ok(true);
     }
     // Mesure ① — l'épreuve du chien de garde, préalable à la montée en N.
@@ -146,6 +157,36 @@ pub(super) fn aiguiller() -> Result<bool> {
     // de la sonde) ou sur périphériques séparés (la question qu'elle laisse).
     if let Ok(mode) = std::env::var("MULTIFENETRE_NVENC") {
         nvenc::plafond(&mode)?;
+        return Ok(true);
+    }
+    // Tâche 6 du chantier D1 : le hook de détection des fenêtres
+    // (`SetWinEventHook`), éprouvé en dehors des descriptions factices de
+    // `fenetres` — la seule façon de savoir si le filtre tient sur de vraies
+    // fenêtres Windows (menus, boîtes de dialogue) et si la pompe de
+    // messages fait bien vivre le rappel `WINEVENT_OUTOFCONTEXT`. `sonde_demandee`
+    // et non la présence seule : cette sonde ne survit pas au processus (la
+    // garde `Hook` retire le hook au retour de cette branche), mais le
+    // patron du fichier n'admet aucune exception.
+    if sonde_demandee("SUPERVISEUR_HOOK") {
+        // Pas de `#[cfg(windows)]` ici : ce module entier est déjà posé
+        // derrière `#[cfg(windows)]` dans `diagnostics.rs`.
+        let (tx, rx) = std::sync::mpsc::channel();
+        for (fenetre, titre) in crate::superviseur::hook::enumerer_existantes() {
+            tracing::info!(id = fenetre.0, titre, "fenêtre déjà ouverte");
+        }
+        let _garde = crate::superviseur::hook::poser(tx)?;
+        tracing::info!("hook posé — ouvrez et fermez des fenêtres pendant 60 s");
+        let fin = std::time::Instant::now() + std::time::Duration::from_secs(60);
+        while std::time::Instant::now() < fin {
+            match rx.recv_timeout(std::time::Duration::from_millis(500)) {
+                Ok(evenement) => tracing::info!(?evenement, "événement de fenêtre"),
+                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
+                Err(e) => {
+                    tracing::warn!(erreur = %e, "canal du hook rompu");
+                    break;
+                }
+            }
+        }
         return Ok(true);
     }
     Ok(false)

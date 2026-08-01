@@ -124,6 +124,12 @@ correction correspondant.
 >   90,1 i/s par fenêtre en capture+encodage à N=8, zéro verdict faux, huit
 >   duplications ouvertes de front. **Une exécution par rang, donc aucun taux**,
 >   et **rien au-delà de 8 sorties**.
+>   ⚠️ **Portée resserrée le 1ᵉʳ août 2026 (sous-bloc D1) : le banc créait ses
+>   N sorties AVANT d'ouvrir la moindre duplication, ce qui n'est pas l'ordre du
+>   produit.** Rien n'est réfuté, mais en exploitation une fenêtre s'ouvre alors
+>   que d'autres capturent, et la création de sa sortie tue toutes les sessions
+>   en cours (`0x887A0026`) —
+>   `2026-08-01-multifenetres-tranche-verticale-resultats.md`.
 >
 > Cette liste compte **neuf** points, dont **trois sont levés** : les deux
 > ci-dessus, plus « Aucune image n'a été soumise aux 8 encodeurs ». Chacun des
@@ -155,6 +161,11 @@ correction correspondant.
   > ✅ **Note postérieure (31/07/2026) — LEVÉ** : montage exercé, **voie reçue**
   > — 90,1 i/s par fenêtre en capture+encodage à N=8, zéro verdict faux, huit
   > duplications ouvertes de front
+  > ⚠️ **Portée resserrée le 1ᵉʳ août 2026 (sous-bloc D1)** : le banc créait ses
+  > N sorties **avant** d'ouvrir la moindre duplication ; ce n'est pas l'ordre du
+  > produit, et cet ordre-là échoue — la création d'une sortie pendant que
+  > d'autres capturent tue toutes les sessions (`0x887A0026`).
+  > `2026-08-01-multifenetres-tranche-verticale-resultats.md`.
   > (`2026-07-31-duplications-paralleles-resultats.md`). **Une exécution par
   > rang, donc aucun taux**, et **rien au-delà de 8 sorties**.
 - **La comparaison des deux modes d'encodage porte sur deux variables
@@ -694,6 +705,11 @@ nombre=2`) et retirée par la purge (`retirees=1 avant=2 apres=1`,
   > voie est reçue — 90,1 i/s par fenêtre en capture+encodage à N=8, zéro
   > verdict faux (`2026-07-31-duplications-paralleles-resultats.md`). Une
   > exécution par rang, donc aucun taux ; rien au-delà de 8 sorties.
+  > ⚠️ **Portée resserrée le 1ᵉʳ août 2026 (sous-bloc D1)** : le banc créait ses
+  > N sorties **avant** d'ouvrir la moindre duplication ; ce n'est pas l'ordre du
+  > produit, et cet ordre-là échoue — la création d'une sortie pendant que
+  > d'autres capturent tue toutes les sessions (`0x887A0026`).
+  > `2026-08-01-multifenetres-tranche-verticale-resultats.md`.
 - **La cadence de 90,0 i/s n'est pas expliquée.** Identique à N=1 et N=2,
   parfaitement régulière, alors que la sortie a été créée à 60 Hz. Le témoin qui
   vaut n'est pas celui de la sonde précédente (autre jour, autre code) mais celui
@@ -929,6 +945,11 @@ mesures et non sur une construction.** Trois choses ont changé :
   > ✅ **Prise le 31 juillet 2026, et la voie est reçue** — 90,1 i/s par fenêtre
   > en capture+encodage à N=8, zéro verdict faux, aire totale 7,37 Mpx :
   > `2026-07-31-duplications-paralleles-resultats.md`. Le défaut de libération
+  > ⚠️ **Portée resserrée le 1ᵉʳ août 2026 (sous-bloc D1)** : le banc créait ses
+  > N sorties **avant** d'ouvrir la moindre duplication ; ce n'est pas l'ordre du
+  > produit, et cet ordre-là échoue — la création d'une sortie pendant que
+  > d'autres capturent tue toutes les sessions (`0x887A0026`).
+  > `2026-08-01-multifenetres-tranche-verticale-resultats.md`.
   > des encodeurs (point suivant de la liste ci-dessous) y est diagnostiqué et
   > corrigé — il était **intermittent**, non déterministe, et `MFShutdown` n'en
   > était pas la cause.
@@ -976,6 +997,11 @@ possible doit être fermé avant qu'on le retienne ou l'écarte pour de bon.
    formelle. Coût : une demi-journée avec le banc existant.
    > ✅ **Note postérieure (31/07/2026)** : **levée, voie reçue à N=8** —
    > `2026-07-31-duplications-paralleles-resultats.md`.
+   > ⚠️ **Portée resserrée le 1ᵉʳ août 2026 (sous-bloc D1)** : le banc créait ses
+   > N sorties **avant** d'ouvrir la moindre duplication ; ce n'est pas l'ordre du
+   > produit, et cet ordre-là échoue — la création d'une sortie pendant que
+   > d'autres capturent tue toutes les sessions (`0x887A0026`).
+   > `2026-08-01-multifenetres-tranche-verticale-resultats.md`.
 2. **Le plantage de la passe d'encodage sur la voie `duplication`.** Localisé,
    non diagnostiqué, et il **laisse des sorties orphelines** — donc il gêne les
    mesures autant qu'il menacerait le produit. À reprendre avec le bornage du

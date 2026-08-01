@@ -38,7 +38,7 @@ où l'on travaille dedans, pas en chantier séparé.
 | Fichier | Lignes | Pourquoi elle reste |
 | --- | --- | --- |
 | `agent/src/encode.rs` | 1536 | `#[cfg(windows)]`, aucun test |
-| `agent/src/windows_source.rs` | 721 | `#[cfg(windows)]`, aucun test |
+| `agent/src/windows_source.rs` | 740 | `#[cfg(windows)]`, aucun test |
 | `agent/src/wasapi.rs` | 543 | `#[cfg(windows)]`, aucun test |
 
 > `encode.rs` est passé de 1502 à 1536 lignes le 31 juillet 2026 (correctif de
@@ -1408,6 +1408,12 @@ en repli mesuré pour les fenêtres non-jeu. Le relevé Apollo (3413×960) qui f
 cette voie n'a pas de journal joint et n'est pas reproductible sans le
 propriétaire du poste.
 
+> ⚠️ **Recommandée, et éprouvée le 1ᵉʳ août 2026 en conditions de produit
+> (sous-bloc D1) : elle tient à arrangement FIGÉ et s'effondre dès qu'une
+> fenêtre s'ouvre.** Créer une sortie virtuelle fait abandonner le mutex des
+> duplications DXGI déjà ouvertes, donc tue toutes les captures en cours. Voir
+> la section « Sous-bloc D1 » plus bas.
+
 > ✅ **Les deux mesures que cette sonde déclarait bloquantes ont été prises le
 > 31 juillet 2026** (plafond de sorties virtuelles, plafond d'encodage sur
 > périphériques séparés) — voir la section suivante. Le chantier D est
@@ -1485,6 +1491,10 @@ confirmation par des processus tiers).
   DXGI n'autorisant qu'une duplication par sortie, la question était réelle.
   ✅ **Elle a été mesurée le 31 juillet 2026 — voie reçue à N=8** : voir la
   section « N duplications DXGI de front » ci-dessous.
+  ⚠️ **Mais dans un ORDRE que le produit n'a pas** : le banc créait ses N sorties
+  avant d'ouvrir la moindre duplication. Le sous-bloc D1 a exercé l'ordre réel
+  (une fenêtre s'ouvre pendant que d'autres capturent) et il échoue — voir la
+  section « Sous-bloc D1 ».
 - **La comparaison des deux modes d'encodage porte sur DEUX variables
   confondues** : le mode `separe` n'ouvre aucune duplication DXGI là où
   `partage` en ouvre une. Le témoin propre n'a pas été exercé.
@@ -1604,6 +1614,13 @@ sortie, un encodeur par sortie. Tout ce qui avait été mesuré jusque-là l'ava
 sur un montage qui n'est pas celui-là.
 
 ### Le résultat : **voie REÇUE**
+
+> ⚠️ **Reçue par ce banc, et par lui seul.** Il crée ses N sorties virtuelles
+> **avant** d'ouvrir la moindre duplication. Le sous-bloc D1 (1ᵉʳ août 2026) a
+> exercé l'ordre du produit — une fenêtre s'ouvre alors que d'autres capturent —
+> et **il échoue** : la création de la sortie fait abandonner le mutex des
+> duplications ouvertes et tue toutes les sessions. Rien ci-dessous n'est
+> réfuté ; c'est la portée qui est plus étroite qu'il n'y paraît.
 
 Le critère posé d'avance était : à N=8, **≥ 60 i/s par fenêtre en
 capture+encodage et aucun verdict faux**.
@@ -1775,6 +1792,152 @@ d'absence, et l'énoncé porte toujours son nombre d'exécutions.*
 - **Corollaire à retenir pour le chantier D** : les 90,1 i/s sont une cadence de
   **capture**, pas d'unités H.264 délivrées — ce montage rend **45 unités par
   seconde et par fenêtre**.
+
+---
+
+## 🪟🌐 Sous-bloc D1 — tranche verticale multi-fenêtres (1ᵉʳ août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-01-multifenetres-tranche-verticale-resultats.md`.
+Conception : `docs/superpowers/specs/2026-08-01-multifenetres-tranche-verticale-design.md`.
+Journaux : `docs/superpowers/plans/journaux-multifenetres-d1/` — **UTF-8 sans
+BOM**, avec les séquences ANSI de `tracing` comme les journaux des chantiers
+précédents (`sed 's/\x1b\[[0-9;]*m//g'` pour les lire à plat). Le répertoire porte
+aussi les pièces qui ne sont pas des journaux d'agent : les captures d'écran des
+fenêtres navigateur, la relecture `WM_GETTEXT` des Bloc-notes, l'environnement
+du signaling, le relevé des veilles prolongées, et **l'instrument lui-même**
+(`pilote-recette.mjs`, versé dans son état final, celui de la dernière
+exécution).
+
+**Premier chantier de PRODUIT du modèle multi-fenêtres**, et première exécution
+réelle : jusqu'ici la seule preuve était le compilateur et les tests des parties
+pures. Le superviseur (`agent/src/superviseur/`) détecte les fenêtres, leur donne
+une sortie virtuelle, y pose la fenêtre, lance un enfant par fenêtre, et parle à
+une page-shell (`client/src/shell.ts`) qui ouvre une fenêtre navigateur par
+fenêtre Windows.
+
+### Le verdict : ça marche, et ça ne tient pas
+
+**Acquis, vérifié en session réelle** : une fenêtre navigateur par fenêtre
+Windows, chacune sur sa sortie virtuelle, chacune capturée et encodée par **son
+propre processus**, chacune montrant **son** application et elle seule, plein
+cadre à 1280×720, RTT 1–3 ms — **jusqu'à quatre simultanées**, sur de vraies
+applications (Bloc-notes, Explorateur, Firefox) et non des mires.
+⚠️ **Ces quatre fenêtres PRÉEXISTAIENT au démarrage du superviseur** : ce sont
+celles que l'énumération initiale trouve. **Le cas produit — un utilisateur
+ouvre une application — a été tenté deux fois et a échoué deux fois.** D1 sait
+éclater un bureau tel qu'il est ; il ne sait pas en accueillir une de plus.
+
+Le son est porté par **une seule** fenêtre (+59 710 octets RTP audio en 9,4 s sur elle
+seule, les trois autres sessions n'ayant aucune piste audio). Aucune sortie n'a
+fuité : ensemble des **noms** de sorties identique au départ aux trois contrôles
+depuis un processus neuf, superviseur pourtant tué net à chaque fois.
+
+**Bloquant** : **créer une sortie virtuelle fait abandonner le mutex des
+duplications DXGI déjà ouvertes** (`0x887A0026`, « Le mutex indexé a été
+abandonné »). Toute nouvelle fenêtre tue donc **toutes** les sessions en cours,
+et l'emballement qui suit vide la page-shell alors que les applications Windows
+sont toujours là. **Reproduit sur trois exécutions versées sur trois, plus une
+quatrième dont les journaux ne sont pas joints.** La correspondance est exacte : sur les **17**
+créations de sortie des trois journaux, **13 n'ont aucune duplication ouverte
+→ 0 erreur** (9 parce qu'aucun enfant n'a encore été lancé, 4 entre deux
+vagues), et **4 en ont → 9 erreurs**, soit `1, 1, 3, 4`. Ce `1, 1, 3, 4` est le
+nombre d'**enfants qui capturent**, PAS le nombre de lignes `duplication de
+sortie établie` — dans F il y en a douze pour quatre enfants et quatre erreurs. ⚠️ **La DESTRUCTION d'une
+sortie n'est pas mise en cause : le cas n'a jamais été exercé** — les
+dix-sept destructions des trois journaux tombent toutes hors de toute
+duplication ouverte. D1 **n'est pas reçu**.
+
+### Quatre défauts à connaître avant de toucher à ce terrain
+
+- **`(index_adaptateur, index_sortie)` n'est PAS un identifiant de sortie.** Il
+  est positionnel et change dès qu'une sortie apparaît ou disparaît. Le
+  superviseur le passe pourtant à l'enfant, qui le résout plus tard : d'où des
+  `Error: aucune sortie DXGI à l'index adaptateur 0, sortie 5`. Le `nom_sortie`
+  (`\\.\DISPLAYn`) est le seul identifiant stable, et le superviseur l'a déjà.
+- **`WindowsSource::resize` ignore le mode `sur_sortie`.** Il redimensionne la
+  fenêtre Windows et reconstruit une duplication du **bureau** : hors écran,
+  donc `la fenêtre est hors de l'écran`, capture de secours sur le bureau
+  physique, et `soumission à l'encodeur échouée … NV12` **une fois par image**.
+  En mode « une sortie par fenêtre », il n'y a rien à redimensionner.
+- **Une hauteur de viewport impaire rend toute fenêtre impossible.** Le pop-up
+  d'un navigateur annonce couramment une hauteur impaire (1280×**713** mesuré).
+  `resize` force les dimensions paires (`& !1`) : la taille demandée ne peut
+  alors jamais égaler celle de la source. **Arrondir le viewport avant de créer
+  la sortie.**
+- **`DELAI_RATTACHEMENT = 1500 ms` n'est pas toujours suffisant**, et
+  l'appariement par égalité stricte de dimensions échoue alors : sortie créée à
+  1280×713, rendue par DXGI à 1280×720 une fois, à 1280×713 l'essai suivant.
+  **Ce n'est pas le facteur DPI de 1,5** que les documents redoutaient, c'est une
+  course.
+
+### Ce que D1 devait relever et n'a PAS relevé
+
+- **Le plafond d'encodeurs en multi-processus.** Pas approché : **4 encodeurs
+  NVENC construits de front dans 4 processus, aucun refus** ; 6 sorties
+  virtuelles attachées simultanément, aucun refus du pilote non plus. Le 8
+  connu reste un chiffre de **processus unique**.
+- **L'injection clavier**, ni démontrée ni réfutée. Deux causes possibles,
+  non départagées : côté navigateur le premier clic est consommé par
+  `requestPointerLock` (activation utilisateur, qu'un clic CDP ne fournit pas
+  sans interface) ; côté agent **`SendInput` est global à la session Windows** —
+  le clavier va à la fenêtre au premier plan, et aucun `SetForegroundWindow`
+  n'est fait. Le second point est **structurel** et vaudra quel que soit le
+  premier.
+- Rien de la latence ni de la cadence, 3 applications seulement, session vivante
+  la plus longue ≈ **50 s**, une exécution exploitée par configuration.
+
+### ⚠️ La VM se met en veille prolongée toute seule — deux mesures perdues
+
+**Deux horodatages, et l'écart entre eux est réel** : l'invité amorce la
+transition à **09:40:04 et 10:40:04 UTC** (Kernel-Power 187/42), QEMU n'est
+terminé qu'à **09:40:09 et 10:40:10** — les ~5 s d'écriture de l'image
+d'hibernation. Ce n'est pas une minuterie d'inactivité (`STANDBYIDLE` et
+`HIBERNATEIDLE` sont à 0) : le journal Windows nomme l'initiateur,
+`\Windows\System32\shutdown.exe` (Kernel-Power **187**), pour une transition de
+type hibernation (Kernel-Power **42**). Relevé versé :
+`journaux-multifenetres-d1/veille-prolongee-vm.txt`.
+⚠️ **Le motif horaire n'est PAS établi** : le journal libvirt porte **quatre**
+extinctions sur la journée — 08:29:55, 09:40:09, 10:40:10 et 11:30:27 UTC —
+soit des intervalles de **70, 60 puis 50 minutes**, dont deux seulement sur la
+minute :40. **Le déclencheur exact n'est pas identifié** — la
+seule tâche planifiée appelant `shutdown` est désactivée depuis avril 2025 ;
+`sunshine`/`sunshinesvc` tournent et sont des suspects **non éprouvés**. La
+seule règle prudente : **vérifier que la VM a survécu après toute séquence
+longue**, plutôt que de se fier à une fenêtre horaire.
+
+```bash
+# Symptômes : /media/vm répond « L'hôte cible est arrêté ou en panne »,
+# virsh list --all dit « fermé », run-agent.sh échoue en écrivant son .ps1.
+grep -E "terminating on signal|shutting down" /var/log/libvirt/qemu/Windows.log | tail -4
+```
+
+### Pièges d'outillage rencontrés
+
+- **`scripts/run-agent.sh` ne transmettait pas `SUPERVISEUR`** — corrigé. Sans
+  cette ligne, l'agent démarre en mode mono-fenêtre sans rien signaler.
+- **Un agent SURVIT à l'hibernation de la VM**, et `run-agent.sh` ne tue pas
+  l'agent existant : il recrée la tâche et la lance. **Vérifier
+  `Get-Process agent` avant chaque exécution**, sinon on mesure le processus
+  précédent.
+- **Sans `--disable-popup-blocking`, la démonstration est vide et muette** : la
+  shell ouvre ses fenêtres hors geste utilisateur, Chrome les refuse toutes, et
+  la seule trace est un message dans la page-shell.
+- **Chrome sans interface survit à la mort de son pilote.** Une exécution
+  entière a été perdue parce que le pilote s'est attaché à une instance
+  résiduelle, sur un port réutilisé, dont les pages périmées ne recevaient plus
+  rien. **Un port de débogage qui répond ne prouve pas que c'est le bon
+  navigateur.**
+- **Une capture d'écran CDP suffit à déclencher l'effondrement** : elle provoque
+  un `Resize`, qui rétrécit la fenêtre Windows, qui engendre un `SHOW`, qui crée
+  une session, qui crée une sortie, qui tue toutes les captures.
+  **L'instrument détruisait ce qu'il mesurait** — même leçon que la trace par
+  paquet du chantier TURN, sous une autre forme.
+- **Le signaling ne mémorise que les offres SDP** : les annonces
+  `fenetre-ouverte` émises avant que la page-shell ne soit connectée sont perdues
+  sans trace. **Lancer le navigateur AVANT le superviseur.**
+- **`agent.log` mêle le superviseur et tous ses enfants** (stdout hérité), sans
+  rien qui distingue l'émetteur hors le champ `session=` de certaines lignes.
 
 ---
 

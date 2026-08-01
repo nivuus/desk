@@ -60,16 +60,21 @@ use std::time::{Duration, Instant};
 
 use anyhow::Result;
 
-use super::moniteurs::{ouvrir_pilote, PiloteParIoctl};
+use crate::moniteurs_virtuels::pilote::{ouvrir_pilote, PiloteParIoctl};
 use crate::capture::SortieDxgi;
 use crate::moniteurs_virtuels::Sorties;
 
 /// Au-delà, on cesse de chercher : le chantier D vise 8 fenêtres, et la sonde
 /// d'encodeurs emploie déjà ce même plafond de recherche.
 ///
-/// `pub(super)` : c'est aussi la borne que `purge.rs` rejoue pour régénérer
-/// les GUID d'une exécution tuée net — même gabarit, même plafond, sans quoi
-/// la purge et la mesure qu'elle rattrape pourraient diverger en silence.
+/// **Ne concerne QUE la mesure.** `purge.rs` employait aussi cette constante
+/// pour régénérer les GUID d'une exécution tuée net ; elle a désormais la
+/// sienne, `moniteurs_virtuels::numeros::PLAFOND_NUMEROS`, aux côtés du
+/// distributeur qui la fait respecter (correctif I1 de la revue finale). Les
+/// deux valent seize, et cette coïncidence n'engage rien : celle-ci dit
+/// jusqu'où une mesure grimpe, l'autre borne les numéros qu'un moniteur peut
+/// porter — la seconde décide de la récupérabilité d'un état système, pas la
+/// première.
 pub(super) const PLAFOND_RECHERCHE: usize = 16;
 
 /// Résolution demandée à chaque sortie : celle que le chantier D vise par
@@ -86,7 +91,9 @@ pub(super) const RESOLUTION: (u32, u32, u32) = (1280, 720, 60);
 ///
 /// `pub(super)` : `purge.rs` relève la même topologie, avant et après sa
 /// purge, avec le même délai de grâce.
-pub(super) const DELAI_TOPOLOGIE: Duration = Duration::from_secs(3);
+// `pub(crate)` : `moniteurs_virtuels::purge::purger` (production) s'en sert
+// pour le même relevé avant/après.
+pub(crate) const DELAI_TOPOLOGIE: Duration = Duration::from_secs(3);
 
 /// Cadence de ping du chien de garde, **par précaution et non par remède
 /// démontré** : le ping est prouvé accepté du pilote, son effet sur le décompte
@@ -115,7 +122,9 @@ const DUREE_EPREUVE_PAR_DEFAUT: Duration = Duration::from_secs(30);
 /// compensé.
 ///
 /// `pub(super)` : `purge.rs` s'en sert pour le même relevé avant/après.
-pub(super) fn relever_topologie(moment: &str) -> Result<Vec<SortieDxgi>> {
+// `pub(crate)` : `moniteurs_virtuels::purge::purger` (production) s'en sert
+// pour le même relevé avant/après.
+pub(crate) fn relever_topologie(moment: &str) -> Result<Vec<SortieDxgi>> {
     let sorties = crate::capture::enumerer_sorties()?;
     let attachees = sorties.iter().filter(|s| s.attachee_au_bureau).count();
     tracing::info!(moment, nombre = sorties.len(), attachees, "topologie relevée");
@@ -140,9 +149,11 @@ pub(super) fn relever_topologie(moment: &str) -> Result<Vec<SortieDxgi>> {
 /// Noms des sorties attachées au bureau, triés — donc comparables comme des
 /// ensembles, l'ordre d'énumération de DXGI n'ayant aucune signification.
 ///
-/// `pub(super)` : `capture_virtuelle.rs` compare les mêmes ensembles avant et
-/// après sa mesure.
-pub(super) fn noms_attaches(sorties: &[SortieDxgi]) -> Vec<String> {
+/// `pub(crate)` : `capture_virtuelle.rs` compare les mêmes ensembles avant et
+/// après sa mesure, et `superviseur::boucle` (production) n'apparie une sortie
+/// fraîchement créée que parmi les noms APPARUS — sans quoi il poserait la
+/// fenêtre sur un moniteur préexistant de mêmes dimensions.
+pub(crate) fn noms_attaches(sorties: &[SortieDxgi]) -> Vec<String> {
     let mut noms: Vec<String> = sorties
         .iter()
         .filter(|s| s.attachee_au_bureau)
@@ -416,7 +427,7 @@ pub(super) fn monter_en_n() -> Result<()> {
     // laissé un retrait dû (le pilote l'a refusé une première fois), c'est
     // ici la dernière chance de ce PROCESSUS de le rejouer — au-delà, seule
     // la purge inter-processus de `purge.rs` pourra encore l'atteindre.
-    let rejoues = super::purge::rejouer_purge_due(&pilote);
+    let rejoues = crate::moniteurs_virtuels::purge::rejouer_purge_due(&pilote);
     if rejoues > 0 {
         tracing::info!(rejoues, "retraits dus rejoués avec succès après la garde");
     }

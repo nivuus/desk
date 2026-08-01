@@ -23,9 +23,23 @@ mod opus;
 mod pointer_settings;
 mod rebuild;
 mod signaling;
+// Pas de `#[cfg(windows)]` ici : c'est la part portable de `capture.rs`
+// (lui-même `#![cfg(windows)]` dans son ensemble) — voir le commentaire de
+// module de `sortie_dxgi.rs`. `superviseur::placement` (tâche 7) en a besoin
+// pour se compiler et se tester sur Linux.
+mod sortie_dxgi;
+// Pas de `#[cfg(windows)]` ici : la logique pure de `superviseur` (tâche 2)
+// décide quelles fenêtres méritent d'exister côté navigateur, et doit se
+// compiler et se tester sur Linux sans dépendance à l'API Windows.
+mod superviseur;
 mod source;
 mod transport;
 mod turn;
+// Le calcul de région est pur et doit être testable sur l'hôte : il est donc
+// déclaré indépendamment du reste de `windows_source`, qui ne compile que sur
+// Windows.
+#[path = "windows_source/sortie.rs"]
+mod windows_source_sortie;
 
 #[cfg(windows)]
 mod capture;
@@ -51,6 +65,26 @@ struct Config {
     session_id: String,
     local_ip: IpAddr,
     test_file: Option<PathBuf>,
+    /// Vrai en mode superviseur : ce processus ne capture rien, il détecte les
+    /// fenêtres et lance un enfant par fenêtre.
+    superviseur: bool,
+    /// `HWND` de la fenêtre à capturer, en décimal ou hexadécimal préfixé
+    /// `0x`. Posé par le superviseur sur ses enfants ; absent, l'agent
+    /// retombe sur la recherche par titre (`WINDOW_TITLE`), c'est-à-dire sur
+    /// le comportement mono-fenêtre d'avant ce sous-bloc.
+    ///
+    /// Les trois champs qui suivent ne sont lus que par la branche Windows de
+    /// `demarrage` : sur l'hôte Linux ils sont morts par construction, et
+    /// l'`allow` le dit plutôt que de laisser un avertissement s'installer.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    fenetre_hwnd: Option<u64>,
+    /// Sortie DXGI à capturer, sous la forme `adaptateur:sortie`. Absente,
+    /// l'agent capture le bureau et recadre la fenêtre.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    sortie_dxgi: Option<(u32, u32)>,
+    /// Faux sur les enfants qui ne portent pas le son.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    audio: bool,
 }
 
 fn config() -> Result<Config> {
@@ -63,7 +97,82 @@ fn config() -> Result<Config> {
             .parse()
             .context("LOCAL_IP n'est pas une adresse IP valide")?,
         test_file: std::env::var("TEST_FILE").ok().map(PathBuf::from),
+        // `SUPERVISEUR=0` DÉSACTIVE le mode, comme `AUDIO=0` désactive le son.
+        // Une simple présence (`is_ok()`) ferait qu'écrire `SUPERVISEUR=0`
+        // pour le couper l'activerait — piège d'exploitation d'autant plus
+        // sûr que la variable voisine, elle, se lit bien ainsi.
+        superviseur: matches!(std::env::var("SUPERVISEUR").as_deref(), Ok(v) if v != "0"),
+        // ABSENTE : mode mono-fenêtre légitime, aucun bruit. PRÉSENTE MAIS MAL
+        // FORMÉE : échec du démarrage, jamais un repli muet — voir
+        // `analyser_hwnd`.
+        fenetre_hwnd: match std::env::var("FENETRE_HWND") {
+            Ok(brut) => Some(analyser_hwnd(&brut)?),
+            Err(_) => None,
+        },
+        // Même règle, et la même fonction d'analyse que le reste du projet :
+        // `moniteurs_virtuels::analyser_designation` nomme le champ fautif
+        // dans son erreur et elle est testée, là où le `and_then` qu'elle
+        // remplace rendait `None` sur toute faute de frappe.
+        sortie_dxgi: match std::env::var("SORTIE_DXGI") {
+            Ok(brut) => Some(
+                moniteurs_virtuels::analyser_designation(brut.trim())
+                    .context("SORTIE_DXGI")?,
+            ),
+            Err(_) => None,
+        },
+        // Le son est actif par défaut : c'est le comportement mono-fenêtre
+        // d'avant ce sous-bloc, qu'un agent lancé à la main doit retrouver.
+        // Seul le superviseur le coupe, sur les enfants non porteurs.
+        audio: std::env::var("AUDIO").as_deref() != Ok("0"),
     })
+}
+
+/// Analyse un `HWND` tel que le superviseur le pose sur ses enfants :
+/// hexadécimal préfixé `0x` (la forme que produit `lanceur.rs`), ou décimal.
+///
+/// **Échoue bruyamment plutôt que de rendre `None`**, et c'est le correctif I5
+/// de la revue finale. La version précédente enchaînait `.ok().and_then(…)` :
+/// toute valeur mal formée — un `0x` oublié, un espace, un débordement —
+/// devenait indiscernable d'une variable absente, et `demarrage::source`
+/// basculait alors sur la capture du bureau entier avec recadrage, sans un mot.
+/// Un enfant du superviseur diffuserait ainsi le bureau de la VM en croyant
+/// montrer sa fenêtre. Une variable ABSENTE garde son sens (mode mono-fenêtre,
+/// recherche par titre) ; une variable PRÉSENTE doit être honorée ou refusée.
+fn analyser_hwnd(brut: &str) -> Result<u64> {
+    let texte = brut.trim();
+    let valeur = match texte.strip_prefix("0x").or_else(|| texte.strip_prefix("0X")) {
+        Some(hexa) => u64::from_str_radix(hexa, 16)
+            .with_context(|| format!("FENETRE_HWND « {texte} » : hexadécimal illisible"))?,
+        None => texte
+            .parse()
+            .with_context(|| format!("FENETRE_HWND « {texte} » : décimal illisible"))?,
+    };
+    anyhow::ensure!(valeur != 0, "FENETRE_HWND vaut 0 : aucune fenêtre ne porte ce handle");
+    Ok(valeur)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn un_hwnd_hexadecimal_ou_decimal_est_accepte() {
+        assert_eq!(analyser_hwnd("0x1a2b").unwrap(), 0x1a2b);
+        assert_eq!(analyser_hwnd(" 0x1A2B ").unwrap(), 0x1a2b);
+        assert_eq!(analyser_hwnd("6699").unwrap(), 6699);
+    }
+
+    /// Le cœur de I5 : chacune de ces valeurs rendait `None` — donc « pas de
+    /// fenêtre imposée », donc le repli silencieux sur la capture du bureau.
+    #[test]
+    fn un_hwnd_mal_forme_fait_echouer_le_demarrage() {
+        assert!(analyser_hwnd("").is_err(), "vide");
+        assert!(analyser_hwnd("0x").is_err(), "préfixe seul");
+        assert!(analyser_hwnd("0xzz").is_err(), "pas de l'hexadécimal");
+        assert!(analyser_hwnd("1a2b").is_err(), "hexadécimal sans préfixe");
+        assert!(analyser_hwnd("-1").is_err(), "négatif");
+        assert!(analyser_hwnd("0").is_err(), "handle nul");
+    }
 }
 
 #[tokio::main]
@@ -117,6 +226,14 @@ async fn main() -> Result<()> {
     // c'est cet ordre que la sonde de linéarité suppose (voir `diagnostics`).
     if diagnostics::aiguiller()? {
         return Ok(());
+    }
+
+    // Le mode superviseur ne capture rien : il détecte les fenêtres et lance
+    // un enfant par fenêtre. Ses enfants n'héritent JAMAIS de `SUPERVISEUR`
+    // (voir `superviseur::lanceur`), sans quoi chacun se prendrait pour un
+    // superviseur et lancerait les siens, indéfiniment.
+    if config.superviseur {
+        return superviseur::executer(config).await;
     }
 
     demarrage::executer(config).await

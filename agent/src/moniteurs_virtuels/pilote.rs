@@ -44,37 +44,24 @@ use windows::Win32::Storage::FileSystem::{
 };
 use windows::Win32::System::IO::DeviceIoControl;
 
-use super::peripherique::chemin_du_peripherique;
-use super::sudovda::{
-    en_champ_14, DemandeAjout, DemandeRetrait, SortieAjoutee, Veille, VersionProtocole,
-    IOCTL_AJOUTER_SORTIE, IOCTL_LIRE_VEILLE, IOCTL_LIRE_VERSION_PROTOCOLE, IOCTL_PINGUER,
+use crate::moniteurs_virtuels::guid::{guid_pour, numero_de};
+use crate::moniteurs_virtuels::numeros::Numeros;
+use crate::moniteurs_virtuels::peripherique::chemin_du_peripherique;
+use crate::moniteurs_virtuels::sudovda::{
+    en_champ_14, DemandeAjout, DemandeRetrait, SortieAjoutee, IOCTL_AJOUTER_SORTIE,
     IOCTL_RETIRER_SORTIE,
 };
-use crate::moniteurs_virtuels::{IdSortie, PiloteAffichageVirtuel};
+use super::{IdSortie, PiloteAffichageVirtuel};
 
-/// Gabarit du GUID que nous attribuons à chaque sortie créée : les 16 bits de
-/// poids faible portent un compteur, le reste est une constante arbitraire
-/// choisie ici. Le GUID n'a besoin que d'être unique et reconnaissable — s'il
-/// traîne un jour dans l'état du pilote, on saura d'où il vient.
-///
-/// Le compteur repart de zéro à chaque exécution, et c'est un choix assumé :
-/// deux exécutions attribuent donc les mêmes GUID. C'est ce déterminisme qui
-/// donnera à la purge de la tâche 7 un motif reconnaissable pour retrouver nos
-/// sorties orphelines, qu'aucune table en mémoire ne peut plus désigner.
-const GABARIT_GUID_MONITEUR: u128 = 0x9c4a_1f6e_2b73_4d51_9e08_6775_4143_0000;
-
-/// GUID attribué au n-ième moniteur créé par CE gabarit, pour un `numero`
-/// donné — extrait de `creer()` pour que `purge.rs` calcule EXACTEMENT la
-/// même suite sans état vivant : c'est ce déterminisme qui permet à une
-/// purge inter-processus de retrouver les GUID d'une exécution tuée net.
-pub(super) fn guid_pour(numero: u16) -> GUID {
-    GUID::from_u128(GABARIT_GUID_MONITEUR | u128::from(numero))
-}
+/// Les trois IOCTL sans effet de bord (version, ping, veille), extraites pour
+/// tenir sous le plafond de 500 lignes — voir son commentaire de tête. Module
+/// ENFANT : c'est ce qui lui laisse l'accès à `commander`, restée privée.
+mod controle;
 
 /// Tout ce que le pilote doit retenir entre deux appels, sous un verrou
-/// unique — le compteur et les deux listes ne servent qu'un seul invariant
-/// (« toute sortie créée a un GUID connu tant qu'elle n'est pas retirée »), et
-/// deux verrous pour un invariant seraient un piège gratuit.
+/// unique — le distributeur de numéros et les deux listes ne servent qu'un
+/// seul invariant (« toute sortie créée a un GUID connu tant qu'elle n'est pas
+/// retirée »), et deux verrous pour un invariant seraient un piège gratuit.
 ///
 /// **Deux listes en revanche, et non une**, parce que ce sont deux rôles et
 /// deux durées de vie.
@@ -98,11 +85,12 @@ struct EtatSorties {
     /// consultée par `detruire` : elle ne sert qu'à ne pas perdre la trace de
     /// ce qui doit être purgé — voir la tâche 7.
     a_purger: Vec<GUID>,
-    /// Compteur des GUID attribués.
-    compteur: u16,
+    /// Distributeur des numéros de GUID, avec recyclage à la destruction
+    /// réussie — voir `numeros` pour le défaut que ce recyclage corrige (I1).
+    numeros: Numeros,
 }
 
-pub(super) struct PiloteParIoctl {
+pub(crate) struct PiloteParIoctl {
     peripherique: HANDLE,
     /// Un `Mutex` et non un `RefCell` parce que `creer(&self, …)` doit rester
     /// utilisable depuis un contexte partagé. Voir `etat()` pour la seule
@@ -114,7 +102,7 @@ pub(super) struct PiloteParIoctl {
 ///
 /// Type concret et non `impl Trait` : les tâches suivantes en prennent une
 /// référence, que Rust coerce vers `&dyn PiloteAffichageVirtuel`.
-pub(super) fn ouvrir_pilote() -> Result<PiloteParIoctl> {
+pub(crate) fn ouvrir_pilote() -> Result<PiloteParIoctl> {
     let chemin = chemin_du_peripherique()?;
     // POURQUOI PAS `FILE_FLAG_OVERLAPPED`, contrairement au client amont.
     //
@@ -168,11 +156,13 @@ impl PiloteParIoctl {
     /// Efface toute trace de ce GUID : la sortie n'existe plus, ni retrait dû
     /// ni appariement ne doivent lui survivre.
     ///
-    /// Indexer par GUID suppose leur UNICITÉ, et c'est le compteur `u16` de
-    /// `EtatSorties` qui la porte : elle tient tant qu'une même instance de
-    /// pilote crée moins de 65 536 sorties, au-delà de quoi `wrapping_add`
-    /// rejouerait un GUID déjà attribué. Hors d'atteinte de ce chantier, mais
-    /// l'invariant est ici, là où on s'y fie.
+    /// Indexer par GUID suppose leur UNICITÉ, et c'est le distributeur de
+    /// `numeros` qui la porte : deux sorties vivantes ne peuvent pas partager
+    /// un numéro, puisqu'un numéro n'est rendu qu'après un retrait RÉUSSI.
+    ///
+    /// **N'appeler que sur une sortie réellement retirée.** C'est ici que le
+    /// numéro repart au distributeur (correctif I1) : l'appeler sur un retrait
+    /// en échec ferait réattribuer le GUID d'un moniteur encore vivant.
     ///
     /// `pub(super)` : `purge::rejouer_purge_due` l'appelle après un retrait
     /// réussi, pour la même raison que `detruire` l'appelle ici.
@@ -180,6 +170,11 @@ impl PiloteParIoctl {
         let mut etat = self.etat();
         etat.a_purger.retain(|connu| *connu != guid_moniteur);
         etat.apparies.retain(|(_, connu)| *connu != guid_moniteur);
+        // `None` seulement pour un GUID qui ne vient pas de notre gabarit :
+        // rien à rendre, et surtout rien à deviner (voir `guid::numero_de`).
+        if let Some(numero) = numero_de(guid_moniteur) {
+            etat.numeros.rendre(numero);
+        }
     }
 
     /// Retire du pilote la sortie portant ce GUID.
@@ -240,54 +235,6 @@ impl PiloteParIoctl {
         Ok(rendus)
     }
 
-    /// Version de protocole annoncée par le pilote installé. Sans effet de
-    /// bord — le tampon le plus simple des six.
-    pub(super) fn version_protocole(&self) -> Result<(VersionProtocole, u32)> {
-        let mut version = VersionProtocole::default();
-        let rendus = self.commander(
-            IOCTL_LIRE_VERSION_PROTOCOLE,
-            None,
-            Some((
-                &mut version as *mut _ as *mut _,
-                std::mem::size_of::<VersionProtocole>() as u32,
-            )),
-            "lecture de la version de protocole du pilote",
-        )?;
-        Ok((version, rendus))
-    }
-
-    /// Réarme le chien de garde du pilote pour CE handle.
-    ///
-    /// Ni entrée ni sortie : c'est le seul des six IOCTL dont les deux tampons
-    /// soient vides, donc le seul dont aucune disposition supposée ne puisse
-    /// être fausse.
-    ///
-    /// **Pourquoi ce battement n'est pas lancé ici, dans un fil interne.** Le
-    /// pilote associe vraisemblablement son chien de garde au *file object*
-    /// ouvert par `CreateFile` — c'est ce que fait le client amont, qui pingue
-    /// sur le handle même dont il s'est servi pour ajouter ses sorties. Pinguer
-    /// depuis un second handle ne sauverait donc rien. Un fil interne devrait
-    /// alors partager CE handle, ce qui obligerait à le rendre `Send` ; or les
-    /// deux seuls appelants de ce module sont séquentiels par construction et
-    /// n'ont besoin que de ponctuer leurs attentes. On expose le battement,
-    /// l'appelant tient la cadence.
-    pub(super) fn pinguer(&self) -> Result<()> {
-        self.commander(IOCTL_PINGUER, None, None, "ping du chien de garde du pilote")?;
-        Ok(())
-    }
-
-    /// Délai et décompte du chien de garde du pilote. Sans effet de bord.
-    pub(super) fn veille(&self) -> Result<(Veille, u32)> {
-        let mut veille = Veille::default();
-        let rendus = self.commander(
-            IOCTL_LIRE_VEILLE,
-            None,
-            Some((&mut veille as *mut _ as *mut _, std::mem::size_of::<Veille>() as u32)),
-            "lecture du watchdog du pilote",
-        )?;
-        Ok((veille, rendus))
-    }
-
     /// Instantané des GUID dont un retrait précédent a échoué et reste dû.
     ///
     /// `pub(super)` pour `purge::rejouer_purge_due`, qui referme la dette
@@ -304,8 +251,13 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
         // noyau bloquant : sans conséquence tant que la montée en N reste
         // séquentielle, à revoir si elle cesse de l'être.
         let mut etat = self.etat();
-        etat.compteur = etat.compteur.wrapping_add(1);
-        let numero = etat.compteur;
+        // Un refus ici est un refus de créer, et c'est voulu : au-delà du
+        // plafond, le GUID attribué sortirait de la plage que la purge
+        // inter-processus balaye, et la sortie deviendrait irrécupérable sans
+        // redémarrage de la VM (voir `numeros`). Mieux vaut une fenêtre
+        // refusée bruyamment — la table du superviseur sait déjà quoi faire
+        // d'un refus de création — qu'un moniteur fantôme irrétirable.
+        let numero = etat.numeros.attribuer()?;
         let guid_moniteur = guid_pour(numero);
 
         let demande = DemandeAjout {
@@ -317,7 +269,7 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
             numero_serie: en_champ_14(&format!("mesure{numero}")),
         };
         let mut ajoutee = SortieAjoutee::default();
-        let rendus = self.commander(
+        let rendus = match self.commander(
             IOCTL_AJOUTER_SORTIE,
             Some((
                 &demande as *const _ as *const _,
@@ -328,7 +280,19 @@ impl PiloteAffichageVirtuel for PiloteParIoctl {
                 std::mem::size_of::<SortieAjoutee>() as u32,
             )),
             &format!("création d'une sortie {largeur}x{hauteur}@{hertz}"),
-        )?;
+        ) {
+            Ok(rendus) => rendus,
+            Err(erreur) => {
+                // AUCUNE sortie n'existe : le numéro n'est dû à personne et
+                // repart au distributeur. Sans cela, une série de refus du
+                // pilote — dont le vivier de dix est PLUS BAS que notre
+                // plafond de seize, donc atteint le premier — consommerait des
+                // numéros pour rien et finirait par faire refuser toute
+                // création alors que le pilote, lui, aurait de la place.
+                etat.numeros.rendre(numero);
+                return Err(erreur);
+            }
+        };
 
         // À PARTIR D'ICI LA SORTIE EXISTE. Tout chemin d'échec sous cette ligne
         // doit donc défaire ce qui vient d'être fait, ou au minimum laisser le
@@ -478,10 +442,16 @@ impl Drop for PiloteParIoctl {
         let etat = self.etat();
         let apparies: Vec<GUID> = etat.apparies.iter().map(|(_, guid)| *guid).collect();
         let a_purger = etat.a_purger.clone();
+        // Numéros attribués et non rendus : normalement égal au nombre de GUID
+        // ci-dessous. Un écart signalerait une fuite du distributeur (un numéro
+        // consommé par une création qui n'a rien créé), c'est-à-dire une place
+        // perdue dans une plage volontairement étroite.
+        let numeros_en_vol = etat.numeros.en_vol();
         drop(etat);
         if !apparies.is_empty() || !a_purger.is_empty() {
             tracing::error!(
                 nombre = apparies.len() + a_purger.len(),
+                numeros_en_vol,
                 guids_jamais_detruits = ?apparies,
                 guids_dont_le_retrait_a_echoue = ?a_purger,
                 "sorties virtuelles créées et NON retirées — elles survivent à ce \

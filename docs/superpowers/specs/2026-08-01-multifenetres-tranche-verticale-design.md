@@ -175,6 +175,19 @@ chiffres de cadence sont pris (90,1 i/s par fenêtre à N=8) ; les reprendre sur
 des applications réelles ne répondrait à aucune question ouverte de ce
 sous-bloc. Ce qui reste à prouver, c'est que l'ensemble s'assemble.
 
+> ⚠️ **Verdict de réception, 1ᵉʳ août 2026 : D1 N'EST PAS REÇU.**
+> `plans/2026-08-01-multifenetres-tranche-verticale-resultats.md`. La
+> démonstration bout en bout est décrite et ses journaux versés, mais **elle
+> n'aboutit pas** : sur les huit points du scénario, **deux sont obtenus** (la
+> shell ouvre une fenêtre par fenêtre Windows et chacune montre son application
+> seule, jusqu'à quatre simultanées ; le son sort d'une seule fenêtre), **deux
+> sont partiels et quatre ne le sont pas**. ⚠️ **Et ces quatre fenêtres
+> PRÉEXISTAIENT au démarrage du superviseur** : le cas produit — un utilisateur
+> ouvre une application — a été tenté deux fois et a échoué deux fois.
+> **L'ensemble s'assemble mais ne tient pas** : créer une sortie virtuelle fait abandonner le mutex des duplications
+> DXGI déjà ouvertes, donc toute nouvelle fenêtre tue toutes les sessions en
+> cours. Sept points à régler sont listés au §9 des résultats.
+
 ---
 
 ## 4. Architecture
@@ -360,17 +373,37 @@ est le repli.
 
 - **Le plafond d'encodeurs est-il par processus ou global ?** Mesuré à 8 dans un
   processus unique, jamais en multi-processus. L'architecture retenue rend la
-  question observable pour la première fois — D1 la relèvera, il ne la résout
-  pas d'avance.
+  question observable pour la première fois — ~~D1 la relèvera~~, il ne la
+  résout pas d'avance.
+  ⚠️ **D1 ne l'a PAS relevée** (recette du 1ᵉʳ août 2026,
+  `plans/2026-08-01-multifenetres-tranche-verticale-resultats.md` §4) : le
+  plafond n'a pas été approché, 4 encodeurs de front dans 4 processus étant le
+  maximum atteint, sans aucun refus. La question reste entièrement ouverte, et
+  la cause de cet échec est le défaut §3.3 de la recette — créer une sortie
+  virtuelle tue les captures en cours.
 - **Le vivier de 10 sorties est-il partagé avec Apollo ?** Non mesuré en
   concurrence. Le refus peut donc tomber avant la 11ᵉ.
 - **L'injection d'entrée sur un moniteur virtuel n'est pas éprouvée** — mais le
   code y est déjà préparé et il n'y a rien à écrire : seule reste à confirmer
   l'extension du bureau virtuel à une sortie virtuelle (§7).
+  ⚠️ **Toujours pas éprouvée après D1**, et la recette a fait apparaître un
+  obstacle que cette puce n'anticipait pas : `SendInput` est **global à la
+  session Windows**, donc le clavier va à la fenêtre au premier plan et non à
+  celle de la session émettrice. Aucun `SetForegroundWindow` n'est fait. La
+  recette n'a écrit dans aucun Bloc-notes ; elle ne départage pas cette cause-là
+  d'une seconde, côté navigateur (le clic consommé par la demande de
+  verrouillage du pointeur). **À traiter en D2.**
 - **Le placement d'une fenêtre sur une sortie virtuelle n'a jamais été fait par
   notre code.** Les mesures posaient les fenêtres par le banc, dans des
   conditions qu'il maîtrisait ; une application réelle peut se replacer, se
   redimensionner, refuser d'être maximisée.
+  ✅ **Fait, et il fonctionne** (recette du 1ᵉʳ août 2026) : quatre applications
+  réelles posées chacune sur sa sortie, à `+2400`, `+3680`, `+4960`, `+6240`, et
+  le contrôle périodique de replacement observé à l'œuvre. ⚠️ **Mais ce qui l'a
+  déclenché n'est pas ce que cette puce redoutait** : ce n'est pas une
+  application qui se replaçait d'elle-même, c'est **notre propre** chemin de
+  redimensionnement qui rétrécissait la fenêtre. Le cas « une application réelle
+  se replace toute seule » reste donc non exercé.
 - **Le loopback par processus n'est pas éprouvé** (§3.2) — seul le numéro de
   build a été relevé.
 - **Les mires ne sont pas des applications.** Toutes les cadences connues

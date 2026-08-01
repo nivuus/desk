@@ -10,7 +10,33 @@ type Role = 'agent' | 'client';
 interface Session {
     agent?: WebSocket;
     client?: WebSocket;
+    /// Dernière offre reçue du client, retenue tant qu'aucun agent n'est là
+    /// pour la prendre.
+    ///
+    /// Le sous-bloc D1 renverse l'ordre d'arrivée : la page navigateur s'ouvre
+    /// et envoie son offre AVANT que le superviseur n'ait lancé l'agent de
+    /// cette fenêtre — c'est le viewport de cette page qui décide de la taille
+    /// de la sortie virtuelle, donc rien ne peut être lancé plus tôt. Sans
+    /// cette mémorisation, l'offre serait perdue en silence et la session ne
+    /// s'établirait jamais.
+    offreEnAttente?: string;
 }
+
+// Types que le serveur relaie au pair. Tout le reste est refusé — un relais
+// qui accepterait n'importe quoi deviendrait un canal de diffusion arbitraire
+// sur un serveur sans authentification.
+//
+// `fenetre-ouverte`, `fenetre-fermee`, `refus` et `viewport` portent la
+// session de contrôle du sous-bloc D1, entre le superviseur (rôle `agent`) et
+// la page-shell (rôle `client`).
+const TYPES_RELAYES = new Set([
+    'offer',
+    'answer',
+    'fenetre-ouverte',
+    'fenetre-fermee',
+    'refus',
+    'viewport',
+]);
 
 // Garde de type : nécessaire pour que TypeScript affine `message.role` (typé
 // `any`) en `Role` et autorise l'indexation de `Session` sous `strict`.
@@ -122,6 +148,13 @@ export function createSignalingServer(port: number): SignalingServer {
                         'aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais',
                     );
                 }
+
+                // Une offre arrivée avant cet agent l'attend : la lui remettre
+                // maintenant, sinon elle ne partira jamais.
+                if (declaredRole === 'agent' && session.offreEnAttente) {
+                    send(socket, { type: 'offer', sdp: session.offreEnAttente });
+                    session.offreEnAttente = undefined;
+                }
                 return;
             }
 
@@ -130,8 +163,16 @@ export function createSignalingServer(port: number): SignalingServer {
             if (!session) return;
             const peer = role === 'client' ? session.agent : session.client;
 
-            if (message.type === 'offer' || message.type === 'answer') {
-                send(peer, { type: message.type, sdp: message.sdp });
+            if (TYPES_RELAYES.has(message.type as string)) {
+                if (message.type === 'offer' && !peer) {
+                    // Pas d'agent en face : on retient, plutôt que de perdre.
+                    // La dernière écrase les précédentes — une offre périmée
+                    // ne sert à rien, et en garder plusieurs n'aurait pas de
+                    // destinataire distinct.
+                    session.offreEnAttente = message.sdp as string;
+                    return;
+                }
+                send(peer, message);
             } else {
                 send(socket, { type: 'error', reason: `type inconnu : ${message.type}` });
             }

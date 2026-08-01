@@ -4,14 +4,37 @@
 //!
 //! Ce module ne contient QUE de la logique pure : le trait que doit remplir
 //! un pilote, la garde qui détruit ce qui a été créé, et les conversions de
-//! coordonnées. La glue Windows vit dans
-//! `diagnostics/multifenetre/moniteurs.rs`.
+//! coordonnées. La glue Windows vit dans les sous-modules `pilote`,
+//! `sudovda`, `peripherique` et `purge`, promus depuis
+//! `diagnostics/multifenetre/` au sous-bloc D1.
 //!
 //! Il n'est PAS sous `#[cfg(windows)]`, délibérément : une sortie virtuelle
 //! survit au processus, donc la garde ci-dessous est le seul rempart contre
 //! une VM laissée avec des moniteurs fantômes — c'est exactement le genre de
 //! code qui doit avoir des tests, et ils ne tourneraient pas sous
 //! `#[cfg(windows)]`.
+
+// Glue Windows du pilote SudoVDA, promue depuis `diagnostics/multifenetre/`
+// au sous-bloc D1 : ce n'est plus de l'outillage de mesure, c'est le chemin
+// par lequel le produit fait paraître ses sorties. Le module parent reste
+// hors `#[cfg(windows)]` — c'est ce qui permet à sa garde `Sorties` d'avoir
+// des tests, et cette raison n'a pas changé.
+#[cfg(windows)]
+pub mod guid;
+#[cfg(windows)]
+pub mod peripherique;
+#[cfg(windows)]
+pub mod pilote;
+#[cfg(windows)]
+pub mod purge;
+#[cfg(windows)]
+pub mod sudovda;
+
+// Hors `#[cfg(windows)]`, comme le module parent et pour la même raison :
+// l'attribution des numéros de GUID décide si une sortie virtuelle orpheline
+// reste récupérable, et ce genre de code doit avoir des tests. Voir son
+// commentaire de tête (correctif I1).
+pub mod numeros;
 
 use anyhow::{Context, Result};
 
@@ -56,6 +79,30 @@ impl<'p> Sorties<'p> {
 
     pub fn nombre(&self) -> usize {
         self.creees.len()
+    }
+
+    /// Rend une sortie au pilote **pendant** l'exécution, et cesse de la
+    /// tenir.
+    ///
+    /// Sans cette méthode, une sortie n'est rendue qu'à la destruction de la
+    /// garde, c'est-à-dire à l'arrêt du superviseur : le vivier du pilote
+    /// (dix sorties, mesuré) se consommerait alors à chaque OUVERTURE de
+    /// fenêtre et non par fenêtre simultanée, et une dizaine
+    /// d'ouvertures-fermetures suffirait à bloquer toute nouvelle fenêtre.
+    ///
+    /// Sur refus du pilote, la sortie **reste tenue** : elle est encore due,
+    /// et la garde la retentera à la destruction. L'oublier ici la rendrait
+    /// irrécupérable — le pilote ne retire que par un GUID dont lui seul et
+    /// `PiloteParIoctl` gardent la trace.
+    pub fn detruire(&mut self, id: IdSortie) -> Result<()> {
+        let rang = self
+            .creees
+            .iter()
+            .position(|connu| *connu == id)
+            .with_context(|| format!("sortie {id} non tenue par cette garde — rien à rendre"))?;
+        self.pilote.detruire(id)?;
+        self.creees.remove(rang);
+        Ok(())
     }
 }
 
@@ -182,11 +229,33 @@ mod tests {
         vivantes: RefCell<Vec<IdSortie>>,
         suivant: RefCell<IdSortie>,
         plafond: usize,
+        /// Sorties effectivement rendues par `detruire`, dans l'ordre — ce que
+        /// `Sorties::detruire` teste, distinctement de `vivantes` qui ne dit
+        /// que ce qui reste.
+        detruites: RefCell<Vec<IdSortie>>,
+        /// Fait échouer toute destruction tant que levé, sans toucher
+        /// `vivantes` : c'est le cas où le pilote refuse, et où la sortie
+        /// doit rester tenue par la garde.
+        refuse_les_destructions: RefCell<bool>,
     }
 
     impl PiloteFactice {
         fn avec_plafond(plafond: usize) -> Self {
-            Self { vivantes: RefCell::new(Vec::new()), suivant: RefCell::new(1), plafond }
+            Self {
+                vivantes: RefCell::new(Vec::new()),
+                suivant: RefCell::new(1),
+                plafond,
+                detruites: RefCell::new(Vec::new()),
+                refuse_les_destructions: RefCell::new(false),
+            }
+        }
+    }
+
+    impl Default for PiloteFactice {
+        /// Aucun plafond : les tests de `detruire` ne portent pas sur le
+        /// vivier, `usize::MAX` évite qu'ils s'en soucient.
+        fn default() -> Self {
+            Self::avec_plafond(usize::MAX)
         }
     }
 
@@ -202,7 +271,12 @@ mod tests {
         }
 
         fn detruire(&self, id: IdSortie) -> Result<()> {
+            anyhow::ensure!(
+                !*self.refuse_les_destructions.borrow(),
+                "le pilote factice refuse cette destruction"
+            );
             self.vivantes.borrow_mut().retain(|vivante| *vivante != id);
+            self.detruites.borrow_mut().push(id);
             Ok(())
         }
     }
@@ -240,6 +314,48 @@ mod tests {
             pilote.vivantes.borrow().is_empty(),
             "des moniteurs fantômes survivent à une panique"
         );
+    }
+
+    #[test]
+    fn detruire_rend_la_sortie_au_pilote_et_l_oublie() {
+        let pilote = PiloteFactice::default();
+        let mut sorties = Sorties::nouvelles(&pilote);
+        let a = sorties.creer(1280, 720, 60).unwrap();
+        let b = sorties.creer(1600, 900, 60).unwrap();
+
+        sorties.detruire(a).unwrap();
+        assert_eq!(*pilote.detruites.borrow(), vec![a]);
+        assert_eq!(sorties.nombre(), 1);
+
+        // La garde ne doit pas redétruire `a` : le pilote refuserait, et le
+        // journal accuserait une purge due qui n'existe pas.
+        drop(sorties);
+        assert_eq!(*pilote.detruites.borrow(), vec![a, b]);
+    }
+
+    #[test]
+    fn detruire_une_sortie_inconnue_echoue_sans_rien_toucher() {
+        let pilote = PiloteFactice::default();
+        let mut sorties = Sorties::nouvelles(&pilote);
+        let a = sorties.creer(1280, 720, 60).unwrap();
+
+        assert!(sorties.detruire(a + 1000).is_err());
+        assert!(pilote.detruites.borrow().is_empty());
+        assert_eq!(sorties.nombre(), 1, "la sortie légitime reste tenue");
+    }
+
+    #[test]
+    fn une_destruction_refusee_par_le_pilote_ne_fait_pas_oublier_la_sortie() {
+        // Le GUID est la seule prise du projet sur ce moniteur : l'oublier
+        // sur échec le rendrait irrécupérable, et la garde ne le retenterait
+        // jamais.
+        let pilote = PiloteFactice::default();
+        let mut sorties = Sorties::nouvelles(&pilote);
+        let a = sorties.creer(1280, 720, 60).unwrap();
+        *pilote.refuse_les_destructions.borrow_mut() = true;
+
+        assert!(sorties.detruire(a).is_err());
+        assert_eq!(sorties.nombre(), 1, "la sortie reste due tant qu'elle n'est pas rendue");
     }
 
     #[test]

@@ -1,0 +1,43 @@
+# Relecture du contenu des deux Bloc-notes de la VM par WM_GETTEXT (0x000D)
+# sur leur controle d'edition. C'est le fait qui porte le verdict NON OBTENU
+# du point 3 : la frappe emise dans les pages navigateur n'a atteint aucun
+# des deux Bloc-notes.
+#
+# Deux relectures, apres deux executions distinctes :
+#   notepads.txt  -- apres l'execution D (11 h 54 heure hote), qui avait
+#                    tape PAGE2 dans w-1 et PAGE3 dans w-2 ;
+#   notepads2.txt -- apres l'execution F (13 h 00 heure hote), qui avait
+#                    tape PAGE2 a PAGE5 dans les quatre pages d'application.
+# Les deux relectures sont VIDES, et aucun titre ne porte l'asterisque de
+# modification que le Bloc-notes ajoute des la premiere frappe.
+#
+# Le script, tel qu'il a tourne en session interactive (C:\dev\it-lirenotepad2.ps1) :
+# ---8<---
+# 
+# [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+# Add-Type @"
+# using System;using System.Text;using System.Runtime.InteropServices;
+# public class N2 {
+#  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr FindWindowEx(IntPtr p, IntPtr c, string cls, string win);
+#  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int SendMessageW(IntPtr h, int m, int w, StringBuilder l);
+# }
+# "@
+# $f = New-Object System.IO.StreamWriter("C:\dev\notepads2.txt", $false, (New-Object System.Text.UTF8Encoding($false)))
+# Get-Process notepad -ErrorAction SilentlyContinue | ForEach-Object {
+#   $h = $_.MainWindowHandle
+#   $edit = [N2]::FindWindowEx($h, [IntPtr]::Zero, "Edit", $null)
+#   $b = New-Object System.Text.StringBuilder 4096
+#   [void][N2]::SendMessageW($edit, 0x000D, 4096, $b)
+#   $f.WriteLine(("pid={0} titre=[{1}] texte=[{2}]" -f $_.Id, $_.MainWindowTitle, $b.ToString()))
+# }
+# $f.Close()
+# 
+# --->8---
+
+$ type C:\dev\notepads.txt        (apres l'execution D)
+pid=12196 hwnd=0x30246 titre=[Sans titre - Bloc-notes] edit=0x20254 texte=[]
+pid=12416 hwnd=0xe011c titre=[Sans titre - Bloc-notes] edit=0x40184 texte=[]
+
+$ type C:\dev\notepads2.txt       (apres l'execution F)
+pid=12196 titre=[Sans titre - Bloc-notes] texte=[]
+pid=12416 titre=[Sans titre - Bloc-notes] texte=[]

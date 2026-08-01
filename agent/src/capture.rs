@@ -325,25 +325,45 @@ impl Drop for DesktopCapture {
     }
 }
 
-/// Ce qu'on sait d'une sortie DXGI, sans en dupliquer quoi que ce soit.
-#[derive(Debug, Clone)]
-pub struct SortieDxgi {
-    pub index_adaptateur: u32,
-    pub index_sortie: u32,
-    pub adaptateur: String,
-    pub nom_sortie: String,
-    pub attachee_au_bureau: bool,
-    /// Position et dimensions dans les coordonnées du bureau virtuel.
-    pub rect: crate::geometry::Rect,
-}
+// `SortieDxgi` vit dans `crate::sortie_dxgi` (portable, hors `#[cfg(windows)]`)
+// pour que `superviseur::placement::sortie_par_dimensions` (tâche 7) puisse la
+// consommer sur l'hôte Linux — `crate::capture` n'existe pas du tout hors
+// Windows. Ce réexport garde `crate::capture::SortieDxgi` valide et identique
+// au type portable pour tout le code qui, lui, ne compile que sous Windows.
+pub use crate::sortie_dxgi::SortieDxgi;
 
-/// Énumère toutes les sorties de tous les adaptateurs.
+/// Énumère toutes les sorties de tous les adaptateurs, **en journalisant** les
+/// adaptateurs dépourvus de sortie.
 ///
 /// Sert au relevé du temps 1 de la sonde multi-fenêtres : deux documents du
 /// dépôt se contredisent sur l'adaptateur qui pilote réellement le bureau
 /// (`plans/fix-debit-socket-report.md:163` contre le commit `4493b24`), et
 /// c'est ce relevé qui tranche.
+///
+/// **Réservée aux relevés ponctuels.** Pour un appel répété — le contrôle de
+/// placement du superviseur court à 1 Hz — voir `enumerer_sorties_silencieux`.
 pub fn enumerer_sorties() -> Result<Vec<SortieDxgi>> {
+    enumerer(true)
+}
+
+/// La même énumération, **sans une ligne de journal**.
+///
+/// **Correctif I2 de la revue finale de branche.** Le contrôle périodique de
+/// `superviseur::boucle` appelait `enumerer_sorties`, dont le `tracing::info!`
+/// par adaptateur sans sortie est inconditionnel : deux lignes par seconde,
+/// indéfiniment, écrites sur un partage CIFS — 1220 lignes relevées dans un
+/// journal de recette de cette branche. Le dépôt a déjà payé pour ce mode de
+/// défaillance (« la mesure détruisait ce qu'elle mesurait », `CLAUDE.md`).
+///
+/// Une variante plutôt qu'une rétrogradation en `debug!` : la trace a une
+/// valeur réelle pour les sondes, qui la relèvent une fois — c'est
+/// précisément l'angle mort où se cacherait un adaptateur d'affichage virtuel
+/// présent mais inactif.
+pub fn enumerer_sorties_silencieux() -> Result<Vec<SortieDxgi>> {
+    enumerer(false)
+}
+
+fn enumerer(journaliser: bool) -> Result<Vec<SortieDxgi>> {
     let factory: IDXGIFactory1 =
         unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI")?;
     let mut sorties = Vec::new();
@@ -379,7 +399,7 @@ pub fn enumerer_sorties() -> Result<Vec<SortieDxgi>> {
             }
             index_sortie += 1;
         }
-        if sorties.len() == nombre_avant {
+        if journaliser && sorties.len() == nombre_avant {
             // Un adaptateur sans aucune sortie ne produit jamais de
             // `SortieDxgi` : sans cette trace, il resterait invisible du
             // relevé, qui ne journalise aujourd'hui que par sortie. C'est
