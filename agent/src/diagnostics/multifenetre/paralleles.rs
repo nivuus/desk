@@ -147,7 +147,13 @@ pub(super) fn mesurer(nombre: u8) -> Result<()> {
 /// compenserait exactement un retrait, et un contrôle par nombre passerait
 /// alors qu'une sortie a disparu. Le cardinal n'est éprouvé qu'APRÈS la
 /// différence de noms, jamais à sa place.
-fn designer_sorties_neuves(
+///
+/// `pub(super)` : le banc `reprise.rs` crée exactement le même montage de
+/// départ, et une seconde désignation écrite à côté de celle-ci divergerait —
+/// c'est ici que vivent les deux refus (addition externe, sortie non attachée)
+/// qui rendent une mesure inimputable, et ils doivent valoir pour les deux
+/// bancs.
+pub(super) fn designer_sorties_neuves(
     apres: &[SortieDxgi],
     connues: &HashSet<String>,
     nombre: u8,

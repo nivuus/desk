@@ -27,6 +27,7 @@ pub(super) mod nvenc;
 pub(super) mod paralleles;
 pub(super) mod pointeur_virtuel;
 pub(super) mod replis;
+pub(super) mod reprise;
 pub(super) mod voies;
 pub(super) mod wgc;
 
@@ -152,6 +153,17 @@ pub(super) fn aiguiller() -> Result<bool> {
             .parse()
             .context("MULTIFENETRE_VDD_PARALLELE doit être un entier (nombre de sorties)")?;
         paralleles::mesurer(nombre)?;
+        return Ok(true);
+    }
+    // L'épreuve de l'inférence fondatrice du sous-bloc D2 : k duplications qui
+    // tournent, une sortie créée par-dessus, reprennent-elles ? Point d'arrêt
+    // de la recette (spec §6.1). Crée des sorties — k, plus la perturbatrice —
+    // donc passe après `MULTIFENETRE_VDD_PURGE`.
+    if let Ok(texte) = std::env::var("MULTIFENETRE_REPRISE") {
+        let nombre: u8 = texte
+            .parse()
+            .context("MULTIFENETRE_REPRISE doit être un entier (nombre de duplications)")?;
+        reprise::mesurer(nombre)?;
         return Ok(true);
     }
     // Mesure ② : le plafond d'encodeurs, sur périphérique partagé (la mesure
