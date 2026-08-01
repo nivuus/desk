@@ -51,3 +51,111 @@ mod tests {
         assert_eq!(region_de_sortie(0, 0), None);
     }
 }
+
+// Le bloc ci-dessous ne compile que sous Windows : il construit une
+// `WindowsSource` réelle (types COM `HWND`/`DesktopCapture`/`H264Encoder`,
+// tous eux-mêmes gated `#[cfg(windows)]`). `region_de_sortie` et ses tests
+// restent AU-DESSUS de ce `cfg`, à portée du module, pour continuer de
+// tourner sur l'hôte — voir la déclaration `#[path]` de ce fichier comme
+// module `windows_source_sortie`, hors de tout `#[cfg(windows)]`, dans
+// `main.rs`.
+//
+// Ce module (`windows_source_sortie`) est un FRÈRE de `windows_source`, pas
+// un descendant (tous deux déclarés séparément à la racine du crate, voir
+// `main.rs`) : la visibilité privée par défaut de Rust ne donnerait donc PAS
+// accès aux champs de `WindowsSource` depuis ici. C'est pourquoi ces champs
+// sont `pub(crate)` (voir leur commentaire dans `windows_source.rs`) plutôt
+// que privés — le minimum qui permette au littéral `Self { … }` ci-dessous de
+// compiler, sans les rendre publics hors du crate.
+#[cfg(windows)]
+use anyhow::{Context, Result};
+#[cfg(windows)]
+use windows::Win32::Foundation::HWND;
+
+#[cfg(windows)]
+use crate::capture::DesktopCapture;
+#[cfg(windows)]
+use crate::encode::H264Encoder;
+#[cfg(windows)]
+use crate::windows_source::WindowsSource;
+
+#[cfg(windows)]
+impl WindowsSource {
+    /// Construit une source capturant une sortie DXGI **entière**.
+    ///
+    /// Mode du sous-bloc D1 : la fenêtre a sa propre sortie virtuelle, il n'y
+    /// a donc plus rien à recadrer ni aucune fenêtre à suivre. `hwnd` reste
+    /// renseigné — l'injection d'entrée et le contrôle de vie en ont besoin —
+    /// mais il ne sert plus au calcul de la région.
+    pub fn sur_sortie(
+        hwnd: HWND,
+        index_adaptateur: u32,
+        index_sortie: u32,
+        fps: u32,
+        bitrate: u32,
+        clock_origin: std::time::Instant,
+    ) -> Result<Self> {
+        let capture = DesktopCapture::sur_sortie(index_adaptateur, index_sortie)?;
+        let (dw, dh) = capture.desktop_size();
+        let region = region_de_sortie(dw, dh).with_context(|| {
+            format!("sortie {index_adaptateur}:{index_sortie} de dimensions inexploitables ({dw}x{dh})")
+        })?;
+        let (width, height) = (region.width, region.height);
+
+        let mut encoder =
+            H264Encoder::new(capture.device(), (width, height), (width, height), fps, bitrate)?;
+        encoder.request_keyframe()?;
+
+        Ok(Self::depuis_pieces(
+            hwnd,
+            capture,
+            encoder,
+            region,
+            width,
+            height,
+            fps,
+            bitrate,
+            clock_origin,
+        ))
+    }
+
+    /// Assemblage final, partagé par les deux constructeurs (`WindowsSource::new`,
+    /// dans `windows_source.rs`, et `sur_sortie` ci-dessus).
+    ///
+    /// Extrait pour que `new` (capture du bureau + recadrage de la fenêtre) et
+    /// `sur_sortie` (capture d'une sortie entière) ne divergent pas sur
+    /// l'initialisation des champs — ils ne diffèrent que par la façon
+    /// d'obtenir la capture, l'encodeur et la région.
+    ///
+    /// `pub(crate)` plutôt que privée : appelée depuis `new`, dans le module
+    /// frère `windows_source` (voir le commentaire de module ci-dessus) —
+    /// le minimum de visibilité qui satisfait cet appel inter-module sans
+    /// exposer la fonction hors du crate.
+    pub(crate) fn depuis_pieces(
+        hwnd: HWND,
+        capture: DesktopCapture,
+        encoder: H264Encoder,
+        region: Rect,
+        width: u32,
+        height: u32,
+        fps: u32,
+        bitrate: u32,
+        clock_origin: std::time::Instant,
+    ) -> Self {
+        Self {
+            hwnd,
+            capture: Some(capture),
+            region,
+            encoder,
+            width,
+            height,
+            fps,
+            bitrate,
+            clock_origin,
+            last_pts_90k: None,
+            fatal: false,
+            encoder_warmed_up: false,
+            ready: std::collections::VecDeque::new(),
+        }
+    }
+}

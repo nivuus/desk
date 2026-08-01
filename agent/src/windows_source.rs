@@ -2,7 +2,7 @@
 
 #![cfg(windows)]
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use windows::Win32::Foundation::HWND;
 
 use crate::capture::DesktopCapture;
@@ -12,13 +12,23 @@ use crate::h264::{AccessUnit, CLOCK_RATE_HZ};
 use crate::rebuild::{rebuild_or_recover, RebuildOutcome};
 use crate::source::VideoSource;
 use crate::window;
-// Le calcul de région d'une sortie DXGI entière est pur et vit hors de ce
-// fichier (donc hors `#[cfg(windows)]`) pour être testable sur l'hôte — voir
-// sa déclaration `#[path]` dans `main.rs`.
-use crate::windows_source_sortie as sortie;
+// `WindowsSource::sur_sortie` et `WindowsSource::depuis_pieces` — donc tout
+// usage de `crate::windows_source_sortie` (alias `sortie`, le calcul pur de
+// région d'une sortie DXGI entière, testable sur l'hôte, voir sa déclaration
+// `#[path]` dans `main.rs`) — vivent désormais dans
+// `windows_source/sortie.rs`, pas ici : voir le commentaire au-dessus de
+// `hwnd()`.
 
 pub struct WindowsSource {
-    hwnd: HWND,
+    // Champs `pub(crate)` plutôt que privés : `WindowsSource::sur_sortie` et
+    // `WindowsSource::depuis_pieces` vivent désormais dans un second `impl`
+    // situé dans `windows_source/sortie.rs` (module frère de `windows_source`,
+    // pas descendant — voir le commentaire de `depuis_pieces`), et
+    // l'assemblage final par littéral `Self { … }` exige un accès à chaque
+    // champ depuis ce module-là. `pub(crate)` reste interne au binaire,
+    // c'est le minimum qui satisfait ce besoin sans rendre les champs
+    // publics à l'extérieur du crate.
+    pub(crate) hwnd: HWND,
     /// `None` seulement de façon transitoire, à l'intérieur de `resize` (voir
     /// son commentaire) : DXGI n'autorise qu'une seule instance vivante
     /// d'`IDXGIOutputDuplication` par sortie et par processus à la fois, donc
@@ -40,14 +50,14 @@ pub struct WindowsSource {
     /// auquel cas `fatal` passe à vrai et `next_frame` court-circuite AVANT
     /// de toucher ce champ (voir son garde en tête de fonction) — jamais de
     /// panique, y compris dans ce pire cas.
-    capture: Option<DesktopCapture>,
+    pub(crate) capture: Option<DesktopCapture>,
     /// Région de l'écran à recadrer, recalculée à chaque redimensionnement.
-    region: Rect,
-    encoder: H264Encoder,
-    width: u32,
-    height: u32,
-    fps: u32,
-    bitrate: u32,
+    pub(crate) region: Rect,
+    pub(crate) encoder: H264Encoder,
+    pub(crate) width: u32,
+    pub(crate) height: u32,
+    pub(crate) fps: u32,
+    pub(crate) bitrate: u32,
     /// Origine d'horloge **de la session**, imposée par `demarrage.rs` et partagée
     /// avec la source audio. C'est cette origine commune qui rend les deux
     /// lignes de temps comparables, donc la synchro A/V exacte. La créer ici
@@ -56,27 +66,27 @@ pub struct WindowsSource {
     /// Jamais réinitialisée, y compris lorsque `resize` reconstruit la chaîne
     /// d'encodage : le décodeur du navigateur rejetterait un horodatage qui
     /// recule.
-    clock_origin: std::time::Instant,
+    pub(crate) clock_origin: std::time::Instant,
     /// Dernier horodatage attribué, pour garantir la stricte croissance même
     /// si deux captures tombaient dans la même graduation de 1/90000 s.
-    last_pts_90k: Option<u64>,
+    pub(crate) last_pts_90k: Option<u64>,
     /// Vrai après une erreur non récupérable (capture ou encodeur) : rend la
     /// source définitivement épuisée (voir `is_exhausted`), indépendamment
     /// de l'état de la fenêtre. Une fenêtre disparue (`!is_alive()`) est
     /// l'autre cas d'épuisement ; celui-ci couvre les pannes qui n'affectent
     /// pas forcément la fenêtre elle-même (périphérique GPU perdu...).
-    fatal: bool,
+    pub(crate) fatal: bool,
     /// Vrai dès que `self.encoder` a rendu sa toute première sortie. Sert
     /// uniquement à borner `SUBMIT_POLL_BUDGET` (voir sa doc) à la phase de
     /// démarrage : remis à faux par `resize`, qui reconstruit un encodeur
     /// neuf n'ayant lui non plus encore rien produit.
-    encoder_warmed_up: bool,
+    pub(crate) encoder_warmed_up: bool,
     /// Unités d'accès déjà récupérées de l'encodeur mais pas encore rendues à
     /// l'appelant : `VideoSource::next_frame` n'en rend qu'une par tour, alors
     /// que le drainage peut en sortir plusieurs (voir `drain_ready_output`).
     /// Jamais purgée par `resize` : ces unités-là sont valides et déjà
     /// horodatées, les jeter ne ferait que trouer la vidéo.
-    ready: std::collections::VecDeque<AccessUnit>,
+    pub(crate) ready: std::collections::VecDeque<AccessUnit>,
 }
 
 // SÉCURITÉ : les types COM enveloppés ici (`HWND`, `ID3D11Device`,
@@ -128,77 +138,14 @@ impl WindowsSource {
         ))
     }
 
-    /// Construit une source capturant une sortie DXGI **entière**.
-    ///
-    /// Mode du sous-bloc D1 : la fenêtre a sa propre sortie virtuelle, il n'y
-    /// a donc plus rien à recadrer ni aucune fenêtre à suivre. `hwnd` reste
-    /// renseigné — l'injection d'entrée et le contrôle de vie en ont besoin —
-    /// mais il ne sert plus au calcul de la région.
-    pub fn sur_sortie(
-        hwnd: HWND,
-        index_adaptateur: u32,
-        index_sortie: u32,
-        fps: u32,
-        bitrate: u32,
-        clock_origin: std::time::Instant,
-    ) -> Result<Self> {
-        let capture = DesktopCapture::sur_sortie(index_adaptateur, index_sortie)?;
-        let (dw, dh) = capture.desktop_size();
-        let region = sortie::region_de_sortie(dw, dh).with_context(|| {
-            format!("sortie {index_adaptateur}:{index_sortie} de dimensions inexploitables ({dw}x{dh})")
-        })?;
-        let (width, height) = (region.width, region.height);
-
-        let mut encoder =
-            H264Encoder::new(capture.device(), (width, height), (width, height), fps, bitrate)?;
-        encoder.request_keyframe()?;
-
-        Ok(Self::depuis_pieces(
-            hwnd,
-            capture,
-            encoder,
-            region,
-            width,
-            height,
-            fps,
-            bitrate,
-            clock_origin,
-        ))
-    }
-
-    /// Assemblage final, partagé par les deux constructeurs.
-    ///
-    /// Extrait pour que `new` (capture du bureau + recadrage de la fenêtre) et
-    /// `sur_sortie` (capture d'une sortie entière) ne divergent pas sur
-    /// l'initialisation des champs — ils ne diffèrent que par la façon
-    /// d'obtenir la capture, l'encodeur et la région.
-    fn depuis_pieces(
-        hwnd: HWND,
-        capture: DesktopCapture,
-        encoder: H264Encoder,
-        region: Rect,
-        width: u32,
-        height: u32,
-        fps: u32,
-        bitrate: u32,
-        clock_origin: std::time::Instant,
-    ) -> Self {
-        Self {
-            hwnd,
-            capture: Some(capture),
-            region,
-            encoder,
-            width,
-            height,
-            fps,
-            bitrate,
-            clock_origin,
-            last_pts_90k: None,
-            fatal: false,
-            encoder_warmed_up: false,
-            ready: std::collections::VecDeque::new(),
-        }
-    }
+    // `sur_sortie` (mode du sous-bloc D1 : sortie DXGI entière, plus rien à
+    // recadrer) et `depuis_pieces` (assemblage final partagé avec `new`) sont
+    // définis dans un second `impl WindowsSource`, situé dans
+    // `windows_source/sortie.rs` sous `#[cfg(windows)]`. Déplacés hors d'ici en
+    // revue pour que ce fichier — déjà en dette de taille (voir `CLAUDE.md`) —
+    // ne porte que le câblage : `new` seul y reste, et se termine par un appel
+    // à `Self::depuis_pieces`, résolu par recherche de méthode inhérente à
+    // travers tout le crate, indépendamment du fichier qui la définit.
 
     pub fn hwnd(&self) -> HWND {
         self.hwnd
