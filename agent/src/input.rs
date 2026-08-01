@@ -42,13 +42,18 @@ mod win {
         /// correcte sur un canal non ordonné.
         mode_relatif: Arc<AtomicBool>,
         /// Dernier résultat connu de `SetForegroundWindow`, pour ne journaliser
-        /// qu'au basculement et non à chaque frappe.
-        premier_plan_obtenu: bool,
+        /// qu'au basculement et non à chaque frappe. `None` à la construction
+        /// — un sentinelle à DEUX états (`bool` initialisé à `false`) rendrait
+        /// muet le tout premier échec, car `false == false` ne bascule rien :
+        /// exactement le cas que cette trace existe pour révéler. `None` ne
+        /// collisionne avec aucun résultat réel de `SetForegroundWindow`, donc
+        /// le premier appel trace toujours, qu'il réussisse ou échoue.
+        premier_plan_obtenu: Option<bool>,
     }
 
     impl InputInjector {
         pub fn new(hwnd: HWND, mode_relatif: Arc<AtomicBool>) -> Self {
-            Self { hwnd, mode_relatif, premier_plan_obtenu: false }
+            Self { hwnd, mode_relatif, premier_plan_obtenu: None }
         }
 
         pub fn inject(&mut self, message: InputMessage) -> Result<()> {
@@ -152,7 +157,7 @@ mod win {
                 return;
             }
             let obtenu = unsafe { SetForegroundWindow(self.hwnd) }.as_bool();
-            if obtenu != self.premier_plan_obtenu {
+            if self.premier_plan_obtenu != Some(obtenu) {
                 if obtenu {
                     tracing::info!(hwnd = ?self.hwnd, "premier plan obtenu avant injection clavier");
                 } else {
@@ -161,7 +166,7 @@ mod win {
                         "SetForegroundWindow refusé — le clavier ira à la fenêtre active"
                     );
                 }
-                self.premier_plan_obtenu = obtenu;
+                self.premier_plan_obtenu = Some(obtenu);
             }
         }
 
