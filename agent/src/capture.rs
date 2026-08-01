@@ -325,17 +325,12 @@ impl Drop for DesktopCapture {
     }
 }
 
-/// Ce qu'on sait d'une sortie DXGI, sans en dupliquer quoi que ce soit.
-#[derive(Debug, Clone)]
-pub struct SortieDxgi {
-    pub index_adaptateur: u32,
-    pub index_sortie: u32,
-    pub adaptateur: String,
-    pub nom_sortie: String,
-    pub attachee_au_bureau: bool,
-    /// Position et dimensions dans les coordonnées du bureau virtuel.
-    pub rect: crate::geometry::Rect,
-}
+// `SortieDxgi` vit dans `crate::sortie_dxgi` (portable, hors `#[cfg(windows)]`)
+// pour que `superviseur::placement::sortie_par_dimensions` (tâche 7) puisse la
+// consommer sur l'hôte Linux — `crate::capture` n'existe pas du tout hors
+// Windows. Ce réexport garde `crate::capture::SortieDxgi` valide et identique
+// au type portable pour tout le code qui, lui, ne compile que sous Windows.
+pub use crate::sortie_dxgi::SortieDxgi;
 
 /// Énumère toutes les sorties de tous les adaptateurs.
 ///

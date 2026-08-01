@@ -23,6 +23,11 @@ mod opus;
 mod pointer_settings;
 mod rebuild;
 mod signaling;
+// Pas de `#[cfg(windows)]` ici : c'est la part portable de `capture.rs`
+// (lui-même `#![cfg(windows)]` dans son ensemble) — voir le commentaire de
+// module de `sortie_dxgi.rs`. `superviseur::placement` (tâche 7) en a besoin
+// pour se compiler et se tester sur Linux.
+mod sortie_dxgi;
 // Pas de `#[cfg(windows)]` ici : la logique pure de `superviseur` (tâche 2)
 // décide quelles fenêtres méritent d'exister côté navigateur, et doit se
 // compiler et se tester sur Linux sans dépendance à l'API Windows.
