@@ -67,12 +67,15 @@ use crate::moniteurs_virtuels::Sorties;
 /// Au-delà, on cesse de chercher : le chantier D vise 8 fenêtres, et la sonde
 /// d'encodeurs emploie déjà ce même plafond de recherche.
 ///
-/// `pub(super)` : c'est aussi la borne que `purge.rs` rejoue pour régénérer
-/// les GUID d'une exécution tuée net — même gabarit, même plafond, sans quoi
-/// la purge et la mesure qu'elle rattrape pourraient diverger en silence.
-// `pub(crate)` : `moniteurs_virtuels::purge::purger` (production) rejoue ce
-// même plafond pour régénérer la suite de GUID déterministe.
-pub(crate) const PLAFOND_RECHERCHE: usize = 16;
+/// **Ne concerne QUE la mesure.** `purge.rs` employait aussi cette constante
+/// pour régénérer les GUID d'une exécution tuée net ; elle a désormais la
+/// sienne, `moniteurs_virtuels::numeros::PLAFOND_NUMEROS`, aux côtés du
+/// distributeur qui la fait respecter (correctif I1 de la revue finale). Les
+/// deux valent seize, et cette coïncidence n'engage rien : celle-ci dit
+/// jusqu'où une mesure grimpe, l'autre borne les numéros qu'un moniteur peut
+/// porter — la seconde décide de la récupérabilité d'un état système, pas la
+/// première.
+pub(super) const PLAFOND_RECHERCHE: usize = 16;
 
 /// Résolution demandée à chaque sortie : celle que le chantier D vise par
 /// fenêtre, pas celle du bureau.

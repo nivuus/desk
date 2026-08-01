@@ -13,12 +13,18 @@ use super::hook;
 use super::placement;
 use super::protocole::{DepuisLaShell, VersLaShell};
 use super::table::{Effet, IdSession, Table};
-use crate::capture::enumerer_sorties;
+use crate::capture::enumerer_sorties_silencieux;
 // `relever_topologie` plutôt qu'`enumerer_sorties` sur le chemin de création :
 // elle journalise la topologie sortie par sortie, et c'est ce relevé qui rend
 // diagnosticable un appariement qui échoue. Le contrôle périodique de
-// placement, lui, garde `enumerer_sorties` — il court chaque seconde et ne doit
-// rien journaliser.
+// placement, lui, emploie `enumerer_sorties_silencieux` — il court chaque
+// seconde et ne doit rien journaliser.
+//
+// **Correctif I2 de la revue finale** : cette dernière phrase était fausse.
+// `enumerer_sorties` porte un `tracing::info!` inconditionnel par adaptateur
+// dépourvu de sortie, soit deux lignes par seconde indéfiniment sur cette VM,
+// écrites sur un partage CIFS. La variante silencieuse existe pour ce seul
+// appelant ; toute nouvelle boucle périodique doit l'employer aussi.
 use crate::diagnostics::multifenetre::montee::{noms_attaches, relever_topologie};
 use crate::moniteurs_virtuels::{pilote::PiloteParIoctl, Sorties};
 
@@ -385,7 +391,7 @@ fn rendre_la_sortie(
 
 /// Remet sur sa sortie toute fenêtre qui en est partie.
 fn controler_le_placement(table: &Table) {
-    let toutes = enumerer_sorties().unwrap_or_default();
+    let toutes = enumerer_sorties_silencieux().unwrap_or_default();
     for session in table.sessions_vivantes() {
         let Some((adaptateur, index)) = table.sortie_dxgi_de(&session) else {
             continue;

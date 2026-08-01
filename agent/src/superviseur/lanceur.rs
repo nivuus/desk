@@ -49,16 +49,32 @@ use windows::Win32::System::JobObjects::{
 
 use super::enfants::{Consigne, Lanceur};
 
+/// Un enfant suivi, et le peu d'état qu'il faut retenir sur lui.
+struct Enfant {
+    /// Retenu pour son HANDLE, pas pour son numéro — voir l'invariant 1 en
+    /// tête de module.
+    processus: std::process::Child,
+    /// Vrai dès qu'un état illisible a été signalé pour cet enfant.
+    ///
+    /// **Correctif I2 de la revue finale.** `est_vivant` est appelé à CHAQUE
+    /// tour de boucle du superviseur, via `Enfants::morts()` : une erreur
+    /// persistante de `try_wait` y produisait une dizaine de lignes par
+    /// seconde et PAR ENFANT, sur un partage CIFS. Un signalement unique
+    /// suffit — l'état étant persistant par hypothèse, le répéter n'apprend
+    /// rien de neuf. Remis à faux si l'état redevient lisible, pour qu'une
+    /// seconde occurrence, elle, se voie.
+    etat_illisible_signale: bool,
+}
+
 pub struct LanceurDeProcessus {
     executable: std::path::PathBuf,
     signaling_url: String,
     local_ip: String,
-    /// Les enfants vivants, par PID. Retenus pour leur HANDLE, pas pour leur
-    /// numéro — voir l'invariant 1 en tête de module.
+    /// Les enfants vivants, par PID.
     ///
     /// `Mutex` et non `RefCell` : `Lanceur` prend `&self`, et rien ne promet
     /// que ce lanceur restera consulté depuis un seul fil.
-    enfants: Mutex<HashMap<u32, std::process::Child>>,
+    enfants: Mutex<HashMap<u32, Enfant>>,
     /// Le job auquel tout enfant est rattaché. Sa fermeture les tue.
     job: HANDLE,
 }
@@ -108,7 +124,7 @@ impl LanceurDeProcessus {
     /// pire une insertion interrompue y manque.
     ///
     /// (`Drop` ne passe PAS par ici : il ne touche que le handle de job.)
-    fn enfants(&self) -> std::sync::MutexGuard<'_, HashMap<u32, std::process::Child>> {
+    fn enfants(&self) -> std::sync::MutexGuard<'_, HashMap<u32, Enfant>> {
         self.enfants.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
     }
 }
@@ -129,6 +145,31 @@ impl Lanceur for LanceurDeProcessus {
             // variable se prendrait pour un superviseur et lancerait ses
             // propres enfants, indéfiniment.
             .env_remove("SUPERVISEUR")
+            // **Correctif I6 de la revue finale.** `SUPERVISEUR` n'était pas
+            // la seule variable héritable qui change le SENS d'un enfant.
+            // `scripts/run-agent.sh:32` pose `$env:TEST_FILE` dès que la
+            // variable est définie dans l'environnement d'appel : un
+            // superviseur lancé ainsi ferait que CHAQUE enfant diffuse le
+            // fichier de test et ne capture rien (`Config::test_file`, lu par
+            // `demarrage`), sans le moindre avertissement.
+            //
+            // `WINDOW_TITLE` par la même règle : la consigne impose la fenêtre
+            // par `FENETRE_HWND`, et `demarrage::source` ne retombe sur la
+            // recherche par titre que si celui-là manque. Inoffensive tant que
+            // `FENETRE_HWND` est posé — ce que fait la ligne ci-dessus — mais
+            // la laisser entretiendrait l'idée qu'un enfant peut chercher sa
+            // fenêtre par titre, ce qui est faux par construction.
+            //
+            // Les modes diagnostic (`CAPTURE_TEST`, `AUDIO_PROBE`,
+            // `MULTIFENETRE_*`…) ne sont volontairement PAS retirés : ils sont
+            // aiguillés par `diagnostics::aiguiller()`, qui court AVANT la
+            // branche superviseur de `main` — un superviseur qui en porterait
+            // un ne serait jamais devenu superviseur, et n'aurait donc jamais
+            // lancé d'enfant. `BITRATE`, `ENCODER_FPS` et `SOURCE_TRACE`
+            // restent hérités à dessein : ce sont des réglages, pas des
+            // changements de mode.
+            .env_remove("TEST_FILE")
+            .env_remove("WINDOW_TITLE")
             .spawn()
             .with_context(|| format!("lancement de l'enfant {}", consigne.session.0))?;
         let pid = enfant.id();
@@ -150,7 +191,8 @@ impl Lanceur for LanceurDeProcessus {
                 .context(format!("rattachement de l'enfant {pid} au job object")));
         }
 
-        self.enfants().insert(pid, enfant);
+        self.enfants()
+            .insert(pid, Enfant { processus: enfant, etat_illisible_signale: false });
         Ok(pid)
     }
 
@@ -162,8 +204,11 @@ impl Lanceur for LanceurDeProcessus {
             // c'est la seule question posée.
             return false;
         };
-        match enfant.try_wait() {
-            Ok(None) => true,
+        match enfant.processus.try_wait() {
+            Ok(None) => {
+                enfant.etat_illisible_signale = false;
+                true
+            }
             Ok(Some(code)) => {
                 tracing::info!(pid, ?code, "enfant terminé");
                 // Le `Child` part avec son handle : le PID redevient
@@ -174,7 +219,17 @@ impl Lanceur for LanceurDeProcessus {
             Err(erreur) => {
                 // Un état illisible n'est PAS une mort : le déclarer mort ferait
                 // détruire la sortie d'un enfant qui capture encore.
-                tracing::warn!(pid, %erreur, "état de l'enfant illisible, tenu pour vivant");
+                //
+                // Signalé UNE fois par enfant, et pas à chaque tour de boucle :
+                // voir `Enfant::etat_illisible_signale`.
+                if !enfant.etat_illisible_signale {
+                    enfant.etat_illisible_signale = true;
+                    tracing::warn!(
+                        pid, %erreur,
+                        "état de l'enfant illisible, tenu pour vivant \
+                         (signalé une seule fois tant que l'état reste illisible)"
+                    );
+                }
                 true
             }
         }
@@ -187,8 +242,8 @@ impl Lanceur for LanceurDeProcessus {
             .with_context(|| format!("processus {pid} inconnu de ce lanceur — rien à tuer"))?;
         // `Child::kill` passe par le HANDLE retenu, jamais par le numéro : même
         // si Windows avait recyclé ce PID, aucun tiers ne peut être visé.
-        let issue = enfant.kill();
-        let _ = enfant.wait();
+        let issue = enfant.processus.kill();
+        let _ = enfant.processus.wait();
         issue.with_context(|| format!("terminaison du processus {pid}"))
     }
 }

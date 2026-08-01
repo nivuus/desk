@@ -7,28 +7,37 @@ use windows::Win32::Foundation::HWND;
 
 use crate::capture::DesktopCapture;
 use crate::encode::H264Encoder;
-use crate::geometry::{borner_au_bureau, crop_region, Rect};
+use crate::geometry::{crop_region, Rect};
 use crate::h264::{AccessUnit, CLOCK_RATE_HZ};
-use crate::rebuild::{rebuild_or_recover, RebuildOutcome};
 use crate::source::VideoSource;
 use crate::window;
-// `WindowsSource::sur_sortie` et `WindowsSource::depuis_pieces` — donc tout
-// usage de `crate::windows_source_sortie` (alias `sortie`, le calcul pur de
-// région d'une sortie DXGI entière, testable sur l'hôte, voir sa déclaration
-// `#[path]` dans `main.rs`) — vivent désormais dans
-// `windows_source/sortie.rs`, pas ici : voir le commentaire au-dessus de
-// `hwnd()`.
+use crate::windows_source_sortie::ModeCapture;
+// `WindowsSource::sur_sortie` vit dans `windows_source/sortie.rs` (module
+// FRÈRE, déclaré `#[path]` dans `main.rs` sous le nom `windows_source_sortie`
+// pour que son calcul pur de région et son `ModeCapture` restent testables sur
+// l'hôte Linux) ; `WindowsSource::resize` vit dans le module ENFANT
+// `windows_source/redimensionnement.rs`, déclaré ci-dessous. La différence
+// n'est pas cosmétique : un module enfant voit les champs privés de ce
+// module-ci, un module frère non — voir le commentaire des champs.
+
+/// Redimensionnement de la fenêtre et reconstruction de la chaîne d'encodage.
+///
+/// Module **enfant** de `windows_source` (et non frère) précisément pour que
+/// `resize` continue de lire et d'écrire les champs privés de `WindowsSource`
+/// sans qu'aucun n'ait à être ouvert. Extrait d'ici parce que ce fichier est
+/// en dette de taille (voir `CLAUDE.md`) et que le correctif C1 y ajoutait
+/// `depuis_pieces` et le champ `mode`.
+mod redimensionnement;
 
 pub struct WindowsSource {
-    // Champs `pub(crate)` plutôt que privés : `WindowsSource::sur_sortie` et
-    // `WindowsSource::depuis_pieces` vivent désormais dans un second `impl`
-    // situé dans `windows_source/sortie.rs` (module frère de `windows_source`,
-    // pas descendant — voir le commentaire de `depuis_pieces`), et
-    // l'assemblage final par littéral `Self { … }` exige un accès à chaque
-    // champ depuis ce module-là. `pub(crate)` reste interne au binaire,
-    // c'est le minimum qui satisfait ce besoin sans rendre les champs
-    // publics à l'extérieur du crate.
-    pub(crate) hwnd: HWND,
+    // Champs PRIVÉS, et c'est un invariant de conception, pas un détail :
+    // plusieurs d'entre eux (`capture`, `fatal`, `width`/`height` face à
+    // `encoder.encode_size()`) ne sont corrects que pris ensemble, et leurs
+    // commentaires disent en quoi. Les seuls écrivains sont donc ce module et
+    // son enfant `redimensionnement` ; le module frère
+    // `windows_source_sortie`, lui, passe par `depuis_pieces` (`pub(crate)`)
+    // et n'en touche aucun.
+    hwnd: HWND,
     /// `None` seulement de façon transitoire, à l'intérieur de `resize` (voir
     /// son commentaire) : DXGI n'autorise qu'une seule instance vivante
     /// d'`IDXGIOutputDuplication` par sortie et par processus à la fois, donc
@@ -50,14 +59,14 @@ pub struct WindowsSource {
     /// auquel cas `fatal` passe à vrai et `next_frame` court-circuite AVANT
     /// de toucher ce champ (voir son garde en tête de fonction) — jamais de
     /// panique, y compris dans ce pire cas.
-    pub(crate) capture: Option<DesktopCapture>,
+    capture: Option<DesktopCapture>,
     /// Région de l'écran à recadrer, recalculée à chaque redimensionnement.
-    pub(crate) region: Rect,
-    pub(crate) encoder: H264Encoder,
-    pub(crate) width: u32,
-    pub(crate) height: u32,
-    pub(crate) fps: u32,
-    pub(crate) bitrate: u32,
+    region: Rect,
+    encoder: H264Encoder,
+    width: u32,
+    height: u32,
+    fps: u32,
+    bitrate: u32,
     /// Origine d'horloge **de la session**, imposée par `demarrage.rs` et partagée
     /// avec la source audio. C'est cette origine commune qui rend les deux
     /// lignes de temps comparables, donc la synchro A/V exacte. La créer ici
@@ -66,27 +75,32 @@ pub struct WindowsSource {
     /// Jamais réinitialisée, y compris lorsque `resize` reconstruit la chaîne
     /// d'encodage : le décodeur du navigateur rejetterait un horodatage qui
     /// recule.
-    pub(crate) clock_origin: std::time::Instant,
+    clock_origin: std::time::Instant,
     /// Dernier horodatage attribué, pour garantir la stricte croissance même
     /// si deux captures tombaient dans la même graduation de 1/90000 s.
-    pub(crate) last_pts_90k: Option<u64>,
+    last_pts_90k: Option<u64>,
     /// Vrai après une erreur non récupérable (capture ou encodeur) : rend la
     /// source définitivement épuisée (voir `is_exhausted`), indépendamment
     /// de l'état de la fenêtre. Une fenêtre disparue (`!is_alive()`) est
     /// l'autre cas d'épuisement ; celui-ci couvre les pannes qui n'affectent
     /// pas forcément la fenêtre elle-même (périphérique GPU perdu...).
-    pub(crate) fatal: bool,
+    fatal: bool,
     /// Vrai dès que `self.encoder` a rendu sa toute première sortie. Sert
     /// uniquement à borner `SUBMIT_POLL_BUDGET` (voir sa doc) à la phase de
     /// démarrage : remis à faux par `resize`, qui reconstruit un encodeur
     /// neuf n'ayant lui non plus encore rien produit.
-    pub(crate) encoder_warmed_up: bool,
+    encoder_warmed_up: bool,
     /// Unités d'accès déjà récupérées de l'encodeur mais pas encore rendues à
     /// l'appelant : `VideoSource::next_frame` n'en rend qu'une par tour, alors
     /// que le drainage peut en sortir plusieurs (voir `drain_ready_output`).
     /// Jamais purgée par `resize` : ces unités-là sont valides et déjà
     /// horodatées, les jeter ne ferait que trouer la vidéo.
-    pub(crate) ready: std::collections::VecDeque<AccessUnit>,
+    ready: std::collections::VecDeque<AccessUnit>,
+    /// Ce que cette source capture — bureau recadré sur la fenêtre, ou sortie
+    /// DXGI entière. **Seul `resize` le consulte**, et c'est sa raison d'être :
+    /// voir `ModeCapture` (`windows_source/sortie.rs`) pour ce que son absence
+    /// produisait.
+    mode: ModeCapture,
 }
 
 // SÉCURITÉ : les types COM enveloppés ici (`HWND`, `ID3D11Device`,
@@ -135,17 +149,62 @@ impl WindowsSource {
             fps,
             bitrate,
             clock_origin,
+            ModeCapture::FenetreRecadree,
         ))
     }
 
     // `sur_sortie` (mode du sous-bloc D1 : sortie DXGI entière, plus rien à
-    // recadrer) et `depuis_pieces` (assemblage final partagé avec `new`) sont
-    // définis dans un second `impl WindowsSource`, situé dans
-    // `windows_source/sortie.rs` sous `#[cfg(windows)]`. Déplacés hors d'ici en
+    // recadrer) est défini dans un second `impl WindowsSource`, situé dans
+    // `windows_source/sortie.rs` sous `#[cfg(windows)]`. Déplacé hors d'ici en
     // revue pour que ce fichier — déjà en dette de taille (voir `CLAUDE.md`) —
-    // ne porte que le câblage : `new` seul y reste, et se termine par un appel
-    // à `Self::depuis_pieces`, résolu par recherche de méthode inhérente à
-    // travers tout le crate, indépendamment du fichier qui la définit.
+    // ne porte que le câblage ; il se termine, comme `new` ci-dessus, par un
+    // appel à `Self::depuis_pieces`, résolu par recherche de méthode inhérente
+    // à travers tout le crate, indépendamment du fichier qui la définit.
+
+    /// Assemblage final, partagé par les deux constructeurs (`new` ci-dessus et
+    /// `sur_sortie`, dans `windows_source/sortie.rs`).
+    ///
+    /// Extrait pour que « capture du bureau + recadrage de la fenêtre » et
+    /// « capture d'une sortie entière » ne divergent pas sur l'initialisation
+    /// des champs — ils ne diffèrent que par la façon d'obtenir la capture,
+    /// l'encodeur, la région, et par `mode`.
+    ///
+    /// **Reste ICI, dans le module qui déclare `WindowsSource`**, et c'est la
+    /// correction d'une revue : l'avoir migrée dans le module frère
+    /// `windows_source_sortie` obligeait à ouvrir les treize champs en
+    /// `pub(crate)` pour que le littéral `Self { … }` y compile. `pub(crate)`
+    /// sur cette fonction unique suffit à l'appel inter-module et n'expose
+    /// aucun champ.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn depuis_pieces(
+        hwnd: HWND,
+        capture: DesktopCapture,
+        encoder: H264Encoder,
+        region: Rect,
+        width: u32,
+        height: u32,
+        fps: u32,
+        bitrate: u32,
+        clock_origin: std::time::Instant,
+        mode: ModeCapture,
+    ) -> Self {
+        Self {
+            hwnd,
+            capture: Some(capture),
+            region,
+            encoder,
+            width,
+            height,
+            fps,
+            bitrate,
+            clock_origin,
+            last_pts_90k: None,
+            fatal: false,
+            encoder_warmed_up: false,
+            ready: std::collections::VecDeque::new(),
+            mode,
+        }
+    }
 
     pub fn hwnd(&self) -> HWND {
         self.hwnd
@@ -159,157 +218,6 @@ impl WindowsSource {
     /// invariant, jamais en usage normal.
     fn capture_mut(&mut self) -> &mut DesktopCapture {
         self.capture.as_mut().expect("capture toujours présente quand fatal est faux")
-    }
-
-    /// Redimensionne la fenêtre et reconstruit la chaîne d'encodage.
-    ///
-    /// Media Foundation n'autorise pas le changement de résolution en cours de
-    /// route : il faut repartir d'un encodeur neuf. L'horodatage, lui, reste
-    /// continu — le décodeur du navigateur rejetterait un retour en arrière
-    /// (`next_pts_90k` n'est jamais réinitialisé ici).
-    pub fn resize(&mut self, width: u32, height: u32) -> Result<()> {
-        let (width, height) = (width.max(160) & !1, height.max(120) & !1);
-
-        // Borner à ce que le bureau peut réellement afficher. Un viewport
-        // client plus grand que le bureau de la VM produirait sinon une
-        // fenêtre qui dépasse : `crop_region` la rognerait à la capture,
-        // l'image prendrait un rapport d'aspect que le conteneur du navigateur
-        // n'a pas — d'où des bandes noires — et la partie hors écran de
-        // l'application deviendrait inatteignable. Constaté le 29/07/2026 :
-        // 1187 px demandés pour un bureau de 1080.
-        //
-        // Sans capture vivante ou sans position lisible, on laisse passer la
-        // taille demandée : `crop_region` reste le filet, et un
-        // redimensionnement imparfait vaut mieux qu'un échec.
-        let (width, height) = match (self.capture.as_ref(), window::client_rect_on_screen(self.hwnd))
-        {
-            (Some(capture), Ok(actuel)) => {
-                let (dw, dh) = capture.desktop_size();
-                let (w, h) = borner_au_bureau(actuel.x, actuel.y, width, height, dw, dh);
-                (w & !1, h & !1)
-            }
-            _ => (width, height),
-        };
-
-        if (width, height) == (self.width, self.height) {
-            return Ok(());
-        }
-
-        window::resize_window(self.hwnd, width, height)?;
-        // Laisser la fenêtre atteindre sa nouvelle taille avant de recapturer.
-        std::thread::sleep(std::time::Duration::from_millis(50));
-        let window_rect = window::client_rect_on_screen(self.hwnd)?;
-
-        // Relâche explicitement l'ancienne capture (donc son
-        // `IDXGIOutputDuplication`) AVANT d'en créer une nouvelle. DXGI
-        // n'autorise qu'une seule instance vivante de la duplication pour une
-        // sortie donnée, dans un même processus : une simple réaffectation
-        // (`self.capture = Some(DesktopCapture::new()?)`) évaluerait le
-        // membre droit — donc `DuplicateOutput` — avant de remplacer
-        // l'ancien `Some`, laissant les deux exister en même temps le temps
-        // de l'appel. `DuplicateOutput` échoue alors avec « duplication de
-        // la sortie écran » — observé lors du premier essai bout en bout de
-        // la tâche 13.
-        //
-        // Cette libération anticipée ouvre en retour une fenêtre où
-        // `self.capture` peut rester `None` si la reconstruction échoue : on
-        // ne la referme jamais avec un simple `?` (voir la ronde de
-        // correction 1 au commentaire du champ `capture`). `rebuild_or_recover`
-        // (module `rebuild`, testé sans dépendance Windows) porte cette
-        // logique : tenter la reconstruction complète, et si elle échoue,
-        // retenter EXPLICITEMENT une capture de secours — avec les anciens
-        // `region`/`encoder`/dimensions, encore valides puisqu'eux n'ont pas
-        // été touchés — avant de renvoyer l'erreur à l'appelant.
-        self.capture = None;
-        let fps = self.fps;
-        let bitrate = self.bitrate;
-        // **Correctif C1 (revue finale de branche).** Une première version de
-        // ce chantier conservait ici la taille d'encodage courante
-        // (`self.encoder.encode_size()`) au lieu de repartir de la taille de
-        // capture, dans l'intention de ne pas effacer une réduction de
-        // résolution appliquée pour cause de lien dégradé (tâche 9). C'était
-        // faux : au démarrage, encode == capture, donc dès le PREMIER
-        // redimensionnement de fenêtre, la taille encodée se figeait pour
-        // toute la session — agrandir la fenêtre n'agrandissait plus jamais
-        // le flux, et le contrôleur (dont l'échelle n'était, elle, jamais
-        // reconstruite) pouvait même finir par viser une taille supérieure à
-        // la nouvelle capture. La taille encodée doit donc à nouveau suivre
-        // la fenêtre inconditionnellement ; c'est `Session::act_on_timeout`
-        // (branche a1, `transport/tick.rs`) qui a désormais la charge de
-        // rappliquer, juste après, la réduction que le contrôleur jugerait
-        // encore nécessaire pour la NOUVELLE taille (voir
-        // `congestion::Controleur::changer_source`) — au lieu de la préserver
-        // ici à l'aveugle.
-
-        // Un NOUVEAU périphérique D3D11 est créé dans `DesktopCapture::new` :
-        // elle pose `SetMultithreadProtected(TRUE)` sur CE périphérique à
-        // chaque appel (voir capture.rs, champ `context`/`multithread`) — la
-        // protection est donc reconstruite avec lui, pas seulement héritée de
-        // l'ancien périphérique qui vient d'être libéré. Sans cela le
-        // blocage intermittent d'`AcquireNextFrame` documenté à la tâche 10
-        // réapparaîtrait après tout redimensionnement.
-        let outcome = rebuild_or_recover(
-            || -> Result<(DesktopCapture, Rect, H264Encoder)> {
-                let new_capture = DesktopCapture::new()?;
-                let (dw, dh) = new_capture.desktop_size();
-                let region = crop_region(window_rect, dw, dh)
-                    .ok_or_else(|| anyhow::anyhow!("la fenêtre est hors de l'écran"))?;
-                let mut encoder = H264Encoder::new(
-                    new_capture.device(),
-                    (region.width, region.height),
-                    (region.width, region.height),
-                    fps,
-                    bitrate,
-                )?;
-                encoder.request_keyframe()?;
-                Ok((new_capture, region, encoder))
-            },
-            // Fabrique de secours : juste une capture valide, pour ne jamais
-            // laisser `self.capture` à `None` sans `fatal` à vrai en retour.
-            // `region`/`encoder`/`width`/`height` restent ceux d'avant :
-            // seule la capture avait dû être relâchée, pas les paramètres qui
-            // en dépendent, qui n'ont jamais cessé d'être valides.
-            DesktopCapture::new,
-        );
-
-        match outcome {
-            RebuildOutcome::Rebuilt((new_capture, region, encoder)) => {
-                self.capture = Some(new_capture);
-                self.region = region;
-                self.encoder = encoder;
-                self.width = region.width;
-                self.height = region.height;
-                // Nouvel encodeur : sa toute première sortie retombe dans le
-                // même cas que le démarrage initial (voir `SUBMIT_POLL_BUDGET`).
-                self.encoder_warmed_up = false;
-                tracing::info!(self.width, self.height, "chaîne d'encodage reconstruite");
-                Ok(())
-            }
-            RebuildOutcome::Recovered(new_capture, primary_error) => {
-                // État exploitable restauré (anciens région/encodeur/
-                // dimensions, nouvelle capture) : la session continue, comme
-                // l'exige le brief pour un échec de redimensionnement. La
-                // fenêtre OS, elle, a déjà changé de taille
-                // (`resize_window` ci-dessus a réussi) : un décalage
-                // transitoire entre la fenêtre réelle et la région capturée
-                // est possible jusqu'au prochain redimensionnement réussi —
-                // préférable, de loin, à un agent qui plante.
-                self.capture = Some(new_capture);
-                tracing::warn!(erreur = %primary_error, "reconstruction de la chaîne d'encodage échouée, capture de secours restaurée");
-                Err(primary_error)
-            }
-            RebuildOutcome::Fatal(primary_error) => {
-                // Ni la chaîne complète, ni une simple capture de secours
-                // n'ont pu être obtenues : `self.capture` reste `None`.
-                // `fatal` le signale pour de bon — `next_frame` s'arrête
-                // avant de toucher `capture` (voir son garde), et
-                // `is_exhausted()` fera clore la session proprement au tour
-                // suivant, plutôt qu'un panic sur le champ vide.
-                self.fatal = true;
-                tracing::error!(erreur = %primary_error, "reconstruction de la chaîne d'encodage et capture de secours toutes deux échouées, source déclarée épuisée");
-                Err(primary_error)
-            }
-        }
     }
 
     /// Vrai tant que la fenêtre capturée existe.

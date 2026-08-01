@@ -102,22 +102,77 @@ fn config() -> Result<Config> {
         // pour le couper l'activerait — piège d'exploitation d'autant plus
         // sûr que la variable voisine, elle, se lit bien ainsi.
         superviseur: matches!(std::env::var("SUPERVISEUR").as_deref(), Ok(v) if v != "0"),
-        fenetre_hwnd: std::env::var("FENETRE_HWND").ok().and_then(|v| {
-            let v = v.trim();
-            match v.strip_prefix("0x") {
-                Some(hexa) => u64::from_str_radix(hexa, 16).ok(),
-                None => v.parse().ok(),
-            }
-        }),
-        sortie_dxgi: std::env::var("SORTIE_DXGI").ok().and_then(|v| {
-            let (a, s) = v.split_once(':')?;
-            Some((a.trim().parse().ok()?, s.trim().parse().ok()?))
-        }),
+        // ABSENTE : mode mono-fenêtre légitime, aucun bruit. PRÉSENTE MAIS MAL
+        // FORMÉE : échec du démarrage, jamais un repli muet — voir
+        // `analyser_hwnd`.
+        fenetre_hwnd: match std::env::var("FENETRE_HWND") {
+            Ok(brut) => Some(analyser_hwnd(&brut)?),
+            Err(_) => None,
+        },
+        // Même règle, et la même fonction d'analyse que le reste du projet :
+        // `moniteurs_virtuels::analyser_designation` nomme le champ fautif
+        // dans son erreur et elle est testée, là où le `and_then` qu'elle
+        // remplace rendait `None` sur toute faute de frappe.
+        sortie_dxgi: match std::env::var("SORTIE_DXGI") {
+            Ok(brut) => Some(
+                moniteurs_virtuels::analyser_designation(brut.trim())
+                    .context("SORTIE_DXGI")?,
+            ),
+            Err(_) => None,
+        },
         // Le son est actif par défaut : c'est le comportement mono-fenêtre
         // d'avant ce sous-bloc, qu'un agent lancé à la main doit retrouver.
         // Seul le superviseur le coupe, sur les enfants non porteurs.
         audio: std::env::var("AUDIO").as_deref() != Ok("0"),
     })
+}
+
+/// Analyse un `HWND` tel que le superviseur le pose sur ses enfants :
+/// hexadécimal préfixé `0x` (la forme que produit `lanceur.rs`), ou décimal.
+///
+/// **Échoue bruyamment plutôt que de rendre `None`**, et c'est le correctif I5
+/// de la revue finale. La version précédente enchaînait `.ok().and_then(…)` :
+/// toute valeur mal formée — un `0x` oublié, un espace, un débordement —
+/// devenait indiscernable d'une variable absente, et `demarrage::source`
+/// basculait alors sur la capture du bureau entier avec recadrage, sans un mot.
+/// Un enfant du superviseur diffuserait ainsi le bureau de la VM en croyant
+/// montrer sa fenêtre. Une variable ABSENTE garde son sens (mode mono-fenêtre,
+/// recherche par titre) ; une variable PRÉSENTE doit être honorée ou refusée.
+fn analyser_hwnd(brut: &str) -> Result<u64> {
+    let texte = brut.trim();
+    let valeur = match texte.strip_prefix("0x").or_else(|| texte.strip_prefix("0X")) {
+        Some(hexa) => u64::from_str_radix(hexa, 16)
+            .with_context(|| format!("FENETRE_HWND « {texte} » : hexadécimal illisible"))?,
+        None => texte
+            .parse()
+            .with_context(|| format!("FENETRE_HWND « {texte} » : décimal illisible"))?,
+    };
+    anyhow::ensure!(valeur != 0, "FENETRE_HWND vaut 0 : aucune fenêtre ne porte ce handle");
+    Ok(valeur)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn un_hwnd_hexadecimal_ou_decimal_est_accepte() {
+        assert_eq!(analyser_hwnd("0x1a2b").unwrap(), 0x1a2b);
+        assert_eq!(analyser_hwnd(" 0x1A2B ").unwrap(), 0x1a2b);
+        assert_eq!(analyser_hwnd("6699").unwrap(), 6699);
+    }
+
+    /// Le cœur de I5 : chacune de ces valeurs rendait `None` — donc « pas de
+    /// fenêtre imposée », donc le repli silencieux sur la capture du bureau.
+    #[test]
+    fn un_hwnd_mal_forme_fait_echouer_le_demarrage() {
+        assert!(analyser_hwnd("").is_err(), "vide");
+        assert!(analyser_hwnd("0x").is_err(), "préfixe seul");
+        assert!(analyser_hwnd("0xzz").is_err(), "pas de l'hexadécimal");
+        assert!(analyser_hwnd("1a2b").is_err(), "hexadécimal sans préfixe");
+        assert!(analyser_hwnd("-1").is_err(), "négatif");
+        assert!(analyser_hwnd("0").is_err(), "handle nul");
+    }
 }
 
 #[tokio::main]

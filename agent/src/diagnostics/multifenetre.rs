@@ -15,9 +15,13 @@ pub(super) mod compteurs;
 pub(super) mod contrat;
 pub(super) mod disponibilite;
 pub(super) mod mires;
-// `pub(crate)` et non `pub(super)` : `moniteurs_virtuels::purge` (production,
-// promue hors de cet arbre à la tâche 4) lit encore `relever_topologie`,
-// `DELAI_TOPOLOGIE` et `PLAFOND_RECHERCHE` d'ici.
+// `pub(crate)` et non `pub(super)` : deux consommateurs de PRODUCTION lisent
+// encore ici. `moniteurs_virtuels::purge` (promue hors de cet arbre à la
+// tâche 4) y prend `relever_topologie` et `DELAI_TOPOLOGIE` ;
+// `superviseur::boucle` y prend `relever_topologie` et `noms_attaches`,
+// c'est-à-dire l'APPARIEMENT d'une sortie fraîchement créée à sa place DXGI —
+// la pièce centrale du montage. `PLAFOND_RECHERCHE` a en revanche cessé d'être
+// emprunté : il vit désormais dans `moniteurs_virtuels::numeros` (correctif I1).
 pub(crate) mod montee;
 pub(super) mod nvenc;
 pub(super) mod paralleles;

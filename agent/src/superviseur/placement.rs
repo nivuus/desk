@@ -42,9 +42,15 @@ pub fn sortie_par_dimensions(
 
 /// Tolérance de position et de taille, en pixels, avant de replacer.
 ///
-/// Les bordures invisibles de DWM décalent couramment `GetWindowRect` de un ou
-/// deux pixels par rapport à ce que `SetWindowPos` a demandé. Sans tolérance,
-/// le superviseur replacerait la fenêtre à chaque tour de boucle.
+/// Les bordures invisibles de DWM décalent couramment `GetWindowRect` de
+/// quelques pixels par rapport à ce que `SetWindowPos` a demandé. Sans
+/// tolérance, le superviseur replacerait la fenêtre à chaque tour de boucle.
+///
+/// **Quatre, et non deux** : la valeur retenue prend une marge délibérée
+/// au-delà du décalage habituel — un écart de quatre pixels sur une fenêtre
+/// plein cadre est invisible, là où un replacement en boucle ne l'est pas. (Le
+/// commentaire disait « un ou deux pixels » face à une constante à 4 ; c'est le
+/// texte qui était en retard, la constante est celle qu'on veut.)
 const TOLERANCE_PX: i64 = 4;
 
 /// Vrai si la fenêtre a quitté sa sortie ou changé de taille au point qu'il

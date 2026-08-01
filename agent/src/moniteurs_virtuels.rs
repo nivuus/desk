@@ -20,6 +20,8 @@
 // hors `#[cfg(windows)]` — c'est ce qui permet à sa garde `Sorties` d'avoir
 // des tests, et cette raison n'a pas changé.
 #[cfg(windows)]
+pub mod guid;
+#[cfg(windows)]
 pub mod peripherique;
 #[cfg(windows)]
 pub mod pilote;
@@ -27,6 +29,12 @@ pub mod pilote;
 pub mod purge;
 #[cfg(windows)]
 pub mod sudovda;
+
+// Hors `#[cfg(windows)]`, comme le module parent et pour la même raison :
+// l'attribution des numéros de GUID décide si une sortie virtuelle orpheline
+// reste récupérable, et ce genre de code doit avoir des tests. Voir son
+// commentaire de tête (correctif I1).
+pub mod numeros;
 
 use anyhow::{Context, Result};
 
