@@ -215,6 +215,27 @@ et §6.
 > s'effondre dès qu'une fenêtre s'ouvre. À corriger avant de la déclarer
 > viable en production.
 
+> ✅ **Corrigé et démontré corrigé par le sous-bloc D2, le 1ᵉʳ août 2026**
+> (`plans/2026-08-01-multifenetres-arrangement-dynamique-resultats.md`).
+> **La phrase « s'effondre dès qu'une fenêtre s'ouvre » n'est plus vraie.**
+> L'abandon du mutex se produit toujours — il n'est ni évité ni expliqué — mais
+> il est **encaissé** : la duplication est relâchée puis rouverte dans une
+> fenêtre de reprise bornée en durée. Relevé en conditions de produit, sur de
+> vraies applications : **44 pertes d'accès `0x887A0026`, aucune session
+> perdue**, montées 1→2, 2→3, 3→4 propres, une seule clôture de session et elle
+> était sollicitée. La destruction d'une sortie abandonne le mutex elle aussi,
+> et la reprise l'encaisse également.
+>
+> ⚠️ **Mais un plafond DISTINCT apparaît à quatre fenêtres simultanées**, que
+> D2 n'a pas levé : la 5ᵉ duplication DXGI, **dans un 5ᵉ processus**, est refusée
+> en `0x887A0022`, par une limite de **concurrence** qui résiste à trois secondes
+> de patience explicite. **La couche qui l'impose n'est pas identifiée**, et
+> **rien n'établit que 4 soit une borne du système**. Ce n'est ni le plafond de
+> sorties virtuelles (10), ni celui des encodeurs NVENC (8) — la mort survient
+> avant tout encodeur. Le rapprochement avec les 8 duplications d'un **seul**
+> processus est une **inférence**. **C'est le point bloquant pour la cible de
+> huit fenêtres de ce chantier.**
+
 **Repli mesuré — `PrintWindow(PW_RENDERFULLCONTENT)`.** Contre toute attente,
 cette voie rend l'image **juste** d'une fenêtre D3D **recouverte** : c'est la
 seule à avoir franchi la porte de correction par une mesure directe. Sa limite
@@ -436,6 +457,44 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
 > entièrement ouverte.** De même, l'injection **clavier** n'est ni démontrée ni
 > réfutée, et rien de la latence ni de la cadence n'a été mesuré.
 
+> 🔁 **Sous-bloc D2 exécuté le 1ᵉʳ août 2026 — résultats :
+> `plans/2026-08-01-multifenetres-arrangement-dynamique-resultats.md`.** Il ne
+> fait qu'une chose : lever ce qui empêchait D1 d'être reçu. **Son verdict est
+> double, et les deux moitiés valent ensemble.**
+>
+> **① Le défaut bloquant ci-dessus est réparé, et démontré réparé en conditions
+> de produit.** « Toute nouvelle fenêtre tue toutes les sessions en cours » **ne
+> décrit plus le dépôt** : l'abandon du mutex se produit toujours — il n'est ni
+> évité ni expliqué — mais la duplication est **relâchée puis rouverte** dans une
+> fenêtre de reprise bornée en durée. Relevé : **44** pertes d'accès
+> `0x887A0026` encaissées, **aucune session perdue**, montées 1→2, 2→3, 3→4
+> propres, **une seule** clôture de session et elle était **sollicitée**. Les
+> **trois défauts de moindre portée** énumérés ci-dessus sont corrigés eux aussi
+> (nom DXGI au lieu de l'index positionnel ; garde `sur_sortie` dans `resize` ;
+> viewport arrondi en pair et appariement tolérant à 4 px). **Et la destruction
+> d'une sortie a été exercée** : elle abandonne le mutex elle aussi, et la
+> reprise l'encaisse — la parenthèse « le cas n'a pas été exercé » est caduque.
+>
+> ⚠️ **② Le critère de D2 exigeait cinq fenêtres simultanées ; on en atteint
+> quatre.** La 5ᵉ duplication DXGI, **dans un 5ᵉ processus**, est refusée en
+> `0x887A0022`, par une limite de **concurrence** qui **résiste à trois secondes
+> de patience explicite**. **La couche qui l'impose n'est pas identifiée** et
+> **rien n'établit que 4 soit une borne du système**. **D2 n'est donc pas reçu
+> au sens de son critère**, et répare pourtant ce pour quoi il existait.
+>
+> **Ce que D2 n'a toujours pas relevé** : le **plafond d'encodeurs en
+> multi-processus** reste entièrement ouvert — la mort survient à l'ouverture de
+> la duplication, **avant tout encodeur**, et le maximum construit de front reste
+> **4**, dans 4 processus. Rien de la latence ni de la cadence non plus.
+> **L'injection clavier, elle, est démontrée** : `SetForegroundWindow` avant
+> injection (4 succès, 0 refus) et quatre fenêtres recevant **chacune sa propre
+> frappe** — ⚠️ portée exacte : une frappe par fenêtre, sonde **séquentielle**,
+> aucune frappe concurrente, et **`SendInput` reste global à la session
+> Windows**.
+>
+> **Une exécution par rang au banc, une exécution exploitée par configuration à
+> la recette : aucun taux, nulle part.**
+
 - **Détection** : `SetWinEventHook` sur `EVENT_OBJECT_SHOW`, `EVENT_OBJECT_HIDE`
   et `EVENT_OBJECT_DESTROY`, filtré sur `idObject == OBJID_WINDOW`. Hook global
   `WINEVENT_OUTOFCONTEXT`, nécessitant une pompe de messages dans un thread
@@ -495,6 +554,12 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
   dans 4 processus distincts, sans un seul refus**. **La question « par
   processus ou global ? » reste donc entièrement ouverte**, et rien n'autorise à
   transposer le 8 tel quel.
+  ⚠️ **Toujours ouverte après le sous-bloc D2, mais pour une AUTRE raison** : les
+  sessions ne meurent plus (le défaut central est réparé) ; c'est désormais la
+  **5ᵉ duplication DXGI** qui est refusée, **avant tout encodeur**. Le maximum
+  d'encodeurs construits de front reste donc **4**, dans 4 processus, sans refus
+  — et **ce n'est toujours pas une limite d'encodeurs qui l'arrête**. Voir
+  l'encadré D2 en tête de ce chantier.
 - **Risque n°1 — popup blocker : LEVÉ le 28/07/2026.** Mesuré sur ChromeOS —
   résultats et protocole dans `plans/2026-07-28-spike-multifenetres-resultats.md`.
   Le modèle tient, mais l'hypothèse « une PWA installée a plus de latitude » est
@@ -721,6 +786,17 @@ justifie le chantier 0 du §8.
    d'une fenêtre de plus** (tenté deux fois, échoué deux fois), et le plafond d'encodeurs en multi-processus n'a pas
    pu être relevé. Détail et suite à donner : encadré D1 du §5 D et
    `plans/2026-08-01-multifenetres-tranche-verticale-resultats.md`.
+   ✅ **Son sous-bloc D2 a levé cette restriction le même jour**
+   (`plans/2026-08-01-multifenetres-arrangement-dynamique-resultats.md`) :
+   **l'arrangement survit désormais à l'ouverture d'une fenêtre de plus**,
+   démontré en conditions de produit — 44 pertes d'accès encaissées, aucune
+   session perdue, montées 1→2→3→4 propres. **La phrase ci-dessus ne décrit plus
+   l'état du dépôt.** ⚠️ **Deux réserves qui, elles, tiennent** : un plafond
+   **distinct** arrête la montée à **quatre** fenêtres simultanées (5ᵉ
+   duplication DXGI refusée en `0x887A0022` ; **couche non identifiée**, et
+   **4 n'est pas prouvé être une borne du système**), et **le plafond
+   d'encodeurs en multi-processus n'a toujours pas pu être relevé** — la mort
+   survient avant tout encodeur.
 
 Cet ordre est une recommandation, pas un engagement. L'argument pour remonter D
 en premier existe : il change la capture, et A/B/C construits sur une hypothèse

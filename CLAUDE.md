@@ -55,6 +55,14 @@ où l'on travaille dedans, pas en chantier séparé.
 > supplémentaire** — la compression y a déjà été jouée, et elle ne l'est qu'une
 > fois.
 
+> ⚠️ **`agent/src/capture.rs` est à 485 lignes : sa marge est de 15 lignes**
+> (1ᵉʳ août 2026, fin du sous-bloc D2). Il avait atteint **exactement 500** en
+> cours de sous-bloc, et n'est redescendu que parce qu'une tâche ultérieure a
+> extrait `creer_peripherique` vers `capture/ouverture.rs`. **Toute addition
+> future à ce fichier appelle une extraction** — les modules enfants
+> `capture/reprise.rs`, `capture/ouverture.rs` et `capture/types.rs` existent
+> déjà et sont le bon endroit.
+
 Ces trois modules ne se compilent que sur la VM et ne sont couverts par aucun
 test : les découper se ferait sans filet automatisé. La dette est assumée
 jusqu'à ce qu'ils gagnent des tests — voir
@@ -1413,6 +1421,16 @@ propriétaire du poste.
 > fenêtre s'ouvre.** Créer une sortie virtuelle fait abandonner le mutex des
 > duplications DXGI déjà ouvertes, donc tue toutes les captures en cours. Voir
 > la section « Sous-bloc D1 » plus bas.
+>
+> ✅ **CETTE PHRASE N'EST PLUS VRAIE — le sous-bloc D2, le même jour, a réparé
+> ce défaut et l'a démontré réparé en conditions de produit.** L'abandon du
+> mutex se produit toujours (il n'est ni évité ni expliqué), mais il est
+> désormais **encaissé** : la duplication est relâchée puis rouverte dans une
+> fenêtre de reprise, et **44 pertes d'accès n'ont tué aucune session**. La voie
+> tient donc à arrangement **dynamique** — jusqu'à **quatre** fenêtres
+> simultanées, où un **plafond distinct** apparaît (la 5ᵉ duplication DXGI, dans
+> un 5ᵉ processus, est refusée en `0x887A0022` ; **la couche qui l'impose n'est
+> pas identifiée**). Voir la section « Sous-bloc D2 » plus bas.
 
 > ✅ **Les deux mesures que cette sonde déclarait bloquantes ont été prises le
 > 31 juillet 2026** (plafond de sorties virtuelles, plafond d'encodage sur
@@ -1495,6 +1513,12 @@ confirmation par des processus tiers).
   avant d'ouvrir la moindre duplication. Le sous-bloc D1 a exercé l'ordre réel
   (une fenêtre s'ouvre pendant que d'autres capturent) et il échoue — voir la
   section « Sous-bloc D1 ».
+  ✅ **L'ordre réel passe depuis le sous-bloc D2** (1ᵉʳ août 2026) : la reprise
+  sur perte d'accès encaisse la perturbation, éprouvée au banc à k = 1, 2, 4
+  puis en conditions de produit jusqu'à **quatre** fenêtres. **Rien au-delà de
+  quatre** : un plafond distinct, sur le nombre de duplications DXGI
+  simultanées **dans des processus distincts**, y arrête la montée — voir la
+  section « Sous-bloc D2 ».
 - **La comparaison des deux modes d'encodage porte sur DEUX variables
   confondues** : le mode `separe` n'ouvre aucune duplication DXGI là où
   `partage` en ouvre une. Le témoin propre n'a pas été exercé.
@@ -1595,6 +1619,7 @@ code d'erreur).
 | `MULTIFENETRE_NVENC=partage\|separe` | **Mesure ②** — plafond d'encodeurs, périphérique D3D11 partagé ou un par encodeur |
 | `MULTIFENETRE_VDD_PARALLELE=<1..8>` | **Chantier des duplications parallèles** — N sorties virtuelles × 1 fenêtre × 1 duplication DXGI × 1 encodeur, trois passes (témoin, capture, capture+encodage), contrôle d'image **en rotation**, chien de garde pingué à 1 Hz |
 | `MULTIFENETRE_EPREUVE_FILE_MS=<ms>` | Bouche la file de travail sérialisée imposée à la MFT pendant la passe — c'est l'épreuve qui montre que la barrière n'est pas un placebo |
+| `MULTIFENETRE_REPRISE=<k>` | **Sous-bloc D2** — *k* sorties virtuelles, *k* duplications, puis **une sortie de plus** créée en cours de capture : éprouve que les *k* duplications reprennent et rendent encore des images justes. Sonde post-mortem sur les voies mortes |
 | `AGENT_TRACE_EXCEPTIONS=1` | Arme le filtre d'exception (pile symbolisable de la faute, journal séparé d'`agent.log`). Inerte sans la variable. `…_FICHIER` en change la destination ; `…_AUTOTEST=1` **tue délibérément le processus** pour éprouver l'instrument |
 
 ---
@@ -1621,6 +1646,14 @@ sur un montage qui n'est pas celui-là.
 > et **il échoue** : la création de la sortie fait abandonner le mutex des
 > duplications ouvertes et tue toutes les sessions. Rien ci-dessous n'est
 > réfuté ; c'est la portée qui est plus étroite qu'il n'y paraît.
+>
+> ✅ **L'ordre du produit passe depuis le sous-bloc D2 (1ᵉʳ août 2026)** : le
+> mutex est toujours abandonné, mais la reprise l'encaisse et **aucune session
+> n'en meurt**. ⚠️ **Ce qui reste plus étroit qu'il n'y paraît** : ce banc tient
+> **8 duplications de front dans UN SEUL processus** ; en **processus distincts**
+> — l'arrangement du produit — la **5ᵉ** est refusée (`0x887A0022`). Que la
+> différence tienne au multi-processus est une **INFÉRENCE** : rien ne rapproche
+> formellement les deux montages.
 
 Le critère posé d'avance était : à N=8, **≥ 60 i/s par fenêtre en
 capture+encodage et aucun verdict faux**.
@@ -1797,6 +1830,12 @@ d'absence, et l'énoncé porte toujours son nombre d'exécutions.*
 
 ## 🪟🌐 Sous-bloc D1 — tranche verticale multi-fenêtres (1ᵉʳ août 2026)
 
+> ✅ **À LIRE AVANT CETTE SECTION — le sous-bloc D2, le même jour, a réparé le
+> défaut bloquant de D1 et fermé quatre de ses sept points de suite.** Les
+> affirmations ci-dessous restent le relevé **de D1**, mais celles qui portent
+> sur ce qui est possible aujourd'hui sont annotées une à une. Verdict à jour :
+> section « Sous-bloc D2 » plus bas.
+
 Résultats complets :
 `docs/superpowers/plans/2026-08-01-multifenetres-tranche-verticale-resultats.md`.
 Conception : `docs/superpowers/specs/2026-08-01-multifenetres-tranche-verticale-design.md`.
@@ -1828,6 +1867,11 @@ celles que l'énumération initiale trouve. **Le cas produit — un utilisateur
 ouvre une application — a été tenté deux fois et a échoué deux fois.** D1 sait
 éclater un bureau tel qu'il est ; il ne sait pas en accueillir une de plus.
 
+> ✅ **D2 sait en accueillir une de plus** : montées 1→2, 2→3 et 3→4 propres, en
+> conditions de produit, sur de vraies applications. La restriction « fenêtres
+> préexistantes » est **levée**. Ce qui la remplace est un plafond de **quatre**
+> fenêtres simultanées, d'une autre nature (§ « Sous-bloc D2 »).
+
 Le son est porté par **une seule** fenêtre (+59 710 octets RTP audio en 9,4 s sur elle
 seule, les trois autres sessions n'ayant aucune piste audio). Aucune sortie n'a
 fuité : ensemble des **noms** de sorties identique au départ aux trois contrôles
@@ -1848,7 +1892,24 @@ sortie n'est pas mise en cause : le cas n'a jamais été exercé** — les
 dix-sept destructions des trois journaux tombent toutes hors de toute
 duplication ouverte. D1 **n'est pas reçu**.
 
+> ✅ **Corrigé par D2, et la destruction a depuis été exercée.** L'abandon du
+> mutex se produit toujours — il n'est ni évité ni expliqué — mais il est
+> **encaissé** : la duplication est relâchée puis rouverte dans une fenêtre de
+> reprise, et 44 pertes d'accès n'ont tué aucune session. **La destruction d'une
+> sortie abandonne le mutex elle aussi** (relevé sous duplication ouverte,
+> aucune création intercalée), et la reprise l'encaisse également. Ce paragraphe
+> reste le relevé exact de D1 ; il ne décrit plus le comportement du dépôt.
+
 ### Quatre défauts à connaître avant de toucher à ce terrain
+
+> ✅ **Les quatre sont corrigés par D2** (nom DXGI partout ; garde `sur_sortie`
+> en tête de `resize` ; viewport arrondi en pair côté client ; appariement
+> tolérant à 4 px et attente **sur condition observable** au lieu d'un délai
+> plat). Le diagnostic ci-dessous garde sa valeur — c'est pourquoi il reste —
+> mais **ne pas repartir de ces quatre points comme s'ils étaient ouverts**.
+> ⚠️ Un piège s'y est ajouté depuis : **le pilote QUANTIFIE la résolution
+> demandée** (1280×632 demandé → sortie 1280×720), ce que 4 px de tolérance ne
+> rattrapent pas.
 
 - **`(index_adaptateur, index_sortie)` n'est PAS un identifiant de sortie.** Il
   est positionnel et change dès qu'une sortie apparaît ou disparaît. Le
@@ -1884,8 +1945,18 @@ duplication ouverte. D1 **n'est pas reçu**.
   le clavier va à la fenêtre au premier plan, et aucun `SetForegroundWindow`
   n'est fait. Le second point est **structurel** et vaudra quel que soit le
   premier.
+  ✅ **D2 l'a démontrée** : `SetForegroundWindow` est désormais posé avant
+  injection (retour vérifié : 4 succès, 0 refus), et les quatre Bloc-notes qui
+  ont une session ont reçu **chacun sa propre frappe**, pas le cumul. **Portée
+  exacte** : une frappe par fenêtre, sonde **séquentielle**, aucune frappe
+  concurrente — `SendInput` **reste global à la session Windows**, et ce relevé
+  ne dit rien de deux utilisateurs frappant en même temps.
 - Rien de la latence ni de la cadence, 3 applications seulement, session vivante
   la plus longue ≈ **50 s**, une exécution exploitée par configuration.
+  ⚠️ **Toujours vrai après D2** — latence et cadence n'ont pas davantage été
+  mesurées, et le **plafond d'encodeurs en multi-processus** n'a pas été
+  approché non plus (4 encodeurs de front dans 4 processus, la mort survenant
+  avant tout encodeur au 5ᵉ).
 
 ### ⚠️ La VM se met en veille prolongée toute seule — deux mesures perdues
 
@@ -1933,11 +2004,163 @@ grep -E "terminating on signal|shutting down" /var/log/libvirt/qemu/Windows.log 
   une session, qui crée une sortie, qui tue toutes les captures.
   **L'instrument détruisait ce qu'il mesurait** — même leçon que la trace par
   paquet du chantier TURN, sous une autre forme.
+  ⚠️ **Depuis D2, le dernier maillon ne tue plus rien** (la reprise l'encaisse),
+  mais **la chaîne demeure entière jusque-là** : une capture CDP provoque
+  toujours un `Resize`, donc un `SHOW`, donc une session et une sortie de plus.
+  **La contrainte de protocole tient** : pas de capture d'écran pendant une
+  mesure. Et une autre raison s'y ajoute — toute évaluation CDP sur une page
+  portant un flux WebRTC actif peut **ne jamais rendre** (voir la section D2).
 - **Le signaling ne mémorise que les offres SDP** : les annonces
   `fenetre-ouverte` émises avant que la page-shell ne soit connectée sont perdues
   sans trace. **Lancer le navigateur AVANT le superviseur.**
 - **`agent.log` mêle le superviseur et tous ses enfants** (stdout hérité), sans
   rien qui distingue l'émetteur hors le champ `session=` de certaines lignes.
+
+---
+
+## 🪟🔁 Sous-bloc D2 — arrangement multi-fenêtres dynamique (1ᵉʳ août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-01-multifenetres-arrangement-dynamique-resultats.md`.
+Conception : `docs/superpowers/specs/2026-08-01-multifenetres-arrangement-dynamique-design.md`.
+Journaux : `docs/superpowers/plans/journaux-multifenetres-d2/` — **UTF-8**, avec
+les séquences ANSI de `tracing` (`sed 's/\x1b\[[0-9;]*m//g'` pour lire à plat).
+**Une exception d'encodage** : `build-agent-11bis.log`, dont les lignes revenant
+du PowerShell distant sont mutilées (voir les pièges plus bas).
+
+D2 ne fait qu'une chose : lever ce qui empêchait D1 d'être reçu.
+
+### Le verdict est DOUBLE — ne le simplifier dans aucun sens
+
+**① Le défaut central de D1 est réparé, et démontré réparé en conditions de
+produit.** Créer une sortie virtuelle ne tue plus les captures en cours : **44**
+pertes d'accès `0x887A0026` encaissées sur le passage décisif, **aucune session
+perdue**, montées 1→2, 2→3 et 3→4 propres, **une seule** ligne `clôture de
+session amorcée` sur tout le passage — et elle est **sollicitée** (0,7 s après un
+`WM_CLOSE` réel). Sur de vraies applications, pas des mires.
+
+**② Le critère de réception exigeait CINQ fenêtres simultanées ; on en atteint
+QUATRE.** La 5ᵉ duplication DXGI, **dans un 5ᵉ processus**, est refusée en
+`0x887A0022` (`DXGI_ERROR_NOT_CURRENTLY_AVAILABLE`) par une limite de
+**concurrence** qui **résiste à trois secondes de patience explicite** — ce
+qu'aucune mesure antérieure n'avait éprouvé. **La couche qui l'impose n'est pas
+identifiée**, et **rien n'établit que 4 soit une borne du système**.
+
+**Donc D2 n'est pas reçu au sens de son critère, et il répare pourtant ce pour
+quoi il existait.**
+
+### La cause, trouvée au bout de TROIS mesures dont deux réfutations
+
+`rouvrir()` demandait une seconde duplication de la même sortie **sans avoir
+relâché la première**. DXGI n'autorise qu'une duplication ouverte par sortie
+(doctrine déjà portée par ce fichier) : l'appel **réussissait** et rendait un
+objet **mort-né**, qui reperdait son accès aussitôt.
+
+| Tirage | Ce qui changeait | Tentatives/voie | `images_apres` | Verdict |
+| --- | --- | --- | --- | --- |
+| 1 | 3 tentatives sans délai | 3 (budget entier, brûlé en 14–21 ms) | 0 | RÉFUTÉ |
+| 2 | fenêtre 8 s, pas 150 ms | **54** (le maximum théorique) | 0 | RÉFUTÉ |
+| 3 | **relâche puis acquiert** | **1** | `[892]`/`[889,888]`/`[884,883,883,882]` | **REÇU** |
+
+**Une exécution par rang à chaque tirage : aucun taux.** Entre le 2ᵉ et le 3ᵉ,
+une seule variable de comportement a changé — l'attribution causale est propre
+sous cette réserve.
+
+Délai perturbation → réouverture, **relevé** : **+48 ms** (k=1), **+70/+81 ms**
+(k=2), **+105 à +144 ms** (k=4). La fenêtre de 8 s consomme donc **1 tentative
+sur 54** : elle est **très surdimensionnée pour le cas mesuré**, mais **aucun cas
+lent n'a été observé** — **ne pas la réduire sur la foi de ce seul relevé.**
+
+> **Leçon de méthode, chère :** deux réfutations coûteuses ont été closes non par
+> un tirage de plus mais par la **relecture d'une ligne**. Quand deux mesures
+> successives réfutent une hypothèse **sans que le symptôme change de forme**,
+> relire le chemin avant de recalibrer.
+
+### Trois acquis que D1 déclarait ouverts
+
+- **Le clavier atteint chaque fenêtre séparément.** `SetForegroundWindow` avant
+  injection, retour vérifié (4 succès, 0 refus) ; les quatre Bloc-notes qui ont
+  une session ont reçu **chacun sa frappe**, la cinquième — sans session — rien.
+  ⚠️ **Portée exacte** : une frappe par fenêtre, sonde séquentielle, aucune
+  frappe concurrente. **`SendInput` reste global à la session Windows.**
+- **La DESTRUCTION d'une sortie abandonne le mutex elle aussi**, et la reprise
+  l'encaisse. D1 déclarait le cas « jamais exercé » ; il l'est (destruction,
+  puis deux pertes d'accès à +22 et +25 ms, **aucune création intercalée**).
+- **L'ordre `relâcher/acquérir` était la cause.** La piste du **périphérique
+  D3D11 conservé**, formulée après la 2ᵉ réfutation, devient **SANS OBJET — et
+  non pas « réfutée »** : elle n'a **jamais** été mise à l'épreuve, elle n'a
+  simplement plus rien à expliquer. Elle reste disponible si un symptôme voisin
+  réapparaissait.
+
+### La suite à donner, nommée précisément
+
+1. **Ne plus détruire puis recréer la sortie virtuelle à chaque relance
+   d'enfant** — c'est **la vraie cause des 32 réouvertures parasites**. Une
+   fenêtre condamnée fait passer le compteur de 6 à 38 à elle seule. Le réessai
+   à l'ouverture ajouté pour cela n'en a supprimé **aucune** : **aucun de ces
+   échecs n'était un transitoire** (quatre séquences, fenêtre entière courue,
+   zéro reprise réussie). Aucun réessai ne peut rien contre cette cause-là.
+   **C'est la première chose à corriger.**
+2. **Identifier la couche du plafond de quatre.** Ce n'est ni le plafond de
+   sorties virtuelles (10 : neuf créées sans un refus du pilote), ni celui des
+   encodeurs NVENC (8 : la mort survient **avant** tout encodeur). Le
+   rapprochement avec les **8 duplications d'un seul processus** du 31 juillet
+   est une **INFÉRENCE** — rien ici ne l'établit. Fermer une fenêtre puis en
+   rouvrir une réussit : la place libérée suffit.
+3. **Une fuite de capacité reste ouverte** pour une fenêtre **neuve** dont la
+   page-shell ne répond **jamais** : ni relancée ni abandonnée, elle consomme sa
+   place indéfiniment. **Défaut préexistant, pas introduit par D2** ; le
+   garde-fou (`DELAI_ATTENTE_VIEWPORT_MAX = 30 s`, majorant non calibré) a été
+   volontairement borné aux entrées **relancées**. Remède proposé par la revue :
+   tamponner `attente_depuis` **paresseusement** au premier passage de
+   `relancer_les_orphelines`, ce qui garde `Table` pure et ne bouge aucun
+   appelant.
+
+### Ce que D2 n'établit PAS
+
+Une exécution par rang au banc, **une exécution exploitée par configuration** à
+la recette : **aucun taux, nulle part**. Rien au-delà de 4 fenêtres. Le
+**mécanisme de l'abandon du mutex reste inconnu** — on sait le traiter, pas
+l'expliquer. Rien de la latence, de la cadence, de la durée (session la plus
+longue ≈ 4 min 30 s). **Plafond d'encodeurs en multi-processus toujours pas
+approché.** Aucun redimensionnement, aucun recouvrement, aucun déplacement de
+fenêtre. Le chemin `resize` n'est **pas exercé** après le correctif
+`new_sans_attente`. La branche `est_ouverture_retentable(ACCES_PERDU)` n'a
+**jamais** été exercée à l'ouverture. **Le chemin d'extinction propre du
+superviseur n'a jamais été exercé** (arrêt net par `schtasks /end`).
+
+### Pièges neufs — à connaître avant de toucher à ce terrain
+
+- **Le pilote de sortie virtuelle QUANTIFIE la résolution demandée** : 1280×632
+  demandé rend une sortie **1280×720**, soit 88 px d'écart, très au-delà de la
+  tolérance d'appariement de 4 px. **Aucune fenêtre ne s'ouvre alors, et rien ne
+  le dit hors du journal d'agent.** Imposer au navigateur une taille que le
+  pilote rend à l'identique.
+- **Toute évaluation CDP sur une page portant un flux WebRTC actif doit être
+  BORNÉE.** `Page.captureScreenshot` peut ne **jamais** rendre ; une relecture de
+  `window.__console` s'y est figée de la même façon.
+- **`scripts/run-agent.sh` ne transmettait pas `MULTIFENETRE_REPRISE`** — même
+  piège que `SUPERVISEUR` en D1. **Toute variable neuve du banc doit y être
+  ajoutée explicitement**, sinon l'agent démarre sans elle et sans rien signaler.
+- **`build-agent.sh` ne pose pas `[Console]::OutputEncoding`** : les lignes
+  revenant du PowerShell distant en reviennent mutilées (« Au caract⏎re
+  Ligne:1 »). C'est le **défaut à deux réglages** déjà documenté plus haut. Le
+  script est partagé : signalé, **non corrigé**.
+- **Un journal d'agent s'écrase facilement**, et deux pièces ont été perdues
+  ainsi dans ce sous-bloc — dont celle qui aurait étayé une affirmation qu'il a
+  fallu retirer. **Copier le journal avant tout relevé qui écrit au même
+  endroit.**
+- **`pkill -f <motif>` depuis un shell dont la ligne de commande contient le
+  motif tue le shell lui-même** (exit 144, la suite de la chaîne ne s'exécute
+  pas). Tuer par PID relevé.
+- **Paint ouvre DEUX fenêtres éligibles** (`Paint` + `UIRibbonWorkPane`) : sur
+  une recette qui compte des fenêtres, n'employer que des applications à fenêtre
+  unique — ou compter les fenêtres, jamais les lancements.
+- **Un défaut du CODE fourni par un plan doit être signalé, pas recopié.** Une
+  tâche a implémenté verbatim un code de brief qui rendait **muet le tout premier
+  refus** — exactement le cas que la trace existait pour révéler. La clause
+  « signaler un défaut du plan » vaut aussi pour un **bug** dans le code fourni,
+  pas seulement pour une divergence de spécification.
 
 ---
 

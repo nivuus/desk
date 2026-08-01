@@ -228,9 +228,11 @@ struct Demande {
 /// contrôle périodique la relance, jusqu'à `RELANCES_MAX` fois (voir
 /// `superviseur::table`). Conséquence à connaître : une fenêtre dont la
 /// création de sortie échoue systématiquement fait donc envoyer jusqu'à
-/// `RELANCES_MAX + 1` `VersLaShell::Refus` à la page-shell — un par tentative
-/// avortée, plus l'abandon final — et non plus un seul comme avant cette
-/// tâche.
+/// `RELANCES_MAX + 2` `VersLaShell::Refus` à la page-shell — soit **cinq**
+/// avec `RELANCES_MAX = 3` : une par tentative avortée (l'originale plus les
+/// trois relances, `relances` valant 0, 1, 2 puis 3), **plus** l'abandon final
+/// que `relancer_les_orphelines` émet quand `relances >= RELANCES_MAX` — et
+/// non plus un seul comme avant cette tâche.
 fn creer_sortie(
     pilote: &PiloteParIoctl,
     sorties: &mut Sorties<'_>,
