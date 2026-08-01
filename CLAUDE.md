@@ -1826,8 +1826,9 @@ applications (Bloc-notes, Explorateur, Firefox) et non des mires.
 ⚠️ **Ces quatre fenêtres PRÉEXISTAIENT au démarrage du superviseur** : ce sont
 celles que l'énumération initiale trouve. **Le cas produit — un utilisateur
 ouvre une application — a été tenté deux fois et a échoué deux fois.** D1 sait
-éclater un bureau tel qu'il est ; il ne sait pas en accueillir une de plus. Le son est
-porté par **une seule** fenêtre (+59 710 octets RTP audio en 9,4 s sur elle
+éclater un bureau tel qu'il est ; il ne sait pas en accueillir une de plus.
+
+Le son est porté par **une seule** fenêtre (+59 710 octets RTP audio en 9,4 s sur elle
 seule, les trois autres sessions n'ayant aucune piste audio). Aucune sortie n'a
 fuité : ensemble des **noms** de sorties identique au départ aux trois contrôles
 depuis un processus neuf, superviseur pourtant tué net à chaque fois.
@@ -1837,10 +1838,12 @@ duplications DXGI déjà ouvertes** (`0x887A0026`, « Le mutex indexé a été
 abandonné »). Toute nouvelle fenêtre tue donc **toutes** les sessions en cours,
 et l'emballement qui suit vide la page-shell alors que les applications Windows
 sont toujours là. **Reproduit sur trois exécutions versées sur trois, plus une
-quatrième dont les journaux ne sont pas joints.** La correspondance est exacte :
-sur les trois journaux, **9 créations de sortie sans duplication ouverte → 0
-erreur**, et **4 créations avec duplications ouvertes → 9 erreurs, soit une par
-duplication ouverte à chaque fois** (1, 1, 3, 4). ⚠️ **La DESTRUCTION d'une
+quatrième dont les journaux ne sont pas joints.** La correspondance est exacte : sur les **17**
+créations de sortie des trois journaux, **13 n'ont aucune duplication ouverte
+→ 0 erreur** (9 parce qu'aucun enfant n'a encore été lancé, 4 entre deux
+vagues), et **4 en ont → 9 erreurs**, soit `1, 1, 3, 4`. Ce `1, 1, 3, 4` est le
+nombre d'**enfants qui capturent**, PAS le nombre de lignes `duplication de
+sortie établie` — dans F il y en a douze pour quatre enfants et quatre erreurs. ⚠️ **La DESTRUCTION d'une
 sortie n'est pas mise en cause : le cas n'a jamais été exercé** — les
 dix-sept destructions des trois journaux tombent toutes hors de toute
 duplication ouverte. D1 **n'est pas reçu**.
@@ -1886,15 +1889,18 @@ duplication ouverte. D1 **n'est pas reçu**.
 
 ### ⚠️ La VM se met en veille prolongée toute seule — deux mesures perdues
 
-**Extinctions horodatées 09:40:09 et 10:40:10 UTC, à une heure d'intervalle, à
-la même minute.** Ce n'est pas une minuterie d'inactivité (`STANDBYIDLE` et
+**Deux horodatages, et l'écart entre eux est réel** : l'invité amorce la
+transition à **09:40:04 et 10:40:04 UTC** (Kernel-Power 187/42), QEMU n'est
+terminé qu'à **09:40:09 et 10:40:10** — les ~5 s d'écriture de l'image
+d'hibernation. Ce n'est pas une minuterie d'inactivité (`STANDBYIDLE` et
 `HIBERNATEIDLE` sont à 0) : le journal Windows nomme l'initiateur,
 `\Windows\System32\shutdown.exe` (Kernel-Power **187**), pour une transition de
 type hibernation (Kernel-Power **42**). Relevé versé :
 `journaux-multifenetres-d1/veille-prolongee-vm.txt`.
-⚠️ **Le motif horaire n'est PAS établi** : le même relevé porte une
-**troisième** hibernation à 08:29:50 UTC, qui ne tombe ni sur la minute :40 ni
-sur l'intervalle d'une heure. **Le déclencheur exact n'est pas identifié** — la
+⚠️ **Le motif horaire n'est PAS établi** : le journal libvirt porte **quatre**
+extinctions sur la journée — 08:29:55, 09:40:09, 10:40:10 et 11:30:27 UTC —
+soit des intervalles de **70, 60 puis 50 minutes**, dont deux seulement sur la
+minute :40. **Le déclencheur exact n'est pas identifié** — la
 seule tâche planifiée appelant `shutdown` est désactivée depuis avril 2025 ;
 `sunshine`/`sunshinesvc` tournent et sont des suspects **non éprouvés**. La
 seule règle prudente : **vérifier que la VM a survécu après toute séquence

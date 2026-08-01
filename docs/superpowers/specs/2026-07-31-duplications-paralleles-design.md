@@ -10,6 +10,17 @@
 > de ce document qui dit « n'a jamais été mesuré », « reste dû » ou « n'est pas
 > diagnostiqué » est à lire au passé.
 
+> ⚠️ **Portée resserrée le 1ᵉʳ août 2026, après la première exécution en
+> conditions de produit (sous-bloc D1,
+> `2026-08-01-multifenetres-tranche-verticale-resultats.md`) : rien de cette
+> mesure n'est réfuté, mais le montage qu'elle exerçait n'est pas celui du
+> produit.** Le banc crée ses N sorties virtuelles **avant** d'ouvrir la
+> moindre duplication, et dans cet ordre tout tient. En exploitation, une
+> fenêtre s'ouvre alors que d'autres capturent déjà : la création de sa sortie
+> fait alors abandonner le mutex des duplications ouvertes (`0x887A0026`) et
+> **tue toutes les sessions en cours**. La voie tient donc à arrangement figé,
+> et s'effondre dès qu'une fenêtre s'ouvre.
+
 > Troisième chantier de mesure de la série, dans la lignée de la sonde de
 > capture multi-fenêtres (`plans/2026-07-30-sonde-capture-multifenetre-resultats.md`)
 > et des mesures préalables (`plans/2026-07-31-mesures-prealables-chantier-d-resultats.md`).

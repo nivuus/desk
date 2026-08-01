@@ -716,8 +716,9 @@ justifie le chantier 0 du §8.
    **Son sous-bloc D1 (tranche verticale) a été construit et exécuté le
    1ᵉʳ août 2026** : une fenêtre navigateur par fenêtre Windows, sur sa propre
    sortie virtuelle, dans son propre processus — **acquis jusqu'à quatre
-   fenêtres simultanées**, mais **l'arrangement ne survit pas à l'ouverture
-   d'une fenêtre de plus**, et le plafond d'encodeurs en multi-processus n'a pas
+   fenêtres simultanées, mais seulement pour des fenêtres qui PRÉEXISTAIENT au
+   démarrage du superviseur** : **l'arrangement ne survit pas à l'ouverture
+   d'une fenêtre de plus** (tenté deux fois, échoué deux fois), et le plafond d'encodeurs en multi-processus n'a pas
    pu être relevé. Détail et suite à donner : encadré D1 du §5 D et
    `plans/2026-08-01-multifenetres-tranche-verticale-resultats.md`.
 

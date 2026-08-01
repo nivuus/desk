@@ -50,9 +50,10 @@ points : **2 obtenus** (1 et 5), **2 partiels** (4 et 8), **4 non obtenus**
 
 ## 1. Ce qui a été exécuté, et ce qui a été écarté
 
-Huit exécutions du scénario ont été lancées — les six qui portent un numéro
-ci-dessous, plus deux écartées avant d'avoir rien produit. **Trois sont
-exploitées**, et ce sont les seules dont les journaux sont versés.
+Huit exécutions du scénario ont été lancées : les **six qui portent une lettre**
+(A à F) et les **deux numérotées 1 et 2**, écartées avant d'avoir rien produit.
+**Trois sont exploitées** — A, B et F — et ce sont les seules dont les journaux
+sont versés.
 
 | # | Superviseur démarré (UTC) | Ce qu'elle vaut |
 | --- | --- | --- |
@@ -61,7 +62,7 @@ exploitées**, et ce sont les seules dont les journaux sont versés.
 | **A** | **10:17:12** | **Exploitée** — viewport tel que le navigateur l'annonce (1280×713). `demonstration-1-viewport-impair-*.log` |
 | **B** | **10:28:14** | **Exploitée** — viewport forcé à 1280×720. `demonstration-2-viewport-pair-*.log` |
 | C | 10:31:35 | Partiellement exploitée (4 sessions établies, effondrement au point 3). Redondante avec F, non versée. |
-| D | 10:39:31 | **Écartée** : veille prolongée de la VM à 10:40:10, en cours d'exécution. |
+| D | 10:39:31 | **Écartée** : veille prolongée de la VM, amorcée par l'invité à 10:40:04 UTC, en cours d'exécution (§7). |
 | E | 10:57 env. | **Écartée** : le pilote s'est attaché à une instance Chrome périmée (§7). Rien de mesuré. |
 | **F** | **10:58:46** | **Exploitée** — viewport pair, aucune nouvelle fenêtre Windows ouverte pendant la mesure. `demonstration-3-arrangement-stable-*.log` |
 
@@ -93,8 +94,9 @@ Le signaling a été relancé **sans variable TURN** (`coturn` n'était pas
 démarré) : toutes les sessions sont directes sur le lien local. Vérifié sur
 l'environnement du processus qui écoute réellement, pas sur celui qu'on croit
 avoir lancé — `environnement-signaling.txt` porte le relevé : le processus qui
-tient `:8080` a démarré à 11:36:44, avant les trois exécutions, et son
-environnement ne contient aucune variable `TURN`.
+tient `:8080` a démarré à **11:36:44 heure hôte, soit 09:36:44 UTC** — donc
+avant les trois exécutions, que le tableau ci-dessus horodate en UTC (10:17,
+10:28, 10:58) — et son environnement ne contient aucune variable `TURN`.
 
 L'instrument lui-même est versé (`pilote-recette.mjs`, `pilote-vm-it.sh`), avec
 la réserve qui compte : **il a été modifié entre les exécutions**, et son état
@@ -233,22 +235,39 @@ meurent 49,1 ms plus tard, en **8,28 ms** (l. 343, 345, 347 et 349 :
 `.930364`, `.935785`, `.936764`, `.938648`), chacun suivi de sa `clôture de
 session amorcée`.
 
-**La correspondance est exacte, et c'est ce qui fait la preuve.** Sur les trois
-journaux versés :
+**La correspondance est exacte, et c'est ce qui fait la preuve.** Les trois
+journaux versés portent **17 créations de sortie** en tout, et elles se rangent
+en trois cas — les trois, pas deux :
 
-| | créations de sortie | erreurs `0x887A0026` |
+| Cas | créations | erreurs `0x887A0026` |
 | --- | --- | --- |
-| **Aucune duplication ouverte** (avant le lancement du premier enfant) | 9 (A : 2, B : 3, F : 4) | **0** |
-| **Duplications ouvertes** | 4 (A : 2, B : 1, F : 1) | **9** — soit `1, 1, 3, 4`, **exactement le nombre de duplications ouvertes à chaque fois** |
+| Aucune duplication ouverte, **parce qu'aucun enfant n'a encore été lancé** | 9 (A : 2, B : 3, F : 4) | **0** |
+| Aucune duplication ouverte, **alors que des enfants ont déjà tourné** — morts, ou lancés depuis moins d'une milliseconde | 4 (A : 1, B : 2, F : 1) | **0** |
+| **Des duplications sont ouvertes** | 4 (A : 2, B : 1, F : 1) | **9**, soit `1, 1, 3, 4` |
 
-Le témoin négatif est donc dans les mêmes journaux : créer une sortie **avant**
-qu'une duplication n'existe ne produit rien.
+Le témoin négatif est donc double, et dans les mêmes journaux : **13 créations
+sur 17 ne produisent rien**, et ce sont exactement celles où aucune duplication
+n'est ouverte — que ce soit avant le premier enfant ou entre deux vagues.
+
+⚠️ **Deux précisions sur la troisième ligne, à ne pas perdre.** D'abord, `1, 1,
+3, 4` est le nombre d'**enfants qui capturent**, et non le nombre de lignes
+`duplication de sortie établie` : dans F, **douze** de ces lignes précèdent la
+création fatale pour **quatre** enfants et **quatre** erreurs — un enfant en
+ouvre plusieurs au fil des reconstructions ratées du §3.2. Le rapport de un pour
+un est **par enfant**. Ensuite, ce que la mesure établit est une correspondance
+observée sur 17 créations, pas un mécanisme : **rien ici ne dit POURQUOI** DXGI
+abandonne le mutex, ni si le nombre d'erreurs suivrait encore les enfants dans
+un montage différent.
 
 ⚠️ **La destruction, elle, n'est PAS mise en cause : le cas n'a jamais été
 exercé.** Les **17** destructions des trois journaux tombent toutes hors de
-toute duplication ouverte — en A, `sortie virtuelle détruite id=264` survient 1,6 s
-avant le lancement du premier enfant ; en B et F, toutes les destructions
-tombent 3,0 à 4,5 s **après** que tous les enfants sont déjà morts. Une
+toute duplication ouverte — en A, `sortie virtuelle détruite id=264` survient
+1,6 s avant le lancement du premier enfant ; en B et F, elles tombent **de
+2,86 s (F) à 4,60 s (B) après la dernière `session terminée`** de la vague.
+*Formulation à ne pas arrondir en « après que tous les enfants sont morts » :
+dans B comme dans F, un second lot d'enfants venait d'être lancé et vivait
+depuis quelques millisecondes au moment des premières destructions. Il n'avait
+ouvert aucune duplication — ce qui est le point —, mais il était bien vivant.* Une
 première rédaction écrivait « créée (ou détruite) » : **cette parenthèse
 doublait la portée du défaut sans la moindre preuve**, et elle est retirée.
 Que la destruction ait ou non le même effet reste ouvert.
@@ -408,16 +427,21 @@ pour qu'aucune ne soit lue comme une découverte de cette recette :
 ## 7. Pièges rencontrés — à connaître avant de retoucher ce terrain
 
 - **La VM se met en veille prolongée toute seule, et elle l'a fait deux fois en
-  pleine mesure.** Les deux extinctions sont horodatées **09:40:09 et 10:40:10
-  UTC**, à une heure d'intervalle et à la même minute. Ce n'est pas une
-  minuterie d'inactivité (`STANDBYIDLE` et `HIBERNATEIDLE` sont tous deux à 0,
+  pleine mesure.** Deux horodatages coexistent, et **l'écart entre eux est réel,
+  pas une erreur de relevé** : l'invité amorce la transition à **09:40:04 et
+  10:40:04 UTC** (Kernel-Power 187/42, `veille-prolongee-vm.txt`, en heure locale
+  de la VM soit UTC+2), et QEMU n'est terminé qu'à **09:40:09 et 10:40:10 UTC**
+  (journal libvirt) — les ~5 s que met l'invité à écrire son image d'hibernation
+  avant de s'éteindre. Ce sont deux instants différents du même événement.
+  Ce n'est pas une minuterie d'inactivité (`STANDBYIDLE` et `HIBERNATEIDLE` sont tous deux à 0,
   relevé dans `veille-prolongee-vm.txt`) : le journal Windows nomme
   l'initiateur, `\Windows\System32\shutdown.exe` (Kernel-Power 187), pour une
   transition de type hibernation (Kernel-Power 42).
   ⚠️ **Le motif horaire n'est PAS établi pour autant, et il ne faut pas
-  l'écrire** : le même relevé porte une **troisième** hibernation, antérieure à
-  la recette, à 08:29:50 UTC — qui ne tombe ni sur la minute :40, ni sur
-  l'intervalle d'une heure. Le déclencheur exact **n'est pas identifié** : la
+  l'écrire.** Le journal libvirt porte **quatre** extinctions sur la journée :
+  08:29:55, 09:40:09, 10:40:10 et **11:30:27 UTC** — la dernière survenue
+  pendant la rédaction de ce rapport. Les intervalles sont de **70, 60 puis
+  50 minutes**, et seules deux tombent sur la minute :40. Le déclencheur exact **n'est pas identifié** : la
   seule tâche planifiée qui appelle `shutdown` est désactivée depuis avril 2025,
   et `sunshine`/`sunshinesvc` tournent sur la VM sans qu'aucune mesure ne les
   mette en cause. La seule règle prudente que ces trois points autorisent est

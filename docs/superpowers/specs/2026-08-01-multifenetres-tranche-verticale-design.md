@@ -178,11 +178,13 @@ sous-bloc. Ce qui reste à prouver, c'est que l'ensemble s'assemble.
 > ⚠️ **Verdict de réception, 1ᵉʳ août 2026 : D1 N'EST PAS REÇU.**
 > `plans/2026-08-01-multifenetres-tranche-verticale-resultats.md`. La
 > démonstration bout en bout est décrite et ses journaux versés, mais **elle
-> n'aboutit pas** : sur les huit points du scénario, trois sont obtenus (la
+> n'aboutit pas** : sur les huit points du scénario, **deux sont obtenus** (la
 > shell ouvre une fenêtre par fenêtre Windows et chacune montre son application
-> seule, jusqu'à quatre simultanées ; le son sort d'une seule fenêtre), deux
-> sont partiels, trois ne le sont pas. **L'ensemble s'assemble mais ne tient
-> pas** : créer une sortie virtuelle fait abandonner le mutex des duplications
+> seule, jusqu'à quatre simultanées ; le son sort d'une seule fenêtre), **deux
+> sont partiels et quatre ne le sont pas**. ⚠️ **Et ces quatre fenêtres
+> PRÉEXISTAIENT au démarrage du superviseur** : le cas produit — un utilisateur
+> ouvre une application — a été tenté deux fois et a échoué deux fois.
+> **L'ensemble s'assemble mais ne tient pas** : créer une sortie virtuelle fait abandonner le mutex des duplications
 > DXGI déjà ouvertes, donc toute nouvelle fenêtre tue toutes les sessions en
 > cours. Sept points à régler sont listés au §9 des résultats.
 
