@@ -155,7 +155,8 @@ pub(super) fn dupliquer(
     Ok((duplication, desc.ModeDesc.Width, desc.ModeDesc.Height))
 }
 
-/// Duplique la sortie, **en retentant tant que DXGI dit « pas maintenant »**.
+/// Duplique la sortie, **en retentant tant que DXGI dit « pas maintenant »**,
+/// et au plus pendant `fenetre`.
 ///
 /// Employée par la seule construction de `DesktopCapture` (`ouvrir`), et non
 /// par `rouvrir` : celle-ci est déjà appelée depuis la fenêtre de reprise de
@@ -168,13 +169,19 @@ pub(super) fn dupliquer_avec_reprise(
     device: &ID3D11Device,
     output: &IDXGIOutput1,
     cible: &CibleCapture,
+    fenetre: std::time::Duration,
 ) -> Result<(IDXGIOutputDuplication, u32, u32)> {
     // Retenter la SEULE duplication, et sur place.
     //
-    // Bloquer est légitime ici, à la différence de `next_frame` : `ouvrir`
-    // court au démarrage du processus enfant, avant toute boucle de
-    // capture — ni keyframe à servir, ni adaptation réseau, ni
-    // redimensionnement en attente.
+    // **Bloquer n'est pas légitime partout, d'où la `fenetre` reçue en
+    // argument plutôt que lue ici.** Au démarrage d'un enfant du superviseur
+    // elle est pleine : rien ne tourne encore — ni keyframe à servir, ni
+    // adaptation réseau, ni redimensionnement en attente. Mais `ouvrir` est
+    // AUSSI rappelée en pleine session par `WindowsSource::resize`
+    // (`DesktopCapture::new`, deux fabriques dans `rebuild_or_recover`), sur
+    // le fil bloquant de `Session::run` : celle-là passe une durée NULLE, et
+    // se comporte donc exactement comme avant ce réessai. C'est le même
+    // arbitrage que `next_frame`, qui refuse déjà de dormir pour cette raison.
     //
     // Sans ce réessai, une première `DuplicateOutput` tombée pendant que
     // Windows reconfigure sa topologie tuait l'enfant, que le superviseur
@@ -198,9 +205,7 @@ pub(super) fn dupliquer_avec_reprise(
                     .map(|e| e.code().0);
                 let retentable =
                     code.is_some_and(crate::capture_reprise::est_ouverture_retentable);
-                if !retentable
-                    || debut.elapsed() >= crate::capture_reprise::DUREE_FENETRE_OUVERTURE
-                {
+                if !retentable || debut.elapsed() >= fenetre {
                     // Bruyant à dessein : c'est ici que se lit un plafond
                     // de duplications concurrentes, indiscernable d'une
                     // reconfiguration par le seul HRESULT.

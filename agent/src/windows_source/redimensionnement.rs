@@ -156,7 +156,7 @@ impl WindowsSource {
         // réapparaîtrait après tout redimensionnement.
         let outcome = rebuild_or_recover(
             || -> Result<(DesktopCapture, Rect, H264Encoder)> {
-                let new_capture = DesktopCapture::new()?;
+                let new_capture = DesktopCapture::new_sans_attente()?;
                 let (dw, dh) = new_capture.desktop_size();
                 let region = crop_region(window_rect, dw, dh)
                     .ok_or_else(|| anyhow::anyhow!("la fenêtre est hors de l'écran"))?;
@@ -175,7 +175,14 @@ impl WindowsSource {
             // `region`/`encoder`/`width`/`height` restent ceux d'avant :
             // seule la capture avait dû être relâchée, pas les paramètres qui
             // en dépendent, qui n'ont jamais cessé d'être valides.
-            DesktopCapture::new,
+            //
+            // `new_sans_attente` comme la fabrique principale ci-dessus : ces
+            // deux appels courent sur le fil bloquant de `Session::run` (voir
+            // `transport/redimensionnement.rs`), où le réessai d'ouverture
+            // ajouté à la tâche 11 bis gèlerait la boucle de session jusqu'à
+            // DEUX fenêtres pleines. Le droit de bloquer se décide ici, pas
+            // dans `capture::ouvrir`.
+            DesktopCapture::new_sans_attente,
         );
 
         match outcome {

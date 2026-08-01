@@ -73,8 +73,29 @@ pub struct DesktopCapture {
 }
 
 impl DesktopCapture {
+    /// Ouvre au DÉMARRAGE : la fenêtre de réessai est pleine, et l'appel peut
+    /// donc bloquer jusqu'à `DUREE_FENETRE_OUVERTURE`.
+    ///
+    /// **N'employer que là où bloquer est légitime** — voir `ouvrir`. Pour la
+    /// reconstruction d'une capture en cours de session, c'est
+    /// `new_sans_attente` qu'il faut.
     pub fn new() -> Result<Self> {
-        Self::ouvrir(CibleCapture::Bureau)
+        Self::ouvrir(CibleCapture::Bureau, crate::capture_reprise::DUREE_FENETRE_OUVERTURE)
+    }
+
+    /// Ouvre SANS attendre : un refus est rendu au premier essai.
+    ///
+    /// Pour les appelants qui courent sur un fil dont l'immobilisation se
+    /// paierait — `WindowsSource::resize`, qui reconstruit sa capture depuis
+    /// le fil bloquant de `Session::run`. Y dormir suspendrait du même coup
+    /// les demandes de keyframe, l'adaptation réseau et les
+    /// redimensionnements suivants : exactement l'arbitrage que `next_frame`
+    /// refuse déjà (voir son commentaire « Pas de boucle interne »).
+    ///
+    /// Comportement **identique à celui d'avant l'ajout du réessai** : rien
+    /// n'est retenté, seule la trace d'abandon est neuve.
+    pub fn new_sans_attente() -> Result<Self> {
+        Self::ouvrir(CibleCapture::Bureau, std::time::Duration::ZERO)
     }
 
     /// Duplique une sortie DXGI précise, désignée par son nom
@@ -84,11 +105,22 @@ impl DesktopCapture {
     /// positionnels et changent dès qu'une sortie apparaît ou disparaît — ce
     /// qui est le cas nominal en multi-fenêtres, où le superviseur crée une
     /// sortie par ouverture de fenêtre.
+    ///
+    /// Fenêtre de réessai pleine : cette forme n'est appelée qu'au démarrage
+    /// d'un enfant du superviseur.
     pub fn sur_sortie(nom: &str) -> Result<Self> {
-        Self::ouvrir(CibleCapture::Sortie(nom.to_string()))
+        Self::ouvrir(
+            CibleCapture::Sortie(nom.to_string()),
+            crate::capture_reprise::DUREE_FENETRE_OUVERTURE,
+        )
     }
 
-    fn ouvrir(cible: CibleCapture) -> Result<Self> {
+    /// `fenetre_ouverture` : durée pendant laquelle une duplication refusée
+    /// pour indisponibilité passagère est retentée. **Un ARGUMENT et non la
+    /// constante lue sur place, parce que le droit de bloquer se décide chez
+    /// l'appelant** — `ouvrir` ne court pas qu'au démarrage d'un enfant. Voir
+    /// `ouverture::dupliquer_avec_reprise` pour l'arbitrage complet.
+    fn ouvrir(cible: CibleCapture, fenetre_ouverture: std::time::Duration) -> Result<Self> {
         let factory: IDXGIFactory1 =
             unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI")?;
 
@@ -103,7 +135,7 @@ impl DesktopCapture {
         let (device, context) = creer_peripherique(&adapter)?;
 
         let (duplication, desktop_width, desktop_height) =
-            dupliquer_avec_reprise(&device, &output, &cible)?;
+            dupliquer_avec_reprise(&device, &output, &cible, fenetre_ouverture)?;
         tracing::info!(desktop_width, desktop_height, "duplication de sortie établie");
 
         Ok(Self {
