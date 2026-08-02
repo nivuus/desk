@@ -32,6 +32,11 @@ mod sortie_dxgi;
 // décide quelles fenêtres méritent d'exister côté navigateur, et doit se
 // compiler et se tester sur Linux sans dépendance à l'API Windows.
 mod superviseur;
+// Pas de `#[cfg(windows)]` ici : le protocole du canal média et la
+// `SourceDistante` sont de la logique pure, et doivent se compiler et se
+// tester sur Linux. Les sous-modules qui touchent DXGI et les tubes sont
+// gatés à l'intérieur de `capteur.rs`.
+mod capteur;
 mod source;
 mod transport;
 mod turn;
