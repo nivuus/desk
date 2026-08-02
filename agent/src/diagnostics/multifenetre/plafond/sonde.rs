@@ -9,7 +9,7 @@
 //!
 //! **Ce qui N'EST PAS exclu, et ne peut pas l'être avec l'interface
 //! imposée** : `DesktopCapture::sur_sortie` appelle `ouvrir`, qui appelle
-//! `creer_peripherique` (`agent/src/capture/ouverture.rs:83-138`) — et cette
+//! `creer_peripherique` (`agent/src/capture/ouverture.rs:83-139`) — et cette
 //! fonction construit INÉVITABLEMENT un `ID3D11Device` + `ID3D11DeviceContext`
 //! réels par duplication (`D3D11CreateDevice` avec
 //! `D3D11_CREATE_DEVICE_BGRA_SUPPORT`), puis leur pose
@@ -65,13 +65,16 @@ pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
             // comme un plantage de sonde (0xc0000005 et consorts) plutôt que
             // comme ce qu'il est. Un `u8` n'existe pas ici pour nommer le
             // fichier que `chemin_verdict` produirait normalement : on dépose
-            // donc un verdict de secours nommé d'après la valeur BRUTE reçue.
-            // Best-effort (l'échec d'écriture n'aggrave rien : la trace
-            // ci-dessous reste le diagnostic de référence), et sans risque de
-            // collision avec une sonde légitime — un rang qui aurait collé à
-            // un `u8` valide aurait pris la branche `Ok` ci-dessus.
+            // donc un verdict de secours, sous un nom FIXE plutôt que dérivé
+            // de la valeur brute — l'interpoler dans un composant de chemin
+            // laisserait passer des séquences `..` significatives pour la
+            // résolution Windows (`Path` y traite `\` et `/` comme
+            // séparateurs) et pourrait écrire hors de `%TEMP%`. La valeur
+            // brute reste dans la trace ci-dessous, où l'interpoler ne pose
+            // aucun risque. Best-effort (l'échec d'écriture n'aggrave rien :
+            // cette trace reste le diagnostic de référence).
             tracing::error!(rang_brute = %rang_brute, %erreur, "MULTIFENETRE_PLAFOND_RANG illisible");
-            let secours = std::env::temp_dir().join(format!("plafond-sonde-{rang_brute}.verdict"));
+            let secours = std::env::temp_dir().join("plafond-sonde-rang-invalide.verdict");
             let _ = std::fs::write(&secours, format!("KO RANG_INVALIDE {rang_brute}"));
             return Err(erreur);
         }
@@ -110,6 +113,8 @@ pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
         }
     }
 
+    // Préexistant, hors périmètre de cette correction : un échec d'écriture
+    // ICI (rang valide, verdict légitime) sort par `?` sans verdict déposé.
     std::fs::write(chemin_verdict(rang), &verdict)
         .with_context(|| format!("écriture du verdict de la sonde {rang}"))?;
     tracing::info!(sonde = rang, ouvertes = tenues.len(), %verdict, "verdict déposé");
