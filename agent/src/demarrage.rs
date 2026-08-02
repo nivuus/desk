@@ -90,6 +90,10 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
         sender_task: _,
     } = signaling::run_signaling(&config.signaling_url, &config.session_id).await?;
     let mut session = Session::new(source, config.local_ip, clock_origin, bitrate)?;
+    // Pour la ligne de cadence périodique de `piste_video` (voir sa doc) :
+    // apparier ce relevé à celui du capteur dans un `agent.log` que
+    // plusieurs fenêtres se partagent (voir `capteur/fenetre.rs`).
+    session.set_session_id(&config.session_id);
 
     // Source audio : son absence ne compromet jamais la session vidéo. Sur une
     // source de test (TEST_FILE), il n'y a rien à capter. Hors Windows, il n'y
