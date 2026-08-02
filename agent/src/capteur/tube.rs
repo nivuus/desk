@@ -46,7 +46,12 @@ const PAS_CONNEXION: Duration = Duration::from_millis(150);
 /// précédente : une ouverture immédiate peut tomber sur `ERROR_PIPE_BUSY`.
 /// Une seconde couvre largement cette course sans rien retarder — l'attache
 /// vient d'aboutir, donc le capteur est vivant et son serveur tourne.
-const DUREE_OUVERTURE_MEDIA: Duration = Duration::from_secs(1);
+///
+/// **Publique parce que le capteur en dérive son propre budget d'attente**
+/// (`serveur::DELAI_CONNEXION_MEDIA`) : les deux patiences doivent être une
+/// seule décision, sans quoi le capteur retient une duplication DXGI bien
+/// après que l'enfant a renoncé.
+pub const DUREE_OUVERTURE_MEDIA: Duration = Duration::from_secs(1);
 
 pub fn connecter(
     session: &str,

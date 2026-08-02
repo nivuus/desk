@@ -34,7 +34,7 @@ use crate::capteur::fenetre::Fenetre;
 use crate::capteur::protocole::{
     ecrire_json, lire_trame, DepuisCapteur, Trame, VersCapteur, NOM_TUBE,
 };
-use crate::capteur::reprise::DUREE_FENETRE_CANAL;
+use crate::capteur::tube::DUREE_OUVERTURE_MEDIA;
 
 /// Tampon de tube, dans les deux sens. Généreux à dessein : c'est lui qui
 /// absorbe les à-coups avant que la contre-pression ne remonte jusqu'au fil
@@ -43,11 +43,39 @@ const TAMPON: u32 = 1024 * 1024;
 
 /// Attente maximale de la connexion média après une attache acceptée.
 ///
-/// **Définie comme `DUREE_FENETRE_CANAL` et non comme une valeur libre** : un
-/// enfant qui renonce à son canal et un capteur qui renonce à sa fenêtre
-/// doivent se découvrir au même moment. Les laisser dériver ferait survivre
-/// une fenêtre sans enfant, ou l'inverse.
-const DELAI_CONNEXION_MEDIA: Duration = DUREE_FENETRE_CANAL;
+/// **Alignée sur la patience de l'enfant (`tube::DUREE_OUVERTURE_MEDIA`), et
+/// non sur `DUREE_FENETRE_CANAL`.** La tâche 10 prescrivait 15 s « pour qu'un
+/// enfant qui abandonne et un capteur qui renonce se découvrent au même
+/// moment » ; mais sur CETTE connexion, ce qui gouverne l'abandon de l'enfant
+/// est `DUREE_OUVERTURE_MEDIA`, pas la fenêtre de reprise d'une session déjà
+/// établie. Passé son propre budget, l'enfant échoue et meurt : attendre plus
+/// longtemps ne rattraperait personne.
+///
+/// ⚠️ **Et attendre coûte cher ici** : à ce point la `Fenetre` est DÉJÀ
+/// construite, donc la duplication DXGI de cette sortie est déjà prise. Or DXGI
+/// n'en autorise qu'une par sortie : chaque seconde d'attente inutile est une
+/// seconde pendant laquelle toute relance de cette fenêtre serait refusée en
+/// `0x80070057` — et avec `RELANCES_MAX = 3` une fenêtre peut brûler ses quatre
+/// tentatives dans un tel trou. D'où la marge d'une seconde, et pas davantage.
+const DELAI_CONNEXION_MEDIA: Duration =
+    DUREE_OUVERTURE_MEDIA.saturating_add(Duration::from_secs(1));
+
+/// Attente maximale d'une réponse du fil de fenêtre — à l'attache comme à
+/// chaque commande.
+///
+/// **Majorant assumé, strictement supérieur au pire cas documenté.** `resize`
+/// peut reconstruire une chaîne d'encodage complète, et `Drop for H264Encoder`
+/// porte une partie bornée de 8 s au pire cas (`2 × DELAI_BARRIERE +
+/// 2 × DELAI_ARRET_MFT`) ; 12 s laissent 4 s pour la reconstruction. Trop
+/// court, on déclarerait morte une fenêtre qui travaille.
+///
+/// **C'est la ceinture, pas la bretelle.** Le remède de l'interblocage relevé
+/// par la revue de la tâche 10 est structurel (le fil écrivain de
+/// `fenetre.rs`) ; cette borne existe pour qu'un fil de fenêtre muet pour une
+/// raison non prévue rende à l'enfant une **erreur** — que la boucle de
+/// transport absorbe déjà par un `warn!` — au lieu de le figer pour toujours.
+/// L'enfant, lui, n'a plus aucun délai sur sa lecture.
+const DELAI_REPONSE_FENETRE: Duration = Duration::from_secs(12);
 
 /// Sessions attachées sur leur connexion de commandes et attendant leur
 /// connexion média. Clé : l'identifiant de session.
@@ -245,7 +273,7 @@ fn ouvrir_les_commandes(
     // qu'après l'avoir lue : entrer directement dans la boucle de lecture le
     // laisserait bloqué à jamais. Bornée, pour qu'une construction de source
     // qui ne rendrait pas ne gèle pas ce fil.
-    let premiere = match receveur_reponses.recv_timeout(DELAI_CONNEXION_MEDIA) {
+    let premiere = match receveur_reponses.recv_timeout(DELAI_REPONSE_FENETRE) {
         Ok(reponse) => reponse,
         Err(erreur) => {
             // L'expéditeur retire l'entrée qu'il a inscrite : si le fil de
@@ -253,6 +281,15 @@ fn ouvrir_les_commandes(
             // jamais sa propre attente, donc jamais son propre retrait.
             oublier(&session);
             tracing::warn!(%session, %erreur, "aucune réponse à l'attache, canal abandonné");
+            // Un REFUS explicite plutôt qu'une fermeture muette : l'enfant le
+            // lit et échoue bruyamment, au lieu d'interpréter une fin de tube.
+            let _ = ecrire_json(
+                &mut ecrivain,
+                &DepuisCapteur::Refus {
+                    motif: format!("aucune réponse du fil de fenêtre en {DELAI_REPONSE_FENETRE:?}"),
+                },
+            );
+            let _ = ecrivain.flush();
             return Ok(());
         }
     };
@@ -365,10 +402,26 @@ fn boucler_les_commandes(
         if commandes.send(message).is_err() {
             return; // le fil de fenêtre est parti
         }
-        // `recv` sans délai : le fil de fenêtre répond toujours, ou meurt — et
-        // sa mort laisse tomber `reponses`, ce qui rend `Disconnected` ici.
-        let Ok(reponse) = reponses.recv() else {
-            return;
+        // **Bornée, et c'est la ceinture de sécurité de tout le canal.**
+        // L'enfant attend cette réponse sans aucun délai : sans borne ici, un
+        // fil de fenêtre muet le figerait pour toujours. À l'expiration on lui
+        // rend une `Erreur`, que `SourceDistante` remonte et que la boucle de
+        // transport absorbe déjà par un `warn!` — puis on clôt la connexion.
+        let reponse = match reponses.recv_timeout(DELAI_REPONSE_FENETRE) {
+            Ok(reponse) => reponse,
+            Err(RecvTimeoutError::Timeout) => {
+                tracing::warn!(
+                    %session,
+                    delai = ?DELAI_REPONSE_FENETRE,
+                    "le fil de fenêtre n'a pas répondu, canal clos"
+                );
+                let motif = format!("le fil de fenêtre n'a pas répondu en {DELAI_REPONSE_FENETRE:?}");
+                let _ = ecrire_json(&mut ecrivain, &DepuisCapteur::Erreur { motif });
+                let _ = ecrivain.flush();
+                return;
+            }
+            // Le fil de fenêtre est parti : la fin de tube le dira à l'enfant.
+            Err(RecvTimeoutError::Disconnected) => return,
         };
         if ecrire_json(&mut ecrivain, &reponse)
             .and_then(|()| ecrivain.flush())
