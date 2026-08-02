@@ -25,6 +25,7 @@ pub(super) mod mires;
 pub(crate) mod montee;
 pub(super) mod nvenc;
 pub(super) mod paralleles;
+pub(super) mod plafond;
 pub(super) mod pointeur_virtuel;
 pub(super) mod replis;
 pub(super) mod reprise;
@@ -110,6 +111,21 @@ pub(super) fn aiguiller() -> Result<bool> {
     // posées, une mesure ne doit jamais l'emporter sur une purge demandée.
     if sonde_demandee("MULTIFENETRE_VDD_PURGE") {
         crate::moniteurs_virtuels::purge::purger()?;
+        return Ok(true);
+    }
+    // Sous-bloc D3 — la sonde minimale, lancée par le porteur ci-dessous. Elle
+    // est aiguillée AVANT le porteur : un processus qui porte les deux
+    // variables (elles sont héritées) doit se comporter en sonde, sinon il
+    // créerait à son tour K sorties.
+    if let Ok(liste) = std::env::var("MULTIFENETRE_PLAFOND_SONDE") {
+        let sorties: Vec<String> = liste.split(',').map(|s| s.trim().to_string()).collect();
+        plafond::sonder(&sorties)?;
+        return Ok(true);
+    }
+    // Sous-bloc D3 — le porteur : K = P×D sorties virtuelles, P sondes.
+    if let Ok(valeur) = std::env::var("MULTIFENETRE_PLAFOND") {
+        let (processus, duplications) = plafond::analyser(&valeur)?;
+        plafond::mesurer(processus, duplications)?;
         return Ok(true);
     }
     // Tâche 1 du chantier D1 : le bureau virtuel s'étend-il jusqu'à une
