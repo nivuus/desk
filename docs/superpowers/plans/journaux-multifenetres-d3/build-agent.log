@@ -1,0 +1,88 @@
+sources synchronisées vers /media/vm/dev
+quota WinRM MaxMemoryPerShellMB déjà suffisant (4096 Mo)
+cargo :    Compiling agent v0.1.0 (C:\dev\agent)
+Au caract
+re Ligne:1 : 148
++ ... IMUM = '3.5'; Set-Location C:\dev; cargo build --release 2>&1 | Out-S ...
++                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling agent v0.1.0 (C:\dev\agent):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+warning: method `nom` is never used
+  --> agent\src\diagnostics\multifenetre\voies.rs:29:8
+   |
+28 | pub(super) trait VoieDeCapture {
+   |                  ------------- method in this trait
+29 |     fn nom(&self) -> &'static str;
+   |        ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `nombre` is never used
+  --> agent\src\moniteurs_virtuels.rs:80:12
+   |
+66 | impl<'p> Sorties<'p> {
+   | -------------------- method in this implementation
+...
+80 |     pub fn nombre(&self) -> usize {
+   |            ^^^^^^
+
+warning: methods `etat` and `taille_sortie_de` are never used
+   --> agent\src\superviseur\table.rs:210:12
+    |
+200 | impl Table {
+    | ---------- methods in this implementation
+...
+210 |     pub fn etat(&self, session: &IdSession) -> Option<&Etat> {
+    |            ^^^^
+...
+282 |     pub fn taille_sortie_de(&self, session: &IdSession) -> Option<(u32, u32)> {
+    |            ^^^^^^^^^^^^^^^^
+
+warning: constant `DEVICE_REMOVED` is never used
+  --> agent\src\capture\reprise.rs:30:11
+   |
+30 | pub const DEVICE_REMOVED: i32 = 0x887A0005u32 as i32;
+   |           ^^^^^^^^^^^^^^
+
+warning: constant `ATTENTE_EXPIREE` is never used
+  --> agent\src\capture\reprise.rs:35:11
+   |
+35 | pub const ATTENTE_EXPIREE: i32 = 0x887A0027u32 as i32;
+   |           ^^^^^^^^^^^^^^^
+
+warning: method `cible` is never used
+   --> agent\src\capture.rs:212:12
+    |
+ 78 | impl DesktopCapture {
+    | ------------------- method in this implementation
+...
+212 |     pub fn cible(&self) -> &CibleCapture {
+    |            ^^^^^
+
+warning: field `capture` is never read
+   --> agent\src\encode.rs:289:5
+    |
+253 | pub struct H264Encoder {
+    |            ----------- field in this struct
+...
+289 |     capture: (u32, u32),
+    |     ^^^^^^^
+
+warning: function `client_size` is never used
+  --> agent\src\window.rs:79:8
+   |
+79 | pub fn client_size(hwnd: HWND) -> Result<(u32, u32)> {
+   |        ^^^^^^^^^^^
+
+warning: method `hwnd` is never used
+   --> agent\src\windows_source.rs:209:12
+    |
+126 | impl WindowsSource {
+    | ------------------ method in this implementation
+...
+209 |     pub fn hwnd(&self) -> HWND {
+    |            ^^^^
+
+warning: `agent` (bin "agent") generated 9 warnings
+    Finished `release` profile [optimized] target(s) in 10.36s
