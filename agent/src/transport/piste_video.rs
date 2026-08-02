@@ -132,6 +132,10 @@ impl Session {
                 }
             }
         }
+        // Compteur de cadence côté enfant, le pendant de celui du capteur —
+        // voir `cadence_video.rs` (extrait de ce fichier, tâche 8 : l'ajout
+        // dépassait le plafond de 500 lignes de ce fichier).
+        self.compter_la_cadence_video();
         Some(Tick::Continue)
     }
 
@@ -199,7 +203,14 @@ impl Session {
             return false;
         };
         match writer.write(pt, capture_at, MediaTime::from_90khz(unit.pts_90k), unit.data) {
-            Ok(()) => true,
+            Ok(()) => {
+                // C'est ICI, et seulement ici, que l'écriture a réellement
+                // eu lieu — voir `compter_la_cadence_video`, qui journalise
+                // ce compte, jamais un tour de boucle ni un `next_frame` à
+                // vide.
+                self.unites_video_ecrites += 1;
+                true
+            }
             Err(e) => {
                 // Échec d'écriture applicatif (ex. RID inconnu) : on clôt la
                 // session plutôt que de faire remonter l'erreur jusqu'au

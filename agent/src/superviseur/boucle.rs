@@ -8,8 +8,9 @@
 
 use anyhow::Result;
 
-use super::enfants::{Consigne, Enfants, Lanceur};
+use super::enfants::{Consigne, Enfants};
 use super::hook;
+use super::lanceur::LanceurDeProcessus;
 use super::placement;
 use super::protocole::{DepuisLaShell, VersLaShell};
 use super::table::{Effet, IdSession, Table};
@@ -39,29 +40,22 @@ use crate::capture::{enumerer_sorties_silencieux, SortieDxgi};
 use crate::diagnostics::multifenetre::montee::{noms_attaches, relever_topologie};
 use crate::moniteurs_virtuels::{pilote::PiloteParIoctl, Sorties};
 
-/// Fenêtres simultanées que le superviseur s'autorise.
+/// Nombre maximal de fenêtres servies simultanément.
 ///
-/// **Valeur MESURÉE sur la VM cible, non prouvée être une borne du système**
-/// (campagne du sous-bloc D3,
-/// `plans/2026-08-02-multifenetres-plafond-concurrence-resultats.md`).
+/// **8, et voici exactement ce que ce chiffre est.** D3 avait ramené cette
+/// valeur à 4, le plafond de processus concurrents tenant une duplication DXGI.
+/// Le capteur mutualise désormais toutes les duplications dans un seul
+/// processus : ce plafond-là ne mord plus. Le plafond qui prend le relais est
+/// celui des **encodeurs** — 8 dans un processus, la 9ᵉ refusée au
+/// `SetOutputType` de la MFT NVIDIA (`MF_E_UNSUPPORTED_D3D_TYPE`), mesuré deux
+/// fois, les 30 et 31 juillet 2026, et inchangé que les encodeurs partagent un
+/// périphérique D3D11 ou qu'ils en aient chacun un neuf.
 ///
-/// Elle valait **8** : ni le vivier de sorties du pilote (10) ni le plafond
-/// d'encodeurs en processus unique (8) ne sont pourtant ce qu'on rencontre en
-/// conditions de produit. Ce qui borne est le **nombre de processus concurrents
-/// tenant une duplication DXGI ouverte**, mesuré à **exactement 4** : le rang
-/// `8x1` est refusé en `0x887A0022` à son 5ᵉ processus, 3/3, quand `1x8`, `2x4`
-/// et `4x2` — **huit** duplications sur au plus quatre processus — passent tous
-/// 3/3. Le rang qui échoue a donc MOINS de duplications ouvertes que ceux qui
-/// réussissent. **La couche qui impose ce plafond n'est pas identifiée.**
-///
-/// Pourquoi la baisser : à 8, le superviseur acceptait quatre fenêtres dont
-/// aucune ne pouvait aboutir, chacune brûlant `RELANCES_MAX + 1` tentatives dont
-/// chacune recréait une sortie virtuelle — ce qui inflige des abandons de mutex
-/// aux sessions saines. Refuser d'avance coûte un message.
-///
-/// **Franchir 4 demande de mutualiser la capture** (un seul processus tenant les
-/// N duplications) — désigné par D3 pour D4, non implémenté.
-const CAPACITE: usize = 4;
+/// ⚠️ **Valeur mesurée sur cette VM, à 1280×720 / 60 Hz / 8 Mb/s, non prouvée
+/// être une borne du système.** La couche qui l'impose n'est pas identifiée
+/// (NVENC, pilote, Media Foundation, ou virtualisation). À corriger au rang que
+/// la recette du sous-bloc atteint réellement, s'il diffère.
+const CAPACITE: usize = 8;
 
 /// Cadence du battement du chien de garde du pilote. Le pilote retire les
 /// sorties d'un client qui cesse de pinguer ; l'unité de son délai n'est PAS
@@ -91,7 +85,7 @@ const PAS_RATTACHEMENT: std::time::Duration = std::time::Duration::from_millis(1
 
 pub fn tourner(
     pilote: &PiloteParIoctl,
-    lanceur: &dyn Lanceur,
+    lanceur: &LanceurDeProcessus,
     rx_hook: std::sync::mpsc::Receiver<hook::EvenementFenetre>,
     rx_shell: std::sync::mpsc::Receiver<DepuisLaShell>,
     envoyer: impl Fn(&VersLaShell),
@@ -99,6 +93,9 @@ pub fn tourner(
     let mut sorties = Sorties::nouvelles(pilote);
     let mut enfants = Enfants::nouveaux(lanceur);
     let mut table = Table::nouvelle(CAPACITE);
+
+    // Le capteur, avant la moindre fenêtre — `surveillance_capteur::EtatCapteur`.
+    let mut etat_capteur = surveillance_capteur::EtatCapteur::demarrer(lanceur)?;
     // Sorties DXGI déjà attribuées, pour que deux fenêtres au même viewport ne
     // se voient pas donner la même. La table porte déjà la correspondance
     // session -> sortie ; ceci n'est que l'ensemble des sorties occupées, par
@@ -204,6 +201,9 @@ pub fn tourner(
         for session in enfants.morts() {
             effets.extend(table.enfant_mort(&session));
         }
+
+        // 5bis. Le capteur, même tour que les enfants — `EtatCapteur::surveiller`.
+        etat_capteur.surveiller(lanceur);
 
         // 6. Les fenêtres sont-elles encore sur leur sortie ?
         //
@@ -483,3 +483,9 @@ fn rendre_la_sortie(
 // raison et même schéma que `superviseur/table/attribution.rs`.
 mod placement_periodique;
 use placement_periodique::{controler_le_placement, replacer_si_besoin};
+
+// Lancement et surveillance du capteur (tâche 7 du sous-bloc D4) : extrait
+// côté production, pour la même raison et le même schéma que
+// `placement_periodique` ci-dessus. Nommé `surveillance_capteur` et non
+// `capteur` — voir l'en-tête de ce fichier (I7).
+mod surveillance_capteur;

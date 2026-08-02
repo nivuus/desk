@@ -1,0 +1,206 @@
+//! `SourceDistante` — la source vidéo d'un enfant, alimentée par le capteur.
+//!
+//! **Pas de `#[cfg(windows)]`** : le tube réel est gaté (`capteur/tube.rs`),
+//! mais la décision de clore ou non une session vit ici, et c'est la pièce la
+//! plus coûteuse à se tromper. Elle est donc écrite contre un `Canal`
+//! injecté et un `Receiver`, tous deux triviaux à simuler sur l'hôte.
+
+use std::sync::mpsc::{Receiver, TryRecvError};
+use std::time::Instant;
+
+use anyhow::{bail, Result};
+
+use crate::capteur::protocole::{DepuisCapteur, VersCapteur};
+use crate::capteur::reprise::FenetreCanal;
+use crate::h264::AccessUnit;
+use crate::source::VideoSource;
+
+/// Ce que l'enfant peut demander au capteur, et le moyen de s'y rattacher
+/// quand le canal se rompt.
+pub trait Canal {
+    fn commander(&mut self, message: VersCapteur) -> Result<DepuisCapteur>;
+    /// Rouvre un canal vers le capteur et s'y réattache. L'implémentation
+    /// remplace son propre état interne d'écriture ; elle rend la file
+    /// d'images neuve et les dimensions annoncées à l'attache.
+    fn rattacher(&mut self) -> Result<Rattachee>;
+}
+
+/// Le fruit d'un rattachement réussi.
+pub struct Rattachee {
+    pub images: Receiver<Recu>,
+    pub largeur: u32,
+    pub hauteur: u32,
+}
+
+/// Ce que le capteur pousse, non sollicité.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Recu {
+    Image(AccessUnit),
+    Etat { vivante: bool, epuisee: bool, largeur: u32, hauteur: u32 },
+}
+
+pub struct SourceDistante {
+    canal: Box<dyn Canal + Send>,
+    images: Receiver<Recu>,
+    largeur: u32,
+    hauteur: u32,
+    vivante: bool,
+    epuisee: bool,
+    /// Rupture du canal en cours. Une rupture n'épuise pas la source tant que
+    /// cette fenêtre n'a pas expiré : c'est ce qui fait survivre les sessions
+    /// à une relance du capteur.
+    fenetre: FenetreCanal,
+}
+
+impl SourceDistante {
+    pub fn nouvelle(
+        canal: Box<dyn Canal + Send>,
+        images: Receiver<Recu>,
+        largeur: u32,
+        hauteur: u32,
+    ) -> Self {
+        Self {
+            canal,
+            images,
+            largeur,
+            hauteur,
+            vivante: true,
+            epuisee: false,
+            fenetre: FenetreCanal::nouvelle(),
+        }
+    }
+
+    /// Émet une commande et n'accepte que `Fait` comme succès.
+    fn commander_simple(&mut self, message: VersCapteur) -> Result<()> {
+        match self.canal.commander(message)? {
+            DepuisCapteur::Fait => Ok(()),
+            DepuisCapteur::Erreur { motif } => bail!("le capteur a refusé : {motif}"),
+            autre => bail!("réponse inattendue du capteur : {autre:?}"),
+        }
+    }
+
+    /// Fait vieillir la fenêtre de reprise, pour les seuls tests : sans elle,
+    /// éprouver l'expiration exigerait d'attendre réellement 15 secondes.
+    #[cfg(test)]
+    pub fn vieillir_pour_test(&mut self, ecart: std::time::Duration) {
+        self.fenetre.vieillir_pour_test(ecart);
+    }
+}
+
+impl VideoSource for SourceDistante {
+    fn next_frame(&mut self) -> Option<AccessUnit> {
+        loop {
+            match self.images.try_recv() {
+                Ok(Recu::Image(unite)) => {
+                    self.fenetre.succes();
+                    return Some(unite);
+                }
+                Ok(Recu::Etat { vivante, epuisee, largeur, hauteur }) => {
+                    self.vivante = vivante;
+                    self.epuisee = epuisee;
+                    self.largeur = largeur;
+                    self.hauteur = hauteur;
+                }
+                // Le cas COURANT et normal : rien de neuf ce tour-ci. La
+                // boucle de transport interroge à 100 Hz une source qui
+                // produit à ~90 i/s.
+                Err(TryRecvError::Empty) => {
+                    self.fenetre.succes();
+                    return None;
+                }
+                // Le canal est rompu. La fenêtre de reprise borne combien de
+                // temps la source reste vivante en attendant un rattachement.
+                Err(TryRecvError::Disconnected) => {
+                    // **Un épuisement AUTORITAIRE ne se retente pas** (I2,
+                    // revue finale de branche du sous-bloc D4). À chaque
+                    // fermeture NORMALE d'une fenêtre, le capteur pousse un
+                    // `Etat { epuisee: true }` puis ferme le tube : l'enfant
+                    // consomme cet état, reboucle, et voit `Disconnected` dans
+                    // le même tour. Sans cette garde il rattacherait
+                    // aussitôt — un tube de commandes neuf, un tube média
+                    // neuf, et côté capteur une duplication DXGI et un
+                    // `H264Encoder` neufs sur une sortie que le superviseur
+                    // est justement en train de détruire. Pire, un
+                    // rattachement qui aboutirait remettrait `epuisee` à faux
+                    // (plus bas) : la session qui devait se clore ne se
+                    // clorait pas, et le résultat dépendrait d'une course.
+                    if self.epuisee {
+                        return None;
+                    }
+                    let maintenant = Instant::now();
+                    if self.fenetre.rupture(maintenant) {
+                        // La fenêtre est expirée : l'épuisement est acquis.
+                        self.epuisee = true;
+                        return None;
+                    }
+                    if self.fenetre.peut_reessayer(maintenant) {
+                        match self.canal.rattacher() {
+                            Ok(Rattachee { images, largeur, hauteur }) => {
+                                tracing::info!(largeur, hauteur, "canal rattaché au capteur");
+                                self.images = images;
+                                self.largeur = largeur;
+                                self.hauteur = hauteur;
+                                self.vivante = true;
+                                self.epuisee = false;
+                                self.fenetre.succes();
+                            }
+                            // Journalisé en `debug!` et non `info!` : au pas
+                            // de 250 ms sur une fenêtre de 15 s, un capteur
+                            // durablement absent produirait 60 lignes par
+                            // fenêtre et par session.
+                            Err(erreur) => tracing::debug!(%erreur, "rattachement refusé"),
+                        }
+                    }
+                    return None;
+                }
+            }
+        }
+    }
+
+    fn dimensions(&self) -> (u32, u32) {
+        (self.largeur, self.hauteur)
+    }
+
+    fn is_exhausted(&self) -> bool {
+        self.epuisee
+    }
+
+    fn is_alive(&self) -> bool {
+        self.vivante
+    }
+
+    fn resize(&mut self, width: u32, height: u32) -> Result<()> {
+        match self
+            .canal
+            .commander(VersCapteur::Redimensionner { largeur: width, hauteur: height })?
+        {
+            // La taille RETENUE est celle obtenue, jamais celle demandée : le
+            // pilote quantifie, et une fenêtre Windows impose des dimensions
+            // paires. Même règle qu'en mono-fenêtre.
+            DepuisCapteur::Taille { largeur, hauteur } => {
+                self.largeur = largeur;
+                self.hauteur = hauteur;
+                Ok(())
+            }
+            DepuisCapteur::Erreur { motif } => bail!("le capteur a refusé : {motif}"),
+            autre => bail!("réponse inattendue du capteur : {autre:?}"),
+        }
+    }
+
+    fn set_bitrate(&mut self, bitrate: u32) -> Result<()> {
+        self.commander_simple(VersCapteur::Debit { bps: bitrate })
+    }
+
+    fn set_encode_size(&mut self, width: u32, height: u32) -> Result<()> {
+        self.commander_simple(VersCapteur::TailleEncodage { largeur: width, hauteur: height })
+    }
+
+    fn request_keyframe(&mut self) -> Result<()> {
+        self.commander_simple(VersCapteur::ImageCle)
+    }
+}
+
+// Les tests vivent dans un fichier voisin : ce fichier-ci était à 487 lignes
+// pour un plafond de projet à 500. Voir l'en-tête de `distante/tests.rs`.
+#[cfg(test)]
+mod tests;

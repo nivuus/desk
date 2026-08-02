@@ -1,0 +1,72 @@
+[    0.0s 2026-08-02T20:27:12.804Z] PHASE=cadence N_CIBLE=2 chrome pid=2034399 port=9991
+[    0.7s 2026-08-02T20:27:13.465Z] identité du navigateur : pid écoutant=2034399 pid lancé=2034399 version=Chrome/150.0.7871.181
+[    0.7s 2026-08-02T20:27:13.483Z] + page attachée  session=29F0EE6B url=about:blank
+[    0.7s 2026-08-02T20:27:13.496Z] >>> ÉTAPE 0 : nettoyage — état de départ SANS fenêtre
+[   15.5s 2026-08-02T20:27:28.313Z] --- fenêtres VM (avant superviseur) ---
+
+[   15.6s 2026-08-02T20:27:28.372Z] + page attachée  session=DB690F80 url=http://192.168.3.1:5173/shell.html
+[   15.6s 2026-08-02T20:27:28.386Z] shell demandée http://192.168.3.1:5173/shell.html
+[   18.6s 2026-08-02T20:27:31.392Z] statut shell : bureau connecté
+[   18.6s 2026-08-02T20:27:31.393Z] >>> lancement du superviseur (SUPERVISEUR=1)
+[   19.9s 2026-08-02T20:27:32.651Z] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   26.1s 2026-08-02T20:27:38.947Z] MARQUEURS (superviseur démarré, 0 fenêtre) {"lignes":23,"cloture":0,"capteur_lance":1,"capteur_relance":0,"capteur_termine":0,"attachee_capteur":0,"rattache":0,"refus_capteur":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":0,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":0,"enfant_termine":0,"abandon_relances":0,"erreurs":0,"refus_debit":0,"refus_taille":0,"reponse_capteur":0,"fin_fenetre":0,"cadence_capteur":0,"cadence_piste":0}
+[   26.8s 2026-08-02T20:27:39.645Z] PIDs agent après démarrage : 3676 25636
+[   26.8s 2026-08-02T20:27:39.646Z] >>> OUVERTURE fenêtre 1 (attendu : 1 pages)
+[   28.1s 2026-08-02T20:27:40.933Z] + page attachée  session=47252D62 url=
+[   28.2s 2026-08-02T20:27:40.983Z] - page détachée   session=47252D62 url=http://192.168.3.1:5173/?session=w-1
+[   28.5s 2026-08-02T20:27:41.314Z] + page attachée  session=E606BC73 url=
+[   30.1s 2026-08-02T20:27:42.932Z]    fenêtre 1 : page ouverte en 2s (total 1)
+[   30.3s 2026-08-02T20:27:43.108Z] SURVIE VM (après ouverture 1) virsh="en cours d’exécution" acces_partage=OUI
+[   33.3s 2026-08-02T20:27:46.110Z] >>> OUVERTURE fenêtre 2 (attendu : 2 pages)
+[   36.7s 2026-08-02T20:27:49.470Z] + page attachée  session=F4C6DE34 url=
+[   36.8s 2026-08-02T20:27:49.579Z] - page détachée   session=F4C6DE34 url=http://192.168.3.1:5173/?session=w-3
+[   37.0s 2026-08-02T20:27:49.776Z] + page attachée  session=71CA2D89 url=
+[   38.7s 2026-08-02T20:27:51.468Z]    fenêtre 2 : page ouverte en 2s (total 2)
+[   38.9s 2026-08-02T20:27:51.718Z] SURVIE VM (après ouverture 2) virsh="en cours d’exécution" acces_partage=OUI
+[   52.0s 2026-08-02T20:28:04.749Z] ÉTAT SHELL (palier établi) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[   52.0s 2026-08-02T20:28:04.749Z]   pages d'application ouvertes (2) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4
+[   53.2s 2026-08-02T20:28:05.949Z] MARQUEURS (palier établi) {"lignes":119,"cloture":0,"capteur_lance":1,"capteur_relance":0,"capteur_termine":0,"attachee_capteur":2,"rattache":0,"refus_capteur":0,"reouverture":1,"mutex_abandonne":1,"sortie_creee":2,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":2,"enfant_termine":0,"abandon_relances":0,"erreurs":0,"refus_debit":0,"refus_taille":0,"reponse_capteur":0,"fin_fenetre":0,"cadence_capteur":3,"cadence_piste":3}
+[   53.2s 2026-08-02T20:28:05.958Z] STATS (palier N=2 (30 s) — relevé 1) {"w:w-2":{"etat":"connected","images":1309,"l":640,"h":360,"octets":5919942,"rtt":0.334,"horloge":1785702485954},"w:w-4":{"etat":"connected","images":674,"l":1280,"h":720,"octets":5900580,"rtt":0.318,"horloge":1785702485956}}
+[   83.2s 2026-08-02T20:28:35.984Z] STATS (palier N=2 (30 s) — relevé 2) {"w:w-2":{"etat":"connected","images":3621,"l":640,"h":360,"octets":9369759,"rtt":0.322,"horloge":1785702515979},"w:w-4":{"etat":"connected","images":3063,"l":1024,"h":576,"octets":17072541,"rtt":0.224,"horloge":1785702515981}}
+[   83.2s 2026-08-02T20:28:35.985Z] CADENCE NAVIGATEUR (palier N=2 (30 s)) {
+ "w:w-2": {
+  "images": 2312,
+  "secondes": 30.025,
+  "i_par_s": 77,
+  "taille": "640x360",
+  "octets": 3449817,
+  "kbps": 919,
+  "etat": "connected"
+ },
+ "w:w-4": {
+  "images": 2389,
+  "secondes": 30.025,
+  "i_par_s": 79.57,
+  "taille": "1024x576",
+  "octets": 11171961,
+  "kbps": 2977,
+  "etat": "connected"
+ }
+}
+[   83.2s 2026-08-02T20:28:35.985Z] SYNTHÈSE CADENCE {
+ "w:w-2": {
+  "images": 2312,
+  "secondes": 30.025,
+  "i_par_s": 77,
+  "taille": "640x360",
+  "octets": 3449817,
+  "kbps": 919,
+  "etat": "connected"
+ },
+ "w:w-4": {
+  "images": 2389,
+  "secondes": 30.025,
+  "i_par_s": 79.57,
+  "taille": "1024x576",
+  "octets": 11171961,
+  "kbps": 2977,
+  "etat": "connected"
+ }
+}
+[   83.9s 2026-08-02T20:28:36.728Z] MARQUEURS (fin de palier) {"lignes":142,"cloture":0,"capteur_lance":1,"capteur_relance":0,"capteur_termine":0,"attachee_capteur":2,"rattache":0,"refus_capteur":0,"reouverture":1,"mutex_abandonne":1,"sortie_creee":2,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":2,"enfant_termine":0,"abandon_relances":0,"erreurs":0,"refus_debit":0,"refus_taille":0,"reponse_capteur":0,"fin_fenetre":0,"cadence_capteur":9,"cadence_piste":9}
+[   84.2s 2026-08-02T20:28:36.992Z] journal copié dans /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/dffb8a0c-ae33-4e14-a0b6-f1eab68129c9/scratchpad/d4b/agent-epreuve-taille-n2.log

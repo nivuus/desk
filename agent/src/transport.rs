@@ -48,6 +48,7 @@ use crate::source::VideoSource;
 #[cfg(test)]
 mod fixtures;
 mod adaptation;
+mod cadence_video;
 mod controle;
 mod evenements;
 mod piste_audio;
@@ -198,6 +199,19 @@ pub struct Session {
     /// raison d'être est de vivre aussi longtemps que `Session` et de
     /// restaurer la résolution d'origine à la destruction.
     _timer_resolution: TimerResolutionGuard,
+    /// Identifiant de session, posé par `set_session_id` (voir
+    /// `cadence_video.rs`) — vide tant qu'il ne l'a pas été (chemins de
+    /// test). Ne sert qu'à apparier la ligne de cadence de la piste vidéo à
+    /// celle du capteur (`capteur/fenetre.rs`) dans un `agent.log` que
+    /// plusieurs fenêtres se partagent.
+    session_id: String,
+    /// Unités d'accès vidéo réellement écrites sur la piste depuis le
+    /// dernier relevé de cadence (voir `cadence_video::PERIODE_COMPTEURS`).
+    /// Incrémenté par `write_frame` (`piste_video.rs`), jamais par un tour de
+    /// boucle qui ne produit rien.
+    unites_video_ecrites: u64,
+    /// Instant du dernier relevé de cadence de la piste vidéo.
+    dernier_compte_video: Instant,
 }
 
 impl Session {
@@ -327,6 +341,9 @@ impl Session {
             last_alive_check: Instant::now(),
             turn: None,
             _timer_resolution: TimerResolutionGuard::new(),
+            session_id: String::new(),
+            unites_video_ecrites: 0,
+            dernier_compte_video: Instant::now(),
         };
 
         // `add_local_candidate` est une mutation : on draine avant de rendre

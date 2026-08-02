@@ -75,7 +75,13 @@ pub struct LanceurDeProcessus {
     /// `Mutex` et non `RefCell` : `Lanceur` prend `&self`, et rien ne promet
     /// que ce lanceur restera consulté depuis un seul fil.
     enfants: Mutex<HashMap<u32, Enfant>>,
-    /// Le job auquel tout enfant est rattaché. Sa fermeture les tue.
+    /// Le capteur unique de capture mutualisée (sous-bloc D4), suivi à part
+    /// des enfants : il n'a pas de session, donc pas sa place dans `enfants`.
+    /// `None` tant qu'aucun capteur n'a encore été lancé, ou juste après que
+    /// le précédent a été constaté mort par `capteur_vivant`.
+    capteur: Mutex<Option<Enfant>>,
+    /// Le job auquel tout enfant — et le capteur — est rattaché. Sa fermeture
+    /// les tue tous.
     job: HANDLE,
 }
 
@@ -108,6 +114,7 @@ impl LanceurDeProcessus {
             signaling_url,
             local_ip,
             enfants: Mutex::new(HashMap::new()),
+            capteur: Mutex::new(None),
             job,
         })
     }
@@ -126,6 +133,93 @@ impl LanceurDeProcessus {
     /// (`Drop` ne passe PAS par ici : il ne touche que le handle de job.)
     fn enfants(&self) -> std::sync::MutexGuard<'_, HashMap<u32, Enfant>> {
         self.enfants.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
+    }
+
+    /// Même raison que `enfants` ci-dessus : ne pas paniquer sur un verrou
+    /// empoisonné, sans quoi une panique isolée dans `lancer_capteur` rendrait
+    /// `capteur_vivant` inutilisable pour toujours, et le superviseur ne
+    /// pourrait plus jamais constater ni relancer le capteur.
+    fn capteur(&self) -> std::sync::MutexGuard<'_, Option<Enfant>> {
+        self.capteur.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
+    }
+
+    /// Lance le capteur unique de capture mutualisée (`agent/src/capteur.rs`) :
+    /// même exécutable, `CAPTEUR=1`, **rattaché au même job object** que les
+    /// enfants — sans quoi il survivrait au superviseur en tenant N
+    /// duplications DXGI et N sorties virtuelles captives du vivier qui n'en
+    /// compte que dix.
+    ///
+    /// **Même contrat atomique que `lancer`** (voir la doc du trait) : `Err`
+    /// signifie qu'aucun processus ne tourne. Le rattachement au job est le
+    /// seul post-traitement faillible, et il tue donc lui-même le capteur
+    /// avant de rendre `Err`.
+    pub fn lancer_capteur(&self) -> Result<u32> {
+        let mut capteur = std::process::Command::new(&self.executable)
+            .env("CAPTEUR", "1")
+            // Même motif que pour un enfant (voir `lancer` ci-dessous) : un
+            // capteur qui hériterait de `SUPERVISEUR` se prendrait pour un
+            // superviseur et lancerait ses propres enfants, indéfiniment.
+            .env_remove("SUPERVISEUR")
+            // Même motif que pour un enfant : ces deux variables changent le
+            // SENS d'une source (un fichier de test à diffuser, une fenêtre à
+            // chercher par titre) — et le capteur n'a pas de source unique
+            // désignée par elles, il en tient N, chacune décrite par l'enfant
+            // qui s'y rattache via le tube nommé.
+            .env_remove("TEST_FILE")
+            .env_remove("WINDOW_TITLE")
+            .spawn()
+            .context("lancement du capteur")?;
+        let pid = capteur.id();
+        let handle = HANDLE(capteur.as_raw_handle() as *mut core::ffi::c_void);
+        if let Err(erreur) = unsafe { AssignProcessToJobObject(self.job, handle) } {
+            // Même contrat atomique que `lancer` : un capteur non rattaché au
+            // job survivrait au superviseur EN TENANT N duplications.
+            if let Err(mise_a_mort) = capteur.kill() {
+                tracing::error!(pid, %mise_a_mort,
+                    "capteur NON rattaché au job ET NON tué — il survivra au superviseur");
+            }
+            let _ = capteur.wait();
+            return Err(anyhow::Error::new(erreur)
+                .context(format!("rattachement du capteur {pid} au job object")));
+        }
+        tracing::info!(pid, "capteur lancé");
+        *self.capteur() = Some(Enfant { processus: capteur, etat_illisible_signale: false });
+        Ok(pid)
+    }
+
+    /// Vrai tant que le capteur lancé par le dernier `lancer_capteur` réussi
+    /// est vivant. Rend `false` si aucun capteur n'a jamais été lancé, ou si
+    /// le précédent est mort — aux appelants de rappeler `lancer_capteur`.
+    ///
+    /// Même logique qu'`est_vivant` (voir plus bas) : un état illisible n'est
+    /// PAS traité comme une mort — le déclarer mort ferait relancer un
+    /// capteur qui tourne peut-être encore, doublant les duplications DXGI —
+    /// et n'est journalisé qu'une fois tant qu'il persiste.
+    pub fn capteur_vivant(&self) -> bool {
+        let mut capteur = self.capteur();
+        let Some(en_cours) = capteur.as_mut() else { return false };
+        match en_cours.processus.try_wait() {
+            Ok(None) => {
+                en_cours.etat_illisible_signale = false;
+                true
+            }
+            Ok(Some(code)) => {
+                tracing::info!(pid = en_cours.processus.id(), ?code, "capteur terminé");
+                *capteur = None;
+                false
+            }
+            Err(erreur) => {
+                if !en_cours.etat_illisible_signale {
+                    en_cours.etat_illisible_signale = true;
+                    tracing::warn!(
+                        %erreur,
+                        "état du capteur illisible, tenu pour vivant \
+                         (signalé une seule fois tant que l'état reste illisible)"
+                    );
+                }
+                true
+            }
+        }
     }
 }
 
@@ -167,6 +261,21 @@ impl Lanceur for LanceurDeProcessus {
             // changements de mode.
             .env_remove("TEST_FILE")
             .env_remove("WINDOW_TITLE")
+            // **I7 de la revue finale de branche du sous-bloc D4**, par la
+            // même règle de symétrie que le bloc I6 ci-dessus : `CAPTEUR` est
+            // une variable héritable qui change le SENS d'un processus — un
+            // enfant qui la porterait deviendrait un second capteur, ne
+            // diffuserait rien, et se disputerait le tube nommé avec le vrai.
+            //
+            // Le cas est INATTEIGNABLE aujourd'hui : `main.rs` prend la
+            // branche capteur AVANT la branche superviseur, donc un
+            // superviseur portant `CAPTEUR` ne serait jamais devenu
+            // superviseur et n'aurait jamais lancé d'enfant. On la retire
+            // quand même, exactement comme `lancer_capteur` retire
+            // `SUPERVISEUR` par ce même raisonnement : ce qui protège l'enfant
+            // ne doit pas dépendre de l'ordre de deux `if` dans un autre
+            // fichier.
+            .env_remove("CAPTEUR")
             .spawn()
             .with_context(|| format!("lancement de l'enfant {}", consigne.session.0))?;
         let pid = enfant.id();

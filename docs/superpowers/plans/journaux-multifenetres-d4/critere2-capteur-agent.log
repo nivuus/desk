@@ -1,0 +1,141 @@
+2026-08-02T18:56:25.782237Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-02T18:56:25.784718Z  INFO agent::superviseur::signalisation: superviseur enregistré sur la session de contrôle session="bureau"
+2026-08-02T18:56:25.786819Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-02T18:56:25.786851Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-02T18:56:25.786863Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=1 attachees=1
+2026-08-02T18:56:25.786867Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-02T18:56:28.788860Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-02T18:56:28.788892Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-02T18:56:28.788900Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-08-02T18:56:28.788908Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-02T18:56:28.788914Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=0 avant=1 apres=1
+2026-08-02T18:56:28.792154Z  INFO agent::superviseur::lanceur: capteur lancé pid=28328
+2026-08-02T18:56:28.798027Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-02T18:56:28.798182Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-08-02T18:56:33.020365Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-02T18:56:33.020400Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-02T18:56:33.020408Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=1 attachees=1
+2026-08-02T18:56:33.020412Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-02T18:56:33.020793Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=261 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430001 largeur=1280 hauteur=720 hertz=60
+2026-08-02T18:56:33.154529Z  INFO agent::superviseur::enfants: enfant lancé session=w-2 pid=28332 sortie=\\.\DISPLAY5 audio=false
+2026-08-02T18:56:33.161542Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-02T18:56:33.161593Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY5 bitrate=12000000 fps=90
+2026-08-02T18:56:33.166305Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-02T18:56:33.247354Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-02T18:56:33.247773Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-02T18:56:33.248795Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-02T18:56:33.317036Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=327681
+2026-08-02T18:56:33.322009Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-02T18:56:38.587261Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-02T18:56:38.587295Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-02T18:56:38.587303Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=2 attachees=2
+2026-08-02T18:56:38.587306Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-02T18:56:38.587311Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-02T18:56:38.587624Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=258 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430002 largeur=1280 hauteur=720 hertz=60
+2026-08-02T18:56:38.728165Z  INFO agent::superviseur::enfants: enfant lancé session=w-4 pid=25952 sortie=\\.\DISPLAY6 audio=false
+2026-08-02T18:56:38.735104Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-02T18:56:38.735147Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY6 bitrate=12000000 fps=90
+2026-08-02T18:56:38.739053Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-02T18:56:38.765454Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-02T18:56:38.765908Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-02T18:56:38.766377Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-02T18:56:38.832501Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=524293
+2026-08-02T18:56:38.833815Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-02T18:56:44.160224Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-02T18:56:44.160259Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-02T18:56:44.160267Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=3 attachees=3
+2026-08-02T18:56:44.160271Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-02T18:56:44.160276Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-02T18:56:44.160279Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-08-02T18:56:44.160550Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=265 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430003 largeur=1280 hauteur=720 hertz=60
+2026-08-02T18:56:44.285763Z  INFO agent::superviseur::enfants: enfant lancé session=w-6 pid=23932 sortie=\\.\DISPLAY7 audio=false
+2026-08-02T18:56:44.293256Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-02T18:56:44.293302Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY7 bitrate=12000000 fps=90
+2026-08-02T18:56:44.298011Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-02T18:56:44.329179Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-02T18:56:44.329775Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-02T18:56:44.330366Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-02T18:56:44.408986Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=655368
+2026-08-02T18:56:44.410274Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-02T18:56:49.617080Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-02T18:56:49.617113Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-02T18:56:49.617121Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=4 attachees=4
+2026-08-02T18:56:49.617124Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-02T18:56:49.617129Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-02T18:56:49.617132Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-08-02T18:56:49.617135Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=0 largeur=1280 hauteur=720
+2026-08-02T18:56:49.617432Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=259 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-08-02T18:56:49.752192Z  INFO agent::superviseur::enfants: enfant lancé session=w-10 pid=27712 sortie=\\.\DISPLAY8 audio=false
+2026-08-02T18:56:49.765437Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-02T18:56:49.765491Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY8 bitrate=12000000 fps=90
+2026-08-02T18:56:49.782873Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 nom_sortie=\\.\DISPLAY8 attachee=true
+2026-08-02T18:56:49.808258Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-02T18:56:49.808722Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-02T18:56:49.809205Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-02T18:56:49.884887Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=786443
+2026-08-02T18:56:49.886218Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+Error: réponse à l'attache
+System.Management.Automation.RemoteException
+Caused by:
+    failed to fill whole buffer
+Error: Error: Error: réponse à l'attacheréponse à l'attache
+System.Management.Automation.RemoteException
+Caused by:
+System.Management.Automation.RemoteException
+System.Management.Automation.RemoteException
+Caused by:    
+failed to fill whole buffer    réponse à l'attachefailed to fill whole buffer
+System.Management.Automation.RemoteException
+System.Management.Automation.RemoteException
+Caused by:
+System.Management.Automation.RemoteException
+    failed to fill whole buffer
+2026-08-02T18:57:13.294243Z  INFO agent::superviseur::lanceur: enfant terminé pid=27712 code=ExitStatus(ExitStatus(1))
+2026-08-02T18:57:13.294330Z  INFO agent::superviseur::lanceur: enfant terminé pid=25952 code=ExitStatus(ExitStatus(1))
+2026-08-02T18:57:13.294336Z  INFO agent::superviseur::lanceur: enfant terminé pid=23932 code=ExitStatus(ExitStatus(1))
+2026-08-02T18:57:13.294358Z  INFO agent::superviseur::lanceur: enfant terminé pid=28332 code=ExitStatus(ExitStatus(1))
+2026-08-02T18:57:13.294380Z  WARN agent::superviseur::enfants: enfant mort de lui-même session=w-10 pid=Some(27712)
+2026-08-02T18:57:13.294387Z  WARN agent::superviseur::enfants: enfant mort de lui-même session=w-4 pid=Some(25952)
+2026-08-02T18:57:13.294389Z  WARN agent::superviseur::enfants: enfant mort de lui-même session=w-6 pid=Some(23932)
+2026-08-02T18:57:13.294391Z  WARN agent::superviseur::enfants: enfant mort de lui-même session=w-2 pid=Some(28332)
+2026-08-02T18:57:13.294396Z  INFO agent::superviseur::lanceur: capteur terminé pid=28328 code=ExitStatus(ExitStatus(4294967295))
+2026-08-02T18:57:13.295794Z  INFO agent::superviseur::lanceur: capteur lancé pid=19640
+2026-08-02T18:57:13.295805Z  WARN agent::superviseur::boucle::capteur: capteur mort, relancé pid_mort=28328 pid_neuf=19640
+2026-08-02T18:57:13.301563Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-02T18:57:13.301595Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-08-02T18:57:14.706289Z  INFO agent::superviseur::enfants: enfant lancé session=w-14 pid=26840 sortie=\\.\DISPLAY8 audio=false
+2026-08-02T18:57:14.712971Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-02T18:57:14.713015Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY8 bitrate=12000000 fps=90
+2026-08-02T18:57:14.715287Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 nom_sortie=\\.\DISPLAY8 attachee=true
+2026-08-02T18:57:14.798572Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-02T18:57:14.798866Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-02T18:57:14.799662Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-02T18:57:14.807874Z  INFO agent::superviseur::enfants: enfant lancé session=w-11 pid=29120 sortie=\\.\DISPLAY7 audio=false
+2026-08-02T18:57:14.809036Z  INFO agent::superviseur::enfants: enfant lancé session=w-12 pid=29300 sortie=\\.\DISPLAY6 audio=false
+2026-08-02T18:57:14.810474Z  INFO agent::superviseur::enfants: enfant lancé session=w-13 pid=25764 sortie=\\.\DISPLAY5 audio=false
+2026-08-02T18:57:14.813923Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-02T18:57:14.813975Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY7 bitrate=12000000 fps=90
+2026-08-02T18:57:14.814580Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-02T18:57:14.815367Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-02T18:57:14.815412Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY6 bitrate=12000000 fps=90
+2026-08-02T18:57:14.815926Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-02T18:57:14.816090Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-02T18:57:14.816148Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY5 bitrate=12000000 fps=90
+2026-08-02T18:57:14.816615Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-02T18:57:14.840313Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-02T18:57:14.840549Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-02T18:57:14.840592Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-02T18:57:14.861060Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-02T18:57:14.861297Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-02T18:57:14.861336Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-02T18:57:14.879940Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-02T18:57:14.880209Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-02T18:57:14.880254Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-02T18:57:14.940707Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=327681
+2026-08-02T18:57:14.945835Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-02T18:57:15.040742Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=655366
+2026-08-02T18:57:15.041151Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-02T18:57:15.041682Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=524292
+2026-08-02T18:57:15.041983Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-02T18:57:15.048356Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=786440
+2026-08-02T18:57:15.048650Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
