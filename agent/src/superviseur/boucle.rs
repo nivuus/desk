@@ -116,6 +116,11 @@ pub fn tourner(
                     dernier_ping = std::time::Instant::now();
                 }
                 Effet::LancerEnfant { session, fenetre, nom_sortie, audio } => {
+                    // Le chemin de réutilisation d'une sortie retenue ne passe
+                    // pas par `creer_sortie`, donc la fenêtre n'a pas été
+                    // reposée. Une seule énumération, sur ce seul bras.
+                    let toutes = enumerer_sorties_silencieux().unwrap_or_default();
+                    replacer_si_besoin(&table, &session, &toutes);
                     if let Err(erreur) = enfants.lancer(Consigne {
                         session: session.clone(),
                         fenetre: fenetre.0,
@@ -452,32 +457,10 @@ fn rendre_la_sortie(
     }
 }
 
-/// Remet sur sa sortie toute fenêtre qui en est partie.
-fn controler_le_placement(table: &Table) {
-    let toutes = enumerer_sorties_silencieux().unwrap_or_default();
-    for session in table.sessions_vivantes() {
-        let Some(nom) = table.nom_sortie_de(&session) else {
-            continue;
-        };
-        let Some(cible) = toutes.iter().find(|s| s.nom_sortie == nom) else {
-            continue;
-        };
-        let Some(fenetre) = table.fenetre_de(&session) else { continue };
-        let hwnd = windows::Win32::Foundation::HWND(fenetre.0 as *mut core::ffi::c_void);
-        let Ok(actuel) = placement::rectangle_de(hwnd) else { continue };
-        if placement::doit_etre_replacee(&actuel, &cible.rect) {
-            tracing::info!(
-                session = %session.0,
-                de = format!("{}x{}+{}+{}", actuel.width, actuel.height, actuel.x, actuel.y),
-                vers = format!(
-                    "{}x{}+{}+{}",
-                    cible.rect.width, cible.rect.height, cible.rect.x, cible.rect.y
-                ),
-                "fenêtre sortie de sa sortie, replacement"
-            );
-            if let Err(erreur) = placement::poser(hwnd, &cible.rect) {
-                tracing::warn!(session = %session.0, %erreur, "replacement échoué");
-            }
-        }
-    }
-}
+// Contrôle périodique de placement (`controler_le_placement`,
+// `replacer_si_besoin`) : extrait côté production, pour rester sous le
+// plafond de 500 lignes du projet — la tâche 7 du sous-bloc D3 a fait
+// franchir ce plafond à ce fichier. Extraire plutôt que compresser, même
+// raison et même schéma que `superviseur/table/attribution.rs`.
+mod placement_periodique;
+use placement_periodique::{controler_le_placement, replacer_si_besoin};
