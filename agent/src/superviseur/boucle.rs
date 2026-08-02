@@ -316,7 +316,7 @@ fn creer_sortie(
     prises.push(nom.clone());
     // Les DEUX identifiants : celui du pilote pour la destruction, le nom
     // DXGI pour la capture. Aucune relation calculable entre eux.
-    let suite = table.sortie_creee(&session, id_pilote, nom);
+    let suite = table.sortie_creee(&session, id_pilote, nom, (cible.rect.width, cible.rect.height));
 
     // Une table qui n'a rien à dire de cette sortie ne la retient nulle part :
     // `id_pilote` ne serait plus connu de personne (ni de la table, ni d'un

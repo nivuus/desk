@@ -134,6 +134,14 @@ struct Entree {
     /// Nom DXGI (`\\.\DISPLAYn`) de la même sortie, pour la capture et le
     /// placement. Stable, contrairement à une position d'énumération.
     nom_sortie: Option<String>,
+    /// Dimensions RÉELLEMENT rendues par DXGI pour cette sortie — et non
+    /// celles demandées. Le pilote quantifie (1280×632 demandé rend une sortie
+    /// 1280×720, mesuré au sous-bloc D2) : comparer un viewport ultérieur à la
+    /// demande jugerait réutilisable une sortie qui ne l'est pas.
+    ///
+    /// Posé et effacé en même temps que `sortie_pilote` et `nom_sortie` : les
+    /// trois désignent la même sortie et ne se séparent jamais.
+    taille_sortie: Option<(u32, u32)>,
     audio: bool,
     /// Nombre de fois où cette fenêtre a déjà été relancée après la mort de
     /// son enfant. Le garde-fou de `relancer_les_orphelines` (`RELANCES_MAX`)
@@ -239,6 +247,7 @@ impl Table {
                 etat: Etat::AttendLeViewport,
                 sortie_pilote: None,
                 nom_sortie: None,
+                taille_sortie: None,
                 audio,
                 relances: 0,
                 attente_depuis: None,
@@ -278,6 +287,7 @@ impl Table {
         session: &IdSession,
         sortie_pilote: u32,
         nom_sortie: String,
+        taille: (u32, u32),
     ) -> Vec<Effet> {
         let Some(entree) = self.entrees.get_mut(session) else {
             return Vec::new();
@@ -288,6 +298,7 @@ impl Table {
         entree.etat = Etat::Vivante;
         entree.sortie_pilote = Some(sortie_pilote);
         entree.nom_sortie = Some(nom_sortie.clone());
+        entree.taille_sortie = Some(taille);
         vec![Effet::LancerEnfant {
             session: session.clone(),
             fenetre: entree.fenetre,
@@ -300,6 +311,11 @@ impl Table {
     /// placement.
     pub fn nom_sortie_de(&self, session: &IdSession) -> Option<&str> {
         self.entrees.get(session).and_then(|e| e.nom_sortie.as_deref())
+    }
+
+    /// Dimensions de la sortie retenue par une session, s'il y en a une.
+    pub fn taille_sortie_de(&self, session: &IdSession) -> Option<(u32, u32)> {
+        self.entrees.get(session).and_then(|e| e.taille_sortie)
     }
 
     /// Sessions dont l'enfant tourne, pour le contrôle périodique de
@@ -417,6 +433,7 @@ impl Table {
                     etat: Etat::AttendLeViewport,
                     sortie_pilote: None,
                     nom_sortie: None,
+                    taille_sortie: None,
                     audio: entree.audio,
                     relances: entree.relances + 1,
                     attente_depuis: Some(maintenant),
@@ -469,3 +486,6 @@ mod tests;
 #[cfg(test)]
 #[path = "table/tests_relance.rs"]
 mod tests_relance;
+
+#[cfg(test)]
+mod tests_retention;

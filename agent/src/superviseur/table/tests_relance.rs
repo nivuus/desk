@@ -31,7 +31,7 @@ fn une_fenetre_dont_l_enfant_meurt_est_reproposee() {
     };
     let session = session.clone();
     t.viewport_recu(&session, 1280, 720);
-    t.sortie_creee(&session, 42, "\\\\.\\DISPLAY7".into());
+    t.sortie_creee(&session, 42, "\\\\.\\DISPLAY7".into(), (1280, 720));
 
     let effets = t.enfant_mort(&session);
     assert!(
@@ -118,7 +118,7 @@ fn un_second_enfant_mort_ne_redemande_pas_la_meme_destruction() {
     };
     let session = session.clone();
     t.viewport_recu(&session, 1280, 720);
-    t.sortie_creee(&session, 42, "\\\\.\\DISPLAY7".into());
+    t.sortie_creee(&session, 42, "\\\\.\\DISPLAY7".into(), (1280, 720));
 
     let premier = t.enfant_mort(&session);
     assert!(
