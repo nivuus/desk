@@ -114,27 +114,25 @@ fn une_fenetre_qui_disparait_tue_l_enfant_detruit_la_sortie_et_l_annonce() {
 }
 
 #[test]
-fn un_enfant_qui_meurt_seul_libere_la_sortie_et_l_annonce_sans_le_tuer() {
+fn un_enfant_qui_meurt_seul_retient_la_sortie_et_l_annonce_sans_le_tuer() {
     // C'est le bénéfice pour lequel le multi-processus a été choisi : la
-    // mort d'un enfant ne doit rien emporter d'autre, mais elle ne doit
-    // pas non plus laisser fuir sa sortie.
+    // mort d'un enfant ne doit rien emporter d'autre. Depuis le correctif
+    // §7.1 du sous-bloc D3, elle ne rend plus non plus la sortie au pilote —
+    // c'est justement sa RECRÉATION à la relance qui abandonnait le mutex des
+    // duplications DXGI voisines (D2, 6 → 38 réouvertures pour une seule
+    // fenêtre condamnée).
     let mut t = table();
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
     t.viewport_recu(&session, 1600, 900);
     t.sortie_creee(&session, 7, "\\\\.\\DISPLAY4".into(), (1280, 720));
 
     let effets = t.enfant_mort(&session);
-    assert_eq!(
-        effets,
-        vec![
-            Effet::DetruireSortie { sortie_pilote: 7, nom_sortie: "\\\\.\\DISPLAY4".into() },
-            Effet::AnnoncerFermeture { session: session.clone() },
-        ]
-    );
+    assert_eq!(effets, vec![Effet::AnnoncerFermeture { session: session.clone() }]);
     // La fenêtre reste dans la table, orpheline : c'est le contrôle
     // périodique (`relancer_les_orphelines`) qui la reproposera, plutôt
     // qu'un `SHOW` fortuit de Windows — voir la tâche 10.
     assert_eq!(t.etat(&session), Some(&Etat::SansSession));
+    assert_eq!(t.taille_sortie_de(&session), Some((1280, 720)), "la sortie est retenue, pas rendue");
 }
 
 #[test]

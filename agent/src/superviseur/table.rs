@@ -371,20 +371,19 @@ impl Table {
             return Vec::new();
         };
         entree.etat = Etat::SansSession;
-        let mut effets = Vec::new();
-        // Effacés pour qu'une seconde mort ne redemande pas deux fois la
-        // même destruction — la sortie ne sera rendue qu'ici, une fois.
-        if let Some(sortie_pilote) = entree.sortie_pilote.take() {
-            effets.push(Effet::DetruireSortie {
-                sortie_pilote,
-                // `nom_sortie` est toujours renseigné quand `sortie_pilote`
-                // l'est : `sortie_creee` pose les deux ensemble, jamais l'un
-                // sans l'autre. Le repli n'est donc pas atteignable.
-                nom_sortie: entree.nom_sortie.take().unwrap_or_default(),
-            });
-        }
-        effets.push(Effet::AnnoncerFermeture { session: session.clone() });
-        effets
+        // **La sortie est RETENUE, et c'est le correctif §7.1 du sous-bloc
+        // D3.** Elle était jusqu'ici rendue au pilote ici même, et la relance
+        // en recréait une — or c'est la CRÉATION d'une sortie qui fait
+        // abandonner le mutex de toutes les duplications DXGI déjà ouvertes
+        // (`0x887A0026`). Une seule fenêtre condamnée faisait ainsi passer le
+        // compteur de réouvertures de 6 à 38 sur des sessions parfaitement
+        // saines (recette D2, étape 4 du passage D).
+        //
+        // La contrepartie est que trois chemins, et non plus un, doivent
+        // rendre la sortie : `fenetre_disparue`, et les deux abandons de
+        // `relancer_les_orphelines`. Une sortie oubliée sur l'un d'eux
+        // consommerait le vivier de dix jusqu'à l'arrêt du superviseur.
+        vec![Effet::AnnoncerFermeture { session: session.clone() }]
     }
 
     /// Repropose les fenêtres dont la session est morte mais qui existent
@@ -431,9 +430,11 @@ impl Table {
                     fenetre: entree.fenetre,
                     titre: entree.titre.clone(),
                     etat: Etat::AttendLeViewport,
-                    sortie_pilote: None,
-                    nom_sortie: None,
-                    taille_sortie: None,
+                    // Reportés, comme `audio` et `relances` : la sortie
+                    // virtuelle survit à la relance (§7.1).
+                    sortie_pilote: entree.sortie_pilote,
+                    nom_sortie: entree.nom_sortie.clone(),
+                    taille_sortie: entree.taille_sortie,
                     audio: entree.audio,
                     relances: entree.relances + 1,
                     attente_depuis: Some(maintenant),

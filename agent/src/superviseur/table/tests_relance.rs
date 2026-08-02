@@ -35,11 +35,8 @@ fn une_fenetre_dont_l_enfant_meurt_est_reproposee() {
 
     let effets = t.enfant_mort(&session);
     assert!(
-        effets.contains(&Effet::DetruireSortie {
-            sortie_pilote: 42,
-            nom_sortie: "\\\\.\\DISPLAY7".into()
-        }),
-        "la sortie doit toujours être rendue au pilote"
+        !effets.iter().any(|e| matches!(e, Effet::DetruireSortie { .. })),
+        "depuis D3 §7.1 la sortie est retenue pour la relance, reçu {effets:?}"
     );
 
     // La fenêtre, elle, n'est pas oubliée : le contrôle périodique la
@@ -104,13 +101,14 @@ fn une_fenetre_orpheline_qui_se_ferme_quitte_la_table() {
     assert!(t.relancer_les_orphelines(std::time::Instant::now()).is_empty());
 }
 
-/// Deuxième moitié d'`enfant_mort`, jusqu'ici non affirmée : sans le `.take()`
-/// sur `sortie_pilote`/`nom_sortie`, un second appel redemanderait au pilote
-/// de détruire une sortie déjà rendue — sur un vivier de dix, un doublon de
-/// ce genre coûte cher (`.clone()` aurait fait passer les autres tests aussi
-/// bien que `.take()`, seule cette assertion les distingue).
+/// Deuxième moitié d'`enfant_mort`, jusqu'ici non affirmée. Avant le
+/// correctif §7.1 de D3, un `.take()` sur `sortie_pilote`/`nom_sortie`
+/// évitait qu'un second appel ne redemande au pilote de détruire une sortie
+/// déjà rendue. Depuis §7.1, `enfant_mort` ne détruit plus jamais rien : ce
+/// risque précis a disparu avec le `.take()` qui le prévenait. Ce qui reste à
+/// garantir, c'est qu'une seconde mort ne fait pas fuir la sortie retenue.
 #[test]
-fn un_second_enfant_mort_ne_redemande_pas_la_meme_destruction() {
+fn un_second_enfant_mort_ne_fait_pas_fuir_la_sortie_retenue() {
     let mut t = Table::nouvelle(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
@@ -122,17 +120,19 @@ fn un_second_enfant_mort_ne_redemande_pas_la_meme_destruction() {
 
     let premier = t.enfant_mort(&session);
     assert!(
-        premier.contains(&Effet::DetruireSortie {
-            sortie_pilote: 42,
-            nom_sortie: "\\\\.\\DISPLAY7".into(),
-        }),
-        "la première mort doit rendre la sortie"
+        !premier.iter().any(|e| matches!(e, Effet::DetruireSortie { .. })),
+        "depuis D3 §7.1 la première mort ne rend déjà plus la sortie, reçu {premier:?}"
     );
 
     let second = t.enfant_mort(&session);
     assert!(
         !second.iter().any(|e| matches!(e, Effet::DetruireSortie { .. })),
-        "une seconde mort ne doit pas redemander la même destruction, reçu {second:?}"
+        "une seconde mort ne doit pas non plus la rendre, reçu {second:?}"
+    );
+    assert_eq!(
+        t.nom_sortie_de(&session),
+        Some("\\\\.\\DISPLAY7"),
+        "la sortie doit toujours être retenue après deux morts"
     );
 }
 

@@ -56,3 +56,45 @@ fn la_taille_survit_a_la_mort_de_l_enfant() {
         "la taille accompagne la sortie retenue"
     );
 }
+
+/// Le correctif §7.1 de D3. Avant lui, `enfant_mort` rendait la sortie au
+/// pilote et la relance en recréait une — et c'est cette RECRÉATION qui
+/// abandonne le mutex de toutes les duplications voisines (D2, 44 pertes
+/// d'accès encaissées ; une seule fenêtre condamnée faisait passer le
+/// compteur de réouvertures de 6 à 38).
+#[test]
+fn la_mort_de_l_enfant_ne_rend_plus_la_sortie_au_pilote() {
+    let mut t = Table::nouvelle(4);
+    let session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
+
+    let effets = t.enfant_mort(&session);
+
+    assert!(
+        !effets
+            .iter()
+            .any(|e| matches!(e, Effet::DetruireSortie { .. })),
+        "la sortie est retenue pour la relance, reçu {effets:?}"
+    );
+    assert!(effets.contains(&Effet::AnnoncerFermeture { session: session.clone() }));
+}
+
+#[test]
+fn l_entree_relancee_porte_encore_sa_sortie() {
+    let mut t = Table::nouvelle(4);
+    let session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
+    t.enfant_mort(&session);
+
+    let effets = t.relancer_les_orphelines(std::time::Instant::now());
+    let Some(Effet::AnnoncerOuverture { session: neuve, .. }) = effets.first() else {
+        panic!("réouverture attendue, reçu {effets:?}");
+    };
+    let neuve = neuve.clone();
+
+    assert_ne!(neuve, session, "un identifiant réutilisé apparierait un message tardif");
+    assert_eq!(
+        t.nom_sortie_de(&neuve),
+        Some("\\\\.\\DISPLAY7"),
+        "la sortie suit la fenêtre dans sa nouvelle session"
+    );
+    assert_eq!(t.taille_sortie_de(&neuve), Some((1280, 720)));
+}
