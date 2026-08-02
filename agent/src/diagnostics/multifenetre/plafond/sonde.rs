@@ -1,10 +1,27 @@
-//! La sonde minimale : D duplications DXGI, tenues, et rien d'autre.
+//! La sonde minimale : D duplications DXGI, tenues, et le moins possible
+//! autour — **« rien d'autre » a une portée précise, pas absolue.**
 //!
-//! **Rien d'autre est le point.** Ni périphérique D3D11 d'encodage, ni
-//! encodeur, ni fenêtre, ni WebRTC. Si le refus de la 5ᵉ duplication observé
-//! au sous-bloc D2 ne se reproduit pas ici, c'est que le plafond ne porte pas
-//! sur la duplication mais sur ce qui l'accompagnait dans l'enfant (hypothèse
-//! H3 de la spec) — et c'est un résultat, pas une panne de la sonde.
+//! **Ce qui EST exclu** : encodeur (NVENC/Media Foundation), convertisseur de
+//! couleur, fenêtre, WebRTC. Si le refus de la 5ᵉ duplication observé au
+//! sous-bloc D2 ne se reproduit pas ici, c'est que le plafond ne porte pas sur
+//! la duplication mais sur l'un de CES éléments-là (hypothèse H3 de la spec)
+//! — et c'est un résultat, pas une panne de la sonde.
+//!
+//! **Ce qui N'EST PAS exclu, et ne peut pas l'être avec l'interface
+//! imposée** : `DesktopCapture::sur_sortie` appelle `ouvrir`, qui appelle
+//! `creer_peripherique` (`agent/src/capture/ouverture.rs:83-138`) — et cette
+//! fonction construit INÉVITABLEMENT un `ID3D11Device` + `ID3D11DeviceContext`
+//! réels par duplication (`D3D11CreateDevice` avec
+//! `D3D11_CREATE_DEVICE_BGRA_SUPPORT`), puis leur pose
+//! `SetMultithreadProtected(true)` — précisément la préparation documentée
+//! comme nécessaire au partage Media Foundation qu'utiliserait un encodeur.
+//! La sonde suit cette interface sans la modifier (la modifier était hors
+//! périmètre) ; elle ne PEUT pas ouvrir une duplication sans ce périphérique.
+//! **Conséquence pour la lecture de la campagne** : l'étage « ajouter un
+//! périphérique D3D11 » de l'escalade H3 est déjà franchi PAR CONSTRUCTION à
+//! ce rang de sonde — si H3 doit être approfondie par une sonde plus épaisse,
+//! le premier étage à y ajouter est l'encodeur, pas le périphérique, déjà
+//! présent ici.
 //!
 //! Le rang de la sonde vient de `MULTIFENETRE_PLAFOND_RANG` ; chaque ligne le
 //! porte, car `agent.log` mêle le porteur et toutes ses sondes par héritage de
@@ -37,10 +54,28 @@ pub(super) fn chemin_verdict(rang: u8) -> std::path::PathBuf {
 // ouvrirait `sonder` à tout le crate sans raison : rien en dehors de
 // `multifenetre` n'en a besoin.
 pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
-    let rang: u8 = std::env::var("MULTIFENETRE_PLAFOND_RANG")
-        .unwrap_or_else(|_| "0".to_string())
-        .parse()
-        .context("MULTIFENETRE_PLAFOND_RANG doit être un entier")?;
+    let rang_brute = std::env::var("MULTIFENETRE_PLAFOND_RANG").unwrap_or_else(|_| "0".to_string());
+    let rang: u8 = match rang_brute.parse().context("MULTIFENETRE_PLAFOND_RANG doit être un entier")
+    {
+        Ok(rang) => rang,
+        Err(erreur) => {
+            // Sans ce bloc, le `?` d'origine sortait AVANT toute écriture de
+            // verdict : le porteur (Task 10) borne son attente à 30 s et rend
+            // MORTE si rien n'arrive, mais un rang malformé se lirait alors
+            // comme un plantage de sonde (0xc0000005 et consorts) plutôt que
+            // comme ce qu'il est. Un `u8` n'existe pas ici pour nommer le
+            // fichier que `chemin_verdict` produirait normalement : on dépose
+            // donc un verdict de secours nommé d'après la valeur BRUTE reçue.
+            // Best-effort (l'échec d'écriture n'aggrave rien : la trace
+            // ci-dessous reste le diagnostic de référence), et sans risque de
+            // collision avec une sonde légitime — un rang qui aurait collé à
+            // un `u8` valide aurait pris la branche `Ok` ci-dessus.
+            tracing::error!(rang_brute = %rang_brute, %erreur, "MULTIFENETRE_PLAFOND_RANG illisible");
+            let secours = std::env::temp_dir().join(format!("plafond-sonde-{rang_brute}.verdict"));
+            let _ = std::fs::write(&secours, format!("KO RANG_INVALIDE {rang_brute}"));
+            return Err(erreur);
+        }
+    };
 
     tracing::info!(sonde = rang, sorties = ?sorties, "sonde démarrée");
 
