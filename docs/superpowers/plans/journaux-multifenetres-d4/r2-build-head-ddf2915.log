@@ -1,0 +1,607 @@
+sources synchronisées vers /media/vm/dev
+quota WinRM MaxMemoryPerShellMB déjà suffisant (4096 Mo)
+cargo : warning: method `nom` is never used
+Au caract
+re Ligne:1 : 148
++ ... IMUM = '3.5'; Set-Location C:\dev; cargo build --release 2>&1 | Out-S ...
++                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: method `nom` is never used:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  --> agent\src\diagnostics\multifenetre\voies.rs:29:8
+   |
+28 | pub(super) trait VoieDeCapture {
+   |                  ------------- method in this trait
+29 |     fn nom(&self) -> &'static str;
+   |        ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `nombre` is never used
+  --> agent\src\moniteurs_virtuels.rs:80:12
+   |
+66 | impl<'p> Sorties<'p> {
+   | -------------------- method in this implementation
+...
+80 |     pub fn nombre(&self) -> usize {
+   |            ^^^^^^
+
+warning: methods `etat` and `taille_sortie_de` are never used
+   --> agent\src\superviseur\table.rs:215:12
+    |
+205 | impl Table {
+    | ---------- methods in this implementation
+...
+215 |     pub fn etat(&self, session: &IdSession) -> Option<&Etat> {
+    |            ^^^^
+...
+287 |     pub fn taille_sortie_de(&self, session: &IdSession) -> Option<(u32, u32)> {
+    |            ^^^^^^^^^^^^^^^^
+
+warning: trait `Canal` is never used
+  --> agent\src\capteur\distante.rs:20:11
+   |
+20 | pub trait Canal {
+   |           ^^^^^
+
+warning: struct `Rattachee` is never constructed
+  --> agent\src\capteur\distante.rs:29:12
+   |
+29 | pub struct Rattachee {
+   |            ^^^^^^^^^
+
+warning: enum `Recu` is never used
+  --> agent\src\capteur\distante.rs:37:10
+   |
+37 | pub enum Recu {
+   |          ^^^^
+
+warning: struct `SourceDistante` is never constructed
+  --> agent\src\capteur\distante.rs:42:12
+   |
+42 | pub struct SourceDistante {
+   |            ^^^^^^^^^^^^^^
+
+warning: associated items `nouvelle` and `commander_simple` are never used
+  --> agent\src\capteur\distante.rs:56:12
+   |
+55 | impl SourceDistante {
+   | ------------------- associated items in this implementation
+56 |     pub fn nouvelle(
+   |            ^^^^^^^^
+...
+74 |     fn commander_simple(&mut self, message: VersCapteur) -> Result<()> {
+   |        ^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> agent\src\capteur\protocole.rs:72:11
+   |
+72 |     Image(AccessUnit),
+   |     ----- ^^^^^^^^^^
+   |     |
+   |     field in this variant
+   |
+   = note: `Trame` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code 
+analysis
+help: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or 
+remove the field
+   |
+72 -     Image(AccessUnit),
+72 +     Image(()),
+   |
+
+warning: constant `DUREE_FENETRE_CANAL` is never used
+  --> agent\src\capteur\reprise.rs:21:11
+   |
+21 | pub const DUREE_FENETRE_CANAL: Duration = Duration::from_secs(15);
+   |           ^^^^^^^^^^^^^^^^^^^
+
+warning: constant `PAS_RATTACHEMENT` is never used
+  --> agent\src\capteur\reprise.rs:31:11
+   |
+31 | pub const PAS_RATTACHEMENT: Duration = Duration::from_millis(250);
+   |           ^^^^^^^^^^^^^^^^
+
+warning: struct `FenetreCanal` is never constructed
+  --> agent\src\capteur\reprise.rs:37:12
+   |
+37 | pub struct FenetreCanal {
+   |            ^^^^^^^^^^^^
+
+warning: associated items `nouvelle`, `rupture`, `peut_reessayer`, and `succes` are never used
+  --> agent\src\capteur\reprise.rs:45:12
+   |
+44 | impl FenetreCanal {
+   | ----------------- associated items in this implementation
+45 |     pub fn nouvelle() -> Self {
+   |            ^^^^^^^^
+...
+51 |     pub fn rupture(&mut self, maintenant: Instant) -> bool {
+   |            ^^^^^^^
+...
+63 |     pub fn peut_reessayer(&mut self, maintenant: Instant) -> bool {
+   |            ^^^^^^^^^^^^^^
+...
+76 |     pub fn succes(&mut self) {
+   |            ^^^^^^
+
+warning: constant `DEVICE_REMOVED` is never used
+  --> agent\src\capture\reprise.rs:30:11
+   |
+30 | pub const DEVICE_REMOVED: i32 = 0x887A0005u32 as i32;
+   |           ^^^^^^^^^^^^^^
+
+warning: constant `ATTENTE_EXPIREE` is never used
+  --> agent\src\capture\reprise.rs:35:11
+   |
+35 | pub const ATTENTE_EXPIREE: i32 = 0x887A0027u32 as i32;
+   |           ^^^^^^^^^^^^^^^
+
+warning: method `cible` is never used
+   --> agent\src\capture.rs:212:12
+    |
+ 78 | impl DesktopCapture {
+    | ------------------- method in this implementation
+...
+212 |     pub fn cible(&self) -> &CibleCapture {
+    |            ^^^^^
+
+warning: field `capture` is never read
+   --> agent\src\encode.rs:289:5
+    |
+253 | pub struct H264Encoder {
+    |            ----------- field in this struct
+...
+289 |     capture: (u32, u32),
+    |     ^^^^^^^
+
+warning: function `client_size` is never used
+  --> agent\src\window.rs:79:8
+   |
+79 | pub fn client_size(hwnd: HWND) -> Result<(u32, u32)> {
+   |        ^^^^^^^^^^^
+
+warning: method `hwnd` is never used
+   --> agent\src\windows_source.rs:209:12
+    |
+126 | impl WindowsSource {
+    | ------------------ method in this implementation
+...
+209 |     pub fn hwnd(&self) -> HWND {
+    |            ^^^^
+
+warning: `agent` (bin "agent") generated 19 warnings
+    Finished `release` profile [optimized] target(s) in 0.12ssources synchronisées vers /media/vm/dev
+quota WinRM MaxMemoryPerShellMB déjà suffisant (4096 Mo)
+cargo : warning: method `nom` is never used
+Au caract
+re Ligne:1 : 148
++ ... IMUM = '3.5'; Set-Location C:\dev; cargo build --release 2>&1 | Out-S ...
++                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: method `nom` is never used:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  --> agent\src\diagnostics\multifenetre\voies.rs:29:8
+   |
+28 | pub(super) trait VoieDeCapture {
+   |                  ------------- method in this trait
+29 |     fn nom(&self) -> &'static str;
+   |        ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `nombre` is never used
+  --> agent\src\moniteurs_virtuels.rs:80:12
+   |
+66 | impl<'p> Sorties<'p> {
+   | -------------------- method in this implementation
+...
+80 |     pub fn nombre(&self) -> usize {
+   |            ^^^^^^
+
+warning: methods `etat` and `taille_sortie_de` are never used
+   --> agent\src\superviseur\table.rs:215:12
+    |
+205 | impl Table {
+    | ---------- methods in this implementation
+...
+215 |     pub fn etat(&self, session: &IdSession) -> Option<&Etat> {
+    |            ^^^^
+...
+287 |     pub fn taille_sortie_de(&self, session: &IdSession) -> Option<(u32, u32)> {
+    |            ^^^^^^^^^^^^^^^^
+
+warning: trait `Canal` is never used
+  --> agent\src\capteur\distante.rs:20:11
+   |
+20 | pub trait Canal {
+   |           ^^^^^
+
+warning: struct `Rattachee` is never constructed
+  --> agent\src\capteur\distante.rs:29:12
+   |
+29 | pub struct Rattachee {
+   |            ^^^^^^^^^
+
+warning: enum `Recu` is never used
+  --> agent\src\capteur\distante.rs:37:10
+   |
+37 | pub enum Recu {
+   |          ^^^^
+
+warning: struct `SourceDistante` is never constructed
+  --> agent\src\capteur\distante.rs:42:12
+   |
+42 | pub struct SourceDistante {
+   |            ^^^^^^^^^^^^^^
+
+warning: associated items `nouvelle` and `commander_simple` are never used
+  --> agent\src\capteur\distante.rs:56:12
+   |
+55 | impl SourceDistante {
+   | ------------------- associated items in this implementation
+56 |     pub fn nouvelle(
+   |            ^^^^^^^^
+...
+74 |     fn commander_simple(&mut self, message: VersCapteur) -> Result<()> {
+   |        ^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> agent\src\capteur\protocole.rs:72:11
+   |
+72 |     Image(AccessUnit),
+   |     ----- ^^^^^^^^^^
+   |     |
+   |     field in this variant
+   |
+   = note: `Trame` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code 
+analysis
+help: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or 
+remove the field
+   |
+72 -     Image(AccessUnit),
+72 +     Image(()),
+   |
+
+warning: constant `DUREE_FENETRE_CANAL` is never used
+  --> agent\src\capteur\reprise.rs:21:11
+   |
+21 | pub const DUREE_FENETRE_CANAL: Duration = Duration::from_secs(15);
+   |           ^^^^^^^^^^^^^^^^^^^
+
+warning: constant `PAS_RATTACHEMENT` is never used
+  --> agent\src\capteur\reprise.rs:31:11
+   |
+31 | pub const PAS_RATTACHEMENT: Duration = Duration::from_millis(250);
+   |           ^^^^^^^^^^^^^^^^
+
+warning: struct `FenetreCanal` is never constructed
+  --> agent\src\capteur\reprise.rs:37:12
+   |
+37 | pub struct FenetreCanal {
+   |            ^^^^^^^^^^^^
+
+warning: associated items `nouvelle`, `rupture`, `peut_reessayer`, and `succes` are never used
+  --> agent\src\capteur\reprise.rs:45:12
+   |
+44 | impl FenetreCanal {
+   | ----------------- associated items in this implementation
+45 |     pub fn nouvelle() -> Self {
+   |            ^^^^^^^^
+...
+51 |     pub fn rupture(&mut self, maintenant: Instant) -> bool {
+   |            ^^^^^^^
+...
+63 |     pub fn peut_reessayer(&mut self, maintenant: Instant) -> bool {
+   |            ^^^^^^^^^^^^^^
+...
+76 |     pub fn succes(&mut self) {
+   |            ^^^^^^
+
+warning: constant `DEVICE_REMOVED` is never used
+  --> agent\src\capture\reprise.rs:30:11
+   |
+30 | pub const DEVICE_REMOVED: i32 = 0x887A0005u32 as i32;
+   |           ^^^^^^^^^^^^^^
+
+warning: constant `ATTENTE_EXPIREE` is never used
+  --> agent\src\capture\reprise.rs:35:11
+   |
+35 | pub const ATTENTE_EXPIREE: i32 = 0x887A0027u32 as i32;
+   |           ^^^^^^^^^^^^^^^
+
+warning: method `cible` is never used
+   --> agent\src\capture.rs:212:12
+    |
+ 78 | impl DesktopCapture {
+    | ------------------- method in this implementation
+...
+212 |     pub fn cible(&self) -> &CibleCapture {
+    |            ^^^^^
+
+warning: field `capture` is never read
+   --> agent\src\encode.rs:289:5
+    |
+253 | pub struct H264Encoder {
+    |            ----------- field in this struct
+...
+289 |     capture: (u32, u32),
+    |     ^^^^^^^
+
+warning: function `client_size` is never used
+  --> agent\src\window.rs:79:8
+   |
+79 | pub fn client_size(hwnd: HWND) -> Result<(u32, u32)> {
+   |        ^^^^^^^^^^^
+
+warning: method `hwnd` is never used
+   --> agent\src\windows_source.rs:209:12
+    |
+126 | impl WindowsSource {
+    | ------------------ method in this implementation
+...
+209 |     pub fn hwnd(&self) -> HWND {
+    |            ^^^^
+
+warning: `agent` (bin "agent") generated 19 warnings
+    Finished `release` profile [optimized] target(s) in 0.13ssources synchronisées vers /media/vm/dev
+quota WinRM MaxMemoryPerShellMB déjà suffisant (4096 Mo)
+cargo : warning: method `nom` is never used
+Au caract
+re Ligne:1 : 148
++ ... IMUM = '3.5'; Set-Location C:\dev; cargo build --release 2>&1 | Out-S ...
++                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: method `nom` is never used:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  --> agent\src\diagnostics\multifenetre\voies.rs:29:8
+   |
+28 | pub(super) trait VoieDeCapture {
+   |                  ------------- method in this trait
+29 |     fn nom(&self) -> &'static str;
+   |        ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `nombre` is never used
+  --> agent\src\moniteurs_virtuels.rs:80:12
+   |
+66 | impl<'p> Sorties<'p> {
+   | -------------------- method in this implementation
+...
+80 |     pub fn nombre(&self) -> usize {
+   |            ^^^^^^
+
+warning: methods `etat` and `taille_sortie_de` are never used
+   --> agent\src\superviseur\table.rs:215:12
+    |
+205 | impl Table {
+    | ---------- methods in this implementation
+...
+215 |     pub fn etat(&self, session: &IdSession) -> Option<&Etat> {
+    |            ^^^^
+...
+287 |     pub fn taille_sortie_de(&self, session: &IdSession) -> Option<(u32, u32)> {
+    |            ^^^^^^^^^^^^^^^^
+
+warning: trait `Canal` is never used
+  --> agent\src\capteur\distante.rs:20:11
+   |
+20 | pub trait Canal {
+   |           ^^^^^
+
+warning: struct `Rattachee` is never constructed
+  --> agent\src\capteur\distante.rs:29:12
+   |
+29 | pub struct Rattachee {
+   |            ^^^^^^^^^
+
+warning: enum `Recu` is never used
+  --> agent\src\capteur\distante.rs:37:10
+   |
+37 | pub enum Recu {
+   |          ^^^^
+
+warning: struct `SourceDistante` is never constructed
+  --> agent\src\capteur\distante.rs:42:12
+   |
+42 | pub struct SourceDistante {
+   |            ^^^^^^^^^^^^^^
+
+warning: associated items `nouvelle` and `commander_simple` are never used
+  --> agent\src\capteur\distante.rs:56:12
+   |
+55 | impl SourceDistante {
+   | ------------------- associated items in this implementation
+56 |     pub fn nouvelle(
+   |            ^^^^^^^^
+...
+74 |     fn commander_simple(&mut self, message: VersCapteur) -> Result<()> {
+   |        ^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> agent\src\capteur\protocole.rs:72:11
+   |
+72 |     Image(AccessUnit),
+   |     ----- ^^^^^^^^^^
+   |     |
+   |     field in this variant
+   |
+   = note: `Trame` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code 
+analysis
+help: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or 
+remove the field
+   |
+72 -     Image(AccessUnit),
+72 +     Image(()),
+   |
+
+warning: constant `DUREE_FENETRE_CANAL` is never used
+  --> agent\src\capteur\reprise.rs:21:11
+   |
+21 | pub const DUREE_FENETRE_CANAL: Duration = Duration::from_secs(15);
+   |           ^^^^^^^^^^^^^^^^^^^
+
+warning: constant `PAS_RATTACHEMENT` is never used
+  --> agent\src\capteur\reprise.rs:31:11
+   |
+31 | pub const PAS_RATTACHEMENT: Duration = Duration::from_millis(250);
+   |           ^^^^^^^^^^^^^^^^
+
+warning: struct `FenetreCanal` is never constructed
+  --> agent\src\capteur\reprise.rs:37:12
+   |
+37 | pub struct FenetreCanal {
+   |            ^^^^^^^^^^^^
+
+warning: associated items `nouvelle`, `rupture`, `peut_reessayer`, and `succes` are never used
+  --> agent\src\capteur\reprise.rs:45:12
+   |
+44 | impl FenetreCanal {
+   | ----------------- associated items in this implementation
+45 |     pub fn nouvelle() -> Self {
+   |            ^^^^^^^^
+...
+51 |     pub fn rupture(&mut self, maintenant: Instant) -> bool {
+   |            ^^^^^^^
+...
+63 |     pub fn peut_reessayer(&mut self, maintenant: Instant) -> bool {
+   |            ^^^^^^^^^^^^^^
+...
+76 |     pub fn succes(&mut self) {
+   |            ^^^^^^
+
+warning: constant `DEVICE_REMOVED` is never used
+  --> agent\src\capture\reprise.rs:30:11
+   |
+30 | pub const DEVICE_REMOVED: i32 = 0x887A0005u32 as i32;
+   |           ^^^^^^^^^^^^^^
+
+warning: constant `ATTENTE_EXPIREE` is never used
+  --> agent\src\capture\reprise.rs:35:11
+   |
+35 | pub const ATTENTE_EXPIREE: i32 = 0x887A0027u32 as i32;
+   |           ^^^^^^^^^^^^^^^
+
+warning: method `cible` is never used
+   --> agent\src\capture.rs:212:12
+    |
+ 78 | impl DesktopCapture {
+    | ------------------- method in this implementation
+...
+212 |     pub fn cible(&self) -> &CibleCapture {
+    |            ^^^^^
+
+warning: field `capture` is never read
+   --> agent\src\encode.rs:289:5
+    |
+253 | pub struct H264Encoder {
+    |            ----------- field in this struct
+...
+289 |     capture: (u32, u32),
+    |     ^^^^^^^
+
+warning: function `client_size` is never used
+  --> agent\src\window.rs:79:8
+   |
+79 | pub fn client_size(hwnd: HWND) -> Result<(u32, u32)> {
+   |        ^^^^^^^^^^^
+
+warning: method `hwnd` is never used
+   --> agent\src\windows_source.rs:209:12
+    |
+126 | impl WindowsSource {
+    | ------------------ method in this implementation
+...
+209 |     pub fn hwnd(&self) -> HWND {
+    |            ^^^^
+
+warning: `agent` (bin "agent") generated 19 warnings
+    Finished `release` profile [optimized] target(s) in 0.13ssources synchronisées vers /media/vm/dev
+quota WinRM MaxMemoryPerShellMB déjà suffisant (4096 Mo)
+cargo :    Compiling agent v0.1.0 (C:\dev\agent)
+Au caract
+re Ligne:1 : 148
++ ... IMUM = '3.5'; Set-Location C:\dev; cargo build --release 2>&1 | Out-S ...
++                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling agent v0.1.0 (C:\dev\agent):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+warning: method `nom` is never used
+  --> agent\src\diagnostics\multifenetre\voies.rs:29:8
+   |
+28 | pub(super) trait VoieDeCapture {
+   |                  ------------- method in this trait
+29 |     fn nom(&self) -> &'static str;
+   |        ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `nombre` is never used
+  --> agent\src\moniteurs_virtuels.rs:80:12
+   |
+66 | impl<'p> Sorties<'p> {
+   | -------------------- method in this implementation
+...
+80 |     pub fn nombre(&self) -> usize {
+   |            ^^^^^^
+
+warning: methods `etat` and `taille_sortie_de` are never used
+   --> agent\src\superviseur\table.rs:215:12
+    |
+205 | impl Table {
+    | ---------- methods in this implementation
+...
+215 |     pub fn etat(&self, session: &IdSession) -> Option<&Etat> {
+    |            ^^^^
+...
+287 |     pub fn taille_sortie_de(&self, session: &IdSession) -> Option<(u32, u32)> {
+    |            ^^^^^^^^^^^^^^^^
+
+warning: constant `DEVICE_REMOVED` is never used
+  --> agent\src\capture\reprise.rs:30:11
+   |
+30 | pub const DEVICE_REMOVED: i32 = 0x887A0005u32 as i32;
+   |           ^^^^^^^^^^^^^^
+
+warning: constant `ATTENTE_EXPIREE` is never used
+  --> agent\src\capture\reprise.rs:35:11
+   |
+35 | pub const ATTENTE_EXPIREE: i32 = 0x887A0027u32 as i32;
+   |           ^^^^^^^^^^^^^^^
+
+warning: method `cible` is never used
+   --> agent\src\capture.rs:212:12
+    |
+ 78 | impl DesktopCapture {
+    | ------------------- method in this implementation
+...
+212 |     pub fn cible(&self) -> &CibleCapture {
+    |            ^^^^^
+
+warning: field `capture` is never read
+   --> agent\src\encode.rs:289:5
+    |
+253 | pub struct H264Encoder {
+    |            ----------- field in this struct
+...
+289 |     capture: (u32, u32),
+    |     ^^^^^^^
+
+warning: function `client_size` is never used
+  --> agent\src\window.rs:79:8
+   |
+79 | pub fn client_size(hwnd: HWND) -> Result<(u32, u32)> {
+   |        ^^^^^^^^^^^
+
+warning: method `hwnd` is never used
+   --> agent\src\windows_source.rs:209:12
+    |
+126 | impl WindowsSource {
+    | ------------------ method in this implementation
+...
+209 |     pub fn hwnd(&self) -> HWND {
+    |            ^^^^
+
+warning: `agent` (bin "agent") generated 9 warnings
+    Finished `release` profile [optimized] target(s) in 10.32s

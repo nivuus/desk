@@ -1,0 +1,217 @@
+[    0.0s 2026-08-02T20:17:47.851Z] PHASE=capteur N_CIBLE=4 chrome pid=2001764 port=9991
+[    0.7s 2026-08-02T20:17:48.562Z] identité du navigateur : pid écoutant=2001764 pid lancé=2001764 version=Chrome/150.0.7871.181
+[    0.7s 2026-08-02T20:17:48.583Z] + page attachée  session=5DC4DF0E url=about:blank
+[    0.8s 2026-08-02T20:17:48.593Z] >>> ÉTAPE 0 : nettoyage — état de départ SANS fenêtre
+[   13.7s 2026-08-02T20:18:01.538Z] --- fenêtres VM (avant superviseur) ---
+
+[   13.7s 2026-08-02T20:18:01.563Z] + page attachée  session=31B57021 url=http://192.168.3.1:5173/shell.html
+[   13.7s 2026-08-02T20:18:01.586Z] shell demandée http://192.168.3.1:5173/shell.html
+[   16.8s 2026-08-02T20:18:04.593Z] statut shell : bureau connecté
+[   16.8s 2026-08-02T20:18:04.593Z] >>> lancement du superviseur (SUPERVISEUR=1)
+[   17.2s 2026-08-02T20:18:05.088Z] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   23.3s 2026-08-02T20:18:11.118Z] MARQUEURS (superviseur démarré, 0 fenêtre) {"lignes":15,"cloture":0,"capteur_lance":1,"capteur_relance":0,"capteur_termine":0,"attachee_capteur":0,"rattache":0,"refus_capteur":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":0,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":0,"enfant_termine":0,"abandon_relances":0,"erreurs":0,"refus_debit":0,"refus_taille":0,"reponse_capteur":0,"fin_fenetre":0,"cadence_capteur":0,"cadence_piste":0}
+[   23.7s 2026-08-02T20:18:11.526Z] PIDs agent après démarrage : 21376 34340
+[   23.7s 2026-08-02T20:18:11.527Z] >>> OUVERTURE fenêtre 1 (attendu : 1 pages)
+[   24.2s 2026-08-02T20:18:12.049Z] + page attachée  session=59A0EC0F url=
+[   24.3s 2026-08-02T20:18:12.166Z] - page détachée   session=59A0EC0F url=http://192.168.3.1:5173/?session=w-1
+[   24.5s 2026-08-02T20:18:12.348Z] + page attachée  session=746E477F url=
+[   26.2s 2026-08-02T20:18:14.027Z]    fenêtre 1 : page ouverte en 2s (total 1)
+[   26.3s 2026-08-02T20:18:14.135Z] SURVIE VM (après ouverture 1) virsh="en cours d’exécution" acces_partage=OUI
+[   29.3s 2026-08-02T20:18:17.138Z] >>> OUVERTURE fenêtre 2 (attendu : 2 pages)
+[   29.8s 2026-08-02T20:18:17.652Z] + page attachée  session=34E2984E url=
+[   29.9s 2026-08-02T20:18:17.774Z] - page détachée   session=34E2984E url=
+[   30.1s 2026-08-02T20:18:17.962Z] + page attachée  session=EAD77CF5 url=
+[   31.7s 2026-08-02T20:18:19.588Z]    fenêtre 2 : page ouverte en 2s (total 2)
+[   31.8s 2026-08-02T20:18:19.664Z] SURVIE VM (après ouverture 2) virsh="en cours d’exécution" acces_partage=OUI
+[   34.8s 2026-08-02T20:18:22.666Z] >>> OUVERTURE fenêtre 3 (attendu : 3 pages)
+[   35.3s 2026-08-02T20:18:23.134Z] + page attachée  session=49740455 url=
+[   35.4s 2026-08-02T20:18:23.248Z] - page détachée   session=49740455 url=
+[   35.6s 2026-08-02T20:18:23.432Z] + page attachée  session=C849C5B4 url=
+[   37.2s 2026-08-02T20:18:25.069Z]    fenêtre 3 : page ouverte en 2s (total 3)
+[   37.3s 2026-08-02T20:18:25.164Z] SURVIE VM (après ouverture 3) virsh="en cours d’exécution" acces_partage=OUI
+[   40.3s 2026-08-02T20:18:28.164Z] >>> OUVERTURE fenêtre 4 (attendu : 4 pages)
+[   41.0s 2026-08-02T20:18:28.799Z] + page attachée  session=6E97B110 url=
+[   41.1s 2026-08-02T20:18:28.927Z] - page détachée   session=6E97B110 url=
+[   41.2s 2026-08-02T20:18:28.995Z] + page attachée  session=B88DE53E url=
+[   42.8s 2026-08-02T20:18:30.684Z]    fenêtre 4 : page ouverte en 2s (total 4)
+[   43.0s 2026-08-02T20:18:30.797Z] SURVIE VM (après ouverture 4) virsh="en cours d’exécution" acces_partage=OUI
+[   54.1s 2026-08-02T20:18:41.948Z] ÉTAT SHELL (avant la mise à mort du capteur) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[   54.1s 2026-08-02T20:18:41.948Z]   pages d'application ouvertes (4) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8
+[   54.2s 2026-08-02T20:18:42.005Z] MARQUEURS (AVANT mise à mort) {"lignes":199,"cloture":0,"capteur_lance":1,"capteur_relance":0,"capteur_termine":0,"attachee_capteur":4,"rattache":0,"refus_capteur":0,"reouverture":6,"mutex_abandonne":6,"sortie_creee":4,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":4,"enfant_termine":0,"abandon_relances":0,"erreurs":0,"refus_debit":0,"refus_taille":0,"reponse_capteur":0,"fin_fenetre":0,"cadence_capteur":6,"cadence_piste":6}
+[   54.3s 2026-08-02T20:18:42.110Z] STATS (AVANT mise à mort — relevé 1) {"w:w-2":{"etat":"connected","images":1938,"l":1280,"h":720,"octets":35532546,"rtt":0.012,"horloge":1785701922042},"w:w-4":{"etat":"connected","images":1251,"l":1280,"h":720,"octets":28826407,"rtt":0.004,"horloge":1785701922045},"w:w-6":{"etat":"connected","images":992,"l":1280,"h":720,"octets":22037060,"rtt":0.028,"horloge":1785701922046},"w:w-8":{"etat":"connected","images":411,"l":1280,"h":720,"octets":10886727,"rtt":0.02,"horloge":1785701922046}}
+[   64.3s 2026-08-02T20:18:52.170Z] STATS (AVANT mise à mort — relevé 2) {"w:w-2":{"etat":"connected","images":2547,"l":1280,"h":720,"octets":49155288,"rtt":0.004,"horloge":1785701932129},"w:w-4":{"etat":"connected","images":1672,"l":1280,"h":720,"octets":41103571,"rtt":0.005,"horloge":1785701932132},"w:w-6":{"etat":"connected","images":1576,"l":1280,"h":720,"octets":34774149,"rtt":0.006,"horloge":1785701932135},"w:w-8":{"etat":"connected","images":864,"l":1280,"h":720,"octets":20680056,"rtt":0.007,"horloge":1785701932138}}
+[   64.3s 2026-08-02T20:18:52.171Z] CADENCE NAVIGATEUR (AVANT mise à mort) {
+ "w:w-2": {
+  "images": 609,
+  "secondes": 10.087,
+  "i_par_s": 60.37,
+  "taille": "1280x720",
+  "octets": 13622742,
+  "kbps": 10804,
+  "etat": "connected"
+ },
+ "w:w-4": {
+  "images": 421,
+  "secondes": 10.087,
+  "i_par_s": 41.74,
+  "taille": "1280x720",
+  "octets": 12277164,
+  "kbps": 9737,
+  "etat": "connected"
+ },
+ "w:w-6": {
+  "images": 584,
+  "secondes": 10.089,
+  "i_par_s": 57.88,
+  "taille": "1280x720",
+  "octets": 12737089,
+  "kbps": 10100,
+  "etat": "connected"
+ },
+ "w:w-8": {
+  "images": 453,
+  "secondes": 10.092,
+  "i_par_s": 44.89,
+  "taille": "1280x720",
+  "octets": 9793329,
+  "kbps": 7763,
+  "etat": "connected"
+ }
+}
+[   64.4s 2026-08-02T20:18:52.211Z] PIDs capteur vus dans le journal : [34340] — cible = 34340
+[   65.1s 2026-08-02T20:18:52.971Z] PIDs agent vivants avant la mise à mort : 21376 23704 33528 33864 34340 36760
+[   65.1s 2026-08-02T20:18:52.971Z] >>> MISE À MORT DU CAPTEUR par PID 34340 (jamais pkill -f) à 2026-08-02T20:18:52.971Z
+[   66.1s 2026-08-02T20:18:53.939Z] résultat de la mise à mort (True = le PID a disparu) : False
+[   67.1s 2026-08-02T20:18:54.977Z]    relance ET 4 rattachements vus à t+1s
+[   71.1s 2026-08-02T20:18:58.983Z] STATS (APRÈS relance du capteur — relevé 1) {"w:w-2":{"etat":"connected","images":2904,"l":1280,"h":720,"octets":56075850,"rtt":0.005,"horloge":1785701938981},"w:w-4":{"etat":"connected","images":2015,"l":1280,"h":720,"octets":47909663,"rtt":0.009,"horloge":1785701938981},"w:w-6":{"etat":"connected","images":1915,"l":1280,"h":720,"octets":40590663,"rtt":0.008,"horloge":1785701938980},"w:w-8":{"etat":"connected","images":1116,"l":1280,"h":720,"octets":25992558,"rtt":0.003,"horloge":1785701938981}}
+[   81.2s 2026-08-02T20:19:09.017Z] STATS (APRÈS relance du capteur — relevé 2) {"w:w-2":{"etat":"connected","images":3534,"l":1280,"h":720,"octets":68173381,"rtt":0.005,"horloge":1785701949004},"w:w-4":{"etat":"connected","images":2684,"l":1280,"h":720,"octets":56355134,"rtt":0.006,"horloge":1785701949007},"w:w-6":{"etat":"connected","images":2564,"l":1280,"h":720,"octets":50851500,"rtt":0.012,"horloge":1785701949005},"w:w-8":{"etat":"connected","images":1643,"l":1280,"h":720,"octets":40117569,"rtt":0.004,"horloge":1785701949010}}
+[   81.2s 2026-08-02T20:19:09.018Z] CADENCE NAVIGATEUR (APRÈS relance du capteur) {
+ "w:w-2": {
+  "images": 630,
+  "secondes": 10.023,
+  "i_par_s": 62.86,
+  "taille": "1280x720",
+  "octets": 12097531,
+  "kbps": 9656,
+  "etat": "connected"
+ },
+ "w:w-4": {
+  "images": 669,
+  "secondes": 10.026,
+  "i_par_s": 66.73,
+  "taille": "1280x720",
+  "octets": 8445471,
+  "kbps": 6739,
+  "etat": "connected"
+ },
+ "w:w-6": {
+  "images": 649,
+  "secondes": 10.025,
+  "i_par_s": 64.74,
+  "taille": "1280x720",
+  "octets": 10260837,
+  "kbps": 8188,
+  "etat": "connected"
+ },
+ "w:w-8": {
+  "images": 527,
+  "secondes": 10.029,
+  "i_par_s": 52.55,
+  "taille": "1280x720",
+  "octets": 14125011,
+  "kbps": 11267,
+  "etat": "connected"
+ }
+}
+[   81.2s 2026-08-02T20:19:09.062Z] MARQUEURS (APRÈS relance du capteur) {"lignes":269,"cloture":0,"capteur_lance":2,"capteur_relance":1,"capteur_termine":1,"attachee_capteur":8,"rattache":4,"refus_capteur":0,"reouverture":6,"mutex_abandonne":6,"sortie_creee":4,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":4,"enfant_termine":0,"abandon_relances":0,"erreurs":0,"refus_debit":1,"refus_taille":0,"reponse_capteur":0,"fin_fenetre":0,"cadence_capteur":15,"cadence_piste":17}
+[   81.2s 2026-08-02T20:19:09.074Z] ÉTAT SHELL (après relance du capteur) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[   81.2s 2026-08-02T20:19:09.075Z]   pages d'application ouvertes (4) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8
+[   81.2s 2026-08-02T20:19:09.075Z] BORNES TEMPORELLES (horodatage local du pilote, UTC)
+[   81.2s 2026-08-02T20:19:09.075Z]    mise à mort demandée : 2026-08-02T20:18:52.971Z
+[   81.2s 2026-08-02T20:19:09.075Z]    fin de l'attente du fait : 2026-08-02T20:18:54.978Z
+[   81.2s 2026-08-02T20:19:09.075Z] SYNTHÈSE CAPTEUR {
+ "pid_capteur_tue": 34340,
+ "cadence_avant": {
+  "w:w-2": {
+   "images": 609,
+   "secondes": 10.087,
+   "i_par_s": 60.37,
+   "taille": "1280x720",
+   "octets": 13622742,
+   "kbps": 10804,
+   "etat": "connected"
+  },
+  "w:w-4": {
+   "images": 421,
+   "secondes": 10.087,
+   "i_par_s": 41.74,
+   "taille": "1280x720",
+   "octets": 12277164,
+   "kbps": 9737,
+   "etat": "connected"
+  },
+  "w:w-6": {
+   "images": 584,
+   "secondes": 10.089,
+   "i_par_s": 57.88,
+   "taille": "1280x720",
+   "octets": 12737089,
+   "kbps": 10100,
+   "etat": "connected"
+  },
+  "w:w-8": {
+   "images": 453,
+   "secondes": 10.092,
+   "i_par_s": 44.89,
+   "taille": "1280x720",
+   "octets": 9793329,
+   "kbps": 7763,
+   "etat": "connected"
+  }
+ },
+ "cadence_apres": {
+  "w:w-2": {
+   "images": 630,
+   "secondes": 10.023,
+   "i_par_s": 62.86,
+   "taille": "1280x720",
+   "octets": 12097531,
+   "kbps": 9656,
+   "etat": "connected"
+  },
+  "w:w-4": {
+   "images": 669,
+   "secondes": 10.026,
+   "i_par_s": 66.73,
+   "taille": "1280x720",
+   "octets": 8445471,
+   "kbps": 6739,
+   "etat": "connected"
+  },
+  "w:w-6": {
+   "images": 649,
+   "secondes": 10.025,
+   "i_par_s": 64.74,
+   "taille": "1280x720",
+   "octets": 10260837,
+   "kbps": 8188,
+   "etat": "connected"
+  },
+  "w:w-8": {
+   "images": 527,
+   "secondes": 10.029,
+   "i_par_s": 52.55,
+   "taille": "1280x720",
+   "octets": 14125011,
+   "kbps": 11267,
+   "etat": "connected"
+  }
+ },
+ "delta_cloture": 0,
+ "delta_relance": 1,
+ "delta_rattache": 4,
+ "delta_attachee": 4,
+ "delta_enfant_lance": 0,
+ "delta_enfant_termine": 0
+}
+[   81.3s 2026-08-02T20:19:09.094Z] journal copié dans /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/dffb8a0c-ae33-4e14-a0b6-f1eab68129c9/scratchpad/d4b/agent-critere2.log
