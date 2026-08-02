@@ -1,10 +1,17 @@
 //! Le client de tube côté enfant : il se connecte au capteur, s'attache, et
 //! rend une `SourceDistante` prête à servir la boucle de transport.
+//!
+//! **Deux connexions, un seul sens par bout.** La connexion de commandes (B)
+//! est écrite puis lue par le seul fil appelant, en stricte alternance ; la
+//! connexion média (A) ne porte qu'une trame d'identité à l'ouverture, puis
+//! n'est plus que lue, par le seul fil répartiteur. Aucun objet fichier ne
+//! porte donc jamais une lecture et une écriture concurrentes — voir la
+//! tâche 10 du sous-bloc D4.
 
 #![cfg(windows)]
 
-use std::io::{BufReader, BufWriter, Write};
-use std::sync::mpsc::{channel, sync_channel, Receiver, Sender, SyncSender};
+use std::io::{BufReader, Write};
+use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -28,17 +35,18 @@ use crate::capteur::reprise::DUREE_FENETRE_CANAL;
 /// silence.
 const CAPACITE_FILE: usize = 8;
 
-/// Attente maximale d'une réponse à une commande.
-///
-/// **Majorant assumé** : `resize` peut reconstruire une chaîne d'encodage
-/// complète, et `Drop for H264Encoder` porte une partie bornée de 8 s au pire
-/// cas. Trop court, on déclarerait morte une fenêtre qui travaille.
-const DELAI_COMMANDE: Duration = Duration::from_secs(10);
-
 /// Pas entre deux tentatives de connexion. Même valeur que le pas de reprise
 /// de `capture/reprise.rs`, et pour la même raison : assez petit pour ne pas
 /// retarder la reprise réelle, assez grand pour que la trace reste rare.
 const PAS_CONNEXION: Duration = Duration::from_millis(150);
+
+/// Fenêtre d'ouverture de la connexion média, une fois l'attache acceptée.
+///
+/// Le capteur ne recrée son instance d'écoute qu'après avoir accepté la
+/// précédente : une ouverture immédiate peut tomber sur `ERROR_PIPE_BUSY`.
+/// Une seconde couvre largement cette course sans rien retarder — l'attache
+/// vient d'aboutir, donc le capteur est vivant et son serveur tourne.
+const DUREE_OUVERTURE_MEDIA: Duration = Duration::from_secs(1);
 
 pub fn connecter(
     session: &str,
@@ -59,12 +67,12 @@ pub fn connecter(
     // La PREMIÈRE ouverture est patiente : l'enfant peut démarrer avant que le
     // capteur n'ait ouvert son tube. Les réouvertures de `rattacher`, elles,
     // ne le sont pas — elles courent depuis la boucle de transport.
-    let attachee = attacher_sur(ouvrir_avec_patience()?, &signalement)?;
+    let commandes = ouvrir_dans(DUREE_FENETRE_CANAL)?;
+    let attachee = attacher_sur(commandes, &signalement)?;
     let (largeur, hauteur) = (attachee.largeur, attachee.hauteur);
     Ok(SourceDistante::nouvelle(
         Box::new(CanalTube {
-            ecrivain: Mutex::new(attachee.ecrivain),
-            reponses: attachee.reponses,
+            commandes: Mutex::new(attachee.commandes),
             signalement,
         }),
         attachee.images,
@@ -73,13 +81,14 @@ pub fn connecter(
     ))
 }
 
-/// Envoie l'attache sur un tube déjà ouvert, lit la réponse, et démarre le fil
-/// répartiteur. **Partagée par `connecter` et `rattacher`** : les deux ne
-/// doivent pas porter deux copies de cette séquence.
-fn attacher_sur(fichier: std::fs::File, signalement: &Signalement) -> Result<Attachee> {
-    let mut ecrivain = BufWriter::new(fichier.try_clone().context("clone du tube en écriture")?);
-    let mut lecteur = BufReader::new(fichier);
-
+/// Attache l'enfant au capteur sur un tube de commandes déjà ouvert, puis
+/// ouvre la connexion média. **Partagée par `connecter` et `rattacher`** : les
+/// deux ne doivent pas porter deux copies de cette séquence.
+///
+/// L'ordre est imposé : les commandes d'abord (l'attache y rend les
+/// dimensions), le média ensuite (l'identité y apparie la connexion à la
+/// session déjà attachée). Le capteur ne saurait pas apparier l'inverse.
+fn attacher_sur(mut commandes: std::fs::File, signalement: &Signalement) -> Result<Attachee> {
     // `clock_origin` a été créée par `demarrage.rs` AVANT cet appel — la
     // connexion peut avoir attendu le capteur plusieurs secondes, et un
     // rattachement survient bien plus tard encore. Lire QPC maintenant et
@@ -92,8 +101,10 @@ fn attacher_sur(fichier: std::fs::File, signalement: &Signalement) -> Result<Att
         .min(i64::MAX as u128) as i64;
     let origine_qpc = lire_qpc().context("lecture de QPC avant l'attache")? - ecoule_tics;
 
+    // Écriture PUIS lecture, sur CE fil, sans aucun tampon d'écriture : c'est
+    // déjà la discipline de `commander`, et l'attache l'inaugure.
     ecrire_json(
-        &mut ecrivain,
+        &mut commandes,
         &VersCapteur::Attache {
             session: signalement.session.clone(),
             hwnd: signalement.hwnd,
@@ -103,9 +114,9 @@ fn attacher_sur(fichier: std::fs::File, signalement: &Signalement) -> Result<Att
             origine_qpc,
         },
     )?;
-    ecrivain.flush()?;
+    commandes.flush()?;
 
-    let (largeur, hauteur) = match lire_trame(&mut lecteur).context("réponse à l'attache")? {
+    let (largeur, hauteur) = match lire_trame(&mut commandes).context("réponse à l'attache")? {
         Trame::Json(octets) => match serde_json::from_slice::<DepuisCapteur>(&octets)? {
             DepuisCapteur::Attachee { largeur, hauteur } => (largeur, hauteur),
             // Un refus fait échouer l'attache BRUYAMMENT : sans cela l'enfant
@@ -115,6 +126,15 @@ fn attacher_sur(fichier: std::fs::File, signalement: &Signalement) -> Result<Att
         },
         Trame::Image(_) => bail!("le capteur a répondu une image à l'attache"),
     };
+
+    // La connexion MÉDIA. On y écrit son identité — la seule et unique trame
+    // que ce bout y écrira jamais — puis on la confie au fil répartiteur, qui
+    // ne fait que lire. C'est ce qui rend impossible qu'une lecture et une
+    // écriture s'y croisent.
+    let mut media = ouvrir_dans(DUREE_OUVERTURE_MEDIA).context("ouverture de la connexion média")?;
+    ecrire_json(&mut media, &VersCapteur::Identite { session: signalement.session.clone() })?;
+    media.flush()?;
+
     tracing::info!(
         session = %signalement.session,
         sortie = %signalement.sortie,
@@ -123,26 +143,25 @@ fn attacher_sur(fichier: std::fs::File, signalement: &Signalement) -> Result<Att
     );
 
     let (tx_images, rx_images) = sync_channel::<Recu>(CAPACITE_FILE);
-    let (tx_reponses, rx_reponses) = channel::<DepuisCapteur>();
-    std::thread::spawn(move || repartir_les_trames(lecteur, tx_images, tx_reponses));
+    std::thread::spawn(move || lire_le_media(BufReader::new(media), tx_images));
 
-    Ok(Attachee {
-        ecrivain,
-        reponses: rx_reponses,
-        images: rx_images,
-        largeur,
-        hauteur,
-    })
+    Ok(Attachee { commandes, images: rx_images, largeur, hauteur })
 }
 
-/// Réessaie la connexion dans une fenêtre bornée : l'enfant peut démarrer
-/// avant que le capteur n'ait ouvert son tube — au tout premier lancement, ou
-/// pendant une relance du capteur.
-fn ouvrir_avec_patience() -> Result<std::fs::File> {
+/// Une seule tentative d'ouverture d'une instance du tube.
+fn ouvrir_une_instance() -> std::io::Result<std::fs::File> {
+    std::fs::OpenOptions::new().read(true).write(true).open(NOM_TUBE)
+}
+
+/// Réessaie l'ouverture dans une fenêtre bornée : l'enfant peut démarrer avant
+/// que le capteur n'ait ouvert son tube (au tout premier lancement, ou pendant
+/// une relance du capteur), et une instance d'écoute peut être momentanément
+/// occupée entre deux accueils.
+fn ouvrir_dans(fenetre: Duration) -> Result<std::fs::File> {
     let debut = Instant::now();
     let mut derniere = None;
-    while debut.elapsed() <= DUREE_FENETRE_CANAL {
-        match std::fs::OpenOptions::new().read(true).write(true).open(NOM_TUBE) {
+    while debut.elapsed() <= fenetre {
+        match ouvrir_une_instance() {
             Ok(fichier) => return Ok(fichier),
             Err(erreur) => {
                 derniere = Some(erreur);
@@ -151,23 +170,19 @@ fn ouvrir_avec_patience() -> Result<std::fs::File> {
         }
     }
     Err(anyhow::Error::from(derniere.expect("au moins une tentative"))
-        .context(format!("aucun capteur sur {NOM_TUBE} après {DUREE_FENETRE_CANAL:?}")))
+        .context(format!("aucun capteur sur {NOM_TUBE} après {fenetre:?}")))
 }
 
-/// Aiguille chaque trame reçue : les images vers la file bornée, les réponses
-/// de commande vers leur propre canal. Les deux ne doivent PAS partager une
-/// file — une réponse coincée derrière huit images bloquerait `commander`.
-fn repartir_les_trames<R: std::io::Read>(
-    mut lecteur: R,
-    images: SyncSender<Recu>,
-    reponses: Sender<DepuisCapteur>,
-) {
+/// Lit la connexion média — et **rien d'autre** : images et états. Une réponse
+/// de commande n'y transite pas, elle est lue par `commander` sur la connexion
+/// de commandes.
+fn lire_le_media<R: std::io::Read>(mut lecteur: R, images: SyncSender<Recu>) {
     loop {
         let trame = match lire_trame(&mut lecteur) {
             Ok(trame) => trame,
-            // Fin de tube : le capteur est parti. Laisser tomber les deux
-            // émetteurs fait rendre `Disconnected` à `SourceDistante`, qui
-            // OUVRE SA FENÊTRE DE REPRISE au lieu de clore la session.
+            // Fin de tube : le capteur est parti. Laisser tomber l'émetteur
+            // fait rendre `Disconnected` à `SourceDistante`, qui OUVRE SA
+            // FENÊTRE DE REPRISE au lieu de clore la session.
             Err(_) => return,
         };
         let envoi = match trame {
@@ -176,7 +191,10 @@ fn repartir_les_trames<R: std::io::Read>(
                 Ok(DepuisCapteur::Etat { vivante, epuisee, largeur, hauteur }) => images
                     .send(Recu::Etat { vivante, epuisee, largeur, hauteur })
                     .is_ok(),
-                Ok(reponse) => reponses.send(reponse).is_ok(),
+                Ok(autre) => {
+                    tracing::warn!(?autre, "trame inattendue sur la connexion média, abandonnée");
+                    return;
+                }
                 Err(erreur) => {
                     tracing::warn!(%erreur, "trame illisible du capteur, canal abandonné");
                     return;
@@ -190,11 +208,11 @@ fn repartir_les_trames<R: std::io::Read>(
 }
 
 struct CanalTube {
-    /// `Mutex` et non `&mut` : `Canal::commander` prend `&mut self`, mais
-    /// l'écrivain est aussi le seul point d'écriture du tube et rien ne promet
-    /// qu'il restera consulté depuis un seul fil.
-    ecrivain: Mutex<BufWriter<std::fs::File>>,
-    reponses: Receiver<DepuisCapteur>,
+    /// La connexion de commandes. `Mutex` et non `&mut` : `Canal::commander`
+    /// prend `&mut self`, mais c'est l'alternance écriture → lecture qui doit
+    /// rester indivisible, et rien ne promet que l'appelant sera toujours le
+    /// même fil.
+    commandes: Mutex<std::fs::File>,
     /// De quoi se réattacher à un capteur relancé. Retenu à la connexion :
     /// au moment de la rupture, plus rien d'autre ne porte ces valeurs.
     signalement: Signalement,
@@ -216,37 +234,31 @@ struct Signalement {
 
 /// Le fruit d'une attache réussie, côté enfant.
 struct Attachee {
-    ecrivain: BufWriter<std::fs::File>,
-    reponses: Receiver<DepuisCapteur>,
+    commandes: std::fs::File,
     images: Receiver<Recu>,
     largeur: u32,
     hauteur: u32,
 }
 
 impl Canal for CanalTube {
-    /// Rouvre un tube vers le capteur (relancé par le superviseur) et
-    /// réémet l'attache. Remplace l'écrivain et le canal de réponses de
+    /// Rouvre les DEUX connexions vers le capteur (relancé par le
+    /// superviseur) et réémet l'attache. Remplace la connexion de commandes de
     /// CE `CanalTube`, et rend la file d'images neuve.
     ///
     /// **Sans cette méthode, la fenêtre de reprise de `SourceDistante` ne
     /// ferait que retarder la mort des sessions de 15 s** : rien d'autre
     /// n'ouvre jamais un second tube. Voir la tâche 3bis.
     ///
-    /// Une seule tentative, sans patience interne : c'est `SourceDistante`
-    /// qui tient le budget et l'espacement (`PAS_RATTACHEMENT`). Ouvrir le
-    /// tube directement par `OpenOptions`, PAS par `ouvrir_avec_patience`,
-    /// qui bloquerait la boucle de transport jusqu'à 15 s.
+    /// Une seule tentative sur la connexion de commandes, sans patience
+    /// interne : c'est `SourceDistante` qui tient le budget et l'espacement
+    /// (`PAS_RATTACHEMENT`). Une ouverture patiente bloquerait la boucle de
+    /// transport jusqu'à 15 s.
     fn rattacher(&mut self) -> Result<Rattachee> {
-        let fichier = std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(NOM_TUBE)
-            .context("réouverture du tube du capteur")?;
-        let attachee = attacher_sur(fichier, &self.signalement)?;
-        // Remplacer l'état d'écriture de CE canal : l'ancien pointe sur un
-        // tube mort, et `commander` l'emploierait encore.
-        self.ecrivain = Mutex::new(attachee.ecrivain);
-        self.reponses = attachee.reponses;
+        let commandes = ouvrir_une_instance().context("réouverture du tube du capteur")?;
+        let attachee = attacher_sur(commandes, &self.signalement)?;
+        // Remplacer la connexion de CE canal : l'ancienne pointe sur un tube
+        // mort, et `commander` l'emploierait encore.
+        self.commandes = Mutex::new(attachee.commandes);
         Ok(Rattachee {
             images: attachee.images,
             largeur: attachee.largeur,
@@ -254,17 +266,28 @@ impl Canal for CanalTube {
         })
     }
 
+    /// ⚠️ **Cette lecture n'a AUCUN délai, et c'est assumé.** Le `recv_timeout`
+    /// qui bornait autrefois l'attente a disparu avec le fil lecteur, et il
+    /// n'existe pas d'équivalent de `SO_RCVTIMEO` pour un tube nommé
+    /// synchrone. La parade retenue est que le capteur ferme ses tubes en
+    /// mourant — le job object garantit sa mort, et la fermeture de ses
+    /// handles avec —, ce qui fait rendre une **erreur** à cette lecture
+    /// plutôt que de la suspendre. **À vérifier explicitement à la recette** :
+    /// tuer le capteur pendant que des commandes circulent, et constater que
+    /// `commander` rend une erreur.
     fn commander(&mut self, message: VersCapteur) -> Result<DepuisCapteur> {
-        {
-            let mut ecrivain = self
-                .ecrivain
-                .lock()
-                .unwrap_or_else(|empoisonne| empoisonne.into_inner());
-            ecrire_json(&mut *ecrivain, &message)?;
-            ecrivain.flush()?;
+        let mut commandes = self
+            .commandes
+            .lock()
+            .unwrap_or_else(|empoisonne| empoisonne.into_inner());
+        // Écriture PUIS lecture sur le même fil : c'est la discipline qui
+        // rend le blocage impossible. Ne jamais introduire de fil lecteur
+        // sur cette connexion — voir la tâche 10 du sous-bloc D4.
+        ecrire_json(&mut *commandes, &message)?;
+        commandes.flush()?;
+        match lire_trame(&mut *commandes).context("réponse du capteur")? {
+            Trame::Json(octets) => Ok(serde_json::from_slice(&octets)?),
+            Trame::Image(_) => bail!("le capteur a répondu une image à une commande"),
         }
-        self.reponses
-            .recv_timeout(DELAI_COMMANDE)
-            .with_context(|| format!("aucune réponse du capteur à {message:?}"))
     }
 }

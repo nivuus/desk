@@ -46,6 +46,11 @@ pub enum VersCapteur {
         /// l'écart entre les deux origines.
         origine_qpc: i64,
     },
+    /// Première et **unique** trame de la connexion média : elle apparie ce
+    /// second tube à la session déjà attachée sur la connexion de commandes.
+    /// Après elle, l'enfant n'écrit plus jamais sur cette connexion — c'est
+    /// ce qui garantit qu'aucune lecture et écriture n'y sont concurrentes.
+    Identite { session: String },
     Redimensionner { largeur: u32, hauteur: u32 },
     TailleEncodage { largeur: u32, hauteur: u32 },
     Debit { bps: u32 },
@@ -153,6 +158,23 @@ mod tests {
             debit: 8_000_000,
             origine_qpc: 123_456_789,
         };
+        let mut tampon = Vec::new();
+        ecrire_json(&mut tampon, &message).unwrap();
+        let mut lecteur = Cursor::new(tampon);
+        match lire_trame(&mut lecteur).unwrap() {
+            Trame::Json(octets) => {
+                assert_eq!(serde_json::from_slice::<VersCapteur>(&octets).unwrap(), message)
+            }
+            autre => panic!("attendu du JSON, reçu {autre:?}"),
+        }
+    }
+
+    /// L'identité est la trame qui apparie la connexion média à la session
+    /// déjà attachée sur la connexion de commandes : un nom de champ qui
+    /// dériverait ferait échouer l'appariement en session réelle seulement.
+    #[test]
+    fn une_identite_fait_l_aller_retour() {
+        let message = VersCapteur::Identite { session: "w-1".into() };
         let mut tampon = Vec::new();
         ecrire_json(&mut tampon, &message).unwrap();
         let mut lecteur = Cursor::new(tampon);
