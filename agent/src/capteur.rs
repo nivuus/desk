@@ -14,6 +14,8 @@ pub mod protocole;
 pub mod reprise;
 #[cfg(windows)]
 pub mod serveur;
+#[cfg(windows)]
+pub mod tube;
 
 /// Point d'entrée du mode capteur.
 #[cfg(windows)]

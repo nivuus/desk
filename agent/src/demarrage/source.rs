@@ -71,14 +71,20 @@ pub(super) fn construire(
 
     let source: Box<dyn VideoSource + Send> = match &config.sortie_dxgi {
         Some(nom_sortie) => {
+            // Mode multi-fenêtres : la capture et l'encodage vivent dans le
+            // CAPTEUR, un seul processus pour toutes les fenêtres. C'est ce
+            // qui lève le plafond de quatre processus tenant une duplication
+            // DXGI (sous-bloc D3). L'enfant ne touche plus ni DXGI ni Media
+            // Foundation.
             tracing::info!(
                 nom_sortie = %nom_sortie,
                 bitrate,
                 fps,
-                "capture d'une sortie DXGI entière (mode multi-fenêtres)"
+                "source distante servie par le capteur (mode multi-fenêtres)"
             );
-            Box::new(windows_source::WindowsSource::sur_sortie(
-                hwnd,
+            Box::new(crate::capteur::tube::connecter(
+                &config.session_id,
+                hwnd.0 as u64,
                 nom_sortie,
                 fps,
                 bitrate,
@@ -86,13 +92,10 @@ pub(super) fn construire(
             )?)
         }
         None => {
+            // Mode mono-fenêtre, inchangé : agent lancé à la main, aucun
+            // capteur. Ce chemin ne doit RIEN perdre au passage.
             tracing::info!(bitrate, fps, "capture de la fenêtre Windows (recadrage)");
-            Box::new(windows_source::WindowsSource::new(
-                hwnd,
-                fps,
-                bitrate,
-                clock_origin,
-            )?)
+            Box::new(windows_source::WindowsSource::new(hwnd, fps, bitrate, clock_origin)?)
         }
     };
 
