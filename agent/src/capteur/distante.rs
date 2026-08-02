@@ -230,6 +230,8 @@ mod tests {
 
     /// `resize` doit retenir la taille RÉELLEMENT obtenue, pas celle demandée
     /// — même règle qu'en mono-fenêtre (`transport/redimensionnement.rs`).
+    /// Le test utilise des dimensions initiales DIFFÉRENTES de la réponse
+    /// pour vérifier que la réponse est réellement adoptée (et pas ignorée).
     #[test]
     fn un_redimensionnement_retient_la_taille_obtenue() {
         let (tx_img, rx) = sync_channel(4);
@@ -238,7 +240,7 @@ mod tests {
             reponses: vec![Ok(DepuisCapteur::Taille { largeur: 1280, hauteur: 720 })],
             recus: recus.clone(),
         };
-        let mut source = SourceDistante::nouvelle(Box::new(canal), rx, 1280, 720);
+        let mut source = SourceDistante::nouvelle(Box::new(canal), rx, 640, 480);
         drop(tx_img);
         source.resize(1281, 713).unwrap();
         assert_eq!(source.dimensions(), (1280, 720));
