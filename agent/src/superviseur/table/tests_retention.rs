@@ -98,3 +98,124 @@ fn l_entree_relancee_porte_encore_sa_sortie() {
     );
     assert_eq!(t.taille_sortie_de(&neuve), Some((1280, 720)));
 }
+
+#[test]
+fn sans_sortie_retenue_le_viewport_en_demande_une() {
+    let mut t = Table::nouvelle(4);
+    let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
+    let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
+        panic!("ouverture attendue, reçu {effets:?}");
+    };
+    let session = session.clone();
+
+    let effets = t.viewport_recu(&session, 1280, 720);
+
+    assert_eq!(
+        effets,
+        vec![Effet::CreerSortie {
+            session: session.clone(),
+            titre: "Bloc-notes".into(),
+            largeur: 1280,
+            hauteur: 720
+        }]
+    );
+}
+
+/// **Le chemin qui supprime les réouvertures parasites.** La fenêtre garde sa
+/// sortie, le viewport annoncé lui correspond : plus rien à créer, donc plus
+/// aucun mutex abandonné chez les voisines.
+#[test]
+fn une_sortie_retenue_compatible_est_reutilisee_sans_rien_creer() {
+    let mut t = Table::nouvelle(4);
+    let session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
+    t.enfant_mort(&session);
+    let effets = t.relancer_les_orphelines(std::time::Instant::now());
+    let Some(Effet::AnnoncerOuverture { session: neuve, .. }) = effets.first() else {
+        panic!("réouverture attendue, reçu {effets:?}");
+    };
+    let neuve = neuve.clone();
+
+    let effets = t.viewport_recu(&neuve, 1280, 720);
+
+    assert_eq!(
+        effets,
+        vec![Effet::LancerEnfant {
+            session: neuve.clone(),
+            fenetre: IdFenetre(1),
+            nom_sortie: "\\\\.\\DISPLAY7".into(),
+            audio: true
+        }],
+        "ni DetruireSortie ni CreerSortie : c'est tout l'objet du correctif"
+    );
+    assert_eq!(t.etat(&neuve), Some(&Etat::Vivante));
+}
+
+/// La tolérance est celle de l'appariement — quatre pixels — et pas davantage.
+#[test]
+fn une_sortie_retenue_a_quatre_pixels_pres_est_reutilisee() {
+    let mut t = Table::nouvelle(4);
+    let session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
+    t.enfant_mort(&session);
+    let effets = t.relancer_les_orphelines(std::time::Instant::now());
+    let Some(Effet::AnnoncerOuverture { session: neuve, .. }) = effets.first() else {
+        panic!("réouverture attendue, reçu {effets:?}");
+    };
+    let neuve = neuve.clone();
+
+    let effets = t.viewport_recu(&neuve, 1278, 718);
+
+    assert!(matches!(effets.first(), Some(Effet::LancerEnfant { .. })), "reçu {effets:?}");
+}
+
+/// Le navigateur a redimensionné sa fenêtre entre-temps : la sortie retenue
+/// ne convient plus, il faut la rendre AVANT d'en demander une autre — sans
+/// quoi elle resterait captive du vivier de dix.
+#[test]
+fn une_sortie_retenue_incompatible_est_rendue_puis_remplacee() {
+    let mut t = Table::nouvelle(4);
+    let session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
+    t.enfant_mort(&session);
+    let effets = t.relancer_les_orphelines(std::time::Instant::now());
+    let Some(Effet::AnnoncerOuverture { session: neuve, .. }) = effets.first() else {
+        panic!("réouverture attendue, reçu {effets:?}");
+    };
+    let neuve = neuve.clone();
+
+    let effets = t.viewport_recu(&neuve, 1920, 1080);
+
+    assert_eq!(
+        effets,
+        vec![
+            Effet::DetruireSortie {
+                sortie_pilote: 42,
+                nom_sortie: "\\\\.\\DISPLAY7".into()
+            },
+            Effet::CreerSortie {
+                session: neuve.clone(),
+                titre: "Bloc-notes".into(),
+                largeur: 1920,
+                hauteur: 1080
+            },
+        ],
+        "la destruction précède la demande, et dans cet ordre"
+    );
+    assert_eq!(t.nom_sortie_de(&neuve), None, "l'entrée ne retient plus rien");
+    assert_eq!(t.etat(&neuve), Some(&Etat::AttendLaSortie));
+}
+
+/// Un message du navigateur est une source externe : rejoué, il ne doit pas
+/// relancer un second enfant sur la même sortie.
+#[test]
+fn un_viewport_rejoue_apres_reutilisation_ne_fait_rien() {
+    let mut t = Table::nouvelle(4);
+    let session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
+    t.enfant_mort(&session);
+    let effets = t.relancer_les_orphelines(std::time::Instant::now());
+    let Some(Effet::AnnoncerOuverture { session: neuve, .. }) = effets.first() else {
+        panic!("réouverture attendue, reçu {effets:?}");
+    };
+    let neuve = neuve.clone();
+    t.viewport_recu(&neuve, 1280, 720);
+
+    assert!(t.viewport_recu(&neuve, 1280, 720).is_empty());
+}

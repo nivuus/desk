@@ -256,57 +256,6 @@ impl Table {
         vec![Effet::AnnoncerOuverture { session, titre }]
     }
 
-    pub fn viewport_recu(&mut self, session: &IdSession, largeur: u32, hauteur: u32) -> Vec<Effet> {
-        // Un message du navigateur est une source externe : tardif, rejoué ou
-        // inventé, il ne doit jamais faire avancer la machine deux fois.
-        let Some(entree) = self.entrees.get_mut(session) else {
-            return Vec::new();
-        };
-        if entree.etat != Etat::AttendLeViewport {
-            return Vec::new();
-        }
-        entree.etat = Etat::AttendLaSortie;
-        // Passé ce point, l'entrée n'attend plus le navigateur : le
-        // garde-fou de staleness de `relancer_les_orphelines` ne la concerne
-        // plus.
-        entree.attente_depuis = None;
-        vec![Effet::CreerSortie {
-            session: session.clone(),
-            titre: entree.titre.clone(),
-            largeur,
-            hauteur,
-        }]
-    }
-
-    /// `sortie_pilote` est ce que le pilote a rendu à la création (il ne sait
-    /// détruire que par là) ; `nom_sortie` est le nom DXGI de la même sortie
-    /// (l'enfant ne sait capturer que par là). Aucune relation calculable
-    /// entre les deux : les deux sont retenus.
-    pub fn sortie_creee(
-        &mut self,
-        session: &IdSession,
-        sortie_pilote: u32,
-        nom_sortie: String,
-        taille: (u32, u32),
-    ) -> Vec<Effet> {
-        let Some(entree) = self.entrees.get_mut(session) else {
-            return Vec::new();
-        };
-        if entree.etat != Etat::AttendLaSortie {
-            return Vec::new();
-        }
-        entree.etat = Etat::Vivante;
-        entree.sortie_pilote = Some(sortie_pilote);
-        entree.nom_sortie = Some(nom_sortie.clone());
-        entree.taille_sortie = Some(taille);
-        vec![Effet::LancerEnfant {
-            session: session.clone(),
-            fenetre: entree.fenetre,
-            nom_sortie,
-            audio: entree.audio,
-        }]
-    }
-
     /// Nom de la sortie d'une session, pour le contrôle périodique de
     /// placement.
     pub fn nom_sortie_de(&self, session: &IdSession) -> Option<&str> {
@@ -470,6 +419,14 @@ impl Table {
         effets
     }
 }
+
+// Chemin d'attribution d'une sortie à une session (`viewport_recu`,
+// `sortie_creee`) : extrait côté PRODUCTION, et non seulement les tests. Ce
+// fichier frôlait déjà le plafond de 500 lignes du projet avant l'ajout du
+// chemin de réutilisation de sortie du sous-bloc D3 (tâche 4) — l'ajouter ici
+// l'aurait franchi. Extraire plutôt que compresser, même raison que les
+// modules de tests ci-dessous.
+mod attribution;
 
 // Module de tests extrait dans un fichier voisin : la production seule
 // approche déjà le plafond de 500 lignes du projet, et les tests en
