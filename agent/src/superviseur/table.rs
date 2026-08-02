@@ -181,6 +181,21 @@ pub struct Table {
     audio_libre: bool,
 }
 
+/// Effet de destruction d'une sortie retenue par une entrée qu'on retire.
+///
+/// **Trois chemins retirent une entrée de la table, et depuis le §7.1 du
+/// sous-bloc D3 les trois peuvent en porter une** : `fenetre_disparue`, et les
+/// deux abandons de `relancer_les_orphelines`. Avant D3, `enfant_mort` avait
+/// toujours rendu la sortie et le cas n'existait pas. Une sortie oubliée ici
+/// consommerait le vivier de dix du pilote jusqu'à l'arrêt du superviseur,
+/// sans qu'aucune trace ne le dise.
+fn rendre_la_sortie_de(entree: &Entree) -> Option<Effet> {
+    entree.sortie_pilote.map(|sortie_pilote| Effet::DetruireSortie {
+        sortie_pilote,
+        nom_sortie: entree.nom_sortie.clone().unwrap_or_default(),
+    })
+}
+
 impl Table {
     pub fn nouvelle(capacite: usize) -> Self {
         Self {
@@ -365,6 +380,7 @@ impl Table {
         for ancienne in orphelines {
             let entree = self.entrees.remove(&ancienne).expect("relevée à l'instant");
             if entree.relances >= RELANCES_MAX {
+                effets.extend(rendre_la_sortie_de(&entree));
                 effets.push(Effet::AnnoncerRefus {
                     titre: entree.titre,
                     motif: format!("la session n'a pas tenu après {RELANCES_MAX} tentatives"),
@@ -410,6 +426,7 @@ impl Table {
             .collect();
         for figee in figees {
             let entree = self.entrees.remove(&figee).expect("relevée à l'instant");
+            effets.extend(rendre_la_sortie_de(&entree));
             effets.push(Effet::AnnoncerRefus {
                 titre: entree.titre,
                 motif: "la page-shell n'a jamais répondu après la relance".into(),

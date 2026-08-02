@@ -219,3 +219,64 @@ fn un_viewport_rejoue_apres_reutilisation_ne_fait_rien() {
 
     assert!(t.viewport_recu(&neuve, 1280, 720).is_empty());
 }
+
+/// Contrepartie du §7.1 : une entrée abandonnée porte désormais une sortie,
+/// ce qui n'arrivait jamais avant D3. L'oublier viderait le vivier de dix du
+/// pilote, silencieusement, jusqu'à l'arrêt du superviseur.
+#[test]
+fn l_abandon_apres_relances_max_rend_la_sortie() {
+    let base = std::time::Instant::now();
+    let mut t = Table::nouvelle(4);
+    let mut session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
+
+    // RELANCES_MAX relances, puis l'abandon au tour suivant.
+    for tour in 0..=RELANCES_MAX {
+        t.enfant_mort(&session);
+        let effets = t.relancer_les_orphelines(base + std::time::Duration::from_secs(tour as u64));
+        if let Some(Effet::AnnoncerOuverture { session: neuve, .. }) = effets.first() {
+            session = neuve.clone();
+            // La sortie suit ; on ne la recrée pas.
+            t.viewport_recu(&session, 1280, 720);
+            continue;
+        }
+        // Tour d'abandon.
+        assert!(
+            effets.contains(&Effet::DetruireSortie {
+                sortie_pilote: 42,
+                nom_sortie: "\\\\.\\DISPLAY7".into()
+            }),
+            "la sortie retenue doit être rendue à l'abandon, reçu {effets:?}"
+        );
+        assert!(
+            effets
+                .iter()
+                .any(|e| matches!(e, Effet::AnnoncerRefus { .. })),
+            "reçu {effets:?}"
+        );
+        return;
+    }
+    panic!("l'abandon n'est jamais survenu");
+}
+
+/// Second chemin d'abandon : la page-shell ne répond jamais après la relance.
+/// L'entrée porte encore sa sortie retenue — même exigence.
+#[test]
+fn l_abandon_d_une_entree_figee_rend_la_sortie() {
+    let base = std::time::Instant::now();
+    let mut t = Table::nouvelle(4);
+    let session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
+    t.enfant_mort(&session);
+    // Relance : l'entrée repasse en AttendLeViewport, tamponnée à `base`.
+    t.relancer_les_orphelines(base);
+
+    // La page-shell ne répond jamais : au-delà du délai, abandon.
+    let effets = t.relancer_les_orphelines(base + DELAI_ATTENTE_VIEWPORT_MAX + std::time::Duration::from_secs(1));
+
+    assert!(
+        effets.contains(&Effet::DetruireSortie {
+            sortie_pilote: 42,
+            nom_sortie: "\\\\.\\DISPLAY7".into()
+        }),
+        "la sortie retenue doit être rendue, reçu {effets:?}"
+    );
+}
