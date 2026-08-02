@@ -36,10 +36,26 @@ use crate::capteur::protocole::{
 };
 use crate::capteur::tube::DUREE_OUVERTURE_MEDIA;
 
-/// Tampon de tube, dans les deux sens. Généreux à dessein : c'est lui qui
-/// absorbe les à-coups avant que la contre-pression ne remonte jusqu'au fil
-/// de capture.
-const TAMPON: u32 = 1024 * 1024;
+/// Tampon de tube, dans les deux sens. **Dimensionné en unités d'accès, pas
+/// en mégaoctets ronds** (correctif I4 de la revue finale de branche).
+///
+/// C'est ce tampon qui fixe la profondeur RÉELLE de la file d'images, et non
+/// `CAPACITE_ECRITURES` ni `CAPACITE_FILE` : ces deux-là valent 8 et raisonnent
+/// sur ≈90 ms de vidéo, mais un tampon OS plus grand les rend sans effet — il
+/// se remplit derrière elles. À 1 MiB, une unité d'accès pesant 10 à 30 Ko, le
+/// tube retenait 30 à 100 images, soit **0,3 à 1,1 s de vidéo en file**. Or
+/// chaque image porte son instant de capture d'origine : un à-coup ne se
+/// rattrape pas, il se rejoue en rafale d'images anciennes.
+///
+/// 128 Kio ramène cela à ≈4 à 12 images, du même ordre que les deux capacités
+/// ci-dessus, sans descendre au point qu'un à-coup normal bloque le fil de
+/// capture.
+///
+/// ⚠️ **La latence n'a jamais été mesurée sur ce chemin** : la recette du
+/// sous-bloc D4 a relevé des cadences, jamais un délai de bout en bout. Ce
+/// dimensionnement est un raisonnement sur des tailles d'unités d'accès
+/// observées, pas un réglage calibré.
+const TAMPON: u32 = 128 * 1024;
 
 /// Attente maximale de la connexion média après une attache acceptée.
 ///
@@ -97,7 +113,15 @@ fn registre_verrouille() -> std::sync::MutexGuard<'static, HashMap<String, Sende
         .unwrap_or_else(|empoisonne| empoisonne.into_inner())
 }
 
+/// Souffle entre deux tentatives de création d'instance de tube après un échec
+/// (correctif I5). Assez court pour qu'un échec transitoire ne coûte rien de
+/// perceptible à l'enfant qui attend, assez long pour qu'un échec persistant
+/// ne devienne pas une boucle serrée. Majorant assumé, non calibré.
+const SOUFFLE_CREATION_INSTANCE: Duration = Duration::from_millis(200);
+
 pub fn servir() -> Result<()> {
+    // Vrai dès qu'un échec de `creer_instance` a été signalé — voir plus bas.
+    let mut echec_signale = false;
     loop {
         // Une instance NEUVE par client. `PIPE_UNLIMITED_INSTANCES` n'a de
         // sens que parce que cette boucle ne bloque JAMAIS sur la trame
@@ -105,7 +129,40 @@ pub fn servir() -> Result<()> {
         // seule instance écoutait à la fois malgré son nom, et un enfant
         // connecté qui n'envoie jamais son attache bloquait l'accueil de
         // toutes les fenêtres suivantes.
-        let tube = creer_instance().context("création d'une instance de tube")?;
+        // **Non fatal, comme les deux autres erreurs de cette boucle**
+        // (correctif I5 de la revue finale de branche). Un `?` ici faisait
+        // tomber le capteur ENTIER — donc les N sessions — pour un échec de
+        // `CreateNamedPipeW` qui peut être transitoire (épuisement momentané
+        // d'une ressource système), alors que la boucle sait déjà survivre à
+        // un refus de connexion et à une attache ratée. Le souffle évite d'en
+        // faire une boucle serrée si la cause, elle, persiste : sans lui, un
+        // échec permanent produirait des milliers de lignes par seconde sur le
+        // partage CIFS.
+        //
+        // La ligne est signalée une seule fois par série d'échecs, même motif
+        // qu'`Enfant::etat_illisible_signale` (`superviseur/lanceur.rs`) : le
+        // souffle seul ne suffirait pas à borner le journal si la cause dure.
+        let tube = match creer_instance() {
+            Ok(tube) => {
+                if echec_signale {
+                    echec_signale = false;
+                    tracing::info!("création d'instances de tube rétablie");
+                }
+                tube
+            }
+            Err(erreur) => {
+                if !echec_signale {
+                    echec_signale = true;
+                    tracing::warn!(
+                        %erreur,
+                        "création d'une instance de tube refusée, réessais \
+                         (signalé une seule fois tant que l'échec se répète)"
+                    );
+                }
+                std::thread::sleep(SOUFFLE_CREATION_INSTANCE);
+                continue;
+            }
+        };
 
         match connecter(tube) {
             // Connecté : déporter TOUT l'accueil — lecture de la première
