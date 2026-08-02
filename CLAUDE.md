@@ -1018,6 +1018,14 @@ scripts/run-agent.sh                 # lance l'agent en session interactive
 séquence qui en dépend, et la démarrer si besoin — c'est une opération sûre et
 idempotente.
 
+⚠️ **`scripts/build-agent.sh` lancé sans avoir sourcé `.env` s'arrête EN
+SILENCE**, après sa ligne « sources synchronisées », sans message ni statut
+d'erreur : son `set -euo pipefail` avorte sur l'affectation du quota WinRM, dont
+le `2>/dev/null` mange la cause. **Le symptôme se lit exactement comme une
+compilation réussie et muette** — on mesure alors le binaire précédent sans
+qu'aucune trace ne le dise. Relevé le 2 août 2026, revue finale du sous-bloc D2.
+Sourcer `.env` d'abord, et se méfier d'un build qui ne dit rien.
+
 ---
 
 ## 🔊 Audio de la VM — état constaté (28 juillet 2026)
