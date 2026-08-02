@@ -6,10 +6,12 @@
 //! injecté et un `Receiver`, tous deux triviaux à simuler sur l'hôte.
 
 use std::sync::mpsc::{Receiver, TryRecvError};
+use std::time::Instant;
 
 use anyhow::{bail, Result};
 
 use crate::capteur::protocole::{DepuisCapteur, VersCapteur};
+use crate::capteur::reprise::FenetreCanal;
 use crate::h264::AccessUnit;
 use crate::source::VideoSource;
 
@@ -32,6 +34,10 @@ pub struct SourceDistante {
     hauteur: u32,
     vivante: bool,
     epuisee: bool,
+    /// Rupture du canal en cours. Une rupture n'épuise pas la source tant que
+    /// cette fenêtre n'a pas expiré : c'est ce qui fait survivre les sessions
+    /// à une relance du capteur.
+    fenetre: FenetreCanal,
 }
 
 impl SourceDistante {
@@ -41,7 +47,15 @@ impl SourceDistante {
         largeur: u32,
         hauteur: u32,
     ) -> Self {
-        Self { commandes, images, largeur, hauteur, vivante: true, epuisee: false }
+        Self {
+            commandes,
+            images,
+            largeur,
+            hauteur,
+            vivante: true,
+            epuisee: false,
+            fenetre: FenetreCanal::nouvelle(),
+        }
     }
 
     /// Émet une commande et n'accepte que `Fait` comme succès.
@@ -52,13 +66,23 @@ impl SourceDistante {
             autre => bail!("réponse inattendue du capteur : {autre:?}"),
         }
     }
+
+    /// Fait vieillir la fenêtre de reprise, pour les seuls tests : sans elle,
+    /// éprouver l'expiration exigerait d'attendre réellement 15 secondes.
+    #[cfg(test)]
+    pub fn vieillir_pour_test(&mut self, ecart: std::time::Duration) {
+        self.fenetre.vieillir_pour_test(ecart);
+    }
 }
 
 impl VideoSource for SourceDistante {
     fn next_frame(&mut self) -> Option<AccessUnit> {
         loop {
             match self.images.try_recv() {
-                Ok(Recu::Image(unite)) => return Some(unite),
+                Ok(Recu::Image(unite)) => {
+                    self.fenetre.succes();
+                    return Some(unite);
+                }
                 Ok(Recu::Etat { vivante, epuisee, largeur, hauteur }) => {
                     self.vivante = vivante;
                     self.epuisee = epuisee;
@@ -68,10 +92,18 @@ impl VideoSource for SourceDistante {
                 // Le cas COURANT et normal : rien de neuf ce tour-ci. La
                 // boucle de transport interroge à 100 Hz une source qui
                 // produit à ~90 i/s.
-                Err(TryRecvError::Empty) => return None,
+                Err(TryRecvError::Empty) => {
+                    self.fenetre.succes();
+                    return None;
+                }
                 // Le canal est rompu. Ce n'est PAS traité ici comme un
                 // épuisement : la tâche 3 y branche la fenêtre de reprise.
-                Err(TryRecvError::Disconnected) => return None,
+                Err(TryRecvError::Disconnected) => {
+                    if self.fenetre.rupture(Instant::now()) {
+                        self.epuisee = true;
+                    }
+                    return None;
+                }
             }
         }
     }
@@ -256,5 +288,28 @@ mod tests {
         let mut source = SourceDistante::nouvelle(Box::new(canal), rx, 1280, 720);
         let erreur = source.set_bitrate(1).unwrap_err().to_string();
         assert!(erreur.contains("encodeur perdu"), "message inattendu : {erreur}");
+    }
+
+    /// Le cœur du critère 2 : tuer le capteur ferme le tube, donc rompt le
+    /// canal — et cela ne doit PAS clore la session, sans quoi
+    /// `brancher_video` appelle `begin_ending("source vidéo épuisée")`.
+    #[test]
+    fn un_canal_rompu_n_epuise_pas_la_source_dans_la_fenetre() {
+        let (mut source, tx, _) = source_avec(4);
+        drop(tx);
+        assert!(source.next_frame().is_none());
+        assert!(!source.is_exhausted(), "une rupture de canal n'est pas un épuisement");
+    }
+
+    /// Mais une rupture qui dure l'est : sans cela, une session morte
+    /// resterait ouverte indéfiniment sur une image figée.
+    #[test]
+    fn un_canal_rompu_au_dela_de_la_fenetre_epuise_la_source() {
+        let (mut source, tx, _) = source_avec(4);
+        drop(tx);
+        assert!(source.next_frame().is_none());
+        source.vieillir_pour_test(crate::capteur::reprise::DUREE_FENETRE_CANAL + std::time::Duration::from_millis(1));
+        assert!(source.next_frame().is_none());
+        assert!(source.is_exhausted());
     }
 }
