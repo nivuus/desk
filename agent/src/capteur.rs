@@ -6,4 +6,5 @@
 //! distante, reprise) est hors `cfg` et se teste sur l'hôte ; ce qui touche
 //! DXGI et les tubes est gaté.
 
+pub mod distante;
 pub mod protocole;
