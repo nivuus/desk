@@ -1,0 +1,433 @@
+[    0.0s 2026-08-02T18:50:27.142Z] PHASE=montee N_CIBLE=10 chrome pid=1702578 port=9991
+[    0.9s 2026-08-02T18:50:28.048Z] identité du navigateur : pid écoutant=1702578 pid lancé=1702578 version=Chrome/150.0.7871.181
+[    0.9s 2026-08-02T18:50:28.079Z] + page attachée  session=CA036171 url=about:blank
+[    1.0s 2026-08-02T18:50:28.094Z] >>> ÉTAPE 0 : nettoyage — état de départ SANS fenêtre
+[   14.0s 2026-08-02T18:50:41.083Z] --- fenêtres VM (avant superviseur) ---
+
+[   14.0s 2026-08-02T18:50:41.129Z] + page attachée  session=D700E393 url=http://192.168.3.1:5173/shell.html
+[   14.0s 2026-08-02T18:50:41.140Z] shell demandée http://192.168.3.1:5173/shell.html
+[   17.0s 2026-08-02T18:50:44.150Z] statut shell : bureau connecté
+[   17.0s 2026-08-02T18:50:44.150Z] >>> lancement du superviseur (SUPERVISEUR=1)
+[   17.5s 2026-08-02T18:50:44.657Z] run-agent.sh : Op?ration r?ussie : la t?che planifi?e "guacamole-agent" a ?t?  supprim?e. / Op?ration r?ussie : la t?che planifi?e "guacamole-agent" a ?t? cr??e. / Op?ration r?ussie : tentative d'ex?cution de la t?che planifi?e "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   23.5s 2026-08-02T18:50:50.680Z] MARQUEURS (superviseur démarré, 0 fenêtre) {"lignes":17,"cloture":0,"capteur_lance":1,"capteur_relance":0,"capteur_termine":0,"attachee_capteur":0,"rattache":0,"refus_capteur":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":0,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":0,"enfant_termine":0,"abandon_relances":0,"erreurs":0}
+[   24.0s 2026-08-02T18:50:51.111Z] PIDs agent après démarrage : 18212 28200
+[   24.0s 2026-08-02T18:50:51.112Z] >>> OUVERTURE fenêtre 1 (attendu : 1 pages)
+[   24.5s 2026-08-02T18:50:51.674Z] + page attachée  session=CCCE9322 url=
+[   24.6s 2026-08-02T18:50:51.754Z] - page détachée   session=CCCE9322 url=
+[   24.7s 2026-08-02T18:50:51.794Z] + page attachée  session=B5967541 url=
+[   26.5s 2026-08-02T18:50:53.618Z]    fenêtre 1 : page ouverte en 2s (total 1)
+[   32.5s 2026-08-02T18:50:59.627Z] ÉTAT SHELL (après fenêtre 1) liste=[Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[   32.5s 2026-08-02T18:50:59.627Z]   pages d'application ouvertes (1) : http://192.168.3.1:5173/?session=w-2
+[   32.5s 2026-08-02T18:50:59.646Z] MARQUEURS (après fenêtre 1) {"lignes":31,"cloture":0,"capteur_lance":1,"capteur_relance":0,"capteur_termine":0,"attachee_capteur":0,"rattache":0,"refus_capteur":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":1,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":1,"enfant_termine":0,"abandon_relances":0,"erreurs":0}
+[   32.5s 2026-08-02T18:50:59.651Z] STATS (rang 1 — relevé 1) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696659650}}
+[   37.5s 2026-08-02T18:51:04.655Z] STATS (rang 1 — relevé 2) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696664654}}
+[   37.5s 2026-08-02T18:51:04.655Z] CADENCE NAVIGATEUR (rang 1) {
+ "w:w-2": null
+}
+[   37.5s 2026-08-02T18:51:04.656Z] RANG 1 : pages=1 DIFFUSENT=0 ouverte=true
+[   37.5s 2026-08-02T18:51:04.656Z] >>> OUVERTURE fenêtre 2 (attendu : 2 pages)
+[   38.1s 2026-08-02T18:51:05.199Z] + page attachée  session=DE0E39F9 url=
+[   38.1s 2026-08-02T18:51:05.275Z] - page détachée   session=DE0E39F9 url=
+[   38.2s 2026-08-02T18:51:05.294Z] + page attachée  session=138C73A3 url=
+[   40.0s 2026-08-02T18:51:07.098Z]    fenêtre 2 : page ouverte en 2s (total 2)
+[   46.0s 2026-08-02T18:51:13.105Z] ÉTAT SHELL (après fenêtre 2) liste=[Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[   46.0s 2026-08-02T18:51:13.105Z]   pages d'application ouvertes (2) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4
+[   46.0s 2026-08-02T18:51:13.124Z] MARQUEURS (après fenêtre 2) {"lignes":46,"cloture":0,"capteur_lance":1,"capteur_relance":0,"capteur_termine":0,"attachee_capteur":0,"rattache":0,"refus_capteur":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":2,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":2,"enfant_termine":0,"abandon_relances":0,"erreurs":0}
+[   46.0s 2026-08-02T18:51:13.128Z] STATS (rang 2 — relevé 1) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696673126},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696673127}}
+[   51.0s 2026-08-02T18:51:18.132Z] STATS (rang 2 — relevé 2) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696678130},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696678131}}
+[   51.0s 2026-08-02T18:51:18.133Z] CADENCE NAVIGATEUR (rang 2) {
+ "w:w-2": null,
+ "w:w-4": null
+}
+[   51.0s 2026-08-02T18:51:18.133Z] RANG 2 : pages=2 DIFFUSENT=0 ouverte=true
+[   51.0s 2026-08-02T18:51:18.133Z] >>> OUVERTURE fenêtre 3 (attendu : 3 pages)
+[   51.6s 2026-08-02T18:51:18.720Z] + page attachée  session=411B3E96 url=
+[   51.7s 2026-08-02T18:51:18.789Z] - page détachée   session=411B3E96 url=
+[   51.7s 2026-08-02T18:51:18.825Z] + page attachée  session=CD80E036 url=
+[   53.5s 2026-08-02T18:51:20.607Z]    fenêtre 3 : page ouverte en 2s (total 3)
+[   59.5s 2026-08-02T18:51:26.614Z] ÉTAT SHELL (après fenêtre 3) liste=[Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[   59.5s 2026-08-02T18:51:26.614Z]   pages d'application ouvertes (3) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6
+[   59.5s 2026-08-02T18:51:26.633Z] MARQUEURS (après fenêtre 3) {"lignes":62,"cloture":0,"capteur_lance":1,"capteur_relance":0,"capteur_termine":0,"attachee_capteur":0,"rattache":0,"refus_capteur":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":3,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":3,"enfant_termine":0,"abandon_relances":0,"erreurs":0}
+[   59.5s 2026-08-02T18:51:26.638Z] STATS (rang 3 — relevé 1) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696686635},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696686636},"w:w-6":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696686636}}
+[   64.5s 2026-08-02T18:51:31.649Z] STATS (rang 3 — relevé 2) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696691642},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696691644},"w:w-6":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696691644}}
+[   64.5s 2026-08-02T18:51:31.649Z] CADENCE NAVIGATEUR (rang 3) {
+ "w:w-2": null,
+ "w:w-4": null,
+ "w:w-6": null
+}
+[   64.5s 2026-08-02T18:51:31.649Z] RANG 3 : pages=3 DIFFUSENT=0 ouverte=true
+[   64.5s 2026-08-02T18:51:31.649Z] >>> OUVERTURE fenêtre 4 (attendu : 4 pages)
+[   65.1s 2026-08-02T18:51:32.260Z] + page attachée  session=C7C5CC2E url=
+[   65.3s 2026-08-02T18:51:32.392Z] - page détachée   session=C7C5CC2E url=http://192.168.3.1:5173/?session=w-7
+[   65.3s 2026-08-02T18:51:32.472Z] + page attachée  session=727FCD1A url=
+[   67.1s 2026-08-02T18:51:34.206Z]    fenêtre 4 : page ouverte en 2s (total 4)
+[   73.1s 2026-08-02T18:51:40.219Z] ÉTAT SHELL (après fenêtre 4) liste=[Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[   73.1s 2026-08-02T18:51:40.219Z]   pages d'application ouvertes (4) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8
+[   73.1s 2026-08-02T18:51:40.255Z] MARQUEURS (après fenêtre 4) {"lignes":79,"cloture":0,"capteur_lance":1,"capteur_relance":0,"capteur_termine":0,"attachee_capteur":0,"rattache":0,"refus_capteur":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":4,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":4,"enfant_termine":0,"abandon_relances":0,"erreurs":0}
+[   73.1s 2026-08-02T18:51:40.262Z] STATS (rang 4 — relevé 1) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696700259},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696700259},"w:w-6":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696700260},"w:w-8":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696700261}}
+[   78.1s 2026-08-02T18:51:45.271Z] STATS (rang 4 — relevé 2) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696705268},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696705268},"w:w-6":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696705269},"w:w-8":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696705269}}
+[   78.1s 2026-08-02T18:51:45.272Z] CADENCE NAVIGATEUR (rang 4) {
+ "w:w-2": null,
+ "w:w-4": null,
+ "w:w-6": null,
+ "w:w-8": null
+}
+[   78.1s 2026-08-02T18:51:45.272Z] RANG 4 : pages=4 DIFFUSENT=0 ouverte=true
+[   78.1s 2026-08-02T18:51:45.272Z] >>> OUVERTURE fenêtre 5 (attendu : 5 pages)
+[   78.8s 2026-08-02T18:51:45.892Z] + page attachée  session=64C17855 url=
+[   78.8s 2026-08-02T18:51:45.970Z] - page détachée   session=64C17855 url=
+[   78.9s 2026-08-02T18:51:45.999Z] + page attachée  session=BA9BA4A6 url=
+[   80.7s 2026-08-02T18:51:47.789Z]    fenêtre 5 : page ouverte en 2s (total 5)
+[   86.7s 2026-08-02T18:51:53.794Z] ÉTAT SHELL (après fenêtre 5) liste=[Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[   86.7s 2026-08-02T18:51:53.794Z]   pages d'application ouvertes (5) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10
+[   86.7s 2026-08-02T18:51:53.813Z] MARQUEURS (après fenêtre 5) {"lignes":97,"cloture":0,"capteur_lance":1,"capteur_relance":0,"capteur_termine":0,"attachee_capteur":0,"rattache":0,"refus_capteur":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":5,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":5,"enfant_termine":0,"abandon_relances":0,"erreurs":0}
+[   86.7s 2026-08-02T18:51:53.820Z] STATS (rang 5 — relevé 1) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696713816},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696713816},"w:w-6":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696713817},"w:w-8":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696713817},"w:w-10":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696713818}}
+[   91.7s 2026-08-02T18:51:58.828Z] STATS (rang 5 — relevé 2) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696718824},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696718824},"w:w-6":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696718825},"w:w-8":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696718825},"w:w-10":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696718826}}
+[   91.7s 2026-08-02T18:51:58.828Z] CADENCE NAVIGATEUR (rang 5) {
+ "w:w-2": null,
+ "w:w-4": null,
+ "w:w-6": null,
+ "w:w-8": null,
+ "w:w-10": null
+}
+[   91.7s 2026-08-02T18:51:58.828Z] RANG 5 : pages=5 DIFFUSENT=0 ouverte=true
+[   91.7s 2026-08-02T18:51:58.829Z] >>> OUVERTURE fenêtre 6 (attendu : 6 pages)
+[   92.3s 2026-08-02T18:51:59.410Z] + page attachée  session=F6309E75 url=
+[   92.4s 2026-08-02T18:51:59.531Z] - page détachée   session=F6309E75 url=http://192.168.3.1:5173/?session=w-11
+[   92.5s 2026-08-02T18:51:59.607Z] + page attachée  session=69D6D857 url=
+[   94.3s 2026-08-02T18:52:01.382Z]    fenêtre 6 : page ouverte en 2s (total 6)
+[  100.3s 2026-08-02T18:52:07.391Z] ÉTAT SHELL (après fenêtre 6) liste=[Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[  100.3s 2026-08-02T18:52:07.392Z]   pages d'application ouvertes (6) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12
+[  100.3s 2026-08-02T18:52:07.425Z] MARQUEURS (après fenêtre 6) {"lignes":116,"cloture":0,"capteur_lance":1,"capteur_relance":0,"capteur_termine":0,"attachee_capteur":0,"rattache":0,"refus_capteur":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":6,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":6,"enfant_termine":0,"abandon_relances":0,"erreurs":0}
+[  100.3s 2026-08-02T18:52:07.442Z] STATS (rang 6 — relevé 1) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696727431},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696727436},"w:w-6":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696727437},"w:w-8":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696727438},"w:w-10":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696727439},"w:w-12":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696727441}}
+[  105.3s 2026-08-02T18:52:12.448Z] STATS (rang 6 — relevé 2) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696732445},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696732445},"w:w-6":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696732446},"w:w-8":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696732446},"w:w-10":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696732446},"w:w-12":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696732447}}
+[  105.3s 2026-08-02T18:52:12.448Z] CADENCE NAVIGATEUR (rang 6) {
+ "w:w-2": null,
+ "w:w-4": null,
+ "w:w-6": null,
+ "w:w-8": null,
+ "w:w-10": null,
+ "w:w-12": null
+}
+[  105.3s 2026-08-02T18:52:12.448Z] RANG 6 : pages=6 DIFFUSENT=0 ouverte=true
+[  105.3s 2026-08-02T18:52:12.448Z] >>> OUVERTURE fenêtre 7 (attendu : 7 pages)
+[  105.8s 2026-08-02T18:52:12.974Z] + page attachée  session=37AEFF49 url=
+[  106.0s 2026-08-02T18:52:13.081Z] - page détachée   session=37AEFF49 url=http://192.168.3.1:5173/?session=w-13
+[  106.0s 2026-08-02T18:52:13.181Z] + page attachée  session=26386D9E url=
+[  107.8s 2026-08-02T18:52:14.908Z]    fenêtre 7 : page ouverte en 2s (total 7)
+[  113.8s 2026-08-02T18:52:20.914Z] ÉTAT SHELL (après fenêtre 7) liste=[Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[  113.8s 2026-08-02T18:52:20.915Z]   pages d'application ouvertes (7) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12 , http://192.168.3.1:5173/?session=w-14
+[  113.8s 2026-08-02T18:52:20.935Z] MARQUEURS (après fenêtre 7) {"lignes":136,"cloture":0,"capteur_lance":1,"capteur_relance":0,"capteur_termine":0,"attachee_capteur":0,"rattache":0,"refus_capteur":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":7,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":7,"enfant_termine":0,"abandon_relances":0,"erreurs":0}
+[  113.8s 2026-08-02T18:52:20.940Z] STATS (rang 7 — relevé 1) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696740937},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696740938},"w:w-6":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696740938},"w:w-8":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696740938},"w:w-10":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696740939},"w:w-12":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696740939},"w:w-14":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696740940}}
+[  118.8s 2026-08-02T18:52:25.945Z] STATS (rang 7 — relevé 2) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696745942},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696745942},"w:w-6":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696745943},"w:w-8":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696745943},"w:w-10":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696745943},"w:w-12":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696745943},"w:w-14":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696745944}}
+[  118.8s 2026-08-02T18:52:25.945Z] CADENCE NAVIGATEUR (rang 7) {
+ "w:w-2": null,
+ "w:w-4": null,
+ "w:w-6": null,
+ "w:w-8": null,
+ "w:w-10": null,
+ "w:w-12": null,
+ "w:w-14": null
+}
+[  118.8s 2026-08-02T18:52:25.945Z] RANG 7 : pages=7 DIFFUSENT=0 ouverte=true
+[  118.8s 2026-08-02T18:52:25.945Z] >>> OUVERTURE fenêtre 8 (attendu : 8 pages)
+[  119.4s 2026-08-02T18:52:26.485Z] + page attachée  session=9A0BC92E url=
+[  119.4s 2026-08-02T18:52:26.527Z] - page détachée   session=9A0BC92E url=
+[  119.4s 2026-08-02T18:52:26.578Z] + page attachée  session=BE6637B6 url=
+[  121.3s 2026-08-02T18:52:28.386Z]    fenêtre 8 : page ouverte en 2s (total 8)
+[  127.3s 2026-08-02T18:52:34.396Z] ÉTAT SHELL (après fenêtre 8) liste=[Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[  127.3s 2026-08-02T18:52:34.397Z]   pages d'application ouvertes (8) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12 , http://192.168.3.1:5173/?session=w-14 , http://192.168.3.1:5173/?session=w-16
+[  127.3s 2026-08-02T18:52:34.434Z] MARQUEURS (après fenêtre 8) {"lignes":157,"cloture":0,"capteur_lance":1,"capteur_relance":0,"capteur_termine":0,"attachee_capteur":0,"rattache":0,"refus_capteur":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":8,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":8,"enfant_termine":0,"abandon_relances":0,"erreurs":0}
+[  127.3s 2026-08-02T18:52:34.451Z] STATS (rang 8 — relevé 1) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696754441},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696754443},"w:w-6":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696754446},"w:w-8":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696754447},"w:w-10":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696754447},"w:w-12":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696754448},"w:w-14":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696754448},"w:w-16":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696754449}}
+[  132.3s 2026-08-02T18:52:39.460Z] STATS (rang 8 — relevé 2) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696759455},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696759455},"w:w-6":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696759456},"w:w-8":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696759456},"w:w-10":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696759457},"w:w-12":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696759457},"w:w-14":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696759457},"w:w-16":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696759458}}
+[  132.3s 2026-08-02T18:52:39.460Z] CADENCE NAVIGATEUR (rang 8) {
+ "w:w-2": null,
+ "w:w-4": null,
+ "w:w-6": null,
+ "w:w-8": null,
+ "w:w-10": null,
+ "w:w-12": null,
+ "w:w-14": null,
+ "w:w-16": null
+}
+[  132.3s 2026-08-02T18:52:39.461Z] RANG 8 : pages=8 DIFFUSENT=0 ouverte=true
+[  132.3s 2026-08-02T18:52:39.461Z] >>> OUVERTURE fenêtre 9 (attendu : 9 pages)
+[  212.9s 2026-08-02T18:54:00.042Z]    !! fenêtre 9 : AUCUNE page ouverte après 80s (total 8)
+[  218.9s 2026-08-02T18:54:06.053Z] ÉTAT SHELL (après fenêtre 9) liste=[Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="« Sans titre - Bloc-notes » n'a pas pu s'ouvrir : plus aucune sortie virtuelle disponible."
+[  218.9s 2026-08-02T18:54:06.053Z]   pages d'application ouvertes (8) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12 , http://192.168.3.1:5173/?session=w-14 , http://192.168.3.1:5173/?session=w-16
+[  218.9s 2026-08-02T18:54:06.078Z] MARQUEURS (après fenêtre 9) {"lignes":157,"cloture":0,"capteur_lance":1,"capteur_relance":0,"capteur_termine":0,"attachee_capteur":0,"rattache":0,"refus_capteur":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":8,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":8,"enfant_termine":0,"abandon_relances":0,"erreurs":0}
+[  219.0s 2026-08-02T18:54:06.099Z] STATS (rang 9 — relevé 1) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696846085},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696846086},"w:w-6":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696846091},"w:w-8":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696846092},"w:w-10":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696846092},"w:w-12":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696846095},"w:w-14":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696846096},"w:w-16":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696846096}}
+[  224.0s 2026-08-02T18:54:11.110Z] STATS (rang 9 — relevé 2) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696851103},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696851104},"w:w-6":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696851105},"w:w-8":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696851105},"w:w-10":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696851106},"w:w-12":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696851107},"w:w-14":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696851107},"w:w-16":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696851108}}
+[  224.0s 2026-08-02T18:54:11.111Z] CADENCE NAVIGATEUR (rang 9) {
+ "w:w-2": null,
+ "w:w-4": null,
+ "w:w-6": null,
+ "w:w-8": null,
+ "w:w-10": null,
+ "w:w-12": null,
+ "w:w-14": null,
+ "w:w-16": null
+}
+[  224.0s 2026-08-02T18:54:11.111Z] RANG 9 : pages=8 DIFFUSENT=0 ouverte=false
+[  224.0s 2026-08-02T18:54:11.111Z] >>> ARRÊT DE LA MONTÉE au rang 9 : aucune page de plus.
+[  230.5s 2026-08-02T18:54:17.646Z] --- fenêtres VM (au rang bloquant 9) ---
+16676	notepad	0x28a01b2	1280x720+11360+0	fenetre-8.txt - Bloc-notes
+21132	notepad	0x1dc0132	1280x720+6240+0	fenetre-4.txt - Bloc-notes
+22376	notepad	0x140266	1280x720+8800+0	fenetre-6.txt - Bloc-notes
+23348	notepad	0x1b3025e	1280x720+7520+0	fenetre-5.txt - Bloc-notes
+24916	notepad	0x3e01a6	1280x720+3680+0	fenetre-9.txt - Bloc-notes
+27352	notepad	0x8e01e4	1280x720+4960+0	fenetre-3.txt - Bloc-notes
+27716	notepad	0xa800d4	1280x720+2400+0	fenetre-1.txt - Bloc-notes
+27824	notepad	0x1e0246	1280x720+10080+0	fenetre-7.txt - Bloc-notes
+29372	notepad	0x24011c	1280x720+3680+0	fenetre-2.txt - Bloc-notes
+[  230.5s 2026-08-02T18:54:17.647Z] SYNTHÈSE MONTÉE [
+ {
+  "rang": 1,
+  "pages": 1,
+  "diffusent": 0,
+  "ouverte": true,
+  "statut": "bureau connecté",
+  "marqueurs": {
+   "lignes": 31,
+   "cloture": 0,
+   "capteur_lance": 1,
+   "capteur_relance": 0,
+   "capteur_termine": 0,
+   "attachee_capteur": 0,
+   "rattache": 0,
+   "refus_capteur": 0,
+   "reouverture": 0,
+   "mutex_abandonne": 0,
+   "sortie_creee": 1,
+   "sortie_rendue": 0,
+   "creation_refusee": 0,
+   "enfant_lance": 1,
+   "enfant_termine": 0,
+   "abandon_relances": 0,
+   "erreurs": 0
+  }
+ },
+ {
+  "rang": 2,
+  "pages": 2,
+  "diffusent": 0,
+  "ouverte": true,
+  "statut": "bureau connecté",
+  "marqueurs": {
+   "lignes": 46,
+   "cloture": 0,
+   "capteur_lance": 1,
+   "capteur_relance": 0,
+   "capteur_termine": 0,
+   "attachee_capteur": 0,
+   "rattache": 0,
+   "refus_capteur": 0,
+   "reouverture": 0,
+   "mutex_abandonne": 0,
+   "sortie_creee": 2,
+   "sortie_rendue": 0,
+   "creation_refusee": 0,
+   "enfant_lance": 2,
+   "enfant_termine": 0,
+   "abandon_relances": 0,
+   "erreurs": 0
+  }
+ },
+ {
+  "rang": 3,
+  "pages": 3,
+  "diffusent": 0,
+  "ouverte": true,
+  "statut": "bureau connecté",
+  "marqueurs": {
+   "lignes": 62,
+   "cloture": 0,
+   "capteur_lance": 1,
+   "capteur_relance": 0,
+   "capteur_termine": 0,
+   "attachee_capteur": 0,
+   "rattache": 0,
+   "refus_capteur": 0,
+   "reouverture": 0,
+   "mutex_abandonne": 0,
+   "sortie_creee": 3,
+   "sortie_rendue": 0,
+   "creation_refusee": 0,
+   "enfant_lance": 3,
+   "enfant_termine": 0,
+   "abandon_relances": 0,
+   "erreurs": 0
+  }
+ },
+ {
+  "rang": 4,
+  "pages": 4,
+  "diffusent": 0,
+  "ouverte": true,
+  "statut": "bureau connecté",
+  "marqueurs": {
+   "lignes": 79,
+   "cloture": 0,
+   "capteur_lance": 1,
+   "capteur_relance": 0,
+   "capteur_termine": 0,
+   "attachee_capteur": 0,
+   "rattache": 0,
+   "refus_capteur": 0,
+   "reouverture": 0,
+   "mutex_abandonne": 0,
+   "sortie_creee": 4,
+   "sortie_rendue": 0,
+   "creation_refusee": 0,
+   "enfant_lance": 4,
+   "enfant_termine": 0,
+   "abandon_relances": 0,
+   "erreurs": 0
+  }
+ },
+ {
+  "rang": 5,
+  "pages": 5,
+  "diffusent": 0,
+  "ouverte": true,
+  "statut": "bureau connecté",
+  "marqueurs": {
+   "lignes": 97,
+   "cloture": 0,
+   "capteur_lance": 1,
+   "capteur_relance": 0,
+   "capteur_termine": 0,
+   "attachee_capteur": 0,
+   "rattache": 0,
+   "refus_capteur": 0,
+   "reouverture": 0,
+   "mutex_abandonne": 0,
+   "sortie_creee": 5,
+   "sortie_rendue": 0,
+   "creation_refusee": 0,
+   "enfant_lance": 5,
+   "enfant_termine": 0,
+   "abandon_relances": 0,
+   "erreurs": 0
+  }
+ },
+ {
+  "rang": 6,
+  "pages": 6,
+  "diffusent": 0,
+  "ouverte": true,
+  "statut": "bureau connecté",
+  "marqueurs": {
+   "lignes": 116,
+   "cloture": 0,
+   "capteur_lance": 1,
+   "capteur_relance": 0,
+   "capteur_termine": 0,
+   "attachee_capteur": 0,
+   "rattache": 0,
+   "refus_capteur": 0,
+   "reouverture": 0,
+   "mutex_abandonne": 0,
+   "sortie_creee": 6,
+   "sortie_rendue": 0,
+   "creation_refusee": 0,
+   "enfant_lance": 6,
+   "enfant_termine": 0,
+   "abandon_relances": 0,
+   "erreurs": 0
+  }
+ },
+ {
+  "rang": 7,
+  "pages": 7,
+  "diffusent": 0,
+  "ouverte": true,
+  "statut": "bureau connecté",
+  "marqueurs": {
+   "lignes": 136,
+   "cloture": 0,
+   "capteur_lance": 1,
+   "capteur_relance": 0,
+   "capteur_termine": 0,
+   "attachee_capteur": 0,
+   "rattache": 0,
+   "refus_capteur": 0,
+   "reouverture": 0,
+   "mutex_abandonne": 0,
+   "sortie_creee": 7,
+   "sortie_rendue": 0,
+   "creation_refusee": 0,
+   "enfant_lance": 7,
+   "enfant_termine": 0,
+   "abandon_relances": 0,
+   "erreurs": 0
+  }
+ },
+ {
+  "rang": 8,
+  "pages": 8,
+  "diffusent": 0,
+  "ouverte": true,
+  "statut": "bureau connecté",
+  "marqueurs": {
+   "lignes": 157,
+   "cloture": 0,
+   "capteur_lance": 1,
+   "capteur_relance": 0,
+   "capteur_termine": 0,
+   "attachee_capteur": 0,
+   "rattache": 0,
+   "refus_capteur": 0,
+   "reouverture": 0,
+   "mutex_abandonne": 0,
+   "sortie_creee": 8,
+   "sortie_rendue": 0,
+   "creation_refusee": 0,
+   "enfant_lance": 8,
+   "enfant_termine": 0,
+   "abandon_relances": 0,
+   "erreurs": 0
+  }
+ },
+ {
+  "rang": 9,
+  "pages": 8,
+  "diffusent": 0,
+  "ouverte": false,
+  "statut": "« Sans titre - Bloc-notes » n'a pas pu s'ouvrir : plus aucune sortie virtuelle disponible.",
+  "marqueurs": {
+   "lignes": 157,
+   "cloture": 0,
+   "capteur_lance": 1,
+   "capteur_relance": 0,
+   "capteur_termine": 0,
+   "attachee_capteur": 0,
+   "rattache": 0,
+   "refus_capteur": 0,
+   "reouverture": 0,
+   "mutex_abandonne": 0,
+   "sortie_creee": 8,
+   "sortie_rendue": 0,
+   "creation_refusee": 0,
+   "enfant_lance": 8,
+   "enfant_termine": 0,
+   "abandon_relances": 0,
+   "erreurs": 0
+  }
+ }
+]
+[  230.5s 2026-08-02T18:54:17.664Z] STATS (PALIER FINAL (30 s) — relevé 1) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696857652},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696857655},"w:w-6":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696857656},"w:w-8":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696857657},"w:w-10":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696857658},"w:w-12":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696857661},"w:w-14":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696857662},"w:w-16":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696857663}}
+[  260.5s 2026-08-02T18:54:47.676Z] STATS (PALIER FINAL (30 s) — relevé 2) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696887668},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696887669},"w:w-6":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696887670},"w:w-8":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696887671},"w:w-10":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696887671},"w:w-12":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696887672},"w:w-14":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696887672},"w:w-16":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785696887673}}
+[  260.5s 2026-08-02T18:54:47.676Z] CADENCE NAVIGATEUR (PALIER FINAL (30 s)) {
+ "w:w-2": null,
+ "w:w-4": null,
+ "w:w-6": null,
+ "w:w-8": null,
+ "w:w-10": null,
+ "w:w-12": null,
+ "w:w-14": null,
+ "w:w-16": null
+}
+[  260.6s 2026-08-02T18:54:47.683Z] ÉTAT SHELL (FIN MONTÉE) liste=[Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="« C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE » n'a pas pu s'ouvrir : plus aucune sortie virtuelle disponible."
+[  260.6s 2026-08-02T18:54:47.683Z]   pages d'application ouvertes (8) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12 , http://192.168.3.1:5173/?session=w-14 , http://192.168.3.1:5173/?session=w-16
+[  260.6s 2026-08-02T18:54:47.702Z] journal copié dans /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/dffb8a0c-ae33-4e14-a0b6-f1eab68129c9/scratchpad/critere1.log

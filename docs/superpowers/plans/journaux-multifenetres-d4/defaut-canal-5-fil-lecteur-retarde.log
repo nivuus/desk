@@ -1,0 +1,57 @@
+2026-08-02T18:48:38.938601Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-02T18:48:38.954515Z  INFO agent::superviseur::signalisation: superviseur enregistré sur la session de contrôle session="bureau"
+2026-08-02T18:48:38.956831Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-02T18:48:38.956870Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-02T18:48:38.956883Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=3 attachees=3
+2026-08-02T18:48:38.956892Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-02T18:48:38.956900Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-02T18:48:38.956904Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-08-02T18:48:38.965655Z  INFO agent::moniteurs_virtuels::purge: sortie virtuelle retirée par la purge numero=1 guid=9C4A1F6E-2B73-4D51-9E08-677541430001
+2026-08-02T18:48:38.972489Z  INFO agent::moniteurs_virtuels::purge: sortie virtuelle retirée par la purge numero=2 guid=9C4A1F6E-2B73-4D51-9E08-677541430002
+2026-08-02T18:48:41.973960Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-02T18:48:41.973994Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-02T18:48:41.974002Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-08-02T18:48:41.974020Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-02T18:48:41.974028Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=2 avant=3 apres=1
+2026-08-02T18:48:41.977571Z  INFO agent::superviseur::lanceur: capteur lancé pid=26668
+2026-08-02T18:48:41.983683Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-02T18:48:41.983712Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-08-02T18:48:46.005464Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-02T18:48:46.005496Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-02T18:48:46.005502Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=1 attachees=1
+2026-08-02T18:48:46.005506Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-02T18:48:46.005866Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=258 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430001 largeur=1280 hauteur=720 hertz=60
+2026-08-02T18:48:46.133191Z  INFO agent::superviseur::enfants: enfant lancé session=w-2 pid=28436 sortie=\\.\DISPLAY5 audio=false
+2026-08-02T18:48:46.140414Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-02T18:48:46.140467Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY5 bitrate=12000000 fps=90
+2026-08-02T18:48:46.140749Z  WARN agent::capteur::serveur: DIAGNOSTIC : fil lecteur en sommeil 25 s avant sa première lecture
+2026-08-02T18:48:46.145487Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-02T18:48:46.224411Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-02T18:48:46.224796Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-02T18:48:46.225698Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-02T18:48:46.314863Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=327681
+2026-08-02T18:48:46.319759Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-02T18:48:46.320229Z  INFO agent::capteur::fenetre: fenêtre attachée au capteur session=w-2 sortie=\\.\DISPLAY5 largeur=1280 hauteur=720
+2026-08-02T18:48:46.320267Z  INFO agent::capteur::tube: attaché au capteur session=w-2 sortie=\\.\DISPLAY5 largeur=1280 hauteur=720
+2026-08-02T18:48:46.323781Z  INFO agent::signaling: agent enregistré auprès du signaling session="w-2"
+2026-08-02T18:48:46.323861Z  INFO agent::transport: socket UDP de l'agent addr=192.168.3.2:62145
+2026-08-02T18:48:46.324478Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-02T18:48:46.353275Z  INFO agent::demarrage: son désactivé sur cet enfant : une seule fenêtre le porte
+2026-08-02T18:48:48.986876Z  INFO agent::demarrage: offre reçue
+2026-08-02T18:48:48.993109Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=réception pendant l'allocation TURN
+2026-08-02T18:48:48.995180Z  INFO agent::demarrage: réponse envoyée
+2026-08-02T18:48:48.995488Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=2.6424393s
+2026-08-02T18:48:49.002276Z  INFO agent::transport::evenements: état ICE state=Connected écoulé=2.6492255s
+2026-08-02T18:48:49.011711Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video
+2026-08-02T18:48:49.011738Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio
+2026-08-02T18:48:49.021878Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-02T18:48:49.021950Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-02T18:48:49.254338Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-02T18:48:49.265499Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-02T18:48:49.304155Z  INFO agent::demarrage: contrôle reçu Resize { version: 3, width: 1280, height: 720 }
+2026-08-02T18:48:56.330905Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=10 cadence="1.0"
+2026-08-02T18:48:59.349802Z  WARN agent::transport::redimensionnement: échec du redimensionnement, ignoré erreur=aucune réponse du capteur à Redimensionner { largeur: 1280, hauteur: 720 } width=1280 height=720
+2026-08-02T18:48:59.349844Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=7 cadence="0.5"
+2026-08-02T18:49:06.331744Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=0 cadence="0.0"
+2026-08-02T18:49:11.141718Z  WARN agent::capteur::serveur: DIAGNOSTIC : fil lecteur ENTRE en lecture bloquante maintenant
+2026-08-02T18:49:11.147740Z  INFO agent::windows_source::redimensionnement: redimensionnement ignoré : la source capture une sortie DXGI entière (hors périmètre D1, voir spec §3.3) width=1280 height=720 mode=SortieEntiere

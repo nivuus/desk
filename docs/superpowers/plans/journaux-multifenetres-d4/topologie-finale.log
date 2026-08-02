@@ -1,0 +1,6 @@
+2026-08-02T18:59:26.893393Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-02T18:59:26.895202Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-02T18:59:26.895234Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-02T18:59:26.895248Z  INFO agent::diagnostics::multifenetre::disponibilite: sorties DXGI relevées nombre=1
+2026-08-02T18:59:26.895251Z  INFO agent::diagnostics::multifenetre::disponibilite: sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 nom=\\.\DISPLAY1 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-02T18:59:26.895256Z  INFO agent::diagnostics::multifenetre::disponibilite: verdict : 1 sortie(s) attachée(s) au bureau — la voie « un moniteur par fenêtre » exige d'en obtenir 8 attachees=1

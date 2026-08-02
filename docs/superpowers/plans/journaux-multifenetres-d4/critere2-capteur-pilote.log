@@ -1,0 +1,104 @@
+[    0.0s 2026-08-02T18:56:07.983Z] PHASE=capteur N_CIBLE=4 chrome pid=1722210 port=9991
+[    1.0s 2026-08-02T18:56:08.945Z] identité du navigateur : pid écoutant=1722210 pid lancé=1722210 version=Chrome/150.0.7871.181
+[    1.0s 2026-08-02T18:56:08.969Z] + page attachée  session=C3213C50 url=about:blank
+[    1.0s 2026-08-02T18:56:08.975Z] >>> ÉTAPE 0 : nettoyage — état de départ SANS fenêtre
+[   14.1s 2026-08-02T18:56:22.076Z] --- fenêtres VM (avant superviseur) ---
+
+[   14.2s 2026-08-02T18:56:22.126Z] + page attachée  session=CD0925F6 url=http://192.168.3.1:5173/shell.html
+[   14.2s 2026-08-02T18:56:22.136Z] shell demandée http://192.168.3.1:5173/shell.html
+[   17.2s 2026-08-02T18:56:25.145Z] statut shell : bureau connecté
+[   17.2s 2026-08-02T18:56:25.145Z] >>> lancement du superviseur (SUPERVISEUR=1)
+[   17.7s 2026-08-02T18:56:25.667Z] run-agent.sh : Op?ration r?ussie : la t?che planifi?e "guacamole-agent" a ?t?  supprim?e. / Op?ration r?ussie : la t?che planifi?e "guacamole-agent" a ?t? cr??e. / Op?ration r?ussie : tentative d'ex?cution de la t?che planifi?e "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   23.7s 2026-08-02T18:56:31.717Z] MARQUEURS (superviseur démarré, 0 fenêtre) {"lignes":15,"cloture":0,"capteur_lance":1,"capteur_relance":0,"capteur_termine":0,"attachee_capteur":0,"rattache":0,"refus_capteur":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":0,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":0,"enfant_termine":0,"abandon_relances":0,"erreurs":0}
+[   24.2s 2026-08-02T18:56:32.150Z] PIDs agent après démarrage : 28236 28328
+[   24.2s 2026-08-02T18:56:32.150Z] >>> OUVERTURE fenêtre 1 (attendu : 1 pages)
+[   24.8s 2026-08-02T18:56:32.738Z] + page attachée  session=44E88B89 url=
+[   24.8s 2026-08-02T18:56:32.798Z] - page détachée   session=44E88B89 url=
+[   24.9s 2026-08-02T18:56:32.832Z] + page attachée  session=B9A29263 url=
+[   26.7s 2026-08-02T18:56:34.640Z]    fenêtre 1 : page ouverte en 2s (total 1)
+[   29.7s 2026-08-02T18:56:37.642Z] >>> OUVERTURE fenêtre 2 (attendu : 2 pages)
+[   30.3s 2026-08-02T18:56:38.306Z] + page attachée  session=0589FC4B url=
+[   30.4s 2026-08-02T18:56:38.389Z] - page détachée   session=0589FC4B url=
+[   30.4s 2026-08-02T18:56:38.416Z] + page attachée  session=2E3C6518 url=
+[   32.3s 2026-08-02T18:56:40.225Z]    fenêtre 2 : page ouverte en 2s (total 2)
+[   35.3s 2026-08-02T18:56:43.227Z] >>> OUVERTURE fenêtre 3 (attendu : 3 pages)
+[   35.8s 2026-08-02T18:56:43.782Z] + page attachée  session=8CC07F76 url=
+[   35.9s 2026-08-02T18:56:43.906Z] - page détachée   session=8CC07F76 url=http://192.168.3.1:5173/?session=w-5
+[   36.0s 2026-08-02T18:56:43.976Z] + page attachée  session=0FD289E0 url=
+[   37.8s 2026-08-02T18:56:45.738Z]    fenêtre 3 : page ouverte en 2s (total 3)
+[   37.9s 2026-08-02T18:56:45.917Z] + page attachée  session=8A9C3C33 url=
+[   38.1s 2026-08-02T18:56:46.036Z] - page détachée   session=8A9C3C33 url=http://192.168.3.1:5173/?session=w-7
+[   38.1s 2026-08-02T18:56:46.047Z] + page attachée  session=153B76F0 url=
+[   38.2s 2026-08-02T18:56:46.128Z] - page détachée   session=153B76F0 url=
+[   40.8s 2026-08-02T18:56:48.739Z] >>> OUVERTURE fenêtre 4 (attendu : 4 pages)
+[   41.3s 2026-08-02T18:56:49.239Z] + page attachée  session=57BE258E url=
+[   41.4s 2026-08-02T18:56:49.352Z] - page détachée   session=57BE258E url=http://192.168.3.1:5173/?session=w-9
+[   41.5s 2026-08-02T18:56:49.432Z] + page attachée  session=46075636 url=
+[   43.2s 2026-08-02T18:56:51.194Z]    fenêtre 4 : page ouverte en 2s (total 4)
+[   54.2s 2026-08-02T18:57:02.210Z] ÉTAT SHELL (avant la mise à mort du capteur) liste=[Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[   54.2s 2026-08-02T18:57:02.211Z]   pages d'application ouvertes (4) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-10
+[   54.3s 2026-08-02T18:57:02.241Z] MARQUEURS (AVANT mise à mort) {"lignes":77,"cloture":0,"capteur_lance":1,"capteur_relance":0,"capteur_termine":0,"attachee_capteur":0,"rattache":0,"refus_capteur":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":4,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":4,"enfant_termine":0,"abandon_relances":0,"erreurs":0}
+[   54.3s 2026-08-02T18:57:02.263Z] STATS (AVANT mise à mort — relevé 1) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785697022248},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785697022252},"w:w-6":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785697022257},"w:w-10":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785697022258}}
+[   64.3s 2026-08-02T18:57:12.273Z] STATS (AVANT mise à mort — relevé 2) {"w:w-2":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785697032269},"w:w-4":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785697032270},"w:w-6":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785697032271},"w:w-10":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785697032271}}
+[   64.3s 2026-08-02T18:57:12.273Z] CADENCE NAVIGATEUR (AVANT mise à mort) {
+ "w:w-2": null,
+ "w:w-4": null,
+ "w:w-6": null,
+ "w:w-10": null
+}
+[   64.3s 2026-08-02T18:57:12.305Z] PIDs capteur vus dans le journal : [28328] — cible = 28328
+[   64.8s 2026-08-02T18:57:12.756Z] PIDs agent vivants avant la mise à mort : 23932 25952 27712 28236 28328 28332
+[   64.8s 2026-08-02T18:57:12.756Z] >>> MISE À MORT DU CAPTEUR par PID 28328 (jamais pkill -f) à 2026-08-02T18:57:12.756Z
+[   65.2s 2026-08-02T18:57:13.188Z] résultat de la mise à mort (True = le PID a disparu) : False
+[   65.4s 2026-08-02T18:57:13.353Z] - page détachée   session=46075636 url=http://192.168.3.1:5173/?session=w-10
+[   65.4s 2026-08-02T18:57:13.359Z] - page détachée   session=2E3C6518 url=http://192.168.3.1:5173/?session=w-4
+[   65.4s 2026-08-02T18:57:13.379Z] - page détachée   session=0FD289E0 url=http://192.168.3.1:5173/?session=w-6
+[   65.4s 2026-08-02T18:57:13.407Z] - page détachée   session=B9A29263 url=http://192.168.3.1:5173/?session=w-2
+[   66.3s 2026-08-02T18:57:14.278Z]    … t+1s relance=pas encore rattachements=0
+[   66.3s 2026-08-02T18:57:14.279Z] + page attachée  session=9C347C69 url=
+[   66.4s 2026-08-02T18:57:14.359Z] + page attachée  session=474E8668 url=
+[   66.5s 2026-08-02T18:57:14.430Z] + page attachée  session=6DC3929C url=
+[   66.5s 2026-08-02T18:57:14.487Z] + page attachée  session=AF5928E3 url=
+[   71.7s 2026-08-02T18:57:19.716Z]    … t+6s relance=2026-08-02T18:57:13.295805Z rattachements=0
+[   76.8s 2026-08-02T18:57:24.790Z]    … t+11s relance=2026-08-02T18:57:13.295805Z rattachements=0
+[   81.9s 2026-08-02T18:57:29.865Z]    … t+16s relance=2026-08-02T18:57:13.295805Z rattachements=0
+[   87.0s 2026-08-02T18:57:34.945Z]    … t+21s relance=2026-08-02T18:57:13.295805Z rattachements=0
+[   92.1s 2026-08-02T18:57:40.034Z]    … t+26s relance=2026-08-02T18:57:13.295805Z rattachements=0
+[   97.2s 2026-08-02T18:57:45.131Z]    … t+31s relance=2026-08-02T18:57:13.295805Z rattachements=0
+[  102.2s 2026-08-02T18:57:50.211Z]    … t+36s relance=2026-08-02T18:57:13.295805Z rattachements=0
+[  110.3s 2026-08-02T18:57:58.279Z] STATS (APRÈS relance du capteur — relevé 1) {"w:w-11":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785697078276},"w:w-12":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785697078277},"w:w-13":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785697078278},"w:w-14":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785697078278}}
+[  120.3s 2026-08-02T18:58:08.286Z] STATS (APRÈS relance du capteur — relevé 2) {"w:w-11":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785697088284},"w:w-12":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785697088285},"w:w-13":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785697088285},"w:w-14":{"etat":"new","images":null,"l":null,"h":null,"octets":null,"rtt":null,"horloge":1785697088285}}
+[  120.3s 2026-08-02T18:58:08.286Z] CADENCE NAVIGATEUR (APRÈS relance du capteur) {
+ "w:w-11": null,
+ "w:w-12": null,
+ "w:w-13": null,
+ "w:w-14": null
+}
+[  120.3s 2026-08-02T18:58:08.301Z] MARQUEURS (APRÈS relance du capteur) {"lignes":142,"cloture":0,"capteur_lance":2,"capteur_relance":1,"capteur_termine":1,"attachee_capteur":0,"rattache":0,"refus_capteur":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":4,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":8,"enfant_termine":4,"abandon_relances":0,"erreurs":0}
+[  120.3s 2026-08-02T18:58:08.305Z] ÉTAT SHELL (après relance du capteur) liste=[Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[  120.3s 2026-08-02T18:58:08.305Z]   pages d'application ouvertes (4) : http://192.168.3.1:5173/?session=w-11 , http://192.168.3.1:5173/?session=w-12 , http://192.168.3.1:5173/?session=w-13 , http://192.168.3.1:5173/?session=w-14
+[  120.3s 2026-08-02T18:58:08.306Z] BORNES TEMPORELLES (horodatage local du pilote, UTC)
+[  120.3s 2026-08-02T18:58:08.306Z]    mise à mort demandée : 2026-08-02T18:57:12.756Z
+[  120.3s 2026-08-02T18:58:08.306Z]    fin de l'attente du fait : 2026-08-02T18:57:54.273Z
+[  120.3s 2026-08-02T18:58:08.306Z] SYNTHÈSE CAPTEUR {
+ "pid_capteur_tue": 28328,
+ "cadence_avant": {
+  "w:w-2": null,
+  "w:w-4": null,
+  "w:w-6": null,
+  "w:w-10": null
+ },
+ "cadence_apres": {
+  "w:w-11": null,
+  "w:w-12": null,
+  "w:w-13": null,
+  "w:w-14": null
+ },
+ "delta_cloture": 0,
+ "delta_relance": 1,
+ "delta_rattache": 0,
+ "delta_attachee": 0,
+ "delta_enfant_lance": 4,
+ "delta_enfant_termine": 4
+}
+[  120.3s 2026-08-02T18:58:08.318Z] journal copié dans /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/dffb8a0c-ae33-4e14-a0b6-f1eab68129c9/scratchpad/critere2.log

@@ -83,6 +83,18 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > `capture.rs` à 485 pour **496**. **Ne jamais s'y fier pour décider si un
 > fichier peut encore grossir : relancer la commande ci-dessous**, qui est la
 > seule source de vérité, et **corriger le tableau dans le même mouvement**.
+>
+> ✅ **Relancée le 2 août 2026 en fin de recette D4 : les trois lignes du tableau
+> sont EXACTES** (1536 / 648 / 543), et `capture.rs` (496), `arret.rs` (500) et
+> `superviseur/table.rs` (489) le sont aussi. **Deux chiffres voisins ne l'étaient
+> plus** — `superviseur/boucle.rs` est à **491** et `demarrage.rs` à **472**,
+> quand la conception de D4 les annonçait à 485 et 468.
+>
+> ⚠️ **Marge étroite NEUVE, qu'aucun document ne signalait :
+> `agent/src/capteur/distante.rs` est à 487 lignes, soit une marge de 13.**
+> C'est un fichier né avec D4, et **c'est lui qui portera le remède du canal**
+> s'il passe par la reprise (voir « Sous-bloc D4 ») : **toute addition
+> substantielle y appelle une extraction, pas une compression.**
 
 **Vérifier l'état** :
 
@@ -1459,8 +1471,17 @@ propriétaire du poste.
 > processus passent, huit réparties sur quatre processus passent, mais la
 > cinquième duplication dans un cinquième processus est refusée — **avec moins de
 > duplications ouvertes que les rangs qui réussissent**. ⚠️ **La couche qui
-> l'impose n'est toujours PAS identifiée** ; seul l'objet du plafond l'est. Voir
-> la section « Sous-bloc D3 » plus bas.
+> l'impose n'est toujours PAS identifiée** ; seul l'objet du plafond l'est.
+>
+> ✅ **Le sous-bloc D4 (2 août 2026) CONTOURNE ce plafond : la capture est
+> mutualisée dans un processus unique, qui a tenu 8 duplications et
+> 8 encodeurs.** Le plafond de quatre **processus** ne borne donc plus le nombre
+> de fenêtres capturées. ⚠️ **Il ne borne pas davantage un nombre de fenêtres
+> DIFFUSANT, parce que ce nombre vaut ZÉRO** : le canal capteur→enfant ne
+> délivre pas sa réponse d'attache et aucune session WebRTC ne s'établit. **La
+> couche du plafond reste, elle, toujours non identifiée** — D4 le contourne, il
+> ne l'explique pas. Voir les sections « Sous-bloc D3 » et « Sous-bloc D4 »
+> plus bas.
 
 > ✅ **Les deux mesures que cette sonde déclarait bloquantes ont été prises le
 > 31 juillet 2026** (plafond de sorties virtuelles, plafond d'encodage sur
@@ -1555,6 +1576,11 @@ confirmation par des processus tiers).
   porte sur le **nombre de processus** concurrents tenant une duplication, et
   vaut **exactement 4** — le rang qui échoue n'a que 4 duplications ouvertes
   quand ceux qui passent en ont 8. Voir « Sous-bloc D3 ».
+  ✅ **Et D4 a supprimé le « rien au-delà de quatre » côté CAPTURE** : la capture
+  mutualisée met les N duplications dans un processus unique, qui en a tenu 8
+  avec 8 encodeurs. ⚠️ **Côté DIFFUSION, « rien au-delà de quatre » est remplacé
+  par « rien du tout »** : aucune session WebRTC ne s'établit sous D4. Voir
+  « Sous-bloc D4 ».
 - **La comparaison des deux modes d'encodage porte sur DEUX variables
   confondues** : le mode `separe` n'ouvre aucune duplication DXGI là où
   `partage` en ouvre une. Le témoin propre n'a pas été exercé.
@@ -1658,6 +1684,7 @@ code d'erreur).
 | `MULTIFENETRE_REPRISE=<k>` | **Sous-bloc D2** — *k* sorties virtuelles, *k* duplications, puis **une sortie de plus** créée en cours de capture : éprouve que les *k* duplications reprennent et rendent encore des images justes. Sonde post-mortem sur les voies mortes |
 | `MULTIFENETRE_PLAFOND=<P>x<D>` | **Sous-bloc D3** — le **porteur** : crée K = P×D sorties virtuelles, bat le chien de garde, **ne duplique rien lui-même**, lance P processus **sondes** en escalier (la *i+1* attend que la *i* soit prête ou en échec), puis détruit ses sorties et compare la topologie **par ensemble de noms** |
 | `MULTIFENETRE_PLAFOND_SONDE=<noms,séparés,par,virgules>` | **Sous-bloc D3** — la **sonde**, posée par le porteur et **jamais à la main** (avec `MULTIFENETRE_PLAFOND_RANG=<i>`). Ouvre une duplication par nom, les tient jusqu'au signal d'arrêt, journalise le `HRESULT` exact. **Branche en tête de tout l'aiguillage** : sans quoi un `MULTIFENETRE_VDD_PURGE=1` résiduel, hérité par l'enfant, détruirait les sorties vivantes du porteur en pleine mesure |
+| `CAPTEUR=1` | **Sous-bloc D4** — lance l'agent en **capteur** de capture mutualisée (serveur du tube `\\.\pipe\agent-capteur`). Posée par le superviseur lui-même (`lancer_capteur`), pas à la main ; transmise par `scripts/run-agent.sh`. Un capteur qui hériterait de `SUPERVISEUR` se prendrait pour un superviseur |
 | `AGENT_TRACE_EXCEPTIONS=1` | Arme le filtre d'exception (pile symbolisable de la faute, journal séparé d'`agent.log`). Inerte sans la variable. `…_FICHIER` en change la destination ; `…_AUTOTEST=1` **tue délibérément le processus** pour éprouver l'instrument |
 
 ---
@@ -2093,6 +2120,15 @@ D2 ne fait qu'une chose : lever ce qui empêchait D1 d'être reçu.
 > duplications. ⚠️ **La couche qui l'impose reste inconnue.** Les affirmations
 > ci-dessous restent le relevé **de D2** ; celles que D3 réfute ou complète sont
 > annotées une à une. Verdict à jour : section « Sous-bloc D3 » plus bas.
+>
+> ✅ **Et le sous-bloc D4 (2 août 2026) a MUTUALISÉ la capture, ce qui retire ce
+> plafond de quatre : un seul processus y tient 8 duplications et 8 encodeurs.**
+> ⚠️ **Sans que rien ne diffuse pour autant** — le canal capteur→enfant ne
+> délivre pas sa réponse d'attache, et **aucune session WebRTC ne s'établit**.
+> `CAPACITE` est repassée à 8, **sans être confrontée à aucune mesure**. Le
+> plafond de quatre ne borne donc plus le nombre de fenêtres **capturées** ;
+> il n'a été remplacé par aucun chiffre de fenêtres **diffusant**, puisque ce
+> nombre vaut **zéro**. Voir la section « Sous-bloc D4 » plus bas.
 
 ### Le verdict est DOUBLE — ne le simplifier dans aucun sens
 
@@ -2255,6 +2291,15 @@ mutex reste inconnu, le plafond d'encodeurs en multi-processus n'a toujours pas
 été approché, et rien de la latence, de la cadence ni de la durée n'a été
 mesuré.
 
+⚠️ **D4 n'en a levé qu'UN, et à moitié** : « rien au-delà de 4 fenêtres » est
+étendu à **8 fenêtres CAPTURÉES** dans le processus capteur unique — mais **0
+fenêtre DIFFUSANT**, aucune session ne s'établissant. **Tout le reste tient
+intégralement** : mécanisme de l'abandon du mutex toujours inconnu, plafond
+d'encodeurs en multi-processus toujours pas approché (D4 n'a plus qu'un seul
+processus qui encode), rien de la latence, de la cadence ni de la durée, aucun
+redimensionnement, aucun recouvrement, aucun déplacement de fenêtre, chemin
+d'extinction propre du superviseur toujours jamais exercé.
+
 ### Pièges neufs — à connaître avant de toucher à ce terrain
 
 - **Le pilote de sortie virtuelle QUANTIFIE la résolution demandée** : 1280×632
@@ -2352,11 +2397,21 @@ confirmée, sa ligne s'applique sans arbitrage :
 
 - **la capture mutualisée** — un seul processus tenant les N duplications et
   distribuant les textures — est **DÉSIGNÉE pour D4**, et **non implémentée** ;
+  ✅ **D4 l'a implémentée (2 août 2026), et sa recette a mesuré qu'UN SEUL
+  processus tient bien 8 duplications DXGI et 8 encodeurs NVENC.** Le plafond de
+  quatre **processus** cesse donc de mordre. ⚠️ **Mais D4 N'EST PAS REÇU** : le
+  canal capteur→enfant ne délivre pas sa réponse d'attache, **aucune session
+  WebRTC ne s'établit**, et les trois critères sont non tenus. Voir
+  « Sous-bloc D4 » plus bas.
 - **`CAPACITE` passe de 8 à 4** (`agent/src/superviseur/boucle.rs`). À 8, le
   superviseur acceptait quatre fenêtres dont aucune ne pouvait aboutir, chacune
   brûlant `RELANCES_MAX + 1` tentatives dont chacune recréait une sortie
   virtuelle. **Valeur MESURÉE sur cette VM, non prouvée être une borne du
   système.**
+  ⚠️ **Cette phrase ne décrit plus le dépôt : D4 a reporté `CAPACITE` à 8**, par
+  coïncidence avec le plafond d'encodeurs connu. **Ce 8 n'a été confronté à
+  AUCUNE mesure** — la montée de la recette D4 s'arrête dessus, donc sur le
+  produit lui-même, et n'approche aucun plafond du système.
 
 ⚠️ **Précision de vocabulaire, pour que D4 ne se trompe pas de repli.** Ce que la
 conception de D3 nomme « le repli de la spec §8 » est la **capture mutualisée**.
@@ -2409,6 +2464,11 @@ fenêtre déjà ouverte (**défaut préexistant**, nommé et non corrigé). La r
 - **Aucune image capturée, aucun encodeur construit** par les sondes. **Le
   plafond d'encodeurs en multi-processus reste entièrement ouvert** — et il
   devient le **risque n°1 de D4**.
+  ⚠️ **Ce risque N'A PAS été levé par D4, et il ne s'est pas non plus manifesté**
+  — parce qu'il n'a pas été approché : D4 mutualise la capture dans **un seul**
+  processus, où 8 encodeurs se construisent sans refus, et sa recette s'arrête à
+  8 sur `CAPACITE`. **Le plafond d'encodeurs en MULTI-processus reste entièrement
+  ouvert**, exactement comme cette ligne le dit.
 - **Un rang `5x1` autonome n'a pas été joué** (ni `6x1`, ni `7x1`). L'état qu'il
   aurait mesuré a bien été atteint et refusé 3/3 **comme sous-produit de `8x1`**,
   mais il manque une mesure dédiée. Le comportement entre 6, 7 et 8 processus est
@@ -2479,6 +2539,132 @@ fenêtre déjà ouverte (**défaut préexistant**, nommé et non corrigé). La r
 (la sonde, posée par le porteur et jamais à la main) sont décrites dans le
 **tableau des variables du banc**, section « Mesures préalables au chantier D »
 plus haut — un seul tableau, pour qu'il n'y ait qu'un endroit à consulter.
+
+---
+
+## 🧩 Sous-bloc D4 — capture mutualisée : la voie est bonne, le canal ne passe pas (2 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-02-multifenetres-capture-mutualisee-resultats.md`.
+Conception : `docs/superpowers/specs/2026-08-02-multifenetres-capture-mutualisee-design.md`.
+Journaux : `docs/superpowers/plans/journaux-multifenetres-d4/` — **17 fichiers,
+tous en UTF-8, séquences ANSI déjà retirées** : ils se `grep`ent à plat, sans
+`sed` (contrairement à ceux de D1, D2 et D3).
+
+D4 remplace « un processus par fenêtre » par trois étages : le **superviseur**
+(qui ne duplique rien), un **capteur** unique qui tient les N duplications DXGI
+et les N encodeurs et sert chaque enfant par un tube nommé
+(`\\.\pipe\agent-capteur`), et les **N enfants** réduits à WebRTC, l'entrée et
+l'audio. `WindowsSource` n'est ni déplacé ni modifié ; une `SourceDistante`
+implémente `VideoSource` côté enfant.
+
+### Le verdict est DOUBLE, et il ne se simplifie dans aucun sens
+
+**① La thèse de D4 est soutenue au niveau de la capture.** Un **unique**
+processus capteur (`capteur lancé pid=18212`) a tenu **8 duplications DXGI** sur
+huit sorties virtuelles nommément distinctes (`\\.\DISPLAY5` à `\\.\DISPLAY12`)
+et **8 encodeurs matériels NVENC**, **zéro `WARN`, zéro `ERROR`**, pendant que
+huit enfants journalisaient chacun `source distante servie par le capteur`. **Le
+plafond de quatre PROCESSUS établi par D3 cesse donc de mordre.**
+
+**② D4 N'EST PAS REÇU : aucune session WebRTC ne s'établit, sur aucun rang.**
+Les trois critères sont non tenus. Le nombre de pages navigateur qui **diffusent
+réellement** (`framesDecoded` en croissance) vaut **0** aux rangs 1 à 8.
+
+**Ces deux faits ne se compensent pas.** Le premier porte sur des
+**constructions** réussies — aucune image n'a été comptée sur ces huit voies, et
+les huit encodeurs n'ont **jamais été alimentés ensemble**.
+
+### Le défaut bloquant, et ce qu'on en sait exactement
+
+**L'écriture du capteur sur le tube n'aboutit pas tant que son fil de lecture de
+commandes a une lecture bloquante pendante sur la même instance de tube.**
+L'enfant reste donc bloqué dans `lire_trame` en attendant sa réponse d'attache,
+n'atteint jamais le signaling, et aucune session ne naît.
+
+C'est un fait **différentiel**, pas une conjecture : sur un binaire par ailleurs
+identique, empêcher ce fil d'entrer en lecture fait aboutir l'attache des **deux**
+côtés en 34 µs, passer l'ICE à `connected`, et arriver de vraies images H.264
+1280×720 au navigateur (`defaut-canal-3` et `-4`).
+
+⚠️ **Le MÉCANISME reste inconnu, et l'explication naturelle est CONTRARIÉE.**
+La sérialisation des E/S sur un objet fichier synchrone Windows expliquerait le
+côté capteur, mais **côté enfant l'écriture aboutit** alors que son propre fil
+lecteur est en lecture bloquante — on le lit à ce que `commander` échoue sur son
+*délai de réponse* (« aucune réponse du capteur à `Debit { … }` »), libellé
+attaché au seul `recv_timeout`. **Il y a une asymétrie que rien n'explique.**
+
+**Le remède n'est pas un correctif** : E/S recouvrantes (`FILE_FLAG_OVERLAPPED`
+aux deux bouts, `ConnectNamedPipe` compris) ou une connexion par sens — dans les
+deux cas de la conception, sur la couche même que le sous-bloc a bâtie.
+
+### Un second défaut, celui-là corrigé (commit `f2b3fbe`)
+
+La réponse `Attachee` était écrite dans un `BufWriter` **sans être vidée**, là où
+toutes les autres écritures du fichier l'étaient. Elle ne partait donc qu'à la
+première **image** — or Desktop Duplication n'émet qu'au changement du bureau, et
+un Bloc-notes immobile n'en produit aucune. **Leçon générale : une réponse de
+protocole se vide à l'écriture, jamais en pariant sur le trafic qui suit.**
+
+Ce correctif est juste **et n'a rien débloqué** : le blocage s'est déplacé en
+amont, et une ligne de journal qui s'affichait avant a **cessé** de s'afficher.
+**Une trace qui disparaît après un correctif est une information.**
+
+### Ce que la recette a mesuré du critère 2 — et le zéro à ne pas lire de travers
+
+Capteur tué **par PID relevé** à 4 fenêtres. La **supervision** tient : relance
+en **≈ 0,54 s** (`capteur mort, relancé pid_mort=28328 pid_neuf=19640`), et les
+quatre sorties virtuelles sont **réemployées** (rétention acquise en D3). Mais
+**les quatre enfants meurent à l'instant même**, en `ExitStatus(1)`, et sont
+remplacés par quatre sessions **neuves** (`w-2,4,6,10` → `w-11,12,13,14`).
+
+⚠️ **`clôture de session amorcée` vaut 0 sur la fenêtre de l'épreuve, et ce zéro
+est VIDE DE SENS** : aucune session n'était établie, il n'y avait rien à clore.
+⚠️ **Le chemin de reprise de `SourceDistante` (fenêtre de 15 s + `rattacher`)
+n'a pas été ATTEINT** — ni validé, ni invalidé : les enfants étaient bloqués
+avant d'entrer dans la boucle de transport.
+
+### Ce que D4 n'établit PAS
+
+**Deux exécutions de recette, une par critère : aucun taux, nulle part.** Aucun
+plafond du système approché (la montée s'arrête sur `CAPACITE = 8`, une constante
+du produit, affichée à la shell comme « plus aucune sortie virtuelle
+disponible » ; **aucun `HRESULT` de refus n'apparaît**). Aucune unité H.264
+décodée ni regardée. **Le critère 3 n'a pas de relevé du tout** — et le « avant »
+sur `7d7e254` n'a pas été joué, faute d'« après » auquel l'opposer. Rien de la
+latence, de la durée, du redimensionnement, du recouvrement, de l'audio, de
+l'injection clavier. Une seule application (Bloc-notes) et **immobile**.
+
+### Pièges neufs — à connaître avant de toucher à ce terrain
+
+- **Une fenêtre IMMOBILE ne produit aucune image.** Le piège des mires du banc
+  frappe ici le chemin de production : toute recette qui veut des images doit
+  **animer sa source**. Ce protocole ne l'a pas fait.
+- **Un `BufWriter` transforme une poignée de main en pari sur le trafic** (§
+  ci-dessus).
+- **Un diagnostic qui change deux choses n'établit rien** : un tirage où le fil
+  lecteur dormait 25 s rendait aussi les commandes sans réponse, ce qui affamait
+  `Session::run` à 10 s par commande et cassait la session pour une raison
+  étrangère à la question. Versé pour mémoire, **exclu du raisonnement**.
+- **Un Bloc-notes fait avancer le compteur de sessions de DEUX** (`w-2, w-4,
+  w-6 …`) : une seconde fenêtre éligible et fugace est détectée par lancement.
+  C'est la leçon de Paint sous une autre forme — **compter les fenêtres, jamais
+  les lancements.**
+- **Le journal du PILOTE n'est pas de l'UTF-8 sans précaution** : les lignes que
+  `run-agent.sh` renvoie de PowerShell portent des octets de contrôle isolés
+  (`Op\x02ration r\x02ussie`), qui font classer le fichier en « data ». Défaut à
+  deux réglages déjà connu, ici sur le chemin de l'**hôte** et non de la VM.
+- **La VM s'est hibernée EN PLEINE MESURE** (`18:05:41Z`), une exécution perdue,
+  et **trois processus `agent` ont survécu au redémarrage**. Les deux pièges
+  documentés, rencontrés tels quels dans la même journée.
+
+### Marge étroite neuve à surveiller
+
+`agent/src/capteur/distante.rs` est à **487 lignes** (marge **13**) — fichier
+neuf de D4, qu'aucun document ne signalait, et **c'est lui qui portera le remède
+du canal s'il passe par la reprise**. `agent/src/superviseur/boucle.rs` est à
+**491** (la conception annonçait 485) et `agent/src/demarrage.rs` à **472** (elle
+annonçait 468). Les trois lignes du tableau de dette sont inchangées.
 
 ---
 
