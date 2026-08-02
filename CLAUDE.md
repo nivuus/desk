@@ -2373,8 +2373,11 @@ mingw-w64 est installé ; depuis `agent/` :
 cargo check --target x86_64-pc-windows-gnu
 ```
 
-Relevé le 2 août 2026 : **sortie 0, 9 avertissements `dead_code` préexistants,
-aucun dans les fichiers neufs**.
+Relevé le 2 août 2026 : **sortie 0, 9 avertissements `dead_code`, aucun dans
+les fichiers neufs**. *(Ils ne sont pas tous préexistants : l'un d'eux vise
+`taille_sortie_de`, accesseur ajouté par D3 et employé par les seuls tests —
+voir le §5 des résultats. La phrase disait « préexistants » ; le §5 la
+corrigeait déjà, sans que cette occurrence-ci soit balayée.)*
 
 ⚠️ **Portée exacte** : cela couvre **types, emprunts, visibilités et durées de
 vie** ; cela **ne couvre PAS l'édition de liens**, la cible réelle du projet
