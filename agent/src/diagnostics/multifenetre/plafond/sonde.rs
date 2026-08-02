@@ -44,6 +44,14 @@ pub(super) fn chemin_verdict(rang: u8) -> std::path::PathBuf {
     std::env::temp_dir().join(format!("plafond-sonde-{rang}.verdict"))
 }
 
+/// Verdict de secours d'un rang illisible (nom FIXE, voir `sonder` ci-dessous
+/// pour pourquoi). Jamais lu par le porteur — ce n'est qu'un diagnostic pour
+/// qui fouille `%TEMP%` — mais nommée ici pour que le porteur puisse la
+/// nettoyer avant un tirage sans dupliquer le nom du fichier.
+pub(super) fn chemin_verdict_rang_invalide() -> std::path::PathBuf {
+    std::env::temp_dir().join("plafond-sonde-rang-invalide.verdict")
+}
+
 // `pub(in super::super)` et non `pub(crate)` : c'est la visibilité la plus
 // étroite qui satisfait encore le réexport `pub(super) use sonde::sonder;` de
 // `plafond.rs` — `super::super` désigne `multifenetre` depuis `sonde`, ce qui
@@ -60,10 +68,11 @@ pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
         Ok(rang) => rang,
         Err(erreur) => {
             // Sans ce bloc, le `?` d'origine sortait AVANT toute écriture de
-            // verdict : le porteur (Task 10) borne son attente à 30 s et rend
-            // MORTE si rien n'arrive, mais un rang malformé se lirait alors
-            // comme un plantage de sonde (0xc0000005 et consorts) plutôt que
-            // comme ce qu'il est. Un `u8` n'existe pas ici pour nommer le
+            // verdict : le porteur (Task 10) borne son attente (voir
+            // `attendre_le_verdict`, `plafond.rs`) et rend MORTE si rien
+            // n'arrive, mais un rang malformé se lirait alors comme un
+            // plantage de sonde (0xc0000005 et consorts) plutôt que comme ce
+            // qu'il est. Un `u8` n'existe pas ici pour nommer le
             // fichier que `chemin_verdict` produirait normalement : on dépose
             // donc un verdict de secours, sous un nom FIXE plutôt que dérivé
             // de la valeur brute — l'interpoler dans un composant de chemin
@@ -74,7 +83,7 @@ pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
             // aucun risque. Best-effort (l'échec d'écriture n'aggrave rien :
             // cette trace reste le diagnostic de référence).
             tracing::error!(rang_brute = %rang_brute, %erreur, "MULTIFENETRE_PLAFOND_RANG illisible");
-            let secours = std::env::temp_dir().join("plafond-sonde-rang-invalide.verdict");
+            let secours = chemin_verdict_rang_invalide();
             let _ = std::fs::write(&secours, format!("KO RANG_INVALIDE {rang_brute}"));
             return Err(erreur);
         }

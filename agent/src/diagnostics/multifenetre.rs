@@ -54,6 +54,26 @@ fn sonde_demandee(variable: &str) -> bool {
 
 /// Renvoie `true` si une sonde de ce chantier a tourné.
 pub(super) fn aiguiller() -> Result<bool> {
+    // Sous-bloc D3 — la sonde minimale, lancée par le porteur du plafond de
+    // concurrence. **En tête de TOUT l'aiguillage**, pas seulement avant le
+    // porteur : `run-agent.sh` transmet l'ensemble des commutateurs
+    // `MULTIFENETRE_*`, et l'enfant que `conduire_les_sondes` lance en hérite
+    // tous — `MULTIFENETRE_PLAFOND` est explicitement retiré avant le
+    // `spawn`, mais rien ne retire `MULTIFENETRE_VDD_PURGE`,
+    // `MULTIFENETRE_DXGI`, etc. si un opérateur les a laissés dans
+    // l'environnement d'une session précédente. Si l'une de ces six branches
+    // passait avant celle-ci, un `MULTIFENETRE_VDD_PURGE=1` résiduel ferait
+    // exécuter `purger()` dans l'enfant — qui retire déterministement les
+    // GUID `1..PLAFOND_NUMEROS`, donc les sorties VIVANTES du porteur, au
+    // milieu de la mesure, sans qu'aucune trace ne le rattache à la vraie
+    // cause. Probabilité faible (erreur d'opérateur), conséquence maximale et
+    // silencieuse : la sonde doit gagner quel que soit ce qui traîne
+    // ailleurs dans l'environnement.
+    if let Ok(liste) = std::env::var("MULTIFENETRE_PLAFOND_SONDE") {
+        let sorties: Vec<String> = liste.split(',').map(|s| s.trim().to_string()).collect();
+        plafond::sonder(&sorties)?;
+        return Ok(true);
+    }
     // Relevé DXGI : quelles sorties existent, laquelle porte le bureau.
     if sonde_demandee("MULTIFENETRE_DXGI") {
         disponibilite::relever_dxgi()?;
@@ -113,16 +133,10 @@ pub(super) fn aiguiller() -> Result<bool> {
         crate::moniteurs_virtuels::purge::purger()?;
         return Ok(true);
     }
-    // Sous-bloc D3 — la sonde minimale, lancée par le porteur ci-dessous. Elle
-    // est aiguillée AVANT le porteur : un processus qui porte les deux
-    // variables (elles sont héritées) doit se comporter en sonde, sinon il
-    // créerait à son tour K sorties.
-    if let Ok(liste) = std::env::var("MULTIFENETRE_PLAFOND_SONDE") {
-        let sorties: Vec<String> = liste.split(',').map(|s| s.trim().to_string()).collect();
-        plafond::sonder(&sorties)?;
-        return Ok(true);
-    }
-    // Sous-bloc D3 — le porteur : K = P×D sorties virtuelles, P sondes.
+    // Sous-bloc D3 — le porteur : K = P×D sorties virtuelles, P sondes. La
+    // sonde elle-même (`MULTIFENETRE_PLAFOND_SONDE`) est aiguillée en tête de
+    // cette fonction, pas ici : voir le commentaire à cet endroit pour
+    // pourquoi elle doit gagner avant tout autre commutateur.
     if let Ok(valeur) = std::env::var("MULTIFENETRE_PLAFOND") {
         let (processus, duplications) = plafond::analyser(&valeur)?;
         plafond::mesurer(processus, duplications)?;
