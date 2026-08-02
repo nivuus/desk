@@ -94,8 +94,8 @@ pub fn tourner(
     let mut enfants = Enfants::nouveaux(lanceur);
     let mut table = Table::nouvelle(CAPACITE);
 
-    // Le capteur, avant la moindre fenêtre — voir `capteur::EtatCapteur`.
-    let mut etat_capteur = capteur::EtatCapteur::demarrer(lanceur)?;
+    // Le capteur, avant la moindre fenêtre — `surveillance_capteur::EtatCapteur`.
+    let mut etat_capteur = surveillance_capteur::EtatCapteur::demarrer(lanceur)?;
     // Sorties DXGI déjà attribuées, pour que deux fenêtres au même viewport ne
     // se voient pas donner la même. La table porte déjà la correspondance
     // session -> sortie ; ceci n'est que l'ensemble des sorties occupées, par
@@ -202,7 +202,7 @@ pub fn tourner(
             effets.extend(table.enfant_mort(&session));
         }
 
-        // 5bis. Le capteur, même tour que les enfants — voir `capteur::EtatCapteur::surveiller`.
+        // 5bis. Le capteur, même tour que les enfants — `EtatCapteur::surveiller`.
         etat_capteur.surveiller(lanceur);
 
         // 6. Les fenêtres sont-elles encore sur leur sortie ?
@@ -486,6 +486,6 @@ use placement_periodique::{controler_le_placement, replacer_si_besoin};
 
 // Lancement et surveillance du capteur (tâche 7 du sous-bloc D4) : extrait
 // côté production, pour la même raison et le même schéma que
-// `placement_periodique` ci-dessus — ce fichier était déjà à 485 lignes,
-// marge 15, avant cette tâche.
-mod capteur;
+// `placement_periodique` ci-dessus. Nommé `surveillance_capteur` et non
+// `capteur` — voir l'en-tête de ce fichier (I7).
+mod surveillance_capteur;
