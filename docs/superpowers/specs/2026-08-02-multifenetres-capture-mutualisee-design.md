@@ -128,6 +128,20 @@ existantes le soutiennent, et il faut être exact sur leur portée :
 **Aucune des deux ne mesure l'arrangement de ce sous-bloc.** Elles rendent
 seulement improbables les deux façons dont il pourrait échouer d'emblée.
 
+**Le capteur ne réécrit aucun code de capture ni d'encodage.** Son fil de fenêtre
+instancie `WindowsSource::sur_sortie(hwnd, nom_sortie, fps, debit, clock_origin)`
+**tel quel** — ce type est déjà exactement le couple `DesktopCapture` +
+`H264Encoder` derrière le trait `VideoSource` (`agent/src/windows_source.rs`), et
+le capteur ne fait qu'appeler ce trait depuis un autre processus. `capture.rs`,
+`capture/*`, `encode.rs` et `windows_source.rs` **ne sont ni déplacés ni
+modifiés**.
+
+C'est la simplification centrale du sous-bloc : elle retire son risque le plus
+lourd — aucune régression possible sur les chemins de capture, d'encodage, de
+reprise après perte de mutex ou de libération d'encodeur, puisque pas une ligne
+n'y change. Ce qui est neuf se réduit au canal, à son protocole, et à la
+`SourceDistante` qui le consomme.
+
 ### 3.2 Un seul canal, et l'enfant s'y décrit lui-même
 
 Le capteur est un **serveur de tube nommé** sur un nom bien connu. Chaque enfant
@@ -151,7 +165,7 @@ retentée dans une **fenêtre bornée**, sur le patron de `capture/reprise.rs`.
 
 | Message enfant → capteur | Réponse | Méthode couverte |
 | --- | --- | --- |
-| `Attache { session, hwnd, sortie, largeur, hauteur, fps, debit }` | `Attachee { largeur, hauteur }` \| `Refus { motif }` | construction |
+| `Attache { session, hwnd, sortie, fps, debit, origine_qpc }` | `Attachee { largeur, hauteur }` \| `Refus { motif }` | construction |
 | `Redimensionner { largeur, hauteur }` | `Taille { largeur, hauteur }` \| `Erreur { motif }` | `resize` |
 | `TailleEncodage { largeur, hauteur }` | `Fait` \| `Erreur { motif }` | `set_encode_size` |
 | `Debit { bps }` | `Fait` \| `Erreur { motif }` | `set_bitrate` |
@@ -179,6 +193,23 @@ sérialisation pure, donc le genre de contrat qui doit être éprouvé sur l'hô
 plutôt qu'en session réelle sur la VM.
 
 **Débit** : 8 Mb/s par fenêtre × 8 ≈ 8 Mo/s sur des tubes locaux. Sans objet.
+
+**`origine_qpc` — l'horloge ne traverse pas un processus.** `clock_origin` est un
+`std::time::Instant`, imposé par `demarrage.rs` et **partagé avec la source
+audio** : c'est cette origine commune qui rend les deux lignes de temps
+comparables, donc la synchro A/V exacte (commentaire du champ dans
+`windows_source.rs`). Un `Instant` n'a aucun sens dans un autre processus. Si le
+capteur horodatait sur sa propre origine, l'enfant porteur du son verrait sa
+vidéo décalée de l'écart entre les deux origines — l'intervalle entre le
+démarrage de l'enfant et son attache, soit potentiellement des centaines de
+millisecondes.
+
+`Attache` porte donc `origine_qpc`, la valeur de `QueryPerformanceCounter` lue
+par l'enfant **au moment même** où il crée son `clock_origin`. QPC est monotone
+et **commun à tous les processus** de la machine : le capteur reconstruit
+l'`Instant` équivalent chez lui (`Instant::now()` moins l'écart converti par
+`QueryPerformanceFrequency`) et le passe à `WindowsSource::sur_sortie`, dont
+l'horodatage reste inchangé.
 
 ### 3.4 Les images vont en push, les commandes en requête/réponse
 
@@ -333,22 +364,28 @@ et journaliser périodiquement.
 
 ### Dette de taille de fichier
 
-Relevé le 2 août 2026 par la commande de `CLAUDE.md`. Ce sous-bloc travaille
-précisément dans ces fichiers, donc la règle « toute addition s'accompagne de son
-extraction » s'y applique pleinement :
+Relevé le 2 août 2026 par la commande de `CLAUDE.md`.
+
+⚠️ **Les trois gros fichiers de dette ne sont PAS touchés par ce sous-bloc**, et
+c'est une conséquence directe de la décision du §3.1 : le capteur instancie
+`WindowsSource::sur_sortie` tel quel, donc `capture.rs`, `encode.rs` et
+`windows_source.rs` ne sont ni déplacés ni modifiés. **Ce sous-bloc n'est donc
+pas l'occasion de payer leur dette**, et il ne doit pas l'aggraver.
+
+Les fichiers réellement modifiés, avec leur marge :
 
 | Fichier | Lignes | Marge |
 | --- | --- | --- |
-| `agent/src/encode.rs` | 1536 | dette gelée |
-| `agent/src/windows_source.rs` | 648 | dette gelée — **déménage côté capteur** |
-| `agent/src/encode/arret.rs` | 500 | **nulle** — extraction obligatoire, la compression y a déjà été jouée |
-| `agent/src/capture.rs` | 496 | **4** — déménage côté capteur |
-| `agent/src/superviseur/boucle.rs` | 485 | 15 — gagne le lancement du capteur |
-| `agent/src/demarrage.rs` | 468 | 32 — arbitre entre source locale et distante |
-| `agent/src/transport/piste_video.rs` | 466 | 34 |
+| `agent/src/superviseur/boucle.rs` | 485 | **15** — gagne le lancement et la surveillance du capteur |
+| `agent/src/demarrage.rs` | 468 | 32 |
+| `agent/src/superviseur/lanceur.rs` | 255 | large |
+| `agent/src/demarrage/source.rs` | 100 | large — arbitre entre source locale et distante |
+| `agent/src/main.rs` | — | déclaration du module `capteur` et aiguillage du mode |
 
-**Le déménagement de `capture.rs` et `windows_source.rs` est l'occasion de payer
-leur dette, pas de la transporter telle quelle.**
+Rappel des marges nulles ou quasi nulles à ne pas frôler par accident :
+`agent/src/encode/arret.rs` est à **500 lignes exactement**,
+`agent/src/capture.rs` à **496** (marge 4), `agent/src/superviseur/table.rs` à
+**489** (marge 11). Aucun fichier neuf du sous-bloc ne naît au-dessus de 500.
 
 ---
 
