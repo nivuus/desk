@@ -1,0 +1,9 @@
+Fraicheur du binaire mesure -- tache 11 bis, ronde de correction.
+Piece en ASCII pur, a dessein : build-agent.sh ne pose pas
+[Console]::OutputEncoding, et le francais du PowerShell distant en
+revient mutile (defaut a deux reglages, CLAUDE.md).
+
+date hote (UTC)      : 2026-08-01T21:35:14Z
+git HEAD             : 0659d94ccade794ef5fe2fb0f59c041e644ebaa1
+git status agent/    : M  agent/src/capture.rs;M  agent/src/capture/ouverture.rs;M  agent/src/windows_source/redimensionnement.rs
+binaire sur la VM    : 2026-08-01T21:34:39.4489337Ztaille du binaire    : 8682496

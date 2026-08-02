@@ -7,6 +7,7 @@ import { attachPointerAuDOM } from './pointer';
 import { attachGamepadAuDOM } from './gamepad';
 import { attachFullscreenAuDOM } from './fullscreen';
 import { texteLien } from './lien';
+import { viewportPair } from './viewport';
 import { encodeResize } from '../../proto/ts/control';
 
 const video = document.querySelector<HTMLVideoElement>('#remote')!;
@@ -36,13 +37,9 @@ const signalingUrl =
 // rechargement direct) : dans ce cas l'agent tourne déjà et il n'y a rien à
 // demander — on ne fait rien plutôt que d'échouer.
 if (window.opener && !window.opener.closed) {
+    const { largeur, hauteur } = viewportPair(window.innerWidth, window.innerHeight);
     window.opener.postMessage(
-        {
-            type: 'viewport',
-            session: sessionId,
-            largeur: Math.round(window.innerWidth),
-            hauteur: Math.round(window.innerHeight),
-        },
+        { type: 'viewport', session: sessionId, largeur, hauteur },
         window.location.origin,
     );
 }

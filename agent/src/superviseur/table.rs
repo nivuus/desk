@@ -29,7 +29,61 @@ pub enum Etat {
     AttendLaSortie,
     /// L'enfant tourne.
     Vivante,
+    /// L'enfant est mort et la sortie a été rendue, mais **la fenêtre Windows
+    /// est toujours là**. Le contrôle périodique la reproposera.
+    ///
+    /// Sans cet état, `enfant_mort` retirait purement l'entrée : plus rien ne
+    /// rappelait la fenêtre sauf un `SHOW` fortuit de Windows, et la shell
+    /// restait vide devant des applications bien vivantes (recette D1 §3.3).
+    SansSession,
 }
+
+/// Relances tolérées pour une même fenêtre avant abandon.
+///
+/// Le garde-fou de l'emballement relevé en recette D1 : une fenêtre dont
+/// l'enfant meurt systématiquement produirait sinon `w-5, w-6, w-7, w-8…`
+/// jusqu'à épuiser le vivier de sorties du pilote.
+///
+/// **Ce compteur ne redescend jamais à zéro**, y compris quand une relance
+/// atteint `Vivante` : il mesure les morts cumulées sur toute la vie de la
+/// fenêtre, pas les échecs consécutifs. Une fenêtre qui vit dix minutes puis
+/// meurt trois fois de suite plus tard est abandonnée à la troisième — pas
+/// « trois échecs d'affilée » au sens strict. Choix conservateur, hérité tel
+/// quel du brief de la tâche 10.
+///
+/// **Corollaire non corrigé, à documenter seulement** : un cycle `HIDE`/`SHOW`
+/// (fenêtre réduite puis restaurée) fait quitter puis rejoindre la table par
+/// `fenetre_disparue`/`fenetre_apparue`, donc repart à `relances = 0`. Le
+/// garde-fou reste borné à chaque cycle pris isolément (jamais plus de 3
+/// relances par cycle), donc aucune fuite — seulement une remise à zéro dont
+/// il faut avoir conscience si l'on cherchait à borner le nombre total de
+/// morts d'une fenêtre sur sa vie entière.
+pub const RELANCES_MAX: u32 = 3;
+
+/// Temps toléré, en attente d'un viewport, avant qu'une fenêtre relancée ne
+/// soit abandonnée.
+///
+/// **Régression que ce délai corrige** : avant la tâche 10, un enfant mort
+/// libérait sa place dans `entrees` immédiatement (`enfant_mort` retirait
+/// l'entrée). Depuis, une fenêtre relancée reste `AttendLeViewport` — et si
+/// la page-shell ne répond jamais (pop-up bloqué, shell déconnectée :
+/// `CLAUDE.md` documente nommément ce cas pour la recette du sous-bloc D1),
+/// plus rien ne fait progresser cette entrée : ni `SansSession` (elle ne l'est
+/// plus), ni `Vivante` (elle ne l'atteindra jamais). Sans ce délai, sa place
+/// serait perdue pour la durée de vie du superviseur.
+///
+/// **Majorante et non calibrée** — même aveu que `DUREE_FENETRE_REPRISE`
+/// (`agent/src/capture/reprise.rs`) : aucune mesure n'a établi combien de
+/// temps une page-shell peut légitimement mettre à répondre. Trente secondes
+/// couvrent largement un rechargement de page ou une reconnexion réseau, sans
+/// bloquer indéfiniment une place sur un vivier de huit.
+///
+/// **Portée volontairement limitée aux entrées RELANCÉES** (voir
+/// `Entree::attente_depuis`) : une entrée issue de la détection initiale
+/// (`fenetre_apparue`) porte le même risque en théorie, mais cette fonction
+/// reste pure et ne reçoit aucun instant — l'étendre à elle changerait sa
+/// signature et tous ses appelants, hors du périmètre de ce correctif.
+pub const DELAI_ATTENTE_VIEWPORT_MAX: std::time::Duration = std::time::Duration::from_secs(30);
 
 /// Ce que la table demande au monde extérieur de faire. Le superviseur les
 /// exécute dans l'ordre rendu.
@@ -44,21 +98,24 @@ pub enum Effet {
     LancerEnfant {
         session: IdSession,
         fenetre: IdFenetre,
-        index_adaptateur: u32,
-        index_sortie: u32,
+        /// Nom DXGI de la sortie (`\\.\DISPLAYn`), **et non un couple
+        /// d'index** : ceux-ci sont positionnels, l'enfant les résout à son
+        /// démarrage — donc plus tard — et une sortie apparue ou disparue
+        /// entre-temps le fait capturer autre chose, ou échouer.
+        nom_sortie: String,
         audio: bool,
     },
     TuerEnfant { session: IdSession },
-    /// `sortie_pilote` est **l'identifiant du PILOTE**, pas l'index DXGI : le
+    /// `sortie_pilote` est **l'identifiant du PILOTE**, pas le nom DXGI : le
     /// pilote ne sait retirer une sortie que par ce qu'il a lui-même rendu à
-    /// la création ; lui présenter un index DXGI ne détruirait rien, ou
+    /// la création ; lui présenter un nom DXGI ne détruirait rien, ou
     /// détruirait la sortie d'autrui. Les deux identifiants désignent la même
     /// sortie et n'ont aucune relation calculable — d'où les deux champs.
     ///
-    /// `dxgi` accompagne la destruction parce que l'entrée a déjà quitté la
-    /// table quand cet effet est rendu : sans lui, l'appelant ne pourrait
-    /// plus savoir quelle place DXGI redevient libre.
-    DetruireSortie { sortie_pilote: u32, dxgi: (u32, u32) },
+    /// `nom_sortie` accompagne la destruction parce que l'entrée a déjà
+    /// quitté la table quand cet effet est rendu : sans lui, l'appelant ne
+    /// pourrait plus savoir quelle place DXGI redevient libre.
+    DetruireSortie { sortie_pilote: u32, nom_sortie: String },
     AnnoncerFermeture { session: IdSession },
     AnnoncerRefus { titre: String, motif: String },
 }
@@ -74,10 +131,24 @@ struct Entree {
     etat: Etat,
     /// Identifiant rendu par le pilote à la création, pour la destruction.
     sortie_pilote: Option<u32>,
-    /// Position de la même sortie dans l'énumération DXGI, pour la capture
-    /// et le placement.
-    dxgi: Option<(u32, u32)>,
+    /// Nom DXGI (`\\.\DISPLAYn`) de la même sortie, pour la capture et le
+    /// placement. Stable, contrairement à une position d'énumération.
+    nom_sortie: Option<String>,
     audio: bool,
+    /// Nombre de fois où cette fenêtre a déjà été relancée après la mort de
+    /// son enfant. Le garde-fou de `relancer_les_orphelines` (`RELANCES_MAX`)
+    /// s'appuie dessus pour abandonner plutôt que de relancer sans fin.
+    relances: u32,
+    /// Instant où cette entrée est entrée en `AttendLeViewport` À LA SUITE
+    /// D'UNE RELANCE — `None` pour une entrée issue de `fenetre_apparue`, qui
+    /// reste une fonction pure sans horloge. C'est le garde-fou du second
+    /// risque de capacité de la tâche 10 : sans lui, une fenêtre relancée
+    /// dont la page-shell ne répond plus jamais resterait `AttendLeViewport`
+    /// pour toujours, ni `SansSession` ni `Vivante`, place perdue jusqu'à
+    /// l'arrêt du superviseur. Effacé dès que le viewport arrive
+    /// (`viewport_recu`) : passé ce point, l'entrée n'attend plus le
+    /// navigateur.
+    attente_depuis: Option<std::time::Instant>,
 }
 
 pub struct Table {
@@ -91,6 +162,14 @@ pub struct Table {
     /// mauvaise fenêtre.
     compteur: u64,
     /// Vrai tant qu'aucune fenêtre ne porte le son.
+    ///
+    /// **Défaut préexistant, hors périmètre de la tâche 10, à documenter
+    /// seulement** : ce champ ne redevient jamais vrai une fois une porteuse
+    /// désignée (`le_son_repasse_a_personne_tant_que_d2_ne_le_redesigne_pas`).
+    /// Ce n'est pas une régression — l'ancien `enfant_mort` perdait déjà le
+    /// son dès la première mort de la fenêtre porteuse — mais le chemin
+    /// d'abandon de `relancer_les_orphelines` (au-delà de `RELANCES_MAX`) en
+    /// est une occasion de plus, silencieuse comme les autres.
     audio_libre: bool,
 }
 
@@ -159,8 +238,10 @@ impl Table {
                 titre: titre.clone(),
                 etat: Etat::AttendLeViewport,
                 sortie_pilote: None,
-                dxgi: None,
+                nom_sortie: None,
                 audio,
+                relances: 0,
+                attente_depuis: None,
             },
         );
         vec![Effet::AnnoncerOuverture { session, titre }]
@@ -176,6 +257,10 @@ impl Table {
             return Vec::new();
         }
         entree.etat = Etat::AttendLaSortie;
+        // Passé ce point, l'entrée n'attend plus le navigateur : le
+        // garde-fou de staleness de `relancer_les_orphelines` ne la concerne
+        // plus.
+        entree.attente_depuis = None;
         vec![Effet::CreerSortie {
             session: session.clone(),
             titre: entree.titre.clone(),
@@ -185,14 +270,14 @@ impl Table {
     }
 
     /// `sortie_pilote` est ce que le pilote a rendu à la création (il ne sait
-    /// détruire que par là) ; `dxgi` est la position de la même sortie dans
-    /// l'énumération DXGI (l'enfant ne sait capturer que par là). Aucune
-    /// relation calculable entre les deux : les deux sont retenus.
+    /// détruire que par là) ; `nom_sortie` est le nom DXGI de la même sortie
+    /// (l'enfant ne sait capturer que par là). Aucune relation calculable
+    /// entre les deux : les deux sont retenus.
     pub fn sortie_creee(
         &mut self,
         session: &IdSession,
         sortie_pilote: u32,
-        dxgi: (u32, u32),
+        nom_sortie: String,
     ) -> Vec<Effet> {
         let Some(entree) = self.entrees.get_mut(session) else {
             return Vec::new();
@@ -202,20 +287,19 @@ impl Table {
         }
         entree.etat = Etat::Vivante;
         entree.sortie_pilote = Some(sortie_pilote);
-        entree.dxgi = Some(dxgi);
+        entree.nom_sortie = Some(nom_sortie.clone());
         vec![Effet::LancerEnfant {
             session: session.clone(),
             fenetre: entree.fenetre,
-            index_adaptateur: dxgi.0,
-            index_sortie: dxgi.1,
+            nom_sortie,
             audio: entree.audio,
         }]
     }
 
-    /// Position DXGI de la sortie d'une session, pour le contrôle périodique
-    /// de placement.
-    pub fn sortie_dxgi_de(&self, session: &IdSession) -> Option<(u32, u32)> {
-        self.entrees.get(session).and_then(|e| e.dxgi)
+    /// Nom de la sortie d'une session, pour le contrôle périodique de
+    /// placement.
+    pub fn nom_sortie_de(&self, session: &IdSession) -> Option<&str> {
+        self.entrees.get(session).and_then(|e| e.nom_sortie.as_deref())
     }
 
     /// Sessions dont l'enfant tourne, pour le contrôle périodique de
@@ -246,10 +330,10 @@ impl Table {
         if let Some(sortie_pilote) = entree.sortie_pilote {
             effets.push(Effet::DetruireSortie {
                 sortie_pilote,
-                // `dxgi` est toujours renseigne quand `sortie_pilote` l'est :
-                // `sortie_creee` pose les deux ensemble, jamais l'un sans
-                // l'autre. Le repli n'est donc pas atteignable.
-                dxgi: entree.dxgi.unwrap_or((0, 0)),
+                // `nom_sortie` est toujours renseigné quand `sortie_pilote`
+                // l'est : `sortie_creee` pose les deux ensemble, jamais l'un
+                // sans l'autre. Le repli n'est donc pas atteignable.
+                nom_sortie: entree.nom_sortie.clone().unwrap_or_default(),
             });
         }
         effets.push(Effet::AnnoncerFermeture { session });
@@ -260,20 +344,111 @@ impl Table {
         // Pas de `TuerEnfant` : il est déjà mort. Mais sa sortie, elle, ne
         // s'est pas détruite toute seule — une sortie virtuelle survit au
         // processus qui l'a créée.
-        let Some(entree) = self.entrees.remove(session) else {
+        //
+        // L'entrée n'est PAS retirée : la fenêtre Windows, elle, est toujours
+        // là (sauf coïncidence avec sa fermeture, traitée ailleurs par
+        // `fenetre_disparue`). Elle bascule en `SansSession` pour que le
+        // contrôle périodique la retrouve et la reproposera via
+        // `relancer_les_orphelines` — sans quoi rien ne rappelait plus la
+        // fenêtre, sauf un `SHOW` fortuit de Windows (recette D1 §3.3).
+        let Some(entree) = self.entrees.get_mut(session) else {
             return Vec::new();
         };
+        entree.etat = Etat::SansSession;
         let mut effets = Vec::new();
-        if let Some(sortie_pilote) = entree.sortie_pilote {
+        // Effacés pour qu'une seconde mort ne redemande pas deux fois la
+        // même destruction — la sortie ne sera rendue qu'ici, une fois.
+        if let Some(sortie_pilote) = entree.sortie_pilote.take() {
             effets.push(Effet::DetruireSortie {
                 sortie_pilote,
-                // `dxgi` est toujours renseigne quand `sortie_pilote` l'est :
-                // `sortie_creee` pose les deux ensemble, jamais l'un sans
-                // l'autre. Le repli n'est donc pas atteignable.
-                dxgi: entree.dxgi.unwrap_or((0, 0)),
+                // `nom_sortie` est toujours renseigné quand `sortie_pilote`
+                // l'est : `sortie_creee` pose les deux ensemble, jamais l'un
+                // sans l'autre. Le repli n'est donc pas atteignable.
+                nom_sortie: entree.nom_sortie.take().unwrap_or_default(),
             });
         }
         effets.push(Effet::AnnoncerFermeture { session: session.clone() });
+        effets
+    }
+
+    /// Repropose les fenêtres dont la session est morte mais qui existent
+    /// toujours côté Windows, et abandonne les entrées figées trop longtemps
+    /// en attente d'un viewport. Appelée par le contrôle périodique du
+    /// superviseur.
+    ///
+    /// **Ne lit aucune horloge** : `maintenant` est reçu en argument, sur le
+    /// modèle de `FenetreDeReprise` (`agent/src/capture/reprise.rs`) — c'est
+    /// ce qui garde cette table éprouvable sur l'hôte Linux.
+    ///
+    /// Deux garde-fous indépendants, tous deux nécessaires :
+    /// - `RELANCES_MAX` borne le nombre de fois où une fenêtre dont l'ENFANT
+    ///   meurt est relancée (l'entrée change d'identifiant de session à
+    ///   chaque relance — un identifiant réutilisé apparierait un message
+    ///   tardif du navigateur à la mauvaise fenêtre — donc chaque orpheline
+    ///   est retirée puis réinsérée sous une session neuve, `relances` et
+    ///   `audio` reportés ; `self.compteur` continue de croître sans jamais
+    ///   reculer) ;
+    /// - `DELAI_ATTENTE_VIEWPORT_MAX` borne le temps passé en `AttendLeViewport`
+    ///   après une relance, si la PAGE-SHELL, elle, ne répond jamais.
+    pub fn relancer_les_orphelines(&mut self, maintenant: std::time::Instant) -> Vec<Effet> {
+        let orphelines: Vec<IdSession> = self
+            .entrees
+            .iter()
+            .filter(|(_, e)| e.etat == Etat::SansSession)
+            .map(|(s, _)| s.clone())
+            .collect();
+        let mut effets = Vec::new();
+        for ancienne in orphelines {
+            let entree = self.entrees.remove(&ancienne).expect("relevée à l'instant");
+            if entree.relances >= RELANCES_MAX {
+                effets.push(Effet::AnnoncerRefus {
+                    titre: entree.titre,
+                    motif: format!("la session n'a pas tenu après {RELANCES_MAX} tentatives"),
+                });
+                continue;
+            }
+            self.compteur += 1;
+            let session = IdSession(format!("w-{}", self.compteur));
+            self.entrees.insert(
+                session.clone(),
+                Entree {
+                    fenetre: entree.fenetre,
+                    titre: entree.titre.clone(),
+                    etat: Etat::AttendLeViewport,
+                    sortie_pilote: None,
+                    nom_sortie: None,
+                    audio: entree.audio,
+                    relances: entree.relances + 1,
+                    attente_depuis: Some(maintenant),
+                },
+            );
+            effets.push(Effet::AnnoncerOuverture { session, titre: entree.titre });
+        }
+
+        // Second garde-fou : une entrée relancée dont la page-shell ne
+        // répond jamais reste `AttendLeViewport` — ni `SansSession` (elle ne
+        // l'est plus), ni `Vivante` (elle ne l'atteindra jamais) — et ne
+        // serait donc JAMAIS relevée par le filtre ci-dessus. `attente_depuis`
+        // est `None` pour une entrée issue de `fenetre_apparue` : elle n'est
+        // délibérément pas concernée (voir la doc de `DELAI_ATTENTE_VIEWPORT_MAX`).
+        let figees: Vec<IdSession> = self
+            .entrees
+            .iter()
+            .filter(|(_, e)| {
+                e.etat == Etat::AttendLeViewport
+                    && e.attente_depuis
+                        .is_some_and(|depuis| maintenant.duration_since(depuis) > DELAI_ATTENTE_VIEWPORT_MAX)
+            })
+            .map(|(s, _)| s.clone())
+            .collect();
+        for figee in figees {
+            let entree = self.entrees.remove(&figee).expect("relevée à l'instant");
+            effets.push(Effet::AnnoncerRefus {
+                titre: entree.titre,
+                motif: "la page-shell n'a jamais répondu après la relance".into(),
+            });
+        }
+
         effets
     }
 }
@@ -287,3 +462,10 @@ impl Table {
 #[cfg(test)]
 #[path = "table/tests.rs"]
 mod tests;
+
+// Tests de la tâche 10 (relance après mort d'enfant), extraits dans un
+// second fichier voisin : leur ajout dans `tests.rs` en aurait fait franchir
+// le plafond de 500 lignes du projet. Voir la doc en tête de ce fichier.
+#[cfg(test)]
+#[path = "table/tests_relance.rs"]
+mod tests_relance;

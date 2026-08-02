@@ -20,6 +20,19 @@
 > **tue toutes les sessions en cours**. La voie tient donc à arrangement figé,
 > et s'effondre dès qu'une fenêtre s'ouvre.
 
+> ✅ **Cette dernière phrase n'est plus vraie depuis le sous-bloc D2**
+> (1ᵉʳ août 2026,
+> `2026-08-01-multifenetres-arrangement-dynamique-resultats.md`). L'abandon du
+> mutex se produit toujours — il n'est ni évité ni expliqué — mais il est
+> désormais **encaissé** : la duplication est relâchée puis rouverte dans une
+> fenêtre de reprise bornée en durée. Relevé en conditions de produit : **44**
+> pertes d'accès `0x887A0026`, **aucune session perdue**, montées 1→2, 2→3, 3→4
+> propres. ⚠️ **Ce qui reste vrai de la portée resserrée ci-dessus** : ce plan
+> mesure 8 duplications de front dans **un seul processus** ; en **processus
+> distincts** — l'arrangement du produit — la **5ᵉ** est refusée
+> (`0x887A0022`), par un plafond dont **la couche n'est pas identifiée**. Que la
+> différence tienne au multi-processus est une **inférence**.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Mesurer si N sorties virtuelles portant chacune une fenêtre, une duplication DXGI et un encodeur H.264 tiennent 60 i/s par fenêtre jusqu'à N=8 — l'arrangement que la voie recommandée du chantier D propose réellement et que rien n'a exercé.

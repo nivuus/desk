@@ -13,7 +13,7 @@ use super::hook;
 use super::placement;
 use super::protocole::{DepuisLaShell, VersLaShell};
 use super::table::{Effet, IdSession, Table};
-use crate::capture::enumerer_sorties_silencieux;
+use crate::capture::{enumerer_sorties_silencieux, SortieDxgi};
 // `relever_topologie` plutôt qu'`enumerer_sorties` sur le chemin de création :
 // elle journalise la topologie sortie par sortie, et c'est ce relevé qui rend
 // diagnosticable un appariement qui échoue. Le contrôle périodique de
@@ -25,6 +25,17 @@ use crate::capture::enumerer_sorties_silencieux;
 // dépourvu de sortie, soit deux lignes par seconde indéfiniment sur cette VM,
 // écrites sur un partage CIFS. La variante silencieuse existe pour ce seul
 // appelant ; toute nouvelle boucle périodique doit l'employer aussi.
+//
+// **Nuance apportée à la tâche 7** : le chemin de création comporte
+// maintenant une troisième étape, la scrutation d'`attendre_une_sortie_neuve`
+// — et ELLE emploie `enumerer_sorties_silencieux`, pas `relever_topologie`,
+// bien qu'elle reste sur le chemin de création. Ce n'est pas une entorse à la
+// règle ci-dessus : cette étape tourne à 10 Hz, jusqu'à 5 s, et
+// `relever_topologie` journalisant une ligne par sortie à CHAQUE appel, ce
+// serait le même défaut que celui que le correctif I2 a corrigé, rejoué à une
+// cadence pire. Le relevé nommé et journalisé reste fait une fois avant la
+// création, et une fois de plus si l'attente expire (voir la doc
+// d'`attendre_une_sortie_neuve`) — jamais à chaque tour de la scrutation.
 use crate::diagnostics::multifenetre::montee::{noms_attaches, relever_topologie};
 use crate::moniteurs_virtuels::{pilote::PiloteParIoctl, Sorties};
 
@@ -45,9 +56,19 @@ const PERIODE_PING: std::time::Duration = std::time::Duration::from_millis(500);
 /// doit pas courir à chaque tour de boucle.
 const PERIODE_PLACEMENT: std::time::Duration = std::time::Duration::from_secs(1);
 
-/// Délai laissé à Windows pour rattacher une sortie fraîchement créée avant de
-/// l'énumérer : elle n'apparaît pas instantanément dans la topologie DXGI.
-const DELAI_RATTACHEMENT: std::time::Duration = std::time::Duration::from_millis(1500);
+/// Temps maximal laissé à Windows pour rattacher une sortie fraîchement créée.
+///
+/// **Une borne, pas une durée d'attente.** La version précédente dormait 1500 ms
+/// plats, et la recette D1 a montré que ce n'était pas toujours assez : la
+/// sortie n'était pas encore dans la topologie quand on l'y cherchait, et la
+/// fenêtre ne s'ouvrait jamais. On attend désormais le FAIT — qu'une sortie
+/// neuve apparaisse — et cette constante ne fait qu'empêcher d'attendre
+/// indéfiniment.
+const LIMITE_RATTACHEMENT: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// Pas de scrutation plus serrée : chaque tour énumère toutes les sorties DXGI,
+/// ce qui n'est pas gratuit.
+const PAS_RATTACHEMENT: std::time::Duration = std::time::Duration::from_millis(100);
 
 pub fn tourner(
     pilote: &PiloteParIoctl,
@@ -61,8 +82,9 @@ pub fn tourner(
     let mut table = Table::nouvelle(CAPACITE);
     // Sorties DXGI déjà attribuées, pour que deux fenêtres au même viewport ne
     // se voient pas donner la même. La table porte déjà la correspondance
-    // session -> sortie ; ceci n'est que l'ensemble des sorties occupées.
-    let mut prises: Vec<(u32, u32)> = Vec::new();
+    // session -> sortie ; ceci n'est que l'ensemble des sorties occupées, par
+    // leur nom DXGI (stable), et non plus par un couple d'index (positionnel).
+    let mut prises: Vec<String> = Vec::new();
 
     // Les fenêtres déjà ouvertes : le hook ne rapporte que les changements.
     let mut effets = Vec::new();
@@ -93,18 +115,11 @@ pub fn tourner(
                     // attente de rattachement : ne pas le recompter en retard.
                     dernier_ping = std::time::Instant::now();
                 }
-                Effet::LancerEnfant {
-                    session,
-                    fenetre,
-                    index_adaptateur,
-                    index_sortie,
-                    audio,
-                } => {
+                Effet::LancerEnfant { session, fenetre, nom_sortie, audio } => {
                     if let Err(erreur) = enfants.lancer(Consigne {
                         session: session.clone(),
                         fenetre: fenetre.0,
-                        index_adaptateur,
-                        index_sortie,
+                        nom_sortie,
                         audio,
                     }) {
                         tracing::error!(session = %session.0, %erreur, "lancement de l'enfant échoué");
@@ -116,12 +131,12 @@ pub fn tourner(
                     }
                 }
                 Effet::TuerEnfant { session } => enfants.tuer(&session),
-                Effet::DetruireSortie { sortie_pilote, dxgi } => {
+                Effet::DetruireSortie { sortie_pilote, nom_sortie } => {
                     // Rendue MAINTENANT, pas à l'arrêt du superviseur : le
                     // vivier du pilote se consomme à chaque ouverture de
                     // fenêtre, et une dizaine d'ouvertures-fermetures
                     // suffirait sinon à bloquer toute nouvelle fenêtre.
-                    rendre_la_sortie(&mut sorties, &mut prises, sortie_pilote, dxgi);
+                    rendre_la_sortie(&mut sorties, &mut prises, sortie_pilote, nom_sortie);
                 }
                 Effet::AnnoncerFermeture { session } => {
                     envoyer(&VersLaShell::FenetreFermee { session: session.0 });
@@ -178,6 +193,10 @@ pub fn tourner(
         if dernier_controle_placement.elapsed() >= PERIODE_PLACEMENT {
             dernier_controle_placement = std::time::Instant::now();
             controler_le_placement(&table);
+            // 7. Fenêtres dont l'enfant est mort mais qui existent toujours
+            // côté Windows : on les repropose plutôt que de les laisser
+            // disparaître de la shell (voir `Etat::SansSession`).
+            effets.extend(table.relancer_les_orphelines(std::time::Instant::now()));
         }
 
         if effets.is_empty() {
@@ -201,14 +220,24 @@ struct Demande {
 ///
 /// Extrait de la boucle pour une raison de fond : **tout chemin d'échec sous
 /// la création doit défaire la sortie**. Une sortie créée que la topologie
-/// DXGI ne rend pas resterait sinon tenue jusqu'à l'arrêt du superviseur, et
-/// l'entrée de la table resterait éternellement en `AttendLaSortie` — une
-/// fenêtre morte-vivante et une place perdue dans un vivier de dix.
+/// DXGI ne rend pas resterait sinon tenue jusqu'à l'arrêt du superviseur.
+///
+/// Chaque chemin d'échec appelle `table.enfant_mort`, qui sort l'entrée
+/// d'`AttendLaSortie`. **Depuis la tâche 10, cet appel ne libère plus la
+/// place dans la capacité** : l'entrée bascule en `Etat::SansSession` et le
+/// contrôle périodique la relance, jusqu'à `RELANCES_MAX` fois (voir
+/// `superviseur::table`). Conséquence à connaître : une fenêtre dont la
+/// création de sortie échoue systématiquement fait donc envoyer jusqu'à
+/// `RELANCES_MAX + 2` `VersLaShell::Refus` à la page-shell — soit **cinq**
+/// avec `RELANCES_MAX = 3` : une par tentative avortée (l'originale plus les
+/// trois relances, `relances` valant 0, 1, 2 puis 3), **plus** l'abandon final
+/// que `relancer_les_orphelines` émet quand `relances >= RELANCES_MAX` — et
+/// non plus un seul comme avant cette tâche.
 fn creer_sortie(
     pilote: &PiloteParIoctl,
     sorties: &mut Sorties<'_>,
     table: &mut Table,
-    prises: &mut Vec<(u32, u32)>,
+    prises: &mut Vec<String>,
     envoyer: &impl Fn(&VersLaShell),
     demande: Demande,
 ) -> Vec<Effet> {
@@ -232,9 +261,11 @@ fn creer_sortie(
                 titre: titre.clone(),
                 motif: "topologie d'affichage illisible".into(),
             });
-            // Aucune sortie n'a été créée : rien à rendre. Mais l'entrée reste
-            // en `AttendLaSortie` sans la sortie qu'elle attend, et sa place
-            // dans la capacité resterait comptée.
+            // Aucune sortie n'a été créée : rien à rendre au pilote. Mais
+            // l'entrée doit sortir d'`AttendLaSortie` — `enfant_mort` la
+            // bascule en `SansSession` (sa place reste comptée, voir la doc
+            // de cette fonction) plutôt que de la retirer : le contrôle
+            // périodique la relancera.
             return table.enfant_mort(&session);
         }
     };
@@ -248,37 +279,22 @@ fn creer_sortie(
         }
     };
 
-    // Laisser Windows rattacher la sortie avant de l'énumérer — SANS cesser de
-    // battre le chien de garde. Le délai du chien de garde vaut 3 dans une
-    // unité INCONNUE dont la seconde n'est pas exclue, et l'étape de ping de la
-    // boucle est HORS du parcours des effets : un lot de huit `CreerSortie`
-    // enchaînerait sinon huit attentes plates, soit douze secondes
-    // consécutives sans un seul ping — et le pilote retire les sorties d'un
-    // client qui cesse de pinguer, y compris celles qu'on vient de créer.
-    attendre_en_pinguant(pilote, DELAI_RATTACHEMENT);
-
-    // Une énumération qui échoue n'est PAS fatale au superviseur : les autres
-    // fenêtres tournent, et rien ne dit que le prochain essai échouera aussi.
-    let toutes = match relever_topologie("après création de sortie") {
-        Ok(toutes) => toutes,
-        Err(erreur) => {
-            tracing::error!(session = %session.0, %erreur, "topologie DXGI illisible");
-            Vec::new()
-        }
-    };
-    let apparues: Vec<_> = toutes
-        .iter()
-        .filter(|s| s.attachee_au_bureau && !avant.contains(&s.nom_sortie))
-        .cloned()
-        .collect();
+    // Attend le FAIT — qu'une sortie neuve apparaisse dans la topologie DXGI —
+    // plutôt qu'un délai plat, tout en continuant de battre le chien de garde
+    // du pilote (voir la doc d'`attendre_une_sortie_neuve`).
+    let apparues = attendre_une_sortie_neuve(pilote, &avant, LIMITE_RATTACHEMENT);
 
     let Some(cible) = placement::sortie_par_dimensions(&apparues, largeur, hauteur, prises) else {
-        // Journaliser les CANDIDATS, pas seulement la demande. L'égalité de
-        // dimensions est exacte à dessein, et `CLAUDE.md` documente une sortie
-        // virtuelle déjà vue à un facteur DPI de 1,5 de ce qui était demandé :
-        // si l'hôte applique une mise à l'échelle, AUCUNE fenêtre ne s'ouvrira
-        // jamais, et un journal qui ne redirait que la demande laisserait ce
-        // diagnostic entièrement à faire.
+        // Journaliser les CANDIDATS, pas seulement la demande. L'appariement
+        // par dimensions tolère `placement::TOLERANCE_PX` (quatre pixels, la
+        // tolérance du replacement) et rien de plus : l'égalité stricte était
+        // le choix initial, la recette D1 a montré qu'elle rendait l'ouverture
+        // impossible sur une course de rattachement de quelques pixels
+        // (1280×713 rendue 1280×720). Le facteur DPI de 1,5 que `CLAUDE.md`
+        // documente sur une sortie virtuelle reste, lui, très loin de cette
+        // tolérance, donc toujours refusé : si l'hôte applique une mise à
+        // l'échelle, AUCUNE fenêtre ne s'ouvrira jamais, et un journal qui ne
+        // redirait que la demande laisserait ce diagnostic entièrement à faire.
         tracing::error!(
             session = %session.0,
             demande = format!("{largeur}x{hauteur}"),
@@ -296,15 +312,15 @@ fn creer_sortie(
         return table.enfant_mort(&session);
     };
 
-    let place = (cible.index_adaptateur, cible.index_sortie);
-    prises.push(place);
-    // Les DEUX identifiants : celui du pilote pour la destruction, la
-    // position DXGI pour la capture. Aucune relation calculable entre eux.
-    let suite = table.sortie_creee(&session, id_pilote, place);
+    let nom = cible.nom_sortie.clone();
+    prises.push(nom.clone());
+    // Les DEUX identifiants : celui du pilote pour la destruction, le nom
+    // DXGI pour la capture. Aucune relation calculable entre eux.
+    let suite = table.sortie_creee(&session, id_pilote, nom);
 
     // Une table qui n'a rien à dire de cette sortie ne la retient nulle part :
     // `id_pilote` ne serait plus connu de personne (ni de la table, ni d'un
-    // effet à venir), une place perdue sur dix, et `place` resterait bloquée
+    // effet à venir), une place perdue sur dix, et le nom resterait bloqué
     // dans `prises` à jamais. Le cas n'est pas atteignable avec l'ordonnancement
     // actuel de la boucle — mais cet ordonnancement n'est déclaré porteur nulle
     // part, et il suffira qu'une étape s'insère un jour.
@@ -314,7 +330,7 @@ fn creer_sortie(
             "la table n'attendait plus cette sortie — elle est rendue au pilote"
         );
         rendre_sans_apparier(sorties, id_pilote);
-        prises.retain(|p| *p != place);
+        prises.retain(|p| *p != cible.nom_sortie);
         return Vec::new();
     }
 
@@ -344,32 +360,79 @@ fn rendre_sans_apparier(sorties: &mut Sorties<'_>, id_pilote: u32) {
     }
 }
 
-/// Attend en battant le chien de garde du pilote, jamais par un `sleep` plat.
-fn attendre_en_pinguant(pilote: &PiloteParIoctl, duree: std::time::Duration) {
-    let jusqua = std::time::Instant::now() + duree;
+/// Attend qu'une sortie neuve apparaisse dans la topologie, sans cesser de
+/// battre le chien de garde.
+///
+/// Le battement n'est pas un détail : le pilote retire les sorties d'un client
+/// qui cesse de pinguer, **y compris celles qu'on vient de créer**, et l'étape
+/// de ping de la boucle est hors du parcours des effets.
+///
+/// **`enumerer_sorties_silencieux`, jamais `relever_topologie`, DANS LA
+/// SCRUTATION.** À 10 Hz, `relever_topologie` journaliserait une ligne par
+/// sortie DXGI existante à chaque tour — le dépôt a déjà payé deux fois pour
+/// une trace émise à la cadence d'une boucle (chantier TURN, correctif I2 de
+/// D1). Le relevé nommé et journalisé reste fait une fois avant l'appel
+/// (`creer_sortie`), et — depuis la relecture de cette fonction — une fois de
+/// plus SEULEMENT si l'attente expire, juste avant de rendre le vecteur vide.
+///
+/// **Ce relevé d'expiration n'est pas cosmétique.** Sans lui, un échec ne
+/// laisse au journal que le relevé d'AVANT création (qui ne peut par
+/// construction pas montrer la sortie neuve) et le journal des « candidats »
+/// de l'appelant, qui ne liste que les sorties déjà filtrées `attachee_au_
+/// bureau && nouvelles` — vide par construction si la sortie n'a jamais été
+/// attachée. Deux pannes distinctes se confondaient alors sous un même
+/// journal : « la sortie est apparue mais Windows n'y a jamais rien composé »
+/// (le refus que la sonde multi-fenêtres nomme déjà) contre « elle n'est
+/// jamais apparue du tout ». Le relevé complet et nommé — toutes les sorties,
+/// attachées et non attachées — tranche entre les deux, et ne coûte rien en
+/// régime normal : il ne s'exécute que sur le chemin d'échec.
+fn attendre_une_sortie_neuve(
+    pilote: &PiloteParIoctl,
+    avant: &[String],
+    limite: std::time::Duration,
+) -> Vec<SortieDxgi> {
+    let echeance = std::time::Instant::now() + limite;
     loop {
         if let Err(erreur) = pilote.pinguer() {
-            tracing::warn!(%erreur, "ping du chien de garde échoué pendant l'attente");
+            tracing::warn!(%erreur, "ping du chien de garde pendant l'attente de rattachement");
         }
-        let restant = jusqua.saturating_duration_since(std::time::Instant::now());
-        if restant.is_zero() {
-            return;
+        let toutes = enumerer_sorties_silencieux().unwrap_or_default();
+        let apparues: Vec<_> = toutes
+            .iter()
+            .filter(|s| s.attachee_au_bureau && !avant.contains(&s.nom_sortie))
+            .cloned()
+            .collect();
+        if !apparues.is_empty() {
+            return apparues;
         }
-        std::thread::sleep(PERIODE_PING.min(restant));
+        if std::time::Instant::now() >= echeance {
+            tracing::error!(
+                limite_ms = limite.as_millis() as u64,
+                "aucune sortie neuve n'est apparue dans la limite"
+            );
+            // Relevé complet, nommé, UNE fois — sur ce seul chemin d'échec.
+            // C'est ici, et seulement ici, que ce diagnostic vaut : voir la
+            // doc de la fonction.
+            if let Err(erreur) = relever_topologie("attente de rattachement expirée") {
+                tracing::error!(%erreur, "topologie DXGI illisible au moment de l'expiration");
+            }
+            return Vec::new();
+        }
+        std::thread::sleep(PAS_RATTACHEMENT);
     }
 }
 
 /// Rend une sortie au pilote et libère sa place DXGI.
 fn rendre_la_sortie(
     sorties: &mut Sorties<'_>,
-    prises: &mut Vec<(u32, u32)>,
+    prises: &mut Vec<String>,
     sortie_pilote: u32,
-    dxgi: (u32, u32),
+    nom_sortie: String,
 ) {
     match sorties.detruire(sortie_pilote) {
         Ok(()) => {
             tracing::info!(sortie_pilote, "sortie virtuelle rendue au pilote");
-            prises.retain(|p| *p != dxgi);
+            prises.retain(|p| *p != nom_sortie);
         }
         // La place DXGI reste RÉSERVÉE sur échec, et c'est le point de fond.
         //
@@ -382,7 +445,7 @@ fn rendre_la_sortie(
         // orpheline. Garder la place réservée coûte au pire une place DXGI
         // jusqu'à l'arrêt ; la libérer coûte une confusion d'identité.
         Err(erreur) => tracing::error!(
-            sortie_pilote, ?dxgi, %erreur,
+            sortie_pilote, %nom_sortie, %erreur,
             "sortie virtuelle NON rendue — la garde la retentera à l'arrêt, \
              et sa place DXGI reste réservée d'ici là"
         ),
@@ -393,13 +456,10 @@ fn rendre_la_sortie(
 fn controler_le_placement(table: &Table) {
     let toutes = enumerer_sorties_silencieux().unwrap_or_default();
     for session in table.sessions_vivantes() {
-        let Some((adaptateur, index)) = table.sortie_dxgi_de(&session) else {
+        let Some(nom) = table.nom_sortie_de(&session) else {
             continue;
         };
-        let Some(cible) = toutes
-            .iter()
-            .find(|s| s.index_adaptateur == adaptateur && s.index_sortie == index)
-        else {
+        let Some(cible) = toutes.iter().find(|s| s.nom_sortie == nom) else {
             continue;
         };
         let Some(fenetre) = table.fenetre_de(&session) else { continue };

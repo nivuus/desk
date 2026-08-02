@@ -19,8 +19,9 @@ pub struct Consigne {
     /// `Send` en windows-rs 0.62, et c'est un identifiant opaque, pas un
     /// pointeur déréférencé.
     pub fenetre: u64,
-    pub index_adaptateur: u32,
-    pub index_sortie: u32,
+    /// Nom DXGI de la sortie (`\\.\DISPLAYn`), stable — contrairement à un
+    /// couple d'index d'énumération, positionnel.
+    pub nom_sortie: String,
     /// Vrai pour la seule fenêtre porteuse du son.
     pub audio: bool,
 }
@@ -63,7 +64,7 @@ impl<'l> Enfants<'l> {
         tracing::info!(
             session = %consigne.session.0,
             pid,
-            sortie = format!("{}:{}", consigne.index_adaptateur, consigne.index_sortie),
+            sortie = %consigne.nom_sortie,
             audio = consigne.audio,
             "enfant lancé"
         );
@@ -166,8 +167,7 @@ mod tests {
         Consigne {
             session: IdSession(session.into()),
             fenetre: 0x1234,
-            index_adaptateur: 0,
-            index_sortie: 1,
+            nom_sortie: "\\\\.\\DISPLAY1".into(),
             audio,
         }
     }

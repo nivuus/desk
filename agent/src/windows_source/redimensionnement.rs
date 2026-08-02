@@ -147,16 +147,21 @@ impl WindowsSource {
         // `congestion::Controleur::changer_source`) — au lieu de la préserver
         // ici à l'aveugle.
 
-        // Un NOUVEAU périphérique D3D11 est créé dans `DesktopCapture::new` :
-        // elle pose `SetMultithreadProtected(TRUE)` sur CE périphérique à
-        // chaque appel (voir capture.rs, champ `context`/`multithread`) — la
+        // Un NOUVEAU périphérique D3D11 est créé par l'ouverture appelée juste
+        // en dessous — `DesktopCapture::new_sans_attente`, et non plus
+        // `DesktopCapture::new` : ce chemin court sur le fil bloquant de
+        // `Session::run`, où la fenêtre de réessai de trois secondes
+        // suspendrait du même coup les demandes de keyframe et l'adaptation
+        // réseau. Les deux passent par `DesktopCapture::ouvrir`, qui pose
+        // `SetMultithreadProtected(TRUE)` sur CE périphérique à chaque appel
+        // (`capture/ouverture.rs::creer_peripherique`, local `multithread`) — la
         // protection est donc reconstruite avec lui, pas seulement héritée de
         // l'ancien périphérique qui vient d'être libéré. Sans cela le
         // blocage intermittent d'`AcquireNextFrame` documenté à la tâche 10
         // réapparaîtrait après tout redimensionnement.
         let outcome = rebuild_or_recover(
             || -> Result<(DesktopCapture, Rect, H264Encoder)> {
-                let new_capture = DesktopCapture::new()?;
+                let new_capture = DesktopCapture::new_sans_attente()?;
                 let (dw, dh) = new_capture.desktop_size();
                 let region = crop_region(window_rect, dw, dh)
                     .ok_or_else(|| anyhow::anyhow!("la fenêtre est hors de l'écran"))?;
@@ -175,7 +180,14 @@ impl WindowsSource {
             // `region`/`encoder`/`width`/`height` restent ceux d'avant :
             // seule la capture avait dû être relâchée, pas les paramètres qui
             // en dépendent, qui n'ont jamais cessé d'être valides.
-            DesktopCapture::new,
+            //
+            // `new_sans_attente` comme la fabrique principale ci-dessus : ces
+            // deux appels courent sur le fil bloquant de `Session::run` (voir
+            // `transport/redimensionnement.rs`), où le réessai d'ouverture
+            // ajouté à la tâche 11 bis gèlerait la boucle de session jusqu'à
+            // DEUX fenêtres pleines. Le droit de bloquer se décide ici, pas
+            // dans `capture::ouvrir`.
+            DesktopCapture::new_sans_attente,
         );
 
         match outcome {

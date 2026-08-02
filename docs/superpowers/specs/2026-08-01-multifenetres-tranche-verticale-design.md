@@ -13,6 +13,12 @@ risqué ». Trois chantiers de mesure successifs l'ont rendu spécifiable — la
 « un moniteur virtuel par fenêtre » est **reçue** à N=8, avec 90,1 i/s par
 fenêtre en capture+encodage et zéro verdict faux
 (`plans/2026-07-31-duplications-paralleles-resultats.md`). Reste à le construire.
+⚠️ **Ce N=8 est un chiffre de PROCESSUS UNIQUE — ne pas le transposer au
+multi-processus.** En processus distincts, l'arrangement du produit, la **5ᵉ**
+duplication est refusée (`0x887A0022`) et le plafond observé est **4** (sous-bloc
+D2, `plans/2026-08-01-multifenetres-arrangement-dynamique-resultats.md`). **La
+couche qui l'impose n'est pas identifiée**, et que la différence tienne au
+multi-processus est une **inférence**.
 
 Il touche au moins sept sous-systèmes largement indépendants : détection des
 fenêtres, topologie d'affichage, N pipelines de capture et d'encodage, N
@@ -187,6 +193,27 @@ sous-bloc. Ce qui reste à prouver, c'est que l'ensemble s'assemble.
 > **L'ensemble s'assemble mais ne tient pas** : créer une sortie virtuelle fait abandonner le mutex des duplications
 > DXGI déjà ouvertes, donc toute nouvelle fenêtre tue toutes les sessions en
 > cours. Sept points à régler sont listés au §9 des résultats.
+
+> ✅ **Sous-bloc D2, 1ᵉʳ août 2026 — le défaut central ci-dessus est réparé, et
+> LES SEPT points du §9 des résultats sont clos.**
+> `plans/2026-08-01-multifenetres-arrangement-dynamique-resultats.md`.
+> « Toute nouvelle fenêtre tue toutes les sessions en cours » **ne décrit plus
+> le dépôt** : le mutex est toujours abandonné — ni évité ni expliqué — mais la
+> duplication est relâchée puis rouverte dans une fenêtre de reprise. Relevé en
+> conditions de produit : **44** pertes d'accès `0x887A0026`, **aucune session
+> perdue**, montées 1→2, 2→3, 3→4 propres. La restriction « ces quatre fenêtres
+> PRÉEXISTAIENT » est **levée**. **Cinq points clos par D2** : **1** (le défaut
+> central), **2** (nom DXGI au lieu de l'index), **4** (viewport pair +
+> appariement tolérant), **5** (premier plan avant injection clavier) et **7**
+> (une fenêtre vivante n'est plus oubliée quand sa session meurt —
+> `Etat::SansSession`, `relancer_les_orphelines`, `RELANCES_MAX`). **Deux
+> l'étaient déjà avant D2**, par le correctif final de branche `e9691eb` :
+> **3** et **6**.
+>
+> ⚠️ **D2 n'est pas reçu pour autant** : son critère exigeait **cinq** fenêtres
+> simultanées et on en atteint **quatre**, la 5ᵉ duplication DXGI dans un 5ᵉ
+> processus étant refusée en `0x887A0022`. **La couche qui impose ce plafond
+> n'est pas identifiée**, et **rien n'établit que 4 soit une borne du système**.
 
 ---
 
@@ -381,6 +408,13 @@ est le repli.
   maximum atteint, sans aucun refus. La question reste entièrement ouverte, et
   la cause de cet échec est le défaut §3.3 de la recette — créer une sortie
   virtuelle tue les captures en cours.
+  ⚠️ **La question reste ouverte après D2, mais la CAUSE ci-dessus n'est plus la
+  bonne** : le défaut §3.3 est réparé, les sessions ne meurent plus. Ce qui
+  arrête désormais la montée est la **5ᵉ duplication DXGI**, refusée en
+  `0x887A0022` **avant tout encodeur**. Le maximum d'encodeurs construits de
+  front reste donc **4**, dans 4 processus, et **aucune pièce de D2 ne compte
+  d'encodeurs** — le 4 ci-dessus est un relevé de D1.
+  `plans/2026-08-01-multifenetres-arrangement-dynamique-resultats.md`.
 - **Le vivier de 10 sorties est-il partagé avec Apollo ?** Non mesuré en
   concurrence. Le refus peut donc tomber avant la 11ᵉ.
 - **L'injection d'entrée sur un moniteur virtuel n'est pas éprouvée** — mais le
@@ -393,6 +427,19 @@ est le repli.
   recette n'a écrit dans aucun Bloc-notes ; elle ne départage pas cette cause-là
   d'une seconde, côté navigateur (le clic consommé par la demande de
   verrouillage du pointeur). **À traiter en D2.**
+  ✅ **TRAITÉ ET DÉMONTRÉ par D2** — ne pas repartir de cette puce.
+  `SetForegroundWindow` est désormais posé avant chaque injection clavier, son
+  retour **vérifié et journalisé** : `premier plan obtenu` = **4**,
+  `SetForegroundWindow refusé` = **0**, et les quatre Bloc-notes qui ont une
+  session ont reçu **chacun sa propre frappe** (relecture `WM_GETTEXT`), la
+  cinquième — sans session — rien.
+  ⚠️ **Portée exacte, et elle ne s'élargit pas** : une frappe par fenêtre, sonde
+  **séquentielle**, aucune frappe concurrente, aucune fenêtre non-Bloc-notes
+  relue. **`SendInput` reste global à la session Windows** — ce relevé ne dit
+  rien de deux utilisateurs frappant en même temps, et la réponse structurelle
+  (injection ciblée par messages de fenêtre, ou un pilote) reste hors périmètre.
+  Le second suspect, côté navigateur, n'a **pas** été départagé.
+  `plans/2026-08-01-multifenetres-arrangement-dynamique-resultats.md` §2.3.
 - **Le placement d'une fenêtre sur une sortie virtuelle n'a jamais été fait par
   notre code.** Les mesures posaient les fenêtres par le banc, dans des
   conditions qu'il maîtrisait ; une application réelle peut se replacer, se

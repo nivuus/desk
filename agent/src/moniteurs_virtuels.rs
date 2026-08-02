@@ -124,24 +124,6 @@ impl Drop for Sorties<'_> {
     }
 }
 
-/// Analyse une désignation de sortie « index_adaptateur:index_sortie », telle
-/// que la portent les variables d'environnement du banc.
-///
-/// Les deux index sont ceux de `capture::enumerer_sorties`, et ce sont ceux
-/// qu'attend `DesktopCapture::sur_sortie`.
-pub fn analyser_designation(texte: &str) -> Result<(u32, u32)> {
-    let (adaptateur, sortie) = texte
-        .split_once(':')
-        .with_context(|| format!("désignation « {texte} » : forme attendue « adaptateur:sortie »"))?;
-    let adaptateur: u32 = adaptateur
-        .parse()
-        .with_context(|| format!("index d'adaptateur « {adaptateur} » n'est pas un entier"))?;
-    let sortie: u32 = sortie
-        .parse()
-        .with_context(|| format!("index de sortie « {sortie} » n'est pas un entier"))?;
-    Ok((adaptateur, sortie))
-}
-
 /// Rapport entre les dimensions ANNONCÉES par la sortie
 /// (`DXGI_OUTPUT_DESC::DesktopCoordinates`) et celles de la texture
 /// RÉELLEMENT rendue par l'acquisition.
@@ -369,20 +351,6 @@ mod tests {
             assert_eq!(sorties.nombre(), 2, "un refus ne doit pas compter comme une création");
         }
         assert!(pilote.vivantes.borrow().is_empty());
-    }
-
-    #[test]
-    fn une_designation_bien_formee_donne_les_deux_index() {
-        assert_eq!(analyser_designation("0:1").unwrap(), (0, 1));
-        assert_eq!(analyser_designation("2:0").unwrap(), (2, 0));
-    }
-
-    #[test]
-    fn une_designation_mal_formee_est_refusee() {
-        assert!(analyser_designation("0").is_err(), "un seul index");
-        assert!(analyser_designation("0:1:2").is_err(), "trois index");
-        assert!(analyser_designation("a:b").is_err(), "pas des entiers");
-        assert!(analyser_designation("").is_err(), "vide");
     }
 
     #[test]

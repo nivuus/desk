@@ -27,6 +27,7 @@ pub(super) mod nvenc;
 pub(super) mod paralleles;
 pub(super) mod pointeur_virtuel;
 pub(super) mod replis;
+pub(super) mod reprise;
 pub(super) mod voies;
 pub(super) mod wgc;
 
@@ -71,22 +72,23 @@ pub(super) fn aiguiller() -> Result<bool> {
     }
     // Temps 2 : le banc, sur la voie et le nombre de fenêtres demandés.
     //
-    // `MULTIFENETRE_SORTIE` (« adaptateur:sortie ») désigne une sortie DXGI
-    // autre que celle du bureau. Absente, le banc mesure le bureau — son
-    // comportement d'origine. Elle sert à rejouer À LA MAIN le banc sur une
-    // sortie que l'on sait vivante ; la mesure ③, elle, passe par
-    // `MULTIFENETRE_VDD_CAPTURE`, la sortie virtuelle ne survivant pas au
+    // `MULTIFENETRE_SORTIE` (un nom de sortie DXGI, `\\.\DISPLAYn`) désigne
+    // une sortie autre que celle du bureau. Absente, le banc mesure le
+    // bureau — son comportement d'origine. Elle sert à rejouer À LA MAIN le
+    // banc sur une sortie que l'on sait vivante ; la mesure ③, elle, passe
+    // par `MULTIFENETRE_VDD_CAPTURE`, la sortie virtuelle ne survivant pas au
     // processus qui la crée.
+    //
+    // Un nom, plus un couple d'index `adaptateur:sortie` : c'est le même
+    // changement que `SORTIE_DXGI` (`main.rs`), pour la même raison — les
+    // index sont positionnels et `DesktopCapture::sur_sortie` n'en prend plus.
     if let Ok(voie) = std::env::var("MULTIFENETRE_BANC") {
         let nombre: u8 = std::env::var("MULTIFENETRE_N")
             .unwrap_or_else(|_| "8".to_string())
             .parse()
             .context("MULTIFENETRE_N doit être un entier")?;
-        let sortie = match std::env::var("MULTIFENETRE_SORTIE") {
-            Ok(designation) => Some(crate::moniteurs_virtuels::analyser_designation(&designation)?),
-            Err(_) => None,
-        };
-        banc::executer(&voie, nombre, sortie)?;
+        let sortie = std::env::var("MULTIFENETRE_SORTIE").ok();
+        banc::executer(&voie, nombre, sortie.as_deref())?;
         return Ok(true);
     }
     // Mesure ① — validation du contrat du pilote d'affichage virtuel, avant
@@ -151,6 +153,17 @@ pub(super) fn aiguiller() -> Result<bool> {
             .parse()
             .context("MULTIFENETRE_VDD_PARALLELE doit être un entier (nombre de sorties)")?;
         paralleles::mesurer(nombre)?;
+        return Ok(true);
+    }
+    // L'épreuve de l'inférence fondatrice du sous-bloc D2 : k duplications qui
+    // tournent, une sortie créée par-dessus, reprennent-elles ? Point d'arrêt
+    // de la recette (spec §6.1). Crée des sorties — k, plus la perturbatrice —
+    // donc passe après `MULTIFENETRE_VDD_PURGE`.
+    if let Ok(texte) = std::env::var("MULTIFENETRE_REPRISE") {
+        let nombre: u8 = texte
+            .parse()
+            .context("MULTIFENETRE_REPRISE doit être un entier (nombre de duplications)")?;
+        reprise::mesurer(nombre)?;
         return Ok(true);
     }
     // Mesure ② : le plafond d'encodeurs, sur périphérique partagé (la mesure

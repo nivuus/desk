@@ -570,9 +570,9 @@ impl VideoSource for WindowsSource {
             }
             Ok(None) => {}
             Err(e) => {
-                // Erreur de capture réelle (pas une absence de changement,
-                // déjà traduite en `Ok(None)`) : périphérique perdu ou autre
-                // panne non récupérable — fin légitime et définitive.
+                // Une perte d'accès est déjà passée par les reprises de
+                // `next_frame` : la recevoir ici signifie qu'elles n'ont pas
+                // suffi. Fin légitime dans les deux cas.
                 tracing::error!(erreur = %e, "capture interrompue, source déclarée épuisée");
                 self.fatal = true;
                 return None;

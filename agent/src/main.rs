@@ -41,6 +41,12 @@ mod turn;
 #[path = "windows_source/sortie.rs"]
 mod windows_source_sortie;
 
+// Même montage, et pour la même raison : la classification des échecs
+// d'acquisition et le budget de reprises sont purs et doivent se tester sur
+// l'hôte, alors que `capture.rs` est `#![cfg(windows)]` dans son ensemble.
+#[path = "capture/reprise.rs"]
+mod capture_reprise;
+
 #[cfg(windows)]
 mod capture;
 #[cfg(windows)]
@@ -78,10 +84,10 @@ struct Config {
     /// l'`allow` le dit plutôt que de laisser un avertissement s'installer.
     #[cfg_attr(not(windows), allow(dead_code))]
     fenetre_hwnd: Option<u64>,
-    /// Sortie DXGI à capturer, sous la forme `adaptateur:sortie`. Absente,
+    /// Sortie DXGI à capturer, désignée par son nom (`\\.\DISPLAYn`). Absente,
     /// l'agent capture le bureau et recadre la fenêtre.
     #[cfg_attr(not(windows), allow(dead_code))]
-    sortie_dxgi: Option<(u32, u32)>,
+    sortie_dxgi: Option<String>,
     /// Faux sur les enfants qui ne portent pas le son.
     #[cfg_attr(not(windows), allow(dead_code))]
     audio: bool,
@@ -109,15 +115,16 @@ fn config() -> Result<Config> {
             Ok(brut) => Some(analyser_hwnd(&brut)?),
             Err(_) => None,
         },
-        // Même règle, et la même fonction d'analyse que le reste du projet :
-        // `moniteurs_virtuels::analyser_designation` nomme le champ fautif
-        // dans son erreur et elle est testée, là où le `and_then` qu'elle
-        // remplace rendait `None` sur toute faute de frappe.
+        // ABSENTE : mode mono-fenêtre légitime. PRÉSENTE MAIS VIDE : échec du
+        // démarrage, jamais un repli muet — même règle que `FENETRE_HWND`.
+        // Plus d'analyse `adaptateur:sortie` : c'est un NOM de sortie DXGI
+        // (`\\.\DISPLAYn`), stable là où les index sont positionnels.
         sortie_dxgi: match std::env::var("SORTIE_DXGI") {
-            Ok(brut) => Some(
-                moniteurs_virtuels::analyser_designation(brut.trim())
-                    .context("SORTIE_DXGI")?,
-            ),
+            Ok(brut) => {
+                let nom = brut.trim().to_string();
+                anyhow::ensure!(!nom.is_empty(), "SORTIE_DXGI est vide");
+                Some(nom)
+            }
             Err(_) => None,
         },
         // Le son est actif par défaut : c'est le comportement mono-fenêtre
