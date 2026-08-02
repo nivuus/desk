@@ -802,7 +802,7 @@ pour mot : « **À vérifier explicitement à la recette** : tuer le capteur pen
 que des commandes circulent, et constater que `commander` rend une erreur. »
 
 Des commandes circulaient : le contrôleur d'adaptation appelle `set_bitrate`
-**à chaque décision**, soit environ une par seconde et par session. **98 ms
+**à chaque décision**, soit environ une par seconde et par session. **96,7 ms
 après la relance du capteur**, l'enfant qui a écrit sur le tube mort obtient une
 erreur, et il la journalise :
 

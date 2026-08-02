@@ -2799,7 +2799,7 @@ attribution au réseau est une INFÉRENCE** : aucune mesure de charge du pont.
 ### La ceinture répond : `commander` rend une erreur, il ne suspend pas
 
 C'est ce que la doc de `Canal::commander` (`agent/src/capteur/tube.rs`) laissait
-explicitement à la recette. 98 ms après la relance du capteur :
+explicitement à la recette. 96,7 ms après la relance du capteur :
 
 ```
 WARN agent::transport::adaptation: l'encodeur refuse le réglage du débit à chaud
