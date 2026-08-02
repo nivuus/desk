@@ -65,6 +65,19 @@ pub fn servir_une_fenetre<E: Write>(
 
     let (largeur, hauteur) = source.dimensions();
     ecrire_json(&mut ecrivain, &DepuisCapteur::Attachee { largeur, hauteur })?;
+    // **Ce `flush` n'est pas décoratif : sans lui l'attache ne se termine
+    // jamais sur une fenêtre immobile.** `ecrivain` est un `BufWriter` ; la
+    // réponse resterait dans son tampon jusqu'à la première écriture qui le
+    // vide — c'est-à-dire jusqu'à la première IMAGE. Or Desktop Duplication ne
+    // rend une image qu'au changement du bureau : devant un Bloc-notes
+    // statique, il n'en vient aucune. L'enfant, lui, bloque dans `lire_trame`
+    // en attendant cette réponse, donc n'atteint jamais le signaling et
+    // n'établit aucune session WebRTC. Relevé en recette (tâche 9,
+    // 2 août 2026) : deux fenêtres attachées côté capteur, zéro
+    // « attaché au capteur » côté enfant, deux pages en `iceConnectionState
+    // = "new"`. Toutes les autres écritures de ce fichier sont déjà suivies
+    // d'un `flush` ; celle-ci était la seule à ne pas l'être.
+    ecrivain.flush()?;
     tracing::info!(%session, %sortie, largeur, hauteur, "fenêtre attachée au capteur");
 
     let mut dernier_etat = (true, false, largeur, hauteur);
