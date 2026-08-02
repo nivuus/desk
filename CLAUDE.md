@@ -38,7 +38,7 @@ où l'on travaille dedans, pas en chantier séparé.
 | Fichier | Lignes | Pourquoi elle reste |
 | --- | --- | --- |
 | `agent/src/encode.rs` | 1536 | `#[cfg(windows)]`, aucun test |
-| `agent/src/windows_source.rs` | 740 | `#[cfg(windows)]`, aucun test |
+| `agent/src/windows_source.rs` | 648 | `#[cfg(windows)]`, aucun test |
 | `agent/src/wasapi.rs` | 543 | `#[cfg(windows)]`, aucun test |
 
 > `encode.rs` est passé de 1502 à 1536 lignes le 31 juillet 2026 (correctif de
@@ -55,14 +55,18 @@ où l'on travaille dedans, pas en chantier séparé.
 > supplémentaire** — la compression y a déjà été jouée, et elle ne l'est qu'une
 > fois.
 
-> ⚠️ **`agent/src/capture.rs` est à 485 lignes : sa marge est de 15 lignes**
-> (1ᵉʳ août 2026, fin du sous-bloc D2). Il a atteint **exactement 500** en cours
-> de sous-bloc ; une extraction vers `capture/ouverture.rs` l'a fait retomber à
-> **453**, puis une ronde de correction lui a **rendu 32 lignes**. **Toute
-> addition future à ce fichier appelle une extraction** — les modules enfants
-> `capture/reprise.rs`, `capture/ouverture.rs` et `capture/types.rs` existent
-> déjà et sont le bon endroit. **Leçon du chiffre : la marge regagnée par une
-> extraction se reperd à la ronde suivante si on la traite comme acquise.**
+> ⚠️ **`agent/src/capture.rs` est à 496 lignes : sa marge est de 4 lignes**
+> (2 août 2026, fin du sous-bloc D3 — voir le §8 de
+> `plans/2026-08-02-multifenetres-plafond-concurrence-resultats.md`). Il a
+> atteint **exactement 500** en cours de sous-bloc D2 ; une extraction vers
+> `capture/ouverture.rs` l'a fait retomber à **453**, puis une ronde de
+> correction lui a **rendu 32 lignes** (485 à la fin de D2), et il a repris
+> **11 lignes** depuis. **Toute addition future à ce fichier appelle une
+> extraction** — les modules enfants `capture/reprise.rs`,
+> `capture/ouverture.rs` et `capture/types.rs` existent déjà et sont le bon
+> endroit. **Leçon du chiffre, vérifiée deux fois plutôt qu'une : la marge
+> regagnée par une extraction se reperd à la ronde suivante si on la traite
+> comme acquise.**
 
 Ces trois modules ne se compilent que sur la VM et ne sont couverts par aucun
 test : les découper se ferait sans filet automatisé. La dette est assumée
@@ -71,6 +75,14 @@ jusqu'à ce qu'ils gagnent des tests — voir
 
 Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 30 juillet 2026 : voir `docs/superpowers/plans/2026-07-30-dette-taille-fichiers.md`.
+
+> ⚠️ **Les nombres de ce tableau et des deux encadrés ci-dessus ont été relevés
+> le 2 août 2026, et ils DÉRIVENT** : rien ne les met à jour hors un chantier
+> qui touche le fichier concerné. Deux d'entre eux étaient faux au moment de ce
+> relevé — `windows_source.rs` était annoncé à 740 pour **648** réels, et
+> `capture.rs` à 485 pour **496**. **Ne jamais s'y fier pour décider si un
+> fichier peut encore grossir : relancer la commande ci-dessous**, qui est la
+> seule source de vérité, et **corriger le tableau dans le même mouvement**.
 
 **Vérifier l'état** :
 
@@ -2283,9 +2295,10 @@ mesuré.
 Résultats complets :
 `docs/superpowers/plans/2026-08-02-multifenetres-plafond-concurrence-resultats.md`.
 Conception : `docs/superpowers/specs/2026-08-02-multifenetres-plafond-concurrence-design.md`.
-Journaux : `docs/superpowers/plans/journaux-multifenetres-d3/` — **23 fichiers,
-UTF-8**, avec les séquences ANSI de `tracing` (`sed 's/\x1b\[[0-9;]*m//g'` pour
-lire à plat ; `agent-critere1.txt` est déjà mis à plat).
+Journaux : `docs/superpowers/plans/journaux-multifenetres-d3/` — **37 fichiers
+suivis par git** (24 au premier niveau, plus 13 dans `instrument/`), **UTF-8**,
+avec les séquences ANSI de `tracing` (`sed 's/\x1b\[[0-9;]*m//g'` pour lire à
+plat ; `agent-critere1.txt` est déjà mis à plat).
 
 D3 prend trois points du §7 de D2 — ne plus recréer la sortie à chaque relance,
 identifier ce sur quoi porte le plafond de quatre, et accorder `CAPACITE` — et
@@ -2416,7 +2429,7 @@ fenêtre déjà ouverte (**défaut préexistant**, nommé et non corrigé). La r
 - **Trois allocations TURN ont échoué** pendant la recette (cause non
   investiguée) : elle s'est jouée sans relais, sur candidats `host`.
 - **Rien de la latence, de la cadence, de la durée** (journaux de campagne :
-  6,42 s à 9,70 s), aucun redimensionnement, aucun recouvrement, aucun
+  6,42 s à 9,69-9,70 s), aucun redimensionnement, aucun recouvrement, aucun
   déplacement de fenêtre, aucune charge d'encodage réelle (Bloc-notes statique).
 
 ### Pièges neufs — à connaître avant de toucher à ce terrain

@@ -8,7 +8,8 @@
 (`plans/2026-08-01-multifenetres-arrangement-dynamique-resultats.md` §7).
 
 Pièces versées, toutes dans `docs/superpowers/plans/journaux-multifenetres-d3/`
-— **23 fichiers, tous commités**. Les journaux d'agent portent les séquences ANSI
+— **37 fichiers suivis par git** (24 au premier niveau, plus 13 dans
+`instrument/`). Les journaux d'agent portent les séquences ANSI
 de `tracing` (`sed 's/\x1b\[[0-9;]*m//g'` pour les lire à plat) ; l'exception est
 `agent-critere1.txt`, déjà mis à plat.
 
@@ -306,7 +307,9 @@ tous corrigés avant tout relevé retenu, et versés plutôt que rapportés.
   les sorties de la campagne sont à 1280×720 / 60 Hz.
 - **Rien de la tenue dans la durée** : les sondes tiennent leurs duplications
   quelques secondes. La durée propre du journal d'agent va de **6,42 s** (`1x8`)
-  à **9,70 s** (`8x1`) — relevée sur les quinze fichiers.
+  à **9,69-9,70 s** (`8x1`) — relevée sur les quinze fichiers, et laissée à sa
+  dispersion réelle plutôt qu'arrondie (9,686 / 9,697 / 9,699 s aux trois
+  essais de `8x1`).
 - **Un rang `5x1` autonome n'a pas été joué**, ni `6x1` ni `7x1`. L'état qu'un
   `5x1` aurait mesuré a bien été **atteint et refusé 3/3** comme sous-produit de
   `8x1` (voir §2.2) ; il manque néanmoins une mesure **dédiée** à ce rang.
