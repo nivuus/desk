@@ -130,6 +130,27 @@ cycles lancement/mort se sont enchaînés — `w-8` (204 ms de vie), `w-9` (100 
 `w-10` (201 ms), `w-11` (101 ms) —, soit l'original plus `RELANCES_MAX = 3`
 relances exactement, puis l'abandon.
 
+⚠️ **Ce récit compte des LANCEMENTS, et il est exact sur eux ; il ne compte pas
+les sessions ANNONCÉES à la page-shell, qui sont cinq.** L'instrument montre une
+page `?session=w-7` ouverte puis refermée (`demonstration-critere1.log`,
+t+38,6 s / t+38,8 s), alors qu'`agent-critere1.txt` ne porte **aucun**
+`enfant lancé session=w-7` — ni aucune `ERROR`, ni aucun
+`lancement de l'enfant échoué`. **`w-7` n'est PAS une cinquième tentative sur la
+fenêtre 4** : le même doublement s'observe sur les **trois fenêtres saines**, où
+l'instrument enregistre à chaque fois une page attachée puis détachée dans les
+100 à 200 ms précédant la page durable (t+21,3/21,4 s, t+26,9/27,0 s,
+t+32,2/32,4 s), ce qui rend compte des identifiants impairs `w-1`, `w-3` et `w-5`
+absents du journal d'agent. C'est le piège déjà inscrit dans `CLAUDE.md` sous
+« Paint ouvre DEUX fenêtres éligibles », ici sur Bloc-notes : une fenêtre
+transitoire est détectée, annoncée, puis disparaît avant d'obtenir une sortie.
+Le marqueur `enfant_lance: 7` de l'instrument concorde (3 saines + 4 tentatives),
+et **`RELANCES_MAX` n'est donc pas dépassé**. ⚠️ **Le mécanisme exact de la
+fenêtre transitoire n'est pas établi** : le superviseur ne trace **rien** à
+l'annonce d'une ouverture, et c'est cette lacune d'instrumentation — pas une
+mesure — qui a rendu le point difficile à trancher. **Corollaire pour la suite :
+la suite des identifiants de session n'est pas un témoin du nombre de fenêtres,
+et compter des sessions annoncées n'est pas compter des lancements.**
+
 **Le relevé du critère, borné par une fenêtre temporelle explicite** — jamais un
 total de fichier, la leçon que D2 avait payée (44 dans la fenêtre, 50 en fin de
 fichier) :
@@ -279,8 +300,23 @@ tous corrigés avant tout relevé retenu, et versés plutôt que rapportés.
   aux enfants, mais **aucune allocation TURN n'a abouti** pendant la recette —
   trois `WARN allocation TURN impossible` dans `agent-critere1.txt`. Non bloquant
   ici (agent et navigateur sur le même pont, les candidats `host` suffisent, et
-  les quatre sessions se sont bien établies), **cause non investiguée** :
+  les **trois** sessions saines se sont bien établies), **cause non investiguée** :
   possiblement `coturn` non démarré, ou un délai de 2 s trop court pour cette VM.
+  ⚠️ **TROIS, pas quatre** — relevé : trois `agent enregistré auprès du signaling`
+  (l. 26, 65, 104) et trois `état ICE state=Connected` (l. 34, 75, 116). La
+  quatrième fenêtre, condamnée, meurt en 100 à 204 ms et **n'atteint jamais le
+  signaling** : ses quatre enfants n'ont donc jamais tenté d'allocation TURN, et
+  le compte de trois `WARN` s'accorde exactement avec trois sessions établies.
+- **L'instrument a conclu `!! ABANDON NON DÉTECTÉ dans la fenêtre de polling
+  (80 s)`** (`demonstration-critere1.log`, t+119,5 s), alors que l'abandon **a
+  bien eu lieu** — la page-shell affiche `« Sans titre - Bloc-notes » n'a pas pu
+  s'ouvrir : la session n'a pas tenu après 3 tentatives.` deux secondes plus
+  tard. **Échec d'instrument, pas d'observation** : l'instrument scrutait
+  `agent.log` pour un texte d'abandon que l'agent ne trace jamais côté
+  superviseur — l'abandon ne se manifeste que par l'`AnnoncerRefus` envoyé à la
+  shell. Cause détaillée au §4. Sans conséquence sur le critère, qui se lit sur
+  les compteurs et non sur ce verdict ; à corriger dans l'instrument avant tout
+  réemploi, ou à doubler d'une trace superviseur.
 - **La VM a hiberné** entre la recette et son contrôle de topologie différé —
   nouvelle occurrence de la veille prolongée que `CLAUDE.md` documente sans
   l'expliquer. Conséquence sur la valeur de ce contrôle : voir §4.
@@ -339,15 +375,60 @@ tous corrigés avant tout relevé retenu, et versés plutôt que rapportés.
   interruption » est correct sur ce que le journal établit — processus vivants,
   aucune `clôture de session amorcée`, ICE établi — mais le journal n'établit ni
   le flux de trames des trois sessions saines ni l'absence d'interruption de leur
-  **affichage**. Leurs sorties ont bien perdu leur mutex à répétition sous
-  l'effet des créations/destructions de la fenêtre 4 : `DISPLAY5` **4** fois,
-  `DISPLAY6` **3**, `DISPLAY7` **2** — chacune rouverte du premier coup
-  (`tentative=1` sur les neuf lignes). Formulation exacte : *processus vivants,
-  ICE établi, neuf réouvertures réussies du premier coup ; aucune trame comptée.*
+  **affichage**. Leurs sorties ont bien perdu leur mutex à répétition :
+  `DISPLAY5` **4** fois, `DISPLAY6` **3**, `DISPLAY7` **2** — soit neuf lignes au
+  total sur le fichier, chacune rouverte du premier coup (`tentative=1` sur les
+  neuf). Formulation exacte : *processus vivants, ICE établi, neuf réouvertures
+  réussies du premier coup ; aucune trame comptée.*
+
+  ⚠️ **Ces neuf ne sont PAS toutes imputables à la fenêtre 4 — six le sont.** Un
+  total de fichier n'est pas une cause, et c'est exactement la leçon que D2 avait
+  payée puis inscrite dans `CLAUDE.md` (« ne jamais opposer un total de fichier à
+  un compte fenêtré »). Décompte ligne à ligne dans `agent-critere1.txt`, les
+  quatre créations de sortie étant aux l. 16, 52, 90 et 132 :
+
+  | Réouvertures | Événement qui précède | Imputable à |
+  | --- | --- | --- |
+  | l. 53 (1) | création de la sortie de `w-4` (l. 52) | une fenêtre **saine** |
+  | l. 91-92 (2) | création de la sortie de `w-6` (l. 90) | une fenêtre **saine** |
+  | l. 133-135 (3) | création `id=257` (l. 132) | **fenêtre 4** |
+  | l. 180-182 (3) | destruction `id=257` (l. 178) | **fenêtre 4** |
+
+  Soit **3 réouvertures antérieures à la fenêtre 4, infligées aux sessions saines
+  par les sorties saines elles-mêmes**, et **6 dues à la fenêtre 4** — ce que le
+  §2.1 établit déjà par ailleurs (`delta_reouverture: 6`), et que l'instrument
+  corrobore de son côté : `reouverture: 3` au marqueur **avant** condamnation,
+  `9` **après**. Le critère est TENU dans les deux lectures — il porte sur la
+  fenêtre [139, 179], où le compte est **0** — mais la phrase causale, elle,
+  était fausse.
 - **La condamnation ne frappe qu'un enfant tout juste lancé.** Aux quatre tours,
   la mort survient **100 à 204 ms** après le lancement, et `w-9` n'atteint même
   jamais la ligne `duplication de sortie établie` avant de mourir. **La mort d'un
   enfant qui capture depuis longtemps, en pleine diffusion, n'est pas exercée.**
+- **Le remplacement d'une sortie devenue incompatible n'a JAMAIS été exercé, et
+  il porte une adjacence neuve à cette branche.** Quand le viewport annoncé ne
+  correspond plus à la sortie retenue, `table/attribution.rs:50-62` rend
+  `[DetruireSortie, CreerSortie]`, que `boucle.rs` exécute **coup sur coup** —
+  et `creer_sortie` prend aussitôt son instantané
+  `relever_topologie("avant création de sortie")`, **sans délai de grâce**. Or
+  **tous** les autres sites du dépôt attendent `DELAI_TOPOLOGIE = 3 s` après une
+  destruction avant de relever quoi que ce soit (`montee.rs:440`,
+  `paralleles.rs:125`, `plafond.rs:197`, `reprise.rs:145`,
+  `capture_virtuelle.rs:133`), pour le motif écrit en toutes lettres dans
+  `plafond.rs:192-196` : « un pilote d'affichage indirect ne défait pas sa
+  topologie dans l'instant ». Défaillance prévisible si les deux conditions se
+  réunissent — la sortie détruite encore attachée à l'instantané **et** la neuve
+  réutilisant son `\\.\DISPLAYn` : la neuve ne serait jamais vue « apparue » par
+  comparaison d'ensembles, l'attente de rattachement expirerait à 5 s, et la
+  fenêtre serait refusée. **Dégradé et auto-résorbant, sans fuite de sortie** (la
+  destruction, elle, a bien eu lieu), et la relance repasse par le même chemin.
+  **Ce cas n'a jamais été observé parce qu'il n'a jamais été atteint** : aucun
+  viewport n'a changé de taille en recette, donc le bras de remplacement n'a
+  jamais couru. **À documenter ici, pas à corriger à l'aveugle** — poser un délai
+  de 3 s dans la boucle du superviseur retarderait toute ouverture de fenêtre, et
+  le remède juste (relever la topologie *avant* de détruire, ou apparier par
+  identifiant de sortie plutôt que par nom) demande une mesure qui n'a pas été
+  prise.
 - **Le contrôle de topologie final est affaibli par une hibernation
   intercalée.** Entre la recette (09:06-09:08) et le contrôle (09:34), la VM
   s'est éteinte et a redémarré — un cycle qui réinitialise le pilote et
@@ -387,8 +468,18 @@ cargo check --target x86_64-pc-windows-gnu
 ```
 
 compile l'intégralité du code Windows. **Vérifié à la rédaction de ce
-document** : sortie 0, **9 avertissements `dead_code` préexistants**, aucun dans
-les fichiers neufs de D3. ⚠️ **Portée exacte** : cela couvre types, emprunts,
+document** : sortie 0, **9 avertissements `dead_code`**, aucun dans
+les fichiers neufs de D3. ⚠️ **« Aucun dans les fichiers neufs » est vrai ;
+« tous préexistants » ne l'est PAS** — une rédaction antérieure disait « 9
+avertissements `dead_code` préexistants ». L'un des neuf est
+`methods 'etat' and 'taille_sortie_de' are never used` (`table.rs:211`), et
+`taille_sortie_de` **n'existe pas à `935cbda`** : c'est un accesseur ajouté par
+D3 (commit `9b011d4`) et employé par les seuls tests, donc mort dans une
+compilation sans `cfg(test)`. Le message a simplement **absorbé** le nom neuf
+dans un avertissement dont la forme, elle, préexistait — piège de lecture à
+retenir : `dead_code` regroupe plusieurs éléments par ligne, et un compte
+d'avertissements ne dit rien du nombre d'éléments qu'ils nomment. ⚠️ **Portée
+exacte** : cela couvre types, emprunts,
 visibilités et durées de vie ; cela **ne couvre pas l'édition de liens**, la
 cible réelle du projet étant `msvc` sur la VM. C'est néanmoins la levée, en
 grande partie, de la réserve « non vérifiable sur l'hôte » qui pesait sur tout
@@ -531,8 +622,12 @@ couche est inconnue peut se déplacer sous une autre charge.
 
 ### 7.5 Points mineurs différés par D3, à traiter à l'occasion
 
-- `cargo fmt --check` signale 4 lignes dans `plafond.rs`, toutes dans du code
-  repris du brief. **Le dépôt n'est pas `rustfmt`-clean par ailleurs.**
+- `cargo fmt --check` signale **5** emplacements dans `plafond.rs` (l. 55, 73,
+  228, 281, 385), toutes dans du code repris du brief — **5 et non 4**, recompté
+  à la revue finale. **Le dépôt n'est pas `rustfmt`-clean par ailleurs** : le
+  même contrôle relève des écarts dans **85** fichiers du crate `agent`, dont
+  `encode.rs` (19) et `geometry.rs` (34). Ce point mineur n'a donc de sens que
+  fichier par fichier, jamais comme un objectif de branche.
 - `enfant.wait()` dans `SondesEnCours::drop` est **non borné** : une sonde morte
   mais dont le processus survivrait y bloquerait le porteur. **Forme
   préexistante**, reprise du modèle de `superviseur/lanceur.rs`.
@@ -608,8 +703,15 @@ Lancée à la rédaction de ce document, depuis `agent/` :
 | Commande | Résultat |
 | --- | --- |
 | `cargo test --workspace` | **exit 0** — 289 tests (agent) + 27 (proto), 0 échec |
-| `cargo clippy --workspace` | **exit 0** — 101 avertissements, dont **100 `dead_code`** dus au `#[cfg(windows)]` et **1 préexistant** (`mire.rs:48`, hors de cette branche) |
-| `cargo check --target x86_64-pc-windows-gnu` | **exit 0** — 9 avertissements `dead_code` préexistants, **aucun dans les fichiers neufs** |
+| `cargo clippy --workspace` | **exit 0** — **100** avertissements : **99 `dead_code`** dus au `#[cfg(windows)]` et **1 préexistant** (`manual_is_multiple_of`, `mire.rs:48`, hors de cette branche) |
+| `cargo check --target x86_64-pc-windows-gnu` | **exit 0** — 9 avertissements `dead_code`, **aucun dans les fichiers neufs** (mais pas tous préexistants : voir §5) |
+
+⚠️ **Le 101 d'une rédaction antérieure comptait deux fois.** Il venait d'un
+`grep -c '^warning'`, qui ramasse aussi la ligne de sommaire
+`warning: agent (bin "agent") generated 100 warnings` — laquelle **annonce** le
+total au lieu d'en faire partie. Le décompte juste est 100 = 99 + 1, et c'est
+cargo lui-même qui le donne. **Ne jamais compter des avertissements par `grep`
+sur le préfixe `warning`** sans retirer la ligne de sommaire.
 
 **Ne pas chasser le compte absolu d'avertissements `clippy`** : il dérive avec la
 fraîcheur du build. Vérifier la **nature**.

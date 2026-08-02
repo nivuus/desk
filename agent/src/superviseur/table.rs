@@ -194,6 +194,10 @@ pub struct Table {
 fn rendre_la_sortie_de(entree: &Entree) -> Option<Effet> {
     entree.sortie_pilote.map(|sortie_pilote| Effet::DetruireSortie {
         sortie_pilote,
+        // `nom_sortie` est toujours renseigné quand `sortie_pilote` l'est :
+        // `sortie_creee` pose les trois champs ensemble, jamais l'un sans les
+        // autres, et `viewport_recu` les vide ensemble. Le repli n'est donc
+        // pas atteignable — s'il l'était, il produirait un `nom_sortie: ""`.
         nom_sortie: entree.nom_sortie.clone().unwrap_or_default(),
     })
 }
@@ -307,17 +311,12 @@ impl Table {
         let entree = self.entrees.remove(&session).expect("trouvée à l'instant");
         let mut effets = vec![Effet::TuerEnfant { session: session.clone() }];
         // Rien à détruire si la fenêtre s'est fermée avant que sa sortie
-        // n'existe : demander au pilote de retirer une sortie qu'il n'a
-        // jamais créée ne ferait qu'une erreur de plus au journal.
-        if let Some(sortie_pilote) = entree.sortie_pilote {
-            effets.push(Effet::DetruireSortie {
-                sortie_pilote,
-                // `nom_sortie` est toujours renseigné quand `sortie_pilote`
-                // l'est : `sortie_creee` pose les deux ensemble, jamais l'un
-                // sans l'autre. Le repli n'est donc pas atteignable.
-                nom_sortie: entree.nom_sortie.clone().unwrap_or_default(),
-            });
-        }
+        // n'existe : `rendre_la_sortie_de` ne rend `None` que dans ce cas, et
+        // demander au pilote de retirer une sortie qu'il n'a jamais créée ne
+        // ferait qu'une erreur de plus au journal. Même appel que les deux
+        // abandons de `relancer_les_orphelines` : les trois chemins qui
+        // rendent une sortie depuis le correctif §7.1 passent par là.
+        effets.extend(rendre_la_sortie_de(&entree));
         effets.push(Effet::AnnoncerFermeture { session });
         effets
     }

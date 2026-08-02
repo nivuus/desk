@@ -28,8 +28,11 @@ pub(super) fn controler_le_placement(table: &Table) {
 /// tard.
 ///
 /// Idempotente : `doit_etre_replacee` garde l'appel, donc le chemin de
-/// création — où la fenêtre vient d'être posée — n'émet aucun second
-/// `SetWindowPos`.
+/// création — où la fenêtre vient d'être posée — n'émet **normalement** aucun
+/// second `SetWindowPos`. « Normalement » et non « jamais » : si Windows a
+/// clampé la taille demandée (taille minimale de la fenêtre, contrainte du DPI),
+/// le rectangle obtenu diffère de la cible, `doit_etre_replacee` est vrai, et un
+/// second `SetWindowPos` **est** émis — sans plus d'effet que le premier.
 pub(super) fn replacer_si_besoin(table: &Table, session: &IdSession, toutes: &[SortieDxgi]) {
     let Some(nom) = table.nom_sortie_de(session) else {
         return;

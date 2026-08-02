@@ -107,16 +107,25 @@ pub(in super::super) fn sonder(sorties: &[String]) -> Result<()> {
                 tenues.push(duplication);
             }
             Err(erreur) => {
-                // Le HRESULT EXACT, et le rang : c'est la seule donnée que la
-                // matrice exploite.
+                // `{erreur:#}` et non `{erreur}` : le Display simple d'`anyhow`
+                // ne rend que le contexte le PLUS EXTERNE (« duplication de la
+                // sortie écran »), et le HRESULT — la seule donnée que la
+                // matrice exploite — resterait dans les causes, invisible ici.
+                // Il ne survivait dans les journaux de la campagne D3 que
+                // parce qu'`agent::capture::ouverture` le journalise pour son
+                // propre compte, une ligne plus haut : dépendance fortuite à
+                // une trace d'un AUTRE module, que rien ne garantissait. Le
+                // format alternatif rend la chaîne complète des causes, donc
+                // le HRESULT, dans la trace comme dans le verdict.
+                let causes = format!("{erreur:#}");
                 tracing::error!(
                     sonde = rang,
                     duplication = rang_local + 1,
                     %nom,
-                    %erreur,
+                    erreur = %causes,
                     "duplication REFUSÉE"
                 );
-                verdict = format!("KO {erreur} {nom}");
+                verdict = format!("KO {causes} {nom}");
                 break;
             }
         }

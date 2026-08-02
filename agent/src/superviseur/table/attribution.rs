@@ -47,6 +47,13 @@ impl Table {
         // fenêtre entre-temps). La rendre AVANT d'en demander une autre :
         // laissée en place, elle resterait captive du vivier de dix, et
         // l'entrée n'en garderait plus l'identifiant.
+        // Les trois champs se posent ensemble dans `sortie_creee` et se vident
+        // ensemble ici : c'est l'invariant sur lequel repose tout le chemin de
+        // réutilisation ci-dessus, qui exige `nom_sortie` ET `taille_sortie`
+        // pour reconnaître une sortie retenue. Le `unwrap_or_default` n'est donc
+        // pas atteignable ; s'il l'était, il produirait un `nom_sortie: ""`,
+        // c'est-à-dire une destruction visant une sortie sans nom. Même repli et
+        // même invariant que `rendre_la_sortie_de` (`table.rs`), qui le note.
         if let Some(sortie_pilote) = entree.sortie_pilote.take() {
             effets.push(Effet::DetruireSortie {
                 sortie_pilote,

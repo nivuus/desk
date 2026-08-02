@@ -149,8 +149,8 @@ pub fn tourner(
                         tracing::error!(session = %session.0, %erreur, "lancement de l'enfant échoué");
                         // Le contrat du trait `Lanceur` est atomique : `Err`
                         // signifie qu'aucun processus ne tourne. Rien à tuer
-                        // donc, mais la sortie, elle, existe — et
-                        // `enfant_mort` est le seul chemin qui la rende.
+                        // donc ; la sortie, elle, est RETENUE par `enfant_mort`
+                        // (§7.1 de D3), et rendue par un chemin d'abandon.
                         effets.extend(table.enfant_mort(&session));
                     }
                 }

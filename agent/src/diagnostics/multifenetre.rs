@@ -69,10 +69,25 @@ pub(super) fn aiguiller() -> Result<bool> {
     // cause. Probabilité faible (erreur d'opérateur), conséquence maximale et
     // silencieuse : la sonde doit gagner quel que soit ce qui traîne
     // ailleurs dans l'environnement.
-    if let Ok(liste) = std::env::var("MULTIFENETRE_PLAFOND_SONDE") {
-        let sorties: Vec<String> = liste.split(',').map(|s| s.trim().to_string()).collect();
-        plafond::sonder(&sorties)?;
-        return Ok(true);
+    //
+    // La CHAÎNE VIDE est rejetée, elle : les six branches voisines passent par
+    // `sonde_demandee`, et celle-ci ne peut pas — elle a besoin de la valeur,
+    // qui est la liste des sorties. Prise sur la seule présence, un
+    // `MULTIFENETRE_PLAFOND_SONDE=` exporté (ou vidé) dans un shell détournerait
+    // TOUT l'aiguillage, puisque cette branche est en tête : le processus
+    // sonderait zéro sortie et rendrait `OK` au lieu d'exécuter le commutateur
+    // demandé. `is_empty` après `trim` : une valeur qui ne porte que des
+    // séparateurs ne nomme aucune sortie non plus.
+    match std::env::var("MULTIFENETRE_PLAFOND_SONDE") {
+        Ok(liste) if !liste.trim().is_empty() => {
+            let sorties: Vec<String> = liste.split(',').map(|s| s.trim().to_string()).collect();
+            plafond::sonder(&sorties)?;
+            return Ok(true);
+        }
+        Ok(_) => tracing::warn!(
+            "MULTIFENETRE_PLAFOND_SONDE posée mais vide : sonde ignorée, aiguillage poursuivi"
+        ),
+        Err(_) => {}
     }
     // Relevé DXGI : quelles sorties existent, laquelle porte le bureau.
     if sonde_demandee("MULTIFENETRE_DXGI") {
