@@ -76,7 +76,8 @@ pub const RELANCES_MAX: u32 = 3;
 /// (`agent/src/capture/reprise.rs`) : aucune mesure n'a établi combien de
 /// temps une page-shell peut légitimement mettre à répondre. Trente secondes
 /// couvrent largement un rechargement de page ou une reconnexion réseau, sans
-/// bloquer indéfiniment une place sur un vivier de huit.
+/// bloquer indéfiniment une place — d'autant que `CAPACITE` n'en offre plus
+/// que **quatre** depuis la campagne de D3.
 ///
 /// **Portée : TOUTES les entrées en attente de viewport**, depuis le sous-bloc
 /// D3. Elle était limitée aux entrées relancées, parce que `fenetre_apparue`

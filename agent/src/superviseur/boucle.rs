@@ -39,10 +39,29 @@ use crate::capture::{enumerer_sorties_silencieux, SortieDxgi};
 use crate::diagnostics::multifenetre::montee::{noms_attaches, relever_topologie};
 use crate::moniteurs_virtuels::{pilote::PiloteParIoctl, Sorties};
 
-/// Capacité retenue : le pilote refuse la 11ᵉ sortie (mesuré), et Apollo puise
-/// au même vivier sans qu'on sache combien il en prend. Huit est la cible du
-/// chantier, avec deux de marge assumée.
-const CAPACITE: usize = 8;
+/// Fenêtres simultanées que le superviseur s'autorise.
+///
+/// **Valeur MESURÉE sur la VM cible, non prouvée être une borne du système**
+/// (campagne du sous-bloc D3,
+/// `plans/2026-08-02-multifenetres-plafond-concurrence-resultats.md`).
+///
+/// Elle valait **8** : ni le vivier de sorties du pilote (10) ni le plafond
+/// d'encodeurs en processus unique (8) ne sont pourtant ce qu'on rencontre en
+/// conditions de produit. Ce qui borne est le **nombre de processus concurrents
+/// tenant une duplication DXGI ouverte**, mesuré à **exactement 4** : le rang
+/// `8x1` est refusé en `0x887A0022` à son 5ᵉ processus, 3/3, quand `1x8`, `2x4`
+/// et `4x2` — **huit** duplications sur au plus quatre processus — passent tous
+/// 3/3. Le rang qui échoue a donc MOINS de duplications ouvertes que ceux qui
+/// réussissent. **La couche qui impose ce plafond n'est pas identifiée.**
+///
+/// Pourquoi la baisser : à 8, le superviseur acceptait quatre fenêtres dont
+/// aucune ne pouvait aboutir, chacune brûlant `RELANCES_MAX + 1` tentatives dont
+/// chacune recréait une sortie virtuelle — ce qui inflige des abandons de mutex
+/// aux sessions saines. Refuser d'avance coûte un message.
+///
+/// **Franchir 4 demande de mutualiser la capture** (un seul processus tenant les
+/// N duplications) — désigné par D3 pour D4, non implémenté.
+const CAPACITE: usize = 4;
 
 /// Cadence du battement du chien de garde du pilote. Le pilote retire les
 /// sorties d'un client qui cesse de pinguer ; l'unité de son délai n'est PAS

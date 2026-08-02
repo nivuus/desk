@@ -1440,6 +1440,15 @@ propriétaire du poste.
 > simultanées, où un **plafond distinct** apparaît (la 5ᵉ duplication DXGI, dans
 > un 5ᵉ processus, est refusée en `0x887A0022` ; **la couche qui l'impose n'est
 > pas identifiée**). Voir la section « Sous-bloc D2 » plus bas.
+>
+> ✅ **Le sous-bloc D3 (2 août 2026) a caractérisé ce plafond distinct : il porte
+> sur le nombre de PROCESSUS concurrents tenant une duplication, et vaut
+> exactement 4.** Quinze exécutions, 3 par rang : huit duplications dans un seul
+> processus passent, huit réparties sur quatre processus passent, mais la
+> cinquième duplication dans un cinquième processus est refusée — **avec moins de
+> duplications ouvertes que les rangs qui réussissent**. ⚠️ **La couche qui
+> l'impose n'est toujours PAS identifiée** ; seul l'objet du plafond l'est. Voir
+> la section « Sous-bloc D3 » plus bas.
 
 > ✅ **Les deux mesures que cette sonde déclarait bloquantes ont été prises le
 > 31 juillet 2026** (plafond de sorties virtuelles, plafond d'encodage sur
@@ -1525,9 +1534,15 @@ confirmation par des processus tiers).
   ✅ **L'ordre réel passe depuis le sous-bloc D2** (1ᵉʳ août 2026) : la reprise
   sur perte d'accès encaisse la perturbation, éprouvée au banc à k = 1, 2, 4
   puis en conditions de produit jusqu'à **quatre** fenêtres. **Rien au-delà de
-  quatre** : un plafond distinct, sur le nombre de duplications DXGI
-  simultanées **dans des processus distincts**, y arrête la montée — voir la
-  section « Sous-bloc D2 ».
+  quatre** : un plafond distinct y arrête la montée — voir la section
+  « Sous-bloc D2 ».
+  ⚠️ **La formulation de cette phrase était fausse et D3 l'a corrigée** : elle
+  disait « sur le nombre de duplications DXGI simultanées **dans des processus
+  distincts** ». Le plafond ne porte **pas** sur un nombre de duplications :
+  huit duplications tiennent, réparties sur un, deux ou quatre processus. Il
+  porte sur le **nombre de processus** concurrents tenant une duplication, et
+  vaut **exactement 4** — le rang qui échoue n'a que 4 duplications ouvertes
+  quand ceux qui passent en ont 8. Voir « Sous-bloc D3 ».
 - **La comparaison des deux modes d'encodage porte sur DEUX variables
   confondues** : le mode `separe` n'ouvre aucune duplication DXGI là où
   `partage` en ouvre une. Le témoin propre n'a pas été exercé.
@@ -1629,6 +1644,8 @@ code d'erreur).
 | `MULTIFENETRE_VDD_PARALLELE=<1..8>` | **Chantier des duplications parallèles** — N sorties virtuelles × 1 fenêtre × 1 duplication DXGI × 1 encodeur, trois passes (témoin, capture, capture+encodage), contrôle d'image **en rotation**, chien de garde pingué à 1 Hz |
 | `MULTIFENETRE_EPREUVE_FILE_MS=<ms>` | Bouche la file de travail sérialisée imposée à la MFT pendant la passe — c'est l'épreuve qui montre que la barrière n'est pas un placebo |
 | `MULTIFENETRE_REPRISE=<k>` | **Sous-bloc D2** — *k* sorties virtuelles, *k* duplications, puis **une sortie de plus** créée en cours de capture : éprouve que les *k* duplications reprennent et rendent encore des images justes. Sonde post-mortem sur les voies mortes |
+| `MULTIFENETRE_PLAFOND=<P>x<D>` | **Sous-bloc D3** — le **porteur** : crée K = P×D sorties virtuelles, bat le chien de garde, **ne duplique rien lui-même**, lance P processus **sondes** en escalier (la *i+1* attend que la *i* soit prête ou en échec), puis détruit ses sorties et compare la topologie **par ensemble de noms** |
+| `MULTIFENETRE_PLAFOND_SONDE=<noms,séparés,par,virgules>` | **Sous-bloc D3** — la **sonde**, posée par le porteur et **jamais à la main** (avec `MULTIFENETRE_PLAFOND_RANG=<i>`). Ouvre une duplication par nom, les tient jusqu'au signal d'arrêt, journalise le `HRESULT` exact. **Branche en tête de tout l'aiguillage** : sans quoi un `MULTIFENETRE_VDD_PURGE=1` résiduel, hérité par l'enfant, détruirait les sorties vivantes du porteur en pleine mesure |
 | `AGENT_TRACE_EXCEPTIONS=1` | Arme le filtre d'exception (pile symbolisable de la faute, journal séparé d'`agent.log`). Inerte sans la variable. `…_FICHIER` en change la destination ; `…_AUTOTEST=1` **tue délibérément le processus** pour éprouver l'instrument |
 
 ---
@@ -1663,6 +1680,13 @@ sur un montage qui n'est pas celui-là.
 > — l'arrangement du produit — la **5ᵉ** est refusée (`0x887A0022`). Que la
 > différence tienne au multi-processus est une **INFÉRENCE** : rien ne rapproche
 > formellement les deux montages.
+>
+> ✅ **Cette inférence a été REMPLACÉE par une mesure le 2 août 2026
+> (sous-bloc D3).** Un banc unique a opposé 1, 2, 4 et 8 processus à D
+> duplications chacun : huit duplications passent sur un, deux ou quatre
+> processus, et le refus tombe au **cinquième processus**. **La différence tient
+> bien au multi-processus**, et le plafond vaut **exactement 4 processus**. Ce
+> qui reste inconnu est la **couche** qui l'impose.
 
 Le critère posé d'avance était : à N=8, **≥ 60 i/s par fenêtre en
 capture+encodage et aucun verdict faux**.
@@ -1881,6 +1905,14 @@ ouvre une application — a été tenté deux fois et a échoué deux fois.** D1
 > conditions de produit, sur de vraies applications. La restriction « fenêtres
 > préexistantes » est **levée**. Ce qui la remplace est un plafond de **quatre**
 > fenêtres simultanées, d'une autre nature (§ « Sous-bloc D2 »).
+>
+> ⚠️ **Et D3 a rendu la restriction inverse obligatoire (2 août 2026)** : le
+> garde-fou d'attente de viewport s'applique désormais à **toutes** les entrées,
+> y compris préexistantes. **Si la page-shell se connecte plus de 30 s après le
+> superviseur, les fenêtres préexistantes sont abandonnées** — et jamais
+> reproposées. « Lancer le navigateur AVANT le superviseur » n'est plus un
+> conseil. Le plafond de quatre est par ailleurs **caractérisé** par D3 : il
+> porte sur le nombre de **processus** (§ « Sous-bloc D3 »).
 
 Le son est porté par **une seule** fenêtre (+59 710 octets RTP audio en 9,4 s sur elle
 seule, les trois autres sessions n'ayant aucune piste audio). Aucune sortie n'a
@@ -2040,6 +2072,16 @@ du PowerShell distant sont mutilées (voir les pièges plus bas).
 
 D2 ne fait qu'une chose : lever ce qui empêchait D1 d'être reçu.
 
+> ✅ **À LIRE AVANT CETTE SECTION — le sous-bloc D3 (2 août 2026) a clos les
+> trois points de suite du §7 que D2 laissait, et caractérisé le plafond de
+> quatre.** La recréation de sortie à chaque relance est supprimée (0 réouverture
+> imputable à une relance, mesuré) ; la fuite de capacité est fermée ;
+> `CAPACITE` est passée de 8 à **4**. Le plafond porte sur le nombre de
+> **processus** concurrents tenant une duplication, **pas** sur le nombre de
+> duplications. ⚠️ **La couche qui l'impose reste inconnue.** Les affirmations
+> ci-dessous restent le relevé **de D2** ; celles que D3 réfute ou complète sont
+> annotées une à une. Verdict à jour : section « Sous-bloc D3 » plus bas.
+
 ### Le verdict est DOUBLE — ne le simplifier dans aucun sens
 
 **① Le défaut central de D1 est réparé, et démontré réparé en conditions de
@@ -2055,6 +2097,13 @@ QUATRE.** La 5ᵉ duplication DXGI, **dans un 5ᵉ processus**, est refusée en
 **concurrence** qui **résiste à trois secondes de patience explicite** — ce
 qu'aucune mesure antérieure n'avait éprouvé. **La couche qui l'impose n'est pas
 identifiée**, et **rien n'établit que 4 soit une borne du système**.
+
+> ✅ **D3 a caractérisé cette limite** : elle porte sur le nombre de
+> **processus** concurrents tenant une duplication, et vaut **exactement 4** —
+> huit duplications tiennent sans peine dès lors qu'elles sont réparties sur au
+> plus quatre processus. ⚠️ **Les deux réserves de ce paragraphe TIENNENT
+> INTÉGRALEMENT** : la couche qui l'impose n'est **toujours pas** identifiée, et
+> **rien n'établit toujours que 4 soit une borne du système**.
 
 **Donc D2 n'est pas reçu au sens de son critère, et il répare pourtant ce pour
 quoi il existait.**
@@ -2117,6 +2166,13 @@ lent n'a été observé** — **ne pas la réduire sur la foi de ce seul relevé
    **50** réouvertures en fin de fichier ; le 44 comparable s'y relit par une
    borne temporelle explicite. Ne jamais opposer un total de fichier à un compte
    fenêtré.
+   ✅ **TRAITÉ par D3 (2 août 2026).** La sortie virtuelle est désormais
+   **retenue** entre la mort d'un enfant et sa relance : sur la recette du
+   critère, **un seul** `sortie virtuelle créée` et **un seul** `détruite`
+   encadrent **quatre** lancements successifs de la même fenêtre condamnée, et
+   la fenêtre bornée porte **0** réouverture imputable à une relance et **0**
+   session saine perdue. ⚠️ **Une seule exécution retenue, aucun taux**, et
+   **aucune image n'a été comptée** — voir « Sous-bloc D3 ».
 2. **Identifier la couche du plafond de quatre.** Ce n'est ni le plafond de
    sorties virtuelles (10 : `création de sortie refusée` = **0** sur tout le
    passage — les neuf créations y sont **successives**, pas simultanées, et ne
@@ -2126,6 +2182,12 @@ lent n'a été observé** — **ne pas la réduire sur la foi de ce seul relevé
    rapprochement avec les **8 duplications d'un seul processus** du 31 juillet
    est une **INFÉRENCE** — rien ici ne l'établit. Fermer une fenêtre puis en
    rouvrir une réussit : la place libérée suffit.
+   ⚠️ **PARTIELLEMENT TRAITÉ par D3, et il faut lire la nuance.** D3 a supprimé
+   l'inférence : une campagne de 15 exécutions établit que le plafond porte sur
+   le nombre de **processus** concurrents tenant une duplication, et vaut
+   **exactement 4** — le rang qui échoue a **moins** de duplications ouvertes
+   que ceux qui passent. **Mais la COUCHE reste inconnue**, et c'était l'objet
+   littéral de ce point : il est **caractérisé, pas résolu**.
    ⚠️ **Le PRODUIT des points 1 et 2 n'est écrit nulle part ailleurs, et c'est
    lui qui coûte.** `CAPACITE = 8` (`superviseur/boucle.rs`) est désormais connu
    **supérieur au plafond mesuré de 4** : le superviseur accepte donc quatre
@@ -2142,6 +2204,11 @@ lent n'a été observé** — **ne pas la réduire sur la foi de ce seul relevé
    dépassé 4 fenêtres. **Ni `CAPACITE` ni le comportement n'ont été changés en
    fin de branche** — ce serait une décision de conception, et le remède réel
    est celui du point 1.
+   ✅ **D3 a pris cette décision de conception : `CAPACITE` vaut désormais 4**
+   (`superviseur/boucle.rs`), et le remède du point 1 est appliqué par ailleurs.
+   Les 16 cycles et les ~128 abandons de mutex décrits ci-dessus n'ont donc plus
+   de cause. **La phrase « n'ont été changés en fin de branche » ne décrit plus
+   le dépôt.**
 3. **Une fuite de capacité reste ouverte** pour une fenêtre **neuve** dont la
    page-shell ne répond **jamais** : ni relancée ni abandonnée, elle consomme sa
    place indéfiniment. **Défaut préexistant, pas introduit par D2** ; le
@@ -2150,6 +2217,12 @@ lent n'a été observé** — **ne pas la réduire sur la foi de ce seul relevé
    tamponner `attente_depuis` **paresseusement** au premier passage de
    `relancer_les_orphelines`, ce qui garde `Table` pure et ne bouge aucun
    appelant.
+   ✅ **TRAITÉ par D3**, exactement par ce remède : le tampon est posé
+   paresseusement, `Table` reste pure et aucun appelant n'a bougé. ⚠️ **Effet de
+   bord assumé** : le garde-fou couvre maintenant aussi les fenêtres
+   **préexistantes**, qui sont abandonnées si la page-shell tarde plus de 30 s —
+   et une entrée abandonnée n'est **jamais reproposée** (défaut préexistant,
+   nommé et non corrigé).
 
 ### Ce que D2 n'établit PAS
 
@@ -2163,6 +2236,12 @@ fenêtre. Le chemin `resize` n'est **pas exercé** après le correctif
 `new_sans_attente`. La branche `est_ouverture_retentable(ACCES_PERDU)` n'a
 **jamais** été exercée à l'ouverture. **Le chemin d'extinction propre du
 superviseur n'a jamais été exercé** (arrêt net par `schtasks /end`).
+
+⚠️ **D3 n'a levé AUCUN de ces points**, hors le « rien au-delà de 4 fenêtres »
+qui est désormais caractérisé plutôt qu'étendu. Le mécanisme de l'abandon du
+mutex reste inconnu, le plafond d'encodeurs en multi-processus n'a toujours pas
+été approché, et rien de la latence, de la cadence ni de la durée n'a été
+mesuré.
 
 ### Pièges neufs — à connaître avant de toucher à ce terrain
 
@@ -2196,6 +2275,194 @@ superviseur n'a jamais été exercé** (arrêt net par `schtasks /end`).
   refus** — exactement le cas que la trace existait pour révéler. La clause
   « signaler un défaut du plan » vaut aussi pour un **bug** dans le code fourni,
   pas seulement pour une divergence de spécification.
+
+---
+
+## 🪟🔢 Sous-bloc D3 — retenir les sorties, et caractériser le plafond de concurrence (2 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-02-multifenetres-plafond-concurrence-resultats.md`.
+Conception : `docs/superpowers/specs/2026-08-02-multifenetres-plafond-concurrence-design.md`.
+Journaux : `docs/superpowers/plans/journaux-multifenetres-d3/` — **23 fichiers,
+UTF-8**, avec les séquences ANSI de `tracing` (`sed 's/\x1b\[[0-9;]*m//g'` pour
+lire à plat ; `agent-critere1.txt` est déjà mis à plat).
+
+D3 prend trois points du §7 de D2 — ne plus recréer la sortie à chaque relance,
+identifier ce sur quoi porte le plafond de quatre, et accorder `CAPACITE` — et
+écarte le reste.
+
+### Le verdict — les deux critères sont TENUS
+
+**① La sortie virtuelle est RETENUE d'une relance à l'autre.** Sur une séquence
+où une fenêtre est condamnée à répétition pendant que trois autres capturent,
+fenêtre bornée `09:06:44.639142Z` → `09:06:48.784516Z` : **0** réouverture de
+duplication imputable à une relance, **0** session saine perdue. Un **seul**
+`sortie virtuelle créée id=257` et un **seul** `détruite id=257` encadrent
+**quatre** `enfant lancé … sortie=\\.\DISPLAY8`. La recréation de sortie que D2
+désignait comme la cause des 32 réouvertures parasites **n'a plus lieu** — c'est
+un fait de code, relevé une fois en conditions de produit ; **une seule exécution
+retenue, aucun taux**.
+
+**② Le plafond de quatre porte sur le nombre de PROCESSUS, et vaut exactement 4.**
+15 exécutions, 5 rangs × 3 essais, sondes **minimales** (aucun encodeur, aucune
+fenêtre, aucun WebRTC) :
+
+| Rang | P × D | Duplications ouvertes | Issue |
+| --- | --- | --- | --- |
+| témoin | 1 × 8 | 8 | **OK 3/3** |
+| A | 2 × 4 | 8 | **OK 3/3** |
+| B | 4 × 2 | 8 | **OK 3/3** |
+| contrôle | 4 × 1 | 4 | **OK 3/3** |
+| C | 8 × 1 | **4 au moment du refus** | **KO 3/3**, sonde 4 (5ᵉ processus), `0x887a0022` |
+
+**Le témoin passe, donc H2 est réfutée** : le plafond ne tient pas au fait que
+le **créateur** des sorties soit un autre processus que le duplicateur — c'est
+exactement le montage de `1x8`, et il passe.
+
+**Le fait le plus tranchant, à ne pas perdre en recopiant ce tableau** : le rang
+qui **échoue** n'a que **4** duplications ouvertes au moment du refus, quand des
+rangs qui **réussissent** en ont **8**. Il en a donc **moins** que ceux qui
+passent — ce n'est pas une absence de corrélation, c'est une **exclusion
+positive** du nombre total de duplications comme cause. Et `4x2` et `8x1` créent
+le **même** nombre de sorties virtuelles (`nombre=9 attachees=9` dans les deux) :
+entre ces deux rangs, **seul le nombre de processus diffère**.
+
+Le refus est un **état atteint**, pas une extrapolation : aux trois essais de
+`8x1`, la ligne `verdict reçu sonde=4` précède **toutes** les lignes
+`arrêt demandé, relâchement des duplications` des sondes 0 à 3 — les quatre
+premières tiennent encore leur duplication quand la cinquième est refusée.
+
+### La décision d'arrangement, et `CAPACITE`
+
+La règle de décision était écrite **avant** la mesure (conception §3.5). H1
+confirmée, sa ligne s'applique sans arbitrage :
+
+- **la capture mutualisée** — un seul processus tenant les N duplications et
+  distribuant les textures — est **DÉSIGNÉE pour D4**, et **non implémentée** ;
+- **`CAPACITE` passe de 8 à 4** (`agent/src/superviseur/boucle.rs`). À 8, le
+  superviseur acceptait quatre fenêtres dont aucune ne pouvait aboutir, chacune
+  brûlant `RELANCES_MAX + 1` tentatives dont chacune recréait une sortie
+  virtuelle. **Valeur MESURÉE sur cette VM, non prouvée être une borne du
+  système.**
+
+⚠️ **Précision de vocabulaire, pour que D4 ne se trompe pas de repli.** Ce que la
+conception de D3 nomme « le repli de la spec §8 » est la **capture mutualisée**.
+Le §8 de la conception de **D2** décrit sous « gardé en réserve » un mécanisme
+**différent** : *sérialiser* (le superviseur fait relâcher, crée, fait rouvrir).
+Même case, pas la même chose — **c'est la mutualisation que D3 désigne**.
+
+### Acquis d'outillage qui dépasse ce sous-bloc — la compilation croisée Windows
+
+**Le dépôt vérifie désormais son code `#[cfg(windows)]` sur l'hôte Linux.**
+mingw-w64 est installé ; depuis `agent/` :
+
+```bash
+cargo check --target x86_64-pc-windows-gnu
+```
+
+Relevé le 2 août 2026 : **sortie 0, 9 avertissements `dead_code` préexistants,
+aucun dans les fichiers neufs**.
+
+⚠️ **Portée exacte** : cela couvre **types, emprunts, visibilités et durées de
+vie** ; cela **ne couvre PAS l'édition de liens**, la cible réelle du projet
+étant `msvc` sur la VM. Ce n'est donc pas un substitut à
+`scripts/build-agent.sh`. C'est en revanche la levée, **en grande partie**, de la
+réserve « non vérifiable sur l'hôte » qui pesait sur tout le code `#[cfg(windows)]`
+depuis le début du projet — **à employer avant toute compilation distante.**
+
+### Un changement de comportement au démarrage, assumé
+
+Le garde-fou `DELAI_ATTENTE_VIEWPORT_MAX = 30 s` (majorant **non calibré**)
+s'applique désormais à **toutes** les entrées en attente de viewport, et plus
+seulement aux entrées relancées : c'est ainsi que la fuite de capacité du §7.3 de
+D2 est fermée. Conséquence : **si la page-shell se connecte plus de 30 s après le
+superviseur, les fenêtres préexistantes sont abandonnées** — et une entrée
+abandonnée n'est **jamais reproposée**, le hook ne réémettant rien pour une
+fenêtre déjà ouverte (**défaut préexistant**, nommé et non corrigé). La règle
+« lancer le navigateur AVANT le superviseur » cesse d'être un conseil.
+
+### Ce que D3 n'établit PAS
+
+- **La couche qui impose le plafond n'est TOUJOURS pas identifiée** — Windows,
+  DXGI, pilote NVIDIA, SudoVDA, virtualisation. D3 répond à *sur quoi porte* le
+  plafond, jamais à *qui l'impose*.
+- **Rien n'établit que 4 soit une borne du système** : c'est le point d'arrêt
+  observé sur cette VM, à 1280×720 / 60 Hz.
+- **VM mono-GPU, une seule sortie physique** : rien d'un plafond par adaptateur,
+  aucune série virtuel/physique.
+- **Aucune image capturée, aucun encodeur construit** par les sondes. **Le
+  plafond d'encodeurs en multi-processus reste entièrement ouvert** — et il
+  devient le **risque n°1 de D4**.
+- **Un rang `5x1` autonome n'a pas été joué** (ni `6x1`, ni `7x1`). L'état qu'il
+  aurait mesuré a bien été atteint et refusé 3/3 **comme sous-produit de `8x1`**,
+  mais il manque une mesure dédiée. Le comportement entre 6, 7 et 8 processus est
+  inconnu : l'escalier s'arrête au premier refus.
+- **Le sens de « processus » n'est pas creusé** : 8 **fils** dans un seul
+  processus n'a pas été mesuré.
+- **Trois essais par rang à la campagne, mais UNE SEULE exécution retenue à la
+  recette du critère 1** — aucun taux de ce côté.
+- **Aucune image n'a été comptée pendant la recette.** « Les sessions saines
+  tournent sans interruption » vaut sur ce que le journal établit — processus
+  vivants, ICE établi, aucune `clôture de session amorcée` — mais leurs sorties
+  ont bien perdu leur mutex à répétition (`DISPLAY5` **4** fois, `DISPLAY6` 3,
+  `DISPLAY7` 2), chacune rouverte du premier coup. **Aucune trame comptée.**
+- **La condamnation ne frappe qu'un enfant tout juste lancé** : la mort survient
+  100 à 204 ms après le lancement aux quatre tours. **La mort d'un enfant qui
+  capture depuis longtemps, en pleine diffusion, n'est pas exercée.**
+- **Le contrôle de topologie final est affaibli par une hibernation de VM
+  intercalée** : il prouve qu'aucun artefact ne survit à long terme, **pas** que
+  le chemin de libération a fonctionné — cette preuve-là est ailleurs, et
+  antérieure au redémarrage (`détruite id=257` puis `rendue au pilote`).
+- **Trois allocations TURN ont échoué** pendant la recette (cause non
+  investiguée) : elle s'est jouée sans relais, sur candidats `host`.
+- **Rien de la latence, de la cadence, de la durée** (journaux de campagne :
+  6,42 s à 9,70 s), aucun redimensionnement, aucun recouvrement, aucun
+  déplacement de fenêtre, aucune charge d'encodage réelle (Bloc-notes statique).
+
+### Pièges neufs — à connaître avant de toucher à ce terrain
+
+- ⚠️ **La sonde dite « minimale » n'est pas nue** : elle porte
+  **inévitablement** un `ID3D11Device` avec `SetMultithreadProtected(true)`,
+  `DuplicateOutput` l'exigeant. L'étage « ajouter un périphérique D3D11 » de
+  l'escalade prévue si H3 s'était vérifiée est donc **déjà franchi par
+  construction**. Ce qui est exclu du montage, c'est l'**encodeur**, la fenêtre et
+  la session WebRTC — pas le périphérique.
+- **`nodejs-winrm` enveloppe TOUJOURS la commande** dans
+  `powershell -Command "& { … }"` (`usePowershell=true` dans `scripts/winrm.js`).
+  Un script inline portant des guillemets doubles entre en collision avec cette
+  enveloppe, et **le symptôme est un script qui ne tourne jamais** — pas une
+  erreur claire. Écrire le script sur le partage et l'invoquer par `-File`.
+- **`scripts/run-agent.sh` ne transmet pas les variables neuves** — piège payé en
+  D1 (`SUPERVISEUR`) et en D2 (`MULTIFENETRE_REPRISE`), évité ici en ajoutant
+  `MULTIFENETRE_PLAFOND` **dans la même tâche** que le mode.
+- **Ne jamais interpoler une valeur d'environnement brute dans un composant de
+  chemin** : `..` est significatif sous Windows. Une ronde de correction l'avait
+  introduit, rattrapé à la suivante — **une correction peut introduire une casse
+  neuve**.
+- **Le porteur hérite ses variables aux sondes**, et `MULTIFENETRE_VDD_PURGE` y
+  aurait détruit les sorties du porteur **en pleine mesure**. L'environnement des
+  enfants se nettoie explicitement.
+- **Ne pas chasser le compte absolu d'avertissements `clippy`** : il dérive d'une
+  exécution à l'autre selon la fraîcheur du build (99 puis 100 relevés par deux
+  relecteurs). Ce sont tous des `dead_code` dus au `#[cfg(windows)]`. **Vérifier
+  la nature, jamais le nombre.**
+- **Attendre le FAIT, jamais une durée.** Le brief prévoyait `sleep 45` par rang ;
+  un polling sur deux lignes de fait a montré que la durée réelle est de 6,4 à
+  9,7 s.
+- **Le chien de garde du pilote se fait attendre davantage à mesure que le rang
+  monte** : `intervalle_ping_max_ms` va de **372 ms** (`1x8`) à **1012 ms**
+  (`8x1`), monotone — et ce 1012 est obtenu sur un escalier **arrêté à 5 sondes
+  sur 8**. **L'unité du `delai = 3` du pilote reste inconnue** : à surveiller.
+- **La fraîcheur du binaire mesuré n'est adossée à aucun horodatage versé** — elle
+  se déduit d'une trace introduite par un commit connu, présente dans les quinze
+  journaux. **Cohérent, non prouvé.**
+
+### Les deux variables d'environnement neuves
+
+`MULTIFENETRE_PLAFOND=<P>x<D>` (le porteur) et `MULTIFENETRE_PLAFOND_SONDE`
+(la sonde, posée par le porteur et jamais à la main) sont décrites dans le
+**tableau des variables du banc**, section « Mesures préalables au chantier D »
+plus haut — un seul tableau, pour qu'il n'y ait qu'un endroit à consulter.
 
 ---
 
