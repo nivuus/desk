@@ -11,7 +11,8 @@ use std::io::{BufReader, BufWriter};
 use std::sync::mpsc::{channel, Sender};
 
 use anyhow::{bail, Context, Result};
-use windows::Win32::Foundation::HANDLE;
+use windows::core::HRESULT;
+use windows::Win32::Foundation::{CloseHandle, ERROR_PIPE_CONNECTED, HANDLE};
 use windows::Win32::Storage::FileSystem::PIPE_ACCESS_DUPLEX;
 use windows::Win32::System::Pipes::{
     ConnectNamedPipe, CreateNamedPipeW, PIPE_READMODE_BYTE, PIPE_TYPE_BYTE,
@@ -28,20 +29,65 @@ const TAMPON: u32 = 1024 * 1024;
 
 pub fn servir() -> Result<()> {
     loop {
-        // Une instance NEUVE par client. `PIPE_UNLIMITED_INSTANCES` autorise
-        // autant d'instances simultanées que de fenêtres.
+        // Une instance NEUVE par client. `PIPE_UNLIMITED_INSTANCES` n'a de
+        // sens que parce que cette boucle ne bloque JAMAIS sur la trame
+        // d'attache d'un enfant (voir plus bas) : sans ce détachement, une
+        // seule instance écoutait à la fois malgré son nom, et un enfant
+        // connecté qui n'envoie jamais son attache bloquait l'accueil de
+        // toutes les fenêtres suivantes.
         let tube = creer_instance().context("création d'une instance de tube")?;
 
-        // Bloque jusqu'à ce qu'un enfant se connecte.
-        unsafe { ConnectNamedPipe(tube, None) }.context("attente d'un enfant")?;
-
-        match accueillir(tube) {
-            Ok(()) => {}
-            // Une attache ratée ne fait PAS tomber le serveur : les autres
-            // fenêtres continuent. C'est tout l'intérêt d'avoir un capteur
-            // qui survit à ses fenêtres.
-            Err(erreur) => tracing::warn!(%erreur, "attache d'un enfant refusée"),
+        match connecter(tube) {
+            // Connecté : déporter TOUT l'accueil — lecture de la trame
+            // d'attache comprise — sur son propre fil, DÉTACHÉ et jamais
+            // joint, pour la même raison que le fil de fenêtre : le
+            // démontage d'un `WindowsSource` peut geler, et la boucle
+            // d'acceptation ne doit jamais pouvoir l'être. C'est aussi ce qui
+            // reboucle immédiatement pour écouter l'instance suivante, au
+            // lieu d'attendre cet enfant-ci.
+            Ok(()) => {
+                // `HANDLE` porte un pointeur brut et n'est donc pas `Send` —
+                // il traverse la frontière de fil sous forme d'entier, sans
+                // risque : cette instance de tube n'est plus touchée par la
+                // boucle d'acceptation une fois le fil lancé, donc aucune
+                // aliasing entre les deux fils.
+                let brut = tube.0 as usize;
+                std::thread::spawn(move || {
+                    let tube = HANDLE(brut as *mut _);
+                    // Une attache ratée ne fait PAS tomber le serveur : les
+                    // autres fenêtres continuent. C'est tout l'intérêt
+                    // d'avoir un capteur qui survit à ses fenêtres.
+                    if let Err(erreur) = accueillir(tube) {
+                        tracing::warn!(%erreur, "attache d'un enfant refusée");
+                    }
+                });
+            }
+            // Échec réel de connexion (pas la course bénigne isolée par
+            // `connecter`) : le tube refusé est fermé pour ne pas fuir, et la
+            // boucle recrée une instance neuve. Ne fait pas tomber le
+            // serveur non plus.
+            Err(erreur) => {
+                if let Err(fermeture) = unsafe { CloseHandle(tube) } {
+                    tracing::warn!(%fermeture, "fermeture d'un tube refusé également en échec");
+                }
+                tracing::warn!(%erreur, "connexion d'un enfant refusée");
+            }
         }
+    }
+}
+
+/// Bloque jusqu'à ce qu'un enfant se connecte à `tube`.
+///
+/// **`ERROR_PIPE_CONNECTED` est un SUCCÈS déguisé en erreur.** Il signale
+/// qu'un enfant s'est connecté dans l'intervalle entre `CreateNamedPipeW` et
+/// cet appel — une course banale, attendue sous `PIPE_UNLIMITED_INSTANCES` —
+/// et non un échec. Le confondre avec un échec réel tuerait le processus
+/// capteur entier (donc les N fenêtres avec lui) à la première course.
+fn connecter(tube: HANDLE) -> Result<()> {
+    match unsafe { ConnectNamedPipe(tube, None) } {
+        Ok(()) => Ok(()),
+        Err(erreur) if erreur.code() == HRESULT::from_win32(ERROR_PIPE_CONNECTED.0) => Ok(()),
+        Err(erreur) => Err(erreur).context("attente d'un enfant"),
     }
 }
 
