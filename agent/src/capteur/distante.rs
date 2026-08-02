@@ -187,7 +187,7 @@ impl VideoSource for SourceDistante {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::capteur::reprise::DUREE_FENETRE_CANAL;
+    use crate::capteur::reprise::{DUREE_FENETRE_CANAL, PAS_RATTACHEMENT};
     use std::sync::mpsc::sync_channel;
 
     /// Ce que le canal factice rendra au prochain `rattacher`. `None` = échec.
@@ -440,6 +440,14 @@ mod tests {
 
     /// Mais un échec qui dure au-delà de la fenêtre, si : sans cela une
     /// session morte resterait ouverte indéfiniment sur une image figée.
+    ///
+    /// ⚠️ Ce test n'exerce PAS un second essai de rattachement : une fois
+    /// `DUREE_FENETRE_CANAL` dépassée, `rupture()` court-circuite et rend
+    /// `true` avant même d'atteindre `peut_reessayer` (branche `Disconnected`
+    /// de `next_frame`) — que `vieillir_pour_test` fasse vieillir
+    /// `dernier_essai` ou non est donc sans effet ICI. Cette bande-là
+    /// (vieillir au-delà du seul pas d'espacement, en restant dans la
+    /// fenêtre) est celle qu'éprouve `un_vieillissement_du_pas_seul_relance_un_essai`.
     #[test]
     fn un_rattachement_qui_echoue_jusqu_a_expiration_epuise_la_source() {
         let (mut source, tx, _, _, _) = source_rattachable(vec![None]);
@@ -448,6 +456,22 @@ mod tests {
         source.vieillir_pour_test(DUREE_FENETRE_CANAL + std::time::Duration::from_millis(1));
         assert!(source.next_frame().is_none());
         assert!(source.is_exhausted());
+    }
+
+    /// Vieillir DANS la fenêtre, au-delà du seul pas d'espacement : un second
+    /// essai doit partir. Ce test-ci est le seul à éprouver que
+    /// `vieillir_pour_test` fait bien vieillir `dernier_essai` — celui de
+    /// l'expiration ne l'atteint jamais, `rupture` court-circuitant avant.
+    #[test]
+    fn un_vieillissement_du_pas_seul_relance_un_essai() {
+        let (mut source, tx, _, _, essais) = source_rattachable(vec![None, None]);
+        drop(tx);
+        assert!(source.next_frame().is_none());
+        assert_eq!(*essais.lock().unwrap(), 1);
+        source.vieillir_pour_test(PAS_RATTACHEMENT + std::time::Duration::from_millis(1));
+        assert!(source.next_frame().is_none());
+        assert_eq!(*essais.lock().unwrap(), 2, "le pas écoulé autorise un second essai");
+        assert!(!source.is_exhausted(), "on est encore dans la fenêtre");
     }
 
     /// Sans espacement, une rupture provoquerait ~100 tentatives par seconde.
