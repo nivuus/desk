@@ -235,6 +235,17 @@ et §6.
 > avant tout encodeur. Le rapprochement avec les 8 duplications d'un **seul**
 > processus est une **inférence**. **C'est le point bloquant pour la cible de
 > huit fenêtres de ce chantier.**
+>
+> 🔢 **L'inférence a été remplacée par une mesure le 2 août 2026 (sous-bloc
+> D3)** : le plafond porte bien sur le nombre de **processus** concurrents
+> tenant une duplication, et vaut **exactement 4** — un banc unique oppose 1, 2,
+> 4 et 8 processus, huit duplications passent sur au plus quatre processus, et
+> le rang qui échoue a **moins** de duplications ouvertes que ceux qui passent.
+> ⚠️ **Les deux réserves ci-dessus TIENNENT** : la couche n'est **toujours pas**
+> identifiée, et **rien n'établit toujours que 4 soit une borne du système**.
+> **Le point reste bloquant pour la cible de huit fenêtres** — il ne se lève
+> qu'en mutualisant la capture (un seul processus tenant les N duplications),
+> voie **désignée pour D4** et non implémentée.
 
 **Repli mesuré — `PrintWindow(PW_RENDERFULLCONTENT)`.** Contre toute attente,
 cette voie rend l'image **juste** d'une fenêtre D3D **recouverte** : c'est la
@@ -498,6 +509,55 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
 > **Une exécution par rang au banc, une exécution exploitée par configuration à
 > la recette : aucun taux, nulle part.**
 
+> 🔢 **Sous-bloc D3 exécuté le 2 août 2026 — résultats :
+> `plans/2026-08-02-multifenetres-plafond-concurrence-resultats.md`.** Il prend
+> trois des points que D2 laissait, et **ses deux critères sont tenus**.
+>
+> **① La sortie virtuelle est RETENUE d'une relance à l'autre.** Le superviseur
+> ne détruit plus puis ne recrée plus une sortie à chaque relance d'enfant —
+> c'était la vraie cause des réouvertures parasites infligées aux sessions
+> **saines**. Relevé sur une fenêtre bornée, une fenêtre étant condamnée à
+> répétition pendant que trois autres capturent : **0** réouverture imputable à
+> une relance, **0** session saine perdue, **une seule** création et **une
+> seule** destruction de sortie encadrant **quatre** lancements. La **fuite de
+> capacité** (fenêtre neuve dont la page-shell ne répond jamais) est fermée par
+> la même occasion.
+>
+> **② Le plafond de quatre est CARACTÉRISÉ : il porte sur le nombre de
+> PROCESSUS concurrents tenant une duplication DXGI, et vaut exactement 4.**
+> Campagne de 15 exécutions (5 rangs × 3), sondes minimales : **8** duplications
+> passent, qu'elles soient réparties sur 1, 2 ou 4 processus ; le refus tombe au
+> **5ᵉ processus**, en `0x887A0022`, 3/3. **Le fait décisif** : le rang qui
+> échoue n'a que **4** duplications ouvertes au moment du refus, quand des rangs
+> qui réussissent en ont **8** — le nombre de duplications est **positivement
+> exclu** comme cause, et deux rangs créant le même nombre de sorties
+> virtuelles ne diffèrent que par le nombre de processus.
+> ⚠️ **La couche qui impose ce plafond n'est TOUJOURS pas identifiée** (Windows,
+> DXGI, pilote NVIDIA, SudoVDA, virtualisation), et **rien n'établit que 4 soit
+> une borne du système**.
+>
+> **Décision d'arrangement, prise selon une règle écrite AVANT la mesure** : la
+> contrainte étant le nombre de processus, la **capture mutualisée** — un seul
+> processus tenant les N duplications et distribuant les textures — est
+> **DÉSIGNÉE pour D4** et **non implémentée** par D3. En conséquence, la
+> capacité du superviseur passe de 8 à **4** : **valeur mesurée sur cette VM,
+> non prouvée être une borne du système.** **La cible de huit fenêtres de ce
+> chantier reste donc hors de portée tant que la capture n'est pas
+> mutualisée.**
+>
+> **Ce que D3 n'a PAS relevé** : le **plafond d'encodeurs en multi-processus**
+> — les sondes ne construisent **aucun** encodeur et ne capturent **aucune**
+> image ; il **devient le risque n°1 de D4**. Rien de la latence, de la cadence
+> ni de la durée. Aucune image comptée pendant la recette du critère 1, dont
+> **une seule exécution** est retenue (la campagne, elle, répète 3 fois par
+> rang).
+>
+> **Acquis d'outillage qui dépasse ce sous-bloc** : `cargo check --target
+> x86_64-pc-windows-gnu` depuis `agent/` compile désormais le code
+> `#[cfg(windows)]` sur l'hôte Linux (mingw-w64). ⚠️ Couvre types, emprunts,
+> visibilités et durées de vie ; **ne couvre PAS l'édition de liens**, la cible
+> réelle étant `msvc` sur la VM.
+
 - **Détection** : `SetWinEventHook` sur `EVENT_OBJECT_SHOW`, `EVENT_OBJECT_HIDE`
   et `EVENT_OBJECT_DESTROY`, filtré sur `idObject == OBJID_WINDOW`. Hook global
   `WINEVENT_OUTOFCONTEXT`, nécessitant une pompe de messages dans un thread
@@ -563,6 +623,13 @@ Le plus structurant et le plus risqué. Refonte du modèle produit (§4).
   d'encodeurs construits de front reste donc **4**, dans 4 processus, sans refus
   — et **ce n'est toujours pas une limite d'encodeurs qui l'arrête**. Voir
   l'encadré D2 en tête de ce chantier.
+  ⚠️ **Et TOUJOURS ouverte après le sous-bloc D3.** Ses sondes sont
+  **minimales** : elles ouvrent des duplications nues et ne construisent
+  **aucun** encodeur. D3 identifie ce qui bornait à quatre — le nombre de
+  processus tenant une duplication —, ce qui **retire l'obstacle** qui empêchait
+  d'atteindre le rang utile, mais **ne relève toujours pas ce plafond-ci**.
+  La voie désignée pour D4 (mutualiser la capture) **déplace précisément le
+  risque ici** : ce plafond **devient le risque n°1 de D4**.
 - **Risque n°1 — popup blocker : LEVÉ le 28/07/2026.** Mesuré sur ChromeOS —
   résultats et protocole dans `plans/2026-07-28-spike-multifenetres-resultats.md`.
   Le modèle tient, mais l'hypothèse « une PWA installée a plus de latitude » est
@@ -800,6 +867,21 @@ justifie le chantier 0 du §8.
    **4 n'est pas prouvé être une borne du système**), et **le plafond
    d'encodeurs en multi-processus n'a toujours pas pu être relevé** — la mort
    survient avant tout encodeur.
+   🔢 **Son sous-bloc D3 a caractérisé ce plafond le 2 août 2026**
+   (`plans/2026-08-02-multifenetres-plafond-concurrence-resultats.md`) : il
+   porte sur le **nombre de processus** concurrents tenant une duplication, et
+   vaut **exactement 4** — huit duplications tiennent dès lors qu'elles sont
+   réparties sur au plus quatre processus, et le rang qui échoue en a **moins**
+   que ceux qui passent. D3 ferme par ailleurs la recréation de sortie à chaque
+   relance et la fuite de capacité, et porte la capacité du superviseur de 8 à
+   **4**. **Décision d'arrangement** : la **capture mutualisée** (un seul
+   processus tenant les N duplications) est **désignée pour D4**, non
+   implémentée — **c'est elle qui conditionne la cible de huit fenêtres**.
+   ⚠️ **Les deux réserves ci-dessus TIENNENT** : la couche du plafond reste
+   **non identifiée**, **4 n'est toujours pas prouvé être une borne du
+   système**, et le **plafond d'encodeurs en multi-processus n'a toujours pas
+   été relevé** — les sondes de D3 ne construisent aucun encodeur. Il **devient
+   le risque n°1 de D4**.
 
 Cet ordre est une recommandation, pas un engagement. L'argument pour remonter D
 en premier existe : il change la capture, et A/B/C construits sur une hypothèse

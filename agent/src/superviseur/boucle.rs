@@ -39,10 +39,29 @@ use crate::capture::{enumerer_sorties_silencieux, SortieDxgi};
 use crate::diagnostics::multifenetre::montee::{noms_attaches, relever_topologie};
 use crate::moniteurs_virtuels::{pilote::PiloteParIoctl, Sorties};
 
-/// Capacité retenue : le pilote refuse la 11ᵉ sortie (mesuré), et Apollo puise
-/// au même vivier sans qu'on sache combien il en prend. Huit est la cible du
-/// chantier, avec deux de marge assumée.
-const CAPACITE: usize = 8;
+/// Fenêtres simultanées que le superviseur s'autorise.
+///
+/// **Valeur MESURÉE sur la VM cible, non prouvée être une borne du système**
+/// (campagne du sous-bloc D3,
+/// `plans/2026-08-02-multifenetres-plafond-concurrence-resultats.md`).
+///
+/// Elle valait **8** : ni le vivier de sorties du pilote (10) ni le plafond
+/// d'encodeurs en processus unique (8) ne sont pourtant ce qu'on rencontre en
+/// conditions de produit. Ce qui borne est le **nombre de processus concurrents
+/// tenant une duplication DXGI ouverte**, mesuré à **exactement 4** : le rang
+/// `8x1` est refusé en `0x887A0022` à son 5ᵉ processus, 3/3, quand `1x8`, `2x4`
+/// et `4x2` — **huit** duplications sur au plus quatre processus — passent tous
+/// 3/3. Le rang qui échoue a donc MOINS de duplications ouvertes que ceux qui
+/// réussissent. **La couche qui impose ce plafond n'est pas identifiée.**
+///
+/// Pourquoi la baisser : à 8, le superviseur acceptait quatre fenêtres dont
+/// aucune ne pouvait aboutir, chacune brûlant `RELANCES_MAX + 1` tentatives dont
+/// chacune recréait une sortie virtuelle — ce qui inflige des abandons de mutex
+/// aux sessions saines. Refuser d'avance coûte un message.
+///
+/// **Franchir 4 demande de mutualiser la capture** (un seul processus tenant les
+/// N duplications) — désigné par D3 pour D4, non implémenté.
+const CAPACITE: usize = 4;
 
 /// Cadence du battement du chien de garde du pilote. Le pilote retire les
 /// sorties d'un client qui cesse de pinguer ; l'unité de son délai n'est PAS
@@ -116,6 +135,11 @@ pub fn tourner(
                     dernier_ping = std::time::Instant::now();
                 }
                 Effet::LancerEnfant { session, fenetre, nom_sortie, audio } => {
+                    // Le chemin de réutilisation d'une sortie retenue ne passe
+                    // pas par `creer_sortie`, donc la fenêtre n'a pas été
+                    // reposée. Une seule énumération, sur ce seul bras.
+                    let toutes = enumerer_sorties_silencieux().unwrap_or_default();
+                    replacer_si_besoin(&table, &session, &toutes);
                     if let Err(erreur) = enfants.lancer(Consigne {
                         session: session.clone(),
                         fenetre: fenetre.0,
@@ -125,8 +149,8 @@ pub fn tourner(
                         tracing::error!(session = %session.0, %erreur, "lancement de l'enfant échoué");
                         // Le contrat du trait `Lanceur` est atomique : `Err`
                         // signifie qu'aucun processus ne tourne. Rien à tuer
-                        // donc, mais la sortie, elle, existe — et
-                        // `enfant_mort` est le seul chemin qui la rende.
+                        // donc ; la sortie, elle, est RETENUE par `enfant_mort`
+                        // (§7.1 de D3), et rendue par un chemin d'abandon.
                         effets.extend(table.enfant_mort(&session));
                     }
                 }
@@ -316,7 +340,7 @@ fn creer_sortie(
     prises.push(nom.clone());
     // Les DEUX identifiants : celui du pilote pour la destruction, le nom
     // DXGI pour la capture. Aucune relation calculable entre eux.
-    let suite = table.sortie_creee(&session, id_pilote, nom);
+    let suite = table.sortie_creee(&session, id_pilote, nom, (cible.rect.width, cible.rect.height));
 
     // Une table qui n'a rien à dire de cette sortie ne la retient nulle part :
     // `id_pilote` ne serait plus connu de personne (ni de la table, ni d'un
@@ -452,32 +476,10 @@ fn rendre_la_sortie(
     }
 }
 
-/// Remet sur sa sortie toute fenêtre qui en est partie.
-fn controler_le_placement(table: &Table) {
-    let toutes = enumerer_sorties_silencieux().unwrap_or_default();
-    for session in table.sessions_vivantes() {
-        let Some(nom) = table.nom_sortie_de(&session) else {
-            continue;
-        };
-        let Some(cible) = toutes.iter().find(|s| s.nom_sortie == nom) else {
-            continue;
-        };
-        let Some(fenetre) = table.fenetre_de(&session) else { continue };
-        let hwnd = windows::Win32::Foundation::HWND(fenetre.0 as *mut core::ffi::c_void);
-        let Ok(actuel) = placement::rectangle_de(hwnd) else { continue };
-        if placement::doit_etre_replacee(&actuel, &cible.rect) {
-            tracing::info!(
-                session = %session.0,
-                de = format!("{}x{}+{}+{}", actuel.width, actuel.height, actuel.x, actuel.y),
-                vers = format!(
-                    "{}x{}+{}+{}",
-                    cible.rect.width, cible.rect.height, cible.rect.x, cible.rect.y
-                ),
-                "fenêtre sortie de sa sortie, replacement"
-            );
-            if let Err(erreur) = placement::poser(hwnd, &cible.rect) {
-                tracing::warn!(session = %session.0, %erreur, "replacement échoué");
-            }
-        }
-    }
-}
+// Contrôle périodique de placement (`controler_le_placement`,
+// `replacer_si_besoin`) : extrait côté production, pour rester sous le
+// plafond de 500 lignes du projet — la tâche 7 du sous-bloc D3 a fait
+// franchir ce plafond à ce fichier. Extraire plutôt que compresser, même
+// raison et même schéma que `superviseur/table/attribution.rs`.
+mod placement_periodique;
+use placement_periodique::{controler_le_placement, replacer_si_besoin};

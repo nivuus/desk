@@ -54,6 +54,17 @@ nombre auquel la montée s'est arrêtée.
 quoi il existait.** Les deux propositions valent ensemble ; ni l'une ni l'autre
 n'annule sa voisine.
 
+> 🔢 **Suite donnée — sous-bloc D3, 2 août 2026**
+> (`plans/2026-08-02-multifenetres-plafond-concurrence-resultats.md`). **Les
+> quatre points de suite du §7 que D3 avait pris sont clos** : §7.1 (recréation
+> de sortie à chaque relance) **traité** ; §7.2 (le plafond de quatre)
+> **caractérisé — il porte sur le nombre de PROCESSUS et vaut exactement 4** ;
+> §7.2 bis (`CAPACITE = 8`) **corrigé, la constante vaut 4** ; §7.3 (fuite de
+> capacité) **fermée**. ⚠️ **Ce que D3 n'a PAS levé, et qui reste écrit
+> ci-dessous tel quel** : **la couche qui impose ce plafond n'est toujours pas
+> identifiée**, **rien n'établit toujours que 4 soit une borne du système**, et
+> le **plafond d'encodeurs en multi-processus n'a toujours pas été approché**.
+
 Il a fallu **trois mesures** là où le plan en prévoyait une, dont **deux
 réfutations**, avant que la cause soit trouvée : `rouvrir()` demandait une
 seconde duplication de la même sortie **sans avoir relâché la première**.
@@ -352,6 +363,18 @@ antérieure de ce dépôt n'avait éprouvé cela.**
   la tâche 11 bis — sur la même VM, le même binaire pour les **deux premières**.
   **Trois observations concordantes, pas un taux.**
 
+> 🔢 **D3 a mesuré ce que ce paragraphe déclarait ignoré, sauf un point.** Une
+> campagne dédiée (15 exécutions, 5 rangs × 3, sondes minimales) établit que **le
+> plafond porte sur le nombre de PROCESSUS concurrents tenant une duplication, et
+> vaut exactement 4** : huit duplications passent sur 1, 2 ou 4 processus, et le
+> refus tombe au **5ᵉ processus**. **L'inférence du 31 juillet devient une
+> mesure.** Le fait qui tranche : le rang qui échoue n'a que **4** duplications
+> ouvertes quand des rangs qui réussissent en ont **8** — le nombre de
+> duplications est **positivement exclu** comme cause.
+> ⚠️ **Le point non levé est celui de la couche** : Windows, DXGI, pilote NVIDIA,
+> SudoVDA ou virtualisation — **toujours pas identifiée**. Et **rien n'établit
+> toujours que 4 soit une borne du système**.
+
 ### 3.2 Le bénéfice du réessai à l'ouverture
 
 Voir §2.5 : mécanisme acquis, bénéfice non produit, cause nommée au §7.1.
@@ -403,7 +426,12 @@ et que ce sous-bloc en porte trois exemples de plus :
   reproduit son défaut trois fois sur trois.
 - **Rien au-delà de quatre fenêtres simultanées**, et **4 n'est pas prouvé être
   une borne du système**.
+  *(D3, 2 août 2026 : le plafond est caractérisé — il porte sur le nombre de
+  **processus** tenant une duplication, et vaut exactement 4. **« 4 n'est pas
+  prouvé être une borne du système » reste vrai.**)*
 - **La couche qui refuse la 5ᵉ duplication n'est pas identifiée.**
+  *(**Toujours vrai après D3** : il mesure sur quoi porte le plafond, jamais qui
+  l'impose.)*
 - **Le mécanisme de l'abandon du mutex reste inconnu.** On sait le traiter, pas
   l'expliquer — c'était un risque assumé d'avance (spec §9), il est confirmé
   entier.
@@ -545,6 +573,18 @@ supprimé aucune** : aucun de ces échecs n'était un transitoire. **Aucun rées
 ne peut rien contre cette cause-là.** Conserver la sortie déjà créée entre la
 mort d'un enfant et sa relance est la première chose à corriger.
 
+> ✅ **TRAITÉ — sous-bloc D3, 2 août 2026.** La sortie est désormais **retenue**
+> entre la mort d'un enfant et sa relance : `enfant_mort` conserve
+> `sortie_pilote` et `nom_sortie`, `relancer_les_orphelines` les reporte, et
+> `creer_sortie` saute l'appel au pilote quand la sortie retenue convient à la
+> taille demandée. **Relevé en conditions de produit**, sur une fenêtre bornée où
+> une fenêtre est condamnée pendant que trois autres capturent : **0**
+> réouverture imputable à une relance, **0** session saine perdue, et **une
+> seule** création et **une seule** destruction de sortie encadrant **quatre**
+> lancements successifs. ⚠️ **Une seule exécution retenue, aucun taux** ;
+> **aucune image n'a été comptée** ; et la condamnation ne frappe qu'un enfant
+> tout juste lancé (100 à 204 ms de vie), jamais un enfant en pleine diffusion.
+
 ### 7.2 Le plafond de quatre — identifier la couche
 
 Ce qu'on en sait : il porte sur le nombre de **duplications DXGI simultanées**
@@ -559,6 +599,21 @@ d'arrêt observé. Le rapprochement avec les 8 duplications d'un **seul** proces
 du 31 juillet est une **inférence**, que rien dans ce sous-bloc n'établit.
 
 C'est le point bloquant pour la cible de **huit** fenêtres du chantier D.
+
+> ⚠️ **CARACTÉRISÉ par D3, PAS résolu — et la première phrase de ce paragraphe
+> était inexacte.** Elle dit que le plafond « porte sur le nombre de duplications
+> DXGI simultanées tenues par des processus distincts ». **Il ne porte pas sur un
+> nombre de duplications** : huit tiennent sans peine, réparties sur un, deux ou
+> quatre processus. Il porte sur le **nombre de processus** concurrents tenant
+> une duplication, et vaut **exactement 4** (campagne de 15 exécutions). Le rang
+> qui échoue a **moins** de duplications ouvertes (4) que ceux qui réussissent
+> (8).
+> **L'objet littéral de cette section — identifier la COUCHE — reste dû** :
+> Windows, DXGI, pilote NVIDIA, SudoVDA ou virtualisation, aucun n'a été mis à
+> l'épreuve. **Et rien n'établit toujours que 4 soit une borne du système.**
+> Le point reste bloquant pour la cible de huit fenêtres : il ne se lève qu'en
+> **mutualisant la capture** (un seul processus tenant les N duplications), voie
+> **désignée par D3 pour D4** et non implémentée.
 
 ### 7.2 bis Le produit de §7.1 et §7.2 — `CAPACITE = 8` face à un plafond de 4
 
@@ -591,6 +646,17 @@ pas le moment de prendre — et le remède réel est celui du §7.1, qui supprim
 recréation elle-même. Ce paragraphe existe pour que ce coût soit **lu** avant
 d'être découvert en exploitation.
 
+> ✅ **TRAITÉ — D3 a pris cette décision de conception, et appliqué les deux
+> remèdes.** `CAPACITE` vaut désormais **4** (`agent/src/superviseur/boucle.rs`),
+> documentée comme **valeur mesurée sur cette VM, non prouvée être une borne du
+> système** ; et le §7.1 est corrigé par ailleurs, de sorte qu'une relance ne
+> recrée plus de sortie. **Les 16 cycles création/destruction et les ~128
+> abandons de mutex décrits ci-dessus n'ont plus de cause**, et la phrase « rien
+> n'a été changé en fin de branche » ne décrit plus le dépôt. ⚠️ **Ce que cela ne
+> règle pas** : un refus reste un refus — la 5ᵉ fenêtre obtient un message, pas
+> une fenêtre, et **la cible de huit reste hors de portée** sans mutualisation de
+> la capture.
+
 ### 7.3 Une fuite de capacité reste ouverte
 
 Une fenêtre **neuve** dont la page-shell ne répond **jamais** reste en
@@ -604,6 +670,18 @@ calibré**) a été volontairement borné aux entrées **relancées**, pour ne p
 `attente_depuis` **paresseusement**, au premier passage de
 `relancer_les_orphelines` sur une entrée `AttendLeViewport` non tamponnée.
 `Table` resterait pure et aucun appelant ne bougerait.
+
+> ✅ **TRAITÉ par D3 — exactement par ce remède.** Le tampon est posé
+> paresseusement, `Table` reste pure (elle ne lit toujours aucune horloge,
+> `maintenant` lui étant passé en argument) et aucun appelant n'a bougé.
+> ⚠️ **Effet de bord assumé, écrit dans la conception plutôt que découvert à la
+> recette** : le garde-fou couvre désormais **toutes** les entrées en attente de
+> viewport, y compris celles issues de l'énumération initiale. **Si la page-shell
+> se connecte plus de 30 s après le superviseur, les fenêtres préexistantes sont
+> abandonnées** — et une entrée abandonnée n'est **jamais reproposée** (défaut
+> préexistant, nommé et non corrigé). « Lancer le navigateur AVANT le
+> superviseur » cesse d'être un conseil. Le majorant de 30 s reste **non
+> calibré**.
 
 ### 7.4 Points mineurs différés, à traiter à l'occasion
 
@@ -647,6 +725,18 @@ calibré**) a été volontairement borné aux entrées **relancées**, pour ne p
 - **La voie de repli de la spec §8** (sérialisation superviseur→enfants) reste
   disponible et non implémentée, si le plafond de §7.2 devait imposer un autre
   arrangement.
+
+> 🔢 **D3 n'a levé aucun des quatre premiers points ci-dessus.** Ses sondes ne
+> construisent **aucun** encodeur : le plafond d'encodeurs en multi-processus
+> reste entièrement ouvert, et il **devient le risque n°1 de D4**. Rien de la
+> latence, de la cadence ni de la durée n'a davantage été mesuré ; le chemin
+> d'extinction propre n'a pas été exercé ; `SendInput` reste global à la session.
+> **Sur le dernier point, une précision qui compte** : ce que D3 désigne pour D4
+> est la **capture mutualisée** (le superviseur tient lui-même les N
+> duplications), **et non** la *sérialisation* décrite au §8 de la conception de
+> D2 (faire relâcher, créer, faire rouvrir). Même case « voie de repli », deux
+> mécanismes différents — et la sérialisation n'est plus nécessaire de toute
+> façon, la reprise encaissant déjà l'abandon de mutex.
 
 ---
 

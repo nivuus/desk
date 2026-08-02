@@ -25,6 +25,7 @@ pub(super) mod mires;
 pub(crate) mod montee;
 pub(super) mod nvenc;
 pub(super) mod paralleles;
+pub(super) mod plafond;
 pub(super) mod pointeur_virtuel;
 pub(super) mod replis;
 pub(super) mod reprise;
@@ -53,6 +54,41 @@ fn sonde_demandee(variable: &str) -> bool {
 
 /// Renvoie `true` si une sonde de ce chantier a tourné.
 pub(super) fn aiguiller() -> Result<bool> {
+    // Sous-bloc D3 — la sonde minimale, lancée par le porteur du plafond de
+    // concurrence. **En tête de TOUT l'aiguillage**, pas seulement avant le
+    // porteur : `run-agent.sh` transmet l'ensemble des commutateurs
+    // `MULTIFENETRE_*`, et l'enfant que `conduire_les_sondes` lance en hérite
+    // tous — `MULTIFENETRE_PLAFOND` est explicitement retiré avant le
+    // `spawn`, mais rien ne retire `MULTIFENETRE_VDD_PURGE`,
+    // `MULTIFENETRE_DXGI`, etc. si un opérateur les a laissés dans
+    // l'environnement d'une session précédente. Si l'une de ces six branches
+    // passait avant celle-ci, un `MULTIFENETRE_VDD_PURGE=1` résiduel ferait
+    // exécuter `purger()` dans l'enfant — qui retire déterministement les
+    // GUID `1..PLAFOND_NUMEROS`, donc les sorties VIVANTES du porteur, au
+    // milieu de la mesure, sans qu'aucune trace ne le rattache à la vraie
+    // cause. Probabilité faible (erreur d'opérateur), conséquence maximale et
+    // silencieuse : la sonde doit gagner quel que soit ce qui traîne
+    // ailleurs dans l'environnement.
+    //
+    // La CHAÎNE VIDE est rejetée, elle : les six branches voisines passent par
+    // `sonde_demandee`, et celle-ci ne peut pas — elle a besoin de la valeur,
+    // qui est la liste des sorties. Prise sur la seule présence, un
+    // `MULTIFENETRE_PLAFOND_SONDE=` exporté (ou vidé) dans un shell détournerait
+    // TOUT l'aiguillage, puisque cette branche est en tête : le processus
+    // sonderait zéro sortie et rendrait `OK` au lieu d'exécuter le commutateur
+    // demandé. `is_empty` après `trim` : une valeur qui ne porte que des
+    // séparateurs ne nomme aucune sortie non plus.
+    match std::env::var("MULTIFENETRE_PLAFOND_SONDE") {
+        Ok(liste) if !liste.trim().is_empty() => {
+            let sorties: Vec<String> = liste.split(',').map(|s| s.trim().to_string()).collect();
+            plafond::sonder(&sorties)?;
+            return Ok(true);
+        }
+        Ok(_) => tracing::warn!(
+            "MULTIFENETRE_PLAFOND_SONDE posée mais vide : sonde ignorée, aiguillage poursuivi"
+        ),
+        Err(_) => {}
+    }
     // Relevé DXGI : quelles sorties existent, laquelle porte le bureau.
     if sonde_demandee("MULTIFENETRE_DXGI") {
         disponibilite::relever_dxgi()?;
@@ -110,6 +146,15 @@ pub(super) fn aiguiller() -> Result<bool> {
     // posées, une mesure ne doit jamais l'emporter sur une purge demandée.
     if sonde_demandee("MULTIFENETRE_VDD_PURGE") {
         crate::moniteurs_virtuels::purge::purger()?;
+        return Ok(true);
+    }
+    // Sous-bloc D3 — le porteur : K = P×D sorties virtuelles, P sondes. La
+    // sonde elle-même (`MULTIFENETRE_PLAFOND_SONDE`) est aiguillée en tête de
+    // cette fonction, pas ici : voir le commentaire à cet endroit pour
+    // pourquoi elle doit gagner avant tout autre commutateur.
+    if let Ok(valeur) = std::env::var("MULTIFENETRE_PLAFOND") {
+        let (processus, duplications) = plafond::analyser(&valeur)?;
+        plafond::mesurer(processus, duplications)?;
         return Ok(true);
     }
     // Tâche 1 du chantier D1 : le bureau virtuel s'étend-il jusqu'à une

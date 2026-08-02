@@ -31,15 +31,12 @@ fn une_fenetre_dont_l_enfant_meurt_est_reproposee() {
     };
     let session = session.clone();
     t.viewport_recu(&session, 1280, 720);
-    t.sortie_creee(&session, 42, "\\\\.\\DISPLAY7".into());
+    t.sortie_creee(&session, 42, "\\\\.\\DISPLAY7".into(), (1280, 720));
 
     let effets = t.enfant_mort(&session);
     assert!(
-        effets.contains(&Effet::DetruireSortie {
-            sortie_pilote: 42,
-            nom_sortie: "\\\\.\\DISPLAY7".into()
-        }),
-        "la sortie doit toujours être rendue au pilote"
+        !effets.iter().any(|e| matches!(e, Effet::DetruireSortie { .. })),
+        "depuis D3 §7.1 la sortie est retenue pour la relance, reçu {effets:?}"
     );
 
     // La fenêtre, elle, n'est pas oubliée : le contrôle périodique la
@@ -104,13 +101,14 @@ fn une_fenetre_orpheline_qui_se_ferme_quitte_la_table() {
     assert!(t.relancer_les_orphelines(std::time::Instant::now()).is_empty());
 }
 
-/// Deuxième moitié d'`enfant_mort`, jusqu'ici non affirmée : sans le `.take()`
-/// sur `sortie_pilote`/`nom_sortie`, un second appel redemanderait au pilote
-/// de détruire une sortie déjà rendue — sur un vivier de dix, un doublon de
-/// ce genre coûte cher (`.clone()` aurait fait passer les autres tests aussi
-/// bien que `.take()`, seule cette assertion les distingue).
+/// Deuxième moitié d'`enfant_mort`, jusqu'ici non affirmée. Avant le
+/// correctif §7.1 de D3, un `.take()` sur `sortie_pilote`/`nom_sortie`
+/// évitait qu'un second appel ne redemande au pilote de détruire une sortie
+/// déjà rendue. Depuis §7.1, `enfant_mort` ne détruit plus jamais rien : ce
+/// risque précis a disparu avec le `.take()` qui le prévenait. Ce qui reste à
+/// garantir, c'est qu'une seconde mort ne fait pas fuir la sortie retenue.
 #[test]
-fn un_second_enfant_mort_ne_redemande_pas_la_meme_destruction() {
+fn un_second_enfant_mort_ne_fait_pas_fuir_la_sortie_retenue() {
     let mut t = Table::nouvelle(4);
     let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
@@ -118,21 +116,23 @@ fn un_second_enfant_mort_ne_redemande_pas_la_meme_destruction() {
     };
     let session = session.clone();
     t.viewport_recu(&session, 1280, 720);
-    t.sortie_creee(&session, 42, "\\\\.\\DISPLAY7".into());
+    t.sortie_creee(&session, 42, "\\\\.\\DISPLAY7".into(), (1280, 720));
 
     let premier = t.enfant_mort(&session);
     assert!(
-        premier.contains(&Effet::DetruireSortie {
-            sortie_pilote: 42,
-            nom_sortie: "\\\\.\\DISPLAY7".into(),
-        }),
-        "la première mort doit rendre la sortie"
+        !premier.iter().any(|e| matches!(e, Effet::DetruireSortie { .. })),
+        "depuis D3 §7.1 la première mort ne rend déjà plus la sortie, reçu {premier:?}"
     );
 
     let second = t.enfant_mort(&session);
     assert!(
         !second.iter().any(|e| matches!(e, Effet::DetruireSortie { .. })),
-        "une seconde mort ne doit pas redemander la même destruction, reçu {second:?}"
+        "une seconde mort ne doit pas non plus la rendre, reçu {second:?}"
+    );
+    assert_eq!(
+        t.nom_sortie_de(&session),
+        Some("\\\\.\\DISPLAY7"),
+        "la sortie doit toujours être retenue après deux morts"
     );
 }
 
@@ -208,4 +208,45 @@ fn une_relance_qui_repond_a_temps_n_est_pas_abandonnee() {
         "une entrée qui a répondu à temps ne doit jamais être abandonnée"
     );
     assert_eq!(t.etat(&relancee), Some(&Etat::AttendLaSortie));
+}
+
+/// §7.3 du sous-bloc D2, corrigé en D3. Une fenêtre NEUVE dont la page-shell
+/// ne répond jamais restait `AttendLeViewport` sans être ni relancée ni
+/// abandonnée : ni `SansSession`, ni `Vivante`. Sa place était perdue jusqu'à
+/// l'arrêt du superviseur.
+#[test]
+fn une_fenetre_neuve_dont_la_shell_ne_repond_jamais_finit_par_etre_abandonnee() {
+    let base = std::time::Instant::now();
+    let mut t = Table::nouvelle(4);
+    t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
+
+    // Premier passage : le tampon est posé, rien n'est abandonné.
+    assert!(t.relancer_les_orphelines(base).is_empty());
+
+    // Le délai court à partir du premier passage, pas du démarrage.
+    let effets = t.relancer_les_orphelines(instant(base, 30_001));
+
+    assert!(
+        effets.iter().any(|e| matches!(e, Effet::AnnoncerRefus { .. })),
+        "la place doit être libérée, reçu {effets:?}"
+    );
+    assert_eq!(t.fenetre_apparue(IdFenetre(2), "Autre".into()).len(), 1);
+}
+
+/// Le tampon ne doit pas abandonner une fenêtre qui répond dans le délai.
+#[test]
+fn une_fenetre_neuve_qui_repond_dans_le_delai_n_est_pas_abandonnee() {
+    let base = std::time::Instant::now();
+    let mut t = Table::nouvelle(4);
+    let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
+    let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
+        panic!("ouverture attendue, reçu {effets:?}");
+    };
+    let session = session.clone();
+
+    t.relancer_les_orphelines(base);
+    t.viewport_recu(&session, 1280, 720);
+
+    let effets = t.relancer_les_orphelines(instant(base, 30_001));
+    assert!(effets.is_empty(), "reçu {effets:?}");
 }

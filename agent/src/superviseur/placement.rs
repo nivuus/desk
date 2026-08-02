@@ -35,6 +35,18 @@ use crate::sortie_dxgi::SortieDxgi;
 /// cette fonction dans le fichier.
 const TOLERANCE_PX: i64 = 4;
 
+/// Vrai si deux tailles se correspondent à `TOLERANCE_PX` près.
+///
+/// **Le même prédicat que `sortie_par_dimensions`, et c'est le point.** Une
+/// sortie appariée à la création doit être jugée réutilisable à la relance
+/// (`table::viewport_recu`) : deux tolérances distinctes feraient détruire
+/// puis recréer une sortie parfaitement bonne — exactement la recréation que
+/// le sous-bloc D3 existe pour supprimer.
+pub fn taille_compatible(a: (u32, u32), b: (u32, u32)) -> bool {
+    let proche = |x: u32, y: u32| (x as i64 - y as i64).abs() <= TOLERANCE_PX;
+    proche(a.0, b.0) && proche(a.1, b.1)
+}
+
 /// Sortie DXGI correspondant à des dimensions demandées, parmi celles qui ne
 /// sont pas déjà attribuées.
 ///
@@ -54,13 +66,11 @@ pub fn sortie_par_dimensions(
     hauteur: u32,
     deja_prises: &[String],
 ) -> Option<SortieDxgi> {
-    let proche = |a: u32, b: u32| (a as i64 - b as i64).abs() <= TOLERANCE_PX;
     sorties
         .iter()
         .find(|s| {
             s.attachee_au_bureau
-                && proche(s.rect.width, largeur)
-                && proche(s.rect.height, hauteur)
+                && taille_compatible((s.rect.width, s.rect.height), (largeur, hauteur))
                 && !deja_prises.contains(&s.nom_sortie)
         })
         .cloned()
@@ -277,5 +287,38 @@ mod tests {
         let cible = Rect { x: 2400, y: 0, width: 1600, height: 900 };
         let presque = Rect { x: 2401, y: 1, width: 1599, height: 899 };
         assert!(!doit_etre_replacee(&presque, &cible));
+    }
+}
+
+#[cfg(test)]
+mod tests_taille {
+    use super::*;
+
+    #[test]
+    fn une_taille_identique_est_compatible() {
+        assert!(taille_compatible((1280, 720), (1280, 720)));
+    }
+
+    /// La course de rattachement de la recette D1 : la sortie est créée à
+    /// 1280×713 et DXGI la rend à 1280×720 un essai sur deux. Quatre pixels
+    /// de tolérance ne couvrent PAS cet écart de sept — c'est
+    /// `viewport_recu` qui doit alors détruire et recréer, pas apparier à
+    /// tort.
+    #[test]
+    fn un_ecart_de_sept_pixels_n_est_pas_compatible() {
+        assert!(!taille_compatible((1280, 713), (1280, 720)));
+    }
+
+    #[test]
+    fn un_ecart_de_quatre_pixels_est_compatible() {
+        assert!(taille_compatible((1276, 716), (1280, 720)));
+    }
+
+    /// Le facteur DPI de 1,5 que `CLAUDE.md` documente sur une sortie
+    /// virtuelle doit rester refusé : l'accepter ferait poser la fenêtre sur
+    /// une texture aux mauvaises dimensions.
+    #[test]
+    fn le_facteur_dpi_reste_refuse() {
+        assert!(!taille_compatible((1280, 720), (1920, 1080)));
     }
 }

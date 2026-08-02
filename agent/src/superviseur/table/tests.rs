@@ -55,7 +55,7 @@ fn la_sortie_creee_declenche_le_lancement_de_l_enfant() {
     // l'identifiant que le PILOTE a rendu, `"\\.\DISPLAY4"` le nom de la
     // même sortie dans l'énumération DXGI. Le pilote ne détruit que par
     // le premier ; l'enfant ne sait capturer que par le second.
-    let effets = t.sortie_creee(&session, 7, "\\\\.\\DISPLAY4".into());
+    let effets = t.sortie_creee(&session, 7, "\\\\.\\DISPLAY4".into(), (1280, 720));
     assert_eq!(
         effets,
         vec![Effet::LancerEnfant {
@@ -77,11 +77,11 @@ fn seule_la_premiere_fenetre_porte_le_son() {
     let mut t = table();
     let a = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
     t.viewport_recu(&a, 1600, 900);
-    t.sortie_creee(&a, 7, "\\\\.\\DISPLAY4".into());
+    t.sortie_creee(&a, 7, "\\\\.\\DISPLAY4".into(), (1280, 720));
 
     let b = session_annoncee(&t.fenetre_apparue(IdFenetre(2), "B".into()));
     t.viewport_recu(&b, 1280, 720);
-    let effets = t.sortie_creee(&b, 8, "\\\\.\\DISPLAY5".into());
+    let effets = t.sortie_creee(&b, 8, "\\\\.\\DISPLAY5".into(), (1280, 720));
     assert_eq!(
         effets,
         vec![Effet::LancerEnfant {
@@ -98,7 +98,7 @@ fn une_fenetre_qui_disparait_tue_l_enfant_detruit_la_sortie_et_l_annonce() {
     let mut t = table();
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
     t.viewport_recu(&session, 1600, 900);
-    t.sortie_creee(&session, 7, "\\\\.\\DISPLAY4".into());
+    t.sortie_creee(&session, 7, "\\\\.\\DISPLAY4".into(), (1280, 720));
 
     let effets = t.fenetre_disparue(IdFenetre(1));
     assert_eq!(
@@ -114,27 +114,25 @@ fn une_fenetre_qui_disparait_tue_l_enfant_detruit_la_sortie_et_l_annonce() {
 }
 
 #[test]
-fn un_enfant_qui_meurt_seul_libere_la_sortie_et_l_annonce_sans_le_tuer() {
+fn un_enfant_qui_meurt_seul_retient_la_sortie_et_l_annonce_sans_le_tuer() {
     // C'est le bénéfice pour lequel le multi-processus a été choisi : la
-    // mort d'un enfant ne doit rien emporter d'autre, mais elle ne doit
-    // pas non plus laisser fuir sa sortie.
+    // mort d'un enfant ne doit rien emporter d'autre. Depuis le correctif
+    // §7.1 du sous-bloc D3, elle ne rend plus non plus la sortie au pilote —
+    // c'est justement sa RECRÉATION à la relance qui abandonnait le mutex des
+    // duplications DXGI voisines (D2, 6 → 38 réouvertures pour une seule
+    // fenêtre condamnée).
     let mut t = table();
     let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
     t.viewport_recu(&session, 1600, 900);
-    t.sortie_creee(&session, 7, "\\\\.\\DISPLAY4".into());
+    t.sortie_creee(&session, 7, "\\\\.\\DISPLAY4".into(), (1280, 720));
 
     let effets = t.enfant_mort(&session);
-    assert_eq!(
-        effets,
-        vec![
-            Effet::DetruireSortie { sortie_pilote: 7, nom_sortie: "\\\\.\\DISPLAY4".into() },
-            Effet::AnnoncerFermeture { session: session.clone() },
-        ]
-    );
+    assert_eq!(effets, vec![Effet::AnnoncerFermeture { session: session.clone() }]);
     // La fenêtre reste dans la table, orpheline : c'est le contrôle
     // périodique (`relancer_les_orphelines`) qui la reproposera, plutôt
     // qu'un `SHOW` fortuit de Windows — voir la tâche 10.
     assert_eq!(t.etat(&session), Some(&Etat::SansSession));
+    assert_eq!(t.taille_sortie_de(&session), Some((1280, 720)), "la sortie est retenue, pas rendue");
 }
 
 #[test]
@@ -159,7 +157,7 @@ fn le_vivier_plein_refuse_la_fenetre_suivante_sans_rien_casser() {
     for n in 1..=2u64 {
         let s = session_annoncee(&t.fenetre_apparue(IdFenetre(n), format!("F{n}")));
         t.viewport_recu(&s, 1280, 720);
-        t.sortie_creee(&s, n as u32, format!("\\\\.\\DISPLAY{n}"));
+        t.sortie_creee(&s, n as u32, format!("\\\\.\\DISPLAY{n}"), (1280, 720));
     }
     let effets = t.fenetre_apparue(IdFenetre(3), "F3".into());
     assert_eq!(
@@ -176,7 +174,7 @@ fn une_sortie_liberee_rouvre_la_place() {
     let mut t = Table::nouvelle(1);
     let a = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
     t.viewport_recu(&a, 1280, 720);
-    t.sortie_creee(&a, 7, "\\\\.\\DISPLAY4".into());
+    t.sortie_creee(&a, 7, "\\\\.\\DISPLAY4".into(), (1280, 720));
     assert!(matches!(
         t.fenetre_apparue(IdFenetre(2), "B".into()).as_slice(),
         [Effet::AnnoncerRefus { .. }]
@@ -194,15 +192,15 @@ fn le_son_repasse_a_personne_tant_que_d2_ne_le_redesigne_pas() {
     let mut t = table();
     let a = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
     t.viewport_recu(&a, 1280, 720);
-    t.sortie_creee(&a, 7, "\\\\.\\DISPLAY4".into());
+    t.sortie_creee(&a, 7, "\\\\.\\DISPLAY4".into(), (1280, 720));
     let b = session_annoncee(&t.fenetre_apparue(IdFenetre(2), "B".into()));
     t.viewport_recu(&b, 1280, 720);
-    t.sortie_creee(&b, 8, "\\\\.\\DISPLAY5".into());
+    t.sortie_creee(&b, 8, "\\\\.\\DISPLAY5".into(), (1280, 720));
 
     t.fenetre_disparue(IdFenetre(1));
     let c = session_annoncee(&t.fenetre_apparue(IdFenetre(3), "C".into()));
     t.viewport_recu(&c, 1280, 720);
-    let effets = t.sortie_creee(&c, 9, "\\\\.\\DISPLAY6".into());
+    let effets = t.sortie_creee(&c, 9, "\\\\.\\DISPLAY6".into(), (1280, 720));
     assert_eq!(
         effets,
         vec![Effet::LancerEnfant {
@@ -268,7 +266,7 @@ fn une_fenetre_reannoncee_ne_cree_pas_de_seconde_entree() {
     assert_eq!(t.etat(&session), Some(&Etat::AttendLeViewport));
 
     t.viewport_recu(&session, 1600, 900);
-    t.sortie_creee(&session, 7, "\\\\.\\DISPLAY4".into());
+    t.sortie_creee(&session, 7, "\\\\.\\DISPLAY4".into(), (1280, 720));
 
     let effets = t.fenetre_disparue(IdFenetre(1));
     assert_eq!(
@@ -312,7 +310,7 @@ fn la_sortie_est_transmise_a_l_enfant_par_son_nom() {
     let session = session.clone();
     t.viewport_recu(&session, 1280, 720);
 
-    let effets = t.sortie_creee(&session, 42, "\\\\.\\DISPLAY7".into());
+    let effets = t.sortie_creee(&session, 42, "\\\\.\\DISPLAY7".into(), (1280, 720));
 
     assert_eq!(
         effets,
@@ -337,7 +335,7 @@ fn la_destruction_porte_l_identifiant_pilote_et_le_nom_dxgi() {
     };
     let session = session.clone();
     t.viewport_recu(&session, 1280, 720);
-    t.sortie_creee(&session, 42, "\\\\.\\DISPLAY7".into());
+    t.sortie_creee(&session, 42, "\\\\.\\DISPLAY7".into(), (1280, 720));
 
     let effets = t.fenetre_disparue(IdFenetre(1));
 

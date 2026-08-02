@@ -1,0 +1,115 @@
+[    0.0s] chrome lancé pid=4060671 port=9983 profil=/tmp/user/0/chrome-d3-QII3QD
+[    1.0s] identité du navigateur : pid écoutant=4060671 pid lancé=4060671 version=Chrome/150.0.7871.181
+[    1.0s] + page attachée  session=F3D2168C url=about:blank
+[    1.0s] >>> ÉTAPE 0 : nettoyage — état de départ SANS fenêtre
+[   12.2s] --- fenêtres VM (avant superviseur) ---
+
+[   12.2s] + page attachée  session=4447C56A url=http://192.168.3.1:5173/shell.html
+[   12.2s] shell demandée http://192.168.3.1:5173/shell.html
+[   15.2s] statut shell : bureau connecté
+[   15.2s] >>> lancement du superviseur (SUPERVISEUR=1)
+[   15.7s] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   20.7s] MARQUEURS (superviseur démarré, 0 fenêtre) {"lignes":12,"cloture":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":0,"duplication_etablie":0,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":0,"enfant_termine":0,"enfant_mort_seul":0,"abandon_relances":0}
+[   20.8s] >>> SESSION SAINE 1/3 : ouverture Bloc-notes (fenetre-1)
+[   21.3s] + page attachée  session=8242C2A8 url=
+[   21.4s] - page détachée   session=8242C2A8 url=
+[   21.4s] + page attachée  session=518A3FA2 url=
+[   23.2s]    saine 1 : 1 page(s) d'application atteinte(s) en 2s
+[   26.2s] ÉTAT SHELL (après saine 1) liste=[Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[   26.2s]   pages d'application ouvertes (1) : http://192.168.3.1:5173/?session=w-2
+[   26.3s] MARQUEURS (après saine 1) {"lignes":45,"cloture":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":1,"duplication_etablie":1,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":1,"enfant_termine":0,"enfant_mort_seul":0,"abandon_relances":0}
+[   26.3s] >>> SESSION SAINE 2/3 : ouverture Bloc-notes (fenetre-2)
+[   26.9s] + page attachée  session=CECCBBE0 url=
+[   27.0s] - page détachée   session=CECCBBE0 url=
+[   27.0s] + page attachée  session=94037EB6 url=
+[   28.8s]    saine 2 : 2 page(s) d'application atteinte(s) en 2s
+[   31.8s] ÉTAT SHELL (après saine 2) liste=[Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[   31.8s]   pages d'application ouvertes (2) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4
+[   31.8s] MARQUEURS (après saine 2) {"lignes":83,"cloture":0,"reouverture":1,"mutex_abandonne":1,"sortie_creee":2,"duplication_etablie":2,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":2,"enfant_termine":0,"enfant_mort_seul":0,"abandon_relances":0}
+[   31.8s] >>> SESSION SAINE 3/3 : ouverture Bloc-notes (fenetre-3)
+[   32.2s] + page attachée  session=2A365493 url=
+[   32.4s] + page attachée  session=E29C5442 url=
+[   32.4s] - page détachée   session=2A365493 url=
+[   34.2s]    saine 3 : 3 page(s) d'application atteinte(s) en 2s
+[   37.2s] ÉTAT SHELL (après saine 3) liste=[Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[   37.2s]   pages d'application ouvertes (3) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6
+[   37.2s] MARQUEURS (AVANT condamnation — trois sessions saines établies) {"lignes":113,"cloture":0,"reouverture":3,"mutex_abandonne":3,"sortie_creee":3,"duplication_etablie":3,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":3,"enfant_termine":0,"enfant_mort_seul":0,"abandon_relances":0}
+[   37.6s] PIDs protégés (superviseur + 3 enfants sains) : [3676,21396,26096,27004]
+[   37.6s] script du tueur écrit sur le partage : /media/vm/dev/tueur-fenetre4.ps1
+[   37.6s] >>> CONDAMNATION : lancement du tueur (fenêtre 4 pas encore ouverte)
+[   38.1s] >>> CONDAMNATION : ouverture de la fenêtre 4 (fenetre-4)
+[   38.6s] >>> attente de l'abandon (jusqu'à RELANCES_MAX dépassé) — polling agent.log
+[   38.6s] + page attachée  session=4C4A1DBB url=
+[   38.8s] - page détachée   session=4C4A1DBB url=http://192.168.3.1:5173/?session=w-7
+[   38.8s] + page attachée  session=74AC1EE6 url=
+[   39.3s] - page détachée   session=74AC1EE6 url=http://192.168.3.1:5173/?session=w-8
+[   40.2s] + page attachée  session=E20F9A1E url=
+[   40.5s] - page détachée   session=E20F9A1E url=http://192.168.3.1:5173/?session=w-9
+[   40.6s]    … t+2s, abandon pas encore vu
+[   41.2s] + page attachée  session=1FD31D82 url=
+[   41.6s] - page détachée   session=1FD31D82 url=http://192.168.3.1:5173/?session=w-10
+[   42.2s] + page attachée  session=7FD70F31 url=
+[   42.5s] - page détachée   session=7FD70F31 url=http://192.168.3.1:5173/?session=w-11
+[   50.7s]    … t+12s, abandon pas encore vu
+[   60.9s]    … t+22s, abandon pas encore vu
+[   71.0s]    … t+32s, abandon pas encore vu
+[   81.1s]    … t+42s, abandon pas encore vu
+[   91.2s]    … t+52s, abandon pas encore vu
+[  101.3s]    … t+62s, abandon pas encore vu
+[  111.4s]    … t+72s, abandon pas encore vu
+[  119.5s] !! ABANDON NON DÉTECTÉ dans la fenêtre de polling (80s) — voir le journal complet
+[  119.5s] tueur terminé (code=0) :
+11:06:44.763 TUE pid=26780
+11:06:46.022 TUE pid=24932
+11:06:47.112 TUE pid=25760
+11:06:48.052 TUE pid=26836
+FIN nb_tues=4 tues=26780,24932,25760,26836
+[  121.5s] ÉTAT SHELL (après condamnation) liste=[Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="« Sans titre - Bloc-notes » n'a pas pu s'ouvrir : la session n'a pas tenu après 3 tentatives."
+[  121.5s]   pages d'application ouvertes (3) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6
+[  121.5s] MARQUEURS (APRÈS condamnation — critère à lire ici) {"lignes":195,"cloture":0,"reouverture":9,"mutex_abandonne":9,"sortie_creee":4,"duplication_etablie":6,"sortie_rendue":1,"creation_refusee":0,"enfant_lance":7,"enfant_termine":4,"enfant_mort_seul":4,"abandon_relances":0}
+[  122.0s] + page attachée  session=83C88DDC url=
+[  122.1s] - page détachée   session=83C88DDC url=
+[  128.0s] --- fenêtres VM (APRÈS condamnation (fenêtre 4 doit toujours exister côté Windows)) ---
+20796	notepad	0x4a0168	1280x720+0+0	fenetre-4.txt - Bloc-notes
+26812	notepad	0x5800ee	1280x720+4960+0	fenetre-3.txt - Bloc-notes
+27128	notepad	0xe01a6	1280x720+3680+0	fenetre-2.txt - Bloc-notes
+27224	notepad	0x3701b0	1280x720+2400+0	fenetre-1.txt - Bloc-notes
+[  128.0s] >>> BORNES TEMPORELLES DE LA SÉQUENCE (horodatage LOCAL, pas celui du journal agent)
+[  128.0s]    déclenchement ouverture fenêtre condamnée : 2026-08-02T09:06:43.726Z
+[  128.0s]    fin de la fenêtre de polling (abandon vu=false) : 2026-08-02T09:08:05.095Z
+[  128.0s] SYNTHÈSE {
+ "avant": {
+  "lignes": 113,
+  "cloture": 0,
+  "reouverture": 3,
+  "mutex_abandonne": 3,
+  "sortie_creee": 3,
+  "duplication_etablie": 3,
+  "sortie_rendue": 0,
+  "creation_refusee": 0,
+  "enfant_lance": 3,
+  "enfant_termine": 0,
+  "enfant_mort_seul": 0,
+  "abandon_relances": 0
+ },
+ "apres": {
+  "lignes": 195,
+  "cloture": 0,
+  "reouverture": 9,
+  "mutex_abandonne": 9,
+  "sortie_creee": 4,
+  "duplication_etablie": 6,
+  "sortie_rendue": 1,
+  "creation_refusee": 0,
+  "enfant_lance": 7,
+  "enfant_termine": 4,
+  "enfant_mort_seul": 4,
+  "abandon_relances": 0
+ },
+ "delta_reouverture": 6,
+ "delta_cloture": 0,
+ "delta_sortie_creee": 1,
+ "delta_duplication_etablie": 3,
+ "delta_enfant_lance": 4,
+ "abandon_relances": 0
+}

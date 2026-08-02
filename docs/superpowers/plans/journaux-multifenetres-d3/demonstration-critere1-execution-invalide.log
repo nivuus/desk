@@ -1,0 +1,156 @@
+[    0.0s] chrome lancé pid=4044796 port=9983 profil=/tmp/user/0/chrome-d3-vvZa0g
+[    1.2s] identité du navigateur : pid écoutant=4044796 pid lancé=4044796 version=Chrome/150.0.7871.181
+[    1.2s] + page attachée  session=DC03FCB8 url=about:blank
+[    1.2s] >>> ÉTAPE 0 : nettoyage — état de départ SANS fenêtre
+[   12.3s] --- fenêtres VM (avant superviseur) ---
+
+[   12.4s] + page attachée  session=B0C6BE16 url=http://192.168.3.1:5173/shell.html
+[   12.4s] shell demandée http://192.168.3.1:5173/shell.html
+[   15.4s] statut shell : bureau connecté
+[   15.4s] >>> lancement du superviseur (SUPERVISEUR=1)
+[   15.9s] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   20.9s] MARQUEURS (superviseur démarré, 0 fenêtre) {"lignes":12,"cloture":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":0,"duplication_etablie":0,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":0,"enfant_termine":0,"enfant_mort_seul":0,"abandon_relances":0}
+[   20.9s] >>> SESSION SAINE 1/3 : ouverture Bloc-notes (fenetre-1)
+[   21.5s] + page attachée  session=98D2DE9A url=
+[   21.6s] - page détachée   session=98D2DE9A url=
+[   21.7s] + page attachée  session=B5DD3CD1 url=
+[   23.4s]    saine 1 : 1 page(s) d'application atteinte(s) en 2s
+[   26.4s] ÉTAT SHELL (après saine 1) liste=[Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[   26.4s]   pages d'application ouvertes (1) : http://192.168.3.1:5173/?session=w-2
+[   26.5s] MARQUEURS (après saine 1) {"lignes":30,"cloture":0,"reouverture":0,"mutex_abandonne":0,"sortie_creee":1,"duplication_etablie":1,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":1,"enfant_termine":0,"enfant_mort_seul":0,"abandon_relances":0}
+[   26.5s] >>> SESSION SAINE 2/3 : ouverture Bloc-notes (fenetre-2)
+[   27.0s] + page attachée  session=DABF86A3 url=
+[   27.1s] - page détachée   session=DABF86A3 url=
+[   27.1s] + page attachée  session=BF0E1620 url=
+[   28.9s]    saine 2 : 2 page(s) d'application atteinte(s) en 2s
+[   31.9s] ÉTAT SHELL (après saine 2) liste=[Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[   31.9s]   pages d'application ouvertes (2) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4
+[   32.0s] MARQUEURS (après saine 2) {"lignes":81,"cloture":0,"reouverture":1,"mutex_abandonne":1,"sortie_creee":2,"duplication_etablie":2,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":2,"enfant_termine":0,"enfant_mort_seul":0,"abandon_relances":0}
+[   32.0s] >>> SESSION SAINE 3/3 : ouverture Bloc-notes (fenetre-3)
+[   32.5s] + page attachée  session=97BBB9E4 url=
+[   32.6s] - page détachée   session=97BBB9E4 url=
+[   32.7s] + page attachée  session=1838E1C5 url=
+[   34.5s]    saine 3 : 3 page(s) d'application atteinte(s) en 2s
+[   37.5s] ÉTAT SHELL (après saine 3) liste=[Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[   37.5s]   pages d'application ouvertes (3) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6
+[   37.5s] MARQUEURS (AVANT condamnation — trois sessions saines établies) {"lignes":121,"cloture":0,"reouverture":3,"mutex_abandonne":3,"sortie_creee":3,"duplication_etablie":3,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":3,"enfant_termine":0,"enfant_mort_seul":0,"abandon_relances":0}
+[   37.9s] PIDs protégés (superviseur + 3 enfants sains) : [18356,24612,24856,26996]
+[   37.9s] >>> CONDAMNATION : lancement du tueur (fenêtre 4 pas encore ouverte)
+[   38.4s] >>> CONDAMNATION : ouverture de la fenêtre 4 (fenetre-4)
+[   38.8s] >>> attente de l'abandon (jusqu'à RELANCES_MAX dépassé) — polling agent.log
+[   38.8s] + page attachée  session=2D7FE341 url=
+[   38.9s] - page détachée   session=2D7FE341 url=
+[   39.0s] + page attachée  session=BB8DFBC9 url=
+[   40.8s]    … t+2s, abandon pas encore vu
+[   50.9s]    … t+12s, abandon pas encore vu
+[   61.1s]    … t+22s, abandon pas encore vu
+[   71.2s]    … t+32s, abandon pas encore vu
+[   81.3s]    … t+42s, abandon pas encore vu
+[   91.4s]    … t+52s, abandon pas encore vu
+[  101.5s]    … t+62s, abandon pas encore vu
+[  111.6s]    … t+72s, abandon pas encore vu
+[  119.6s] !! ABANDON NON DÉTECTÉ dans la fenêtre de polling (80s) — voir le journal complet
+[  119.6s] tueur terminé (code=0) :
+Au caract
+re Ligne:1 : 585
++ ... tues.Add($p.Id) | Out-Null;         [void]$log.AppendLine($ts TUE pid ...
++                                                                  ~
+Parenth
+se fermante .)/ manquante dans l'appel de mthode.
+Au caract
+re Ligne:1 : 586
++ ... .Add($p.Id) | Out-Null;         [void]$log.AppendLine($ts TUE pid=$($ ...
++                                                               ~~~
+Jeton inattendu .TUE/ dans l'expression ou l'instruction.
+Au caract
+re Ligne:1 : 455
++ ...        $ts = (Get-Date).ToString('HH:mm:ss.fff');       try {;        ...
++                                                                 ~
+Accolade fermante .}/ manquante dans le bloc d'instruction ou dfinition du type manquante.
+Au caract
+re Ligne:1 : 602
++ ...  Out-Null;         [void]$log.AppendLine($ts TUE pid=$($p.Id));       ...
++                                                                  ~
+Le bloc Catch ou Finally manque dans l'instruction Try.
+Au caract
+re Ligne:1 : 393
++ ... oteges -notcontains $p.Id) -and ($tues -notcontains $p.Id)) {;        ...
++                                                                 ~
+Accolade fermante .}/ manquante dans le bloc d'instruction ou dfinition du type manquante.
+Au caract
+re Ligne:1 : 318
++ ... ent -ErrorAction SilentlyContinue;   foreach ($p in $procs) {;     if ...
++                                                                 ~
+Accolade fermante .}/ manquante dans le bloc d'instruction ou dfinition du type manquante.
+Au caract
+re Ligne:1 : 230
++ ... Text.StringBuilder; while ($sw.Elapsed.TotalSeconds -lt 55) {;   $pro ...
++                                                                 ~
+Accolade fermante .}/ manquante dans le bloc d'instruction ou dfinition du type manquante.
+Au caract
+re Ligne:1 : 3
++ & { $proteges = @(18356,24612,24856,26996); $tues = New-Object System ...
++   ~
+Accolade fermante .}/ manquante dans le bloc d'instruction ou dfinition du type manquante.
+Au caract
+re Ligne:1 : 602
++ ... Out-Null;         [void]$log.AppendLine($ts TUE pid=$($p.Id));        ...
++                                                                 ~
+Jeton inattendu .)/ dans l'expression ou l'instruction.
+Au caract
+re Ligne:1 : 611
++ ...          [void]$log.AppendLine($ts TUE pid=$($p.Id));       } catch { ...
++                                                                 ~
+Jeton inattendu .}/ dans l'expression ou l'instruction.
+Les erreurs d'analyse n'ont pas toutes t signales. Corrigez les erreurs signales, puis recommencez.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingEndParenthesisInMethodCall
+[  121.6s] ÉTAT SHELL (après condamnation) liste=[Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte  | Sans titre - Bloc-notes — ouverte ] statut="bureau connecté"
+[  121.6s]   pages d'application ouvertes (4) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8
+[  121.7s] MARQUEURS (APRÈS condamnation — critère à lire ici) {"lignes":180,"cloture":0,"reouverture":6,"mutex_abandonne":6,"sortie_creee":4,"duplication_etablie":4,"sortie_rendue":0,"creation_refusee":0,"enfant_lance":4,"enfant_termine":0,"enfant_mort_seul":0,"abandon_relances":0}
+[  122.1s] + page attachée  session=26729224 url=
+[  122.3s] - page détachée   session=26729224 url=
+[  128.1s] --- fenêtres VM (APRÈS condamnation (fenêtre 4 doit toujours exister côté Windows)) ---
+19376	notepad	0x8b00d4	1280x720+3680+0	fenetre-2.txt - Bloc-notes
+26224	notepad	0x25d0022	1280x720+2400+0	fenetre-1.txt - Bloc-notes
+26772	notepad	0x33022c	1280x720+6240+0	fenetre-4.txt - Bloc-notes
+26892	notepad	0x4800d0	1280x720+4960+0	fenetre-3.txt - Bloc-notes
+[  128.1s] >>> BORNES TEMPORELLES DE LA SÉQUENCE (horodatage LOCAL, pas celui du journal agent)
+[  128.1s]    déclenchement ouverture fenêtre condamnée : 2026-08-02T09:02:01.550Z
+[  128.1s]    fin de la fenêtre de polling (abandon vu=false) : 2026-08-02T09:03:22.823Z
+[  128.1s] SYNTHÈSE {
+ "avant": {
+  "lignes": 121,
+  "cloture": 0,
+  "reouverture": 3,
+  "mutex_abandonne": 3,
+  "sortie_creee": 3,
+  "duplication_etablie": 3,
+  "sortie_rendue": 0,
+  "creation_refusee": 0,
+  "enfant_lance": 3,
+  "enfant_termine": 0,
+  "enfant_mort_seul": 0,
+  "abandon_relances": 0
+ },
+ "apres": {
+  "lignes": 180,
+  "cloture": 0,
+  "reouverture": 6,
+  "mutex_abandonne": 6,
+  "sortie_creee": 4,
+  "duplication_etablie": 4,
+  "sortie_rendue": 0,
+  "creation_refusee": 0,
+  "enfant_lance": 4,
+  "enfant_termine": 0,
+  "enfant_mort_seul": 0,
+  "abandon_relances": 0
+ },
+ "delta_reouverture": 3,
+ "delta_cloture": 0,
+ "delta_sortie_creee": 1,
+ "delta_duplication_etablie": 1,
+ "delta_enfant_lance": 1,
+ "abandon_relances": 0
+}
