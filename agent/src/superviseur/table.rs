@@ -78,11 +78,12 @@ pub const RELANCES_MAX: u32 = 3;
 /// couvrent largement un rechargement de page ou une reconnexion réseau, sans
 /// bloquer indéfiniment une place sur un vivier de huit.
 ///
-/// **Portée volontairement limitée aux entrées RELANCÉES** (voir
-/// `Entree::attente_depuis`) : une entrée issue de la détection initiale
-/// (`fenetre_apparue`) porte le même risque en théorie, mais cette fonction
-/// reste pure et ne reçoit aucun instant — l'étendre à elle changerait sa
-/// signature et tous ses appelants, hors du périmètre de ce correctif.
+/// **Portée : TOUTES les entrées en attente de viewport**, depuis le sous-bloc
+/// D3. Elle était limitée aux entrées relancées, parce que `fenetre_apparue`
+/// est pure et ne reçoit aucun instant ; le tampon est désormais posé
+/// paresseusement par `relancer_les_orphelines`, qui en reçoit un. Conséquence
+/// à connaître : une fenêtre préexistante au démarrage est abandonnée si la
+/// page-shell ne s'est pas connectée dans ce délai.
 pub const DELAI_ATTENTE_VIEWPORT_MAX: std::time::Duration = std::time::Duration::from_secs(30);
 
 /// Ce que la table demande au monde extérieur de faire. Le superviseur les
@@ -147,10 +148,10 @@ struct Entree {
     /// son enfant. Le garde-fou de `relancer_les_orphelines` (`RELANCES_MAX`)
     /// s'appuie dessus pour abandonner plutôt que de relancer sans fin.
     relances: u32,
-    /// Instant où cette entrée est entrée en `AttendLeViewport` À LA SUITE
-    /// D'UNE RELANCE — `None` pour une entrée issue de `fenetre_apparue`, qui
-    /// reste une fonction pure sans horloge. C'est le garde-fou du second
-    /// risque de capacité de la tâche 10 : sans lui, une fenêtre relancée
+    /// Instant à partir duquel cette entrée est en `AttendLeViewport` — posé
+    /// paresseusement par `relancer_les_orphelines` pour une entrée issue de
+    /// `fenetre_apparue`, qui reste pure et sans horloge. C'est le garde-fou
+    /// du second risque de capacité de la tâche 10 : sans lui, une fenêtre
     /// dont la page-shell ne répond plus jamais resterait `AttendLeViewport`
     /// pour toujours, ni `SansSession` ni `Vivante`, place perdue jusqu'à
     /// l'arrêt du superviseur. Effacé dès que le viewport arrive
@@ -367,8 +368,9 @@ impl Table {
     ///   est retirée puis réinsérée sous une session neuve, `relances` et
     ///   `audio` reportés ; `self.compteur` continue de croître sans jamais
     ///   reculer) ;
-    /// - `DELAI_ATTENTE_VIEWPORT_MAX` borne le temps passé en `AttendLeViewport`
-    ///   après une relance, si la PAGE-SHELL, elle, ne répond jamais.
+    /// - `DELAI_ATTENTE_VIEWPORT_MAX` borne le temps passé en `AttendLeViewport`,
+    ///   relancée ou non depuis le sous-bloc D3, si la PAGE-SHELL, elle, ne
+    ///   répond jamais.
     pub fn relancer_les_orphelines(&mut self, maintenant: std::time::Instant) -> Vec<Effet> {
         let orphelines: Vec<IdSession> = self
             .entrees
@@ -408,12 +410,33 @@ impl Table {
             effets.push(Effet::AnnoncerOuverture { session, titre: entree.titre });
         }
 
-        // Second garde-fou : une entrée relancée dont la page-shell ne
-        // répond jamais reste `AttendLeViewport` — ni `SansSession` (elle ne
-        // l'est plus), ni `Vivante` (elle ne l'atteindra jamais) — et ne
-        // serait donc JAMAIS relevée par le filtre ci-dessus. `attente_depuis`
-        // est `None` pour une entrée issue de `fenetre_apparue` : elle n'est
-        // délibérément pas concernée (voir la doc de `DELAI_ATTENTE_VIEWPORT_MAX`).
+        // Tampon PARESSEUX (§7.3 du sous-bloc D2, corrigé en D3). Une entrée
+        // issue de `fenetre_apparue` n'était pas tamponnée : cette fonction
+        // est le seul endroit qui reçoive un instant, et `fenetre_apparue`
+        // doit rester pure. On la tamponne donc ici, au premier passage.
+        //
+        // ⚠️ **Changement de comportement au démarrage** : les fenêtres de
+        // l'énumération initiale cessent d'être exemptées. Si la page-shell se
+        // connecte plus de `DELAI_ATTENTE_VIEWPORT_MAX` après le superviseur,
+        // elles seront abandonnées — et une entrée abandonnée n'est JAMAIS
+        // reproposée, le hook ne réémettant rien pour une fenêtre déjà
+        // ouverte. Cohérent avec le piège de la recette D1 (« lancer le
+        // navigateur AVANT le superviseur »), mais à connaître.
+        //
+        // Le délai court à partir de ce premier passage, cadencé par
+        // `PERIODE_PLACEMENT` (1 s), et non depuis le démarrage.
+        for entree in self.entrees.values_mut() {
+            if entree.etat == Etat::AttendLeViewport && entree.attente_depuis.is_none() {
+                entree.attente_depuis = Some(maintenant);
+            }
+        }
+
+        // Second garde-fou : une entrée en `AttendLeViewport` dont la
+        // page-shell ne répond jamais — ni `SansSession` (elle ne l'est
+        // plus, ou ne l'a jamais été), ni `Vivante` (elle ne l'atteindra
+        // jamais) — et ne serait donc JAMAIS relevée par le filtre
+        // ci-dessus. Toute entrée en attente porte désormais un
+        // `attente_depuis` depuis la boucle qui précède.
         let figees: Vec<IdSession> = self
             .entrees
             .iter()

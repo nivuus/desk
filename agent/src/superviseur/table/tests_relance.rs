@@ -209,3 +209,44 @@ fn une_relance_qui_repond_a_temps_n_est_pas_abandonnee() {
     );
     assert_eq!(t.etat(&relancee), Some(&Etat::AttendLaSortie));
 }
+
+/// §7.3 du sous-bloc D2, corrigé en D3. Une fenêtre NEUVE dont la page-shell
+/// ne répond jamais restait `AttendLeViewport` sans être ni relancée ni
+/// abandonnée : ni `SansSession`, ni `Vivante`. Sa place était perdue jusqu'à
+/// l'arrêt du superviseur.
+#[test]
+fn une_fenetre_neuve_dont_la_shell_ne_repond_jamais_finit_par_etre_abandonnee() {
+    let base = std::time::Instant::now();
+    let mut t = Table::nouvelle(4);
+    t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
+
+    // Premier passage : le tampon est posé, rien n'est abandonné.
+    assert!(t.relancer_les_orphelines(base).is_empty());
+
+    // Le délai court à partir du premier passage, pas du démarrage.
+    let effets = t.relancer_les_orphelines(instant(base, 30_001));
+
+    assert!(
+        effets.iter().any(|e| matches!(e, Effet::AnnoncerRefus { .. })),
+        "la place doit être libérée, reçu {effets:?}"
+    );
+    assert_eq!(t.fenetre_apparue(IdFenetre(2), "Autre".into()).len(), 1);
+}
+
+/// Le tampon ne doit pas abandonner une fenêtre qui répond dans le délai.
+#[test]
+fn une_fenetre_neuve_qui_repond_dans_le_delai_n_est_pas_abandonnee() {
+    let base = std::time::Instant::now();
+    let mut t = Table::nouvelle(4);
+    let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
+    let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
+        panic!("ouverture attendue, reçu {effets:?}");
+    };
+    let session = session.clone();
+
+    t.relancer_les_orphelines(base);
+    t.viewport_recu(&session, 1280, 720);
+
+    let effets = t.relancer_les_orphelines(instant(base, 30_001));
+    assert!(effets.is_empty(), "reçu {effets:?}");
+}
