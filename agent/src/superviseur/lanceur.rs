@@ -261,6 +261,21 @@ impl Lanceur for LanceurDeProcessus {
             // changements de mode.
             .env_remove("TEST_FILE")
             .env_remove("WINDOW_TITLE")
+            // **I7 de la revue finale de branche du sous-bloc D4**, par la
+            // même règle de symétrie que le bloc I6 ci-dessus : `CAPTEUR` est
+            // une variable héritable qui change le SENS d'un processus — un
+            // enfant qui la porterait deviendrait un second capteur, ne
+            // diffuserait rien, et se disputerait le tube nommé avec le vrai.
+            //
+            // Le cas est INATTEIGNABLE aujourd'hui : `main.rs` prend la
+            // branche capteur AVANT la branche superviseur, donc un
+            // superviseur portant `CAPTEUR` ne serait jamais devenu
+            // superviseur et n'aurait jamais lancé d'enfant. On la retire
+            // quand même, exactement comme `lancer_capteur` retire
+            // `SUPERVISEUR` par ce même raisonnement : ce qui protège l'enfant
+            // ne doit pas dépendre de l'ordre de deux `if` dans un autre
+            // fichier.
+            .env_remove("CAPTEUR")
             .spawn()
             .with_context(|| format!("lancement de l'enfant {}", consigne.session.0))?;
         let pid = enfant.id();
