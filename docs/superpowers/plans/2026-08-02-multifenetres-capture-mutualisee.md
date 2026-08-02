@@ -505,6 +505,13 @@ mod tests {
 
     /// `resize` doit retenir la taille RÉELLEMENT obtenue, pas celle demandée
     /// — même règle qu'en mono-fenêtre (`transport/redimensionnement.rs`).
+    ///
+    /// ⚠️ **Les dimensions initiales (640×480) DOIVENT différer de celles que
+    /// le capteur factice répond.** Une première rédaction de ce test
+    /// construisait la source en 1280×720, soit exactement la réponse : elle
+    /// passait aussi bien avec un `resize` correct qu'avec un `resize`
+    /// devenu no-op, et ne gardait donc pas la règle qu'elle existe pour
+    /// garder — celle-là même sur laquelle D1 s'était trompé.
     #[test]
     fn un_redimensionnement_retient_la_taille_obtenue() {
         let (tx_img, rx) = sync_channel(4);
@@ -513,7 +520,7 @@ mod tests {
             reponses: vec![Ok(DepuisCapteur::Taille { largeur: 1280, hauteur: 720 })],
             recus: recus.clone(),
         };
-        let mut source = SourceDistante::nouvelle(Box::new(canal), rx, 1280, 720);
+        let mut source = SourceDistante::nouvelle(Box::new(canal), rx, 640, 480);
         drop(tx_img);
         source.resize(1281, 713).unwrap();
         assert_eq!(source.dimensions(), (1280, 720));
@@ -911,6 +918,346 @@ git commit -m "feat(d4): une rupture du canal ne tue pas la session avant expira
 
 ---
 
+### Task 3bis : Rattachement du canal après une rupture
+
+**Files:**
+- Modify: `agent/src/capteur/distante.rs`
+- Modify: `agent/src/capteur/reprise.rs`
+- Test: dans les deux fichiers
+
+**Interfaces:**
+- Produces: `trait Canal` (**renommage** de `Commandes`) avec `fn commander(&mut self, message: VersCapteur) -> Result<DepuisCapteur>` **et** `fn rattacher(&mut self) -> Result<Rattachee>` ; `struct Rattachee { pub images: Receiver<Recu>, pub largeur: u32, pub hauteur: u32 }` ; `FenetreCanal::peut_reessayer(&mut self, maintenant: Instant) -> bool` ; `PAS_RATTACHEMENT: Duration`.
+
+**Pourquoi cette tâche existe — un trou de conception, pas une extension.** La
+tâche 3 a livré une fenêtre qui **retarde** l'épuisement de 15 s. Elle ne
+**rattache rien** : `connecter()` (tâche 6) n'est appelée qu'une fois, au
+démarrage de l'enfant ; à la mort du capteur le fil lecteur sort, le `Receiver`
+se déconnecte définitivement, et rien n'ouvre jamais de tube vers le capteur
+relancé. Les sessions survivraient 15 s puis mourraient toutes — **le critère de
+réception n°2 échouerait**, et le recul d'isolation assumé au §3.6 de la
+conception ne serait compensé par rien.
+
+**Pourquoi le rattachement est injecté et non écrit dans le tube.** La décision
+de rattacher, d'attendre ou d'abandonner est exactement la logique qui décide
+si une session WebRTC meurt. Elle doit rester hors `#[cfg(windows)]` et
+testable sur l'hôte, comme le reste de `SourceDistante`. La tâche 6 fournira
+l'implémentation réelle du trait ; celle-ci n'écrit que la politique.
+
+- [ ] **Step 1 : Écrire les tests d'abord**
+
+Dans `agent/src/capteur/reprise.rs`, **ajouter** au module de tests existant :
+
+```rust
+    /// Le pas d'espacement existe parce que `next_frame` est appelée ~100
+    /// fois par seconde : sans lui, une rupture déclencherait 100 tentatives
+    /// de reconnexion par seconde et par fenêtre.
+    #[test]
+    fn les_essais_de_rattachement_sont_espaces() {
+        let mut fenetre = FenetreCanal::nouvelle();
+        let t0 = Instant::now();
+        assert!(!fenetre.rupture(t0));
+        assert!(fenetre.peut_reessayer(t0), "le premier essai est immédiat");
+        assert!(!fenetre.peut_reessayer(t0), "deux essais dans le même instant");
+        assert!(!fenetre.peut_reessayer(t0 + PAS_RATTACHEMENT / 2));
+        assert!(fenetre.peut_reessayer(t0 + PAS_RATTACHEMENT + Duration::from_millis(1)));
+    }
+
+    /// Un succès doit rendre le budget d'essais entier, pas seulement celui
+    /// d'expiration : une seconde rupture, plus tard, doit pouvoir réessayer
+    /// tout de suite.
+    #[test]
+    fn un_succes_rend_aussi_le_droit_de_reessayer_immediatement() {
+        let mut fenetre = FenetreCanal::nouvelle();
+        let t0 = Instant::now();
+        assert!(!fenetre.rupture(t0));
+        assert!(fenetre.peut_reessayer(t0));
+        fenetre.succes();
+        let t1 = t0 + Duration::from_millis(1);
+        assert!(!fenetre.rupture(t1));
+        assert!(fenetre.peut_reessayer(t1), "après un succès, le premier essai est immédiat");
+    }
+```
+
+Dans `agent/src/capteur/distante.rs`, **ajouter** au module de tests existant.
+Le canal factice gagne d'abord de quoi simuler un rattachement :
+
+```rust
+    /// Ce que le canal factice rendra au prochain `rattacher`. `None` = échec.
+    /// Une file, pour que les tests enchaînent échecs puis succès.
+    type ProchainsRattachements = std::sync::Arc<std::sync::Mutex<Vec<Option<u32>>>>;
+```
+
+et `CanalFactice` gagne deux champs — `rattachements: ProchainsRattachements`
+et `essais: std::sync::Arc<std::sync::Mutex<u32>>` — plus cette implémentation
+(le `u32` rendu est la largeur, pour que le test distingue la file neuve de
+l'ancienne) :
+
+```rust
+        fn rattacher(&mut self) -> anyhow::Result<Rattachee> {
+            *self.essais.lock().unwrap() += 1;
+            let prochain = {
+                let mut file = self.rattachements.lock().unwrap();
+                if file.is_empty() { None } else { file.remove(0) }
+            };
+            match prochain {
+                Some(largeur) => {
+                    let (tx, rx) = sync_channel(4);
+                    // Une image dans la file neuve : c'est elle qui prouvera
+                    // que la source lit bien le NOUVEAU canal.
+                    tx.send(Recu::Image(AccessUnit {
+                        data: vec![7],
+                        is_keyframe: true,
+                        pts_90k: 700,
+                    }))
+                    .unwrap();
+                    Ok(Rattachee { images: rx, largeur, hauteur: 480 })
+                }
+                None => anyhow::bail!("aucun capteur"),
+            }
+        }
+```
+
+Les tests :
+
+```rust
+    /// Le cœur du critère 2 : le capteur meurt, il est relancé, et la session
+    /// reprend — même file neuve, mêmes dimensions annoncées par le capteur.
+    #[test]
+    fn un_rattachement_reussi_fait_revivre_la_source_et_reprend_ses_dimensions() {
+        let (mut source, tx, _, rattachements, essais) = source_rattachable(vec![Some(1600)]);
+        drop(tx);
+        // Premier tour : rupture constatée, rattachement tenté et réussi.
+        assert!(source.next_frame().is_none(), "le tour de la rupture ne rend pas d'image");
+        assert_eq!(*essais.lock().unwrap(), 1);
+        assert!(rattachements.lock().unwrap().is_empty());
+        // Tour suivant : l'image vient de la file NEUVE.
+        let unite = source.next_frame().expect("la file neuve porte une image");
+        assert_eq!(unite.pts_90k, 700);
+        assert_eq!(source.dimensions(), (1600, 480), "les dimensions du capteur relancé");
+        assert!(!source.is_exhausted());
+        assert!(source.is_alive());
+    }
+
+    /// Un rattachement qui échoue ne conclut rien : la fenêtre court encore.
+    #[test]
+    fn un_rattachement_qui_echoue_laisse_la_source_en_attente_sans_l_epuiser() {
+        let (mut source, tx, _, _, essais) = source_rattachable(vec![None]);
+        drop(tx);
+        assert!(source.next_frame().is_none());
+        assert_eq!(*essais.lock().unwrap(), 1);
+        assert!(!source.is_exhausted(), "un échec de rattachement n'épuise pas");
+    }
+
+    /// Mais un échec qui dure au-delà de la fenêtre, si : sans cela une
+    /// session morte resterait ouverte indéfiniment sur une image figée.
+    #[test]
+    fn un_rattachement_qui_echoue_jusqu_a_expiration_epuise_la_source() {
+        let (mut source, tx, _, _, _) = source_rattachable(vec![None]);
+        drop(tx);
+        assert!(source.next_frame().is_none());
+        source.vieillir_pour_test(DUREE_FENETRE_CANAL + std::time::Duration::from_millis(1));
+        assert!(source.next_frame().is_none());
+        assert!(source.is_exhausted());
+    }
+
+    /// Sans espacement, une rupture provoquerait ~100 tentatives par seconde.
+    #[test]
+    fn une_rafale_d_interrogations_ne_produit_qu_un_seul_essai() {
+        let (mut source, tx, _, _, essais) = source_rattachable(vec![None, None, None, None]);
+        drop(tx);
+        for _ in 0..10 {
+            assert!(source.next_frame().is_none());
+        }
+        assert_eq!(*essais.lock().unwrap(), 1, "un seul essai dans la rafale");
+    }
+```
+
+avec l'aide de construction, à placer près de `source_avec` :
+
+```rust
+    #[allow(clippy::type_complexity)]
+    fn source_rattachable(
+        rattachements: Vec<Option<u32>>,
+    ) -> (
+        SourceDistante,
+        std::sync::mpsc::SyncSender<Recu>,
+        std::sync::Arc<std::sync::Mutex<Vec<VersCapteur>>>,
+        ProchainsRattachements,
+        std::sync::Arc<std::sync::Mutex<u32>>,
+    ) {
+        let (tx, rx) = sync_channel(4);
+        let recus = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let file = std::sync::Arc::new(std::sync::Mutex::new(rattachements));
+        let essais = std::sync::Arc::new(std::sync::Mutex::new(0));
+        let canal = CanalFactice {
+            reponses: Vec::new(),
+            recus: recus.clone(),
+            rattachements: file.clone(),
+            essais: essais.clone(),
+        };
+        (
+            SourceDistante::nouvelle(Box::new(canal), rx, 1280, 720),
+            tx,
+            recus,
+            file,
+            essais,
+        )
+    }
+```
+
+> Les constructions existantes de `CanalFactice` (dans `source_avec` et dans
+> les deux tests qui l'instancient à la main) gagnent les deux champs neufs.
+> **Ne pas dupliquer le corps de `source_avec`** : le faire déléguer à
+> `source_rattachable(Vec::new())` est acceptable et préférable.
+
+- [ ] **Step 2 : Lancer les tests pour vérifier qu'ils échouent**
+
+Run: `cd agent && cargo test capteur::`
+Expected: échec de compilation — `rattacher`, `Rattachee`, `peut_reessayer`
+et `PAS_RATTACHEMENT` n'existent pas.
+
+- [ ] **Step 3 : Écrire l'implémentation**
+
+Dans `agent/src/capteur/reprise.rs` :
+
+```rust
+/// Intervalle minimal entre deux tentatives de rattachement.
+///
+/// `next_frame` est appelée ~100 fois par seconde (`FRAME_INTERVAL` vaut
+/// 10 ms) : sans ce pas, une rupture provoquerait une centaine de tentatives
+/// d'ouverture de tube par seconde et par fenêtre. 250 ms laissent au
+/// superviseur le temps de relancer le capteur sans que la reprise traîne —
+/// au pire 250 ms de retard sur un rattachement possible, contre 15 s de
+/// budget total.
+pub const PAS_RATTACHEMENT: Duration = Duration::from_millis(250);
+```
+
+`FenetreCanal` gagne un champ et une méthode :
+
+```rust
+    /// Dernier essai de rattachement. `None` = aucun depuis le dernier
+    /// succès, donc le prochain est immédiat.
+    dernier_essai: Option<Instant>,
+```
+
+```rust
+    /// Vrai si un essai de rattachement est dû. À n'appeler qu'après une
+    /// `rupture` non expirée.
+    pub fn peut_reessayer(&mut self, maintenant: Instant) -> bool {
+        let du = match self.dernier_essai {
+            None => true,
+            Some(precedent) => maintenant.duration_since(precedent) > PAS_RATTACHEMENT,
+        };
+        if du {
+            self.dernier_essai = Some(maintenant);
+        }
+        du
+    }
+```
+
+et `succes()` remet **les deux** champs à zéro :
+
+```rust
+    pub fn succes(&mut self) {
+        self.ouverte_depuis = None;
+        self.dernier_essai = None;
+    }
+```
+
+> ⚠️ `vieillir_pour_test` doit faire vieillir `dernier_essai` **aussi**.
+>
+> **Correction d'une note fausse de la première rédaction**, relevée à la revue :
+> cette exigence n'est **pas** éprouvée par le test d'expiration, contrairement à
+> ce qui était écrit ici. Dans le bras `Disconnected`, `rupture` est évaluée
+> **avant** `peut_reessayer` et sort par un `return None` anticipé : après un
+> vieillissement au-delà de `DUREE_FENETRE_CANAL`, `peut_reessayer` n'est jamais
+> atteinte, et le test passerait à l'identique si le vieillissement de
+> `dernier_essai` était retiré. Le seul test qui l'éprouve est
+> `un_vieillissement_du_pas_seul_relance_un_essai`, qui vieillit **dans** la
+> fenêtre — au-delà de `PAS_RATTACHEMENT` seulement — et attend un second essai.
+
+Dans `agent/src/capteur/distante.rs` : `Commandes` est **renommé `Canal`** et
+gagne `rattacher`. Le nom `Commandes` deviendrait faux — un trait qui rouvre
+une connexion ne porte pas que des commandes.
+
+```rust
+/// Ce que l'enfant peut demander au capteur, et le moyen de s'y rattacher
+/// quand le canal se rompt.
+pub trait Canal {
+    fn commander(&mut self, message: VersCapteur) -> Result<DepuisCapteur>;
+    /// Rouvre un canal vers le capteur et s'y réattache. L'implémentation
+    /// remplace son propre état interne d'écriture ; elle rend la file
+    /// d'images neuve et les dimensions annoncées à l'attache.
+    fn rattacher(&mut self) -> Result<Rattachee>;
+}
+
+/// Le fruit d'un rattachement réussi.
+pub struct Rattachee {
+    pub images: Receiver<Recu>,
+    pub largeur: u32,
+    pub hauteur: u32,
+}
+```
+
+Le bras `Disconnected` de `next_frame` devient :
+
+```rust
+                Err(TryRecvError::Disconnected) => {
+                    let maintenant = Instant::now();
+                    if self.fenetre.rupture(maintenant) {
+                        // La fenêtre est expirée : l'épuisement est acquis.
+                        self.epuisee = true;
+                        return None;
+                    }
+                    if self.fenetre.peut_reessayer(maintenant) {
+                        match self.canal.rattacher() {
+                            Ok(Rattachee { images, largeur, hauteur }) => {
+                                tracing::info!(largeur, hauteur, "canal rattaché au capteur");
+                                self.images = images;
+                                self.largeur = largeur;
+                                self.hauteur = hauteur;
+                                self.vivante = true;
+                                self.epuisee = false;
+                                self.fenetre.succes();
+                            }
+                            // Journalisé en `debug!` et non `info!` : au pas
+                            // de 250 ms sur une fenêtre de 15 s, un capteur
+                            // durablement absent produirait 60 lignes par
+                            // fenêtre et par session.
+                            Err(erreur) => tracing::debug!(%erreur, "rattachement refusé"),
+                        }
+                    }
+                    return None;
+                }
+```
+
+> ⚠️ **Le tour du rattachement ne rend pas d'image**, même réussi : `return
+> None` est délibéré et les tests l'encodent. Le tour suivant lira la file
+> neuve, 10 ms plus tard.
+
+Renommer enfin le champ `commandes` en `canal` et son type en
+`Box<dyn Canal + Send>`, dans la structure, dans `nouvelle` et dans
+`commander_simple`.
+
+- [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
+
+Run: `cd agent && cargo test capteur::`
+Expected: 8 (`protocole`) + 14 (`distante`) + 5 (`reprise`) = **27 tests**.
+
+- [ ] **Step 5 : Vérifier la compilation croisée Windows**
+
+Run: `cd agent && cargo check --target x86_64-pc-windows-gnu`
+Expected: sortie 0.
+
+- [ ] **Step 6 : Commit**
+
+```bash
+git add agent/src/capteur/distante.rs agent/src/capteur/reprise.rs
+git commit -m "feat(d4): rattacher le canal au capteur relance, sans quoi la reprise ne reprend rien"
+```
+
+---
+
 ### Task 4 : L'horloge commune aux deux processus
 
 **Files:**
@@ -1268,10 +1615,15 @@ use std::io::{BufReader, BufWriter};
 use std::sync::mpsc::{channel, Sender};
 
 use anyhow::{bail, Context, Result};
-use windows::Win32::Foundation::HANDLE;
+use windows::Win32::Foundation::{CloseHandle, ERROR_PIPE_CONNECTED, HANDLE};
+// ⚠️ `PIPE_ACCESS_DUPLEX` vit dans `Storage::FileSystem` et NON dans
+// `System::Pipes` en windows-rs 0.62 — vérifié dans les sources du crate.
+// La feature `Win32_Storage_FileSystem` est déjà activée, employée par
+// `moniteurs_virtuels/pilote.rs`.
+use windows::Win32::Storage::FileSystem::PIPE_ACCESS_DUPLEX;
 use windows::Win32::System::Pipes::{
-    ConnectNamedPipe, CreateNamedPipeW, PIPE_ACCESS_DUPLEX, PIPE_READMODE_BYTE,
-    PIPE_TYPE_BYTE, PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
+    ConnectNamedPipe, CreateNamedPipeW, PIPE_READMODE_BYTE, PIPE_TYPE_BYTE,
+    PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
 };
 
 use crate::capteur::fenetre::servir_une_fenetre;
@@ -1285,19 +1637,39 @@ const TAMPON: u32 = 1024 * 1024;
 pub fn servir() -> Result<()> {
     loop {
         // Une instance NEUVE par client. `PIPE_UNLIMITED_INSTANCES` autorise
-        // autant d'instances simultanées que de fenêtres.
+        // autant d'instances simultanées que de fenêtres — et c'est vrai
+        // parce que `accueillir` est déportée sur son propre fil ci-dessous :
+        // cette boucle revient écouter tout de suite.
         let tube = creer_instance().context("création d'une instance de tube")?;
 
         // Bloque jusqu'à ce qu'un enfant se connecte.
-        unsafe { ConnectNamedPipe(tube, None) }.context("attente d'un enfant")?;
-
-        match accueillir(tube) {
-            Ok(()) => {}
-            // Une attache ratée ne fait PAS tomber le serveur : les autres
-            // fenêtres continuent. C'est tout l'intérêt d'avoir un capteur
-            // qui survit à ses fenêtres.
-            Err(erreur) => tracing::warn!(%erreur, "attache d'un enfant refusée"),
+        //
+        // ⚠️ `ERROR_PIPE_CONNECTED` est un SUCCÈS, pas une erreur : l'enfant
+        // s'est connecté dans l'intervalle entre `CreateNamedPipeW` et cet
+        // appel, et le tube est bel et bien connecté. Le passer par `?`
+        // ferait mourir le processus capteur — donc TOUTES les fenêtres —
+        // sur une course banale. (Ronde de correction de la tâche 5.)
+        if let Err(erreur) = unsafe { ConnectNamedPipe(tube, None) } {
+            if erreur.code() != ERROR_PIPE_CONNECTED.to_hresult() {
+                // Un échec RÉEL ne fait pas non plus tomber le serveur : on
+                // referme l'instance — sinon le handle fuit — et on reboucle.
+                tracing::warn!(%erreur, "connexion d'un enfant échouée");
+                let _ = unsafe { CloseHandle(tube) };
+                continue;
+            }
         }
+
+        // Déportée sur son propre fil, DÉTACHÉ : `accueillir` lit la trame
+        // d'attache en bloquant, et un enfant qui se connecterait sans jamais
+        // l'envoyer bloquerait sinon l'accueil de toutes les autres fenêtres.
+        std::thread::spawn(move || {
+            if let Err(erreur) = accueillir(tube) {
+                // Une attache ratée ne fait PAS tomber le serveur : les autres
+                // fenêtres continuent. C'est tout l'intérêt d'avoir un capteur
+                // qui survit à ses fenêtres.
+                tracing::warn!(%erreur, "attache d'un enfant refusée");
+            }
+        });
     }
 }
 
@@ -1514,28 +1886,58 @@ pub fn connecter(
     debit: u32,
     clock_origin: Instant,
 ) -> Result<SourceDistante> {
-    let fichier = ouvrir_avec_patience()?;
+    let signalement = Signalement {
+        session: session.to_string(),
+        hwnd,
+        sortie: sortie.to_string(),
+        fps,
+        debit,
+        clock_origin,
+    };
+    // La PREMIÈRE ouverture est patiente : l'enfant peut démarrer avant que le
+    // capteur n'ait ouvert son tube. Les réouvertures de `rattacher`, elles,
+    // ne le sont pas — elles courent depuis la boucle de transport.
+    let attachee = attacher_sur(ouvrir_avec_patience()?, &signalement)?;
+    let (largeur, hauteur) = (attachee.largeur, attachee.hauteur);
+    Ok(SourceDistante::nouvelle(
+        Box::new(CanalTube {
+            ecrivain: Mutex::new(attachee.ecrivain),
+            reponses: attachee.reponses,
+            signalement,
+        }),
+        attachee.images,
+        largeur,
+        hauteur,
+    ))
+}
+
+/// Envoie l'attache sur un tube déjà ouvert, lit la réponse, et démarre le fil
+/// répartiteur. **Partagée par `connecter` et `rattacher`** : les deux ne
+/// doivent pas porter deux copies de cette séquence.
+fn attacher_sur(fichier: std::fs::File, signalement: &Signalement) -> Result<Attachee> {
     let mut ecrivain = BufWriter::new(fichier.try_clone().context("clone du tube en écriture")?);
     let mut lecteur = BufReader::new(fichier);
 
     // `clock_origin` a été créée par `demarrage.rs` AVANT cet appel — la
-    // connexion peut avoir attendu le capteur plusieurs secondes. Lire QPC
-    // maintenant et l'envoyer tel quel décalerait la vidéo de tout cet écart
-    // par rapport à l'audio, qui partage `clock_origin`. On CORRIGE donc de
-    // l'écoulé, ce qui rend l'origine exacte quelle que soit l'attente.
+    // connexion peut avoir attendu le capteur plusieurs secondes, et un
+    // rattachement survient bien plus tard encore. Lire QPC maintenant et
+    // l'envoyer tel quel décalerait la vidéo de tout cet écart par rapport à
+    // l'audio, qui partage `clock_origin`. On CORRIGE donc de l'écoulé, ce
+    // qui rend l'origine exacte à chaque attache.
     let frequence = crate::capteur::horloge::frequence_qpc()?;
-    let ecoule_tics = (clock_origin.elapsed().as_nanos() * frequence as u128 / 1_000_000_000)
+    let ecoule_tics = (signalement.clock_origin.elapsed().as_nanos() * frequence as u128
+        / 1_000_000_000)
         .min(i64::MAX as u128) as i64;
     let origine_qpc = lire_qpc().context("lecture de QPC avant l'attache")? - ecoule_tics;
 
     ecrire_json(
         &mut ecrivain,
         &VersCapteur::Attache {
-            session: session.to_string(),
-            hwnd,
-            sortie: sortie.to_string(),
-            fps,
-            debit,
+            session: signalement.session.clone(),
+            hwnd: signalement.hwnd,
+            sortie: signalement.sortie.clone(),
+            fps: signalement.fps,
+            debit: signalement.debit,
             origine_qpc,
         },
     )?;
@@ -1544,25 +1946,31 @@ pub fn connecter(
     let (largeur, hauteur) = match lire_trame(&mut lecteur).context("réponse à l'attache")? {
         Trame::Json(octets) => match serde_json::from_slice::<DepuisCapteur>(&octets)? {
             DepuisCapteur::Attachee { largeur, hauteur } => (largeur, hauteur),
-            // Un refus fait échouer le démarrage BRUYAMMENT : sans cela
-            // l'enfant attendrait une image qui ne viendra jamais.
+            // Un refus fait échouer l'attache BRUYAMMENT : sans cela l'enfant
+            // attendrait une image qui ne viendra jamais.
             DepuisCapteur::Refus { motif } => bail!("le capteur a refusé l'attache : {motif}"),
             autre => bail!("réponse inattendue à l'attache : {autre:?}"),
         },
         Trame::Image(_) => bail!("le capteur a répondu une image à l'attache"),
     };
-    tracing::info!(%session, %sortie, largeur, hauteur, "attaché au capteur");
+    tracing::info!(
+        session = %signalement.session,
+        sortie = %signalement.sortie,
+        largeur, hauteur,
+        "attaché au capteur"
+    );
 
     let (tx_images, rx_images) = sync_channel::<Recu>(CAPACITE_FILE);
     let (tx_reponses, rx_reponses) = channel::<DepuisCapteur>();
     std::thread::spawn(move || repartir_les_trames(lecteur, tx_images, tx_reponses));
 
-    Ok(SourceDistante::nouvelle(
-        Box::new(CanalTube { ecrivain: Mutex::new(ecrivain), reponses: rx_reponses }),
-        rx_images,
+    Ok(Attachee {
+        ecrivain,
+        reponses: rx_reponses,
+        images: rx_images,
         largeur,
         hauteur,
-    ))
+    })
 }
 
 /// Réessaie la connexion dans une fenêtre bornée : l'enfant peut démarrer
@@ -1620,14 +2028,70 @@ fn repartir_les_trames<R: std::io::Read>(
 }
 
 struct CanalTube {
-    /// `Mutex` et non `&mut` : `Commandes::commander` prend `&mut self`, mais
+    /// `Mutex` et non `&mut` : `Canal::commander` prend `&mut self`, mais
     /// l'écrivain est aussi le seul point d'écriture du tube et rien ne promet
     /// qu'il restera consulté depuis un seul fil.
     ecrivain: Mutex<BufWriter<std::fs::File>>,
     reponses: Receiver<DepuisCapteur>,
+    /// De quoi se réattacher à un capteur relancé. Retenu à la connexion :
+    /// au moment de la rupture, plus rien d'autre ne porte ces valeurs.
+    signalement: Signalement,
 }
 
-impl Commandes for CanalTube {
+/// Ce qu'il faut redire au capteur pour se réattacher.
+///
+/// `clock_origin` est retenue et NON figée en tics QPC : chaque attache
+/// recalcule `origine_qpc` à partir d'elle, de sorte que l'origine reste
+/// exacte quel que soit le temps écoulé depuis le démarrage de l'enfant.
+struct Signalement {
+    session: String,
+    hwnd: u64,
+    sortie: String,
+    fps: u32,
+    debit: u32,
+    clock_origin: Instant,
+}
+
+/// Le fruit d'une attache réussie, côté enfant.
+struct Attachee {
+    ecrivain: BufWriter<std::fs::File>,
+    reponses: Receiver<DepuisCapteur>,
+    images: Receiver<Recu>,
+    largeur: u32,
+    hauteur: u32,
+}
+
+impl Canal for CanalTube {
+    /// Rouvre un tube vers le capteur (relancé par le superviseur) et
+    /// réémet l'attache. Remplace l'écrivain et le canal de réponses de
+    /// CE `CanalTube`, et rend la file d'images neuve.
+    ///
+    /// **Sans cette méthode, la fenêtre de reprise de `SourceDistante` ne
+    /// ferait que retarder la mort des sessions de 15 s** : rien d'autre
+    /// n'ouvre jamais un second tube. Voir la tâche 3bis.
+    ///
+    /// Une seule tentative, sans patience interne : c'est `SourceDistante`
+    /// qui tient le budget et l'espacement (`PAS_RATTACHEMENT`). Ouvrir le
+    /// tube directement par `OpenOptions`, PAS par `ouvrir_avec_patience`,
+    /// qui bloquerait la boucle de transport jusqu'à 15 s.
+    fn rattacher(&mut self) -> Result<Rattachee> {
+        let fichier = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(NOM_TUBE)
+            .context("réouverture du tube du capteur")?;
+        let attachee = attacher_sur(fichier, &self.signalement)?;
+        // Remplacer l'état d'écriture de CE canal : l'ancien pointe sur un
+        // tube mort, et `commander` l'emploierait encore.
+        self.ecrivain = Mutex::new(attachee.ecrivain);
+        self.reponses = attachee.reponses;
+        Ok(Rattachee {
+            images: attachee.images,
+            largeur: attachee.largeur,
+            hauteur: attachee.hauteur,
+        })
+    }
+
     fn commander(&mut self, message: VersCapteur) -> Result<DepuisCapteur> {
         {
             let mut ecrivain = self
