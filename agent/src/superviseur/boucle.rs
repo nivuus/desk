@@ -8,8 +8,9 @@
 
 use anyhow::Result;
 
-use super::enfants::{Consigne, Enfants, Lanceur};
+use super::enfants::{Consigne, Enfants};
 use super::hook;
+use super::lanceur::LanceurDeProcessus;
 use super::placement;
 use super::protocole::{DepuisLaShell, VersLaShell};
 use super::table::{Effet, IdSession, Table};
@@ -91,7 +92,7 @@ const PAS_RATTACHEMENT: std::time::Duration = std::time::Duration::from_millis(1
 
 pub fn tourner(
     pilote: &PiloteParIoctl,
-    lanceur: &dyn Lanceur,
+    lanceur: &LanceurDeProcessus,
     rx_hook: std::sync::mpsc::Receiver<hook::EvenementFenetre>,
     rx_shell: std::sync::mpsc::Receiver<DepuisLaShell>,
     envoyer: impl Fn(&VersLaShell),
@@ -99,6 +100,9 @@ pub fn tourner(
     let mut sorties = Sorties::nouvelles(pilote);
     let mut enfants = Enfants::nouveaux(lanceur);
     let mut table = Table::nouvelle(CAPACITE);
+
+    // Le capteur, avant la moindre fenêtre — voir `capteur::EtatCapteur`.
+    let mut etat_capteur = capteur::EtatCapteur::demarrer(lanceur)?;
     // Sorties DXGI déjà attribuées, pour que deux fenêtres au même viewport ne
     // se voient pas donner la même. La table porte déjà la correspondance
     // session -> sortie ; ceci n'est que l'ensemble des sorties occupées, par
@@ -204,6 +208,9 @@ pub fn tourner(
         for session in enfants.morts() {
             effets.extend(table.enfant_mort(&session));
         }
+
+        // 5bis. Le capteur, même tour que les enfants — voir `capteur::EtatCapteur::surveiller`.
+        etat_capteur.surveiller(lanceur);
 
         // 6. Les fenêtres sont-elles encore sur leur sortie ?
         //
@@ -483,3 +490,9 @@ fn rendre_la_sortie(
 // raison et même schéma que `superviseur/table/attribution.rs`.
 mod placement_periodique;
 use placement_periodique::{controler_le_placement, replacer_si_besoin};
+
+// Lancement et surveillance du capteur (tâche 7 du sous-bloc D4) : extrait
+// côté production, pour la même raison et le même schéma que
+// `placement_periodique` ci-dessus — ce fichier était déjà à 485 lignes,
+// marge 15, avant cette tâche.
+mod capteur;
