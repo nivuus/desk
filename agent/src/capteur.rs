@@ -7,5 +7,6 @@
 //! DXGI et les tubes est gaté.
 
 pub mod distante;
+pub mod horloge;
 pub mod protocole;
 pub mod reprise;
