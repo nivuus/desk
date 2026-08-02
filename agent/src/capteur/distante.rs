@@ -2,7 +2,7 @@
 //!
 //! **Pas de `#[cfg(windows)]`** : le tube réel est gaté (`capteur/tube.rs`),
 //! mais la décision de clore ou non une session vit ici, et c'est la pièce la
-//! plus coûteuse à se tromper. Elle est donc écrite contre un `Commandes`
+//! plus coûteuse à se tromper. Elle est donc écrite contre un `Canal`
 //! injecté et un `Receiver`, tous deux triviaux à simuler sur l'hôte.
 
 use std::sync::mpsc::{Receiver, TryRecvError};
@@ -15,9 +15,21 @@ use crate::capteur::reprise::FenetreCanal;
 use crate::h264::AccessUnit;
 use crate::source::VideoSource;
 
-/// Ce que l'enfant peut demander au capteur, en requête/réponse.
-pub trait Commandes {
+/// Ce que l'enfant peut demander au capteur, et le moyen de s'y rattacher
+/// quand le canal se rompt.
+pub trait Canal {
     fn commander(&mut self, message: VersCapteur) -> Result<DepuisCapteur>;
+    /// Rouvre un canal vers le capteur et s'y réattache. L'implémentation
+    /// remplace son propre état interne d'écriture ; elle rend la file
+    /// d'images neuve et les dimensions annoncées à l'attache.
+    fn rattacher(&mut self) -> Result<Rattachee>;
+}
+
+/// Le fruit d'un rattachement réussi.
+pub struct Rattachee {
+    pub images: Receiver<Recu>,
+    pub largeur: u32,
+    pub hauteur: u32,
 }
 
 /// Ce que le capteur pousse, non sollicité.
@@ -28,7 +40,7 @@ pub enum Recu {
 }
 
 pub struct SourceDistante {
-    commandes: Box<dyn Commandes + Send>,
+    canal: Box<dyn Canal + Send>,
     images: Receiver<Recu>,
     largeur: u32,
     hauteur: u32,
@@ -42,13 +54,13 @@ pub struct SourceDistante {
 
 impl SourceDistante {
     pub fn nouvelle(
-        commandes: Box<dyn Commandes + Send>,
+        canal: Box<dyn Canal + Send>,
         images: Receiver<Recu>,
         largeur: u32,
         hauteur: u32,
     ) -> Self {
         Self {
-            commandes,
+            canal,
             images,
             largeur,
             hauteur,
@@ -60,7 +72,7 @@ impl SourceDistante {
 
     /// Émet une commande et n'accepte que `Fait` comme succès.
     fn commander_simple(&mut self, message: VersCapteur) -> Result<()> {
-        match self.commandes.commander(message)? {
+        match self.canal.commander(message)? {
             DepuisCapteur::Fait => Ok(()),
             DepuisCapteur::Erreur { motif } => bail!("le capteur a refusé : {motif}"),
             autre => bail!("réponse inattendue du capteur : {autre:?}"),
@@ -96,11 +108,32 @@ impl VideoSource for SourceDistante {
                     self.fenetre.succes();
                     return None;
                 }
-                // Le canal est rompu. Ce n'est PAS traité ici comme un
-                // épuisement : la tâche 3 y branche la fenêtre de reprise.
+                // Le canal est rompu. La fenêtre de reprise borne combien de
+                // temps la source reste vivante en attendant un rattachement.
                 Err(TryRecvError::Disconnected) => {
-                    if self.fenetre.rupture(Instant::now()) {
+                    let maintenant = Instant::now();
+                    if self.fenetre.rupture(maintenant) {
+                        // La fenêtre est expirée : l'épuisement est acquis.
                         self.epuisee = true;
+                        return None;
+                    }
+                    if self.fenetre.peut_reessayer(maintenant) {
+                        match self.canal.rattacher() {
+                            Ok(Rattachee { images, largeur, hauteur }) => {
+                                tracing::info!(largeur, hauteur, "canal rattaché au capteur");
+                                self.images = images;
+                                self.largeur = largeur;
+                                self.hauteur = hauteur;
+                                self.vivante = true;
+                                self.epuisee = false;
+                                self.fenetre.succes();
+                            }
+                            // Journalisé en `debug!` et non `info!` : au pas
+                            // de 250 ms sur une fenêtre de 15 s, un capteur
+                            // durablement absent produirait 60 lignes par
+                            // fenêtre et par session.
+                            Err(erreur) => tracing::debug!(%erreur, "rattachement refusé"),
+                        }
                     }
                     return None;
                 }
@@ -122,7 +155,7 @@ impl VideoSource for SourceDistante {
 
     fn resize(&mut self, width: u32, height: u32) -> Result<()> {
         match self
-            .commandes
+            .canal
             .commander(VersCapteur::Redimensionner { largeur: width, hauteur: height })?
         {
             // La taille RETENUE est celle obtenue, jamais celle demandée : le
@@ -154,7 +187,12 @@ impl VideoSource for SourceDistante {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::capteur::reprise::DUREE_FENETRE_CANAL;
     use std::sync::mpsc::sync_channel;
+
+    /// Ce que le canal factice rendra au prochain `rattacher`. `None` = échec.
+    /// Une file, pour que les tests enchaînent échecs puis succès.
+    type ProchainsRattachements = std::sync::Arc<std::sync::Mutex<Vec<Option<u32>>>>;
 
     /// Canal factice : rend des réponses préparées et retient ce qui a été
     /// demandé, pour que les tests vérifient le message ÉMIS et pas seulement
@@ -162,9 +200,11 @@ mod tests {
     struct CanalFactice {
         reponses: Vec<anyhow::Result<DepuisCapteur>>,
         recus: std::sync::Arc<std::sync::Mutex<Vec<VersCapteur>>>,
+        rattachements: ProchainsRattachements,
+        essais: std::sync::Arc<std::sync::Mutex<u32>>,
     }
 
-    impl Commandes for CanalFactice {
+    impl Canal for CanalFactice {
         fn commander(&mut self, message: VersCapteur) -> anyhow::Result<DepuisCapteur> {
             self.recus.lock().unwrap().push(message);
             if self.reponses.is_empty() {
@@ -173,19 +213,72 @@ mod tests {
                 self.reponses.remove(0)
             }
         }
+
+        fn rattacher(&mut self) -> anyhow::Result<Rattachee> {
+            *self.essais.lock().unwrap() += 1;
+            let prochain = {
+                let mut file = self.rattachements.lock().unwrap();
+                if file.is_empty() { None } else { file.remove(0) }
+            };
+            match prochain {
+                Some(largeur) => {
+                    let (tx, rx) = sync_channel(4);
+                    // Une image dans la file neuve : c'est elle qui prouvera
+                    // que la source lit bien le NOUVEAU canal.
+                    tx.send(Recu::Image(AccessUnit {
+                        data: vec![7],
+                        is_keyframe: true,
+                        pts_90k: 700,
+                    }))
+                    .unwrap();
+                    Ok(Rattachee { images: rx, largeur, hauteur: 480 })
+                }
+                None => anyhow::bail!("aucun capteur"),
+            }
+        }
     }
 
+    /// `_capacite` est conservée pour ne pas changer la signature appelée par
+    /// les tests existants, mais `source_rattachable` fixe la sienne à 4 —
+    /// ce qui couvre tous les usages actuels de `source_avec`.
     fn source_avec(
-        capacite: usize,
+        _capacite: usize,
     ) -> (
         SourceDistante,
         std::sync::mpsc::SyncSender<Recu>,
         std::sync::Arc<std::sync::Mutex<Vec<VersCapteur>>>,
     ) {
-        let (tx, rx) = sync_channel(capacite);
+        let (source, tx, recus, _, _) = source_rattachable(Vec::new());
+        (source, tx, recus)
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn source_rattachable(
+        rattachements: Vec<Option<u32>>,
+    ) -> (
+        SourceDistante,
+        std::sync::mpsc::SyncSender<Recu>,
+        std::sync::Arc<std::sync::Mutex<Vec<VersCapteur>>>,
+        ProchainsRattachements,
+        std::sync::Arc<std::sync::Mutex<u32>>,
+    ) {
+        let (tx, rx) = sync_channel(4);
         let recus = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-        let canal = CanalFactice { reponses: Vec::new(), recus: recus.clone() };
-        (SourceDistante::nouvelle(Box::new(canal), rx, 1280, 720), tx, recus)
+        let file = std::sync::Arc::new(std::sync::Mutex::new(rattachements));
+        let essais = std::sync::Arc::new(std::sync::Mutex::new(0));
+        let canal = CanalFactice {
+            reponses: Vec::new(),
+            recus: recus.clone(),
+            rattachements: file.clone(),
+            essais: essais.clone(),
+        };
+        (
+            SourceDistante::nouvelle(Box::new(canal), rx, 1280, 720),
+            tx,
+            recus,
+            file,
+            essais,
+        )
     }
 
     #[test]
@@ -271,6 +364,8 @@ mod tests {
         let canal = CanalFactice {
             reponses: vec![Ok(DepuisCapteur::Taille { largeur: 1280, hauteur: 720 })],
             recus: recus.clone(),
+            rattachements: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
+            essais: std::sync::Arc::new(std::sync::Mutex::new(0)),
         };
         let mut source = SourceDistante::nouvelle(Box::new(canal), rx, 640, 480);
         drop(tx_img);
@@ -284,6 +379,8 @@ mod tests {
         let canal = CanalFactice {
             reponses: vec![Ok(DepuisCapteur::Erreur { motif: "encodeur perdu".into() })],
             recus: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
+            rattachements: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
+            essais: std::sync::Arc::new(std::sync::Mutex::new(0)),
         };
         let mut source = SourceDistante::nouvelle(Box::new(canal), rx, 1280, 720);
         let erreur = source.set_bitrate(1).unwrap_err().to_string();
@@ -311,5 +408,56 @@ mod tests {
         source.vieillir_pour_test(crate::capteur::reprise::DUREE_FENETRE_CANAL + std::time::Duration::from_millis(1));
         assert!(source.next_frame().is_none());
         assert!(source.is_exhausted());
+    }
+
+    /// Le cœur du critère 2 : le capteur meurt, il est relancé, et la session
+    /// reprend — même file neuve, mêmes dimensions annoncées par le capteur.
+    #[test]
+    fn un_rattachement_reussi_fait_revivre_la_source_et_reprend_ses_dimensions() {
+        let (mut source, tx, _, rattachements, essais) = source_rattachable(vec![Some(1600)]);
+        drop(tx);
+        // Premier tour : rupture constatée, rattachement tenté et réussi.
+        assert!(source.next_frame().is_none(), "le tour de la rupture ne rend pas d'image");
+        assert_eq!(*essais.lock().unwrap(), 1);
+        assert!(rattachements.lock().unwrap().is_empty());
+        // Tour suivant : l'image vient de la file NEUVE.
+        let unite = source.next_frame().expect("la file neuve porte une image");
+        assert_eq!(unite.pts_90k, 700);
+        assert_eq!(source.dimensions(), (1600, 480), "les dimensions du capteur relancé");
+        assert!(!source.is_exhausted());
+        assert!(source.is_alive());
+    }
+
+    /// Un rattachement qui échoue ne conclut rien : la fenêtre court encore.
+    #[test]
+    fn un_rattachement_qui_echoue_laisse_la_source_en_attente_sans_l_epuiser() {
+        let (mut source, tx, _, _, essais) = source_rattachable(vec![None]);
+        drop(tx);
+        assert!(source.next_frame().is_none());
+        assert_eq!(*essais.lock().unwrap(), 1);
+        assert!(!source.is_exhausted(), "un échec de rattachement n'épuise pas");
+    }
+
+    /// Mais un échec qui dure au-delà de la fenêtre, si : sans cela une
+    /// session morte resterait ouverte indéfiniment sur une image figée.
+    #[test]
+    fn un_rattachement_qui_echoue_jusqu_a_expiration_epuise_la_source() {
+        let (mut source, tx, _, _, _) = source_rattachable(vec![None]);
+        drop(tx);
+        assert!(source.next_frame().is_none());
+        source.vieillir_pour_test(DUREE_FENETRE_CANAL + std::time::Duration::from_millis(1));
+        assert!(source.next_frame().is_none());
+        assert!(source.is_exhausted());
+    }
+
+    /// Sans espacement, une rupture provoquerait ~100 tentatives par seconde.
+    #[test]
+    fn une_rafale_d_interrogations_ne_produit_qu_un_seul_essai() {
+        let (mut source, tx, _, _, essais) = source_rattachable(vec![None, None, None, None]);
+        drop(tx);
+        for _ in 0..10 {
+            assert!(source.next_frame().is_none());
+        }
+        assert_eq!(*essais.lock().unwrap(), 1, "un seul essai dans la rafale");
     }
 }

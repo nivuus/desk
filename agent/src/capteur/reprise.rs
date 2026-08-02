@@ -20,12 +20,25 @@ use std::time::{Duration, Instant};
 /// asymétrique, d'où le choix d'une valeur large.
 pub const DUREE_FENETRE_CANAL: Duration = Duration::from_secs(15);
 
+/// Intervalle minimal entre deux tentatives de rattachement.
+///
+/// `next_frame` est appelée ~100 fois par seconde (`FRAME_INTERVAL` vaut
+/// 10 ms) : sans ce pas, une rupture provoquerait une centaine de tentatives
+/// d'ouverture de tube par seconde et par fenêtre. 250 ms laissent au
+/// superviseur le temps de relancer le capteur sans que la reprise traîne —
+/// au pire 250 ms de retard sur un rattachement possible, contre 15 s de
+/// budget total.
+pub const PAS_RATTACHEMENT: Duration = Duration::from_millis(250);
+
 /// Fenêtre ouverte à la première rupture et **refermée par le premier
 /// succès**. La durée court donc depuis la DERNIÈRE rupture constatée après un
 /// succès, jamais depuis la première de la session.
 #[derive(Debug, Default)]
 pub struct FenetreCanal {
     ouverte_depuis: Option<Instant>,
+    /// Dernier essai de rattachement. `None` = aucun depuis le dernier
+    /// succès, donc le prochain est immédiat.
+    dernier_essai: Option<Instant>,
 }
 
 impl FenetreCanal {
@@ -45,16 +58,33 @@ impl FenetreCanal {
         }
     }
 
+    /// Vrai si un essai de rattachement est dû. À n'appeler qu'après une
+    /// `rupture` non expirée.
+    pub fn peut_reessayer(&mut self, maintenant: Instant) -> bool {
+        let du = match self.dernier_essai {
+            None => true,
+            Some(precedent) => maintenant.duration_since(precedent) > PAS_RATTACHEMENT,
+        };
+        if du {
+            self.dernier_essai = Some(maintenant);
+        }
+        du
+    }
+
     /// À appeler dès qu'une lecture aboutit : la fenêtre se referme et le
     /// budget repart entier pour une rupture ultérieure.
     pub fn succes(&mut self) {
         self.ouverte_depuis = None;
+        self.dernier_essai = None;
     }
 
     #[cfg(test)]
     pub fn vieillir_pour_test(&mut self, ecart: Duration) {
         if let Some(debut) = self.ouverte_depuis {
             self.ouverte_depuis = Some(debut - ecart);
+        }
+        if let Some(dernier) = self.dernier_essai {
+            self.dernier_essai = Some(dernier - ecart);
         }
     }
 }
@@ -91,5 +121,34 @@ mod tests {
         assert!(!fenetre.rupture(t1), "la fenêtre doit repartir de zéro");
         assert!(!fenetre.rupture(t1 + DUREE_FENETRE_CANAL / 2));
         assert!(fenetre.rupture(t1 + DUREE_FENETRE_CANAL + Duration::from_millis(1)));
+    }
+
+    /// Le pas d'espacement existe parce que `next_frame` est appelée ~100
+    /// fois par seconde : sans lui, une rupture déclencherait 100 tentatives
+    /// de reconnexion par seconde et par fenêtre.
+    #[test]
+    fn les_essais_de_rattachement_sont_espaces() {
+        let mut fenetre = FenetreCanal::nouvelle();
+        let t0 = Instant::now();
+        assert!(!fenetre.rupture(t0));
+        assert!(fenetre.peut_reessayer(t0), "le premier essai est immédiat");
+        assert!(!fenetre.peut_reessayer(t0), "deux essais dans le même instant");
+        assert!(!fenetre.peut_reessayer(t0 + PAS_RATTACHEMENT / 2));
+        assert!(fenetre.peut_reessayer(t0 + PAS_RATTACHEMENT + Duration::from_millis(1)));
+    }
+
+    /// Un succès doit rendre le budget d'essais entier, pas seulement celui
+    /// d'expiration : une seconde rupture, plus tard, doit pouvoir réessayer
+    /// tout de suite.
+    #[test]
+    fn un_succes_rend_aussi_le_droit_de_reessayer_immediatement() {
+        let mut fenetre = FenetreCanal::nouvelle();
+        let t0 = Instant::now();
+        assert!(!fenetre.rupture(t0));
+        assert!(fenetre.peut_reessayer(t0));
+        fenetre.succes();
+        let t1 = t0 + Duration::from_millis(1);
+        assert!(!fenetre.rupture(t1));
+        assert!(fenetre.peut_reessayer(t1), "après un succès, le premier essai est immédiat");
     }
 }
