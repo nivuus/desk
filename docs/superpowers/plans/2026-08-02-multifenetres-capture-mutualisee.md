@@ -2424,6 +2424,189 @@ git commit -m "recette(d4): resultats des trois criteres, et mise a jour de CLAU
 
 ---
 
+### Task 10 : Une connexion par sens
+
+**Files:**
+- Modify: `agent/src/capteur/protocole.rs`, `agent/src/capteur/serveur.rs`, `agent/src/capteur/fenetre.rs`, `agent/src/capteur/tube.rs`
+
+**Pourquoi cette tâche existe.** La recette (tâche 9) a établi, par expérience
+différentielle sur le même binaire à une variable près, que **l'écriture du
+capteur sur le tube n'aboutit pas tant que son fil lecteur de commandes a une
+lecture bloquante pendante sur la même instance de tube**. Empêcher ce fil
+d'entrer en lecture fait aboutir l'attache des deux côtés en **34 µs**, passer
+l'ICE à `connected`, et arriver de vraies images H.264 1280×720. Aucun des trois
+critères de réception n'était atteignable sans cela.
+
+⚠️ **Le mécanisme reste inconnu** — l'hypothèse de la sérialisation des E/S sur
+un objet fichier synchrone Windows est *contrariée* par une observation côté
+enfant, et la recette a eu raison de ne pas conclure. **Cette tâche ne prétend
+pas l'expliquer : elle rend la situation impossible.**
+
+**Le principe : aucun objet fichier ne porte jamais une lecture et une écriture
+concurrentes.** Deux connexions par fenêtre, et une discipline de fil à chaque
+bout.
+
+| Connexion | Capteur | Enfant | Concurrence |
+| --- | --- | --- | --- |
+| **A — média** | écrit seulement (fil de fenêtre) | lit seulement (fil répartiteur) | aucune : un seul sens par bout |
+| **B — commandes** | lit puis écrit, **sur un seul fil** | écrit puis lit, **sur le fil appelant** | aucune : stricte alternance |
+
+Sur B, il n'y a **plus de fil lecteur dédié à aucun bout**. Côté enfant,
+`Canal::commander` écrit puis lit sa réponse sur le fil qui l'appelle. Côté
+capteur, un fil unique boucle : lire une commande → la faire exécuter → écrire
+la réponse.
+
+**Le `WindowsSource` reste strictement mono-fil.** Il porte des objets COM et
+n'est pas `Sync` : le fil B ne le touche jamais. Il transmet la commande au fil
+de fenêtre par un `mpsc::channel`, et attend la réponse sur un second — c'est
+le seul point de synchronisation, et il est déjà la forme employée aujourd'hui.
+
+- [ ] **Step 1 : Le protocole gagne un message d'identité**
+
+Dans `agent/src/capteur/protocole.rs`, ajouter à `VersCapteur` :
+
+```rust
+    /// Première et **unique** trame de la connexion média : elle apparie ce
+    /// second tube à la session déjà attachée sur la connexion de commandes.
+    /// Après elle, l'enfant n'écrit plus jamais sur cette connexion — c'est
+    /// ce qui garantit qu'aucune lecture et écriture n'y sont concurrentes.
+    Identite { session: String },
+```
+
+et son test d'aller-retour, sur le modèle exact de `une_attache_fait_l_aller_retour`.
+
+- [ ] **Step 2 : Le capteur apparie les deux connexions**
+
+`agent/src/capteur/serveur.rs` gagne un registre des sessions en attente de leur
+connexion média :
+
+```rust
+/// Sessions attachées sur leur connexion de commandes et attendant leur
+/// connexion média. Clé : l'identifiant de session.
+///
+/// `Mutex` et non `RefCell` : la boucle d'acceptation et les fils de commandes
+/// y touchent tous deux.
+static EN_ATTENTE_DE_MEDIA: std::sync::OnceLock<
+    std::sync::Mutex<std::collections::HashMap<String, std::sync::mpsc::Sender<std::fs::File>>>,
+> = std::sync::OnceLock::new();
+```
+
+`accueillir` lit la première trame et **aiguille sur son type** :
+
+- `VersCapteur::Attache { .. }` → c'est la connexion **B**. Le capteur inscrit la
+  session au registre avec l'extrémité émettrice d'un `channel::<File>()`, répond
+  `Attachee`, puis lance le fil de commandes. Le fil de fenêtre attend la
+  connexion média sur l'extrémité réceptrice, **avec un délai borné** :
+  `DELAI_CONNEXION_MEDIA = 15 s`, la même valeur que `DUREE_FENETRE_CANAL`
+  côté enfant, pour qu'un enfant qui abandonne et un capteur qui renonce se
+  découvrent au même moment. Le délai expiré, la session est retirée du registre
+  et le fil se termine sur un `warn!`.
+- `VersCapteur::Identite { session }` → c'est la connexion **A**. Le capteur
+  retire l'entrée du registre et lui envoie le `File`. **Session inconnue** :
+  `warn!` nommant la session, et la connexion est abandonnée — jamais un panic,
+  et jamais un silence.
+- toute autre trame → `warn!` et abandon, comme aujourd'hui.
+
+> ⚠️ **Le retrait du registre doit être fait par le receveur comme par
+> l'expéditeur.** Un enfant qui meurt entre ses deux connexions laisserait sinon
+> une entrée éternelle. Le fil de fenêtre retire sa propre entrée quand son
+> attente expire.
+
+- [ ] **Step 3 : Le fil de fenêtre n'écrit plus que des images**
+
+`agent/src/capteur/fenetre.rs` : `servir_une_fenetre` reçoit désormais **deux**
+écrivains distincts — celui de A pour les images et l'état, et un canal de
+réponses vers le fil B pour les commandes. Sa boucle ne change pas de forme :
+commandes en attente (`try_recv`), puis une image, puis l'état au changement.
+
+**Ce qui change** : la réponse à une commande ne part plus par une écriture
+directe, mais par un `Sender<DepuisCapteur>` vers le fil B, qui l'écrit sur sa
+propre connexion. Le fil de fenêtre n'écrit **que** sur A.
+
+- [ ] **Step 4 : L'enfant ouvre deux tubes, et `commander` ne passe plus par un canal**
+
+`agent/src/capteur/tube.rs` : `attacher_sur` devient une séquence à deux temps.
+
+1. Ouvrir B, écrire `Attache`, lire `Attachee` — **sur le fil appelant**, sans
+   aucun fil lecteur.
+2. Ouvrir A, écrire `Identite { session }`, et **ne plus jamais y écrire**.
+   Lancer sur A le fil répartiteur, qui ne fait que lire.
+
+`CanalTube` porte donc deux objets : `commandes: Mutex<std::fs::File>` (B, lu et
+écrit par le seul `commander`) et rien de plus pour A — le répartiteur en est
+propriétaire.
+
+`Canal::commander` devient une écriture suivie d'une lecture sur B, sur le fil
+appelant :
+
+```rust
+    fn commander(&mut self, message: VersCapteur) -> Result<DepuisCapteur> {
+        let mut commandes = self
+            .commandes
+            .lock()
+            .unwrap_or_else(|empoisonne| empoisonne.into_inner());
+        // Écriture PUIS lecture sur le même fil : c'est la discipline qui
+        // rend le blocage impossible. Ne jamais introduire de fil lecteur
+        // sur cette connexion — voir le §Task 10 du plan.
+        ecrire_json(&mut *commandes, &message)?;
+        commandes.flush()?;
+        match lire_trame(&mut *commandes).context("réponse du capteur")? {
+            Trame::Json(octets) => Ok(serde_json::from_slice(&octets)?),
+            Trame::Image(_) => bail!("le capteur a répondu une image à une commande"),
+        }
+    }
+```
+
+> ⚠️ **`recv_timeout` disparaît, et avec lui la borne de `DELAI_COMMANDE`.** Une
+> lecture bloquante sur B n'a plus de délai : un capteur mort pendant une
+> commande figerait la boucle de transport de cet enfant. **Poser
+> `SetNamedPipeHandleState` avec un délai, ou `SO_RCVTIMEO`-équivalent, n'existe
+> pas pour les tubes** — la parade retenue est que le capteur ferme ses tubes en
+> mourant (le job object garantit sa mort, et la fermeture des handles avec),
+> ce qui fait rendre une erreur à la lecture plutôt que de la suspendre.
+> **À vérifier explicitement à la recette** : tuer le capteur pendant que des
+> commandes circulent, et constater que `commander` rend une erreur.
+
+`rattacher` refait la séquence complète des deux connexions et remplace
+`self.commandes`.
+
+- [ ] **Step 5 : Vérifier et committer**
+
+Run: `cd agent && cargo test` puis `cd agent && cargo check --target x86_64-pc-windows-gnu`
+Expected: tous les tests passent (les tests neufs du protocole compris), sortie 0, aucun avertissement dans les fichiers touchés.
+
+Contrôle de dette : `agent/src/capteur/distante.rs` est à **487 lignes, marge 13** — cette tâche ne doit pas y toucher. `tube.rs` était à 270.
+
+```bash
+git add agent/src/capteur/protocole.rs agent/src/capteur/serveur.rs \
+        agent/src/capteur/fenetre.rs agent/src/capteur/tube.rs
+git commit -m "fix(d4): une connexion par sens, pour qu'aucun objet fichier ne porte lecture et ecriture"
+```
+
+---
+
+### Task 11 : Rejouer la recette
+
+Identique à la tâche 9, sur le binaire de la tâche 10, **avec quatre corrections
+de protocole que la recette précédente a elle-même identifiées** :
+
+1. **Une source qui bouge.** La recette 9 a employé le Bloc-notes, immobile :
+   Desktop Duplication n'émet une trame qu'au changement du bureau. Employer une
+   application qui redessine (une horloge, une vidéo, une fenêtre dont le contenu
+   change), ou animer la fenêtre.
+2. **Vérifier que la mise à mort du capteur pendant une commande** fait rendre
+   une erreur à `commander` plutôt que de le suspendre (voir le §Step 4).
+3. **Contrôler la survie de la VM après chaque rang**, pas seulement à la fin :
+   la recette 9 en a perdu une exécution.
+4. **Le « avant » du critère 3** se joue sur `7d7e254`, dernier commit où
+   l'enfant capture lui-même. S'il n'est pas joué, l'écrire.
+
+Le document de résultats de la tâche 9 est **amendé**, pas réécrit : il porte
+déjà le diagnostic du défaut, qui reste vrai et qui est le fait le plus utile de
+ce sous-bloc.
+
+---
+
 ## Ce que ce plan ne couvre pas, et pourquoi
 
 - **Le partage de la capacité réseau entre N flux** (D6) : chaque enfant garde sa
