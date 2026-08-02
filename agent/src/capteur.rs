@@ -7,6 +7,22 @@
 //! DXGI et les tubes est gaté.
 
 pub mod distante;
+#[cfg(windows)]
+pub mod fenetre;
 pub mod horloge;
 pub mod protocole;
 pub mod reprise;
+#[cfg(windows)]
+pub mod serveur;
+
+/// Point d'entrée du mode capteur.
+#[cfg(windows)]
+pub fn executer() -> anyhow::Result<()> {
+    tracing::info!(tube = protocole::NOM_TUBE, "capteur démarré");
+    serveur::servir()
+}
+
+#[cfg(not(windows))]
+pub fn executer() -> anyhow::Result<()> {
+    anyhow::bail!("le mode capteur n'existe que sur Windows")
+}

@@ -80,6 +80,10 @@ windows = { version = "0.62", features = [
     "Win32_System_JobObjects",
     "Win32_System_LibraryLoader",
     "Win32_System_Ole",
+    # Tube nommé du capteur (`capteur::serveur`) : `CreateNamedPipeW` et
+    # `ConnectNamedPipe` vivent ici, distinct de `Win32_System_IO` qui ne
+    # porte que `OVERLAPPED`.
+    "Win32_System_Pipes",
     "Win32_System_Performance",
     "Win32_System_Threading",
     "Win32_System_Variant",

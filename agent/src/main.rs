@@ -240,6 +240,14 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
+    // Le mode capteur ne détecte rien et ne lance personne : il tient les N
+    // duplications DXGI et les N encodeurs, et sert le média aux enfants du
+    // superviseur par tube nommé. `CAPTEUR=0` DÉSACTIVE le mode, comme
+    // `SUPERVISEUR=0` et `AUDIO=0` — même piège d'exploitation, même parade.
+    if matches!(std::env::var("CAPTEUR").as_deref(), Ok(v) if v != "0") {
+        return capteur::executer();
+    }
+
     // Le mode superviseur ne capture rien : il détecte les fenêtres et lance
     // un enfant par fenêtre. Ses enfants n'héritent JAMAIS de `SUPERVISEUR`
     // (voir `superviseur::lanceur`), sans quoi chacun se prendrait pour un
