@@ -2229,6 +2229,11 @@ surveillance se fait au même tour de boucle que `Enfants::morts()`.
 surveillance dans `agent/src/superviseur/boucle/capteur.rs` — le répertoire
 existe déjà (`boucle/placement_periodique.rs`) et c'est le bon endroit.
 
+> ⚠️ **Ce nom de fichier n'est plus le bon.** La revue finale de branche a fait
+> renommer ce module en `agent/src/superviseur/boucle/surveillance_capteur.rs` :
+> `capteur` y était l'homonyme de `crate::capteur`, qui est autre chose — la
+> supervision du capteur, pas le capteur. Le chemin ci-dessus n'existe plus.
+
 Points imposés :
 
 - une relance est journalisée en `warn!` avec le PID mort et le PID neuf ;

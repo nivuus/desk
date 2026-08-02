@@ -106,6 +106,18 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > `superviseur/table.rs` **489** (11), `capteur/distante.rs` **487** (13),
 > `transport/socket.rs` **481** (19), `transport/piste_video.rs` **477** (23),
 > `demarrage.rs` **472** (28).
+>
+> ⚠️ **Seconde marge étroite NEUVE, relevée après la vague de correction de la
+> revue finale de branche : `agent/src/capteur/serveur.rs` est à 490 lignes,
+> soit une marge de 10.** Il était à **433** avant cette vague : **+57 en une
+> seule ronde**, dont l'essentiel est le commentaire que la revue avait
+> explicitement exigé pour justifier `TAMPON`. La croissance est donc légitime,
+> et c'est précisément pourquoi elle mérite l'encadré : **la leçon déjà payée
+> deux fois par ce dépôt — « la marge regagnée par une extraction se reperd à la
+> ronde suivante si on la traite comme acquise » — s'applique littéralement ici.**
+> Toute addition future à ce fichier appelle une extraction, jamais une
+> compression du commentaire de `TAMPON`, qui doit rester auprès de la constante
+> qu'il justifie.
 
 **Vérifier l'état** :
 
