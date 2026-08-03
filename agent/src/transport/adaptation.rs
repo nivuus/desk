@@ -10,7 +10,9 @@
 //!
 //! Le redimensionnement demandé par l'utilisateur, qui reconfigure lui aussi
 //! l'encodage mais pour une tout autre raison, vit dans
-//! `redimensionnement`.
+//! `redimensionnement`. L'application d'une part de budget accordée par le
+//! capteur (sous-bloc D6), extraite de ce fichier pour rester sous le plafond
+//! de 500 lignes, vit dans `part`.
 
 use std::time::{Duration, Instant};
 
@@ -186,31 +188,13 @@ mod tests {
     use anyhow::anyhow;
     use str0m::bwe::{Bitrate, BweKind};
     use str0m::media::Mid;
-    use str0m::stats::MediaEgressStats;
     use str0m::Event;
 
     use super::*;
     use crate::h264::AccessUnit;
     use crate::source::VideoSource;
     use crate::transport::fixtures;
-
-    /// Statistiques d'émission minimales pour la piste `mid` : seuls `mid`,
-    /// `rtt` et `loss` sont lus par `handle_event`, le reste n'a qu'à exister.
-    fn stats_video(mid: Mid) -> MediaEgressStats {
-        MediaEgressStats {
-            mid,
-            rid: None,
-            bytes: 0,
-            packets: 0,
-            firs: 0,
-            plis: 0,
-            nacks: 0,
-            rtt: Some(Duration::from_millis(20)),
-            loss: Some(0.0),
-            timestamp: Instant::now(),
-            remote: None,
-        }
-    }
+    use crate::transport::fixtures::stats_video;
 
     /// Réserve consignée par `CLAUDE.md` depuis le chantier C : « les
     /// transitions d'`Adaptation` (`Active` → `Indisponible`) et l'expiration

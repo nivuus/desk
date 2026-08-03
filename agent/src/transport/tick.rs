@@ -50,11 +50,12 @@ impl Session {
     /// `write_frame` (une mutation) suivi directement de `handle_input`
     /// (une seconde) violerait la même règle.
     ///
-    /// Six branches supplémentaires (a0bis : drainage d'un message de
+    /// Sept branches supplémentaires (a0bis : drainage d'un message de
     /// contrôle produit hors boucle vers `pending_control` ; a0ter :
     /// décision d'adaptation en attente ; a1 : redimensionnement en attente ;
     /// a1bis : visibilité en attente ; a1ter : annonce d'un changement de
-    /// sommeil ; a2 : vérification de la fenêtre) ne mutent JAMAIS `Rtc` —
+    /// sommeil ; a1quater : part de budget accordée par le capteur (sous-bloc
+    /// D6) ; a2 : vérification de la fenêtre) ne mutent JAMAIS `Rtc` —
     /// elles ne touchent que `self.source`, `self.audio_source` et/ou
     /// `self.pending_control`, au plus en y mettant en file un message de
     /// contrôle (`queue_control`, qui n'empile qu'un `VecDeque`, sans effet
@@ -67,7 +68,7 @@ impl Session {
     /// réellement `Rtc` — garde cette fonction lisible comme une seule
     /// liste de priorités plutôt que de mêler deux styles différents.
     ///
-    /// **À qui lira ceci après une septième branche** : ce compte et cette
+    /// **À qui lira ceci après une huitième branche** : ce compte et cette
     /// énumération sont le point d'audit de l'invariant « aucune de ces
     /// branches ne mute `Rtc` » — une addition qui l'oublie se vérifie sur une
     /// liste incomplète. Mets-les à jour dans le même geste que la branche.
@@ -157,6 +158,20 @@ impl Session {
         //        contrôle même à ~100 Hz.
         if let Some((endormie, raison)) = self.source.sommeil_a_annoncer() {
             self.queue_control(AgentControl::asleep(endormie, &raison));
+            return Ok(Tick::Continue);
+        }
+
+        // a1quater) Une part de budget accordée par le capteur. Après le
+        //           sommeil, dont elle découle : une fenêtre qu'on vient
+        //           d'endormir reçoit sa part d'endormie dans le même lot, et
+        //           l'appliquer avant l'ordre décrirait l'état précédent.
+        //           Ne mute pas `Rtc` au sens du drainage — `set_desired_bitrate`
+        //           n'écrit aucun paquet —, mais pose une décision que la
+        //           branche a0ter appliquera au tour suivant.
+        //           `part_a_appliquer` CONSOMME : aucune réémission, donc
+        //           aucune reconfiguration en boucle à ~100 Hz.
+        if let Some(bps) = self.source.part_a_appliquer() {
+            self.appliquer_part(bps);
             return Ok(Tick::Continue);
         }
 
