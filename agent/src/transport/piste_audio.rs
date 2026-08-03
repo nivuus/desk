@@ -111,6 +111,11 @@ impl Session {
         }
     }
 
+    /// Applique l'arbitrage audio du capteur : porter le son, ou se taire.
+    pub(super) fn appliquer_audio(&mut self, actif: bool) {
+        tracing::info!(session = %self.session_id, actif, "ordre audio applique");
+    }
+
     fn warn_audio_negotiation_once(&mut self) {
         if !self.warned_audio_negotiation {
             self.warned_audio_negotiation = true;

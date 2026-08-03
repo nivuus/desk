@@ -45,6 +45,9 @@ pub enum Recu {
     /// sollicitée. Retenue par `SourceDistante::part` jusqu'à ce que
     /// `part_a_appliquer` la consomme.
     Part { bps: u32 },
+    /// Ordre audio poussé par le capteur, non sollicité. Retenu par
+    /// `SourceDistante::audio` jusqu'à ce que `audio_a_appliquer` le consomme.
+    Audio { actif: bool },
 }
 
 pub struct SourceDistante {
@@ -70,6 +73,15 @@ pub struct SourceDistante {
     /// d'application. Consommée par `part_a_appliquer`. Même régime
     /// d'écrasement que `sommeil`.
     part: Option<u32>,
+    /// Dernier ordre audio reçu du capteur, en attente d'application. Consommé
+    /// par `audio_a_appliquer`. Même régime d'écrasement que `part`.
+    ///
+    /// ⚠️ **`None` à la naissance, et ce n'est pas « pas d'ordre » mais « rien
+    /// à changer »** : l'enfant naît MUET (voir `demarrage.rs`), et le capteur
+    /// lui envoie son premier ordre dès l'attache. Partir d'un `Some(true)`
+    /// implicite ferait porter le son aux deux fenêtres d'un même processus
+    /// pendant les millisecondes qui précèdent le premier arbitrage.
+    audio: Option<bool>,
     /// État de sommeil COURANT, tel que le capteur le décrit.
     ///
     /// **Distinct de `sommeil` juste au-dessus, et non redondant avec lui** :
@@ -108,6 +120,7 @@ impl SourceDistante {
             fenetre: FenetreCanal::nouvelle(),
             sommeil: None,
             part: None,
+            audio: None,
             endormie: true,
         }
     }
@@ -151,6 +164,9 @@ impl VideoSource for SourceDistante {
                 }
                 Ok(Recu::Part { bps }) => {
                     self.part = Some(bps);
+                }
+                Ok(Recu::Audio { actif }) => {
+                    self.audio = Some(actif);
                 }
                 // Le cas COURANT et normal : rien de neuf ce tour-ci. La
                 // boucle de transport interroge à 100 Hz une source qui
@@ -201,6 +217,11 @@ impl VideoSource for SourceDistante {
                                 // d'encodage, pour toute la durée qui sépare
                                 // l'attache du premier `Ordre::Reveiller`.
                                 self.endormie = true;
+                                // Un rattachement passe par une `Fenetre` NEUVE
+                                // côté capteur, dont `sommeil::inscrire` purge
+                                // `derniers_audio` : un ordre neuf arrive donc
+                                // toujours. Ne rien retenir d'avant la rupture.
+                                self.audio = None;
                                 self.fenetre.succes();
                             }
                             // Journalisé en `debug!` et non `info!` : au pas
@@ -274,6 +295,11 @@ impl VideoSource for SourceDistante {
     /// Rend la part en attente, et la consomme.
     fn part_a_appliquer(&mut self) -> Option<u32> {
         self.part.take()
+    }
+
+    /// Rend l'ordre audio en attente, et le consomme.
+    fn audio_a_appliquer(&mut self) -> Option<bool> {
+        self.audio.take()
     }
 
     /// Rend l'état de sommeil courant, sans le consommer.

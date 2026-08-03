@@ -59,6 +59,12 @@ pub(crate) fn lire_le_media<R: Read>(mut lecteur: R, images: SyncSender<Recu>) {
                 // tombait dans `Ok(autre)` et tuait ce fil au tout premier
                 // message reçu, en conditions de produit et sur toute session.
                 Ok(DepuisCapteur::Part { bps }) => images.send(Recu::Part { bps }).is_ok(),
+                // Tâche 6, sous-bloc D7 : même point de passage obligé que
+                // `Sommeil` et `Part` juste au-dessus — l'oublier ici tuerait
+                // ce fil en silence au premier ordre audio reçu.
+                Ok(DepuisCapteur::Audio { actif }) => {
+                    images.send(Recu::Audio { actif }).is_ok()
+                }
                 Ok(autre) => {
                     tracing::warn!(?autre, "trame inattendue sur la connexion média, abandonnée");
                     return;

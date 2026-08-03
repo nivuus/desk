@@ -124,6 +124,20 @@ pub trait VideoSource {
         None
     }
 
+    /// Rend l'ordre audio en attente d'application, et le consomme.
+    ///
+    /// **État courant, pas un historique** : deux ordres arrivés entre deux
+    /// lectures s'écrasent — même régime que `part_a_appliquer` juste
+    /// au-dessus. Comme elle consomme, la branche de transport qui l'interroge
+    /// à ~100 Hz ne peut pas rejouer `Start()`/`Stop()` en boucle.
+    ///
+    /// Par défaut sans effet : une source fichier n'a pas de son, et une
+    /// `WindowsSource` tenue en direct par son propre processus est
+    /// mono-fenêtre, donc jamais arbitrée. Seule `SourceDistante` la redéfinit.
+    fn audio_a_appliquer(&mut self) -> Option<bool> {
+        None
+    }
+
     /// Vrai tant que le capteur tient cette fenêtre pour ENDORMIE — encodeur
     /// et duplication relâchés (sous-bloc D5), aucune image produite.
     ///

@@ -50,14 +50,15 @@ impl Session {
     /// `write_frame` (une mutation) suivi directement de `handle_input`
     /// (une seconde) violerait la même règle.
     ///
-    /// Sept branches supplémentaires (a0bis : drainage d'un message de
+    /// Huit branches supplémentaires (a0bis : drainage d'un message de
     /// contrôle produit hors boucle vers `pending_control` ; a0ter :
     /// décision d'adaptation en attente ; a1 : redimensionnement en attente ;
     /// a1bis : visibilité en attente ; a1ter : annonce d'un changement de
     /// sommeil ; a1quater : part de budget accordée par le capteur (sous-bloc
-    /// D6) ; a2 : vérification de la fenêtre) ne mettent JAMAIS en file,
-    /// avant de rendre la main, une écriture qui resterait à drainer — c'est
-    /// l'invariant que cette énumération existe pour auditer. **Six d'entre
+    /// D6) ; a1quinquies : ordre audio décidé par le capteur (sous-bloc D7) ;
+    /// a2 : vérification de la fenêtre) ne mettent JAMAIS en file, avant de
+    /// rendre la main, une écriture qui resterait à drainer — c'est
+    /// l'invariant que cette énumération existe pour auditer. **Sept d'entre
     /// elles (toutes sauf a1quater) ne touchent même pas `self.rtc`** :
     /// seulement `self.source`, `self.audio_source` et/ou
     /// `self.pending_control`, au plus en y mettant en file un message de
@@ -84,7 +85,7 @@ impl Session {
     /// c…) — garde cette fonction lisible comme une seule liste de priorités
     /// plutôt que de mêler deux styles différents.
     ///
-    /// **À qui lira ceci après une huitième branche** : ce compte et cette
+    /// **À qui lira ceci après une neuvième branche** : ce compte et cette
     /// énumération sont le point d'audit de l'invariant « aucune de ces
     /// branches ne met en file, avant de rendre la main, une écriture qui
     /// resterait à drainer » — **PAS** « aucune de ces branches ne mute
@@ -220,6 +221,22 @@ impl Session {
         //           aucune reconfiguration en boucle à ~100 Hz.
         if let Some(bps) = self.source.part_a_appliquer() {
             self.appliquer_part(bps);
+            return Ok(Tick::Continue);
+        }
+
+        // a1quinquies) Un ordre audio décidé par le capteur. Après a1quater,
+        //              pour la même raison de lisibilité : on respecte l'ordre
+        //              d'arrivée plutôt que de l'inverser sans raison.
+        //
+        //              Ne met AUCUN paquet en file : `appliquer_audio` ne
+        //              touche que la source audio et le budget du contrôleur —
+        //              l'invariant de drainage de cette fonction est préservé.
+        //
+        //              `audio_a_appliquer` CONSOMME : un `Start()`/`Stop()` par
+        //              tour à ~100 Hz est exactement ce que cette consommation
+        //              empêche.
+        if let Some(actif) = self.source.audio_a_appliquer() {
+            self.appliquer_audio(actif);
             return Ok(Tick::Continue);
         }
 
