@@ -46,15 +46,21 @@ pub struct Fenetre {
 /// Chaque endormie reçoit `PART_DORMANTE_BPS` ; le reste se divise entre les
 /// éveillées, la focalisée recevant `FACTEUR_FOCUS` parts au lieu d'une.
 ///
-/// **Invariant, et sa condition** : tant que le budget couvre les planchers
-/// des endormies, la somme des parts ne le dépasse jamais. En dessous de ce
-/// seuil — `budget < endormies × PART_DORMANTE_BPS` — les planchers sont
-/// servis quand même et la somme franchit le budget : **cas dégénéré assumé**,
-/// parce qu'un `set_desired_bitrate(0)` serait pire qu'un dépassement sur un
-/// lien que rien ne peut de toute façon satisfaire.
+/// **Garanties inviolables** : aucune panique, aucune part nulle, fonction
+/// totale. La somme des parts peut dépasser le budget dans une bande étroite
+/// qui a pour cause : quand le budget reste après paiement des planchers ne
+/// suffit pas pour servir 1 bps à chaque éveillée, le `.max(1)` appliqué à
+/// chaque part finale produit un dépassement borné par le nombre d'éveillées,
+/// en bits par seconde.
 ///
-/// **Fonction totale** : plusieurs focalisées, aucune éveillée, ou un budget
-/// dérisoire ne la font ni paniquer ni rendre de part nulle.
+/// **Cas normal** (`reste ≥ eveillees`) : la somme ne dépasse jamais le
+/// budget, et la majoration de focus est appliquée.
+///
+/// **Cas dégénéré** (`reste < eveillees`) : chaque éveillée reçoit 1 bps
+/// (dû au `.max(1)`), chaque endormie son plancher, et la somme dépasse le
+/// budget d'au plus `eveillees` bps. La majoration de focus disparaît car
+/// `part_base` vaut 0. Ce comportement est assumé : un `set_desired_bitrate(0)`
+/// serait pire qu'un microdepassement sur un lien que rien ne peut satisfaire.
 ///
 /// **Aucun travail conservateur** : une fenêtre qui n'use pas sa part ne la
 /// rend pas aux autres. Ce serait une seconde boucle de rétroaction dont la

@@ -109,3 +109,50 @@ fn un_budget_inferieur_aux_planchers_ne_deborde_pas() {
     let parts = repartir(100_000, &fenetres);
     assert!(parts.iter().all(|(_, bps)| *bps > 0));
 }
+
+/// **Test de la bande critique.** Balaie les budgets autour du seuil où le
+/// reste (budget moins planchers des endormies) ne suffit plus pour servir 1 bps
+/// à chaque éveillée. Dans cette bande, le dépassement existe mais reste borné,
+/// et la majoration de focus disparaît.
+#[test]
+fn budget_insuffisant_pour_eveillees_reste_borne_et_sans_majoration() {
+    // Configuration : 2 endormies (512 000 bps de planchers), 2 éveillées.
+    // Budgets couvrant les planchers : seuil critique = 512 000 + 2 = 512 002
+    // (budgets où reste >= 0 mais reste < eveillees).
+    let configs = vec![
+        (512_000, "reste = 0 < eveillees = 2"),
+        (512_001, "reste = 1 < eveillees = 2"),
+        (512_002, "reste = 2 = eveillees = 2"),
+        (512_003, "reste = 3 > eveillees = 2"),
+        (514_000, "reste > eveillees, cas normal"),
+    ];
+
+    for (budget_bps, desc) in configs {
+        let mut fenetres = vec![f("d0", false, false), f("d1", false, false)];
+        fenetres.push(f("e0", true, true)); // éveillée focalisée
+        fenetres.push(f("e1", true, false)); // éveillée non focalisée
+
+        let parts = repartir(budget_bps, &fenetres);
+
+        // Propriété 1 : aucune part n'est nulle
+        assert!(parts.iter().all(|(_, bps)| *bps > 0), "{desc}: une part vaut 0");
+
+        // Propriété 2 : somme ne dépasse le budget que de au plus eveillees bps
+        let somme: u32 = parts.iter().map(|(_, bps)| bps).sum();
+        let depassement = somme.saturating_sub(budget_bps);
+        assert!(
+            depassement <= 2,
+            "{desc}: somme {somme} dépasse le budget {budget_bps} de plus de 2 bps (dépassement: {depassement})"
+        );
+
+        // Propriété 3 : quand reste < eveillees, majoration de focus disparaît
+        let reste = budget_bps.saturating_sub(2 * PART_DORMANTE_BPS);
+        let e0_part = part_de(&parts, "e0");
+        let e1_part = part_de(&parts, "e1");
+        if reste < 2 {
+            // Dans la bande critique, e0 (focalisée) et e1 (non focalisée)
+            // reçoivent la même part car part_base = 0 → (0 * 2).max(1) = 1
+            assert_eq!(e0_part, e1_part, "{desc}: focalisée {e0_part} != non-focalisée {e1_part}");
+        }
+    }
+}
