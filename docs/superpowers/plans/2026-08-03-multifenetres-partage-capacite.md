@@ -172,6 +172,104 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ---
 
+## Tâche 1bis : où la charge agrégée décroche, et si un barreau plus bas la sauve
+
+**Pourquoi elle existe.** La tâche 1 a **réfuté** la prémisse : le pont porte
+≥ 1,45 Gb/s, donc 96 Mb/s ne l'ont jamais saturé, et sur une fenêtre à 82 Mb/s
+le navigateur jetait 53,6 % des images en passant 90,2 % du temps mural à
+décoder. Mais ce montage — **une** fenêtre — ne reproduit pas celui de D4 —
+**huit**. Deux questions restent, et elles décident du budget :
+
+1. **À quelle charge agrégée le navigateur décroche-t-il**, dans le montage qui
+   compte ?
+2. **Descendre d'un barreau supprime-t-il le décrochage ?** C'est le mécanisme
+   même par lequel D6 corrigerait quelque chose : une part réduite fait
+   descendre le contrôleur, donc réduit la surface à décoder, pas seulement les
+   bits. **Si la réponse est non, D6 ne corrige rien** et il faut le savoir
+   avant d'écrire le code.
+
+**Le montage a un raccourci heureux** : `BITRATE` est hérité **tel quel** par
+chaque enfant. Poser `BITRATE = B/N` **simule donc exactement** ce que D6
+donnerait avec des parts égales — sans écrire une ligne. Le relevé B est une
+maquette du produit, pas une approximation.
+
+**Files:**
+- Create: `docs/superpowers/plans/journaux-multifenetres-d6/decrochage-*.log`
+- Create: `docs/superpowers/plans/journaux-multifenetres-d6/decrochage-*.json`
+- Modify: `docs/superpowers/plans/journaux-multifenetres-d6/instrument/` (l'instrument, dans son état final)
+- Modify: `docs/superpowers/plans/2026-08-03-multifenetres-partage-capacite-resultats.md` (un §2)
+
+**Interfaces:**
+- Consumes: l'instrument et le protocole de la tâche 1.
+- Produces: **le nombre qui justifie `BUDGET_BPS`**, et un verdict sur la
+  capacité de D6 à corriger quoi que ce soit.
+
+- [ ] **Step 1: Relevé A — montée à débit par fenêtre FIXE**
+
+Rangs N = 1, 2, 4, 8. `BITRATE = 10_000_000` par fenêtre à tous les rangs
+(proche du ~10 Mb/s de D4), source animée, une fenêtre par
+`--user-data-dir`, palier d'au moins 30 s par rang.
+
+À chaque rang, relever — **par fenêtre et cumulé** :
+
+| Grandeur | Source |
+| --- | --- |
+| i/s produites au capteur | `agent.log`, lignes de compteurs |
+| `framesDecoded`, `framesDropped` | `getStats()` |
+| `totalDecodeTime` | `getStats()` — **le témoin qui a tranché en tâche 1** |
+| `packetsLost` / `packetsReceived` | `getStats()` |
+| RTT | `getStats()` |
+
+**Le nombre cherché** : le rang, et la charge agrégée correspondante **en Mb/s
+et en Mpx/s**, où `framesDropped` cesse d'être négligeable.
+
+- [ ] **Step 2: Relevé B — à 8 fenêtres, un barreau plus bas**
+
+Même montage, **N = 8 figé**, et `BITRATE` abaissé pour forcer le contrôleur
+sous le barreau plein. Au moins deux valeurs, par exemple 4 Mb/s et 2 Mb/s par
+fenêtre — vérifier dans `agent.log` que la **taille d'encodage** a réellement
+changé, sans quoi on ne mesure qu'un débit plus bas à surface constante, ce qui
+ne répond pas à la question.
+
+**Ce qui est cherché** : `framesDropped` retombe-t-il, et à quelle charge
+agrégée ? C'est **cette valeur-là** qui devient la justification de
+`BUDGET_BPS`.
+
+- [ ] **Step 3: Écrire le §2 des résultats**
+
+Trois énoncés, chacun avec son nombre d'exécutions :
+
+1. La charge agrégée à laquelle le navigateur décroche, **relevée**, avec la
+   part de ce décrochage imputable au décodage (`totalDecodeTime`) et celle
+   imputable au réseau (`packetsLost`).
+2. **Si descendre d'un barreau sauve le décrochage** — et donc si le mécanisme
+   de D6 peut corriger quelque chose.
+3. La valeur proposée pour `BUDGET_BPS`, et **le raisonnement qui va du nombre
+   relevé à cette valeur**, marge comprise.
+
+⚠️ **Si le relevé B montre qu'un barreau plus bas ne sauve rien**, l'écrire
+sans l'atténuer et rendre `DONE_WITH_CONCERNS` : D6 tel que conçu ne corrigerait
+alors pas l'effondrement de D4, et c'est une décision d'humain.
+
+⚠️ **Ce que ce montage ne dira pas**, à écrire : le navigateur de recette
+tourne sur l'hôte, avec sa charge propre (`tdarr-ffmpeg` contaminait déjà le
+témoin CPU de la tâche 1) ; un client réel sur une autre machine décrocherait
+ailleurs. La valeur trouvée est **de laboratoire**.
+
+- [ ] **Step 4: Contrôler la survie de la VM, purger, commiter**
+
+```bash
+grep -E "terminating on signal|shutting down" /var/log/libvirt/qemu/Windows.log | tail -4
+MULTIFENETRE_VDD_PURGE=1 scripts/run-agent.sh
+git add docs/superpowers/plans/journaux-multifenetres-d6/ \
+        docs/superpowers/plans/2026-08-03-multifenetres-partage-capacite-resultats.md
+git commit -m "mesure(d6): ou la charge agregee decroche, et si un barreau plus bas la sauve
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+```
+
+---
+
 ## Tâche 2 : `repartiteur.rs` — la règle de part, pure et testée à froid
 
 **Files:**
