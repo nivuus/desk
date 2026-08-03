@@ -7,7 +7,7 @@ use std::time::Instant;
 use super::controleur::Controleur;
 use super::echelle::Echelle;
 use super::hysteresis::Hysteresis;
-use super::{Adaptation, Decision};
+use super::Decision;
 
 impl Controleur {
     /// Rebâtit l'échelle pour une nouvelle taille de source, en conservant le
@@ -57,25 +57,41 @@ impl Controleur {
     /// contrairement à `changer_source` juste au-dessus, qui doit reporter le
     /// barreau sur une échelle neuve.
     ///
-    /// Deux régimes, distingués par `courant.adaptation` — déjà tenu par
-    /// `observer`, aucun second témoin introduit ici :
+    /// Trois régimes possibles, et seulement DEUX comportements — le témoin
+    /// qui les distingue est `premiere_estimation_a`
+    /// (`Option<Instant>`), pas `courant.adaptation` : ce dernier est un état
+    /// DÉRIVÉ et RÉVERSIBLE (il retombe à `Indisponible` aussi bien avant la
+    /// toute première estimation qu'après la péremption d'une estimation
+    /// ancienne — voir `observer`, branche `o.estimate_bps == None`), alors
+    /// que `premiere_estimation_a` est un fait MONOTONE : posé une fois à la
+    /// première estimation, jamais effacé. Une première version de cette
+    /// méthode se fiait à `adaptation` et confondait les deux derniers
+    /// régimes — corrigé en revue.
     ///
-    /// - **`Indisponible`** (état initial de `Controleur::new`, permanent si
-    ///   TWCC n'est jamais négocié) : aucune estimation n'a jamais borné la
-    ///   décision, `video_bitrate_bps` n'est qu'une valeur de repli égale au
-    ///   plafond (voir la doc de `Config::plafond_bps`). Le débit **suit
-    ///   directement** le nouveau plafond — sans ce cas, une hausse de
-    ///   plafond resterait figée sur l'ancienne valeur pour toujours, rien
-    ///   d'autre ne la relevant jamais.
-    /// - **`Active`** : une estimation réelle commande déjà la décision. Le
-    ///   débit reste borné par elle — un plafond qui remonte ne le relève
-    ///   jamais d'office ; la remontée n'arrive qu'à la prochaine
-    ///   observation, en passant par `observer` et son hystérésis.
+    /// - **Jamais aucune estimation** (`premiere_estimation_a.is_none()`,
+    ///   état initial de `Controleur::new`, permanent si TWCC n'est jamais
+    ///   négocié) : `video_bitrate_bps` n'est qu'une valeur de repli égale au
+    ///   plafond (voir la doc de `Config::plafond_bps`), rien ne l'a jamais
+    ///   asservie. Le débit **suit directement** le nouveau plafond — sans ce
+    ///   cas, une hausse de plafond resterait figée sur l'ancienne valeur
+    ///   pour toujours, rien d'autre ne la relevant jamais.
+    /// - **Une estimation existe** (`premiere_estimation_a.is_some()`), que
+    ///   `adaptation` soit `Active` (elle commande la décision en ce moment)
+    ///   ou `Indisponible` par péremption (le lien vient de se taire,
+    ///   `observer` conserve alors délibérément le dernier point de
+    ///   fonctionnement plutôt que de rien asservir) : dans les DEUX cas,
+    ///   `video_bitrate_bps` porte une information réelle sur ce que le lien
+    ///   a récemment porté, et le débit reste **borné** par elle — un
+    ///   plafond qui remonte ne le relève jamais d'office, sous peine de
+    ///   saturer un lien qui vient précisément de devenir muet. La remontée
+    ///   n'arrive qu'à la prochaine observation utilisable, en passant par
+    ///   `observer` et son hystérésis.
     pub fn changer_plafond(&mut self, plafond_bps: u32) -> Decision {
         self.config.plafond_bps = plafond_bps;
-        self.courant.video_bitrate_bps = match self.courant.adaptation {
-            Adaptation::Indisponible => plafond_bps,
-            Adaptation::Active => self.courant.video_bitrate_bps.min(plafond_bps),
+        self.courant.video_bitrate_bps = if self.premiere_estimation_a.is_none() {
+            plafond_bps
+        } else {
+            self.courant.video_bitrate_bps.min(plafond_bps)
         };
         self.courant
     }
@@ -100,6 +116,7 @@ pub(super) fn config() -> super::Config {
 #[cfg(test)]
 mod tests {
     use super::super::hysteresis::t0;
+    use super::super::Adaptation;
     use super::*;
     use std::time::Duration;
 
@@ -227,6 +244,52 @@ mod tests {
         assert_eq!(
             decision.video_bitrate_bps, 50_000_000,
             "sans estimation, le débit est une pure valeur de repli : il doit suivre le plafond"
+        );
+    }
+
+    #[test]
+    fn un_plafond_qui_monte_apres_une_estimation_perimee_ne_saute_pas_au_plafond() {
+        let base = t0();
+        let mut c = Controleur::new(config(), base);
+
+        // Une première estimation réelle : elle fixe un point de
+        // fonctionnement en dessous du plafond.
+        let d = c
+            .observer(super::super::Observation {
+                estimate_bps: Some(2_000_000),
+                rtt: None,
+                loss: None,
+                at: base + Duration::from_secs(1),
+            })
+            .expect("la première estimation doit produire une décision");
+        assert_eq!(d.adaptation, Adaptation::Active, "précondition : l'estimation est active");
+
+        // Le lien se tait : plus aucune estimation n'arrive (c'est ainsi que
+        // la péremption, gérée au niveau transport par `EXPIRATION_ESTIMATION`
+        // dans `transport/adaptation.rs`, se traduit pour le contrôleur — il
+        // ne connaît pas de délai, seulement l'absence). Loin après la
+        // fenêtre d'amorçage pour ne pas se mélanger avec elle.
+        c.observer(super::super::Observation {
+            estimate_bps: None,
+            rtt: None,
+            loss: None,
+            at: base + Duration::from_secs(30),
+        });
+        assert_eq!(
+            c.courant().adaptation,
+            Adaptation::Indisponible,
+            "précondition : le lien est déclaré indisponible, MAIS une estimation a déjà eu lieu"
+        );
+
+        // Le débit courant, hérité de la dernière estimation réelle — PAS la
+        // valeur de repli du plafond, contrairement au cas « jamais reçue ».
+        let debit_avant = c.courant().video_bitrate_bps;
+        assert!(debit_avant < 50_000_000, "précondition : bien en dessous du plafond visé");
+
+        let decision = c.changer_plafond(50_000_000);
+        assert_eq!(
+            decision.video_bitrate_bps, debit_avant,
+            "une estimation périmée n'est pas « jamais reçue » : le débit ne doit pas sauter au plafond plein sur un lien qui vient de se taire"
         );
     }
 }
