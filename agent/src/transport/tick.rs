@@ -50,11 +50,12 @@ impl Session {
     /// `write_frame` (une mutation) suivi directement de `handle_input`
     /// (une seconde) violerait la même règle.
     ///
-    /// Quatre branches supplémentaires (a0bis : drainage d'un message de
+    /// Six branches supplémentaires (a0bis : drainage d'un message de
     /// contrôle produit hors boucle vers `pending_control` ; a0ter :
-    /// décision d'adaptation en attente ; a1, a2 : redimensionnement en
-    /// attente et vérification de la fenêtre) ne mutent JAMAIS `Rtc` — elles
-    /// ne touchent que `self.source`, `self.audio_source` et/ou
+    /// décision d'adaptation en attente ; a1 : redimensionnement en attente ;
+    /// a1bis : visibilité en attente ; a1ter : annonce d'un changement de
+    /// sommeil ; a2 : vérification de la fenêtre) ne mutent JAMAIS `Rtc` —
+    /// elles ne touchent que `self.source`, `self.audio_source` et/ou
     /// `self.pending_control`, au plus en y mettant en file un message de
     /// contrôle (`queue_control`, qui n'empile qu'un `VecDeque`, sans effet
     /// sur `Rtc` avant le tour suivant). Chacune rend quand même la main
@@ -65,6 +66,11 @@ impl Session {
     /// entière — au même titre que les branches qui, elles, mutent
     /// réellement `Rtc` — garde cette fonction lisible comme une seule
     /// liste de priorités plutôt que de mêler deux styles différents.
+    ///
+    /// **À qui lira ceci après une septième branche** : ce compte et cette
+    /// énumération sont le point d'audit de l'invariant « aucune de ces
+    /// branches ne mute `Rtc` » — une addition qui l'oublie se vérifie sur une
+    /// liste incomplète. Mets-les à jour dans le même geste que la branche.
     ///
     /// Ne prend pas `on_input`/`on_control` : `handle_input` ne produit
     /// jamais d'événement applicatif directement (les événements qui en
@@ -143,10 +149,12 @@ impl Session {
             return Ok(Tick::Continue);
         }
 
-        // a1ter) Un changement de sommeil à annoncer au navigateur. Interrogé
-        //        à chaque tour, mais `sommeil_a_annoncer` consomme : aucun
-        //        message n'est jamais réémis, donc cette branche ne peut pas
-        //        inonder le canal de contrôle même à ~100 Hz.
+        // a1ter) Un changement de sommeil à annoncer au navigateur. Interrogée
+        //        à chaque tour où a1bis ne s'est pas déclenchée (sinon celle-ci
+        //        est déjà sortie par un retour anticipé) ; mais
+        //        `sommeil_a_annoncer` consomme : aucun message n'est jamais
+        //        réémis, donc cette branche ne peut pas inonder le canal de
+        //        contrôle même à ~100 Hz.
         if let Some((endormie, raison)) = self.source.sommeil_a_annoncer() {
             self.queue_control(AgentControl::asleep(endormie, &raison));
             return Ok(Tick::Continue);
