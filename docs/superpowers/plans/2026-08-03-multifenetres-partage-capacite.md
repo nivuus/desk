@@ -406,7 +406,7 @@ fn un_budget_inferieur_aux_planchers_ne_deborde_pas() {
 - [ ] **Step 2: Lancer les tests pour vérifier qu'ils échouent**
 
 ```bash
-cd agent && cargo test --lib repartiteur 2>&1 | tail -20
+cd agent && cargo test --bin agent repartiteur 2>&1 | tail -20
 ```
 
 Attendu : ÉCHEC de compilation, `unresolved module or unlinked crate
@@ -533,7 +533,7 @@ pub mod repartiteur;
 - [ ] **Step 4: Lancer les tests pour vérifier qu'ils passent**
 
 ```bash
-cd agent && cargo test --lib repartiteur 2>&1 | tail -20
+cd agent && cargo test --bin agent repartiteur 2>&1 | tail -20
 ```
 
 Attendu : `test result: ok.` avec 10 tests.
@@ -614,7 +614,7 @@ inventer un.**
 - [ ] **Step 2: Lancer le test pour vérifier qu'il échoue**
 
 ```bash
-cd agent && cargo test --lib vivier::tests::eveillees 2>&1 | tail -15
+cd agent && cargo test --bin agent vivier::tests::eveillees 2>&1 | tail -15
 ```
 
 Attendu : ÉCHEC, `no method named 'eveillees' found for struct 'Vivier'`.
@@ -642,7 +642,7 @@ méthodes publiques :
 - [ ] **Step 4: Lancer les tests pour vérifier qu'ils passent**
 
 ```bash
-cd agent && cargo test --lib vivier 2>&1 | tail -15
+cd agent && cargo test --bin agent vivier 2>&1 | tail -15
 ```
 
 Attendu : `test result: ok.`, aucun test existant cassé.
@@ -769,7 +769,7 @@ mutuellement des places du vivier partagé) :
 - [ ] **Step 2: Lancer les tests pour vérifier qu'ils échouent**
 
 ```bash
-cd agent && cargo test --lib sommeil 2>&1 | tail -20
+cd agent && cargo test --bin agent sommeil 2>&1 | tail -20
 ```
 
 Attendu : ÉCHEC de compilation, `cannot find type 'Message'`.
@@ -952,14 +952,14 @@ de `Etat` dans `etat()` gagne `focalisee: None` et
 - [ ] **Step 4: Lancer les tests pour vérifier qu'ils passent**
 
 ```bash
-cd agent && cargo test --lib sommeil 2>&1 | tail -20
+cd agent && cargo test --bin agent sommeil 2>&1 | tail -20
 ```
 
 Attendu : `test result: ok.` — les tests de D5 **et** les trois neufs.
 
 ⚠️ `fenetre/transitions.rs` ne compile plus (le type du `Receiver` a changé).
 C'est attendu : la tâche 5 le répare. Pour valider **cette** tâche isolément,
-`cargo test --lib sommeil` suffit si le module fautif est `#[cfg(windows)]` ;
+`cargo test --bin agent sommeil` suffit si le module fautif est `#[cfg(windows)]` ;
 sinon, enchaîner directement sur la tâche 5 avant de commiter.
 
 - [ ] **Step 5: Vérifier la taille du fichier**
@@ -1023,7 +1023,7 @@ réellement) : les lire avant d'écrire le test, ne pas les deviner.
 - [ ] **Step 2: Lancer le test pour vérifier qu'il échoue**
 
 ```bash
-cd agent && cargo test --lib protocole 2>&1 | tail -15
+cd agent && cargo test --bin agent protocole 2>&1 | tail -15
 ```
 
 Attendu : ÉCHEC, `no variant named 'Part' found for enum 'DepuisCapteur'`.
@@ -1102,7 +1102,7 @@ déjà par lui que `Sommeil` transite. Ne pas ajouter de variante.
 - [ ] **Step 5: Lancer les tests et la compilation croisée**
 
 ```bash
-cd agent && cargo test --lib 2>&1 | tail -20
+cd agent && cargo test --bin agent 2>&1 | tail -20
 cd agent && cargo check --target x86_64-pc-windows-gnu 2>&1 | tail -25
 ```
 
@@ -1182,7 +1182,7 @@ autre) et sa construction : les lire, ne pas les deviner.
 - [ ] **Step 2: Lancer les tests pour vérifier qu'ils échouent**
 
 ```bash
-cd agent && cargo test --lib distante 2>&1 | tail -15
+cd agent && cargo test --bin agent distante 2>&1 | tail -15
 ```
 
 Attendu : ÉCHEC, `no variant named 'Part' found for enum 'Recu'`.
@@ -1259,7 +1259,7 @@ grep -rn "Recu::Sommeil" agent/src --include='*.rs'
 - [ ] **Step 4: Lancer les tests pour vérifier qu'ils passent**
 
 ```bash
-cd agent && cargo test --lib distante 2>&1 | tail -15
+cd agent && cargo test --bin agent distante 2>&1 | tail -15
 cd agent && cargo check --target x86_64-pc-windows-gnu 2>&1 | tail -20
 ```
 
@@ -1346,7 +1346,7 @@ ce module frère (`pub(super)`).
 - [ ] **Step 2: Lancer les tests pour vérifier qu'ils échouent**
 
 ```bash
-cd agent && cargo test --lib congestion 2>&1 | tail -15
+cd agent && cargo test --bin agent congestion 2>&1 | tail -15
 ```
 
 Attendu : ÉCHEC, `no method named 'changer_plafond'`.
@@ -1385,7 +1385,7 @@ naturellement à la prochaine observation, une par seconde.
 - [ ] **Step 4: Lancer les tests pour vérifier qu'ils passent**
 
 ```bash
-cd agent && cargo test --lib congestion 2>&1 | tail -15
+cd agent && cargo test --bin agent congestion 2>&1 | tail -15
 ```
 
 - [ ] **Step 5: Commit**
@@ -1466,7 +1466,7 @@ délibérément différemment — la première contrôle l'état de départ par
 - [ ] **Step 2: Lancer le test pour vérifier qu'il échoue**
 
 ```bash
-cd agent && cargo test --lib adaptation 2>&1 | tail -15
+cd agent && cargo test --bin agent adaptation 2>&1 | tail -15
 ```
 
 - [ ] **Step 3: Écrire l'implémentation**
@@ -1517,7 +1517,7 @@ et **avant `a2`** :
 - [ ] **Step 4: Lancer les tests et la compilation croisée**
 
 ```bash
-cd agent && cargo test --lib 2>&1 | tail -20
+cd agent && cargo test --bin agent 2>&1 | tail -20
 cd agent && cargo check --target x86_64-pc-windows-gnu 2>&1 | tail -20
 ```
 
