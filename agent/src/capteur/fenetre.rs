@@ -181,9 +181,13 @@ impl Fenetre {
         // l'enfant a déjà envoyé. L'enfant fait de même de son côté, depuis son
         // `FENETRE_HWND`. Deux dérivations indépendantes du même identifiant
         // stable valent mieux qu'un champ de protocole à tenir cohérent.
+        // Pré-initialisé à 0, et c'est CE 0 que le `ensure` ci-dessous
+        // attrape en cas d'échec — pas une garantie de l'API Windows, qui ne
+        // documente aucune écriture de `lpdwProcessId` en cas d'échec.
         let mut pid = 0u32;
-        // SAFETY : `hwnd` vient d'un enfant vivant ; un handle invalide fait
-        // rendre 0 à la fonction, ce que le `ensure` ci-dessous attrape.
+        // SAFETY : `hwnd` vient d'un enfant vivant, et `&mut pid` est un
+        // pointeur valide vers une variable initialisée pour toute la durée
+        // de l'appel.
         unsafe { GetWindowThreadProcessId(hwnd, Some(&mut pid)) };
         anyhow::ensure!(
             pid != 0,

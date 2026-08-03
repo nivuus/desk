@@ -30,13 +30,27 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
         .canaux
         .keys()
         .filter_map(|session| {
-            // Une session sans PID connu n'existe pas : `inscrire` pose les
-            // deux ensemble. Le `filter_map` est un filet, pas un cas nominal.
+            // Une session sans PID ou sans rang d'arrivée connu n'existe pas
+            // : `inscrire` pose les deux ensemble. Le `filter_map` est un
+            // filet, pas un cas nominal.
+            //
+            // ⚠️ `arrivee` et `dernier_focus` ne sont PAS symétriques malgré
+            // l'air qu'elles en ont : `0` est le sentinelle DOCUMENTÉ de
+            // `dernier_focus` (« jamais focalisée », la priorité la plus
+            // basse — voir `FenetreAudio`), donc `unwrap_or(0)` y est le bon
+            // repli. Pour `arrivee`, `0` BAT toute fenêtre réelle de son
+            // groupe de PID (`l_emporte` compare `candidat.arrivee <
+            // actuel.arrivee`) : un repli à 0 y serait donc le pire choix
+            // possible, pas un choix neutre. Aucun chemin vivant ne produit
+            // ce cas — `inscrire` pose toujours `arrivees` avant tout appel
+            // à `distribuer_l_audio` —, mais le rendre par `?` plutôt que par
+            // un défaut le rend impossible à mal lire.
             let pid = *garde.pids.get(session)?;
+            let arrivee = *garde.arrivees.get(session)?;
             Some(FenetreAudio {
                 session: session.clone(),
                 pid,
-                arrivee: garde.arrivees.get(session).copied().unwrap_or(0),
+                arrivee,
                 dernier_focus: garde.derniers_focus.get(session).copied().unwrap_or(0),
             })
         })
@@ -49,12 +63,24 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
     garde.derniers_audio.retain(|session, _| vivantes.contains(session));
 
     // Les ordres de SE TAIRE partent d'abord, les ordres de PORTER ensuite.
-    // Sans cet ordre, une bascule de focus au sein d'un groupe rendrait les
-    // deux fenêtres audibles pendant le temps qui sépare les deux messages —
-    // court, mais parfaitement audible sur de la musique.
+    // Cet ordre RÉDUIT la fenêtre de recouvrement, il ne la ferme pas : les
+    // deux ordres empruntent deux canaux `mpsc` distincts, lus chacun par le
+    // fil de SA fenêtre. L'ordre d'ENVOI est garanti, pas celui de
+    // TRAITEMENT — si le fil qui doit se taire est déclassé par
+    // l'ordonnanceur avant de lire son message, les deux fenêtres restent
+    // audibles ensemble le temps qu'il reprenne la main. La borne réelle est
+    // donc l'ordonnancement des deux fils, pas ce canal.
     let (a_porter, a_taire): (Vec<_>, Vec<_>) =
         decisions.into_iter().partition(|(_, actif)| *actif);
 
+    // ⚠️ Un canal rompu ici n'est PAS ré-arbitré dans la même passe : si la
+    // session rompue portait le son de son groupe, sa voisine ne le
+    // reprendra qu'au TOUR DE ROUE SUIVANT — borne `PERIODE_REARBITRAGE`,
+    // 250 ms. Même résidu, et même borne, que le chemin `rompus` de
+    // `distribuer_les_parts` (voir la doc du `Message` juste au-dessus), mais
+    // le symptôme n'est pas de même nature : là, un plancher de débit
+    // transitoire ; ici, un silence PERCEPTIBLE par l'utilisateur pendant
+    // jusqu'à 250 ms.
     let mut rompus = Vec::new();
     for (session, actif) in a_taire.into_iter().chain(a_porter) {
         if garde.derniers_audio.get(&session) == Some(&actif) {
