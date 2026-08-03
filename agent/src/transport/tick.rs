@@ -186,14 +186,30 @@ impl Session {
         //           (qui n'endort rien : elle ANNONCE au navigateur un
         //           sommeil déjà décidé côté capteur — l'endormissement
         //           réel, lui, a lieu côté capteur, pas ici). La cohérence
-        //           entre un sommeil et la part qui en découle n'est PAS
-        //           garantie par cet ordre local : elle l'est en AMONT, côté
-        //           capteur, où `distribuer` (les ordres de sommeil) est
-        //           toujours appelée avant `distribuer_les_parts` (voir
-        //           `capteur/sommeil.rs`) — les deux arrivent donc déjà
-        //           cohérents dans le même lot de messages avant même que
-        //           cette liste de priorités ne s'exécute. Traiter a1quater
-        //           juste après a1ter reste néanmoins le choix le plus
+        //           entre un sommeil et la part qui en découle ne se joue PAS
+        //           dans cet ordre local : elle se joue en AMONT, côté
+        //           capteur, où `distribuer` (les ordres de sommeil) précède
+        //           `distribuer_les_parts` sur tous les chemins d'entrée du
+        //           registre (`inscrire`, `retirer`, `signaler`,
+        //           `echec_de_reveil`, tour de roue — voir
+        //           `capteur/sommeil.rs`).
+        //
+        //           ⚠️ **Tous SAUF UN, et il ne faut pas le taire** (I2, revue
+        //           finale de branche). Le chemin `rompus` de
+        //           `distribuer_les_parts` envoie les parts D'ABORD, puis
+        //           détecte les canaux rompus, retire leurs sessions du
+        //           vivier, et relaie seulement ensuite les ordres que ce
+        //           retrait engendre. Une session RÉVEILLÉE par la place
+        //           qu'un mort libère reçoit donc son `Reveiller` APRÈS la
+        //           part d'endormie calculée juste avant, et n'obtient sa part
+        //           d'éveillée qu'au tour de roue suivant.
+        //           **Borne : `PERIODE_REARBITRAGE`, soit 250 ms**, pendant
+        //           lesquelles cette fenêtre encode au plancher
+        //           `PART_DORMANTE_BPS`. Le canal unique garantit l'ordre de
+        //           LIVRAISON, jamais l'ordre de CALCUL — c'est cette
+        //           distinction que la rédaction précédente manquait.
+        //
+        //           Traiter a1quater juste après a1ter reste le choix le plus
         //           lisible : il respecte l'ordre d'arrivée plutôt que de
         //           l'inverser sans raison.
         //           Ne met aucun paquet en file — voir la doc de tête de

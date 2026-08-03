@@ -8,8 +8,23 @@
 //! **Le défaut que ce module existe pour corriger.** Depuis le sous-bloc D1,
 //! chaque fenêtre est un processus portant sa propre `PeerConnection`, donc son
 //! propre BWE, et chacune hérite `BITRATE` tel quel. À huit fenêtres, huit
-//! `set_desired_bitrate` visent 96 Mb/s cumulés sur un lien unique, et le
-//! sondage à la hausse de chacune est lu par les autres comme de la congestion.
+//! `set_desired_bitrate` visent 96 Mb/s cumulés sur un lien unique : personne
+//! n'arbitre, et chaque fenêtre encode comme si elle était seule.
+//!
+//! ⚠️ **Ce n'est PAS une congestion de lien, et la prémisse d'origine du
+//! sous-bloc disait le contraire — la recette l'a réfutée.** Le pont porte
+//! **≥ 1,44 Gb/s** et `packetsLost` vaut **0 aux onze exécutions** : 96 Mb/s
+//! cumulés sont entre 15 et 27 fois moins que ce que le chemin porte, et
+//! aucune fenêtre n'a jamais lu le sondage d'une autre comme de la congestion.
+//! **Le goulot mesuré est le DÉCODEUR du navigateur**, et ce qui le soulage
+//! est le nombre de pixels : réduire les bits sans franchir de seuil de
+//! barreau ne sauve rien (23,08 % d'images jetées à surface constante), quand
+//! passer de 1280×720 à 852×480 fait tomber le taux de 18,03 % à 3,94 %.
+//! Le partage reste donc le bon mécanisme, mais **il agit par la RÉSOLUTION** :
+//! une part plus petite fait descendre l'échelle d'`congestion/echelle.rs`
+//! d'un barreau, et c'est ce barreau qui soulage le décodeur. Voir
+//! `docs/superpowers/plans/2026-08-03-multifenetres-partage-capacite-resultats.md`,
+//! §1 et §3.6.
 
 /// Majoration accordée à la fenêtre que l'utilisateur regarde.
 ///
@@ -28,9 +43,22 @@ pub const FACTEUR_FOCUS: u32 = 2;
 ///
 /// ⚠️ **NON CALIBRÉE**, et l'hypothèse qui la motive n'est pas vérifiée : on
 /// ignore si str0m émet réellement du bourrage de sondage quand aucun média ne
-/// part. Si oui, ce plancher empêche des fenêtres endormies de manger le lien
-/// pour rien ; si non, il ne coûte que sa ligne. L'ordre de grandeur couvre
-/// l'audio (`opus::BITRATE_BPS`, 128 kb/s) et laisse de la marge.
+/// part. Si oui, ce plancher évite à des fenêtres endormies d'émettre du
+/// trafic pour rien ; si non, il ne coûte que sa ligne. **Ce n'était de toute
+/// façon jamais une question de saturation** : le lien porte ≥ 1,44 Gb/s et
+/// n'a jamais perdu un paquet (voir la doc de tête). L'ordre de grandeur
+/// couvre l'audio (`opus::BITRATE_BPS`, 128 kb/s) et laisse de la marge.
+///
+/// ⚠️ **Cette valeur ne doit JAMAIS atteindre `Controleur::changer_plafond`.**
+/// Elle est très en dessous du barreau le plus bas de l'échelle (691 200 bps à
+/// 1280×720/60 avec `BPP_MIN`) : appliquée comme plafond d'encodage, elle
+/// pose `video_bitrate_bps = 256_000` par le `min` de `changer_plafond`, et
+/// **rien ne le remonte au réveil** — une endormie n'émet rien, donc str0m
+/// n'émet aucun `MediaEgressStats` pour elle, donc `Controleur::observer`,
+/// seule réparation possible, n'est jamais appelé. C'est le défaut I1 de la
+/// revue finale de branche ; le remède vit dans `Session::appliquer_part`, qui
+/// n'applique une part d'endormie qu'au sondage. **Une fenêtre endormie a
+/// relâché son encodeur (D5) : il n'y a rien à borner côté encodage.**
 pub const PART_DORMANTE_BPS: u32 = 256_000;
 
 /// L'état d'une fenêtre, tel que le répartiteur a besoin de le connaître.
