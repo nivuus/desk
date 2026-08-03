@@ -7,9 +7,17 @@
 //! raisons différentes — `adaptation` réagit à ce que le RÉSEAU observe,
 //! celui-ci à ce que le CAPTEUR arbitre entre plusieurs fenêtres.
 //!
-//! Comme la branche a0ter, la branche a1quater ne mute JAMAIS `Rtc` — elle ne
-//! touche que le contrôleur de congestion et le sous-système BWE de `Rtc`,
-//! sans écrire aucun paquet.
+//! **Contrairement à la branche a0ter, celle-ci MUTE bien un champ interne de
+//! `Rtc`** : `rtc.bwe().set_desired_bitrate` écrit l'objectif de sondage du
+//! sous-système BWE et, si une estimation existe déjà, reconfigure le pacer
+//! de str0m (`configure_pacer`, appelé en interne). Elle ne met en revanche
+//! AUCUN paquet en file d'attente : l'effet différé qu'elle programme côté
+//! contrôleur de sondage (`ProbeControl` de str0m — qui peut avancer
+//! l'échéance de la prochaine sonde et faire émettre du bourrage) n'est
+//! évalué qu'au PROCHAIN traitement de `Input::Timeout`, jamais pendant cet
+//! appel. C'est cette absence de mise en file — et non une absence de
+//! mutation de `Rtc`, qui serait fausse — qui préserve l'invariant de
+//! drainage documenté en tête de `tick.rs`.
 
 use str0m::bwe::Bitrate;
 
@@ -56,8 +64,12 @@ mod tests {
 
         session.appliquer_part(3_000_000);
 
-        assert!(
-            session.congestion.courant().video_bitrate_bps <= 3_000_000,
+        // `assert_eq!`, pas `<=` : dans le régime « jamais aucune estimation »
+        // (voir le test suivant), `changer_plafond` fait suivre le débit
+        // EXACTEMENT au plafond — une borne large (`<=`) laisserait passer
+        // 0 ou 1 tout aussi bien qu'une vraie borne.
+        assert_eq!(
+            session.congestion.courant().video_bitrate_bps, 3_000_000,
             "la décision du contrôleur doit être bornée par la part"
         );
         assert!(
