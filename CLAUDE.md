@@ -1844,7 +1844,7 @@ code d'erreur).
 | `CAPTEUR=1` | **Sous-bloc D4** — lance l'agent en **capteur** de capture mutualisée (serveur du tube `\\.\pipe\agent-capteur`). Posée par le superviseur lui-même (`lancer_capteur`), pas à la main ; transmise par `scripts/run-agent.sh`. Un capteur qui hériterait de `SUPERVISEUR` se prendrait pour un superviseur |
 | `AGENT_TRACE_EXCEPTIONS=1` | Arme le filtre d'exception (pile symbolisable de la faute, journal séparé d'`agent.log`). Inerte sans la variable. `…_FICHIER` en change la destination ; `…_AUTOTEST=1` **tue délibérément le processus** pour éprouver l'instrument |
 | `BUDGET_BPS=<bps>` | **Sous-bloc D6** — le **budget de débit de toute la session**, lu par le **capteur** seul (`capteur/sommeil/parts.rs`), qui le découpe en parts et les pousse aux enfants. Défaut **12 000 000**. Transmise par `scripts/run-agent.sh` (tâche 9). C'est une variable de **produit**, pas de banc. Trace de contrôle : `budget de debit de la session budget_bps=<valeur>` — **comparer la VALEUR, jamais la seule présence de la ligne**, et **pas avant la première fenêtre** : elle vient d'un `OnceLock` initialisé au premier calcul de parts |
-| `SOURCE_TRACE=1` | ⚠️ **MORT DES DEUX CÔTÉS en multi-fenêtres** (constaté le 3 août 2026, sous-bloc D6). Les écrivains de `TICKS`/`CAPTURED`/`PRODUCED` vivent dans `windows_source.rs` (313 / 518 / 544), donc dans le **capteur** depuis D4 ; le lecteur unique est `demarrage.rs:142-144`, donc dans l'**enfant** ; et `main.rs:247` rend la main à `capteur::executer` avant que `demarrage::executer` ne soit atteint. La variable n'affiche donc que des **zéros** côté enfant, et les compteurs du capteur ne sont lus par **personne**. **Elle ne décrit plus que le chemin mono-fenêtre**, sans `CAPTEUR` ni `SUPERVISEUR`. Remède consigné pour D7 : rendre ces trois statiques **per-session** et les extraire vers `windows_source/telemetrie.rs` |
+| `SOURCE_TRACE=1` | ⚠️ **MORT DES DEUX CÔTÉS en multi-fenêtres** (constaté le 3 août 2026, sous-bloc D6). Les écrivains vivent dans `windows_source.rs` — `PRODUCED` **313**, `TICKS` **518**, `CAPTURED` **544** (ordre non positionnel : ne pas apparier à la liste `TICKS`/`CAPTURED`/`PRODUCED`) —, donc dans le **capteur** depuis D4 ; le lecteur unique est `demarrage.rs:142-144`, donc dans l'**enfant** ; et `main.rs:247` rend la main à `capteur::executer` avant que `demarrage::executer` ne soit atteint. La variable n'affiche donc que des **zéros** côté enfant, et les compteurs du capteur ne sont lus par **personne**. **Elle ne décrit plus que le chemin mono-fenêtre**, sans `CAPTEUR` ni `SUPERVISEUR`. Remède consigné pour D7 : rendre ces trois statiques **per-session** et les extraire vers `windows_source/telemetrie.rs` |
 
 ---
 
@@ -2966,9 +2966,12 @@ cumulées au palier de 30 s — l'écart est **en aval du canal** (huit sessions
 attribution au réseau est une INFÉRENCE** : aucune mesure de charge du pont.
 
 > ❌ **CETTE INFÉRENCE EST RÉFUTÉE (3 août 2026, sous-bloc D6, tâche 1).** La
-> mesure de charge du pont qui manquait a été prise : **il porte ≥ 1,45 Gb/s en
-> TCP** (3 exécutions) **et 1,64 Gb/s en UDP** (3 exécutions), soit **15 à
-> 27 fois** les 96 Mb/s que huit fenêtres à 12 Mb/s pouvaient cumuler. **Le pont
+> mesure de charge du pont qui manquait a été prise : **il porte ≥ 1,44 Gb/s en
+> TCP** (3 exécutions, minimum relevé 1 448,74 Mb/s) **et 1,64 Gb/s en UDP**
+> (**1 exécution sur 3 — la seule instrumentée au noyau** : les deux autres
+> émettent 1 615 et 1 665 Mb/s côté VM, mais **rien n'établit leur arrivée**),
+> soit **15 à 27 fois** les 96 Mb/s que huit fenêtres à 12 Mb/s pouvaient
+> cumuler. **Le pont
 > ne pouvait pas être saturé.** Et `packetsLost` vaut **0** — pas « négligeable »,
 > zéro — aux quatre exécutions du banc de décrochage de D6 comme aux sept
 > exécutions de sa recette.
@@ -3088,7 +3091,7 @@ n'a toujours jamais été exercé.
   bon instrument pour DISCULPER un canal** — c'est lui qui autorise à dire que
   la perte est en aval.
   ⚠️ **Vrai, et insuffisant : « en aval » n'est pas « dans le réseau ».** D6 a
-  mesuré le lien (≥ 1,45 Gb/s, `packetsLost` = 0) et le décodeur (90,2 % du temps
+  mesuré le lien (≥ 1,44 Gb/s, `packetsLost` = 0) et le décodeur (90,2 % du temps
   mural en décodage vidéo, 53,6 % d'images jetées sur une fenêtre) : **l'aval
   incriminé était le NAVIGATEUR**, pas le pont. **Disculper un maillon ne désigne
   pas le coupable suivant** — il faut une mesure par maillon.
@@ -3282,9 +3285,12 @@ constante dérivée.
 
 ### Le verdict, en trois faits qui ne se simplifient dans aucun sens
 
-> ❌ **① LA PRÉMISSE EST RÉFUTÉE.** Le pont porte **≥ 1,45 Gb/s en TCP**
-> (3 exécutions) et **1,64 Gb/s en UDP** (3 exécutions). Huit fenêtres visant
-> chacune 12 Mb/s font 96 Mb/s cumulés : **15 à 27 fois moins**. Et
+> ❌ **① LA PRÉMISSE EST RÉFUTÉE.** Le pont porte **≥ 1,44 Gb/s en TCP**
+> (**3 exécutions**, minimum relevé 1 448,74 Mb/s, les deux bouts comptant le
+> même nombre d'octets) et **1,64 Gb/s en UDP** (**1 exécution sur 3 — la seule
+> instrumentée au noyau** ; les deux autres émettent 1 615 et 1 665 Mb/s côté VM
+> sans qu'aucun compteur n'établisse leur arrivée). Huit fenêtres visant chacune
+> 12 Mb/s font 96 Mb/s cumulés : **15 à 27 fois moins**. Et
 > `packetsLost` vaut **0** — pas « négligeable », zéro — aux **quatre**
 > exécutions du banc de décrochage **et** aux **sept** de la recette. **Le
 > goulot est le DÉCODEUR DU NAVIGATEUR**, pas le réseau : sur **une** fenêtre à
@@ -3300,18 +3306,23 @@ constante dérivée.
 >
 > ⚠️ **③ MAIS CE N'EST PAS LE DÉBIT QUI SAUVE, C'EST LA RÉSOLUTION — et c'est
 > le fait le plus contre-intuitif du sous-bloc.** Le témoin à **surface
-> constante** — bits divisés par 2,2, sans franchir de seuil de barreau — rend
-> **23,08 %** d'images jetées, soit **PIRE** que les 18,03 % du barreau plein
-> (une exécution chacun). **`BUDGET_BPS` n'agit que par l'intermédiaire de
-> l'échelle, en marches discrètes** : une valeur qui réduirait les bits sans
-> faire changer de barreau **ne corrigerait rien**. Elle doit donc être choisie
+> quasi constante** — bits divisés par 2,2, **7 fenêtres sur 8 restées en
+> 1280×720**, la huitième seule ayant franchi un seuil — rend **23,08 %**
+> d'images jetées, soit **PAS MEILLEUR** que les 18,03 % du barreau plein.
+> ⚠️ **Une exécution chacun : l'écart entre ces deux nombres n'est pas
+> nécessairement significatif. Ce qui l'est, c'est l'ABSENCE DE TOUTE
+> AMÉLIORATION**, à opposer aux baisses nettes obtenues dès qu'un barreau est
+> franchi. **`BUDGET_BPS` n'agit que par l'intermédiaire de l'échelle, en
+> marches discrètes** : une valeur qui réduirait les bits sans faire changer de
+> barreau **ne corrigerait rien**. Elle doit donc être choisie
 > pour **franchir un seuil de barreau au N visé**, jamais pour « laisser de la
 > marge ».
 
 ### Les cinq critères, avec le nombre d'exécutions dans chaque énoncé
 
-**Douze exécutions du produit en tout** : une au §1, quatre au §2, sept à la
-recette. **Aucun taux n'est revendiqué nulle part.**
+**Douze exécutions du produit en tout** : une au §1 du document de résultats
+(la mesure du lien), quatre à son §2 (le banc de décrochage), sept à la recette
+de son §3. **Aucun taux n'est revendiqué nulle part.**
 
 | # | Critère | Verdict | Exécutions |
 | --- | --- | --- | --- |
@@ -3378,6 +3389,11 @@ pas :**
 | **12 Mb/s** | 852×480 | **3,94 %** (1 exéc. comparable) | **196,40** | 8/10 |
 | **8 Mb/s** | 640×360 | **1,46 %** et **3,94 %** (2 exéc.) | 95,54 et 135,57 | 3/4 |
 
+⚠️ **La colonne « focus réussi » ne compare RIEN** : `8/10` contre `3/4`
+**mesure surtout la durée des paliers, pas le mécanisme** — les échecs sont
+imputés au protocole (palier de 25 s contre `DELAI_REMONTEE` de 20 s, voir le
+premier piège). **`FACTEUR_FOCUS` ne départage pas les deux budgets.**
+
 **Plus de pixels livrés, davantage jetés.** Aucune des deux valeurs ne domine
 l'autre sur les deux grandeurs, et les effectifs (1 contre 2) n'autorisent
 aucune comparaison statistique. **Le choix tient à UNE seule raison : 12 Mb/s ne
@@ -3424,8 +3440,8 @@ quand un média *actif* sonde à la hausse.
 
 ### Ce que D6 n'établit PAS
 
-- **Aucun taux, nulle part.** Une exécution par point aux §1 et §2 ; sept à la
-  recette, dont **trois seulement** comparables entre elles et **une seule** à
+- **Aucun taux, nulle part.** Une exécution par point aux §1 et §2 du document
+  de résultats ; sept à la recette de son §3, dont **trois seulement** comparables entre elles et **une seule** à
   12 Mb/s dans ces conditions.
 - **`FACTEUR_FOCUS` et `PART_DORMANTE_BPS` restent NON CALIBRÉES**, et **aucune
   constante de ce sous-bloc n'a été jugée par un jugement visuel** — exactement

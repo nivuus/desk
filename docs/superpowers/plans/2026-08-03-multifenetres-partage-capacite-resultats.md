@@ -20,8 +20,9 @@ TCP, trois en UDP. Aucun taux n'est revendiqué nulle part.**
 
 > ❌ **LA PRÉMISSE DU SOUS-BLOC D6 EST RÉFUTÉE.**
 >
-> Le pont porte **au moins 1,45 Gb/s en TCP et 1,64 Gb/s en UDP**, avec **zéro
-> perte réseau**. Huit fenêtres visant chacune 12 Mb/s, soit **96 Mb/s cumulés,
+> Le pont porte **au moins 1,44 Gb/s en TCP** (3 exécutions, minimum relevé
+> 1 448,74 Mb/s) **et 1,64 Gb/s en UDP** (**1 exécution sur 3 — la seule
+> instrumentée au noyau**), avec **zéro perte réseau**. Huit fenêtres visant chacune 12 Mb/s, soit **96 Mb/s cumulés,
 > ne pouvaient pas le saturer** : c'est **entre 15 et 27 fois** moins que ce que
 > le chemin a porté.
 >
@@ -934,7 +935,7 @@ reportée sur cette recette.
    borne à lui seul ce que l'encodeur produit : **l'observation est entièrement
    expliquée sans invoquer `set_desired_bitrate`.**
 2. **Le comportement de montée.** `packetsLost` vaut **0** aux sept exécutions,
-   et le lien porte ≥ 1,45 Gb/s (§1) : il n'y a aucune congestion de lien dont
+   et le lien porte ≥ 1,44 Gb/s (§1) : il n'y a aucune congestion de lien dont
    une montée bornée se distinguerait d'une montée libre.
 3. **L'estimation BWE brute** (`agent::transport::evenements=debug`). Tentée à
    l'exécution B ; le journal passe de 1 128 à 2 317 lignes et l'exécution rend
@@ -1129,9 +1130,10 @@ part dans ce document.**
 
 > ❌ **① LA PRÉMISSE DU SOUS-BLOC EST RÉFUTÉE.** D6 existait pour empêcher N
 > fenêtres de se disputer un lien saturé. **Le lien n'était pas saturé, et il
-> ne pouvait pas l'être** : le pont porte **≥ 1,45 Gb/s** (3 exécutions TCP,
-> §1.2) et `packetsLost` vaut **0** aux quatre exécutions du §2 **et** aux sept
-> du §3. Le goulot observé est **le décodeur du navigateur**, pas le réseau.
+> ne pouvait pas l'être** : le pont porte **≥ 1,44 Gb/s** (3 exécutions TCP,
+> minimum relevé 1 448,74 Mb/s, §1.2) — et **1,64 Gb/s en UDP, sur 1 exécution
+> des 3, la seule instrumentée au noyau** — tandis que `packetsLost` vaut **0**
+> aux quatre exécutions du §2 **et** aux sept du §3. Le goulot observé est **le décodeur du navigateur**, pas le réseau.
 >
 > ✅ **② LE MÉCANISME CORRIGE POURTANT QUELQUE CHOSE, ET LA MESURE DIT QUOI.**
 > À huit fenêtres : **18,03 %** d'images jetées au barreau plein, **7,99 %** un
@@ -1140,9 +1142,12 @@ part dans ce document.**
 > **3,94 %** au barreau 852×480 (1 exécution comparable, §3.3).
 >
 > ⚠️ **③ MAIS CE N'EST PAS LE DÉBIT QUI SAUVE, C'EST LA RÉSOLUTION.** Le témoin
-> à surface constante — bits divisés par 2,2 **sans** franchir de seuil de
-> barreau — rend **23,08 %** d'images jetées, soit **pire** que les 18,03 % du
-> barreau plein (1 exécution chacun, §2.3). **`BUDGET_BPS` n'agit que par
+> à surface **quasi** constante — bits divisés par 2,2, **7 fenêtres sur 8**
+> restées en 1280×720, la huitième seule ayant franchi un seuil — rend
+> **23,08 %** d'images jetées, soit **pas meilleur** que les 18,03 % du barreau
+> plein (1 exécution chacun, §2.3). ⚠️ **L'écart entre ces deux nombres n'est
+> pas nécessairement significatif ; ce qui l'est, c'est l'ABSENCE DE TOUTE
+> AMÉLIORATION.** **`BUDGET_BPS` n'agit que par
 > l'intermédiaire de l'échelle, en marches discrètes** : une valeur qui
 > réduirait les bits sans faire changer de barreau ne corrigerait rien.
 
