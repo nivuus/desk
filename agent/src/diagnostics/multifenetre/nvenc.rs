@@ -30,7 +30,7 @@ const PLAFOND_RECHERCHE: usize = 16;
 ///
 /// L'adaptateur est laissé au choix du système (`D3D_DRIVER_TYPE_HARDWARE`) :
 /// sur cette VM il n'y a qu'un GPU réel, et c'est celui qui porte NVENC.
-fn peripherique_autonome() -> Result<(ID3D11Device, ID3D11DeviceContext)> {
+pub(super) fn peripherique_autonome() -> Result<(ID3D11Device, ID3D11DeviceContext)> {
     let mut device: Option<ID3D11Device> = None;
     let mut contexte: Option<ID3D11DeviceContext> = None;
     unsafe {

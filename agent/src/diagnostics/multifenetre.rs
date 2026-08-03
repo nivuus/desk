@@ -27,6 +27,7 @@ pub(super) mod nvenc;
 pub(super) mod paralleles;
 pub(super) mod plafond;
 pub(super) mod pointeur_virtuel;
+pub(super) mod recyclage;
 pub(super) mod replis;
 pub(super) mod reprise;
 pub(super) mod voies;
@@ -209,6 +210,17 @@ pub(super) fn aiguiller() -> Result<bool> {
             .parse()
             .context("MULTIFENETRE_REPRISE doit être un entier (nombre de duplications)")?;
         reprise::mesurer(nombre)?;
+        return Ok(true);
+    }
+    // Mesure pivot du sous-bloc D5 : détruire un encodeur libère-t-il la
+    // place ? Placée AVANT `MULTIFENETRE_NVENC` : les deux variables ont un
+    // préfixe commun, et l'ordre rend l'intention non ambiguë si les deux
+    // sont posées par mégarde.
+    if let Ok(texte) = std::env::var("MULTIFENETRE_NVENC_CYCLES") {
+        let cycles: usize = texte
+            .parse()
+            .context("MULTIFENETRE_NVENC_CYCLES doit être un entier (nombre de recyclages)")?;
+        recyclage::mesurer(cycles)?;
         return Ok(true);
     }
     // Mesure ② : le plafond d'encodeurs, sur périphérique partagé (la mesure
