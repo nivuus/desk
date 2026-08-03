@@ -6,6 +6,7 @@
 //! distante, reprise) est hors `cfg` et se teste sur l'hôte ; ce qui touche
 //! DXGI et les tubes est gaté.
 
+pub mod audio;
 pub mod distante;
 #[cfg(windows)]
 pub mod fenetre;
