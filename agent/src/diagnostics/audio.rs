@@ -110,16 +110,41 @@ pub(super) fn executer_capture_process_loopback(pid_texte: &str) -> Result<()> {
         Err(e) => tracing::warn!(pid, erreur = %e, "cycle Stop puis Start REFUSE"),
     }
 
+    // La seconde moitié journalise les MÊMES quatre champs que la première
+    // (echantillons, lectures_vides, crete, silencieux), pas la seule crête.
+    // Sans echantillons_apres/lectures_vides_apres, une crete_apres a 0 est
+    // ambiguë entre trois causes bien distinctes : le flux a bien repris mais
+    // la source est redevenue silencieuse (echantillons_apres > 0) ; le flux a
+    // repris mais ne rend jamais rien (echantillons_apres = 0, lectures_vides_apres
+    // proche du plafond) ; ou `demarrer()` a été refusé et cette boucle a
+    // interrogé un flux resté arrêté pendant 5 s (même signature que le cas
+    // précédent, mais pour une tout autre raison). Or c'est précisément cette
+    // distinction que la tâche 3 doit trancher pour la décision du §4.4 de la
+    // spec : un « `Start` accepté » ne garantit que le HRESULT, pas que
+    // l'audio a réellement repris.
     let debut = std::time::Instant::now();
+    let mut echantillons_apres = 0u64;
+    let mut lectures_vides_apres = 0u64;
     let mut crete_apres = 0i16;
     while debut.elapsed() < std::time::Duration::from_secs(5) {
-        if let Some(bloc) = capture.read()? {
-            for v in bloc {
-                crete_apres = crete_apres.max(v.saturating_abs());
+        match capture.read()? {
+            Some(bloc) => {
+                echantillons_apres += bloc.len() as u64;
+                for v in bloc {
+                    crete_apres = crete_apres.max(v.saturating_abs());
+                }
             }
+            None => lectures_vides_apres += 1,
         }
         std::thread::sleep(std::time::Duration::from_millis(5));
     }
-    tracing::info!(pid, crete_apres, "sonde de capture process loopback terminee");
+    tracing::info!(
+        pid,
+        echantillons_apres,
+        lectures_vides_apres,
+        crete_apres,
+        silencieux_apres = crete_apres == 0,
+        "sonde de capture process loopback terminee"
+    );
     Ok(())
 }
