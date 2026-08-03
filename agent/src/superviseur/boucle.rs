@@ -42,20 +42,22 @@ use crate::moniteurs_virtuels::{pilote::PiloteParIoctl, Sorties};
 
 /// Nombre maximal de fenêtres servies simultanément.
 ///
-/// **8, et voici exactement ce que ce chiffre est.** D3 avait ramené cette
-/// valeur à 4, le plafond de processus concurrents tenant une duplication DXGI.
-/// Le capteur mutualise désormais toutes les duplications dans un seul
-/// processus : ce plafond-là ne mord plus. Le plafond qui prend le relais est
-/// celui des **encodeurs** — 8 dans un processus, la 9ᵉ refusée au
-/// `SetOutputType` de la MFT NVIDIA (`MF_E_UNSUPPORTED_D3D_TYPE`), mesuré deux
-/// fois, les 30 et 31 juillet 2026, et inchangé que les encodeurs partagent un
-/// périphérique D3D11 ou qu'ils en aient chacun un neuf.
+/// **10, soit le vivier de sorties virtuelles du pilote** (mesure ① du
+/// 31 juillet 2026 : refus à la 11ᵉ création, `ERROR_TOO_MANY_NAMES`). Ce
+/// n'est plus le plafond d'ENCODEURS, et c'est le changement de D5 : jusqu'ici
+/// les deux se confondaient à 8, faute de pouvoir ouvrir plus de fenêtres qu'on
+/// ne pouvait en encoder. Le vivier (`capteur::vivier`) les sépare — au plus
+/// `vivier::PLAFOND_EVEIL` (8) fenêtres sont éveillées à la fois, les autres
+/// dorment en gardant leur sortie virtuelle et leur session.
 ///
-/// ⚠️ **Valeur mesurée sur cette VM, à 1280×720 / 60 Hz / 8 Mb/s, non prouvée
-/// être une borne du système.** La couche qui l'impose n'est pas identifiée
-/// (NVENC, pilote, Media Foundation, ou virtualisation). À corriger au rang que
-/// la recette du sous-bloc atteint réellement, s'il diffère.
-const CAPACITE: usize = 8;
+/// Les deux plafonds ne viennent donc plus de la même couche : celui-ci du
+/// **pilote de sorties virtuelles**, `PLAFOND_EVEIL` du **matériel
+/// d'encodage**. Les faire suivre l'un l'autre serait une erreur.
+///
+/// ⚠️ **Valeur mesurée sur cette VM, non prouvée être une borne du système** —
+/// et la cause du refus à la 11ᵉ création n'est pas isolée (on ignore même si le
+/// vivier de 10 est global au pilote ou par client : Apollo pingue le même).
+const CAPACITE: usize = 10;
 
 /// Cadence du battement du chien de garde du pilote. Le pilote retire les
 /// sorties d'un client qui cesse de pinguer ; l'unité de son délai n'est PAS

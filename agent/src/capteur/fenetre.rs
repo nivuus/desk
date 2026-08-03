@@ -5,11 +5,30 @@
 //! déjà exactement le couple `DesktopCapture` + `H264Encoder` derrière le
 //! trait `VideoSource` : ce module ne fait qu'appeler ce trait et transporter
 //! ses résultats. C'est la simplification centrale du sous-bloc D4.
+//!
+//! **Depuis le sous-bloc D5, la source est OPTIONNELLE.** Le vivier
+//! (`capteur/vivier.rs`, branché sur des canaux par `capteur/sommeil.rs`)
+//! ordonne à ce fil de relâcher son encodeur et sa duplication, puis de les
+//! reconstruire. Ces deux gestes se font ICI et nulle part ailleurs, pour la
+//! même raison que la sortie de boucle : `Drop for H264Encoder` peut geler, et
+//! sur ce fil-ci un gel ne coûterait que cette fenêtre.
+//!
+//! Trois fichiers, parce que le sous-bloc D5 a porté celui-ci de 336 à plus de
+//! 600 lignes : la boucle et le transport restent ici, les transitions de
+//! sommeil et le service des commandes vivent dans les deux modules enfants.
 
 #![cfg(windows)]
 
+// `transitions` porte `dormir` et `reveiller` — l'exécution, pour CETTE
+// fenêtre, de ce que `crate::capteur::sommeil` décide pour toutes. Il ne
+// s'appelle délibérément PAS `sommeil` : deux modules de ce nom dans le même
+// sous-arbre se confondraient à la lecture, et l'import du registre entrerait
+// en collision avec l'enfant.
+mod commandes;
+mod transitions;
+
 use std::io::Write;
-use std::sync::mpsc::{sync_channel, Receiver, Sender, SyncSender, TryRecvError, TrySendError};
+use std::sync::mpsc::{sync_channel, Receiver, Sender, SyncSender};
 use std::time::{Duration, Instant};
 
 use anyhow::{bail, Context, Result};
@@ -17,9 +36,12 @@ use windows::Win32::Foundation::HWND;
 
 use crate::capteur::horloge::{frequence_qpc, lire_qpc, origine_depuis_qpc};
 use crate::capteur::protocole::{ecrire_image, ecrire_json, DepuisCapteur, VersCapteur};
+use crate::capteur::vivier::Ordre;
 use crate::h264::AccessUnit;
 use crate::source::VideoSource;
 use crate::windows_source::WindowsSource;
+
+use self::commandes::{deposer, servir_les_commandes};
 
 /// Pas de sommeil quand la source n'a rien rendu.
 ///
@@ -57,6 +79,41 @@ enum Fin {
     Terminer(&'static str),
 }
 
+/// Ce que le service des commandes doit connaître en plus de la source.
+///
+/// **Regroupé parce que ces quatre-là voyagent toujours ensemble** :
+/// `servir_les_commandes` fait exécuter les commandes, et `deposer` l'appelle à
+/// chaque tour de sa contre-pression. Les passer un à un allongeait les deux
+/// signatures de quatre paramètres.
+///
+/// **N'emprunte rien de `Fenetre`** — `taille` est copiée — de sorte qu'un
+/// contexte vivant n'empêche jamais un appel de méthode sur `&mut self`.
+struct Contexte<'a> {
+    /// La session, pour le registre de sommeil : c'est par elle que la
+    /// visibilité reçue ici est arbitrée globalement.
+    session: &'a str,
+    /// Dimensions RETENUES de la fenêtre. Seule réponse possible à un
+    /// redimensionnement reçu pendant un sommeil, où il n'y a plus de source à
+    /// interroger.
+    taille: (u32, u32),
+    commandes: &'a Receiver<VersCapteur>,
+    reponses: &'a Sender<DepuisCapteur>,
+}
+
+/// De quoi reconstruire la source à l'identique après un sommeil.
+///
+/// **`clock_origin` est retenue, jamais recalculée** : elle est l'origine des
+/// horodatages de la piste vidéo, et la refaire au réveil décalerait le flux de
+/// l'écart entre les deux origines — le même piège que l'attache résout par
+/// `origine_qpc`.
+struct Parametres {
+    hwnd: HWND,
+    sortie: String,
+    fps: u32,
+    debit: u32,
+    clock_origin: Instant,
+}
+
 /// Une fenêtre servie par le capteur : sa source, et de quoi la nommer.
 ///
 /// **Le `WindowsSource` ne quitte jamais le fil qui l'a construit.** Il porte
@@ -64,15 +121,39 @@ enum Fin {
 /// le seul fil de fenêtre, et les commandes lui parviennent par `mpsc` depuis
 /// le fil qui tient la connexion de commandes.
 pub struct Fenetre {
-    source: WindowsSource,
+    /// `None` quand la fenêtre dort : l'encodeur et la duplication DXGI sont
+    /// alors relâchés, et c'est tout l'objet du sous-bloc D5. La sortie
+    /// virtuelle, elle, n'est jamais touchée — c'est ce qui évite d'infliger un
+    /// abandon de mutex aux fenêtres voisines à chaque endormissement.
+    source: Option<WindowsSource>,
+    parametres: Parametres,
     session: String,
-    sortie: String,
     largeur: u32,
     hauteur: u32,
 }
 
 impl Fenetre {
-    /// Construit la source annoncée par une trame d'attache.
+    /// Prépare la fenêtre annoncée par une trame d'attache — **sans construire
+    /// sa source**.
+    ///
+    /// **Une fenêtre que personne ne regarde ne consomme aucun encodeur.**
+    /// Jusqu'au sous-bloc D5 cette fonction appelait `sur_sortie`, donc ouvrait
+    /// une duplication DXGI et construisait un encodeur matériel, *avant* toute
+    /// inscription au vivier : la 9ᵉ fenêtre échouait au plafond matériel comme
+    /// si le vivier n'existait pas, et la comptabilité du vivier était fausse
+    /// dès la naissance — il croyait la place libre alors qu'elle était déjà
+    /// prise. La fenêtre naît désormais **endormie**, et c'est le premier
+    /// `Ordre::Reveiller` qui construit la source, une fois la place acquise.
+    ///
+    /// ⚠️ **Cela DÉPLACE la détection des échecs, sans la perdre.** Un `hwnd`
+    /// invalide ou une sortie inaccessible faisait jusqu'ici échouer l'attache,
+    /// et l'enfant recevait un `Refus` immédiat. Désormais l'attache ne peut
+    /// plus échouer que sur la résolution de la TAILLE ; une source impossible
+    /// à construire ne se manifeste qu'au premier réveil, par un `warn!` et un
+    /// `echec_de_reveil` qui la fait reproposer indéfiniment. Une fenêtre dont
+    /// la sortie a disparu entre l'attache et le réveil boucle donc sur des
+    /// réveils refusés au lieu de mourir — c'est le prix de l'acquisition
+    /// préalable, et il est assumé.
     ///
     /// La réponse à l'attache n'est PAS écrite ici : elle part sur la
     /// connexion de commandes, que ce fil ne touche jamais. L'appelant écrit
@@ -91,10 +172,13 @@ impl Fenetre {
         );
 
         let hwnd = HWND(hwnd as *mut core::ffi::c_void);
-        let source = WindowsSource::sur_sortie(hwnd, &sortie, fps, debit, clock_origin)
+        // La taille est la seule chose qu'il faut savoir avant d'avoir la
+        // place : `taille_de_sortie` la lit sans ouvrir de duplication, donc
+        // sans prendre le mutex de la sortie ni perturber aucune voisine.
+        let (largeur, hauteur) = crate::capture::ouverture::taille_de_sortie(&sortie)
             .with_context(|| format!("attache de la session {session}"))?;
-        let (largeur, hauteur) = source.dimensions();
-        Ok(Fenetre { source, session, sortie, largeur, hauteur })
+        let parametres = Parametres { hwnd, sortie, fps, debit, clock_origin };
+        Ok(Fenetre { source: None, parametres, session, largeur, hauteur })
     }
 
     pub fn dimensions(&self) -> (u32, u32) {
@@ -122,12 +206,12 @@ impl Fenetre {
         reponses: Sender<DepuisCapteur>,
         ecrivain: E,
     ) -> Result<()> {
-        // Copiée une fois : les traces la citent à chaque tour, et `source`
-        // emprunte l'autre champ pendant tout ce temps.
+        // Copiée une fois : les traces la citent à chaque tour, et la boucle
+        // emprunte `self` en mutable pendant tout ce temps.
         let session = self.session.clone();
         tracing::info!(
             %session,
-            sortie = %self.sortie,
+            sortie = %self.parametres.sortie,
             largeur = self.largeur,
             hauteur = self.hauteur,
             "fenêtre attachée au capteur"
@@ -137,25 +221,106 @@ impl Fenetre {
         let session_ecrivain = session.clone();
         std::thread::spawn(move || ecrire_le_media(ecrivain, a_ecrire, &session_ecrivain));
 
-        let source = &mut self.source;
+        // Inscription au vivier. Une fenêtre naît ENDORMIE des deux côtés — au
+        // vivier ET ici, `source` valant `None` depuis `ouvrir` : c'est ce qui
+        // fait que le vivier voit la vérité dès la première seconde, et que
+        // huit encodeurs au plus existent quel que soit le nombre de fenêtres
+        // attachées. Le premier signal de visibilité du client la réveillera.
+        //
+        // ⚠️ **Corollaire : une fenêtre dont le client n'annonce JAMAIS sa
+        // visibilité ne se réveille jamais, et sa page reste noire.** C'est le
+        // comportement voulu — aucun encodeur ne doit être pris pour une
+        // fenêtre que personne ne déclare regarder —, mais c'est la nouvelle
+        // façon dont une session peut rester vide sans qu'aucune erreur ne soit
+        // journalisée.
+        let ordres = crate::capteur::sommeil::inscrire(&session);
+
+        let resultat = self.boucler(&session, &ordres, &ecritures, &commandes, &reponses);
+
+        // **Point de passage UNIQUE de toutes les sorties de la boucle**, y
+        // compris ses sorties d'erreur : une session qui sortirait sans se
+        // retirer garderait sa place au vivier pour toute la vie du processus.
+        // Une panique sur ce fil court-circuiterait pourtant ces deux lignes —
+        // le filet est alors la chute d'`ordres` pendant le déroulement de
+        // pile, que le tour de roue du registre voit comme un canal rompu et
+        // qu'il retire de lui-même. Ce chemin-ci est le déterministe.
+        //
+        // La source est relâchée AVANT le retrait, et explicitement plutôt que
+        // par la chute de `self` en fin de fonction, pour que cet ordre ne
+        // dépende pas de la position d'un `return` : `retirer` rend une place
+        // que le vivier peut attribuer aussitôt à une endormie, laquelle
+        // demanderait un encodeur de plus au matériel si le nôtre vivait
+        // encore. Le relâchement reste sur ce fil-ci, comme partout ailleurs.
+        drop(self.source.take());
+        crate::capteur::sommeil::retirer(&session);
+        resultat
+    }
+
+    /// La boucle de service. **Extraite de `servir` pour que le relâchement de
+    /// la source et le retrait du vivier n'aient qu'un seul point de passage**,
+    /// quel que soit le chemin de sortie.
+    ///
+    /// ⚠️ **Aucun emprunt sur `self.source` ne survit à une instruction.**
+    /// C'est la contrainte structurante de cette fonction depuis que la source
+    /// est optionnelle : `appliquer_les_ordres` a besoin de `&mut self` entier
+    /// (elle relâche et reconstruit la source), ce qui est incompatible avec le
+    /// `let source = &mut self.source;` que cette boucle tenait autrefois d'un
+    /// bout à l'autre. Chaque point d'usage reprend donc un emprunt neuf par
+    /// `self.source.as_mut()`, dans une instruction qui se termine. **Ne pas
+    /// réintroduire d'emprunt long** : le compilateur le refuserait, mais la
+    /// tentation de contourner en déplaçant le sommeil hors de ce fil, elle,
+    /// romprait l'invariant du relâchement sur ce fil-ci.
+    fn boucler(
+        &mut self,
+        session: &str,
+        ordres: &Receiver<Ordre>,
+        ecritures: &SyncSender<AEcrire>,
+        commandes: &Receiver<VersCapteur>,
+        reponses: &Sender<DepuisCapteur>,
+    ) -> Result<()> {
+        // Initialisé sur la taille RÉSOLUE par `ouvrir` — celle-là même qui est
+        // partie dans `Attachee` —, jamais sur zéro ni sur une valeur devinée.
+        // C'est ce qui fait de la comparaison du point 3 un filet réel : si la
+        // texture rendue au premier réveil ne fait pas la taille annoncée (une
+        // sortie mise à l'échelle DPI annonce moins qu'elle ne rend, voir
+        // `capture::ouverture::taille_de_sortie`), l'écart devient un `Etat` que
+        // l'enfant applique. Partir de zéro aurait produit un `Etat` inutile à
+        // chaque session ; partir d'une devinette aurait masqué l'écart.
         let mut dernier_etat = (true, false, self.largeur, self.hauteur);
         let mut images = 0u64;
         let mut dernier_compte = Instant::now();
 
-        loop {
-            // 1. Les commandes en attente, s'il y en a. Elles sont rares.
-            if let Fin::Terminer(motif) = servir_les_commandes(source, &commandes, &reponses) {
-                // On sort par le haut, ce qui relâche `source` — donc la
-                // duplication et l'encodeur — SUR CE FIL-CI, jamais sur la
-                // boucle d'acceptation. `Drop for H264Encoder` peut geler
-                // (risque observé, non attribué) ; ici il ne gèlerait que
-                // cette fenêtre.
-                tracing::info!(%session, images, motif, "fin de la fenêtre côté capteur");
-                return Ok(());
+        let motif = loop {
+            // Refait à chaque tour : la taille retenue peut changer au réveil.
+            // Ne contient que des copies et des emprunts extérieurs à `self`,
+            // donc n'entrave aucun `&mut self`.
+            let ctx =
+                Contexte { session, taille: (self.largeur, self.hauteur), commandes, reponses };
+
+            // 0. Les ordres du vivier. Avant tout le reste : dormir libère des
+            //    ressources, et il n'y a aucune raison d'encoder une image de
+            //    plus quand l'ordre est déjà là.
+            if let Fin::Terminer(motif) = self.appliquer_les_ordres(ordres, ecritures, &ctx) {
+                break motif;
             }
 
-            // 2. Une image, s'il y en a une.
-            match source.next_frame() {
+            // 1. Les commandes en attente, s'il y en a. Elles sont rares, et
+            //    elles sont servies MÊME ENDORMIE : refuser tout pendant le
+            //    sommeil ferait échouer l'adaptation réseau de l'enfant et
+            //    clore la session par un chemin étranger au sommeil.
+            if let Fin::Terminer(motif) = servir_les_commandes(self.source.as_mut(), &ctx) {
+                break motif;
+            }
+
+            // 2. Une image, s'il y en a une — et il n'y en a jamais quand la
+            //    fenêtre dort. Extraite par une instruction qui se termine,
+            //    pour que l'emprunt meure avec elle : `deposer` en reprend un
+            //    neuf juste après.
+            let unite = match self.source.as_mut() {
+                Some(source) => source.next_frame(),
+                None => None,
+            };
+            match unite {
                 Some(unite) => {
                     images += 1;
                     // La file bornée EST la contre-pression : si l'enfant ne
@@ -164,41 +329,43 @@ impl Fenetre {
                     // commandes. Une unité d'accès ne peut pas être jetée sans
                     // corrompre le flux (les images P référencent les
                     // précédentes), d'où l'attente plutôt que l'abandon.
-                    if let Fin::Terminer(motif) = deposer(
-                        AEcrire::Image(unite),
-                        &ecritures,
-                        source,
-                        &commandes,
-                        &reponses,
-                    ) {
-                        tracing::info!(%session, images, motif, "fin de la fenêtre côté capteur");
-                        return Ok(());
+                    if let Fin::Terminer(motif) =
+                        deposer(AEcrire::Image(unite), ecritures, self.source.as_mut(), &ctx)
+                    {
+                        break motif;
                     }
                 }
+                // Rien à envoyer : soit le bureau n'a pas changé, soit la
+                // fenêtre dort. Dans les deux cas, souffler.
                 None => std::thread::sleep(PAS_A_VIDE),
             }
 
-            // 3. L'état, au CHANGEMENT seulement.
-            let (largeur, hauteur) = source.dimensions();
-            let etat = (source.is_alive(), source.is_exhausted(), largeur, hauteur);
-            if etat != dernier_etat {
-                dernier_etat = etat;
-                let message = DepuisCapteur::Etat {
-                    vivante: etat.0,
-                    epuisee: etat.1,
-                    largeur: etat.2,
-                    hauteur: etat.3,
-                };
-                if let Fin::Terminer(motif) =
-                    deposer(AEcrire::Etat(message), &ecritures, source, &commandes, &reponses)
-                {
-                    tracing::info!(%session, images, motif, "fin de la fenêtre côté capteur");
-                    return Ok(());
-                }
-                if !etat.0 || etat.1 {
-                    tracing::info!(%session, vivante = etat.0, epuisee = etat.1, images,
-                        "fin de la fenêtre côté capteur");
-                    return Ok(());
+            // 3. L'état, au CHANGEMENT seulement. Une fenêtre endormie n'en a
+            //    aucun à relever : son dernier `Etat` reste vrai — la sortie et
+            //    la géométrie ne bougent pas pendant le sommeil — et c'est
+            //    `Sommeil` qui dit au client ce qui lui arrive.
+            let etat = self.source.as_ref().map(|source| {
+                let (largeur, hauteur) = source.dimensions();
+                (source.is_alive(), source.is_exhausted(), largeur, hauteur)
+            });
+            if let Some(etat) = etat {
+                if etat != dernier_etat {
+                    dernier_etat = etat;
+                    let message = DepuisCapteur::Etat {
+                        vivante: etat.0,
+                        epuisee: etat.1,
+                        largeur: etat.2,
+                        hauteur: etat.3,
+                    };
+                    if let Fin::Terminer(motif) =
+                        deposer(AEcrire::Etat(message), ecritures, self.source.as_mut(), &ctx)
+                    {
+                        break motif;
+                    }
+                    if !etat.0 || etat.1 {
+                        tracing::info!(%session, vivante = etat.0, epuisee = etat.1, "source close");
+                        break "la source est morte ou épuisée";
+                    }
                 }
             }
 
@@ -207,74 +374,17 @@ impl Fenetre {
                 tracing::info!(
                     %session,
                     images,
+                    endormie = self.source.is_none(),
                     cadence = format!("{:.1}", images as f64 / ecoule),
                     "cadence du capteur"
                 );
                 images = 0;
                 dernier_compte = Instant::now();
             }
-        }
-    }
-}
+        };
 
-/// Vide la file des commandes en attente et renvoie chaque réponse au fil de
-/// commandes. **Ne bloque jamais** : `try_recv` d'un côté, `Sender` non borné
-/// de l'autre.
-fn servir_les_commandes(
-    source: &mut WindowsSource,
-    commandes: &Receiver<VersCapteur>,
-    reponses: &Sender<DepuisCapteur>,
-) -> Fin {
-    loop {
-        match commandes.try_recv() {
-            Ok(message) => {
-                let reponse = executer_commande(source, message);
-                // La réponse repart par le canal, jamais par une écriture
-                // directe : ce fil ne touche aucun objet fichier.
-                if reponses.send(reponse).is_err() {
-                    return Fin::Terminer("le fil de commandes est parti");
-                }
-            }
-            Err(TryRecvError::Empty) => return Fin::Continuer,
-            // L'enfant a fermé sa connexion de commandes : la fenêtre est finie.
-            Err(TryRecvError::Disconnected) => return Fin::Terminer("l'enfant a fermé le canal"),
-        }
-    }
-}
-
-/// Dépose une charge pour le fil écrivain de la connexion média.
-///
-/// ⚠️ **C'est le SEUL point où le fil de fenêtre peut attendre, et c'est ce qui
-/// garantit qu'il ne peut jamais attendre sans servir les commandes.** La file
-/// est bornée pour que la contre-pression remonte jusqu'à la capture ; quand
-/// elle est pleine, on ne bloque pas dessus — on sert les commandes, on souffle
-/// un pas, et on réessaie. Un `send` bloquant ici recréerait exactement
-/// l'interblocage que la tâche 10 devait supprimer : enfant figé dans
-/// `commander` → file d'images de l'enfant pleine → tampon du tube plein →
-/// écriture du capteur bloquée → commande jamais servie → enfant figé.
-fn deposer(
-    charge: AEcrire,
-    ecritures: &SyncSender<AEcrire>,
-    source: &mut WindowsSource,
-    commandes: &Receiver<VersCapteur>,
-    reponses: &Sender<DepuisCapteur>,
-) -> Fin {
-    let mut charge = charge;
-    loop {
-        match ecritures.try_send(charge) {
-            Ok(()) => return Fin::Continuer,
-            Err(TrySendError::Full(rendue)) => {
-                charge = rendue;
-                if let Fin::Terminer(motif) = servir_les_commandes(source, commandes, reponses) {
-                    return Fin::Terminer(motif);
-                }
-                std::thread::sleep(PAS_A_VIDE);
-            }
-            // Le fil écrivain est mort : la connexion média est perdue.
-            Err(TrySendError::Disconnected(_)) => {
-                return Fin::Terminer("la connexion média est fermée")
-            }
-        }
+        tracing::info!(%session, images, motif, "fin de la fenêtre côté capteur");
+        Ok(())
     }
 }
 
@@ -293,37 +403,5 @@ fn ecrire_le_media<E: Write>(mut ecrivain: E, charges: Receiver<AEcrire>, sessio
             tracing::warn!(%session, %erreur, "écriture de la connexion média interrompue");
             return;
         }
-    }
-}
-
-fn executer_commande(source: &mut WindowsSource, message: VersCapteur) -> DepuisCapteur {
-    let resultat = match message {
-        VersCapteur::Redimensionner { largeur, hauteur } => {
-            return match source.resize(largeur, hauteur) {
-                Ok(()) => {
-                    let (largeur, hauteur) = source.dimensions();
-                    DepuisCapteur::Taille { largeur, hauteur }
-                }
-                Err(erreur) => DepuisCapteur::Erreur { motif: format!("{erreur:#}") },
-            }
-        }
-        VersCapteur::TailleEncodage { largeur, hauteur } => source.set_encode_size(largeur, hauteur),
-        VersCapteur::Debit { bps } => source.set_bitrate(bps),
-        VersCapteur::ImageCle => source.request_keyframe(),
-        VersCapteur::Attache { .. } => {
-            return DepuisCapteur::Erreur { motif: "seconde attache sur un canal déjà attaché".into() }
-        }
-        // `Identite` n'appartient qu'à la connexion média, où elle est la
-        // première et unique trame : la voir ici signale un enfant qui
-        // confond ses deux connexions.
-        VersCapteur::Identite { session } => {
-            return DepuisCapteur::Erreur {
-                motif: format!("identité de {session} sur la connexion de commandes"),
-            }
-        }
-    };
-    match resultat {
-        Ok(()) => DepuisCapteur::Fait,
-        Err(erreur) => DepuisCapteur::Erreur { motif: format!("{erreur:#}") },
     }
 }

@@ -10,12 +10,15 @@ pub mod distante;
 #[cfg(windows)]
 pub mod fenetre;
 pub mod horloge;
+pub mod pont_media;
 pub mod protocole;
 pub mod reprise;
 #[cfg(windows)]
 pub mod serveur;
+pub mod sommeil;
 #[cfg(windows)]
 pub mod tube;
+pub mod vivier;
 
 /// Point d'entrée du mode capteur.
 #[cfg(windows)]

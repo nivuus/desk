@@ -41,11 +41,31 @@ export interface Statut {
     /// affiché : il doit rester visible jusqu'à ce qu'un autre message le
     /// remplace.
     masquer(): void;
+    /// Lève la persistance du message courant puis masque, comme si ce
+    /// message n'avait jamais porté `persistant: true` — sans toucher à la
+    /// protection `terminal`, qui reste intouchable : c'est elle qui empêche
+    /// une fin de session d'être écrasée par un bandeau de routine, et rien
+    /// ne doit l'affaiblir.
+    ///
+    /// `masquer()` protège délibérément un message persistant : c'est ce qui
+    /// lui permet de survivre à la minuterie d'un bandeau voisin qui ne sait
+    /// pas qu'il existe (voir `OptionsAffichage.persistant`). Mais quand
+    /// l'appelant qui a affiché ce message SAIT que la condition qui le
+    /// justifiait a cessé (ex. une fenêtre endormie vient de se réveiller),
+    /// il lui faut un moyen explicite de le dire — sans réafficher un
+    /// message vide en guise de contournement, ce qui ferait clignoter le
+    /// bandeau et recopierait le problème au prochain message persistant.
+    expirer(): void;
 }
 
 export function creerStatut(element: CibleStatut): Statut {
     let terminal = false;
     let persistant = false;
+
+    const masquer = () => {
+        if (terminal || persistant) return;
+        element.dataset.hidden = 'true';
+    };
 
     return {
         afficher(message, options) {
@@ -59,9 +79,10 @@ export function creerStatut(element: CibleStatut): Statut {
             element.textContent = message;
             element.dataset.hidden = 'false';
         },
-        masquer() {
-            if (terminal || persistant) return;
-            element.dataset.hidden = 'true';
+        masquer,
+        expirer() {
+            persistant = false;
+            masquer();
         },
     };
 }

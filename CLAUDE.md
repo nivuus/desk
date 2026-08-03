@@ -38,7 +38,7 @@ où l'on travaille dedans, pas en chantier séparé.
 | Fichier | Lignes | Pourquoi elle reste |
 | --- | --- | --- |
 | `agent/src/encode.rs` | 1536 | `#[cfg(windows)]`, aucun test |
-| `agent/src/windows_source.rs` | 648 | `#[cfg(windows)]`, aucun test |
+| `agent/src/windows_source.rs` | 631 | `#[cfg(windows)]`, aucun test |
 | `agent/src/wasapi.rs` | 543 | `#[cfg(windows)]`, aucun test |
 
 > `encode.rs` est passé de 1502 à 1536 lignes le 31 juillet 2026 (correctif de
@@ -95,6 +95,15 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > C'est un fichier né avec D4 (voir « Sous-bloc D4 ») : **toute addition
 > substantielle y appelle une extraction, pas une compression.**
 >
+> ❌ **CE CHIFFRE EST FAUX, et il l'était déjà quand il a été écrit — relevé du
+> 3 août 2026 (sous-bloc D5) : `agent/src/capteur/distante.rs` fait 235 lignes**,
+> ses tests vivant depuis D4 dans `agent/src/capteur/distante/tests.rs` (385).
+> Le 487 est le compte d'AVANT cette extraction, jamais repris ensuite. **Il n'y
+> a donc jamais eu de marge de 13 sur ce fichier** — et c'est exactement la
+> dérive contre laquelle l'encadré ci-dessous prévient : un nombre recopié
+> survit à la réalité qu'il décrivait. Les trois autres occurrences de ce 487
+> dans ce fichier sont annotées de la même façon.
+>
 > ✅ **Relance du 2 août 2026, après la SECONDE recette de D4 : les trois lignes
 > du tableau sont toujours exactes** (1536 / 648 / 543), et **aucun autre fichier
 > de code source ne dépasse 500 lignes**. La tâche 10 a fait grossir
@@ -106,6 +115,17 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > `superviseur/table.rs` **489** (11), `capteur/distante.rs` **487** (13),
 > `transport/socket.rs` **481** (19), `transport/piste_video.rs` **477** (23),
 > `demarrage.rs` **472** (28).
+>
+> ❌ **Les deux `487` de ce paragraphe sont faux** (voir l'annotation ci-dessus) :
+> `capteur/distante.rs` fait **235** lignes, et la marge de 13 n'a jamais
+> existé. Le reste de la liste n'est pas réfuté, mais **il a vieilli**. Relevé
+> du 3 août 2026, fin du sous-bloc D5, **par la commande** : `encode/arret.rs`
+> **500** (marge 0), `capture.rs` **496** (4), `superviseur/boucle.rs` **493**
+> (7), `capteur/serveur.rs` **490** (10), `superviseur/table.rs` **489** (11),
+> `transport/socket.rs` **481** (19), `transport/piste_video.rs` **477** (23),
+> `transport/adaptation.rs` **472** (28), `demarrage.rs` **472** (28). Et
+> `windows_source.rs` a **maigri** de 648 à **631** : le remède de D5 y remplace
+> une reconstruction d'encodeur par une destruction préalable.
 >
 > ⚠️ **Seconde marge étroite NEUVE, relevée après la vague de correction de la
 > revue finale de branche : `agent/src/capteur/serveur.rs` est à 490 lignes,
@@ -1465,6 +1485,14 @@ la mise en sommeil des fenêtres masquées reste à éprouver par une séquence
 > résolutions ou débits, et la mise en sommeil des fenêtres masquées demeure une
 > conjecture — « créer 8 → en détruire 1 → tenter un 9ᵉ » n'a toujours pas été
 > jouée.
+>
+> ✅ **ELLE A ÉTÉ JOUÉE le 3 août 2026 (sous-bloc D5), et la conjecture est
+> CONFIRMÉE : détruire un encodeur libère la place.** Quatre exécutions,
+> **10 cycles « détruire un, en construire un » sur 10** à chacune, dans
+> l'arrangement de production (un processus, un périphérique D3D11 par
+> encodeur). Le plafond de 8 porte donc sur la **concurrence**, pas sur les
+> créations cumulées. ⚠️ **La couche qui l'impose reste inconnue**, et ce banc
+> n'a soumis aucune image ni ouvert aucune duplication.
 
 **Voie recommandée** : le moniteur virtuel par fenêtre (seule voie qui préserve
 le chemin GPU en supprimant le recouvrement par construction), avec `PrintWindow`
@@ -1628,6 +1656,12 @@ confirmation par des processus tiers).
   périphériques D3D11 **distincts**, pas sur le périphérique unique partagé de
   cette mesure-ci. **La couche du plafond et la mise en sommeil restent, elles,
   entièrement ouvertes.**
+  ✅ **La mise en sommeil N'EST PLUS OUVERTE (3 août 2026, sous-bloc D5) :
+  détruire un encodeur libère bien la place** — 4 exécutions, 10 recyclages sur
+  10 chacune —, et **le défaut qui en découlait est mort** : à huit fenêtres,
+  `set_encode_size` réussit désormais **198 fois sur 198**, contre 18 refus sur
+  18 en D4, parce qu'il détruit l'ancien encodeur avant d'en construire un neuf.
+  ⚠️ **La couche du plafond, elle, reste entièrement inconnue.**
 - **La cause du refus à la 11ᵉ sortie n'est pas isolée**, et on ignore si le
   vivier de 10 est global au pilote ou par client (Apollo pingue le même
   pilote). **L'unité du chien de garde (`delai = 3`) reste inconnue : aucune
@@ -1714,6 +1748,7 @@ code d'erreur).
 | `MULTIFENETRE_VDD_PURGE=1` | **Purge autonome** des sorties orphelines |
 | `MULTIFENETRE_VDD_CAPTURE=1` | **Mesure ③** — crée une sortie virtuelle et y lance le banc |
 | `MULTIFENETRE_NVENC=partage\|separe` | **Mesure ②** — plafond d'encodeurs, périphérique D3D11 partagé ou un par encodeur |
+| `MULTIFENETRE_NVENC_CYCLES=<k>` | **Sous-bloc D5, la mesure pivot** — monte jusqu'au refus dans l'arrangement de PRODUCTION (un périphérique D3D11 par encodeur), puis répète *k* fois « détruire un, en construire un ». **Le cycle répété est le cœur** : un seul recyclage ne distingue pas un plafond de concurrence d'un plafond de créations cumulées. Branché **avant** `MULTIFENETRE_NVENC`, les deux variables ayant un préfixe commun |
 | `MULTIFENETRE_VDD_PARALLELE=<1..8>` | **Chantier des duplications parallèles** — N sorties virtuelles × 1 fenêtre × 1 duplication DXGI × 1 encodeur, trois passes (témoin, capture, capture+encodage), contrôle d'image **en rotation**, chien de garde pingué à 1 Hz |
 | `MULTIFENETRE_EPREUVE_FILE_MS=<ms>` | Bouche la file de travail sérialisée imposée à la MFT pendant la passe — c'est l'épreuve qui montre que la barrière n'est pas un placebo |
 | `MULTIFENETRE_REPRISE=<k>` | **Sous-bloc D2** — *k* sorties virtuelles, *k* duplications, puis **une sortie de plus** créée en cours de capture : éprouve que les *k* duplications reprennent et rendent encore des images justes. Sonde post-mortem sur les voies mortes |
@@ -1886,6 +1921,11 @@ d'absence, et l'énoncé porte toujours son nombre d'exécutions.*
   autres encodent** — ce que fera pourtant la fermeture d'une fenêtre.
 - **La mise en sommeil des fenêtres masquées reste une conjecture** : « créer 8 →
   en détruire 1 → tenter un 9ᵉ » n'a pas été jouée.
+  ✅ **Jouée le 3 août 2026 (D5), conjecture confirmée** : 4 exécutions,
+  10 recyclages sur 10 chacune. Voir « Sous-bloc D5 ».
+- **Le cas d'exploitation « détruire un encodeur pendant que les autres
+  encodent » est, lui, exercé depuis D5** — c'est ce que fait chaque
+  endormissement —, mais **sur le chemin du produit et non à ce banc-ci**.
 
 ### Pièges neufs — à connaître avant de toucher à ce terrain
 
@@ -2463,6 +2503,16 @@ confirmée, sa ligne s'applique sans arbitrage :
   refusée 18 fois sur 18, alors qu'elle réussit 3 fois sur 3 à 2 fenêtres. **8
   fenêtres se capturent et se diffusent, mais elles ne s'adaptent plus par la
   résolution.**
+  ✅ **Ces deux phrases ne décrivent plus le dépôt (3 août 2026, D5).**
+  `CAPACITE` vaut **10**, et ce 10 n'est plus « le plafond d'encodeurs » : les
+  deux plafonds viennent désormais de couches différentes — `CAPACITE = 10` du
+  **vivier de sorties du pilote** (mesuré 10 le jour même de la recette, refus à
+  la 11ᵉ en `0x80070044`), `vivier::PLAFOND_EVEIL = 8` du **matériel
+  d'encodage**. Et **l'adaptation par la résolution fonctionne de nouveau à
+  8 fenêtres** : 198 changements acceptés, 0 refusé. ⚠️ **Ce 10 n'a pas
+  davantage été confronté à un plafond du système que le 8 ne l'était** : c'est
+  la constante du produit qui refuse la 11ᵉ fenêtre, le pilote n'étant jamais
+  sollicité pour elle.
 
 ⚠️ **Précision de vocabulaire, pour que D4 ne se trompe pas de repli.** Ce que la
 conception de D3 nomme « le repli de la spec §8 » est la **capture mutualisée**.
@@ -2766,6 +2816,17 @@ est à **491** (la conception annonçait 485) et `agent/src/demarrage.rs` à **4
 > et la marge de 13 reste à surveiller pour la même raison. Le remède du défaut
 > **neuf** trouvé par la seconde recette touchera, lui, `encode.rs` (1536, dette
 > gelée) ou `capteur/fenetre.rs` (329).
+>
+> ❌ **Les trois `487` de cette section sont FAUX, et l'étaient déjà le jour où
+> ils ont été écrits.** Relevé du 3 août 2026 (sous-bloc D5), par la commande :
+> `agent/src/capteur/distante.rs` fait **235 lignes**, ses tests vivant à part
+> dans `agent/src/capteur/distante/tests.rs` (385). Le 487 comptait le fichier
+> **avant** cette extraction, faite en fin de D4, et personne ne l'a repris
+> après. **Il n'y a jamais eu de « marge de 13 » à surveiller sur ce fichier**,
+> et la vigilance qu'appelait cette section portait sur un fichier qui n'était
+> pas menacé. Le remède du défaut neuf n'a finalement touché ni `encode.rs` ni
+> `capteur/fenetre.rs` mais `windows_source.rs`, qui en est **maigri** (648 →
+> 631).
 
 ---
 
@@ -2856,6 +2917,17 @@ reste est le **débit**, la résolution étant gelée — la moitié du disposit
 chantier C volet 1 disparaît au rang maximal, signalée par un seul `WARN`.
 **C'est le seul défaut ouvert de D4**, et la première chose à traiter en D5.
 
+> ✅ **CE DÉFAUT EST MORT (3 août 2026, sous-bloc D5).** `set_encode_size`
+> **détruit l'ancien encodeur avant d'en construire un neuf**
+> (`agent/src/windows_source.rs`), et ne demande donc plus un neuvième encodeur
+> transitoire au matériel. Relevé en conditions de produit, à huit fenêtres
+> éveillées : **198 changements de taille acceptés, 0 refusé**, sur trois
+> exécutions complètes (53 / 42 / 103). ⚠️ **Le prix du remède est réel et n'a
+> PAS été exercé** : si la construction du neuf échoue, l'ancien n'est plus là et
+> la source s'épuise — aucun refus n'ayant eu lieu, ce chemin n'a jamais couru.
+> ⚠️ **La couche qui impose le plafond de 8 reste inconnue** : D5 la contourne,
+> comme D4 contournait celui de quatre processus.
+
 ### Ce que la seconde recette n'établit PAS
 
 **Aucun taux, nulle part.** **Le plafond suivant côté capture n'est toujours pas
@@ -2902,6 +2974,149 @@ n'a toujours jamais été exercé.
 - **Une source animée doit l'être à une cadence CONNUE, affichée par la source
   elle-même** : sans ce chiffre, une capture lente et une source lente se lisent
   pareil.
+
+---
+
+## 🛏️ Sous-bloc D5 — le vivier d'encodeurs, et la mise en sommeil (3 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-02-multifenetres-vivier-encodeurs-resultats.md`.
+Conception : `docs/superpowers/specs/2026-08-02-multifenetres-vivier-encodeurs-design.md`.
+Journaux : `docs/superpowers/plans/journaux-multifenetres-d5/` — **UTF-8,
+séquences ANSI déjà retirées** : ils se `grep`ent à plat, sans `sed`, comme ceux
+de D4. L'instrument y vit aussi (`instrument/`), versé dans son état final.
+
+D5 traite comme **un seul sujet** ce que D4 laissait en deux : le défaut ouvert
+de D4 (à 8 fenêtres, `set_encode_size` refusé 18 fois sur 18) et la mise en
+sommeil des fenêtres masquées. Les deux reposaient sur **la même conjecture**,
+ouverte depuis le 30 juillet 2026 : *détruire un encodeur libère-t-il la place ?*
+
+### ① La mesure pivot : la conjecture est CONFIRMÉE
+
+`MULTIFENETRE_NVENC_CYCLES=10`, dans **l'arrangement de production** (un
+processus, **un périphérique D3D11 par encodeur** — ni le mode `partage` ni le
+mode `separe` du banc de juillet). **Quatre exécutions, 10 recyclages sur 10
+chacune** : monter jusqu'au refus du 9ᵉ (au `SetOutputType`, `0xC00D6D76`, le
+même appel et le même code que le 31 juillet), puis dix fois « détruire un, en
+construire un ».
+
+**Le plafond de 8 porte sur la CONCURRENCE, pas sur les créations cumulées.** Le
+cycle répété est ce qui le prouve : un seul recyclage n'aurait pas distingué les
+deux, et le vivier, qui recycle par construction, aurait déclenché la seconde
+panne en production.
+
+⚠️ **Ce que la mesure pivot ne dit pas** : la couche qui impose le 8 (inconnue
+depuis le 30 juillet 2026), rien d'autres résolutions ni débits, **aucune image
+soumise**, **aucune duplication DXGI ouverte** par ce banc.
+
+### ② Le produit : dix fenêtres ouvertes, huit qui diffusent
+
+Le navigateur annonce visibilité et focus sur le data channel
+(`client/src/visibilite.ts`) ; l'enfant relaie au capteur ; un **vivier LRU pur**
+(`agent/src/capteur/vivier.rs` — aucun `cfg`, aucun objet COM, entièrement
+testé) décide qui dort ; le fil de fenêtre relâche ou reconstruit son
+`WindowsSource`. **La sortie virtuelle n'est jamais touchée** : c'est ce qui rend
+le sommeil sans effet sur les fenêtres voisines — aucun abandon de mutex n'est
+provoqué par un endormissement.
+
+Relevé en conditions de produit, sur de vraies fenêtres Chrome animées :
+
+| Critère | Verdict | Le chiffre, **relevé** |
+| --- | --- | --- |
+| C1 — dépasser huit fenêtres | **TENU sur le fond** | **10 fenêtres ouvertes, 8 qui diffusent, 2 figées** ; LRU = les deux plus anciennes ; les **deux** raisons de sommeil exercées et observées |
+| C1 — refus du rang 11 par le PILOTE | **NON TENU** | le refus vient de `CAPACITE = 10`, constante du produit, annoncée à la page-shell |
+| C2 — le défaut de D4 est mort | **TENU** | **198 changements de taille acceptés, 0 refusé** (53 / 42 / 103 sur trois exécutions), contre 18 refus sur 18 en D4 |
+| C3 — le réveil est borné | **MESURÉ** | agent **113–124 ms**, navigateur **366–545 ms** sur les deux gestes de l'exécution retenue |
+
+`CAPACITE` passe de 8 à **10**, `vivier::PLAFOND_EVEIL` vaut **8** : **les deux
+plafonds ne viennent plus de la même couche** — le premier du pilote de sorties
+virtuelles, le second du matériel d'encodage. **Les faire suivre l'un l'autre
+serait une erreur.**
+
+**Ce que coûte une endormie : rien de mesurable, et le journal le dit de
+lui-même** — `session=w-4 images=0 endormie=true cadence="0.0"` pendant que les
+huit éveillées tiennent **58,4 à 68,6 i/s** chacune.
+
+**Le contrat du vivier est observable sur le chemin réel** : le sommeil précède
+toujours le réveil qu'il finance (92 ms d'écart au geste d'éviction, 82 ms au
+masquage). Un réveil appliqué le premier demanderait transitoirement un encodeur
+de plus que le plafond.
+
+### ③ Le refus au rang 11 : ce qui est établi, et ce qui ne l'est pas
+
+La onzième fenêtre est refusée par la **constante du produit**, jamais par le
+pilote — qui n'est pas sollicité pour elle. Ce qui a été établi, et qui n'est pas
+la même chose : **le vivier du pilote vaut bien 10 le jour de la recette**,
+mesuré douze minutes après elle depuis un processus neuf (`vivier-pilote.log`) —
+refus à la 11ᵉ création en `0x80070044`, onze sorties énumérées nommément.
+
+**La constante ne borne donc plus le système en dessous de lui ; elle lui est
+égale, à la date de la mesure.** Dépasser 10 exigerait de rendre des sorties au
+pilote, donc d'infliger un abandon de mutex à toutes les voisines à chaque
+endormissement — **ce n'était pas le marché de D5** (conception §4.2).
+
+### ④ Pièges neufs — à connaître avant de toucher à ce terrain
+
+- ⚠️ **Un Chrome sans interface rapporte `document.hidden = true` pour TOUTE
+  fenêtre d'arrière-plan.** Une recette du sommeil qui n'y prend pas garde ne
+  mesure pas ce qu'elle croit : à sept fenêtres, six pages sur sept se
+  déclaraient cachées. **La visibilité de la recette D5 est donc IMPOSÉE par le
+  pilote de recette**, page par page — c'est sa limite la plus lourde, et **la
+  minimisation d'une vraie fenêtre n'a jamais été jouée**.
+- **`Page.addScriptToEvaluateOnNewDocument` ne court PAS sur une page ouverte par
+  `window.open`** : la course contre la création du document est perdue. Éprouvé
+  isolément (`instrument/essai-visibilite.mjs`) — l'amorce y marque les pages
+  qu'elle atteint, et les popups n'en portent pas la marque. **Poser l'override
+  explicitement, page par page, est le seul moyen sûr.**
+- **Le bandeau client garde son TEXTE une fois masqué** (`expirer()` lève la
+  persistance sans effacer `textContent`). Lire `#status` prouve donc qu'un
+  message est arrivé, **pas qu'il était affiché**. Et c'est le **seul** endroit
+  observable où la *raison* du sommeil apparaisse : ni l'agent ni l'enfant ne la
+  journalisent.
+- **Le bandeau des pages d'application est `#status` ; `#statut` est celui de la
+  page-shell.** Une exécution entière a lu le mauvais et n'a rien vu.
+- ⚠️ **Après un `Stop-Process -Force` sur les agents, les sorties virtuelles
+  SURVIVENT** (neuf relevées depuis un processus neuf) : il n'existe aucun chemin
+  de libération sur une mort brutale. Le chien de garde du pilote finit par les
+  reprendre — observé une fois en moins d'une minute, une autre fois pas encore
+  au bout de deux. **Purger (`MULTIFENETRE_VDD_PURGE=1`) entre deux exécutions**,
+  sans quoi la suivante démarre avec un vivier déjà entamé.
+- **Ouvrir une fenêtre endort brièvement sa voisine** dans ce montage (114 à
+  218 ms), pour la raison du premier piège. L'hystérésis ne peut rien contre, par
+  construction : elle ne protège pas contre le masquage, qui est un geste
+  explicite.
+- **Un `Runtime.evaluate` qui rend un objet `Window`** (`window.open(...)`)
+  échoue en `Object reference chain is too long` avec `returnByValue` : rendre
+  une chaîne.
+
+### ⑤ Ce que D5 n'établit PAS
+
+**Aucun taux, nulle part** : une exécution rapportée, deux confirmations, et deux
+exécutions abandonnées **versées avec leur diagnostic**. `HYSTERESIS = 2 s` et
+`REPIT_APRES_ECHEC = 500 ms` restent **non calibrées** — le battement rapide qui
+aurait jugé la première n'a pas été joué, et **aucun réveil n'a été refusé**,
+donc le second chemin n'a jamais couru. Le prix du remède de C2 (si la
+construction du neuf échoue, l'ancien n'est plus là) n'a **pas** été exercé.
+**Rien de la latence de bout en bout**, rien de la durée (5 min 20 s au plus),
+une seule application, aucun clavier, aucune souris, aucun audio, aucun
+redimensionnement, aucun déplacement. **La mort d'un enfant pendant que les
+autres diffusent et la fermeture d'une fenêtre en cours de diffusion** ne sont
+toujours pas exercées. **Le chemin d'extinction propre du superviseur** n'a
+toujours jamais été exercé — et le piège des sorties survivantes montre ce que
+coûte son absence. **Les trois couches inconnues le restent** : celle du plafond
+de 8 encodeurs, celle du plafond de 4 processus, et le mécanisme de l'abandon du
+mutex DXGI.
+
+### ⑥ La suite : D6, puis D7
+
+**D6** — partage de la capacité réseau entre N flux, et audio par fenêtre. La
+dette est nommée depuis le chantier C volet 1 : `Event::EgressBitrateEstimate`
+est une estimation **de session**, pas de piste ; `audio_bps` est un budget
+unique à retirer une fois et non N fois ; le filtre de `MediaEgressStats`
+s'appuie sur un `video_mid` unique. **Une fenêtre endormie continue de porter son
+propre contrôleur de congestion, que D5 ne touche pas.**
+
+**D7** — plein écran et Keyboard Lock.
 
 ---
 

@@ -37,6 +37,10 @@ pub struct Rattachee {
 pub enum Recu {
     Image(AccessUnit),
     Etat { vivante: bool, epuisee: bool, largeur: u32, hauteur: u32 },
+    /// Changement de sommeil poussé par le capteur, non sollicité. Retenu par
+    /// `SourceDistante::sommeil` jusqu'à ce que `sommeil_a_annoncer` le
+    /// consomme.
+    Sommeil { endormie: bool, raison: String },
 }
 
 pub struct SourceDistante {
@@ -50,6 +54,14 @@ pub struct SourceDistante {
     /// cette fenêtre n'a pas expiré : c'est ce qui fait survivre les sessions
     /// à une relance du capteur.
     fenetre: FenetreCanal,
+    /// Dernier changement de sommeil reçu du capteur, en attente d'être
+    /// annoncé au navigateur. Consommé par `sommeil_a_annoncer`.
+    ///
+    /// **État courant, pas un historique** : deux `Sommeil` reçus avant
+    /// qu'une lecture n'intervienne s'écrasent, seul le dernier survit — même
+    /// régime que `Etat` juste au-dessus, dont les champs s'écrasent aussi
+    /// sans accumulation.
+    sommeil: Option<(bool, String)>,
 }
 
 impl SourceDistante {
@@ -67,6 +79,7 @@ impl SourceDistante {
             vivante: true,
             epuisee: false,
             fenetre: FenetreCanal::nouvelle(),
+            sommeil: None,
         }
     }
 
@@ -100,6 +113,9 @@ impl VideoSource for SourceDistante {
                     self.epuisee = epuisee;
                     self.largeur = largeur;
                     self.hauteur = hauteur;
+                }
+                Ok(Recu::Sommeil { endormie, raison }) => {
+                    self.sommeil = Some((endormie, raison));
                 }
                 // Le cas COURANT et normal : rien de neuf ce tour-ci. La
                 // boucle de transport interroge à 100 Hz une source qui
@@ -197,6 +213,19 @@ impl VideoSource for SourceDistante {
 
     fn request_keyframe(&mut self) -> Result<()> {
         self.commander_simple(VersCapteur::ImageCle)
+    }
+
+    fn set_awake(&mut self, visible: bool, focalisee: bool) -> Result<()> {
+        self.commander_simple(VersCapteur::Visibilite { visible, focalisee })
+    }
+
+    /// Rend le changement de sommeil en attente, et le consomme.
+    ///
+    /// **Une annonce ne se répète pas** : la boucle de transport l'interroge à
+    /// chaque tour, et réémettre le même message inonderait le canal de
+    /// contrôle.
+    fn sommeil_a_annoncer(&mut self) -> Option<(bool, String)> {
+        self.sommeil.take()
     }
 }
 

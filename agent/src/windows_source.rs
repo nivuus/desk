@@ -29,6 +29,15 @@ use crate::windows_source_sortie::ModeCapture;
 /// `depuis_pieces` et le champ `mode`.
 mod redimensionnement;
 
+/// Changement de la seule taille d'encodage, capture et fenêtre inchangées.
+///
+/// Module **enfant** pour la même raison que `redimensionnement` ci-dessus :
+/// il lit et écrit les champs privés de `WindowsSource`. Extrait d'ici au
+/// sous-bloc D5, le remède du défaut C2 (détruire l'encodeur avant d'en
+/// construire un neuf) y ajoutant une quinzaine de lignes que ce fichier, en
+/// dette de taille gelée, ne pouvait pas absorber.
+mod encodage;
+
 pub struct WindowsSource {
     // Champs PRIVÉS, et c'est un invariant de conception, pas un détail :
     // plusieurs d'entre eux (`capture`, `fatal`, `width`/`height` face à
@@ -62,7 +71,17 @@ pub struct WindowsSource {
     capture: Option<DesktopCapture>,
     /// Région de l'écran à recadrer, recalculée à chaque redimensionnement.
     region: Rect,
-    encoder: H264Encoder,
+    /// `None` seulement de façon transitoire, à l'intérieur de
+    /// `set_encode_size` (module enfant `encodage`), qui doit détruire
+    /// l'encodeur courant AVANT d'en construire un neuf — voir son
+    /// commentaire pour le pourquoi et pour le prix. Comme pour `capture`
+    /// ci-dessus, le seul état où ce champ reste vide après retour est celui
+    /// où `fatal` vaut vrai : les lecteurs passent donc par `encoder_mut`,
+    /// qui rend une ERREUR et jamais une panique — deux d'entre eux
+    /// (`request_keyframe`, `set_bitrate`) sont appelés depuis la boucle de
+    /// transport sans garde `fatal`, et une panique y traverserait
+    /// `spawn_blocking`.
+    encoder: Option<H264Encoder>,
     width: u32,
     height: u32,
     fps: u32,
@@ -192,7 +211,7 @@ impl WindowsSource {
             hwnd,
             capture: Some(capture),
             region,
-            encoder,
+            encoder: Some(encoder),
             width,
             height,
             fps,
@@ -220,6 +239,22 @@ impl WindowsSource {
         self.capture.as_mut().expect("capture toujours présente quand fatal est faux")
     }
 
+    /// Encodeur courant, mutable — ou une **erreur**, jamais une panique.
+    ///
+    /// La différence avec `capture_mut` ci-dessus est délibérée : `capture`
+    /// n'est lue que par `next_frame`, derrière son garde `if self.fatal`, ce
+    /// qui rend son `expect` inatteignable. L'encodeur, lui, est aussi lu par
+    /// `request_keyframe` et `set_bitrate`, que la boucle de transport appelle
+    /// sur un événement du navigateur **sans consulter `is_exhausted`** : entre
+    /// l'échec de `set_encode_size` et la clôture de la session, un tel appel
+    /// est possible, et une panique y emporterait tout le processus — donc
+    /// toutes les autres fenêtres. Les deux savent quoi faire d'un `Err`.
+    fn encoder_mut(&mut self) -> Result<&mut H264Encoder> {
+        self.encoder
+            .as_mut()
+            .ok_or_else(|| anyhow::anyhow!("source épuisée : encodeur détruit"))
+    }
+
     /// Vrai tant que la fenêtre capturée existe.
     pub fn is_alive(&self) -> bool {
         window::is_window_alive(self.hwnd)
@@ -229,66 +264,11 @@ impl WindowsSource {
     /// depuis `Event::KeyframeRequest` par `transport/evenements.rs` via l'implémentation
     /// `VideoSource::request_keyframe` ci-dessous.
     pub fn request_keyframe(&mut self) -> Result<()> {
-        self.encoder.request_keyframe()
+        self.encoder_mut()?.request_keyframe()
     }
 
-    /// Reconstruit l'encodeur à une nouvelle taille de sortie, **sans toucher
-    /// à la capture ni à la fenêtre**.
-    ///
-    /// Media Foundation n'autorise pas le changement de résolution en cours
-    /// de route : il faut un encodeur neuf (même contrainte que `resize`, voir
-    /// son commentaire). Mais contrairement à `resize`, la capture DXGI reste
-    /// vivante — c'est l'entrée du convertisseur, elle n'a pas changé. Aucune
-    /// contrainte de duplication DXGI ici, donc aucun besoin de
-    /// `rebuild_or_recover`.
-    ///
-    /// L'horodatage n'est pas réinitialisé : `last_pts_90k` est conservé, le
-    /// décodeur du navigateur rejetterait un retour en arrière.
-    pub fn set_encode_size(&mut self, width: u32, height: u32) -> Result<()> {
-        // La source est définitivement épuisée : `capture` peut valoir `None`
-        // pour de bon (voir le commentaire du champ), et `capture_mut()`
-        // paniquerait. Une panique ici traverserait `spawn_blocking` et
-        // emporterait tout le processus — le transport, lui, sait quoi faire
-        // d'une erreur : il garde le barreau courant et poursuit la session
-        // jusqu'à sa clôture normale.
-        if self.fatal {
-            anyhow::bail!("source épuisée : taille d'encodage inchangée");
-        }
-
-        // Borne haute ajoutée en revue finale de branche (C1) : la
-        // justification qui la rendait jusqu'ici inutile (« l'appelant ne
-        // produit jamais de taille supérieure à la source ») était fausse —
-        // voir le commentaire de `resize` ci-dessus. Un filet, pas LE
-        // correctif : c'est `changer_source` côté contrôleur qui évite
-        // normalement de viser une taille trop grande, mais un appelant futur
-        // (ou un bug de calibration de l'échelle) ne doit pas pouvoir
-        // demander à Media Foundation une sortie plus grande que son entrée.
-        let (width, height) = (width.max(2) & !1, height.max(2) & !1);
-        let (width, height) = (width.min(self.width), height.min(self.height));
-        if (width, height) == self.encoder.encode_size() {
-            return Ok(());
-        }
-
-        let device = self.capture_mut().device().clone();
-        let mut encoder = H264Encoder::new(
-            &device,
-            (self.width, self.height),
-            (width, height),
-            self.fps,
-            self.bitrate,
-        )?;
-        // Un encodeur neuf doit commencer par une image clé : sans elle, le
-        // décodeur du navigateur n'a aucun point d'entrée dans le nouveau
-        // flux et rend un écran gris jusqu'à la prochaine.
-        encoder.request_keyframe()?;
-
-        self.encoder = encoder;
-        // L'encodeur neuf n'a rien produit : le budget de sondage de
-        // démarrage doit repartir, comme après `resize`.
-        self.encoder_warmed_up = false;
-        tracing::info!(width, height, "taille d'encodage changée sans toucher à la fenêtre");
-        Ok(())
-    }
+    // `set_encode_size` (changement de la seule taille d'encodage) vit dans le
+    // module enfant `encodage.rs` — voir sa déclaration en tête de fichier.
 
     /// Retire du pipeline tout ce qui est prêt, sans jamais attendre, et rend
     /// l'unité d'accès la plus ancienne encore en file.
@@ -324,14 +304,17 @@ impl WindowsSource {
     fn drain_ready_output_inner(&mut self) -> Option<AccessUnit> {
         const MAX_DRAIN: usize = 8;
         for _ in 0..MAX_DRAIN {
-            match self.encoder.poll_output() {
-                Ok(Some(unit)) => {
+            // `None` : encodeur détruit par un `set_encode_size` en échec (voir
+            // `encoder_mut`). Plus rien à drainer, mais ce qui est déjà en
+            // file reste bon à rendre.
+            match self.encoder.as_mut().map(H264Encoder::poll_output) {
+                Some(Ok(Some(unit))) => {
                     self.encoder_warmed_up = true;
                     PRODUCED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                     self.ready.push_back(unit);
                 }
-                Ok(None) => break,
-                Err(e) => {
+                Some(Ok(None)) | None => break,
+                Some(Err(e)) => {
                     tracing::warn!(erreur = %e, "récupération de l'image encodée échouée");
                     break;
                 }
@@ -339,7 +322,7 @@ impl WindowsSource {
         }
         // Les emplacements d'entrée libérés par le drainage ci-dessus sont
         // réutilisables dès maintenant : ne pas attendre le tour suivant.
-        if let Err(e) = self.encoder.flush_pending_inputs() {
+        if let Err(e) = self.encoder_mut().and_then(H264Encoder::flush_pending_inputs) {
             tracing::warn!(erreur = %e, "réalimentation de l'encodeur échouée");
         }
         self.ready.pop_front()
@@ -557,7 +540,7 @@ impl VideoSource for WindowsSource {
                 // où l'encodeur voudra bien l'accepter (voir `next_pts_90k`).
                 let pts = self.next_pts_90k();
                 let t_submit = std::time::Instant::now();
-                let fed = self.encoder.submit(&frame, pts);
+                let fed = self.encoder_mut().and_then(|encoder| encoder.submit(&frame, pts));
                 SUBMIT_NS.fetch_add(
                     t_submit.elapsed().as_nanos() as u64,
                     std::sync::atomic::Ordering::Relaxed,
@@ -639,7 +622,7 @@ impl VideoSource for WindowsSource {
         // Mémorisé même en cas d'échec : c'est ce débit-là qu'une
         // reconstruction ultérieure de l'encodeur devra reprendre.
         self.bitrate = bitrate;
-        self.encoder.set_bitrate(bitrate)
+        self.encoder_mut()?.set_bitrate(bitrate)
     }
 
     fn set_encode_size(&mut self, width: u32, height: u32) -> Result<()> {

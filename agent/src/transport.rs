@@ -130,6 +130,9 @@ pub struct Session {
     /// `act_on_timeout`, jamais depuis `dispatch_channel_data` — voir le
     /// commentaire de ce champ à son point de consommation.
     pending_resize: Option<(u32, u32)>,
+    /// Dernière visibilité annoncée par le navigateur, en attente
+    /// d'application. Même raison de différer que `pending_resize`.
+    pending_visibility: Option<(bool, bool)>,
     /// Contrôleur de congestion. Alimenté par `Event::EgressBitrateEstimate`
     /// et `Event::MediaEgressStats`, tous deux déjà émis par str0m — le
     /// second l'était même déjà avant ce chantier, et tombait dans le `_ =>
@@ -301,6 +304,7 @@ impl Session {
             audio_write_pending_drain: false,
             warned_audio_negotiation: false,
             pending_resize: None,
+            pending_visibility: None,
             congestion: congestion::Controleur::new(
                 congestion::Config {
                     plafond_bps,

@@ -1,0 +1,1752 @@
+[    0.0s 2026-08-03T12:07:11.646Z] N_CIBLE=11 chrome pid=938747 port=9992
+[    0.9s 2026-08-03T12:07:12.531Z] identité du navigateur : pid écoutant=938747 pid lancé=938747 version=Chrome/150.0.7871.181
+[    0.9s 2026-08-03T12:07:12.558Z] + page attachée  session=E31CD5C3 url=about:blank
+[    0.9s 2026-08-03T12:07:12.569Z] >>> ÉTAPE 0 : nettoyage — état de départ SANS fenêtre
+[   13.9s 2026-08-03T12:07:25.566Z] --- fenêtres VM (avant superviseur) ---
+
+[   14.0s 2026-08-03T12:07:25.590Z] + page attachée  session=F38C1609 url=http://192.168.3.1:5173/shell.html
+[   14.0s 2026-08-03T12:07:25.600Z] shell demandée http://192.168.3.1:5173/shell.html
+[   17.0s 2026-08-03T12:07:28.607Z] statut shell : bureau connecté
+[   17.0s 2026-08-03T12:07:28.607Z] >>> lancement du superviseur (SUPERVISEUR=1)
+[   17.5s 2026-08-03T12:07:29.161Z] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   23.6s 2026-08-03T12:07:35.218Z] MARQUEURS (superviseur démarré, 0 fenêtre) {"lignes":15,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":0,"endormie":0,"reveillee":0,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":0,"taille_refusee":0,"refus_debit":0,"sortie_creee":0,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":0,"mutex_abandonne":0,"enfant_lance":0,"enfant_termine":0,"erreurs":0}
+[   23.6s 2026-08-03T12:07:35.219Z] >>> OUVERTURE fenêtre 1 (attendu : 1 pages)
+[   24.2s 2026-08-03T12:07:35.816Z] + page attachée  session=2FD5B165 url=
+[   24.3s 2026-08-03T12:07:35.894Z] - page détachée   session=2FD5B165 url=
+[   24.5s 2026-08-03T12:07:36.121Z] + page attachée  session=9A4A48A3 url=
+[   26.1s 2026-08-03T12:07:37.757Z]    fenêtre 1 : page ouverte en 2s (total 1)
+[   32.2s 2026-08-03T12:07:43.794Z] ÉTAT SHELL (après fenêtre 1) liste=[_/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[   32.2s 2026-08-03T12:07:43.795Z]   pages d'application ouvertes (1) : http://192.168.3.1:5173/?session=w-2
+[   32.2s 2026-08-03T12:07:43.822Z] MARQUEURS (après fenêtre 1) {"lignes":56,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":1,"endormie":0,"reveillee":1,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":0,"taille_refusee":0,"refus_debit":0,"sortie_creee":1,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":0,"mutex_abandonne":0,"enfant_lance":1,"enfant_termine":0,"erreurs":0}
+[   32.2s 2026-08-03T12:07:43.830Z] STATS (rang 1 — relevé 1) {"w:w-2":{"etat":"connected","images":328,"l":1280,"h":720,"octets":4272457,"rtt":0.004,"focalisee":true,"cachee":false,"bandeau":"cliquez pour activer le son","horloge":1785758863827}}
+[   37.2s 2026-08-03T12:07:48.834Z] STATS (rang 1 — relevé 2) {"w:w-2":{"etat":"connected","images":751,"l":1280,"h":720,"octets":11195412,"rtt":0.002,"focalisee":true,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758868833}}
+[   37.2s 2026-08-03T12:07:48.834Z] CADENCE NAVIGATEUR (rang 1) {
+ "w:w-2": {
+  "images": 423,
+  "secondes": 5.006,
+  "i_par_s": 84.5,
+  "taille": "1280x720",
+  "kbps": 11063,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ }
+}
+[   37.2s 2026-08-03T12:07:48.834Z] RANG 1 : pages=1 DIFFUSENT=1 ouverte=true endormies=-1
+[   37.3s 2026-08-03T12:07:48.888Z] SURVIE VM (après rang 1) virsh="en cours d’exécution" acces_partage=OUI
+[   37.3s 2026-08-03T12:07:48.889Z] >>> OUVERTURE fenêtre 2 (attendu : 2 pages)
+[   37.9s 2026-08-03T12:07:49.522Z] + page attachée  session=A7F60112 url=
+[   38.0s 2026-08-03T12:07:49.675Z] - page détachée   session=A7F60112 url=
+[   38.2s 2026-08-03T12:07:49.819Z] + page attachée  session=0D3F5E88 url=
+[   39.9s 2026-08-03T12:07:51.503Z]    fenêtre 2 : page ouverte en 2s (total 2)
+[   45.9s 2026-08-03T12:07:57.517Z] ÉTAT SHELL (après fenêtre 2) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[   45.9s 2026-08-03T12:07:57.517Z]   pages d'application ouvertes (2) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4
+[   45.9s 2026-08-03T12:07:57.534Z] MARQUEURS (après fenêtre 2) {"lignes":122,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":2,"endormie":1,"reveillee":3,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":0,"taille_refusee":0,"refus_debit":0,"sortie_creee":2,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":1,"mutex_abandonne":1,"enfant_lance":2,"enfant_termine":0,"erreurs":0}
+[   45.9s 2026-08-03T12:07:57.542Z] STATS (rang 2 — relevé 1) {"w:w-2":{"etat":"connected","images":1464,"l":1280,"h":720,"octets":23206894,"rtt":0.002,"focalisee":false,"cachee":true,"bandeau":"image figée : fenêtre masquée","horloge":1785758877535},"w:w-4":{"etat":"connected","images":369,"l":1280,"h":720,"octets":6322814,"rtt":0.001,"focalisee":true,"cachee":false,"bandeau":"cliquez pour activer le son","horloge":1785758877536}}
+[   50.9s 2026-08-03T12:08:02.550Z] STATS (rang 2 — relevé 2) {"w:w-2":{"etat":"connected","images":1886,"l":1280,"h":720,"octets":29955594,"rtt":0.002,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s — adaptation indisponible","horloge":1785758882546},"w:w-4":{"etat":"connected","images":791,"l":1280,"h":720,"octets":13296615,"rtt":0.003,"focalisee":true,"cachee":false,"bandeau":"cliquez pour activer le son","horloge":1785758882549}}
+[   50.9s 2026-08-03T12:08:02.551Z] CADENCE NAVIGATEUR (rang 2) {
+ "w:w-2": {
+  "images": 422,
+  "secondes": 5.011,
+  "i_par_s": 84.21,
+  "taille": "1280x720",
+  "kbps": 10774,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s — adaptation indisponible"
+ },
+ "w:w-4": {
+  "images": 422,
+  "secondes": 5.013,
+  "i_par_s": 84.18,
+  "taille": "1280x720",
+  "kbps": 11129,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": "cliquez pour activer le son"
+ }
+}
+[   50.9s 2026-08-03T12:08:02.551Z] RANG 2 : pages=2 DIFFUSENT=2 ouverte=true endormies=-2
+[   51.0s 2026-08-03T12:08:02.643Z] SURVIE VM (après rang 2) virsh="en cours d’exécution" acces_partage=OUI
+[   51.0s 2026-08-03T12:08:02.643Z] >>> OUVERTURE fenêtre 3 (attendu : 3 pages)
+[   51.6s 2026-08-03T12:08:03.243Z] + page attachée  session=669D34B0 url=
+[   51.7s 2026-08-03T12:08:03.360Z] - page détachée   session=669D34B0 url=http://192.168.3.1:5173/?session=w-5
+[   51.9s 2026-08-03T12:08:03.546Z] + page attachée  session=5F809BA3 url=
+[   53.6s 2026-08-03T12:08:05.222Z]    fenêtre 3 : page ouverte en 2s (total 3)
+[   59.6s 2026-08-03T12:08:11.237Z] ÉTAT SHELL (après fenêtre 3) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[   59.6s 2026-08-03T12:08:11.237Z]   pages d'application ouvertes (3) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6
+[   59.6s 2026-08-03T12:08:11.268Z] MARQUEURS (après fenêtre 3) {"lignes":184,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":3,"endormie":1,"reveillee":4,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":0,"taille_refusee":0,"refus_debit":0,"sortie_creee":3,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":3,"mutex_abandonne":3,"enfant_lance":3,"enfant_termine":0,"erreurs":0}
+[   59.6s 2026-08-03T12:08:11.280Z] STATS (rang 3 — relevé 1) {"w:w-2":{"etat":"connected","images":2618,"l":1280,"h":720,"octets":42483173,"rtt":0.003,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758891276},"w:w-4":{"etat":"connected","images":1516,"l":1280,"h":720,"octets":25602080,"rtt":0.002,"focalisee":false,"cachee":true,"bandeau":"cliquez pour activer le son","horloge":1785758891277},"w:w-6":{"etat":"connected","images":380,"l":1280,"h":720,"octets":6428359,"rtt":0.002,"focalisee":true,"cachee":false,"bandeau":"cliquez pour activer le son","horloge":1785758891277}}
+[   64.7s 2026-08-03T12:08:16.296Z] STATS (rang 3 — relevé 2) {"w:w-2":{"etat":"connected","images":3032,"l":1280,"h":720,"octets":49458921,"rtt":0.003,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758896290},"w:w-4":{"etat":"connected","images":1934,"l":1280,"h":720,"octets":32808847,"rtt":0.001,"focalisee":false,"cachee":true,"bandeau":"cliquez pour activer le son","horloge":1785758896291},"w:w-6":{"etat":"connected","images":797,"l":1280,"h":720,"octets":13879831,"rtt":0.001,"focalisee":true,"cachee":false,"bandeau":"cliquez pour activer le son","horloge":1785758896291}}
+[   64.7s 2026-08-03T12:08:16.296Z] CADENCE NAVIGATEUR (rang 3) {
+ "w:w-2": {
+  "images": 414,
+  "secondes": 5.014,
+  "i_par_s": 82.57,
+  "taille": "1280x720",
+  "kbps": 11130,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-4": {
+  "images": 418,
+  "secondes": 5.014,
+  "i_par_s": 83.37,
+  "taille": "1280x720",
+  "kbps": 11499,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "cliquez pour activer le son"
+ },
+ "w:w-6": {
+  "images": 417,
+  "secondes": 5.014,
+  "i_par_s": 83.17,
+  "taille": "1280x720",
+  "kbps": 11889,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": "cliquez pour activer le son"
+ }
+}
+[   64.7s 2026-08-03T12:08:16.296Z] RANG 3 : pages=3 DIFFUSENT=3 ouverte=true endormies=-3
+[   64.8s 2026-08-03T12:08:16.411Z] SURVIE VM (après rang 3) virsh="en cours d’exécution" acces_partage=OUI
+[   64.8s 2026-08-03T12:08:16.411Z] >>> OUVERTURE fenêtre 4 (attendu : 4 pages)
+[   65.5s 2026-08-03T12:08:17.167Z] + page attachée  session=17B1E407 url=
+[   65.7s 2026-08-03T12:08:17.304Z] - page détachée   session=17B1E407 url=
+[   65.8s 2026-08-03T12:08:17.471Z] + page attachée  session=4F1EEBD5 url=
+[   67.5s 2026-08-03T12:08:19.126Z]    fenêtre 4 : page ouverte en 2s (total 4)
+[   73.5s 2026-08-03T12:08:25.151Z] ÉTAT SHELL (après fenêtre 4) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[   73.5s 2026-08-03T12:08:25.151Z]   pages d'application ouvertes (4) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8
+[   73.6s 2026-08-03T12:08:25.215Z] MARQUEURS (après fenêtre 4) {"lignes":252,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":4,"endormie":1,"reveillee":5,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":0,"taille_refusee":0,"refus_debit":0,"sortie_creee":4,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":6,"mutex_abandonne":6,"enfant_lance":4,"enfant_termine":0,"erreurs":0}
+[   73.6s 2026-08-03T12:08:25.236Z] STATS (rang 4 — relevé 1) {"w:w-2":{"etat":"connected","images":3778,"l":1280,"h":720,"octets":61725347,"rtt":0.003,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s — adaptation indisponible","horloge":1785758905224},"w:w-4":{"etat":"connected","images":2666,"l":1280,"h":720,"octets":45094772,"rtt":0.003,"focalisee":false,"cachee":true,"bandeau":"cliquez pour activer le son","horloge":1785758905229},"w:w-6":{"etat":"connected","images":1520,"l":1280,"h":720,"octets":25847619,"rtt":0.004,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s — adaptation indisponible","horloge":1785758905230},"w:w-8":{"etat":"connected","images":345,"l":1280,"h":720,"octets":6342745,"rtt":0.001,"focalisee":true,"cachee":false,"bandeau":"cliquez pour activer le son","horloge":1785758905232}}
+[   78.6s 2026-08-03T12:08:30.259Z] STATS (rang 4 — relevé 2) {"w:w-2":{"etat":"connected","images":4189,"l":1280,"h":720,"octets":69052282,"rtt":0.003,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s — adaptation indisponible","horloge":1785758910244},"w:w-4":{"etat":"connected","images":2960,"l":1280,"h":720,"octets":52230480,"rtt":0.004,"focalisee":false,"cachee":true,"bandeau":"cliquez pour activer le son","horloge":1785758910247},"w:w-6":{"etat":"connected","images":1928,"l":1280,"h":720,"octets":33446449,"rtt":0.033,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s — adaptation indisponible","horloge":1785758910252},"w:w-8":{"etat":"connected","images":746,"l":1280,"h":720,"octets":13900213,"rtt":0.004,"focalisee":true,"cachee":false,"bandeau":"cliquez pour activer le son","horloge":1785758910253}}
+[   78.6s 2026-08-03T12:08:30.259Z] CADENCE NAVIGATEUR (rang 4) {
+ "w:w-2": {
+  "images": 411,
+  "secondes": 5.02,
+  "i_par_s": 81.87,
+  "taille": "1280x720",
+  "kbps": 11676,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s — adaptation indisponible"
+ },
+ "w:w-4": {
+  "images": 294,
+  "secondes": 5.018,
+  "i_par_s": 58.59,
+  "taille": "1280x720",
+  "kbps": 11376,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "cliquez pour activer le son"
+ },
+ "w:w-6": {
+  "images": 408,
+  "secondes": 5.022,
+  "i_par_s": 81.24,
+  "taille": "1280x720",
+  "kbps": 12105,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s — adaptation indisponible"
+ },
+ "w:w-8": {
+  "images": 401,
+  "secondes": 5.021,
+  "i_par_s": 79.86,
+  "taille": "1280x720",
+  "kbps": 12041,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": "cliquez pour activer le son"
+ }
+}
+[   78.6s 2026-08-03T12:08:30.260Z] RANG 4 : pages=4 DIFFUSENT=4 ouverte=true endormies=-4
+[   78.8s 2026-08-03T12:08:30.388Z] SURVIE VM (après rang 4) virsh="en cours d’exécution" acces_partage=OUI
+[   78.8s 2026-08-03T12:08:30.388Z] >>> OUVERTURE fenêtre 5 (attendu : 5 pages)
+[   79.6s 2026-08-03T12:08:31.190Z] + page attachée  session=857AE175 url=
+[   79.7s 2026-08-03T12:08:31.339Z] - page détachée   session=857AE175 url=
+[   79.9s 2026-08-03T12:08:31.519Z] + page attachée  session=3B494003 url=
+[   81.5s 2026-08-03T12:08:33.098Z]    fenêtre 5 : page ouverte en 2s (total 5)
+[   87.5s 2026-08-03T12:08:39.133Z] ÉTAT SHELL (après fenêtre 5) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[   87.5s 2026-08-03T12:08:39.133Z]   pages d'application ouvertes (5) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10
+[   87.5s 2026-08-03T12:08:39.172Z] MARQUEURS (après fenêtre 5) {"lignes":325,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":5,"endormie":1,"reveillee":6,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":0,"taille_refusee":0,"refus_debit":0,"sortie_creee":5,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":10,"mutex_abandonne":10,"enfant_lance":5,"enfant_termine":0,"erreurs":0}
+[   87.6s 2026-08-03T12:08:39.210Z] STATS (rang 5 — relevé 1) {"w:w-2":{"etat":"connected","images":4838,"l":1280,"h":720,"octets":80775658,"rtt":0.003,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758919188},"w:w-4":{"etat":"connected","images":3488,"l":1280,"h":720,"octets":64168810,"rtt":0.003,"focalisee":false,"cachee":true,"bandeau":"cliquez pour activer le son","horloge":1785758919189},"w:w-6":{"etat":"connected","images":2578,"l":1280,"h":720,"octets":44832112,"rtt":0.026,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s — adaptation indisponible","horloge":1785758919190},"w:w-8":{"etat":"connected","images":1410,"l":1280,"h":720,"octets":25909848,"rtt":0.005,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s — adaptation indisponible","horloge":1785758919191},"w:w-10":{"etat":"connected","images":268,"l":1280,"h":720,"octets":5735394,"rtt":0.009,"focalisee":true,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758919192}}
+[   92.7s 2026-08-03T12:08:44.340Z] STATS (rang 5 — relevé 2) {"w:w-2":{"etat":"connected","images":5187,"l":1280,"h":720,"octets":88117104,"rtt":0.005,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758924229},"w:w-4":{"etat":"connected","images":3828,"l":1280,"h":720,"octets":71751273,"rtt":0.012,"focalisee":false,"cachee":true,"bandeau":"cliquez pour activer le son","horloge":1785758924268},"w:w-6":{"etat":"connected","images":2929,"l":1280,"h":720,"octets":52191250,"rtt":0.015,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s — adaptation indisponible","horloge":1785758924271},"w:w-8":{"etat":"connected","images":1774,"l":1280,"h":720,"octets":32515245,"rtt":0.015,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s — adaptation indisponible","horloge":1785758924276},"w:w-10":{"etat":"connected","images":623,"l":1280,"h":720,"octets":12776659,"rtt":0.008,"focalisee":true,"cachee":false,"bandeau":"cliquez pour activer le son","horloge":1785758924247}}
+[   92.7s 2026-08-03T12:08:44.343Z] CADENCE NAVIGATEUR (rang 5) {
+ "w:w-2": {
+  "images": 349,
+  "secondes": 5.041,
+  "i_par_s": 69.23,
+  "taille": "1280x720",
+  "kbps": 11651,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-4": {
+  "images": 340,
+  "secondes": 5.079,
+  "i_par_s": 66.94,
+  "taille": "1280x720",
+  "kbps": 11943,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "cliquez pour activer le son"
+ },
+ "w:w-6": {
+  "images": 351,
+  "secondes": 5.081,
+  "i_par_s": 69.08,
+  "taille": "1280x720",
+  "kbps": 11587,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s — adaptation indisponible"
+ },
+ "w:w-8": {
+  "images": 364,
+  "secondes": 5.085,
+  "i_par_s": 71.58,
+  "taille": "1280x720",
+  "kbps": 10392,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s — adaptation indisponible"
+ },
+ "w:w-10": {
+  "images": 355,
+  "secondes": 5.055,
+  "i_par_s": 70.23,
+  "taille": "1280x720",
+  "kbps": 11143,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": "cliquez pour activer le son"
+ }
+}
+[   92.7s 2026-08-03T12:08:44.343Z] RANG 5 : pages=5 DIFFUSENT=5 ouverte=true endormies=-5
+[   92.8s 2026-08-03T12:08:44.458Z] SURVIE VM (après rang 5) virsh="en cours d’exécution" acces_partage=OUI
+[   92.8s 2026-08-03T12:08:44.460Z] >>> OUVERTURE fenêtre 6 (attendu : 6 pages)
+[   93.7s 2026-08-03T12:08:45.339Z] + page attachée  session=6E26D205 url=
+[   94.0s 2026-08-03T12:08:45.591Z] - page détachée   session=6E26D205 url=
+[   94.1s 2026-08-03T12:08:45.773Z] + page attachée  session=8A1F606C url=
+[   95.7s 2026-08-03T12:08:47.313Z]    fenêtre 6 : page ouverte en 2s (total 6)
+[  101.7s 2026-08-03T12:08:53.342Z] ÉTAT SHELL (après fenêtre 6) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[  101.7s 2026-08-03T12:08:53.342Z]   pages d'application ouvertes (6) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12
+[  101.8s 2026-08-03T12:08:53.403Z] MARQUEURS (après fenêtre 6) {"lignes":404,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":6,"endormie":1,"reveillee":7,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":0,"taille_refusee":0,"refus_debit":0,"sortie_creee":6,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":15,"mutex_abandonne":15,"enfant_lance":6,"enfant_termine":0,"erreurs":0}
+[  101.9s 2026-08-03T12:08:53.539Z] STATS (rang 6 — relevé 1) {"w:w-2":{"etat":"connected","images":5696,"l":1280,"h":720,"octets":98342133,"rtt":0.007,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758933440},"w:w-4":{"etat":"connected","images":4271,"l":1280,"h":720,"octets":80688942,"rtt":0.011,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758933458},"w:w-6":{"etat":"connected","images":3435,"l":1280,"h":720,"octets":61716915,"rtt":0.006,"focalisee":false,"cachee":true,"bandeau":"1280×720, 11.0 Mb/s","horloge":1785758933467},"w:w-8":{"etat":"connected","images":2276,"l":1280,"h":720,"octets":43023721,"rtt":0.037,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s — adaptation indisponible","horloge":1785758933468},"w:w-10":{"etat":"connected","images":1154,"l":1280,"h":720,"octets":19992815,"rtt":0.006,"focalisee":false,"cachee":true,"bandeau":"1280×720, 7.3 Mb/s","horloge":1785758933473},"w:w-12":{"etat":"connected","images":198,"l":1280,"h":720,"octets":5394298,"rtt":0.005,"focalisee":true,"cachee":false,"bandeau":"cliquez pour activer le son","horloge":1785758933479}}
+[  107.0s 2026-08-03T12:08:58.664Z] STATS (rang 6 — relevé 2) {"w:w-2":{"etat":"connected","images":5963,"l":1280,"h":720,"octets":105442512,"rtt":0.013,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758938567},"w:w-4":{"etat":"connected","images":4276,"l":1280,"h":720,"octets":86111032,"rtt":0.027,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758938620},"w:w-6":{"etat":"connected","images":3696,"l":1280,"h":720,"octets":66121288,"rtt":0.009,"focalisee":false,"cachee":true,"bandeau":"1280×720, 11.0 Mb/s","horloge":1785758938621},"w:w-8":{"etat":"connected","images":2547,"l":1280,"h":720,"octets":48807959,"rtt":0.013,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s — adaptation indisponible","horloge":1785758938622},"w:w-10":{"etat":"connected","images":1432,"l":1280,"h":720,"octets":26609463,"rtt":0.013,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758938633},"w:w-12":{"etat":"connected","images":487,"l":1280,"h":720,"octets":11689473,"rtt":0.024,"focalisee":true,"cachee":false,"bandeau":"cliquez pour activer le son","horloge":1785758938639}}
+[  107.0s 2026-08-03T12:08:58.665Z] CADENCE NAVIGATEUR (rang 6) {
+ "w:w-2": {
+  "images": 267,
+  "secondes": 5.127,
+  "i_par_s": 52.08,
+  "taille": "1280x720",
+  "kbps": 11079,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-4": {
+  "images": 5,
+  "secondes": 5.162,
+  "i_par_s": 0.97,
+  "taille": "1280x720",
+  "kbps": 8403,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-6": {
+  "images": 261,
+  "secondes": 5.154,
+  "i_par_s": 50.64,
+  "taille": "1280x720",
+  "kbps": 6836,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 11.0 Mb/s"
+ },
+ "w:w-8": {
+  "images": 271,
+  "secondes": 5.154,
+  "i_par_s": 52.58,
+  "taille": "1280x720",
+  "kbps": 8978,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s — adaptation indisponible"
+ },
+ "w:w-10": {
+  "images": 278,
+  "secondes": 5.16,
+  "i_par_s": 53.88,
+  "taille": "1280x720",
+  "kbps": 10258,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-12": {
+  "images": 289,
+  "secondes": 5.16,
+  "i_par_s": 56.01,
+  "taille": "1280x720",
+  "kbps": 9760,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": "cliquez pour activer le son"
+ }
+}
+[  107.0s 2026-08-03T12:08:58.665Z] RANG 6 : pages=6 DIFFUSENT=6 ouverte=true endormies=-6
+[  107.3s 2026-08-03T12:08:58.919Z] SURVIE VM (après rang 6) virsh="en cours d’exécution" acces_partage=OUI
+[  107.3s 2026-08-03T12:08:58.920Z] >>> OUVERTURE fenêtre 7 (attendu : 7 pages)
+[  108.6s 2026-08-03T12:09:00.197Z] + page attachée  session=7B71BC3E url=
+[  108.8s 2026-08-03T12:09:00.452Z] - page détachée   session=7B71BC3E url=
+[  108.9s 2026-08-03T12:09:00.560Z] + page attachée  session=F48CDED9 url=
+[  110.5s 2026-08-03T12:09:02.162Z]    fenêtre 7 : page ouverte en 2s (total 7)
+[  116.6s 2026-08-03T12:09:08.187Z] ÉTAT SHELL (après fenêtre 7) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[  116.6s 2026-08-03T12:09:08.187Z]   pages d'application ouvertes (7) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12 , http://192.168.3.1:5173/?session=w-14
+[  116.6s 2026-08-03T12:09:08.263Z] MARQUEURS (après fenêtre 7) {"lignes":501,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":7,"endormie":2,"reveillee":9,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":0,"taille_refusee":0,"refus_debit":0,"sortie_creee":7,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":21,"mutex_abandonne":21,"enfant_lance":7,"enfant_termine":0,"erreurs":0}
+[  116.7s 2026-08-03T12:09:08.299Z] STATS (rang 7 — relevé 1) {"w:w-2":{"etat":"connected","images":6418,"l":1280,"h":720,"octets":113380618,"rtt":0.014,"focalisee":false,"cachee":true,"bandeau":"1280×720, 4.2 Mb/s","horloge":1785758948283},"w:w-4":{"etat":"connected","images":4335,"l":1280,"h":720,"octets":92922324,"rtt":0.016,"focalisee":false,"cachee":true,"bandeau":"1280×720, 9.6 Mb/s","horloge":1785758948283},"w:w-6":{"etat":"connected","images":4158,"l":1280,"h":720,"octets":72027341,"rtt":0.018,"focalisee":false,"cachee":true,"bandeau":"1280×720, 11.8 Mb/s","horloge":1785758948284},"w:w-8":{"etat":"connected","images":3038,"l":1280,"h":720,"octets":52432956,"rtt":0.049,"focalisee":false,"cachee":true,"bandeau":"1280×720, 8.0 Mb/s","horloge":1785758948285},"w:w-10":{"etat":"connected","images":1914,"l":1280,"h":720,"octets":35083097,"rtt":0.017,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758948285},"w:w-12":{"etat":"connected","images":978,"l":1280,"h":720,"octets":22519886,"rtt":0.019,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758948289},"w:w-14":{"etat":"connected","images":171,"l":1280,"h":720,"octets":5113013,"rtt":0.023,"focalisee":true,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758948290}}
+[  121.8s 2026-08-03T12:09:13.385Z] STATS (rang 7 — relevé 2) {"w:w-2":{"etat":"connected","images":6678,"l":1280,"h":720,"octets":116718239,"rtt":0.002,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758953320},"w:w-4":{"etat":"connected","images":4438,"l":1280,"h":720,"octets":95907981,"rtt":0.009,"focalisee":false,"cachee":true,"bandeau":"1280×720, 8.1 Mb/s","horloge":1785758953321},"w:w-6":{"etat":"connected","images":4402,"l":1280,"h":720,"octets":76542317,"rtt":0.097,"focalisee":false,"cachee":true,"bandeau":"1280×720, 11.8 Mb/s","horloge":1785758953321},"w:w-8":{"etat":"connected","images":3301,"l":1280,"h":720,"octets":55208619,"rtt":0.012,"focalisee":false,"cachee":true,"bandeau":"1280×720, 6.1 Mb/s","horloge":1785758953322},"w:w-10":{"etat":"connected","images":2165,"l":1280,"h":720,"octets":42005446,"rtt":0.015,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758953322},"w:w-12":{"etat":"connected","images":1245,"l":1280,"h":720,"octets":26512834,"rtt":0.08,"focalisee":false,"cachee":true,"bandeau":"1280×720, 6.5 Mb/s","horloge":1785758953323},"w:w-14":{"etat":"connected","images":437,"l":1280,"h":720,"octets":11290688,"rtt":0.001,"focalisee":true,"cachee":false,"bandeau":"1280×720, 10.2 Mb/s","horloge":1785758953326}}
+[  121.8s 2026-08-03T12:09:13.385Z] CADENCE NAVIGATEUR (rang 7) {
+ "w:w-2": {
+  "images": 260,
+  "secondes": 5.037,
+  "i_par_s": 51.62,
+  "taille": "1280x720",
+  "kbps": 5301,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-4": {
+  "images": 103,
+  "secondes": 5.038,
+  "i_par_s": 20.44,
+  "taille": "1280x720",
+  "kbps": 4741,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 8.1 Mb/s"
+ },
+ "w:w-6": {
+  "images": 244,
+  "secondes": 5.037,
+  "i_par_s": 48.44,
+  "taille": "1280x720",
+  "kbps": 7171,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 11.8 Mb/s"
+ },
+ "w:w-8": {
+  "images": 263,
+  "secondes": 5.037,
+  "i_par_s": 52.21,
+  "taille": "1280x720",
+  "kbps": 4408,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 6.1 Mb/s"
+ },
+ "w:w-10": {
+  "images": 251,
+  "secondes": 5.037,
+  "i_par_s": 49.83,
+  "taille": "1280x720",
+  "kbps": 10994,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-12": {
+  "images": 267,
+  "secondes": 5.034,
+  "i_par_s": 53.04,
+  "taille": "1280x720",
+  "kbps": 6346,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 6.5 Mb/s"
+ },
+ "w:w-14": {
+  "images": 266,
+  "secondes": 5.036,
+  "i_par_s": 52.82,
+  "taille": "1280x720",
+  "kbps": 9814,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": "1280×720, 10.2 Mb/s"
+ }
+}
+[  121.8s 2026-08-03T12:09:13.386Z] RANG 7 : pages=7 DIFFUSENT=7 ouverte=true endormies=-7
+[  122.0s 2026-08-03T12:09:13.628Z] SURVIE VM (après rang 7) virsh="en cours d’exécution" acces_partage=OUI
+[  122.0s 2026-08-03T12:09:13.634Z] >>> OUVERTURE fenêtre 8 (attendu : 8 pages)
+[  122.9s 2026-08-03T12:09:14.562Z] + page attachée  session=B66DEDAC url=
+[  123.2s 2026-08-03T12:09:14.831Z] - page détachée   session=B66DEDAC url=
+[  123.3s 2026-08-03T12:09:14.983Z] + page attachée  session=8187BFBC url=
+[  124.9s 2026-08-03T12:09:16.535Z]    fenêtre 8 : page ouverte en 2s (total 8)
+[  130.9s 2026-08-03T12:09:22.565Z] ÉTAT SHELL (après fenêtre 8) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[  130.9s 2026-08-03T12:09:22.565Z]   pages d'application ouvertes (8) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12 , http://192.168.3.1:5173/?session=w-14 , http://192.168.3.1:5173/?session=w-16
+[  131.0s 2026-08-03T12:09:22.620Z] MARQUEURS (après fenêtre 8) {"lignes":602,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":8,"endormie":3,"reveillee":11,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":0,"taille_refusee":0,"refus_debit":0,"sortie_creee":8,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":28,"mutex_abandonne":28,"enfant_lance":8,"enfant_termine":0,"erreurs":0}
+[  131.0s 2026-08-03T12:09:22.663Z] STATS (rang 8 — relevé 1) {"w:w-2":{"etat":"connected","images":6894,"l":1280,"h":720,"octets":124568937,"rtt":0.001,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758962636},"w:w-4":{"etat":"connected","images":4783,"l":1280,"h":720,"octets":102636315,"rtt":0.006,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758962639},"w:w-6":{"etat":"connected","images":4830,"l":1280,"h":720,"octets":82286329,"rtt":0.025,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758962647},"w:w-8":{"etat":"connected","images":3774,"l":1280,"h":720,"octets":60786436,"rtt":0.027,"focalisee":false,"cachee":true,"bandeau":"1280×720, 8.8 Mb/s","horloge":1785758962648},"w:w-10":{"etat":"connected","images":2427,"l":1280,"h":720,"octets":50031490,"rtt":0.002,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758962652},"w:w-12":{"etat":"connected","images":1506,"l":1280,"h":720,"octets":35819213,"rtt":0.023,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758962653},"w:w-14":{"etat":"connected","images":618,"l":1280,"h":720,"octets":18620619,"rtt":0.005,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758962653},"w:w-16":{"etat":"connected","images":203,"l":1280,"h":720,"octets":4128309,"rtt":0.013,"focalisee":true,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758962656}}
+[  136.2s 2026-08-03T12:09:27.824Z] STATS (rang 8 — relevé 2) {"w:w-2":{"etat":"connected","images":7057,"l":1280,"h":720,"octets":128998735,"rtt":0.042,"focalisee":false,"cachee":true,"bandeau":"1280×720, 6.8 Mb/s","horloge":1785758967768},"w:w-4":{"etat":"connected","images":4877,"l":1280,"h":720,"octets":105578833,"rtt":0.009,"focalisee":false,"cachee":true,"bandeau":"1280×720, 2.9 Mb/s","horloge":1785758967772},"w:w-6":{"etat":"connected","images":5001,"l":1280,"h":720,"octets":86084938,"rtt":0.009,"focalisee":false,"cachee":true,"bandeau":"1280×720, 5.4 Mb/s","horloge":1785758967773},"w:w-8":{"etat":"connected","images":3943,"l":1280,"h":720,"octets":63955098,"rtt":0.061,"focalisee":false,"cachee":true,"bandeau":"1280×720, 3.8 Mb/s","horloge":1785758967773},"w:w-10":{"etat":"connected","images":2593,"l":1280,"h":720,"octets":56546708,"rtt":0.029,"focalisee":false,"cachee":true,"bandeau":"1280×720, 10.5 Mb/s","horloge":1785758967784},"w:w-12":{"etat":"connected","images":1669,"l":1280,"h":720,"octets":40399252,"rtt":0.01,"focalisee":false,"cachee":true,"bandeau":"1280×720, 7.1 Mb/s","horloge":1785758967785},"w:w-14":{"etat":"connected","images":787,"l":1280,"h":720,"octets":25015170,"rtt":0.052,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s — adaptation indisponible","horloge":1785758967785},"w:w-16":{"etat":"connected","images":367,"l":1280,"h":720,"octets":7683426,"rtt":0.008,"focalisee":true,"cachee":false,"bandeau":"1280×720, 5.6 Mb/s","horloge":1785758967785}}
+[  136.2s 2026-08-03T12:09:27.824Z] CADENCE NAVIGATEUR (rang 8) {
+ "w:w-2": {
+  "images": 163,
+  "secondes": 5.132,
+  "i_par_s": 31.76,
+  "taille": "1280x720",
+  "kbps": 6905,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 6.8 Mb/s"
+ },
+ "w:w-4": {
+  "images": 94,
+  "secondes": 5.133,
+  "i_par_s": 18.31,
+  "taille": "1280x720",
+  "kbps": 4586,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 2.9 Mb/s"
+ },
+ "w:w-6": {
+  "images": 171,
+  "secondes": 5.126,
+  "i_par_s": 33.36,
+  "taille": "1280x720",
+  "kbps": 5928,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 5.4 Mb/s"
+ },
+ "w:w-8": {
+  "images": 169,
+  "secondes": 5.125,
+  "i_par_s": 32.98,
+  "taille": "1280x720",
+  "kbps": 4946,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 3.8 Mb/s"
+ },
+ "w:w-10": {
+  "images": 166,
+  "secondes": 5.132,
+  "i_par_s": 32.35,
+  "taille": "1280x720",
+  "kbps": 10156,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 10.5 Mb/s"
+ },
+ "w:w-12": {
+  "images": 163,
+  "secondes": 5.132,
+  "i_par_s": 31.76,
+  "taille": "1280x720",
+  "kbps": 7140,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 7.1 Mb/s"
+ },
+ "w:w-14": {
+  "images": 169,
+  "secondes": 5.132,
+  "i_par_s": 32.93,
+  "taille": "1280x720",
+  "kbps": 9968,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s — adaptation indisponible"
+ },
+ "w:w-16": {
+  "images": 164,
+  "secondes": 5.129,
+  "i_par_s": 31.98,
+  "taille": "1280x720",
+  "kbps": 5545,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": "1280×720, 5.6 Mb/s"
+ }
+}
+[  136.2s 2026-08-03T12:09:27.825Z] RANG 8 : pages=8 DIFFUSENT=8 ouverte=true endormies=-8
+[  136.5s 2026-08-03T12:09:28.173Z] SURVIE VM (après rang 8) virsh="en cours d’exécution" acces_partage=OUI
+[  136.5s 2026-08-03T12:09:28.174Z] >>> OUVERTURE fenêtre 9 (attendu : 9 pages)
+[  138.0s 2026-08-03T12:09:29.650Z] + page attachée  session=83E96E72 url=
+[  138.3s 2026-08-03T12:09:29.947Z] - page détachée   session=83E96E72 url=
+[  138.5s 2026-08-03T12:09:30.090Z] + page attachée  session=D4A8474C url=
+[  140.0s 2026-08-03T12:09:31.650Z]    fenêtre 9 : page ouverte en 2s (total 9)
+[  146.0s 2026-08-03T12:09:37.683Z] ÉTAT SHELL (après fenêtre 9) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[  146.1s 2026-08-03T12:09:37.684Z]   pages d'application ouvertes (9) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12 , http://192.168.3.1:5173/?session=w-14 , http://192.168.3.1:5173/?session=w-16 , http://192.168.3.1:5173/?session=w-18
+[  146.1s 2026-08-03T12:09:37.773Z] MARQUEURS (après fenêtre 9) {"lignes":732,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":9,"endormie":5,"reveillee":13,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":2,"taille_refusee":0,"refus_debit":0,"sortie_creee":9,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":36,"mutex_abandonne":36,"enfant_lance":9,"enfant_termine":0,"erreurs":0}
+[  146.4s 2026-08-03T12:09:37.998Z] STATS (rang 9 — relevé 1) {"w:w-2":{"etat":"connected","images":7207,"l":1280,"h":720,"octets":132092475,"rtt":0.007,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758977817},"w:w-4":{"etat":"connected","images":4974,"l":1280,"h":720,"octets":111208897,"rtt":0.001,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758977822},"w:w-6":{"etat":"connected","images":5125,"l":1280,"h":720,"octets":91672792,"rtt":0.02,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758977839},"w:w-8":{"etat":"connected","images":4260,"l":852,"h":480,"octets":68822711,"rtt":0.026,"focalisee":false,"cachee":true,"bandeau":"Image réduite par le réseau — 852×480, 11.6 Mb/s","horloge":1785758977846},"w:w-10":{"etat":"connected","images":2716,"l":1280,"h":720,"octets":64982532,"rtt":0.009,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758977847},"w:w-12":{"etat":"connected","images":1837,"l":1280,"h":720,"octets":49105234,"rtt":0.019,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758977848},"w:w-14":{"etat":"connected","images":954,"l":1280,"h":720,"octets":33541882,"rtt":0.003,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758977849},"w:w-16":{"etat":"connected","images":540,"l":1280,"h":720,"octets":11807184,"rtt":0.019,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758977850},"w:w-18":{"etat":"connected","images":202,"l":1280,"h":720,"octets":4281617,"rtt":0.008,"focalisee":true,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758977851}}
+[  151.5s 2026-08-03T12:09:43.090Z] STATS (rang 9 — relevé 2) {"w:w-2":{"etat":"connected","images":7207,"l":1280,"h":720,"octets":132092475,"rtt":0.02,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s — adaptation indisponible","horloge":1785758983046},"w:w-4":{"etat":"connected","images":5163,"l":1280,"h":720,"octets":114338853,"rtt":0.031,"focalisee":false,"cachee":true,"bandeau":"1280×720, 6.4 Mb/s","horloge":1785758983052},"w:w-6":{"etat":"connected","images":5163,"l":1280,"h":720,"octets":95066196,"rtt":0.01,"focalisee":false,"cachee":true,"bandeau":"1280×720, 7.9 Mb/s","horloge":1785758983066},"w:w-8":{"etat":"connected","images":4506,"l":852,"h":480,"octets":72057625,"rtt":0.019,"focalisee":false,"cachee":true,"bandeau":"Image réduite par le réseau — 852×480, 6.1 Mb/s","horloge":1785758983072},"w:w-10":{"etat":"connected","images":2909,"l":1280,"h":720,"octets":69036796,"rtt":0.017,"focalisee":false,"cachee":true,"bandeau":"1280×720, 4.5 Mb/s","horloge":1785758983077},"w:w-12":{"etat":"connected","images":2019,"l":1280,"h":720,"octets":53745636,"rtt":0.022,"focalisee":false,"cachee":true,"bandeau":"1280×720, 6.5 Mb/s","horloge":1785758983077},"w:w-14":{"etat":"connected","images":1130,"l":1280,"h":720,"octets":37715978,"rtt":0.018,"focalisee":false,"cachee":true,"bandeau":"1280×720, 7.4 Mb/s","horloge":1785758983078},"w:w-16":{"etat":"connected","images":699,"l":1280,"h":720,"octets":14425581,"rtt":0.022,"focalisee":false,"cachee":true,"bandeau":"1280×720, 3.9 Mb/s","horloge":1785758983080},"w:w-18":{"etat":"connected","images":372,"l":1280,"h":720,"octets":7281373,"rtt":0.024,"focalisee":true,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758983081}}
+[  151.5s 2026-08-03T12:09:43.093Z] CADENCE NAVIGATEUR (rang 9) {
+ "w:w-2": {
+  "images": 0,
+  "secondes": 5.229,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 0,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s — adaptation indisponible"
+ },
+ "w:w-4": {
+  "images": 189,
+  "secondes": 5.23,
+  "i_par_s": 36.14,
+  "taille": "1280x720",
+  "kbps": 4788,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 6.4 Mb/s"
+ },
+ "w:w-6": {
+  "images": 38,
+  "secondes": 5.227,
+  "i_par_s": 7.27,
+  "taille": "1280x720",
+  "kbps": 5194,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 7.9 Mb/s"
+ },
+ "w:w-8": {
+  "images": 246,
+  "secondes": 5.226,
+  "i_par_s": 47.07,
+  "taille": "852x480",
+  "kbps": 4952,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "Image réduite par le réseau — 852×480, 6.1 Mb/s"
+ },
+ "w:w-10": {
+  "images": 193,
+  "secondes": 5.23,
+  "i_par_s": 36.9,
+  "taille": "1280x720",
+  "kbps": 6202,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 4.5 Mb/s"
+ },
+ "w:w-12": {
+  "images": 182,
+  "secondes": 5.229,
+  "i_par_s": 34.81,
+  "taille": "1280x720",
+  "kbps": 7099,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 6.5 Mb/s"
+ },
+ "w:w-14": {
+  "images": 176,
+  "secondes": 5.229,
+  "i_par_s": 33.66,
+  "taille": "1280x720",
+  "kbps": 6386,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 7.4 Mb/s"
+ },
+ "w:w-16": {
+  "images": 159,
+  "secondes": 5.23,
+  "i_par_s": 30.4,
+  "taille": "1280x720",
+  "kbps": 4005,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 3.9 Mb/s"
+ },
+ "w:w-18": {
+  "images": 170,
+  "secondes": 5.23,
+  "i_par_s": 32.5,
+  "taille": "1280x720",
+  "kbps": 4589,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ }
+}
+[  151.5s 2026-08-03T12:09:43.094Z] RANG 9 : pages=9 DIFFUSENT=8 ouverte=true endormies=-8
+[  151.7s 2026-08-03T12:09:43.367Z] SURVIE VM (après rang 9) virsh="en cours d’exécution" acces_partage=OUI
+[  151.7s 2026-08-03T12:09:43.368Z] >>> OUVERTURE fenêtre 10 (attendu : 10 pages)
+[  152.9s 2026-08-03T12:09:44.499Z] + page attachée  session=B5E582EA url=
+[  153.2s 2026-08-03T12:09:44.826Z] - page détachée   session=B5E582EA url=
+[  153.5s 2026-08-03T12:09:45.115Z] + page attachée  session=32A957E4 url=
+[  154.8s 2026-08-03T12:09:46.482Z]    fenêtre 10 : page ouverte en 2s (total 10)
+[  160.9s 2026-08-03T12:09:52.524Z] ÉTAT SHELL (après fenêtre 10) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[  160.9s 2026-08-03T12:09:52.525Z]   pages d'application ouvertes (10) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12 , http://192.168.3.1:5173/?session=w-14 , http://192.168.3.1:5173/?session=w-16 , http://192.168.3.1:5173/?session=w-18 , http://192.168.3.1:5173/?session=w-20
+[  160.9s 2026-08-03T12:09:52.582Z] MARQUEURS (après fenêtre 10) {"lignes":848,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":10,"endormie":6,"reveillee":14,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":4,"taille_refusee":0,"refus_debit":0,"sortie_creee":10,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":44,"mutex_abandonne":44,"enfant_lance":10,"enfant_termine":0,"erreurs":0}
+[  161.0s 2026-08-03T12:09:52.637Z] STATS (rang 10 — relevé 1) {"w:w-2":{"etat":"connected","images":7207,"l":1280,"h":720,"octets":132092475,"rtt":0.046,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s — adaptation indisponible","horloge":1785758992611},"w:w-4":{"etat":"connected","images":5300,"l":1280,"h":720,"octets":116663074,"rtt":0.005,"focalisee":false,"cachee":true,"bandeau":"image figée : trop de fenêtres actives","horloge":1785758992611},"w:w-6":{"etat":"connected","images":5176,"l":1280,"h":720,"octets":100032397,"rtt":0.01,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758992612},"w:w-8":{"etat":"connected","images":4781,"l":852,"h":480,"octets":75149401,"rtt":0.006,"focalisee":false,"cachee":true,"bandeau":"Image réduite par le réseau — 852×480, 7.1 Mb/s","horloge":1785758992613},"w:w-10":{"etat":"connected","images":3182,"l":1280,"h":720,"octets":74143693,"rtt":0.019,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758992618},"w:w-12":{"etat":"connected","images":2148,"l":1280,"h":720,"octets":59065064,"rtt":0.015,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758992618},"w:w-14":{"etat":"connected","images":1290,"l":1280,"h":720,"octets":43326039,"rtt":0.014,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758992619},"w:w-16":{"etat":"connected","images":1022,"l":852,"h":480,"octets":18670091,"rtt":0.014,"focalisee":false,"cachee":true,"bandeau":"Image réduite par le réseau — 852×480, 12.0 Mb/s","horloge":1785758992619},"w:w-18":{"etat":"connected","images":540,"l":1280,"h":720,"octets":11682698,"rtt":0.046,"focalisee":false,"cachee":true,"bandeau":"1280×720, 11.4 Mb/s","horloge":1785758992620},"w:w-20":{"etat":"connected","images":124,"l":1280,"h":720,"octets":2846650,"rtt":0.022,"focalisee":true,"cachee":false,"bandeau":"1280×720, 9.5 Mb/s","horloge":1785758992621}}
+[  166.1s 2026-08-03T12:09:57.726Z] STATS (rang 10 — relevé 2) {"w:w-2":{"etat":"connected","images":7207,"l":1280,"h":720,"octets":132092475,"rtt":0.022,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s — adaptation indisponible","horloge":1785758997668},"w:w-4":{"etat":"connected","images":5300,"l":1280,"h":720,"octets":116707954,"rtt":0.048,"focalisee":false,"cachee":true,"bandeau":"image figée : trop de fenêtres actives","horloge":1785758997669},"w:w-6":{"etat":"connected","images":5198,"l":1280,"h":720,"octets":104559260,"rtt":0.044,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758997681},"w:w-8":{"etat":"connected","images":4899,"l":1280,"h":720,"octets":78973085,"rtt":0.051,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758997687},"w:w-10":{"etat":"connected","images":3303,"l":1280,"h":720,"octets":79535227,"rtt":0.052,"focalisee":false,"cachee":true,"bandeau":"1280×720, 6.4 Mb/s","horloge":1785758997691},"w:w-12":{"etat":"connected","images":2270,"l":1280,"h":720,"octets":64411369,"rtt":0.031,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758997692},"w:w-14":{"etat":"connected","images":1457,"l":1280,"h":720,"octets":48645534,"rtt":0.026,"focalisee":false,"cachee":true,"bandeau":"1280×720, 8.0 Mb/s","horloge":1785758997694},"w:w-16":{"etat":"connected","images":1246,"l":852,"h":480,"octets":23717476,"rtt":0.043,"focalisee":false,"cachee":true,"bandeau":"Image réduite par le réseau — 852×480, 12.0 Mb/s","horloge":1785758997696},"w:w-18":{"etat":"connected","images":579,"l":1280,"h":720,"octets":16078708,"rtt":0.02,"focalisee":false,"cachee":true,"bandeau":"1280×720, 11.4 Mb/s","horloge":1785758997697},"w:w-20":{"etat":"connected","images":329,"l":1280,"h":720,"octets":6508414,"rtt":0.067,"focalisee":true,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785758997701}}
+[  166.1s 2026-08-03T12:09:57.727Z] CADENCE NAVIGATEUR (rang 10) {
+ "w:w-2": {
+  "images": 0,
+  "secondes": 5.057,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 0,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s — adaptation indisponible"
+ },
+ "w:w-4": {
+  "images": 0,
+  "secondes": 5.058,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 71,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "image figée : trop de fenêtres actives"
+ },
+ "w:w-6": {
+  "images": 22,
+  "secondes": 5.069,
+  "i_par_s": 4.34,
+  "taille": "1280x720",
+  "kbps": 7144,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-8": {
+  "images": 118,
+  "secondes": 5.074,
+  "i_par_s": 23.26,
+  "taille": "1280x720",
+  "kbps": 6029,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-10": {
+  "images": 121,
+  "secondes": 5.073,
+  "i_par_s": 23.85,
+  "taille": "1280x720",
+  "kbps": 8502,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 6.4 Mb/s"
+ },
+ "w:w-12": {
+  "images": 122,
+  "secondes": 5.074,
+  "i_par_s": 24.04,
+  "taille": "1280x720",
+  "kbps": 8429,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-14": {
+  "images": 167,
+  "secondes": 5.075,
+  "i_par_s": 32.91,
+  "taille": "1280x720",
+  "kbps": 8385,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 8.0 Mb/s"
+ },
+ "w:w-16": {
+  "images": 224,
+  "secondes": 5.077,
+  "i_par_s": 44.12,
+  "taille": "852x480",
+  "kbps": 7953,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "Image réduite par le réseau — 852×480, 12.0 Mb/s"
+ },
+ "w:w-18": {
+  "images": 39,
+  "secondes": 5.077,
+  "i_par_s": 7.68,
+  "taille": "1280x720",
+  "kbps": 6927,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 11.4 Mb/s"
+ },
+ "w:w-20": {
+  "images": 205,
+  "secondes": 5.08,
+  "i_par_s": 40.35,
+  "taille": "1280x720",
+  "kbps": 5767,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ }
+}
+[  166.1s 2026-08-03T12:09:57.730Z] RANG 10 : pages=10 DIFFUSENT=8 ouverte=true endormies=-8
+[  166.2s 2026-08-03T12:09:57.848Z] SURVIE VM (après rang 10) virsh="en cours d’exécution" acces_partage=OUI
+[  166.2s 2026-08-03T12:09:57.848Z] >>> OUVERTURE fenêtre 11 (attendu : 11 pages)
+[  247.8s 2026-08-03T12:11:19.416Z]    !! fenêtre 11 : AUCUNE page ouverte après 80s (total 10)
+[  253.9s 2026-08-03T12:11:25.502Z] ÉTAT SHELL (après fenêtre 11) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="« _/C:/dev/anim-d4.html » n'a pas pu s'ouvrir : plus aucune sortie virtuelle disponible."
+[  253.9s 2026-08-03T12:11:25.504Z]   pages d'application ouvertes (10) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12 , http://192.168.3.1:5173/?session=w-14 , http://192.168.3.1:5173/?session=w-16 , http://192.168.3.1:5173/?session=w-18 , http://192.168.3.1:5173/?session=w-20
+[  254.0s 2026-08-03T12:11:25.628Z] MARQUEURS (après fenêtre 11) {"lignes":1175,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":10,"endormie":6,"reveillee":14,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":42,"taille_refusee":0,"refus_debit":0,"sortie_creee":10,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":44,"mutex_abandonne":44,"enfant_lance":10,"enfant_termine":0,"erreurs":0}
+[  254.1s 2026-08-03T12:11:25.686Z] STATS (rang 11 — relevé 1) {"w:w-2":{"etat":"connected","images":7207,"l":1280,"h":720,"octets":132092475,"rtt":0.019,"focalisee":false,"cachee":true,"bandeau":"Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s","horloge":1785759085648},"w:w-4":{"etat":"connected","images":5300,"l":1280,"h":720,"octets":116842594,"rtt":0.024,"focalisee":false,"cachee":true,"bandeau":"Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s","horloge":1785759085654},"w:w-6":{"etat":"connected","images":8351,"l":1024,"h":576,"octets":146859366,"rtt":0.01,"focalisee":false,"cachee":true,"bandeau":"Image réduite par le réseau — 1024×576, 2.1 Mb/s","horloge":1785759085655},"w:w-8":{"etat":"connected","images":8083,"l":1280,"h":720,"octets":122688551,"rtt":0.014,"focalisee":false,"cachee":true,"bandeau":"1280×720, 3.7 Mb/s","horloge":1785759085656},"w:w-10":{"etat":"connected","images":6735,"l":1280,"h":720,"octets":135858136,"rtt":0.024,"focalisee":false,"cachee":true,"bandeau":"1280×720, 3.7 Mb/s","horloge":1785759085657},"w:w-12":{"etat":"connected","images":5182,"l":1280,"h":720,"octets":128163558,"rtt":0.006,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759085665},"w:w-14":{"etat":"connected","images":3736,"l":1280,"h":720,"octets":100888856,"rtt":0.013,"focalisee":false,"cachee":true,"bandeau":"1280×720, 3.4 Mb/s","horloge":1785759085669},"w:w-16":{"etat":"connected","images":3915,"l":852,"h":480,"octets":67882661,"rtt":0.009,"focalisee":false,"cachee":true,"bandeau":"Image réduite par le réseau — 852×480, 2.0 Mb/s","horloge":1785759085671},"w:w-18":{"etat":"connected","images":3364,"l":852,"h":480,"octets":65824896,"rtt":0.02,"focalisee":false,"cachee":true,"bandeau":"Image réduite par le réseau — 852×480, 1.6 Mb/s","horloge":1785759085671},"w:w-20":{"etat":"connected","images":3816,"l":852,"h":480,"octets":51310236,"rtt":0.019,"focalisee":true,"cachee":false,"bandeau":"Image réduite par le réseau — 852×480, 12.0 Mb/s","horloge":1785759085672}}
+[  259.2s 2026-08-03T12:11:30.829Z] STATS (rang 11 — relevé 2) {"w:w-2":{"etat":"connected","images":7207,"l":1280,"h":720,"octets":132092475,"rtt":0.008,"focalisee":false,"cachee":true,"bandeau":"Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s","horloge":1785759090716},"w:w-4":{"etat":"connected","images":5300,"l":1280,"h":720,"octets":116842594,"rtt":0.004,"focalisee":false,"cachee":true,"bandeau":"Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s","horloge":1785759090717},"w:w-6":{"etat":"connected","images":8613,"l":1024,"h":576,"octets":149333170,"rtt":0.015,"focalisee":false,"cachee":true,"bandeau":"Image réduite par le réseau — 1024×576, 12.0 Mb/s","horloge":1785759090723},"w:w-8":{"etat":"connected","images":8349,"l":1280,"h":720,"octets":125498857,"rtt":0.007,"focalisee":false,"cachee":true,"bandeau":"1280×720, 8.7 Mb/s","horloge":1785759090768},"w:w-10":{"etat":"connected","images":7021,"l":1280,"h":720,"octets":138764925,"rtt":0.008,"focalisee":false,"cachee":true,"bandeau":"1280×720, 4.1 Mb/s","horloge":1785759090769},"w:w-12":{"etat":"connected","images":5470,"l":1280,"h":720,"octets":133695874,"rtt":0.015,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759090771},"w:w-14":{"etat":"connected","images":4017,"l":1280,"h":720,"octets":102447619,"rtt":0.011,"focalisee":false,"cachee":true,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759090774},"w:w-16":{"etat":"connected","images":4219,"l":852,"h":480,"octets":69086869,"rtt":0.014,"focalisee":false,"cachee":true,"bandeau":"Image réduite par le réseau — 852×480, 12.0 Mb/s","horloge":1785759090775},"w:w-18":{"etat":"connected","images":3646,"l":852,"h":480,"octets":67992660,"rtt":0.008,"focalisee":false,"cachee":true,"bandeau":"Image réduite par le réseau — 852×480, 7.8 Mb/s","horloge":1785759090780},"w:w-20":{"etat":"connected","images":4085,"l":852,"h":480,"octets":55830097,"rtt":0.009,"focalisee":true,"cachee":false,"bandeau":"Image réduite par le réseau — 852×480, 12.0 Mb/s","horloge":1785759090788}}
+[  259.2s 2026-08-03T12:11:30.829Z] CADENCE NAVIGATEUR (rang 11) {
+ "w:w-2": {
+  "images": 0,
+  "secondes": 5.068,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 0,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s"
+ },
+ "w:w-4": {
+  "images": 0,
+  "secondes": 5.063,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 0,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s"
+ },
+ "w:w-6": {
+  "images": 262,
+  "secondes": 5.068,
+  "i_par_s": 51.7,
+  "taille": "1024x576",
+  "kbps": 3905,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "Image réduite par le réseau — 1024×576, 12.0 Mb/s"
+ },
+ "w:w-8": {
+  "images": 266,
+  "secondes": 5.112,
+  "i_par_s": 52.03,
+  "taille": "1280x720",
+  "kbps": 4398,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 8.7 Mb/s"
+ },
+ "w:w-10": {
+  "images": 286,
+  "secondes": 5.112,
+  "i_par_s": 55.95,
+  "taille": "1280x720",
+  "kbps": 4549,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 4.1 Mb/s"
+ },
+ "w:w-12": {
+  "images": 288,
+  "secondes": 5.106,
+  "i_par_s": 56.4,
+  "taille": "1280x720",
+  "kbps": 8668,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-14": {
+  "images": 281,
+  "secondes": 5.105,
+  "i_par_s": 55.04,
+  "taille": "1280x720",
+  "kbps": 2443,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-16": {
+  "images": 304,
+  "secondes": 5.104,
+  "i_par_s": 59.56,
+  "taille": "852x480",
+  "kbps": 1887,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "Image réduite par le réseau — 852×480, 12.0 Mb/s"
+ },
+ "w:w-18": {
+  "images": 282,
+  "secondes": 5.109,
+  "i_par_s": 55.2,
+  "taille": "852x480",
+  "kbps": 3394,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "Image réduite par le réseau — 852×480, 7.8 Mb/s"
+ },
+ "w:w-20": {
+  "images": 269,
+  "secondes": 5.116,
+  "i_par_s": 52.58,
+  "taille": "852x480",
+  "kbps": 7068,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": "Image réduite par le réseau — 852×480, 12.0 Mb/s"
+ }
+}
+[  259.2s 2026-08-03T12:11:30.830Z] RANG 11 : pages=10 DIFFUSENT=8 ouverte=false endormies=-8
+[  259.4s 2026-08-03T12:11:31.011Z] SURVIE VM (après rang 11) virsh="en cours d’exécution" acces_partage=OUI
+[  259.4s 2026-08-03T12:11:31.011Z] >>> ARRÊT DE LA MONTÉE au rang 11 : aucune page de plus.
+[  266.4s 2026-08-03T12:11:37.984Z] --- fenêtres VM (au rang bloquant 11) ---
+30560	chrome	0x6f0212	1280x720+13920+0	Anim 10
+31036	chrome	0x60388	1280x720+2400+0	Anim 1
+31436	chrome	0x5049c	1280x720+7520+0	Anim 5
+35332	chrome	0x2604da	1280x720+6240+0	Anim 4
+37372	chrome	0x90414	1280x720+150+150	Anim 11
+40504	chrome	0x2603a4	1280x720+10080+0	Anim 7
+41072	chrome	0x604ba	1280x720+11360+0	Anim 8
+41188	chrome	0x6034a	1280x720+3680+0	Anim 2
+41876	chrome	0x802b6	1280x720+12640+0	Anim 9
+41904	chrome	0x190380	1280x720+8800+0	Anim 6
+42904	chrome	0x82016c	1280x720+4960+0	Anim 3
+[  266.4s 2026-08-03T12:11:37.985Z] SYNTHÈSE MONTÉE [
+ {
+  "rang": 1,
+  "pages": 1,
+  "diffusent": 1,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 2,
+  "pages": 2,
+  "diffusent": 2,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 3,
+  "pages": 3,
+  "diffusent": 3,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 4,
+  "pages": 4,
+  "diffusent": 4,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 5,
+  "pages": 5,
+  "diffusent": 5,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 6,
+  "pages": 6,
+  "diffusent": 6,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 7,
+  "pages": 7,
+  "diffusent": 7,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 8,
+  "pages": 8,
+  "diffusent": 8,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 9,
+  "pages": 9,
+  "diffusent": 8,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 10,
+  "pages": 10,
+  "diffusent": 8,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 11,
+  "pages": 10,
+  "diffusent": 8,
+  "ouverte": false,
+  "statut": "« _/C:/dev/anim-d4.html » n'a pas pu s'ouvrir : plus aucune sortie virtuelle disponible."
+ }
+]
+[  266.5s 2026-08-03T12:11:38.103Z] VISIBILITÉ IMPOSÉE (après la montée) document.hidden={"w:w-2":false,"w:w-4":false,"w:w-6":false,"w:w-8":false,"w:w-10":false,"w:w-12":false,"w:w-14":false,"w:w-16":false,"w:w-18":false,"w:w-20":false}
+[  266.6s 2026-08-03T12:11:38.224Z] STATS (PALIER (20 s) — relevé 1) {"w:w-2":{"etat":"connected","images":7207,"l":1280,"h":720,"octets":132092475,"rtt":0.004,"focalisee":false,"cachee":false,"bandeau":"Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s","horloge":1785759098148},"w:w-4":{"etat":"connected","images":5300,"l":1280,"h":720,"octets":116842594,"rtt":0.006,"focalisee":false,"cachee":false,"bandeau":"Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s","horloge":1785759098147},"w:w-6":{"etat":"connected","images":8775,"l":1024,"h":576,"octets":156404643,"rtt":0.044,"focalisee":false,"cachee":false,"bandeau":"Image réduite par le réseau — 1024×576, 4.8 Mb/s","horloge":1785759098159},"w:w-8":{"etat":"connected","images":8536,"l":1280,"h":720,"octets":131221425,"rtt":0.007,"focalisee":false,"cachee":false,"bandeau":"1280×720, 5.0 Mb/s","horloge":1785759098166},"w:w-10":{"etat":"connected","images":7247,"l":1280,"h":720,"octets":143098280,"rtt":0.006,"focalisee":false,"cachee":false,"bandeau":"1280×720, 4.3 Mb/s","horloge":1785759098167},"w:w-12":{"etat":"connected","images":5661,"l":1280,"h":720,"octets":140436786,"rtt":0.045,"focalisee":false,"cachee":false,"bandeau":"1280×720, 5.0 Mb/s","horloge":1785759098168},"w:w-14":{"etat":"connected","images":4224,"l":1280,"h":720,"octets":109062478,"rtt":0.005,"focalisee":false,"cachee":false,"bandeau":"1280×720, 5.3 Mb/s","horloge":1785759098168},"w:w-16":{"etat":"connected","images":4424,"l":852,"h":480,"octets":74931027,"rtt":0.046,"focalisee":false,"cachee":false,"bandeau":"Image réduite par le réseau — 852×480, 4.4 Mb/s","horloge":1785759098169},"w:w-18":{"etat":"connected","images":3894,"l":852,"h":480,"octets":74192490,"rtt":0.006,"focalisee":false,"cachee":false,"bandeau":"Image réduite par le réseau — 852×480, 4.1 Mb/s","horloge":1785759098190},"w:w-20":{"etat":"connected","images":4324,"l":852,"h":480,"octets":61323182,"rtt":0.004,"focalisee":true,"cachee":false,"bandeau":"Image réduite par le réseau — 852×480, 4.1 Mb/s","horloge":1785759098191}}
+[  286.7s 2026-08-03T12:11:58.326Z] STATS (PALIER (20 s) — relevé 2) {"w:w-2":{"etat":"connected","images":7207,"l":1280,"h":720,"octets":132092475,"rtt":0.002,"focalisee":false,"cachee":false,"bandeau":"Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s","horloge":1785759118262},"w:w-4":{"etat":"connected","images":5300,"l":1280,"h":720,"octets":116842594,"rtt":0.023,"focalisee":false,"cachee":false,"bandeau":"Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s","horloge":1785759118262},"w:w-6":{"etat":"connected","images":9622,"l":1280,"h":720,"octets":169801688,"rtt":0.021,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759118274},"w:w-8":{"etat":"connected","images":9482,"l":1280,"h":720,"octets":146065678,"rtt":0.011,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759118275},"w:w-10":{"etat":"connected","images":8280,"l":1280,"h":720,"octets":159445672,"rtt":0.023,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759118245},"w:w-12":{"etat":"connected","images":6674,"l":1280,"h":720,"octets":159177852,"rtt":0.018,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759118276},"w:w-14":{"etat":"connected","images":5161,"l":1280,"h":720,"octets":127426060,"rtt":0.003,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s — adaptation indisponible","horloge":1785759118278},"w:w-16":{"etat":"connected","images":5467,"l":1280,"h":720,"octets":87794175,"rtt":0.02,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759118279},"w:w-18":{"etat":"connected","images":4904,"l":1280,"h":720,"octets":84898207,"rtt":0.003,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759118291},"w:w-20":{"etat":"connected","images":4677,"l":1280,"h":720,"octets":74197446,"rtt":0.002,"focalisee":true,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759118292}}
+[  286.7s 2026-08-03T12:11:58.327Z] CADENCE NAVIGATEUR (PALIER (20 s)) {
+ "w:w-2": {
+  "images": 0,
+  "secondes": 20.114,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 0,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s"
+ },
+ "w:w-4": {
+  "images": 0,
+  "secondes": 20.115,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 0,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s"
+ },
+ "w:w-6": {
+  "images": 847,
+  "secondes": 20.115,
+  "i_par_s": 42.11,
+  "taille": "1280x720",
+  "kbps": 5328,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-8": {
+  "images": 946,
+  "secondes": 20.109,
+  "i_par_s": 47.04,
+  "taille": "1280x720",
+  "kbps": 5906,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-10": {
+  "images": 1033,
+  "secondes": 20.078,
+  "i_par_s": 51.45,
+  "taille": "1280x720",
+  "kbps": 6514,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-12": {
+  "images": 1013,
+  "secondes": 20.108,
+  "i_par_s": 50.38,
+  "taille": "1280x720",
+  "kbps": 7456,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-14": {
+  "images": 937,
+  "secondes": 20.11,
+  "i_par_s": 46.59,
+  "taille": "1280x720",
+  "kbps": 7305,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s — adaptation indisponible"
+ },
+ "w:w-16": {
+  "images": 1043,
+  "secondes": 20.11,
+  "i_par_s": 51.86,
+  "taille": "1280x720",
+  "kbps": 5117,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-18": {
+  "images": 1010,
+  "secondes": 20.101,
+  "i_par_s": 50.25,
+  "taille": "1280x720",
+  "kbps": 4261,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-20": {
+  "images": 353,
+  "secondes": 20.101,
+  "i_par_s": 17.56,
+  "taille": "1280x720",
+  "kbps": 5124,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ }
+}
+[  286.8s 2026-08-03T12:11:58.444Z] TRANSITIONS (fin de montée) 20 ligne(s)
+[
+ {
+  "t": "2026-08-03T12:07:39.731848Z",
+  "s": "w-2",
+  "quoi": "réveil",
+  "duree_ms": 155
+ },
+ {
+  "t": "2026-08-03T12:07:49.686998Z",
+  "s": "w-2",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:07:49.905050Z",
+  "s": "w-2",
+  "quoi": "réveil",
+  "duree_ms": 207
+ },
+ {
+  "t": "2026-08-03T12:07:53.221894Z",
+  "s": "w-4",
+  "quoi": "réveil",
+  "duree_ms": 85
+ },
+ {
+  "t": "2026-08-03T12:08:06.887635Z",
+  "s": "w-6",
+  "quoi": "réveil",
+  "duree_ms": 81
+ },
+ {
+  "t": "2026-08-03T12:08:20.975367Z",
+  "s": "w-8",
+  "quoi": "réveil",
+  "duree_ms": 92
+ },
+ {
+  "t": "2026-08-03T12:08:35.315854Z",
+  "s": "w-10",
+  "quoi": "réveil",
+  "duree_ms": 94
+ },
+ {
+  "t": "2026-08-03T12:08:49.526732Z",
+  "s": "w-12",
+  "quoi": "réveil",
+  "duree_ms": 100
+ },
+ {
+  "t": "2026-08-03T12:09:00.510337Z",
+  "s": "w-12",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:09:00.624872Z",
+  "s": "w-12",
+  "quoi": "réveil",
+  "duree_ms": 104
+ },
+ {
+  "t": "2026-08-03T12:09:04.510742Z",
+  "s": "w-14",
+  "quoi": "réveil",
+  "duree_ms": 101
+ },
+ {
+  "t": "2026-08-03T12:09:14.856468Z",
+  "s": "w-14",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:09:14.997348Z",
+  "s": "w-14",
+  "quoi": "réveil",
+  "duree_ms": 130
+ },
+ {
+  "t": "2026-08-03T12:09:18.987060Z",
+  "s": "w-16",
+  "quoi": "réveil",
+  "duree_ms": 110
+ },
+ {
+  "t": "2026-08-03T12:09:29.962427Z",
+  "s": "w-16",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:09:30.118653Z",
+  "s": "w-16",
+  "quoi": "réveil",
+  "duree_ms": 145
+ },
+ {
+  "t": "2026-08-03T12:09:34.132836Z",
+  "s": "w-2",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:09:34.220590Z",
+  "s": "w-18",
+  "quoi": "réveil",
+  "duree_ms": 124
+ },
+ {
+  "t": "2026-08-03T12:09:50.022897Z",
+  "s": "w-4",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:09:50.151062Z",
+  "s": "w-20",
+  "quoi": "réveil",
+  "duree_ms": 177
+ }
+]
+[  286.9s 2026-08-03T12:11:58.523Z] MARQUEURS (fin de montée) {"lignes":1281,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":10,"endormie":6,"reveillee":14,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":50,"taille_refusee":0,"refus_debit":0,"sortie_creee":10,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":44,"mutex_abandonne":44,"enfant_lance":10,"enfant_termine":0,"erreurs":0}
+[  286.9s 2026-08-03T12:11:58.524Z] AVANT ÉVICTION : endormies=["w:w-2","w:w-4"] éveillées=["w:w-6","w:w-8","w:w-10","w:w-12","w:w-14","w:w-16","w:w-18","w:w-20"]
+[  286.9s 2026-08-03T12:11:58.524Z] >>> ÉVICTION : on focalise w:w-2, qui dort
+[  287.5s 2026-08-03T12:11:59.127Z] FOCUS (éviction) cible=w:w-2 hasFocus/visibilité={"w:w-2":"true/visible","w:w-4":"false/visible","w:w-6":"false/visible","w:w-8":"false/visible","w:w-10":"false/visible","w:w-12":"false/visible","w:w-14":"false/visible","w:w-16":"false/visible","w:w-18":"false/visible","w:w-20":"false/visible"}
+[  288.1s 2026-08-03T12:11:59.702Z] RÉVEIL NAVIGATEUR w:w-2 : première image 545 ms après la demande (images 7207 → 7209)
+[  292.1s 2026-08-03T12:12:03.776Z] STATS (APRÈS ÉVICTION — relevé 1) {"w:w-2":{"etat":"connected","images":7270,"l":1280,"h":720,"octets":135184696,"rtt":0.01,"focalisee":true,"cachee":false,"bandeau":"Image réduite par le réseau — 640×360, 12.0 Mb/s","horloge":1785759123718},"w:w-4":{"etat":"connected","images":5300,"l":1280,"h":720,"octets":116842594,"rtt":0.04,"focalisee":false,"cachee":false,"bandeau":"Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s","horloge":1785759123726},"w:w-6":{"etat":"connected","images":9644,"l":1280,"h":720,"octets":170072419,"rtt":0.004,"focalisee":false,"cachee":false,"bandeau":"image figée : trop de fenêtres actives","horloge":1785759123734},"w:w-8":{"etat":"connected","images":9763,"l":1280,"h":720,"octets":151637409,"rtt":0.013,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759123737},"w:w-10":{"etat":"connected","images":8564,"l":1280,"h":720,"octets":165723455,"rtt":0.038,"focalisee":false,"cachee":false,"bandeau":"1280×720, 4.7 Mb/s","horloge":1785759123738},"w:w-12":{"etat":"connected","images":6961,"l":1280,"h":720,"octets":164769718,"rtt":0.004,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759123744},"w:w-14":{"etat":"connected","images":5445,"l":1280,"h":720,"octets":132742948,"rtt":0.009,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759123745},"w:w-16":{"etat":"connected","images":5742,"l":1280,"h":720,"octets":92996941,"rtt":0.004,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759123745},"w:w-18":{"etat":"connected","images":5172,"l":1280,"h":720,"octets":90672989,"rtt":0.01,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759123762},"w:w-20":{"etat":"connected","images":4802,"l":1280,"h":720,"octets":79068664,"rtt":0.01,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759123763}}
+[  298.2s 2026-08-03T12:12:09.862Z] STATS (APRÈS ÉVICTION — relevé 2) {"w:w-2":{"etat":"connected","images":7560,"l":1280,"h":720,"octets":140596279,"rtt":0.009,"focalisee":true,"cachee":false,"bandeau":"Image réduite par le réseau — 640×360, 12.0 Mb/s","horloge":1785759129817},"w:w-4":{"etat":"connected","images":5300,"l":1280,"h":720,"octets":116842594,"rtt":0.009,"focalisee":false,"cachee":false,"bandeau":"Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s","horloge":1785759129821},"w:w-6":{"etat":"connected","images":9644,"l":1280,"h":720,"octets":170200327,"rtt":0.008,"focalisee":false,"cachee":false,"bandeau":"image figée : trop de fenêtres actives","horloge":1785759129823},"w:w-8":{"etat":"connected","images":10030,"l":1280,"h":720,"octets":154475657,"rtt":0.007,"focalisee":false,"cachee":false,"bandeau":"1280×720, 9.8 Mb/s","horloge":1785759129824},"w:w-10":{"etat":"connected","images":8874,"l":1280,"h":720,"octets":168801301,"rtt":0.009,"focalisee":false,"cachee":false,"bandeau":"1280×720, 9.6 Mb/s","horloge":1785759129825},"w:w-12":{"etat":"connected","images":7247,"l":1280,"h":720,"octets":168886405,"rtt":0.008,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759129825},"w:w-14":{"etat":"connected","images":5755,"l":1280,"h":720,"octets":136210628,"rtt":0.009,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759129839},"w:w-16":{"etat":"connected","images":6020,"l":1280,"h":720,"octets":97137831,"rtt":0.007,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759129844},"w:w-18":{"etat":"connected","images":5446,"l":1280,"h":720,"octets":94485337,"rtt":0.009,"focalisee":false,"cachee":false,"bandeau":"1280×720, 10.7 Mb/s","horloge":1785759129854},"w:w-20":{"etat":"connected","images":4916,"l":1280,"h":720,"octets":81967020,"rtt":0.008,"focalisee":false,"cachee":false,"bandeau":"1280×720, 6.8 Mb/s","horloge":1785759129858}}
+[  298.2s 2026-08-03T12:12:09.862Z] CADENCE NAVIGATEUR (APRÈS ÉVICTION) {
+ "w:w-2": {
+  "images": 290,
+  "secondes": 6.099,
+  "i_par_s": 47.55,
+  "taille": "1280x720",
+  "kbps": 7098,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": "Image réduite par le réseau — 640×360, 12.0 Mb/s"
+ },
+ "w:w-4": {
+  "images": 0,
+  "secondes": 6.095,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 0,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s"
+ },
+ "w:w-6": {
+  "images": 0,
+  "secondes": 6.089,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 168,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "image figée : trop de fenêtres actives"
+ },
+ "w:w-8": {
+  "images": 267,
+  "secondes": 6.087,
+  "i_par_s": 43.86,
+  "taille": "1280x720",
+  "kbps": 3730,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 9.8 Mb/s"
+ },
+ "w:w-10": {
+  "images": 310,
+  "secondes": 6.087,
+  "i_par_s": 50.93,
+  "taille": "1280x720",
+  "kbps": 4045,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 9.6 Mb/s"
+ },
+ "w:w-12": {
+  "images": 286,
+  "secondes": 6.081,
+  "i_par_s": 47.03,
+  "taille": "1280x720",
+  "kbps": 5416,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-14": {
+  "images": 310,
+  "secondes": 6.094,
+  "i_par_s": 50.87,
+  "taille": "1280x720",
+  "kbps": 4552,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-16": {
+  "images": 278,
+  "secondes": 6.099,
+  "i_par_s": 45.58,
+  "taille": "1280x720",
+  "kbps": 5432,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-18": {
+  "images": 274,
+  "secondes": 6.092,
+  "i_par_s": 44.98,
+  "taille": "1280x720",
+  "kbps": 5006,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 10.7 Mb/s"
+ },
+ "w:w-20": {
+  "images": 114,
+  "secondes": 6.095,
+  "i_par_s": 18.7,
+  "taille": "1280x720",
+  "kbps": 3804,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 6.8 Mb/s"
+ }
+}
+[  298.2s 2026-08-03T12:12:09.863Z] APRÈS ÉVICTION : endormies=["w:w-4","w:w-6"] éveillées=["w:w-2","w:w-8","w:w-10","w:w-12","w:w-14","w:w-16","w:w-18","w:w-20"]
+[  298.3s 2026-08-03T12:12:09.949Z] TRANSITIONS (après éviction) 22 ligne(s)
+[
+ {
+  "t": "2026-08-03T12:07:39.731848Z",
+  "s": "w-2",
+  "quoi": "réveil",
+  "duree_ms": 155
+ },
+ {
+  "t": "2026-08-03T12:07:49.686998Z",
+  "s": "w-2",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:07:49.905050Z",
+  "s": "w-2",
+  "quoi": "réveil",
+  "duree_ms": 207
+ },
+ {
+  "t": "2026-08-03T12:07:53.221894Z",
+  "s": "w-4",
+  "quoi": "réveil",
+  "duree_ms": 85
+ },
+ {
+  "t": "2026-08-03T12:08:06.887635Z",
+  "s": "w-6",
+  "quoi": "réveil",
+  "duree_ms": 81
+ },
+ {
+  "t": "2026-08-03T12:08:20.975367Z",
+  "s": "w-8",
+  "quoi": "réveil",
+  "duree_ms": 92
+ },
+ {
+  "t": "2026-08-03T12:08:35.315854Z",
+  "s": "w-10",
+  "quoi": "réveil",
+  "duree_ms": 94
+ },
+ {
+  "t": "2026-08-03T12:08:49.526732Z",
+  "s": "w-12",
+  "quoi": "réveil",
+  "duree_ms": 100
+ },
+ {
+  "t": "2026-08-03T12:09:00.510337Z",
+  "s": "w-12",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:09:00.624872Z",
+  "s": "w-12",
+  "quoi": "réveil",
+  "duree_ms": 104
+ },
+ {
+  "t": "2026-08-03T12:09:04.510742Z",
+  "s": "w-14",
+  "quoi": "réveil",
+  "duree_ms": 101
+ },
+ {
+  "t": "2026-08-03T12:09:14.856468Z",
+  "s": "w-14",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:09:14.997348Z",
+  "s": "w-14",
+  "quoi": "réveil",
+  "duree_ms": 130
+ },
+ {
+  "t": "2026-08-03T12:09:18.987060Z",
+  "s": "w-16",
+  "quoi": "réveil",
+  "duree_ms": 110
+ },
+ {
+  "t": "2026-08-03T12:09:29.962427Z",
+  "s": "w-16",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:09:30.118653Z",
+  "s": "w-16",
+  "quoi": "réveil",
+  "duree_ms": 145
+ },
+ {
+  "t": "2026-08-03T12:09:34.132836Z",
+  "s": "w-2",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:09:34.220590Z",
+  "s": "w-18",
+  "quoi": "réveil",
+  "duree_ms": 124
+ },
+ {
+  "t": "2026-08-03T12:09:50.022897Z",
+  "s": "w-4",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:09:50.151062Z",
+  "s": "w-20",
+  "quoi": "réveil",
+  "duree_ms": 177
+ },
+ {
+  "t": "2026-08-03T12:11:58.584638Z",
+  "s": "w-6",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:11:58.676297Z",
+  "s": "w-2",
+  "quoi": "réveil",
+  "duree_ms": 124
+ }
+]
+[  298.4s 2026-08-03T12:12:10.045Z] STATS (AVANT MASQUAGE — relevé 1) {"w:w-2":{"etat":"connected","images":7566,"l":1280,"h":720,"octets":140765883,"rtt":0.009,"focalisee":true,"cachee":false,"bandeau":"Image réduite par le réseau — 640×360, 12.0 Mb/s","horloge":1785759129984},"w:w-4":{"etat":"connected","images":5300,"l":1280,"h":720,"octets":116842594,"rtt":0.009,"focalisee":false,"cachee":false,"bandeau":"Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s","horloge":1785759130009},"w:w-6":{"etat":"connected","images":9644,"l":1280,"h":720,"octets":170200327,"rtt":0.008,"focalisee":false,"cachee":false,"bandeau":"image figée : trop de fenêtres actives","horloge":1785759130013},"w:w-8":{"etat":"connected","images":10036,"l":1280,"h":720,"octets":154548731,"rtt":0.028,"focalisee":false,"cachee":false,"bandeau":"1280×720, 9.8 Mb/s","horloge":1785759130014},"w:w-10":{"etat":"connected","images":8881,"l":1280,"h":720,"octets":168928937,"rtt":0.009,"focalisee":false,"cachee":false,"bandeau":"1280×720, 9.6 Mb/s","horloge":1785759130021},"w:w-12":{"etat":"connected","images":7254,"l":1280,"h":720,"octets":169020492,"rtt":0.008,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759130022},"w:w-14":{"etat":"connected","images":5761,"l":1280,"h":720,"octets":136335863,"rtt":0.009,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759130023},"w:w-16":{"etat":"connected","images":6026,"l":1280,"h":720,"octets":97277100,"rtt":0.007,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759130024},"w:w-18":{"etat":"connected","images":5452,"l":1280,"h":720,"octets":94651647,"rtt":0.009,"focalisee":false,"cachee":false,"bandeau":"1280×720, 10.7 Mb/s","horloge":1785759130030},"w:w-20":{"etat":"connected","images":4916,"l":1280,"h":720,"octets":82030032,"rtt":0.008,"focalisee":false,"cachee":false,"bandeau":"1280×720, 6.8 Mb/s","horloge":1785759130032}}
+[  304.5s 2026-08-03T12:12:16.180Z] STATS (AVANT MASQUAGE — relevé 2) {"w:w-2":{"etat":"connected","images":7853,"l":1280,"h":720,"octets":143848712,"rtt":0.013,"focalisee":true,"cachee":false,"bandeau":"Image réduite par le réseau — 640×360, 4.4 Mb/s","horloge":1785759136104},"w:w-4":{"etat":"connected","images":5300,"l":1280,"h":720,"octets":116842594,"rtt":0.006,"focalisee":false,"cachee":false,"bandeau":"Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s","horloge":1785759136105},"w:w-6":{"etat":"connected","images":9644,"l":1280,"h":720,"octets":170245207,"rtt":0.019,"focalisee":false,"cachee":false,"bandeau":"image figée : trop de fenêtres actives","horloge":1785759136111},"w:w-8":{"etat":"connected","images":10322,"l":1280,"h":720,"octets":159351426,"rtt":0.007,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759136112},"w:w-10":{"etat":"connected","images":9188,"l":1280,"h":720,"octets":173587970,"rtt":0.007,"focalisee":false,"cachee":false,"bandeau":"1280×720, 6.6 Mb/s","horloge":1785759136116},"w:w-12":{"etat":"connected","images":7564,"l":1280,"h":720,"octets":173364907,"rtt":0.022,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759136117},"w:w-14":{"etat":"connected","images":6051,"l":1280,"h":720,"octets":141899307,"rtt":0.011,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759136118},"w:w-16":{"etat":"connected","images":6310,"l":1280,"h":720,"octets":100643565,"rtt":0.019,"focalisee":false,"cachee":false,"bandeau":"1280×720, 5.6 Mb/s","horloge":1785759136118},"w:w-18":{"etat":"connected","images":5733,"l":1280,"h":720,"octets":98360396,"rtt":0.009,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759136091},"w:w-20":{"etat":"connected","images":5112,"l":1280,"h":720,"octets":84901971,"rtt":0.011,"focalisee":false,"cachee":false,"bandeau":"1280×720, 6.8 Mb/s — adaptation indisponible","horloge":1785759136122}}
+[  304.6s 2026-08-03T12:12:16.184Z] CADENCE NAVIGATEUR (AVANT MASQUAGE) {
+ "w:w-2": {
+  "images": 287,
+  "secondes": 6.12,
+  "i_par_s": 46.9,
+  "taille": "1280x720",
+  "kbps": 4030,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": "Image réduite par le réseau — 640×360, 4.4 Mb/s"
+ },
+ "w:w-4": {
+  "images": 0,
+  "secondes": 6.096,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 0,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s"
+ },
+ "w:w-6": {
+  "images": 0,
+  "secondes": 6.098,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 59,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "image figée : trop de fenêtres actives"
+ },
+ "w:w-8": {
+  "images": 286,
+  "secondes": 6.098,
+  "i_par_s": 46.9,
+  "taille": "1280x720",
+  "kbps": 6301,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-10": {
+  "images": 307,
+  "secondes": 6.095,
+  "i_par_s": 50.37,
+  "taille": "1280x720",
+  "kbps": 6115,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 6.6 Mb/s"
+ },
+ "w:w-12": {
+  "images": 310,
+  "secondes": 6.095,
+  "i_par_s": 50.86,
+  "taille": "1280x720",
+  "kbps": 5702,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-14": {
+  "images": 290,
+  "secondes": 6.095,
+  "i_par_s": 47.58,
+  "taille": "1280x720",
+  "kbps": 7302,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-16": {
+  "images": 284,
+  "secondes": 6.094,
+  "i_par_s": 46.6,
+  "taille": "1280x720",
+  "kbps": 4419,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 5.6 Mb/s"
+ },
+ "w:w-18": {
+  "images": 281,
+  "secondes": 6.061,
+  "i_par_s": 46.36,
+  "taille": "1280x720",
+  "kbps": 4895,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-20": {
+  "images": 196,
+  "secondes": 6.09,
+  "i_par_s": 32.18,
+  "taille": "1280x720",
+  "kbps": 3773,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 6.8 Mb/s — adaptation indisponible"
+ }
+}
+[  304.6s 2026-08-03T12:12:16.185Z] >>> MASQUAGE : on cache w:w-8 (éveillée) ; attendu : elle dort, et une endormie se réveille
+[  304.6s 2026-08-03T12:12:16.211Z] MASQUAGE w:w-8 cachee=true → document.hidden=true
+[  305.0s 2026-08-03T12:12:16.660Z] RÉVEIL NAVIGATEUR w:w-6 : première image 366 ms après la demande (images 9644 → 9652)
+[  309.2s 2026-08-03T12:12:20.791Z] STATS (APRÈS MASQUAGE — relevé 1) {"w:w-2":{"etat":"connected","images":8029,"l":1280,"h":720,"octets":145933606,"rtt":0.007,"focalisee":true,"cachee":false,"bandeau":"1280×720, 10.1 Mb/s","horloge":1785759140741},"w:w-4":{"etat":"connected","images":5300,"l":1280,"h":720,"octets":116842594,"rtt":0.027,"focalisee":false,"cachee":false,"bandeau":"Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s","horloge":1785759140742},"w:w-6":{"etat":"connected","images":9758,"l":640,"h":360,"octets":174018151,"rtt":0.076,"focalisee":false,"cachee":false,"bandeau":"Réseau insuffisant pour le jeu nerveux — 640×360, 0.1 Mb/s","horloge":1785759140743},"w:w-8":{"etat":"connected","images":10344,"l":1280,"h":720,"octets":159586308,"rtt":0.009,"focalisee":false,"cachee":true,"bandeau":"1280×720, 10.6 Mb/s","horloge":1785759140744},"w:w-10":{"etat":"connected","images":9367,"l":1280,"h":720,"octets":176654928,"rtt":0.026,"focalisee":false,"cachee":false,"bandeau":"1280×720, 4.5 Mb/s","horloge":1785759140745},"w:w-12":{"etat":"connected","images":7751,"l":1280,"h":720,"octets":177437936,"rtt":0.076,"focalisee":false,"cachee":false,"bandeau":"1280×720, 9.7 Mb/s","horloge":1785759140745},"w:w-14":{"etat":"connected","images":6221,"l":1280,"h":720,"octets":146779115,"rtt":0.016,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759140750},"w:w-16":{"etat":"connected","images":6486,"l":1280,"h":720,"octets":103950907,"rtt":0.07,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759140756},"w:w-18":{"etat":"connected","images":5913,"l":1280,"h":720,"octets":102539451,"rtt":0.014,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759140757},"w:w-20":{"etat":"connected","images":5286,"l":1280,"h":720,"octets":88478916,"rtt":0.004,"focalisee":false,"cachee":false,"bandeau":"1280×720, 4.8 Mb/s","horloge":1785759140758}}
+[  315.2s 2026-08-03T12:12:26.814Z] STATS (APRÈS MASQUAGE — relevé 2) {"w:w-2":{"etat":"connected","images":8347,"l":1280,"h":720,"octets":148414725,"rtt":0.003,"focalisee":true,"cachee":false,"bandeau":"1280×720, 5.1 Mb/s","horloge":1785759146796},"w:w-4":{"etat":"connected","images":5300,"l":1280,"h":720,"octets":116842594,"rtt":0.007,"focalisee":false,"cachee":false,"bandeau":"Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s","horloge":1785759146797},"w:w-6":{"etat":"connected","images":10112,"l":640,"h":360,"octets":174769431,"rtt":0.007,"focalisee":false,"cachee":false,"bandeau":"Image réduite par le réseau — 640×360, 12.0 Mb/s","horloge":1785759146796},"w:w-8":{"etat":"connected","images":10344,"l":1280,"h":720,"octets":159617724,"rtt":0.006,"focalisee":false,"cachee":true,"bandeau":"1280×720, 9.5 Mb/s","horloge":1785759146800},"w:w-10":{"etat":"connected","images":9735,"l":1280,"h":720,"octets":179688671,"rtt":0.007,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759146801},"w:w-12":{"etat":"connected","images":7937,"l":1280,"h":720,"octets":182350805,"rtt":0.006,"focalisee":false,"cachee":false,"bandeau":"1280×720, 8.3 Mb/s","horloge":1785759146801},"w:w-14":{"etat":"connected","images":6385,"l":1280,"h":720,"octets":150013051,"rtt":0.003,"focalisee":false,"cachee":false,"bandeau":"1280×720, 4.6 Mb/s","horloge":1785759146802},"w:w-16":{"etat":"connected","images":6795,"l":1280,"h":720,"octets":108076574,"rtt":0.006,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759146803},"w:w-18":{"etat":"connected","images":6200,"l":1280,"h":720,"octets":106887154,"rtt":0.004,"focalisee":false,"cachee":false,"bandeau":"1280×720, 12.0 Mb/s","horloge":1785759146803},"w:w-20":{"etat":"connected","images":5576,"l":1280,"h":720,"octets":91233199,"rtt":0.002,"focalisee":false,"cachee":false,"bandeau":"1280×720, 10.8 Mb/s","horloge":1785759146811}}
+[  315.2s 2026-08-03T12:12:26.815Z] CADENCE NAVIGATEUR (APRÈS MASQUAGE) {
+ "w:w-2": {
+  "images": 318,
+  "secondes": 6.055,
+  "i_par_s": 52.52,
+  "taille": "1280x720",
+  "kbps": 3278,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": "1280×720, 5.1 Mb/s"
+ },
+ "w:w-4": {
+  "images": 0,
+  "secondes": 6.055,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 0,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s"
+ },
+ "w:w-6": {
+  "images": 354,
+  "secondes": 6.053,
+  "i_par_s": 58.48,
+  "taille": "640x360",
+  "kbps": 993,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "Image réduite par le réseau — 640×360, 12.0 Mb/s"
+ },
+ "w:w-8": {
+  "images": 0,
+  "secondes": 6.056,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 42,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 9.5 Mb/s"
+ },
+ "w:w-10": {
+  "images": 368,
+  "secondes": 6.056,
+  "i_par_s": 60.77,
+  "taille": "1280x720",
+  "kbps": 4008,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-12": {
+  "images": 186,
+  "secondes": 6.056,
+  "i_par_s": 30.71,
+  "taille": "1280x720",
+  "kbps": 6490,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 8.3 Mb/s"
+ },
+ "w:w-14": {
+  "images": 164,
+  "secondes": 6.052,
+  "i_par_s": 27.1,
+  "taille": "1280x720",
+  "kbps": 4275,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 4.6 Mb/s"
+ },
+ "w:w-16": {
+  "images": 309,
+  "secondes": 6.047,
+  "i_par_s": 51.1,
+  "taille": "1280x720",
+  "kbps": 5458,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-18": {
+  "images": 287,
+  "secondes": 6.046,
+  "i_par_s": 47.47,
+  "taille": "1280x720",
+  "kbps": 5753,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 12.0 Mb/s"
+ },
+ "w:w-20": {
+  "images": 290,
+  "secondes": 6.053,
+  "i_par_s": 47.91,
+  "taille": "1280x720",
+  "kbps": 3640,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": "1280×720, 10.8 Mb/s"
+ }
+}
+[  315.2s 2026-08-03T12:12:26.815Z] APRÈS MASQUAGE : endormies=["w:w-4","w:w-8"] éveillées=["w:w-2","w:w-6","w:w-10","w:w-12","w:w-14","w:w-16","w:w-18","w:w-20"]
+[  315.3s 2026-08-03T12:12:26.889Z] TRANSITIONS (après masquage) 24 ligne(s)
+[
+ {
+  "t": "2026-08-03T12:07:39.731848Z",
+  "s": "w-2",
+  "quoi": "réveil",
+  "duree_ms": 155
+ },
+ {
+  "t": "2026-08-03T12:07:49.686998Z",
+  "s": "w-2",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:07:49.905050Z",
+  "s": "w-2",
+  "quoi": "réveil",
+  "duree_ms": 207
+ },
+ {
+  "t": "2026-08-03T12:07:53.221894Z",
+  "s": "w-4",
+  "quoi": "réveil",
+  "duree_ms": 85
+ },
+ {
+  "t": "2026-08-03T12:08:06.887635Z",
+  "s": "w-6",
+  "quoi": "réveil",
+  "duree_ms": 81
+ },
+ {
+  "t": "2026-08-03T12:08:20.975367Z",
+  "s": "w-8",
+  "quoi": "réveil",
+  "duree_ms": 92
+ },
+ {
+  "t": "2026-08-03T12:08:35.315854Z",
+  "s": "w-10",
+  "quoi": "réveil",
+  "duree_ms": 94
+ },
+ {
+  "t": "2026-08-03T12:08:49.526732Z",
+  "s": "w-12",
+  "quoi": "réveil",
+  "duree_ms": 100
+ },
+ {
+  "t": "2026-08-03T12:09:00.510337Z",
+  "s": "w-12",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:09:00.624872Z",
+  "s": "w-12",
+  "quoi": "réveil",
+  "duree_ms": 104
+ },
+ {
+  "t": "2026-08-03T12:09:04.510742Z",
+  "s": "w-14",
+  "quoi": "réveil",
+  "duree_ms": 101
+ },
+ {
+  "t": "2026-08-03T12:09:14.856468Z",
+  "s": "w-14",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:09:14.997348Z",
+  "s": "w-14",
+  "quoi": "réveil",
+  "duree_ms": 130
+ },
+ {
+  "t": "2026-08-03T12:09:18.987060Z",
+  "s": "w-16",
+  "quoi": "réveil",
+  "duree_ms": 110
+ },
+ {
+  "t": "2026-08-03T12:09:29.962427Z",
+  "s": "w-16",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:09:30.118653Z",
+  "s": "w-16",
+  "quoi": "réveil",
+  "duree_ms": 145
+ },
+ {
+  "t": "2026-08-03T12:09:34.132836Z",
+  "s": "w-2",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:09:34.220590Z",
+  "s": "w-18",
+  "quoi": "réveil",
+  "duree_ms": 124
+ },
+ {
+  "t": "2026-08-03T12:09:50.022897Z",
+  "s": "w-4",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:09:50.151062Z",
+  "s": "w-20",
+  "quoi": "réveil",
+  "duree_ms": 177
+ },
+ {
+  "t": "2026-08-03T12:11:58.584638Z",
+  "s": "w-6",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:11:58.676297Z",
+  "s": "w-2",
+  "quoi": "réveil",
+  "duree_ms": 124
+ },
+ {
+  "t": "2026-08-03T12:12:16.258870Z",
+  "s": "w-8",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T12:12:16.340739Z",
+  "s": "w-6",
+  "quoi": "réveil",
+  "duree_ms": 113
+ }
+]
+[  315.3s 2026-08-03T12:12:26.889Z] SYNTHÈSE C3 (délais de réveil, côté navigateur) [
+ {
+  "geste": "focus sur une endormie",
+  "demande": "2026-08-03T12:11:58.525Z",
+  "nom": "w:w-2",
+  "ms": 545,
+  "depart": 7207,
+  "arrivee": 7209
+ },
+ {
+  "geste": "masquage d'une éveillée → réveil d'une endormie",
+  "demande": "2026-08-03T12:12:16.186Z",
+  "nom": "w:w-6",
+  "ms": 366,
+  "depart": 9644,
+  "arrivee": 9652
+ }
+]
+[  315.3s 2026-08-03T12:12:26.947Z] MARQUEURS (FIN) {"lignes":1368,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":10,"endormie":8,"reveillee":16,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":53,"taille_refusee":0,"refus_debit":0,"sortie_creee":10,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":44,"mutex_abandonne":44,"enfant_lance":10,"enfant_termine":0,"erreurs":0}
+[  315.3s 2026-08-03T12:12:26.954Z] ÉTAT SHELL (FIN) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="« C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE » n'a pas pu s'ouvrir : plus aucune sortie virtuelle disponible."
+[  315.3s 2026-08-03T12:12:26.955Z]   pages d'application ouvertes (10) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12 , http://192.168.3.1:5173/?session=w-14 , http://192.168.3.1:5173/?session=w-16 , http://192.168.3.1:5173/?session=w-18 , http://192.168.3.1:5173/?session=w-20
+[  322.1s 2026-08-03T12:12:33.743Z] --- fenêtres VM (fin de recette) ---
+30560	chrome	0x6f0212	1280x720+13920+0	Anim 10
+31036	chrome	0x60388	1280x720+2400+0	Anim 1
+31436	chrome	0x5049c	1280x720+7520+0	Anim 5
+35332	chrome	0x2604da	1280x720+6240+0	Anim 4
+37372	chrome	0x90414	1280x720+150+150	Anim 11
+40504	chrome	0x2603a4	1280x720+10080+0	Anim 7
+41072	chrome	0x604ba	1280x720+11360+0	Anim 8
+41188	chrome	0x6034a	1280x720+3680+0	Anim 2
+41876	chrome	0x802b6	1280x720+12640+0	Anim 9
+41904	chrome	0x190380	1280x720+8800+0	Anim 6
+42904	chrome	0x82016c	1280x720+4960+0	Anim 3
+[  322.2s 2026-08-03T12:12:33.854Z] SURVIE VM (fin de recette) virsh="en cours d’exécution" acces_partage=OUI
+[  322.2s 2026-08-03T12:12:33.854Z] SYNTHÈSE C2 {"taille_changee":53,"taille_refusee":0,"refus_debit":0}
+[  322.3s 2026-08-03T12:12:33.886Z] journal copié dans /tmp/agent-encours-d5.log

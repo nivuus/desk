@@ -20,7 +20,14 @@ export interface ResizeMessage {
     height: number;
 }
 
-export type ClientControl = ResizeMessage;
+export interface VisibilityMessage {
+    v: number;
+    type: 'visibility';
+    visible: boolean;
+    focused: boolean;
+}
+
+export type ClientControl = ResizeMessage | VisibilityMessage;
 
 export interface ReadyMessage {
     v: number;
@@ -68,11 +75,21 @@ export interface LinkMessage {
     adaptation: LinkAdaptation;
 }
 
+export interface AsleepMessage {
+    v: number;
+    type: 'asleep';
+    asleep: boolean;
+    reason: string;
+}
+
 export type AgentControl =
     | ReadyMessage | SessionEndMessage
-    | PointerMessage | RumbleMessage | CapabilitiesMessage | LinkMessage;
+    | PointerMessage | RumbleMessage | CapabilitiesMessage | LinkMessage
+    | AsleepMessage;
 
-const TYPES_AGENT = ['ready', 'session-end', 'pointer', 'rumble', 'capabilities', 'link'] as const;
+const TYPES_AGENT = [
+    'ready', 'session-end', 'pointer', 'rumble', 'capabilities', 'link', 'asleep',
+] as const;
 
 export function encodeResize(width: number, height: number): string {
     const message: ResizeMessage = {
@@ -80,6 +97,16 @@ export function encodeResize(width: number, height: number): string {
         type: 'resize',
         width: Math.max(1, Math.round(width)),
         height: Math.max(1, Math.round(height)),
+    };
+    return JSON.stringify(message);
+}
+
+export function encodeVisibility(visible: boolean, focused: boolean): string {
+    const message: VisibilityMessage = {
+        v: CONTROL_VERSION,
+        type: 'visibility',
+        visible,
+        focused,
     };
     return JSON.stringify(message);
 }

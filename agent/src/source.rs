@@ -82,6 +82,33 @@ pub trait VideoSource {
     fn set_encode_size(&mut self, _width: u32, _height: u32) -> anyhow::Result<()> {
         Ok(())
     }
+
+    /// Annonce au producteur si la fenêtre est visible pour l'utilisateur, et
+    /// si elle a le focus.
+    ///
+    /// Par défaut sans effet : une source fichier n'a personne à qui plaire.
+    /// La source distante la relaie au capteur, qui arbitre GLOBALEMENT — la
+    /// décision qui s'ensuit peut donc concerner une autre fenêtre que
+    /// celle-ci, et ne revient jamais par la valeur de retour.
+    fn set_awake(&mut self, _visible: bool, _focalisee: bool) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    /// Rend le changement de sommeil en attente d'annonce au navigateur, et le
+    /// consomme.
+    ///
+    /// **État courant, pas un historique** : deux changements arrivés entre
+    /// deux lectures s'écrasent, seul le dernier survit. La boucle de
+    /// transport interroge cette méthode à chaque tour (~100 Hz) ; comme elle
+    /// consomme, aucun message n'est jamais réémis — sans quoi le canal de
+    /// contrôle du navigateur serait inondé.
+    ///
+    /// Par défaut sans effet : une source fichier ne dort ni ne se réveille
+    /// jamais. Seule `SourceDistante` redéfinit cette méthode — c'est elle
+    /// qui relaie le sommeil décidé GLOBALEMENT par le vivier du capteur.
+    fn sommeil_a_annoncer(&mut self) -> Option<(bool, String)> {
+        None
+    }
 }
 
 /// Source de test rejouant un fichier H.264 Annex-B en boucle.

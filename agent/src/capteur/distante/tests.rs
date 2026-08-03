@@ -337,3 +337,49 @@ fn une_rafale_d_interrogations_ne_produit_qu_un_seul_essai() {
     }
     assert_eq!(*essais.lock().unwrap(), 1, "un seul essai dans la rafale");
 }
+
+/// `set_awake` relaie la visibilité telle quelle au capteur : c'est lui qui
+/// arbitre globalement (tâche 7). `source_avec` sert ici de canal espion, par
+/// son troisième élément (`recus`), pour vérifier le message ÉMIS.
+#[test]
+fn set_awake_transmet_la_visibilite_au_capteur() {
+    let (mut source, _tx, recus) = source_avec(4);
+    source.set_awake(false, false).expect("le capteur accepte");
+    assert_eq!(
+        recus.lock().unwrap().as_slice(),
+        &[VersCapteur::Visibilite { visible: false, focalisee: false }]
+    );
+}
+
+/// Un `Sommeil` poussé par le capteur est retenu, pas ignoré : c'est
+/// `sommeil_a_annoncer` qui le rend disponible à la boucle de transport, et
+/// une seule fois — la réémettre à chaque tour inonderait le canal de
+/// contrôle vers le navigateur. `source_avec` sert ici de file injectable par
+/// son deuxième élément (`tx`).
+#[test]
+fn un_sommeil_pousse_par_le_capteur_est_retenu_pour_le_client() {
+    let (mut source, tx, _recus) = source_avec(4);
+    tx.send(Recu::Sommeil { endormie: true, raison: "evincee".into() }).expect("dépôt");
+    // Le sommeil est consommé par le tour de boucle qui cherche une image.
+    assert!(source.next_frame().is_none());
+    assert_eq!(source.sommeil_a_annoncer(), Some((true, "evincee".to_string())));
+    assert_eq!(source.sommeil_a_annoncer(), None, "une annonce ne se répète pas");
+}
+
+/// `sommeil` est un état COURANT, pas un historique : deux `Sommeil` reçus
+/// avant toute lecture s'écrasent, et seul le dernier doit survivre — sans
+/// quoi la boucle de transport annoncerait au navigateur un état déjà
+/// périmé, ou pire, une file d'annonces grandirait sans jamais se vider.
+#[test]
+fn deux_sommeils_consecutifs_ne_retiennent_que_le_dernier() {
+    let (mut source, tx, _recus) = source_avec(4);
+    tx.send(Recu::Sommeil { endormie: true, raison: "masquee".into() }).expect("dépôt");
+    tx.send(Recu::Sommeil { endormie: true, raison: "evincee".into() }).expect("dépôt");
+    assert!(source.next_frame().is_none());
+    assert_eq!(
+        source.sommeil_a_annoncer(),
+        Some((true, "evincee".to_string())),
+        "seul le dernier sommeil reçu doit survivre"
+    );
+    assert_eq!(source.sommeil_a_annoncer(), None);
+}

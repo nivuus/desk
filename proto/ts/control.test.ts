@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CONTROL_VERSION, encodeResize, parseAgentControl } from './control';
+import { CONTROL_VERSION, encodeResize, encodeVisibility, parseAgentControl } from './control';
 
 describe('protocole de contrôle', () => {
     it('encode un redimensionnement', () => {
@@ -87,6 +87,18 @@ describe('protocole de contrôle', () => {
             height: 720,
             quality: 'degradee',
             adaptation: 'active',
+        });
+    });
+
+    it('encode une visibilité à la version courante', () => {
+        const json = JSON.parse(encodeVisibility(false, true));
+        expect(json).toEqual({ v: CONTROL_VERSION, type: 'visibility', visible: false, focused: true });
+    });
+
+    it('accepte un message asleep venant de l’agent', () => {
+        const raw = JSON.stringify({ v: CONTROL_VERSION, type: 'asleep', asleep: true, reason: 'evincee' });
+        expect(parseAgentControl(raw)).toEqual({
+            v: CONTROL_VERSION, type: 'asleep', asleep: true, reason: 'evincee',
         });
     });
 });

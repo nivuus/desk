@@ -194,7 +194,7 @@ impl WindowsSource {
             RebuildOutcome::Rebuilt((new_capture, region, encoder)) => {
                 self.capture = Some(new_capture);
                 self.region = region;
-                self.encoder = encoder;
+                self.encoder = Some(encoder);
                 self.width = region.width;
                 self.height = region.height;
                 // Nouvel encodeur : sa toute première sortie retombe dans le

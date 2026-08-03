@@ -8,6 +8,7 @@ import { attachGamepadAuDOM } from './gamepad';
 import { attachFullscreenAuDOM } from './fullscreen';
 import { texteLien } from './lien';
 import { viewportPair } from './viewport';
+import { attachVisibilite } from './visibilite';
 import { encodeResize } from '../../proto/ts/control';
 
 const video = document.querySelector<HTMLVideoElement>('#remote')!;
@@ -58,6 +59,7 @@ let bandeau: number | undefined;
 let pointeur: ReturnType<typeof attachPointerAuDOM> | undefined;
 let manette: ReturnType<typeof attachGamepadAuDOM> | undefined;
 let detacherPleinEcran: ReturnType<typeof attachFullscreenAuDOM> | undefined;
+let detacherVisibilite: ReturnType<typeof attachVisibilite> | undefined;
 let manetteAnnoncee = false;
 let bandeauManette: number | undefined;
 
@@ -88,11 +90,28 @@ connectSession({
             pointeur?.detacher();
             manette?.detacher();
             detacherPleinEcran?.();
+            detacherVisibilite?.();
             statut.afficher(`session terminée : ${message.reason}`, { terminal: true });
         } else if (message.type === 'pointer') {
             pointeur?.surMessagePointeur(message.visible, message.shape);
         } else if (message.type === 'rumble') {
             manette?.surVibration(message.left, message.right);
+        } else if (message.type === 'asleep') {
+            if (message.asleep) {
+                const texte =
+                    message.reason === 'evincee'
+                        ? 'image figée : trop de fenêtres actives'
+                        : 'image figée : fenêtre masquée';
+                // `persistant` : l'état dure tant que la fenêtre dort, il ne
+                // doit pas être effacé par la minuterie d'un bandeau voisin.
+                statut.afficher(texte, { persistant: true });
+            } else {
+                // `masquer()` protège délibérément un message persistant : le
+                // réveil doit donc lever explicitement cette persistance,
+                // sans quoi le bandeau « image figée : … » resterait affiché
+                // pour toujours après le réveil réel (voir status.ts).
+                statut.expirer();
+            }
         } else if (message.type === 'link') {
             const t = texteLien(message);
             window.clearTimeout(bandeauLien);
@@ -186,6 +205,57 @@ connectSession({
                 }
             },
         });
+
+        // `document` ne porte pas `focus`/`blur` : ils vont sur `window`. La
+        // cible réunit les deux sources sous l'interface que le module attend.
+        //
+        // Attacher n'a lieu qu'une fois `controlChannel` réellement ouvert.
+        // `connectSession` résout juste après `setRemoteDescription` : à cet
+        // instant le canal est encore `connecting` (ICE/DTLS/SCTP n'ont pas
+        // fini), et `attachVisibilite` envoie son annonce initiale de façon
+        // SYNCHRONE à l'attache. Attacher trop tôt ferait donc échouer ce tout
+        // premier envoi — et si la fenêtre reste ensuite visible et focalisée
+        // sans qu'aucun `focus`/`blur`/`visibilitychange` ne se déclenche
+        // jamais (le cas courant d'une fenêtre qui s'ouvre au premier plan et
+        // y reste), rien ne réémettrait ensuite : exactement le mode de
+        // défaillance silencieux — fenêtre jamais réveillée, aucun `WARN`
+        // côté agent — que la mémorisation prudente de `dernier` dans
+        // visibilite.ts atténue mais ne peut pas, à elle seule, éliminer si
+        // aucun second déclenchement n'a jamais lieu.
+        const demarrerAnnonceVisibilite = () => {
+            detacherVisibilite = attachVisibilite(
+                {
+                    get hidden() {
+                        return document.hidden;
+                    },
+                    get focalisee() {
+                        return document.hasFocus();
+                    },
+                    addEventListener(nom, rappel) {
+                        if (nom === 'visibilitychange') document.addEventListener(nom, rappel);
+                        else window.addEventListener(nom, rappel);
+                    },
+                    removeEventListener(nom, rappel) {
+                        if (nom === 'visibilitychange') document.removeEventListener(nom, rappel);
+                        else window.removeEventListener(nom, rappel);
+                    },
+                },
+                (charge) => {
+                    // Cette garde n'est plus le rempart principal contre la
+                    // perte de l'annonce initiale (assurée par l'attente
+                    // ci-dessus) : elle reste utile pour le cas résiduel où le
+                    // canal se refermerait entre deux changements d'état.
+                    if (session.controlChannel.readyState !== 'open') return false;
+                    session.controlChannel.send(charge);
+                    return true;
+                },
+            );
+        };
+        if (session.controlChannel.readyState === 'open') {
+            demarrerAnnonceVisibilite();
+        } else {
+            session.controlChannel.addEventListener('open', demarrerAnnonceVisibilite, { once: true });
+        }
 
         // Le redimensionnement reconstruit la chaîne d'encodage côté agent :
         // on n'émet donc qu'une fois le geste terminé, pas à chaque pixel
