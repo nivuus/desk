@@ -35,10 +35,31 @@ use super::{distribuer, Etat, Message};
 /// la commande.**
 ///
 /// 12 Mb/s conserve au cas mono-fenêtre exactement ce qu'il a aujourd'hui, et
-/// donne 1,33 Mb/s par fenêtre à huit — soit le barreau 852×480, **entre les
-/// deux points mesurés, donc non mesuré**. ⚠️ **C'est la recette de la
-/// tâche 10 qui le calibre** : si elle déçoit, descendre à 8 Mb/s, seul point
-/// relevé propre, au prix du cas mono-fenêtre.
+/// donne 1,33 Mb/s par fenêtre à huit — soit le barreau 852×480.
+///
+/// ✅ **CALIBRÉ par la recette de la tâche 10 (3 août 2026), et la valeur est
+/// RECONDUITE.** Le barreau 852×480 à huit fenêtres, que personne n'avait
+/// mesuré, l'est : **3,94 % d'images jetées** par le navigateur, contre un
+/// seuil de réception fixé à 7,99 % (le meilleur point de la tâche 1bis
+/// au-dessus de ce budget). Les huit fenêtres s'y posent bien à 852×480, la
+/// focalisée à 1024×576, et la somme des parts vaut 11 999 997 pour un budget
+/// de 12 000 000. Le point de repli à 8 Mb/s a été mesuré dans la foulée :
+/// 1,46 % et 3,94 % sur deux exécutions, mais au barreau 640×360 — moitié
+/// moins de pixels décodés par seconde (95,5 à 135,6 MP/s contre 196,4).
+/// **12 Mb/s achète une image nettement meilleure sans franchir le seuil, et
+/// ne coûte rien au cas mono-fenêtre.**
+///
+/// ⚠️ **La marge est une marge de LABORATOIRE, et elle est mince.** Le 3,94 %
+/// vient d'**une seule** exécution, sur l'unique hôte de mesure, dont la
+/// charge étrangère (transcodifications tierces) a varié d'un facteur 3,6
+/// pendant la campagne. Les quatre autres exécutions à 12 Mb/s ont toutes
+/// dépassé le seuil — 8,03 %, 16,70 %, 59,32 %, 75,47 % — et **toutes se sont
+/// jouées sous une charge d'hôte plus lourde que celle de la référence.** La
+/// grandeur qui commande ici n'est ni le lien (`packetsLost` = 0 partout) ni
+/// le débit, mais **ce que le client arrive à décoder** : sur une machine
+/// cliente plus lente, 12 Mb/s décrocherait. Le repli à 8 Mb/s n'a, lui,
+/// **jamais été éprouvé sous charge élevée** — que 12 Mb/s s'y dégrade plus
+/// vite n'est donc **pas établi**.
 fn budget_bps() -> u32 {
     static BUDGET: OnceLock<u32> = OnceLock::new();
     *BUDGET.get_or_init(|| {

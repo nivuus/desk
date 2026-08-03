@@ -1,0 +1,1423 @@
+{
+ "etiquette": "budget8",
+ "budget_bps": 8000000,
+ "bitrate_par_enfant": 12000000,
+ "n_eveil": 8,
+ "n_total": 10,
+ "palier_s": 40,
+ "phases": {
+  "palier": {
+   "cible_focus": "w:w-2",
+   "scenario": {
+    "etats": {
+     "w:w-2": "false/true",
+     "w:w-4": "false/false",
+     "w:w-6": "false/false",
+     "w:w-8": "false/false",
+     "w:w-10": "false/false",
+     "w:w-12": "false/false",
+     "w:w-14": "false/false",
+     "w:w-16": "false/false"
+    },
+    "focalisees": [
+     "w:w-2"
+    ]
+   },
+   "ouvertes": 8,
+   "debut1": "2026-08-03T17:43:32.985Z",
+   "fin1": "2026-08-03T17:44:23.421Z",
+   "pose": {
+    "stable": true,
+    "attente_s": 12.3,
+    "changements": 20
+   },
+   "parFenetre": {
+    "w:w-2": {
+     "secondes": 45.482,
+     "images_recues": 3402,
+     "images_decodees": 3178,
+     "images_jetees": 223,
+     "i_par_s": 69.87,
+     "pc_jetees": 6.55,
+     "mbps": 1.449,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 9096,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 24.893,
+     "pc_decodage": 54.7,
+     "gels": 0,
+     "pli": 0,
+     "taille": "1024x576",
+     "rtt": 0.008,
+     "lien_bitrate": 1777776,
+     "lien_taille": "1024x576",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": true,
+     "bandeau": "Image réduite par le réseau — 1024×576, 1.8 Mb/s"
+    },
+    "w:w-4": {
+     "secondes": 45.483,
+     "images_recues": 3581,
+     "images_decodees": 3523,
+     "images_jetees": 57,
+     "i_par_s": 77.46,
+     "pc_jetees": 1.59,
+     "mbps": 0.738,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 5398,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 11.121,
+     "pc_decodage": 24.5,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.008,
+     "lien_bitrate": 888888,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 640×360, 0.9 Mb/s"
+    },
+    "w:w-6": {
+     "secondes": 45.481,
+     "images_recues": 2402,
+     "images_decodees": 2401,
+     "images_jetees": 2,
+     "i_par_s": 52.79,
+     "pc_jetees": 0.08,
+     "mbps": 0.495,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 3750,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 8.981,
+     "pc_decodage": 19.7,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.009,
+     "lien_bitrate": 888888,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 640×360, 0.9 Mb/s"
+    },
+    "w:w-8": {
+     "secondes": 45.481,
+     "images_recues": 2338,
+     "images_decodees": 2337,
+     "images_jetees": 0,
+     "i_par_s": 51.38,
+     "pc_jetees": 0,
+     "mbps": 0.278,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 2828,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 6.637,
+     "pc_decodage": 14.6,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.005,
+     "lien_bitrate": 703949,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 640×360, 0.7 Mb/s"
+    },
+    "w:w-10": {
+     "secondes": 45.478,
+     "images_recues": 2319,
+     "images_decodees": 2320,
+     "images_jetees": 0,
+     "i_par_s": 51.01,
+     "pc_jetees": 0,
+     "mbps": 0.412,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 3218,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 7.983,
+     "pc_decodage": 17.6,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.002,
+     "lien_bitrate": 888888,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 640×360, 0.9 Mb/s"
+    },
+    "w:w-12": {
+     "secondes": 45.478,
+     "images_recues": 2397,
+     "images_decodees": 2396,
+     "images_jetees": 2,
+     "i_par_s": 52.68,
+     "pc_jetees": 0.08,
+     "mbps": 0.418,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 3296,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 7.518,
+     "pc_decodage": 16.5,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.005,
+     "lien_bitrate": 366568,
+     "lien_taille": "640x360",
+     "lien_qualite": "insuffisante",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.4 Mb/s"
+    },
+    "w:w-14": {
+     "secondes": 45.478,
+     "images_recues": 3345,
+     "images_decodees": 3325,
+     "images_jetees": 18,
+     "i_par_s": 73.11,
+     "pc_jetees": 0.54,
+     "mbps": 0.674,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 4984,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 10.126,
+     "pc_decodage": 22.3,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.005,
+     "lien_bitrate": 888888,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 640×360, 0.9 Mb/s"
+    },
+    "w:w-16": {
+     "secondes": 45.477,
+     "images_recues": 2346,
+     "images_decodees": 2324,
+     "images_jetees": 21,
+     "i_par_s": 51.1,
+     "pc_jetees": 0.9,
+     "mbps": 0.467,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 3537,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 7.796,
+     "pc_decodage": 17.1,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.003,
+     "lien_bitrate": 827744,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 640×360, 0.8 Mb/s"
+    }
+   },
+   "cumule": {
+    "fenetres_mesurees": 8,
+    "mbps_cumule": 4.931,
+    "i_par_s_cumule": 479.4,
+    "images_recues": 22130,
+    "images_jetees": 323,
+    "pc_jetees": 1.46,
+    "paquets_perdus": 0,
+    "paquets_recus": 36107,
+    "pc_decodage_cumule": 187,
+    "mpx_par_s_decodes": 135.57,
+    "gels": 0,
+    "rtt_median": 0.005
+   },
+   "agent": {
+    "capteur": {
+     "w-8": 51.1,
+     "w-14": 72.82,
+     "w-2": 74.18,
+     "w-10": 50.94,
+     "w-16": 51.5,
+     "w-4": 78.32,
+     "w-12": 52.6,
+     "w-6": 52.78
+    },
+    "enfant": {
+     "w-8": 51.1,
+     "w-14": 72.82,
+     "w-2": 74.2,
+     "w-10": 50.96,
+     "w-16": 51.6,
+     "w-4": 78.26,
+     "w-12": 52.58,
+     "w-6": 52.8
+    },
+    "capteur_cumule": 484.24,
+    "endormies": []
+   },
+   "parts": {
+    "dernieres": {
+     "w-2": {
+      "bps": 1777776,
+      "t": "2026-08-03T17:43:12.654924Z"
+     },
+     "w-4": {
+      "bps": 888888,
+      "t": "2026-08-03T17:43:12.652052Z"
+     },
+     "w-6": {
+      "bps": 888888,
+      "t": "2026-08-03T17:43:12.641933Z"
+     },
+     "w-8": {
+      "bps": 888888,
+      "t": "2026-08-03T17:43:12.645985Z"
+     },
+     "w-10": {
+      "bps": 888888,
+      "t": "2026-08-03T17:43:12.656002Z"
+     },
+     "w-12": {
+      "bps": 888888,
+      "t": "2026-08-03T17:43:12.649003Z"
+     },
+     "w-14": {
+      "bps": 888888,
+      "t": "2026-08-03T17:43:12.658001Z"
+     },
+     "w-16": {
+      "bps": 888888,
+      "t": "2026-08-03T17:43:12.661000Z"
+     }
+    },
+    "somme": 7999992,
+    "nombre_de_lignes": 123
+   },
+   "barreaux": {
+    "changees": [
+     {
+      "t": "2026-08-03T17:43:02.053273Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:43:02.053372Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:43:02.402480Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:43:02.402547Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:43:04.363534Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:43:04.363611Z",
+      "taille": "1024x576"
+     },
+     {
+      "t": "2026-08-03T17:43:07.225491Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:43:07.225573Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:43:07.240736Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:43:07.240785Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:43:07.661325Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:43:07.661385Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:43:09.895034Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:43:09.895118Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:43:12.848806Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:43:12.848891Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:43:16.048924Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:43:16.048980Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:43:19.123896Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:43:19.123988Z",
+      "taille": "640x360"
+     }
+    ],
+    "refusees": []
+   },
+   "cpu": [
+    {
+     "cpu": "%Cpu(s): 33,8 ut, 18,0 sy,  0,0 ni, 47,4 id,  0,0 wa,  0,0 hi,  0,8 si,  0,0 st \n    %Cpu(s): 32,6 ut, 17,5 sy,  0,0 ni, 49,4 id,  0,0 wa,  0,0 hi,  0,5 si,  0,0 st \n    %Cpu(s): 31,5 ut, 18,4 sy,  0,0 ni, 49,4 id,  0,0 wa,  0,0 hi,  0,6 si,  0,0 st",
+     "tdarr_pcpu": "97.1",
+     "loadavg": "13.01 17.75 19.32 33/3527 2082477"
+    },
+    {
+     "cpu": "%Cpu(s): 34,5 ut, 17,5 sy,  0,0 ni, 47,6 id,  0,0 wa,  0,0 hi,  0,5 si,  0,0 st \n    %Cpu(s): 32,9 ut, 17,9 sy,  0,0 ni, 48,7 id,  0,0 wa,  0,0 hi,  0,5 si,  0,0 st \n    %Cpu(s): 33,2 ut, 18,8 sy,  0,0 ni, 47,4 id,  0,0 wa,  0,0 hi,  0,5 si,  0,0 st",
+     "tdarr_pcpu": "97.0",
+     "loadavg": "14.64 17.66 19.22 32/3453 2085135"
+    }
+   ],
+   "survie": {
+    "virsh": "en cours d’exécution",
+    "acces": "OUI"
+   }
+  },
+  "focus": [
+   {
+    "cible": "w:w-4",
+    "scenario": {
+     "etats": {
+      "w:w-2": "false/false",
+      "w:w-4": "false/true",
+      "w:w-6": "false/false",
+      "w:w-8": "false/false",
+      "w:w-10": "false/false",
+      "w:w-12": "false/false",
+      "w:w-14": "false/false",
+      "w:w-16": "false/false"
+     },
+     "focalisees": [
+      "w:w-4"
+     ]
+    },
+    "fin": "2026-08-03T17:44:48.989Z",
+    "tailles": {
+     "w:w-2": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 888888,
+      "focalisee": false
+     },
+     "w:w-4": {
+      "taille": "1024x576",
+      "lien_taille": "1024x576",
+      "lien_bitrate": 1777776,
+      "focalisee": true
+     },
+     "w:w-6": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 888888,
+      "focalisee": false
+     },
+     "w:w-8": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 888888,
+      "focalisee": false
+     },
+     "w:w-10": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 888888,
+      "focalisee": false
+     },
+     "w:w-12": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 678651,
+      "focalisee": false
+     },
+     "w:w-14": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 888888,
+      "focalisee": false
+     },
+     "w:w-16": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 552154,
+      "focalisee": false
+     }
+    },
+    "parts": {
+     "dernieres": {
+      "w-2": {
+       "bps": 888888,
+       "t": "2026-08-03T17:44:23.934959Z"
+      },
+      "w-4": {
+       "bps": 1777776,
+       "t": "2026-08-03T17:44:23.941831Z"
+      },
+      "w-6": {
+       "bps": 888888,
+       "t": "2026-08-03T17:44:23.932897Z"
+      },
+      "w-8": {
+       "bps": 888888,
+       "t": "2026-08-03T17:44:23.938730Z"
+      },
+      "w-10": {
+       "bps": 888888,
+       "t": "2026-08-03T17:44:23.935943Z"
+      },
+      "w-12": {
+       "bps": 888888,
+       "t": "2026-08-03T17:44:23.929861Z"
+      },
+      "w-14": {
+       "bps": 888888,
+       "t": "2026-08-03T17:44:23.929868Z"
+      },
+      "w-16": {
+       "bps": 888888,
+       "t": "2026-08-03T17:44:23.934988Z"
+      }
+     },
+     "somme": 7999992,
+     "nombre_de_lignes": 139
+    },
+    "stats": {
+     "w:w-2": {
+      "etat": "connected",
+      "horloge": 1785779089014,
+      "images_decodees": 8027,
+      "images_recues": 8557,
+      "images_perdues": 528,
+      "gels": 12,
+      "octets_recus": 22126456,
+      "octets_audio": null,
+      "paquets_recus": 24114,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 52.179448,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.014,
+      "lien_bitrate": 888888,
+      "lien_taille": "640x360",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 640×360, 0.9 Mb/s"
+     },
+     "w:w-4": {
+      "etat": "connected",
+      "horloge": 1785779089019,
+      "images_decodees": 8507,
+      "images_recues": 8833,
+      "images_perdues": 314,
+      "gels": 6,
+      "octets_recus": 15509252,
+      "octets_audio": null,
+      "paquets_recus": 18136,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 29.748946999999998,
+      "l": 1024,
+      "h": 576,
+      "rtt": 0.015,
+      "lien_bitrate": 1777776,
+      "lien_taille": "1024x576",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": true,
+      "bandeau": "Image réduite par le réseau — 1024×576, 1.8 Mb/s"
+     },
+     "w:w-6": {
+      "etat": "connected",
+      "horloge": 1785779089031,
+      "images_decodees": 5920,
+      "images_recues": 6171,
+      "images_perdues": 250,
+      "gels": 7,
+      "octets_recus": 8860771,
+      "octets_audio": null,
+      "paquets_recus": 11181,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 21.767934,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.032,
+      "lien_bitrate": 888888,
+      "lien_taille": "640x360",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 640×360, 0.9 Mb/s"
+     },
+     "w:w-8": {
+      "etat": "connected",
+      "horloge": 1785779089035,
+      "images_decodees": 5517,
+      "images_recues": 5732,
+      "images_perdues": 213,
+      "gels": 5,
+      "octets_recus": 5810394,
+      "octets_audio": null,
+      "paquets_recus": 8516,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 17.372044,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.025,
+      "lien_bitrate": 888888,
+      "lien_taille": "640x360",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 640×360, 0.9 Mb/s"
+     },
+     "w:w-10": {
+      "etat": "connected",
+      "horloge": 1785779089043,
+      "images_decodees": 5376,
+      "images_recues": 5470,
+      "images_perdues": 92,
+      "gels": 4,
+      "octets_recus": 6308438,
+      "octets_audio": null,
+      "paquets_recus": 8579,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 18.57834,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.01,
+      "lien_bitrate": 888888,
+      "lien_taille": "640x360",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 640×360, 0.9 Mb/s"
+     },
+     "w:w-12": {
+      "etat": "connected",
+      "horloge": 1785779089052,
+      "images_decodees": 5367,
+      "images_recues": 5589,
+      "images_perdues": 220,
+      "gels": 3,
+      "octets_recus": 6236445,
+      "octets_audio": null,
+      "paquets_recus": 8367,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 17.023588,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.006,
+      "lien_bitrate": 678651,
+      "lien_taille": "640x360",
+      "lien_qualite": "insuffisante",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.7 Mb/s"
+     },
+     "w:w-14": {
+      "etat": "connected",
+      "horloge": 1785779089059,
+      "images_decodees": 7232,
+      "images_recues": 7463,
+      "images_perdues": 230,
+      "gels": 1,
+      "octets_recus": 9127063,
+      "octets_audio": null,
+      "paquets_recus": 11702,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 22.585409,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.008,
+      "lien_bitrate": 888888,
+      "lien_taille": "640x360",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 640×360, 0.9 Mb/s"
+     },
+     "w:w-16": {
+      "etat": "connected",
+      "horloge": 1785779089073,
+      "images_decodees": 4960,
+      "images_recues": 5176,
+      "images_perdues": 215,
+      "gels": 1,
+      "octets_recus": 5970100,
+      "octets_audio": null,
+      "paquets_recus": 7916,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 16.900857,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.01,
+      "lien_bitrate": 552154,
+      "lien_taille": "640x360",
+      "lien_qualite": "insuffisante",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.6 Mb/s"
+     }
+    }
+   },
+   {
+    "cible": "w:w-6",
+    "scenario": {
+     "etats": {
+      "w:w-2": "false/false",
+      "w:w-4": "false/false",
+      "w:w-6": "false/true",
+      "w:w-8": "false/false",
+      "w:w-10": "false/false",
+      "w:w-12": "false/false",
+      "w:w-14": "false/false",
+      "w:w-16": "false/false"
+     },
+     "focalisees": [
+      "w:w-6"
+     ]
+    },
+    "fin": "2026-08-03T17:45:14.475Z",
+    "tailles": {
+     "w:w-2": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 888888,
+      "focalisee": false
+     },
+     "w:w-4": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 888888,
+      "focalisee": false
+     },
+     "w:w-6": {
+      "taille": "640x360",
+      "lien_taille": "1024x576",
+      "lien_bitrate": 1777776,
+      "focalisee": true
+     },
+     "w:w-8": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 888888,
+      "focalisee": false
+     },
+     "w:w-10": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 885102,
+      "focalisee": false
+     },
+     "w:w-12": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 888888,
+      "focalisee": false
+     },
+     "w:w-14": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 888888,
+      "focalisee": false
+     },
+     "w:w-16": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 636877,
+      "focalisee": false
+     }
+    },
+    "parts": {
+     "dernieres": {
+      "w-2": {
+       "bps": 888888,
+       "t": "2026-08-03T17:44:49.348816Z"
+      },
+      "w-4": {
+       "bps": 888888,
+       "t": "2026-08-03T17:44:49.330585Z"
+      },
+      "w-6": {
+       "bps": 1777776,
+       "t": "2026-08-03T17:44:49.342531Z"
+      },
+      "w-8": {
+       "bps": 888888,
+       "t": "2026-08-03T17:44:49.347520Z"
+      },
+      "w-10": {
+       "bps": 888888,
+       "t": "2026-08-03T17:44:49.346525Z"
+      },
+      "w-12": {
+       "bps": 888888,
+       "t": "2026-08-03T17:44:49.340460Z"
+      },
+      "w-14": {
+       "bps": 888888,
+       "t": "2026-08-03T17:44:49.340438Z"
+      },
+      "w-16": {
+       "bps": 888888,
+       "t": "2026-08-03T17:44:49.345511Z"
+      }
+     },
+     "somme": 7999992,
+     "nombre_de_lignes": 155
+    },
+    "stats": {
+     "w:w-2": {
+      "etat": "connected",
+      "horloge": 1785779114501,
+      "images_decodees": 9930,
+      "images_recues": 10467,
+      "images_perdues": 536,
+      "gels": 12,
+      "octets_recus": 24400694,
+      "octets_audio": null,
+      "paquets_recus": 27021,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 58.715736,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.013,
+      "lien_bitrate": 888888,
+      "lien_taille": "640x360",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 640×360, 0.9 Mb/s"
+     },
+     "w:w-4": {
+      "etat": "connected",
+      "horloge": 1785779114502,
+      "images_decodees": 10555,
+      "images_recues": 10914,
+      "images_perdues": 358,
+      "gels": 6,
+      "octets_recus": 18094589,
+      "octets_audio": null,
+      "paquets_recus": 21482,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 37.367551,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.013,
+      "lien_bitrate": 888888,
+      "lien_taille": "640x360",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 640×360, 0.9 Mb/s"
+     },
+     "w:w-6": {
+      "etat": "connected",
+      "horloge": 1785779114504,
+      "images_decodees": 7355,
+      "images_recues": 7607,
+      "images_perdues": 250,
+      "gels": 7,
+      "octets_recus": 12123564,
+      "octets_audio": null,
+      "paquets_recus": 14846,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 28.559265,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.005,
+      "lien_bitrate": 1777776,
+      "lien_taille": "1024x576",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": true,
+      "bandeau": "Image réduite par le réseau — 1024×576, 1.8 Mb/s"
+     },
+     "w:w-8": {
+      "etat": "connected",
+      "horloge": 1785779114504,
+      "images_decodees": 6922,
+      "images_recues": 7135,
+      "images_perdues": 213,
+      "gels": 5,
+      "octets_recus": 7372677,
+      "octets_audio": null,
+      "paquets_recus": 10590,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 22.53062,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.011,
+      "lien_bitrate": 888888,
+      "lien_taille": "640x360",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 640×360, 0.9 Mb/s"
+     },
+     "w:w-10": {
+      "etat": "connected",
+      "horloge": 1785779114505,
+      "images_decodees": 6794,
+      "images_recues": 6887,
+      "images_perdues": 92,
+      "gels": 4,
+      "octets_recus": 8038744,
+      "octets_audio": null,
+      "paquets_recus": 10845,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 23.799231,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.008,
+      "lien_bitrate": 885102,
+      "lien_taille": "640x360",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 640×360, 0.9 Mb/s"
+     },
+     "w:w-12": {
+      "etat": "connected",
+      "horloge": 1785779114506,
+      "images_decodees": 6830,
+      "images_recues": 7051,
+      "images_perdues": 220,
+      "gels": 3,
+      "octets_recus": 7736413,
+      "octets_audio": null,
+      "paquets_recus": 10507,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 22.075089,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.012,
+      "lien_bitrate": 888888,
+      "lien_taille": "640x360",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 640×360, 0.9 Mb/s"
+     },
+     "w:w-14": {
+      "etat": "connected",
+      "horloge": 1785779114507,
+      "images_decodees": 9158,
+      "images_recues": 9392,
+      "images_perdues": 234,
+      "gels": 1,
+      "octets_recus": 11184181,
+      "octets_audio": null,
+      "paquets_recus": 14477,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 28.644278,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.019,
+      "lien_bitrate": 888888,
+      "lien_taille": "640x360",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 640×360, 0.9 Mb/s"
+     },
+     "w:w-16": {
+      "etat": "connected",
+      "horloge": 1785779114507,
+      "images_decodees": 6345,
+      "images_recues": 6562,
+      "images_perdues": 215,
+      "gels": 1,
+      "octets_recus": 7504957,
+      "octets_audio": null,
+      "paquets_recus": 9955,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 21.784377,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.016,
+      "lien_bitrate": 636877,
+      "lien_taille": "640x360",
+      "lien_qualite": "insuffisante",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.6 Mb/s"
+     }
+    }
+   }
+  ],
+  "sommeil": {
+   "cible_focus": "w:w-6",
+   "scenario": {
+    "etats": {
+     "w:w-2": "false/false",
+     "w:w-4": "false/false",
+     "w:w-6": "false/true",
+     "w:w-8": "false/false",
+     "w:w-10": "false/false",
+     "w:w-12": "false/false",
+     "w:w-14": "false/false",
+     "w:w-16": "false/false",
+     "w:w-18": "false/false",
+     "w:w-20": "false/false"
+    },
+    "focalisees": [
+     "w:w-6"
+    ]
+   },
+   "ouvertes": 10,
+   "debut3": "2026-08-03T17:45:48.918Z",
+   "fin3": "2026-08-03T17:46:19.016Z",
+   "pose": {
+    "stable": true,
+    "attente_s": 12.3,
+    "changements": 34
+   },
+   "parFenetre": {
+    "w:w-2": {
+     "secondes": 30.051,
+     "images_recues": 2091,
+     "images_decodees": 2070,
+     "images_jetees": 20,
+     "i_par_s": 68.88,
+     "pc_jetees": 0.96,
+     "mbps": 0.616,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 3034,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 6.578,
+     "pc_decodage": 21.9,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.005,
+     "lien_bitrate": 832000,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 640×360, 0.8 Mb/s"
+    },
+    "w:w-4": {
+     "secondes": 30.046,
+     "images_recues": 2361,
+     "images_decodees": 2344,
+     "images_jetees": 19,
+     "i_par_s": 78.01,
+     "pc_jetees": 0.8,
+     "mbps": 0.708,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 3484,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 7.135,
+     "pc_decodage": 23.7,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.002,
+     "lien_bitrate": 613401,
+     "lien_taille": "640x360",
+     "lien_qualite": "insuffisante",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.6 Mb/s"
+    },
+    "w:w-6": {
+     "secondes": 30.064,
+     "images_recues": 1665,
+     "images_decodees": 1667,
+     "images_jetees": 0,
+     "i_par_s": 55.45,
+     "pc_jetees": 0,
+     "mbps": 0.517,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 2536,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 5.778,
+     "pc_decodage": 19.2,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.004,
+     "lien_bitrate": 1664000,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": true,
+     "bandeau": "Image réduite par le réseau — 640×360, 1.7 Mb/s"
+    },
+    "w:w-8": {
+     "secondes": 30.045,
+     "images_recues": 0,
+     "images_decodees": 0,
+     "images_jetees": 0,
+     "i_par_s": 0,
+     "pc_jetees": null,
+     "mbps": 0,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 5009,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 0,
+     "pc_decodage": 0,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.006,
+     "lien_bitrate": 231542,
+     "lien_taille": "640x360",
+     "lien_qualite": "insuffisante",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.2 Mb/s"
+    },
+    "w:w-10": {
+     "secondes": 30.063,
+     "images_recues": 0,
+     "images_decodees": 0,
+     "images_jetees": 0,
+     "i_par_s": 0,
+     "pc_jetees": null,
+     "mbps": 0,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 0,
+     "pc_paquets_perdus": null,
+     "temps_decodage": 0,
+     "pc_decodage": 0,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.004,
+     "lien_bitrate": 176206,
+     "lien_taille": "640x360",
+     "lien_qualite": "insuffisante",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.2 Mb/s"
+    },
+    "w:w-12": {
+     "secondes": 30.063,
+     "images_recues": 1723,
+     "images_decodees": 1722,
+     "images_jetees": 4,
+     "i_par_s": 57.28,
+     "pc_jetees": 0.23,
+     "mbps": 0.288,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 1973,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 4.693,
+     "pc_decodage": 15.6,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.002,
+     "lien_bitrate": 21779,
+     "lien_taille": "640x360",
+     "lien_qualite": "insuffisante",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.0 Mb/s"
+    },
+    "w:w-14": {
+     "secondes": 30.063,
+     "images_recues": 2112,
+     "images_decodees": 2090,
+     "images_jetees": 24,
+     "i_par_s": 69.52,
+     "pc_jetees": 1.14,
+     "mbps": 0.637,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 3133,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 6.496,
+     "pc_decodage": 21.6,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.008,
+     "lien_bitrate": 832000,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 640×360, 0.8 Mb/s"
+    },
+    "w:w-16": {
+     "secondes": 30.065,
+     "images_recues": 1658,
+     "images_decodees": 1657,
+     "images_jetees": 2,
+     "i_par_s": 55.11,
+     "pc_jetees": 0.12,
+     "mbps": 0.465,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 2338,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 5.29,
+     "pc_decodage": 17.6,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.004,
+     "lien_bitrate": 603469,
+     "lien_taille": "640x360",
+     "lien_qualite": "insuffisante",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.6 Mb/s"
+    },
+    "w:w-18": {
+     "secondes": 30.065,
+     "images_recues": 1708,
+     "images_decodees": 1273,
+     "images_jetees": 586,
+     "i_par_s": 42.34,
+     "pc_jetees": 34.31,
+     "mbps": 0.524,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 2616,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 4.069,
+     "pc_decodage": 13.5,
+     "gels": 4,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.015,
+     "lien_bitrate": 832000,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 640×360, 0.8 Mb/s"
+    },
+    "w:w-20": {
+     "secondes": 30.065,
+     "images_recues": 1587,
+     "images_decodees": 1383,
+     "images_jetees": 123,
+     "i_par_s": 46,
+     "pc_jetees": 7.75,
+     "mbps": 0.462,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 2323,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 4.564,
+     "pc_decodage": 15.2,
+     "gels": 1,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.006,
+     "lien_bitrate": 832000,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 640×360, 0.8 Mb/s"
+    }
+   },
+   "cumule": {
+    "fenetres_mesurees": 10,
+    "mbps_cumule": 4.217,
+    "i_par_s_cumule": 472.59,
+    "images_recues": 14905,
+    "images_jetees": 778,
+    "pc_jetees": 5.22,
+    "paquets_perdus": 0,
+    "paquets_recus": 26446,
+    "pc_decodage_cumule": 148.3,
+    "mpx_par_s_decodes": 108.88,
+    "gels": 5,
+    "rtt_median": 0.005
+   },
+   "agent": {
+    "capteur": {
+     "w-4": 78.37,
+     "w-18": 56.83,
+     "w-12": 58.83,
+     "w-6": 56.5,
+     "w-14": 71.3,
+     "w-8": 0,
+     "w-20": 53,
+     "w-2": 69.9,
+     "w-10": 0,
+     "w-16": 55.4
+    },
+    "enfant": {
+     "w-4": 78.3,
+     "w-18": 56.8,
+     "w-12": 58.87,
+     "w-6": 56.5,
+     "w-8": 0,
+     "w-14": 71.17,
+     "w-20": 53.03,
+     "w-2": 69.9,
+     "w-10": 0,
+     "w-16": 55.43
+    },
+    "capteur_cumule": 500.13,
+    "endormies": [
+     "w-8@2026-08-03T17:45:54.391293Z",
+     "w-10@2026-08-03T17:45:57.783292Z",
+     "w-8@2026-08-03T17:46:04.395201Z",
+     "w-10@2026-08-03T17:46:07.790722Z",
+     "w-8@2026-08-03T17:46:14.398134Z",
+     "w-10@2026-08-03T17:46:17.794828Z"
+    ]
+   },
+   "parts": {
+    "dernieres": {
+     "w-2": {
+      "bps": 832000,
+      "t": "2026-08-03T17:45:28.553260Z"
+     },
+     "w-4": {
+      "bps": 832000,
+      "t": "2026-08-03T17:45:28.553160Z"
+     },
+     "w-6": {
+      "bps": 1664000,
+      "t": "2026-08-03T17:45:28.551120Z"
+     },
+     "w-8": {
+      "bps": 256000,
+      "t": "2026-08-03T17:45:19.827007Z"
+     },
+     "w-10": {
+      "bps": 256000,
+      "t": "2026-08-03T17:45:25.076362Z"
+     },
+     "w-12": {
+      "bps": 832000,
+      "t": "2026-08-03T17:45:28.550155Z"
+     },
+     "w-14": {
+      "bps": 832000,
+      "t": "2026-08-03T17:45:28.552147Z"
+     },
+     "w-16": {
+      "bps": 832000,
+      "t": "2026-08-03T17:45:28.555190Z"
+     },
+     "w-18": {
+      "bps": 832000,
+      "t": "2026-08-03T17:45:28.554161Z"
+     },
+     "w-20": {
+      "bps": 832000,
+      "t": "2026-08-03T17:45:28.548467Z"
+     }
+    },
+    "somme": 8000000,
+    "nombre_de_lignes": 195
+   },
+   "cpu": {
+    "cpu": "%Cpu(s): 33,3 ut, 19,4 sy,  0,0 ni, 46,6 id,  0,0 wa,  0,0 hi,  0,7 si,  0,0 st \n    %Cpu(s): 32,9 ut, 19,5 sy,  0,0 ni, 47,1 id,  0,0 wa,  0,0 hi,  0,4 si,  0,0 st \n    %Cpu(s): 34,0 ut, 19,1 sy,  0,0 ni, 46,2 id,  0,0 wa,  0,0 hi,  0,7 si,  0,0 st",
+    "tdarr_pcpu": "96.9",
+    "loadavg": "19.88 18.23 19.22 23/3445 2091562"
+   },
+   "survie": {
+    "virsh": "en cours d’exécution",
+    "acces": "OUI"
+   }
+  }
+ },
+ "navigateur": "Chrome/151.0.7922.71",
+ "cpu_repos": {
+  "cpu": "%Cpu(s): 17,7 ut,  6,4 sy,  0,0 ni, 75,1 id,  0,0 wa,  0,0 hi,  0,7 si,  0,0 st \n    %Cpu(s): 13,4 ut,  2,7 sy,  0,0 ni, 83,3 id,  0,0 wa,  0,0 hi,  0,5 si,  0,0 st \n    %Cpu(s): 16,2 ut,  3,9 sy,  0,0 ni, 77,8 id,  0,1 wa,  0,0 hi,  2,0 si,  0,0 st",
+  "tdarr_pcpu": "97.0",
+  "loadavg": "10.04 18.74 19.74 13/3454 2078885"
+ },
+ "budget_annonce": [],
+ "marqueurs": {
+  "lignes": 1240,
+  "enfant_lance": 10,
+  "attachee_capteur": 10,
+  "cloture": 0,
+  "endormie": 2,
+  "reveillee": 10,
+  "part_appliquee": 195,
+  "taille_changee": 34,
+  "taille_refusee": 0,
+  "refus_debit": 0,
+  "erreurs": 0
+ }
+}
