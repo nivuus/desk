@@ -321,15 +321,12 @@ fn executer_commande(source: &mut WindowsSource, message: VersCapteur) -> Depuis
                 motif: format!("identité de {session} sur la connexion de commandes"),
             }
         }
-        // Ouvert par la tâche 4 pour l'exhaustivité du protocole, câblé par
-        // la tâche 7 : aucun enfant ne relaie encore ce message au capteur
-        // (le bras `ClientControl::Visibility` du transport est vide), donc
-        // cette branche est structurellement inatteignable aujourd'hui. La
-        // documentation de `VersCapteur::Visibilite` est explicite : la
-        // réponse voulue n'est pas `Fait`, elle reste à concevoir par la
-        // tâche 7 — ne pas anticiper ici.
+        // Ouvert pour l'exhaustivité du protocole (tâche 4), câblé par la
+        // tâche 6 vers le registre de sommeil.
         VersCapteur::Visibilite { .. } => {
-            unreachable!("VersCapteur::Visibilite n'est relayé par aucun enfant avant la tâche 7")
+            return DepuisCapteur::Erreur {
+                motif: "visibilité reçue avant que le vivier soit câblé".into(),
+            }
         }
     };
     match resultat {
