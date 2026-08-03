@@ -243,3 +243,237 @@ pas contaminé par la charge étrangère. Il désigne un décodeur au plafond.
 (`mesure-lien.log`, ligne `SURVIE VM (fin de mesure)`). Le journal libvirt ne
 porte aucune extinction après `2026-08-03 11:17:44+0000`, soit **1 h 37 avant**
 le début de la séquence : la VM a survécu à toute la mesure.
+
+---
+
+## §2 — Où la charge agrégée décroche, et si un barreau plus bas la sauve
+
+**Tâche 1bis. QUATRE exécutions au total : une pour le relevé A (montée
+N = 1, 2, 4, 8 à 10 Mb/s par fenêtre) et une par valeur du relevé B (4, 2 puis
+1 Mb/s par fenêtre, N = 8 figé). Une exécution par point : aucun taux n'est
+revendiqué nulle part.**
+
+### 2.0 Les trois verdicts, d'abord
+
+> **① La charge décroche entre N = 2 et N = 4**, soit entre **18,3 et
+> 37,4 Mb/s** cumulés (entre **152 et 294 Mpx/s décodés**). À N = 8 sans budget,
+> **18,03 %** des images reçues sont jetées par le navigateur.
+>
+> **② Le décrochage est intégralement en aval du réseau** : `packetsLost` = **0**
+> aux quatre rangs du relevé A **et** aux trois exécutions du relevé B. Zéro.
+> Pas « négligeable » — zéro.
+>
+> **③ ✅ DESCENDRE D'UN BARREAU SAUVE LE DÉCROCHAGE. Le mécanisme de D6 corrige
+> bien quelque chose.** À N = 8 : **18,03 %** d'images jetées au barreau plein,
+> **7,99 %** un barreau plus bas (1024×576), **1,47 %** trois barreaux plus bas
+> (640×360) — et le nombre d'images réellement décodées **monte** en même temps
+> (390,74 → 453,02 → 514,69 i/s).
+>
+> **⚠️ MAIS le témoin à surface CONSTANTE ne sauve rien** : diviser les bits par
+> 2,5 sans changer de barreau (4 Mb/s par fenêtre, 7 fenêtres sur 8 restées en
+> 1280×720) donne **23,08 %** d'images jetées, c'est-à-dire **pas mieux** qu'au
+> barreau plein. **Ce n'est donc pas le débit qui sauve, c'est la RÉSOLUTION.**
+> Un `BUDGET_BPS` qui réduirait les bits sans faire franchir de seuil de barreau
+> ne corrigerait rien.
+
+### 2.1 Le montage, et le raccourci qui le rend fidèle
+
+Même instrument que le §1, augmenté d'une montée en N et d'un palier par rang
+dont les compteurs sont pris en **delta** :
+`journaux-multifenetres-d6/instrument/pilote-decrochage-d6.mjs`.
+Source animée (`anim-d4.html`), un `--user-data-dir` par fenêtre, palier de
+**35 s** par rang, navigateur pilote lancé avant le superviseur, aucune capture
+d'écran CDP, évaluations CDP bornées, `agent.log` copié après la fin réelle,
+survie de la VM contrôlée après chaque rang, agents tués et sorties virtuelles
+purgées entre chaque exécution.
+
+**Le raccourci** : `BITRATE` est hérité **tel quel** par chaque enfant
+(`superviseur/lanceur.rs`). Poser `BITRATE = B/N` **simule donc exactement** ce
+que D6 donnerait avec des parts égales. Ce qui n'y est **pas** : la majoration
+de la fenêtre au premier plan (`FACTEUR_FOCUS`).
+
+**L'instrument le plus lourd, hérité de D5 et obligatoire ici** : un Chrome sans
+interface rapporte `document.hidden = true` pour toute fenêtre d'arrière-plan.
+Sans l'override de visibilité posé page par page, le vivier de D5 endormirait
+les fenêtres et l'on mesurerait le sommeil au lieu de la charge. **Contrôle :
+`fenêtre endormie` vaut 0 aux quatre exécutions** (champ `marqueurs.endormie`
+des quatre fichiers `decrochage-*.json`).
+
+**L'échelle des barreaux**, pour une source 1280×720 et le `fps: 60` de
+`transport.rs`, **calculée** depuis `congestion/echelle.rs`
+(`DIVISEURS = [1.0, 1.25, 1.5, 2.0]`, `BPP_MIN = 0.05`) :
+
+| Barreau | Taille | `min_bps` | `BITRATE` par fenêtre qui l'impose |
+| --- | --- | --- | --- |
+| 0 | 1280×720 | 2 764 800 | ≥ 2,9 Mb/s |
+| 1 | 1024×576 | 1 769 472 | 2 Mb/s |
+| 2 | 852×480 | 1 226 880 | ~1,4 Mb/s |
+| 3 | 640×360 | 691 200 | 1 Mb/s |
+
+C'est ce calcul qui a fait **écarter la valeur de 4 Mb/s que le brief suggérait
+comme « un barreau plus bas »** : à 4 Mb/s le barreau **ne bouge pas**. Elle a
+été conservée, mais comme **témoin à surface constante** — et c'est elle qui
+porte le résultat le plus tranchant du §2.0. Les tailles annoncées ci-dessous
+sont **relevées** (`largeur=`/`hauteur=` dans `agent.log`, et `frameWidth`/
+`frameHeight` dans `getStats()`), pas déduites de ce tableau.
+
+### 2.2 Relevé A — la montée à 10 Mb/s par fenêtre (UNE exécution)
+
+Source : `decrochage-a-10mbps.log` / `.json`, palier de 35 s par rang. Deltas
+**relevés** ; débits, cadences et pourcentages **calculés**.
+
+| N | Mb/s cumulé | i/s décodées | i/s au capteur | images jetées | **% jetées** | décodage cumulé | Mpx/s décodés | `packetsLost` | gels |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 9,479 | 84,94 | 85,03 | 0 | **0 %** | 48,7 % | 78,28 | **0** | 0 |
+| 2 | 18,349 | 165,04 | 165,40 | 0 | **0 %** | 96,4 % | 152,10 | **0** | 0 |
+| 4 | 37,386 | 319,25 | 336,30 | 623 | **4,66 %** | 270,7 % | 294,22 | **0** | 1 |
+| 8 | 43,715 | 390,74 | 477,84 | 3 517 | **18,03 %** | 457,6 % | 360,11 | **0** | 5 |
+
+*(« décodage cumulé » est la SOMME des `totalDecodeTime` rapportés à la durée du
+palier, en % d'un cœur ; l'hôte en a 8. « i/s au capteur » vient des lignes
+`cadence du capteur` d'`agent.log`, restreintes à la fenêtre du palier.)*
+
+Trois lectures que ce tableau porte et qu'il ne faut pas perdre :
+
+- **le rapport décodé/produit s'effondre avec N** : 0,999 · 0,998 · 0,949 ·
+  **0,818**. À N = 8 le capteur produit 477,84 i/s et le navigateur n'en décode
+  que 390,74 — **c'est exactement la forme du décrochage de D4** (494,4 produites
+  contre 224,9 décodées) ;
+- **le réseau est hors de cause à tous les rangs** : `packetsLost` = 0, RTT
+  médian de 1 à 13 ms ;
+- **le débit cumulé n'atteint jamais les 80 Mb/s visés** (43,7 relevés) : le
+  capteur lui-même retombe de 85 i/s par fenêtre à 47,8–79,4. **Les deux bouts
+  se dégradent**, et ce montage ne les départage pas.
+
+À N = 8, `agent.log` porte **18** `taille d'encodage changée` : l'adaptation
+existante a bien fait descendre des barreaux d'elle-même (1024×576 puis 852×480)
+**puis est remontée** — les huit fenêtres sont en 1280×720 à la fin du palier.
+C'est le comportement oscillant qu'un budget imposé remplacerait par un barreau
+tenu.
+
+### 2.3 Relevé B — à N = 8, un barreau plus bas (UNE exécution par valeur)
+
+Sources : `decrochage-b-{4,2,1}mbps.log` / `.json`. Même montage, N = 8 figé.
+
+| `BITRATE`/fenêtre | Budget de session **équivalent** | Taille **relevée** | Mb/s cumulé | i/s décodées | **% jetées** | décodage cumulé | Mpx/s | `packetsLost` |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 10 Mb/s (§2.2) | 80 Mb/s | 1280×720 (8/8) | 43,715 | 390,74 | **18,03 %** | 457,6 % | 360,11 | **0** |
+| **4 Mb/s (témoin)** | 32 Mb/s | **1280×720 (7/8)** | 19,574 | 333,25 | **23,08 %** | 408,6 % | 278,26 | **0** |
+| 2 Mb/s | 16 Mb/s | **1024×576 (8/8)** | 11,023 | 453,02 | **7,99 %** | 374,2 % | 267,20 | **0** |
+| 1 Mb/s | 8 Mb/s | **640×360 (8/8)** | 5,930 | 514,69 | **1,47 %** | 150,4 % | 118,58 | **0** |
+
+Le contrôle que le barreau a réellement bougé, **relevé** dans `agent.log`
+(champ `marqueurs.taille_changee`) : **2** changements à 4 Mb/s (une seule
+fenêtre est descendue, à 852×480), **16** à 2 Mb/s, **16** à 1 Mb/s — soit deux
+lignes par fenêtre pour huit fenêtres, aux deux valeurs qui franchissent un
+seuil. **0 refus** (`taille_refusee`) aux quatre exécutions : le défaut de D4,
+mort en D5, ne se réveille pas.
+
+**Le témoin à surface constante est ce qui donne son sens au reste.** À 4 Mb/s
+la charge de bits est divisée par 2,2 (43,7 → 19,6 Mb/s) et le taux d'images
+jetées **ne baisse pas** — il est relevé à 23,08 % contre 18,03 %. *L'écart
+entre ces deux nombres, sur une exécution chacun, n'est pas nécessairement
+significatif ; ce qui l'est, c'est l'absence de toute amélioration, à opposer
+aux baisses nettes obtenues dès qu'un barreau est franchi.*
+
+### 2.4 La valeur proposée pour `BUDGET_BPS`, et le chemin qui y mène
+
+**Proposition : `BUDGET_BPS = 8_000_000` (8 Mb/s de budget de session).**
+
+Le raisonnement, point par point, chaque étape adossée à un relevé :
+
+1. **C'est le seul point mesuré propre à N = 8** : 8 Mb/s de budget donnent
+   1 Mb/s par fenêtre, donc le barreau 640×360, donc **1,47 %** d'images jetées
+   et **514,69 i/s** décodées — le meilleur des quatre exécutions sur les deux
+   grandeurs à la fois.
+2. **Le point immédiatement au-dessus est mesuré MAUVAIS** : 16 Mb/s de budget
+   (2 Mb/s par fenêtre, 1024×576) donnent **7,99 %**. La marge n'est donc pas
+   confortable : **le budget propre et le budget sale ne sont séparés que d'un
+   facteur 2**.
+3. **Il ne dégrade pas les petits N par rapport à ce qui est mesuré propre** :
+   à N = 1 il donne 8 Mb/s, sous les 9,479 Mb/s relevés à 0 % d'images jetées ;
+   à N = 2 il donne 4 Mb/s par fenêtre, sous les 9,1–9,2 relevés à 0 %.
+4. **Aucune marge n'est ajoutée au-delà de cela**, et c'est délibéré : la marge
+   habituelle se prend sur une capacité dont on connaît la forme, or ici la
+   grandeur qui commande n'est ni un débit ni une capacité de lien mais **la
+   charge de décodage du client**, dont ce montage ne donne que quatre points.
+
+⚠️ **Trois réserves que cette valeur porte, et qui doivent voyager avec elle :**
+
+- **Elle coûte au cas mono-fenêtre.** `BITRATE` vaut aujourd'hui 12 Mb/s par
+  défaut ; un budget de session de 8 Mb/s **abaisse** ce que reçoit une fenêtre
+  seule. **12 Mb/s à N = 1 n'a jamais été mesuré** — ni propre, ni sale : les
+  points existants à N = 1 sont 9,479 Mb/s (0 % jetées, §2.2) et 82,257 Mb/s
+  (53,6 % jetées, §1.4).
+- **Le barreau intermédiaire n'est pas mesuré.** Un budget de 12 Mb/s donnerait
+  1,5 Mb/s par fenêtre à N = 8, donc le barreau 852×480, **entre** les deux
+  points mesurés (267 Mpx/s à 7,99 % et 118,6 Mpx/s à 1,47 %). Personne ne sait
+  ce qu'il rend.
+- **La grandeur qui commande n'est pas celle que le budget règle.** Le témoin à
+  surface constante l'établit : ce sont les **pixels décodés par seconde**, pas
+  les bits. Le budget n'agit que par l'intermédiaire de l'échelle, en marches
+  discrètes. **`BUDGET_BPS` doit donc être choisi pour franchir un seuil de
+  barreau à la valeur de N visée, pas pour « laisser de la marge ».**
+
+### 2.5 La charge de l'hôte, et ce qu'elle a fait pendant les quatre exécutions
+
+Relevé par `top -b -n 3 -d 2` et `ps -o pcpu -C tdarr-ffmpeg` à chaque rang
+(champ `cpu` des quatre `.json`). Hôte à **8 cœurs**.
+
+| Exécution | `tdarr-ffmpeg` %CPU au repos → à N = 8 | `loadavg` au repos → à N = 8 | `%Cpu` inactif à N = 8 |
+| --- | --- | --- | --- |
+| A, 10 Mb/s | 111 → 108 | 5,48 → 15,60 | 43,7–48,3 % |
+| B, 4 Mb/s | 108 → 107 | 7,19 → 19,01 | 46,5–47,1 % |
+| B, 2 Mb/s | 107 → 106 | 16,56 → 18,51 | 46,6–50,2 % |
+| B, 1 Mb/s | 106 → 106 | 14,72 → 16,10 | 48,4–52,0 % |
+
+**La contamination signalée au §1 a changé d'ampleur, et il faut le dire** :
+`tdarr-ffmpeg` tournait à **~345 %** pendant la mesure de la tâche 1 ; il tourne
+à **106–111 %** pendant les quatre exécutions du §2. **Les quatre exécutions du
+§2 sont donc comparables entre elles** (variation de 5 points sur toute la
+campagne) **et ne le sont PAS avec le §1.**
+
+Le fait qui pèse : **l'hôte n'est globalement jamais saturé** — 43 à 52 % de
+temps CPU inactif au rang où 18 % des images sont jetées — et **aucune fenêtre
+ne sature son propre décodeur** : les `totalDecodeTime` par fenêtre valent 43,7
+à 68,9 % à N = 8, moins qu'à N = 4 (63,4 à 69,6 %). **Le décrochage ne
+s'explique donc ni par une machine pleine ni par un décodeur individuel au
+plafond**, et ce montage ne dit pas ce qui l'impose.
+
+### 2.6 Ce que le §2 n'établit PAS
+
+- **Une exécution par point. Aucun taux, aucune variabilité, aucune barre
+  d'erreur.** Les comparaisons entre exécutions distinctes (A contre B) portent
+  cette limite entière.
+- **Le décrochage n'est pas bracketé finement** : il y a un trou entre N = 2
+  (0 %) et N = 4 (4,66 %), soit entre 18,3 et 37,4 Mb/s et entre 152 et
+  294 Mpx/s. Ni N = 3, ni un rang intermédiaire en débit n'ont été joués.
+- **La composante qui jette les images n'est pas identifiée.** L'hôte n'est pas
+  saturé, aucun décodeur individuel ne l'est, le réseau ne perd rien. `gels`,
+  `pliCount` et le rapport décodé/produit disent qu'il se passe quelque chose ;
+  **rien ici ne dit quoi.**
+- **Les deux bouts se dégradent ensemble** : à N = 8 le capteur lui-même tombe
+  de 85 à 47,8–79,4 i/s par fenêtre. Ce montage **ne départage pas** la part du
+  décrochage imputable à la VM de celle imputable au navigateur.
+- **La valeur trouvée est DE LABORATOIRE.** Le navigateur de recette est un
+  Chrome sans interface, `--disable-gpu`, donc en **décodage logiciel**, sur
+  l'hôte qui porte aussi la VM et une transcodification étrangère. **Un client
+  réel, sur une autre machine, avec décodage matériel, décrocherait ailleurs** —
+  probablement bien plus haut. `BUDGET_BPS` ne peut pas être présenté comme une
+  constante du produit.
+- **`FACTEUR_FOCUS` n'est pas exercé** : le raccourci `BITRATE = B/N` simule des
+  parts **égales**, pas la majoration de la fenêtre au premier plan.
+- **Rien de la latence de bout en bout**, rien de la durée (paliers de 35 s),
+  une seule application, une seule animation, aucun clavier, aucun audio, aucun
+  redimensionnement, aucun recouvrement.
+- **Le barreau 852×480 à huit fenêtres n'est pas mesuré** (voir §2.4).
+
+### 2.7 Contrôle de survie de la VM
+
+`virsh domstate Windows` : « en cours d'exécution » ; accès réel au partage
+contrôlé **après chaque rang** des quatre exécutions (lignes `SURVIE VM`,
+`acces_partage=OUI` partout). Le journal libvirt ne porte aucune extinction
+après `2026-08-03 11:17:44+0000`, soit **2 h 03 avant** le début du relevé A.
+Sorties virtuelles purgées avant chaque exécution et après la dernière
+(`purge terminée retirees=… avant=… apres=1`, journal
+`decrochage-b-enchainement.log`).

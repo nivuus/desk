@@ -1,0 +1,332 @@
+{
+ "etiquette": "b-2mbps",
+ "bitrate_par_fenetre": 2000000,
+ "palier_s": 35,
+ "rangs": [
+  {
+   "N": 8,
+   "ouvertes": 8,
+   "debutIso": "2026-08-03T13:29:59.214Z",
+   "finIso": "2026-08-03T13:30:44.231Z",
+   "parFenetre": {
+    "w:w-2": {
+     "secondes": 39.927,
+     "images_recues": 2443,
+     "images_decodees": 2355,
+     "images_jetees": 92,
+     "i_par_s": 58.98,
+     "pc_jetees": 3.77,
+     "mbps": 1.386,
+     "paquets_perdus": 0,
+     "paquets_recus": 7407,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 19.655,
+     "pc_decodage": 49.2,
+     "gels": 0,
+     "pli": 0,
+     "taille": "1024x576",
+     "rtt": 0.028,
+     "lien_bitrate": 2000000,
+     "lien_taille": "1024x576",
+     "lien_qualite": "degradee",
+     "cachee": false
+    },
+    "w:w-4": {
+     "secondes": 39.94,
+     "images_recues": 3284,
+     "images_decodees": 2846,
+     "images_jetees": 414,
+     "i_par_s": 71.26,
+     "pc_jetees": 12.61,
+     "mbps": 1.829,
+     "paquets_perdus": 0,
+     "paquets_recus": 9771,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 22.021,
+     "pc_decodage": 55.1,
+     "gels": 1,
+     "pli": 0,
+     "taille": "1024x576",
+     "rtt": 0.003,
+     "lien_bitrate": 2000000,
+     "lien_taille": "1024x576",
+     "lien_qualite": "degradee",
+     "cachee": false
+    },
+    "w:w-6": {
+     "secondes": 39.936,
+     "images_recues": 2016,
+     "images_decodees": 2006,
+     "images_jetees": 12,
+     "i_par_s": 50.23,
+     "pc_jetees": 0.6,
+     "mbps": 1.113,
+     "paquets_perdus": 0,
+     "paquets_recus": 6006,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 17.36,
+     "pc_decodage": 43.5,
+     "gels": 0,
+     "pli": 0,
+     "taille": "1024x576",
+     "rtt": 0.003,
+     "lien_bitrate": 2000000,
+     "lien_taille": "1024x576",
+     "lien_qualite": "degradee",
+     "cachee": false
+    },
+    "w:w-8": {
+     "secondes": 39.936,
+     "images_recues": 2195,
+     "images_decodees": 2168,
+     "images_jetees": 63,
+     "i_par_s": 54.29,
+     "pc_jetees": 2.87,
+     "mbps": 1.24,
+     "paquets_perdus": 0,
+     "paquets_recus": 6633,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 18.265,
+     "pc_decodage": 45.7,
+     "gels": 0,
+     "pli": 0,
+     "taille": "1024x576",
+     "rtt": 0.004,
+     "lien_bitrate": 2000000,
+     "lien_taille": "1024x576",
+     "lien_qualite": "degradee",
+     "cachee": false
+    },
+    "w:w-10": {
+     "secondes": 39.935,
+     "images_recues": 2325,
+     "images_decodees": 2260,
+     "images_jetees": 66,
+     "i_par_s": 56.59,
+     "pc_jetees": 2.84,
+     "mbps": 1.294,
+     "paquets_perdus": 0,
+     "paquets_recus": 6946,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 19.276,
+     "pc_decodage": 48.3,
+     "gels": 0,
+     "pli": 0,
+     "taille": "1024x576",
+     "rtt": 0.011,
+     "lien_bitrate": 2000000,
+     "lien_taille": "1024x576",
+     "lien_qualite": "degradee",
+     "cachee": false
+    },
+    "w:w-12": {
+     "secondes": 39.935,
+     "images_recues": 2968,
+     "images_decodees": 2389,
+     "images_jetees": 737,
+     "i_par_s": 59.82,
+     "pc_jetees": 24.83,
+     "mbps": 1.645,
+     "paquets_perdus": 0,
+     "paquets_recus": 8791,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 19.157,
+     "pc_decodage": 48,
+     "gels": 3,
+     "pli": 0,
+     "taille": "1024x576",
+     "rtt": 0.003,
+     "lien_bitrate": 2000000,
+     "lien_taille": "1024x576",
+     "lien_qualite": "degradee",
+     "cachee": false
+    },
+    "w:w-14": {
+     "secondes": 39.933,
+     "images_recues": 2156,
+     "images_decodees": 2138,
+     "images_jetees": 26,
+     "i_par_s": 53.54,
+     "pc_jetees": 1.21,
+     "mbps": 1.286,
+     "paquets_perdus": 0,
+     "paquets_recus": 6815,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 17.779,
+     "pc_decodage": 44.5,
+     "gels": 0,
+     "pli": 0,
+     "taille": "1024x576",
+     "rtt": 0.006,
+     "lien_bitrate": 2000000,
+     "lien_taille": "1024x576",
+     "lien_qualite": "degradee",
+     "cachee": false
+    },
+    "w:w-16": {
+     "secondes": 39.933,
+     "images_recues": 2072,
+     "images_decodees": 1929,
+     "images_jetees": 144,
+     "i_par_s": 48.31,
+     "pc_jetees": 6.95,
+     "mbps": 1.23,
+     "paquets_perdus": 0,
+     "paquets_recus": 6545,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 15.936,
+     "pc_decodage": 39.9,
+     "gels": 1,
+     "pli": 0,
+     "taille": "1024x576",
+     "rtt": 0.01,
+     "lien_bitrate": 1972988,
+     "lien_taille": "1024x576",
+     "lien_qualite": "degradee",
+     "cachee": false
+    }
+   },
+   "cumule": {
+    "fenetres_mesurees": 8,
+    "mbps_cumule": 11.023,
+    "i_par_s_cumule": 453.02,
+    "images_recues": 19459,
+    "images_jetees": 1554,
+    "pc_jetees": 7.99,
+    "paquets_perdus": 0,
+    "paquets_recus": 58914,
+    "pc_paquets_perdus": 0,
+    "pc_decodage_cumule": 374.2,
+    "mpx_par_s_decodes": 267.2,
+    "gels": 5
+   },
+   "agent": {
+    "capteur": {
+     "w-2": 54.74,
+     "w-16": 50.18,
+     "w-10": 52.52,
+     "w-4": 76.26,
+     "w-12": 69.38,
+     "w-6": 50.53,
+     "w-14": 54.15,
+     "w-8": 55.2
+    },
+    "enfant": {
+     "w-2": 54.8,
+     "w-16": 50.34,
+     "w-10": 52.58,
+     "w-4": 76.38,
+     "w-12": 69.5,
+     "w-6": 50.58,
+     "w-14": 54.15,
+     "w-8": 55.2
+    },
+    "capteur_cumule": 462.96,
+    "endormies": []
+   },
+   "barreaux": {
+    "changees": [
+     {
+      "t": "2026-08-03T13:30:01.224377Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T13:30:01.224448Z",
+      "taille": "1024x576"
+     },
+     {
+      "t": "2026-08-03T13:30:03.269532Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T13:30:03.269624Z",
+      "taille": "1024x576"
+     },
+     {
+      "t": "2026-08-03T13:30:03.385139Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T13:30:03.385187Z",
+      "taille": "1024x576"
+     },
+     {
+      "t": "2026-08-03T13:30:03.641024Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T13:30:03.641076Z",
+      "taille": "1024x576"
+     },
+     {
+      "t": "2026-08-03T13:30:03.670929Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T13:30:03.670977Z",
+      "taille": "1024x576"
+     },
+     {
+      "t": "2026-08-03T13:30:03.735139Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T13:30:03.735198Z",
+      "taille": "1024x576"
+     },
+     {
+      "t": "2026-08-03T13:30:03.885706Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T13:30:03.885760Z",
+      "taille": "1024x576"
+     },
+     {
+      "t": "2026-08-03T13:30:03.951135Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T13:30:03.951236Z",
+      "taille": "1024x576"
+     }
+    ],
+    "refusees": []
+   },
+   "cpu": [
+    {
+     "cpu": "%Cpu(s): 32,3 ut, 15,6 sy,  0,0 ni, 51,3 id,  0,0 wa,  0,0 hi,  0,7 si,  0,0 st \n    %Cpu(s): 35,8 ut, 25,2 sy,  0,0 ni, 36,9 id,  0,0 wa,  0,0 hi,  2,0 si,  0,0 st \n    %Cpu(s): 32,9 ut, 17,0 sy,  0,0 ni, 49,7 id,  0,0 wa,  0,0 hi,  0,3 si,  0,0 st",
+     "tdarr_pcpu": "107",
+     "loadavg": "14.62 12.18 11.39 19/3805 1208099"
+    },
+    {
+     "cpu": "%Cpu(s): 34,0 ut, 19,1 sy,  0,0 ni, 46,6 id,  0,0 wa,  0,0 hi,  0,3 si,  0,0 st \n    %Cpu(s): 34,4 ut, 17,3 sy,  0,0 ni, 47,9 id,  0,0 wa,  0,0 hi,  0,4 si,  0,0 st \n    %Cpu(s): 31,8 ut, 17,6 sy,  0,0 ni, 50,2 id,  0,0 wa,  0,0 hi,  0,4 si,  0,0 st",
+     "tdarr_pcpu": "106",
+     "loadavg": "18.51 13.43 11.84 11/3790 1209460"
+    }
+   ],
+   "survie": {
+    "virsh": "en cours d’exécution",
+    "acces": "OUI"
+   }
+  }
+ ],
+ "navigateur": "Chrome/150.0.7871.181",
+ "cpu_repos": {
+  "cpu": "%Cpu(s): 15,0 ut,  4,6 sy,  0,0 ni, 79,9 id,  0,0 wa,  0,0 hi,  0,5 si,  0,0 st \n    %Cpu(s):  8,9 ut,  1,8 sy,  0,0 ni, 88,3 id,  0,0 wa,  0,0 hi,  1,0 si,  0,0 st \n    %Cpu(s): 13,4 ut,  3,8 sy,  0,0 ni, 80,9 id,  0,0 wa,  0,0 hi,  2,0 si,  0,0 st",
+  "tdarr_pcpu": "107",
+  "loadavg": "16.56 12.18 11.36 3/3735 1205145"
+ },
+ "marqueurs": {
+  "lignes": 505,
+  "enfant_lance": 8,
+  "attachee_capteur": 8,
+  "cloture": 0,
+  "endormie": 0,
+  "reveillee": 8,
+  "taille_changee": 16,
+  "taille_refusee": 0,
+  "refus_debit": 0,
+  "erreurs": 0
+ }
+}
