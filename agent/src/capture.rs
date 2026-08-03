@@ -485,7 +485,7 @@ pub use enumeration::{enumerer_sorties, enumerer_sorties_silencieux};
 // tâche 11 bis, la seconde portant le réessai d'ouverture et la première n'y
 // étant descendue que pour rendre au fichier parent la marge que ce réessai
 // lui prenait.
-mod ouverture;
+pub mod ouverture;
 use ouverture::{creer_peripherique, dupliquer, dupliquer_avec_reprise, ouvrir_sortie};
 
 // `EchecAcquisition`, `CibleCapture` et l'aide `lire` vivent dans ce module

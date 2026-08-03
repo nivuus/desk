@@ -1,11 +1,10 @@
 //! Les deux transitions du fil de fenêtre : relâcher sa source, la
 //! reconstruire.
 //!
-//! ⚠️ **À ne pas confondre avec `crate::capteur::sommeil`**, qui est le registre
-//! GLOBAL du processus : celui-là *décide* qui dort, celui-ci *exécute* la
-//! décision pour une fenêtre. Ils portent le même nom parce qu'ils parlent de
-//! la même chose de part et d'autre d'un canal `mpsc`, et le module parent
-//! nomme donc toujours le registre par son chemin complet.
+//! **Ce module EXÉCUTE ce que `crate::capteur::sommeil` DÉCIDE.** Il ne porte
+//! pas ce nom-là exprès : deux modules `sommeil` dans le même sous-arbre se
+//! confondraient à la lecture, et l'import du registre depuis `fenetre.rs`
+//! entrerait en collision avec l'enfant.
 //!
 //! **Extrait de `fenetre.rs` et non ajouté dedans** : le sous-bloc D5 y aurait
 //! porté le fichier au-delà du plafond de 500 lignes du projet. Le dépôt a le
@@ -38,7 +37,14 @@ impl Fenetre {
         }
     }
 
-    /// Reconstruit la source à l'identique, puis force une image clé.
+    /// Construit la source à partir des paramètres retenus, puis force une
+    /// image clé.
+    ///
+    /// **C'est le SEUL endroit du capteur qui construise un `WindowsSource`**
+    /// depuis le sous-bloc D5 : `Fenetre::ouvrir` n'en construit plus, et une
+    /// fenêtre naît endormie. Ce chemin sert donc aussi bien la première
+    /// construction que toutes les reconstructions — et cela n'exige rien de
+    /// particulier, `Parametres` portant exactement ce qu'`ouvrir` savait.
     ///
     /// **Peut échouer, et c'est le cas NOMINAL** quand le plafond matériel
     /// d'encodeurs est atteint : l'appelant doit alors le dire au vivier (voir

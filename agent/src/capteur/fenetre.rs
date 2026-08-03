@@ -19,13 +19,13 @@
 
 #![cfg(windows)]
 
-// ⚠️ `sommeil` ci-dessous est le module ENFANT — les transitions de CE fil —,
-// à ne pas confondre avec `crate::capteur::sommeil`, le registre global qui les
-// décide. C'est pourquoi ce fichier ne fait AUCUN `use crate::capteur::sommeil`
-// et nomme toujours le registre par son chemin complet : l'import entrerait en
-// collision avec le module enfant.
+// `transitions` porte `dormir` et `reveiller` — l'exécution, pour CETTE
+// fenêtre, de ce que `crate::capteur::sommeil` décide pour toutes. Il ne
+// s'appelle délibérément PAS `sommeil` : deux modules de ce nom dans le même
+// sous-arbre se confondraient à la lecture, et l'import du registre entrerait
+// en collision avec l'enfant.
 mod commandes;
-mod sommeil;
+mod transitions;
 
 use std::io::Write;
 use std::sync::mpsc::{sync_channel, Receiver, Sender, SyncSender};
@@ -133,7 +133,27 @@ pub struct Fenetre {
 }
 
 impl Fenetre {
-    /// Construit la source annoncée par une trame d'attache.
+    /// Prépare la fenêtre annoncée par une trame d'attache — **sans construire
+    /// sa source**.
+    ///
+    /// **Une fenêtre que personne ne regarde ne consomme aucun encodeur.**
+    /// Jusqu'au sous-bloc D5 cette fonction appelait `sur_sortie`, donc ouvrait
+    /// une duplication DXGI et construisait un encodeur matériel, *avant* toute
+    /// inscription au vivier : la 9ᵉ fenêtre échouait au plafond matériel comme
+    /// si le vivier n'existait pas, et la comptabilité du vivier était fausse
+    /// dès la naissance — il croyait la place libre alors qu'elle était déjà
+    /// prise. La fenêtre naît désormais **endormie**, et c'est le premier
+    /// `Ordre::Reveiller` qui construit la source, une fois la place acquise.
+    ///
+    /// ⚠️ **Cela DÉPLACE la détection des échecs, sans la perdre.** Un `hwnd`
+    /// invalide ou une sortie inaccessible faisait jusqu'ici échouer l'attache,
+    /// et l'enfant recevait un `Refus` immédiat. Désormais l'attache ne peut
+    /// plus échouer que sur la résolution de la TAILLE ; une source impossible
+    /// à construire ne se manifeste qu'au premier réveil, par un `warn!` et un
+    /// `echec_de_reveil` qui la fait reproposer indéfiniment. Une fenêtre dont
+    /// la sortie a disparu entre l'attache et le réveil boucle donc sur des
+    /// réveils refusés au lieu de mourir — c'est le prix de l'acquisition
+    /// préalable, et il est assumé.
     ///
     /// La réponse à l'attache n'est PAS écrite ici : elle part sur la
     /// connexion de commandes, que ce fil ne touche jamais. L'appelant écrit
@@ -152,11 +172,13 @@ impl Fenetre {
         );
 
         let hwnd = HWND(hwnd as *mut core::ffi::c_void);
-        let source = WindowsSource::sur_sortie(hwnd, &sortie, fps, debit, clock_origin)
+        // La taille est la seule chose qu'il faut savoir avant d'avoir la
+        // place : `taille_de_sortie` la lit sans ouvrir de duplication, donc
+        // sans prendre le mutex de la sortie ni perturber aucune voisine.
+        let (largeur, hauteur) = crate::capture::ouverture::taille_de_sortie(&sortie)
             .with_context(|| format!("attache de la session {session}"))?;
-        let (largeur, hauteur) = source.dimensions();
         let parametres = Parametres { hwnd, sortie, fps, debit, clock_origin };
-        Ok(Fenetre { source: Some(source), parametres, session, largeur, hauteur })
+        Ok(Fenetre { source: None, parametres, session, largeur, hauteur })
     }
 
     pub fn dimensions(&self) -> (u32, u32) {
@@ -199,11 +221,18 @@ impl Fenetre {
         let session_ecrivain = session.clone();
         std::thread::spawn(move || ecrire_le_media(ecrivain, a_ecrire, &session_ecrivain));
 
-        // Inscription au vivier. Une fenêtre naît ENDORMIE côté vivier ; le
-        // premier signal de visibilité du client la réveillera. Elle est
-        // pourtant construite éveillée ici — c'est voulu : la première image
-        // doit pouvoir partir avant que le client ait eu le temps de parler,
-        // sans quoi la page resterait grise le temps d'un aller-retour.
+        // Inscription au vivier. Une fenêtre naît ENDORMIE des deux côtés — au
+        // vivier ET ici, `source` valant `None` depuis `ouvrir` : c'est ce qui
+        // fait que le vivier voit la vérité dès la première seconde, et que
+        // huit encodeurs au plus existent quel que soit le nombre de fenêtres
+        // attachées. Le premier signal de visibilité du client la réveillera.
+        //
+        // ⚠️ **Corollaire : une fenêtre dont le client n'annonce JAMAIS sa
+        // visibilité ne se réveille jamais, et sa page reste noire.** C'est le
+        // comportement voulu — aucun encodeur ne doit être pris pour une
+        // fenêtre que personne ne déclare regarder —, mais c'est la nouvelle
+        // façon dont une session peut rester vide sans qu'aucune erreur ne soit
+        // journalisée.
         let ordres = crate::capteur::sommeil::inscrire(&session);
 
         let resultat = self.boucler(&session, &ordres, &ecritures, &commandes, &reponses);
@@ -249,6 +278,14 @@ impl Fenetre {
         commandes: &Receiver<VersCapteur>,
         reponses: &Sender<DepuisCapteur>,
     ) -> Result<()> {
+        // Initialisé sur la taille RÉSOLUE par `ouvrir` — celle-là même qui est
+        // partie dans `Attachee` —, jamais sur zéro ni sur une valeur devinée.
+        // C'est ce qui fait de la comparaison du point 3 un filet réel : si la
+        // texture rendue au premier réveil ne fait pas la taille annoncée (une
+        // sortie mise à l'échelle DPI annonce moins qu'elle ne rend, voir
+        // `capture::ouverture::taille_de_sortie`), l'écart devient un `Etat` que
+        // l'enfant applique. Partir de zéro aurait produit un `Etat` inutile à
+        // chaque session ; partir d'une devinette aurait masqué l'écart.
         let mut dernier_etat = (true, false, self.largeur, self.hauteur);
         let mut images = 0u64;
         let mut dernier_compte = Instant::now();

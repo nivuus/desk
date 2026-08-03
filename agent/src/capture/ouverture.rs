@@ -18,10 +18,52 @@ use windows::Win32::Graphics::Direct3D11::{
     D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_SDK_VERSION,
 };
 use windows::Win32::Graphics::Dxgi::{
-    IDXGIAdapter1, IDXGIFactory1, IDXGIOutput1, IDXGIOutputDuplication,
+    CreateDXGIFactory1, IDXGIAdapter1, IDXGIFactory1, IDXGIOutput1, IDXGIOutputDuplication,
 };
 
 use super::CibleCapture;
+
+/// Dimensions d'une sortie DXGI désignée par son nom, **sans en ouvrir la
+/// duplication**.
+///
+/// C'est la seule façon de connaître la taille d'une fenêtre avant d'avoir
+/// décidé qu'elle méritait un encodeur : DXGI n'autorise qu'une duplication
+/// ouverte par sortie, et en ouvrir une ici prendrait le mutex de la sortie —
+/// donc le retirerait à la session qui la capture peut-être déjà. Cette
+/// fonction n'ouvre rien, ne duplique rien, et ne perturbe aucune voisine.
+///
+/// **La taille se lit sur `DesktopCoordinates`, jamais sur WMI ni sur ce que
+/// l'appelant a demandé au pilote.** WMI rend un champ vu périmé de 68 s
+/// (relevé de la sonde multi-fenêtres), et le pilote de sortie virtuelle
+/// QUANTIFIE la résolution demandée — 1280×632 demandé rend une sortie
+/// 1280×720 (sous-bloc D2). Seule la valeur rendue par DXGI est vraie.
+///
+/// ⚠️ **Elle peut néanmoins différer de la taille de la TEXTURE** que
+/// l'acquisition rendra plus tard (`duplication.GetDesc().ModeDesc`) : sur une
+/// sortie mise à l'échelle, le rapport vaut le facteur DPI — 3413×960 annoncés
+/// pour 5120×1440 réels, relevé à 150 % par la sonde, d'où
+/// `moniteurs_virtuels::facteur_echelle`. Sur le chemin du produit, où les
+/// sorties virtuelles sont créées à la taille du viewport et sans mise à
+/// l'échelle, les deux coïncident ; l'appelant qui ne peut pas le garantir doit
+/// traiter cette valeur comme une ANNONCE, et confronter la taille réelle une
+/// fois la source construite.
+pub fn taille_de_sortie(nom: &str) -> Result<(u32, u32)> {
+    let factory: IDXGIFactory1 =
+        unsafe { CreateDXGIFactory1() }.context("création de la fabrique DXGI")?;
+    // `ouvrir_sortie` fait déjà exactement la résolution par nom, avec sa
+    // trace : la refaire ici serait une seconde vérité à maintenir.
+    let (_adaptateur, sortie) = ouvrir_sortie(&factory, &CibleCapture::Sortie(nom.to_string()))?;
+    let desc = unsafe { sortie.GetDesc() }.with_context(|| format!("description de {nom}"))?;
+    let rect = desc.DesktopCoordinates;
+    let largeur = (rect.right - rect.left).max(0) as u32;
+    let hauteur = (rect.bottom - rect.top).max(0) as u32;
+    // Le même seuil que `region_de_sortie` : en dessous, l'alignement pair
+    // qu'exige NV12 ne laisse plus rien à encoder.
+    if largeur < 2 || hauteur < 2 {
+        bail!("sortie {nom} de dimensions inexploitables ({largeur}x{hauteur})");
+    }
+    Ok((largeur, hauteur))
+}
 
 /// Ouvre une sortie désignée par son nom, ou — pour `CibleCapture::Bureau` —
 /// trouve et ouvre la sortie qui compose le bureau.
