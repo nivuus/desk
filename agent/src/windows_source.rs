@@ -441,8 +441,15 @@ const SUBMIT_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_mill
 ///
 /// Le coût est nul en pratique (trois incréments `Relaxed` par tour) et rien
 /// ne les lit sauf le fil de surveillance de `demarrage.rs`, activé par
-/// `SOURCE_TRACE=1`. L'agent étant mono-session (un processus par session),
-/// des statiques ne mélangent pas plusieurs sessions.
+/// `SOURCE_TRACE=1`.
+///
+/// ⚠️ **Portée : le PROCESSUS — donc TOUTES les fenêtres depuis D4**, le
+/// capteur y tenant N `WindowsSource`. La justification d'origine (« l'agent
+/// étant mono-session, des statiques ne mélangent pas plusieurs sessions »)
+/// était vraie avant D4 et ne l'est plus : `SOURCE_TRACE=1` agrège désormais
+/// les N fenêtres, et mentirait donc dans le cas même où on l'allumerait. Les
+/// rendre par session est **consigné pour D7** (recette de D6, tâche 10) ; le
+/// code n'est PAS corrigé ici.
 pub static TICKS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 pub static CAPTURED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 pub static PRODUCED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);

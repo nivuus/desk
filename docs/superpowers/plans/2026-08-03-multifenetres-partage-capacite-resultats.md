@@ -612,8 +612,12 @@ deltas relevés entre deux appels de `getStats()`.
 | **F** | **8 Mb/s** | oui, 12,2 s | **3,94** | 414,65 | 95,54 | 4,433 | 4 ms | 15,78 → 18,14 | 97,3 |
 | A | 12 Mb/s | **non mesurée** | 8,03 | 467,86 | 182,86 | 8,560 | 5 ms | 14,60 → 20,19 | 108 |
 | G | 12 Mb/s | oui, 12,6 s | 16,70 | 391,94 | 168,75 | 7,778 | 8 ms | 23,17 → 29,11 | **351 → 333** |
-| B | 12 Mb/s | **non** (60 chgts) | 59,32 | 213,97 | 77,26 | 8,215 | 9 ms | 31,77 → 34,10 | 104 |
-| C | 12 Mb/s | **non** (50 chgts) | 75,47 | 141,34 | 56,84 | 9,071 | 63 ms | 35,01 → 38,08 | 98,0 |
+| B | 12 Mb/s | **non** (60 lignes = 30 chgts) | 59,32 | 213,97 | 77,26 | 8,215 | 9 ms | 31,77 → 34,10 | 104 |
+| C | 12 Mb/s | **non** (50 lignes = 25 chgts) | 75,47 | 141,34 | 56,84 | 9,071 | 63 ms | 35,01 → 38,08 | 98,0 |
+
+*(Les compteurs de changements de barreau de ce tableau sont donnés en lignes
+de journal ET en changements : chaque changement produit deux lignes, une côté
+capteur et une côté enfant — voir le §3.4 ② et sa liste complète.)*
 
 **La règle de sélection, écrite ici parce que son absence est ce qui rend un
 sous-ensemble possible** : est retenue comme *comparable* une exécution qui
@@ -715,8 +719,14 @@ changements de barreau nécessaires pour s'y poser : **12** à 12 Mb/s, **10** e
 **9** à 8 Mb/s.
 
 ⚠️ **Tous les compteurs de barreau de ce §3, y compris les champs `pose` des
-`.json` (24, 20, 18, 50, 76, 34, 16…), comptent des LIGNES et valent donc le
-DOUBLE du nombre de changements.** Un changement produit **deux** lignes au même
+`.json`, comptent des LIGNES et valent donc le DOUBLE du nombre de
+changements.** La liste **complète et vérifiée** des douze compteurs des sept
+exécutions, sans point de suspension : **16, 18, 20, 24, 34, 34, 50, 50, 60,
+76, 94, 172** (valeurs distinctes : 16, 18, 20, 24, 34, 50, 60, 76, 94, 172).
+*(Une rédaction antérieure en donnait un extrait clos par des points de
+suspension — « 24, 20, 18, 50, 76, 34, 16… » — qui masquait les trois plus
+gros, 60, 94 et 172. Chacun des nombres imprimés était juste ; c'est
+l'ellipse qui ne l'était pas.)* Un changement produit **deux** lignes au même
 horodatage, à ~70 µs d'intervalle : une d'`agent::windows_source::encodage`
 (« taille d'encodage changée sans toucher à la fenêtre ») côté capteur, et une
 d'`agent::transport::adaptation` (« taille d'encodage changée ») côté enfant.
@@ -779,13 +789,30 @@ observé que de 25 %.**
 
 Le relevé de `lien_taille` et `lien_bitrate` fenêtre par fenêtre, échantillon
 par échantillon, montre que **la promotion a bien eu lieu dans les trois cas,
-après la fin du palier** :
+après la fin du palier**. **Les délais sont comptés depuis l'IMPOSITION du
+focus**, et rendus comme des **encadrements** — la promotion n'est pas datée,
+elle est bornée entre deux échantillons :
 
-| Exéc. | fenêtre | à la fin du palier de focus | plus tard, même fenêtre, toujours focalisée |
-| --- | --- | --- | --- |
-| **G** | `w-6` | `18:01:39` — **852×480**, part 2 666 666 | `18:02:42` (**+63 s**) — **1024×576 / 2 552 888** |
-| **G** | `w-4` | `18:01:14` — **852×480**, part 2 509 810 | jamais : le focus lui est **retiré 25 s plus tard**, sa promotion est **préemptée** |
-| **F** | `w-6` | `17:51:22` — **640×360**, part 1 777 776 | `17:52:28` (**+66 s**) — **852×480 / 1 664 000** |
+| Exéc. | fenêtre | encore au barreau bas à | promue à | **encadrement depuis l'imposition** |
+| --- | --- | --- | --- | --- |
+| **G** | `w-6` | `18:01:39,518` — 852×480, part 2 666 666 | `18:02:42,158` — **1024×576** / 2 552 888 | **] 25,1 s ; 87,8 s ]** |
+| **F** | `w-6` | `17:51:22,363` — 640×360, part 1 777 776 | `17:52:28,387` — **852×480** / 1 664 000 | **] 25,2 s ; 91,2 s ]** |
+| **G** | `w-4` | `18:01:14,098` — 852×480, part 2 509 810 | jamais : focus **retiré 0,3 s après cet échantillon**, soit **25,4 s après son imposition** | promotion **préemptée** |
+
+**C'est la borne BASSE qui porte la thèse, pas l'écart.** À l'instant où le
+critère est jugé — 25,1 et 25,2 s après l'imposition — la promotion est encore
+**due** : le compteur de 20 s vient à peine d'expirer, et il n'a disposé que de
+5 s de marge pour absorber l'annonce de focus, la redistribution des parts et
+la montée de l'estimation. Dit ainsi, « 63 s » ou « 66 s » ne peut pas se lire
+comme la latence du mécanisme : ce sont des **bornes hautes d'échantillonnage**,
+imposées par la cadence des relevés.
+
+⚠️ **Et le contre-argument évident est réfuté par les mêmes lignes** : on
+pourrait croire que la promotion tardive est due à un rebattement des parts qui
+aurait enrichi la focalisée. **C'est l'inverse — sa part a BAISSÉ entre les deux
+échantillons** dans les deux cas (G : 2 666 666 → 2 552 888 ; F : 1 777 776 →
+1 664 000, la phase 3 ayant rebattu les parts entre dix fenêtres). **Le
+rebattement ne peut donc pas être crédité de la promotion.**
 
 Et **G tient le critère ④ en phase 1**, où sa focalisée `w-2` a disposé de
 **45 s** : elle y est à **1024×576 / 2 666 666** contre 852×480 / 1 333 333 pour
