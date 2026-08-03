@@ -787,8 +787,20 @@ use crate::capteur::repartiteur::{self, Fenetre};
 /// Lu une seule fois : le changer en cours de vie n'aurait aucun sens tant
 /// que le lien ne change pas.
 ///
-/// ⚠️ Le repli de 12 Mb/s est l'ancien `BITRATE` par fenêtre, repris faute de
-/// mieux ; la valeur réelle se dérive de la mesure de la tâche 1.
+/// **12 Mb/s est un CHOIX, pas une dérivation.** La tâche 1 a montré que le
+/// lien porte ≥ 1,45 Gb/s : la capacité du chemin ne borne rien ici, et le
+/// budget ne s'en dérive pas. Ce qui borne est ce que le CLIENT décode. La
+/// tâche 1bis relève, à huit fenêtres : 18,03 % d'images jetées au barreau
+/// plein, 7,99 % à 1024×576, 1,47 % à 640×360 — et surtout que réduire les
+/// bits **sans** franchir de seuil de barreau ne sauve rien (23,08 % à
+/// surface constante). **Le levier est la résolution, le débit n'en est que
+/// la commande.**
+///
+/// 12 Mb/s conserve au cas mono-fenêtre exactement ce qu'il a aujourd'hui, et
+/// donne 1,33 Mb/s par fenêtre à huit — soit le barreau 852×480, **entre les
+/// deux points mesurés, donc non mesuré**. ⚠️ **C'est la recette de la
+/// tâche 10 qui le calibre** : si elle déçoit, descendre à 8 Mb/s, seul point
+/// relevé propre, au prix du cas mono-fenêtre.
 fn budget_bps() -> u32 {
     static BUDGET: OnceLock<u32> = OnceLock::new();
     *BUDGET.get_or_init(|| {
@@ -1631,15 +1643,30 @@ Sur un palier d'au moins 30 s à 8 fenêtres :
 | Grandeur | Source | Seuil |
 | --- | --- | --- |
 | i/s cumulées produites au capteur | `agent.log`, lignes de compteurs | — |
-| i/s cumulées décodées au navigateur | `framesDecoded` par `getStats()` | **≥ 90 % du capteur** |
-| RTT médian | `getStats()` et `agent.log` | **≤ 20 ms** |
+| i/s cumulées décodées au navigateur | `framesDecoded` par `getStats()` | — |
+| **`framesDropped` en % des images reçues** | `getStats()` | **< 7,99 %** |
+| **Taille d'encodage des huit fenêtres** | `agent.log` | **le barreau A BOUGÉ** |
+| Somme des parts accordées | `agent.log`, traces `part de budget appliquee` | **≤ `BUDGET_BPS`** |
+| RTT médian | `getStats()` et `agent.log` | ≤ 20 ms |
 
-**Ces deux seuils sont CHOISIS, pas mesurés** — à opposer aux 45 % et 104 ms de
-D4, et à écrire comme tels.
+⚠️ **Ce critère a été RÉÉCRIT après les mesures des tâches 1 et 1bis, et les
+seuils du plan initial (« navigateur ≥ 90 % du capteur », RTT ≤ 20 ms)
+mesuraient la mauvaise chose.** Le lien porte ≥ 1,45 Gb/s et `packetsLost`
+vaut 0 partout : le réseau n'est pas le goulot, et un critère de RTT ne
+juge rien. Ce qui juge est **le taux d'images jetées par le décodeur**, et
+**le franchissement d'un seuil de barreau** — la tâche 1bis montre que
+réduire les bits à surface constante donne 23,08 %, soit pire que les
+18,03 % du barreau plein.
 
-Si la tâche 1 a réfuté la prémisse, ce critère devient : *la somme des
-`set_desired_bitrate` de tous les enfants ne dépasse pas `BUDGET_BPS`*, lu dans
-`agent.log` par les traces `part de budget appliquee`.
+**Les points de comparaison, RELEVÉS à la tâche 1bis, à huit fenêtres** :
+18,03 % sans budget, 7,99 % à 1024×576, 1,47 % à 640×360. Le seuil `< 7,99 %`
+est donc « au moins aussi bon que le meilleur point mesuré au-dessus du
+budget retenu ».
+
+**Cette recette CALIBRE `BUDGET_BPS`** : 12 Mb/s place les huit fenêtres au
+barreau 852×480, qui n'a jamais été mesuré. Si le taux dépasse 7,99 %,
+descendre à 8 Mb/s et **le dire dans les résultats avec les deux relevés** —
+ce n'est pas un échec de critère, c'est la calibration prévue.
 
 - [ ] **Step 4: Relever le critère ②**
 
