@@ -19,6 +19,7 @@
 // s'appelle pas `repartiteur` : ce nom est déjà pris par le module qui porte
 // la RÈGLE pure ; celui-ci ne porte que sa BRANCHE sur ce registre.
 mod parts;
+mod porteurs;
 
 use std::collections::HashMap;
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -56,6 +57,15 @@ const PERIODE_REARBITRAGE: Duration = Duration::from_millis(250);
 pub enum Message {
     Sommeil(Ordre),
     Part { bps: u32 },
+    /// Ordre de porter le son, ou de se taire. Poussé **au changement
+    /// seulement**, comme `Part`.
+    ///
+    /// Sur le même canal que les deux autres, et pour la même raison : un
+    /// canal unique garantit l'ordre de LIVRAISON. Un ordre de se taire doit
+    /// atteindre l'ancienne porteuse **avant** que la nouvelle ne commence,
+    /// sans quoi les deux fenêtres d'un même processus seraient audibles
+    /// ensemble.
+    Audio { actif: bool },
 }
 
 struct Etat {
@@ -72,6 +82,22 @@ struct Etat {
     /// inondation** : le tour de roue ré-arbitre toutes les 250 ms, et sans
     /// cette mémoire huit fenêtres recevraient 32 messages par seconde à vie.
     dernieres_parts: HashMap<String, u32>,
+    /// PID du processus propriétaire de chaque fenêtre. **Ici et pas dans un
+    /// second registre** : le capteur n'a qu'une vérité à tenir, et deux
+    /// tables à synchroniser en feraient deux.
+    pids: HashMap<String, u32>,
+    /// Rang d'arrivée de chaque session, et rang du dernier focus reçu. Deux
+    /// compteurs tirés du même `horloge`, strictement croissante.
+    arrivees: HashMap<String, u64>,
+    derniers_focus: HashMap<String, u64>,
+    /// Compteur monotone qui sert de rang aux deux tables ci-dessus. Un
+    /// `Instant` ne conviendrait pas : il faut un ordre total, stable et
+    /// comparable, pas une durée.
+    horloge: u64,
+    /// Dernier ordre audio envoyé à chaque session. **Le rempart contre
+    /// l'inondation**, exactement comme `dernieres_parts` : le tour de roue
+    /// ré-arbitre toutes les 250 ms.
+    derniers_audio: HashMap<String, bool>,
 }
 
 static ETAT: OnceLock<Mutex<Etat>> = OnceLock::new();
@@ -84,6 +110,11 @@ fn etat() -> MutexGuard<'static, Etat> {
             canaux: HashMap::new(),
             focalisee: None,
             dernieres_parts: HashMap::new(),
+            pids: HashMap::new(),
+            arrivees: HashMap::new(),
+            derniers_focus: HashMap::new(),
+            horloge: 0,
+            derniers_audio: HashMap::new(),
         })
     });
     // Un empoisonnement ne doit pas tuer le capteur : l'état du vivier reste
@@ -108,6 +139,7 @@ fn demarrer_le_tour_de_roue() {
         let ordres = garde.vivier.rearbitrer(maintenant);
         distribuer(&mut garde, ordres);
         parts::distribuer_les_parts(&mut garde);
+        porteurs::distribuer_l_audio(&mut garde);
     });
 }
 
@@ -170,13 +202,26 @@ fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(String, Ordre)
 fn oublier(garde: &mut MutexGuard<'static, Etat>, session: &str) -> Vec<(String, Ordre)> {
     garde.canaux.remove(session);
     garde.dernieres_parts.remove(session);
+    // Les quatre tables de D7 s'oublient ICI et nulle part ailleurs. Le
+    // registre a trois chemins de retrait (fermeture normale, canal rompu
+    // détecté par les ordres, canal rompu détecté par les parts) : un champ
+    // oublié par deux d'entre eux est exactement le défaut M1 de la revue
+    // finale de branche du sous-bloc D6.
+    // `derniers_audio` en particulier : un rattachement réinscrit la MÊME
+    // session (voir `inscrire`), et un `false` resté en mémoire ferait juger
+    // l'ordre déjà livré — sur un canal disparu avec la rupture. La fenêtre
+    // resterait muette sans terme.
+    garde.pids.remove(session);
+    garde.arrivees.remove(session);
+    garde.derniers_focus.remove(session);
+    garde.derniers_audio.remove(session);
     if garde.focalisee.as_deref() == Some(session) {
         garde.focalisee = None;
     }
     garde.vivier.retirer(session, Instant::now())
 }
 
-pub fn inscrire(session: &str) -> Receiver<Message> {
+pub fn inscrire(session: &str, pid: u32) -> Receiver<Message> {
     let (emetteur, receveur) = channel::<Message>();
     let mut garde = etat();
     if garde.canaux.insert(session.to_string(), emetteur).is_some() {
@@ -188,10 +233,23 @@ pub fn inscrire(session: &str) -> Receiver<Message> {
         // les deux inscriptions — le plafond de débit resterait périmé sans
         // terme. Une première inscription n'a, elle, rien à purger.
         garde.dernieres_parts.remove(session);
+        // Même motif que la ligne ci-dessus : l'ordre audio mémorisé l'a été
+        // sur l'ANCIEN canal, disparu avec la rupture.
+        garde.derniers_audio.remove(session);
+    }
+    garde.pids.insert(session.to_string(), pid);
+    // Le rang d'arrivée n'est posé qu'à la PREMIÈRE inscription : un
+    // rattachement ne doit pas faire perdre à la fenêtre son ancienneté au
+    // sein de son groupe de PID.
+    if !garde.arrivees.contains_key(session) {
+        garde.horloge += 1;
+        let rang = garde.horloge;
+        garde.arrivees.insert(session.to_string(), rang);
     }
     let ordres = garde.vivier.inscrire(session, Instant::now());
     distribuer(&mut garde, ordres);
     parts::distribuer_les_parts(&mut garde);
+    porteurs::distribuer_l_audio(&mut garde);
     receveur
 }
 
@@ -200,18 +258,26 @@ pub fn retirer(session: &str) {
     let ordres = oublier(&mut garde, session);
     distribuer(&mut garde, ordres);
     parts::distribuer_les_parts(&mut garde);
+    porteurs::distribuer_l_audio(&mut garde);
 }
 
 pub fn signaler(session: &str, visible: bool, focalisee: bool) {
     let mut garde = etat();
     if focalisee {
         garde.focalisee = Some(session.to_string());
+        // Le rang du focus, et non un booléen : c'est lui qui fait tenir la
+        // règle 3 de l'arbitrage — un groupe qui perd tout focus garde son son
+        // sur la DERNIÈRE à l'avoir eu.
+        garde.horloge += 1;
+        let rang = garde.horloge;
+        garde.derniers_focus.insert(session.to_string(), rang);
     } else if garde.focalisee.as_deref() == Some(session) {
         garde.focalisee = None;
     }
     let ordres = garde.vivier.signaler(session, visible, focalisee, Instant::now());
     distribuer(&mut garde, ordres);
     parts::distribuer_les_parts(&mut garde);
+    porteurs::distribuer_l_audio(&mut garde);
 }
 
 /// Signale l'échec de la reconstruction du `WindowsSource` lors d'un réveil.
@@ -225,6 +291,7 @@ pub fn echec_de_reveil(session: &str) {
     let ordres = garde.vivier.echec_de_reveil(session, Instant::now());
     distribuer(&mut garde, ordres);
     parts::distribuer_les_parts(&mut garde);
+    porteurs::distribuer_l_audio(&mut garde);
 }
 
 /// Le texte que le client recevra. **Stable** : il traverse deux protocoles et
@@ -276,6 +343,7 @@ mod tests {
             match canal.try_recv() {
                 Ok(Message::Sommeil(ordre)) => return Some(ordre),
                 Ok(Message::Part { .. }) => continue,
+                Ok(Message::Audio { .. }) => continue,
                 Err(_) => return None,
             }
         }
@@ -286,7 +354,7 @@ mod tests {
         let _verrou = verrouiller_pour_le_test();
         // Noms uniques : le registre est un état GLOBAL de processus, et les
         // tests Rust tournent en parallèle dans le même processus.
-        let ordres = inscrire("t5-a");
+        let ordres = inscrire("t5-a", 5001);
         signaler("t5-a", true, true);
         assert_eq!(premier_ordre(&ordres), Some(Ordre::Reveiller));
         retirer("t5-a");
@@ -295,7 +363,7 @@ mod tests {
     #[test]
     fn une_session_retiree_ne_recoit_plus_rien() {
         let _verrou = verrouiller_pour_le_test();
-        let ordres = inscrire("t5-b");
+        let ordres = inscrire("t5-b", 5002);
         retirer("t5-b");
         signaler("t5-b", true, true);
         assert_eq!(premier_ordre(&ordres), None);
@@ -312,7 +380,7 @@ mod tests {
     fn un_echec_de_reveil_rendort_la_session_et_ne_la_reelit_pas_immediatement() {
         let _verrou = verrouiller_pour_le_test();
         // "t5-c" devient visible et focalisee, donc eveillee par arbitrer().
-        let ordres = inscrire("t5-c");
+        let ordres = inscrire("t5-c", 5003);
         signaler("t5-c", true, true);
         assert_eq!(premier_ordre(&ordres), Some(Ordre::Reveiller));
 
@@ -348,7 +416,7 @@ mod tests {
     #[test]
     fn un_canal_rompu_libere_aussi_le_focus_de_la_session_morte() {
         let _verrou = verrouiller_pour_le_test();
-        let canal = inscrire("m1-focus");
+        let canal = inscrire("m1-focus", 5004);
         signaler("m1-focus", true, true);
         assert_eq!(
             etat().focalisee.as_deref(),
@@ -363,7 +431,7 @@ mod tests {
         // L'inscription d'une session tierce — endormie — fait varier le
         // budget partagé, donc la part de "m1-focus", donc tente un envoi sur
         // son canal rompu : c'est ce qui déclenche la détection.
-        inscrire("m1-tiers");
+        inscrire("m1-tiers", 5005);
         assert_eq!(
             etat().focalisee,
             None,
@@ -384,7 +452,7 @@ mod tests {
         let mut recepteurs_pleins = Vec::new();
         for i in 0..8 {
             let nom = format!("t5-plein-{i}");
-            let ordres = inscrire(&nom);
+            let ordres = inscrire(&nom, 5100 + i as u32);
             signaler(&nom, true, true);
             assert_eq!(
                 premier_ordre(&ordres),
@@ -396,7 +464,7 @@ mod tests {
 
         // "t5-attend" arrive alors que le plafond est deja atteint : elle
         // reste endormie, faute de place.
-        let ordres_attend = inscrire("t5-attend");
+        let ordres_attend = inscrire("t5-attend", 5200);
         signaler("t5-attend", true, true);
         assert_eq!(premier_ordre(&ordres_attend), None, "t5-attend devrait rester endormie");
 
@@ -404,7 +472,7 @@ mod tests {
         // la devancerait si une place se liberait. Son recepteur est jete
         // immediatement : son canal est rompu des avant toute tentative
         // d'envoi.
-        drop(inscrire("t5-tardif"));
+        drop(inscrire("t5-tardif", 5201));
         signaler("t5-tardif", true, true);
 
         // Libere UNE place en retirant le premier "plein". Le vivier elit

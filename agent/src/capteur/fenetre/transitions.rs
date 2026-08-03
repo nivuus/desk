@@ -149,6 +149,13 @@ impl Fenetre {
                         return Fin::Terminer(motif);
                     }
                 }
+                // Rien ne relaie encore cet ordre à l'enfant : le protocole
+                // qui le porterait (`DepuisCapteur`) est l'objet de la tâche
+                // 6. Ce bras existe pour la seule raison que `Message` doit
+                // rester exhaustif ici — ce n'est PAS un choix de conception,
+                // juste ce que la tâche 5 doit faire pour compiler tant que
+                // la tâche 6 n'a pas câblé le reste.
+                Ok(Message::Audio { .. }) => continue,
                 Ok(Message::Part { bps }) => {
                     // Rien à faire localement : le capteur ne règle PAS son
                     // encodeur sur cette part. C'est l'enfant qui décide de

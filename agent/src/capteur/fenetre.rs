@@ -33,6 +33,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::{bail, Context, Result};
 use windows::Win32::Foundation::HWND;
+use windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId;
 
 use crate::capteur::horloge::{frequence_qpc, lire_qpc, origine_depuis_qpc};
 use crate::capteur::protocole::{ecrire_image, ecrire_json, DepuisCapteur, VersCapteur};
@@ -130,6 +131,10 @@ pub struct Fenetre {
     session: String,
     largeur: u32,
     hauteur: u32,
+    /// PID du processus propriétaire de la fenêtre Windows, dérivé du `hwnd` à
+    /// l'attache. C'est par lui que `capteur::audio::arbitrer` regroupe les
+    /// fenêtres d'une même application.
+    pid: u32,
 }
 
 impl Fenetre {
@@ -172,13 +177,25 @@ impl Fenetre {
         );
 
         let hwnd = HWND(hwnd as *mut core::ffi::c_void);
+        // Le PID ne circule pas sur le protocole : il se dérive du `hwnd` que
+        // l'enfant a déjà envoyé. L'enfant fait de même de son côté, depuis son
+        // `FENETRE_HWND`. Deux dérivations indépendantes du même identifiant
+        // stable valent mieux qu'un champ de protocole à tenir cohérent.
+        let mut pid = 0u32;
+        // SAFETY : `hwnd` vient d'un enfant vivant ; un handle invalide fait
+        // rendre 0 à la fonction, ce que le `ensure` ci-dessous attrape.
+        unsafe { GetWindowThreadProcessId(hwnd, Some(&mut pid)) };
+        anyhow::ensure!(
+            pid != 0,
+            "impossible de dériver le PID de la fenêtre {hwnd:?} de la session {session}"
+        );
         // La taille est la seule chose qu'il faut savoir avant d'avoir la
         // place : `taille_de_sortie` la lit sans ouvrir de duplication, donc
         // sans prendre le mutex de la sortie ni perturber aucune voisine.
         let (largeur, hauteur) = crate::capture::ouverture::taille_de_sortie(&sortie)
             .with_context(|| format!("attache de la session {session}"))?;
         let parametres = Parametres { hwnd, sortie, fps, debit, clock_origin };
-        Ok(Fenetre { source: None, parametres, session, largeur, hauteur })
+        Ok(Fenetre { source: None, parametres, session, largeur, hauteur, pid })
     }
 
     pub fn dimensions(&self) -> (u32, u32) {
@@ -233,7 +250,7 @@ impl Fenetre {
         // fenêtre que personne ne déclare regarder —, mais c'est la nouvelle
         // façon dont une session peut rester vide sans qu'aucune erreur ne soit
         // journalisée.
-        let ordres = crate::capteur::sommeil::inscrire(&session);
+        let ordres = crate::capteur::sommeil::inscrire(&session, self.pid);
 
         let resultat = self.boucler(&session, &ordres, &ecritures, &commandes, &reponses);
 
