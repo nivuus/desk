@@ -1246,14 +1246,22 @@ Et dans `impl VideoSource for SourceDistante`, à côté de `sommeil_a_annoncer`
     }
 ```
 
-⚠️ Il faut aussi que le **lecteur du tube** traduise
-`DepuisCapteur::Part { bps }` en `Recu::Part { bps }`. Chercher où
-`DepuisCapteur::Sommeil` est converti en `Recu::Sommeil` — c'est dans le
-lecteur de `capteur/tube.rs` — et ajouter le bras symétrique **au même
-endroit**.
+✅ **La variante `Recu::Part` et le bras du lecteur média existent DÉJÀ** : ils
+ont été ajoutés par la ronde de correction des tâches 4 et 5, parce que leur
+absence tuait le fil média de l'enfant au premier `Part` reçu. Ne les récris
+pas ; vérifie qu'ils sont là et enchaîne.
+
+⚠️ **Le lecteur ne vit PAS dans `capteur/tube.rs`** — une rédaction antérieure
+de ce brief l'y envoyait à tort. Il a été extrait dans
+`agent/src/capteur/pont_media.rs`, hors de `#[cfg(windows)]` précisément pour
+être testable sur l'hôte, après qu'une omission identique eut échappé à la
+tâche 7 du sous-bloc D5. Le fichier porte l'avertissement en toutes lettres
+au-dessus de son `match` : **c'est un point de passage obligé pour toute
+variante de `DepuisCapteur` poussée sur la connexion média, et l'oublier ne se
+signale par aucune erreur de compilation.**
 
 ```bash
-grep -rn "Recu::Sommeil" agent/src --include='*.rs'
+grep -rn "Recu::Sommeil\|Recu::Part" agent/src --include='*.rs'
 ```
 
 - [ ] **Step 4: Lancer les tests pour vérifier qu'ils passent**
@@ -1266,7 +1274,7 @@ cd agent && cargo check --target x86_64-pc-windows-gnu 2>&1 | tail -20
 - [ ] **Step 5: Vérifier les tailles**
 
 ```bash
-wc -l agent/src/capteur/distante.rs agent/src/capteur/distante/tests.rs agent/src/source.rs agent/src/capteur/tube.rs
+wc -l agent/src/capteur/distante.rs agent/src/capteur/distante/tests.rs agent/src/source.rs agent/src/capteur/pont_media.rs
 ```
 
 Attendu : tous sous 500.
@@ -1275,7 +1283,7 @@ Attendu : tous sous 500.
 
 ```bash
 git add agent/src/capteur/distante.rs agent/src/capteur/distante/tests.rs \
-        agent/src/source.rs agent/src/capteur/tube.rs
+        agent/src/source.rs agent/src/capteur/pont_media.rs
 git commit -m "feat(d6): la source distante retient la part jusqu'a son application
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
