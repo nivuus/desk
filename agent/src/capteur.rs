@@ -14,6 +14,7 @@ pub mod protocole;
 pub mod reprise;
 #[cfg(windows)]
 pub mod serveur;
+pub mod sommeil;
 #[cfg(windows)]
 pub mod tube;
 pub mod vivier;
