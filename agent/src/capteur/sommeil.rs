@@ -12,50 +12,25 @@
 //! la même raison. C'est aussi ce qui permet à ce sous-bloc de **ne pas
 //! toucher `serveur.rs`**, dont la marge de taille est de 10 lignes.
 
+// `parts` porte le calcul et la distribution des parts de débit. Extrait pour
+// la même raison que `fenetre::transitions` : ce fichier a franchi le
+// plafond de 500 lignes du projet en y ajoutant le remède au canal rompu
+// détecté par cette voie-là (voir `parts::distribuer_les_parts`). Il ne
+// s'appelle pas `repartiteur` : ce nom est déjà pris par le module qui porte
+// la RÈGLE pure ; celui-ci ne porte que sa BRANCHE sur ce registre.
+mod parts;
+
 use std::collections::HashMap;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::time::{Duration, Instant};
 
-use crate::capteur::repartiteur::{self, Fenetre};
 use crate::capteur::vivier::{Ordre, Raison, Vivier, HYSTERESIS, PLAFOND_EVEIL};
 
 /// Période du tour de roue. Ni une cadence de rendu ni une horloge : c'est le
 /// seul moyen pour une fenêtre bloquée sous hystérésis d'être réexaminée, et
 /// 250 ms est très en deçà des 2 s d'hystérésis tout en restant négligeable.
 const PERIODE_REARBITRAGE: Duration = Duration::from_millis(250);
-
-/// Budget de débit de la session entière, en bits par seconde.
-///
-/// **De session, pas par fenêtre** — c'est tout le sujet du sous-bloc D6.
-/// Lu une seule fois : le changer en cours de vie n'aurait aucun sens tant
-/// que le lien ne change pas.
-///
-/// **12 Mb/s est un CHOIX, pas une dérivation.** La tâche 1 a montré que le
-/// lien porte ≥ 1,45 Gb/s : la capacité du chemin ne borne rien ici, et le
-/// budget ne s'en dérive pas. Ce qui borne est ce que le CLIENT décode. La
-/// tâche 1bis relève, à huit fenêtres : 18,03 % d'images jetées au barreau
-/// plein, 7,99 % à 1024×576, 1,47 % à 640×360 — et surtout que réduire les
-/// bits **sans** franchir de seuil de barreau ne sauve rien (23,08 % à
-/// surface constante). **Le levier est la résolution, le débit n'en est que
-/// la commande.**
-///
-/// 12 Mb/s conserve au cas mono-fenêtre exactement ce qu'il a aujourd'hui, et
-/// donne 1,33 Mb/s par fenêtre à huit — soit le barreau 852×480, **entre les
-/// deux points mesurés, donc non mesuré**. ⚠️ **C'est la recette de la
-/// tâche 10 qui le calibre** : si elle déçoit, descendre à 8 Mb/s, seul point
-/// relevé propre, au prix du cas mono-fenêtre.
-fn budget_bps() -> u32 {
-    static BUDGET: OnceLock<u32> = OnceLock::new();
-    *BUDGET.get_or_init(|| {
-        let budget = std::env::var("BUDGET_BPS")
-            .ok()
-            .and_then(|v| v.parse::<u32>().ok())
-            .unwrap_or(12_000_000);
-        tracing::info!(budget_bps = budget, "budget de debit de la session");
-        budget
-    })
-}
 
 /// Ce qu'une fenêtre reçoit du registre global.
 ///
@@ -119,7 +94,7 @@ fn demarrer_le_tour_de_roue() {
         let maintenant = Instant::now();
         let ordres = garde.vivier.rearbitrer(maintenant);
         distribuer(&mut garde, ordres);
-        distribuer_les_parts(&mut garde);
+        parts::distribuer_les_parts(&mut garde);
     });
 }
 
@@ -161,57 +136,6 @@ fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(String, Ordre)
     }
 }
 
-/// Recalcule les parts et n'envoie que celles qui ont changé.
-///
-/// **Appelée APRÈS `distribuer`**, jamais avant : les ordres de sommeil
-/// changent l'éveil, et une part calculée avant eux décrirait l'état
-/// précédent.
-///
-/// Une session dont le canal est rompu est retirée, comme dans `distribuer` —
-/// mais sans boucle de reprise : contrairement à un ordre de sommeil, une part
-/// perdue n'engendre aucun ordre supplémentaire, et la prochaine passe la
-/// rattrapera.
-fn distribuer_les_parts(garde: &mut MutexGuard<'static, Etat>) {
-    let eveillees = garde.vivier.eveillees();
-    let focalisee = garde.focalisee.clone();
-    let fenetres: Vec<Fenetre> = garde
-        .canaux
-        .keys()
-        .map(|session| Fenetre {
-            session: session.clone(),
-            eveillee: eveillees.iter().any(|e| e == session),
-            focalisee: focalisee.as_deref() == Some(session.as_str()),
-        })
-        .collect();
-
-    let parts = repartiteur::repartir(budget_bps(), &fenetres);
-
-    // Les sessions disparues ne doivent pas laisser leur part en mémoire.
-    let vivantes: std::collections::HashSet<&String> =
-        parts.iter().map(|(session, _)| session).collect();
-    garde.dernieres_parts.retain(|session, _| vivantes.contains(session));
-
-    let mut rompus = Vec::new();
-    for (session, bps) in parts {
-        if garde.dernieres_parts.get(&session) == Some(&bps) {
-            continue;
-        }
-        let envoye = match garde.canaux.get(&session) {
-            Some(canal) => canal.send(Message::Part { bps }).is_ok(),
-            None => false,
-        };
-        if envoye {
-            garde.dernieres_parts.insert(session, bps);
-        } else {
-            rompus.push(session);
-        }
-    }
-    for session in rompus {
-        garde.canaux.remove(&session);
-        garde.dernieres_parts.remove(&session);
-    }
-}
-
 pub fn inscrire(session: &str) -> Receiver<Message> {
     let (emetteur, receveur) = channel::<Message>();
     let mut garde = etat();
@@ -220,7 +144,7 @@ pub fn inscrire(session: &str) -> Receiver<Message> {
     }
     let ordres = garde.vivier.inscrire(session, Instant::now());
     distribuer(&mut garde, ordres);
-    distribuer_les_parts(&mut garde);
+    parts::distribuer_les_parts(&mut garde);
     receveur
 }
 
@@ -232,7 +156,7 @@ pub fn retirer(session: &str) {
     }
     let ordres = garde.vivier.retirer(session, Instant::now());
     distribuer(&mut garde, ordres);
-    distribuer_les_parts(&mut garde);
+    parts::distribuer_les_parts(&mut garde);
 }
 
 pub fn signaler(session: &str, visible: bool, focalisee: bool) {
@@ -244,7 +168,7 @@ pub fn signaler(session: &str, visible: bool, focalisee: bool) {
     }
     let ordres = garde.vivier.signaler(session, visible, focalisee, Instant::now());
     distribuer(&mut garde, ordres);
-    distribuer_les_parts(&mut garde);
+    parts::distribuer_les_parts(&mut garde);
 }
 
 /// Signale l'échec de la reconstruction du `WindowsSource` lors d'un réveil.
@@ -257,7 +181,7 @@ pub fn echec_de_reveil(session: &str) {
     let mut garde = etat();
     let ordres = garde.vivier.echec_de_reveil(session, Instant::now());
     distribuer(&mut garde, ordres);
-    distribuer_les_parts(&mut garde);
+    parts::distribuer_les_parts(&mut garde);
 }
 
 /// Le texte que le client recevra. **Stable** : il traverse deux protocoles et
@@ -283,7 +207,11 @@ mod tests {
     /// ce fichier sans toucher au code de production ni à `vivier.rs`.
     static VERROU_TESTS: Mutex<()> = Mutex::new(());
 
-    fn verrouiller_pour_le_test() -> MutexGuard<'static, ()> {
+    /// `pub(super)` : repris par `parts::tests`, qui sature le même vivier
+    /// partagé et doit s'y sérialiser exactement de la même façon (ce module
+    /// et `parts::tests` sont deux descendants distincts de `sommeil`, pas
+    /// l'un de l'autre — d'où la visibilité explicite).
+    pub(super) fn verrouiller_pour_le_test() -> MutexGuard<'static, ()> {
         VERROU_TESTS.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
     }
 
@@ -297,7 +225,10 @@ mod tests {
     /// (voir la doc de `inscrire`). Les tests d'ORDRE, hérités de D5, portent
     /// sur `Ordre` et non sur `Message` : ce filtre restaure leur intention
     /// d'origine sans la changer.
-    fn premier_ordre(canal: &Receiver<Message>) -> Option<Ordre> {
+    ///
+    /// `pub(super)` : repris par `parts::tests`, pour la même raison que
+    /// `verrouiller_pour_le_test`.
+    pub(super) fn premier_ordre(canal: &Receiver<Message>) -> Option<Ordre> {
         loop {
             match canal.try_recv() {
                 Ok(Message::Sommeil(ordre)) => return Some(ordre),
@@ -353,84 +284,6 @@ mod tests {
         assert_eq!(premier_ordre(&ordres), None);
 
         retirer("t5-c");
-    }
-
-    #[test]
-    fn une_session_qui_s_eveille_recoit_une_part_apres_son_ordre_de_reveil() {
-        let _verrou = verrouiller_pour_le_test();
-        let messages = inscrire("t6-a");
-        signaler("t6-a", true, true);
-
-        let recus: Vec<Message> = messages.try_iter().collect();
-        let position_reveil = recus
-            .iter()
-            .position(|m| matches!(m, Message::Sommeil(Ordre::Reveiller)))
-            .expect("l'ordre de réveil doit être présent");
-        // La recherche part de `position_reveil`, pas du début : l'inscription
-        // elle-même envoie déjà une PREMIÈRE part (le plancher endormi, avant
-        // tout ordre — voir la doc de `inscrire`), et c'est légitime. La
-        // recherche depuis le début confondrait cette part-là, envoyée AVANT
-        // le réveil, avec celle que ce test veut vérifier : celle qui décrit
-        // la fenêtre ÉVEILLÉE, et qui doit suivre son ordre.
-        let position_part = recus[position_reveil..]
-            .iter()
-            .position(|m| matches!(m, Message::Part { .. }))
-            .map(|i| i + position_reveil)
-            .expect("une part doit suivre le réveil");
-        assert!(
-            position_reveil < position_part,
-            "la part suit l'ordre, jamais l'inverse : une fenêtre encore endormie \
-             recevrait sinon une part d'éveillée"
-        );
-        retirer("t6-a");
-    }
-
-    #[test]
-    fn une_part_inchangee_n_est_pas_reemise() {
-        let _verrou = verrouiller_pour_le_test();
-        let messages = inscrire("t6-b");
-        signaler("t6-b", true, true);
-        let _ = messages.try_iter().count();
-
-        // Même signal, donc même état, donc même part : rien ne doit partir.
-        signaler("t6-b", true, true);
-        let parts: Vec<Message> = messages
-            .try_iter()
-            .filter(|m| matches!(m, Message::Part { .. }))
-            .collect();
-        assert!(parts.is_empty(), "une part inchangée ne se réémet pas : {parts:?}");
-        retirer("t6-b");
-    }
-
-    #[test]
-    fn l_arrivee_d_une_seconde_fenetre_reduit_la_part_de_la_premiere() {
-        let _verrou = verrouiller_pour_le_test();
-        let a = inscrire("t6-c");
-        signaler("t6-c", true, true);
-        let premiere = derniere_part(&a).expect("la première doit avoir une part");
-
-        let b = inscrire("t6-d");
-        signaler("t6-d", true, false);
-        let apres = derniere_part(&a).expect("la première doit être ré-servie");
-        assert!(
-            apres < premiere,
-            "part de la première : {premiere} puis {apres} — elle doit baisser"
-        );
-        assert!(derniere_part(&b).is_some(), "la seconde doit recevoir une part");
-
-        retirer("t6-c");
-        retirer("t6-d");
-    }
-
-    /// Dernière part reçue sur un canal, en vidant ce qui s'y trouve.
-    fn derniere_part(canal: &Receiver<Message>) -> Option<u32> {
-        canal
-            .try_iter()
-            .filter_map(|m| match m {
-                Message::Part { bps } => Some(bps),
-                _ => None,
-            })
-            .last()
     }
 
     #[test]
