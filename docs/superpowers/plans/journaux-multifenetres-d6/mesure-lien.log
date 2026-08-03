@@ -1,0 +1,109 @@
+[    0.0s 2026-08-03T13:03:55.659Z] BITRATE=100000000 PALIER_S=90 chrome pid=1125878 port=9993
+[    5.5s 2026-08-03T13:04:01.169Z] identité du navigateur : pid écoutant=1125878 pid lancé=1125878 version=Chrome/150.0.7871.181
+[    5.6s 2026-08-03T13:04:01.203Z] + page attachée  session=2F1440D6 url=about:blank
+[    5.6s 2026-08-03T13:04:01.236Z] >>> ÉTAPE 0 : la VM part SANS fenêtre éligible
+[   19.0s 2026-08-03T13:04:14.683Z] CPU HÔTE (au repos, avant toute session)
+top - 15:04:10 up 11 days,  2:07,  6 users,  load average: 16,03, 16,77, 14,32
+%Cpu(s): 25,0 ut,  6,2 sy,  0,0 ni, 68,5 id,  0,0 wa,  0,0 hi,  0,2 si,  0,0 st 
+top - 15:04:12 up 11 days,  2:07,  6 users,  load average: 16,03, 16,77, 14,32
+%Cpu(s): 25,7 ut,  3,5 sy,  0,0 ni, 69,5 id,  1,1 wa,  0,0 hi,  0,3 si,  0,0 st 
+top - 15:04:14 up 11 days,  2:07,  6 users,  load average: 15,79, 16,70, 14,31
+%Cpu(s): 21,9 ut,  3,1 sy,  0,0 ni, 74,4 id,  0,2 wa,  0,0 hi,  0,3 si,  0,0 st
+--- processus les plus chargés ---
+ 809137  252 qemu-system-x86
+1076921  343 tdarr-ffmpeg
+ 809137  252 qemu-system-x86
+1123511 29.8 node
+ 751653 27.7 claude
+ 751790 25.0 claude
+2423455 22.9 Tdarr_Server
+--- loadavg / nproc ---
+15.79 16.70 14.31 15/3784 1126491
+8
+[   19.1s 2026-08-03T13:04:14.701Z] + page attachée  session=A7EA8DE9 url=http://192.168.3.1:5173/shell.html
+[   19.1s 2026-08-03T13:04:14.711Z] shell demandée http://192.168.3.1:5173/shell.html
+[   22.1s 2026-08-03T13:04:17.714Z] statut shell : bureau connecté
+[   22.1s 2026-08-03T13:04:17.714Z] >>> lancement du superviseur
+[   22.5s 2026-08-03T13:04:18.152Z] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   28.5s 2026-08-03T13:04:24.158Z] >>> OUVERTURE de LA fenêtre (une seule)
+[   29.1s 2026-08-03T13:04:24.737Z] + page attachée  session=1F1A8528 url=
+[   29.4s 2026-08-03T13:04:25.049Z] + page attachée  session=23B9A19D url=
+[   31.1s 2026-08-03T13:04:26.724Z] page d'application ouverte après 2s
+[   31.1s 2026-08-03T13:04:26.733Z] STATS (amorçage 0) {"etat":"new","horloge":1785762266730,"images_decodees":null,"images_recues":null,"images_perdues":null,"gels":null,"gel_total_s":null,"octets_recus":null,"paquets_recus":null,"paquets_perdus":null,"nack":null,"pli":null,"jitter":null,"temps_decodage_total":null,"l":null,"h":null,"rtt":null,"debit_entrant_dispo":null,"octets_paire":null,"type_local":null,"type_distant":null,"protocole":null,"lien_bitrate":null,"lien_taille":null,"lien_qualite":null,"lien_adaptation":null,"liens_recus":0}
+[   33.1s 2026-08-03T13:04:28.739Z] STATS (amorçage 1) {"etat":"connected","horloge":1785762268737,"images_decodees":null,"images_recues":null,"images_perdues":null,"gels":null,"gel_total_s":null,"octets_recus":null,"paquets_recus":null,"paquets_perdus":null,"nack":null,"pli":null,"jitter":null,"temps_decodage_total":null,"l":null,"h":null,"rtt":0.002,"debit_entrant_dispo":null,"octets_paire":1552,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":null,"lien_taille":null,"lien_qualite":null,"lien_adaptation":null,"liens_recus":0}
+[   35.1s 2026-08-03T13:04:30.743Z] STATS (amorçage 2) {"etat":"connected","horloge":1785762270742,"images_decodees":118,"images_recues":175,"images_perdues":39,"gels":0,"gel_total_s":0,"octets_recus":21757827,"paquets_recus":19513,"paquets_perdus":0,"nack":0,"pli":0,"jitter":0.004,"temps_decodage_total":1.685203,"l":1280,"h":720,"rtt":0.002,"debit_entrant_dispo":null,"octets_paire":22619973,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":86950640,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":2}
+[   35.1s 2026-08-03T13:04:30.744Z] >>> PALIER de 90 s, échantillon toutes les 5 s
+[   39.8s 2026-08-03T13:04:35.409Z] CPU HÔTE (début du palier)
+top - 15:04:31 up 11 days,  2:07,  6 users,  load average: 16,18, 16,75, 14,37
+%Cpu(s): 28,6 ut,  8,5 sy,  0,0 ni, 62,6 id,  0,3 wa,  0,0 hi,  0,0 si,  0,0 st 
+top - 15:04:33 up 11 days,  2:07,  6 users,  load average: 16,18, 16,75, 14,37
+%Cpu(s): 28,9 ut,  9,2 sy,  0,0 ni, 61,6 id,  0,1 wa,  0,0 hi,  0,3 si,  0,0 st 
+top - 15:04:35 up 11 days,  2:07,  6 users,  load average: 16,09, 16,72, 14,37
+%Cpu(s): 28,0 ut,  7,8 sy,  0,0 ni, 63,8 id,  0,1 wa,  0,0 hi,  0,4 si,  0,0 st
+--- processus les plus chargés ---
+ 809137  251 qemu-system-x86
+1127049  600 ps
+1076921  345 tdarr-ffmpeg
+ 809137  251 qemu-system-x86
+ 751653 27.7 claude
+1126213 27.0 chrome
+ 751790 25.0 claude
+--- loadavg / nproc ---
+16.09 16.72 14.37 15/3807 1127052
+8
+[   39.8s 2026-08-03T13:04:35.419Z] STATS (palier +5s) {"etat":"connected","horloge":1785762275415,"images_decodees":417,"images_recues":582,"images_perdues":153,"gels":0,"gel_total_s":0,"octets_recus":73258095,"paquets_recus":65708,"paquets_perdus":0,"nack":0,"pli":0,"jitter":0.004,"temps_decodage_total":6.048553999999999,"l":1280,"h":720,"rtt":0.004,"debit_entrant_dispo":null,"octets_paire":76179450,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":100000000,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":3}
+[   44.8s 2026-08-03T13:04:40.441Z] STATS (palier +10s) {"etat":"connected","horloge":1785762280433,"images_decodees":622,"images_recues":1016,"images_perdues":377,"gels":0,"gel_total_s":0,"octets_recus":132570228,"paquets_recus":118889,"paquets_perdus":0,"nack":0,"pli":0,"jitter":0.007,"temps_decodage_total":10.685853,"l":1280,"h":720,"rtt":0.001,"debit_entrant_dispo":null,"octets_paire":137880042,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":100000000,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":3}
+[   49.8s 2026-08-03T13:04:45.459Z] STATS (palier +15s) {"etat":"connected","horloge":1785762285454,"images_decodees":828,"images_recues":1433,"images_perdues":602,"gels":0,"gel_total_s":0,"octets_recus":183962702,"paquets_recus":164991,"paquets_perdus":0,"nack":0,"pli":1,"jitter":0.007,"temps_decodage_total":15.272874999999999,"l":1280,"h":720,"rtt":0.028,"debit_entrant_dispo":null,"octets_paire":191277795,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":84752488,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":4}
+[   54.8s 2026-08-03T13:04:50.467Z] STATS (palier +20s) {"etat":"connected","horloge":1785762290466,"images_decodees":1001,"images_recues":1849,"images_perdues":816,"gels":0,"gel_total_s":0,"octets_recus":232363108,"paquets_recus":208408,"paquets_perdus":0,"nack":0,"pli":1,"jitter":0.01,"temps_decodage_total":19.889820999999998,"l":1280,"h":720,"rtt":0.002,"debit_entrant_dispo":null,"octets_paire":241554163,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":84752488,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":4}
+[   59.8s 2026-08-03T13:04:55.479Z] STATS (palier +25s) {"etat":"connected","horloge":1785762295474,"images_decodees":1211,"images_recues":2285,"images_perdues":1047,"gels":0,"gel_total_s":0,"octets_recus":276095161,"paquets_recus":247668,"paquets_perdus":325,"nack":1,"pli":1,"jitter":0.007,"temps_decodage_total":24.488249999999997,"l":1280,"h":720,"rtt":0.001,"debit_entrant_dispo":null,"octets_paire":287022679,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":82770736,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":8}
+[   64.8s 2026-08-03T13:05:00.485Z] STATS (palier +30s) {"etat":"connected","horloge":1785762300481,"images_decodees":1406,"images_recues":2703,"images_perdues":1287,"gels":0,"gel_total_s":0,"octets_recus":327273459,"paquets_recus":293591,"paquets_perdus":325,"nack":1,"pli":1,"jitter":0.009,"temps_decodage_total":29.039543,"l":1280,"h":720,"rtt":0.001,"debit_entrant_dispo":null,"octets_paire":340299305,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":95839480,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":9}
+[   69.9s 2026-08-03T13:05:05.499Z] STATS (palier +35s) {"etat":"connected","horloge":1785762305491,"images_decodees":1611,"images_recues":3130,"images_perdues":1477,"gels":0,"gel_total_s":0,"octets_recus":381104689,"paquets_recus":341858,"paquets_perdus":325,"nack":1,"pli":1,"jitter":0.006,"temps_decodage_total":33.627907,"l":1280,"h":720,"rtt":0.008,"debit_entrant_dispo":null,"octets_paire":396184061,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":95839480,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":9}
+[   74.9s 2026-08-03T13:05:10.533Z] STATS (palier +40s) {"etat":"connected","horloge":1785762310529,"images_decodees":1801,"images_recues":3568,"images_perdues":1730,"gels":0,"gel_total_s":0,"octets_recus":438705332,"paquets_recus":393519,"paquets_perdus":325,"nack":1,"pli":1,"jitter":0.006,"temps_decodage_total":38.194983,"l":1280,"h":720,"rtt":0.069,"debit_entrant_dispo":null,"octets_paire":456061369,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":95839480,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":9}
+[   79.9s 2026-08-03T13:05:15.551Z] STATS (palier +45s) {"etat":"connected","horloge":1785762315549,"images_decodees":1937,"images_recues":3886,"images_perdues":1921,"gels":1,"gel_total_s":1.025,"octets_recus":493122099,"paquets_recus":442326,"paquets_perdus":325,"nack":1,"pli":8,"jitter":0.011,"temps_decodage_total":41.885615,"l":1280,"h":720,"rtt":0.001,"debit_entrant_dispo":null,"octets_paire":512733766,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":62897372,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":10}
+[   84.9s 2026-08-03T13:05:20.562Z] STATS (palier +50s) {"etat":"connected","horloge":1785762320560,"images_decodees":2189,"images_recues":4313,"images_perdues":2112,"gels":1,"gel_total_s":1.025,"octets_recus":531696509,"paquets_recus":476988,"paquets_perdus":325,"nack":1,"pli":8,"jitter":0.008,"temps_decodage_total":46.451671999999995,"l":1280,"h":720,"rtt":0.019,"debit_entrant_dispo":null,"octets_paire":552734687,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":72865048,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":11}
+[   89.9s 2026-08-03T13:05:25.585Z] STATS (palier +55s) {"etat":"connected","horloge":1785762325571,"images_decodees":2378,"images_recues":4741,"images_perdues":2310,"gels":1,"gel_total_s":1.025,"octets_recus":580560184,"paquets_recus":520832,"paquets_perdus":325,"nack":1,"pli":8,"jitter":0.006,"temps_decodage_total":51.036260999999996,"l":1280,"h":720,"rtt":0.001,"debit_entrant_dispo":null,"octets_paire":603565841,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":100000000,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":13}
+[   95.0s 2026-08-03T13:05:30.616Z] STATS (palier +60s) {"etat":"connected","horloge":1785762330607,"images_decodees":2550,"images_recues":5178,"images_perdues":2581,"gels":1,"gel_total_s":1.025,"octets_recus":639804806,"paquets_recus":573954,"paquets_perdus":325,"nack":1,"pli":8,"jitter":0.007,"temps_decodage_total":55.594992,"l":1280,"h":720,"rtt":0.011,"debit_entrant_dispo":null,"octets_paire":665257998,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":100000000,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":13}
+[  100.0s 2026-08-03T13:05:35.636Z] STATS (palier +65s) {"etat":"connected","horloge":1785762335630,"images_decodees":2756,"images_recues":5603,"images_perdues":2829,"gels":1,"gel_total_s":1.025,"octets_recus":688159883,"paquets_recus":617348,"paquets_perdus":325,"nack":1,"pli":8,"jitter":0.005,"temps_decodage_total":60.226777,"l":1280,"h":720,"rtt":0.019,"debit_entrant_dispo":null,"octets_paire":715385527,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":53400852,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":14}
+[  105.0s 2026-08-03T13:05:40.647Z] STATS (palier +70s) {"etat":"connected","horloge":1785762340643,"images_decodees":2994,"images_recues":6038,"images_perdues":3025,"gels":1,"gel_total_s":1.025,"octets_recus":726947795,"paquets_recus":652207,"paquets_perdus":325,"nack":1,"pli":8,"jitter":0.006,"temps_decodage_total":64.759312,"l":1280,"h":720,"rtt":0.002,"debit_entrant_dispo":null,"octets_paire":755711474,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":83474528,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":17}
+[  110.0s 2026-08-03T13:05:45.666Z] STATS (palier +75s) {"etat":"connected","horloge":1785762345663,"images_decodees":3169,"images_recues":6473,"images_perdues":3291,"gels":1,"gel_total_s":1.025,"octets_recus":782602270,"paquets_recus":702123,"paquets_perdus":325,"nack":1,"pli":8,"jitter":0.006,"temps_decodage_total":69.27814699999999,"l":1280,"h":720,"rtt":0.01,"debit_entrant_dispo":null,"octets_paire":813640767,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":96654048,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":18}
+[  115.0s 2026-08-03T13:05:50.676Z] STATS (palier +80s) {"etat":"connected","horloge":1785762350674,"images_decodees":3351,"images_recues":6906,"images_perdues":3552,"gels":1,"gel_total_s":1.025,"octets_recus":837518262,"paquets_recus":751386,"paquets_perdus":325,"nack":1,"pli":8,"jitter":0.008,"temps_decodage_total":73.805813,"l":1280,"h":720,"rtt":0.045,"debit_entrant_dispo":null,"octets_paire":870653507,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":96654048,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":18}
+[  120.0s 2026-08-03T13:05:55.691Z] STATS (palier +85s) {"etat":"connected","horloge":1785762355686,"images_decodees":3550,"images_recues":7337,"images_perdues":3744,"gels":1,"gel_total_s":1.025,"octets_recus":892174664,"paquets_recus":800414,"paquets_perdus":325,"nack":1,"pli":8,"jitter":0.006,"temps_decodage_total":78.420011,"l":1280,"h":720,"rtt":0.002,"debit_entrant_dispo":null,"octets_paire":927472787,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":96654048,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":18}
+[  125.1s 2026-08-03T13:06:00.711Z] STATS (palier +90s) {"etat":"connected","horloge":1785762360709,"images_decodees":3724,"images_recues":7759,"images_perdues":3998,"gels":1,"gel_total_s":1.025,"octets_recus":950266257,"paquets_recus":852497,"paquets_perdus":325,"nack":1,"pli":9,"jitter":0.007,"temps_decodage_total":82.979655,"l":1280,"h":720,"rtt":0.003,"debit_entrant_dispo":null,"octets_paire":987984544,"type_local":"prflx","type_distant":"host","protocole":"udp","lien_bitrate":96654048,"lien_taille":"1280x720","lien_qualite":"bonne","lien_adaptation":"active","liens_recus":18}
+[  134.9s 2026-08-03T13:06:10.562Z] CPU HÔTE (fin du palier)
+top - 15:06:06 up 11 days,  2:09,  6 users,  load average: 21,11, 18,27, 15,14
+%Cpu(s): 30,6 ut,  8,5 sy,  0,0 ni, 60,7 id,  0,0 wa,  0,0 hi,  0,2 si,  0,0 st 
+top - 15:06:08 up 11 days,  2:09,  6 users,  load average: 21,11, 18,27, 15,14
+%Cpu(s): 30,4 ut,  7,5 sy,  0,0 ni, 61,7 id,  0,0 wa,  0,0 hi,  0,4 si,  0,0 st 
+top - 15:06:10 up 11 days,  2:09,  6 users,  load average: 21,35, 18,36, 15,19
+%Cpu(s): 30,6 ut,  8,6 sy,  0,0 ni, 60,3 id,  0,0 wa,  0,0 hi,  0,4 si,  0,0 st
+--- processus les plus chargés ---
+ 809137  250 qemu-system-x86
+1076921  346 tdarr-ffmpeg
+ 809137  250 qemu-system-x86
+1126213 96.6 chrome
+1133067 31.2 chrome-headless
+ 751653 27.7 claude
+ 751790 25.0 claude
+--- loadavg / nproc ---
+21.35 18.36 15.19 27/3905 1133128
+8
+[  135.0s 2026-08-03T13:06:10.601Z] OBSERVATIONS AGENT : 102 ligne(s) « observation réseau »
+[  135.0s 2026-08-03T13:06:10.602Z]   dix dernières : [{"t":"2026-08-03T13:06:01.460175Z","estimation":"171432229","rtt":"7.186999ms","perte":"0.0"},{"t":"2026-08-03T13:06:02.460280Z","estimation":"171432229","rtt":"7.125963ms","perte":"0.0"},{"t":"2026-08-03T13:06:03.460272Z","estimation":"171432229","rtt":"3.692683ms","perte":"0.0"},{"t":"2026-08-03T13:06:04.460281Z","estimation":"53734515","rtt":"28.809034ms","perte":"0.0"},{"t":"2026-08-03T13:06:05.460437Z","estimation":"53734515","rtt":"3.58587ms","perte":"0.055752825"},{"t":"2026-08-03T13:06:06.460933Z","estimation":"53734515","rtt":"3.58587ms","perte":null},{"t":"2026-08-03T13:06:07.461262Z","estimation":"56425561","rtt":"11.642634ms","perte":"0.0"},{"t":"2026-08-03T13:06:08.461746Z","estimation":"126750503","rtt":"12.63447ms","perte":"0.0"},{"t":"2026-08-03T13:06:09.461914Z","estimation":"126750503","rtt":"3.326466ms","perte":"0.0"},{"t":"2026-08-03T13:06:10.462935Z","estimation":"89955314","rtt":"32.715342ms","perte":"0.0"}]
+[  135.0s 2026-08-03T13:06:10.642Z] MARQUEURS (FIN) {"lignes":201,"capteur_lance":1,"enfant_lance":1,"attachee_capteur":1,"cloture":0,"observation":102,"taille_changee":0,"taille_refusee":0,"refus_debit":0,"absence_bwe":0,"erreurs":0,"avertissements":18}
+[  135.1s 2026-08-03T13:06:10.739Z] SURVIE VM (fin de mesure) virsh="en cours d’exécution" acces_partage=OUI
+[  135.1s 2026-08-03T13:06:10.740Z] BILAN CALCULÉ {
+ "secondes": 85.294,
+ "images_decodees": 3307,
+ "i_par_s": 38.77,
+ "images_perdues": 3845,
+ "paquets_perdus": 325,
+ "paquets_recus": 786789,
+ "gels": 1,
+ "mbps_recu": 82.257,
+ "taille": "1280x720",
+ "lien_bitrate_final": 96654048,
+ "rtt_final": 0.003,
+ "chemin": "prflx ↔ host (udp)"
+}
+[  135.1s 2026-08-03T13:06:10.748Z] relevé navigateur écrit dans /home/mallanic/Projects/Guacamole/docs/superpowers/plans/journaux-multifenetres-d6/mesure-lien-navigateur.json
+[  141.2s 2026-08-03T13:06:16.893Z] journal copié dans /tmp/agent-encours-d6.log (après la fermeture du navigateur)

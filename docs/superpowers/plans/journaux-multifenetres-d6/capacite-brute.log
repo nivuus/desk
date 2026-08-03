@@ -1,0 +1,99 @@
+Sous-bloc D6, tâche 1 — capacité BRUTE du chemin VM → pont → hôte
+=================================================================
+Relevé le 3 août 2026. Instrument :
+  docs/superpowers/plans/journaux-multifenetres-d6/instrument/puits-debit.mjs (hôte)
+  docs/superpowers/plans/journaux-multifenetres-d6/instrument/debit-tcp.ps1  (VM)
+  docs/superpowers/plans/journaux-multifenetres-d6/instrument/debit-udp.ps1  (VM)
+
+Sens mesuré : VM (192.168.3.2) → pont `internalBridge` → hôte (192.168.3.1).
+C'est le sens du média. Le sens inverse n'a PAS été mesuré.
+
+Pourquoi cette mesure existe : une capacité relevée À TRAVERS WebRTC est bornée
+par l'encodeur, le sondage BWE et le décodeur autant que par le lien. Elle ne
+peut donc pas répondre seule à « le pont porte-t-il 96 Mb/s ? ». Celle-ci ne
+fait intervenir ni encodeur ni WebRTC.
+
+Contexte de charge : l'hôte portait pendant tout le chantier une transcodification
+étrangère (`tdarr-ffmpeg`, ~345 % de CPU relevé par `ps`) et la VM elle-même
+(`qemu-system-x86_64`, ~250 %). Les chiffres ci-dessous sont donc des PLANCHERS
+de ce que le chemin porte, pas son maximum.
+
+
+§A — TCP, TROIS exécutions
+--------------------------
+Émetteur : `System.Net.Sockets.TcpClient`, tampon de 1 MiB, 10 s d'écriture.
+Puits    : `net.createServer`, comptage d'octets, `mbps_calcule` = octets×8/s.
+
+  exécution 1
+    VM   : emis_octets=1814036480 secondes=10.014 mbps_emis_calcule=1449.27
+    HÔTE : {"etiquette":"connexion close","transport":"tcp","octets":1814036480,
+            "secondes":10.017,"mbps_calcule":1448.74}
+  exécution 2
+    VM   : emis_octets=3240099840 secondes=10.001 mbps_emis_calcule=2591.7
+    HÔTE : {"etiquette":"connexion close","transport":"tcp","octets":3240099840,
+            "secondes":10.018,"mbps_calcule":2587.39}
+  exécution 3
+    VM   : emis_octets=3165650944 secondes=10.002 mbps_emis_calcule=2531.98
+    HÔTE : {"etiquette":"connexion close","transport":"tcp","octets":3165650944,
+            "secondes":10.013,"mbps_calcule":2529.31}
+
+Les deux bouts comptent le MÊME nombre d'octets aux trois exécutions : rien
+n'est perdu, la mesure n'est pas une estimation.
+Débits CALCULÉS reçus : 1448,74 / 2587,39 / 2529,31 Mb/s. Trois exécutions,
+donc trois relevés — aucune moyenne n'est revendiquée comme « la » capacité.
+
+
+§B — UDP, TROIS exécutions, dont UNE avec les compteurs du noyau
+----------------------------------------------------------------
+Émetteur : `UdpClient`, datagrammes de 1200 octets (taille utile d'un paquet RTP
+sur ce chemin), 10 s.
+Puits    : `dgram`, `recvbuf` porté à 32 Mio, arrêt sur 1,5 s de silence.
+
+  exécution 1
+    VM   : emis_paquets=1682600 emis_octets=2019120000 secondes=10.002 mbps_emis_calcule=1615
+    HÔTE : {"transport":"udp","octets":399207600,"secondes":12.052,
+            "mbps_calcule":265,"paquets":332673}
+  exécution 2
+    VM   : emis_paquets=1734600 emis_octets=2081520000 secondes=10.001 mbps_emis_calcule=1665
+    HÔTE : {"transport":"udp","octets":396218400,"secondes":12.162,
+            "mbps_calcule":260.62,"paquets":330182}
+  exécution 3 (avec /proc/net/snmp avant/après)
+    VM   : emis_paquets=1711800 emis_octets=2054160000 secondes=10.001 mbps_emis_calcule=1643.09
+    HÔTE (puits node) : {"transport":"udp","octets":362870400,"secondes":12.278,
+                         "mbps_calcule":236.44,"paquets":302392}
+    /proc/net/snmp, ligne Udp:
+      AVANT: Udp: 36286226 4222660 3529518 16813167 3529518 0 0 754897 0
+      APRES: Udp: 36588938 4222662 4938926 16813426 4938926 0 0 754915 0
+      delta: InDatagrams=302712  NoPorts=2  InErrors=1409408
+             OutDatagrams=259  RcvbufErrors=1409408  SndbufErrors=0
+             InCsumErrors=0  IgnoredMulti=18  MemErrors=0
+
+LECTURE DE L'EXÉCUTION 3 — c'est le point important.
+`InDatagrams` (302 712) + `RcvbufErrors` (1 409 408) = **1 712 120** datagrammes
+parvenus à la couche socket de l'hôte, contre **1 711 800** émis par la VM
+(l'excédent de 320 est le trafic UDP étranger de l'hôte sur la même fenêtre).
+`InCsumErrors` = 0.
+
+Donc : **la totalité des datagrammes émis a traversé le pont.** Les 82 % que le
+puits node n'a pas vus ont été jetés par le NOYAU faute de place dans le tampon
+de réception (`RcvbufErrors`), c'est-à-dire parce que le programme de mesure ne
+drainait pas assez vite — PAS parce que le réseau les aurait perdus.
+
+Débit UDP CALCULÉ parvenu à l'hôte, exécution 3 :
+  2 054 160 000 octets × 8 / 10,001 s = **1 643,09 Mb/s**, avec zéro perte réseau.
+
+Les chiffres `mbps_calcule` du puits node (265,00 / 260,62 / 236,44) mesurent la
+capacité de DRAINAGE de l'instrument, pas celle du pont. Ne pas les citer comme
+une capacité de lien.
+
+
+§C — Ce que cette mesure N'ÉTABLIT PAS
+--------------------------------------
+- Rien du sens hôte → VM.
+- Rien d'un régime à N flux concurrents : un seul flux à la fois.
+- Rien de la latence sous charge, rien de la gigue.
+- L'émetteur PowerShell peut avoir borné les exécutions UDP : le débit émis
+  (1615 à 1665 Mb/s) est peut-être son propre plafond et non celui du pont.
+  Le chiffre de 1643 Mb/s est donc un PLANCHER.
+- Trois exécutions par transport : ce sont des relevés, pas un taux ni une
+  distribution.

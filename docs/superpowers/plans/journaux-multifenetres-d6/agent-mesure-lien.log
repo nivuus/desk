@@ -1,0 +1,221 @@
+2026-08-03T13:04:18.287645Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-03T13:04:18.289954Z  INFO agent::superviseur::signalisation: superviseur enregistré sur la session de contrôle session="bureau"
+2026-08-03T13:04:18.292162Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-03T13:04:18.292203Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-03T13:04:18.292224Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=1 attachees=1
+2026-08-03T13:04:18.292229Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-03T13:04:21.294463Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-03T13:04:21.294496Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-03T13:04:21.294505Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-08-03T13:04:21.294528Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-03T13:04:21.294532Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=0 avant=1 apres=1
+2026-08-03T13:04:21.298417Z  INFO agent::superviseur::lanceur: capteur lancé pid=38480
+2026-08-03T13:04:21.305475Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-03T13:04:21.305520Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-08-03T13:04:25.424438Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-03T13:04:25.424469Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-03T13:04:25.424477Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=1 attachees=1
+2026-08-03T13:04:25.424481Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-03T13:04:25.424635Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=258 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430001 largeur=1280 hauteur=720 hertz=60
+2026-08-03T13:04:25.593063Z  INFO agent::superviseur::enfants: enfant lancé session=w-2 pid=28020 sortie=\\.\DISPLAY5 audio=false
+2026-08-03T13:04:25.601572Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-03T13:04:25.601651Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY5 bitrate=100000000 fps=90
+2026-08-03T13:04:25.607446Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-03T13:04:25.607709Z  INFO agent::capteur::tube: attaché au capteur session=w-2 sortie=\\.\DISPLAY5 largeur=1280 hauteur=720
+2026-08-03T13:04:25.607926Z  INFO agent::capteur::fenetre: fenêtre attachée au capteur session=w-2 sortie=\\.\DISPLAY5 largeur=1280 hauteur=720
+2026-08-03T13:04:25.610028Z  INFO agent::signaling: agent enregistré auprès du signaling session="w-2"
+2026-08-03T13:04:25.610118Z  INFO agent::transport: socket UDP de l'agent addr=192.168.3.2:59892
+2026-08-03T13:04:25.610640Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-03T13:04:25.643648Z  INFO agent::demarrage: son désactivé sur cet enfant : une seule fenêtre le porte
+2026-08-03T13:04:28.422905Z  INFO agent::demarrage: offre reçue
+2026-08-03T13:04:28.428287Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=réception pendant l'allocation TURN
+2026-08-03T13:04:28.430362Z  INFO agent::demarrage: réponse envoyée
+2026-08-03T13:04:28.430661Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=2.7872635s
+2026-08-03T13:04:28.436011Z  INFO agent::transport::evenements: état ICE state=Connected écoulé=2.7926134s
+2026-08-03T13:04:28.449057Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video
+2026-08-03T13:04:28.449077Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio
+2026-08-03T13:04:28.475170Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-03T13:04:28.475250Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-03T13:04:28.563614Z  INFO agent::demarrage: contrôle reçu Visibility { version: 3, visible: true, focused: true }
+2026-08-03T13:04:28.578308Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-03T13:04:28.677370Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-03T13:04:28.677729Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-03T13:04:28.678687Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-03T13:04:28.694956Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:04:28.701555Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:04:28.739590Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=327681
+2026-08-03T13:04:28.744715Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-03T13:04:28.745108Z  INFO agent::capteur::fenetre::transitions: fenêtre réveillée session=w-2 largeur=1280 hauteur=720 duree_ms=167
+2026-08-03T13:04:28.756562Z  INFO agent::demarrage: contrôle reçu Resize { version: 3, width: 1280, height: 720 }
+2026-08-03T13:04:28.760543Z  INFO agent::windows_source::redimensionnement: redimensionnement ignoré : la source capture une sortie DXGI entière (hors périmètre D1, voir spec §3.3) width=1280 height=720 mode=SortieEntiere
+2026-08-03T13:04:29.195540Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:04:29.200476Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:04:29.431226Z DEBUG agent::transport::evenements: observation réseau estimation=Some(96754050) rtt=None perte=None
+2026-08-03T13:04:30.199269Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:04:30.203799Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=2 backoff_ms=4
+2026-08-03T13:04:30.431809Z DEBUG agent::transport::evenements: observation réseau estimation=Some(106672357) rtt=Some(7.33959ms) perte=Some(0.0)
+2026-08-03T13:04:31.200373Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:04:31.432584Z DEBUG agent::transport::evenements: observation réseau estimation=Some(112006317) rtt=Some(6.225681ms) perte=Some(0.0)
+2026-08-03T13:04:32.433117Z DEBUG agent::transport::evenements: observation réseau estimation=Some(117607270) rtt=Some(12.420844ms) perte=Some(0.0)
+2026-08-03T13:04:33.200786Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:04:33.222006Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:04:33.433904Z DEBUG agent::transport::evenements: observation réseau estimation=Some(123487857) rtt=Some(1.937895ms) perte=Some(0.0)
+2026-08-03T13:04:34.434124Z DEBUG agent::transport::evenements: observation réseau estimation=Some(129662437) rtt=Some(1.937895ms) perte=None
+2026-08-03T13:04:35.434247Z DEBUG agent::transport::evenements: observation réseau estimation=Some(129662437) rtt=Some(1.937895ms) perte=Some(0.0)
+2026-08-03T13:04:35.613332Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=598 endormie=false cadence="59.8"
+2026-08-03T13:04:35.649275Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=602 cadence="60.2"
+2026-08-03T13:04:36.201148Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:04:36.220961Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:04:36.434610Z DEBUG agent::transport::evenements: observation réseau estimation=Some(136159094) rtt=Some(2.166781ms) perte=Some(0.0)
+2026-08-03T13:04:37.434889Z DEBUG agent::transport::evenements: observation réseau estimation=Some(142967298) rtt=Some(3.219653ms) perte=Some(0.0)
+2026-08-03T13:04:38.435083Z DEBUG agent::transport::evenements: observation réseau estimation=Some(142967298) rtt=Some(90.409704ms) perte=Some(0.0)
+2026-08-03T13:04:39.200577Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:04:39.221711Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:04:39.435419Z DEBUG agent::transport::evenements: observation réseau estimation=Some(142967298) rtt=Some(90.409704ms) perte=None
+2026-08-03T13:04:40.435821Z DEBUG agent::transport::evenements: observation réseau estimation=Some(142967298) rtt=Some(22.110322ms) perte=Some(0.0)
+2026-08-03T13:04:41.435863Z DEBUG agent::transport::evenements: observation réseau estimation=Some(142967298) rtt=Some(1.144426ms) perte=Some(0.0)
+2026-08-03T13:04:42.200287Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:04:42.220713Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:04:42.436388Z DEBUG agent::transport::evenements: observation réseau estimation=Some(150189043) rtt=Some(1.144426ms) perte=None
+2026-08-03T13:04:43.188201Z DEBUG agent::transport::evenements: image clé demandée par le pair mid=Mid(0)
+2026-08-03T13:04:43.436653Z DEBUG agent::transport::evenements: observation réseau estimation=Some(94311658) rtt=Some(6.561379ms) perte=Some(0.0)
+2026-08-03T13:04:44.437309Z DEBUG agent::transport::evenements: observation réseau estimation=Some(89579498) rtt=Some(11.886778ms) perte=Some(0.0)
+2026-08-03T13:04:45.200466Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:04:45.221278Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:04:45.437803Z DEBUG agent::transport::evenements: observation réseau estimation=Some(94058744) rtt=Some(11.886778ms) perte=None
+2026-08-03T13:04:45.616914Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=861 endormie=false cadence="86.1"
+2026-08-03T13:04:45.649730Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=860 cadence="86.0"
+2026-08-03T13:04:46.438374Z DEBUG agent::transport::evenements: observation réseau estimation=Some(94058744) rtt=Some(12.436103ms) perte=Some(0.0)
+2026-08-03T13:04:47.438550Z DEBUG agent::transport::evenements: observation réseau estimation=Some(94058744) rtt=Some(12.436103ms) perte=None
+2026-08-03T13:04:48.439034Z DEBUG agent::transport::evenements: observation réseau estimation=Some(94058744) rtt=Some(10.528726ms) perte=Some(0.0)
+2026-08-03T13:04:49.439114Z DEBUG agent::transport::evenements: observation réseau estimation=Some(98761938) rtt=Some(4.806592ms) perte=Some(0.0)
+2026-08-03T13:04:50.439444Z DEBUG agent::transport::evenements: observation réseau estimation=Some(98514707) rtt=Some(9.628443ms) perte=Some(0.0)
+2026-08-03T13:04:51.439811Z DEBUG agent::transport::evenements: observation réseau estimation=Some(76187355) rtt=Some(9.628443ms) perte=None
+2026-08-03T13:04:52.439945Z DEBUG agent::transport::evenements: observation réseau estimation=Some(68681656) rtt=Some(20.920118ms) perte=Some(0.0)
+2026-08-03T13:04:53.440080Z DEBUG agent::transport::evenements: observation réseau estimation=Some(72117219) rtt=Some(26.459144ms) perte=Some(0.02745098)
+2026-08-03T13:04:54.440339Z DEBUG agent::transport::evenements: observation réseau estimation=Some(79548527) rtt=Some(2.761883ms) perte=Some(0.0)
+2026-08-03T13:04:55.440330Z DEBUG agent::transport::evenements: observation réseau estimation=Some(92109709) rtt=Some(6.057832ms) perte=Some(0.0)
+2026-08-03T13:04:55.620722Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=851 endormie=false cadence="85.1"
+2026-08-03T13:04:55.659484Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=852 cadence="85.1"
+2026-08-03T13:04:56.440544Z DEBUG agent::transport::evenements: observation réseau estimation=Some(101552272) rtt=Some(19.058518ms) perte=Some(0.0)
+2026-08-03T13:04:57.440428Z DEBUG agent::transport::evenements: observation réseau estimation=Some(101552272) rtt=Some(6.179904ms) perte=Some(0.0)
+2026-08-03T13:04:58.441104Z DEBUG agent::transport::evenements: observation réseau estimation=Some(106630534) rtt=Some(6.179904ms) perte=None
+2026-08-03T13:04:59.441092Z DEBUG agent::transport::evenements: observation réseau estimation=Some(117561426) rtt=Some(13.992523ms) perte=Some(0.0)
+2026-08-03T13:05:00.441102Z DEBUG agent::transport::evenements: observation réseau estimation=Some(123439560) rtt=Some(7.217517ms) perte=Some(0.0)
+2026-08-03T13:05:01.441687Z DEBUG agent::transport::evenements: observation réseau estimation=Some(123439560) rtt=Some(20.370794ms) perte=Some(0.0)
+2026-08-03T13:05:02.441850Z DEBUG agent::transport::evenements: observation réseau estimation=Some(136093290) rtt=Some(1.434348ms) perte=Some(0.0)
+2026-08-03T13:05:03.442341Z DEBUG agent::transport::evenements: observation réseau estimation=Some(136093290) rtt=Some(9.781033ms) perte=Some(0.0)
+2026-08-03T13:05:04.442640Z DEBUG agent::transport::evenements: observation réseau estimation=Some(136093290) rtt=Some(9.781033ms) perte=None
+2026-08-03T13:05:05.442924Z DEBUG agent::transport::evenements: observation réseau estimation=Some(142898691) rtt=Some(2.01419ms) perte=Some(0.0)
+2026-08-03T13:05:05.628153Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=845 endormie=false cadence="84.4"
+2026-08-03T13:05:05.660179Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=844 cadence="84.4"
+2026-08-03T13:05:06.443244Z DEBUG agent::transport::evenements: observation réseau estimation=Some(145994147) rtt=Some(1.571679ms) perte=Some(0.0)
+2026-08-03T13:05:07.444055Z DEBUG agent::transport::evenements: observation réseau estimation=Some(145994147) rtt=Some(46.5095ms) perte=Some(0.0)
+2026-08-03T13:05:08.444123Z DEBUG agent::transport::evenements: observation réseau estimation=Some(145994147) rtt=Some(4.66926ms) perte=Some(0.0)
+2026-08-03T13:05:09.444273Z DEBUG agent::transport::evenements: observation réseau estimation=Some(145994147) rtt=Some(32.45594ms) perte=Some(0.0)
+2026-08-03T13:05:10.444581Z DEBUG agent::transport::evenements: observation réseau estimation=Some(147646530) rtt=Some(13.138018ms) perte=Some(0.0)
+2026-08-03T13:05:11.444680Z DEBUG agent::transport::evenements: observation réseau estimation=Some(123772940) rtt=Some(2.33463ms) perte=Some(0.0)
+2026-08-03T13:05:11.625053Z DEBUG agent::transport::evenements: image clé demandée par le pair mid=Mid(0)
+2026-08-03T13:05:11.849263Z DEBUG agent::transport::evenements: image clé demandée par le pair mid=Mid(0)
+2026-08-03T13:05:12.032723Z DEBUG agent::transport::evenements: image clé demandée par le pair mid=Mid(0)
+2026-08-03T13:05:12.220247Z DEBUG agent::transport::evenements: image clé demandée par le pair mid=Mid(0)
+2026-08-03T13:05:12.419172Z DEBUG agent::transport::evenements: image clé demandée par le pair mid=Mid(0)
+2026-08-03T13:05:12.445076Z DEBUG agent::transport::evenements: observation réseau estimation=Some(123772940) rtt=Some(5.004959ms) perte=Some(0.0)
+2026-08-03T13:05:12.633917Z DEBUG agent::transport::evenements: image clé demandée par le pair mid=Mid(0)
+2026-08-03T13:05:12.836038Z DEBUG agent::transport::evenements: image clé demandée par le pair mid=Mid(0)
+2026-08-03T13:05:13.445701Z DEBUG agent::transport::evenements: observation réseau estimation=Some(123772940) rtt=Some(16.983292ms) perte=Some(0.0)
+2026-08-03T13:05:14.446407Z DEBUG agent::transport::evenements: observation réseau estimation=Some(123772940) rtt=Some(18.524454ms) perte=Some(0.0)
+2026-08-03T13:05:15.446906Z DEBUG agent::transport::evenements: observation réseau estimation=Some(70028188) rtt=Some(6.149386ms) perte=Some(0.0)
+2026-08-03T13:05:15.630618Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=862 endormie=false cadence="86.2"
+2026-08-03T13:05:15.669695Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=863 cadence="86.2"
+2026-08-03T13:05:16.447176Z DEBUG agent::transport::evenements: observation réseau estimation=Some(70028188) rtt=Some(12.146181ms) perte=Some(0.0)
+2026-08-03T13:05:17.448175Z DEBUG agent::transport::evenements: observation réseau estimation=Some(70028188) rtt=Some(1.602197ms) perte=Some(0.0)
+2026-08-03T13:05:18.448848Z DEBUG agent::transport::evenements: observation réseau estimation=Some(73530110) rtt=Some(2.441443ms) perte=Some(0.0)
+2026-08-03T13:05:19.449376Z DEBUG agent::transport::evenements: observation réseau estimation=Some(81103390) rtt=Some(1.358053ms) perte=Some(0.0)
+2026-08-03T13:05:20.450269Z DEBUG agent::transport::evenements: observation réseau estimation=Some(85158808) rtt=Some(19.470512ms) perte=Some(0.0)
+2026-08-03T13:05:21.450270Z DEBUG agent::transport::evenements: observation réseau estimation=Some(93930961) rtt=Some(4.776074ms) perte=Some(0.0)
+2026-08-03T13:05:22.450403Z DEBUG agent::transport::evenements: observation réseau estimation=Some(103560094) rtt=Some(33.951324ms) perte=Some(0.0)
+2026-08-03T13:05:23.450407Z DEBUG agent::transport::evenements: observation réseau estimation=Some(103560094) rtt=Some(76.417184ms) perte=Some(0.0)
+2026-08-03T13:05:24.450415Z DEBUG agent::transport::evenements: observation réseau estimation=Some(114176411) rtt=Some(4.150454ms) perte=Some(0.0)
+2026-08-03T13:05:25.450427Z DEBUG agent::transport::evenements: observation réseau estimation=Some(119885809) rtt=Some(4.150454ms) perte=None
+2026-08-03T13:05:25.639128Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=849 endormie=false cadence="84.8"
+2026-08-03T13:05:25.670336Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=848 cadence="84.8"
+2026-08-03T13:05:26.450435Z DEBUG agent::transport::evenements: observation réseau estimation=Some(119885809) rtt=Some(3.73846ms) perte=Some(0.0)
+2026-08-03T13:05:27.450445Z DEBUG agent::transport::evenements: observation réseau estimation=Some(125880640) rtt=Some(10.376135ms) perte=Some(0.0)
+2026-08-03T13:05:28.450645Z DEBUG agent::transport::evenements: observation réseau estimation=Some(132174914) rtt=Some(10.376135ms) perte=None
+2026-08-03T13:05:29.450649Z DEBUG agent::transport::evenements: observation réseau estimation=Some(132174914) rtt=Some(32.837416ms) perte=Some(0.0)
+2026-08-03T13:05:30.450655Z DEBUG agent::transport::evenements: observation réseau estimation=Some(138785599) rtt=Some(7.186999ms) perte=Some(0.0)
+2026-08-03T13:05:31.450664Z DEBUG agent::transport::evenements: observation réseau estimation=Some(145730572) rtt=Some(21.286334ms) perte=Some(0.0)
+2026-08-03T13:05:32.451289Z DEBUG agent::transport::evenements: observation réseau estimation=Some(145730572) rtt=Some(19.775692ms) perte=Some(0.0)
+2026-08-03T13:05:33.451261Z DEBUG agent::transport::evenements: observation réseau estimation=Some(145730572) rtt=Some(19.775692ms) perte=None
+2026-08-03T13:05:34.451735Z DEBUG agent::transport::evenements: observation réseau estimation=Some(59476502) rtt=Some(43.549248ms) perte=Some(0.0)
+2026-08-03T13:05:35.452119Z DEBUG agent::transport::evenements: observation réseau estimation=Some(62450401) rtt=Some(14.282444ms) perte=Some(0.0)
+2026-08-03T13:05:35.642952Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=857 endormie=false cadence="85.7"
+2026-08-03T13:05:35.680188Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=858 cadence="85.7"
+2026-08-03T13:05:36.452641Z DEBUG agent::transport::evenements: observation réseau estimation=Some(65573411) rtt=Some(6.820783ms) perte=Some(0.0)
+2026-08-03T13:05:37.453209Z DEBUG agent::transport::evenements: observation réseau estimation=Some(68853687) rtt=Some(2.258335ms) perte=Some(0.0)
+2026-08-03T13:05:38.453787Z DEBUG agent::transport::evenements: observation réseau estimation=Some(80209746) rtt=Some(8.59083ms) perte=Some(0.0)
+2026-08-03T13:05:39.454304Z DEBUG agent::transport::evenements: observation réseau estimation=Some(88467592) rtt=Some(53.788052ms) perte=Some(0.0)
+2026-08-03T13:05:40.454537Z DEBUG agent::transport::evenements: observation réseau estimation=Some(92891704) rtt=Some(53.788052ms) perte=None
+2026-08-03T13:05:41.454627Z DEBUG agent::transport::evenements: observation réseau estimation=Some(102413535) rtt=Some(6.988632ms) perte=Some(0.0)
+2026-08-03T13:05:42.454664Z DEBUG agent::transport::evenements: observation réseau estimation=Some(107535617) rtt=Some(82.307168ms) perte=Some(0.0)
+2026-08-03T13:05:43.455466Z DEBUG agent::transport::evenements: observation réseau estimation=Some(118559115) rtt=Some(82.307168ms) perte=None
+2026-08-03T13:05:44.455884Z DEBUG agent::transport::evenements: observation réseau estimation=Some(124488095) rtt=Some(52.06378ms) perte=Some(0.0)
+2026-08-03T13:05:45.456288Z DEBUG agent::transport::evenements: observation réseau estimation=Some(130713110) rtt=Some(52.06378ms) perte=None
+2026-08-03T13:05:45.652829Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=868 endormie=false cadence="86.7"
+2026-08-03T13:05:45.689612Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=868 cadence="86.7"
+2026-08-03T13:05:46.456573Z DEBUG agent::transport::evenements: observation réseau estimation=Some(137249988) rtt=Some(10.788129ms) perte=Some(0.0)
+2026-08-03T13:05:47.456921Z DEBUG agent::transport::evenements: observation réseau estimation=Some(144145264) rtt=Some(3.173876ms) perte=Some(0.0)
+2026-08-03T13:05:48.456937Z DEBUG agent::transport::evenements: observation réseau estimation=Some(144145264) rtt=Some(27.75616ms) perte=Some(0.0)
+2026-08-03T13:05:49.457473Z DEBUG agent::transport::evenements: observation réseau estimation=Some(145778766) rtt=Some(26.321814ms) perte=Some(0.0)
+2026-08-03T13:05:50.457751Z DEBUG agent::transport::evenements: observation réseau estimation=Some(145778766) rtt=Some(28.717478ms) perte=Some(0.0)
+2026-08-03T13:05:51.457838Z DEBUG agent::transport::evenements: observation réseau estimation=Some(145778766) rtt=Some(1.785305ms) perte=Some(0.0)
+2026-08-03T13:05:52.458006Z DEBUG agent::transport::evenements: observation réseau estimation=Some(149442810) rtt=Some(27.481498ms) perte=Some(0.0)
+2026-08-03T13:05:53.458437Z DEBUG agent::transport::evenements: observation réseau estimation=Some(149442810) rtt=Some(2.471961ms) perte=Some(0.0)
+2026-08-03T13:05:54.458876Z DEBUG agent::transport::evenements: observation réseau estimation=Some(149442810) rtt=Some(11.505303ms) perte=Some(0.0)
+2026-08-03T13:05:55.459927Z DEBUG agent::transport::evenements: observation réseau estimation=Some(149574400) rtt=Some(1.342793ms) perte=Some(0.0)
+2026-08-03T13:05:55.663637Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=863 endormie=false cadence="86.2"
+2026-08-03T13:05:55.690401Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=861 cadence="86.1"
+2026-08-03T13:05:56.460099Z DEBUG agent::transport::evenements: observation réseau estimation=Some(149574400) rtt=Some(10.223545ms) perte=Some(0.0)
+2026-08-03T13:05:57.460195Z DEBUG agent::transport::evenements: observation réseau estimation=Some(149574400) rtt=Some(6.485084ms) perte=Some(0.0)
+2026-08-03T13:05:58.460144Z DEBUG agent::transport::evenements: observation réseau estimation=Some(149574400) rtt=Some(6.485084ms) perte=None
+2026-08-03T13:05:59.460283Z DEBUG agent::transport::evenements: observation réseau estimation=Some(149574400) rtt=Some(4.028381ms) perte=Some(0.0)
+2026-08-03T13:05:59.967977Z DEBUG agent::transport::evenements: image clé demandée par le pair mid=Mid(0)
+2026-08-03T13:06:00.460169Z DEBUG agent::transport::evenements: observation réseau estimation=Some(171432229) rtt=Some(5.203326ms) perte=Some(0.0)
+2026-08-03T13:06:01.460175Z DEBUG agent::transport::evenements: observation réseau estimation=Some(171432229) rtt=Some(7.186999ms) perte=Some(0.0)
+2026-08-03T13:06:02.460280Z DEBUG agent::transport::evenements: observation réseau estimation=Some(171432229) rtt=Some(7.125963ms) perte=Some(0.0)
+2026-08-03T13:06:03.460272Z DEBUG agent::transport::evenements: observation réseau estimation=Some(171432229) rtt=Some(3.692683ms) perte=Some(0.0)
+2026-08-03T13:06:04.460281Z DEBUG agent::transport::evenements: observation réseau estimation=Some(53734515) rtt=Some(28.809034ms) perte=Some(0.0)
+2026-08-03T13:06:05.140750Z DEBUG agent::transport::evenements: image clé demandée par le pair mid=Mid(0)
+2026-08-03T13:06:05.460437Z DEBUG agent::transport::evenements: observation réseau estimation=Some(53734515) rtt=Some(3.58587ms) perte=Some(0.055752825)
+2026-08-03T13:06:05.667498Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=861 endormie=false cadence="86.1"
+2026-08-03T13:06:05.700212Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=862 cadence="86.1"
+2026-08-03T13:06:06.460933Z DEBUG agent::transport::evenements: observation réseau estimation=Some(53734515) rtt=Some(3.58587ms) perte=None
+2026-08-03T13:06:07.461262Z DEBUG agent::transport::evenements: observation réseau estimation=Some(56425561) rtt=Some(11.642634ms) perte=Some(0.0)
+2026-08-03T13:06:08.461746Z DEBUG agent::transport::evenements: observation réseau estimation=Some(126750503) rtt=Some(12.63447ms) perte=Some(0.0)
+2026-08-03T13:06:09.461914Z DEBUG agent::transport::evenements: observation réseau estimation=Some(126750503) rtt=Some(3.326466ms) perte=Some(0.0)
+2026-08-03T13:06:10.039686Z DEBUG agent::transport::evenements: image clé demandée par le pair mid=Mid(0)
+2026-08-03T13:06:10.231494Z DEBUG agent::transport::evenements: image clé demandée par le pair mid=Mid(0)
+2026-08-03T13:06:10.408809Z DEBUG agent::transport::evenements: image clé demandée par le pair mid=Mid(0)
+2026-08-03T13:06:10.462935Z DEBUG agent::transport::evenements: observation réseau estimation=Some(89955314) rtt=Some(32.715342ms) perte=Some(0.0)
+2026-08-03T13:06:10.790243Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-03T13:06:10.790792Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:06:10.793323Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=2 backoff_ms=4
+2026-08-03T13:06:10.798428Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=3 backoff_ms=8
+2026-08-03T13:06:10.808278Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=4 backoff_ms=16
+2026-08-03T13:06:10.827108Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=5 backoff_ms=32
+2026-08-03T13:06:10.860654Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=6 backoff_ms=64
+2026-08-03T13:06:11.463446Z DEBUG agent::transport::evenements: observation réseau estimation=Some(89955314) rtt=Some(32.715342ms) perte=None
+2026-08-03T13:06:11.797195Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:06:12.463864Z DEBUG agent::transport::evenements: observation réseau estimation=Some(89955314) rtt=Some(32.715342ms) perte=None
+2026-08-03T13:06:12.797540Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:06:13.464377Z DEBUG agent::transport::evenements: observation réseau estimation=Some(80870640) rtt=Some(32.715342ms) perte=None
+2026-08-03T13:06:13.797182Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:06:14.464578Z DEBUG agent::transport::evenements: observation réseau estimation=Some(84708327) rtt=Some(32.715342ms) perte=None
+2026-08-03T13:06:14.796736Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:06:15.465009Z DEBUG agent::transport::evenements: observation réseau estimation=Some(84708327) rtt=Some(32.715342ms) perte=None
+2026-08-03T13:06:15.674494Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=856 endormie=false cadence="85.5"
+2026-08-03T13:06:15.706212Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=855 cadence="85.4"
+2026-08-03T13:06:15.796722Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:06:16.465479Z DEBUG agent::transport::evenements: observation réseau estimation=Some(84708327) rtt=Some(32.715342ms) perte=None
+2026-08-03T13:06:16.797007Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2

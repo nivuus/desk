@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>chargement</title>
+<style>
+  html,body { margin:0; padding:0; background:#101018; overflow:hidden; }
+  canvas { display:block; width:100vw; height:100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// Source ANIMEE de la recette D4 (tache 11) : le bureau doit changer a chaque
+// trame, sans quoi Desktop Duplication n'emet rien -- piege documente dans
+// CLAUDE.md, et faiblesse que la recette 9 s'est elle-meme reprochee.
+// Le compteur de trames rAF affiche en grand rend l'animation verifiable, et
+// son debit est la borne haute de ce que la capture peut voir.
+const n = new URLSearchParams(location.search).get('n') || '0';
+document.title = 'Anim ' + n;
+const c = document.getElementById('c');
+const g = c.getContext('2d');
+let trames = 0;
+let debut = performance.now();
+let hz = 0;
+function taille() {
+  c.width = Math.max(1, Math.floor(window.innerWidth));
+  c.height = Math.max(1, Math.floor(window.innerHeight));
+}
+taille();
+window.addEventListener('resize', taille);
+function boucle(t) {
+  trames += 1;
+  if (t - debut >= 1000) { hz = (trames * 1000 / (t - debut)); trames = 0; debut = t; }
+  const L = c.width, H = c.height;
+  // Fond qui derive : chaque pixel change a chaque trame, donc l'encodeur
+  // travaille reellement, et non sur un delta nul.
+  const phase = (t / 20) % 360;
+  const grad = g.createLinearGradient(0, 0, L, H);
+  grad.addColorStop(0, 'hsl(' + phase + ',70%,22%)');
+  grad.addColorStop(1, 'hsl(' + ((phase + 120) % 360) + ',70%,42%)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, L, H);
+  const x = ((t / 6) % (L + 200)) - 100;
+  g.fillStyle = 'rgba(255,255,255,0.85)';
+  g.fillRect(x, 0, 40, H);
+  g.fillStyle = '#fff';
+  g.font = 'bold ' + Math.floor(H / 7) + 'px monospace';
+  g.textBaseline = 'top';
+  g.fillText('W' + n + '  ' + Math.floor(t), 20, 20);
+  g.font = 'bold ' + Math.floor(H / 12) + 'px monospace';
+  g.fillText('rAF ' + hz.toFixed(1) + ' Hz', 20, 30 + Math.floor(H / 7));
+  g.fillText(L + 'x' + H, 20, 40 + Math.floor(H / 7) + Math.floor(H / 12));
+  requestAnimationFrame(boucle);
+}
+requestAnimationFrame(boucle);
+</script>
+</body>
+</html>
