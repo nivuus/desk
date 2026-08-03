@@ -495,7 +495,9 @@ comparable à celle du §2. Aucun taux n'est revendiqué nulle part.**
 > **① Les cinq critères sont tenus, mais DEUX D'ENTRE EUX SOUS RÉSERVE, et la
 > réserve est écrite dans le verdict lui-même** — ① n'est **pas reproduit** hors
 > de la charge d'hôte de référence, et ④ n'est **pas systématique** (11
-> déplacements de focus sur 14). À huit fenêtres, `BUDGET_BPS = 12 000 000` :
+> déplacements de focus sur 14 — mais les trois échecs sont imputés au
+> **protocole de mesure**, pas au produit : la promotion a lieu après la fin du
+> palier, relevée 63 et 66 s plus tard sur la même fenêtre, voir §3.4 ④). À huit fenêtres, `BUDGET_BPS = 12 000 000` :
 > **3,94 %** des images reçues sont jetées (seuil : **< 7,99 %**), les sept
 > fenêtres non focalisées se posent au barreau **852×480** — celui que personne
 > n'avait mesuré — et la focalisée à 1024×576, la somme des parts vaut
@@ -709,8 +711,19 @@ le fait produire par le capteur) : elle est **indicative, pas contrôlée**.
 focalisées sont à **852×480** et la focalisée à **1024×576** (champs `taille`
 et `lien_taille` de `recette-d-budget12.json`) ; sans budget, le §2.2 relevait
 **1280×720 (8/8)**. À 8 Mb/s : **640×360** pour les sept. Le nombre de
-changements de barreau nécessaires pour s'y poser est relevé : **24** à 12 Mb/s,
-**20** et **18** à 8 Mb/s.
+changements de barreau nécessaires pour s'y poser : **12** à 12 Mb/s, **10** et
+**9** à 8 Mb/s.
+
+⚠️ **Tous les compteurs de barreau de ce §3, y compris les champs `pose` des
+`.json` (24, 20, 18, 50, 76, 34, 16…), comptent des LIGNES et valent donc le
+DOUBLE du nombre de changements.** Un changement produit **deux** lignes au même
+horodatage, à ~70 µs d'intervalle : une d'`agent::windows_source::encodage`
+(« taille d'encodage changée sans toucher à la fenêtre ») côté capteur, et une
+d'`agent::transport::adaptation` (« taille d'encodage changée ») côté enfant.
+Le §2.3 le savait et le disait ; l'instrument de ce §3 les compte toutes deux.
+**Défaut préexistant, sans effet sur aucune conclusion** — le critère « échelle
+posée » se juge sur 12 s **sans aucune ligne**, ce qu'un double comptage ne
+change pas — mais les nombres bruts sont à diviser par deux.
 
 **③ — la somme des parts.** Relevé nominal, session par session, dans les
 traces `part de budget appliquee session=… part_bps=…` :
@@ -750,22 +763,57 @@ la règle est « strictement au-dessus de **toutes** les autres éveillées » :
 sélection** — et l'exécution qui manquait est précisément celle qui échoue. La
 règle de sélection est désormais au §3.3 ; ici, **les 14 sont rapportés**.
 
-Les deux modes d'échec **ne sont pas le même**, et un seul s'explique :
+**Les trois échecs ne sont PAS des échecs du produit : ce sont des échecs du
+protocole de mesure, et les journaux le montrent.** Une rédaction antérieure de
+ce paragraphe déclarait les deux échecs de G « INEXPLIQUÉS » ; ils s'expliquent,
+sur les pièces déjà versées.
 
-- **F, 2ᵉ déplacement — expliqué, et arithmétiquement.** À 8 Mb/s la part
-  majorée vaut 1 777 776 bps pour un `min_bps` de **1 769 472** au barreau
-  1024×576 : **8 304 bps de marge, soit 0,47 %.** Il suffit que l'estimation BWE
-  passe d'un cheveu sous la part pour que la promotion n'ait pas lieu, et c'est
-  bien ce qu'on observe (plusieurs fenêtres annoncent 552 154 à 885 102 bps pour
-  une part de 888 888).
-- **G, les DEUX déplacements — INEXPLIQUÉ.** Sa focalisée a reçu **2 509 810**
-  puis **2 666 666 bps**, très au-dessus des 1 769 472 requis : **les 51 % de
-  marge étaient là, et la promotion n'a pas eu lieu.** G a par ailleurs une
-  **échelle posée** (12,6 s), donc elle n'a pas le disqualifiant de A. Ce qui la
-  distingue est sa charge d'hôte (`tdarr` à 351 %) — **corrélation, pas cause**.
-  **La marge arithmétique ne suffit donc pas à garantir la promotion**, et
-  `FACTEUR_FOCUS` ne départage pas les deux budgets : **8/10 contre 3/4** n'est
-  pas un écart que ces effectifs permettent de trancher.
+**Le produit s'impose lui-même une temporisation de 20 s.** `DELAI_REMONTEE`
+(`agent/src/congestion/hysteresis.rs`) exige qu'une cible plus haute **tienne
+20 s** avant qu'une remontée de barreau ne soit appliquée. **Le palier de focus
+de cette recette dure 25 s** : il doit absorber dans ses 5 s de marge l'annonce
+de focus, la redistribution des parts, la montée de l'estimation BWE au-dessus
+du `min_bps` du barreau visé, **et** 20 s sans un seul creux qui rearme le
+compteur. **La fenêtre d'observation n'excède la temporisation du mécanisme
+observé que de 25 %.**
+
+Le relevé de `lien_taille` et `lien_bitrate` fenêtre par fenêtre, échantillon
+par échantillon, montre que **la promotion a bien eu lieu dans les trois cas,
+après la fin du palier** :
+
+| Exéc. | fenêtre | à la fin du palier de focus | plus tard, même fenêtre, toujours focalisée |
+| --- | --- | --- | --- |
+| **G** | `w-6` | `18:01:39` — **852×480**, part 2 666 666 | `18:02:42` (**+63 s**) — **1024×576 / 2 552 888** |
+| **G** | `w-4` | `18:01:14` — **852×480**, part 2 509 810 | jamais : le focus lui est **retiré 25 s plus tard**, sa promotion est **préemptée** |
+| **F** | `w-6` | `17:51:22` — **640×360**, part 1 777 776 | `17:52:28` (**+66 s**) — **852×480 / 1 664 000** |
+
+Et **G tient le critère ④ en phase 1**, où sa focalisée `w-2` a disposé de
+**45 s** : elle y est à **1024×576 / 2 666 666** contre 852×480 / 1 333 333 pour
+les sept autres. **La promotion de focus fonctionne dans G.** Ce que le
+protocole a mesuré n'est pas son absence, mais sa **latence**.
+
+**L'imputation correcte, à écrire à la place d'« inexpliqué »** : *promotion
+retardée au-delà de la fenêtre d'observation ; relevée 63 s (G) et 66 s (F) plus
+tard sur la même fenêtre, le palier de 25 s n'excédant que de 5 s le
+`DELAI_REMONTEE` de 20 s du produit.*
+
+⚠️ **Le comptage 11/14 ne bouge pas** : la mesure a bien échoué à ces trois
+instants, et le tableau ci-dessus reste le relevé. **C'est son IMPUTATION qui
+change** — le protocole, pas le mécanisme.
+
+⚠️ **Et l'explication arithmétique que je donnais pour F est REMISE À SA
+PLACE.** À 8 Mb/s, la part majorée vaut 1 777 776 bps pour un `min_bps` de
+**1 769 472** au barreau 1024×576 : **8 304 bps de marge, soit 0,47 %** — c'est
+exact, et cela reste un facteur plausible pour expliquer que `w-6` ait fini à
+852×480 plutôt qu'à 1024×576. **Mais ce n'est PAS la raison pour laquelle le
+critère a été manqué** : la promotion a eu lieu, hors fenêtre. La marge de
+0,47 % est donc un **facteur candidat sur le barreau atteint**, pas la cause de
+l'échec de mesure. L'autre déplacement de F, et les deux de E, ont d'ailleurs
+réussi dans les mêmes 25 s au même budget.
+
+**Conséquence pour la calibration** : `FACTEUR_FOCUS` ne départage toujours pas
+les deux budgets — et on sait maintenant que **8/10 contre 3/4 mesure surtout la
+durée des paliers**, pas le mécanisme.
 
 ⚠️ **Une nuance de mesure, à ne pas taire** : au second déplacement de
 l'exécution E, l'agent annonçait bien 1024×576 pour la focalisée alors que le
@@ -904,8 +952,14 @@ survit* :
   le taux d'images jetées, ni le débit de pixels, ni la réussite de la
   majoration de focus ne désignent un gagnant (§3.5). Le choix tient à une
   raison — le cas mono-fenêtre — **elle-même jamais mesurée à 12 Mb/s**.
-- **Les deux échecs de focus de l'exécution G ne sont pas expliqués** : 51 % de
-  marge sur le seuil de barreau, échelle posée, promotion absente deux fois.
+- **Les trois échecs de promotion de focus sont imputés au PROTOCOLE**, sur les
+  pièces versées (promotion relevée 63 et 66 s après la fin du palier, une
+  quatrième préemptée par le déplacement suivant) — **mais aucune exécution n'a
+  été rejouée avec un palier plus long**. Que 45 à 60 s suffiraient est
+  **plausible et non vérifié**. La latence de promotion elle-même n'est pas
+  mesurée : elle est **bornée** par deux échantillons distants de 63 et 66 s,
+  faute d'une trace datée et attribuable — corrigée depuis (`99e5641`) et
+  inutilisable rétrospectivement.
 - **La valeur est DE LABORATOIRE**, exactement comme celle du §2 : navigateur
   Chrome sans interface, `--disable-gpu`, donc **décodage logiciel**, sur l'hôte
   qui porte aussi la VM et une charge étrangère variable d'un facteur 3,6.
@@ -958,12 +1012,29 @@ survit* :
   secondes sans changement de barreau — et non une durée.
 - ⚠️ **Sur un hôte qui porte d'autres charges, relever la charge à chaque
   palier ne suffit pas : il faut la relever NOMMÉMENT et refuser de comparer
-  au-delà d'un écart.** Ici `tdarr-ffmpeg` seul est passé de 97 % à 351 % de CPU
-  en une heure, et le verdict du critère ① bascule avec lui.
+  au-delà d'un écart.** Ici la charge de l'hôte a varié d'un facteur **3,6**
+  (`tdarr-ffmpeg` de 97 % à 351 % de CPU en une heure) et les taux d'images
+  jetées d'un facteur **19** — **sans que les deux soient appariés**. Les deux
+  pires exécutions ont `tdarr` à **104** et **98**, et le seul rang à **351 %**
+  rend 16,70 % : **le verdict ne suit pas `tdarr`.** *(Une rédaction antérieure
+  de ce piège écrivait « et le verdict du critère ① bascule avec lui » — c'était
+  exactement l'attribution que le §3.0 ③ venait de déclarer inférée et non
+  établie, réintroduite dans la section destinée à être recopiée.)*
 - **Une part majorée qui atterrit à 0,47 % d'un seuil de barreau est un tirage
   au sort, pas une majoration.** Vérifier la marge d'une constante contre
-  l'échelle **avant** de croire qu'elle produit l'effet voulu. ⚠️ **Et la marge
-  ne suffit pas** : l'exécution G rate ses deux promotions avec 51 % de marge.
+  l'échelle **avant** de croire qu'elle produit l'effet voulu. ⚠️ **Mais une
+  marge insuffisante n'était PAS la cause des échecs de focus ici** — c'était la
+  durée du palier (piège ci-dessus) : l'exécution G rate ses deux promotions
+  avec 51 % de marge, et les obtient plus tard.
+- ⚠️ **UN PALIER DE MESURE DOIT ÊTRE PLUSIEURS FOIS PLUS LONG QUE LA
+  TEMPORISATION DU MÉCANISME QU'IL OBSERVE.** Celui du focus valait **25 s**
+  pour un `DELAI_REMONTEE` de **20 s** : 25 % de marge, dans laquelle devaient
+  encore tenir l'annonce de focus, la redistribution des parts et la montée de
+  l'estimation. Trois promotions sur quatorze sont arrivées **après** la fin du
+  palier (relevées 63 et 66 s plus tard), et une quatrième a été **préemptée**
+  par le déplacement de focus suivant. **Le critère en devenait aléatoire, et
+  l'échec s'imputait au produit.** Le remède est gratuit — 45 à 60 s. **Lire les
+  constantes de temporisation du code AVANT de dimensionner un palier.**
 - ⚠️ **UN SOUS-ENSEMBLE SANS RÈGLE DE SÉLECTION EST UN SOUS-ENSEMBLE CHOISI**,
   même quand on ne l'a pas choisi. Le premier énoncé du critère ④ annonçait
   « 4 déplacements sur 4 » sur 8 des **14** relevés, en écartant sans le dire
