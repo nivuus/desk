@@ -82,6 +82,17 @@ pub trait VideoSource {
     fn set_encode_size(&mut self, _width: u32, _height: u32) -> anyhow::Result<()> {
         Ok(())
     }
+
+    /// Annonce au producteur si la fenêtre est visible pour l'utilisateur, et
+    /// si elle a le focus.
+    ///
+    /// Par défaut sans effet : une source fichier n'a personne à qui plaire.
+    /// La source distante la relaie au capteur, qui arbitre GLOBALEMENT — la
+    /// décision qui s'ensuit peut donc concerner une autre fenêtre que
+    /// celle-ci, et ne revient jamais par la valeur de retour.
+    fn set_awake(&mut self, _visible: bool, _focalisee: bool) -> anyhow::Result<()> {
+        Ok(())
+    }
 }
 
 /// Source de test rejouant un fichier H.264 Annex-B en boucle.
