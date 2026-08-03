@@ -38,8 +38,28 @@ où l'on travaille dedans, pas en chantier séparé.
 | Fichier | Lignes | Pourquoi elle reste |
 | --- | --- | --- |
 | `agent/src/encode.rs` | 1536 | `#[cfg(windows)]`, aucun test |
-| `agent/src/windows_source.rs` | 631 | `#[cfg(windows)]`, aucun test |
+| `agent/src/windows_source.rs` | **638** | `#[cfg(windows)]`, aucun test |
 | `agent/src/wasapi.rs` | 543 | `#[cfg(windows)]`, aucun test |
+
+> ⚠️ **`windows_source.rs` est passé de 631 à 638 lignes le 3 août 2026
+> (sous-bloc D6, commits `1523c36` et `5a9267d`) : +7 sur de la dette GELÉE.**
+> Ces trois chiffres sont **relevés par la commande ci-dessous ce jour-là**, pas
+> recopiés. **La croissance est déclarée avec sa justification et sa
+> condition** :
+>
+> - **justification** — l'addition est **100 % commentaire**. Elle n'ajoute
+>   **rien** à la surface non testée que la règle des 500 lignes existe pour
+>   contenir, et elle inscrit la réfutation d'une justification portante devenue
+>   fausse (« l'agent étant mono-session, des statiques ne mélangent pas
+>   plusieurs sessions » — faux depuis D4) au lieu de la retirer. **Raccourcir
+>   une réfutation pour atteindre un compte de lignes échangerait une vérité
+>   contre un nombre** — geste que cet encadré interdit déjà pour `arret.rs` ;
+> - **condition, puisqu'il n'y a eu AUCUNE extraction** : **la prochaine
+>   addition à ce fichier, de quelque nature qu'elle soit, exige une
+>   extraction.** Son point de chute est nommé — **`agent/src/windows_source/telemetrie.rs`** —
+>   et c'est aussi le remède de fond : le jour où `TICKS`, `CAPTURED` et
+>   `PRODUCED` deviendront per-session (consignation n°1 de D7), ils sortiront
+>   du fichier et lui rendront cette marge.
 
 > `encode.rs` est passé de 1502 à 1536 lignes le 31 juillet 2026 (correctif de
 > libération des encodeurs). **Cette croissance de +34 est régulière au regard
@@ -138,6 +158,28 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > Toute addition future à ce fichier appelle une extraction, jamais une
 > compression du commentaire de `TAMPON`, qui doit rester auprès de la constante
 > qu'il justifie.
+>
+> ✅ **Relance du 3 août 2026, fin du sous-bloc D6, PAR LA COMMANDE** : les trois
+> lignes du tableau sont exactes après correction — **1536 / 638 / 543** —, le
+> `638` étant le seul mouvement (voir l'encadré du tableau), et **aucun autre
+> fichier de code source ne dépasse 500 lignes**. Marges étroites de ce relevé :
+> `encode/arret.rs` **500** (marge 0), `capture.rs` **496** (4),
+> `superviseur/boucle.rs` **493** (7), `capteur/serveur.rs` **490** (10),
+> `superviseur/table.rs` **489** (11), `transport/socket.rs` **481** (19),
+> `transport/piste_video.rs` **477** (23), `demarrage.rs` **472** (28),
+> `transport/adaptation.rs` **468** (32).
+>
+> ⚠️ **Un chiffre de l'annotation ci-dessus a vieilli, et il faut le dire** :
+> `transport/adaptation.rs` y est donné à **472** (relevé D5) ; il vaut **468**.
+> D6 l'a fait franchir 500 (562 en accueillant le câblage des parts) puis
+> **extrait** vers `agent/src/transport/part.rs` (138), d'où 456 puis 468 après
+> deux rondes de documentation. **La marge regagnée par une extraction se
+> reperd** : +12 en deux rondes, sur le fichier même qui venait d'être découpé.
+> C'est la troisième fois que ce dépôt paie cette leçon.
+>
+> ✅ **Les fichiers nés de D6 sont tous très en dessous du plafond** :
+> `capteur/repartiteur.rs` **119**, `capteur/sommeil/parts.rs` **348**,
+> `transport/part.rs` **138**, `capteur/pont_media.rs` **188**.
 
 **Vérifier l'état** :
 
@@ -1233,6 +1275,30 @@ comportement neuf, celui-ci ferme une dette de test constatée au passage.
 
 ### Ce que le chantier D (multi-fenêtres) devra régler
 
+> ❌ **CETTE DETTE EST DÉCRITE POUR UNE ARCHITECTURE QUI N'EXISTE PLUS, et le
+> paragraphe ci-dessous n'est plus une consigne exécutable (annoté le 3 août
+> 2026, sous-bloc D6).** Il suppose **N pistes dans UNE session**, donc une
+> `PeerConnection` unique dont l'estimation de session doit être découpée. **Le
+> produit a N SESSIONS** depuis D1 : chaque fenêtre est un processus enfant avec
+> sa propre `PeerConnection`, donc son propre BWE, son propre `audio_bps` et son
+> propre `video_mid`. **Il n'y a donc rien à découper d'une estimation
+> partagée** — le problème réel est l'inverse : N estimateurs indépendants qui
+> sondent chacun vers le lien entier.
+>
+> **Ce que D6 a fait à la place** : un **budget de session** (`BUDGET_BPS`, lu
+> par le capteur) découpé en **parts** poussées à chaque enfant, qui les applique
+> à son `Controleur` **et** à son `set_desired_bitrate`. La couche de répartition
+> existe donc bien, mais elle répartit un budget **posé**, pas une capacité
+> **mesurée** — et c'est délibéré, parce que la mesure a montré que le lien n'est
+> pas le goulot (voir « Sous-bloc D6 »).
+>
+> ⚠️ **Les deux dettes voisines ne sont ni réglées ni caduques : elles sont
+> DÉPLACÉES.** `audio_bps` n'est plus « un budget unique de session à retirer une
+> fois » puisqu'il n'y a plus de session unique — mais **l'audio par fenêtre est
+> le sujet de D7**, et rien n'a encore été fait de ce côté. Le filtre de
+> `MediaEgressStats` sur un `video_mid` unique reste **juste** dans l'enfant,
+> qui n'a bien qu'une piste vidéo.
+
 `Controleur` s'instancie par flux sans difficulté, **mais son alimentation
 non** : `Event::EgressBitrateEstimate` est une estimation **de session**, pas de
 piste — c'est la capacité du chemin, partagée. Le chantier D devra donc insérer
@@ -1252,6 +1318,27 @@ l'aurait validé suppose un jugement visuel qui n'a jamais été porté. Il est
 `ENCODER_FPS` qui vaut 90 et n'est que la cadence de sollicitation) : les deux
 doivent être recalibrés **ensemble**. `DELAI_REMONTEE` a été porté de 10 à 20 s
 pendant la recette pour réduire une oscillation, améliorée sans être éliminée.
+
+> ⚠️ **Ces 20 s de `DELAI_REMONTEE` ont fait échouer trois mesures de D6, et
+> c'est un piège de MÉTHODE à connaître (3 août 2026).** Le palier de focus de la
+> recette D6 durait **25 s** : la fenêtre d'observation n'excédait la
+> temporisation du mécanisme observé que de **25 %**, marge dans laquelle devaient
+> encore tenir l'annonce de focus, la redistribution des parts et la montée de
+> l'estimation. Trois promotions de barreau sur quatorze sont arrivées **après**
+> la fin du palier — relevées 63 et 66 s plus tard sur la même fenêtre —, une
+> quatrième a été **préemptée**, et l'échec s'imputait au **produit** alors qu'il
+> venait du **protocole**. **Lire les constantes de temporisation du code AVANT
+> de dimensionner un palier de mesure.**
+>
+> ⚠️ **`BPP_MIN` reste NON CALIBRÉ après D6, et le sous-bloc en a pourtant fait
+> le levier central.** D6 a mesuré ce que rendent quatre barreaux de cette
+> échelle à huit fenêtres (18,03 % / 7,99 % / 3,94 % / 1,47 % d'images jetées par
+> le navigateur, une exécution par point) et a établi que **c'est la résolution,
+> et non le débit, qui commande** — le débit n'étant que la commande de
+> l'échelle. **Mais aucun jugement visuel n'a davantage été porté** : le critère
+> qui validerait `BPP_MIN` manque exactement comme avant. Le couplage avec le
+> `fps` de `Config` (60) est en revanche **employé** par D6 pour calculer les
+> `min_bps` de chaque barreau : les deux se recalibrent toujours ensemble.
 
 ---
 
@@ -1756,6 +1843,8 @@ code d'erreur).
 | `MULTIFENETRE_PLAFOND_SONDE=<noms,séparés,par,virgules>` | **Sous-bloc D3** — la **sonde**, posée par le porteur et **jamais à la main** (avec `MULTIFENETRE_PLAFOND_RANG=<i>`). Ouvre une duplication par nom, les tient jusqu'au signal d'arrêt, journalise le `HRESULT` exact. **Branche en tête de tout l'aiguillage** : sans quoi un `MULTIFENETRE_VDD_PURGE=1` résiduel, hérité par l'enfant, détruirait les sorties vivantes du porteur en pleine mesure |
 | `CAPTEUR=1` | **Sous-bloc D4** — lance l'agent en **capteur** de capture mutualisée (serveur du tube `\\.\pipe\agent-capteur`). Posée par le superviseur lui-même (`lancer_capteur`), pas à la main ; transmise par `scripts/run-agent.sh`. Un capteur qui hériterait de `SUPERVISEUR` se prendrait pour un superviseur |
 | `AGENT_TRACE_EXCEPTIONS=1` | Arme le filtre d'exception (pile symbolisable de la faute, journal séparé d'`agent.log`). Inerte sans la variable. `…_FICHIER` en change la destination ; `…_AUTOTEST=1` **tue délibérément le processus** pour éprouver l'instrument |
+| `BUDGET_BPS=<bps>` | **Sous-bloc D6** — le **budget de débit de toute la session**, lu par le **capteur** seul (`capteur/sommeil/parts.rs`), qui le découpe en parts et les pousse aux enfants. Défaut **12 000 000**. Transmise par `scripts/run-agent.sh` (tâche 9). C'est une variable de **produit**, pas de banc. Trace de contrôle : `budget de debit de la session budget_bps=<valeur>` — **comparer la VALEUR, jamais la seule présence de la ligne**, et **pas avant la première fenêtre** : elle vient d'un `OnceLock` initialisé au premier calcul de parts |
+| `SOURCE_TRACE=1` | ⚠️ **MORT DES DEUX CÔTÉS en multi-fenêtres** (constaté le 3 août 2026, sous-bloc D6). Les écrivains de `TICKS`/`CAPTURED`/`PRODUCED` vivent dans `windows_source.rs` (313 / 518 / 544), donc dans le **capteur** depuis D4 ; le lecteur unique est `demarrage.rs:142-144`, donc dans l'**enfant** ; et `main.rs:247` rend la main à `capteur::executer` avant que `demarrage::executer` ne soit atteint. La variable n'affiche donc que des **zéros** côté enfant, et les compteurs du capteur ne sont lus par **personne**. **Elle ne décrit plus que le chemin mono-fenêtre**, sans `CAPTEUR` ni `SUPERVISEUR`. Remède consigné pour D7 : rendre ces trois statiques **per-session** et les extraire vers `windows_source/telemetrie.rs` |
 
 ---
 
@@ -2396,10 +2485,17 @@ jamais exercé.
 - **`scripts/run-agent.sh` ne transmettait pas `MULTIFENETRE_REPRISE`** — même
   piège que `SUPERVISEUR` en D1. **Toute variable neuve du banc doit y être
   ajoutée explicitement**, sinon l'agent démarre sans elle et sans rien signaler.
+  ✅ **Piège évité en D3 (`MULTIFENETRE_PLAFOND`) et en D6 (`BUDGET_BPS`, tâche 9
+  dédiée à cette seule ligne)** : il vaut aussi pour les variables de **produit**,
+  pas seulement pour celles du banc.
 - **`build-agent.sh` ne pose pas `[Console]::OutputEncoding`** : les lignes
   revenant du PowerShell distant en reviennent mutilées (« Au caract⏎re
   Ligne:1 »). C'est le **défaut à deux réglages** déjà documenté plus haut. Le
   script est partagé : signalé, **non corrigé**.
+  ⚠️ **Toujours non corrigé au 3 août 2026, et il a mutilé les journaux de
+  pilote de D6** : ceux-ci portent des octets de contrôle isolés à la place des
+  accents (`Op\x02ration r\x02ussie`) et se classent en « data ». Un `grep` sur
+  un mot accentué y rend zéro.
 - **Un journal d'agent s'écrase facilement**, et deux pièces ont été perdues
   ainsi dans ce sous-bloc — dont celle qui aurait étayé une affirmation qu'il a
   fallu retirer. **Copier le journal avant tout relevé qui écrit au même
@@ -2869,6 +2965,26 @@ cumulées au palier de 30 s — l'écart est **en aval du canal** (huit sessions
 ~10 Mb/s sur le même pont, RTT relevé montant de 2 ms à 104 ms). **Cette
 attribution au réseau est une INFÉRENCE** : aucune mesure de charge du pont.
 
+> ❌ **CETTE INFÉRENCE EST RÉFUTÉE (3 août 2026, sous-bloc D6, tâche 1).** La
+> mesure de charge du pont qui manquait a été prise : **il porte ≥ 1,45 Gb/s en
+> TCP** (3 exécutions) **et 1,64 Gb/s en UDP** (3 exécutions), soit **15 à
+> 27 fois** les 96 Mb/s que huit fenêtres à 12 Mb/s pouvaient cumuler. **Le pont
+> ne pouvait pas être saturé.** Et `packetsLost` vaut **0** — pas « négligeable »,
+> zéro — aux quatre exécutions du banc de décrochage de D6 comme aux sept
+> exécutions de sa recette.
+>
+> **Le goulot est le DÉCODEUR DU NAVIGATEUR.** Témoin relevé sur **une** fenêtre
+> à 82,257 Mb/s : le navigateur jette **53,6 %** des images reçues en passant
+> **90,2 % du temps mural dans le seul décodage vidéo**, pendant que le réseau
+> perd 0,0413 % des paquets. ⚠️ **Portée** : ce montage a une fenêtre là où D4 en
+> avait huit — que la chute *de D4* soit due au décodeur est **cohérent avec** ce
+> relevé, pas **prouvé par** lui. Ce qui est établi sans réserve, c'est que **la
+> saturation du pont est exclue**. Voir « Sous-bloc D6 ».
+>
+> ⚠️ **Et le décodage LOGICIEL est une propriété du montage de recette**
+> (`--disable-gpu` sur un Chrome sans interface), **pas du produit** : un
+> navigateur à décodage matériel n'a été éprouvé ni en D4, ni en D6.
+
 ### La ceinture répond : `commander` rend une erreur, il ne suspend pas
 
 C'est ce que la doc de `Canal::commander` (`agent/src/capteur/tube.rs`) laissait
@@ -2971,6 +3087,11 @@ n'a toujours jamais été exercé.
 - **Un compteur de cadence côté enfant qui s'apparie à celui du capteur est le
   bon instrument pour DISCULPER un canal** — c'est lui qui autorise à dire que
   la perte est en aval.
+  ⚠️ **Vrai, et insuffisant : « en aval » n'est pas « dans le réseau ».** D6 a
+  mesuré le lien (≥ 1,45 Gb/s, `packetsLost` = 0) et le décodeur (90,2 % du temps
+  mural en décodage vidéo, 53,6 % d'images jetées sur une fenêtre) : **l'aval
+  incriminé était le NAVIGATEUR**, pas le pont. **Disculper un maillon ne désigne
+  pas le coupable suivant** — il faut une mesure par maillon.
 - **Une source animée doit l'être à une cadence CONNUE, affichée par la source
   elle-même** : sans ce chiffre, une capture lente et une source lente se lisent
   pareil.
@@ -3109,6 +3230,28 @@ mutex DXGI.
 
 ### ⑥ La suite : D6, puis D7
 
+> ⚠️ **CE PARAGRAPHE EST PÉRIMÉ SUR TROIS POINTS (annoté le 3 août 2026, à la
+> fin de D6). La numérotation a changé** :
+>
+> - **D6 n'a fait QUE le partage de la capacité**, pas l'audio par fenêtre ;
+> - **D7 est désormais l'audio par fenêtre**, avec son inconnue d'API Windows ;
+> - **D8 est le plein écran et Keyboard Lock** — c'est-à-dire l'ancien D7.
+>
+> ❌ **Et la dette telle qu'elle est nommée ci-dessous décrit une architecture
+> qui n'existe plus** : `Event::EgressBitrateEstimate` n'est une estimation « de
+> session, pas de piste » que dans un montage à N pistes **dans une seule**
+> `PeerConnection`. Le produit a **N sessions** depuis D1. Il n'y avait donc rien
+> à découper ; le vrai défaut était l'inverse — N estimateurs indépendants
+> sondant chacun vers le lien entier. Voir l'annotation du § « Ce que le chantier
+> D devra régler » (chantier C volet 1) et la section « Sous-bloc D6 ».
+>
+> ✅ **La dernière phrase, elle, reste VRAIE, et D6 lui ajoute un plafond** : une
+> fenêtre endormie porte toujours son propre contrôleur de congestion, que D6 ne
+> supprime pas davantage que D5 — mais son plafond vaut désormais
+> `PART_DORMANTE_BPS` (**256 000 bps**), et le relevé de recette est que son
+> trafic vidéo entrant est de **0,000 Mb/s sur 30 s**, aux six exécutions où le
+> cas est exercé.
+
 **D6** — partage de la capacité réseau entre N flux, et audio par fenêtre. La
 dette est nommée depuis le chantier C volet 1 : `Event::EgressBitrateEstimate`
 est une estimation **de session**, pas de piste ; `audio_bps` est un budget
@@ -3117,6 +3260,305 @@ s'appuie sur un `video_mid` unique. **Une fenêtre endormie continue de porter s
 propre contrôleur de congestion, que D5 ne touche pas.**
 
 **D7** — plein écran et Keyboard Lock.
+
+---
+
+## 🔀 Sous-bloc D6 — le budget de session, et la réfutation de sa propre prémisse (3 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-03-multifenetres-partage-capacite-resultats.md`
+(**le §4.1 est le paragraphe à lire si l'on n'en lit qu'un**).
+Conception : `docs/superpowers/specs/2026-08-03-multifenetres-partage-capacite-design.md`.
+Journaux : `docs/superpowers/plans/journaux-multifenetres-d6/` — **49 fichiers suivis par git** (40 au
+premier niveau, plus 9 dans `instrument/`), et **TROIS familles d'encodage
+distinctes**, contrairement à celles de D4 et D5 qui se
+`grep`aient toutes à plat (voir « Note de lecture des journaux » plus bas).
+
+D6 devait empêcher N fenêtres de se disputer un lien saturé. **La première tâche
+du sous-bloc a mesuré le lien, et il n'était pas saturé.** Le chantier a été
+retourné sans être abandonné : le mécanisme est resté, sa justification a changé,
+et sa constante de réglage est devenue une décision de conception au lieu d'une
+constante dérivée.
+
+### Le verdict, en trois faits qui ne se simplifient dans aucun sens
+
+> ❌ **① LA PRÉMISSE EST RÉFUTÉE.** Le pont porte **≥ 1,45 Gb/s en TCP**
+> (3 exécutions) et **1,64 Gb/s en UDP** (3 exécutions). Huit fenêtres visant
+> chacune 12 Mb/s font 96 Mb/s cumulés : **15 à 27 fois moins**. Et
+> `packetsLost` vaut **0** — pas « négligeable », zéro — aux **quatre**
+> exécutions du banc de décrochage **et** aux **sept** de la recette. **Le
+> goulot est le DÉCODEUR DU NAVIGATEUR**, pas le réseau : sur **une** fenêtre à
+> 82,257 Mb/s, le navigateur jette **53,6 %** des images reçues en passant
+> **90,2 % du temps mural dans le seul décodage vidéo**.
+>
+> ✅ **② LE MÉCANISME CORRIGE POURTANT QUELQUE CHOSE.** À huit fenêtres :
+> **18,03 %** d'images jetées au barreau plein, **7,99 %** un barreau plus bas
+> (1024×576), **1,47 %** trois barreaux plus bas (640×360) — une exécution par
+> point. Et le produit complet, budget arbitré par le capteur, relève **3,94 %**
+> au barreau **852×480**, celui que personne n'avait mesuré (une exécution
+> comparable).
+>
+> ⚠️ **③ MAIS CE N'EST PAS LE DÉBIT QUI SAUVE, C'EST LA RÉSOLUTION — et c'est
+> le fait le plus contre-intuitif du sous-bloc.** Le témoin à **surface
+> constante** — bits divisés par 2,2, sans franchir de seuil de barreau — rend
+> **23,08 %** d'images jetées, soit **PIRE** que les 18,03 % du barreau plein
+> (une exécution chacun). **`BUDGET_BPS` n'agit que par l'intermédiaire de
+> l'échelle, en marches discrètes** : une valeur qui réduirait les bits sans
+> faire changer de barreau **ne corrigerait rien**. Elle doit donc être choisie
+> pour **franchir un seuil de barreau au N visé**, jamais pour « laisser de la
+> marge ».
+
+### Les cinq critères, avec le nombre d'exécutions dans chaque énoncé
+
+**Douze exécutions du produit en tout** : une au §1, quatre au §2, sept à la
+recette. **Aucun taux n'est revendiqué nulle part.**
+
+| # | Critère | Verdict | Exécutions |
+| --- | --- | --- | --- |
+| ① | `framesDropped` < 7,99 % à 8 fenêtres | **TENU sous charge d'hôte de référence — NON REPRODUIT autrement** (3,94 %) | **1 sur 5** à 12 Mb/s ; **1 sur 2** parmi celles dont l'échelle s'est posée |
+| ② | la taille d'encodage a bougé | **TENU** — 852×480 à 12 Mb/s, 640×360 à 8 Mb/s, contre 1280×720 sans budget | **7 sur 7** |
+| ③ | somme des parts ≤ `BUDGET_BPS` | **TENU** — jamais dépassé, dans aucune phase d'aucune exécution | **7 sur 7** |
+| ④ | la focalisée est strictement au-dessus des autres éveillées | **TENU en majorité, PAS SYSTÉMATIQUE** — **11 déplacements sur 14** | **7** (2 déplacements chacune) |
+| ⑤ | une endormie reste au plancher | **TENU** — 256 000 bps exactement, **0,000 Mb/s sur 30 s** | **6 sur 6** (une exécution n'atteint pas sa phase 3) |
+
+⚠️ **Le critère ① porte sa réserve DANS son verdict, et il ne faut pas la perdre
+en recopiant le tableau.** Les quatre autres exécutions à 12 Mb/s relèvent
+**8,03 %, 16,70 %, 59,32 % et 75,47 %**. La dégradation covarie avec le
+`loadavg` de l'hôte **et** avec le non-établissement de l'échelle d'encodage ;
+**les deux ne sont pas départagées.** **Le produit n'est pas démontré robuste
+sous la charge d'hôte réellement rencontrée pendant la campagne**, et la
+performance mesurée varie **d'un facteur 19** sur le taux d'images jetées à
+binaire, budget et protocole identiques. **Le montage de recette mesure son hôte
+au moins autant que le produit.**
+
+✅ **Les trois échecs du critère ④ sont imputés au PROTOCOLE, sur pièces** — voir
+le premier piège plus bas. ⚠️ **Aucune exécution n'a été rejouée avec un palier
+plus long** : que 45 à 60 s suffiraient est **plausible et non vérifié**.
+
+### Ce que le code livre, et trois faits de conception qui lui survivront
+
+| Étage | Fichier | Nature |
+| --- | --- | --- |
+| la règle de part | `agent/src/capteur/repartiteur.rs` (119) | **pur, aucun `cfg`**, trois régimes documentés et testés sur l'hôte |
+| l'arbitrage et l'émission | `agent/src/capteur/sommeil/parts.rs` (348) | lit `BUDGET_BPS`, n'émet que les parts **qui changent** |
+| le transport | `agent/src/capteur/pont_media.rs` (188), `capteur/distante.rs` | la part voyage sur la connexion **média**, écrasement du dernier reçu |
+| l'application | `agent/src/transport/part.rs` (138) | `changer_plafond` **et** `set_desired_bitrate` |
+
+1. **`repartir` ne garantit le non-dépassement du budget que dans son régime 1.**
+   Deux régimes dégénérés existent — `reste < diviseur`, et
+   `budget < endormies × PART_DORMANTE_BPS` — où le `.max(1)` appliqué à chaque
+   part **après** la division fait dépasser le budget de quelques bps. **Cet
+   invariant est CONDITIONNEL**, et sa documentation a dû être réécrite **deux
+   fois** pour cesser d'affirmer un absolu : la première réécriture a remplacé un
+   faux par un autre. **Seul le régime 1 a jamais été rencontré en recette** —
+   les deux autres exigeraient un budget dérisoire.
+2. **`Controleur::changer_plafond` doit distinguer « aucune estimation JAMAIS
+   reçue » de « estimation PÉRIMÉE ».** Le témoin correct est
+   `premiere_estimation_a` (`agent/src/congestion/controleur.rs`), **monotone et
+   jamais effacé** — **pas** `courant.adaptation`, dont l'`Indisponible` couvre
+   les deux cas. Sans cette distinction : ou bien une part qui remonte ne relève
+   **jamais** le débit et le fige sans terme (défaut passif), ou bien un lien qui
+   vient de se taire se voit accorder un **dépassement actif** (pire).
+3. **`set_desired_bitrate` EST une mutation de `Rtc`.** L'énoncé d'audit de
+   `agent/src/transport/tick.rs` affirmait que les branches concernées n'en
+   mutent aucune : **c'était faux**, et il a fallu deux rondes pour le corriger
+   **aux deux endroits du même fichier**. Ce qui préserve réellement l'invariant
+   de drainage, c'est que l'appel **ne met aucun paquet en file** — pas une
+   absence de mutation.
+
+### `BUDGET_BPS = 12 000 000` : un choix ASSUMÉ, pas démontré
+
+Le brief prévoyait de replier à 8 000 000 si le taux dépassait 7,99 % ; **il ne
+le dépasse pas** sur l'exécution jouée sous la charge d'hôte de référence.
+**Mais la comparaison des deux valeurs est un ARBITRAGE que la mesure ne tranche
+pas :**
+
+| Budget | barreau des 7 non focalisées | % jetées | MP/s décodés | focus réussi |
+| --- | --- | --- | --- | --- |
+| **12 Mb/s** | 852×480 | **3,94 %** (1 exéc. comparable) | **196,40** | 8/10 |
+| **8 Mb/s** | 640×360 | **1,46 %** et **3,94 %** (2 exéc.) | 95,54 et 135,57 | 3/4 |
+
+**Plus de pixels livrés, davantage jetés.** Aucune des deux valeurs ne domine
+l'autre sur les deux grandeurs, et les effectifs (1 contre 2) n'autorisent
+aucune comparaison statistique. **Le choix tient à UNE seule raison : 12 Mb/s ne
+coûte rien au cas mono-fenêtre**, là où 8 Mb/s lui retirerait un tiers de son
+débit. ⚠️ **Et ce cas mono-fenêtre n'a JAMAIS été mesuré à 12 Mb/s** — les deux
+points existants à N = 1 sont 9,479 Mb/s (0 % jetées) et 82,257 Mb/s (53,6 %).
+**La valeur protège donc un acquis SUPPOSÉ**, et se réviserait sans embarras si
+ce cas était mesuré et se révélait déjà mauvais.
+
+⚠️ **La valeur est DE LABORATOIRE** : navigateur Chrome sans interface,
+`--disable-gpu`, donc **décodage logiciel**, sur l'hôte qui porte aussi la VM et
+une charge étrangère variable d'un facteur 3,6. **Un client réel, sur une autre
+machine, avec décodage matériel, décrocherait ailleurs** — probablement bien
+plus haut. **`BUDGET_BPS` n'est pas une constante du produit.**
+
+### ❌ `set_desired_bitrate` n'a AUCUNE couverture — et la voie qui l'aurait donnée n'a pas été jouée
+
+C'est l'appel que la conception désigne comme **le plus important** — celui qui
+empêche N fenêtres de sonder chacune le lien entier. Il n'a **ni test unitaire,
+ni recette**.
+
+- **Le test unitaire honnête est INFAISABLE**, établi indépendamment par deux
+  relecteurs : str0m n'expose **aucun getter**, son `Debug` est un **stub**, et
+  `configure_pacer` **ne dépend pas** de cette valeur (même effet synchrone à
+  1 000 et à 50 000 000 bps). Deux voies de plus ont été explorées et écartées
+  (différentiel de bourrage sur pair local : non déterministe ; couture
+  injectable : tautologie payée d'une indirection permanente).
+- **La recette n'a pas pu servir de témoin**, et elle dit **pourquoi** : une
+  fenêtre endormie a un objectif de sondage de 256 000 bps, n'encode plus rien,
+  et émet **0,000 Mb/s sur 30 s** aux six exécutions où le cas est exercé. **Sur
+  ce montage, « sondage borné à la part » et « pas de sondage du tout » se
+  lisent identiquement.**
+- ⚠️ **« Aucun témoin trouvé » n'est PAS « aucun témoin n'était possible ».**
+  **L'A/B différentiel sur ce montage même** — neutraliser l'appel, opposer les
+  deux trafics cumulés — **n'a pas été joué**, et rien dans les relevés ne dit
+  qu'il aurait échoué. C'est exactement la méthode que ce dépôt a payée cher au
+  chantier des duplications parallèles : *retirer la variable suspecte et voir
+  si le symptôme survit.* **C'est le point ouvert le plus important de D6.**
+
+**Fait annexe utile** : que l'endormie n'émette rien répond au passage à
+l'hypothèse déclarée non vérifiée dans la doc de `PART_DORMANTE_BPS` — **sur ce
+montage, le plancher ne coûte que sa ligne**. Cela ne dit rien du bourrage émis
+quand un média *actif* sonde à la hausse.
+
+### Ce que D6 n'établit PAS
+
+- **Aucun taux, nulle part.** Une exécution par point aux §1 et §2 ; sept à la
+  recette, dont **trois seulement** comparables entre elles et **une seule** à
+  12 Mb/s dans ces conditions.
+- **`FACTEUR_FOCUS` et `PART_DORMANTE_BPS` restent NON CALIBRÉES**, et **aucune
+  constante de ce sous-bloc n'a été jugée par un jugement visuel** — exactement
+  la lacune que `BPP_MIN` traîne depuis le chantier C volet 1. La recette montre
+  que `FACTEUR_FOCUS` fait franchir un barreau 11 fois sur 14 ; elle ne le
+  calibre pas, et **ne permet pas de le dire plus robuste à un budget qu'à
+  l'autre** (une première rédaction l'affirmait, sur un sous-ensemble choisi ;
+  réfutée par une pièce versée).
+- **Aucun travail conservateur** : une fenêtre qui n'use pas sa part **ne la
+  rend pas** aux autres. La reprise de l'inutilisé introduirait une seconde
+  boucle de rétroaction, hors périmètre — **à nommer, pas à croire faite**.
+- **Les régimes 2 et 3 de `repartir` ne sont pas exercés** en conditions réelles.
+- **La latence de bout en bout n'est toujours mesurée par AUCUN sous-bloc du
+  chantier D**, et D6 ne la mesure pas davantage.
+- **Les trois couches inconnues le restent** : celle du plafond de 8 encodeurs,
+  celle du plafond de 4 processus, et le mécanisme de l'abandon du mutex DXGI.
+- **`BPP_MIN` et le `fps` de `Config`** restent non calibrés et se recalibrent
+  ensemble ; **`HYSTERESIS` et `REPIT_APRES_ECHEC`** du vivier de D5 aussi.
+- **Le chemin d'extinction propre du superviseur n'a toujours jamais été
+  exercé**, et **la mort d'un enfant pendant que les autres diffusent** pas
+  davantage.
+- **Rien au-delà de dix fenêtres** : `CAPACITE` vaut 10, la montée s'y arrête —
+  donc sur le produit et non sur un plafond du système.
+- **La visibilité ET le focus sont IMPOSÉS par le pilote de recette**, page par
+  page, parce qu'un Chrome sans interface rapporte `document.hidden = true` pour
+  toute fenêtre d'arrière-plan. **Aucune minimisation de vraie fenêtre, aucun
+  clic réel.** Limite héritée de D5, et la plus lourde de ce montage.
+- **La composante qui jette les images n'est pas identifiée** : l'hôte n'est pas
+  saturé (43 à 52 % de temps CPU inactif au rang où 18 % des images sont
+  jetées), aucun décodeur individuel ne l'est, le réseau ne perd rien. **Et les
+  deux bouts se dégradent ensemble** — à N = 8 le capteur lui-même retombe de 85
+  à 47,8–79,4 i/s par fenêtre : **ce montage ne départage pas** la part imputable
+  à la VM de celle imputable au navigateur.
+- Une seule application, une seule animation, aucun clavier, aucune souris,
+  aucun audio, aucun redimensionnement, aucun recouvrement, aucun déplacement de
+  fenêtre. Palier le plus long : 40 s ; exécution la plus longue : 8 min 47 s.
+
+### Pièges neufs — à connaître avant de toucher à ce terrain
+
+- ⚠️ **UN PALIER DE MESURE DOIT ÊTRE PLUSIEURS FOIS PLUS LONG QUE LA
+  TEMPORISATION DU MÉCANISME QU'IL OBSERVE.** Celui du focus valait **25 s** pour
+  un `DELAI_REMONTEE` de **20 s** (`agent/src/congestion/hysteresis.rs`) : 25 %
+  de marge, où devaient encore tenir l'annonce de focus, la redistribution des
+  parts et la montée de l'estimation. **Trois promotions sur quatorze sont
+  arrivées APRÈS la fin du palier** — relevées 63 et 66 s plus tard sur la même
+  fenêtre — et une quatrième a été **préemptée** par le déplacement suivant.
+  **L'échec s'imputait au produit alors qu'il venait du protocole.** Le remède
+  est gratuit (45 à 60 s). **Lire les constantes de temporisation du code AVANT
+  de dimensionner un palier.**
+- ⚠️ **UN SOUS-ENSEMBLE SANS RÈGLE DE SÉLECTION ÉNONCÉE EST UN SOUS-ENSEMBLE
+  CHOISI**, même quand on ne l'a pas choisi. « 4 déplacements de focus sur 4 »
+  en cachait **14**, dont 11 réussis — et l'exécution écartée était **précisément
+  celle qui échoue**. La conclusion fausse qui en sortait partait vers un
+  commentaire de code, donc vers la mémoire longue du dépôt. **Énoncer la règle
+  de sélection AVANT de compter, et vérifier qu'elle est pertinente pour la
+  grandeur qu'on juge** — celle appliquée ici l'avait été sur la charge d'hôte,
+  qui ne dit rien de la promotion de focus.
+- ⚠️ **« Seule X change » se vérifie contre son PROPRE tableau.** L'affirmation
+  « entre ces deux exécutions, seule la charge de l'hôte change » était réfutée
+  par une ligne imprimée **trois lignes plus haut** du même document (l'échelle
+  de l'une ne s'était jamais posée, et la charge étrangère **nommée** était
+  identique à 0,1 point près).
+- ⚠️ **Une trace non attribuable coûte une ré-imputation.** Tous les enfants
+  partagent le même `agent.log` depuis D4 : une trace sans champ `session` y est
+  un nombre dans un multiensemble anonyme. **Deux traces ont dû recevoir leur
+  `session` en pleine recette** (`f7557d3`, `99e5641`), et **une troisième manque
+  encore** — les trois `warn!` d'`agent/src/transport/adaptation.rs` (99, 155,
+  166). Le remède de fond est un **span `tracing` porteur de `session` sur le fil
+  de fenêtre du capteur** (consignation n°2 pour D7).
+- ⚠️ **Un compteur de journal peut compter des LIGNES et non des ÉVÉNEMENTS.**
+  Chaque changement de barreau produit **deux** lignes au même horodatage, à
+  ~70 µs d'intervalle : une d'`agent::windows_source::encodage` côté capteur, une
+  d'`agent::transport::adaptation` côté enfant. Tous les compteurs bruts de la
+  recette valent **le double**.
+- ⚠️ **Corriger une affirmation fausse peut en PRODUIRE une autre.** La
+  rectification de `windows_source.rs` a échangé une prémisse fausse contre une
+  **conclusion** fausse, dans le même commentaire, à la ronde suivante. Le remède
+  qui a fini par tenir est d'**inscrire dans le commentaire les trois `grep` qui
+  l'établissent**, pour que le prochain lecteur refasse le contrôle sans croire
+  personne.
+- ⚠️ **Un contrôle anti-piège qui se déclenche trop tôt ne contrôle rien.** Le
+  contrôle « la variable est-elle arrivée ? » a rendu `[]` aux sept exécutions :
+  la trace vient d'un `OnceLock` initialisé à la **première fenêtre**, et le
+  contrôle courait six secondes après le lancement du superviseur. **Il aurait
+  masqué une variable réellement manquante.** Vérifier qu'un contrôle **peut
+  échouer** avant de s'y fier.
+- ⚠️ **Mesurer un palier avant que l'échelle d'encodage ne se pose mélange deux
+  régimes** — et disqualifie l'exécution. **Attendre le FAIT** (douze secondes
+  sans aucun changement de barreau), pas une durée.
+- ⚠️ **La déduplication d'annonce de `client/src/visibilite.ts` peut faire
+  DISPARAÎTRE le focus.** Une page tout juste ouverte annonce `focalisee=true` si
+  `main.ts` s'attache avant l'amorce du pilote ; le `blur` envoyé ensuite vide le
+  champ côté capteur, et la page qu'on **veut** focalisée, dont l'état n'a pas
+  changé, ne réémet rien. Résultat mesuré : plus aucune fenêtre focalisée du
+  tout. **Faire passer la cible par `blur` puis `focus`.**
+- ⚠️ **Une part majorée qui atterrit à 0,47 % d'un seuil de barreau est un tirage
+  au sort, pas une majoration.** Vérifier la marge d'une constante **contre
+  l'échelle** avant de croire qu'elle produit l'effet voulu. *(Ce n'était
+  cependant pas la cause des échecs de focus ici — c'était la durée du palier.)*
+
+**Note de lecture des journaux — D6 a TROIS familles**, contrairement à D4 et D5
+qui se `grep`aient tous à plat :
+
+| Famille | État | Ce qu'il faut faire |
+| --- | --- | --- |
+| `agent-mesure-lien.log`, `agent-decrochage-*.log` | UTF-8, **ANSI retirées** | rien |
+| les **sept** `agent-critere-*.log` | UTF-8, **séquences ANSI PRÉSENTES** | `sed 's/\x1b\[[0-9;]*m//g'` avant tout `grep` |
+| les journaux de **pilote** (`mesure-lien.log`, `decrochage-*.log`, `critere-*.log`) | classés « data » : **octets de contrôle isolés à la place des accents** (`Op\x02ration r\x02ussie`), renvoyés par le PowerShell de `run-agent.sh` | `grep -a`, et **ne jamais y chercher un mot accentué** |
+
+⚠️ La troisième ligne est le **défaut à deux réglages** déjà documenté (D4),
+rencontré tel quel : `build-agent.sh` / `run-agent.sh` ne posent pas
+`[Console]::OutputEncoding`. **Toujours non corrigé.**
+
+### La suite : D7, puis D8 — et les quatre consignations
+
+**La numérotation a changé, et le §⑥ de D5 est annoté en conséquence** : D6 n'a
+fait que le partage de la capacité.
+
+- **D7** — **l'audio par fenêtre**, avec son inconnue d'API Windows.
+- **D8** — **le plein écran et Keyboard Lock** (l'ancien D7).
+
+**Les quatre consignations, à porter dans le plan de D7 plutôt qu'à
+redécouvrir :**
+
+1. **Rendre `TICKS` / `CAPTURED` / `PRODUCED` par session** — et, ce faisant, les
+   **extraire** vers `agent/src/windows_source/telemetrie.rs`, ce qui rend au
+   fichier la marge que D6 lui a prise (+7, voir le tableau de dette).
+2. **Poser un span `tracing` porteur de `session` sur le fil de fenêtre du
+   capteur.** Préalable à toute recette qui chronomètre des promotions de
+   barreau ; il couvre aussi les trois `warn!` anonymes d'`adaptation.rs`.
+3. **Rejouer le critère ④ avec un palier de 45 à 60 s** — la seule façon de
+   savoir si la promotion de focus est systématique.
+4. **Couvrir `set_desired_bitrate` par l'A/B différentiel**, non joué ici.
 
 ---
 
