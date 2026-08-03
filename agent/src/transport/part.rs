@@ -36,7 +36,12 @@ impl Session {
     pub(super) fn appliquer_part(&mut self, bps: u32) {
         let decision = self.congestion.changer_plafond(bps);
         self.rtc.bwe().set_desired_bitrate(Bitrate::bps(bps as u64));
-        tracing::info!(part_bps = bps, "part de budget appliquee");
+        // `session` : sans ce champ la trace n'est PAS attribuable. Tous les
+        // enfants héritent le même `agent.log` (stdout partagé depuis D4), et
+        // la somme des parts accordées — le critère ③ de la recette — se
+        // calculerait alors sur un multiensemble de nombres anonymes. Même
+        // motif et même champ que `cadence de la piste vidéo (côté enfant)`.
+        tracing::info!(session = %self.session_id, part_bps = bps, "part de budget appliquee");
         self.pending_decision = Some(decision);
     }
 }
