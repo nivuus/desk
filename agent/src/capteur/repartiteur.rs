@@ -47,20 +47,28 @@ pub struct Fenetre {
 /// éveillées, la focalisée recevant `FACTEUR_FOCUS` parts au lieu d'une.
 ///
 /// **Garanties inviolables** : aucune panique, aucune part nulle, fonction
-/// totale. La somme des parts peut dépasser le budget dans une bande étroite
-/// qui a pour cause : quand le budget reste après paiement des planchers ne
-/// suffit pas pour servir 1 bps à chaque éveillée, le `.max(1)` appliqué à
-/// chaque part finale produit un dépassement borné par le nombre d'éveillées,
-/// en bits par seconde.
+/// totale.
 ///
-/// **Cas normal** (`reste ≥ eveillees`) : la somme ne dépasse jamais le
-/// budget, et la majoration de focus est appliquée.
+/// **Trois régimes** selon `budget` et `diviseur` (nombre d'éveillées,
+/// majoré de `FACTEUR_FOCUS - 1` s'il y a une focalisée éveillée) :
 ///
-/// **Cas dégénéré** (`reste < eveillees`) : chaque éveillée reçoit 1 bps
-/// (dû au `.max(1)`), chaque endormie son plancher, et la somme dépasse le
-/// budget d'au plus `eveillees` bps. La majoration de focus disparaît car
-/// `part_base` vaut 0. Ce comportement est assumé : un `set_desired_bitrate(0)`
-/// serait pire qu'un microdepassement sur un lien que rien ne peut satisfaire.
+/// **Régime 1** : `budget ≥ endormies × PART_DORMANTE_BPS` ET `reste ≥ diviseur`.
+/// La somme ne dépasse jamais le budget, et la majoration de focus est appliquée.
+/// C'est la seule garantie de non-dépassement.
+///
+/// **Régime 2** : `budget ≥ endormies × PART_DORMANTE_BPS` MAIS `reste < diviseur`.
+/// Le `.max(1)` appliqué à chaque part finale rend `part_base = 0`. Chaque
+/// éveillée reçoit 1 bps, la majoration de focus disparaît, et la somme dépasse
+/// le budget d'au plus `diviseur − reste` bps. Les planchers des endormies sont
+/// payés en intégralité.
+///
+/// **Régime 3** : `budget < endormies × PART_DORMANTE_BPS`. Les planchers des
+/// endormies sont quand même payés (aucune part nulle), et la somme dépasse le
+/// budget de `(endormies × PART_DORMANTE_BPS − budget) + eveillees` bps, non borné
+/// par le seul nombre d'éveillées. Ce comportement est assumé : un
+/// `set_desired_bitrate(0)` serait pire qu'un dépassement sur un lien que rien
+/// ne peut satisfaire de toute façon. Ce cas est décrit en détail au commentaire
+/// du calcul de `reste` dans le corps.
 ///
 /// **Aucun travail conservateur** : une fenêtre qui n'use pas sa part ne la
 /// rend pas aux autres. Ce serait une seconde boucle de rétroaction dont la

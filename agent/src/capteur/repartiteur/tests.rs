@@ -110,49 +110,82 @@ fn un_budget_inferieur_aux_planchers_ne_deborde_pas() {
     assert!(parts.iter().all(|(_, bps)| *bps > 0));
 }
 
-/// **Test de la bande critique.** Balaie les budgets autour du seuil où le
-/// reste (budget moins planchers des endormies) ne suffit plus pour servir 1 bps
-/// à chaque éveillée. Dans cette bande, le dépassement existe mais reste borné,
-/// et la majoration de focus disparaît.
+/// **Test des trois régimes.** Valide chaque régime décrit dans la doc :
+/// 1. Régime 1 : budget couvre les planchers ET reste ≥ diviseur → somme jamais dépasse le budget
+/// 2. Régime 2 : budget couvre les planchers MAIS reste < diviseur → dépassement borné à diviseur bps
+/// 3. Régime 3 : budget ne couvre pas les planchers → dépassement = (planchers - budget) + eveillees
+///
+/// Teste aussi la frontière avec focalisée : diviseur = eveillees + 1, pas eveillees.
 #[test]
-fn budget_insuffisant_pour_eveillees_reste_borne_et_sans_majoration() {
-    // Configuration : 2 endormies (512 000 bps de planchers), 2 éveillées.
-    // Budgets couvrant les planchers : seuil critique = 512 000 + 2 = 512 002
-    // (budgets où reste >= 0 mais reste < eveillees).
-    let configs = vec![
-        (512_000, "reste = 0 < eveillees = 2"),
-        (512_001, "reste = 1 < eveillees = 2"),
-        (512_002, "reste = 2 = eveillees = 2"),
-        (512_003, "reste = 3 > eveillees = 2"),
-        (514_000, "reste > eveillees, cas normal"),
+fn les_trois_regimes_sont_bornes_ou_jamais_paniquent() {
+    // **Régime 1 : cas normal, budget copieux**
+    // 2 endormies = 512 000 bps, budget = 1 000 000, reste = 488 000 >> diviseur
+    let regime_1 = vec![
+        (f("d0", false, false), false),
+        (f("d1", false, false), false),
+        (f("e0", true, true), true),
+        (f("e1", true, false), true),
     ];
+    let mut fenetres: Vec<Fenetre> = regime_1.iter().map(|(fenetre, _)| fenetre.clone()).collect();
+    let parts = repartir(1_000_000, &fenetres);
+    let somme: u32 = parts.iter().map(|(_, bps)| bps).sum();
+    assert!(somme <= 1_000_000, "Régime 1 : somme {somme} dépasse budget 1 000 000");
+    let e0_part = part_de(&parts, "e0");
+    let e1_part = part_de(&parts, "e1");
+    assert!(e0_part > e1_part, "Régime 1 : majoration de focus doit exister");
 
-    for (budget_bps, desc) in configs {
-        let mut fenetres = vec![f("d0", false, false), f("d1", false, false)];
-        fenetres.push(f("e0", true, true)); // éveillée focalisée
-        fenetres.push(f("e1", true, false)); // éveillée non focalisée
+    // **Régime 2a : frontière avec focalisée, reste = diviseur - 1**
+    // 2 endormies = 512 000 bps, 1 focalisée + 1 non-focalisée
+    // Diviseur = 2 - 1 + 2 = 3, seuil = 512 000 + 3 = 512 003
+    // Budget = 512 002 → reste = 2, reste < diviseur = 3
+    let regime_2_focus = vec![
+        (f("d0", false, false), false),
+        (f("d1", false, false), false),
+        (f("e0", true, true), true),
+        (f("e1", true, false), true),
+    ];
+    let fenetres: Vec<Fenetre> = regime_2_focus.iter().map(|(fenetre, _)| fenetre.clone()).collect();
+    let parts = repartir(512_002, &fenetres);
+    let somme: u32 = parts.iter().map(|(_, bps)| bps).sum();
+    let depassement = somme.saturating_sub(512_002);
+    assert!(depassement <= 3, "Régime 2 (focalisée) : dépassement {depassement} > diviseur 3");
+    let e0_part = part_de(&parts, "e0");
+    let e1_part = part_de(&parts, "e1");
+    assert_eq!(e0_part, e1_part, "Régime 2 (focalisée) : majoration doit disparaître, {e0_part} != {e1_part}");
 
-        let parts = repartir(budget_bps, &fenetres);
+    // **Régime 2b : sans focalisée, reste = diviseur - 1**
+    // 2 endormies = 512 000 bps, 2 non-focalisées
+    // Diviseur = 2, seuil = 512 000 + 2 = 512 002
+    // Budget = 512 001 → reste = 1, reste < diviseur = 2
+    let regime_2_no_focus = vec![
+        (f("d0", false, false), false),
+        (f("d1", false, false), false),
+        (f("e0", true, false), true),
+        (f("e1", true, false), true),
+    ];
+    let fenetres: Vec<Fenetre> = regime_2_no_focus.iter().map(|(fenetre, _)| fenetre.clone()).collect();
+    let parts = repartir(512_001, &fenetres);
+    let somme: u32 = parts.iter().map(|(_, bps)| bps).sum();
+    let depassement = somme.saturating_sub(512_001);
+    assert!(depassement <= 2, "Régime 2 (sans focalisée) : dépassement {depassement} > diviseur 2");
 
-        // Propriété 1 : aucune part n'est nulle
-        assert!(parts.iter().all(|(_, bps)| *bps > 0), "{desc}: une part vaut 0");
-
-        // Propriété 2 : somme ne dépasse le budget que de au plus eveillees bps
-        let somme: u32 = parts.iter().map(|(_, bps)| bps).sum();
-        let depassement = somme.saturating_sub(budget_bps);
-        assert!(
-            depassement <= 2,
-            "{desc}: somme {somme} dépasse le budget {budget_bps} de plus de 2 bps (dépassement: {depassement})"
-        );
-
-        // Propriété 3 : quand reste < eveillees, majoration de focus disparaît
-        let reste = budget_bps.saturating_sub(2 * PART_DORMANTE_BPS);
-        let e0_part = part_de(&parts, "e0");
-        let e1_part = part_de(&parts, "e1");
-        if reste < 2 {
-            // Dans la bande critique, e0 (focalisée) et e1 (non focalisée)
-            // reçoivent la même part car part_base = 0 → (0 * 2).max(1) = 1
-            assert_eq!(e0_part, e1_part, "{desc}: focalisée {e0_part} != non-focalisée {e1_part}");
-        }
-    }
+    // **Régime 3 : budget trop petit, ne couvre pas les planchers**
+    // 2 endormies = 512 000 bps, budget = 100 000 < planchers
+    // Reste = 0 (saturating_sub), dépassement = (512_000 - 100_000) + eveillees = 412_000 + 2
+    let regime_3 = vec![
+        (f("d0", false, false), false),
+        (f("d1", false, false), false),
+        (f("e0", true, false), true),
+        (f("e1", true, false), true),
+    ];
+    let fenetres: Vec<Fenetre> = regime_3.iter().map(|(fenetre, _)| fenetre.clone()).collect();
+    let parts = repartir(100_000, &fenetres);
+    let somme: u32 = parts.iter().map(|(_, bps)| bps).sum();
+    let depassement = somme.saturating_sub(100_000);
+    let expected_depassement = (512_000 - 100_000) + 2; // planchers écrasés + eveillees
+    assert_eq!(
+        depassement, expected_depassement,
+        "Régime 3 : dépassement {depassement} != {expected_depassement}"
+    );
+    assert!(parts.iter().all(|(_, bps)| *bps > 0), "Régime 3 : aucune part ne doit être nulle");
 }
