@@ -130,15 +130,14 @@ fn executer_commande(
     // pleine résolution au débit d'un barreau réduit, donc dégradée — jamais un
     // dépassement de débit.
     //
-    // **Ce n'est PAS corrigé, et c'est une décision, pas un oubli.** Réappliquer
-    // la taille au réveil signifierait appeler `set_encode_size`, qui construit
-    // un `H264Encoder` NEUF avant de relâcher l'ancien
-    // (`windows_source.rs:272-285`) : au réveil, c'est-à-dire à l'instant précis
-    // où le vivier vient d'attribuer sa dernière place, ce serait un encodeur de
-    // plus que le plafond — exactement le refus relevé 18 fois sur 18 à la
-    // seconde recette du sous-bloc D4. Payer ce risque pour rattraper une
-    // dégradation qui se résorbe au prochain changement de barreau serait un
-    // mauvais marché, et il irait contre ce que ce sous-bloc cherche à obtenir.
+    // **Ce n'est PAS corrigé, et c'est une décision — mais sa raison a changé.**
+    // L'obstacle technique est tombé : `set_encode_size` détruit l'encodeur
+    // courant avant d'en construire un neuf (`windows_source/encodage.rs`,
+    // tâche 10 de D5), il ne dépasse donc plus le plafond. Reste un arbitrage de
+    // portée, plus faible : réappliquer coûterait une construction d'encodeur à
+    // l'instant du réveil — celui où la session a le plus besoin de sa première
+    // image — pour une dégradation qui se résorbe seule au prochain barreau.
+    // **À rouvrir hors de ce sous-bloc**, son obstacle n'existant plus.
     let Some(source) = source else {
         return match message {
             // La même réponse qu'éveillée, où `resize` est de toute façon sans
