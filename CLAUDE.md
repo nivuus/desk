@@ -124,6 +124,12 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > survit à la réalité qu'il décrivait. Les trois autres occurrences de ce 487
 > dans ce fichier sont annotées de la même façon.
 >
+> ⚠️ **Le 235 a vieilli à son tour** : le sous-bloc D6 a porté
+> `agent/src/capteur/distante.rs` à **288** (relevé par la commande le 3 août
+> 2026, vague de correction finale de branche). Marge 212 — le fichier reste
+> très en dessous du plafond, mais **le nombre qui le disait n'était déjà plus
+> le bon.**
+>
 > ✅ **Relance du 2 août 2026, après la SECONDE recette de D4 : les trois lignes
 > du tableau sont toujours exactes** (1536 / 648 / 543), et **aucun autre fichier
 > de code source ne dépasse 500 lignes**. La tâche 10 a fait grossir
@@ -172,14 +178,55 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > ⚠️ **Un chiffre de l'annotation ci-dessus a vieilli, et il faut le dire** :
 > `transport/adaptation.rs` y est donné à **472** (relevé D5) ; il vaut **468**.
 > D6 l'a fait franchir 500 (562 en accueillant le câblage des parts) puis
-> **extrait** vers `agent/src/transport/part.rs` (138), d'où 456 puis 468 après
+> **extrait** vers `agent/src/transport/part.rs` (**138 à l'extraction ; 274
+> aujourd'hui**, voir plus bas), d'où 456 puis 468 après
 > deux rondes de documentation. **La marge regagnée par une extraction se
 > reperd** : +12 en deux rondes, sur le fichier même qui venait d'être découpé.
 > C'est la troisième fois que ce dépôt paie cette leçon.
 >
 > ✅ **Les fichiers nés de D6 sont tous très en dessous du plafond** :
-> `capteur/repartiteur.rs` **119**, `capteur/sommeil/parts.rs` **348**,
-> `transport/part.rs` **138**, `capteur/pont_media.rs` **188**.
+> `capteur/repartiteur.rs` **147**, `capteur/sommeil/parts.rs` **348**,
+> `transport/part.rs` **274**, `capteur/pont_media.rs` **188**.
+>
+> ❌ **DEUX DE CES QUATRE CHIFFRES ONT ÉTÉ FAUX, et ils l'étaient au moment même
+> où la vague de correction finale de branche corrigeait les MÊMES nombres dans
+> le document de résultats.** Ils portaient **119** et **138** ; la commande rend
+> **147** et **274**, et la ligne ci-dessus est corrigée. `parts.rs` **348** et
+> `pont_media.rs` **188** étaient, eux, exacts.
+>
+> ⚠️ **C'est le naufrage du « 487 » rejoué à l'identique, et il faut voir
+> comment.** Le tableau du §« Ce que le code livre » de la section D6 a bien été
+> corrigé dans le même mouvement — mais **pas ce paragraphe-ci**, qui est le
+> SOMMAIRE, le seul endroit qu'un chantier suivant lira pour savoir de quelle
+> marge il dispose. *Corriger une affirmation exige de la CHERCHER, pas de la
+> corriger là où on nous l'a montrée* : la règle est écrite trois fois plus haut
+> dans ce fichier, et elle a quand même été payée une quatrième.
+>
+> ✅ **Relevé complet des fichiers que la branche D6 a fait bouger, PAR LA
+> COMMANDE, à la vague de correction finale** — aucun n'approche 500 :
+>
+> | Fichier | Lignes | Remarque |
+> | --- | --- | --- |
+> | `agent/src/transport/adaptation.rs` | **468** | inchangé depuis le relevé ci-dessus |
+> | `agent/src/capteur/sommeil.rs` | **432** | **le fichier qui a le plus grossi de la branche** — il porte le registre entier (vivier partagé, canaux, focus, tour de roue). Marge 68 |
+> | `agent/src/capteur/distante/tests.rs` | **409** | |
+> | `agent/src/capteur/fenetre.rs` | **407** | |
+> | `agent/src/capteur/sommeil/parts.rs` | **348** | |
+> | `agent/src/capteur/protocole.rs` | **347** | |
+> | `agent/src/source.rs` | **334** | |
+> | `agent/src/congestion/reconfiguration.rs` | **306** | |
+> | `agent/src/capteur/distante.rs` | **288** | |
+> | `agent/src/transport/tick.rs` | **275** | |
+> | `agent/src/capteur/vivier.rs` | **275** | |
+> | `agent/src/transport/part.rs` | **274** | |
+> | `agent/src/capteur/repartiteur.rs` | **147** | |
+>
+> ⚠️ **Deux autres chiffres de ce fichier ont vieilli au passage, et ils sont
+> corrigés ici plutôt que là où ils dorment** : `capteur/fenetre.rs` est donné à
+> **329** dans le relevé du 2 août (D4) — il vaut **407** ; et
+> `capteur/tube.rs`, donné à **298** dans la même phrase, vaut **263**. Ce
+> dernier n'a pas été touché par D6 : **il dérivait déjà**, ce qui est
+> exactement la raison pour laquelle ces nombres ne se recopient jamais.
 
 **Vérifier l'état** :
 
@@ -2923,6 +2970,14 @@ est à **491** (la conception annonçait 485) et `agent/src/demarrage.rs` à **4
 > pas menacé. Le remède du défaut neuf n'a finalement touché ni `encode.rs` ni
 > `capteur/fenetre.rs` mais `windows_source.rs`, qui en est **maigri** (648 →
 > 631).
+>
+> ⚠️ **Les trois chiffres de cette annotation-ci ont vieilli à leur tour**
+> (relevé par la commande le 3 août 2026, vague de correction finale de D6) :
+> `capteur/distante.rs` vaut **288** (et non 235), `distante/tests.rs` **409**
+> (et non 385), `capteur/fenetre.rs` **407** (et non 329), et
+> `windows_source.rs` est remonté de 631 à **638**. **Une annotation qui
+> corrige un nombre périmé vieillit exactement comme le nombre qu'elle
+> corrigeait** : la seule défense reste la commande, jamais la recopie.
 
 ---
 
@@ -3411,6 +3466,42 @@ désormais par `sommeil::oublier`, **point de passage unique** du registre. La
 conséquence qui mord n'est pas celle qu'on croit : un nom mort ne majore
 personne, mais un **rattachement réinscrit le même nom**, qui héritait alors du
 focus sans que le client l'ait jamais réémis.
+
+### 🔎 La recette d'entrée de D7 — un `grep`, et le seul défaut muet est levé
+
+**Le mode de défaillance que cette vague introduit est SILENCIEUX, et il est
+total.** Si `est_endormie()` restait bloqué à `true` — un `Sommeil
+{ endormie: false }` perdu, un rattachement dont le réveil n'arrive jamais —,
+**aucune fenêtre n'appliquerait plus jamais de part à son contrôleur, et D6 ne
+ferait plus rien du tout**, sans un `WARN`, sans une erreur, sans un seul
+symptôme hors la résolution qui ne descend plus.
+
+Le champ `endormie` de la trace le rend observable **pour rien** :
+
+```bash
+grep 'part de budget appliquee' agent.log | grep -c 'endormie=true'
+grep -c 'part de budget appliquee' agent.log
+```
+
+**Si les deux comptes sont égaux, le défaut est là.** En marche nominale à N
+fenêtres, la très grande majorité des parts appliquées porte `endormie=false` :
+seules les fenêtres réellement au-delà de `vivier::PLAFOND_EVEIL` (8) dorment.
+**C'est ce qui fait du changement de format du journal un BÉNÉFICE, pas un
+coût** — à jouer en tête de D7, avant toute autre mesure.
+
+✅ **Et ce changement de format ne casse aucun instrument** : un seul lit cette
+trace, `docs/superpowers/plans/journaux-multifenetres-d6/instrument/pilote-recette-d6.mjs`,
+qui la filtre par sous-chaîne (l. 130, 225) et l'analyse par **regex sur la
+clé** — `/session=(\S+)/` et `/part_bps=(\d+)/` (l. 133-134), **jamais par
+position**. Vérifié, à ne pas revérifier.
+
+⚠️ **Deux phrases de ce dépôt parlent de « saturer le lien » sans porter la
+prémisse de D6, et il ne faut PAS les chasser** : `agent/src/transport.rs:270`
+et `agent/src/transport/adaptation.rs:28` décrivent toutes deux le risque d'une
+estimation initiale trop haute sur un lien **étroit, au premier instant d'une
+session** (`ESTIMATION_INITIALE_BPS`, chantier C volet 1). Elles sont
+préexistantes, conditionnelles, et étrangères au partage de capacité. Nommées
+ici pour qu'un successeur n'y perde pas une ronde.
 
 1. **`repartir` ne garantit le non-dépassement du budget que dans son régime 1.**
    Deux régimes dégénérés existent — `reste < diviseur`, et
