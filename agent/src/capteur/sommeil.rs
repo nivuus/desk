@@ -141,6 +141,13 @@ pub fn inscrire(session: &str) -> Receiver<Message> {
     let mut garde = etat();
     if garde.canaux.insert(session.to_string(), emetteur).is_some() {
         tracing::warn!(%session, "canal d'ordres remplacé pour cette session");
+        // Sans cette purge, une part identique à celle déjà envoyée sur
+        // L'ANCIEN canal (disparu avec la rupture) serait jugée déjà livrée
+        // par le filtre d'écrasement de `distribuer_les_parts`, et le canal
+        // NEUF ne la recevrait jamais si la topologie n'a pas changé entre
+        // les deux inscriptions — le plafond de débit resterait périmé sans
+        // terme. Une première inscription n'a, elle, rien à purger.
+        garde.dernieres_parts.remove(session);
     }
     let ordres = garde.vivier.inscrire(session, Instant::now());
     distribuer(&mut garde, ordres);

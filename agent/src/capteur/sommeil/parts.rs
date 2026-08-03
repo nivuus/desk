@@ -269,4 +269,45 @@ mod tests {
             retirer(&nom);
         }
     }
+
+    /// Le défaut trouvé en revue de la tâche 6 : `sommeil::inscrire` remplace
+    /// le canal d'une session déjà connue (rattachement après rupture de
+    /// tube) sans purger `dernieres_parts`. Si la topologie n'a pas changé
+    /// entre les deux inscriptions, la part recalculée est identique à celle
+    /// déjà mémorisée, le filtre d'écrasement de `distribuer_les_parts` la
+    /// juge donc déjà livrée, et le canal NEUF ne reçoit jamais rien — le
+    /// plafond de débit de cet enfant reste périmé sans terme.
+    #[test]
+    fn un_rattachement_a_topologie_inchangee_renvoie_une_part_sur_le_canal_neuf() {
+        let _verrou = verrouiller_pour_le_test();
+
+        // Premier canal : inscription seule, aucune autre fenêtre, aucun
+        // signal — la fenêtre naît endormie et reçoit tout de même la part
+        // plancher à l'inscription (voir la doc de `inscrire`).
+        let premier_canal = inscrire("t8-rattache");
+        let premiere_part = derniere_part(&premier_canal)
+            .expect("une première part doit partir à l'inscription initiale");
+
+        // Le tube se rompt et l'enfant se rattache : MÊME session, rien
+        // d'autre dans la topologie n'a bougé (aucune autre fenêtre, aucun
+        // signal de visibilité entre-temps). `inscrire` détecte le
+        // remplacement (elle journalise « canal d'ordres remplacé pour
+        // cette session ») et rend un canal neuf.
+        let canal_neuf = inscrire("t8-rattache");
+
+        // Sans le remède, la part recalculée est identique à `premiere_part`
+        // : `dernieres_parts` la juge déjà livrée (elle l'était, mais sur
+        // L'ANCIEN canal, disparu avec la rupture) et rien ne part sur le
+        // canal neuf, qui reste muet pour toujours tant que la topologie ne
+        // change pas.
+        assert_eq!(
+            derniere_part(&canal_neuf),
+            Some(premiere_part),
+            "le canal neuf doit recevoir sa part même si elle est identique à celle \
+             déjà envoyée sur l'ancien canal : dernieres_parts doit être purgée pour \
+             cette session au moment où son canal est remplacé"
+        );
+
+        retirer("t8-rattache");
+    }
 }
