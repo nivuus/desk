@@ -1,0 +1,135 @@
+[2m2026-08-03T10:30:29.207322Z[0m [32m INFO[0m [2magent[0m[2m:[0m accélération pointeur neutralisée [3mrapport[0m[2m=[0m"seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+[2m2026-08-03T10:30:29.207367Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m mesure pivot D5 : recyclage d'encodeurs, un périphérique D3D11 par encodeur [3mcycles[0m[2m=[0m10 [3mlargeur[0m[2m=[0m1280 [3mhauteur[0m[2m=[0m720 [3mfps[0m[2m=[0m60 [3mdebit[0m[2m=[0m8000000
+[2m2026-08-03T10:30:29.284631Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:29.346925Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m file de travail sérialisée imposée [3mmft[0m[2m=[0m"encodeur" [3mfile[0m[2m=[0m327681
+[2m2026-08-03T10:30:29.351668Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-08-03T10:30:29.352058Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m phase 1 : encodeur créé [3mrang[0m[2m=[0m1 [3mvivants[0m[2m=[0m1
+[2m2026-08-03T10:30:29.370436Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:29.423621Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m file de travail sérialisée imposée [3mmft[0m[2m=[0m"encodeur" [3mfile[0m[2m=[0m524293
+[2m2026-08-03T10:30:29.423833Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-08-03T10:30:29.424100Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m phase 1 : encodeur créé [3mrang[0m[2m=[0m2 [3mvivants[0m[2m=[0m2
+[2m2026-08-03T10:30:29.443057Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:29.493101Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m file de travail sérialisée imposée [3mmft[0m[2m=[0m"encodeur" [3mfile[0m[2m=[0m655368
+[2m2026-08-03T10:30:29.493311Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-08-03T10:30:29.493568Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m phase 1 : encodeur créé [3mrang[0m[2m=[0m3 [3mvivants[0m[2m=[0m3
+[2m2026-08-03T10:30:29.512358Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:29.565859Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m file de travail sérialisée imposée [3mmft[0m[2m=[0m"encodeur" [3mfile[0m[2m=[0m786443
+[2m2026-08-03T10:30:29.566077Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-08-03T10:30:29.566363Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m phase 1 : encodeur créé [3mrang[0m[2m=[0m4 [3mvivants[0m[2m=[0m4
+[2m2026-08-03T10:30:29.585149Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:29.637554Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m file de travail sérialisée imposée [3mmft[0m[2m=[0m"encodeur" [3mfile[0m[2m=[0m917518
+[2m2026-08-03T10:30:29.637781Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-08-03T10:30:29.638107Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m phase 1 : encodeur créé [3mrang[0m[2m=[0m5 [3mvivants[0m[2m=[0m5
+[2m2026-08-03T10:30:29.656554Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:29.708414Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m file de travail sérialisée imposée [3mmft[0m[2m=[0m"encodeur" [3mfile[0m[2m=[0m1048593
+[2m2026-08-03T10:30:29.708631Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-08-03T10:30:29.708934Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m phase 1 : encodeur créé [3mrang[0m[2m=[0m6 [3mvivants[0m[2m=[0m6
+[2m2026-08-03T10:30:29.727802Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:29.779919Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m file de travail sérialisée imposée [3mmft[0m[2m=[0m"encodeur" [3mfile[0m[2m=[0m1179668
+[2m2026-08-03T10:30:29.780142Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-08-03T10:30:29.780422Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m phase 1 : encodeur créé [3mrang[0m[2m=[0m7 [3mvivants[0m[2m=[0m7
+[2m2026-08-03T10:30:29.803709Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:29.854685Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m file de travail sérialisée imposée [3mmft[0m[2m=[0m"encodeur" [3mfile[0m[2m=[0m1310743
+[2m2026-08-03T10:30:29.854905Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-08-03T10:30:29.855312Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m phase 1 : encodeur créé [3mrang[0m[2m=[0m8 [3mvivants[0m[2m=[0m8
+[2m2026-08-03T10:30:29.874213Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:29.909362Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m phase 1 : plafond atteint — création refusée [3mphase[0m[2m=[0m1 [3mplafond[0m[2m=[0m8 [3mrang_refuse[0m[2m=[0m9 [3mcauses[0m[2m=[0mconfiguration du type de sortie de l'encodeur H.264 (transform matériel) : Le type d’entrée n’est pas pris en charge pour le périphérique D3D. (0xC00D6D76)
+[2m2026-08-03T10:30:29.909383Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement d'un encodeur [3mcycle[0m[2m=[0m1 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:29.909466Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : avant [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:29.909892Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : après [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:29.920911Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement terminé [3mcycle[0m[2m=[0m1 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:29.938579Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:29.989943Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m file de travail sérialisée imposée [3mmft[0m[2m=[0m"encodeur" [3mfile[0m[2m=[0m1310748
+[2m2026-08-03T10:30:29.990164Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-08-03T10:30:29.990403Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : reconstruction RÉUSSIE [3mcycle[0m[2m=[0m1 [3mvivants[0m[2m=[0m8
+[2m2026-08-03T10:30:29.990413Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement d'un encodeur [3mcycle[0m[2m=[0m2 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:29.990455Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : avant [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:29.990888Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : après [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.002617Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement terminé [3mcycle[0m[2m=[0m2 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:30.022331Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:30.076094Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m file de travail sérialisée imposée [3mmft[0m[2m=[0m"encodeur" [3mfile[0m[2m=[0m1310751
+[2m2026-08-03T10:30:30.076308Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-08-03T10:30:30.076680Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : reconstruction RÉUSSIE [3mcycle[0m[2m=[0m2 [3mvivants[0m[2m=[0m8
+[2m2026-08-03T10:30:30.076693Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement d'un encodeur [3mcycle[0m[2m=[0m3 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:30.076766Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : avant [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.077124Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : après [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.089915Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement terminé [3mcycle[0m[2m=[0m3 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:30.107319Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:30.158084Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m file de travail sérialisée imposée [3mmft[0m[2m=[0m"encodeur" [3mfile[0m[2m=[0m1310754
+[2m2026-08-03T10:30:30.158292Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-08-03T10:30:30.158551Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : reconstruction RÉUSSIE [3mcycle[0m[2m=[0m3 [3mvivants[0m[2m=[0m8
+[2m2026-08-03T10:30:30.158563Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement d'un encodeur [3mcycle[0m[2m=[0m4 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:30.158594Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : avant [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.158953Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : après [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.170356Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement terminé [3mcycle[0m[2m=[0m4 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:30.188416Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:30.239561Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m file de travail sérialisée imposée [3mmft[0m[2m=[0m"encodeur" [3mfile[0m[2m=[0m1310757
+[2m2026-08-03T10:30:30.239771Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-08-03T10:30:30.240024Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : reconstruction RÉUSSIE [3mcycle[0m[2m=[0m4 [3mvivants[0m[2m=[0m8
+[2m2026-08-03T10:30:30.240033Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement d'un encodeur [3mcycle[0m[2m=[0m5 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:30.240096Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : avant [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.240472Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : après [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.251943Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement terminé [3mcycle[0m[2m=[0m5 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:30.271759Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:30.322139Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m file de travail sérialisée imposée [3mmft[0m[2m=[0m"encodeur" [3mfile[0m[2m=[0m1310760
+[2m2026-08-03T10:30:30.322346Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-08-03T10:30:30.322653Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : reconstruction RÉUSSIE [3mcycle[0m[2m=[0m5 [3mvivants[0m[2m=[0m8
+[2m2026-08-03T10:30:30.322667Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement d'un encodeur [3mcycle[0m[2m=[0m6 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:30.322713Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : avant [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.323069Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : après [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.334624Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement terminé [3mcycle[0m[2m=[0m6 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:30.353128Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:30.405832Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m file de travail sérialisée imposée [3mmft[0m[2m=[0m"encodeur" [3mfile[0m[2m=[0m1310763
+[2m2026-08-03T10:30:30.406066Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-08-03T10:30:30.406322Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : reconstruction RÉUSSIE [3mcycle[0m[2m=[0m6 [3mvivants[0m[2m=[0m8
+[2m2026-08-03T10:30:30.406335Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement d'un encodeur [3mcycle[0m[2m=[0m7 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:30.406361Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : avant [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.406722Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : après [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.417860Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement terminé [3mcycle[0m[2m=[0m7 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:30.434990Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:30.484932Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m file de travail sérialisée imposée [3mmft[0m[2m=[0m"encodeur" [3mfile[0m[2m=[0m1310766
+[2m2026-08-03T10:30:30.485139Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-08-03T10:30:30.485370Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : reconstruction RÉUSSIE [3mcycle[0m[2m=[0m7 [3mvivants[0m[2m=[0m8
+[2m2026-08-03T10:30:30.485379Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement d'un encodeur [3mcycle[0m[2m=[0m8 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:30.485429Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : avant [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.485786Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : après [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.497985Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement terminé [3mcycle[0m[2m=[0m8 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:30.516129Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:30.565448Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m file de travail sérialisée imposée [3mmft[0m[2m=[0m"encodeur" [3mfile[0m[2m=[0m1310769
+[2m2026-08-03T10:30:30.565652Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-08-03T10:30:30.565894Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : reconstruction RÉUSSIE [3mcycle[0m[2m=[0m8 [3mvivants[0m[2m=[0m8
+[2m2026-08-03T10:30:30.565906Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement d'un encodeur [3mcycle[0m[2m=[0m9 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:30.565936Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : avant [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.566247Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : après [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.577178Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement terminé [3mcycle[0m[2m=[0m9 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:30.603336Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:30.652843Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m file de travail sérialisée imposée [3mmft[0m[2m=[0m"encodeur" [3mfile[0m[2m=[0m1310772
+[2m2026-08-03T10:30:30.653051Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-08-03T10:30:30.653310Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : reconstruction RÉUSSIE [3mcycle[0m[2m=[0m9 [3mvivants[0m[2m=[0m8
+[2m2026-08-03T10:30:30.653322Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement d'un encodeur [3mcycle[0m[2m=[0m10 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:30.653344Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : avant [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.653703Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : après [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.664900Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : relâchement terminé [3mcycle[0m[2m=[0m10 [3mrestants[0m[2m=[0m7
+[2m2026-08-03T10:30:30.682737Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m encodeur matériel retenu [3mencodeur[0m[2m=[0mNVIDIA H.264 Encoder MFT
+[2m2026-08-03T10:30:30.733518Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m file de travail sérialisée imposée [3mmft[0m[2m=[0m"encodeur" [3mfile[0m[2m=[0m1310775
+[2m2026-08-03T10:30:30.733728Z[0m [32m INFO[0m [2magent::encode[0m[2m:[0m convertisseur BGRA→NV12 (Video Processor MFT) configuré [3mconverter_provides_samples[0m[2m=[0mtrue
+[2m2026-08-03T10:30:30.734004Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m cycle : reconstruction RÉUSSIE [3mcycle[0m[2m=[0m10 [3mvivants[0m[2m=[0m8
+[2m2026-08-03T10:30:30.734020Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m VERDICT : détruire un encodeur libère la place, et les cycles tiennent [3mplafond[0m[2m=[0m8 [3mcycles_demandes[0m[2m=[0m10 [3mcycles_reussis[0m[2m=[0m10 [3mverdict[0m[2m=[0m"concurrence"
+[2m2026-08-03T10:30:30.734025Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m relâchement final [3mvivants[0m[2m=[0m8
+[2m2026-08-03T10:30:30.734061Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : avant [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.734439Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : après [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.746162Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : avant [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.746568Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : après [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.758543Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : avant [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.759025Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : après [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.771928Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : avant [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.772413Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : après [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.784801Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : avant [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.785251Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : après [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.797115Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : avant [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.797569Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : après [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.809968Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : avant [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.810421Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : après [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.822625Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : avant [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.823416Z[0m [32m INFO[0m [2magent::encode::arret[0m[2m:[0m IMFShutdown::Shutdown : après [3mmft[0m[2m=[0m"encodeur"
+[2m2026-08-03T10:30:30.841085Z[0m [32m INFO[0m [2magent::diagnostics::multifenetre::recyclage[0m[2m:[0m relâchement final terminé — le processus a survécu
