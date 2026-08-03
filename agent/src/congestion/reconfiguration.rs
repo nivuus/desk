@@ -48,6 +48,23 @@ impl Controleur {
 
         self.courant
     }
+
+    /// Change la borne haute de débit, sans toucher à l'échelle.
+    ///
+    /// Appelée quand le capteur accorde une nouvelle part du budget de
+    /// session (sous-bloc D6). **Ne reconstruit rien** : `Echelle::depuis` ne
+    /// dépend que de la taille source et de la cadence, jamais du plafond —
+    /// contrairement à `changer_source` juste au-dessus, qui doit reporter le
+    /// barreau sur une échelle neuve.
+    ///
+    /// Le débit rendu reste borné par la dernière estimation de bande
+    /// passante : un plafond qui remonte ne fait jamais dépasser ce que le
+    /// lien porte, il lève seulement une borne qui l'emprisonnait.
+    pub fn changer_plafond(&mut self, plafond_bps: u32) -> Decision {
+        self.config.plafond_bps = plafond_bps;
+        self.courant.video_bitrate_bps = self.courant.video_bitrate_bps.min(plafond_bps);
+        self.courant
+    }
 }
 
 /// Réglages de test partagés avec `controleur::tests`.
@@ -137,6 +154,41 @@ mod tests {
             c.echelle.barreaux()[0].min_bps,
             echelle_attendue.barreaux()[0].min_bps,
             "les seuils min_bps doivent suivre la nouvelle taille de source, pas rester ceux de 1920×1080"
+        );
+    }
+
+    #[test]
+    fn changer_plafond_borne_la_decision_sans_toucher_l_echelle() {
+        let base = t0();
+        let mut c = Controleur::new(config(), base);
+        let barreaux_avant = c.echelle.barreaux().to_vec();
+
+        let decision = c.changer_plafond(3_000_000);
+        assert_eq!(decision.video_bitrate_bps, 3_000_000, "le débit suit le nouveau plafond");
+        assert_eq!(
+            c.echelle.barreaux(),
+            barreaux_avant.as_slice(),
+            "l'échelle ne dépend pas du plafond"
+        );
+    }
+
+    #[test]
+    fn un_plafond_qui_remonte_ne_depasse_pas_l_estimation_courante() {
+        let base = t0();
+        let mut c = Controleur::new(config(), base);
+        // Une estimation modeste, puis un plafond très haut : c'est
+        // l'estimation qui doit continuer de commander.
+        c.observer(super::super::Observation {
+            estimate_bps: Some(2_000_000),
+            rtt: None,
+            loss: None,
+            at: base + Duration::from_secs(1),
+        });
+        let decision = c.changer_plafond(50_000_000);
+        assert!(
+            decision.video_bitrate_bps <= 2_000_000,
+            "le plafond ne doit jamais faire dépasser l'estimation : {}",
+            decision.video_bitrate_bps
         );
     }
 }
