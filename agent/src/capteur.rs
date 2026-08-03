@@ -10,6 +10,7 @@ pub mod distante;
 #[cfg(windows)]
 pub mod fenetre;
 pub mod horloge;
+pub mod pont_media;
 pub mod protocole;
 pub mod reprise;
 #[cfg(windows)]

@@ -56,6 +56,11 @@ pub struct SourceDistante {
     fenetre: FenetreCanal,
     /// Dernier changement de sommeil reçu du capteur, en attente d'être
     /// annoncé au navigateur. Consommé par `sommeil_a_annoncer`.
+    ///
+    /// **État courant, pas un historique** : deux `Sommeil` reçus avant
+    /// qu'une lecture n'intervienne s'écrasent, seul le dernier survit — même
+    /// régime que `Etat` juste au-dessus, dont les champs s'écrasent aussi
+    /// sans accumulation.
     sommeil: Option<(bool, String)>,
 }
 

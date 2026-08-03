@@ -365,3 +365,21 @@ fn un_sommeil_pousse_par_le_capteur_est_retenu_pour_le_client() {
     assert_eq!(source.sommeil_a_annoncer(), Some((true, "evincee".to_string())));
     assert_eq!(source.sommeil_a_annoncer(), None, "une annonce ne se répète pas");
 }
+
+/// `sommeil` est un état COURANT, pas un historique : deux `Sommeil` reçus
+/// avant toute lecture s'écrasent, et seul le dernier doit survivre — sans
+/// quoi la boucle de transport annoncerait au navigateur un état déjà
+/// périmé, ou pire, une file d'annonces grandirait sans jamais se vider.
+#[test]
+fn deux_sommeils_consecutifs_ne_retiennent_que_le_dernier() {
+    let (mut source, tx, _recus) = source_avec(4);
+    tx.send(Recu::Sommeil { endormie: true, raison: "masquee".into() }).expect("dépôt");
+    tx.send(Recu::Sommeil { endormie: true, raison: "evincee".into() }).expect("dépôt");
+    assert!(source.next_frame().is_none());
+    assert_eq!(
+        source.sommeil_a_annoncer(),
+        Some((true, "evincee".to_string())),
+        "seul le dernier sommeil reçu doit survivre"
+    );
+    assert_eq!(source.sommeil_a_annoncer(), None);
+}

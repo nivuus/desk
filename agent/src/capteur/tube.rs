@@ -11,7 +11,7 @@
 #![cfg(windows)]
 
 use std::io::{BufReader, Write};
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
+use std::sync::mpsc::{sync_channel, Receiver};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -19,9 +19,8 @@ use anyhow::{bail, Context, Result};
 
 use crate::capteur::distante::{Canal, Rattachee, Recu, SourceDistante};
 use crate::capteur::horloge::lire_qpc;
-use crate::capteur::protocole::{
-    ecrire_json, lire_trame, DepuisCapteur, Trame, VersCapteur, NOM_TUBE,
-};
+use crate::capteur::pont_media::lire_le_media;
+use crate::capteur::protocole::{ecrire_json, lire_trame, DepuisCapteur, Trame, VersCapteur, NOM_TUBE};
 use crate::capteur::reprise::DUREE_FENETRE_CANAL;
 
 /// Profondeur de la file d'images entre le fil lecteur et `next_frame`.
@@ -176,40 +175,6 @@ fn ouvrir_dans(fenetre: Duration) -> Result<std::fs::File> {
     }
     Err(anyhow::Error::from(derniere.expect("au moins une tentative"))
         .context(format!("aucun capteur sur {NOM_TUBE} après {fenetre:?}")))
-}
-
-/// Lit la connexion média — et **rien d'autre** : images et états. Une réponse
-/// de commande n'y transite pas, elle est lue par `commander` sur la connexion
-/// de commandes.
-fn lire_le_media<R: std::io::Read>(mut lecteur: R, images: SyncSender<Recu>) {
-    loop {
-        let trame = match lire_trame(&mut lecteur) {
-            Ok(trame) => trame,
-            // Fin de tube : le capteur est parti. Laisser tomber l'émetteur
-            // fait rendre `Disconnected` à `SourceDistante`, qui OUVRE SA
-            // FENÊTRE DE REPRISE au lieu de clore la session.
-            Err(_) => return,
-        };
-        let envoi = match trame {
-            Trame::Image(unite) => images.send(Recu::Image(unite)).is_ok(),
-            Trame::Json(octets) => match serde_json::from_slice::<DepuisCapteur>(&octets) {
-                Ok(DepuisCapteur::Etat { vivante, epuisee, largeur, hauteur }) => images
-                    .send(Recu::Etat { vivante, epuisee, largeur, hauteur })
-                    .is_ok(),
-                Ok(autre) => {
-                    tracing::warn!(?autre, "trame inattendue sur la connexion média, abandonnée");
-                    return;
-                }
-                Err(erreur) => {
-                    tracing::warn!(%erreur, "trame illisible du capteur, canal abandonné");
-                    return;
-                }
-            },
-        };
-        if !envoi {
-            return; // la source est partie
-        }
-    }
 }
 
 struct CanalTube {
