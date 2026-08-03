@@ -106,7 +106,11 @@ connectSession({
                 // doit pas être effacé par la minuterie d'un bandeau voisin.
                 statut.afficher(texte, { persistant: true });
             } else {
-                statut.masquer();
+                // `masquer()` protège délibérément un message persistant : le
+                // réveil doit donc lever explicitement cette persistance,
+                // sans quoi le bandeau « image figée : … » resterait affiché
+                // pour toujours après le réveil réel (voir status.ts).
+                statut.expirer();
             }
         } else if (message.type === 'link') {
             const t = texteLien(message);

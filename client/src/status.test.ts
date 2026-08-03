@@ -110,6 +110,33 @@ describe('creerStatut', () => {
         expect(element.dataset.hidden).toBe('true');
     });
 
+    it('expirer() lève la persistance d’un message persistant et le masque', () => {
+        // Cas réel qui a motivé cette méthode : le réveil d'une fenêtre
+        // endormie doit effacer le bandeau « image figée : … » affiché avec
+        // `persistant: true` à l'endormissement — `masquer()` seul ne le
+        // peut pas, par construction.
+        const element = faireCible();
+        const statut = creerStatut(element);
+
+        statut.afficher('image figée : fenêtre masquée', { persistant: true });
+        statut.expirer();
+
+        expect(element.dataset.hidden).toBe('true');
+    });
+
+    it('expirer() n’efface pas un message terminal : la garde terminale n’est pas affaiblie', () => {
+        // Même exigence que pour masquer() : `expirer()` ne lève QUE la
+        // persistance, jamais la protection terminale.
+        const element = faireCible();
+        const statut = creerStatut(element);
+
+        statut.afficher('session terminée : fermeture demandée', { terminal: true });
+        statut.expirer();
+
+        expect(element.dataset.hidden).toBe('false');
+        expect(element.textContent).toBe('session terminée : fermeture demandée');
+    });
+
     it('un message terminal reste prioritaire sur un persistant : la garde terminale n’est pas affaiblie', () => {
         // Ce test compte particulièrement : `persistant` est un drapeau ajouté
         // à côté de `terminal`, exactement le genre d'endroit où l'on
