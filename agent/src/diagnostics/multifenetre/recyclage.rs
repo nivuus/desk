@@ -37,10 +37,16 @@ const PLAFOND_RECHERCHE: usize = 16;
 /// Un encodeur et le périphérique qui le porte. Le périphérique DOIT vivre
 /// aussi longtemps que l'encodeur ; les relâcher séparément ferait mesurer
 /// autre chose que ce qu'on croit.
+///
+/// Les trois champs ne sont que des porteurs de durée de vie : aucun n'est
+/// jamais lu, ils existent uniquement pour que leurs objets restent vivants
+/// jusqu'au `drop` de l'`Instance`, d'où le préfixe `_` sur les trois — un
+/// champ `_x` reste possédé et se détruit normalement, seule la lecture est
+/// tue.
 struct Instance {
     _peripherique: windows::Win32::Graphics::Direct3D11::ID3D11Device,
     _contexte: windows::Win32::Graphics::Direct3D11::ID3D11DeviceContext,
-    encodeur: H264Encoder,
+    _encodeur: H264Encoder,
 }
 
 /// Construit une instance complète, ou rend l'erreur du refus.
@@ -53,7 +59,7 @@ fn construire() -> Result<Instance> {
         FPS,
         DEBIT,
     )?;
-    Ok(Instance { _peripherique: peripherique, _contexte: contexte, encodeur })
+    Ok(Instance { _peripherique: peripherique, _contexte: contexte, _encodeur: encodeur })
 }
 
 pub(super) fn mesurer(cycles: usize) -> Result<()> {
