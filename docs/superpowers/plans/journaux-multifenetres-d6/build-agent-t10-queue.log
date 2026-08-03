@@ -1,0 +1,25 @@
+   --> agent\src\encode.rs:289:5
+    |
+253 | pub struct H264Encoder {
+    |            ----------- field in this struct
+...
+289 |     capture: (u32, u32),
+    |     ^^^^^^^
+
+warning: function `client_size` is never used
+  --> agent\src\window.rs:79:8
+   |
+79 | pub fn client_size(hwnd: HWND) -> Result<(u32, u32)> {
+   |        ^^^^^^^^^^^
+
+warning: method `hwnd` is never used
+   --> agent\src\windows_source.rs:228:12
+    |
+145 | impl WindowsSource {
+    | ------------------ method in this implementation
+...
+228 |     pub fn hwnd(&self) -> HWND {
+    |            ^^^^
+
+warning: `agent` (bin "agent") generated 10 warnings
+    Finished `release` profile [optimized] target(s) in 11.58s

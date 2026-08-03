@@ -492,39 +492,43 @@ comparable à celle du §2. Aucun taux n'est revendiqué nulle part.**
 
 ### 3.0 Les verdicts, d'abord
 
-> **① Les cinq critères sont TENUS, et le seuil du critère ① n'est atteint que
-> sous une charge d'hôte comparable à celle qui a produit son point de
-> comparaison.** À huit fenêtres, `BUDGET_BPS = 12 000 000` : **3,94 %** des
-> images reçues sont jetées (seuil : **< 7,99 %**), les huit fenêtres se posent
-> au barreau **852×480** — celui que personne n'avait mesuré —, la somme des
-> parts vaut **11 999 997** pour un budget de 12 000 000, la focalisée est
-> **strictement** au-dessus de ses voisines à chacun des quatre déplacements de
-> focus, et les deux endormies reçoivent exactement `PART_DORMANTE_BPS` en
-> n'émettant **rien**.
+> **① Les cinq critères sont tenus, mais DEUX D'ENTRE EUX SOUS RÉSERVE, et la
+> réserve est écrite dans le verdict lui-même** — ① n'est **pas reproduit** hors
+> de la charge d'hôte de référence, et ④ n'est **pas systématique** (11
+> déplacements de focus sur 14). À huit fenêtres, `BUDGET_BPS = 12 000 000` :
+> **3,94 %** des images reçues sont jetées (seuil : **< 7,99 %**), les sept
+> fenêtres non focalisées se posent au barreau **852×480** — celui que personne
+> n'avait mesuré — et la focalisée à 1024×576, la somme des parts vaut
+> **11 999 997** pour un budget de 12 000 000, et les deux endormies reçoivent
+> exactement `PART_DORMANTE_BPS` en n'émettant **rien**. Le détail critère par
+> critère, avec ses réserves, est au §3.4.
 >
-> **② `BUDGET_BPS` est RECONDUIT à 12 000 000**, et le repli à 8 Mb/s prévu par
-> le brief n'est **pas** appliqué. Le point de repli a bien été mesuré :
-> **1,46 %** et **3,94 %** d'images jetées sur deux exécutions, mais au barreau
-> **640×360**, soit **95,5 à 135,6 MP/s** décodés contre **196,4** à 12 Mb/s.
-> 12 Mb/s achète une image nettement meilleure sans franchir le seuil, et ne
-> coûte rien au cas mono-fenêtre — ce que le §2.4 nommait comme le prix de
-> 8 Mb/s.
+> **② ⚠️ LE CRITÈRE ① EST TENU SOUS CHARGE D'HÔTE DE RÉFÉRENCE, ET NON
+> REPRODUIT AUTREMENT.** 3,94 % à l'exécution D. **Une exécution sur cinq à
+> 12 Mb/s passe le seuil ; une sur deux** si l'on ne retient que celles dont
+> l'échelle d'encodage s'était posée — la seule population honnête, et celle
+> que l'instrument a été modifié pour garantir. Les autres relèvent 8,03 %,
+> 16,70 %, 59,32 % et 75,47 %. La dégradation covarie avec le `loadavg` de
+> l'hôte **et** avec le non-établissement de l'échelle ; **les deux ne sont pas
+> départagées**. **Le produit n'est pas démontré robuste sous la charge d'hôte
+> réellement rencontrée pendant la campagne.**
 >
-> **③ ⚠️ LA MARGE EST UNE MARGE DE LABORATOIRE, ET LA CAMPAGNE LE MONTRE
-> CRÛMENT.** Les quatre autres exécutions à 12 Mb/s ont **toutes** dépassé le
-> seuil — **8,03 %**, **16,70 %**, **59,32 %**, **75,47 %** — et toutes se sont
-> jouées sous une charge d'hôte plus lourde que la référence : la charge
-> étrangère de l'hôte de mesure a varié d'un facteur **3,6** pendant la
-> campagne (`tdarr-ffmpeg` de 97 % à 351 % de CPU, `loadavg` de 13,0 à 38,1).
-> **La grandeur qui commande le verdict n'est pas le budget : c'est ce que le
-> client arrive à décoder.**
+> **③ `BUDGET_BPS` est RECONDUIT à 12 000 000, et ce choix est ASSUMÉ, PAS
+> DÉMONTRÉ.** Le repli à 8 Mb/s prévu par le brief a été mesuré — **1,46 %** et
+> **3,94 %** d'images jetées sur deux exécutions — mais au barreau **640×360**.
+> La comparaison est un **arbitrage** et non une domination : 852×480 livre
+> **196,4 MP/s** décodés contre 95,5 à 135,6, et en jette 3,94 % contre 1,46 à
+> 3,94 %. **Plus de pixels livrés, davantage jetés.** La seule raison qui ne se
+> discute pas est que 12 Mb/s **ne coûte rien au cas mono-fenêtre**. Voir §3.5.
 >
 > **④ ❌ AUCUN TÉMOIN HONNÊTE DE `set_desired_bitrate` N'A ÉTÉ TROUVÉ**, et
 > cette recette peut dire **pourquoi** plutôt que de simplement l'avouer : une
 > fenêtre endormie, dont l'objectif de sondage vaut 256 000 bps et qui
-> n'encode rien, émet **0,000 Mb/s** sur 30 s, aux quatre exécutions où le cas
+> n'encode rien, émet **0,000 Mb/s** sur 30 s, aux **six** exécutions où le cas
 > est exercé. Ce montage ne distingue donc pas « le sondage est borné à la
-> part » de « il n'y a pas de sondage du tout ». Voir §3.6.
+> part » de « il n'y a pas de sondage du tout ». ⚠️ **Une voie n'a PAS été
+> essayée et aurait pu répondre** : l'A/B différentiel sur ce montage même —
+> neutraliser l'appel, opposer les deux trafics cumulés. Voir §3.6.
 
 ### 3.1 Le montage, et les trois écarts avec celui du §2
 
@@ -549,12 +553,21 @@ puis montée à dix fenêtres avec palier de 30 s (critère ⑤). Source animée
 (`instrument/anim-d4.html`), un `--user-data-dir` par fenêtre, navigateur
 pilote lancé avant le superviseur, aucune capture d'écran CDP, évaluations CDP
 bornées, `agent.log` copié après la fermeture du navigateur, agents tués et
-sorties virtuelles purgées entre chaque exécution.
+sorties virtuelles purgées entre chaque exécution (⚠️ **sans pièce versée pour
+les purges intermédiaires** — voir §3.9).
 
 **Le binaire mesuré** : `C:\dev\target\release\agent.exe`, **9 146 880 octets**,
-horodaté `2026-08-03 17:01:34 UTC`, soit **cinq minutes** avant la première
-exécution (`17:06`). Sources à `f7557d3`. Journal de compilation :
-`/tmp/build-d6-t10.log` (non versé — sa queue seule a été capturée).
+horodaté `2026-08-03 17:01:34 UTC` (relevé par `ls --time-style=full-iso` sur le
+partage), soit **cinq minutes** avant la première exécution (`17:06`). Sources à
+`f7557d3`. ⚠️ **Le journal de compilation versé
+(`build-agent-t10-queue.log`) n'en est que la QUEUE** — 25 lignes capturées par
+un `tee` placé après un `tail`. Il porte `Finished release profile in 11,58s`,
+ce qui **ne suffit pas** à prouver une compilation non vide ; la preuve de
+fraîcheur est la taille et l'horodatage du binaire (9 142 784 octets au §1
+contre 9 146 880 ici, donc un lien réellement refait).
+
+**Les sept exécutions portent le même binaire** : aucune compilation n'a eu
+lieu entre la première et la dernière.
 
 **Un champ de trace a été ajouté pour cette recette** (commit `f7557d3`) :
 `part de budget appliquee` porte désormais `session=`. Tous les enfants
@@ -565,15 +578,15 @@ attribuable.
 
 ### 3.2 Le contrôle que la variable est arrivée
 
-Relevé dans les cinq `agent.log` conservés, séquences ANSI retirées :
+Relevé dans les **sept** `agent.log` versés, séquences ANSI retirées :
 
 | Exécution | ligne relevée |
 | --- | --- |
-| A, D, G | `budget de debit de la session budget_bps=12000000` — **1** occurrence |
+| A, B, C, D, G | `budget de debit de la session budget_bps=12000000` — **1** occurrence |
 | E, F | `budget de debit de la session budget_bps=8000000` — **1** occurrence |
 
 **La valeur est comparée, pas seulement la présence de la ligne.** Elle égale
-ce qui a été posé dans les cinq cas.
+ce qui a été posé dans les **sept** cas.
 
 ⚠️ **Le contrôle automatique du pilote a rendu `[]` aux sept exécutions, et ce
 vide ne voulait rien dire** : `budget_bps()` est un `OnceLock` dont la trace ne
@@ -600,47 +613,97 @@ deltas relevés entre deux appels de `getStats()`.
 | B | 12 Mb/s | **non** (60 chgts) | 59,32 | 213,97 | 77,26 | 8,215 | 9 ms | 31,77 → 34,10 | 104 |
 | C | 12 Mb/s | **non** (50 chgts) | 75,47 | 141,34 | 56,84 | 9,071 | 63 ms | 35,01 → 38,08 | 98,0 |
 
-**Les trois premières lignes sont les seules comparables entre elles et avec le
-§2** (`loadavg` 13,0 à 18,1, `tdarr-ffmpeg` 97 à 98 % — le §2 relevait 15 à 19
-et 106 à 111 %). Les quatre autres sont écartées, chacune pour une raison
-nommée :
+**La règle de sélection, écrite ici parce que son absence est ce qui rend un
+sous-ensemble possible** : est retenue comme *comparable* une exécution qui
+remplit les **deux** conditions — échelle d'encodage **posée** avant le palier,
+et charge d'hôte dans la bande du §2. **D, E et F les remplissent ; A, B, C et
+G non**, chacune pour une raison nommée :
 
-- **A** est l'exécution de rodage : son palier a **chevauché la descente de
-  barreau**, le dernier `taille d'encodage changée` tombant 4 s avant la fin.
-  Elle mêle donc le régime établi et le transitoire depuis 1280×720. C'est ce
-  qui a fait ajouter l'attente d'échelle posée à l'instrument.
-- **B** portait `RUST_LOG='info,agent::transport::evenements=debug'`, posé pour
-  tenter d'observer l'estimation BWE (§3.6) — **et l'hôte portait en même temps
-  2,3 fois la charge de la référence**. ⚠️ **Deux variables : la dégradation
-  n'est attribuée à aucune des deux**, et le niveau `debug` a été abandonné.
-- **C** s'est jouée sous `loadavg` 35,0 → 38,1.
-- **G** s'est jouée pendant que `tdarr-ffmpeg` passait à **351 % de CPU**,
+- **A** : **échelle non posée** — son palier a **chevauché la descente de
+  barreau**, le dernier `taille d'encodage changée` tombant 4 s avant la fin,
+  et l'attente d'échelle posée n'existait pas encore dans l'instrument. **C'est
+  son seul disqualifiant** : sa charge d'hôte (`loadavg` 14,60 → 20,19,
+  `tdarr` 108) est **dans la même bande que celle du §2**, et une rédaction
+  antérieure de ce paragraphe la rangeait à tort parmi les exécutions « sous
+  charge plus lourde ».
+- **B** : **échelle non posée** (60 changements) **et** `loadavg` 31,8 → 34,1,
+  **et** `RUST_LOG='info,agent::transport::evenements=debug'` posé pour tenter
+  d'observer l'estimation BWE (§3.6). ⚠️ **Trois variables : la dégradation
+  n'est attribuée à aucune**, et le niveau `debug` a été abandonné.
+- **C** : **échelle non posée** (50 changements, 91,1 s sans se poser)
+  **et** `loadavg` 35,0 → 38,1.
+- **G** : **échelle posée** (12,6 s), mais `tdarr-ffmpeg` à **351 % de CPU**,
   3,6 fois sa valeur de référence. Son exécution a par ailleurs été
   **interrompue en phase 3** par le délai de l'outil qui la portait : sa
-  phase 1 est complète et versée, il n'y a pas de `.json`.
+  phase 1 et sa phase 2 sont complètes et versées, il n'y a pas de `.json`.
 
-**Ce que ce tableau dit, et qui dépasse la calibration** : entre l'exécution D
-et l'exécution C, **seule la charge étrangère de l'hôte change** — même
-binaire, même budget, même protocole — et le taux d'images jetées passe de
-3,94 % à 75,47 %. **Le montage de recette mesure l'hôte au moins autant que le
-produit.**
+⚠️ **Ce que ce tableau ne permet PAS de dire, et qu'une rédaction antérieure
+disait** : « entre D et C, seule la charge étrangère de l'hôte change ». C'est
+**faux**, et le tableau au-dessus le contredit lui-même. **Trois choses au
+moins diffèrent** :
+
+1. **l'échelle** — D : posée en 18,4 s après 24 changements ; C : **jamais
+   posée**, 50 changements en 91,1 s. C'est exactement le disqualifiant appliqué
+   à A, et le §3.8 en fait un piège nommé ;
+2. **la charge étrangère NOMMÉE est identique** — `tdarr-ffmpeg` vaut **97,9**
+   pour D et **98,0** pour C. Le facteur 3,6 invoqué appartient à **G seule**.
+   Ce qui sépare D de C est le seul `loadavg`, **dont la composition n'est
+   relevée nulle part** ;
+3. **le `loadavg` est confondu avec la durée du montage avant le palier** —
+   celui-ci commence à 81,8 s pour D et 158,2 s pour C, et `loadavg` est une
+   moyenne à une minute : il mesure en partie l'instrument lui-même. Le `%Cpu`
+   inactif, lui, ne diffère que de 6 points (44,9–53,0 contre 45,7–46,6).
+
+**L'attribution de la dégradation à la charge de l'hôte est donc INFÉRÉE, pas
+établie**, et il reste **deux variables jamais départagées** : la charge d'hôte
+et le non-établissement de l'échelle. C'est la règle appliquée à B ; elle vaut
+pour C.
+
+Ce que le tableau autorise, et rien de plus : **la performance du produit
+mesurée par ce montage varie d'un facteur 19 sur le taux d'images jetées
+(3,94 % à 75,47 %) à binaire, budget et protocole identiques.** **Le montage de
+recette mesure son hôte au moins autant que le produit.**
 
 ### 3.4 Critère par critère
 
+**Les verdicts sont GRADUÉS** — ce dépôt écrit « TENU sur le fond » et « NON
+TENU » sur deux lignes d'un même critère quand c'est la vérité (D5), et
+« MESURÉ » quand il n'y a pas de seuil.
+
 | # | Critère | Seuil | Verdict | Exécutions |
 | --- | --- | --- | --- | --- |
-| ① | `framesDropped` en % des images reçues, à 8 fenêtres | **< 7,99 %** | **TENU** — 3,94 % à 12 Mb/s | **1** comparable (D) ; 1,46 % et 3,94 % à 8 Mb/s sur **2** (E, F) |
-| ② | La taille d'encodage des huit fenêtres a **bougé** | le barreau a bougé | **TENU** — 852×480 à 12 Mb/s, 640×360 à 8 Mb/s, contre 1280×720 sans budget | **3** |
-| ③ | Somme des parts accordées ≤ `BUDGET_BPS` | ≤ budget | **TENU** — jamais dépassé, dans **aucune** phase d'**aucune** exécution | **7** |
-| ④ | Barreau de la focalisée > celui des autres éveillées | strictement | **TENU** — 7 déplacements de focus sur 8 | **4** (2 déplacements chacune) |
-| ⑤ | Une endormie reste au plancher, octets RTP au plancher | 256 000 bps | **TENU** — 256 000 bps exactement, **0,000 Mb/s** sur 30 s | **4** |
+| ① | `framesDropped` en % des images reçues, à 8 fenêtres | **< 7,99 %** | **TENU sous charge d'hôte de référence — NON REPRODUIT autrement** | **1 sur 5** à 12 Mb/s ; **1 sur 2** parmi celles dont l'échelle s'est posée |
+| ② | La taille d'encodage des huit fenêtres a **bougé** | le barreau a bougé | **TENU** — 852×480 à 12 Mb/s, 640×360 à 8 Mb/s, contre 1280×720 sans budget | **7 sur 7** |
+| ③ | Somme des parts accordées ≤ `BUDGET_BPS` | ≤ budget | **TENU** — jamais dépassé, dans **aucune** phase d'**aucune** exécution | **7 sur 7** |
+| ④ | Barreau de la focalisée > celui des autres éveillées | strictement | **TENU en majorité, PAS SYSTÉMATIQUE** — **11 déplacements sur 14** | **7** (2 déplacements chacune) |
+| ⑤ | Une endormie reste au plancher, octets RTP au plancher | 256 000 bps | **TENU** — 256 000 bps exactement, **0,000 Mb/s sur 30 s** | **6 sur 6** (G n'atteint pas sa phase 3) |
 
-**① — le barreau 852×480 à huit fenêtres, enfin mesuré.** Le §2.4 le nommait
-comme le trou du relevé B (« entre les deux points mesurés, donc non mesuré »).
-Il vaut **3,94 %** d'images jetées et **196,40 MP/s** décodés, à comparer aux
-deux points encadrants du §2.3 : 7,99 % / 267,20 MP/s à 1024×576, et 1,47 % /
-118,58 MP/s à 640×360. Il est donc **meilleur que le barreau du dessus sur les
-deux grandeurs à la fois**, ce que l'interpolation ne laissait pas prévoir.
+**① — le verdict, en toutes lettres.** **3,94 %** à l'exécution D, contre un
+seuil de 7,99 %. **Une exécution sur cinq à 12 Mb/s passe le seuil, et une sur
+deux parmi celles dont l'échelle s'est posée** (D à 3,94 %, G à 16,70 % ; A, B
+et C n'ont pas posé leur échelle). La dégradation covarie avec le `loadavg` de
+l'hôte **et** avec le non-établissement de l'échelle ; **les deux ne sont pas
+départagées** (§3.3). **Le produit n'est pas démontré robuste sous la charge
+d'hôte réellement rencontrée pendant la campagne.**
+
+**Le barreau 852×480 à huit fenêtres, que le §2.4 nommait comme le trou du
+relevé B, est mesuré**, et il faut lire ce qu'il donne comme un **arbitrage** :
+
+| Barreau | % jetées | MP/s décodés | source |
+| --- | --- | --- | --- |
+| 1024×576 | 7,99 % | **267,20** | §2.3 (relevé B, 2 Mb/s/fenêtre) |
+| **852×480** | **3,94 %** | **196,40** | **§3, exécution D** |
+| 640×360 | 1,47 % | 118,58 | §2.3 (relevé B, 1 Mb/s/fenêtre) |
+
+⚠️ **852×480 ne domine PAS le barreau du dessus** : il en jette moitié moins
+(−51 %) mais en livre un quart de moins (−26 % de pixels décodés par seconde).
+Une rédaction antérieure de ce paragraphe écrivait « meilleur sur les deux
+grandeurs à la fois » — **c'est faux**, 196,40 < 267,20. Ce que le point neuf
+apporte est qu'il tombe **au-dessus de l'interpolation linéaire** entre ses deux
+voisins sur le taux d'images jetées : l'interpolation en prédisait ≈ 4,7 %, il en
+donne 3,94 %. ⚠️ **Et cette comparaison croise trois exécutions distinctes de
+deux montages distincts** (le §2 simulait le budget par `BITRATE = B/N`, le §3
+le fait produire par le capteur) : elle est **indicative, pas contrôlée**.
 
 **② — le barreau a bougé, et il tient.** À 12 Mb/s, les sept fenêtres non
 focalisées sont à **852×480** et la focalisée à **1024×576** (champs `taille`
@@ -654,33 +717,55 @@ traces `part de budget appliquee session=… part_bps=…` :
 
 | Exécution | phase | somme relevée | budget | dépassement |
 | --- | --- | --- | --- | --- |
-| D | palier 8 fen. | **11 999 997** | 12 000 000 | non |
-| D | 10 fen., 2 endormies | **11 999 996** | 12 000 000 | non |
+| A, B, C, D, G | palier 8 fen. | **11 999 997** | 12 000 000 | non |
+| B, C, D | 10 fen., 2 endormies | **11 999 996** | 12 000 000 | non |
+| A | 10 fen., 2 endormies | **12 000 000** | 12 000 000 | non |
 | E, F | palier 8 fen. | **7 999 992** | 8 000 000 | non |
 | E, F | 10 fen., 2 endormies | **8 000 000** | 8 000 000 | non |
-| A | les trois phases | 11 999 997 puis 12 000 000 | 12 000 000 | non |
 
 Le régime 1 de `repartir` (le seul qui garantisse le non-dépassement) est donc
 le seul rencontré. **Les régimes 2 et 3 n'ont jamais été exercés** — il aurait
 fallu un budget dérisoire.
 
-**④ — le focus.** Huit déplacements au total sur quatre exécutions, jugés sur
-la taille **annoncée par l'agent** (`lien_taille` du message `link`), qui est la
-grandeur que le brief désigne :
+**④ — le focus : 11 déplacements sur 14, et les échecs ne s'expliquent pas
+tous.** Les sept exécutions ont toutes joué leur phase 2, soit **14**
+déplacements. Le verdict porte sur la taille **annoncée par l'agent**
+(`lien_taille` du message `link`), qui est la grandeur que le brief désigne, et
+la règle est « strictement au-dessus de **toutes** les autres éveillées » :
 
-- **à 12 Mb/s : 4 déplacements sur 4**, la focalisée à 1024×576 quand les sept
-  autres sont à 852×480 (exécutions A et D) ;
-- **à 8 Mb/s : 3 sur 4.** Au second déplacement de l'exécution F, la focalisée
-  est restée à 640×360 comme ses voisines pendant les 25 s du palier.
-  **L'explication est arithmétique et elle compte** : à 8 Mb/s la part majorée
-  vaut 1 777 776 bps, pour un `min_bps` de **1 769 472** au barreau 1024×576 —
-  **8 304 bps de marge, soit 0,47 %.** Il suffit que l'estimation BWE passe
-  d'un cheveu sous la part pour que la promotion n'ait pas lieu, et c'est bien
-  ce qu'on observe (plusieurs fenêtres annoncent 552 154 à 885 102 bps pour une
-  part de 888 888). À 12 Mb/s la part majorée vaut 2 666 666 pour le même seuil :
-  **51 % de marge**. **`FACTEUR_FOCUS` n'est robuste qu'à 12 Mb/s**, et c'est un
-  argument de calibration que le §2 ne pouvait pas voir, faute d'exercer le
-  focus.
+| Exéc. | Budget | 1ᵉʳ déplacement | 2ᵉ déplacement |
+| --- | --- | --- | --- |
+| A | 12 Mb/s | ✅ 1024×576 vs 852×480 | ✅ 1024×576 vs 852×480 |
+| B | 12 Mb/s | ✅ 1024×576 vs {852×480, 640×360} | ✅ idem |
+| C | 12 Mb/s | ✅ 1024×576 vs {852×480, 640×360} | ✅ 1024×576 vs 852×480 |
+| D | 12 Mb/s | ✅ 1024×576 vs 852×480 | ✅ 1024×576 vs 852×480 |
+| **G** | 12 Mb/s | **❌ 852×480 vs 852×480** | **❌ 852×480 vs {852×480, 640×360}** |
+| E | 8 Mb/s | ✅ 1024×576 vs 640×360 | ✅ 1024×576 vs 640×360 |
+| F | 8 Mb/s | ✅ 1024×576 vs 640×360 | **❌ 640×360 vs 640×360** |
+
+**Soit 11 sur 14 : 8 sur 10 à 12 Mb/s, 3 sur 4 à 8 Mb/s.**
+
+⚠️ **Une rédaction antérieure de ce paragraphe annonçait « 4 déplacements sur 4
+à 12 Mb/s », sur un sous-ensemble de 8 des 14, sans énoncer de règle de
+sélection** — et l'exécution qui manquait est précisément celle qui échoue. La
+règle de sélection est désormais au §3.3 ; ici, **les 14 sont rapportés**.
+
+Les deux modes d'échec **ne sont pas le même**, et un seul s'explique :
+
+- **F, 2ᵉ déplacement — expliqué, et arithmétiquement.** À 8 Mb/s la part
+  majorée vaut 1 777 776 bps pour un `min_bps` de **1 769 472** au barreau
+  1024×576 : **8 304 bps de marge, soit 0,47 %.** Il suffit que l'estimation BWE
+  passe d'un cheveu sous la part pour que la promotion n'ait pas lieu, et c'est
+  bien ce qu'on observe (plusieurs fenêtres annoncent 552 154 à 885 102 bps pour
+  une part de 888 888).
+- **G, les DEUX déplacements — INEXPLIQUÉ.** Sa focalisée a reçu **2 509 810**
+  puis **2 666 666 bps**, très au-dessus des 1 769 472 requis : **les 51 % de
+  marge étaient là, et la promotion n'a pas eu lieu.** G a par ailleurs une
+  **échelle posée** (12,6 s), donc elle n'a pas le disqualifiant de A. Ce qui la
+  distingue est sa charge d'hôte (`tdarr` à 351 %) — **corrélation, pas cause**.
+  **La marge arithmétique ne suffit donc pas à garantir la promotion**, et
+  `FACTEUR_FOCUS` ne départage pas les deux budgets : **8/10 contre 3/4** n'est
+  pas un écart que ces effectifs permettent de trancher.
 
 ⚠️ **Une nuance de mesure, à ne pas taire** : au second déplacement de
 l'exécution E, l'agent annonçait bien 1024×576 pour la focalisée alors que le
@@ -688,37 +773,71 @@ navigateur décodait encore du 640×360 à l'instant de l'échantillon. **La tai
 décodée retarde sur la taille annoncée** ; le verdict porte sur la seconde.
 
 **⑤ — les endormies.** À dix fenêtres ouvertes (`CAPACITE` = 10,
-`PLAFOND_EVEIL` = 8), les deux plus anciennes s'endorment. Aux **quatre**
-exécutions où la phase 3 est allée à son terme, les deux endormies reçoivent
+`PLAFOND_EVEIL` = 8), deux s'endorment. Aux **six** exécutions dont la phase 3
+est allée à son terme (toutes sauf G), les deux endormies reçoivent
 **exactement 256 000 bps** (`PART_DORMANTE_BPS`) et leur trafic vidéo entrant
 est relevé à **0 image et 0,000 Mb/s** sur les 30 s du palier — pendant que les
 huit éveillées tiennent 42 à 78 i/s. Le bandeau `#status` de leur page dit
 « Réseau insuffisant pour le jeu nerveux — …, 0.2 Mb/s ».
 
-### 3.5 La valeur retenue, et ce qui la justifie
+⚠️ **Ce ne sont PAS « les deux plus anciennes »**, comme une rédaction
+antérieure l'écrivait : les évincées sont **`w-8` et `w-10`** aux exécutions
+B à F, soit les **4ᵉ et 5ᵉ ouvertes** (`w-2` et `w-8` à l'exécution A). Le
+vivier de D5 arbitre par **récence du dernier signal**, et les trois premières
+fenêtres avaient reçu un focus pendant la phase 2 : c'est le protocole de
+recette qui détermine lesquelles s'endorment, pas leur ancienneté.
+
+### 3.5 La valeur retenue, et pourquoi le choix est ASSUMÉ et non démontré
 
 **`BUDGET_BPS` reste 12 000 000.** Le brief prévoyait de descendre à 8 000 000
 si le taux dépassait 7,99 % ; **il ne le dépasse pas** sur l'exécution jouée
-sous la charge d'hôte de référence. Trois raisons, chacune adossée à un relevé :
+sous la charge d'hôte de référence.
 
-1. **Le seuil est tenu avec un facteur 2** : 3,94 % contre 7,99 % (exécution D).
-2. **L'image est nettement meilleure** : 852×480 contre 640×360, **196,40 MP/s**
-   décodés contre 95,54 et 135,57 (exécutions D contre F et E).
-3. **La majoration de focus n'est robuste qu'à 12 Mb/s** : 51 % de marge sur le
-   seuil de barreau contre 0,47 %, et un déplacement de focus sans effet observé
-   à 8 Mb/s (§3.4 ④).
+**Deux raisons survivent à la relecture des relevés, et une troisième est
+tombée.**
 
-Et il ne coûte rien au cas mono-fenêtre, ce que le §2.4 déclarait être le prix
-de 8 Mb/s.
+1. **Le seuil est tenu d'un facteur 2** sur l'exécution comparable : 3,94 %
+   contre 7,99 % (exécution D). ⚠️ **Une seule exécution.**
+2. **12 Mb/s ne coûte rien au cas mono-fenêtre**, là où 8 Mb/s lui retirerait
+   un tiers de son débit. **C'est la seule raison qui ne se discute pas** — et
+   c'est exactement le prix que le §2.4 avait nommé pour 8 Mb/s.
+   ⚠️ **Le cas mono-fenêtre à 12 Mb/s n'a pourtant JAMAIS été mesuré**, ni ici
+   ni au §2 (les points existants à N = 1 sont 9,479 Mb/s à 0 % jetées et
+   82,257 Mb/s à 53,6 %). Cette raison protège donc un acquis **supposé**.
+3. ❌ **« La majoration de focus n'est robuste qu'à 12 Mb/s » — RETIRÉE.**
+   Cette raison figurait dans une rédaction antérieure de ce §, dans le rapport
+   de tâche et dans le commentaire de `parts.rs` : elle allait entrer dans la
+   mémoire longue du dépôt. **Elle est réfutée par une pièce versée ici même**
+   (`critere-g-budget12-partiel.log`) : l'exécution G, à 12 Mb/s et avec 51 %
+   de marge sur le seuil de barreau, rate ses **deux** déplacements de focus.
+   Le relevé complet est **8/10 à 12 Mb/s contre 3/4 à 8 Mb/s** (§3.4 ④) —
+   **`FACTEUR_FOCUS` ne départage pas les deux valeurs.**
+
+**Ce que la comparaison des deux budgets donne réellement est un ARBITRAGE que
+la mesure ne tranche pas :**
+
+| Budget | barreau des 7 non focalisées | % jetées | MP/s décodés | focus réussi |
+| --- | --- | --- | --- | --- |
+| **12 Mb/s** | 852×480 | **3,94 %** (1 exéc. comparable) | **196,40** | 8/10 |
+| **8 Mb/s** | 640×360 | **1,46 %** et **3,94 %** (2 exéc.) | 95,54 et 135,57 | 3/4 |
+
+**Plus de pixels livrés, davantage jetés.** Aucune des deux valeurs ne domine
+l'autre sur les deux grandeurs, et les effectifs (1 exécution contre 2) ne
+permettent aucune comparaison statistique. **Le choix de 12 Mb/s repose donc
+sur la raison n°2 — le cas mono-fenêtre — et sur elle seule.** Il est assumé,
+pas démontré, et il se réviserait sans embarras si le cas mono-fenêtre était
+mesuré et se révélait déjà mauvais à 12 Mb/s.
 
 ⚠️ **Trois réserves qui doivent voyager avec cette valeur :**
 
 - **Une seule exécution comparable la porte.** Aucun taux, aucune variabilité.
-- **Les quatre autres exécutions à 12 Mb/s ont dépassé le seuil**, toutes sous
-  une charge d'hôte plus lourde. **La marge est une marge de laboratoire.**
+- **Une exécution sur cinq à 12 Mb/s passe le seuil**, une sur deux parmi
+  celles dont l'échelle s'est posée. **La marge est une marge de laboratoire**,
+  et **le produit n'est pas démontré robuste** sous la charge d'hôte
+  réellement rencontrée pendant la campagne.
 - **Le repli à 8 Mb/s n'a JAMAIS été éprouvé sous charge élevée.** Que 12 Mb/s
-  s'y dégrade plus vite que 8 Mb/s est **plausible et non établi** : il n'existe
-  aucune exécution à 8 Mb/s sous `loadavg` supérieur à 18,1.
+  s'y dégrade plus vite est **plausible et non établi** : il n'existe aucune
+  exécution à 8 Mb/s sous `loadavg` supérieur à 18,1.
 
 ### 3.6 Le sondage : ce que cette recette n'a PAS pu établir, et pourquoi
 
@@ -748,7 +867,7 @@ reportée sur cette recette.
 **Le relevé qui explique l'échec, et qui a sa valeur propre** : une fenêtre
 endormie a `set_desired_bitrate` à 256 000 bps et n'encode plus rien (D5 a
 relâché son encodeur). Son trafic vidéo entrant est relevé à **0,000 Mb/s sur
-30 s, aux quatre exécutions**. **str0m n'émet donc aucun bourrage de sondage
+30 s, aux six exécutions dont la phase 3 aboutit**. **str0m n'émet donc aucun bourrage de sondage
 mesurable quand aucun média ne part** — ce qui répond au passage à l'hypothèse
 explicitement déclarée non vérifiée dans la doc de `PART_DORMANTE_BPS` : sur ce
 montage, le plancher « ne coûte que sa ligne ».
@@ -759,22 +878,47 @@ montage, **« sondage borné à la part » et « pas de sondage du tout » se li
 identiquement.** `set_desired_bitrate` reste donc **non couvert**, ni par un
 test, ni par cette recette. C'est le point ouvert le plus important de D6.
 
+⚠️ **« Aucun témoin trouvé » n'est PAS « aucun témoin n'était possible », et la
+voie la plus simple n'a pas été essayée.** Trois remèdes se présentent, et le
+troisième est celui que ce dépôt a payé cher pour apprendre au chantier des
+duplications parallèles — *retirer la variable suspecte et voir si le symptôme
+survit* :
+
+1. un montage où le sondage produit du trafic observable — média actif, plafond
+   très haut, lien réellement contraint ;
+2. instrumenter str0m pour exposer la valeur ;
+3. **un A/B différentiel sur CE montage** : une exécution avec l'appel
+   `rtc.bwe().set_desired_bitrate` neutralisé, opposée à une exécution
+   nominale, sur le trafic sortant cumulé des huit fenêtres. **Cette voie n'a
+   pas été jouée**, et rien dans les relevés ne dit qu'elle aurait échoué.
+
 ### 3.7 Ce que le §3 n'établit PAS
 
 - **Aucun taux, nulle part.** Sept exécutions, dont **trois seulement**
   comparables entre elles, et **une seule** à 12 Mb/s dans ces conditions.
+- **Le critère ① n'est pas reproduit** : 1 exécution sur 5 à 12 Mb/s le passe,
+  1 sur 2 parmi celles dont l'échelle s'est posée. **La cause de la dégradation
+  n'est pas isolée** — charge d'hôte et non-établissement de l'échelle
+  covarient sans être départagées (§3.3).
+- **L'arbitrage 12 Mb/s contre 8 Mb/s n'est pas tranché par la mesure** : ni
+  le taux d'images jetées, ni le débit de pixels, ni la réussite de la
+  majoration de focus ne désignent un gagnant (§3.5). Le choix tient à une
+  raison — le cas mono-fenêtre — **elle-même jamais mesurée à 12 Mb/s**.
+- **Les deux échecs de focus de l'exécution G ne sont pas expliqués** : 51 % de
+  marge sur le seuil de barreau, échelle posée, promotion absente deux fois.
 - **La valeur est DE LABORATOIRE**, exactement comme celle du §2 : navigateur
   Chrome sans interface, `--disable-gpu`, donc **décodage logiciel**, sur l'hôte
   qui porte aussi la VM et une charge étrangère variable d'un facteur 3,6.
   **Un client réel, sur une autre machine, avec décodage matériel, décrocherait
   ailleurs.** `BUDGET_BPS` n'est pas une constante du produit.
-- **`set_desired_bitrate` n'est pas couvert** (§3.6).
+- **`set_desired_bitrate` n'est pas couvert** (§3.6), et **l'A/B différentiel
+  qui aurait pu le couvrir n'a pas été joué**.
 - **Les régimes 2 et 3 de `repartir` ne sont pas exercés** : seul le régime 1,
   celui qui garantit le non-dépassement, a été rencontré.
 - **`HYSTERESIS`, `REPIT_APRES_ECHEC`, `FACTEUR_FOCUS` et `PART_DORMANTE_BPS`
-  restent NON CALIBRÉES.** Cette recette juge `FACTEUR_FOCUS` **suffisant** à
-  12 Mb/s (il fait franchir un barreau, 4 fois sur 4) ; elle ne le calibre pas,
-  et elle montre qu'il est **insuffisamment robuste à 8 Mb/s**.
+  restent NON CALIBRÉES.** Cette recette montre que `FACTEUR_FOCUS` fait
+  franchir un barreau **11 fois sur 14** ; elle ne le calibre pas, et elle
+  **ne permet pas de dire qu'il est plus robuste à un budget qu'à l'autre**.
 - **La visibilité et le focus sont IMPOSÉS par le pilote**, page par page,
   parce qu'un Chrome sans interface rapporte `document.hidden = true` pour toute
   fenêtre d'arrière-plan. **Aucune minimisation de vraie fenêtre, aucun clic
@@ -818,16 +962,48 @@ test, ni par cette recette. C'est le point ouvert le plus important de D6.
   en une heure, et le verdict du critère ① bascule avec lui.
 - **Une part majorée qui atterrit à 0,47 % d'un seuil de barreau est un tirage
   au sort, pas une majoration.** Vérifier la marge d'une constante contre
-  l'échelle **avant** de croire qu'elle produit l'effet voulu.
+  l'échelle **avant** de croire qu'elle produit l'effet voulu. ⚠️ **Et la marge
+  ne suffit pas** : l'exécution G rate ses deux promotions avec 51 % de marge.
+- ⚠️ **UN SOUS-ENSEMBLE SANS RÈGLE DE SÉLECTION EST UN SOUS-ENSEMBLE CHOISI**,
+  même quand on ne l'a pas choisi. Le premier énoncé du critère ④ annonçait
+  « 4 déplacements sur 4 » sur 8 des **14** relevés, en écartant sans le dire
+  les exécutions jugées non comparables **sur un autre critère** — celui de la
+  charge d'hôte, qui ne dit rien de la promotion de focus. L'exécution ainsi
+  écartée était précisément celle qui échoue, et la conclusion fausse qui en
+  sortait — « `FACTEUR_FOCUS` n'est robuste qu'à 12 Mb/s » — partait vers la
+  mémoire longue du dépôt. **Énoncer la règle de sélection AVANT de compter, et
+  vérifier qu'elle est pertinente pour la grandeur qu'on juge.**
+- ⚠️ **« Meilleur » n'a de sens que sur une grandeur à la fois.** Le barreau
+  852×480 jette moitié moins d'images que 1024×576 et livre un quart de pixels
+  en moins : c'est un **arbitrage**, pas une domination, et l'écrire comme une
+  domination contredisait l'argument voisin, qui traitait les pixels décodés
+  comme « plus haut = mieux ».
+- ⚠️ **« Seule X change » se vérifie contre son propre tableau.** L'affirmation
+  « entre D et C seule la charge de l'hôte change » était réfutée par la ligne
+  imprimée trois paragraphes plus haut (l'échelle de C ne s'est jamais posée),
+  et par le fait que la charge étrangère **nommée** était identique (98 % dans
+  les deux cas). La règle « deux variables, aucune attribution », correctement
+  appliquée à une autre exécution du même tableau, ne l'avait pas été à
+  celle-ci.
 
 ### 3.9 Contrôle de survie de la VM et état final
 
 `virsh domstate Windows` : « en cours d'exécution » ; accès réel au partage
-contrôlé **après chaque phase** des sept exécutions (lignes `SURVIE VM`,
-`acces_partage=OUI` partout). Le journal libvirt ne porte aucune extinction
-après `2026-08-03 11:17:44+0000`, soit **5 h 49 avant** le début de la première
-exécution.
+contrôlé **après chaque phase** — trois contrôles par exécution, **sauf G qui
+n'en a que deux**, son interruption l'ayant privée de sa phase 3. Lignes
+`SURVIE VM`, `acces_partage=OUI` partout. Le journal libvirt ne porte aucune
+extinction après `2026-08-03 11:17:44+0000`, soit **5 h 49 avant** le début de
+la première exécution.
 
-Sorties virtuelles purgées avant chaque exécution et après la dernière :
-`purge terminée retirees=0 avant=1 apres=1`, une seule sortie attachée, la
-physique (`purge-finale-t10.log`). Zéro processus `agent` survivant.
+**Purge finale, avec sa pièce** : `purge terminée retirees=0 avant=1 apres=1`,
+une seule sortie attachée, la physique (`purge-finale-t10.log`). Zéro processus
+`agent` survivant, relevé depuis un processus neuf.
+
+⚠️ **Les purges INTERMÉDIAIRES sont affirmées sans pièce.** Les agents ont bien
+été tués et les sorties virtuelles purgées avant chaque exécution — la sortie de
+chaque `MULTIFENETRE_VDD_PURGE=1` a été lue au terminal, dont un
+`retirees=10 avant=11 apres=1` qui a rattrapé les sorties laissées par
+l'exécution B —, **mais aucun pilote ne journalise ces purges et rien n'en a été
+versé**. Le §2 avait versé son équivalent
+(`decrochage-b-enchainement.log`) ; ce §3 ne l'a pas fait. **C'est une
+affirmation sans trace, et elle est écrite comme telle.**

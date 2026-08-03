@@ -37,29 +37,43 @@ use super::{distribuer, Etat, Message};
 /// 12 Mb/s conserve au cas mono-fenêtre exactement ce qu'il a aujourd'hui, et
 /// donne 1,33 Mb/s par fenêtre à huit — soit le barreau 852×480.
 ///
-/// ✅ **CALIBRÉ par la recette de la tâche 10 (3 août 2026), et la valeur est
-/// RECONDUITE.** Le barreau 852×480 à huit fenêtres, que personne n'avait
-/// mesuré, l'est : **3,94 % d'images jetées** par le navigateur, contre un
-/// seuil de réception fixé à 7,99 % (le meilleur point de la tâche 1bis
-/// au-dessus de ce budget). Les huit fenêtres s'y posent bien à 852×480, la
-/// focalisée à 1024×576, et la somme des parts vaut 11 999 997 pour un budget
-/// de 12 000 000. Le point de repli à 8 Mb/s a été mesuré dans la foulée :
-/// 1,46 % et 3,94 % sur deux exécutions, mais au barreau 640×360 — moitié
-/// moins de pixels décodés par seconde (95,5 à 135,6 MP/s contre 196,4).
-/// **12 Mb/s achète une image nettement meilleure sans franchir le seuil, et
-/// ne coûte rien au cas mono-fenêtre.**
+/// ⚖️ **MESURÉ par la recette de la tâche 10 (3 août 2026), et la valeur est
+/// RECONDUITE — mais l'arbitrage n'est PAS tranché par la mesure.** Le barreau
+/// 852×480 à huit fenêtres, que personne n'avait mesuré, l'est : **3,94 %
+/// d'images jetées** par le navigateur, contre un seuil de réception fixé à
+/// 7,99 %. Le point de repli à 8 Mb/s a été mesuré dans la foulée : **1,46 %
+/// et 3,94 %** sur deux exécutions, mais au barreau 640×360.
+///
+/// **Ce que la comparaison donne est un ARBITRAGE, pas une domination** :
+/// 852×480 rend **196,4 MP/s** décodés contre 95,5 à 135,6 à 640×360, et
+/// 3,94 % d'images jetées contre 1,46 à 3,94. Plus de pixels livrés, davantage
+/// jetés. **Aucune des deux valeurs ne domine l'autre sur les deux grandeurs.**
+/// Ce qui fait pencher pour 12 Mb/s tient en une seule raison qui, elle, ne se
+/// discute pas : **elle ne coûte rien au cas mono-fenêtre**, là où 8 Mb/s lui
+/// retirerait un tiers de son débit — et ce cas-là n'a jamais été mesuré à
+/// 12 Mb/s (voir le §2.4 des résultats). **Le choix est donc assumé, pas
+/// démontré.**
 ///
 /// ⚠️ **La marge est une marge de LABORATOIRE, et elle est mince.** Le 3,94 %
-/// vient d'**une seule** exécution, sur l'unique hôte de mesure, dont la
-/// charge étrangère (transcodifications tierces) a varié d'un facteur 3,6
-/// pendant la campagne. Les quatre autres exécutions à 12 Mb/s ont toutes
-/// dépassé le seuil — 8,03 %, 16,70 %, 59,32 %, 75,47 % — et **toutes se sont
-/// jouées sous une charge d'hôte plus lourde que celle de la référence.** La
-/// grandeur qui commande ici n'est ni le lien (`packetsLost` = 0 partout) ni
-/// le débit, mais **ce que le client arrive à décoder** : sur une machine
-/// cliente plus lente, 12 Mb/s décrocherait. Le repli à 8 Mb/s n'a, lui,
-/// **jamais été éprouvé sous charge élevée** — que 12 Mb/s s'y dégrade plus
-/// vite n'est donc **pas établi**.
+/// vient d'**une seule** exécution. **Une seule des cinq exécutions à 12 Mb/s
+/// passe le seuil** — et **une sur deux** si l'on ne retient que celles dont
+/// l'échelle d'encodage s'était réellement posée, la seule population honnête.
+/// Les autres relèvent 8,03 %, 16,70 %, 59,32 % et 75,47 %. La dégradation
+/// covarie avec la charge de l'hôte de mesure **et** avec le non-établissement
+/// de l'échelle ; **les deux ne sont pas départagées.** La grandeur qui
+/// commande ici n'est ni le lien (`packetsLost` = 0 partout) ni le débit, mais
+/// **ce que le client arrive à décoder** : sur une machine cliente plus lente,
+/// 12 Mb/s décrocherait. **Le produit n'est pas démontré robuste** sous la
+/// charge d'hôte réellement rencontrée pendant la campagne, et le repli à
+/// 8 Mb/s n'a, lui, **jamais été éprouvé sous charge élevée** — qu'il y
+/// résiste mieux n'est **pas établi**.
+///
+/// ⚠️ **`FACTEUR_FOCUS` ne départage PAS les deux valeurs.** Une première
+/// rédaction de ce commentaire l'affirmait, sur un sous-ensemble de 8 des
+/// 14 déplacements de focus relevés. Sur les 14 : **11 réussissent**, et
+/// **8 sur 10 à 12 Mb/s** contre **3 sur 4 à 8 Mb/s** — les deux échecs à
+/// 12 Mb/s se produisent avec 51 % de marge sur le seuil de barreau, donc
+/// **sans explication arithmétique**. Voir le §3.4 ④ des résultats.
 fn budget_bps() -> u32 {
     static BUDGET: OnceLock<u32> = OnceLock::new();
     *BUDGET.get_or_init(|| {
