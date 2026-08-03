@@ -12,11 +12,11 @@ pub mod fenetre;
 pub mod horloge;
 pub mod protocole;
 pub mod reprise;
-pub mod vivier;
 #[cfg(windows)]
 pub mod serveur;
 #[cfg(windows)]
 pub mod tube;
+pub mod vivier;
 
 /// Point d'entrée du mode capteur.
 #[cfg(windows)]

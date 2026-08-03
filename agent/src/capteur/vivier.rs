@@ -34,6 +34,14 @@ pub const PLAFOND_EVEIL: usize = 8;
 /// geste explicite de l'utilisateur.
 pub const HYSTERESIS: Duration = Duration::from_secs(2);
 
+/// Temps d'attente après l'échec de reveil d'une fenêtre avant de la reproposer.
+///
+/// ⚠️ **Valeur NON CALIBRÉE.** Elle borne la fréquence de rejeu d'un réveil
+/// refusé : sans elle, une fenêtre dont la construction d'encodeur échoue
+/// serait relancée à chaque arbitrage dans la boucle serrée. Le nombre de
+/// tentatives de reveil observé à la recette est ce qui la jugera.
+pub const REPIT_APRES_ECHEC: Duration = Duration::from_millis(500);
+
 /// Pourquoi une fenêtre s'endort. Les deux cas ne se valent pas pour
 /// l'utilisateur, et le client les affiche différemment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,6 +68,10 @@ struct Entree {
     dernier_vu: Instant,
     eveillee: bool,
     eveillee_depuis: Instant,
+    /// Instant du dernier échec de reveil, ou `None` si jamais échoué ou depuis
+    /// longtemps. Exclut la fenêtre des candidates tant que le répit n'est pas
+    /// écoulé.
+    dernier_echec: Option<Instant>,
 }
 
 pub struct Vivier {
@@ -84,6 +96,7 @@ impl Vivier {
                 dernier_vu: maintenant,
                 eveillee: false,
                 eveillee_depuis: maintenant,
+                dernier_echec: None,
             },
         );
         self.arbitrer(maintenant)
@@ -115,6 +128,22 @@ impl Vivier {
         self.arbitrer(maintenant)
     }
 
+    /// Enregistrer l'échec du reveil d'une fenêtre et mettre à jour l'état.
+    ///
+    /// Appelée par le capteur quand la construction de l'encodeur échoue.
+    /// Repasse l'entrée à `eveillee = false` et pose un répit, puis
+    /// ré-arbitre pour tenter de remplir la place ainsi libérée.
+    pub fn echec_de_reveil(&mut self, session: &str, maintenant: Instant) -> Vec<(String, Ordre)> {
+        let Some(entree) = self.entrees.get_mut(session) else {
+            // Un signal peut arriver d'un enfant dont la fenêtre vient d'être
+            // retirée. Ignorer, jamais paniquer.
+            return Vec::new();
+        };
+        entree.eveillee = false;
+        entree.dernier_echec = Some(maintenant);
+        self.arbitrer(maintenant)
+    }
+
     /// Ré-arbitrage périodique, appelé par le fil de `sommeil.rs`.
     ///
     /// **Indispensable, et pas un luxe** : sous hystérésis, une fenêtre qui
@@ -132,8 +161,14 @@ impl Vivier {
     /// Le cœur : calcule l'ensemble cible des éveillées, et en déduit les
     /// transitions. **Idempotent** — appelé deux fois de suite sans changement
     /// d'état ni de temps, il ne rend rien la seconde fois.
+    ///
+    /// **Ordre du vecteur rendu** : tous les `Dormir` précèdent tout
+    /// `Reveiller`, chaque groupe étant trié par nom de session. Un réveil
+    /// appliqué avant le sommeil qu'il finance demanderait transitoirement un
+    /// encodeur de plus que le plafond.
     fn arbitrer(&mut self, maintenant: Instant) -> Vec<(String, Ordre)> {
-        let mut ordres = Vec::new();
+        let mut ordres_dormir = Vec::new();
+        let mut ordres_reveiller = Vec::new();
 
         // 1. Toute éveillée devenue invisible s'endort. Sans hystérésis : le
         //    masquage est explicite.
@@ -147,7 +182,7 @@ impl Vivier {
             if let Some(e) = self.entrees.get_mut(&nom) {
                 e.eveillee = false;
             }
-            ordres.push((nom, Ordre::Dormir(Raison::Masquee)));
+            ordres_dormir.push((nom, Ordre::Dormir(Raison::Masquee)));
         }
 
         // 2. Les épinglées : éveillées, encore visibles, et réveillées depuis
@@ -164,14 +199,19 @@ impl Vivier {
             .map(|(nom, _)| nom.clone())
             .collect();
 
-        // 3. Les candidates : toutes les visibles, de la plus récemment vue à
-        //    la plus ancienne. Un ordre total est nécessaire pour que le
-        //    résultat ne dépende pas du parcours d'une table de hachage : à
-        //    récence égale, le nom départage.
+        // 3. Les candidates : toutes les visibles, sauf celles en répit après
+        //    échec, de la plus récemment vue à la plus ancienne. Un ordre total
+        //    est nécessaire pour que le résultat ne dépende pas du parcours
+        //    d'une table de hachage : à récence égale, le nom départage.
         let mut candidates: Vec<(String, Instant)> = self
             .entrees
             .iter()
-            .filter(|(_, e)| e.visible)
+            .filter(|(_, e)| {
+                e.visible
+                    && e.dernier_echec.map_or(true, |t| {
+                        maintenant.saturating_duration_since(t) >= REPIT_APRES_ECHEC
+                    })
+            })
             .map(|(nom, e)| (nom.clone(), e.dernier_vu))
             .collect();
         candidates.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
@@ -196,14 +236,21 @@ impl Vivier {
             if doit_veiller && !e.eveillee {
                 e.eveillee = true;
                 e.eveillee_depuis = maintenant;
-                ordres.push((nom, Ordre::Reveiller));
+                e.dernier_echec = None;
+                ordres_reveiller.push((nom, Ordre::Reveiller));
             } else if !doit_veiller && e.eveillee {
                 e.eveillee = false;
-                ordres.push((nom, Ordre::Dormir(Raison::Evincee)));
+                ordres_dormir.push((nom, Ordre::Dormir(Raison::Evincee)));
             }
         }
 
-        ordres
+        // Trier chaque groupe pour déterminisme total.
+        ordres_dormir.sort_by(|a, b| a.0.cmp(&b.0));
+        ordres_reveiller.sort_by(|a, b| a.0.cmp(&b.0));
+
+        // Rendus dans l'ordre : tous les dormir avant tous les reveiller.
+        ordres_dormir.extend(ordres_reveiller);
+        ordres_dormir
     }
 }
 
@@ -375,5 +422,104 @@ mod tests {
         // Second signal identique : la fenêtre est déjà éveillée.
         let ordres = v.signaler("a", true, true, t + Duration::from_millis(50));
         assert!(ordres.is_empty(), "un état inchangé n'ordonne rien : {ordres:?}");
+    }
+
+    #[test]
+    fn un_reveil_qui_echoue_rend_l_entree_endormie_et_ne_la_réélit_pas_au_tour_suivant() {
+        let mut v = petit();
+        let t = t0();
+        v.inscrire("a", t);
+        v.signaler("a", true, true, t);
+        assert_eq!(v.eveillee("a"), Some(true), "a était éveillée");
+
+        // L'encodeur échoue à se construire : enregistrer l'échec.
+        let ordres = v.echec_de_reveil("a", t + Duration::from_millis(100));
+        assert_eq!(v.eveillee("a"), Some(false), "a doit s'endormir après l'échec");
+        // Aucun nouvel ordre ne doit être émis : a était déjà le seul éveillé.
+        assert!(ordres.is_empty(), "pas de réélection au tour même de l'échec : {ordres:?}");
+    }
+
+    #[test]
+    fn passé_le_répit_un_rearbitrer_repropose_bien_la_fenetre_en_echec() {
+        let mut v = petit();
+        let t = t0();
+        v.inscrire("a", t);
+        v.signaler("a", true, true, t);
+        v.echec_de_reveil("a", t + Duration::from_millis(100));
+        assert_eq!(v.eveillee("a"), Some(false), "a est endormie après l'échec");
+
+        // Avant le répit : pas de reproposition.
+        let ordres = v.rearbitrer(t + Duration::from_millis(200));
+        assert!(
+            ordres.is_empty(),
+            "avant le répit, a n'est pas reproposée : {ordres:?}"
+        );
+        assert_eq!(v.eveillee("a"), Some(false));
+
+        // Après le répit : reproposition.
+        let ordres = v.rearbitrer(t + Duration::from_millis(700));
+        assert_eq!(
+            ordres,
+            vec![("a".to_string(), Ordre::Reveiller)],
+            "après le répit, a doit être réveillée : {ordres:?}"
+        );
+        assert_eq!(v.eveillee("a"), Some(true));
+    }
+
+    #[test]
+    fn les_ordres_rendus_placent_tous_les_dormir_avant_tout_reveiller() {
+        // Cas où on éteint une fenêtre et on en allume une autre
+        // simultanément : vérifier que Dormir précède Reveiller.
+        let mut v = petit();
+        let t = t0();
+        for (i, nom) in ["a", "b", "c"].iter().enumerate() {
+            let quand = t + Duration::from_millis(i as u64 * 100);
+            v.inscrire(nom, quand);
+            v.signaler(nom, true, true, quand);
+        }
+        // État : a endormi, b et c éveillés.
+        assert_eq!(v.eveillee("a"), Some(false));
+        assert_eq!(v.eveillee("b"), Some(true));
+        assert_eq!(v.eveillee("c"), Some(true));
+
+        // Faire arriver une quatrième fenêtre : d > c > b > a en récence.
+        v.inscrire("d", t + Duration::from_millis(300));
+        let ordres = v.signaler("d", true, true, t + Duration::from_millis(300));
+
+        // Ordres attendus : b s'endort (Dormir), d s'éveille (Reveiller).
+        // Ou plus largement, les Dormir avant les Reveiller.
+        let premiers_dormir = ordres.iter().position(|(_, o)| matches!(o, Ordre::Dormir(_)));
+        let premier_reveiller =
+            ordres.iter().position(|(_, o)| matches!(o, Ordre::Reveiller));
+        if let (Some(d_idx), Some(r_idx)) = (premiers_dormir, premier_reveiller) {
+            assert!(
+                d_idx < r_idx,
+                "tous les Dormir doivent précéder tout Reveiller : {ordres:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn une_fenetre_en_repit_reste_exclue_des_candidates_jusqu_au_repit_ecoulé() {
+        // Une fenêtre qui échoue à s'éveiller reste en répit et n'est pas
+        // reproposée même si une place se libère, jusqu'à ce que le répit
+        // s'écoule.
+        let mut v = petit();
+        let t = t0();
+        v.inscrire("a", t);
+        v.signaler("a", true, true, t);
+        v.inscrire("b", t + Duration::from_millis(100));
+        v.signaler("b", true, true, t + Duration::from_millis(100));
+
+        // Échec du reveil de « a » à t + 200.
+        v.echec_de_reveil("a", t + Duration::from_millis(200));
+        // « b » se voit masquer à t + 300 (100 ms après l'échec), libérant une place.
+        // Mais « a » est encore en répit (le répit dure 500 ms).
+        let ordres = v.signaler("b", false, false, t + Duration::from_millis(300));
+        assert!(
+            !ordres.iter().any(|(nom, _)| nom == "a"),
+            "a ne doit pas être réveillée car elle est en répit depuis seulement 100 ms : {ordres:?}"
+        );
+        assert_eq!(v.eveillee("a"), Some(false));
     }
 }
