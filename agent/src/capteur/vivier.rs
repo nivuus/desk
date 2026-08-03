@@ -158,6 +158,19 @@ impl Vivier {
         self.entrees.get(session).map(|e| e.eveillee)
     }
 
+    /// Les sessions actuellement éveillées, dans un ordre non spécifié.
+    ///
+    /// Lu par `sommeil.rs` pour alimenter le répartiteur de débit (D6) : la
+    /// part d'une fenêtre dépend de son éveil, et le vivier est la seule
+    /// source de vérité sur ce point.
+    pub fn eveillees(&self) -> Vec<String> {
+        self.entrees
+            .iter()
+            .filter(|(_, entree)| entree.eveillee)
+            .map(|(session, _)| session.clone())
+            .collect()
+    }
+
     /// Le cœur : calcule l'ensemble cible des éveillées, et en déduit les
     /// transitions. **Idempotent** — appelé deux fois de suite sans changement
     /// d'état ni de temps, il ne rend rien la seconde fois.

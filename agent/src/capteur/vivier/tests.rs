@@ -271,3 +271,23 @@ fn une_fenetre_en_repit_reste_exclue_des_candidates_jusqu_au_repit_ecoulé() {
     );
     assert_eq!(v.eveillee("a"), Some(false));
 }
+
+#[test]
+fn eveillees_rend_exactement_les_sessions_reveillees() {
+    let base = t0();
+    let mut vivier = Vivier::nouveau(2, Duration::from_secs(2));
+    vivier.inscrire("a", base);
+    vivier.inscrire("b", base);
+    assert!(vivier.eveillees().is_empty(), "une fenêtre naît endormie");
+
+    vivier.signaler("a", true, true, base);
+    assert_eq!(vivier.eveillees(), vec!["a".to_string()]);
+
+    vivier.signaler("b", true, false, base);
+    let mut eveillees = vivier.eveillees();
+    eveillees.sort();
+    assert_eq!(eveillees, vec!["a".to_string(), "b".to_string()]);
+
+    vivier.retirer("a", base);
+    assert_eq!(vivier.eveillees(), vec!["b".to_string()]);
+}
