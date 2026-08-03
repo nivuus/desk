@@ -109,6 +109,20 @@ pub trait VideoSource {
     fn sommeil_a_annoncer(&mut self) -> Option<(bool, String)> {
         None
     }
+
+    /// Rend la part de budget de débit en attente d'application, et la
+    /// consomme.
+    ///
+    /// **État courant, pas un historique** : deux parts arrivées entre deux
+    /// lectures s'écrasent — même régime que `sommeil_a_annoncer` juste
+    /// au-dessus. Comme elle consomme, la branche de transport qui
+    /// l'interroge à chaque tour ne peut pas reconfigurer en boucle.
+    ///
+    /// Par défaut sans effet : une source fichier ne partage le lien avec
+    /// personne. Seule `SourceDistante` la redéfinit.
+    fn part_a_appliquer(&mut self) -> Option<u32> {
+        None
+    }
 }
 
 /// Source de test rejouant un fichier H.264 Annex-B en boucle.

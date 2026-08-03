@@ -42,11 +42,8 @@ pub enum Recu {
     /// consomme.
     Sommeil { endormie: bool, raison: String },
     /// Part du budget de débit accordée par le capteur, poussée non
-    /// sollicitée. **Reliée jusqu'ici seulement** : la rétention côté
-    /// `SourceDistante` (un champ analogue à `sommeil`) et l'accesseur qui
-    /// l'applique sont le travail de la tâche 6, volontairement hors de ce
-    /// correctif — voir `pont_media::lire_le_media`, dont c'était l'omission
-    /// bloquante.
+    /// sollicitée. Retenue par `SourceDistante::part` jusqu'à ce que
+    /// `part_a_appliquer` la consomme.
     Part { bps: u32 },
 }
 
@@ -69,6 +66,10 @@ pub struct SourceDistante {
     /// régime que `Etat` juste au-dessus, dont les champs s'écrasent aussi
     /// sans accumulation.
     sommeil: Option<(bool, String)>,
+    /// Dernière part de budget de débit reçue du capteur, en attente
+    /// d'application. Consommée par `part_a_appliquer`. Même régime
+    /// d'écrasement que `sommeil`.
+    part: Option<u32>,
 }
 
 impl SourceDistante {
@@ -87,6 +88,7 @@ impl SourceDistante {
             epuisee: false,
             fenetre: FenetreCanal::nouvelle(),
             sommeil: None,
+            part: None,
         }
     }
 
@@ -124,15 +126,9 @@ impl VideoSource for SourceDistante {
                 Ok(Recu::Sommeil { endormie, raison }) => {
                     self.sommeil = Some((endormie, raison));
                 }
-                // Pas de rétention ni d'application : c'est le travail de la
-                // tâche 6 (champ analogue à `sommeil`, accesseur
-                // `part_a_appliquer`, méthode par défaut du trait
-                // `VideoSource`). Ce bras existe pour que `Recu` reste
-                // exhaustif — sans lui, `Part` tomberait dans aucun bras et ne
-                // compilerait pas — et surtout pour que le fil de
-                // `lire_le_media` (`pont_media.rs`) SURVIVE à une trame
-                // `Part` au lieu de s'abandonner comme avant ce correctif.
-                Ok(Recu::Part { .. }) => {}
+                Ok(Recu::Part { bps }) => {
+                    self.part = Some(bps);
+                }
                 // Le cas COURANT et normal : rien de neuf ce tour-ci. La
                 // boucle de transport interroge à 100 Hz une source qui
                 // produit à ~90 i/s.
@@ -242,6 +238,11 @@ impl VideoSource for SourceDistante {
     /// contrôle.
     fn sommeil_a_annoncer(&mut self) -> Option<(bool, String)> {
         self.sommeil.take()
+    }
+
+    /// Rend la part en attente, et la consomme.
+    fn part_a_appliquer(&mut self) -> Option<u32> {
+        self.part.take()
     }
 }
 
