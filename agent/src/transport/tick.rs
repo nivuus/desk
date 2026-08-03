@@ -80,14 +80,19 @@ impl Session {
     /// redimensionnement reconstruit une chaîne d'encodage entière
     /// (potentiellement long, voir `WindowsSource::resize`), et le traiter
     /// comme une étape à part entière — au même titre que les branches qui,
-    /// elles, mutent réellement `Rtc` — garde cette fonction lisible comme
-    /// une seule liste de priorités plutôt que de mêler deux styles
-    /// différents.
+    /// elles, écrivent ou lisent réellement des paquets sur `Rtc` (a0, a3, b,
+    /// c…) — garde cette fonction lisible comme une seule liste de priorités
+    /// plutôt que de mêler deux styles différents.
     ///
     /// **À qui lira ceci après une huitième branche** : ce compte et cette
     /// énumération sont le point d'audit de l'invariant « aucune de ces
-    /// branches ne mute `Rtc` » — une addition qui l'oublie se vérifie sur une
-    /// liste incomplète. Mets-les à jour dans le même geste que la branche.
+    /// branches ne met en file, avant de rendre la main, une écriture qui
+    /// resterait à drainer » — **PAS** « aucune de ces branches ne mute
+    /// `Rtc` » : a1quater en mute bien un champ (voir plus haut, et ne pas
+    /// laisser cette formulation-ci se recopier dans une future addition
+    /// sans revérifier ce distinguo). Une addition qui oublie de se confronter
+    /// à cet invariant se vérifie sur une liste incomplète. Mets-les à jour
+    /// dans le même geste que la branche.
     ///
     /// Ne prend pas `on_input`/`on_control` : `handle_input` ne produit
     /// jamais d'événement applicatif directement (les événements qui en
