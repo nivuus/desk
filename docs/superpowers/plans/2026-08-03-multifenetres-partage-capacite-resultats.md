@@ -755,6 +755,20 @@ Le régime 1 de `repartir` (le seul qui garantisse le non-dépassement) est donc
 le seul rencontré. **Les régimes 2 et 3 n'ont jamais été exercés** — il aurait
 fallu un budget dérisoire.
 
+⚠️ **Ce critère est tenu sur les PARTS, ce qui n'est pas la même chose que sur
+le FIL** (M2, revue finale de branche). La part est un budget **total**, et les
+deux applications qu'en fait l'enfant ne la lisent pas de la même façon :
+`Controleur::changer_plafond` la traite comme une borne **vidéo** — `observer`
+retranche `audio_bps` avant de borner (`congestion/controleur.rs`) —, tandis que
+`rtc.bwe().set_desired_bitrate` la traite comme un total. Le trafic réellement
+émis dépasse donc la somme des parts de **N × (audio + surcoût RTP)**.
+L'approximation est **préexistante à D6**, mais **D6 la rend un ordre de
+grandeur plus significative** : à 12 Mb/s sur huit fenêtres, `audio_bps`
+(128 000) pèse **≈ 10 % d'une part** de 1,33 Mb/s, contre ≈ 1 % des 12 Mb/s que
+chaque fenêtre visait avant le sous-bloc. **Aucune mesure du dépassement réel
+sur le fil n'a été prise** — le tableau ci-dessus relève des parts accordées,
+lues au journal de l'agent, jamais des octets.
+
 **④ — le focus : 11 déplacements sur 14, et les échecs ne s'expliquent pas
 tous.** Les sept exécutions ont toutes joué leur phase 2, soit **14**
 déplacements. Le verdict porte sur la taille **annoncée par l'agent**

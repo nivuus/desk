@@ -13,11 +13,10 @@
 //! méthodes privées de `Fenetre`.
 
 use std::sync::{MutexGuard, OnceLock};
-use std::time::Instant;
 
 use crate::capteur::repartiteur::{self, Fenetre};
 
-use super::{distribuer, Etat, Message};
+use super::{distribuer, oublier, Etat, Message};
 
 /// Budget de débit de la session entière, en bits par seconde.
 ///
@@ -144,12 +143,13 @@ pub(super) fn distribuer_les_parts(garde: &mut MutexGuard<'static, Etat>) {
     // point de passage unique cote fil, court-circuite par une panique). Sans
     // ce retrait du vivier, l'entree y survivrait pour toute la vie du
     // processus.
+    //
+    // `oublier` et non trois retraits écrits ici : c'est le point de passage
+    // unique du registre, et il porte le champ que cette boucle omettait —
+    // `focalisee` (M1, revue finale de branche). Voir sa doc.
     let mut ordres_du_retrait = Vec::new();
     for session in rompus {
-        garde.canaux.remove(&session);
-        garde.dernieres_parts.remove(&session);
-        let maintenant = Instant::now();
-        ordres_du_retrait.extend(garde.vivier.retirer(&session, maintenant));
+        ordres_du_retrait.extend(oublier(garde, &session));
     }
     if !ordres_du_retrait.is_empty() {
         distribuer(garde, ordres_du_retrait);

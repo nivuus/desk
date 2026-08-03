@@ -3350,10 +3350,67 @@ plus long** : que 45 à 60 s suffiraient est **plausible et non vérifié**.
 
 | Étage | Fichier | Nature |
 | --- | --- | --- |
-| la règle de part | `agent/src/capteur/repartiteur.rs` (119) | **pur, aucun `cfg`**, trois régimes documentés et testés sur l'hôte |
+| la règle de part | `agent/src/capteur/repartiteur.rs` (147) | **pur, aucun `cfg`**, trois régimes documentés et testés sur l'hôte |
 | l'arbitrage et l'émission | `agent/src/capteur/sommeil/parts.rs` (348) | lit `BUDGET_BPS`, n'émet que les parts **qui changent** |
-| le transport | `agent/src/capteur/pont_media.rs` (188), `capteur/distante.rs` | la part voyage sur la connexion **média**, écrasement du dernier reçu |
-| l'application | `agent/src/transport/part.rs` (138) | `changer_plafond` **et** `set_desired_bitrate` |
+| le transport | `agent/src/capteur/pont_media.rs` (188), `capteur/distante.rs` (288) | la part voyage sur la connexion **média**, écrasement du dernier reçu |
+| l'application | `agent/src/transport/part.rs` (274) | `set_desired_bitrate` **toujours** ; `changer_plafond` **seulement si la fenêtre est éveillée** |
+
+> ✅ **Tailles relevées PAR LA COMMANDE le 3 août 2026, à la vague de correction
+> finale de branche** — `repartiteur.rs` et `part.rs` avaient grossi depuis le
+> relevé initial (119 → 147, 138 → 274). **Aucun fichier de ce sous-bloc
+> n'approche le plafond de 500** : le plus gros est `capteur/sommeil.rs` à
+> **432**, et `windows_source.rs` (638, dette gelée) n'a pas été touché.
+
+### ⚠️ Le défaut que la revue finale a trouvé, et qui frappait CHAQUE réveil
+
+**Une part d'endormie ne doit JAMAIS atteindre `Controleur::changer_plafond`.**
+La chaîne, entièrement lisible dans le code et corrigée le 3 août 2026 :
+`PART_DORMANTE_BPS` vaut **256 000**, `changer_plafond` fait
+`video_bitrate_bps.min(plafond)` dès qu'une estimation a existé, et **rien ne
+défait ce `min`** — la seule réparation est `Controleur::observer`, alimenté par
+le bras `MediaEgressStats` que **str0m n'émet pas pour un flux qui n'a rien
+envoyé** (`send_stats.rs`, `if self.bytes == 0 { return; }`). Une endormie
+n'envoie rien. Au réveil, **le plafond remontait, pas le débit** : la fenêtre
+restait figée à 256 kb/s, soit **sous le barreau plancher de l'échelle**
+(691 200 bps à 1280×720/60), pour le restant de la session. **Ce n'était pas un
+cas limite : c'était l'état de chaque réveil.**
+
+**Le remède** : l'enfant lit son état de sommeil (`VideoSource::est_endormie`,
+porté par `SourceDistante` et posé sur les `Sommeil` que le capteur pousse
+déjà) et n'applique la part au contrôleur que s'il est éveillé ; le sondage,
+lui, la reçoit toujours. **Une endormie a relâché son encodeur (D5) : il n'y a
+rien à borner côté encodage.** Couvert par
+`une_part_dormante_ne_borne_pas_le_controleur_et_le_reveil_est_suivi`
+(`transport/part.rs`), **rouge observé** avant remède (`left: 256000`,
+`right: 1333333`).
+
+⚠️ **L'état de sommeil est LU, jamais deviné.** Le déduire d'une comparaison de
+la part à `PART_DORMANTE_BPS` couplerait deux processus par une valeur, et ce
+couplage se romprait en silence le jour où l'un des deux changerait de
+constante ; et il ne se
+consomme pas, contrairement à l'annonce `sommeil_a_annoncer` — c'est un état
+courant, relu à chaque part.
+
+⚠️ **`SourceDistante` naît `endormie = true`, et se remet à `true` à chaque
+rattachement.** Depuis D5 une fenêtre naît endormie côté capteur, sans qu'aucun
+`Sommeil` ne l'annonce (il n'y a pas de transition), et sa première part est le
+plancher. Partir de `false` réintroduirait le défaut à la naissance et à chaque
+reprise de canal.
+
+⚠️ **Un résidu borné subsiste, et il est nommé** : sur le chemin `rompus` de
+`distribuer_les_parts`, une session réveillée par la place qu'un mort libère
+reçoit son `Reveiller` **après** une part d'endormie déjà périmée, qu'elle
+applique donc en étant éveillée. **Borne : `PERIODE_REARBITRAGE`, 250 ms**, au
+terme desquelles le tour de roue réémet la part correcte. Le canal unique
+garantit l'ordre de **livraison**, jamais l'ordre de **calcul** — deux
+commentaires affirmaient le contraire sans réserve, corrigés dans la même vague.
+
+⚠️ **Second défaut de la même vague** : `sommeil::retirer` vidait `focalisee`,
+mais ni `distribuer` ni le chemin `rompus` ne le faisaient. Les trois passent
+désormais par `sommeil::oublier`, **point de passage unique** du registre. La
+conséquence qui mord n'est pas celle qu'on croit : un nom mort ne majore
+personne, mais un **rattachement réinscrit le même nom**, qui héritait alors du
+focus sans que le client l'ait jamais réémis.
 
 1. **`repartir` ne garantit le non-dépassement du budget que dans son régime 1.**
    Deux régimes dégénérés existent — `reste < diviseur`, et
@@ -3415,6 +3472,16 @@ C'est l'appel que la conception désigne comme **le plus important** — celui q
 empêche N fenêtres de sonder chacune le lien entier. Il n'a **ni test unitaire,
 ni recette**.
 
+> ⚠️ **« Le plus important » était une conséquence de la prémisse, et la
+> prémisse est réfutée (voir ① ci-dessus).** Le sondage cumulé ne saturait
+> rien : le lien porte ≥ 1,44 Gb/s et n'a jamais perdu un paquet. **Ce qui agit
+> est `changer_plafond`**, par l'échelle, donc par la **résolution** — c'est le
+> fait ③. Ce commentaire vivait à l'identique dans trois blocs de code
+> (`capteur/repartiteur.rs`, `capteur/protocole.rs`, `transport/part.rs`),
+> réécrits à la vague de correction finale de branche. **La lacune de
+> couverture, elle, tient intégralement** : l'appel reste sans témoin, et l'A/B
+> différentiel qui l'aurait donné n'a toujours pas été joué.
+
 - **Le test unitaire honnête est INFAISABLE**, établi indépendamment par deux
   relecteurs : str0m n'expose **aucun getter**, son `Debug` est un **stub**, et
   `configure_pacer` **ne dépend pas** de cette valeur (même effet synchrone à
@@ -3453,6 +3520,15 @@ quand un média *actif* sonde à la hausse.
 - **Aucun travail conservateur** : une fenêtre qui n'use pas sa part **ne la
   rend pas** aux autres. La reprise de l'inutilisé introduirait une seconde
   boucle de rétroaction, hors périmètre — **à nommer, pas à croire faite**.
+- **Le critère ③ est tenu sur les PARTS, pas sur le FIL** (M2, revue finale de
+  branche). La part est un budget **total**, mais `changer_plafond` la traite
+  comme une borne **vidéo** (`observer` retranche `audio_bps` avant de borner)
+  quand `set_desired_bitrate` la traite comme un total : le trafic émis dépasse
+  la somme des parts de **N × (audio + surcoût RTP)**. L'approximation est
+  **préexistante**, mais **D6 la rend un ordre de grandeur plus
+  significative** — à 12 Mb/s sur huit fenêtres, `audio_bps` (128 000) pèse
+  **≈ 10 % d'une part** contre ≈ 1 % des 12 Mb/s d'avant. **Aucune mesure du
+  dépassement réel sur le fil n'a été prise.**
 - **Les régimes 2 et 3 de `repartir` ne sont pas exercés** en conditions réelles.
 - **La latence de bout en bout n'est toujours mesurée par AUCUN sous-bloc du
   chantier D**, et D6 ne la mesure pas davantage.

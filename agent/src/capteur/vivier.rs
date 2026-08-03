@@ -160,9 +160,10 @@ impl Vivier {
 
     /// Les sessions actuellement éveillées, dans un ordre non spécifié.
     ///
-    /// Lu par `sommeil.rs` pour alimenter le répartiteur de débit (D6) : la
-    /// part d'une fenêtre dépend de son éveil, et le vivier est la seule
-    /// source de vérité sur ce point.
+    /// Lu par `sommeil/parts.rs` pour alimenter le répartiteur de débit (D6) :
+    /// la part d'une fenêtre dépend de son éveil, et le vivier est la seule
+    /// source de vérité sur ce point. Le présent est bien le temps juste — ce
+    /// lecteur existe depuis la tâche 4 du sous-bloc.
     pub fn eveillees(&self) -> Vec<String> {
         self.entrees
             .iter()

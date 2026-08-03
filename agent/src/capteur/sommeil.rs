@@ -34,11 +34,24 @@ const PERIODE_REARBITRAGE: Duration = Duration::from_millis(250);
 
 /// Ce qu'une fenêtre reçoit du registre global.
 ///
-/// **Un seul canal pour les deux**, et non deux canaux parallèles : l'ordre
-/// entre un endormissement et la part qui en découle est ainsi garanti par
-/// construction. Une fenêtre qui recevrait sa part d'endormie avant l'ordre de
-/// dormir serait momentanément décrite comme endormie alors qu'elle encode
-/// encore.
+/// **Un seul canal pour les deux**, et non deux canaux parallèles : ce qu'un
+/// canal unique garantit est l'ordre de LIVRAISON — deux canaux parallèles
+/// laisseraient une part d'endormie doubler l'ordre de dormir qui la motive,
+/// et la fenêtre serait momentanément décrite comme endormie alors qu'elle
+/// encode encore.
+///
+/// ⚠️ **Il ne garantit PAS l'ordre de CALCUL, et la distinction n'est pas
+/// théorique** (I2, revue finale de branche du sous-bloc D6). Les appelants
+/// respectent bien « `distribuer` puis `distribuer_les_parts` », sauf un : le
+/// chemin `rompus` de `distribuer_les_parts` envoie les parts d'abord, puis
+/// retire du vivier les sessions dont le canal est rompu, puis seulement
+/// relaie les ordres que ce retrait engendre. Une session réveillée par la
+/// place ainsi libérée reçoit son `Reveiller` APRÈS une part d'endormie déjà
+/// périmée, et ne reçoit sa part d'éveillée qu'au tour de roue suivant.
+/// **Borne : `PERIODE_REARBITRAGE`, 250 ms au plancher `PART_DORMANTE_BPS`.**
+/// Conséquence assumée : la recalculer sur place demanderait une seconde passe
+/// de parts sous le même verrou, pour 250 ms de plancher sur un chemin qui ne
+/// s'emprunte qu'à la mort inopinée d'un fil de fenêtre.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Message {
     Sommeil(Ordre),
@@ -127,13 +140,40 @@ fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(String, Ordre)
                 None => false,
             };
             if rompu {
-                garde.canaux.remove(&session);
-                let maintenant = Instant::now();
-                suite.extend(garde.vivier.retirer(&session, maintenant));
+                suite.extend(oublier(garde, &session));
             }
         }
         a_traiter = suite;
     }
+}
+
+/// Oublie TOUT ce que le registre retient d'une session, et rend les ordres
+/// que son retrait du vivier engendre.
+///
+/// **Le point de passage unique**, et c'est tout son intérêt : le registre
+/// retient quatre choses d'une session (son canal, sa dernière part, le focus
+/// si elle le porte, son entrée au vivier), et il en existe trois chemins de
+/// retrait — la fermeture normale (`retirer`), la détection d'un canal rompu
+/// pendant la distribution des ORDRES (`distribuer`), et la même détection
+/// pendant celle des PARTS (`parts::distribuer_les_parts`).
+///
+/// ⚠️ **`focalisee` était le champ oublié par les deux derniers** (M1, revue
+/// finale de branche du sous-bloc D6). Seule la fermeture normale le vidait.
+/// Une session focalisée qui meurt par canal rompu laissait donc son nom dans
+/// `focalisee` ; comme plus aucune fenêtre vivante ne porte ce nom, la
+/// majoration `FACTEUR_FOCUS` cessait de s'appliquer à quiconque — sans
+/// différence observable, puisqu'elle ne s'appliquait déjà à personne
+/// d'autre. **La conséquence qui MORD est ailleurs, et elle est atteignable** :
+/// un rattachement réinscrit la MÊME session (voir `inscrire` et le chemin de
+/// reprise de D4), qui héritait alors du focus sans que le client l'ait jamais
+/// réémis — deux parts au lieu d'une, prises sur ses voisines.
+fn oublier(garde: &mut MutexGuard<'static, Etat>, session: &str) -> Vec<(String, Ordre)> {
+    garde.canaux.remove(session);
+    garde.dernieres_parts.remove(session);
+    if garde.focalisee.as_deref() == Some(session) {
+        garde.focalisee = None;
+    }
+    garde.vivier.retirer(session, Instant::now())
 }
 
 pub fn inscrire(session: &str) -> Receiver<Message> {
@@ -157,11 +197,7 @@ pub fn inscrire(session: &str) -> Receiver<Message> {
 
 pub fn retirer(session: &str) {
     let mut garde = etat();
-    garde.canaux.remove(session);
-    if garde.focalisee.as_deref() == Some(session) {
-        garde.focalisee = None;
-    }
-    let ordres = garde.vivier.retirer(session, Instant::now());
+    let ordres = oublier(&mut garde, session);
     distribuer(&mut garde, ordres);
     parts::distribuer_les_parts(&mut garde);
 }
@@ -291,6 +327,52 @@ mod tests {
         assert_eq!(premier_ordre(&ordres), None);
 
         retirer("t5-c");
+    }
+
+    /// M1 de la revue finale de branche du sous-bloc D6 : `retirer` vidait
+    /// `focalisee`, mais ni `distribuer` ni le chemin `rompus` de
+    /// `distribuer_les_parts` ne le faisaient. Une session focalisée qui meurt
+    /// par canal rompu — le fil de fenêtre qui panique avant son point de
+    /// retrait unique — laissait donc son nom dans le registre.
+    ///
+    /// **L'état est lu directement, et c'est délibéré.** La conséquence
+    /// visible par les parts n'est pas discriminante : un nom mort ne désigne
+    /// aucune fenêtre vivante, donc la majoration ne s'applique à personne —
+    /// ce qui est aussi le cas quand `focalisee` vaut `None`. Ce qui MORD est
+    /// la réinscription du même nom (rattachement, chemin de reprise de D4),
+    /// qui hériterait du focus sans que le client l'ait jamais réémis ; mais
+    /// l'éprouver par les parts exigerait un `signaler` sur ce nom, qui vide
+    /// `focalisee` de lui-même et effacerait le défaut avant de le mesurer.
+    /// Le champ est privé à ce module, et ce test en est un descendant : le
+    /// lire est l'observation la plus directe et la moins ambiguë.
+    #[test]
+    fn un_canal_rompu_libere_aussi_le_focus_de_la_session_morte() {
+        let _verrou = verrouiller_pour_le_test();
+        let canal = inscrire("m1-focus");
+        signaler("m1-focus", true, true);
+        assert_eq!(
+            etat().focalisee.as_deref(),
+            Some("m1-focus"),
+            "précondition : le registre tient bien cette session pour la focalisée"
+        );
+
+        // Le fil de "m1-focus" meurt SANS passer par `retirer`, exactement ce
+        // qui arrive quand il panique.
+        drop(canal);
+
+        // L'inscription d'une session tierce — endormie — fait varier le
+        // budget partagé, donc la part de "m1-focus", donc tente un envoi sur
+        // son canal rompu : c'est ce qui déclenche la détection.
+        inscrire("m1-tiers");
+        assert_eq!(
+            etat().focalisee,
+            None,
+            "le focus d'une session morte doit être rendu avec le reste de ce que le registre \
+             retenait d'elle"
+        );
+
+        retirer("m1-focus");
+        retirer("m1-tiers");
     }
 
     #[test]
