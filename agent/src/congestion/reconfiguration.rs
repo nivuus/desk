@@ -7,7 +7,7 @@ use std::time::Instant;
 use super::controleur::Controleur;
 use super::echelle::Echelle;
 use super::hysteresis::Hysteresis;
-use super::Decision;
+use super::{Adaptation, Decision};
 
 impl Controleur {
     /// Rebâtit l'échelle pour une nouvelle taille de source, en conservant le
@@ -57,12 +57,26 @@ impl Controleur {
     /// contrairement à `changer_source` juste au-dessus, qui doit reporter le
     /// barreau sur une échelle neuve.
     ///
-    /// Le débit rendu reste borné par la dernière estimation de bande
-    /// passante : un plafond qui remonte ne fait jamais dépasser ce que le
-    /// lien porte, il lève seulement une borne qui l'emprisonnait.
+    /// Deux régimes, distingués par `courant.adaptation` — déjà tenu par
+    /// `observer`, aucun second témoin introduit ici :
+    ///
+    /// - **`Indisponible`** (état initial de `Controleur::new`, permanent si
+    ///   TWCC n'est jamais négocié) : aucune estimation n'a jamais borné la
+    ///   décision, `video_bitrate_bps` n'est qu'une valeur de repli égale au
+    ///   plafond (voir la doc de `Config::plafond_bps`). Le débit **suit
+    ///   directement** le nouveau plafond — sans ce cas, une hausse de
+    ///   plafond resterait figée sur l'ancienne valeur pour toujours, rien
+    ///   d'autre ne la relevant jamais.
+    /// - **`Active`** : une estimation réelle commande déjà la décision. Le
+    ///   débit reste borné par elle — un plafond qui remonte ne le relève
+    ///   jamais d'office ; la remontée n'arrive qu'à la prochaine
+    ///   observation, en passant par `observer` et son hystérésis.
     pub fn changer_plafond(&mut self, plafond_bps: u32) -> Decision {
         self.config.plafond_bps = plafond_bps;
-        self.courant.video_bitrate_bps = self.courant.video_bitrate_bps.min(plafond_bps);
+        self.courant.video_bitrate_bps = match self.courant.adaptation {
+            Adaptation::Indisponible => plafond_bps,
+            Adaptation::Active => self.courant.video_bitrate_bps.min(plafond_bps),
+        };
         self.courant
     }
 }
@@ -161,14 +175,19 @@ mod tests {
     fn changer_plafond_borne_la_decision_sans_toucher_l_echelle() {
         let base = t0();
         let mut c = Controleur::new(config(), base);
-        let barreaux_avant = c.echelle.barreaux().to_vec();
+        // Identité, pas seulement valeur : un pointeur vers l'allocation du
+        // `Vec` interne. Une reconstruction avec la même source et le même
+        // `fps` produirait des valeurs identiques mais une allocation
+        // DIFFÉRENTE — c'est cette distinction qu'une simple comparaison de
+        // valeurs ne peut pas faire.
+        let ptr_avant = c.echelle.barreaux().as_ptr();
 
         let decision = c.changer_plafond(3_000_000);
         assert_eq!(decision.video_bitrate_bps, 3_000_000, "le débit suit le nouveau plafond");
         assert_eq!(
-            c.echelle.barreaux(),
-            barreaux_avant.as_slice(),
-            "l'échelle ne dépend pas du plafond"
+            c.echelle.barreaux().as_ptr(),
+            ptr_avant,
+            "l'échelle ne doit pas être reconstruite : même allocation avant et après"
         );
     }
 
@@ -189,6 +208,25 @@ mod tests {
             decision.video_bitrate_bps <= 2_000_000,
             "le plafond ne doit jamais faire dépasser l'estimation : {}",
             decision.video_bitrate_bps
+        );
+    }
+
+    #[test]
+    fn un_plafond_qui_monte_est_suivi_tant_qu_aucune_estimation_n_est_jamais_arrivee() {
+        let base = t0();
+        let mut c = Controleur::new(config(), base);
+        // Précondition : aucune observation n'a eu lieu, l'adaptation est
+        // encore celle posée par `Controleur::new`.
+        assert_eq!(c.courant().adaptation, Adaptation::Indisponible);
+
+        // L'ancien plafond (12 000 000, voir `config()`) est bien inférieur
+        // au nouveau : sans le remède, le `min` figerait le débit sur
+        // l'ancienne valeur pour toujours, puisqu'aucune observation ne
+        // viendra jamais le relever.
+        let decision = c.changer_plafond(50_000_000);
+        assert_eq!(
+            decision.video_bitrate_bps, 50_000_000,
+            "sans estimation, le débit est une pure valeur de repli : il doit suivre le plafond"
         );
     }
 }
