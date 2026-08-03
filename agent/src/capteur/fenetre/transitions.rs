@@ -17,6 +17,7 @@ use std::time::Instant;
 use anyhow::{Context, Result};
 
 use crate::capteur::protocole::DepuisCapteur;
+use crate::capteur::sommeil::Message;
 use crate::capteur::vivier::Ordre;
 use crate::source::VideoSource;
 use crate::windows_source::WindowsSource;
@@ -102,13 +103,13 @@ impl Fenetre {
     /// réveil arrivé trop tôt.
     pub(super) fn appliquer_les_ordres(
         &mut self,
-        ordres: &Receiver<Ordre>,
+        ordres: &Receiver<Message>,
         ecritures: &SyncSender<AEcrire>,
         ctx: &Contexte,
     ) -> Fin {
         loop {
             match ordres.try_recv() {
-                Ok(Ordre::Dormir(raison)) => {
+                Ok(Message::Sommeil(Ordre::Dormir(raison))) => {
                     self.dormir();
                     let raison = crate::capteur::sommeil::raison_en_texte(raison);
                     let etat = DepuisCapteur::Sommeil { endormie: true, raison: raison.into() };
@@ -122,7 +123,7 @@ impl Fenetre {
                         return Fin::Terminer(motif);
                     }
                 }
-                Ok(Ordre::Reveiller) => {
+                Ok(Message::Sommeil(Ordre::Reveiller)) => {
                     if let Err(erreur) = self.reveiller() {
                         tracing::warn!(
                             session = %ctx.session,
@@ -144,6 +145,19 @@ impl Fenetre {
                     let etat = DepuisCapteur::Sommeil { endormie: false, raison: String::new() };
                     if let Fin::Terminer(motif) =
                         deposer(AEcrire::Etat(etat), ecritures, self.source.as_mut(), ctx)
+                    {
+                        return Fin::Terminer(motif);
+                    }
+                }
+                Ok(Message::Part { bps }) => {
+                    // Rien à faire localement : le capteur ne règle PAS son
+                    // encodeur sur cette part. C'est l'enfant qui décide de
+                    // son débit d'encodage (il a le BWE), et la part n'est
+                    // qu'une borne qu'on lui transmet. Le capteur n'est ici
+                    // que le facteur.
+                    let message = DepuisCapteur::Part { bps };
+                    if let Fin::Terminer(motif) =
+                        deposer(AEcrire::Etat(message), ecritures, self.source.as_mut(), ctx)
                     {
                         return Fin::Terminer(motif);
                     }

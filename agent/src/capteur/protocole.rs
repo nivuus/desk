@@ -83,6 +83,18 @@ pub enum DepuisCapteur {
     /// et y mêler le sommeil ferait passer une annonce ponctuelle par un
     /// chemin conçu pour un état permanent.
     Sommeil { endormie: bool, raison: String },
+    /// Part du budget de débit de session accordée à cette fenêtre, poussée
+    /// non sollicitée quand elle CHANGE.
+    ///
+    /// Distincte d'`Etat` pour la même raison que `Sommeil` : `Etat` alimente
+    /// un cache lu à chaque tour de la boucle de transport, et y mêler une
+    /// annonce ponctuelle passerait par un chemin conçu pour un état permanent.
+    ///
+    /// L'enfant l'applique en DEUX endroits, et le second est le plus
+    /// important : `Controleur::changer_plafond` borne ce que l'encodeur
+    /// produit, mais c'est `rtc.bwe().set_desired_bitrate` qui arrête le
+    /// sondage à la hausse — la vraie cause de la congestion à N fenêtres.
+    Part { bps: u32 },
 }
 
 #[derive(Debug)]
@@ -297,6 +309,18 @@ mod tests {
         let json = serde_json::to_string(&message).expect("sérialisation");
         let relu: DepuisCapteur = serde_json::from_str(&json).expect("désérialisation");
         assert_eq!(relu, message);
+    }
+
+    #[test]
+    fn une_part_traverse_l_encodage_json() {
+        let mut tampon = Vec::new();
+        ecrire_json(&mut tampon, &DepuisCapteur::Part { bps: 4_000_000 }).unwrap();
+        let mut lecture = &tampon[..];
+        let Trame::Json(corps) = lire_trame(&mut lecture).unwrap() else {
+            panic!("une trame JSON était attendue");
+        };
+        let message: DepuisCapteur = serde_json::from_slice(&corps).unwrap();
+        assert_eq!(message, DepuisCapteur::Part { bps: 4_000_000 });
     }
 
     /// Une image de zéro octet n'existe pas : elle signalerait un cadrage
