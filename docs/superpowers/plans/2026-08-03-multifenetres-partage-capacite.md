@@ -367,10 +367,15 @@ pub struct Fenetre {
 /// Chaque endormie reçoit `PART_DORMANTE_BPS` ; le reste se divise entre les
 /// éveillées, la focalisée recevant `FACTEUR_FOCUS` parts au lieu d'une.
 ///
-/// **Invariant** : la somme des parts ne dépasse jamais le budget, et aucune
-/// part n'est nulle. **Fonction totale** : plusieurs focalisées, aucune
-/// éveillée, ou un budget inférieur aux planchers ne la font ni déborder ni
-/// paniquer.
+/// **Invariant, et sa condition** : tant que le budget couvre les planchers
+/// des endormies, la somme des parts ne le dépasse jamais. En dessous de ce
+/// seuil — `budget < endormies × PART_DORMANTE_BPS` — les planchers sont
+/// servis quand même et la somme franchit le budget : **cas dégénéré assumé**,
+/// parce qu'un `set_desired_bitrate(0)` serait pire qu'un dépassement sur un
+/// lien que rien ne peut de toute façon satisfaire.
+///
+/// **Fonction totale** : plusieurs focalisées, aucune éveillée, ou un budget
+/// dérisoire ne la font ni paniquer ni rendre de part nulle.
 ///
 /// **Aucun travail conservateur** : une fenêtre qui n'use pas sa part ne la
 /// rend pas aux autres. Ce serait une seconde boucle de rétroaction dont la
