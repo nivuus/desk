@@ -55,6 +55,13 @@ pub enum VersCapteur {
     TailleEncodage { largeur: u32, hauteur: u32 },
     Debit { bps: u32 },
     ImageCle,
+    /// Visibilité annoncée par le client, relayée par l'enfant.
+    ///
+    /// **Ne se répond pas par `Fait`** : le capteur arbitre globalement, et la
+    /// décision peut concerner une AUTRE fenêtre que celle qui a signalé.
+    /// L'effet revient par `DepuisCapteur::Sommeil`, poussé sur la connexion
+    /// média de chaque fenêtre concernée.
+    Visibilite { visible: bool, focalisee: bool },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -69,6 +76,13 @@ pub enum DepuisCapteur {
     /// le cache que lisent `is_alive`, `is_exhausted` et `dimensions`, qui
     /// sont interrogées à chaque tour de la boucle de transport.
     Etat { vivante: bool, epuisee: bool, largeur: u32, hauteur: u32 },
+    /// Poussé, non sollicité, quand une fenêtre change d'état de sommeil.
+    ///
+    /// Distinct d'`Etat` à dessein : `Etat` alimente un cache lu à chaque tour
+    /// de la boucle de transport (`is_alive`, `is_exhausted`, `dimensions`),
+    /// et y mêler le sommeil ferait passer une annonce ponctuelle par un
+    /// chemin conçu pour un état permanent.
+    Sommeil { endormie: bool, raison: String },
 }
 
 #[derive(Debug)]
@@ -267,6 +281,22 @@ mod tests {
         tampon.extend_from_slice(&(TAILLE_MAX as u32 + 1).to_le_bytes());
         tampon.push(1);
         assert!(lire_trame(&mut Cursor::new(tampon)).is_err());
+    }
+
+    #[test]
+    fn une_visibilite_traverse_le_canal_du_capteur() {
+        let message = VersCapteur::Visibilite { visible: true, focalisee: false };
+        let json = serde_json::to_string(&message).expect("sérialisation");
+        let relu: VersCapteur = serde_json::from_str(&json).expect("désérialisation");
+        assert_eq!(relu, message);
+    }
+
+    #[test]
+    fn un_sommeil_traverse_le_canal_du_capteur() {
+        let message = DepuisCapteur::Sommeil { endormie: true, raison: "masquee".into() };
+        let json = serde_json::to_string(&message).expect("sérialisation");
+        let relu: DepuisCapteur = serde_json::from_str(&json).expect("désérialisation");
+        assert_eq!(relu, message);
     }
 
     /// Une image de zéro octet n'existe pas : elle signalerait un cadrage

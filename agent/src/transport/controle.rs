@@ -99,6 +99,7 @@ impl Session {
             AgentControl::Ready { .. } => "ready",
             AgentControl::SessionEnd { .. } => "session-end",
             AgentControl::Pointer { .. } => "pointer",
+            AgentControl::Asleep { .. } => "asleep",
             AgentControl::Rumble { .. } => "rumble",
             AgentControl::Capabilities { .. } => "capabilities",
             AgentControl::Link { .. } => "link",

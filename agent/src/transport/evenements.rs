@@ -187,13 +187,12 @@ impl Session {
                     // demande la plus récente ; `act_on_timeout` l'applique à
                     // son tour, comme une étape à part entière.
                     //
-                    // `ClientControl` n'a qu'une seule variante aujourd'hui :
-                    // une déstructuration directe (pas `if let`) évite
-                    // l'avertissement « pattern irréfutable ». Par référence,
-                    // pour laisser `message` intact et le transmettre
-                    // ensuite, inchangé, à `on_control`.
-                    let ClientControl::Resize { width, height, .. } = &message;
-                    self.pending_resize = Some((*width, *height));
+                    match &message {
+                        ClientControl::Resize { width, height, .. } => {
+                            self.pending_resize = Some((*width, *height));
+                        }
+                        ClientControl::Visibility { .. } => {}
+                    }
                     on_control(message);
                 }
                 Ok(Err(e)) => tracing::warn!(erreur = %e, "message de contrôle invalide"),

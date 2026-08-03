@@ -91,6 +91,18 @@ pub enum ClientControl {
         width: u32,
         height: u32,
     },
+    /// Visibilité de la fenêtre navigateur, et si elle a le focus.
+    ///
+    /// **Deux signaux dans un seul message, et le second n'est pas
+    /// décoratif** : la visibilité seule ne suffirait pas à ordonner le vivier
+    /// du capteur quand plusieurs fenêtres sont visibles en même temps — elles
+    /// ont alors exactement la même visibilité.
+    Visibility {
+        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        version: u8,
+        visible: bool,
+        focused: bool,
+    },
 }
 
 /// Message de l'agent vers le client web.
@@ -117,6 +129,17 @@ pub enum AgentControl {
         version: u8,
         visible: bool,
         shape: CursorShape,
+    },
+    /// La fenêtre dort — son encodeur et sa duplication ont été relâchés.
+    ///
+    /// `reason` vaut `"masquee"` (l'utilisateur l'a voulu) ou `"evincee"` (le
+    /// vivier lui a pris sa place alors qu'il la regardait). Les deux ne se
+    /// valent pas pour lui : la seconde mérite d'être dite.
+    Asleep {
+        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        version: u8,
+        asleep: bool,
+        reason: String,
     },
     Rumble {
         #[serde(rename = "v", deserialize_with = "verifie_version")]
@@ -172,6 +195,14 @@ impl AgentControl {
 
     pub fn pointer(visible: bool, shape: CursorShape) -> Self {
         AgentControl::Pointer { version: CONTROL_VERSION, visible, shape }
+    }
+
+    pub fn asleep(asleep: bool, reason: &str) -> AgentControl {
+        AgentControl::Asleep {
+            version: CONTROL_VERSION,
+            asleep,
+            reason: reason.to_string(),
+        }
     }
 
     pub fn rumble(left: u8, right: u8) -> Self {
@@ -310,6 +341,31 @@ mod tests {
     fn rejette_la_version_de_controle_1_devenue_obsolete() {
         let err = serde_json::from_str::<AgentControl>(r#"{"type":"ready","v":1,"width":1,"height":1}"#);
         assert!(err.is_err());
+    }
+
+    #[test]
+    fn une_visibilite_se_relit_telle_qu_ecrite() {
+        let json = r#"{"type":"visibility","v":3,"visible":false,"focused":false}"#;
+        let message: ClientControl = serde_json::from_str(json).expect("visibilité valide");
+        assert_eq!(
+            message,
+            ClientControl::Visibility { version: 3, visible: false, focused: false }
+        );
+    }
+
+    #[test]
+    fn une_visibilite_de_mauvaise_version_est_rejetee() {
+        let json = r#"{"type":"visibility","v":1,"visible":true,"focused":true}"#;
+        assert!(serde_json::from_str::<ClientControl>(json).is_err());
+    }
+
+    #[test]
+    fn un_sommeil_s_ecrit_avec_son_type_en_tete_et_sa_raison() {
+        let json = serde_json::to_string(&AgentControl::asleep(true, "evincee"))
+            .expect("sérialisation");
+        assert!(json.starts_with(r#"{"type":"asleep""#), "obtenu : {json}");
+        assert!(json.contains(r#""asleep":true"#), "obtenu : {json}");
+        assert!(json.contains(r#""reason":"evincee""#), "obtenu : {json}");
     }
 
     #[test]
