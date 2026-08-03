@@ -12,6 +12,7 @@ pub mod fenetre;
 pub mod horloge;
 pub mod pont_media;
 pub mod protocole;
+pub mod repartiteur;
 pub mod reprise;
 #[cfg(windows)]
 pub mod serveur;

@@ -112,6 +112,59 @@ fn un_changement_de_sommeil_de_la_source_est_traduit_en_message_asleep() {
     // voir avec ce que ce test vérifie.
 }
 
+/// Source factice qui rend une part de budget préparée une seule fois —
+/// comme le fait réellement `SourceDistante` (`Option` consommé par
+/// `take()`), sans dépendre du capteur : ce test vérifie le CÂBLAGE de la
+/// branche a1quater d'`act_on_timeout`, pas la logique de `SourceDistante`
+/// elle-même (couverte par `capteur/distante/tests.rs`) ni celle de
+/// `Session::appliquer_part` (couverte par `transport/part.rs`).
+struct SourceAvecPart {
+    inner: crate::source::FileSource,
+    part_preparee: Option<u32>,
+}
+
+impl VideoSource for SourceAvecPart {
+    fn next_frame(&mut self) -> Option<AccessUnit> {
+        self.inner.next_frame()
+    }
+    fn dimensions(&self) -> (u32, u32) {
+        self.inner.dimensions()
+    }
+    fn part_a_appliquer(&mut self) -> Option<u32> {
+        self.part_preparee.take()
+    }
+}
+
+/// Ferme la réserve relevée en revue de la tâche 8 (sous-bloc D6) : les
+/// tests de `transport/part.rs` appellent `Session::appliquer_part`
+/// directement, si bien que supprimer tout le bloc a1quater d'
+/// `act_on_timeout` les laissait verts — seule la disparition d'un
+/// avertissement `dead_code` aurait trahi l'absence de câblage. Ce test-ci
+/// pilote `act_on_timeout` à travers une source factice, comme
+/// `une_visibilite_en_attente_est_appliquee_a_la_source_puis_relachee` et
+/// `un_changement_de_sommeil_de_la_source_est_traduit_en_message_asleep`
+/// ci-dessus le font pour leurs branches respectives.
+#[test]
+fn une_part_en_attente_est_appliquee_par_act_on_timeout() {
+    let inner = fixtures::video_test_source();
+    let source = Box::new(SourceAvecPart { inner, part_preparee: Some(3_000_000) });
+    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
+        .expect("session");
+
+    session
+        .act_on_timeout(Instant::now())
+        .expect("appliquer une part ne doit jamais faire échouer la session");
+
+    assert_eq!(
+        session.congestion.courant().video_bitrate_bps, 3_000_000,
+        "la part rendue par la source doit avoir été appliquée au contrôleur par la branche a1quater"
+    );
+    assert!(
+        session.pending_decision.is_some(),
+        "la décision issue de la part doit être mémorisée pour que a0ter l'applique au tour suivant"
+    );
+}
+
 /// Preuve d'intégration pour C1 (cadence) et C2 (drainage) : les tests
 /// ci-dessus valident les fonctions pures, mais la revue demandait une
 /// mesure réelle de cadence. Sans navigateur disponible, on simule le

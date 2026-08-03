@@ -41,6 +41,10 @@ pub enum Recu {
     /// `SourceDistante::sommeil` jusqu'à ce que `sommeil_a_annoncer` le
     /// consomme.
     Sommeil { endormie: bool, raison: String },
+    /// Part du budget de débit accordée par le capteur, poussée non
+    /// sollicitée. Retenue par `SourceDistante::part` jusqu'à ce que
+    /// `part_a_appliquer` la consomme.
+    Part { bps: u32 },
 }
 
 pub struct SourceDistante {
@@ -62,6 +66,29 @@ pub struct SourceDistante {
     /// régime que `Etat` juste au-dessus, dont les champs s'écrasent aussi
     /// sans accumulation.
     sommeil: Option<(bool, String)>,
+    /// Dernière part de budget de débit reçue du capteur, en attente
+    /// d'application. Consommée par `part_a_appliquer`. Même régime
+    /// d'écrasement que `sommeil`.
+    part: Option<u32>,
+    /// État de sommeil COURANT, tel que le capteur le décrit.
+    ///
+    /// **Distinct de `sommeil` juste au-dessus, et non redondant avec lui** :
+    /// celui-là est l'annonce à faire au navigateur, rendue une seule fois ;
+    /// celui-ci est l'état, relu à chaque part appliquée par
+    /// `Session::appliquer_part` — qui ne doit pas propager le plancher d'une
+    /// endormie au contrôleur de congestion. Les deux se posent au même
+    /// endroit, sur le même message ; seule leur durée de vie diffère.
+    ///
+    /// ⚠️ **Vrai à la naissance, et ce n'est pas un choix prudent mais un
+    /// fait** : depuis le sous-bloc D5 une fenêtre naît ENDORMIE côté capteur
+    /// (`Fenetre::ouvrir` ne construit plus de `WindowsSource`, voir sa doc),
+    /// et aucun `Sommeil { endormie: true }` n'est jamais poussé pour cette
+    /// naissance — il n'y a pas de transition à annoncer. La toute première
+    /// part reçue, envoyée par `sommeil::inscrire` dès l'attache, est donc le
+    /// plancher `PART_DORMANTE_BPS`. Partir de `false` la ferait appliquer
+    /// comme plafond d'encodage, précisément le défaut que ce champ existe
+    /// pour éviter.
+    endormie: bool,
 }
 
 impl SourceDistante {
@@ -80,6 +107,8 @@ impl SourceDistante {
             epuisee: false,
             fenetre: FenetreCanal::nouvelle(),
             sommeil: None,
+            part: None,
+            endormie: true,
         }
     }
 
@@ -115,7 +144,13 @@ impl VideoSource for SourceDistante {
                     self.hauteur = hauteur;
                 }
                 Ok(Recu::Sommeil { endormie, raison }) => {
+                    // Deux écritures, deux durées de vie : l'état courant, qui
+                    // survit à sa lecture, et l'annonce, qui ne s'y survit pas.
+                    self.endormie = endormie;
                     self.sommeil = Some((endormie, raison));
+                }
+                Ok(Recu::Part { bps }) => {
+                    self.part = Some(bps);
                 }
                 // Le cas COURANT et normal : rien de neuf ce tour-ci. La
                 // boucle de transport interroge à 100 Hz une source qui
@@ -158,6 +193,14 @@ impl VideoSource for SourceDistante {
                                 self.hauteur = hauteur;
                                 self.vivante = true;
                                 self.epuisee = false;
+                                // Un rattachement passe par `VersCapteur::Attache`,
+                                // donc par une `Fenetre` NEUVE côté capteur — et
+                                // une fenêtre naît endormie. Garder ici l'état
+                                // d'avant la rupture ferait appliquer la part
+                                // plancher de cette renaissance comme un plafond
+                                // d'encodage, pour toute la durée qui sépare
+                                // l'attache du premier `Ordre::Reveiller`.
+                                self.endormie = true;
                                 self.fenetre.succes();
                             }
                             // Journalisé en `debug!` et non `info!` : au pas
@@ -226,6 +269,16 @@ impl VideoSource for SourceDistante {
     /// contrôle.
     fn sommeil_a_annoncer(&mut self) -> Option<(bool, String)> {
         self.sommeil.take()
+    }
+
+    /// Rend la part en attente, et la consomme.
+    fn part_a_appliquer(&mut self) -> Option<u32> {
+        self.part.take()
+    }
+
+    /// Rend l'état de sommeil courant, sans le consommer.
+    fn est_endormie(&self) -> bool {
+        self.endormie
     }
 }
 

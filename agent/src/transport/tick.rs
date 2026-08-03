@@ -50,27 +50,49 @@ impl Session {
     /// `write_frame` (une mutation) suivi directement de `handle_input`
     /// (une seconde) violerait la même règle.
     ///
-    /// Six branches supplémentaires (a0bis : drainage d'un message de
+    /// Sept branches supplémentaires (a0bis : drainage d'un message de
     /// contrôle produit hors boucle vers `pending_control` ; a0ter :
     /// décision d'adaptation en attente ; a1 : redimensionnement en attente ;
     /// a1bis : visibilité en attente ; a1ter : annonce d'un changement de
-    /// sommeil ; a2 : vérification de la fenêtre) ne mutent JAMAIS `Rtc` —
-    /// elles ne touchent que `self.source`, `self.audio_source` et/ou
+    /// sommeil ; a1quater : part de budget accordée par le capteur (sous-bloc
+    /// D6) ; a2 : vérification de la fenêtre) ne mettent JAMAIS en file,
+    /// avant de rendre la main, une écriture qui resterait à drainer — c'est
+    /// l'invariant que cette énumération existe pour auditer. **Six d'entre
+    /// elles (toutes sauf a1quater) ne touchent même pas `self.rtc`** :
+    /// seulement `self.source`, `self.audio_source` et/ou
     /// `self.pending_control`, au plus en y mettant en file un message de
     /// contrôle (`queue_control`, qui n'empile qu'un `VecDeque`, sans effet
-    /// sur `Rtc` avant le tour suivant). Chacune rend quand même la main
-    /// immédiatement après son action plutôt que d'enchaîner sur la branche
-    /// suivante dans le même appel : le redimensionnement reconstruit une
-    /// chaîne d'encodage entière (potentiellement long, voir
-    /// `WindowsSource::resize`), et le traiter comme une étape à part
-    /// entière — au même titre que les branches qui, elles, mutent
-    /// réellement `Rtc` — garde cette fonction lisible comme une seule
-    /// liste de priorités plutôt que de mêler deux styles différents.
+    /// sur `Rtc` avant le tour suivant).
     ///
-    /// **À qui lira ceci après une septième branche** : ce compte et cette
+    /// **a1quater fait exception, et il faut le dire précisément** :
+    /// `rtc.bwe().set_desired_bitrate` (corps dans `part`) MUTE bien un champ
+    /// interne de `Rtc` — et reconfigure le pacer de str0m
+    /// (`configure_pacer`) si une estimation de bande passante existe déjà.
+    /// Mais cet appel ne met AUCUN paquet en file : l'effet qu'il programme
+    /// côté sondage (`ProbeControl` de str0m, qui peut avancer l'échéance de
+    /// la prochaine sonde et faire émettre du bourrage) n'est évalué qu'au
+    /// PROCHAIN traitement de `Input::Timeout`, jamais pendant cet appel-ci.
+    /// C'est cette absence de mise en file — pas l'absence de mutation de
+    /// `Rtc` — qui préserve l'invariant de drainage pour cette branche.
+    ///
+    /// Chacune rend quand même la main immédiatement après son action plutôt
+    /// que d'enchaîner sur la branche suivante dans le même appel : le
+    /// redimensionnement reconstruit une chaîne d'encodage entière
+    /// (potentiellement long, voir `WindowsSource::resize`), et le traiter
+    /// comme une étape à part entière — au même titre que les branches qui,
+    /// elles, écrivent ou lisent réellement des paquets sur `Rtc` (a0, a3, b,
+    /// c…) — garde cette fonction lisible comme une seule liste de priorités
+    /// plutôt que de mêler deux styles différents.
+    ///
+    /// **À qui lira ceci après une huitième branche** : ce compte et cette
     /// énumération sont le point d'audit de l'invariant « aucune de ces
-    /// branches ne mute `Rtc` » — une addition qui l'oublie se vérifie sur une
-    /// liste incomplète. Mets-les à jour dans le même geste que la branche.
+    /// branches ne met en file, avant de rendre la main, une écriture qui
+    /// resterait à drainer » — **PAS** « aucune de ces branches ne mute
+    /// `Rtc` » : a1quater en mute bien un champ (voir plus haut, et ne pas
+    /// laisser cette formulation-ci se recopier dans une future addition
+    /// sans revérifier ce distinguo). Une addition qui oublie de se confronter
+    /// à cet invariant se vérifie sur une liste incomplète. Mets-les à jour
+    /// dans le même geste que la branche.
     ///
     /// Ne prend pas `on_input`/`on_control` : `handle_input` ne produit
     /// jamais d'événement applicatif directement (les événements qui en
@@ -157,6 +179,47 @@ impl Session {
         //        contrôle même à ~100 Hz.
         if let Some((endormie, raison)) = self.source.sommeil_a_annoncer() {
             self.queue_control(AgentControl::asleep(endormie, &raison));
+            return Ok(Tick::Continue);
+        }
+
+        // a1quater) Une part de budget accordée par le capteur. Après a1ter
+        //           (qui n'endort rien : elle ANNONCE au navigateur un
+        //           sommeil déjà décidé côté capteur — l'endormissement
+        //           réel, lui, a lieu côté capteur, pas ici). La cohérence
+        //           entre un sommeil et la part qui en découle ne se joue PAS
+        //           dans cet ordre local : elle se joue en AMONT, côté
+        //           capteur, où `distribuer` (les ordres de sommeil) précède
+        //           `distribuer_les_parts` sur tous les chemins d'entrée du
+        //           registre (`inscrire`, `retirer`, `signaler`,
+        //           `echec_de_reveil`, tour de roue — voir
+        //           `capteur/sommeil.rs`).
+        //
+        //           ⚠️ **Tous SAUF UN, et il ne faut pas le taire** (I2, revue
+        //           finale de branche). Le chemin `rompus` de
+        //           `distribuer_les_parts` envoie les parts D'ABORD, puis
+        //           détecte les canaux rompus, retire leurs sessions du
+        //           vivier, et relaie seulement ensuite les ordres que ce
+        //           retrait engendre. Une session RÉVEILLÉE par la place
+        //           qu'un mort libère reçoit donc son `Reveiller` APRÈS la
+        //           part d'endormie calculée juste avant, et n'obtient sa part
+        //           d'éveillée qu'au tour de roue suivant.
+        //           **Borne : `PERIODE_REARBITRAGE`, soit 250 ms**, pendant
+        //           lesquelles cette fenêtre encode au plancher
+        //           `PART_DORMANTE_BPS`. Le canal unique garantit l'ordre de
+        //           LIVRAISON, jamais l'ordre de CALCUL — c'est cette
+        //           distinction que la rédaction précédente manquait.
+        //
+        //           Traiter a1quater juste après a1ter reste le choix le plus
+        //           lisible : il respecte l'ordre d'arrivée plutôt que de
+        //           l'inverser sans raison.
+        //           Ne met aucun paquet en file — voir la doc de tête de
+        //           cette fonction sur ce que `set_desired_bitrate` mute
+        //           réellement — mais pose une décision que la branche
+        //           a0ter appliquera au tour suivant.
+        //           `part_a_appliquer` CONSOMME : aucune réémission, donc
+        //           aucune reconfiguration en boucle à ~100 Hz.
+        if let Some(bps) = self.source.part_a_appliquer() {
+            self.appliquer_part(bps);
             return Ok(Tick::Continue);
         }
 

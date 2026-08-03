@@ -1,0 +1,3 @@
+2026-08-03T18:13:45.612401Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=1 attachees=1
+2026-08-03T18:13:48.614669Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-08-03T18:13:48.614682Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=0 avant=1 apres=1

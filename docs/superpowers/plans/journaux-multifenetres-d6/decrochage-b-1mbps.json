@@ -1,0 +1,332 @@
+{
+ "etiquette": "b-1mbps",
+ "bitrate_par_fenetre": 1000000,
+ "palier_s": 35,
+ "rangs": [
+  {
+   "N": 8,
+   "ouvertes": 8,
+   "debutIso": "2026-08-03T13:32:06.435Z",
+   "finIso": "2026-08-03T13:32:51.366Z",
+   "parFenetre": {
+    "w:w-2": {
+     "secondes": 40.009,
+     "images_recues": 2807,
+     "images_decodees": 2570,
+     "images_jetees": 235,
+     "i_par_s": 64.24,
+     "pc_jetees": 8.37,
+     "mbps": 0.846,
+     "paquets_perdus": 0,
+     "paquets_recus": 5056,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 7.716,
+     "pc_decodage": 19.3,
+     "gels": 2,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.005,
+     "lien_bitrate": 1000000,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false
+    },
+    "w:w-4": {
+     "secondes": 39.996,
+     "images_recues": 2972,
+     "images_decodees": 2974,
+     "images_jetees": 0,
+     "i_par_s": 74.36,
+     "pc_jetees": 0,
+     "mbps": 0.811,
+     "paquets_perdus": 0,
+     "paquets_recus": 4954,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 8.108,
+     "pc_decodage": 20.3,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.006,
+     "lien_bitrate": 982843,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false
+    },
+    "w:w-6": {
+     "secondes": 39.998,
+     "images_recues": 2038,
+     "images_decodees": 2038,
+     "images_jetees": 0,
+     "i_par_s": 50.95,
+     "pc_jetees": 0,
+     "mbps": 0.571,
+     "paquets_perdus": 0,
+     "paquets_recus": 3657,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 6.527,
+     "pc_decodage": 16.3,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.003,
+     "lien_bitrate": 1000000,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false
+    },
+    "w:w-8": {
+     "secondes": 40.009,
+     "images_recues": 3287,
+     "images_decodees": 3245,
+     "images_jetees": 42,
+     "i_par_s": 81.11,
+     "pc_jetees": 1.28,
+     "mbps": 0.964,
+     "paquets_perdus": 0,
+     "paquets_recus": 5800,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 9.413,
+     "pc_decodage": 23.5,
+     "gels": 1,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.007,
+     "lien_bitrate": 1000000,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false
+    },
+    "w:w-10": {
+     "secondes": 39.998,
+     "images_recues": 2114,
+     "images_decodees": 2115,
+     "images_jetees": 0,
+     "i_par_s": 52.88,
+     "pc_jetees": 0,
+     "mbps": 0.588,
+     "paquets_perdus": 0,
+     "paquets_recus": 3646,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 6.654,
+     "pc_decodage": 16.6,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.004,
+     "lien_bitrate": 1000000,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false
+    },
+    "w:w-12": {
+     "secondes": 39.995,
+     "images_recues": 3105,
+     "images_decodees": 3100,
+     "images_jetees": 5,
+     "i_par_s": 77.51,
+     "pc_jetees": 0.16,
+     "mbps": 0.893,
+     "paquets_perdus": 0,
+     "paquets_recus": 5407,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 9.069,
+     "pc_decodage": 22.7,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.006,
+     "lien_bitrate": 1000000,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false
+    },
+    "w:w-14": {
+     "secondes": 39.995,
+     "images_recues": 2445,
+     "images_decodees": 2447,
+     "images_jetees": 0,
+     "i_par_s": 61.18,
+     "pc_jetees": 0,
+     "mbps": 0.698,
+     "paquets_perdus": 0,
+     "paquets_recus": 4339,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 7.226,
+     "pc_decodage": 18.1,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.006,
+     "lien_bitrate": 1000000,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false
+    },
+    "w:w-16": {
+     "secondes": 39.992,
+     "images_recues": 2109,
+     "images_decodees": 2098,
+     "images_jetees": 25,
+     "i_par_s": 52.46,
+     "pc_jetees": 1.19,
+     "mbps": 0.559,
+     "paquets_perdus": 0,
+     "paquets_recus": 3587,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 5.457,
+     "pc_decodage": 13.6,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.006,
+     "lien_bitrate": 1000000,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false
+    }
+   },
+   "cumule": {
+    "fenetres_mesurees": 8,
+    "mbps_cumule": 5.93,
+    "i_par_s_cumule": 514.69,
+    "images_recues": 20877,
+    "images_jetees": 307,
+    "pc_jetees": 1.47,
+    "paquets_perdus": 0,
+    "paquets_recus": 36446,
+    "pc_paquets_perdus": 0,
+    "pc_decodage_cumule": 150.4,
+    "mpx_par_s_decodes": 118.58,
+    "gels": 3
+   },
+   "agent": {
+    "capteur": {
+     "w-2": 61.24,
+     "w-16": 50.28,
+     "w-10": 47.26,
+     "w-4": 68.5,
+     "w-12": 74.12,
+     "w-6": 50.05,
+     "w-14": 61.1,
+     "w-8": 81.63
+    },
+    "enfant": {
+     "w-2": 61.3,
+     "w-16": 50.38,
+     "w-10": 47.34,
+     "w-4": 68.6,
+     "w-12": 74.22,
+     "w-6": 50.18,
+     "w-14": 61.13,
+     "w-8": 81.63
+    },
+    "capteur_cumule": 494.18,
+    "endormies": []
+   },
+   "barreaux": {
+    "changees": [
+     {
+      "t": "2026-08-03T13:32:08.577954Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T13:32:08.578004Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T13:32:10.346394Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T13:32:10.346446Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T13:32:10.423196Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T13:32:10.423251Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T13:32:10.752058Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T13:32:10.752112Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T13:32:10.798377Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T13:32:10.798461Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T13:32:10.911950Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T13:32:10.911995Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T13:32:11.072814Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T13:32:11.072913Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T13:32:11.127832Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T13:32:11.127900Z",
+      "taille": "640x360"
+     }
+    ],
+    "refusees": []
+   },
+   "cpu": [
+    {
+     "cpu": "%Cpu(s): 30,2 ut, 18,8 sy,  0,0 ni, 50,5 id,  0,3 wa,  0,0 hi,  0,2 si,  0,0 st \n    %Cpu(s): 33,9 ut, 24,3 sy,  0,0 ni, 40,1 id,  0,0 wa,  0,0 hi,  1,7 si,  0,0 st \n    %Cpu(s): 32,2 ut, 18,6 sy,  0,0 ni, 48,8 id,  0,0 wa,  0,0 hi,  0,4 si,  0,0 st",
+     "tdarr_pcpu": "106",
+     "loadavg": "16.84 13.82 12.11 27/3777 1214779"
+    },
+    {
+     "cpu": "%Cpu(s): 31,9 ut, 19,2 sy,  0,2 ni, 48,4 id,  0,0 wa,  0,0 hi,  0,3 si,  0,0 st \n    %Cpu(s): 30,8 ut, 18,0 sy,  0,0 ni, 50,5 id,  0,0 wa,  0,0 hi,  0,7 si,  0,0 st \n    %Cpu(s): 29,4 ut, 18,2 sy,  0,0 ni, 52,0 id,  0,0 wa,  0,0 hi,  0,4 si,  0,0 st",
+     "tdarr_pcpu": "106",
+     "loadavg": "16.10 14.12 12.29 20/3792 1216630"
+    }
+   ],
+   "survie": {
+    "virsh": "en cours d’exécution",
+    "acces": "OUI"
+   }
+  }
+ ],
+ "navigateur": "Chrome/150.0.7871.181",
+ "cpu_repos": {
+  "cpu": "%Cpu(s):  8,4 ut,  2,2 sy,  0,0 ni, 88,9 id,  0,0 wa,  0,0 hi,  0,4 si,  0,0 st \n    %Cpu(s):  9,5 ut,  1,9 sy,  0,0 ni, 88,2 id,  0,0 wa,  0,0 hi,  0,4 si,  0,0 st \n    %Cpu(s): 11,5 ut,  3,4 sy,  0,0 ni, 83,2 id,  0,0 wa,  0,0 hi,  1,8 si,  0,0 st",
+  "tdarr_pcpu": "106",
+  "loadavg": "14.72 13.19 11.84 5/3729 1211900"
+ },
+ "marqueurs": {
+  "lignes": 501,
+  "enfant_lance": 8,
+  "attachee_capteur": 8,
+  "cloture": 0,
+  "endormie": 0,
+  "reveillee": 8,
+  "taille_changee": 16,
+  "taille_refusee": 0,
+  "refus_debit": 0,
+  "erreurs": 0
+ }
+}

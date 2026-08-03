@@ -36,7 +36,7 @@ use windows::Win32::Foundation::HWND;
 
 use crate::capteur::horloge::{frequence_qpc, lire_qpc, origine_depuis_qpc};
 use crate::capteur::protocole::{ecrire_image, ecrire_json, DepuisCapteur, VersCapteur};
-use crate::capteur::vivier::Ordre;
+use crate::capteur::sommeil::Message;
 use crate::h264::AccessUnit;
 use crate::source::VideoSource;
 use crate::windows_source::WindowsSource;
@@ -273,7 +273,7 @@ impl Fenetre {
     fn boucler(
         &mut self,
         session: &str,
-        ordres: &Receiver<Ordre>,
+        ordres: &Receiver<Message>,
         ecritures: &SyncSender<AEcrire>,
         commandes: &Receiver<VersCapteur>,
         reponses: &Sender<DepuisCapteur>,

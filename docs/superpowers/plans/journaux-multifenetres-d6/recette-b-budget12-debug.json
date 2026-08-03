@@ -1,0 +1,1655 @@
+{
+ "etiquette": "budget12b",
+ "budget_bps": 12000000,
+ "bitrate_par_enfant": 12000000,
+ "n_eveil": 8,
+ "n_total": 10,
+ "palier_s": 40,
+ "phases": {
+  "palier": {
+   "cible_focus": "w:w-2",
+   "scenario": {
+    "etats": {
+     "w:w-2": "false/true",
+     "w:w-4": "false/false",
+     "w:w-6": "false/false",
+     "w:w-8": "false/false",
+     "w:w-10": "false/false",
+     "w:w-12": "false/false",
+     "w:w-14": "false/false",
+     "w:w-16": "false/false"
+    },
+    "focalisees": [
+     "w:w-2"
+    ]
+   },
+   "ouvertes": 8,
+   "debut1": "2026-08-03T17:16:52.829Z",
+   "fin1": "2026-08-03T17:17:45.478Z",
+   "pose": {
+    "stable": false,
+    "attente_s": 152.1,
+    "changements": 60
+   },
+   "parFenetre": {
+    "w:w-2": {
+     "secondes": 47.102,
+     "images_recues": 3425,
+     "images_decodees": 1020,
+     "images_jetees": 2449,
+     "i_par_s": 21.66,
+     "pc_jetees": 71.5,
+     "mbps": 2.099,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 12808,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 21.456,
+     "pc_decodage": 45.6,
+     "gels": 1,
+     "pli": 0,
+     "taille": "1024x576",
+     "rtt": 0.009,
+     "lien_bitrate": 2533128,
+     "lien_taille": "1024x576",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": true,
+     "bandeau": "Image réduite par le réseau — 1024×576, 2.5 Mb/s"
+    },
+    "w:w-4": {
+     "secondes": 47.073,
+     "images_recues": 3521,
+     "images_decodees": 1398,
+     "images_jetees": 2181,
+     "i_par_s": 29.7,
+     "pc_jetees": 61.94,
+     "mbps": 1.042,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 7249,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 13.043,
+     "pc_decodage": 27.7,
+     "gels": 0,
+     "pli": 0,
+     "taille": "852x480",
+     "rtt": 0.005,
+     "lien_bitrate": 1299897,
+     "lien_taille": "852x480",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 852×480, 1.3 Mb/s"
+    },
+    "w:w-6": {
+     "secondes": 47.068,
+     "images_recues": 2585,
+     "images_decodees": 1222,
+     "images_jetees": 1392,
+     "i_par_s": 25.96,
+     "pc_jetees": 53.85,
+     "mbps": 0.785,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 5466,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 12.326,
+     "pc_decodage": 26.2,
+     "gels": 1,
+     "pli": 0,
+     "taille": "852x480",
+     "rtt": 0.005,
+     "lien_bitrate": 1333333,
+     "lien_taille": "852x480",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 852×480, 1.3 Mb/s"
+    },
+    "w:w-8": {
+     "secondes": 47.067,
+     "images_recues": 2468,
+     "images_decodees": 1239,
+     "images_jetees": 1258,
+     "i_par_s": 26.32,
+     "pc_jetees": 50.97,
+     "mbps": 0.72,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 5012,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 11.21,
+     "pc_decodage": 23.8,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.022,
+     "lien_bitrate": 1333333,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 640×360, 1.3 Mb/s"
+    },
+    "w:w-10": {
+     "secondes": 47.107,
+     "images_recues": 2523,
+     "images_decodees": 1138,
+     "images_jetees": 1353,
+     "i_par_s": 24.16,
+     "pc_jetees": 53.63,
+     "mbps": 0.815,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 5542,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 11.464,
+     "pc_decodage": 24.3,
+     "gels": 1,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.009,
+     "lien_bitrate": 1333333,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 640×360, 1.3 Mb/s"
+    },
+    "w:w-12": {
+     "secondes": 47.082,
+     "images_recues": 3144,
+     "images_decodees": 1385,
+     "images_jetees": 1823,
+     "i_par_s": 29.42,
+     "pc_jetees": 57.98,
+     "mbps": 0.891,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 6248,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 11.144,
+     "pc_decodage": 23.7,
+     "gels": 0,
+     "pli": 0,
+     "taille": "852x480",
+     "rtt": 0.008,
+     "lien_bitrate": 1333333,
+     "lien_taille": "852x480",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 852×480, 1.3 Mb/s"
+    },
+    "w:w-14": {
+     "secondes": 47.086,
+     "images_recues": 2704,
+     "images_decodees": 1315,
+     "images_jetees": 1470,
+     "i_par_s": 27.93,
+     "pc_jetees": 54.36,
+     "mbps": 0.822,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 5705,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 12.123,
+     "pc_decodage": 25.7,
+     "gels": 0,
+     "pli": 0,
+     "taille": "852x480",
+     "rtt": 0.002,
+     "lien_bitrate": 1244097,
+     "lien_taille": "852x480",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 852×480, 1.2 Mb/s"
+    },
+    "w:w-16": {
+     "secondes": 47.081,
+     "images_recues": 3498,
+     "images_decodees": 1357,
+     "images_jetees": 2233,
+     "i_par_s": 28.82,
+     "pc_jetees": 63.84,
+     "mbps": 1.041,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 7206,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 8.531,
+     "pc_decodage": 18.1,
+     "gels": 1,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.011,
+     "lien_bitrate": 1333333,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 640×360, 1.3 Mb/s"
+    }
+   },
+   "cumule": {
+    "fenetres_mesurees": 8,
+    "mbps_cumule": 8.215,
+    "i_par_s_cumule": 213.97,
+    "images_recues": 23868,
+    "images_jetees": 14159,
+    "pc_jetees": 59.32,
+    "paquets_perdus": 0,
+    "paquets_recus": 55236,
+    "pc_decodage_cumule": 215.1,
+    "mpx_par_s_decodes": 77.26,
+    "gels": 4,
+    "rtt_median": 0.009
+   },
+   "agent": {
+    "capteur": {
+     "w-8": 52.73,
+     "w-14": 58.23,
+     "w-2": 72.24,
+     "w-10": 53.44,
+     "w-16": 73.22,
+     "w-4": 73.68,
+     "w-12": 66.6,
+     "w-6": 54.82
+    },
+    "enfant": {
+     "w-8": 52.77,
+     "w-14": 58.23,
+     "w-2": 72.2,
+     "w-10": 53.52,
+     "w-16": 73.26,
+     "w-4": 73.68,
+     "w-12": 66.62,
+     "w-6": 54.86
+    },
+    "capteur_cumule": 504.96,
+    "endormies": []
+   },
+   "parts": {
+    "dernieres": {
+     "w-2": {
+      "bps": 2666666,
+      "t": "2026-08-03T17:14:12.597921Z"
+     },
+     "w-4": {
+      "bps": 1333333,
+      "t": "2026-08-03T17:14:12.578880Z"
+     },
+     "w-6": {
+      "bps": 1333333,
+      "t": "2026-08-03T17:14:12.584929Z"
+     },
+     "w-8": {
+      "bps": 1333333,
+      "t": "2026-08-03T17:14:12.585902Z"
+     },
+     "w-10": {
+      "bps": 1333333,
+      "t": "2026-08-03T17:14:12.585900Z"
+     },
+     "w-12": {
+      "bps": 1333333,
+      "t": "2026-08-03T17:14:12.583882Z"
+     },
+     "w-14": {
+      "bps": 1333333,
+      "t": "2026-08-03T17:14:12.585865Z"
+     },
+     "w-16": {
+      "bps": 1333333,
+      "t": "2026-08-03T17:14:12.582830Z"
+     }
+    },
+    "somme": 11999997,
+    "nombre_de_lignes": 119
+   },
+   "barreaux": {
+    "changees": [
+     {
+      "t": "2026-08-03T17:14:01.349318Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:14:01.349386Z",
+      "taille": "1024x576"
+     },
+     {
+      "t": "2026-08-03T17:14:05.164416Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:14:05.164483Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:14:06.888236Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:14:06.888287Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:14:07.215203Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:14:07.215256Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:14:07.935127Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:14:07.935229Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:14:10.923247Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:14:10.923311Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:14:15.622802Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:14:15.622947Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:14:17.067625Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:14:17.067686Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:14:21.353770Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:14:21.353849Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:14:23.615951Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:14:23.616038Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:14:42.361965Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:14:42.362020Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:14:46.630975Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:14:46.631092Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:14:56.912364Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:14:56.912413Z",
+      "taille": "1024x576"
+     },
+     {
+      "t": "2026-08-03T17:15:00.914635Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:15:00.914684Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:15:03.649981Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:15:03.650033Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:15:09.948097Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:15:09.948197Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:15:18.380245Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:15:18.380329Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:15:28.660784Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:15:28.660838Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:15:32.946444Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:15:32.946498Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:15:33.931559Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:15:33.931608Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:15:41.393654Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:15:41.393740Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:15:58.924132Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:15:58.924204Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:15:59.216715Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:15:59.216766Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:16:00.113198Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:16:00.113280Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:16:18.686161Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:16:18.686215Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:16:18.990276Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:16:18.990334Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:16:28.143232Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:16:28.143287Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:16:29.959062Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:16:29.959114Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:16:40.012045Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:16:40.012098Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:16:41.952929Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:16:41.952982Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:16:57.146476Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:16:57.146524Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:17:04.232781Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:17:04.232867Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:17:06.700581Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:17:06.700669Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:17:09.999733Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:17:09.999834Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:17:10.029500Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:17:10.029553Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:17:22.022007Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:17:22.022098Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:17:34.998135Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:17:34.998222Z",
+      "taille": "640x360"
+     },
+     {
+      "t": "2026-08-03T17:17:40.042669Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:17:40.042722Z",
+      "taille": "852x480"
+     },
+     {
+      "t": "2026-08-03T17:17:43.029774Z",
+      "taille": "undefinedxundefined"
+     },
+     {
+      "t": "2026-08-03T17:17:43.029828Z",
+      "taille": "852x480"
+     }
+    ],
+    "refusees": []
+   },
+   "cpu": [
+    {
+     "cpu": "%Cpu(s): 38,3 ut, 23,3 sy,  0,0 ni, 38,2 id,  0,0 wa,  0,0 hi,  0,2 si,  0,0 st \n    %Cpu(s): 36,1 ut, 18,9 sy,  0,0 ni, 44,6 id,  0,0 wa,  0,0 hi,  0,4 si,  0,0 st \n    %Cpu(s): 36,0 ut, 18,8 sy,  0,0 ni, 44,8 id,  0,0 wa,  0,0 hi,  0,5 si,  0,0 st",
+     "tdarr_pcpu": "104",
+     "loadavg": "31.77 20.74 14.45 40/3534 1989219"
+    },
+    {
+     "cpu": "%Cpu(s): 34,7 ut, 16,8 sy,  0,0 ni, 47,9 id,  0,0 wa,  0,0 hi,  0,6 si,  0,0 st \n    %Cpu(s): 34,9 ut, 19,9 sy,  0,0 ni, 44,5 id,  0,0 wa,  0,0 hi,  0,7 si,  0,0 st \n    %Cpu(s): 35,0 ut, 16,6 sy,  0,0 ni, 47,9 id,  0,0 wa,  0,0 hi,  0,4 si,  0,0 st",
+     "tdarr_pcpu": "103",
+     "loadavg": "34.10 23.04 15.54 20/3451 1992375"
+    }
+   ],
+   "survie": {
+    "virsh": "en cours d’exécution",
+    "acces": "OUI"
+   }
+  },
+  "focus": [
+   {
+    "cible": "w:w-4",
+    "scenario": {
+     "etats": {
+      "w:w-2": "false/false",
+      "w:w-4": "false/true",
+      "w:w-6": "false/false",
+      "w:w-8": "false/false",
+      "w:w-10": "false/false",
+      "w:w-12": "false/false",
+      "w:w-14": "false/false",
+      "w:w-16": "false/false"
+     },
+     "focalisees": [
+      "w:w-4"
+     ]
+    },
+    "fin": "2026-08-03T17:18:11.162Z",
+    "tailles": {
+     "w:w-2": {
+      "taille": "852x480",
+      "lien_taille": "852x480",
+      "lien_bitrate": 1333333,
+      "focalisee": false
+     },
+     "w:w-4": {
+      "taille": "1024x576",
+      "lien_taille": "1024x576",
+      "lien_bitrate": 2666666,
+      "focalisee": true
+     },
+     "w:w-6": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 1260601,
+      "focalisee": false
+     },
+     "w:w-8": {
+      "taille": "852x480",
+      "lien_taille": "852x480",
+      "lien_bitrate": 1333333,
+      "focalisee": false
+     },
+     "w:w-10": {
+      "taille": "852x480",
+      "lien_taille": "852x480",
+      "lien_bitrate": 1333333,
+      "focalisee": false
+     },
+     "w:w-12": {
+      "taille": "852x480",
+      "lien_taille": "852x480",
+      "lien_bitrate": 1333333,
+      "focalisee": false
+     },
+     "w:w-14": {
+      "taille": "852x480",
+      "lien_taille": "852x480",
+      "lien_bitrate": 1244097,
+      "focalisee": false
+     },
+     "w:w-16": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 595827,
+      "focalisee": false
+     }
+    },
+    "parts": {
+     "dernieres": {
+      "w-2": {
+       "bps": 1333333,
+       "t": "2026-08-03T17:17:46.103894Z"
+      },
+      "w-4": {
+       "bps": 2666666,
+       "t": "2026-08-03T17:17:46.105010Z"
+      },
+      "w-6": {
+       "bps": 1333333,
+       "t": "2026-08-03T17:17:46.093911Z"
+      },
+      "w-8": {
+       "bps": 1333333,
+       "t": "2026-08-03T17:17:46.100945Z"
+      },
+      "w-10": {
+       "bps": 1333333,
+       "t": "2026-08-03T17:17:46.098973Z"
+      },
+      "w-12": {
+       "bps": 1333333,
+       "t": "2026-08-03T17:17:46.093911Z"
+      },
+      "w-14": {
+       "bps": 1333333,
+       "t": "2026-08-03T17:17:46.092281Z"
+      },
+      "w-16": {
+       "bps": 1333333,
+       "t": "2026-08-03T17:17:46.096932Z"
+      }
+     },
+     "somme": 11999997,
+     "nombre_de_lignes": 135
+    },
+    "stats": {
+     "w:w-2": {
+      "etat": "connected",
+      "horloge": 1785777491189,
+      "images_decodees": 10131,
+      "images_recues": 18344,
+      "images_perdues": 8212,
+      "gels": 21,
+      "octets_recus": 64201887,
+      "octets_audio": null,
+      "paquets_recus": 66942,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 1,
+      "temps_decodage_total": 125.52457799999999,
+      "l": 852,
+      "h": 480,
+      "rtt": 0.004,
+      "lien_bitrate": 1333333,
+      "lien_taille": "852x480",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 852×480, 1.3 Mb/s"
+     },
+     "w:w-4": {
+      "etat": "connected",
+      "horloge": 1785777491199,
+      "images_decodees": 13459,
+      "images_recues": 19117,
+      "images_perdues": 5593,
+      "gels": 12,
+      "octets_recus": 40660931,
+      "octets_audio": null,
+      "paquets_recus": 45884,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 96.84006099999999,
+      "l": 1024,
+      "h": 576,
+      "rtt": 0.015,
+      "lien_bitrate": 2666666,
+      "lien_taille": "1024x576",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": true,
+      "bandeau": "Image réduite par le réseau — 1024×576, 2.7 Mb/s"
+     },
+     "w:w-6": {
+      "etat": "connected",
+      "horloge": 1785777491175,
+      "images_decodees": 11230,
+      "images_recues": 13686,
+      "images_perdues": 2456,
+      "gels": 7,
+      "octets_recus": 25697041,
+      "octets_audio": null,
+      "paquets_recus": 30104,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 77.557791,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.013,
+      "lien_bitrate": 1260601,
+      "lien_taille": "640x360",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 640×360, 1.3 Mb/s"
+     },
+     "w:w-8": {
+      "etat": "connected",
+      "horloge": 1785777491207,
+      "images_decodees": 8967,
+      "images_recues": 12935,
+      "images_perdues": 3818,
+      "gels": 17,
+      "octets_recus": 24316289,
+      "octets_audio": null,
+      "paquets_recus": 28362,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 1,
+      "temps_decodage_total": 67.549499,
+      "l": 852,
+      "h": 480,
+      "rtt": 0.009,
+      "lien_bitrate": 1333333,
+      "lien_taille": "852x480",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 852×480, 1.3 Mb/s"
+     },
+     "w:w-10": {
+      "etat": "connected",
+      "horloge": 1785777491207,
+      "images_decodees": 10976,
+      "images_recues": 13373,
+      "images_perdues": 2395,
+      "gels": 8,
+      "octets_recus": 24577495,
+      "octets_audio": null,
+      "paquets_recus": 28764,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 71.830651,
+      "l": 852,
+      "h": 480,
+      "rtt": 0.005,
+      "lien_bitrate": 1333333,
+      "lien_taille": "852x480",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 852×480, 1.3 Mb/s"
+     },
+     "w:w-12": {
+      "etat": "connected",
+      "horloge": 1785777491213,
+      "images_decodees": 11852,
+      "images_recues": 16555,
+      "images_perdues": 4700,
+      "gels": 10,
+      "octets_recus": 30890388,
+      "octets_audio": null,
+      "paquets_recus": 35977,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 80.846767,
+      "l": 852,
+      "h": 480,
+      "rtt": 0.005,
+      "lien_bitrate": 1333333,
+      "lien_taille": "852x480",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 852×480, 1.3 Mb/s"
+     },
+     "w:w-14": {
+      "etat": "connected",
+      "horloge": 1785777491214,
+      "images_decodees": 11334,
+      "images_recues": 13876,
+      "images_perdues": 2541,
+      "gels": 3,
+      "octets_recus": 24226241,
+      "octets_audio": null,
+      "paquets_recus": 28576,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 76.596854,
+      "l": 852,
+      "h": 480,
+      "rtt": 0.017,
+      "lien_bitrate": 1244097,
+      "lien_taille": "852x480",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 852×480, 1.2 Mb/s"
+     },
+     "w:w-16": {
+      "etat": "connected",
+      "horloge": 1785777491215,
+      "images_decodees": 11833,
+      "images_recues": 17597,
+      "images_perdues": 5762,
+      "gels": 11,
+      "octets_recus": 30285296,
+      "octets_audio": null,
+      "paquets_recus": 35855,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 72.47785499999999,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.014,
+      "lien_bitrate": 595827,
+      "lien_taille": "640x360",
+      "lien_qualite": "insuffisante",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.6 Mb/s"
+     }
+    }
+   },
+   {
+    "cible": "w:w-6",
+    "scenario": {
+     "etats": {
+      "w:w-2": "false/false",
+      "w:w-4": "false/false",
+      "w:w-6": "false/true",
+      "w:w-8": "false/false",
+      "w:w-10": "false/false",
+      "w:w-12": "false/false",
+      "w:w-14": "false/false",
+      "w:w-16": "false/false"
+     },
+     "focalisees": [
+      "w:w-6"
+     ]
+    },
+    "fin": "2026-08-03T17:18:36.603Z",
+    "tailles": {
+     "w:w-2": {
+      "taille": "852x480",
+      "lien_taille": "852x480",
+      "lien_bitrate": 1333333,
+      "focalisee": false
+     },
+     "w:w-4": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 1333333,
+      "focalisee": false
+     },
+     "w:w-6": {
+      "taille": "1024x576",
+      "lien_taille": "1024x576",
+      "lien_bitrate": 2547200,
+      "focalisee": true
+     },
+     "w:w-8": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 1275344,
+      "focalisee": false
+     },
+     "w:w-10": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 1333333,
+      "focalisee": false
+     },
+     "w:w-12": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 731773,
+      "focalisee": false
+     },
+     "w:w-14": {
+      "taille": "852x480",
+      "lien_taille": "852x480",
+      "lien_bitrate": 1244097,
+      "focalisee": false
+     },
+     "w:w-16": {
+      "taille": "640x360",
+      "lien_taille": "640x360",
+      "lien_bitrate": 1333333,
+      "focalisee": false
+     }
+    },
+    "parts": {
+     "dernieres": {
+      "w-2": {
+       "bps": 1333333,
+       "t": "2026-08-03T17:18:11.522928Z"
+      },
+      "w-4": {
+       "bps": 1333333,
+       "t": "2026-08-03T17:18:11.514884Z"
+      },
+      "w-6": {
+       "bps": 2666666,
+       "t": "2026-08-03T17:18:11.522941Z"
+      },
+      "w-8": {
+       "bps": 1333333,
+       "t": "2026-08-03T17:18:11.520903Z"
+      },
+      "w-10": {
+       "bps": 1333333,
+       "t": "2026-08-03T17:18:11.515829Z"
+      },
+      "w-12": {
+       "bps": 1333333,
+       "t": "2026-08-03T17:18:11.513870Z"
+      },
+      "w-14": {
+       "bps": 1333333,
+       "t": "2026-08-03T17:18:11.521961Z"
+      },
+      "w-16": {
+       "bps": 1333333,
+       "t": "2026-08-03T17:18:11.514885Z"
+      }
+     },
+     "somme": 11999997,
+     "nombre_de_lignes": 151
+    },
+    "stats": {
+     "w:w-2": {
+      "etat": "connected",
+      "horloge": 1785777516666,
+      "images_decodees": 11488,
+      "images_recues": 20125,
+      "images_perdues": 8629,
+      "gels": 21,
+      "octets_recus": 67478749,
+      "octets_audio": null,
+      "paquets_recus": 70731,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 1,
+      "temps_decodage_total": 136.991007,
+      "l": 852,
+      "h": 480,
+      "rtt": 0.004,
+      "lien_bitrate": 1333333,
+      "lien_taille": "852x480",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 852×480, 1.3 Mb/s"
+     },
+     "w:w-4": {
+      "etat": "connected",
+      "horloge": 1785777516667,
+      "images_decodees": 14232,
+      "images_recues": 21061,
+      "images_perdues": 6606,
+      "gels": 15,
+      "octets_recus": 44293239,
+      "octets_audio": null,
+      "paquets_recus": 50068,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 102.871409,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.01,
+      "lien_bitrate": 1333333,
+      "lien_taille": "640x360",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 640×360, 1.3 Mb/s"
+     },
+     "w:w-6": {
+      "etat": "connected",
+      "horloge": 1785777516668,
+      "images_decodees": 12447,
+      "images_recues": 15074,
+      "images_perdues": 2612,
+      "gels": 7,
+      "octets_recus": 30666696,
+      "octets_audio": null,
+      "paquets_recus": 35237,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 87.486508,
+      "l": 1024,
+      "h": 576,
+      "rtt": 0.01,
+      "lien_bitrate": 2547200,
+      "lien_taille": "1024x576",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": true,
+      "bandeau": "Image réduite par le réseau — 1024×576, 2.5 Mb/s"
+     },
+     "w:w-8": {
+      "etat": "connected",
+      "horloge": 1785777516669,
+      "images_decodees": 9526,
+      "images_recues": 14259,
+      "images_perdues": 4729,
+      "gels": 23,
+      "octets_recus": 26917389,
+      "octets_audio": null,
+      "paquets_recus": 31382,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 1,
+      "temps_decodage_total": 71.07349599999999,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.034,
+      "lien_bitrate": 1275344,
+      "lien_taille": "640x360",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 640×360, 1.3 Mb/s"
+     },
+     "w:w-10": {
+      "etat": "connected",
+      "horloge": 1785777516670,
+      "images_decodees": 11953,
+      "images_recues": 14828,
+      "images_perdues": 2723,
+      "gels": 10,
+      "octets_recus": 27224688,
+      "octets_audio": null,
+      "paquets_recus": 31869,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 79.263099,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.021,
+      "lien_bitrate": 1333333,
+      "lien_taille": "640x360",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 640×360, 1.3 Mb/s"
+     },
+     "w:w-12": {
+      "etat": "connected",
+      "horloge": 1785777516679,
+      "images_decodees": 13202,
+      "images_recues": 18313,
+      "images_perdues": 5105,
+      "gels": 10,
+      "octets_recus": 33732032,
+      "octets_audio": null,
+      "paquets_recus": 39368,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 91.39929599999999,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.021,
+      "lien_bitrate": 731773,
+      "lien_taille": "640x360",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 640×360, 0.7 Mb/s"
+     },
+     "w:w-14": {
+      "etat": "connected",
+      "horloge": 1785777516665,
+      "images_decodees": 12548,
+      "images_recues": 15321,
+      "images_perdues": 2751,
+      "gels": 3,
+      "octets_recus": 26923269,
+      "octets_audio": null,
+      "paquets_recus": 31703,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 87.63734099999999,
+      "l": 852,
+      "h": 480,
+      "rtt": 0.014,
+      "lien_bitrate": 1244097,
+      "lien_taille": "852x480",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 852×480, 1.2 Mb/s"
+     },
+     "w:w-16": {
+      "etat": "connected",
+      "horloge": 1785777516680,
+      "images_decodees": 13335,
+      "images_recues": 19412,
+      "images_perdues": 6072,
+      "gels": 11,
+      "octets_recus": 33497159,
+      "octets_audio": null,
+      "paquets_recus": 39591,
+      "paquets_perdus": 0,
+      "nack": 0,
+      "pli": 0,
+      "temps_decodage_total": 80.830225,
+      "l": 640,
+      "h": 360,
+      "rtt": 0.01,
+      "lien_bitrate": 1333333,
+      "lien_taille": "640x360",
+      "lien_qualite": "degradee",
+      "cachee": false,
+      "focalisee": false,
+      "bandeau": "Image réduite par le réseau — 640×360, 1.3 Mb/s"
+     }
+    }
+   }
+  ],
+  "sommeil": {
+   "cible_focus": "w:w-6",
+   "scenario": {
+    "etats": {
+     "w:w-2": "false/false",
+     "w:w-4": "false/false",
+     "w:w-6": "false/true",
+     "w:w-8": "false/false",
+     "w:w-10": "false/false",
+     "w:w-12": "false/false",
+     "w:w-14": "false/false",
+     "w:w-16": "false/false",
+     "w:w-18": "false/false",
+     "w:w-20": "false/false"
+    },
+    "focalisees": [
+     "w:w-6"
+    ]
+   },
+   "ouvertes": 10,
+   "debut3": "2026-08-03T17:21:32.161Z",
+   "fin3": "2026-08-03T17:22:02.427Z",
+   "pose": {
+    "stable": false,
+    "attente_s": 152.2,
+    "changements": 172
+   },
+   "parFenetre": {
+    "w:w-2": {
+     "secondes": 30.16,
+     "images_recues": 1976,
+     "images_decodees": 775,
+     "images_jetees": 1254,
+     "i_par_s": 25.7,
+     "pc_jetees": 63.46,
+     "mbps": 0.869,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 3870,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 4.837,
+     "pc_decodage": 16,
+     "gels": 5,
+     "pli": 0,
+     "taille": "852x480",
+     "rtt": 0.011,
+     "lien_bitrate": 1178927,
+     "lien_taille": "852x480",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 852×480, 1.2 Mb/s"
+    },
+    "w:w-4": {
+     "secondes": 30.136,
+     "images_recues": 2162,
+     "images_decodees": 1622,
+     "images_jetees": 535,
+     "i_par_s": 53.82,
+     "pc_jetees": 24.75,
+     "mbps": 1.038,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 4594,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 10.45,
+     "pc_decodage": 34.7,
+     "gels": 0,
+     "pli": 0,
+     "taille": "852x480",
+     "rtt": 0.041,
+     "lien_bitrate": 1276444,
+     "lien_taille": "852x480",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 852×480, 1.3 Mb/s"
+    },
+    "w:w-6": {
+     "secondes": 30.17,
+     "images_recues": 1650,
+     "images_decodees": 955,
+     "images_jetees": 743,
+     "i_par_s": 31.65,
+     "pc_jetees": 45.03,
+     "mbps": 1.307,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 5229,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 8.203,
+     "pc_decodage": 27.2,
+     "gels": 3,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.041,
+     "lien_bitrate": 2552888,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": true,
+     "bandeau": "Image réduite par le réseau — 640×360, 2.6 Mb/s"
+    },
+    "w:w-8": {
+     "secondes": 30.138,
+     "images_recues": 0,
+     "images_decodees": 0,
+     "images_jetees": 0,
+     "i_par_s": 0,
+     "pc_jetees": null,
+     "mbps": 0,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 0,
+     "pc_paquets_perdus": null,
+     "temps_decodage": 0,
+     "pc_decodage": 0,
+     "gels": 0,
+     "pli": 0,
+     "taille": "852x480",
+     "rtt": 0.009,
+     "lien_bitrate": 256000,
+     "lien_taille": "640x360",
+     "lien_qualite": "insuffisante",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.3 Mb/s"
+    },
+    "w:w-10": {
+     "secondes": 30.127,
+     "images_recues": 0,
+     "images_decodees": 0,
+     "images_jetees": 0,
+     "i_par_s": 0,
+     "pc_jetees": null,
+     "mbps": 0,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 0,
+     "pc_paquets_perdus": null,
+     "temps_decodage": 0,
+     "pc_decodage": 0,
+     "gels": 0,
+     "pli": 0,
+     "taille": "852x480",
+     "rtt": 0.011,
+     "lien_bitrate": 256000,
+     "lien_taille": "640x360",
+     "lien_qualite": "insuffisante",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Réseau insuffisant pour le jeu nerveux — 640×360, 0.3 Mb/s"
+    },
+    "w:w-12": {
+     "secondes": 30.111,
+     "images_recues": 1912,
+     "images_decodees": 1504,
+     "images_jetees": 415,
+     "i_par_s": 49.95,
+     "pc_jetees": 21.71,
+     "mbps": 0.927,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 4071,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 11.713,
+     "pc_decodage": 38.9,
+     "gels": 1,
+     "pli": 0,
+     "taille": "852x480",
+     "rtt": 0.011,
+     "lien_bitrate": 1230971,
+     "lien_taille": "852x480",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 852×480, 1.2 Mb/s"
+    },
+    "w:w-14": {
+     "secondes": 30.102,
+     "images_recues": 1723,
+     "images_decodees": 1437,
+     "images_jetees": 343,
+     "i_par_s": 47.74,
+     "pc_jetees": 19.91,
+     "mbps": 0.792,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 3521,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 9.911,
+     "pc_decodage": 32.9,
+     "gels": 0,
+     "pli": 0,
+     "taille": "852x480",
+     "rtt": 0.032,
+     "lien_bitrate": 1276444,
+     "lien_taille": "852x480",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 852×480, 1.3 Mb/s"
+    },
+    "w:w-16": {
+     "secondes": 30.102,
+     "images_recues": 2090,
+     "images_decodees": 1613,
+     "images_jetees": 562,
+     "i_par_s": 53.58,
+     "pc_jetees": 26.89,
+     "mbps": 0.854,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 3834,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 9.43,
+     "pc_decodage": 31.3,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.028,
+     "lien_bitrate": 1157115,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 640×360, 1.2 Mb/s"
+    },
+    "w:w-18": {
+     "secondes": 30.104,
+     "images_recues": 1778,
+     "images_decodees": 1361,
+     "images_jetees": 507,
+     "i_par_s": 45.21,
+     "pc_jetees": 28.52,
+     "mbps": 0.716,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 3256,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 7.915,
+     "pc_decodage": 26.3,
+     "gels": 1,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.028,
+     "lien_bitrate": 1276444,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 640×360, 1.3 Mb/s"
+    },
+    "w:w-20": {
+     "secondes": 30.065,
+     "images_recues": 2373,
+     "images_decodees": 1638,
+     "images_jetees": 805,
+     "i_par_s": 54.48,
+     "pc_jetees": 33.92,
+     "mbps": 1.147,
+     "kbps_audio": 0,
+     "paquets_perdus": 0,
+     "paquets_recus": 4965,
+     "pc_paquets_perdus": 0,
+     "temps_decodage": 10.091,
+     "pc_decodage": 33.6,
+     "gels": 0,
+     "pli": 0,
+     "taille": "640x360",
+     "rtt": 0.01,
+     "lien_bitrate": 1276444,
+     "lien_taille": "640x360",
+     "lien_qualite": "degradee",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 640×360, 1.3 Mb/s"
+    }
+   },
+   "cumule": {
+    "fenetres_mesurees": 10,
+    "mbps_cumule": 7.65,
+    "i_par_s_cumule": 362.13,
+    "images_recues": 15664,
+    "images_jetees": 5164,
+    "pc_jetees": 32.97,
+    "paquets_perdus": 0,
+    "paquets_recus": 33340,
+    "pc_decodage_cumule": 240.9,
+    "mpx_par_s_decodes": 115.08,
+    "gels": 10,
+    "rtt_median": 0.028
+   },
+   "agent": {
+    "capteur": {
+     "w-18": 58.73,
+     "w-8": 0,
+     "w-14": 58.03,
+     "w-2": 66.47,
+     "w-10": 0,
+     "w-16": 70.27,
+     "w-4": 70.97,
+     "w-20": 78.7,
+     "w-6": 54.7,
+     "w-12": 63.17
+    },
+    "enfant": {
+     "w-18": 58.73,
+     "w-8": 0,
+     "w-14": 58.13,
+     "w-2": 66.37,
+     "w-10": 0,
+     "w-16": 70.27,
+     "w-4": 71.03,
+     "w-20": 78.87,
+     "w-12": 62.57,
+     "w-6": 54.77
+    },
+    "capteur_cumule": 521.04,
+    "endormies": [
+     "w-8@2026-08-03T17:21:34.506794Z",
+     "w-10@2026-08-03T17:21:37.658958Z",
+     "w-8@2026-08-03T17:21:44.510545Z",
+     "w-10@2026-08-03T17:21:47.661277Z",
+     "w-8@2026-08-03T17:21:54.516783Z",
+     "w-10@2026-08-03T17:21:57.665815Z"
+    ]
+   },
+   "parts": {
+    "dernieres": {
+     "w-2": {
+      "bps": 1276444,
+      "t": "2026-08-03T17:18:51.865535Z"
+     },
+     "w-4": {
+      "bps": 1276444,
+      "t": "2026-08-03T17:18:51.864657Z"
+     },
+     "w-6": {
+      "bps": 2552888,
+      "t": "2026-08-03T17:18:51.858540Z"
+     },
+     "w-8": {
+      "bps": 256000,
+      "t": "2026-08-03T17:18:44.360980Z"
+     },
+     "w-10": {
+      "bps": 256000,
+      "t": "2026-08-03T17:18:50.186558Z"
+     },
+     "w-12": {
+      "bps": 1276444,
+      "t": "2026-08-03T17:18:51.859510Z"
+     },
+     "w-14": {
+      "bps": 1276444,
+      "t": "2026-08-03T17:18:51.865580Z"
+     },
+     "w-16": {
+      "bps": 1276444,
+      "t": "2026-08-03T17:18:51.858547Z"
+     },
+     "w-18": {
+      "bps": 1276444,
+      "t": "2026-08-03T17:18:51.865535Z"
+     },
+     "w-20": {
+      "bps": 1276444,
+      "t": "2026-08-03T17:18:51.861511Z"
+     }
+    },
+    "somme": 11999996,
+    "nombre_de_lignes": 189
+   },
+   "cpu": {
+    "cpu": "%Cpu(s): 33,5 ut, 22,1 sy,  0,0 ni, 44,1 id,  0,0 wa,  0,0 hi,  0,3 si,  0,0 st \n    %Cpu(s): 34,7 ut, 20,3 sy,  0,0 ni, 44,5 id,  0,0 wa,  0,0 hi,  0,4 si,  0,0 st \n    %Cpu(s): 34,6 ut, 20,8 sy,  0,0 ni, 43,9 id,  0,0 wa,  0,0 hi,  0,6 si,  0,0 st",
+    "tdarr_pcpu": "100",
+    "loadavg": "29.87 26.84 19.01 46/3476 2006081"
+   },
+   "survie": {
+    "virsh": "en cours d’exécution",
+    "acces": "OUI"
+   }
+  }
+ },
+ "navigateur": "Chrome/151.0.7922.71",
+ "cpu_repos": {
+  "cpu": "%Cpu(s): 25,3 ut,  4,1 sy,  0,0 ni, 69,8 id,  0,3 wa,  0,0 hi,  0,5 si,  0,0 st \n    %Cpu(s): 23,2 ut,  4,9 sy,  0,0 ni, 70,9 id,  0,4 wa,  0,0 hi,  0,6 si,  0,0 st \n    %Cpu(s): 20,9 ut,  3,5 sy,  0,0 ni, 74,0 id,  0,4 wa,  0,0 hi,  1,2 si,  0,0 st",
+  "tdarr_pcpu": "106",
+  "loadavg": "7.99 11.06 10.57 7/3397 1979066"
+ },
+ "budget_annonce": [],
+ "marqueurs": {
+  "lignes": 2317,
+  "enfant_lance": 10,
+  "attachee_capteur": 10,
+  "cloture": 0,
+  "endormie": 2,
+  "reveillee": 10,
+  "part_appliquee": 189,
+  "taille_changee": 196,
+  "taille_refusee": 0,
+  "refus_debit": 0,
+  "erreurs": 0
+ }
+}

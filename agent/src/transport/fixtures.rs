@@ -16,7 +16,9 @@
 use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::time::{Duration, Instant};
 
+use str0m::media::Mid;
 use str0m::net::{DatagramRecv, Protocol, Receive};
+use str0m::stats::MediaEgressStats;
 use str0m::{Candidate, Input, Rtc};
 
 /// Adresse locale utilisée par tous les pairs de test (loopback).
@@ -47,6 +49,27 @@ pub(super) fn local_peer(local_ip: IpAddr, enable_opus: bool) -> (UdpSocket, Soc
     let mut peer_rtc = builder.build(Instant::now());
     peer_rtc.add_local_candidate(Candidate::host(peer_addr, "udp").unwrap());
     (peer_socket, peer_addr, peer_rtc)
+}
+
+/// Statistiques d'émission minimales pour la piste `mid` : seuls `mid`, `rtt`
+/// et `loss` sont lus par `handle_event`, le reste n'a qu'à exister.
+///
+/// Partagée entre `adaptation` et `part` (sous-bloc D6) : les deux modules en
+/// ont besoin pour amener le contrôleur à observer une estimation réelle.
+pub(super) fn stats_video(mid: Mid) -> MediaEgressStats {
+    MediaEgressStats {
+        mid,
+        rid: None,
+        bytes: 0,
+        packets: 0,
+        firs: 0,
+        plis: 0,
+        nacks: 0,
+        rtt: Some(Duration::from_millis(20)),
+        loss: Some(0.0),
+        timestamp: Instant::now(),
+        remote: None,
+    }
 }
 
 /// Reçoit un datagramme du pair et le transmet à son `Rtc`, en respectant

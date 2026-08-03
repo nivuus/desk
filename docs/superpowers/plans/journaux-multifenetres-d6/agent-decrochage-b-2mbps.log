@@ -1,0 +1,539 @@
+2026-08-03T13:29:22.759198Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-03T13:29:22.774734Z  INFO agent::superviseur::signalisation: superviseur enregistré sur la session de contrôle session="bureau"
+2026-08-03T13:29:22.777049Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-03T13:29:22.777085Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-03T13:29:22.777097Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=1 attachees=1
+2026-08-03T13:29:22.777100Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-03T13:29:25.779505Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-03T13:29:25.779537Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-03T13:29:25.779545Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-08-03T13:29:25.779554Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-03T13:29:25.779559Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=0 avant=1 apres=1
+2026-08-03T13:29:25.782971Z  INFO agent::superviseur::lanceur: capteur lancé pid=34784
+2026-08-03T13:29:25.788500Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-03T13:29:25.788531Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-08-03T13:29:29.808348Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-03T13:29:29.808378Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-03T13:29:29.808384Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=1 attachees=1
+2026-08-03T13:29:29.808387Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-03T13:29:29.808672Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=264 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430001 largeur=1280 hauteur=720 hertz=60
+2026-08-03T13:29:29.945693Z  INFO agent::superviseur::enfants: enfant lancé session=w-2 pid=18032 sortie=\\.\DISPLAY5 audio=false
+2026-08-03T13:29:29.954499Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-03T13:29:29.954568Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY5 bitrate=2000000 fps=90
+2026-08-03T13:29:29.960387Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-03T13:29:29.960552Z  INFO agent::capteur::tube: attaché au capteur session=w-2 sortie=\\.\DISPLAY5 largeur=1280 hauteur=720
+2026-08-03T13:29:29.960720Z  INFO agent::capteur::fenetre: fenêtre attachée au capteur session=w-2 sortie=\\.\DISPLAY5 largeur=1280 hauteur=720
+2026-08-03T13:29:29.963147Z  INFO agent::signaling: agent enregistré auprès du signaling session="w-2"
+2026-08-03T13:29:29.963245Z  INFO agent::transport: socket UDP de l'agent addr=192.168.3.2:59960
+2026-08-03T13:29:29.964125Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-03T13:29:29.996588Z  INFO agent::demarrage: son désactivé sur cet enfant : une seule fenêtre le porte
+2026-08-03T13:29:32.160475Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-03T13:29:32.160508Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-03T13:29:32.160517Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=2 attachees=2
+2026-08-03T13:29:32.160521Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-03T13:29:32.160526Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:32.160704Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=256 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430002 largeur=1280 hauteur=720 hertz=60
+2026-08-03T13:29:32.299433Z  INFO agent::superviseur::enfants: enfant lancé session=w-4 pid=27824 sortie=\\.\DISPLAY6 audio=false
+2026-08-03T13:29:32.312277Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-03T13:29:32.312343Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY6 bitrate=2000000 fps=90
+2026-08-03T13:29:32.321999Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-03T13:29:32.322131Z  INFO agent::capteur::tube: attaché au capteur session=w-4 sortie=\\.\DISPLAY6 largeur=1280 hauteur=720
+2026-08-03T13:29:32.322264Z  INFO agent::capteur::fenetre: fenêtre attachée au capteur session=w-4 sortie=\\.\DISPLAY6 largeur=1280 hauteur=720
+2026-08-03T13:29:32.329348Z  INFO agent::signaling: agent enregistré auprès du signaling session="w-4"
+2026-08-03T13:29:32.329441Z  INFO agent::transport: socket UDP de l'agent addr=192.168.3.2:63977
+2026-08-03T13:29:32.330201Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-03T13:29:32.374902Z  INFO agent::demarrage: son désactivé sur cet enfant : une seule fenêtre le porte
+2026-08-03T13:29:32.798840Z  INFO agent::demarrage: offre reçue
+2026-08-03T13:29:32.804111Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=réception pendant l'allocation TURN
+2026-08-03T13:29:32.806103Z  INFO agent::demarrage: réponse envoyée
+2026-08-03T13:29:32.806341Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=2.8098828s
+2026-08-03T13:29:32.811638Z  INFO agent::transport::evenements: état ICE state=Connected écoulé=2.8151782s
+2026-08-03T13:29:32.822464Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video
+2026-08-03T13:29:32.822482Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio
+2026-08-03T13:29:32.836818Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-03T13:29:32.836878Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-03T13:29:32.953242Z  INFO agent::demarrage: contrôle reçu Visibility { version: 3, visible: false, focused: false }
+2026-08-03T13:29:33.065009Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:33.076651Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:33.575087Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:33.592859Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:34.584776Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:34.596504Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:34.609200Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-03T13:29:34.609232Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-03T13:29:34.609241Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=3 attachees=3
+2026-08-03T13:29:34.609244Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-03T13:29:34.609249Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:34.609253Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:34.609429Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=262 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430003 largeur=1280 hauteur=720 hertz=60
+2026-08-03T13:29:34.817046Z  INFO agent::superviseur::enfants: enfant lancé session=w-6 pid=20980 sortie=\\.\DISPLAY7 audio=false
+2026-08-03T13:29:34.836568Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-03T13:29:34.836629Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY7 bitrate=2000000 fps=90
+2026-08-03T13:29:34.848795Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-03T13:29:34.848928Z  INFO agent::capteur::tube: attaché au capteur session=w-6 sortie=\\.\DISPLAY7 largeur=1280 hauteur=720
+2026-08-03T13:29:34.849055Z  INFO agent::capteur::fenetre: fenêtre attachée au capteur session=w-6 sortie=\\.\DISPLAY7 largeur=1280 hauteur=720
+2026-08-03T13:29:34.851644Z  INFO agent::signaling: agent enregistré auprès du signaling session="w-6"
+2026-08-03T13:29:34.851755Z  INFO agent::transport: socket UDP de l'agent addr=192.168.3.2:58628
+2026-08-03T13:29:34.852444Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-03T13:29:34.900889Z  INFO agent::demarrage: son désactivé sur cet enfant : une seule fenêtre le porte
+2026-08-03T13:29:35.181192Z  INFO agent::demarrage: offre reçue
+2026-08-03T13:29:35.187141Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=réception pendant l'allocation TURN
+2026-08-03T13:29:35.189330Z  INFO agent::demarrage: réponse envoyée
+2026-08-03T13:29:35.189574Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=2.8147667s
+2026-08-03T13:29:35.199260Z  INFO agent::transport::evenements: état ICE state=Connected écoulé=2.8244504s
+2026-08-03T13:29:35.208554Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video
+2026-08-03T13:29:35.208575Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio
+2026-08-03T13:29:35.213843Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-03T13:29:35.213914Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-03T13:29:35.215856Z  INFO agent::demarrage: contrôle reçu Visibility { version: 3, visible: false, focused: false }
+2026-08-03T13:29:35.962383Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:36.971140Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:37.336933Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-03T13:29:37.336967Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-03T13:29:37.336975Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=4 attachees=4
+2026-08-03T13:29:37.336980Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-03T13:29:37.336986Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:37.336988Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:37.336991Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:37.337145Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=258 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-08-03T13:29:37.581172Z  INFO agent::demarrage: offre reçue
+2026-08-03T13:29:37.641868Z  INFO agent::superviseur::enfants: enfant lancé session=w-8 pid=37988 sortie=\\.\DISPLAY8 audio=false
+2026-08-03T13:29:37.654671Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-03T13:29:37.654759Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY8 bitrate=2000000 fps=90
+2026-08-03T13:29:37.672502Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 nom_sortie=\\.\DISPLAY8 attachee=true
+2026-08-03T13:29:37.672615Z  INFO agent::capteur::tube: attaché au capteur session=w-8 sortie=\\.\DISPLAY8 largeur=1280 hauteur=720
+2026-08-03T13:29:37.672743Z  INFO agent::capteur::fenetre: fenêtre attachée au capteur session=w-8 sortie=\\.\DISPLAY8 largeur=1280 hauteur=720
+2026-08-03T13:29:37.674917Z  INFO agent::signaling: agent enregistré auprès du signaling session="w-8"
+2026-08-03T13:29:37.675015Z  INFO agent::transport: socket UDP de l'agent addr=192.168.3.2:53059
+2026-08-03T13:29:37.676430Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-03T13:29:37.712320Z  INFO agent::demarrage: son désactivé sur cet enfant : une seule fenêtre le porte
+2026-08-03T13:29:37.971603Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:39.583635Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=aucune allocation TURN obtenue en 2s
+2026-08-03T13:29:39.585353Z  INFO agent::demarrage: réponse envoyée
+2026-08-03T13:29:39.585616Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=4.6847577s
+2026-08-03T13:29:39.606717Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:39.674099Z  INFO agent::transport::evenements: état ICE state=Connected écoulé=4.7732389s
+2026-08-03T13:29:39.682362Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video
+2026-08-03T13:29:39.682382Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio
+2026-08-03T13:29:39.694758Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-03T13:29:39.694827Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-03T13:29:39.705260Z  INFO agent::demarrage: contrôle reçu Visibility { version: 3, visible: false, focused: false }
+2026-08-03T13:29:39.850444Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:39.856368Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-03T13:29:39.856416Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-03T13:29:39.856431Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=5 attachees=5
+2026-08-03T13:29:39.856439Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-03T13:29:39.856447Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:39.856452Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:39.856456Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:39.856463Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY8 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 attachee=true x=6240 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:39.856645Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=263 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430005 largeur=1280 hauteur=720 hertz=60
+2026-08-03T13:29:39.966336Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=0 endormie=true cadence="0.0"
+2026-08-03T13:29:40.002701Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=0 cadence="0.0"
+2026-08-03T13:29:40.308706Z  INFO agent::demarrage: offre reçue
+2026-08-03T13:29:40.339708Z  INFO agent::superviseur::enfants: enfant lancé session=w-10 pid=31428 sortie=\\.\DISPLAY9 audio=false
+2026-08-03T13:29:40.360416Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-03T13:29:40.360477Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY9 bitrate=2000000 fps=90
+2026-08-03T13:29:40.391193Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=5 nom_sortie=\\.\DISPLAY9 attachee=true
+2026-08-03T13:29:40.391312Z  INFO agent::capteur::tube: attaché au capteur session=w-10 sortie=\\.\DISPLAY9 largeur=1280 hauteur=720
+2026-08-03T13:29:40.391446Z  INFO agent::capteur::fenetre: fenêtre attachée au capteur session=w-10 sortie=\\.\DISPLAY9 largeur=1280 hauteur=720
+2026-08-03T13:29:40.393709Z  INFO agent::signaling: agent enregistré auprès du signaling session="w-10"
+2026-08-03T13:29:40.393790Z  INFO agent::transport: socket UDP de l'agent addr=192.168.3.2:64033
+2026-08-03T13:29:40.394329Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-03T13:29:40.431094Z  INFO agent::demarrage: son désactivé sur cet enfant : une seule fenêtre le porte
+2026-08-03T13:29:41.356528Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:42.313027Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=aucune allocation TURN obtenue en 2s
+2026-08-03T13:29:42.316369Z  INFO agent::demarrage: réponse envoyée
+2026-08-03T13:29:42.316669Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=4.6043829s
+2026-08-03T13:29:42.324078Z  INFO agent::transport::evenements: état ICE state=Connected écoulé=4.6117897s
+2026-08-03T13:29:42.326018Z  INFO agent::capteur::fenetre: cadence du capteur session=w-4 images=0 endormie=true cadence="0.0"
+2026-08-03T13:29:42.342554Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video
+2026-08-03T13:29:42.342585Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio
+2026-08-03T13:29:42.356009Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-03T13:29:42.356147Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-03T13:29:42.356289Z  INFO agent::demarrage: contrôle reçu Visibility { version: 3, visible: false, focused: false }
+2026-08-03T13:29:42.366714Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:42.379680Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=0 cadence="0.0"
+2026-08-03T13:29:42.661097Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-03T13:29:42.661147Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-03T13:29:42.661161Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=6 attachees=6
+2026-08-03T13:29:42.661169Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-03T13:29:42.661177Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:42.661183Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:42.661230Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:42.661250Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY8 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 attachee=true x=6240 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:42.661256Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY9 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=5 attachee=true x=7520 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:42.661466Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=265 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430006 largeur=1280 hauteur=720 hertz=60
+2026-08-03T13:29:42.879776Z  INFO agent::demarrage: offre reçue
+2026-08-03T13:29:42.885407Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=réception pendant l'allocation TURN
+2026-08-03T13:29:42.887175Z  INFO agent::demarrage: réponse envoyée
+2026-08-03T13:29:42.887435Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=2.4563977s
+2026-08-03T13:29:42.892970Z  INFO agent::transport::evenements: état ICE state=Connected écoulé=2.4619307s
+2026-08-03T13:29:42.902235Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video
+2026-08-03T13:29:42.902257Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio
+2026-08-03T13:29:42.907998Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-03T13:29:42.909967Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-03T13:29:42.911998Z  INFO agent::demarrage: contrôle reçu Visibility { version: 3, visible: false, focused: false }
+2026-08-03T13:29:43.479785Z  INFO agent::superviseur::enfants: enfant lancé session=w-12 pid=33392 sortie=\\.\DISPLAY10 audio=false
+2026-08-03T13:29:43.507787Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-03T13:29:43.507846Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY10 bitrate=2000000 fps=90
+2026-08-03T13:29:43.517456Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=6 nom_sortie=\\.\DISPLAY10 attachee=true
+2026-08-03T13:29:43.517593Z  INFO agent::capteur::tube: attaché au capteur session=w-12 sortie=\\.\DISPLAY10 largeur=1280 hauteur=720
+2026-08-03T13:29:43.517731Z  INFO agent::capteur::fenetre: fenêtre attachée au capteur session=w-12 sortie=\\.\DISPLAY10 largeur=1280 hauteur=720
+2026-08-03T13:29:43.520201Z  INFO agent::signaling: agent enregistré auprès du signaling session="w-12"
+2026-08-03T13:29:43.520306Z  INFO agent::transport: socket UDP de l'agent addr=192.168.3.2:53250
+2026-08-03T13:29:43.521384Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-03T13:29:43.570217Z  INFO agent::demarrage: son désactivé sur cet enfant : une seule fenêtre le porte
+2026-08-03T13:29:44.085326Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:44.855323Z  INFO agent::capteur::fenetre: cadence du capteur session=w-6 images=0 endormie=true cadence="0.0"
+2026-08-03T13:29:44.903393Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=0 cadence="0.0"
+2026-08-03T13:29:45.085622Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:45.606571Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-03T13:29:45.606600Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-03T13:29:45.606608Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=7 attachees=7
+2026-08-03T13:29:45.606612Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-03T13:29:45.606617Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:45.606620Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:45.606623Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:45.606626Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY8 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 attachee=true x=6240 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:45.606628Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY9 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=5 attachee=true x=7520 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:45.606632Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY10 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=6 attachee=true x=8800 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:45.606758Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=257 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430007 largeur=1280 hauteur=720 hertz=60
+2026-08-03T13:29:45.661476Z  INFO agent::demarrage: offre reçue
+2026-08-03T13:29:45.991447Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:46.834155Z  INFO agent::superviseur::enfants: enfant lancé session=w-14 pid=34624 sortie=\\.\DISPLAY11 audio=false
+2026-08-03T13:29:46.887407Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-03T13:29:46.887491Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY11 bitrate=2000000 fps=90
+2026-08-03T13:29:46.909339Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=7 nom_sortie=\\.\DISPLAY11 attachee=true
+2026-08-03T13:29:46.909548Z  INFO agent::capteur::tube: attaché au capteur session=w-14 sortie=\\.\DISPLAY11 largeur=1280 hauteur=720
+2026-08-03T13:29:46.909792Z  INFO agent::capteur::fenetre: fenêtre attachée au capteur session=w-14 sortie=\\.\DISPLAY11 largeur=1280 hauteur=720
+2026-08-03T13:29:46.913778Z  INFO agent::signaling: agent enregistré auprès du signaling session="w-14"
+2026-08-03T13:29:46.913904Z  INFO agent::transport: socket UDP de l'agent addr=192.168.3.2:58692
+2026-08-03T13:29:46.914779Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-03T13:29:46.980664Z  INFO agent::demarrage: son désactivé sur cet enfant : une seule fenêtre le porte
+2026-08-03T13:29:47.095453Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:47.663558Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=aucune allocation TURN obtenue en 2s
+2026-08-03T13:29:47.667523Z  INFO agent::demarrage: réponse envoyée
+2026-08-03T13:29:47.667869Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=4.0976825s
+2026-08-03T13:29:47.673543Z  INFO agent::transport::evenements: état ICE state=Connected écoulé=4.1033546s
+2026-08-03T13:29:47.677497Z  INFO agent::capteur::fenetre: cadence du capteur session=w-8 images=0 endormie=true cadence="0.0"
+2026-08-03T13:29:47.685826Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video
+2026-08-03T13:29:47.685848Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio
+2026-08-03T13:29:47.691666Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-03T13:29:47.691793Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-03T13:29:47.695653Z  INFO agent::demarrage: contrôle reçu Visibility { version: 3, visible: false, focused: false }
+2026-08-03T13:29:47.712876Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-8 unites=0 cadence="0.0"
+2026-08-03T13:29:47.927857Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:48.161846Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-03T13:29:48.161886Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-03T13:29:48.161898Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=8 attachees=8
+2026-08-03T13:29:48.161902Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-03T13:29:48.161910Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:48.161917Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:48.161921Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:48.161925Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY8 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 attachee=true x=6240 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:48.161929Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY9 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=5 attachee=true x=7520 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:48.161933Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY10 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=6 attachee=true x=8800 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:48.161937Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY11 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=7 attachee=true x=10080 y=0 largeur=1280 hauteur=720
+2026-08-03T13:29:48.162164Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=259 adaptateur_bas=62534 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430008 largeur=1280 hauteur=720 hertz=60
+2026-08-03T13:29:48.552076Z  INFO agent::demarrage: offre reçue
+2026-08-03T13:29:49.001418Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:49.974389Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=0 endormie=true cadence="0.0"
+2026-08-03T13:29:50.003391Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=0 cadence="0.0"
+2026-08-03T13:29:50.080860Z  INFO agent::superviseur::enfants: enfant lancé session=w-16 pid=32600 sortie=\\.\DISPLAY12 audio=false
+2026-08-03T13:29:50.097279Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-03T13:29:50.097356Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY12 bitrate=2000000 fps=90
+2026-08-03T13:29:50.104605Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:50.107716Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=8 nom_sortie=\\.\DISPLAY12 attachee=true
+2026-08-03T13:29:50.107869Z  INFO agent::capteur::tube: attaché au capteur session=w-16 sortie=\\.\DISPLAY12 largeur=1280 hauteur=720
+2026-08-03T13:29:50.108028Z  INFO agent::capteur::fenetre: fenêtre attachée au capteur session=w-16 sortie=\\.\DISPLAY12 largeur=1280 hauteur=720
+2026-08-03T13:29:50.111406Z  INFO agent::signaling: agent enregistré auprès du signaling session="w-16"
+2026-08-03T13:29:50.111533Z  INFO agent::transport: socket UDP de l'agent addr=192.168.3.2:50230
+2026-08-03T13:29:50.112180Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-03T13:29:50.173242Z  INFO agent::demarrage: son désactivé sur cet enfant : une seule fenêtre le porte
+2026-08-03T13:29:50.398101Z  INFO agent::capteur::fenetre: cadence du capteur session=w-10 images=0 endormie=true cadence="0.0"
+2026-08-03T13:29:50.433232Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-10 unites=0 cadence="0.0"
+2026-08-03T13:29:50.555472Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=aucune allocation TURN obtenue en 2s
+2026-08-03T13:29:50.559624Z  INFO agent::demarrage: réponse envoyée
+2026-08-03T13:29:50.559912Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=3.5792836s
+2026-08-03T13:29:50.566172Z  INFO agent::transport::evenements: état ICE state=Connected écoulé=3.5855403s
+2026-08-03T13:29:50.578617Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video
+2026-08-03T13:29:50.578646Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio
+2026-08-03T13:29:50.584551Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-03T13:29:50.584653Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-03T13:29:50.588977Z  INFO agent::demarrage: contrôle reçu Visibility { version: 3, visible: false, focused: false }
+2026-08-03T13:29:50.823649Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:51.135163Z  INFO agent::demarrage: offre reçue
+2026-08-03T13:29:52.001512Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:52.329556Z  INFO agent::capteur::fenetre: cadence du capteur session=w-4 images=0 endormie=true cadence="0.0"
+2026-08-03T13:29:52.389506Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=0 cadence="0.0"
+2026-08-03T13:29:53.105517Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:53.137548Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=aucune allocation TURN obtenue en 2s
+2026-08-03T13:29:53.139463Z  INFO agent::demarrage: réponse envoyée
+2026-08-03T13:29:53.139737Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=2.9665408s
+2026-08-03T13:29:53.151546Z  INFO agent::transport::evenements: état ICE state=Connected écoulé=2.9783477s
+2026-08-03T13:29:53.161921Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video
+2026-08-03T13:29:53.161946Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio
+2026-08-03T13:29:53.178534Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-03T13:29:53.178597Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-03T13:29:53.188582Z  INFO agent::demarrage: contrôle reçu Visibility { version: 3, visible: true, focused: true }
+2026-08-03T13:29:53.208909Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=8 nom_sortie=\\.\DISPLAY12 attachee=true
+2026-08-03T13:29:53.336697Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-03T13:29:53.337117Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-03T13:29:53.338540Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-03T13:29:53.380564Z  INFO agent::demarrage: contrôle reçu Resize { version: 3, width: 1280, height: 720 }
+2026-08-03T13:29:53.417339Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=327681
+2026-08-03T13:29:53.424344Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-03T13:29:53.424830Z  INFO agent::capteur::fenetre::transitions: fenêtre réveillée session=w-16 largeur=1280 hauteur=720 duree_ms=216
+2026-08-03T13:29:53.424859Z  INFO agent::windows_source::redimensionnement: redimensionnement ignoré : la source capture une sortie DXGI entière (hors périmètre D1, voir spec §3.3) width=1280 height=720 mode=SortieEntiere
+2026-08-03T13:29:53.521502Z  INFO agent::capteur::fenetre: cadence du capteur session=w-12 images=0 endormie=true cadence="0.0"
+2026-08-03T13:29:53.576952Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-12 unites=0 cadence="0.0"
+2026-08-03T13:29:53.931603Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:54.859497Z  INFO agent::capteur::fenetre: cadence du capteur session=w-6 images=0 endormie=true cadence="0.0"
+2026-08-03T13:29:54.903504Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=0 cadence="0.0"
+2026-08-03T13:29:54.941328Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:55.185441Z  INFO agent::demarrage: contrôle reçu Visibility { version: 3, visible: true, focused: false }
+2026-08-03T13:29:55.188066Z  INFO agent::demarrage: contrôle reçu Visibility { version: 3, visible: true, focused: false }
+2026-08-03T13:29:55.191435Z  INFO agent::demarrage: contrôle reçu Visibility { version: 3, visible: true, focused: false }
+2026-08-03T13:29:55.193358Z  INFO agent::demarrage: contrôle reçu Visibility { version: 3, visible: true, focused: false }
+2026-08-03T13:29:55.196326Z  INFO agent::demarrage: contrôle reçu Visibility { version: 3, visible: true, focused: false }
+2026-08-03T13:29:55.200341Z  INFO agent::demarrage: contrôle reçu Visibility { version: 3, visible: true, focused: false }
+2026-08-03T13:29:55.201436Z  INFO agent::demarrage: contrôle reçu Visibility { version: 3, visible: true, focused: false }
+2026-08-03T13:29:55.203152Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-03T13:29:55.206172Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 nom_sortie=\\.\DISPLAY8 attachee=true
+2026-08-03T13:29:55.208224Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-03T13:29:55.208241Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=5 nom_sortie=\\.\DISPLAY9 attachee=true
+2026-08-03T13:29:55.210544Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-03T13:29:55.213789Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=6 nom_sortie=\\.\DISPLAY10 attachee=true
+2026-08-03T13:29:55.218742Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=7 nom_sortie=\\.\DISPLAY11 attachee=true
+2026-08-03T13:29:55.232999Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-03T13:29:55.233392Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-03T13:29:55.233498Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-03T13:29:55.258699Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-03T13:29:55.259689Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-03T13:29:55.259744Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-03T13:29:55.285341Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-03T13:29:55.285684Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-03T13:29:55.285740Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-03T13:29:55.320970Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-03T13:29:55.321390Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-03T13:29:55.321454Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-03T13:29:55.349320Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-03T13:29:55.349596Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-03T13:29:55.349657Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-03T13:29:55.378771Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-03T13:29:55.379049Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-03T13:29:55.379130Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-03T13:29:55.409059Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-03T13:29:55.409490Z  INFO agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-03T13:29:55.409554Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-03T13:29:55.834218Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=655367
+2026-08-03T13:29:55.834532Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-03T13:29:55.834977Z  INFO agent::capteur::fenetre::transitions: fenêtre réveillée session=w-8 largeur=1280 hauteur=720 duree_ms=629
+2026-08-03T13:29:55.844747Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=786441
+2026-08-03T13:29:55.845015Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-03T13:29:55.845542Z  INFO agent::capteur::fenetre::transitions: fenêtre réveillée session=w-4 largeur=1280 hauteur=720 duree_ms=637
+2026-08-03T13:29:55.856695Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=1048589
+2026-08-03T13:29:55.857017Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-03T13:29:55.857536Z  INFO agent::capteur::fenetre::transitions: fenêtre réveillée session=w-6 largeur=1280 hauteur=720 duree_ms=647
+2026-08-03T13:29:55.862107Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=1179663
+2026-08-03T13:29:55.862587Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-03T13:29:55.867388Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=524293
+2026-08-03T13:29:55.867706Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-03T13:29:55.867940Z  INFO agent::capteur::fenetre::transitions: fenêtre réveillée session=w-12 largeur=1280 hauteur=720 duree_ms=654
+2026-08-03T13:29:55.869171Z  INFO agent::capteur::fenetre::transitions: fenêtre réveillée session=w-2 largeur=1280 hauteur=720 duree_ms=666
+2026-08-03T13:29:55.870435Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=1310737
+2026-08-03T13:29:55.870687Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-03T13:29:55.874393Z  INFO agent::capteur::fenetre::transitions: fenêtre réveillée session=w-14 largeur=1280 hauteur=720 duree_ms=655
+2026-08-03T13:29:55.878132Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=917515
+2026-08-03T13:29:55.878559Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-03T13:29:55.879091Z  INFO agent::capteur::fenetre::transitions: fenêtre réveillée session=w-10 largeur=1280 hauteur=720 duree_ms=671
+2026-08-03T13:29:55.896381Z  WARN agent::transport::evenements: aucune estimation de bande passante reçue : l'adaptation reste indisponible et le débit demeure au plafond configuré
+2026-08-03T13:29:55.939695Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:56.920825Z  INFO agent::capteur::fenetre: cadence du capteur session=w-14 images=74 endormie=false cadence="7.4"
+2026-08-03T13:29:56.989571Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-14 unites=79 cadence="7.9"
+2026-08-03T13:29:57.688577Z  INFO agent::capteur::fenetre: cadence du capteur session=w-8 images=132 endormie=false cadence="13.2"
+2026-08-03T13:29:57.713554Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-8 unites=134 cadence="13.4"
+2026-08-03T13:29:57.951507Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:57.954632Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=2 backoff_ms=4
+2026-08-03T13:29:59.115686Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:29:59.977675Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=272 endormie=false cadence="27.2"
+2026-08-03T13:30:00.012704Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=274 cadence="27.4"
+2026-08-03T13:30:00.110296Z  INFO agent::capteur::fenetre: cadence du capteur session=w-16 images=441 endormie=false cadence="44.1"
+2026-08-03T13:30:00.179239Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-16 unites=445 cadence="44.5"
+2026-08-03T13:30:00.398984Z  INFO agent::capteur::fenetre: cadence du capteur session=w-10 images=314 endormie=false cadence="31.4"
+2026-08-03T13:30:00.443510Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-10 unites=316 cadence="31.6"
+2026-08-03T13:30:00.951498Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:00.954696Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=2 backoff_ms=4
+2026-08-03T13:30:01.165839Z  INFO agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-03T13:30:01.166652Z  INFO agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-03T13:30:01.166789Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-03T13:30:01.223766Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=327706
+2026-08-03T13:30:01.224045Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-03T13:30:01.224377Z  INFO agent::windows_source::encodage: taille d'encodage changée sans toucher à la fenêtre width=1024 height=576
+2026-08-03T13:30:01.224448Z  INFO agent::transport::adaptation: taille d'encodage changée largeur=1024 hauteur=576
+2026-08-03T13:30:01.361051Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:02.331238Z  INFO agent::capteur::fenetre: cadence du capteur session=w-4 images=506 endormie=false cadence="50.6"
+2026-08-03T13:30:02.399192Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=512 cadence="51.2"
+2026-08-03T13:30:03.222701Z  INFO agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-03T13:30:03.223178Z  INFO agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-03T13:30:03.223322Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-03T13:30:03.269060Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=786461
+2026-08-03T13:30:03.269279Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-03T13:30:03.269532Z  INFO agent::windows_source::encodage: taille d'encodage changée sans toucher à la fenêtre width=1024 height=576
+2026-08-03T13:30:03.269624Z  INFO agent::transport::adaptation: taille d'encodage changée largeur=1024 hauteur=576
+2026-08-03T13:30:03.343560Z  INFO agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-03T13:30:03.344071Z  INFO agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-03T13:30:03.344166Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-03T13:30:03.384688Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=655392
+2026-08-03T13:30:03.384902Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-03T13:30:03.385139Z  INFO agent::windows_source::encodage: taille d'encodage changée sans toucher à la fenêtre width=1024 height=576
+2026-08-03T13:30:03.385187Z  INFO agent::transport::adaptation: taille d'encodage changée largeur=1024 hauteur=576
+2026-08-03T13:30:03.531872Z  INFO agent::capteur::fenetre: cadence du capteur session=w-12 images=505 endormie=false cadence="50.4"
+2026-08-03T13:30:03.586785Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-12 unites=507 cadence="50.7"
+2026-08-03T13:30:03.587811Z  INFO agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-03T13:30:03.588397Z  INFO agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-03T13:30:03.588491Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-03T13:30:03.621694Z  INFO agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-03T13:30:03.622288Z  INFO agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-03T13:30:03.622399Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-03T13:30:03.640514Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=1310755
+2026-08-03T13:30:03.640749Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-03T13:30:03.641024Z  INFO agent::windows_source::encodage: taille d'encodage changée sans toucher à la fenêtre width=1024 height=576
+2026-08-03T13:30:03.641076Z  INFO agent::transport::adaptation: taille d'encodage changée largeur=1024 hauteur=576
+2026-08-03T13:30:03.670364Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=1048613
+2026-08-03T13:30:03.670592Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-03T13:30:03.670929Z  INFO agent::windows_source::encodage: taille d'encodage changée sans toucher à la fenêtre width=1024 height=576
+2026-08-03T13:30:03.670977Z  INFO agent::transport::adaptation: taille d'encodage changée largeur=1024 hauteur=576
+2026-08-03T13:30:03.688112Z  INFO agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-03T13:30:03.690955Z  INFO agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-03T13:30:03.691095Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-03T13:30:03.734654Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=1179689
+2026-08-03T13:30:03.734888Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-03T13:30:03.735139Z  INFO agent::windows_source::encodage: taille d'encodage changée sans toucher à la fenêtre width=1024 height=576
+2026-08-03T13:30:03.735198Z  INFO agent::transport::adaptation: taille d'encodage changée largeur=1024 hauteur=576
+2026-08-03T13:30:03.843256Z  INFO agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-03T13:30:03.843740Z  INFO agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-03T13:30:03.843849Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-03T13:30:03.885113Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=524332
+2026-08-03T13:30:03.885377Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-03T13:30:03.885706Z  INFO agent::windows_source::encodage: taille d'encodage changée sans toucher à la fenêtre width=1024 height=576
+2026-08-03T13:30:03.885760Z  INFO agent::transport::adaptation: taille d'encodage changée largeur=1024 hauteur=576
+2026-08-03T13:30:03.907580Z  INFO agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-03T13:30:03.908882Z  INFO agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-03T13:30:03.909001Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-03T13:30:03.950554Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=917551
+2026-08-03T13:30:03.950777Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-03T13:30:03.951135Z  INFO agent::windows_source::encodage: taille d'encodage changée sans toucher à la fenêtre width=1024 height=576
+2026-08-03T13:30:03.951236Z  INFO agent::transport::adaptation: taille d'encodage changée largeur=1024 hauteur=576
+2026-08-03T13:30:03.953211Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:03.956299Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=2 backoff_ms=4
+2026-08-03T13:30:04.363315Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:04.865243Z  INFO agent::capteur::fenetre: cadence du capteur session=w-6 images=527 endormie=false cadence="52.7"
+2026-08-03T13:30:04.911253Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=530 cadence="53.0"
+2026-08-03T13:30:06.571357Z  WARN agent::transport::evenements: aucune estimation de bande passante reçue : l'adaptation reste indisponible et le débit demeure au plafond configuré
+2026-08-03T13:30:06.921108Z  INFO agent::capteur::fenetre: cadence du capteur session=w-14 images=569 endormie=false cadence="56.9"
+2026-08-03T13:30:06.957254Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:06.967247Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:06.991263Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-14 unites=568 cadence="56.8"
+2026-08-03T13:30:07.363840Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:07.698488Z  INFO agent::capteur::fenetre: cadence du capteur session=w-8 images=567 endormie=false cadence="56.6"
+2026-08-03T13:30:07.715489Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-8 unites=566 cadence="56.6"
+2026-08-03T13:30:09.957483Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:09.974571Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:09.987493Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=635 endormie=false cadence="63.4"
+2026-08-03T13:30:10.016582Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=634 cadence="63.4"
+2026-08-03T13:30:10.120640Z  INFO agent::capteur::fenetre: cadence du capteur session=w-16 images=552 endormie=false cadence="55.1"
+2026-08-03T13:30:10.185572Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-16 unites=551 cadence="55.1"
+2026-08-03T13:30:10.409456Z  INFO agent::capteur::fenetre: cadence du capteur session=w-10 images=599 endormie=false cadence="59.8"
+2026-08-03T13:30:10.451579Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-10 unites=599 cadence="59.9"
+2026-08-03T13:30:12.341171Z  INFO agent::capteur::fenetre: cadence du capteur session=w-4 images=821 endormie=false cadence="82.0"
+2026-08-03T13:30:12.400124Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=821 cadence="82.1"
+2026-08-03T13:30:13.532115Z  INFO agent::capteur::fenetre: cadence du capteur session=w-12 images=750 endormie=false cadence="75.0"
+2026-08-03T13:30:13.596146Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-12 unites=751 cadence="75.0"
+2026-08-03T13:30:14.154087Z  WARN agent::transport::evenements: aucune estimation de bande passante reçue : l'adaptation reste indisponible et le débit demeure au plafond configuré
+2026-08-03T13:30:14.865330Z  INFO agent::capteur::fenetre: cadence du capteur session=w-6 images=510 endormie=false cadence="51.0"
+2026-08-03T13:30:14.911363Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=510 cadence="51.0"
+2026-08-03T13:30:16.931376Z  INFO agent::capteur::fenetre: cadence du capteur session=w-14 images=540 endormie=false cadence="53.9"
+2026-08-03T13:30:16.991385Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-14 unites=539 cadence="53.9"
+2026-08-03T13:30:17.698717Z  INFO agent::capteur::fenetre: cadence du capteur session=w-8 images=551 endormie=false cadence="55.1"
+2026-08-03T13:30:17.725411Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-8 unites=552 cadence="55.1"
+2026-08-03T13:30:19.997435Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=606 endormie=false cadence="60.5"
+2026-08-03T13:30:20.026519Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=606 cadence="60.5"
+2026-08-03T13:30:20.131588Z  INFO agent::capteur::fenetre: cadence du capteur session=w-16 images=504 endormie=false cadence="50.3"
+2026-08-03T13:30:20.195500Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-16 unites=504 cadence="50.4"
+2026-08-03T13:30:20.409753Z  INFO agent::capteur::fenetre: cadence du capteur session=w-10 images=547 endormie=false cadence="54.7"
+2026-08-03T13:30:20.461510Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-10 unites=547 cadence="54.6"
+2026-08-03T13:30:22.348527Z  INFO agent::capteur::fenetre: cadence du capteur session=w-4 images=828 endormie=false cadence="82.7"
+2026-08-03T13:30:22.400503Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=827 cadence="82.7"
+2026-08-03T13:30:23.542594Z  INFO agent::capteur::fenetre: cadence du capteur session=w-12 images=716 endormie=false cadence="71.5"
+2026-08-03T13:30:23.605466Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-12 unites=717 cadence="71.6"
+2026-08-03T13:30:24.875676Z  INFO agent::capteur::fenetre: cadence du capteur session=w-6 images=481 endormie=false cadence="48.1"
+2026-08-03T13:30:24.921278Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=481 cadence="48.1"
+2026-08-03T13:30:26.931716Z  INFO agent::capteur::fenetre: cadence du capteur session=w-14 images=528 endormie=false cadence="52.8"
+2026-08-03T13:30:27.001296Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-14 unites=529 cadence="52.8"
+2026-08-03T13:30:27.709280Z  INFO agent::capteur::fenetre: cadence du capteur session=w-8 images=510 endormie=false cadence="50.9"
+2026-08-03T13:30:27.726421Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-8 unites=509 cadence="50.9"
+2026-08-03T13:30:30.005211Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=592 endormie=false cadence="59.2"
+2026-08-03T13:30:30.036144Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=594 cadence="59.3"
+2026-08-03T13:30:30.142299Z  INFO agent::capteur::fenetre: cadence du capteur session=w-16 images=507 endormie=false cadence="50.6"
+2026-08-03T13:30:30.205136Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-16 unites=507 cadence="50.7"
+2026-08-03T13:30:30.412138Z  INFO agent::capteur::fenetre: cadence du capteur session=w-10 images=590 endormie=false cadence="59.0"
+2026-08-03T13:30:30.461801Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-10 unites=593 cadence="59.3"
+2026-08-03T13:30:32.352940Z  INFO agent::capteur::fenetre: cadence du capteur session=w-4 images=834 endormie=false cadence="83.4"
+2026-08-03T13:30:32.409945Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=832 cadence="83.1"
+2026-08-03T13:30:33.549520Z  INFO agent::capteur::fenetre: cadence du capteur session=w-12 images=764 endormie=false cadence="76.3"
+2026-08-03T13:30:33.615558Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-12 unites=766 cadence="76.5"
+2026-08-03T13:30:34.875838Z  INFO agent::capteur::fenetre: cadence du capteur session=w-6 images=503 endormie=false cadence="50.3"
+2026-08-03T13:30:34.921471Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=502 cadence="50.2"
+2026-08-03T13:30:36.623492Z  WARN agent::transport::evenements: aucune estimation de bande passante reçue : l'adaptation reste indisponible et le débit demeure au plafond configuré
+2026-08-03T13:30:36.941645Z  INFO agent::capteur::fenetre: cadence du capteur session=w-14 images=531 endormie=false cadence="53.0"
+2026-08-03T13:30:37.001485Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-14 unites=531 cadence="53.1"
+2026-08-03T13:30:37.719577Z  INFO agent::capteur::fenetre: cadence du capteur session=w-8 images=583 endormie=false cadence="58.2"
+2026-08-03T13:30:37.735610Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-8 unites=583 cadence="58.2"
+2026-08-03T13:30:40.011348Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=634 endormie=false cadence="63.4"
+2026-08-03T13:30:40.036403Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=634 cadence="63.4"
+2026-08-03T13:30:40.153074Z  INFO agent::capteur::fenetre: cadence du capteur session=w-16 images=509 endormie=false cadence="50.8"
+2026-08-03T13:30:40.214959Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-16 unites=510 cadence="51.0"
+2026-08-03T13:30:40.419459Z  INFO agent::capteur::fenetre: cadence du capteur session=w-10 images=577 endormie=false cadence="57.7"
+2026-08-03T13:30:40.461987Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-10 unites=575 cadence="57.5"
+2026-08-03T13:30:42.357405Z  INFO agent::capteur::fenetre: cadence du capteur session=w-4 images=826 endormie=false cadence="82.6"
+2026-08-03T13:30:42.410471Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=828 cadence="82.8"
+2026-08-03T13:30:43.231004Z  WARN agent::transport::evenements: aucune estimation de bande passante reçue : l'adaptation reste indisponible et le débit demeure au plafond configuré
+2026-08-03T13:30:43.555609Z  INFO agent::capteur::fenetre: cadence du capteur session=w-12 images=737 endormie=false cadence="73.7"
+2026-08-03T13:30:43.615752Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-12 unites=737 cadence="73.7"
+2026-08-03T13:30:44.647699Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:44.650769Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=2 backoff_ms=4
+2026-08-03T13:30:44.653670Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:44.653670Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:44.656657Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=2 backoff_ms=4
+2026-08-03T13:30:44.656681Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=2 backoff_ms=4
+2026-08-03T13:30:44.657678Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:44.657684Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:44.692142Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-03T13:30:44.695290Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-03T13:30:44.695434Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-03T13:30:44.698147Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-03T13:30:44.700583Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-03T13:30:44.702593Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-03T13:30:44.719572Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-03T13:30:44.719570Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-03T13:30:44.886290Z  INFO agent::capteur::fenetre: cadence du capteur session=w-6 images=484 endormie=false cadence="48.3"
+2026-08-03T13:30:44.921676Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=484 cadence="48.4"
+2026-08-03T13:30:45.660347Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:46.662385Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:46.952338Z  INFO agent::capteur::fenetre: cadence du capteur session=w-14 images=572 endormie=false cadence="57.1"
+2026-08-03T13:30:47.002425Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-14 unites=572 cadence="57.2"
+2026-08-03T13:30:47.668301Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:47.730344Z  INFO agent::capteur::fenetre: cadence du capteur session=w-8 images=542 endormie=false cadence="54.1"
+2026-08-03T13:30:47.736362Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-8 unites=542 cadence="54.2"
+2026-08-03T13:30:48.667615Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:48.667644Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:49.713727Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-03T13:30:50.018698Z  INFO agent::capteur::fenetre: cadence du capteur session=w-2 images=623 endormie=false cadence="62.3"
+2026-08-03T13:30:50.036734Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=621 cadence="62.1"
+2026-08-03T13:30:50.163897Z  INFO agent::capteur::fenetre: cadence du capteur session=w-16 images=507 endormie=false cadence="50.6"
+2026-08-03T13:30:50.224940Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-16 unites=507 cadence="50.6"
+2026-08-03T13:30:50.419556Z  INFO agent::capteur::fenetre: cadence du capteur session=w-10 images=547 endormie=false cadence="54.7"
+2026-08-03T13:30:50.471530Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-10 unites=547 cadence="54.6"
+2026-08-03T13:30:50.742523Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2

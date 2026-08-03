@@ -10,7 +10,9 @@
 //!
 //! Le redimensionnement demandé par l'utilisateur, qui reconfigure lui aussi
 //! l'encodage mais pour une tout autre raison, vit dans
-//! `redimensionnement`.
+//! `redimensionnement`. L'application d'une part de budget accordée par le
+//! capteur (sous-bloc D6), extraite de ce fichier pour rester sous le plafond
+//! de 500 lignes, vit dans `part`.
 
 use std::time::{Duration, Instant};
 
@@ -122,7 +124,19 @@ impl Session {
         if decision.encode_size != self.encode_size_appliquee && !deja_refusee {
             match self.source.set_encode_size(decision.encode_size.0, decision.encode_size.1) {
                 Ok(()) => {
+                    // `session` : sans ce champ la trace n'est PAS
+                    // attribuable. Tous les enfants partagent le même
+                    // `agent.log` depuis D4, et cette ligne était donc
+                    // anonyme — la recette de D6 (tâche 10) n'a pas pu DATER
+                    // la promotion de barreau d'une fenêtre nommée, et a dû
+                    // se rabattre sur l'échantillonnage de `getStats()` côté
+                    // navigateur, ce qui lui a fait imputer à tort au produit
+                    // un retard qui n'était qu'une fenêtre d'observation trop
+                    // courte. Même champ et même motif que
+                    // `part de budget appliquee` et que `cadence de la piste
+                    // vidéo (côté enfant)`.
                     tracing::info!(
+                        session = %self.session_id,
                         largeur = decision.encode_size.0,
                         hauteur = decision.encode_size.1,
                         "taille d'encodage changée"
@@ -186,31 +200,13 @@ mod tests {
     use anyhow::anyhow;
     use str0m::bwe::{Bitrate, BweKind};
     use str0m::media::Mid;
-    use str0m::stats::MediaEgressStats;
     use str0m::Event;
 
     use super::*;
     use crate::h264::AccessUnit;
     use crate::source::VideoSource;
     use crate::transport::fixtures;
-
-    /// Statistiques d'émission minimales pour la piste `mid` : seuls `mid`,
-    /// `rtt` et `loss` sont lus par `handle_event`, le reste n'a qu'à exister.
-    fn stats_video(mid: Mid) -> MediaEgressStats {
-        MediaEgressStats {
-            mid,
-            rid: None,
-            bytes: 0,
-            packets: 0,
-            firs: 0,
-            plis: 0,
-            nacks: 0,
-            rtt: Some(Duration::from_millis(20)),
-            loss: Some(0.0),
-            timestamp: Instant::now(),
-            remote: None,
-        }
-    }
+    use crate::transport::fixtures::stats_video;
 
     /// Réserve consignée par `CLAUDE.md` depuis le chantier C : « les
     /// transitions d'`Adaptation` (`Active` → `Indisponible`) et l'expiration

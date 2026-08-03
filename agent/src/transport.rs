@@ -51,6 +51,7 @@ mod adaptation;
 mod cadence_video;
 mod controle;
 mod evenements;
+mod part;
 mod piste_audio;
 mod piste_video;
 mod redimensionnement;

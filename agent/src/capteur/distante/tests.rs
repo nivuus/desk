@@ -383,3 +383,27 @@ fn deux_sommeils_consecutifs_ne_retiennent_que_le_dernier() {
     );
     assert_eq!(source.sommeil_a_annoncer(), None);
 }
+
+/// Une part reçue est retenue jusqu'à ce que la boucle de transport la
+/// consomme, et ne se rend qu'une fois — même patron que
+/// `un_sommeil_pousse_par_le_capteur_est_retenu_pour_le_client` plus haut.
+#[test]
+fn une_part_recue_est_rendue_une_seule_fois() {
+    let (mut source, tx, _recus) = source_avec(4);
+    tx.send(Recu::Part { bps: 4_000_000 }).expect("dépôt");
+    // `next_frame` est ce qui draine le canal : sans lui, rien n'est lu.
+    assert_eq!(source.next_frame(), None);
+    assert_eq!(source.part_a_appliquer(), Some(4_000_000));
+    assert_eq!(source.part_a_appliquer(), None, "une part ne se réapplique pas");
+}
+
+/// Deux parts arrivées entre deux lectures s'écrasent : c'est un état
+/// courant, pas un historique — même régime que `Etat` et `Sommeil`.
+#[test]
+fn deux_parts_arrivees_avant_lecture_s_ecrasent() {
+    let (mut source, tx, _recus) = source_avec(4);
+    tx.send(Recu::Part { bps: 4_000_000 }).expect("dépôt");
+    tx.send(Recu::Part { bps: 2_000_000 }).expect("dépôt");
+    assert_eq!(source.next_frame(), None);
+    assert_eq!(source.part_a_appliquer(), Some(2_000_000), "seule la dernière survit");
+}

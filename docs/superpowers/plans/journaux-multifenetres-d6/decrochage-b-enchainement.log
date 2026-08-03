@@ -1,0 +1,16 @@
+=== PURGE avant b-4mbps ===
+02026-08-03T13:26:42.326130Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=0 avant=1 apres=1
+0=== RUN b-4mbps (BITRATE=4000000) ===
+=== FIN b-4mbps exit=0 ===
+[  100.0s 2026-08-03T13:28:36.797Z] RANG 8 — CUMULÉ {"fenetres_mesurees":8,"mbps_cumule":19.574,"i_par_s_cumule":333.25,"images_recues":17819,"images_jetees":4112,"pc_jetees":23.08,"paquets_perdus":0,"paquets_recus":96552,"pc_paquets_perdus":0,"pc_decodage_cumule":408.6,"mpx_par_s_decodes":278.26,"gels":14}
+=== PURGE avant b-2mbps ===
+02026-08-03T13:28:50.180221Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=8 avant=9 apres=1
+0=== RUN b-2mbps (BITRATE=2000000) ===
+=== FIN b-2mbps exit=0 ===
+[   99.6s 2026-08-03T13:30:44.315Z] RANG 8 — CUMULÉ {"fenetres_mesurees":8,"mbps_cumule":11.023,"i_par_s_cumule":453.02,"images_recues":19459,"images_jetees":1554,"pc_jetees":7.99,"paquets_perdus":0,"paquets_recus":58914,"pc_paquets_perdus":0,"pc_decodage_cumule":374.2,"mpx_par_s_decodes":267.2,"gels":5}
+=== PURGE avant b-1mbps ===
+02026-08-03T13:30:57.276788Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=8 avant=9 apres=1
+0=== RUN b-1mbps (BITRATE=1000000) ===
+=== FIN b-1mbps exit=0 ===
+[   99.7s 2026-08-03T13:32:51.451Z] RANG 8 — CUMULÉ {"fenetres_mesurees":8,"mbps_cumule":5.93,"i_par_s_cumule":514.69,"images_recues":20877,"images_jetees":307,"pc_jetees":1.47,"paquets_perdus":0,"paquets_recus":36446,"pc_paquets_perdus":0,"pc_decodage_cumule":150.4,"mpx_par_s_decodes":118.58,"gels":3}
+=== TOUT TERMINE ===

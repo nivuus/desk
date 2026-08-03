@@ -83,6 +83,29 @@ pub enum DepuisCapteur {
     /// et y mêler le sommeil ferait passer une annonce ponctuelle par un
     /// chemin conçu pour un état permanent.
     Sommeil { endormie: bool, raison: String },
+    /// Part du budget de débit de session accordée à cette fenêtre, poussée
+    /// non sollicitée quand elle CHANGE.
+    ///
+    /// Distincte d'`Etat` pour la même raison que `Sommeil` : `Etat` alimente
+    /// un cache lu à chaque tour de la boucle de transport, et y mêler une
+    /// annonce ponctuelle passerait par un chemin conçu pour un état permanent.
+    ///
+    /// L'enfant l'applique en DEUX endroits (`transport/part.rs`), et c'est le
+    /// PREMIER qui agit : `Controleur::changer_plafond` borne ce que l'encodeur
+    /// produit, donc fait descendre l'échelle d'un barreau, donc réduit la
+    /// RÉSOLUTION — le seul levier que la recette de D6 ait mesuré efficace.
+    /// `rtc.bwe().set_desired_bitrate` arrête en plus le sondage à la hausse,
+    /// excessif en principe à N fenêtres.
+    ///
+    /// ⚠️ **Le second n'est pas « la vraie cause de la congestion à N
+    /// fenêtres », et la prémisse qui le disait a été RÉFUTÉE par la branche
+    /// elle-même** : le pont porte ≥ 1,44 Gb/s, `packetsLost` vaut 0 aux onze
+    /// exécutions, il n'y a jamais eu de congestion de lien. Ce qui sature est
+    /// le décodeur du navigateur.
+    ///
+    /// **Une part d'ENDORMIE ne va qu'au second** — voir
+    /// `capteur::repartiteur::PART_DORMANTE_BPS` et `Session::appliquer_part`.
+    Part { bps: u32 },
 }
 
 #[derive(Debug)]
@@ -297,6 +320,18 @@ mod tests {
         let json = serde_json::to_string(&message).expect("sérialisation");
         let relu: DepuisCapteur = serde_json::from_str(&json).expect("désérialisation");
         assert_eq!(relu, message);
+    }
+
+    #[test]
+    fn une_part_traverse_l_encodage_json() {
+        let mut tampon = Vec::new();
+        ecrire_json(&mut tampon, &DepuisCapteur::Part { bps: 4_000_000 }).unwrap();
+        let mut lecture = &tampon[..];
+        let Trame::Json(corps) = lire_trame(&mut lecture).unwrap() else {
+            panic!("une trame JSON était attendue");
+        };
+        let message: DepuisCapteur = serde_json::from_slice(&corps).unwrap();
+        assert_eq!(message, DepuisCapteur::Part { bps: 4_000_000 });
     }
 
     /// Une image de zéro octet n'existe pas : elle signalerait un cadrage

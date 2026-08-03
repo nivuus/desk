@@ -1,0 +1,236 @@
+[    0.0s 2026-08-03T13:26:56.803Z] ÉTIQUETTE=b-4mbps BITRATE=4000000 RANGS=8 PALIER_S=35 chrome pid=1197202
+[    0.8s 2026-08-03T13:26:57.582Z] identité du navigateur : pid écoutant=1197202 pid lancé=1197202 version=Chrome/150.0.7871.181
+[    0.8s 2026-08-03T13:26:57.604Z] + page attachée  session=0970C709 url=about:blank
+[    0.8s 2026-08-03T13:26:57.611Z] >>> ÉTAPE 0 : la VM part SANS fenêtre éligible
+[   13.8s 2026-08-03T13:27:10.594Z] CPU HÔTE (au repos, avant toute session)
+    %Cpu(s): 11,7 ut,  2,1 sy,  0,0 ni, 86,2 id,  0,0 wa,  0,0 hi,  0,0 si,  0,0 st 
+    %Cpu(s):  8,9 ut,  2,5 sy,  0,0 ni, 87,9 id,  0,2 wa,  0,0 hi,  0,4 si,  0,0 st 
+    %Cpu(s): 11,6 ut,  3,0 sy,  0,0 ni, 84,2 id,  0,0 wa,  0,0 hi,  1,1 si,  0,0 st
+    tdarr-ffmpeg %CPU=108  loadavg=7.19 9.03 10.38 3/3734 1197888
+[   13.8s 2026-08-03T13:27:10.622Z] + page attachée  session=8F4DD057 url=http://192.168.3.1:5173/shell.html
+[   16.8s 2026-08-03T13:27:13.631Z] statut shell : bureau connecté
+[   16.8s 2026-08-03T13:27:13.631Z] >>> lancement du superviseur
+[   17.4s 2026-08-03T13:27:14.188Z] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   23.4s 2026-08-03T13:27:20.193Z] >>> RANG N=8 (BITRATE=4000000 par fenêtre, 32 Mb/s cumulés visés)
+[   23.4s 2026-08-03T13:27:20.194Z]   · ouverture fenêtre 1
+[   24.0s 2026-08-03T13:27:20.770Z] + page attachée  session=DCF81A4F url=
+[   24.3s 2026-08-03T13:27:21.070Z] + page attachée  session=FEEF68BD url=
+[   25.9s 2026-08-03T13:27:22.734Z]   · ouverture fenêtre 2
+[   26.5s 2026-08-03T13:27:23.327Z] + page attachée  session=A1716EBD url=
+[   26.8s 2026-08-03T13:27:23.629Z] + page attachée  session=3A3530B9 url=
+[   28.5s 2026-08-03T13:27:25.289Z]   · ouverture fenêtre 3
+[   29.0s 2026-08-03T13:27:25.795Z] + page attachée  session=B9106C0C url=
+[   29.3s 2026-08-03T13:27:26.091Z] + page attachée  session=7E8E0823 url=
+[   30.9s 2026-08-03T13:27:27.714Z]   · ouverture fenêtre 4
+[   31.3s 2026-08-03T13:27:28.133Z] + page attachée  session=9D9946DA url=
+[   31.7s 2026-08-03T13:27:28.534Z] + page attachée  session=3A280E98 url=
+[   33.3s 2026-08-03T13:27:30.077Z]   · ouverture fenêtre 5
+[   34.0s 2026-08-03T13:27:30.761Z] + page attachée  session=CE4157D0 url=
+[   34.3s 2026-08-03T13:27:31.061Z] + page attachée  session=1B79CC15 url=
+[   35.8s 2026-08-03T13:27:32.644Z]   · ouverture fenêtre 6
+[   36.6s 2026-08-03T13:27:33.352Z] + page attachée  session=0411725C url=
+[   37.0s 2026-08-03T13:27:33.755Z] + page attachée  session=A3D8CB07 url=
+[   38.5s 2026-08-03T13:27:35.284Z]   · ouverture fenêtre 7
+[   39.3s 2026-08-03T13:27:36.081Z] + page attachée  session=3E9F3D45 url=
+[   40.0s 2026-08-03T13:27:36.788Z] + page attachée  session=D606CB74 url=
+[   41.2s 2026-08-03T13:27:37.954Z]   · ouverture fenêtre 8
+[   41.9s 2026-08-03T13:27:38.744Z] + page attachée  session=A7D90AF2 url=
+[   42.6s 2026-08-03T13:27:39.351Z] + page attachée  session=5D63FEE4 url=
+[   49.9s 2026-08-03T13:27:46.663Z] VISIBILITÉ IMPOSÉE (rang 8) document.hidden={"w:w-2":false,"w:w-4":false,"w:w-6":false,"w:w-8":false,"w:w-10":false,"w:w-12":false,"w:w-14":false,"w:w-16":false}
+[   53.9s 2026-08-03T13:27:50.736Z] STATS (rang 8 — début du palier) {"w:w-2":{"etat":"connected","horloge":1785763670693,"images_decodees":21,"images_recues":226,"images_perdues":177,"gels":0,"octets_recus":1629182,"paquets_recus":1568,"paquets_perdus":0,"nack":0,"pli":0,"temps_decodage_total":0.282585,"l":1280,"h":720,"rtt":0.003,"lien_bitrate":4000000,"lien_taille":"1280x720","lien_qualite":"bonne","cachee":false},"w:w-4":{"etat":"connected","horloge":1785763670697,"images_decodees":202,"images_recues":222,"images_perdues":18,"gels":0,"octets_recus":1614875,"paquets_recus":1560,"paquets_perdus":0,"nack":0,"pli":0,"temps_decodage_total":2.417761,"l":1280,"h":720,"rtt":0.009,"lien_bitrate":4000000,"lien_taille":"1280x720","lien_qualite":"bonne","cachee":false},"w:w-6":{"etat":"connected","horloge":1785763670703,"images_decodees":194,"images_recues":213,"images_perdues":17,"gels":0,"octets_recus":1381863,"paquets_recus":1349,"paquets_perdus":0,"nack":0,"pli":0,"temps_decodage_total":2.344429,"l":1280,"h":720,"rtt":0.002,"lien_bitrate":4000000,"lien_taille":"1280x720","lien_qualite":"bonne","cachee":false},"w:w-8":{"etat":"connected","horloge":1785763670708,"images_decodees":217,"images_recues":232,"images_perdues":11,"gels":0,"octets_recus":1665027,"paquets_recus":1607,"paquets_perdus":0,"nack":0,"pli":0,"temps_decodage_total":2.50188,"l":1280,"h":720,"rtt":0.006,"lien_bitrate":4000000,"lien_taille":"1280x720","lien_qualite":"bonne","cachee":false},"w:w-10":{"etat":"connected","horloge":1785763670709,"images_decodees":196,"images_recues":200,"images_perdues":1,"gels":0,"octets_recus":1538316,"paquets_recus":1478,"paquets_perdus":0,"nack":0,"pli":0,"temps_decodage_total":2.325533,"l":1280,"h":720,"rtt":0.011,"lien_bitrate":4000000,"lien_taille":"1280x720","lien_qualite":"bonne","cachee":false},"w:w-12":{"etat":"connected","horloge":1785763670710,"images_decodees":202,"images_recues":237,"images_perdues":32,"gels":0,"octets_recus":1482627,"paquets_recus":1444,"paquets_perdus":0,"nack":0,"pli":0,"temps_decodage_total":2.317112,"l":1280,"h":720,"rtt":0.015,"lien_bitrate":4000000,"lien_taille":"1280x720","lien_qualite":"bonne","cachee":false},"w:w-14":{"etat":"connected","horloge":1785763670718,"images_decodees":223,"images_recues":235,"images_perdues":10,"gels":0,"octets_recus":1746422,"paquets_recus":1677,"paquets_perdus":0,"nack":0,"pli":0,"temps_decodage_total":2.3844149999999997,"l":1280,"h":720,"rtt":0.013,"lien_bitrate":4000000,"lien_taille":"1280x720","lien_qualite":"bonne","cachee":false},"w:w-16":{"etat":"connected","horloge":1785763670720,"images_decodees":359,"images_recues":365,"images_perdues":6,"gels":0,"octets_recus":2547019,"paquets_recus":2458,"paquets_perdus":0,"nack":0,"pli":0,"temps_decodage_total":3.145156,"l":1280,"h":720,"rtt":0.003,"lien_bitrate":4000000,"lien_taille":"1280x720","lien_qualite":"bonne","cachee":false}}
+[   58.9s 2026-08-03T13:27:55.727Z] CPU HÔTE (rang 8, début du palier)
+    %Cpu(s): 33,9 ut, 18,5 sy,  0,0 ni, 47,2 id,  0,0 wa,  0,0 hi,  0,4 si,  0,0 st 
+    %Cpu(s): 37,8 ut, 24,5 sy,  0,0 ni, 36,1 id,  0,0 wa,  0,0 hi,  1,5 si,  0,0 st 
+    %Cpu(s): 30,5 ut, 17,4 sy,  0,0 ni, 51,6 id,  0,0 wa,  0,0 hi,  0,5 si,  0,0 st
+    tdarr-ffmpeg %CPU=108  loadavg=11.46 9.67 10.52 24/3750 1200341
+[   94.0s 2026-08-03T13:28:30.811Z] STATS (rang 8 — fin du palier) {"w:w-2":{"etat":"connected","horloge":1785763710772,"images_decodees":1839,"images_recues":2557,"images_perdues":690,"gels":1,"octets_recus":14732014,"paquets_recus":14465,"paquets_perdus":0,"nack":0,"pli":0,"temps_decodage_total":23.062859,"l":1280,"h":720,"rtt":0.052,"lien_bitrate":4000000,"lien_taille":"1280x720","lien_qualite":"bonne","cachee":false},"w:w-4":{"etat":"connected","horloge":1785763710773,"images_decodees":2040,"images_recues":2346,"images_perdues":303,"gels":0,"octets_recus":13428805,"paquets_recus":13213,"paquets_perdus":0,"nack":0,"pli":0,"temps_decodage_total":26.053036,"l":1280,"h":720,"rtt":0.05,"lien_bitrate":4000000,"lien_taille":"1280x720","lien_qualite":"bonne","cachee":false},"w:w-6":{"etat":"connected","horloge":1785763710774,"images_decodees":1686,"images_recues":2207,"images_perdues":494,"gels":2,"octets_recus":12496417,"paquets_recus":12271,"paquets_perdus":0,"nack":0,"pli":0,"temps_decodage_total":21.980625999999997,"l":1280,"h":720,"rtt":0.033,"lien_bitrate":4000000,"lien_taille":"1280x720","lien_qualite":"bonne","cachee":false},"w:w-8":{"etat":"connected","horloge":1785763710775,"images_decodees":2473,"images_recues":2871,"images_perdues":319,"gels":0,"octets_recus":14835486,"paquets_recus":14679,"paquets_perdus":0,"nack":0,"pli":0,"temps_decodage_total":24.589104,"l":852,"h":480,"rtt":0.022,"lien_bitrate":4000000,"lien_taille":"852x480","lien_qualite":"degradee","cachee":false},"w:w-10":{"etat":"connected","horloge":1785763710776,"images_decodees":1551,"images_recues":2175,"images_perdues":614,"gels":3,"octets_recus":12564116,"paquets_recus":12317,"paquets_perdus":0,"nack":0,"pli":0,"temps_decodage_total":20.281927,"l":1280,"h":720,"rtt":0.013,"lien_bitrate":4000000,"lien_taille":"1280x720","lien_qualite":"bonne","cachee":false},"w:w-12":{"etat":"connected","horloge":1785763710776,"images_decodees":1985,"images_recues":2534,"images_perdues":536,"gels":2,"octets_recus":14639121,"paquets_recus":14336,"paquets_perdus":0,"nack":0,"pli":0,"temps_decodage_total":23.372436999999998,"l":1280,"h":720,"rtt":0.038,"lien_bitrate":4000000,"lien_taille":"1280x720","lien_qualite":"bonne","cachee":false},"w:w-14":{"etat":"connected","horloge":1785763710787,"images_decodees":1997,"images_recues":2646,"images_perdues":457,"gels":1,"octets_recus":15122909,"paquets_recus":14832,"paquets_perdus":0,"nack":0,"pli":0,"temps_decodage_total":23.882409,"l":1280,"h":720,"rtt":0.049,"lien_bitrate":4000000,"lien_taille":"1280x720","lien_qualite":"bonne","cachee":false},"w:w-16":{"etat":"connected","horloge":1785763710791,"images_decodees":1397,"images_recues":2413,"images_perdues":971,"gels":5,"octets_recus":13832481,"paquets_recus":13580,"paquets_perdus":0,"nack":0,"pli":0,"temps_decodage_total":18.231569999999998,"l":1280,"h":720,"rtt":0.044,"lien_bitrate":4000000,"lien_taille":"1280x720","lien_qualite":"bonne","cachee":false}}
+[   99.8s 2026-08-03T13:28:36.580Z] CPU HÔTE (rang 8, fin du palier)
+    %Cpu(s): 34,0 ut, 18,6 sy,  0,0 ni, 46,5 id,  0,0 wa,  0,0 hi,  0,9 si,  0,0 st 
+    %Cpu(s): 34,2 ut, 17,6 sy,  0,0 ni, 47,1 id,  0,0 wa,  0,0 hi,  1,0 si,  0,0 st 
+    %Cpu(s): 34,6 ut, 17,9 sy,  0,0 ni, 46,8 id,  0,0 wa,  0,0 hi,  0,7 si,  0,0 st
+    tdarr-ffmpeg %CPU=107  loadavg=19.01 11.72 11.17 35/3840 1201816
+[  100.0s 2026-08-03T13:28:36.788Z] RANG 8 — PAR FENÊTRE {
+ "w:w-2": {
+  "secondes": 40.079,
+  "images_recues": 2331,
+  "images_decodees": 1818,
+  "images_jetees": 513,
+  "i_par_s": 45.36,
+  "pc_jetees": 22.01,
+  "mbps": 2.615,
+  "paquets_perdus": 0,
+  "paquets_recus": 12897,
+  "pc_paquets_perdus": 0,
+  "temps_decodage": 22.78,
+  "pc_decodage": 56.8,
+  "gels": 1,
+  "pli": 0,
+  "taille": "1280x720",
+  "rtt": 0.052,
+  "lien_bitrate": 4000000,
+  "lien_taille": "1280x720",
+  "lien_qualite": "bonne",
+  "cachee": false
+ },
+ "w:w-4": {
+  "secondes": 40.076,
+  "images_recues": 2124,
+  "images_decodees": 1838,
+  "images_jetees": 285,
+  "i_par_s": 45.86,
+  "pc_jetees": 13.42,
+  "mbps": 2.358,
+  "paquets_perdus": 0,
+  "paquets_recus": 11653,
+  "pc_paquets_perdus": 0,
+  "temps_decodage": 23.635,
+  "pc_decodage": 59,
+  "gels": 0,
+  "pli": 0,
+  "taille": "1280x720",
+  "rtt": 0.05,
+  "lien_bitrate": 4000000,
+  "lien_taille": "1280x720",
+  "lien_qualite": "bonne",
+  "cachee": false
+ },
+ "w:w-6": {
+  "secondes": 40.071,
+  "images_recues": 1994,
+  "images_decodees": 1492,
+  "images_jetees": 477,
+  "i_par_s": 37.23,
+  "pc_jetees": 23.92,
+  "mbps": 2.219,
+  "paquets_perdus": 0,
+  "paquets_recus": 10922,
+  "pc_paquets_perdus": 0,
+  "temps_decodage": 19.636,
+  "pc_decodage": 49,
+  "gels": 2,
+  "pli": 0,
+  "taille": "1280x720",
+  "rtt": 0.033,
+  "lien_bitrate": 4000000,
+  "lien_taille": "1280x720",
+  "lien_qualite": "bonne",
+  "cachee": false
+ },
+ "w:w-8": {
+  "secondes": 40.067,
+  "images_recues": 2639,
+  "images_decodees": 2256,
+  "images_jetees": 308,
+  "i_par_s": 56.31,
+  "pc_jetees": 11.67,
+  "mbps": 2.63,
+  "paquets_perdus": 0,
+  "paquets_recus": 13072,
+  "pc_paquets_perdus": 0,
+  "temps_decodage": 22.087,
+  "pc_decodage": 55.1,
+  "gels": 0,
+  "pli": 0,
+  "taille": "852x480",
+  "rtt": 0.022,
+  "lien_bitrate": 4000000,
+  "lien_taille": "852x480",
+  "lien_qualite": "degradee",
+  "cachee": false
+ },
+ "w:w-10": {
+  "secondes": 40.067,
+  "images_recues": 1975,
+  "images_decodees": 1355,
+  "images_jetees": 613,
+  "i_par_s": 33.82,
+  "pc_jetees": 31.04,
+  "mbps": 2.201,
+  "paquets_perdus": 0,
+  "paquets_recus": 10839,
+  "pc_paquets_perdus": 0,
+  "temps_decodage": 17.956,
+  "pc_decodage": 44.8,
+  "gels": 3,
+  "pli": 0,
+  "taille": "1280x720",
+  "rtt": 0.013,
+  "lien_bitrate": 4000000,
+  "lien_taille": "1280x720",
+  "lien_qualite": "bonne",
+  "cachee": false
+ },
+ "w:w-12": {
+  "secondes": 40.066,
+  "images_recues": 2297,
+  "images_decodees": 1783,
+  "images_jetees": 504,
+  "i_par_s": 44.5,
+  "pc_jetees": 21.94,
+  "mbps": 2.627,
+  "paquets_perdus": 0,
+  "paquets_recus": 12892,
+  "pc_paquets_perdus": 0,
+  "temps_decodage": 21.055,
+  "pc_decodage": 52.6,
+  "gels": 2,
+  "pli": 0,
+  "taille": "1280x720",
+  "rtt": 0.038,
+  "lien_bitrate": 4000000,
+  "lien_taille": "1280x720",
+  "lien_qualite": "bonne",
+  "cachee": false
+ },
+ "w:w-14": {
+  "secondes": 40.069,
+  "images_recues": 2411,
+  "images_decodees": 1774,
+  "images_jetees": 447,
+  "i_par_s": 44.27,
+  "pc_jetees": 18.54,
+  "mbps": 2.671,
+  "paquets_perdus": 0,
+  "paquets_recus": 13155,
+  "pc_paquets_perdus": 0,
+  "temps_decodage": 21.498,
+  "pc_decodage": 53.7,
+  "gels": 1,
+  "pli": 0,
+  "taille": "1280x720",
+  "rtt": 0.049,
+  "lien_bitrate": 4000000,
+  "lien_taille": "1280x720",
+  "lien_qualite": "bonne",
+  "cachee": false
+ },
+ "w:w-16": {
+  "secondes": 40.071,
+  "images_recues": 2048,
+  "images_decodees": 1038,
+  "images_jetees": 965,
+  "i_par_s": 25.9,
+  "pc_jetees": 47.12,
+  "mbps": 2.253,
+  "paquets_perdus": 0,
+  "paquets_recus": 11122,
+  "pc_paquets_perdus": 0,
+  "temps_decodage": 15.086,
+  "pc_decodage": 37.6,
+  "gels": 5,
+  "pli": 0,
+  "taille": "1280x720",
+  "rtt": 0.044,
+  "lien_bitrate": 4000000,
+  "lien_taille": "1280x720",
+  "lien_qualite": "bonne",
+  "cachee": false
+ }
+}
+[  100.0s 2026-08-03T13:28:36.797Z] RANG 8 — CUMULÉ {"fenetres_mesurees":8,"mbps_cumule":19.574,"i_par_s_cumule":333.25,"images_recues":17819,"images_jetees":4112,"pc_jetees":23.08,"paquets_perdus":0,"paquets_recus":96552,"pc_paquets_perdus":0,"pc_decodage_cumule":408.6,"mpx_par_s_decodes":278.26,"gels":14}
+[  100.0s 2026-08-03T13:28:36.798Z] RANG 8 — AGENT {"capteur":{"w-16":49,"w-2":52,"w-10":44.48,"w-4":50.14,"w-12":55.26,"w-6":49.8,"w-14":60.52,"w-8":65.45},"enfant":{"w-16":49.1,"w-2":52.04,"w-10":44.54,"w-4":50.24,"w-12":55.3,"w-6":50.05,"w-14":60.52,"w-8":65.47},"capteur_cumule":426.65,"endormies":[]}
+[  100.0s 2026-08-03T13:28:36.798Z] RANG 8 — BARREAUX changés=2 refusés=0 [{"t":"2026-08-03T13:28:14.866120Z","taille":"undefinedxundefined"},{"t":"2026-08-03T13:28:14.866176Z","taille":"852x480"}]
+[  100.2s 2026-08-03T13:28:37.003Z] SURVIE VM (après rang 8) virsh="en cours d’exécution" acces_partage=OUI
+[  100.3s 2026-08-03T13:28:37.067Z] MARQUEURS (FIN) {"lignes":460,"enfant_lance":8,"attachee_capteur":8,"cloture":0,"endormie":0,"reveillee":8,"taille_changee":2,"taille_refusee":0,"refus_debit":0,"erreurs":0}
+[  100.3s 2026-08-03T13:28:37.101Z] relevé écrit dans /home/mallanic/Projects/Guacamole/docs/superpowers/plans/journaux-multifenetres-d6/decrochage-b-4mbps.json
+[  106.9s 2026-08-03T13:28:43.697Z] journal copié dans /tmp/agent-decrochage-b-4mbps.log (après la fermeture du navigateur)

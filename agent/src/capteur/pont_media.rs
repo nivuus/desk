@@ -50,6 +50,15 @@ pub(crate) fn lire_le_media<R: Read>(mut lecteur: R, images: SyncSender<Recu>) {
                 Ok(DepuisCapteur::Sommeil { endormie, raison }) => {
                     images.send(Recu::Sommeil { endormie, raison }).is_ok()
                 }
+                // Relié par le correctif de la tâche 5/D6 : `DepuisCapteur::Part`
+                // était déjà câblée côté capteur (protocole + fil de fenêtre)
+                // mais jamais reliée ICI, exactement l'omission que le
+                // commentaire ci-dessus signalait déjà pour `Sommeil` en D5.
+                // Sans ce bras, la première part — envoyée par
+                // `sommeil::inscrire` dès l'attache, avant la moindre image —
+                // tombait dans `Ok(autre)` et tuait ce fil au tout premier
+                // message reçu, en conditions de produit et sur toute session.
+                Ok(DepuisCapteur::Part { bps }) => images.send(Recu::Part { bps }).is_ok(),
                 Ok(autre) => {
                     tracing::warn!(?autre, "trame inattendue sur la connexion média, abandonnée");
                     return;
@@ -116,6 +125,37 @@ mod tests {
             rx.recv().unwrap(),
             Recu::Sommeil { endormie: true, raison: "masquee".to_string() }
         );
+        assert!(
+            rx.try_recv().is_err(),
+            "aucune trame de plus après la fin du tampon : le fil n'a rien perdu ni rien inventé"
+        );
+    }
+
+    /// Le test qui aurait attrapé le défaut critique relevé en revue du
+    /// sous-bloc D6 : `DepuisCapteur::Part` est la toute première trame
+    /// qu'une session reçoit en conditions de produit (`sommeil::inscrire`
+    /// l'envoie dès l'attache, avant la moindre image). Avant ce correctif,
+    /// elle tombait dans le bras `Ok(autre)` et abandonnait le fil — chaque
+    /// session serait morte à la première trame reçue, sans qu'aucun test des
+    /// tâches 4 ou 5 ne puisse le voir puisqu'aucune des deux ne pousse de
+    /// trame jusqu'à ce fil-ci.
+    #[test]
+    fn lire_le_media_survit_a_une_part_et_la_transmet() {
+        let mut tampon = Vec::new();
+        ecrire_json(&mut tampon, &DepuisCapteur::Part { bps: 4_000_000 }).unwrap();
+        // Une image APRÈS la part : si le fil s'était abandonné sur la part,
+        // cette image ne serait jamais relayée non plus.
+        ecrire_image(&mut tampon, &AccessUnit { data: vec![9, 9, 9], is_keyframe: true, pts_90k: 7 })
+            .unwrap();
+
+        let (tx, rx) = sync_channel(8);
+        lire_le_media(std::io::Cursor::new(tampon), tx);
+
+        assert_eq!(rx.recv().unwrap(), Recu::Part { bps: 4_000_000 });
+        match rx.recv().unwrap() {
+            Recu::Image(unite) => assert_eq!(unite.pts_90k, 7),
+            autre => panic!("attendu une image après la part, reçu {autre:?}"),
+        }
         assert!(
             rx.try_recv().is_err(),
             "aucune trame de plus après la fin du tampon : le fil n'a rien perdu ni rien inventé"

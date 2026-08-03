@@ -109,6 +109,45 @@ pub trait VideoSource {
     fn sommeil_a_annoncer(&mut self) -> Option<(bool, String)> {
         None
     }
+
+    /// Rend la part de budget de débit en attente d'application, et la
+    /// consomme.
+    ///
+    /// **État courant, pas un historique** : deux parts arrivées entre deux
+    /// lectures s'écrasent — même régime que `sommeil_a_annoncer` juste
+    /// au-dessus. Comme elle consomme, la branche de transport qui
+    /// l'interroge à chaque tour ne peut pas reconfigurer en boucle.
+    ///
+    /// Par défaut sans effet : une source fichier ne partage le lien avec
+    /// personne. Seule `SourceDistante` la redéfinit.
+    fn part_a_appliquer(&mut self) -> Option<u32> {
+        None
+    }
+
+    /// Vrai tant que le capteur tient cette fenêtre pour ENDORMIE — encodeur
+    /// et duplication relâchés (sous-bloc D5), aucune image produite.
+    ///
+    /// **État courant, et il NE SE CONSOMME PAS.** C'est exactement ce qui la
+    /// distingue de `sommeil_a_annoncer` juste au-dessus, qui rend un
+    /// CHANGEMENT une seule fois : `Session::appliquer_part` a besoin de relire
+    /// cet état à chaque part qu'elle applique, et une annonce qui s'épuise ne
+    /// saurait pas le lui dire. Deviner l'état en comparant la part reçue à
+    /// `PART_DORMANTE_BPS` ne conviendrait pas davantage : ce serait un
+    /// couplage de valeur entre deux processus, muet le jour où l'un des deux
+    /// changerait de constante.
+    ///
+    /// **Pourquoi la boucle de transport le demande** : la part d'une endormie
+    /// est un plancher (`capteur::repartiteur::PART_DORMANTE_BPS`, 256 kb/s),
+    /// très en dessous du barreau le plus bas de l'échelle. L'appliquer comme
+    /// plafond d'ENCODAGE y ferait descendre `video_bitrate_bps` sans qu'aucun
+    /// chemin ne le remonte au réveil — voir `Session::appliquer_part`.
+    ///
+    /// Faux par défaut : une source fichier, comme une `WindowsSource` tenue
+    /// en direct par son propre processus, ne dort jamais. Seule
+    /// `SourceDistante` la redéfinit.
+    fn est_endormie(&self) -> bool {
+        false
+    }
 }
 
 /// Source de test rejouant un fichier H.264 Annex-B en boucle.

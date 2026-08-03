@@ -439,10 +439,17 @@ const SUBMIT_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_mill
 /// qu'il advient *après* une reconstruction. Une poignée attachée à
 /// l'encodeur cesserait d'être observée au moment précis qui intéresse.
 ///
-/// Le coût est nul en pratique (trois incréments `Relaxed` par tour) et rien
-/// ne les lit sauf le fil de surveillance de `demarrage.rs`, activé par
-/// `SOURCE_TRACE=1`. L'agent étant mono-session (un processus par session),
-/// des statiques ne mélangent pas plusieurs sessions.
+/// Le coût est nul (trois incréments `Relaxed` par tour) et le seul lecteur
+/// est le fil de surveillance de `demarrage.rs`, activé par `SOURCE_TRACE=1`.
+///
+/// ⚠️ **Ils ne décrivent plus que le chemin MONO-FENÊTRE.** Depuis D4 l'unique
+/// lecteur (`demarrage.rs`, côté **enfant**) et les seuls écrivains (ce
+/// fichier, côté **capteur**) sont dans deux processus, `main.rs` rendant la
+/// main à `capteur::executer` avant `demarrage::executer` : `SOURCE_TRACE=1`
+/// rend des **zéros** sur un enfant (il porte une `SourceDistante`) et n'est
+/// lu par **personne** dans le capteur. **Mort des deux côtés, pas agrégé.**
+/// Trois `grep` le refont (lecteur, écrivains, aiguillage `CAPTEUR`). Les
+/// rendre par session est **consigné pour D7** ; le code n'est PAS corrigé.
 pub static TICKS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 pub static CAPTURED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 pub static PRODUCED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);

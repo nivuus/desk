@@ -26,7 +26,16 @@ pub struct Controleur {
     /// estimation plutôt qu'un simple drapeau : c'est ce qui permet de borner
     /// `DELAI_AMORCAGE` (voir sa doc), la fenêtre pendant laquelle la rampe du
     /// BWE ne doit pas être prise pour une dégradation.
-    premiere_estimation_a: Option<Instant>,
+    ///
+    /// **`pub(super)` depuis le sous-bloc D6 (tâche 7, fix round 2)** :
+    /// `reconfiguration::changer_plafond` en a besoin pour distinguer « aucune
+    /// estimation jamais reçue » de « estimation reçue puis périmée ». C'est
+    /// le seul champ qui porte cette distinction : contrairement à
+    /// `courant.adaptation` (dérivé, réversible — il retombe à `Indisponible`
+    /// aussi bien avant la première estimation qu'après la péremption d'une
+    /// estimation ancienne), celui-ci est un fait MONOTONE, posé une fois et
+    /// jamais effacé.
+    pub(super) premiere_estimation_a: Option<Instant>,
 }
 
 impl Controleur {
