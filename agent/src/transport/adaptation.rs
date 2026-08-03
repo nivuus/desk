@@ -124,7 +124,19 @@ impl Session {
         if decision.encode_size != self.encode_size_appliquee && !deja_refusee {
             match self.source.set_encode_size(decision.encode_size.0, decision.encode_size.1) {
                 Ok(()) => {
+                    // `session` : sans ce champ la trace n'est PAS
+                    // attribuable. Tous les enfants partagent le même
+                    // `agent.log` depuis D4, et cette ligne était donc
+                    // anonyme — la recette de D6 (tâche 10) n'a pas pu DATER
+                    // la promotion de barreau d'une fenêtre nommée, et a dû
+                    // se rabattre sur l'échantillonnage de `getStats()` côté
+                    // navigateur, ce qui lui a fait imputer à tort au produit
+                    // un retard qui n'était qu'une fenêtre d'observation trop
+                    // courte. Même champ et même motif que
+                    // `part de budget appliquee` et que `cadence de la piste
+                    // vidéo (côté enfant)`.
                     tracing::info!(
+                        session = %self.session_id,
                         largeur = decision.encode_size.0,
                         hauteur = decision.encode_size.1,
                         "taille d'encodage changée"
