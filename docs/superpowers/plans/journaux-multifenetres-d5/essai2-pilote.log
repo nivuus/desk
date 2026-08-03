@@ -1,0 +1,1554 @@
+[    0.0s 2026-08-03T11:44:25.996Z] N_CIBLE=11 chrome pid=853596 port=9992
+[    0.7s 2026-08-03T11:44:26.644Z] identité du navigateur : pid écoutant=853596 pid lancé=853596 version=Chrome/150.0.7871.181
+[    0.7s 2026-08-03T11:44:26.668Z] + page attachée  session=8A3DDF83 url=about:blank
+[    0.7s 2026-08-03T11:44:26.685Z] >>> ÉTAPE 0 : nettoyage — état de départ SANS fenêtre
+[   13.7s 2026-08-03T11:44:39.720Z] --- fenêtres VM (avant superviseur) ---
+
+[   13.8s 2026-08-03T11:44:39.748Z] + page attachée  session=873273E5 url=http://192.168.3.1:5173/shell.html
+[   13.8s 2026-08-03T11:44:39.758Z] shell demandée http://192.168.3.1:5173/shell.html
+[   16.8s 2026-08-03T11:44:42.765Z] statut shell : bureau connecté
+[   16.8s 2026-08-03T11:44:42.765Z] >>> lancement du superviseur (SUPERVISEUR=1)
+[   17.2s 2026-08-03T11:44:43.209Z] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   23.3s 2026-08-03T11:44:49.242Z] MARQUEURS (superviseur démarré, 0 fenêtre) {"lignes":15,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":0,"endormie":0,"reveillee":0,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":0,"taille_refusee":0,"refus_debit":0,"sortie_creee":0,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":0,"mutex_abandonne":0,"enfant_lance":0,"enfant_termine":0,"erreurs":0}
+[   23.3s 2026-08-03T11:44:49.243Z] >>> OUVERTURE fenêtre 1 (attendu : 1 pages)
+[   23.8s 2026-08-03T11:44:49.753Z] + page attachée  session=0E4985EF url=
+[   23.9s 2026-08-03T11:44:49.872Z] - page détachée   session=0E4985EF url=
+[   24.1s 2026-08-03T11:44:50.051Z] + page attachée  session=ECDC82AC url=
+[   25.7s 2026-08-03T11:44:51.714Z]    fenêtre 1 : page ouverte en 2s (total 1)
+[   31.8s 2026-08-03T11:44:57.736Z] ÉTAT SHELL (après fenêtre 1) liste=[_/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[   31.8s 2026-08-03T11:44:57.737Z]   pages d'application ouvertes (1) : http://192.168.3.1:5173/?session=w-2
+[   31.8s 2026-08-03T11:44:57.752Z] MARQUEURS (après fenêtre 1) {"lignes":57,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":1,"endormie":0,"reveillee":1,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":0,"taille_refusee":0,"refus_debit":0,"sortie_creee":1,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":0,"mutex_abandonne":0,"enfant_lance":1,"enfant_termine":0,"erreurs":0}
+[   31.8s 2026-08-03T11:44:57.765Z] STATS (rang 1 — relevé 1) {"w:w-2":{"etat":"connected","images":349,"l":1280,"h":720,"octets":5842698,"rtt":0.002,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757497755}}
+[   36.8s 2026-08-03T11:45:02.796Z] STATS (rang 1 — relevé 2) {"w:w-2":{"etat":"connected","images":774,"l":1280,"h":720,"octets":13284503,"rtt":0.001,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757502791}}
+[   36.8s 2026-08-03T11:45:02.796Z] CADENCE NAVIGATEUR (rang 1) {
+ "w:w-2": {
+  "images": 425,
+  "secondes": 5.036,
+  "i_par_s": 84.39,
+  "taille": "1280x720",
+  "kbps": 11822,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": null
+ }
+}
+[   36.8s 2026-08-03T11:45:02.797Z] RANG 1 : pages=1 DIFFUSENT=1 ouverte=true endormies=-1
+[   37.0s 2026-08-03T11:45:02.928Z] SURVIE VM (après rang 1) virsh="en cours d’exécution" acces_partage=OUI
+[   37.0s 2026-08-03T11:45:02.928Z] >>> OUVERTURE fenêtre 2 (attendu : 2 pages)
+[   37.7s 2026-08-03T11:45:03.715Z] + page attachée  session=711D1BAC url=
+[   37.9s 2026-08-03T11:45:03.867Z] - page détachée   session=711D1BAC url=
+[   38.0s 2026-08-03T11:45:03.987Z] + page attachée  session=1F3E2DDE url=
+[   39.7s 2026-08-03T11:45:05.634Z]    fenêtre 2 : page ouverte en 2s (total 2)
+[   45.7s 2026-08-03T11:45:11.651Z] ÉTAT SHELL (après fenêtre 2) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[   45.7s 2026-08-03T11:45:11.651Z]   pages d'application ouvertes (2) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4
+[   45.7s 2026-08-03T11:45:11.713Z] MARQUEURS (après fenêtre 2) {"lignes":114,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":2,"endormie":0,"reveillee":2,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":0,"taille_refusee":0,"refus_debit":0,"sortie_creee":2,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":1,"mutex_abandonne":1,"enfant_lance":2,"enfant_termine":0,"erreurs":0}
+[   45.8s 2026-08-03T11:45:11.735Z] STATS (rang 2 — relevé 1) {"w:w-2":{"etat":"connected","images":1206,"l":1280,"h":720,"octets":24433063,"rtt":0.026,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757511725},"w:w-4":{"etat":"connected","images":252,"l":1280,"h":720,"octets":4422824,"rtt":0.015,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757511726}}
+[   50.8s 2026-08-03T11:45:16.751Z] STATS (rang 2 — relevé 2) {"w:w-2":{"etat":"connected","images":1549,"l":1280,"h":720,"octets":31017101,"rtt":0.051,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757516743},"w:w-4":{"etat":"connected","images":566,"l":1280,"h":720,"octets":11704032,"rtt":0.003,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757516747}}
+[   50.8s 2026-08-03T11:45:16.754Z] CADENCE NAVIGATEUR (rang 2) {
+ "w:w-2": {
+  "images": 343,
+  "secondes": 5.018,
+  "i_par_s": 68.35,
+  "taille": "1280x720",
+  "kbps": 10497,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-4": {
+  "images": 314,
+  "secondes": 5.021,
+  "i_par_s": 62.54,
+  "taille": "1280x720",
+  "kbps": 11601,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": null
+ }
+}
+[   50.8s 2026-08-03T11:45:16.755Z] RANG 2 : pages=2 DIFFUSENT=2 ouverte=true endormies=-2
+[   50.9s 2026-08-03T11:45:16.886Z] SURVIE VM (après rang 2) virsh="en cours d’exécution" acces_partage=OUI
+[   50.9s 2026-08-03T11:45:16.887Z] >>> OUVERTURE fenêtre 3 (attendu : 3 pages)
+[   51.8s 2026-08-03T11:45:17.772Z] + page attachée  session=1629995B url=
+[   52.0s 2026-08-03T11:45:18.026Z] - page détachée   session=1629995B url=
+[   52.1s 2026-08-03T11:45:18.104Z] + page attachée  session=CA61EA27 url=
+[   53.7s 2026-08-03T11:45:19.689Z]    fenêtre 3 : page ouverte en 2s (total 3)
+[   59.7s 2026-08-03T11:45:25.724Z] ÉTAT SHELL (après fenêtre 3) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[   59.7s 2026-08-03T11:45:25.724Z]   pages d'application ouvertes (3) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6
+[   59.8s 2026-08-03T11:45:25.800Z] MARQUEURS (après fenêtre 3) {"lignes":187,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":3,"endormie":1,"reveillee":4,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":0,"taille_refusee":0,"refus_debit":0,"sortie_creee":3,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":3,"mutex_abandonne":3,"enfant_lance":3,"enfant_termine":0,"erreurs":0}
+[   59.9s 2026-08-03T11:45:25.903Z] STATS (rang 3 — relevé 1) {"w:w-2":{"etat":"connected","images":1821,"l":1280,"h":720,"octets":42302222,"rtt":0.006,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757525873},"w:w-4":{"etat":"connected","images":841,"l":1280,"h":720,"octets":23070138,"rtt":0.003,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757525874},"w:w-6":{"etat":"connected","images":102,"l":1280,"h":720,"octets":3050247,"rtt":0.03,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757525894}}
+[   65.1s 2026-08-03T11:45:31.088Z] STATS (rang 3 — relevé 2) {"w:w-2":{"etat":"connected","images":1932,"l":1280,"h":720,"octets":48452701,"rtt":0.045,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757531014},"w:w-4":{"etat":"connected","images":962,"l":1280,"h":720,"octets":27849132,"rtt":0.03,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757531015},"w:w-6":{"etat":"connected","images":233,"l":1280,"h":720,"octets":5234616,"rtt":0.009,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757531016}}
+[   65.1s 2026-08-03T11:45:31.088Z] CADENCE NAVIGATEUR (rang 3) {
+ "w:w-2": {
+  "images": 111,
+  "secondes": 5.141,
+  "i_par_s": 21.59,
+  "taille": "1280x720",
+  "kbps": 9571,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-4": {
+  "images": 121,
+  "secondes": 5.141,
+  "i_par_s": 23.54,
+  "taille": "1280x720",
+  "kbps": 7437,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-6": {
+  "images": 131,
+  "secondes": 5.122,
+  "i_par_s": 25.58,
+  "taille": "1280x720",
+  "kbps": 3412,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": null
+ }
+}
+[   65.1s 2026-08-03T11:45:31.089Z] RANG 3 : pages=3 DIFFUSENT=3 ouverte=true endormies=-3
+[   65.8s 2026-08-03T11:45:31.735Z] SURVIE VM (après rang 3) virsh="en cours d’exécution" acces_partage=OUI
+[   65.8s 2026-08-03T11:45:31.735Z] >>> OUVERTURE fenêtre 4 (attendu : 4 pages)
+[   67.3s 2026-08-03T11:45:33.244Z] + page attachée  session=E49FFA75 url=
+[   67.6s 2026-08-03T11:45:33.592Z] - page détachée   session=E49FFA75 url=
+[   67.7s 2026-08-03T11:45:33.686Z] + page attachée  session=C3DA248F url=
+[   69.3s 2026-08-03T11:45:35.233Z]    fenêtre 4 : page ouverte en 2s (total 4)
+[   75.3s 2026-08-03T11:45:41.313Z] ÉTAT SHELL (après fenêtre 4) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[   75.3s 2026-08-03T11:45:41.326Z]   pages d'application ouvertes (4) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8
+[   75.5s 2026-08-03T11:45:41.520Z] MARQUEURS (après fenêtre 4) {"lignes":266,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":4,"endormie":2,"reveillee":6,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":0,"taille_refusee":0,"refus_debit":0,"sortie_creee":4,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":6,"mutex_abandonne":6,"enfant_lance":4,"enfant_termine":0,"erreurs":0}
+[   75.6s 2026-08-03T11:45:41.625Z] STATS (rang 4 — relevé 1) {"w:w-2":{"etat":"connected","images":2023,"l":1280,"h":720,"octets":61631209,"rtt":0.506,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757541561},"w:w-4":{"etat":"connected","images":1062,"l":1280,"h":720,"octets":35864652,"rtt":0.651,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757541567},"w:w-6":{"etat":"connected","images":348,"l":1280,"h":720,"octets":11853515,"rtt":0.627,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757541581},"w:w-8":{"etat":"connected","images":17,"l":1280,"h":720,"octets":2537915,"rtt":0.13,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757541602}}
+[   81.0s 2026-08-03T11:45:46.999Z] STATS (rang 4 — relevé 2) {"w:w-2":{"etat":"connected","images":2083,"l":1280,"h":720,"octets":65145801,"rtt":0.18,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757546822},"w:w-4":{"etat":"connected","images":1119,"l":1280,"h":720,"octets":38499461,"rtt":0.212,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757546958},"w:w-6":{"etat":"connected","images":391,"l":1280,"h":720,"octets":14019930,"rtt":0.153,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757546996},"w:w-8":{"etat":"connected","images":81,"l":1280,"h":720,"octets":4253971,"rtt":0.247,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757546791}}
+[   81.0s 2026-08-03T11:45:47.000Z] CADENCE NAVIGATEUR (rang 4) {
+ "w:w-2": {
+  "images": 60,
+  "secondes": 5.261,
+  "i_par_s": 11.4,
+  "taille": "1280x720",
+  "kbps": 5344,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-4": {
+  "images": 57,
+  "secondes": 5.391,
+  "i_par_s": 10.57,
+  "taille": "1280x720",
+  "kbps": 3910,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-6": {
+  "images": 43,
+  "secondes": 5.415,
+  "i_par_s": 7.94,
+  "taille": "1280x720",
+  "kbps": 3201,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-8": {
+  "images": 64,
+  "secondes": 5.189,
+  "i_par_s": 12.33,
+  "taille": "1280x720",
+  "kbps": 2646,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": null
+ }
+}
+[   81.0s 2026-08-03T11:45:47.000Z] RANG 4 : pages=4 DIFFUSENT=4 ouverte=true endormies=-4
+[   81.7s 2026-08-03T11:45:47.695Z] SURVIE VM (après rang 4) virsh="en cours d’exécution" acces_partage=OUI
+[   81.7s 2026-08-03T11:45:47.695Z] >>> OUVERTURE fenêtre 5 (attendu : 5 pages)
+[   84.1s 2026-08-03T11:45:50.054Z] + page attachée  session=694BE31B url=
+[   84.3s 2026-08-03T11:45:50.230Z] + page attachée  session=6ADF34E8 url=
+[   84.3s 2026-08-03T11:45:50.310Z] - page détachée   session=694BE31B url=
+[   86.1s 2026-08-03T11:45:52.039Z]    fenêtre 5 : page ouverte en 2s (total 5)
+[   92.1s 2026-08-03T11:45:58.109Z] ÉTAT SHELL (après fenêtre 5) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[   92.1s 2026-08-03T11:45:58.109Z]   pages d'application ouvertes (5) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10
+[   92.3s 2026-08-03T11:45:58.254Z] MARQUEURS (après fenêtre 5) {"lignes":368,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":5,"endormie":2,"reveillee":7,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":8,"taille_refusee":0,"refus_debit":0,"sortie_creee":5,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":10,"mutex_abandonne":10,"enfant_lance":5,"enfant_termine":0,"erreurs":0}
+[   92.4s 2026-08-03T11:45:58.365Z] STATS (rang 5 — relevé 1) {"w:w-2":{"etat":"connected","images":2219,"l":1024,"h":576,"octets":69843315,"rtt":0.013,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757558330},"w:w-4":{"etat":"connected","images":1224,"l":1024,"h":576,"octets":44333741,"rtt":0.006,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757558331},"w:w-6":{"etat":"connected","images":518,"l":1024,"h":576,"octets":18755104,"rtt":0.093,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757558332},"w:w-8":{"etat":"connected","images":217,"l":1024,"h":576,"octets":12264822,"rtt":0.084,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757558332},"w:w-10":{"etat":"connected","images":32,"l":1280,"h":720,"octets":3826654,"rtt":0.027,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757558332}}
+[   97.6s 2026-08-03T11:46:03.551Z] STATS (rang 5 — relevé 2) {"w:w-2":{"etat":"connected","images":2308,"l":1024,"h":576,"octets":71488917,"rtt":0.096,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757563489},"w:w-4":{"etat":"connected","images":1257,"l":1024,"h":576,"octets":48317631,"rtt":0.12,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757563492},"w:w-6":{"etat":"connected","images":610,"l":1024,"h":576,"octets":20374731,"rtt":0.173,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757563510},"w:w-8":{"etat":"connected","images":287,"l":1024,"h":576,"octets":14250464,"rtt":0.129,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757563511},"w:w-10":{"etat":"connected","images":107,"l":1280,"h":720,"octets":7902714,"rtt":0.097,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757563512}}
+[   97.6s 2026-08-03T11:46:03.567Z] CADENCE NAVIGATEUR (rang 5) {
+ "w:w-2": {
+  "images": 89,
+  "secondes": 5.159,
+  "i_par_s": 17.25,
+  "taille": "1024x576",
+  "kbps": 2552,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-4": {
+  "images": 33,
+  "secondes": 5.161,
+  "i_par_s": 6.39,
+  "taille": "1024x576",
+  "kbps": 6175,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-6": {
+  "images": 92,
+  "secondes": 5.178,
+  "i_par_s": 17.77,
+  "taille": "1024x576",
+  "kbps": 2502,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-8": {
+  "images": 70,
+  "secondes": 5.179,
+  "i_par_s": 13.52,
+  "taille": "1024x576",
+  "kbps": 3067,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-10": {
+  "images": 75,
+  "secondes": 5.18,
+  "i_par_s": 14.48,
+  "taille": "1280x720",
+  "kbps": 6295,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": null
+ }
+}
+[   97.6s 2026-08-03T11:46:03.567Z] RANG 5 : pages=5 DIFFUSENT=5 ouverte=true endormies=-5
+[   98.0s 2026-08-03T11:46:04.023Z] SURVIE VM (après rang 5) virsh="en cours d’exécution" acces_partage=OUI
+[   98.0s 2026-08-03T11:46:04.025Z] >>> OUVERTURE fenêtre 6 (attendu : 6 pages)
+[  100.2s 2026-08-03T11:46:06.148Z] + page attachée  session=F78E18F8 url=
+[  100.5s 2026-08-03T11:46:06.510Z] + page attachée  session=1CAE1E14 url=
+[  100.6s 2026-08-03T11:46:06.579Z] - page détachée   session=F78E18F8 url=
+[  102.2s 2026-08-03T11:46:08.145Z]    fenêtre 6 : page ouverte en 2s (total 6)
+[  108.2s 2026-08-03T11:46:14.193Z] ÉTAT SHELL (après fenêtre 6) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[  108.2s 2026-08-03T11:46:14.194Z]   pages d'application ouvertes (6) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12
+[  108.3s 2026-08-03T11:46:14.309Z] MARQUEURS (après fenêtre 6) {"lignes":448,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":6,"endormie":2,"reveillee":8,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":8,"taille_refusee":0,"refus_debit":0,"sortie_creee":6,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":15,"mutex_abandonne":15,"enfant_lance":6,"enfant_termine":0,"erreurs":0}
+[  108.4s 2026-08-03T11:46:14.426Z] STATS (rang 6 — relevé 1) {"w:w-2":{"etat":"connected","images":2600,"l":1024,"h":576,"octets":75274103,"rtt":0.023,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757574363},"w:w-4":{"etat":"connected","images":1547,"l":1024,"h":576,"octets":57355165,"rtt":0.025,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757574364},"w:w-6":{"etat":"connected","images":815,"l":1024,"h":576,"octets":28100192,"rtt":0.035,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757574382},"w:w-8":{"etat":"connected","images":536,"l":1024,"h":576,"octets":20275812,"rtt":0.017,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757574403},"w:w-10":{"etat":"connected","images":298,"l":1280,"h":720,"octets":15165634,"rtt":0.02,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757574403},"w:w-12":{"etat":"connected","images":106,"l":1280,"h":720,"octets":3835105,"rtt":0.018,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757574421}}
+[  113.5s 2026-08-03T11:46:19.500Z] STATS (rang 6 — relevé 2) {"w:w-2":{"etat":"connected","images":2673,"l":1024,"h":576,"octets":77852078,"rtt":0.014,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757579482},"w:w-4":{"etat":"connected","images":1555,"l":1024,"h":576,"octets":62559239,"rtt":0.012,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757579483},"w:w-6":{"etat":"connected","images":1044,"l":1024,"h":576,"octets":30838112,"rtt":0.025,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757579483},"w:w-8":{"etat":"connected","images":781,"l":1024,"h":576,"octets":24307340,"rtt":0.013,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757579473},"w:w-10":{"etat":"connected","images":480,"l":1280,"h":720,"octets":20735878,"rtt":0.013,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757579483},"w:w-12":{"etat":"connected","images":257,"l":1280,"h":720,"octets":8857960,"rtt":0.019,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757579484}}
+[  113.5s 2026-08-03T11:46:19.501Z] CADENCE NAVIGATEUR (rang 6) {
+ "w:w-2": {
+  "images": 73,
+  "secondes": 5.119,
+  "i_par_s": 14.26,
+  "taille": "1024x576",
+  "kbps": 4029,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-4": {
+  "images": 8,
+  "secondes": 5.119,
+  "i_par_s": 1.56,
+  "taille": "1024x576",
+  "kbps": 8133,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-6": {
+  "images": 229,
+  "secondes": 5.101,
+  "i_par_s": 44.89,
+  "taille": "1024x576",
+  "kbps": 4294,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-8": {
+  "images": 245,
+  "secondes": 5.07,
+  "i_par_s": 48.32,
+  "taille": "1024x576",
+  "kbps": 6361,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-10": {
+  "images": 182,
+  "secondes": 5.08,
+  "i_par_s": 35.83,
+  "taille": "1280x720",
+  "kbps": 8772,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-12": {
+  "images": 151,
+  "secondes": 5.063,
+  "i_par_s": 29.82,
+  "taille": "1280x720",
+  "kbps": 7937,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": null
+ }
+}
+[  113.5s 2026-08-03T11:46:19.501Z] RANG 6 : pages=6 DIFFUSENT=6 ouverte=true endormies=-6
+[  113.7s 2026-08-03T11:46:19.663Z] SURVIE VM (après rang 6) virsh="en cours d’exécution" acces_partage=OUI
+[  113.7s 2026-08-03T11:46:19.664Z] >>> OUVERTURE fenêtre 7 (attendu : 7 pages)
+[  114.6s 2026-08-03T11:46:20.575Z] + page attachée  session=FEE51F82 url=
+[  114.9s 2026-08-03T11:46:20.896Z] - page détachée   session=FEE51F82 url=
+[  115.1s 2026-08-03T11:46:21.049Z] + page attachée  session=41D729E0 url=
+[  116.6s 2026-08-03T11:46:22.541Z]    fenêtre 7 : page ouverte en 2s (total 7)
+[  122.6s 2026-08-03T11:46:28.559Z] ÉTAT SHELL (après fenêtre 7) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[  122.6s 2026-08-03T11:46:28.562Z]   pages d'application ouvertes (7) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12 , http://192.168.3.1:5173/?session=w-14
+[  122.7s 2026-08-03T11:46:28.666Z] MARQUEURS (après fenêtre 7) {"lignes":564,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":7,"endormie":3,"reveillee":10,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":14,"taille_refusee":0,"refus_debit":0,"sortie_creee":7,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":21,"mutex_abandonne":21,"enfant_lance":7,"enfant_termine":0,"erreurs":0}
+[  122.8s 2026-08-03T11:46:28.754Z] STATS (rang 7 — relevé 1) {"w:w-2":{"etat":"connected","images":2796,"l":1024,"h":576,"octets":81289493,"rtt":0.11,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757588713},"w:w-4":{"etat":"connected","images":1699,"l":1280,"h":720,"octets":65326904,"rtt":0.14,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757588718},"w:w-6":{"etat":"connected","images":1207,"l":1280,"h":720,"octets":34278272,"rtt":0.011,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757588723},"w:w-8":{"etat":"connected","images":941,"l":1280,"h":720,"octets":30455564,"rtt":0.003,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757588723},"w:w-10":{"etat":"connected","images":641,"l":1280,"h":720,"octets":24798600,"rtt":0.23,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757588724},"w:w-12":{"etat":"connected","images":405,"l":1280,"h":720,"octets":15567839,"rtt":0.037,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757588724},"w:w-14":{"etat":"connected","images":74,"l":1280,"h":720,"octets":2977620,"rtt":0.221,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757588725}}
+[  127.8s 2026-08-03T11:46:33.820Z] STATS (rang 7 — relevé 2) {"w:w-2":{"etat":"connected","images":2863,"l":1024,"h":576,"octets":82249278,"rtt":0.093,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757593771},"w:w-4":{"etat":"connected","images":2035,"l":640,"h":360,"octets":67567274,"rtt":0.092,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757593776},"w:w-6":{"etat":"connected","images":1473,"l":852,"h":480,"octets":37470144,"rtt":0.016,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757593782},"w:w-8":{"etat":"connected","images":1085,"l":1280,"h":720,"octets":34406669,"rtt":0.012,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757593783},"w:w-10":{"etat":"connected","images":898,"l":1024,"h":576,"octets":26782683,"rtt":0.082,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757593784},"w:w-12":{"etat":"connected","images":615,"l":1280,"h":720,"octets":18625187,"rtt":0.018,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757593794},"w:w-14":{"etat":"connected","images":313,"l":1280,"h":720,"octets":7388912,"rtt":0.029,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757593796}}
+[  127.8s 2026-08-03T11:46:33.820Z] CADENCE NAVIGATEUR (rang 7) {
+ "w:w-2": {
+  "images": 67,
+  "secondes": 5.058,
+  "i_par_s": 13.25,
+  "taille": "1024x576",
+  "kbps": 1518,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-4": {
+  "images": 336,
+  "secondes": 5.058,
+  "i_par_s": 66.43,
+  "taille": "640x360",
+  "kbps": 3543,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-6": {
+  "images": 266,
+  "secondes": 5.059,
+  "i_par_s": 52.58,
+  "taille": "852x480",
+  "kbps": 5047,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-8": {
+  "images": 144,
+  "secondes": 5.06,
+  "i_par_s": 28.46,
+  "taille": "1280x720",
+  "kbps": 6247,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-10": {
+  "images": 257,
+  "secondes": 5.06,
+  "i_par_s": 50.79,
+  "taille": "1024x576",
+  "kbps": 3137,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-12": {
+  "images": 210,
+  "secondes": 5.07,
+  "i_par_s": 41.42,
+  "taille": "1280x720",
+  "kbps": 4824,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-14": {
+  "images": 239,
+  "secondes": 5.071,
+  "i_par_s": 47.13,
+  "taille": "1280x720",
+  "kbps": 6959,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": null
+ }
+}
+[  127.8s 2026-08-03T11:46:33.820Z] RANG 7 : pages=7 DIFFUSENT=7 ouverte=true endormies=-7
+[  128.0s 2026-08-03T11:46:33.976Z] SURVIE VM (après rang 7) virsh="en cours d’exécution" acces_partage=OUI
+[  128.0s 2026-08-03T11:46:33.976Z] >>> OUVERTURE fenêtre 8 (attendu : 8 pages)
+[  128.9s 2026-08-03T11:46:34.862Z] + page attachée  session=E141F822 url=
+[  129.1s 2026-08-03T11:46:35.082Z] - page détachée   session=E141F822 url=
+[  129.3s 2026-08-03T11:46:35.286Z] + page attachée  session=05F48406 url=
+[  130.8s 2026-08-03T11:46:36.780Z]    fenêtre 8 : page ouverte en 2s (total 8)
+[  136.8s 2026-08-03T11:46:42.794Z] ÉTAT SHELL (après fenêtre 8) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[  136.8s 2026-08-03T11:46:42.795Z]   pages d'application ouvertes (8) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12 , http://192.168.3.1:5173/?session=w-14 , http://192.168.3.1:5173/?session=w-16
+[  136.9s 2026-08-03T11:46:42.869Z] MARQUEURS (après fenêtre 8) {"lignes":681,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":8,"endormie":3,"reveillee":11,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":20,"taille_refusee":0,"refus_debit":0,"sortie_creee":8,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":28,"mutex_abandonne":28,"enfant_lance":8,"enfant_termine":0,"erreurs":0}
+[  137.0s 2026-08-03T11:46:42.929Z] STATS (rang 8 — relevé 1) {"w:w-2":{"etat":"connected","images":2980,"l":1024,"h":576,"octets":87016771,"rtt":0.015,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757602906},"w:w-4":{"etat":"connected","images":2443,"l":640,"h":360,"octets":72998037,"rtt":0.013,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757602907},"w:w-6":{"etat":"connected","images":1668,"l":852,"h":480,"octets":42880673,"rtt":0.03,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757602907},"w:w-8":{"etat":"connected","images":1297,"l":1280,"h":720,"octets":41009454,"rtt":0.027,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757602908},"w:w-10":{"etat":"connected","images":1090,"l":1024,"h":576,"octets":32029529,"rtt":0.013,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757602909},"w:w-12":{"etat":"connected","images":915,"l":1280,"h":720,"octets":25352048,"rtt":0.032,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757602909},"w:w-14":{"etat":"connected","images":522,"l":1280,"h":720,"octets":14527693,"rtt":0.003,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757602910},"w:w-16":{"etat":"connected","images":114,"l":1280,"h":720,"octets":4124949,"rtt":0.019,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757602919}}
+[  142.0s 2026-08-03T11:46:48.013Z] STATS (rang 8 — relevé 2) {"w:w-2":{"etat":"connected","images":2998,"l":1024,"h":576,"octets":91196557,"rtt":0.003,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757607988},"w:w-4":{"etat":"connected","images":2718,"l":640,"h":360,"octets":75925084,"rtt":0.005,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757607989},"w:w-6":{"etat":"connected","images":1853,"l":852,"h":480,"octets":46585623,"rtt":0.121,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757607991},"w:w-8":{"etat":"connected","images":1479,"l":1280,"h":720,"octets":47075432,"rtt":0.117,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757607993},"w:w-10":{"etat":"connected","images":1270,"l":1024,"h":576,"octets":38129517,"rtt":0.004,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757607994},"w:w-12":{"etat":"connected","images":1092,"l":1280,"h":720,"octets":31536758,"rtt":0.029,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757607967},"w:w-14":{"etat":"connected","images":692,"l":1280,"h":720,"octets":18973356,"rtt":0.015,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757607995},"w:w-16":{"etat":"connected","images":301,"l":1280,"h":720,"octets":9856514,"rtt":0.012,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757607995}}
+[  142.0s 2026-08-03T11:46:48.018Z] CADENCE NAVIGATEUR (rang 8) {
+ "w:w-2": {
+  "images": 18,
+  "secondes": 5.082,
+  "i_par_s": 3.54,
+  "taille": "1024x576",
+  "kbps": 6580,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-4": {
+  "images": 275,
+  "secondes": 5.082,
+  "i_par_s": 54.11,
+  "taille": "640x360",
+  "kbps": 4608,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-6": {
+  "images": 185,
+  "secondes": 5.084,
+  "i_par_s": 36.39,
+  "taille": "852x480",
+  "kbps": 5830,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-8": {
+  "images": 182,
+  "secondes": 5.085,
+  "i_par_s": 35.79,
+  "taille": "1280x720",
+  "kbps": 9543,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-10": {
+  "images": 180,
+  "secondes": 5.085,
+  "i_par_s": 35.4,
+  "taille": "1024x576",
+  "kbps": 9597,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-12": {
+  "images": 177,
+  "secondes": 5.058,
+  "i_par_s": 34.99,
+  "taille": "1280x720",
+  "kbps": 9782,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-14": {
+  "images": 170,
+  "secondes": 5.085,
+  "i_par_s": 33.43,
+  "taille": "1280x720",
+  "kbps": 6994,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-16": {
+  "images": 187,
+  "secondes": 5.076,
+  "i_par_s": 36.84,
+  "taille": "1280x720",
+  "kbps": 9033,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": null
+ }
+}
+[  142.0s 2026-08-03T11:46:48.018Z] RANG 8 : pages=8 DIFFUSENT=8 ouverte=true endormies=-8
+[  142.2s 2026-08-03T11:46:48.178Z] SURVIE VM (après rang 8) virsh="en cours d’exécution" acces_partage=OUI
+[  142.2s 2026-08-03T11:46:48.179Z] >>> OUVERTURE fenêtre 9 (attendu : 9 pages)
+[  143.0s 2026-08-03T11:46:49.009Z] + page attachée  session=3504E72A url=
+[  143.3s 2026-08-03T11:46:49.268Z] - page détachée   session=3504E72A url=
+[  143.6s 2026-08-03T11:46:49.578Z] + page attachée  session=509A15A6 url=
+[  145.0s 2026-08-03T11:46:51.006Z]    fenêtre 9 : page ouverte en 2s (total 9)
+[  151.0s 2026-08-03T11:46:57.020Z] ÉTAT SHELL (après fenêtre 9) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[  151.0s 2026-08-03T11:46:57.021Z]   pages d'application ouvertes (9) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12 , http://192.168.3.1:5173/?session=w-14 , http://192.168.3.1:5173/?session=w-16 , http://192.168.3.1:5173/?session=w-18
+[  151.1s 2026-08-03T11:46:57.113Z] MARQUEURS (après fenêtre 9) {"lignes":833,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":9,"endormie":5,"reveillee":13,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":31,"taille_refusee":0,"refus_debit":0,"sortie_creee":9,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":36,"mutex_abandonne":36,"enfant_lance":9,"enfant_termine":0,"erreurs":0}
+[  151.2s 2026-08-03T11:46:57.199Z] STATS (rang 9 — relevé 1) {"w:w-2":{"etat":"connected","images":3000,"l":1024,"h":576,"octets":93738192,"rtt":0.054,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757617171},"w:w-4":{"etat":"connected","images":3027,"l":1280,"h":720,"octets":81761837,"rtt":0.045,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757617171},"w:w-6":{"etat":"connected","images":2156,"l":1280,"h":720,"octets":51567411,"rtt":0.005,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757617172},"w:w-8":{"etat":"connected","images":1587,"l":1280,"h":720,"octets":51610067,"rtt":0.005,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757617180},"w:w-10":{"etat":"connected","images":1446,"l":852,"h":480,"octets":42198812,"rtt":0.04,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757617188},"w:w-12":{"etat":"connected","images":1192,"l":1280,"h":720,"octets":37240819,"rtt":0.064,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757617191},"w:w-14":{"etat":"connected","images":806,"l":1024,"h":576,"octets":23160018,"rtt":0.012,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757617194},"w:w-16":{"etat":"connected","images":404,"l":1280,"h":720,"octets":15817958,"rtt":0.007,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757617156},"w:w-18":{"etat":"connected","images":118,"l":1280,"h":720,"octets":4989080,"rtt":0.044,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757617195}}
+[  156.3s 2026-08-03T11:47:02.263Z] STATS (rang 9 — relevé 2) {"w:w-2":{"etat":"connected","images":3000,"l":1024,"h":576,"octets":93783072,"rtt":0.056,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757622239},"w:w-4":{"etat":"connected","images":3189,"l":1280,"h":720,"octets":84825869,"rtt":0.074,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757622241},"w:w-6":{"etat":"connected","images":2225,"l":1280,"h":720,"octets":54894655,"rtt":0.049,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757622242},"w:w-8":{"etat":"connected","images":1764,"l":1280,"h":720,"octets":53625455,"rtt":0.049,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757622243},"w:w-10":{"etat":"connected","images":1747,"l":852,"h":480,"octets":43595764,"rtt":0.056,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757622244},"w:w-12":{"etat":"connected","images":1371,"l":1280,"h":720,"octets":40726012,"rtt":0.013,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757622245},"w:w-14":{"etat":"connected","images":1029,"l":1024,"h":576,"octets":25087479,"rtt":0.026,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757622218},"w:w-16":{"etat":"connected","images":573,"l":1280,"h":720,"octets":18650059,"rtt":0.061,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757622245},"w:w-18":{"etat":"connected","images":299,"l":1280,"h":720,"octets":8353678,"rtt":0.008,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757622246}}
+[  156.3s 2026-08-03T11:47:02.264Z] CADENCE NAVIGATEUR (rang 9) {
+ "w:w-2": {
+  "images": 0,
+  "secondes": 5.068,
+  "i_par_s": 0,
+  "taille": "1024x576",
+  "kbps": 71,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-4": {
+  "images": 162,
+  "secondes": 5.07,
+  "i_par_s": 31.95,
+  "taille": "1280x720",
+  "kbps": 4835,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-6": {
+  "images": 69,
+  "secondes": 5.07,
+  "i_par_s": 13.61,
+  "taille": "1280x720",
+  "kbps": 5250,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-8": {
+  "images": 177,
+  "secondes": 5.063,
+  "i_par_s": 34.96,
+  "taille": "1280x720",
+  "kbps": 3184,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-10": {
+  "images": 301,
+  "secondes": 5.056,
+  "i_par_s": 59.53,
+  "taille": "852x480",
+  "kbps": 2210,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-12": {
+  "images": 179,
+  "secondes": 5.054,
+  "i_par_s": 35.42,
+  "taille": "1280x720",
+  "kbps": 5517,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-14": {
+  "images": 223,
+  "secondes": 5.024,
+  "i_par_s": 44.39,
+  "taille": "1024x576",
+  "kbps": 3069,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-16": {
+  "images": 169,
+  "secondes": 5.089,
+  "i_par_s": 33.21,
+  "taille": "1280x720",
+  "kbps": 4452,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-18": {
+  "images": 181,
+  "secondes": 5.051,
+  "i_par_s": 35.83,
+  "taille": "1280x720",
+  "kbps": 5329,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": null
+ }
+}
+[  156.3s 2026-08-03T11:47:02.264Z] RANG 9 : pages=9 DIFFUSENT=8 ouverte=true endormies=-8
+[  156.5s 2026-08-03T11:47:02.515Z] SURVIE VM (après rang 9) virsh="en cours d’exécution" acces_partage=OUI
+[  156.5s 2026-08-03T11:47:02.516Z] >>> OUVERTURE fenêtre 10 (attendu : 10 pages)
+[  157.7s 2026-08-03T11:47:03.700Z] + page attachée  session=8655B00A url=
+[  157.9s 2026-08-03T11:47:03.902Z] - page détachée   session=8655B00A url=
+[  158.3s 2026-08-03T11:47:04.235Z] + page attachée  session=A613A905 url=
+[  159.6s 2026-08-03T11:47:05.546Z]    fenêtre 10 : page ouverte en 2s (total 10)
+[  165.6s 2026-08-03T11:47:11.569Z] ÉTAT SHELL (après fenêtre 10) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="bureau connecté"
+[  165.6s 2026-08-03T11:47:11.569Z]   pages d'application ouvertes (10) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12 , http://192.168.3.1:5173/?session=w-14 , http://192.168.3.1:5173/?session=w-16 , http://192.168.3.1:5173/?session=w-18 , http://192.168.3.1:5173/?session=w-20
+[  165.7s 2026-08-03T11:47:11.652Z] MARQUEURS (après fenêtre 10) {"lignes":952,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":10,"endormie":6,"reveillee":14,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":33,"taille_refusee":0,"refus_debit":0,"sortie_creee":10,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":44,"mutex_abandonne":44,"enfant_lance":10,"enfant_termine":0,"erreurs":0}
+[  165.8s 2026-08-03T11:47:11.758Z] STATS (rang 10 — relevé 1) {"w:w-2":{"etat":"connected","images":3000,"l":1024,"h":576,"octets":93872832,"rtt":0.04,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757631662},"w:w-4":{"etat":"connected","images":3329,"l":1280,"h":720,"octets":87476257,"rtt":0.039,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757631677},"w:w-6":{"etat":"connected","images":2275,"l":1024,"h":576,"octets":59273967,"rtt":0.009,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757631692},"w:w-8":{"etat":"connected","images":1878,"l":1280,"h":720,"octets":57823233,"rtt":0.012,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757631707},"w:w-10":{"etat":"connected","images":1974,"l":852,"h":480,"octets":47134072,"rtt":0.039,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757631708},"w:w-12":{"etat":"connected","images":1489,"l":1280,"h":720,"octets":45424758,"rtt":0.003,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757631712},"w:w-14":{"etat":"connected","images":1263,"l":1024,"h":576,"octets":28104370,"rtt":0.094,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757631716},"w:w-16":{"etat":"connected","images":690,"l":1280,"h":720,"octets":23068065,"rtt":0.02,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757631735},"w:w-18":{"etat":"connected","images":470,"l":1280,"h":720,"octets":11877837,"rtt":0.023,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757631738},"w:w-20":{"etat":"connected","images":65,"l":1280,"h":720,"octets":2958319,"rtt":0.015,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757631755}}
+[  171.0s 2026-08-03T11:47:16.937Z] STATS (rang 10 — relevé 2) {"w:w-2":{"etat":"connected","images":3000,"l":1024,"h":576,"octets":93917712,"rtt":0.032,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757636905},"w:w-4":{"etat":"connected","images":3339,"l":1280,"h":720,"octets":87521137,"rtt":0.03,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757636909},"w:w-6":{"etat":"connected","images":2476,"l":1024,"h":576,"octets":63459477,"rtt":0.028,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757636901},"w:w-8":{"etat":"connected","images":2025,"l":1024,"h":576,"octets":60327559,"rtt":0.018,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757636910},"w:w-10":{"etat":"connected","images":2212,"l":852,"h":480,"octets":52664078,"rtt":0.035,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757636911},"w:w-12":{"etat":"connected","images":1639,"l":1280,"h":720,"octets":47240655,"rtt":0.004,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757636911},"w:w-14":{"etat":"connected","images":1367,"l":1024,"h":576,"octets":29613665,"rtt":0.011,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757636912},"w:w-16":{"etat":"connected","images":813,"l":1280,"h":720,"octets":28626616,"rtt":0.021,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757636912},"w:w-18":{"etat":"connected","images":601,"l":640,"h":360,"octets":13510595,"rtt":0.009,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757636930},"w:w-20":{"etat":"connected","images":260,"l":1280,"h":720,"octets":6746166,"rtt":0.019,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757636931}}
+[  171.0s 2026-08-03T11:47:16.938Z] CADENCE NAVIGATEUR (rang 10) {
+ "w:w-2": {
+  "images": 0,
+  "secondes": 5.243,
+  "i_par_s": 0,
+  "taille": "1024x576",
+  "kbps": 68,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-4": {
+  "images": 10,
+  "secondes": 5.232,
+  "i_par_s": 1.91,
+  "taille": "1280x720",
+  "kbps": 69,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-6": {
+  "images": 201,
+  "secondes": 5.209,
+  "i_par_s": 38.59,
+  "taille": "1024x576",
+  "kbps": 6428,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-8": {
+  "images": 147,
+  "secondes": 5.203,
+  "i_par_s": 28.25,
+  "taille": "1024x576",
+  "kbps": 3851,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-10": {
+  "images": 238,
+  "secondes": 5.203,
+  "i_par_s": 45.74,
+  "taille": "852x480",
+  "kbps": 8503,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-12": {
+  "images": 150,
+  "secondes": 5.199,
+  "i_par_s": 28.85,
+  "taille": "1280x720",
+  "kbps": 2794,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-14": {
+  "images": 104,
+  "secondes": 5.196,
+  "i_par_s": 20.02,
+  "taille": "1024x576",
+  "kbps": 2324,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-16": {
+  "images": 123,
+  "secondes": 5.177,
+  "i_par_s": 23.76,
+  "taille": "1280x720",
+  "kbps": 8590,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-18": {
+  "images": 131,
+  "secondes": 5.192,
+  "i_par_s": 25.23,
+  "taille": "640x360",
+  "kbps": 2516,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-20": {
+  "images": 195,
+  "secondes": 5.176,
+  "i_par_s": 37.67,
+  "taille": "1280x720",
+  "kbps": 5854,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": null
+ }
+}
+[  171.0s 2026-08-03T11:47:16.940Z] RANG 10 : pages=10 DIFFUSENT=9 ouverte=true endormies=-8
+[  171.1s 2026-08-03T11:47:17.087Z] SURVIE VM (après rang 10) virsh="en cours d’exécution" acces_partage=OUI
+[  171.1s 2026-08-03T11:47:17.087Z] >>> OUVERTURE fenêtre 11 (attendu : 11 pages)
+[  252.2s 2026-08-03T11:48:38.133Z]    !! fenêtre 11 : AUCUNE page ouverte après 80s (total 10)
+[  258.2s 2026-08-03T11:48:44.161Z] ÉTAT SHELL (après fenêtre 11) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="« _/C:/dev/anim-d4.html » n'a pas pu s'ouvrir : plus aucune sortie virtuelle disponible."
+[  258.2s 2026-08-03T11:48:44.165Z]   pages d'application ouvertes (10) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12 , http://192.168.3.1:5173/?session=w-14 , http://192.168.3.1:5173/?session=w-16 , http://192.168.3.1:5173/?session=w-18 , http://192.168.3.1:5173/?session=w-20
+[  258.3s 2026-08-03T11:48:44.244Z] MARQUEURS (après fenêtre 11) {"lignes":1320,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":10,"endormie":6,"reveillee":14,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":83,"taille_refusee":0,"refus_debit":0,"sortie_creee":10,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":44,"mutex_abandonne":44,"enfant_lance":10,"enfant_termine":0,"erreurs":0}
+[  258.6s 2026-08-03T11:48:44.588Z] STATS (rang 11 — relevé 1) {"w:w-2":{"etat":"connected","images":3000,"l":1024,"h":576,"octets":94603254,"rtt":0.22,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757724537},"w:w-4":{"etat":"connected","images":3339,"l":1280,"h":720,"octets":88273878,"rtt":0.22,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757724544},"w:w-6":{"etat":"connected","images":4949,"l":1024,"h":576,"octets":108795373,"rtt":0.197,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757724545},"w:w-8":{"etat":"connected","images":4604,"l":640,"h":360,"octets":103507502,"rtt":0.15,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757724554},"w:w-10":{"etat":"connected","images":5041,"l":852,"h":480,"octets":98570241,"rtt":0.105,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757724391},"w:w-12":{"etat":"connected","images":5454,"l":1280,"h":720,"octets":91544169,"rtt":0.159,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757724340},"w:w-14":{"etat":"connected","images":4417,"l":640,"h":360,"octets":65766128,"rtt":0.182,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757724472},"w:w-16":{"etat":"connected","images":2641,"l":1024,"h":576,"octets":80211274,"rtt":0.137,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757724451},"w:w-18":{"etat":"connected","images":3179,"l":640,"h":360,"octets":50213413,"rtt":0.167,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757724570},"w:w-20":{"etat":"connected","images":2518,"l":1280,"h":720,"octets":44272323,"rtt":0.126,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757724576}}
+[  263.9s 2026-08-03T11:48:49.900Z] STATS (rang 11 — relevé 2) {"w:w-2":{"etat":"connected","images":3000,"l":1024,"h":576,"octets":94627938,"rtt":0.096,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757729861},"w:w-4":{"etat":"connected","images":3339,"l":1280,"h":720,"octets":88318758,"rtt":0.096,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757729775},"w:w-6":{"etat":"connected","images":5020,"l":1024,"h":576,"octets":110139677,"rtt":0.044,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757729866},"w:w-8":{"etat":"connected","images":4686,"l":640,"h":360,"octets":105930861,"rtt":0.058,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757729868},"w:w-10":{"etat":"connected","images":5129,"l":640,"h":360,"octets":100439295,"rtt":0.05,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757729871},"w:w-12":{"etat":"connected","images":5522,"l":1280,"h":720,"octets":94107912,"rtt":0.079,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757729872},"w:w-14":{"etat":"connected","images":4507,"l":640,"h":360,"octets":68362210,"rtt":0.025,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757729873},"w:w-16":{"etat":"connected","images":2715,"l":1024,"h":576,"octets":81306484,"rtt":0.054,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757729873},"w:w-18":{"etat":"connected","images":3280,"l":640,"h":360,"octets":51916800,"rtt":0.085,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757729874},"w:w-20":{"etat":"connected","images":2576,"l":1280,"h":720,"octets":46474067,"rtt":0.064,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757729882}}
+[  263.9s 2026-08-03T11:48:49.902Z] CADENCE NAVIGATEUR (rang 11) {
+ "w:w-2": {
+  "images": 0,
+  "secondes": 5.324,
+  "i_par_s": 0,
+  "taille": "1024x576",
+  "kbps": 37,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-4": {
+  "images": 0,
+  "secondes": 5.231,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 69,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-6": {
+  "images": 71,
+  "secondes": 5.321,
+  "i_par_s": 13.34,
+  "taille": "1024x576",
+  "kbps": 2021,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-8": {
+  "images": 82,
+  "secondes": 5.314,
+  "i_par_s": 15.43,
+  "taille": "640x360",
+  "kbps": 3648,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-10": {
+  "images": 88,
+  "secondes": 5.48,
+  "i_par_s": 16.06,
+  "taille": "640x360",
+  "kbps": 2729,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-12": {
+  "images": 68,
+  "secondes": 5.532,
+  "i_par_s": 12.29,
+  "taille": "1280x720",
+  "kbps": 3708,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-14": {
+  "images": 90,
+  "secondes": 5.401,
+  "i_par_s": 16.66,
+  "taille": "640x360",
+  "kbps": 3845,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-16": {
+  "images": 74,
+  "secondes": 5.422,
+  "i_par_s": 13.65,
+  "taille": "1024x576",
+  "kbps": 1616,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-18": {
+  "images": 101,
+  "secondes": 5.304,
+  "i_par_s": 19.04,
+  "taille": "640x360",
+  "kbps": 2569,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-20": {
+  "images": 58,
+  "secondes": 5.306,
+  "i_par_s": 10.93,
+  "taille": "1280x720",
+  "kbps": 3320,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": null
+ }
+}
+[  263.9s 2026-08-03T11:48:49.902Z] RANG 11 : pages=10 DIFFUSENT=8 ouverte=false endormies=-8
+[  264.2s 2026-08-03T11:48:50.171Z] SURVIE VM (après rang 11) virsh="en cours d’exécution" acces_partage=OUI
+[  264.2s 2026-08-03T11:48:50.172Z] >>> ARRÊT DE LA MONTÉE au rang 11 : aucune page de plus.
+[  271.8s 2026-08-03T11:48:57.811Z] --- fenêtres VM (au rang bloquant 11) ---
+5712	chrome	0x18014a	1280x720+10080+0	Anim 7
+27656	chrome	0x502bc	1280x720+8800+0	Anim 6
+28048	chrome	0x304f8	1280x720+7520+0	Anim 5
+33136	chrome	0x380392	1280x720+4960+0	Anim 3
+33780	chrome	0x204de	1280x720+6240+0	Anim 4
+34992	chrome	0xb013e	1280x720+11360+0	Anim 8
+35280	chrome	0x2080052	1280x720+150+150	Anim 11
+35816	chrome	0x603be	1280x720+2400+0	Anim 1
+35852	chrome	0xf027a	1280x720+13920+0	Anim 10
+36440	chrome	0x20498	1280x720+3680+0	Anim 2
+39872	chrome	0x4040c	1280x720+12640+0	Anim 9
+[  271.8s 2026-08-03T11:48:57.815Z] SYNTHÈSE MONTÉE [
+ {
+  "rang": 1,
+  "pages": 1,
+  "diffusent": 1,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 2,
+  "pages": 2,
+  "diffusent": 2,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 3,
+  "pages": 3,
+  "diffusent": 3,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 4,
+  "pages": 4,
+  "diffusent": 4,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 5,
+  "pages": 5,
+  "diffusent": 5,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 6,
+  "pages": 6,
+  "diffusent": 6,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 7,
+  "pages": 7,
+  "diffusent": 7,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 8,
+  "pages": 8,
+  "diffusent": 8,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 9,
+  "pages": 9,
+  "diffusent": 8,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 10,
+  "pages": 10,
+  "diffusent": 9,
+  "ouverte": true,
+  "statut": "bureau connecté"
+ },
+ {
+  "rang": 11,
+  "pages": 10,
+  "diffusent": 8,
+  "ouverte": false,
+  "statut": "« _/C:/dev/anim-d4.html » n'a pas pu s'ouvrir : plus aucune sortie virtuelle disponible."
+ }
+]
+[  272.1s 2026-08-03T11:48:58.039Z] STATS (PALIER (20 s) — relevé 1) {"w:w-2":{"etat":"connected","images":3000,"l":1024,"h":576,"octets":94717698,"rtt":0.052,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757737927},"w:w-4":{"etat":"connected","images":3339,"l":1280,"h":720,"octets":88408518,"rtt":0.051,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757737927},"w:w-6":{"etat":"connected","images":5079,"l":1024,"h":576,"octets":113676171,"rtt":0.136,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757737853},"w:w-8":{"etat":"connected","images":4758,"l":640,"h":360,"octets":110554757,"rtt":0.075,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757737928},"w:w-10":{"etat":"connected","images":5206,"l":640,"h":360,"octets":104063649,"rtt":0.095,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757737928},"w:w-12":{"etat":"connected","images":5581,"l":1280,"h":720,"octets":98646712,"rtt":0.076,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757737959},"w:w-14":{"etat":"connected","images":4590,"l":640,"h":360,"octets":70587646,"rtt":0.102,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757737986},"w:w-16":{"etat":"connected","images":2784,"l":1024,"h":576,"octets":83120597,"rtt":0.067,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757737987},"w:w-18":{"etat":"connected","images":3345,"l":640,"h":360,"octets":56728828,"rtt":0.068,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757737999},"w:w-20":{"etat":"connected","images":2624,"l":1280,"h":720,"octets":48290233,"rtt":0.101,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757737999}}
+[  292.4s 2026-08-03T11:49:18.415Z] STATS (PALIER (20 s) — relevé 2) {"w:w-2":{"etat":"connected","images":3000,"l":1024,"h":576,"octets":94876201,"rtt":0.287,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757758322},"w:w-4":{"etat":"connected","images":3339,"l":1280,"h":720,"octets":88567842,"rtt":0.16,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757758324},"w:w-6":{"etat":"connected","images":5330,"l":640,"h":360,"octets":119133403,"rtt":0.103,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757758325},"w:w-8":{"etat":"connected","images":5016,"l":1280,"h":720,"octets":121595573,"rtt":0.142,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757758325},"w:w-10":{"etat":"connected","images":5499,"l":640,"h":360,"octets":112907219,"rtt":0.11,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757758160},"w:w-12":{"etat":"connected","images":5800,"l":1280,"h":720,"octets":110809679,"rtt":0.106,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757758130},"w:w-14":{"etat":"connected","images":4883,"l":1280,"h":720,"octets":81143315,"rtt":0.132,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757758326},"w:w-16":{"etat":"connected","images":3012,"l":852,"h":480,"octets":93106782,"rtt":0.116,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757758337},"w:w-18":{"etat":"connected","images":3588,"l":1280,"h":720,"octets":64815133,"rtt":0.126,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757758345},"w:w-20":{"etat":"connected","images":2844,"l":1280,"h":720,"octets":57694464,"rtt":0.357,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757758350}}
+[  292.4s 2026-08-03T11:49:18.415Z] CADENCE NAVIGATEUR (PALIER (20 s)) {
+ "w:w-2": {
+  "images": 0,
+  "secondes": 20.395,
+  "i_par_s": 0,
+  "taille": "1024x576",
+  "kbps": 62,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-4": {
+  "images": 0,
+  "secondes": 20.397,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 62,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-6": {
+  "images": 251,
+  "secondes": 20.472,
+  "i_par_s": 12.26,
+  "taille": "640x360",
+  "kbps": 2133,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-8": {
+  "images": 258,
+  "secondes": 20.397,
+  "i_par_s": 12.65,
+  "taille": "1280x720",
+  "kbps": 4330,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-10": {
+  "images": 293,
+  "secondes": 20.232,
+  "i_par_s": 14.48,
+  "taille": "640x360",
+  "kbps": 3497,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-12": {
+  "images": 219,
+  "secondes": 20.171,
+  "i_par_s": 10.86,
+  "taille": "1280x720",
+  "kbps": 4824,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-14": {
+  "images": 293,
+  "secondes": 20.34,
+  "i_par_s": 14.41,
+  "taille": "1280x720",
+  "kbps": 4152,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-16": {
+  "images": 228,
+  "secondes": 20.35,
+  "i_par_s": 11.2,
+  "taille": "852x480",
+  "kbps": 3926,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-18": {
+  "images": 243,
+  "secondes": 20.346,
+  "i_par_s": 11.94,
+  "taille": "1280x720",
+  "kbps": 3180,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-20": {
+  "images": 220,
+  "secondes": 20.351,
+  "i_par_s": 10.81,
+  "taille": "1280x720",
+  "kbps": 3697,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": null
+ }
+}
+[  292.7s 2026-08-03T11:49:18.632Z] TRANSITIONS (fin de montée) 20 ligne(s)
+[
+ {
+  "t": "2026-08-03T11:44:53.733998Z",
+  "s": "w-2",
+  "quoi": "réveil",
+  "duree_ms": 166
+ },
+ {
+  "t": "2026-08-03T11:45:07.672125Z",
+  "s": "w-4",
+  "quoi": "réveil",
+  "duree_ms": 87
+ },
+ {
+  "t": "2026-08-03T11:45:18.067035Z",
+  "s": "w-4",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:45:18.169487Z",
+  "s": "w-4",
+  "quoi": "réveil",
+  "duree_ms": 92
+ },
+ {
+  "t": "2026-08-03T11:45:21.888939Z",
+  "s": "w-6",
+  "quoi": "réveil",
+  "duree_ms": 89
+ },
+ {
+  "t": "2026-08-03T11:45:33.633689Z",
+  "s": "w-6",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:45:33.750926Z",
+  "s": "w-6",
+  "quoi": "réveil",
+  "duree_ms": 106
+ },
+ {
+  "t": "2026-08-03T11:45:38.721536Z",
+  "s": "w-8",
+  "quoi": "réveil",
+  "duree_ms": 101
+ },
+ {
+  "t": "2026-08-03T11:45:55.296626Z",
+  "s": "w-10",
+  "quoi": "réveil",
+  "duree_ms": 99
+ },
+ {
+  "t": "2026-08-03T11:46:11.149904Z",
+  "s": "w-12",
+  "quoi": "réveil",
+  "duree_ms": 102
+ },
+ {
+  "t": "2026-08-03T11:46:20.963570Z",
+  "s": "w-12",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:46:21.077812Z",
+  "s": "w-12",
+  "quoi": "réveil",
+  "duree_ms": 103
+ },
+ {
+  "t": "2026-08-03T11:46:25.360060Z",
+  "s": "w-14",
+  "quoi": "réveil",
+  "duree_ms": 111
+ },
+ {
+  "t": "2026-08-03T11:46:39.271653Z",
+  "s": "w-16",
+  "quoi": "réveil",
+  "duree_ms": 117
+ },
+ {
+  "t": "2026-08-03T11:46:49.308674Z",
+  "s": "w-16",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:46:49.522135Z",
+  "s": "w-16",
+  "quoi": "réveil",
+  "duree_ms": 203
+ },
+ {
+  "t": "2026-08-03T11:46:53.505452Z",
+  "s": "w-2",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:46:53.612063Z",
+  "s": "w-18",
+  "quoi": "réveil",
+  "duree_ms": 145
+ },
+ {
+  "t": "2026-08-03T11:47:09.480786Z",
+  "s": "w-4",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:47:09.592711Z",
+  "s": "w-20",
+  "quoi": "réveil",
+  "duree_ms": 167
+ }
+]
+[  292.8s 2026-08-03T11:49:18.782Z] MARQUEURS (fin de montée) {"lignes":1438,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":10,"endormie":6,"reveillee":14,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":99,"taille_refusee":0,"refus_debit":0,"sortie_creee":10,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":44,"mutex_abandonne":44,"enfant_lance":10,"enfant_termine":0,"erreurs":0}
+[  292.8s 2026-08-03T11:49:18.791Z] AVANT ÉVICTION : endormies=["w:w-2","w:w-4"] éveillées=["w:w-6","w:w-8","w:w-10","w:w-12","w:w-14","w:w-16","w:w-18","w:w-20"]
+[  292.8s 2026-08-03T11:49:18.792Z] >>> ÉVICTION : on focalise w:w-2, qui dort
+[  293.8s 2026-08-03T11:49:19.812Z] FOCUS (éviction) cible=w:w-2 hasFocus={"w:w-2":true,"w:w-4":false,"w:w-6":false,"w:w-8":false,"w:w-10":false,"w:w-12":false,"w:w-14":false,"w:w-16":false,"w:w-18":false,"w:w-20":false}
+[  294.6s 2026-08-03T11:49:20.559Z] RÉVEIL NAVIGATEUR w:w-2 : première image 375 ms après la demande (images 3002 → 3007)
+[  298.7s 2026-08-03T11:49:24.639Z] STATS (APRÈS ÉVICTION — relevé 1) {"w:w-2":{"etat":"connected","images":3096,"l":640,"h":360,"octets":99161284,"rtt":0.054,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757764583},"w:w-4":{"etat":"connected","images":3340,"l":1280,"h":720,"octets":88629026,"rtt":0.053,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757764578},"w:w-6":{"etat":"connected","images":5359,"l":1280,"h":720,"octets":120020160,"rtt":0.091,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757764586},"w:w-8":{"etat":"connected","images":5033,"l":1280,"h":720,"octets":122202644,"rtt":0.086,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757764589},"w:w-10":{"etat":"connected","images":5620,"l":640,"h":360,"octets":113684668,"rtt":0.092,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757764590},"w:w-12":{"etat":"connected","images":5858,"l":1280,"h":720,"octets":111727311,"rtt":0.084,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757764595},"w:w-14":{"etat":"connected","images":4956,"l":1280,"h":720,"octets":83086974,"rtt":0.092,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757764596},"w:w-16":{"etat":"connected","images":3124,"l":852,"h":480,"octets":93903797,"rtt":0.084,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757764597},"w:w-18":{"etat":"connected","images":3633,"l":1280,"h":720,"octets":65755745,"rtt":0.092,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757764600},"w:w-20":{"etat":"connected","images":2890,"l":1280,"h":720,"octets":58743061,"rtt":0.073,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757764601}}
+[  304.9s 2026-08-03T11:49:30.906Z] STATS (APRÈS ÉVICTION — relevé 2) {"w:w-2":{"etat":"connected","images":3352,"l":640,"h":360,"octets":103645458,"rtt":0.02,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757770733},"w:w-4":{"etat":"connected","images":3340,"l":1280,"h":720,"octets":88718786,"rtt":0.019,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757770734},"w:w-6":{"etat":"connected","images":5359,"l":1280,"h":720,"octets":120020160,"rtt":0.042,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757770735},"w:w-8":{"etat":"connected","images":5033,"l":1280,"h":720,"octets":122202644,"rtt":0.066,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757770735},"w:w-10":{"etat":"connected","images":5620,"l":640,"h":360,"octets":113684668,"rtt":0.066,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757770738},"w:w-12":{"etat":"connected","images":5858,"l":1280,"h":720,"octets":111727311,"rtt":0.071,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757770739},"w:w-14":{"etat":"connected","images":4959,"l":1280,"h":720,"octets":83131854,"rtt":0.068,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757770740},"w:w-16":{"etat":"connected","images":3124,"l":852,"h":480,"octets":93948677,"rtt":0.068,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757770740},"w:w-18":{"etat":"connected","images":3633,"l":1280,"h":720,"octets":65800625,"rtt":0.065,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757770757},"w:w-20":{"etat":"connected","images":2890,"l":1280,"h":720,"octets":58743061,"rtt":0.044,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757770775}}
+[  304.9s 2026-08-03T11:49:30.911Z] CADENCE NAVIGATEUR (APRÈS ÉVICTION) {
+ "w:w-2": {
+  "images": 256,
+  "secondes": 6.15,
+  "i_par_s": 41.63,
+  "taille": "640x360",
+  "kbps": 5833,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": null
+ },
+ "w:w-4": {
+  "images": 0,
+  "secondes": 6.156,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 117,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-6": {
+  "images": 0,
+  "secondes": 6.149,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 0,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-8": {
+  "images": 0,
+  "secondes": 6.146,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 0,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-10": {
+  "images": 0,
+  "secondes": 6.148,
+  "i_par_s": 0,
+  "taille": "640x360",
+  "kbps": 0,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-12": {
+  "images": 0,
+  "secondes": 6.144,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 0,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-14": {
+  "images": 3,
+  "secondes": 6.144,
+  "i_par_s": 0.49,
+  "taille": "1280x720",
+  "kbps": 58,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-16": {
+  "images": 0,
+  "secondes": 6.143,
+  "i_par_s": 0,
+  "taille": "852x480",
+  "kbps": 58,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-18": {
+  "images": 0,
+  "secondes": 6.157,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 58,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-20": {
+  "images": 0,
+  "secondes": 6.174,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 0,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ }
+}
+[  304.9s 2026-08-03T11:49:30.922Z] APRÈS ÉVICTION : endormies=["w:w-4","w:w-6","w:w-8","w:w-10","w:w-12","w:w-16","w:w-18","w:w-20"] éveillées=["w:w-2","w:w-14"]
+[  305.1s 2026-08-03T11:49:31.127Z] TRANSITIONS (après éviction) 33 ligne(s)
+[
+ {
+  "t": "2026-08-03T11:44:53.733998Z",
+  "s": "w-2",
+  "quoi": "réveil",
+  "duree_ms": 166
+ },
+ {
+  "t": "2026-08-03T11:45:07.672125Z",
+  "s": "w-4",
+  "quoi": "réveil",
+  "duree_ms": 87
+ },
+ {
+  "t": "2026-08-03T11:45:18.067035Z",
+  "s": "w-4",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:45:18.169487Z",
+  "s": "w-4",
+  "quoi": "réveil",
+  "duree_ms": 92
+ },
+ {
+  "t": "2026-08-03T11:45:21.888939Z",
+  "s": "w-6",
+  "quoi": "réveil",
+  "duree_ms": 89
+ },
+ {
+  "t": "2026-08-03T11:45:33.633689Z",
+  "s": "w-6",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:45:33.750926Z",
+  "s": "w-6",
+  "quoi": "réveil",
+  "duree_ms": 106
+ },
+ {
+  "t": "2026-08-03T11:45:38.721536Z",
+  "s": "w-8",
+  "quoi": "réveil",
+  "duree_ms": 101
+ },
+ {
+  "t": "2026-08-03T11:45:55.296626Z",
+  "s": "w-10",
+  "quoi": "réveil",
+  "duree_ms": 99
+ },
+ {
+  "t": "2026-08-03T11:46:11.149904Z",
+  "s": "w-12",
+  "quoi": "réveil",
+  "duree_ms": 102
+ },
+ {
+  "t": "2026-08-03T11:46:20.963570Z",
+  "s": "w-12",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:46:21.077812Z",
+  "s": "w-12",
+  "quoi": "réveil",
+  "duree_ms": 103
+ },
+ {
+  "t": "2026-08-03T11:46:25.360060Z",
+  "s": "w-14",
+  "quoi": "réveil",
+  "duree_ms": 111
+ },
+ {
+  "t": "2026-08-03T11:46:39.271653Z",
+  "s": "w-16",
+  "quoi": "réveil",
+  "duree_ms": 117
+ },
+ {
+  "t": "2026-08-03T11:46:49.308674Z",
+  "s": "w-16",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:46:49.522135Z",
+  "s": "w-16",
+  "quoi": "réveil",
+  "duree_ms": 203
+ },
+ {
+  "t": "2026-08-03T11:46:53.505452Z",
+  "s": "w-2",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:46:53.612063Z",
+  "s": "w-18",
+  "quoi": "réveil",
+  "duree_ms": 145
+ },
+ {
+  "t": "2026-08-03T11:47:09.480786Z",
+  "s": "w-4",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:47:09.592711Z",
+  "s": "w-20",
+  "quoi": "réveil",
+  "duree_ms": 167
+ },
+ {
+  "t": "2026-08-03T11:49:19.011383Z",
+  "s": "w-6",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:49:19.090943Z",
+  "s": "w-2",
+  "quoi": "réveil",
+  "duree_ms": 112
+ },
+ {
+  "t": "2026-08-03T11:49:19.360097Z",
+  "s": "w-20",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:49:19.411924Z",
+  "s": "w-6",
+  "quoi": "réveil",
+  "duree_ms": 126
+ },
+ {
+  "t": "2026-08-03T11:49:19.828679Z",
+  "s": "w-6",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:49:19.968146Z",
+  "s": "w-8",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:49:19.968228Z",
+  "s": "w-12",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:49:19.968278Z",
+  "s": "w-16",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:49:19.968616Z",
+  "s": "w-10",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:49:19.968710Z",
+  "s": "w-18",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:49:19.968728Z",
+  "s": "w-14",
+  "quoi": "dort"
+ },
+ {
+  "t": "2026-08-03T11:49:20.001832Z",
+  "s": "w-4",
+  "quoi": "réveil",
+  "duree_ms": 250
+ },
+ {
+  "t": "2026-08-03T11:49:20.027745Z",
+  "s": "w-4",
+  "quoi": "dort"
+ }
+]
+[  305.3s 2026-08-03T11:49:31.312Z] STATS (AVANT MASQUAGE — relevé 1) {"w:w-2":{"etat":"connected","images":3363,"l":640,"h":360,"octets":103988658,"rtt":0.007,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757771236},"w:w-4":{"etat":"connected","images":3340,"l":1280,"h":720,"octets":88718786,"rtt":0.008,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757771237},"w:w-6":{"etat":"connected","images":5359,"l":1280,"h":720,"octets":120020160,"rtt":0.039,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757771258},"w:w-8":{"etat":"connected","images":5033,"l":1280,"h":720,"octets":122202644,"rtt":0.038,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757771259},"w:w-10":{"etat":"connected","images":5620,"l":640,"h":360,"octets":113684668,"rtt":0.034,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757771259},"w:w-12":{"etat":"connected","images":5858,"l":1280,"h":720,"octets":111727311,"rtt":0.039,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757771260},"w:w-14":{"etat":"connected","images":4959,"l":1280,"h":720,"octets":83131854,"rtt":0.039,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757771260},"w:w-16":{"etat":"connected","images":3124,"l":852,"h":480,"octets":93948677,"rtt":0.034,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757771215},"w:w-18":{"etat":"connected","images":3633,"l":1280,"h":720,"octets":65800625,"rtt":0.039,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757771261},"w:w-20":{"etat":"connected","images":2890,"l":1280,"h":720,"octets":58743061,"rtt":0.044,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757771262}}
+[  311.4s 2026-08-03T11:49:37.426Z] STATS (AVANT MASQUAGE — relevé 2) {"w:w-2":{"etat":"connected","images":3595,"l":640,"h":360,"octets":109005812,"rtt":0.02,"focalisee":true,"cachee":false,"bandeau":null,"horloge":1785757777361},"w:w-4":{"etat":"connected","images":3340,"l":1280,"h":720,"octets":88763666,"rtt":0.014,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757777363},"w:w-6":{"etat":"connected","images":5359,"l":1280,"h":720,"octets":120038112,"rtt":0.061,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757777363},"w:w-8":{"etat":"connected","images":5033,"l":1280,"h":720,"octets":122202644,"rtt":0.06,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757777375},"w:w-10":{"etat":"connected","images":5620,"l":640,"h":360,"octets":113694766,"rtt":0.063,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757777381},"w:w-12":{"etat":"connected","images":5858,"l":1280,"h":720,"octets":111747007,"rtt":0.064,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757777383},"w:w-14":{"etat":"connected","images":4959,"l":1280,"h":720,"octets":83176734,"rtt":0.059,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757777392},"w:w-16":{"etat":"connected","images":3124,"l":852,"h":480,"octets":94038437,"rtt":0.061,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757777401},"w:w-18":{"etat":"connected","images":3633,"l":1280,"h":720,"octets":65845505,"rtt":0.061,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757777407},"w:w-20":{"etat":"connected","images":2890,"l":1280,"h":720,"octets":58765501,"rtt":0.026,"focalisee":false,"cachee":true,"bandeau":null,"horloge":1785757777407}}
+[  311.5s 2026-08-03T11:49:37.429Z] CADENCE NAVIGATEUR (AVANT MASQUAGE) {
+ "w:w-2": {
+  "images": 232,
+  "secondes": 6.125,
+  "i_par_s": 37.88,
+  "taille": "640x360",
+  "kbps": 6553,
+  "etat": "connected",
+  "focalisee": true,
+  "bandeau": null
+ },
+ "w:w-4": {
+  "images": 0,
+  "secondes": 6.126,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 59,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-6": {
+  "images": 0,
+  "secondes": 6.105,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 24,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-8": {
+  "images": 0,
+  "secondes": 6.116,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 0,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-10": {
+  "images": 0,
+  "secondes": 6.122,
+  "i_par_s": 0,
+  "taille": "640x360",
+  "kbps": 13,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-12": {
+  "images": 0,
+  "secondes": 6.123,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 26,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-14": {
+  "images": 0,
+  "secondes": 6.132,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 59,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-16": {
+  "images": 0,
+  "secondes": 6.186,
+  "i_par_s": 0,
+  "taille": "852x480",
+  "kbps": 116,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-18": {
+  "images": 0,
+  "secondes": 6.146,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 58,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ },
+ "w:w-20": {
+  "images": 0,
+  "secondes": 6.145,
+  "i_par_s": 0,
+  "taille": "1280x720",
+  "kbps": 29,
+  "etat": "connected",
+  "focalisee": false,
+  "bandeau": null
+ }
+}
+[  311.5s 2026-08-03T11:49:37.429Z] !! aucune page éveillée à masquer
+[  311.5s 2026-08-03T11:49:37.432Z] SYNTHÈSE C3 (délais de réveil, côté navigateur) [
+ {
+  "geste": "focus sur une endormie",
+  "demande": "2026-08-03T11:49:18.792Z",
+  "nom": "w:w-2",
+  "ms": 375,
+  "depart": 3002,
+  "arrivee": 3007
+ }
+]
+[  311.7s 2026-08-03T11:49:37.630Z] MARQUEURS (FIN) {"lignes":1553,"cloture":0,"capteur_lance":1,"capteur_relance":0,"attachee_capteur":10,"endormie":16,"reveillee":17,"reveil_refuse":0,"visibilite_refusee":0,"taille_changee":103,"taille_refusee":0,"refus_debit":0,"sortie_creee":10,"sortie_rendue":0,"creation_refusee":0,"trop_de_noms":0,"reouverture":44,"mutex_abandonne":44,"enfant_lance":10,"enfant_termine":0,"erreurs":0}
+[  311.8s 2026-08-03T11:49:37.728Z] ÉTAT SHELL (FIN) liste=[_/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte  | _/C:/dev/anim-d4.html — ouverte ] statut="« C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE » n'a pas pu s'ouvrir : plus aucune sortie virtuelle disponible."
+[  311.8s 2026-08-03T11:49:37.734Z]   pages d'application ouvertes (10) : http://192.168.3.1:5173/?session=w-2 , http://192.168.3.1:5173/?session=w-4 , http://192.168.3.1:5173/?session=w-6 , http://192.168.3.1:5173/?session=w-8 , http://192.168.3.1:5173/?session=w-10 , http://192.168.3.1:5173/?session=w-12 , http://192.168.3.1:5173/?session=w-14 , http://192.168.3.1:5173/?session=w-16 , http://192.168.3.1:5173/?session=w-18 , http://192.168.3.1:5173/?session=w-20
+[  319.7s 2026-08-03T11:49:45.683Z] --- fenêtres VM (fin de recette) ---
+5712	chrome	0x18014a	1280x720+10080+0	Anim 7
+27656	chrome	0x502bc	1280x720+8800+0	Anim 6
+28048	chrome	0x304f8	1280x720+7520+0	Anim 5
+33136	chrome	0x380392	1280x720+4960+0	Anim 3
+33780	chrome	0x204de	1280x720+6240+0	Anim 4
+34992	chrome	0xb013e	1280x720+11360+0	Anim 8
+35280	chrome	0x2080052	1280x720+150+150	Anim 11
+35816	chrome	0x603be	1280x720+2400+0	Anim 1
+35852	chrome	0xf027a	1280x720+13920+0	Anim 10
+36440	chrome	0x20498	1280x720+3680+0	Anim 2
+39872	chrome	0x4040c	1280x720+12640+0	Anim 9
+[  320.0s 2026-08-03T11:49:46.000Z] SURVIE VM (fin de recette) virsh="en cours d’exécution" acces_partage=OUI
+[  320.0s 2026-08-03T11:49:46.002Z] SYNTHÈSE C2 {"taille_changee":103,"taille_refusee":0,"refus_debit":0}
+[  320.1s 2026-08-03T11:49:46.073Z] journal copié dans /tmp/agent-encours-d5.log
