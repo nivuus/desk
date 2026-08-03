@@ -86,6 +86,17 @@ impl Controleur {
     ///   saturer un lien qui vient précisément de devenir muet. La remontée
     ///   n'arrive qu'à la prochaine observation utilisable, en passant par
     ///   `observer` et son hystérésis.
+    ///
+    /// ⚠️ **Ce `min` est un cliquet, et il n'a de sens que si l'appelant
+    /// continue d'ÉMETTRE** (I1, revue finale de branche du sous-bloc D6). La
+    /// seule chose qui le desserre est `observer`, alimenté par le bras
+    /// `MediaEgressStats` de str0m, que str0m n'émet pas pour un flux qui n'a
+    /// rien envoyé (`send_stats.rs`, `if self.bytes == 0 { return; }`). Passer
+    /// ici le plancher d'une fenêtre ENDORMIE — qui n'émet rien et n'a plus
+    /// d'encodeur — y figerait donc `video_bitrate_bps` pour le restant de la
+    /// session : le plafond remonterait au réveil, pas le débit.
+    /// `Session::appliquer_part` s'en garde, et c'est chez elle que la garde
+    /// doit rester : ce contrôleur n'a pas à connaître la notion de sommeil.
     pub fn changer_plafond(&mut self, plafond_bps: u32) -> Decision {
         self.config.plafond_bps = plafond_bps;
         self.courant.video_bitrate_bps = if self.premiere_estimation_a.is_none() {

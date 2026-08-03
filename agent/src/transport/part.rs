@@ -27,22 +27,61 @@ impl Session {
     /// Applique une part du budget de session accordée par le capteur
     /// (sous-bloc D6).
     ///
-    /// **Deux applications, et la seconde n'est pas la moins importante.**
-    /// `changer_plafond` borne ce que le contrôleur décidera d'encoder ;
-    /// `set_desired_bitrate` borne ce que le sous-système BWE **sonde**. Sans
-    /// la seconde, N fenêtres continueraient de viser chacune le lien entier
-    /// en injectant du trafic de sondage — la cause même du défaut que D6
-    /// corrige — même si aucune n'encodait au-delà de sa part.
+    /// **Deux applications, et elles n'ont pas la même portée.**
+    /// `changer_plafond` borne ce que le contrôleur décidera d'encoder — c'est
+    /// par lui que la part agit réellement, en faisant descendre l'échelle
+    /// d'un barreau, donc la RÉSOLUTION. `set_desired_bitrate` borne ce que le
+    /// sous-système BWE **sonde** : sans elle, N fenêtres viseraient chacune le
+    /// lien entier en injectant du trafic de sondage, ce qui est excessif en
+    /// principe même si aucune n'encodait au-delà de sa part.
+    ///
+    /// ⚠️ **Ne pas relire cette seconde application comme le remède au défaut
+    /// que D6 corrige.** La recette de la branche a RÉFUTÉ la prémisse dont
+    /// elle était tirée : le pont porte ≥ 1,44 Gb/s et `packetsLost` vaut 0 aux
+    /// onze exécutions — **le lien n'a jamais été le goulot**, donc le sondage
+    /// cumulé ne saturait rien et n'était lu comme de la congestion par
+    /// personne. Ce qui sature est le **décodeur du navigateur**, et le seul
+    /// levier mesuré efficace contre lui est le nombre de pixels
+    /// (`docs/superpowers/plans/2026-08-03-multifenetres-partage-capacite-resultats.md`,
+    /// §1 et §3.6). Le mécanisme reste juste, sa justification a changé.
+    ///
+    /// **Une part d'ENDORMIE ne va pas au contrôleur**, et c'est la seule
+    /// asymétrie de cette fonction. Le plancher `PART_DORMANTE_BPS`
+    /// (256 kb/s) est très en dessous du barreau le plus bas de l'échelle
+    /// (691 200 bps à 1280×720/60) : le passer à `changer_plafond` poserait
+    /// `video_bitrate_bps = 256_000` par son `min`, et **rien ne le
+    /// remonterait au réveil** — le plafond remonterait, pas le débit, car la
+    /// seule réparation est `Controleur::observer`, appelé depuis le bras
+    /// `MediaEgressStats`, que str0m n'émet jamais pour un flux qui n'a rien
+    /// envoyé (`send_stats.rs`, `if self.bytes == 0 { return; }`). Une endormie
+    /// n'envoie rien, par définition. Et le remède serait de toute façon sans
+    /// objet : une endormie a déjà relâché son encodeur (D5), lui imposer un
+    /// plafond d'ENCODAGE ne borne rien qui existe. Seul le sondage, lui, a
+    /// encore un sens — sa `PeerConnection` vit.
+    ///
+    /// L'état de sommeil est LU (`VideoSource::est_endormie`), jamais deviné :
+    /// le déduire d'une comparaison de la part à `PART_DORMANTE_BPS`
+    /// couplerait deux processus par une valeur — un couplage qui se romprait
+    /// en silence le jour où l'un des deux changerait de constante.
     pub(super) fn appliquer_part(&mut self, bps: u32) {
-        let decision = self.congestion.changer_plafond(bps);
+        let endormie = self.source.est_endormie();
+        if !endormie {
+            self.pending_decision = Some(self.congestion.changer_plafond(bps));
+        }
         self.rtc.bwe().set_desired_bitrate(Bitrate::bps(bps as u64));
         // `session` : sans ce champ la trace n'est PAS attribuable. Tous les
         // enfants héritent le même `agent.log` (stdout partagé depuis D4), et
         // la somme des parts accordées — le critère ③ de la recette — se
         // calculerait alors sur un multiensemble de nombres anonymes. Même
         // motif et même champ que `cadence de la piste vidéo (côté enfant)`.
-        tracing::info!(session = %self.session_id, part_bps = bps, "part de budget appliquee");
-        self.pending_decision = Some(decision);
+        // `endormie` : sans lui, une part appliquée au seul sondage se lit
+        // dans le journal exactement comme une part appliquée aux deux.
+        tracing::info!(
+            session = %self.session_id,
+            part_bps = bps,
+            endormie,
+            "part de budget appliquee"
+        );
     }
 }
 
@@ -55,9 +94,106 @@ mod tests {
     use str0m::Event;
 
     use super::*;
+    use crate::capteur::repartiteur::PART_DORMANTE_BPS;
     use crate::congestion;
+    use crate::h264::AccessUnit;
+    use crate::source::VideoSource;
     use crate::transport::fixtures;
     use crate::transport::fixtures::stats_video;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
+
+    /// Source factice dont l'état de sommeil se pilote depuis le test —
+    /// exactement ce que `SourceDistante` expose au vu des `Sommeil` poussés
+    /// par le capteur, sans dépendre du capteur.
+    struct SourceEndormable {
+        inner: crate::source::FileSource,
+        endormie: Arc<AtomicBool>,
+    }
+
+    impl VideoSource for SourceEndormable {
+        fn next_frame(&mut self) -> Option<AccessUnit> {
+            self.inner.next_frame()
+        }
+        fn dimensions(&self) -> (u32, u32) {
+            self.inner.dimensions()
+        }
+        fn est_endormie(&self) -> bool {
+            self.endormie.load(Ordering::SeqCst)
+        }
+    }
+
+    /// Le défaut de fond relevé par la revue finale de branche (I1), et le
+    /// seul test qui le voie : **le plafond remonte au réveil, pas le débit.**
+    ///
+    /// La chaîne, entièrement dans le code : `PART_DORMANTE_BPS` vaut 256 kb/s,
+    /// `changer_plafond` fait `video_bitrate_bps.min(plafond)` dès qu'une
+    /// estimation a existé, et rien ne défait ce `min` — la seule réparation
+    /// serait `Controleur::observer`, appelé depuis le bras `MediaEgressStats`
+    /// que str0m n'émet pas pour un flux qui n'a rien envoyé. Une endormie
+    /// n'envoie rien. Ce n'est pas un cas limite : c'est l'état de CHAQUE
+    /// réveil.
+    ///
+    /// Le régime importe : il faut une estimation RÉELLE avant la part
+    /// dormante, sinon `changer_plafond` fait suivre le débit au plafond dans
+    /// les deux sens (régime « jamais aucune estimation ») et le défaut ne se
+    /// manifeste pas — le test serait vert par construction. Même précaution
+    /// que `une_part_qui_remonte_ne_releve_pas_le_debit_au_dela_de_l_estimation`.
+    #[test]
+    fn une_part_dormante_ne_borne_pas_le_controleur_et_le_reveil_est_suivi() {
+        let mid = Mid::from("0");
+        let endormie = Arc::new(AtomicBool::new(false));
+        let source = Box::new(SourceEndormable {
+            inner: fixtures::video_test_source(),
+            endormie: endormie.clone(),
+        });
+        let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
+            .expect("session");
+        session.video_mid = Some(mid);
+
+        session.handle_event(
+            Event::EgressBitrateEstimate(BweKind::Twcc(Bitrate::bps(8_000_000))),
+            &mut |_| {},
+            &mut |_| {},
+        );
+        session.handle_event(Event::MediaEgressStats(stats_video(mid)), &mut |_| {}, &mut |_| {});
+        assert_eq!(
+            session.congestion.courant().adaptation,
+            congestion::Adaptation::Active,
+            "précondition : une estimation réelle a bien été observée, donc `changer_plafond` BORNE"
+        );
+        let part_eveillee = 1_333_333; // 12 Mb/s partagés à huit fenêtres.
+        assert!(
+            session.congestion.courant().video_bitrate_bps > part_eveillee,
+            "précondition : l'estimation laisse de la place au-dessus de la part d'éveillée, \
+             sans quoi l'assertion finale ne prouverait rien"
+        );
+
+        // L'observation ci-dessus a elle-même posé une décision en attente :
+        // la vider ici est ce qui rend l'assertion suivante lisible — sans
+        // cela, elle constaterait un `Some` hérité et non celui qu'on cherche.
+        session.pending_decision = None;
+
+        // La fenêtre s'endort : le capteur pousse le plancher, très en dessous
+        // du barreau le plus bas de l'échelle.
+        endormie.store(true, Ordering::SeqCst);
+        session.appliquer_part(PART_DORMANTE_BPS);
+        assert!(
+            session.pending_decision.is_none(),
+            "une part d'endormie ne pose aucune décision : il n'y a plus d'encodeur à régler"
+        );
+
+        // Elle se réveille, et reçoit sa part d'éveillée.
+        endormie.store(false, Ordering::SeqCst);
+        session.appliquer_part(part_eveillee);
+
+        assert_eq!(
+            session.congestion.courant().video_bitrate_bps,
+            part_eveillee,
+            "le débit doit suivre la part de l'ÉVEILLÉE : avant le remède, le `min` du plancher \
+             dormant le figeait à {PART_DORMANTE_BPS} bps pour toute la vie de la session"
+        );
+    }
 
     #[test]
     fn une_part_recue_borne_le_plafond_du_controleur() {
