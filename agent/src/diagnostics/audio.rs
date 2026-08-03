@@ -46,7 +46,7 @@ pub(super) fn executer_process_loopback(pid_texte: &str) -> Result<()> {
     let pid: u32 = pid_texte
         .parse()
         .context("PROCESS_LOOPBACK_PROBE doit être un identifiant de processus")?;
-    match wasapi::probe_process_loopback(pid) {
+    match wasapi::process_loopback::probe_process_loopback(pid) {
         Ok(rapport) => tracing::info!(pid, rapport, "sonde process loopback"),
         Err(e) => tracing::warn!(pid, erreur = %e, "sonde process loopback échouée"),
     }
