@@ -19,6 +19,7 @@
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Result};
+use proto::control::AgentControl;
 use str0m::Input;
 
 use super::Session;
@@ -127,6 +128,27 @@ impl Session {
         //     l'image des autres branches. Corps dans `redimensionnement`.
         if let Some((width, height)) = self.pending_resize.take() {
             self.appliquer_redimensionnement(width, height);
+            return Ok(Tick::Continue);
+        }
+
+        // a1bis) Visibilité en attente. Après le redimensionnement et avant la
+        //        vidéo, pour la même raison que lui : la décision peut
+        //        relâcher un encodeur côté capteur, ce qui est long, et ne
+        //        mute jamais `Rtc`.
+        if let Some((visible, focalisee)) = self.pending_visibility.take() {
+            if let Err(erreur) = self.source.set_awake(visible, focalisee) {
+                // Non fatal : perdre l'arbitrage n'est pas perdre la session.
+                tracing::warn!(%erreur, visible, focalisee, "visibilité refusée par le capteur");
+            }
+            return Ok(Tick::Continue);
+        }
+
+        // a1ter) Un changement de sommeil à annoncer au navigateur. Interrogé
+        //        à chaque tour, mais `sommeil_a_annoncer` consomme : aucun
+        //        message n'est jamais réémis, donc cette branche ne peut pas
+        //        inonder le canal de contrôle même à ~100 Hz.
+        if let Some((endormie, raison)) = self.source.sommeil_a_annoncer() {
+            self.queue_control(AgentControl::asleep(endormie, &raison));
             return Ok(Tick::Continue);
         }
 

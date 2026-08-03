@@ -179,26 +179,47 @@ impl Session {
         } else {
             match std::str::from_utf8(&data.data).map(serde_json::from_str::<ClientControl>) {
                 Ok(Ok(message)) => {
-                    // Le redimensionnement ne s'applique pas ici : ce code
-                    // s'exécute pendant le drainage de `poll_output`, et
-                    // reconstruire la chaîne d'encodage y serait long et
-                    // romprait l'invariant de drainage de str0m (une seule
-                    // mutation de `Rtc` par appel). On mémorise seulement la
-                    // demande la plus récente ; `act_on_timeout` l'applique à
-                    // son tour, comme une étape à part entière.
-                    //
-                    match &message {
-                        ClientControl::Resize { width, height, .. } => {
-                            self.pending_resize = Some((*width, *height));
-                        }
-                        ClientControl::Visibility { .. } => {}
-                    }
+                    self.memoriser_controle(&message);
                     on_control(message);
                 }
                 Ok(Err(e)) => tracing::warn!(erreur = %e, "message de contrôle invalide"),
                 Err(e) => tracing::warn!(erreur = %e, "contrôle non UTF-8"),
             }
         }
+    }
+
+    /// Mémorise un `ClientControl` reçu, sans jamais l'appliquer sur-le-champ.
+    ///
+    /// Ce code s'exécute pendant le drainage de `poll_output` : reconstruire
+    /// la chaîne d'encodage ou relâcher un encodeur y serait long et romprait
+    /// l'invariant de drainage de str0m (une seule mutation de `Rtc` par
+    /// appel). On mémorise seulement la demande la plus récente ;
+    /// `act_on_timeout` l'applique à son tour, comme une étape à part
+    /// entière.
+    fn memoriser_controle(&mut self, message: &ClientControl) {
+        match message {
+            ClientControl::Resize { width, height, .. } => {
+                self.pending_resize = Some((*width, *height));
+            }
+            ClientControl::Visibility { visible, focused, .. } => {
+                self.pending_visibility = Some((*visible, *focused));
+            }
+        }
+    }
+
+    /// Point d'entrée `#[cfg(test)]` qui exerce `memoriser_controle` sans
+    /// passer par un `str0m::channel::ChannelData` réel — str0m interdit
+    /// délibérément sa construction hors de son propre crate (voir
+    /// `ChannelId`, « Deliberately not Deref or From to avoid this Id being
+    /// created outside of this module »). Les tests d'intégration existants
+    /// de ce module contournent cela en montant un second `Rtc` str0m en
+    /// pair local ; cette voie-ci est plus légère pour un test qui ne vérifie
+    /// que la mémorisation elle-même.
+    #[cfg(test)]
+    pub(super) fn dispatch_controle_de_test(&mut self, json: &str) {
+        let message: ClientControl =
+            serde_json::from_str(json).expect("json de test valide dans dispatch_controle_de_test");
+        self.memoriser_controle(&message);
     }
 }
 
@@ -213,6 +234,27 @@ mod tests {
     use crate::h264::AccessUnit;
     use crate::source::VideoSource;
     use crate::transport::fixtures;
+
+    /// `ClientControl::Visibility` reçu doit être mémorisé dans
+    /// `pending_visibility`, pas appliqué sur-le-champ.
+    ///
+    /// Même raison que pour `Resize` : ce code court pendant le drainage de
+    /// `poll_output`, et relâcher un encodeur y romprait l'invariant d'une
+    /// seule mutation de `Rtc` par appel. `dispatch_controle_de_test` est un
+    /// point d'entrée `#[cfg(test)]` qui court-circuite `ChannelData` (str0m
+    /// interdit délibérément sa construction hors du crate) tout en exerçant
+    /// exactement le même chemin de mémorisation que `dispatch_channel_data`.
+    #[test]
+    fn un_message_de_visibilite_est_memorise_et_non_applique_sur_le_champ() {
+        let source = Box::new(fixtures::video_test_source());
+        let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
+            .expect("session");
+
+        let json = r#"{"type":"visibility","v":3,"visible":false,"focused":false}"#;
+        session.dispatch_controle_de_test(json);
+
+        assert_eq!(session.pending_visibility, Some((false, false)));
+    }
 
     /// Preuve d'intégration que `Event::KeyframeRequest` (émis par str0m
     /// quand le pair envoie un PLI/FIR RTCP — ce que fait un navigateur après

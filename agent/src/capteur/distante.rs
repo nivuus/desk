@@ -98,15 +98,6 @@ impl SourceDistante {
     pub fn vieillir_pour_test(&mut self, ecart: std::time::Duration) {
         self.fenetre.vieillir_pour_test(ecart);
     }
-
-    /// Rend le changement de sommeil en attente, et le consomme.
-    ///
-    /// **Une annonce ne se répète pas** : la boucle de transport l'interroge à
-    /// chaque tour, et réémettre le même message inonderait le canal de
-    /// contrôle.
-    pub fn sommeil_a_annoncer(&mut self) -> Option<(bool, String)> {
-        self.sommeil.take()
-    }
 }
 
 impl VideoSource for SourceDistante {
@@ -226,6 +217,15 @@ impl VideoSource for SourceDistante {
 
     fn set_awake(&mut self, visible: bool, focalisee: bool) -> Result<()> {
         self.commander_simple(VersCapteur::Visibilite { visible, focalisee })
+    }
+
+    /// Rend le changement de sommeil en attente, et le consomme.
+    ///
+    /// **Une annonce ne se répète pas** : la boucle de transport l'interroge à
+    /// chaque tour, et réémettre le même message inonderait le canal de
+    /// contrôle.
+    fn sommeil_a_annoncer(&mut self) -> Option<(bool, String)> {
+        self.sommeil.take()
     }
 }
 
