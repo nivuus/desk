@@ -1,10 +1,15 @@
 // Plein écran et Keyboard Lock.
 //
 // Le §4.1 du cadrage jeux fait de Windows le maître du plein écran, dans un
-// sens unique. Ce module n'implémente QUE le plein écran demandé par
-// l'utilisateur, qui ne touche pas à l'état de la fenêtre Windows : le
-// chantier D ajoutera le sens Windows → navigateur par-dessus, sans rien
-// défaire ici.
+// sens UNIQUE : c'est Windows qui décide, le navigateur qui suit, jamais
+// l'inverse. Ce module porte les deux entrées vers le plein écran — le
+// bouton de bascule (`attachFullscreen`, geste local de l'utilisateur) et
+// l'armement déclenché par le message `fullscreen` que l'agent relaie pour
+// suivre l'état de la fenêtre Windows (`armerPleinEcran` /
+// `armerPleinEcranAuDOM`, câblés dans `main.ts` sur `AgentControl.fullscreen`)
+// — mais ni l'une ni l'autre ne remonte quoi que ce soit vers Windows : le
+// navigateur ne force jamais l'état de la fenêtre distante. C'est ce qui rend
+// toute oscillation impossible.
 //
 // Keyboard Lock n'est pas un confort : Échap est à la fois la touche de
 // sortie du plein écran navigateur et la touche de menu pause de presque tous
