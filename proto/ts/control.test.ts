@@ -101,4 +101,11 @@ describe('protocole de contrôle', () => {
             v: CONTROL_VERSION, type: 'asleep', asleep: true, reason: 'evincee',
         });
     });
+
+    it('analyse un message de plein écran', () => {
+        const message = parseAgentControl(
+            JSON.stringify({ v: CONTROL_VERSION, type: 'fullscreen', active: true }),
+        );
+        expect(message).toEqual({ v: CONTROL_VERSION, type: 'fullscreen', active: true });
+    });
 });

@@ -103,6 +103,7 @@ impl Session {
             AgentControl::Rumble { .. } => "rumble",
             AgentControl::Capabilities { .. } => "capabilities",
             AgentControl::Link { .. } => "link",
+            AgentControl::Fullscreen { .. } => "fullscreen",
         };
         let json = serde_json::to_string(&message)?;
         if let Some(mut channel) = self.rtc.channel(id) {

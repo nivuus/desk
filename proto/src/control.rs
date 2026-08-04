@@ -162,6 +162,19 @@ pub enum AgentControl {
         version: u8,
         gamepad: bool,
     },
+    /// L'application Windows est passée en plein écran, ou en est sortie.
+    ///
+    /// **Le client ARME, il n'agit pas** : `requestFullscreen()` exige une
+    /// activation utilisateur transitoire qu'un message de canal de données ne
+    /// fournit pas. Voir `client/src/fullscreen.ts`.
+    ///
+    /// Le sens est UNIQUE — le navigateur ne force jamais l'état de la fenêtre
+    /// Windows —, et c'est ce qui rend toute oscillation impossible.
+    Fullscreen {
+        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        version: u8,
+        active: bool,
+    },
     /// État du lien réseau, émis à chaque changement de décision
     /// d'adaptation — donc rarement, pas à chaque seconde.
     Link {
@@ -203,6 +216,10 @@ impl AgentControl {
             asleep,
             reason: reason.to_string(),
         }
+    }
+
+    pub fn fullscreen(active: bool) -> AgentControl {
+        AgentControl::Fullscreen { version: CONTROL_VERSION, active }
     }
 
     pub fn rumble(left: u8, right: u8) -> Self {
@@ -366,6 +383,22 @@ mod tests {
         assert!(json.starts_with(r#"{"type":"asleep""#), "obtenu : {json}");
         assert!(json.contains(r#""asleep":true"#), "obtenu : {json}");
         assert!(json.contains(r#""reason":"evincee""#), "obtenu : {json}");
+    }
+
+    #[test]
+    fn le_plein_ecran_se_serialise_en_kebab_case_avec_sa_version() {
+        let json = serde_json::to_string(&AgentControl::fullscreen(true)).unwrap();
+        assert!(json.contains(r#""type":"fullscreen""#), "{json}");
+        assert!(json.contains(r#""active":true"#), "{json}");
+        assert!(json.contains(r#""v":"#), "{json}");
+    }
+
+    #[test]
+    fn le_plein_ecran_fait_l_aller_retour() {
+        let origine = AgentControl::fullscreen(false);
+        let json = serde_json::to_string(&origine).unwrap();
+        let relu: AgentControl = serde_json::from_str(&json).unwrap();
+        assert_eq!(relu, origine);
     }
 
     #[test]
