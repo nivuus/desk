@@ -230,6 +230,15 @@ impl Fenetre {
         // Copiée une fois : les traces la citent à chaque tour, et la boucle
         // emprunte `self` en mutable pendant tout ce temps.
         let session = self.session.clone();
+
+        // Consignation n°2 du sous-bloc D6, portée ici : tous les enfants et le
+        // capteur écrivent dans le MÊME `agent.log` (stdout hérité depuis D4).
+        // Une trace sans `session` y est un nombre dans un multiensemble
+        // anonyme, et D6 a dû ajouter ce champ à deux traces EN PLEINE RECETTE.
+        // Un span posé une fois sur le fil de fenêtre le donne à tout ce qui
+        // s'émet en dessous, y compris aux `warn!` des modules appelés.
+        let _span = tracing::info_span!("fenetre", session = %session).entered();
+
         tracing::info!(
             %session,
             sortie = %self.parametres.sortie,
