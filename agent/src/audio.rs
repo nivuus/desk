@@ -45,6 +45,61 @@ pub trait AudioSource {
     /// Sans effet par défaut : une source qui n'est pas arbitrée émet
     /// toujours.
     fn set_actif(&mut self, _actif: bool) {}
+
+    /// Vrai quand la capture a définitivement cessé et qu'aucun ordre ne la
+    /// fera repartir.
+    ///
+    /// **Existe pour que les traces cessent de mentir.** `set_actif` réussit
+    /// toujours — il n'écrit qu'un atomique —, et sans ce témoin
+    /// `appliquer_audio` journaliserait `actif=true` pour une fenêtre qui ne
+    /// produira plus jamais un paquet. Faux par défaut : une source qui n'a
+    /// pas de fil de capture n'a rien qui puisse mourir.
+    fn capture_morte(&self) -> bool {
+        false
+    }
+}
+
+/// Nombre d'erreurs de lecture consécutives tolérées par le fil de capture
+/// avant qu'il n'abandonne définitivement.
+///
+/// **Une erreur isolée ne doit pas condamner tout un groupe de PID.** Le fil
+/// de capture est le seul producteur de son de sa fenêtre, et sa mort est
+/// sans retour : le capteur continue de tenir cette session pour porteuse de
+/// son groupe, donc sa voisine reste muette et n'est jamais promue. Or les
+/// causes connues d'un refus de lecture WASAPI — changement de périphérique,
+/// redémarrage du service audio, changement de format — sont **transitoires**.
+/// On retente donc, avec la temporisation croissante ci-dessous, et l'on
+/// n'abandonne qu'après `LECTURES_ECHOUEES_MAX` échecs d'affilée.
+pub const LECTURES_ECHOUEES_MAX: u32 = 10;
+
+/// Bornes de la temporisation appliquée entre deux tentatives de lecture.
+///
+/// La base vaut l'intervalle de sondage du fil de capture : au premier échec,
+/// retenter ne coûte pas plus cher qu'un tour de boucle normal. Le plafond
+/// évite qu'une rafale d'erreurs rendues *immédiatement* — le cas qui compte,
+/// `read()` n'attendant alors pas son délai — ne tourne en boucle serrée.
+const REPRISE_LECTURE_BASE: std::time::Duration = std::time::Duration::from_millis(5);
+const REPRISE_LECTURE_MAX: std::time::Duration = std::time::Duration::from_millis(200);
+
+/// Temporisation à observer après `consecutives` erreurs de lecture d'affilée :
+/// croissance exponentielle bornée (5, 10, 20, ... jusqu'à
+/// `REPRISE_LECTURE_MAX`).
+///
+/// Même forme que `transport::socket::recv_error_backoff`, dont c'est le
+/// précédent — à ceci près que cette fonction-ci vit dans un module sans
+/// `cfg`, donc éprouvable sur l'hôte, là où son appelant
+/// (`windows_audio.rs`) ne l'est pas.
+///
+/// `consecutives = 0` n'a pas de sens (aucune erreur, donc aucune attente) et
+/// rend la base, comme `consecutives = 1`.
+pub fn temporisation_de_reprise(consecutives: u32) -> std::time::Duration {
+    // Borner l'exposant AVANT le décalage : `1u32 << 32` déborderait
+    // silencieusement, et `saturating_mul` n'opère que sur la `Duration`, pas
+    // sur l'opérande entier qu'on lui passe.
+    let exposant = consecutives.saturating_sub(1).min(31);
+    REPRISE_LECTURE_BASE
+        .saturating_mul(1u32 << exposant)
+        .min(REPRISE_LECTURE_MAX)
 }
 
 /// Tampon circulaire borné, partagé entre le fil de capture et la boucle de
@@ -110,6 +165,39 @@ impl PacketRing {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // -- temporisation de reprise de lecture --------------------------------
+
+    #[test]
+    fn la_temporisation_de_reprise_croit_puis_se_borne() {
+        // Sans croissance, une rafale d'erreurs rendues immédiatement
+        // tournerait en boucle serrée ; sans borne, la dixième tentative
+        // arriverait des secondes trop tard — et c'est elle qui décide de la
+        // mort du fil.
+        let un = temporisation_de_reprise(1);
+        let deux = temporisation_de_reprise(2);
+        let trois = temporisation_de_reprise(3);
+        assert!(un < deux && deux < trois, "{un:?} {deux:?} {trois:?}");
+        assert_eq!(un, REPRISE_LECTURE_BASE);
+        assert_eq!(temporisation_de_reprise(0), REPRISE_LECTURE_BASE);
+
+        assert_eq!(temporisation_de_reprise(u32::MAX), REPRISE_LECTURE_MAX);
+        assert!(temporisation_de_reprise(LECTURES_ECHOUEES_MAX) <= REPRISE_LECTURE_MAX);
+    }
+
+    #[test]
+    fn la_tolerance_totale_reste_de_l_ordre_de_la_seconde() {
+        // La borne qui compte n'est pas le nombre d'essais mais le temps
+        // qu'ils prennent : trop court, un redémarrage du service audio tue
+        // la fenêtre ; trop long, une capture morte reste annoncée vivante.
+        let totale: std::time::Duration =
+            (1..=LECTURES_ECHOUEES_MAX).map(temporisation_de_reprise).sum();
+        assert!(
+            totale >= std::time::Duration::from_millis(500)
+                && totale <= std::time::Duration::from_secs(3),
+            "tolérance totale hors bornes : {totale:?}"
+        );
+    }
 
     fn paquet(pts_48k: u64) -> AudioPacket {
         AudioPacket {

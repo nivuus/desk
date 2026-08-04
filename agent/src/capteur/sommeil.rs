@@ -243,9 +243,21 @@ pub fn inscrire(session: &str, pid: u32) -> Receiver<Message> {
         garde.derniers_audio.remove(session);
     }
     garde.pids.insert(session.to_string(), pid);
-    // Le rang d'arrivée n'est posé qu'à la PREMIÈRE inscription : un
-    // rattachement ne doit pas faire perdre à la fenêtre son ancienneté au
-    // sein de son groupe de PID.
+    // Le rang d'arrivée n'est posé que si la session n'en a pas déjà un.
+    //
+    // ⚠️ **La portée réelle est plus étroite que l'intention** (F6, revue
+    // finale de branche du sous-bloc D7). L'intention est qu'un rattachement
+    // ne fasse pas perdre à la fenêtre son ancienneté au sein de son groupe de
+    // PID — mais `oublier` retire `arrivees` ET `derniers_focus`, et sur un
+    // rattachement ORDINAIRE le `retirer` du fil de fenêtre mort court AVANT
+    // que l'enfant ne se reconnecte : les deux tables sont alors déjà vides,
+    // et la garde ci-dessous ne retient rien. Elle ne mord que dans la fenêtre
+    // de course où l'inscription neuve précède le retrait de l'ancienne.
+    //
+    // Retenir ces tables pendant un délai de grâce serait le remède, mais
+    // c'est un changement de conception du registre — à cadrer, pas à
+    // improviser : la même identité par NOM porte déjà une course connue,
+    // consignée pour le sous-bloc suivant.
     if !garde.arrivees.contains_key(session) {
         garde.horloge += 1;
         let rang = garde.horloge;

@@ -245,6 +245,29 @@ sous-bloc.
    bénin, indiscernable du défaut que le contrôle existe pour révéler — le piège « un contrôle qui se
    déclenche trop tôt ne contrôle rien », rejoué sur un contrôle écrit pour l'éviter.
 
+❌ **Un TROISIÈME défaut de ce même contrôle a été trouvé après coup, par la revue finale de branche
+(F1), et il annule la valeur des deux premiers : la condition était INSATISFIABLE.** Dans
+`windows_audio.rs`, le bloc `REPORT_INTERVAL` vivait **après** le `if !emettait { … continue; }` de la
+branche muette. La trace n'était donc atteignable que quand `emettait` valait vrai, et son champ
+`actif` valait **structurellement `true`** : `B` était **toujours égal** à `A`, et « le second vaut
+zéro alors que le premier ne le vaut pas » ne pouvait **jamais** se produire. Le défaut que ce contrôle
+existe pour révéler — plus aucune fenêtre ne porte le son — rend `A = 0, B = 0`, que le point 3
+ci-dessus classe **bénin** : un opérateur lisait 0/0 et concluait correctement que rien n'allait mal,
+dans l'état exact où tout allait mal.
+
+**Que ce défaut ait survécu à la conception, à l'implémentation, à treize revues par tâche ET à
+l'exécution du contrôle lui-même tient à une seule chose : personne n'a vérifié que le contrôle
+POUVAIT échouer.** Les sessions de la recette duraient toutes moins de 30 s — la ligne n'a jamais été
+émise, donc le point 2 (les séquences ANSI) a été trouvé sur un **autre** journal, et le fait que
+`actif` ne prenne qu'une seule valeur ne pouvait pas se voir. C'est le piège du dépôt, ⚠️ **rejoué
+DEUX fois de suite sur le même paragraphe** : la première fois sur la durée de session (point 3),
+la seconde sur l'atteignabilité de la trace.
+
+**Corrigé (F1)** : le bloc a été remonté au-dessus du gate ; une fenêtre muette rapporte elle aussi
+toutes les 30 s, avec `actif=false`. Les deux réserves des points 2 et 3 **restent entières** — le
+`sed` demeure obligatoire, et le contrôle demeure muet sous 30 s. La grille de lecture à jour vit au §6
+de la conception.
+
 ## 4. Ce que D7 n'établit PAS
 
 - **Aucun taux** : 2 exécutions du critère ①, 1 des critères ② ④ ⑤, 4 relevés au §1.

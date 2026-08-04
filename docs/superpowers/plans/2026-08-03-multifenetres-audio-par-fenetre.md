@@ -2333,6 +2333,16 @@ Si le second vaut zéro alors que le premier ne le vaut pas, l'arbitrage est
 figé. **Vérifier que ce contrôle est joué après qu'une fenêtre existe** — la
 trace est périodique (30 s).
 
+❌ **CETTE ÉTAPE, INTITULÉE « le contrôle qui doit pouvoir échouer », PORTAIT UN
+CONTRÔLE QUI NE POUVAIT PAS ÉCHOUER** (F1, revue finale de branche). Trois
+défauts, à ne pas recopier d'ici : le `grep` rend 0 sur un journal brut (les
+séquences ANSI séparent la clé de la valeur, `sed 's/\x1b\[[0-9;]*m//g'`
+d'abord) ; il rend 0 sur toute session de moins de 30 s ; et surtout la trace
+n'était **atteignable que dans l'état `actif=true`**, le bloc périodique vivant
+après le `continue` de la branche muette dans `windows_audio.rs` — le second
+compte égalait donc **toujours** le premier. Corrigé dans le code ; forme et
+grille de lecture à jour dans `CLAUDE.md`, section « Sous-bloc D7 ».
+
 - [ ] **Étape 9 : écrire les résultats**
 
 Compléter

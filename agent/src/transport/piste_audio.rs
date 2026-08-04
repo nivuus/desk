@@ -118,19 +118,43 @@ impl Session {
     /// tombe à zéro. Sans le second, une fenêtre muette continuerait d'amputer
     /// son budget vidéo de 128 kb/s pour une piste qui n'émet rien — c'est le
     /// défaut préexistant que D7 corrige (spec §5).
+    ///
+    /// ⚠️ **Le budget se conditionne à l'EXISTENCE d'une source, pas au seul
+    /// ordre** (F4, revue finale de branche du sous-bloc D7). `actif` seul
+    /// ratait les deux chemins où la session n'a aucune source audio alors que
+    /// le capteur l'élit porteuse : l'échec d'ouverture du *process loopback*,
+    /// dont la spec §6 fait explicitement un repli silencieux, et `AUDIO=0` —
+    /// où, à une fenêtre par PID, **toutes** les fenêtres sont porteuses et le
+    /// défaut préexistant revenait intact.
     pub(super) fn appliquer_audio(&mut self, actif: bool) {
+        let mut capture_morte = false;
         if let Some(source) = self.audio_source.as_mut() {
             source.set_actif(actif);
+            capture_morte = source.capture_morte();
         }
-        self.congestion.changer_audio_bps(if actif {
-            crate::opus::BITRATE_BPS as u32
-        } else {
-            0
-        });
+        self.congestion
+            .changer_audio_bps(if actif && self.audio_source.is_some() {
+                crate::opus::BITRATE_BPS as u32
+            } else {
+                0
+            });
         // `session` : sans ce champ la trace n'est PAS attribuable — tous les
         // enfants héritent le même `agent.log` depuis D4. Même motif et même
         // champ que « part de budget appliquee ».
-        tracing::info!(session = %self.session_id, actif, "ordre audio applique");
+        //
+        // `capture_morte` : sans lui cette ligne MENTIRAIT (F3). Un fil de
+        // capture qui a définitivement abandonné laisse `set_actif` réussir —
+        // il n'écrit qu'un atomique que plus personne ne lit —, et la trace
+        // annonçait alors `actif=true` pour une fenêtre qui ne produira plus
+        // jamais un paquet. C'est le seul endroit du produit où cet état
+        // devienne observable ; le capteur, lui, ne le voit pas (voir le
+        // commentaire d'abandon dans `windows_audio.rs`).
+        tracing::info!(
+            session = %self.session_id,
+            actif,
+            capture_morte,
+            "ordre audio applique"
+        );
     }
 
     fn warn_audio_negotiation_once(&mut self) {

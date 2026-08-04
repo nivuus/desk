@@ -13,7 +13,9 @@ use std::time::{Duration, Instant};
 use anyhow::{Context, Result};
 use windows::Win32::System::Com::{CoInitializeEx, COINIT_MULTITHREADED};
 
-use crate::audio::{AudioPacket, AudioSource, PacketRing};
+use crate::audio::{
+    temporisation_de_reprise, AudioPacket, AudioSource, PacketRing, LECTURES_ECHOUEES_MAX,
+};
 use crate::frames::FrameAssembler;
 use crate::opus::OpusEncoder;
 use crate::wasapi::process_loopback::CaptureProcessus;
@@ -104,6 +106,12 @@ pub struct WindowsAudioSource {
     /// prise avant le déplacement de ce paramètre dans le fil de capture, qui
     /// alimente la trace périodique « compteurs audio ».
     pid: Option<u32>,
+    /// Posé par le fil de capture juste avant qu'il ne se termine pour de bon,
+    /// et jamais effacé — sa mort est sans retour. Lu par `appliquer_audio`,
+    /// qui annoncerait sinon `actif=true` pour une fenêtre qui ne produira plus
+    /// jamais un paquet (F3, revue finale de branche du sous-bloc D7 ; voir
+    /// `AudioSource::capture_morte`).
+    capture_morte: Arc<AtomicBool>,
 }
 
 impl WindowsAudioSource {
@@ -150,11 +158,14 @@ impl WindowsAudioSource {
         let perte_desiree = Arc::new(AtomicI32::new(0));
         // Même patron : voir la doc du champ `emet`.
         let emet = Arc::new(AtomicBool::new(false));
+        // Même patron encore : voir la doc du champ `capture_morte`.
+        let capture_morte = Arc::new(AtomicBool::new(false));
 
         let ring_fil = ring.clone();
         let arret_fil = Arc::clone(&arret);
         let perte_desiree_fil = Arc::clone(&perte_desiree);
         let emet_fil = Arc::clone(&emet);
+        let capture_morte_fil = Arc::clone(&capture_morte);
         // `Option<u32>` est `Copy` : cette copie locale est celle que le fil
         // emporte, indépendamment du champ `pid` de `Self` construit plus bas.
         let pid_fil = pid;
@@ -207,6 +218,10 @@ impl WindowsAudioSource {
                 // rien, exactement le mode de défaillance silencieux que
                 // cette trace existe pour révéler.
                 let mut emettait = false;
+                // Erreurs de lecture consécutives. Remis à zéro par toute
+                // lecture qui aboutit — y compris `Ok(None)`, qui est le cas
+                // courant : le flux n'a simplement rien de neuf à rendre.
+                let mut lectures_echouees: u32 = 0;
 
                 while !arret_fil.load(Ordering::Relaxed) {
                     let veut_emettre = emet_fil.load(Ordering::Relaxed);
@@ -239,6 +254,52 @@ impl WindowsAudioSource {
                             }
                         }
                     }
+                    // ⚠️ **CE BLOC EST AVANT LE GATE `!emettait`, ET C'EST
+                    // TOUT SON INTÉRÊT** (F1, revue finale de branche du
+                    // sous-bloc D7). Il vivait en fin de corps de boucle,
+                    // c'est-à-dire APRÈS le `continue` de la branche muette :
+                    // la trace n'était donc atteignable que quand `emettait`
+                    // valait vrai, et son champ `actif` valait
+                    // structurellement `true` — le contrôle d'entrée de D8
+                    // (`grep -c 'actif=true'` opposé au compte total) était
+                    // **insatisfiable**, et le défaut qu'il existe pour
+                    // révéler — plus aucune fenêtre ne porte le son — rendait
+                    // 0 et 0, que ces mêmes documents classaient comme bénin.
+                    // Une fenêtre muette rapporte désormais elle aussi, toutes
+                    // les `REPORT_INTERVAL`.
+                    //
+                    // Les trois compteurs restent lisibles en muette : ils
+                    // vivent sur `ring_fil` et `assembleur`, que ce fil
+                    // possède, et leurs accesseurs ne prennent que `&self`.
+                    if dernier_rapport.elapsed() >= REPORT_INTERVAL {
+                        dernier_rapport = Instant::now();
+                        // `info!`, pas `debug!` : le filtre par défaut
+                        // (`agent/src/main.rs`, `EnvFilter` replié sur
+                        // `"info"` en l'absence de `RUST_LOG`) n'émet jamais
+                        // les journaux `debug!` en exploitation normale. La
+                        // spec (§5, §9) promet des compteurs « journalisés
+                        // périodiquement et jamais silencieux » — un
+                        // enregistrement toutes les `REPORT_INTERVAL` (30 s)
+                        // n'est pas du bruit, et un compteur de rejets muet
+                        // est exactement ce qui rendrait une dégradation
+                        // audio invisible en recette.
+                        //
+                        // `pid` et `actif` sont le seul moyen d'observer un
+                        // arbitrage figé : si aucune fenêtre ne portait plus
+                        // jamais le son, toutes rapporteraient `actif=false`
+                        // — le symptôme serait sinon le silence total, sans un
+                        // `WARN`, sans une erreur. C'est le `grep` d'entrée du
+                        // sous-bloc suivant (spec §6).
+                        tracing::info!(
+                            pid = pid_fil,
+                            actif = emettait,
+                            rejetes = ring_fil.rejetes(),
+                            complements = assembleur.complements(),
+                            echantillons_jetes = assembleur.echantillons_jetes(),
+                            "compteurs audio"
+                        );
+                    }
+
                     if !emettait {
                         // Muette : ne rien lire, ne rien encoder, ne rien
                         // déposer. Une trame de silence encodée coûterait
@@ -250,24 +311,58 @@ impl WindowsAudioSource {
                     }
 
                     match capture.read() {
-                        Ok(Some(bloc)) => assembleur.push(&bloc),
-                        Ok(None) => {}
+                        Ok(Some(bloc)) => {
+                            lectures_echouees = 0;
+                            assembleur.push(&bloc);
+                        }
+                        Ok(None) => lectures_echouees = 0,
                         Err(e) => {
-                            // Une erreur de lecture ne doit pas tuer la
-                            // session : on journalise et on arrête l'audio.
-                            // La vidéo continue. Les compteurs sont inclus
-                            // ici parce que c'est la dernière ligne de log de
-                            // ce fil : sans eux, une capture morte en cours
-                            // de session serait indiscernable d'un simple
-                            // silence — `next_packet` continuerait à rendre
-                            // `None` comme dans le cas nominal.
+                            // **Une erreur ISOLÉE ne condamne pas tout un
+                            // groupe de PID** (F3, revue finale de branche du
+                            // sous-bloc D7) : on retente, et l'on n'abandonne
+                            // qu'après `LECTURES_ECHOUEES_MAX` échecs d'affilée.
+                            // Le motif complet et la temporisation vivent sur
+                            // `audio::LECTURES_ECHOUEES_MAX` et
+                            // `audio::temporisation_de_reprise`, éprouvés sur
+                            // l'hôte.
+                            lectures_echouees = lectures_echouees.saturating_add(1);
+                            if lectures_echouees < LECTURES_ECHOUEES_MAX {
+                                tracing::warn!(
+                                    erreur = %e,
+                                    consecutives = lectures_echouees,
+                                    "lecture audio échouée, nouvelle tentative"
+                                );
+                                std::thread::sleep(temporisation_de_reprise(lectures_echouees));
+                                continue;
+                            }
+                            // Abandon définitif. Le témoin est posé AVANT la
+                            // trace, pour qu'aucun ordre traité entre les deux
+                            // ne puisse se déclarer appliqué à une capture
+                            // déjà morte.
+                            capture_morte_fil.store(true, Ordering::Relaxed);
+                            // Les compteurs sont inclus ici parce que c'est la
+                            // dernière ligne de log de ce fil : sans eux, une
+                            // capture morte en cours de session serait
+                            // indiscernable d'un simple silence —
+                            // `next_packet` continuerait à rendre `None` comme
+                            // dans le cas nominal.
                             tracing::warn!(
                                 erreur = %e,
+                                consecutives = lectures_echouees,
                                 rejetes = ring_fil.rejetes(),
                                 complements = assembleur.complements(),
                                 echantillons_jetes = assembleur.echantillons_jetes(),
                                 "lecture audio échouée, capture arrêtée définitivement"
                             );
+                            // ⚠️ **HORS PÉRIMÈTRE, et nommé pour le sous-bloc
+                            // suivant** : le capteur ne peut PAS observer ce
+                            // témoin — il vit dans l'enfant. La fenêtre reste
+                            // donc porteuse de son groupe aux yeux de
+                            // `capteur/audio.rs`, et sa voisine n'est jamais
+                            // promue. Fermer ce trou demande un signal
+                            // enfant→capteur (un `VersCapteur` neuf, puis un
+                            // réarbitrage), c'est-à-dire un changement de
+                            // protocole : à cadrer, pas à improviser ici.
                             return;
                         }
                     }
@@ -300,7 +395,15 @@ impl WindowsAudioSource {
                                 // Même raisonnement que pour l'erreur de
                                 // lecture ci-dessus : dernière ligne de log
                                 // de ce fil, donc dernière chance de rendre
-                                // les compteurs accumulés exploitables.
+                                // les compteurs accumulés exploitables — et
+                                // même témoin, pour la même raison (F3).
+                                //
+                                // **Pas de tolérance ici**, contrairement à la
+                                // lecture : un refus de l'encodeur Opus sur
+                                // une trame bien formée ne relève d'aucune
+                                // cause transitoire connue, là où un refus
+                                // WASAPI en a plusieurs.
+                                capture_morte_fil.store(true, Ordering::Relaxed);
                                 tracing::warn!(
                                     erreur = %e,
                                     rejetes = ring_fil.rejetes(),
@@ -311,34 +414,6 @@ impl WindowsAudioSource {
                                 return;
                             }
                         }
-                    }
-
-                    if dernier_rapport.elapsed() >= REPORT_INTERVAL {
-                        dernier_rapport = Instant::now();
-                        // `info!`, pas `debug!` : le filtre par défaut
-                        // (`agent/src/main.rs`, `EnvFilter` replié sur
-                        // `"info"` en l'absence de `RUST_LOG`) n'émet jamais
-                        // les journaux `debug!` en exploitation normale. La
-                        // spec (§5, §9) promet des compteurs « journalisés
-                        // périodiquement et jamais silencieux » — un
-                        // enregistrement toutes les `REPORT_INTERVAL` (30 s)
-                        // n'est pas du bruit, et un compteur de rejets muet
-                        // est exactement ce qui rendrait une dégradation
-                        // audio invisible en recette.
-                        //
-                        // `pid` et `actif` sont le seul moyen d'observer un
-                        // arbitrage figé : si aucune fenêtre ne portait plus
-                        // jamais le son, le symptôme serait le silence total
-                        // sans un `WARN`, sans une erreur. C'est le `grep`
-                        // d'entrée du sous-bloc suivant (spec §6).
-                        tracing::info!(
-                            pid = pid_fil,
-                            actif = emettait,
-                            rejetes = ring_fil.rejetes(),
-                            complements = assembleur.complements(),
-                            echantillons_jetes = assembleur.echantillons_jetes(),
-                            "compteurs audio"
-                        );
                     }
 
                     std::thread::sleep(POLL_INTERVAL);
@@ -354,6 +429,7 @@ impl WindowsAudioSource {
             perte_desiree,
             emet,
             pid,
+            capture_morte,
         })
     }
 
@@ -389,6 +465,10 @@ impl AudioSource for WindowsAudioSource {
 
     fn set_actif(&mut self, actif: bool) {
         self.emettre(actif);
+    }
+
+    fn capture_morte(&self) -> bool {
+        self.capture_morte.load(Ordering::Relaxed)
     }
 }
 

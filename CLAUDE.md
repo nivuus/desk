@@ -273,15 +273,36 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > | --- | --- | --- |
 > | `agent/src/wasapi/process_loopback.rs` | **402** | neuf — la machinerie COM extraite de `wasapi.rs` |
 > | `agent/src/wasapi.rs` | **352** | sort de la dette gelée (543 → 352) |
-> | `agent/src/windows_audio.rs` | **399** | préexistant (chantier A), modifié — porte la trace `compteurs audio` que la recette d'entrée de D8 relit |
+> | `agent/src/windows_audio.rs` | ~~399~~ **479** (marge 21) | préexistant (chantier A), modifié — porte la trace `compteurs audio` que la recette d'entrée de D8 relit |
 > | `agent/src/superviseur/table.rs` | **468** (marge 32) | ALLÉGÉ — 489 → 468 : la tâche 9 retire `audio_libre` et le champ `audio`, le superviseur cessant de décider du son |
 > | `agent/src/congestion/controleur.rs` | **472** (marge 28) | modifié — `audio_bps` suit désormais l'arbitrage au lieu d'être posé inconditionnellement |
 > | `agent/src/capteur/fenetre.rs` | **437** (marge 63) | ALOURDI — 407 → 437 : le span `tracing` porteur de `session` (consignation n°2 de D6) et l'arbitrage du son |
 > | `agent/src/demarrage.rs` | **457** (marge 43) | 472 → 457 malgré l'ajout du câblage audio, extrait vers `demarrage/audio.rs` |
 > | `agent/src/demarrage/audio.rs` | **77** | neuf |
 > | `agent/src/capteur/audio.rs` | **152** | neuf — la règle pure de l'arbitrage, sans aucun `cfg`, testée sur l'hôte |
-> | `agent/src/capteur/sommeil.rs` | **315** | ALLÉGÉ — 432 → 315 : montée à 500 en cours de tâche puis ses tests extraits vers `sommeil/tests.rs` |
+> | `agent/src/capteur/sommeil.rs` | ~~315~~ **327** | ALLÉGÉ — 432 → 315 : montée à 500 en cours de tâche puis ses tests extraits vers `sommeil/tests.rs` |
 > | `agent/src/capteur/sommeil/tests.rs` | **203** | neuf |
+>
+> ✅ **Relevé de la VAGUE DE CORRECTION de la revue finale de branche (4 août
+> 2026), PAR LA COMMANDE.** Deux chiffres du tableau ci-dessus ont bougé dans
+> cette vague même, et sont **barrés à leur place** plutôt que corrigés
+> ailleurs. Les autres fichiers qu'elle touche :
+>
+> | Fichier | Lignes | Remarque |
+> | --- | --- | --- |
+> | `agent/src/capteur/distante/tests.rs` | **462** (marge 38) | +53 : le test du rattachement muet (F2) |
+> | `agent/src/capteur/distante.rs` | **354** | +22 : le rattachement remet l'enfant au silence (F2) |
+> | `agent/src/audio.rs` | **273** | +87 : `LECTURES_ECHOUEES_MAX` et `temporisation_de_reprise`, PURS et éprouvés sur l'hôte, avec leurs deux tests (F3) |
+> | `agent/src/transport/piste_audio.rs` | **218** | +24 : le budget audio se conditionne à l'existence d'une source (F4), et `capture_morte` au journal (F3) |
+>
+> ⚠️ **`windows_audio.rs` est passé de 399 à 479 : sa marge est de 21**, et
+> **il n'y a eu AUCUNE extraction** — la croissance est presque entièrement du
+> commentaire (la réfutation de F1) et la tolérance aux erreurs de lecture (F3),
+> dont la partie *pure* a bien été portée dans `audio.rs`, où elle est testable.
+> **Toute addition future à ce fichier appelle une extraction, jamais une
+> compression** ; son point de chute est nommé — `agent/src/windows_audio/`, en
+> commençant par le corps du fil de capture. Et le successeur immédiat est
+> connu : le signal enfant→capteur que F3 laisse hors périmètre passera par ici.
 >
 > Les fichiers du tableau du 3 août (D6) **absents de la liste ci-dessus ne
 > sont PAS tous des fichiers que D7 a laissés intacts** — quatre d'entre eux
@@ -3890,8 +3911,12 @@ d'octets.**
 3. **Ce même contrôle rend 0 sur toute session de moins de 30 s**, bénin, et
    indiscernable du défaut qu'il existe pour révéler — voir la sous-section
    suivante.
+4. ❌ **Et un TROISIÈME défaut, que la recette n'a PAS trouvé** — la revue
+   finale de branche, si : la condition de ce contrôle était **insatisfiable**,
+   parce que le code ne pouvait pas émettre `actif=false`. Voir la
+   sous-section suivante.
 
-### ⚠️ La recette d'entrée de D8 : le `grep` de la conception a DEUX défauts, corrigés ici
+### ⚠️ La recette d'entrée de D8 : le `grep` de la conception a TROIS défauts, corrigés ici
 
 La conception (§6) prescrivait, comme premier geste de D8 :
 
@@ -3901,7 +3926,8 @@ grep 'compteurs audio' agent.log | grep -c 'actif=true'
 ```
 
 **Les deux lignes ont été exécutées, et les deux portent un défaut trouvé par
-l'exécution, pas par la relecture** :
+l'exécution, pas par la relecture** — puis un troisième, que l'exécution n'a pas
+pu trouver :
 
 1. **Elle rend 0 sur un `agent.log` brut.** Les séquences ANSI de `tracing`
    séparent le nom du champ de sa valeur (`[3mactif[0m[2m=[0mtrue`) :
@@ -3915,23 +3941,99 @@ l'exécution, pas par la relecture** :
    indiscernable du défaut que le contrôle existe pour révéler. **C'est le
    propre piège du dépôt — « un contrôle qui se déclenche trop tôt ne contrôle
    rien » (D6) — rejoué sur un contrôle écrit précisément pour l'éviter.**
+3. ❌ **LA CONDITION ÉTAIT INSATISFIABLE — le code ne pouvait pas émettre la
+   ligne que le second `grep` cherche à ne PAS trouver** (F1, revue finale de
+   branche). Dans `agent/src/windows_audio.rs`, le bloc `REPORT_INTERVAL`
+   vivait **après** le `if !emettait { … continue; }` de la branche muette : la
+   trace n'était atteignable que quand `emettait` valait vrai, donc son champ
+   `actif` valait **structurellement `true`**. Le second compte était
+   **toujours égal** au premier. Et le défaut que ce contrôle existe pour
+   révéler — plus aucune fenêtre ne porte le son — rend `0` et `0`, que le
+   point 2 ci-dessus classe **bénin** : l'opérateur lisait 0/0, concluait
+   correctement que rien n'allait mal, **dans l'état exact où tout allait
+   mal**. ✅ **Corrigé** : le bloc est remonté au-dessus du gate, une fenêtre
+   muette rapporte elle aussi toutes les 30 s, avec `actif=false`.
+
+⚠️ **La leçon de méthode est le point 3, pas les deux premiers.** Ce contrôle
+avait été écrit *précisément* pour éviter un défaut muet, relu par treize revues
+par tâche, et **exécuté** — et il ne pouvait pas échouer. Ce qui l'a laissé
+passer est que personne n'a vérifié qu'il **PEUT** échouer : les sessions de la
+recette durant toutes moins de 30 s, la ligne n'a jamais été émise, et le fait
+qu'`actif` ne prenne qu'une seule valeur ne pouvait pas se voir. **Le piège
+« vérifier qu'un contrôle peut échouer » (D6) a été payé DEUX fois de suite sur
+ce seul paragraphe** — d'abord sur la durée de session, ensuite sur
+l'atteignabilité de la trace.
 
 **La forme corrigée, à employer en tête de D8** :
 
 ```bash
 sed 's/\x1b\[[0-9;]*m//g' agent.log > agent-plat.log
-grep -c 'compteurs audio' agent-plat.log
-grep 'compteurs audio' agent-plat.log | grep -c 'actif=true'
+grep -c 'compteurs audio' agent-plat.log                      # A
+grep 'compteurs audio' agent-plat.log | grep -c 'actif=true'  # B
 ```
 
 **et seulement sur une session vivante depuis au moins `REPORT_INTERVAL` (30 s)**
 — sous cette durée, un premier compte à 0 ne dit rien. Le §6 de la conception
-porte l'annotation de ce défaut ; ne pas y relire le `grep` non corrigé.
+porte l'annotation de ces défauts ; ne pas y relire le `grep` non corrigé.
+
+**Grille de lecture, sur un binaire portant le correctif F1** — chaque fenêtre
+vivante émet une ligne par période, qu'elle porte le son ou non :
+
+| Relevé | Lecture |
+| --- | --- |
+| `A = 0` | **Le contrôle n'a rien à dire.** Aucune session n'a vécu 30 s : ce n'est pas un verdict, c'est une mesure non prise |
+| `A > 0`, `B = 0` | **Le défaut est là** : des fenêtres vivent, aucune ne porte le son |
+| `A > 0`, `B > 0` | L'arbitrage désigne bien un porteur. Sur `N` fenêtres d'un même PID, attendre `B ≈ A / N` |
+| `B == A`, plusieurs fenêtres d'un même PID | ⚠️ **Suspect** — c'est la signature exacte du code d'avant F1 |
+
+### ⚠️ La revue finale de branche — cinq défauts que seule une lecture TRANSVERSE pouvait voir
+
+Treize revues par tâche étaient passées. Les cinq défauts ci-dessous ont en
+commun de **franchir une frontière de tâche** : chacun est correct des deux
+côtés pris séparément.
+
+| # | Défaut | Remède |
+| --- | --- | --- |
+| **F1** | **Le détecteur de panne muette de la branche ne pouvait pas se déclencher** — voir la sous-section ci-dessus. Écrit tâche 7, prescrit tâche 12, jamais confronté | Le bloc `REPORT_INTERVAL` remonte au-dessus du gate `!emettait` |
+| **F2** | **Un rattachement ne rendait PAS l'enfant muet**, contre la conception §4.4 : seul l'ordre EN ATTENTE était effacé (`None` = « rien à changer »), le drapeau `emet` gardait sa valeur d'avant la rupture | `self.audio = Some(false)` dans `capteur/distante.rs`, plus son test |
+| **F3** | **Une erreur de lecture WASAPI silençait DÉFINITIVEMENT tout un groupe de PID**, en se déclarant en bonne santé | Tolérance à N erreurs (`audio.rs`, pur et testé) + témoin `capture_morte` au journal |
+| **F4** | **`audio_bps` réservait 128 kb/s pour une piste inexistante** quand la source audio manque (échec d'ouverture — le « repli est le silence » de la spec §6 — ou `AUDIO=0`) | Le budget se conditionne à `actif && audio_source.is_some()` |
+| **F6** | Un commentaire d'ancienneté promettait ce que le chemin réel ne tient pas (`oublier` vide `arrivees` avant qu'un rattachement ne réinscrive) | Le commentaire dit sa portée réelle ; **comportement inchangé** |
+
+**Le cas de F2 mérite d'être retenu pour sa forme** : deux fenêtres A et B d'un
+même PID, A porteuse, le capteur redémarre. B se rattache la première, son
+groupe est vide côté capteur, elle est élue et démarre. A se rattache quelques
+centaines de millisecondes plus tard **en émettant toujours** — les deux jouent
+le même mix, désynchronisé : un **écho audible**, jusqu'à ce que l'ordre
+d'extinction destiné à A arrive.
+
+⚠️ **AUCUN de ces cinq remèdes n'a été exercé sur la VM.** Ils sont raisonnés,
+compilés (`cargo check --target x86_64-pc-windows-gnu`, 10 avertissements
+`dead_code` préexistants) et couverts par 403 tests d'hôte — dont **trois neufs
+dont un a été vu ROUGE avant remède** (F2). Mais `windows_audio.rs` est
+`#[cfg(windows)]` et **aucun test d'hôte ne peut couvrir F1 ni F3** : la
+correction de F1 en particulier repose sur un **argument de flot de contrôle**,
+pas sur une observation. **Le premier geste de D8 — le `grep` ci-dessus, sur une
+session de plus de 30 s — est donc AUSSI la première mesure de F1** : il doit
+rendre `A > 0` avec `B < A` dès que deux fenêtres d'un même PID vivent.
+
+**F5 est délibérément HORS de cette vague** : l'identité d'une session par son
+seul nom porte une course au `retirer` (préexistante, antérieure à D7). La
+fermer demande une génération monotone par session, c'est-à-dire un changement
+de conception du registre — **consignée pour le sous-bloc suivant, avec le
+signal enfant→capteur que F3 laisse ouvert.**
 
 ### Ce que D7 n'établit PAS
 
 - **Aucun taux nulle part** : 4 relevés au §1 (un par point), 2 exécutions du
   critère ①, 1 des critères ② ④ ⑤.
+- **Les cinq correctifs de la revue finale de branche n'ont jamais tourné sur la
+  VM** (voir l'encadré ci-dessus). En particulier, **la trace `compteurs audio`
+  n'a JAMAIS été observée portant `actif=false`** — c'est ce que le premier
+  `grep` de D8 établira, ou réfutera.
+- **La promotion de la fenêtre voisine quand une capture meurt n'existe pas** :
+  le capteur ne voit pas le témoin `capture_morte`, qui vit dans l'enfant. F3
+  rend l'état observable au journal, il ne le rend pas actionnable.
 - **Le critère ③ (l'audio survit au sommeil) n'a pas été exercé** — la lacune
   la plus lourde, à traiter en priorité si D8 en dépend.
 - **Le plafond d'activations *process loopback* concurrentes reste inconnu** :
@@ -3968,8 +4070,43 @@ porte l'annotation de ce défaut ; ne pas y relire le `grep` non corrigé.
   corrigé avant la mesure par l'ajout d'un compte d'échantillons post-cycle.
 - **Un `grep` de recette écrit pour révéler un mode de défaillance silencieux
   doit lui-même être exécuté avant d'être prescrit** — voir la sous-section
-  ci-dessus : les deux défauts du `grep` de D8 n'ont été trouvés qu'en le
-  faisant tourner.
+  ci-dessus : les deux premiers défauts du `grep` de D8 n'ont été trouvés qu'en
+  le faisant tourner.
+  ⚠️ **ET L'EXÉCUTER NE SUFFIT PAS : le troisième défaut, le seul qui annulait
+  le contrôle, a survécu à son exécution** (F1). Le `grep` avait tourné, rendu
+  0/0, et ce 0/0 avait été correctement diagnostiqué comme « session trop
+  courte » — ce qu'il était. Ce qu'aucune exécution ne pouvait montrer, c'est
+  que le champ observé **n'avait qu'une seule valeur atteignable**. **La règle
+  complète est donc en deux temps : exécuter le contrôle, PUIS provoquer
+  délibérément l'état qu'il doit dénoncer et vérifier qu'il le dénonce.** Un
+  contrôle qu'on n'a jamais vu ROUGE n'est pas un contrôle — c'est exactement
+  la doctrine que ce dépôt applique déjà à ses tests.
+- ⚠️ **Un défaut peut être invisible à treize revues et sauter à la
+  quatorzième, sans que personne n'ait mal lu** : les cinq défauts de la revue
+  finale de branche franchissent tous une **frontière de tâche** (F1 : écrit
+  tâche 7, prescrit tâche 12 ; F2 : conception §4.4 contre le rattachement de
+  D4 ; F4 : le repli silencieux de la spec §6 contre le budget de la tâche 8).
+  Chacun est correct des deux côtés pris séparément. **Une revue par tâche ne
+  peut structurellement pas les voir** — ce n'est pas un défaut de rigueur,
+  c'est une propriété du découpage, et cela justifie à soi seul la revue
+  transverse.
+
+### La suite : D8, et les consignations
+
+- **D8** — **le plein écran et Keyboard Lock**, précédé de son geste d'ouverture
+  (le `grep` ci-dessus, qui est **aussi la première mesure de F1**).
+
+**Ce que D7 lègue, à porter dans le plan de D8 plutôt qu'à redécouvrir :**
+
+1. **Exercer le critère ③** (l'audio d'une fenêtre endormie) — la lacune la plus
+   lourde de la recette D7.
+2. **Le signal enfant→capteur quand une capture meurt** (F3, hors périmètre) :
+   sans lui, la fenêtre voisine n'est jamais promue et le groupe reste muet.
+3. **L'identité d'une session par génération monotone, pas par son seul nom**
+   (F5, préexistant) : changement de conception du registre.
+4. **Les trois consignations de D6 non traitées par D7** : `TICKS`/`CAPTURED`/
+   `PRODUCED` par session, le critère ④ à palier de 45 à 60 s, et l'A/B
+   différentiel sur `set_desired_bitrate`.
 - **`agent/src/wasapi.rs` a un jumeau `#[cfg(windows)]` neuf, sans test** :
   `agent/src/wasapi/process_loopback.rs` (402 lignes). Toute la machinerie COM
   du *process loopback* y vit désormais — activation, complétion asynchrone,

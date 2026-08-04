@@ -217,29 +217,51 @@ impl VideoSource for SourceDistante {
                                 // d'encodage, pour toute la durée qui sépare
                                 // l'attache du premier `Ordre::Reveiller`.
                                 self.endormie = true;
-                                // Un rattachement passe par une `Fenetre` NEUVE
-                                // côté capteur, dont `sommeil::inscrire` purge
-                                // `derniers_audio` : un ordre neuf arrive donc
-                                // toujours — et SANS la borne du tour de roue.
+                                // ⚠️ **`Some(false)`, PAS `None` : au
+                                // rattachement, l'enfant REDEVIENT MUET**
+                                // (conception §4.4 ; F2, revue finale de
+                                // branche du sous-bloc D7). `None` ne veut
+                                // pas dire « muet », il veut dire « rien à
+                                // changer » : le drapeau `emet` de la
+                                // `WindowsAudioSource` gardait alors sa valeur
+                                // d'AVANT la rupture, et une fenêtre qui
+                                // portait le son continuait de le porter.
+                                //
+                                // Le cas qui mord : deux fenêtres A et B d'un
+                                // même PID, A porteuse, le capteur redémarre.
+                                // B se rattache la première, son groupe est
+                                // vide côté capteur — donc elle est élue et
+                                // démarre. A se rattache quelques dizaines à
+                                // quelques centaines de millisecondes plus
+                                // tard (D4 a mesuré 538 à 689 ms pour le seul
+                                // rattachement, et rien ne synchronise les deux
+                                // enfants) en émettant TOUJOURS : les deux
+                                // jouent le même mix du même PID, désynchronisé
+                                // — un écho audible — jusqu'à ce que le
+                                // `Audio { actif: false }` destiné à A arrive.
+                                //
+                                // Le défaut inverse n'existe pas : un
+                                // rattachement passe par `VersCapteur::Attache`,
+                                // donc par une `Fenetre` NEUVE côté capteur,
+                                // dont `sommeil::inscrire` purge
+                                // `derniers_audio` — un ordre neuf arrive donc
+                                // TOUJOURS, et sans la borne du tour de roue.
                                 // `inscrire` appelle `distribuer_l_audio`
                                 // SYNCHRONEMENT, avant même que `boucler` ne
-                                // démarre sa boucle (`fenetre.rs`, `servir`,
-                                // l. 257-259) — laquelle sonde `ordres` en tête
-                                // de chaque tour, sans délai. Ce n'est PAS le
-                                // résidu de `sommeil/porteurs.rs` (un ordre
-                                // différé au TOUR DE ROUE SUIVANT, borné
+                                // démarre sa boucle (`fenetre.rs`, `servir`),
+                                // laquelle sonde `ordres` en tête de chaque
+                                // tour, sans délai. Ce n'est PAS le résidu de
+                                // `sommeil/porteurs.rs` (un ordre différé au
+                                // TOUR DE ROUE SUIVANT, borné
                                 // `PERIODE_REARBITRAGE` = 250 ms) : ce
                                 // résidu-là ne joue que quand le canal d'une
                                 // fenêtre VOISINE casse pendant la MÊME passe
-                                // d'arbitrage — pas ici. Aucune borne dure
-                                // connue ne s'applique donc à la fenêtre où
-                                // `audio` vaut `None` : elle tient à
-                                // l'acheminement du message sur le fil (tube,
-                                // fil écrivain, fil lecteur), pas à un
-                                // minuteur. Bénin dans tous les cas : l'enfant
-                                // naît muet, et ne rien retenir d'avant la
-                                // rupture est la seule chose qui compte ici.
-                                self.audio = None;
+                                // d'arbitrage. Le silence d'une porteuse qui se
+                                // rattache est donc borné par l'acheminement du
+                                // message sur le fil, et c'est l'arbitrage que
+                                // la conception a choisi : un blanc bref plutôt
+                                // qu'un écho.
+                                self.audio = Some(false);
                                 self.fenetre.succes();
                             }
                             // Journalisé en `debug!` et non `info!` : au pas
