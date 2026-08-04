@@ -68,6 +68,29 @@ fn la_sortie_creee_declenche_le_lancement_de_l_enfant() {
     assert_eq!(t.nom_sortie_de(&session), Some("\\\\.\\DISPLAY4"));
 }
 
+/// Deux fenêtres en vol en même temps ne doivent jamais se faire attribuer
+/// l'identifiant ou la sortie l'une de l'autre : chaque `Effet::LancerEnfant`
+/// doit porter le `IdFenetre` et le `nom_sortie` de SA PROPRE fenêtre.
+#[test]
+fn deux_fenetres_en_vol_gardent_chacune_leur_fenetre_et_leur_sortie() {
+    let mut t = table();
+    let a = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
+    t.viewport_recu(&a, 1600, 900);
+    t.sortie_creee(&a, 7, "\\\\.\\DISPLAY4".into(), (1280, 720));
+
+    let b = session_annoncee(&t.fenetre_apparue(IdFenetre(2), "B".into()));
+    t.viewport_recu(&b, 1280, 720);
+    let effets = t.sortie_creee(&b, 8, "\\\\.\\DISPLAY5".into(), (1280, 720));
+    assert_eq!(
+        effets,
+        vec![Effet::LancerEnfant {
+            session: b,
+            fenetre: IdFenetre(2),
+            nom_sortie: "\\\\.\\DISPLAY5".into(),
+        }]
+    );
+}
+
 #[test]
 fn une_fenetre_qui_disparait_tue_l_enfant_detruit_la_sortie_et_l_annonce() {
     let mut t = table();
