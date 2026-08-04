@@ -53,6 +53,42 @@ impl SuiviBordure {
     }
 }
 
+use std::time::Duration;
+
+/// Période de relecture du style de la fenêtre.
+///
+/// ⚠️ **Ce n'est PAS le tour de roue de `PERIODE_REARBITRAGE`**, qui vit sur le
+/// fil de sommeil (`capteur/sommeil.rs`) et n'a pas les `HWND`. La valeur est du
+/// même ordre, délibérément, mais la constante est propre à ce module : les
+/// faire suivre l'une l'autre coupleraient deux mécanismes que rien ne lie.
+///
+/// **Jamais à l'image** : un `GetWindowLongPtrW` est bon marché, pas gratuit à
+/// N × 90 i/s.
+pub const PERIODE_STYLE: Duration = Duration::from_millis(250);
+
+#[cfg(windows)]
+mod win {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::{GetWindowLongPtrW, GWL_STYLE};
+
+    /// Style de la fenêtre, ou `None` si la fenêtre a disparu.
+    ///
+    /// `GetWindowLongPtrW` rend `0` sur erreur, ce qui est aussi un style
+    /// valide en théorie — mais une fenêtre applicative réelle en a toujours au
+    /// moins un bit. On traite donc `0` comme une disparition : le seul risque
+    /// est de ne rien annoncer, jamais d'annoncer à tort.
+    pub fn lire_style(hwnd: HWND) -> Option<u32> {
+        let brut = unsafe { GetWindowLongPtrW(hwnd, GWL_STYLE) };
+        if brut == 0 {
+            return None;
+        }
+        Some(brut as u32)
+    }
+}
+
+#[cfg(windows)]
+pub use win::lire_style;
+
 #[cfg(test)]
 mod tests {
     use super::*;

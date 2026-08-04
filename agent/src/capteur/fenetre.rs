@@ -36,6 +36,7 @@ use windows::Win32::Foundation::HWND;
 use windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId;
 
 use crate::capteur::horloge::{frequence_qpc, lire_qpc, origine_depuis_qpc};
+use crate::capteur::plein_ecran;
 use crate::capteur::protocole::{ecrire_image, ecrire_json, DepuisCapteur, VersCapteur};
 use crate::capteur::sommeil::Message;
 use crate::h264::AccessUnit;
@@ -319,6 +320,14 @@ impl Fenetre {
         let mut dernier_etat = (true, false, self.largeur, self.hauteur);
         let mut images = 0u64;
         let mut dernier_compte = Instant::now();
+        // D8 : l'état de référence est celui lu à l'OUVERTURE de la fenêtre, pas
+        // une valeur par défaut arbitraire — c'est la garde qui empêche une
+        // application née sans bordure de faire entrer sa fenêtre navigateur en
+        // plein écran sans raison (voir `plein_ecran::SuiviBordure`).
+        let mut suivi_bordure = plein_ecran::SuiviBordure::nouveau(
+            plein_ecran::lire_style(self.parametres.hwnd).unwrap_or(0),
+        );
+        let mut dernier_style = Instant::now();
 
         let motif = loop {
             // Refait à chaque tour : la taille retenue peut changer au réveil.
@@ -395,6 +404,24 @@ impl Fenetre {
                     if !etat.0 || etat.1 {
                         tracing::info!(%session, vivante = etat.0, epuisee = etat.1, "source close");
                         break "la source est morte ou épuisée";
+                    }
+                }
+            }
+
+            // 4. D8 : le style de la fenêtre dit si l'application est passée en
+            //    plein écran. Bridé par son propre minuteur — voir
+            //    `plein_ecran::PERIODE_STYLE`.
+            if dernier_style.elapsed() >= plein_ecran::PERIODE_STYLE {
+                dernier_style = Instant::now();
+                if let Some(style) = plein_ecran::lire_style(self.parametres.hwnd) {
+                    if let Some(actif) = suivi_bordure.observer(style) {
+                        tracing::info!(%session, actif, "plein ecran de la fenetre Windows");
+                        let message = DepuisCapteur::PleinEcran { actif };
+                        if let Fin::Terminer(motif) =
+                            deposer(AEcrire::Etat(message), ecritures, self.source.as_mut(), &ctx)
+                        {
+                            break motif;
+                        }
                     }
                 }
             }
