@@ -5,7 +5,7 @@ import { armerLeSon } from './audio';
 import { creerStatut } from './status';
 import { attachPointerAuDOM } from './pointer';
 import { attachGamepadAuDOM } from './gamepad';
-import { attachFullscreenAuDOM } from './fullscreen';
+import { armerPleinEcranAuDOM, attachFullscreenAuDOM } from './fullscreen';
 import { texteLien } from './lien';
 import { viewportPair } from './viewport';
 import { attachVisibilite } from './visibilite';
@@ -59,6 +59,7 @@ let bandeau: number | undefined;
 let pointeur: ReturnType<typeof attachPointerAuDOM> | undefined;
 let manette: ReturnType<typeof attachGamepadAuDOM> | undefined;
 let detacherPleinEcran: ReturnType<typeof attachFullscreenAuDOM> | undefined;
+let detacherArmement: (() => void) | undefined;
 let detacherVisibilite: ReturnType<typeof attachVisibilite> | undefined;
 let manetteAnnoncee = false;
 let bandeauManette: number | undefined;
@@ -90,6 +91,7 @@ connectSession({
             pointeur?.detacher();
             manette?.detacher();
             detacherPleinEcran?.();
+            detacherArmement?.();
             detacherVisibilite?.();
             statut.afficher(`session terminée : ${message.reason}`, { terminal: true });
         } else if (message.type === 'pointer') {
@@ -111,6 +113,20 @@ connectSession({
                 // sans quoi le bandeau « image figée : … » resterait affiché
                 // pour toujours après le réveil réel (voir status.ts).
                 statut.expirer();
+            }
+        } else if (message.type === 'fullscreen') {
+            // Sens UNIQUE : l'application Windows décide, le navigateur suit.
+            // Sortir n'exige aucune activation utilisateur ; entrer, si — d'où
+            // l'armement.
+            detacherArmement?.();
+            detacherArmement = undefined;
+            if (message.active) {
+                detacherArmement = armerPleinEcranAuDOM(document.documentElement);
+            } else {
+                void document.exitFullscreen().catch(() => {
+                    // Sortir d'un plein écran qu'on n'a pas est sans
+                    // conséquence : l'utilisateur a pu en sortir lui-même.
+                });
             }
         } else if (message.type === 'link') {
             const t = texteLien(message);
