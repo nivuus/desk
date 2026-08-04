@@ -1658,6 +1658,29 @@ Dans le corps du fil, en tête de boucle :
                     // ... (le corps existant, inchangé)
 ```
 
+⚠️ **CETTE INSTRUCTION A PRODUIT F1, le pire défaut de la branche, et
+l'implémenteur qui la suivait ne pouvait pas le voir.** Le « corps existant,
+inchangé » contenait le bloc `REPORT_INTERVAL` de la trace périodique
+`compteurs audio`, dont l'ajout des deux champs est demandé juste après ce
+snippet. En plaçant le gate `if !emettait { … continue; }` **au-dessus** de ce
+corps, cette instruction l'a
+placé au-dessus de la trace aussi : la trace n'était alors atteignable que
+quand `emettait` valait vrai, donc son champ `actif` valait
+**structurellement `true`** — exactement le contrôle que D8 devait pouvoir
+faire échouer, rendu incapable d'échouer par la position même du bloc qu'il
+lisait. Le `⚠️` qui suit (« `actif` et `pid` sont le seul moyen de voir un
+arbitrage figé ») reste vrai aujourd'hui — le bloc a depuis été **remonté
+au-dessus du gate** (revue finale de branche, F1) — mais il était **faux** au
+moment où le plan le faisait suivre cette instruction telle quelle.
+**Invariant à tenir désormais : le rapport périodique doit rester au-dessus du
+gate de coupure du son, pour qu'une fenêtre muette rapporte quand même toutes
+les 30 s (`actif=false`).** Voir `docs/superpowers/plans/2026-08-03-multifenetres-audio-par-fenetre-resultats.md`
+§3 point F1, et la forme corrigée dans `agent/src/windows_audio.rs` (le bloc
+`REPORT_INTERVAL` y précède le `if !emettait`, avec un commentaire qui
+réaffirme cet ordre). **Un successeur qui rejoue ou adapte cette étape sur la
+foi du code ci-dessus recréerait le défaut** : ne pas reproduire cet ordre de
+blocs sans réordonner.
+
 Et dans la trace périodique `compteurs audio`, **ajouter les deux champs qui
 rendent observable le mode de défaillance silencieux** :
 

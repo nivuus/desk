@@ -290,10 +290,21 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 >
 > | Fichier | Lignes | Remarque |
 > | --- | --- | --- |
-> | `agent/src/capteur/distante/tests.rs` | **462** (marge 38) | +53 : le test du rattachement muet (F2) |
+> | `agent/src/capteur/distante/tests.rs` | **462** (marge 38) | +29 (433 → 462) : le test du rattachement muet (F2) |
 > | `agent/src/capteur/distante.rs` | **354** | +22 : le rattachement remet l'enfant au silence (F2) |
-> | `agent/src/audio.rs` | **273** | +87 : `LECTURES_ECHOUEES_MAX` et `temporisation_de_reprise`, PURS et éprouvés sur l'hôte, avec leurs deux tests (F3) |
+> | `agent/src/audio.rs` | **273** | +88 (185 → 273) : `LECTURES_ECHOUEES_MAX` et `temporisation_de_reprise`, PURS et éprouvés sur l'hôte, avec leurs deux tests (F3) |
 > | `agent/src/transport/piste_audio.rs` | **218** | +24 : le budget audio se conditionne à l'existence d'une source (F4), et `capture_morte` au journal (F3) |
+>
+> ❌ **Les deux deltas ci-dessus (`+53` sur `tests.rs`, `+87` sur `audio.rs`)
+> étaient FAUX, relevés le 4 août 2026 par la commande** (`git diff --numstat`
+> entre le début et la fin de la vague) : `distante/tests.rs` a gagné **+29**
+> (433 → 462, pas 409 → 462) et `audio.rs` **+88** (185 → 273). Le `409` de
+> départ n'a jamais été mesuré pour cette vague : c'est le chiffre **D6** de la
+> ligne 221 de ce même fichier, recopié au lieu d'être relevé — le même geste
+> que le naufrage du « 487 » de `distante.rs`, documenté quatre fois plus haut
+> dans ce fichier, et que le 119/138 de `repartiteur.rs`/`part.rs` rejouait déjà
+> « à l'identique » (voir ci-dessus, section D6). **Corrigé dans le tableau
+> ci-dessus** ; l'absolu de 462 restait juste.
 >
 > ⚠️ **`windows_audio.rs` est passé de 399 à 479 : sa marge est de 21**, et
 > **il n'y a eu AUCUNE extraction** — la croissance est presque entièrement du
