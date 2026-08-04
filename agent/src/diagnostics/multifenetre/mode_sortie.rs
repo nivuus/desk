@@ -26,6 +26,38 @@
 //! Refus et acceptation sont deux résultats de mesure également valides —
 //! aucun des deux n'est une panne de la sonde. Un refus a son repli déjà acté
 //! ailleurs dans le plan (l'upscale, documenté puis accepté).
+//!
+//! # Défaut corrigé le 4 août 2026 (F1 rejoué) — voir `p1-mode-sortie.log`
+//!
+//! La première exécution a rendu « P1 RECU » sans valeur : elle demandait à
+//! la sortie la taille qu'elle avait **déjà** au moment de la création
+//! (`sortie moment="après création" … largeur=1920 hauteur=1080`, alors que
+//! la sonde croyait avoir créé du 1280×720 — persistance probable au
+//! registre d'un `CDS_UPDATEREGISTRY` d'une exécution antérieure). Le critère
+//! `derniere_taille == cible` était donc vrai AVANT toute tentative :
+//! `ChangeDisplaySettingsExW` n'a jamais eu l'occasion de changer quoi que ce
+//! soit, et rien ne pouvait faire échouer le contrôle. Exactement le défaut
+//! que ce dépôt appelle F1 (un contrôle qui ne peut pas rendre l'autre
+//! verdict), rejoué sur l'instrument censé l'éviter.
+//!
+//! **Le remède tient en deux points, tous deux appliqués ci-dessous :**
+//! 1. la taille courante est relevée par DXGI (`GetDesc`/`DesktopCoordinates`,
+//!    jamais WMI) **avant toute tentative**, sous une clé sans ambiguïté
+//!    (`taille_avant_tentative_*`), et comparée à la cible ;
+//! 2. la cible n'est plus un couple fixe reçu tel quel : elle est choisie
+//!    dynamiquement parmi les modes que `EnumDisplaySettingsExW` annonce, **en
+//!    excluant la taille courante** (`choisir_cible`). Si aucun mode
+//!    n'en diffère — cas dégénéré, non rencontré en pratique avec les neuf
+//!    modes de cette VM — la sonde REFUSE de mesurer (`P1 NON MESURABLE`)
+//!    plutôt que de rendre un verdict vide ;
+//! 3. **le verdict lui-même est un MOUVEMENT observé, pas une égalité à la
+//!    cible.** `P1 RECU` ⟺ la taille relue par DXGI après une tentative
+//!    diffère de `avant` — exactement la question que pose le titre du
+//!    module (« un AUTRE mode que celui de sa création »), pas « CE mode
+//!    précis-là ». Que le pilote honore ou non la valeur exacte demandée est
+//!    journalisé à part (`cible_atteinte`/`cible_exacte_atteinte`) : une
+//!    question plus fine, qui peut valoir `false` sous un verdict `P1 RECU`
+//!    sans que ce soit une contradiction.
 
 use std::collections::HashSet;
 
@@ -141,18 +173,84 @@ fn appliquer_combo(nom_sortie: &str, largeur: u32, hauteur: u32, combo: &Combo) 
     }
 }
 
+/// Choisit la cible à tenter : la résolution demandée si elle diffère déjà de
+/// la taille courante et figure parmi les modes annoncés, sinon une cible
+/// prise dynamiquement dans les modes annoncés, **en excluant systématiquement
+/// la taille courante** (`avant`) — c'est ce qui rend impossible de rejouer le
+/// défaut F1 documenté en tête du module : quel que soit l'état où la
+/// persistance au registre a laissé la sortie, la cible retenue en diffère
+/// par construction, sauf le cas dégénéré rendu par `None`.
+///
+/// Modes triés par `modes_annonces` (croissant, dédupliqués) : le repli
+/// choisit le plus grand mode distinct de `avant`, pour un mouvement large et
+/// donc sans ambiguïté de mesure.
+fn choisir_cible(avant: (u32, u32), demande: (u32, u32), annonces: &[(u32, u32)]) -> Option<(u32, u32)> {
+    if demande != avant && annonces.contains(&demande) {
+        return Some(demande);
+    }
+    annonces.iter().copied().rev().find(|&mode| mode != avant)
+}
+
 /// Essaie les combinaisons connues jusqu'à ce que la relecture DXGI confirme
-/// la cible, ou jusqu'à épuisement. Rend toujours `Ok` : un refus est une
-/// mesure, pas une erreur — voir le commentaire de tête du module. Seule une
+/// la cible, ou jusqu'à épuisement. Rend toujours `Ok` : un refus — ou
+/// l'impossibilité de choisir une cible mesurable — est une mesure, pas une
+/// erreur de la sonde ; voir le commentaire de tête du module. Seule une
 /// topologie devenue illisible fait remonter une erreur.
-fn essayer_les_modes(pilote: &PiloteParIoctl, nom_sortie: &str, cible: (u32, u32)) -> Result<()> {
+///
+/// `avant` est la taille lue par DXGI juste après la création, PAS supposée
+/// être la résolution de création : c'est exactement la valeur dont l'absence
+/// a rendu le premier relevé vide de sens (voir le commentaire de tête).
+fn essayer_les_modes(
+    pilote: &PiloteParIoctl,
+    nom_sortie: &str,
+    avant: (u32, u32),
+    demande: (u32, u32),
+) -> Result<()> {
     let annonces = modes_annonces(nom_sortie);
     tracing::info!(
         nombre = annonces.len(),
-        contient_cible = annonces.contains(&cible),
+        largeur_avant_tentative = avant.0,
+        hauteur_avant_tentative = avant.1,
+        contient_demande = annonces.contains(&demande),
+        demande_egale_avant = demande == avant,
         modes = ?annonces,
         "modes annonces (EnumDisplaySettingsExW) avant tout changement"
     );
+
+    let cible = match choisir_cible(avant, demande, &annonces) {
+        Some(cible) => cible,
+        None => {
+            tracing::error!(
+                verdict = "P1 NON MESURABLE",
+                raison = "aucun mode annonce ne differe de la taille courante",
+                largeur_avant_tentative = avant.0,
+                hauteur_avant_tentative = avant.1,
+                largeur_demandee = demande.0,
+                hauteur_demandee = demande.1,
+                modes = ?annonces,
+                "verdict P1 : mesure impossible, aucune tentative effectuee"
+            );
+            return Ok(());
+        }
+    };
+    if cible == demande {
+        tracing::info!(
+            largeur_cible = cible.0,
+            hauteur_cible = cible.1,
+            "cible retenue = resolution demandee (differe deja de la taille courante)"
+        );
+    } else {
+        tracing::warn!(
+            largeur_demandee = demande.0,
+            hauteur_demandee = demande.1,
+            largeur_avant_tentative = avant.0,
+            hauteur_avant_tentative = avant.1,
+            largeur_cible = cible.0,
+            hauteur_cible = cible.1,
+            "la resolution demandee egale deja la taille courante (persistance registre probable \
+             d'une execution anterieure) -- cible substituee dynamiquement parmi les modes annonces"
+        );
+    }
 
     let combos = [
         Combo::Simple("CDS_UPDATEREGISTRY seul", CDS_UPDATEREGISTRY),
@@ -165,6 +263,7 @@ fn essayer_les_modes(pilote: &PiloteParIoctl, nom_sortie: &str, cible: (u32, u32
     let mut dernier_code = 0i32;
     let mut derniere_taille = (0u32, 0u32);
     let mut gagnante: Option<&'static str> = None;
+    let mut cible_exacte_atteinte = false;
     for combo in &combos {
         dernier_code = appliquer_combo(nom_sortie, cible.0, cible.1, combo);
         // Windows reconfigure sa topologie d'affichage de façon asynchrone —
@@ -179,18 +278,27 @@ fn essayer_les_modes(pilote: &PiloteParIoctl, nom_sortie: &str, cible: (u32, u32
             .find(|sortie| sortie.nom_sortie == nom_sortie)
             .map(|sortie| (sortie.rect.width, sortie.rect.height))
             .unwrap_or((0, 0));
-        let conforme = derniere_taille == cible;
+        // Le critère qui compte est le MOUVEMENT (`derniere_taille != avant`),
+        // pas l'égalité à la cible choisie — voir le commentaire de tête du
+        // module (défaut F1 corrigé). `cible_atteinte` reste journalisé,
+        // séparément : il documente si le pilote honore la valeur exacte
+        // demandée, une question plus fine que P1, jamais celle qui décide du
+        // verdict.
+        let mouvement = derniere_taille != avant;
+        let cible_atteinte = derniere_taille == cible;
         tracing::info!(
             etiquette = combo.etiquette(),
             code_brut = dernier_code,
             api_annonce_succes = (dernier_code == DISP_CHANGE_SUCCESSFUL.0),
             largeur_relue = derniere_taille.0,
             hauteur_relue = derniere_taille.1,
-            conforme,
+            mouvement,
+            cible_atteinte,
             "relecture DXGI (GetDesc/DesktopCoordinates) apres la tentative"
         );
-        if conforme {
+        if mouvement {
             gagnante = Some(combo.etiquette());
+            cible_exacte_atteinte = cible_atteinte;
             break;
         }
     }
@@ -199,10 +307,23 @@ fn essayer_les_modes(pilote: &PiloteParIoctl, nom_sortie: &str, cible: (u32, u32
         verdict = if gagnante.is_some() { "P1 RECU" } else { "P1 REFUSE" },
         combinaison_gagnante = ?gagnante,
         code_brut_dernier_essai = dernier_code,
+        largeur_avant_tentative = avant.0,
+        hauteur_avant_tentative = avant.1,
         largeur_relue = derniere_taille.0,
         hauteur_relue = derniere_taille.1,
         largeur_cible = cible.0,
         hauteur_cible = cible.1,
+        // Le verdict lui-même : un mouvement (A != B) a-t-il été observé ?
+        // C'est CE champ qui gouverne "P1 RECU" ci-dessus, pas une égalité à
+        // la cible (voir le commentaire de tête du module, défaut F1
+        // corrigé) -- recalculé ici, redondant avec `gagnante.is_some()` par
+        // construction, pour qu'un lecteur du journal n'ait pas à le déduire.
+        mouvement_observe = derniere_taille != avant,
+        // Secondaire : le pilote a-t-il honoré la valeur EXACTE demandée, ou
+        // s'est-il arrêté à un mode intermédiaire ? Peut valoir `false` avec
+        // un verdict "P1 RECU" -- ce n'est pas une contradiction, c'est une
+        // question plus fine que celle de P1.
+        cible_exacte_atteinte,
         "verdict P1 : une sortie virtuelle accepte-t-elle un autre mode que celui de sa creation"
     );
     Ok(())
@@ -216,7 +337,11 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
              (par exemple 1920x1080)"
         )
     })?;
-    let cible: (u32, u32) = (
+    // `demande` : la préférence de l'opérateur, PAS forcément la cible
+    // retenue — voir `choisir_cible`. La conserver permet à un opérateur qui
+    // connaît déjà la taille courante de viser directement une cible utile,
+    // sans rien changer au format d'appel documenté.
+    let demande: (u32, u32) = (
         l.trim().parse().context("largeur invalide dans MULTIFENETRE_MODE_SORTIE")?,
         h.trim().parse().context("hauteur invalide dans MULTIFENETRE_MODE_SORTIE")?,
     );
@@ -241,9 +366,26 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
         let apres_creation = relever_topologie("après création")?;
         let virtuelle = designer_sortie_neuve(&apres_creation, &connues, id)?;
         let nom_sortie = virtuelle.nom_sortie.clone();
-        tracing::info!(nom = %nom_sortie, "sortie de sonde créée à 1280x720 (résolution de production)");
+        // `taille_avant_tentative` : la taille RÉELLEMENT lue par DXGI juste
+        // après la création — PAS supposée être
+        // `largeur_creation`×`hauteur_creation`. C'est exactement le relevé
+        // dont l'absence a rendu le premier passage de cette sonde vide de
+        // sens (voir le commentaire de tête du module) : la sortie peut
+        // naître à une taille différente de celle demandée au pilote, par
+        // persistance au registre d'un `CDS_UPDATEREGISTRY` antérieur. Nommée
+        // à part de `avant` (la topologie complète relevée plus haut, encore
+        // en usage plus bas) pour ne rien masquer par ombrage.
+        let taille_avant_tentative = (virtuelle.rect.width, virtuelle.rect.height);
+        tracing::info!(
+            nom = %nom_sortie,
+            largeur_demandee_a_la_creation = largeur_creation,
+            hauteur_demandee_a_la_creation = hauteur_creation,
+            largeur_avant_tentative = taille_avant_tentative.0,
+            hauteur_avant_tentative = taille_avant_tentative.1,
+            "sortie de sonde créée -- taille relue par DXGI avant toute tentative de changement"
+        );
 
-        essayer_les_modes(&pilote, &nom_sortie, cible)
+        essayer_les_modes(&pilote, &nom_sortie, taille_avant_tentative, demande)
         // La garde `sorties` rend la sortie au pilote ici, à la sortie de
         // portée.
     };
