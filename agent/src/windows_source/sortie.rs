@@ -177,6 +177,26 @@ mod tests {
         assert_eq!(h % 2, 0, "hauteur {h}");
     }
 
+    /// IMPORTANT 2 de la revue de la tâche 9 : **le test ci-dessus ne peut pas
+    /// échouer sur la propriété qu'il nomme.**
+    ///
+    /// Sur `(3441, 1441)`, `facteur ≈ 0,557977` donne `round(3441×f) = 1920` et
+    /// `round(1441×f) = 804` — **déjà pairs avant tout masquage**. Retirer les
+    /// deux `& !1` de `borner_a_la_taille_max` le laisse VERT. Et les deux
+    /// autres entrées paires des tests voisins (`(1280, 720)`, `(0, 0)`) ne
+    /// l'exercent pas davantage : avant ce cas-ci, **aucun des cinq tests ne
+    /// couvrait l'alignement pair**, alors que l'un porte son nom.
+    ///
+    /// `(1281, 721)` passe par la **branche rapide** (sous le plafond, donc
+    /// aucun facteur d'échelle) : l'alignement y est le seul mécanisme en jeu,
+    /// et le retrait des `& !1` rend `(1281, 721)` au lieu de `(1280, 720)`.
+    /// C'est la doctrine du dépôt appliquée à un test : **un contrôle qu'on n'a
+    /// jamais vu rouge n'est pas un contrôle** (D7, F1).
+    #[test]
+    fn l_alignement_pair_est_reellement_exerce_par_une_entree_impaire() {
+        assert_eq!(borner_a_la_taille_max((1281, 721)), (1280, 720));
+    }
+
     /// IMPORTANT 4 (revue de la tâche 9) : la branche rapide ne bornait pas
     /// vers le bas, contrairement à la branche d'échelle qui appliquait déjà
     /// `.max(2)`. `(0, 0)` en est le cas dégénéré réel : une boîte vidéo
