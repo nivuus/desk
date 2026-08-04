@@ -92,6 +92,17 @@ impl WindowsSource {
         // un refus du pilote ferait journaliser un incident à chaque connexion.
         // L'adaptation réseau, elle, passe par `set_encode_size` et n'est
         // toujours pas concernée.
+        //
+        // ⚠️ **IMPORTANT 2 (revue de la tâche 9), écart banc/produit jamais
+        // mesuré.** La sonde P1 crée sa sortie, change son mode, puis relit —
+        // elle n'ouvre JAMAIS `DuplicateOutput` dessus. En production,
+        // `changer_mode_de_sortie` retaille une sortie dont la duplication
+        // DXGI est ouverte et détenue pendant l'attente (jusqu'à 3,1 s). P1 ne
+        // dit donc rien de ce que fait `ChangeDisplaySettingsExW` sur une
+        // sortie EN COURS de capture — la même classe d'écart banc/produit
+        // que le chantier « N duplications de front » a payée en D1. **Non
+        // corrigeable par du code** : les tâches 10 et 11 (recette) en sont
+        // la première mesure réelle.
         if !self.mode.redimensionne_la_fenetre() {
             if !crate::capteur::plein_ecran::actif() {
                 tracing::info!(
@@ -103,6 +114,18 @@ impl WindowsSource {
                 );
                 return Ok(());
             }
+            // IMPORTANT 4 (revue de la tâche 9) : même plancher que le chemin
+            // `FenetreRecadree` quelques lignes plus bas (`width.max(160)`,
+            // `height.max(120)`), appliqué ICI et non délégué à
+            // `borner_a_la_taille_max` — dont le rôle reste borné au PLAFOND
+            // (`TAILLE_MAX_SORTIE`), pas au plancher. Sans lui, toute
+            // réduction à zéro de la boîte vidéo (fenêtre repliée, transition
+            // de plein écran) émettrait `0×0`, que `borner_a_la_taille_max`
+            // laissait passer tel quel par sa branche rapide (`l <= max_l &&
+            // h <= max_h`, aucun `.max` avant D8) : le pilote aurait été
+            // sollicité pour un mode quasi nul, brûlant les 3,1 s
+            // d'`attendre_la_sortie` pour rien.
+            let (width, height) = (width.max(160), height.max(120));
             let (largeur, hauteur) = crate::windows_source_sortie::borner_a_la_taille_max((
                 width, height,
             ));

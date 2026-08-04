@@ -279,3 +279,44 @@ fn l_abandon_d_une_entree_figee_rend_la_sortie() {
         "la sortie retenue doit être rendue, reçu {effets:?}"
     );
 }
+
+/// IMPORTANT 5 (revue de la tâche 9) : `changer_mode_de_sortie` (D8) retaille
+/// une sortie hors de cette table. `rafraichir_taille_sortie` est le
+/// rattrapage — appelé par le contrôle périodique de placement sur une
+/// lecture DXGI fraîche, il doit se répercuter sur ce que `viewport_recu`
+/// comparera à la prochaine relance.
+#[test]
+fn rafraichir_la_taille_met_a_jour_une_sortie_deja_retenue() {
+    let mut t = Table::nouvelle(4);
+    let session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
+    assert_eq!(t.taille_sortie_de(&session), Some((1280, 720)));
+
+    // Le mode a changé hors de cette table (D8) : la sortie fait maintenant
+    // 1920×1080, et c'est ce que le contrôle périodique relit sur DXGI.
+    t.rafraichir_taille_sortie(&session, (1920, 1080));
+
+    assert_eq!(t.taille_sortie_de(&session), Some((1920, 1080)));
+}
+
+/// Ne doit RIEN inventer : une session sans sortie retenue (encore en attente
+/// de création, ou inconnue) reste sans taille après l'appel — seul
+/// `sortie_creee` a le droit de poser la toute première valeur.
+#[test]
+fn rafraichir_la_taille_n_invente_rien_sans_sortie_retenue() {
+    let mut t = Table::nouvelle(4);
+    let effets = t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into());
+    let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
+        panic!("ouverture attendue, reçu {effets:?}");
+    };
+    let session = session.clone();
+    // Ni `viewport_recu` ni `sortie_creee` n'ont encore couru : aucune sortie
+    // n'est retenue.
+    assert_eq!(t.taille_sortie_de(&session), None);
+
+    t.rafraichir_taille_sortie(&session, (1920, 1080));
+    assert_eq!(t.taille_sortie_de(&session), None, "rien à rafraîchir, rien n'a dû apparaître");
+
+    // Une session totalement inconnue ne doit pas non plus paniquer ni créer
+    // d'entrée fantôme.
+    t.rafraichir_taille_sortie(&IdSession("w-inconnue".into()), (1920, 1080));
+}

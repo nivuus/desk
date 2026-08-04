@@ -71,6 +71,18 @@ impl ModeCapture {
     /// (`GetDesc`/`DesktopCoordinates`, jamais WMI — champ vu périmé de 68 s
     /// sur ce terrain). Verdict « P1 RECU », avec `CDS_UPDATEREGISTRY` seul, du
     /// premier coup.
+    ///
+    /// ⚠️ **IMPORTANT 2 (revue de la tâche 9), écart banc/produit jamais
+    /// mesuré.** Cette sonde crée sa sortie, change son mode, puis relit —
+    /// elle n'ouvre JAMAIS `DuplicateOutput` dessus. En production, le
+    /// changement de mode retaille une sortie dont la duplication DXGI est
+    /// ouverte et détenue pendant l'attente (jusqu'à 3,1 s,
+    /// `windows_source/redimensionnement/mode_sortie.rs`). P1 ne dit donc rien
+    /// de ce que fait `ChangeDisplaySettingsExW` sur une sortie EN COURS de
+    /// capture — la même classe d'écart banc/produit que le chantier « N
+    /// duplications de front » a payée en D1. **Non corrigeable par du
+    /// code** : les tâches 10 et 11 (recette) en sont la première mesure
+    /// réelle.
     pub fn redimensionne_la_fenetre(self) -> bool {
         matches!(self, ModeCapture::FenetreRecadree)
     }
@@ -87,11 +99,21 @@ impl ModeCapture {
 pub const TAILLE_MAX_SORTIE: (u32, u32) = (1920, 1080);
 
 /// Ramène une taille demandée sous `TAILLE_MAX_SORTIE`, à rapport d'aspect
-/// préservé et en dimensions paires.
+/// préservé, en dimensions paires, et jamais nulle.
+///
+/// ⚠️ **IMPORTANT 4 (revue de la tâche 9) : la branche rapide ci-dessous
+/// n'appliquait aucun plancher**, contrairement à la branche d'échelle
+/// (`.max(2)` déjà présent dessus). `(0, 0)` — une boîte vidéo réduite à
+/// rien, transitoirement vraie pendant une fenêtre repliée ou une transition
+/// de plein écran — y passait tel quel. Ce `.max(2)` reste un filet minimal :
+/// le plancher qui compte réellement (160×120, la même valeur que le chemin
+/// `FenetreRecadree`) est appliqué par l'APPELANT
+/// (`windows_source/redimensionnement.rs::resize`), avant même d'atteindre
+/// cette fonction — dont le rôle propre reste borné au PLAFOND.
 pub fn borner_a_la_taille_max((l, h): (u32, u32)) -> (u32, u32) {
     let (max_l, max_h) = TAILLE_MAX_SORTIE;
     if l <= max_l && h <= max_h {
-        return (l & !1, h & !1);
+        return (l.max(2) & !1, h.max(2) & !1);
     }
     // Le facteur le plus contraignant des deux axes : borner chaque axe
     // séparément déformerait l'image.
@@ -153,6 +175,15 @@ mod tests {
         let (l, h) = borner_a_la_taille_max((3441, 1441));
         assert_eq!(l % 2, 0, "largeur {l}");
         assert_eq!(h % 2, 0, "hauteur {h}");
+    }
+
+    /// IMPORTANT 4 (revue de la tâche 9) : la branche rapide ne bornait pas
+    /// vers le bas, contrairement à la branche d'échelle qui appliquait déjà
+    /// `.max(2)`. `(0, 0)` en est le cas dégénéré réel : une boîte vidéo
+    /// réduite à rien (fenêtre repliée, transition de plein écran) l'émet.
+    #[test]
+    fn le_bornage_ne_rend_jamais_une_dimension_nulle() {
+        assert_eq!(borner_a_la_taille_max((0, 0)), (2, 2));
     }
 
     #[test]

@@ -9,10 +9,26 @@
 
 use super::*;
 
-/// Remet sur sa sortie toute fenêtre qui en est partie.
-pub(super) fn controler_le_placement(table: &Table) {
+/// Remet sur sa sortie toute fenêtre qui en est partie, et rafraîchit la
+/// taille de sortie que la table a retenue pour chacune.
+///
+/// **`&mut Table`, et non `&Table`** depuis IMPORTANT 5 (revue de la tâche
+/// 9) : la relecture DXGI que ce contrôle fait déjà, chaque seconde, pour
+/// toutes les sessions vivantes, est aussi la façon la moins invasive de
+/// tenir `taille_sortie` à jour d'un changement de mode fait par
+/// `WindowsSource::changer_mode_de_sortie` (D8), hors de cette table. Voir
+/// `Table::rafraichir_taille_sortie`.
+pub(super) fn controler_le_placement(table: &mut Table) {
     let toutes = enumerer_sorties_silencieux().unwrap_or_default();
     for session in table.sessions_vivantes() {
+        // Cloné : `nom_sortie_de` emprunte `table`, et `rafraichir_taille_sortie`
+        // juste en dessous en a besoin `&mut`. Un `&str` emprunté ne
+        // survivrait pas à cet appel.
+        if let Some(nom) = table.nom_sortie_de(&session).map(str::to_string) {
+            if let Some(sortie) = toutes.iter().find(|s| s.nom_sortie == nom) {
+                table.rafraichir_taille_sortie(&session, (sortie.rect.width, sortie.rect.height));
+            }
+        }
         replacer_si_besoin(table, &session, &toutes);
     }
 }

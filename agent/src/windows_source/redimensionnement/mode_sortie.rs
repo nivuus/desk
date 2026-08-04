@@ -47,10 +47,15 @@ const PAS_TOPOLOGIE: std::time::Duration = std::time::Duration::from_millis(100)
 impl WindowsSource {
     /// Change le mode de la sortie virtuelle, puis y repose la fenêtre.
     ///
-    /// Rend `Ok(())` même quand le pilote refuse : rien n'a échoué du point de
-    /// vue de la session, l'image reste simplement mise à l'échelle. Un `Err`
+    /// Rend `Ok(())` même quand le pilote REFUSE TOTALEMENT (la sortie relue
+    /// n'a pas bougé de `self.width`/`self.height`) : rien n'a échoué du point
+    /// de vue de la session, le flux reste à sa taille courante. Un `Err`
     /// ferait journaliser un incident à chaque connexion (le `ResizeObserver`
-    /// émet une fois à l'observation initiale).
+    /// émet une fois à l'observation initiale). ⚠️ Ce n'est PAS le seul cas où
+    /// `Ok(())` sort : un refus de RECONSTRUCTION après que la sortie a bel et
+    /// bien bougé rend, lui, une `Err` (voir `reconstruire_sur_la_sortie`) —
+    /// les deux ne doivent pas être confondus, IMPORTANT 1 de la revue de la
+    /// tâche 9 l'a précisément corrigé pour cette raison.
     ///
     /// ✅ Le superviseur ne combattra pas ce placement, et c'est vérifié :
     /// `replacer_si_besoin` (`superviseur/boucle/placement_periodique.rs`)
@@ -63,6 +68,22 @@ impl WindowsSource {
     /// survivent au changement de mode. Seule la duplication perd son accès —
     /// c'est l'abandon de mutex `0x887A0026` que D2 a appris à encaisser — et
     /// elle est ici rouverte explicitement, à la taille neuve.
+    ///
+    /// ⚠️ **IMPORTANT 2 (revue de la tâche 9), écart banc/produit jamais
+    /// mesuré.** La sonde P1 (`diagnostics/multifenetre/mode_sortie.rs::essayer_les_modes`)
+    /// crée la sortie, change son mode, puis relit — elle n'ouvre JAMAIS
+    /// `DuplicateOutput` dessus. Ici, en production, cette fonction retaille
+    /// une sortie dont la duplication DXGI est ouverte et détenue pendant
+    /// toute l'attente (jusqu'à 3,1 s). P1 ne dit donc rien de ce que fait
+    /// `ChangeDisplaySettingsExW` sur une sortie EN COURS de capture — la
+    /// même classe d'écart banc/produit que le chantier « N duplications de
+    /// front » a payée en D1. **Non corrigeable par du code** : les tâches
+    /// 10 et 11 (recette) en sont la première mesure réelle.
+    ///
+    /// ⚠️ **IMPORTANT 4 (revue de la tâche 9) : aucun plancher n'est appliqué
+    /// ICI.** Le plancher (160×120, même valeur que le chemin
+    /// `FenetreRecadree`) est posé par l'appelant, `resize()`, avant
+    /// `borner_a_la_taille_max` — voir son commentaire.
     pub(super) fn changer_mode_de_sortie(&mut self, largeur: u32, hauteur: u32) -> Result<()> {
         // Le nom de la sortie n'est PAS un champ de `WindowsSource` — et il n'a
         // pas eu à le devenir : `DesktopCapture` retient déjà sa `CibleCapture`
@@ -108,6 +129,29 @@ impl WindowsSource {
         // (1280×632 demandé rendu 1280×720, soit 88 px, sous-bloc D2) : c'est
         // la taille OBTENUE qui est retenue plus bas, et c'est elle qui ferme
         // la boucle.
+        //
+        // ⚠️ **IMPORTANT 3 (revue de la tâche 9) : cette protection n'est
+        // COMPLÈTE qu'à `devicePixelRatio == 1`, et l'affirmation ci-dessus
+        // (« sans lui, [...] déclencherait ») ne le disait pas.** La sortie
+        // est créée sur `viewportPair(window.innerWidth, window.innerHeight)`
+        // (`client/src/main.ts`, SANS `devicePixelRatio`), alors que le
+        // `ResizeObserver` qui suit émet
+        // `round(video.clientWidth * window.devicePixelRatio)`
+        // (`client/src/main.ts`, AVEC lui). À dpr = 1 les deux coïncident (0
+        // ou 1 px d'écart, sous la tolérance de 4 px) ; à dpr = 1,25 / 1,5 / 2
+        // l'écart vaut 25 à 100 % — largement au-dessus — et l'observation
+        // initiale déclenche alors RÉELLEMENT la cascade que ce court-circuit
+        // existe pour empêcher, sur tout client HiDPI, sans qu'aucun plein
+        // écran n'ait été demandé. **Non corrigé ici** : les deux annonces
+        // (création de sortie côté shell, `ResizeObserver` côté page de
+        // session) partagent le même message `resize` que consomme AUSSI le
+        // chemin `FenetreRecadree` (mono-fenêtre), où `devicePixelRatio` est
+        // en revanche NÉCESSAIRE — la texture DXGI du bureau physique que ce
+        // chemin recadre est en pixels PHYSIQUES, pas en pixels CSS. Unifier
+        // les deux unités sans casser ce second chemin exige de vérifier ce
+        // qu'il en coûte, ce qu'aucun test d'hôte ne peut faire ; signalé au
+        // lieu d'être risqué. `PLEIN_ECRAN=0` reste la seule parade
+        // disponible aujourd'hui pour un client HiDPI.
         if crate::superviseur::placement::taille_compatible(
             (largeur, hauteur),
             (self.width, self.height),
@@ -134,19 +178,60 @@ impl WindowsSource {
         // **Le verdict est ce que DXGI relit, jamais ce que l'API retourne** —
         // doctrine de la sonde P1 : un `DISP_CHANGE_SUCCESSFUL` sur une sortie
         // dont les dimensions n'ont pas bougé est un refus déguisé.
+        //
+        // `None` signifie ici « aucune lecture de topologie n'a réussi dans le
+        // budget » — PAS « la cible n'a pas été atteinte ». Voir
+        // `attendre_la_sortie` : la distinction entre « refusé » et « atteint
+        // une taille différente de la cible » se fait ci-dessous, contre
+        // `self.width`/`self.height`, pas ici contre `None`.
         let Some(rect) = attendre_la_sortie(&nom_sortie, (largeur, hauteur)) else {
             tracing::warn!(
                 sortie = %nom_sortie,
                 largeur,
                 hauteur,
                 code,
-                "la sortie n'a pas pris le mode demandé : le flux reste mis à l'échelle"
+                "topologie illisible apres le changement de mode : etat suppose inchange"
             );
             return Ok(());
         };
 
-        // La fenêtre est reposée sur le rectangle FRAÎCHEMENT RELU, jamais sur
-        // celui demandé — le pilote quantifie.
+        // IMPORTANT 1 (revue de la tâche 9) : comparer à `self.width`/`self.height`
+        // — la taille AVANT tentative —, pas seulement à `(largeur, hauteur)`
+        // — la cible. Le pilote QUANTIFIE (1280×632 demandé → 1280×720 obtenu,
+        // 88 px d'écart, sous-bloc D2) et n'annonce que NEUF modes discrets
+        // (sonde P1), alors que `borner_a_la_taille_max` produit des tailles à
+        // rapport d'aspect préservé qui n'en font presque jamais partie
+        // (1920×1200 → 1728×1080, par exemple). Une première version de cette
+        // tâche ne testait la sortie relue QUE contre la cible : un
+        // changement PARTIEL — la sortie a bougé, mais pas jusqu'à la cible —
+        // se lisait alors comme un refus total, et la chaîne de capture
+        // n'était JAMAIS reconstruite alors que la texture, elle, avait
+        // changé de taille : même corruption permanente que le Critique
+        // (région périmée, recadrage de travers).
+        if crate::superviseur::placement::taille_compatible(
+            (rect.width, rect.height),
+            (self.width, self.height),
+        ) {
+            // La sortie n'a PAS bougé : refus authentique. Rien à
+            // reconstruire — le flux reste à sa taille courante, mise à
+            // l'échelle par le lecteur vidéo du navigateur si le viewport
+            // diffère.
+            tracing::warn!(
+                sortie = %nom_sortie,
+                largeur,
+                hauteur,
+                code,
+                largeur_relue = rect.width,
+                hauteur_relue = rect.height,
+                "la sortie n'a pas pris le mode demandé : le flux reste a sa taille courante, mis a l'echelle cote client"
+            );
+            return Ok(());
+        }
+
+        // La sortie A bougé — qu'elle ait atteint la cible exacte ou une
+        // quantification différente — : la fenêtre est reposée sur le
+        // rectangle FRAÎCHEMENT RELU, jamais sur celui demandé, et la chaîne
+        // de capture est reconstruite sur CETTE taille.
         if let Err(erreur) = crate::superviseur::placement::poser(self.hwnd, &rect) {
             // Non bloquant : le contrôle périodique du superviseur repose la
             // fenêtre à 1 Hz de toute façon. Le journal, lui, doit le dire.
@@ -166,6 +251,36 @@ impl WindowsSource {
     /// jamais `self.capture` à `None` sans que `fatal` ne le dise.
     fn reconstruire_sur_la_sortie(&mut self, nom_sortie: &str, rect: Rect) -> Result<()> {
         self.capture = None;
+        // CRITIQUE (revue de la tâche 9) : l'ancien encodeur DOIT être détruit
+        // ICI, AVANT que la fabrique ci-dessous n'en demande un neuf au
+        // matériel — même ordre que `set_encode_size` (`windows_source/encodage.rs`),
+        // avec vingt lignes de commentaire dessus pour dire pourquoi. À
+        // `vivier::PLAFOND_EVEIL` (8) encodeurs vivants, un instant où le
+        // neuf coexiste avec l'ancien demande un NEUVIÈME encodeur au
+        // matériel, refusé au `SetOutputType` (`MF_E_UNSUPPORTED_D3D_TYPE`,
+        // `0xC00D6D76` — 18 refus sur 18 mesurés en D4). Une première version
+        // de cette tâche ne détruisait que `self.capture` ici : sur la
+        // configuration nominale (huit fenêtres éveillées), un changement de
+        // mode aurait donc demandé ce neuvième encodeur, retombant sur le
+        // secours `DesktopCapture::sur_sortie` — qui réussit, lui, puisqu'il
+        // ne demande aucun encodeur — et **gardait alors `self.region` d'AVANT
+        // sur une texture qui avait changé de taille** : recadrage périmé,
+        // corruption permanente de la session (le bras `Recovered` ci-dessous
+        // ne réessaie jamais).
+        //
+        // Le prix est le même qu'ailleurs dans ce fichier, et assumé de la
+        // même façon : si la construction du neuf échoue, l'ancien n'est plus
+        // là. Le bras `Recovered` plus bas en tire la conséquence honnête —
+        // `fatal`, pas un faux repli.
+        //
+        // ⚠️ **`resize()` (parent de ce fichier) ne détruit PAS son propre
+        // encodeur avant d'en construire un neuf** : sa fabrique appelle
+        // `H264Encoder::new` pendant que `self.encoder` porte encore l'ancien.
+        // C'est le même geste que le Critique ci-dessus décrivait AVANT ce
+        // correctif — non exploré ni corrigé ici, hors du périmètre de cette
+        // tâche, et nommé pour qu'un futur lecteur ne le redécouvre pas à ses
+        // frais.
+        self.encoder = None;
         let fps = self.fps;
         let bitrate = self.bitrate;
         let nom = nom_sortie.to_string();
@@ -220,7 +335,17 @@ impl WindowsSource {
             }
             RebuildOutcome::Recovered(new_capture, primary_error) => {
                 self.capture = Some(new_capture);
-                tracing::warn!(erreur = %primary_error, sortie = %nom_sortie, "reconstruction après changement de mode échouée, capture de secours restaurée");
+                // CRITIQUE (revue de la tâche 9) : contrairement au secours
+                // de `resize()`, il n'y a ici PLUS d'encodeur de repli valide
+                // — `self.encoder` a été détruit avant la tentative (voir le
+                // commentaire au-dessus de `self.encoder = None`), justement
+                // pour ne jamais demander un encodeur en trop au matériel.
+                // `fatal` le dit pour de bon : `next_frame` s'arrête avant de
+                // toucher `capture` ou `encoder` (voir leurs gardes), et la
+                // session se clôt proprement au lieu de soumettre des images
+                // à un encodeur qui n'existe plus.
+                self.fatal = true;
+                tracing::error!(erreur = %primary_error, sortie = %nom_sortie, "reconstruction après changement de mode échouée, aucun encodeur de repli (détruit avant la tentative) : source déclarée épuisée");
                 Err(primary_error)
             }
             RebuildOutcome::Fatal(primary_error) => {
@@ -256,34 +381,46 @@ fn changer_mode(nom_sortie: &str, largeur: u32, hauteur: u32) -> i32 {
     }
 }
 
-/// Attend que la sortie nommée porte la taille demandée, et rend son rectangle
-/// relu. `None` si elle ne l'a pas prise dans le budget.
+/// Attend que la sortie nommée se stabilise, et rend le DERNIER rectangle
+/// relu — que la cible ait été atteinte ou non.
+///
+/// `None` signifie « aucune lecture de topologie n'a réussi dans le budget »
+/// (pilote muet, sortie disparue) — PAS « la cible n'a pas été atteinte ».
+/// **C'est l'appelant qui juge du refus**, en comparant ce rectangle à
+/// `self.width`/`self.height` (la taille AVANT tentative), pas à `cible` :
+/// voir l'IMPORTANT 1 de la revue de la tâche 9. Une première version de
+/// cette fonction rendait `None` dès que la cible n'était pas atteinte,
+/// confondant ainsi « refusé » et « atteint une taille différente de la
+/// cible » — cette dernière laissait la sortie changée sans que la chaîne de
+/// capture ne soit jamais reconstruite.
 ///
 /// **Relecture par `GetDesc`/`DesktopCoordinates`** (`enumerer_sorties_silencieux`),
 /// jamais par WMI : le champ WMI a été vu périmé de 68 s sur ce terrain.
 /// Silencieuse, parce que cette boucle interroge jusqu'à trente fois.
 ///
-/// Le critère est « la taille demandée est atteinte, à `taille_compatible`
-/// près » : le pilote quantifie, donc exiger l'égalité stricte ferait conclure
-/// à un refus sur un succès de 4 px d'écart. Une quantification plus large
-/// (88 px relevés en D2) épuise le budget et se lit comme un refus — c'est le
-/// comportement voulu : le flux reste alors mis à l'échelle, et le journal le
-/// dit.
+/// Le critère de sortie ANTICIPÉE du budget est « la taille demandée est
+/// atteinte, à `taille_compatible` près » : le pilote quantifie, donc exiger
+/// l'égalité stricte ferait attendre inutilement les 3 s pleines sur un
+/// succès à 4 px d'écart. Une quantification plus large (88 px relevés en D2)
+/// épuise le budget — mais rend tout de même le dernier rectangle lu, que
+/// l'appelant reconnaîtra comme « bougé, à reconstruire ».
 fn attendre_la_sortie(nom_sortie: &str, cible: (u32, u32)) -> Option<Rect> {
     let debut = std::time::Instant::now();
+    let mut dernier_lu: Option<Rect> = None;
     loop {
         if let Ok(sorties) = crate::capture::enumerer_sorties_silencieux() {
             if let Some(sortie) = sorties.iter().find(|s| s.nom_sortie == nom_sortie) {
+                dernier_lu = Some(sortie.rect);
                 if crate::superviseur::placement::taille_compatible(
                     (sortie.rect.width, sortie.rect.height),
                     cible,
                 ) {
-                    return Some(sortie.rect);
+                    return dernier_lu;
                 }
             }
         }
         if debut.elapsed() >= BUDGET_TOPOLOGIE {
-            return None;
+            return dernier_lu;
         }
         std::thread::sleep(PAS_TOPOLOGIE);
     }
