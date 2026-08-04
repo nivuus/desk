@@ -354,7 +354,7 @@ async function sortieDeSession(session) {
 /// dans le code actuel (vérifié par `grep` avant d'écrire cette fonction).
 async function cadencesAgent(debutIso, finIso) {
     const plat = await journalPlat();
-    const out = { capteur: {}, enfant: {}, endormies: [] };
+    const out = { capteur: {}, enfant: {}, endormies: [], eveillees: [] };
     for (const l of plat.split('\n')) {
         const t = horodate(l);
         if (!t || t < debutIso || t > finIso) continue;
@@ -363,14 +363,24 @@ async function cadencesAgent(debutIso, finIso) {
         if (!s || !c) continue;
         if (l.includes('cadence du capteur')) {
             (out.capteur[s] ??= []).push(Number(c));
+            // `eveillees` : le pendant symétrique d'`endormies`, une ligne
+            // `endormie=false` DANS la fenêtre bornée fournie par l'appelant.
+            // Indispensable pour un contrôle de RÉVEIL qui ne se contente pas
+            // de la seule PRÉSENCE de la session dans `capteur` (laquelle est
+            // vraie dès la première ligne du run, avant même tout sommeil —
+            // voir la revue de la tâche 10, Critique 2) : l'appelant doit
+            // borner `debutIso` à l'instant de l'ordre de réveil, pas au
+            // début de la phase, pour que cette liste ne puisse être non vide
+            // QUE si un réveil a réellement eu lieu depuis.
             if (l.includes('endormie=true')) out.endormies.push(`${s}@${t}`);
+            else if (l.includes('endormie=false')) out.eveillees.push(`${s}@${t}`);
         } else if (l.includes('cadence de la piste vidéo')) {
             (out.enfant[s] ??= []).push(Number(c));
         }
     }
     const moy = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) =>
         [k, Number((v.reduce((a, b) => a + b, 0) / v.length).toFixed(2))]));
-    return { capteur: moy(out.capteur), enfant: moy(out.enfant), endormies: out.endormies };
+    return { capteur: moy(out.capteur), enfant: moy(out.enfant), endormies: out.endormies, eveillees: out.eveillees };
 }
 
 /// Les parts de budget appliquées, avec leur champ `endormie` — second témoin
@@ -809,10 +819,20 @@ async function togglerStyleFenetre(marqueur, action) {
 function marqueurFenetre(n) { return `chrome-d8-${ETIQUETTE}-${n}`; }
 function hzDe(n) { return 300 + 110 * n; }
 
-/// Copie `ton.html` (D7) vers une copie PROPRE À CHAQUE FRÉQUENCE — même
-/// correctif que D7 (round 3) : `document.title` (donc la légende de fenêtre
-/// Windows) est la seule identité disponible pour une fenêtre `--app` sur
-/// `file://`, la chaîne de requête n'y figurant pas.
+/// Copie `ton.html` (D7) vers une copie PROPRE À CHAQUE FRÉQUENCE. DEUX choses
+/// distinctes en dépendent, et il ne faut pas les confondre :
+///   - le NOM DE FICHIER (`ton-${hz}.html`) donne à chaque fenêtre une identité
+///     stable pour la corrélation (même correctif que D7, round 3 :
+///     `document.title`, donc la légende de fenêtre Windows, est la seule
+///     identité disponible pour une fenêtre `--app` sur `file://` — le CHEMIN
+///     de fichier y est visible, pas la chaîne de requête) ;
+///   - la FRÉQUENCE RÉELLEMENT JOUÉE, elle, vient exclusivement de
+///     `?hz=…` dans l'URL ouverte par `ouvrirFenetre` (`ton.html` lit
+///     `URLSearchParams(location.search).get('hz')`, `null` sans requête, et
+///     retombe alors sur son défaut 440). Copier le fichier ne suffit PAS à
+///     donner sa fréquence à une fenêtre : sans le paramètre de requête,
+///     TOUTES les fenêtres joueraient 440 Hz, quel que soit le nom du fichier
+///     ouvert — bug trouvé en revue, corrigé dans `ouvrirFenetre` ci-dessous.
 function assurerTonHtml(hz) {
     spawnSync('bash', ['-c', `cp ${TON_HTML_D7} /media/vm/dev/ton-${hz}.html`]);
 }
@@ -825,7 +845,10 @@ async function ouvrirFenetre(n) {
     log(`  · ouverture fenêtre ${n} (hz=${hz}, marqueur=${marqueur})`);
     vmIt(`ouvrird8-${n}`, [
         '$a = @(',
-        `  "--app=file:///C:/dev/ton-${hz}.html",`,
+        // `?hz=${hz}` est INDISPENSABLE : sans lui `ton.html` retombe sur son
+        // défaut (440 Hz) pour TOUTES les fenêtres, quel que soit le fichier
+        // ouvert (voir le commentaire de `assurerTonHtml`).
+        `  "--app=file:///C:/dev/ton-${hz}.html?hz=${hz}",`,
         `  "--user-data-dir=C:\\dev\\${marqueur}",`,
         "  '--no-first-run','--no-default-browser-check','--disable-session-crashed-bubble',",
         `  '--window-size=1280,720','--window-position=${30 + n * 12},${30 + n * 12}',`,
@@ -900,6 +923,13 @@ async function phaseTemoin(cdp) {
 /// la même fenêtre temporelle, ce qui permet de compter les pertes d'accès des
 /// VOISINES une seule fois pour les deux mécanismes qu'ils déclenchent (le style
 /// Windows d'un côté, le viewport CDP de l'autre).
+///
+/// ⚠️ CES DEUX CRITÈRES NE SONT PAS ISOLÉS : ② est mesuré sur la fenêtre cible
+/// APRÈS que ① l'a déjà basculée `sansBordure`, sans restauration
+/// intermédiaire. C'est défendable (① et ② sont deux mécanismes indépendants,
+/// voir l'en-tête de fichier), mais le relevé JSON le dit explicitement
+/// (`critere2.style_de_la_fenetre_pendant_cette_mesure`) pour qu'un lecteur ne
+/// croie pas ② mesuré à l'état nominal sans avoir à relire ce fichier.
 async function phaseCritere1Et2(cdp, cible, marqueurCible) {
     log(`>>> PHASE CRITÈRE ①+② — cible=${cible} marqueur=${marqueurCible}`);
     const sessionCible = cible.replace(/^w:/, '');
@@ -986,6 +1016,14 @@ async function phaseCritere1Et2(cdp, cible, marqueurCible) {
             verdict_partie_mesurable: !!detectionAgent && !!messagesRecus && fuiteVersVoisine.length === 0,
         },
         critere2: {
+            // Revue de la tâche 10, Important : ② est mesuré SANS restaurer le
+            // style Windows entre ① et ②, sur la MÊME fenêtre déjà sans
+            // bordure (défendable — les deux mécanismes sont indépendants,
+            // voir l'en-tête de fichier — mais un lecteur du seul JSON ne
+            // doit pas croire ② mesuré à l'état nominal). L'état de style au
+            // moment de ② est donc porté explicitement ici plutôt que laissé
+            // implicite dans l'ordre du code.
+            style_de_la_fenetre_pendant_cette_mesure: 'sans_bordure (bascule du critère 1, non restaurée avant 2)',
             viewport_demande: VIEWPORT_PLEIN_ECRAN, mode_apres_cible: modeApresCible,
             stats_apres_redimensionnement: statsApresRedim,
             viewport_surdimensionne_demande: VIEWPORT_SURDIMENSIONNE,
@@ -1024,10 +1062,20 @@ async function phaseCritere4Et5(cdp, voisine, hzVoisine) {
     const audioPendantSommeil = await cdp.evalBorne(
         sidDe(voisine), expressionReleveFrequence([hzVoisine]), 8000, true);
 
+    // Revue de la tâche 10, Critique 2 : la voisine émettait DÉJÀ des lignes
+    // `cadence du capteur` avant d'être masquée (elle diffusait normalement
+    // depuis l'ouverture), donc `hasOwnProperty(cad.capteur, sessionVoisine)`
+    // sur une fenêtre partant de `debut` (avant le masquage) serait vrai dès
+    // le premier sondage, QUE le réveil ait fonctionné ou non — un contrôle
+    // qui ne peut pas échouer n'en est pas un. Remède : borner la fenêtre
+    // d'observation à `debutReveil`, pris APRÈS l'ordre de réveil, et exiger
+    // un FAIT qui n'existait pas avant ce geste — une ligne `endormie=false`
+    // POSTÉRIEURE à l'ordre (`cad.eveillees`), pas la seule présence d'une clé.
+    const debutReveil = maintenantIso();
     await marquerCachee(cdp, voisine, false, 'critère ④ — réveil');
-    const reveilConfirme = await attendreLeFait('réveil de la voisine (endormie=false)', async () => {
-        const cad = await cadencesAgent(debut, maintenantIso());
-        return Object.prototype.hasOwnProperty.call(cad.capteur, sessionVoisine) ? cad : null;
+    const reveilConfirme = await attendreLeFait('réveil de la voisine (endormie=false, postérieur à l\'ordre)', async () => {
+        const cad = await cadencesAgent(debutReveil, maintenantIso());
+        return cad.eveillees.some((e) => e.startsWith(`${sessionVoisine}@`)) ? cad : null;
     }, 30);
     const fin = maintenantIso();
 
