@@ -53,7 +53,38 @@ impl SuiviBordure {
     }
 }
 
+use std::sync::OnceLock;
 use std::time::Duration;
+
+/// `PLEIN_ECRAN=0` désarme le mécanisme ENTIER — la relecture du style
+/// (`capteur/fenetre.rs`) comme le changement de mode de la sortie
+/// (`windows_source/redimensionnement.rs`).
+///
+/// **`=0` DÉSACTIVE, une simple présence n'active pas**, exactement comme
+/// `AUDIO`, `SUPERVISEUR` et `CAPTEUR` (`main.rs`) : tester `is_ok()`
+/// activerait le plein écran en écrivant `PLEIN_ECRAN=0` pour le couper.
+///
+/// ⚠️ **Lue dans le processus CAPTEUR**, où vivent les deux moitiés du
+/// mécanisme depuis D4 — le fil de fenêtre qui lit le style, et la
+/// `WindowsSource` que `resize` retaille. L'enfant ne la consulte pas : il ne
+/// fait que relayer.
+///
+/// `OnceLock` et non une lecture par appel : la relecture du style court à
+/// 4 Hz par fenêtre, et l'environnement ne change pas en cours de processus.
+/// C'est le même montage que `BUDGET_BPS` (`capteur/sommeil/parts.rs`).
+pub fn actif() -> bool {
+    static ACTIF: OnceLock<bool> = OnceLock::new();
+    *ACTIF.get_or_init(|| {
+        let actif = std::env::var("PLEIN_ECRAN").as_deref() != Ok("0");
+        if !actif {
+            tracing::warn!(
+                "plein ecran DESARME (PLEIN_ECRAN=0) : ni detection de style, \
+                 ni changement de mode de sortie"
+            );
+        }
+        actif
+    })
+}
 
 /// Période de relecture du style de la fenêtre.
 ///

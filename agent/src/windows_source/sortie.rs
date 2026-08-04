@@ -49,9 +49,55 @@ impl ModeCapture {
     /// seule issue correcte est de ne rien faire ; l'adaptation réseau, qui
     /// change la taille d'**encodage** et non celle de la source
     /// (`set_encode_size`), continue de fonctionner sans passer par ici.
+    ///
+    /// ⚠️ **Le nom de cette méthode reste juste, mais le paragraphe ci-dessus
+    /// est à moitié réfuté depuis le sous-bloc D8 (4 août 2026).** La PRÉMISSE
+    /// tient — le pilote SudoVDA n'a effectivement toujours aucun `SET_MODE`
+    /// parmi ses six IOCTL — et la CONCLUSION tombe : la sortie SUIT désormais
+    /// le viewport, par l'API d'affichage de **Windows**
+    /// (`ChangeDisplaySettingsExW`) et non par le canal du pilote. Ce que ce
+    /// booléen distingue n'est donc plus « retaillable » de « figé », mais
+    /// **quel chemin** `resize` emprunte : `false` mène à
+    /// `WindowsSource::changer_mode_de_sortie` (la sortie change de mode, la
+    /// fenêtre y est reposée), `true` au recadrage historique. Ce qui reste
+    /// vrai sans réserve : en `SortieEntiere` il n'y a jamais de fenêtre à
+    /// retailler *dans* sa sortie, et l'adaptation réseau ne passe toujours pas
+    /// par ici.
+    ///
+    /// **Ce qui l'établit, pour le refaire sans croire personne** : la sonde P1
+    /// `agent/src/diagnostics/multifenetre/mode_sortie.rs`
+    /// (`MULTIFENETRE_MODE_SORTIE=1920x1080`) crée une sortie à 1280×720 par le
+    /// chemin de production, la fait passer à 1920×1080, et **relit par DXGI**
+    /// (`GetDesc`/`DesktopCoordinates`, jamais WMI — champ vu périmé de 68 s
+    /// sur ce terrain). Verdict « P1 RECU », avec `CDS_UPDATEREGISTRY` seul, du
+    /// premier coup.
     pub fn redimensionne_la_fenetre(self) -> bool {
         matches!(self, ModeCapture::FenetreRecadree)
     }
+}
+
+/// Taille maximale qu'une sortie virtuelle prendra sur demande de viewport.
+///
+/// ⚠️ **NON CALIBRÉE.** C'est un garde-fou posé par prudence, sans qu'aucun
+/// jugement visuel ne l'ait jugée — exactement la lacune que `BPP_MIN` traîne
+/// depuis le chantier C volet 1. Sa raison est mesurée, elle : D6 a relevé le
+/// décodeur du navigateur saturé dès huit fenêtres de 1280×720 (18,03 %
+/// d'images jetées au barreau plein, une exécution), et un écran 4K
+/// demanderait 9× les pixels d'une seule de ces fenêtres.
+pub const TAILLE_MAX_SORTIE: (u32, u32) = (1920, 1080);
+
+/// Ramène une taille demandée sous `TAILLE_MAX_SORTIE`, à rapport d'aspect
+/// préservé et en dimensions paires.
+pub fn borner_a_la_taille_max((l, h): (u32, u32)) -> (u32, u32) {
+    let (max_l, max_h) = TAILLE_MAX_SORTIE;
+    if l <= max_l && h <= max_h {
+        return (l & !1, h & !1);
+    }
+    // Le facteur le plus contraignant des deux axes : borner chaque axe
+    // séparément déformerait l'image.
+    let facteur = f64::min(max_l as f64 / l as f64, max_h as f64 / h as f64);
+    let borne = |x: u32| (((x as f64 * facteur).round() as u32).max(2)) & !1;
+    (borne(l), borne(h))
 }
 
 /// Région à capturer dans la texture d'une sortie dupliquée.
@@ -77,6 +123,37 @@ pub fn region_de_sortie(largeur: u32, hauteur: u32) -> Option<Rect> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn une_taille_sous_le_plafond_passe_telle_quelle() {
+        assert_eq!(borner_a_la_taille_max((1280, 720)), (1280, 720));
+    }
+
+    #[test]
+    fn une_taille_4k_est_ramenee_au_plafond() {
+        // D6 a mesuré le décodeur du navigateur saturé dès huit fenêtres de
+        // 720p : 9× les pixels d'une seule est exactement ce qu'il encaisse le
+        // plus mal.
+        assert_eq!(borner_a_la_taille_max((3840, 2160)), TAILLE_MAX_SORTIE);
+    }
+
+    #[test]
+    fn le_bornage_preserve_le_rapport_d_aspect() {
+        // Un 21:9 borné indépendamment sur chaque axe déformerait l'image.
+        let (l, h) = borner_a_la_taille_max((3440, 1440));
+        assert!(l <= TAILLE_MAX_SORTIE.0 && h <= TAILLE_MAX_SORTIE.1, "{l}x{h}");
+        let ecart = (l as f64 / h as f64) - (3440.0 / 1440.0);
+        assert!(ecart.abs() < 0.01, "rapport {l}/{h} contre 3440/1440");
+    }
+
+    #[test]
+    fn le_bornage_rend_des_dimensions_paires() {
+        // Une fenêtre Windows impose des dimensions paires, et un encodeur
+        // NV12 aussi.
+        let (l, h) = borner_a_la_taille_max((3441, 1441));
+        assert_eq!(l % 2, 0, "largeur {l}");
+        assert_eq!(h % 2, 0, "hauteur {h}");
+    }
 
     #[test]
     fn la_region_couvre_toute_la_sortie_a_partir_de_son_origine_propre() {

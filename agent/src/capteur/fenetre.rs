@@ -411,7 +411,13 @@ impl Fenetre {
             // 4. D8 : le style de la fenêtre dit si l'application est passée en
             //    plein écran. Bridé par son propre minuteur — voir
             //    `plein_ecran::PERIODE_STYLE`.
-            if dernier_style.elapsed() >= plein_ecran::PERIODE_STYLE {
+            //
+            //    `plein_ecran::actif()` D'ABORD : `PLEIN_ECRAN=0` désarme le
+            //    mécanisme entier, lecture de style comprise, et pas seulement
+            //    le changement de mode de la sortie. Un interrupteur qui
+            //    laisserait courir la moitié amont annoncerait encore le plein
+            //    écran au navigateur.
+            if plein_ecran::actif() && dernier_style.elapsed() >= plein_ecran::PERIODE_STYLE {
                 dernier_style = Instant::now();
                 if let Some(style) = plein_ecran::lire_style(self.parametres.hwnd) {
                     if let Some(actif) = suivi_bordure.observer(style) {

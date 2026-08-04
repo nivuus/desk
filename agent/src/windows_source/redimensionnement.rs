@@ -11,6 +11,17 @@
 //!
 //! Aucune valeur, aucun ordre d'opération n'a changé au déplacement ; la seule
 //! addition est le garde de mode en tête de `resize`.
+//!
+//! **Le sous-bloc D8 lui a donné un enfant, `mode_sortie`**, qui porte le
+//! chemin `SortieEntiere` : la sortie virtuelle y change de mode pour suivre le
+//! viewport. Il vit sous ce module-ci, et non sous `windows_source`, pour ne
+//! pas ajouter une ligne à un fichier en dette de taille gelée — voir son
+//! commentaire de tête.
+
+// Petit-fils de `windows_source` : il voit les champs privés de
+// `WindowsSource` comme ce module-ci, la visibilité privée de Rust s'étendant
+// à tous les descendants du module définissant.
+mod mode_sortie;
 
 use anyhow::Result;
 
@@ -54,22 +65,48 @@ impl WindowsSource {
         // réel de la VM diffusé dans la fenêtre du navigateur, pour un seul
         // `warn!`.
         //
-        // Ne rien faire est le comportement JUSTE, pas un pis-aller : la spec
-        // §3.3 acte que le redimensionnement d'une fenêtre déjà ouverte est
-        // hors périmètre de D1 (le pilote SudoVDA n'expose aucun `SET_MODE`,
-        // la sortie ne peut donc pas suivre). `Ok(())` et non `Err` : rien n'a
-        // échoué, et une erreur ferait journaliser un incident à chaque
-        // connexion. L'adaptation réseau, elle, passe par `set_encode_size` et
-        // n'est pas concernée.
+        // Ne rien faire ÉTAIT le comportement juste, et ne l'est plus. La spec
+        // §3.3 actait que le redimensionnement d'une fenêtre déjà ouverte est
+        // hors périmètre de D1 « le pilote SudoVDA n'expose aucun `SET_MODE`,
+        // la sortie ne peut donc pas suivre ».
+        //
+        // ⚠️ **La PRÉMISSE reste vraie, la CONCLUSION est réfutée** (sous-bloc
+        // D8, 4 août 2026). Le pilote SudoVDA n'a effectivement toujours aucun
+        // `SET_MODE` parmi ses six IOCTL — ce n'était pas une erreur de D1. Ce
+        // qui a changé est le CHEMIN employé : l'API d'affichage de WINDOWS
+        // (`ChangeDisplaySettingsExW`), et non le canal du pilote. La sortie
+        // suit donc désormais le viewport, et `changer_mode_de_sortie` s'en
+        // charge.
+        //
+        // **Ce qui l'établit, et comment le refaire sans croire personne** :
+        // la sonde P1 `agent/src/diagnostics/multifenetre/mode_sortie.rs`
+        // (`MULTIFENETRE_MODE_SORTIE=1920x1080`) crée une sortie virtuelle à
+        // 1280×720 par le chemin de production, la fait passer à 1920×1080, et
+        // **relit par DXGI** (`GetDesc`/`DesktopCoordinates`) — jamais par WMI,
+        // dont le champ a été vu périmé de 68 s sur ce terrain. Elle a rendu
+        // « P1 RECU » avec `CDS_UPDATEREGISTRY` seul, du premier coup ; ses
+        // deux combinaisons de repli n'ont jamais été exercées.
+        //
+        // `Ok(())` et non `Err` reste vrai, et pour la même raison : le
+        // `ResizeObserver` du client émet une fois à l'observation initiale, et
+        // un refus du pilote ferait journaliser un incident à chaque connexion.
+        // L'adaptation réseau, elle, passe par `set_encode_size` et n'est
+        // toujours pas concernée.
         if !self.mode.redimensionne_la_fenetre() {
-            tracing::info!(
-                width,
-                height,
-                mode = ?self.mode,
-                "redimensionnement ignoré : la source capture une sortie DXGI entière \
-                 (hors périmètre D1, voir spec §3.3)"
-            );
-            return Ok(());
+            if !crate::capteur::plein_ecran::actif() {
+                tracing::info!(
+                    width,
+                    height,
+                    mode = ?self.mode,
+                    "redimensionnement ignoré : PLEIN_ECRAN=0 désarme le changement de mode \
+                     de sortie (comportement D1)"
+                );
+                return Ok(());
+            }
+            let (largeur, hauteur) = crate::windows_source_sortie::borner_a_la_taille_max((
+                width, height,
+            ));
+            return self.changer_mode_de_sortie(largeur, hauteur);
         }
 
         let (width, height) = (width.max(160) & !1, height.max(120) & !1);

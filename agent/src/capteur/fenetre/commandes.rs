@@ -140,9 +140,20 @@ fn executer_commande(
     // **À rouvrir hors de ce sous-bloc**, son obstacle n'existant plus.
     let Some(source) = source else {
         return match message {
-            // La même réponse qu'éveillée, où `resize` est de toute façon sans
-            // effet sur une source en mode `SortieEntiere`. Un `Fait` ferait
-            // échouer `SourceDistante::resize`, qui attend une `Taille`.
+            // La taille retenue, telle quelle : une fenêtre endormie n'a plus
+            // ni capture ni encodeur, il n'y a rien à retailler. Un `Fait`
+            // ferait échouer `SourceDistante::resize`, qui attend une `Taille`.
+            //
+            // ⚠️ **Ce commentaire disait « `resize` est de toute façon sans
+            // effet sur une source en mode `SortieEntiere` » : c'était vrai
+            // jusqu'au sous-bloc D8, et ça ne l'est plus** — `resize` y change
+            // désormais le mode de la sortie virtuelle. Conséquence assumée et
+            // non corrigée ici : un passage en plein écran demandé pendant que
+            // la fenêtre dort est **perdu**, la sortie gardant sa taille
+            // d'avant. Le réveil reconstruit la source sur la sortie telle
+            // qu'elle est, donc sans le plein écran ; il faudra un nouveau
+            // geste du navigateur. Une fenêtre endormie est, par construction
+            // du vivier (D5), une fenêtre que le client ne regarde pas.
             VersCapteur::Redimensionner { .. } => {
                 DepuisCapteur::Taille { largeur: ctx.taille.0, hauteur: ctx.taille.1 }
             }
