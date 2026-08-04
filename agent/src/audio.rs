@@ -39,6 +39,12 @@ pub trait AudioSource {
     fn set_packet_loss_perc(&mut self, _perc: i32) -> anyhow::Result<()> {
         Ok(())
     }
+
+    /// Porte le son, ou se tait, sur ordre de l'arbitrage du capteur.
+    ///
+    /// Sans effet par défaut : une source qui n'est pas arbitrée émet
+    /// toujours.
+    fn set_actif(&mut self, _actif: bool) {}
 }
 
 /// Tampon circulaire borné, partagé entre le fil de capture et la boucle de

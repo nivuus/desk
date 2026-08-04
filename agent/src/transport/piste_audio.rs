@@ -113,13 +113,23 @@ impl Session {
 
     /// Applique l'arbitrage audio du capteur : porter le son, ou se taire.
     ///
-    /// **Complétée à la tâche 7** : pour l'instant (tâche 6) ne fait que
-    /// journaliser l'ordre reçu — ni la source audio n'est coupée ou rouverte,
-    /// ni `audio_bps` (le budget que le contrôleur de congestion retranche,
-    /// voir `congestion::Config`) n'est ramené à zéro. Ce stub minimal est un
-    /// choix délibéré : il fait compiler et fonctionner ce commit de bout en
-    /// bout sans anticiper le comportement de la tâche 7.
+    /// **Deux effets, et le second est facile à oublier** : la source cesse
+    /// d'émettre, ET le budget audio retenu par le contrôleur de congestion
+    /// tombe à zéro. Sans le second, une fenêtre muette continuerait d'amputer
+    /// son budget vidéo de 128 kb/s pour une piste qui n'émet rien — c'est le
+    /// défaut préexistant que D7 corrige (spec §5).
     pub(super) fn appliquer_audio(&mut self, actif: bool) {
+        if let Some(source) = self.audio_source.as_mut() {
+            source.set_actif(actif);
+        }
+        self.congestion.changer_audio_bps(if actif {
+            crate::opus::BITRATE_BPS as u32
+        } else {
+            0
+        });
+        // `session` : sans ce champ la trace n'est PAS attribuable — tous les
+        // enfants héritent le même `agent.log` depuis D4. Même motif et même
+        // champ que « part de budget appliquee ».
         tracing::info!(session = %self.session_id, actif, "ordre audio applique");
     }
 

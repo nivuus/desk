@@ -94,6 +94,12 @@ struct Config {
     #[cfg_attr(not(windows), allow(dead_code))]
     sortie_dxgi: Option<String>,
     /// Faux sur les enfants qui ne portent pas le son.
+    ///
+    /// **Depuis la tâche 7 du sous-bloc D7, `true` n'ouvre plus le mix de
+    /// session** : l'enfant capte le son de SON PROPRE processus (process
+    /// loopback), naît muet, et c'est le capteur qui décide ensuite qui émet
+    /// réellement (`AudioSource::set_actif`). Avant cette tâche, `true`
+    /// ouvrait inconditionnellement le mix global de la machine.
     #[cfg_attr(not(windows), allow(dead_code))]
     audio: bool,
 }
@@ -134,7 +140,10 @@ fn config() -> Result<Config> {
         },
         // Le son est actif par défaut : c'est le comportement mono-fenêtre
         // d'avant ce sous-bloc, qu'un agent lancé à la main doit retrouver.
-        // Seul le superviseur le coupe, sur les enfants non porteurs.
+        // Seul le superviseur le coupe, sur les enfants non porteurs — cette
+        // réservation statique disparaît quand le superviseur cesse de
+        // décider du son (tâche 9) ; jusque-là, l'enfant qui la garde capte
+        // désormais le son de SON PROCESSUS, pas le mix de session (tâche 7).
         audio: std::env::var("AUDIO").as_deref() != Ok("0"),
     })
 }

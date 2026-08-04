@@ -16,6 +16,7 @@ use windows::Win32::System::Com::{CoInitializeEx, COINIT_MULTITHREADED};
 use crate::audio::{AudioPacket, AudioSource, PacketRing};
 use crate::frames::FrameAssembler;
 use crate::opus::OpusEncoder;
+use crate::wasapi::process_loopback::CaptureProcessus;
 use crate::wasapi::LoopbackCapture;
 
 /// Profondeur du tampon partagé, en paquets de 10 ms. 10 paquets = 100 ms :
@@ -30,6 +31,48 @@ const POLL_INTERVAL: Duration = Duration::from_millis(5);
 /// Intervalle entre deux journaux de compteurs agrégés.
 const REPORT_INTERVAL: Duration = Duration::from_secs(30);
 
+/// Ce que le fil de capture lit, selon le mode.
+///
+/// **Deux chemins, un seul fil.** Le mode global (`Session`) est celui d'avant
+/// D7 et sert le cas mono-fenêtre — un agent lancé à la main, sans
+/// `FENETRE_HWND`. Le mode `Processus` est celui du multi-fenêtres.
+enum Capture {
+    Session(LoopbackCapture),
+    Processus(CaptureProcessus),
+}
+
+impl Capture {
+    fn read(&mut self) -> Result<Option<Vec<i16>>> {
+        match self {
+            Capture::Session(c) => c.read(),
+            Capture::Processus(c) => c.read(),
+        }
+    }
+
+    fn description(&self) -> String {
+        match self {
+            Capture::Session(c) => c.description().to_string(),
+            Capture::Processus(c) => c.description().to_string(),
+        }
+    }
+
+    /// Démarre ou arrête le flux. **Sans effet en mode session** : le loopback
+    /// global n'est jamais arbitré — un agent mono-fenêtre porte toujours son
+    /// son.
+    fn emettre(&mut self, actif: bool) -> Result<()> {
+        match self {
+            Capture::Session(_) => Ok(()),
+            Capture::Processus(c) => {
+                if actif {
+                    c.demarrer()
+                } else {
+                    c.arreter()
+                }
+            }
+        }
+    }
+}
+
 pub struct WindowsAudioSource {
     ring: PacketRing,
     arret: Arc<AtomicBool>,
@@ -39,16 +82,58 @@ pub struct WindowsAudioSource {
     /// dans `new` pour la raison d'être de cet indirection : l'`OpusEncoder`
     /// lui-même est déplacé dans ce fil et n'est donc pas accessible ici.
     perte_desiree: Arc<AtomicI32>,
+    /// Ordre d'émission voulu par l'arbitrage du capteur, lu par le fil de
+    /// capture avant chaque tour. Même patron d'indirection que
+    /// `perte_desiree` : la capture vit sur le fil, pas ici.
+    ///
+    /// **Faux à la naissance.** L'enfant naît MUET et n'émet que sur ordre du
+    /// capteur — même doctrine que `SourceDistante::endormie`, qui naît à
+    /// `true`. C'est ce qui évite que deux fenêtres d'un même processus soient
+    /// toutes deux audibles pendant les millisecondes qui précèdent le premier
+    /// arbitrage.
+    emet: Arc<AtomicBool>,
+    /// PID capté, pour la trace périodique. `None` en mode session.
+    ///
+    /// Non relu après construction : c'est `pid_fil`, une copie locale prise
+    /// avant le déplacement de ce paramètre dans le fil de capture, qui
+    /// alimente la trace. Conservé ici pour que l'origine du PID reste
+    /// visible sur la valeur construite, malgré l'avertissement `dead_code`
+    /// que cela vaut sous `cargo check --target x86_64-pc-windows-gnu`.
+    #[allow(dead_code)]
+    pid: Option<u32>,
 }
 
 impl WindowsAudioSource {
-    /// Ouvre la capture et démarre le fil de production.
+    /// Ouvre le loopback GLOBAL de la session et démarre le fil de production.
+    ///
+    /// Mode mono-fenêtre : un agent lancé à la main, sans `FENETRE_HWND`. Le
+    /// son est porté sans arbitrage — il n'y a personne avec qui le partager.
     ///
     /// `origin` est l'origine d'horloge **de la session**, partagée avec la
     /// source vidéo : c'est elle qui rend les deux lignes de temps
     /// comparables, donc la synchro A/V exacte.
     pub fn new(origin: Instant) -> Result<Self> {
-        let mut capture = LoopbackCapture::open().context("ouverture du loopback audio")?;
+        let capture = LoopbackCapture::open().context("ouverture du loopback audio")?;
+        let source = Self::demarrer(Capture::Session(capture), origin, None)?;
+        // Aucun capteur n'enverra jamais d'ordre à cet agent : il émet d'emblée.
+        source.emettre(true);
+        Ok(source)
+    }
+
+    /// Ouvre le loopback du PROCESSUS `pid` et de son arbre, et démarre le fil
+    /// de production.
+    ///
+    /// **La source naît MUETTE** : c'est le capteur qui décide qui porte le
+    /// son, et son premier ordre arrive dès l'attache. Voir le champ `emet`.
+    pub fn pour_processus(pid: u32, origin: Instant) -> Result<Self> {
+        let capture = CaptureProcessus::ouvrir(pid)
+            .with_context(|| format!("ouverture du process loopback du PID {pid}"))?;
+        Self::demarrer(Capture::Processus(capture), origin, Some(pid))
+    }
+
+    /// Corps commun aux deux constructeurs : démarre le fil de production à
+    /// partir d'une capture déjà ouverte, quel que soit son mode.
+    fn demarrer(mut capture: Capture, origin: Instant, pid: Option<u32>) -> Result<Self> {
         let description = capture.description();
         let mut encodeur = OpusEncoder::new().context("création de l'encodeur Opus")?;
 
@@ -60,10 +145,16 @@ impl WindowsAudioSource {
         // de l'encodeur serait pris à chaque trame de 10 ms sur ce chemin
         // chaud ; un entier atomique lu une fois par trame ne coûte rien.
         let perte_desiree = Arc::new(AtomicI32::new(0));
+        // Même patron : voir la doc du champ `emet`.
+        let emet = Arc::new(AtomicBool::new(false));
 
         let ring_fil = ring.clone();
         let arret_fil = Arc::clone(&arret);
         let perte_desiree_fil = Arc::clone(&perte_desiree);
+        let emet_fil = Arc::clone(&emet);
+        // `Option<u32>` est `Copy` : cette copie locale est celle que le fil
+        // emporte, indépendamment du champ `pid` de `Self` construit plus bas.
+        let pid_fil = pid;
         std::thread::Builder::new()
             .name("audio-capture".into())
             .spawn(move || {
@@ -97,8 +188,39 @@ impl WindowsAudioSource {
                 // appel CTL par trame de 10 ms serait du gaspillage sur ce
                 // chemin chaud : on ne réécrit que lorsque la cible a changé.
                 let mut derniere_perte: i32 = 0;
+                // Dernière valeur effectivement appliquée à `capture` : on ne
+                // rappelle `Start()`/`Stop()` que lorsque l'ordre change,
+                // jamais à chaque tour à ~200 Hz.
+                let mut emettait = false;
 
                 while !arret_fil.load(Ordering::Relaxed) {
+                    let veut_emettre = emet_fil.load(Ordering::Relaxed);
+                    if veut_emettre != emettait {
+                        match capture.emettre(veut_emettre) {
+                            Ok(()) => emettait = veut_emettre,
+                            Err(e) => {
+                                // Un refus ne tue pas la session : on
+                                // journalise et on retentera au prochain
+                                // changement d'ordre plutôt qu'à chaque tour.
+                                emettait = veut_emettre;
+                                tracing::warn!(
+                                    erreur = %e,
+                                    actif = veut_emettre,
+                                    "bascule d'emission audio refusee"
+                                );
+                            }
+                        }
+                    }
+                    if !emettait {
+                        // Muette : ne rien lire, ne rien encoder, ne rien
+                        // déposer. Une trame de silence encodée coûterait
+                        // quelques octets grâce au DTX, mais elle arriverait
+                        // au navigateur — et deux fenêtres d'un même processus
+                        // s'entendraient toutes les deux.
+                        std::thread::sleep(POLL_INTERVAL);
+                        continue;
+                    }
+
                     match capture.read() {
                         Ok(Some(bloc)) => assembleur.push(&bloc),
                         Ok(None) => {}
@@ -175,7 +297,15 @@ impl WindowsAudioSource {
                         // n'est pas du bruit, et un compteur de rejets muet
                         // est exactement ce qui rendrait une dégradation
                         // audio invisible en recette.
+                        //
+                        // `pid` et `actif` sont le seul moyen d'observer un
+                        // arbitrage figé : si aucune fenêtre ne portait plus
+                        // jamais le son, le symptôme serait le silence total
+                        // sans un `WARN`, sans une erreur. C'est le `grep`
+                        // d'entrée du sous-bloc suivant (spec §6).
                         tracing::info!(
+                            pid = pid_fil,
+                            actif = emettait,
                             rejetes = ring_fil.rejetes(),
                             complements = assembleur.complements(),
                             echantillons_jetes = assembleur.echantillons_jetes(),
@@ -194,12 +324,20 @@ impl WindowsAudioSource {
             arret,
             description,
             perte_desiree,
+            emet,
+            pid,
         })
     }
 
     /// Format de mixage obtenu, pour le journal.
     pub fn description(&self) -> &str {
         &self.description
+    }
+
+    /// Porte le son, ou se tait. Appelée depuis la boucle de transport, qui
+    /// consomme l'ordre du capteur.
+    pub fn emettre(&self, actif: bool) {
+        self.emet.store(actif, Ordering::Relaxed);
     }
 }
 
@@ -214,6 +352,10 @@ impl AudioSource for WindowsAudioSource {
         // l'encodeur (voir le commentaire du champ `perte_desiree`).
         self.perte_desiree.store(perc, Ordering::Relaxed);
         Ok(())
+    }
+
+    fn set_actif(&mut self, actif: bool) {
+        self.emettre(actif);
     }
 }
 
