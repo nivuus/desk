@@ -120,6 +120,14 @@ pub enum DepuisCapteur {
     /// loopback* n'a aucune des propriétés qui avaient forcé la mutualisation de
     /// la vidéo en D4.
     Audio { actif: bool },
+    /// La fenêtre Windows est passée en plein écran, ou en est sortie. Poussé
+    /// non sollicité, **au changement seulement**.
+    ///
+    /// Distinct d'`Etat` pour la même raison que `Sommeil`, `Part` et `Audio` :
+    /// `Etat` alimente un cache lu à chaque tour de la boucle de transport, et
+    /// y mêler une annonce ponctuelle passerait par un chemin conçu pour un
+    /// état permanent.
+    PleinEcran { actif: bool },
 }
 
 #[derive(Debug)]
