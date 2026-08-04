@@ -56,9 +56,16 @@ impl Capture {
         }
     }
 
-    /// Démarre ou arrête le flux. **Sans effet en mode session** : le loopback
-    /// global n'est jamais arbitré — un agent mono-fenêtre porte toujours son
-    /// son.
+    /// Démarre ou arrête le flux. **Sans effet en mode session** sur le flux
+    /// WASAPI lui-même : le loopback global n'est jamais démarré/arrêté par
+    /// cette méthode — un agent mono-fenêtre porte toujours son son.
+    ///
+    /// ⚠️ Cette immunité ne s'étend PAS au fil appelant : c'est lui qui gate
+    /// lecture/encodage/dépôt sur la valeur d'`emettait` (voir `demarrer`),
+    /// pas cette méthode. Un `set_actif(false)` qui atteindrait une source en
+    /// mode `Session` la rendrait donc tout aussi muette qu'une source en
+    /// mode `Processus` — seul `new()` (qui n'expose jamais l'`Arc<AtomicBool>`
+    /// à un ordre externe) rend ce cas inatteignable aujourd'hui.
     fn emettre(&mut self, actif: bool) -> Result<()> {
         match self {
             Capture::Session(_) => Ok(()),
@@ -92,14 +99,10 @@ pub struct WindowsAudioSource {
     /// toutes deux audibles pendant les millisecondes qui précèdent le premier
     /// arbitrage.
     emet: Arc<AtomicBool>,
-    /// PID capté, pour la trace périodique. `None` en mode session.
-    ///
-    /// Non relu après construction : c'est `pid_fil`, une copie locale prise
-    /// avant le déplacement de ce paramètre dans le fil de capture, qui
-    /// alimente la trace. Conservé ici pour que l'origine du PID reste
-    /// visible sur la valeur construite, malgré l'avertissement `dead_code`
-    /// que cela vaut sous `cargo check --target x86_64-pc-windows-gnu`.
-    #[allow(dead_code)]
+    /// PID capté. `None` en mode session. Exposé par `pid()`, au journal
+    /// d'ouverture (`demarrage/audio.rs`) — c'est `pid_fil`, une copie locale
+    /// prise avant le déplacement de ce paramètre dans le fil de capture, qui
+    /// alimente la trace périodique « compteurs audio ».
     pid: Option<u32>,
 }
 
@@ -188,21 +191,46 @@ impl WindowsAudioSource {
                 // appel CTL par trame de 10 ms serait du gaspillage sur ce
                 // chemin chaud : on ne réécrit que lorsque la cible a changé.
                 let mut derniere_perte: i32 = 0;
-                // Dernière valeur effectivement appliquée à `capture` : on ne
-                // rappelle `Start()`/`Stop()` que lorsque l'ordre change,
-                // jamais à chaque tour à ~200 Hz.
+                // Dernier ordre pour lequel une bascule a été TENTÉE (que
+                // `capture.emettre` ait réussi ou non). Sert uniquement à ne
+                // pas rappeler `Start()`/`Stop()` à chaque tour à ~200 Hz : ce
+                // n'est PAS l'état réel du flux, voir `emettait`.
+                let mut voulu_applique = false;
+                // État RÉEL du flux : vrai seulement quand `Start()` a
+                // effectivement réussi, écrit UNIQUEMENT dans la branche
+                // `Ok` ci-dessous. Gouverne à la fois le gate de
+                // lecture/encodage plus bas et la trace `actif` de
+                // « compteurs audio » — la seule fenêtre sur un arbitrage
+                // figé. Si un refus de `Start()` faisait mentir cette valeur
+                // (comme le ferait `emettait = veut_emettre` inconditionnel),
+                // la trace annoncerait une fenêtre audible qui ne capture
+                // rien, exactement le mode de défaillance silencieux que
+                // cette trace existe pour révéler.
                 let mut emettait = false;
 
                 while !arret_fil.load(Ordering::Relaxed) {
                     let veut_emettre = emet_fil.load(Ordering::Relaxed);
-                    if veut_emettre != emettait {
+                    if veut_emettre != voulu_applique {
+                        voulu_applique = veut_emettre;
                         match capture.emettre(veut_emettre) {
-                            Ok(()) => emettait = veut_emettre,
+                            Ok(()) => {
+                                // Reprise réelle (Start() a réussi après une
+                                // coupure, ou premier démarrage) : réancrer
+                                // l'assembleur AVANT qu'il ne rejoue toute la
+                                // coupure en une rafale de silence (voir
+                                // `FrameAssembler::reancrer`).
+                                if veut_emettre && !emettait {
+                                    assembleur.reancrer();
+                                }
+                                emettait = veut_emettre;
+                            }
                             Err(e) => {
                                 // Un refus ne tue pas la session : on
                                 // journalise et on retentera au prochain
-                                // changement d'ordre plutôt qu'à chaque tour.
-                                emettait = veut_emettre;
+                                // changement d'ordre plutôt qu'à chaque tour
+                                // (grâce à `voulu_applique`, mis à jour ci-
+                                // dessus). `emettait` NE BOUGE PAS : c'est
+                                // l'état réel du flux, et il n'a pas changé.
                                 tracing::warn!(
                                     erreur = %e,
                                     actif = veut_emettre,
@@ -332,6 +360,11 @@ impl WindowsAudioSource {
     /// Format de mixage obtenu, pour le journal.
     pub fn description(&self) -> &str {
         &self.description
+    }
+
+    /// PID capté, pour le journal d'ouverture. `None` en mode session.
+    pub fn pid(&self) -> Option<u32> {
+        self.pid
     }
 
     /// Porte le son, ou se tait. Appelée depuis la boucle de transport, qui

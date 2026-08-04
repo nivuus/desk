@@ -2,8 +2,8 @@
 //!
 //! Extrait de `demarrage.rs` à la tâche 7 du sous-bloc D7 : l'ajout du mode
 //! par-processus (deux embranchements, plus l'aide `pid_de_fenetre`) portait
-//! le fichier parent à 502 lignes, au-dessus du plafond de 500 du dépôt —
-//! même règle, même remède que `demarrage/source.rs` (voir son commentaire de
+//! le fichier parent au-dessus du plafond de 500 lignes du dépôt — même
+//! règle, même remède que `demarrage/source.rs` (voir son commentaire de
 //! tête) : l'addition s'accompagne de son extraction plutôt que d'une
 //! compression du commentaire qu'elle porte.
 
@@ -41,7 +41,11 @@ pub(super) fn brancher(config: &Config, session: &mut Session, clock_origin: Ins
         };
         match ouverture {
             Ok(source_audio) => {
-                tracing::info!(format = source_audio.description(), "audio activé");
+                tracing::info!(
+                    format = source_audio.description(),
+                    pid = source_audio.pid(),
+                    "audio activé"
+                );
                 session.set_audio_source(Box::new(source_audio));
             }
             Err(e) => {
