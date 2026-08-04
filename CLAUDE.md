@@ -230,6 +230,31 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > | `agent/src/transport/part.rs` | **274** | |
 > | `agent/src/capteur/repartiteur.rs` | **147** | |
 >
+> ⚠️ **Quatre chiffres de CE tableau ont vieilli à leur tour, et pour la même
+> raison que celui de `capteur/fenetre.rs` ci-dessous : du travail ultérieur les
+> a fait bouger sans que la table ne soit reprise.** Relevé par la commande le
+> 4 août 2026, fin du sous-bloc D7 — **ce sont des fichiers que D7 a modifiés**
+> (tâches 6, 7 et 10 : protocole de fenêtre, source distante, tick de
+> transport) :
+>
+> | Fichier | Publié ci-dessus | Réel (4 août 2026) | Cause du mouvement |
+> | --- | --- | --- | --- |
+> | `agent/src/capteur/protocole.rs` | 347 | **361** (+14) | D7 tâche 6 — le message `Audio` s'ajoute au protocole de commandes |
+> | `agent/src/capteur/distante.rs` | 288 | **332** (+44) | D7 tâche 7 — `SourceDistante` porte `est_endormie` et l'état audio |
+> | `agent/src/source.rs` | 334 | **348** (+14) | D7 — le trait `VideoSource`/audio gagne une méthode |
+> | `agent/src/transport/tick.rs` | 275 | **297** (+22) | D7 tâche 10 — le fil de fenêtre relaie l'ordre `Audio` |
+>
+> Aucun des quatre n'approche 500 (marge la plus étroite : 168 sur
+> `distante.rs`), donc aucune entrée de dette n'est à tort présente ou absente.
+> Mais **ce sont précisément des chiffres que ce fichier a payé cher ailleurs
+> pour avoir laissés dériver** — voir le naufrage du « 487 » sur ce même
+> `distante.rs` un peu plus haut dans ce document.
+>
+> ⚠️ **`superviseur/boucle.rs` dérive aussi d'une ligne** : publié à **493**
+> plus haut (relevés D5 et D6), il vaut **492** aujourd'hui. Non touché par D7 ;
+> écart trop mince pour identifier une cause, corrigé ici puisque cette même
+> table était de toute façon rouverte.
+>
 > ⚠️ **Deux autres chiffres de ce fichier ont vieilli au passage, et ils sont
 > corrigés ici plutôt que là où ils dorment** : `capteur/fenetre.rs` est donné à
 > **329** dans le relevé du 2 août (D4) — il vaut **407** ; et
@@ -258,8 +283,13 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > | `agent/src/capteur/sommeil.rs` | **315** | ALLÉGÉ — 432 → 315 : montée à 500 en cours de tâche puis ses tests extraits vers `sommeil/tests.rs` |
 > | `agent/src/capteur/sommeil/tests.rs` | **203** | neuf |
 >
-> Les autres fichiers du tableau du 3 août (D6) que D7 n'a pas touchés ne sont
-> **pas** revérifiés ici — relancer la commande avant de s'y fier.
+> Les fichiers du tableau du 3 août (D6) **absents de la liste ci-dessus ne
+> sont PAS tous des fichiers que D7 a laissés intacts** — quatre d'entre eux
+> (`protocole.rs`, `distante.rs`, `source.rs`, `transport/tick.rs`) ont bien
+> bougé sous D7 et sont corrigés à l'endroit où ce tableau du 3 août les publie
+> (voir l'encadré juste au-dessus de ce même tableau), pas répétés ici. Pour
+> tout fichier ne figurant dans **aucun** des deux tableaux, relancer la
+> commande avant de s'y fier.
 
 **Vérifier l'état** :
 
