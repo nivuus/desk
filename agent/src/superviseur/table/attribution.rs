@@ -36,7 +36,6 @@ impl Table {
                     session: session.clone(),
                     fenetre: entree.fenetre,
                     nom_sortie: nom,
-                    audio: entree.audio,
                 }];
             }
         }
@@ -95,7 +94,6 @@ impl Table {
             session: session.clone(),
             fenetre: entree.fenetre,
             nom_sortie,
-            audio: entree.audio,
         }]
     }
 }

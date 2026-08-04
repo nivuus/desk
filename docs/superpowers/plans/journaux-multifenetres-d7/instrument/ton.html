@@ -1,0 +1,87 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>ton</title>
+<!--
+  Sous-bloc D7, tâche 11 — la SOURCE de la recette d'isolation audio.
+
+  Chaque fenêtre « application » de la recette est une instance de cette page,
+  ouverte avec un `hz` distinct (`ton.html?hz=440`, `ton.html?hz=880`, …).
+  Le produit capture le son du PROCESSUS qui possède la fenêtre au premier
+  plan (voir agent/src/audio.rs) : deux fenêtres à deux fréquences connues
+  rendent donc le critère d'isolation MESURABLE — page A doit lire ~440 Hz et
+  PAS 880, page B l'inverse — là où `bytesReceived` dirait seulement « du son
+  arrive », sans jamais dire lequel.
+
+  Affiche sa PROPRE fréquence et sa PROPRE cadence de rAF, comme l'a fait
+  `anim-d4.html` pour la cadence d'image en D4 : sans ce chiffre affiché, une
+  capture qui tourne au ralenti et une source qui tourne au ralenti se lisent
+  identiquement dans un journal — le nombre affiché est ce qui les distingue.
+
+  Le fond change de teinte à chaque trame (comme `anim-d4.html`) : Desktop
+  Duplication n'émet une trame qu'au changement du bureau, et une fenêtre
+  totalement immobile ne produirait donc aucune image à capturer — piège
+  documenté dans CLAUDE.md, payé plusieurs fois par les sous-blocs D précédents.
+
+  `gain` est un paramètre supplémentaire par rapport au gabarit du brief, pour
+  l'étape 3 (« vérifier que l'instrument peut échouer ») : `ton.html?hz=440&gain=0`
+  ouvre une fenêtre qui REND du son (le processus WASAPI tourne, la capture par
+  processus voit un flux réel), mais un son NUL — le cas « fenêtre muette »
+  réaliste, sans lequel l'étape 3 devrait soit modifier ce fichier a posteriori,
+  soit se rabattre sur une fenêtre qui n'émet aucune piste audio du tout (les deux
+  cas sont utiles et distincts, voir le rapport de tâche 11).
+
+  Revue de tâche 11, correctif round 1, FINDING 5 : `document.title` porte la
+  fréquence. Une fenêtre Chrome `--app` sans chrome de titre affiche quand même
+  ce texte comme légende de sa fenêtre OS (`WM_SETTEXT`), et c'est CE texte que
+  le superviseur relaie à la page-shell comme `titre` de la fenêtre détectée
+  (`fenetre-ouverte`, `client/src/shell.ts`). Le pilote peut donc CONFRONTER
+  l'assignation qu'il suppose (« j'ai ouvert la keme fenêtre avec tel hz ») à ce
+  que le produit affirme réellement avoir capté, au lieu de la tenir pour
+  acquise par le seul ordre d'ouverture — leçon D4 : une fenêtre « éligible »
+  supplémentaire et non désirée (Paint en ouvre deux) décale un tel ordre sans
+  qu'aucune erreur ne le signale autrement.
+-->
+<body style="font:48px monospace;background:#111;color:#0f0">
+<div id="info">…</div>
+<script>
+const params = new URLSearchParams(location.search);
+const hz = Number(params.get('hz') || 440);
+document.title = hz + ' Hz';
+// Par défaut 0.25, comme le gabarit du brief. `gain=0` sert le cas « fenêtre
+// muette » de l'étape 3 : le graphe audio tourne réellement (l'oscillateur
+// démarre, le contexte n'est jamais suspendu volontairement), mais ne produit
+// aucune énergie — un plancher, pas un silence numérique par absence de piste.
+const gain0 = params.has('gain') ? Number(params.get('gain')) : 0.25;
+
+const ctx = new AudioContext();
+const osc = ctx.createOscillator();
+const gain = ctx.createGain();
+osc.frequency.value = hz;
+gain.gain.value = gain0;
+osc.connect(gain).connect(ctx.destination);
+osc.start();
+
+// Tentative de démarrage immédiat, en plus du geste manuel ci-dessous : sans
+// activation utilisateur ni `--autoplay-policy=no-user-gesture-required` côté
+// navigateur, `resume()` reste sans effet et `ctx.state` demeure `suspended`
+// jusqu'au premier clic — c'est justement ce que `#info` affiche, pour que la
+// panne soit visible plutôt que silencieuse (leçon D7 : « AudioContext démarre
+// suspended sans activation utilisateur », reprise ici côté SOURCE et pas
+// seulement côté pilote qui lit la piste reçue).
+ctx.resume().catch(() => {});
+
+// L'animation donne aussi de quoi capturer une image : Desktop Duplication
+// n'emet une trame qu'au changement du bureau.
+let n = 0, t0 = performance.now();
+function boucle(t) {
+  n++;
+  const rafHz = n / ((t - t0) / 1000);
+  document.getElementById('info').textContent =
+    `${hz} Hz · gain ${gain0} · rAF ${rafHz.toFixed(1)} /s · ${ctx.state} · sr ${ctx.sampleRate}`;
+  document.body.style.background = `hsl(${(n * 3) % 360} 40% 12%)`;
+  requestAnimationFrame(boucle);
+}
+requestAnimationFrame(boucle);
+addEventListener('click', () => ctx.resume());
+</script>
+</body>

@@ -178,7 +178,7 @@ mod tests {
     #[test]
     fn une_session_qui_s_eveille_recoit_une_part_apres_son_ordre_de_reveil() {
         let _verrou = verrouiller_pour_le_test();
-        let messages = inscrire("t6-a");
+        let messages = inscrire("t6-a", 6001);
         signaler("t6-a", true, true);
 
         let recus: Vec<Message> = messages.try_iter().collect();
@@ -208,7 +208,7 @@ mod tests {
     #[test]
     fn une_part_inchangee_n_est_pas_reemise() {
         let _verrou = verrouiller_pour_le_test();
-        let messages = inscrire("t6-b");
+        let messages = inscrire("t6-b", 6002);
         signaler("t6-b", true, true);
         let _ = messages.try_iter().count();
 
@@ -225,11 +225,11 @@ mod tests {
     #[test]
     fn l_arrivee_d_une_seconde_fenetre_reduit_la_part_de_la_premiere() {
         let _verrou = verrouiller_pour_le_test();
-        let a = inscrire("t6-c");
+        let a = inscrire("t6-c", 6003);
         signaler("t6-c", true, true);
         let premiere = derniere_part(&a).expect("la première doit avoir une part");
 
-        let b = inscrire("t6-d");
+        let b = inscrire("t6-d", 6004);
         signaler("t6-d", true, false);
         let apres = derniere_part(&a).expect("la première doit être ré-servie");
         assert!(
@@ -256,7 +256,7 @@ mod tests {
         let mut recepteurs_pleins = Vec::new();
         for i in 0..8 {
             let nom = format!("t7-plein-{i}");
-            let ordres = inscrire(&nom);
+            let ordres = inscrire(&nom, 6100 + i as u32);
             signaler(&nom, true, false);
             assert_eq!(
                 premier_ordre(&ordres),
@@ -281,7 +281,7 @@ mod tests {
         // compris celle de la session morte. La tentative d'envoi qui en
         // resulte sur son canal rompu declenche le remede : elle est retiree
         // du VIVIER (et pas seulement de `canaux`), ce qui libere sa place.
-        let ordres_attend = inscrire("t7-attend");
+        let ordres_attend = inscrire("t7-attend", 6200);
 
         // Se signaler visible suffit desormais : la place est deja libre.
         // Sans le remede (retrait du vivier en plus de `canaux`), la session
@@ -319,7 +319,7 @@ mod tests {
         // Premier canal : inscription seule, aucune autre fenêtre, aucun
         // signal — la fenêtre naît endormie et reçoit tout de même la part
         // plancher à l'inscription (voir la doc de `inscrire`).
-        let premier_canal = inscrire("t8-rattache");
+        let premier_canal = inscrire("t8-rattache", 6300);
         let premiere_part = derniere_part(&premier_canal)
             .expect("une première part doit partir à l'inscription initiale");
 
@@ -328,7 +328,7 @@ mod tests {
         // signal de visibilité entre-temps). `inscrire` détecte le
         // remplacement (elle journalise « canal d'ordres remplacé pour
         // cette session ») et rend un canal neuf.
-        let canal_neuf = inscrire("t8-rattache");
+        let canal_neuf = inscrire("t8-rattache", 6300);
 
         // Sans le remède, la part recalculée est identique à `premiere_part`
         // : `dernieres_parts` la juge déjà livrée (elle l'était, mais sur

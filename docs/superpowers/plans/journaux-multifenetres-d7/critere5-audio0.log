@@ -1,0 +1,12 @@
+2026-08-04T08:31:24.989747Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-04T08:31:24.989823Z  INFO agent::demarrage::source: capture de la fenêtre Windows (recadrage) bitrate=12000000 fps=90
+2026-08-04T08:31:24.991639Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 nom_sortie=\\.\DISPLAY1 attachee=true
+2026-08-04T08:31:25.085936Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-04T08:31:25.086241Z  INFO agent::capture: duplication de sortie établie desktop_width=2400 desktop_height=1080
+2026-08-04T08:31:25.087145Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-04T08:31:25.145844Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=327681
+2026-08-04T08:31:25.151123Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-04T08:31:25.154309Z  INFO agent::signaling: agent enregistré auprès du signaling session="demo"
+2026-08-04T08:31:25.154378Z  INFO agent::transport: socket UDP de l'agent addr=192.168.3.2:49336
+2026-08-04T08:31:25.181003Z  INFO agent::demarrage::audio: son désactivé sur cet agent par AUDIO=0
+2026-08-04T08:31:25.188663Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478

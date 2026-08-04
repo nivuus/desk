@@ -106,6 +106,20 @@ pub enum DepuisCapteur {
     /// **Une part d'ENDORMIE ne va qu'au second** — voir
     /// `capteur::repartiteur::PART_DORMANTE_BPS` et `Session::appliquer_part`.
     Part { bps: u32 },
+    /// Ordre de porter le son, ou de se taire. Poussé non sollicité, **au
+    /// changement seulement**.
+    ///
+    /// Distinct d'`Etat` pour la même raison que `Sommeil` et `Part` : `Etat`
+    /// alimente un cache lu à chaque tour de la boucle de transport, et y mêler
+    /// une annonce ponctuelle passerait par un chemin conçu pour un état
+    /// permanent.
+    ///
+    /// **Le capteur ne capte AUCUN son.** Il arbitre seulement : il sait quelles
+    /// fenêtres partagent un processus (il a leurs `hwnd`) et qui a le focus,
+    /// ce que l'enfant ignore. La capture, elle, vit dans l'enfant — le *process
+    /// loopback* n'a aucune des propriétés qui avaient forcé la mutualisation de
+    /// la vidéo en D4.
+    Audio { actif: bool },
 }
 
 #[derive(Debug)]

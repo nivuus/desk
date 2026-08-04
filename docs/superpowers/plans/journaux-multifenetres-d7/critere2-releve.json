@@ -1,0 +1,288 @@
+{
+ "etiquette": "critere2",
+ "hz": [
+  440,
+  880
+ ],
+ "gains": [
+  0.25,
+  0.25
+ ],
+ "phases": {
+  "arbitrage_pid": {
+   "groupe": [
+    "w:w-2",
+    "w:w-4"
+   ],
+   "hzs_groupe": [
+    440,
+    880
+   ],
+   "phases": {
+    "focus_0": {
+     "cible": "w:w-2",
+     "scenario": {
+      "cible": "w:w-2",
+      "etats": {
+       "w:w-2": "false/true",
+       "w:w-4": "false/false"
+      },
+      "focalisees": [
+       "w:w-2"
+      ]
+     },
+     "actif_attendu": {
+      "w:w-2": true,
+      "w:w-4": false
+     },
+     "frequences": {
+      "w:w-2": {
+       "hz": 441,
+       "db": -40,
+       "plancher_db": -157,
+       "sample_rate": 44100,
+       "niveaux": [
+        {
+         "f": 440,
+         "db": -40
+        },
+        {
+         "f": 880,
+         "db": -41
+        }
+       ],
+       "piste_muted": false,
+       "piste_ready_state": "live",
+       "stats_audio": {
+        "bytes_recus": 274832,
+        "paquets_recus": 1708
+       }
+      },
+      "w:w-4": {
+       "hz": 0,
+       "db": -1000,
+       "plancher_db": -1000,
+       "sample_rate": 44100,
+       "niveaux": [
+        {
+         "f": 440,
+         "db": -1000
+        },
+        {
+         "f": 880,
+         "db": -1000
+        }
+       ],
+       "piste_muted": true,
+       "piste_ready_state": "live",
+       "stats_audio": null
+      }
+     },
+     "jugement": {
+      "toutesBonnes": true,
+      "jugements": {
+       "w:w-2": {
+        "doit_porter": true,
+        "plancher_db": -157,
+        "ecarts": [
+         {
+          "f": 440,
+          "db": -40,
+          "ecart_signal_db": 117
+         },
+         {
+          "f": 880,
+          "db": -41,
+          "ecart_signal_db": 116
+         }
+        ],
+        "piste_muted": false,
+        "piste_ready_state": "live",
+        "stats_audio": {
+         "bytes_recus": 274832,
+         "paquets_recus": 1708
+        },
+        "verdict": "OK"
+       },
+       "w:w-4": {
+        "doit_porter": false,
+        "plancher_db": -1000,
+        "ecarts": [
+         {
+          "f": 440,
+          "db": -1000,
+          "ecart_signal_db": 0
+         },
+         {
+          "f": 880,
+          "db": -1000,
+          "ecart_signal_db": 0
+         }
+        ],
+        "piste_muted": true,
+        "piste_ready_state": "live",
+        "stats_audio": null,
+        "verdict": "OK"
+       }
+      }
+     },
+     "agent_confirme": {
+      "w:w-2": true,
+      "w:w-4": false
+     },
+     "agent_accord": true
+    },
+    "focus_1": {
+     "cible": "w:w-4",
+     "scenario": {
+      "cible": "w:w-4",
+      "etats": {
+       "w:w-2": "false/false",
+       "w:w-4": "false/true"
+      },
+      "focalisees": [
+       "w:w-4"
+      ]
+     },
+     "actif_attendu": {
+      "w:w-2": false,
+      "w:w-4": true
+     },
+     "frequences": {
+      "w:w-2": {
+       "hz": 0,
+       "db": -1000,
+       "plancher_db": -1000,
+       "sample_rate": 44100,
+       "niveaux": [
+        {
+         "f": 440,
+         "db": -1000
+        },
+        {
+         "f": 880,
+         "db": -1000
+        }
+       ],
+       "piste_muted": false,
+       "piste_ready_state": "live",
+       "stats_audio": {
+        "bytes_recus": 275798,
+        "paquets_recus": 1714
+       }
+      },
+      "w:w-4": {
+       "hz": 441,
+       "db": -40,
+       "plancher_db": -157,
+       "sample_rate": 44100,
+       "niveaux": [
+        {
+         "f": 440,
+         "db": -40
+        },
+        {
+         "f": 880,
+         "db": -41
+        }
+       ],
+       "piste_muted": false,
+       "piste_ready_state": "live",
+       "stats_audio": {
+        "bytes_recus": 265491,
+        "paquets_recus": 1649
+       }
+      }
+     },
+     "jugement": {
+      "toutesBonnes": true,
+      "jugements": {
+       "w:w-2": {
+        "doit_porter": false,
+        "plancher_db": -1000,
+        "ecarts": [
+         {
+          "f": 440,
+          "db": -1000,
+          "ecart_signal_db": 0
+         },
+         {
+          "f": 880,
+          "db": -1000,
+          "ecart_signal_db": 0
+         }
+        ],
+        "piste_muted": false,
+        "piste_ready_state": "live",
+        "stats_audio": {
+         "bytes_recus": 275798,
+         "paquets_recus": 1714
+        },
+        "verdict": "OK"
+       },
+       "w:w-4": {
+        "doit_porter": true,
+        "plancher_db": -157,
+        "ecarts": [
+         {
+          "f": 440,
+          "db": -40,
+          "ecart_signal_db": 117
+         },
+         {
+          "f": 880,
+          "db": -41,
+          "ecart_signal_db": 116
+         }
+        ],
+        "piste_muted": false,
+        "piste_ready_state": "live",
+        "stats_audio": {
+         "bytes_recus": 265491,
+         "paquets_recus": 1649
+        },
+        "verdict": "OK"
+       }
+      }
+     },
+     "agent_confirme": {
+      "w:w-2": false,
+      "w:w-4": true
+     },
+     "agent_accord": true
+    }
+   },
+   "verif_assignation": {
+    "correspond": true,
+    "jetons": {
+     "w:w-2": "ton-440.html",
+     "w:w-4": "ton-880.html"
+    },
+    "titresObserves": [
+     "_/C:/dev/ton-440.html",
+     "_/C:/dev/ton-880.html"
+    ]
+   },
+   "verdict_final": true
+  }
+ },
+ "navigateur": "Chrome/151.0.7922.71",
+ "survie_avant": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ },
+ "survie_apres": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ },
+ "marqueurs": {
+  "lignes": 138,
+  "enfant_lance": 2,
+  "attachee_capteur": 2,
+  "cloture": 0,
+  "audio_active": 2,
+  "ordre_audio_actif_true": 2,
+  "ordre_audio_actif_false": 2,
+  "erreurs": 0
+ }
+}

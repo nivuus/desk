@@ -62,18 +62,17 @@ fn la_sortie_creee_declenche_le_lancement_de_l_enfant() {
             session: session.clone(),
             fenetre: IdFenetre(1),
             nom_sortie: "\\\\.\\DISPLAY4".into(),
-            // La première fenêtre porte le son : le loopback WASAPI capte
-            // toute la session Windows, deux porteurs feraient entendre
-            // deux fois le même son.
-            audio: true,
         }]
     );
     assert_eq!(t.etat(&session), Some(&Etat::Vivante));
     assert_eq!(t.nom_sortie_de(&session), Some("\\\\.\\DISPLAY4"));
 }
 
+/// Deux fenêtres en vol en même temps ne doivent jamais se faire attribuer
+/// l'identifiant ou la sortie l'une de l'autre : chaque `Effet::LancerEnfant`
+/// doit porter le `IdFenetre` et le `nom_sortie` de SA PROPRE fenêtre.
 #[test]
-fn seule_la_premiere_fenetre_porte_le_son() {
+fn deux_fenetres_en_vol_gardent_chacune_leur_fenetre_et_leur_sortie() {
     let mut t = table();
     let a = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
     t.viewport_recu(&a, 1600, 900);
@@ -88,7 +87,6 @@ fn seule_la_premiere_fenetre_porte_le_son() {
             session: b,
             fenetre: IdFenetre(2),
             nom_sortie: "\\\\.\\DISPLAY5".into(),
-            audio: false,
         }]
     );
 }
@@ -183,34 +181,6 @@ fn une_sortie_liberee_rouvre_la_place() {
     t.fenetre_disparue(IdFenetre(1));
     let effets = t.fenetre_apparue(IdFenetre(3), "C".into());
     assert!(matches!(effets.as_slice(), [Effet::AnnoncerOuverture { .. }]));
-}
-
-#[test]
-fn le_son_repasse_a_personne_tant_que_d2_ne_le_redesigne_pas() {
-    // Limite assumée de D1, écrite en test pour qu'elle soit un choix
-    // visible plutôt qu'un oubli : fermer la porteuse ne redésigne rien.
-    let mut t = table();
-    let a = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "A".into()));
-    t.viewport_recu(&a, 1280, 720);
-    t.sortie_creee(&a, 7, "\\\\.\\DISPLAY4".into(), (1280, 720));
-    let b = session_annoncee(&t.fenetre_apparue(IdFenetre(2), "B".into()));
-    t.viewport_recu(&b, 1280, 720);
-    t.sortie_creee(&b, 8, "\\\\.\\DISPLAY5".into(), (1280, 720));
-
-    t.fenetre_disparue(IdFenetre(1));
-    let c = session_annoncee(&t.fenetre_apparue(IdFenetre(3), "C".into()));
-    t.viewport_recu(&c, 1280, 720);
-    let effets = t.sortie_creee(&c, 9, "\\\\.\\DISPLAY6".into(), (1280, 720));
-    assert_eq!(
-        effets,
-        vec![Effet::LancerEnfant {
-            session: c,
-            fenetre: IdFenetre(3),
-            nom_sortie: "\\\\.\\DISPLAY6".into(),
-            audio: false,
-        }],
-        "aucune redésignation du son en D1"
-    );
 }
 
 #[test]
@@ -318,7 +288,6 @@ fn la_sortie_est_transmise_a_l_enfant_par_son_nom() {
             session: session.clone(),
             fenetre: IdFenetre(1),
             nom_sortie: "\\\\.\\DISPLAY7".into(),
-            audio: true,
         }]
     );
     assert_eq!(t.nom_sortie_de(&session), Some("\\\\.\\DISPLAY7"));

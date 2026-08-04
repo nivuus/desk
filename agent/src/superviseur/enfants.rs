@@ -22,8 +22,6 @@ pub struct Consigne {
     /// Nom DXGI de la sortie (`\\.\DISPLAYn`), stable — contrairement à un
     /// couple d'index d'énumération, positionnel.
     pub nom_sortie: String,
-    /// Vrai pour la seule fenêtre porteuse du son.
-    pub audio: bool,
 }
 
 pub trait Lanceur {
@@ -65,7 +63,6 @@ impl<'l> Enfants<'l> {
             session = %consigne.session.0,
             pid,
             sortie = %consigne.nom_sortie,
-            audio = consigne.audio,
             "enfant lancé"
         );
         self.vivants.insert(consigne.session, pid);
@@ -163,12 +160,11 @@ mod tests {
         }
     }
 
-    fn consigne(session: &str, audio: bool) -> Consigne {
+    fn consigne(session: &str) -> Consigne {
         Consigne {
             session: IdSession(session.into()),
             fenetre: 0x1234,
             nom_sortie: "\\\\.\\DISPLAY1".into(),
-            audio,
         }
     }
 
@@ -176,17 +172,17 @@ mod tests {
     fn lancer_transmet_la_consigne_au_lanceur() {
         let lanceur = LanceurFactice::default();
         let mut enfants = Enfants::nouveaux(&lanceur);
-        enfants.lancer(consigne("w-1", true)).unwrap();
+        enfants.lancer(consigne("w-1")).unwrap();
         assert_eq!(lanceur.lancees.borrow().len(), 1);
-        assert!(lanceur.lancees.borrow()[0].audio);
+        assert_eq!(lanceur.lancees.borrow()[0].session, IdSession("w-1".into()));
     }
 
     #[test]
     fn tuer_demande_la_mise_a_mort_du_bon_processus() {
         let lanceur = LanceurFactice::default();
         let mut enfants = Enfants::nouveaux(&lanceur);
-        enfants.lancer(consigne("w-1", true)).unwrap();
-        enfants.lancer(consigne("w-2", false)).unwrap();
+        enfants.lancer(consigne("w-1")).unwrap();
+        enfants.lancer(consigne("w-2")).unwrap();
         enfants.tuer(&IdSession("w-1".into()));
         assert_eq!(*lanceur.tues.borrow(), vec![1]);
     }
@@ -195,8 +191,8 @@ mod tests {
     fn morts_rend_les_sessions_dont_le_processus_a_disparu() {
         let lanceur = LanceurFactice::default();
         let mut enfants = Enfants::nouveaux(&lanceur);
-        enfants.lancer(consigne("w-1", true)).unwrap();
-        enfants.lancer(consigne("w-2", false)).unwrap();
+        enfants.lancer(consigne("w-1")).unwrap();
+        enfants.lancer(consigne("w-2")).unwrap();
         lanceur.vivants.borrow_mut().retain(|p| *p != 1);
 
         assert_eq!(enfants.morts(), vec![IdSession("w-1".into())]);
@@ -209,7 +205,7 @@ mod tests {
         // de boucle, et le journal se remplirait d'échecs.
         let lanceur = LanceurFactice::default();
         let mut enfants = Enfants::nouveaux(&lanceur);
-        enfants.lancer(consigne("w-1", true)).unwrap();
+        enfants.lancer(consigne("w-1")).unwrap();
         lanceur.vivants.borrow_mut().clear();
 
         assert_eq!(enfants.morts().len(), 1);
@@ -230,7 +226,7 @@ mod tests {
         // signaler morte ferait détruire sa sortie une seconde fois.
         let lanceur = LanceurFactice::default();
         let mut enfants = Enfants::nouveaux(&lanceur);
-        enfants.lancer(consigne("w-1", true)).unwrap();
+        enfants.lancer(consigne("w-1")).unwrap();
         enfants.tuer(&IdSession("w-1".into()));
         assert!(enfants.morts().is_empty());
     }
@@ -245,7 +241,7 @@ mod tests {
         // doit laisser aucune trace.
         let lanceur = LanceurEchec;
         let mut enfants = Enfants::nouveaux(&lanceur);
-        let err = enfants.lancer(consigne("w-1", true));
+        let err = enfants.lancer(consigne("w-1"));
         assert!(err.is_err());
         // Aucune session enregistrée.
         assert!(enfants.morts().is_empty());

@@ -33,6 +33,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::{bail, Context, Result};
 use windows::Win32::Foundation::HWND;
+use windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId;
 
 use crate::capteur::horloge::{frequence_qpc, lire_qpc, origine_depuis_qpc};
 use crate::capteur::protocole::{ecrire_image, ecrire_json, DepuisCapteur, VersCapteur};
@@ -130,6 +131,10 @@ pub struct Fenetre {
     session: String,
     largeur: u32,
     hauteur: u32,
+    /// PID du processus propriétaire de la fenêtre Windows, dérivé du `hwnd` à
+    /// l'attache. C'est par lui que `capteur::audio::arbitrer` regroupe les
+    /// fenêtres d'une même application.
+    pid: u32,
 }
 
 impl Fenetre {
@@ -172,13 +177,29 @@ impl Fenetre {
         );
 
         let hwnd = HWND(hwnd as *mut core::ffi::c_void);
+        // Le PID ne circule pas sur le protocole : il se dérive du `hwnd` que
+        // l'enfant a déjà envoyé. L'enfant fait de même de son côté, depuis son
+        // `FENETRE_HWND`. Deux dérivations indépendantes du même identifiant
+        // stable valent mieux qu'un champ de protocole à tenir cohérent.
+        // Pré-initialisé à 0, et c'est CE 0 que le `ensure` ci-dessous
+        // attrape en cas d'échec — pas une garantie de l'API Windows, qui ne
+        // documente aucune écriture de `lpdwProcessId` en cas d'échec.
+        let mut pid = 0u32;
+        // SAFETY : `hwnd` vient d'un enfant vivant, et `&mut pid` est un
+        // pointeur valide vers une variable initialisée pour toute la durée
+        // de l'appel.
+        unsafe { GetWindowThreadProcessId(hwnd, Some(&mut pid)) };
+        anyhow::ensure!(
+            pid != 0,
+            "impossible de dériver le PID de la fenêtre {hwnd:?} de la session {session}"
+        );
         // La taille est la seule chose qu'il faut savoir avant d'avoir la
         // place : `taille_de_sortie` la lit sans ouvrir de duplication, donc
         // sans prendre le mutex de la sortie ni perturber aucune voisine.
         let (largeur, hauteur) = crate::capture::ouverture::taille_de_sortie(&sortie)
             .with_context(|| format!("attache de la session {session}"))?;
         let parametres = Parametres { hwnd, sortie, fps, debit, clock_origin };
-        Ok(Fenetre { source: None, parametres, session, largeur, hauteur })
+        Ok(Fenetre { source: None, parametres, session, largeur, hauteur, pid })
     }
 
     pub fn dimensions(&self) -> (u32, u32) {
@@ -209,6 +230,15 @@ impl Fenetre {
         // Copiée une fois : les traces la citent à chaque tour, et la boucle
         // emprunte `self` en mutable pendant tout ce temps.
         let session = self.session.clone();
+
+        // Consignation n°2 du sous-bloc D6, portée ici : tous les enfants et le
+        // capteur écrivent dans le MÊME `agent.log` (stdout hérité depuis D4).
+        // Une trace sans `session` y est un nombre dans un multiensemble
+        // anonyme, et D6 a dû ajouter ce champ à deux traces EN PLEINE RECETTE.
+        // Un span posé une fois sur le fil de fenêtre le donne à tout ce qui
+        // s'émet en dessous, y compris aux `warn!` des modules appelés.
+        let _span = tracing::info_span!("fenetre", session = %session).entered();
+
         tracing::info!(
             %session,
             sortie = %self.parametres.sortie,
@@ -233,7 +263,7 @@ impl Fenetre {
         // fenêtre que personne ne déclare regarder —, mais c'est la nouvelle
         // façon dont une session peut rester vide sans qu'aucune erreur ne soit
         // journalisée.
-        let ordres = crate::capteur::sommeil::inscrire(&session);
+        let ordres = crate::capteur::sommeil::inscrire(&session, self.pid);
 
         let resultat = self.boucler(&session, &ordres, &ecritures, &commandes, &reponses);
 

@@ -133,7 +133,7 @@ pub fn tourner(
                     // attente de rattachement : ne pas le recompter en retard.
                     dernier_ping = std::time::Instant::now();
                 }
-                Effet::LancerEnfant { session, fenetre, nom_sortie, audio } => {
+                Effet::LancerEnfant { session, fenetre, nom_sortie } => {
                     // Le chemin de réutilisation d'une sortie retenue ne passe
                     // pas par `creer_sortie`, donc la fenêtre n'a pas été
                     // reposée. Une seule énumération, sur ce seul bras.
@@ -143,7 +143,6 @@ pub fn tourner(
                         session: session.clone(),
                         fenetre: fenetre.0,
                         nom_sortie,
-                        audio,
                     }) {
                         tracing::error!(session = %session.0, %erreur, "lancement de l'enfant échoué");
                         // Le contrat du trait `Lanceur` est atomique : `Err`

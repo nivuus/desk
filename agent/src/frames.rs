@@ -97,6 +97,25 @@ impl FrameAssembler {
         sorties
     }
 
+    /// Réancre l'assembleur : le prochain `drain_due` recommencera par un
+    /// ancrage silencieux, exactement comme au tout premier appel.
+    ///
+    /// **À appeler à chaque reprise après une coupure d'alimentation**, par
+    /// exemple une désactivation puis réactivation de la capture (audio par
+    /// fenêtre, sous-bloc D7). Sans cela, `emis_par_canal` reste figé à la
+    /// position d'avant la coupure pendant que l'horloge murale, elle,
+    /// continue d'avancer : le premier `drain_due` qui suit la reprise
+    /// rendrait alors une trame par tranche de 10 ms de la coupure ENTIÈRE en
+    /// une seule fois — silence-complétées puisque rien n'a été poussé
+    /// pendant la coupure — au lieu d'une seule trame due comme dans le cas
+    /// nominal. C'est la même rafale que celle contre laquelle l'ancrage
+    /// paresseux du premier appel protège déjà (voir
+    /// `s_ancre_sur_le_temps_ecoule_plutot_que_d_emettre_une_rafale`) ; ce
+    /// n'est simplement pas la même occasion de la déclencher.
+    pub fn reancrer(&mut self) {
+        self.emis_par_canal = None;
+    }
+
     /// Nombre de trames qui ont dû être complétées par du silence.
     pub fn complements(&self) -> u64 {
         self.complements
@@ -265,6 +284,36 @@ mod tests {
         let suivantes = a.drain_due(origine + Duration::from_millis(510));
         assert_eq!(suivantes.len(), 1);
         assert_eq!(suivantes[0].pts_48k, 50 * FRAME_SAMPLES as u64);
+    }
+
+    #[test]
+    fn se_reancre_sur_le_temps_ecoule_plutot_que_de_rattraper_une_coupure() {
+        // Le pendant de `s_ancre_sur_le_temps_ecoule_plutot_que_d_emettre_une_rafale`
+        // pour une coupure EN COURS DE VIE plutôt qu'à la construction : une
+        // désactivation puis réactivation de la capture (audio par fenêtre,
+        // sous-bloc D7) laisse l'horloge murale avancer sans que rien ne soit
+        // poussé. Sans `reancrer()`, le premier `drain_due` qui suit la
+        // reprise rendrait une trame de silence par tranche de 10 ms de toute
+        // la coupure, en une seule rafale.
+        let origine = Instant::now();
+        let mut a = FrameAssembler::new(origine);
+        a.drain_due(origine); // ancrage initial
+
+        // Coupure longue : bien plus qu'une seule trame de 10 ms, et rien
+        // n'est poussé pendant cette période.
+        let longue_coupure = origine + Duration::from_secs(30);
+        a.reancrer();
+        let sorties = a.drain_due(longue_coupure);
+        assert!(
+            sorties.is_empty(),
+            "le premier drain_due après reancrer() ancre, il ne rattrape pas : {} trames émises",
+            sorties.len()
+        );
+
+        // Et la ligne de temps repart de la position écoulée à la reprise,
+        // pas de zéro ni du cumul de la coupure.
+        let suivante = a.drain_due(longue_coupure + trames(1));
+        assert_eq!(suivante.len(), 1);
     }
 
     #[test]

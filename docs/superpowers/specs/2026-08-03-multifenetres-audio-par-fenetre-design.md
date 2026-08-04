@@ -32,6 +32,20 @@ L'arbitrage retenu, décidé au cadrage :
 | La consigne descend par une variable d'environnement booléenne | `agent/src/superviseur/lanceur.rs:234` (`AUDIO`), lue en `agent/src/main.rs:138` |
 | L'enfant construit sa source audio, ou continue sans son en cas d'échec | `agent/src/demarrage.rs:109-117` |
 | Le **DTX Opus est actif** : une trame de silence retombe à quelques octets | `agent/src/opus.rs:76`, test `le_silence_prolonge_retombe_a_quelques_octets_par_trame` |
+
+> ⚠️ **Ce fait, exact en lui-même, a nourri une inférence NON CONFIRMÉE par la
+> recette.** Le cadrage de ce sous-bloc en tirait qu'une fenêtre porteuse dont
+> l'application ne joue jamais rien « ne coûtera quasiment rien », en pariant
+> que le DTX s'engage aussi sur le flux du *process loopback*. La mesure du §3
+> a trouvé un **plancher de 1 LSB** sur ce chemin (ni A ni B silencieux ne
+> rendent 0), et **un flux à ±1 LSB n'est pas du silence numérique** — rien
+> n'établit que le DTX s'y engage. La recette de la tâche 13 ne l'a pas non
+> plus tranché : ses sources jouaient toutes un son continu, et le cas d'une
+> fenêtre porteuse dont l'application se tait n'a jamais été monté. **Reste une
+> inférence, jamais mesurée** — voir
+> `docs/superpowers/plans/2026-08-03-multifenetres-audio-par-fenetre-resultats.md`
+> §1.5 et §4.
+
 | Le capteur reçoit le **`hwnd`** de chaque fenêtre | `agent/src/capteur/protocole.rs:38` (`VersCapteur::Attache`) |
 | Le capteur tient le **focus** | `agent/src/capteur/sommeil.rs:70` (`focalisee`), alimenté par `signaler` (l. 205) depuis `VersCapteur::Visibilite` (protocole l. 64) |
 | Le capteur pousse déjà des ordres par fenêtre | `DepuisCapteur::Sommeil` (protocole l. 85), `DepuisCapteur::Part` (l. 108) |
@@ -231,13 +245,86 @@ grep -c 'compteurs audio' agent.log
 grep 'compteurs audio' agent.log | grep -c 'actif=true'
 ```
 
-Si le second vaut zéro alors que le premier ne le vaut pas, le défaut est là. Un
-champ qui rend un défaut muet observable **pour rien** est un bénéfice, pas un
-coût.
+❌ **CE `grep` TEL QU'ÉCRIT A TROIS DÉFAUTS — ne pas le recopier tel quel.** Les
+deux premiers ont été trouvés en l'exécutant (tâche 12, document de résultats
+§3) ; le troisième, **de loin le plus grave**, par la revue finale de branche
+(F1), et il visait le CODE autant que ce paragraphe :
+
+1. **Il rend 0 sur un `agent.log` brut.** Les séquences ANSI de `tracing`
+   séparent le nom du champ de sa valeur (`[3mactif[0m[2m=[0mtrue`), donc
+   `actif=true` ne matche jamais littéralement. Il faut
+   `sed 's/\x1b\[[0-9;]*m//g'` **avant** le `grep`.
+2. **Il rend 0 sur toute session de moins de `REPORT_INTERVAL` (30 s)**, la
+   trace `compteurs audio` étant périodique — un zéro **bénin**, indiscernable
+   du défaut qu'il existe pour révéler.
+3. ❌ **Et sa condition de déclenchement était INSATISFIABLE, parce que le code
+   ne pouvait pas produire la ligne qu'elle cherchait.** Dans
+   `windows_audio.rs`, le bloc `REPORT_INTERVAL` vivait **après** le
+   `if !emettait { sleep; continue; }` de la branche muette : la trace n'était
+   atteignable que quand `emettait` valait vrai, donc son champ `actif` valait
+   **structurellement `true`**. Le second compte était donc **toujours égal**
+   au premier, et « le second vaut zéro alors que le premier ne le vaut pas »
+   ne pouvait jamais se produire. Pire : le défaut que ce contrôle existe pour
+   révéler — plus aucune fenêtre ne porte le son — rend `0` et `0`, que le
+   point 2 ci-dessus classe comme **bénin**. Un opérateur lisait 0/0, concluait
+   correctement que rien n'allait mal, dans l'état exact où tout allait mal.
+   **Corrigé par la revue finale de branche (F1)** : le bloc a été remonté
+   au-dessus du gate, une fenêtre muette rapporte donc elle aussi toutes les
+   30 s, avec `actif=false`.
+
+**Forme corrigée** :
+
+```bash
+sed 's/\x1b\[[0-9;]*m//g' agent.log > agent-plat.log
+grep -c 'compteurs audio' agent-plat.log                      # A
+grep 'compteurs audio' agent-plat.log | grep -c 'actif=true'  # B
+```
+
+sur une session vivante depuis au moins 30 s. Voir `CLAUDE.md`, section
+« Sous-bloc D7 », pour le détail.
+
+**Lecture, sur un binaire portant le correctif F1** — chaque fenêtre vivante
+émet une ligne par période, porteuse ou non :
+
+- `A = 0` : **le contrôle n'a rien à dire.** Aucune session n'a vécu 30 s ; ce
+  n'est pas un verdict, c'est une mesure non prise.
+- `A > 0` et `B = 0` : **le défaut est là.** Des fenêtres vivent, aucune ne
+  porte le son.
+- `A > 0` et `B > 0` : l'arbitrage désigne bien un porteur. Sur `N` fenêtres
+  d'un même PID, attendre `B ≈ A / N`.
+- ⚠️ `B == A` avec plusieurs fenêtres d'un même PID vivantes : **suspect** —
+  c'était précisément la signature du code d'avant F1.
+
+Un champ qui rend un défaut muet observable **pour rien** est un bénéfice, pas
+un coût — mais **encore faut-il que le code puisse l'émettre dans les deux
+états.** C'est la leçon de F1, et elle est plus générale que ce contrôle-ci :
+*un contrôle dont on n'a pas vérifié qu'il PEUT échouer ne contrôle rien* —
+même piège que D6, ici rejoué une seconde fois sur le même paragraphe.
 
 Les erreurs de lecture et d'encodage gardent le comportement d'aujourd'hui :
 elles arrêtent l'audio de **cette** fenêtre, journalisent les compteurs
 accumulés, et ne touchent ni la vidéo ni les autres sessions.
+
+⚠️ **Ce paragraphe sous-estimait la portée d'une erreur de LECTURE, et la revue
+finale de branche l'a corrigé (F3).** « Elles n'affectent que cette fenêtre »
+est faux depuis que l'audio est arbitré : le capteur continue de tenir la
+session comme **porteuse de son groupe de PID**, donc sa voisine reste muette et
+n'est jamais promue — une seule erreur transitoire (changement de périphérique,
+redémarrage du service audio, changement de format) silençait **tout le
+groupe**, définitivement, pendant que `set_actif` continuait de réussir et que
+`ordre audio applique` continuait d'annoncer `actif=true`. Depuis F3 :
+
+- les erreurs de **lecture** sont retentées avec temporisation croissante, et
+  l'abandon n'a lieu qu'après `LECTURES_ECHOUEES_MAX` (10) échecs d'affilée
+  (`agent/src/audio.rs`, éprouvé sur l'hôte) ;
+- un abandon définitif, de lecture **ou** d'encodage, pose un témoin que
+  `appliquer_audio` journalise (`capture_morte=true`) : la trace cesse de
+  mentir.
+
+⚠️ **Ce qui reste ouvert, et qui est un changement de PROTOCOLE hors périmètre
+de D7** : le capteur ne voit pas ce témoin, qui vit dans l'enfant. La promotion
+de la fenêtre voisine demande un signal enfant→capteur puis un réarbitrage — à
+cadrer dans le sous-bloc suivant.
 
 ## 7. Deux dettes soldées dans le mouvement, et une règle qui l'exige
 

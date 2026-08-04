@@ -231,7 +231,6 @@ impl Lanceur for LanceurDeProcessus {
             .env("LOCAL_IP", &self.local_ip)
             .env("FENETRE_HWND", format!("{:#x}", consigne.fenetre))
             .env("SORTIE_DXGI", &consigne.nom_sortie)
-            .env("AUDIO", if consigne.audio { "1" } else { "0" })
             // Surtout PAS `SUPERVISEUR` : un enfant qui hériterait de la
             // variable se prendrait pour un superviseur et lancerait ses
             // propres enfants, indéfiniment.

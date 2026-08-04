@@ -59,6 +59,12 @@ pub(crate) fn lire_le_media<R: Read>(mut lecteur: R, images: SyncSender<Recu>) {
                 // tombait dans `Ok(autre)` et tuait ce fil au tout premier
                 // message reçu, en conditions de produit et sur toute session.
                 Ok(DepuisCapteur::Part { bps }) => images.send(Recu::Part { bps }).is_ok(),
+                // Tâche 6, sous-bloc D7 : même point de passage obligé que
+                // `Sommeil` et `Part` juste au-dessus — l'oublier ici tuerait
+                // ce fil en silence au premier ordre audio reçu.
+                Ok(DepuisCapteur::Audio { actif }) => {
+                    images.send(Recu::Audio { actif }).is_ok()
+                }
                 Ok(autre) => {
                     tracing::warn!(?autre, "trame inattendue sur la connexion média, abandonnée");
                     return;
@@ -155,6 +161,37 @@ mod tests {
         match rx.recv().unwrap() {
             Recu::Image(unite) => assert_eq!(unite.pts_90k, 7),
             autre => panic!("attendu une image après la part, reçu {autre:?}"),
+        }
+        assert!(
+            rx.try_recv().is_err(),
+            "aucune trame de plus après la fin du tampon : le fil n'a rien perdu ni rien inventé"
+        );
+    }
+
+    /// Le même défaut, sur le même hop, pour la même raison — cette fois pour
+    /// `DepuisCapteur::Audio` (tâche 6, sous-bloc D7) : câblé côté capteur
+    /// (protocole + fil de fenêtre) mais, sans ce bras, il tomberait dans
+    /// `Ok(autre)` et tuerait ce fil au tout premier ordre audio reçu, en
+    /// conditions de produit et sur toute session.
+    #[test]
+    fn lire_le_media_survit_a_un_audio_et_le_transmet() {
+        let mut tampon = Vec::new();
+        ecrire_json(&mut tampon, &DepuisCapteur::Audio { actif: true }).unwrap();
+        // Une image APRÈS l'ordre : si le fil s'était abandonné dessus, cette
+        // image ne serait jamais relayée non plus.
+        ecrire_image(
+            &mut tampon,
+            &AccessUnit { data: vec![4, 4, 4], is_keyframe: true, pts_90k: 11 },
+        )
+        .unwrap();
+
+        let (tx, rx) = sync_channel(8);
+        lire_le_media(std::io::Cursor::new(tampon), tx);
+
+        assert_eq!(rx.recv().unwrap(), Recu::Audio { actif: true });
+        match rx.recv().unwrap() {
+            Recu::Image(unite) => assert_eq!(unite.pts_90k, 11),
+            autre => panic!("attendu une image après l'ordre audio, reçu {autre:?}"),
         }
         assert!(
             rx.try_recv().is_err(),

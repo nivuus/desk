@@ -11,12 +11,17 @@ use crate::source::{FileSource, VideoSource};
 use crate::transport::Session;
 use crate::Config;
 #[cfg(windows)]
-use crate::{capture, cursor, encode, gamepad, input, windows_audio, windows_source};
+use crate::{capture, cursor, encode, gamepad, input, windows_source};
 
 /// Construction de la source vidéo Windows, extraite pour tenir le plafond de
 /// 500 lignes de ce fichier — voir son commentaire de tête.
 #[cfg(windows)]
 mod source;
+
+/// Construction et branchement de la source audio, extraite pour la même
+/// raison (tâche 7 du sous-bloc D7) — voir son commentaire de tête.
+#[cfg(windows)]
+mod audio;
 
 pub(crate) async fn executer(config: Config) -> Result<()> {
     // Renseigné dans la branche Windows ci-dessous : la fenêtre capturée est
@@ -95,32 +100,12 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     // plusieurs fenêtres se partagent (voir `capteur/fenetre.rs`).
     session.set_session_id(&config.session_id);
 
-    // Source audio : son absence ne compromet jamais la session vidéo. Sur une
-    // source de test (TEST_FILE), il n'y a rien à capter. Hors Windows, il n'y
-    // a pas de WASAPI. Et si le loopback refuse de s'ouvrir — pas de
-    // périphérique de rendu par défaut, format de mixage non supporté — on
-    // journalise et la session continue, muette.
-    //
-    // `config.audio` en plus : en multi-fenêtres, une seule fenêtre porte le
-    // son (la table le réserve à la première détectée). Sans cette garde, huit
-    // enfants ouvriraient huit captures loopback du MÊME périphérique et le
-    // navigateur recevrait le son en huit exemplaires.
+    // Source audio : son absence ne compromet jamais la session vidéo — voir
+    // le commentaire de tête de `demarrage::audio` pour le détail des deux
+    // modes (mix de session, ou process loopback par fenêtre) et le repli
+    // délibérément écarté.
     #[cfg(windows)]
-    if config.test_file.is_none() && config.audio {
-        match windows_audio::WindowsAudioSource::new(clock_origin) {
-            Ok(source_audio) => {
-                tracing::info!(format = source_audio.description(), "audio activé");
-                session.set_audio_source(Box::new(source_audio));
-            }
-            Err(e) => {
-                tracing::warn!(erreur = %e, "audio indisponible, la session continue sans son");
-            }
-        }
-    }
-    #[cfg(windows)]
-    if !config.audio {
-        tracing::info!("son désactivé sur cet enfant : une seule fenêtre le porte");
-    }
+    audio::brancher(&config, &mut session, clock_origin);
 
     // Surveillance du chemin réel (`SOURCE_TRACE=1`) : cadence d'appel de
     // `next_frame`, captures neuves, unités d'accès produites. Contrairement

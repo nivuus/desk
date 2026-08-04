@@ -30,8 +30,11 @@ pub(crate) mod pixels;
 
 /// Renvoie `true` si une sonde a tourné — `main` doit alors s'arrêter là.
 ///
-/// L'ordre des cinq sondes reproduit exactement celui qu'avait `main()`
-/// avant le découpage, et il n'est pas indifférent : `INPUT_LINEARITY_PROBE`
+/// L'ordre des sondes reproduit exactement celui qu'avait `main()`
+/// avant le découpage (à l'exception de `PROCESS_LOOPBACK_CAPTURE`, ajoutée
+/// par le sous-bloc D7 directement avant sa voisine `PROCESS_LOOPBACK_PROBE`,
+/// les deux variables partageant un préfixe), et il n'est pas indifférent :
+/// `INPUT_LINEARITY_PROBE`
 /// (la dernière) lit `INPUT_LINEARITY_NEUTRALISER`, dont l'effet dépend de la
 /// neutralisation SPI que `main()` a déjà — ou non — appliquée avant
 /// d'appeler cette fonction. Voir le commentaire de `main()` à ce sujet.
@@ -50,6 +53,18 @@ pub(crate) fn aiguiller() -> Result<bool> {
     #[cfg(windows)]
     if std::env::var("AUDIO_PROBE").is_ok() {
         audio::executer_sonde_audio()?;
+        return Ok(true);
+    }
+
+    // Mesure pivot du sous-bloc D7 : `PROCESS_LOOPBACK_CAPTURE=<pid>` va
+    // jusqu'où `PROCESS_LOOPBACK_PROBE` (juste en dessous) s'arrête —
+    // `Initialize`, `GetService`, `Start`, et une lecture réelle. Placée
+    // AVANT ce bras : les deux variables partagent un préfixe
+    // (`PROCESS_LOOPBACK_`), le piège exact de `MULTIFENETRE_NVENC_CYCLES` en
+    // D5, où la variable la plus spécifique doit être testée en premier.
+    #[cfg(windows)]
+    if let Ok(pid_texte) = std::env::var("PROCESS_LOOPBACK_CAPTURE") {
+        audio::executer_capture_process_loopback(&pid_texte)?;
         return Ok(true);
     }
 

@@ -407,3 +407,56 @@ fn deux_parts_arrivees_avant_lecture_s_ecrasent() {
     assert_eq!(source.next_frame(), None);
     assert_eq!(source.part_a_appliquer(), Some(2_000_000), "seule la dernière survit");
 }
+
+/// Un ordre audio reçu est retenu jusqu'à ce que la boucle de transport le
+/// consomme, et ne se rend qu'une fois — même patron que
+/// `une_part_recue_est_rendue_une_seule_fois` plus haut.
+#[test]
+fn un_ordre_audio_recu_est_rendu_une_seule_fois() {
+    let (mut source, tx, _recus) = source_avec(4);
+    tx.send(Recu::Audio { actif: true }).expect("dépôt");
+    // `next_frame` est ce qui draine le canal : sans lui, rien n'est lu.
+    assert_eq!(source.next_frame(), None);
+    assert_eq!(source.audio_a_appliquer(), Some(true));
+    assert_eq!(source.audio_a_appliquer(), None, "un ordre audio ne se réapplique pas");
+}
+
+/// **Au rattachement, l'enfant REDEVIENT MUET** (conception §4.4 ; F2, revue
+/// finale de branche).
+///
+/// Ce que ce test attrape, et que rien n'attrapait : une porteuse dont le
+/// canal casse gardait son drapeau `emet` d'avant la rupture, parce que le
+/// rattachement ne remettait à zéro que l'ordre EN ATTENTE (`None`, « rien à
+/// changer ») et jamais l'état de la source. Deux fenêtres d'un même PID
+/// jouaient alors le même mix, désynchronisées, jusqu'à ce que l'ordre
+/// d'extinction arrive — un écho audible.
+#[test]
+fn un_rattachement_remet_l_enfant_au_silence() {
+    let (mut source, tx, _recus, _rattachements, _essais) = source_rattachable(vec![Some(1600)]);
+    // La fenêtre porte le son, et la boucle de transport a consommé l'ordre :
+    // il ne reste plus rien en attente, seul l'état réel de la source le sait.
+    tx.send(Recu::Audio { actif: true }).expect("dépôt");
+    assert_eq!(source.next_frame(), None);
+    assert_eq!(source.audio_a_appliquer(), Some(true));
+
+    // Le capteur meurt, l'enfant se rattache.
+    drop(tx);
+    assert_eq!(source.next_frame(), None, "le tour de la rupture ne rend pas d'image");
+
+    assert_eq!(
+        source.audio_a_appliquer(),
+        Some(false),
+        "un rattachement doit ORDONNER le silence, pas se taire sur la question"
+    );
+}
+
+/// Deux ordres audio arrivés entre deux lectures s'écrasent : même régime
+/// que `deux_parts_arrivees_avant_lecture_s_ecrasent` juste au-dessus.
+#[test]
+fn deux_ordres_audio_arrives_avant_lecture_s_ecrasent() {
+    let (mut source, tx, _recus) = source_avec(4);
+    tx.send(Recu::Audio { actif: true }).expect("dépôt");
+    tx.send(Recu::Audio { actif: false }).expect("dépôt");
+    assert_eq!(source.next_frame(), None);
+    assert_eq!(source.audio_a_appliquer(), Some(false), "seul le dernier ordre survit");
+}

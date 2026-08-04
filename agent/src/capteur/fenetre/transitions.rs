@@ -149,6 +149,16 @@ impl Fenetre {
                         return Fin::Terminer(motif);
                     }
                 }
+                Ok(Message::Audio { actif }) => {
+                    // Rien à faire localement : le capteur ne capte pas de son.
+                    // Il n'est ici que le facteur, comme pour les parts.
+                    let message = DepuisCapteur::Audio { actif };
+                    if let Fin::Terminer(motif) =
+                        deposer(AEcrire::Etat(message), ecritures, self.source.as_mut(), ctx)
+                    {
+                        return Fin::Terminer(motif);
+                    }
+                }
                 Ok(Message::Part { bps }) => {
                     // Rien à faire localement : le capteur ne règle PAS son
                     // encodeur sur cette part. C'est l'enfant qui décide de

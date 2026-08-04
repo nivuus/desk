@@ -1,0 +1,29 @@
+[    0.0s 2026-08-04T08:08:18.724Z] ÉTIQUETTE=critere1 HZS=[440,880] GAINS=[0.25] DELAI_STABILISATION_S=15 chrome pid=646352
+[    0.6s 2026-08-04T08:08:19.352Z] identité du navigateur : pid écoutant=646352 pid lancé=646352 version=Chrome/151.0.7922.71
+[    0.7s 2026-08-04T08:08:19.371Z] + page attachée  session=E1985145 url=about:blank
+[    0.7s 2026-08-04T08:08:19.386Z] ton.html copié vers /media/vm/dev/ton.html
+[    0.7s 2026-08-04T08:08:19.386Z] >>> préparation VM : purge des processus et sorties résiduels
+[    5.8s 2026-08-04T08:08:24.548Z] SURVIE VM (avant lancement) virsh="en cours d’exécution" acces_partage=OUI
+[    5.9s 2026-08-04T08:08:24.599Z] + page attachée  session=DE9FEBFF url=http://192.168.3.1:5173/shell.html
+[    8.9s 2026-08-04T08:08:27.606Z] statut shell : bureau connecté
+[    8.9s 2026-08-04T08:08:27.606Z] >>> lancement du superviseur
+[    9.3s 2026-08-04T08:08:28.052Z] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   15.3s 2026-08-04T08:08:34.058Z] >>> OUVERTURE — 2 fenêtre(s) : [440,880]
+[   15.3s 2026-08-04T08:08:34.059Z]   · ouverture fenêtre 1 (ton.html?hz=440&gain=0.25)
+[   15.9s 2026-08-04T08:08:34.640Z] + page attachée  session=6E9BAB18 url=
+[   16.3s 2026-08-04T08:08:35.043Z] + page attachée  session=A7EB8CEC url=
+[   17.9s 2026-08-04T08:08:36.600Z]   · ouverture fenêtre 2 (ton.html?hz=880&gain=0.25)
+[   18.5s 2026-08-04T08:08:37.189Z] + page attachée  session=04DB029F url=
+[   18.9s 2026-08-04T08:08:37.603Z] + page attachée  session=D4F2AC90 url=
+[   20.4s 2026-08-04T08:08:39.126Z]   2/2 fenêtres ouvertes ; assignation={"w:w-2":440,"w:w-4":880}
+[   20.4s 2026-08-04T08:08:39.133Z] VÉRIFICATION ASSIGNATION (titres shell) attendus=["440 Hz","880 Hz"] observes=["_/C:/dev/ton.html","_/C:/dev/ton.html"] correspond=false
+[   20.4s 2026-08-04T08:08:39.133Z]   !! DÉSYNCHRONISATION assignation<->titre : l'assignation fenêtre/fréquence N'EST PAS CONFIRMÉE par le produit (voir CLAUDE.md, leçon D4 : une fenêtre éligible supplémentaire décale le compte sans le signaler autrement)
+[   20.4s 2026-08-04T08:08:39.148Z] SCÉNARIO IMPOSÉ (critère ①) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true","w:w-4":"false/false"}
+[   20.4s 2026-08-04T08:08:39.149Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   20.4s 2026-08-04T08:08:39.149Z] >>> stabilisation 15 s avant lecture
+[   37.0s 2026-08-04T08:08:55.698Z] FRÉQUENCES (critère ① — isolation) {"w:w-2":{"hz":441,"db":-40,"plancher_db":-158,"sample_rate":44100,"niveaux":[{"f":440,"db":-40},{"f":880,"db":-125}],"piste_muted":false,"piste_ready_state":"live","stats_audio":{"bytes_recus":274346,"paquets_recus":1704}},"w:w-4":{"hz":877,"db":-41,"plancher_db":-158,"sample_rate":44100,"niveaux":[{"f":440,"db":-135},{"f":880,"db":-41}],"piste_muted":false,"piste_ready_state":"live","stats_audio":{"bytes_recus":239409,"paquets_recus":1487}}}
+[   37.0s 2026-08-04T08:08:55.700Z] CRITÈRE ① — ISOLATION toutesBonnes=true assignation_confirmee=false verdict_final=false {"w:w-2":{"attendu":440,"niveau_propre_db":-40,"pire_autre_db":-125,"plancher_db":-158,"ecart_isolation_db":85,"ecart_signal_db":118,"argmax_hz":441,"argmax_db":-40,"argmax_correspond":true,"piste_muted":false,"piste_ready_state":"live","stats_audio":{"bytes_recus":274346,"paquets_recus":1704},"verdict":"OK"},"w:w-4":{"attendu":880,"niveau_propre_db":-41,"pire_autre_db":-135,"plancher_db":-158,"ecart_isolation_db":94,"ecart_signal_db":117,"argmax_hz":877,"argmax_db":-41,"argmax_correspond":true,"piste_muted":false,"piste_ready_state":"live","stats_audio":{"bytes_recus":239409,"paquets_recus":1487},"verdict":"OK"}}
+[   37.1s 2026-08-04T08:08:55.818Z] SURVIE VM (après critère ①) virsh="en cours d’exécution" acces_partage=OUI
+[   37.1s 2026-08-04T08:08:55.855Z] MARQUEURS (FIN) {"lignes":122,"enfant_lance":2,"attachee_capteur":2,"cloture":0,"audio_active":2,"ordre_audio_actif_true":2,"ordre_audio_actif_false":0,"erreurs":0}
+[   37.1s 2026-08-04T08:08:55.856Z] relevé écrit dans /home/mallanic/Projects/Guacamole/docs/superpowers/plans/journaux-multifenetres-d7/critere1-releve.json
+[   45.5s 2026-08-04T08:09:04.170Z] journal copié dans /tmp/agent-recette-d7-critere1.log (après la fermeture du navigateur)
