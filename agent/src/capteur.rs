@@ -12,6 +12,7 @@ pub mod distante;
 pub mod fenetre;
 pub mod horloge;
 pub mod pont_media;
+pub mod plein_ecran;
 pub mod protocole;
 pub mod repartiteur;
 pub mod reprise;
