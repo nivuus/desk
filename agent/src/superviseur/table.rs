@@ -105,7 +105,6 @@ pub enum Effet {
         /// démarrage — donc plus tard — et une sortie apparue ou disparue
         /// entre-temps le fait capturer autre chose, ou échouer.
         nom_sortie: String,
-        audio: bool,
     },
     TuerEnfant { session: IdSession },
     /// `sortie_pilote` est **l'identifiant du PILOTE**, pas le nom DXGI : le
@@ -144,7 +143,6 @@ struct Entree {
     /// Posé et effacé en même temps que `sortie_pilote` et `nom_sortie` : les
     /// trois désignent la même sortie et ne se séparent jamais.
     taille_sortie: Option<(u32, u32)>,
-    audio: bool,
     /// Nombre de fois où cette fenêtre a déjà été relancée après la mort de
     /// son enfant. Le garde-fou de `relancer_les_orphelines` (`RELANCES_MAX`)
     /// s'appuie dessus pour abandonner plutôt que de relancer sans fin.
@@ -171,16 +169,6 @@ pub struct Table {
     /// identifiant réutilisé apparierait un message tardif du navigateur à la
     /// mauvaise fenêtre.
     compteur: u64,
-    /// Vrai tant qu'aucune fenêtre ne porte le son.
-    ///
-    /// **Défaut préexistant, hors périmètre de la tâche 10, à documenter
-    /// seulement** : ce champ ne redevient jamais vrai une fois une porteuse
-    /// désignée (`le_son_repasse_a_personne_tant_que_d2_ne_le_redesigne_pas`).
-    /// Ce n'est pas une régression — l'ancien `enfant_mort` perdait déjà le
-    /// son dès la première mort de la fenêtre porteuse — mais le chemin
-    /// d'abandon de `relancer_les_orphelines` (au-delà de `RELANCES_MAX`) en
-    /// est une occasion de plus, silencieuse comme les autres.
-    audio_libre: bool,
 }
 
 /// Effet de destruction d'une sortie retenue par une entrée qu'on retire.
@@ -208,7 +196,6 @@ impl Table {
             capacite,
             entrees: HashMap::new(),
             compteur: 0,
-            audio_libre: true,
         }
     }
 
@@ -255,11 +242,6 @@ impl Table {
         }
         self.compteur += 1;
         let session = IdSession(format!("w-{}", self.compteur));
-        // Le son est réservé ici, à la détection, et non au lancement : deux
-        // fenêtres détectées coup sur coup ne doivent pas se le voir attribuer
-        // toutes les deux parce que aucune n'a encore été lancée.
-        let audio = self.audio_libre;
-        self.audio_libre = false;
         self.entrees.insert(
             session.clone(),
             Entree {
@@ -269,7 +251,6 @@ impl Table {
                 sortie_pilote: None,
                 nom_sortie: None,
                 taille_sortie: None,
-                audio,
                 relances: 0,
                 attente_depuis: None,
             },
@@ -365,9 +346,8 @@ impl Table {
     ///   meurt est relancée (l'entrée change d'identifiant de session à
     ///   chaque relance — un identifiant réutilisé apparierait un message
     ///   tardif du navigateur à la mauvaise fenêtre — donc chaque orpheline
-    ///   est retirée puis réinsérée sous une session neuve, `relances` et
-    ///   `audio` reportés ; `self.compteur` continue de croître sans jamais
-    ///   reculer) ;
+    ///   est retirée puis réinsérée sous une session neuve, `relances`
+    ///   reporté ; `self.compteur` continue de croître sans jamais reculer) ;
     /// - `DELAI_ATTENTE_VIEWPORT_MAX` borne le temps passé en `AttendLeViewport`,
     ///   relancée ou non depuis le sous-bloc D3, si la PAGE-SHELL, elle, ne
     ///   répond jamais.
@@ -397,12 +377,11 @@ impl Table {
                     fenetre: entree.fenetre,
                     titre: entree.titre.clone(),
                     etat: Etat::AttendLeViewport,
-                    // Reportés, comme `audio` et `relances` : la sortie
-                    // virtuelle survit à la relance (§7.1).
+                    // Reporté, comme `relances` : la sortie virtuelle survit
+                    // à la relance (§7.1).
                     sortie_pilote: entree.sortie_pilote,
                     nom_sortie: entree.nom_sortie.clone(),
                     taille_sortie: entree.taille_sortie,
-                    audio: entree.audio,
                     relances: entree.relances + 1,
                     attente_depuis: Some(maintenant),
                 },
