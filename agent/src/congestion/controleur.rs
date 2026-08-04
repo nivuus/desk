@@ -63,6 +63,21 @@ impl Controleur {
         self.courant
     }
 
+    /// Change le budget réservé à la piste audio.
+    ///
+    /// **Zéro quand la session ne porte pas le son** (sous-bloc D7). Avant lui,
+    /// `Config::audio_bps` valait inconditionnellement `opus::BITRATE_BPS`, et
+    /// une fenêtre sans aucune piste audio amputait quand même son budget vidéo
+    /// de 128 kb/s.
+    ///
+    /// **Ne recalcule rien de lui-même**, et c'est délibéré : la valeur ne mord
+    /// qu'au prochain `observer`, qui est le seul endroit où le budget vidéo se
+    /// dérive de l'estimation. Recalculer ici demanderait une estimation qui
+    /// peut n'avoir jamais existé.
+    pub fn changer_audio_bps(&mut self, bps: u32) {
+        self.config.audio_bps = bps;
+    }
+
     pub fn observer(&mut self, o: Observation) -> Option<Decision> {
         let Some(estimate) = o.estimate_bps else {
             // Sans estimation, rien à asservir sur le débit ni la résolution.
@@ -225,6 +240,34 @@ mod tests {
             assert_eq!(c.observer(obs(None, None, at)), None);
         }
         assert_eq!(c.courant().adaptation, Adaptation::Indisponible);
+    }
+
+    #[test]
+    fn une_session_muette_ne_retranche_plus_le_budget_audio() {
+        // Le défaut préexistant que D7 corrige : `Controleur::new` posait
+        // `audio_bps` inconditionnellement, si bien que sept fenêtres sur huit
+        // amputaient leur budget vidéo de 128 kb/s pour une piste qu'elles
+        // n'avaient pas — environ 8,5 % d'une part de 1,5 Mb/s.
+        let base = t0();
+        let mut avec = Controleur::new(config(), base);
+        let mut sans = Controleur::new(config(), base);
+        sans.changer_audio_bps(0);
+
+        let o = obs(Some(2_000_000), None, base + DELAI_AMORCAGE * 2);
+        avec.observer(o);
+        sans.observer(o);
+
+        assert!(
+            sans.courant().video_bitrate_bps > avec.courant().video_bitrate_bps,
+            "sans piste audio, le budget video doit etre plus grand : {} vs {}",
+            sans.courant().video_bitrate_bps,
+            avec.courant().video_bitrate_bps
+        );
+        assert_eq!(
+            sans.courant().video_bitrate_bps - avec.courant().video_bitrate_bps,
+            crate::opus::BITRATE_BPS as u32,
+            "l'ecart doit valoir exactement le budget audio"
+        );
     }
 
     #[test]
