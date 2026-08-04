@@ -32,6 +32,20 @@ L'arbitrage retenu, décidé au cadrage :
 | La consigne descend par une variable d'environnement booléenne | `agent/src/superviseur/lanceur.rs:234` (`AUDIO`), lue en `agent/src/main.rs:138` |
 | L'enfant construit sa source audio, ou continue sans son en cas d'échec | `agent/src/demarrage.rs:109-117` |
 | Le **DTX Opus est actif** : une trame de silence retombe à quelques octets | `agent/src/opus.rs:76`, test `le_silence_prolonge_retombe_a_quelques_octets_par_trame` |
+
+> ⚠️ **Ce fait, exact en lui-même, a nourri une inférence NON CONFIRMÉE par la
+> recette.** Le cadrage de ce sous-bloc en tirait qu'une fenêtre porteuse dont
+> l'application ne joue jamais rien « ne coûtera quasiment rien », en pariant
+> que le DTX s'engage aussi sur le flux du *process loopback*. La mesure du §3
+> a trouvé un **plancher de 1 LSB** sur ce chemin (ni A ni B silencieux ne
+> rendent 0), et **un flux à ±1 LSB n'est pas du silence numérique** — rien
+> n'établit que le DTX s'y engage. La recette de la tâche 13 ne l'a pas non
+> plus tranché : ses sources jouaient toutes un son continu, et le cas d'une
+> fenêtre porteuse dont l'application se tait n'a jamais été monté. **Reste une
+> inférence, jamais mesurée** — voir
+> `docs/superpowers/plans/2026-08-03-multifenetres-audio-par-fenetre-resultats.md`
+> §1.5 et §4.
+
 | Le capteur reçoit le **`hwnd`** de chaque fenêtre | `agent/src/capteur/protocole.rs:38` (`VersCapteur::Attache`) |
 | Le capteur tient le **focus** | `agent/src/capteur/sommeil.rs:70` (`focalisee`), alimenté par `signaler` (l. 205) depuis `VersCapteur::Visibilite` (protocole l. 64) |
 | Le capteur pousse déjà des ordres par fenêtre | `DepuisCapteur::Sommeil` (protocole l. 85), `DepuisCapteur::Part` (l. 108) |
@@ -230,6 +244,28 @@ par ce `grep`** :
 grep -c 'compteurs audio' agent.log
 grep 'compteurs audio' agent.log | grep -c 'actif=true'
 ```
+
+❌ **CE `grep` TEL QU'ÉCRIT A DEUX DÉFAUTS, trouvés en l'exécutant (tâche 12,
+document de résultats §3) — ne pas le recopier tel quel :**
+
+1. **Il rend 0 sur un `agent.log` brut.** Les séquences ANSI de `tracing`
+   séparent le nom du champ de sa valeur (`[3mactif[0m[2m=[0mtrue`), donc
+   `actif=true` ne matche jamais littéralement. Il faut
+   `sed 's/\x1b\[[0-9;]*m//g'` **avant** le `grep`.
+2. **Il rend 0 sur toute session de moins de `REPORT_INTERVAL` (30 s)**, la
+   trace `compteurs audio` étant périodique — un zéro **bénin**, indiscernable
+   du défaut qu'il existe pour révéler.
+
+**Forme corrigée** :
+
+```bash
+sed 's/\x1b\[[0-9;]*m//g' agent.log > agent-plat.log
+grep -c 'compteurs audio' agent-plat.log
+grep 'compteurs audio' agent-plat.log | grep -c 'actif=true'
+```
+
+sur une session vivante depuis au moins 30 s. Voir `CLAUDE.md`, section
+« Sous-bloc D7 », pour le détail.
 
 Si le second vaut zéro alors que le premier ne le vaut pas, le défaut est là. Un
 champ qui rend un défaut muet observable **pour rien** est un bénéfice, pas un
