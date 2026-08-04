@@ -513,7 +513,7 @@ async function frequencesToutes(cdp, etiquette, hzsAssignes) {
 ///     `MARGE_SIGNAL_DB`.
 /// L'argmax du brief (`argmax_hz`) est conservé en DIAGNOSTIC seulement — il
 /// ne décide plus seul du verdict.
-function jugerIsolation(freqs, assignation) {
+export function jugerIsolation(freqs, assignation) {
     const jugements = {};
     let toutesBonnes = true;
     for (const [nom, attendu] of Object.entries(assignation)) {
@@ -523,11 +523,36 @@ function jugerIsolation(freqs, assignation) {
             toutesBonnes = false;
             continue;
         }
+        // Revue de tâche 11, FINDING 8 (Important, round 2) — `plancher_db`
+        // MANQUANT ou mal formé n'est PAS substitué par `SENTINEL_DB` : ce
+        // serait l'inverse du fail-closed voulu. `SENTINEL_DB` signifie
+        // « silence mesuré » partout ailleurs dans ce fichier (une vraie
+        // lecture, très basse) ; l'employer ici pour un champ ABSENT ferait
+        // `ecartSignalDb = niveauPropre - (-1000)`, qui franchit
+        // `MARGE_SIGNAL_DB` pour PRESQUE N'IMPORTE QUELLE valeur — une mesure
+        // de plancher manquante se lirait comme un succès facile de la marge
+        // de signal, exactement la classe de défaut que ce correctif entier
+        // existe pour éliminer. Une valeur manquante doit rester une ERREUR,
+        // jamais un nombre qui décide la porte.
+        if (typeof r.plancher_db !== 'number') {
+            jugements[nom] = { attendu, mesure: r, verdict: 'ERREUR (plancher_db absent ou invalide)' };
+            toutesBonnes = false;
+            continue;
+        }
+        // `niveauPropre ?? SENTINEL_DB` (ligne suivante) pointe dans l'autre
+        // sens EXPRÈS : une fréquence propre absente de `niveaux` doit rendre
+        // l'écart très NÉGATIF (donc `ok = false`), pas l'ouvrir. Les deux
+        // fallbacks de cette fonction doivent donc TOUJOURS fermer la porte,
+        // jamais l'ouvrir — c'est pour ça que `plancher_db` manquant est une
+        // ERREUR explicite ci-dessus plutôt qu'un `?? SENTINEL_DB` par
+        // symétrie avec `niveauPropre` : la même substitution aurait ici
+        // l'effet contraire de celui recherché, selon qu'elle apparaît côté
+        // MINUEND ou côté SOUSTRAIT d'une soustraction.
         const niveauPropre = r.niveaux.find((x) => x.f === attendu)?.db ?? SENTINEL_DB;
         const autres = r.niveaux.filter((x) => x.f !== attendu);
         const pireAutreDb = autres.length ? Math.max(...autres.map((x) => x.db)) : SENTINEL_DB;
         const ecartIsolationDb = niveauPropre - pireAutreDb;
-        const ecartSignalDb = niveauPropre - (typeof r.plancher_db === 'number' ? r.plancher_db : SENTINEL_DB);
+        const ecartSignalDb = niveauPropre - r.plancher_db;
         const ok = ecartIsolationDb >= MARGE_ISOLATION_DB && ecartSignalDb >= MARGE_SIGNAL_DB;
         if (!ok) toutesBonnes = false;
         jugements[nom] = {
