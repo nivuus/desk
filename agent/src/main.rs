@@ -101,6 +101,14 @@ struct Config {
     /// Chaque enfant capte désormais le son de son PROPRE processus, et c'est
     /// le capteur qui arbitre entre les fenêtres d'un même processus : il n'y a
     /// plus rien à réserver.
+    ///
+    /// **Un agent lancé à la main coupe son son via `AUDIO=0
+    /// scripts/run-agent.sh`**, qui transmet la variable en `$env:AUDIO` dans
+    /// le script d'amorçage PowerShell (`schtasks` ne transmet pas
+    /// l'environnement directement). Ce transport a manqué un temps : retirer
+    /// le poseur du superviseur a d'abord laissé `AUDIO` sans aucun chemin
+    /// vers l'enfant, `run-agent.sh` ne la portant pas — corrigé dans la
+    /// même tâche 9, avant que ce commentaire ne soit lu par personne.
     #[cfg_attr(not(windows), allow(dead_code))]
     audio: bool,
 }

@@ -30,6 +30,7 @@ cat > /media/vm/dev/run-agent.ps1 <<PS1
 \$env:WINDOW_TITLE  = '${WINDOW_TITLE:-firefox}'
 ${SUPERVISEUR:+\$env:SUPERVISEUR = '$SUPERVISEUR'}
 ${CAPTEUR:+\$env:CAPTEUR = '$CAPTEUR'}
+${AUDIO:+\$env:AUDIO = '$AUDIO'}
 ${TEST_FILE:+\$env:TEST_FILE = '$TEST_FILE'}
 ${CAPTURE_TEST:+\$env:CAPTURE_TEST = '$CAPTURE_TEST'}
 ${SOURCE_TRACE:+\$env:SOURCE_TRACE = '$SOURCE_TRACE'}
