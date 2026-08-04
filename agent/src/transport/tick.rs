@@ -228,9 +228,14 @@ impl Session {
         //              pour la même raison de lisibilité : on respecte l'ordre
         //              d'arrivée plutôt que de l'inverser sans raison.
         //
-        //              Ne met AUCUN paquet en file : `appliquer_audio` ne
-        //              touche que la source audio et le budget du contrôleur —
-        //              l'invariant de drainage de cette fonction est préservé.
+        //              Ne met AUCUN paquet en file — AUJOURD'HUI parce
+        //              qu'`appliquer_audio` ne fait que journaliser l'ordre
+        //              reçu (stub de la tâche 6, voir `piste_audio.rs`) ; dans
+        //              son état de tâche 7, elle ne touchera que la source
+        //              audio et le budget du contrôleur, et ni l'un ni
+        //              l'autre ne met de paquet en file non plus.
+        //              L'invariant de drainage de cette fonction est donc
+        //              préservé aujourd'hui, et le restera à la tâche 7.
         //
         //              `audio_a_appliquer` CONSOMME : un `Start()`/`Stop()` par
         //              tour à ~100 Hz est exactement ce que cette consommation

@@ -112,6 +112,13 @@ impl Session {
     }
 
     /// Applique l'arbitrage audio du capteur : porter le son, ou se taire.
+    ///
+    /// **Complétée à la tâche 7** : pour l'instant (tâche 6) ne fait que
+    /// journaliser l'ordre reçu — ni la source audio n'est coupée ou rouverte,
+    /// ni `audio_bps` (le budget que le contrôleur de congestion retranche,
+    /// voir `congestion::Config`) n'est ramené à zéro. Ce stub minimal est un
+    /// choix délibéré : il fait compiler et fonctionner ce commit de bout en
+    /// bout sans anticiper le comportement de la tâche 7.
     pub(super) fn appliquer_audio(&mut self, actif: bool) {
         tracing::info!(session = %self.session_id, actif, "ordre audio applique");
     }

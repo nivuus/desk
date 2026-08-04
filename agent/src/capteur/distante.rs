@@ -220,7 +220,25 @@ impl VideoSource for SourceDistante {
                                 // Un rattachement passe par une `Fenetre` NEUVE
                                 // côté capteur, dont `sommeil::inscrire` purge
                                 // `derniers_audio` : un ordre neuf arrive donc
-                                // toujours. Ne rien retenir d'avant la rupture.
+                                // toujours — et SANS la borne du tour de roue.
+                                // `inscrire` appelle `distribuer_l_audio`
+                                // SYNCHRONEMENT, avant même que `boucler` ne
+                                // démarre sa boucle (`fenetre.rs`, `servir`,
+                                // l. 257-259) — laquelle sonde `ordres` en tête
+                                // de chaque tour, sans délai. Ce n'est PAS le
+                                // résidu de `sommeil/porteurs.rs` (un ordre
+                                // différé au TOUR DE ROUE SUIVANT, borné
+                                // `PERIODE_REARBITRAGE` = 250 ms) : ce
+                                // résidu-là ne joue que quand le canal d'une
+                                // fenêtre VOISINE casse pendant la MÊME passe
+                                // d'arbitrage — pas ici. Aucune borne dure
+                                // connue ne s'applique donc à la fenêtre où
+                                // `audio` vaut `None` : elle tient à
+                                // l'acheminement du message sur le fil (tube,
+                                // fil écrivain, fil lecteur), pas à un
+                                // minuteur. Bénin dans tous les cas : l'enfant
+                                // naît muet, et ne rien retenir d'avant la
+                                // rupture est la seule chose qui compte ici.
                                 self.audio = None;
                                 self.fenetre.succes();
                             }

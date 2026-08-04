@@ -407,3 +407,27 @@ fn deux_parts_arrivees_avant_lecture_s_ecrasent() {
     assert_eq!(source.next_frame(), None);
     assert_eq!(source.part_a_appliquer(), Some(2_000_000), "seule la dernière survit");
 }
+
+/// Un ordre audio reçu est retenu jusqu'à ce que la boucle de transport le
+/// consomme, et ne se rend qu'une fois — même patron que
+/// `une_part_recue_est_rendue_une_seule_fois` plus haut.
+#[test]
+fn un_ordre_audio_recu_est_rendu_une_seule_fois() {
+    let (mut source, tx, _recus) = source_avec(4);
+    tx.send(Recu::Audio { actif: true }).expect("dépôt");
+    // `next_frame` est ce qui draine le canal : sans lui, rien n'est lu.
+    assert_eq!(source.next_frame(), None);
+    assert_eq!(source.audio_a_appliquer(), Some(true));
+    assert_eq!(source.audio_a_appliquer(), None, "un ordre audio ne se réapplique pas");
+}
+
+/// Deux ordres audio arrivés entre deux lectures s'écrasent : même régime
+/// que `deux_parts_arrivees_avant_lecture_s_ecrasent` juste au-dessus.
+#[test]
+fn deux_ordres_audio_arrives_avant_lecture_s_ecrasent() {
+    let (mut source, tx, _recus) = source_avec(4);
+    tx.send(Recu::Audio { actif: true }).expect("dépôt");
+    tx.send(Recu::Audio { actif: false }).expect("dépôt");
+    assert_eq!(source.next_frame(), None);
+    assert_eq!(source.audio_a_appliquer(), Some(false), "seul le dernier ordre survit");
+}
