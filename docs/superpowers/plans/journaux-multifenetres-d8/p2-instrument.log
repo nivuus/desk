@@ -1,0 +1,14 @@
+Verdict : P2 REFUSE — ni l'activation du plein ecran (`pleinEcran.actif=false`, aucun rejet leve) ni l'API Keyboard Lock (`navigator.keyboard` absent, `clavier.present=false`) ne sont disponibles sous `--headless=new`.
+Repli retenu : declarer le critere (3) non eprouve pour l'instant. La cause probable (l'absence de gestionnaire de fenetres reel en mode headless, distinct d'Xvfb qui en fournirait un a un Chrome non headless) rend Xvfb + xdotool un candidat plausible, mais l'installer est une decision d'hote qui revient a son proprietaire et sera posee plus tard (consigne 6 du brief) ; elle n'est donc pas retenue ici. ⚠️ Si Xvfb est un jour retenu, les mesures qui en resulteront ne se compareront a aucune campagne anterieure.
+{
+  "clavier": {
+    "present": false,
+    "lock": false
+  },
+  "pleinEcran": {
+    "appele": true,
+    "rejet": null,
+    "actif": false
+  }
+}
+P2 REFUSE : voir le detail ci-dessus, et le repli du §4 de la spec
