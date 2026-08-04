@@ -62,9 +62,27 @@
 //     comme DISCRIMINANTS annexes (jamais comme preuve d'isolation à eux
 //     seuls) ;
 //   - l'assignation fenêtre↔fréquence n'est plus SUPPOSÉE de l'ordre
-//     d'ouverture : `ton.html` pose son `document.title`, et
-//     `verifierAssignationParTitre` la confronte à ce que la page-shell
-//     affiche avoir réellement reçu du produit.
+//     d'ouverture : elle est confrontée à ce que la page-shell affiche avoir
+//     réellement reçu du produit (mécanisme corrigé au round 3, voir plus
+//     bas — la version de ce round-ci, par `document.title`, ne fonctionnait
+//     pas).
+//
+// CORRECTIF ROUND 2/5 — un repli latent qui ouvrait la porte au lieu de la
+// fermer (`plancher_db` manquant substitué par `SENTINEL_DB`, qui aurait
+// PASSÉ la marge de signal au lieu de la faire échouer) est devenu sa propre
+// erreur explicite. Voir `jugerIsolation`.
+//
+// CORRECTIF ROUND 3/5 — mesuré sur la VM (recette du 4 août 2026, critère ①,
+// deux fenêtres à 440 et 880 Hz, isolation à 85 et 94 dB de marge) :
+// `document.title` N'ATTEINT PAS la légende que le superviseur relaie pour
+// une fenêtre Chrome `--app` sur `file://` — cette légende est le CHEMIN DE
+// FICHIER, identique pour toutes les fenêtres puisque la chaîne de requête
+// n'y figure pas. Le garde-fou du round 1 était donc en permanence rouge, y
+// compris sur une mesure d'isolation par ailleurs parfaite. Remède :
+// l'identité vit maintenant dans le NOM DE FICHIER (`ton-440.html`,
+// `ton-880.html`, copiés par fréquence), et le contrôle devient un test de
+// CONTENANCE par fenêtre plutôt qu'une comparaison positionnelle de tableaux.
+// Voir `verifierAssignationParFichier`.
 
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
@@ -498,7 +516,7 @@ async function frequencesToutes(cdp, etiquette, hzsAssignes) {
 /// Le critère ① : chaque fenêtre entend-elle SA fréquence assignée, ET RIEN
 /// QUE ELLE — pas seulement « SA fréquence est-elle la plus forte » ?
 /// `assignation` associe un nom de session (`w:N`) à son hz, VÉRIFIÉ par
-/// `verifierAssignationParTitre` (FINDING 5) plutôt que supposé de l'ordre
+/// `verifierAssignationParFichier` (FINDING 5, round 3) plutôt que supposé de l'ordre
 /// d'ouverture.
 ///
 /// Revue de tâche 11, FINDING 1 (Critical) : un simple argmax passerait à
@@ -573,37 +591,71 @@ export function jugerIsolation(freqs, assignation) {
     return { toutesBonnes, jugements };
 }
 
-/// Revue de tâche 11, FINDING 5 (Important) — confronte l'assignation
-/// SUPPOSÉE (construite par l'ordre d'ouverture, dans `ouvrirFenetreTon`) à ce
-/// que le produit affirme avoir réellement capté. `ton.html` pose
-/// `document.title = hz + ' Hz'` (voir ce fichier) ; le superviseur relaie ce
-/// texte comme `titre` de la fenêtre détectée (`fenetre-ouverte`,
-/// `client/src/shell.ts`), et la page-shell l'affiche dans sa liste
-/// (`#fenetres li`, `client/src/shell-page.ts`) DANS L'ORDRE D'ARRIVÉE des
-/// événements — le même ordre causal que celui des pages qui s'attachent à
-/// notre session CDP, puisque le shell inscrit l'entrée AVANT d'ouvrir la
-/// fenêtre (`shell.ts`, `ouvrir()`). Comparer positionnellement les titres
-/// observés aux titres attendus révèle donc une divergence de CONTENU, pas
-/// seulement de compte — exactement le risque documenté par D4 : une fenêtre
-/// « éligible » supplémentaire et non désirée (Paint en ouvre deux) décale un
-/// tel ordre sans qu'aucune erreur ne le signale autrement, et coûterait une
-/// exécution VM entière avant qu'on s'en aperçoive.
-async function verifierAssignationParTitre(cdp, sidShell, assignation) {
+/// Revue de tâche 11, FINDING 5 (Important) puis FINDING 9 (round 3) —
+/// confronte l'assignation SUPPOSÉE (construite par l'ordre d'ouverture, dans
+/// `ouvrirFenetreTon`) à ce que le produit affirme avoir réellement capté.
+///
+/// CE QUI A ÉTÉ MESURÉ, PAS SUPPOSÉ (round 3, recette du 4 août 2026 sur la
+/// VM) : la légende que le superviseur relaie pour une fenêtre Chrome `--app`
+/// sur `file://` est le CHEMIN DE FICHIER (observé : `"_/C:/dev/ton.html"`),
+/// **pas** `document.title` — et la chaîne de requête (`?hz=…`) n'y figure
+/// pas, donc deux fenêtres ouvertes sur le MÊME fichier portent la MÊME
+/// légende, mot pour mot. Le mécanisme du round 1 (comparer `document.title`
+/// posé par `ton.html` au texte affiché par la page-shell) était donc
+/// TOUJOURS FAUX, y compris sur une mesure d'isolation à 85 et 94 dB de
+/// marge — un garde-fou qui ne peut jamais être vert est pire qu'aucun
+/// garde-fou. Ce relevé ne distingue pas SI Chrome ne propage simplement pas
+/// `document.title` à la légende d'une fenêtre `--app`, ou si le superviseur
+/// échantillonne la légende à la détection de la fenêtre, avant que le script
+/// de la page ne s'exécute — les deux mécanismes rendraient le même symptôme,
+/// et rien ici ne permet de trancher.
+///
+/// LE REMÈDE : l'identité vit maintenant dans le NOM DE FICHIER, pas la
+/// chaîne de requête ni le titre — `ouvrirFenetreTon` copie `ton.html` vers
+/// un fichier PROPRE À CHAQUE FRÉQUENCE (`ton-440.html`, `ton-880.html`, …)
+/// et ouvre CE fichier. La légende observée diffère alors nécessairement
+/// d'une fenêtre à l'autre, et PORTE la fréquence.
+///
+/// Le contrôle n'est plus POSITIONNEL (l'ordre des `<li>` n'a jamais été
+/// vérifié non plus, et une fenêtre « éligible » supplémentaire — D4, Paint
+/// en ouvre deux — pourrait encore le décaler) : pour chaque fréquence
+/// assignée, on vérifie qu'AU MOINS UNE légende observée CONTIENT
+/// `ton-${hz}.html`, et qu'AUCUNE légende n'est partagée entre deux
+/// fréquences différentes — c'est ce second contrôle qui aurait détecté le
+/// défaut de ce round-ci (deux légendes rigoureusement identiques pour deux
+/// fenêtres distinctes). Une containance par fenêtre ne dépend d'aucun ordre.
+export async function verifierAssignationParFichier(cdp, sidShell, assignation) {
     const titresObserves = await cdp.evalBorne(sidShell,
         `[...document.querySelectorAll('#fenetres li')].map(li => li.textContent.replace(/ — (ouverte|fermée) $/, ''))`,
         6000, false);
-    const titresAttendus = Object.values(assignation).map((hz) => `${hz} Hz`);
-    const correspond = Array.isArray(titresObserves)
-        && titresObserves.length === titresAttendus.length
-        && titresObserves.every((t, i) => t === titresAttendus[i]);
-    log(`VÉRIFICATION ASSIGNATION (titres shell) attendus=${JSON.stringify(titresAttendus)} `
-        + `observes=${JSON.stringify(titresObserves)} correspond=${correspond}`);
-    if (!correspond) {
-        log("  !! DÉSYNCHRONISATION assignation<->titre : l'assignation fenêtre/fréquence "
-            + "N'EST PAS CONFIRMÉE par le produit (voir CLAUDE.md, leçon D4 : une fenêtre "
-            + "éligible supplémentaire décale le compte sans le signaler autrement)");
+    const observes = Array.isArray(titresObserves) ? titresObserves : [];
+    const jetons = Object.fromEntries(
+        Object.entries(assignation).map(([nom, hz]) => [nom, `ton-${hz}.html`]));
+    const correspondances = {};
+    let correspond = observes.length > 0;
+    for (const [nom, jeton] of Object.entries(jetons)) {
+        const trouvees = observes.filter((t) => t.includes(jeton));
+        correspondances[nom] = { jeton, occurrences: trouvees.length };
+        if (trouvees.length < 1) correspond = false;
     }
-    return { correspond, titresAttendus, titresObserves };
+    // Aucune légende ne doit être PARTAGÉE entre deux fenêtres : c'est
+    // exactement le défaut observé ce round-ci (deux légendes identiques
+    // pour deux fréquences différentes). Note : si `assignation` assignait
+    // deux fois la MÊME fréquence à deux fenêtres (non exercé, HZS par
+    // défaut est toujours composé de valeurs distinctes), ce contrôle serait
+    // ATTENDU de refuser une légende partagée qui serait pourtant légitime —
+    // cas dégénéré non traité ici.
+    const legendesUniques = new Set(observes);
+    if (legendesUniques.size < observes.length) correspond = false;
+    log(`VÉRIFICATION ASSIGNATION (légendes shell, par fichier) attendues=${JSON.stringify(jetons)} `
+        + `observees=${JSON.stringify(observes)} correspondances=${JSON.stringify(correspondances)} `
+        + `correspond=${correspond}`);
+    if (!correspond) {
+        log("  !! DÉSYNCHRONISATION assignation<->légende : l'assignation fenêtre/fréquence "
+            + "N'EST PAS CONFIRMÉE par le produit (légende partagée, ou fréquence introuvable "
+            + "dans aucune légende observée)");
+    }
+    return { correspond, jetons, titresObserves: observes };
 }
 
 // ---------------------------------------------------------------- main
@@ -711,10 +763,22 @@ async function main() {
         const assignation = {};
         const ouvrirFenetreTon = async (n, hz, gain) => {
             const avant = appPages().length;
-            log(`  · ouverture fenêtre ${n} (ton.html?hz=${hz}&gain=${gain})`);
+            // FINDING 9 (round 3) : la légende de fenêtre relayée par le
+            // superviseur pour une fenêtre Chrome `--app` sur `file://` est
+            // le CHEMIN DE FICHIER, pas `document.title` — mesuré sur la VM,
+            // pas supposé (voir `verifierAssignationParFichier`). L'identité
+            // par fréquence doit donc vivre dans le NOM DE FICHIER : chaque
+            // fréquence obtient sa propre copie de `ton.html`. La chaîne de
+            // requête (`?hz=…&gain=…`) reste nécessaire par ailleurs : c'est
+            // elle que lit le script de la page pour choisir le ton à jouer
+            // — le nom de fichier ne sert qu'à l'identité observable
+            // côté produit, pas à paramétrer `ton.html`.
+            const fichier = `ton-${hz}.html`;
+            spawnSync('bash', ['-c', `cp ${join(AIDE, 'ton.html')} /media/vm/dev/${fichier}`]);
+            log(`  · ouverture fenêtre ${n} (${fichier}?hz=${hz}&gain=${gain})`);
             await vmIt(`ouvrird7-${n}`, [
                 `$a = @(`,
-                `  "--app=file:///C:/dev/ton.html?hz=${hz}&gain=${gain}",`,
+                `  "--app=file:///C:/dev/${fichier}?hz=${hz}&gain=${gain}",`,
                 `  "--user-data-dir=C:\\dev\\chrome-d7-${n}",`,
                 `  '--no-first-run','--no-default-browser-check','--disable-session-crashed-bubble',`,
                 `  '--window-size=1280,720','--window-position=${30 + n * 12},${30 + n * 12}',`,
@@ -750,10 +814,10 @@ async function main() {
         }
         log(`  ${ouvertes}/${HZS.length} fenêtres ouvertes ; assignation=` + JSON.stringify(assignation));
 
-        // FINDING 5 : l'assignation ci-dessus est une HYPOTHÈSE (construite de
-        // l'ordre d'ouverture) — on la confronte à ce que le produit affirme
-        // avant de s'en servir pour juger l'isolation.
-        const verifAssignation = await verifierAssignationParTitre(cdp, sidShell, assignation);
+        // FINDING 5 / FINDING 9 : l'assignation ci-dessus est une HYPOTHÈSE
+        // (construite de l'ordre d'ouverture) — on la confronte à ce que le
+        // produit affirme avant de s'en servir pour juger l'isolation.
+        const verifAssignation = await verifierAssignationParFichier(cdp, sidShell, assignation);
 
         const scenario = await imposerScenario(cdp, INDEX_FOCUS, 'critère ①');
         log(`>>> stabilisation ${DELAI_STABILISATION_S} s avant lecture`);
