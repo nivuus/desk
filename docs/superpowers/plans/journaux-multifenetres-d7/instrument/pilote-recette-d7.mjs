@@ -39,12 +39,14 @@
 //   7. `--disable-popup-blocking`, sans quoi la page-shell voit toutes ses
 //      fenêtres refusées en silence.
 //
-// CE QUE CE FICHIER NE FAIT PAS : il ne pilote pas les cinq critères de la
-// tâche 13 (arbitrage par PID, survie au sommeil, budget rendu, non-régression
-// mono-fenêtre) — seul le critère ① (isolation par fréquence) y est câblé de
-// bout en bout, en exemple d'emploi. Les fonctions exportées (`Cdp`,
-// `expressionReleveFrequence`, `imposerScenario`, `AMORCE`) sont réutilisables
-// telles quelles par la tâche 13 pour les critères restants.
+// CE QUE CE FICHIER FAIT ET NE FAIT PAS : le critère ① (isolation par
+// fréquence, mode par défaut) et le critère ② (arbitrage par PID,
+// `MEME_PROCESSUS=1`) y sont câblés de bout en bout. Les critères ③④⑤
+// restants de la tâche 13 (survie au sommeil, budget rendu, non-régression
+// mono-fenêtre) n'y sont PAS câblés. Les fonctions exportées (`Cdp`,
+// `expressionReleveFrequence`, `imposerScenario`, `AMORCE`, `jugerIsolation`,
+// `jugerArbitragePid`, `dernierEtatActifParSession`) sont réutilisables
+// telles quelles pour les critères restants.
 //
 // CORRECTIF ROUND 1/5 (revue de tâche 11) — cinq changements de fond :
 //   - un simple argmax ne prouve QUE « le ton le plus fort », jamais « et pas
@@ -83,6 +85,66 @@
 // `ton-880.html`, copiés par fréquence), et le contrôle devient un test de
 // CONTENANCE par fenêtre plutôt qu'une comparaison positionnelle de tableaux.
 // Voir `verifierAssignationParFichier`.
+//
+// AJOUT — CRITÈRE ② (arbitrage par PID), tâche 13, sous-bloc D7 : le second
+// mode de ce pilote, `MEME_PROCESSUS=1`.
+//
+// LE MÉCANISME : Chrome invoqué deux fois avec le MÊME `--user-data-dir` ne
+// démarre pas un second processus — la seconde invocation rejoint l'instance
+// déjà lancée (verrou de profil, single-instance de Chrome), et LES DEUX
+// FENÊTRES APPARTIENNENT À UN SEUL PID. En ce mode, `ouvrirFenetreTon` pointe
+// donc TOUTES les fenêtres du run vers `C:\dev\chrome-d7-groupe` au lieu d'un
+// dossier par fenêtre — c'est le SEUL changement nécessaire côté lancement,
+// tout le reste (fichier par fréquence, drapeaux anti-gel, etc.) est partagé
+// avec le mode par défaut.
+//
+// CE QUE LE CRITÈRE ② DOIT ÉTABLIR, ET RIEN D'AUTRE (`agent/src/capteur/audio.rs`) :
+//   1. EXACTEMENT une des deux fenêtres du groupe porte le son à la fois ;
+//   2. c'est la FOCALISÉE ;
+//   3. déplacer le focus sur l'autre DÉPLACE le son, et la première se tait.
+//
+// LA FORME DU JUGEMENT DIFFÈRE DE `jugerIsolation`, ET CE N'EST PAS COSMÉTIQUE
+// — recherché dans le code avant d'écrire une ligne (`agent/src/wasapi/process_loopback.rs`,
+// `agent/src/windows_audio.rs`) : la capture WASAPI est PAR PROCESSUS
+// (`AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK`,
+// `PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE`, ciblant le PID ET SON
+// ARBRE), JAMAIS par fenêtre ni par onglet. Quand la fenêtre PORTEUSE capture,
+// elle capture TOUT ce que produit son processus — y compris l'oscillateur de
+// sa voisine du même groupe, qui joue une fréquence DIFFÉRENTE. La fenêtre
+// porteuse doit donc entendre le MÉLANGE DES DEUX TONS, pas seulement le
+// sien : c'est `jugerArbitragePid`, une fonction SÉPARÉE — `jugerIsolation`
+// reste intacte et continue de gouverner le mode par défaut, dont le critère
+// (« sa fréquence, et RIEN QUE elle ») est l'inverse de celui-ci. La fenêtre
+// MUETTE, elle, ne doit entendre NI L'UN NI L'AUTRE — pas un silence
+// numérique par gain nul comme `ton.html?gain=0`, mais un VRAI arrêt de
+// capture côté agent : quand `actif=false`, le thread de capture appelle
+// `CaptureProcessus::arreter()` (`Stop()`) et ne lit, n'encode, ni ne pousse
+// un seul échantillon (`agent/src/windows_audio.rs`, commentaire du code :
+// « deux fenêtres d'un même processus s'entendraient toutes les deux »
+// sinon).
+//
+// LA PREUVE CÔTÉ NAVIGATEUR (le spectre REÇU) EST CORROBORÉE PAR UNE PREUVE
+// CÔTÉ AGENT, quasi gratuite : `agent/src/transport/piste_audio.rs`
+// journalise `ordre audio applique session=<id> actif=<bool>` à CHAQUE
+// décision. `dernierEtatActifParSession` lit la DERNIÈRE décision connue par
+// session (pas un compte de lignes, qui ne dit rien de l'ordre) et l'exige en
+// accord avec ce que le scénario a demandé.
+//
+// L'IDENTITÉ DE FENÊTRE (nom de fichier `ton-${hz}.html`, round 3) continue
+// de fonctionner SANS CHANGEMENT dans ce mode : elle ne dépend d'aucune
+// notion de PID ou de processus, seulement du fichier `file://` que CHAQUE
+// fenêtre a ouvert — deux fenêtres qui partagent un processus restent deux
+// fenêtres (deux HWND) distinctes, chacune affichant SA PROPRE légende de
+// barre de titre. `verifierAssignationParFichier` reste donc appelée,
+// INCHANGÉE, dans les deux modes.
+//
+// CE QUI N'EST PAS VÉRIFIÉ PAR CET AJOUT (voir le rapport de tâche 11/13) :
+// que Chrome joigne réellement un processus existant sur LA VM WINDOWS plutôt
+// que la théorie du mécanisme (aucune exécution VM à ce stade) ; que
+// `GetWindowThreadProcessId` (`agent/src/capteur/fenetre.rs`) rende bien le
+// MÊME PID pour les deux fenêtres dans ce cas précis ; le format exact du
+// champ `session` du journal agent (INFÉRÉ de la convention `w-2`/`w-4` des
+// sous-blocs D4/D5, jamais confronté à un journal réel en ce mode).
 
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
@@ -144,6 +206,30 @@ const TOLERANCE_HZ = Number(process.env.TOLERANCE_HZ ?? 25);
 //     fond compterait comme une isolation réussie.
 const MARGE_ISOLATION_DB = Number(process.env.MARGE_ISOLATION_DB ?? 10);
 const MARGE_SIGNAL_DB = Number(process.env.MARGE_SIGNAL_DB ?? 20);
+// CRITÈRE ② (arbitrage par PID, `agent/src/capteur/audio.rs`) — opt-in, hors
+// de quoi ce pilote se comporte EXACTEMENT comme avant (le critère ① garde sa
+// marche par défaut). `MEME_PROCESSUS=1` fait partager à TOUTES les fenêtres
+// de ce run un seul `--user-data-dir` : la seconde invocation de Chrome
+// rejoint le processus déjà lancé au lieu d'en démarrer un nouveau — les deux
+// fenêtres appartiennent alors à UN SEUL PID, exactement la situation que
+// `arbitrer()` existe pour trancher. Voir le bloc de commentaire d'en-tête.
+const MEME_PROCESSUS = process.env.MEME_PROCESSUS === '1';
+// Les index (dans l'ordre trié des sessions, PAS l'ordre de HZS) à focaliser
+// successivement, une PHASE par entrée. Par défaut deux phases : focaliser la
+// fenêtre 0, mesurer, puis la fenêtre 1, mesurer à nouveau — c'est le
+// mouvement même que le critère ② exige (« déplacer le focus déplace le
+// son »). Sans objet hors `MEME_PROCESSUS`.
+const SEQUENCE_FOCUS = (process.env.SEQUENCE_FOCUS ?? '0,1').split(',').map(Number);
+// Marge sous laquelle une fréquence est jugée SILENCIEUSE. NE RÉUTILISE PAS
+// `MARGE_ISOLATION_DB` : ce concept n'a pas de sens ici, une fenêtre PORTEUSE
+// n'est pas jugée contre « les autres fréquences », elle doit au contraire
+// les porter TOUTES (le mélange complet du processus, voir le commentaire
+// d'en-tête) — seule la fenêtre MUETTE est jugée par un plancher. NON
+// CALIBRÉE, choisie par analogie avec `MARGE_SIGNAL_DB` (20) mais
+// volontairement plus permissive : marge pour le bruit de fond WASAPI d'un
+// flux réellement COUPÉ À LA SOURCE (`CaptureProcessus::arreter()`), pas un
+// simple silence numérique par gain nul.
+const MARGE_SILENCE_DB = Number(process.env.MARGE_SILENCE_DB ?? 15);
 // En-dessous de tout plancher RÉEL observé en vérification locale (-210 dB,
 // silence quasi total) : sert à représenter -Infinity (silence numérique
 // exact, non représentable en JSON — `JSON.stringify(-Infinity) === 'null'`)
@@ -195,11 +281,53 @@ function vmVivante(etiquette) {
 function copierLog() {
     spawnSync('bash', ['-c', `cp /media/vm/dev/agent.log ${COPIE_LOG} 2>/dev/null`]);
 }
+// Retire les séquences d'échappement ANSI AVANT tout `grep`/`match` — sans
+// quoi une recherche sur `actif=true` peut rendre zéro si le formateur de
+// `tracing` a coloré le nom du champ et sa valeur séparément, insérant des
+// codes ENTRE `actif` et `=true` (documenté dans CLAUDE.md pour les journaux
+// de pilote PowerShell ; le même risque existe ici pour `agent.log` lui-même).
+// Élargi au-delà des seuls codes SGI terminés par `m` (couleur) : n'importe
+// quelle séquence CSI (`\x1b[` … terminée par UNE LETTRE, pas seulement `m`)
+// est retirée — un code de déplacement de curseur ou d'effacement de ligne
+// intercalé casserait la même façon un `match` littéral. NON VÉRIFIÉ contre
+// un vrai `agent.log` en mode `MEME_PROCESSUS` (aucune exécution VM à ce
+// stade) : élargissement défensif, pas la preuve d'un défaut observé ici.
+function retirerAnsi(texte) {
+    return texte.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+}
 async function journalPlat() {
     copierLog();
     let texte = '';
     try { texte = await readFile(COPIE_LOG, 'utf8'); } catch { }
-    return texte.replace(/\x1b\[[0-9;]*m/g, '');
+    return retirerAnsi(texte);
+}
+
+/// Le DERNIER `actif=` journalisé par l'AGENT LUI-MÊME pour chaque session du
+/// groupe — pas un COMPTE de lignes (qui ne dit rien de l'ORDRE), la toute
+/// dernière décision connue. C'est la preuve la moins chère du critère ② :
+/// « à cet instant, le journal de l'agent confirme qu'une seule session du
+/// groupe porte le son, et c'est la bonne ». Pure (opère sur du texte déjà
+/// aplati) : testable en Node sans navigateur ni VM.
+///
+/// Correspondance de nom : le champ `session` du journal
+/// (`agent/src/transport/piste_audio.rs`, `tracing::info!(session = %self.session_id, …)`)
+/// porte l'identifiant BRUT (p.ex. `w-2`), quand `nomDe()` de CE pilote lui
+/// préfixe `w:` (`w:w-2`) pour distinguer un nom de session d'une URL de page
+/// — voir sa définition plus bas. INFÉRÉ de la convention `w-2`/`w-4` des
+/// sous-blocs D4/D5 (CLAUDE.md) : jamais confronté à un vrai journal en mode
+/// `MEME_PROCESSUS`, à confirmer au premier passage VM.
+export function dernierEtatActifParSession(platLog, nomsCdp) {
+    const brut = (nom) => nom.replace(/^w:/, '');
+    const cible = new Set(nomsCdp.map(brut));
+    const dernier = {};
+    const re = /ordre audio applique session=(\S+) actif=(true|false)/g;
+    let m;
+    while ((m = re.exec(platLog))) {
+        if (cible.has(m[1])) dernier[m[1]] = m[2] === 'true';
+    }
+    // Reprojette sur les noms CDP d'origine pour que l'appelant n'ait pas à
+    // refaire la correspondance lui-même.
+    return Object.fromEntries(nomsCdp.map((nom) => [nom, dernier[brut(nom)] ?? null]));
 }
 
 /// Les marqueurs de fin, dans l'esprit de D6 : un décompte de lignes-clé pour
@@ -591,6 +719,59 @@ export function jugerIsolation(freqs, assignation) {
     return { toutesBonnes, jugements };
 }
 
+/// Le critère ② : au sein d'un GROUPE de fenêtres qui partagent un seul PID
+/// (`MEME_PROCESSUS=1`), UNE SEULE doit porter le son, et c'est la focalisée.
+///
+/// CE N'EST PAS UNE ISOLATION PAR FRÉQUENCE COMME `jugerIsolation` — voir le
+/// bloc de commentaire d'en-tête du fichier pour le POURQUOI (capture WASAPI
+/// PAR PROCESSUS, jamais par fenêtre). La fenêtre PORTEUSE doit entendre LE
+/// MÉLANGE de TOUTES les fréquences du groupe (`hzsGroupe`, pas seulement
+/// celle qui lui a été assignée) ; la fenêtre MUETTE ne doit en entendre
+/// AUCUNE. `actifAttendu` vient du SCÉNARIO imposé (`imposerScenario`), pas
+/// d'une inférence a posteriori — c'est l'appelant qui sait qui a été
+/// focalisé.
+export function jugerArbitragePid(freqs, hzsGroupe, actifAttendu) {
+    const jugements = {};
+    let toutesBonnes = true;
+    for (const [nom, doitPorter] of Object.entries(actifAttendu)) {
+        const r = freqs[nom];
+        if (!r || !Array.isArray(r.niveaux)) {
+            jugements[nom] = { doit_porter: doitPorter, mesure: r, verdict: 'ERREUR (pas de niveaux)' };
+            toutesBonnes = false;
+            continue;
+        }
+        // Même garde fail-closed que FINDING 8 de `jugerIsolation` : un
+        // plancher absent ou mal formé est une ERREUR explicite, jamais un
+        // nombre substitué qui déciderait la porte à sa place.
+        if (typeof r.plancher_db !== 'number') {
+            jugements[nom] = { doit_porter: doitPorter, mesure: r, verdict: 'ERREUR (plancher_db absent ou invalide)' };
+            toutesBonnes = false;
+            continue;
+        }
+        const ecarts = hzsGroupe.map((f) => {
+            const db = r.niveaux.find((x) => x.f === f)?.db ?? SENTINEL_DB;
+            return { f, db, ecart_signal_db: db - r.plancher_db };
+        });
+        // Porteuse : CHAQUE fréquence du groupe doit être audible (le mélange
+        // complet attendu) — une seule des deux qui passerait laisserait
+        // croire à une fuite partielle plutôt qu'à la capture par processus.
+        // Muette : CHAQUE fréquence doit rester proche du plancher — une
+        // seule qui le dépasserait trahirait une fuite vers cette fenêtre.
+        const ok = doitPorter
+            ? ecarts.every((e) => e.ecart_signal_db >= MARGE_SIGNAL_DB)
+            : ecarts.every((e) => e.ecart_signal_db < MARGE_SILENCE_DB);
+        if (!ok) toutesBonnes = false;
+        jugements[nom] = {
+            doit_porter: doitPorter,
+            plancher_db: r.plancher_db,
+            ecarts,
+            piste_muted: r.piste_muted, piste_ready_state: r.piste_ready_state, stats_audio: r.stats_audio,
+            verdict: ok ? 'OK' : 'FAUX',
+        };
+    }
+    return { toutesBonnes, jugements };
+}
+
 /// Revue de tâche 11, FINDING 5 (Important) puis FINDING 9 (round 3) —
 /// confronte l'assignation SUPPOSÉE (construite par l'ordre d'ouverture, dans
 /// `ouvrirFenetreTon`) à ce que le produit affirme avoir réellement capté.
@@ -656,6 +837,77 @@ export async function verifierAssignationParFichier(cdp, sidShell, assignation) 
             + "dans aucune légende observée)");
     }
     return { correspond, jetons, titresObserves: observes };
+}
+
+/// Le critère ② complet : une PHASE par entrée de `SEQUENCE_FOCUS`, chacune
+/// focalisant une fenêtre DIFFÉRENTE du groupe, mesurant, et jugeant par
+/// `jugerArbitragePid`. Exige EN PLUS, phase par phase, que le journal de
+/// l'AGENT LUI-MÊME confirme indépendamment quelle session porte le son
+/// (`dernierEtatActifParSession`) — deux preuves distinctes (le spectre REÇU
+/// côté navigateur, la décision ÉMISE côté agent) qui doivent s'accorder.
+///
+/// Toutes les fenêtres ouvertes par ce run forment UN SEUL groupe (mode
+/// `MEME_PROCESSUS` : un seul `--user-data-dir` partagé) — c'est la portée
+/// visée par le critère ② (deux fenêtres d'un même processus), pas un
+/// mécanisme général de sous-groupes.
+async function executerCritereArbitragePid(cdp, assignation, verifAssignation) {
+    const noms = nomsTries();
+    const hzsGroupe = HZS.slice(0, noms.length);
+    const phases = {};
+    for (const idxFocus of SEQUENCE_FOCUS) {
+        if (!Number.isInteger(idxFocus) || idxFocus < 0 || idxFocus >= noms.length) {
+            log(`!! SEQUENCE_FOCUS contient un index hors bornes ou invalide : ${idxFocus}, ignoré`);
+            continue;
+        }
+        const cle = `focus_${idxFocus}`;
+        const scenario = await imposerScenario(cdp, idxFocus, `critère ② ${cle}`);
+        log(`>>> stabilisation ${DELAI_STABILISATION_S} s avant lecture (${cle})`);
+        await dodo(DELAI_STABILISATION_S * 1000);
+
+        const freqs = await frequencesToutes(cdp, `critère ② ${cle}`, Object.values(assignation));
+        // L'attendu vient du SCÉNARIO qu'on vient d'imposer, pas d'une
+        // relecture de l'agent : ce sont deux preuves INDÉPENDANTES qu'on
+        // confronte l'une à l'autre plus bas (`agentAccord`), jamais une
+        // dérivée de l'autre.
+        const actifAttendu = Object.fromEntries(noms.map((nom, i) => [nom, i === idxFocus]));
+        const jugement = jugerArbitragePid(freqs, hzsGroupe, actifAttendu);
+
+        const plat = await journalPlat();
+        const agentConfirme = dernierEtatActifParSession(plat, noms);
+        const agentAccord = noms.every((nom) => agentConfirme[nom] === actifAttendu[nom]);
+        if (!agentAccord) {
+            log(`  !! DÉSACCORD journal agent / attendu (${cle}) attendu=${JSON.stringify(actifAttendu)} `
+                + `journal=${JSON.stringify(agentConfirme)}`);
+        }
+
+        phases[cle] = {
+            cible: noms[idxFocus], scenario, actif_attendu: actifAttendu,
+            frequences: freqs, jugement, agent_confirme: agentConfirme, agent_accord: agentAccord,
+        };
+        log(`CRITÈRE ② — ARBITRAGE PID (${cle}, cible=${noms[idxFocus]}) `
+            + `toutesBonnes=${jugement.toutesBonnes} agent_accord=${agentAccord} `
+            + JSON.stringify(jugement.jugements));
+    }
+
+    const cles = Object.keys(phases);
+    // Le FLIP : ce n'est démontré que si AU MOINS DEUX phases ciblent des
+    // fenêtres DIFFÉRENTES et que chacune est individuellement correcte SUR
+    // LES DEUX PREUVES (spectre ET journal agent) — une seule phase correcte
+    // prouverait seulement « focus == actif », jamais « déplacer le focus
+    // déplace le son ». L'assignation fenêtre/fréquence doit elle aussi être
+    // confirmée (comme au critère ①) : un verdict sur une assignation
+    // désynchronisée ne prouverait rien.
+    let flipConfirme = false;
+    if (cles.length >= 2 && verifAssignation.correspond) {
+        const a = phases[cles[0]];
+        const b = phases[cles[cles.length - 1]];
+        flipConfirme = a.cible !== b.cible
+            && a.jugement.toutesBonnes && b.jugement.toutesBonnes
+            && a.agent_accord && b.agent_accord;
+    }
+    log(`CRITÈRE ② — VERDICT FINAL phases=${cles.length} assignation_confirmee=${verifAssignation.correspond} `
+        + `flip_confirme=${flipConfirme}`);
+    return { groupe: noms, hzs_groupe: hzsGroupe, phases, verif_assignation: verifAssignation, verdict_final: flipConfirme };
 }
 
 // ---------------------------------------------------------------- main
@@ -761,7 +1013,17 @@ async function main() {
         await dodo(6000);
 
         const assignation = {};
-        const ouvrirFenetreTon = async (n, hz, gain) => {
+        // `profilChromeVm` est désormais un PARAMÈTRE (pas construit ici
+        // depuis `n`) : c'est ce qui permet au mode `MEME_PROCESSUS` de
+        // pointer TOUTES les fenêtres vers le MÊME dossier de profil, sans
+        // quoi la seconde invocation de Chrome démarrerait un second
+        // processus au lieu de rejoindre le premier — voir le bloc de
+        // commentaire d'en-tête. NOMMÉ DIFFÉREMMENT de `userDataDir` du
+        // `main()` englobant (le profil du Chrome LOCAL qui pilote CDP,
+        // sans rapport) : même nom sur deux notions distinctes se serait prêté
+        // à une confusion future, même si le scoping JS les distingue déjà
+        // correctement.
+        const ouvrirFenetreTon = async (n, hz, gain, profilChromeVm) => {
             const avant = appPages().length;
             // FINDING 9 (round 3) : la légende de fenêtre relayée par le
             // superviseur pour une fenêtre Chrome `--app` sur `file://` est
@@ -772,14 +1034,16 @@ async function main() {
             // requête (`?hz=…&gain=…`) reste nécessaire par ailleurs : c'est
             // elle que lit le script de la page pour choisir le ton à jouer
             // — le nom de fichier ne sert qu'à l'identité observable
-            // côté produit, pas à paramétrer `ton.html`.
+            // côté produit, pas à paramétrer `ton.html`. Ceci reste vrai à
+            // l'identique en mode `MEME_PROCESSUS` : le nom de fichier ne
+            // dépend d'aucune notion de PID.
             const fichier = `ton-${hz}.html`;
             spawnSync('bash', ['-c', `cp ${join(AIDE, 'ton.html')} /media/vm/dev/${fichier}`]);
-            log(`  · ouverture fenêtre ${n} (${fichier}?hz=${hz}&gain=${gain})`);
+            log(`  · ouverture fenêtre ${n} (${fichier}?hz=${hz}&gain=${gain}, profil=${profilChromeVm})`);
             await vmIt(`ouvrird7-${n}`, [
                 `$a = @(`,
                 `  "--app=file:///C:/dev/${fichier}?hz=${hz}&gain=${gain}",`,
-                `  "--user-data-dir=C:\\dev\\chrome-d7-${n}",`,
+                `  "--user-data-dir=${profilChromeVm}",`,
                 `  '--no-first-run','--no-default-browser-check','--disable-session-crashed-bubble',`,
                 `  '--window-size=1280,720','--window-position=${30 + n * 12},${30 + n * 12}',`,
                 `  '--disable-features=CalculateNativeWinOcclusion',`,
@@ -806,38 +1070,52 @@ async function main() {
             return false;
         };
 
-        log(`>>> OUVERTURE — ${HZS.length} fenêtre(s) : ${JSON.stringify(HZS)}`);
+        log(`>>> OUVERTURE — ${HZS.length} fenêtre(s) : ${JSON.stringify(HZS)} meme_processus=${MEME_PROCESSUS}`);
         let ouvertes = 0;
+        // Mode par défaut : UN profil PAR fenêtre (`chrome-d7-1`, `chrome-d7-2`,
+        // …), inchangé depuis le round 3 — chaque fenêtre son propre PID.
+        // `MEME_PROCESSUS=1` : TOUTES les fenêtres du run partagent
+        // `chrome-d7-groupe` — la seconde invocation de Chrome rejoint la
+        // première au lieu de démarrer un second processus (voir le bloc de
+        // commentaire d'en-tête).
+        const dossierPartage = 'C:\\dev\\chrome-d7-groupe';
         for (let n = 0; n < HZS.length; n += 1) {
-            if (!(await ouvrirFenetreTon(n + 1, HZS[n], gainDe(n)))) break;
+            const profilChromeVm = MEME_PROCESSUS ? dossierPartage : `C:\\dev\\chrome-d7-${n + 1}`;
+            if (!(await ouvrirFenetreTon(n + 1, HZS[n], gainDe(n), profilChromeVm))) break;
             ouvertes += 1;
         }
         log(`  ${ouvertes}/${HZS.length} fenêtres ouvertes ; assignation=` + JSON.stringify(assignation));
 
         // FINDING 5 / FINDING 9 : l'assignation ci-dessus est une HYPOTHÈSE
         // (construite de l'ordre d'ouverture) — on la confronte à ce que le
-        // produit affirme avant de s'en servir pour juger l'isolation.
+        // produit affirme avant de s'en servir pour juger l'isolation. Reste
+        // valable telle quelle en mode `MEME_PROCESSUS` : ce contrôle ne
+        // dépend d'aucune notion de PID, voir le bloc de commentaire d'en-tête.
         const verifAssignation = await verifierAssignationParFichier(cdp, sidShell, assignation);
 
-        const scenario = await imposerScenario(cdp, INDEX_FOCUS, 'critère ①');
-        log(`>>> stabilisation ${DELAI_STABILISATION_S} s avant lecture`);
-        await dodo(DELAI_STABILISATION_S * 1000);
+        if (MEME_PROCESSUS) {
+            releve.phases.arbitrage_pid = await executerCritereArbitragePid(cdp, assignation, verifAssignation);
+        } else {
+            const scenario = await imposerScenario(cdp, INDEX_FOCUS, 'critère ①');
+            log(`>>> stabilisation ${DELAI_STABILISATION_S} s avant lecture`);
+            await dodo(DELAI_STABILISATION_S * 1000);
 
-        const freqs = await frequencesToutes(cdp, 'critère ① — isolation', Object.values(assignation));
-        const jugement = jugerIsolation(freqs, assignation);
-        // Le verdict global n'est valable QUE si l'assignation elle-même est
-        // confirmée (FINDING 5) : un jugement "OK" sur une assignation
-        // désynchronisée ne prouverait rien.
-        const toutesBonnesEtAssignationSure = jugement.toutesBonnes && verifAssignation.correspond;
-        log(`CRITÈRE ① — ISOLATION toutesBonnes=${jugement.toutesBonnes} `
-            + `assignation_confirmee=${verifAssignation.correspond} `
-            + `verdict_final=${toutesBonnesEtAssignationSure} ` + JSON.stringify(jugement.jugements));
+            const freqs = await frequencesToutes(cdp, 'critère ① — isolation', Object.values(assignation));
+            const jugement = jugerIsolation(freqs, assignation);
+            // Le verdict global n'est valable QUE si l'assignation elle-même est
+            // confirmée (FINDING 5) : un jugement "OK" sur une assignation
+            // désynchronisée ne prouverait rien.
+            const toutesBonnesEtAssignationSure = jugement.toutesBonnes && verifAssignation.correspond;
+            log(`CRITÈRE ① — ISOLATION toutesBonnes=${jugement.toutesBonnes} `
+                + `assignation_confirmee=${verifAssignation.correspond} `
+                + `verdict_final=${toutesBonnesEtAssignationSure} ` + JSON.stringify(jugement.jugements));
 
-        releve.phases.isolation = {
-            ouvertes, assignation, verifAssignation, scenario, frequences: freqs, jugement,
-            verdict_final: toutesBonnesEtAssignationSure,
-        };
-        releve.survie_apres = vmVivante('après critère ①');
+            releve.phases.isolation = {
+                ouvertes, assignation, verifAssignation, scenario, frequences: freqs, jugement,
+                verdict_final: toutesBonnesEtAssignationSure,
+            };
+        }
+        releve.survie_apres = vmVivante(MEME_PROCESSUS ? 'après critère ②' : 'après critère ①');
         releve.marqueurs = await marqueurs('FIN');
         await writeFile(SORTIE_JSON, JSON.stringify(releve, null, 1));
         log('relevé écrit dans ' + SORTIE_JSON);
