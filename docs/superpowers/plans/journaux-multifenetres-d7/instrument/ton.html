@@ -29,12 +29,24 @@
   réaliste, sans lequel l'étape 3 devrait soit modifier ce fichier a posteriori,
   soit se rabattre sur une fenêtre qui n'émet aucune piste audio du tout (les deux
   cas sont utiles et distincts, voir le rapport de tâche 11).
+
+  Revue de tâche 11, correctif round 1, FINDING 5 : `document.title` porte la
+  fréquence. Une fenêtre Chrome `--app` sans chrome de titre affiche quand même
+  ce texte comme légende de sa fenêtre OS (`WM_SETTEXT`), et c'est CE texte que
+  le superviseur relaie à la page-shell comme `titre` de la fenêtre détectée
+  (`fenetre-ouverte`, `client/src/shell.ts`). Le pilote peut donc CONFRONTER
+  l'assignation qu'il suppose (« j'ai ouvert la keme fenêtre avec tel hz ») à ce
+  que le produit affirme réellement avoir capté, au lieu de la tenir pour
+  acquise par le seul ordre d'ouverture — leçon D4 : une fenêtre « éligible »
+  supplémentaire et non désirée (Paint en ouvre deux) décale un tel ordre sans
+  qu'aucune erreur ne le signale autrement.
 -->
 <body style="font:48px monospace;background:#111;color:#0f0">
 <div id="info">…</div>
 <script>
 const params = new URLSearchParams(location.search);
 const hz = Number(params.get('hz') || 440);
+document.title = hz + ' Hz';
 // Par défaut 0.25, comme le gabarit du brief. `gain=0` sert le cas « fenêtre
 // muette » de l'étape 3 : le graphe audio tourne réellement (l'oscillateur
 // démarre, le contexte n'est jamais suspendu volontairement), mais ne produit

@@ -21,7 +21,7 @@
 //      existante et on compte des lancements au lieu de fenêtres ;
 //   2. `AudioContext` démarre `suspended` sans activation utilisateur : ce
 //      pilote appelle `ctx.resume()` et VÉRIFIE `ctx.state === 'running'`
-//      avant toute mesure — voir `RELEVE_FREQUENCE` ci-dessous — sinon on
+//      avant toute mesure — voir `expressionReleveFrequence` ci-dessous — sinon on
 //      mesure un silence et on conclut à tort à une panne d'isolation ;
 //   3. toute évaluation CDP sur une page portant un flux WebRTC actif est
 //      BORNÉE (`Cdp.evalBorne`, `Promise.race` avec délai) : elle peut ne
@@ -43,8 +43,28 @@
 // tâche 13 (arbitrage par PID, survie au sommeil, budget rendu, non-régression
 // mono-fenêtre) — seul le critère ① (isolation par fréquence) y est câblé de
 // bout en bout, en exemple d'emploi. Les fonctions exportées (`Cdp`,
-// `RELEVE_FREQUENCE`, `imposerScenario`, `AMORCE`) sont réutilisables telles
-// quelles par la tâche 13 pour les critères restants.
+// `expressionReleveFrequence`, `imposerScenario`, `AMORCE`) sont réutilisables
+// telles quelles par la tâche 13 pour les critères restants.
+//
+// CORRECTIF ROUND 1/5 (revue de tâche 11) — cinq changements de fond :
+//   - un simple argmax ne prouve QUE « le ton le plus fort », jamais « et pas
+//     les autres » : une fenêtre qui entendrait 440 en plein ET 880 à -10 dB
+//     argmaxerait quand même sur 440 et passerait « OK » à tort. Le verdict
+//     lit maintenant le niveau à CHAQUE fréquence assignée, pas seulement au
+//     pic (`niveaux`, `jugerIsolation`) ;
+//   - `ctx` n'était jamais fermé : jusqu'à dix contextes web audio vivants en
+//     parallèle sur un hôte dont la charge a déjà faussé des mesures d'un
+//     facteur 19 (D6). Fermé en `finally` ;
+//   - la piste audio se lit désormais AUSSI via `<video>.srcObject` (le
+//     `MediaStream` unique de `client/src/webrtc.ts`), qui ne dépend d'aucune
+//     course avec l'amorce ;
+//   - `bytesReceived`/`packetsReceived`/`muted`/`readyState` sont relevés
+//     comme DISCRIMINANTS annexes (jamais comme preuve d'isolation à eux
+//     seuls) ;
+//   - l'assignation fenêtre↔fréquence n'est plus SUPPOSÉE de l'ordre
+//     d'ouverture : `ton.html` pose son `document.title`, et
+//     `verifierAssignationParTitre` la confronte à ce que la page-shell
+//     affiche avoir réellement reçu du produit.
 
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
@@ -82,7 +102,7 @@ const DELAI_STABILISATION_S = Number(process.env.DELAI_STABILISATION_S ?? 15);
 const INDEX_FOCUS = Number(process.env.INDEX_FOCUS ?? 0);
 // Tolérance de correspondance fréquence mesurée / fréquence assignée. Les
 // deux fréquences par défaut (440, 880) sont séparées de 440 Hz ; la
-// résolution du bin FFT (voir RELEVE_FREQUENCE, fftSize=8192) est
+// résolution du bin FFT (voir expressionReleveFrequence, fftSize=8192) est
 // `sampleRate / fftSize` — RELEVÉE à 5,383 Hz en vérification locale (Chrome
 // Linux, `ctx.sampleRate = 44100`), et attendue autour de 5,86 Hz sur la VM
 // Windows (le sondage audio de juillet 2026, CLAUDE.md, y a mesuré un mixage
@@ -91,6 +111,29 @@ const INDEX_FOCUS = Number(process.env.INDEX_FOCUS ?? 0);
 // de 25 Hz reste très en dessous des 440 Hz qui séparent les deux tons tout
 // en absorbant largement l'arrondi du bin (1 à 3 Hz mesurés localement).
 const TOLERANCE_HZ = Number(process.env.TOLERANCE_HZ ?? 25);
+// L'argmax seul ne prouve QUE « le ton le plus fort », jamais « et pas les
+// autres » (revue de tâche 11, FINDING 1) : une fenêtre qui entendrait 440 en
+// plein ET 880 à -10 dB argmaxerait quand même sur 440. Le verdict lit donc le
+// niveau à CHAQUE fréquence assignée (`niveaux`, calculé côté page) et exige
+// DEUX marges, toutes deux NON CALIBRÉES — choisies par analogie avec un
+// rapport signal/interférence confortable à l'oreille, jamais mesurées sur ce
+// produit ni ajustées à son bruit de fond réel :
+//   - `MARGE_ISOLATION_DB` : écart minimal entre le niveau à SA fréquence et
+//     le niveau à CHAQUE AUTRE fréquence assignée — c'est elle qui distingue
+//     « on entend surtout la sienne » de « on n'entend QUE la sienne » ;
+//   - `MARGE_SIGNAL_DB` : écart minimal entre le niveau à SA fréquence et le
+//     PLANCHER du spectre — sans elle, un pic à peine au-dessus du bruit de
+//     fond compterait comme une isolation réussie.
+const MARGE_ISOLATION_DB = Number(process.env.MARGE_ISOLATION_DB ?? 10);
+const MARGE_SIGNAL_DB = Number(process.env.MARGE_SIGNAL_DB ?? 20);
+// En-dessous de tout plancher RÉEL observé en vérification locale (-210 dB,
+// silence quasi total) : sert à représenter -Infinity (silence numérique
+// exact, non représentable en JSON — `JSON.stringify(-Infinity) === 'null'`)
+// par une valeur NUMÉRIQUE distincte de « champ absent » (`null` propre).
+// Revue de tâche 11, FINDING 6 : avant ce correctif, `db` ET `plancher_db`
+// utilisaient tous deux `null` pour « silence total » ET pour « valeur
+// manquante », strictement indiscernables une fois relus dans un journal.
+const SENTINEL_DB = -1000;
 // Préparer la VM avant de lancer (kill des processus résiduels, purge des
 // sorties virtuelles orphelines) : mis à '0' pour enchaîner plusieurs mesures
 // sans reperdre l'état déjà en place.
@@ -224,7 +267,8 @@ async function attendreDevtools(port) {
 // ouverte par `window.open` (course perdue contre la création du document,
 // éprouvée en D5) :
 //
-//   1. la capture de `window.__pc` — RELEVE_FREQUENCE en dépend pour trouver
+//   1. la capture de `window.__pc` — `expressionReleveFrequence` s'en sert en
+//      premier recours (avec un repli sur `<video>.srcObject`, FINDING 4) pour trouver
 //      la piste audio reçue. `client/src/webrtc.ts` N'EXPOSE RIEN de global :
 //      c'est ce monkey-patch, et lui seul, qui rend la PeerConnection visible
 //      au script de recette (même technique qu'en D6, où elle sert `__liens`
@@ -232,6 +276,13 @@ async function attendreDevtools(port) {
 //   2. les overrides de visibilité et de focus, pilotés par le SCÉNARIO
 //      (`imposerScenario`) et non par le navigateur — indispensable dès qu'un
 //      Chrome sans interface est de la partie (leçon 5).
+// Revue de tâche 11, FINDING 7 (mineur) : cette substitution du constructeur
+// remplace `window.RTCPeerConnection` par une fonction ordinaire, qui NE PORTE
+// PAS les membres STATIQUES de l'original (`generateCertificate` notamment —
+// `RTCPeerConnection.prototype` est réassigné juste après, mais les statiques
+// ne le sont pas). Inerte aujourd'hui : rien dans `client/src/webrtc.ts`
+// n'appelle de membre statique. Silencieux si un futur changement du client en
+// dépendait — à surveiller, pas à corriger à vide.
 export const AMORCE = `
 (() => {
   if (window.__amorceD7) return;
@@ -251,10 +302,24 @@ export const AMORCE = `
 })();
 `;
 
-// Branche un `AnalyserNode` sur la piste audio REÇUE (via la PeerConnection
-// capturée par l'AMORCE) et rend la fréquence du bin le plus énergique.
-// C'est ce qui rend le critère d'isolation MESURABLE au lieu de déclaratif :
-// `bytesReceived` dit que du son arrive, jamais LEQUEL.
+// Branche un `AnalyserNode` sur la piste audio REÇUE et rend, pour CHAQUE
+// fréquence assignée (`hzsAssignes` — toutes les fenêtres en jeu, pas
+// seulement celle de la page courante), le niveau du bin qui lui correspond —
+// PAS SEULEMENT celui du bin le plus énergique. C'est ce qui rend le critère
+// d'isolation MESURABLE au lieu de déclaratif : `bytesReceived` dit que du son
+// arrive, jamais LEQUEL.
+//
+// Revue de tâche 11, FINDING 1 (Critical) — POURQUOI l'argmax seul ne
+// suffisait pas, avec l'exemple qui l'a montré : une fenêtre qui entendrait
+// SA fréquence en plein ET celle de sa voisine à -10 dB argmaxerait quand même
+// sur la sienne, jugerait « OK », alors qu'elle entend audiblement sa voisine.
+// L'argmax du brief est CONSERVÉ ci-dessous (verbatim de sa forme, utile en
+// diagnostic — `hz`/`db` bruts dans le journal), mais `jugerIsolation` ne s'y
+// fie plus SEUL : elle lit `niveaux`, le niveau à CHAQUE fréquence assignée,
+// et exige `db(propre) - db(chaque autre) >= MARGE_ISOLATION_DB` en plus de
+// `db(propre) - plancher >= MARGE_SIGNAL_DB`. Le calcul du bin par fréquence
+// se fait ICI, côté page (elle seule connaît `ctx.sampleRate` au moment de la
+// mesure), pour ne pas dupliquer cette conversion côté Node.
 //
 // `ctx.resume()` + la vérification `ctx.state === 'running'` (leçon 2) sont
 // une addition à ce que le brief esquissait : un `AudioContext` fraîchement
@@ -265,33 +330,105 @@ export const AMORCE = `
 // jamais tourné » de « la piste est bien silencieuse », exactement le faux
 // négatif que l'étape 3 du brief existe pour révéler par ailleurs — mieux
 // vaut le détecter ICI, à la source, que le laisser confondre les deux cas
-// en aval.
-export const RELEVE_FREQUENCE = `(async () => {
+// en aval. Vérifié activement en local (rapport de tâche 11, essai 3) : sans
+// activation possible, `ctx.resume()` ne se résout pas dans le délai borné de
+// l'appelant — ce contrôle intercepterait donc réellement ce cas.
+//
+// Revue de tâche 11, FINDING 2 (Important) — `'aucune piste audio'` est
+// INATTEIGNABLE sur ce produit : `client/src/webrtc.ts` appelle
+// `pc.addTransceiver('audio', { direction: 'recvonly' })` INCONDITIONNELLEMENT
+// (ligne 206), donc un récepteur ET une piste EXISTENT même quand l'agent
+// n'envoie jamais un seul paquet. Le cas « pas de piste du tout » ne se
+// présentera donc essentiellement jamais ; le cas réel d'une fenêtre
+// silencieuse se lira comme `hz` improbable ou un pic quelconque au niveau du
+// bruit — indiscernable, SANS AIDE SUPPLÉMENTAIRE, d'« un ton a été reçu et
+// mal mesuré ». `piste.muted`, `piste.readyState` et les compteurs
+// `inbound-rtp` audio de `pc.getStats()` sont donc relevés en plus, comme
+// DISCRIMINANTS annexes — jamais comme preuve d'isolation à eux seuls : c'est
+// le seul emploi légitime de `bytesReceived` dans cet instrument.
+//
+// Revue de tâche 11, FINDING 4 (Important) — la piste ne dépend plus
+// SEULEMENT de gagner la course de l'AMORCE contre `window.open`
+// (`Page.addScriptToEvaluateOnNewDocument` ne court pas sur une page ouverte
+// ainsi, éprouvé en D5) : `client/src/webrtc.ts` place les DEUX pistes reçues
+// dans un `MediaStream` UNIQUE affecté à `<video>.srcObject` (ligne ~228-246).
+// Cette piste est donc réatteignable, SANS AVOIR À GAGNER AUCUNE COURSE, via
+// `document.querySelector('video').srcObject.getAudioTracks()[0]` — un repli
+// à deux lignes qui élimine toute une classe d'exécutions VM perdues pour rien
+// si l'AMORCE arrivait après coup.
+//
+// Revue de tâche 11, FINDING 3 (Important) — `ctx.close()` en `finally` :
+// laissé ouvert, chaque appel ajoutait un `AudioContext` vivant de plus,
+// jusqu'à dix (un par page, sur toutes les pages, à chaque relevé) — ce
+// dépôt a déjà DEUX FOIS payé le prix d'un instrument qui perturbe ce qu'il
+// mesure (la trace par paquet du chantier TURN, la capture d'écran CDP du
+// sous-bloc D1). Fermer le contexte est le geste symétrique de l'ouvrir.
+export function expressionReleveFrequence(hzsAssignes) {
+    return `(async () => {
+  const CIBLES = ${JSON.stringify(hzsAssignes)};
+  const SENTINEL = ${SENTINEL_DB};
   const pc = window.__pc;
-  if (!pc) return { erreur: 'aucune PeerConnection exposee' };
-  const piste = pc.getReceivers()
-    .map(r => r.track).find(t => t && t.kind === 'audio');
-  if (!piste) return { erreur: 'aucune piste audio' };
-  const ctx = new AudioContext();
-  await ctx.resume();
-  if (ctx.state !== 'running') {
-    return { erreur: 'AudioContext non demarre etat=' + ctx.state };
+  let piste = pc ? pc.getReceivers().map(r => r.track).find(t => t && t.kind === 'audio') : null;
+  // FINDING 4 : repli qui ne dépend d'aucune course avec l'AMORCE.
+  if (!piste) {
+    const v = document.querySelector('video');
+    piste = v?.srcObject?.getAudioTracks?.()[0] ?? null;
   }
-  const analyseur = ctx.createAnalyser();
-  analyseur.fftSize = 8192;
-  ctx.createMediaStreamSource(new MediaStream([piste])).connect(analyseur);
-  await new Promise(r => setTimeout(r, 1500));
-  const bins = new Float32Array(analyseur.frequencyBinCount);
-  analyseur.getFloatFrequencyData(bins);
-  let meilleur = 0;
-  for (let i = 1; i < bins.length; i++) if (bins[i] > bins[meilleur]) meilleur = i;
-  return {
-    hz: Math.round(meilleur * ctx.sampleRate / analyseur.fftSize),
-    db: Math.round(bins[meilleur]),
-    plancher_db: Math.round(bins.reduce((a, b) => a + b, 0) / bins.length),
-    sample_rate: ctx.sampleRate,
-  };
+  if (!piste) return { erreur: pc ? 'aucune piste audio' : 'aucune PeerConnection exposee' };
+  const ctx = new AudioContext();
+  try {
+    await ctx.resume();
+    if (ctx.state !== 'running') {
+      return { erreur: 'AudioContext non demarre etat=' + ctx.state };
+    }
+    const analyseur = ctx.createAnalyser();
+    analyseur.fftSize = 8192;
+    ctx.createMediaStreamSource(new MediaStream([piste])).connect(analyseur);
+    await new Promise(r => setTimeout(r, 1500));
+    const bins = new Float32Array(analyseur.frequencyBinCount);
+    analyseur.getFloatFrequencyData(bins);
+    // FINDING 6 : -Infinity (silence numerique exact) n'est pas representable
+    // en JSON (devient null, indiscernable d'un champ absent) -> clampe sur
+    // SENTINEL, une valeur numerique tres en dessous de tout plancher reel.
+    const db = (x) => (Number.isFinite(x) ? Math.round(x) : SENTINEL);
+    const binDe = (f) => Math.max(0, Math.min(bins.length - 1,
+      Math.round(f * analyseur.fftSize / ctx.sampleRate)));
+    let meilleur = 0;
+    for (let i = 1; i < bins.length; i++) if (bins[i] > bins[meilleur]) meilleur = i;
+    // FINDING 6 (suite) : la moyenne du plancher filtre les bins non finis —
+    // un seul -Infinity dans un tableau moyenné rend TOUT le plancher
+    // -Infinity, précisément quand le spectre est partiellement silencieux et
+    // que ce chiffre importe le plus.
+    const finis = [...bins].filter(Number.isFinite);
+    const plancher_db = finis.length ? Math.round(finis.reduce((a, b) => a + b, 0) / finis.length) : SENTINEL;
+    let statsAudio = null;
+    if (pc) {
+      try {
+        const rapport = await pc.getStats();
+        const entree = [...rapport.values()].find((x) => x.type === 'inbound-rtp' && x.kind === 'audio');
+        if (entree) {
+          statsAudio = {
+            bytes_recus: entree.bytesReceived ?? null,
+            paquets_recus: entree.packetsReceived ?? null,
+          };
+        }
+      } catch { }
+    }
+    return {
+      hz: Math.round(meilleur * ctx.sampleRate / analyseur.fftSize),
+      db: db(bins[meilleur]),
+      plancher_db,
+      sample_rate: ctx.sampleRate,
+      niveaux: CIBLES.map((f) => ({ f, db: db(bins[binDe(f)]) })),
+      piste_muted: piste.muted,
+      piste_ready_state: piste.readyState,
+      stats_audio: statsAudio,
+    };
+  } finally {
+    await ctx.close();
+  }
 })()`;
+}
 
 const pages = new Map();
 const appPages = () => [...pages].filter(([, p]) =>
@@ -343,38 +480,105 @@ export async function imposerScenario(cdp, cibleIndex, etiquette) {
     return { cible, etats: Object.fromEntries(etats), focalisees };
 }
 
-/// Relève la fréquence dominante sur toutes les pages d'application, bornée
-/// page par page (leçon 3).
-async function frequencesToutes(cdp, etiquette) {
+/// Relève le niveau à CHAQUE fréquence assignée sur toutes les pages
+/// d'application, bornée page par page (leçon 3). `hzsAssignes` doit couvrir
+/// TOUTES les fenêtres réellement ouvertes (pas seulement celle qu'on lit) :
+/// c'est ce qui permet à `jugerIsolation` de comparer le niveau propre de
+/// chaque page au niveau de CHAQUE autre fréquence en jeu.
+async function frequencesToutes(cdp, etiquette, hzsAssignes) {
     const entrees = appPages();
+    const expression = expressionReleveFrequence(hzsAssignes);
     const resultats = await Promise.all(entrees.map(async ([sid, p]) =>
-        [nomDe(p.url), await cdp.evalBorne(sid, RELEVE_FREQUENCE)]));
+        [nomDe(p.url), await cdp.evalBorne(sid, expression)]));
     const out = Object.fromEntries(resultats);
     log(`FRÉQUENCES (${etiquette}) ` + JSON.stringify(out));
     return out;
 }
 
-/// Le critère ① : chaque fenêtre lit-elle SA fréquence assignée, et PAS une
-/// autre ? `assignation` associe un nom de session (`w:N`) à son hz — c'est
-/// l'ouverture des fenêtres qui la construit, dans l'ordre.
+/// Le critère ① : chaque fenêtre entend-elle SA fréquence assignée, ET RIEN
+/// QUE ELLE — pas seulement « SA fréquence est-elle la plus forte » ?
+/// `assignation` associe un nom de session (`w:N`) à son hz, VÉRIFIÉ par
+/// `verifierAssignationParTitre` (FINDING 5) plutôt que supposé de l'ordre
+/// d'ouverture.
+///
+/// Revue de tâche 11, FINDING 1 (Critical) : un simple argmax passerait à
+/// tort une fuite PARTIELLE (sa fréquence en plein, une autre à -10 dB) —
+/// les deux argmaxeraient sur leur propre ton. Le verdict exige donc DEUX
+/// marges lues sur `niveaux` (voir `expressionReleveFrequence`), toutes deux
+/// NON CALIBRÉES (voir leur définition avec `MARGE_ISOLATION_DB` /
+/// `MARGE_SIGNAL_DB` plus haut) :
+///   - `ecart_isolation_db = db(propre) - max(db(chaque autre))` doit
+///     dépasser `MARGE_ISOLATION_DB` ;
+///   - `ecart_signal_db = db(propre) - plancher_db` doit dépasser
+///     `MARGE_SIGNAL_DB`.
+/// L'argmax du brief (`argmax_hz`) est conservé en DIAGNOSTIC seulement — il
+/// ne décide plus seul du verdict.
 function jugerIsolation(freqs, assignation) {
     const jugements = {};
     let toutesBonnes = true;
     for (const [nom, attendu] of Object.entries(assignation)) {
         const r = freqs[nom];
-        if (!r || typeof r.hz !== 'number') {
-            jugements[nom] = { attendu, mesure: r, verdict: 'ERREUR (pas de hz)' };
+        if (!r || !Array.isArray(r.niveaux)) {
+            jugements[nom] = { attendu, mesure: r, verdict: 'ERREUR (pas de niveaux)' };
             toutesBonnes = false;
             continue;
         }
-        const ecartPropre = Math.abs(r.hz - attendu);
-        const confusions = Object.entries(assignation)
-            .filter(([autreNom, autreHz]) => autreNom !== nom && Math.abs(r.hz - autreHz) <= TOLERANCE_HZ);
-        const ok = ecartPropre <= TOLERANCE_HZ && confusions.length === 0;
+        const niveauPropre = r.niveaux.find((x) => x.f === attendu)?.db ?? SENTINEL_DB;
+        const autres = r.niveaux.filter((x) => x.f !== attendu);
+        const pireAutreDb = autres.length ? Math.max(...autres.map((x) => x.db)) : SENTINEL_DB;
+        const ecartIsolationDb = niveauPropre - pireAutreDb;
+        const ecartSignalDb = niveauPropre - (typeof r.plancher_db === 'number' ? r.plancher_db : SENTINEL_DB);
+        const ok = ecartIsolationDb >= MARGE_ISOLATION_DB && ecartSignalDb >= MARGE_SIGNAL_DB;
         if (!ok) toutesBonnes = false;
-        jugements[nom] = { attendu, mesure: r, ecart_propre_hz: ecartPropre, confusions, verdict: ok ? 'OK' : 'FAUX' };
+        jugements[nom] = {
+            attendu,
+            niveau_propre_db: niveauPropre,
+            pire_autre_db: pireAutreDb,
+            plancher_db: r.plancher_db,
+            ecart_isolation_db: ecartIsolationDb,
+            ecart_signal_db: ecartSignalDb,
+            // Diagnostic seulement — voir le commentaire de la fonction.
+            argmax_hz: r.hz, argmax_db: r.db,
+            argmax_correspond: typeof r.hz === 'number' && Math.abs(r.hz - attendu) <= TOLERANCE_HZ,
+            // Discriminants annexes (FINDING 2) — jamais une preuve à eux seuls.
+            piste_muted: r.piste_muted, piste_ready_state: r.piste_ready_state, stats_audio: r.stats_audio,
+            verdict: ok ? 'OK' : 'FAUX',
+        };
     }
     return { toutesBonnes, jugements };
+}
+
+/// Revue de tâche 11, FINDING 5 (Important) — confronte l'assignation
+/// SUPPOSÉE (construite par l'ordre d'ouverture, dans `ouvrirFenetreTon`) à ce
+/// que le produit affirme avoir réellement capté. `ton.html` pose
+/// `document.title = hz + ' Hz'` (voir ce fichier) ; le superviseur relaie ce
+/// texte comme `titre` de la fenêtre détectée (`fenetre-ouverte`,
+/// `client/src/shell.ts`), et la page-shell l'affiche dans sa liste
+/// (`#fenetres li`, `client/src/shell-page.ts`) DANS L'ORDRE D'ARRIVÉE des
+/// événements — le même ordre causal que celui des pages qui s'attachent à
+/// notre session CDP, puisque le shell inscrit l'entrée AVANT d'ouvrir la
+/// fenêtre (`shell.ts`, `ouvrir()`). Comparer positionnellement les titres
+/// observés aux titres attendus révèle donc une divergence de CONTENU, pas
+/// seulement de compte — exactement le risque documenté par D4 : une fenêtre
+/// « éligible » supplémentaire et non désirée (Paint en ouvre deux) décale un
+/// tel ordre sans qu'aucune erreur ne le signale autrement, et coûterait une
+/// exécution VM entière avant qu'on s'en aperçoive.
+async function verifierAssignationParTitre(cdp, sidShell, assignation) {
+    const titresObserves = await cdp.evalBorne(sidShell,
+        `[...document.querySelectorAll('#fenetres li')].map(li => li.textContent.replace(/ — (ouverte|fermée) $/, ''))`,
+        6000, false);
+    const titresAttendus = Object.values(assignation).map((hz) => `${hz} Hz`);
+    const correspond = Array.isArray(titresObserves)
+        && titresObserves.length === titresAttendus.length
+        && titresObserves.every((t, i) => t === titresAttendus[i]);
+    log(`VÉRIFICATION ASSIGNATION (titres shell) attendus=${JSON.stringify(titresAttendus)} `
+        + `observes=${JSON.stringify(titresObserves)} correspond=${correspond}`);
+    if (!correspond) {
+        log("  !! DÉSYNCHRONISATION assignation<->titre : l'assignation fenêtre/fréquence "
+            + "N'EST PAS CONFIRMÉE par le produit (voir CLAUDE.md, leçon D4 : une fenêtre "
+            + "éligible supplémentaire décale le compte sans le signaler autrement)");
+    }
+    return { correspond, titresAttendus, titresObserves };
 }
 
 // ---------------------------------------------------------------- main
@@ -385,9 +589,9 @@ async function main() {
     //  - popup-blocking désactivé (7) ;
     //  - les trois drapeaux anti-gel (6) ;
     //  - autoplay sans geste, pour que les `AudioContext` créés par
-    //    `RELEVE_FREQUENCE` PUISSENT passer à `running` sur `ctx.resume()`
-    //    (sans quoi la vérification de la leçon 2 échouerait toujours, y
-    //    compris sur une isolation par ailleurs correcte).
+    //    `expressionReleveFrequence` PUISSENT passer à `running` sur
+    //    `ctx.resume()` (sans quoi la vérification de la leçon 2 échouerait
+    //    toujours, y compris sur une isolation par ailleurs correcte).
     const chrome = spawn(process.env.CHROME_BIN ?? 'google-chrome', [
         '--headless=new', `--remote-debugging-port=${port}`, '--remote-allow-origins=*',
         `--user-data-dir=${userDataDir}`, '--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu',
@@ -521,15 +725,29 @@ async function main() {
         }
         log(`  ${ouvertes}/${HZS.length} fenêtres ouvertes ; assignation=` + JSON.stringify(assignation));
 
+        // FINDING 5 : l'assignation ci-dessus est une HYPOTHÈSE (construite de
+        // l'ordre d'ouverture) — on la confronte à ce que le produit affirme
+        // avant de s'en servir pour juger l'isolation.
+        const verifAssignation = await verifierAssignationParTitre(cdp, sidShell, assignation);
+
         const scenario = await imposerScenario(cdp, INDEX_FOCUS, 'critère ①');
         log(`>>> stabilisation ${DELAI_STABILISATION_S} s avant lecture`);
         await dodo(DELAI_STABILISATION_S * 1000);
 
-        const freqs = await frequencesToutes(cdp, 'critère ① — isolation');
+        const freqs = await frequencesToutes(cdp, 'critère ① — isolation', Object.values(assignation));
         const jugement = jugerIsolation(freqs, assignation);
-        log(`CRITÈRE ① — ISOLATION toutesBonnes=${jugement.toutesBonnes} ` + JSON.stringify(jugement.jugements));
+        // Le verdict global n'est valable QUE si l'assignation elle-même est
+        // confirmée (FINDING 5) : un jugement "OK" sur une assignation
+        // désynchronisée ne prouverait rien.
+        const toutesBonnesEtAssignationSure = jugement.toutesBonnes && verifAssignation.correspond;
+        log(`CRITÈRE ① — ISOLATION toutesBonnes=${jugement.toutesBonnes} `
+            + `assignation_confirmee=${verifAssignation.correspond} `
+            + `verdict_final=${toutesBonnesEtAssignationSure} ` + JSON.stringify(jugement.jugements));
 
-        releve.phases.isolation = { ouvertes, assignation, scenario, frequences: freqs, jugement };
+        releve.phases.isolation = {
+            ouvertes, assignation, verifAssignation, scenario, frequences: freqs, jugement,
+            verdict_final: toutesBonnesEtAssignationSure,
+        };
         releve.survie_apres = vmVivante('après critère ①');
         releve.marqueurs = await marqueurs('FIN');
         await writeFile(SORTIE_JSON, JSON.stringify(releve, null, 1));
@@ -548,8 +766,8 @@ async function main() {
 }
 
 // N'exécute `main()` que si ce fichier est le point d'entrée du process —
-// permet à la tâche 13 d'importer `Cdp`, `RELEVE_FREQUENCE`, `AMORCE` et
-// `imposerScenario` sans relancer une recette complète.
+// permet à la tâche 13 d'importer `Cdp`, `expressionReleveFrequence`,
+// `AMORCE` et `imposerScenario` sans relancer une recette complète.
 if (import.meta.url === `file://${process.argv[1]}`) {
     main().catch((e) => { console.error('ERREUR FATALE', e); process.exit(1); });
 }
