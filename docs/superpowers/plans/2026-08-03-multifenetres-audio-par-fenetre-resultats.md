@@ -112,8 +112,14 @@ pas un relevé.
 pas le son est `arreter()`ée et ne capte donc rien du tout. La question ne se
 pose que pour la fenêtre qui **porte** le son pendant que son application est
 silencieuse. À une seule fenêtre porteuse par groupe de PID, le coût plafonne à
-un flux Opus au débit nominal au lieu de quelques octets par trame — à vérifier
-à la recette de la tâche 13, où `bytesReceived` le dira.
+un flux Opus au débit nominal au lieu de quelques octets par trame.
+
+❌ **Cette phrase renvoyait la vérification « à la recette de la tâche 13 ». La
+recette a eu lieu et NE L'A PAS TRANCHÉE** : ses sources jouaient toutes un son
+continu, et le cas d'une fenêtre **porteuse dont l'application se tait** n'a
+jamais été monté. La question reste entière, et le §2.2 apporte au contraire un
+indice qu'elle mérite d'être posée — `bytesReceived` continue de croître sur une
+fenêtre dont le spectre est à −1000 dB.
 
 ### 1.6 Ce que ce §1 n'établit PAS
 
@@ -135,3 +141,126 @@ un flux Opus au débit nominal au lieu de quelques octets par trame — à véri
   du produit.
 - **Aucun octet capté n'a été décodé ni écouté** : seule la crête d'amplitude
   est relevée.
+
+---
+
+## 2. La recette — quatre critères sur cinq
+
+**Binaire mesuré** : bâti depuis `826a5ca`, **9 216 512 octets** (compilation de 19,64 s, pas les 0,13 s
+qui signaleraient un binaire non rebâti).
+
+⚠️ **Le nombre d'exécutions figure dans chaque énoncé. Aucun taux n'est revendiqué.**
+
+| # | Critère | Verdict | Exécutions |
+| --- | --- | --- | --- |
+| ① | **Isolation** — deux applications, deux tonalités | **TENU** | **2** |
+| ② | **Arbitrage par PID** — deux fenêtres d'un même processus | **TENU** | **1** (2 phases de focus) |
+| ③ | **L'audio survit au sommeil** | **NON EXERCÉ** | 0 |
+| ④ | **Le budget suit l'arbitrage** | **MESURÉ** | 1 |
+| ⑤ | **Aucune régression mono-fenêtre** | **TENU** | 1, plus un témoin A/B |
+
+### 2.1 Critère ① — l'isolation, mesurée à la fréquence
+
+Deux fenêtres Chrome `--app`, deux profils distincts donc deux processus, jouant 440 et 880 Hz.
+Relevé sur la piste audio **reçue par le navigateur**, par `AnalyserNode` :
+
+| Exécution | Fenêtre | Sa fréquence | La fréquence du **voisin** | Séparation |
+| --- | --- | --- | --- | --- |
+| `critere1` | w-2 (440) | **−40 dB** | −125 dB | **85 dB** |
+| `critere1` | w-4 (880) | **−41 dB** | −135 dB | **94 dB** |
+| `critere1b` | w-2 (440) | **−40 dB** | −129 dB | **89 dB** |
+| `critere1b` | w-4 (880) | **−41 dB** | −123 dB | **82 dB** |
+
+Plancher de bruit **−158 dB** aux quatre relevés ; marge de signal 117-118 dB. RTP réel : 238 926 à
+279 659 octets reçus par fenêtre. Journal de l'agent : deux *process loopback* sur des **PID
+distincts** (49412/44460 puis 47448/34600).
+
+**Ce que l'argmax seul n'aurait pas prouvé.** Une revue a établi avant la mesure qu'un simple « la
+raie la plus forte est la bonne » laisse passer une **fuite partielle** — une fenêtre entendant sa
+propre tonalité à plein niveau *plus* celle du voisin 10 dB en dessous aurait été déclarée isolée.
+Le verdict exige donc **deux marges** : `db(propre) − db(chaque autre) ≥ 10` et
+`db(propre) − plancher ≥ 20`. Les écarts relevés (82 à 94 dB) sont un ordre de grandeur au-dessus du
+seuil.
+
+### 2.2 Critère ② — l'arbitrage par PID, et le fait de conception qu'il a révélé
+
+Deux fenêtres, **un seul `--user-data-dir`**, donc **un seul processus Chrome** : le cas que la règle
+de `agent/src/capteur/audio.rs` existe pour trancher.
+
+| Phase | Fenêtre portante | Ce qu'elle entend | Fenêtre muette |
+| --- | --- | --- | --- |
+| focus sur w-2 | **w-2** | 440 à **−40 dB** *et* 880 à **−41 dB** | w-4 : **−1000 dB** sur les deux, `piste_muted=true`, `stats_audio=null` |
+| focus sur w-4 | **w-4** | idem, miroir | w-2 : **−1000 dB** sur les deux |
+
+`flip_confirme=true`, `assignation_confirmee=true`, et `agent_accord=true` — le journal de l'agent
+corrobore par ses `ordre audio applique session=… actif=…`.
+
+⚠️ **La fenêtre porteuse entend LE MÉLANGE des deux tonalités, et c'est structurel.**
+`PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE` capte l'**arbre de processus**, jamais la fenêtre.
+**Deux fenêtres d'une même application ne peuvent donc pas avoir un son séparé, par nature de l'API** —
+le focus ne choisit que **laquelle reçoit le flux partagé**. Ce n'est pas une limite de
+l'implémentation ; c'est ce que l'isolation par processus veut dire, et la conception ne le disait pas.
+
+⚠️ **Fait annexe, qui justifie après coup un choix d'instrument** : en phase 2, `bytesReceived` de
+w-2 **a continué de croître** (274 832 → 275 798) alors que son spectre était à −1000 dB.
+**`bytesReceived` seul aurait conclu qu'elle entend encore quelque chose.** C'est exactement pourquoi
+le critère se juge à la fréquence et jamais au compte d'octets.
+
+### 2.3 Critères ④ et ⑤
+
+**④ — le budget suit.** Sur `critere1b` : **2** `ordre audio applique`, **tous deux `actif=true`**,
+**0** `actif=false` — deux PID distincts, donc les deux portent, et `audio_bps` suit chacun.
+Sur `critere2`, l'alternance `true`/`false` accompagne chaque bascule de focus.
+
+**⑤ — aucune régression mono-fenêtre**, avec témoin A/B :
+
+- sans `FENETRE_HWND` : `audio activé format="48000 Hz, 2 canaux, 32 bits, flottant"` — le **mix de
+  session**, pas un *process loopback* ;
+- avec `AUDIO=0` : **0** `audio activé`, et `son désactivé sur cet agent par AUDIO=0` ;
+- la variable retirée, même fenêtre, même commande : le son revient.
+
+### 2.4 La consignation n°2 de D6, vérifiée
+
+`fenetre{session=w-2}` apparaît sur **22** lignes du journal, y compris celles émises par les modules
+que le fil de fenêtre appelle (`agent::capteur::sommeil::parts`). Les traces du capteur sont
+désormais attribuables sans effort.
+
+## 3. Trois défauts que seule la recette pouvait trouver
+
+**Aucune revue de code ne pouvait voir ceux-là**, et deux d'entre eux visent la spécification de ce
+sous-bloc.
+
+1. **`scripts/run-agent.sh` ne transmettait pas `AUDIO`.** La tâche 9 a retiré le poseur du
+   superviseur (`lanceur.rs`) et promu `AUDIO=0` en interrupteur global « qu'un agent lancé à la main
+   doit pouvoir employer » — mais `run-agent.sh` **est** la façon dont on lance un agent à la main sur
+   cette VM, et rien ne l'y avait ajouté. L'implémenteur **et** son relecteur avaient vérifié la
+   propriété **en traçant le code** : le tracé était juste, la valeur ne pouvait simplement pas
+   atteindre le processus. Corrigé (`a891062`) et vérifié de bout en bout ci-dessus.
+2. **La recette d'entrée de D8, telle que la conception la prescrivait, rend 0 sur un journal brut.**
+   Les séquences ANSI de `tracing` séparent le nom du champ de sa valeur
+   (`[3mactif[0m[2m=[0mtrue`) : `grep 'actif=true'` ne trouve rien. Le `sed` de mise à plat est
+   **obligatoire**, pas facultatif.
+3. **Et ce même contrôle rend 0 sur toute session de moins de 30 s.** `compteurs audio` est périodique
+   (`REPORT_INTERVAL = 30 s`) : sur les sessions de la recette, il n'a **jamais** été émis. Un zéro
+   bénin, indiscernable du défaut que le contrôle existe pour révéler — le piège « un contrôle qui se
+   déclenche trop tôt ne contrôle rien », rejoué sur un contrôle écrit pour l'éviter.
+
+## 4. Ce que D7 n'établit PAS
+
+- **Aucun taux** : 2 exécutions du critère ①, 1 des critères ② ④ ⑤, 4 relevés au §1.
+- **Le critère ③ n'a pas été exercé** : l'audio d'une fenêtre **endormie** (au-delà des huit éveillées
+  du vivier de D5) n'a jamais été observé. Le chemin existe et est raisonné — le sommeil ne touche pas
+  `emet` —, mais **il n'a pas été vu tourner**. C'est la lacune la plus lourde de cette recette.
+- **Le plafond d'activations *process loopback* concurrentes reste inconnu.** Deux au plus ont
+  coexisté. La forme exacte de l'inférence que D3 a dû payer sur DXGI.
+- **Rien au-delà de deux fenêtres.**
+- **Rien des applications UWP**, dont le rendu audio peut ne pas vivre dans l'arbre du processus
+  propriétaire.
+- **Aucun jugement d'écoute** : la fréquence est mesurée, la qualité perçue ne l'est pas — même lacune
+  que `BPP_MIN` traîne depuis le chantier C.
+- **Rien de la latence**, rien de la durée (session la plus longue < 1 min), aucun redimensionnement,
+  aucun recouvrement, aucun déplacement de fenêtre, aucun clavier.
+- **Le plancher de 1 LSB du §1 n'a pas été confronté au DTX** : qu'un flux « muet » à ±1 LSB fasse ou
+  non retomber Opus à quelques octets par trame reste **une inférence, jamais mesurée**.
+- **Les trois couches inconnues le restent** : le plafond de 8 encodeurs, celui de 4 processus, et le
+  mécanisme de l'abandon du mutex DXGI.
