@@ -5,12 +5,18 @@ Instrument, écrit par la tâche 10 : `docs/superpowers/plans/journaux-multifene
 — **modifié par la correction de revue** (voir « Ce que la correction a changé »
 en fin de document) ; il ne l'a **pas** été pour l'exécution initiale.
 
-⚠️ **Ce document a été corrigé sur revue.** La première rédaction portait deux
-Critiques et quatre Importants — pour l'essentiel des affirmations qui
-dépassaient leur relevé, dans les deux sens (trop dites ou pas assez dites).
-Une seconde exécution (`REJOUER_2_ET_5=1`) a rejoué ② et ⑤ avec un instrument
-corrigé sur trois défauts. **Ce qui suit est le document corrigé** ; rien n'est
-laissé sous sa forme fautive.
+⚠️ **Ce document a été corrigé sur DEUX rondes de revue.** La première
+rédaction portait deux Critiques et quatre Importants — pour l'essentiel des
+affirmations qui dépassaient leur relevé, dans les deux sens (trop dites ou
+pas assez dites). Une seconde exécution (`REJOUER_2_ET_5=1`) a rejoué ② et ⑤
+avec un instrument corrigé sur trois défauts. **Une seconde ronde de revue,
+sur le document corrigé lui-même, a trouvé deux nouvelles casses** (une
+latence de réveil qui mêlait une mesure agent et un artefact d'échantillonnage
+du pilote ; une pièce d'appui — le bandeau du témoin — citée à l'envers) et
+une lacune de provenance (une pièce de préparation régénérée après coup,
+classée sans le dire) — aucune n'exigeant de nouvelle mesure. **Ce qui suit
+est le document deux fois corrigé** ; rien n'est laissé sous une forme
+fautive connue.
 
 Deux exécutions produisent les pièces de ce document :
 
@@ -46,7 +52,7 @@ s'arrête. **Les trois inconnues du brief restent donc entièrement ouvertes.**
 | ① | Plein écran Windows détecté et annoncé, à la bonne fenêtre seule | **CONFIRMÉ** — détection exclusive, symétrique (activation/restauration), sur la session dont l'identité a été vérifiée | 1 mesure + 1 corroboration |
 | ② | Le flux suit le viewport plein écran, la sortie garde son nom | **NON EXERCÉ** — zéro tentative de changement de mode, dans les deux exécutions, malgré un viewport qui atteint bien sa cible côté page | 2 |
 | ③ | Échap et Keyboard Lock | **NON MESURÉ** — décision actée en tête de tâche 10 | 0 |
-| ④ | Les voisines s'endorment par le chemin existant | **TENU** — sommeil en 2,2 s, réveil en 471 ms à 10,2 s selon l'exécution | 2 |
+| ④ | Les voisines s'endorment par le chemin existant | **TENU** — latences AGENT (ordre→transition) : sommeil 37 ms / 28 ms, réveil 471 ms / 119 ms selon l'exécution ; 2,2 s / 10,2 s ne sont PAS des latences produit, voir le corps du texte | 2 |
 | ⑤ | L'audio d'une endormie survit | **TENU** — dominante à la fréquence assignée, une fois la bonne session ciblée | 1 mesure corrigée (1 mesure initiale invalidée par une mauvaise identité) |
 
 ## Étape 0 : un blocage environnemental a d'abord empêché toute mesure
@@ -88,9 +94,15 @@ héritée du registre (2560×1440, confirmée), et la fait passer à 1280×720 p
 `largeur_relue=1280 hauteur_relue=720`, `cible_exacte_atteinte=true`. Ce n'est
 **pas** un changement de code — c'est l'exécution de l'outillage diagnostic
 déjà présent, au même titre que la purge des sorties orphelines déjà prescrite
-par le brief. Un contrôle de topologie neuf (`MULTIFENETRE_DXGI=1`) a confirmé
-l'état propre après coup — pièce :
+par le brief. Un contrôle de topologie (`MULTIFENETRE_DXGI=1`, même commande
+que celle employée au moment des faits) confirme l'état propre — pièce :
 `docs/superpowers/plans/journaux-multifenetres-d8/dxgi-controle-preparation.log`.
+⚠️ **Provenance de cette pièce, signalée en re-revue** : elle est horodatée
+**21:48:25**, c'est-à-dire produite en FIN de la ronde de correction de
+revue — après la recette ET après le rejeu, pas au moment de la préparation
+historique. Elle documente la MÊME vérification (topologie propre,
+`\\.\DISPLAY1` seule), pas l'exécution historique exacte du tout premier
+contrôle, qui n'a pas été capturée en fichier séparé sur le moment.
 
 **Piège opérationnel neuf, à consigner** : la première tentative de combiner
 `MULTIFENETRE_VDD_PURGE=1` et `MULTIFENETRE_MODE_SORTIE=1280x720` dans le même
@@ -117,18 +129,26 @@ ci-dessous pour ce que ce nombre signifie réellement — ce n'est **pas** ce qu
 la première rédaction en disait). Une session focalisée (`w-1`, une des deux
 préexistantes) à 1280×720, quatre non focalisées réduites à 1024×576.
 
-**Correction (Important 7)** : la réduction n'est **pas** causée par le
-« réseau » au sens propre — le bandeau « Image réduite par le réseau » est un
-**libellé d'interface**, pas un diagnostic de cause. Le journal porte **cinq**
+**Correction (Important 7, PUIS re-corrigée en re-revue — la pièce d'appui
+était inversée)** : la réduction n'est **pas** causée par le « réseau » au
+sens propre — le bandeau « Image réduite par le réseau » est un **libellé
+d'interface**, pas un diagnostic de cause. Le journal porte **cinq**
 `WARN … aucune estimation de bande passante reçue : l'adaptation reste
-indisponible`, et chaque session non focalisée porte un bandeau
-« adaptation indisponible ». La réduction observée (1280×720 → 1024×576) est
-celle de la **part de budget** attribuée par l'arbitrage D6
-(`agent/src/capteur/sommeil/parts.rs`) aux sessions non focalisées, pas une
-dégradation décidée par le contrôleur de congestion réseau (`Adaptation` reste
-`Indisponible` sur tout le palier, faute d'estimation). Les deux mécanismes
-partagent le même résultat visuel (une résolution plus basse), pas la même
-cause.
+indisponible`. **Correction de la pièce (elle était donnée à l'envers)** :
+c'est la session FOCALISÉE (`w:w-1`) qui porte le bandeau
+« 1280×720, 4.0 Mb/s — adaptation indisponible » — c'est elle qui sonde le
+lien et ne reçoit aucune estimation. Les **quatre** non focalisées portent
+toutes « Image réduite par le réseau — 1024×576, 2.0 Mb/s » (`recette-recette.json`,
+`phases.temoin.deltas`, champ `bandeau` de chaque session). La réduction
+observée sur les quatre non focalisées (1280×720 → 1024×576) reste celle de
+la **part de budget** attribuée par l'arbitrage D6
+(`agent/src/capteur/sommeil/parts.rs`), pas une dégradation décidée par le
+contrôleur de congestion réseau — c'est seulement la session focalisée dont
+l'`Adaptation` reste `Indisponible`, faute d'estimation, parce que c'est elle
+seule qui sonde le lien à pleine résolution. Les deux mécanismes (budget de
+part, contrôleur de congestion) coexistent sans se confondre ; le fond de la
+correction (« Image réduite par le réseau » est un libellé, pas une cause)
+tient toujours, seule l'attribution par session était fausse.
 
 Chiffres, focalisée : 84,71 i/s, 0,04 % jetées, 3,75 Mb/s. Non focalisées :
 81,9 à 84,5 i/s, 0,04 à 4,21 % jetées. **« Comportement conforme au régime
@@ -323,14 +343,32 @@ installé sur cet hôte (`which Xvfb` : introuvable). 0 exécution.
 **CORRIGÉ (Critique 1 de la revue) — le réveil ÉTAIT confirmé, et le pilote
 avait un défaut qui l'empêchait de le voir.**
 
-Masquage de la voisine par `document.hidden=true` : **sommeil confirmé en
-2,2 s** aux deux exécutions. Part de budget appliquée : 256 000 bps
-(`PART_DORMANTE_BPS`), `endormie=true`. Comportement conforme au contrat
-documenté depuis D5/D6.
+**Second correctif, sur cette même section (re-revue)** : la première
+correction publiait « sommeil en 2,2 s, réveil en 471 ms à 10,2 s selon
+l'exécution » comme si c'était un intervalle de latence produit. **Ce n'en
+était pas un** — 2,2 s et 10,2 s sont le temps mis par le PILOTE à confirmer
+le fait (`attendreLeFait` interroge le journal toutes les 2 s ; pour le
+réveil, le test lit la prochaine ligne `cadence du capteur`, dont la
+**période est de 10 s** — 10,2 s est un artefact d'échantillonnage, pas une
+latence, exactement le piège maison « un compteur de journal peut compter des
+LIGNES et non des ÉVÉNEMENTS »). Les latences RÉELLES sont celles de
+l'agent, ordre reçu → transition, et elles sont dans les pièces déjà
+versées :
 
-**Le réveil a bien eu lieu, 471 ms après l'ordre, et trois lignes le
-confirment dans la fenêtre de 30 s du run initial** — la première rédaction
-disait le contraire :
+| | Run initial (`agent-recette.log`, session `w-2`) | Rejeu (`agent-rejeu-2-5.log`, session `w-4`) |
+| --- | --- | --- |
+| Sommeil (ordre → `fenêtre endormie`) | **37 ms** (21:05:52.524 → 21:05:52.561, l. 614→621) | **28 ms** (21:41:36.534 → 21:41:36.562, l. 235→240) |
+| Réveil (ordre → `fenêtre réveillée`) | **471 ms** (21:05:56.244 → 21:05:56.716, l. 631→642, `duree_ms=454`) | **119 ms** (21:41:40.178 → 21:41:40.297, l. 249→258, `duree_ms=97`) |
+
+Masquage de la voisine par `document.hidden=true` : sommeil confirmé aux deux
+exécutions (37 ms et 28 ms d'après le journal agent — 2,2 s est le délai de
+confirmation du pilote, pas la latence). Part de budget appliquée :
+256 000 bps (`PART_DORMANTE_BPS`), `endormie=true`. Comportement conforme au
+contrat documenté depuis D5/D6.
+
+**Le réveil a bien eu lieu, 471 ms après l'ordre sur le run initial (pas
+10,2 s — voir le tableau), et trois lignes le confirment dans la fenêtre de
+30 s du run initial** — la première rédaction disait le contraire :
 
 ```
 21:05:56.244  contrôle reçu Visibility { visible: true }
@@ -355,13 +393,13 @@ la fonction même dont le commentaire se félicitait d'avoir déjà corrigé ce
 prédicat.** Remède : `sessionDeLigne(l)` seul, comme dans tous les autres
 parseurs du fichier.
 
-**Corroboré par le rejeu**, avec l'instrument corrigé : réveil confirmé en
-10,2 s cette fois (latence différente d'une exécution à l'autre — la
-temporisation de recadrage du cycle de sondage n'est pas fixe), les trois
-sessions présentes portant chacune une ligne `endormie=false` postérieure à
-l'ordre de réveil.
+**Corroboré par le rejeu**, avec l'instrument corrigé : réveil confirmé par
+le pilote en 10,2 s (délai de confirmation, voir ci-dessus — la latence
+AGENT réelle est de 119 ms, tableau ci-dessus), les trois sessions présentes
+portant chacune une ligne `endormie=false` postérieure à l'ordre de réveil.
 
-**2 exécutions, les deux moitiés (sommeil et réveil) tenues aux deux.**
+**2 exécutions, les deux moitiés (sommeil et réveil) tenues aux deux, sur les
+latences AGENT — jamais les délais de confirmation du pilote.**
 
 ## Critère ⑤ : TENU (une fois la bonne session ciblée)
 
@@ -377,18 +415,23 @@ fenêtre dont le contenu réel était inconnu.
 confirmaient déjà :**
 
 - **`kbps_audio` du témoin** (`recette-recette.json:47-92`) : `w-1` 128,8 ·
-  `w-2` 128,8 · `w-4` **0** · `w-6` **0** · `w-8` 128,8. Les deux fenêtres du
-  pilote qui portent réellement 410 et 520 Hz (`w-4`, `w-6`) **n'ont aucune
-  piste audio** ; les préexistantes (`w-1`, `w-2`) en ont une. C'est la
-  signature de l'arbitrage par groupe de PID déjà documenté par D7 —
-  observable, non exploitée par la première rédaction.
+  `w-2` 128,8 · `w-4` **0** · `w-6` **0** · `w-8` 128,8. **Cette pièce ne
+  soutient PAS proprement l'attribution « groupe de PID » que la première
+  correction en tirait** : `w-8` est ELLE AUSSI une fenêtre ouverte par le
+  pilote (fenêtre 3, hz=630) et porte pourtant 128,8 kbps d'audio, exactement
+  comme les deux préexistantes — la ligne nette « fenêtres du pilote sans
+  audio / préexistantes avec audio » ne survit pas à ce contre-exemple.
+  L'attribution à l'arbitrage par groupe de PID de D7 reste **plausible pour
+  `w-4`/`w-6` spécifiquement**, mais elle n'est plus présentée ici comme
+  acquise : `w-8` n'a pas d'explication versée dans ce document.
 - **Le seuil `audio_survit` du pilote ne peut quasiment pas échouer** : il
   compare le niveau à la fréquence assignée au **plancher de bruit**
-  (`pilote-recette-d8.mjs:1090`, valeur inchangée), pas à la dominante. Sur
-  le run initial, le niveau à 520 Hz (`-115 dB`) était 79 dB **sous** la
-  dominante mesurée (409 Hz, `-36 dB`) — indiscernable d'une fuite spectrale
-  au seuil employé. Le pilote donnait les deux nombres sans en tirer la
-  conclusion qui s'imposait.
+  (`pilote-recette-d8.mjs:1205-1206`), pas à la dominante — voir « Pièges
+  neufs » plus bas, où ce défaut d'instrument est maintenant consigné à la
+  même place que les autres. Sur le run initial, le niveau à 520 Hz
+  (`-115 dB`) était 79 dB **sous** la dominante mesurée (409 Hz, `-36 dB`) —
+  indiscernable d'une fuite spectrale au seuil employé. Le pilote donnait les
+  deux nombres sans en tirer la conclusion qui s'imposait.
 
 **Le rejeu, ciblant la session correctement résolue (`w-4`, la vraie fenêtre 2,
 hz=520), tranche sans ambiguïté :**
@@ -505,10 +548,20 @@ de contrôle) que la chaîne casse.
   l'exécution de préparation de cette tâche (`mode-sortie-1280x720-preparation.log`,
   cible 1280×720, atteinte exactement). **Une troisième pièce, invoquée nulle
   part par la première rédaction, porte le refus net d'un mode non annoncé**
-  (`mode-sortie-1728x1080.log`, tâche 3bis : cible 1728×1080, hors des neuf
-  modes annoncés, `verdict="P1 REFUSE"`) — c'est la preuve directe de la
-  conséquence sur les rapports d'aspect non-16:9 que le brief demande de
-  porter comme fait établi, absente de la première rédaction.
+  (`mode-sortie-1728x1080.log` — **CORRIGÉ (re-revue) : attribué à tort à la
+  tâche 3bis, c'est le commit `d5ce288` de la TÂCHE 9**
+  (`git log --diff-filter=A`, et `task-9-report.md` §B) : cible 1728×1080,
+  hors des neuf modes annoncés, `verdict="P1 REFUSE"`, `code=-2`
+  (`DISP_CHANGE_BADMODE`) — c'est la preuve directe de la conséquence sur les
+  rapports d'aspect non-16:9 que le brief demande de porter comme fait
+  établi, absente de la première rédaction. **Les neuf modes annoncés**
+  (`p1-mode-sortie.log`, `p1bis-mode-sortie.log`, `mode-sortie-1728x1080.log`,
+  identiques aux trois occasions) : 640×360, 800×600, 960×540, 1280×720,
+  1366×768, 1600×900, 1920×1080, 2560×1440, 3840×2160 — **huit en 16:9
+  exactement, un seul en 4:3 (800×600)**. Un client dont le viewport de plein
+  écran a un rapport d'aspect ni 16:9 ni 4:3 (16:10, 3:2 — les formats
+  d'ordinateurs portables les plus courants) n'a donc AUCUN mode dans cette
+  liste qui le serve : le refus net serait systématique.
 - **Le repli `NORESET`→`RESET` de la sonde P1 n'a jamais fait bouger une
   sortie** — sur les occasions valides ci-dessus, `CDS_UPDATEREGISTRY` seul a
   toujours suffi ; les deux combinaisons de repli restent non exercées.
@@ -563,6 +616,26 @@ de contrôle) que la chaîne casse.
   horodatage, produisant un faux positif de « fuite » si une autre bascule a
   eu lieu plus tôt sur la page lue. Découvert par le rejeu (①), non corrigé
   dans l'instrument.
+- **Le seuil `audio_survit` du pilote ne peut quasiment pas échouer**
+  (`pilote-recette-d8.mjs:1205-1206` :
+  `(niveaux[0].db ?? -1000) - (plancher_db ?? 0) >= 20`, avec
+  `plancher_db = -158` sur les mesures de ce sous-bloc) — il compare le
+  niveau à la fréquence assignée au PLANCHER de bruit, jamais à la
+  dominante. Le verdict ⑤ de ce document ne tient PAS grâce à ce seuil : il a
+  fallu le déplacer sur la dominante (`hz`/`db` du pic, comparée à la
+  fréquence assignée) pour que la mesure soit discriminante. Le seuil du
+  pilote reste sans valeur de détection et n'a pas été corrigé — ouvert.
+- **`verdict_partie_mesurable` (champ du JSON de ①, présent dans les DEUX
+  exécutions — `recette-recette.json` et `recette-rejeu-2-5.json`) n'est
+  mentionné NULLE PART dans ce document corrigé.** Il vaut `false` aux deux
+  runs (calculé sur `detection_agent && messages_navigateur_cible &&
+  fuite_vers_voisine.length === 0` — et `fuite_vers_voisine` porte le faux
+  positif du point précédent au rejeu). Un lecteur qui ouvrirait le JSON
+  seul, sans ce document, y lirait `false` là où le texte dit ① CONFIRMÉ :
+  le champ n'a pas été mis à jour pour refléter la lecture corrigée de la
+  fuite, et ce document ne le signale pas. Ouvert, à corriger au prochain
+  travail sur cet instrument (soit en bornant `fuite_vers_voisine` par
+  horodatage, soit en annotant le champ lui-même).
 - **`--ozone-override-screen-size` du Chrome hôte NE plafonne PAS
   silencieusement `Emulation.setDeviceMetricsOverride`** — hypothèse posée
   par la première rédaction sans preuve, RÉFUTÉE par mesure directe
