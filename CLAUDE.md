@@ -4710,8 +4710,12 @@ même genre, un `match` qu'aucun brief ne nommait :
     ouvre le cadrage sans passer par `CLAUDE.md` y lit encore le critère comme
     valide. **Décision de périmètre assumée** — un index durable ne se commite
     pas avec une spec —, **et donc dette, pas disparition.**
-    ✅ **FAIT** au commit suivant celui-ci ; si cette ligne se lit encore sans
-    son ✅, c'est que le second commit n'a pas eu lieu.
+    ✅ **FAIT le 5 août 2026, commit `2856f2a`** — le §4.1 porte désormais son
+    encadré : prémisse conservée, conclusion sur le premier signal réfutée,
+    `SHQueryUserNotificationState` écarté, et le signal survivant nommé.
+    ⚠️ *Cette ligne a d'abord été écrite au futur (« fait au commit suivant »)
+    dans un commit où le geste n'avait pas encore eu lieu — une affirmation
+    au-delà de son relevé, corrigée ici en nommant le hachage.*
 
 ---
 
