@@ -2070,6 +2070,8 @@ code d'erreur).
 | `SOURCE_TRACE=1` | ⚠️ **MORT DES DEUX CÔTÉS en multi-fenêtres** (constaté le 3 août 2026, sous-bloc D6). Les écrivains vivent dans `windows_source.rs` — `PRODUCED` **313**, `TICKS` **518**, `CAPTURED` **544** (ordre non positionnel : ne pas apparier à la liste `TICKS`/`CAPTURED`/`PRODUCED`) —, donc dans le **capteur** depuis D4 ; le lecteur unique est `demarrage.rs:127-129` (déplacé depuis `142-144` par les
 remaniements de D7), donc dans
 l'**enfant** ; et `main.rs:268` rend la main à `capteur::executer` avant que `demarrage::executer` ne soit atteint. La variable n'affiche donc que des **zéros** côté enfant, et les compteurs du capteur ne sont lus par **personne**. **Elle ne décrit plus que le chemin mono-fenêtre**, sans `CAPTEUR` ni `SUPERVISEUR`. ✅ **Les cinq numéros de ligne de cette case ont été REVÉRIFIÉS le 5 août 2026 (D8, tâche 12) et sont tous EXACTS** — `313`, `518`, `544`, `demarrage.rs:127-129`, `main.rs:268` : la mention « valeur non revérifiée pour le reste » est donc levée. ⚠️ **Le remède, lui, n'a PAS été appliqué** — il était consigné pour D7, D7 ne l'a pas fait, D8 non plus : rendre ces trois statiques **per-session** et les extraire vers `windows_source/telemetrie.rs` reste dû, et c'est ce qui rendrait à `windows_source.rs` la marge que D6 lui a prise |
+| `MULTIFENETRE_MODE_SORTIE=<L>x<H>` | **Sous-bloc D8** — la sonde **P1** (`agent/src/diagnostics/multifenetre.rs:169`) : crée une sortie virtuelle, relit sa taille **courante** par DXGI, choisit une cible parmi les modes annoncés **en excluant cette taille courante**, tente `ChangeDisplaySettingsExW`, et **juge sur le MOUVEMENT relu par DXGI, jamais sur une égalité** — la première version rendait `P1 RECU` sans que rien n'ait bougé, son critère ne pouvant pas échouer. Rend `P1 NON MESURABLE` si aucun mode ne diffère de la taille courante. Transmise par `scripts/run-agent.sh:77`. ⚠️ **C'est AUSSI le remède opérationnel au blocage produit par pollution du registre** : une sortie naît à la dernière taille laissée au registre, et un registre resté à 2560×1440 empêche toute fenêtre de s'attacher — `MULTIFENETRE_MODE_SORTIE=1280x720` le rétablit. ⚠️ **Un lancement à elle seule** : l'aiguillage retourne après la première sonde reconnue, un `MULTIFENETRE_VDD_PURGE=1` dans le même lancement l'annulerait en silence |
+| `PLEIN_ECRAN=0` | **Sous-bloc D8** — **variable de PRODUIT**, pas de banc. **Désarme le mécanisme ENTIER** : ni relecture du style (`capteur/fenetre.rs`), ni changement de mode de sortie (`windows_source/redimensionnement.rs`). ⚠️ **`=0` désactive ; une simple PRÉSENCE n'active pas** — même convention qu'`AUDIO`, `SUPERVISEUR` et `CAPTEUR`, et pour la même raison : tester `is_ok()` activerait le plein écran en écrivant `PLEIN_ECRAN=0` pour le couper. Lue dans le **capteur** seul (`capteur/plein_ecran.rs:78`), par `OnceLock` — l'enfant ne fait que relayer. Transmise par `scripts/run-agent.sh:34`. Traces de contrôle : `plein ecran DESARME (PLEIN_ECRAN=0) : …` au démarrage du capteur, et `redimensionnement ignoré : PLEIN_ECRAN=0 …` à chaque `resize`. ⚠️ **C'est la SEULE parade actuelle au défaut HiDPI ouvert** (voir « Sous-bloc D8 ») |
 
 ---
 
@@ -4325,7 +4327,7 @@ concerne quiconque relira le cadrage jeux** (§4.1 de
 Le §4.1 prescrit de détecter le plein écran par « comparaison de `GetWindowRect`
 avec le rect du moniteur ». **Depuis D1, chaque fenêtre est seule sur sa propre
 sortie virtuelle et l'occupe exactement**, et le superviseur le lui réimpose
-périodiquement (`superviseur/placement.rs`, `controler_le_placement`) :
+périodiquement (`controler_le_placement`, **`agent/src/superviseur/boucle/placement_periodique.rs:21`**) :
 « rect fenêtre == rect moniteur » est donc **l'état NOMINAL**, pas l'état plein
 écran.
 
@@ -4342,8 +4344,11 @@ quasi-totalité des jeux modernes emploient.
 
 ### Le verdict, avec le nombre d'exécutions dans chaque énoncé
 
-**Deux exécutions du produit en tout** : la recette complète (`recette`) et un
-rejeu ciblé de ② et ⑤ avec un instrument corrigé (`rejeu-2-5`). Binaire mesuré :
+**Deux exécutions de RECETTE** : la recette complète (`recette`) et un
+rejeu ciblé de ② et ⑤ avec un instrument corrigé (`rejeu-2-5`). ⚠️ **Le
+sous-bloc en compte TROIS au total** — la troisième est le run de **P0**, la
+mesure de F1, dont le verdict vit dans la section D7 (c'est là qu'on va chercher
+F1) et **une seule exécution** également. Binaire mesuré :
 commit `7032b01`, `agent.exe` **9 248 256 octets**, identique aux deux
 exécutions — seul le pilote a été corrigé entre elles. **Aucun taux n'est
 revendiqué nulle part.**
@@ -4384,6 +4389,10 @@ brief posait comme risque n°1 sont donc **exactement aussi ouvertes qu'avant** 
    LA DUPLICATION EST OUVERTE ?** **NON TRANCHÉE.** La sonde P1 n'ouvre **jamais**
    de `DuplicateOutput` — c'est l'écart banc/produit, et c'est le cas du produit.
    **C'est le premier travail de toute recette suivante.**
+   ⚠️ **Je la qualifie d'ÉLIMINATOIRE, et ce mot est de moi** : ni la conception
+   ni le brief ne le portent. Il se dérive du fait que les deux autres inconnues
+   sont **sans objet tant que celle-ci n'est pas tranchée**, et que ② ne peut pas
+   être exercé sans elle — c'est un durcissement raisonné, pas une transcription.
 2. **Combien de pertes d'accès `0x887a0026` un changement de mode inflige-t-il
    aux voisines ?** **SANS OBJET** : `pertes_acces_voisines: []` reflète
    l'absence de toute tentative, **pas** l'absence de pertes. Les pertes relevées
@@ -4426,7 +4435,10 @@ occasions où ils ont été énumérés : **huit en 16:9 exactement, un seul en 
 courants — en plein écran produit une taille hors liste, refusée net, et
 n'obtient AUCUN changement de résolution.** Ce n'est pas un cas limite : c'est
 le cas **nominal** pour ces machines. Et le refus coûte **~3 s de gel du fil de
-fenêtre à chaque redimensionnement** (les deux tentatives de la sonde).
+fenêtre à chaque redimensionnement** — c'est le budget entier de l'unique
+combinaison de drapeaux que le **code de production** tente. *(Ne pas imputer ce
+coût aux « deux tentatives de la sonde » : la sonde P1 en enchaîne deux, le
+produit une seule, et c'est le chemin du produit qui est décrit ici.)*
 
 ### ⚠️ Le défaut HiDPI, OUVERT côté client, et structurellement invisible à ce montage
 
@@ -4515,11 +4527,11 @@ l'avait déjà écrit après D6, et l'a repayé ici.**
 
 | Étage | Fichier | Nature |
 | --- | --- | --- |
-| le prédicat | `agent/src/capteur/plein_ecran.rs` (**195**) | **pur, aucun `cfg`**, 8 tests d'hôte. Seule `GetWindowLongPtrW` est `#[cfg(windows)]` |
+| le prédicat | `agent/src/capteur/plein_ecran.rs` (**195**) | **pur, aucun `cfg`**, **9** tests d'hôte (`cargo test -p agent capteur::plein_ecran` → `9 passed`). Seule `GetWindowLongPtrW` est `#[cfg(windows)]` |
 | l'état de référence | idem — `SuiviBordure` | **l'état lu à l'attache fait référence, on n'annonce que les CHANGEMENTS** : une application née sans bordure n'annonce rien |
 | la lecture | `agent/src/capteur/fenetre.rs` (**470**) | sur le fil de fenêtre, bridée à `PERIODE_STYLE = 250 ms`, **jamais à l'image**. Constante **propre** à ce mécanisme — ne pas la coupler à `PERIODE_REARBITRAGE` |
 | le message | `capteur/protocole.rs` (**369**) → `proto/src/control.rs` (**419**) | `DepuisCapteur::PleinEcran { actif }` → `AgentControl::Fullscreen { active }`, le trajet exact de `Sommeil` |
-| le changement de mode | `agent/src/windows_source/redimensionnement/mode_sortie.rs` (**427**) | `ChangeDisplaySettingsExW`, `borner_a_la_taille_max`, `TAILLE_MAX_SORTIE = (1920, 1080)` |
+| le changement de mode | `agent/src/windows_source/redimensionnement/mode_sortie.rs` (**427**) | `ChangeDisplaySettingsExW` seul. ⚠️ **`borner_a_la_taille_max` et `TAILLE_MAX_SORTIE = (1920, 1080)` ne sont PAS ici** : ils vivent dans **`agent/src/windows_source/sortie.rs:99` et `:113`** |
 | le client | `client/src/fullscreen.ts` (**174**) | **armement, pas action** : on entre au premier `pointerdown`/`keydown`. `Fullscreen { active: false }` sort immédiatement |
 
 **Trois faits de conception qui survivront au code :**
@@ -4562,7 +4574,8 @@ même genre, un `match` qu'aucun brief ne nommait :
   consentement d'installer `Xvfb` + `xdotool` avait été DONNÉ par le
   propriétaire de la machine, et l'installation n'a pas eu lieu** (`which Xvfb` :
   introuvable). Si elle se fait un jour, **les mesures qui en sortiront ne se
-  compareront à AUCUNE des huit campagnes précédentes.**
+  compareront à AUCUNE campagne antérieure** — la conception le dit sans compte,
+  et je n'en ajoute pas.
 - **`TAILLE_MAX_SORTIE = (1920, 1080)` n'est PAS calibrée**, et **aucun jugement
   visuel n'a été porté** — la lacune exacte que `BPP_MIN` traîne depuis le
   chantier C volet 1, et que D6 traîne sur `FACTEUR_FOCUS` et
@@ -4687,6 +4700,18 @@ même genre, un `match` qu'aucun brief ne nommait :
    et `window.__pleinEcran` non borné dans le temps.
 10. **Le fait que 3 sessions sur 5 n'aient jamais émis leur `Resize` initial de
     connexion**, sans explication versée.
+11. ⛔ **ANNOTER LE §4.1 DU CADRAGE JEUX LUI-MÊME** —
+    `docs/superpowers/specs/2026-07-28-support-jeux-design.md`, l. **266-273**.
+    Il propose toujours ses « trois signaux possibles, à arbitrer à
+    l'implémentation », **le premier étant la comparaison `GetWindowRect` /
+    rect du moniteur, sans aucune marque**. Une implémentation fidèle à cette
+    page annoncerait le plein écran **en permanence, pour toutes les fenêtres**.
+    ⚠️ **La réfutation n'existe pour l'instant QUE dans ce fichier-ci** : qui
+    ouvre le cadrage sans passer par `CLAUDE.md` y lit encore le critère comme
+    valide. **Décision de périmètre assumée** — un index durable ne se commite
+    pas avec une spec —, **et donc dette, pas disparition.**
+    ✅ **FAIT** au commit suivant celui-ci ; si cette ligne se lit encore sans
+    son ✅, c'est que le second commit n'a pas eu lieu.
 
 ---
 
