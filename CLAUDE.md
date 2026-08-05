@@ -4379,7 +4379,7 @@ période **10 s**). C'est le piège maison « un compteur de journal peut compte
 des LIGNES et non des ÉVÉNEMENTS », rejoué sur une latence. **Facteur ~86 entre
 le chiffre faux et le vrai.**
 
-### 🔴 Les trois inconnues restent ENTIÈRES, et la première est éliminatoire
+### 🔴 Les trois inconnues restent ENTIÈRES, et la première commande les deux autres
 
 **Aucun changement de mode n'a été sollicité de toute la recette**
 (`mode_sortie_demande=0` aux **deux** exécutions). Les trois inconnues que le
@@ -4684,9 +4684,12 @@ même genre, un `match` qu'aucun brief ne nommait :
 
 **Et les legs propres à D8 :**
 
-6. ⛔ **Les trois inconnues**, dont la première est éliminatoire : **le pilote
-   accepte-t-il un changement de mode sur une sortie DONT LA DUPLICATION EST
-   OUVERTE ?** Rien ne l'établit à ce jour, et P1 n'ouvre jamais de duplication.
+6. ⛔ **Les trois inconnues**, dont la première commande les deux autres
+   (« éliminatoire » est un qualificatif de cet index, **absent de la conception
+   et du brief** — voir l'annotation du § « Les trois inconnues » plus haut) :
+   **le pilote accepte-t-il un changement de mode sur une sortie DONT LA
+   DUPLICATION EST OUVERTE ?** Rien ne l'établit à ce jour, et P1 n'ouvre jamais
+   de duplication.
    Les deux autres — pertes de mutex infligées aux voisines, conservation du nom
    `\\.\DISPLAYn` — sont sans objet tant que celle-ci n'est pas tranchée.
 7. **Le défaut HiDPI, ouvert côté client par décision motivée** : un client à
