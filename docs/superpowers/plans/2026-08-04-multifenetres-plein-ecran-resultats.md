@@ -1,40 +1,53 @@
 # Sous-bloc D8 — la recette du plein écran (5 août 2026)
 
 Cahier des charges : `.superpowers/sdd/2026-08-04-multifenetres-plein-ecran/task-11-brief.md`.
-Instrument, écrit par la tâche 10, non modifié par cette tâche :
-`docs/superpowers/plans/journaux-multifenetres-d8/instrument/pilote-recette-d8.mjs`.
-Journal complet de l'unique exécution retenue :
-`docs/superpowers/plans/journaux-multifenetres-d8/critere-recette.log` (pilote,
-mis à plat, sans séquences ANSI) et son pendant côté VM,
-`docs/superpowers/plans/journaux-multifenetres-d8/agent-recette.log` (copié
-après la fermeture du navigateur, comme l'exige l'étape 4 du brief). Relevé
-structuré : `docs/superpowers/plans/journaux-multifenetres-d8/recette-recette.json`.
+Instrument, écrit par la tâche 10 : `docs/superpowers/plans/journaux-multifenetres-d8/instrument/pilote-recette-d8.mjs`
+— **modifié par la correction de revue** (voir « Ce que la correction a changé »
+en fin de document) ; il ne l'a **pas** été pour l'exécution initiale.
 
-Binaire mesuré : commit `7032b01`, `agent.exe` 9 248 256 octets, horodaté
-4 août 17:59 — 4 minutes après le commit (17:55:37), `git status --porcelain`
-vide sur `agent/ scripts/ proto/ client/ signaling/` au moment de la mesure.
-**Aucune recompilation n'a eu lieu pour cette tâche** : le binaire déjà présent
-sur la VM était à jour.
+⚠️ **Ce document a été corrigé sur revue.** La première rédaction portait deux
+Critiques et quatre Importants — pour l'essentiel des affirmations qui
+dépassaient leur relevé, dans les deux sens (trop dites ou pas assez dites).
+Une seconde exécution (`REJOUER_2_ET_5=1`) a rejoué ② et ⑤ avec un instrument
+corrigé sur trois défauts. **Ce qui suit est le document corrigé** ; rien n'est
+laissé sous sa forme fautive.
+
+Deux exécutions produisent les pièces de ce document :
+
+| Étiquette | Rôle | Journal pilote | Journal agent | JSON |
+| --- | --- | --- | --- | --- |
+| `recette` | exécution complète (témoin, ①+②, ④+⑤) | `critere-recette.log` | `agent-recette.log` | `recette-recette.json` |
+| `rejeu-2-5` | rejeu de ② et ⑤ avec l'instrument corrigé | `critere-rejeu-2-5.log` | `agent-rejeu-2-5.log` | `recette-rejeu-2-5.json` |
+
+Binaire agent mesuré (inchangé entre les deux exécutions — seul le pilote a été
+corrigé) : commit `7032b01`, `agent.exe` 9 248 256 octets, horodaté 4 août
+17:59, 4 minutes après le commit, `git status --porcelain` vide sur
+`agent/ scripts/ proto/ client/ signaling/` au moment des deux mesures.
+**Aucune recompilation n'a eu lieu** : le binaire déjà présent sur la VM était
+à jour pour les deux exécutions.
 
 ## Le verdict, en une phrase
 
-**Une exécution complète a été menée à son terme, après la levée d'un blocage
-environnemental qui empêchait toute fenêtre de s'attacher.** Le témoin de
-non-régression est TENU. Le critère ④ (sommeil de la voisine) est TENU sur son
-mécanisme central. Les critères ①, ② et ⑤ ne sont **pas confirmés**, chacun pour
-une raison distincte et bien identifiée — aucune des trois n'est un « refus »
-franc, mais aucune n'établit non plus ce que le critère demandait. **Une seule
-exécution complète a été jouée : tout ce qui suit porte ce nombre, jamais un
-taux.**
+**Deux exécutions.** ④ est TENU sur ses deux moitiés (sommeil et réveil). ①
+est confirmé sur son mécanisme (détection exclusive, à la bonne session, dans
+les deux sens) — l'identité de la session qui portait la fenêtre du pilote
+était mal résolue par le pilote, pas par l'agent. ⑤, rejoué avec une
+identité correctement résolue, reçoit désormais la tonalité qui lui est
+réellement assignée : la mesure initiale portait sur la mauvaise fenêtre. ②
+reste **NON EXERCÉ** après les deux exécutions — mais la seconde, instrumentée,
+établit que ce n'est **pas** faute du viewport CDP de prendre effet
+(`window.innerWidth`/`innerHeight` atteignent la cible exactement) : c'est en
+aval, entre ce fait et l'émission d'un message `Resize`, que la chaîne
+s'arrête. **Les trois inconnues du brief restent donc entièrement ouvertes.**
 
 | # | Critère | Verdict | Exécutions |
 | --- | --- | --- | --- |
 | témoin | Non-régression (aucun plein écran) | **TENU** | 1 |
-| ① | Plein écran Windows détecté et annoncé, et à la bonne fenêtre seule | **NON CONFIRMÉ** — aucune détection sur la cible, une fuite vers une voisine | 1 |
-| ② | Le flux suit le viewport plein écran, la sortie garde son nom | **NON EXERCÉ** — zéro tentative de changement de mode enregistrée | 1 |
-| ③ | Échap et Keyboard Lock | **NON MESURÉ** — décision actée en tête de tâche 10 (voir plus bas) | 0 |
-| ④ | Les voisines s'endorment par le chemin existant | **TENU** — endormissement confirmé en 2,2 s | 1 |
-| ⑤ | L'audio d'une endormie survit | **MESURÉ, avec réserve** — le seuil brut passe, le contenu fréquentiel est douteux | 1 |
+| ① | Plein écran Windows détecté et annoncé, à la bonne fenêtre seule | **CONFIRMÉ** — détection exclusive, symétrique (activation/restauration), sur la session dont l'identité a été vérifiée | 1 mesure + 1 corroboration |
+| ② | Le flux suit le viewport plein écran, la sortie garde son nom | **NON EXERCÉ** — zéro tentative de changement de mode, dans les deux exécutions, malgré un viewport qui atteint bien sa cible côté page | 2 |
+| ③ | Échap et Keyboard Lock | **NON MESURÉ** — décision actée en tête de tâche 10 | 0 |
+| ④ | Les voisines s'endorment par le chemin existant | **TENU** — sommeil en 2,2 s, réveil en 471 ms à 10,2 s selon l'exécution | 2 |
+| ⑤ | L'audio d'une endormie survit | **TENU** — dominante à la fréquence assignée, une fois la bonne session ciblée | 1 mesure corrigée (1 mesure initiale invalidée par une mauvaise identité) |
 
 ## Étape 0 : un blocage environnemental a d'abord empêché toute mesure
 
@@ -44,279 +57,469 @@ fait déjà établi à un niveau plus grave que documenté.**
 
 Après purge des sorties orphelines (0 orpheline trouvée, topologie propre —
 `\\.\DISPLAY1` seule, physique) et lancement du superviseur, **aucune des trois
-fenêtres n'a pu s'attacher** : le superviseur a créé et détruit en boucle des
-sorties virtuelles à 1280×720 pour une dizaine de noms de session différents en
-moins de 6 secondes, chacune refusée par
-`sortie créée mais introuvable dans la topologie DXGI` — la sortie apparaissait
-bien dans la topologie, mais à **2560×1440**, jamais à 1280×720 demandé.
+fenêtres n'a pu s'attacher** lors de la préparation de la première exécution :
+le superviseur a créé et détruit en boucle des sorties virtuelles à 1280×720
+pour une dizaine de noms de session différents en moins de 6 secondes, chacune
+refusée par `sortie créée mais introuvable dans la topologie DXGI` — la sortie
+apparaissait bien dans la topologie, mais à **2560×1440**, jamais à 1280×720
+demandé (pièce : sortie de la commande `MULTIFENETRE_VDD_PURGE=1
+scripts/run-agent.sh` suivie du lancement du superviseur, capturées dans le
+terminal de préparation — non versées en fichier séparé, voir le manque
+signalé en revue et corrigé ci-dessous).
 
 C'est exactement le défaut F1 déjà documenté en tête de
 `agent/src/diagnostics/multifenetre/mode_sortie.rs` (« persistance probable au
 registre d'un `CDS_UPDATEREGISTRY` d'une exécution antérieure ») — mais ici il
-ne biaisait pas une sonde, **il bloquait le produit entier** : les mesures P1/P1bis
-de la tâche 3/3bis (`mode-sortie-1728x1080.log`, `p1bis-mode-sortie.log`) avaient
-laissé le registre SudoVDA à 2560×1440 pour le GUID de sortie virtuelle unique
-(`9C4A1F6E-2B73-4D51-9E08-677541430001`), et **le code de production**
-(`superviseur/boucle.rs`) exige une correspondance exacte avec la taille
-demandée — sans le repli dynamique que P1 s'était donné pour se prémunir de ce
-même défaut.
+ne biaisait pas une sonde, **il bloquait le produit entier** : les mesures
+antérieures avaient laissé le registre SudoVDA à 2560×1440 pour le GUID de
+sortie virtuelle unique (`9C4A1F6E-2B73-4D51-9E08-677541430001`), et **le code
+de production** (`superviseur/boucle.rs`) exige une correspondance exacte avec
+la taille demandée — sans le repli dynamique que P1 s'était donné pour se
+prémunir de ce même défaut.
 
 **Remède appliqué : la sonde P1 elle-même**
 (`MULTIFENETRE_MODE_SORTIE=1280x720`, invocation séparée — elle a son propre
-aiguillage et sort après un seul mode), qui crée une sortie, lit la taille
+aiguillage et sort après une seule mesure), qui crée une sortie, lit la taille
 héritée du registre (2560×1440, confirmée), et la fait passer à 1280×720 par
-`CDS_UPDATEREGISTRY` (verdict "P1 RECU", `code_brut_dernier_essai=0`,
-mouvement observé et confirmé par relecture DXGI). Ce n'est **pas** un
-changement de code — c'est l'exécution de l'outillage diagnostic déjà présent,
-au même titre que la purge des sorties orphelines déjà prescrite par le brief.
-Un contrôle de topologie neuf (`MULTIFENETRE_DXGI=1`) a confirmé l'état propre
-après coup.
+`CDS_UPDATEREGISTRY` seul. **Pièce versée cette fois** :
+`docs/superpowers/plans/journaux-multifenetres-d8/mode-sortie-1280x720-preparation.log`
+(copie de `agent.log` juste après cette invocation) — verdict "P1 RECU",
+`largeur_avant_tentative=2560 hauteur_avant_tentative=1440`,
+`largeur_relue=1280 hauteur_relue=720`, `cible_exacte_atteinte=true`. Ce n'est
+**pas** un changement de code — c'est l'exécution de l'outillage diagnostic
+déjà présent, au même titre que la purge des sorties orphelines déjà prescrite
+par le brief. Un contrôle de topologie neuf (`MULTIFENETRE_DXGI=1`) a confirmé
+l'état propre après coup — pièce :
+`docs/superpowers/plans/journaux-multifenetres-d8/dxgi-controle-preparation.log`.
 
 **Piège opérationnel neuf, à consigner** : la première tentative de combiner
 `MULTIFENETRE_VDD_PURGE=1` et `MULTIFENETRE_MODE_SORTIE=1280x720` dans le même
 lancement n'a rien fait pour la seconde variable — l'aiguillage de
 `agent/src/diagnostics/multifenetre.rs` retourne après la **première** sonde
 reconnue (chaque branche fait `return Ok(true)`), il ne les enchaîne pas.
-**Chaque sonde doit être son propre lancement.** Second piège, plus coûteux :
-un premier essai de correction a été silencieusement sans effet parce que
-**deux processus `agent` de la tentative de recette précédente (échouée) étaient
-encore vivants** — `Get-Process agent` en montrait déjà zéro juste avant le
-lancement de la recette elle-même, mais celle-ci avait relancé un superviseur
-qui n'a jamais été arrêté après l'échec (`ERREUR FATALE`, aucun nettoyage côté
-VM dans le pilote). Résultat observé : le fichier `agent.log` restait identique
-octet pour octet après un second `run-agent.sh`, parce que le nouveau
-`StreamWriter` ne pouvait pas ouvrir le fichier déjà tenu par l'ancien
-processus. **`Get-Process agent` doit être revérifié après CHAQUE tentative
-échouée, pas seulement avant la première.**
+**Chaque sonde doit être son propre lancement.** Second piège, plus coûteux,
+rencontré **trois fois sur les trois occasions** où une exécution a suivi une
+tentative précédente sur la même VM (préparation de la première exécution,
+puis avant et après le rejeu) : un pilote ou une sonde qui laisse un
+superviseur vivant fait échouer **silencieusement** le lancement suivant — le
+nouveau `StreamWriter` ne peut pas ouvrir `agent.log` déjà tenu par l'ancien
+processus, et la copie relue est celle, périmée, de la tentative précédente.
+**`Get-Process agent` doit être revérifié après CHAQUE tentative, précédente ou
+échouée — pas seulement avant la toute première.** C'est ce constat répété qui
+a motivé le remède B2 ci-dessous (purge automatique en tête de pilote, plutôt
+que confiée à l'opérateur).
 
 ## Le témoin de non-régression : TENU
 
 Palier de 60 s, 3 fenêtres réellement ouvertes menant à **5 sessions
-détectées** (voir plus bas), une focalisée (w-1) à 1280×720, quatre non
-focalisées réduites à 1024×576 par l'adaptation réseau (« Image réduite par le
-réseau »). Comportement conforme au régime déjà documenté pour D6/D7 : la
-focalisée tient son plein débit (84,71 i/s, 0,04 % jetées, 3,75 Mb/s), les
-non-focalisées sont cadencées de façon comparable (81,9 à 84,5 i/s, 0,04 à
-4,21 % jetées) sans qu'aucune ne meure ni ne décroche. VM vivante après la
-phase (`virsh="en cours d'exécution"`, `acces_partage=OUI`). **1 exécution.**
+détectées** lors de la première exécution (voir « Fenêtres préexistantes »
+ci-dessous pour ce que ce nombre signifie réellement — ce n'est **pas** ce que
+la première rédaction en disait). Une session focalisée (`w-1`, une des deux
+préexistantes) à 1280×720, quatre non focalisées réduites à 1024×576.
 
-## Une inconnue neuve, non prévue par le brief : 5 sessions pour 3 fenêtres ouvertes
+**Correction (Important 7)** : la réduction n'est **pas** causée par le
+« réseau » au sens propre — le bandeau « Image réduite par le réseau » est un
+**libellé d'interface**, pas un diagnostic de cause. Le journal porte **cinq**
+`WARN … aucune estimation de bande passante reçue : l'adaptation reste
+indisponible`, et chaque session non focalisée porte un bandeau
+« adaptation indisponible ». La réduction observée (1280×720 → 1024×576) est
+celle de la **part de budget** attribuée par l'arbitrage D6
+(`agent/src/capteur/sommeil/parts.rs`) aux sessions non focalisées, pas une
+dégradation décidée par le contrôleur de congestion réseau (`Adaptation` reste
+`Indisponible` sur tout le palier, faute d'estimation). Les deux mécanismes
+partagent le même résultat visuel (une résolution plus basse), pas la même
+cause.
 
-**Fait à consigner avant les critères eux-mêmes, parce qu'il conditionne la
-lecture de ①, ② et ⑤.** Le pilote a ouvert exactement 3 fenêtres
-(`ouvrirFenetre(1)`, `(2)`, `(3)`, marqueurs `chrome-d8-recette-{1,2,3}`,
-fréquences 410/520/630 Hz). Le superviseur a détecté et attaché **5 sessions
-distinctes** : `w-1, w-2, w-4, w-6, w-8` (`enfant_lancé=5`,
-`attachee_capteur=5`). Ce nombre est un **fait relevé directement dans le
-journal** (`enfant lancé session=… pid=… sortie=\\.\DISPLAYn` × 5), pas une
-extrapolation.
+Chiffres, focalisée : 84,71 i/s, 0,04 % jetées, 3,75 Mb/s. Non focalisées :
+81,9 à 84,5 i/s, 0,04 à 4,21 % jetées. **« Comportement conforme au régime
+documenté pour D6/D7 » est RETIRÉ** (Important 7) : aucun point de comparaison
+n'a été nommé (D6 publie des chiffres à N=8, D7 n'a pas de rang comparable à
+N=3/5) — un « TENU » ne doit pas s'appuyer sur une référence non citée. Le
+verdict TENU repose seulement sur l'absence de régression observable :
+aucune session n'est morte, aucune n'a décroché, aucune erreur. VM vivante
+après la phase. **1 exécution, non rejouée** (le témoin ne dépend pas de
+l'identité résolue par fenêtre — n'importe quelle session convient pour juger
+« une focalisée / les autres réduites »).
 
-C'est le même phénomène de « fenêtre fantôme » déjà documenté (Paint ouvre deux
-fenêtres éligibles en D2, un Bloc-notes fait avancer le compteur de deux en D4)
-— **une seule fenêtre navigateur `--app` peut donc produire plus d'une entrée
-détectable côté superviseur.** Ce qui n'était PAS établi jusqu'ici : la
-correspondance entre l'ORDRE de lancement du script (`n=1,2,3`, donc les
-fréquences 410/520/630 assignées par index de boucle) et l'ordre réel
-d'attachement (`w-1, w-2, w-4, w-6, w-8`) **n'a aucune raison d'être fidèle**
-dès qu'un doublon fantôme s'intercale. Le pilote assigne `cible = noms[0]`
-(donc `w-1`) et `voisine = noms[1]` (donc `w-2`) en supposant cette fidélité —
-supposition **non vérifiée par ce pilote**, et les deux anomalies ci-dessous
-(①, ⑤) sont cohérentes avec sa mise en défaut, **sans que cela soit prouvé**
-par la seule exécution menée.
+## Fenêtres préexistantes : ce que « 5 sessions pour 3 fenêtres » signifiait réellement
 
-## Critère ① : NON CONFIRMÉ
+**CORRIGÉ EN TOTALITÉ (Critique 2 de la revue).** La première rédaction
+attribuait ce nombre au phénomène de « fenêtre fantôme » (Paint, Bloc-notes) —
+**c'est l'explication inverse de ce que les pièces disent, et le mauvais
+précédent était invoqué.**
+
+Les faits, relevés directement :
+
+| Fait | Pièce |
+| --- | --- |
+| Deux sorties virtuelles créées et deux enfants lancés (`w-2`, `w-1`) à 21:01:54,88 / 21:01:55,03 | `agent-recette.log:24-27` |
+| Première fenêtre OUVERTE PAR LE PILOTE à 21:01:57,20 | `critere-recette.log:16` |
+| Ouverture 1 (21:01:57,20) → enfant `w-4` lancé à 21:01:58,55 | `agent-recette.log:98` |
+| Ouverture 2 (21:01:59,83) → enfant `w-6` lancé à 21:02:01,36 | `agent-recette.log:139` |
+| Ouverture 3 (21:02:02,60) → enfant `w-8` lancé à 21:02:04,50 | `agent-recette.log:222` |
+
+**Chaque fenêtre ouverte PAR le pilote a produit EXACTEMENT une session
+neuve, dans l'ordre.** `w-1` et `w-2` existaient déjà **2,2 secondes avant** la
+première ouverture du pilote : ce ne sont pas des doublons produits par une
+fenêtre qui se multiplie, ce sont **deux fenêtres éligibles préexistantes** —
+très vraisemblablement les rescapées, jamais fermées, d'une tentative
+antérieure (le pilote ne ferme que son Chrome hôte dans son `finally`, jamais
+les fenêtres qu'il ouvre côté VM). Le journal de la première exécution
+annonçait « ÉTAPE 0 : VM sans fenêtre éligible » **sans jamais le vérifier.**
+
+**Conséquence directe sur ① et ⑤** : le pilote assigne `cible = noms[0]` (donc
+`w-1`) et `voisine = noms[1]` (donc `w-2`) en supposant que ce sont les deux
+premières fenêtres QU'IL a ouvertes. C'est faux dans les deux cas : `w-1` et
+`w-2` sont les rescapées, et la vraie fenêtre 1 du pilote (marqueur
+`chrome-d8-recette-1`, hz 410) est en réalité la session **`w-4`** — voir ①
+ci-dessous, qui l'établit par quatre faits indépendants, puis le rejeu qui le
+confirme par résolution directe.
+
+**Remède implémenté (B2)** : `purgerFenetresVMRescapees()` — tue tout
+`chrome.exe` sur la VM et relit le compte (jamais ne le suppose) avant de
+lancer le superviseur. Sur le rejeu, elle rapporte
+`{"agents_restants":0,"chrome_restants":0}` avant lancement, et le superviseur
+détecte alors **exactement 3 sessions pour 3 fenêtres** (`w-2, w-4, w-6`, une
+par ouverture, dans l'ordre) — la correspondance qu'on aurait naïvement
+supposée la première fois se vérifie effectivement une fois la VM
+réellement propre. **Remède complémentaire (B3), volontairement redondant**
+avec B2 : rien ne prouve qu'un doublon ne puisse survenir malgré un nettoyage
+préalable — voir « Résolution d'identité » plus bas.
+
+## Critère ① : CONFIRMÉ (le mécanisme, une fois la bonne session ciblée)
+
+**CORRIGÉ (Critique 3 de la revue) — le mot « fuite » est retiré : il impute au
+produit un défaut qu'aucune pièce ne montre.** Sur tout le run initial, il y a
+**exactement deux** lignes `plein ecran de la fenetre Windows` — toutes deux
+`session=w-4`, une `actif=true`, une `actif=false`. **Annonce unique, exclusive
+et symétrique.** Aucune autre session n'a jamais rien reçu.
 
 **La bascule de style Windows a réellement eu lieu, confirmée par relecture
-directe.** `togglerStyleFenetre` relit le style par `GetWindowLongPtrW` avant
-et après (jamais le seul code de retour de l'appel, doctrine déjà établie) :
-`avant=382664704` (`WS_CAPTION`/`WS_THICKFRAME` présents),
-`après=369819648` (les deux bits retirés) — **la fenêtre Windows ciblée
-(marqueur `chrome-d8-recette-1`) est passée sans bordure pour de vrai.**
+directe** (`GetWindowLongPtrW` avant/après, jamais le seul code de retour) :
+`avant=382664704` (bordure présente), `après=369819648` (bordure retirée), sur
+la fenêtre marquée `chrome-d8-recette-1`.
 
-**Mais l'agent n'a jamais annoncé cette bascule pour la session cible.**
-`détection_agent` = `null` : aucune ligne `plein ecran de la fenetre Windows
-session=w-1` en 30 s. Le message de contrôle attendu côté navigateur n'est donc
-jamais arrivé non plus (`messages_navigateur_cible: null`).
+**Que `w-4` — et non `w-1` — soit la session qui porte cette fenêtre repose sur
+QUATRE faits indépendants, pas sur une coïncidence unique :**
 
-**Et une VOISINE a reçu le message que la cible attendait.** `w:w-4` a bien
-reçu `{"type":"fullscreen","active":true}` sur son canal de contrôle pendant
-la fenêtre de mesure (`fuite_vers_voisine: ["w:w-4"]`). Relevé direct dans le
-journal agent, les DEUX seules lignes `plein ecran de la fenetre Windows` de
-**tout le run** portent `session=w-4` (une `actif=true` à 21:03:41.971Z, une
-`actif=false` à 21:05:24.604Z) — jamais `session=w-1`.
+1. `w-1` et `w-2` ne PEUVENT PAS être des fenêtres du pilote — c'est un fait
+   d'horodatage (section précédente), pas une lecture.
+2. Chaque ouverture du pilote ajoute EXACTEMENT une session, dans l'ordre —
+   fait relevé, pas une inférence.
+3. La bascule réelle (déduite de l'envoi de la tâche planifiée `sansBordure`,
+   ~21:03:41,4) et la détection agent (21:03:41,971) sont séparées d'environ
+   0,5 s.
+4. La restauration (tâche planifiée `restaurer`, ~21:05:24,1) et `actif=false`
+   (21:05:24,604) sont séparées de la MÊME latence, ~0,5 s, dans l'autre sens.
 
-**Lecture, sous réserve de la section précédente** : l'explication la plus
-cohérente avec les faits est que la session que le superviseur nomme `w-4` est
-en réalité celle qui porte le HWND de `chrome-d8-recette-1` — pas `w-1`, comme
-le pilote le suppose par construction (`cible = noms[0]`). Sous cette lecture,
-① n'est pas réfuté sur le fond (le mécanisme détecte bien un vrai changement de
-style et l'annonce bien, exclusivement, à une seule session) — c'est
-l'**attribution** cible/session du pilote qui serait fausse. **Cette lecture
-n'est PAS prouvée** : elle repose sur une seule coïncidence temporelle
-(l'annonce tombe pendant la fenêtre où la bascule a eu lieu) et sur le fait,
-distinct, que le sous-bloc précédent établit que la correspondance
-ordre-de-lancement / ordre-d'attachement n'est pas fiable. **Verdict tel que le
-critère l'exige (« et elle seule », sur la session PRÉSUMÉE cible) : NON
-CONFIRMÉ, mesurable uniquement en partie
-(`verdict_partie_mesurable: false`).** 1 exécution.
+**Le verdict que ces pièces portent** : *le mécanisme agent de ① est démontré
+— un vrai changement de style est détecté et annoncé à une session et une
+seule, deux fois, à latence constante. Ce qui n'était pas établi par la
+première exécution seule était l'identité physique de la session annoncée ;
+l'hypothèse `cible = noms[0]` du pilote était réfutée.*
 
-## Critère ② : NON EXERCÉ
+**Corroboration par le rejeu (`rejeu-2-5`, session résolue = `w-2` cette
+fois — la VM ayant été repartie propre, la numérotation change, ce qui est
+sans conséquence puisque l'identité est désormais résolue et non supposée) :**
+`detection_agent.session = "w-2"`, **exactement** la session que
+`resoudreIdentite` avait résolue pour ce marqueur AVANT que la mesure ①
+officielle ne commence. `messages_navigateur_cible` porte 3 entrées ; les deux
+premières proviennent de la balise d'identité elle-même (toggle diagnostique,
+avant le début de la fenêtre de mesure officielle à 21:40:42,013Z), la
+troisième (21:40:47,825Z, DANS la fenêtre officielle) est la bascule
+mesurée par ①. `messages_navigateur_voisines.w:w-6` (la session non touchée)
+est vide — zéro message, aucune exception.
 
-**Zéro tentative de changement de mode de sortie enregistrée sur toute la
-fenêtre de mesure** (`mode_sortie_demande=0`,
-`mode_sortie_complet: {demandees: [], reussies: [], refusees: [], illisibles: [], impossibles: []}`).
-Les deux forçages de viewport CDP (`Emulation.setDeviceMetricsOverride`, 1920×1080
-puis 3840×2160, sur la page présumée cible) n'ont produit **aucun** message
-`Resize` visible côté agent : sur tout le run, seules **deux** lignes
-`contrôle reçu Resize` existent, toutes deux à la connexion initiale
-(21:01:58 et 21:02:09, 1280×720 — la taille déjà en place), **avant** que la
-phase critère ①+② ne commence (21:03:31). `stats_apres_redimensionnement.l/h`
-et `stats_apres_surdimensionne.l/h` restent tous deux à `1280×720` : le flux
-vidéo n'a jamais bougé.
+⚠️ **Défaut d'instrument découvert par ce rejeu, à consigner** :
+`window.__pleinEcran` (le tampon côté page) **n'est jamais vidé ni borné dans
+le temps** — il persiste pour toute la durée de vie de la page et n'est
+purgé que par dépassement de capacité (50 entrées). Le rejeu montre donc
+`messages_navigateur_voisines.w:w-4` avec DEUX entrées historiques —
+celles de la balise d'identité de LA FENÊTRE 2 elle-même (légitime bascule
+de `w-4`, réalisée par `resoudreIdentite` avant le début de la phase ①+②,
+21:40:29-34), lues alors comme si elles s'étaient produites PENDANT la
+mesure. `fuite_vers_voisine: ["w:w-4"]` réapparaît donc dans le JSON du
+rejeu, mais c'est un **FAUX POSITIF de l'instrument** : les deux horodatages
+concernés (1785966029848, 1785966034388) précèdent le `debut` de la phase
+(`"debut": "2026-08-05T21:40:42.013Z"`, soit ~1785966042013 en ms) de
+12 à 8 secondes. **Aucun message n'a été reçu par une voisine PENDANT la
+fenêtre de mesure du rejeu** — seul `w:w-6`, dont le tampon n'a jamais reçu
+d'entrée d'aucune sorte, le prouve sans ambiguïté. Non corrigé dans
+l'instrument (hors budget de cette ronde) : à borner par horodatage au
+prochain travail sur ce fichier.
 
-**Ni l'explication « `PLEIN_ECRAN=0` désarme le chemin » ni l'explication
-« le mode `SortieEntiere` n'était pas actif » ne sont établies** : aucune trace
-`redimensionnement ignoré : PLEIN_ECRAN=0` n'apparaît non plus dans tout le
-journal — si c'était la cause, elle se serait journalisée. **Le fait le plus
-probable, non vérifié au-delà de cette inférence, est que le message `Resize`
-lui-même n'a jamais été ÉMIS côté client** : le pilote lance son Chrome hôte
-avec `--ozone-override-screen-size=1600,1000`, plus petit que la cible
-1920×1080 demandée par `Emulation.setDeviceMetricsOverride` — si l'écran
-émulé borne l'override, `video.clientWidth`/`clientHeight` ne changeraient
-jamais, et le `ResizeObserver` du client n'aurait rien à observer. **Cette
-explication n'a pas été vérifiée indépendamment** (aucune instrumentation
-côté page pour confirmer que `window.innerWidth` a ou non changé après
-l'appel CDP) — elle est proposée comme piste, pas comme fait établi.
+**1 exécution qui établit le mécanisme + 1 rejeu qui corrobore l'identité et
+révèle un artefact d'instrument sans le contredire.**
 
-**Conséquence directe pour le brief : les trois inconnues qu'il posait comme
-risque n°1 ne sont TRANCHÉES PAR AUCUNE DONNÉE de cette exécution** — voir la
-section dédiée ci-dessous. Ce n'est pas un refus du pilote SudoVDA : c'est
-l'absence totale de sollicitation.
+## Critère ② : NON EXERCÉ (dans les deux exécutions), et mieux caractérisé
+
+**Toujours zéro tentative de changement de mode de sortie**, dans les deux
+exécutions (`mode_sortie_demande=0` aux deux runs). `stats_apres_redimensionnement.l/h`
+et `stats_apres_surdimensionne.l/h` restent à 1280×720 dans les deux cas — le
+flux vidéo n'a jamais bougé.
+
+**CORRIGÉ (Important 5) — l'argument d'exclusion de la première rédaction
+était circulaire.** Elle écartait l'explication « `PLEIN_ECRAN=0` désarme le
+chemin » au motif qu'aucune trace `redimensionnement ignoré : PLEIN_ECRAN=0`
+n'apparaît. Or le run tourne avec `PLEIN_ECRAN=1` : cette trace **ne pouvait
+structurellement pas être émise**, quelle que soit la cause réelle — son
+absence ne prouve donc rien sur cette hypothèse ni sur aucune autre.
+
+**Pièce corroborante non exploitée dans la première rédaction** : sur le run
+initial, l'agent reçoit **22 messages de contrôle** sur tout le run — **20
+`Visibility`, 2 `Resize`** (tous deux à la connexion initiale, 1280×720). Le
+canal de contrôle vit et délivre pour les cinq sessions pendant toute la
+phase ② ; seul le message `Resize` attendu après un forçage de viewport
+manque. **Le défaut est donc bien côté ÉMISSION du client**, pas côté
+transport ni côté agent. Fait annexe : sur les 5 sessions du run initial,
+**3 n'ont jamais émis même leur `Resize` initial de connexion** (2 `Resize`
+au total pour 5 sessions) — un fait qui n'a pas d'explication par le
+plafonnement d'écran émulé (voir ci-dessous, réfuté) et qui reste ouvert.
+
+**L'hypothèse `--ozone-override-screen-size` est RÉFUTÉE par le rejeu, avec
+mesure directe.** La première rédaction proposait, sans le vérifier, que
+l'écran émulé du Chrome hôte du pilote (1600×1000) plafonnerait
+silencieusement `Emulation.setDeviceMetricsOverride` demandé plus grand
+(1920×1080, puis 3840×2160). Le rejeu instrumente désormais
+`window.innerWidth`/`innerHeight` immédiatement avant et après chaque appel
+CDP (remède B4) :
+
+```
+window.innerWidth/Height — plein écran : 1280x720 → 1920x1080 (cible 1920x1080)
+                            surdimensionné : 1920x1080 → 3840x2160 (cible 3840x2160)
+```
+
+**Les deux appels atteignent leur cible EXACTEMENT**, y compris au-delà de
+l'écran émulé. L'hypothèse du plafonnement est donc réfutée par une mesure
+directe, pas seulement écartée par défaut d'observation. **Ce que ceci établit
+avec précision, pour la première fois** : le viewport CDP prend bien effet
+côté page (`window.innerWidth`/`innerHeight` corrects), et pourtant **aucun**
+message `Resize` n'est émis vers l'agent (`mode_sortie_demande=0` au rejeu
+aussi). **Le point de rupture est donc situé entre `window.innerWidth` et
+l'émission du message de contrôle** — très probablement le `ResizeObserver`
+sur l'élément `<video>` (`client/src/main.ts`), dont `clientWidth`/
+`clientHeight` ne suivent `window.innerWidth`/`innerHeight` que si la mise en
+page CSS le permet effectivement. **Ceci n'est PAS vérifié plus loin** : aucune
+instrumentation de `video.clientWidth` elle-même n'a été ajoutée, et le
+diagnostic s'arrête ici, dans le respect du mandat de mesure (ne pas corriger,
+ne pas creuser le code client).
+
+**Conséquence inchangée pour le brief : les trois inconnues restent
+entièrement ouvertes** — voir la section dédiée, elle-même jugée la meilleure
+partie du document initial et volontairement peu retouchée.
 
 ## Critère ③ : NON MESURÉ, décision actée en amont
 
-Comme convenu en tête de la tâche 10 (voir le commentaire de tête du pilote) :
-la sonde P2 a établi que Chrome `--headless=new` n'entre pas réellement en
-plein écran (`document.fullscreenElement` reste `null` 800 ms après un
-`requestFullscreen()` par ailleurs invoqué) et n'expose pas `navigator.keyboard`.
-**Décision actée : ③ n'est pas instrumenté, sans installation de `Xvfb`.**
-Confirmé pour cette recette : `Xvfb` n'est **pas** installé sur cet hôte
-(`which Xvfb` : introuvable). 0 exécution.
+Inchangé. Comme convenu en tête de la tâche 10 : la sonde P2 a établi que
+Chrome `--headless=new` n'entre pas réellement en plein écran
+(`document.fullscreenElement` reste `null` 800 ms après un
+`requestFullscreen()` par ailleurs invoqué) et n'expose pas
+`navigator.keyboard`. **Décision actée : ③ n'est pas instrumenté, sans
+installation de `Xvfb`.** Confirmé pour cette recette : `Xvfb` n'est **pas**
+installé sur cet hôte (`which Xvfb` : introuvable). 0 exécution.
 
-## Critère ④ : TENU
+## Critère ④ : TENU (les deux moitiés)
 
-Masquage de la voisine (`w:w-2`, présumée hz=520) par `document.hidden=true` :
-**sommeil confirmé en 2,2 s** (`FAIT ATTEINT … après 2.2 s`). La part de
-budget appliquée à `w-2` tombe à **256 000 bps** (`PART_DORMANTE_BPS`) avec
-`endormie=true`, pendant que les quatre autres sessions restent à
-2 348 800 ou 4 697 600 bps, `endormie=false` — exactement le contrat documenté
-depuis D5/D6, exercé ici sur une troisième fenêtre dans un binaire portant
-le plein écran. **Le chemin existant fonctionne encore.**
+**CORRIGÉ (Critique 1 de la revue) — le réveil ÉTAIT confirmé, et le pilote
+avait un défaut qui l'empêchait de le voir.**
 
-**Réserve** : le réveil (masquage levé) n'a **pas** été confirmé dans la
-fenêtre d'attente de 30 s du pilote (`reveil_confirme: null`,
-`!! FAIT NON ATTEINT … après 30 s`). Ce n'est pas une réfutation du critère tel
-que le brief le formule (« les voisines s'endorment », côté endormissement
-seul) — mais c'est une donnée manquante que le pilote lui-même cherchait à
-établir en plus. **1 exécution, le sommeil est confirmé, le réveil ne l'est
-pas dans le délai imparti.**
+Masquage de la voisine par `document.hidden=true` : **sommeil confirmé en
+2,2 s** aux deux exécutions. Part de budget appliquée : 256 000 bps
+(`PART_DORMANTE_BPS`), `endormie=true`. Comportement conforme au contrat
+documenté depuis D5/D6.
 
-## Critère ⑤ : MESURÉ, avec réserve sérieuse
+**Le réveil a bien eu lieu, 471 ms après l'ordre, et trois lignes le
+confirment dans la fenêtre de 30 s du run initial** — la première rédaction
+disait le contraire :
 
-Le seuil brut programmé dans le pilote passe : `audio_survit: true`
-(le niveau à la fréquence assignée à `w-2`, 520 Hz, dépasse le plancher de
-bruit de 43 dB, seuil fixé à 20 dB). **Mais le contenu fréquentiel dominant
-reçu sur cette session est 409 Hz** (`hz: 409, db: -36`) — la tonalité assignée
-à `w-1` (410 Hz), pas celle assignée à `w-2` (520 Hz, mesurée nettement plus
-bas, `-115 dB`, tout de même 43 dB au-dessus du plancher).
+```
+21:05:56.244  contrôle reçu Visibility { visible: true }
+21:05:56.715  fenêtre réveillée session=w-2 … duree_ms=454
+21:05:56.719  part de budget appliquee session=w-2 part_bps=2000000 endormie=false
+21:06:05.198 / 21:06:15.207 / 21:06:25.214  cadence du capteur session=w-2 … endormie=false
+```
 
-**Deux lectures possibles, non départagées par cette seule exécution :**
+**Cause du faux négatif, dans l'instrument, corrigée (B1)** :
+`cadencesAgent` (parseur de journal du pilote) extrayait la session par
+`champ(l, 'session') ?? sessionDeLigne(l)`. Sur une ligne portant le span
+`fenetre{session=w-2}:`, `champ()` matche la **première** occurrence de
+`session=` — celle DANS le span — et son motif `\S+` capture `w-2}:`
+(accolade et deux-points compris, non whitespace). Cette valeur fausse est
+**truthy**, donc `?? sessionDeLigne(l)` — qui aurait rendu la valeur correcte —
+ne s'évalue jamais. `eveillees` contenait alors des entrées `"w-2}:@…"`, et le
+prédicat `e.startsWith('w-2@')` en aval ne pouvait **jamais** être vrai. Le
+sommeil, lui, passait grâce à un repli sur `partsAgent` (dont les lignes
+n'ont pas de span) — masquant le défaut plutôt que le révéler. **C'est le
+piège « vérifier qu'un contrôle peut réussir » rejoué une troisième fois, sur
+la fonction même dont le commentaire se félicitait d'avoir déjà corrigé ce
+prédicat.** Remède : `sessionDeLigne(l)` seul, comme dans tous les autres
+parseurs du fichier.
 
-1. **Confirmation du fait de conception déjà documenté par D7** : une fenêtre
-   qui partage le groupe de PID d'une autre application entend le mélange
-   entier de ce groupe (`PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE`
-   capture l'arbre de processus, pas la fenêtre). Si `w-2` est en réalité une
-   fenêtre fantôme du MÊME processus Chrome que `w-1` (cohérent avec la section
-   « 5 sessions pour 3 fenêtres » ci-dessus), elle entendrait légitimement le
-   ton de `w-1` — pas un défaut, le comportement déjà connu et accepté.
-2. **Un défaut d'isolation propre à cette mesure**, sans rapport avec le fait
-   ci-dessus.
+**Corroboré par le rejeu**, avec l'instrument corrigé : réveil confirmé en
+10,2 s cette fois (latence différente d'une exécution à l'autre — la
+temporisation de recadrage du cycle de sondage n'est pas fixe), les trois
+sessions présentes portant chacune une ligne `endormie=false` postérieure à
+l'ordre de réveil.
 
-**Aucune des deux n'est établie ici.** Ce que l'exécution établit sans
-ambiguïté : de l'audio arrive bel et bien sur la session masquée (le critère
-tel qu'énoncé — « l'audio d'une endormie survit » — passe au sens strict, de
-l'énergie franchit le plancher de bruit pendant le sommeil), mais **la preuve
-que c'est SPÉCIFIQUEMENT le ton de la fenêtre censée être `w-2` qui survit
-n'est pas apportée** — le signal dominant reçu est celui d'une autre fenêtre.
-**1 exécution.**
+**2 exécutions, les deux moitiés (sommeil et réveil) tenues aux deux.**
+
+## Critère ⑤ : TENU (une fois la bonne session ciblée)
+
+**CORRIGÉ EN TOTALITÉ (Important 4 de la revue).** La première rédaction
+écrivait « 409 Hz — la tonalité assignée à `w-1` » : **c'est une erreur, il n'y
+avait aucun référent.** `hzDe(n)` assigne les fréquences aux fenêtres 1, 2, 3
+ouvertes PAR le pilote — c'est-à-dire, sur le run initial, aux sessions
+`w-4, w-6, w-8` (voir « Fenêtres préexistantes » ci-dessus). `w-1` et `w-2`
+n'ont **jamais** reçu d'assignation de fréquence : ⑤ avait été mesuré sur une
+fenêtre dont le contenu réel était inconnu.
+
+**Deux pièces, versées dans le run initial mais non exploitées, le
+confirmaient déjà :**
+
+- **`kbps_audio` du témoin** (`recette-recette.json:47-92`) : `w-1` 128,8 ·
+  `w-2` 128,8 · `w-4` **0** · `w-6` **0** · `w-8` 128,8. Les deux fenêtres du
+  pilote qui portent réellement 410 et 520 Hz (`w-4`, `w-6`) **n'ont aucune
+  piste audio** ; les préexistantes (`w-1`, `w-2`) en ont une. C'est la
+  signature de l'arbitrage par groupe de PID déjà documenté par D7 —
+  observable, non exploitée par la première rédaction.
+- **Le seuil `audio_survit` du pilote ne peut quasiment pas échouer** : il
+  compare le niveau à la fréquence assignée au **plancher de bruit**
+  (`pilote-recette-d8.mjs:1090`, valeur inchangée), pas à la dominante. Sur
+  le run initial, le niveau à 520 Hz (`-115 dB`) était 79 dB **sous** la
+  dominante mesurée (409 Hz, `-36 dB`) — indiscernable d'une fuite spectrale
+  au seuil employé. Le pilote donnait les deux nombres sans en tirer la
+  conclusion qui s'imposait.
+
+**Le rejeu, ciblant la session correctement résolue (`w-4`, la vraie fenêtre 2,
+hz=520), tranche sans ambiguïté :**
+
+```
+"hz": 522, "db": -40, "niveaux": [{"f": 520, "db": -40}]
+```
+
+**La fréquence DOMINANTE reçue (522 Hz) est désormais celle assignée (520 Hz,
+à la résolution du bin FFT près)** — le pic dominant EST le pic à la
+fréquence attendue, pas un signal 79 dB en dessous de lui. **Ceci confirme
+que l'anomalie du run initial était une mauvaise identification de session,
+pas une fuite d'isolation audio ni un défaut du produit.** Le fait de
+conception D7 (une fenêtre qui partage le groupe de PID d'une application en
+entend le mélange entier) reste vrai en soi, mais il n'est **plus** la
+lecture qui explique cette mesure — il ne s'applique qu'aux DEUX fenêtres
+préexistantes entre elles, hors du périmètre de ⑤.
+
+**1 exécution corrigée, tient sans réserve : une session endormie continue de
+recevoir l'audio de SA propre fenêtre.** (La mesure initiale n'est pas
+comptée comme une exécution valide de ⑤ : elle portait sur la mauvaise
+session.)
 
 ## Les trois inconnues du brief : AUCUNE N'EST TRANCHÉE
 
-Le brief posait trois inconnues comme risque n°1 de ce sous-bloc. Cette
-recette **ne les tranche pas**, faute d'avoir sollicité le mécanisme qu'elles
-interrogent — voir critère ② ci-dessus.
+*Section jugée la meilleure du document initial — conservée presque à
+l'identique, seule la clause finale (méthode) est mise à jour pour refléter
+ce que le rejeu a effectivement vérifié.*
+
+Le brief posait trois inconnues comme risque n°1 de ce sous-bloc. **Les deux
+exécutions ne les tranchent pas**, faute d'avoir sollicité le mécanisme
+qu'elles interrogent — voir critère ② ci-dessus.
 
 1. **Le pilote SudoVDA accepte-t-il un changement de mode sur une sortie dont
    la duplication est ouverte ?** NON TRANCHÉE. Zéro tentative de changement de
-   mode a eu lieu pendant que des duplications étaient ouvertes (0 tentative,
-   point final) — la question posée par le brief reste **exactement aussi
+   mode a eu lieu pendant que des duplications étaient ouvertes, aux deux
+   exécutions — la question posée par le brief reste **exactement aussi
    ouverte qu'avant cette recette**.
 2. **Combien de pertes d'accès `0x887a0026` un changement de mode inflige-t-il
-   aux voisines ?** SANS OBJET. `pertes_acces_voisines: []` reflète l'absence
-   de toute tentative, **pas** l'absence de pertes lors d'un changement réel.
-   Les 6 pertes de mutex relevées sur tout le run (`mutex_abandonne=6`,
-   marqueurs finaux) sont toutes les réouvertures de routine à l'ouverture des
-   captures (documentées depuis D2), sans rapport avec un changement de mode.
+   aux voisines ?** SANS OBJET. `pertes_acces_voisines: []` aux deux
+   exécutions reflète l'absence de toute tentative, **pas** l'absence de
+   pertes lors d'un changement réel. Les pertes de mutex relevées (6 au run
+   initial, 1 au rejeu) sont toutes des réouvertures de routine à l'ouverture
+   des captures, sans rapport avec un changement de mode.
 3. **La sortie garde-t-elle son nom `\\.\DISPLAYn` à travers le changement ?**
-   SANS OBJET pour la même raison. `garde_fou_7_nom_sortie` relève
-   `avant: "\\.\DISPLAY6"`, `apres: null`, `conserve: false` — le `null` vient
-   de l'absence totale de ligne « demandées » à comparer, **pas** d'un
-   changement de nom observé. Ne pas lire `conserve: false` comme un refus.
+   SANS OBJET pour la même raison, aux deux exécutions. Ne pas lire
+   `conserve: false` comme un refus : c'est l'absence de mesure qui le rend
+   `null`/`false`, pas un changement de nom observé.
 
-**Ces trois inconnues restent donc le premier travail d'une prochaine
-recette**, avec un correctif de méthode nommé : vérifier, par une trace côté
-page (`window.innerWidth`/`innerHeight` avant/après l'appel CDP), que le
-viewport forcé prend réellement effet dans l'environnement du pilote avant de
-compter sur le `ResizeObserver` du client pour le relayer.
+**Ces trois inconnues restent le premier travail d'une prochaine recette.**
+Le correctif de méthode proposé initialement (« vérifier par une trace côté
+page que le viewport pris effet ») **a été appliqué par le rejeu, et il a
+rempli son rôle** : il a permis d'écarter une fausse piste (le plafond
+d'écran émulé) et de localiser la rupture plus précisément (entre
+`window.innerWidth` et l'émission du `Resize`). **Il reste à instrumenter
+`video.clientWidth`/`clientHeight` directement**, pour savoir si c'est là ou
+plus en aval (le `ResizeObserver` lui-même, son verrou de 200 ms, ou le canal
+de contrôle) que la chaîne casse.
 
 ## Ce que D8 n'établit pas
 
-- **Aucun taux nulle part** : une seule exécution complète, pour les six
-  lignes du tableau de synthèse comme pour chaque phase.
+- **Aucun taux nulle part** : une exécution complète (témoin, ①, ④) et une
+  seconde ciblée (②, ⑤, plus corroboration de ① et ④). Aucune ligne de ce
+  document ne porte de fréquence de succès.
 - **③ n'est pas mesuré**, et sa raison est mesurée elle-même (P2, sonde
   d'instrument) : Chrome `--headless=new` n'entre pas réellement en plein
   écran et n'expose pas `navigator.keyboard`.
 - **Le cas HiDPI reste structurellement invisible à ce montage** : le pilote
-  tourne avec `deviceScaleFactor: 1` partout (garde-fou de mesure hérité), et
-  le défaut déjà documenté (le garde-fou anti-changement-de-mode-parasite ne
-  tient qu'à `devicePixelRatio == 1`) n'a donc pu ni se manifester ni être
-  réfuté ici.
+  tourne avec `deviceScaleFactor: 1` partout, et le défaut déjà documenté (le
+  garde-fou anti-changement-de-mode-parasite ne tient qu'à
+  `devicePixelRatio == 1`) n'a donc pu ni se manifester ni être réfuté ici.
+- **La visibilité ET le focus sont IMPOSÉS par le pilote, page par page**
+  (garde-fou 2, hérité de D5/D6) — un Chrome sans interface rapporte
+  `document.hidden = true` pour toute fenêtre d'arrière-plan. C'est la limite
+  la plus lourde du montage : aucune minimisation de vraie fenêtre, aucun
+  focus par clic réel. **Absente de la première rédaction, ajoutée ici.**
 - **Rien de la latence de bout en bout**, qu'aucun sous-bloc du chantier D n'a
   mesurée à ce jour.
 - **Les trois couches inconnues du chantier D restent inconnues** : le plafond
   de 8 encodeurs, celui de 4 processus, et le mécanisme de l'abandon du mutex
   DXGI. Cette recette n'en a rencontré qu'une conséquence déjà documentée
-  (6 pertes `0x887a0026` de routine, toutes encaissées).
-- **L'attribution session ↔ fenêtre physique n'est vérifiée par aucune preuve
-  indépendante** dans ce pilote (pas de titre de fenêtre journalisé côté
-  agent, pas de HWND journalisé au moment de l'attachement) — c'est la lacune
-  d'instrumentation qui rend ① et ⑤ non conclusifs plutôt que réfutés.
-- **Un seul rang (N=3 fenêtres)** a été joué ; rien au-delà, rien sur le
-  recouvrement, le déplacement ou le redimensionnement manuel d'une fenêtre.
-- **`Xvfb` n'a pas été installé** pour cette recette — confirmé
-  explicitement (§ critère ③) : aucune mesure de ce document ne s'appuie sur
-  lui, et rien ici ne se compare à une éventuelle future campagne qui
-  l'installerait.
+  (pertes `0x887a0026` de routine, toutes encaissées, aux deux exécutions).
+- **`video.clientWidth`/`clientHeight` n'a pas été instrumenté** (voir ②) :
+  la localisation de la rupture entre le viewport CDP et l'émission du
+  `Resize` s'arrête à `window.innerWidth`.
+- **Un seul rang (N=3 fenêtres)** a été joué aux deux exécutions ; rien
+  au-delà, rien sur le recouvrement, le déplacement ou le redimensionnement
+  manuel d'une fenêtre.
+- **`Xvfb` n'a pas été installé** pour cette recette, aux deux exécutions —
+  confirmé explicitement (§ critère ③) : aucune mesure de ce document ne
+  s'appuie sur lui.
+- **Aucun journal séparé par critère** : le pilote produit un journal combiné
+  par exécution (`critere-recette.log`, `critere-rejeu-2-5.log`), pas les
+  `critere-{1..5}-*.log` que le cahier des charges nommait. Ce n'est pas une
+  omission silencieuse — elle est déclarée ici : le pilote (tâche 10) est
+  monolithique par construction (une seule fonction `main()`, phases
+  enchaînées), et le scinder pour produire cinq fichiers aurait dépassé le
+  périmètre d'une recette qui ne doit pas réécrire l'instrument sans raison.
 
-## Réserves héritées, reprises sans les remesurer
+## Réserves héritées, reprises sans les remesurer — corrigées sur trois points
 
 - **La mesure F1 (P0) porte une seule exécution et une bascule de porteur en
   cours de mesure** — non rejouée ici, reprise telle quelle depuis la tâche 2.
+- **CORRIGÉ (Important 6)** : la première rédaction citait « les deux
+  occasions où P1 a tourné (tâche 3 et l'exécution de préparation) » comme
+  preuve que `CDS_UPDATEREGISTRY` seul suffit. **Le verdict P1 de la tâche 3
+  est INVALIDE** — c'est l'objet même du commit `7032b01`
+  (« P1 rendait RECU sans valeur, le critere ne pouvait pas echouer ») : son
+  journal (`p1-mode-sortie.log`) ne porte pas le champ
+  `largeur_avant_tentative`, signature de la version d'AVANT le correctif.
+  **Les occasions valides sont** : `p1bis-mode-sortie.log` (tâche 3bis,
+  cible 3840×2160 → « snap » à 2560×1440, `cible_exacte_atteinte=false`,
+  mais `CDS_UPDATEREGISTRY` seul a suffi à produire un mouvement) et
+  l'exécution de préparation de cette tâche (`mode-sortie-1280x720-preparation.log`,
+  cible 1280×720, atteinte exactement). **Une troisième pièce, invoquée nulle
+  part par la première rédaction, porte le refus net d'un mode non annoncé**
+  (`mode-sortie-1728x1080.log`, tâche 3bis : cible 1728×1080, hors des neuf
+  modes annoncés, `verdict="P1 REFUSE"`) — c'est la preuve directe de la
+  conséquence sur les rapports d'aspect non-16:9 que le brief demande de
+  porter comme fait établi, absente de la première rédaction.
 - **Le repli `NORESET`→`RESET` de la sonde P1 n'a jamais fait bouger une
-  sortie** — `CDS_UPDATEREGISTRY` seul a suffi aux deux occasions où P1 a
-  tourné (tâche 3 et l'exécution de préparation de cette tâche) ; les deux
-  combinaisons de repli restent non exercées.
-- **Le défaut HiDPI reste ouvert côté client**, non remesuré (voir ci-dessus).
+  sortie** — sur les occasions valides ci-dessus, `CDS_UPDATEREGISTRY` seul a
+  toujours suffi ; les deux combinaisons de repli restent non exercées.
+- **CORRIGÉ (Important 8, point 4)** : la première rédaction disait la
+  naissance d'une sortie à la dernière taille du registre « probable ».
+  **Elle est CONFIRMÉE ET REPRODUITE**, pas supposée : la tâche 3bis
+  établit la chaîne `avant(N) = après(N-1)` sur trois transitions
+  consécutives (`task-3bis-report.md`, § « Persistance au registre ») — pas
+  une lecture du commentaire de code, une mesure.
+- **Le défaut HiDPI reste ouvert côté client**, non remesuré (voir
+  ci-dessus).
 
 ## Pièges neufs à connaître avant de retoucher ce terrain
 
@@ -325,38 +528,85 @@ compter sur le `ResizeObserver` du client pour le relayer.
   variable de préparation (`MULTIFENETRE_VDD_PURGE`) et une variable de mesure
   (`MULTIFENETRE_MODE_SORTIE`) doivent être deux lancements séparés, même si
   leur ordre relatif de priorité est documenté dans le code.
-- **Un pilote qui se termine en erreur (`ERREUR FATALE`) ne nettoie PAS le
-  superviseur côté VM.** Le bloc `finally` du pilote ne tue que le Chrome
-  hôte ; les processus `agent` (superviseur + capteur) lancés par
-  `run-agent.sh` survivent, tiennent le fichier `agent.log` en écriture
-  exclusive, et font échouer silencieusement tout relancement ultérieur tant
-  qu'ils n'ont pas été tués nommément (`Get-Process agent` puis
-  `Stop-Process -Id … -Force`).
+- **Un pilote qui se termine en erreur, OU qui laisse un superviseur vivant en
+  fin d'exécution normale, bloque silencieusement la tentative suivante.**
+  Rencontré trois fois sur trois lors de ce sous-bloc. Le `finally` du pilote
+  ne tue que le Chrome hôte, jamais le superviseur/capteur côté VM. Remède
+  appliqué dans l'instrument (B2) : `purgerFenetresVMRescapees()` en tête de
+  `main()`, qui tue tout `chrome.exe` **et vérifie** (`agents_restants`,
+  `chrome_restants`) plutôt que suppose — mais elle ne tue PAS les processus
+  `agent` eux-mêmes, seulement les fenêtres Chrome : `Get-Process agent`
+  reste à vérifier manuellement entre deux invocations du pilote, comme
+  rencontré à trois reprises pendant cette même tâche.
 - **Une pollution de registre laissée par une sonde de mesure peut bloquer le
   produit, pas seulement fausser une sonde future.** Le défaut F1 documenté
   pour P1 (« persistance probable au registre ») s'est manifesté ici comme un
-  blocage total de l'attachement de fenêtre — aucune des trois fenêtres ne
-  pouvait s'ouvrir tant que le registre n'a pas été remis à 1280×720 par la
-  sonde P1 elle-même, en préparation.
-- **Le nombre de sessions détectées par le superviseur n'est pas fiable comme
-  proxy du nombre de fenêtres réellement ouvertes par un pilote**, et ce
-  n'était pas déjà écrit noir sur blanc pour ce cas précis (3 fenêtres, 5
-  sessions) — seuls les précédents Paint/Bloc-notes l'étaient. Un pilote qui
-  assigne une identité (fréquence, marqueur) par INDEX DE BOUCLE plutôt que
-  par un identifiant relu côté agent (titre de fenêtre, HWND) s'expose à une
-  attribution fausse dès qu'une fenêtre fantôme s'intercale dans l'ordre
-  d'attachement.
-- **`--ozone-override-screen-size` du Chrome hôte peut plafonner
-  silencieusement un `Emulation.setDeviceMetricsOverride` demandé plus
-  grand** — hypothèse posée par cette recette pour expliquer le silence total
-  de ②, non vérifiée indépendamment.
+  blocage total de l'attachement de fenêtre — remède : la sonde P1 elle-même,
+  en préparation.
+- **Le nombre de sessions détectées par le superviseur n'est PAS la
+  multiplication d'une seule fenêtre (contrairement à ce qu'une première
+  lecture, calquée sur le précédent Paint/Bloc-notes, suggérait) — c'est le
+  signe de fenêtres PRÉEXISTANTES non nettoyées.** Ces deux causes produisent
+  la même observation de surface (plus de sessions que de fenêtres ouvertes
+  par le pilote) et ne se distinguent QUE par l'horodatage relatif entre la
+  création des sessions en trop et la première ouverture du pilote. **Ne
+  jamais conclure sans comparer ces deux horodatages.**
+- **Résoudre cible/voisine par rang de nom (`noms[0]`, `noms[1]`) n'est pas
+  fiable, MÊME sur une VM nettoyée au préalable** — rien ne prouve qu'un
+  doublon ne puisse survenir pour une autre raison. Remède appliqué (B3) :
+  `resoudreIdentite()`, qui réutilise le mécanisme même de ① (bascule de
+  bordure + observation de la session qui l'annonce) comme balise
+  d'identité, avant toute mesure qui en dépend.
+- **`window.__pleinEcran` (tampon client du pilote) n'est jamais borné dans le
+  temps** : toute bascule de bordure antérieure (y compris une balise
+  d'identité) laisse une trace que `messagesVoisines` relit sans filtrer par
+  horodatage, produisant un faux positif de « fuite » si une autre bascule a
+  eu lieu plus tôt sur la page lue. Découvert par le rejeu (①), non corrigé
+  dans l'instrument.
+- **`--ozone-override-screen-size` du Chrome hôte NE plafonne PAS
+  silencieusement `Emulation.setDeviceMetricsOverride`** — hypothèse posée
+  par la première rédaction sans preuve, RÉFUTÉE par mesure directe
+  (`window.innerWidth`/`innerHeight`) sur le rejeu.
+
+## Ce que la correction a changé dans l'instrument (parties B de la revue)
+
+Quatre changements dans `pilote-recette-d8.mjs`, tous conservés pour tout
+travail futur sur ce terrain :
+
+1. **`cadencesAgent`** : l'extraction de session utilise désormais
+   `sessionDeLigne(l)` seul (au lieu de `champ(l, 'session') ?? sessionDeLigne(l)`,
+   dont le premier terme masquait systématiquement le second sur les lignes à
+   span). Corrige le faux négatif de réveil de ④.
+2. **`purgerFenetresVMRescapees()`** : tue tout `chrome.exe` sur la VM et
+   RELIT le compte de processus (`chrome_restants`, `agents_restants`) avant
+   de lancer le superviseur — l'« ÉTAPE 0 » vérifie désormais ce qu'elle
+   annonçait sans le faire.
+3. **`resoudreIdentite(marqueur, etiquette)`** : bascule la bordure de la
+   fenêtre portant `marqueur`, observe QUELLE session l'annonce, restaure, et
+   rend cette session — jamais un rang de nom. Employée pour `cible` et
+   `voisine` avant ①+②/④+⑤.
+4. **Instrumentation `window.innerWidth`/`innerHeight`** autour des deux
+   appels `forcerViewport` de ②, versée dans le JSON
+   (`inner_avant`/`inner_apres`, `inner_a_atteint_la_cible`).
+
+Un cinquième changement, `REJOUER_2_ET_5=1` : shortcut de `main()` qui saute
+le témoin (déjà TENU, non redépendant de l'identité résolue) mais laisse ①+②
+et ④+⑤ intacts (non scindés, par prudence — scinder ①+② pour ne rejouer QUE ②
+aurait risqué d'introduire un bug dans un code par ailleurs correct pour un
+gain marginal). ① et ④ sont donc réexercés comme sous-produit du rejeu ; leurs
+verdicts ne sont **pas** re-émis à partir de cette seconde exécution seule —
+ils corroborent ceux déjà établis par la première.
 
 ## Fichiers
 
-- Pilote (non modifié) :
-  `docs/superpowers/plans/journaux-multifenetres-d8/instrument/pilote-recette-d8.mjs`
-- Journal du pilote (hôte, mis à plat) :
-  `docs/superpowers/plans/journaux-multifenetres-d8/critere-recette.log`
-- Journal de l'agent (VM, copié après fermeture du navigateur) :
-  `docs/superpowers/plans/journaux-multifenetres-d8/agent-recette.log`
-- Relevé structuré : `docs/superpowers/plans/journaux-multifenetres-d8/recette-recette.json`
+- Pilote, corrigé : `docs/superpowers/plans/journaux-multifenetres-d8/instrument/pilote-recette-d8.mjs`
+- Exécution initiale : `critere-recette.log`, `agent-recette.log`, `recette-recette.json`
+- Rejeu ②+⑤ (avec corroboration ①/④) : `critere-rejeu-2-5.log`, `agent-rejeu-2-5.log`, `recette-rejeu-2-5.json`
+- Préparation (levée du blocage registre) : `mode-sortie-1280x720-preparation.log`, `dxgi-controle-preparation.log`
+- Réserves héritées, réexaminées : `p1-mode-sortie.log` (invalide, tâche 3),
+  `p1bis-mode-sortie.log` (valide, snap), `mode-sortie-1728x1080.log` (valide,
+  refus net), `.superpowers/sdd/2026-08-04-multifenetres-plein-ecran/task-3bis-report.md`
+  (confirmation de la persistance au registre)
+
+Tous les fichiers ci-dessus sous
+`docs/superpowers/plans/journaux-multifenetres-d8/`, sauf le dernier.

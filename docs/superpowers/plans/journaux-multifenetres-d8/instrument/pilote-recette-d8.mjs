@@ -254,6 +254,47 @@ function vmVivante(etiquette) {
 function copierLog() {
     spawnSync('bash', ['-c', `cp /media/vm/dev/agent.log ${COPIE_LOG} 2>/dev/null`]);
 }
+
+/// AJOUTÉ (revue tâche 11, Critique 2, remède B2). L'« ÉTAPE 0 » annonçait
+/// « VM sans fenêtre éligible » sans jamais le vérifier — sur l'exécution
+/// jouée par la tâche 11, DEUX fenêtres d'une tentative précédente échouée
+/// (jamais fermées : ce pilote ne ferme que SON Chrome hôte dans son
+/// `finally`, jamais les fenêtres qu'il ouvre côté VM) préexistaient et ont
+/// été détectées par le superviseur AVANT la première ouverture de CE run
+/// (`w-1`/`w-2`, créées 2,2 s avant `ouverture fenêtre 1` — relevé direct,
+/// `agent-recette.log:24-27` contre `critere-recette.log:16`). Elles ont
+/// décalé toute la suite : chaque fenêtre ouverte PAR ce pilote a bien produit
+/// EXACTEMENT une session neuve, dans l'ordre (`ouverture 1→w-4`,
+/// `2→w-6`, `3→w-8`), mais `noms[0]`/`noms[1]` (= `w-1`/`w-2`) pointaient sur
+/// les rescapées, pas sur les fenêtres du pilote.
+///
+/// Remède : tuer tout `chrome.exe` sur la VM AVANT de lancer le superviseur,
+/// et RELIRE le compte de processus pour confirmer plutôt que supposer l'effet
+/// — même doctrine que `togglerStyleFenetre` (jamais croire le code de retour
+/// de l'appel, toujours relire l'état). Écrit sur le partage puis invoqué par
+/// `-File` (piège déjà payé sur les guillemets doubles de l'enveloppe
+/// `nodejs-winrm`, voir `CLAUDE.md`).
+async function purgerFenetresVMRescapees() {
+    const script = [
+        'Get-Process chrome -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue',
+        'Start-Sleep -Seconds 2',
+        '$n = (Get-Process chrome -ErrorAction SilentlyContinue | Measure-Object).Count',
+        '$agents = (Get-Process agent -ErrorAction SilentlyContinue | Measure-Object).Count',
+        '@{ chrome_restants = $n; agents_restants = $agents } | ConvertTo-Json -Compress | Out-File -Encoding ascii C:\\dev\\purge-rescapees.json',
+    ].join('\n');
+    vmIt('purge-rescapees', script);
+    await dodo(5000);
+    let resultat = null;
+    try {
+        resultat = JSON.parse(await readFile('/media/vm/dev/purge-rescapees.json', 'utf8'));
+    } catch { }
+    log('PURGE FENÊTRES/AGENTS RESCAPÉS (avant lancement du superviseur) ' + JSON.stringify(resultat));
+    if (!resultat || resultat.chrome_restants !== 0 || resultat.agents_restants !== 0) {
+        throw new Error(
+            `état VM non propre avant lancement : ${JSON.stringify(resultat)} — ` +
+            'une fenêtre ou un agent rescapé fausserait l\'attribution cible/voisine (Critique 2)');
+    }
+}
 async function journalPlat() {
     copierLog();
     let texte = '';
@@ -358,7 +399,22 @@ async function cadencesAgent(debutIso, finIso) {
     for (const l of plat.split('\n')) {
         const t = horodate(l);
         if (!t || t < debutIso || t > finIso) continue;
-        const s = champ(l, 'session') ?? sessionDeLigne(l);
+        // CORRIGÉ (revue tâche 11, Critique 1) : `champ(l, 'session')` seul
+        // matchait, sur une ligne portant le span `fenetre{session=w-2}:`, la
+        // PREMIÈRE occurrence de `session=` — celle DANS le span — et
+        // `\S+` capturait `w-2}:` (accolade et deux-points compris), jamais
+        // nettoyé par un `?? sessionDeLigne(l)` qui ne s'évaluait plus
+        // puisque `champ()` avait déjà rendu une valeur (fausse, mais
+        // truthy). `eveillees` ne pouvait alors JAMAIS matcher
+        // `startsWith('<session>@')` en aval (`phaseCritere4Et5`) : un
+        // contrôle qui ne pouvait pas réussir, sur la ligne même dont le
+        // commentaire se félicitait d'avoir déjà corrigé ce prédicat.
+        // `sessionDeLigne` seul est la bonne primitive ici, comme dans
+        // TOUS les autres parseurs de ce fichier (`pleinEcranAgent`,
+        // `modeSortieAgent`, `pertesAcces`) : elle tente d'abord le span
+        // `fenetre\{session=([^}]+)\}` (borné par `}`, jamais pollué), et
+        // ne retombe sur `\bsession=(\S+)` que si le span est absent.
+        const s = sessionDeLigne(l);
         const c = champ(l, 'cadence')?.replace(/"/g, '');
         if (!s || !c) continue;
         if (l.includes('cadence du capteur')) {
@@ -899,6 +955,47 @@ function deltas(a, b) {
     return parFenetre;
 }
 
+// ---------------------------------------------------------------- identité
+/// AJOUTÉ (revue tâche 11, Critique 2 et remède B3). `purgerFenetresVMRescapees`
+/// (garde-fou 2) réduit le risque d'une mauvaise attribution `noms[N]`, il ne
+/// l'élimine pas par construction — rien ne prouve qu'un doublon (Paint,
+/// Bloc-notes, ou un artefact non encore rencontré) ne puisse survenir même sur
+/// une VM propre au départ. **Ne plus JAMAIS résoudre cible/voisine par rang de
+/// nom** : cette fonction établit l'identité par un fait observable, pas par
+/// une hypothèse d'ordre.
+///
+/// Méthode : c'est le mécanisme même du critère ① (déjà prouvé fiable — deux
+/// annonces, exclusives, à ~0,5 s de latence, sur les pièces de la tâche 11)
+/// employé comme BALISE d'identité plutôt que comme critère à juger. On
+/// bascule la bordure Windows de la fenêtre portant `marqueur`
+/// (`togglerStyleFenetre`, qui retrouve son HWND par le `--user-data-dir`
+/// unique dans la ligne de commande — jamais par un titre ou un rang), on
+/// attend l'annonce `PleinEcran{actif:true}` et on retient LA SESSION QUI
+/// L'ANNONCE — quel que soit son nom —, puis on restaure immédiatement. Aucun
+/// verdict n'est porté ici sur le critère ① lui-même (ses pièces suffisent
+/// déjà, revue tâche 11) : cette fonction ne fait QUE résoudre une identité.
+async function resoudreIdentite(marqueur, etiquette) {
+    log(`>>> RÉSOLUTION D'IDENTITÉ (${etiquette}) marqueur=${marqueur}`);
+    const debut = maintenantIso();
+    await togglerStyleFenetre(marqueur, 'sansBordure');
+    const detection = await attendreLeFait(
+        `balise d'identité — annonce PleinEcran actif=true (${marqueur})`,
+        async () => {
+            const evts = await pleinEcranAgent(debut, maintenantIso());
+            return evts.find((e) => e.actif === true) ?? null;
+        },
+        20,
+    );
+    await togglerStyleFenetre(marqueur, 'restaurer');
+    if (!detection) {
+        throw new Error(
+            `identité non résolue pour marqueur=${marqueur} : aucune annonce ` +
+            'PleinEcran en 20 s — impossible de cibler ② ou ⑤ sans deviner (Critique 2)');
+    }
+    log(`  → ${marqueur} résolu à session=${detection.session}`);
+    return detection.session;
+}
+
 // ---------------------------------------------------------------- phases
 /// Le TÉMOIN de non-régression (spec §8) : un palier à N fenêtres sans AUCUN
 /// plein écran, qui doit se comporter comme D7 — même mécanisme de mesure
@@ -964,7 +1061,17 @@ async function phaseCritere1Et2(cdp, cible, marqueurCible) {
         .map(([nom]) => nom);
 
     // --- ② : viewport forcé, indépendant de ① (voir en-tête de fichier) ---
+    // AJOUTÉ (revue tâche 11, Important 5 / remède B4) : `window.innerWidth`/
+    // `innerHeight` lus AVANT et APRÈS chaque appel CDP, pour trancher
+    // directement l'hypothèse posée sans preuve par la première rédaction —
+    // que `--ozone-override-screen-size` (1600×1000 sur le Chrome hôte de ce
+    // pilote) plafonnerait silencieusement `Emulation.setDeviceMetricsOverride`
+    // demandé plus grand. Si `innerWidth`/`innerHeight` n'atteignent pas la
+    // cible, le plafond est confirmé ; s'ils l'atteignent, l'absence de
+    // `Resize` a une autre cause (le `ResizeObserver` lui-même, ou le canal).
+    const innerAvant1 = await cdp.evalBorne(sidDe(cible), 'window.innerWidth+"x"+window.innerHeight', 4000, false);
     await forcerViewport(cdp, cible, VIEWPORT_PLEIN_ECRAN[0], VIEWPORT_PLEIN_ECRAN[1], 'critère ② — cible plein écran');
+    const innerApres1 = await cdp.evalBorne(sidDe(cible), 'window.innerWidth+"x"+window.innerHeight', 4000, false);
     const modeApresCible = await attendreLeFait('changement de mode côté agent (cible)', async () => {
         const m = await modeSortieAgent(debut, maintenantIso());
         return (m.reussies.find((r) => r.session === sessionCible)
@@ -974,9 +1081,14 @@ async function phaseCritere1Et2(cdp, cible, marqueurCible) {
     const statsApresRedim = await cdp.evalBorne(sidDe(cible), STATS, 6000, true);
 
     // Probe annexe : au-dessus de TAILLE_MAX_SORTIE, le flux doit rester borné.
+    const innerAvant2 = await cdp.evalBorne(sidDe(cible), 'window.innerWidth+"x"+window.innerHeight', 4000, false);
     await forcerViewport(cdp, cible, VIEWPORT_SURDIMENSIONNE[0], VIEWPORT_SURDIMENSIONNE[1], 'critère ② — probe TAILLE_MAX_SORTIE');
+    const innerApres2 = await cdp.evalBorne(sidDe(cible), 'window.innerWidth+"x"+window.innerHeight', 4000, false);
     await dodo(6000);
     const statsApresSurdimensionne = await cdp.evalBorne(sidDe(cible), STATS, 6000, true);
+    log(`  window.innerWidth/Height — plein écran : ${innerAvant1} → ${innerApres1} ` +
+        `(cible ${VIEWPORT_PLEIN_ECRAN.join('x')}) ; surdimensionné : ${innerAvant2} → ${innerApres2} ` +
+        `(cible ${VIEWPORT_SURDIMENSIONNE.join('x')})`);
 
     const fin = maintenantIso();
 
@@ -1025,8 +1137,11 @@ async function phaseCritere1Et2(cdp, cible, marqueurCible) {
             // implicite dans l'ordre du code.
             style_de_la_fenetre_pendant_cette_mesure: 'sans_bordure (bascule du critère 1, non restaurée avant 2)',
             viewport_demande: VIEWPORT_PLEIN_ECRAN, mode_apres_cible: modeApresCible,
+            inner_avant: innerAvant1, inner_apres: innerApres1,
+            inner_a_atteint_la_cible: innerApres1 === `${VIEWPORT_PLEIN_ECRAN[0]}x${VIEWPORT_PLEIN_ECRAN[1]}`,
             stats_apres_redimensionnement: statsApresRedim,
             viewport_surdimensionne_demande: VIEWPORT_SURDIMENSIONNE,
+            inner_avant_surdimensionne: innerAvant2, inner_apres_surdimensionne: innerApres2,
             stats_apres_surdimensionne: statsApresSurdimensionne,
             surdimensionne_borne: !!(statsApresSurdimensionne?.l <= 1920 && statsApresSurdimensionne?.h <= 1080),
         },
@@ -1157,8 +1272,10 @@ async function main() {
         await cdp.send('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: true, flatten: true });
         await cdp.send('Target.setDiscoverTargets', { discover: true });
 
-        log('>>> ÉTAPE 0 : préparation — VM sans fenêtre éligible');
+        log('>>> ÉTAPE 0 : préparation — VM sans fenêtre éligible (vérifié, pas supposé)');
         releve.cpu_repos = cpuHote('au repos, avant toute session');
+        await purgerFenetresVMRescapees();
+        releve.purge_rescapees = true;
 
         await cdp.send('Target.createTarget', { url: URL_SHELL });
         await dodo(3000);
@@ -1188,14 +1305,38 @@ async function main() {
         const noms = nomsTries();
         if (noms.length < 2) throw new Error(`au moins deux fenêtres sont requises pour observer des voisines (${noms.length} ouvertes)`);
 
-        releve.phases.temoin = await phaseTemoin(cdp);
-
-        const cible = noms[0];
+        // CORRIGÉ (revue tâche 11, Critique 2 / Important 4, remède B3) :
+        // cible et voisine ne sont PLUS résolues par `noms[0]`/`noms[1]`
+        // (rang de nom, hypothèse d'ordre) mais par la balise d'identité —
+        // fait observable, jamais supposé. `purgerFenetresVMRescapees`
+        // (garde-fou 2, ci-dessus) réduit le risque d'un doublon, il ne
+        // l'élimine pas par construction : cette résolution reste la seule
+        // garantie directe.
         const marqueurCible = marqueurFenetre(1);
+        const sessionCible = await resoudreIdentite(marqueurCible, 'fenêtre 1 = cible');
+        const cible = `w:${sessionCible}`;
+        const marqueurVoisine = marqueurFenetre(2);
+        const sessionVoisine = await resoudreIdentite(marqueurVoisine, 'fenêtre 2 = voisine');
+        const voisine = `w:${sessionVoisine}`;
+        const hzVoisine = hzDe(2);
+        log(`IDENTITÉ RÉSOLUE cible=${cible} (marqueur=${marqueurCible}) ` +
+            `voisine=${voisine} (marqueur=${marqueurVoisine}, hz=${hzVoisine})`);
+        releve.identite_resolue = { cible, marqueurCible, voisine, marqueurVoisine, hzVoisine };
+
+        // REJOUER_2_ET_5=1 (revue tâche 11, partie C) : le témoin et le
+        // détail intégral de ① ne sont PAS rejoués — leurs pièces suffisent
+        // déjà (verdict de la tâche 11). ① est réexercé comme sous-produit de
+        // `phaseCritere1Et2` (①+② partagent la même fonction, non scindée
+        // pour ne pas risquer un bug sur un code déjà correct) : sa
+        // corroboration éventuelle est une note annexe, pas un verdict rejoué.
+        if (process.env.REJOUER_2_ET_5 !== '1') {
+            releve.phases.temoin = await phaseTemoin(cdp);
+        } else {
+            log('>>> REJOUER_2_ET_5=1 : témoin non rejoué (pièces déjà suffisantes)');
+        }
+
         releve.phases.critere1et2 = await phaseCritere1Et2(cdp, cible, marqueurCible);
 
-        const voisine = noms[1];
-        const hzVoisine = hzDe(2);
         releve.phases.critere4et5 = await phaseCritere4Et5(cdp, voisine, hzVoisine);
 
         releve.marqueurs = await marqueurs('FIN');

@@ -1,0 +1,311 @@
+[    0.0s 2026-08-05T21:39:45.271Z] ÉTIQUETTE=rejeu-2-5 N_FENETRES=3 PALIER_S=60 BITRATE=8000000 BUDGET_BPS=12000000 PLEIN_ECRAN=1 AUDIO=1 chrome pid=2564333
+[    0.7s 2026-08-05T21:39:45.986Z] identité du navigateur : pid écoutant=2564333 pid lancé=2564333 version=Chrome/151.0.7922.71
+[    0.7s 2026-08-05T21:39:46.005Z] + page attachée  session=8187FA42 url=about:blank
+[    0.7s 2026-08-05T21:39:46.009Z] >>> ÉTAPE 0 : préparation — VM sans fenêtre éligible (vérifié, pas supposé)
+[    5.3s 2026-08-05T21:39:50.536Z] CPU HÔTE (au repos, avant toute session)
+    %Cpu(s): 19,5 ut, 18,7 sy,  0,0 ni, 61,0 id,  0,3 wa,  0,0 hi,  0,6 si,  0,0 st 
+    %Cpu(s): 15,2 ut,  8,5 sy,  0,0 ni, 76,0 id,  0,0 wa,  0,0 hi,  0,3 si,  0,0 st 
+    %Cpu(s): 11,3 ut,  6,7 sy,  0,0 ni, 81,7 id,  0,0 wa,  0,0 hi,  0,3 si,  0,0 st
+    loadavg=5.56 5.30 5.94 2/3078 2564793
+[   10.9s 2026-08-05T21:39:56.130Z] PURGE FENÊTRES/AGENTS RESCAPÉS (avant lancement du superviseur) {"agents_restants":0,"chrome_restants":0}
+[   10.9s 2026-08-05T21:39:56.158Z] + page attachée  session=3BC3481F url=http://192.168.3.1:5173/shell.html
+[   13.9s 2026-08-05T21:39:59.197Z] statut shell : bureau connecté
+[   13.9s 2026-08-05T21:39:59.198Z] >>> lancement du superviseur
+[   14.4s 2026-08-05T21:39:59.668Z] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   20.4s 2026-08-05T21:40:05.704Z]   · ouverture fenêtre 1 (hz=410, marqueur=chrome-d8-rejeu-2-5-1)
+[   21.0s 2026-08-05T21:40:06.235Z] + page attachée  session=93035956 url=
+[   21.4s 2026-08-05T21:40:06.632Z] + page attachée  session=BEAD030A url=
+[   23.0s 2026-08-05T21:40:08.226Z] SCÉNARIO IMPOSÉ (après ouverture 1) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true"}
+[   23.0s 2026-08-05T21:40:08.226Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   23.0s 2026-08-05T21:40:08.246Z]   · ouverture fenêtre 2 (hz=520, marqueur=chrome-d8-rejeu-2-5-2)
+[   23.6s 2026-08-05T21:40:08.883Z] + page attachée  session=D9EF530D url=
+[   23.9s 2026-08-05T21:40:09.184Z] + page attachée  session=2E5545CC url=
+[   25.5s 2026-08-05T21:40:10.779Z] SCÉNARIO IMPOSÉ (après ouverture 2) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true","w:w-4":"false/false"}
+[   25.5s 2026-08-05T21:40:10.779Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   25.5s 2026-08-05T21:40:10.798Z]   · ouverture fenêtre 3 (hz=630, marqueur=chrome-d8-rejeu-2-5-3)
+[   26.1s 2026-08-05T21:40:11.335Z] + page attachée  session=15D42E71 url=
+[   26.6s 2026-08-05T21:40:11.833Z] + page attachée  session=4D6A18B7 url=
+[   28.0s 2026-08-05T21:40:13.261Z] SCÉNARIO IMPOSÉ (après ouverture 3) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true","w:w-4":"false/false","w:w-6":"false/false"}
+[   28.0s 2026-08-05T21:40:13.261Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   28.0s 2026-08-05T21:40:13.262Z]   3/3 fenêtres ouvertes
+[   34.0s 2026-08-05T21:40:19.264Z] >>> RÉSOLUTION D'IDENTITÉ (fenêtre 1 = cible) marqueur=chrome-d8-rejeu-2-5-1
+[   34.7s 2026-08-05T21:40:19.959Z] + page attachée  session=2A0328D4 url=
+[   38.6s 2026-08-05T21:40:23.912Z] STYLE FENÊTRE (chrome-d8-rejeu-2-5-1, action=sansBordure) {"hwnd":"2021c","sans_bordure_apres":true,"avant":382664704,"sans_bordure_avant":false,"apres":369819648}
+
+[   38.7s 2026-08-05T21:40:23.946Z] FAIT ATTEINT (balise d'identité — annonce PleinEcran actif=true (chrome-d8-rejeu-2-5-1)) après 0.0 s
+[   39.4s 2026-08-05T21:40:24.696Z] + page attachée  session=E2979ABC url=
+[   43.4s 2026-08-05T21:40:28.632Z] STYLE FENÊTRE (chrome-d8-rejeu-2-5-1, action=restaurer) {"hwnd":"2021c","sans_bordure_apres":false,"avant":369819648,"sans_bordure_avant":true,"apres":382664704}
+
+[   43.4s 2026-08-05T21:40:28.632Z]   → chrome-d8-rejeu-2-5-1 résolu à session=w-2
+[   43.4s 2026-08-05T21:40:28.632Z] >>> RÉSOLUTION D'IDENTITÉ (fenêtre 2 = voisine) marqueur=chrome-d8-rejeu-2-5-2
+[   44.1s 2026-08-05T21:40:29.335Z] + page attachée  session=290AC4B5 url=
+[   48.0s 2026-08-05T21:40:33.289Z] STYLE FENÊTRE (chrome-d8-rejeu-2-5-2, action=sansBordure) {"hwnd":"2025a","sans_bordure_apres":true,"avant":382664704,"sans_bordure_avant":false,"apres":369819648}
+
+[   48.1s 2026-08-05T21:40:33.316Z] FAIT ATTEINT (balise d'identité — annonce PleinEcran actif=true (chrome-d8-rejeu-2-5-2)) après 0.0 s
+[   48.7s 2026-08-05T21:40:33.961Z] + page attachée  session=33B4472A url=
+[   52.7s 2026-08-05T21:40:37.919Z] STYLE FENÊTRE (chrome-d8-rejeu-2-5-2, action=restaurer) {"hwnd":"2025a","sans_bordure_apres":false,"avant":369819648,"sans_bordure_avant":true,"apres":382664704}
+
+[   52.7s 2026-08-05T21:40:37.919Z]   → chrome-d8-rejeu-2-5-2 résolu à session=w-4
+[   52.7s 2026-08-05T21:40:37.919Z] IDENTITÉ RÉSOLUE cible=w:w-2 (marqueur=chrome-d8-rejeu-2-5-1) voisine=w:w-4 (marqueur=chrome-d8-rejeu-2-5-2, hz=520)
+[   52.7s 2026-08-05T21:40:37.919Z] >>> REJOUER_2_ET_5=1 : témoin non rejoué (pièces déjà suffisantes)
+[   52.7s 2026-08-05T21:40:37.921Z] >>> PHASE CRITÈRE ①+② — cible=w:w-2 marqueur=chrome-d8-rejeu-2-5-1
+[   52.7s 2026-08-05T21:40:37.949Z]   sortie AVANT (garde-fou 7) : \\.\DISPLAY5
+[   52.7s 2026-08-05T21:40:38.010Z] SCÉNARIO IMPOSÉ (critère ①+② (visibilité de référence)) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true","w:w-4":"false/false","w:w-6":"false/false"}
+[   52.7s 2026-08-05T21:40:38.011Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   57.5s 2026-08-05T21:40:42.735Z] + page attachée  session=7133239C url=
+[   61.4s 2026-08-05T21:40:46.705Z] STYLE FENÊTRE (chrome-d8-rejeu-2-5-1, action=lire) {"hwnd":"2021c","sans_bordure_apres":false,"avant":382664704,"sans_bordure_avant":false,"apres":382664704}
+
+[   62.1s 2026-08-05T21:40:47.356Z] + page attachée  session=D6A2A676 url=
+[   66.0s 2026-08-05T21:40:51.312Z] STYLE FENÊTRE (chrome-d8-rejeu-2-5-1, action=sansBordure) {"hwnd":"2021c","sans_bordure_apres":true,"avant":382664704,"sans_bordure_avant":false,"apres":369819648}
+
+[   66.1s 2026-08-05T21:40:51.336Z] FAIT ATTEINT (annonce PleinEcran actif=true côté agent) après 0.0 s
+[   66.1s 2026-08-05T21:40:51.339Z] FAIT ATTEINT (message fullscreen reçu côté navigateur (cible)) après 0.0 s
+[   66.1s 2026-08-05T21:40:51.352Z] VIEWPORT FORCÉ (critère ② — cible plein écran) cible=w:w-2 1920x1080
+[   96.5s 2026-08-05T21:41:21.807Z] !! FAIT NON ATTEINT (changement de mode côté agent (cible)) après 30 s
+[   96.6s 2026-08-05T21:41:21.828Z] VIEWPORT FORCÉ (critère ② — probe TAILLE_MAX_SORTIE) cible=w:w-2 3840x2160
+[  102.6s 2026-08-05T21:41:27.839Z]   window.innerWidth/Height — plein écran : 1280x720 → 1920x1080 (cible 1920x1080) ; surdimensionné : 1920x1080 → 3840x2160 (cible 3840x2160)
+[  103.3s 2026-08-05T21:41:28.564Z] + page attachée  session=B0D01EAB url=
+[  107.2s 2026-08-05T21:41:32.498Z] STYLE FENÊTRE (chrome-d8-rejeu-2-5-1, action=restaurer) {"hwnd":"2021c","sans_bordure_apres":false,"avant":369819648,"sans_bordure_avant":true,"apres":382664704}
+
+[  107.2s 2026-08-05T21:41:32.505Z] VIEWPORT FORCÉ (critère ①+② — restauration) cible=w:w-2 1280x720
+[  111.3s 2026-08-05T21:41:36.534Z] FAIT ATTEINT (annonce PleinEcran actif=false (restauration)) après 0.0 s
+[  111.3s 2026-08-05T21:41:36.534Z] CRITÈRE ①+② — RELEVÉ {
+ "cible": "w:w-2",
+ "session_cible": "w-2",
+ "marqueur_cible": "chrome-d8-rejeu-2-5-1",
+ "debut": "2026-08-05T21:40:42.013Z",
+ "fin": "2026-08-05T21:41:27.840Z",
+ "critere1": {
+  "style_avant": {
+   "hwnd": "2021c",
+   "sans_bordure_apres": false,
+   "avant": 382664704,
+   "sans_bordure_avant": false,
+   "apres": 382664704
+  },
+  "style_bascule": {
+   "hwnd": "2021c",
+   "sans_bordure_apres": true,
+   "avant": 382664704,
+   "sans_bordure_avant": false,
+   "apres": 369819648
+  },
+  "detection_agent": {
+   "t": "2026-08-05T21:40:47.813973Z",
+   "session": "w-2",
+   "actif": true
+  },
+  "messages_navigateur_cible": [
+   {
+    "t": 1785966020336,
+    "active": true
+   },
+   {
+    "t": 1785966025136,
+    "active": false
+   },
+   {
+    "t": 1785966047825,
+    "active": true
+   }
+  ],
+  "messages_navigateur_voisines": {
+   "w:w-4": [
+    {
+     "t": 1785966029848,
+     "active": true
+    },
+    {
+     "t": 1785966034388,
+     "active": false
+    }
+   ],
+   "w:w-6": []
+  },
+  "fuite_vers_voisine": [
+   "w:w-4"
+  ],
+  "verdict_partie_mesurable": false
+ },
+ "critere2": {
+  "style_de_la_fenetre_pendant_cette_mesure": "sans_bordure (bascule du critère 1, non restaurée avant 2)",
+  "viewport_demande": [
+   1920,
+   1080
+  ],
+  "mode_apres_cible": null,
+  "inner_avant": "1280x720",
+  "inner_apres": "1920x1080",
+  "inner_a_atteint_la_cible": true,
+  "stats_apres_redimensionnement": {
+   "etat": "connected",
+   "horloge": 1785966081817,
+   "images_decodees": 5866,
+   "images_recues": 6031,
+   "images_perdues": 12,
+   "octets_recus": 41465125,
+   "octets_audio": 1157757,
+   "l": 1280,
+   "h": 720,
+   "fullscreen_element_non_nul": false,
+   "cachee": false,
+   "focalisee": true,
+   "bandeau": "1280×720, 6.0 Mb/s — adaptation indisponible",
+   "plein_ecran_messages": [
+    {
+     "t": 1785966020336,
+     "active": true
+    },
+    {
+     "t": 1785966025136,
+     "active": false
+    },
+    {
+     "t": 1785966047825,
+     "active": true
+    }
+   ]
+  },
+  "viewport_surdimensionne_demande": [
+   3840,
+   2160
+  ],
+  "inner_avant_surdimensionne": "1920x1080",
+  "inner_apres_surdimensionne": "3840x2160",
+  "stats_apres_surdimensionne": {
+   "etat": "connected",
+   "horloge": 1785966087838,
+   "images_decodees": 6296,
+   "images_recues": 6550,
+   "images_perdues": 253,
+   "octets_recus": 45639945,
+   "octets_audio": 1254840,
+   "l": 1280,
+   "h": 720,
+   "fullscreen_element_non_nul": false,
+   "cachee": false,
+   "focalisee": true,
+   "bandeau": "1280×720, 6.0 Mb/s — adaptation indisponible",
+   "plein_ecran_messages": [
+    {
+     "t": 1785966020336,
+     "active": true
+    },
+    {
+     "t": 1785966025136,
+     "active": false
+    },
+    {
+     "t": 1785966047825,
+     "active": true
+    }
+   ]
+  },
+  "surdimensionne_borne": true
+ },
+ "garde_fou_7_nom_sortie": {
+  "avant": "\\\\.\\DISPLAY5",
+  "apres": null,
+  "conserve": false
+ },
+ "mode_sortie_complet": {
+  "demandees": [],
+  "reussies": [],
+  "refusees": [],
+  "illisibles": [],
+  "impossibles": []
+ },
+ "pertes_acces_toutes": [],
+ "pertes_acces_voisines": [],
+ "detection_agent_sortie": {
+  "t": "2026-08-05T21:41:28.929188Z",
+  "session": "w-2",
+  "actif": false
+ },
+ "style_restaure": {
+  "hwnd": "2021c",
+  "sans_bordure_apres": false,
+  "avant": 369819648,
+  "sans_bordure_avant": true,
+  "apres": 382664704
+ }
+}
+[  111.3s 2026-08-05T21:41:36.535Z] >>> PHASE CRITÈRE ④+⑤ — voisine=w:w-4 hz=520
+[  111.3s 2026-08-05T21:41:36.539Z] VISIBILITÉ FORCÉE (critère ④ — masquage) cible=w:w-4 cachee=true relu=true
+[  113.4s 2026-08-05T21:41:38.640Z] FAIT ATTEINT (sommeil de la voisine (endormie=true)) après 2.1 s
+[  114.9s 2026-08-05T21:41:40.183Z] VISIBILITÉ FORCÉE (critère ④ — réveil) cible=w:w-4 cachee=false relu=false
+[  125.1s 2026-08-05T21:41:50.406Z] FAIT ATTEINT (réveil de la voisine (endormie=false, postérieur à l'ordre)) après 10.2 s
+[  125.3s 2026-08-05T21:41:50.557Z] SURVIE VM (après critère ④+⑤) virsh="en cours d’exécution" acces_partage=OUI
+[  125.3s 2026-08-05T21:41:50.558Z] CRITÈRE ④+⑤ — RELEVÉ {
+ "voisine": "w:w-4",
+ "session_voisine": "w-4",
+ "hz_assigne": 520,
+ "debut": "2026-08-05T21:41:36.536Z",
+ "fin": "2026-08-05T21:41:50.406Z",
+ "sommeil_confirme": {
+  "parts": [
+   {
+    "t": "2026-08-05T21:41:36.550131Z",
+    "session": "w-6",
+    "part_bps": 3914666,
+    "endormie": false
+   },
+   {
+    "t": "2026-08-05T21:41:36.551132Z",
+    "session": "w-2",
+    "part_bps": 7829332,
+    "endormie": false
+   },
+   {
+    "t": "2026-08-05T21:41:36.563666Z",
+    "session": "w-4",
+    "part_bps": 256000,
+    "endormie": true
+   }
+  ]
+ },
+ "audio_pendant_sommeil": {
+  "hz": 522,
+  "db": -40,
+  "plancher_db": -158,
+  "sample_rate": 44100,
+  "niveaux": [
+   {
+    "f": 520,
+    "db": -40
+   }
+  ],
+  "piste_muted": false,
+  "piste_ready_state": "live",
+  "stats_audio": {
+   "bytes_recus": 1411972,
+   "paquets_recus": 8770
+  }
+ },
+ "audio_survit": true,
+ "reveil_confirme": {
+  "capteur": {
+   "w-6": 84.2,
+   "w-2": 86.3,
+   "w-4": 79.8
+  },
+  "enfant": {
+   "w-6": 84.1,
+   "w-2": 86.5,
+   "w-4": 80.2
+  },
+  "endormies": [],
+  "eveillees": [
+   "w-6@2026-08-05T21:41:42.341162Z",
+   "w-2@2026-08-05T21:41:47.109346Z",
+   "w-4@2026-08-05T21:41:49.669343Z"
+  ]
+ },
+ "survie": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ }
+}
+[  125.3s 2026-08-05T21:41:50.585Z] MARQUEURS (FIN) {"lignes":274,"enfant_lance":3,"attachee_capteur":3,"cloture":0,"plein_ecran_total":6,"plein_ecran_actif":3,"mode_sortie_demande":0,"mode_sortie_reussi":0,"mode_sortie_refuse":0,"mutex_abandonne":1,"erreurs":0}
+[  125.3s 2026-08-05T21:41:50.594Z] relevé écrit dans /home/mallanic/Projects/Guacamole/docs/superpowers/plans/journaux-multifenetres-d8/recette-rejeu-2-5.json
+[  133.6s 2026-08-05T21:41:58.834Z] journal copié dans /tmp/agent-recette-d8-rejeu-2-5.log (après la fermeture du navigateur)
