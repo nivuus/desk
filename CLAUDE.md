@@ -354,14 +354,14 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 >
 > | Fichier | Lignes | Remarque |
 > | --- | --- | --- |
-> | `agent/src/windows_source/redimensionnement/mode_sortie.rs` | **427** (marge 73) | neuf — `ChangeDisplaySettingsExW` et `borner_a_la_taille_max`, module petit-fils **pour ne pas ajouter une ligne `mod` à `windows_source.rs`** (jugé sain, sauvé par l'honnêteté de son commentaire ; **premier module à remonter d'un cran le jour du découpage**) |
+> | `agent/src/windows_source/redimensionnement/mode_sortie.rs` | ~~427~~ ~~446~~ **458** (marge 42) | neuf — `ChangeDisplaySettingsExW` et `borner_a_la_taille_max`, module petit-fils **pour ne pas ajouter une ligne `mod` à `windows_source.rs`** (jugé sain, sauvé par l'honnêteté de son commentaire ; **premier module à remonter d'un cran le jour du découpage**) |
 > | `agent/src/diagnostics/multifenetre/mode_sortie.rs` | **421** (marge 79) | neuf — la sonde P1, deux fois écrite (la première ne pouvait pas échouer) |
 > | `client/src/fullscreen.test.ts` | **327** | neuf |
 > | `agent/src/superviseur/table/tests_retention.rs` | **322** | +41 |
 > | `agent/src/windows_source/sortie.rs` | **316** | +128 |
-> | `agent/src/windows_source/redimensionnement.rs` | **292** | +75/-15 |
+> | `agent/src/windows_source/redimensionnement.rs` | ~~292~~ ~~327~~ **345** (marge 155) | +75/-15 sous D8, **puis +53 sur les deux rondes de la revue finale de branche** (le garde du désarmement, la correction I5, et la conditionnalisation de l'en-tête) |
 > | `agent/src/capteur/pont_media.rs` | ~~188~~ **263** | +38 sous D8 — le bras `PleinEcran` du `match` catch-all, **et son test** (trou du plan, voir la section D8). ⚠️ Le 188 est un chiffre **D6** : D7 l'avait déjà porté à **225** sans qu'aucun de ses tableaux ne le dise |
-> | `agent/src/capteur/plein_ecran.rs` | **195** | neuf — le prédicat pur, aucun `cfg`, 8 tests d'hôte |
+> | `agent/src/capteur/plein_ecran.rs` | ~~195~~ **263** (marge 237) | neuf — le prédicat pur, aucun `cfg`, 8 tests d'hôte. **+68 à la vague de correction de la revue finale de branche** : `changement_de_mode_arme` et les trois raisons du désarmement |
 > | `client/src/fullscreen.ts` | **174** | +64/-4 |
 > | `agent/src/capteur/fenetre/commandes.rs` | **192** | +14/-3 |
 > | `proto/ts/control.ts` | **129** | +8/-2 |
@@ -2070,7 +2070,7 @@ code d'erreur).
 | `SOURCE_TRACE=1` | ⚠️ **MORT DES DEUX CÔTÉS en multi-fenêtres** (constaté le 3 août 2026, sous-bloc D6). Les écrivains vivent dans `windows_source.rs` — `PRODUCED` **313**, `TICKS` **518**, `CAPTURED` **544** (ordre non positionnel : ne pas apparier à la liste `TICKS`/`CAPTURED`/`PRODUCED`) —, donc dans le **capteur** depuis D4 ; le lecteur unique est `demarrage.rs:127-129` (déplacé depuis `142-144` par les
 remaniements de D7), donc dans
 l'**enfant** ; et `main.rs:268` rend la main à `capteur::executer` avant que `demarrage::executer` ne soit atteint. La variable n'affiche donc que des **zéros** côté enfant, et les compteurs du capteur ne sont lus par **personne**. **Elle ne décrit plus que le chemin mono-fenêtre**, sans `CAPTEUR` ni `SUPERVISEUR`. ✅ **Les cinq numéros de ligne de cette case ont été REVÉRIFIÉS le 5 août 2026 (D8, tâche 12) et sont tous EXACTS** — `313`, `518`, `544`, `demarrage.rs:127-129`, `main.rs:268` : la mention « valeur non revérifiée pour le reste » est donc levée. ⚠️ **Le remède, lui, n'a PAS été appliqué** — il était consigné pour D7, D7 ne l'a pas fait, D8 non plus : rendre ces trois statiques **per-session** et les extraire vers `windows_source/telemetrie.rs` reste dû, et c'est ce qui rendrait à `windows_source.rs` la marge que D6 lui a prise |
-| `MULTIFENETRE_MODE_SORTIE=<L>x<H>` | **Sous-bloc D8** — la sonde **P1** (`agent/src/diagnostics/multifenetre.rs:169`) : crée une sortie virtuelle, relit sa taille **courante** par DXGI, choisit une cible parmi les modes annoncés **en excluant cette taille courante**, tente `ChangeDisplaySettingsExW`, et **juge sur le MOUVEMENT relu par DXGI, jamais sur une égalité** — la première version rendait `P1 RECU` sans que rien n'ait bougé, son critère ne pouvant pas échouer. Rend `P1 NON MESURABLE` si aucun mode ne diffère de la taille courante. Transmise par `scripts/run-agent.sh:77`. ⚠️ **C'est AUSSI le remède opérationnel au blocage produit par pollution du registre** : une sortie naît à la dernière taille laissée au registre, et un registre resté à 2560×1440 empêche toute fenêtre de s'attacher — `MULTIFENETRE_MODE_SORTIE=1280x720` le rétablit. ⚠️ **Un lancement à elle seule** : l'aiguillage retourne après la première sonde reconnue, un `MULTIFENETRE_VDD_PURGE=1` dans le même lancement l'annulerait en silence |
+| `MULTIFENETRE_MODE_SORTIE=<L>x<H>` | **Sous-bloc D8** — la sonde **P1** (`agent/src/diagnostics/multifenetre.rs:169`) : crée une sortie virtuelle, relit sa taille **courante** par DXGI, choisit une cible parmi les modes annoncés **en excluant cette taille courante**, tente `ChangeDisplaySettingsExW`, et **juge sur le MOUVEMENT relu par DXGI, jamais sur une égalité** — la première version rendait `P1 RECU` sans que rien n'ait bougé, son critère ne pouvant pas échouer. Rend `P1 NON MESURABLE` si aucun mode ne diffère de la taille courante. Transmise par `scripts/run-agent.sh:78` *(publié `:77` — l'insertion de `PLEIN_ECRAN_MODE_SORTIE` à la ligne 35 a décalé tout ce qui suit de +1 ; la 77 est désormais `MULTIFENETRE_PLAFOND_SONDE`)*. ⚠️ **C'est AUSSI le remède opérationnel au blocage produit par pollution du registre** : une sortie naît à la dernière taille laissée au registre, et un registre resté à 2560×1440 empêche toute fenêtre de s'attacher — `MULTIFENETRE_MODE_SORTIE=1280x720` le rétablit. ⚠️ **Un lancement à elle seule** : l'aiguillage retourne après la première sonde reconnue, un `MULTIFENETRE_VDD_PURGE=1` dans le même lancement l'annulerait en silence |
 | `PLEIN_ECRAN=0` | **Sous-bloc D8** — **variable de PRODUIT**, pas de banc. **Désarme le mécanisme ENTIER** : ni relecture du style (`capteur/fenetre.rs`), ni changement de mode de sortie (`windows_source/redimensionnement.rs`). ⚠️ **`=0` désactive ; une simple PRÉSENCE n'active pas** — même convention qu'`AUDIO`, `SUPERVISEUR` et `CAPTEUR`, et pour la même raison : tester `is_ok()` activerait le plein écran en écrivant `PLEIN_ECRAN=0` pour le couper. Lue dans le **capteur** seul (`capteur/plein_ecran.rs:78`), par `OnceLock` — l'enfant ne fait que relayer. Transmise par `scripts/run-agent.sh:34`. Traces de contrôle : `plein ecran DESARME (PLEIN_ECRAN=0) : …` au démarrage du capteur, et `redimensionnement ignoré : PLEIN_ECRAN=0 …` à chaque `resize`. ⚠️ ~~**C'est la SEULE parade actuelle au défaut HiDPI ouvert**~~ — **plus vrai depuis la revue finale de branche de D8** : le changement de mode étant désormais désarmé PAR DÉFAUT (ligne suivante), le défaut HiDPI est inatteignable en configuration livrée, et `PLEIN_ECRAN=0` est devenu la parade du mécanisme **entier**, plus la seule parade d'un défaut |
 | `PLEIN_ECRAN_MODE_SORTIE=1` | **Sous-bloc D8, revue finale de branche (5 août 2026)** — **variable de PRODUIT**. **ARME** le changement de mode de la sortie virtuelle (`windows_source/redimensionnement/mode_sortie.rs`), **DÉSARMÉ PAR DÉFAUT**. ⚠️ **Convention INVERSE de `PLEIN_ECRAN`, à dessein** : on désarme sur `=0` ce qui est livré, on **arme sur `=1`** ce qui ne l'est pas — et ici la simple présence ne suffit pas non plus, il faut la valeur `1`. **Ce qui reste actif sans elle** : détection du style, annonce `PleinEcran`/`Fullscreen`, armement client. **Pourquoi** : critère ② **JAMAIS EXERCÉ** (`mode_sortie_demande=0` aux deux exécutions) et **deux Critiques ouvertes** — C1, la pollution du registre qui bloque les ouvertures de fenêtre ultérieures (portée inconnue : **cinq GUID SudoVDA distincts** au journal de recette) ; C2, la reprise D2 court-circuitée par une `Err` sur un échec **transitoire** de réouverture. **Les deux sont délibérément NON CORRIGÉES**, le désarmement les rendant inatteignables. Garde et raisons : `agent/src/capteur/plein_ecran.rs::changement_de_mode_arme`. Transmise par `scripts/run-agent.sh:35`. Traces : `changement de mode de sortie ARME (…)` au premier appel si armée, `redimensionnement ignoré : changement de mode de sortie DÉSARMÉ (…)` à chaque `resize` sinon |
 
@@ -4646,19 +4646,48 @@ l'avait déjà écrit après D6, et l'a repayé ici.**
 | l'état de référence | idem — `SuiviBordure` | **l'état lu à l'attache fait référence, on n'annonce que les CHANGEMENTS** : une application née sans bordure n'annonce rien |
 | la lecture | `agent/src/capteur/fenetre.rs` (**470**) | sur le fil de fenêtre, bridée à `PERIODE_STYLE = 250 ms`, **jamais à l'image**. Constante **propre** à ce mécanisme — ne pas la coupler à `PERIODE_REARBITRAGE` |
 | le message | `capteur/protocole.rs` (**369**) → `proto/src/control.rs` (**419**) | `DepuisCapteur::PleinEcran { actif }` → `AgentControl::Fullscreen { active }`, le trajet exact de `Sommeil` |
-| le changement de mode, **DÉSARMÉ par défaut** | `agent/src/windows_source/redimensionnement/mode_sortie.rs` (~~427~~ **446**, 6 août) | `ChangeDisplaySettingsExW` seul. ⚠️ **`TAILLE_MAX_SORTIE = (1920, 1080)` et `borner_a_la_taille_max` ne sont PAS ici** : ils vivent dans **`agent/src/windows_source/sortie.rs:99`** (la constante) **et `:113`** (la fonction). *L'ordre des deux noms était inversé — corrigé, les numéros étaient justes.* |
-| le garde du changement de mode | `agent/src/capteur/plein_ecran.rs::changement_de_mode_arme` | **neuf, revue finale de branche** — `PLEIN_ECRAN_MODE_SORTIE=1` **arme** ; désarmé par défaut. Porte C1 et C2 auprès de lui. Unique point d'application : `windows_source/redimensionnement.rs` (**327**) |
+| le changement de mode, **DÉSARMÉ par défaut** | `agent/src/windows_source/redimensionnement/mode_sortie.rs` (~~427~~ ~~446~~ **458**, 6 août) | `ChangeDisplaySettingsExW` seul. ⚠️ **`TAILLE_MAX_SORTIE = (1920, 1080)` et `borner_a_la_taille_max` ne sont PAS ici** : ils vivent dans **`agent/src/windows_source/sortie.rs:99`** (la constante) **et `:113`** (la fonction). *L'ordre des deux noms était inversé — corrigé, les numéros étaient justes.* |
+| le garde du changement de mode | `agent/src/capteur/plein_ecran.rs::changement_de_mode_arme` | **neuf, revue finale de branche** — `PLEIN_ECRAN_MODE_SORTIE=1` **arme** ; désarmé par défaut. Porte C1 et C2 auprès de lui. Unique point d'application : `windows_source/redimensionnement.rs` (~~327~~ **345**) |
 | le client | `client/src/fullscreen.ts` (**174**) | **armement, pas action** : on entre au premier `pointerdown`/`keydown`. `Fullscreen { active: false }` sort immédiatement |
 
 > ✅ **Les six chiffres de ce tableau sont RELEVÉS PAR LA COMMANDE le 6 août
 > 2026**, à la vague de correction de la revue finale de branche. **Deux ont
-> bougé sous cette vague même** et sont barrés à leur place plutôt que corrigés
-> ailleurs : `plein_ecran.rs` 195 → **263** (le garde et ses raisons) et
-> `mode_sortie.rs` 427 → **446** (la correction I5 et la note HiDPI). Les
-> quatre autres — `capteur/fenetre.rs` **470**, `capteur/protocole.rs` **369**,
-> `proto/src/control.rs` **419**, `client/src/fullscreen.ts` **174** — sont
-> inchangés et exacts. **Aucun n'approche 500** ; la marge la plus étroite est
-> celle de `fenetre.rs`, **30**.
+> bougé sous cette vague même** : `plein_ecran.rs` 195 → **263** (le garde et
+> ses raisons) et `mode_sortie.rs` 427 → **458** (la correction I5, la note
+> HiDPI, puis l'en-tête de module conditionnalisée à la re-revue). Les quatre autres — `capteur/fenetre.rs` **470**,
+> `capteur/protocole.rs` **369**, `proto/src/control.rs` **419**,
+> `client/src/fullscreen.ts` **174** — sont inchangés et exacts. **Aucun
+> n'approche 500** ; la marge la plus étroite est celle de `fenetre.rs`, **30**.
+>
+> ❌ **CETTE ANNOTATION A ÉLLE-MÊME PORTÉ UN FAUX, et c'est le naufrage du
+> « 487 » une CINQUIÈME fois** (relevé à la re-revue de la vague, 6 août 2026).
+> Elle affirmait que les deux chiffres étaient « barrés **à leur place** plutôt
+> que corrigés ailleurs ». **« Leur place » comptait DEUX tableaux** : celui-ci
+> et le **récapitulatif de tête** (§ « Conventions de code », « Fichiers que D8
+> a fait bouger ») — dont ce fichier écrit trois fois qu'il est le seul qu'on
+> lise pour savoir de quelle marge on dispose. **Seul celui-ci avait été
+> traité.** Le tableau de tête portait donc **trois** chiffres faux, dont un
+> — `redimensionnement.rs` **292 → 327** — que le commit correcteur **n'a même
+> pas nommé**, alors que sa valeur juste figurait dans une ligne que **ce même
+> commit venait d'ajouter** quelques lignes plus haut.
+>
+> **Les trois sont désormais corrigés à leur place** : `mode_sortie.rs`
+> 427 → **458**, `redimensionnement.rs` 292 → **345**, `plein_ecran.rs`
+> 195 → **263**. Les neuf autres lignes du tableau de tête ont été **remesurées
+> par la commande** et sont exactes.
+>
+> ⚠️ **Les deux premiers ont ENCORE bougé pendant la correction elle-même**
+> (`446` → **458**, `327` → **345**), la re-revue exigeant par ailleurs de
+> conditionner à l'armement les deux en-têtes de module et la phrase
+> d'ouverture de `resize`. **Ils sont relevés APRÈS ces éditions, pas avant** —
+> une table corrigée sur une mesure prise en début de ronde serait fausse à la
+> fin de la même ronde. C'est la forme la plus discrète de la dérive, et la
+> plus facile à commettre en croyant bien faire.
+>
+> ⚠️ **La leçon n'est pas « recompter » — c'est que « corrigé à sa place » est
+> une affirmation de COMPLÉTUDE, et qu'une affirmation de complétude se
+> vérifie en énumérant les places AVANT de l'écrire.** Le geste qui manquait
+> tient en une commande : `grep -n '<le nombre>' CLAUDE.md`.
 
 **Trois faits de conception qui survivront au code :**
 

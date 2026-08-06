@@ -1,6 +1,18 @@
 //! Faire suivre à la sortie virtuelle la taille du viewport — le passage en
 //! plein écran du sous-bloc D8.
 //!
+//! ⚠️ **CE MODULE NE S'EXÉCUTE PAS EN CONFIGURATION LIVRÉE.** La revue finale
+//! de branche de D8 (5 août 2026) l'a **désarmé par défaut** : son unique
+//! appelant (`redimensionnement.rs::resize`) est gardé par
+//! `capteur::plein_ecran::changement_de_mode_arme()`, que seul
+//! `PLEIN_ECRAN_MODE_SORTIE=1` rend vrai. **Raison** : ce chemin n'a JAMAIS
+//! tourné en conditions de produit (critère ② de la recette NON EXERCÉ,
+//! `mode_sortie_demande=0` aux deux exécutions) et porte deux Critiques
+//! ouvertes — C1, la pollution du registre qui bloquerait les ouvertures de
+//! fenêtre ultérieures ; C2, la reprise sur perte d'accès de D2
+//! court-circuitée. Les deux sont documentées auprès du garde, et sont le
+//! premier travail de qui armera ce module.
+//!
 //! **Module ENFANT de `redimensionnement`, donc PETIT-FILS de
 //! `windows_source`** : la visibilité privée de Rust s'étend au module
 //! définissant et à tous ses descendants, si bien que ces méthodes touchent les

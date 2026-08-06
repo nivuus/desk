@@ -17,6 +17,12 @@
 //! viewport. Il vit sous ce module-ci, et non sous `windows_source`, pour ne
 //! pas ajouter une ligne à un fichier en dette de taille gelée — voir son
 //! commentaire de tête.
+//!
+//! ⚠️ **CE CHEMIN EST DÉSARMÉ PAR DÉFAUT** depuis la revue finale de branche
+//! de D8 : `resize` retombe sur le comportement D1 (ne rien faire) tant que
+//! `PLEIN_ECRAN_MODE_SORTIE=1` n'est pas posé. **Ce qui reste actif et livré
+//! du plein écran, c'est la DÉTECTION et l'ANNONCE** (`capteur/fenetre.rs` →
+//! `AgentControl::Fullscreen`), qui ne passent pas par ici.
 
 // Petit-fils de `windows_source` : il voit les champs privés de
 // `WindowsSource` comme ce module-ci, la visibilité privée de Rust s'étendant
@@ -74,9 +80,21 @@ impl WindowsSource {
         // D8, 4 août 2026). Le pilote SudoVDA n'a effectivement toujours aucun
         // `SET_MODE` parmi ses six IOCTL — ce n'était pas une erreur de D1. Ce
         // qui a changé est le CHEMIN employé : l'API d'affichage de WINDOWS
-        // (`ChangeDisplaySettingsExW`), et non le canal du pilote. La sortie
-        // suit donc désormais le viewport, et `changer_mode_de_sortie` s'en
-        // charge.
+        // (`ChangeDisplaySettingsExW`), et non le canal du pilote.
+        //
+        // ⚠️ **MAIS EN CONFIGURATION LIVRÉE, LA SORTIE NE SUIT PAS LE
+        // VIEWPORT** (revue finale de branche, 5 août 2026) : le chemin que
+        // `changer_mode_de_sortie` porte est **désarmé par défaut**, et il
+        // faut poser `PLEIN_ECRAN_MODE_SORTIE=1` pour l'armer — voir le garde
+        // quelques lignes plus bas, et ses trois raisons dans
+        // `capteur::plein_ecran::changement_de_mode_arme`. *Une rédaction
+        // antérieure de ce bloc affirmait ici « la sortie suit donc désormais
+        // le viewport » : c'était vrai le 4 août, et faux le lendemain.*
+        //
+        // **Ce qui reste vrai sans réserve** : la voie est établie, elle
+        // fonctionne au banc, et la conclusion de D1 (« la sortie ne peut pas
+        // suivre ») reste réfutée. Ce qui manque n'est pas un chemin, c'est
+        // une mesure de ce chemin **en production**.
         //
         // **Ce qui l'établit, et comment le refaire sans croire personne** :
         // la sonde P1 `agent/src/diagnostics/multifenetre/mode_sortie.rs`

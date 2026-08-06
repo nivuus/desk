@@ -312,11 +312,29 @@ QUATRE faits indépendants, pas sur une coïncidence unique :**
    d'horodatage (section précédente), pas une lecture.
 2. Chaque ouverture du pilote ajoute EXACTEMENT une session, dans l'ordre —
    fait relevé, pas une inférence.
-3. La bascule réelle (déduite de l'envoi de la tâche planifiée `sansBordure`,
-   ~21:03:41,4) et la détection agent (21:03:41,971) sont séparées d'environ
-   0,5 s.
-4. La restauration (tâche planifiée `restaurer`, ~21:05:24,1) et `actif=false`
-   (21:05:24,604) sont séparées de la MÊME latence, ~0,5 s, dans l'autre sens.
+3. L'ENVOI de la tâche planifiée `sansBordure` (~21:03:41,4) et la détection
+   agent (21:03:41,971) sont séparés d'environ **0,5 s**.
+4. L'envoi de la tâche planifiée `restaurer` (~21:05:24,1) et `actif=false`
+   (21:05:24,604) sont séparés du **même intervalle**, ~0,5 s, dans l'autre
+   sens.
+
+⚠️ **CORRIGÉ (revue finale de branche) : ce « ~0,5 s » est une latence ENVOI →
+DÉTECTION, et c'est une BORNE SUPÉRIEURE — pas la latence du détecteur, pas
+une caractéristique du produit.** La rédaction précédente écrivait « la bascule
+réelle » et « la MÊME latence », ce qui la donnait pour une mesure du mécanisme.
+
+- **Les deux horodatages de départ (~21:03:41,4 et ~21:05:24,1) ne figurent
+  dans AUCUN journal** : ils se **reconstituent** en retranchant le
+  `dodo(4000)` du pilote de l'horodatage de sa commande. Le tilde n'était pas
+  décoratif.
+- **Entre l'envoi et le `SetWindowLongPtrW` réel s'intercalent `schtasks`, le
+  démarrage de PowerShell et un `Add-Type`** — tout cela est compté **dans**
+  le 0,5 s. **La latence propre du détecteur est donc inférieure, d'une
+  quantité non mesurée**, et elle est bornée par ailleurs par
+  `PERIODE_STYLE = 250 ms`.
+- **Ce qui reste relevé et juste, et qui suffit à l'argument n°4** : la même
+  borne se retrouve **dans les deux sens**. C'est une symétrie, et c'est
+  d'elle seule que le fait d'identité a besoin — jamais d'une valeur absolue.
 
 **Le verdict que ces pièces portent** : *le mécanisme agent de ① est démontré
 — un vrai changement de style est détecté et annoncé à une session et une
