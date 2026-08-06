@@ -1050,11 +1050,21 @@ async function phaseCritere1Et2(cdp, cible, marqueurCible) {
         const r = await cdp.evalBorne(sidDe(cible), 'window.__pleinEcran.slice()', 4000, false);
         return Array.isArray(r) && r.some((m) => m.active === true) ? r : null;
     }, 30);
-    // « et elle seule » : les VOISINES ne doivent RIEN avoir reçu.
+    // « et elle seule » : les VOISINES ne doivent RIEN avoir reçu — DEPUIS LE
+    // DÉBUT DE CETTE PHASE. Le tampon côté page n'était jamais vidé ni borné
+    // dans le temps : il persiste pour toute la vie de la page et n'est purgé
+    // qu'à 50 entrées. Toute bascule antérieure — y compris la balise
+    // d'identité de `resoudreIdentite()` — y laissait une trace que ce code
+    // relisait SANS filtrer, produisant un faux positif de « fuite ».
+    // Découvert par le rejeu de D8, non corrigé jusqu'ici. Chaque entrée porte
+    // déjà `t` (`Date.now()` posé à l'écriture, voir l'AMORCE) : on ne lit que
+    // celles postérieures au début de CETTE phase.
+    const debutMs = Date.parse(debut);
     const messagesVoisines = {};
     for (const nom of nomsTries()) {
         if (nom === cible) continue;
-        messagesVoisines[nom] = await cdp.evalBorne(sidDe(nom), 'window.__pleinEcran.slice()', 4000, false);
+        const bruts = await cdp.evalBorne(sidDe(nom), 'window.__pleinEcran.slice()', 4000, false);
+        messagesVoisines[nom] = Array.isArray(bruts) ? bruts.filter((m) => m.t >= debutMs) : bruts;
     }
     const fuiteVersVoisine = Object.entries(messagesVoisines)
         .filter(([, msgs]) => Array.isArray(msgs) && msgs.some((m) => m.active === true))
@@ -1194,16 +1204,31 @@ async function phaseCritere4Et5(cdp, voisine, hzVoisine) {
     }, 30);
     const fin = maintenantIso();
 
+    // Résolution d'un bin FFT (8192 points, voir `analyseur.fftSize` dans
+    // `expressionReleveFrequence` ci-dessus) à l'échantillonnage RÉELLEMENT
+    // rapporté par la page : deux fréquences à l'intérieur du même bin sont
+    // indiscernables l'une de l'autre pour l'analyseur — c'est la tolérance
+    // minimale pour apparier une dominante mesurée à une fréquence assignée,
+    // pas un choix arbitraire.
+    const toleranceBinHz = audioPendantSommeil?.sample_rate ? audioPendantSommeil.sample_rate / 8192 : 0;
+
     const releve = {
         voisine, session_voisine: sessionVoisine, hz_assigne: hzVoisine, debut, fin,
         sommeil_confirme: sommeilConfirme,
         audio_pendant_sommeil: audioPendantSommeil,
-        // Jugement : le niveau à SA fréquence doit dominer un plancher net, la
-        // même marge que D7 (`MARGE_SIGNAL_DB`, ~30 dB) — sans reprendre son
-        // arbitrage multi-fréquence (D8 ne teste pas l'isolation, seulement la
-        // survie), un simple écart au plancher suffit ici.
+        // AVANT : `(niveaux[0].db ?? -1000) - (plancher_db ?? 0) >= 20`, avec
+        // `plancher_db = -158`. Ce seuil ne pouvait quasiment pas échouer : sur le run
+        // initial de D8, le niveau à 520 Hz valait -115 dB, soit 79 dB SOUS la
+        // dominante mesurée (409 Hz, -36 dB) — indiscernable d'une fuite spectrale —
+        // et il passait quand même. Le verdict ⑤ n'a tenu que parce qu'on l'a déplacée
+        // à la main sur la dominante. `hz`/`db` sont l'argmax RÉEL du spectre entier
+        // renvoyé par `expressionReleveFrequence` — jamais `niveaux`, qui ne porte
+        // que le niveau À la fréquence assignée, exactement le champ qui ne
+        // pouvait pas échouer : le jugement compare maintenant cette dominante à
+        // la fréquence assignée à LA fenêtre, dans la tolérance d'un bin FFT.
         audio_survit: !!(audioPendantSommeil && !audioPendantSommeil.erreur
-            && (audioPendantSommeil.niveaux?.[0]?.db ?? -1000) - (audioPendantSommeil.plancher_db ?? 0) >= 20),
+            && typeof audioPendantSommeil.hz === 'number'
+            && Math.abs(audioPendantSommeil.hz - hzVoisine) <= toleranceBinHz),
         reveil_confirme: reveilConfirme,
         survie: vmVivante('après critère ④+⑤'),
     };
