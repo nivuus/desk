@@ -157,6 +157,17 @@ impl Session {
         );
     }
 
+    /// Vrai si la capture audio de cette fenêtre a définitivement abandonné
+    /// (`AudioSource::capture_morte`, posé après
+    /// `crate::audio::LECTURES_ECHOUEES_MAX` erreurs de lecture WASAPI
+    /// consécutives, `windows_audio.rs`).
+    ///
+    /// Sans source (pas de piste audio pour cette session, ou `AUDIO=0`),
+    /// jamais morte : il n'y a rien à signaler.
+    pub(super) fn capture_audio_morte(&self) -> bool {
+        self.audio_source.as_deref().is_some_and(|source| source.capture_morte())
+    }
+
     fn warn_audio_negotiation_once(&mut self) {
         if !self.warned_audio_negotiation {
             self.warned_audio_negotiation = true;

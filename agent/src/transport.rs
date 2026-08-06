@@ -216,6 +216,13 @@ pub struct Session {
     unites_video_ecrites: u64,
     /// Instant du dernier relevé de cadence de la piste vidéo.
     dernier_compte_video: Instant,
+    /// Vrai une fois `VideoSource::signaler_audio_mort` appelée pour cette
+    /// capture — le verrou qui empêche d'inonder le capteur : `capture_morte`
+    /// (`crate::audio::AudioSource`) reste vrai à jamais une fois posé, alors
+    /// que ce champ, lui, retombe à `false` à chaque rattachement du canal
+    /// vers le capteur (`VideoSource::rattachement_survenu`, sous-bloc D9) —
+    /// un capteur relancé a perdu la mémoire de tout signalement antérieur.
+    audio_mort_signale: bool,
 }
 
 impl Session {
@@ -349,6 +356,7 @@ impl Session {
             session_id: String::new(),
             unites_video_ecrites: 0,
             dernier_compte_video: Instant::now(),
+            audio_mort_signale: false,
         };
 
         // `add_local_candidate` est une mutation : on draine avant de rendre

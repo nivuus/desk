@@ -62,6 +62,18 @@ pub enum VersCapteur {
     /// L'effet revient par `DepuisCapteur::Sommeil`, poussé sur la connexion
     /// média de chaque fenêtre concernée.
     Visibilite { visible: bool, focalisee: bool },
+    /// La capture audio de cette fenêtre est morte définitivement, après
+    /// `crate::audio::LECTURES_ECHOUEES_MAX` erreurs de lecture consécutives.
+    ///
+    /// **Aucune charge utile** : la session est celle du canal, comme pour
+    /// toutes les commandes — `capteur/fenetre/commandes.rs` la tire de son
+    /// contexte.
+    ///
+    /// **Ne se répond pas par `Fait` au sens de l'effet** : le capteur
+    /// ré-arbitre globalement, et la décision peut concerner une AUTRE fenêtre
+    /// du même groupe de PID. L'effet revient par `DepuisCapteur::Audio`,
+    /// poussé sur la connexion média. Même patron exactement que `Visibilite`.
+    AudioMort,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

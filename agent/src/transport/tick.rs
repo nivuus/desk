@@ -50,20 +50,21 @@ impl Session {
     /// `write_frame` (une mutation) suivi directement de `handle_input`
     /// (une seconde) violerait la même règle.
     ///
-    /// Neuf branches supplémentaires (a0bis : drainage d'un message de
+    /// Dix branches supplémentaires (a0bis : drainage d'un message de
     /// contrôle produit hors boucle vers `pending_control` ; a0ter :
     /// décision d'adaptation en attente ; a1 : redimensionnement en attente ;
     /// a1bis : visibilité en attente ; a1ter : annonce d'un changement de
     /// sommeil ; a1ter-bis : annonce d'un changement de plein écran
     /// (sous-bloc D8) ; a1quater : part de budget accordée par le capteur
     /// (sous-bloc D6) ; a1quinquies : ordre audio décidé par le capteur
-    /// (sous-bloc D7) ; a2 : vérification de la fenêtre) ne mettent JAMAIS en
-    /// file, avant de rendre la main, une écriture qui resterait à drainer —
-    /// c'est l'invariant que cette énumération existe pour auditer. **Huit
-    /// d'entre elles (toutes sauf a1quater) ne touchent même pas
-    /// `self.rtc`** : seulement `self.source`, `self.audio_source` et/ou
-    /// `self.pending_control`, au plus en y mettant en file un message de
-    /// contrôle (`queue_control`, qui n'empile qu'un `VecDeque`, sans effet
+    /// (sous-bloc D7) ; a1sexies : signalement d'une capture audio morte
+    /// détectée localement (sous-bloc D9) ; a2 : vérification de la fenêtre)
+    /// ne mettent JAMAIS en file, avant de rendre la main, une écriture qui
+    /// resterait à drainer — c'est l'invariant que cette énumération existe
+    /// pour auditer. **Neuf d'entre elles (toutes sauf a1quater) ne touchent
+    /// même pas `self.rtc`** : seulement `self.source`, `self.audio_source`
+    /// et/ou `self.pending_control`, au plus en y mettant en file un message
+    /// de contrôle (`queue_control`, qui n'empile qu'un `VecDeque`, sans effet
     /// sur `Rtc` avant le tour suivant).
     ///
     /// **a1quater fait exception, et il faut le dire précisément** :
@@ -253,6 +254,40 @@ impl Session {
         //              empêche.
         if let Some(actif) = self.source.audio_a_appliquer() {
             self.appliquer_audio(actif);
+            return Ok(Tick::Continue);
+        }
+
+        // a1sexies) Transition détectée LOCALEMENT, pas poussée par le
+        //           capteur : la capture audio de cette fenêtre vient de
+        //           mourir définitivement (dix erreurs de lecture WASAPI
+        //           consécutives, `windows_audio.rs`).
+        //
+        //           `appliquer_audio` (a1quinquies juste au-dessus) ne court
+        //           qu'à l'ARRIVÉE d'un ordre, jamais périodiquement : sans ce
+        //           contrôle au tick, une capture qui meurt entre deux ordres
+        //           ne serait jamais signalée. Un `load` atomique par tour est
+        //           bon marché.
+        //
+        //           Le verrou `audio_mort_signale` est ce qui empêche
+        //           d'inonder le capteur : `capture_morte` reste vrai à jamais
+        //           une fois posé, et sans lui ce contrôle enverrait
+        //           `AudioMort` à chaque tour de boucle. Corps dans
+        //           `piste_audio`.
+        //
+        //           La remise à zéro du verrou (`rattachement_survenu`) N'EST
+        //           PAS elle-même une action : elle ne mute ni `Rtc` ni la
+        //           source, ne met rien en file, et ne casse donc pas
+        //           l'invariant de drainage même sans `return` — même régime
+        //           que `last_alive_check` en a2. Un rattachement (capteur
+        //           relancé) fait perdre au capteur la mémoire de tout
+        //           `AudioMort` signalé avant la rupture : sans cette remise à
+        //           zéro, cette fenêtre ne le réinformerait jamais.
+        if self.source.rattachement_survenu() {
+            self.audio_mort_signale = false;
+        }
+        if !self.audio_mort_signale && self.capture_audio_morte() {
+            self.audio_mort_signale = true;
+            self.source.signaler_audio_mort();
             return Ok(Tick::Continue);
         }
 
