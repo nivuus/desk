@@ -54,13 +54,39 @@ const PERIODE_REARBITRAGE: Duration = Duration::from_millis(250);
 /// Répit avant qu'une fenêtre dont la capture audio est morte ne redevienne
 /// éligible au portage.
 ///
-/// **Il finance le cas MAJORITAIRE** — une application, une fenêtre, donc
-/// aucune voisine à promouvoir. Sans lui, le remède ne couvrirait que les
-/// applications multi-fenêtres et le groupe resterait muet sans retour,
-/// exactement comme avant D9. Réélire la même session construit une activation
-/// *process loopback* NEUVE, ce qui est une chance réelle : les causes connues
-/// d'un refus de lecture WASAPI — changement de périphérique, redémarrage du
-/// service audio, changement de format — sont transitoires.
+/// ❌ **CE MÉCANISME EST INERTE POUR LE CAS MAJORITAIRE, et une rédaction
+/// antérieure de ce commentaire affirmait le contraire à tort** (constaté
+/// par la recette VM de la tâche 15, sous-bloc D9, revue finale). Elle
+/// disait : « réélire la même session construit une activation *process
+/// loopback* NEUVE ». **C'est faux, vérifié sur le code** :
+/// `WindowsAudioSource` n'est construite QU'UNE FOIS, au démarrage de
+/// l'enfant (`demarrage/audio.rs::brancher`, appelé une seule fois, sans
+/// boucle) ; le fil de capture (`windows_audio.rs`), une fois
+/// `capture_morte` posé, exécute un `return` DÉFINITIF et ne relit plus
+/// jamais rien ; et réélire la MÊME session ne fait que pousser
+/// `Audio { actif: true }`, qui aboutit à `AudioSource::set_actif(true)`
+/// (`windows_audio.rs::set_actif`) — **lequel n'écrit qu'un booléen atomique
+/// que ce fil mort ne lira plus jamais**. Rien, nulle part, ne reconstruit
+/// la source.
+///
+/// ✅ **La branche PROMOTION, elle, reste valide** : une voisine du même
+/// groupe de PID a SA PROPRE `WindowsAudioSource`, construite à SON PROPRE
+/// démarrage, sur un fil de capture qui n'a jamais échoué — l'élire lui
+/// donne réellement le son. C'est le répit lui-même — la RÉÉLECTION DE LA
+/// MÊME SESSION SANS VOISINE — qui ne restaure rien.
+///
+/// **Conséquence assumée** : le cas MAJORITAIRE — une application, une
+/// fenêtre, donc aucune voisine à promouvoir — reste SANS REMÈDE. Le répit
+/// fait taire puis reparler la bonne session au niveau du REGISTRE (le
+/// capteur cesse de la croire inapte, lui renvoie `Audio { actif: true }`),
+/// mais aucun son ne sort réellement côté enfant tant que sa capture n'a pas
+/// été reconstruite — ce que rien ne fait. **Ceci reste une dette, pas un
+/// remède partiel** : le chemin de reconstruction n'existe pas, et devrait
+/// vivre à l'intersection de trois fichiers déjà nommés dans ce commentaire —
+/// `demarrage/audio.rs` (qui construit la source aujourd'hui, une fois),
+/// `transport/piste_audio.rs` (qui la porte via `appliquer_audio`), et
+/// `windows_audio.rs` (qui tient le fil et le témoin `capture_morte`) —
+/// légué au sous-bloc suivant.
 ///
 /// ⚠️ **NON CALIBRÉE.** Aucune mesure ne la fonde : elle rejoint `BPP_MIN`,
 /// `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC` et
