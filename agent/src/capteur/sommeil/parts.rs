@@ -178,7 +178,7 @@ mod tests {
     #[test]
     fn une_session_qui_s_eveille_recoit_une_part_apres_son_ordre_de_reveil() {
         let _verrou = verrouiller_pour_le_test();
-        let messages = inscrire("t6-a", 6001, 1);
+        let (messages, generation) = inscrire("t6-a", 6001);
         signaler("t6-a", true, true);
 
         let recus: Vec<Message> = messages.try_iter().collect();
@@ -202,13 +202,13 @@ mod tests {
             "la part suit l'ordre, jamais l'inverse : une fenêtre encore endormie \
              recevrait sinon une part d'éveillée"
         );
-        retirer("t6-a", 1);
+        retirer("t6-a", generation);
     }
 
     #[test]
     fn une_part_inchangee_n_est_pas_reemise() {
         let _verrou = verrouiller_pour_le_test();
-        let messages = inscrire("t6-b", 6002, 1);
+        let (messages, generation) = inscrire("t6-b", 6002);
         signaler("t6-b", true, true);
         let _ = messages.try_iter().count();
 
@@ -219,17 +219,17 @@ mod tests {
             .filter(|m| matches!(m, Message::Part { .. }))
             .collect();
         assert!(parts.is_empty(), "une part inchangée ne se réémet pas : {parts:?}");
-        retirer("t6-b", 1);
+        retirer("t6-b", generation);
     }
 
     #[test]
     fn l_arrivee_d_une_seconde_fenetre_reduit_la_part_de_la_premiere() {
         let _verrou = verrouiller_pour_le_test();
-        let a = inscrire("t6-c", 6003, 1);
+        let (a, generation_a) = inscrire("t6-c", 6003);
         signaler("t6-c", true, true);
         let premiere = derniere_part(&a).expect("la première doit avoir une part");
 
-        let b = inscrire("t6-d", 6004, 1);
+        let (b, generation_b) = inscrire("t6-d", 6004);
         signaler("t6-d", true, false);
         let apres = derniere_part(&a).expect("la première doit être ré-servie");
         assert!(
@@ -238,8 +238,8 @@ mod tests {
         );
         assert!(derniere_part(&b).is_some(), "la seconde doit recevoir une part");
 
-        retirer("t6-c", 1);
-        retirer("t6-d", 1);
+        retirer("t6-c", generation_a);
+        retirer("t6-d", generation_b);
     }
 
     /// Le test qui couvre le défaut trouvé en revue : un canal rompu détecté
@@ -256,21 +256,21 @@ mod tests {
         let mut recepteurs_pleins = Vec::new();
         for i in 0..8 {
             let nom = format!("t7-plein-{i}");
-            let ordres = inscrire(&nom, 6100 + i as u32, 1);
+            let (ordres, generation) = inscrire(&nom, 6100 + i as u32);
             signaler(&nom, true, false);
             assert_eq!(
                 premier_ordre(&ordres),
                 Some(Ordre::Reveiller),
                 "{nom} devrait s'eveiller"
             );
-            recepteurs_pleins.push((nom, ordres));
+            recepteurs_pleins.push((nom, ordres, generation));
         }
 
         // Le fil de la premiere "meurt" : son recepteur est jete SANS passer
         // par `retirer`, exactement ce qui arrive quand un fil de fenetre
         // panique avant d'atteindre son point de retrait unique. `canaux`
         // garde donc une entree dont plus personne ne lit.
-        let (session_morte, recepteur_mort) = recepteurs_pleins.remove(0);
+        let (session_morte, recepteur_mort, generation_morte) = recepteurs_pleins.remove(0);
         drop(recepteur_mort);
 
         // "t7-attend" arrive. La simple INSCRIPTION d'une session neuve
@@ -281,7 +281,7 @@ mod tests {
         // compris celle de la session morte. La tentative d'envoi qui en
         // resulte sur son canal rompu declenche le remede : elle est retiree
         // du VIVIER (et pas seulement de `canaux`), ce qui libere sa place.
-        let ordres_attend = inscrire("t7-attend", 6200, 1);
+        let (ordres_attend, generation_attend) = inscrire("t7-attend", 6200);
 
         // Se signaler visible suffit desormais : la place est deja libre.
         // Sans le remede (retrait du vivier en plus de `canaux`), la session
@@ -298,10 +298,10 @@ mod tests {
         // Nettoyage. `retirer` sur la session deja retiree par le remede est
         // un no-op sur une cle deja absente, aussi bien pour `Vivier::retirer`
         // (HashMap::remove) que pour `canaux` — pas un double retrait.
-        retirer("t7-attend", 1);
-        retirer(&session_morte, 1);
-        for (nom, _) in recepteurs_pleins {
-            retirer(&nom, 1);
+        retirer("t7-attend", generation_attend);
+        retirer(&session_morte, generation_morte);
+        for (nom, _, generation) in recepteurs_pleins {
+            retirer(&nom, generation);
         }
     }
 
@@ -319,7 +319,7 @@ mod tests {
         // Premier canal : inscription seule, aucune autre fenêtre, aucun
         // signal — la fenêtre naît endormie et reçoit tout de même la part
         // plancher à l'inscription (voir la doc de `inscrire`).
-        let premier_canal = inscrire("t8-rattache", 6300, 1);
+        let (premier_canal, _generation_initiale) = inscrire("t8-rattache", 6300);
         let premiere_part = derniere_part(&premier_canal)
             .expect("une première part doit partir à l'inscription initiale");
 
@@ -327,8 +327,9 @@ mod tests {
         // d'autre dans la topologie n'a bougé (aucune autre fenêtre, aucun
         // signal de visibilité entre-temps). `inscrire` détecte le
         // remplacement (elle journalise « canal d'ordres remplacé pour
-        // cette session ») et rend un canal neuf.
-        let canal_neuf = inscrire("t8-rattache", 6300, 1);
+        // cette session ») et rend un canal neuf, avec une génération neuve
+        // (D9, F5 de D7).
+        let (canal_neuf, generation_neuve) = inscrire("t8-rattache", 6300);
 
         // Sans le remède, la part recalculée est identique à `premiere_part`
         // : `dernieres_parts` la juge déjà livrée (elle l'était, mais sur
@@ -343,6 +344,6 @@ mod tests {
              cette session au moment où son canal est remplacé"
         );
 
-        retirer("t8-rattache", 1);
+        retirer("t8-rattache", generation_neuve);
     }
 }

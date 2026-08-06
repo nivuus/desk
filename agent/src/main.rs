@@ -99,13 +99,6 @@ struct Config {
     /// l'agent capture le bureau et recadre la fenêtre.
     #[cfg_attr(not(windows), allow(dead_code))]
     sortie_dxgi: Option<String>,
-    /// Génération de cette session, frappée par le superviseur au lancement
-    /// de l'enfant et relayée telle quelle dans son `VersCapteur::Attache`
-    /// (D9, F5 de D7 : le nom seul ne suffit pas à identifier une session).
-    /// Absente en mode mono-fenêtre — où elle n'est lue par personne, la
-    /// `SourceDistante` n'existant que sur la branche `sortie_dxgi`.
-    #[cfg_attr(not(windows), allow(dead_code))]
-    generation: u64,
     /// Faux quand `AUDIO=0` coupe le son de cet agent.
     ///
     /// **Interrupteur GLOBAL, plus une consigne par fenêtre.** Jusqu'au
@@ -169,14 +162,6 @@ fn config() -> Result<Config> {
         // capte le son de SON PROPRE processus (tâche 7), et c'est le capteur
         // qui arbitre entre les fenêtres qui en partagent un.
         audio: std::env::var("AUDIO").as_deref() != Ok("0"),
-        // ABSENTE : mode mono-fenêtre, valeur sans emploi — voir la doc du
-        // champ. `0` par défaut plutôt qu'un échec : contrairement à
-        // `FENETRE_HWND`/`SORTIE_DXGI`, une valeur mal formée ici ne change
-        // le sens d'aucun chemin, elle ne fait que voyager jusqu'au capteur.
-        generation: std::env::var("GENERATION")
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(0),
     })
 }
 

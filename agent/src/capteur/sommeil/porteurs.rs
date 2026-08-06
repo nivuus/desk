@@ -141,8 +141,8 @@ mod tests {
     #[test]
     fn deux_fenetres_d_un_meme_pid_se_disputent_le_son_et_le_focus_tranche() {
         let _verrou = verrouiller_pour_le_test();
-        let a = inscrire("t9-a", 4242, 1);
-        let b = inscrire("t9-b", 4242, 1);
+        let (a, generation_a) = inscrire("t9-a", 4242);
+        let (b, generation_b) = inscrire("t9-b", 4242);
 
         // Aucune focalisée : la première arrivée porte le son.
         assert_eq!(dernier_audio(&a), Some(true), "la premiere arrivee porte le son");
@@ -156,21 +156,21 @@ mod tests {
 
         // "b" disparaît : "a" doit reprendre le son, sinon le groupe devient
         // definitivement muet.
-        retirer("t9-b", 1);
+        retirer("t9-b", generation_b);
         assert_eq!(dernier_audio(&a), Some(true), "le son revient a la survivante");
 
-        retirer("t9-a", 1);
+        retirer("t9-a", generation_a);
     }
 
     #[test]
     fn deux_pid_distincts_portent_chacun_leur_son() {
         let _verrou = verrouiller_pour_le_test();
-        let a = inscrire("t9-c", 111, 1);
-        let b = inscrire("t9-d", 222, 1);
+        let (a, generation_a) = inscrire("t9-c", 111);
+        let (b, generation_b) = inscrire("t9-d", 222);
         assert_eq!(dernier_audio(&a), Some(true));
         assert_eq!(dernier_audio(&b), Some(true));
-        retirer("t9-c", 1);
-        retirer("t9-d", 1);
+        retirer("t9-c", generation_a);
+        retirer("t9-d", generation_b);
     }
 
     #[test]
@@ -179,7 +179,7 @@ mod tests {
         // quatre ordres par seconde et par fenêtre, à vie. Même rempart que
         // `dernieres_parts`.
         let _verrou = verrouiller_pour_le_test();
-        let a = inscrire("t9-e", 333, 1);
+        let (a, generation) = inscrire("t9-e", 333);
         let _ = a.try_iter().count();
         signaler("t9-e", true, true);
         let ordres: Vec<Message> = a
@@ -187,6 +187,6 @@ mod tests {
             .filter(|m| matches!(m, Message::Audio { .. }))
             .collect();
         assert!(ordres.is_empty(), "ordre audio inchange reemis : {ordres:?}");
-        retirer("t9-e", 1);
+        retirer("t9-e", generation);
     }
 }

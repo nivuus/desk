@@ -112,7 +112,6 @@ pub fn tourner(
 
     let mut dernier_ping = std::time::Instant::now();
     let mut dernier_controle_placement = std::time::Instant::now();
-    let mut generations = generations::Generations::default();
     loop {
         // 1. Exécuter les effets en attente.
         let a_faire = std::mem::take(&mut effets);
@@ -144,7 +143,6 @@ pub fn tourner(
                         session: session.clone(),
                         fenetre: fenetre.0,
                         nom_sortie,
-                        generation: generations.suivante(),
                     }) {
                         tracing::error!(session = %session.0, %erreur, "lancement de l'enfant échoué");
                         // Le contrat du trait `Lanceur` est atomique : `Err`
@@ -492,8 +490,3 @@ use placement_periodique::{controler_le_placement, replacer_si_besoin};
 // `placement_periodique` ci-dessus. Nommé `surveillance_capteur` et non
 // `capteur` — voir l'en-tête de ce fichier (I7).
 mod surveillance_capteur;
-
-// Le compteur de génération des enfants (D9, F5 de D7) : extrait pour la
-// même raison que les deux modules ci-dessus — ce fichier valait exactement
-// 500 lignes avec lui en ligne. Voir l'en-tête de `generations.rs`.
-mod generations;

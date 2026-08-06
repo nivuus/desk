@@ -45,15 +45,6 @@ pub enum VersCapteur {
         /// rebasage, la vidéo de l'enfant porteur du son serait décalée de
         /// l'écart entre les deux origines.
         origine_qpc: i64,
-        /// Génération de cette session, strictement croissante, frappée par le
-        /// superviseur au lancement de l'enfant.
-        ///
-        /// **Le nom seul ne suffit pas à identifier une session** (F5 du
-        /// sous-bloc D7, défaut préexistant) : un rattachement réinscrit le
-        /// même nom, et le `retirer` de l'instance précédente pouvait alors
-        /// emporter la session vivante. La génération rend ce `retirer`
-        /// inoffensif.
-        generation: u64,
     },
     /// Première et **unique** trame de la connexion média : elle apparie ce
     /// second tube à la session déjà attachée sur la connexion de commandes.
@@ -237,7 +228,6 @@ mod tests {
             fps: 90,
             debit: 8_000_000,
             origine_qpc: 123_456_789,
-            generation: 1,
         };
         let mut tampon = Vec::new();
         ecrire_json(&mut tampon, &message).unwrap();
