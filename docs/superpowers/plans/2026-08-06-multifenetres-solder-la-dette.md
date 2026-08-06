@@ -873,16 +873,29 @@ pub fn audio_mort(session: &str) {
 }
 ```
 
-- [ ] **Step 4 : expirer le répit au tour de roue**
+- [ ] **Step 4 : expirer le répit au tour de roue, par une fonction NOMMÉE**
 
-Dans le tour de roue (`sommeil.rs:146`), **avant** `porteurs::distribuer_l_audio` :
+⚠️ **La purge est une fonction du produit, pas un `retain` en ligne** — sans quoi le test du step 7 n'éprouverait que `HashMap::retain`, c'est-à-dire rien.
 
 ```rust
-        // Le tour de roue (250 ms) est ce qui rend le répit effectif : sans
-        // cette purge, une inapte le resterait jusqu'au prochain événement,
-        // qui peut ne jamais venir.
-        let maintenant = Instant::now();
-        garde.inaptes.retain(|_, echeance| *echeance > maintenant);
+/// Retire du registre les inaptitudes dont le répit a expiré.
+///
+/// **Nommée et séparée pour être ÉPROUVABLE** : le tour de roue (250 ms) est
+/// ce qui rend le répit effectif, et sans cette purge une inapte le resterait
+/// jusqu'au prochain événement, qui peut ne jamais venir. Un `retain` en ligne
+/// dans le tour de roue ne serait couvert par aucun test.
+pub(super) fn purger_les_inaptitudes(
+    inaptes: &mut HashMap<String, Instant>,
+    maintenant: Instant,
+) {
+    inaptes.retain(|_, echeance| *echeance > maintenant);
+}
+```
+
+Et dans le tour de roue (`sommeil.rs:146`), **avant** `porteurs::distribuer_l_audio` :
+
+```rust
+        purger_les_inaptitudes(&mut garde.inaptes, Instant::now());
 ```
 
 - [ ] **Step 5 : remplir `inapte` dans `porteurs.rs`**
@@ -914,14 +927,25 @@ Dans `agent/src/capteur/sommeil/tests.rs` — les tables et l'expiration se test
 ```rust
 #[test]
 fn le_repit_expire_et_rend_la_fenetre_apte() {
+    // Éprouve `purger_les_inaptitudes`, la fonction du PRODUIT — pas
+    // `HashMap::retain`. L'horloge est injectée (`maintenant`), ce qui rend
+    // le test déterministe sans aucune attente réelle.
     let mut inaptes: HashMap<String, Instant> = HashMap::new();
     let t0 = Instant::now();
     inaptes.insert("w-1".into(), t0 + Duration::from_millis(10));
     inaptes.insert("w-2".into(), t0 + Duration::from_secs(60));
-    let maintenant = t0 + Duration::from_millis(20);
-    inaptes.retain(|_, echeance| *echeance > maintenant);
+
+    purger_les_inaptitudes(&mut inaptes, t0 + Duration::from_millis(20));
+
     assert!(!inaptes.contains_key("w-1"), "le répit de w-1 a expiré");
     assert!(inaptes.contains_key("w-2"), "celui de w-2 court encore");
+}
+
+#[test]
+fn une_purge_sur_un_registre_vide_ne_panique_pas() {
+    let mut inaptes: HashMap<String, Instant> = HashMap::new();
+    purger_les_inaptitudes(&mut inaptes, Instant::now());
+    assert!(inaptes.is_empty());
 }
 ```
 
@@ -1081,6 +1105,26 @@ git commit -m "feat(d9): l'enfant dit au capteur que sa capture audio est morte"
 
 - [ ] **Step 1 : écrire le test qui échoue**
 
+⚠️ **Le test éprouve un PRÉDICAT NOMMÉ du produit, pas l'opérateur `>`.** Écrire d'abord ce prédicat dans `sommeil.rs`, puis le tester :
+
+```rust
+/// Ce `retirer` est-il périmé, c'est-à-dire adressé à une instance déjà
+/// remplacée par un rattachement ?
+///
+/// **Nommé et séparé pour être ÉPROUVABLE** : la logique en ligne dans
+/// `retirer` ne serait couverte par aucun test, `retirer` touchant un état
+/// global (`OnceLock<Mutex<Etat>>`) qu'un test d'hôte ne peut pas isoler.
+pub(super) fn retirer_est_perime(
+    generations: &HashMap<String, u64>,
+    session: &str,
+    generation: u64,
+) -> bool {
+    generations
+        .get(session)
+        .is_some_and(|courante| *courante > generation)
+}
+```
+
 ```rust
 #[test]
 fn un_retirer_perime_n_emporte_pas_l_inscription_neuve() {
@@ -1088,22 +1132,41 @@ fn un_retirer_perime_n_emporte_pas_l_inscription_neuve() {
     // avec une génération neuve, et le `retirer` de l'instance PRÉCÉDENTE
     // arrive après. Sans la génération, il emporterait la session vivante.
     let mut generations: HashMap<String, u64> = HashMap::new();
-    generations.insert("w-1".into(), 7); // l'inscription neuve
+    generations.insert("w-1".into(), 7); // l'inscription neuve, après rattachement
 
-    // Le `retirer` de la génération 6, en retard : sans effet.
-    let doit_retirer = generations.get("w-1").is_some_and(|g| *g <= 6);
-    assert!(!doit_retirer, "un retirer périmé ne retire rien");
+    assert!(
+        retirer_est_perime(&generations, "w-1", 6),
+        "le retirer de la génération 6 est en retard : il ne doit rien retirer"
+    );
+    assert!(
+        !retirer_est_perime(&generations, "w-1", 7),
+        "celui de la génération courante retire bien"
+    );
+}
 
-    // Celui de la génération 7, à l'heure : il retire.
-    let doit_retirer = generations.get("w-1").is_some_and(|g| *g <= 7);
-    assert!(doit_retirer, "le retirer de la génération courante retire bien");
+#[test]
+fn un_retirer_sur_une_session_inconnue_n_est_pas_perime() {
+    // Aucune inscription : `retirer` doit suivre son chemin normal, qui est
+    // déjà tolérant à l'absence. Rendre `true` ici le rendrait inerte pour
+    // toute session que le registre ne connaît pas encore.
+    let generations: HashMap<String, u64> = HashMap::new();
+    assert!(!retirer_est_perime(&generations, "w-1", 3));
+}
+
+#[test]
+fn un_retirer_d_une_generation_posterieure_n_est_pas_perime() {
+    // Le cas d'un `retirer` qui arrive APRÈS l'inscription qu'il vise : il
+    // porte une génération plus récente que celle enregistrée, donc il agit.
+    let mut generations: HashMap<String, u64> = HashMap::new();
+    generations.insert("w-1".into(), 7);
+    assert!(!retirer_est_perime(&generations, "w-1", 8));
 }
 ```
 
 - [ ] **Step 2 : exécuter le test pour vérifier qu'il échoue**
 
-Run: `cd agent && cargo test -p agent capteur::sommeil::tests::un_retirer_perime`
-Expected: FAIL — le test n'existe pas encore, puis il passe trivialement sur des `HashMap` locaux : **le transformer en test du vrai chemin** dès que `retirer` prend sa génération (step 5).
+Run: `cd agent && cargo test -p agent capteur::sommeil::tests::un_retirer`
+Expected: FAIL — `cannot find function retirer_est_perime`.
 
 - [ ] **Step 3 : ajouter le champ au protocole**
 
@@ -1131,13 +1194,10 @@ Dans `superviseur/boucle.rs`, un compteur monotone incrémenté à chaque `enfan
 pub fn retirer(session: &str, generation: u64) {
     let mut garde = etat();
     // Sans effet si l'inscription enregistrée est PLUS RÉCENTE : ce `retirer`
-    // est celui d'une instance déjà remplacée (F5).
-    match garde.generations.get(session) {
-        Some(courante) if *courante > generation => {
-            tracing::info!(%session, courante, generation, "retirer périmé ignoré");
-            return;
-        }
-        _ => {}
+    // est celui d'une instance déjà remplacée par un rattachement (F5).
+    if retirer_est_perime(&garde.generations, session, generation) {
+        tracing::info!(%session, generation, "retirer périmé ignoré");
+        return;
     }
     // ... corps existant inchangé, plus :
     garde.generations.remove(session);
