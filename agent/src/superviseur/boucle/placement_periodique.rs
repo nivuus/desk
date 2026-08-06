@@ -12,12 +12,14 @@ use super::*;
 /// Remet sur sa sortie toute fenêtre qui en est partie, et rafraîchit la
 /// taille de sortie que la table a retenue pour chacune.
 ///
-/// **`&mut Table`, et non `&Table`** depuis IMPORTANT 5 (revue de la tâche
-/// 9) : la relecture DXGI que ce contrôle fait déjà, chaque seconde, pour
-/// toutes les sessions vivantes, est aussi la façon la moins invasive de
-/// tenir `taille_sortie` à jour d'un changement de mode fait par
-/// `WindowsSource::changer_mode_de_sortie` (D8), hors de cette table. Voir
-/// `Table::rafraichir_taille_sortie`.
+/// **`&mut Table`, et non `&Table`** — hérité d'IMPORTANT 5 (revue de la
+/// tâche 9), qui tenait `taille_sortie` à jour d'un changement de mode fait
+/// par `WindowsSource::changer_mode_de_sortie` (D8), hors de cette table. Ce
+/// chemin a été retiré au sous-bloc D9, mesure à l'appui (voir le constat en
+/// tête de `capteur/plein_ecran.rs`) : la relecture DXGI que ce contrôle fait
+/// déjà, chaque seconde, pour toutes les sessions vivantes, continue de
+/// rafraîchir `taille_sortie` par précaution, mais rien ne peut plus la
+/// faire dériver de la taille de création. Voir `Table::rafraichir_taille_sortie`.
 pub(super) fn controler_le_placement(table: &mut Table) {
     let toutes = enumerer_sorties_silencieux().unwrap_or_default();
     for session in table.sessions_vivantes() {
