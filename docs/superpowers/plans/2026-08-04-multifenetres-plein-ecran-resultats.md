@@ -49,11 +49,69 @@ s'arrête. **Les trois inconnues du brief restent donc entièrement ouvertes.**
 | # | Critère | Verdict | Exécutions |
 | --- | --- | --- | --- |
 | témoin | Non-régression (aucun plein écran) | **TENU** | 1 |
-| ① | Plein écran Windows détecté et annoncé, à la bonne fenêtre seule | **CONFIRMÉ** — détection exclusive, symétrique (activation/restauration), sur la session dont l'identité a été vérifiée | 1 mesure + 1 corroboration |
+| ① | Plein écran Windows détecté et annoncé, à la bonne fenêtre seule | **CONFIRMÉ** — détection exclusive, symétrique (activation/restauration), sur la session dont l'identité a été vérifiée. ⚠️ **La « corroboration » est PARTIELLEMENT CIRCULAIRE** : `resoudreIdentite()` identifie la session **par la bascule de bordure**, donc **par ① lui-même**. Ce que le rejeu corrobore est la cohérence de deux emplois du même mécanisme, pas ① par un signal indépendant | 1 mesure + 1 corroboration (voir la réserve ci-contre) |
 | ② | Le flux suit le viewport plein écran, la sortie garde son nom | **NON EXERCÉ** — zéro tentative de changement de mode, dans les deux exécutions, malgré un viewport qui atteint bien sa cible côté page | 2 |
 | ③ | Échap et Keyboard Lock | **NON MESURÉ** — décision actée en tête de tâche 10 | 0 |
 | ④ | Les voisines s'endorment par le chemin existant | **TENU** — latences AGENT (ordre→transition) : sommeil 37 ms / 28 ms, réveil 471 ms / 119 ms selon l'exécution ; 2,2 s / 10,2 s ne sont PAS des latences produit, voir le corps du texte | 2 |
 | ⑤ | L'audio d'une endormie survit | **TENU** — dominante à la fréquence assignée, une fois la bonne session ciblée | 1 mesure corrigée (1 mesure initiale invalidée par une mauvaise identité) |
+
+## ⛔ La décision de conception : le changement de mode est DÉSARMÉ PAR DÉFAUT
+
+**Prise par le propriétaire du dépôt à la revue finale de branche (5 août
+2026), après ce document et sur ses pièces.** La moitié « changement de mode
+de sortie » **n'a jamais été sollicitée par cette recette** — critère ② NON
+EXERCÉ, `mode_sortie_demande=0` aux deux exécutions, **zéro tentative** de
+`ChangeDisplaySettingsExW` en conditions de produit — et la revue finale y a
+trouvé **deux Critiques**. On livre donc **la détection et l'annonce**, qui
+sont mesurées et confirmées ; le changement de mode reste dans le code, sous
+un garde qui l'arme.
+
+**C'est exactement le repli que le §4 de la conception a écrit d'avance** :
+« ①, ③, ④ et ⑤ tiennent sans ② ».
+
+| Ce qui reste ACTIF, livré | Ce qui est DÉSARMÉ |
+| --- | --- |
+| relecture du style de fenêtre (`capteur/fenetre.rs`, `PERIODE_STYLE`) | `changer_mode_de_sortie` (`windows_source/redimensionnement/mode_sortie.rs`) |
+| `DepuisCapteur::PleinEcran` → `AgentControl::Fullscreen` | tout appel à `ChangeDisplaySettingsExW` par le produit |
+| armement client (`client/src/fullscreen.ts`) et Keyboard Lock | — |
+
+**Le mécanisme** : une variable d'environnement dédiée,
+**`PLEIN_ECRAN_MODE_SORTIE=1`**, qui **ARME** ce chemin. Absente, il ne
+s'exécute pas. Elle est **distincte de `PLEIN_ECRAN=0`**, qui désarme le
+mécanisme **entier**, et sa convention est **inverse à dessein** : on désarme
+sur `=0` ce qui est livré, on arme sur `=1` ce qui ne l'est pas. Le garde vit
+dans `agent/src/capteur/plein_ecran.rs::changement_de_mode_arme`, avec ses
+raisons. Trace de contrôle, à chaque `resize` : `redimensionnement ignoré :
+changement de mode de sortie DÉSARMÉ (poser PLEIN_ECRAN_MODE_SORTIE=1 pour
+l'armer)`.
+
+### ⚠️ Les deux Critiques ne sont PAS corrigées — et c'est délibéré
+
+Le désarmement les rend **inatteignables**. Elles sont inscrites auprès du
+garde, dans le code, **comme le premier travail de la recette qui armera ce
+chemin** :
+
+- **C1 — le produit bloque ses propres ouvertures de fenêtre ultérieures.**
+  `changer_mode_de_sortie` écrit `CDS_UPDATEREGISTRY` à **chaque** plein écran
+  réussi, et une sortie virtuelle **naît à la dernière taille laissée au
+  registre** (mesuré, tâche 3bis). C'est littéralement le blocage que la
+  préparation de cette recette a dû lever à la main (« Étape 0 » ci-dessous) —
+  **le produit se l'infligerait à lui-même, en marche normale.**
+  ⚠️ **Et sa portée est INCONNUE, par l'alternative des cinq GUID** : voir
+  l'encadré C1 de l'étape 0. Les deux branches aggravent le défaut.
+- **C2 — la reprise sur perte d'accès de D2 est court-circuitée.** Après un
+  changement de mode réussi, `reconstruire_sur_la_sortie` rend une `Err` sur
+  un échec de réouverture de la duplication — **y compris transitoire**, ce
+  qui est la classe d'échec exacte que la fenêtre de reprise de D2 existe pour
+  encaisser (44 pertes `0x887A0026` absorbées sans tuer une seule session,
+  1ᵉʳ août 2026). Ici, la session meurt.
+
+**Une troisième raison, qui n'est pas un défaut mais un manque** : ce chemin
+**n'a jamais tourné en conditions de produit**. L'écart banc/produit est nommé
+et non mesuré — la sonde P1 n'ouvre **jamais** de `DuplicateOutput`, là où la
+production retaille une sortie dont la duplication est ouverte et détenue
+pendant l'attente (jusqu'à 3,1 s). **C'est la première des trois inconnues du
+brief, et elle commande les deux autres.**
 
 ## Étape 0 : un blocage environnemental a d'abord empêché toute mesure
 
@@ -70,18 +128,46 @@ refusée par `sortie créée mais introuvable dans la topologie DXGI` — la sor
 apparaissait bien dans la topologie, mais à **2560×1440**, jamais à 1280×720
 demandé (pièce : sortie de la commande `MULTIFENETRE_VDD_PURGE=1
 scripts/run-agent.sh` suivie du lancement du superviseur, capturées dans le
-terminal de préparation — non versées en fichier séparé, voir le manque
-signalé en revue et corrigé ci-dessous).
+terminal de préparation — **non versées en fichier séparé**).
+⚠️ **CORRIGÉ (revue finale de branche) : la rédaction précédente écrivait ici
+« voir le manque signalé en revue et CORRIGÉ ci-dessous ». Il ne l'est pas.**
+Les deux pièces versées plus bas (`mode-sortie-1280x720-preparation.log`,
+`dxgi-controle-preparation.log`) documentent le **remède** et le **contrôle
+d'état** — pas ce relevé-ci : la sortie de terminal qui montre le superviseur
+créant et détruisant ses sorties en boucle n'a **jamais** été capturée en
+fichier, et ne peut plus l'être. **Le manque est DÉCLARÉ et NON CORRIGÉ** ; la
+phrase disait l'inverse.
 
 C'est exactement le défaut F1 déjà documenté en tête de
 `agent/src/diagnostics/multifenetre/mode_sortie.rs` (« persistance probable au
 registre d'un `CDS_UPDATEREGISTRY` d'une exécution antérieure ») — mais ici il
 ne biaisait pas une sonde, **il bloquait le produit entier** : les mesures
-antérieures avaient laissé le registre SudoVDA à 2560×1440 pour le GUID de
-sortie virtuelle unique (`9C4A1F6E-2B73-4D51-9E08-677541430001`), et **le code
-de production** (`superviseur/boucle.rs`) exige une correspondance exacte avec
-la taille demandée — sans le repli dynamique que P1 s'était donné pour se
+antérieures avaient laissé le registre SudoVDA à 2560×1440, et **le code de
+production** (`superviseur/boucle.rs`) exige une correspondance exacte avec la
+taille demandée — sans le repli dynamique que P1 s'était donné pour se
 prémunir de ce même défaut.
+
+❌ **CORRIGÉ (C1, revue finale de branche) : « le GUID de sortie virtuelle
+UNIQUE (`9C4A1F6E-2B73-4D51-9E08-677541430001`) » est FAUX.**
+`agent-recette.log` porte **CINQ GUID SudoVDA distincts**, un par sortie
+virtuelle créée — `…677541430001`, `…430002`, `…430003`, `…430004`,
+`…430005` (lignes `sortie virtuelle créée`, `grep -aoE '[0-9A-F-]{36}'`). Il
+n'y a donc pas « un » GUID, et l'affirmation d'unicité **ouvre une alternative
+que ce document n'a pas les moyens de trancher** :
+
+- **ou bien le mode enregistré est PAR GUID** — et alors la sonde P1, qui n'a
+  agi que sur **une** sortie, ne pouvait pas débloquer les quatre autres :
+  **la chaîne causale « remède appliqué → blocage levé » n'est pas fermée par
+  ses pièces**, et ce qui a réellement débloqué la recette reste à établir ;
+- **ou bien il ne l'est pas** — et alors **une seule écriture
+  `CDS_UPDATEREGISTRY` empoisonne TOUTES les sorties futures**, ce qui est
+  strictement pire que ce que le paragraphe décrivait.
+
+⚠️ **Les deux branches AGGRAVENT le défaut, et aucune mesure ne les
+départage.** C'est la Critique C1 de la revue finale de branche, et c'est
+l'une des deux raisons pour lesquelles **le changement de mode de sortie est
+désormais DÉSARMÉ PAR DÉFAUT** — voir « La décision de conception » en tête de
+ce document.
 
 **Remède appliqué : la sonde P1 elle-même**
 (`MULTIFENETRE_MODE_SORTIE=1280x720`, invocation séparée — elle a son propre
@@ -172,7 +258,7 @@ Les faits, relevés directement :
 
 | Fait | Pièce |
 | --- | --- |
-| Deux sorties virtuelles créées et deux enfants lancés (`w-2`, `w-1`) à 21:01:54,88 / 21:01:55,03 | `agent-recette.log:24-27` |
+| Deux sorties virtuelles créées et deux enfants lancés (`w-2`, `w-1`) à 21:01:54,62 / 21:01:54,88 puis 21:01:55,03 | `agent-recette.log:19` et `:25` (les deux créations), `:26-27` (les deux enfants). ⚠️ *La plage `24-27` publiée jusqu'ici ne contient qu'UNE des deux créations : l'autre est à la ligne 19.* |
 | Première fenêtre OUVERTE PAR LE PILOTE à 21:01:57,20 | `critere-recette.log:16` |
 | Ouverture 1 (21:01:57,20) → enfant `w-4` lancé à 21:01:58,55 | `agent-recette.log:98` |
 | Ouverture 2 (21:01:59,83) → enfant `w-6` lancé à 21:02:01,36 | `agent-recette.log:139` |
@@ -285,16 +371,50 @@ n'apparaît. Or le run tourne avec `PLEIN_ECRAN=1` : cette trace **ne pouvait
 structurellement pas être émise**, quelle que soit la cause réelle — son
 absence ne prouve donc rien sur cette hypothèse ni sur aucune autre.
 
-**Pièce corroborante non exploitée dans la première rédaction** : sur le run
-initial, l'agent reçoit **22 messages de contrôle** sur tout le run — **20
-`Visibility`, 2 `Resize`** (tous deux à la connexion initiale, 1280×720). Le
-canal de contrôle vit et délivre pour les cinq sessions pendant toute la
-phase ② ; seul le message `Resize` attendu après un forçage de viewport
-manque. **Le défaut est donc bien côté ÉMISSION du client**, pas côté
-transport ni côté agent. Fait annexe : sur les 5 sessions du run initial,
-**3 n'ont jamais émis même leur `Resize` initial de connexion** (2 `Resize`
-au total pour 5 sessions) — un fait qui n'a pas d'explication par le
-plafonnement d'écran émulé (voir ci-dessous, réfuté) et qui reste ouvert.
+❌ **La « pièce corroborante » que la ronde précédente ajoutait ici est
+RÉFUTÉE PAR SES PROPRES JOURNAUX (C3, revue finale de branche) — et c'était
+le seul argument qui situait la rupture côté client.** Elle écrivait : « sur
+le run initial, l'agent reçoit **22 messages de contrôle** — 20 `Visibility`,
+2 `Resize` (tous deux à la connexion initiale, 1280×720) ; le canal de
+contrôle vit et délivre pour les cinq sessions **pendant toute la phase ②** ;
+le défaut est donc bien côté ÉMISSION du client, pas côté transport ni côté
+agent. »
+
+**Le compte de 22 est exact — mais il porte sur TOUT LE RUN, pas sur la
+phase ②, et la phase ② est précisément l'intervalle où le canal est MUET :**
+
+| Fait | Relevé |
+| --- | --- |
+| Fenêtre de la phase ② | `21:03:35.810Z` → `21:05:23.233Z` (`recette-recette.json`, `phases.critere1et2`) |
+| Lignes `contrôle reçu` dans cette fenêtre | **ZÉRO** |
+| Dernière avant | `21:03:31.785` |
+| Première après | `21:05:52.524` |
+| Silence | **≈ 141 s**, soit plus que la phase entière |
+| Idem au rejeu | phase ② `21:40:42.013Z` → `21:41:27.840Z` ; dernière avant `21:40:37.982`, première après `21:41:36.534`, **zéro dans la fenêtre** |
+
+**Et « pour les cinq sessions » n'est étayé par rien non plus** : les lignes
+`contrôle reçu` sortent d'`agent::demarrage` **sans champ `session` ni
+span** — elles ne s'attribuent à aucune session (c'est le même défaut
+d'attribution que D6 a payé, et le legs n°2 de D7 y touche).
+
+**Conséquence, qu'il faut porter en entier** : *le transport n'est disculpé
+par AUCUNE pièce de cette recette.* La rupture de ② peut se situer côté
+émission client, mais **rien ici ne l'y situe** — l'argument qui le faisait
+était faux. Le verdict de ② ne change pas pour autant : **« NON EXERCÉ, cause
+inconnue » reste vrai, et l'est DAVANTAGE.** Le legs n°8 (instrumenter
+`video.clientWidth`) reste utile, mais il vise désormais **une hypothèse parmi
+d'autres**, et non le maillon désigné.
+
+❌ **Fait annexe également RÉFUTÉ comme énoncé (I8)** : la rédaction précédente
+écrivait « sur les 5 sessions du run initial, **3 n'ont jamais émis même leur
+`Resize` initial de connexion** ». **Ce « 3 » n'est pas dérivable.** Ce qui est
+RELEVÉ est : **2 lignes `Resize` pour 5 sessions**. Ces deux lignes ne portant
+**aucun champ `session`**, rien n'établit qu'elles viennent de deux sessions
+**distinctes** — elles pourraient venir de la même. Le « donc 3 » reposait sur
+une hypothèse tacite d'unicité, publiée comme un fait et **inscrite en dette**
+(legs n°10). **L'énoncé juste est : 2 `Resize` pour 5 sessions, l'attribution
+par session étant impossible en l'état de la trace.** Ce qui reste ouvert est
+donc *pourquoi si peu de `Resize`*, pas *lesquelles n'en ont pas émis*.
 
 **L'hypothèse `--ozone-override-screen-size` est RÉFUTÉE par le rejeu, avec
 mesure directe.** La première rédaction proposait, sans le vérifier, que
@@ -334,9 +454,26 @@ Inchangé. Comme convenu en tête de la tâche 10 : la sonde P2 a établi que
 Chrome `--headless=new` n'entre pas réellement en plein écran
 (`document.fullscreenElement` reste `null` 800 ms après un
 `requestFullscreen()` par ailleurs invoqué) et n'expose pas
-`navigator.keyboard`. **Décision actée : ③ n'est pas instrumenté, sans
-installation de `Xvfb`.** Confirmé pour cette recette : `Xvfb` n'est **pas**
-installé sur cet hôte (`which Xvfb` : introuvable). 0 exécution.
+`navigator.keyboard`. **Décision actée : ③ n'est pas instrumenté.** Confirmé
+pour cette recette : `Xvfb` n'est **pas** installé sur cet hôte
+(`which Xvfb` : introuvable). 0 exécution.
+
+❌ **CORRIGÉ (I7, revue finale de branche) : la formule « sans installation de
+`Xvfb` » laissait croire que ③ était HORS D'ATTEINTE. Il ne l'était pas.** Le
+registre de la branche enregistre, **postérieurement à cette décision**, que
+le **consentement d'installer `Xvfb` + `xdotool` a été DONNÉ** par le
+propriétaire de la machine (`progress.md`, « DÉCISIONS DU PARTENAIRE HUMAIN
+(4 août 2026) », point 3). **L'obstacle avait donc été levé, et l'installation
+n'a simplement pas eu lieu.** L'énoncé juste est : *③ n'est pas mesuré parce
+que l'installation consentie n'a pas été faite*, et non parce qu'elle était
+refusée ou impossible. `CLAUDE.md` porte déjà cette version ; ce document ne
+la portait pas, et les deux se contredisaient.
+
+⚠️ **Conséquence à porter avec le consentement, et que la décision d'origine
+énonçait déjà** : si l'installation se fait un jour, **les mesures qui en
+sortiront ne se compareront à AUCUNE campagne antérieure** — les sept
+précédentes ont toutes tourné sous Chrome sans interface. La conception le dit
+sans y attacher de compte, et aucun n'est ajouté ici.
 
 ## Critère ④ : TENU (les deux moitiés)
 
@@ -414,7 +551,7 @@ fenêtre dont le contenu réel était inconnu.
 **Deux pièces, versées dans le run initial mais non exploitées, le
 confirmaient déjà :**
 
-- **`kbps_audio` du témoin** (`recette-recette.json:47-92`) : `w-1` 128,8 ·
+- **`kbps_audio` du témoin** (`recette-recette.json:36-92`) : `w-1` 128,8 ·
   `w-2` 128,8 · `w-4` **0** · `w-6` **0** · `w-8` 128,8. **Cette pièce ne
   soutient PAS proprement l'attribution « groupe de PID » que la première
   correction en tirait** : `w-8` est ELLE AUSSI une fenêtre ouverte par le
@@ -491,8 +628,23 @@ d'écran émulé) et de localiser la rupture plus précisément (entre
 plus en aval (le `ResizeObserver` lui-même, son verrou de 200 ms, ou le canal
 de contrôle) que la chaîne casse.
 
+⚠️ **Et le CANAL DE CONTRÔLE reste dans cette liste de suspects, contrairement
+à ce que la ronde précédente laissait croire** (C3, revue finale de branche) :
+la pièce qui prétendait le disculper est réfutée par les journaux — **zéro
+ligne `contrôle reçu` pendant les 141 s de la phase ②**, aux deux exécutions.
+Le classer en dernier « pour mémoire » serait reprendre une conclusion sans
+sa prémisse. **Aucun maillon n'est disculpé par cette recette.**
+
 ## Ce que D8 n'établit pas
 
+- **RIEN N'EST DISCULPÉ dans la chaîne qui casse à ②** — ni le client, ni le
+  canal de contrôle, ni l'agent. La pièce qui prétendait disculper le transport
+  est réfutée par les journaux (C3, revue finale de branche) : **zéro ligne
+  `contrôle reçu` pendant les 141 s de la phase ②**, aux deux exécutions.
+- **Le changement de mode de sortie n'a JAMAIS tourné en conditions de
+  produit**, et il est **désarmé par défaut** depuis la revue finale de branche
+  (voir la section en tête). Son verdict n'est donc ni « il marche » ni « il ne
+  marche pas » : **il n'a pas été essayé.**
 - **Aucun taux nulle part** : une exécution complète (témoin, ①, ④) et une
   seconde ciblée (②, ⑤, plus corroboration de ① et ④). Aucune ligne de ce
   document ne porte de fréquence de succès.
@@ -557,20 +709,51 @@ de contrôle) que la chaîne casse.
   établi, absente de la première rédaction. **Les neuf modes annoncés**
   (`p1-mode-sortie.log`, `p1bis-mode-sortie.log`, `mode-sortie-1728x1080.log`,
   identiques aux trois occasions) : 640×360, 800×600, 960×540, 1280×720,
-  1366×768, 1600×900, 1920×1080, 2560×1440, 3840×2160 — **huit en 16:9
-  exactement, un seul en 4:3 (800×600)**. Un client dont le viewport de plein
-  écran a un rapport d'aspect ni 16:9 ni 4:3 (16:10, 3:2 — les formats
-  d'ordinateurs portables les plus courants) n'a donc AUCUN mode dans cette
-  liste qui le serve : le refus net serait systématique.
-- **Le repli `NORESET`→`RESET` de la sonde P1 n'a jamais fait bouger une
-  sortie** — sur les occasions valides ci-dessus, `CDS_UPDATEREGISTRY` seul a
-  toujours suffi ; les deux combinaisons de repli restent non exercées.
+  1366×768, 1600×900, 1920×1080, 2560×1440, 3840×2160.
+  ❌ **CORRIGÉ (I6, revue finale de branche) : « huit en 16:9 exactement » est
+  FAUX — il y en a SEPT.** Le décompte juste est **7 en 16:9 exact**
+  (640×360, 960×540, 1280×720, 1600×900, 1920×1080, 2560×1440, 3840×2160),
+  **1 en 4:3** (800×600), et **1 qui n'est NI l'un NI l'autre** : **1366×768**
+  (1366 × 9 = 12 294 ≠ 768 × 16 = 12 288). Le mot « exactement » interdisait
+  de le lire comme une approximation, et c'est bien la seule lecture qui
+  sauverait la phrase. **La conclusion aval survit intacte** : un client dont
+  le viewport de plein écran a un rapport d'aspect ni 16:9 ni 4:3 (16:10,
+  3:2 — les formats d'ordinateurs portables les plus courants) n'a AUCUN mode
+  dans cette liste qui le serve, et le refus net serait systématique.
+- ❌ **CORRIGÉ (I5, revue finale de branche) : « les deux combinaisons de repli
+  restent non exercées » est FAUX — elles LE SONT, dans un journal que ce
+  document cite lui-même.** `mode-sortie-1728x1080.log` porte les trois
+  combinaisons, jouées :
+
+  | Combinaison | Code | `api_annonce_succes` | Sortie relue | `conforme` |
+  | --- | --- | --- | --- | --- |
+  | `CDS_UPDATEREGISTRY` seul | **−2** | `false` | 1920×1080 (inchangée) | `false` |
+  | `CDS_UPDATEREGISTRY \| CDS_RESET` | **−2** | `false` | 1920×1080 (inchangée) | `false` |
+  | `CDS_UPDATEREGISTRY\|CDS_NORESET` puis `CDS_RESET` seul | `code_premier_appel=-2`, **`code_second_appel=0`** | **`true`** | 1920×1080 (inchangée) | `false` |
+
+  **L'énoncé juste** : les deux replis **ont été exercés, et aucun n'a jamais
+  fait bouger une sortie** — sur les occasions valides ci-dessus,
+  `CDS_UPDATEREGISTRY` seul a toujours suffi quand quelque chose bougeait.
+  ⚠️ **Et la troisième ligne est le fait le plus important du tableau : c'est
+  un REFUS DÉGUISÉ EN SUCCÈS.** L'API annonce `0` sur une sortie qui n'a pas
+  bougé d'un pixel — exactement ce contre quoi ce dépôt a bâti sa doctrine
+  « juger sur la relecture DXGI, jamais sur le code de retour ». **Le produit
+  n'est pas affecté** (il n'emploie que `CDS_UPDATEREGISTRY` seul, et juge sur
+  la relecture), mais un successeur qui adopterait l'idiome multi-écran sur la
+  foi de la phrase corrigée ici **croirait avoir réussi**.
 - **CORRIGÉ (Important 8, point 4)** : la première rédaction disait la
   naissance d'une sortie à la dernière taille du registre « probable ».
   **Elle est CONFIRMÉE ET REPRODUITE**, pas supposée : la tâche 3bis
   établit la chaîne `avant(N) = après(N-1)` sur trois transitions
   consécutives (`task-3bis-report.md`, § « Persistance au registre ») — pas
   une lecture du commentaire de code, une mesure.
+  ⚠️ **Réserve de la tâche 3bis, NON TRANSPORTÉE jusqu'ici et rétablie
+  (revue finale de branche)** : ces trois transitions reposent sur **UN SEUL
+  journal brut versé**, donc **une exécution**. `task-3bis-report.md` porte sa
+  propre réserve en toutes lettres — trois exécutions au total, dont l'une
+  « non versée en brut (nettoyée par erreur avant copie) », son contenu étant
+  reproduit à plat dans le rapport. **La chaîne est cohérente et reproduite,
+  elle n'est pas rejouable sur pièces.** Aucun taux, ici comme partout.
 - **Le défaut HiDPI reste ouvert côté client**, non remesuré (voir
   ci-dessus).
 

@@ -2071,7 +2071,8 @@ code d'erreur).
 remaniements de D7), donc dans
 l'**enfant** ; et `main.rs:268` rend la main à `capteur::executer` avant que `demarrage::executer` ne soit atteint. La variable n'affiche donc que des **zéros** côté enfant, et les compteurs du capteur ne sont lus par **personne**. **Elle ne décrit plus que le chemin mono-fenêtre**, sans `CAPTEUR` ni `SUPERVISEUR`. ✅ **Les cinq numéros de ligne de cette case ont été REVÉRIFIÉS le 5 août 2026 (D8, tâche 12) et sont tous EXACTS** — `313`, `518`, `544`, `demarrage.rs:127-129`, `main.rs:268` : la mention « valeur non revérifiée pour le reste » est donc levée. ⚠️ **Le remède, lui, n'a PAS été appliqué** — il était consigné pour D7, D7 ne l'a pas fait, D8 non plus : rendre ces trois statiques **per-session** et les extraire vers `windows_source/telemetrie.rs` reste dû, et c'est ce qui rendrait à `windows_source.rs` la marge que D6 lui a prise |
 | `MULTIFENETRE_MODE_SORTIE=<L>x<H>` | **Sous-bloc D8** — la sonde **P1** (`agent/src/diagnostics/multifenetre.rs:169`) : crée une sortie virtuelle, relit sa taille **courante** par DXGI, choisit une cible parmi les modes annoncés **en excluant cette taille courante**, tente `ChangeDisplaySettingsExW`, et **juge sur le MOUVEMENT relu par DXGI, jamais sur une égalité** — la première version rendait `P1 RECU` sans que rien n'ait bougé, son critère ne pouvant pas échouer. Rend `P1 NON MESURABLE` si aucun mode ne diffère de la taille courante. Transmise par `scripts/run-agent.sh:77`. ⚠️ **C'est AUSSI le remède opérationnel au blocage produit par pollution du registre** : une sortie naît à la dernière taille laissée au registre, et un registre resté à 2560×1440 empêche toute fenêtre de s'attacher — `MULTIFENETRE_MODE_SORTIE=1280x720` le rétablit. ⚠️ **Un lancement à elle seule** : l'aiguillage retourne après la première sonde reconnue, un `MULTIFENETRE_VDD_PURGE=1` dans le même lancement l'annulerait en silence |
-| `PLEIN_ECRAN=0` | **Sous-bloc D8** — **variable de PRODUIT**, pas de banc. **Désarme le mécanisme ENTIER** : ni relecture du style (`capteur/fenetre.rs`), ni changement de mode de sortie (`windows_source/redimensionnement.rs`). ⚠️ **`=0` désactive ; une simple PRÉSENCE n'active pas** — même convention qu'`AUDIO`, `SUPERVISEUR` et `CAPTEUR`, et pour la même raison : tester `is_ok()` activerait le plein écran en écrivant `PLEIN_ECRAN=0` pour le couper. Lue dans le **capteur** seul (`capteur/plein_ecran.rs:78`), par `OnceLock` — l'enfant ne fait que relayer. Transmise par `scripts/run-agent.sh:34`. Traces de contrôle : `plein ecran DESARME (PLEIN_ECRAN=0) : …` au démarrage du capteur, et `redimensionnement ignoré : PLEIN_ECRAN=0 …` à chaque `resize`. ⚠️ **C'est la SEULE parade actuelle au défaut HiDPI ouvert** (voir « Sous-bloc D8 ») |
+| `PLEIN_ECRAN=0` | **Sous-bloc D8** — **variable de PRODUIT**, pas de banc. **Désarme le mécanisme ENTIER** : ni relecture du style (`capteur/fenetre.rs`), ni changement de mode de sortie (`windows_source/redimensionnement.rs`). ⚠️ **`=0` désactive ; une simple PRÉSENCE n'active pas** — même convention qu'`AUDIO`, `SUPERVISEUR` et `CAPTEUR`, et pour la même raison : tester `is_ok()` activerait le plein écran en écrivant `PLEIN_ECRAN=0` pour le couper. Lue dans le **capteur** seul (`capteur/plein_ecran.rs:78`), par `OnceLock` — l'enfant ne fait que relayer. Transmise par `scripts/run-agent.sh:34`. Traces de contrôle : `plein ecran DESARME (PLEIN_ECRAN=0) : …` au démarrage du capteur, et `redimensionnement ignoré : PLEIN_ECRAN=0 …` à chaque `resize`. ⚠️ ~~**C'est la SEULE parade actuelle au défaut HiDPI ouvert**~~ — **plus vrai depuis la revue finale de branche de D8** : le changement de mode étant désormais désarmé PAR DÉFAUT (ligne suivante), le défaut HiDPI est inatteignable en configuration livrée, et `PLEIN_ECRAN=0` est devenu la parade du mécanisme **entier**, plus la seule parade d'un défaut |
+| `PLEIN_ECRAN_MODE_SORTIE=1` | **Sous-bloc D8, revue finale de branche (5 août 2026)** — **variable de PRODUIT**. **ARME** le changement de mode de la sortie virtuelle (`windows_source/redimensionnement/mode_sortie.rs`), **DÉSARMÉ PAR DÉFAUT**. ⚠️ **Convention INVERSE de `PLEIN_ECRAN`, à dessein** : on désarme sur `=0` ce qui est livré, on **arme sur `=1`** ce qui ne l'est pas — et ici la simple présence ne suffit pas non plus, il faut la valeur `1`. **Ce qui reste actif sans elle** : détection du style, annonce `PleinEcran`/`Fullscreen`, armement client. **Pourquoi** : critère ② **JAMAIS EXERCÉ** (`mode_sortie_demande=0` aux deux exécutions) et **deux Critiques ouvertes** — C1, la pollution du registre qui bloque les ouvertures de fenêtre ultérieures (portée inconnue : **cinq GUID SudoVDA distincts** au journal de recette) ; C2, la reprise D2 court-circuitée par une `Err` sur un échec **transitoire** de réouverture. **Les deux sont délibérément NON CORRIGÉES**, le désarmement les rendant inatteignables. Garde et raisons : `agent/src/capteur/plein_ecran.rs::changement_de_mode_arme`. Transmise par `scripts/run-agent.sh:35`. Traces : `changement de mode de sortie ARME (…)` au premier appel si armée, `redimensionnement ignoré : changement de mode de sortie DÉSARMÉ (…)` à chaque `resize` sinon |
 
 ---
 
@@ -2713,7 +2714,9 @@ jamais exercé.
   (5 août 2026, tâche 3bis) : une sortie NE NAÎT PAS À LA TAILLE DEMANDÉE, mais
   à la DERNIÈRE TAILLE LAISSÉE AU REGISTRE** par un `CDS_UPDATEREGISTRY`
   antérieur — chaîne `avant(N) = après(N-1)` vérifiée sur trois transitions
-  consécutives, **confirmée et reproduite, jamais expliquée**. La taille passée
+  consécutives, **confirmée et reproduite, jamais expliquée** ⚠️ (sur **un seul
+  journal brut versé**, donc une exécution : voir la réserve rétablie en
+  section D8). La taille passée
   à la création est purement et simplement ignorée par le pilote.
   **Conséquence opérationnelle mesurée** : la préparation de la recette D8 a
   trouvé le produit **entièrement bloqué** — le superviseur créait et détruisait
@@ -4304,19 +4307,68 @@ Résultats complets :
 `docs/superpowers/plans/2026-08-04-multifenetres-plein-ecran-resultats.md`.
 Conception : `docs/superpowers/specs/2026-08-04-multifenetres-plein-ecran-design.md`.
 Journaux : `docs/superpowers/plans/journaux-multifenetres-d8/` — **16 fichiers
-suivis par git**, et **TROIS familles d'encodage**, comme D6 :
+suivis par git**, et **QUATRE familles de lecture** — trois d'encodage comme
+D6, plus une distinction de fin de ligne que la rédaction précédente avait
+tranchée à tort :
 
 | Famille | État | Ce qu'il faut faire |
 | --- | --- | --- |
-| `agent-recette.log`, `agent-rejeu-2-5.log`, `dxgi-controle-preparation.log`, `mode-sortie-*.log`, `p2-instrument.log`, `p0-f1.log` | UTF-8, **ANSI déjà retirées**, CRLF | rien |
+| `agent-recette.log`, `agent-rejeu-2-5.log`, `dxgi-controle-preparation.log`, `mode-sortie-*.log` | UTF-8, **ANSI déjà retirées**, CRLF | rien |
+| `p2-instrument.log`, `p0-f1.log` | UTF-8 (`p0-f1.log` pur ASCII), **ANSI déjà retirées**, **LF — aucun `\r`** | rien. ⚠️ *Ils étaient rangés « CRLF » avec les précédents : c'est faux, et corrigé ici.* |
 | `p0-agent.log`, `p1-mode-sortie.log`, `p1bis-mode-sortie.log` | UTF-8, **séquences ANSI PRÉSENTES** | `sed 's/\x1b\[[0-9;]*m//g'` avant tout `grep` |
 | `critere-recette.log`, `critere-rejeu-2-5.log` (journaux de **pilote**) | classés « data » — **une seule ligne** y porte 17 `\x02` et 3 `\x03`, résidu du PowerShell de `run-agent.sh` | `grep -a`. ⚠️ **Contrairement à D6, les accents sont INTACTS** et se `grep`ent normalement : le défaut à deux réglages n'a mordu qu'une ligne |
 
 D8 livre le sens **Windows → navigateur** du plein écran, que le cadrage jeux
 laissait au chantier D : quand une application Windows passe en plein écran, sa
-fenêtre navigateur y entre au geste suivant — **et elle seule**. Il livre aussi
-la **résolution qui suit** (la sortie virtuelle change de mode) et devait
+fenêtre navigateur y entre au geste suivant — **et elle seule**. Il devait
+livrer aussi la **résolution qui suit** (la sortie virtuelle change de mode) et
 éprouver **Keyboard Lock**.
+
+### ⛔ CE QUI EST RÉELLEMENT LIVRÉ : la détection et l'annonce, pas le changement de mode
+
+**Décision du propriétaire du dépôt à la revue finale de branche (5 août
+2026).** La moitié « changement de mode de sortie » **n'a JAMAIS été sollicitée
+par la recette** — critère ② NON EXERCÉ, `mode_sortie_demande=0` aux deux
+exécutions, **zéro tentative** de `ChangeDisplaySettingsExW` en conditions de
+produit — et la revue y a trouvé **deux Critiques**. Elle reste dans le code,
+**désarmée par défaut**, derrière `PLEIN_ECRAN_MODE_SORTIE=1` (voir le tableau
+des variables). **C'est le repli que le §4 de la conception avait écrit
+d'avance : « ①, ③, ④ et ⑤ tiennent sans ② ».**
+
+| ACTIF, livré, mesuré | DÉSARMÉ |
+| --- | --- |
+| relecture du style (`capteur/fenetre.rs`, `PERIODE_STYLE`) | `changer_mode_de_sortie` |
+| `DepuisCapteur::PleinEcran` → `AgentControl::Fullscreen` | tout `ChangeDisplaySettingsExW` du produit |
+| armement client (`client/src/fullscreen.ts`) et Keyboard Lock | — |
+
+⚠️ **Les deux Critiques ne sont PAS corrigées, et c'est délibéré** — le
+désarmement les rend inatteignables. Elles vivent auprès du garde
+(`agent/src/capteur/plein_ecran.rs::changement_de_mode_arme`) comme **le
+premier travail de la recette qui armera ce chemin** :
+
+- **C1 — le produit bloquerait ses propres ouvertures de fenêtre
+  ultérieures.** Il écrit `CDS_UPDATEREGISTRY` à **chaque** plein écran
+  réussi, et une sortie **naît à la dernière taille laissée au registre** :
+  c'est littéralement le blocage que la préparation de la recette a dû lever à
+  la main, et le produit se l'infligerait **en marche normale**.
+  ⚠️ **Portée INCONNUE, et les deux branches aggravent** : `agent-recette.log`
+  porte **CINQ GUID SudoVDA distincts** (`…677541430001` à `…430005`), un par
+  sortie. Ou le mode registre est **par GUID** — et lever le blocage sur un
+  seul ne pouvait rien pour les quatre autres, donc **la chaîne causale
+  « remède P1 → blocage levé » n'est pas fermée par ses pièces** —, ou il ne
+  l'est pas — et **une seule écriture empoisonne TOUTES les sorties futures**.
+  *(Le document de résultats parlait du « GUID de sortie virtuelle unique » :
+  c'était faux, corrigé.)*
+- **C2 — la reprise sur perte d'accès de D2 est court-circuitée.** Après un
+  changement de mode, `reconstruire_sur_la_sortie` rend une `Err` sur un échec
+  de réouverture **y compris transitoire** — la classe d'échec exacte que la
+  fenêtre de reprise de D2 existe pour encaisser (44 pertes `0x887A0026`
+  absorbées sans tuer une session). Ici, la session meurt.
+
+**Une troisième raison, qui n'est pas un défaut mais un manque** : ce chemin
+**n'a jamais tourné en conditions de produit** — P1 n'ouvre jamais de
+`DuplicateOutput`, la production retaille une sortie dont la duplication est
+ouverte et détenue jusqu'à 3,1 s. C'est la première des trois inconnues.
 
 ### ⛔ Le fait de conception le plus réutilisable : le critère de détection du cadrage est MORT
 
@@ -4356,7 +4408,7 @@ revendiqué nulle part.**
 | # | Critère | Verdict | Exécutions |
 | --- | --- | --- | --- |
 | témoin | Non-régression, aucun plein écran | **TENU** | **1** |
-| ① | Le plein écran Windows est détecté et annoncé, **à la bonne fenêtre seule** | **CONFIRMÉ** — détection exclusive et symétrique | **1** mesure + **1** corroboration |
+| ① | Le plein écran Windows est détecté et annoncé, **à la bonne fenêtre seule** | **CONFIRMÉ** — détection exclusive et symétrique. ⚠️ **La corroboration est PARTIELLEMENT CIRCULAIRE** : `resoudreIdentite()` identifie la session **par la bascule de bordure**, donc **par ① lui-même** — elle corrobore la cohérence de deux emplois du même mécanisme, pas ① par un signal indépendant | **1** mesure + **1** corroboration (voir la réserve ci-contre) |
 | ② | Le flux suit le viewport, la sortie garde son nom | **NON EXERCÉ** — zéro tentative de changement de mode, aux **deux** exécutions | **2** |
 | ③ | Échap et Keyboard Lock | **NON MESURÉ, par décision** actée en amont | **0** |
 | ④ | Les voisines s'endorment par le chemin existant | **TENU** sur ses deux moitiés | **2** |
@@ -4366,8 +4418,19 @@ revendiqué nulle part.**
 sur tout le run, toutes deux `session=w-4`, une `actif=true`, une `actif=false`.
 La bascule de style Windows est confirmée par **relecture directe**
 (`GetWindowLongPtrW` avant/après, jamais le seul code de retour) :
-`avant=382664704` → `après=369819648`. Latence bascule → détection : **~0,5 s**,
-la même dans les deux sens.
+`avant=382664704` → `après=369819648`.
+⚠️ **CORRIGÉ (revue finale de branche) : le « ~0,5 s » publié ici comme
+« latence bascule → détection » est une latence ENVOI → DÉTECTION, et c'est une
+BORNE SUPÉRIEURE, pas une caractéristique du produit.** Les deux horodatages
+qui la fondaient (~21:03:41,4 et ~21:05:24,1) **ne figurent dans AUCUN
+journal** : ils se reconstituent en retranchant le `dodo(4000)` du pilote de
+l'horodatage de la commande. Entre l'envoi de la tâche planifiée et le
+`SetWindowLongPtrW` réel s'intercalent `schtasks`, le démarrage de PowerShell
+et un `Add-Type` — tout ce temps est compté DANS le 0,5 s. **La latence propre
+du détecteur est donc inférieure, d'une quantité non mesurée**, et elle est
+bornée par ailleurs par `PERIODE_STYLE = 250 ms`. Ce qui reste relevé et
+juste : **la même borne se retrouve dans les deux sens** (activation et
+restauration).
 
 **④ en détail, et le piège de lecture qu'il porte** : les latences **AGENT**
 (ordre reçu → transition) sont **sommeil 37 ms / 28 ms** et **réveil 471 ms /
@@ -4412,24 +4475,70 @@ directe.** La rupture est **entre `window.innerWidth` et l'émission du message
 `window.innerWidth` que si la mise en page CSS le permet. ⚠️ **Ceci n'est PAS
 vérifié plus loin** : `video.clientWidth` n'a pas été instrumenté.
 
-**Pièce corroborante qui disculpe le transport** : l'agent reçoit **22 messages
-de contrôle** sur le run initial — **20 `Visibility`, 2 `Resize`** (les deux à la
-connexion). Le canal vit et délivre pour les cinq sessions pendant toute la
-phase ② ; **le défaut est côté ÉMISSION du client**. ⚠️ **Fait annexe sans
-explication** : sur 5 sessions, **3 n'ont jamais émis même leur `Resize` initial
-de connexion** — ouvert.
+❌ **La « pièce corroborante qui disculpait le transport » est RÉFUTÉE PAR SES
+PROPRES JOURNAUX** (C3, revue finale de branche, 5 août 2026). Elle disait :
+« l'agent reçoit **22 messages de contrôle** sur le run initial — 20
+`Visibility`, 2 `Resize` (les deux à la connexion) ; le canal vit et délivre
+pour les cinq sessions **pendant toute la phase ②** ; le défaut est côté
+ÉMISSION du client. » **Le 22 est exact, mais il porte sur TOUT LE RUN — et la
+phase ② est précisément l'intervalle MUET** : phase `21:03:35.810Z` →
+`21:05:23.233Z`, **zéro** ligne `contrôle reçu` dedans, la dernière à
+`21:03:31.785`, la suivante à `21:05:52.524`, soit **≈ 141 s de silence**, plus
+long que la phase entière. **Idem au rejeu** (phase `21:40:42.013Z` →
+`21:41:27.840Z`, zéro dans la fenêtre). Et **« pour les cinq sessions » n'est
+étayé par rien** : les lignes `contrôle reçu` sortent d'`agent::demarrage`
+**sans champ `session` ni span**.
+
+⚠️ **Conséquence, et c'est ce qu'il faut retenir : LE TRANSPORT N'EST DISCULPÉ
+PAR AUCUNE PIÈCE.** C'était le seul argument qui situait la rupture de ② côté
+client ; le legs n°8 (instrumenter `video.clientWidth`) vise donc **une
+hypothèse parmi d'autres**, plus le maillon désigné, et **le canal de contrôle
+reste suspect**. *Le verdict de ② ne bouge pas — « NON EXERCÉ, cause inconnue »
+reste vrai, et l'est DAVANTAGE.*
+
+❌ **Le « fait annexe » est réfuté comme ÉNONCÉ (I8)** : « sur 5 sessions, 3
+n'ont jamais émis même leur `Resize` initial » **n'est pas dérivable**. Ce qui
+est relevé est **2 `Resize` pour 5 sessions** ; ces deux lignes ne portant
+**aucun champ `session`**, rien n'établit qu'elles viennent de deux sessions
+**distinctes**. Le « donc 3 » était une inférence sous hypothèse tacite,
+publiée comme un fait **et inscrite en dette** (legs n°10, corrigé). **Ce qui
+reste ouvert est *pourquoi si peu de `Resize`*, pas *lesquelles n'en ont pas
+émis*.**
 
 ### ⚠️ La conséquence produit du refus net : un client 16:10 ou 3:2 n'obtient RIEN
 
 Mesure de la tâche 9 (commit `d5ce288`, journal `mode-sortie-1728x1080.log`) :
-**un mode NON ANNONCÉ est refusé NET** — `DISP_CHANGE_BADMODE` (`code=-2`), aux
-**trois** combinaisons de drapeaux, et **la sortie NE BOUGE PAS**. Pas de
-quantification silencieuse sur ce chemin.
+**un mode NON ANNONCÉ ne fait JAMAIS bouger la sortie**, aux trois combinaisons
+de drapeaux.
+
+❌ **CORRIGÉ (I5, revue finale de branche) : « refusé NET aux TROIS
+combinaisons » est FAUX — c'est vrai de DEUX. La troisième annonce un
+SUCCÈS.**
+
+| Combinaison | Code | `api_annonce_succes` | Sortie relue | `conforme` |
+| --- | --- | --- | --- | --- |
+| `CDS_UPDATEREGISTRY` seul | **−2** (`DISP_CHANGE_BADMODE`) | `false` | 1920×1080, **inchangée** | `false` |
+| `CDS_UPDATEREGISTRY \| CDS_RESET` | **−2** | `false` | 1920×1080, **inchangée** | `false` |
+| `CDS_UPDATEREGISTRY\|CDS_NORESET` puis `CDS_RESET` seul | `premier=-2`, **`second=0`** | **`true`** | 1920×1080, **inchangée** | `false` |
+
+⚠️ **La troisième ligne est un REFUS DÉGUISÉ EN SUCCÈS** — l'API rend `0` sur
+une sortie qui n'a pas bougé d'un pixel. C'est exactement ce contre quoi ce
+dépôt a bâti sa doctrine : **juger sur la relecture DXGI, jamais sur le code de
+retour.** **Le produit n'est pas affecté** (il n'emploie que
+`CDS_UPDATEREGISTRY` seul, et juge sur la relecture), **mais un successeur qui
+adopterait l'idiome multi-écran sur la foi de la phrase d'avant croirait avoir
+réussi.**
 
 **La sortie n'annonce que NEUF modes** — 640×360, 800×600, 960×540, 1280×720,
-1366×768, 1600×900, 1920×1080, 2560×1440, 3840×2160 —, identiques aux trois
-occasions où ils ont été énumérés : **huit en 16:9 exactement, un seul en 4:3**
-(800×600). Or `borner_a_la_taille_max` **préserve le rapport d'aspect**.
+1366×768, 1600×900, 1920×1080, 2560×1440, 3840×2160 —, identiques aux
+occasions où ils ont été énumérés.
+❌ **CORRIGÉ (I6, même revue) : « huit en 16:9 exactement » est FAUX — il y en
+a SEPT.** Le décompte juste : **7 en 16:9 exact** (640×360, 960×540, 1280×720,
+1600×900, 1920×1080, 2560×1440, 3840×2160), **1 en 4:3** (800×600), et **1 qui
+n'est NI l'un NI l'autre — `1366×768`** (1366 × 9 = 12 294 ≠ 768 × 16 =
+12 288). Le mot « exactement » interdisait de le lire comme une approximation.
+**La conclusion aval SURVIT** : `borner_a_la_taille_max` **préserve le rapport
+d'aspect**.
 
 ⚠️ **Donc un client 16:10 ou 3:2 — les formats d'ordinateurs portables les plus
 courants — en plein écran produit une taille hors liste, refusée net, et
@@ -4465,6 +4574,12 @@ laissée au registre** par un `CDS_UPDATEREGISTRY` antérieur : chaîne
 `avant(N) = après(N-1)` vérifiée sur **trois transitions consécutives**
 (tâche 3bis). **Ce n'est pas une lecture de commentaire, c'est une mesure**, et
 elle touche une hypothèse que D1 à D7 tenaient pour acquise.
+⚠️ **Réserve de la tâche 3bis, non transportée jusqu'ici et rétablie par la
+revue finale de branche** : ces trois transitions reposent sur **UN SEUL
+journal brut versé**, donc **une exécution**. `task-3bis-report.md` le dit en
+toutes lettres — trois exécutions au total, dont l'une « non versée en brut
+(nettoyée par erreur avant copie) », reproduite à plat dans le rapport. **La
+chaîne est cohérente et reproduite ; elle n'est pas rejouable sur pièces.**
 
 **Second fait, qui ressuscite le risque de changement PARTIEL** : le pilote peut
 **« snapper »** vers une taille intermédiaire — **3840×2160 demandé (pourtant
@@ -4531,7 +4646,7 @@ l'avait déjà écrit après D6, et l'a repayé ici.**
 | l'état de référence | idem — `SuiviBordure` | **l'état lu à l'attache fait référence, on n'annonce que les CHANGEMENTS** : une application née sans bordure n'annonce rien |
 | la lecture | `agent/src/capteur/fenetre.rs` (**470**) | sur le fil de fenêtre, bridée à `PERIODE_STYLE = 250 ms`, **jamais à l'image**. Constante **propre** à ce mécanisme — ne pas la coupler à `PERIODE_REARBITRAGE` |
 | le message | `capteur/protocole.rs` (**369**) → `proto/src/control.rs` (**419**) | `DepuisCapteur::PleinEcran { actif }` → `AgentControl::Fullscreen { active }`, le trajet exact de `Sommeil` |
-| le changement de mode | `agent/src/windows_source/redimensionnement/mode_sortie.rs` (**427**) | `ChangeDisplaySettingsExW` seul. ⚠️ **`borner_a_la_taille_max` et `TAILLE_MAX_SORTIE = (1920, 1080)` ne sont PAS ici** : ils vivent dans **`agent/src/windows_source/sortie.rs:99` et `:113`** |
+| le changement de mode | `agent/src/windows_source/redimensionnement/mode_sortie.rs` (**427**) | `ChangeDisplaySettingsExW` seul. ⚠️ **`TAILLE_MAX_SORTIE = (1920, 1080)` et `borner_a_la_taille_max` ne sont PAS ici** : ils vivent dans **`agent/src/windows_source/sortie.rs:99`** (la constante) **et `:113`** (la fonction). *L'ordre des deux noms était inversé — corrigé, les numéros étaient justes.* |
 | le client | `client/src/fullscreen.ts` (**174**) | **armement, pas action** : on entre au premier `pointerdown`/`keydown`. `Fullscreen { active: false }` sort immédiatement |
 
 **Trois faits de conception qui survivront au code :**
@@ -4567,6 +4682,14 @@ même genre, un `match` qu'aucun brief ne nommait :
   de fréquence de succès.**
 - **② n'a rien sollicité, donc les trois inconnues restent ENTIÈRES**, dont le
   risque n°1 — le changement de mode sur une sortie à duplication ouverte.
+- **RIEN N'EST DISCULPÉ dans la chaîne qui casse à ②** — ni le client, ni le
+  canal de contrôle, ni l'agent. La pièce qui prétendait disculper le transport
+  est réfutée par les journaux (C3) : **141 s sans une seule ligne
+  `contrôle reçu` pendant la phase ②**, aux deux exécutions.
+- **Le changement de mode de sortie n'a JAMAIS tourné en conditions de
+  produit**, et il est **désarmé par défaut** depuis la revue finale de branche.
+  Son verdict n'est donc pas « il marche » ni « il ne marche pas » : **il n'a
+  pas été essayé.**
 - **③ n'est pas mesuré**, et sa raison est elle-même mesurée (sonde P2) : Chrome
   `--headless=new` **n'entre pas réellement en plein écran**
   (`document.fullscreenElement` reste `null` 800 ms après un `requestFullscreen()`
@@ -4587,8 +4710,12 @@ même genre, un `match` qu'aucun brief ne nommait :
 - **Un seul rang (N = 3 fenêtres)** aux deux exécutions ; rien au-delà, rien du
   recouvrement, du déplacement, ni du redimensionnement manuel d'une fenêtre.
 - **Le repli `NORESET` → `RESET` de la sonde P1 n'a JAMAIS fait bouger une
-  sortie** : `CDS_UPDATEREGISTRY` seul a toujours suffi. Les combinaisons de
-  repli restent **écrites et non éprouvées**.
+  sortie** : `CDS_UPDATEREGISTRY` seul a toujours suffi quand quelque chose
+  bougeait. ❌ **CORRIGÉ (I5) : « les combinaisons de repli restent écrites et
+  non éprouvées » est FAUX — elles SONT éprouvées**, dans
+  `mode-sortie-1728x1080.log`, et l'une d'elles **annonce un succès sur une
+  sortie inchangée** (voir le tableau de la section « refus net » ci-dessus).
+  Ce qui reste vrai : **aucune n'a jamais fait bouger une sortie.**
 - **Le prix du chemin « refus » n'est pas exercé** : le correctif de la tâche 9
   détruit l'ancien encodeur avant de construire le neuf (ordre de D5) et rend le
   bras `Recovered` **fatal** plutôt qu'un faux repli à région périmée — mais
@@ -4692,19 +4819,43 @@ même genre, un `match` qu'aucun brief ne nommait :
    de duplication.
    Les deux autres — pertes de mutex infligées aux voisines, conservation du nom
    `\\.\DISPLAYn` — sont sans objet tant que celle-ci n'est pas tranchée.
+   ⚠️ **Elles sont désormais le PRÉALABLE À L'ARMEMENT du chemin, pas une suite
+   parmi d'autres** : depuis la revue finale de branche, le changement de mode
+   de sortie est **désarmé par défaut** (`PLEIN_ECRAN_MODE_SORTIE=1` l'arme), et
+   ces trois inconnues sont ce que la recette qui l'armera doit trancher
+   d'abord.
 7. **Le défaut HiDPI, ouvert côté client par décision motivée** : un client à
    `devicePixelRatio > 1` déclencherait un changement de mode à chaque connexion
-   de chaque fenêtre. **Seule parade actuelle : `PLEIN_ECRAN=0`.**
-8. **Instrumenter `video.clientWidth`/`clientHeight`**, seule façon de savoir où
-   casse la chaîne entre le viewport CDP et l'émission du `Resize` — et donc de
-   pouvoir enfin exercer ②.
+   de chaque fenêtre. ~~Seule parade actuelle : `PLEIN_ECRAN=0`.~~ ✅ **Il est
+   INATTEIGNABLE en configuration livrée depuis le désarmement** — il n'y a plus
+   de changement de mode à déclencher. **Le défaut reste ouvert côté client**, et
+   redevient mordant le jour où `PLEIN_ECRAN_MODE_SORTIE=1` sera posé.
+8. **Instrumenter `video.clientWidth`/`clientHeight`**, pour savoir où casse la
+   chaîne entre le viewport CDP et l'émission du `Resize` — et donc pouvoir
+   enfin exercer ②.
+   ⚠️ **Ce legs visait le CLIENT sur la foi d'une pièce RÉFUTÉE (C3)** : « le
+   canal de contrôle vit et délivre pendant toute la phase ② » est faux — **141 s
+   sans une seule ligne `contrôle reçu`**, aux deux exécutions. **Le transport
+   n'est donc disculpé par rien**, et `video.clientWidth` n'est qu'**une
+   hypothèse parmi d'autres** — le canal de contrôle en reste une. Instrumenter
+   le client garde son intérêt ; **le désigner comme LE maillon fautif n'a plus
+   de pièce.**
 9. **Trois défauts d'instrument, tous ouverts** : le seuil `audio_survit` qui ne
    peut pas échouer, `verdict_partie_mesurable` qui contredit le verdict publié,
    et `window.__pleinEcran` non borné dans le temps.
-10. **Le fait que 3 sessions sur 5 n'aient jamais émis leur `Resize` initial de
-    connexion**, sans explication versée.
+10. **Le fait que la recette n'ait relevé que DEUX `Resize` pour CINQ
+    sessions**, sans explication versée.
+    ❌ **CORRIGÉ (I8) : ce legs disait « 3 sessions sur 5 n'ont jamais émis leur
+    `Resize` », et ce « 3 » N'EST PAS DÉRIVABLE** — les deux lignes
+    `contrôle reçu Resize` ne portent **aucun champ `session`**, donc rien
+    n'établit qu'elles viennent de deux sessions distinctes. Une inférence sous
+    hypothèse tacite était **inscrite en dette comme un fait**. **La question
+    ouverte est *pourquoi si peu de `Resize`*, pas *lesquelles n'en ont pas
+    émis*** — et l'attribution par session exige d'abord que la trace porte sa
+    session (legs n°2 de D7).
 11. ⛔ **ANNOTER LE §4.1 DU CADRAGE JEUX LUI-MÊME** —
-    `docs/superpowers/specs/2026-07-28-support-jeux-design.md`, l. **266-273**.
+    `docs/superpowers/specs/2026-07-28-support-jeux-design.md`, l. **267-274**
+    *(publié `266-273` : le paragraphe commence une ligne plus bas).*
     Il propose toujours ses « trois signaux possibles, à arbitrer à
     l'implémentation », **le premier étant la comparaison `GetWindowRect` /
     rect du moniteur, sans aucune marque**. Une implémentation fidèle à cette
@@ -4719,6 +4870,16 @@ même genre, un `match` qu'aucun brief ne nommait :
     ⚠️ *Cette ligne a d'abord été écrite au futur (« fait au commit suivant »)
     dans un commit où le geste n'avait pas encore eu lieu — une affirmation
     au-delà de son relevé, corrigée ici en nommant le hachage.*
+12. ⛔ **C1 — la pollution du registre par le produit lui-même**, et
+    **l'alternative des cinq GUID qui en rend la portée inconnue** (voir
+    l'encadré « Ce qui est réellement livré » plus haut). **Premier travail de
+    la recette qui posera `PLEIN_ECRAN_MODE_SORTIE=1`**, avec le legs n°13.
+    Inatteignable tant que le chemin est désarmé — donc **dette, pas défaut
+    actif**.
+13. ⛔ **C2 — la reprise sur perte d'accès de D2 court-circuitée** par une `Err`
+    sur un échec **transitoire** de réouverture après changement de mode. Même
+    statut que le n°12 : inatteignable par défaut, **à traiter avant tout
+    armement**.
 
 ---
 
