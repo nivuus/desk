@@ -1,0 +1,24 @@
+[    0.0s 2026-08-06T16:50:40.279Z] ÉTIQUETTE=rouge-validation MONTAGE=a PORT_SHELL=5173 OBSERVATION_S=15 chrome pid=1791258
+[    2.0s 2026-08-06T16:50:42.273Z] identité du navigateur : pid écoutant=1791258 pid lancé=1791258 version=Chrome/151.0.7922.71
+[    2.2s 2026-08-06T16:50:42.471Z] + page attachée  session=2F805589 url=about:blank index=1 initiale=true shell=false app=false
+[    2.3s 2026-08-06T16:50:42.573Z] >>> ÉTAPE 0 : préparation — VM sans fenêtre éligible
+[    2.3s 2026-08-06T16:50:42.602Z] CPU HÔTE (au repos, avant toute session) loadavg=16.44 12.56 9.95 27/3192 1791541
+[    8.2s 2026-08-06T16:50:48.486Z] PURGE FENÊTRES/AGENTS RESCAPÉS (avant lancement du superviseur) {"agents_restants":0,"chrome_restants":0}
+[    8.4s 2026-08-06T16:50:48.661Z] + page attachée  session=59EF6536 url=http://192.168.3.1:5173/shell.html index=2 initiale=false shell=true app=false
+[   11.4s 2026-08-06T16:50:51.688Z] statut shell : bureau connecté
+[   11.4s 2026-08-06T16:50:51.688Z] >>> lancement du superviseur
+[   12.0s 2026-08-06T16:50:52.257Z] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   18.0s 2026-08-06T16:50:58.298Z]   · ouverture fenêtre 1 (ton-d9c2-1-660.html?hz=660&gain=0.3, profil=C:\dev\chrome-d9c2-rouge-validation-a)
+[   18.5s 2026-08-06T16:50:58.812Z] + page attachée  session=32B92EFA url= index=3 initiale=false shell=false app=true
+[   18.9s 2026-08-06T16:50:59.117Z] + page attachée  session=049AB0AD url= index=4 initiale=false shell=false app=true
+[   22.5s 2026-08-06T16:51:02.794Z] FAIT ATTEINT (ICE connected (montage A, session=w-2)) après 0.0 s
+[   22.5s 2026-08-06T16:51:02.794Z] MONTAGE A — fenêtre ouverte session=w-2 ice=connected
+[   24.1s 2026-08-06T16:51:04.329Z] AVANT (montage A, session=w-2) {"hz":662,"db":-39,"plancher_db":-158,"sample_rate":44100,"niveaux":[{"f":660,"db":-39}],"piste_muted":false,"piste_ready_state":"live","stats_audio":{"bytes_recus":30431,"paquets_recus":189}}
+[   24.1s 2026-08-06T16:51:04.329Z] >>> déclenchement (stop_attente_start) : Stop-Service Audiosrv -Force; Start-Sleep -Milliseconds 1500; Start-Service Audiosrv
+[   26.5s 2026-08-06T16:51:06.813Z] VM-DIRECT [Stop-Service Audiosrv -Force; Start-Sleep -Milliseconds 1500…] status=0 
+[   33.1s 2026-08-06T16:51:13.329Z]   relevé montage A (+6.5s) {"hz":3122,"db":-228,"plancher_db":-238,"sample_rate":44100,"niveaux":[{"f":660,"db":-229}],"piste_muted":false,"piste_ready_state":"live","stats_audio":{"bytes_recus":49894,"paquets_recus":1092}}
+[   39.6s 2026-08-06T16:51:19.858Z]   relevé montage A (+13.0s) {"hz":3924,"db":-183,"plancher_db":-193,"sample_rate":44100,"niveaux":[{"f":660,"db":-196}],"piste_muted":false,"piste_ready_state":"live","stats_audio":{"bytes_recus":53107,"paquets_recus":1745}}
+[   46.1s 2026-08-06T16:51:26.380Z]   relevé montage A (+19.6s) {"hz":11999,"db":-175,"plancher_db":-183,"sample_rate":44100,"niveaux":[{"f":660,"db":-197}],"piste_muted":false,"piste_ready_state":"live","stats_audio":{"bytes_recus":56319,"paquets_recus":2397}}
+[   46.2s 2026-08-06T16:51:26.495Z] SURVIE VM (fin de mesure) virsh="en cours d’exécution" acces_partage=OUI
+[   46.2s 2026-08-06T16:51:26.499Z] relevé écrit dans /home/mallanic/Projects/Guacamole/docs/superpowers/plans/journaux-multifenetres-d9/critere-2-rouge-validation.json
+[   54.4s 2026-08-06T16:51:34.632Z] journal copié dans /tmp/agent-critere-2-rouge-validation.log (après la fermeture du navigateur)

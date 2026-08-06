@@ -1,0 +1,30 @@
+[    0.0s 2026-08-06T16:57:09.092Z] ÉTIQUETTE=a-1 MONTAGE=a PORT_SHELL=5173 OBSERVATION_S=55 chrome pid=1823748
+[    0.8s 2026-08-06T16:57:09.896Z] identité du navigateur : pid écoutant=1823748 pid lancé=1823748 version=Chrome/151.0.7922.71
+[    0.9s 2026-08-06T16:57:09.942Z] + page attachée  session=A4C1EFCE url=about:blank index=1 initiale=true shell=false app=false
+[    0.9s 2026-08-06T16:57:09.958Z] >>> ÉTAPE 0 : préparation — VM sans fenêtre éligible
+[    0.9s 2026-08-06T16:57:09.971Z] CPU HÔTE (au repos, avant toute session) loadavg=4.96 9.03 9.40 6/3091 1824040
+[    6.3s 2026-08-06T16:57:15.394Z] PURGE FENÊTRES/AGENTS RESCAPÉS (avant lancement du superviseur) {"agents_restants":0,"chrome_restants":0}
+[    6.4s 2026-08-06T16:57:15.441Z] + page attachée  session=9461FA8A url=http://192.168.3.1:5173/shell.html index=2 initiale=false shell=true app=false
+[    9.4s 2026-08-06T16:57:18.464Z] statut shell : bureau connecté
+[    9.4s 2026-08-06T16:57:18.465Z] >>> lancement du superviseur
+[    9.9s 2026-08-06T16:57:18.950Z] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   15.9s 2026-08-06T16:57:25.003Z]   · ouverture fenêtre 1 (ton-d9c2-1-660.html?hz=660&gain=0.3, profil=C:\dev\chrome-d9c2-a-1-a)
+[   16.5s 2026-08-06T16:57:25.602Z] + page attachée  session=8B07F08E url= index=3 initiale=false shell=false app=true
+[   16.7s 2026-08-06T16:57:25.802Z] + page attachée  session=E5245C72 url= index=4 initiale=false shell=false app=true
+[   20.4s 2026-08-06T16:57:29.518Z] FAIT ATTEINT (ICE connected (montage A, session=w-2)) après 0.0 s
+[   20.4s 2026-08-06T16:57:29.519Z] MONTAGE A — fenêtre ouverte session=w-2 ice=connected
+[   22.0s 2026-08-06T16:57:31.041Z] AVANT (montage A, session=w-2) {"hz":662,"db":-39,"plancher_db":-157,"sample_rate":44100,"niveaux":[{"f":660,"db":-39}],"piste_muted":false,"piste_ready_state":"live","stats_audio":{"bytes_recus":31236,"paquets_recus":194}}
+[   22.0s 2026-08-06T16:57:31.041Z] >>> déclenchement (restart_force) : Restart-Service Audiosrv -Force
+[   22.8s 2026-08-06T16:57:31.912Z] VM-DIRECT [Restart-Service Audiosrv -Force…] status=0 
+[   29.4s 2026-08-06T16:57:38.438Z]   relevé montage A (+6.5s) {"hz":0,"db":-1000,"plancher_db":-1000,"sample_rate":44100,"niveaux":[{"f":660,"db":-1000}],"piste_muted":false,"piste_ready_state":"live","stats_audio":{"bytes_recus":48776,"paquets_recus":934}}
+[   35.9s 2026-08-06T16:57:44.967Z]   relevé montage A (+13.1s) {"hz":0,"db":-1000,"plancher_db":-1000,"sample_rate":44100,"niveaux":[{"f":660,"db":-1000}],"piste_muted":false,"piste_ready_state":"live","stats_audio":{"bytes_recus":51989,"paquets_recus":1587}}
+[   42.4s 2026-08-06T16:57:51.486Z]   relevé montage A (+19.6s) {"hz":0,"db":-1000,"plancher_db":-1000,"sample_rate":44100,"niveaux":[{"f":660,"db":-1000}],"piste_muted":false,"piste_ready_state":"live","stats_audio":{"bytes_recus":55201,"paquets_recus":2239}}
+[   48.9s 2026-08-06T16:57:58.023Z]   relevé montage A (+26.1s) {"hz":0,"db":-261,"plancher_db":-269,"sample_rate":44100,"niveaux":[{"f":660,"db":-262}],"piste_muted":false,"piste_ready_state":"live","stats_audio":{"bytes_recus":58415,"paquets_recus":2893}}
+[   55.5s 2026-08-06T16:58:04.560Z]   relevé montage A (+32.6s) {"hz":5114,"db":-176,"plancher_db":-189,"sample_rate":44100,"niveaux":[{"f":660,"db":-182}],"piste_muted":false,"piste_ready_state":"live","stats_audio":{"bytes_recus":61628,"paquets_recus":3546}}
+[   62.0s 2026-08-06T16:58:11.087Z]   relevé montage A (+39.2s) {"hz":5679,"db":-178,"plancher_db":-189,"sample_rate":44100,"niveaux":[{"f":660,"db":-187}],"piste_muted":false,"piste_ready_state":"live","stats_audio":{"bytes_recus":64841,"paquets_recus":4199}}
+[   68.5s 2026-08-06T16:58:17.603Z]   relevé montage A (+45.7s) {"hz":1712,"db":-154,"plancher_db":-168,"sample_rate":44100,"niveaux":[{"f":660,"db":-163}],"piste_muted":false,"piste_ready_state":"live","stats_audio":{"bytes_recus":68052,"paquets_recus":4850}}
+[   75.0s 2026-08-06T16:58:24.119Z]   relevé montage A (+52.2s) {"hz":1373,"db":-154,"plancher_db":-171,"sample_rate":44100,"niveaux":[{"f":660,"db":-165}],"piste_muted":false,"piste_ready_state":"live","stats_audio":{"bytes_recus":71261,"paquets_recus":5499}}
+[   81.6s 2026-08-06T16:58:30.655Z]   relevé montage A (+58.7s) {"hz":2638,"db":-151,"plancher_db":-169,"sample_rate":44100,"niveaux":[{"f":660,"db":-160}],"piste_muted":false,"piste_ready_state":"live","stats_audio":{"bytes_recus":74478,"paquets_recus":6156}}
+[   81.7s 2026-08-06T16:58:30.803Z] SURVIE VM (fin de mesure) virsh="en cours d’exécution" acces_partage=OUI
+[   81.7s 2026-08-06T16:58:30.807Z] relevé écrit dans /home/mallanic/Projects/Guacamole/docs/superpowers/plans/journaux-multifenetres-d9/critere-2-a-1.json
+[   89.9s 2026-08-06T16:58:38.951Z] journal copié dans /tmp/agent-critere-2-a-1.log (après la fermeture du navigateur)
