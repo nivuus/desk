@@ -80,11 +80,36 @@ pub(super) fn essayer_les_modes(
     // La relecture fraîche sert désormais de référence PARTOUT dans cette
     // fonction (`choisir_cible` compris) ; `avant_a_la_creation` ne sert
     // plus qu'à détecter et journaliser l'écart.
-    let avant = relever_topologie("juste avant le premier essai (relecture fraîche)")?
-        .into_iter()
+    //
+    // ⚠️ **Correction (revue de la tâche 2bis, seconde passe, point 12).**
+    // `.unwrap_or(avant_a_la_creation)` était le même trou que celui que
+    // cette correction referme partout ailleurs (I4/I13) : si la SUT est
+    // ABSENTE de la relecture fraîche, l'ancien repli rendait
+    // `avant == avant_a_la_creation` PAR CONSTRUCTION, et le `WARN`
+    // d'écart ci-dessous ne pouvait alors JAMAIS se déclencher -- une
+    // sortie disparue se lisait comme « aucun écart détecté », exactement
+    // l'inverse. L'absence est maintenant un événement journalisé À PART
+    // (`tracing::error!`, jamais confondu avec le cas « présente et
+    // inchangée »), avant même de retomber sur la valeur de création.
+    let releve_frais = relever_topologie("juste avant le premier essai (relecture fraîche)")?;
+    let taille_fraiche = releve_frais
+        .iter()
         .find(|sortie| sortie.nom_sortie == nom_sortie)
-        .map(|sortie| (sortie.rect.width, sortie.rect.height))
-        .unwrap_or(avant_a_la_creation);
+        .map(|sortie| (sortie.rect.width, sortie.rect.height));
+    let avant = match taille_fraiche {
+        Some(taille) => taille,
+        None => {
+            tracing::error!(
+                nom_sortie,
+                largeur_a_la_creation = avant_a_la_creation.0,
+                hauteur_a_la_creation = avant_a_la_creation.1,
+                "la sortie sous test est ABSENTE de la relecture fraiche -- repli sur la taille \
+                 de creation, mais ceci N'EST PAS un 'aucun ecart detecte' : c'est une anomalie \
+                 distincte, journalisee ici pour ne jamais se confondre avec elle"
+            );
+            avant_a_la_creation
+        }
+    };
     if avant != avant_a_la_creation {
         tracing::warn!(
             nom_sortie,
@@ -187,11 +212,30 @@ pub(super) fn essayer_les_modes(
             }
         }
         let releve = relever_topologie(&format!("après tentative « {} »", combo.etiquette()))?;
-        derniere_taille = releve
+        let taille_lue = releve
             .iter()
             .find(|sortie| sortie.nom_sortie == nom_sortie)
-            .map(|sortie| (sortie.rect.width, sortie.rect.height))
-            .unwrap_or((0, 0));
+            .map(|sortie| (sortie.rect.width, sortie.rect.height));
+        // ⚠️ **Correction (revue de la tâche 2bis, seconde passe, point 13).**
+        // L'ancien repli `.unwrap_or((0, 0))` faisait d'une sortie ABSENTE
+        // après tentative un FAUX mouvement dans la quasi-totalité des cas
+        // (`(0, 0) != avant` presque toujours) -- un bras aurait pu
+        // « gagner » (`gagnante = Some(...)`, verdict "P1 RECU") sur la
+        // seule disparition de la sortie, jamais sur un changement de
+        // taille réel. L'absence est maintenant une anomalie journalisée à
+        // part qui ne peut PAS faire gagner ce bras : `derniere_taille`
+        // garde la dernière valeur RÉELLEMENT lue (celle d'avant cette
+        // tentative, ou `avant` à la première itération).
+        let Some(taille_lue) = taille_lue else {
+            tracing::error!(
+                etiquette = combo.etiquette(),
+                nom_sortie,
+                "la sortie sous test est ABSENTE de la relecture apres cette tentative -- \
+                 aucun mouvement ne peut en etre conclu, ce bras ne peut pas gagner"
+            );
+            continue;
+        };
+        derniere_taille = taille_lue;
         // Le critère qui compte est le MOUVEMENT (`derniere_taille != avant`),
         // pas l'égalité à la cible choisie — voir le commentaire de tête du
         // module parent (défaut F1 corrigé). `cible_atteinte` reste

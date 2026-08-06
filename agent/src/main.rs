@@ -33,6 +33,12 @@ mod signaling;
 // module de `sortie_dxgi.rs`. `superviseur::placement` (tâche 7) en a besoin
 // pour se compiler et se tester sur Linux.
 mod sortie_dxgi;
+// Pas de `#[cfg(windows)]` ici : le prédicat de PERSISTANCE (tâche 2bis, D9,
+// correction n°14 de la revue) est pur -- `Option<(u32, u32)> ×
+// Option<(u32, u32)> -> &str` -- et doit se compiler et se tester sur Linux,
+// même s'il n'est appelé que depuis `diagnostics::multifenetre`, gated
+// derrière `#[cfg(windows)]` dans `diagnostics.rs`.
+mod survie_verdict;
 // Pas de `#[cfg(windows)]` ici : la logique pure de `superviseur` (tâche 2)
 // décide quelles fenêtres méritent d'exister côté navigateur, et doit se
 // compiler et se tester sur Linux sans dépendance à l'API Windows.

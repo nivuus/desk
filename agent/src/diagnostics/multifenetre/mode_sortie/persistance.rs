@@ -20,6 +20,7 @@
 //! addition y appelle une extraction, pas une compression.
 
 use crate::sortie_dxgi::SortieDxgi;
+use crate::survie_verdict::verdict_persistance;
 
 /// Restreint le tour à UNE combinaison, désignée par son étiquette exacte
 /// (`MULTIFENETRE_MODE_SORTIE_DRAPEAUX`). Sans elle, le comportement actuel
@@ -58,14 +59,11 @@ pub(super) fn combinaison_imposee() -> Option<String> {
 /// nommément, jamais par position -- doctrine constante de ce module.
 ///
 /// ⚠️ **Correction (revue de la tâche 2bis, Important I4)** : `survit` ne
-/// vaut PLUS `true` quand la sortie a disparu d'un côté ou de l'autre.
-/// L'ancienne version repliait une taille introuvable sur `(0, 0)`, si bien
-/// qu'une sortie disparue AVANT et APRÈS rendait `(0, 0) == (0, 0)` →
-/// `survit=true` -- l'instrument annonçait « le changement a survécu »
-/// exactement quand la sortie s'était volatilisée. `survit` est maintenant
-/// une chaîne à trois états : `"true"`, `"false"`, ou
-/// `"indetermine (sortie disparue)"` quand l'un des deux relevés est absent
-/// -- jamais une comparaison sur une sentinelle numérique.
+/// vaut PLUS `true` quand la sortie a disparu d'un côté ou de l'autre. La
+/// comparaison elle-même est déléguée à `survie_verdict::verdict_persistance`
+/// depuis la correction n°14 de la seconde revue — un prédicat PUR, sorti de
+/// cet arbre `#[cfg(windows)]` pour être testable sur l'hôte, voir son
+/// commentaire de tête pour le défaut exact qu'il empêche de revenir.
 ///
 /// La comparaison elle-même, quand les deux relevés existent, porte sur deux
 /// tailles obtenues par la MÊME relecture DXGI (`GetDesc`/`DesktopCoordinates`)
@@ -92,10 +90,7 @@ pub(super) fn journaliser_verdict(
         Some((l, h)) => (true, l, h),
         None => (false, 0, 0),
     };
-    let survit = match (avant_creation, apres_creation) {
-        (Some(a), Some(b)) => (a == b).to_string(),
-        _ => "indetermine (sortie disparue)".to_string(),
-    };
+    let survit = verdict_persistance(avant_creation, apres_creation);
 
     tracing::info!(
         combinaison_imposee = ?combinaison_imposee,

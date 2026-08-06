@@ -65,11 +65,24 @@ pub(super) fn rejouer_temoin(
     let dernier_code = appliquer_combo(nom_sortie, cible.0, cible.1, combo);
     attendre_en_pinguant(pilote, DELAI_TOPOLOGIE)?;
     let releve = relever_topologie(&format!("après tentative TÉMOIN « {} »", combo.etiquette()))?;
-    let derniere_taille = releve
+    let taille_lue = releve
         .iter()
         .find(|sortie| sortie.nom_sortie == nom_sortie)
-        .map(|sortie| (sortie.rect.width, sortie.rect.height))
-        .unwrap_or((0, 0));
+        .map(|sortie| (sortie.rect.width, sortie.rect.height));
+    // ⚠️ **Correction (revue de la tâche 2bis, seconde passe, point 13).**
+    // L'ancien repli `.unwrap_or((0, 0))` aurait pu faire gagner "TEMOIN
+    // RECU" sur la seule disparition de la sortie témoin (même défaut que
+    // dans `eliminatoire.rs`, même remède : aucun verdict n'est rendu sur
+    // une sentinelle, l'absence est journalisée à part).
+    let Some(derniere_taille) = taille_lue else {
+        tracing::error!(
+            etiquette = combo.etiquette(),
+            nom_sortie,
+            "la sortie TEMOIN est ABSENTE de la relecture apres sa tentative -- aucun verdict \
+             ne peut en etre rendu"
+        );
+        return Ok(());
+    };
     let mouvement = derniere_taille != avant;
     tracing::info!(
         etiquette = combo.etiquette(),
