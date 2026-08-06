@@ -140,21 +140,24 @@ fn cible_du_temoin(
 
 /// Le nom sous lequel la sortie testée se retrouve après le tour éliminatoire
 /// — l'inconnue annexe n°3 de D8 (« la sortie garde-t-elle son nom
-/// `\\.\DISPLAYn` ? »).
+/// `\\.\DISPLAYn` ? »), et sa taille à ce même instant — le point
+/// `avant_creation` du contrôle de PERSISTANCE (`persistance::journaliser_verdict`,
+/// tâche 2bis de D9), pour ne pas relire une seconde fois une topologie déjà
+/// en main.
 ///
 /// Cherche d'abord le nom INCHANGÉ. À défaut, cherche un successeur parmi les
 /// noms apparus depuis le tout début de la sonde et qui ne sont ni la sortie
 /// testée elle-même ni l'une des deux voisines : une seule candidate tranche,
 /// plusieurs ou aucune laissent la question ouverte (`<disparue>`, journalisé
-/// à part plutôt que deviné).
+/// à part plutôt que deviné, taille `(0, 0)`).
 pub(super) fn nom_apres_tour(
     nom_sortie: &str,
     connues_avant_tout: &HashSet<String>,
     autres_noms_a_nous: &HashSet<String>,
-) -> Result<String> {
+) -> Result<(String, (u32, u32))> {
     let releve = relever_topologie("après le tour (inconnues annexes)")?;
-    if releve.iter().any(|sortie| sortie.nom_sortie == nom_sortie) {
-        return Ok(nom_sortie.to_string());
+    if let Some(sortie) = releve.iter().find(|sortie| sortie.nom_sortie == nom_sortie) {
+        return Ok((nom_sortie.to_string(), (sortie.rect.width, sortie.rect.height)));
     }
     let candidats: Vec<&str> = releve
         .iter()
@@ -162,7 +165,12 @@ pub(super) fn nom_apres_tour(
         .filter(|nom| !connues_avant_tout.contains(*nom) && !autres_noms_a_nous.contains(*nom))
         .collect();
     if let [seul] = candidats.as_slice() {
-        return Ok(seul.to_string());
+        let taille = releve
+            .iter()
+            .find(|sortie| sortie.nom_sortie == *seul)
+            .map(|sortie| (sortie.rect.width, sortie.rect.height))
+            .unwrap_or((0, 0));
+        return Ok((seul.to_string(), taille));
     }
     tracing::warn!(
         nom_sortie,
@@ -170,5 +178,5 @@ pub(super) fn nom_apres_tour(
         "la sortie testée n'apparaît plus sous son nom d'origine, et aucun successeur univoque \
          ne se dégage -- nom_apres = <disparue>"
     );
-    Ok("<disparue>".to_string())
+    Ok(("<disparue>".to_string(), (0, 0)))
 }

@@ -81,8 +81,23 @@
 //!    journalisé à part (`cible_atteinte`/`cible_exacte_atteinte`) : une
 //!    question plus fine, qui peut valoir `false` sous un verdict `P1 RECU`
 //!    sans que ce soit une contradiction.
+//!
+//! # Tâche 2bis du sous-bloc D9 — la PERSISTANCE, pas seulement le déclenchement
+//!
+//! La tâche 2 a établi que `CDS_TYPE(0)` (dynamique, non persistée par
+//! construction) fait bouger la sortie **au premier essai**, si bien que les
+//! trois autres bras — dont `CDS_UPDATEREGISTRY`, seul à persister par
+//! construction — n'ont jamais été sollicités, et que le mouvement obtenu ne
+//! survit pas à la création d'une sortie virtuelle de plus. Cette tâche
+//! répond pour `CDS_UPDATEREGISTRY` : `MULTIFENETRE_MODE_SORTIE_DRAPEAUX`
+//! restreint le tour à un seul bras désigné (`persistance::combinaison_imposee`,
+//! `combinaisons::combos_du_tour`), et le verdict de survie est journalisé
+//! explicitement (`persistance::journaliser_verdict`) plutôt que recomposable
+//! seulement en recoupant deux relevés de topologie à dix lignes d'écart.
 
 mod combinaisons;
+mod eliminatoire;
+mod persistance;
 mod temoin;
 mod voisines;
 
@@ -91,20 +106,20 @@ use std::collections::HashSet;
 use anyhow::{Context, Result};
 use windows::core::PCWSTR;
 use windows::Win32::Graphics::Gdi::{
-    DEVMODEW, DISP_CHANGE_SUCCESSFUL, ENUM_DISPLAY_SETTINGS_FLAGS, ENUM_DISPLAY_SETTINGS_MODE,
-    EnumDisplaySettingsExW,
+    DEVMODEW, ENUM_DISPLAY_SETTINGS_FLAGS, ENUM_DISPLAY_SETTINGS_MODE, EnumDisplaySettingsExW,
 };
 
-use combinaisons::{appliquer_combo, combo_pour_temoin, combos};
+use combinaisons::combo_pour_temoin;
+use eliminatoire::essayer_les_modes;
+use persistance::journaliser_verdict;
 use temoin::{nom_apres_tour, rejouer_temoin};
-use voisines::DuplicationVoisine;
 
 use super::capture_virtuelle::designer_sortie_neuve;
 use super::montee::{
     attendre_en_pinguant, noms_attaches, relever_topologie, DELAI_TOPOLOGIE, RESOLUTION,
 };
 use crate::capture::DesktopCapture;
-use crate::moniteurs_virtuels::pilote::{ouvrir_pilote, PiloteParIoctl};
+use crate::moniteurs_virtuels::pilote::ouvrir_pilote;
 use crate::moniteurs_virtuels::Sorties;
 
 /// Modes que la sortie ANNONCE (`EnumDisplaySettingsExW`, énumération pure) —
@@ -160,167 +175,6 @@ pub(super) fn choisir_cible(avant: (u32, u32), demande: (u32, u32), annonces: &[
         return Some(demande);
     }
     annonces.iter().copied().rev().find(|&mode| mode != avant)
-}
-
-/// Ce qu'un tour de combinaisons a établi.
-struct ResultatTour {
-    /// Cible numérique effectivement visée pendant le tour, ou `None` si
-    /// aucune cible mesurable n'a pu être choisie (`P1 NON MESURABLE`) — le
-    /// témoin n'a alors rien à rejouer, voir son appelant.
-    cible: Option<(u32, u32)>,
-    /// Le bras qui a fait bouger la sortie, s'il y en a un.
-    gagnante: Option<&'static str>,
-    /// Nombre de tentatives où au moins une voisine a perdu l'accès à sa
-    /// duplication pendant le tour — voir
-    /// `voisines::DuplicationVoisine::sonder` pour la granularité exacte.
-    pertes_voisines: u32,
-}
-
-/// Essaie les combinaisons connues jusqu'à ce que la relecture DXGI confirme
-/// la cible, ou jusqu'à épuisement. Rend toujours `Ok` : un refus — ou
-/// l'impossibilité de choisir une cible mesurable — est une mesure, pas une
-/// erreur de la sonde ; voir le commentaire de tête du module. Seule une
-/// topologie devenue illisible fait remonter une erreur.
-///
-/// `avant` est la taille lue par DXGI juste après la création, PAS supposée
-/// être la résolution de création : c'est exactement la valeur dont l'absence
-/// a rendu le premier relevé vide de sens (voir le commentaire de tête).
-///
-/// `voisines` : sondées une fois PAR TENTATIVE (voir `DuplicationVoisine::sonder`)
-/// — c'est l'inconnue annexe n°2 de D8 relevée au même moment que
-/// l'éliminatoire, pas une mesure séparée.
-fn essayer_les_modes(
-    pilote: &PiloteParIoctl,
-    nom_sortie: &str,
-    avant: (u32, u32),
-    demande: (u32, u32),
-    voisines: &mut [DuplicationVoisine],
-) -> Result<ResultatTour> {
-    let annonces = modes_annonces(nom_sortie);
-    tracing::info!(
-        nombre = annonces.len(),
-        largeur_avant_tentative = avant.0,
-        hauteur_avant_tentative = avant.1,
-        contient_demande = annonces.contains(&demande),
-        demande_egale_avant = demande == avant,
-        modes = ?annonces,
-        "modes annonces (EnumDisplaySettingsExW) avant tout changement"
-    );
-
-    let cible = match choisir_cible(avant, demande, &annonces) {
-        Some(cible) => cible,
-        None => {
-            tracing::error!(
-                verdict = "P1 NON MESURABLE",
-                raison = "aucun mode annonce ne differe de la taille courante",
-                largeur_avant_tentative = avant.0,
-                hauteur_avant_tentative = avant.1,
-                largeur_demandee = demande.0,
-                hauteur_demandee = demande.1,
-                modes = ?annonces,
-                "verdict P1 : mesure impossible, aucune tentative effectuee"
-            );
-            return Ok(ResultatTour { cible: None, gagnante: None, pertes_voisines: 0 });
-        }
-    };
-    if cible == demande {
-        tracing::info!(
-            largeur_cible = cible.0,
-            hauteur_cible = cible.1,
-            "cible retenue = resolution demandee (differe deja de la taille courante)"
-        );
-    } else {
-        tracing::warn!(
-            largeur_demandee = demande.0,
-            hauteur_demandee = demande.1,
-            largeur_avant_tentative = avant.0,
-            hauteur_avant_tentative = avant.1,
-            largeur_cible = cible.0,
-            hauteur_cible = cible.1,
-            "la resolution demandee egale deja la taille courante (persistance registre probable \
-             d'une execution anterieure) -- cible substituee dynamiquement parmi les modes annonces"
-        );
-    }
-
-    let mut dernier_code = 0i32;
-    let mut derniere_taille = (0u32, 0u32);
-    let mut gagnante: Option<&'static str> = None;
-    let mut cible_exacte_atteinte = false;
-    let mut pertes_voisines = 0u32;
-    for combo in combos() {
-        dernier_code = appliquer_combo(nom_sortie, cible.0, cible.1, &combo);
-        // Windows reconfigure sa topologie d'affichage de façon asynchrone —
-        // exactement pourquoi `montee.rs` observe le même délai de grâce
-        // après une création. Interroger DXGI trop tôt ferait conclure à un
-        // refus là où il n'y a qu'un délai, et battre le chien de garde
-        // pendant l'attente comme le fait le reste de ce module.
-        attendre_en_pinguant(pilote, DELAI_TOPOLOGIE)?;
-        // Sondées ICI, après l'attente : si une perte survient à n'importe
-        // quel instant de la fenêtre qui vient de s'écouler, l'instance de
-        // duplication de la voisine la porte encore au moment de cette
-        // sollicitation (voir `DuplicationVoisine::sonder`) -- une sonde par
-        // tentative suffit à la détecter.
-        for voisine in voisines.iter_mut() {
-            if voisine.sonder() {
-                pertes_voisines += 1;
-            }
-        }
-        let releve = relever_topologie(&format!("après tentative « {} »", combo.etiquette()))?;
-        derniere_taille = releve
-            .iter()
-            .find(|sortie| sortie.nom_sortie == nom_sortie)
-            .map(|sortie| (sortie.rect.width, sortie.rect.height))
-            .unwrap_or((0, 0));
-        // Le critère qui compte est le MOUVEMENT (`derniere_taille != avant`),
-        // pas l'égalité à la cible choisie — voir le commentaire de tête du
-        // module (défaut F1 corrigé). `cible_atteinte` reste journalisé,
-        // séparément : il documente si le pilote honore la valeur exacte
-        // demandée, une question plus fine que P1, jamais celle qui décide du
-        // verdict.
-        let mouvement = derniere_taille != avant;
-        let cible_atteinte = derniere_taille == cible;
-        tracing::info!(
-            etiquette = combo.etiquette(),
-            code_brut = dernier_code,
-            api_annonce_succes = (dernier_code == DISP_CHANGE_SUCCESSFUL.0),
-            largeur_relue = derniere_taille.0,
-            hauteur_relue = derniere_taille.1,
-            mouvement,
-            cible_atteinte,
-            "relecture DXGI (GetDesc/DesktopCoordinates) apres la tentative"
-        );
-        if mouvement {
-            gagnante = Some(combo.etiquette());
-            cible_exacte_atteinte = cible_atteinte;
-            break;
-        }
-    }
-
-    tracing::info!(
-        verdict = if gagnante.is_some() { "P1 RECU" } else { "P1 REFUSE" },
-        combinaison_gagnante = ?gagnante,
-        code_brut_dernier_essai = dernier_code,
-        largeur_avant_tentative = avant.0,
-        hauteur_avant_tentative = avant.1,
-        largeur_relue = derniere_taille.0,
-        hauteur_relue = derniere_taille.1,
-        largeur_cible = cible.0,
-        hauteur_cible = cible.1,
-        // Le verdict lui-même : un mouvement (A != B) a-t-il été observé ?
-        // C'est CE champ qui gouverne "P1 RECU" ci-dessus, pas une égalité à
-        // la cible (voir le commentaire de tête du module, défaut F1
-        // corrigé) -- recalculé ici, redondant avec `gagnante.is_some()` par
-        // construction, pour qu'un lecteur du journal n'ait pas à le déduire.
-        mouvement_observe = derniere_taille != avant,
-        // Secondaire : le pilote a-t-il honoré la valeur EXACTE demandée, ou
-        // s'est-il arrêté à un mode intermédiaire ? Peut valoir `false` avec
-        // un verdict "P1 RECU" -- ce n'est pas une contradiction, c'est une
-        // question plus fine que celle de P1.
-        cible_exacte_atteinte,
-        pertes_acces_voisines_pendant_le_tour = pertes_voisines,
-        "verdict P1 : une sortie virtuelle accepte-t-elle un autre mode que celui de sa creation"
-    );
-    Ok(ResultatTour { cible: Some(cible), gagnante, pertes_voisines })
 }
 
 /// Sonde `MULTIFENETRE_MODE_SORTIE=<L>x<H>`.
@@ -413,7 +267,8 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
         // --- Les deux inconnues annexes (étape 5), relevées au même moment
         // que l'éliminatoire -- avant de relâcher quoi que ce soit.
         let autres_noms_a_nous: HashSet<String> = [nom_v1, nom_v2].into_iter().collect();
-        let nom_apres = nom_apres_tour(&nom_sortie, &connues_avant_tout, &autres_noms_a_nous)?;
+        let (nom_apres, taille_apres_tour) =
+            nom_apres_tour(&nom_sortie, &connues_avant_tout, &autres_noms_a_nous)?;
         let pertes_acces_voisines = resultat.pertes_voisines;
         tracing::info!(
             pertes_acces_voisines,
@@ -448,6 +303,13 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
                 let id_temoin = sorties.creer(largeur_creation, hauteur_creation, hertz)?;
                 attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
                 let apres_temoin = relever_topologie("après création (témoin)")?;
+                // PERSISTANCE (tâche 2bis, D9) : la sortie sous test a-t-elle
+                // gardé, au moment où une sortie virtuelle DE PLUS vient
+                // d'être créée, la taille que le tour venait de lui donner ?
+                // Voir `persistance.rs` -- même relevé que `designer_sortie_neuve`
+                // ci-dessous, recherché sous `nom_apres` plutôt que par
+                // position.
+                journaliser_verdict(resultat.gagnante, &nom_apres, taille_apres_tour, &apres_temoin);
                 let sortie_temoin =
                     designer_sortie_neuve(&apres_temoin, &connues_a_ce_point, id_temoin)?;
                 let nom_temoin = sortie_temoin.nom_sortie.clone();

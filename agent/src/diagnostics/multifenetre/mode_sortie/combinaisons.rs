@@ -62,6 +62,34 @@ pub(super) fn combos() -> [Combo; 4] {
     ]
 }
 
+/// Les combos à essayer CE tour : les quatre, dans l'ordre, sauf si `imposee`
+/// restreint le tour à une seule (tâche 2bis, sous-bloc D9,
+/// `MULTIFENETRE_MODE_SORTIE_DRAPEAUX`) — `CDS_TYPE(0)` réussissant TOUJOURS
+/// au premier essai (relevé de la tâche 2), les trois autres bras, dont
+/// `CDS_UPDATEREGISTRY`, ne sont sinon jamais sollicités.
+///
+/// `imposee` doit correspondre EXACTEMENT à l'une des quatre étiquettes de
+/// `combos()` ; sinon le tour n'essaie rien (vecteur vide), plutôt qu'un repli
+/// silencieux sur les quatre qui masquerait une étiquette mal orthographiée —
+/// d'où l'avertissement si le filtre ne retient rien.
+pub(super) fn combos_du_tour(imposee: Option<&str>) -> Vec<Combo> {
+    let toutes = combos();
+    let Some(etiquette) = imposee else {
+        return toutes.into_iter().collect();
+    };
+    let filtrees: Vec<Combo> =
+        toutes.into_iter().filter(|combo| combo.etiquette() == etiquette).collect();
+    if filtrees.is_empty() {
+        tracing::warn!(
+            etiquette_demandee = etiquette,
+            etiquettes_connues = ?combos().map(|c| c.etiquette()),
+            "MULTIFENETRE_MODE_SORTIE_DRAPEAUX ne correspond à AUCUNE combinaison connue -- \
+             le tour n'essaiera rien"
+        );
+    }
+    filtrees
+}
+
 /// Le bras à rejouer pour le témoin (étape 3, brief D9) : le MÊME qui a gagné
 /// le tour principal, ou le premier si aucun n'a gagné. Rend une valeur
 /// possédée — pas une référence dans le tableau du tour principal, qui a déjà
