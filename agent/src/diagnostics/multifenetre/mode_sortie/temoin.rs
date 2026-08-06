@@ -14,6 +14,7 @@ use windows::Win32::Graphics::Gdi::DISP_CHANGE_SUCCESSFUL;
 
 use super::combinaisons::{appliquer_combo, Combo};
 use super::super::montee::{attendre_en_pinguant, relever_topologie, DELAI_TOPOLOGIE};
+use super::{choisir_cible, modes_annonces};
 use crate::moniteurs_virtuels::pilote::PiloteParIoctl;
 
 /// Le TÉMOIN (étape 3, brief D9) : rejoue `combo` sur `nom_sortie` — une
@@ -23,13 +24,34 @@ use crate::moniteurs_virtuels::pilote::PiloteParIoctl;
 /// tenue pendant ce tour, alors qu'il pourrait tout aussi bien venir du mode
 /// choisi lui-même : le témoin rejoue le MÊME geste, la seule variable qui
 /// change étant la duplication.
+///
+/// `cible_eliminatoire` est la cible retenue pour l'ÉLIMINATOIRE, PAS
+/// forcément celle appliquée ici : voir `cible_du_temoin`, qui la substitue
+/// dans le cas dégénéré où la sortie témoin naît déjà à cette valeur
+/// (persistance registre, doctrine D8) -- exactement le défaut F1 que
+/// `choisir_cible` corrige déjà pour l'éliminatoire, et qui frapperait le
+/// témoin à l'identique sans cette parade (Critique 2 de la revue de la
+/// tâche 1).
 pub(super) fn rejouer_temoin(
     pilote: &PiloteParIoctl,
     nom_sortie: &str,
     avant: (u32, u32),
-    cible: (u32, u32),
+    cible_eliminatoire: (u32, u32),
     combo: &Combo,
 ) -> Result<()> {
+    let Some(cible) = cible_du_temoin(nom_sortie, avant, cible_eliminatoire) else {
+        tracing::error!(
+            verdict = "TEMOIN NON MESURABLE",
+            raison = "la sortie temoin nait deja a la cible de l'eliminatoire, et aucun mode \
+                      annonce ne differe de sa taille courante",
+            largeur_avant_tentative = avant.0,
+            hauteur_avant_tentative = avant.1,
+            largeur_cible_eliminatoire = cible_eliminatoire.0,
+            hauteur_cible_eliminatoire = cible_eliminatoire.1,
+            "verdict TEMOIN : mesure impossible, aucune tentative effectuee"
+        );
+        return Ok(());
+    };
     let dernier_code = appliquer_combo(nom_sortie, cible.0, cible.1, combo);
     attendre_en_pinguant(pilote, DELAI_TOPOLOGIE)?;
     let releve = relever_topologie(&format!("après tentative TÉMOIN « {} »", combo.etiquette()))?;
@@ -55,6 +77,55 @@ pub(super) fn rejouer_temoin(
          departage si un refus de l'eliminatoire vient de la duplication tenue ou du mode choisi"
     );
     Ok(())
+}
+
+/// Choisit la cible RÉELLEMENT appliquée par le témoin.
+///
+/// En général la MÊME que l'éliminatoire (`cible_eliminatoire`) — c'est le
+/// sens même du mot « témoin » : rejouer le geste à l'identique. Mais si
+/// cette sortie NEUVE naît déjà à `cible_eliminatoire`, appliquer CE combo
+/// sur CETTE cible ne pourrait JAMAIS observer de mouvement, quel que soit le
+/// verdict réel du pilote : un pilote qui accepte et un pilote qui refuse
+/// rendraient tous deux `derniere_taille == avant`. C'est le défaut F1
+/// rejoué — le même que `choisir_cible` corrige pour l'éliminatoire.
+///
+/// **Ce cas n'est pas un accident de tirage.** La doctrine D8 est qu'une
+/// sortie naît à la DERNIÈRE taille laissée au registre par un
+/// `CDS_UPDATEREGISTRY` antérieur, et `CLAUDE.md` rapporte que
+/// « `CDS_UPDATEREGISTRY` seul a toujours suffi quand quelque chose
+/// bougeait » : SI le bras gagnant de l'éliminatoire écrit le registre (3 des
+/// 4 bras de `combinaisons::combos` le font), la sortie témoin, créée
+/// juste APRÈS, naît alors précisément à `cible_eliminatoire`. C'est donc le
+/// cas ATTENDU sur un bras gagnant persistant, pas une exception rare.
+///
+/// La parade est la MÊME que pour l'éliminatoire : substituer une cible
+/// mesurable, choisie parmi ce que CETTE sortie annonce, en excluant sa
+/// taille courante. `None` si aucun mode annoncé n'en diffère — cas
+/// dégénéré, voir `choisir_cible`.
+fn cible_du_temoin(
+    nom_sortie: &str,
+    avant: (u32, u32),
+    cible_eliminatoire: (u32, u32),
+) -> Option<(u32, u32)> {
+    if avant != cible_eliminatoire {
+        return Some(cible_eliminatoire);
+    }
+    let annonces = modes_annonces(nom_sortie);
+    let substituee = choisir_cible(avant, cible_eliminatoire, &annonces);
+    if let Some(cible) = substituee {
+        tracing::warn!(
+            largeur_avant_tentative = avant.0,
+            hauteur_avant_tentative = avant.1,
+            largeur_cible_eliminatoire = cible_eliminatoire.0,
+            hauteur_cible_eliminatoire = cible_eliminatoire.1,
+            largeur_cible_temoin = cible.0,
+            hauteur_cible_temoin = cible.1,
+            "la sortie temoin nait deja a la cible de l'eliminatoire (persistance registre \
+             probable) -- cible substituee pour rester mesurable, meme parade que choisir_cible \
+             pour l'eliminatoire (defaut F1)"
+        );
+    }
+    substituee
 }
 
 /// Le nom sous lequel la sortie testée se retrouve après le tour éliminatoire

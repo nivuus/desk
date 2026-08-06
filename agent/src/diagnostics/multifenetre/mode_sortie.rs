@@ -110,7 +110,11 @@ use crate::moniteurs_virtuels::Sorties;
 /// Modes que la sortie ANNONCE (`EnumDisplaySettingsExW`, énumération pure) —
 /// ne dit rien de ce qu'elle accepte réellement, c'est tout le sujet du
 /// module.
-fn modes_annonces(nom_sortie: &str) -> Vec<(u32, u32)> {
+///
+/// `pub(super)` : `temoin::rejouer_temoin` en a besoin pour se prémunir du
+/// même défaut F1 que `choisir_cible` corrige ici pour l'éliminatoire — voir
+/// son commentaire de tête.
+pub(super) fn modes_annonces(nom_sortie: &str) -> Vec<(u32, u32)> {
     let nom: Vec<u16> = nom_sortie.encode_utf16().chain(std::iter::once(0)).collect();
     let mut modes = Vec::new();
     let mut index = 0u32;
@@ -147,7 +151,11 @@ fn modes_annonces(nom_sortie: &str) -> Vec<(u32, u32)> {
 /// Modes triés par `modes_annonces` (croissant, dédupliqués) : le repli
 /// choisit le plus grand mode distinct de `avant`, pour un mouvement large et
 /// donc sans ambiguïté de mesure.
-fn choisir_cible(avant: (u32, u32), demande: (u32, u32), annonces: &[(u32, u32)]) -> Option<(u32, u32)> {
+///
+/// `pub(super)` : `temoin::rejouer_temoin` réemploie cette MÊME fonction
+/// plutôt que d'en récrire une variante, pour la même raison qu'elle existe
+/// ici -- voir Critique 2 de la revue de la tâche 1.
+pub(super) fn choisir_cible(avant: (u32, u32), demande: (u32, u32), annonces: &[(u32, u32)]) -> Option<(u32, u32)> {
     if demande != avant && annonces.contains(&demande) {
         return Some(demande);
     }
@@ -382,25 +390,21 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
         tracing::info!(sortie = %nom_sortie, "duplication ouverte et TENUE pendant les tentatives");
 
         // --- Deux VOISINES, pour l'inconnue annexe n°2 (D8) : combien de
-        // pertes d'accès un changement de mode leur inflige-t-il ? Créées
-        // et désignées UNE À LA FOIS, comme la sortie testée ci-dessus : les
-        // désigner par paire exigerait de savoir laquelle des deux entrées
-        // neuves est laquelle, ce que la topologie DXGI ne dit pas (aucun
-        // ordre garanti entre deux sorties apparues au même relevé).
-        let id_v1 = sorties.creer(largeur_creation, hauteur_creation, hertz)?;
-        attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
-        let apres_v1 = relever_topologie("après création (voisine 1)")?;
-        let sortie_v1 = designer_sortie_neuve(&apres_v1, &connues_a_ce_point, id_v1)?.clone();
-        connues_a_ce_point.insert(sortie_v1.nom_sortie.clone());
-
-        let id_v2 = sorties.creer(largeur_creation, hauteur_creation, hertz)?;
-        attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
-        let apres_v2 = relever_topologie("après création (voisine 2)")?;
-        let sortie_v2 = designer_sortie_neuve(&apres_v2, &connues_a_ce_point, id_v2)?.clone();
-        connues_a_ce_point.insert(sortie_v2.nom_sortie.clone());
-
-        let mut voisines =
-            vec![DuplicationVoisine::ouvrir(&sortie_v1)?, DuplicationVoisine::ouvrir(&sortie_v2)?];
+        // pertes d'accès un changement de mode leur inflige-t-il ? La
+        // création, la désignation ET l'ouverture de chacune sont
+        // ORCHESTRÉES par `voisines::creer_deux` (et non enchaînées ici) :
+        // c'est cet ordre strict, un index positionnel résolu et consommé
+        // avant toute création suivante, qui évite le piège documenté en
+        // doctrine D1 -- voir son commentaire de tête.
+        let (voisine1, voisine2, nom_v1, nom_v2) = voisines::creer_deux(
+            &pilote,
+            &mut sorties,
+            &mut connues_a_ce_point,
+            largeur_creation,
+            hauteur_creation,
+            hertz,
+        )?;
+        let mut voisines = vec![voisine1, voisine2];
 
         // --- L'ÉLIMINATOIRE ---
         let resultat =
@@ -408,8 +412,7 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
 
         // --- Les deux inconnues annexes (étape 5), relevées au même moment
         // que l'éliminatoire -- avant de relâcher quoi que ce soit.
-        let autres_noms_a_nous: HashSet<String> =
-            [sortie_v1.nom_sortie.clone(), sortie_v2.nom_sortie.clone()].into_iter().collect();
+        let autres_noms_a_nous: HashSet<String> = [nom_v1, nom_v2].into_iter().collect();
         let nom_apres = nom_apres_tour(&nom_sortie, &connues_avant_tout, &autres_noms_a_nous)?;
         let pertes_acces_voisines = resultat.pertes_voisines;
         tracing::info!(
@@ -419,6 +422,16 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
             nom_conserve = nom_sortie == nom_apres,
             "inconnues annexes relevées au même moment que l'éliminatoire"
         );
+        // Le nom qui remplace `nom_sortie` (s'il a changé -- ce que la ligne
+        // ci-dessus vient de mesurer) n'est encore connu de PERSONNE : ni de
+        // `connues_avant_tout`, ni de `connues_a_ce_point` (qui ne porte que
+        // l'ANCIEN nom). Sans cet ajout, la création du témoin verrait DEUX
+        // entrées neuves -- le nom renommé ET le témoin -- et échouerait avec
+        // « addition externe » (Important 2, revue de la tâche 1)
+        // précisément quand le renommage est le phénomène étudié.
+        if nom_apres != "<disparue>" {
+            connues_a_ce_point.insert(nom_apres.clone());
+        }
 
         // TÉMOIN. Sans lui, un refus s'imputerait à la duplication alors
         // qu'il pourrait venir du mode choisi. Le témoin rejoue le MÊME
