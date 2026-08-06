@@ -49,9 +49,77 @@ impl ModeCapture {
     /// seule issue correcte est de ne rien faire ; l'adaptation réseau, qui
     /// change la taille d'**encodage** et non celle de la source
     /// (`set_encode_size`), continue de fonctionner sans passer par ici.
+    ///
+    /// ⚠️ **Le nom de cette méthode reste juste, mais le paragraphe ci-dessus
+    /// est à moitié réfuté depuis le sous-bloc D8 (4 août 2026).** La PRÉMISSE
+    /// tient — le pilote SudoVDA n'a effectivement toujours aucun `SET_MODE`
+    /// parmi ses six IOCTL — et la CONCLUSION tombe : la sortie SUIT désormais
+    /// le viewport, par l'API d'affichage de **Windows**
+    /// (`ChangeDisplaySettingsExW`) et non par le canal du pilote. Ce que ce
+    /// booléen distingue n'est donc plus « retaillable » de « figé », mais
+    /// **quel chemin** `resize` emprunte : `false` mène à
+    /// `WindowsSource::changer_mode_de_sortie` (la sortie change de mode, la
+    /// fenêtre y est reposée), `true` au recadrage historique. Ce qui reste
+    /// vrai sans réserve : en `SortieEntiere` il n'y a jamais de fenêtre à
+    /// retailler *dans* sa sortie, et l'adaptation réseau ne passe toujours pas
+    /// par ici.
+    ///
+    /// **Ce qui l'établit, pour le refaire sans croire personne** : la sonde P1
+    /// `agent/src/diagnostics/multifenetre/mode_sortie.rs`
+    /// (`MULTIFENETRE_MODE_SORTIE=1920x1080`) crée une sortie à 1280×720 par le
+    /// chemin de production, la fait passer à 1920×1080, et **relit par DXGI**
+    /// (`GetDesc`/`DesktopCoordinates`, jamais WMI — champ vu périmé de 68 s
+    /// sur ce terrain). Verdict « P1 RECU », avec `CDS_UPDATEREGISTRY` seul, du
+    /// premier coup.
+    ///
+    /// ⚠️ **IMPORTANT 2 (revue de la tâche 9), écart banc/produit jamais
+    /// mesuré.** Cette sonde crée sa sortie, change son mode, puis relit —
+    /// elle n'ouvre JAMAIS `DuplicateOutput` dessus. En production, le
+    /// changement de mode retaille une sortie dont la duplication DXGI est
+    /// ouverte et détenue pendant l'attente (jusqu'à 3,1 s,
+    /// `windows_source/redimensionnement/mode_sortie.rs`). P1 ne dit donc rien
+    /// de ce que fait `ChangeDisplaySettingsExW` sur une sortie EN COURS de
+    /// capture — la même classe d'écart banc/produit que le chantier « N
+    /// duplications de front » a payée en D1. **Non corrigeable par du
+    /// code** : les tâches 10 et 11 (recette) en sont la première mesure
+    /// réelle.
     pub fn redimensionne_la_fenetre(self) -> bool {
         matches!(self, ModeCapture::FenetreRecadree)
     }
+}
+
+/// Taille maximale qu'une sortie virtuelle prendra sur demande de viewport.
+///
+/// ⚠️ **NON CALIBRÉE.** C'est un garde-fou posé par prudence, sans qu'aucun
+/// jugement visuel ne l'ait jugée — exactement la lacune que `BPP_MIN` traîne
+/// depuis le chantier C volet 1. Sa raison est mesurée, elle : D6 a relevé le
+/// décodeur du navigateur saturé dès huit fenêtres de 1280×720 (18,03 %
+/// d'images jetées au barreau plein, une exécution), et un écran 4K
+/// demanderait 9× les pixels d'une seule de ces fenêtres.
+pub const TAILLE_MAX_SORTIE: (u32, u32) = (1920, 1080);
+
+/// Ramène une taille demandée sous `TAILLE_MAX_SORTIE`, à rapport d'aspect
+/// préservé, en dimensions paires, et jamais nulle.
+///
+/// ⚠️ **IMPORTANT 4 (revue de la tâche 9) : la branche rapide ci-dessous
+/// n'appliquait aucun plancher**, contrairement à la branche d'échelle
+/// (`.max(2)` déjà présent dessus). `(0, 0)` — une boîte vidéo réduite à
+/// rien, transitoirement vraie pendant une fenêtre repliée ou une transition
+/// de plein écran — y passait tel quel. Ce `.max(2)` reste un filet minimal :
+/// le plancher qui compte réellement (160×120, la même valeur que le chemin
+/// `FenetreRecadree`) est appliqué par l'APPELANT
+/// (`windows_source/redimensionnement.rs::resize`), avant même d'atteindre
+/// cette fonction — dont le rôle propre reste borné au PLAFOND.
+pub fn borner_a_la_taille_max((l, h): (u32, u32)) -> (u32, u32) {
+    let (max_l, max_h) = TAILLE_MAX_SORTIE;
+    if l <= max_l && h <= max_h {
+        return (l.max(2) & !1, h.max(2) & !1);
+    }
+    // Le facteur le plus contraignant des deux axes : borner chaque axe
+    // séparément déformerait l'image.
+    let facteur = f64::min(max_l as f64 / l as f64, max_h as f64 / h as f64);
+    let borne = |x: u32| (((x as f64 * facteur).round() as u32).max(2)) & !1;
+    (borne(l), borne(h))
 }
 
 /// Région à capturer dans la texture d'une sortie dupliquée.
@@ -77,6 +145,66 @@ pub fn region_de_sortie(largeur: u32, hauteur: u32) -> Option<Rect> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn une_taille_sous_le_plafond_passe_telle_quelle() {
+        assert_eq!(borner_a_la_taille_max((1280, 720)), (1280, 720));
+    }
+
+    #[test]
+    fn une_taille_4k_est_ramenee_au_plafond() {
+        // D6 a mesuré le décodeur du navigateur saturé dès huit fenêtres de
+        // 720p : 9× les pixels d'une seule est exactement ce qu'il encaisse le
+        // plus mal.
+        assert_eq!(borner_a_la_taille_max((3840, 2160)), TAILLE_MAX_SORTIE);
+    }
+
+    #[test]
+    fn le_bornage_preserve_le_rapport_d_aspect() {
+        // Un 21:9 borné indépendamment sur chaque axe déformerait l'image.
+        let (l, h) = borner_a_la_taille_max((3440, 1440));
+        assert!(l <= TAILLE_MAX_SORTIE.0 && h <= TAILLE_MAX_SORTIE.1, "{l}x{h}");
+        let ecart = (l as f64 / h as f64) - (3440.0 / 1440.0);
+        assert!(ecart.abs() < 0.01, "rapport {l}/{h} contre 3440/1440");
+    }
+
+    #[test]
+    fn le_bornage_rend_des_dimensions_paires() {
+        // Une fenêtre Windows impose des dimensions paires, et un encodeur
+        // NV12 aussi.
+        let (l, h) = borner_a_la_taille_max((3441, 1441));
+        assert_eq!(l % 2, 0, "largeur {l}");
+        assert_eq!(h % 2, 0, "hauteur {h}");
+    }
+
+    /// IMPORTANT 2 de la revue de la tâche 9 : **le test ci-dessus ne peut pas
+    /// échouer sur la propriété qu'il nomme.**
+    ///
+    /// Sur `(3441, 1441)`, `facteur ≈ 0,557977` donne `round(3441×f) = 1920` et
+    /// `round(1441×f) = 804` — **déjà pairs avant tout masquage**. Retirer les
+    /// deux `& !1` de `borner_a_la_taille_max` le laisse VERT. Et les deux
+    /// autres entrées paires des tests voisins (`(1280, 720)`, `(0, 0)`) ne
+    /// l'exercent pas davantage : avant ce cas-ci, **aucun des cinq tests ne
+    /// couvrait l'alignement pair**, alors que l'un porte son nom.
+    ///
+    /// `(1281, 721)` passe par la **branche rapide** (sous le plafond, donc
+    /// aucun facteur d'échelle) : l'alignement y est le seul mécanisme en jeu,
+    /// et le retrait des `& !1` rend `(1281, 721)` au lieu de `(1280, 720)`.
+    /// C'est la doctrine du dépôt appliquée à un test : **un contrôle qu'on n'a
+    /// jamais vu rouge n'est pas un contrôle** (D7, F1).
+    #[test]
+    fn l_alignement_pair_est_reellement_exerce_par_une_entree_impaire() {
+        assert_eq!(borner_a_la_taille_max((1281, 721)), (1280, 720));
+    }
+
+    /// IMPORTANT 4 (revue de la tâche 9) : la branche rapide ne bornait pas
+    /// vers le bas, contrairement à la branche d'échelle qui appliquait déjà
+    /// `.max(2)`. `(0, 0)` en est le cas dégénéré réel : une boîte vidéo
+    /// réduite à rien (fenêtre repliée, transition de plein écran) l'émet.
+    #[test]
+    fn le_bornage_ne_rend_jamais_une_dimension_nulle() {
+        assert_eq!(borner_a_la_taille_max((0, 0)), (2, 2));
+    }
 
     #[test]
     fn la_region_couvre_toute_la_sortie_a_partir_de_son_origine_propre() {

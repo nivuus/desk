@@ -48,6 +48,10 @@ pub enum Recu {
     /// Ordre audio poussé par le capteur, non sollicité. Retenu par
     /// `SourceDistante::audio` jusqu'à ce que `audio_a_appliquer` le consomme.
     Audio { actif: bool },
+    /// Changement de plein écran poussé par le capteur, non sollicité. Retenu
+    /// par `SourceDistante::plein_ecran` jusqu'à ce que
+    /// `plein_ecran_a_annoncer` le consomme.
+    PleinEcran { actif: bool },
 }
 
 pub struct SourceDistante {
@@ -82,6 +86,14 @@ pub struct SourceDistante {
     /// implicite ferait porter le son aux deux fenêtres d'un même processus
     /// pendant les millisecondes qui précèdent le premier arbitrage.
     audio: Option<bool>,
+    /// Dernier changement de plein écran reçu du capteur, en attente d'être
+    /// annoncé au navigateur. Consommé par `plein_ecran_a_annoncer`.
+    ///
+    /// **Même régime d'écrasement que `sommeil`** : deux changements arrivés
+    /// entre deux lectures s'écrasent, seul le dernier survit. Il n'y a pas
+    /// d'état courant jumeau ici, contrairement à `sommeil`/`endormie` : rien
+    /// dans l'enfant n'a besoin de relire le plein écran hors de l'annonce.
+    plein_ecran: Option<bool>,
     /// État de sommeil COURANT, tel que le capteur le décrit.
     ///
     /// **Distinct de `sommeil` juste au-dessus, et non redondant avec lui** :
@@ -121,6 +133,7 @@ impl SourceDistante {
             sommeil: None,
             part: None,
             audio: None,
+            plein_ecran: None,
             endormie: true,
         }
     }
@@ -167,6 +180,9 @@ impl VideoSource for SourceDistante {
                 }
                 Ok(Recu::Audio { actif }) => {
                     self.audio = Some(actif);
+                }
+                Ok(Recu::PleinEcran { actif }) => {
+                    self.plein_ecran = Some(actif);
                 }
                 // Le cas COURANT et normal : rien de neuf ce tour-ci. La
                 // boucle de transport interroge à 100 Hz une source qui
@@ -340,6 +356,11 @@ impl VideoSource for SourceDistante {
     /// Rend l'ordre audio en attente, et le consomme.
     fn audio_a_appliquer(&mut self) -> Option<bool> {
         self.audio.take()
+    }
+
+    /// Rend le changement de plein écran en attente, et le consomme.
+    fn plein_ecran_a_annoncer(&mut self) -> Option<bool> {
+        self.plein_ecran.take()
     }
 
     /// Rend l'état de sommeil courant, sans le consommer.

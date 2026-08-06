@@ -1,0 +1,121 @@
+VERDICT : F1 CONFIRME
+A (lignes 'compteurs audio') = 14
+B (lignes 'compteurs audio' avec actif=true) = 7
+Grille : A > 0, B < A -> F1 CONFIRME (agent/src/windows_audio.rs, correctif F1 de la revue finale de branche D7)
+
+--- Contexte de la mesure ---
+
+Binaire : compile sur la VM par scripts/build-agent.sh, HEAD de la branche
+chantier-multifenetres-d8, apres avoir tue les deux processus agent
+survivants qui verrouillaient l'exe (schtasks les avait laisses vivants
+d'une execution precedente). Duree de compilation observee : 12.50s (pas
+l'aveu des 0.13s d'un binaire non reconstruit).
+
+Deux fenetres CIBLES, memes PID (ecart au brief documente et justifie
+ci-dessous) :
+  - Deux fenetres Chrome --app (D8-F1-Fenetre-A, D8-F1-Fenetre-B), lancees
+    avec le MEME --user-data-dir (C:\dev\chrome-d8-groupe), ce qui les fait
+    partager UN SEUL processus chrome.exe cote OS.
+  - PID verifie de DEUX facons independantes, toutes deux egales a 44600 :
+      1. Enumeration native EnumWindows + GetWindowThreadProcessId, executee
+         DANS la session interactive (session 1) via tache planifiee /it
+         (WinRM tourne en session 0 et ne verrait aucune fenetre) :
+           44600  D8-F1-Fenetre-A
+           44600  D8-F1-Fenetre-B
+      2. La propre derivation de l'agent (capteur ET enfant, independamment,
+         voir agent/src/demarrage/audio.rs) : les deux lignes 'audio active'
+         portent 'pid=44600'.
+
+Ecart au brief, et pourquoi : le brief proposait deux fenetres Bloc-notes
+('meme executable, donc meme groupe de PID') ; c'est faux, deux notepad.exe
+sont deux processus distincts avec deux PID distincts, ce qui aurait rendu
+la grille non discriminante (a deux PID distincts, chaque fenetre porte
+necessairement son propre PID, B == A serait alors le comportement CORRECT
+et non le signe du defaut F1). Deux fenetres Chrome partageant
+--user-data-dir, en revanche, partagent reellement un PID (verifie deux
+fois ci-dessus), exactement le cas que agent/src/capteur/audio.rs existe
+pour trancher (c'est la meme technique que celle du critere (2) de la
+recette D7 -- doc 2026-08-03-multifenetres-audio-par-fenetre-resultats.md
+S2.2 -- 'Deux fenetres, un seul --user-data-dir, donc un seul processus
+Chrome').
+
+Etape non prevue par le brief, necessaire pour que la mesure soit
+possible du tout : sans une PAGE-SHELL REELLEMENT CONNECTEE (recevant
+'fenetre-ouverte' et repondant 'viewport', PUIS ouvrant une popup qui
+etablit une vraie session WebRTC), le superviseur cree bien les entrees de
+table et lance bien les enfants, l'audio process-loopback demarre bien
+(traces 'audio active'), MAIS Session::run() -- qui est la seule boucle a
+lire audio_a_appliquer() et donc a appeler AudioSource::set_actif() -- ne
+demarre qu'APRES accept_offer(), c'est-a-dire apres qu'une offre SDP reelle
+est recue (agent/src/transport.rs, agent/src/transport/tick.rs branche
+a1quinquies). Une premiere tentative avec un simple repondeur WebSocket
+(role client, session 'bureau', ne repondant que 'viewport') a bien
+declenche la creation de sortie et le lancement des enfants, mais AUCUNE
+session WebRTC ne s'est jamais etablie : compteurs audio a alors montre
+actif=false pour LES DEUX fenetres, tout le temps (10/10 lignes) -- un
+faux negatif de methode, pas une mesure de F1 (l'ordre 'actif=true' calcule
+par le capteur restait en attente, jamais consomme, faute de boucle de
+transport demarree). Corrige en faisant tourner une VRAIE page-shell
+(client/src/shell.ts + client/src/main.ts, servies par le serveur vite deja
+actif sur le host, port 5173) dans un Chrome headless lance SUR LE HOST
+(jamais sur la VM : sinon la fenetre de la page-shell elle-meme se ferait
+capturer par le superviseur, provoquant une boucle -- constate une fois,
+corrige en deplacant la page-shell hors de la VM).
+
+Piege de mesure rencontre et corrige : le popup ouvert par
+window.open('/?session=w-N') en Chrome headless annonce un viewport dont la
+HAUTEUR est amputee de 88px par rapport a la taille de fenetre demandee
+(1280x720 demande -> 1280x632 rapporte), ce qui est EXACTEMENT le piege deja
+documente dans CLAUDE.md (sous-bloc D2) : 'le pilote de sortie virtuelle
+QUANTIFIE la resolution demandee : 1280x632 demande rend une sortie
+1280x720 [...] Aucune fenetre ne s'ouvre alors'. Corrige en lancant le
+Chrome headless de la page-shell avec --window-size=1280,808 (720+88), ce
+qui a fait rapporter 1280x721 par les popups -- a l'interieur de la
+tolerance d'appariement du superviseur -- et les deux sessions se sont
+etablies au premier essai (0 retentative, 0 'sortie creee mais introuvable
+dans la topologie DXGI').
+
+Sequence de commandes reellement jouee (dans l'ordre) :
+  1. virsh list --all (VM deja 'en cours d'execution')
+  2. verification port 5985 et /media/vm/dev (deja disponibles)
+  3. set -a && source .env && set +a ; scripts/build-agent.sh
+     (echoue une premiere fois : 'AccC(s refuse... os error 5' sur
+     agent.exe, verrouille par deux processus agent survivants d'une
+     execution anterieure -- Stop-Process sur ces PID, puis succes,
+     12.50s, binaire 9222656 octets)
+  4. lancement du Chrome headless de la page-shell SUR LE HOST (google-chrome
+     --headless=new --no-sandbox --disable-gpu --disable-popup-blocking
+     --autoplay-policy=no-user-gesture-required --window-size=1280,808
+     http://127.0.0.1:5173/shell.html?signaling=ws://127.0.0.1:8080)
+  5. node scripts/winrm.js "Get-Process agent" (verification : rien de
+     survivant)
+  6. SUPERVISEUR=1 scripts/run-agent.sh
+  7. ouverture des deux fenetres Chrome cibles (D8-F1-Fenetre-A et -B),
+     meme --user-data-dir, via tache planifiee /it (session interactive)
+  8. verification independante des PID par enumeration native (EnumWindows)
+  9. attente : les deux sessions vivent de 11:05:41.9Z (audio active w-2) a
+     11:09:15.6Z (derniere ligne compteurs audio) soit 213.7s, largement
+     plus que les 90s demandes et 7 periodes de REPORT_INTERVAL (30s)
+     completes des DEUX cotes (alternance stricte false/true observee)
+ 10. verification survie VM (grep sur Windows.log : dernier arret le
+     2026-08-03, rien depuis)
+ 11. arret propre (Stop-Process chrome puis agent sur la VM, kill du
+     Chrome headless du host)
+ 12. cp /media/vm/dev/agent.log -> p0-agent.log, sed ANSI, grep A/B
+
+Duree de vie des sessions : w-2 de 11:05:41.913Z (audio active) a la
+derniere ligne compteurs audio a 11:09:11.928Z (actif=false) soit ~210s ;
+w-3 de 11:05:45.578Z a 11:09:15.599Z (actif=true) soit ~210s. Sept periodes
+de REPORT_INTERVAL (30s) completes sur chacune des deux sessions.
+
+Lignes 'compteurs audio' (toutes, pid=44600 pour les deux fenetres) :
+false, true, false, true, false, true, false, true, false, true, false,
+true, false, true -- alternance stricte, 7 false (session muette du
+groupe) et 7 true (session porteuse du groupe), jamais les deux a
+actif=true ni les deux a actif=false simultanement au sein d'une meme
+paire d'echantillons. Le porteur bascule une fois en cours de session (de
+w-2 vers w-3, 11:05:48.6Z) sous l'effet d'un focus recu pour w-3 -- comportement
+attendu de la regle pure agent/src/capteur/audio.rs::arbitrer (le focus le
+plus recent prime).
+
+Case de la grille : A=14 > 0, B=7 < A=14 -> F1 CONFIRME.

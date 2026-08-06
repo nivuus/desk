@@ -22,6 +22,7 @@ pub(super) mod mires;
 // c'est-à-dire l'APPARIEMENT d'une sortie fraîchement créée à sa place DXGI —
 // la pièce centrale du montage. `PLAFOND_RECHERCHE` a en revanche cessé d'être
 // emprunté : il vit désormais dans `moniteurs_virtuels::numeros` (correctif I1).
+mod mode_sortie;
 pub(crate) mod montee;
 pub(super) mod nvenc;
 pub(super) mod paralleles;
@@ -156,6 +157,17 @@ pub(super) fn aiguiller() -> Result<bool> {
     if let Ok(valeur) = std::env::var("MULTIFENETRE_PLAFOND") {
         let (processus, duplications) = plafond::analyser(&valeur)?;
         plafond::mesurer(processus, duplications)?;
+        return Ok(true);
+    }
+    // P1 du sous-bloc D8 : une sortie virtuelle accepte-t-elle un autre mode
+    // que celui de sa création ? L'énumération ne suffit pas — un pilote peut
+    // annoncer un mode et le refuser. Crée une sortie, donc passe après
+    // `MULTIFENETRE_VDD_PURGE`, comme toute sonde voisine qui en crée une.
+    // Aucune variable de ce fichier ne partage son préfixe, mais la règle se
+    // respecte à l'ajout : placée avant `MULTIFENETRE_POINTEUR` par simple
+    // ordre d'introduction, pas par nécessité.
+    if let Ok(consigne) = std::env::var("MULTIFENETRE_MODE_SORTIE") {
+        mode_sortie::executer(&consigne)?;
         return Ok(true);
     }
     // Tâche 1 du chantier D1 : le bureau virtuel s'étend-il jusqu'à une

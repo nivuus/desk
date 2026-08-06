@@ -159,7 +159,12 @@ pub(super) fn capturer_sur_virtuelle(nombre: u8) -> Result<()> {
 /// Refuse si plusieurs sorties sont neuves : quelqu'un d'autre en aurait ajouté
 /// une pendant la mesure (Apollo pilote la configuration d'affichage de cette
 /// VM), et rien ne dirait plus laquelle est la nôtre.
-fn designer_sortie_neuve<'s>(
+///
+/// `pub(super)` : `mode_sortie.rs` (tâche 3 du sous-bloc D8) crée elle aussi
+/// UNE sortie et doit retrouver son nom DXGI avant de tenter un changement de
+/// mode — même besoin exact que cette mesure-ci, donc même fonction plutôt
+/// qu'une duplication de la logique d'appariement par nom.
+pub(super) fn designer_sortie_neuve<'s>(
     apres: &'s [SortieDxgi],
     connues: &std::collections::HashSet<String>,
     id: crate::moniteurs_virtuels::IdSortie,

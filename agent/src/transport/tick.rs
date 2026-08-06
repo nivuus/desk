@@ -50,17 +50,18 @@ impl Session {
     /// `write_frame` (une mutation) suivi directement de `handle_input`
     /// (une seconde) violerait la même règle.
     ///
-    /// Huit branches supplémentaires (a0bis : drainage d'un message de
+    /// Neuf branches supplémentaires (a0bis : drainage d'un message de
     /// contrôle produit hors boucle vers `pending_control` ; a0ter :
     /// décision d'adaptation en attente ; a1 : redimensionnement en attente ;
     /// a1bis : visibilité en attente ; a1ter : annonce d'un changement de
-    /// sommeil ; a1quater : part de budget accordée par le capteur (sous-bloc
-    /// D6) ; a1quinquies : ordre audio décidé par le capteur (sous-bloc D7) ;
-    /// a2 : vérification de la fenêtre) ne mettent JAMAIS en file, avant de
-    /// rendre la main, une écriture qui resterait à drainer — c'est
-    /// l'invariant que cette énumération existe pour auditer. **Sept d'entre
-    /// elles (toutes sauf a1quater) ne touchent même pas `self.rtc`** :
-    /// seulement `self.source`, `self.audio_source` et/ou
+    /// sommeil ; a1ter-bis : annonce d'un changement de plein écran
+    /// (sous-bloc D8) ; a1quater : part de budget accordée par le capteur
+    /// (sous-bloc D6) ; a1quinquies : ordre audio décidé par le capteur
+    /// (sous-bloc D7) ; a2 : vérification de la fenêtre) ne mettent JAMAIS en
+    /// file, avant de rendre la main, une écriture qui resterait à drainer —
+    /// c'est l'invariant que cette énumération existe pour auditer. **Huit
+    /// d'entre elles (toutes sauf a1quater) ne touchent même pas
+    /// `self.rtc`** : seulement `self.source`, `self.audio_source` et/ou
     /// `self.pending_control`, au plus en y mettant en file un message de
     /// contrôle (`queue_control`, qui n'empile qu'un `VecDeque`, sans effet
     /// sur `Rtc` avant le tour suivant).
@@ -85,7 +86,7 @@ impl Session {
     /// c…) — garde cette fonction lisible comme une seule liste de priorités
     /// plutôt que de mêler deux styles différents.
     ///
-    /// **À qui lira ceci après une neuvième branche** : ce compte et cette
+    /// **À qui lira ceci après une dixième branche** : ce compte et cette
     /// énumération sont le point d'audit de l'invariant « aucune de ces
     /// branches ne met en file, avant de rendre la main, une écriture qui
     /// resterait à drainer » — **PAS** « aucune de ces branches ne mute
@@ -180,6 +181,16 @@ impl Session {
         //        contrôle même à ~100 Hz.
         if let Some((endormie, raison)) = self.source.sommeil_a_annoncer() {
             self.queue_control(AgentControl::asleep(endormie, &raison));
+            return Ok(Tick::Continue);
+        }
+
+        // a1ter-bis) Un changement de plein écran à annoncer au navigateur.
+        //            Même régime que a1ter juste au-dessus :
+        //            `plein_ecran_a_annoncer` CONSOMME, donc aucun message
+        //            n'est jamais réémis et cette branche ne peut pas inonder
+        //            le canal de contrôle même à ~100 Hz.
+        if let Some(actif) = self.source.plein_ecran_a_annoncer() {
+            self.queue_control(AgentControl::fullscreen(actif));
             return Ok(Tick::Continue);
         }
 

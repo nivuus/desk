@@ -1,0 +1,311 @@
+[    0.0s 2026-08-05T21:01:42.409Z] ÉTIQUETTE=recette N_FENETRES=3 PALIER_S=60 BITRATE=8000000 BUDGET_BPS=12000000 PLEIN_ECRAN=1 AUDIO=1 chrome pid=2458227
+[    0.7s 2026-08-05T21:01:43.095Z] identité du navigateur : pid écoutant=2458227 pid lancé=2458227 version=Chrome/151.0.7922.71
+[    0.7s 2026-08-05T21:01:43.122Z] + page attachée  session=C5C3D077 url=about:blank
+[    0.7s 2026-08-05T21:01:43.130Z] >>> ÉTAPE 0 : préparation — VM sans fenêtre éligible
+[    5.2s 2026-08-05T21:01:47.639Z] CPU HÔTE (au repos, avant toute session)
+    %Cpu(s): 17,9 ut, 10,1 sy,  0,0 ni, 71,7 id,  0,0 wa,  0,0 hi,  0,3 si,  0,0 st 
+    %Cpu(s): 14,5 ut,  5,3 sy,  0,0 ni, 79,7 id,  0,1 wa,  0,0 hi,  0,4 si,  0,0 st 
+    %Cpu(s): 15,1 ut,  6,0 sy,  0,0 ni, 78,3 id,  0,0 wa,  0,0 hi,  0,6 si,  0,0 st
+    loadavg=5.13 4.44 3.71 5/2986 2458472
+[    5.3s 2026-08-05T21:01:47.678Z] + page attachée  session=BB029FA1 url=http://192.168.3.1:5173/shell.html
+[    8.3s 2026-08-05T21:01:50.703Z] statut shell : bureau connecté
+[    8.3s 2026-08-05T21:01:50.704Z] >>> lancement du superviseur
+[    8.8s 2026-08-05T21:01:51.183Z] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   11.9s 2026-08-05T21:01:54.341Z] + page attachée  session=8BD9303D url=
+[   12.0s 2026-08-05T21:01:54.412Z] + page attachée  session=D7590C6A url=
+[   14.8s 2026-08-05T21:01:57.203Z]   · ouverture fenêtre 1 (hz=410, marqueur=chrome-d8-recette-1)
+[   15.5s 2026-08-05T21:01:57.933Z] + page attachée  session=C72BB9A0 url=
+[   15.8s 2026-08-05T21:01:58.173Z] + page attachée  session=FBD0DD5A url=
+[   17.4s 2026-08-05T21:01:59.815Z] SCÉNARIO IMPOSÉ (après ouverture 1) cible=w:w-1 hidden/hasFocus={"w:w-1":"false/true","w:w-2":"false/false","w:w-4":"false/false"}
+[   17.4s 2026-08-05T21:01:59.816Z]   → focalisées effectives : ["w:w-1"] (une seule attendue)
+[   17.4s 2026-08-05T21:01:59.834Z]   · ouverture fenêtre 2 (hz=520, marqueur=chrome-d8-recette-2)
+[   18.3s 2026-08-05T21:02:00.683Z] + page attachée  session=D1C59995 url=
+[   18.5s 2026-08-05T21:02:00.883Z] + page attachée  session=EC82A750 url=
+[   20.2s 2026-08-05T21:02:02.588Z] SCÉNARIO IMPOSÉ (après ouverture 2) cible=w:w-1 hidden/hasFocus={"w:w-1":"false/true","w:w-2":"false/false","w:w-4":"false/false","w:w-6":"false/false"}
+[   20.2s 2026-08-05T21:02:02.588Z]   → focalisées effectives : ["w:w-1"] (une seule attendue)
+[   20.2s 2026-08-05T21:02:02.604Z]   · ouverture fenêtre 3 (hz=630, marqueur=chrome-d8-recette-3)
+[   20.9s 2026-08-05T21:02:03.294Z] + page attachée  session=C287E0F5 url=
+[   21.4s 2026-08-05T21:02:03.807Z] + page attachée  session=3CA2A2EF url=
+[   22.8s 2026-08-05T21:02:05.247Z] SCÉNARIO IMPOSÉ (après ouverture 3) cible=w:w-1 hidden/hasFocus={"w:w-1":"false/true","w:w-2":"false/false","w:w-4":"false/false","w:w-6":"false/false","w:w-8":"false/false"}
+[   22.8s 2026-08-05T21:02:05.247Z]   → focalisées effectives : ["w:w-1"] (une seule attendue)
+[   22.8s 2026-08-05T21:02:05.248Z]   3/3 fenêtres ouvertes
+[   28.8s 2026-08-05T21:02:11.249Z] >>> PHASE TÉMOIN — aucun plein écran, palier de non-régression
+[   28.9s 2026-08-05T21:02:11.294Z] SCÉNARIO IMPOSÉ (témoin) cible=w:w-1 hidden/hasFocus={"w:w-1":"false/true","w:w-2":"false/false","w:w-4":"false/false","w:w-6":"false/false","w:w-8":"false/false"}
+[   28.9s 2026-08-05T21:02:11.294Z]   → focalisées effectives : ["w:w-1"] (une seule attendue)
+[   49.2s 2026-08-05T21:02:31.591Z] ÉCHELLE POSÉE après 12.3 s (8 changements cumulés)
+[   49.2s 2026-08-05T21:02:31.611Z] STATS (témoin — début) {"w:w-1":{"etat":"connected","horloge":1785963751601,"images_decodees":2370,"images_recues":2494,"images_perdues":124,"octets_recus":14653184,"octets_audio":544987,"l":1280,"h":720,"fullscreen_element_non_nul":false,"cachee":false,"focalisee":true,"bandeau":"1280×720, 4.0 Mb/s","plein_ecran_messages":[]},"w:w-2":{"etat":"connected","horloge":1785963751602,"images_decodees":2435,"images_recues":2679,"images_perdues":243,"octets_recus":7663855,"octets_audio":545473,"l":1024,"h":576,"fullscreen_element_non_nul":false,"cachee":false,"focalisee":false,"bandeau":"Image réduite par le réseau — 1024×576, 2.0 Mb/s","plein_ecran_messages":[]},"w:w-4":{"etat":"connected","horloge":1785963751603,"images_decodees":1623,"images_recues":2365,"images_perdues":741,"octets_recus":7226930,"octets_audio":null,"l":1024,"h":576,"fullscreen_element_non_nul":false,"cachee":false,"focalisee":false,"bandeau":"Image réduite par le réseau — 1024×576, 2.0 Mb/s","plein_ecran_messages":[]},"w:w-6":{"etat":"connected","horloge":1785963751606,"images_decodees":2103,"images_recues":2104,"images_perdues":1,"octets_recus":6297656,"octets_audio":null,"l":1024,"h":576,"fullscreen_element_non_nul":false,"cachee":false,"focalisee":false,"bandeau":"Image réduite par le réseau — 1024×576, 2.0 Mb/s","plein_ecran_messages":[]},"w:w-8":{"etat":"connected","horloge":1785963751608,"images_decodees":1704,"images_recues":1737,"images_perdues":32,"octets_recus":5152217,"octets_audio":361608,"l":1024,"h":576,"fullscreen_element_non_nul":false,"cachee":false,"focalisee":false,"bandeau":"Image réduite par le réseau — 1024×576, 2.0 Mb/s","plein_ecran_messages":[]}}
+[  109.2s 2026-08-05T21:03:31.628Z] STATS (témoin — fin) {"w:w-1":{"etat":"connected","horloge":1785963811618,"images_decodees":7454,"images_recues":7580,"images_perdues":126,"octets_recus":42779078,"octets_audio":1511470,"l":1280,"h":720,"fullscreen_element_non_nul":false,"cachee":false,"focalisee":true,"bandeau":"1280×720, 4.0 Mb/s — adaptation indisponible","plein_ecran_messages":[]},"w:w-2":{"etat":"connected","horloge":1785963811619,"images_decodees":7353,"images_recues":7813,"images_perdues":459,"octets_recus":21863802,"octets_audio":1511795,"l":1024,"h":576,"fullscreen_element_non_nul":false,"cachee":false,"focalisee":false,"bandeau":"Image réduite par le réseau — 1024×576, 2.0 Mb/s","plein_ecran_messages":[]},"w:w-4":{"etat":"connected","horloge":1785963811620,"images_decodees":6694,"images_recues":7438,"images_perdues":744,"octets_recus":21230651,"octets_audio":null,"l":1024,"h":576,"fullscreen_element_non_nul":false,"cachee":false,"focalisee":false,"bandeau":"Image réduite par le réseau — 1024×576, 2.0 Mb/s","plein_ecran_messages":[]},"w:w-6":{"etat":"connected","horloge":1785963811621,"images_decodees":7104,"images_recues":7107,"images_perdues":3,"octets_recus":20094296,"octets_audio":null,"l":1024,"h":576,"fullscreen_element_non_nul":false,"cachee":false,"focalisee":false,"bandeau":"Image réduite par le réseau — 1024×576, 2.0 Mb/s","plein_ecran_messages":[]},"w:w-8":{"etat":"connected","horloge":1785963811622,"images_decodees":6691,"images_recues":6730,"images_perdues":39,"octets_recus":18789573,"octets_audio":1327930,"l":1024,"h":576,"fullscreen_element_non_nul":false,"cachee":false,"focalisee":false,"bandeau":"Image réduite par le réseau — 1024×576, 2.0 Mb/s","plein_ecran_messages":[]}}
+[  109.2s 2026-08-05T21:03:31.630Z] TÉMOIN — DELTAS {
+ "w:w-1": {
+  "secondes": 60.017,
+  "images_recues": 5086,
+  "images_decodees": 5084,
+  "images_jetees": 2,
+  "i_par_s": 84.71,
+  "pc_jetees": 0.04,
+  "mbps": 3.749,
+  "kbps_audio": 128.8,
+  "taille": "1280x720",
+  "cachee": false,
+  "focalisee": true,
+  "bandeau": "1280×720, 4.0 Mb/s — adaptation indisponible"
+ },
+ "w:w-2": {
+  "secondes": 60.017,
+  "images_recues": 5134,
+  "images_decodees": 4918,
+  "images_jetees": 216,
+  "i_par_s": 81.94,
+  "pc_jetees": 4.21,
+  "mbps": 1.893,
+  "kbps_audio": 128.8,
+  "taille": "1024x576",
+  "cachee": false,
+  "focalisee": false,
+  "bandeau": "Image réduite par le réseau — 1024×576, 2.0 Mb/s"
+ },
+ "w:w-4": {
+  "secondes": 60.017,
+  "images_recues": 5073,
+  "images_decodees": 5071,
+  "images_jetees": 3,
+  "i_par_s": 84.49,
+  "pc_jetees": 0.06,
+  "mbps": 1.867,
+  "kbps_audio": 0,
+  "taille": "1024x576",
+  "cachee": false,
+  "focalisee": false,
+  "bandeau": "Image réduite par le réseau — 1024×576, 2.0 Mb/s"
+ },
+ "w:w-6": {
+  "secondes": 60.015,
+  "images_recues": 5003,
+  "images_decodees": 5001,
+  "images_jetees": 2,
+  "i_par_s": 83.33,
+  "pc_jetees": 0.04,
+  "mbps": 1.839,
+  "kbps_audio": 0,
+  "taille": "1024x576",
+  "cachee": false,
+  "focalisee": false,
+  "bandeau": "Image réduite par le réseau — 1024×576, 2.0 Mb/s"
+ },
+ "w:w-8": {
+  "secondes": 60.014,
+  "images_recues": 4993,
+  "images_decodees": 4987,
+  "images_jetees": 7,
+  "i_par_s": 83.1,
+  "pc_jetees": 0.14,
+  "mbps": 1.818,
+  "kbps_audio": 128.8,
+  "taille": "1024x576",
+  "cachee": false,
+  "focalisee": false,
+  "bandeau": "Image réduite par le réseau — 1024×576, 2.0 Mb/s"
+ }
+}
+[  109.3s 2026-08-05T21:03:31.729Z] SURVIE VM (après le témoin) virsh="en cours d’exécution" acces_partage=OUI
+[  109.3s 2026-08-05T21:03:31.732Z] >>> PHASE CRITÈRE ①+② — cible=w:w-1 marqueur=chrome-d8-recette-1
+[  109.4s 2026-08-05T21:03:31.762Z]   sortie AVANT (garde-fou 7) : \\.\DISPLAY6
+[  109.4s 2026-08-05T21:03:31.806Z] SCÉNARIO IMPOSÉ (critère ①+② (visibilité de référence)) cible=w:w-1 hidden/hasFocus={"w:w-1":"false/true","w:w-2":"false/false","w:w-4":"false/false","w:w-6":"false/false","w:w-8":"false/false"}
+[  109.4s 2026-08-05T21:03:31.806Z]   → focalisées effectives : ["w:w-1"] (une seule attendue)
+[  114.4s 2026-08-05T21:03:36.796Z] + page attachée  session=1B557389 url=
+[  118.3s 2026-08-05T21:03:40.709Z] STYLE FENÊTRE (chrome-d8-recette-1, action=lire) {"hwnd":"200ee","sans_bordure_apres":false,"avant":382664704,"sans_bordure_avant":false,"apres":382664704}
+
+[  119.1s 2026-08-05T21:03:41.537Z] + page attachée  session=046AC8B2 url=
+[  123.1s 2026-08-05T21:03:45.483Z] STYLE FENÊTRE (chrome-d8-recette-1, action=sansBordure) {"hwnd":"200ee","sans_bordure_apres":true,"avant":382664704,"sans_bordure_avant":false,"apres":369819648}
+
+[  153.7s 2026-08-05T21:04:16.140Z] !! FAIT NON ATTEINT (annonce PleinEcran actif=true côté agent) après 30 s
+[  183.9s 2026-08-05T21:04:46.302Z] !! FAIT NON ATTEINT (message fullscreen reçu côté navigateur (cible)) après 30 s
+[  183.9s 2026-08-05T21:04:46.337Z] VIEWPORT FORCÉ (critère ② — cible plein écran) cible=w:w-1 1920x1080
+[  214.8s 2026-08-05T21:05:17.169Z] !! FAIT NON ATTEINT (changement de mode côté agent (cible)) après 30 s
+[  214.8s 2026-08-05T21:05:17.203Z] VIEWPORT FORCÉ (critère ② — probe TAILLE_MAX_SORTIE) cible=w:w-1 3840x2160
+[  221.8s 2026-08-05T21:05:24.242Z] + page attachée  session=CBFECB2A url=
+[  225.7s 2026-08-05T21:05:28.126Z] STYLE FENÊTRE (chrome-d8-recette-1, action=restaurer) {"hwnd":"200ee","sans_bordure_apres":false,"avant":369819648,"sans_bordure_avant":true,"apres":382664704}
+
+[  225.7s 2026-08-05T21:05:28.132Z] VIEWPORT FORCÉ (critère ①+② — restauration) cible=w:w-1 1280x720
+[  250.1s 2026-08-05T21:05:52.522Z] !! FAIT NON ATTEINT (annonce PleinEcran actif=false (restauration)) après 20 s
+[  250.1s 2026-08-05T21:05:52.522Z] CRITÈRE ①+② — RELEVÉ {
+ "cible": "w:w-1",
+ "session_cible": "w-1",
+ "marqueur_cible": "chrome-d8-recette-1",
+ "debut": "2026-08-05T21:03:35.810Z",
+ "fin": "2026-08-05T21:05:23.233Z",
+ "critere1": {
+  "style_avant": {
+   "hwnd": "200ee",
+   "sans_bordure_apres": false,
+   "avant": 382664704,
+   "sans_bordure_avant": false,
+   "apres": 382664704
+  },
+  "style_bascule": {
+   "hwnd": "200ee",
+   "sans_bordure_apres": true,
+   "avant": 382664704,
+   "sans_bordure_avant": false,
+   "apres": 369819648
+  },
+  "detection_agent": null,
+  "messages_navigateur_cible": null,
+  "messages_navigateur_voisines": {
+   "w:w-2": [],
+   "w:w-4": [
+    {
+     "t": 1785963821978,
+     "active": true
+    }
+   ],
+   "w:w-6": [],
+   "w:w-8": []
+  },
+  "fuite_vers_voisine": [
+   "w:w-4"
+  ],
+  "verdict_partie_mesurable": false
+ },
+ "critere2": {
+  "style_de_la_fenetre_pendant_cette_mesure": "sans_bordure (bascule du critère 1, non restaurée avant 2)",
+  "viewport_demande": [
+   1920,
+   1080
+  ],
+  "mode_apres_cible": null,
+  "stats_apres_redimensionnement": {
+   "etat": "connected",
+   "horloge": 1785963917183,
+   "images_decodees": 15740,
+   "images_recues": 16530,
+   "images_perdues": 788,
+   "octets_recus": 88513181,
+   "octets_audio": 3210825,
+   "l": 1280,
+   "h": 720,
+   "fullscreen_element_non_nul": false,
+   "cachee": false,
+   "focalisee": true,
+   "bandeau": "1280×720, 4.0 Mb/s",
+   "plein_ecran_messages": []
+  },
+  "viewport_surdimensionne_demande": [
+   3840,
+   2160
+  ],
+  "stats_apres_surdimensionne": {
+   "etat": "connected",
+   "horloge": 1785963923223,
+   "images_decodees": 16188,
+   "images_recues": 17046,
+   "images_perdues": 843,
+   "octets_recus": 91370819,
+   "octets_audio": 3307908,
+   "l": 1280,
+   "h": 720,
+   "fullscreen_element_non_nul": false,
+   "cachee": false,
+   "focalisee": true,
+   "bandeau": "1280×720, 4.0 Mb/s",
+   "plein_ecran_messages": []
+  },
+  "surdimensionne_borne": true
+ },
+ "garde_fou_7_nom_sortie": {
+  "avant": "\\\\.\\DISPLAY6",
+  "apres": null,
+  "conserve": false
+ },
+ "mode_sortie_complet": {
+  "demandees": [],
+  "reussies": [],
+  "refusees": [],
+  "illisibles": [],
+  "impossibles": []
+ },
+ "pertes_acces_toutes": [],
+ "pertes_acces_voisines": [],
+ "detection_agent_sortie": null,
+ "style_restaure": {
+  "hwnd": "200ee",
+  "sans_bordure_apres": false,
+  "avant": 369819648,
+  "sans_bordure_avant": true,
+  "apres": 382664704
+ }
+}
+[  250.1s 2026-08-05T21:05:52.523Z] >>> PHASE CRITÈRE ④+⑤ — voisine=w:w-2 hz=520
+[  250.1s 2026-08-05T21:05:52.526Z] VISIBILITÉ FORCÉE (critère ④ — masquage) cible=w:w-2 cachee=true relu=true
+[  252.3s 2026-08-05T21:05:54.686Z] FAIT ATTEINT (sommeil de la voisine (endormie=true)) après 2.2 s
+[  253.8s 2026-08-05T21:05:56.245Z] VISIBILITÉ FORCÉE (critère ④ — réveil) cible=w:w-2 cachee=false relu=false
+[  284.7s 2026-08-05T21:06:27.091Z] !! FAIT NON ATTEINT (réveil de la voisine (endormie=false, postérieur à l'ordre)) après 30 s
+[  284.8s 2026-08-05T21:06:27.184Z] SURVIE VM (après critère ④+⑤) virsh="en cours d’exécution" acces_partage=OUI
+[  284.8s 2026-08-05T21:06:27.184Z] CRITÈRE ④+⑤ — RELEVÉ {
+ "voisine": "w:w-2",
+ "session_voisine": "w-2",
+ "hz_assigne": 520,
+ "debut": "2026-08-05T21:05:52.523Z",
+ "fin": "2026-08-05T21:06:27.091Z",
+ "sommeil_confirme": {
+  "parts": [
+   {
+    "t": "2026-08-05T21:05:52.545270Z",
+    "session": "w-6",
+    "part_bps": 2348800,
+    "endormie": false
+   },
+   {
+    "t": "2026-08-05T21:05:52.545305Z",
+    "session": "w-8",
+    "part_bps": 2348800,
+    "endormie": false
+   },
+   {
+    "t": "2026-08-05T21:05:52.546279Z",
+    "session": "w-4",
+    "part_bps": 2348800,
+    "endormie": false
+   },
+   {
+    "t": "2026-08-05T21:05:52.546284Z",
+    "session": "w-1",
+    "part_bps": 4697600,
+    "endormie": false
+   },
+   {
+    "t": "2026-08-05T21:05:52.569471Z",
+    "session": "w-2",
+    "part_bps": 256000,
+    "endormie": true
+   }
+  ]
+ },
+ "audio_pendant_sommeil": {
+  "hz": 409,
+  "db": -36,
+  "plancher_db": -158,
+  "sample_rate": 44100,
+  "niveaux": [
+   {
+    "f": 520,
+    "db": -115
+   }
+  ],
+  "piste_muted": false,
+  "piste_ready_state": "live",
+  "stats_audio": {
+   "bytes_recus": 3840016,
+   "paquets_recus": 23852
+  }
+ },
+ "audio_survit": true,
+ "reveil_confirme": null,
+ "survie": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ }
+}
+[  284.8s 2026-08-05T21:06:27.218Z] MARQUEURS (FIN) {"lignes":679,"enfant_lance":5,"attachee_capteur":5,"cloture":0,"plein_ecran_total":2,"plein_ecran_actif":1,"mode_sortie_demande":0,"mode_sortie_reussi":0,"mode_sortie_refuse":0,"mutex_abandonne":6,"erreurs":0}
+[  284.8s 2026-08-05T21:06:27.223Z] relevé écrit dans /home/mallanic/Projects/Guacamole/docs/superpowers/plans/journaux-multifenetres-d8/recette-recette.json
+[  293.0s 2026-08-05T21:06:35.437Z] journal copié dans /tmp/agent-recette-d8-recette.log (après la fermeture du navigateur)

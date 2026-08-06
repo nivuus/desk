@@ -138,6 +138,20 @@ pub trait VideoSource {
         None
     }
 
+    /// Rend le changement de plein écran en attente d'annonce, et le consomme.
+    ///
+    /// **État courant, pas un historique** : deux changements arrivés entre
+    /// deux lectures s'écrasent — même régime que `sommeil_a_annoncer`. Comme
+    /// elle consomme, la branche de transport qui l'interroge à ~100 Hz ne peut
+    /// pas inonder le canal de contrôle.
+    ///
+    /// Par défaut sans effet : une source fichier n'a pas de fenêtre Windows,
+    /// et une `WindowsSource` tenue en direct par son propre processus n'a
+    /// personne pour la lui pousser.
+    fn plein_ecran_a_annoncer(&mut self) -> Option<bool> {
+        None
+    }
+
     /// Vrai tant que le capteur tient cette fenêtre pour ENDORMIE — encodeur
     /// et duplication relâchés (sous-bloc D5), aucune image produite.
     ///

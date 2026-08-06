@@ -82,13 +82,19 @@ export interface AsleepMessage {
     reason: string;
 }
 
+export interface FullscreenMessage {
+    v: number;
+    type: 'fullscreen';
+    active: boolean;
+}
+
 export type AgentControl =
     | ReadyMessage | SessionEndMessage
     | PointerMessage | RumbleMessage | CapabilitiesMessage | LinkMessage
-    | AsleepMessage;
+    | AsleepMessage | FullscreenMessage;
 
 const TYPES_AGENT = [
-    'ready', 'session-end', 'pointer', 'rumble', 'capabilities', 'link', 'asleep',
+    'ready', 'session-end', 'pointer', 'rumble', 'capabilities', 'link', 'asleep', 'fullscreen',
 ] as const;
 
 export function encodeResize(width: number, height: number): string {

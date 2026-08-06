@@ -273,6 +273,30 @@ supprime lui-même les notifications pendant un jeu. Le déclencheur est le
 `EVENT_SYSTEM_FOREGROUND`). Nouveau message dans `AgentControl`
 (`proto/src/control.rs:45`).
 
+> ❌ **ARBITRÉ, ET DEUX DES TROIS SIGNAUX SONT ÉCARTÉS** — sous-bloc D8, 5 août
+> 2026 (`docs/superpowers/specs/2026-08-04-multifenetres-plein-ecran-design.md`,
+> `…/plans/2026-08-04-multifenetres-plein-ecran-resultats.md`). La prémisse de
+> ce paragraphe — trois signaux à arbitrer — tient ; **la conclusion sur le
+> premier est FAUSSE dans l'architecture née de D1** :
+>
+> - ⛔ **`GetWindowRect` contre le rect du moniteur ne distingue RIEN.** Chaque
+>   fenêtre est seule sur sa propre sortie virtuelle et l'occupe **exactement**,
+>   le superviseur le lui réimposant périodiquement
+>   (`controler_le_placement`, `agent/src/superviseur/boucle/placement_periodique.rs:21`).
+>   « rect fenêtre == rect moniteur » est donc l'état **NOMINAL**. Le critère
+>   n'est pas seulement inopérant : **il est TOUJOURS VRAI**, et une
+>   implémentation fidèle à cette page annoncerait le plein écran **en
+>   permanence, pour toutes les fenêtres.**
+> - ⛔ **`SHQueryUserNotificationState()` est global à la session interactive,
+>   pas par fenêtre** : à N fenêtres il ne dit pas *laquelle*. Et il ne voit pas
+>   le « borderless fullscreen », que la quasi-totalité des jeux modernes
+>   emploient.
+> - ✅ **Le signal survivant est le SECOND — la perte des styles de bordure**,
+>   et c'est celui que D8 a implémenté (`agent/src/capteur/plein_ecran.rs`,
+>   prédicat pur, 9 tests d'hôte), avec l'état lu à l'attache pour référence :
+>   **on n'annonce que les CHANGEMENTS**, sans quoi une application née sans
+>   bordure ferait entrer sa fenêtre en plein écran sans raison.
+
 **Déclenchement côté client — obstacle identique à `window.open()`.**
 `element.requestFullscreen()` exige une activation utilisateur transitoire ; un
 message reçu sur data channel n'en est pas une, l'appel est rejeté. Solution

@@ -5,6 +5,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import {
+    armerPleinEcran,
     attachFullscreen,
     verrouillerClavier,
     type BoutonPleinEcran,
@@ -234,5 +235,93 @@ describe('attachFullscreen', () => {
         // Les événements ultérieurs ne doivent plus rien déclencher.
         bouton.declencher('click');
         expect(cible.demandes).toBe(0);
+    });
+});
+
+/** Double de test pour une cible d'événements. */
+function faireEcouteurs() {
+    const ecouteurs = new Map<string, EventListener[]>();
+    return {
+        addEventListener(type: string, e: EventListener) {
+            const l = ecouteurs.get(type) ?? [];
+            l.push(e);
+            ecouteurs.set(type, l);
+        },
+        removeEventListener(type: string, e: EventListener) {
+            ecouteurs.set(type, (ecouteurs.get(type) ?? []).filter((x) => x !== e));
+        },
+        declencher(type: string) {
+            for (const e of ecouteurs.get(type) ?? []) e(new Event(type));
+        },
+        compte(type: string) {
+            return (ecouteurs.get(type) ?? []).length;
+        },
+    };
+}
+
+describe('armement du plein écran', () => {
+    it("n'entre pas en plein écran avant un geste utilisateur", () => {
+        // `requestFullscreen()` exige une activation transitoire : appeler
+        // depuis le message serait rejeté par le navigateur.
+        const requestFullscreen = vi.fn().mockResolvedValue(undefined);
+        const cible = { requestFullscreen };
+        const doc = { fullscreenElement: null, exitFullscreen: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn() };
+        const ecouteurs = faireEcouteurs();
+        armerPleinEcran({ cible, doc, ecouteurs });
+        expect(requestFullscreen).not.toHaveBeenCalled();
+    });
+
+    it('entre en plein écran au premier pointerdown', () => {
+        const requestFullscreen = vi.fn().mockResolvedValue(undefined);
+        const cible = { requestFullscreen };
+        const doc = { fullscreenElement: null, exitFullscreen: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn() };
+        const ecouteurs = faireEcouteurs();
+        armerPleinEcran({ cible, doc, ecouteurs });
+        ecouteurs.declencher('pointerdown');
+        expect(requestFullscreen).toHaveBeenCalledOnce();
+    });
+
+    it('entre en plein écran au premier keydown, sans clic', () => {
+        // Un joueur à la manette ou au clavier n'a aucune raison de cliquer.
+        const requestFullscreen = vi.fn().mockResolvedValue(undefined);
+        const cible = { requestFullscreen };
+        const doc = { fullscreenElement: null, exitFullscreen: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn() };
+        const ecouteurs = faireEcouteurs();
+        armerPleinEcran({ cible, doc, ecouteurs });
+        ecouteurs.declencher('keydown');
+        expect(requestFullscreen).toHaveBeenCalledOnce();
+    });
+
+    it("n'entre qu'une fois, et retire ses écouteurs après", () => {
+        const requestFullscreen = vi.fn().mockResolvedValue(undefined);
+        const cible = { requestFullscreen };
+        const doc = { fullscreenElement: null, exitFullscreen: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn() };
+        const ecouteurs = faireEcouteurs();
+        armerPleinEcran({ cible, doc, ecouteurs });
+        ecouteurs.declencher('pointerdown');
+        ecouteurs.declencher('pointerdown');
+        expect(requestFullscreen).toHaveBeenCalledOnce();
+        expect(ecouteurs.compte('pointerdown')).toBe(0);
+        expect(ecouteurs.compte('keydown')).toBe(0);
+    });
+
+    it("n'arme rien si la page est déjà en plein écran", () => {
+        const cible = { requestFullscreen: vi.fn().mockResolvedValue(undefined) };
+        const doc = { fullscreenElement: cible, exitFullscreen: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn() };
+        const ecouteurs = faireEcouteurs();
+        armerPleinEcran({ cible, doc, ecouteurs });
+        expect(ecouteurs.compte('pointerdown')).toBe(0);
+    });
+
+    it('la fonction de détachement retire les écouteurs sans avoir armé', () => {
+        // Fin de session avant tout geste : rien ne doit survivre.
+        const cible = { requestFullscreen: vi.fn().mockResolvedValue(undefined) };
+        const doc = { fullscreenElement: null, exitFullscreen: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn() };
+        const ecouteurs = faireEcouteurs();
+        const detacher = armerPleinEcran({ cible, doc, ecouteurs });
+        detacher();
+        expect(ecouteurs.compte('pointerdown')).toBe(0);
+        ecouteurs.declencher('pointerdown');
+        expect(cible.requestFullscreen).not.toHaveBeenCalled();
     });
 });

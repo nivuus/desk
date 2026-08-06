@@ -269,6 +269,31 @@ impl Table {
         self.entrees.get(session).and_then(|e| e.taille_sortie)
     }
 
+    /// Met à jour la taille RETENUE d'une sortie déjà attribuée, sur une
+    /// lecture DXGI fraîche. N'écrit RIEN si la session n'a pas (encore) de
+    /// sortie retenue : cette méthode ne fait que corriger un enregistrement
+    /// existant, jamais en créer un — `sortie_creee` reste le seul point qui
+    /// pose `nom_sortie` et `taille_sortie` ensemble.
+    ///
+    /// IMPORTANT 5 (revue de la tâche 9) : referme l'écart que D8 a ouvert.
+    /// `WindowsSource::changer_mode_de_sortie` retaille une sortie virtuelle
+    /// sans passer par cette table, donc sans qu'elle ne le sache —
+    /// `taille_sortie` restait figée à la taille de CRÉATION. Sans ce
+    /// rafraîchissement, `viewport_recu` comparerait, à la prochaine relance,
+    /// cette taille MÉMORISÉE (périmée) au viewport ACTUEL que le navigateur
+    /// réannonce, jugerait à tort la sortie incompatible alors qu'elle avait
+    /// déjà la bonne taille, et la détruirait pour en recréer une —
+    /// exactement la recréation parasite que le sous-bloc D3 (§7.1) a
+    /// supprimée, avec l'abandon de mutex qu'elle inflige à toutes les
+    /// sorties voisines.
+    pub fn rafraichir_taille_sortie(&mut self, session: &IdSession, taille: (u32, u32)) {
+        if let Some(entree) = self.entrees.get_mut(session) {
+            if entree.taille_sortie.is_some() {
+                entree.taille_sortie = Some(taille);
+            }
+        }
+    }
+
     /// Sessions dont l'enfant tourne, pour le contrôle périodique de
     /// placement. Rendues par valeur : l'appelant mute la table pendant
     /// qu'il les parcourt.

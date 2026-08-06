@@ -1,10 +1,15 @@
 // Plein écran et Keyboard Lock.
 //
 // Le §4.1 du cadrage jeux fait de Windows le maître du plein écran, dans un
-// sens unique. Ce module n'implémente QUE le plein écran demandé par
-// l'utilisateur, qui ne touche pas à l'état de la fenêtre Windows : le
-// chantier D ajoutera le sens Windows → navigateur par-dessus, sans rien
-// défaire ici.
+// sens UNIQUE : c'est Windows qui décide, le navigateur qui suit, jamais
+// l'inverse. Ce module porte les deux entrées vers le plein écran — le
+// bouton de bascule (`attachFullscreen`, geste local de l'utilisateur) et
+// l'armement déclenché par le message `fullscreen` que l'agent relaie pour
+// suivre l'état de la fenêtre Windows (`armerPleinEcran` /
+// `armerPleinEcranAuDOM`, câblés dans `main.ts` sur `AgentControl.fullscreen`)
+// — mais ni l'une ni l'autre ne remonte quoi que ce soit vers Windows : le
+// navigateur ne force jamais l'état de la fenêtre distante. C'est ce qui rend
+// toute oscillation impossible.
 //
 // Keyboard Lock n'est pas un confort : Échap est à la fois la touche de
 // sortie du plein écran navigateur et la touche de menu pause de presque tous
@@ -110,5 +115,60 @@ export function attachFullscreenAuDOM(
         doc: document as unknown as DocumentPleinEcran,
         navigateur: navigator as unknown as NavigateurClavier,
         ...options,
+    });
+}
+
+/** Ce dont l'armement a besoin d'une cible d'événements (le document). */
+export interface CibleEvenement {
+    addEventListener(type: string, ecouteur: EventListener): void;
+    removeEventListener(type: string, ecouteur: EventListener): void;
+}
+
+export interface ArmementOptions {
+    cible: CibleEcran;
+    doc: DocumentPleinEcran;
+    ecouteurs: CibleEvenement;
+}
+
+/** Les gestes qui portent une activation utilisateur transitoire. */
+const GESTES = ['pointerdown', 'keydown'] as const;
+
+/**
+ * Arme l'entrée en plein écran sur le prochain geste utilisateur.
+ *
+ * **On arme, on n'agit pas.** `requestFullscreen()` exige une activation
+ * utilisateur transitoire ; un message reçu sur canal de données n'en est pas
+ * une, et l'appel serait rejeté. C'est le mécanisme retenu au §4.1 du cadrage
+ * jeux, et le même que le spike multi-fenêtres a validé pour `window.open()` :
+ * un seul mécanisme pour les deux besoins.
+ *
+ * Le clavier compte autant que le pointeur : un joueur à la manette ou au
+ * clavier n'a aucune raison de cliquer.
+ *
+ * **Keyboard Lock n'est pas à demander ici** : `attachFullscreen` verrouille
+ * déjà sur `fullscreenchange`, quelle que soit l'origine de l'entrée.
+ *
+ * Renvoie une fonction de détachement, à appeler en fin de session.
+ */
+export function armerPleinEcran({ cible, doc, ecouteurs }: ArmementOptions): () => void {
+    if (doc.fullscreenElement) return () => {};
+
+    const detacher = (): void => {
+        for (const geste of GESTES) ecouteurs.removeEventListener(geste, surGeste);
+    };
+    const surGeste = (): void => {
+        detacher();
+        void cible.requestFullscreen();
+    };
+    for (const geste of GESTES) ecouteurs.addEventListener(geste, surGeste);
+    return detacher;
+}
+
+/** Valeurs par défaut pour utilisation dans le navigateur réel. */
+export function armerPleinEcranAuDOM(cible: CibleEcran): () => void {
+    return armerPleinEcran({
+        cible,
+        doc: document as unknown as DocumentPleinEcran,
+        ecouteurs: document as unknown as CibleEvenement,
     });
 }

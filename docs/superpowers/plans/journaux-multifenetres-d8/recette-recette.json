@@ -1,0 +1,295 @@
+{
+ "etiquette": "recette",
+ "n_fenetres": 3,
+ "palier_s": 60,
+ "phases": {
+  "temoin": {
+   "cible": "w:w-1",
+   "scenario": {
+    "etats": {
+     "w:w-1": "false/true",
+     "w:w-2": "false/false",
+     "w:w-4": "false/false",
+     "w:w-6": "false/false",
+     "w:w-8": "false/false"
+    },
+    "focalisees": [
+     "w:w-1"
+    ]
+   },
+   "debut": "2026-08-05T21:02:31.591Z",
+   "fin": "2026-08-05T21:03:31.628Z",
+   "pose": {
+    "stable": true,
+    "attente_s": 12.3,
+    "changements": 8
+   },
+   "deltas": {
+    "w:w-1": {
+     "secondes": 60.017,
+     "images_recues": 5086,
+     "images_decodees": 5084,
+     "images_jetees": 2,
+     "i_par_s": 84.71,
+     "pc_jetees": 0.04,
+     "mbps": 3.749,
+     "kbps_audio": 128.8,
+     "taille": "1280x720",
+     "cachee": false,
+     "focalisee": true,
+     "bandeau": "1280×720, 4.0 Mb/s — adaptation indisponible"
+    },
+    "w:w-2": {
+     "secondes": 60.017,
+     "images_recues": 5134,
+     "images_decodees": 4918,
+     "images_jetees": 216,
+     "i_par_s": 81.94,
+     "pc_jetees": 4.21,
+     "mbps": 1.893,
+     "kbps_audio": 128.8,
+     "taille": "1024x576",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 1024×576, 2.0 Mb/s"
+    },
+    "w:w-4": {
+     "secondes": 60.017,
+     "images_recues": 5073,
+     "images_decodees": 5071,
+     "images_jetees": 3,
+     "i_par_s": 84.49,
+     "pc_jetees": 0.06,
+     "mbps": 1.867,
+     "kbps_audio": 0,
+     "taille": "1024x576",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 1024×576, 2.0 Mb/s"
+    },
+    "w:w-6": {
+     "secondes": 60.015,
+     "images_recues": 5003,
+     "images_decodees": 5001,
+     "images_jetees": 2,
+     "i_par_s": 83.33,
+     "pc_jetees": 0.04,
+     "mbps": 1.839,
+     "kbps_audio": 0,
+     "taille": "1024x576",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 1024×576, 2.0 Mb/s"
+    },
+    "w:w-8": {
+     "secondes": 60.014,
+     "images_recues": 4993,
+     "images_decodees": 4987,
+     "images_jetees": 7,
+     "i_par_s": 83.1,
+     "pc_jetees": 0.14,
+     "mbps": 1.818,
+     "kbps_audio": 128.8,
+     "taille": "1024x576",
+     "cachee": false,
+     "focalisee": false,
+     "bandeau": "Image réduite par le réseau — 1024×576, 2.0 Mb/s"
+    }
+   },
+   "survie": {
+    "virsh": "en cours d’exécution",
+    "acces": "OUI"
+   }
+  },
+  "critere1et2": {
+   "cible": "w:w-1",
+   "session_cible": "w-1",
+   "marqueur_cible": "chrome-d8-recette-1",
+   "debut": "2026-08-05T21:03:35.810Z",
+   "fin": "2026-08-05T21:05:23.233Z",
+   "critere1": {
+    "style_avant": {
+     "hwnd": "200ee",
+     "sans_bordure_apres": false,
+     "avant": 382664704,
+     "sans_bordure_avant": false,
+     "apres": 382664704
+    },
+    "style_bascule": {
+     "hwnd": "200ee",
+     "sans_bordure_apres": true,
+     "avant": 382664704,
+     "sans_bordure_avant": false,
+     "apres": 369819648
+    },
+    "detection_agent": null,
+    "messages_navigateur_cible": null,
+    "messages_navigateur_voisines": {
+     "w:w-2": [],
+     "w:w-4": [
+      {
+       "t": 1785963821978,
+       "active": true
+      }
+     ],
+     "w:w-6": [],
+     "w:w-8": []
+    },
+    "fuite_vers_voisine": [
+     "w:w-4"
+    ],
+    "verdict_partie_mesurable": false
+   },
+   "critere2": {
+    "style_de_la_fenetre_pendant_cette_mesure": "sans_bordure (bascule du critère 1, non restaurée avant 2)",
+    "viewport_demande": [
+     1920,
+     1080
+    ],
+    "mode_apres_cible": null,
+    "stats_apres_redimensionnement": {
+     "etat": "connected",
+     "horloge": 1785963917183,
+     "images_decodees": 15740,
+     "images_recues": 16530,
+     "images_perdues": 788,
+     "octets_recus": 88513181,
+     "octets_audio": 3210825,
+     "l": 1280,
+     "h": 720,
+     "fullscreen_element_non_nul": false,
+     "cachee": false,
+     "focalisee": true,
+     "bandeau": "1280×720, 4.0 Mb/s",
+     "plein_ecran_messages": []
+    },
+    "viewport_surdimensionne_demande": [
+     3840,
+     2160
+    ],
+    "stats_apres_surdimensionne": {
+     "etat": "connected",
+     "horloge": 1785963923223,
+     "images_decodees": 16188,
+     "images_recues": 17046,
+     "images_perdues": 843,
+     "octets_recus": 91370819,
+     "octets_audio": 3307908,
+     "l": 1280,
+     "h": 720,
+     "fullscreen_element_non_nul": false,
+     "cachee": false,
+     "focalisee": true,
+     "bandeau": "1280×720, 4.0 Mb/s",
+     "plein_ecran_messages": []
+    },
+    "surdimensionne_borne": true
+   },
+   "garde_fou_7_nom_sortie": {
+    "avant": "\\\\.\\DISPLAY6",
+    "apres": null,
+    "conserve": false
+   },
+   "mode_sortie_complet": {
+    "demandees": [],
+    "reussies": [],
+    "refusees": [],
+    "illisibles": [],
+    "impossibles": []
+   },
+   "pertes_acces_toutes": [],
+   "pertes_acces_voisines": [],
+   "detection_agent_sortie": null,
+   "style_restaure": {
+    "hwnd": "200ee",
+    "sans_bordure_apres": false,
+    "avant": 369819648,
+    "sans_bordure_avant": true,
+    "apres": 382664704
+   }
+  },
+  "critere4et5": {
+   "voisine": "w:w-2",
+   "session_voisine": "w-2",
+   "hz_assigne": 520,
+   "debut": "2026-08-05T21:05:52.523Z",
+   "fin": "2026-08-05T21:06:27.091Z",
+   "sommeil_confirme": {
+    "parts": [
+     {
+      "t": "2026-08-05T21:05:52.545270Z",
+      "session": "w-6",
+      "part_bps": 2348800,
+      "endormie": false
+     },
+     {
+      "t": "2026-08-05T21:05:52.545305Z",
+      "session": "w-8",
+      "part_bps": 2348800,
+      "endormie": false
+     },
+     {
+      "t": "2026-08-05T21:05:52.546279Z",
+      "session": "w-4",
+      "part_bps": 2348800,
+      "endormie": false
+     },
+     {
+      "t": "2026-08-05T21:05:52.546284Z",
+      "session": "w-1",
+      "part_bps": 4697600,
+      "endormie": false
+     },
+     {
+      "t": "2026-08-05T21:05:52.569471Z",
+      "session": "w-2",
+      "part_bps": 256000,
+      "endormie": true
+     }
+    ]
+   },
+   "audio_pendant_sommeil": {
+    "hz": 409,
+    "db": -36,
+    "plancher_db": -158,
+    "sample_rate": 44100,
+    "niveaux": [
+     {
+      "f": 520,
+      "db": -115
+     }
+    ],
+    "piste_muted": false,
+    "piste_ready_state": "live",
+    "stats_audio": {
+     "bytes_recus": 3840016,
+     "paquets_recus": 23852
+    }
+   },
+   "audio_survit": true,
+   "reveil_confirme": null,
+   "survie": {
+    "virsh": "en cours d’exécution",
+    "acces": "OUI"
+   }
+  }
+ },
+ "navigateur": "Chrome/151.0.7922.71",
+ "cpu_repos": {
+  "cpu": "%Cpu(s): 17,9 ut, 10,1 sy,  0,0 ni, 71,7 id,  0,0 wa,  0,0 hi,  0,3 si,  0,0 st \n    %Cpu(s): 14,5 ut,  5,3 sy,  0,0 ni, 79,7 id,  0,1 wa,  0,0 hi,  0,4 si,  0,0 st \n    %Cpu(s): 15,1 ut,  6,0 sy,  0,0 ni, 78,3 id,  0,0 wa,  0,0 hi,  0,6 si,  0,0 st",
+  "loadavg": "5.13 4.44 3.71 5/2986 2458472"
+ },
+ "marqueurs": {
+  "lignes": 679,
+  "enfant_lance": 5,
+  "attachee_capteur": 5,
+  "cloture": 0,
+  "plein_ecran_total": 2,
+  "plein_ecran_actif": 1,
+  "mode_sortie_demande": 0,
+  "mode_sortie_reussi": 0,
+  "mode_sortie_refuse": 0,
+  "mutex_abandonne": 6,
+  "erreurs": 0
+ }
+}

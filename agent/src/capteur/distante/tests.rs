@@ -460,3 +460,15 @@ fn deux_ordres_audio_arrives_avant_lecture_s_ecrasent() {
     assert_eq!(source.next_frame(), None);
     assert_eq!(source.audio_a_appliquer(), Some(false), "seul le dernier ordre survit");
 }
+
+/// Même régime que `sommeil_a_annoncer` : l'annonce est un CHANGEMENT, elle
+/// se consomme. Sans quoi la branche de transport qui l'interroge à ~100 Hz
+/// inonderait le canal de contrôle.
+#[test]
+fn un_plein_ecran_pousse_est_annonce_une_seule_fois() {
+    let (mut source, tx, _recus) = source_avec(4);
+    tx.send(Recu::PleinEcran { actif: true }).expect("dépôt");
+    assert_eq!(source.next_frame(), None);
+    assert_eq!(source.plein_ecran_a_annoncer(), Some(true));
+    assert_eq!(source.plein_ecran_a_annoncer(), None, "une annonce ne se répète pas");
+}

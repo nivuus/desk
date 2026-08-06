@@ -217,7 +217,7 @@ pub fn tourner(
         // retard.
         if dernier_controle_placement.elapsed() >= PERIODE_PLACEMENT {
             dernier_controle_placement = std::time::Instant::now();
-            controler_le_placement(&table);
+            controler_le_placement(&mut table);
             // 7. Fenêtres dont l'enfant est mort mais qui existent toujours
             // côté Windows : on les repropose plutôt que de les laisser
             // disparaître de la shell (voir `Etat::SansSession`).
