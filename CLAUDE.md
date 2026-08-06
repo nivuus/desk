@@ -4642,12 +4642,23 @@ l'avait déjà écrit après D6, et l'a repayé ici.**
 
 | Étage | Fichier | Nature |
 | --- | --- | --- |
-| le prédicat | `agent/src/capteur/plein_ecran.rs` (**195**) | **pur, aucun `cfg`**, **9** tests d'hôte (`cargo test -p agent capteur::plein_ecran` → `9 passed`). Seule `GetWindowLongPtrW` est `#[cfg(windows)]` |
+| le prédicat | `agent/src/capteur/plein_ecran.rs` (~~195~~ **263**, 6 août) | **pur, aucun `cfg`**, **9** tests d'hôte (`cargo test -p agent capteur::plein_ecran` → `9 passed`). Seule `GetWindowLongPtrW` est `#[cfg(windows)]` |
 | l'état de référence | idem — `SuiviBordure` | **l'état lu à l'attache fait référence, on n'annonce que les CHANGEMENTS** : une application née sans bordure n'annonce rien |
 | la lecture | `agent/src/capteur/fenetre.rs` (**470**) | sur le fil de fenêtre, bridée à `PERIODE_STYLE = 250 ms`, **jamais à l'image**. Constante **propre** à ce mécanisme — ne pas la coupler à `PERIODE_REARBITRAGE` |
 | le message | `capteur/protocole.rs` (**369**) → `proto/src/control.rs` (**419**) | `DepuisCapteur::PleinEcran { actif }` → `AgentControl::Fullscreen { active }`, le trajet exact de `Sommeil` |
-| le changement de mode | `agent/src/windows_source/redimensionnement/mode_sortie.rs` (**427**) | `ChangeDisplaySettingsExW` seul. ⚠️ **`TAILLE_MAX_SORTIE = (1920, 1080)` et `borner_a_la_taille_max` ne sont PAS ici** : ils vivent dans **`agent/src/windows_source/sortie.rs:99`** (la constante) **et `:113`** (la fonction). *L'ordre des deux noms était inversé — corrigé, les numéros étaient justes.* |
+| le changement de mode, **DÉSARMÉ par défaut** | `agent/src/windows_source/redimensionnement/mode_sortie.rs` (~~427~~ **446**, 6 août) | `ChangeDisplaySettingsExW` seul. ⚠️ **`TAILLE_MAX_SORTIE = (1920, 1080)` et `borner_a_la_taille_max` ne sont PAS ici** : ils vivent dans **`agent/src/windows_source/sortie.rs:99`** (la constante) **et `:113`** (la fonction). *L'ordre des deux noms était inversé — corrigé, les numéros étaient justes.* |
+| le garde du changement de mode | `agent/src/capteur/plein_ecran.rs::changement_de_mode_arme` | **neuf, revue finale de branche** — `PLEIN_ECRAN_MODE_SORTIE=1` **arme** ; désarmé par défaut. Porte C1 et C2 auprès de lui. Unique point d'application : `windows_source/redimensionnement.rs` (**327**) |
 | le client | `client/src/fullscreen.ts` (**174**) | **armement, pas action** : on entre au premier `pointerdown`/`keydown`. `Fullscreen { active: false }` sort immédiatement |
+
+> ✅ **Les six chiffres de ce tableau sont RELEVÉS PAR LA COMMANDE le 6 août
+> 2026**, à la vague de correction de la revue finale de branche. **Deux ont
+> bougé sous cette vague même** et sont barrés à leur place plutôt que corrigés
+> ailleurs : `plein_ecran.rs` 195 → **263** (le garde et ses raisons) et
+> `mode_sortie.rs` 427 → **446** (la correction I5 et la note HiDPI). Les
+> quatre autres — `capteur/fenetre.rs` **470**, `capteur/protocole.rs` **369**,
+> `proto/src/control.rs` **419**, `client/src/fullscreen.ts` **174** — sont
+> inchangés et exacts. **Aucun n'approche 500** ; la marge la plus étroite est
+> celle de `fenetre.rs`, **30**.
 
 **Trois faits de conception qui survivront au code :**
 
