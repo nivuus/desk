@@ -150,8 +150,14 @@ impl WindowsSource {
         // chemin recadre est en pixels PHYSIQUES, pas en pixels CSS. Unifier
         // les deux unités sans casser ce second chemin exige de vérifier ce
         // qu'il en coûte, ce qu'aucun test d'hôte ne peut faire ; signalé au
-        // lieu d'être risqué. `PLEIN_ECRAN=0` reste la seule parade
-        // disponible aujourd'hui pour un client HiDPI.
+        // lieu d'être risqué. ✅ **Depuis la revue finale de branche (5 août
+        // 2026), la parade est l'état PAR DÉFAUT** : ce chemin entier est
+        // désarmé tant que `PLEIN_ECRAN_MODE_SORTIE=1` n'est pas posé (voir
+        // `capteur::plein_ecran::changement_de_mode_arme`), et le défaut HiDPI
+        // est donc inatteignable en configuration livrée. Il reste ouvert côté
+        // client, et devient le premier travail de qui armera ce chemin —
+        // `PLEIN_ECRAN=0` n'est plus la seule parade, elle est devenue la
+        // parade du mécanisme entier.
         if crate::superviseur::placement::taille_compatible(
             (largeur, hauteur),
             (self.width, self.height),
@@ -160,9 +166,22 @@ impl WindowsSource {
         }
 
         // `CDS_UPDATEREGISTRY` SEUL : c'est littéralement la combinaison que la
-        // sonde P1 a vue tenir du premier coup. Ses deux replis
-        // (`|CDS_RESET`, puis `NORESET` + `RESET` séparé) n'ont jamais été
-        // exercés — les reprendre ici serait du code jamais couru.
+        // sonde P1 a vue tenir du premier coup.
+        //
+        // ⚠️ **Ses deux replis (`|CDS_RESET`, puis `NORESET` + `RESET` séparé)
+        // ONT été exercés, et il ne faut pas les reprendre pour autant** —
+        // correction de la revue finale de branche (I5) : une rédaction
+        // antérieure les disait « jamais exercés », ce qui était faux.
+        // `mode-sortie-1728x1080.log` (tâche 9) les joue tous les deux sur une
+        // cible hors des neuf modes annoncés, et AUCUN ne fait bouger la
+        // sortie. Le troisième est pire qu'un refus : il rend
+        // `code_second_appel=0` et `api_annonce_succes=true` sur une sortie
+        // relue INCHANGÉE (`largeur_relue=1920 hauteur_relue=1080`,
+        // `conforme=false`) — un **refus déguisé en succès**, exactement ce
+        // contre quoi ce dépôt a bâti sa doctrine « juger sur la relecture
+        // DXGI, jamais sur le code de retour ». Les reprendre ici n'ajouterait
+        // donc aucune chance de succès, et le troisième ferait croire à une
+        // réussite là où rien n'a bougé.
         // `CDS_SET_PRIMARY` est délibérément absent : on ne touche pas au
         // moniteur primaire.
         let code = changer_mode(&nom_sortie, largeur, hauteur);

@@ -84,8 +84,13 @@ impl WindowsSource {
         // 1280×720 par le chemin de production, la fait passer à 1920×1080, et
         // **relit par DXGI** (`GetDesc`/`DesktopCoordinates`) — jamais par WMI,
         // dont le champ a été vu périmé de 68 s sur ce terrain. Elle a rendu
-        // « P1 RECU » avec `CDS_UPDATEREGISTRY` seul, du premier coup ; ses
-        // deux combinaisons de repli n'ont jamais été exercées.
+        // « P1 RECU » avec `CDS_UPDATEREGISTRY` seul, du premier coup. ⚠️ **Ses
+        // deux combinaisons de repli ONT été exercées** (correction I5 de la
+        // revue finale de branche — une rédaction antérieure les disait
+        // « jamais exercées ») : `mode-sortie-1728x1080.log` les joue toutes
+        // deux, aucune ne fait bouger la sortie, et la troisième annonce un
+        // SUCCÈS d'API sur une sortie inchangée. Voir le commentaire de
+        // `mode_sortie.rs`, auprès du `CDS_UPDATEREGISTRY` seul du produit.
         //
         // `Ok(())` et non `Err` reste vrai, et pour la même raison : le
         // `ResizeObserver` du client émet une fois à l'observation initiale, et
@@ -111,6 +116,36 @@ impl WindowsSource {
                     mode = ?self.mode,
                     "redimensionnement ignoré : PLEIN_ECRAN=0 désarme le changement de mode \
                      de sortie (comportement D1)"
+                );
+                return Ok(());
+            }
+            // ⚠️ **DÉSARMÉ PAR DÉFAUT — décision de la revue finale de branche
+            // de D8 (5 août 2026), pas une prudence vague.** Les trois raisons
+            // et leurs pièces vivent auprès du garde lui-même
+            // (`capteur::plein_ecran::changement_de_mode_arme`) : C1, la
+            // pollution du registre qui bloque les ouvertures de fenêtre
+            // ultérieures, de portée inconnue puisque cinq GUID SudoVDA
+            // distincts apparaissent au journal de recette ; C2, la reprise sur
+            // perte d'accès de D2 court-circuitée par une `Err` sur un échec
+            // transitoire de réouverture ; et le fait que ce chemin n'ait
+            // JAMAIS tourné en conditions de produit — critère ② NON EXERCÉ,
+            // `mode_sortie_demande=0` aux deux exécutions de la recette.
+            //
+            // **Ce qui reste livré et actif** : la détection du style, son
+            // annonce au navigateur, et l'armement client. C'est le repli que
+            // le §4 de la conception a écrit — « ①, ③, ④ et ⑤ tiennent sans ② ».
+            //
+            // Les deux Critiques sont donc INATTEIGNABLES par défaut et
+            // délibérément NON CORRIGÉES : les traiter est le premier travail
+            // de la recette qui armera `PLEIN_ECRAN_MODE_SORTIE=1`.
+            if !crate::capteur::plein_ecran::changement_de_mode_arme() {
+                tracing::info!(
+                    width,
+                    height,
+                    mode = ?self.mode,
+                    "redimensionnement ignoré : changement de mode de sortie DÉSARMÉ \
+                     (poser PLEIN_ECRAN_MODE_SORTIE=1 pour l'armer) — la détection et \
+                     l'annonce du plein écran restent actives"
                 );
                 return Ok(());
             }
