@@ -1,6 +1,33 @@
 //! P1 du sous-bloc D8 : une sortie virtuelle SudoVDA accepte-t-elle un autre
 //! mode d'affichage que celui de sa création ?
 //!
+//! ⚠️ **Le critère juge sur la RELECTURE DXGI, jamais sur le code de retour.**
+//! `mode-sortie-1728x1080.log` montre l'idiome `CDS_UPDATEREGISTRY|CDS_NORESET`
+//! puis `CDS_RESET` annonçant `0` sur une sortie qui n'a pas bougé d'un pixel :
+//! un refus déguisé en succès. Et le premier verdict P1 de D8 était `REÇU`
+//! rendu par un critère qui ne pouvait pas rendre l'autre valeur — la sonde
+//! demandait à la sortie la taille qu'elle avait déjà.
+//!
+//! # Tâche 1 du sous-bloc D9 — l'écart banc/produit, comblé
+//!
+//! D8 éprouvait TROIS combinaisons de drapeaux, toutes `CDS_UPDATEREGISTRY`,
+//! et n'ouvrait JAMAIS de duplication DXGI — alors que le produit retaille une
+//! sortie dont la duplication est ouverte et détenue jusqu'à 3,1 s. Cette
+//! sonde comble l'écart :
+//!
+//! 1. une QUATRIÈME combinaison, dynamique et non persistée
+//!    (`combinaisons::combos`) ;
+//! 2. une duplication DXGI ouverte sur la sortie testée ET TENUE pendant tout
+//!    le tour (`DesktopCapture::sur_sortie`) — c'est l'ÉLIMINATOIRE elle-même,
+//!    l'objet de cette sonde ;
+//! 3. un TÉMOIN : le même bras, rejoué sur une sortie neuve sans duplication
+//!    ouverte, pour ne pas imputer un refus à la duplication alors qu'il
+//!    viendrait du mode choisi ;
+//! 4. les deux inconnues annexes de D8 relevées au même moment que
+//!    l'éliminatoire : les pertes d'accès infligées à deux sorties VOISINES
+//!    (`mode_sortie::voisines`), et si la sortie testée conserve son nom
+//!    `\\.\DISPLAYn`.
+//!
 //! **L'énumération ne suffit pas, et c'est tout le sujet de cette sonde.** Un
 //! pilote peut annoncer un mode et le refuser, comme il peut accepter un mode
 //! qu'il n'énumère pas. Elle fait donc les TROIS, dans l'ordre : elle énumère
@@ -11,14 +38,10 @@
 //! WMI, dont le champ de résolution a été vu périmé de 68 s sur ce terrain
 //! (voir `moniteurs_virtuels.rs`).
 //!
-//! **Le verdict est ce que la relecture DXGI établit, jamais ce que
-//! `ChangeDisplaySettingsExW` retourne.** Un `DISP_CHANGE_SUCCESSFUL` sur une
-//! sortie dont les dimensions n'ont pas bougé est un refus déguisé.
-//!
 //! `MULTIFENETRE_MODE_SORTIE=<L>x<H>` : crée une sortie à la résolution de
 //! production (`montee::RESOLUTION`, 1280×720 — le chemin par lequel le
 //! produit fait paraître ses sorties), tente de la faire passer à L×H par
-//! trois combinaisons de drapeaux `CDS_*` croissantes, relit après chacune,
+//! QUATRE combinaisons de drapeaux `CDS_*` croissantes, relit après chacune,
 //! s'arrête à la première qui tient, puis rend la sortie au pilote.
 //! `CDS_SET_PRIMARY` n'est employé dans AUCUNE combinaison : on ne touche pas
 //! au moniteur primaire.
@@ -59,20 +82,28 @@
 //!    question plus fine, qui peut valoir `false` sous un verdict `P1 RECU`
 //!    sans que ce soit une contradiction.
 
+mod combinaisons;
+mod temoin;
+mod voisines;
+
 use std::collections::HashSet;
 
 use anyhow::{Context, Result};
 use windows::core::PCWSTR;
 use windows::Win32::Graphics::Gdi::{
-    ChangeDisplaySettingsExW, EnumDisplaySettingsExW, CDS_NORESET, CDS_RESET, CDS_TYPE,
-    CDS_UPDATEREGISTRY, DEVMODEW, DISP_CHANGE_SUCCESSFUL, DM_PELSHEIGHT, DM_PELSWIDTH,
-    ENUM_DISPLAY_SETTINGS_FLAGS, ENUM_DISPLAY_SETTINGS_MODE,
+    DEVMODEW, DISP_CHANGE_SUCCESSFUL, ENUM_DISPLAY_SETTINGS_FLAGS, ENUM_DISPLAY_SETTINGS_MODE,
+    EnumDisplaySettingsExW,
 };
+
+use combinaisons::{appliquer_combo, combo_pour_temoin, combos};
+use temoin::{nom_apres_tour, rejouer_temoin};
+use voisines::DuplicationVoisine;
 
 use super::capture_virtuelle::designer_sortie_neuve;
 use super::montee::{
     attendre_en_pinguant, noms_attaches, relever_topologie, DELAI_TOPOLOGIE, RESOLUTION,
 };
+use crate::capture::DesktopCapture;
 use crate::moniteurs_virtuels::pilote::{ouvrir_pilote, PiloteParIoctl};
 use crate::moniteurs_virtuels::Sorties;
 
@@ -105,74 +136,6 @@ fn modes_annonces(nom_sortie: &str) -> Vec<(u32, u32)> {
     modes
 }
 
-/// Une combinaison de drapeaux `CDS_*` à essayer, du moins au plus insistant.
-/// `CDS_SET_PRIMARY` est délibérément absent des deux variantes : on ne
-/// touche pas au moniteur primaire (brief, étape 7).
-enum Combo {
-    /// Un seul appel `ChangeDisplaySettingsExW`, drapeaux directs.
-    Simple(&'static str, CDS_TYPE),
-    /// L'idiome multi-écran standard de l'API Win32 : la sortie ciblée est
-    /// modifiée avec `CDS_NORESET` (le changement est différé et n'est pas
-    /// appliqué), puis un second appel — sans nom de périphérique, sans
-    /// `DEVMODE` — applique tout ce qui est en attente avec `CDS_RESET` seul.
-    NoresetPuisReset(&'static str),
-}
-
-impl Combo {
-    fn etiquette(&self) -> &'static str {
-        match self {
-            Combo::Simple(etiquette, _) | Combo::NoresetPuisReset(etiquette) => etiquette,
-        }
-    }
-}
-
-/// Construit le `DEVMODEW` ciblant `largeur`×`hauteur` et tente le
-/// changement avec les drapeaux donnés. Rend le code brut de
-/// `ChangeDisplaySettingsExW` — un `DISP_CHANGE_SUCCESSFUL` ici ne prouve
-/// rien par lui-même, voir le commentaire de tête du module.
-fn changer_mode(nom_sortie: &str, largeur: u32, hauteur: u32, drapeaux: CDS_TYPE) -> i32 {
-    let nom: Vec<u16> = nom_sortie.encode_utf16().chain(std::iter::once(0)).collect();
-    let dm = DEVMODEW {
-        dmSize: std::mem::size_of::<DEVMODEW>() as u16,
-        dmFields: DM_PELSWIDTH | DM_PELSHEIGHT,
-        dmPelsWidth: largeur,
-        dmPelsHeight: hauteur,
-        ..Default::default()
-    };
-    unsafe {
-        ChangeDisplaySettingsExW(PCWSTR(nom.as_ptr()), Some(&dm as *const DEVMODEW), None, drapeaux, None)
-            .0
-    }
-}
-
-/// Applique une combinaison et rend le code qui compte pour le verdict — le
-/// second appel pour `NoresetPuisReset`, puisque c'est lui qui applique
-/// effectivement le changement différé par le premier.
-fn appliquer_combo(nom_sortie: &str, largeur: u32, hauteur: u32, combo: &Combo) -> i32 {
-    match combo {
-        Combo::Simple(etiquette, drapeaux) => {
-            let code = changer_mode(nom_sortie, largeur, hauteur, *drapeaux);
-            tracing::info!(etiquette, code, "combinaison de drapeaux tentee (appel unique)");
-            code
-        }
-        Combo::NoresetPuisReset(etiquette) => {
-            let premier = changer_mode(nom_sortie, largeur, hauteur, CDS_UPDATEREGISTRY | CDS_NORESET);
-            // Second appel : NUL nom de périphérique, NUL DEVMODE — c'est
-            // ainsi que Win32 documente l'application groupée des
-            // changements différés par CDS_NORESET.
-            let second =
-                unsafe { ChangeDisplaySettingsExW(PCWSTR::null(), None, None, CDS_RESET, None).0 };
-            tracing::info!(
-                etiquette,
-                code_premier_appel = premier,
-                code_second_appel = second,
-                "combinaison de drapeaux tentee (deux appels : NORESET puis RESET seul)"
-            );
-            second
-        }
-    }
-}
-
 /// Choisit la cible à tenter : la résolution demandée si elle diffère déjà de
 /// la taille courante et figure parmi les modes annoncés, sinon une cible
 /// prise dynamiquement dans les modes annoncés, **en excluant systématiquement
@@ -191,6 +154,20 @@ fn choisir_cible(avant: (u32, u32), demande: (u32, u32), annonces: &[(u32, u32)]
     annonces.iter().copied().rev().find(|&mode| mode != avant)
 }
 
+/// Ce qu'un tour de combinaisons a établi.
+struct ResultatTour {
+    /// Cible numérique effectivement visée pendant le tour, ou `None` si
+    /// aucune cible mesurable n'a pu être choisie (`P1 NON MESURABLE`) — le
+    /// témoin n'a alors rien à rejouer, voir son appelant.
+    cible: Option<(u32, u32)>,
+    /// Le bras qui a fait bouger la sortie, s'il y en a un.
+    gagnante: Option<&'static str>,
+    /// Nombre de tentatives où au moins une voisine a perdu l'accès à sa
+    /// duplication pendant le tour — voir
+    /// `voisines::DuplicationVoisine::sonder` pour la granularité exacte.
+    pertes_voisines: u32,
+}
+
 /// Essaie les combinaisons connues jusqu'à ce que la relecture DXGI confirme
 /// la cible, ou jusqu'à épuisement. Rend toujours `Ok` : un refus — ou
 /// l'impossibilité de choisir une cible mesurable — est une mesure, pas une
@@ -200,12 +177,17 @@ fn choisir_cible(avant: (u32, u32), demande: (u32, u32), annonces: &[(u32, u32)]
 /// `avant` est la taille lue par DXGI juste après la création, PAS supposée
 /// être la résolution de création : c'est exactement la valeur dont l'absence
 /// a rendu le premier relevé vide de sens (voir le commentaire de tête).
+///
+/// `voisines` : sondées une fois PAR TENTATIVE (voir `DuplicationVoisine::sonder`)
+/// — c'est l'inconnue annexe n°2 de D8 relevée au même moment que
+/// l'éliminatoire, pas une mesure séparée.
 fn essayer_les_modes(
     pilote: &PiloteParIoctl,
     nom_sortie: &str,
     avant: (u32, u32),
     demande: (u32, u32),
-) -> Result<()> {
+    voisines: &mut [DuplicationVoisine],
+) -> Result<ResultatTour> {
     let annonces = modes_annonces(nom_sortie);
     tracing::info!(
         nombre = annonces.len(),
@@ -230,7 +212,7 @@ fn essayer_les_modes(
                 modes = ?annonces,
                 "verdict P1 : mesure impossible, aucune tentative effectuee"
             );
-            return Ok(());
+            return Ok(ResultatTour { cible: None, gagnante: None, pertes_voisines: 0 });
         }
     };
     if cible == demande {
@@ -252,26 +234,29 @@ fn essayer_les_modes(
         );
     }
 
-    let combos = [
-        Combo::Simple("CDS_UPDATEREGISTRY seul", CDS_UPDATEREGISTRY),
-        Combo::Simple("CDS_UPDATEREGISTRY | CDS_RESET", CDS_UPDATEREGISTRY | CDS_RESET),
-        Combo::NoresetPuisReset(
-            "CDS_UPDATEREGISTRY|CDS_NORESET puis CDS_RESET seul (idiome multi-ecran)",
-        ),
-    ];
-
     let mut dernier_code = 0i32;
     let mut derniere_taille = (0u32, 0u32);
     let mut gagnante: Option<&'static str> = None;
     let mut cible_exacte_atteinte = false;
-    for combo in &combos {
-        dernier_code = appliquer_combo(nom_sortie, cible.0, cible.1, combo);
+    let mut pertes_voisines = 0u32;
+    for combo in combos() {
+        dernier_code = appliquer_combo(nom_sortie, cible.0, cible.1, &combo);
         // Windows reconfigure sa topologie d'affichage de façon asynchrone —
         // exactement pourquoi `montee.rs` observe le même délai de grâce
         // après une création. Interroger DXGI trop tôt ferait conclure à un
         // refus là où il n'y a qu'un délai, et battre le chien de garde
         // pendant l'attente comme le fait le reste de ce module.
         attendre_en_pinguant(pilote, DELAI_TOPOLOGIE)?;
+        // Sondées ICI, après l'attente : si une perte survient à n'importe
+        // quel instant de la fenêtre qui vient de s'écouler, l'instance de
+        // duplication de la voisine la porte encore au moment de cette
+        // sollicitation (voir `DuplicationVoisine::sonder`) -- une sonde par
+        // tentative suffit à la détecter.
+        for voisine in voisines.iter_mut() {
+            if voisine.sonder() {
+                pertes_voisines += 1;
+            }
+        }
         let releve = relever_topologie(&format!("après tentative « {} »", combo.etiquette()))?;
         derniere_taille = releve
             .iter()
@@ -324,9 +309,10 @@ fn essayer_les_modes(
         // un verdict "P1 RECU" -- ce n'est pas une contradiction, c'est une
         // question plus fine que celle de P1.
         cible_exacte_atteinte,
+        pertes_acces_voisines_pendant_le_tour = pertes_voisines,
         "verdict P1 : une sortie virtuelle accepte-t-elle un autre mode que celui de sa creation"
     );
-    Ok(())
+    Ok(ResultatTour { cible: Some(cible), gagnante, pertes_voisines })
 }
 
 /// Sonde `MULTIFENETRE_MODE_SORTIE=<L>x<H>`.
@@ -350,7 +336,8 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
     // restauration manuelle après plantage se ferait à l'aveugle.
     let avant = relever_topologie("avant création")?;
     let noms_avant = noms_attaches(&avant);
-    let connues: HashSet<String> = avant.iter().map(|sortie| sortie.nom_sortie.clone()).collect();
+    let connues_avant_tout: HashSet<String> =
+        avant.iter().map(|sortie| sortie.nom_sortie.clone()).collect();
 
     let pilote = ouvrir_pilote()?;
     let (largeur_creation, hauteur_creation, hertz) = RESOLUTION;
@@ -360,11 +347,12 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
     // discipline que `montee.rs` et `capture_virtuelle.rs`.
     let issue = {
         let mut sorties = Sorties::nouvelles(&pilote);
+
+        // --- La sortie SOUS TEST ---
         let id = sorties.creer(largeur_creation, hauteur_creation, hertz)?;
         attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
-
-        let apres_creation = relever_topologie("après création")?;
-        let virtuelle = designer_sortie_neuve(&apres_creation, &connues, id)?;
+        let apres_creation = relever_topologie("après création (sortie testée)")?;
+        let virtuelle = designer_sortie_neuve(&apres_creation, &connues_avant_tout, id)?;
         let nom_sortie = virtuelle.nom_sortie.clone();
         // `taille_avant_tentative` : la taille RÉELLEMENT lue par DXGI juste
         // après la création — PAS supposée être
@@ -372,9 +360,7 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
         // dont l'absence a rendu le premier passage de cette sonde vide de
         // sens (voir le commentaire de tête du module) : la sortie peut
         // naître à une taille différente de celle demandée au pilote, par
-        // persistance au registre d'un `CDS_UPDATEREGISTRY` antérieur. Nommée
-        // à part de `avant` (la topologie complète relevée plus haut, encore
-        // en usage plus bas) pour ne rien masquer par ombrage.
+        // persistance au registre d'un `CDS_UPDATEREGISTRY` antérieur.
         let taille_avant_tentative = (virtuelle.rect.width, virtuelle.rect.height);
         tracing::info!(
             nom = %nom_sortie,
@@ -384,9 +370,85 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
             hauteur_avant_tentative = taille_avant_tentative.1,
             "sortie de sonde créée -- taille relue par DXGI avant toute tentative de changement"
         );
+        let mut connues_a_ce_point = connues_avant_tout.clone();
+        connues_a_ce_point.insert(nom_sortie.clone());
 
-        essayer_les_modes(&pilote, &nom_sortie, taille_avant_tentative, demande)
-        // La garde `sorties` rend la sortie au pilote ici, à la sortie de
+        // L'ÉCART BANC/PRODUIT que D8 a laissé béant, et l'objet même de
+        // cette sonde : la production retaille une sortie DONT LA
+        // DUPLICATION EST OUVERTE et détenue jusqu'à 3,1 s. P1 n'en ouvrait
+        // jamais.
+        let duplication = DesktopCapture::sur_sortie(&nom_sortie)
+            .context("ouverture de la duplication sur la sortie virtuelle neuve")?;
+        tracing::info!(sortie = %nom_sortie, "duplication ouverte et TENUE pendant les tentatives");
+
+        // --- Deux VOISINES, pour l'inconnue annexe n°2 (D8) : combien de
+        // pertes d'accès un changement de mode leur inflige-t-il ? Créées
+        // et désignées UNE À LA FOIS, comme la sortie testée ci-dessus : les
+        // désigner par paire exigerait de savoir laquelle des deux entrées
+        // neuves est laquelle, ce que la topologie DXGI ne dit pas (aucun
+        // ordre garanti entre deux sorties apparues au même relevé).
+        let id_v1 = sorties.creer(largeur_creation, hauteur_creation, hertz)?;
+        attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
+        let apres_v1 = relever_topologie("après création (voisine 1)")?;
+        let sortie_v1 = designer_sortie_neuve(&apres_v1, &connues_a_ce_point, id_v1)?.clone();
+        connues_a_ce_point.insert(sortie_v1.nom_sortie.clone());
+
+        let id_v2 = sorties.creer(largeur_creation, hauteur_creation, hertz)?;
+        attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
+        let apres_v2 = relever_topologie("après création (voisine 2)")?;
+        let sortie_v2 = designer_sortie_neuve(&apres_v2, &connues_a_ce_point, id_v2)?.clone();
+        connues_a_ce_point.insert(sortie_v2.nom_sortie.clone());
+
+        let mut voisines =
+            vec![DuplicationVoisine::ouvrir(&sortie_v1)?, DuplicationVoisine::ouvrir(&sortie_v2)?];
+
+        // --- L'ÉLIMINATOIRE ---
+        let resultat =
+            essayer_les_modes(&pilote, &nom_sortie, taille_avant_tentative, demande, &mut voisines)?;
+
+        // --- Les deux inconnues annexes (étape 5), relevées au même moment
+        // que l'éliminatoire -- avant de relâcher quoi que ce soit.
+        let autres_noms_a_nous: HashSet<String> =
+            [sortie_v1.nom_sortie.clone(), sortie_v2.nom_sortie.clone()].into_iter().collect();
+        let nom_apres = nom_apres_tour(&nom_sortie, &connues_avant_tout, &autres_noms_a_nous)?;
+        let pertes_acces_voisines = resultat.pertes_voisines;
+        tracing::info!(
+            pertes_acces_voisines,
+            nom_avant = %nom_sortie,
+            nom_apres = %nom_apres,
+            nom_conserve = nom_sortie == nom_apres,
+            "inconnues annexes relevées au même moment que l'éliminatoire"
+        );
+
+        // TÉMOIN. Sans lui, un refus s'imputerait à la duplication alors
+        // qu'il pourrait venir du mode choisi. Le témoin rejoue le MÊME
+        // geste sur une sortie neuve, duplication fermée.
+        drop(duplication);
+        tracing::info!("duplication relâchée — début du témoin sans duplication");
+        // Les voisines n'ont plus rien à sonder : le témoin porte sur la
+        // duplication de la sortie TESTÉE, pas sur celle des voisines.
+        drop(voisines);
+
+        match resultat.cible {
+            Some(cible) => {
+                let combo_temoin = combo_pour_temoin(resultat.gagnante);
+                let id_temoin = sorties.creer(largeur_creation, hauteur_creation, hertz)?;
+                attendre_en_pinguant(&pilote, DELAI_TOPOLOGIE)?;
+                let apres_temoin = relever_topologie("après création (témoin)")?;
+                let sortie_temoin =
+                    designer_sortie_neuve(&apres_temoin, &connues_a_ce_point, id_temoin)?;
+                let nom_temoin = sortie_temoin.nom_sortie.clone();
+                let avant_temoin = (sortie_temoin.rect.width, sortie_temoin.rect.height);
+                rejouer_temoin(&pilote, &nom_temoin, avant_temoin, cible, &combo_temoin)?;
+            }
+            None => tracing::info!(
+                "témoin non joué : le tour éliminatoire n'a désigné aucune cible mesurable \
+                 (P1 NON MESURABLE)"
+            ),
+        }
+
+        Ok(())
+        // La garde `sorties` rend les sorties au pilote ici, à la sortie de
         // portée.
     };
 
