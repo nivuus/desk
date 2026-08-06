@@ -225,11 +225,14 @@ fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(String, Ordre)
 /// que son retrait du vivier engendre.
 ///
 /// **Le point de passage unique**, et c'est tout son intérêt : le registre
-/// retient quatre choses d'une session (son canal, sa dernière part, le focus
-/// si elle le porte, son entrée au vivier), et il en existe trois chemins de
-/// retrait — la fermeture normale (`retirer`), la détection d'un canal rompu
-/// pendant la distribution des ORDRES (`distribuer`), et la même détection
-/// pendant celle des PARTS (`parts::distribuer_les_parts`).
+/// retient NEUF choses d'une session (son canal, sa dernière part, son PID,
+/// son rang d'arrivée, son dernier focus reçu, son dernier ordre audio
+/// envoyé, le focus courant si elle le porte, son inaptitude audio et son
+/// compteur de réarmements — ces deux dernières depuis D9), et rend
+/// séparément son entrée au vivier. Il en existe trois chemins de retrait —
+/// la fermeture normale (`retirer`), la détection d'un canal rompu pendant la
+/// distribution des ORDRES (`distribuer`), et la même détection pendant
+/// celle des PARTS (`parts::distribuer_les_parts`).
 ///
 /// ⚠️ **`focalisee` était le champ oublié par les deux derniers** (M1, revue
 /// finale de branche du sous-bloc D6). Seule la fermeture normale le vidait.
@@ -258,6 +261,17 @@ fn oublier(garde: &mut MutexGuard<'static, Etat>, session: &str) -> Vec<(String,
     garde.arrivees.remove(session);
     garde.derniers_focus.remove(session);
     garde.derniers_audio.remove(session);
+    // `inaptes` et `rearmements` (D9) : même motif que `derniers_audio`
+    // ci-dessus, et c'est le défaut M1 de la revue finale de branche du
+    // sous-bloc D6 rejoué une deuxième fois. Un rattachement réinscrit la
+    // MÊME session (voir `inscrire` et le chemin de reprise de D4) : sans
+    // cette purge, une session dont la capture audio venait de mourir
+    // hériterait de son inaptitude ou de son compteur de réarmements
+    // périmés à travers une reconnexion pourtant saine — jusqu'à
+    // `REPIT_REARMEMENT_AUDIO` (5 s) d'exclusion injustifiée dans le cas
+    // ordinaire, jusqu'à 24 h de silence garanti après un abandon définitif.
+    garde.inaptes.remove(session);
+    garde.rearmements.remove(session);
     if garde.focalisee.as_deref() == Some(session) {
         garde.focalisee = None;
     }

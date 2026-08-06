@@ -224,3 +224,40 @@ fn une_purge_sur_un_registre_vide_ne_panique_pas() {
     purger_les_inaptitudes(&mut inaptes, Instant::now());
     assert!(inaptes.is_empty());
 }
+
+/// Remède à la réserve de revue : `oublier` (donc `retirer`) doit purger
+/// `inaptes` et `rearmements`, sans quoi un rattachement — qui réinscrit la
+/// MÊME session (`inscrire`, chemin de reprise de D4) — hériterait d'une
+/// inaptitude ou d'un compteur de réarmements PÉRIMÉS. C'est le défaut M1 de
+/// la revue finale de branche du sous-bloc D6, rejoué sur ces deux tables.
+#[test]
+fn un_retrait_purge_l_inaptitude_et_le_compteur_de_rearmements() {
+    let _verrou = verrouiller_pour_le_test();
+    let canal = inscrire("t8-purge", 6001);
+
+    audio_mort("t8-purge");
+    assert!(
+        etat().inaptes.contains_key("t8-purge"),
+        "précondition : la session doit être marquée inapte"
+    );
+    assert_eq!(
+        etat().rearmements.get("t8-purge"),
+        Some(&1),
+        "précondition : un premier réarmement doit être compté"
+    );
+
+    retirer("t8-purge");
+
+    assert!(
+        !etat().inaptes.contains_key("t8-purge"),
+        "l'inaptitude d'une session retirée doit être oubliée, sinon un \
+         rattachement en hériterait à tort"
+    );
+    assert!(
+        !etat().rearmements.contains_key("t8-purge"),
+        "le compteur de réarmements d'une session retirée doit être oublié, \
+         sinon un rattachement hériterait d'un compteur périmé"
+    );
+
+    drop(canal);
+}
