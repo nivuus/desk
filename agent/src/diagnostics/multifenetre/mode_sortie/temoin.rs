@@ -22,8 +22,18 @@ use crate::moniteurs_virtuels::pilote::PiloteParIoctl;
 ///
 /// Sans lui, un refus au tour ÉLIMINATOIRE s'imputerait à la duplication
 /// tenue pendant ce tour, alors qu'il pourrait tout aussi bien venir du mode
-/// choisi lui-même : le témoin rejoue le MÊME geste, la seule variable qui
-/// change étant la duplication.
+/// choisi lui-même : le témoin rejoue le MÊME geste.
+///
+/// ⚠️ **Correction (revue de la tâche 2, point mineur)** : ce commentaire
+/// affirmait « la seule variable qui change étant la duplication » — c'est
+/// faux. La sortie témoin est une sortie NEUVE (pas la même que celle testée
+/// par l'éliminatoire), et `drop(voisines)` relâche aussi les deux
+/// duplications voisines avant que le témoin ne soit rejoué
+/// (`mode_sortie.rs::executer`). Au moins trois choses diffèrent entre
+/// l'éliminatoire et le témoin : la duplication SUT, les deux duplications
+/// voisines, et l'identité de la sortie elle-même. Le témoin isole « aucune
+/// duplication DXGI ouverte nulle part », pas « uniquement la duplication
+/// SUT ».
 ///
 /// `cible_eliminatoire` est la cible retenue pour l'ÉLIMINATOIRE, PAS
 /// forcément celle appliquée ici : voir `cible_du_temoin`, qui la substitue
