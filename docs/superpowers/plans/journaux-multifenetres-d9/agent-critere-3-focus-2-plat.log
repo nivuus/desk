@@ -1,0 +1,880 @@
+2026-08-06T21:08:37.547528Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-06T21:08:37.549453Z  INFO agent::superviseur::signalisation: superviseur enregistré sur la session de contrôle session="bureau"
+2026-08-06T21:08:37.551547Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:08:37.551585Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:08:37.551596Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=4 attachees=4
+2026-08-06T21:08:37.551601Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:08:37.551606Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=3840 hauteur=2160
+2026-08-06T21:08:37.551611Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:08:37.551614Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:08:37.560638Z  INFO agent::moniteurs_virtuels::purge: sortie virtuelle retirée par la purge numero=1 guid=9C4A1F6E-2B73-4D51-9E08-677541430001
+2026-08-06T21:08:37.568482Z  INFO agent::moniteurs_virtuels::purge: sortie virtuelle retirée par la purge numero=2 guid=9C4A1F6E-2B73-4D51-9E08-677541430002
+2026-08-06T21:08:37.578487Z  INFO agent::moniteurs_virtuels::purge: sortie virtuelle retirée par la purge numero=3 guid=9C4A1F6E-2B73-4D51-9E08-677541430003
+2026-08-06T21:08:40.579946Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:08:40.579981Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:08:40.579989Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-08-06T21:08:40.579995Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:08:40.580000Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=3 avant=4 apres=1
+2026-08-06T21:08:40.584351Z  INFO agent::superviseur::lanceur: capteur lancé pid=2792
+2026-08-06T21:08:40.592071Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-06T21:08:40.592101Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-08-06T21:08:44.709909Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:08:44.709938Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:08:44.709949Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=1 attachees=1
+2026-08-06T21:08:44.709957Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:08:44.710165Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=264 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430001 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:08:44.943493Z  INFO agent::superviseur::enfants: enfant lancé session=w-2 pid=22648 sortie=\\.\DISPLAY5
+2026-08-06T21:08:44.952081Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-06T21:08:44.952137Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY5 bitrate=8000000 fps=90
+2026-08-06T21:08:44.956070Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:44.956180Z  INFO agent::capteur::tube: attaché au capteur session=w-2 sortie=\\.\DISPLAY5 largeur=1280 hauteur=720
+2026-08-06T21:08:44.956330Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: fenêtre attachée au capteur session=w-2 sortie=\\.\DISPLAY5 largeur=1280 hauteur=720
+2026-08-06T21:08:44.956413Z  INFO fenetre{session=w-2}: agent::capteur::sommeil::parts: budget de debit de la session budget_bps=8000000
+2026-08-06T21:08:44.958740Z  INFO agent::signaling: agent enregistré auprès du signaling session="w-2"
+2026-08-06T21:08:44.958815Z  INFO agent::transport: socket UDP de l'agent addr=192.168.3.2:54869
+2026-08-06T21:08:44.959380Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-06T21:08:44.989922Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=29220 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-06T21:08:44.989969Z  INFO agent::demarrage::audio: audio activé format="process loopback pid=29220 — 48000 Hz, 2 canaux, 16 bits entiers" pid=29220
+2026-08-06T21:08:46.950923Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:08:46.950955Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:08:46.950963Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=2 attachees=2
+2026-08-06T21:08:46.950966Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:08:46.950972Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-06T21:08:46.951129Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=261 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430002 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:08:47.076142Z  INFO agent::superviseur::enfants: enfant lancé session=w-4 pid=19536 sortie=\\.\DISPLAY6
+2026-08-06T21:08:47.087385Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-06T21:08:47.087445Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY6 bitrate=8000000 fps=90
+2026-08-06T21:08:47.095612Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:08:47.095735Z  INFO agent::capteur::tube: attaché au capteur session=w-4 sortie=\\.\DISPLAY6 largeur=1280 hauteur=720
+2026-08-06T21:08:47.095924Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: fenêtre attachée au capteur session=w-4 sortie=\\.\DISPLAY6 largeur=1280 hauteur=720
+2026-08-06T21:08:47.099400Z  INFO agent::signaling: agent enregistré auprès du signaling session="w-4"
+2026-08-06T21:08:47.099525Z  INFO agent::transport: socket UDP de l'agent addr=192.168.3.2:52437
+2026-08-06T21:08:47.100109Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-06T21:08:47.141023Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=23900 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-06T21:08:47.141076Z  INFO agent::demarrage::audio: audio activé format="process loopback pid=23900 — 48000 Hz, 2 canaux, 16 bits entiers" pid=23900
+2026-08-06T21:08:47.703250Z  INFO agent::demarrage: offre reçue
+2026-08-06T21:08:47.709175Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=réception pendant l'allocation TURN
+2026-08-06T21:08:47.711183Z  INFO agent::demarrage: réponse envoyée
+2026-08-06T21:08:47.711449Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=2.7236559s
+2026-08-06T21:08:47.718259Z  INFO agent::transport::evenements: état ICE state=Connected écoulé=2.7304645s
+2026-08-06T21:08:47.727059Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video
+2026-08-06T21:08:47.727080Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio
+2026-08-06T21:08:47.727107Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=256000 endormie=true
+2026-08-06T21:08:47.727112Z  INFO agent::transport::piste_audio: ordre audio applique session=w-2 actif=true capture_morte=false
+2026-08-06T21:08:47.748097Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-06T21:08:47.748153Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-06T21:08:47.857152Z  INFO agent::demarrage: contrôle reçu session=w-2 Visibility { version: 3, visible: true, focused: true }
+2026-08-06T21:08:47.882963Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:47.964232Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:08:47.967732Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:08:47.977251Z  INFO fenetre{session=w-2}: agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-06T21:08:47.977635Z  INFO fenetre{session=w-2}: agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-06T21:08:47.978753Z  INFO fenetre{session=w-2}: agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-06T21:08:48.040446Z  INFO fenetre{session=w-2}: agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=327681
+2026-08-06T21:08:48.045948Z  INFO fenetre{session=w-2}: agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-06T21:08:48.046331Z  INFO fenetre{session=w-2}: agent::capteur::fenetre::transitions: fenêtre réveillée session=w-2 largeur=1280 hauteur=720 duree_ms=170
+2026-08-06T21:08:48.047982Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=7744000 endormie=false
+2026-08-06T21:08:48.319308Z  INFO agent::demarrage: contrôle reçu session=w-2 Visibility { version: 3, visible: true, focused: false }
+2026-08-06T21:08:48.322296Z  INFO agent::demarrage: contrôle reçu session=w-2 Visibility { version: 3, visible: true, focused: true }
+2026-08-06T21:08:48.466613Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:08:48.471165Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:08:49.467132Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:08:49.471730Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:08:49.590461Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:08:49.590491Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:08:49.590499Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=3 attachees=3
+2026-08-06T21:08:49.590503Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:08:49.590508Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-06T21:08:49.590512Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-08-06T21:08:49.590626Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=257 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430003 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:08:49.632654Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:49.662640Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:49.766693Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-2 de="1280x720+2400+0" vers="3840x2160+2400+0"
+2026-08-06T21:08:49.811569Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:49.813694Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:49.873368Z  INFO agent::superviseur::enfants: enfant lancé session=w-6 pid=20228 sortie=\\.\DISPLAY7
+2026-08-06T21:08:49.885633Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-06T21:08:49.885678Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY7 bitrate=8000000 fps=90
+2026-08-06T21:08:49.889750Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:08:49.889858Z  INFO agent::capteur::tube: attaché au capteur session=w-6 sortie=\\.\DISPLAY7 largeur=1280 hauteur=720
+2026-08-06T21:08:49.890087Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: fenêtre attachée au capteur session=w-6 sortie=\\.\DISPLAY7 largeur=1280 hauteur=720
+2026-08-06T21:08:49.892716Z  INFO agent::signaling: agent enregistré auprès du signaling session="w-6"
+2026-08-06T21:08:49.892851Z  INFO agent::transport: socket UDP de l'agent addr=192.168.3.2:54010
+2026-08-06T21:08:49.893848Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-06T21:08:49.907446Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=7488000 endormie=false
+2026-08-06T21:08:49.935264Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=4548 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-06T21:08:49.935305Z  INFO agent::demarrage::audio: audio activé format="process loopback pid=4548 — 48000 Hz, 2 canaux, 16 bits entiers" pid=4548
+2026-08-06T21:08:49.944711Z  INFO agent::demarrage: offre reçue
+2026-08-06T21:08:49.950571Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=réception pendant l'allocation TURN
+2026-08-06T21:08:49.952761Z  INFO agent::demarrage: réponse envoyée
+2026-08-06T21:08:49.953030Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=2.8148424s
+2026-08-06T21:08:49.961110Z  INFO agent::transport::evenements: état ICE state=Connected écoulé=2.8229208s
+2026-08-06T21:08:49.971699Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=2 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:49.973100Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:49.978011Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video
+2026-08-06T21:08:49.978033Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio
+2026-08-06T21:08:49.978075Z  INFO agent::transport::part: part de budget appliquee session=w-4 part_bps=256000 endormie=true
+2026-08-06T21:08:49.978083Z  INFO agent::transport::piste_audio: ordre audio applique session=w-4 actif=true capture_morte=false
+2026-08-06T21:08:49.991682Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-06T21:08:49.991759Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-06T21:08:49.994722Z  INFO agent::demarrage: contrôle reçu session=w-4 Visibility { version: 3, visible: true, focused: false }
+2026-08-06T21:08:50.015406Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:08:50.017289Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=5162666 endormie=false
+2026-08-06T21:08:50.038842Z  INFO fenetre{session=w-4}: agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-06T21:08:50.039397Z  INFO fenetre{session=w-4}: agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-06T21:08:50.039915Z  INFO fenetre{session=w-4}: agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-06T21:08:50.111394Z  INFO fenetre{session=w-4}: agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=524293
+2026-08-06T21:08:50.112961Z  INFO fenetre{session=w-4}: agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-06T21:08:50.113332Z  INFO fenetre{session=w-4}: agent::capteur::fenetre::transitions: fenêtre réveillée session=w-4 largeur=1280 hauteur=720 duree_ms=98
+2026-08-06T21:08:50.118381Z  INFO agent::transport::part: part de budget appliquee session=w-4 part_bps=2581333 endormie=false
+2026-08-06T21:08:50.707389Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:08:50.756980Z  INFO agent::demarrage: contrôle reçu session=w-2 Visibility { version: 3, visible: true, focused: false }
+2026-08-06T21:08:50.769037Z  INFO agent::transport::part: part de budget appliquee session=w-4 part_bps=3872000 endormie=false
+2026-08-06T21:08:50.777581Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=3872000 endormie=false
+2026-08-06T21:08:50.781662Z  INFO agent::demarrage: contrôle reçu session=w-2 Visibility { version: 3, visible: true, focused: true }
+2026-08-06T21:08:50.788777Z  INFO agent::transport::part: part de budget appliquee session=w-4 part_bps=2581333 endormie=false
+2026-08-06T21:08:50.797755Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=5162666 endormie=false
+2026-08-06T21:08:51.708568Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:08:52.488932Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:08:52.488962Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:08:52.488970Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=4 attachees=4
+2026-08-06T21:08:52.488974Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:08:52.488979Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=3840 hauteur=2160
+2026-08-06T21:08:52.488983Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:08:52.488987Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:08:52.489119Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=263 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:08:52.529750Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:08:52.529750Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:52.578805Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:08:52.596753Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:52.628538Z  INFO agent::demarrage: offre reçue
+2026-08-06T21:08:52.645336Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:52.677242Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:52.709019Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:08:52.712063Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:52.724970Z ERROR agent::superviseur::boucle: sortie créée mais introuvable dans la topologie DXGI — elle est rendue au pilote session=w-8 demande="1280x720" apparues=["\\\\.\\DISPLAY8 3840x2160"]
+2026-08-06T21:08:52.725096Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle détruite id=263
+2026-08-06T21:08:52.729636Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:52.762790Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:52.764777Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:08:52.810117Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:52.825353Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:08:52.849296Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-6 de="1280x720+4960+0" vers="1280x720+4960+-720"
+2026-08-06T21:08:52.953824Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:52.958101Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:53.190677Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:08:53.190709Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:08:53.190717Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=4 attachees=4
+2026-08-06T21:08:53.190721Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:08:53.190726Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=3840 hauteur=2160
+2026-08-06T21:08:53.190730Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:08:53.190736Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:08:53.190883Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=262 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:08:53.232297Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:08:53.233253Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:53.268737Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:53.310120Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:08:53.314339Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:53.342999Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:53.369262Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:53.393180Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:53.415641Z ERROR agent::superviseur::boucle: sortie créée mais introuvable dans la topologie DXGI — elle est rendue au pilote session=w-9 demande="1280x720" apparues=["\\\\.\\DISPLAY8 3840x2160"]
+2026-08-06T21:08:53.415786Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle détruite id=262
+2026-08-06T21:08:53.417922Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:53.457985Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:08:53.480571Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:53.504692Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:08:53.664731Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:53.668760Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:53.718208Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:08:54.231870Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:08:54.231953Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:08:54.231979Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=4 attachees=4
+2026-08-06T21:08:54.231987Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:08:54.232001Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=3840 hauteur=2160
+2026-08-06T21:08:54.232008Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:08:54.232015Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:08:54.232225Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=256 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:08:54.292257Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:54.292258Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:08:54.345957Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:54.379785Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:54.389897Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:08:54.411821Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:54.428380Z ERROR agent::superviseur::boucle: sortie créée mais introuvable dans la topologie DXGI — elle est rendue au pilote session=w-10 demande="1280x720" apparues=["\\\\.\\DISPLAY8 3840x2160"]
+2026-08-06T21:08:54.428507Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle détruite id=256
+2026-08-06T21:08:54.513288Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:08:54.534256Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=2 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:54.564847Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:08:54.570984Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:54.632799Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=aucune allocation TURN obtenue en 2s
+2026-08-06T21:08:54.637255Z  INFO agent::demarrage: réponse envoyée
+2026-08-06T21:08:54.637650Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=4.7048755s
+2026-08-06T21:08:54.670995Z  INFO agent::transport::evenements: état ICE state=Connected écoulé=4.7382234s
+2026-08-06T21:08:54.691244Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video
+2026-08-06T21:08:54.691264Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio
+2026-08-06T21:08:54.691305Z  INFO agent::transport::part: part de budget appliquee session=w-6 part_bps=256000 endormie=true
+2026-08-06T21:08:54.691311Z  INFO agent::transport::piste_audio: ordre audio applique session=w-6 actif=true capture_morte=false
+2026-08-06T21:08:54.702032Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-06T21:08:54.702103Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-06T21:08:54.703982Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:54.710937Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:08:54.715796Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:54.725004Z  INFO agent::demarrage: contrôle reçu session=w-6 Visibility { version: 3, visible: true, focused: false }
+2026-08-06T21:08:54.738042Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=4000000 endormie=false
+2026-08-06T21:08:54.739017Z  INFO agent::transport::part: part de budget appliquee session=w-4 part_bps=2000000 endormie=false
+2026-08-06T21:08:54.754353Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:08:54.796537Z  INFO fenetre{session=w-6}: agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-06T21:08:54.797237Z  INFO fenetre{session=w-6}: agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-06T21:08:54.798028Z  INFO fenetre{session=w-6}: agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-06T21:08:54.875922Z  INFO fenetre{session=w-6}: agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=655368
+2026-08-06T21:08:54.877330Z  INFO fenetre{session=w-6}: agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-06T21:08:54.877841Z  INFO fenetre{session=w-6}: agent::capteur::fenetre::transitions: fenêtre réveillée session=w-6 largeur=1280 hauteur=720 duree_ms=139
+2026-08-06T21:08:54.881583Z  INFO agent::transport::part: part de budget appliquee session=w-6 part_bps=2000000 endormie=false
+2026-08-06T21:08:54.927636Z  INFO agent::demarrage: contrôle reçu session=w-6 Resize { version: 3, width: 1280, height: 720 }
+2026-08-06T21:08:54.932520Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-6 de="861x483+4954+-719" vers="1280x720+4960+-720"
+2026-08-06T21:08:54.935020Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-4 de="861x483+3674+-719" vers="1280x720+3680+-720"
+2026-08-06T21:08:54.937534Z  INFO fenetre{session=w-6}: agent::windows_source::redimensionnement: redimensionnement ignoré : la source capture une sortie DXGI entière (voir le constat de mesure de capteur::plein_ecran, sous-bloc D9) width=1280 height=720 mode=SortieEntiere
+2026-08-06T21:08:54.958584Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=412 endormie=false cadence="41.2"
+2026-08-06T21:08:54.997619Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=416 cadence="41.6"
+2026-08-06T21:08:55.339201Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:08:55.339238Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:08:55.339247Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=4 attachees=4
+2026-08-06T21:08:55.339251Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:08:55.339258Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=3840 hauteur=2160
+2026-08-06T21:08:55.339262Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:08:55.339276Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:08:55.339423Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=260 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:08:55.379929Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:55.379929Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:08:55.379929Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:08:55.447011Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:08:55.459807Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:55.475115Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:08:55.485450Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:55.516551Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:55.554008Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:55.566935Z ERROR agent::superviseur::boucle: sortie créée mais introuvable dans la topologie DXGI — elle est rendue au pilote session=w-11 demande="1280x720" apparues=["\\\\.\\DISPLAY8 3840x2160"]
+2026-08-06T21:08:55.567073Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle détruite id=260
+2026-08-06T21:08:55.586508Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:55.620069Z  INFO agent::demarrage: contrôle reçu session=w-2 Visibility { version: 3, visible: true, focused: false }
+2026-08-06T21:08:55.622008Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:08:55.625013Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:08:55.631097Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:55.650032Z  INFO agent::demarrage: contrôle reçu session=w-2 Visibility { version: 3, visible: true, focused: true }
+2026-08-06T21:08:55.679916Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:08:55.688020Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:55.696568Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:08:55.698552Z  INFO agent::transport::part: part de budget appliquee session=w-4 part_bps=2666666 endormie=false
+2026-08-06T21:08:55.699210Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=2666666 endormie=false
+2026-08-06T21:08:55.708291Z  INFO agent::transport::part: part de budget appliquee session=w-4 part_bps=2000000 endormie=false
+2026-08-06T21:08:55.708411Z  INFO agent::transport::part: part de budget appliquee session=w-6 part_bps=2000000 endormie=false
+2026-08-06T21:08:55.709335Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=4000000 endormie=false
+2026-08-06T21:08:55.831823Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:55.835723Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:56.398828Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:08:56.718528Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:08:57.097688Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=430 endormie=false cadence="43.0"
+2026-08-06T21:08:57.138760Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=434 cadence="43.4"
+2026-08-06T21:08:57.585224Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:08:57.585259Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:08:57.585268Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=4 attachees=4
+2026-08-06T21:08:57.585273Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:08:57.585280Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=3840 hauteur=2160
+2026-08-06T21:08:57.585284Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:08:57.585287Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:08:57.585400Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=265 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:08:57.652177Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:57.660407Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:08:57.661430Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:08:57.713435Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:08:57.725577Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:08:57.759455Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:57.791806Z ERROR agent::superviseur::boucle: sortie créée mais introuvable dans la topologie DXGI — elle est rendue au pilote session=w-13 demande="1280x720" apparues=["\\\\.\\DISPLAY8 3840x2160"]
+2026-08-06T21:08:57.791943Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle détruite id=265
+2026-08-06T21:08:57.807406Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:57.809377Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:08:57.847609Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:08:57.847609Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:08:57.893708Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:57.915867Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:08:57.935425Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:08:57.960979Z  INFO fenetre{session=w-4}: agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-06T21:08:57.962194Z  INFO fenetre{session=w-4}: agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-06T21:08:57.962810Z  INFO fenetre{session=w-4}: agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-06T21:08:58.029162Z  INFO fenetre{session=w-4}: agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=524299
+2026-08-06T21:08:58.030628Z  INFO fenetre{session=w-4}: agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-06T21:08:58.030965Z  INFO fenetre{session=w-4}: agent::windows_source::encodage: taille d'encodage changée sans toucher à la fenêtre width=1024 height=576
+2026-08-06T21:08:58.031025Z  INFO agent::transport::adaptation: taille d'encodage changée session=w-4 largeur=1024 hauteur=576
+2026-08-06T21:08:58.106349Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:58.114757Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:58.429366Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:08:58.429402Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:08:58.429412Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=4 attachees=4
+2026-08-06T21:08:58.429416Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:08:58.429423Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=3840 hauteur=2160
+2026-08-06T21:08:58.429469Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:08:58.429476Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:08:58.429661Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=258 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:08:58.465693Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:08:58.466675Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:58.468711Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:08:58.498528Z  INFO agent::demarrage: contrôle reçu session=w-2 Visibility { version: 3, visible: true, focused: false }
+2026-08-06T21:08:58.523539Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:58.537037Z  INFO agent::demarrage: contrôle reçu session=w-2 Visibility { version: 3, visible: true, focused: true }
+2026-08-06T21:08:58.547707Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=2666666 endormie=false
+2026-08-06T21:08:58.558658Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:58.558716Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=4000000 endormie=false
+2026-08-06T21:08:58.594384Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:58.600469Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:08:58.621219Z  INFO agent::transport::part: part de budget appliquee session=w-4 part_bps=2000000 endormie=false
+2026-08-06T21:08:58.625294Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:08:58.649290Z  INFO agent::transport::part: part de budget appliquee session=w-6 part_bps=2000000 endormie=false
+2026-08-06T21:08:58.687773Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:58.689568Z ERROR agent::superviseur::boucle: sortie créée mais introuvable dans la topologie DXGI — elle est rendue au pilote session=w-14 demande="1280x720" apparues=["\\\\.\\DISPLAY8 3840x2160"]
+2026-08-06T21:08:58.689706Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle détruite id=258
+2026-08-06T21:08:58.712601Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:58.752577Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:08:58.753100Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:08:58.762598Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:58.812793Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:08:58.826443Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:58.836932Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:08:58.993613Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:59.000094Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:59.401213Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:08:59.609536Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:08:59.609610Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:08:59.609633Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=4 attachees=4
+2026-08-06T21:08:59.609643Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:08:59.609653Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=3840 hauteur=2160
+2026-08-06T21:08:59.609659Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:08:59.609669Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:08:59.609908Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=259 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:08:59.669025Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:59.674010Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:08:59.675019Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:08:59.720019Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:08:59.762981Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:08:59.802227Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:59.861456Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:08:59.861718Z ERROR agent::superviseur::boucle: sortie créée mais introuvable dans la topologie DXGI — elle est rendue au pilote session=w-15 demande="1280x720" apparues=["\\\\.\\DISPLAY8 3840x2160"]
+2026-08-06T21:08:59.861867Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle détruite id=259
+2026-08-06T21:08:59.864523Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:08:59.891590Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=249 endormie=false cadence="24.9"
+2026-08-06T21:08:59.902750Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:08:59.938673Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=249 cadence="24.9"
+2026-08-06T21:08:59.941713Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:08:59.945220Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:08:59.949271Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:00.018708Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:09:00.023348Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:00.025883Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:09:00.206846Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-6 de="1920x1080+4960+0" vers="1280x720+4960+-720"
+2026-08-06T21:09:00.252321Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:00.261152Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:00.368637Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-4 de="861x483+3674+-719" vers="1280x720+3680+-720"
+2026-08-06T21:09:00.713209Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:09:01.193807Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-6 de="853x480+4960+-720" vers="1280x720+4960+-720"
+2026-08-06T21:09:01.297982Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:09:01.298029Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:09:01.298043Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=4 attachees=4
+2026-08-06T21:09:01.298049Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:09:01.298060Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=3840 hauteur=2160
+2026-08-06T21:09:01.298066Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:09:01.298073Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:09:01.298255Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=263 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:09:01.308981Z  INFO agent::demarrage: contrôle reçu session=w-2 Visibility { version: 3, visible: true, focused: false }
+2026-08-06T21:09:01.322147Z  INFO agent::transport::part: part de budget appliquee session=w-4 part_bps=2666666 endormie=false
+2026-08-06T21:09:01.322147Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=2666666 endormie=false
+2026-08-06T21:09:01.328777Z  INFO agent::transport::part: part de budget appliquee session=w-6 part_bps=2666666 endormie=false
+2026-08-06T21:09:01.342833Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:09:01.342833Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:01.348840Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:09:01.369429Z  INFO agent::demarrage: contrôle reçu session=w-2 Visibility { version: 3, visible: true, focused: true }
+2026-08-06T21:09:01.435247Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:09:01.482454Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:01.511781Z  INFO agent::transport::part: part de budget appliquee session=w-4 part_bps=2000000 endormie=false
+2026-08-06T21:09:01.518391Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=4000000 endormie=false
+2026-08-06T21:09:01.519378Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:01.538486Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:09:01.558958Z  INFO agent::transport::part: part de budget appliquee session=w-6 part_bps=2000000 endormie=false
+2026-08-06T21:09:01.560390Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:01.600832Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:01.627439Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:01.656466Z ERROR agent::superviseur::boucle: sortie créée mais introuvable dans la topologie DXGI — elle est rendue au pilote session=w-18 demande="1280x720" apparues=["\\\\.\\DISPLAY8 3840x2160"]
+2026-08-06T21:09:01.656588Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle détruite id=263
+2026-08-06T21:09:01.713244Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:09:01.713244Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:09:01.751299Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=2 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:01.766190Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:09:01.766237Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:09:01.766250Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=5 attachees=4
+2026-08-06T21:09:01.766257Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:09:01.766263Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-06T21:09:01.766272Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:09:01.766277Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:09:01.766283Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY8 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 attachee=false x=0 y=0 largeur=0 hauteur=0
+2026-08-06T21:09:01.766431Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=262 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:09:01.844608Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:09:01.953557Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:09:01.978356Z ERROR agent::superviseur::boucle: sortie créée mais introuvable dans la topologie DXGI — elle est rendue au pilote session=w-17 demande="1280x720" apparues=["\\\\.\\DISPLAY8 3840x2160"]
+2026-08-06T21:09:01.978494Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle détruite id=262
+2026-08-06T21:09:01.979525Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:02.015127Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:09:02.022093Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:09:02.025143Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:02.086196Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:09:02.098553Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:02.118324Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:09:02.269100Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:02.278151Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:02.399588Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:09:02.655552Z  INFO fenetre{session=w-6}: agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-06T21:09:02.656306Z  INFO fenetre{session=w-6}: agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-06T21:09:02.657290Z  INFO fenetre{session=w-6}: agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-06T21:09:02.723116Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:09:02.735068Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:09:02.735130Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:09:02.735150Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=4 attachees=4
+2026-08-06T21:09:02.735162Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:09:02.735172Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=3840 hauteur=2160
+2026-08-06T21:09:02.735177Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:09:02.735184Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:09:02.735502Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=256 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:09:02.747839Z  INFO fenetre{session=w-6}: agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=655374
+2026-08-06T21:09:02.749930Z  INFO fenetre{session=w-6}: agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-06T21:09:02.750531Z  INFO fenetre{session=w-6}: agent::windows_source::encodage: taille d'encodage changée sans toucher à la fenêtre width=1024 height=576
+2026-08-06T21:09:02.750597Z  INFO agent::transport::adaptation: taille d'encodage changée session=w-6 largeur=1024 hauteur=576
+2026-08-06T21:09:02.834131Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:09:02.835117Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:02.963780Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:03.013138Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:03.030977Z  WARN fenetre{session=w-6}: agent::encode: ProcessInput de l'encodeur lent elapsed=266.0919ms
+2026-08-06T21:09:03.032201Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:09:03.055395Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:03.055756Z ERROR agent::superviseur::boucle: sortie créée mais introuvable dans la topologie DXGI — elle est rendue au pilote session=w-19 demande="1280x720" apparues=["\\\\.\\DISPLAY8 3840x2160"]
+2026-08-06T21:09:03.055909Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle détruite id=256
+2026-08-06T21:09:03.068656Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:09:03.127134Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:03.130130Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:09:03.201717Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:09:03.225696Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:03.251600Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:09:03.476204Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:03.493305Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:03.712076Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:09:03.792060Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:09:03.792100Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:09:03.792111Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=4 attachees=4
+2026-08-06T21:09:03.792116Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:09:03.792123Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=3840 hauteur=2160
+2026-08-06T21:09:03.792127Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:09:03.792135Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:09:03.792308Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=260 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:09:03.864525Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:09:03.867552Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:09:03.868770Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:03.991347Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:09:04.009536Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:04.043227Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:09:04.047029Z ERROR agent::superviseur::boucle: sortie créée mais introuvable dans la topologie DXGI — elle est rendue au pilote session=w-22 demande="1280x720" apparues=["\\\\.\\DISPLAY8 3840x2160"]
+2026-08-06T21:09:04.047148Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle détruite id=260
+2026-08-06T21:09:04.100601Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:04.146961Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:09:04.153986Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:09:04.187170Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:04.194310Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:09:04.194340Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:09:04.194351Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=5 attachees=3
+2026-08-06T21:09:04.194357Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:09:04.194363Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-06T21:09:04.194366Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-08-06T21:09:04.194370Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=false x=0 y=0 largeur=0 hauteur=0
+2026-08-06T21:09:04.194373Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY8 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 attachee=false x=0 y=0 largeur=0 hauteur=0
+2026-08-06T21:09:04.194519Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=265 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:09:04.289247Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:09:04.354179Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:09:04.354293Z ERROR agent::superviseur::boucle: sortie créée mais introuvable dans la topologie DXGI — elle est rendue au pilote session=w-21 demande="1280x720" apparues=["\\\\.\\DISPLAY7 1280x720", "\\\\.\\DISPLAY8 3840x2160"]
+2026-08-06T21:09:04.354416Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle détruite id=265
+2026-08-06T21:09:04.403729Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:04.405720Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:09:04.410805Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:09:04.482060Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:09:04.496124Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:04.507921Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-6 de="1280x720+4960+0" vers="1280x720+4960+-720"
+2026-08-06T21:09:04.515960Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:09:04.666676Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:04.670941Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:04.852545Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-4 de="853x480+3680+-720" vers="1280x720+3680+-720"
+2026-08-06T21:09:04.963142Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=347 endormie=false cadence="34.7"
+2026-08-06T21:09:04.999257Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=347 cadence="34.7"
+2026-08-06T21:09:05.401364Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:09:05.415647Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:09:05.415680Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:09:05.415689Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=4 attachees=4
+2026-08-06T21:09:05.415693Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:09:05.415702Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=3840 hauteur=2160
+2026-08-06T21:09:05.415706Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:09:05.415748Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:09:05.415880Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=258 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:09:05.474805Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:09:05.474811Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:05.477750Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:09:05.542298Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:05.613266Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:05.656899Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:09:05.660169Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:05.690824Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:09:05.694174Z ERROR agent::superviseur::boucle: sortie créée mais introuvable dans la topologie DXGI — elle est rendue au pilote session=w-24 demande="1280x720" apparues=["\\\\.\\DISPLAY8 3840x2160"]
+2026-08-06T21:09:05.694306Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle détruite id=258
+2026-08-06T21:09:05.722101Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:09:05.763232Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:05.797132Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:09:05.821379Z  WARN fenetre{session=w-4}: agent::encode: ProcessInput de l'encodeur lent elapsed=64.0935ms
+2026-08-06T21:09:05.832137Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:09:05.837324Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:09:05.837359Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:09:05.837371Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=5 attachees=4
+2026-08-06T21:09:05.837377Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:09:05.837383Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-06T21:09:05.837387Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-08-06T21:09:05.837390Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=0 largeur=1280 hauteur=720
+2026-08-06T21:09:05.837393Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY8 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 attachee=false x=0 y=0 largeur=0 hauteur=0
+2026-08-06T21:09:05.837541Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=259 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:09:05.947754Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:09:05.994102Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:06.029141Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:09:06.070358Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:06.083160Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:06.105429Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:06.117790Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:06.121900Z ERROR agent::superviseur::boucle: sortie créée mais introuvable dans la topologie DXGI — elle est rendue au pilote session=w-23 demande="1280x720" apparues=["\\\\.\\DISPLAY8 3840x2160"]
+2026-08-06T21:09:06.122029Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle détruite id=259
+2026-08-06T21:09:06.141809Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:06.149900Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:06.183220Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:06.185256Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:09:06.187201Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:09:06.227330Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-2 de="3840x2160+2400+0" vers="1280x720+2400+0"
+2026-08-06T21:09:06.253919Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:06.328024Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:09:06.341435Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:09:06.428754Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-6 de="1612x725+-7+1" vers="1280x720+4960+-720"
+2026-08-06T21:09:06.455596Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-4 de="1920x1080+3680+0" vers="1280x720+3680+0"
+2026-08-06T21:09:06.517922Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:06.530850Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:06.717580Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:09:06.838958Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:09:06.838998Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:09:06.839008Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=4 attachees=4
+2026-08-06T21:09:06.839012Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:09:06.839019Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=3840 hauteur=2160
+2026-08-06T21:09:06.839022Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:09:06.839029Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:09:06.839242Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=263 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:09:06.880272Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:06.889023Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:09:06.889384Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:09:06.980800Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:09:07.034114Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:07.086131Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:07.097818Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:09:07.102114Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=321 endormie=false cadence="32.1"
+2026-08-06T21:09:07.130836Z ERROR agent::superviseur::boucle: sortie créée mais introuvable dans la topologie DXGI — elle est rendue au pilote session=w-25 demande="1280x720" apparues=["\\\\.\\DISPLAY8 3840x2160"]
+2026-08-06T21:09:07.130961Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle détruite id=263
+2026-08-06T21:09:07.132518Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:07.141355Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=317 cadence="31.7"
+2026-08-06T21:09:07.170017Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:07.192423Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:07.229291Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:07.231250Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:09:07.232228Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:09:07.251367Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-2 de="1298x728+2390+3" vers="1280x720+2400+0"
+2026-08-06T21:09:07.295607Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:09:07.317462Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:07.327564Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:09:07.435760Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-6 de="1280x720+4960+-720" vers="1280x720+4960+0"
+2026-08-06T21:09:07.496159Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:07.499446Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:07.538372Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-4 de="853x480+3680+-720" vers="1280x720+3680+0"
+2026-08-06T21:09:07.887066Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-06T21:09:07.887099Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-06T21:09:07.887109Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=4 attachees=4
+2026-08-06T21:09:07.887113Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-06T21:09:07.887124Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=3840 hauteur=2160
+2026-08-06T21:09:07.887128Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:09:07.887136Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=-720 largeur=1280 hauteur=720
+2026-08-06T21:09:07.887270Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=262 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430004 largeur=1280 hauteur=720 hertz=60
+2026-08-06T21:09:07.917242Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:09:07.917303Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:09:07.921185Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:08.032835Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:09:08.051590Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:08.073882Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:09:08.123084Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:08.163251Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:08.176932Z ERROR agent::superviseur::boucle: sortie créée mais introuvable dans la topologie DXGI — elle est rendue au pilote session=w-26 demande="1280x720" apparues=["\\\\.\\DISPLAY8 3840x2160"]
+2026-08-06T21:09:08.177066Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle détruite id=262
+2026-08-06T21:09:08.202086Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:08.238215Z  INFO fenetre{session=w-4}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY6") hresult="0x887a0026"
+2026-08-06T21:09:08.263588Z  WARN fenetre{session=w-6}: agent::encode: ProcessInput de l'encodeur lent elapsed=61.386ms
+2026-08-06T21:09:08.273932Z  INFO fenetre{session=w-6}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY7") hresult="0x887a0026"
+2026-08-06T21:09:08.279491Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:08.296770Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-2 de="1298x728+2390+3" vers="1280x720+2400+0"
+2026-08-06T21:09:08.311062Z  INFO fenetre{session=w-4}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-06T21:09:08.347614Z  INFO fenetre{session=w-6}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 nom_sortie=\\.\DISPLAY7 attachee=true
+2026-08-06T21:09:08.401526Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:09:08.444033Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-6 de="1280x720+2410+0" vers="1280x720+4960+-720"
+2026-08-06T21:09:08.504174Z  INFO fenetre{session=w-2}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-06T21:09:08.514250Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-06T21:09:08.594674Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-4 de="1280x720+2430+0" vers="1280x720+3680+-720"
+2026-08-06T21:09:09.246643Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-2 de="1298x728+2390+3" vers="3840x2160+2400+0"
+2026-08-06T21:09:09.250100Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-6 de="853x480+4960+-720" vers="1280x720+4960+-720"
+2026-08-06T21:09:09.252833Z  INFO agent::superviseur::boucle::placement_periodique: fenêtre sortie de sa sortie, replacement session=w-4 de="853x480+3680+-720" vers="1280x720+3680+-720"
+2026-08-06T21:09:09.891987Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=291 endormie=false cadence="29.1"
+2026-08-06T21:09:09.941007Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=296 cadence="29.6"
+2026-08-06T21:09:11.402945Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:09:11.409932Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:09:11.651062Z  WARN agent::transport::evenements: aucune estimation de bande passante reçue : l'adaptation reste indisponible et le débit demeure au plafond configuré
+2026-08-06T21:09:14.966678Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=551 endormie=false cadence="55.1"
+2026-08-06T21:09:14.992508Z  INFO agent::windows_audio: compteurs audio pid=29220 actif=true rejetes=3 complements=1 echantillons_jetes=0
+2026-08-06T21:09:15.008073Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=550 cadence="55.0"
+2026-08-06T21:09:17.109206Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=601 endormie=false cadence="60.1"
+2026-08-06T21:09:17.143210Z  INFO agent::windows_audio: compteurs audio pid=23900 actif=true rejetes=0 complements=1 echantillons_jetes=0
+2026-08-06T21:09:17.151251Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=604 cadence="60.3"
+2026-08-06T21:09:19.900994Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=751 endormie=false cadence="75.0"
+2026-08-06T21:09:19.941317Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=750 cadence="75.0"
+2026-08-06T21:09:19.941309Z  INFO agent::windows_audio: compteurs audio pid=4548 actif=true rejetes=1 complements=1 echantillons_jetes=0
+2026-08-06T21:09:24.976349Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=806 endormie=false cadence="80.5"
+2026-08-06T21:09:25.008431Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=805 cadence="80.5"
+2026-08-06T21:09:27.110263Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=828 endormie=false cadence="82.8"
+2026-08-06T21:09:27.151424Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=828 cadence="82.8"
+2026-08-06T21:09:29.903087Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=815 endormie=false cadence="81.5"
+2026-08-06T21:09:29.941868Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=815 cadence="81.5"
+2026-08-06T21:09:31.972560Z  WARN agent::transport::evenements: aucune estimation de bande passante reçue : l'adaptation reste indisponible et le débit demeure au plafond configuré
+2026-08-06T21:09:34.984060Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=828 endormie=false cadence="82.7"
+2026-08-06T21:09:35.018330Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=830 cadence="82.9"
+2026-08-06T21:09:37.117525Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=834 endormie=false cadence="83.3"
+2026-08-06T21:09:37.161664Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=836 cadence="83.5"
+2026-08-06T21:09:39.903182Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=827 endormie=false cadence="82.7"
+2026-08-06T21:09:39.951233Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=828 cadence="82.7"
+2026-08-06T21:09:44.992042Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=852 endormie=false cadence="85.1"
+2026-08-06T21:09:44.997038Z  INFO agent::windows_audio: compteurs audio pid=29220 actif=true rejetes=3 complements=1 echantillons_jetes=0
+2026-08-06T21:09:45.028054Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=852 cadence="85.1"
+2026-08-06T21:09:47.120334Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=840 endormie=false cadence="84.0"
+2026-08-06T21:09:47.147548Z  INFO agent::windows_audio: compteurs audio pid=23900 actif=true rejetes=0 complements=1 echantillons_jetes=0
+2026-08-06T21:09:47.171570Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=838 cadence="83.7"
+2026-08-06T21:09:49.904022Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=805 endormie=false cadence="80.5"
+2026-08-06T21:09:49.945003Z  INFO agent::windows_audio: compteurs audio pid=4548 actif=true rejetes=1 complements=1 echantillons_jetes=0
+2026-08-06T21:09:49.961099Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=805 cadence="80.4"
+2026-08-06T21:09:54.999201Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=833 endormie=false cadence="83.2"
+2026-08-06T21:09:55.038274Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=833 cadence="83.2"
+2026-08-06T21:09:57.129478Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=832 endormie=false cadence="83.1"
+2026-08-06T21:09:57.172232Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=833 cadence="83.3"
+2026-08-06T21:09:59.908951Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=807 endormie=false cadence="80.7"
+2026-08-06T21:09:59.971072Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=806 cadence="80.5"
+2026-08-06T21:10:04.687280Z  INFO fenetre{session=w-6}: agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-06T21:10:04.690016Z  INFO fenetre{session=w-6}: agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-06T21:10:04.690629Z  INFO fenetre{session=w-6}: agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-06T21:10:04.734594Z  INFO fenetre{session=w-6}: agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=655377
+2026-08-06T21:10:04.735910Z  INFO fenetre{session=w-6}: agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-06T21:10:04.736228Z  INFO fenetre{session=w-6}: agent::windows_source::encodage: taille d'encodage changée sans toucher à la fenêtre width=852 height=480
+2026-08-06T21:10:04.736278Z  INFO agent::transport::adaptation: taille d'encodage changée session=w-6 largeur=852 hauteur=480
+2026-08-06T21:10:05.006172Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=842 endormie=false cadence="84.1"
+2026-08-06T21:10:05.048822Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=842 cadence="84.1"
+2026-08-06T21:10:07.136017Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=850 endormie=false cadence="84.9"
+2026-08-06T21:10:07.181167Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=851 cadence="85.0"
+2026-08-06T21:10:08.343341Z  INFO agent::demarrage: contrôle reçu session=w-2 Visibility { version: 3, visible: true, focused: false }
+2026-08-06T21:10:08.357325Z  INFO agent::transport::part: part de budget appliquee session=w-6 part_bps=2666666 endormie=false
+2026-08-06T21:10:08.358395Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=2666666 endormie=false
+2026-08-06T21:10:08.361376Z  INFO agent::transport::part: part de budget appliquee session=w-4 part_bps=2666666 endormie=false
+2026-08-06T21:10:08.398512Z  INFO agent::demarrage: contrôle reçu session=w-2 Visibility { version: 3, visible: true, focused: true }
+2026-08-06T21:10:08.417924Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=4000000 endormie=false
+2026-08-06T21:10:08.421832Z  INFO agent::transport::part: part de budget appliquee session=w-4 part_bps=2000000 endormie=false
+2026-08-06T21:10:08.426964Z  INFO agent::transport::part: part de budget appliquee session=w-6 part_bps=2000000 endormie=false
+2026-08-06T21:10:09.910007Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=809 endormie=false cadence="80.9"
+2026-08-06T21:10:09.976612Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=812 cadence="81.2"
+2026-08-06T21:10:15.000542Z  INFO agent::windows_audio: compteurs audio pid=29220 actif=true rejetes=3 complements=1 echantillons_jetes=0
+2026-08-06T21:10:15.013354Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=847 endormie=false cadence="84.6"
+2026-08-06T21:10:15.057935Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=848 cadence="84.7"
+2026-08-06T21:10:16.758072Z  WARN agent::transport::evenements: aucune estimation de bande passante reçue : l'adaptation reste indisponible et le débit demeure au plafond configuré
+2026-08-06T21:10:17.140043Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=833 endormie=false cadence="83.3"
+2026-08-06T21:10:17.151016Z  INFO agent::windows_audio: compteurs audio pid=23900 actif=true rejetes=0 complements=1 echantillons_jetes=0
+2026-08-06T21:10:17.181909Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=832 cadence="83.2"
+2026-08-06T21:10:19.916294Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=801 endormie=false cadence="80.0"
+2026-08-06T21:10:19.949318Z  INFO agent::windows_audio: compteurs audio pid=4548 actif=true rejetes=1 complements=1 echantillons_jetes=0
+2026-08-06T21:10:19.977162Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=800 cadence="80.0"
+2026-08-06T21:10:25.020186Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=837 endormie=false cadence="83.6"
+2026-08-06T21:10:25.058305Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=836 cadence="83.6"
+2026-08-06T21:10:25.690421Z  INFO fenetre{session=w-6}: agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-06T21:10:25.691873Z  INFO fenetre{session=w-6}: agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-06T21:10:25.692009Z  INFO fenetre{session=w-6}: agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-06T21:10:25.738883Z  INFO fenetre{session=w-6}: agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=655380
+2026-08-06T21:10:25.739137Z  INFO fenetre{session=w-6}: agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-06T21:10:25.739413Z  INFO fenetre{session=w-6}: agent::windows_source::encodage: taille d'encodage changée sans toucher à la fenêtre width=1024 height=576
+2026-08-06T21:10:25.739518Z  INFO agent::transport::adaptation: taille d'encodage changée session=w-6 largeur=1024 hauteur=576
+2026-08-06T21:10:27.140383Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=832 endormie=false cadence="83.2"
+2026-08-06T21:10:27.192093Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=831 cadence="83.0"
+2026-08-06T21:10:29.922976Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=802 endormie=false cadence="80.1"
+2026-08-06T21:10:29.980662Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=802 cadence="80.2"
+2026-08-06T21:10:35.021263Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=814 endormie=false cadence="81.4"
+2026-08-06T21:10:35.058756Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=814 cadence="81.4"
+2026-08-06T21:10:37.145213Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=851 endormie=false cadence="85.1"
+2026-08-06T21:10:37.201307Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=854 cadence="85.3"
+2026-08-06T21:10:39.928404Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=793 endormie=false cadence="79.3"
+2026-08-06T21:10:39.990501Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=792 cadence="79.1"
+2026-08-06T21:10:44.518463Z  INFO agent::demarrage: contrôle reçu session=w-2 Visibility { version: 3, visible: true, focused: false }
+2026-08-06T21:10:44.528781Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=2666666 endormie=false
+2026-08-06T21:10:44.530451Z  INFO agent::transport::part: part de budget appliquee session=w-6 part_bps=2666666 endormie=false
+2026-08-06T21:10:44.541489Z  INFO agent::transport::part: part de budget appliquee session=w-4 part_bps=2666666 endormie=false
+2026-08-06T21:10:44.550740Z  INFO agent::demarrage: contrôle reçu session=w-4 Visibility { version: 3, visible: true, focused: true }
+2026-08-06T21:10:44.578455Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=2000000 endormie=false
+2026-08-06T21:10:44.580025Z  INFO agent::transport::part: part de budget appliquee session=w-6 part_bps=2000000 endormie=false
+2026-08-06T21:10:44.581720Z  INFO agent::transport::part: part de budget appliquee session=w-4 part_bps=4000000 endormie=false
+2026-08-06T21:10:45.002235Z  INFO agent::windows_audio: compteurs audio pid=29220 actif=true rejetes=3 complements=1 echantillons_jetes=0
+2026-08-06T21:10:45.022339Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=840 endormie=false cadence="84.0"
+2026-08-06T21:10:45.067853Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=841 cadence="84.0"
+2026-08-06T21:10:46.776492Z  INFO fenetre{session=w-2}: agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-06T21:10:46.777810Z  INFO fenetre{session=w-2}: agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-06T21:10:46.777968Z  INFO fenetre{session=w-2}: agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-06T21:10:46.833111Z  INFO fenetre{session=w-2}: agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=327703
+2026-08-06T21:10:46.833344Z  INFO fenetre{session=w-2}: agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-06T21:10:46.836567Z  INFO fenetre{session=w-2}: agent::windows_source::encodage: taille d'encodage changée sans toucher à la fenêtre width=1024 height=576
+2026-08-06T21:10:46.836721Z  INFO agent::transport::adaptation: taille d'encodage changée session=w-2 largeur=1024 hauteur=576
+2026-08-06T21:10:47.145432Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=848 endormie=false cadence="84.8"
+2026-08-06T21:10:47.154398Z  INFO agent::windows_audio: compteurs audio pid=23900 actif=true rejetes=0 complements=1 echantillons_jetes=0
+2026-08-06T21:10:47.201367Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=848 cadence="84.8"
+2026-08-06T21:10:49.932448Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=809 endormie=false cadence="80.9"
+2026-08-06T21:10:49.952311Z  INFO agent::windows_audio: compteurs audio pid=4548 actif=true rejetes=1 complements=1 echantillons_jetes=0
+2026-08-06T21:10:50.000462Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=811 cadence="81.0"
+2026-08-06T21:10:55.024064Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=826 endormie=false cadence="82.6"
+2026-08-06T21:10:55.077129Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=826 cadence="82.5"
+2026-08-06T21:10:57.151229Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=854 endormie=false cadence="85.4"
+2026-08-06T21:10:57.211321Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=853 cadence="85.2"
+2026-08-06T21:10:59.942678Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=807 endormie=false cadence="80.6"
+2026-08-06T21:11:00.010098Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=807 cadence="80.6"
+2026-08-06T21:11:05.025545Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=833 endormie=false cadence="83.3"
+2026-08-06T21:11:05.025603Z  INFO fenetre{session=w-4}: agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-06T21:11:05.026077Z  INFO fenetre{session=w-4}: agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-06T21:11:05.026177Z  INFO fenetre{session=w-4}: agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-06T21:11:05.069333Z  INFO fenetre{session=w-4}: agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=524314
+2026-08-06T21:11:05.069550Z  INFO fenetre{session=w-4}: agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-06T21:11:05.069783Z  INFO fenetre{session=w-4}: agent::windows_source::encodage: taille d'encodage changée sans toucher à la fenêtre width=1280 height=720
+2026-08-06T21:11:05.069833Z  INFO agent::transport::adaptation: taille d'encodage changée session=w-4 largeur=1280 hauteur=720
+2026-08-06T21:11:05.077647Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=832 cadence="83.2"
+2026-08-06T21:11:07.151635Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=844 endormie=false cadence="84.4"
+2026-08-06T21:11:07.220656Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=846 cadence="84.5"
+2026-08-06T21:11:09.950836Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=819 endormie=false cadence="81.8"
+2026-08-06T21:11:10.010129Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=817 cadence="81.7"
+2026-08-06T21:11:15.003792Z  INFO agent::windows_audio: compteurs audio pid=29220 actif=true rejetes=3 complements=1 echantillons_jetes=0
+2026-08-06T21:11:15.026873Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=818 endormie=false cadence="81.8"
+2026-08-06T21:11:15.077667Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=819 cadence="81.9"
+2026-08-06T21:11:17.156960Z  INFO agent::windows_audio: compteurs audio pid=23900 actif=true rejetes=0 complements=1 echantillons_jetes=0
+2026-08-06T21:11:17.160963Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=855 endormie=false cadence="85.4"
+2026-08-06T21:11:17.230450Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=853 cadence="85.2"
+2026-08-06T21:11:19.953670Z  INFO agent::windows_audio: compteurs audio pid=4548 actif=true rejetes=1 complements=1 echantillons_jetes=0
+2026-08-06T21:11:19.960660Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=801 endormie=false cadence="80.0"
+2026-08-06T21:11:20.020015Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=799 cadence="79.8"
+2026-08-06T21:11:25.033980Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=825 endormie=false cadence="82.4"
+2026-08-06T21:11:25.087647Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=825 cadence="82.4"
+2026-08-06T21:11:27.169789Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=825 endormie=false cadence="82.4"
+2026-08-06T21:11:27.239936Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=827 cadence="82.6"
+2026-08-06T21:11:29.961828Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=798 endormie=false cadence="79.8"
+2026-08-06T21:11:30.030165Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=802 cadence="80.1"
+2026-08-06T21:11:35.040786Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=835 endormie=false cadence="83.4"
+2026-08-06T21:11:35.096949Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=836 cadence="83.5"
+2026-08-06T21:11:37.171715Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=847 endormie=false cadence="84.7"
+2026-08-06T21:11:37.240251Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=846 cadence="84.6"
+2026-08-06T21:11:39.962496Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=811 endormie=false cadence="81.1"
+2026-08-06T21:11:40.040067Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=812 cadence="81.1"
+2026-08-06T21:11:44.760648Z  INFO agent::demarrage: contrôle reçu session=w-4 Visibility { version: 3, visible: true, focused: false }
+2026-08-06T21:11:44.777659Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=2666666 endormie=false
+2026-08-06T21:11:44.779650Z  INFO agent::transport::part: part de budget appliquee session=w-6 part_bps=2666666 endormie=false
+2026-08-06T21:11:44.780637Z  INFO agent::transport::part: part de budget appliquee session=w-4 part_bps=2666666 endormie=false
+2026-08-06T21:11:44.784621Z  INFO agent::demarrage: contrôle reçu session=w-6 Visibility { version: 3, visible: true, focused: true }
+2026-08-06T21:11:44.799789Z  INFO agent::transport::part: part de budget appliquee session=w-6 part_bps=4000000 endormie=false
+2026-08-06T21:11:44.809041Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=2000000 endormie=false
+2026-08-06T21:11:44.810945Z  INFO agent::transport::part: part de budget appliquee session=w-4 part_bps=2000000 endormie=false
+2026-08-06T21:11:45.004728Z  INFO agent::windows_audio: compteurs audio pid=29220 actif=true rejetes=3 complements=1 echantillons_jetes=0
+2026-08-06T21:11:45.049430Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=833 endormie=false cadence="83.2"
+2026-08-06T21:11:45.097606Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=830 cadence="83.0"
+2026-08-06T21:11:47.160221Z  INFO agent::windows_audio: compteurs audio pid=23900 actif=true rejetes=0 complements=1 echantillons_jetes=0
+2026-08-06T21:11:47.181538Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=834 endormie=false cadence="83.3"
+2026-08-06T21:11:47.240756Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=833 cadence="83.3"
+2026-08-06T21:11:49.957039Z  INFO agent::windows_audio: compteurs audio pid=4548 actif=true rejetes=1 complements=1 echantillons_jetes=0
+2026-08-06T21:11:49.969681Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=788 endormie=false cadence="78.7"
+2026-08-06T21:11:50.049689Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=786 cadence="78.5"
+2026-08-06T21:11:55.059630Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=816 endormie=false cadence="81.5"
+2026-08-06T21:11:55.107191Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=816 cadence="81.5"
+2026-08-06T21:11:57.189669Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=845 endormie=false cadence="84.4"
+2026-08-06T21:11:57.250494Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=846 cadence="84.5"
+2026-08-06T21:11:59.972793Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=810 endormie=false cadence="81.0"
+2026-08-06T21:12:00.050316Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=812 cadence="81.2"
+2026-08-06T21:12:05.069553Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=823 endormie=false cadence="82.2"
+2026-08-06T21:12:05.107563Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=822 cadence="82.2"
+2026-08-06T21:12:07.191478Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=850 endormie=false cadence="85.0"
+2026-08-06T21:12:07.250959Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=850 cadence="85.0"
+2026-08-06T21:12:09.054969Z  INFO fenetre{session=w-4}: agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-06T21:12:09.056178Z  INFO fenetre{session=w-4}: agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-06T21:12:09.056291Z  INFO fenetre{session=w-4}: agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-06T21:12:09.101485Z  INFO fenetre{session=w-4}: agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=524317
+2026-08-06T21:12:09.101688Z  INFO fenetre{session=w-4}: agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-06T21:12:09.101933Z  INFO fenetre{session=w-4}: agent::windows_source::encodage: taille d'encodage changée sans toucher à la fenêtre width=1024 height=576
+2026-08-06T21:12:09.102012Z  INFO agent::transport::adaptation: taille d'encodage changée session=w-4 largeur=1024 hauteur=576
+2026-08-06T21:12:09.973004Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=799 endormie=false cadence="79.9"
+2026-08-06T21:12:10.060249Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=798 cadence="79.7"
+2026-08-06T21:12:15.006325Z  INFO agent::windows_audio: compteurs audio pid=29220 actif=true rejetes=3 complements=1 echantillons_jetes=0
+2026-08-06T21:12:15.069816Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=823 endormie=false cadence="82.3"
+2026-08-06T21:12:15.117630Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=823 cadence="82.2"
+2026-08-06T21:12:17.164349Z  INFO agent::windows_audio: compteurs audio pid=23900 actif=true rejetes=0 complements=1 echantillons_jetes=0
+2026-08-06T21:12:17.200981Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=832 endormie=false cadence="83.1"
+2026-08-06T21:12:17.252528Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=831 cadence="83.1"
+2026-08-06T21:12:19.958966Z  INFO agent::windows_audio: compteurs audio pid=4548 actif=true rejetes=1 complements=1 echantillons_jetes=0
+2026-08-06T21:12:19.977942Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=824 endormie=false cadence="82.4"
+2026-08-06T21:12:20.070109Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=826 cadence="82.5"
+2026-08-06T21:12:25.076733Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=825 endormie=false cadence="82.4"
+2026-08-06T21:12:25.127291Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=828 cadence="82.7"
+2026-08-06T21:12:27.210120Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=846 endormie=false cadence="84.5"
+2026-08-06T21:12:27.253142Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=845 cadence="84.5"
+2026-08-06T21:12:29.987884Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=824 endormie=false cadence="82.3"
+2026-08-06T21:12:30.080022Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=824 cadence="82.3"
+2026-08-06T21:12:35.077834Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=832 endormie=false cadence="83.2"
+2026-08-06T21:12:35.137467Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=833 cadence="83.2"
+2026-08-06T21:12:37.212907Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=836 endormie=false cadence="83.6"
+2026-08-06T21:12:37.263339Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=835 cadence="83.4"
+2026-08-06T21:12:39.997004Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=818 endormie=false cadence="81.7"
+2026-08-06T21:12:40.090030Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=818 cadence="81.7"
+2026-08-06T21:12:45.007032Z  INFO agent::windows_audio: compteurs audio pid=29220 actif=true rejetes=3 complements=1 echantillons_jetes=0
+2026-08-06T21:12:45.085732Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=822 endormie=false cadence="82.1"
+2026-08-06T21:12:45.137943Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=821 cadence="82.1"
+2026-08-06T21:12:45.772388Z  INFO fenetre{session=w-6}: agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-06T21:12:45.773605Z  INFO fenetre{session=w-6}: agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-06T21:12:45.773729Z  INFO fenetre{session=w-6}: agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-06T21:12:45.817339Z  INFO fenetre{session=w-6}: agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=655392
+2026-08-06T21:12:45.817560Z  INFO fenetre{session=w-6}: agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-06T21:12:45.817884Z  INFO fenetre{session=w-6}: agent::windows_source::encodage: taille d'encodage changée sans toucher à la fenêtre width=1280 height=720
+2026-08-06T21:12:45.817969Z  INFO agent::transport::adaptation: taille d'encodage changée session=w-6 largeur=1280 hauteur=720
+2026-08-06T21:12:45.970543Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:12:45.973625Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:12:45.975667Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:12:45.978678Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=2 backoff_ms=4
+2026-08-06T21:12:45.980642Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:12:45.983320Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=2 backoff_ms=4
+2026-08-06T21:12:45.991347Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-06T21:12:45.994729Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-06T21:12:46.003281Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-06T21:12:46.969326Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:12:47.170249Z  INFO agent::windows_audio: compteurs audio pid=23900 actif=true rejetes=0 complements=1 echantillons_jetes=0
+2026-08-06T21:12:47.213260Z  INFO fenetre{session=w-4}: agent::capteur::fenetre: cadence du capteur session=w-4 images=833 endormie=false cadence="83.3"
+2026-08-06T21:12:47.273301Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-4 unites=833 cadence="83.2"
+2026-08-06T21:12:47.969931Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:12:48.974642Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:12:49.964023Z  INFO agent::windows_audio: compteurs audio pid=4548 actif=true rejetes=1 complements=1 echantillons_jetes=0
+2026-08-06T21:12:49.970061Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:12:50.004983Z  INFO fenetre{session=w-6}: agent::capteur::fenetre: cadence du capteur session=w-6 images=822 endormie=false cadence="82.1"
+2026-08-06T21:12:50.098543Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-6 unites=822 cadence="82.1"
+2026-08-06T21:12:50.969898Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:12:51.969382Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:12:52.970150Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-06T21:12:53.969914Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2

@@ -1,0 +1,111 @@
+[    0.0s 2026-08-06T21:22:16.200Z] ÉTIQUETTE=ab-desarme-2 MODE=ab BUDGET_BPS=12000000 BITRATE=12000000 N_EVEIL=8 PALIER_FOCUS_S=60 PALIER_AB_S=30 PART_SONDAGE=0 chrome pid=2714004
+[    0.9s 2026-08-06T21:22:17.059Z] identité du navigateur : pid écoutant=2714004 pid lancé=2714004 version=Chrome/151.0.7922.108
+[    0.9s 2026-08-06T21:22:17.084Z] + page attachée  session=622CA9A8 url=about:blank
+[    0.9s 2026-08-06T21:22:17.097Z] >>> ÉTAPE 0 : purge, VM sans fenêtre ni agent rescapé
+[    0.9s 2026-08-06T21:22:17.106Z] CPU HÔTE (au repos, avant toute session) loadavg=16.28 17.51 16.48 9/2811 2714156
+[    6.4s 2026-08-06T21:22:22.577Z] PURGE FENÊTRES/AGENTS RESCAPÉS (avant lancement du superviseur) {"agents_restants":0,"chrome_restants":0}
+[    6.4s 2026-08-06T21:22:22.607Z] + page attachée  session=4A298B35 url=http://192.168.3.1:5173/shell.html
+[    9.4s 2026-08-06T21:22:25.629Z] statut shell : bureau connecté
+[    9.4s 2026-08-06T21:22:25.629Z] >>> lancement du superviseur
+[   10.0s 2026-08-06T21:22:26.148Z] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   16.0s 2026-08-06T21:22:32.177Z] >>> CONSTRUCTION — montée à 8 fenêtres (toutes doivent rester ÉVEILLÉES)
+[   16.0s 2026-08-06T21:22:32.177Z]   · ouverture fenêtre 1
+[   16.5s 2026-08-06T21:22:32.725Z] + page attachée  session=B93AB777 url=
+[   16.9s 2026-08-06T21:22:33.120Z] + page attachée  session=DFA1EE23 url=
+[   18.5s 2026-08-06T21:22:34.709Z] SCÉNARIO IMPOSÉ (après ouverture 1) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true"}
+[   18.5s 2026-08-06T21:22:34.709Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   18.5s 2026-08-06T21:22:34.709Z]   · ouverture fenêtre 2
+[   19.2s 2026-08-06T21:22:35.391Z] + page attachée  session=37F3E7ED url=
+[   19.6s 2026-08-06T21:22:35.793Z] + page attachée  session=89A2645A url=
+[   21.1s 2026-08-06T21:22:37.328Z] SCÉNARIO IMPOSÉ (après ouverture 2) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true","w:w-4":"false/false"}
+[   21.1s 2026-08-06T21:22:37.329Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   21.1s 2026-08-06T21:22:37.329Z]   · ouverture fenêtre 3
+[   22.0s 2026-08-06T21:22:38.152Z] + page attachée  session=F9FAB08F url=
+[   22.3s 2026-08-06T21:22:38.447Z] + page attachée  session=644160E9 url=
+[   23.8s 2026-08-06T21:22:40.035Z] SCÉNARIO IMPOSÉ (après ouverture 3) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true","w:w-4":"false/false","w:w-6":"false/false"}
+[   23.8s 2026-08-06T21:22:40.036Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   23.8s 2026-08-06T21:22:40.036Z]   · ouverture fenêtre 4
+[   24.6s 2026-08-06T21:22:40.781Z] + page attachée  session=436387E1 url=
+[   25.0s 2026-08-06T21:22:41.177Z] + page attachée  session=04AFA70B url=
+[   26.4s 2026-08-06T21:22:42.605Z] + page attachée  session=7DFA44EF url=
+[   26.6s 2026-08-06T21:22:42.793Z] SCÉNARIO IMPOSÉ (après ouverture 4) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true","w:w-4":"false/false","w:w-6":"false/false","w:w-9":"false/false"}
+[   26.6s 2026-08-06T21:22:42.794Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   26.6s 2026-08-06T21:22:42.794Z]   · ouverture fenêtre 5
+[   27.4s 2026-08-06T21:22:43.613Z] + page attachée  session=A1C6C243 url=
+[   27.5s 2026-08-06T21:22:43.700Z] + page attachée  session=67EBAC2F url=
+[   27.9s 2026-08-06T21:22:44.113Z] + page attachée  session=489D6009 url=
+[   28.9s 2026-08-06T21:22:45.082Z] + page attachée  session=86392A76 url=
+[   29.0s 2026-08-06T21:22:45.184Z] + page attachée  session=54094E38 url=
+[   29.6s 2026-08-06T21:22:45.774Z] SCÉNARIO IMPOSÉ (après ouverture 5) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true","w:w-4":"false/false","w:w-6":"false/false","w:w-13":"false/false","w:w-14":"false/false"}
+[   29.6s 2026-08-06T21:22:45.774Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   29.6s 2026-08-06T21:22:45.774Z]   · ouverture fenêtre 6
+[   30.4s 2026-08-06T21:22:46.587Z] + page attachée  session=9F7A7CEC url=
+[   30.6s 2026-08-06T21:22:46.744Z] + page attachée  session=DD163C0A url=
+[   31.7s 2026-08-06T21:22:47.858Z] + page attachée  session=10DF9EED url=
+[   31.8s 2026-08-06T21:22:48.041Z] + page attachée  session=3B1E2DF8 url=
+[   33.3s 2026-08-06T21:22:49.538Z] + page attachée  session=A7D1BB9F url=
+[   34.5s 2026-08-06T21:22:50.715Z] + page attachée  session=329A76D2 url=
+[   35.7s 2026-08-06T21:22:51.905Z] + page attachée  session=24EB0178 url=
+[   90.4s 2026-08-06T21:23:46.613Z]   !! fenêtre 6 : aucune page de plus après 60 s
+[   90.4s 2026-08-06T21:23:46.613Z]   5 fenêtres ouvertes
+[   90.4s 2026-08-06T21:23:46.613Z]   !! ATTENTION : 5/8 seulement — mesure sur un effectif réduit
+[   96.5s 2026-08-06T21:23:52.662Z] SCÉNARIO IMPOSÉ (construction — focus initial) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true","w:w-4":"false/false","w:w-6":"false/false"}
+[   96.5s 2026-08-06T21:23:52.662Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[  119.9s 2026-08-06T21:24:16.058Z] ÉCHELLE POSÉE après 15.4 s (0 changements cumulés, 15 s sans changement)
+[  119.9s 2026-08-06T21:24:16.091Z] CONTRÔLE BUDGET : valeurs=[12000000] attendu=12000000
+[  120.0s 2026-08-06T21:24:16.210Z] SURVIE VM (après construction) virsh="en cours d’exécution" acces_partage=OUI
+[  120.0s 2026-08-06T21:24:16.210Z] >>> A/B — mesure du trafic vidéo cumulé sur 30 s (PART_SONDAGE=0)
+[  120.0s 2026-08-06T21:24:16.219Z] STATS (A/B — début du palier) {"w:w-2":{"etat":"connected","horloge":1786051456216,"images_decodees":4133,"images_recues":4569,"octets_recus":40532992,"octets_audio":1606783,"paquets_recus":38686,"paquets_perdus":0,"l":1280,"h":720,"rtt":0.008,"lien_bitrate":6000000,"lien_taille":"1280x720","cachee":false,"focalisee":true},"w:w-4":{"etat":"connected","horloge":1786051456217,"images_decodees":4187,"images_recues":4286,"octets_recus":19186348,"octets_audio":1563796,"paquets_recus":19489,"paquets_perdus":0,"l":1280,"h":720,"rtt":0.003,"lien_bitrate":3000000,"lien_taille":"1280x720","cachee":false,"focalisee":false},"w:w-6":{"etat":"connected","horloge":1786051456218,"images_decodees":3813,"images_recues":4021,"octets_recus":18171605,"octets_audio":1485708,"paquets_recus":18457,"paquets_perdus":0,"l":1280,"h":720,"rtt":0.001,"lien_bitrate":3000000,"lien_taille":"1280x720","cachee":false,"focalisee":false}}
+[  150.1s 2026-08-06T21:24:46.266Z] STATS (A/B — fin du palier) {"w:w-2":{"etat":"connected","horloge":1786051486247,"images_decodees":5621,"images_recues":6059,"octets_recus":52805000,"octets_audio":2090266,"paquets_recus":50415,"paquets_perdus":0,"l":1280,"h":720,"rtt":0.001,"lien_bitrate":6000000,"lien_taille":"1280x720","cachee":false,"focalisee":true},"w:w-4":{"etat":"connected","horloge":1786051486258,"images_decodees":5744,"images_recues":5842,"octets_recus":26154532,"octets_audio":2047118,"paquets_recus":26521,"paquets_perdus":0,"l":1280,"h":720,"rtt":0.002,"lien_bitrate":3000000,"lien_taille":"1280x720","cachee":false,"focalisee":false},"w:w-6":{"etat":"connected","horloge":1786051486259,"images_decodees":5240,"images_recues":5448,"octets_recus":24509377,"octets_audio":1969191,"paquets_recus":24858,"paquets_perdus":0,"l":1280,"h":720,"rtt":0.002,"lien_bitrate":3000000,"lien_taille":"1280x720","cachee":false,"focalisee":false}}
+[  150.1s 2026-08-06T21:24:46.269Z] A/B — PAR FENÊTRE {
+ "w:w-2": {
+  "secondes": 30.031,
+  "octets_video": 12272008,
+  "mbps": 3.269,
+  "octets_audio": 483483,
+  "paquets_perdus": 0,
+  "paquets_recus": 11729,
+  "pc_paquets_perdus": 0,
+  "taille": "1280x720",
+  "rtt": 0.001,
+  "lien_bitrate": 6000000,
+  "lien_taille": "1280x720",
+  "cachee": false,
+  "focalisee": true
+ },
+ "w:w-4": {
+  "secondes": 30.041,
+  "octets_video": 6968184,
+  "mbps": 1.856,
+  "octets_audio": 483322,
+  "paquets_perdus": 0,
+  "paquets_recus": 7032,
+  "pc_paquets_perdus": 0,
+  "taille": "1280x720",
+  "rtt": 0.002,
+  "lien_bitrate": 3000000,
+  "lien_taille": "1280x720",
+  "cachee": false,
+  "focalisee": false
+ },
+ "w:w-6": {
+  "secondes": 30.041,
+  "octets_video": 6337772,
+  "mbps": 1.688,
+  "octets_audio": 483483,
+  "paquets_perdus": 0,
+  "paquets_recus": 6401,
+  "pc_paquets_perdus": 0,
+  "taille": "1280x720",
+  "rtt": 0.002,
+  "lien_bitrate": 3000000,
+  "lien_taille": "1280x720",
+  "cachee": false,
+  "focalisee": false
+ }
+}
+[  150.1s 2026-08-06T21:24:46.270Z] A/B — CUMULÉ {"fenetres_mesurees":3,"octets_video_cumules":25577964,"mbps_cumule":6.813,"paquets_perdus":0,"paquets_recus":25162,"pc_paquets_perdus_global":0}
+[  150.2s 2026-08-06T21:24:46.370Z] SURVIE VM (après A/B) virsh="en cours d’exécution" acces_partage=OUI
+[  150.2s 2026-08-06T21:24:46.423Z] MARQUEURS (FIN) {"lignes":592,"enfant_lance":3,"attachee_capteur":3,"cloture":0,"endormie":0,"part_appliquee":30,"taille_changee":0,"taille_refusee":0,"erreurs":12}
+[  150.2s 2026-08-06T21:24:46.437Z] relevé écrit dans /home/mallanic/Projects/Guacamole/docs/superpowers/plans/journaux-multifenetres-d9/critere-3-ab-desarme-2.json
+[  158.5s 2026-08-06T21:24:54.706Z] journal copié dans /tmp/agent-critere-3-ab-desarme-2.log (après la fermeture du navigateur)
