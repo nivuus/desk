@@ -268,6 +268,111 @@ git commit -m "mesure(d9): verdict de l'eliminatoire, deux executions"
 
 ---
 
+### Task 2bis : la persistance sous `CDS_UPDATEREGISTRY`
+
+**Inscrite le 6 août 2026, APRÈS le verdict de la tâche 2, sur décision de
+l'utilisateur.** Elle n'était pas au plan initial : la règle de décision du §3.6
+couvrait « le pilote refuse », et la mesure a rendu « il accepte, puis défait ».
+
+**Files:**
+- Modify: `agent/src/diagnostics/multifenetre/mode_sortie.rs` (496 lignes, **marge 4**)
+- Create: `docs/superpowers/plans/journaux-multifenetres-d9/p-persistance-{1,2}.log`
+
+**Interfaces:**
+- Consumes: la sonde des tâches 1 et 2
+- Produces: **le verdict qui décide du sort de la famille ①** — `SURVIT` ou `NE SURVIT PAS`
+
+**Ce qui motive cette tâche.** `CDS_TYPE(0)` a réussi **au premier essai** aux
+deux exécutions : les trois autres combinaisons **n'ont jamais été sollicitées**.
+On ignore donc si le changement écrit sous `CDS_UPDATEREGISTRY` — celui qui
+persiste par construction — survivrait, lui, à la création d'une sortie.
+Abandonner la famille ① sur la foi d'un bras sur quatre serait trancher sur une
+preuve incomplète.
+
+- [ ] **Step 1 : ajouter le sélecteur de combinaison**
+
+Variable de banc `MULTIFENETRE_MODE_SORTIE_DRAPEAUX=<étiquette>` qui restreint le
+tour à **une seule** combinaison, désignée par son étiquette exacte. Sans elle,
+le comportement actuel est inchangé.
+
+```rust
+/// Restreint le tour à UNE combinaison, désignée par son étiquette exacte.
+///
+/// **Pourquoi** : `CDS_TYPE(0)` réussit au premier essai, ce qui laisse les
+/// trois combinaisons suivantes non sollicitées — dont `CDS_UPDATEREGISTRY`,
+/// la seule qui persiste par construction. Sans ce sélecteur, la question
+/// « le changement PERSISTANT survit-il, lui, à la création d'une sortie ? »
+/// n'est pas atteignable.
+fn combinaison_imposee() -> Option<String> {
+    std::env::var("MULTIFENETRE_MODE_SORTIE_DRAPEAUX").ok()
+}
+```
+
+⚠️ **La transmettre dans `scripts/run-agent.sh` dans CETTE tâche** — piège payé
+en D1, D2 et D6.
+
+- [ ] **Step 2 : journaliser le contrôle de survie comme un VERDICT nommé**
+
+Le retour à la taille d'origine existe déjà dans les journaux de la tâche 2, mais
+il n'y est lisible qu'en recoupant deux blocs de topologie à dix lignes d'écart —
+c'est ce qui l'a fait manquer au premier rapport. Le rendre explicite :
+
+```rust
+tracing::info!(
+    combinaison = %etiquette,
+    avant_creation_l = taille_apres_tour.0,
+    avant_creation_h = taille_apres_tour.1,
+    apres_creation_l = taille_apres_sortie_neuve.0,
+    apres_creation_h = taille_apres_sortie_neuve.1,
+    survit = taille_apres_tour == taille_apres_sortie_neuve,
+    "PERSISTANCE : le changement de mode survit-il à la création d'une sortie ?"
+);
+```
+
+⚠️ **Ce contrôle doit pouvoir rendre les DEUX valeurs**, et la tâche 2 établit
+qu'il le peut : `survit=false` y est le relevé réel sous `CDS_TYPE(0)`. Une
+exécution sous `CDS_TYPE(0)` sert donc de **témoin rouge** et doit être jouée.
+
+- [ ] **Step 3 : vérifier le plafond de lignes**
+
+Run: `wc -l agent/src/diagnostics/multifenetre/mode_sortie.rs`
+Expected: < 500. ⚠️ **Le fichier est à 496 : la marge est de 4.** L'addition
+appelle donc une extraction — `combinaisons.rs` (129), `temoin.rs` (164) et
+`voisines.rs` (240) sont les points de chute.
+
+- [ ] **Step 4 : compiler et mesurer, deux exécutions par bras**
+
+```bash
+set -a && source .env && set +a
+scripts/build-agent.sh
+MULTIFENETRE_MODE_SORTIE_DRAPEAUX='CDS_UPDATEREGISTRY seul' \
+  MULTIFENETRE_MODE_SORTIE=1280x720 scripts/run-agent.sh
+```
+
+Deux exécutions sous `CDS_UPDATEREGISTRY seul`, plus **une** sous
+`aucun drapeau (dynamique, non persisté)` comme témoin rouge.
+
+- [ ] **Step 5 : rendre le verdict**
+
+**SURVIT** — l'arbitrage redevient « persistance contre pollution du registre »,
+qui a un remède connu (restaurer le registre après coup, §4.1 du plan).
+**NE SURVIT PAS** — l'abandon de la famille ① devient **établi et non supposé**.
+
+⚠️ Relever aussi si `CDS_UPDATEREGISTRY` **pollue effectivement** : une sortie
+créée après le changement naît-elle à la nouvelle taille ? Sous `CDS_TYPE(0)`, la
+tâche 2 relève que `DISPLAY8` naît à 1280×720 et non 2560×1440 — le contrôle
+existe donc déjà et se lit au même endroit.
+
+- [ ] **Step 6 : commit**
+
+```bash
+git add agent/src/diagnostics/multifenetre/mode_sortie.rs scripts/run-agent.sh \
+  docs/superpowers/plans/journaux-multifenetres-d9/
+git commit -m "mesure(d9): la persistance sous CDS_UPDATEREGISTRY, deux executions"
+```
+
+---
+
 ## Famille ① — armer le plein écran
 
 ### Task 3 : les drapeaux retenus et l'encadrement de la duplication
