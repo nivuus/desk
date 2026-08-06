@@ -1,0 +1,68 @@
+{
+ "etiquette": "3-force-defert",
+ "port_shell": "5173",
+ "n_fenetres": 1,
+ "phases": {
+  "resize_dpr_cible": {
+   "fenetre": "cible",
+   "session_avant": "w-2",
+   "session": "w-2",
+   "dpr_attendu": 2,
+   "debut": "2026-08-06T15:58:49.695Z",
+   "fin": "2026-08-06T16:00:43.245Z",
+   "forcage": {
+    "sid_initial": "6CA8D0EB0746E3A43812978EC4E4554E",
+    "etat_avant_forcage": {
+     "pc": null
+    },
+    "debut_reouverture": "2026-08-06T15:58:49.713Z",
+    "reouverture_reussie": false,
+    "sid_frais": null
+   },
+   "etat_initial": {
+    "__erreur": "Error: {\"code\":-32001,\"message\":\"Session with given id not found.\"}"
+   },
+   "viewport_msg": null,
+   "console_warn": [],
+   "premier_resize_agent": null,
+   "resize_mi_session": {
+    "demande": "1000x600",
+    "dpr": 2,
+    "evenement": null,
+    "inner_apres": {
+     "__erreur": "Error: {\"code\":-32001,\"message\":\"Session with given id not found.\"}"
+    }
+   },
+   "tous_les_resize_toutes_sessions_pendant_la_phase": [],
+   "resize_de_cette_session": [],
+   "deference_console_observee": false,
+   "rejeu_observe_naturellement": false,
+   "meme_unite_annonce_et_resize": false,
+   "toutes_les_lignes_portent_leur_session": true
+  }
+ },
+ "navigateur": "Chrome/151.0.7922.71",
+ "cpu_repos": {
+  "loadavg": "9.51 9.52 8.48 26/3133 1598700"
+ },
+ "purge_rescapees": true,
+ "session_cible": "w-2",
+ "fenetres_ouvertes": [
+  {
+   "ok": true,
+   "marqueur": "chrome-d9c1-3-force-defert-1",
+   "sid": "6CA8D0EB0746E3A43812978EC4E4554E"
+  }
+ ],
+ "exclusivite": [],
+ "tous_les_resize_toutes_sessions": [],
+ "toutes_les_lignes_resize_portent_leur_session": true,
+ "marqueurs_finaux": {
+  "lignes_resize": 0,
+  "sessions_distinctes_resize": []
+ },
+ "survie_finale": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ }
+}

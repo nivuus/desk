@@ -1,0 +1,176 @@
+[    0.0s 2026-08-06T16:02:10.392Z] ÉTIQUETTE=rouge PORT_SHELL=5174 N_FENETRES=1 DPR_CIBLE=2 PHASE_EXCLUSIVITE=0 chrome pid=1608740
+[    0.8s 2026-08-06T16:02:11.228Z] identité du navigateur : pid écoutant=1608740 pid lancé=1608740 version=Chrome/151.0.7922.71
+[    0.9s 2026-08-06T16:02:11.253Z] + page attachée  session=E3B1212D url=about:blank index=1 initiale=true shell=false app=false
+[    0.9s 2026-08-06T16:02:11.264Z] >>> ÉTAPE 0 : préparation — VM sans fenêtre éligible (vérifié, pas supposé)
+[    0.9s 2026-08-06T16:02:11.273Z] CPU HÔTE (au repos, avant toute session) loadavg=6.37 8.71 8.46 7/3133 1608987
+[    6.4s 2026-08-06T16:02:16.739Z] PURGE FENÊTRES/AGENTS RESCAPÉS (avant lancement du superviseur) {"agents_restants":0,"chrome_restants":0}
+[    6.4s 2026-08-06T16:02:16.795Z] + page attachée  session=7E0F21CC url=http://192.168.3.1:5174/shell.html index=2 initiale=false shell=true app=false
+[    9.4s 2026-08-06T16:02:19.823Z] statut shell : bureau connecté
+[    9.4s 2026-08-06T16:02:19.823Z] >>> lancement du superviseur
+[   10.0s 2026-08-06T16:02:20.350Z] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   16.0s 2026-08-06T16:02:26.385Z]   · ouverture fenêtre 1 (hz=410, marqueur=chrome-d9c1-rouge-1)
+[   16.5s 2026-08-06T16:02:26.911Z] + page attachée  session=68E3DB8E url= index=3 initiale=false shell=false app=true
+[   16.6s 2026-08-06T16:02:26.949Z]   → page app #1 (session=68E3DB8E) : dpr=1 css=1280x720 (équivalent périphérique 1280x720)
+[   16.8s 2026-08-06T16:02:27.211Z] + page attachée  session=C711476B url= index=4 initiale=false shell=false app=true
+[   16.9s 2026-08-06T16:02:27.249Z]   → page app #2 (session=C711476B) : dpr=1 css=1280x720 (équivalent périphérique 1280x720)
+[   20.5s 2026-08-06T16:02:30.898Z] >>> PHASE RESIZE/HiDPI — fenêtre=cible sid_initial=C711476B dpr_attendu=2
+[   20.5s 2026-08-06T16:02:30.903Z]   état AVANT forçage (cible) session=w-2 sid=C711476B {"etat":"connected","horloge":1786032150902,"images_decodees":1,"l":1280,"h":720,"dpr":1,"inner":"1280x720","video_client":"1280x720","viewport_msg":{"type":"viewport","session":"w-2","largeur":1280,"hauteur":720,"t":1786032147413},"console_warn":[]}
+[   20.5s 2026-08-06T16:02:30.909Z]   page fermée délibérément (cible) pour forcer une réouverture à dpr=2
+[   21.2s 2026-08-06T16:02:31.564Z] + page attachée  session=435397DD url= index=5 initiale=false shell=false app=true
+[   21.2s 2026-08-06T16:02:31.616Z]   → page app #3 (session=435397DD) : dpr=2 css=1280x720 (équivalent périphérique 1280x720)
+[   22.5s 2026-08-06T16:02:32.910Z] FAIT ATTEINT (réouverture pour dpr=2 (cible)) après 2.0 s
+[   22.5s 2026-08-06T16:02:32.911Z]   réouverture (cible) reussie=true sid=435397DD depuis=2026-08-06T16:02:30.909Z
+[   22.5s 2026-08-06T16:02:32.914Z]   session après réouverture (cible) = w-3 (avant : w-2)
+[   22.5s 2026-08-06T16:02:32.919Z]   état initial (cible) sid=435397DD {"etat":"new","horloge":1786032152917,"images_decodees":null,"l":null,"h":null,"dpr":2,"inner":"1280x720","video_client":"1280x720","viewport_msg":{"type":"viewport","session":"w-3","largeur":1280,"hauteur":720,"t":1786032151781},"console_warn":[]}
+[   26.6s 2026-08-06T16:02:36.996Z] FAIT ATTEINT (premier Resize agent (cible)) après 4.1 s
+[   26.6s 2026-08-06T16:02:37.009Z]   viewport forcé en cours de session (cible) → 1000x600 @dpr2
+[   28.2s 2026-08-06T16:02:38.542Z] FAIT ATTEINT (Resize mi-session agent (cible)) après 0.0 s
+[   29.7s 2026-08-06T16:02:40.073Z] RESIZE/HiDPI (cible) — RELEVÉ {
+ "fenetre": "cible",
+ "session_avant": "w-2",
+ "session": "w-3",
+ "dpr_attendu": 2,
+ "debut": "2026-08-06T16:02:30.898Z",
+ "fin": "2026-08-06T16:02:40.048Z",
+ "forcage": {
+  "sid_initial": "C711476BEE07CA37565A4BD31A029C42",
+  "etat_avant_forcage": {
+   "etat": "connected",
+   "horloge": 1786032150902,
+   "images_decodees": 1,
+   "l": 1280,
+   "h": 720,
+   "dpr": 1,
+   "inner": "1280x720",
+   "video_client": "1280x720",
+   "viewport_msg": {
+    "type": "viewport",
+    "session": "w-2",
+    "largeur": 1280,
+    "hauteur": 720,
+    "t": 1786032147413
+   },
+   "console_warn": []
+  },
+  "debut_reouverture": "2026-08-06T16:02:30.909Z",
+  "reouverture_reussie": true,
+  "sid_frais": "435397DD6ADE57101CCD35D7D341B7CB"
+ },
+ "etat_initial": {
+  "etat": "new",
+  "horloge": 1786032152917,
+  "images_decodees": null,
+  "l": null,
+  "h": null,
+  "dpr": 2,
+  "inner": "1280x720",
+  "video_client": "1280x720",
+  "viewport_msg": {
+   "type": "viewport",
+   "session": "w-3",
+   "largeur": 1280,
+   "hauteur": 720,
+   "t": 1786032151781
+  },
+  "console_warn": []
+ },
+ "viewport_msg": {
+  "type": "viewport",
+  "session": "w-3",
+  "largeur": 1280,
+  "hauteur": 720,
+  "t": 1786032151781
+ },
+ "console_warn": [],
+ "premier_resize_agent": {
+  "t": "2026-08-06T16:02:35.079431Z",
+  "session": "w-3",
+  "largeur": 2560,
+  "hauteur": 1440,
+  "ligne": "2026-08-06T16:02:35.079431Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2560, height: 1440 }"
+ },
+ "resize_mi_session": {
+  "demande": "1000x600",
+  "dpr": 2,
+  "evenement": {
+   "t": "2026-08-06T16:02:37.202229Z",
+   "session": "w-3",
+   "largeur": 2000,
+   "hauteur": 1200,
+   "ligne": "2026-08-06T16:02:37.202229Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2000, height: 1200 }"
+  },
+  "inner_apres": {
+   "etat": "connected",
+   "horloge": 1786032158514,
+   "images_decodees": 297,
+   "l": 1280,
+   "h": 720,
+   "dpr": 2,
+   "inner": "1000x600",
+   "video_client": "1000x600",
+   "viewport_msg": {
+    "type": "viewport",
+    "session": "w-3",
+    "largeur": 1280,
+    "hauteur": 720,
+    "t": 1786032151781
+   },
+   "console_warn": []
+  }
+ },
+ "tous_les_resize_toutes_sessions_pendant_la_phase": [
+  {
+   "t": "2026-08-06T16:02:35.079431Z",
+   "session": "w-3",
+   "largeur": 2560,
+   "hauteur": 1440,
+   "ligne": "2026-08-06T16:02:35.079431Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2560, height: 1440 }"
+  },
+  {
+   "t": "2026-08-06T16:02:37.202229Z",
+   "session": "w-3",
+   "largeur": 2000,
+   "hauteur": 1200,
+   "ligne": "2026-08-06T16:02:37.202229Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2000, height: 1200 }"
+  },
+  {
+   "t": "2026-08-06T16:02:38.759501Z",
+   "session": "w-3",
+   "largeur": 2560,
+   "hauteur": 1440,
+   "ligne": "2026-08-06T16:02:38.759501Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2560, height: 1440 }"
+  }
+ ],
+ "resize_de_cette_session": [
+  {
+   "t": "2026-08-06T16:02:35.079431Z",
+   "session": "w-3",
+   "largeur": 2560,
+   "hauteur": 1440,
+   "ligne": "2026-08-06T16:02:35.079431Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2560, height: 1440 }"
+  },
+  {
+   "t": "2026-08-06T16:02:37.202229Z",
+   "session": "w-3",
+   "largeur": 2000,
+   "hauteur": 1200,
+   "ligne": "2026-08-06T16:02:37.202229Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2000, height: 1200 }"
+  },
+  {
+   "t": "2026-08-06T16:02:38.759501Z",
+   "session": "w-3",
+   "largeur": 2560,
+   "hauteur": 1440,
+   "ligne": "2026-08-06T16:02:38.759501Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2560, height: 1440 }"
+  }
+ ],
+ "deference_console_observee": false,
+ "rejeu_observe_naturellement": false,
+ "meme_unite_annonce_et_resize": false,
+ "toutes_les_lignes_portent_leur_session": true
+}
+[   29.7s 2026-08-06T16:02:40.074Z] SESSION CIBLE (fenêtre 1) = w-3
+[   29.7s 2026-08-06T16:02:40.074Z]   1/1 fenêtres ouvertes
+[   35.8s 2026-08-06T16:02:46.193Z] SURVIE VM (fin de mesure) virsh="en cours d’exécution" acces_partage=OUI
+[   35.8s 2026-08-06T16:02:46.197Z] relevé écrit dans /home/mallanic/Projects/Guacamole/docs/superpowers/plans/journaux-multifenetres-d9/critere-1-rouge.json
+[   43.9s 2026-08-06T16:02:54.318Z] journal copié dans /tmp/agent-critere-1-rouge.log (après la fermeture du navigateur)

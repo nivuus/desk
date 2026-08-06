@@ -1,0 +1,222 @@
+[    0.0s 2026-08-06T15:53:36.662Z] ÉTIQUETTE=1 PORT_SHELL=5173 N_FENETRES=3 DPR_CIBLE=2 PHASE_EXCLUSIVITE=1 chrome pid=1581927
+[    1.0s 2026-08-06T15:53:37.661Z] identité du navigateur : pid écoutant=1581927 pid lancé=1581927 version=Chrome/151.0.7922.71
+[    1.0s 2026-08-06T15:53:37.699Z] + page attachée  session=21D9C999 url=about:blank index=1 initiale=true shell=false app=false
+[    1.1s 2026-08-06T15:53:37.710Z] >>> ÉTAPE 0 : préparation — VM sans fenêtre éligible (vérifié, pas supposé)
+[    1.1s 2026-08-06T15:53:37.719Z] CPU HÔTE (au repos, avant toute session) loadavg=6.55 7.07 7.50 8/3107 1582135
+[    6.5s 2026-08-06T15:53:43.179Z] PURGE FENÊTRES/AGENTS RESCAPÉS (avant lancement du superviseur) {"agents_restants":0,"chrome_restants":0}
+[    6.6s 2026-08-06T15:53:43.253Z] + page attachée  session=F9996D19 url=http://192.168.3.1:5173/shell.html index=2 initiale=false shell=true app=false
+[    9.6s 2026-08-06T15:53:46.278Z] statut shell : bureau connecté
+[    9.6s 2026-08-06T15:53:46.279Z] >>> lancement du superviseur
+[   10.0s 2026-08-06T15:53:46.660Z] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   16.0s 2026-08-06T15:53:52.677Z]   · ouverture fenêtre 1 (hz=410, marqueur=chrome-d9c1-1-1)
+[   16.6s 2026-08-06T15:53:53.212Z] + page attachée  session=C6472DB5 url= index=3 initiale=false shell=false app=true
+[   16.6s 2026-08-06T15:53:53.257Z]   → page app #1 (session=C6472DB5) : dpr=1 css=1280x720 (équivalent périphérique 1280x720)
+[   16.9s 2026-08-06T15:53:53.512Z] + page attachée  session=E42AC4BD url= index=4 initiale=false shell=false app=true
+[   16.9s 2026-08-06T15:53:53.556Z]   → page app #2 (session=E42AC4BD) : dpr=1 css=1280x720 (équivalent périphérique 1280x720)
+[   20.5s 2026-08-06T15:53:57.131Z] >>> PHASE RESIZE/HiDPI — fenêtre=cible sid_initial=E42AC4BD dpr_attendu=2
+[   20.5s 2026-08-06T15:53:57.141Z]   état AVANT forçage (cible) session=w-2 sid=E42AC4BD {"etat":"connected","horloge":1786031637139,"images_decodees":0,"l":null,"h":null,"dpr":1,"inner":"1280x720","video_client":"1280x720","viewport_msg":{"type":"viewport","session":"w-2","largeur":1280,"hauteur":720,"t":1786031633812},"console_warn":[]}
+[   20.5s 2026-08-06T15:53:57.143Z]   page fermée délibérément (cible) pour forcer une réouverture à dpr=2
+[   21.2s 2026-08-06T15:53:57.871Z] + page attachée  session=AA590167 url= index=5 initiale=false shell=false app=true
+[   21.2s 2026-08-06T15:53:57.895Z]   → page app #3 (session=AA590167) : dpr=2 css=640x360 (équivalent périphérique 1280x720)
+[   22.5s 2026-08-06T15:53:59.145Z] FAIT ATTEINT (réouverture pour dpr=2 (cible)) après 2.0 s
+[   22.5s 2026-08-06T15:53:59.145Z]   réouverture (cible) reussie=true sid=AA590167 depuis=2026-08-06T15:53:57.143Z
+[   22.5s 2026-08-06T15:53:59.149Z]   session après réouverture (cible) = w-3 (avant : w-2)
+[   22.5s 2026-08-06T15:53:59.154Z]   état initial (cible) sid=AA590167 {"etat":"new","horloge":1786031639152,"images_decodees":null,"l":null,"h":null,"dpr":2,"inner":"640x360","video_client":"640x360","viewport_msg":{"type":"viewport","session":"w-3","largeur":1280,"hauteur":720,"t":1786031637970},"console_warn":[]}
+[   26.6s 2026-08-06T15:54:03.225Z] FAIT ATTEINT (premier Resize agent (cible)) après 4.1 s
+[   26.6s 2026-08-06T15:54:03.228Z]   viewport forcé en cours de session (cible) → 1000x600 @dpr2
+[   28.1s 2026-08-06T15:54:04.755Z] FAIT ATTEINT (Resize mi-session agent (cible)) après 0.0 s
+[   29.6s 2026-08-06T15:54:06.294Z] RESIZE/HiDPI (cible) — RELEVÉ {
+ "fenetre": "cible",
+ "session_avant": "w-2",
+ "session": "w-3",
+ "dpr_attendu": 2,
+ "debut": "2026-08-06T15:53:57.131Z",
+ "fin": "2026-08-06T15:54:06.279Z",
+ "forcage": {
+  "sid_initial": "E42AC4BDDE2F2477BBA900612F989302",
+  "etat_avant_forcage": {
+   "etat": "connected",
+   "horloge": 1786031637139,
+   "images_decodees": 0,
+   "l": null,
+   "h": null,
+   "dpr": 1,
+   "inner": "1280x720",
+   "video_client": "1280x720",
+   "viewport_msg": {
+    "type": "viewport",
+    "session": "w-2",
+    "largeur": 1280,
+    "hauteur": 720,
+    "t": 1786031633812
+   },
+   "console_warn": []
+  },
+  "debut_reouverture": "2026-08-06T15:53:57.143Z",
+  "reouverture_reussie": true,
+  "sid_frais": "AA5901670840D769F43654604036E668"
+ },
+ "etat_initial": {
+  "etat": "new",
+  "horloge": 1786031639152,
+  "images_decodees": null,
+  "l": null,
+  "h": null,
+  "dpr": 2,
+  "inner": "640x360",
+  "video_client": "640x360",
+  "viewport_msg": {
+   "type": "viewport",
+   "session": "w-3",
+   "largeur": 1280,
+   "hauteur": 720,
+   "t": 1786031637970
+  },
+  "console_warn": []
+ },
+ "viewport_msg": {
+  "type": "viewport",
+  "session": "w-3",
+  "largeur": 1280,
+  "hauteur": 720,
+  "t": 1786031637970
+ },
+ "console_warn": [],
+ "premier_resize_agent": {
+  "t": "2026-08-06T15:54:01.310831Z",
+  "session": "w-3",
+  "largeur": 1280,
+  "hauteur": 720,
+  "ligne": "2026-08-06T15:54:01.310831Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 1280, height: 720 }"
+ },
+ "resize_mi_session": {
+  "demande": "1000x600",
+  "dpr": 2,
+  "evenement": {
+   "t": "2026-08-06T15:54:03.428180Z",
+   "session": "w-3",
+   "largeur": 2000,
+   "hauteur": 1200,
+   "ligne": "2026-08-06T15:54:03.428180Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2000, height: 1200 }"
+  },
+  "inner_apres": {
+   "etat": "connected",
+   "horloge": 1786031644731,
+   "images_decodees": 152,
+   "l": 1280,
+   "h": 720,
+   "dpr": 2,
+   "inner": "1000x600",
+   "video_client": "1000x600",
+   "viewport_msg": {
+    "type": "viewport",
+    "session": "w-3",
+    "largeur": 1280,
+    "hauteur": 720,
+    "t": 1786031637970
+   },
+   "console_warn": []
+  }
+ },
+ "tous_les_resize_toutes_sessions_pendant_la_phase": [
+  {
+   "t": "2026-08-06T15:54:01.310831Z",
+   "session": "w-3",
+   "largeur": 1280,
+   "hauteur": 720,
+   "ligne": "2026-08-06T15:54:01.310831Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 1280, height: 720 }"
+  },
+  {
+   "t": "2026-08-06T15:54:03.428180Z",
+   "session": "w-3",
+   "largeur": 2000,
+   "hauteur": 1200,
+   "ligne": "2026-08-06T15:54:03.428180Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2000, height: 1200 }"
+  },
+  {
+   "t": "2026-08-06T15:54:04.969298Z",
+   "session": "w-3",
+   "largeur": 2560,
+   "hauteur": 1440,
+   "ligne": "2026-08-06T15:54:04.969298Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2560, height: 1440 }"
+  }
+ ],
+ "resize_de_cette_session": [
+  {
+   "t": "2026-08-06T15:54:01.310831Z",
+   "session": "w-3",
+   "largeur": 1280,
+   "hauteur": 720,
+   "ligne": "2026-08-06T15:54:01.310831Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 1280, height: 720 }"
+  },
+  {
+   "t": "2026-08-06T15:54:03.428180Z",
+   "session": "w-3",
+   "largeur": 2000,
+   "hauteur": 1200,
+   "ligne": "2026-08-06T15:54:03.428180Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2000, height: 1200 }"
+  },
+  {
+   "t": "2026-08-06T15:54:04.969298Z",
+   "session": "w-3",
+   "largeur": 2560,
+   "hauteur": 1440,
+   "ligne": "2026-08-06T15:54:04.969298Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2560, height: 1440 }"
+  }
+ ],
+ "deference_console_observee": false,
+ "rejeu_observe_naturellement": false,
+ "meme_unite_annonce_et_resize": true,
+ "toutes_les_lignes_portent_leur_session": true
+}
+[   29.6s 2026-08-06T15:54:06.294Z] SESSION CIBLE (fenêtre 1) = w-3
+[   29.7s 2026-08-06T15:54:06.308Z]   · ouverture fenêtre 2 (hz=520, marqueur=chrome-d9c1-1-2)
+[   30.2s 2026-08-06T15:54:06.829Z] + page attachée  session=79685506 url= index=6 initiale=false shell=false app=true
+[   30.2s 2026-08-06T15:54:06.884Z]   → page app #4 (session=79685506) : dpr=1 css=1280x720 (équivalent périphérique 1280x720)
+[   30.5s 2026-08-06T15:54:07.127Z] + page attachée  session=9CFF803F url= index=7 initiale=false shell=false app=true
+[   30.5s 2026-08-06T15:54:07.180Z]   → page app #5 (session=9CFF803F) : dpr=1 css=1280x720 (équivalent périphérique 1280x720)
+[   32.1s 2026-08-06T15:54:08.783Z]   · ouverture fenêtre 3 (hz=630, marqueur=chrome-d9c1-1-3)
+[   32.7s 2026-08-06T15:54:09.374Z] + page attachée  session=209E1550 url= index=8 initiale=false shell=false app=true
+[   32.8s 2026-08-06T15:54:09.428Z]   → page app #6 (session=209E1550) : dpr=1 css=1280x720 (équivalent périphérique 1280x720)
+[   33.0s 2026-08-06T15:54:09.671Z] + page attachée  session=80AE39C0 url= index=9 initiale=false shell=false app=true
+[   33.1s 2026-08-06T15:54:09.763Z]   → page app #7 (session=80AE39C0) : dpr=1 css=1280x720 (équivalent périphérique 1280x720)
+[   34.7s 2026-08-06T15:54:11.321Z]   3/3 fenêtres ouvertes
+[   40.7s 2026-08-06T15:54:17.326Z] >>> IDENTITÉ + EXCLUSIVITÉ (fenêtre 1) marqueur=chrome-d9c1-1-1
+[   41.4s 2026-08-06T15:54:18.053Z] + page attachée  session=90B8B147 url= index=10 initiale=false shell=false app=true
+[   41.5s 2026-08-06T15:54:18.162Z]   → page app #8 (session=90B8B147) : dpr=1 css=1280x720 (équivalent périphérique 1280x720)
+[   45.3s 2026-08-06T15:54:21.997Z] STYLE FENÊTRE (chrome-d9c1-1-1, action=sansBordure) {"hwnd":"61020a","sans_bordure_apres":true,"avant":382664704,"sans_bordure_avant":false,"apres":369819648}
+
+[   45.4s 2026-08-06T15:54:22.032Z] FAIT ATTEINT (plein écran actif=true (fenêtre 1)) après 0.0 s
+[   46.2s 2026-08-06T15:54:22.815Z] + page attachée  session=1008DC08 url= index=11 initiale=false shell=false app=true
+[   46.2s 2026-08-06T15:54:22.867Z]   → page app #9 (session=1008DC08) : dpr=1 css=1280x720 (équivalent périphérique 1280x720)
+[   50.1s 2026-08-06T15:54:26.704Z] STYLE FENÊTRE (chrome-d9c1-1-1, action=restaurer) {"hwnd":"61020a","sans_bordure_apres":false,"avant":369819648,"sans_bordure_avant":true,"apres":382664704}
+
+[   50.1s 2026-08-06T15:54:26.741Z] FAIT ATTEINT (plein écran actif=false, restauration (fenêtre 1)) après 0.0 s
+[   50.1s 2026-08-06T15:54:26.742Z]   → chrome-d9c1-1-1 : sessions_actives=["w-3"] exclusif=true restaure=true
+[   50.1s 2026-08-06T15:54:26.743Z] >>> IDENTITÉ + EXCLUSIVITÉ (fenêtre 2) marqueur=chrome-d9c1-1-2
+[   50.9s 2026-08-06T15:54:27.525Z] + page attachée  session=637FA575 url= index=12 initiale=false shell=false app=true
+[   50.9s 2026-08-06T15:54:27.600Z]   → page app #10 (session=637FA575) : dpr=1 css=1280x720 (équivalent périphérique 1280x720)
+[   54.8s 2026-08-06T15:54:31.436Z] STYLE FENÊTRE (chrome-d9c1-1-2, action=sansBordure) {"hwnd":"801dc","sans_bordure_apres":true,"avant":382664704,"sans_bordure_avant":false,"apres":369819648}
+
+[   54.8s 2026-08-06T15:54:31.464Z] FAIT ATTEINT (plein écran actif=true (fenêtre 2)) après 0.0 s
+[   55.5s 2026-08-06T15:54:32.153Z] + page attachée  session=353EF29E url= index=13 initiale=false shell=false app=true
+[   55.6s 2026-08-06T15:54:32.214Z]   → page app #11 (session=353EF29E) : dpr=1 css=1280x720 (équivalent périphérique 1280x720)
+[   59.5s 2026-08-06T15:54:36.107Z] STYLE FENÊTRE (chrome-d9c1-1-2, action=restaurer) {"hwnd":"801dc","sans_bordure_apres":false,"avant":369819648,"sans_bordure_avant":true,"apres":382664704}
+
+[   59.5s 2026-08-06T15:54:36.140Z] FAIT ATTEINT (plein écran actif=false, restauration (fenêtre 2)) après 0.0 s
+[   59.5s 2026-08-06T15:54:36.141Z]   → chrome-d9c1-1-2 : sessions_actives=["w-5"] exclusif=true restaure=true
+[   59.5s 2026-08-06T15:54:36.141Z] >>> IDENTITÉ + EXCLUSIVITÉ (fenêtre 3) marqueur=chrome-d9c1-1-3
+[   60.2s 2026-08-06T15:54:36.878Z] + page attachée  session=605F97FE url= index=14 initiale=false shell=false app=true
+[   60.3s 2026-08-06T15:54:36.930Z]   → page app #12 (session=605F97FE) : dpr=1 css=1280x720 (équivalent périphérique 1280x720)
+[   64.1s 2026-08-06T15:54:40.786Z] STYLE FENÊTRE (chrome-d9c1-1-3, action=sansBordure) {"hwnd":"5d017e","sans_bordure_apres":true,"avant":382664704,"sans_bordure_avant":false,"apres":369819648}
+
+[   64.2s 2026-08-06T15:54:40.820Z] FAIT ATTEINT (plein écran actif=true (fenêtre 3)) après 0.0 s
+[   65.0s 2026-08-06T15:54:41.609Z] + page attachée  session=941D5E4E url= index=15 initiale=false shell=false app=true
+[   65.0s 2026-08-06T15:54:41.693Z]   → page app #13 (session=941D5E4E) : dpr=1 css=1280x720 (équivalent périphérique 1280x720)
+[   68.9s 2026-08-06T15:54:45.535Z] STYLE FENÊTRE (chrome-d9c1-1-3, action=restaurer) {"hwnd":"5d017e","sans_bordure_apres":false,"avant":369819648,"sans_bordure_avant":true,"apres":382664704}
+
+[   68.9s 2026-08-06T15:54:45.566Z] FAIT ATTEINT (plein écran actif=false, restauration (fenêtre 3)) après 0.0 s
+[   68.9s 2026-08-06T15:54:45.566Z]   → chrome-d9c1-1-3 : sessions_actives=["w-7"] exclusif=true restaure=true
+[   69.1s 2026-08-06T15:54:45.702Z] SURVIE VM (fin de mesure) virsh="en cours d’exécution" acces_partage=OUI
+[   69.1s 2026-08-06T15:54:45.706Z] relevé écrit dans /home/mallanic/Projects/Guacamole/docs/superpowers/plans/journaux-multifenetres-d9/critere-1-1.json
+[   77.2s 2026-08-06T15:54:53.881Z] journal copié dans /tmp/agent-critere-1-1.log (après la fermeture du navigateur)

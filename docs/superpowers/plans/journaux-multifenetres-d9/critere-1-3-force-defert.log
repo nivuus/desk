@@ -1,0 +1,71 @@
+[    0.0s 2026-08-06T15:58:26.980Z] ÉTIQUETTE=3-force-defert PORT_SHELL=5173 N_FENETRES=1 DPR_CIBLE=2 PHASE_EXCLUSIVITE=0 chrome pid=1598540
+[    1.1s 2026-08-06T15:58:28.040Z] identité du navigateur : pid écoutant=1598540 pid lancé=1598540 version=Chrome/151.0.7922.71
+[    1.1s 2026-08-06T15:58:28.073Z] + page attachée  session=9FCB009E url=about:blank index=1 initiale=true shell=false app=false
+[    1.1s 2026-08-06T15:58:28.095Z] >>> ÉTAPE 0 : préparation — VM sans fenêtre éligible (vérifié, pas supposé)
+[    1.2s 2026-08-06T15:58:28.121Z] CPU HÔTE (au repos, avant toute session) loadavg=9.51 9.52 8.48 26/3133 1598700
+[    6.6s 2026-08-06T15:58:33.615Z] PURGE FENÊTRES/AGENTS RESCAPÉS (avant lancement du superviseur) {"agents_restants":0,"chrome_restants":0}
+[    6.7s 2026-08-06T15:58:33.661Z] + page attachée  session=6A1AFF37 url=http://192.168.3.1:5173/shell.html index=2 initiale=false shell=true app=false
+[    9.7s 2026-08-06T15:58:36.688Z] statut shell : bureau connecté
+[    9.7s 2026-08-06T15:58:36.688Z] >>> lancement du superviseur
+[   10.2s 2026-08-06T15:58:37.166Z] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   16.2s 2026-08-06T15:58:43.197Z]   · ouverture fenêtre 1 (hz=410, marqueur=chrome-d9c1-3-force-defert-1)
+[   16.8s 2026-08-06T15:58:43.746Z] + page attachée  session=806BFF1E url= index=3 initiale=false shell=false app=true
+[   16.8s 2026-08-06T15:58:43.815Z]   → page app #1 (session=806BFF1E) : dpr=1 css=1280x720 (équivalent périphérique 1280x720)
+[   16.9s 2026-08-06T15:58:43.824Z]   → FORCER_DEFERT : latence de 3000 ms posée (session=806BFF1E)
+[   17.1s 2026-08-06T15:58:44.021Z] + page attachée  session=6CA8D0EB url= index=4 initiale=false shell=false app=true
+[   17.1s 2026-08-06T15:58:44.072Z]   → page app #2 (session=6CA8D0EB) : dpr=1 css=1280x720 (équivalent périphérique 1280x720)
+[   17.1s 2026-08-06T15:58:44.084Z]   → FORCER_DEFERT : latence de 3000 ms posée (session=6CA8D0EB)
+[   22.7s 2026-08-06T15:58:49.695Z] >>> PHASE RESIZE/HiDPI — fenêtre=cible sid_initial=6CA8D0EB dpr_attendu=2
+[   22.7s 2026-08-06T15:58:49.701Z]   état AVANT forçage (cible) session=w-2 sid=6CA8D0EB {"pc":null}
+[   22.7s 2026-08-06T15:58:49.713Z]   page fermée délibérément (cible) pour forcer une réouverture à dpr=2
+[   23.9s 2026-08-06T15:58:50.825Z]   → FORCER_DEFERT : latence retirée (session=806BFF1E)
+[   24.1s 2026-08-06T15:58:51.085Z]   → FORCER_DEFERT : latence retirée (session=6CA8D0EB)
+[   82.8s 2026-08-06T15:59:49.766Z] !! FAIT NON ATTEINT (réouverture pour dpr=2 (cible)) après 60 s
+[   82.8s 2026-08-06T15:59:49.767Z]   réouverture (cible) reussie=false sid=6CA8D0EB depuis=2026-08-06T15:58:49.713Z
+[   82.8s 2026-08-06T15:59:49.767Z]   session après réouverture (cible) = w-2 (avant : w-2)
+[   82.8s 2026-08-06T15:59:49.770Z]   état initial (cible) sid=6CA8D0EB {"__erreur":"Error: {\"code\":-32001,\"message\":\"Session with given id not found.\"}"}
+[  113.1s 2026-08-06T16:00:20.031Z] !! FAIT NON ATTEINT (premier Resize agent (cible)) après 30 s
+[  113.1s 2026-08-06T16:00:20.033Z]   viewport forcé en cours de session (cible) → 1000x600 @dpr2
+[  134.8s 2026-08-06T16:00:41.742Z] !! FAIT NON ATTEINT (Resize mi-session agent (cible)) après 20 s
+[  136.3s 2026-08-06T16:00:43.270Z] RESIZE/HiDPI (cible) — RELEVÉ {
+ "fenetre": "cible",
+ "session_avant": "w-2",
+ "session": "w-2",
+ "dpr_attendu": 2,
+ "debut": "2026-08-06T15:58:49.695Z",
+ "fin": "2026-08-06T16:00:43.245Z",
+ "forcage": {
+  "sid_initial": "6CA8D0EB0746E3A43812978EC4E4554E",
+  "etat_avant_forcage": {
+   "pc": null
+  },
+  "debut_reouverture": "2026-08-06T15:58:49.713Z",
+  "reouverture_reussie": false,
+  "sid_frais": null
+ },
+ "etat_initial": {
+  "__erreur": "Error: {\"code\":-32001,\"message\":\"Session with given id not found.\"}"
+ },
+ "viewport_msg": null,
+ "console_warn": [],
+ "premier_resize_agent": null,
+ "resize_mi_session": {
+  "demande": "1000x600",
+  "dpr": 2,
+  "evenement": null,
+  "inner_apres": {
+   "__erreur": "Error: {\"code\":-32001,\"message\":\"Session with given id not found.\"}"
+  }
+ },
+ "tous_les_resize_toutes_sessions_pendant_la_phase": [],
+ "resize_de_cette_session": [],
+ "deference_console_observee": false,
+ "rejeu_observe_naturellement": false,
+ "meme_unite_annonce_et_resize": false,
+ "toutes_les_lignes_portent_leur_session": true
+}
+[  136.3s 2026-08-06T16:00:43.272Z] SESSION CIBLE (fenêtre 1) = w-2
+[  136.3s 2026-08-06T16:00:43.273Z]   1/1 fenêtres ouvertes
+[  142.4s 2026-08-06T16:00:49.408Z] SURVIE VM (fin de mesure) virsh="en cours d’exécution" acces_partage=OUI
+[  142.4s 2026-08-06T16:00:49.410Z] relevé écrit dans /home/mallanic/Projects/Guacamole/docs/superpowers/plans/journaux-multifenetres-d9/critere-1-3-force-defert.json
+[  150.6s 2026-08-06T16:00:57.555Z] journal copié dans /tmp/agent-critere-1-3.log (après la fermeture du navigateur)

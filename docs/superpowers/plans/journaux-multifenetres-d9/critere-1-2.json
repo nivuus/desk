@@ -1,0 +1,268 @@
+{
+ "etiquette": "2",
+ "port_shell": "5173",
+ "n_fenetres": 3,
+ "phases": {
+  "resize_dpr_cible": {
+   "fenetre": "cible",
+   "session_avant": "w-2",
+   "session": "w-3",
+   "dpr_attendu": 2,
+   "debut": "2026-08-06T15:55:47.228Z",
+   "fin": "2026-08-06T15:55:56.415Z",
+   "forcage": {
+    "sid_initial": "759A5EDD3D749291B7DF349F6D23B71F",
+    "etat_avant_forcage": {
+     "etat": "connected",
+     "horloge": 1786031747245,
+     "images_decodees": 0,
+     "l": null,
+     "h": null,
+     "dpr": 1,
+     "inner": "1280x720",
+     "video_client": "1280x720",
+     "viewport_msg": {
+      "type": "viewport",
+      "session": "w-2",
+      "largeur": 1280,
+      "hauteur": 720,
+      "t": 1786031743813
+     },
+     "console_warn": []
+    },
+    "debut_reouverture": "2026-08-06T15:55:47.256Z",
+    "reouverture_reussie": true,
+    "sid_frais": "2806B442F9802F552FAE1726DECB2F18"
+   },
+   "etat_initial": {
+    "etat": "new",
+    "horloge": 1786031749264,
+    "images_decodees": null,
+    "l": null,
+    "h": null,
+    "dpr": 2,
+    "inner": "640x360",
+    "video_client": "640x360",
+    "viewport_msg": {
+     "type": "viewport",
+     "session": "w-3",
+     "largeur": 1280,
+     "hauteur": 720,
+     "t": 1786031748090
+    },
+    "console_warn": []
+   },
+   "viewport_msg": {
+    "type": "viewport",
+    "session": "w-3",
+    "largeur": 1280,
+    "hauteur": 720,
+    "t": 1786031748090
+   },
+   "console_warn": [],
+   "premier_resize_agent": {
+    "t": "2026-08-06T15:55:51.373422Z",
+    "session": "w-3",
+    "largeur": 1280,
+    "hauteur": 720,
+    "ligne": "2026-08-06T15:55:51.373422Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 1280, height: 720 }"
+   },
+   "resize_mi_session": {
+    "demande": "1000x600",
+    "dpr": 2,
+    "evenement": {
+     "t": "2026-08-06T15:55:53.560265Z",
+     "session": "w-3",
+     "largeur": 2000,
+     "hauteur": 1200,
+     "ligne": "2026-08-06T15:55:53.560265Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2000, height: 1200 }"
+    },
+    "inner_apres": {
+     "etat": "connected",
+     "horloge": 1786031754876,
+     "images_decodees": 310,
+     "l": 1280,
+     "h": 720,
+     "dpr": 2,
+     "inner": "1000x600",
+     "video_client": "1000x600",
+     "viewport_msg": {
+      "type": "viewport",
+      "session": "w-3",
+      "largeur": 1280,
+      "hauteur": 720,
+      "t": 1786031748090
+     },
+     "console_warn": []
+    }
+   },
+   "tous_les_resize_toutes_sessions_pendant_la_phase": [
+    {
+     "t": "2026-08-06T15:55:47.241091Z",
+     "session": "w-2",
+     "largeur": 1280,
+     "hauteur": 720,
+     "ligne": "2026-08-06T15:55:47.241091Z  INFO agent::demarrage: contrôle reçu session=w-2 Resize { version: 3, width: 1280, height: 720 }"
+    },
+    {
+     "t": "2026-08-06T15:55:51.373422Z",
+     "session": "w-3",
+     "largeur": 1280,
+     "hauteur": 720,
+     "ligne": "2026-08-06T15:55:51.373422Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 1280, height: 720 }"
+    },
+    {
+     "t": "2026-08-06T15:55:53.560265Z",
+     "session": "w-3",
+     "largeur": 2000,
+     "hauteur": 1200,
+     "ligne": "2026-08-06T15:55:53.560265Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2000, height: 1200 }"
+    },
+    {
+     "t": "2026-08-06T15:55:55.113451Z",
+     "session": "w-3",
+     "largeur": 2560,
+     "hauteur": 1440,
+     "ligne": "2026-08-06T15:55:55.113451Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2560, height: 1440 }"
+    }
+   ],
+   "resize_de_cette_session": [
+    {
+     "t": "2026-08-06T15:55:51.373422Z",
+     "session": "w-3",
+     "largeur": 1280,
+     "hauteur": 720,
+     "ligne": "2026-08-06T15:55:51.373422Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 1280, height: 720 }"
+    },
+    {
+     "t": "2026-08-06T15:55:53.560265Z",
+     "session": "w-3",
+     "largeur": 2000,
+     "hauteur": 1200,
+     "ligne": "2026-08-06T15:55:53.560265Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2000, height: 1200 }"
+    },
+    {
+     "t": "2026-08-06T15:55:55.113451Z",
+     "session": "w-3",
+     "largeur": 2560,
+     "hauteur": 1440,
+     "ligne": "2026-08-06T15:55:55.113451Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2560, height: 1440 }"
+    }
+   ],
+   "deference_console_observee": false,
+   "rejeu_observe_naturellement": false,
+   "meme_unite_annonce_et_resize": true,
+   "toutes_les_lignes_portent_leur_session": true
+  }
+ },
+ "navigateur": "Chrome/151.0.7922.71",
+ "cpu_repos": {
+  "loadavg": "9.69 8.28 7.89 7/3114 1588633"
+ },
+ "purge_rescapees": true,
+ "session_cible": "w-3",
+ "fenetres_ouvertes": [
+  {
+   "ok": true,
+   "marqueur": "chrome-d9c1-2-1",
+   "sid": "759A5EDD3D749291B7DF349F6D23B71F"
+  },
+  {
+   "ok": true,
+   "hz": 520,
+   "marqueur": "chrome-d9c1-2-2",
+   "sid": "07BF5FFF221219BD1700F3CD9EB20F33"
+  },
+  {
+   "ok": true,
+   "hz": 630,
+   "marqueur": "chrome-d9c1-2-3",
+   "sid": "010E8E1A8222D7AFEDDBF1F25ABC49E5"
+  }
+ ],
+ "exclusivite": [
+  {
+   "marqueur": "chrome-d9c1-2-1",
+   "session": "w-3",
+   "sessions_actives": [
+    "w-3"
+   ],
+   "exclusif": true,
+   "restaure": true,
+   "debut": "2026-08-06T15:56:07.688Z",
+   "fin": "2026-08-06T15:56:12.467Z"
+  },
+  {
+   "marqueur": "chrome-d9c1-2-2",
+   "session": "w-5",
+   "sessions_actives": [
+    "w-5"
+   ],
+   "exclusif": true,
+   "restaure": true,
+   "debut": "2026-08-06T15:56:17.391Z",
+   "fin": "2026-08-06T15:56:22.286Z"
+  },
+  {
+   "marqueur": "chrome-d9c1-2-3",
+   "session": "w-7",
+   "sessions_actives": [
+    "w-7"
+   ],
+   "exclusif": true,
+   "restaure": true,
+   "debut": "2026-08-06T15:56:27.053Z",
+   "fin": "2026-08-06T15:56:31.777Z"
+  }
+ ],
+ "tous_les_resize_toutes_sessions": [
+  {
+   "t": "2026-08-06T15:55:47.241091Z",
+   "session": "w-2",
+   "largeur": 1280,
+   "hauteur": 720,
+   "ligne": "2026-08-06T15:55:47.241091Z  INFO agent::demarrage: contrôle reçu session=w-2 Resize { version: 3, width: 1280, height: 720 }"
+  },
+  {
+   "t": "2026-08-06T15:55:51.373422Z",
+   "session": "w-3",
+   "largeur": 1280,
+   "hauteur": 720,
+   "ligne": "2026-08-06T15:55:51.373422Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 1280, height: 720 }"
+  },
+  {
+   "t": "2026-08-06T15:55:53.560265Z",
+   "session": "w-3",
+   "largeur": 2000,
+   "hauteur": 1200,
+   "ligne": "2026-08-06T15:55:53.560265Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2000, height: 1200 }"
+  },
+  {
+   "t": "2026-08-06T15:55:55.113451Z",
+   "session": "w-3",
+   "largeur": 2560,
+   "hauteur": 1440,
+   "ligne": "2026-08-06T15:55:55.113451Z  INFO agent::demarrage: contrôle reçu session=w-3 Resize { version: 3, width: 2560, height: 1440 }"
+  },
+  {
+   "t": "2026-08-06T15:56:05.711107Z",
+   "session": "w-7",
+   "largeur": 1280,
+   "hauteur": 720,
+   "ligne": "2026-08-06T15:56:05.711107Z  INFO agent::demarrage: contrôle reçu session=w-7 Resize { version: 3, width: 1280, height: 720 }"
+  }
+ ],
+ "toutes_les_lignes_resize_portent_leur_session": true,
+ "marqueurs_finaux": {
+  "lignes_resize": 5,
+  "sessions_distinctes_resize": [
+   "w-2",
+   "w-3",
+   "w-7"
+  ]
+ },
+ "survie_finale": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ }
+}
