@@ -192,8 +192,24 @@ mod tests {
     #[test]
     fn un_groupe_entierement_inapte_reste_muet() {
         // Aucune voisine à promouvoir : c'est le cas MAJORITAIRE — une
-        // application, une fenêtre. Le réarmement après répit est le seul remède,
-        // et il vit dans le registre, pas ici.
+        // application, une fenêtre.
+        //
+        // ❌ **Ce commentaire disait « le réarmement après répit est le seul
+        // remède, et il vit dans le registre, pas ici ». Le remède en question
+        // est INERTE** (recette VM de la tâche 15, sous-bloc D9) : réélire la
+        // même session ne reconstruit AUCUNE capture — `set_audio_source` n'est
+        // appelée qu'une fois (`demarrage/audio.rs`), le fil de capture
+        // (`windows_audio.rs`) fait un `return` définitif, et `set_actif(true)`
+        // n'écrit qu'un atomique que ce fil ne relit jamais. La réfutation
+        // complète vit auprès de `REPIT_REARMEMENT_AUDIO`
+        // (`capteur/sommeil.rs`) ; elle est répétée ICI parce que c'est ici que
+        // le cas majoritaire se lit, et que ce dépôt a payé cinq fois d'avoir
+        // corrigé une affirmation là où on la lui montrait plutôt que là où
+        // elle vit. **Le cas majoritaire reste donc SANS REMÈDE, et c'est un
+        // legs de D9.**
+        //
+        // Ce que ce test établit, et qui reste juste : la RÈGLE pure ne fait
+        // porter le son à personne quand tout le groupe est inapte.
         let fenetres = vec![
             FenetreAudio { session: "w-1".into(), pid: 42, arrivee: 1, dernier_focus: 0, inapte: true },
             FenetreAudio { session: "w-2".into(), pid: 42, arrivee: 2, dernier_focus: 0, inapte: true },

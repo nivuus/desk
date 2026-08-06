@@ -88,6 +88,31 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
         // est refermé. Sans cette remise à zéro, `REARMEMENTS_MAX`
         // s'épuiserait sur toute la vie de la session au lieu de compter
         // des échecs CONSÉCUTIFS.
+        //
+        // ⚠️ **`actif` est une DÉCISION d'arbitrage, pas la preuve qu'un son
+        // sorte** — et la conséquence est que `REARMEMENTS_MAX` ne peut PAS
+        // mordre dans le cas majoritaire. Trouvé par la revue TRANSVERSE de fin
+        // de branche D9 : la borne (tâche 8) et la réfutation du réarmement
+        // (correction de la tâche 15) sont chacune justes de leur côté, et
+        // c'est leur composition qui ne l'est pas. Pour une fenêtre SEULE de
+        // son groupe de PID, la sortie de répit la rend automatiquement
+        // porteuse — `arbitrer` n'a personne d'autre à élire —, donc son
+        // compteur est remis à zéro à chaque cycle, alors même que rien n'a
+        // été restauré (voir `REPIT_REARMEMENT_AUDIO`). Le garde-fou du §5.1
+        // point 4 de la spec — « pour qu'un périphérique définitivement mort ne
+        // tourne pas sans fin » — ne s'applique donc en pratique qu'aux
+        // groupes de PID à PLUSIEURS fenêtres, où la dormante n'est jamais
+        // élue tant qu'une voisine porte le son.
+        //
+        // **Non corrigé, délibérément** : la sanction n'a aucune conséquence
+        // observée aujourd'hui — le cycle ne tourne pas sans fin pour autant,
+        // l'enfant ne resignalant `AudioMort` qu'après un rattachement
+        // (`Session::audio_mort_signale`, `transport/tick.rs`). Le remède juste
+        // est de refermer le cycle sur une PREUVE de son (un signal
+        // enfant→capteur « la capture est vivante »), pas sur une décision — et
+        // ce signal est exactement ce que le legs « reconstruire la capture »
+        // apportera. Corriger la remise à zéro seule, sans lui, échangerait une
+        // borne inopérante contre une borne qui mord sur un état sain.
         if actif {
             garde.rearmements.remove(&session);
         }

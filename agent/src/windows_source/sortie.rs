@@ -93,6 +93,20 @@ pub const TAILLE_MAX_SORTIE: (u32, u32) = (1920, 1080);
 /// rien n'interdit de réemployer. Son rôle propre reste borné au PLAFOND
 /// (`TAILLE_MAX_SORTIE`) ; le plancher applicatif de 160×120 qu'appliquait
 /// l'ancien appelant n'existe donc plus nulle part.
+///
+/// ⚠️ **Et la TAILLE DE CRÉATION d'une sortie n'a jamais été bornée par
+/// personne — ce n'est pas une régression de D9, c'est une lacune que D9 rend
+/// plus mordante.** `superviseur::boucle::creer_sortie` passe au pilote le
+/// viewport annoncé par la page, tel quel ; or la tâche 5 de D9 fait désormais
+/// annoncer ce viewport en **pixels périphériques** (`client/src/main.ts`,
+/// `innerWidth × devicePixelRatio`). Un client à `devicePixelRatio = 2`
+/// demande donc une sortie de 2560×1440 là où il demandait 1280×720, soit
+/// quatre fois les pixels à capturer et à encoder — et cette fonction, la
+/// seule du dépôt qui sache poser un plafond, se retrouve sans appelant dans
+/// le même sous-bloc. **Aucun client HiDPI réel n'a été mesuré** : le montage
+/// de recette est un Chrome sans interface, et D9 n'a exercé
+/// `deviceScaleFactor = 2` que sur la symétrie d'unité, jamais sur le coût.
+/// Relevé par la revue transverse de fin de branche D9 ; legs de D9.
 pub fn borner_a_la_taille_max((l, h): (u32, u32)) -> (u32, u32) {
     let (max_l, max_h) = TAILLE_MAX_SORTIE;
     if l <= max_l && h <= max_h {

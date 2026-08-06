@@ -358,6 +358,18 @@ fn tenir_la_fenetre(
 /// abandon qui expire à l'instant précis où la même session vient de se
 /// réinscrire retirerait l'entrée neuve ; l'enfant s'en remet par sa fenêtre
 /// de reprise. Course jugée négligeable, pas inexistante.
+///
+/// ⚠️ **C'est LITTÉRALEMENT la course F5 (D7) que le sous-bloc D9 a fermée —
+/// sur l'AUTRE registre, et sur lui seul.** La tâche 10 de D9 a donné une
+/// génération monotone aux inscriptions du registre de sommeil
+/// (`capteur/sommeil/registre.rs` : `inscrire` la frappe, `retirer` devient
+/// sans effet si l'enregistrée est plus récente). Le registre d'attentes
+/// tenu ICI n'a rien reçu de tel, et son `remove` reste inconditionnel : le
+/// leg 2 est donc fermé sur `sommeil`, **pas sur `instances`**. Relevé par la
+/// revue transverse de fin de branche D9 — le brief de la tâche 10 ne nommait
+/// que `sommeil`, et aucune revue par tâche ne pouvait voir le jumeau.
+/// Le remède serait le même patron : `attendre_le_media` rend la génération
+/// qu'il vient d'inscrire, `oublier` la reçoit et se tait si elle est périmée.
 fn oublier(session: &str) {
     registre_verrouille().remove(session);
 }

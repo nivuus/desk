@@ -247,6 +247,30 @@ relaie déjà la visibilité ; il est reçu par le serveur du capteur.
 4. le cycle est **borné en nombre**, pour qu'un périphérique définitivement mort
    ne tourne pas sans fin.
 
+> ❌ **LES POINTS 3 ET 4 SONT RÉFUTÉS PAR L'EXÉCUTION (D9, tâche 15 et revue
+> transverse de fin de branche, 6 août 2026). Le point 2 tient.**
+>
+> - **Point 3 — « construit elle aussi une activation neuve » est FAUX.**
+>   Vérifié sur le code : `set_audio_source` n'est appelée qu'une fois
+>   (`agent/src/demarrage/audio.rs`, sans boucle), le fil de capture
+>   (`agent/src/windows_audio.rs`) exécute un `return` **définitif** une fois
+>   `capture_morte` posé, et réélire la même session ne fait que pousser
+>   `Audio { actif: true }` → `set_actif(true)`, **qui n'écrit qu'un booléen
+>   atomique que ce fil mort ne relira jamais**. Rien, nulle part, ne
+>   reconstruit la source. **Le cas majoritaire — une application, une fenêtre
+>   — reste donc SANS REMÈDE**, exactement ce que cette branche existait pour
+>   éviter. Le point 2 (promotion d'une voisine), lui, reste valide : la
+>   voisine a son propre fil de capture, qui n'a jamais échoué.
+> - **Point 4 — la borne ne mord pas là où elle devait.**
+>   `capteur/sommeil/porteurs.rs` remet le compteur de réarmements à zéro dès
+>   qu'une session est **décidée** porteuse ; pour une fenêtre seule de son
+>   groupe de PID, la sortie de répit la rend automatiquement porteuse, donc le
+>   compteur repart de zéro à chaque cycle — `REARMEMENTS_MAX` n'est
+>   atteignable que dans un groupe à plusieurs fenêtres.
+>
+> Le remède réel est légué : reconstruire la capture, à l'intersection de
+> `demarrage/audio.rs`, `transport/piste_audio.rs` et `windows_audio.rs`.
+
 Le réarmement réemploie la variante `DepuisCapteur::Audio { emet }`
 **existante** : aucune variante neuve dans ce sens.
 

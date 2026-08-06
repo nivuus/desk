@@ -858,6 +858,14 @@ git commit -m "feat(d9): une fenetre dont la capture audio est morte ne porte pl
 
 Dans `sommeil.rs` :
 
+> ❌ **LE COMMENTAIRE CI-DESSOUS, PRESCRIT PAR CE PLAN, EST RÉFUTÉ — il ne
+> décrit pas le code livré.** « Réélire la même session construit une activation
+> *process loopback* NEUVE » est FAUX (recette VM de la tâche 15, D9, vérifiée
+> sur le code) : rien ne reconstruit la capture, et la réélection après répit
+> est **INERTE**. La rédaction juste vit dans
+> `agent/src/capteur/sommeil.rs::REPIT_REARMEMENT_AUDIO` ; **ne pas recopier
+> celle-ci.** La branche PROMOTION, elle, reste valide.
+
 ```rust
 /// Répit avant qu'une fenêtre dont la capture audio est morte ne redevienne
 /// éligible au portage.

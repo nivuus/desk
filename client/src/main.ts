@@ -40,11 +40,34 @@ const signalingUrl =
 // demander — on ne fait rien plutôt que d'échouer.
 if (window.opener && !window.opener.closed) {
     // MÊME UNITÉ que le `Resize` émis plus bas (`clientWidth × devicePixelRatio`).
-    // Sans ce facteur, à `devicePixelRatio > 1` la sortie virtuelle naît sur une
-    // grandeur que le `Resize` de routine ne peut pas égaler, et le court-circuit
-    // « taille inchangée » de `windows_source/redimensionnement.rs` ne retient
-    // plus rien : CHAQUE connexion de CHAQUE fenêtre déclencherait un changement
-    // de mode, avec 25 à 100 % d'écart (leg 7 du sous-bloc D8).
+    //
+    // ⚠️ **La raison écrite ici à l'origine était déjà périmée quand elle a été
+    // écrite, et c'est la revue TRANSVERSE de fin de branche D9 qui l'a
+    // rattrapée.** Elle disait : « sans ce facteur, CHAQUE connexion de CHAQUE
+    // fenêtre déclencherait un changement de mode, avec 25 à 100 % d'écart
+    // (leg 7 du sous-bloc D8) ». Or la tâche 3 du même sous-bloc D9 — un commit
+    // AVANT celui qui a écrit cette phrase — avait retiré le changement de mode
+    // de sortie sur mesure (voir le constat en tête de
+    // `agent/src/capteur/plein_ecran.rs`). Il n'y a donc plus aucun changement
+    // de mode à déclencher : `WindowsSource::resize` retourne avant tout en
+    // mode `SortieEntiere`, et le court-circuit « taille inchangée » qu'on
+    // invoquait n'est même plus atteint.
+    //
+    // ✅ **Ce que le facteur corrige RÉELLEMENT, et qui justifie de le garder** :
+    // l'annonce de viewport DÉCIDE la taille de la sortie virtuelle créée par le
+    // superviseur (`superviseur/boucle.rs::creer_sortie`). Sans dpr, un client
+    // HiDPI recevait une sortie plus PETITE que sa surface d'affichage réelle,
+    // donc une image mise à l'échelle vers le haut par le navigateur. Avec, la
+    // sortie naît en pixels périphériques, l'unité dans laquelle le `Resize` de
+    // routine parle déjà.
+    //
+    // ⚠️ **Conséquence non mesurée, et déclarée comme telle (legs de D9)** : à
+    // `devicePixelRatio = 2`, une fenêtre de 1280×720 CSS demande désormais une
+    // sortie de 2560×1440, soit QUATRE fois les pixels à capturer et à encoder,
+    // et **rien ne borne cette demande** — `windows_source/sortie.rs::
+    // borner_a_la_taille_max` (1920×1080) a perdu son dernier appelant avec le
+    // changement de mode et n'est plus branchée nulle part. D6 a relevé le
+    // décodeur du navigateur saturé dès huit fenêtres de 1280×720.
     //
     // Il n'y a qu'un `devicePixelRatio` en jeu : c'est CETTE page qui annonce, et
     // c'est son propre `ResizeObserver` qui émettra le `Resize`.
