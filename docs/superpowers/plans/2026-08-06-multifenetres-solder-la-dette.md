@@ -373,142 +373,99 @@ git commit -m "mesure(d9): la persistance sous CDS_UPDATEREGISTRY, deux executio
 
 ---
 
-## Famille ① — armer le plein écran
+## Famille ① — le plein écran : retirer ce qui ne peut pas fonctionner
 
-### Task 3 : les drapeaux retenus et l'encadrement de la duplication
+> ⚠️ **CETTE FAMILLE A CHANGÉ D'OBJET LE 6 AOÛT 2026, après le verdict consolidé
+> de la phase P (tâches 2 et 2bis), sur décision de l'utilisateur.** Elle
+> s'appelait « armer le plein écran ». La mesure a établi que le changement de
+> mode **ne survit pas** — `n = 4` exécutions propres à cibles distinctes de la
+> taille de création, sous `CDS_UPDATEREGISTRY` comme sous `flags = 0` — et que
+> `CDS_UPDATEREGISTRY` **pollue le registre**, confirmé et attribuable par GUID.
+> **L'abandon est donc établi, pas supposé.** L'ancienne tâche 4 (C2) est
+> supprimée : `reconstruire_sur_la_sortie` n'a qu'un seul appelant, le
+> changement de mode lui-même, et disparaît avec lui.
 
-**Files:**
-- Modify: `agent/src/windows_source/redimensionnement/mode_sortie.rs` (458 lignes, marge 42)
-- Modify: `agent/src/capteur/plein_ecran.rs` (263 lignes) — le garde et ses raisons
-
-**Interfaces:**
-- Consumes: le verdict de la tâche 2
-- Produces: `WindowsSource::changer_mode_de_sortie` corrigée, appelée par `redimensionnement.rs::resize`
-
-- [ ] **Step 1 : adopter la combinaison de drapeaux que la tâche 2 a retenue**
-
-Si `CDS_TYPE(0)` a fait bouger la sortie, remplacer `CDS_UPDATEREGISTRY` par elle, et **remplacer le commentaire de C1** par le constat :
-
-```rust
-// C1 est MORT : ce chemin n'écrit plus au registre. Mesuré en phase P
-// (`p-eliminatoire-{1,2}.log`) : `CDS_TYPE(0)` fait bouger la sortie,
-// relecture DXGI à l'appui, sans persistance. Le produit ne peut donc plus
-// bloquer ses propres ouvertures de fenêtre ultérieures.
-```
-
-Sinon, garder `CDS_UPDATEREGISTRY` et **ajouter le repli**, nommé pour ce qu'il est :
-
-```rust
-// C1, REPLI et non remède : `CDS_TYPE(0)` ne fait pas bouger la sortie
-// (phase P). On restaure donc le registre à `TAILLE_SORTIE_REFERENCE` après
-// coup. C'est un pansement sur un comportement de pilote non expliqué — une
-// sortie naît à la dernière taille laissée au registre, et rien ne dit
-// pourquoi.
-const TAILLE_SORTIE_REFERENCE: (u32, u32) = (1280, 720);
-```
-
-- [ ] **Step 2 : encadrer l'appel si l'éliminatoire a REFUSÉ**
-
-Si et seulement si la tâche 2 a rendu `REFUSE` :
-
-```rust
-// Règle de décision ÉCRITE AVANT LA MESURE (spec §3.6), appliquée parce que
-// la phase P a rendu REFUSE : le pilote n'accepte pas le changement de mode
-// sur une sortie dont la duplication est ouverte. On relâche, on change, on
-// rouvre — la mécanique de reprise de D2, éprouvée à 44 pertes d'accès
-// encaissées sans tuer une session.
-//
-// COÛT, écrit d'avance : une interruption de capture bornée sur CETTE
-// fenêtre, et un abandon de mutex probablement infligé aux voisines à chaque
-// entrée en plein écran. La recette ① le relève ; elle ne le seuille pas,
-// aucun seuil acceptable n'étant connu.
-self.relacher_la_duplication();
-let resultat = changer_le_mode(...);
-self.rouvrir_la_duplication_avec_reprise()?;
-resultat
-```
-
-Si la phase P a rendu `ACCEPTE`, **ne pas ajouter cet encadrement** et écrire pourquoi :
-
-```rust
-// Pas d'encadrement relâcher/changer/rouvrir : la phase P a mesuré que le
-// pilote ACCEPTE le changement de mode sur une sortie à duplication ouverte
-// (`p-eliminatoire-{1,2}.log`, deux exécutions). L'ajouter coûterait une
-// interruption de capture pour rien.
-```
-
-- [ ] **Step 3 : mettre le garde à jour**
-
-Dans `capteur/plein_ecran.rs::changement_de_mode_arme`, remplacer les raisons du désarmement par l'état réel. **Ne pas armer par défaut dans cette tâche** — c'est la recette ① (tâche 14) qui décide, sur pièces.
-
-```rust
-// Les deux Critiques de D8 sont traitées (D9 tâches 3 et 4) et le chemin a
-// été mesuré en phase P. Il reste DÉSARMÉ par défaut jusqu'à ce que la
-// recette ① l'ait exercé en conditions de produit : un chemin corrigé mais
-// jamais couru n'est pas un chemin livré, et c'est exactement la leçon que
-// D7 a payée sur ses cinq remèdes.
-```
-
-- [ ] **Step 4 : vérifier**
-
-Run: `cd agent && cargo check --target x86_64-pc-windows-gnu && cargo test -p agent capteur::plein_ecran`
-Expected: sortie 0 ; les 9 tests de `plein_ecran` passent.
-
-- [ ] **Step 5 : commit**
-
-```bash
-git add agent/src/windows_source/redimensionnement/mode_sortie.rs agent/src/capteur/plein_ecran.rs
-git commit -m "fix(d9): C1 traite, les drapeaux suivent la mesure de la phase P"
-```
-
----
-
-### Task 4 : C2 — la réouverture retentable emprunte la reprise de D2
+### Task 3 : retirer le changement de mode de sortie
 
 **Files:**
-- Modify: `agent/src/windows_source/redimensionnement.rs` (345 lignes, marge 155)
+- Delete: `agent/src/windows_source/redimensionnement/mode_sortie.rs` (458 lignes)
+- Modify: `agent/src/windows_source/redimensionnement.rs` (345) — l'appel unique, l. 185
+- Modify: `agent/src/capteur/plein_ecran.rs` (263) — le garde `changement_de_mode_arme` et ses raisons
+- Modify: `scripts/run-agent.sh` — la ligne `PLEIN_ECRAN_MODE_SORTIE`
+- Modify: `agent/src/superviseur/table.rs:279`, `agent/src/superviseur/boucle/placement_periodique.rs:19`, `agent/src/superviseur/table/tests_retention.rs:283`, `agent/src/windows_source/sortie.rs:61` — les quatre commentaires renvoyants
 
 **Interfaces:**
-- Consumes: `crate::rebuild::{rebuild_or_recover, RebuildOutcome}`, `est_ouverture_retentable`
-- Produces: `reconstruire_sur_la_sortie` qui ne casse plus la session sur un transitoire
+- Consumes: le verdict consolidé de la phase P
+- Produces: rien — c'est une suppression
 
-**Contexte.** Après un changement de mode, `reconstruire_sur_la_sortie` rend une `Err` sur un échec de réouverture **y compris transitoire** — la classe d'échec exacte que la fenêtre de reprise de D2 existe pour encaisser (44 pertes `0x887A0026` absorbées sans tuer une session). Ici, la session meurt.
+**Ce qui reste livré, et c'est le repli que la conception de D8 avait écrit
+d'avance** (« ①, ③, ④ et ⑤ tiennent sans ② ») : la détection du style de
+fenêtre (`capteur/fenetre.rs`, `PERIODE_STYLE`), l'annonce
+`DepuisCapteur::PleinEcran` → `AgentControl::Fullscreen`, et l'armement client
+(`client/src/fullscreen.ts`) avec Keyboard Lock. **La fenêtre navigateur passe
+en plein écran ; le flux garde la résolution de création de sa sortie.**
 
-- [ ] **Step 1 : distinguer le transitoire du définitif**
+- [ ] **Step 1 : vérifier qu'il n'y a bien qu'un appelant**
+
+Run: `grep -rn "changer_mode_de_sortie\|reconstruire_sur_la_sortie\|changement_de_mode_arme\|PLEIN_ECRAN_MODE_SORTIE" agent/src client/src proto scripts`
+Expected: le seul site d'appel de `changer_mode_de_sortie` est `redimensionnement.rs:185` ; le seul appelant de `reconstruire_sur_la_sortie` est `changer_mode_de_sortie` lui-même. **Si le relevé contredit cela, s'arrêter et le signaler** — le périmètre de la suppression en dépend.
+
+- [ ] **Step 2 : supprimer le module et son appel**
+
+Supprimer le fichier, sa déclaration `mod` dans `redimensionnement.rs`, et le
+bras qui l'appelle (l. 185). **Ce que `resize` doit faire à la place est ce
+qu'il faisait avant D8** : en mode « une sortie par fenêtre », il n'y a rien à
+redimensionner — la garde `sur_sortie` posée par D2 reste, et c'est elle qui
+porte ce comportement.
+
+- [ ] **Step 3 : supprimer le garde, en inscrivant POURQUOI**
+
+Retirer `changement_de_mode_arme` de `capteur/plein_ecran.rs`, et remplacer ses
+deux Critiques par le constat de mesure, auprès de la détection qui reste :
 
 ```rust
-// C2 (D8, revue finale de branche). Une `Err` ici tue la session, y compris
-// sur un échec RETENTABLE — c'est-à-dire précisément la classe que la
-// fenêtre de reprise de D2 absorbe sans dommage depuis le 1ᵉʳ août 2026.
-// Un changement de mode fait perdre le mutex aux duplications, donc rend ce
-// cas FRÉQUENT et non exceptionnel.
-match DesktopCapture::sur_sortie(&nom) {
-    Ok(capture) => Ok(capture),
-    Err(erreur) if est_ouverture_retentable(&erreur) => {
-        tracing::info!(%erreur, "réouverture retentable après changement de mode, reprise");
-        rouvrir_avec_reprise(&nom)
-    }
-    Err(erreur) => Err(erreur),
-}
+//! **Le sens « la résolution suit » n'existe pas, et c'est une décision de
+//! mesure, pas un oubli.** Le sous-bloc D8 avait écrit un changement de mode de
+//! la sortie virtuelle, livré désarmé faute d'avoir jamais tourné. Le sous-bloc
+//! D9 l'a mesuré et l'a retiré :
+//!
+//! - le changement **ne survit pas** — la sortie revient à sa taille de création
+//!   dès qu'une sortie virtuelle de plus est créée, c'est-à-dire à chaque
+//!   ouverture de fenêtre. `n = 4` exécutions propres, cibles toutes distinctes
+//!   de la taille de création, sous `CDS_UPDATEREGISTRY` comme sous `flags = 0` ;
+//! - `CDS_UPDATEREGISTRY` **pollue le registre**, confirmé et attribuable par
+//!   GUID sur 3 transitions probantes : une sortie créée ensuite naît à la
+//!   taille polluée, ce qui bloque le produit — la préparation de la recette D8
+//!   avait dû lever ce blocage à la main.
+//!
+//! Journaux : `docs/superpowers/plans/journaux-multifenetres-d9/p-persistance-*`
+//! et `p2-*`. **Le mécanisme n'est PAS expliqué** : il est séparé en deux
+//! régimes observables, et un confondeur covarie avec leur frontière.
 ```
 
-- [ ] **Step 2 : ne pas dupliquer la fenêtre de reprise**
+- [ ] **Step 4 : reprendre les quatre commentaires renvoyants**
 
-`rouvrir_avec_reprise` doit **appeler** le mécanisme existant de D2, pas en réimplémenter un second. Si le code de D2 n'est pas accessible depuis ce module, l'**extraire** vers `agent/src/capture/reprise.rs` (qui existe déjà) plutôt que de le recopier.
+Les quatre nommés ci-dessus décrivent un mécanisme qui n'existe plus. **Les
+corriger à leur place, pas ailleurs** — et vérifier par `grep -n` qu'aucune
+autre occurrence ne survit.
 
-- [ ] **Step 3 : vérifier**
+- [ ] **Step 5 : vérifier**
 
-Run: `cd agent && cargo check --target x86_64-pc-windows-gnu`
-Expected: sortie 0.
+Run: `cd agent && cargo check --target x86_64-pc-windows-gnu && cargo test -p agent`
+Expected: sortie 0 ; **425 tests passent** (le compte de début de tâche), aucun avertissement neuf.
 
-Run: `wc -l agent/src/windows_source/redimensionnement.rs`
-Expected: < 500.
+Run: `grep -rn "PLEIN_ECRAN_MODE_SORTIE" agent client proto scripts docs/superpowers/specs CLAUDE.md`
+Expected: aucune occurrence hors documents de résultats et `CLAUDE.md` (que la tâche 17 reprendra).
 
-- [ ] **Step 4 : commit**
+- [ ] **Step 6 : commit**
 
 ```bash
-git add agent/src/windows_source/redimensionnement.rs agent/src/capture/reprise.rs
-git commit -m "fix(d9): C2, la reouverture retentable ne tue plus la session"
+git add agent/src/windows_source/redimensionnement.rs agent/src/capteur/plein_ecran.rs \
+  agent/src/superviseur/table.rs agent/src/superviseur/boucle/placement_periodique.rs \
+  agent/src/superviseur/table/tests_retention.rs agent/src/windows_source/sortie.rs \
+  scripts/run-agent.sh
+git rm agent/src/windows_source/redimensionnement/mode_sortie.rs
+git commit -m "feat(d9): retirer le changement de mode de sortie, mesure a l'appui"
 ```
 
 ---
@@ -1600,56 +1557,71 @@ git commit -m "fix(d9): trois defauts d'instrument, dont un seuil qui ne pouvait
 
 ## Recettes
 
-### Task 14 : recette ① — le plein écran armé
+### Task 14 : recette ① — la chaîne `Resize`, sans changement de mode
+
+> ⚠️ **RÉDUITE le 6 août 2026.** Elle s'appelait « le plein écran armé » et
+> devait exercer le critère ② de D8. Le changement de mode ayant été **retiré**
+> (tâche 3, sur mesure), il n'y a plus rien à armer : ce qui reste à éprouver est
+> la chaîne `Resize` de la tâche 5 et la non-régression de la détection.
 
 **Files:**
-- Create: `docs/superpowers/plans/journaux-multifenetres-d9/critere-1-{1,2}.log`, `agent-critere-1-{1,2}.log`, `recette-critere-1-{1,2}.json`
+- Create: `docs/superpowers/plans/journaux-multifenetres-d9/critere-1-{1,2}.log`, `agent-critere-1-{1,2}.log`
 
 **Interfaces:**
-- Consumes: les tâches 3, 4, 5, 13
+- Consumes: les tâches 3, 5, 13
 
 - [ ] **Step 1 : jouer le contrôle ROUGE d'abord**
 
-Sur le binaire **d'avant les tâches 3 à 5** (`git stash` ou un `git worktree` sur `bdd1300`), avec `PLEIN_ECRAN_MODE_SORTIE=1` et `deviceScaleFactor: 2` : le changement de mode parasite à la connexion **doit** se produire. **Sans cette pièce, le critère HiDPI n'est pas un critère.**
+Sur le binaire **d'avant la tâche 5**, à `deviceScaleFactor: 2` : l'annonce de
+viewport et le `Resize` doivent être dans **deux unités différentes** — c'est le
+leg 7. **Sans cette pièce, le critère HiDPI n'est pas un critère**, et le
+montage de D8 ne pouvait structurellement pas le voir (dpr = 1 partout).
 
 - [ ] **Step 2 : exécuter la recette, deux fois**
 
 ```bash
-PLEIN_ECRAN_MODE_SORTIE=1 scripts/run-agent.sh
+scripts/run-agent.sh
 node docs/superpowers/plans/journaux-multifenetres-d8/instrument/pilote-recette-d8.mjs
 ```
 
-Le pilote pose `Emulation.setDeviceMetricsOverride` avec `deviceScaleFactor: 2` sur une des fenêtres, et `1` sur les autres.
+Le pilote pose `Emulation.setDeviceMetricsOverride` avec `deviceScaleFactor: 2`
+sur une des fenêtres et `1` sur les autres, puis **change le viewport** d'une
+fenêtre en cours de session.
 
-⚠️ Vérifier `Get-Process agent` **après chaque tentative, y compris échouée** ; contrôler la survie de la VM après chaque rang.
+⚠️ Vérifier `Get-Process agent` **après chaque tentative, y compris échouée** ;
+contrôler la survie de la VM après chaque rang.
 
 - [ ] **Step 3 : relever**
 
 ```bash
 sed 's/\x1b\[[0-9;]*m//g' agent-critere-1-1.log > agent-critere-1-1-plat.log
-grep -c 'mode de sortie change' agent-critere-1-1-plat.log
-grep -c '0x887a0026' agent-critere-1-1-plat.log
 grep 'contrôle reçu' agent-critere-1-1-plat.log | grep -c 'Resize'
+grep 'contrôle reçu' agent-critere-1-1-plat.log | grep 'Resize'   # doivent porter leur session
+grep -c 'plein ecran de la fenetre Windows' agent-critere-1-1-plat.log
 ```
 
 - [ ] **Step 4 : rendre le verdict**
 
-Le critère ② de D8, enfin exercé, est **tenu** si : le flux suit le viewport, la sortie garde son nom, les pertes d'accès infligées aux voisines sont **relevées** (non seuillées — aucun seuil acceptable n'est connu), et à `deviceScaleFactor = 2` **aucun** changement de mode parasite n'a lieu à la connexion.
+**Tenu** si : (a) un `Resize` émis alors que le canal n'était pas ouvert est
+**rejoué** à son ouverture ; (b) chaque `contrôle reçu Resize` porte son champ
+`session`, ce qui rend enfin décidable la question du leg 10 — *pourquoi si peu
+de `Resize` ?* ; (c) à `deviceScaleFactor = 2`, l'annonce de viewport et le
+`Resize` sont dans la **même** unité ; (d) la détection du plein écran annonce
+toujours à la bonne fenêtre **et à elle seule**, non-régression de D8.
 
-⚠️ **Si le critère ② reste non exercé** — zéro tentative de changement de mode —, le dire : c'est le verdict de D8, et il faudrait alors instrumenter `video.clientWidth`/`clientHeight` (leg 8) avant de conclure. **Le transport n'est disculpé par aucune pièce** (C3 de D8) : le canal de contrôle reste suspect.
+⚠️ **Le transport n'est disculpé par aucune pièce** (C3 de D8) : si le nombre de
+`Resize` reste anormalement bas, le canal de contrôle reste suspect au même titre
+que le client — ne pas désigner un maillon sans pièce.
 
-- [ ] **Step 5 : décider de l'armement par défaut**
-
-**Sur pièces seulement.** Si les deux exécutions tiennent le critère, retirer le désarmement par défaut de `capteur/plein_ecran.rs::changement_de_mode_arme`. Sinon, le **garder** et réécrire ses raisons avec les nouvelles pièces.
-
-- [ ] **Step 6 : commit**
+- [ ] **Step 5 : commit**
 
 ```bash
-git add docs/superpowers/plans/journaux-multifenetres-d9/ agent/src/capteur/plein_ecran.rs
-git commit -m "recette(d9): le plein ecran arme, deux executions"
+git add docs/superpowers/plans/journaux-multifenetres-d9/
+git commit -m "recette(d9): la chaine Resize et le HiDPI, deux executions"
 ```
 
 ---
+
 
 ### Task 15 : recette ② — l'audio mort, deux montages
 
@@ -1811,9 +1783,9 @@ git commit -m "docs(d9): resultats du sous-bloc, et les chiffres releves par la 
 | Spec | Tâche(s) |
 | --- | --- |
 | §3 Phase P (éliminatoire, 4ᵉ combinaison, contre-épreuve, inconnues annexes, règle de décision) | 1, 2 |
-| §4.1 C1 | 1 (mesure), 3 (adoption ou repli) |
-| §4.2 C2 | 4 |
-| §4.3 HiDPI | 5 (steps 6), 14 (mesure à `deviceScaleFactor: 2`) |
+| §4.1 C1 | 1 et 2bis (mesure) ; **3 (retrait — C1 cesse d'exister)** |
+| §4.2 C2 | **sans objet depuis le 6 août 2026** : `reconstruire_sur_la_sortie` n'a qu'un appelant, le changement de mode, supprimé en tâche 3 |
+| §4.3 HiDPI | 5 (step 6), 14 (mesure à `deviceScaleFactor: 2`). ⚠️ Le défaut perd sa conséquence produit avec le retrait, mais l'asymétrie d'unité reste et se corrige |
 | §4.4 legs 8 et 10 | 5 (steps 1-5, 7), 14 (step 3) |
 | §5.1 leg 1 | 7 (règle pure), 8 (registre), 9 (message), 15 (recette) |
 | §5.2 leg 2 | 10, 15 (step 6) |
@@ -1829,4 +1801,4 @@ git commit -m "docs(d9): resultats du sous-bloc, et les chiffres releves par la 
 
 **Cohérence des types** — vérifiée : `FenetreAudio.inapte: bool` (tâche 7) est rempli par `porteurs.rs` (tâche 8, step 5) depuis `Etat.inaptes: HashMap<String, Instant>` (tâche 8, step 2) ; `VersCapteur::AudioMort` sans charge utile (tâche 9, step 1) est consommé par `commandes.rs` via `ctx.session` (step 3) et produit par `signaler_audio_mort` (steps 4-5) ; `Telemetrie::lire() -> (u64, u64, u64)` (tâche 11, step 3) est consommé au step 6 dans cet ordre.
 
-**Ordre imposé** : la tâche 2 commande les tâches 3 à 5 ; la tâche 6 précède obligatoirement la tâche 9 (marge de 10 lignes sur `serveur.rs`) ; la tâche 7 précède la 8 ; la 12 précède la 16. Les familles ② et ③ ne dépendent d'aucune tâche de la famille ①.
+**Ordre imposé** : la tâche 2, complétée par la tâche 2bis, a commandé le sort des tâches 3 à 5 — la famille ① est devenue un retrait ; la tâche 6 précède obligatoirement la tâche 9 (marge de 10 lignes sur `serveur.rs`) ; la tâche 7 précède la 8 ; la 12 précède la 16. Les familles ② et ③ ne dépendent d'aucune tâche de la famille ①.
