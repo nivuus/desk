@@ -279,6 +279,11 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     // boucle d'émission du signaling — jusqu'à une seconde par tour, voire
     // beaucoup plus dès que la session n'est plus vivante. On la déplace donc
     // sur le pool de threads bloquants de tokio, dédié à cet usage.
+    // Clonée avant la fermeture `move` ci-dessous : c'est cette copie qui
+    // donne à la trace `contrôle reçu` sa `session` (voir `on_control` plus
+    // bas), faute de quoi elle est indiscernable de celle de tout autre
+    // enfant partageant le même `agent.log` (D4).
+    let session_id = config.session_id.clone();
     let transport = tokio::task::spawn_blocking(move || {
         #[cfg(windows)]
         let mut injector = window_hwnd_addr.map(|addr| {
@@ -378,7 +383,12 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                 }
             }
         };
-        let mut on_control = |message| tracing::info!(?message, "contrôle reçu");
+        // `session` : sans ce champ la trace n'est PAS attribuable — tous les enfants
+        // héritent le même `agent.log` depuis D4. C'est exactement ce qui a rendu
+        // indécidable « 2 `Resize` pour 5 sessions » (leg 10 de D8, correction I8) :
+        // les deux lignes ne portaient aucune session, donc rien n'établissait
+        // qu'elles vinssent de deux sessions distinctes.
+        let mut on_control = |message| tracing::info!(session = %session_id, ?message, "contrôle reçu");
         session.run(&mut on_input, &mut on_control)
     });
 

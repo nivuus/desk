@@ -8,6 +8,7 @@ import { attachGamepadAuDOM } from './gamepad';
 import { armerPleinEcranAuDOM, attachFullscreenAuDOM } from './fullscreen';
 import { texteLien } from './lien';
 import { viewportPair } from './viewport';
+import { RejeuResize } from './resize';
 import { attachVisibilite } from './visibilite';
 import { encodeResize } from '../../proto/ts/control';
 
@@ -38,7 +39,23 @@ const signalingUrl =
 // rechargement direct) : dans ce cas l'agent tourne déjà et il n'y a rien à
 // demander — on ne fait rien plutôt que d'échouer.
 if (window.opener && !window.opener.closed) {
-    const { largeur, hauteur } = viewportPair(window.innerWidth, window.innerHeight);
+    // MÊME UNITÉ que le `Resize` émis plus bas (`clientWidth × devicePixelRatio`).
+    // Sans ce facteur, à `devicePixelRatio > 1` la sortie virtuelle naît sur une
+    // grandeur que le `Resize` de routine ne peut pas égaler, et le court-circuit
+    // « taille inchangée » de `windows_source/redimensionnement.rs` ne retient
+    // plus rien : CHAQUE connexion de CHAQUE fenêtre déclencherait un changement
+    // de mode, avec 25 à 100 % d'écart (leg 7 du sous-bloc D8).
+    //
+    // Il n'y a qu'un `devicePixelRatio` en jeu : c'est CETTE page qui annonce, et
+    // c'est son propre `ResizeObserver` qui émettra le `Resize`.
+    //
+    // Multiplier PUIS arrondir en pair — `viewportPair` a un plancher à 2, et
+    // l'ordre inverse laisserait passer une hauteur impaire à dpr impair.
+    const dpr = window.devicePixelRatio;
+    const { largeur, hauteur } = viewportPair(
+        Math.round(window.innerWidth * dpr),
+        Math.round(window.innerHeight * dpr),
+    );
     window.opener.postMessage(
         { type: 'viewport', session: sessionId, largeur, hauteur },
         window.location.origin,
@@ -276,17 +293,34 @@ connectSession({
         // Le redimensionnement reconstruit la chaîne d'encodage côté agent :
         // on n'émet donc qu'une fois le geste terminé, pas à chaque pixel
         // parcouru pendant que l'utilisateur tire un bord.
+        const rejeu = new RejeuResize();
+        const emettreSiPossible = () => {
+            const taille = rejeu.aEmettre();
+            if (!taille) return;
+            if (session.controlChannel.readyState !== 'open') {
+                // Tracé, et non plus muet : c'est ce `return` silencieux qui perdait
+                // les `Resize` sans laisser la moindre trace (leg 10).
+                console.warn('Resize différé : canal de contrôle non ouvert');
+                return;
+            }
+            session.controlChannel.send(encodeResize(taille.largeur, taille.hauteur));
+            rejeu.confirmer(taille);
+        };
+
         let resizeTimer: number | undefined;
         const observer = new ResizeObserver(() => {
             window.clearTimeout(resizeTimer);
             resizeTimer = window.setTimeout(() => {
-                if (session.controlChannel.readyState !== 'open') return;
-                const width = Math.round(video.clientWidth * window.devicePixelRatio);
-                const height = Math.round(video.clientHeight * window.devicePixelRatio);
-                session.controlChannel.send(encodeResize(width, height));
+                rejeu.observer({
+                    largeur: Math.round(video.clientWidth * window.devicePixelRatio),
+                    hauteur: Math.round(video.clientHeight * window.devicePixelRatio),
+                });
+                emettreSiPossible();
             }, 200);
         });
         observer.observe(video);
+        // Le rejeu : à l'ouverture du canal, la taille retenue repart.
+        session.controlChannel.addEventListener('open', emettreSiPossible);
     })
     .catch((error: unknown) => {
         statut.afficher(`échec : ${error instanceof Error ? error.message : String(error)}`, {
