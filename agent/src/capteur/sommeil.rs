@@ -33,6 +33,32 @@ use crate::capteur::vivier::{Ordre, Raison, Vivier, HYSTERESIS, PLAFOND_EVEIL};
 /// 250 ms est très en deçà des 2 s d'hystérésis tout en restant négligeable.
 const PERIODE_REARBITRAGE: Duration = Duration::from_millis(250);
 
+/// Répit avant qu'une fenêtre dont la capture audio est morte ne redevienne
+/// éligible au portage.
+///
+/// **Il finance le cas MAJORITAIRE** — une application, une fenêtre, donc
+/// aucune voisine à promouvoir. Sans lui, le remède ne couvrirait que les
+/// applications multi-fenêtres et le groupe resterait muet sans retour,
+/// exactement comme avant D9. Réélire la même session construit une activation
+/// *process loopback* NEUVE, ce qui est une chance réelle : les causes connues
+/// d'un refus de lecture WASAPI — changement de périphérique, redémarrage du
+/// service audio, changement de format — sont transitoires.
+///
+/// ⚠️ **NON CALIBRÉE.** Aucune mesure ne la fonde : elle rejoint `BPP_MIN`,
+/// `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC` et
+/// `TAILLE_MAX_SORTIE`.
+pub const REPIT_REARMEMENT_AUDIO: Duration = Duration::from_secs(5);
+
+/// Nombre de réarmements consécutifs avant abandon définitif.
+///
+/// Sans borne, un périphérique audio définitivement mort ferait tourner le
+/// cycle « inapte → répit → réélue → morte » sans fin, et chaque tour coûte
+/// une activation COM.
+///
+/// ⚠️ **NON CALIBRÉE**, comme la précédente. L'abandon définitif est
+/// **journalisé**, jamais muet — c'est la contrainte que F3 de D7 a posée.
+pub const REARMEMENTS_MAX: u32 = 5;
+
 /// Ce qu'une fenêtre reçoit du registre global.
 ///
 /// **Un seul canal pour les deux**, et non deux canaux parallèles : ce qu'un
@@ -102,6 +128,15 @@ struct Etat {
     /// l'inondation**, exactement comme `dernieres_parts` : le tour de roue
     /// ré-arbitre toutes les 250 ms.
     derniers_audio: HashMap<String, bool>,
+    /// Instant après lequel une session dont la capture audio est morte
+    /// redevient éligible au portage. Absente = apte.
+    ///
+    /// **Ici et pas dans `capteur::audio`** : ce module a l'horloge, l'autre
+    /// est pur et le reste.
+    inaptes: HashMap<String, Instant>,
+    /// Nombre de réarmements consécutifs déjà accordés à chaque session.
+    /// Remis à zéro dès qu'elle porte le son sans mourir.
+    rearmements: HashMap<String, u32>,
 }
 
 static ETAT: OnceLock<Mutex<Etat>> = OnceLock::new();
@@ -119,6 +154,8 @@ fn etat() -> MutexGuard<'static, Etat> {
             derniers_focus: HashMap::new(),
             horloge: 0,
             derniers_audio: HashMap::new(),
+            inaptes: HashMap::new(),
+            rearmements: HashMap::new(),
         })
     });
     // Un empoisonnement ne doit pas tuer le capteur : l'état du vivier reste
@@ -143,6 +180,7 @@ fn demarrer_le_tour_de_roue() {
         let ordres = garde.vivier.rearbitrer(maintenant);
         distribuer(&mut garde, ordres);
         parts::distribuer_les_parts(&mut garde);
+        purger_les_inaptitudes(&mut garde.inaptes, Instant::now());
         porteurs::distribuer_l_audio(&mut garde);
     });
 }
@@ -309,6 +347,47 @@ pub fn echec_de_reveil(session: &str) {
     distribuer(&mut garde, ordres);
     parts::distribuer_les_parts(&mut garde);
     porteurs::distribuer_l_audio(&mut garde);
+}
+
+/// Une session signale que sa capture audio est morte.
+///
+/// **Ne répond rien, et c'est voulu** : l'arbitrage est global et la décision
+/// peut concerner une AUTRE fenêtre. L'effet revient par
+/// `DepuisCapteur::Audio`, poussé sur la connexion média de chaque fenêtre
+/// concernée — exactement le patron de `signaler`.
+pub fn audio_mort(session: &str) {
+    let mut garde = etat();
+    let tours = garde.rearmements.entry(session.to_string()).or_insert(0);
+    *tours += 1;
+    if *tours > REARMEMENTS_MAX {
+        // Abandon définitif, JOURNALISÉ. Un silence muet est précisément le
+        // défaut que F3 de D7 a corrigé ; ne pas le réintroduire ici.
+        tracing::warn!(
+            %session,
+            rearmements = *tours - 1,
+            "capture audio morte et abandon définitif : le groupe de PID restera muet"
+        );
+        garde.inaptes.insert(session.to_string(), Instant::now() + Duration::from_secs(86_400));
+    } else {
+        tracing::info!(
+            %session,
+            rearmement = *tours,
+            repit = ?REPIT_REARMEMENT_AUDIO,
+            "capture audio morte, réarmement programmé"
+        );
+        garde.inaptes.insert(session.to_string(), Instant::now() + REPIT_REARMEMENT_AUDIO);
+    }
+    porteurs::distribuer_l_audio(&mut garde);
+}
+
+/// Retire du registre les inaptitudes dont le répit a expiré.
+///
+/// **Nommée et séparée pour être ÉPROUVABLE** : le tour de roue (250 ms) est
+/// ce qui rend le répit effectif, et sans cette purge une inapte le resterait
+/// jusqu'au prochain événement, qui peut ne jamais venir. Un `retain` en ligne
+/// dans le tour de roue ne serait couvert par aucun test.
+pub(super) fn purger_les_inaptitudes(inaptes: &mut HashMap<String, Instant>, maintenant: Instant) {
+    inaptes.retain(|_, echeance| *echeance > maintenant);
 }
 
 /// Le texte que le client recevra. **Stable** : il traverse deux protocoles et

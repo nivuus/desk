@@ -52,7 +52,7 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
                 pid,
                 arrivee,
                 dernier_focus: garde.derniers_focus.get(session).copied().unwrap_or(0),
-                inapte: false,
+                inapte: garde.inaptes.contains_key(session),
             })
         })
         .collect();
@@ -84,6 +84,13 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
     // jusqu'à 250 ms.
     let mut rompus = Vec::new();
     for (session, actif) in a_taire.into_iter().chain(a_porter) {
+        // Elle porte le son et n'est pas inapte : le cycle de réarmement
+        // est refermé. Sans cette remise à zéro, `REARMEMENTS_MAX`
+        // s'épuiserait sur toute la vie de la session au lieu de compter
+        // des échecs CONSÉCUTIFS.
+        if actif {
+            garde.rearmements.remove(&session);
+        }
         if garde.derniers_audio.get(&session) == Some(&actif) {
             continue;
         }

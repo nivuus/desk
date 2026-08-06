@@ -201,3 +201,26 @@ fn un_retrait_qui_libere_une_place_reveille_bien_la_session_qui_l_attendait() {
         retirer(&nom);
     }
 }
+
+#[test]
+fn le_repit_expire_et_rend_la_fenetre_apte() {
+    // Éprouve `purger_les_inaptitudes`, la fonction du PRODUIT — pas
+    // `HashMap::retain`. L'horloge est injectée (`maintenant`), ce qui rend
+    // le test déterministe sans aucune attente réelle.
+    let mut inaptes: HashMap<String, Instant> = HashMap::new();
+    let t0 = Instant::now();
+    inaptes.insert("w-1".into(), t0 + Duration::from_millis(10));
+    inaptes.insert("w-2".into(), t0 + Duration::from_secs(60));
+
+    purger_les_inaptitudes(&mut inaptes, t0 + Duration::from_millis(20));
+
+    assert!(!inaptes.contains_key("w-1"), "le répit de w-1 a expiré");
+    assert!(inaptes.contains_key("w-2"), "celui de w-2 court encore");
+}
+
+#[test]
+fn une_purge_sur_un_registre_vide_ne_panique_pas() {
+    let mut inaptes: HashMap<String, Instant> = HashMap::new();
+    purger_les_inaptitudes(&mut inaptes, Instant::now());
+    assert!(inaptes.is_empty());
+}
