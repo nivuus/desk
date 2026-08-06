@@ -13,9 +13,10 @@
 //! même raison que la sortie de boucle : `Drop for H264Encoder` peut geler, et
 //! sur ce fil-ci un gel ne coûterait que cette fenêtre.
 //!
-//! Trois fichiers, parce que le sous-bloc D5 a porté celui-ci de 336 à plus de
-//! 600 lignes : la boucle et le transport restent ici, les transitions de
-//! sommeil et le service des commandes vivent dans les deux modules enfants.
+//! Quatre fichiers, parce que le sous-bloc D5 a porté celui-ci de 336 à plus
+//! de 600 lignes : la boucle et le transport restent ici, les transitions de
+//! sommeil, le service des commandes et la trace des compteurs (D9, tâche 11)
+//! vivent dans les modules enfants.
 
 #![cfg(windows)]
 
@@ -25,11 +26,15 @@
 // sous-arbre se confondraient à la lecture, et l'import du registre entrerait
 // en collision avec l'enfant.
 mod commandes;
+// `trace` porte la trace périodique des compteurs de capture
+// (`SOURCE_TRACE=1`) — troisième module enfant sur le même patron que les
+// deux ci-dessus, extrait en revue de la tâche 11 (D9) pour la même raison de
+// plafond de taille.
+mod trace;
 mod transitions;
 
 use std::io::Write;
 use std::sync::mpsc::{sync_channel, Receiver, Sender, SyncSender};
-use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use anyhow::{bail, Context, Result};
@@ -45,6 +50,7 @@ use crate::source::VideoSource;
 use crate::windows_source::WindowsSource;
 
 use self::commandes::{deposer, servir_les_commandes};
+use self::trace::tracer_les_compteurs;
 
 /// Pas de sommeil quand la source n'a rien rendu.
 ///
@@ -59,16 +65,6 @@ const PAS_A_VIDE: Duration = Duration::from_millis(10);
 /// Période des lignes de compteurs. **Jamais de trace par image** : le projet
 /// a déjà perdu une session entière à une trace par paquet.
 const PERIODE_COMPTEURS: Duration = Duration::from_secs(10);
-
-/// `SOURCE_TRACE=1` active la trace des compteurs de capture — présence
-/// ACTIVE, à l'inverse de `PLEIN_ECRAN`/`AUDIO`. Déplacée ici (D9, tâche 11)
-/// depuis `demarrage.rs`, côté enfant, où elle ne lisait plus rien depuis D4
-/// (voir `windows_source/telemetrie.rs`). `OnceLock` : même raison que
-/// `plein_ecran::actif`, l'environnement ne change pas en cours de processus.
-fn trace_source_active() -> bool {
-    static ACTIF: OnceLock<bool> = OnceLock::new();
-    *ACTIF.get_or_init(|| std::env::var("SOURCE_TRACE").is_ok())
-}
 
 /// Profondeur de la file entre le fil de fenêtre et le fil écrivain de la
 /// connexion média.
@@ -459,14 +455,7 @@ impl Fenetre {
                     cadence = format!("{:.1}", images as f64 / ecoule),
                     "cadence du capteur"
                 );
-                // Sous le span `fenetre{session=…}` (D7) : attribuable sans
-                // champ de plus. `None` (endormie) : rien à lire.
-                if trace_source_active() {
-                    if let Some(source) = self.source.as_ref() {
-                        let (ticks, capturees, produites) = source.telemetrie.lire();
-                        tracing::info!(ticks, capturees, produites, "compteurs de capture");
-                    }
-                }
+                tracer_les_compteurs(self.source.as_ref());
                 images = 0;
                 dernier_compte = Instant::now();
             }
