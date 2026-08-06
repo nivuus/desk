@@ -58,17 +58,17 @@ fn une_session_inscrite_recoit_l_ordre_de_se_reveiller_quand_elle_devient_visibl
     let _verrou = verrouiller_pour_le_test();
     // Noms uniques : le registre est un état GLOBAL de processus, et les
     // tests Rust tournent en parallèle dans le même processus.
-    let ordres = inscrire("t5-a", 5001);
+    let ordres = inscrire("t5-a", 5001, 1);
     signaler("t5-a", true, true);
     assert_eq!(premier_ordre(&ordres), Some(Ordre::Reveiller));
-    retirer("t5-a");
+    retirer("t5-a", 1);
 }
 
 #[test]
 fn une_session_retiree_ne_recoit_plus_rien() {
     let _verrou = verrouiller_pour_le_test();
-    let ordres = inscrire("t5-b", 5002);
-    retirer("t5-b");
+    let ordres = inscrire("t5-b", 5002, 1);
+    retirer("t5-b", 1);
     signaler("t5-b", true, true);
     assert_eq!(premier_ordre(&ordres), None);
 }
@@ -84,7 +84,7 @@ fn les_deux_raisons_ont_un_texte_stable_pour_le_client() {
 fn un_echec_de_reveil_rendort_la_session_et_ne_la_reelit_pas_immediatement() {
     let _verrou = verrouiller_pour_le_test();
     // "t5-c" devient visible et focalisee, donc eveillee par arbitrer().
-    let ordres = inscrire("t5-c", 5003);
+    let ordres = inscrire("t5-c", 5003, 1);
     signaler("t5-c", true, true);
     assert_eq!(premier_ordre(&ordres), Some(Ordre::Reveiller));
 
@@ -98,7 +98,7 @@ fn un_echec_de_reveil_rendort_la_session_et_ne_la_reelit_pas_immediatement() {
     echec_de_reveil("t5-c");
     assert_eq!(premier_ordre(&ordres), None);
 
-    retirer("t5-c");
+    retirer("t5-c", 1);
 }
 
 /// M1 de la revue finale de branche du sous-bloc D6 : `retirer` vidait
@@ -120,7 +120,7 @@ fn un_echec_de_reveil_rendort_la_session_et_ne_la_reelit_pas_immediatement() {
 #[test]
 fn un_canal_rompu_libere_aussi_le_focus_de_la_session_morte() {
     let _verrou = verrouiller_pour_le_test();
-    let canal = inscrire("m1-focus", 5004);
+    let canal = inscrire("m1-focus", 5004, 1);
     signaler("m1-focus", true, true);
     assert_eq!(
         etat().focalisee.as_deref(),
@@ -135,7 +135,7 @@ fn un_canal_rompu_libere_aussi_le_focus_de_la_session_morte() {
     // L'inscription d'une session tierce — endormie — fait varier le
     // budget partagé, donc la part de "m1-focus", donc tente un envoi sur
     // son canal rompu : c'est ce qui déclenche la détection.
-    inscrire("m1-tiers", 5005);
+    inscrire("m1-tiers", 5005, 1);
     assert_eq!(
         etat().focalisee,
         None,
@@ -143,8 +143,8 @@ fn un_canal_rompu_libere_aussi_le_focus_de_la_session_morte() {
          retenait d'elle"
     );
 
-    retirer("m1-focus");
-    retirer("m1-tiers");
+    retirer("m1-focus", 1);
+    retirer("m1-tiers", 1);
 }
 
 #[test]
@@ -156,7 +156,7 @@ fn un_retrait_qui_libere_une_place_reveille_bien_la_session_qui_l_attendait() {
     let mut recepteurs_pleins = Vec::new();
     for i in 0..8 {
         let nom = format!("t5-plein-{i}");
-        let ordres = inscrire(&nom, 5100 + i as u32);
+        let ordres = inscrire(&nom, 5100 + i as u32, 1);
         signaler(&nom, true, true);
         assert_eq!(
             premier_ordre(&ordres),
@@ -168,7 +168,7 @@ fn un_retrait_qui_libere_une_place_reveille_bien_la_session_qui_l_attendait() {
 
     // "t5-attend" arrive alors que le plafond est deja atteint : elle
     // reste endormie, faute de place.
-    let ordres_attend = inscrire("t5-attend", 5200);
+    let ordres_attend = inscrire("t5-attend", 5200, 1);
     signaler("t5-attend", true, true);
     assert_eq!(premier_ordre(&ordres_attend), None, "t5-attend devrait rester endormie");
 
@@ -176,7 +176,7 @@ fn un_retrait_qui_libere_une_place_reveille_bien_la_session_qui_l_attendait() {
     // la devancerait si une place se liberait. Son recepteur est jete
     // immediatement : son canal est rompu des avant toute tentative
     // d'envoi.
-    drop(inscrire("t5-tardif", 5201));
+    drop(inscrire("t5-tardif", 5201, 1));
     signaler("t5-tardif", true, true);
 
     // Libere UNE place en retirant le premier "plein". Le vivier elit
@@ -186,7 +186,7 @@ fn un_retrait_qui_libere_une_place_reveille_bien_la_session_qui_l_attendait() {
     // ENSUITE pour "t5-attend" serait perdu pour toujours : le vivier
     // aurait deja pose `eveillee = true` sur "t5-attend" en interne, et
     // plus aucun rearbitrage ne le reproposerait.
-    retirer("t5-plein-0");
+    retirer("t5-plein-0", 1);
 
     assert_eq!(
         premier_ordre(&ordres_attend),
@@ -195,10 +195,10 @@ fn un_retrait_qui_libere_une_place_reveille_bien_la_session_qui_l_attendait() {
     );
 
     // Nettoyage.
-    retirer("t5-attend");
-    retirer("t5-tardif");
+    retirer("t5-attend", 1);
+    retirer("t5-tardif", 1);
     for (nom, _) in recepteurs_pleins.into_iter().skip(1) {
-        retirer(&nom);
+        retirer(&nom, 1);
     }
 }
 
@@ -233,7 +233,7 @@ fn une_purge_sur_un_registre_vide_ne_panique_pas() {
 #[test]
 fn un_retrait_purge_l_inaptitude_et_le_compteur_de_rearmements() {
     let _verrou = verrouiller_pour_le_test();
-    let canal = inscrire("t8-purge", 6001);
+    let canal = inscrire("t8-purge", 6001, 1);
 
     audio_mort("t8-purge");
     assert!(
@@ -246,7 +246,7 @@ fn un_retrait_purge_l_inaptitude_et_le_compteur_de_rearmements() {
         "précondition : un premier réarmement doit être compté"
     );
 
-    retirer("t8-purge");
+    retirer("t8-purge", 1);
 
     assert!(
         !etat().inaptes.contains_key("t8-purge"),
@@ -273,7 +273,7 @@ fn un_retrait_purge_l_inaptitude_et_le_compteur_de_rearmements() {
 #[test]
 fn un_signal_audio_mort_redondant_ne_recompte_pas_le_rearmement() {
     let _verrou = verrouiller_pour_le_test();
-    let canal = inscrire("t9-redondant", 6002);
+    let canal = inscrire("t9-redondant", 6002, 1);
 
     audio_mort("t9-redondant");
     assert_eq!(
@@ -295,6 +295,42 @@ fn un_signal_audio_mort_redondant_ne_recompte_pas_le_rearmement() {
          inapte, ne doit pas avancer le compteur de réarmements"
     );
 
-    retirer("t9-redondant");
+    retirer("t9-redondant", 1);
     drop(canal);
+}
+
+/// F5 (D7, préexistant). Une session meurt, se rattache sous le même nom
+/// avec une génération neuve, et le `retirer` de l'instance PRÉCÉDENTE
+/// arrive après. Sans la génération, il emporterait la session vivante.
+#[test]
+fn un_retirer_perime_n_emporte_pas_l_inscription_neuve() {
+    let mut generations: HashMap<String, u64> = HashMap::new();
+    generations.insert("w-1".into(), 7); // l'inscription neuve, après rattachement
+
+    assert!(
+        retirer_est_perime(&generations, "w-1", 6),
+        "le retirer de la génération 6 est en retard : il ne doit rien retirer"
+    );
+    assert!(
+        !retirer_est_perime(&generations, "w-1", 7),
+        "celui de la génération courante retire bien"
+    );
+}
+
+#[test]
+fn un_retirer_sur_une_session_inconnue_n_est_pas_perime() {
+    // Aucune inscription : `retirer` doit suivre son chemin normal, qui est
+    // déjà tolérant à l'absence. Rendre `true` ici le rendrait inerte pour
+    // toute session que le registre ne connaît pas encore.
+    let generations: HashMap<String, u64> = HashMap::new();
+    assert!(!retirer_est_perime(&generations, "w-1", 3));
+}
+
+#[test]
+fn un_retirer_d_une_generation_posterieure_n_est_pas_perime() {
+    // Le cas d'un `retirer` qui arrive APRÈS l'inscription qu'il vise : il
+    // porte une génération plus récente que celle enregistrée, donc il agit.
+    let mut generations: HashMap<String, u64> = HashMap::new();
+    generations.insert("w-1".into(), 7);
+    assert!(!retirer_est_perime(&generations, "w-1", 8));
 }

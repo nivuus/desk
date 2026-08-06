@@ -22,6 +22,12 @@ pub struct Consigne {
     /// Nom DXGI de la sortie (`\\.\DISPLAYn`), stable — contrairement à un
     /// couple d'index d'énumération, positionnel.
     pub nom_sortie: String,
+    /// Génération de cette session, strictement croissante, frappée par la
+    /// boucle du superviseur à chaque lancement d'enfant (D9, F5 de D7). Un
+    /// rattachement — même session, même sortie — en reçoit une NEUVE : c'est
+    /// elle qui rend inoffensif le `retirer` de l'instance précédente au
+    /// registre du capteur.
+    pub generation: u64,
 }
 
 pub trait Lanceur {
@@ -165,6 +171,7 @@ mod tests {
             session: IdSession(session.into()),
             fenetre: 0x1234,
             nom_sortie: "\\\\.\\DISPLAY1".into(),
+            generation: 1,
         }
     }
 

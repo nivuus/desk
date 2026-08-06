@@ -231,6 +231,10 @@ impl Lanceur for LanceurDeProcessus {
             .env("LOCAL_IP", &self.local_ip)
             .env("FENETRE_HWND", format!("{:#x}", consigne.fenetre))
             .env("SORTIE_DXGI", &consigne.nom_sortie)
+            // D9 (F5 de D7) : la génération que l'enfant relaiera telle
+            // quelle dans son `VersCapteur::Attache`. Voir la doc de
+            // `Consigne::generation`.
+            .env("GENERATION", consigne.generation.to_string())
             // Surtout PAS `SUPERVISEUR` : un enfant qui hériterait de la
             // variable se prendrait pour un superviseur et lancerait ses
             // propres enfants, indéfiniment.

@@ -136,6 +136,11 @@ pub struct Fenetre {
     /// l'attache. C'est par lui que `capteur::audio::arbitrer` regroupe les
     /// fenêtres d'une même application.
     pid: u32,
+    /// Génération de cette session, frappée par le superviseur au lancement
+    /// de l'enfant (D9, F5 de D7). Retenue pour la redonner à `sommeil::
+    /// retirer` à la fin de `servir` : c'est elle qui rend inoffensif le
+    /// `retirer` d'une instance déjà remplacée par un rattachement.
+    generation: u64,
 }
 
 impl Fenetre {
@@ -165,7 +170,8 @@ impl Fenetre {
     /// connexion de commandes, que ce fil ne touche jamais. L'appelant écrit
     /// `Attachee { largeur, hauteur }` en cas de succès, `Refus` sinon.
     pub fn ouvrir(attache: VersCapteur) -> Result<Fenetre> {
-        let VersCapteur::Attache { session, hwnd, sortie, fps, debit, origine_qpc } = attache
+        let VersCapteur::Attache { session, hwnd, sortie, fps, debit, origine_qpc, generation } =
+            attache
         else {
             bail!("le premier message d'un enfant doit être une attache");
         };
@@ -200,7 +206,7 @@ impl Fenetre {
         let (largeur, hauteur) = crate::capture::ouverture::taille_de_sortie(&sortie)
             .with_context(|| format!("attache de la session {session}"))?;
         let parametres = Parametres { hwnd, sortie, fps, debit, clock_origin };
-        Ok(Fenetre { source: None, parametres, session, largeur, hauteur, pid })
+        Ok(Fenetre { source: None, parametres, session, largeur, hauteur, pid, generation })
     }
 
     pub fn dimensions(&self) -> (u32, u32) {
@@ -264,7 +270,7 @@ impl Fenetre {
         // fenêtre que personne ne déclare regarder —, mais c'est la nouvelle
         // façon dont une session peut rester vide sans qu'aucune erreur ne soit
         // journalisée.
-        let ordres = crate::capteur::sommeil::inscrire(&session, self.pid);
+        let ordres = crate::capteur::sommeil::inscrire(&session, self.pid, self.generation);
 
         let resultat = self.boucler(&session, &ordres, &ecritures, &commandes, &reponses);
 
@@ -283,7 +289,7 @@ impl Fenetre {
         // demanderait un encodeur de plus au matériel si le nôtre vivait
         // encore. Le relâchement reste sur ce fil-ci, comme partout ailleurs.
         drop(self.source.take());
-        crate::capteur::sommeil::retirer(&session);
+        crate::capteur::sommeil::retirer(&session, self.generation);
         resultat
     }
 

@@ -59,6 +59,7 @@ pub fn connecter(
     fps: u32,
     debit: u32,
     clock_origin: Instant,
+    generation: u64,
 ) -> Result<SourceDistante> {
     let signalement = Signalement {
         session: session.to_string(),
@@ -67,6 +68,7 @@ pub fn connecter(
         fps,
         debit,
         clock_origin,
+        generation,
     };
     // La PREMIÈRE ouverture est patiente : l'enfant peut démarrer avant que le
     // capteur n'ait ouvert son tube. Les réouvertures de `rattacher`, elles,
@@ -116,6 +118,7 @@ fn attacher_sur(mut commandes: std::fs::File, signalement: &Signalement) -> Resu
             fps: signalement.fps,
             debit: signalement.debit,
             origine_qpc,
+            generation: signalement.generation,
         },
     )?;
     commandes.flush()?;
@@ -200,6 +203,10 @@ struct Signalement {
     fps: u32,
     debit: u32,
     clock_origin: Instant,
+    /// Frappée une seule fois, à `connecter` : un rattachement (`rattacher`
+    /// ci-dessous) redit la MÊME génération, puisqu'il représente le même
+    /// processus enfant, pas une instance neuve (D9, F5 de D7).
+    generation: u64,
 }
 
 /// Le fruit d'une attache réussie, côté enfant.

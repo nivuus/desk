@@ -137,6 +137,14 @@ struct Etat {
     /// Nombre de réarmements consécutifs déjà accordés à chaque session.
     /// Remis à zéro dès qu'elle porte le son sans mourir.
     rearmements: HashMap<String, u32>,
+    /// Génération de la dernière inscription connue de chaque session (D9,
+    /// F5 de D7). **Volontairement absente d'`oublier`** : c'est `retirer`
+    /// seul qui la purge, et seulement quand il n'est pas périmé — voir
+    /// `retirer_est_perime`. La purger depuis `oublier` la ferait disparaître
+    /// aussi sur les chemins de canal rompu, qui n'ont aucune génération à
+    /// comparer et ne doivent donc jamais l'effacer à la place d'un
+    /// rattachement déjà inscrit.
+    generations: HashMap<String, u64>,
 }
 
 static ETAT: OnceLock<Mutex<Etat>> = OnceLock::new();
@@ -156,6 +164,7 @@ fn etat() -> MutexGuard<'static, Etat> {
             derniers_audio: HashMap::new(),
             inaptes: HashMap::new(),
             rearmements: HashMap::new(),
+            generations: HashMap::new(),
         })
     });
     // Un empoisonnement ne doit pas tuer le capteur : l'état du vivier reste
@@ -278,9 +287,14 @@ fn oublier(garde: &mut MutexGuard<'static, Etat>, session: &str) -> Vec<(String,
     garde.vivier.retirer(session, Instant::now())
 }
 
-pub fn inscrire(session: &str, pid: u32) -> Receiver<Message> {
+pub fn inscrire(session: &str, pid: u32, generation: u64) -> Receiver<Message> {
     let (emetteur, receveur) = channel::<Message>();
     let mut garde = etat();
+    // Retenue INCONDITIONNELLEMENT : cette inscription est par construction
+    // la plus récente connue du registre (F5, D9) — c'est elle que
+    // `retirer_est_perime` compare à la génération d'un `retirer` reçu plus
+    // tard.
+    garde.generations.insert(session.to_string(), generation);
     if garde.canaux.insert(session.to_string(), emetteur).is_some() {
         tracing::warn!(%session, "canal d'ordres remplacé pour cette session");
         // Sans cette purge, une part identique à celle déjà envoyée sur
@@ -322,12 +336,22 @@ pub fn inscrire(session: &str, pid: u32) -> Receiver<Message> {
     receveur
 }
 
-pub fn retirer(session: &str) {
+pub fn retirer(session: &str, generation: u64) {
     let mut garde = etat();
+    // Sans effet si l'inscription enregistrée est PLUS RÉCENTE : ce `retirer`
+    // est celui d'une instance déjà remplacée par un rattachement (F5, D9).
+    // Ne PAS appeler `oublier` ici est délibéré : les neuf tables qu'elle
+    // purge appartiennent toutes à l'instance VIVANTE, pas à celle,
+    // périmée, qui appelle ce `retirer`.
+    if retirer_est_perime(&garde.generations, session, generation) {
+        tracing::info!(%session, generation, "retirer périmé ignoré");
+        return;
+    }
     let ordres = oublier(&mut garde, session);
     distribuer(&mut garde, ordres);
     parts::distribuer_les_parts(&mut garde);
     porteurs::distribuer_l_audio(&mut garde);
+    garde.generations.remove(session);
 }
 
 pub fn signaler(session: &str, visible: bool, focalisee: bool) {
@@ -423,6 +447,22 @@ pub fn audio_mort(session: &str) {
 /// dans le tour de roue ne serait couvert par aucun test.
 pub(super) fn purger_les_inaptitudes(inaptes: &mut HashMap<String, Instant>, maintenant: Instant) {
     inaptes.retain(|_, echeance| *echeance > maintenant);
+}
+
+/// Ce `retirer` est-il périmé, c'est-à-dire adressé à une instance déjà
+/// remplacée par un rattachement ?
+///
+/// **Nommé et séparé pour être ÉPROUVABLE** : la logique en ligne dans
+/// `retirer` ne serait couverte par aucun test, `retirer` touchant un état
+/// global (`OnceLock<Mutex<Etat>>`) qu'un test d'hôte ne peut pas isoler.
+pub(super) fn retirer_est_perime(
+    generations: &HashMap<String, u64>,
+    session: &str,
+    generation: u64,
+) -> bool {
+    generations
+        .get(session)
+        .is_some_and(|courante| *courante > generation)
 }
 
 /// Le texte que le client recevra. **Stable** : il traverse deux protocoles et

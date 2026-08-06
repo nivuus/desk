@@ -89,6 +89,7 @@ pub(super) fn construire(
                 fps,
                 bitrate,
                 clock_origin,
+                config.generation,
             )?)
         }
         None => {
