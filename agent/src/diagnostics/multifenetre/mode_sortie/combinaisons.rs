@@ -45,14 +45,20 @@ impl Combo {
 /// celle du tour principal.
 pub(super) fn combos() -> [Combo; 4] {
     [
-        // `CDS_TYPE(0)` — changement DYNAMIQUE, non écrit au registre. C'est
-        // le remède candidat de C1 : le produit écrit aujourd'hui
-        // `CDS_UPDATEREGISTRY` à chaque plein écran réussi, et une sortie
-        // NAÎT à la dernière taille laissée au registre (chaîne
-        // `avant(N) = après(N-1)`, tâche 3bis de D8) — si bien qu'il
-        // bloquerait ses propres ouvertures de fenêtre ultérieures. Les
-        // trois combinaisons éprouvées par D8 portaient TOUTES
-        // `CDS_UPDATEREGISTRY` : ce bras-ci n'a jamais été tenté.
+        // `CDS_TYPE(0)` — changement DYNAMIQUE, non écrit au registre. C'était
+        // le remède candidat à la pollution de registre que D8 avait relevée
+        // (« C1 » dans son document de résultats) : le produit écrivait alors
+        // `CDS_UPDATEREGISTRY` à chaque plein écran réussi, et une sortie NAÎT
+        // à la dernière taille laissée au registre (chaîne
+        // `avant(N) = après(N-1)`, tâche 3bis de D8) — si bien qu'il aurait
+        // bloqué ses propres ouvertures de fenêtre ultérieures. Les trois
+        // combinaisons éprouvées par D8 portaient TOUTES `CDS_UPDATEREGISTRY` :
+        // ce bras-ci n'avait jamais été tenté. ⚠️ Le sous-bloc D9 a mesuré que
+        // même ce bras dynamique ne suffisait pas — le changement ne survit
+        // pas à l'ouverture d'une sortie de plus — et a retiré le mécanisme
+        // entier plutôt que de le corriger (voir `capteur/plein_ecran.rs`) :
+        // cette combinaison reste ici pour la valeur de sa mesure, pas comme
+        // un remède employé par le produit.
         Combo::Simple("aucun drapeau (dynamique, non persisté)", CDS_TYPE(0)),
         Combo::Simple("CDS_UPDATEREGISTRY seul", CDS_UPDATEREGISTRY),
         Combo::Simple("CDS_UPDATEREGISTRY | CDS_RESET", CDS_UPDATEREGISTRY | CDS_RESET),

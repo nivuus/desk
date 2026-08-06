@@ -5438,7 +5438,7 @@ x86_64-pc-windows-gnu` → **sortie 0, 11 avertissements**, tous `dead_code`, do
   pouvait structurellement pas rendre `true` en production. **Le défaut était
   dans la conception, pas dans l'exécution.**
 
-### Ce que D9 lègue — dix points, dont trois neufs
+### Ce que D9 lègue — douze points, dont trois neufs (plus deux ajoutés par la vague de correction)
 
 **Repris de D8 et de D6, toujours dus :**
 
@@ -5466,7 +5466,19 @@ x86_64-pc-windows-gnu` → **sortie 0, 11 avertissements**, tous `dead_code`, do
 5. 🔴 **Borner la taille de sortie demandée** : le viewport passe désormais en
    pixels périphériques, donc ×4 les pixels à `dpr = 2`, et
    `borner_a_la_taille_max` (1920×1080) n'a plus d'appelant. **Aucun client
-   HiDPI réel n'a été mesuré.**
+   HiDPI réel n'a été mesuré.** ⚠️ **Deux conséquences mordent, et ni l'une ni
+   l'autre n'est nommée ci-dessus** :
+   - **le plafond de 8 encodeurs concurrents n'a JAMAIS été mesuré qu'à 720p**
+     (1280×720/60, toutes les campagnes du 31 juillet au 3 août 2026) — NVENC
+     borne en macroblocs par seconde, pas en nombre de sessions : huit fenêtres
+     HiDPI en 1440p ou plus (le ×4 ci-dessus) peuvent très bien être refusées
+     là où huit fenêtres 720p passaient ;
+   - et depuis le remède du sous-bloc D5, `set_encode_size` **détruit l'ancien
+     encodeur avant de construire le neuf** — si la construction du neuf
+     échoue, la source n'a plus d'encodeur du tout. Ce chemin d'échec est
+     déclaré **« jamais couru »** dans ce fichier (sections D4/D5) : un HiDPI
+     qui ferait franchir le plafond de 8 (jamais mesuré au-delà de 720p) serait
+     la première charge réelle à l'emprunter.
 6. ⛔ **`REARMEMENTS_MAX` ne mord pas dans le cas majoritaire** — le compteur est
    remis à zéro sur une **décision** d'arbitrage, pas sur une preuve de son.
    Se referme avec le legs n°1, pas avant.
@@ -5480,13 +5492,45 @@ x86_64-pc-windows-gnu` → **sortie 0, 11 avertissements**, tous `dead_code`, do
 9. ⛔ **`agent/src/survie_verdict.rs` est posé à la RACINE du crate** alors que le
    dépôt a deux précédents (`capture_reprise`, `windows_source_sortie`) qui
    gardent le fichier chez le parent et n'y hissent que la déclaration par
-   `#[path]`. Un seul appelant. Déviation relevée, non justifiée.
+   `#[path]`. Un seul appelant. ⚠️ **« Déviation non justifiée » est INEXACT** :
+   l'en-tête du fichier la justifie, en citant un AUTRE précédent
+   (`geometry.rs`, `sortie_dxgi.rs`, tous deux posés directement à la racine,
+   sans `#[path]`). Ce qui reste vrai, c'est que la branche D9 a dans le même
+   mouvement **TRIPLÉ** la convention `#[path]` par ailleurs
+   (`windows_source_telemetrie`, tâche 11, s'ajoutant à `capture_reprise` et
+   `windows_source_sortie`) sans réconcilier les deux conventions ni choisir
+   entre elles pour ce fichier-ci.
 10. ⛔ **Neuf constats de revue PARQUÉS sur la tâche 14** (recette ①), dont
     l'A/B rouge/vert non propre, la pièce du critère (a) qui ne couvre qu'une
     page sur treize, et un « défaut d'instrument » qui est en réalité un
     **comportement du produit** (le shell réémet `fenetre-ouverte` pour une
     fenêtre déjà ouverte, mécanisme non élucidé). **Ils sont toujours dans le
     rapport versé.**
+
+**Trois de plus, trouvés par la vague de correction unique de la revue finale
+de D9 (6 août 2026), et délibérément NON corrigés — legs, pas défauts actifs :**
+
+11. ⛔ **Deux tests faibles, sans être morts, incapables de rendre l'autre
+    valeur** :
+    - `agent/src/windows_source/telemetrie.rs:68`,
+      `une_telemetrie_neuve_est_a_zero` : n'éprouve que `#[derive(Default)]`,
+      jamais la logique propre de `Telemetrie` (`tick`/`capturee`/`produite`),
+      déjà couverte par ailleurs par `deux_telemetries_ne_se_melangent_pas`.
+    - `client/src/resize.test.ts:18`, dont le titre annonce « REJOUE la
+      dernière taille quand le canal était fermé au moment du geste » :
+      `RejeuResize` (`client/src/resize.ts`) n'a AUCUNE notion de canal ni de
+      `readyState` — le test se contente d'omettre l'appel à `confirmer()`, ce
+      qui rend le même verdict pour n'importe quelle autre raison de
+      non-confirmation. Il annonce un état de canal qu'il n'exerce pas.
+12. ⛔ **Un invariant non écrit, `client/src/main.ts:345`** : le rejeu du
+    `Resize` (`session.controlChannel.addEventListener('open',
+    emettreSiPossible)`) tient parce que le `.then()` qui le pose (ligne 204)
+    s'exécute intégralement de façon SYNCHRONE, sans `await` intercalé entre
+    la construction de `rejeu`/du `ResizeObserver` et cet `addEventListener`.
+    Un `await` glissé là romprait le rejeu EN SILENCE si le canal s'ouvrait
+    pendant l'attente. Ni écrit dans un commentaire du code (au-delà de la
+    ligne 345 elle-même, qui ne dit que le QUOI, pas le POURQUOI de l'ordre),
+    ni testé.
 
 ---
 

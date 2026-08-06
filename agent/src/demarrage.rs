@@ -117,6 +117,23 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     // désormais un champ PAR SESSION sur `WindowsSource` lui-même
     // (`telemetrie`, voir `windows_source/telemetrie.rs`), tracés côté
     // CAPTEUR par `capteur/fenetre.rs`, où la source vit réellement.
+    //
+    // ⚠️ Les QUINZE compteurs que ce fil lit encore (`capture::ATTEMPTS`/
+    // `HITS`/`ACCUMULATED`, `encode::NEED_INPUT_EVENTS`/`ENCODER_INPUTS`/
+    // `DROPPED_STALE`/`CONVERTER_*`/`*_NS`, `windows_source::CAPTURE_NS`/
+    // `SUBMIT_NS`/`DRAIN_NS`) sont morts pour la MÊME raison que les trois
+    // ci-dessus : ce sont des statiques du crate, écrites uniquement par
+    // `WindowsSource` (`capture.rs:311,328`, `encode.rs:522,850,868`), et
+    // `demarrage/source.rs` dit en toutes lettres que « l'enfant ne touche
+    // plus ni DXGI ni Media Foundation » en mode multi-fenêtres. Ce fil ne
+    // peut donc rien y lire non plus, en mode multi-fenêtres.
+    //
+    // Second effet, réciproque : en mode MONO-fenêtre, ce fil touche bien
+    // DXGI/MF en process (via `WindowsSource`) et ces quinze compteurs y sont
+    // vivants — mais `Telemetrie` (le remplaçant par session de `TICKS`/
+    // `CAPTURED`/`PRODUCED`) n'a qu'un seul lecteur, `capteur/fenetre/
+    // trace.rs`, qui ne tourne que dans le CAPTEUR. Le chemin mono-fenêtre a
+    // donc perdu ces trois compteurs-là, sans que rien ne les y remplace.
     #[cfg(windows)]
     let _source_trace = std::env::var("SOURCE_TRACE").is_ok().then(|| {
         std::thread::spawn(|| {

@@ -11,9 +11,11 @@
 //! # Tâche 1 du sous-bloc D9 — l'écart banc/produit, comblé
 //!
 //! D8 éprouvait TROIS combinaisons de drapeaux, toutes `CDS_UPDATEREGISTRY`,
-//! et n'ouvrait JAMAIS de duplication DXGI — alors que le produit retaille une
-//! sortie dont la duplication est ouverte et détenue jusqu'à 3,1 s. Cette
-//! sonde comble l'écart :
+//! et n'ouvrait JAMAIS de duplication DXGI — alors que le produit, à l'époque,
+//! retaillait une sortie dont la duplication était ouverte et détenue jusqu'à
+//! 3,1 s (`agent/src/windows_source/redimensionnement/mode_sortie.rs`,
+//! **retiré par le sous-bloc D9** — voir le constat de mesure en tête de
+//! `capteur/plein_ecran.rs`). Cette sonde comble l'écart :
 //!
 //! 1. une QUATRIÈME combinaison, dynamique et non persistée
 //!    (`combinaisons::combos`) ;
@@ -252,9 +254,11 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
         connues_a_ce_point.insert(nom_sortie.clone());
 
         // L'ÉCART BANC/PRODUIT que D8 a laissé béant, et l'objet même de
-        // cette sonde : la production retaille une sortie DONT LA
+        // cette sonde : la production retaillait alors une sortie DONT LA
         // DUPLICATION EST OUVERTE et détenue jusqu'à 3,1 s. P1 n'en ouvrait
-        // jamais.
+        // jamais. Le mécanisme mesuré ici a depuis été retiré par le
+        // sous-bloc D9 (voir `capteur/plein_ecran.rs`) ; cette sonde garde sa
+        // valeur de mesure.
         let duplication = DesktopCapture::sur_sortie(&nom_sortie)
             .context("ouverture de la duplication sur la sortie virtuelle neuve")?;
         tracing::info!(sortie = %nom_sortie, "duplication ouverte et TENUE pendant les tentatives");

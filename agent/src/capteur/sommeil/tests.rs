@@ -220,10 +220,23 @@ fn le_repit_expire_et_rend_la_fenetre_apte() {
 }
 
 #[test]
-fn une_purge_sur_un_registre_vide_ne_panique_pas() {
+fn une_inaptitude_dont_l_echeance_vaut_exactement_maintenant_est_purgee() {
+    // Sur un registre VIDE, `purger_les_inaptitudes` ne peut que retirer —
+    // le test qu'il remplace (`une_purge_sur_un_registre_vide_ne_panique_pas`)
+    // ne pouvait donc pas rendre l'autre valeur (revue finale de branche,
+    // M3). Le cas qui vaut est la borne : `retain(|_, echeance| *echeance >
+    // maintenant)` (agent/src/capteur/sommeil.rs) purge une échéance
+    // EXACTEMENT égale à `maintenant`, pas seulement une échéance dépassée.
     let mut inaptes: HashMap<String, Instant> = HashMap::new();
-    purger_les_inaptitudes(&mut inaptes, Instant::now());
-    assert!(inaptes.is_empty());
+    let maintenant = Instant::now();
+    inaptes.insert("w-1".into(), maintenant);
+
+    purger_les_inaptitudes(&mut inaptes, maintenant);
+
+    assert!(
+        !inaptes.contains_key("w-1"),
+        "une echeance egale a `maintenant` doit etre purgee, pas conservee"
+    );
 }
 
 /// Remède à la réserve de revue : `oublier` (donc `retirer`) doit purger

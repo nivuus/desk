@@ -48,10 +48,15 @@ impl WindowsSource {
         // bureau. Les deux sont faux en mode `SortieEntiere`, et le chemin
         // était pourtant emprunté SYSTÉMATIQUEMENT : le `ResizeObserver` du
         // client émet une fois à l'observation initiale, donc ~200 ms après
-        // chaque connexion, avec une taille qui n'a aucune raison d'égaler
-        // celle de la sortie (elle vaut `clientWidth × devicePixelRatio`, là où
-        // la sortie a été créée sur `innerWidth`), si bien que le court-circuit
-        // « taille inchangée » plus bas ne la retenait pas.
+        // chaque connexion, avec une taille qui n'avait alors aucune raison
+        // d'égaler celle de la sortie (elle vaut `clientWidth × devicePixelRatio`,
+        // là où la sortie était créée sur `innerWidth` SEUL, sans le facteur
+        // dpr), si bien que le court-circuit « taille inchangée » plus bas ne
+        // la retenait pas. ⚠️ **Ce désaccord d'unité est celui que la tâche 5
+        // du sous-bloc D9 a précisément fermé** (`client/src/main.ts`, l'annonce
+        // de viewport multiplie désormais par `devicePixelRatio`) : les deux
+        // unités concordent aujourd'hui, ce qui ne change rien à ce garde —
+        // il reste nécessaire en mode `SortieEntiere` quelle que soit l'unité.
         //
         // La suite produisait alors, dans l'ordre : une fenêtre rétrécie qui
         // quitte sa sortie virtuelle (que le contrôle à 1 Hz du superviseur
