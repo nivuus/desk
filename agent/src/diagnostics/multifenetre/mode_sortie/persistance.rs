@@ -38,36 +38,75 @@ pub(super) fn combinaison_imposee() -> Option<String> {
 /// de le laisser recomposable seulement en recoupant deux relevés de
 /// topologie à dix lignes d'écart (voir le commentaire de tête du module).
 ///
+/// `combinaison_imposee` : la valeur BRUTE de `MULTIFENETRE_MODE_SORTIE_DRAPEAUX`,
+/// que l'opérateur a demandée -- PAS forcément celle qui a gagné (`combinaison_gagnante`).
+/// ⚠️ **Correction (revue de la tâche 2bis, mineurs)** : la première version
+/// ne journalisait QUE le bras gagnant, si bien qu'un tour resté VIDE parce
+/// que l'étiquette imposée ne correspondait à rien (mojibake, voir le
+/// commentaire de tête du module) affichait `combinaison=None` -- identique
+/// à l'absence de toute contrainte. Les deux champs distincts permettent de
+/// relire directement CE que l'opérateur a demandé et CE qui s'est
+/// réellement passé.
+///
 /// `avant_creation` : la taille de la sortie sous test relevée par
 /// `temoin::nom_apres_tour`, APRÈS le tour, duplication encore tenue — pas
-/// une supposition sur ce que le tour vient de fixer.
+/// une supposition sur ce que le tour vient de fixer. `None` si la sortie a
+/// disparu à ce moment-là (`<disparue>`, voir `nom_apres_tour`).
 ///
 /// `apres_creation_releve` : la topologie relue APRÈS que la sortie témoin
 /// (une sortie virtuelle NEUVE) a été créée ; `nom_cible` y est recherchée
 /// nommément, jamais par position -- doctrine constante de ce module.
 ///
-/// `survit` compare deux tailles obtenues par la MÊME relecture DXGI
-/// (`GetDesc`/`DesktopCoordinates`) que le reste de la sonde : jamais le code
-/// de retour de `ChangeDisplaySettingsExW`, mesuré ailleurs rendant `0` sur
-/// une sortie qui n'a pas bougé d'un pixel.
+/// ⚠️ **Correction (revue de la tâche 2bis, Important I4)** : `survit` ne
+/// vaut PLUS `true` quand la sortie a disparu d'un côté ou de l'autre.
+/// L'ancienne version repliait une taille introuvable sur `(0, 0)`, si bien
+/// qu'une sortie disparue AVANT et APRÈS rendait `(0, 0) == (0, 0)` →
+/// `survit=true` -- l'instrument annonçait « le changement a survécu »
+/// exactement quand la sortie s'était volatilisée. `survit` est maintenant
+/// une chaîne à trois états : `"true"`, `"false"`, ou
+/// `"indetermine (sortie disparue)"` quand l'un des deux relevés est absent
+/// -- jamais une comparaison sur une sentinelle numérique.
+///
+/// La comparaison elle-même, quand les deux relevés existent, porte sur deux
+/// tailles obtenues par la MÊME relecture DXGI (`GetDesc`/`DesktopCoordinates`)
+/// que le reste de la sonde : jamais le code de retour de
+/// `ChangeDisplaySettingsExW`, mesuré ailleurs rendant `0` sur une sortie qui
+/// n'a pas bougé d'un pixel.
 pub(super) fn journaliser_verdict(
-    combinaison: Option<&str>,
+    combinaison_imposee: Option<&str>,
+    combinaison_gagnante: Option<&str>,
     nom_cible: &str,
-    avant_creation: (u32, u32),
+    avant_creation: Option<(u32, u32)>,
     apres_creation_releve: &[SortieDxgi],
 ) {
     let apres_creation = apres_creation_releve
         .iter()
         .find(|sortie| sortie.nom_sortie == nom_cible)
-        .map(|sortie| (sortie.rect.width, sortie.rect.height))
-        .unwrap_or((0, 0));
+        .map(|sortie| (sortie.rect.width, sortie.rect.height));
+
+    let (avant_mesurable, avant_l, avant_h) = match avant_creation {
+        Some((l, h)) => (true, l, h),
+        None => (false, 0, 0),
+    };
+    let (apres_mesurable, apres_l, apres_h) = match apres_creation {
+        Some((l, h)) => (true, l, h),
+        None => (false, 0, 0),
+    };
+    let survit = match (avant_creation, apres_creation) {
+        (Some(a), Some(b)) => (a == b).to_string(),
+        _ => "indetermine (sortie disparue)".to_string(),
+    };
+
     tracing::info!(
-        combinaison = ?combinaison,
-        avant_creation_l = avant_creation.0,
-        avant_creation_h = avant_creation.1,
-        apres_creation_l = apres_creation.0,
-        apres_creation_h = apres_creation.1,
-        survit = avant_creation == apres_creation,
+        combinaison_imposee = ?combinaison_imposee,
+        combinaison_gagnante = ?combinaison_gagnante,
+        avant_creation_mesurable = avant_mesurable,
+        avant_creation_l = avant_l,
+        avant_creation_h = avant_h,
+        apres_creation_mesurable = apres_mesurable,
+        apres_creation_l = apres_l,
+        apres_creation_h = apres_h,
+        survit,
         "PERSISTANCE : le changement de mode survit-il à la création d'une sortie ?"
     );
 }

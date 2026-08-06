@@ -94,6 +94,22 @@
 //! `combinaisons::combos_du_tour`), et le verdict de survie est journalisé
 //! explicitement (`persistance::journaliser_verdict`) plutôt que recomposable
 //! seulement en recoupant deux relevés de topologie à dix lignes d'écart.
+//!
+//! ## Revue de la tâche 2bis — quatre défauts trouvés sur pièces, corrigés
+//!
+//! La première mesure comparait `mouvement` à une valeur `avant` capturée
+//! plusieurs secondes avant le tour, AVANT l'ouverture des deux voisines —
+//! **la sortie peut bouger sans aucun appel d'API entre ces deux instants**
+//! (résidu de pollution du registre d'une exécution antérieure, réappliqué à
+//! la création d'une sortie virtuelle voisine). `essayer_les_modes` relit
+//! désormais l'état DXGI juste avant le premier essai et compare CONTRE
+//! CETTE relecture fraîche, jamais contre la valeur stale. Trois autres
+//! défauts, plus mineurs mais réels : `journaliser_verdict` pouvait rendre
+//! `survit=true` sur une sortie disparue (repli `(0, 0)` des deux côtés) ;
+//! `mouvement_observe` pouvait valoir `true` sur un tour VIDE (aucun combo
+//! tenté) ; et seul le bras GAGNANT était journalisé, jamais le bras
+//! IMPOSÉ — voir les commentaires de tête d'`eliminatoire.rs` et
+//! `persistance.rs` pour le détail de chaque correction.
 
 mod combinaisons;
 mod eliminatoire;
@@ -308,8 +324,17 @@ pub(super) fn executer(consigne: &str) -> Result<()> {
                 // d'être créée, la taille que le tour venait de lui donner ?
                 // Voir `persistance.rs` -- même relevé que `designer_sortie_neuve`
                 // ci-dessous, recherché sous `nom_apres` plutôt que par
-                // position.
-                journaliser_verdict(resultat.gagnante, &nom_apres, taille_apres_tour, &apres_temoin);
+                // position. Les deux premiers arguments sont DISTINCTS depuis
+                // la revue de la tâche 2bis : `combinaison_imposee` (ce qui a
+                // été DEMANDÉ) et `resultat.gagnante` (ce qui s'est
+                // RÉELLEMENT passé) peuvent diverger (tour vide, mojibake).
+                journaliser_verdict(
+                    resultat.combinaison_imposee.as_deref(),
+                    resultat.gagnante,
+                    &nom_apres,
+                    taille_apres_tour,
+                    &apres_temoin,
+                );
                 let sortie_temoin =
                     designer_sortie_neuve(&apres_temoin, &connues_a_ce_point, id_temoin)?;
                 let nom_temoin = sortie_temoin.nom_sortie.clone();

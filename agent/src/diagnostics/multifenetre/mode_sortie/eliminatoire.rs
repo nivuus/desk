@@ -28,6 +28,11 @@ pub(super) struct ResultatTour {
     /// duplication pendant le tour — voir
     /// `voisines::DuplicationVoisine::sonder` pour la granularité exacte.
     pub(super) pertes_voisines: u32,
+    /// La valeur BRUTE de `MULTIFENETRE_MODE_SORTIE_DRAPEAUX` (ce que
+    /// l'opérateur a DEMANDÉ), à distinguer de `gagnante` (ce qui s'est
+    /// RÉELLEMENT passé) — voir `persistance::journaliser_verdict`, qui
+    /// journalise les deux séparément depuis la revue de la tâche 2bis.
+    pub(super) combinaison_imposee: Option<String>,
 }
 
 /// Essaie les combinaisons connues jusqu'à ce que la relecture DXGI confirme
@@ -36,10 +41,10 @@ pub(super) struct ResultatTour {
 /// erreur de la sonde ; voir le commentaire de tête de `mode_sortie.rs`. Seule
 /// une topologie devenue illisible fait remonter une erreur.
 ///
-/// `avant` est la taille lue par DXGI juste après la création, PAS supposée
-/// être la résolution de création : c'est exactement la valeur dont l'absence
-/// a rendu le premier relevé vide de sens (voir le commentaire de tête du
-/// module parent).
+/// `avant_a_la_creation` est la taille lue par DXGI juste après la création
+/// de la sortie sous test, plusieurs secondes avant que ce tour ne
+/// s'exécute — voir la relecture FRAÎCHE ci-dessous, qui la remplace comme
+/// référence de mouvement.
 ///
 /// `voisines` : sondées une fois PAR TENTATIVE (voir `DuplicationVoisine::sonder`)
 /// — c'est l'inconnue annexe n°2 de D8 relevée au même moment que
@@ -52,10 +57,46 @@ pub(super) struct ResultatTour {
 pub(super) fn essayer_les_modes(
     pilote: &PiloteParIoctl,
     nom_sortie: &str,
-    avant: (u32, u32),
+    avant_a_la_creation: (u32, u32),
     demande: (u32, u32),
     voisines: &mut [DuplicationVoisine],
 ) -> Result<ResultatTour> {
+    // La valeur BRUTE demandée par l'opérateur, capturée UNE fois et
+    // réutilisée aux deux points de sortie (`P1 NON MESURABLE` inclus) --
+    // voir le champ `combinaison_imposee` de `ResultatTour`.
+    let imposee = combinaison_imposee();
+
+    // ⚠️ **Correction (revue de la tâche 2bis, Critique).** `avant_a_la_creation`
+    // a été capturé plusieurs secondes plus tôt, AVANT l'ouverture de la
+    // duplication et la création des deux voisines. Entre ces deux instants,
+    // la sortie peut avoir bougé SANS AUCUN appel d'API : `p-persistance-2`
+    // et le témoin invalide de la tâche 2bis montrent tous deux `DISPLAY5`
+    // passer de 1280×720 à 2560×1440 avant tout `ChangeDisplaySettingsExW`
+    // de CE tour -- un résidu de pollution du registre d'une exécution
+    // antérieure, apparemment réappliqué à la création d'une sortie
+    // virtuelle voisine (mécanisme non expliqué, doctrine D1/D2 de
+    // l'abandon du mutex sous une autre forme). Comparer `mouvement` contre
+    // la valeur STALE ferait passer ce résidu pour un effet DE ce tour.
+    // La relecture fraîche sert désormais de référence PARTOUT dans cette
+    // fonction (`choisir_cible` compris) ; `avant_a_la_creation` ne sert
+    // plus qu'à détecter et journaliser l'écart.
+    let avant = relever_topologie("juste avant le premier essai (relecture fraîche)")?
+        .into_iter()
+        .find(|sortie| sortie.nom_sortie == nom_sortie)
+        .map(|sortie| (sortie.rect.width, sortie.rect.height))
+        .unwrap_or(avant_a_la_creation);
+    if avant != avant_a_la_creation {
+        tracing::warn!(
+            nom_sortie,
+            largeur_a_la_creation = avant_a_la_creation.0,
+            hauteur_a_la_creation = avant_a_la_creation.1,
+            largeur_fraiche = avant.0,
+            hauteur_fraiche = avant.1,
+            "la sortie a bouge SANS appel d'API entre sa creation et ce tour -- residu probable \
+             d'une execution anterieure ; la relecture FRAICHE sert desormais de reference"
+        );
+    }
+
     let annonces = modes_annonces(nom_sortie);
     tracing::info!(
         nombre = annonces.len(),
@@ -80,7 +121,12 @@ pub(super) fn essayer_les_modes(
                 modes = ?annonces,
                 "verdict P1 : mesure impossible, aucune tentative effectuee"
             );
-            return Ok(ResultatTour { cible: None, gagnante: None, pertes_voisines: 0 });
+            return Ok(ResultatTour {
+                cible: None,
+                gagnante: None,
+                pertes_voisines: 0,
+                combinaison_imposee: imposee,
+            });
         }
     };
     if cible == demande {
@@ -103,12 +149,26 @@ pub(super) fn essayer_les_modes(
     }
 
     let mut dernier_code = 0i32;
-    let mut derniere_taille = (0u32, 0u32);
+    // ⚠️ **Correction (revue de la tâche 2bis, Important I5).** Initialisée à
+    // `avant` (fraîche) et non plus `(0, 0)` : sur un tour VIDE (aucun combo
+    // ne correspond à `MULTIFENETRE_MODE_SORTIE_DRAPEAUX`, voir
+    // `combinaisons::combos_du_tour`), `derniere_taille` restait à `(0, 0)`
+    // et `mouvement_observe = derniere_taille != avant` valait presque
+    // toujours `true` -- un tour qui n'avait RIEN tenté affichait un
+    // mouvement. Avec `avant` comme valeur de repos, l'absence de tentative
+    // se traduit par l'absence de mouvement, sans code spécial.
+    let mut derniere_taille = avant;
     let mut gagnante: Option<&'static str> = None;
     let mut cible_exacte_atteinte = false;
     let mut pertes_voisines = 0u32;
-    let imposee = combinaison_imposee();
+    // Compte les tentatives RÉELLEMENT effectuées -- distinct de
+    // `gagnante.is_some()` : un tour VIDE (0 tentative) et un tour qui a
+    // épuisé ses bras sans succès (N tentatives, 0 succès) se ressemblaient
+    // jusqu'ici (`gagnante = None` dans les deux cas). Voir le verdict
+    // "P1 NON TENTE" plus bas.
+    let mut tentatives = 0u32;
     for combo in combos_du_tour(imposee.as_deref()) {
+        tentatives += 1;
         dernier_code = appliquer_combo(nom_sortie, cible.0, cible.1, &combo);
         // Windows reconfigure sa topologie d'affichage de façon asynchrone —
         // exactement pourquoi `montee.rs` observe le même délai de grâce
@@ -157,9 +217,24 @@ pub(super) fn essayer_les_modes(
         }
     }
 
+    // ⚠️ **Correction (revue de la tâche 2bis, I5/I6).** Un tour VIDE
+    // (`tentatives == 0`, filtre de `combos_du_tour` n'ayant rien retenu)
+    // rendait "P1 REFUSE" -- une absence d'essai présentée comme un relevé,
+    // exactement la confusion que la doctrine du dépôt (D9, tâche 2bis I6)
+    // interdit. "P1 NON TENTE" la distingue d'un refus RÉEL (N tentatives,
+    // 0 succès).
+    let verdict = if gagnante.is_some() {
+        "P1 RECU"
+    } else if tentatives == 0 {
+        "P1 NON TENTE"
+    } else {
+        "P1 REFUSE"
+    };
     tracing::info!(
-        verdict = if gagnante.is_some() { "P1 RECU" } else { "P1 REFUSE" },
+        verdict,
+        combinaison_imposee = ?imposee,
         combinaison_gagnante = ?gagnante,
+        tentatives_effectuees = tentatives,
         code_brut_dernier_essai = dernier_code,
         largeur_avant_tentative = avant.0,
         hauteur_avant_tentative = avant.1,
@@ -172,6 +247,9 @@ pub(super) fn essayer_les_modes(
         // la cible (voir le commentaire de tête du module parent, défaut F1
         // corrigé) -- recalculé ici, redondant avec `gagnante.is_some()` par
         // construction, pour qu'un lecteur du journal n'ait pas à le déduire.
+        // Sur un tour VIDE, `derniere_taille == avant` par construction
+        // (voir son initialisation) : `mouvement_observe` vaut `false`,
+        // jamais `true` par défaut (correction I5).
         mouvement_observe = derniere_taille != avant,
         // Secondaire : le pilote a-t-il honoré la valeur EXACTE demandée, ou
         // s'est-il arrêté à un mode intermédiaire ? Peut valoir `false` avec
@@ -181,5 +259,5 @@ pub(super) fn essayer_les_modes(
         pertes_acces_voisines_pendant_le_tour = pertes_voisines,
         "verdict P1 : une sortie virtuelle accepte-t-elle un autre mode que celui de sa creation"
     );
-    Ok(ResultatTour { cible: Some(cible), gagnante, pertes_voisines })
+    Ok(ResultatTour { cible: Some(cible), gagnante, pertes_voisines, combinaison_imposee: imposee })
 }

@@ -149,15 +149,21 @@ fn cible_du_temoin(
 /// noms apparus depuis le tout début de la sonde et qui ne sont ni la sortie
 /// testée elle-même ni l'une des deux voisines : une seule candidate tranche,
 /// plusieurs ou aucune laissent la question ouverte (`<disparue>`, journalisé
-/// à part plutôt que deviné, taille `(0, 0)`).
+/// à part plutôt que deviné).
+///
+/// ⚠️ **Correction (revue de la tâche 2bis, I4)** : la taille rend désormais
+/// `Option<(u32, u32)>`, PAS `(0, 0)` en repli sur le cas `<disparue>`. Un
+/// repli `(0, 0)` faisait dire à `journaliser_verdict` qu'une sortie
+/// disparue avait « survécu » dès lors que l'autre bout du calcul valait
+/// aussi `(0, 0)` — `None` rend cette confusion impossible par construction.
 pub(super) fn nom_apres_tour(
     nom_sortie: &str,
     connues_avant_tout: &HashSet<String>,
     autres_noms_a_nous: &HashSet<String>,
-) -> Result<(String, (u32, u32))> {
+) -> Result<(String, Option<(u32, u32)>)> {
     let releve = relever_topologie("après le tour (inconnues annexes)")?;
     if let Some(sortie) = releve.iter().find(|sortie| sortie.nom_sortie == nom_sortie) {
-        return Ok((nom_sortie.to_string(), (sortie.rect.width, sortie.rect.height)));
+        return Ok((nom_sortie.to_string(), Some((sortie.rect.width, sortie.rect.height))));
     }
     let candidats: Vec<&str> = releve
         .iter()
@@ -168,8 +174,7 @@ pub(super) fn nom_apres_tour(
         let taille = releve
             .iter()
             .find(|sortie| sortie.nom_sortie == *seul)
-            .map(|sortie| (sortie.rect.width, sortie.rect.height))
-            .unwrap_or((0, 0));
+            .map(|sortie| (sortie.rect.width, sortie.rect.height));
         return Ok((seul.to_string(), taille));
     }
     tracing::warn!(
@@ -178,5 +183,5 @@ pub(super) fn nom_apres_tour(
         "la sortie testée n'apparaît plus sous son nom d'origine, et aucun successeur univoque \
          ne se dégage -- nom_apres = <disparue>"
     );
-    Ok(("<disparue>".to_string(), (0, 0)))
+    Ok(("<disparue>".to_string(), None))
 }
