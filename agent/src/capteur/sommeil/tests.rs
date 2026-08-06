@@ -261,3 +261,40 @@ fn un_retrait_purge_l_inaptitude_et_le_compteur_de_rearmements() {
 
     drop(canal);
 }
+
+/// Remède à la réserve I2 de la revue de la tâche 9 (sous-bloc D9) :
+/// `SourceDistante::rattacher` ne peut pas distinguer un redémarrage réel du
+/// capteur d'une simple reconnexion de canal sur un capteur resté vivant, et
+/// remet `Session::audio_mort_signale` à zéro dans les deux cas — un second
+/// `AudioMort` pour la MÊME session, encore inapte, ne doit donc PAS compter
+/// comme un échec CONSÉCUTIF de plus : ce serait le même échec, redit, et ça
+/// rapprocherait l'abandon définitif de 24 h pour une raison étrangère à
+/// l'état réel de la capture.
+#[test]
+fn un_signal_audio_mort_redondant_ne_recompte_pas_le_rearmement() {
+    let _verrou = verrouiller_pour_le_test();
+    let canal = inscrire("t9-redondant", 6002);
+
+    audio_mort("t9-redondant");
+    assert_eq!(
+        etat().rearmements.get("t9-redondant"),
+        Some(&1),
+        "précondition : un premier réarmement doit être compté"
+    );
+
+    // Second signal, sans qu'aucun retrait n'ait eu lieu entre les deux :
+    // la session est toujours inapte (répit de `REPIT_REARMEMENT_AUDIO`, pas
+    // encore expiré). Un vrai canal rattaché sur un capteur relancé serait
+    // indiscernable de ceci pour `SourceDistante` — c'est exactement le cas
+    // que ce test isole côté capteur, où la distinction EST possible.
+    audio_mort("t9-redondant");
+    assert_eq!(
+        etat().rearmements.get("t9-redondant"),
+        Some(&1),
+        "un signal redondant, reçu pendant que la session est encore \
+         inapte, ne doit pas avancer le compteur de réarmements"
+    );
+
+    retirer("t9-redondant");
+    drop(canal);
+}

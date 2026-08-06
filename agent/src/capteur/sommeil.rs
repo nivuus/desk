@@ -371,6 +371,27 @@ pub fn echec_de_reveil(session: &str) {
 /// concernée — exactement le patron de `signaler`.
 pub fn audio_mort(session: &str) {
     let mut garde = etat();
+    // Une session déjà inapte (répit en cours, ou abandon définitif) qui
+    // signale À NOUVEAU une capture morte n'a pas échoué une seconde fois :
+    // c'est le MÊME échec, redit — typiquement une reconnexion de canal sur
+    // un capteur resté vivant (`SourceDistante::rattacher`, sous-bloc D9),
+    // qui ne peut structurellement pas distinguer ce cas d'un vrai
+    // redémarrage du capteur et remet donc `Session::audio_mort_signale` à
+    // zéro dans les deux cas. Compter ce signal comme un échec CONSÉCUTIF de
+    // plus rapprocherait l'abandon définitif de 24 h pour une raison
+    // étrangère à l'état réel de la capture. **Journalisé, jamais tu** :
+    // le silence est précisément le défaut que F3 de D7 a corrigé.
+    if garde.inaptes.contains_key(session) {
+        // `info!`, pas `debug!` : l'exploitation tourne en `RUST_LOG=info`
+        // (voir `encode/arret.rs`), et un signal muet ici serait exactement
+        // le défaut que ce commentaire vient d'expliquer comment éviter.
+        tracing::info!(
+            %session,
+            "capture audio morte signalée à nouveau pour une session déjà \
+             inapte : signal redondant, réarmement non recompté"
+        );
+        return;
+    }
     let tours = garde.rearmements.entry(session.to_string()).or_insert(0);
     *tours += 1;
     if *tours > REARMEMENTS_MAX {
