@@ -21,12 +21,30 @@
 mod parts;
 mod porteurs;
 
+// Le registre lui-même — `Etat`, `etat`, le tour de roue, `distribuer`,
+// `oublier`, `inscrire`, `retirer` — extrait pour rester sous le plafond de
+// 500 lignes du projet (revue de la tâche 10, D9) : ce fichier-ci était
+// tombé à exactement 500 avec ce bloc en ligne. Voir l'en-tête de
+// `registre.rs`. Les quatre re-exports ci-dessous rendent l'extraction
+// invisible à `parts.rs`/`porteurs.rs`/`tests.rs`, qui continuent d'écrire
+// `super::{distribuer, oublier, Etat, Message}` sans le savoir.
+mod registre;
+use registre::{distribuer, etat, oublier, Etat};
+pub use registre::{inscrire, retirer};
+
 use std::collections::HashMap;
-use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::{Mutex, MutexGuard, OnceLock};
+// `Receiver`, `Mutex` et `MutexGuard` : plus employés par le code de PRODUCTION
+// de ce fichier depuis l'extraction ci-dessus — seul `sommeil::tests` s'en
+// sert encore (`premier_ordre`, `VERROU_TESTS`), via `use super::*`. Gater sur
+// `cfg(test)` évite un `unused_imports` en dehors de la compilation de test,
+// sans toucher `tests.rs`.
+#[cfg(test)]
+use std::sync::mpsc::Receiver;
+#[cfg(test)]
+use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
-use crate::capteur::vivier::{Ordre, Raison, Vivier, HYSTERESIS, PLAFOND_EVEIL};
+use crate::capteur::vivier::{Ordre, Raison};
 
 /// Période du tour de roue. Ni une cadence de rendu ni une horloge : c'est le
 /// seul moyen pour une fenêtre bloquée sous hystérésis d'être réexaminée, et
@@ -96,280 +114,6 @@ pub enum Message {
     /// seraient audibles ensemble — sans la fermer : la borne réelle est
     /// l'ordonnancement des deux fils, pas ce canal.
     Audio { actif: bool },
-}
-
-struct Etat {
-    vivier: Vivier,
-    canaux: HashMap<String, Sender<Message>>,
-    /// La session que le client déclare focalisée, si elle existe encore.
-    ///
-    /// Tenue ici et non dans `Vivier` : le vivier arbitre des places
-    /// d'encodeur, le répartiteur des parts de débit. Le client émet `blur`
-    /// aussi bien que `focus` (`client/src/visibilite.ts`), donc ce champ se
-    /// vide bien quand la fenêtre perd le focus.
-    focalisee: Option<String>,
-    /// Dernière part envoyée à chaque session. **Le seul rempart contre une
-    /// inondation** : le tour de roue ré-arbitre toutes les 250 ms, et sans
-    /// cette mémoire huit fenêtres recevraient 32 messages par seconde à vie.
-    dernieres_parts: HashMap<String, u32>,
-    /// PID du processus propriétaire de chaque fenêtre. **Ici et pas dans un
-    /// second registre** : le capteur n'a qu'une vérité à tenir, et deux
-    /// tables à synchroniser en feraient deux.
-    pids: HashMap<String, u32>,
-    /// Rang d'arrivée de chaque session, et rang du dernier focus reçu. Deux
-    /// compteurs tirés du même `horloge`, strictement croissante.
-    arrivees: HashMap<String, u64>,
-    derniers_focus: HashMap<String, u64>,
-    /// Compteur monotone qui sert de rang aux deux tables ci-dessus. Un
-    /// `Instant` ne conviendrait pas : il faut un ordre total, stable et
-    /// comparable, pas une durée.
-    horloge: u64,
-    /// Dernier ordre audio envoyé à chaque session. **Le rempart contre
-    /// l'inondation**, exactement comme `dernieres_parts` : le tour de roue
-    /// ré-arbitre toutes les 250 ms.
-    derniers_audio: HashMap<String, bool>,
-    /// Instant après lequel une session dont la capture audio est morte
-    /// redevient éligible au portage. Absente = apte.
-    ///
-    /// **Ici et pas dans `capteur::audio`** : ce module a l'horloge, l'autre
-    /// est pur et le reste.
-    inaptes: HashMap<String, Instant>,
-    /// Nombre de réarmements consécutifs déjà accordés à chaque session.
-    /// Remis à zéro dès qu'elle porte le son sans mourir.
-    rearmements: HashMap<String, u32>,
-    /// Génération de la dernière inscription connue de chaque session (D9,
-    /// F5 de D7 — course au `retirer` quand un nom se réinscrit). Posée par
-    /// `inscrire`, lue et effacée par `retirer` via `retirer_est_perime`.
-    ///
-    /// **Absente d'`oublier` à dessein** : seul `retirer` non périmé la
-    /// purge — un canal rompu n'a rien à y comparer, et l'effacer là
-    /// emporterait un rattachement déjà inscrit. Conséquence assumée, sans
-    /// effet fonctionnel : l'entrée d'un nom mort peut y survivre pour la vie
-    /// du capteur (les noms ne sont jamais réemployés).
-    generations: HashMap<String, u64>,
-    /// Compteur qui frappe la génération de chaque `inscrire` — **distinct
-    /// de `horloge`, délibérément** : celui-ci ne bouge, pour `arrivees`, qu'à
-    /// la PREMIÈRE inscription d'un nom, quand `generations` exige l'inverse
-    /// — une valeur neuve à CHAQUE appel. Le coupler à `horloge` le rendrait
-    /// dépendant d'une garde écrite pour un autre besoin.
-    prochaine_generation: u64,
-}
-
-static ETAT: OnceLock<Mutex<Etat>> = OnceLock::new();
-
-fn etat() -> MutexGuard<'static, Etat> {
-    let mutex = ETAT.get_or_init(|| {
-        demarrer_le_tour_de_roue();
-        Mutex::new(Etat {
-            vivier: Vivier::nouveau(PLAFOND_EVEIL, HYSTERESIS),
-            canaux: HashMap::new(),
-            focalisee: None,
-            dernieres_parts: HashMap::new(),
-            pids: HashMap::new(),
-            arrivees: HashMap::new(),
-            derniers_focus: HashMap::new(),
-            horloge: 0,
-            derniers_audio: HashMap::new(),
-            inaptes: HashMap::new(),
-            rearmements: HashMap::new(),
-            generations: HashMap::new(),
-            prochaine_generation: 0,
-        })
-    });
-    // Un empoisonnement ne doit pas tuer le capteur : l'état du vivier reste
-    // cohérent (un `Vec` d'ordres perdu au pire), et refuser de servir serait
-    // pire que de continuer.
-    mutex.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
-}
-
-/// **Un seul fil pour tout le processus**, démarré à la première inscription.
-///
-/// **La sûreté ne tient pas au `sleep` ci-dessous.** Ce fil est lancé DEPUIS la
-/// fermeture d'initialisation de `ETAT.get_or_init` ; c'est
-/// `OnceLock::get_or_init` lui-même qui garantit qu'un second fil appelant
-/// `etat()` pendant que cette fermeture tourne encore **bloque** jusqu'à ce
-/// qu'elle se termine — la réentrance qui paniquerait serait celle du *même*
-/// fil, qui n'a pas lieu ici. Le `sleep` n'est qu'une cadence, pas une garde.
-fn demarrer_le_tour_de_roue() {
-    std::thread::spawn(|| loop {
-        std::thread::sleep(PERIODE_REARBITRAGE);
-        let mut garde = etat();
-        let maintenant = Instant::now();
-        let ordres = garde.vivier.rearbitrer(maintenant);
-        distribuer(&mut garde, ordres);
-        parts::distribuer_les_parts(&mut garde);
-        purger_les_inaptitudes(&mut garde.inaptes, Instant::now());
-        porteurs::distribuer_l_audio(&mut garde);
-    });
-}
-
-/// Envoie chaque ordre à la fenêtre concernée. Un canal rompu signale une
-/// fenêtre déjà morte : on retire son entrée plutôt que de la journaliser à
-/// chaque tour de roue.
-///
-/// **En boucle jusqu'à épuisement, et pas un seul passage.** Retirer une
-/// session éveillée libère sa place, et `arbitrer` peut alors élire une AUTRE
-/// session en réponse — en posant `eveillee = true` sur elle EN INTERNE, dans
-/// le même mouvement qui produit l'ordre `Reveiller` correspondant. Si ce
-/// nouveau lot d'ordres n'était pas distribué à son tour, cette élection ne
-/// serait qu'un artefact du modèle : `arbitrer` est idempotent, il la croit
-/// déjà servie, et plus aucun ré-arbitrage futur — pas même le tour de roue —
-/// ne réémettrait cet ordre. La place resterait occupée dans le vivier sans
-/// qu'aucun encodeur réel ne l'occupe, pour toute la vie du processus.
-///
-/// **Terminaison** : un tour n'engendre un nouveau lot que s'il a détecté au
-/// moins un canal rompu, et chaque canal rompu détecté est retiré de
-/// `canaux` avant que le tour suivant ne commence. `canaux` est fini et
-/// décroît strictement à chaque retrait ; le nombre de tours est donc borné
-/// par le nombre de sessions inscrites.
-fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(String, Ordre)>) {
-    let mut a_traiter = ordres;
-    while !a_traiter.is_empty() {
-        let mut suite = Vec::new();
-        for (session, ordre) in a_traiter {
-            let rompu = match garde.canaux.get(&session) {
-                Some(canal) => canal.send(Message::Sommeil(ordre)).is_err(),
-                None => false,
-            };
-            if rompu {
-                suite.extend(oublier(garde, &session));
-            }
-        }
-        a_traiter = suite;
-    }
-}
-
-/// Oublie TOUT ce que le registre retient d'une session, et rend les ordres
-/// que son retrait du vivier engendre.
-///
-/// **Le point de passage unique**, et c'est tout son intérêt : le registre
-/// retient NEUF choses d'une session (son canal, sa dernière part, son PID,
-/// son rang d'arrivée, son dernier focus reçu, son dernier ordre audio
-/// envoyé, le focus courant si elle le porte, son inaptitude audio et son
-/// compteur de réarmements — ces deux dernières depuis D9), et rend
-/// séparément son entrée au vivier. Il en existe trois chemins de retrait —
-/// la fermeture normale (`retirer`), la détection d'un canal rompu pendant la
-/// distribution des ORDRES (`distribuer`), et la même détection pendant
-/// celle des PARTS (`parts::distribuer_les_parts`).
-///
-/// ⚠️ **`focalisee` était le champ oublié par les deux derniers** (M1, revue
-/// finale de branche du sous-bloc D6). Seule la fermeture normale le vidait.
-/// Une session focalisée qui meurt par canal rompu laissait donc son nom dans
-/// `focalisee` ; comme plus aucune fenêtre vivante ne porte ce nom, la
-/// majoration `FACTEUR_FOCUS` cessait de s'appliquer à quiconque — sans
-/// différence observable, puisqu'elle ne s'appliquait déjà à personne
-/// d'autre. **La conséquence qui MORD est ailleurs, et elle est atteignable** :
-/// un rattachement réinscrit la MÊME session (voir `inscrire` et le chemin de
-/// reprise de D4), qui héritait alors du focus sans que le client l'ait jamais
-/// réémis — deux parts au lieu d'une, prises sur ses voisines.
-fn oublier(garde: &mut MutexGuard<'static, Etat>, session: &str) -> Vec<(String, Ordre)> {
-    garde.canaux.remove(session);
-    garde.dernieres_parts.remove(session);
-    // Les quatre tables de D7 s'oublient ICI et nulle part ailleurs. Le
-    // registre a trois chemins de retrait (fermeture normale, canal rompu
-    // détecté par les ordres, canal rompu détecté par les parts) : un champ
-    // oublié par deux d'entre eux est exactement le défaut M1 de la revue
-    // finale de branche du sous-bloc D6.
-    //
-    // `derniers_audio` en particulier : un rattachement réinscrit la MÊME
-    // session (voir `inscrire`), et un `false` resté en mémoire ferait juger
-    // l'ordre déjà livré — sur un canal disparu avec la rupture. La fenêtre
-    // resterait muette sans terme.
-    garde.pids.remove(session);
-    garde.arrivees.remove(session);
-    garde.derniers_focus.remove(session);
-    garde.derniers_audio.remove(session);
-    // `inaptes` et `rearmements` (D9) : même motif que `derniers_audio`
-    // ci-dessus, et c'est le défaut M1 de la revue finale de branche du
-    // sous-bloc D6 rejoué une deuxième fois. Un rattachement réinscrit la
-    // MÊME session (voir `inscrire` et le chemin de reprise de D4) : sans
-    // cette purge, une session dont la capture audio venait de mourir
-    // hériterait de son inaptitude ou de son compteur de réarmements
-    // périmés à travers une reconnexion pourtant saine — jusqu'à
-    // `REPIT_REARMEMENT_AUDIO` (5 s) d'exclusion injustifiée dans le cas
-    // ordinaire, jusqu'à 24 h de silence garanti après un abandon définitif.
-    garde.inaptes.remove(session);
-    garde.rearmements.remove(session);
-    if garde.focalisee.as_deref() == Some(session) {
-        garde.focalisee = None;
-    }
-    garde.vivier.retirer(session, Instant::now())
-}
-
-/// Inscrit une session au registre et rend, avec son canal, la génération
-/// qui vient de lui être attribuée.
-///
-/// **Frappée ICI, par le capteur, pas transmise par le protocole** (revue
-/// de la première version de cette tâche, D9) : la frapper au lancement
-/// d'un processus ne couvre pas la course réelle, qui n'existe qu'au
-/// rattachement du MÊME enfant (`CanalTube::rattacher`) — un enfant relancé
-/// par le superviseur reçoit un nom neuf (`Table::compteur`), donc aucune
-/// course. `Fenetre::servir` retient la valeur rendue et la redonne telle
-/// quelle à `retirer`.
-pub fn inscrire(session: &str, pid: u32) -> (Receiver<Message>, u64) {
-    let (emetteur, receveur) = channel::<Message>();
-    let mut garde = etat();
-    // Inconditionnel, à CHAQUE appel : seule façon de distinguer cette
-    // instance de la précédente (voir la doc de `prochaine_generation`).
-    garde.prochaine_generation += 1;
-    let generation = garde.prochaine_generation;
-    garde.generations.insert(session.to_string(), generation);
-    if garde.canaux.insert(session.to_string(), emetteur).is_some() {
-        tracing::warn!(%session, "canal d'ordres remplacé pour cette session");
-        // Sans cette purge, une part identique à celle déjà envoyée sur
-        // L'ANCIEN canal (disparu avec la rupture) serait jugée déjà livrée
-        // par le filtre d'écrasement de `distribuer_les_parts`, et le canal
-        // NEUF ne la recevrait jamais si la topologie n'a pas changé entre
-        // les deux inscriptions — le plafond de débit resterait périmé sans
-        // terme. Une première inscription n'a, elle, rien à purger.
-        garde.dernieres_parts.remove(session);
-        // Même motif que la ligne ci-dessus : l'ordre audio mémorisé l'a été
-        // sur l'ANCIEN canal, disparu avec la rupture.
-        garde.derniers_audio.remove(session);
-    }
-    garde.pids.insert(session.to_string(), pid);
-    // Le rang d'arrivée n'est posé que si la session n'en a pas déjà un.
-    //
-    // ⚠️ **La portée réelle est plus étroite que l'intention** (F6, revue
-    // finale de branche du sous-bloc D7). L'intention est qu'un rattachement
-    // ne fasse pas perdre à la fenêtre son ancienneté au sein de son groupe de
-    // PID — mais `oublier` retire `arrivees` ET `derniers_focus`, et sur un
-    // rattachement ORDINAIRE le `retirer` du fil de fenêtre mort court AVANT
-    // que l'enfant ne se reconnecte : les deux tables sont alors déjà vides,
-    // et la garde ci-dessous ne retient rien. Elle ne mord que dans la fenêtre
-    // de course où l'inscription neuve précède le retrait de l'ancienne.
-    //
-    // Retenir ces tables pendant un délai de grâce serait le remède, mais
-    // c'est un changement de conception du registre — à cadrer, pas à
-    // improviser : la même identité par NOM porte déjà une course connue,
-    // consignée pour le sous-bloc suivant.
-    if !garde.arrivees.contains_key(session) {
-        garde.horloge += 1;
-        let rang = garde.horloge;
-        garde.arrivees.insert(session.to_string(), rang);
-    }
-    let ordres = garde.vivier.inscrire(session, Instant::now());
-    distribuer(&mut garde, ordres);
-    parts::distribuer_les_parts(&mut garde);
-    porteurs::distribuer_l_audio(&mut garde);
-    (receveur, generation)
-}
-
-pub fn retirer(session: &str, generation: u64) {
-    let mut garde = etat();
-    // Sans effet si l'inscription enregistrée est PLUS RÉCENTE : ce `retirer`
-    // vise une instance déjà remplacée par un rattachement (F5, D9). Ne PAS
-    // appeler `oublier` est délibéré : ses neuf tables appartiennent à
-    // l'instance VIVANTE, pas à celle-ci, périmée.
-    if retirer_est_perime(&garde.generations, session, generation) {
-        tracing::info!(%session, generation, "retirer périmé ignoré");
-        return;
-    }
-    let ordres = oublier(&mut garde, session);
-    distribuer(&mut garde, ordres);
-    parts::distribuer_les_parts(&mut garde);
-    porteurs::distribuer_l_audio(&mut garde);
-    garde.generations.remove(session);
 }
 
 pub fn signaler(session: &str, visible: bool, focalisee: bool) {
