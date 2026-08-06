@@ -52,6 +52,7 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
                 pid,
                 arrivee,
                 dernier_focus: garde.derniers_focus.get(session).copied().unwrap_or(0),
+                inapte: false,
             })
         })
         .collect();
