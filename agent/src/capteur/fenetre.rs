@@ -29,6 +29,7 @@ mod transitions;
 
 use std::io::Write;
 use std::sync::mpsc::{sync_channel, Receiver, Sender, SyncSender};
+use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use anyhow::{bail, Context, Result};
@@ -58,6 +59,16 @@ const PAS_A_VIDE: Duration = Duration::from_millis(10);
 /// Période des lignes de compteurs. **Jamais de trace par image** : le projet
 /// a déjà perdu une session entière à une trace par paquet.
 const PERIODE_COMPTEURS: Duration = Duration::from_secs(10);
+
+/// `SOURCE_TRACE=1` active la trace des compteurs de capture — présence
+/// ACTIVE, à l'inverse de `PLEIN_ECRAN`/`AUDIO`. Déplacée ici (D9, tâche 11)
+/// depuis `demarrage.rs`, côté enfant, où elle ne lisait plus rien depuis D4
+/// (voir `windows_source/telemetrie.rs`). `OnceLock` : même raison que
+/// `plein_ecran::actif`, l'environnement ne change pas en cours de processus.
+fn trace_source_active() -> bool {
+    static ACTIF: OnceLock<bool> = OnceLock::new();
+    *ACTIF.get_or_init(|| std::env::var("SOURCE_TRACE").is_ok())
+}
 
 /// Profondeur de la file entre le fil de fenêtre et le fil écrivain de la
 /// connexion média.
@@ -448,6 +459,14 @@ impl Fenetre {
                     cadence = format!("{:.1}", images as f64 / ecoule),
                     "cadence du capteur"
                 );
+                // Sous le span `fenetre{session=…}` (D7) : attribuable sans
+                // champ de plus. `None` (endormie) : rien à lire.
+                if trace_source_active() {
+                    if let Some(source) = self.source.as_ref() {
+                        let (ticks, capturees, produites) = source.telemetrie.lire();
+                        tracing::info!(ticks, capturees, produites, "compteurs de capture");
+                    }
+                }
                 images = 0;
                 dernier_compte = Instant::now();
             }

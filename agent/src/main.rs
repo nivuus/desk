@@ -58,6 +58,17 @@ mod windows_source_sortie;
 #[path = "capture/reprise.rs"]
 mod capture_reprise;
 
+// Même montage encore (D9, tâche 11) : `Telemetrie` est pure — trois
+// compteurs atomiques par SESSION, remplaçant les statiques de PROCESSUS
+// `TICKS`/`CAPTURED`/`PRODUCED` de `windows_source.rs`, mortes des deux côtés
+// depuis D4 (consignation n°1 de D6). `mod telemetrie;` DANS `windows_source`
+// ne suffirait pas : ce fichier est lui-même `#![cfg(windows)]`, et
+// `mod windows_source;` ci-dessous l'est aussi — sur Linux, tout son
+// sous-arbre serait absent de la compilation, y compris ce module, qui ne
+// serait donc plus « éprouvable sur l'hôte ».
+#[path = "windows_source/telemetrie.rs"]
+mod windows_source_telemetrie;
+
 #[cfg(windows)]
 mod capture;
 #[cfg(windows)]
