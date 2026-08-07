@@ -35,24 +35,6 @@ use crate::sortie_dxgi::SortieDxgi;
 /// cette fonction dans le fichier.
 const TOLERANCE_PX: i64 = 4;
 
-/// Vrai si deux tailles se correspondent à `TOLERANCE_PX` près.
-///
-/// ⚠️ **Ce prédicat a DIVERGÉ de l'appariement à la création (D10, tâche 5).**
-/// Avant D10, c'était le même prédicat que `sortie_par_dimensions` : une
-/// sortie appariée à la création (par égalité tolérante) devait être jugée
-/// réutilisable à la relance (`table::viewport_recu`, qui appelle
-/// `taille_compatible`) — deux tolérances distinctes auraient fait détruire
-/// puis recréer une sortie parfaitement bonne, exactement la recréation que
-/// le sous-bloc D3 existe pour supprimer. **Depuis D10, l'appariement à la
-/// création se fait par INÉGALITÉ** (`sortie_assez_grande`), tandis que
-/// `taille_compatible` reste, lui, une égalité tolérante : les deux
-/// prédicats ne sont plus le même. **C'est la tâche 7 qui les réaccordera**,
-/// en portant `sortie_assez_grande` sur le chemin de réutilisation.
-pub fn taille_compatible(a: (u32, u32), b: (u32, u32)) -> bool {
-    let proche = |x: u32, y: u32| (x as i64 - y as i64).abs() <= TOLERANCE_PX;
-    proche(a.0, b.0) && proche(a.1, b.1)
-}
-
 /// Vrai si une sortie peut servir un viewport donné.
 ///
 /// **Une inégalité, plus une égalité, et c'est tout le sous-bloc D10.** Une
@@ -385,34 +367,6 @@ mod tests {
 #[cfg(test)]
 mod tests_taille {
     use super::*;
-
-    #[test]
-    fn une_taille_identique_est_compatible() {
-        assert!(taille_compatible((1280, 720), (1280, 720)));
-    }
-
-    /// La course de rattachement de la recette D1 : la sortie est créée à
-    /// 1280×713 et DXGI la rend à 1280×720 un essai sur deux. Quatre pixels
-    /// de tolérance ne couvrent PAS cet écart de sept — c'est
-    /// `viewport_recu` qui doit alors détruire et recréer, pas apparier à
-    /// tort.
-    #[test]
-    fn un_ecart_de_sept_pixels_n_est_pas_compatible() {
-        assert!(!taille_compatible((1280, 713), (1280, 720)));
-    }
-
-    #[test]
-    fn un_ecart_de_quatre_pixels_est_compatible() {
-        assert!(taille_compatible((1276, 716), (1280, 720)));
-    }
-
-    /// Le facteur DPI de 1,5 que `CLAUDE.md` documente sur une sortie
-    /// virtuelle doit rester refusé : l'accepter ferait poser la fenêtre sur
-    /// une texture aux mauvaises dimensions.
-    #[test]
-    fn le_facteur_dpi_reste_refuse() {
-        assert!(!taille_compatible((1280, 720), (1920, 1080)));
-    }
 
     /// Le fait produit de D9 : sur cette VM, les sorties naissent à 3840×2160
     /// parce que le registre y est resté. `taille_compatible` refusait, et le

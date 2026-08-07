@@ -25,13 +25,30 @@ impl Table {
         // de staleness de `relancer_les_orphelines` ne la concerne plus.
         entree.attente_depuis = None;
 
+        // Même bornage qu'à la création (`creation_sortie::creer_sortie`), et
+        // pour la même raison : le viewport arrive en pixels périphériques
+        // depuis D9, et sans ce bornage une sortie retenue serait jugée assez
+        // grande — ou trop petite — contre une demande qui dépasse le plafond
+        // que la création s'impose. Le poser ici plutôt que chez l'appelant
+        // (`boucle.rs`) garde les deux chemins symétriques.
+        let (largeur, hauteur) =
+            crate::windows_source_sortie::borner_a_la_taille_max((largeur, hauteur));
+
         // **Chemin de réutilisation (§7.1 du sous-bloc D3).** Une fenêtre
         // relancée a gardé sa sortie ; si le viewport annoncé lui correspond,
         // il n'y a RIEN à créer — et c'est précisément la création qui fait
         // abandonner le mutex des duplications DXGI voisines.
         if let (Some(nom), Some(taille)) = (entree.nom_sortie.clone(), entree.taille_sortie) {
-            if crate::superviseur::placement::taille_compatible(taille, (largeur, hauteur)) {
+            // Même prédicat que l'appariement à la création
+            // (`placement::sortie_pour_viewport`), et c'est le point : deux
+            // règles distinctes feraient détruire à la relance une sortie que
+            // la création venait d'accepter. La sortie retenue est réutilisée
+            // dès qu'elle est ASSEZ GRANDE ; elle n'est rendue que si elle est
+            // trop petite, seul cas où la recréer peut apporter des pixels.
+            if crate::superviseur::placement::sortie_assez_grande(taille, (largeur, hauteur)) {
                 entree.etat = Etat::Vivante;
+                entree.taille_sortie =
+                    Some(crate::superviseur::placement::taille_retenue((largeur, hauteur), taille));
                 return vec![Effet::LancerEnfant {
                     session: session.clone(),
                     fenetre: entree.fenetre,

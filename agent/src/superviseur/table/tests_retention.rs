@@ -9,13 +9,26 @@ use super::*;
 
 /// Ouvre une fenêtre et la mène jusqu'à `Vivante`, en rendant la session.
 fn session_vivante(t: &mut Table, fenetre: u64, titre: &str, sortie: u32, nom: &str) -> IdSession {
+    session_vivante_de_taille(t, fenetre, titre, sortie, nom, (1280, 720))
+}
+
+/// Même amorce, mais la sortie naît à une taille imposée — le cas d'une VM
+/// dont le registre a été pollué (D9 §9).
+fn session_vivante_de_taille(
+    t: &mut Table,
+    fenetre: u64,
+    titre: &str,
+    sortie: u32,
+    nom: &str,
+    taille: (u32, u32),
+) -> IdSession {
     let effets = t.fenetre_apparue(IdFenetre(fenetre), titre.into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
         panic!("ouverture attendue, reçu {effets:?}");
     };
     let session = session.clone();
     t.viewport_recu(&session, 1280, 720);
-    t.sortie_creee(&session, sortie, nom.into(), (1280, 720));
+    t.sortie_creee(&session, sortie, nom.into(), taille);
     session
 }
 
@@ -147,6 +160,36 @@ fn une_sortie_retenue_compatible_est_reutilisee_sans_rien_creer() {
         "ni DetruireSortie ni CreerSortie : c'est tout l'objet du correctif"
     );
     assert_eq!(t.etat(&neuve), Some(&Etat::Vivante));
+}
+
+/// Une sortie retenue plus GRANDE que le viewport resservira : la
+/// détruire et la recréer ferait abandonner le mutex des duplications
+/// voisines à chaque relance — exactement la recréation que le sous-bloc
+/// D3 existe pour supprimer, et la cause de ses 32 réouvertures parasites.
+#[test]
+fn une_sortie_retenue_plus_grande_est_reutilisee() {
+    let mut t = Table::nouvelle(4);
+    let session = session_vivante_de_taille(
+        &mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY8", (3840, 2160),
+    );
+    t.enfant_mort(&session);
+    let effets = t.relancer_les_orphelines(std::time::Instant::now());
+    let Some(Effet::AnnoncerOuverture { session: neuve, .. }) = effets.first() else {
+        panic!("réouverture attendue, reçu {effets:?}");
+    };
+    let neuve = neuve.clone();
+
+    let effets = t.viewport_recu(&neuve, 1280, 720);
+
+    assert_eq!(
+        effets,
+        vec![Effet::LancerEnfant {
+            session: neuve.clone(),
+            fenetre: IdFenetre(1),
+            nom_sortie: "\\\\.\\DISPLAY8".into(),
+        }],
+        "une sortie retenue assez grande ne doit être ni détruite ni recréée"
+    );
 }
 
 /// La tolérance est celle de l'appariement — quatre pixels — et pas davantage.
