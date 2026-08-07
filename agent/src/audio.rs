@@ -96,13 +96,25 @@ pub const REPIT_RECONSTRUCTION: std::time::Duration = std::time::Duration::from_
 /// avant qu'il n'abandonne définitivement.
 ///
 /// **Une erreur isolée ne doit pas condamner tout un groupe de PID.** Le fil
-/// de capture est le seul producteur de son de sa fenêtre, et sa mort est
+/// de capture est le seul producteur de son de sa fenêtre, et ~~sa mort est
 /// sans retour : le capteur continue de tenir cette session pour porteuse de
-/// son groupe, donc sa voisine reste muette et n'est jamais promue. Or les
+/// son groupe, donc sa voisine reste muette et n'est jamais promue~~. Or les
 /// causes connues d'un refus de lecture WASAPI — changement de périphérique,
 /// redémarrage du service audio, changement de format — sont **transitoires**.
 /// On retente donc, avec la temporisation croissante ci-dessous, et l'on
 /// n'abandonne qu'après `LECTURES_ECHOUEES_MAX` échecs d'affilée.
+///
+/// ✅ **La clause barrée ci-dessus a été réfutée par le sous-bloc D10, aux
+/// deux bouts à la fois** (relevé par la revue transverse ; le paragraphe
+/// suivant, `Reconstructeur`, énonçait déjà correctement le contraire, sans
+/// que celui-ci soit repris). La mort du fil n'est plus sans retour :
+/// `Session::reconstruire_ou_signaler` refabrique la source, jusqu'à
+/// `RECONSTRUCTIONS_MAX` fois, le budget étant réapprovisionné à chaque
+/// réélection. Et même en repli, `AudioMort` marque la session inapte côté
+/// capteur, ce qui promeut bien une voisine du même groupe de PID.
+/// **L'argument de fond, lui, tient sans changement** : les causes connues
+/// d'un refus de lecture sont transitoires, et retenter coûte moins que
+/// condamner.
 pub const LECTURES_ECHOUEES_MAX: u32 = 10;
 
 /// Bornes de la temporisation appliquée entre deux tentatives de lecture.

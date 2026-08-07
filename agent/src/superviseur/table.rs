@@ -29,8 +29,17 @@ pub enum Etat {
     AttendLaSortie,
     /// L'enfant tourne.
     Vivante,
-    /// L'enfant est mort et la sortie a été rendue, mais **la fenêtre Windows
-    /// est toujours là**. Le contrôle périodique la reproposera.
+    /// L'enfant est mort, mais **la fenêtre Windows est toujours là**. Le
+    /// contrôle périodique la reproposera.
+    ///
+    /// ❌ **« et la sortie a été rendue » figurait ici et est faux depuis le
+    /// sous-bloc D3** — contredit par `enfant_mort` deux cents lignes plus
+    /// bas, qui dit en toutes lettres « la sortie est RETENUE, et c'est le
+    /// correctif §7.1 du sous-bloc D3 ». Fausseté antérieure à D10, relevée
+    /// par sa revue transverse parce qu'elle survivait dans un fichier que la
+    /// branche a modifié. La rétention est **le** point du correctif : rendre
+    /// la sortie ferait recréer une sortie à la relance, et c'est la création
+    /// qui fait abandonner le mutex de toutes les duplications ouvertes.
     ///
     /// Sans cet état, `enfant_mort` retirait purement l'entrée : plus rien ne
     /// rappelait la fenêtre sauf un `SHOW` fortuit de Windows, et la shell
@@ -107,10 +116,24 @@ struct Entree {
     /// Nom DXGI (`\\.\DISPLAYn`) de la même sortie, pour la capture et le
     /// placement. Stable, contrairement à une position d'énumération.
     nom_sortie: Option<String>,
-    /// Dimensions RÉELLEMENT rendues par DXGI pour cette sortie — et non
-    /// celles demandées. Le pilote quantifie (1280×632 demandé rend une sortie
-    /// 1280×720, mesuré au sous-bloc D2) : comparer un viewport ultérieur à la
-    /// demande jugerait réutilisable une sortie qui ne l'est pas.
+    /// ❌ **Ce champ portait « les dimensions RÉELLEMENT rendues par DXGI »,
+    /// et ce n'est plus vrai depuis le sous-bloc D10** (relevé par la revue
+    /// transverse : le fichier se contredisait lui-même, `rafraichir_taille_sortie`
+    /// plus bas et `boucle/placement_periodique.rs` disant tous deux le
+    /// contraire). Il porte la **taille RETENUE** — `min` axe par axe entre le
+    /// viewport borné et la taille DXGI réelle —, écrite par
+    /// `boucle::creation_sortie::creer_sortie` à la création et par
+    /// `table::attribution::viewport_recu` à la réutilisation. C'est la taille
+    /// à laquelle la fenêtre est posée, et celle que la capture recadre dans
+    /// la duplication de la sortie ; elle **n'a plus de raison d'égaler** la
+    /// taille DXGI brute, puisqu'une sortie peut naître plus grande que
+    /// demandé.
+    ///
+    /// Le raisonnement qui justifiait l'ancienne sémantique — le pilote
+    /// quantifie (1280×632 demandé rend 1280×720, mesuré au sous-bloc D2),
+    /// donc comparer un viewport ultérieur à la DEMANDE jugerait réutilisable
+    /// une sortie qui ne l'est pas — est **mort avec elle** : la réutilisation
+    /// ne compare plus une égalité mais `placement::sortie_assez_grande`.
     ///
     /// Posé et effacé en même temps que `sortie_pilote` et `nom_sortie` : les
     /// trois désignent la même sortie et ne se séparent jamais.

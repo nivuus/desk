@@ -201,9 +201,20 @@ impl Session {
         // capture qui a définitivement abandonné laisse `set_actif` réussir —
         // il n'écrit qu'un atomique que plus personne ne lit —, et la trace
         // annonçait alors `actif=true` pour une fenêtre qui ne produira plus
-        // jamais un paquet. C'est le seul endroit du produit où cet état
-        // devienne observable ; le capteur, lui, ne le voit pas (voir le
-        // commentaire d'abandon dans `windows_audio.rs`).
+        // jamais un paquet. ~~C'est le seul endroit du produit où cet état
+        // devienne observable ; le capteur, lui, ne le voit pas.~~
+        //
+        // ❌ **Les deux clauses barrées sont fausses depuis le sous-bloc
+        // D10** (revue transverse). `capture_morte` est relu à CHAQUE tour par
+        // `capture_audio_morte` → `reconstruire_ou_signaler` (branche
+        // a1sexies), qui journalise « capture audio reconstruite » ou
+        // « reconstruction de la capture audio refusée » et pousse `AudioMort`
+        // en repli — le capteur le voit donc, l'inscrit dans ses `inaptes` et
+        // le journalise à son tour. Cette trace-ci n'est plus ni le seul
+        // observatoire ni la seule voie ; elle reste utile pour ce qu'elle
+        // est, un état lu au point d'application de l'ordre. Le renvoi au
+        // « commentaire d'abandon dans `windows_audio.rs` » a en outre suivi
+        // l'extraction de la tâche 3 : il vit dans `windows_audio/fil.rs`.
         tracing::info!(
             session = %self.session_id,
             actif,
@@ -228,11 +239,34 @@ impl Session {
     ///
     /// ⚠️ **Une reconstruction réussie RÉARME aussi la source, sur
     /// `audio_porteuse`** (défaut trouvé en recette VM, corrigé dans le corps
-    /// ci-dessous) : `WindowsAudioSource::pour_processus` — le seul chemin
-    /// qu'emprunte un reconstructeur — naît toujours MUETTE, et sans ce
-    /// réarmement une session porteuse dont la capture vient d'être
-    /// reconstruite ne produirait plus jamais aucun paquet, donc aucune
-    /// PREUVE, donc aucune réélection : un état ABSORBANT.
+    /// ci-dessous) : `WindowsAudioSource::pour_processus` naît toujours
+    /// MUETTE, et sans ce réarmement une session porteuse dont la capture
+    /// vient d'être reconstruite ne produirait plus jamais aucun paquet, donc
+    /// aucune PREUVE, donc aucune réélection : un état ABSORBANT.
+    ///
+    /// ❌ **« Le seul chemin qu'emprunte un reconstructeur » était écrit ici,
+    /// et c'est FAUX — relevé par la revue transverse de fin de branche, et
+    /// c'est le défaut le plus lourd qu'elle ait trouvé, parce qu'il a une
+    /// conséquence de comportement.** `demarrage/audio.rs::brancher` pose un
+    /// reconstructeur dans les DEUX modes : sa branche `None`
+    /// (`config.fenetre_hwnd` absent — le chemin MONO-FENÊTRE) appelle
+    /// `WindowsAudioSource::new`, qui s'auto-émet.
+    ///
+    /// 🔴 **Conséquence, NON CORRIGÉE et léguée : en mono-fenêtre, le remède
+    /// de reconstruction est INERTE.** `audio_porteuse` naît `false`
+    /// (`transport.rs`) et n'est écrit que par `appliquer_audio`, c'est-à-dire
+    /// par un ordre `Audio` du capteur — qu'un agent mono-fenêtre ne reçoit
+    /// jamais. Une capture reconstruite y est donc auto-émise à `true` par
+    /// `new()`, puis **remise à `false`** par la ligne de réarmement
+    /// ci-dessous. **Ce n'est PAS une régression** — avant D10 rien n'était
+    /// reconstruit du tout, et le son était mort de la même façon — mais le
+    /// remède ne sauve pas le cas qu'il vise en mono-fenêtre.
+    ///
+    /// ⚠️ **Ne pas « corriger » en forçant `true` sans arbitrage** : c'est
+    /// exactement le défaut PIRE que le passage de `audio_porteuse` évite en
+    /// multi-fenêtres (une fuite de son vers une fenêtre qui doit se taire),
+    /// et un test l'y garde rouge. Le remède juste distingue les deux modes,
+    /// et demande sa propre couverture.
     ///
     /// ⚠️ **Cette méthode court sur le fil de `Session::run`**, et ouvrir une
     /// source WASAPI y est un appel bloquant de durée non bornée. D'où le

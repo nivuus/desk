@@ -8,11 +8,23 @@
 //! ❌ **Le critère du cadrage jeux §4.1 — comparer le rect de la fenêtre à
 //! celui du moniteur — est MORT dans cette architecture, et il ne faut pas y
 //! revenir.** Depuis le sous-bloc D1, `superviseur::placement::poser` donne à
-//! la fenêtre exactement la taille de sa sortie virtuelle, et
-//! `controler_le_placement` la lui réimpose périodiquement : « rect fenêtre ==
-//! rect moniteur » est l'état NOMINAL. Ce critère n'est pas inopérant, il est
-//! TOUJOURS VRAI — une implémentation fidèle annoncerait le plein écran en
-//! permanence, pour toutes les fenêtres.
+//! la fenêtre la taille retenue pour sa sortie virtuelle, et
+//! `controler_le_placement` la lui réimpose périodiquement. Le rect de la
+//! fenêtre est donc **imposé par le superviseur, jamais par l'application** —
+//! et c'est cela seul qui tue le critère : il mesure une décision de notre
+//! propre code, pas un geste de l'application observée.
+//!
+//! ⚠️ **La formulation d'origine — « rect fenêtre == rect moniteur est l'état
+//! NOMINAL, ce critère est TOUJOURS VRAI » — n'est plus exacte depuis le
+//! sous-bloc D10** (famille ①, tâches 4 à 9). Une sortie virtuelle peut naître
+//! plus grande que la taille demandée ; le superviseur l'accepte alors et pose
+//! la fenêtre à la **taille retenue**, strictement plus petite que la sortie.
+//! Le critère y serait donc TOUJOURS FAUX au lieu de toujours vrai — une
+//! implémentation fidèle n'annoncerait jamais le plein écran sur ces
+//! fenêtres-là, et l'annoncerait en permanence sur les autres. **La
+//! conclusion ne bouge pas d'un pouce : le critère est mort dans les deux
+//! régimes, et il est désormais mort de deux façons opposées selon l'état du
+//! registre — ce qui est pire, pas mieux.**
 //!
 //! `SHQueryUserNotificationState` a été écarté pour une autre raison : il est
 //! global à la session interactive, donc à N fenêtres il ne dit pas LAQUELLE,
@@ -29,8 +41,19 @@
 //!   de la taille de création, sous `CDS_UPDATEREGISTRY` comme sous `flags = 0` ;
 //! - `CDS_UPDATEREGISTRY` **pollue le registre**, confirmé et attribuable par
 //!   GUID sur 3 transitions probantes : une sortie créée ensuite naît à la
-//!   taille polluée, ce qui bloque le produit — la préparation de la recette D8
-//!   avait dû lever ce blocage à la main.
+//!   taille polluée, ~~ce qui bloque le produit~~ — la préparation de la
+//!   recette D8 avait dû lever ce blocage à la main.
+//!
+//! ✅ **« Ce qui bloque le produit » N'EST PLUS VRAI depuis le sous-bloc D10**
+//! (famille ①, tâches 4 à 9, recette ① de la tâche 10). Le superviseur
+//! **accepte** une sortie née trop grande au lieu de la rendre au pilote, et
+//! la capture recadre la taille retenue dedans. Relevé sur un registre laissé
+//! sale à 3840×2160 : le binaire de `main` attache **3** fenêtres et rejette
+//! **32** fois, la branche en attache **10** avec **0** rejet, à **deux**
+//! exécutions. ⚠️ **La POLLUTION, elle, subsiste : c'est le produit qui y est
+//! devenu indifférent, pas le registre qui a été nettoyé** — rien, dans ce
+//! dépôt, ne nettoie derrière. Le fait mesuré ci-dessus reste donc entier ;
+//! seule sa conséquence produit a disparu.
 //!
 //! Journaux : `docs/superpowers/plans/journaux-multifenetres-d9/p-persistance-*`
 //! et `p2-*`. **Le mécanisme n'est PAS expliqué** : il est séparé en deux

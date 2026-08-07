@@ -74,8 +74,18 @@ impl Capture {
     /// lecture/encodage/dépôt sur la valeur d'`emettait` (voir `demarrer`),
     /// pas cette méthode. Un `set_actif(false)` qui atteindrait une source en
     /// mode `Session` la rendrait donc tout aussi muette qu'une source en
-    /// mode `Processus` — seul `new()` (qui n'expose jamais l'`Arc<AtomicBool>`
-    /// à un ordre externe) rend ce cas inatteignable aujourd'hui.
+    /// mode `Processus` — ~~seul `new()` (qui n'expose jamais
+    /// l'`Arc<AtomicBool>` à un ordre externe) rend ce cas inatteignable
+    /// aujourd'hui~~.
+    ///
+    /// ❌ **CE CAS EST DEVENU ATTEIGNABLE AU SOUS-BLOC D10** (revue
+    /// transverse) : `Session::reconstruire_ou_signaler` applique
+    /// `set_actif(self.audio_porteuse)` **sans condition** à toute source
+    /// reconstruite, et le reconstructeur de `demarrage/audio.rs` passe par
+    /// `WindowsAudioSource::new` — donc par `Capture::Session` — quand
+    /// `config.fenetre_hwnd` est `None`. Un ordre externe atteint bien une
+    /// source en mode session, et il la fait taire. Voir la conséquence
+    /// complète auprès de `reconstruire_ou_signaler`.
     fn emettre(&mut self, actif: bool) -> Result<()> {
         match self {
             Capture::Session(_) => Ok(()),
@@ -113,10 +123,17 @@ pub struct WindowsAudioSource {
     /// aussi à chaque RECONSTRUCTION**, pas seulement à l'ouverture initiale
     /// (défaut trouvé en recette VM, sous-bloc D10 : `capture audio
     /// reconstruite` = 2, `compteurs_audio_actif_true` = 0 aux deux
-    /// exécutions). `pour_processus` — le seul chemin qu'emprunte un
-    /// reconstructeur (`demarrage/audio.rs`) — ne s'auto-émet jamais, à la
+    /// exécutions). `pour_processus` ne s'auto-émet jamais, à la
     /// différence de `new()` (mode session), qui s'émet lui-même
-    /// juste après construction. C'est
+    /// juste après construction.
+    ///
+    /// ❌ **« Le seul chemin qu'emprunte un reconstructeur » était écrit ici,
+    /// et c'est faux : `demarrage/audio.rs` en pose un dans les DEUX modes.**
+    /// La conséquence — en mono-fenêtre le réarmement RETIRE le son que
+    /// `new()` venait de donner, faute d'ordre du capteur pour poser
+    /// `audio_porteuse` — est documentée auprès de
+    /// `Session::reconstruire_ou_signaler`
+    /// (`transport/piste_audio.rs`), et léguée. C'est
     /// `Session::reconstruire_ou_signaler` (`transport/piste_audio.rs`) qui
     /// réarme désormais une source reconstruite, sur `audio_porteuse` — sans
     /// quoi une capture reconstruite pour une fenêtre porteuse restait

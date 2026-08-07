@@ -1,8 +1,18 @@
-//! Construction d'une `WindowsSource` sur une sortie DXGI entière, et le
-//! discriminant de mode qui distingue ce cas de l'autre.
+//! Construction d'une `WindowsSource` sur une sortie DXGI, et le discriminant
+//! de mode qui distingue ce cas de l'autre.
 //!
-//! C'est le mode du sous-bloc D1 : une fenêtre par sortie virtuelle, donc
-//! plus rien à recadrer — la sortie *est* la fenêtre.
+//! C'est le mode du sous-bloc D1 : une fenêtre par sortie virtuelle.
+//!
+//! ❌ **Ce paragraphe disait « donc plus rien à recadrer — la sortie *est* la
+//! fenêtre », et le sous-bloc D10 l'a réfuté** (tâches 4 à 9). Une sortie
+//! virtuelle **ne naît pas à la taille demandée** mais à la dernière taille
+//! laissée au registre : elle peut donc être PLUS GRANDE que la fenêtre. Le
+//! superviseur l'accepte désormais au lieu de la rendre au pilote, y pose la
+//! fenêtre à la **taille retenue**, et `sur_sortie` ci-dessous **recadre ce
+//! rectangle dans la duplication de la sortie**. Il reste donc bien un
+//! recadrage, et la sortie n'est la fenêtre que dans le cas — non garanti —
+//! où elle naît à la taille demandée. Ce qui n'a pas changé : `resize` ne
+//! retaille toujours pas la fenêtre en ce mode (voir `ModeCapture`).
 //!
 //! Deux moitiés, séparées par un `#[cfg(windows)]` en milieu de fichier :
 //! au-dessus, le calcul pur de région et `ModeCapture`, tous deux testables sur
@@ -33,8 +43,17 @@ pub enum ModeCapture {
     /// est redimensionnable et la région de recadrage suit sa taille : c'est
     /// le mode mono-fenêtre historique.
     FenetreRecadree,
-    /// Une sortie DXGI entière est capturée : la sortie **est** la fenêtre.
-    /// Mode du sous-bloc D1.
+    /// Une sortie DXGI est capturée, sans fenêtre Windows à suivre : la
+    /// fenêtre occupe sa propre sortie virtuelle. Mode du sous-bloc D1.
+    ///
+    /// ❌ **Le nom de cette variante, et le texte qu'elle portait — « la
+    /// sortie **est** la fenêtre » —, ne décrivent plus le comportement
+    /// depuis le sous-bloc D10.** Une sortie peut naître PLUS GRANDE que la
+    /// taille demandée (registre pollué), auquel cas `sur_sortie` recadre la
+    /// **taille retenue** à l'origine de la sortie. Le nom est conservé
+    /// plutôt que renommé : ce qu'il discrimine réellement — et la seule
+    /// chose dont dépende `redimensionne_la_fenetre` ci-dessous — est
+    /// **l'absence de fenêtre Windows à retailler**, qui reste vraie.
     SortieEntiere,
 }
 

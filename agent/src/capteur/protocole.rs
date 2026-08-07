@@ -72,8 +72,24 @@ pub enum VersCapteur {
     /// L'effet revient par `DepuisCapteur::Sommeil`, poussé sur la connexion
     /// média de chaque fenêtre concernée.
     Visibilite { visible: bool, focalisee: bool },
-    /// La capture audio de cette fenêtre est morte définitivement, après
-    /// `crate::audio::LECTURES_ECHOUEES_MAX` erreurs de lecture consécutives.
+    /// La capture audio de cette fenêtre a cessé de produire du son, et
+    /// l'enfant a **épuisé ses moyens de la rétablir**.
+    ///
+    /// ❌ **Ce champ disait « morte DÉFINITIVEMENT, après
+    /// `LECTURES_ECHOUEES_MAX` erreurs de lecture consécutives », et les DEUX
+    /// moitiés sont fausses depuis le sous-bloc D10** — relevé par la revue
+    /// transverse, la tâche qui a ajouté `AudioVivant` juste en dessous
+    /// n'ayant pas relu la variante du dessus.
+    ///
+    /// - **Pas définitivement** : `Session::reconstruire_ou_signaler`
+    ///   (`transport/piste_audio.rs`) refabrique la capture, et
+    ///   `VersCapteur::AudioVivant` existe précisément pour prouver la
+    ///   reprise par un paquet réel.
+    /// - **Pas au bout de `LECTURES_ECHOUEES_MAX`** : ces dix erreurs posent
+    ///   `capture_morte`, rien de plus. Ce message-ci ne part **qu'en
+    ///   REPLI** — quand `crate::audio::RECONSTRUCTIONS_MAX` tentatives de
+    ///   reconstruction ont été épuisées, ou qu'il n'existe aucun
+    ///   reconstructeur.
     ///
     /// **Aucune charge utile** : la session est celle du canal, comme pour
     /// toutes les commandes — `capteur/fenetre/commandes.rs` la tire de son

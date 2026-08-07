@@ -241,9 +241,22 @@ mod tests {
 
     #[test]
     fn n_apparie_pas_une_sortie_aux_mauvaises_dimensions() {
-        // Le facteur d'échelle DPI a déjà produit un écart de 1,5 sur ce
-        // terrain (5120x1440 annoncé, 3413x960 mesuré) : un appariement
-        // approximatif rendrait ce piège invisible.
+        // ❌ **Ce commentaire disait : « Le facteur d'échelle DPI a déjà
+        // produit un écart de 1,5 sur ce terrain (5120x1440 annoncé,
+        // 3413x960 mesuré) : un appariement approximatif rendrait ce piège
+        // invisible. » Le sous-bloc D10 l'a réfuté** — et le test
+        // `un_facteur_d_echelle_est_desormais_recadre_et_non_refuse`, vingt
+        // lignes plus bas, dit désormais le contraire. L'appariement EST
+        // devenu délibérément approximatif (inégalité, plus tolérance de
+        // 4 px) : un écart DPI n'est plus un motif de refus, il est recadré.
+        // La protection a migré vers `taille_retenue`, qui borne la fenêtre à
+        // ce que la sortie peut réellement porter. Relevé par la revue
+        // transverse : c'est le seul commentaire de ce fichier que le
+        // renommage `sortie_par_dimensions` → `sortie_pour_viewport` a laissé
+        // intact sans le relire.
+        //
+        // Ce que ce test-ci exerce encore, et qui reste juste : une sortie
+        // TROP PETITE sur un axe n'est toujours pas appariée.
         let toutes = vec![sortie(0, 1, 2400, 1067, 600, true)];
         assert!(sortie_pour_viewport(&toutes, 1600, 900, &[]).is_none());
     }
@@ -319,8 +332,12 @@ mod tests {
     }
 
     // Distinct de `sortie` ci-dessus (qui fixe `nom_sortie` à partir de
-    // `index_sortie`) : ces trois tests veulent un nom explicite pour vérifier
-    // l'identité de la sortie appariée, pas seulement son existence.
+    // `index_sortie`) : les tests qui l'emploient veulent un nom explicite
+    // pour vérifier l'identité de la sortie appariée, pas seulement son
+    // existence. *(Ils étaient trois quand cette phrase a été écrite ; le
+    // sous-bloc D10 en a ajouté trois de plus. Le compte n'est plus donné
+    // ici — un nombre inscrit dans un commentaire dérive à la première
+    // addition, et ce dépôt l'a payé six fois.)*
     fn sortie_nommee(nom: &str, largeur: u32, hauteur: u32) -> SortieDxgi {
         SortieDxgi {
             index_adaptateur: 0,

@@ -52,8 +52,11 @@ impl Fenetre {
     /// connexion de commandes, que ce fil ne touche jamais. L'appelant écrit
     /// `Attachee { largeur, hauteur }` en cas de succès, `Refus` sinon.
     pub fn ouvrir(attache: VersCapteur) -> Result<Fenetre> {
-        // Renommé à la destructuration : `Contexte.taille`, plus bas dans ce
-        // fichier, désigne la taille RÉSOLUE courante, sans rapport avec la
+        // Renommé à la destructuration : `Contexte.taille` — dans le module
+        // PARENT, `capteur/fenetre.rs`, et non « plus bas dans ce fichier »
+        // comme cette phrase le disait avant l'extraction du même sous-bloc
+        // (le déplacement verbatim a conservé le texte et cassé le
+        // déictique) — désigne la taille RÉSOLUE courante, sans rapport avec la
         // taille DEMANDÉE que l'attache apporte ici. Les deux cohabitent dans
         // ce module ; ne pas les confondre au premier coup d'œil.
         let VersCapteur::Attache {

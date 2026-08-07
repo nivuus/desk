@@ -95,9 +95,19 @@ const PERIODE_REARBITRAGE: Duration = Duration::from_millis(250);
 /// ci-dessus, `demarrage/audio.rs` fournissant le reconstructeur — et
 /// n'appelle `audio_mort` (donc ce répit et cette promotion) qu'en REPLI :
 /// quand son propre budget de tentatives (`crate::audio::RECONSTRUCTIONS_MAX`)
-/// est épuisé, ou qu'il n'existe aucun reconstructeur (chemin mono-fenêtre,
-/// ou `AUDIO=0` : là, le comportement d'avant D10 — signaler immédiatement —
-/// reste exactement conservé). Ce que CE mécanisme-ci (le répit et la
+/// est épuisé, ou qu'il n'existe aucun reconstructeur (`AUDIO=0`, ou toute
+/// session dont l'ouverture audio initiale a échoué : là, le comportement
+/// d'avant D10 — signaler immédiatement — reste exactement conservé).
+///
+/// ❌ **« Chemin mono-fenêtre » figurait dans cette liste, et c'est faux :
+/// `demarrage/audio.rs::brancher` pose un reconstructeur dans les DEUX
+/// modes** (revue transverse de fin de branche). Le mono-fenêtre reconstruit
+/// donc lui aussi, `RECONSTRUCTIONS_MAX` fois, avant de signaler. 🔴 **Mais
+/// le remède y est INERTE pour une autre raison, léguée et non corrigée** :
+/// la source reconstruite y est réarmée sur `audio_porteuse`, qu'aucun ordre
+/// de capteur ne vient jamais poser en l'absence de capteur — voir
+/// `Session::reconstruire_ou_signaler` (`transport/piste_audio.rs`). Ce que
+/// CE mécanisme-ci (le répit et la
 /// promotion) continue de faire, inchangé : donner sa chance à une voisine du
 /// même groupe de PID, et éviter qu'un périphérique définitivement mort ne
 /// fasse tourner le cycle sans fin. Et la preuve que la reconstruction a
