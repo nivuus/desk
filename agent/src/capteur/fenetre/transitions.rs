@@ -66,8 +66,14 @@ impl Fenetre {
         }
         let debut = Instant::now();
         // `self.dimensions()` : la taille RETENUE, celle que `ouvrir` a
-        // résolue ou qu'un `resize` a mise à jour depuis — jamais celle de la
-        // sortie, qui peut être plus grande (registre pollué, D9 §9).
+        // résolue — jamais celle de la sortie, qui peut être plus grande
+        // (registre pollué, D9 §9). `resize` ne la met JAMAIS à jour : il est
+        // un no-op en mode `SortieEntiere` (`ModeCapture::redimensionne_la_fenetre`
+        // rend `false`, `WindowsSource::resize` retourne avant tout), et rien
+        // d'autre n'écrit `self.largeur`/`self.hauteur` entre deux réveils —
+        // seuls `ouvrir` et `reveiller` le font. Un réveil relit donc toujours
+        // la même valeur que le précédent, jamais une valeur périmée par un
+        // redimensionnement qui n'a jamais eu lieu.
         let taille = self.dimensions();
         let p = &self.parametres;
         let mut source =
