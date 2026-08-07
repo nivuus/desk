@@ -552,6 +552,13 @@ ci-dessous.
   `windows_source/sortie_conversion.rs`. Cette clause ne change le
   classement d'aucun des six cas relevés ci-dessous : aucun n'a de second
   préfixe candidat plus court.
+  **Une égalité de longueur entre deux préfixes candidats ne peut pas se
+  produire** : un préfixe valide s'arrête toujours sur une frontière de
+  tiret bas (`<parent>_`). Si deux noms de module de premier niveau
+  DIFFÉRENTS étaient chacun un préfixe de la MÊME longueur du nom à ranger,
+  ils seraient la même sous-chaîne — donc le même nom. L'égalité est
+  structurellement exclue, pas seulement absente des cas rencontrés à ce
+  jour ; il n'y a donc rien à trancher au-delà de « le plus long l'emporte ».
 - **Le nom du module se comprend SANS référence à un parent** — il ne porte
   le préfixe d'aucun module de premier niveau existant (`geometry`,
   `sortie_dxgi`, `survie_verdict`) : il vit à la racine nue, `mod <nom>;`
@@ -578,6 +585,16 @@ trois noms préfixés sont TOUS déclarés par `#[path]` chez leur parent, les
 trois noms autonomes sont TOUS à la racine nue. **Aucune exception**, y
 compris sous la clause du préfixe le plus long ci-dessus.
 `survie_verdict.rs` s'y conforme déjà — il n'a jamais eu besoin de bouger.
+
+**Preuve, portée ici plutôt que dans un rapport de tâche gitignoré, que la
+clause du préfixe le plus long ne change le classement d'aucun des trois
+noms préfixés** : pour chacun, aucun AUTRE module de premier niveau n'en est
+un préfixe plus court et valide.
+- `capture_reprise` : seul `capture` le préfixe.
+- `windows_source_sortie` : seul `windows_source` le préfixe.
+- `windows_source_telemetrie` : seul `windows_source` le préfixe —
+  `windows_source_sortie` n'en est PAS un préfixe : le nom continue par
+  `_telemetrie`, pas par `_sortie`.
 
 ## Development Commands
 
