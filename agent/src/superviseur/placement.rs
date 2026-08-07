@@ -31,17 +31,23 @@ use crate::sortie_dxgi::SortieDxgi;
 /// texte qui était en retard, la constante est celle qu'on veut.)
 ///
 /// Cette même tolérance sert désormais aussi à l'appariement d'une sortie
-/// fraîchement créée (`sortie_par_dimensions`) : elle doit être déclarée avant
+/// fraîchement créée (`sortie_assez_grande`) : elle doit être déclarée avant
 /// cette fonction dans le fichier.
 const TOLERANCE_PX: i64 = 4;
 
 /// Vrai si deux tailles se correspondent à `TOLERANCE_PX` près.
 ///
-/// **Le même prédicat que `sortie_par_dimensions`, et c'est le point.** Une
-/// sortie appariée à la création doit être jugée réutilisable à la relance
-/// (`table::viewport_recu`) : deux tolérances distinctes feraient détruire
-/// puis recréer une sortie parfaitement bonne — exactement la recréation que
-/// le sous-bloc D3 existe pour supprimer.
+/// ⚠️ **Ce prédicat a DIVERGÉ de l'appariement à la création (D10, tâche 5).**
+/// Avant D10, c'était le même prédicat que `sortie_par_dimensions` : une
+/// sortie appariée à la création (par égalité tolérante) devait être jugée
+/// réutilisable à la relance (`table::viewport_recu`, qui appelle
+/// `taille_compatible`) — deux tolérances distinctes auraient fait détruire
+/// puis recréer une sortie parfaitement bonne, exactement la recréation que
+/// le sous-bloc D3 existe pour supprimer. **Depuis D10, l'appariement à la
+/// création se fait par INÉGALITÉ** (`sortie_assez_grande`), tandis que
+/// `taille_compatible` reste, lui, une égalité tolérante : les deux
+/// prédicats ne sont plus le même. **C'est la tâche 7 qui les réaccordera**,
+/// en portant `sortie_assez_grande` sur le chemin de réutilisation.
 pub fn taille_compatible(a: (u32, u32), b: (u32, u32)) -> bool {
     let proche = |x: u32, y: u32| (x as i64 - y as i64).abs() <= TOLERANCE_PX;
     proche(a.0, b.0) && proche(a.1, b.1)
