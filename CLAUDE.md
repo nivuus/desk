@@ -476,7 +476,7 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > | `agent/src/diagnostics/multifenetre/mode_sortie/temoin.rs` | **200** | neuf |
 > | `agent/src/diagnostics/multifenetre/mode_sortie/combinaisons.rs` | **157** | neuf |
 > | `agent/src/diagnostics/multifenetre/mode_sortie/persistance.rs` | **107** | neuf |
-> | `agent/src/survie_verdict.rs` | **61** | neuf, **pur** — ✅ **TRANCHÉ (7 août 2026, tâche 17, D10) : ce n'était PAS une déviation.** La convention retenue (§« Convention de module enfant… », tête de ce fichier) range un module par son NOM : `capture_reprise`/`windows_source_sortie` portent le préfixe de leur parent et se déclarent par `#[path]` ; `survie_verdict`, comme `geometry` et `sortie_dxgi`, n'en porte aucun et vit à la racine nue — où il était déjà. **Aucun fichier n'a bougé.** |
+> | `agent/src/survie_verdict.rs` | **61** | neuf, **pur** — ~~⚠️ posé à la RACINE du crate alors que le dépôt a deux précédents (`capture_reprise`, `windows_source_sortie`) qui gardent le fichier chez le parent et n'y hissent que la déclaration par `#[path]`. Déviation relevée, non corrigée~~ ✅ **TRANCHÉ (7 août 2026, tâche 17, D10) : ce n'était PAS une déviation.** La convention retenue (§« Convention de module enfant… », tête de ce fichier) range un module par son NOM : `capture_reprise`/`windows_source_sortie` portent le préfixe de leur parent et se déclarent par `#[path]` ; `survie_verdict`, comme `geometry` et `sortie_dxgi`, n'en porte aucun et vit à la racine nue — où il était déjà. **Aucun fichier n'a bougé.** |
 > | `client/src/main.ts` | **352** | legs 7, 8 et 10 |
 > | `client/src/resize.ts` + `resize.test.ts` | **45** + **39** | neufs, **purs, sans DOM** |
 > | `agent/src/demarrage.rs` | ~~457~~ **464** | le champ `session` sur `contrôle reçu`, et le lecteur mort de `SOURCE_TRACE` retiré |
@@ -540,6 +540,18 @@ ci-dessous.
   `capture_reprise` (`capture/reprise.rs`), `windows_source_sortie`
   (`windows_source/sortie.rs`), `windows_source_telemetrie`
   (`windows_source/telemetrie.rs`).
+  ⚠️ **Si plusieurs modules de premier niveau sont chacun un préfixe valide du
+  nom** (cas non encore rencontré, mais qui existe dès aujourd'hui :
+  `windows_source_sortie` est LUI-MÊME un module de premier niveau depuis D1,
+  donc un futur `windows_source_sortie_conversion` préfixerait à la fois
+  `windows_source` et `windows_source_sortie`), **c'est le préfixe le PLUS
+  LONG — le plus spécifique — qui l'emporte.** Le fichier physique suit :
+  `windows_source_sortie_conversion` se rangerait sous
+  `windows_source/sortie/conversion.rs` (enfant de `windows_source_sortie`,
+  lui-même à `windows_source/sortie.rs`), pas sous
+  `windows_source/sortie_conversion.rs`. Cette clause ne change le
+  classement d'aucun des six cas relevés ci-dessous : aucun n'a de second
+  préfixe candidat plus court.
 - **Le nom du module se comprend SANS référence à un parent** — il ne porte
   le préfixe d'aucun module de premier niveau existant (`geometry`,
   `sortie_dxgi`, `survie_verdict`) : il vit à la racine nue, `mod <nom>;`
@@ -551,10 +563,20 @@ ci-dessous.
   extraits pour la même raison (compiler sur l'hôte) d'un parent tout aussi
   gaté (`capture.rs`, `window.rs`).
 
+**Cas du parent qui n'existe pas encore quand on écrit le module** : la règle
+se résout mécaniquement vers la racine nue — un nom ne peut préfixer un
+module de premier niveau qui n'est pas encore déclaré dans `main.rs`. **Effet
+de bord non traité** : si un module homonyme du préfixe apparaît plus tard
+(un futur `mod windows_source_sortie_conversion` créé avant que
+`windows_source_sortie` existe, par exemple), rien ne force à re-hisser le
+premier sous le second après coup — aucune règle de re-hissage n'est posée
+ici, à écrire le jour où le cas se présente réellement.
+
 **Vérifiée sur les six cas existants au 7 août 2026**
 (`grep -rn '#\[path' agent/src/`, `ls agent/src/*.rs`, depuis `agent/`) : les
 trois noms préfixés sont TOUS déclarés par `#[path]` chez leur parent, les
-trois noms autonomes sont TOUS à la racine nue. **Aucune exception.**
+trois noms autonomes sont TOUS à la racine nue. **Aucune exception**, y
+compris sous la clause du préfixe le plus long ci-dessus.
 `survie_verdict.rs` s'y conforme déjà — il n'a jamais eu besoin de bouger.
 
 ## Development Commands
