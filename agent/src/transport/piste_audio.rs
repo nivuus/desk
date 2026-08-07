@@ -55,6 +55,15 @@ impl Session {
             .audio_source
             .as_mut()
             .and_then(|source| source.next_packet())?;
+        // Le leg 6 de D9 : la remise à zéro du compteur de réarmements se fait
+        // sur une PREUVE de son — ce paquet-ci —, jamais sur la décision
+        // d'arbitrage qui, elle, ne peut pas mordre dans le cas majoritaire
+        // (`sommeil/porteurs.rs`, une fenêtre seule de son groupe de PID
+        // redevient porteuse automatiquement à la sortie de répit).
+        if self.audio_reconstruit_sans_preuve {
+            self.audio_reconstruit_sans_preuve = false;
+            self.audio_vivant_a_annoncer = true;
+        }
         if self.write_audio(mid, paquet) {
             self.audio_write_pending_drain = true;
         }

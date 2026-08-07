@@ -108,8 +108,9 @@ impl AudioSource for AudioSourceMortelle {
     }
 }
 
-/// Source vidéo factice qui compte les appels à `signaler_audio_mort` et
-/// rend un rattachement piloté de l'extérieur — même patron que
+/// Source vidéo factice qui compte les appels à `signaler_audio_mort`, rend
+/// un rattachement piloté de l'extérieur, et enregistre les appels à
+/// `signaler_audio_vivant` (sous-bloc D10) — même patron que
 /// `SourceAvecSommeil`/`SourceAvecPart` ci-dessus : ce test vérifie le
 /// CÂBLAGE de la branche a1sexies d'`act_on_timeout` (et sa remise à zéro
 /// par a1sexies elle-même), pas la logique de `SourceDistante`, couverte par
@@ -118,6 +119,9 @@ struct SourceAvecAudioMort {
     inner: crate::source::FileSource,
     signalements: std::sync::Arc<std::sync::Mutex<u32>>,
     rattachement_prepare: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    /// Posé à `true` par `signaler_audio_vivant` : la seule façon d'observer
+    /// un appel sur un `Box<dyn VideoSource>` sans downcast (leg 6 de D9).
+    annonces_audio_vivant: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl VideoSource for SourceAvecAudioMort {
@@ -129,6 +133,9 @@ impl VideoSource for SourceAvecAudioMort {
     }
     fn signaler_audio_mort(&mut self) {
         *self.signalements.lock().unwrap() += 1;
+    }
+    fn signaler_audio_vivant(&mut self) {
+        self.annonces_audio_vivant.store(true, std::sync::atomic::Ordering::Relaxed);
     }
     fn rattachement_survenu(&mut self) -> bool {
         // `swap`, pas une simple lecture : CONSOMMÉ, sur le même régime que

@@ -248,6 +248,17 @@ pub struct Session {
     /// toute la différence que `SourceVivante::sans_paquet` existe pour
     /// exercer (leg 6).
     audio_reconstruit_sans_preuve: bool,
+    /// Vrai dès qu'un paquet RÉEL a confirmé — la PREUVE, pas la décision —
+    /// que la capture audio reconstruite produit de nouveau du son : reste à
+    /// annoncer `VersCapteur::AudioVivant` au capteur.
+    ///
+    /// Posé par `brancher_audio`, juste après qu'`audio_reconstruit_sans_preuve`
+    /// retombe (voir ce champ) ; consommé — remis à `false` — par la branche
+    /// a1sexies de `act_on_timeout`, qui appelle alors
+    /// `VideoSource::signaler_audio_vivant`. C'est ce qui referme le leg 6 de
+    /// D9 : `REARMEMENTS_MAX` (`capteur/sommeil.rs`) repart de zéro sur CE
+    /// signal, jamais sur la seule décision de réélection.
+    audio_vivant_a_annoncer: bool,
 }
 
 impl Session {
@@ -386,6 +397,7 @@ impl Session {
             reconstructions_restantes: crate::audio::RECONSTRUCTIONS_MAX,
             prochaine_reconstruction: None,
             audio_reconstruit_sans_preuve: false,
+            audio_vivant_a_annoncer: false,
         };
 
         // `add_local_candidate` est une mutation : on draine avant de rendre

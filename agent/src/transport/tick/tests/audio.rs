@@ -18,6 +18,7 @@ fn une_capture_audio_morte_est_signalee_une_fois_puis_de_nouveau_apres_un_rattac
         inner,
         signalements: signalements.clone(),
         rattachement_prepare: rattachement.clone(),
+        annonces_audio_vivant: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
     });
     let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
         .expect("session");
@@ -187,4 +188,50 @@ fn sans_reconstructeur_on_signale_immediatement() {
     let mut session = session_d_essai();
     session.set_audio_source(Box::new(SourceMorte::new()));
     assert!(session.reconstruire_ou_signaler(std::time::Instant::now()));
+}
+
+/// Le leg 6 : `REARMEMENTS_MAX` doit se remettre à zéro sur une PREUVE de
+/// son, pas sur une décision d'arbitrage. La preuve est le premier paquet
+/// qui repart après une reconstruction.
+///
+/// Construite directement via `Session::new`, PAS via `session_d_essai()` :
+/// celle-ci pose une `FileSource` muette sur `signaler_audio_vivant` (défaut
+/// inerte du trait), qui ne permettrait d'observer aucun appel. Seule une
+/// source vidéo FACTICE — `SourceAvecAudioMort`, étendue pour ce test plutôt
+/// que dupliquée — peut porter l'`Arc<AtomicBool>` que ce test lit, sans
+/// downcast sur `Box<dyn VideoSource>`.
+#[test]
+fn audio_vivant_n_est_annonce_qu_apres_un_paquet_reel() {
+    let annonces = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let source = Box::new(SourceAvecAudioMort {
+        inner: fixtures::video_test_source(),
+        signalements: std::sync::Arc::new(std::sync::Mutex::new(0)),
+        rattachement_prepare: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        annonces_audio_vivant: annonces.clone(),
+    });
+    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
+        .expect("session");
+
+    session.set_audio_source(Box::new(SourceMorte::new()));
+    session.set_audio_reconstructeur(Box::new(|| {
+        Ok(Box::new(SourceVivante::sans_paquet()) as Box<dyn AudioSource + Send>)
+    }));
+    session.reconstruire_ou_signaler(std::time::Instant::now());
+    assert!(
+        !annonces.load(std::sync::atomic::Ordering::Relaxed),
+        "reconstruite n'est pas entendue : aucune preuve encore"
+    );
+
+    // Un `mid` factice fait passer la garde de négociation de `brancher_audio`
+    // : `write_audio` échouera derrière (`rtc.writer` ne connaît pas ce mid,
+    // aucune vraie négociation SDP n'a eu lieu ici), mais `next_packet()` aura
+    // déjà été appelé AVANT cet échec — c'est lui, et lui seul, qui porte la
+    // preuve que ce test vérifie (voir le commentaire de `brancher_audio`).
+    session.audio_mid = Some(str0m::media::Mid::new());
+    session.set_audio_source(Box::new(SourceVivante::avec_un_paquet()));
+    session.brancher_audio(); // le paquet qui repart EST la preuve
+    session
+        .act_on_timeout(std::time::Instant::now())
+        .expect("annoncer une reprise audio ne doit jamais faire échouer la session");
+    assert!(annonces.load(std::sync::atomic::Ordering::Relaxed));
 }

@@ -109,6 +109,17 @@ fn executer_commande(
             crate::capteur::sommeil::audio_mort(ctx.session);
             return DepuisCapteur::Fait;
         }
+        // Sous-bloc D10 : la PREUVE (un paquet réel) que la capture audio de
+        // CETTE session est repartie. Traitée au même rang qu'`AudioMort` —
+        // avant la source, pas après — pour la même raison : elle ne touche
+        // ni encodeur ni duplication, seulement le registre de sommeil.
+        // Contrairement à `AudioMort`, elle ne ré-arbitre rien et ne revient
+        // jamais par une poussée sur la connexion média — elle ne fait que
+        // remettre à zéro le compteur de réarmements de cette session.
+        VersCapteur::AudioVivant => {
+            crate::capteur::sommeil::signaler_audio_vivant(ctx.session);
+            return DepuisCapteur::Fait;
+        }
         VersCapteur::Attache { .. } => {
             return DepuisCapteur::Erreur {
                 motif: "seconde attache sur un canal déjà attaché".into(),
@@ -209,7 +220,8 @@ fn executer_commande(
         VersCapteur::Attache { .. }
         | VersCapteur::Identite { .. }
         | VersCapteur::Visibilite { .. }
-        | VersCapteur::AudioMort => {
+        | VersCapteur::AudioMort
+        | VersCapteur::AudioVivant => {
             return DepuisCapteur::Erreur {
                 motif: "commande déjà traitée hors de la source".into(),
             }

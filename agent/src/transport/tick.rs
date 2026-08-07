@@ -57,15 +57,18 @@ impl Session {
     /// sommeil ; a1ter-bis : annonce d'un changement de plein écran
     /// (sous-bloc D8) ; a1quater : part de budget accordée par le capteur
     /// (sous-bloc D6) ; a1quinquies : ordre audio décidé par le capteur
-    /// (sous-bloc D7) ; a1sexies : signalement d'une capture audio morte
-    /// détectée localement (sous-bloc D9) ; a2 : vérification de la fenêtre)
-    /// ne mettent JAMAIS en file, avant de rendre la main, une écriture qui
-    /// resterait à drainer — c'est l'invariant que cette énumération existe
-    /// pour auditer. **Neuf d'entre elles (toutes sauf a1quater) ne touchent
-    /// même pas `self.rtc`** : seulement `self.source`, `self.audio_source`
-    /// et/ou `self.pending_control`, au plus en y mettant en file un message
-    /// de contrôle (`queue_control`, qui n'empile qu'un `VecDeque`, sans effet
-    /// sur `Rtc` avant le tour suivant).
+    /// (sous-bloc D7) ; a1sexies : reconstruction d'une capture audio morte
+    /// détectée localement, `AudioMort` en repli si le budget de tentatives
+    /// est épuisé, et annonce d'une reprise PROUVÉE par un paquet réel
+    /// (sous-bloc D9, remède complet apporté par D10) ; a2 : vérification de
+    /// la fenêtre) ne mettent JAMAIS en file, avant de rendre la main, une
+    /// écriture qui resterait à drainer — c'est l'invariant que cette
+    /// énumération existe pour auditer. **Neuf d'entre elles (toutes sauf
+    /// a1quater) ne touchent même pas `self.rtc`** : seulement `self.source`,
+    /// `self.audio_source`, le budget de reconstruction audio (a1sexies
+    /// seule) et/ou `self.pending_control`, au plus en y mettant en file un
+    /// message de contrôle (`queue_control`, qui n'empile qu'un `VecDeque`,
+    /// sans effet sur `Rtc` avant le tour suivant).
     ///
     /// **a1quater fait exception, et il faut le dire précisément** :
     /// `rtc.bwe().set_desired_bitrate` (corps dans `part`) MUTE bien un champ
@@ -257,22 +260,39 @@ impl Session {
             return Ok(Tick::Continue);
         }
 
-        // a1sexies) Transition détectée LOCALEMENT, pas poussée par le
-        //           capteur : la capture audio de cette fenêtre vient de
-        //           mourir définitivement (dix erreurs de lecture WASAPI
-        //           consécutives, `windows_audio.rs`).
+        // a1sexies) Deux transitions détectées LOCALEMENT, jamais poussées par
+        //           le capteur : la capture audio de cette fenêtre vient de
+        //           mourir définitivement (`crate::audio::LECTURES_ECHOUEES_MAX`
+        //           erreurs de lecture WASAPI consécutives, `windows_audio.rs`),
+        //           ou elle vient d'apporter la PREUVE qu'elle est repartie
+        //           (un paquet réel, posé par `brancher_audio` — voir
+        //           `piste_audio`).
+        //
+        //           **D10 inverse l'ordre du remède** (D9 ne savait que
+        //           signaler `AudioMort`, jamais reconstruire).
+        //           `reconstruire_ou_signaler` (corps dans `piste_audio`)
+        //           TENTE D'ABORD de refabriquer la source ; `AudioMort` n'est
+        //           plus le premier geste mais le REPLI — celui du cas où le
+        //           budget de tentatives est épuisé, ou où il n'existe aucun
+        //           reconstructeur (chemin mono-fenêtre, ou `AUDIO=0`) — et où
+        //           seule la promotion d'une voisine par le capteur peut
+        //           encore rendre du son au groupe.
         //
         //           `appliquer_audio` (a1quinquies juste au-dessus) ne court
         //           qu'à l'ARRIVÉE d'un ordre, jamais périodiquement : sans ce
-        //           contrôle au tick, une capture qui meurt entre deux ordres
-        //           ne serait jamais signalée. Un `load` atomique par tour est
-        //           bon marché.
+        //           contrôle au tick, une capture qui meurt (ou qui reprend)
+        //           entre deux ordres ne serait jamais signalée. Un `load`
+        //           atomique ou une tentative de reconstruction bornée par son
+        //           propre répit sont, l'un comme l'autre, bon marché par
+        //           tour.
         //
         //           Le verrou `audio_mort_signale` est ce qui empêche
-        //           d'inonder le capteur : `capture_morte` reste vrai à jamais
-        //           une fois posé, et sans lui ce contrôle enverrait
-        //           `AudioMort` à chaque tour de boucle. Corps dans
-        //           `piste_audio`.
+        //           d'inonder le capteur d'`AudioMort` : une fois posé, il ne
+        //           retombe qu'à un rattachement — voir plus bas.
+        //           `audio_vivant_a_annoncer`, lui, se CONSOMME dès sa
+        //           lecture (même régime que `sommeil_a_annoncer` /
+        //           `part_a_appliquer`), donc ne peut pas non plus réémettre
+        //           `AudioVivant` en boucle.
         //
         //           La remise à zéro du verrou (`rattachement_survenu`) N'EST
         //           PAS elle-même une action : elle ne mute ni `Rtc` ni la
@@ -285,9 +305,18 @@ impl Session {
         if self.source.rattachement_survenu() {
             self.audio_mort_signale = false;
         }
-        if !self.audio_mort_signale && self.capture_audio_morte() {
+        // D10 : on tente d'abord de RECONSTRUIRE. `AudioMort` n'est plus le
+        // premier geste mais le repli — celui du cas où l'arbre de processus a
+        // disparu, et où seule la promotion d'une voisine peut encore rendre
+        // du son au groupe.
+        if !self.audio_mort_signale && self.reconstruire_ou_signaler(Instant::now()) {
             self.audio_mort_signale = true;
             self.source.signaler_audio_mort();
+            return Ok(Tick::Continue);
+        }
+        if self.audio_vivant_a_annoncer {
+            self.audio_vivant_a_annoncer = false;
+            self.source.signaler_audio_vivant();
             return Ok(Tick::Continue);
         }
 

@@ -184,6 +184,12 @@ pub trait VideoSource {
     /// l'implémente réellement.
     fn signaler_audio_mort(&mut self) {}
 
+    /// Annonce au capteur que la capture audio de cette fenêtre a repris.
+    ///
+    /// Défaut INERTE, comme les deux méthodes voisines : les sources qui ne
+    /// parlent à aucun capteur (test, mono-fenêtre) n'ont rien à annoncer.
+    fn signaler_audio_vivant(&mut self) {}
+
     /// Vrai une seule fois, juste après que le canal vers le capteur s'est
     /// RATTACHÉ (capteur relancé, ou perte d'accès DXGI encaissée par la
     /// fenêtre de reprise). Consommé, comme `sommeil_a_annoncer`.

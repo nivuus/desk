@@ -313,6 +313,31 @@ fn un_signal_audio_mort_redondant_ne_recompte_pas_le_rearmement() {
     drop(canal);
 }
 
+/// Le leg 6 de D9, côté registre : `signaler_audio_vivant` — la PREUVE —
+/// referme le compteur de réarmements, exactement comme le faisait autrefois
+/// (à tort, voir `sommeil/porteurs.rs`) la seule décision d'arbitrage.
+#[test]
+fn un_signal_audio_vivant_remet_le_compteur_de_rearmements_a_zero() {
+    let _verrou = verrouiller_pour_le_test();
+    let (canal, generation) = inscrire("t10-preuve", 6003);
+
+    audio_mort("t10-preuve");
+    assert_eq!(
+        etat().rearmements.get("t10-preuve"),
+        Some(&1),
+        "précondition : un premier réarmement doit être compté"
+    );
+
+    signaler_audio_vivant("t10-preuve");
+    assert!(
+        !etat().rearmements.contains_key("t10-preuve"),
+        "une preuve de son doit remettre le compteur de réarmements à zéro"
+    );
+
+    retirer("t10-preuve", generation);
+    drop(canal);
+}
+
 /// F5 (D7, préexistant). Une session meurt, se rattache sous le même nom
 /// avec une génération neuve, et le `retirer` de l'instance PRÉCÉDENTE
 /// arrive après. Sans la génération, il emporterait la session vivante.

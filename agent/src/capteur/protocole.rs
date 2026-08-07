@@ -84,6 +84,17 @@ pub enum VersCapteur {
     /// du même groupe de PID. L'effet revient par `DepuisCapteur::Audio`,
     /// poussé sur la connexion média. Même patron exactement que `Visibilite`.
     AudioMort,
+    /// La capture audio de cette fenêtre vient d'apporter la PREUVE qu'elle
+    /// est repartie : un paquet réel a été produit, pas seulement une
+    /// reconstruction qui a rendu `Ok` (sous-bloc D10, ferme le leg 6 de D9).
+    ///
+    /// **Aucune charge utile**, comme `AudioMort`. **Ne se répond pas par
+    /// `Fait` au sens de l'effet non plus** : elle ne fait que remettre à
+    /// zéro le compteur de réarmements de CETTE session
+    /// (`capteur::sommeil::signaler_audio_vivant`). À la différence
+    /// d'`AudioMort`, elle ne ré-arbitre rien : la preuve ne concerne que la
+    /// session qui l'apporte, jamais une AUTRE fenêtre du même groupe de PID.
+    AudioVivant,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

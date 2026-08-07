@@ -88,6 +88,23 @@ const PERIODE_REARBITRAGE: Duration = Duration::from_millis(250);
 /// `windows_audio.rs` (qui tient le fil et le témoin `capture_morte`) —
 /// légué au sous-bloc suivant.
 ///
+/// ✅ **CE CHEMIN EXISTE DÉSORMAIS, câblé de bout en bout (sous-bloc D10,
+/// tâches 11 et 12) : le cas MAJORITAIRE N'EST PLUS SANS REMÈDE.**
+/// `Session::reconstruire_ou_signaler` (`transport/piste_audio.rs`) tente
+/// D'ABORD de refabriquer la source — exactement à l'intersection nommée
+/// ci-dessus, `demarrage/audio.rs` fournissant le reconstructeur — et
+/// n'appelle `audio_mort` (donc ce répit et cette promotion) qu'en REPLI :
+/// quand son propre budget de tentatives (`crate::audio::RECONSTRUCTIONS_MAX`)
+/// est épuisé, ou qu'il n'existe aucun reconstructeur (chemin mono-fenêtre,
+/// ou `AUDIO=0` : là, le comportement d'avant D10 — signaler immédiatement —
+/// reste exactement conservé). Ce que CE mécanisme-ci (le répit et la
+/// promotion) continue de faire, inchangé : donner sa chance à une voisine du
+/// même groupe de PID, et éviter qu'un périphérique définitivement mort ne
+/// fasse tourner le cycle sans fin. Et la preuve que la reconstruction a
+/// réellement rendu du son — pas seulement réussi à s'ouvrir — referme le
+/// cycle de réarmements : voir `signaler_audio_vivant` plus bas, et le leg 6
+/// de D9 qu'il ferme (`capteur/sommeil/porteurs.rs`).
+///
 /// ⚠️ **NON CALIBRÉE.** Aucune mesure ne la fonde : elle rejoint `BPP_MIN`,
 /// `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC` et
 /// `TAILLE_MAX_SORTIE`.
@@ -225,6 +242,20 @@ pub fn audio_mort(session: &str) {
         garde.inaptes.insert(session.to_string(), Instant::now() + REPIT_REARMEMENT_AUDIO);
     }
     porteurs::distribuer_l_audio(&mut garde);
+}
+
+/// Une session apporte la PREUVE que sa capture audio est repartie : un
+/// paquet réel, pas seulement une reconstruction qui a rendu `Ok` (sous-bloc
+/// D10, ferme le leg 6 de D9).
+///
+/// **Ne répond rien, et ne ré-arbitre rien** : contrairement à `audio_mort`,
+/// cette preuve ne concerne jamais qu'une seule session — la sienne — donc
+/// rien à distribuer à une voisine. Elle referme seulement le cycle de
+/// réarmements sur une PREUVE plutôt que sur la seule décision d'arbitrage
+/// (voir `sommeil/porteurs.rs`, dont la remise à zéro vivait ici jusqu'à ce
+/// signal).
+pub fn signaler_audio_vivant(session: &str) {
+    etat().rearmements.remove(session);
 }
 
 /// Retire du registre les inaptitudes dont le répit a expiré.
