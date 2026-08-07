@@ -108,6 +108,20 @@ pub struct WindowsAudioSource {
     /// `true`. C'est ce qui évite que deux fenêtres d'un même processus soient
     /// toutes deux audibles pendant les millisecondes qui précèdent le premier
     /// arbitrage.
+    ///
+    /// ⚠️ **« À la naissance » veut dire à CHAQUE appel de `demarrer` — donc
+    /// aussi à chaque RECONSTRUCTION**, pas seulement à l'ouverture initiale
+    /// (défaut trouvé en recette VM, sous-bloc D10 : `capture audio
+    /// reconstruite` = 2, `compteurs_audio_actif_true` = 0 aux deux
+    /// exécutions). `pour_processus` — le seul chemin qu'emprunte un
+    /// reconstructeur (`demarrage/audio.rs`) — ne s'auto-émet jamais, à la
+    /// différence de `new()` (mode session), qui s'émet lui-même
+    /// juste après construction. C'est
+    /// `Session::reconstruire_ou_signaler` (`transport/piste_audio.rs`) qui
+    /// réarme désormais une source reconstruite, sur `audio_porteuse` — sans
+    /// quoi une capture reconstruite pour une fenêtre porteuse restait
+    /// muette pour toujours (aucun paquet → aucune preuve → aucune
+    /// réélection → muette, un état ABSORBANT).
     emet: Arc<AtomicBool>,
     /// PID capté. `None` en mode session. Exposé par `pid()`, au journal
     /// d'ouverture (`demarrage/audio.rs`) — c'est `pid_fil`, une copie locale

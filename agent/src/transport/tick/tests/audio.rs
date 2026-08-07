@@ -94,18 +94,33 @@ impl AudioSource for SourceMorte {
 /// Capture vivante, avec ou sans paquet en attente. `sans_paquet` sert à
 /// distinguer « reconstruite » de « entendue » — c'est toute la
 /// différence entre une décision et une preuve (leg 6).
+///
+/// `actif` observe les appels à `set_actif` — défaut RENDU OBSERVABLE en
+/// recette VM (sous-bloc D10, après la tâche 12) : les trois constructeurs
+/// historiques (`sans_paquet`/`avec_un_paquet`/`new`) lui donnent un `Arc`
+/// frais que personne n'inspecte, comportement inchangé pour les tests
+/// existants ; `observant_actif` en prend un fourni par l'appelant, pour les
+/// tests qui vérifient précisément CET appel.
 struct SourceVivante {
     paquets: u32,
+    actif: std::sync::Arc<std::sync::Mutex<Option<bool>>>,
 }
 impl SourceVivante {
     fn new() -> Self {
         Self::avec_un_paquet()
     }
     fn sans_paquet() -> Self {
-        Self { paquets: 0 }
+        Self { paquets: 0, actif: std::sync::Arc::new(std::sync::Mutex::new(None)) }
     }
     fn avec_un_paquet() -> Self {
-        Self { paquets: 1 }
+        Self { paquets: 1, actif: std::sync::Arc::new(std::sync::Mutex::new(None)) }
+    }
+    /// `paquets = 0` : ce constructeur n'observe QUE l'appel `set_actif`,
+    /// indépendamment de tout paquet — c'est un appel synchrone, fait avant
+    /// le move dans `self.audio_source`, pas une conséquence d'un paquet
+    /// émis.
+    fn observant_actif(actif: std::sync::Arc<std::sync::Mutex<Option<bool>>>) -> Self {
+        Self { paquets: 0, actif }
     }
 }
 impl AudioSource for SourceVivante {
@@ -118,7 +133,9 @@ impl AudioSource for SourceVivante {
             paquet_d_essai()
         })
     }
-    fn set_actif(&mut self, _actif: bool) {}
+    fn set_actif(&mut self, actif: bool) {
+        *self.actif.lock().unwrap() = Some(actif);
+    }
 }
 
 /// Le fait réparé (D9 §4.3) : une capture morte n'était JAMAIS
@@ -302,5 +319,74 @@ fn une_reelection_reapprovisionne_le_budget_et_leve_le_verrou() {
     assert!(
         session.reconstruire_ou_signaler(t),
         "second épuisement : le cycle a bien tourné une seconde fois"
+    );
+}
+
+/// Défaut trouvé en recette VM (deux exécutions, `capture audio reconstruite`
+/// = 2, `compteurs_audio_actif_true` = 0 aux deux) : une source reconstruite
+/// par `WindowsAudioSource::pour_processus` NAÎT MUETTE
+/// (`windows_audio.rs::demarrer`, `emet = Arc::new(AtomicBool::new(false))`)
+/// — contrairement au mode mono-fenêtre `new()`, qui s'émet lui-même. Rien,
+/// avant ce correctif, ne réarmait la source reconstruite :
+/// `reconstruire_ou_signaler` la posait dans `self.audio_source` sans jamais
+/// appeler `set_actif`. Chaîne complète, refermée sur elle-même : muette →
+/// aucun paquet → aucune PREUVE (`audio_vivant_a_annoncer`) → aucune
+/// réélection → muette pour toujours. **Un état ABSORBANT, pas un retard.**
+///
+/// Aucun test d'hôte antérieur ne pouvait voir ce défaut : `SourceMorte` et
+/// (avant ce correctif) `SourceVivante` avaient toutes deux un `set_actif`
+/// no-op.
+#[test]
+fn une_session_porteuse_reconstruite_recoit_set_actif_true() {
+    let mut session = session_d_essai();
+    session.set_audio_source(Box::new(SourceMorte::new()));
+    let actif_recu = std::sync::Arc::new(std::sync::Mutex::new(None));
+    let observe = actif_recu.clone();
+    session.set_audio_reconstructeur(Box::new(move || {
+        Ok(Box::new(SourceVivante::observant_actif(observe.clone()))
+            as Box<dyn AudioSource + Send>)
+    }));
+    // Cette session PORTE le son au moment où sa capture meurt — le cas
+    // majoritaire (une application, une fenêtre), miroir local du dernier
+    // ordre `Audio { actif: true }` reçu du capteur.
+    session.audio_porteuse = true;
+
+    session.reconstruire_ou_signaler(std::time::Instant::now());
+
+    assert_eq!(
+        *actif_recu.lock().unwrap(),
+        Some(true),
+        "une session porteuse dont la capture est reconstruite doit être \
+         réémise IMMÉDIATEMENT (avant tout paquet) : sans quoi elle reste \
+         muette pour toujours (aucun paquet -> aucune preuve -> aucune \
+         réélection -> muette)"
+    );
+}
+
+/// Cas symétrique, demandé en revue : une session qui NE PORTE PAS le son au
+/// moment où sa capture est reconstruite ne doit pas être rallumée par sa
+/// propre reconstruction — `audio_porteuse` le donne gratuitement (le
+/// correctif appelle `set_actif(self.audio_porteuse)` sans condition), mais
+/// ce test le PROUVE plutôt que de le supposer.
+#[test]
+fn une_session_non_porteuse_reconstruite_reste_muette() {
+    let mut session = session_d_essai();
+    session.set_audio_source(Box::new(SourceMorte::new()));
+    let actif_recu = std::sync::Arc::new(std::sync::Mutex::new(None));
+    let observe = actif_recu.clone();
+    session.set_audio_reconstructeur(Box::new(move || {
+        Ok(Box::new(SourceVivante::observant_actif(observe.clone()))
+            as Box<dyn AudioSource + Send>)
+    }));
+    // `audio_porteuse` reste à son défaut de construction : `false`.
+    assert!(!session.audio_porteuse, "précondition : cette session ne porte pas le son");
+
+    session.reconstruire_ou_signaler(std::time::Instant::now());
+
+    assert_eq!(
+        *actif_recu.lock().unwrap(),
+        Some(false),
+        "une session qui ne porte pas le son ne doit pas être rallumée par sa \
+         propre reconstruction"
     );
 }

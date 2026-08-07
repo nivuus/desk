@@ -226,6 +226,14 @@ impl Session {
     /// D9 qui fonctionnait) garde alors son rôle exact — celui du cas où
     /// l'arbre de processus a réellement disparu.
     ///
+    /// ⚠️ **Une reconstruction réussie RÉARME aussi la source, sur
+    /// `audio_porteuse`** (défaut trouvé en recette VM, corrigé dans le corps
+    /// ci-dessous) : `WindowsAudioSource::pour_processus` — le seul chemin
+    /// qu'emprunte un reconstructeur — naît toujours MUETTE, et sans ce
+    /// réarmement une session porteuse dont la capture vient d'être
+    /// reconstruite ne produirait plus jamais aucun paquet, donc aucune
+    /// PREUVE, donc aucune réélection : un état ABSORBANT.
+    ///
     /// ⚠️ **Cette méthode court sur le fil de `Session::run`**, et ouvrir une
     /// source WASAPI y est un appel bloquant de durée non bornée. D'où le
     /// répit : au plus une tentative par `REPIT_RECONSTRUCTION`. Si la mesure
@@ -247,11 +255,33 @@ impl Session {
         self.reconstructions_restantes -= 1;
         self.prochaine_reconstruction = Some(maintenant + crate::audio::REPIT_RECONSTRUCTION);
         match reconstructeur() {
-            Ok(source) => {
+            Ok(mut source) => {
                 tracing::info!(
                     restantes = self.reconstructions_restantes,
                     "capture audio reconstruite"
                 );
+                // Trouvé en recette VM (deux exécutions : `capture audio
+                // reconstruite` = 2, `compteurs_audio_actif_true` = 0 aux
+                // deux) : une source reconstruite par
+                // `WindowsAudioSource::pour_processus` NAÎT MUETTE
+                // (`windows_audio.rs::demarrer`) — à la différence du mode
+                // mono-fenêtre `new()`, qui s'émet lui-même. Sans cette
+                // ligne, RIEN ne réarme la source reconstruite : elle ne
+                // produit aucun paquet, donc aucune PREUVE
+                // (`audio_vivant_a_annoncer`), donc aucune réélection —
+                // muette pour toujours. Un état ABSORBANT, pas un retard.
+                //
+                // `audio_porteuse` — jamais l'ordre `actif` du dernier appel
+                // à `appliquer_audio`, capturé AVANT que cette fonction n'ait
+                // pu le modifier — est le miroir LOCAL du dernier ordre reçu
+                // du capteur (voir `appliquer_audio`) : la garantie ne dépend
+                // ainsi d'aucune discipline distante. Appliqué SANS
+                // condition, aussi bien pour une session porteuse (`true`,
+                // qui réarme) que pour une session muette (`false`, qui
+                // confirme explicitement le silence plutôt que de le
+                // supposer) — voir
+                // `une_session_non_porteuse_reconstruite_reste_muette`.
+                source.set_actif(self.audio_porteuse);
                 self.audio_source = Some(source);
                 self.audio_reconstruit_sans_preuve = true;
                 false
