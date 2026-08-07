@@ -5403,8 +5403,22 @@ il ne désigne PAS le client.** C'est exactement la nuance que la correction C3
 de D8 avait payée. Le maillon fautif reste **non identifié**.
 
 ⚠️ **Le rapport de la tâche 14 déclare ce leg clos en sens inverse, et il n'a
-pas été corrigé** (interruption assumée de la ronde de correction). **Le
-contredire est le premier travail de qui le relira.**
+pas été corrigé** (interruption assumée de la ronde de correction). ~~Le
+contredire est le premier travail de qui le relira.~~
+
+❌ **CETTE DERNIÈRE PHRASE EST FAUSSE, et elle l'était déjà en germe au moment
+où elle a été écrite : elle présume que ce rapport SURVIVRA pour qu'on le
+relise (7 août 2026, tâche 18, sous-bloc D10).** Son espace de travail
+était `.superpowers/sdd/`, **gitignoré et jamais commité** — vérifié par la
+commande : `git log --all --diff-filter=A --name-only -- '*task-14*'` ne rend
+**rien** pour ce chantier (la seule occurrence de ce motif dans tout
+l'historique du dépôt est le `task-14-report.md` d'un chantier de juillet
+2026, sans rapport avec celui-ci), et aucune branche ni aucun *stash* n'en
+porte de copie. **Le rapport a disparu avec la session de D9 qui l'a écrit, et
+il n'y a donc personne à qui « le relire ».** Ce paragraphe-ci, et celui du
+document de résultats de D9 qui porte la même phrase, **SONT** la correction —
+ils ne renvoient plus vers elle. Voir aussi le sort des neuf constats parqués,
+plus bas : la même disparition les rend, eux, irrécupérables.
 
 ### ⚠️ La revue transverse de fin de branche — six défauts, tous franchissant une frontière de tâche
 
@@ -5612,12 +5626,30 @@ x86_64-pc-windows-gnu` → **sortie 0, 11 avertissements**, tous `dead_code`, do
    n'ait été déplacé ni renommé** ; la qualification de « déviation » (D9,
    tableau de tête et cette entrée) était fausse depuis le début — corrigée
    aux deux endroits.
-10. ⛔ **Neuf constats de revue PARQUÉS sur la tâche 14** (recette ①), dont
-    l'A/B rouge/vert non propre, la pièce du critère (a) qui ne couvre qu'une
-    page sur treize, et un « défaut d'instrument » qui est en réalité un
-    **comportement du produit** (le shell réémet `fenetre-ouverte` pour une
-    fenêtre déjà ouverte, mécanisme non élucidé). **Ils sont toujours dans le
-    rapport versé.**
+10. ⛔ ~~Neuf constats de revue PARQUÉS sur la tâche 14 (recette ①)… Ils sont
+    toujours dans le rapport versé.~~
+
+    ✅ **REQUALIFIÉ (7 août 2026, tâche 18, D10) : « toujours dans le rapport
+    versé » est faux — ce rapport a disparu** (voir la correction du § leg 10
+    ci-dessus, « qui le relira »). **Sur les neuf constats, trois SURVIVENT**
+    parce qu'ils avaient déjà été extraits vers ce document permanent-ci avant
+    que le rapport source ne disparaisse — **TRAITÉS, sans action
+    supplémentaire requise** :
+    - l'A/B rouge/vert non propre du critère ①c — **déjà porté** au §
+      « Le critère ①c porte une réserve de méthode qui n'a pas été corrigée »,
+      quelques paragraphes plus haut ;
+    - la pièce du critère (a) qui ne couvre qu'une page sur treize —
+      **déjà reprise** dans le document de résultats de D9, § 3 ;
+    - « le shell réémet `fenetre-ouverte` pour une fenêtre déjà ouverte » —
+      **REQUALIFIÉ tel quel** : ce n'est pas un défaut d'instrument mais un
+      **comportement du PRODUIT, mécanisme non élucidé**. Aucune pièce
+      supplémentaire ne permet d'aller plus loin que cette phrase.
+
+    **Les SIX autres constats sont PERDUS**, pas seulement parqués : leur
+    contenu n'a survécu nulle part ailleurs dans ce dépôt, et le rapport qui
+    les portait n'existe plus (§8, vérifié par la commande). **Inventer une
+    liste serait pire que d'admettre qu'elle est perdue** — constat honnête,
+    pas une lacune de recherche.
 
 **DEUX de plus, trouvés par la vague de correction unique de la revue finale
 de D9 (6 août 2026), et délibérément NON corrigés — legs, pas défauts actifs.**

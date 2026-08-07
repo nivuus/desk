@@ -326,12 +326,39 @@ connectSession({
                 console.warn('Resize différé : canal de contrôle non ouvert');
                 return;
             }
+            // Instrumentation du legs n°7 de D9 (tâche 18, D10) : le sous-bloc D8
+            // avait désigné le `ResizeObserver` sur `<video>` comme le maillon où
+            // la chaîne pourrait casser entre `window.innerWidth` (ce que la page
+            // annonce à l'ouverture) et l'émission réelle du `Resize` (« leg 10 »
+            // dans la numérotation de D8 — même défaut, deux numéros selon le
+            // sous-bloc qui le nomme) — sans jamais l'avoir mesuré. **Ceci reste
+            // une hypothèse parmi d'autres : le canal de contrôle en est une
+            // autre**, et rien ici ne tranche — seule la comparaison, une fois
+            // relevée, pourra le faire. Si `clientWidth`/`clientHeight` suit
+            // `innerWidth`/`innerHeight` à l'émission, la mise en page CSS n'est
+            // pas en cause ; sinon, elle l'est.
+            console.debug('[instrumentation resize] emission', {
+                taille,
+                clientWidth: video.clientWidth,
+                clientHeight: video.clientHeight,
+                innerWidth: window.innerWidth,
+                innerHeight: window.innerHeight,
+            });
             session.controlChannel.send(encodeResize(taille.largeur, taille.hauteur));
             rejeu.confirmer(taille);
         };
 
         let resizeTimer: number | undefined;
         const observer = new ResizeObserver(() => {
+            // Même instrumentation, au déclenchement BRUT de l'observateur —
+            // avant le lissage de 200 ms — pour situer un éventuel décalage
+            // avant même que le rejeu n'entre en jeu.
+            console.debug('[instrumentation resize] declenchement ResizeObserver', {
+                clientWidth: video.clientWidth,
+                clientHeight: video.clientHeight,
+                innerWidth: window.innerWidth,
+                innerHeight: window.innerHeight,
+            });
             window.clearTimeout(resizeTimer);
             resizeTimer = window.setTimeout(() => {
                 rejeu.observer({
