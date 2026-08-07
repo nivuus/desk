@@ -198,8 +198,19 @@ fn le_repit_espace_les_tentatives() {
     );
 }
 
-/// Sans reconstructeur — chemin mono-fenêtre, ou `AUDIO=0` —, le
-/// comportement d'avant D10 doit être exactement conservé.
+/// Sans reconstructeur — `AUDIO=0`, `TEST_FILE`, ou un échec d'ouverture
+/// audio initiale —, le comportement d'avant D10 doit être exactement
+/// conservé.
+///
+/// ❌ **Ce doc-comment annonçait « chemin mono-fenêtre » parmi ces cas, et
+/// c'est FAUX** (revue transverse de fin de branche, second tour) :
+/// `demarrage/audio.rs::brancher` pose un reconstructeur
+/// INCONDITIONNELLEMENT dans son bras `Ok`, branche `None` comprise. **Ce
+/// test ne couvre donc PAS le mono-fenêtre**, contrairement à ce qu'il
+/// annonçait — il couvre l'absence de reconstructeur, qui est autre chose.
+/// Le mono-fenêtre a bien un reconstructeur, et son défaut propre (la
+/// source reconstruite est réarmée à `false`) n'est couvert par aucun test :
+/// voir le legs n°4 de D10.
 #[test]
 fn sans_reconstructeur_on_signale_immediatement() {
     let mut session = session_d_essai();

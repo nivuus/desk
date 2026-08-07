@@ -476,7 +476,7 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > | `agent/src/diagnostics/multifenetre/mode_sortie/temoin.rs` | **200** | neuf |
 > | `agent/src/diagnostics/multifenetre/mode_sortie/combinaisons.rs` | **157** | neuf |
 > | `agent/src/diagnostics/multifenetre/mode_sortie/persistance.rs` | **107** | neuf |
-> | `agent/src/survie_verdict.rs` | **61** | neuf, **pur** — ~~⚠️ posé à la RACINE du crate alors que le dépôt a deux précédents (`capture_reprise`, `windows_source_sortie`) qui gardent le fichier chez le parent et n'y hissent que la déclaration par `#[path]`. Déviation relevée, non corrigée~~ ✅ **TRANCHÉ (7 août 2026, tâche 17, D10) : ce n'était PAS une déviation.** La convention retenue (§« Convention de module enfant… », tête de ce fichier) range un module par son NOM : `capture_reprise`/`windows_source_sortie` portent le préfixe de leur parent et se déclarent par `#[path]` ; `survie_verdict`, comme `geometry` et `sortie_dxgi`, n'en porte aucun et vit à la racine nue — où il était déjà. **Aucun fichier n'a bougé.** |
+> | `agent/src/survie_verdict.rs` | ~~61~~ **74** (7 août 2026, D10) | neuf, **pur** — ~~⚠️ posé à la RACINE du crate alors que le dépôt a deux précédents (`capture_reprise`, `windows_source_sortie`) qui gardent le fichier chez le parent et n'y hissent que la déclaration par `#[path]`. Déviation relevée, non corrigée~~ ✅ **TRANCHÉ (7 août 2026, tâche 17, D10) : ce n'était PAS une déviation.** La convention retenue (§« Convention de module enfant… », tête de ce fichier) range un module par son NOM : `capture_reprise`/`windows_source_sortie` portent le préfixe de leur parent et se déclarent par `#[path]` ; `survie_verdict`, comme `geometry` et `sortie_dxgi`, n'en porte aucun et vit à la racine nue — où il était déjà. **Aucun fichier n'a bougé.** |
 > | `client/src/main.ts` | **352** | legs 7, 8 et 10 |
 > | `client/src/resize.ts` + `resize.test.ts` | **45** + **39** | neufs, **purs, sans DOM** |
 > | `agent/src/demarrage.rs` | ~~457~~ **464** | le champ `session` sur `contrôle reçu`, et le lecteur mort de `SOURCE_TRACE` retiré |
@@ -554,20 +554,20 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > | --- | --- | --- |
 > | `agent/src/superviseur/table.rs` | ~~494~~ **492** (marge **8**) | voir l'ascenseur ci-dessus |
 > | `agent/src/demarrage.rs` | ~~464~~ **481** (marge 19) | +17 |
-> | `agent/src/transport.rs` | **457** | franchi 501, puis extrait |
+> | `agent/src/transport.rs` | ~~457~~ **468** | franchi 501, puis extrait ; +11 à la vague de correction de la revue finale |
 > | `agent/src/superviseur/placement.rs` | **441** | `sortie_assez_grande`, `taille_retenue`, et leurs tests |
 > | `agent/src/capteur/fenetre.rs` | ~~485~~ **426** (marge 74) | franchi 505, puis extrait |
 > | `agent/src/capteur/protocole.rs` | ~~381~~ **419** | `AudioVivant`, et la correction d'`AudioMort` |
 > | `agent/src/capteur/distante.rs` | ~~400~~ **409** | |
 > | `agent/src/transport/piste_audio.rs` | ~~229~~ **403** | `reconstruire_ou_signaler` et sa documentation |
 > | `client/src/main.ts` | ~~352~~ **392** | l'instrumentation du `Resize` (legs 7 et 10 de D9) |
-> | `agent/src/transport/tick/tests/audio.rs` | **392** | neuf (tâche 2), et grossi par les tests de la famille ② |
+> | `agent/src/transport/tick/tests/audio.rs` | ~~392~~ **403** | neuf (tâche 2), grossi par les tests de la famille ②, puis +11 à la vague de correction |
 > | `agent/src/source.rs` | ~~387~~ **393** | |
 > | `agent/src/windows_audio/fil.rs` | **339** | neuf (tâche 3) — porte `AUDIO_FAUTE_LECTURE` et le budget global |
 > | `agent/src/capteur/sommeil/registre.rs` | ~~331~~ **346** | ⚠️ **ce nombre est resté FAUX au commit de la revue transverse**, corrigé au tour suivant — voir l'encadré sous ce tableau |
 > | `agent/src/windows_source/sortie.rs` | ~~313~~ **351** | `sur_sortie` reçoit la taille RETENUE |
 > | `agent/src/windows_audio.rs` | ~~479~~ **283** | 479 → 252 par extraction, puis +31 de corrections |
-> | `agent/src/superviseur/boucle/creation_sortie.rs` | **282** | neuf (tâche 1) |
+> | `agent/src/superviseur/boucle/creation_sortie.rs` | ~~282~~ **295** | neuf (tâche 1) ; +13 à la vague de correction (les TROIS causes du refus) |
 > | `agent/src/capteur/audio.rs` | ~~228~~ **271** | |
 > | `agent/src/superviseur/boucle.rs` | ~~492~~ **263** | 492 → 262 par extraction, puis +1 |
 > | `agent/src/audio.rs` | ~~273~~ **318** | `RECONSTRUCTIONS_MAX`, `REPIT_RECONSTRUCTION`, `Reconstructeur` |
@@ -579,6 +579,9 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > | `agent/src/transport/initialisation.rs` | **80** | neuf — idem |
 > | `agent/src/capteur/serveur/attentes/tests.rs` | **64** | neuf |
 > | `agent/src/superviseur/table/effets.rs` | **52** | neuf — idem |
+> | `agent/src/transport/tick.rs` | ~~343~~ **398** | la branche a1sexies, puis +55 à la vague de correction |
+> | `agent/src/superviseur/boucle/placement_periodique.rs` | ~~76~~ **103** | |
+> | `agent/src/survie_verdict.rs` | ~~61~~ **74** | ⚠️ **ABSENT de la première rédaction de ce tableau**, dont l'en-tête dit « tous mesurés par la commande » — voir l'encadré ci-dessous |
 >
 > ✅ **Chiffres voisins RELEVÉS et EXACTS ce jour-là**, à ne pas re-vérifier :
 > `encode/arret.rs` **500** (marge 0), `capture.rs` **492** (8),
@@ -628,6 +631,21 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > `grep -n` doit être relu place par place APRÈS l'édition, pas seulement
 > lancé avant.** Une substitution qui ne dit pas combien d'occurrences elle a
 > touchées est une affirmation de complétude non vérifiée.
+>
+> ❌ **NEUVIÈME OCCURRENCE, trouvée par la revue finale de branche, et c'est le
+> jumeau exact de la précédente : `agent/src/survie_verdict.rs` était publié
+> **61** ; il vaut **74**.** Et c'est **cette branche** qui l'a fait grandir
+> (`3c8c305`, +13) — **dans le commit même qui éditait cette ligne de tableau**
+> pour y porter l'annotation « ✅ TRANCHÉ ». Le fichier était en outre **absent**
+> du tableau D10 ci-dessus, dont l'en-tête dit « tous mesurés par la commande » :
+> l'en-tête était donc faux d'une ligne. Les deux sont corrigés.
+>
+> **Ce que ces deux occurrences ajoutent à la doctrine, et qui ne s'y trouvait
+> pas** : *éditer une ligne de tableau ne fait pas relire le nombre qu'elle
+> porte.* Dans les deux cas, la main qui écrivait était **sur la ligne même**
+> qui contenait le chiffre faux — et le regard portait sur l'annotation, pas sur
+> le nombre. **Toucher une ligne d'un tableau de comptes oblige à remesurer son
+> compte**, même quand ce n'est pas l'objet de l'édition.
 
 **Vérifier l'état** :
 
@@ -5998,8 +6016,13 @@ devenues fausses dans leur propre branche**.
 
 **Le plus lourd est le seul qui ait une conséquence de COMPORTEMENT :**
 
-> 🔴 **En mono-fenêtre, le remède de reconstruction audio est INERTE, et trois
-> commentaires disaient le contraire.** La tâche 11 a posé un reconstructeur
+> 🔴 **En mono-fenêtre, le remède de reconstruction audio est INERTE, et
+> ~~trois~~ **SIX** commentaires disaient le contraire.** *(La revue transverse
+> en avait corrigé trois et affirmé qu'il n'y en avait que trois — affirmation
+> de complétude faite sans lancer `grep -rn "mono-fenêtre" agent/src`. La revue
+> finale de branche en a trouvé deux de plus ; le balayage exigé par elle en a
+> révélé un **sixième**, `transport.rs`, qu'aucune des deux revues n'avait
+> nommé. **Treizième, quatorzième et quinzième énoncés faux de la branche.**)* La tâche 11 a posé un reconstructeur
 > dans les **deux** modes ; la tâche 12 a écrit dans `capteur/sommeil.rs` que le
 > mono-fenêtre n'en a **aucun** ; la tâche 14 a écrit à **deux** endroits que
 > `pour_processus` est « le seul chemin qu'emprunte un reconstructeur » et
@@ -6135,6 +6158,35 @@ une **extraction** exigée en revue, jamais par une compression.
   sont jouées **sans relais**, sur candidats `host`.
 - **Le chemin d'extinction propre du superviseur** n'a toujours jamais été
   exercé, depuis D1.
+- 🔴 **LES DEUX FAMILLES N'ONT JAMAIS TOURNÉ ENSEMBLE**, et c'est la lacune de
+  couverture la plus lourde de D10 (relevée par la revue finale de branche) :
+  la famille ① a été recettée à **dix** fenêtres **sans aucune faute audio**, la
+  famille ② à **une seule** fenêtre. Deux conséquences, à ne pas perdre :
+  - le couplage que la tâche 12 documente — **la réélection annule le répit
+    `REPIT_RECONSTRUCTION`, donc une ouverture WASAPI bloquante peut tomber sur
+    le fil de drainage** — n'est exercé **qu'à une fenêtre**, là où il est borné
+    par `PERIODE_REARBITRAGE` (250 ms) précisément parce que plusieurs fenêtres
+    peuvent le déclencher ;
+  - **à une seule fenêtre, `audio_porteuse` vaut toujours `true`.** La recette
+    verte **ne peut donc pas distinguer** le correctif livré
+    (`set_actif(self.audio_porteuse)`) de la version que le code déclare
+    **pire** (`set_actif(true)` inconditionnel) : les deux rendraient 441 Hz.
+    **Cette discrimination n'existe que dans les tests d'hôte**, où le test
+    symétrique la porte — jamais sur la VM.
+- ⚠️ **La réutilisation d'une sortie retenue compare contre la taille RETENUE,
+  pas contre la taille DXGI réelle.** `superviseur/table/attribution.rs`
+  annonce « le même prédicat que l'appariement à la création » : la **fonction**
+  est bien la même, l'**opérande** ne l'est pas. **Aucune régression** — c'est
+  identique au comportement d'avant D10 —, mais une sortie dont la taille DXGI
+  aurait changé sous le produit ne serait jugée que sur ce que la table croit
+  d'elle.
+- ⚠️ **Deux fonctions orphelinées dans la même branche ont été traitées
+  différemment, sans qu'aucune règle soit énoncée** : `taille_compatible`
+  **supprimée** (tâche 7, énumération des appelants versée), et
+  `rafraichir_taille_sortie` **conservée avec ses tests** (tâche 6) alors
+  qu'elle n'a plus d'appelant de production. Les deux décisions sont
+  défendables ; **le dépôt n'a pas de doctrine sur le code orphelin**, et
+  l'écart se lit d'un fichier à l'autre.
 
 ### Pièges neufs — à connaître avant de toucher à ce terrain
 

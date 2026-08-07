@@ -227,9 +227,20 @@ pub struct Session {
     /// un capteur relancé a perdu la mémoire de tout signalement antérieur.
     audio_mort_signale: bool,
     /// De quoi refabriquer la source audio après la mort de sa capture
-    /// (sous-bloc D10). Absent sur le chemin mono-fenêtre et quand
-    /// `AUDIO=0` : le comportement d'avant D10 — signaler immédiatement —
-    /// reste exactement conservé dans ce cas.
+    /// (sous-bloc D10). Absent quand `AUDIO=0`, sous `TEST_FILE`, et quand
+    /// l'ouverture audio initiale a échoué : le comportement d'avant D10 —
+    /// signaler immédiatement — reste exactement conservé dans ces cas.
+    ///
+    /// ❌ **« Absent sur le chemin mono-fenêtre » figurait ici et c'est
+    /// FAUX** : `demarrage/audio.rs::brancher` pose ce champ
+    /// INCONDITIONNELLEMENT dans son bras `Ok`, branche `None` comprise. Le
+    /// mono-fenêtre reconstruit donc bien — et son défaut propre est que la
+    /// source reconstruite est réarmée à `false` (legs n°4 de D10, voir
+    /// `Session::reconstruire_ou_signaler`). ⚠️ **Troisième occurrence de
+    /// cette même phrase, et celle-ci n'a été trouvée ni par la revue
+    /// transverse ni par la revue finale de branche** : les deux ont corrigé
+    /// les jumelles de `tick.rs` et de `tick/tests/audio.rs` sans balayer
+    /// jusqu'ici. Le `grep -rn "mono-fenêtre" agent/src` la listait pourtant.
     audio_reconstructeur: Option<Reconstructeur>,
     /// Budget de tentatives de reconstruction restant, initialisé à
     /// `crate::audio::RECONSTRUCTIONS_MAX`. Épuisé, `reconstruire_ou_signaler`

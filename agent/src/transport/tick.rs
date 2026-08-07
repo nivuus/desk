@@ -274,9 +274,27 @@ impl Session {
         //           TENTE D'ABORD de refabriquer la source ; `AudioMort` n'est
         //           plus le premier geste mais le REPLI — celui du cas où le
         //           budget de tentatives est épuisé, ou où il n'existe aucun
-        //           reconstructeur (chemin mono-fenêtre, ou `AUDIO=0`) — et où
-        //           seule la promotion d'une voisine par le capteur peut
-        //           encore rendre du son au groupe.
+        //           reconstructeur — et où seule la promotion d'une voisine
+        //           par le capteur peut encore rendre du son au groupe.
+        //
+        //           ❌ **« Chemin mono-fenêtre » figurait dans cette
+        //           parenthèse et c'est FAUX** (revue transverse de fin de
+        //           branche, second tour) : `demarrage/audio.rs::brancher`
+        //           pose un reconstructeur INCONDITIONNELLEMENT dans son bras
+        //           `Ok`, branche `None` COMPRISE. Les seuls cas réellement
+        //           sans reconstructeur sont `AUDIO=0`, `TEST_FILE`, et un
+        //           échec d'ouverture initiale.
+        //
+        //           🔴 **Et l'erreur portait à conséquence ICI plus
+        //           qu'ailleurs, parce que ce fichier est celui qui APPELLE
+        //           `reconstruire_ou_signaler`** : elle donnait à qui
+        //           reprendra le legs n°1 le modèle mental exactement
+        //           INVERSE du vrai. En mono-fenêtre la source EST
+        //           reconstruite — puis le réarmement la rend MUETTE,
+        //           `audio_porteuse` valant toujours `false` faute de
+        //           capteur pour l'écrire. Voir la conséquence complète et
+        //           son correctif auprès de
+        //           `Session::reconstruire_ou_signaler` (`piste_audio.rs`).
         //
         //           `appliquer_audio` (a1quinquies juste au-dessus) ne court
         //           qu'à l'ARRIVÉE d'un ordre, jamais périodiquement : sans ce

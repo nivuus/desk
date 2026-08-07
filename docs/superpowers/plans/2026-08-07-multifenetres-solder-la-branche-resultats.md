@@ -333,8 +333,19 @@ affirmations de code devenues fausses dans leur propre branche**.
 
 ### 🔴 Le seul qui ait une conséquence de comportement
 
-**En mono-fenêtre, le remède de reconstruction audio est INERTE, et trois
-commentaires disaient le contraire.**
+**En mono-fenêtre, le remède de reconstruction audio est INERTE, et ~~trois~~
+**SIX** commentaires disaient le contraire.** *(La revue transverse en a corrigé
+trois et affirmé qu'il n'y en avait que trois, **sans lancer le balayage** ; la
+revue finale de branche en a trouvé deux de plus dans `transport/tick.rs` et
+`transport/tick/tests/audio.rs` ; et le balayage qu'elle a exigé en a révélé un
+**sixième**, `transport.rs`, qu'aucune des deux revues n'avait nommé.)*
+
+⚠️ **Les trois survivants portaient à conséquence plus que les trois premiers** :
+`tick.rs` est le fichier qui **appelle** `reconstruire_ou_signaler` — il donnait
+à qui reprendra le legs le **modèle mental exactement inverse** du vrai — et le
+doc-comment du test annonçait une couverture du mono-fenêtre que le test n'a
+pas. La revue finale de branche a fait de leur correction une **condition** du
+legs.
 
 - la tâche 11 (`demarrage/audio.rs::brancher`) pose un reconstructeur dans les
   **deux** modes — sa branche `None` appelle `WindowsAudioSource::new` ;
@@ -445,6 +456,29 @@ affirmation de complétude non vérifiée. **Septième occurrence du naufrage du
   sont jouées **sans relais**, sur candidats `host`.
 - **Le chemin d'extinction propre du superviseur** n'a toujours jamais été
   exercé, depuis D1.
+- 🔴 **LES DEUX FAMILLES N'ONT JAMAIS TOURNÉ ENSEMBLE** — ① à **dix** fenêtres
+  sans aucune faute audio, ② à **une seule** fenêtre. C'est la lacune de
+  couverture la plus lourde de D10, relevée par la revue finale de branche.
+  Deux conséquences :
+  - le couplage documenté par la tâche 12 — **la réélection annule le répit
+    `REPIT_RECONSTRUCTION`, donc une ouverture WASAPI bloquante peut tomber sur
+    le fil de drainage** — n'est exercé **qu'à une fenêtre**, alors qu'il est
+    borné par `PERIODE_REARBITRAGE` (250 ms) précisément parce que plusieurs
+    fenêtres peuvent le déclencher ;
+  - **à une seule fenêtre, `audio_porteuse` vaut toujours `true`** : la recette
+    verte **ne peut pas distinguer** le correctif livré de la version que le
+    code déclare **pire** (`set_actif(true)` inconditionnel). Les deux
+    rendraient 441 Hz. **Cette discrimination n'existe que dans les tests
+    d'hôte.**
+- ⚠️ **La réutilisation d'une sortie retenue compare contre la taille RETENUE,
+  pas contre la taille DXGI réelle.** `table/attribution.rs` annonce « le même
+  prédicat que l'appariement à la création » : la **fonction** est la même,
+  l'**opérande** ne l'est pas. **Aucune régression** (identique à avant D10).
+- ⚠️ **Deux fonctions orphelinées dans la même branche, traitées différemment
+  sans règle énoncée** : `taille_compatible` **supprimée** (tâche 7),
+  `rafraichir_taille_sortie` **conservée avec ses tests** (tâche 6). Les deux
+  décisions sont défendables ; **le dépôt n'a pas de doctrine sur le code
+  orphelin.**
 
 ---
 

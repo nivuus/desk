@@ -60,11 +60,21 @@ pub(super) fn controler_le_placement(table: &Table) {
 /// D10) : `sortie.rect` donne l'origine dans le bureau virtuel, mais
 /// `Table::taille_sortie_de` donne la taille RETENUE — celle, éventuellement
 /// bien plus petite que la sortie, à laquelle la fenêtre a été posée et que la
-/// capture recadre. Le second `let Some` ne peut, en pratique, jamais échouer
-/// une fois le premier passé : `sortie_creee` pose `nom_sortie` et
+/// capture recadre. Le **TROISIÈME** `let Some` — celui de
+/// `Table::taille_sortie_de` — ne peut, en pratique, jamais échouer une fois
+/// le PREMIER passé (`nom_sortie_de`) : `sortie_creee` pose `nom_sortie` et
 /// `taille_sortie` ensemble, jamais l'un sans l'autre (`table.rs`) — ce n'est
 /// donc pas `Etat::Vivante` qui gouverne ici, mais cet invariant-là. Gardé
 /// tel quel plutôt que supposé, pour ne rien devoir à un fichier voisin.
+///
+/// ❌ **Cette phrase disait « le second `let Some` », et elle désignait le
+/// TROISIÈME** (constat de la revue de la tâche 6, différé puis repris à la
+/// revue finale de branche). ⚠️ **L'erreur n'était pas seulement de comptage** :
+/// le vrai second — la recherche DXGI par nom, `toutes.iter().find(...)` —
+/// **PEUT** échouer après le premier, une sortie pouvant avoir disparu de la
+/// topologie entre deux tours. Un lecteur qui comptait les `let Some`
+/// attribuait donc la clause « ne peut jamais échouer » au **mauvais garde**,
+/// celui pour lequel elle est fausse.
 pub(super) fn replacer_si_besoin(table: &Table, session: &IdSession, toutes: &[SortieDxgi]) {
     let Some(nom) = table.nom_sortie_de(session) else {
         return;

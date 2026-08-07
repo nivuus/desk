@@ -103,9 +103,22 @@ pub(super) fn creer_sortie(
     else {
         // Ce refus ne peut plus venir d'une sortie née TROP GRANDE — c'est le
         // leg 4 de D9, qui plafonnait le produit à trois fenêtres sur une VM
-        // au registre pollué. Il ne reste que deux causes : aucune sortie n'est
-        // apparue du tout, ou celle qui est apparue est plus PETITE que la
-        // demande de plus de `TOLERANCE_PX`.
+        // au registre pollué. Il reste TROIS causes, et les énumérer toutes
+        // est le seul service que ce commentaire rende à qui débogue cette
+        // `ERROR` :
+        //   1. aucune sortie n'est apparue du tout ;
+        //   2. celle qui est apparue est plus PETITE que la demande, de plus
+        //      de `TOLERANCE_PX` ;
+        //   3. celle qui est apparue est DÉJÀ PRISE — `sortie_pour_viewport`
+        //      filtre aussi sur `!deja_prises`, et `rendre_la_sortie` CRÉE
+        //      délibérément ce cas : quand la destruction est refusée par le
+        //      pilote, le nom reste réservé pour ne pas être réattribué.
+        //
+        // ❌ **Ce commentaire a dit « il ne reste que deux causes » pendant
+        // toute la branche** (constat de la revue de la tâche 6, différé puis
+        // repris à la revue finale) : il envoyait un débogueur cesser de
+        // chercher après deux hypothèses, sur une `ERROR` dont la troisième
+        // cause est produite par le code du même module.
         tracing::error!(
             session = %session.0,
             demande = format!("{largeur}x{hauteur}"),
