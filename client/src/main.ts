@@ -326,17 +326,11 @@ connectSession({
                 console.warn('Resize différé : canal de contrôle non ouvert');
                 return;
             }
-            // Instrumentation du legs n°7 de D9 (tâche 18, D10) : le sous-bloc D8
-            // avait désigné le `ResizeObserver` sur `<video>` comme le maillon où
-            // la chaîne pourrait casser entre `window.innerWidth` (ce que la page
-            // annonce à l'ouverture) et l'émission réelle du `Resize` (« leg 10 »
-            // dans la numérotation de D8 — même défaut, deux numéros selon le
-            // sous-bloc qui le nomme) — sans jamais l'avoir mesuré. **Ceci reste
-            // une hypothèse parmi d'autres : le canal de contrôle en est une
-            // autre**, et rien ici ne tranche — seule la comparaison, une fois
-            // relevée, pourra le faire. Si `clientWidth`/`clientHeight` suit
-            // `innerWidth`/`innerHeight` à l'émission, la mise en page CSS n'est
-            // pas en cause ; sinon, elle l'est.
+            // Instrumentation du legs n°7 de D9 (tâche 18, D10) — confirmation au
+            // point d'émission. Grille de lecture complète sur le log
+            // « declenchement ResizeObserver » ci-dessous ; celui-ci ne fait que
+            // confirmer, pour CETTE tentative de `Resize`, laquelle des trois
+            // issues s'est produite.
             console.debug('[instrumentation resize] emission', {
                 taille,
                 clientWidth: video.clientWidth,
@@ -350,9 +344,28 @@ connectSession({
 
         let resizeTimer: number | undefined;
         const observer = new ResizeObserver(() => {
-            // Même instrumentation, au déclenchement BRUT de l'observateur —
-            // avant le lissage de 200 ms — pour situer un éventuel décalage
-            // avant même que le rejeu n'entre en jeu.
+            // Instrumentation du legs n°7 de D9 (tâche 18, D10) : le sous-bloc D8
+            // avait désigné ce maillon — entre `window.innerWidth` (ce que la page
+            // annonce à l'ouverture) et l'émission réelle du `Resize`, « leg 10 »
+            // dans la numérotation de D8 — sans jamais l'avoir mesuré. Trois
+            // issues sont lisibles depuis ce log et celui d'émission ci-dessus,
+            // dans CET ORDRE de lecture — aucune ne conclut au-delà de ce
+            // qu'elle établit, et le canal de contrôle reste une hypothèse à
+            // part entière (voir le `console.warn` ci-dessus) :
+            //   1. AUCUN log « declenchement » pour une session qui n'émet
+            //      jamais de `Resize` (cas D9 : w-2, w-5) ⟹ l'observateur ne
+            //      s'arme jamais ou n'est jamais rappelé — le maillon est EN
+            //      AMONT de la mise en page, dans le câblage de
+            //      `observer.observe(video)` ou la construction de la session.
+            //   2. Log présent, `clientWidth`/`clientHeight` SUIT
+            //      `innerWidth`/`innerHeight` ⟹ ni l'observateur ni la mise en
+            //      page ne sont en cause ; le maillon est ailleurs.
+            //   3. Log présent, `clientWidth`/`clientHeight` NE SUIT PAS
+            //      `innerWidth`/`innerHeight` ⟹ la mise en page CSS de
+            //      l'élément `<video>` est en cause.
+            // Ce log-ci, pris avant le lissage de 200 ms, tranche le cas 1 ;
+            // le log d'émission ci-dessus confirme 2 ou 3 pour la tentative
+            // qui aboutit réellement.
             console.debug('[instrumentation resize] declenchement ResizeObserver', {
                 clientWidth: video.clientWidth,
                 clientHeight: video.clientHeight,
