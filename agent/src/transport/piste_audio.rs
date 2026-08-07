@@ -155,6 +155,24 @@ impl Session {
         // true` identiques rendrait le budget infini.
         if actif && !self.audio_porteuse {
             self.reconstructions_restantes = crate::audio::RECONSTRUCTIONS_MAX;
+            // ⚠️ **Résidu trouvé en re-revue (sous-bloc D10), documenté et non
+            // corrigé : cette remise à `None` ANNULE l'espacement
+            // `REPIT_RECONSTRUCTION` à chaque réélection.** Pour une session
+            // déjà latchée morte, chaque transition `false → true` achète
+            // donc une tentative de reconstruction IMMÉDIATE au prochain tour
+            // — c'est-à-dire une ouverture *process loopback* bloquante sur
+            // le fil de `Session::run`, exactement le coût que le répit
+            // existe pour espacer. `REARMEMENTS_MAX` ne le borne pas : il ne
+            // compte que les cycles qui atteignent `AudioMort`, jamais les
+            // réélections elles-mêmes — un groupe qui bascule entre deux
+            // fenêtres du même PID peut donc réélire plus vite qu'un budget
+            // ne s'épuise. **Ce n'est pas une régression** : le débit reste
+            // borné par `PERIODE_REARBITRAGE` (250 ms, `capteur/sommeil.rs`),
+            // qui borne la fréquence à laquelle le registre peut faire
+            // basculer `actif`. Mais c'est un couplage NEUF entre le
+            // va-et-vient de l'arbitrage audio et du travail bloquant sur le
+            // fil de drainage, que rien n'empêchait avant que cette remise à
+            // zéro n'existe.
             self.prochaine_reconstruction = None;
             // Lève le verrou qui, sinon, empêcherait `act_on_timeout`
             // (branche a1sexies) de rappeler `reconstruire_ou_signaler` :

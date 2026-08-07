@@ -208,10 +208,12 @@ mod tests {
         // elle vit. **Le cas majoritaire reste donc SANS REMÈDE, et c'est un
         // legs de D9.**
         //
-        // ✅ **CE LEGS EST FERMÉ — sous-bloc D10 (tâches 11 et 12), corrigé
-        // ICI même, où le commentaire ci-dessus disait explicitement qu'il
-        // fallait le corriger (sixième occurrence de ce défaut sur cette
-        // branche, la première où le code nommait lui-même l'endroit).** Le
+        // ✅ **CE LEGS EST FERMÉ SUR PIÈCES — code plus tests d'hôte —,
+        // NON EXERCÉ SUR LA VM (sous-bloc D10, tâches 11 et 12).** La recette
+        // audio qui l'exercerait est la tâche 14, et elle n'a pas encore
+        // tourné : ne pas lire ce qui suit comme mesuré. Corrigé ICI même, où
+        // le commentaire ci-dessus disait explicitement qu'il fallait le
+        // corriger — le code nommait lui-même l'endroit où corriger. Le
         // remède n'est PAS la réélection : c'est
         // `Session::reconstruire_ou_signaler` (`transport/piste_audio.rs`),
         // appelée AVANT tout signalement `AudioMort`, qui refabrique

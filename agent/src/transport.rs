@@ -21,13 +21,17 @@
 //! ouvrier async de tokio.
 //!
 //! Ce fichier ne porte plus que l'état de la session et la boucle qui
-//! l'anime. Le reste est réparti par thème dans les sous-modules, tous
-//! écrits en `impl Session` : `tick` (la liste de priorités d'un tour, dont
-//! `act_on_timeout`), `controle` (canal de contrôle et fin de session),
+//! l'anime. Le reste est réparti par thème dans les sous-modules, presque
+//! tous écrits en `impl Session` : `tick` (la liste de priorités d'un tour,
+//! dont `act_on_timeout`), `controle` (canal de contrôle et fin de session),
 //! `adaptation` (asservissement au réseau), `redimensionnement` (la fenêtre
 //! que l'utilisateur retaille), `evenements` (ce que str0m remonte),
 //! `piste_video` et `piste_audio` (les deux pistes média), `socket` (attente
 //! et réception UDP), `fixtures` (les échafaudages de test partagés).
+//! **Seul `initialisation` fait exception** : une fonction LIBRE
+//! (`construire_rtc`), pas une méthode de `Session` — elle construit le
+//! socket UDP et le `Rtc` str0m avant que `Session` elle-même n'existe, donc
+//! avant qu'il y ait un `self` à qui l'attacher.
 
 use std::collections::VecDeque;
 use std::net::{IpAddr, UdpSocket};
