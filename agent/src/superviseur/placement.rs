@@ -84,20 +84,22 @@ pub fn taille_retenue(demandee: (u32, u32), sortie: (u32, u32)) -> (u32, u32) {
     (retenir(demandee.0, sortie.0), retenir(demandee.1, sortie.1))
 }
 
-/// Sortie DXGI correspondant à des dimensions demandées, parmi celles qui ne
-/// sont pas déjà attribuées.
+/// Sortie DXGI capable de servir un viewport, parmi celles qui ne sont pas
+/// déjà attribuées.
 ///
-/// **Tolérante de `TOLERANCE_PX`, et pas davantage.** L'égalité stricte était
-/// le choix initial, pour ne pas masquer le facteur d'échelle décrit en tête de
-/// module ; la recette D1 a montré qu'elle rendait l'ouverture impossible sur
-/// une course de rattachement de quelques pixels (1280×713 rendue 1280×720).
-/// La tolérance retenue est celle du replacement — quatre pixels — très loin
-/// du facteur 1,5 qui reste, lui, refusé.
+/// **`deja_prises` est ce qui empêche l'inégalité de tout casser.** Avec
+/// l'égalité d'avant D10, deux fenêtres au même viewport se disputaient déjà
+/// une sortie ; avec « au moins aussi grande », une seule grande sortie
+/// conviendrait à TOUTES les fenêtres, et toutes montreraient la même image.
+/// Le filtre désigne par NOM DXGI (`\\.\DISPLAYn`), stable, et non par un
+/// couple d'index d'énumération, positionnel.
 ///
-/// `deja_prises` désigne par NOM DXGI (`\\.\DISPLAYn`), stable, et non plus
-/// par un couple d'index d'énumération — positionnel, il change dès qu'une
-/// sortie apparaît ou disparaît.
-pub fn sortie_par_dimensions(
+/// ⚠️ **L'appelant ne doit chercher QUE parmi les sorties APPARUES** (voir le
+/// commentaire de `creation_sortie::creer_sortie`) : le viewport annoncé par le
+/// navigateur peut égaler la résolution d'un moniteur PHYSIQUE, et l'inégalité
+/// rend ce risque plus grand, pas moins — un moniteur 4K conviendrait
+/// désormais à n'importe quel viewport.
+pub fn sortie_pour_viewport(
     sorties: &[SortieDxgi],
     largeur: u32,
     hauteur: u32,
@@ -107,7 +109,7 @@ pub fn sortie_par_dimensions(
         .iter()
         .find(|s| {
             s.attachee_au_bureau
-                && taille_compatible((s.rect.width, s.rect.height), (largeur, hauteur))
+                && sortie_assez_grande((s.rect.width, s.rect.height), (largeur, hauteur))
                 && !deja_prises.contains(&s.nom_sortie)
         })
         .cloned()
@@ -205,11 +207,18 @@ mod tests {
 
     #[test]
     fn trouve_la_sortie_aux_dimensions_demandees() {
+        // La première sortie doit rester INADÉQUATE sous l'inégalité de D10 —
+        // sans quoi `.find()` s'arrêterait sur elle et le test ne prouverait
+        // plus rien. Sa hauteur (800) est donc en dessous du viewport demandé
+        // (900), exactement comme `n_apparie_pas_une_sortie_aux_mauvaises_
+        // dimensions` reste inadéquate en restant plus petite sur les deux
+        // axes : voir le rapport de la tâche 5, cette donnée n'est pas dans
+        // le brief tel quel, qui rendait ce test rouge en l'état.
         let toutes = vec![
-            sortie(0, 0, 0, 2400, 1080, true),
+            sortie(0, 0, 0, 2400, 800, true),
             sortie(0, 1, 2400, 1600, 900, true),
         ];
-        let trouvee = sortie_par_dimensions(&toutes, 1600, 900, &[]).unwrap();
+        let trouvee = sortie_pour_viewport(&toutes, 1600, 900, &[]).unwrap();
         assert_eq!((trouvee.index_adaptateur, trouvee.index_sortie), (0, 1));
     }
 
@@ -218,7 +227,7 @@ mod tests {
         // Une sortie créée mais que Windows n'a pas encore rattachée ne peut
         // rien afficher : la prendre donnerait une capture noire.
         let toutes = vec![sortie(0, 1, 2400, 1600, 900, false)];
-        assert!(sortie_par_dimensions(&toutes, 1600, 900, &[]).is_none());
+        assert!(sortie_pour_viewport(&toutes, 1600, 900, &[]).is_none());
     }
 
     #[test]
@@ -231,7 +240,7 @@ mod tests {
             sortie(0, 2, 4000, 1600, 900, true),
         ];
         let deja_prises = vec!["\\\\.\\DISPLAY1".to_string()];
-        let trouvee = sortie_par_dimensions(&toutes, 1600, 900, &deja_prises).unwrap();
+        let trouvee = sortie_pour_viewport(&toutes, 1600, 900, &deja_prises).unwrap();
         assert_eq!((trouvee.index_adaptateur, trouvee.index_sortie), (0, 2));
     }
 
@@ -239,7 +248,7 @@ mod tests {
     fn ne_trouve_rien_quand_toutes_sont_prises() {
         let toutes = vec![sortie(0, 1, 2400, 1600, 900, true)];
         let deja_prises = vec!["\\\\.\\DISPLAY1".to_string()];
-        assert!(sortie_par_dimensions(&toutes, 1600, 900, &deja_prises).is_none());
+        assert!(sortie_pour_viewport(&toutes, 1600, 900, &deja_prises).is_none());
     }
 
     #[test]
@@ -248,7 +257,7 @@ mod tests {
         // terrain (5120x1440 annoncé, 3413x960 mesuré) : un appariement
         // approximatif rendrait ce piège invisible.
         let toutes = vec![sortie(0, 1, 2400, 1067, 600, true)];
-        assert!(sortie_par_dimensions(&toutes, 1600, 900, &[]).is_none());
+        assert!(sortie_pour_viewport(&toutes, 1600, 900, &[]).is_none());
     }
 
     /// §3.1 de la recette D1 : une sortie créée à 1280×713 a été rendue par
@@ -257,17 +266,20 @@ mod tests {
     #[test]
     fn un_ecart_dans_la_tolerance_apparie_quand_meme() {
         let sorties = vec![sortie_nommee("\\\\.\\DISPLAY7", 1280, 717)];
-        let trouvee = sortie_par_dimensions(&sorties, 1280, 720, &[]);
+        let trouvee = sortie_pour_viewport(&sorties, 1280, 720, &[]);
         assert_eq!(trouvee.map(|s| s.nom_sortie), Some("\\\\.\\DISPLAY7".into()));
     }
 
-    /// La tolérance ne doit pas avaler le facteur DPI de 1,5 que le dépôt a
-    /// relevé sur une sortie virtuelle : c'est le piège que l'égalité stricte
-    /// protégeait, et qu'il faut continuer de voir échouer.
+    /// Le facteur DPI de 1,5 (5120×1440 annoncé par WMI, 3413×960 mesuré par
+    /// DXGI) n'est plus un motif de REFUS : une sortie plus grande est
+    /// recadrée. Ce qui protégeait contre lui — poser la fenêtre sur une
+    /// texture aux mauvaises dimensions — est désormais assuré par
+    /// `taille_retenue`, pas par l'appariement.
     #[test]
-    fn un_facteur_d_echelle_n_apparie_pas() {
+    fn un_facteur_d_echelle_est_desormais_recadre_et_non_refuse() {
         let sorties = vec![sortie_nommee("\\\\.\\DISPLAY7", 1920, 1080)];
-        assert!(sortie_par_dimensions(&sorties, 1280, 720, &[]).is_none());
+        assert!(sortie_pour_viewport(&sorties, 1280, 720, &[]).is_some());
+        assert_eq!(taille_retenue((1280, 720), (1920, 1080)), (1280, 720));
     }
 
     #[test]
@@ -277,8 +289,45 @@ mod tests {
             sortie_nommee("\\\\.\\DISPLAY8", 1280, 720),
         ];
         let trouvee =
-            sortie_par_dimensions(&sorties, 1280, 720, &["\\\\.\\DISPLAY7".to_string()]);
+            sortie_pour_viewport(&sorties, 1280, 720, &["\\\\.\\DISPLAY7".to_string()]);
         assert_eq!(trouvee.map(|s| s.nom_sortie), Some("\\\\.\\DISPLAY8".into()));
+    }
+
+    /// Le cas produit de D9 : la sortie naît à 3840×2160 pour un viewport de
+    /// 1280×720, et doit désormais être appariée.
+    #[test]
+    fn apparie_une_sortie_nee_beaucoup_plus_grande() {
+        let sorties = vec![sortie_nommee("\\\\.\\DISPLAY8", 3840, 2160)];
+        let trouvee = sortie_pour_viewport(&sorties, 1280, 720, &[]);
+        assert_eq!(trouvee.map(|s| s.nom_sortie), Some("\\\\.\\DISPLAY8".into()));
+    }
+
+    #[test]
+    fn n_apparie_pas_une_sortie_trop_petite() {
+        let sorties = vec![sortie_nommee("\\\\.\\DISPLAY8", 1024, 576)];
+        assert!(sortie_pour_viewport(&sorties, 1280, 720, &[]).is_none());
+    }
+
+    /// Le filtre sur les sorties DÉJÀ PRISES devient plus important, pas
+    /// moins : avec une inégalité, une même grande sortie conviendrait à
+    /// toutes les fenêtres, et toutes montreraient la même image.
+    #[test]
+    fn une_grande_sortie_deja_prise_n_est_pas_reattribuee() {
+        let sorties = vec![
+            sortie_nommee("\\\\.\\DISPLAY8", 3840, 2160),
+            sortie_nommee("\\\\.\\DISPLAY9", 3840, 2160),
+        ];
+        let trouvee =
+            sortie_pour_viewport(&sorties, 1280, 720, &["\\\\.\\DISPLAY8".to_string()]);
+        assert_eq!(trouvee.map(|s| s.nom_sortie), Some("\\\\.\\DISPLAY9".into()));
+    }
+
+    #[test]
+    fn ignore_toujours_une_sortie_non_attachee() {
+        // Une sortie que Windows n'a pas rattachée ne peut rien afficher :
+        // la prendre donnerait une capture noire, quelle que soit sa taille.
+        let toutes = vec![sortie(0, 1, 2400, 3840, 2160, false)];
+        assert!(sortie_pour_viewport(&toutes, 1280, 720, &[]).is_none());
     }
 
     // Distinct de `sortie` ci-dessus (qui fixe `nom_sortie` à partir de

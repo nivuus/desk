@@ -82,7 +82,7 @@ pub(super) fn creer_sortie(
     // du pilote (voir la doc d'`attendre_une_sortie_neuve`).
     let apparues = attendre_une_sortie_neuve(pilote, &avant, LIMITE_RATTACHEMENT);
 
-    let Some(cible) = placement::sortie_par_dimensions(&apparues, largeur, hauteur, prises) else {
+    let Some(cible) = placement::sortie_pour_viewport(&apparues, largeur, hauteur, prises) else {
         // Journaliser les CANDIDATS, pas seulement la demande. L'appariement
         // par dimensions tolère `placement::TOLERANCE_PX` (quatre pixels, la
         // tolérance du replacement) et rien de plus : l'égalité stricte était
