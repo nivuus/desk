@@ -5411,9 +5411,7 @@ où elle a été écrite : elle présume que ce rapport SURVIVRA pour qu'on le
 relise (7 août 2026, tâche 18, sous-bloc D10).** Son espace de travail
 était `.superpowers/sdd/`, **gitignoré et jamais commité** — vérifié par la
 commande : `git log --all --diff-filter=A --name-only -- '*task-14*'` ne rend
-**rien** pour ce chantier (la seule occurrence de ce motif dans tout
-l'historique du dépôt est le `task-14-report.md` d'un chantier de juillet
-2026, sans rapport avec celui-ci), et aucune branche ni aucun *stash* n'en
+**aucun résultat pour ce chantier**, et aucune branche ni aucun *stash* n'en
 porte de copie. **Le rapport a disparu avec la session de D9 qui l'a écrit, et
 il n'y a donc personne à qui « le relire ».** Ce paragraphe-ci, et celui du
 document de résultats de D9 qui porte la même phrase, **SONT** la correction —
