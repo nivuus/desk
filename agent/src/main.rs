@@ -33,6 +33,12 @@ mod signaling;
 // module de `sortie_dxgi.rs`. `superviseur::placement` (tâche 7) en a besoin
 // pour se compiler et se tester sur Linux.
 mod sortie_dxgi;
+// Pas de `#[cfg(windows)]` ici : le prédicat de PERSISTANCE (tâche 2bis, D9,
+// correction n°14 de la revue) est pur -- `Option<(u32, u32)> ×
+// Option<(u32, u32)> -> &str` -- et doit se compiler et se tester sur Linux,
+// même s'il n'est appelé que depuis `diagnostics::multifenetre`, gated
+// derrière `#[cfg(windows)]` dans `diagnostics.rs`.
+mod survie_verdict;
 // Pas de `#[cfg(windows)]` ici : la logique pure de `superviseur` (tâche 2)
 // décide quelles fenêtres méritent d'exister côté navigateur, et doit se
 // compiler et se tester sur Linux sans dépendance à l'API Windows.
@@ -51,6 +57,17 @@ mod windows_source_sortie;
 // l'hôte, alors que `capture.rs` est `#![cfg(windows)]` dans son ensemble.
 #[path = "capture/reprise.rs"]
 mod capture_reprise;
+
+// Même montage encore (D9, tâche 11) : `Telemetrie` est pure — trois
+// compteurs atomiques par SESSION, remplaçant les statiques de PROCESSUS
+// `TICKS`/`CAPTURED`/`PRODUCED` de `windows_source.rs`, mortes des deux côtés
+// depuis D4 (consignation n°1 de D6). `mod telemetrie;` DANS `windows_source`
+// ne suffirait pas : ce fichier est lui-même `#![cfg(windows)]`, et
+// `mod windows_source;` ci-dessous l'est aussi — sur Linux, tout son
+// sous-arbre serait absent de la compilation, y compris ce module, qui ne
+// serait donc plus « éprouvable sur l'hôte ».
+#[path = "windows_source/telemetrie.rs"]
+mod windows_source_telemetrie;
 
 #[cfg(windows)]
 mod capture;

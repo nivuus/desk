@@ -1,0 +1,307 @@
+//! Le tour ÉLIMINATOIRE (étape 2, brief D9) : essaie les combinaisons connues
+//! sur la sortie SOUS TEST, duplication DXGI ouverte et tenue, jusqu'à ce que
+//! la relecture DXGI confirme un mouvement, ou jusqu'à épuisement.
+//!
+//! Extrait de `mode_sortie.rs` à la tâche 2bis du sous-bloc D9, pour le
+//! plafond de 500 lignes (`CLAUDE.md`) — même raison que `temoin.rs`,
+//! `voisines.rs` et `combinaisons.rs`, extraits à la tâche 1.
+
+use anyhow::Result;
+use windows::Win32::Graphics::Gdi::DISP_CHANGE_SUCCESSFUL;
+
+use super::combinaisons::{appliquer_combo, combos_du_tour};
+use super::persistance::combinaison_imposee;
+use super::voisines::DuplicationVoisine;
+use super::{choisir_cible, modes_annonces};
+use super::super::montee::{attendre_en_pinguant, relever_topologie, DELAI_TOPOLOGIE};
+use crate::moniteurs_virtuels::pilote::PiloteParIoctl;
+
+/// Ce qu'un tour de combinaisons a établi.
+pub(super) struct ResultatTour {
+    /// Cible numérique effectivement visée pendant le tour, ou `None` si
+    /// aucune cible mesurable n'a pu être choisie (`P1 NON MESURABLE`) — le
+    /// témoin n'a alors rien à rejouer, voir son appelant.
+    pub(super) cible: Option<(u32, u32)>,
+    /// Le bras qui a fait bouger la sortie, s'il y en a un.
+    pub(super) gagnante: Option<&'static str>,
+    /// Nombre de tentatives où au moins une voisine a perdu l'accès à sa
+    /// duplication pendant le tour — voir
+    /// `voisines::DuplicationVoisine::sonder` pour la granularité exacte.
+    pub(super) pertes_voisines: u32,
+    /// La valeur BRUTE de `MULTIFENETRE_MODE_SORTIE_DRAPEAUX` (ce que
+    /// l'opérateur a DEMANDÉ), à distinguer de `gagnante` (ce qui s'est
+    /// RÉELLEMENT passé) — voir `persistance::journaliser_verdict`, qui
+    /// journalise les deux séparément depuis la revue de la tâche 2bis.
+    pub(super) combinaison_imposee: Option<String>,
+}
+
+/// Essaie les combinaisons connues jusqu'à ce que la relecture DXGI confirme
+/// la cible, ou jusqu'à épuisement. Rend toujours `Ok` : un refus — ou
+/// l'impossibilité de choisir une cible mesurable — est une mesure, pas une
+/// erreur de la sonde ; voir le commentaire de tête de `mode_sortie.rs`. Seule
+/// une topologie devenue illisible fait remonter une erreur.
+///
+/// `avant_a_la_creation` est la taille lue par DXGI juste après la création
+/// de la sortie sous test, plusieurs secondes avant que ce tour ne
+/// s'exécute — voir la relecture FRAÎCHE ci-dessous, qui la remplace comme
+/// référence de mouvement.
+///
+/// `voisines` : sondées une fois PAR TENTATIVE (voir `DuplicationVoisine::sonder`)
+/// — c'est l'inconnue annexe n°2 de D8 relevée au même moment que
+/// l'éliminatoire, pas une mesure séparée.
+///
+/// Le tour est restreint à UN bras si l'opérateur l'impose (tâche 2bis, D9,
+/// `MULTIFENETRE_MODE_SORTIE_DRAPEAUX`) — voir `persistance::combinaison_imposee`
+/// et `combinaisons::combos_du_tour`. Sans elle, comportement inchangé : les
+/// quatre combos, dans l'ordre.
+pub(super) fn essayer_les_modes(
+    pilote: &PiloteParIoctl,
+    nom_sortie: &str,
+    avant_a_la_creation: (u32, u32),
+    demande: (u32, u32),
+    voisines: &mut [DuplicationVoisine],
+) -> Result<ResultatTour> {
+    // La valeur BRUTE demandée par l'opérateur, capturée UNE fois et
+    // réutilisée aux deux points de sortie (`P1 NON MESURABLE` inclus) --
+    // voir le champ `combinaison_imposee` de `ResultatTour`.
+    let imposee = combinaison_imposee();
+
+    // ⚠️ **Correction (revue de la tâche 2bis, Critique).** `avant_a_la_creation`
+    // a été capturé plusieurs secondes plus tôt, AVANT l'ouverture de la
+    // duplication et la création des deux voisines. Entre ces deux instants,
+    // la sortie peut avoir bougé SANS AUCUN appel d'API : `p-persistance-2`
+    // et le témoin invalide de la tâche 2bis montrent tous deux `DISPLAY5`
+    // passer de 1280×720 à 2560×1440 avant tout `ChangeDisplaySettingsExW`
+    // de CE tour -- un résidu de pollution du registre d'une exécution
+    // antérieure, apparemment réappliqué à la création d'une sortie
+    // virtuelle voisine (mécanisme non expliqué, doctrine D1/D2 de
+    // l'abandon du mutex sous une autre forme). Comparer `mouvement` contre
+    // la valeur STALE ferait passer ce résidu pour un effet DE ce tour.
+    // La relecture fraîche sert désormais de référence PARTOUT dans cette
+    // fonction (`choisir_cible` compris) ; `avant_a_la_creation` ne sert
+    // plus qu'à détecter et journaliser l'écart.
+    //
+    // ⚠️ **Correction (revue de la tâche 2bis, seconde passe, point 12).**
+    // `.unwrap_or(avant_a_la_creation)` était le même trou que celui que
+    // cette correction referme partout ailleurs (I4/I13) : si la SUT est
+    // ABSENTE de la relecture fraîche, l'ancien repli rendait
+    // `avant == avant_a_la_creation` PAR CONSTRUCTION, et le `WARN`
+    // d'écart ci-dessous ne pouvait alors JAMAIS se déclencher -- une
+    // sortie disparue se lisait comme « aucun écart détecté », exactement
+    // l'inverse. L'absence est maintenant un événement journalisé À PART
+    // (`tracing::error!`, jamais confondu avec le cas « présente et
+    // inchangée »), avant même de retomber sur la valeur de création.
+    let releve_frais = relever_topologie("juste avant le premier essai (relecture fraîche)")?;
+    let taille_fraiche = releve_frais
+        .iter()
+        .find(|sortie| sortie.nom_sortie == nom_sortie)
+        .map(|sortie| (sortie.rect.width, sortie.rect.height));
+    let avant = match taille_fraiche {
+        Some(taille) => taille,
+        None => {
+            tracing::error!(
+                nom_sortie,
+                largeur_a_la_creation = avant_a_la_creation.0,
+                hauteur_a_la_creation = avant_a_la_creation.1,
+                "la sortie sous test est ABSENTE de la relecture fraiche -- repli sur la taille \
+                 de creation, mais ceci N'EST PAS un 'aucun ecart detecte' : c'est une anomalie \
+                 distincte, journalisee ici pour ne jamais se confondre avec elle"
+            );
+            avant_a_la_creation
+        }
+    };
+    if avant != avant_a_la_creation {
+        tracing::warn!(
+            nom_sortie,
+            largeur_a_la_creation = avant_a_la_creation.0,
+            hauteur_a_la_creation = avant_a_la_creation.1,
+            largeur_fraiche = avant.0,
+            hauteur_fraiche = avant.1,
+            "la sortie a bouge SANS appel d'API entre sa creation et ce tour -- residu probable \
+             d'une execution anterieure ; la relecture FRAICHE sert desormais de reference"
+        );
+    }
+
+    let annonces = modes_annonces(nom_sortie);
+    tracing::info!(
+        nombre = annonces.len(),
+        largeur_avant_tentative = avant.0,
+        hauteur_avant_tentative = avant.1,
+        contient_demande = annonces.contains(&demande),
+        demande_egale_avant = demande == avant,
+        modes = ?annonces,
+        "modes annonces (EnumDisplaySettingsExW) avant tout changement"
+    );
+
+    let cible = match choisir_cible(avant, demande, &annonces) {
+        Some(cible) => cible,
+        None => {
+            tracing::error!(
+                verdict = "P1 NON MESURABLE",
+                raison = "aucun mode annonce ne differe de la taille courante",
+                largeur_avant_tentative = avant.0,
+                hauteur_avant_tentative = avant.1,
+                largeur_demandee = demande.0,
+                hauteur_demandee = demande.1,
+                modes = ?annonces,
+                "verdict P1 : mesure impossible, aucune tentative effectuee"
+            );
+            return Ok(ResultatTour {
+                cible: None,
+                gagnante: None,
+                pertes_voisines: 0,
+                combinaison_imposee: imposee,
+            });
+        }
+    };
+    if cible == demande {
+        tracing::info!(
+            largeur_cible = cible.0,
+            hauteur_cible = cible.1,
+            "cible retenue = resolution demandee (differe deja de la taille courante)"
+        );
+    } else {
+        tracing::warn!(
+            largeur_demandee = demande.0,
+            hauteur_demandee = demande.1,
+            largeur_avant_tentative = avant.0,
+            hauteur_avant_tentative = avant.1,
+            largeur_cible = cible.0,
+            hauteur_cible = cible.1,
+            "la resolution demandee egale deja la taille courante (persistance registre probable \
+             d'une execution anterieure) -- cible substituee dynamiquement parmi les modes annonces"
+        );
+    }
+
+    let mut dernier_code = 0i32;
+    // ⚠️ **Correction (revue de la tâche 2bis, Important I5).** Initialisée à
+    // `avant` (fraîche) et non plus `(0, 0)` : sur un tour VIDE (aucun combo
+    // ne correspond à `MULTIFENETRE_MODE_SORTIE_DRAPEAUX`, voir
+    // `combinaisons::combos_du_tour`), `derniere_taille` restait à `(0, 0)`
+    // et `mouvement_observe = derniere_taille != avant` valait presque
+    // toujours `true` -- un tour qui n'avait RIEN tenté affichait un
+    // mouvement. Avec `avant` comme valeur de repos, l'absence de tentative
+    // se traduit par l'absence de mouvement, sans code spécial.
+    let mut derniere_taille = avant;
+    let mut gagnante: Option<&'static str> = None;
+    let mut cible_exacte_atteinte = false;
+    let mut pertes_voisines = 0u32;
+    // Compte les tentatives RÉELLEMENT effectuées -- distinct de
+    // `gagnante.is_some()` : un tour VIDE (0 tentative) et un tour qui a
+    // épuisé ses bras sans succès (N tentatives, 0 succès) se ressemblaient
+    // jusqu'ici (`gagnante = None` dans les deux cas). Voir le verdict
+    // "P1 NON TENTE" plus bas.
+    let mut tentatives = 0u32;
+    for combo in combos_du_tour(imposee.as_deref()) {
+        tentatives += 1;
+        dernier_code = appliquer_combo(nom_sortie, cible.0, cible.1, &combo);
+        // Windows reconfigure sa topologie d'affichage de façon asynchrone —
+        // exactement pourquoi `montee.rs` observe le même délai de grâce
+        // après une création. Interroger DXGI trop tôt ferait conclure à un
+        // refus là où il n'y a qu'un délai, et battre le chien de garde
+        // pendant l'attente comme le fait le reste de ce module.
+        attendre_en_pinguant(pilote, DELAI_TOPOLOGIE)?;
+        // Sondées ICI, après l'attente : si une perte survient à n'importe
+        // quel instant de la fenêtre qui vient de s'écouler, l'instance de
+        // duplication de la voisine la porte encore au moment de cette
+        // sollicitation (voir `DuplicationVoisine::sonder`) -- une sonde par
+        // tentative suffit à la détecter.
+        for voisine in voisines.iter_mut() {
+            if voisine.sonder() {
+                pertes_voisines += 1;
+            }
+        }
+        let releve = relever_topologie(&format!("après tentative « {} »", combo.etiquette()))?;
+        let taille_lue = releve
+            .iter()
+            .find(|sortie| sortie.nom_sortie == nom_sortie)
+            .map(|sortie| (sortie.rect.width, sortie.rect.height));
+        // ⚠️ **Correction (revue de la tâche 2bis, seconde passe, point 13).**
+        // L'ancien repli `.unwrap_or((0, 0))` faisait d'une sortie ABSENTE
+        // après tentative un FAUX mouvement dans la quasi-totalité des cas
+        // (`(0, 0) != avant` presque toujours) -- un bras aurait pu
+        // « gagner » (`gagnante = Some(...)`, verdict "P1 RECU") sur la
+        // seule disparition de la sortie, jamais sur un changement de
+        // taille réel. L'absence est maintenant une anomalie journalisée à
+        // part qui ne peut PAS faire gagner ce bras : `derniere_taille`
+        // garde la dernière valeur RÉELLEMENT lue (celle d'avant cette
+        // tentative, ou `avant` à la première itération).
+        let Some(taille_lue) = taille_lue else {
+            tracing::error!(
+                etiquette = combo.etiquette(),
+                nom_sortie,
+                "la sortie sous test est ABSENTE de la relecture apres cette tentative -- \
+                 aucun mouvement ne peut en etre conclu, ce bras ne peut pas gagner"
+            );
+            continue;
+        };
+        derniere_taille = taille_lue;
+        // Le critère qui compte est le MOUVEMENT (`derniere_taille != avant`),
+        // pas l'égalité à la cible choisie — voir le commentaire de tête du
+        // module parent (défaut F1 corrigé). `cible_atteinte` reste
+        // journalisé, séparément : il documente si le pilote honore la valeur
+        // exacte demandée, une question plus fine que P1, jamais celle qui
+        // décide du verdict.
+        let mouvement = derniere_taille != avant;
+        let cible_atteinte = derniere_taille == cible;
+        tracing::info!(
+            etiquette = combo.etiquette(),
+            code_brut = dernier_code,
+            api_annonce_succes = (dernier_code == DISP_CHANGE_SUCCESSFUL.0),
+            largeur_relue = derniere_taille.0,
+            hauteur_relue = derniere_taille.1,
+            mouvement,
+            cible_atteinte,
+            "relecture DXGI (GetDesc/DesktopCoordinates) apres la tentative"
+        );
+        if mouvement {
+            gagnante = Some(combo.etiquette());
+            cible_exacte_atteinte = cible_atteinte;
+            break;
+        }
+    }
+
+    // ⚠️ **Correction (revue de la tâche 2bis, I5/I6).** Un tour VIDE
+    // (`tentatives == 0`, filtre de `combos_du_tour` n'ayant rien retenu)
+    // rendait "P1 REFUSE" -- une absence d'essai présentée comme un relevé,
+    // exactement la confusion que la doctrine du dépôt (D9, tâche 2bis I6)
+    // interdit. "P1 NON TENTE" la distingue d'un refus RÉEL (N tentatives,
+    // 0 succès).
+    let verdict = if gagnante.is_some() {
+        "P1 RECU"
+    } else if tentatives == 0 {
+        "P1 NON TENTE"
+    } else {
+        "P1 REFUSE"
+    };
+    tracing::info!(
+        verdict,
+        combinaison_imposee = ?imposee,
+        combinaison_gagnante = ?gagnante,
+        tentatives_effectuees = tentatives,
+        code_brut_dernier_essai = dernier_code,
+        largeur_avant_tentative = avant.0,
+        hauteur_avant_tentative = avant.1,
+        largeur_relue = derniere_taille.0,
+        hauteur_relue = derniere_taille.1,
+        largeur_cible = cible.0,
+        hauteur_cible = cible.1,
+        // Le verdict lui-même : un mouvement (A != B) a-t-il été observé ?
+        // C'est CE champ qui gouverne "P1 RECU" ci-dessus, pas une égalité à
+        // la cible (voir le commentaire de tête du module parent, défaut F1
+        // corrigé) -- recalculé ici, redondant avec `gagnante.is_some()` par
+        // construction, pour qu'un lecteur du journal n'ait pas à le déduire.
+        // Sur un tour VIDE, `derniere_taille == avant` par construction
+        // (voir son initialisation) : `mouvement_observe` vaut `false`,
+        // jamais `true` par défaut (correction I5).
+        mouvement_observe = derniere_taille != avant,
+        // Secondaire : le pilote a-t-il honoré la valeur EXACTE demandée, ou
+        // s'est-il arrêté à un mode intermédiaire ? Peut valoir `false` avec
+        // un verdict "P1 RECU" -- ce n'est pas une contradiction, c'est une
+        // question plus fine que celle de P1.
+        cible_exacte_atteinte,
+        pertes_acces_voisines_pendant_le_tour = pertes_voisines,
+        "verdict P1 : une sortie virtuelle accepte-t-elle un autre mode que celui de sa creation"
+    );
+    Ok(ResultatTour { cible: Some(cible), gagnante, pertes_voisines, combinaison_imposee: imposee })
+}

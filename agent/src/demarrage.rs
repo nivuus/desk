@@ -107,27 +107,44 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     #[cfg(windows)]
     audio::brancher(&config, &mut session, clock_origin);
 
-    // Surveillance du chemin réel (`SOURCE_TRACE=1`) : cadence d'appel de
-    // `next_frame`, captures neuves, unités d'accès produites. Contrairement
-    // à `watch_encoder`, ces compteurs survivent à un redimensionnement (qui
-    // remplace l'encodeur, donc sa télémétrie) — c'est justement le cas qu'il
-    // faut pouvoir observer.
+    // Surveillance du chemin réel (`SOURCE_TRACE=1`) : ce qui reste ici après
+    // la tâche 11 de D9 est la partie ENCODEUR (tentatives/accumulation de
+    // capture, entrées/sorties du convertisseur et de l'encodeur). La cadence
+    // de `next_frame`, les captures neuves et les unités produites — les trois
+    // compteurs qui vivaient dans `windows_source::TICKS`/`CAPTURED`/
+    // `PRODUCED` — sont partis avec eux : ce fil-ci est dans l'ENFANT, qui n'a
+    // plus de `WindowsSource` depuis D4, donc plus rien à en lire. Ils sont
+    // désormais un champ PAR SESSION sur `WindowsSource` lui-même
+    // (`telemetrie`, voir `windows_source/telemetrie.rs`), tracés côté
+    // CAPTEUR par `capteur/fenetre.rs`, où la source vit réellement.
+    //
+    // ⚠️ Les QUINZE compteurs que ce fil lit encore (`capture::ATTEMPTS`/
+    // `HITS`/`ACCUMULATED`, `encode::NEED_INPUT_EVENTS`/`ENCODER_INPUTS`/
+    // `DROPPED_STALE`/`CONVERTER_*`/`*_NS`, `windows_source::CAPTURE_NS`/
+    // `SUBMIT_NS`/`DRAIN_NS`) sont morts pour la MÊME raison que les trois
+    // ci-dessus : ce sont des statiques du crate, écrites uniquement par
+    // `WindowsSource` (`capture.rs:311,328`, `encode.rs:522,850,868`), et
+    // `demarrage/source.rs` dit en toutes lettres que « l'enfant ne touche
+    // plus ni DXGI ni Media Foundation » en mode multi-fenêtres. Ce fil ne
+    // peut donc rien y lire non plus, en mode multi-fenêtres.
+    //
+    // Second effet, réciproque : en mode MONO-fenêtre, ce fil touche bien
+    // DXGI/MF en process (via `WindowsSource`) et ces quinze compteurs y sont
+    // vivants — mais `Telemetrie` (le remplaçant par session de `TICKS`/
+    // `CAPTURED`/`PRODUCED`) n'a qu'un seul lecteur, `capteur/fenetre/
+    // trace.rs`, qui ne tourne que dans le CAPTEUR. Le chemin mono-fenêtre a
+    // donc perdu ces trois compteurs-là, sans que rien ne les y remplace.
     #[cfg(windows)]
     let _source_trace = std::env::var("SOURCE_TRACE").is_ok().then(|| {
         std::thread::spawn(|| {
             use std::sync::atomic::Ordering::Relaxed;
-            let (mut t0, mut c0, mut p0, mut a0, mut h0, mut ac0) = (0u64, 0u64, 0u64, 0u64, 0u64, 0u64);
+            let (mut a0, mut h0, mut ac0) = (0u64, 0u64, 0u64);
             let (mut ni0, mut ei0, mut ds0) = (0u64, 0u64, 0u64);
             let (mut cn0, mut sn0, mut dn0) = (0u64, 0u64, 0u64);
             let (mut cv0, mut in0, mut out0) = (0u64, 0u64, 0u64);
             let (mut ci0, mut co0, mut cs0) = (0u64, 0u64, 0u64);
             loop {
                 std::thread::sleep(Duration::from_secs(2));
-                let (t, c, p) = (
-                    windows_source::TICKS.load(Relaxed),
-                    windows_source::CAPTURED.load(Relaxed),
-                    windows_source::PRODUCED.load(Relaxed),
-                );
                 let (a, h, ac) = (
                     capture::ATTEMPTS.load(Relaxed),
                     capture::HITS.load(Relaxed),
@@ -158,9 +175,6 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                 // qui sature d'un étage qui attend.
                 let pct = |now: u64, prev: u64| (now - prev) as f64 / 2e9 * 100.0;
                 tracing::info!(
-                    ticks_hz = (t - t0) as f64 / 2.0,
-                    captured_hz = (c - c0) as f64 / 2.0,
-                    produced_hz = (p - p0) as f64 / 2.0,
                     acquire_hz = (a - a0) as f64 / 2.0,
                     hits_hz = (h - h0) as f64 / 2.0,
                     // Mises à jour du bureau réellement survenues, y compris
@@ -181,7 +195,7 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                     enc_out_pct = pct(out_ns, out0),
                     "cadence de la source (chemin réel)"
                 );
-                (t0, c0, p0, a0, h0, ac0) = (t, c, p, a, h, ac);
+                (a0, h0, ac0) = (a, h, ac);
                 (ni0, ei0, ds0) = (ni, ei, ds);
                 (cn0, sn0, dn0) = (cap_ns, sub_ns, dr_ns);
                 (cv0, in0, out0) = (cv_ns, in_ns, out_ns);
@@ -279,6 +293,11 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     // boucle d'émission du signaling — jusqu'à une seconde par tour, voire
     // beaucoup plus dès que la session n'est plus vivante. On la déplace donc
     // sur le pool de threads bloquants de tokio, dédié à cet usage.
+    // Clonée avant la fermeture `move` ci-dessous : c'est cette copie qui
+    // donne à la trace `contrôle reçu` sa `session` (voir `on_control` plus
+    // bas), faute de quoi elle est indiscernable de celle de tout autre
+    // enfant partageant le même `agent.log` (D4).
+    let session_id = config.session_id.clone();
     let transport = tokio::task::spawn_blocking(move || {
         #[cfg(windows)]
         let mut injector = window_hwnd_addr.map(|addr| {
@@ -378,7 +397,12 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                 }
             }
         };
-        let mut on_control = |message| tracing::info!(?message, "contrôle reçu");
+        // `session` : sans ce champ la trace n'est PAS attribuable — tous les enfants
+        // héritent le même `agent.log` depuis D4. C'est exactement ce qui a rendu
+        // indécidable « 2 `Resize` pour 5 sessions » (leg 10 de D8, correction I8) :
+        // les deux lignes ne portaient aucune session, donc rien n'établissait
+        // qu'elles vinssent de deux sessions distinctes.
+        let mut on_control = |message| tracing::info!(session = %session_id, ?message, "contrôle reçu");
         session.run(&mut on_input, &mut on_control)
     });
 

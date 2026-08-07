@@ -50,39 +50,16 @@ impl ModeCapture {
     /// change la taille d'**encodage** et non celle de la source
     /// (`set_encode_size`), continue de fonctionner sans passer par ici.
     ///
-    /// ⚠️ **Le nom de cette méthode reste juste, mais le paragraphe ci-dessus
-    /// est à moitié réfuté depuis le sous-bloc D8 (4 août 2026).** La PRÉMISSE
-    /// tient — le pilote SudoVDA n'a effectivement toujours aucun `SET_MODE`
-    /// parmi ses six IOCTL — et la CONCLUSION tombe : la sortie SUIT désormais
-    /// le viewport, par l'API d'affichage de **Windows**
-    /// (`ChangeDisplaySettingsExW`) et non par le canal du pilote. Ce que ce
-    /// booléen distingue n'est donc plus « retaillable » de « figé », mais
-    /// **quel chemin** `resize` emprunte : `false` mène à
-    /// `WindowsSource::changer_mode_de_sortie` (la sortie change de mode, la
-    /// fenêtre y est reposée), `true` au recadrage historique. Ce qui reste
-    /// vrai sans réserve : en `SortieEntiere` il n'y a jamais de fenêtre à
-    /// retailler *dans* sa sortie, et l'adaptation réseau ne passe toujours pas
-    /// par ici.
-    ///
-    /// **Ce qui l'établit, pour le refaire sans croire personne** : la sonde P1
-    /// `agent/src/diagnostics/multifenetre/mode_sortie.rs`
-    /// (`MULTIFENETRE_MODE_SORTIE=1920x1080`) crée une sortie à 1280×720 par le
-    /// chemin de production, la fait passer à 1920×1080, et **relit par DXGI**
-    /// (`GetDesc`/`DesktopCoordinates`, jamais WMI — champ vu périmé de 68 s
-    /// sur ce terrain). Verdict « P1 RECU », avec `CDS_UPDATEREGISTRY` seul, du
-    /// premier coup.
-    ///
-    /// ⚠️ **IMPORTANT 2 (revue de la tâche 9), écart banc/produit jamais
-    /// mesuré.** Cette sonde crée sa sortie, change son mode, puis relit —
-    /// elle n'ouvre JAMAIS `DuplicateOutput` dessus. En production, le
-    /// changement de mode retaille une sortie dont la duplication DXGI est
-    /// ouverte et détenue pendant l'attente (jusqu'à 3,1 s,
-    /// `windows_source/redimensionnement/mode_sortie.rs`). P1 ne dit donc rien
-    /// de ce que fait `ChangeDisplaySettingsExW` sur une sortie EN COURS de
-    /// capture — la même classe d'écart banc/produit que le chantier « N
-    /// duplications de front » a payée en D1. **Non corrigeable par du
-    /// code** : les tâches 10 et 11 (recette) en sont la première mesure
-    /// réelle.
+    /// ⚠️ **Le sous-bloc D8 avait établi que la PRÉMISSE ci-dessus était
+    /// exacte, mais la CONCLUSION réfutable** : une autre voie
+    /// (`ChangeDisplaySettingsExW`) faisait bien suivre la sortie au viewport.
+    /// Le sous-bloc D9 l'a mesurée en conditions de produit et l'a
+    /// **retirée** — le changement ne survivait pas à l'ouverture de la
+    /// fenêtre suivante, et il polluait le registre au point de bloquer le
+    /// produit (voir le constat de mesure en tête de
+    /// `capteur/plein_ecran.rs`). **Le paragraphe ci-dessus décrit donc à
+    /// nouveau, sans réserve, le comportement du dépôt** : `false` ne mène
+    /// plus qu'à « ne rien faire », comme avant D8.
     pub fn redimensionne_la_fenetre(self) -> bool {
         matches!(self, ModeCapture::FenetreRecadree)
     }
@@ -105,11 +82,31 @@ pub const TAILLE_MAX_SORTIE: (u32, u32) = (1920, 1080);
 /// n'appliquait aucun plancher**, contrairement à la branche d'échelle
 /// (`.max(2)` déjà présent dessus). `(0, 0)` — une boîte vidéo réduite à
 /// rien, transitoirement vraie pendant une fenêtre repliée ou une transition
-/// de plein écran — y passait tel quel. Ce `.max(2)` reste un filet minimal :
-/// le plancher qui compte réellement (160×120, la même valeur que le chemin
-/// `FenetreRecadree`) est appliqué par l'APPELANT
-/// (`windows_source/redimensionnement.rs::resize`), avant même d'atteindre
-/// cette fonction — dont le rôle propre reste borné au PLAFOND.
+/// de plein écran — y passait tel quel. Ce `.max(2)` reste un filet minimal.
+///
+/// ⚠️ **Cette fonction n'a plus AUCUN appelant en production depuis le
+/// sous-bloc D9** (voir le constat de mesure en tête de
+/// `capteur/plein_ecran.rs`) : son unique appelant, la branche `SortieEntiere`
+/// de `WindowsSource::resize`, a été retirée avec le changement de mode de
+/// sortie. Elle reste ici, `pub` et testée, parce qu'elle borne un cas
+/// général (rapport d'aspect préservé, dimensions paires, jamais nulles) que
+/// rien n'interdit de réemployer. Son rôle propre reste borné au PLAFOND
+/// (`TAILLE_MAX_SORTIE`) ; le plancher applicatif de 160×120 qu'appliquait
+/// l'ancien appelant n'existe donc plus nulle part.
+///
+/// ⚠️ **Et la TAILLE DE CRÉATION d'une sortie n'a jamais été bornée par
+/// personne — ce n'est pas une régression de D9, c'est une lacune que D9 rend
+/// plus mordante.** `superviseur::boucle::creer_sortie` passe au pilote le
+/// viewport annoncé par la page, tel quel ; or la tâche 5 de D9 fait désormais
+/// annoncer ce viewport en **pixels périphériques** (`client/src/main.ts`,
+/// `innerWidth × devicePixelRatio`). Un client à `devicePixelRatio = 2`
+/// demande donc une sortie de 2560×1440 là où il demandait 1280×720, soit
+/// quatre fois les pixels à capturer et à encoder — et cette fonction, la
+/// seule du dépôt qui sache poser un plafond, se retrouve sans appelant dans
+/// le même sous-bloc. **Aucun client HiDPI réel n'a été mesuré** : le montage
+/// de recette est un Chrome sans interface, et D9 n'a exercé
+/// `deviceScaleFactor = 2` que sur la symétrie d'unité, jamais sur le coût.
+/// Relevé par la revue transverse de fin de branche D9 ; legs de D9.
 pub fn borner_a_la_taille_max((l, h): (u32, u32)) -> (u32, u32) {
     let (max_l, max_h) = TAILLE_MAX_SORTIE;
     if l <= max_l && h <= max_h {

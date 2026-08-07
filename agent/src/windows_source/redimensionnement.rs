@@ -12,22 +12,14 @@
 //! Aucune valeur, aucun ordre d'opération n'a changé au déplacement ; la seule
 //! addition est le garde de mode en tête de `resize`.
 //!
-//! **Le sous-bloc D8 lui a donné un enfant, `mode_sortie`**, qui porte le
-//! chemin `SortieEntiere` : la sortie virtuelle y change de mode pour suivre le
-//! viewport. Il vit sous ce module-ci, et non sous `windows_source`, pour ne
-//! pas ajouter une ligne à un fichier en dette de taille gelée — voir son
-//! commentaire de tête.
-//!
-//! ⚠️ **CE CHEMIN EST DÉSARMÉ PAR DÉFAUT** depuis la revue finale de branche
-//! de D8 : `resize` retombe sur le comportement D1 (ne rien faire) tant que
-//! `PLEIN_ECRAN_MODE_SORTIE=1` n'est pas posé. **Ce qui reste actif et livré
-//! du plein écran, c'est la DÉTECTION et l'ANNONCE** (`capteur/fenetre.rs` →
+//! ⚠️ **Le sous-bloc D8 avait donné à ce module un enfant, `mode_sortie`**, qui
+//! faisait suivre à la sortie virtuelle le mode du viewport. Le sous-bloc D9
+//! l'a mesuré — le changement ne survit pas à l'ouverture de la fenêtre
+//! suivante, et `CDS_UPDATEREGISTRY` pollue le registre au point de bloquer le
+//! produit — et l'a **retiré**. Voir le constat de mesure en tête de
+//! `capteur/plein_ecran.rs`. **Ce qui reste actif et livré du plein écran,
+//! c'est la DÉTECTION et l'ANNONCE** (`capteur/fenetre.rs` →
 //! `AgentControl::Fullscreen`), qui ne passent pas par ici.
-
-// Petit-fils de `windows_source` : il voit les champs privés de
-// `WindowsSource` comme ce module-ci, la visibilité privée de Rust s'étendant
-// à tous les descendants du module définissant.
-mod mode_sortie;
 
 use anyhow::Result;
 
@@ -56,10 +48,15 @@ impl WindowsSource {
         // bureau. Les deux sont faux en mode `SortieEntiere`, et le chemin
         // était pourtant emprunté SYSTÉMATIQUEMENT : le `ResizeObserver` du
         // client émet une fois à l'observation initiale, donc ~200 ms après
-        // chaque connexion, avec une taille qui n'a aucune raison d'égaler
-        // celle de la sortie (elle vaut `clientWidth × devicePixelRatio`, là où
-        // la sortie a été créée sur `innerWidth`), si bien que le court-circuit
-        // « taille inchangée » plus bas ne la retenait pas.
+        // chaque connexion, avec une taille qui n'avait alors aucune raison
+        // d'égaler celle de la sortie (elle vaut `clientWidth × devicePixelRatio`,
+        // là où la sortie était créée sur `innerWidth` SEUL, sans le facteur
+        // dpr), si bien que le court-circuit « taille inchangée » plus bas ne
+        // la retenait pas. ⚠️ **Ce désaccord d'unité est celui que la tâche 5
+        // du sous-bloc D9 a précisément fermé** (`client/src/main.ts`, l'annonce
+        // de viewport multiplie désormais par `devicePixelRatio`) : les deux
+        // unités concordent aujourd'hui, ce qui ne change rien à ce garde —
+        // il reste nécessaire en mode `SortieEntiere` quelle que soit l'unité.
         //
         // La suite produisait alors, dans l'ordre : une fenêtre rétrécie qui
         // quitte sa sortie virtuelle (que le contrôle à 1 Hz du superviseur
@@ -71,118 +68,33 @@ impl WindowsSource {
         // réel de la VM diffusé dans la fenêtre du navigateur, pour un seul
         // `warn!`.
         //
-        // Ne rien faire ÉTAIT le comportement juste, et ne l'est plus. La spec
-        // §3.3 actait que le redimensionnement d'une fenêtre déjà ouverte est
-        // hors périmètre de D1 « le pilote SudoVDA n'expose aucun `SET_MODE`,
-        // la sortie ne peut donc pas suivre ».
+        // Ne rien faire est le comportement JUSTE, pas un pis-aller : la spec
+        // §3.3 acte que le redimensionnement d'une fenêtre déjà ouverte est
+        // hors périmètre de D1 (le pilote SudoVDA n'expose aucun `SET_MODE`,
+        // la sortie ne peut donc pas suivre). `Ok(())` et non `Err` : rien n'a
+        // échoué, et une erreur ferait journaliser un incident à chaque
+        // connexion. L'adaptation réseau, elle, passe par `set_encode_size` et
+        // n'est pas concernée.
         //
-        // ⚠️ **La PRÉMISSE reste vraie, la CONCLUSION est réfutée** (sous-bloc
-        // D8, 4 août 2026). Le pilote SudoVDA n'a effectivement toujours aucun
-        // `SET_MODE` parmi ses six IOCTL — ce n'était pas une erreur de D1. Ce
-        // qui a changé est le CHEMIN employé : l'API d'affichage de WINDOWS
-        // (`ChangeDisplaySettingsExW`), et non le canal du pilote.
-        //
-        // ⚠️ **MAIS EN CONFIGURATION LIVRÉE, LA SORTIE NE SUIT PAS LE
-        // VIEWPORT** (revue finale de branche, 5 août 2026) : le chemin que
-        // `changer_mode_de_sortie` porte est **désarmé par défaut**, et il
-        // faut poser `PLEIN_ECRAN_MODE_SORTIE=1` pour l'armer — voir le garde
-        // quelques lignes plus bas, et ses trois raisons dans
-        // `capteur::plein_ecran::changement_de_mode_arme`. *Une rédaction
-        // antérieure de ce bloc affirmait ici « la sortie suit donc désormais
-        // le viewport » : c'était vrai le 4 août, et faux le lendemain.*
-        //
-        // **Ce qui reste vrai sans réserve** : la voie est établie, elle
-        // fonctionne au banc, et la conclusion de D1 (« la sortie ne peut pas
-        // suivre ») reste réfutée. Ce qui manque n'est pas un chemin, c'est
-        // une mesure de ce chemin **en production**.
-        //
-        // **Ce qui l'établit, et comment le refaire sans croire personne** :
-        // la sonde P1 `agent/src/diagnostics/multifenetre/mode_sortie.rs`
-        // (`MULTIFENETRE_MODE_SORTIE=1920x1080`) crée une sortie virtuelle à
-        // 1280×720 par le chemin de production, la fait passer à 1920×1080, et
-        // **relit par DXGI** (`GetDesc`/`DesktopCoordinates`) — jamais par WMI,
-        // dont le champ a été vu périmé de 68 s sur ce terrain. Elle a rendu
-        // « P1 RECU » avec `CDS_UPDATEREGISTRY` seul, du premier coup. ⚠️ **Ses
-        // deux combinaisons de repli ONT été exercées** (correction I5 de la
-        // revue finale de branche — une rédaction antérieure les disait
-        // « jamais exercées ») : `mode-sortie-1728x1080.log` les joue toutes
-        // deux, aucune ne fait bouger la sortie, et la troisième annonce un
-        // SUCCÈS d'API sur une sortie inchangée. Voir le commentaire de
-        // `mode_sortie.rs`, auprès du `CDS_UPDATEREGISTRY` seul du produit.
-        //
-        // `Ok(())` et non `Err` reste vrai, et pour la même raison : le
-        // `ResizeObserver` du client émet une fois à l'observation initiale, et
-        // un refus du pilote ferait journaliser un incident à chaque connexion.
-        // L'adaptation réseau, elle, passe par `set_encode_size` et n'est
-        // toujours pas concernée.
-        //
-        // ⚠️ **IMPORTANT 2 (revue de la tâche 9), écart banc/produit jamais
-        // mesuré.** La sonde P1 crée sa sortie, change son mode, puis relit —
-        // elle n'ouvre JAMAIS `DuplicateOutput` dessus. En production,
-        // `changer_mode_de_sortie` retaille une sortie dont la duplication
-        // DXGI est ouverte et détenue pendant l'attente (jusqu'à 3,1 s). P1 ne
-        // dit donc rien de ce que fait `ChangeDisplaySettingsExW` sur une
-        // sortie EN COURS de capture — la même classe d'écart banc/produit
-        // que le chantier « N duplications de front » a payée en D1. **Non
-        // corrigeable par du code** : les tâches 10 et 11 (recette) en sont
-        // la première mesure réelle.
+        // ⚠️ **Le sous-bloc D8 avait établi que la PRÉMISSE ci-dessus était
+        // exacte, mais la CONCLUSION réfutable** : une autre voie
+        // (`ChangeDisplaySettingsExW`, hors du canal du pilote SudoVDA) fait
+        // bien suivre la sortie. Le sous-bloc D9 l'a mesurée en conditions de
+        // produit et l'a **retirée** : le changement ne survit pas à
+        // l'ouverture de la fenêtre suivante, et il pollue le registre au
+        // point de bloquer le produit. Voir le constat de mesure en tête de
+        // `capteur/plein_ecran.rs`. **Ne rien faire est donc redevenu, à
+        // nouveau, le comportement juste — cette fois sur la foi d'une
+        // mesure, et non d'une limite seulement supposée du pilote.**
         if !self.mode.redimensionne_la_fenetre() {
-            if !crate::capteur::plein_ecran::actif() {
-                tracing::info!(
-                    width,
-                    height,
-                    mode = ?self.mode,
-                    "redimensionnement ignoré : PLEIN_ECRAN=0 désarme le changement de mode \
-                     de sortie (comportement D1)"
-                );
-                return Ok(());
-            }
-            // ⚠️ **DÉSARMÉ PAR DÉFAUT — décision de la revue finale de branche
-            // de D8 (5 août 2026), pas une prudence vague.** Les trois raisons
-            // et leurs pièces vivent auprès du garde lui-même
-            // (`capteur::plein_ecran::changement_de_mode_arme`) : C1, la
-            // pollution du registre qui bloque les ouvertures de fenêtre
-            // ultérieures, de portée inconnue puisque cinq GUID SudoVDA
-            // distincts apparaissent au journal de recette ; C2, la reprise sur
-            // perte d'accès de D2 court-circuitée par une `Err` sur un échec
-            // transitoire de réouverture ; et le fait que ce chemin n'ait
-            // JAMAIS tourné en conditions de produit — critère ② NON EXERCÉ,
-            // `mode_sortie_demande=0` aux deux exécutions de la recette.
-            //
-            // **Ce qui reste livré et actif** : la détection du style, son
-            // annonce au navigateur, et l'armement client. C'est le repli que
-            // le §4 de la conception a écrit — « ①, ③, ④ et ⑤ tiennent sans ② ».
-            //
-            // Les deux Critiques sont donc INATTEIGNABLES par défaut et
-            // délibérément NON CORRIGÉES : les traiter est le premier travail
-            // de la recette qui armera `PLEIN_ECRAN_MODE_SORTIE=1`.
-            if !crate::capteur::plein_ecran::changement_de_mode_arme() {
-                tracing::info!(
-                    width,
-                    height,
-                    mode = ?self.mode,
-                    "redimensionnement ignoré : changement de mode de sortie DÉSARMÉ \
-                     (poser PLEIN_ECRAN_MODE_SORTIE=1 pour l'armer) — la détection et \
-                     l'annonce du plein écran restent actives"
-                );
-                return Ok(());
-            }
-            // IMPORTANT 4 (revue de la tâche 9) : même plancher que le chemin
-            // `FenetreRecadree` quelques lignes plus bas (`width.max(160)`,
-            // `height.max(120)`), appliqué ICI et non délégué à
-            // `borner_a_la_taille_max` — dont le rôle reste borné au PLAFOND
-            // (`TAILLE_MAX_SORTIE`), pas au plancher. Sans lui, toute
-            // réduction à zéro de la boîte vidéo (fenêtre repliée, transition
-            // de plein écran) émettrait `0×0`, que `borner_a_la_taille_max`
-            // laissait passer tel quel par sa branche rapide (`l <= max_l &&
-            // h <= max_h`, aucun `.max` avant D8) : le pilote aurait été
-            // sollicité pour un mode quasi nul, brûlant les 3,1 s
-            // d'`attendre_la_sortie` pour rien.
-            let (width, height) = (width.max(160), height.max(120));
-            let (largeur, hauteur) = crate::windows_source_sortie::borner_a_la_taille_max((
-                width, height,
-            ));
-            return self.changer_mode_de_sortie(largeur, hauteur);
+            tracing::info!(
+                width,
+                height,
+                mode = ?self.mode,
+                "redimensionnement ignoré : la source capture une sortie DXGI entière \
+                 (voir le constat de mesure de capteur::plein_ecran, sous-bloc D9)"
+            );
+            return Ok(());
         }
 
         let (width, height) = (width.max(160) & !1, height.max(120) & !1);

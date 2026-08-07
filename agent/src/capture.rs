@@ -209,10 +209,6 @@ impl DesktopCapture {
         types::lire(&self.duplication, self.dernier_code_perdu)
     }
 
-    pub fn cible(&self) -> &CibleCapture {
-        &self.cible
-    }
-
     /// Branche le marqueur d'étape partagé avec le fil de surveillance.
     ///
     /// Sans lui, un blocage dans `next_frame` reste anonyme : les trois appels

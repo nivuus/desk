@@ -113,6 +113,12 @@ pub struct SourceDistante {
     /// comme plafond d'encodage, précisément le défaut que ce champ existe
     /// pour éviter.
     endormie: bool,
+    /// Vrai une seule fois, juste après un rattachement réussi. Consommé par
+    /// `rattachement_survenu`, sur le même régime que `sommeil`/`part`/
+    /// `audio`/`plein_ecran` : c'est ce qui permet à `Session` de remettre à
+    /// zéro `audio_mort_signale` — un capteur relancé a perdu la mémoire de
+    /// tout signalement antérieur.
+    rattache: bool,
 }
 
 impl SourceDistante {
@@ -135,6 +141,7 @@ impl SourceDistante {
             audio: None,
             plein_ecran: None,
             endormie: true,
+            rattache: false,
         }
     }
 
@@ -278,6 +285,14 @@ impl VideoSource for SourceDistante {
                                 // la conception a choisi : un blanc bref plutôt
                                 // qu'un écho.
                                 self.audio = Some(false);
+                                // Consommé par `rattachement_survenu`, pour
+                                // remettre à zéro `Session::audio_mort_signale`
+                                // : un `AudioMort` déjà signalé avant la
+                                // rupture n'est pas garanti connu du capteur de
+                                // l'autre côté de CE rattachement (le cas visé
+                                // est le capteur relancé, dont le registre
+                                // d'inaptitudes repart vide en mémoire).
+                                self.rattache = true;
                                 self.fenetre.succes();
                             }
                             // Journalisé en `debug!` et non `info!` : au pas
@@ -366,6 +381,16 @@ impl VideoSource for SourceDistante {
     /// Rend l'état de sommeil courant, sans le consommer.
     fn est_endormie(&self) -> bool {
         self.endormie
+    }
+
+    fn signaler_audio_mort(&mut self) {
+        if let Err(erreur) = self.commander_simple(VersCapteur::AudioMort) {
+            tracing::warn!(%erreur, "signalement de capture audio morte non délivré");
+        }
+    }
+
+    fn rattachement_survenu(&mut self) -> bool {
+        std::mem::take(&mut self.rattache)
     }
 }
 

@@ -8,6 +8,7 @@ import { attachGamepadAuDOM } from './gamepad';
 import { armerPleinEcranAuDOM, attachFullscreenAuDOM } from './fullscreen';
 import { texteLien } from './lien';
 import { viewportPair } from './viewport';
+import { RejeuResize } from './resize';
 import { attachVisibilite } from './visibilite';
 import { encodeResize } from '../../proto/ts/control';
 
@@ -38,7 +39,46 @@ const signalingUrl =
 // rechargement direct) : dans ce cas l'agent tourne déjà et il n'y a rien à
 // demander — on ne fait rien plutôt que d'échouer.
 if (window.opener && !window.opener.closed) {
-    const { largeur, hauteur } = viewportPair(window.innerWidth, window.innerHeight);
+    // MÊME UNITÉ que le `Resize` émis plus bas (`clientWidth × devicePixelRatio`).
+    //
+    // ⚠️ **La raison écrite ici à l'origine était déjà périmée quand elle a été
+    // écrite, et c'est la revue TRANSVERSE de fin de branche D9 qui l'a
+    // rattrapée.** Elle disait : « sans ce facteur, CHAQUE connexion de CHAQUE
+    // fenêtre déclencherait un changement de mode, avec 25 à 100 % d'écart
+    // (leg 7 du sous-bloc D8) ». Or la tâche 3 du même sous-bloc D9 — un commit
+    // AVANT celui qui a écrit cette phrase — avait retiré le changement de mode
+    // de sortie sur mesure (voir le constat en tête de
+    // `agent/src/capteur/plein_ecran.rs`). Il n'y a donc plus aucun changement
+    // de mode à déclencher : `WindowsSource::resize` retourne avant tout en
+    // mode `SortieEntiere`, et le court-circuit « taille inchangée » qu'on
+    // invoquait n'est même plus atteint.
+    //
+    // ✅ **Ce que le facteur corrige RÉELLEMENT, et qui justifie de le garder** :
+    // l'annonce de viewport DÉCIDE la taille de la sortie virtuelle créée par le
+    // superviseur (`superviseur/boucle.rs::creer_sortie`). Sans dpr, un client
+    // HiDPI recevait une sortie plus PETITE que sa surface d'affichage réelle,
+    // donc une image mise à l'échelle vers le haut par le navigateur. Avec, la
+    // sortie naît en pixels périphériques, l'unité dans laquelle le `Resize` de
+    // routine parle déjà.
+    //
+    // ⚠️ **Conséquence non mesurée, et déclarée comme telle (legs de D9)** : à
+    // `devicePixelRatio = 2`, une fenêtre de 1280×720 CSS demande désormais une
+    // sortie de 2560×1440, soit QUATRE fois les pixels à capturer et à encoder,
+    // et **rien ne borne cette demande** — `windows_source/sortie.rs::
+    // borner_a_la_taille_max` (1920×1080) a perdu son dernier appelant avec le
+    // changement de mode et n'est plus branchée nulle part. D6 a relevé le
+    // décodeur du navigateur saturé dès huit fenêtres de 1280×720.
+    //
+    // Il n'y a qu'un `devicePixelRatio` en jeu : c'est CETTE page qui annonce, et
+    // c'est son propre `ResizeObserver` qui émettra le `Resize`.
+    //
+    // Multiplier PUIS arrondir en pair — `viewportPair` a un plancher à 2, et
+    // l'ordre inverse laisserait passer une hauteur impaire à dpr impair.
+    const dpr = window.devicePixelRatio;
+    const { largeur, hauteur } = viewportPair(
+        Math.round(window.innerWidth * dpr),
+        Math.round(window.innerHeight * dpr),
+    );
     window.opener.postMessage(
         { type: 'viewport', session: sessionId, largeur, hauteur },
         window.location.origin,
@@ -276,17 +316,34 @@ connectSession({
         // Le redimensionnement reconstruit la chaîne d'encodage côté agent :
         // on n'émet donc qu'une fois le geste terminé, pas à chaque pixel
         // parcouru pendant que l'utilisateur tire un bord.
+        const rejeu = new RejeuResize();
+        const emettreSiPossible = () => {
+            const taille = rejeu.aEmettre();
+            if (!taille) return;
+            if (session.controlChannel.readyState !== 'open') {
+                // Tracé, et non plus muet : c'est ce `return` silencieux qui perdait
+                // les `Resize` sans laisser la moindre trace (leg 10).
+                console.warn('Resize différé : canal de contrôle non ouvert');
+                return;
+            }
+            session.controlChannel.send(encodeResize(taille.largeur, taille.hauteur));
+            rejeu.confirmer(taille);
+        };
+
         let resizeTimer: number | undefined;
         const observer = new ResizeObserver(() => {
             window.clearTimeout(resizeTimer);
             resizeTimer = window.setTimeout(() => {
-                if (session.controlChannel.readyState !== 'open') return;
-                const width = Math.round(video.clientWidth * window.devicePixelRatio);
-                const height = Math.round(video.clientHeight * window.devicePixelRatio);
-                session.controlChannel.send(encodeResize(width, height));
+                rejeu.observer({
+                    largeur: Math.round(video.clientWidth * window.devicePixelRatio),
+                    hauteur: Math.round(video.clientHeight * window.devicePixelRatio),
+                });
+                emettreSiPossible();
             }, 200);
         });
         observer.observe(video);
+        // Le rejeu : à l'ouverture du canal, la taille retenue repart.
+        session.controlChannel.addEventListener('open', emettreSiPossible);
     })
     .catch((error: unknown) => {
         statut.afficher(`échec : ${error instanceof Error ? error.message : String(error)}`, {

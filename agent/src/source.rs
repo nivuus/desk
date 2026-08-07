@@ -176,6 +176,31 @@ pub trait VideoSource {
     fn est_endormie(&self) -> bool {
         false
     }
+
+    /// Signale au capteur que la capture audio de cette fenêtre est morte.
+    ///
+    /// **Défaut inerte**, comme `est_endormie` : une source qui n'a pas de
+    /// capteur en face n'a personne à prévenir. Seule `SourceDistante`
+    /// l'implémente réellement.
+    fn signaler_audio_mort(&mut self) {}
+
+    /// Vrai une seule fois, juste après que le canal vers le capteur s'est
+    /// RATTACHÉ (capteur relancé, ou perte d'accès DXGI encaissée par la
+    /// fenêtre de reprise). Consommé, comme `sommeil_a_annoncer`.
+    ///
+    /// **Pourquoi la boucle de transport en a besoin** : le registre
+    /// d'inaptitudes audio vit en mémoire, dans le CAPTEUR
+    /// (`capteur/sommeil.rs`) — un capteur relancé n'a plus la moindre trace
+    /// d'un `AudioMort` signalé avant sa mort. `Session::audio_mort_signale`
+    /// doit donc retomber à `false` pour que la prochaine détection de
+    /// `capture_morte` (`transport/tick.rs`) le réinforme.
+    ///
+    /// Défaut inerte : une source qui ne se rattache jamais (fichier, ou
+    /// `WindowsSource` tenue en direct par son propre processus) n'a rien à
+    /// signaler.
+    fn rattachement_survenu(&mut self) -> bool {
+        false
+    }
 }
 
 /// Source de test rejouant un fichier H.264 Annex-B en boucle.

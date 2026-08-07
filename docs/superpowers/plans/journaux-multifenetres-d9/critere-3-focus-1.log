@@ -1,0 +1,90 @@
+[    0.0s 2026-08-06T21:04:03.825Z] ÉTIQUETTE=focus-1 MODE=focus BUDGET_BPS=8000000 BITRATE=8000000 N_EVEIL=8 PALIER_FOCUS_S=60 PALIER_AB_S=30 PART_SONDAGE=(absent → armé) chrome pid=2650184
+[    2.1s 2026-08-06T21:04:05.933Z] identité du navigateur : pid écoutant=2650184 pid lancé=2650184 version=Chrome/151.0.7922.108
+[    2.2s 2026-08-06T21:04:06.013Z] + page attachée  session=1E415AC8 url=about:blank
+[    2.2s 2026-08-06T21:04:06.037Z] >>> ÉTAPE 0 : purge, VM sans fenêtre ni agent rescapé
+[    2.2s 2026-08-06T21:04:06.046Z] CPU HÔTE (au repos, avant toute session) loadavg=20.43 18.04 14.21 20/2980 2650461
+[    8.0s 2026-08-06T21:04:11.829Z] PURGE FENÊTRES/AGENTS RESCAPÉS (avant lancement du superviseur) {"agents_restants":0,"chrome_restants":0}
+[    8.2s 2026-08-06T21:04:11.960Z] + page attachée  session=EDD825DD url=http://192.168.3.1:5173/shell.html
+[   11.2s 2026-08-06T21:04:14.992Z] statut shell : bureau connecté
+[   11.2s 2026-08-06T21:04:14.993Z] >>> lancement du superviseur
+[   12.0s 2026-08-06T21:04:15.831Z] run-agent.sh : Opration russie : la tche planifie "guacamole-agent" a t  supprime. / Opration russie : la tche planifie "guacamole-agent" a t cre. / Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[   18.0s 2026-08-06T21:04:21.837Z] >>> CONSTRUCTION — montée à 8 fenêtres (toutes doivent rester ÉVEILLÉES)
+[   18.0s 2026-08-06T21:04:21.838Z]   · ouverture fenêtre 1
+[   18.8s 2026-08-06T21:04:22.619Z] + page attachée  session=4D848E3B url=
+[   19.1s 2026-08-06T21:04:22.867Z] + page attachée  session=11E125EC url=
+[   20.7s 2026-08-06T21:04:24.513Z] SCÉNARIO IMPOSÉ (après ouverture 1) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true"}
+[   20.7s 2026-08-06T21:04:24.513Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   20.7s 2026-08-06T21:04:24.513Z]   · ouverture fenêtre 2
+[   21.4s 2026-08-06T21:04:25.225Z] + page attachée  session=84B3EA3F url=
+[   21.7s 2026-08-06T21:04:25.550Z] + page attachée  session=172EB968 url=
+[   23.4s 2026-08-06T21:04:27.162Z] SCÉNARIO IMPOSÉ (après ouverture 2) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true","w:w-4":"false/false"}
+[   23.4s 2026-08-06T21:04:27.162Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   23.4s 2026-08-06T21:04:27.162Z]   · ouverture fenêtre 3
+[   24.1s 2026-08-06T21:04:27.950Z] + page attachée  session=E7C9E861 url=
+[   24.4s 2026-08-06T21:04:28.248Z] + page attachée  session=CAFA42EE url=
+[   26.2s 2026-08-06T21:04:29.979Z] SCÉNARIO IMPOSÉ (après ouverture 3) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true","w:w-4":"false/false","w:w-6":"false/false"}
+[   26.2s 2026-08-06T21:04:29.979Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   26.2s 2026-08-06T21:04:29.980Z]   · ouverture fenêtre 4
+[   27.2s 2026-08-06T21:04:30.975Z] + page attachée  session=982DD091 url=
+[   27.5s 2026-08-06T21:04:31.281Z] + page attachée  session=30018FAF url=
+[   28.5s 2026-08-06T21:04:32.272Z] + page attachée  session=F1A494A9 url=
+[   29.4s 2026-08-06T21:04:33.220Z] SCÉNARIO IMPOSÉ (après ouverture 4) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true","w:w-4":"false/false","w:w-6":"false/false","w:w-9":"false/false"}
+[   29.4s 2026-08-06T21:04:33.220Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   29.4s 2026-08-06T21:04:33.220Z]   · ouverture fenêtre 5
+[   30.7s 2026-08-06T21:04:34.511Z] + page attachée  session=7BEA66BA url=
+[   31.1s 2026-08-06T21:04:34.890Z] + page attachée  session=857B8F31 url=
+[   31.7s 2026-08-06T21:04:35.476Z] + page attachée  session=91F19307 url=
+[   33.0s 2026-08-06T21:04:36.787Z] + page attachée  session=CC92B868 url=
+[   33.3s 2026-08-06T21:04:37.062Z] SCÉNARIO IMPOSÉ (après ouverture 5) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true","w:w-4":"false/false","w:w-6":"false/false","w:w-10":"false/false","w:w-12":{"__erreur":"Error: {\"code\":-32001,\"message\":\"Session with given id not found.\"}"}}
+[   33.3s 2026-08-06T21:04:37.062Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   33.3s 2026-08-06T21:04:37.062Z]   · ouverture fenêtre 6
+[   34.5s 2026-08-06T21:04:38.299Z] + page attachée  session=E002884E url=
+[   34.7s 2026-08-06T21:04:38.552Z] + page attachée  session=2218A822 url=
+[   35.2s 2026-08-06T21:04:39.022Z] + page attachée  session=E32F1A18 url=
+[   35.4s 2026-08-06T21:04:39.244Z] + page attachée  session=8727D082 url=
+[   36.9s 2026-08-06T21:04:40.675Z] SCÉNARIO IMPOSÉ (après ouverture 6) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true","w:w-4":"false/false","w:w-6":"false/false","w:w-14":"false/false","w:w-16":"false/false","w:w-17":{"__erreur":"Error: {\"code\":-32001,\"message\":\"Session with given id not found.\"}"}}
+[   36.9s 2026-08-06T21:04:40.675Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   36.9s 2026-08-06T21:04:40.675Z]   · ouverture fenêtre 7
+[   37.8s 2026-08-06T21:04:41.623Z] + page attachée  session=86F49ED5 url=
+[   38.3s 2026-08-06T21:04:42.064Z] + page attachée  session=A260DAD7 url=
+[   38.6s 2026-08-06T21:04:42.388Z] + page attachée  session=131D620E url=
+[   39.0s 2026-08-06T21:04:42.815Z] + page attachée  session=A3C8FDCB url=
+[   40.1s 2026-08-06T21:04:43.903Z] SCÉNARIO IMPOSÉ (après ouverture 7) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true","w:w-4":"false/false","w:w-6":"false/false","w:w-18":{"__erreur":"Error: {\"code\":-32001,\"message\":\"Session with given id not found.\"}"},"w:w-19":"false/false","w:w-21":"false/false"}
+[   40.1s 2026-08-06T21:04:43.903Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   40.1s 2026-08-06T21:04:43.903Z]   · ouverture fenêtre 8
+[   41.4s 2026-08-06T21:04:45.203Z] + page attachée  session=4E7ED095 url=
+[   41.5s 2026-08-06T21:04:45.344Z] + page attachée  session=1428915A url=
+[   42.1s 2026-08-06T21:04:45.878Z] + page attachée  session=CE554D20 url=
+[   42.4s 2026-08-06T21:04:46.233Z] + page attachée  session=39799FCB url=
+[   44.0s 2026-08-06T21:04:47.834Z] SCÉNARIO IMPOSÉ (après ouverture 8) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true","w:w-4":"false/false","w:w-6":"false/false","w:w-22":"false/false","w:w-23":"false/false","w:w-25":{"__erreur":"Error: {\"code\":-32001,\"message\":\"Session with given id not found.\"}"}}
+[   44.0s 2026-08-06T21:04:47.834Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   44.0s 2026-08-06T21:04:47.834Z]   8 fenêtres ouvertes
+[   44.8s 2026-08-06T21:04:48.652Z] + page attachée  session=1E1709A7 url=
+[   45.1s 2026-08-06T21:04:48.921Z] + page attachée  session=42DB3B4F url=
+[   45.3s 2026-08-06T21:04:49.128Z] + page attachée  session=05E65CD7 url=
+[   48.2s 2026-08-06T21:04:52.048Z] + page attachée  session=C51A25AF url=
+[   48.9s 2026-08-06T21:04:52.693Z] + page attachée  session=BFE6F524 url=
+[   50.6s 2026-08-06T21:04:54.434Z] SCÉNARIO IMPOSÉ (construction — focus initial) cible=w:w-2 hidden/hasFocus={"w:w-2":"false/true","w:w-4":"false/false","w:w-6":"false/false","w:w-29":"false/false","w:w-30":"false/false"}
+[   50.6s 2026-08-06T21:04:54.434Z]   → focalisées effectives : ["w:w-2"] (une seule attendue)
+[   51.5s 2026-08-06T21:04:55.270Z] + page attachée  session=D66DC0DC url=
+[   96.9s 2026-08-06T21:05:40.667Z] ÉCHELLE POSÉE après 38.2 s (17 changements cumulés, 15 s sans changement)
+[   97.0s 2026-08-06T21:05:40.760Z] CONTRÔLE BUDGET : valeurs=[8000000] attendu=8000000
+[   97.5s 2026-08-06T21:05:41.254Z] SURVIE VM (après construction) virsh="en cours d’exécution" acces_partage=OUI
+[   97.5s 2026-08-06T21:05:41.254Z] >>> FOCUS — deux déplacements à PALIER_FOCUS_S=60 s (rejeu du critère ④ de D6)
+[   97.6s 2026-08-06T21:05:41.424Z] SCÉNARIO IMPOSÉ (focus sur w:w-4) cible=w:w-4 hidden/hasFocus={"w:w-2":"false/false","w:w-4":"false/true","w:w-6":"false/false"}
+[   97.6s 2026-08-06T21:05:41.424Z]   → focalisées effectives : ["w:w-4"] (une seule attendue)
+[  157.7s 2026-08-06T21:06:41.488Z] STATS (focus sur w:w-4) {"w:w-2":{"etat":"connected","horloge":1786050401461,"images_decodees":5585,"images_recues":6276,"octets_recus":22890586,"octets_audio":2171085,"paquets_recus":23761,"paquets_perdus":0,"l":640,"h":360,"rtt":0.006,"lien_bitrate":2000000,"lien_taille":"640x360","cachee":false,"focalisee":false},"w:w-4":{"etat":"connected","horloge":1786050401471,"images_decodees":5534,"images_recues":6847,"octets_recus":29951238,"octets_audio":2133414,"paquets_recus":30247,"paquets_perdus":0,"l":1280,"h":720,"rtt":0.002,"lien_bitrate":4000000,"lien_taille":"1280x720","cachee":false,"focalisee":true},"w:w-6":{"etat":"connected","horloge":1786050401474,"images_decodees":4874,"images_recues":6240,"octets_recus":15848303,"octets_audio":2057419,"paquets_recus":17484,"paquets_perdus":0,"l":640,"h":360,"rtt":0.005,"lien_bitrate":1870897,"lien_taille":"640x360","cachee":false,"focalisee":false}}
+[  157.9s 2026-08-06T21:06:41.710Z] FOCUS w:w-4 — TAILLES {"w:w-2":{"taille":"640x360","aire":230400,"lien_taille":"640x360","lien_bitrate":2000000,"focalisee":false},"w:w-4":{"taille":"1280x720","aire":921600,"lien_taille":"1280x720","lien_bitrate":4000000,"focalisee":true},"w:w-6":{"taille":"640x360","aire":230400,"lien_taille":"640x360","lien_bitrate":1870897,"focalisee":false}}
+[  157.9s 2026-08-06T21:06:41.711Z] FOCUS w:w-4 — PARTS somme=8000000 {"w-2":{"bps":2000000,"t":"2026-08-06T21:05:41.409219Z"},"w-4":{"bps":4000000,"t":"2026-08-06T21:05:41.411884Z"},"w-6":{"bps":2000000,"t":"2026-08-06T21:05:41.407425Z"}}
+[  157.9s 2026-08-06T21:06:41.716Z] FOCUS w:w-4 — PROMOTION aire_focalisee=921600 aire_max_autres=230400 promotion=true
+[  158.0s 2026-08-06T21:06:41.755Z] SCÉNARIO IMPOSÉ (focus sur w:w-6) cible=w:w-6 hidden/hasFocus={"w:w-2":"false/false","w:w-4":"false/false","w:w-6":"false/true"}
+[  158.0s 2026-08-06T21:06:41.755Z]   → focalisées effectives : ["w:w-6"] (une seule attendue)
+[  218.0s 2026-08-06T21:07:41.815Z] STATS (focus sur w:w-6) {"w:w-2":{"etat":"connected","horloge":1786050461791,"images_decodees":8331,"images_recues":9047,"octets_recus":30735018,"octets_audio":3142398,"paquets_recus":32199,"paquets_perdus":0,"l":1024,"h":576,"rtt":0.003,"lien_bitrate":2000000,"lien_taille":"1024x576","cachee":false,"focalisee":false},"w:w-4":{"etat":"connected","horloge":1786050461798,"images_decodees":8663,"images_recues":10082,"octets_recus":39253924,"octets_audio":3104727,"paquets_recus":40254,"paquets_perdus":0,"l":1024,"h":576,"rtt":0.002,"lien_bitrate":2000000,"lien_taille":"1024x576","cachee":false,"focalisee":false},"w:w-6":{"etat":"connected","horloge":1786050461798,"images_decodees":7960,"images_recues":9336,"octets_recus":33376602,"octets_audio":3028732,"paquets_recus":34733,"paquets_perdus":0,"l":1280,"h":720,"rtt":0.002,"lien_bitrate":4000000,"lien_taille":"1280x720","cachee":false,"focalisee":true}}
+[  218.1s 2026-08-06T21:07:41.943Z] FOCUS w:w-6 — TAILLES {"w:w-2":{"taille":"1024x576","aire":589824,"lien_taille":"1024x576","lien_bitrate":2000000,"focalisee":false},"w:w-4":{"taille":"1024x576","aire":589824,"lien_taille":"1024x576","lien_bitrate":2000000,"focalisee":false},"w:w-6":{"taille":"1280x720","aire":921600,"lien_taille":"1280x720","lien_bitrate":4000000,"focalisee":true}}
+[  218.1s 2026-08-06T21:07:41.943Z] FOCUS w:w-6 — PARTS somme=8000000 {"w-2":{"bps":2000000,"t":"2026-08-06T21:06:41.768109Z"},"w-4":{"bps":2000000,"t":"2026-08-06T21:06:41.774049Z"},"w-6":{"bps":4000000,"t":"2026-08-06T21:06:41.782162Z"}}
+[  218.1s 2026-08-06T21:07:41.943Z] FOCUS w:w-6 — PROMOTION aire_focalisee=921600 aire_max_autres=589824 promotion=true
+[  218.1s 2026-08-06T21:07:41.944Z] >>> FOCUS — survie VM après la phase
+[  218.3s 2026-08-06T21:07:42.057Z] SURVIE VM (après phase focus) virsh="en cours d’exécution" acces_partage=OUI
+[  218.3s 2026-08-06T21:07:42.124Z] MARQUEURS (FIN) {"lignes":979,"enfant_lance":3,"attachee_capteur":3,"cloture":0,"endormie":0,"part_appliquee":52,"taille_changee":33,"taille_refusee":0,"erreurs":20}
+[  218.3s 2026-08-06T21:07:42.129Z] relevé écrit dans /home/mallanic/Projects/Guacamole/docs/superpowers/plans/journaux-multifenetres-d9/critere-3-focus-1.json
+[  226.6s 2026-08-06T21:07:50.414Z] journal copié dans /tmp/agent-critere-3-focus-1.log (après la fermeture du navigateur)

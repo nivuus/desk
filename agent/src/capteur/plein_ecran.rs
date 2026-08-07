@@ -17,6 +17,24 @@
 //! `SHQueryUserNotificationState` a été écarté pour une autre raison : il est
 //! global à la session interactive, donc à N fenêtres il ne dit pas LAQUELLE,
 //! et il ne voit pas le « borderless fullscreen » que les jeux emploient.
+//!
+//! **Le sens « la résolution suit » n'existe pas, et c'est une décision de
+//! mesure, pas un oubli.** Le sous-bloc D8 avait écrit un changement de mode de
+//! la sortie virtuelle, livré désarmé faute d'avoir jamais tourné. Le sous-bloc
+//! D9 l'a mesuré et l'a retiré :
+//!
+//! - le changement **ne survit pas** — la sortie revient à sa taille de création
+//!   dès qu'une sortie virtuelle de plus est créée, c'est-à-dire à chaque
+//!   ouverture de fenêtre. `n = 4` exécutions propres, cibles toutes distinctes
+//!   de la taille de création, sous `CDS_UPDATEREGISTRY` comme sous `flags = 0` ;
+//! - `CDS_UPDATEREGISTRY` **pollue le registre**, confirmé et attribuable par
+//!   GUID sur 3 transitions probantes : une sortie créée ensuite naît à la
+//!   taille polluée, ce qui bloque le produit — la préparation de la recette D8
+//!   avait dû lever ce blocage à la main.
+//!
+//! Journaux : `docs/superpowers/plans/journaux-multifenetres-d9/p-persistance-*`
+//! et `p2-*`. **Le mécanisme n'est PAS expliqué** : il est séparé en deux
+//! régimes observables, et un confondeur covarie avec leur frontière.
 
 /// `WS_CAPTION` — la fenêtre a une barre de titre.
 pub const WS_CAPTION_BIT: u32 = 0x00C0_0000;
@@ -56,18 +74,20 @@ impl SuiviBordure {
 use std::sync::OnceLock;
 use std::time::Duration;
 
-/// `PLEIN_ECRAN=0` désarme le mécanisme ENTIER — la relecture du style
-/// (`capteur/fenetre.rs`) comme le changement de mode de la sortie
-/// (`windows_source/redimensionnement.rs`).
+/// `PLEIN_ECRAN=0` désarme la détection — la relecture du style
+/// (`capteur/fenetre.rs`) et l'annonce `PleinEcran` → `Fullscreen` qui en
+/// découle. **C'est tout ce que ce mécanisme fait désormais** : le sous-bloc
+/// D9 a retiré l'autre moitié, le changement de mode de la sortie virtuelle
+/// (voir le constat de mesure en tête de fichier) — il n'y a donc plus rien
+/// d'autre à désarmer.
 ///
 /// **`=0` DÉSACTIVE, une simple présence n'active pas**, exactement comme
 /// `AUDIO`, `SUPERVISEUR` et `CAPTEUR` (`main.rs`) : tester `is_ok()`
 /// activerait le plein écran en écrivant `PLEIN_ECRAN=0` pour le couper.
 ///
-/// ⚠️ **Lue dans le processus CAPTEUR**, où vivent les deux moitiés du
-/// mécanisme depuis D4 — le fil de fenêtre qui lit le style, et la
-/// `WindowsSource` que `resize` retaille. L'enfant ne la consulte pas : il ne
-/// fait que relayer.
+/// ⚠️ **Lue dans le processus CAPTEUR**, où vit ce mécanisme depuis D4 — le fil
+/// de fenêtre qui lit le style. L'enfant ne la consulte pas : il ne fait que
+/// relayer.
 ///
 /// `OnceLock` et non une lecture par appel : la relecture du style court à
 /// 4 Hz par fenêtre, et l'environnement ne change pas en cours de processus.
@@ -77,80 +97,9 @@ pub fn actif() -> bool {
     *ACTIF.get_or_init(|| {
         let actif = std::env::var("PLEIN_ECRAN").as_deref() != Ok("0");
         if !actif {
-            tracing::warn!(
-                "plein ecran DESARME (PLEIN_ECRAN=0) : ni detection de style, \
-                 ni changement de mode de sortie"
-            );
+            tracing::warn!("plein ecran DESARME (PLEIN_ECRAN=0) : detection de style desactivee");
         }
         actif
-    })
-}
-
-/// `PLEIN_ECRAN_MODE_SORTIE=1` **ARME** le changement de mode de la sortie
-/// virtuelle. **Il est DÉSARMÉ par défaut**, et c'est une décision de
-/// conception, pas une prudence vague.
-///
-/// **Convention INVERSE de `PLEIN_ECRAN` ci-dessus, à dessein** : `actif()`
-/// désarme sur `=0` parce que le mécanisme entier est livré ; celle-ci arme sur
-/// `=1` parce que cette moitié-là ne l'est pas. Un `is_ok()` sur la simple
-/// présence est évité pour la même raison qu'au-dessus — on veut une valeur
-/// explicite, jamais une variable posée à vide qui armerait par accident.
-///
-/// **Ce qui reste actif sans elle** : la relecture du style
-/// (`capteur/fenetre.rs`), l'annonce `PleinEcran` → `Fullscreen`, et l'armement
-/// client (`client/src/fullscreen.ts`). C'est la moitié MESURÉE du sous-bloc
-/// D8 — critère ① CONFIRMÉ, détection exclusive et symétrique. Ce qui est
-/// désarmé est la moitié que la recette n'a **jamais sollicitée** :
-/// `mode_sortie_demande=0` aux **deux** exécutions, critère ② NON EXERCÉ, zéro
-/// tentative de `ChangeDisplaySettingsExW` en conditions de produit.
-///
-/// ⚠️ **Trois raisons de ne pas l'armer sans une recette qui les traite
-/// D'ABORD.** Les deux premières sont les Critiques de la revue finale de
-/// branche, laissées NON CORRIGÉES parce que ce désarmement les rend
-/// inatteignables — ce sont les deux premiers travaux de la recette qui armera
-/// ce chemin :
-///
-/// 1. **C1 — le produit empoisonne ses propres ouvertures de fenêtre
-///    ultérieures.** `changer_mode_de_sortie` écrit `CDS_UPDATEREGISTRY` à
-///    CHAQUE plein écran réussi, et une sortie virtuelle **naît à la dernière
-///    taille laissée au registre** (mesuré, tâche 3bis, chaîne
-///    `avant(N) = après(N-1)`). Le superviseur exigeant une correspondance
-///    exacte avec la taille demandée, une sortie qui naît ailleurs fait échouer
-///    l'attache — c'est le blocage que la préparation de la recette D8 a dû
-///    lever à la main, par la sonde P1 elle-même.
-///    ⚠️ **Et sa portée est INCONNUE** : `agent-recette.log` porte **cinq**
-///    GUID SudoVDA distincts (`…677541430001` à `…430005`), un par sortie. Ou
-///    bien le mode registre est par GUID — et lever le blocage sur un GUID ne
-///    peut rien pour les quatre autres —, ou bien il ne l'est pas — et une
-///    seule écriture empoisonne TOUTES les sorties futures. **Les deux branches
-///    aggravent C1**, et aucune mesure ne les départage.
-/// 2. **C2 — la reprise sur perte d'accès de D2 est court-circuitée.** Après un
-///    changement de mode, `reconstruire_sur_la_sortie` rend une `Err` sur un
-///    échec de réouverture de la duplication — y compris **transitoire**, la
-///    classe d'échec exacte que la fenêtre de reprise de D2 existe pour
-///    encaisser (44 pertes d'accès `0x887A0026` absorbées sans tuer une seule
-///    session). Ici la session meurt.
-/// 3. **Le chemin n'a JAMAIS tourné en conditions de produit.** L'écart
-///    banc/produit est nommé et non mesuré : la sonde P1 n'ouvre **jamais** de
-///    `DuplicateOutput`, quand la production retaille une sortie dont la
-///    duplication est ouverte et détenue pendant l'attente (jusqu'à 3,1 s).
-///    C'est la première des trois inconnues du brief, et elle commande les deux
-///    autres.
-///
-/// **Le repli est celui que la conception a elle-même écrit** (§4) : ①, ③, ④ et
-/// ⑤ tiennent sans ②.
-pub fn changement_de_mode_arme() -> bool {
-    static ARME: OnceLock<bool> = OnceLock::new();
-    *ARME.get_or_init(|| {
-        let arme = std::env::var("PLEIN_ECRAN_MODE_SORTIE").as_deref() == Ok("1");
-        if arme {
-            tracing::warn!(
-                "changement de mode de sortie ARME (PLEIN_ECRAN_MODE_SORTIE=1) : \
-                 chemin jamais exercé en production, deux critiques ouvertes \
-                 (pollution du registre, reprise D2 court-circuitée)"
-            );
-        }
-        arme
     })
 }
 

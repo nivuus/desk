@@ -12,6 +12,10 @@ use crate::h264::{AccessUnit, CLOCK_RATE_HZ};
 use crate::source::VideoSource;
 use crate::window;
 use crate::windows_source_sortie::ModeCapture;
+// `Telemetrie` (D9, tâche 11) : compteurs de capture PAR SESSION, même
+// montage FRÈRE que `windows_source_sortie` ci-dessus — voir
+// `windows_source/telemetrie.rs`.
+use crate::windows_source_telemetrie::Telemetrie;
 // `WindowsSource::sur_sortie` vit dans `windows_source/sortie.rs` (module
 // FRÈRE, déclaré `#[path]` dans `main.rs` sous le nom `windows_source_sortie`
 // pour que son calcul pur de région et son `ModeCapture` restent testables sur
@@ -120,6 +124,10 @@ pub struct WindowsSource {
     /// voir `ModeCapture` (`windows_source/sortie.rs`) pour ce que son absence
     /// produisait.
     mode: ModeCapture,
+    /// Compteurs de capture par session (D9, tâche 11), remplaçant les
+    /// statiques `TICKS`/`CAPTURED`/`PRODUCED`. `pub(crate)` : lu depuis
+    /// `capteur/fenetre.rs`, module frère et non enfant de celui-ci.
+    pub(crate) telemetrie: Telemetrie,
 }
 
 // SÉCURITÉ : les types COM enveloppés ici (`HWND`, `ID3D11Device`,
@@ -222,6 +230,7 @@ impl WindowsSource {
             encoder_warmed_up: false,
             ready: std::collections::VecDeque::new(),
             mode,
+            telemetrie: Telemetrie::default(),
         }
     }
 
@@ -310,7 +319,7 @@ impl WindowsSource {
             match self.encoder.as_mut().map(H264Encoder::poll_output) {
                 Some(Ok(Some(unit))) => {
                     self.encoder_warmed_up = true;
-                    PRODUCED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    self.telemetrie.produite();
                     self.ready.push_back(unit);
                 }
                 Some(Ok(None)) | None => break,
@@ -431,28 +440,9 @@ impl WindowsSource {
 const SUBMIT_POLL_BUDGET: std::time::Duration = std::time::Duration::from_millis(40);
 const SUBMIT_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(1);
 
-/// Compteurs du chemin réel (`Session::run`), à l'échelle du processus.
-///
-/// Volontairement des statiques plutôt qu'un champ : `resize` remplace
-/// l'encodeur — donc sa télémétrie — et la question à laquelle ces compteurs
-/// doivent répondre (« où le flux s'arrête-t-il ? ») porte justement sur ce
-/// qu'il advient *après* une reconstruction. Une poignée attachée à
-/// l'encodeur cesserait d'être observée au moment précis qui intéresse.
-///
-/// Le coût est nul (trois incréments `Relaxed` par tour) et le seul lecteur
-/// est le fil de surveillance de `demarrage.rs`, activé par `SOURCE_TRACE=1`.
-///
-/// ⚠️ **Ils ne décrivent plus que le chemin MONO-FENÊTRE.** Depuis D4 l'unique
-/// lecteur (`demarrage.rs`, côté **enfant**) et les seuls écrivains (ce
-/// fichier, côté **capteur**) sont dans deux processus, `main.rs` rendant la
-/// main à `capteur::executer` avant `demarrage::executer` : `SOURCE_TRACE=1`
-/// rend des **zéros** sur un enfant (il porte une `SourceDistante`) et n'est
-/// lu par **personne** dans le capteur. **Mort des deux côtés, pas agrégé.**
-/// Trois `grep` le refont (lecteur, écrivains, aiguillage `CAPTEUR`). Les
-/// rendre par session est **consigné pour D7** ; le code n'est PAS corrigé.
-pub static TICKS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-pub static CAPTURED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-pub static PRODUCED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+// Les compteurs `TICKS`/`CAPTURED`/`PRODUCED` vivaient ici, en statiques de
+// processus — mortes des deux côtés depuis D4. Remplacées par le champ
+// `telemetrie` de `WindowsSource`, par session (voir `windows_source/telemetrie.rs`).
 
 /// Temps cumulé (ns) passé dans chaque étape d'un tour de `next_frame`.
 ///
@@ -515,7 +505,7 @@ impl VideoSource for WindowsSource {
     /// l'appelant) : la fenêtre a disparu, ou une erreur de capture non
     /// récupérable s'est produite.
     fn next_frame(&mut self) -> Option<AccessUnit> {
-        TICKS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.telemetrie.tick();
         if self.fatal {
             // Une reconstruction de la chaîne par `resize` a pu échouer au
             // point de ne laisser aucune capture de secours valide non plus
@@ -541,7 +531,7 @@ impl VideoSource for WindowsSource {
         );
         match captured {
             Ok(Some(frame)) => {
-                CAPTURED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                self.telemetrie.capturee();
                 // Horodatage lu sur l'horloge réelle AVANT la soumission :
                 // c'est l'instant de la capture qui date l'image, pas celui
                 // où l'encodeur voudra bien l'accepter (voir `next_pts_90k`).

@@ -165,6 +165,124 @@ fn une_part_en_attente_est_appliquee_par_act_on_timeout() {
     );
 }
 
+/// Source audio factice pilotable de l'extérieur (`Arc<AtomicBool>`) : rend
+/// `capture_morte()` sur commande, sans jamais produire de paquet — ce test
+/// n'exerce que la DÉTECTION (branche a1sexies), pas l'émission audio.
+struct AudioSourceMortelle {
+    morte: std::sync::Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl AudioSource for AudioSourceMortelle {
+    fn next_packet(&mut self) -> Option<AudioPacket> {
+        None
+    }
+    fn capture_morte(&self) -> bool {
+        self.morte.load(std::sync::atomic::Ordering::Relaxed)
+    }
+}
+
+/// Source vidéo factice qui compte les appels à `signaler_audio_mort` et
+/// rend un rattachement piloté de l'extérieur — même patron que
+/// `SourceAvecSommeil`/`SourceAvecPart` ci-dessus : ce test vérifie le
+/// CÂBLAGE de la branche a1sexies d'`act_on_timeout` (et sa remise à zéro
+/// par a1sexies elle-même), pas la logique de `SourceDistante`, couverte par
+/// `capteur/distante/tests.rs`.
+struct SourceAvecAudioMort {
+    inner: crate::source::FileSource,
+    signalements: std::sync::Arc<std::sync::Mutex<u32>>,
+    rattachement_prepare: std::sync::Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl VideoSource for SourceAvecAudioMort {
+    fn next_frame(&mut self) -> Option<AccessUnit> {
+        self.inner.next_frame()
+    }
+    fn dimensions(&self) -> (u32, u32) {
+        self.inner.dimensions()
+    }
+    fn signaler_audio_mort(&mut self) {
+        *self.signalements.lock().unwrap() += 1;
+    }
+    fn rattachement_survenu(&mut self) -> bool {
+        // `swap`, pas une simple lecture : CONSOMMÉ, sur le même régime que
+        // `Option::take()` dans `SourceAvecSommeil`/`SourceAvecPart` — sans
+        // quoi ce drapeau resterait vrai indéfiniment et masquerait le
+        // défaut que ce test existe pour attraper (un verrou qui ne se
+        // remettrait jamais à zéro serait, à l'identique, invisible).
+        self.rattachement_prepare.swap(false, std::sync::atomic::Ordering::Relaxed)
+    }
+}
+
+/// Remède à la réserve I1 de la revue de la tâche 9 (sous-bloc D9) : la
+/// branche a1sexies n'avait aucun test — exactement le risque que le
+/// commentaire d'`une_part_en_attente_est_appliquee_par_act_on_timeout`
+/// nomme pour a1quater (« supprimer tout le bloc laissait les autres tests
+/// verts »). Séquence complète, vue ROUGE avant remède (voir le rapport de
+/// tâche) : `capture_morte()` devient vraie → `AudioMort` part UNE fois →
+/// elle NE repart PAS au tour suivant (le verrou `audio_mort_signale`) →
+/// `rattachement_survenu()` devient vraie → elle REPART.
+#[test]
+fn une_capture_audio_morte_est_signalee_une_fois_puis_de_nouveau_apres_un_rattachement() {
+    let inner = fixtures::video_test_source();
+    let signalements = std::sync::Arc::new(std::sync::Mutex::new(0u32));
+    let rattachement = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let source = Box::new(SourceAvecAudioMort {
+        inner,
+        signalements: signalements.clone(),
+        rattachement_prepare: rattachement.clone(),
+    });
+    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
+        .expect("session");
+
+    let morte = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    session.set_audio_source(Box::new(AudioSourceMortelle { morte: morte.clone() }));
+
+    // Capture vivante : rien à signaler.
+    session
+        .act_on_timeout(Instant::now())
+        .expect("un tour sans capture morte ne doit jamais faire échouer la session");
+    assert_eq!(
+        *signalements.lock().unwrap(),
+        0,
+        "aucun signalement tant que la capture est vivante"
+    );
+
+    // La capture meurt : le tour SUIVANT doit signaler exactement une fois.
+    morte.store(true, std::sync::atomic::Ordering::Relaxed);
+    session
+        .act_on_timeout(Instant::now())
+        .expect("signaler une capture morte ne doit jamais faire échouer la session");
+    assert_eq!(
+        *signalements.lock().unwrap(),
+        1,
+        "la capture morte doit être signalée exactement une fois"
+    );
+
+    // Tour suivant, capture toujours morte, AUCUN rattachement : le verrou
+    // doit empêcher toute réémission.
+    session
+        .act_on_timeout(Instant::now())
+        .expect("un tour sous verrou ne doit jamais faire échouer la session");
+    assert_eq!(
+        *signalements.lock().unwrap(),
+        1,
+        "le verrou audio_mort_signale doit empêcher une réémission tant qu'aucun \
+         rattachement n'a eu lieu"
+    );
+
+    // Un rattachement survient (capteur relancé, ou reconnexion de canal) :
+    // le verrou retombe, et la capture toujours morte doit repartir.
+    rattachement.store(true, std::sync::atomic::Ordering::Relaxed);
+    session
+        .act_on_timeout(Instant::now())
+        .expect("re-signaler après un rattachement ne doit jamais faire échouer la session");
+    assert_eq!(
+        *signalements.lock().unwrap(),
+        2,
+        "un rattachement doit remettre le verrou à zéro et permettre un nouveau signalement"
+    );
+}
+
 /// Preuve d'intégration pour C1 (cadence) et C2 (drainage) : les tests
 /// ci-dessus valident les fonctions pures, mais la revue demandait une
 /// mesure réelle de cadence. Sans navigateur disponible, on simule le

@@ -1,0 +1,176 @@
+{
+ "etiquette": "focus-2",
+ "mode": "focus",
+ "budget_bps": 8000000,
+ "bitrate_par_enfant": 8000000,
+ "n_eveil": 8,
+ "part_sondage": "(absent → armé)",
+ "phases": {
+  "focus": [
+   {
+    "cible": "w:w-4",
+    "scenario": {
+     "etats": {
+      "w:w-2": "false/false",
+      "w:w-4": "false/true",
+      "w:w-6": "false/false"
+     },
+     "focalisees": [
+      "w:w-4"
+     ]
+    },
+    "fin": "2026-08-06T21:11:44.584Z",
+    "tailles": {
+     "w:w-2": {
+      "taille": "1024x576",
+      "aire": 589824,
+      "lien_taille": "1024x576",
+      "lien_bitrate": 2000000,
+      "focalisee": false
+     },
+     "w:w-4": {
+      "taille": "1280x720",
+      "aire": 921600,
+      "lien_taille": "1280x720",
+      "lien_bitrate": 3664238,
+      "focalisee": true
+     },
+     "w:w-6": {
+      "taille": "1024x576",
+      "aire": 589824,
+      "lien_taille": "1024x576",
+      "lien_bitrate": 2000000,
+      "focalisee": false
+     }
+    },
+    "parts": {
+     "dernieres": {
+      "w-2": {
+       "bps": 2000000,
+       "t": "2026-08-06T21:10:44.578455Z"
+      },
+      "w-4": {
+       "bps": 4000000,
+       "t": "2026-08-06T21:10:44.581720Z"
+      },
+      "w-6": {
+       "bps": 2000000,
+       "t": "2026-08-06T21:10:44.580025Z"
+      }
+     },
+     "somme": 8000000,
+     "nombre_de_lignes": 41
+    },
+    "aire_focalisee": 921600,
+    "aire_max_autres": 589824,
+    "promotion": true,
+    "barreaux_cumules_a_date": 12
+   },
+   {
+    "cible": "w:w-6",
+    "scenario": {
+     "etats": {
+      "w:w-2": "false/false",
+      "w:w-4": "false/false",
+      "w:w-6": "false/true"
+     },
+     "focalisees": [
+      "w:w-6"
+     ]
+    },
+    "fin": "2026-08-06T21:12:44.853Z",
+    "tailles": {
+     "w:w-2": {
+      "taille": "1024x576",
+      "aire": 589824,
+      "lien_taille": "1024x576",
+      "lien_bitrate": 2000000,
+      "focalisee": false
+     },
+     "w:w-4": {
+      "taille": "1024x576",
+      "aire": 589824,
+      "lien_taille": "1024x576",
+      "lien_bitrate": 2000000,
+      "focalisee": false
+     },
+     "w:w-6": {
+      "taille": "1024x576",
+      "aire": 589824,
+      "lien_taille": "1024x576",
+      "lien_bitrate": 4000000,
+      "focalisee": true
+     }
+    },
+    "parts": {
+     "dernieres": {
+      "w-2": {
+       "bps": 2000000,
+       "t": "2026-08-06T21:11:44.809041Z"
+      },
+      "w-4": {
+       "bps": 2000000,
+       "t": "2026-08-06T21:11:44.810945Z"
+      },
+      "w-6": {
+       "bps": 4000000,
+       "t": "2026-08-06T21:11:44.799789Z"
+      }
+     },
+     "somme": 8000000,
+     "nombre_de_lignes": 47
+    },
+    "aire_focalisee": 589824,
+    "aire_max_autres": 589824,
+    "promotion": false,
+    "barreaux_cumules_a_date": 14
+   }
+  ]
+ },
+ "navigateur": "Chrome/151.0.7922.108",
+ "cpu_repos": {
+  "loadavg": "15.23 19.85 16.19 15/2775 2670857"
+ },
+ "purge_rescapees": true,
+ "budget_annonce": [
+  8000000
+ ],
+ "construction": {
+  "ouvertes": 6,
+  "cible1": "w:w-2",
+  "scenario": {
+   "etats": {
+    "w:w-2": "false/true",
+    "w:w-4": "false/false",
+    "w:w-6": "false/false"
+   },
+   "focalisees": [
+    "w:w-2"
+   ]
+  },
+  "pose": {
+   "stable": true,
+   "attente_s": 27.7,
+   "changements": 8
+  },
+  "survie": {
+   "virsh": "en cours d’exécution",
+   "acces": "OUI"
+  }
+ },
+ "survie_apres_focus": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ },
+ "marqueurs": {
+  "lignes": 851,
+  "enfant_lance": 3,
+  "attachee_capteur": 3,
+  "cloture": 0,
+  "endormie": 0,
+  "part_appliquee": 47,
+  "taille_changee": 14,
+  "taille_refusee": 0,
+  "erreurs": 16
+ }
+}

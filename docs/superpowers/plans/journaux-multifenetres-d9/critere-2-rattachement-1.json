@@ -1,0 +1,34 @@
+{
+ "etiquette": "rattachement-1",
+ "montage": "rattachement",
+ "port_shell": "5173",
+ "navigateur": "Chrome/151.0.7922.71",
+ "cpu_repos": {
+  "loadavg": "10.14 8.33 8.32 26/3133 1864626"
+ },
+ "phase": {
+  "session": "w-2",
+  "pid_capteur": "15856",
+  "debut_mort": "2026-08-06T17:07:33.760Z",
+  "mort": {
+   "status": 0
+  },
+  "capteur_relance": true,
+  "canal_rattache": true,
+  "lignes_rattache": [
+   "2026-08-06T17:07:34.347115Z  INFO agent::capteur::distante: canal rattaché au capteur largeur=1280 hauteur=720\r"
+  ],
+  "cloture_de_session_amorcee": 0,
+  "lignes_cloture": [],
+  "enfants_termines": 1,
+  "lignes_enfants_termines": [
+   "2026-08-06T17:07:34.143497Z  INFO agent::superviseur::lanceur: capteur terminé pid=15856 code=ExitStatus(ExitStatus(4294967295))\r"
+  ],
+  "session_vivante_apres": true,
+  "fin_observation": "2026-08-06T17:07:42.152Z"
+ },
+ "survie_finale": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ }
+}

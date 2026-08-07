@@ -13,9 +13,10 @@
 //! même raison que la sortie de boucle : `Drop for H264Encoder` peut geler, et
 //! sur ce fil-ci un gel ne coûterait que cette fenêtre.
 //!
-//! Trois fichiers, parce que le sous-bloc D5 a porté celui-ci de 336 à plus de
-//! 600 lignes : la boucle et le transport restent ici, les transitions de
-//! sommeil et le service des commandes vivent dans les deux modules enfants.
+//! Quatre fichiers, parce que le sous-bloc D5 a porté celui-ci de 336 à plus
+//! de 600 lignes : la boucle et le transport restent ici, les transitions de
+//! sommeil, le service des commandes et la trace des compteurs (D9, tâche 11)
+//! vivent dans les modules enfants.
 
 #![cfg(windows)]
 
@@ -25,6 +26,11 @@
 // sous-arbre se confondraient à la lecture, et l'import du registre entrerait
 // en collision avec l'enfant.
 mod commandes;
+// `trace` porte la trace périodique des compteurs de capture
+// (`SOURCE_TRACE=1`) — troisième module enfant sur le même patron que les
+// deux ci-dessus, extrait en revue de la tâche 11 (D9) pour la même raison de
+// plafond de taille.
+mod trace;
 mod transitions;
 
 use std::io::Write;
@@ -44,6 +50,7 @@ use crate::source::VideoSource;
 use crate::windows_source::WindowsSource;
 
 use self::commandes::{deposer, servir_les_commandes};
+use self::trace::tracer_les_compteurs;
 
 /// Pas de sommeil quand la source n'a rien rendu.
 ///
@@ -264,7 +271,14 @@ impl Fenetre {
         // fenêtre que personne ne déclare regarder —, mais c'est la nouvelle
         // façon dont une session peut rester vide sans qu'aucune erreur ne soit
         // journalisée.
-        let ordres = crate::capteur::sommeil::inscrire(&session, self.pid);
+        //
+        // `inscrire` frappe et rend la GÉNÉRATION de cette inscription (D9,
+        // F5 de D7) : retenue en local — jamais sur `self`, elle n'a de sens
+        // qu'entre cet appel et le `retirer` de fin de fonction, tous deux
+        // sur ce même fil — et redonnée telle quelle à `retirer`, seul moyen
+        // pour le registre de reconnaître un `retirer` déjà périmé par un
+        // rattachement survenu entre-temps.
+        let (ordres, generation) = crate::capteur::sommeil::inscrire(&session, self.pid);
 
         let resultat = self.boucler(&session, &ordres, &ecritures, &commandes, &reponses);
 
@@ -283,7 +297,7 @@ impl Fenetre {
         // demanderait un encodeur de plus au matériel si le nôtre vivait
         // encore. Le relâchement reste sur ce fil-ci, comme partout ailleurs.
         drop(self.source.take());
-        crate::capteur::sommeil::retirer(&session);
+        crate::capteur::sommeil::retirer(&session, generation);
         resultat
     }
 
@@ -412,11 +426,12 @@ impl Fenetre {
             //    plein écran. Bridé par son propre minuteur — voir
             //    `plein_ecran::PERIODE_STYLE`.
             //
-            //    `plein_ecran::actif()` D'ABORD : `PLEIN_ECRAN=0` désarme le
-            //    mécanisme entier, lecture de style comprise, et pas seulement
-            //    le changement de mode de la sortie. Un interrupteur qui
-            //    laisserait courir la moitié amont annoncerait encore le plein
-            //    écran au navigateur.
+            //    `plein_ecran::actif()` D'ABORD : `PLEIN_ECRAN=0` désarme la
+            //    détection — la relecture du style et l'annonce `PleinEcran`
+            //    qui en découle. C'est tout ce que ce mécanisme fait
+            //    désormais : le sous-bloc D9 a retiré l'autre moitié, le
+            //    changement de mode de la sortie virtuelle (voir
+            //    `plein_ecran::actif` pour le constat de mesure).
             if plein_ecran::actif() && dernier_style.elapsed() >= plein_ecran::PERIODE_STYLE {
                 dernier_style = Instant::now();
                 if let Some(style) = plein_ecran::lire_style(self.parametres.hwnd) {
@@ -441,6 +456,7 @@ impl Fenetre {
                     cadence = format!("{:.1}", images as f64 / ecoule),
                     "cadence du capteur"
                 );
+                tracer_les_compteurs(self.source.as_ref());
                 images = 0;
                 dernier_compte = Instant::now();
             }

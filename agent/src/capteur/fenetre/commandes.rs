@@ -86,17 +86,27 @@ fn executer_commande(
     ctx: &Contexte,
     message: VersCapteur,
 ) -> DepuisCapteur {
-    // Les trois messages qui ne touchent pas la source sont traités AVANT elle,
-    // pour que leur réponse soit la même endormie et éveillée : `Visibilite`
-    // parce qu'elle est ce qui COMMANDE le sommeil — l'ignorer pendant un
-    // sommeil interdirait tout réveil —, les deux autres parce qu'une violation
-    // de protocole n'en cesse pas d'être une pendant un sommeil.
+    // Les quatre messages qui ne touchent pas la source sont traités AVANT
+    // elle, pour que leur réponse soit la même endormie et éveillée :
+    // `Visibilite` et `AudioMort` parce qu'ils COMMANDENT ou alimentent
+    // l'arbitrage du sommeil — les ignorer pendant un sommeil interdirait
+    // tout réveil ou toute promotion d'une voisine —, les deux autres parce
+    // qu'une violation de protocole n'en cesse pas d'être une pendant un
+    // sommeil.
     match message {
         VersCapteur::Visibilite { visible, focalisee } => {
             // L'effet ne revient PAS par cette réponse : l'arbitrage est global
             // et peut concerner une AUTRE fenêtre que celle-ci. Il revient par
             // `DepuisCapteur::Sommeil`, poussé sur la connexion média.
             crate::capteur::sommeil::signaler(ctx.session, visible, focalisee);
+            return DepuisCapteur::Fait;
+        }
+        VersCapteur::AudioMort => {
+            // L'effet ne revient PAS par cette réponse : l'arbitrage est global
+            // et peut concerner une AUTRE fenêtre du même groupe de PID. Il
+            // revient par `DepuisCapteur::Audio`, poussé sur la connexion
+            // média. Même patron que `Visibilite` juste au-dessus.
+            crate::capteur::sommeil::audio_mort(ctx.session);
             return DepuisCapteur::Fait;
         }
         VersCapteur::Attache { .. } => {
@@ -144,16 +154,27 @@ fn executer_commande(
             // ni capture ni encodeur, il n'y a rien à retailler. Un `Fait`
             // ferait échouer `SourceDistante::resize`, qui attend une `Taille`.
             //
-            // ⚠️ **Ce commentaire disait « `resize` est de toute façon sans
-            // effet sur une source en mode `SortieEntiere` » : c'était vrai
-            // jusqu'au sous-bloc D8, et ça ne l'est plus** — `resize` y change
-            // désormais le mode de la sortie virtuelle. Conséquence assumée et
-            // non corrigée ici : un passage en plein écran demandé pendant que
-            // la fenêtre dort est **perdu**, la sortie gardant sa taille
-            // d'avant. Le réveil reconstruit la source sur la sortie telle
-            // qu'elle est, donc sans le plein écran ; il faudra un nouveau
-            // geste du navigateur. Une fenêtre endormie est, par construction
-            // du vivier (D5), une fenêtre que le client ne regarde pas.
+            // ⚠️ **Ce commentaire a dit successivement deux choses fausses, et
+            // c'est la revue TRANSVERSE de fin de branche D9 qui l'a rattrapé —
+            // aucune revue par tâche ne le pouvait.** Il a d'abord affirmé que
+            // « `resize` est de toute façon sans effet sur une source en mode
+            // `SortieEntiere` » ; D8 l'a réfuté en faisant suivre la sortie au
+            // viewport ; le commentaire a donc été réécrit pour annoncer, comme
+            // conséquence assumée, qu'un passage en plein écran demandé pendant
+            // le sommeil serait **perdu**. ❌ **Cette seconde rédaction est
+            // périmée depuis la tâche 3 du sous-bloc D9**, qui a retiré le
+            // changement de mode de sortie sur mesure (voir le constat en tête
+            // de `capteur/plein_ecran.rs`) : `resize` est redevenu, sans
+            // réserve, sans effet en `SortieEntiere`
+            // (`ModeCapture::redimensionne_la_fenetre` rend `false` et
+            // `WindowsSource::resize` retourne avant tout), et il n'y a donc
+            // plus AUCUN plein écran à perdre par ce chemin — la détection et
+            // l'annonce, la seule moitié qui reste livrée, ne passent pas par
+            // `Redimensionner`.
+            //
+            // Ce qui reste vrai, et pourquoi ce bras existe : rendre une
+            // `Taille` plutôt qu'un `Fait`, parce que `SourceDistante::resize`
+            // attend une `Taille`.
             VersCapteur::Redimensionner { .. } => {
                 DepuisCapteur::Taille { largeur: ctx.taille.0, hauteur: ctx.taille.1 }
             }
@@ -179,7 +200,8 @@ fn executer_commande(
         // emporterait la fenêtre pour une faute de rédaction.
         VersCapteur::Attache { .. }
         | VersCapteur::Identite { .. }
-        | VersCapteur::Visibilite { .. } => {
+        | VersCapteur::Visibilite { .. }
+        | VersCapteur::AudioMort => {
             return DepuisCapteur::Erreur {
                 motif: "commande déjà traitée hors de la source".into(),
             }

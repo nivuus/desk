@@ -1,0 +1,240 @@
+{
+ "etiquette": "rouge",
+ "montage": "a",
+ "port_shell": "5173",
+ "navigateur": "Chrome/151.0.7922.71",
+ "cpu_repos": {
+  "loadavg": "9.09 9.64 8.43 21/3189 1762284"
+ },
+ "phase": {
+  "montage": "a",
+  "session": "w-2",
+  "ice_avant": "connected",
+  "avant": {
+   "hz": 662,
+   "db": -39,
+   "plancher_db": -158,
+   "sample_rate": 44100,
+   "niveaux": [
+    {
+     "f": 660,
+     "db": -39
+    }
+   ],
+   "piste_muted": false,
+   "piste_ready_state": "live",
+   "stats_audio": {
+    "bytes_recus": 26889,
+    "paquets_recus": 167
+   }
+  },
+  "debut_declencheur": "2026-08-06T16:45:59.399Z",
+  "restart_service": {
+   "status": 0,
+   "stdout": ""
+  },
+  "releves": [
+   {
+    "t": "2026-08-06T16:46:06.885Z",
+    "hz": 0,
+    "db": -1000,
+    "plancher_db": -1000,
+    "sample_rate": 44100,
+    "niveaux": [
+     {
+      "f": 660,
+      "db": -1000
+     }
+    ],
+    "piste_muted": false,
+    "piste_ready_state": "live",
+    "stats_audio": {
+     "bytes_recus": 44917,
+     "paquets_recus": 915
+    }
+   },
+   {
+    "t": "2026-08-06T16:46:13.413Z",
+    "hz": 0,
+    "db": -1000,
+    "plancher_db": -1000,
+    "sample_rate": 44100,
+    "niveaux": [
+     {
+      "f": 660,
+      "db": -1000
+     }
+    ],
+    "piste_muted": false,
+    "piste_ready_state": "live",
+    "stats_audio": {
+     "bytes_recus": 48130,
+     "paquets_recus": 1568
+    }
+   },
+   {
+    "t": "2026-08-06T16:46:19.930Z",
+    "hz": 18680,
+    "db": -238,
+    "plancher_db": -250,
+    "sample_rate": 44100,
+    "niveaux": [
+     {
+      "f": 660,
+      "db": -247
+     }
+    ],
+    "piste_muted": false,
+    "piste_ready_state": "live",
+    "stats_audio": {
+     "bytes_recus": 51343,
+     "paquets_recus": 2221
+    }
+   },
+   {
+    "t": "2026-08-06T16:46:26.471Z",
+    "hz": 689,
+    "db": -178,
+    "plancher_db": -191,
+    "sample_rate": 44100,
+    "niveaux": [
+     {
+      "f": 660,
+      "db": -178
+     }
+    ],
+    "piste_muted": false,
+    "piste_ready_state": "live",
+    "stats_audio": {
+     "bytes_recus": 54553,
+     "paquets_recus": 2871
+    }
+   },
+   {
+    "t": "2026-08-06T16:46:33.002Z",
+    "hz": 8904,
+    "db": -179,
+    "plancher_db": -189,
+    "sample_rate": 44100,
+    "niveaux": [
+     {
+      "f": 660,
+      "db": -187
+     }
+    ],
+    "piste_muted": false,
+    "piste_ready_state": "live",
+    "stats_audio": {
+     "bytes_recus": 57770,
+     "paquets_recus": 3528
+    }
+   },
+   {
+    "t": "2026-08-06T16:46:39.536Z",
+    "hz": 2514,
+    "db": -163,
+    "plancher_db": -175,
+    "sample_rate": 44100,
+    "niveaux": [
+     {
+      "f": 660,
+      "db": -180
+     }
+    ],
+    "piste_muted": false,
+    "piste_ready_state": "live",
+    "stats_audio": {
+     "bytes_recus": 60983,
+     "paquets_recus": 4181
+    }
+   },
+   {
+    "t": "2026-08-06T16:46:46.070Z",
+    "hz": 3020,
+    "db": -162,
+    "plancher_db": -177,
+    "sample_rate": 44100,
+    "niveaux": [
+     {
+      "f": 660,
+      "db": -168
+     }
+    ],
+    "piste_muted": false,
+    "piste_ready_state": "live",
+    "stats_audio": {
+     "bytes_recus": 64196,
+     "paquets_recus": 4834
+    }
+   },
+   {
+    "t": "2026-08-06T16:46:52.600Z",
+    "hz": 3860,
+    "db": -152,
+    "plancher_db": -170,
+    "sample_rate": 44100,
+    "niveaux": [
+     {
+      "f": 660,
+      "db": -167
+     }
+    ],
+    "piste_muted": false,
+    "piste_ready_state": "live",
+    "stats_audio": {
+     "bytes_recus": 67410,
+     "paquets_recus": 5488
+    }
+   },
+   {
+    "t": "2026-08-06T16:46:59.109Z",
+    "hz": 1680,
+    "db": -154,
+    "plancher_db": -170,
+    "sample_rate": 44100,
+    "niveaux": [
+     {
+      "f": 660,
+      "db": -158
+     }
+    ],
+    "piste_muted": false,
+    "piste_ready_state": "live",
+    "stats_audio": {
+     "bytes_recus": 70621,
+     "paquets_recus": 6139
+    }
+   }
+  ],
+  "fin_observation": "2026-08-06T16:46:59.110Z",
+  "lignes_mort_enfant": [],
+  "lignes_registre": [],
+  "lignes_ordre": [],
+  "effondrement_observe": true,
+  "index_premier_effondrement": 0,
+  "dominante_revenue": false,
+  "dernier_releve": {
+   "t": "2026-08-06T16:46:59.109Z",
+   "hz": 1680,
+   "db": -154,
+   "plancher_db": -170,
+   "sample_rate": 44100,
+   "niveaux": [
+    {
+     "f": 660,
+     "db": -158
+    }
+   ],
+   "piste_muted": false,
+   "piste_ready_state": "live",
+   "stats_audio": {
+    "bytes_recus": 70621,
+    "paquets_recus": 6139
+   }
+  }
+ },
+ "survie_finale": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ }
+}

@@ -22,40 +22,14 @@ use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
-use windows::core::HRESULT;
-use windows::Win32::Foundation::{CloseHandle, ERROR_PIPE_CONNECTED, HANDLE};
-use windows::Win32::Storage::FileSystem::PIPE_ACCESS_DUPLEX;
-use windows::Win32::System::Pipes::{
-    ConnectNamedPipe, CreateNamedPipeW, PIPE_READMODE_BYTE, PIPE_TYPE_BYTE,
-    PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
-};
+use windows::Win32::Foundation::{CloseHandle, HANDLE};
 
 use crate::capteur::fenetre::Fenetre;
-use crate::capteur::protocole::{
-    ecrire_json, lire_trame, DepuisCapteur, Trame, VersCapteur, NOM_TUBE,
-};
+use crate::capteur::protocole::{ecrire_json, lire_trame, DepuisCapteur, Trame, VersCapteur};
 use crate::capteur::tube::DUREE_OUVERTURE_MEDIA;
 
-/// Tampon de tube, dans les deux sens. **Dimensionné en unités d'accès, pas
-/// en mégaoctets ronds** (correctif I4 de la revue finale de branche).
-///
-/// C'est ce tampon qui fixe la profondeur RÉELLE de la file d'images, et non
-/// `CAPACITE_ECRITURES` ni `CAPACITE_FILE` : ces deux-là valent 8 et raisonnent
-/// sur ≈90 ms de vidéo, mais un tampon OS plus grand les rend sans effet — il
-/// se remplit derrière elles. À 1 MiB, une unité d'accès pesant 10 à 30 Ko, le
-/// tube retenait 30 à 100 images, soit **0,3 à 1,1 s de vidéo en file**. Or
-/// chaque image porte son instant de capture d'origine : un à-coup ne se
-/// rattrape pas, il se rejoue en rafale d'images anciennes.
-///
-/// 128 Kio ramène cela à ≈4 à 12 images, du même ordre que les deux capacités
-/// ci-dessus, sans descendre au point qu'un à-coup normal bloque le fil de
-/// capture.
-///
-/// ⚠️ **La latence n'a jamais été mesurée sur ce chemin** : la recette du
-/// sous-bloc D4 a relevé des cadences, jamais un délai de bout en bout. Ce
-/// dimensionnement est un raisonnement sur des tailles d'unités d'accès
-/// observées, pas un réglage calibré.
-const TAMPON: u32 = 128 * 1024;
+mod instances;
+use instances::{connecter, creer_instance, SOUFFLE_CREATION_INSTANCE};
 
 /// Attente maximale de la connexion média après une attache acceptée.
 ///
@@ -112,12 +86,6 @@ fn registre_verrouille() -> std::sync::MutexGuard<'static, HashMap<String, Sende
         .lock()
         .unwrap_or_else(|empoisonne| empoisonne.into_inner())
 }
-
-/// Souffle entre deux tentatives de création d'instance de tube après un échec
-/// (correctif I5). Assez court pour qu'un échec transitoire ne coûte rien de
-/// perceptible à l'enfant qui attend, assez long pour qu'un échec persistant
-/// ne devienne pas une boucle serrée. Majorant assumé, non calibré.
-const SOUFFLE_CREATION_INSTANCE: Duration = Duration::from_millis(200);
 
 pub fn servir() -> Result<()> {
     // Vrai dès qu'un échec de `creer_instance` a été signalé — voir plus bas.
@@ -201,41 +169,6 @@ pub fn servir() -> Result<()> {
             }
         }
     }
-}
-
-/// Bloque jusqu'à ce qu'un enfant se connecte à `tube`.
-///
-/// **`ERROR_PIPE_CONNECTED` est un SUCCÈS déguisé en erreur.** Il signale
-/// qu'un enfant s'est connecté dans l'intervalle entre `CreateNamedPipeW` et
-/// cet appel — une course banale, attendue sous `PIPE_UNLIMITED_INSTANCES` —
-/// et non un échec. Le confondre avec un échec réel tuerait le processus
-/// capteur entier (donc les N fenêtres avec lui) à la première course.
-fn connecter(tube: HANDLE) -> Result<()> {
-    match unsafe { ConnectNamedPipe(tube, None) } {
-        Ok(()) => Ok(()),
-        Err(erreur) if erreur.code() == HRESULT::from_win32(ERROR_PIPE_CONNECTED.0) => Ok(()),
-        Err(erreur) => Err(erreur).context("attente d'un enfant"),
-    }
-}
-
-fn creer_instance() -> Result<HANDLE> {
-    let nom: Vec<u16> = NOM_TUBE.encode_utf16().chain(std::iter::once(0)).collect();
-    let tube = unsafe {
-        CreateNamedPipeW(
-            windows::core::PCWSTR(nom.as_ptr()),
-            PIPE_ACCESS_DUPLEX,
-            PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
-            PIPE_UNLIMITED_INSTANCES,
-            TAMPON,
-            TAMPON,
-            0,
-            None,
-        )
-    };
-    if tube.is_invalid() {
-        bail!("CreateNamedPipeW a rendu un handle invalide");
-    }
-    Ok(tube)
 }
 
 /// Lit la première trame et AIGUILLE sur son type : une attache ouvre une
@@ -425,6 +358,18 @@ fn tenir_la_fenetre(
 /// abandon qui expire à l'instant précis où la même session vient de se
 /// réinscrire retirerait l'entrée neuve ; l'enfant s'en remet par sa fenêtre
 /// de reprise. Course jugée négligeable, pas inexistante.
+///
+/// ⚠️ **C'est LITTÉRALEMENT la course F5 (D7) que le sous-bloc D9 a fermée —
+/// sur l'AUTRE registre, et sur lui seul.** La tâche 10 de D9 a donné une
+/// génération monotone aux inscriptions du registre de sommeil
+/// (`capteur/sommeil/registre.rs` : `inscrire` la frappe, `retirer` devient
+/// sans effet si l'enregistrée est plus récente). Le registre d'attentes
+/// tenu ICI n'a rien reçu de tel, et son `remove` reste inconditionnel : le
+/// leg 2 est donc fermé sur `sommeil`, **pas sur `instances`**. Relevé par la
+/// revue transverse de fin de branche D9 — le brief de la tâche 10 ne nommait
+/// que `sommeil`, et aucune revue par tâche ne pouvait voir le jumeau.
+/// Le remède serait le même patron : `attendre_le_media` rend la génération
+/// qu'il vient d'inscrire, `oublier` la reçoit et se tait si elle est périmée.
 fn oublier(session: &str) {
     registre_verrouille().remove(session);
 }

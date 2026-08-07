@@ -38,7 +38,7 @@ où l'on travaille dedans, pas en chantier séparé.
 | Fichier | Lignes | Pourquoi elle reste |
 | --- | --- | --- |
 | `agent/src/encode.rs` | 1536 | `#[cfg(windows)]`, aucun test |
-| `agent/src/windows_source.rs` | **638** | `#[cfg(windows)]`, aucun test |
+| `agent/src/windows_source.rs` | ~~638~~ **628** (6 août 2026, D9) | `#[cfg(windows)]`, aucun test |
 
 > ✅ **`wasapi.rs` SORT de cette table (3 août 2026, sous-bloc D7, tâche 1).**
 > Il faisait 543 lignes ; la tâche 1 en a extrait la machinerie COM du *process
@@ -69,6 +69,17 @@ où l'on travaille dedans, pas en chantier séparé.
 >   et c'est aussi le remède de fond : le jour où `TICKS`, `CAPTURED` et
 >   `PRODUCED` deviendront per-session (consignation n°1 de D7), ils sortiront
 >   du fichier et lui rendront cette marge.
+>
+> ✅ **CETTE CONDITION EST LEVÉE, et par le remède annoncé lui-même (6 août
+> 2026, sous-bloc D9, tâche 11).** Les trois statiques `TICKS`/`CAPTURED`/
+> `PRODUCED` sont devenues un champ **par session** de `WindowsSource` et sont
+> sorties vers **`agent/src/windows_source/telemetrie.rs`** (**72** lignes,
+> **pur, aucun `cfg`, deux tests d'hôte**) — exactement le point de chute
+> nommé trois ans de lecture plus haut. `windows_source.rs` retombe de **638 à
+> 628** (relevé par la commande le 6 août 2026), et **il a récupéré plus que
+> les 7 lignes que D6 lui avait prises**. La dette de taille reste, elle,
+> entière : 628 est toujours au-dessus de 500, toujours `#[cfg(windows)]`,
+> toujours sans test.
 
 > `encode.rs` est passé de 1502 à 1536 lignes le 31 juillet 2026 (correctif de
 > libération des encodeurs). **Cette croissance de +34 est régulière au regard
@@ -96,6 +107,13 @@ où l'on travaille dedans, pas en chantier séparé.
 > endroit. **Leçon du chiffre, vérifiée deux fois plutôt qu'une : la marge
 > regagnée par une extraction se reperd à la ronde suivante si on la traite
 > comme acquise.**
+>
+> ✅ **Le chiffre a bougé, et pour une fois dans le bon sens : `capture.rs` vaut
+> ~~496~~ **492**, marge ~~4~~ **8** (relevé par la commande le 6 août 2026,
+> D9).** Aucune extraction : `DesktopCapture::cible()`, **orphelin non
+> revendiqué**, est parti avec le changement de mode de sortie (tâche 3). **Une
+> marge peut aussi se regagner en retirant du code mort — mais c'est un effet de
+> bord, pas une méthode**, et l'injonction ci-dessus tient sans changement.**
 
 Ces trois modules ne se compilent que sur la VM et ne sont couverts par aucun
 test : les découper se ferait sans filet automatisé. La dette est assumée
@@ -174,6 +192,17 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > compression du commentaire de `TAMPON`, qui doit rester auprès de la constante
 > qu'il justifie.
 >
+> ✅ **CETTE INJONCTION A ÉTÉ TENUE À LA LETTRE, et par une tâche DÉDIÉE placée
+> AVANT celle qui devait y ajouter du code (6 août 2026, D9, tâche 6).**
+> `agent/src/capteur/serveur/instances.rs` (**82** lignes) est extrait, et **le
+> commentaire de `TAMPON` part AVEC sa constante** — comparé mot pour mot par la
+> revue. `serveur.rs` retombe de ~~490~~ à **435** : **la marge passe de 10 à
+> 65**, et la tâche 9 y a ensuite ajouté son bras `AudioMort` sans franchir
+> quoi que ce soit. **C'est la première fois dans ce dépôt qu'une marge étroite
+> est traitée AVANT l'addition plutôt qu'après**, et c'est ce qui a évité la
+> compression que les deux autres fichiers de ce même sous-bloc ont subie
+> (`sommeil.rs`, `capteur/fenetre.rs` — voir la section D9).
+>
 > ✅ **Relance du 3 août 2026, fin du sous-bloc D6, PAR LA COMMANDE** : les trois
 > lignes du tableau sont exactes après correction — **1536 / 638 / 543** —, le
 > `638` étant le seul mouvement (voir l'encadré du tableau), et **aucun autre
@@ -228,17 +257,17 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > | Fichier | Lignes | Remarque |
 > | --- | --- | --- |
 > | `agent/src/transport/adaptation.rs` | **468** | inchangé depuis le relevé ci-dessus |
-> | `agent/src/capteur/sommeil.rs` | **432** | **le fichier qui a le plus grossi de la branche** — il porte le registre entier (vivier partagé, canaux, focus, tour de roue). Marge 68 |
-> | `agent/src/capteur/distante/tests.rs` | **409** | |
-> | `agent/src/capteur/fenetre.rs` | **407** | |
-> | `agent/src/capteur/sommeil/parts.rs` | **348** | |
+> | `agent/src/capteur/sommeil.rs` | ~~432~~ **269** (6 août 2026, D9) | **le fichier qui a le plus grossi de la branche** — il portait le registre entier (vivier partagé, canaux, focus, tour de roue). ⚠️ **D9 a extrait ce registre vers `sommeil/registre.rs` (331)**, sur exigence de revue, après l'avoir d'abord ramené à 499 **par compression** — geste que ce fichier interdit |
+> | `agent/src/capteur/distante/tests.rs` | ~~409~~ **474** (D8, inchangé sous D9) | |
+> | `agent/src/capteur/fenetre.rs` | ~~407~~ **485** (6 août 2026, D9 — marge 15) | |
+> | `agent/src/capteur/sommeil/parts.rs` | ~~348~~ **349** (D9) | |
 > | `agent/src/capteur/protocole.rs` | **347** | |
 > | `agent/src/source.rs` | **334** | |
 > | `agent/src/congestion/reconfiguration.rs` | **306** | |
 > | `agent/src/capteur/distante.rs` | **288** | |
 > | `agent/src/transport/tick.rs` | **275** | |
-> | `agent/src/capteur/vivier.rs` | **275** | |
-> | `agent/src/transport/part.rs` | **274** | |
+> | `agent/src/capteur/vivier.rs` | **275** | inchangé au 6 août 2026 |
+> | `agent/src/transport/part.rs` | ~~274~~ **301** (D9 — `PART_SONDAGE=0`) | |
 > | `agent/src/capteur/repartiteur.rs` | **147** | |
 >
 > ⚠️ **Quatre chiffres de CE tableau ont vieilli à leur tour, et pour la même
@@ -250,10 +279,10 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 >
 > | Fichier | Publié ci-dessus | Réel (4 août 2026) | Cause du mouvement |
 > | --- | --- | --- | --- |
-> | `agent/src/capteur/protocole.rs` | 347 | ~~361~~ **369** (5 août) | D7 tâche 6 — le message `Audio` ; **D8 y ajoute `PleinEcran`, +8** |
-> | `agent/src/capteur/distante.rs` | 288 | ~~332~~ **375** (5 août) | D7 tâche 7 — `est_endormie` et l'état audio ; puis la vague F2 (354) ; **puis D8, +21** |
-> | `agent/src/source.rs` | 334 | ~~348~~ **362** (5 août) | D7 — le trait `VideoSource`/audio gagne une méthode ; **D8 y ajoute +14** |
-> | `agent/src/transport/tick.rs` | 275 | ~~297~~ **308** (5 août) | D7 tâche 10 — le fil de fenêtre relaie l'ordre `Audio` ; **D8 y relaie `Fullscreen`, +20/-9** |
+> | `agent/src/capteur/protocole.rs` | 347 | ~~361~~ ~~369~~ **381** (6 août) | D7 tâche 6 — le message `Audio` ; D8 y ajoute `PleinEcran`, +8 ; **D9 y ajoute `AudioMort`, +12** |
+> | `agent/src/capteur/distante.rs` | 288 | ~~332~~ ~~375~~ **400** (6 août) | D7 tâche 7 — `est_endormie` et l'état audio ; puis la vague F2 (354) ; puis D8, +21 ; **puis D9, +25** (`signaler_audio_mort`, `rattachement_survenu`) |
+> | `agent/src/source.rs` | 334 | ~~348~~ ~~362~~ **387** (6 août) | D7 — le trait `VideoSource`/audio gagne une méthode ; D8 y ajoute +14 ; **D9 y ajoute deux méthodes de trait, +25** |
+> | `agent/src/transport/tick.rs` | 275 | ~~297~~ ~~308~~ **343** (6 août) | D7 tâche 10 — le fil de fenêtre relaie l'ordre `Audio` ; D8 y relaie `Fullscreen`, +20/-9 ; **D9 y ajoute la branche a1sexies, +35** |
 >
 > Aucun des quatre n'approche 500 (marge la plus étroite : 168 sur
 > `distante.rs`), donc aucune entrée de dette n'est à tort présente ou absente.
@@ -285,13 +314,13 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > | `agent/src/wasapi/process_loopback.rs` | **402** | neuf — la machinerie COM extraite de `wasapi.rs` |
 > | `agent/src/wasapi.rs` | **352** | sort de la dette gelée (543 → 352) |
 > | `agent/src/windows_audio.rs` | ~~399~~ **479** (marge 21) | préexistant (chantier A), modifié — porte la trace `compteurs audio` que la recette d'entrée de D8 relit |
-> | `agent/src/superviseur/table.rs` | ~~468~~ **493** (marge **7**) | ALLÉGÉ par D7 — 489 → 468 : la tâche 9 de D7 retire `audio_libre` et le champ `audio`. ⚠️ **REPRIS ET DÉPASSÉ par D8** : +25/-0 (`rafraichir_taille_sortie`), marge 7, voir l'encadré du 5 août |
+> | `agent/src/superviseur/table.rs` | ~~468~~ ~~493~~ **494** (marge **6**) | ALLÉGÉ par D7 — 489 → 468 : la tâche 9 de D7 retire `audio_libre` et le champ `audio`. ⚠️ **REPRIS ET DÉPASSÉ par D8** : +25/-0 (`rafraichir_taille_sortie`), marge 7 ; ⚠️ **et D9 lui prend encore UNE ligne** (un commentaire) : **marge 6 au 6 août 2026, la plus serrée du dépôt après `arret.rs`** |
 > | `agent/src/congestion/controleur.rs` | **472** (marge 28) | modifié — `audio_bps` suit désormais l'arbitrage au lieu d'être posé inconditionnellement |
-> | `agent/src/capteur/fenetre.rs` | ~~437~~ **470** (marge 30) | ALOURDI — 407 → 437 : le span `tracing` porteur de `session` (consignation n°2 de D6) et l'arbitrage du son. ⚠️ **D8 y ajoute +33** (lecture du style, `SuiviBordure`, `PERIODE_STYLE`) : **470 au 5 août 2026** |
+> | `agent/src/capteur/fenetre.rs` | ~~437~~ ~~470~~ **485** (marge 15) | ALOURDI — 407 → 437 : le span `tracing` porteur de `session` (consignation n°2 de D6) et l'arbitrage du son. ⚠️ D8 y ajoute +33 (lecture du style, `SuiviBordure`, `PERIODE_STYLE`) : 470 au 5 août. ⚠️ **D9 l'a fait franchir 500 (508) puis EXTRAIT** `fenetre/trace.rs` (**43**) : **485 au 6 août 2026** |
 > | `agent/src/demarrage.rs` | **457** (marge 43) | 472 → 457 malgré l'ajout du câblage audio, extrait vers `demarrage/audio.rs` |
 > | `agent/src/demarrage/audio.rs` | **77** | neuf |
-> | `agent/src/capteur/audio.rs` | **152** | neuf — la règle pure de l'arbitrage, sans aucun `cfg`, testée sur l'hôte |
-> | `agent/src/capteur/sommeil.rs` | ~~315~~ **327** | ALLÉGÉ — 432 → 315 : montée à 500 en cours de tâche puis ses tests extraits vers `sommeil/tests.rs` |
+> | `agent/src/capteur/audio.rs` | ~~152~~ **228** (6 août 2026, D9) | neuf — la règle pure de l'arbitrage, sans aucun `cfg`, testée sur l'hôte. **D9 y ajoute le champ `inapte` et quatre tests** |
+> | `agent/src/capteur/sommeil.rs` | ~~315~~ ~~327~~ **269** (6 août 2026, D9) | ALLÉGÉ — 432 → 315 : montée à 500 en cours de tâche puis ses tests extraits vers `sommeil/tests.rs`. ⚠️ **D9 l'a fait franchir 500 (à 499 après COMPRESSION, geste que ce fichier interdit), puis la revue a exigé l'EXTRACTION** de `sommeil/registre.rs` (**331**) : 269 |
 > | `agent/src/capteur/sommeil/tests.rs` | **203** | neuf |
 >
 > ✅ **Relevé de la VAGUE DE CORRECTION de la revue finale de branche (4 août
@@ -302,7 +331,7 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > | Fichier | Lignes | Remarque |
 > | --- | --- | --- |
 > | `agent/src/capteur/distante/tests.rs` | ~~462~~ **474** (marge 26) | +29 (433 → 462) : le test du rattachement muet (F2). ⚠️ **D8 y ajoute +12** (le message `PleinEcran`) : **474 au 5 août 2026** |
-> | `agent/src/capteur/distante.rs` | ~~354~~ **375** | +22 : le rattachement remet l'enfant au silence (F2). ⚠️ **D8 y ajoute +21** : **375 au 5 août 2026** |
+> | `agent/src/capteur/distante.rs` | ~~354~~ ~~375~~ **400** | +22 : le rattachement remet l'enfant au silence (F2). ⚠️ D8 y ajoute +21 (375 au 5 août) ; ⚠️ **D9 y ajoute +25** : **400 au 6 août 2026** |
 > | `agent/src/audio.rs` | **273** | +88 (185 → 273) : `LECTURES_ECHOUEES_MAX` et `temporisation_de_reprise`, PURS et éprouvés sur l'hôte, avec leurs deux tests (F3) |
 > | `agent/src/transport/piste_audio.rs` | **218** | +24 : le budget audio se conditionne à l'existence d'une source (F4), et `capture_morte` au journal (F3) |
 >
@@ -343,8 +372,10 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > mode vit dans un module petit-fils.
 >
 > ⚠️ **MARGE ÉTROITE NEUVE, et c'est la plus serrée du dépôt après
-> `encode/arret.rs` : `agent/src/superviseur/table.rs` est à 493 lignes, marge
-> 7.** Il était à 468 à la fin de D7 ; la tâche 9 lui a ajouté **+25/-0**
+> `encode/arret.rs` : `agent/src/superviseur/table.rs` est à ~~493~~ **494**
+> lignes, marge ~~7~~ **6** (relevé du 6 août 2026 : D9 y ajoute une ligne de
+> commentaire, et c'est désormais la marge la plus serrée du dépôt après
+> `encode/arret.rs`).** Il était à 468 à la fin de D7 ; la tâche 9 lui a ajouté **+25/-0**
 > (`rafraichir_taille_sortie`), **aucune compression, aucune extraction**.
 > **Toute addition future à ce fichier appelle une extraction** — ses tests de
 > rétention vivent déjà à part (`superviseur/table/tests_retention.rs`, **322**),
@@ -354,16 +385,16 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 >
 > | Fichier | Lignes | Remarque |
 > | --- | --- | --- |
-> | `agent/src/windows_source/redimensionnement/mode_sortie.rs` | ~~427~~ ~~446~~ **458** (marge 42) | neuf — `ChangeDisplaySettingsExW` et `borner_a_la_taille_max`, module petit-fils **pour ne pas ajouter une ligne `mod` à `windows_source.rs`** (jugé sain, sauvé par l'honnêteté de son commentaire ; **premier module à remonter d'un cran le jour du découpage**) |
-> | `agent/src/diagnostics/multifenetre/mode_sortie.rs` | **421** (marge 79) | neuf — la sonde P1, deux fois écrite (la première ne pouvait pas échouer) |
+> | ~~`agent/src/windows_source/redimensionnement/mode_sortie.rs`~~ **CE FICHIER N'EXISTE PLUS** (supprimé le 6 août 2026, D9 tâche 3 — voir la section D9) | ~~427~~ ~~446~~ ~~458~~ | neuf — `ChangeDisplaySettingsExW` et `borner_a_la_taille_max`, module petit-fils **pour ne pas ajouter une ligne `mod` à `windows_source.rs`** (jugé sain, sauvé par l'honnêteté de son commentaire ; **premier module à remonter d'un cran le jour du découpage**) |
+> | `agent/src/diagnostics/multifenetre/mode_sortie.rs` | ~~421~~ **383** (6 août 2026, D9) | neuf — la sonde P1, deux fois écrite (la première ne pouvait pas échouer). ⚠️ **D9 l'a portée à 496 puis EXTRAITE en cinq enfants** : `eliminatoire.rs` **307**, `voisines.rs` **240**, `temoin.rs` **200**, `combinaisons.rs` **157**, `persistance.rs` **107** |
 > | `client/src/fullscreen.test.ts` | **327** | neuf |
 > | `agent/src/superviseur/table/tests_retention.rs` | **322** | +41 |
-> | `agent/src/windows_source/sortie.rs` | **316** | +128 |
-> | `agent/src/windows_source/redimensionnement.rs` | ~~292~~ ~~327~~ **345** (marge 155) | +75/-15 sous D8, **puis +53 sur les deux rondes de la revue finale de branche** (le garde du désarmement, la correction I5, et la conditionnalisation de l'en-tête) |
+> | `agent/src/windows_source/sortie.rs` | ~~316~~ **313** (6 août 2026, D9) | +128 sous D8 ; D9 y laisse `borner_a_la_taille_max` **sans aucun appelant** |
+> | `agent/src/windows_source/redimensionnement.rs` | ~~292~~ ~~327~~ ~~345~~ **252** (6 août 2026, D9) | +75/-15 sous D8, +53 aux deux rondes de la revue finale ; **D9 lui retire 93 lignes** — le garde du désarmement et tout l'appel au changement de mode partent avec lui |
 > | `agent/src/capteur/pont_media.rs` | ~~188~~ **263** | +38 sous D8 — le bras `PleinEcran` du `match` catch-all, **et son test** (trou du plan, voir la section D8). ⚠️ Le 188 est un chiffre **D6** : D7 l'avait déjà porté à **225** sans qu'aucun de ses tableaux ne le dise |
-> | `agent/src/capteur/plein_ecran.rs` | ~~195~~ **263** (marge 237) | neuf — le prédicat pur, aucun `cfg`, 8 tests d'hôte. **+68 à la vague de correction de la revue finale de branche** : `changement_de_mode_arme` et les trois raisons du désarmement |
+> | `agent/src/capteur/plein_ecran.rs` | ~~195~~ ~~263~~ **212** (6 août 2026, D9) | neuf — le prédicat pur, aucun `cfg`, ~~8~~ **9** tests d'hôte. **+68 à la revue finale de D8** (`changement_de_mode_arme`), **puis −51 en D9** : le garde disparaît avec le mécanisme, et le fichier devient le **point de référence du constat de mesure** que cinq commentaires du dépôt citent |
 > | `client/src/fullscreen.ts` | **174** | +64/-4 |
-> | `agent/src/capteur/fenetre/commandes.rs` | **192** | +14/-3 |
+> | `agent/src/capteur/fenetre/commandes.rs` | ~~192~~ **214** (6 août 2026, D9) | +14/-3 sous D8 ; D9 y ajoute le bras `AudioMort` et y corrige un commentaire périmé trouvé par la **revue transverse** |
 > | `proto/ts/control.ts` | **129** | +8/-2 |
 > | `agent/src/superviseur/boucle/placement_periodique.rs` | **76** | +18/-2 |
 >
@@ -381,17 +412,87 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > dont ce fichier écrit trois fois qu'il est le seul qu'on lise.
 >
 > ✅ **Chiffres voisins RELEVÉS et EXACTS ce jour-là**, à ne pas re-vérifier :
-> `encode/arret.rs` **500** (marge 0), `capture.rs` **496** (4),
-> `superviseur/boucle.rs` **492** (8), `capteur/serveur.rs` **490** (10),
+> `encode/arret.rs` **500** (marge 0), `capture.rs` ~~496~~ **492** (8),
+> `superviseur/boucle.rs` **492** (8), `capteur/serveur.rs` ~~490~~ **435** (65),
 > `transport/socket.rs` **481** (19), `windows_audio.rs` **479** (21),
 > `transport/piste_video.rs` **477** (23), `congestion/controleur.rs` **472**
-> (28), `transport/adaptation.rs` **468** (32), `demarrage.rs` **457** (43),
+> (28), `transport/adaptation.rs` **468** (32), `demarrage.rs` ~~457~~ **464** (36),
 > `wasapi.rs` **352**, `wasapi/process_loopback.rs` **402**,
 > `capteur/tube.rs` **263**, `capteur/vivier.rs` **275**,
-> `transport/part.rs` **274**, `capteur/repartiteur.rs` **147**,
-> `capteur/sommeil.rs` **327**, `capteur/sommeil/parts.rs` **348**,
-> `capteur/audio.rs` **152**, `audio.rs` **273**,
+> `transport/part.rs` ~~274~~ **301**, `capteur/repartiteur.rs` **147**,
+> `capteur/sommeil.rs` ~~327~~ **269**, `capteur/sommeil/parts.rs` ~~348~~ **349**,
+> `capteur/audio.rs` ~~152~~ **228**, `audio.rs` **273**,
 > `transport/piste_audio.rs` **218**, `demarrage/audio.rs` **77**.
+
+> ✅ **Relance du 6 août 2026, fin du sous-bloc D9, PAR LA COMMANDE, APRÈS les
+> dernières éditions de la ronde** (y compris celles de la revue transverse — une
+> table relevée en début de ronde serait fausse à la fin de la même ronde, erreur
+> que D8 a commise en croyant bien faire). **Le tableau de dette a toujours DEUX
+> lignes, et l'une d'elles a MAIGRI** : `encode.rs` **1536** (inchangé),
+> `windows_source.rs` **628** (~~638~~). **Aucun autre fichier de code source ne
+> dépasse 500 lignes.**
+>
+> ⚠️ **MARGE LA PLUS SERRÉE DU DÉPÔT APRÈS `encode/arret.rs`, et elle s'est
+> encore resserrée : `agent/src/superviseur/table.rs` est à 494 lignes, marge 6**
+> (493 à la fin de D8). D9 n'y a mis qu'une ligne de commentaire, et cela a suffi.
+> **Toute addition future à ce fichier appelle une extraction** — ses tests de
+> rétention vivent déjà à part (`superviseur/table/tests_retention.rs`, **326**).
+>
+> ⚠️ **MARGE ÉTROITE NEUVE, que nul tableau ne signalait :
+> `agent/src/transport/tick/tests.rs` est à 489 lignes, marge 11.** Fichier né
+> avant D9, porté là par la tâche 9 (le test du verrou `audio_mort_signale`).
+> Consigné comme mineur différé par la revue de cette tâche, repris ici parce que
+> c'est le seul endroit qu'on lit pour connaître sa marge.
+>
+> **Fichiers que D9 a fait bouger, tous mesurés par la commande :**
+>
+> | Fichier | Lignes | Remarque |
+> | --- | --- | --- |
+> | ❌ `agent/src/windows_source/redimensionnement/mode_sortie.rs` | **SUPPRIMÉ** (~~458~~) | tâche 3 — le changement de mode de sortie est retiré **sur mesure**, pas désarmé |
+> | `agent/src/capteur/sommeil.rs` | ~~327~~ **269** | il a franchi 500, a été ramené à **499 PAR COMPRESSION** — geste que ce fichier interdit nommément —, et la revue a exigé l'**extraction** : `sommeil/registre.rs` |
+> | `agent/src/capteur/sommeil/registre.rs` | **331** | neuf — le registre lui-même, transposition vérifiée caractère pour caractère |
+> | `agent/src/capteur/serveur.rs` | ~~490~~ **435** (marge 65) | tâche 6 — `serveur/instances.rs` extrait AVANT que la tâche 9 n'y ajoute quoi que ce soit. **La seule marge de 10 du dépôt est rendue** |
+> | `agent/src/capteur/serveur/instances.rs` | **82** | neuf — le commentaire de `TAMPON` part **avec sa constante**, comme la règle l'exige |
+> | `agent/src/capteur/fenetre.rs` | ~~470~~ **485** (marge 15) | tâche 11 : franchi 500 (508), resserré à 496, puis **extrait** `fenetre/trace.rs` sur reclassement de la revue |
+> | `agent/src/capteur/fenetre/trace.rs` | **43** | neuf — le lecteur de `SOURCE_TRACE`, côté CAPTEUR cette fois |
+> | `agent/src/windows_source/telemetrie.rs` | **72** | neuf — **pur, aucun `cfg`**, deux tests d'hôte. C'est lui qui rend sa marge à `windows_source.rs` |
+> | `agent/src/capteur/audio.rs` | ~~152~~ **228** | le champ `inapte`, quatre tests neufs, et la réfutation du réarmement (revue transverse) |
+> | `agent/src/capteur/sommeil/porteurs.rs` | **217** | +25 : la remise à zéro du compteur de réarmements, et sa réfutation (revue transverse) |
+> | `agent/src/capteur/distante.rs` | ~~375~~ **400** | `signaler_audio_mort`, `rattachement_survenu` |
+> | `agent/src/source.rs` | ~~362~~ **387** | deux méthodes de trait, toutes deux à défaut inerte |
+> | `agent/src/transport/tick.rs` | ~~308~~ **343** | la branche a1sexies |
+> | `agent/src/transport/tick/tests.rs` | **489** (marge **11**) | +118 |
+> | `agent/src/capteur/protocole.rs` | ~~369~~ **381** | `VersCapteur::AudioMort` |
+> | `agent/src/transport/part.rs` | ~~274~~ **301** | `PART_SONDAGE=0` |
+> | `agent/src/windows_source/redimensionnement.rs` | ~~345~~ **252** | −93 : tout l'appel au changement de mode part |
+> | `agent/src/capteur/plein_ecran.rs` | ~~263~~ **212** | −51 : le garde disparaît ; l'en-tête devient le **constat de mesure** que cinq commentaires citent |
+> | `agent/src/windows_source/sortie.rs` | ~~316~~ **313** | `borner_a_la_taille_max` y reste, **sans aucun appelant** |
+> | `agent/src/capteur/fenetre/commandes.rs` | ~~192~~ **214** | le bras `AudioMort`, et un commentaire périmé corrigé par la revue transverse |
+> | `agent/src/superviseur/table.rs` | ~~493~~ **494** (marge **6**) | une ligne de commentaire, et c'est la marge la plus serrée du dépôt après `arret.rs` |
+> | `agent/src/superviseur/table/tests_retention.rs` | ~~322~~ **326** | +4 |
+> | `agent/src/diagnostics/multifenetre/mode_sortie.rs` | ~~421~~ **383** | la phase P : franchi 496, puis extrait en **cinq** enfants |
+> | `agent/src/diagnostics/multifenetre/mode_sortie/eliminatoire.rs` | **307** | neuf |
+> | `agent/src/diagnostics/multifenetre/mode_sortie/voisines.rs` | **240** | neuf |
+> | `agent/src/diagnostics/multifenetre/mode_sortie/temoin.rs` | **200** | neuf |
+> | `agent/src/diagnostics/multifenetre/mode_sortie/combinaisons.rs` | **157** | neuf |
+> | `agent/src/diagnostics/multifenetre/mode_sortie/persistance.rs` | **107** | neuf |
+> | `agent/src/survie_verdict.rs` | **61** | neuf, **pur** — ⚠️ posé à la RACINE du crate alors que le dépôt a deux précédents (`capture_reprise`, `windows_source_sortie`) qui gardent le fichier chez le parent et n'y hissent que la déclaration par `#[path]`. Déviation relevée, non corrigée |
+> | `client/src/main.ts` | **352** | legs 7, 8 et 10 |
+> | `client/src/resize.ts` + `resize.test.ts` | **45** + **39** | neufs, **purs, sans DOM** |
+> | `agent/src/demarrage.rs` | ~~457~~ **464** | le champ `session` sur `contrôle reçu`, et le lecteur mort de `SOURCE_TRACE` retiré |
+> | `agent/src/capture.rs` | ~~496~~ **492** (marge 8) | ALLÉGÉ — `DesktopCapture::cible()`, orphelin, part avec le changement de mode |
+>
+> ✅ **Chiffres voisins RELEVÉS et EXACTS ce jour-là**, à ne pas re-vérifier :
+> `encode/arret.rs` **500** (marge 0), `superviseur/boucle.rs` **492** (8),
+> `transport/socket.rs` **481** (19), `windows_audio.rs` **479** (21),
+> `transport/piste_video.rs` **477** (23), `capteur/distante/tests.rs` **474**
+> (26), `congestion/controleur.rs` **472** (28), `transport/adaptation.rs`
+> **468** (32), `proto/src/control.rs` **419**, `wasapi/process_loopback.rs`
+> **402**, `capteur/sommeil/parts.rs` **349**, `wasapi.rs` **352**,
+> `capteur/sommeil/tests.rs` **378**, `capteur/vivier.rs` **275**,
+> `capteur/tube.rs` **263**, `capteur/pont_media.rs` **263**,
+> `audio.rs` **273**, `transport/piste_audio.rs` **229**,
+> `capteur/repartiteur.rs` **147**, `demarrage/audio.rs` **77**.
 
 **Vérifier l'état** :
 
@@ -2069,10 +2170,11 @@ code d'erreur).
 | `BUDGET_BPS=<bps>` | **Sous-bloc D6** — le **budget de débit de toute la session**, lu par le **capteur** seul (`capteur/sommeil/parts.rs`), qui le découpe en parts et les pousse aux enfants. Défaut **12 000 000**. Transmise par `scripts/run-agent.sh` (tâche 9). C'est une variable de **produit**, pas de banc. Trace de contrôle : `budget de debit de la session budget_bps=<valeur>` — **comparer la VALEUR, jamais la seule présence de la ligne**, et **pas avant la première fenêtre** : elle vient d'un `OnceLock` initialisé au premier calcul de parts |
 | `SOURCE_TRACE=1` | ⚠️ **MORT DES DEUX CÔTÉS en multi-fenêtres** (constaté le 3 août 2026, sous-bloc D6). Les écrivains vivent dans `windows_source.rs` — `PRODUCED` **313**, `TICKS` **518**, `CAPTURED` **544** (ordre non positionnel : ne pas apparier à la liste `TICKS`/`CAPTURED`/`PRODUCED`) —, donc dans le **capteur** depuis D4 ; le lecteur unique est `demarrage.rs:127-129` (déplacé depuis `142-144` par les
 remaniements de D7), donc dans
-l'**enfant** ; et `main.rs:268` rend la main à `capteur::executer` avant que `demarrage::executer` ne soit atteint. La variable n'affiche donc que des **zéros** côté enfant, et les compteurs du capteur ne sont lus par **personne**. **Elle ne décrit plus que le chemin mono-fenêtre**, sans `CAPTEUR` ni `SUPERVISEUR`. ✅ **Les cinq numéros de ligne de cette case ont été REVÉRIFIÉS le 5 août 2026 (D8, tâche 12) et sont tous EXACTS** — `313`, `518`, `544`, `demarrage.rs:127-129`, `main.rs:268` : la mention « valeur non revérifiée pour le reste » est donc levée. ⚠️ **Le remède, lui, n'a PAS été appliqué** — il était consigné pour D7, D7 ne l'a pas fait, D8 non plus : rendre ces trois statiques **per-session** et les extraire vers `windows_source/telemetrie.rs` reste dû, et c'est ce qui rendrait à `windows_source.rs` la marge que D6 lui a prise |
-| `MULTIFENETRE_MODE_SORTIE=<L>x<H>` | **Sous-bloc D8** — la sonde **P1** (`agent/src/diagnostics/multifenetre.rs:169`) : crée une sortie virtuelle, relit sa taille **courante** par DXGI, choisit une cible parmi les modes annoncés **en excluant cette taille courante**, tente `ChangeDisplaySettingsExW`, et **juge sur le MOUVEMENT relu par DXGI, jamais sur une égalité** — la première version rendait `P1 RECU` sans que rien n'ait bougé, son critère ne pouvant pas échouer. Rend `P1 NON MESURABLE` si aucun mode ne diffère de la taille courante. Transmise par `scripts/run-agent.sh:78` *(publié `:77` — l'insertion de `PLEIN_ECRAN_MODE_SORTIE` à la ligne 35 a décalé tout ce qui suit de +1 ; la 77 est désormais `MULTIFENETRE_PLAFOND_SONDE`)*. ⚠️ **C'est AUSSI le remède opérationnel au blocage produit par pollution du registre** : une sortie naît à la dernière taille laissée au registre, et un registre resté à 2560×1440 empêche toute fenêtre de s'attacher — `MULTIFENETRE_MODE_SORTIE=1280x720` le rétablit. ⚠️ **Un lancement à elle seule** : l'aiguillage retourne après la première sonde reconnue, un `MULTIFENETRE_VDD_PURGE=1` dans le même lancement l'annulerait en silence |
+l'**enfant** ; et `main.rs:268` rend la main à `capteur::executer` avant que `demarrage::executer` ne soit atteint. La variable n'affiche donc que des **zéros** côté enfant, et les compteurs du capteur ne sont lus par **personne**. **Elle ne décrit plus que le chemin mono-fenêtre**, sans `CAPTEUR` ni `SUPERVISEUR`. ✅ **Les cinq numéros de ligne de cette case ont été REVÉRIFIÉS le 5 août 2026 (D8, tâche 12) et sont tous EXACTS** — `313`, `518`, `544`, `demarrage.rs:127-129`, `main.rs:268` : la mention « valeur non revérifiée pour le reste » est donc levée. ✅ **LE REMÈDE A ÉTÉ APPLIQUÉ le 6 août 2026 (D9, tâche 11), et TOUT CE QUI PRÉCÈDE EST DEVENU DE L'HISTOIRE — y compris les cinq numéros de ligne, qui ne désignent plus rien.** Les trois statiques ont disparu : elles sont un champ `telemetrie` **par session** de `WindowsSource`, dans **`agent/src/windows_source/telemetrie.rs`** (**72** lignes, **pur, aucun `cfg`**, deux tests d'hôte). Le lecteur mort de `demarrage.rs` a été retiré ; **le lecteur est désormais `agent/src/capteur/fenetre/trace.rs`** (**43**), qui vit dans le CAPTEUR, là où les compteurs sont écrits, et qui trace **sous le span `fenetre{session=…}` posé par D7** — donc attribuable sans champ supplémentaire. **La convention de la variable est INCHANGÉE : la simple PRÉSENCE active** (à l'inverse de `PLEIN_ECRAN`/`AUDIO`/`SUPERVISEUR`/`CAPTEUR`, où `=0` désarme). Trace : `compteurs de capture ticks=… capturees=… produites=…`. Toujours transmise par `scripts/run-agent.sh`. ⚠️ **Ce qui reste dans `demarrage.rs`, côté enfant, est la partie ENCODEUR** (tentatives et accumulation de capture, entrées/sorties du convertisseur et de l'encodeur) : elle, n'a pas bougé et reste lue là. **Effet de bord recherché et obtenu** : `windows_source.rs` retombe de 638 à **628** |
+| `MULTIFENETRE_MODE_SORTIE=<L>x<H>` | **Sous-bloc D8** — la sonde **P1** (`agent/src/diagnostics/multifenetre.rs:169`) : crée une sortie virtuelle, relit sa taille **courante** par DXGI, choisit une cible parmi les modes annoncés **en excluant cette taille courante**, tente `ChangeDisplaySettingsExW`, et **juge sur le MOUVEMENT relu par DXGI, jamais sur une égalité** — la première version rendait `P1 RECU` sans que rien n'ait bougé, son critère ne pouvant pas échouer. Rend `P1 NON MESURABLE` si aucun mode ne diffère de la taille courante. Transmise par `scripts/run-agent.sh` *(les numéros de ligne publiés ici — `:77` puis `:78` — ont dérivé DEUX fois : `PLEIN_ECRAN_MODE_SORTIE` en avait ajouté un, D9 l'a retiré et a ajouté `PART_SONDAGE`. **Ne plus recopier de numéro de ligne pour ce script : `grep -n` avant de s'y fier.**)*. ⚠️ **ÉTENDUE PAR LA PHASE P DE D9** : elle porte désormais la duplication DXGI ouverte et tenue pendant la tentative (l'écart banc/produit que D8 laissait béant), un **témoin sans duplication** dans la même exécution, une **quatrième combinaison de drapeaux** (`flags = 0`, sélectionnable par `MULTIFENETRE_MODE_SORTIE_DRAPEAUX`), le compte des **pertes d'accès infligées à deux voisines**, et une **épreuve de PERSISTANCE** (une sortie de plus est créée après le changement, et la sortie sous test est relue). Voir la section D9. ⚠️ **C'est AUSSI le remède opérationnel au blocage produit par pollution du registre** : une sortie naît à la dernière taille laissée au registre, et un registre resté à 2560×1440 empêche toute fenêtre de s'attacher — `MULTIFENETRE_MODE_SORTIE=1280x720` le rétablit. ⚠️ **Un lancement à elle seule** : l'aiguillage retourne après la première sonde reconnue, un `MULTIFENETRE_VDD_PURGE=1` dans le même lancement l'annulerait en silence |
 | `PLEIN_ECRAN=0` | **Sous-bloc D8** — **variable de PRODUIT**, pas de banc. **Désarme le mécanisme ENTIER** : ni relecture du style (`capteur/fenetre.rs`), ni changement de mode de sortie (`windows_source/redimensionnement.rs`). ⚠️ **`=0` désactive ; une simple PRÉSENCE n'active pas** — même convention qu'`AUDIO`, `SUPERVISEUR` et `CAPTEUR`, et pour la même raison : tester `is_ok()` activerait le plein écran en écrivant `PLEIN_ECRAN=0` pour le couper. Lue dans le **capteur** seul (`capteur/plein_ecran.rs:78`), par `OnceLock` — l'enfant ne fait que relayer. Transmise par `scripts/run-agent.sh:34`. Traces de contrôle : `plein ecran DESARME (PLEIN_ECRAN=0) : …` au démarrage du capteur, et `redimensionnement ignoré : PLEIN_ECRAN=0 …` à chaque `resize`. ⚠️ ~~**C'est la SEULE parade actuelle au défaut HiDPI ouvert**~~ — **plus vrai depuis la revue finale de branche de D8** : le changement de mode étant désormais désarmé PAR DÉFAUT (ligne suivante), le défaut HiDPI est inatteignable en configuration livrée, et `PLEIN_ECRAN=0` est devenu la parade du mécanisme **entier**, plus la seule parade d'un défaut |
-| `PLEIN_ECRAN_MODE_SORTIE=1` | **Sous-bloc D8, revue finale de branche (5 août 2026)** — **variable de PRODUIT**. **ARME** le changement de mode de la sortie virtuelle (`windows_source/redimensionnement/mode_sortie.rs`), **DÉSARMÉ PAR DÉFAUT**. ⚠️ **Convention INVERSE de `PLEIN_ECRAN`, à dessein** : on désarme sur `=0` ce qui est livré, on **arme sur `=1`** ce qui ne l'est pas — et ici la simple présence ne suffit pas non plus, il faut la valeur `1`. **Ce qui reste actif sans elle** : détection du style, annonce `PleinEcran`/`Fullscreen`, armement client. **Pourquoi** : critère ② **JAMAIS EXERCÉ** (`mode_sortie_demande=0` aux deux exécutions) et **deux Critiques ouvertes** — C1, la pollution du registre qui bloque les ouvertures de fenêtre ultérieures (portée inconnue : **cinq GUID SudoVDA distincts** au journal de recette) ; C2, la reprise D2 court-circuitée par une `Err` sur un échec **transitoire** de réouverture. **Les deux sont délibérément NON CORRIGÉES**, le désarmement les rendant inatteignables. Garde et raisons : `agent/src/capteur/plein_ecran.rs::changement_de_mode_arme`. Transmise par `scripts/run-agent.sh:35`. Traces : `changement de mode de sortie ARME (…)` au premier appel si armée, `redimensionnement ignoré : changement de mode de sortie DÉSARMÉ (…)` à chaque `resize` sinon |
+| ❌ ~~`PLEIN_ECRAN_MODE_SORTIE=1`~~ **CETTE VARIABLE N'EXISTE PLUS** (retirée le 6 août 2026, D9 tâche 3 — ni dans le code, ni dans `scripts/run-agent.sh` ; les legs 12 et 13 **cessent d'exister** au lieu d'être différés. Voir la section D9). Tout ce qui suit est le relevé de D8, conservé pour son diagnostic. | ~~**Sous-bloc D8, revue finale de branche (5 août 2026)** — **variable de PRODUIT**. **ARME** le changement de mode de la sortie virtuelle (`windows_source/redimensionnement/mode_sortie.rs`), **DÉSARMÉ PAR DÉFAUT**. ⚠️ **Convention INVERSE de `PLEIN_ECRAN`, à dessein** : on désarme sur `=0` ce qui est livré, on **arme sur `=1`** ce qui ne l'est pas — et ici la simple présence ne suffit pas non plus, il faut la valeur `1`. **Ce qui reste actif sans elle** : détection du style, annonce `PleinEcran`/`Fullscreen`, armement client. **Pourquoi** : critère ② **JAMAIS EXERCÉ** (`mode_sortie_demande=0` aux deux exécutions) et **deux Critiques ouvertes** — C1, la pollution du registre qui bloque les ouvertures de fenêtre ultérieures (portée inconnue : **cinq GUID SudoVDA distincts** au journal de recette) ; C2, la reprise D2 court-circuitée par une `Err` sur un échec **transitoire** de réouverture. **Les deux sont délibérément NON CORRIGÉES**, le désarmement les rendant inatteignables. Garde et raisons : `agent/src/capteur/plein_ecran.rs::changement_de_mode_arme`. Transmise par `scripts/run-agent.sh:35`. Traces : `changement de mode de sortie ARME (…)` au premier appel si armée, `redimensionnement ignoré : changement de mode de sortie DÉSARMÉ (…)` à chaque `resize` sinon.~~ **Ces deux traces n'existent plus** ; `resize` en mode `SortieEntiere` journalise désormais `redimensionnement ignoré : la source capture une sortie DXGI entière (voir le constat de mesure de capteur::plein_ecran, sous-bloc D9)` |
+| `PART_SONDAGE=0` | **Sous-bloc D9, tâche 12** — **variable de BANC, jamais une configuration livrée**. Neutralise l'appel `set_desired_bitrate` de `agent/src/transport/part.rs` : c'est le bras « désarmé » de l'A/B différentiel que D6 laissait dû (son leg n°4). ⚠️ **Convention de `PLEIN_ECRAN` — `=0` DÉSARME, une simple présence n'active pas** ; l'appel est armé par défaut. Lue dans l'**enfant**. Transmise par `scripts/run-agent.sh`. Trace, émise **seulement si désarmé** : `objectif de sondage DESARME (PART_SONDAGE=0) : bras A/B, jamais une configuration livrée` (`warn!`). ⚠️ **L'A/B qu'elle sert a été joué et N'ÉTABLIT RIEN** : 2 exécutions par bras, écart de trafic cumulé +23,2 % dans le sens attendu, mais **variance intra-bras +83,1 %** — plus grande que l'écart mesuré. Voir la section D9 |
 
 ---
 
@@ -3611,15 +3713,15 @@ plus long** : que 45 à 60 s suffiraient est **plausible et non vérifié**.
 | Étage | Fichier | Nature |
 | --- | --- | --- |
 | la règle de part | `agent/src/capteur/repartiteur.rs` (147) | **pur, aucun `cfg`**, trois régimes documentés et testés sur l'hôte |
-| l'arbitrage et l'émission | `agent/src/capteur/sommeil/parts.rs` (348) | lit `BUDGET_BPS`, n'émet que les parts **qui changent** |
-| le transport | `agent/src/capteur/pont_media.rs` (~~188~~ **263** au 5 août 2026), `capteur/distante.rs` (~~288~~ **375**) | la part voyage sur la connexion **média**, écrasement du dernier reçu |
-| l'application | `agent/src/transport/part.rs` (274) | `set_desired_bitrate` **toujours** ; `changer_plafond` **seulement si la fenêtre est éveillée** |
+| l'arbitrage et l'émission | `agent/src/capteur/sommeil/parts.rs` (~~348~~ **349** au 6 août 2026) | lit `BUDGET_BPS`, n'émet que les parts **qui changent** |
+| le transport | `agent/src/capteur/pont_media.rs` (~~188~~ **263** au 5 août 2026), `capteur/distante.rs` (~~288~~ ~~375~~ **400** au 6 août 2026) | la part voyage sur la connexion **média**, écrasement du dernier reçu |
+| l'application | `agent/src/transport/part.rs` (~~274~~ **301** au 6 août 2026) | `set_desired_bitrate` **toujours** ; `changer_plafond` **seulement si la fenêtre est éveillée** |
 
 > ✅ **Tailles relevées PAR LA COMMANDE le 3 août 2026, à la vague de correction
 > finale de branche** — `repartiteur.rs` et `part.rs` avaient grossi depuis le
 > relevé initial (119 → 147, 138 → 274). **Aucun fichier de ce sous-bloc
 > n'approche le plafond de 500** : le plus gros est `capteur/sommeil.rs` à
-> **432**, et `windows_source.rs` (638, dette gelée) n'a pas été touché.
+> **432**, et `windows_source.rs` (~~638~~ **628** depuis D9, dette gelée) n'a pas été touché.
 
 ### ⚠️ Le défaut que la revue finale a trouvé, et qui frappait CHAQUE réveil
 
@@ -3961,6 +4063,15 @@ qui rendrait à `windows_source.rs` (638, dette gelée) la marge que D6 lui a
 prise, et le fichier reste sous la condition « la prochaine addition exige une
 extraction ». ⚠️ **Deuxième sous-bloc consécutif qui les reporte** ; elles sont
 reprises dans les legs de D8.
+
+✅ **D9 (6 août 2026) en a traité DEUX sur trois.** La n°1 est FAITE :
+`windows_source.rs` retombe de 638 à **628**, `windows_source/telemetrie.rs`
+(**72**, pur, deux tests d'hôte) est né, et la condition « la prochaine addition
+exige une extraction » est **LEVÉE**. La n°3 (le critère ④ à palier long) a été
+jouée — **3 promotions sur 4 déplacements, 2 exécutions**. ❌ **La n°4 (l'A/B
+sur `set_desired_bitrate`) a été jouée MAIS N'ÉTABLIT RIEN** : l'écart entre
+bras (+23,2 %) est **plus petit que la variance intra-bras** (+83,1 %). Elle
+reste due.
 
 ---
 
@@ -4335,16 +4446,34 @@ produit — et la revue y a trouvé **deux Critiques**. Elle reste dans le code,
 des variables). **C'est le repli que le §4 de la conception avait écrit
 d'avance : « ①, ③, ④ et ⑤ tiennent sans ② ».**
 
-| ACTIF, livré, mesuré | DÉSARMÉ |
+> ❌ **ELLE NE RESTE PLUS DANS LE CODE. Le sous-bloc D9 l'a MESURÉE puis
+> RETIRÉE (6 août 2026).** L'inconnue éliminatoire est tranchée dans le sens
+> favorable — le pilote **accepte**, duplication ouverte, 2/2 — mais le
+> changement **ne survit pas** à la création de la sortie suivante (`n = 4`
+> exécutions propres, sous `CDS_UPDATEREGISTRY` **comme** sous `flags = 0`), et
+> `CDS_UPDATEREGISTRY` **pollue le registre** (attribuable par GUID, 3
+> transitions probantes). **`PLEIN_ECRAN_MODE_SORTIE`, `changement_de_mode_arme`,
+> `reconstruire_sur_la_sortie` et `windows_source/redimensionnement/mode_sortie.rs`
+> n'existent plus.** La colonne « DÉSARMÉ » du tableau ci-dessous est devenue la
+> colonne « SUPPRIMÉ » ; la colonne « ACTIF » est inchangée. Voir la section D9.
+
+| ACTIF, livré, mesuré | ~~DÉSARMÉ~~ **SUPPRIMÉ (D9)** |
 | --- | --- |
-| relecture du style (`capteur/fenetre.rs`, `PERIODE_STYLE`) | `changer_mode_de_sortie` |
-| `DepuisCapteur::PleinEcran` → `AgentControl::Fullscreen` | tout `ChangeDisplaySettingsExW` du produit |
+| relecture du style (`capteur/fenetre.rs`, `PERIODE_STYLE`) | ~~`changer_mode_de_sortie`~~ |
+| `DepuisCapteur::PleinEcran` → `AgentControl::Fullscreen` | ~~tout `ChangeDisplaySettingsExW` du produit~~ |
 | armement client (`client/src/fullscreen.ts`) et Keyboard Lock | — |
 
 ⚠️ **Les deux Critiques ne sont PAS corrigées, et c'est délibéré** — le
 désarmement les rend inatteignables. Elles vivent auprès du garde
 (`agent/src/capteur/plein_ecran.rs::changement_de_mode_arme`) comme **le
 premier travail de la recette qui armera ce chemin** :
+
+> ⛔ **IL N'Y AURA PAS DE RECETTE QUI ARME CE CHEMIN : D9 l'a retiré (6 août
+> 2026), et le garde avec lui.** C1 et C2 **cessent d'exister comme dettes de
+> code**. ⚠️ **Mais C1 laisse une trace vivante que le retrait ne défait pas** :
+> la pollution DÉJÀ écrite au registre bloque le produit à **trois** fenêtres
+> sur cette VM, et **rien ne nettoie derrière** (legs n°4 de D9). Ce qui suit
+> reste le diagnostic de D8, conservé pour lui-même.
 
 - **C1 — le produit bloquerait ses propres ouvertures de fenêtre
   ultérieures.** Il écrit `CDS_UPDATEREGISTRY` à **chaque** plein écran
@@ -4642,21 +4771,21 @@ l'avait déjà écrit après D6, et l'a repayé ici.**
 
 | Étage | Fichier | Nature |
 | --- | --- | --- |
-| le prédicat | `agent/src/capteur/plein_ecran.rs` (~~195~~ **263**, 6 août) | **pur, aucun `cfg`**, **9** tests d'hôte (`cargo test -p agent capteur::plein_ecran` → `9 passed`). Seule `GetWindowLongPtrW` est `#[cfg(windows)]` |
+| le prédicat | `agent/src/capteur/plein_ecran.rs` (~~195~~ ~~263~~ **212**, D9) | **pur, aucun `cfg`**, **9** tests d'hôte (`cargo test -p agent capteur::plein_ecran` → `9 passed`). Seule `GetWindowLongPtrW` est `#[cfg(windows)]`. ⚠️ **−51 en D9** : le garde `changement_de_mode_arme` disparaît avec le mécanisme, et l'en-tête devient le **constat de mesure** que cinq commentaires du dépôt citent |
 | l'état de référence | idem — `SuiviBordure` | **l'état lu à l'attache fait référence, on n'annonce que les CHANGEMENTS** : une application née sans bordure n'annonce rien |
-| la lecture | `agent/src/capteur/fenetre.rs` (**470**) | sur le fil de fenêtre, bridée à `PERIODE_STYLE = 250 ms`, **jamais à l'image**. Constante **propre** à ce mécanisme — ne pas la coupler à `PERIODE_REARBITRAGE` |
-| le message | `capteur/protocole.rs` (**369**) → `proto/src/control.rs` (**419**) | `DepuisCapteur::PleinEcran { actif }` → `AgentControl::Fullscreen { active }`, le trajet exact de `Sommeil` |
-| le changement de mode, **DÉSARMÉ par défaut** | `agent/src/windows_source/redimensionnement/mode_sortie.rs` (~~427~~ ~~446~~ **458**, 6 août) | `ChangeDisplaySettingsExW` seul. ⚠️ **`TAILLE_MAX_SORTIE = (1920, 1080)` et `borner_a_la_taille_max` ne sont PAS ici** : ils vivent dans **`agent/src/windows_source/sortie.rs:99`** (la constante) **et `:113`** (la fonction). *L'ordre des deux noms était inversé — corrigé, les numéros étaient justes.* |
-| le garde du changement de mode | `agent/src/capteur/plein_ecran.rs::changement_de_mode_arme` | **neuf, revue finale de branche** — `PLEIN_ECRAN_MODE_SORTIE=1` **arme** ; désarmé par défaut. Porte C1 et C2 auprès de lui. Unique point d'application : `windows_source/redimensionnement.rs` (~~327~~ **345**) |
+| la lecture | `agent/src/capteur/fenetre.rs` (~~470~~ **485** au 6 août 2026) | sur le fil de fenêtre, bridée à `PERIODE_STYLE = 250 ms`, **jamais à l'image**. Constante **propre** à ce mécanisme — ne pas la coupler à `PERIODE_REARBITRAGE` |
+| le message | `capteur/protocole.rs` (~~369~~ **381** au 6 août 2026) → `proto/src/control.rs` (**419**) | `DepuisCapteur::PleinEcran { actif }` → `AgentControl::Fullscreen { active }`, le trajet exact de `Sommeil` |
+| ❌ ~~le changement de mode, **DÉSARMÉ par défaut**~~ **RETIRÉ le 6 août 2026 (D9, tâche 3), sur mesure** | ~~`agent/src/windows_source/redimensionnement/mode_sortie.rs`~~ **le fichier n'existe plus** (~~427~~ ~~446~~ ~~458~~) | ~~`ChangeDisplaySettingsExW` seul.~~ Voir la section D9. ⚠️ **`TAILLE_MAX_SORTIE = (1920, 1080)` et `borner_a_la_taille_max` SURVIVENT, dans `agent/src/windows_source/sortie.rs`** — mais `borner_a_la_taille_max` n'a **plus aucun appelant**, son unique appelant étant parti avec le changement de mode. *(Les numéros de ligne `:99`/`:113` ont dérivé avec le fichier : ne pas les recopier.)* |
+| ❌ ~~le garde du changement de mode~~ **DISPARU avec lui (D9)** | ~~`agent/src/capteur/plein_ecran.rs::changement_de_mode_arme`~~ | ~~`PLEIN_ECRAN_MODE_SORTIE=1` **arme** ; désarmé par défaut. Porte C1 et C2 auprès de lui.~~ **`PLEIN_ECRAN_MODE_SORTIE` N'EXISTE PLUS** — ni dans le code, ni dans `scripts/run-agent.sh`. Les legs C1/C2 (12 et 13) **cessent d'exister** au lieu d'être différés. `windows_source/redimensionnement.rs` (~~327~~ ~~345~~ **252**) |
 | le client | `client/src/fullscreen.ts` (**174**) | **armement, pas action** : on entre au premier `pointerdown`/`keydown`. `Fullscreen { active: false }` sort immédiatement |
 
 > ✅ **Les six chiffres de ce tableau sont RELEVÉS PAR LA COMMANDE le 6 août
 > 2026**, à la vague de correction de la revue finale de branche. **Deux ont
 > bougé sous cette vague même** : `plein_ecran.rs` 195 → **263** (le garde et
 > ses raisons) et `mode_sortie.rs` 427 → **458** (la correction I5, la note
-> HiDPI, puis l'en-tête de module conditionnalisée à la re-revue). Les quatre autres — `capteur/fenetre.rs` **470**,
-> `capteur/protocole.rs` **369**, `proto/src/control.rs` **419**,
-> `client/src/fullscreen.ts` **174** — sont inchangés et exacts. **Aucun
+> HiDPI, puis l'en-tête de module conditionnalisée à la re-revue). Les quatre autres — `capteur/fenetre.rs` ~~470~~ **485** (D9),
+> `capteur/protocole.rs` ~~369~~ **381** (D9), `proto/src/control.rs` **419**,
+> `client/src/fullscreen.ts` **174** — étaient inchangés et exacts CE JOUR-LÀ ; **deux ont bougé sous D9**. **Aucun
 > n'approche 500** ; la marge la plus étroite est celle de `fenetre.rs`, **30**.
 >
 > ❌ **CETTE ANNOTATION A ÉLLE-MÊME PORTÉ UN FAUX, et c'est le naufrage du
@@ -4683,6 +4812,13 @@ l'avait déjà écrit après D6, et l'a repayé ici.**
 > une table corrigée sur une mesure prise en début de ronde serait fausse à la
 > fin de la même ronde. C'est la forme la plus discrète de la dérive, et la
 > plus facile à commettre en croyant bien faire.
+>
+> ✅ **SIXIÈME occurrence, et elle est ANNONCÉE plutôt que subie (6 août 2026,
+> revue transverse de fin de branche D9).** Les six chiffres de ce tableau ont
+> tous rebougé sous D9 ou disparu avec leur fichier ; ils sont barrés ici **et**
+> dans le récapitulatif de tête, les deux places énumérées AVANT d'écrire quoi
+> que ce soit, par `grep -n '<le nombre>' CLAUDE.md`. Le relevé D9, seul faisant
+> foi, vit dans le § « Conventions de code ».
 >
 > ⚠️ **La leçon n'est pas « recompter » — c'est que « corrigé à sa place » est
 > une affirmation de COMPLÉTUDE, et qu'une affirmation de complétude se
@@ -4843,7 +4979,8 @@ même genre, un `match` qu'aucun brief ne nommait :
 3. **Les compteurs `TICKS` / `CAPTURED` / `PRODUCED` par session** et leur
    extraction vers `agent/src/windows_source/telemetrie.rs` (D6 n°1) — **c'est
    ce qui rendrait à `windows_source.rs` (638, dette gelée) la marge que D6 lui
-   a prise.**
+   a prise.** ✅ **FAIT par D9 (tâche 11) : 638 → 628, `telemetrie.rs` (72) est
+   né, pur et testé sur l'hôte, et la condition d'extraction est LEVÉE.**
 4. **Le critère ④ de D6 rejoué à palier de 45 à 60 s**, seule façon de savoir si
    la promotion de focus est systématique.
 5. **L'A/B différentiel sur `set_desired_bitrate`** (D6 n°4), **jamais joué** —
@@ -4864,12 +5001,28 @@ même genre, un `match` qu'aucun brief ne nommait :
    de sortie est **désarmé par défaut** (`PLEIN_ECRAN_MODE_SORTIE=1` l'arme), et
    ces trois inconnues sont ce que la recette qui l'armera doit trancher
    d'abord.
+   ✅ **D9 les a tranchées, et il n'y aura pas d'armement : le chemin est
+   RETIRÉ.** La première est **répondue OUI** (le pilote accepte sur duplication
+   ouverte, 2/2), le nom est **conservé** (2/2), et la deuxième reste **non
+   mesurée** — le compteur de pertes voisines a **saturé au plafond de
+   l'instrument**. Ce qui a décidé n'est aucune des trois : c'est la
+   **non-persistance** (`n = 4`) et la **pollution du registre**. Voir la
+   section D9.
 7. **Le défaut HiDPI, ouvert côté client par décision motivée** : un client à
    `devicePixelRatio > 1` déclencherait un changement de mode à chaque connexion
    de chaque fenêtre. ~~Seule parade actuelle : `PLEIN_ECRAN=0`.~~ ✅ **Il est
    INATTEIGNABLE en configuration livrée depuis le désarmement** — il n'y a plus
    de changement de mode à déclencher. **Le défaut reste ouvert côté client**, et
-   redevient mordant le jour où `PLEIN_ECRAN_MODE_SORTIE=1` sera posé.
+   ~~redevient mordant le jour où `PLEIN_ECRAN_MODE_SORTIE=1` sera posé~~.
+   ✅ **CORRIGÉ par D9 (tâche 5) : l'annonce de viewport passe désormais dans la
+   MÊME UNITÉ que le `Resize` (pixels périphériques), et le contrôle a été vu
+   ROUGE** (annonce 1280×720 contre `Resize` 2560×1440 sur le client d'avant).
+   ⚠️ **Sa conséquence produit avait de toute façon disparu avec le mécanisme,
+   un commit plus tôt — la raison écrite dans le code par la tâche 5 était donc
+   fausse au moment où elle était écrite**, et la revue transverse de D9 l'a
+   corrigée. ⚠️ **Et le correctif en ouvre un autre** : à `dpr = 2`, la sortie
+   virtuelle naît quatre fois plus grande, et **rien ne borne cette demande**
+   (legs n°5 de D9).
 8. **Instrumenter `video.clientWidth`/`clientHeight`**, pour savoir où casse la
    chaîne entre le viewport CDP et l'émission du `Resize` — et donc pouvoir
    enfin exercer ②.
@@ -4916,10 +5069,480 @@ même genre, un `match` qu'aucun brief ne nommait :
     la recette qui posera `PLEIN_ECRAN_MODE_SORTIE=1`**, avec le legs n°13.
     Inatteignable tant que le chemin est désarmé — donc **dette, pas défaut
     actif**.
+    ⛔ **CE LEG CESSE D'EXISTER COMME DETTE DE CODE (D9)** : le produit n'écrit
+    plus jamais au registre. 🔴 **MAIS LA POLLUTION DÉJÀ ÉCRITE MORD, et D9 l'a
+    observée** : elle bloque le produit à **TROIS fenêtres** sur cette VM, aux
+    six exécutions de la recette ③ sans exception (20/16/12 `ERROR` du type
+    `sortie créée mais introuvable dans la topologie DXGI`). **Rien ne nettoie
+    derrière**, et **la portée reste inconnue**. C'est le legs n°4 de D9.
 13. ⛔ **C2 — la reprise sur perte d'accès de D2 court-circuitée** par une `Err`
     sur un échec **transitoire** de réouverture après changement de mode. Même
     statut que le n°12 : inatteignable par défaut, **à traiter avant tout
     armement**.
+    ⛔ **CE LEG CESSE D'EXISTER (D9)** : `reconstruire_sur_la_sortie` n'avait
+    qu'un seul appelant — le changement de mode — et **il est parti avec lui**.
+    Contrairement au n°12, **rien ne survit** : il n'y a pas de trace laissée
+    dans l'environnement.
+
+> ✅ **CE QUE D9 A FAIT DE CETTE LISTE (6 août 2026), point par point.** Les
+> n°6, 7, 12 et 13 supposaient tous un chemin qui n'existe plus : **D9 a mesuré
+> le changement de mode de sortie et l'a RETIRÉ**, il ne l'a pas armé.
+>
+> | Leg | Sort sous D9 |
+> | --- | --- |
+> | 1 — signal enfant→capteur (capture audio morte) | **FERMÉ SUR PIÈCES côté code, NON EXERCÉ sur la VM** — et la branche « réélection » du remède est **INERTE** |
+> | 2 — identité par génération monotone | **FERMÉ SUR PIÈCES** (tests d'hôte) **sur le registre de sommeil SEUL** ; le jumeau de `serveur.rs` reste |
+> | 3 — `TICKS`/`CAPTURED`/`PRODUCED` par session | **FERMÉ SUR PIÈCES** — 638 → 628, `telemetrie.rs` né |
+> | 4 — critère ④ à palier long | **FERMÉ SUR PIÈCES** — 3/4, 2 exécutions |
+> | 5 — A/B `set_desired_bitrate` | **JOUÉ, N'ÉTABLIT RIEN** — +23,2 % entre bras contre +83,1 % de variance intra-bras. **Reste dû** |
+> | 6 — les trois inconnues | **DEVENUES SANS OBJET** : la première est TRANCHÉE (le pilote accepte, duplication ouverte), et le mécanisme est retiré |
+> | 7 — HiDPI | **CORRIGÉ sur l'unité, et sa CONSÉQUENCE a disparu avec le mécanisme** |
+> | 8 — chaîne viewport → `Resize` | **FERMÉ SUR PIÈCES côté code** ; le rejeu différé **NON EXERCÉ** sur la VM |
+> | 9 — trois défauts d'instrument | **FERMÉ SUR PIÈCES** |
+> | 10 — pourquoi si peu de `Resize` | **RENDU DÉCIDABLE, et la réponse contredit le rapport de la tâche qui l'a mesuré** |
+> | 11 — annoter le §4.1 du cadrage jeux | déjà fait par D8 (`2856f2a`) |
+> | 12 — C1, pollution du registre | ⛔ **CESSE D'EXISTER comme dette de code** — le produit n'écrit plus au registre. ⚠️ **MAIS la pollution DÉJÀ ÉCRITE bloque le produit à TROIS fenêtres sur cette VM, et rien ne nettoie derrière** |
+> | 13 — C2, reprise court-circuitée | ⛔ **CESSE D'EXISTER** — `reconstruire_sur_la_sortie` n'avait qu'un appelant, et il est parti |
+>
+> **Détail, réserves et pièces : section « Sous-bloc D9 » ci-dessous.**
+
+---
+
+## 🧾 Sous-bloc D9 — solder la dette, et ce qu'on retire au lieu de le réparer (6 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-06-multifenetres-solder-la-dette-resultats.md`.
+Conception : `docs/superpowers/specs/2026-08-06-multifenetres-solder-la-dette-design.md`.
+Journaux : `docs/superpowers/plans/journaux-multifenetres-d9/` — **118 fichiers
+suivis par git**, et **TROIS familles de lecture** :
+
+| Famille | État | Ce qu'il faut faire |
+| --- | --- | --- |
+| tous les `*-plat.log` | UTF-8, **ANSI déjà retirées**, CRLF | rien |
+| les journaux d'agent bruts (`agent-*.log`, `p-*.log`, `p2-*.log`) | UTF-8, CRLF, **séquences ANSI PRÉSENTES** | `sed 's/\x1b\[[0-9;]*m//g'` — ou lire le `-plat` jumeau, versé pour chacun |
+| les journaux de **pilote** (`critere-*.log` **sans** préfixe `agent-`) | classés « data » — **20 octets `\x02`/`\x03`** par fichier, résidu du PowerShell de `run-agent.sh` | `grep -a`. ⚠️ **Les accents sont INTACTS** et se `grep`ent normalement, comme en D8 et contrairement à D6 |
+
+D9 devait fermer les **douze** legs ouverts au sortir de D8. Il en a fermé une
+partie sur pièces, en a fait **disparaître deux**, en a laissé plusieurs **non
+exercés faute de pouvoir les provoquer**, et il en a **découvert de nouveaux**.
+Le tableau leg par leg vit à la fin de la section D8, juste au-dessus.
+
+### ⛔ Le fait n°1 : le changement de mode de sortie est RETIRÉ, pas armé
+
+**C'est l'inverse de ce que le sous-bloc allait chercher.** D8 avait livré ce
+mécanisme désarmé, faute d'avoir jamais pu l'exercer, et D9 s'ouvrait sur une
+phase de mesure pour décider s'il fallait l'armer. La mesure a tranché contre :
+
+- ✅ **L'inconnue « éliminatoire » de D8 est TRANCHÉE, et dans le sens
+  favorable** : le pilote SudoVDA **accepte** un changement de mode sur une
+  sortie **dont la duplication DXGI est ouverte et tenue** — mouvement relu par
+  DXGI, **2 exécutions sur 2**. Le nom `\\.\DISPLAYn` est **conservé**, 2/2.
+- ❌ **Mais le changement NE SURVIT PAS.** La sortie revient à sa taille de
+  création **dès qu'une sortie virtuelle de plus est créée** — c'est-à-dire à
+  **chaque ouverture de fenêtre**, donc en marche nominale du produit.
+  **`n = 4` exécutions propres**, à cibles toutes distinctes de la taille de
+  création (R6 1920×1080, R7 2560×1440, R8 et R9 1600×900), **sous
+  `CDS_UPDATEREGISTRY` comme sous `flags = 0`**.
+- ❌ **Et `CDS_UPDATEREGISTRY` POLLUE le registre** — **confirmé et attribuable
+  par GUID**, sur **3 transitions probantes** : les GUID jamais visés par
+  l'API ne sont jamais pollués, sur 9 exécutions.
+
+**Décision du propriétaire du dépôt : retirer le code.** La forme retenue n'est
+pas un second désarmement mais une **suppression** —
+`windows_source/redimensionnement/mode_sortie.rs` (458 lignes) disparaît,
+`PLEIN_ECRAN_MODE_SORTIE` disparaît, `reconstruire_sur_la_sortie` disparaît avec
+son unique appelant. **Les legs 12 (C1) et 13 (C2) CESSENT D'EXISTER au lieu
+d'être différés** — ils décrivaient un chemin qui n'est plus là.
+
+⚠️ **Le mécanisme de la non-persistance N'EST PAS EXPLIQUÉ.** Il est séparé en
+deux régimes observables, et un confondeur covarie exactement avec leur
+frontière (la duplication de la sortie sous test est ouverte aux créations de
+voisines, fermée à la création du témoin). **Séparé, pas expliqué.**
+
+⚠️ **Ce qui reste livré du plein écran, et qui n'a pas bougé** : la **détection**
+par le style de fenêtre (`capteur/fenetre.rs`, `PERIODE_STYLE = 250 ms`) et
+l'**annonce** `PleinEcran` → `Fullscreen` → armement client. Le sens « la
+résolution suit » n'existe plus. Le constat de mesure qui le justifie vit **en
+tête de `agent/src/capteur/plein_ecran.rs`**, et **cinq commentaires du dépôt y
+renvoient** : c'est le point de référence à ne pas déplacer.
+
+### 🔴 Le fait n°2 : la pollution de registre BLOQUE le produit à TROIS fenêtres
+
+**C'est la Critique C1 de D8 — celle que le désarmement devait rendre
+inatteignable — observée EN TRAIN DE MORDRE, en conditions de produit.**
+
+`superviseur/boucle.rs` exige une correspondance exacte avec la taille demandée
+(1280×720, à `placement::TOLERANCE_PX = 4` près) et **rend la sortie au pilote**
+sinon. Or, sur cette VM, les sorties **naissent à 3840×2160** — la dernière
+taille laissée au registre par une mesure antérieure. Résultat, aux **six**
+exécutions de la recette ③ **sans exception** : **trois** sessions établies, et
+toutes les tentatives au-delà de la troisième échouent sur
+`sortie créée mais introuvable dans la topologie DXGI … apparues=["\\.\DISPLAY8 3840x2160"]`
+— **20** `ERROR` sur `focus-1`, **16** sur `focus-2`, **12** sur `ab-desarme-2`,
+**toutes du même type**.
+
+⚠️ **« Inatteignable » vaut pour le PRODUIT, qui n'écrit plus au registre. Cela
+ne vaut pas pour ce qui y a DÉJÀ été écrit, et rien ne nettoie derrière.** Le
+remède opérationnel reste la sonde elle-même :
+`MULTIFENETRE_MODE_SORTIE=1280x720`, **dans un lancement à elle seule**.
+
+⚠️ **Portée toujours INCONNUE** : l'alternative « le mode registre est par GUID »
+contre « une seule écriture empoisonne toutes les sorties futures » n'est
+**toujours pas tranchée** — D9 a établi l'attribution par GUID de la
+**pollution**, pas la portée du **blocage**.
+
+⚠️ **Conséquence de méthode, à ne pas perdre** : **toutes les mesures de
+capacité de D9 portent sur TROIS fenêtres**, pas huit ni dix. Elles ne se
+comparent à aucune campagne de D4 à D6 sur un seul chiffre absolu.
+
+### 🔴 Le fait n°3 : la réélection après répit est INERTE
+
+Le leg 1 (le signal enfant→capteur quand une capture audio meurt) est livré en
+trois étages — la règle pure (`capteur/audio.rs`, champ `inapte`), le registre
+(`capteur/sommeil.rs` : `REPIT_REARMEMENT_AUDIO = 5 s`, `REARMEMENTS_MAX = 5`),
+et le message `VersCapteur::AudioMort` de bout en bout. **La branche PROMOTION
+est valide** : une voisine du même groupe de PID a sa propre capture, sur un fil
+qui n'a jamais échoué, et l'élire lui donne réellement le son.
+
+❌ **La branche RÉÉLECTION APRÈS RÉPIT, elle, ne restaure RIEN — et c'est le cas
+MAJORITAIRE (une application, une fenêtre, aucune voisine).** Vérifié sur le
+code : `set_audio_source` n'est appelée **qu'une fois**
+(`demarrage/audio.rs`, sans boucle) ; le fil de capture (`windows_audio.rs`)
+exécute un `return` **définitif** une fois `capture_morte` posé ; et réélire la
+même session ne fait que pousser `Audio { actif: true }` → `set_actif(true)`,
+**qui n'écrit qu'un booléen atomique que ce fil mort ne relira jamais**. Rien,
+nulle part, ne reconstruit la source.
+
+**Décision : corriger l'affirmation, léguer le remède.** Le point de chute est
+nommé — `demarrage/audio.rs` construit, `transport/piste_audio.rs` porte,
+`windows_audio.rs` tient le fil.
+
+⚠️ **Corollaire trouvé par la revue transverse** : `REARMEMENTS_MAX` **ne peut
+pas mordre dans ce même cas majoritaire**. `sommeil/porteurs.rs` remet le
+compteur à zéro dès qu'une session est **décidée** porteuse ; pour une fenêtre
+seule de son groupe de PID, la sortie de répit la rend automatiquement porteuse.
+Le garde-fou ne s'applique donc en pratique qu'aux groupes à **plusieurs**
+fenêtres. **Non corrigé, délibérément** : le remède juste est de refermer le
+cycle sur une **preuve** de son, pas sur une décision — et cette preuve viendra
+avec le legs ci-dessus.
+
+### 🔵 Le fait le plus réutilisable : le *process loopback* suit l'ARBRE DE PROCESSUS
+
+**La capture *process loopback* n'est liée ni au service audio, ni au
+périphérique de rendu.** Toute disruption au niveau service ou endpoint est donc
+**structurellement le mauvais levier** — ce qui explique d'un seul coup les
+**quatre** échecs de déclenchement de la recette ② : `Restart-Service Audiosrv
+-Force` (celui du brief), `Stop-Service` + attente + `Start-Service`,
+`Stop-Process audiodg -Force`, et `Disable-PnpDevice`/`Enable-PnpDevice` ne
+produisent **aucune** ligne `lecture audio échouée` sur **9 exécutions versées**.
+
+**Corroboration** : `compteurs audio actif=true` et `paquets_recus` passant de
+194 à 6156 établissent que `read()` **était bien appelée** — le zéro n'est pas
+l'artefact d'une fenêtre qui ne lit jamais.
+
+**Cinquième déclencheur nommé et JAMAIS ESSAYÉ** : tuer le `chrome.exe` **CIBLE**
+du process loopback.
+
+### Les quatre passes, avec le nombre d'exécutions dans chaque énoncé
+
+**Aucun taux n'est revendiqué nulle part.**
+
+| | Objet | Verdict | Exéc. |
+| --- | --- | --- | --- |
+| **P** | l'éliminatoire × 4 combinaisons, témoin sans duplication | **REÇU, et il tranche CONTRE l'armement** | 2 (éliminatoire) + 9 (persistance) |
+| **① a** | rejeu du `Resize` différé | **NON EXERCÉ** — le réseau local est trop rapide pour provoquer la course ; forcer par latence a cassé la reconnexion | 2 vertes + 1 tentative |
+| **① b** | chaque `contrôle reçu Resize` porte son `session` | **TENU** | 2 + 1 rouge |
+| **① c** | même unité annonce/`Resize` à `deviceScaleFactor = 2` | **TENU sur vert, RÉFUTÉ sur rouge** (annonce 1280×720 / `Resize` 2560×1440) | 2 + 1 rouge |
+| **① d** | détection plein écran **exclusive** | **TENU** — 3 bascules, 3 sessions distinctes, jamais de fuite | 2 |
+| **② A** | réarmement | **NON DÉMONTRABLE, et INSATISFIABLE PAR CONSTRUCTION** | 2 |
+| **② B** | promotion d'une voisine | **NON DÉMONTRABLE** — aucun `AudioMort` jamais signalé, donc aucune promotion à provoquer | 2 |
+| **② rouge** | le contrôle sans le remède | **NON DISCRIMINANT** — le même silence se reproduirait sur un binaire au remède parfait | 1 + 3 validations |
+| **② nr** | non-régression du rattachement (D4) | **TENU** — capteur relancé en **0,05 s**, canal rattaché **0,25 s** après, **0** clôture, **0** enfant terminé | 1 |
+| **③ focus** | critère ④ de D6 à palier **60 s** | **3 promotions sur 4 déplacements** | 2 |
+| **③ A/B** | `set_desired_bitrate` armé / désarmé | **N'ÉTABLIT RIEN** | 4 (2 par bras) |
+
+⚠️ **Le critère ① c porte une réserve de méthode qui n'a pas été corrigée** :
+« seul le client diffère » entre rouge et verts est **FAUX** — le rouge a tourné
+avec une géométrie **double** (1280×720 CSS contre 640×360). Le verdict survit
+(le critère est intra-run), **l'A/B n'est pas propre**, et la ligne de commande
+du rouge n'est versée nulle part.
+
+⚠️ **Le critère ② A était insatisfiable INDÉPENDAMMENT du problème de
+déclencheur** : même avec une disruption qui aurait fait échouer
+`capture.read()`, la réélection ne reconstruit rien (fait n°3). **Deux causes
+d'échec, pas une** — et seule la seconde était connue avant la revue.
+
+### L'A/B de `set_desired_bitrate` : joué, et il n'établit rien
+
+Le leg n°4 de D6 — « le point ouvert le plus important » — a enfin son bras
+désarmé (`PART_SONDAGE=0`). **Il ne tranche pas** :
+
+| Bras | Exéc. | Mb/s cumulés | `packetsLost` |
+| --- | --- | --- | --- |
+| ARMÉ | 2 | 11,439 et 6,247 — moyenne **8,843** | 0 |
+| DÉSARMÉ | 2 | 7,546 et 6,813 — moyenne **7,180** | 0 |
+
+**Écart entre bras : +23,2 %, dans le sens attendu. Variance INTRA-bras :
++83,1 %** (11,439 contre 6,247 sur le même bras armé). **Le bruit dépasse le
+signal** : rien n'autorise à imputer la différence de moyenne à `PART_SONDAGE`
+plutôt qu'à la variabilité de l'hôte, déjà nommée en D6 comme facteur dominant.
+**Le leg reste dû**, et il faudra plus d'exécutions, pas un autre montage.
+
+⚠️ **Trois fenêtres mesurées aux quatre exécutions**, pas huit — le plafond du
+fait n°2. La base de comparaison est identique aux quatre, ce qui rend l'A/B
+légitime **sur un effectif de 3**.
+
+### ⚠️ Le leg 10 est DÉCIDABLE, et les journaux le tranchent — contre le rapport qui l'a mesuré
+
+D8 demandait « pourquoi si peu de `Resize` ? » et laissait la question
+indécidable, faute de champ `session` sur la trace. **La tâche 5 de D9 a posé ce
+champ ; la tâche 14 l'a mesuré ; et son rapport conclut en sens inverse de ses
+propres journaux.**
+
+Inventaire réel, `agent-critere-1-1.log` : `w-2` = 3 `Visibility` / **0
+`Resize`** ; `w-3` = 3/3 ; **`w-5` = 1 `Visibility` / 0 `Resize`** ; `w-7` =
+13/1. **Deux sessions sur quatre, canal de contrôle DÉMONTRÉ VIVANT, zéro
+`Resize`.**
+
+⚠️ **Le canal vivant ÉCARTE l'hypothèse « canal mort » pour ces deux sessions ;
+il ne désigne PAS le client.** C'est exactement la nuance que la correction C3
+de D8 avait payée. Le maillon fautif reste **non identifié**.
+
+⚠️ **Le rapport de la tâche 14 déclare ce leg clos en sens inverse, et il n'a
+pas été corrigé** (interruption assumée de la ronde de correction). **Le
+contredire est le premier travail de qui le relira.**
+
+### ⚠️ La revue transverse de fin de branche — six défauts, tous franchissant une frontière de tâche
+
+Elle a trouvé **cinq** défauts en D7 et **trois** Critiques en D8. Elle en trouve
+**six** ici, et **tous ont la même forme** : corrects des deux côtés pris
+séparément.
+
+| # | Défaut | Sort |
+| --- | --- | --- |
+| **1** | `capteur/fenetre/commandes.rs` affirmait encore que « `resize` change désormais le mode de la sortie virtuelle » et annonçait comme conséquence assumée qu'un plein écran demandé pendant le sommeil serait **perdu**. La tâche 3 avait retiré le mécanisme ; la tâche 9 a édité ce fichier **cinquante lignes plus haut** sans le voir | **CORRIGÉ** |
+| **2** | `client/src/main.ts` justifiait le correctif HiDPI par « sinon chaque connexion déclencherait un changement de mode » — **une conséquence déjà supprimée un commit plus tôt**. Le correctif est juste (symétrie d'unité) ; **la raison écrite dans le code était fausse dans la branche même qui la livre** | **CORRIGÉ** — et la vraie raison est écrite |
+| **3** | `capteur/audio.rs` affirmait encore « le réarmement après répit est le seul remède ». Réfuté par la tâche 15, corrigé dans `sommeil.rs`, **pas ici** — le naufrage du « 487 », **sixième occurrence** | **CORRIGÉ** |
+| **4** | La taille de création d'une sortie **n'est bornée par personne**, et D9 la fait **doubler** sur HiDPI (viewport en pixels périphériques) pendant que `borner_a_la_taille_max` (1920×1080) **perd son dernier appelant** dans le même sous-bloc. À `dpr = 2`, une fenêtre 1280×720 CSS demande **quatre fois** les pixels | **DOCUMENTÉ, non corrigé — legs** |
+| **5** | Le leg 2 est fermé sur le registre de **sommeil** seul. `capteur/serveur.rs::oublier` porte **la même course F5** sur le registre d'attentes, `remove` inconditionnel — le brief de la tâche 10 ne nommait que `sommeil` | **DOCUMENTÉ, non corrigé — legs** |
+| **6** | `REARMEMENTS_MAX` ne mord pas dans le cas majoritaire (voir le fait n°3) | **DOCUMENTÉ, non corrigé — legs** |
+
+**Les trois premiers sont des affirmations de code devenues fausses dans leur
+propre branche.** Aucune revue par tâche ne pouvait les voir : la tâche qui
+écrit la phrase et celle qui la réfute ne se relisent jamais l'une l'autre.
+
+### Ce que le code livre
+
+| Étage | Fichier | Nature |
+| --- | --- | --- |
+| la règle d'inaptitude | `agent/src/capteur/audio.rs` (**228**) | **pur, aucun `cfg`** — le champ `inapte`, 4 tests neufs (12 en tout) |
+| le registre | `agent/src/capteur/sommeil.rs` (**269**) + `sommeil/registre.rs` (**331**) | `REPIT_REARMEMENT_AUDIO`, `REARMEMENTS_MAX`, la génération monotone. **Extrait sur exigence de revue** après une compression que ce dépôt interdit |
+| le message | `capteur/protocole.rs` (**381**) — `VersCapteur::AudioMort` | poussé, non répondu par `Fait` ; **hors du bras catch-all de `pont_media.rs`**, vérifié |
+| la détection locale | `agent/src/transport/tick.rs` (**343**), branche **a1sexies** | verrou `audio_mort_signale`, remis à zéro par `VideoSource::rattachement_survenu` |
+| la télémétrie | `agent/src/windows_source/telemetrie.rs` (**72**) | **pur, aucun `cfg`**, par session ; lue par `capteur/fenetre/trace.rs` (**43**) sous le span `session` de D7 |
+| le rejeu du `Resize` | `client/src/resize.ts` (**45**) | **pur, sans DOM**, 5 tests |
+| la sonde P | `diagnostics/multifenetre/mode_sortie.rs` (**383**) + 5 enfants | duplication tenue, témoin, 4ᵉ combinaison, épreuve de persistance |
+
+**Vérifications de fin de branche** : `cargo test -p agent` → **440 passed, 0
+failed** (422 en début de branche, **+18**) ; `cargo check --target
+x86_64-pc-windows-gnu` → **sortie 0, 11 avertissements**, tous `dead_code`, dont
+**deux délibérés et justifiés dans le code** (`TAILLE_MAX_SORTIE` et
+`borner_a_la_taille_max`, conservés sans appelant) ; `npx vitest run` côté client
+→ **107 passed**.
+
+### Ce que D9 n'établit PAS
+
+- **Aucun taux, nulle part.** Deux exécutions par critère au mieux, une pour
+  plusieurs.
+- **Le MÉCANISME de la non-persistance du changement de mode** : séparé en deux
+  régimes, **pas expliqué**, et un confondeur covarie avec leur frontière.
+- **La PORTÉE du blocage par pollution de registre** : par GUID, ou global ?
+  Non tranchée. Et **rien dans le produit ne nettoie le registre**.
+- **Le leg 1 n'a JAMAIS été exercé de bout en bout sur la VM** : aucun
+  `AudioMort`, aucun `réarmement programmé`, aucun `abandon définitif` n'apparaît
+  dans un seul journal. Le remède est raisonné, compilé et couvert par des tests
+  d'hôte — **pas mesuré**.
+- **Le rejeu du `Resize` différé (leg 8) n'a pas été observé en conditions
+  réelles**, seulement par ses tests unitaires.
+- **La course du leg 2 n'a pas été provoquée** — c'était écrit d'avance (§11 de
+  la spec) : le correctif se prouve par tests d'hôte, la VM n'établit que la
+  non-régression du rattachement.
+- **Le maillon fautif du leg 10 reste non identifié** : le canal est disculpé
+  pour deux sessions, **rien n'est désigné**.
+- **`REPIT_REARMEMENT_AUDIO` et `REARMEMENTS_MAX` ne sont pas calibrées** —
+  elles rejoignent `BPP_MIN`, `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`,
+  `HYSTERESIS`, `REPIT_APRES_ECHEC` et `TAILLE_MAX_SORTIE`. **Aucun jugement
+  visuel ni d'écoute n'a été porté sur aucune constante.**
+- **Rien au-delà de TROIS fenêtres**, à cause du fait n°2 — et donc rien qui se
+  compare aux campagnes de D4 à D6.
+- **Le critère ③ focus a tourné à `BUDGET_BPS = 8 000 000`, pas à la valeur
+  livrée (12 M)** : rejouer à 12 M exige d'abord de lever le plafond à trois
+  sessions.
+- **La latence de bout en bout**, qu'aucun sous-bloc du chantier D n'a jamais
+  mesurée.
+- **Les trois couches inconnues le restent** : le plafond de 8 encodeurs, celui
+  de 4 processus, et le mécanisme de l'abandon du mutex DXGI.
+- **Le chemin d'extinction propre du superviseur n'a toujours jamais été
+  exercé**, depuis D1.
+- **Aucun client réel, aucun HiDPI réel** : le montage reste un Chrome sans
+  interface, à décodage logiciel, sur l'hôte qui porte la VM ; `deviceScaleFactor
+  = 2` n'a été exercé que sur la **symétrie d'unité**, jamais sur le **coût**.
+- **La visibilité et le focus restent IMPOSÉS par le pilote de recette**, page
+  par page — limite héritée de D5, la plus lourde du montage, qu'aucun sous-bloc
+  n'a levée.
+
+### Pièges neufs — à connaître avant de toucher à ce terrain
+
+- ⚠️ **Une variable de disruption peut viser la mauvaise couche entière, et cela
+  se lit comme une panne du produit.** Quatre déclencheurs audio, neuf
+  exécutions, zéro erreur de lecture : ce n'était pas le remède qui ne marchait
+  pas, c'était le levier qui n'était pas relié. **Vérifier À QUOI un mécanisme
+  est lié avant de choisir comment le casser** — ici, l'arbre de processus, pas
+  le service ni l'endpoint.
+- ⚠️ **Un critère peut être insatisfiable pour DEUX raisons, et trouver la
+  première fait manquer la seconde.** Le montage A de la recette ② n'aurait pas
+  pu réussir même avec un déclencheur correct. **Chercher la seconde cause après
+  avoir trouvé la première.**
+- ⚠️ **Un compteur de fenêtres côté PILOTE compte des popups, pas des
+  sessions.** Le rapport de la tâche 16 a annoncé **8 puis 6** fenêtres ; il y en
+  avait **3**, aux six exécutions. La source de vérité est
+  `enfant lancé`/`fenêtre attachée au capteur` dans `agent.log`, jamais le
+  navigateur. C'est le piège maison « compter les fenêtres, jamais les
+  lancements » sous une troisième forme.
+- ⚠️ **Une promotion peut arriver 0,83 s APRÈS la fin de la mesure** — c'est
+  littéralement le phénomène que le palier de 60 s existait pour éliminer, et il
+  s'est reproduit. **Chercher activement l'événement juste après la fenêtre**
+  avant de compter un échec.
+- ⚠️ **Une sonde qui demande à une sortie la taille qu'elle a déjà ne peut pas
+  échouer.** Rejoué en D9 (le confondeur « cibler 1280×720 », trouvé par
+  l'implémenteur lui-même, run conservé et **étiqueté**). Le remède est celui de
+  D8 : **exclure structurellement la taille courante des cibles**, et juger sur
+  le **mouvement**, jamais sur une égalité.
+- ⚠️ **`survit=true` peut être rendu par une sortie qui a DISPARU** (sentinelle
+  `(0,0) == (0,0)`), et `mouvement_observe=true` par un tour vide. **Un verdict
+  positif doit exiger que la chose mesurée existe encore.**
+- ⚠️ **Un plafond de fenêtres peut venir d'un état laissé par une mesure
+  antérieure, pas du produit.** Trois sessions au lieu de huit, aux six
+  exécutions : ce n'était ni de l'instabilité VM ni une limite du système, c'est
+  du registre pollué. **`grep 'sortie créée mais introuvable'` avant de conclure
+  à un plafond.**
+- ⚠️ **Extraire pour rester sous 500 lignes, ce n'est pas COMPRESSER.**
+  `sommeil.rs` a franchi 500, a été ramené à **499 en resserrant des
+  commentaires** — geste que `CLAUDE.md` interdit nommément — et la revue a
+  exigé l'extraction, qui l'a ramené à **269**. Même scénario sur
+  `capteur/fenetre.rs` (508 → 496 par compression → **485** par extraction).
+  **Deux fois dans le même sous-bloc.**
+- ⚠️ **Une revue peut être conforme à la LETTRE d'un brief et manquer son
+  OBJET.** La première version du leg 2 frappait la génération **au lancement du
+  processus**, quand la course est à l'**attache** : `retirer_est_perime` ne
+  pouvait structurellement pas rendre `true` en production. **Le défaut était
+  dans la conception, pas dans l'exécution.**
+
+### Ce que D9 lègue — douze points, dont trois neufs (plus deux ajoutés par la vague de correction)
+
+**Repris de D8 et de D6, toujours dus :**
+
+1. ⛔ **Reconstruire la capture audio après sa mort** — c'est le remède réel du
+   leg 1, dont D9 n'a livré que la moitié qui marche (la promotion d'une
+   voisine). **Le cas majoritaire — une application, une fenêtre — reste sans
+   remède.** Point de chute nommé : `demarrage/audio.rs` construit,
+   `transport/piste_audio.rs` porte, `windows_audio.rs` tient le fil.
+2. ⛔ **Le leg 2 sur le SECOND registre** : `capteur/serveur.rs::oublier` porte
+   la même course F5, `remove` inconditionnel. Même patron de remède que
+   `sommeil/registre.rs`.
+3. ⛔ **L'A/B sur `set_desired_bitrate` (D6 n°4)** — **joué, n'établit rien** :
+   le bruit intra-bras (+83,1 %) dépasse le signal (+23,2 %). Il faut **plus
+   d'exécutions**, pas un autre montage — et de préférence à plus de trois
+   fenêtres, donc après le legs n°4.
+
+**Neufs, propres à D9 :**
+
+4. 🔴 **Nettoyer la pollution de registre, ou s'en rendre immunisé.** Elle bloque
+   le produit à **trois** fenêtres sur cette VM, aujourd'hui, et **rien ne
+   nettoie derrière**. Deux voies, non arbitrées : purger le registre au
+   démarrage du superviseur, ou **tolérer** une sortie née à la mauvaise taille
+   plutôt que la rendre au pilote (`superviseur/boucle.rs`). ⚠️ **Sa portée
+   reste inconnue** — par GUID, ou global ?
+5. 🔴 **Borner la taille de sortie demandée** : le viewport passe désormais en
+   pixels périphériques, donc ×4 les pixels à `dpr = 2`, et
+   `borner_a_la_taille_max` (1920×1080) n'a plus d'appelant. **Aucun client
+   HiDPI réel n'a été mesuré.** ⚠️ **Deux conséquences mordent, et ni l'une ni
+   l'autre n'est nommée ci-dessus** :
+   - **le plafond de 8 encodeurs concurrents n'a JAMAIS été mesuré qu'à 720p**
+     (1280×720/60, toutes les campagnes du 31 juillet au 3 août 2026) — NVENC
+     borne en macroblocs par seconde, pas en nombre de sessions : huit fenêtres
+     HiDPI en 1440p ou plus (le ×4 ci-dessus) peuvent très bien être refusées
+     là où huit fenêtres 720p passaient ;
+   - et depuis le remède du sous-bloc D5, `set_encode_size` **détruit l'ancien
+     encodeur avant de construire le neuf** — si la construction du neuf
+     échoue, la source n'a plus d'encodeur du tout. Ce chemin d'échec est
+     déclaré **« jamais couru »** dans ce fichier (sections D4/D5) : un HiDPI
+     qui ferait franchir le plafond de 8 (jamais mesuré au-delà de 720p) serait
+     la première charge réelle à l'emprunter.
+6. ⛔ **`REARMEMENTS_MAX` ne mord pas dans le cas majoritaire** — le compteur est
+   remis à zéro sur une **décision** d'arbitrage, pas sur une preuve de son.
+   Se referme avec le legs n°1, pas avant.
+7. ⛔ **Le maillon fautif du leg 10 reste non identifié.** Deux sessions sur
+   quatre n'émettent aucun `Resize` **avec un canal démontré vivant** ; le canal
+   est disculpé pour elles, **rien n'est désigné**. ⚠️ **Et le rapport de la
+   tâche 14 conclut l'inverse et n'a pas été corrigé.**
+8. ⛔ **Le cinquième déclencheur d'une mort de capture audio, jamais essayé** :
+   tuer le `chrome.exe` **cible** du process loopback. Sans lui, le leg 1 restera
+   non exercé sur la VM.
+9. ⛔ **`agent/src/survie_verdict.rs` est posé à la RACINE du crate** alors que le
+   dépôt a deux précédents (`capture_reprise`, `windows_source_sortie`) qui
+   gardent le fichier chez le parent et n'y hissent que la déclaration par
+   `#[path]`. Un seul appelant. ⚠️ **« Déviation non justifiée » est INEXACT** :
+   l'en-tête du fichier la justifie, en citant un AUTRE précédent
+   (`geometry.rs`, `sortie_dxgi.rs`, tous deux posés directement à la racine,
+   sans `#[path]`). ❌ **Et « la branche D9 a TRIPLÉ la convention `#[path]` »,
+   écrit ici par la vague de correction finale, est FAUX à son tour** — relevé
+   par `git log -S` à la re-revue de cette même vague : `windows_source_sortie`
+   date de **D1** (`0529651`) et `capture_reprise` de **D2** (`9438e33`), tous
+   deux fusionnés sur `main` AVANT que cette branche ne diverge. **D9 en ajoute
+   UN SEUL** — `windows_source_telemetrie` (tâche 11). C'est 2 → 3, pas un
+   triplement. *Corriger une affirmation fausse peut en produire une autre : ce
+   fichier l'écrit depuis D6, et la vague qui corrigeait le leg l'a repayé.*
+   Ce qui reste vrai, c'est que la branche a ajouté un troisième emploi de la
+   convention par ailleurs
+   (`windows_source_telemetrie`, tâche 11, s'ajoutant à `capture_reprise` et
+   `windows_source_sortie`) sans réconcilier les deux conventions ni choisir
+   entre elles pour ce fichier-ci.
+10. ⛔ **Neuf constats de revue PARQUÉS sur la tâche 14** (recette ①), dont
+    l'A/B rouge/vert non propre, la pièce du critère (a) qui ne couvre qu'une
+    page sur treize, et un « défaut d'instrument » qui est en réalité un
+    **comportement du produit** (le shell réémet `fenetre-ouverte` pour une
+    fenêtre déjà ouverte, mécanisme non élucidé). **Ils sont toujours dans le
+    rapport versé.**
+
+**DEUX de plus, trouvés par la vague de correction unique de la revue finale
+de D9 (6 août 2026), et délibérément NON corrigés — legs, pas défauts actifs.**
+*(Ce sous-titre annonçait « trois » pour deux entrées numérotées, quand
+l'en-tête du même commit en comptait deux — corrigé à la re-revue. Le n°11
+porte deux tests, ce qui explique probablement le glissement : on compte ici
+des LEGS, pas des problèmes individuels.)*
+
+11. ⛔ **Deux tests faibles, sans être morts, incapables de rendre l'autre
+    valeur** :
+    - `agent/src/windows_source/telemetrie.rs:68`,
+      `une_telemetrie_neuve_est_a_zero` : n'éprouve que `#[derive(Default)]`,
+      jamais la logique propre de `Telemetrie` (`tick`/`capturee`/`produite`),
+      déjà couverte par ailleurs par `deux_telemetries_ne_se_melangent_pas`.
+    - `client/src/resize.test.ts:18`, dont le titre annonce « REJOUE la
+      dernière taille quand le canal était fermé au moment du geste » :
+      `RejeuResize` (`client/src/resize.ts`) n'a AUCUNE notion de canal ni de
+      `readyState` — le test se contente d'omettre l'appel à `confirmer()`, ce
+      qui rend le même verdict pour n'importe quelle autre raison de
+      non-confirmation. Il annonce un état de canal qu'il n'exerce pas.
+12. ⛔ **Un invariant non écrit, `client/src/main.ts:345`** : le rejeu du
+    `Resize` (`session.controlChannel.addEventListener('open',
+    emettreSiPossible)`) tient parce que le `.then()` qui le pose (ligne 204)
+    s'exécute intégralement de façon SYNCHRONE, sans `await` intercalé entre
+    la construction de `rejeu`/du `ResizeObserver` et cet `addEventListener`.
+    Un `await` glissé là romprait le rejeu EN SILENCE si le canal s'ouvrait
+    pendant l'attente. Ni écrit dans un commentaire du code (au-delà de la
+    ligne 345 elle-même, qui ne dit que le QUOI, pas le POURQUOI de l'ordre),
+    ni testé.
 
 ---
 
@@ -5128,7 +5751,7 @@ winrm.runCommand('Get-ChildItem C:\\', '192.168.3.2', 'Administrator', 'PASSWORD
 
 **Dernière mise à jour**: ~~21 octobre 2025 (Session de bugfixing complète)~~ —
 ⚠️ **cette ligne dormait depuis huit sous-blocs et se réfutait elle-même** : le
-fichier a été écrit tout du long jusqu'au **5 août 2026** (sous-bloc D8). Elle ne
+fichier a été écrit tout du long jusqu'au **6 août 2026** (sous-bloc D9). Elle ne
 date que le pied de page hérité du Guacamole historique, ci-dessous, qu'aucun
 chantier du projet agent n'a touché.
 

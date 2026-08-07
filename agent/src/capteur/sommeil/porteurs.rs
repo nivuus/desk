@@ -52,6 +52,7 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
                 pid,
                 arrivee,
                 dernier_focus: garde.derniers_focus.get(session).copied().unwrap_or(0),
+                inapte: garde.inaptes.contains_key(session),
             })
         })
         .collect();
@@ -83,6 +84,38 @@ pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
     // jusqu'à 250 ms.
     let mut rompus = Vec::new();
     for (session, actif) in a_taire.into_iter().chain(a_porter) {
+        // Elle porte le son et n'est pas inapte : le cycle de réarmement
+        // est refermé. Sans cette remise à zéro, `REARMEMENTS_MAX`
+        // s'épuiserait sur toute la vie de la session au lieu de compter
+        // des échecs CONSÉCUTIFS.
+        //
+        // ⚠️ **`actif` est une DÉCISION d'arbitrage, pas la preuve qu'un son
+        // sorte** — et la conséquence est que `REARMEMENTS_MAX` ne peut PAS
+        // mordre dans le cas majoritaire. Trouvé par la revue TRANSVERSE de fin
+        // de branche D9 : la borne (tâche 8) et la réfutation du réarmement
+        // (correction de la tâche 15) sont chacune justes de leur côté, et
+        // c'est leur composition qui ne l'est pas. Pour une fenêtre SEULE de
+        // son groupe de PID, la sortie de répit la rend automatiquement
+        // porteuse — `arbitrer` n'a personne d'autre à élire —, donc son
+        // compteur est remis à zéro à chaque cycle, alors même que rien n'a
+        // été restauré (voir `REPIT_REARMEMENT_AUDIO`). Le garde-fou du §5.1
+        // point 4 de la spec — « pour qu'un périphérique définitivement mort ne
+        // tourne pas sans fin » — ne s'applique donc en pratique qu'aux
+        // groupes de PID à PLUSIEURS fenêtres, où la dormante n'est jamais
+        // élue tant qu'une voisine porte le son.
+        //
+        // **Non corrigé, délibérément** : la sanction n'a aucune conséquence
+        // observée aujourd'hui — le cycle ne tourne pas sans fin pour autant,
+        // l'enfant ne resignalant `AudioMort` qu'après un rattachement
+        // (`Session::audio_mort_signale`, `transport/tick.rs`). Le remède juste
+        // est de refermer le cycle sur une PREUVE de son (un signal
+        // enfant→capteur « la capture est vivante »), pas sur une décision — et
+        // ce signal est exactement ce que le legs « reconstruire la capture »
+        // apportera. Corriger la remise à zéro seule, sans lui, échangerait une
+        // borne inopérante contre une borne qui mord sur un état sain.
+        if actif {
+            garde.rearmements.remove(&session);
+        }
         if garde.derniers_audio.get(&session) == Some(&actif) {
             continue;
         }
@@ -133,8 +166,8 @@ mod tests {
     #[test]
     fn deux_fenetres_d_un_meme_pid_se_disputent_le_son_et_le_focus_tranche() {
         let _verrou = verrouiller_pour_le_test();
-        let a = inscrire("t9-a", 4242);
-        let b = inscrire("t9-b", 4242);
+        let (a, generation_a) = inscrire("t9-a", 4242);
+        let (b, generation_b) = inscrire("t9-b", 4242);
 
         // Aucune focalisée : la première arrivée porte le son.
         assert_eq!(dernier_audio(&a), Some(true), "la premiere arrivee porte le son");
@@ -148,21 +181,21 @@ mod tests {
 
         // "b" disparaît : "a" doit reprendre le son, sinon le groupe devient
         // definitivement muet.
-        retirer("t9-b");
+        retirer("t9-b", generation_b);
         assert_eq!(dernier_audio(&a), Some(true), "le son revient a la survivante");
 
-        retirer("t9-a");
+        retirer("t9-a", generation_a);
     }
 
     #[test]
     fn deux_pid_distincts_portent_chacun_leur_son() {
         let _verrou = verrouiller_pour_le_test();
-        let a = inscrire("t9-c", 111);
-        let b = inscrire("t9-d", 222);
+        let (a, generation_a) = inscrire("t9-c", 111);
+        let (b, generation_b) = inscrire("t9-d", 222);
         assert_eq!(dernier_audio(&a), Some(true));
         assert_eq!(dernier_audio(&b), Some(true));
-        retirer("t9-c");
-        retirer("t9-d");
+        retirer("t9-c", generation_a);
+        retirer("t9-d", generation_b);
     }
 
     #[test]
@@ -171,7 +204,7 @@ mod tests {
         // quatre ordres par seconde et par fenêtre, à vie. Même rempart que
         // `dernieres_parts`.
         let _verrou = verrouiller_pour_le_test();
-        let a = inscrire("t9-e", 333);
+        let (a, generation) = inscrire("t9-e", 333);
         let _ = a.try_iter().count();
         signaler("t9-e", true, true);
         let ordres: Vec<Message> = a
@@ -179,6 +212,6 @@ mod tests {
             .filter(|m| matches!(m, Message::Audio { .. }))
             .collect();
         assert!(ordres.is_empty(), "ordre audio inchange reemis : {ordres:?}");
-        retirer("t9-e");
+        retirer("t9-e", generation);
     }
 }

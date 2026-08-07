@@ -1,0 +1,115 @@
+{
+ "etiquette": "ab-desarme-1",
+ "mode": "ab",
+ "budget_bps": 12000000,
+ "bitrate_par_enfant": 12000000,
+ "n_eveil": 8,
+ "part_sondage": "0",
+ "phases": {
+  "ab": {
+   "debut": "2026-08-06T21:21:16.572Z",
+   "fin": "2026-08-06T21:21:46.623Z",
+   "parFenetre": {
+    "w:w-2": {
+     "secondes": 30.039,
+     "octets_video": 13782205,
+     "mbps": 3.67,
+     "octets_audio": 483966,
+     "paquets_perdus": 0,
+     "paquets_recus": 13113,
+     "pc_paquets_perdus": 0,
+     "taille": "1280x720",
+     "rtt": 0.002,
+     "lien_bitrate": 6000000,
+     "lien_taille": "1280x720",
+     "cachee": false,
+     "focalisee": true
+    },
+    "w:w-4": {
+     "secondes": 30.039,
+     "octets_video": 6723630,
+     "mbps": 1.791,
+     "octets_audio": 483644,
+     "paquets_perdus": 0,
+     "paquets_recus": 6820,
+     "pc_paquets_perdus": 0,
+     "taille": "1280x720",
+     "rtt": 0.001,
+     "lien_bitrate": 2791243,
+     "lien_taille": "1280x720",
+     "cachee": false,
+     "focalisee": false
+    },
+    "w:w-6": {
+     "secondes": 30.041,
+     "octets_video": 7828474,
+     "mbps": 2.085,
+     "octets_audio": 483644,
+     "paquets_perdus": 0,
+     "paquets_recus": 7940,
+     "pc_paquets_perdus": 0,
+     "taille": "1280x720",
+     "rtt": 0.005,
+     "lien_bitrate": 2840641,
+     "lien_taille": "1280x720",
+     "cachee": false,
+     "focalisee": false
+    }
+   },
+   "cumule": {
+    "fenetres_mesurees": 3,
+    "octets_video_cumules": 28334309,
+    "mbps_cumule": 7.546,
+    "paquets_perdus": 0,
+    "paquets_recus": 27873,
+    "pc_paquets_perdus_global": 0
+   },
+   "survie": {
+    "virsh": "en cours d’exécution",
+    "acces": "OUI"
+   }
+  }
+ },
+ "navigateur": "Chrome/151.0.7922.108",
+ "cpu_repos": {
+  "loadavg": "13.79 14.26 15.27 21/2845 2704581"
+ },
+ "purge_rescapees": true,
+ "budget_annonce": [
+  12000000
+ ],
+ "construction": {
+  "ouvertes": 3,
+  "cible1": "w:w-2",
+  "scenario": {
+   "etats": {
+    "w:w-2": "false/true",
+    "w:w-4": "false/false",
+    "w:w-6": "false/false"
+   },
+   "focalisees": [
+    "w:w-2"
+   ]
+  },
+  "pose": {
+   "stable": true,
+   "attente_s": 31.1,
+   "changements": 12
+  },
+  "survie": {
+   "virsh": "en cours d’exécution",
+   "acces": "OUI"
+  }
+ },
+ "marqueurs": {
+  "lignes": 424,
+  "enfant_lance": 3,
+  "attachee_capteur": 3,
+  "cloture": 0,
+  "endormie": 0,
+  "part_appliquee": 20,
+  "taille_changee": 12,
+  "taille_refusee": 0,
+  "erreurs": 4
+ }
+}

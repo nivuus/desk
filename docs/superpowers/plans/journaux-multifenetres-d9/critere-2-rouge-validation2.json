@@ -1,0 +1,126 @@
+{
+ "etiquette": "rouge-validation2",
+ "montage": "a",
+ "port_shell": "5173",
+ "navigateur": "Chrome/151.0.7922.71",
+ "cpu_repos": {
+  "loadavg": "7.83 11.39 10.00 3/3082 1806829"
+ },
+ "phase": {
+  "montage": "a",
+  "session": "w-2",
+  "ice_avant": "connected",
+  "avant": {
+   "hz": 662,
+   "db": -39,
+   "plancher_db": -158,
+   "sample_rate": 44100,
+   "niveaux": [
+    {
+     "f": 660,
+     "db": -39
+    }
+   ],
+   "piste_muted": false,
+   "piste_ready_state": "live",
+   "stats_audio": {
+    "bytes_recus": 30431,
+    "paquets_recus": 189
+   }
+  },
+  "debut_declencheur": "2026-08-06T16:53:47.500Z",
+  "restart_service": {
+   "status": 0,
+   "stdout": "audiodg tue"
+  },
+  "releves": [
+   {
+    "t": "2026-08-06T16:53:54.434Z",
+    "hz": 662,
+    "db": -39,
+    "plancher_db": -158,
+    "sample_rate": 44100,
+    "niveaux": [
+     {
+      "f": 660,
+      "db": -39
+     }
+    ],
+    "piste_muted": false,
+    "piste_ready_state": "live",
+    "stats_audio": {
+     "bytes_recus": 142004,
+     "paquets_recus": 882
+    }
+   },
+   {
+    "t": "2026-08-06T16:54:00.956Z",
+    "hz": 662,
+    "db": -39,
+    "plancher_db": -157,
+    "sample_rate": 44100,
+    "niveaux": [
+     {
+      "f": 660,
+      "db": -39
+     }
+    ],
+    "piste_muted": false,
+    "piste_ready_state": "live",
+    "stats_audio": {
+     "bytes_recus": 247137,
+     "paquets_recus": 1535
+    }
+   },
+   {
+    "t": "2026-08-06T16:54:07.497Z",
+    "hz": 662,
+    "db": -39,
+    "plancher_db": -157,
+    "sample_rate": 44100,
+    "niveaux": [
+     {
+      "f": 660,
+      "db": -39
+     }
+    ],
+    "piste_muted": false,
+    "piste_ready_state": "live",
+    "stats_audio": {
+     "bytes_recus": 352270,
+     "paquets_recus": 2188
+    }
+   }
+  ],
+  "fin_observation": "2026-08-06T16:54:07.497Z",
+  "lignes_mort_enfant": [],
+  "lignes_registre": [],
+  "lignes_ordre": [],
+  "effondrement_observe": false,
+  "index_premier_effondrement": -1,
+  "dominante_revenue": true,
+  "dernier_releve": {
+   "t": "2026-08-06T16:54:07.497Z",
+   "hz": 662,
+   "db": -39,
+   "plancher_db": -157,
+   "sample_rate": 44100,
+   "niveaux": [
+    {
+     "f": 660,
+     "db": -39
+    }
+   ],
+   "piste_muted": false,
+   "piste_ready_state": "live",
+   "stats_audio": {
+    "bytes_recus": 352270,
+    "paquets_recus": 2188
+   }
+  }
+ },
+ "survie_finale": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ }
+}

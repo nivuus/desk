@@ -280,19 +280,23 @@ fn l_abandon_d_une_entree_figee_rend_la_sortie() {
     );
 }
 
-/// IMPORTANT 5 (revue de la tâche 9) : `changer_mode_de_sortie` (D8) retaille
-/// une sortie hors de cette table. `rafraichir_taille_sortie` est le
-/// rattrapage — appelé par le contrôle périodique de placement sur une
-/// lecture DXGI fraîche, il doit se répercuter sur ce que `viewport_recu`
-/// comparera à la prochaine relance.
+/// Ex-IMPORTANT 5 (revue de la tâche 9) : `changer_mode_de_sortie` (D8)
+/// retaillait une sortie hors de cette table, et `rafraichir_taille_sortie`
+/// était le rattrapage. **Ce chemin a été retiré au sous-bloc D9**, mesure à
+/// l'appui (voir le constat en tête de `capteur/plein_ecran.rs`) — mais
+/// `rafraichir_taille_sortie` reste appelée par le contrôle périodique de
+/// placement sur chaque lecture DXGI fraîche, et ce test couvre toujours son
+/// comportement propre : la répercussion sur ce que `viewport_recu` comparera
+/// à la prochaine relance.
 #[test]
 fn rafraichir_la_taille_met_a_jour_une_sortie_deja_retenue() {
     let mut t = Table::nouvelle(4);
     let session = session_vivante(&mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY7");
     assert_eq!(t.taille_sortie_de(&session), Some((1280, 720)));
 
-    // Le mode a changé hors de cette table (D8) : la sortie fait maintenant
-    // 1920×1080, et c'est ce que le contrôle périodique relit sur DXGI.
+    // Une sortie retaillée par un mécanisme quelconque (aucun n'existe plus
+    // en production depuis D9, mais la méthode reste générale) : c'est ce que
+    // le contrôle périodique relirait sur DXGI.
     t.rafraichir_taille_sortie(&session, (1920, 1080));
 
     assert_eq!(t.taille_sortie_de(&session), Some((1920, 1080)));

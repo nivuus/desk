@@ -19,9 +19,34 @@
 //! mutation de `Rtc`, qui serait fausse — qui préserve l'invariant de
 //! drainage documenté en tête de `tick.rs`.
 
+use std::sync::OnceLock;
+
 use str0m::bwe::Bitrate;
 
 use super::Session;
+
+/// L'objectif de sondage est-il armé ?
+///
+/// **Variable de BANC, pas de produit** : elle n'existe que pour l'A/B
+/// différentiel de la consignation n°4 du sous-bloc D6, jamais joué à ce jour.
+/// `PART_SONDAGE=0` neutralise `set_desired_bitrate` ; toute autre valeur, et
+/// l'absence de variable, l'arment. Même convention que `AUDIO` et
+/// `PLEIN_ECRAN` : on désarme sur `=0` ce qui est livré.
+///
+/// ⚠️ **Ce que l'A/B établira, et rien de plus** : que l'appel a un effet
+/// observable sur le trafic émis. Il n'établira PAS qu'il est nécessaire — la
+/// prémisse qui le disait « le plus important » a été réfutée par D6 elle-même,
+/// le pont portant ≥ 1,44 Gb/s pour `packetsLost = 0`.
+fn sondage_arme() -> bool {
+    static ARME: OnceLock<bool> = OnceLock::new();
+    *ARME.get_or_init(|| {
+        let arme = std::env::var("PART_SONDAGE").as_deref() != Ok("0");
+        if !arme {
+            tracing::warn!("objectif de sondage DESARME (PART_SONDAGE=0) : bras A/B, jamais une configuration livrée");
+        }
+        arme
+    })
+}
 
 impl Session {
     /// Applique une part du budget de session accordée par le capteur
@@ -68,7 +93,9 @@ impl Session {
         if !endormie {
             self.pending_decision = Some(self.congestion.changer_plafond(bps));
         }
-        self.rtc.bwe().set_desired_bitrate(Bitrate::bps(bps as u64));
+        if sondage_arme() {
+            self.rtc.bwe().set_desired_bitrate(Bitrate::bps(bps as u64));
+        }
         // `session` : sans ce champ la trace n'est PAS attribuable. Tous les
         // enfants héritent le même `agent.log` (stdout partagé depuis D4), et
         // la somme des parts accordées — le critère ③ de la recette — se

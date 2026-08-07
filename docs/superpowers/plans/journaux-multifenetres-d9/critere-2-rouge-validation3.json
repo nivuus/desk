@@ -1,0 +1,126 @@
+{
+ "etiquette": "rouge-validation3",
+ "montage": "a",
+ "port_shell": "5173",
+ "navigateur": "Chrome/151.0.7922.71",
+ "cpu_repos": {
+  "loadavg": "10.81 11.00 10.01 3/3097 1819016"
+ },
+ "phase": {
+  "montage": "a",
+  "session": "w-2",
+  "ice_avant": "connected",
+  "avant": {
+   "hz": 662,
+   "db": -39,
+   "plancher_db": -156,
+   "sample_rate": 44100,
+   "niveaux": [
+    {
+     "f": 660,
+     "db": -39
+    }
+   ],
+   "piste_muted": false,
+   "piste_ready_state": "live",
+   "stats_audio": {
+    "bytes_recus": 31558,
+    "paquets_recus": 196
+   }
+  },
+  "debut_declencheur": "2026-08-06T16:56:01.158Z",
+  "restart_service": {
+   "status": 0,
+   "stdout": "peripheriques bascules : SWD\\MMDEVAPI\\{0.0.0.00000000}.{8BF867BF-5EBE-45EA-B488-3D70CE3E430C},SWD\\MMDEVAPI\\{0.0.0.00000000}.{8695A111-ABF2-4199-88C0-FE4A9176F3E9}"
+  },
+  "releves": [
+   {
+    "t": "2026-08-06T16:56:10.366Z",
+    "hz": 662,
+    "db": -39,
+    "plancher_db": -157,
+    "sample_rate": 44100,
+    "niveaux": [
+     {
+      "f": 660,
+      "db": -39
+     }
+    ],
+    "piste_muted": false,
+    "piste_ready_state": "live",
+    "stats_audio": {
+     "bytes_recus": 180000,
+     "paquets_recus": 1118
+    }
+   },
+   {
+    "t": "2026-08-06T16:56:16.899Z",
+    "hz": 662,
+    "db": -39,
+    "plancher_db": -157,
+    "sample_rate": 44100,
+    "niveaux": [
+     {
+      "f": 660,
+      "db": -39
+     }
+    ],
+    "piste_muted": false,
+    "piste_ready_state": "live",
+    "stats_audio": {
+     "bytes_recus": 285133,
+     "paquets_recus": 1771
+    }
+   },
+   {
+    "t": "2026-08-06T16:56:23.422Z",
+    "hz": 662,
+    "db": -39,
+    "plancher_db": -157,
+    "sample_rate": 44100,
+    "niveaux": [
+     {
+      "f": 660,
+      "db": -39
+     }
+    ],
+    "piste_muted": false,
+    "piste_ready_state": "live",
+    "stats_audio": {
+     "bytes_recus": 390105,
+     "paquets_recus": 2423
+    }
+   }
+  ],
+  "fin_observation": "2026-08-06T16:56:23.422Z",
+  "lignes_mort_enfant": [],
+  "lignes_registre": [],
+  "lignes_ordre": [],
+  "effondrement_observe": false,
+  "index_premier_effondrement": -1,
+  "dominante_revenue": true,
+  "dernier_releve": {
+   "t": "2026-08-06T16:56:23.422Z",
+   "hz": 662,
+   "db": -39,
+   "plancher_db": -157,
+   "sample_rate": 44100,
+   "niveaux": [
+    {
+     "f": 660,
+     "db": -39
+    }
+   ],
+   "piste_muted": false,
+   "piste_ready_state": "live",
+   "stats_audio": {
+    "bytes_recus": 390105,
+    "paquets_recus": 2423
+   }
+  }
+ },
+ "survie_finale": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ }
+}
