@@ -172,11 +172,19 @@ impl Fenetre {
     /// connexion de commandes, que ce fil ne touche jamais. L'appelant écrit
     /// `Attachee { largeur, hauteur }` en cas de succès, `Refus` sinon.
     pub fn ouvrir(attache: VersCapteur) -> Result<Fenetre> {
-        // `taille` : non consommé ici. La tâche 9 du sous-bloc D10 fait
-        // voyager la taille demandée jusqu'à ce point ; la tâche 8, qui la
-        // consomme pour recadrer la capture, n'est pas encore faite.
-        let VersCapteur::Attache { session, hwnd, sortie, fps, debit, taille: _, origine_qpc } =
-            attache
+        // Renommé à la destructuration : `Contexte.taille`, plus bas dans ce
+        // fichier, désigne la taille RÉSOLUE courante, sans rapport avec la
+        // taille DEMANDÉE que l'attache apporte ici. Les deux cohabitent dans
+        // ce module ; ne pas les confondre au premier coup d'œil.
+        let VersCapteur::Attache {
+            session,
+            hwnd,
+            sortie,
+            fps,
+            debit,
+            taille: taille_demandee,
+            origine_qpc,
+        } = attache
         else {
             bail!("le premier message d'un enfant doit être une attache");
         };
@@ -208,8 +216,15 @@ impl Fenetre {
         // La taille est la seule chose qu'il faut savoir avant d'avoir la
         // place : `taille_de_sortie` la lit sans ouvrir de duplication, donc
         // sans prendre le mutex de la sortie ni perturber aucune voisine.
-        let (largeur, hauteur) = crate::capture::ouverture::taille_de_sortie(&sortie)
+        let sortie_taille = crate::capture::ouverture::taille_de_sortie(&sortie)
             .with_context(|| format!("attache de la session {session}"))?;
+        // La sortie peut être plus grande que la fenêtre (registre pollué,
+        // D9 §9). L'enfant a annoncé la taille que le superviseur lui a
+        // donnée ; le capteur la borne à ce que la sortie offre réellement,
+        // avec la MÊME fonction pure que le superviseur — deux calculs
+        // déterministes sur les mêmes entrées, jamais deux règles.
+        let (largeur, hauteur) =
+            crate::superviseur::placement::taille_retenue(taille_demandee, sortie_taille);
         let parametres = Parametres { hwnd, sortie, fps, debit, clock_origin };
         Ok(Fenetre { source: None, parametres, session, largeur, hauteur, pid })
     }

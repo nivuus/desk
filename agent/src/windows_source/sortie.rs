@@ -84,29 +84,29 @@ pub const TAILLE_MAX_SORTIE: (u32, u32) = (1920, 1080);
 /// rien, transitoirement vraie pendant une fenêtre repliée ou une transition
 /// de plein écran — y passait tel quel. Ce `.max(2)` reste un filet minimal.
 ///
-/// ⚠️ **Cette fonction n'a plus AUCUN appelant en production depuis le
-/// sous-bloc D9** (voir le constat de mesure en tête de
-/// `capteur/plein_ecran.rs`) : son unique appelant, la branche `SortieEntiere`
-/// de `WindowsSource::resize`, a été retirée avec le changement de mode de
-/// sortie. Elle reste ici, `pub` et testée, parce qu'elle borne un cas
-/// général (rapport d'aspect préservé, dimensions paires, jamais nulles) que
-/// rien n'interdit de réemployer. Son rôle propre reste borné au PLAFOND
-/// (`TAILLE_MAX_SORTIE`) ; le plancher applicatif de 160×120 qu'appliquait
-/// l'ancien appelant n'existe donc plus nulle part.
+/// ❌ **CETTE FONCTION A RETROUVÉ SES APPELANTS, et c'est FAUX de dire ici
+/// qu'elle n'en a aucun — corrigé à la tâche 8 du sous-bloc D10.** Elle est
+/// restée sans appelant du retrait du changement de mode de sortie (D9,
+/// tâche 3) jusqu'au leg 5 de D9, fermé par les tâches 6 et 7 de CE
+/// sous-bloc : `superviseur::boucle::creation_sortie::creer_sortie` la
+/// borne à la CRÉATION d'une sortie, et `superviseur::table::attribution::viewport_recu`
+/// la borne à la RÉUTILISATION d'une sortie retenue, par le même bornage et
+/// pour la même raison — le viewport annoncé par le navigateur arrive en
+/// pixels périphériques depuis D9, et sans ce plafond une demande à
+/// `devicePixelRatio > 1` s'y engouffrerait sans limite. Son rôle propre
+/// reste borné au PLAFOND (`TAILLE_MAX_SORTIE`) ; le plancher applicatif de
+/// 160×120 qu'appliquait l'ancien appelant (le changement de mode retiré par
+/// D9) n'existe toujours nulle part.
 ///
-/// ⚠️ **Et la TAILLE DE CRÉATION d'une sortie n'a jamais été bornée par
-/// personne — ce n'est pas une régression de D9, c'est une lacune que D9 rend
-/// plus mordante.** `superviseur::boucle::creer_sortie` passe au pilote le
-/// viewport annoncé par la page, tel quel ; or la tâche 5 de D9 fait désormais
-/// annoncer ce viewport en **pixels périphériques** (`client/src/main.ts`,
-/// `innerWidth × devicePixelRatio`). Un client à `devicePixelRatio = 2`
-/// demande donc une sortie de 2560×1440 là où il demandait 1280×720, soit
-/// quatre fois les pixels à capturer et à encoder — et cette fonction, la
-/// seule du dépôt qui sache poser un plafond, se retrouve sans appelant dans
-/// le même sous-bloc. **Aucun client HiDPI réel n'a été mesuré** : le montage
-/// de recette est un Chrome sans interface, et D9 n'a exercé
-/// `deviceScaleFactor = 2` que sur la symétrie d'unité, jamais sur le coût.
-/// Relevé par la revue transverse de fin de branche D9 ; legs de D9.
+/// ✅ **La TAILLE DE CRÉATION d'une sortie EST DÉSORMAIS BORNÉE**, aux deux
+/// points d'entrée ci-dessus. **Aucun client HiDPI réel n'a été mesuré pour
+/// autant** : le montage de recette reste un Chrome sans interface, et rien
+/// n'a exercé `deviceScaleFactor > 1` sur le COÛT (huit fenêtres à
+/// `TAILLE_MAX_SORTIE` plutôt qu'à 720p, plafond d'encodeurs jamais mesuré
+/// au-delà de 720p) — seule la symétrie d'unité l'a été (D9, tâche 5). Cette
+/// dernière phrase est la même réserve que D9 laissait ; le bornage qui la
+/// suivait manquait, et c'est lui qui est corrigé ici, pas la réserve
+/// elle-même.
 pub fn borner_a_la_taille_max((l, h): (u32, u32)) -> (u32, u32) {
     let (max_l, max_h) = TAILLE_MAX_SORTIE;
     if l <= max_l && h <= max_h {
@@ -130,6 +130,11 @@ pub fn borner_a_la_taille_max((l, h): (u32, u32)) -> (u32, u32) {
 /// Les dimensions sont alignées sur des valeurs paires : l'encodeur NV12 les
 /// exige, et une sortie virtuelle créée à une taille impaire par un viewport
 /// impair est un cas réel.
+///
+/// ⚠️ **Depuis le sous-bloc D10, l'appelant lui passe la taille RETENUE, pas
+/// celle de la sortie** : une sortie née trop grande (registre pollué) est
+/// acceptée et recadrée à l'origine. La fonction elle-même est inchangée —
+/// c'est son argument qui a changé de sens.
 pub fn region_de_sortie(largeur: u32, hauteur: u32) -> Option<Rect> {
     let largeur = largeur & !1;
     let hauteur = hauteur & !1;
@@ -204,7 +209,7 @@ mod tests {
     }
 
     #[test]
-    fn la_region_couvre_toute_la_sortie_a_partir_de_son_origine_propre() {
+    fn la_region_part_de_l_origine_de_la_sortie() {
         assert_eq!(
             region_de_sortie(1600, 900),
             Some(Rect { x: 0, y: 0, width: 1600, height: 900 })
@@ -271,22 +276,36 @@ use crate::windows_source::WindowsSource;
 
 #[cfg(windows)]
 impl WindowsSource {
-    /// Construit une source capturant une sortie DXGI **entière**.
+    /// Construit une source capturant une sortie DXGI, recadrée à la taille
+    /// RETENUE.
     ///
     /// Mode du sous-bloc D1 : la fenêtre a sa propre sortie virtuelle, il n'y
-    /// a donc plus rien à recadrer ni aucune fenêtre à suivre. `hwnd` reste
-    /// renseigné — l'injection d'entrée et le contrôle de vie en ont besoin —
-    /// mais il ne sert plus au calcul de la région.
+    /// a donc aucune fenêtre Windows à suivre — `resize` continue de ne rien
+    /// faire (`ModeCapture::SortieEntiere`). ⚠️ **Mais depuis le sous-bloc
+    /// D10, la sortie elle-même peut naître PLUS GRANDE que ce que le
+    /// superviseur a demandé** (registre pollué, voir le constat de mesure en
+    /// tête de `capteur/plein_ecran.rs`) : `taille` porte ce que le
+    /// superviseur a retenu, et la région capturée est recadrée à l'origine
+    /// de la sortie sur cette taille-là — jamais sur la sortie entière si
+    /// elle déborde. `hwnd` reste renseigné — l'injection d'entrée et le
+    /// contrôle de vie en ont besoin — mais il ne sert toujours pas au calcul
+    /// de la région.
     pub fn sur_sortie(
         hwnd: HWND,
         nom_sortie: &str,
+        taille: (u32, u32),
         fps: u32,
         bitrate: u32,
         clock_origin: std::time::Instant,
     ) -> Result<Self> {
         let capture = DesktopCapture::sur_sortie(nom_sortie)?;
         let (dw, dh) = capture.desktop_size();
-        let region = region_de_sortie(dw, dh).with_context(|| {
+        // La sortie peut être PLUS GRANDE que la fenêtre depuis le sous-bloc
+        // D10 : on recadre à l'origine de la sortie, là où le superviseur a
+        // posé la fenêtre. `taille_retenue` garantit que la région tient dans
+        // la texture — c'est elle qui borne, pas cette fonction.
+        let (rl, rh) = crate::superviseur::placement::taille_retenue(taille, (dw, dh));
+        let region = region_de_sortie(rl, rh).with_context(|| {
             format!("sortie {nom_sortie} de dimensions inexploitables ({dw}x{dh})")
         })?;
         let (width, height) = (region.width, region.height);

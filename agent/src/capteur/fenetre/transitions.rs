@@ -65,9 +65,13 @@ impl Fenetre {
             return Ok(());
         }
         let debut = Instant::now();
+        // `self.dimensions()` : la taille RETENUE, celle que `ouvrir` a
+        // résolue ou qu'un `resize` a mise à jour depuis — jamais celle de la
+        // sortie, qui peut être plus grande (registre pollué, D9 §9).
+        let taille = self.dimensions();
         let p = &self.parametres;
         let mut source =
-            WindowsSource::sur_sortie(p.hwnd, &p.sortie, p.fps, p.debit, p.clock_origin)
+            WindowsSource::sur_sortie(p.hwnd, &p.sortie, taille, p.fps, p.debit, p.clock_origin)
                 .with_context(|| format!("réveil de la session {}", self.session))?;
         // `sur_sortie` en demande déjà une à la construction. Ce second appel
         // est une ceinture : sans image clé, le décodeur du navigateur n'aurait

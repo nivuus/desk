@@ -132,7 +132,15 @@ fn executer_commande(
     //
     // ⚠️ **Ce qu'on accepte ainsi n'est ni appliqué ni retenu.** Le réveil
     // reconstruit la source par `sur_sortie`, donc à la taille d'encodage
-    // pleine et au débit d'attache. Le débit se rattrape seul —
+    // pleine et au débit d'attache.
+    //
+    // **Relu à la tâche 8 du sous-bloc D10 : toujours vrai, et « pleine »
+    // désigne désormais la taille RETENUE** (`superviseur::placement::taille_retenue`),
+    // pas la taille brute de la sortie DXGI — qui peut être plus grande sur
+    // un registre pollué. C'est même plus exact qu'avant : la « pleine
+    // résolution » reconstruite au réveil est celle que la fenêtre a
+    // réellement demandée, jamais celle, potentiellement gonflée, de la
+    // sortie. Le débit se rattrape seul —
     // `appliquer_decision` le repousse à chaque décision du contrôleur ; la
     // taille d'encodage, elle, ne se rattrape qu'au prochain changement de
     // barreau, la comparaison à `encode_size_appliquee` côté enfant croyant la
