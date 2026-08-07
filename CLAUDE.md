@@ -523,8 +523,14 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > vague même qui le corrigeait ailleurs. **Le seul chiffre auquel se fier pour
 > décider si ce fichier peut grossir est celui du tableau de dette.**
 >
-> ⚠️ **MARGE LA PLUS SERRÉE DU DÉPÔT APRÈS `encode/arret.rs` (500, marge 0) :
-> `agent/src/superviseur/table.rs` est à 492, marge 8.** Il a fait l'ascenseur
+> ⚠️ **MARGE LA PLUS SERRÉE D'`agent/src` APRÈS `encode/arret.rs` (500, marge
+> 0) : `agent/src/superviseur/table.rs` est à 492, marge 8** — **ex æquo avec
+> `agent/src/capture.rs`, également à 492**, et **la plus serrée du DÉPÔT est
+> ailleurs** : `client/verify-webrtc.mjs`, marge 3 (voir la fin de ce relevé).
+> *(Une première rédaction déclarait ici « du dépôt », et déclarait la même
+> chose de `verify-webrtc.mjs` soixante-six lignes plus bas : deux superlatifs
+> qui se contredisaient, dont l'un était faux quelle que soit la portée
+> retenue.)* Il a fait l'ascenseur
 > pendant la branche — 494 → 497 (tâche 6) → **504** (tâche 9, plafond
 > FRANCHI) → 499 par réduction de doc neuve, marge 1 → **469** par
 > l'**extraction** exigée en revue (`enum Effet` → `superviseur/table/effets.rs`,
@@ -558,7 +564,7 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > | `agent/src/transport/tick/tests/audio.rs` | **392** | neuf (tâche 2), et grossi par les tests de la famille ② |
 > | `agent/src/source.rs` | ~~387~~ **393** | |
 > | `agent/src/windows_audio/fil.rs` | **339** | neuf (tâche 3) — porte `AUDIO_FAUTE_LECTURE` et le budget global |
-> | `agent/src/capteur/sommeil/registre.rs` | **331** | |
+> | `agent/src/capteur/sommeil/registre.rs` | ~~331~~ **346** | ⚠️ **ce nombre est resté FAUX au commit de la revue transverse**, corrigé au tour suivant — voir l'encadré sous ce tableau |
 > | `agent/src/windows_source/sortie.rs` | ~~313~~ **351** | `sur_sortie` reçoit la taille RETENUE |
 > | `agent/src/windows_audio.rs` | ~~479~~ **283** | 479 → 252 par extraction, puis +31 de corrections |
 > | `agent/src/superviseur/boucle/creation_sortie.rs` | **282** | neuf (tâche 1) |
@@ -588,8 +594,40 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 >
 > ⚠️ **`client/verify-webrtc.mjs` est à 497 lignes, marge 3** — c'est la marge
 > la plus serrée du dépôt après `encode/arret.rs`, et **aucun tableau ne la
-> signalait**. Fichier de recette suivi par git, donc dans la portée de la
-> règle, et intouché par D10 : il dérivait déjà.
+> signalait**. Intouché par D10 : il dérivait déjà.
+>
+> ⚠️ **Corollaire, non vérifié et signalé comme tel** : ce fichier n'ayant
+> **jamais** été mesuré avant aujourd'hui, les quatre déclarations « la marge
+> la plus serrée du dépôt après `arret.rs` » portées par les relevés D7, D8 et
+> D9 sur `superviseur/table.rs` (l. 317, 374, 377, 471) **étaient peut-être
+> déjà fausses à leur date**. Elles sont datées, donc conservées telles
+> quelles ; **rien ne permet de les confirmer ni de les réfuter
+> rétrospectivement**, et les rejouer demanderait de remonter chaque commit.
+>
+> ⚠️ **DIVERGENCE DE CONVENTION à trancher, signalée et NON tranchée** : le
+> § « Portée » en tête de ce fichier liste `client/src/`, quand la commande de
+> vérification, elle, ne filtre que `node_modules|package-lock|…` et attrape
+> donc **`client/verify-webrtc.mjs`**, hors de `client/src/`. Ce fichier est-il
+> dans la portée de la règle des 500 lignes ? **La commande dit oui, le texte
+> dit non**, et l'écart n'a jamais été relevé. C'est une décision de
+> convention, pas un constat : elle appartient au propriétaire du dépôt.
+>
+> ❌ **CE RELEVÉ A LUI-MÊME PORTÉ UN NOMBRE FAUX, et c'est le naufrage du
+> « 487 » commis À L'INTÉRIEUR de la ronde qui le dénonce — septième
+> occurrence.** `capteur/sommeil/registre.rs` était publié **331** dans le
+> tableau ci-dessus, dont l'en-tête dit « **tous mesurés par la commande** » ;
+> il vaut **346**. Le nombre **avait bien été mesuré**, et la correction est
+> partie **au mauvais endroit** : un `replace(…, 1)` a barré le 331 de la table
+> **D9** (que personne ne relira pour connaître une marge) en laissant intact
+> celui de la table **D10**, la seule que le sous-bloc suivant lira. **Six des
+> sept chiffres re-mesurés étaient justes ; celui-là est resté faux d'un tour
+> entier**, dans le commit même dont le message annonçait avoir énuméré les
+> places avant d'écrire.
+>
+> **La leçon n'est donc PAS « mesurer », qui avait été fait — c'est que
+> `grep -n` doit être relu place par place APRÈS l'édition, pas seulement
+> lancé avant.** Une substitution qui ne dit pas combien d'occurrences elle a
+> touchées est une affirmation de complétude non vérifiée.
 
 **Vérifier l'état** :
 
@@ -5539,7 +5577,7 @@ propre branche.** Aucune revue par tâche ne pouvait les voir : la tâche qui
 | Étage | Fichier | Nature |
 | --- | --- | --- |
 | la règle d'inaptitude | `agent/src/capteur/audio.rs` (**228**) | **pur, aucun `cfg`** — le champ `inapte`, 4 tests neufs (12 en tout) |
-| le registre | `agent/src/capteur/sommeil.rs` (**269**) + `sommeil/registre.rs` (**331**) | `REPIT_REARMEMENT_AUDIO`, `REARMEMENTS_MAX`, la génération monotone. **Extrait sur exigence de revue** après une compression que ce dépôt interdit |
+| le registre | `agent/src/capteur/sommeil.rs` (~~269~~ **325**, D10) + `sommeil/registre.rs` (~~331~~ **346**, D10) | `REPIT_REARMEMENT_AUDIO`, `REARMEMENTS_MAX`, la génération monotone. **Extrait sur exigence de revue** après une compression que ce dépôt interdit |
 | le message | `capteur/protocole.rs` (**381**) — `VersCapteur::AudioMort` | poussé, non répondu par `Fait` ; **hors du bras catch-all de `pont_media.rs`**, vérifié |
 | la détection locale | `agent/src/transport/tick.rs` (**343**), branche **a1sexies** | verrou `audio_mort_signale`, remis à zéro par `VideoSource::rattachement_survenu` |
 | la télémétrie | `agent/src/windows_source/telemetrie.rs` (**72**) | **pur, aucun `cfg`**, par session ; lue par `capteur/fenetre/trace.rs` (**43**) sous le span `session` de D7 |
@@ -5869,8 +5907,17 @@ en cinq maillons** : la source reconstruite **naît muette** ; rien ne la réarm
 source muette ne produit pas, pendant qu'`AudioMort` ne part pas non plus
 puisque la reconstruction a **réussi**. **Un état ABSORBANT, pas un retard.**
 
-⚠️ **Portée bornée** : propre à la branche `pour_processus` (multi-fenêtres).
-Le mode session appelle `emettre(true)` dans `new()` et **est immunisé**.
+⚠️ **Portée bornée** : le défaut DIAGNOSTIQUÉ ci-dessus — naître muette — est
+propre à la branche `pour_processus` (multi-fenêtres), le mode session
+appelant `emettre(true)` dans `new()`.
+
+🔴 **MAIS NE PAS LIRE « le mode session est immunisé » COMME UN FEU VERT SUR CE
+CAS : le CORRECTIF le casse à son tour, et c'est le legs n°4 ci-dessous.** Le
+réarmement `set_actif(audio_porteuse)` s'applique **sans condition**, donc aussi
+à une source reconstruite par `new()` — et en mono-fenêtre `audio_porteuse` vaut
+toujours `false`, faute de capteur pour l'écrire. **Le mode session est immunisé
+du défaut d'origine et cassé par son remède** ; les deux phrases sont vraies et
+il faut les tenir ensemble. Détail complet à la revue transverse et au legs n°4.
 
 ⚠️ **Pourquoi aucun test d'hôte ne pouvait le voir : les sources factices
 implémentent `set_actif` en NO-OP.** 456 tests verts sur un produit muet.
@@ -6161,8 +6208,17 @@ constats parqués **requalifiés : 3 survivent, 6 sont PERDUS**).
 **Legs neufs de D10 :**
 
 4. 🔴 **Le remède de reconstruction audio est INERTE en mono-fenêtre** (voir la
-   revue transverse). Le remède juste distingue les deux modes ; forcer `true`
-   sans arbitrage réintroduirait un défaut pire. Demande sa propre couverture.
+   revue transverse). ⚠️ **Ne pas lire cette ligne comme « aucun correctif sûr
+   n'existe » — il en existe un, et il est bon marché** : `demarrage/audio.rs::brancher`
+   connaît déjà `config.fenetre_hwnd`, et poser `audio_porteuse = true` **dans
+   la seule branche `None`** laisserait le multi-fenêtres strictement inchangé
+   et le test `une_session_non_porteuse_reconstruite_reste_muette` vert. Ce qui
+   serait faux, c'est de forcer `true` **sans arbitrage** dans
+   `reconstruire_ou_signaler` — là, une fenêtre non porteuse reconstruite se
+   remettrait à parler, défaut *pire* que celui qu'on répare. **Non fait ici
+   par périmètre** (la revue transverse corrige des énoncés, elle ne change pas
+   de comportement au dernier commit d'une branche), et **jamais exercé** :
+   demande sa propre couverture.
 5. ⛔ **Construire `AUDIO_FAUTE_RECONSTRUCTION`** — la seule voie nommée pour
    exercer le critère ④ sans dépendre d'un kill qui tue la fenêtre avec l'audio.
 6. ⛔ **La cause du refus de reconstruction n'est pas identifiée.**

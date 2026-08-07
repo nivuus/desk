@@ -320,6 +320,93 @@ d'être de l'appariement, reste donc une HYPOTHÈSE**, non un acquis du montage.
 
 ---
 
+## 8bis. La revue transverse de fin de branche — douze défauts
+
+Elle en a trouvé cinq en D7, trois en D8, six en D9. **Douze ici**, et **tous
+franchissent une frontière de tâche** : chacun est correct des deux côtés pris
+séparément. Sa cible propre, nommée d'avance par la conception, était **les
+affirmations de code devenues fausses dans leur propre branche**.
+
+> ⚠️ **Cette section est portée ici et pas seulement dans `CLAUDE.md`, parce
+> qu'un document de résultats qui omettrait la revue qui l'a relu ne serait
+> qu'un demi-filet** — c'est le reproche exact que ce sous-bloc adresse à D9.
+
+### 🔴 Le seul qui ait une conséquence de comportement
+
+**En mono-fenêtre, le remède de reconstruction audio est INERTE, et trois
+commentaires disaient le contraire.**
+
+- la tâche 11 (`demarrage/audio.rs::brancher`) pose un reconstructeur dans les
+  **deux** modes — sa branche `None` appelle `WindowsAudioSource::new` ;
+- la tâche 12 écrit dans `capteur/sommeil.rs` que le mono-fenêtre n'en a
+  **aucun**, et que « le comportement d'avant D10 y reste exactement conservé » ;
+- la tâche 14 écrit à **deux** endroits que `pour_processus` est « le seul
+  chemin qu'emprunte un reconstructeur », et applique `set_actif(audio_porteuse)`
+  **sans condition**.
+
+Chacune est correcte avec ce que son auteur voyait. **Ensemble** :
+`audio_porteuse` naît `false` et n'a **qu'un seul site d'écriture hors tests**,
+atteint uniquement par un ordre `Audio` du capteur — qu'un agent mono-fenêtre ne
+reçoit jamais. La capture reconstruite y est donc auto-émise à `true` par
+`new()`, puis **remise à `false`** par la ligne de réarmement.
+
+⚠️ **Ce n'est PAS une régression** : avant D10, rien n'était reconstruit du
+tout. ⚠️ **Établi par lecture de code, jamais exercé** — quatre maillons courts,
+chacun vérifié, aucune exécution. **Non corrigé, et un correctif sûr existe** :
+`brancher` connaît `config.fenetre_hwnd`, et poser `audio_porteuse = true` dans
+la **seule** branche `None` laisserait le multi-fenêtres strictement inchangé.
+Ce qui serait faux, c'est de forcer `true` sans arbitrage dans
+`reconstruire_ou_signaler`.
+
+### Le septième commentaire orphelin — et c'est le patron le plus pur
+
+`capteur/audio.rs` portait « la recette audio qui l'exercerait est la tâche 14,
+et **elle n'a pas encore tourné** ». Écrit par la tâche 12, **réfuté par la
+tâche 14 de la même branche**. **Six commentaires orphelins avaient déjà été
+attrapés tâche après tâche — toujours APRÈS coup. C'est le seul défaut qui soit
+revenu à chaque fois.**
+
+### Les autres
+
+Corrigés à leur place : l'en-tête et la variante `SortieEntiere` de
+`windows_source/sortie.rs` disant « plus rien à recadrer — la sortie *est* la
+fenêtre » (**la doc de la FONCTION, dans le même fichier, avait bien été
+corrigée par la tâche 8** — c'est l'asymétrie exacte que cette revue cherche) ;
+le champ `taille_sortie` de `superviseur/table.rs` annonçant « les dimensions
+RÉELLEMENT rendues par DXGI », **contredit deux fois dans le même fichier** ;
+`VersCapteur::AudioMort` promettant une mort « définitive » sous la variante
+`AudioVivant` que la même branche a ajoutée huit lignes plus bas ; le constat de
+mesure de `capteur/plein_ecran.rs`, **que cinq commentaires du dépôt citent**,
+sur ses deux clauses ; le commentaire DPI de `placement.rs` **qu'un test situé
+vingt lignes plus bas contredit** ; un déictique cassé par une extraction
+verbatim ; un compte de tests devenu six ; et quatre énoncés audio (« sa mort
+est sans retour », « remis à zéro dès qu'elle porte le son », « le seul endroit
+où cet état devienne observable », « seul `new()` rend ce cas inatteignable »).
+
+**Une fausseté ANTÉRIEURE à D10 relevée au passage** : `Etat::SansSession`
+disait « l'enfant est mort **et la sortie a été rendue** », contredit deux cents
+lignes plus bas par `enfant_mort` — « la sortie est RETENUE, correctif §7.1 du
+sous-bloc D3 ». Elle survivait depuis D3.
+
+### ❌ Et la revue transverse a elle-même commis le défaut qu'elle dénonce
+
+`capteur/sommeil/registre.rs` a été publié **331** dans la table D10 — dont
+l'en-tête dit « tous mesurés par la commande » — alors qu'il vaut **346**. **Le
+nombre avait bien été mesuré** ; la correction est partie **au mauvais
+endroit**, une substitution à occurrence unique ayant barré le 331 de la table
+**D9** en laissant celui de la table **D10**, la seule qu'un successeur lira.
+**Six des sept chiffres re-mesurés étaient justes ; celui-là est resté faux un
+tour entier**, dans le commit dont le message annonçait avoir énuméré les places
+avant d'écrire.
+
+**La leçon n'est donc pas « mesurer », qui avait été fait : c'est que `grep -n`
+doit être relu place par place APRÈS l'édition, pas seulement lancé avant.** Une
+substitution qui ne dit pas combien d'occurrences elle a touchées est une
+affirmation de complétude non vérifiée. **Septième occurrence du naufrage du
+« 487 » dans ce dépôt.**
+
+---
+
 ## 9. Ce que D10 n'établit PAS
 
 - **Aucun taux, nulle part.** Deux exécutions par critère au mieux ; une seule
