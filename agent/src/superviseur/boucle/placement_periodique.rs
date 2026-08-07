@@ -8,29 +8,33 @@
 //! `superviseur/table/attribution.rs`.
 
 use super::*;
+use crate::geometry::Rect;
 
-/// Remet sur sa sortie toute fenêtre qui en est partie, et rafraîchit la
-/// taille de sortie que la table a retenue pour chacune.
+/// Remet sur sa sortie toute fenêtre qui en est partie.
 ///
-/// **`&mut Table`, et non `&Table`** — hérité d'IMPORTANT 5 (revue de la
-/// tâche 9), qui tenait `taille_sortie` à jour d'un changement de mode fait
-/// par `WindowsSource::changer_mode_de_sortie` (D8), hors de cette table. Ce
-/// chemin a été retiré au sous-bloc D9, mesure à l'appui (voir le constat en
-/// tête de `capteur/plein_ecran.rs`) : la relecture DXGI que ce contrôle fait
-/// déjà, chaque seconde, pour toutes les sessions vivantes, continue de
-/// rafraîchir `taille_sortie` par précaution, mais rien ne peut plus la
-/// faire dériver de la taille de création. Voir `Table::rafraichir_taille_sortie`.
-pub(super) fn controler_le_placement(table: &mut Table) {
+/// **`&Table`, et non `&mut Table`.** Jusqu'au sous-bloc D10, cette fonction
+/// rafraîchissait aussi `taille_sortie` depuis la taille DXGI brute de la
+/// sortie (héritage d'IMPORTANT 5, revue de la tâche 9 de D8, qui tenait ce
+/// champ à jour d'un changement de mode fait hors de cette table par
+/// `WindowsSource::changer_mode_de_sortie`). Ce chemin a été retiré au
+/// sous-bloc D9 ; le rafraîchissement, lui, avait survécu par précaution,
+/// alors qu'il ne pouvait déjà plus rien faire dériver.
+///
+/// **D10 le rend carrément FAUX, et c'est pourquoi il a disparu plutôt que
+/// d'être conservé.** Depuis `sortie_pour_viewport` (une sortie peut être
+/// bien plus grande que le viewport, registre pollué oblige),
+/// `Table::taille_sortie_de` porte la taille RETENUE — celle à laquelle la
+/// fenêtre est posée et que la capture recadre —, qui n'a plus aucune raison
+/// d'égaler `GetDesc`/`DesktopCoordinates` de la sortie DXGI. Rafraîchir
+/// depuis cette dernière aurait donc écrasé la taille retenue par la taille
+/// PLEINE de la sortie à chaque tour — reposant la fenêtre en grand une
+/// seconde après que `creer_sortie` l'a posée à sa taille recadrée. La table
+/// est désormais la seule source de vérité de cette taille, posée une fois à
+/// la création (tâche 6) et à la réutilisation (tâche 7) : ce contrôle
+/// périodique la relit, il ne la recalcule plus.
+pub(super) fn controler_le_placement(table: &Table) {
     let toutes = enumerer_sorties_silencieux().unwrap_or_default();
     for session in table.sessions_vivantes() {
-        // Cloné : `nom_sortie_de` emprunte `table`, et `rafraichir_taille_sortie`
-        // juste en dessous en a besoin `&mut`. Un `&str` emprunté ne
-        // survivrait pas à cet appel.
-        if let Some(nom) = table.nom_sortie_de(&session).map(str::to_string) {
-            if let Some(sortie) = toutes.iter().find(|s| s.nom_sortie == nom) {
-                table.rafraichir_taille_sortie(&session, (sortie.rect.width, sortie.rect.height));
-            }
-        }
         replacer_si_besoin(table, &session, &toutes);
     }
 }
@@ -51,27 +55,35 @@ pub(super) fn controler_le_placement(table: &mut Table) {
 /// clampé la taille demandée (taille minimale de la fenêtre, contrainte du DPI),
 /// le rectangle obtenu diffère de la cible, `doit_etre_replacee` est vrai, et un
 /// second `SetWindowPos` **est** émis — sans plus d'effet que le premier.
+///
+/// **La position vient de la sortie DXGI, la taille de la table** (sous-bloc
+/// D10) : `sortie.rect` donne l'origine dans le bureau virtuel, mais
+/// `Table::taille_sortie_de` donne la taille RETENUE — celle, éventuellement
+/// bien plus petite que la sortie, à laquelle la fenêtre a été posée et que la
+/// capture recadre. Une session sans taille retenue (pas encore
+/// `Etat::Vivante`) n'a rien à replacer.
 pub(super) fn replacer_si_besoin(table: &Table, session: &IdSession, toutes: &[SortieDxgi]) {
     let Some(nom) = table.nom_sortie_de(session) else {
         return;
     };
-    let Some(cible) = toutes.iter().find(|s| s.nom_sortie == nom) else {
+    let Some(sortie) = toutes.iter().find(|s| s.nom_sortie == nom) else {
         return;
     };
+    let Some((largeur, hauteur)) = table.taille_sortie_de(session) else {
+        return;
+    };
+    let cible = Rect { x: sortie.rect.x, y: sortie.rect.y, width: largeur, height: hauteur };
     let Some(fenetre) = table.fenetre_de(session) else { return };
     let hwnd = windows::Win32::Foundation::HWND(fenetre.0 as *mut core::ffi::c_void);
     let Ok(actuel) = placement::rectangle_de(hwnd) else { return };
-    if placement::doit_etre_replacee(&actuel, &cible.rect) {
+    if placement::doit_etre_replacee(&actuel, &cible) {
         tracing::info!(
             session = %session.0,
             de = format!("{}x{}+{}+{}", actuel.width, actuel.height, actuel.x, actuel.y),
-            vers = format!(
-                "{}x{}+{}+{}",
-                cible.rect.width, cible.rect.height, cible.rect.x, cible.rect.y
-            ),
+            vers = format!("{}x{}+{}+{}", cible.width, cible.height, cible.x, cible.y),
             "fenêtre sortie de sa sortie, replacement"
         );
-        if let Err(erreur) = placement::poser(hwnd, &cible.rect) {
+        if let Err(erreur) = placement::poser(hwnd, &cible) {
             tracing::warn!(session = %session.0, %erreur, "replacement échoué");
         }
     }

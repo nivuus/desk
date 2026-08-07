@@ -12,6 +12,7 @@
 //! le module parent.
 
 use super::*;
+use crate::geometry::Rect;
 
 /// Crée la sortie virtuelle d'une session, l'apparie à sa place DXGI, y pose
 /// la fenêtre, et rend les effets à enchaîner.
@@ -41,16 +42,32 @@ pub(super) fn creer_sortie(
 ) -> Vec<Effet> {
     let Demande { session, titre, largeur, hauteur } = demande;
 
+    // LEG 5 de D9. `borner_a_la_taille_max` attendait son appelant depuis que
+    // le changement de mode de sortie a été retiré : c'est ici.
+    //
+    // ⚠️ Le viewport arrive en PIXELS PÉRIPHÉRIQUES depuis la tâche 5 de D9
+    // (`client/src/main.ts`, `innerWidth × devicePixelRatio`) : un client à
+    // `devicePixelRatio = 2` demande 2560×1440 là où il demandait 1280×720,
+    // soit quatre fois les pixels à capturer et à encoder. Et le plafond de
+    // 8 encodeurs concurrents n'a JAMAIS été mesuré au-delà de 720p — NVENC
+    // borne en macroblocs par seconde, pas en nombre de sessions.
+    //
+    // `TAILLE_MAX_SORTIE` (1920×1080) n'est PAS calibrée : c'est un garde-fou
+    // de prudence, et aucun jugement visuel ne l'a jugée.
+    let (largeur, hauteur) =
+        crate::windows_source_sortie::borner_a_la_taille_max((largeur, hauteur));
+
     // Relevé AVANT création, et c'est la pièce maîtresse de l'appariement.
     //
-    // `sortie_par_dimensions` ne filtre que sur « attachée, aux bonnes
-    // dimensions, pas déjà prise » : rien n'y exclut les sorties PRÉEXISTANTES.
-    // Or le viewport annoncé par le navigateur peut parfaitement égaler la
-    // résolution d'un moniteur physique — c'est même le cas banal en plein
-    // écran. Sans ce relevé, la fenêtre serait posée sur l'écran RÉEL de la VM
-    // et la sortie virtuelle qu'on vient de créer deviendrait orpheline. On
-    // n'apparie donc que parmi les sorties APPARUES, et le dépôt a déjà écrit
-    // la doctrine : comparer des ensembles de NOMS, jamais des nombres.
+    // `sortie_pour_viewport` ne filtre que sur « attachée, ASSEZ GRANDE, pas
+    // déjà prise » : rien n'y exclut les sorties PRÉEXISTANTES. Or le viewport
+    // annoncé par le navigateur peut parfaitement égaler, ou même être plus
+    // petit que, la résolution d'un moniteur physique — c'est même le cas
+    // banal en plein écran. Sans ce relevé, la fenêtre serait posée sur
+    // l'écran RÉEL de la VM et la sortie virtuelle qu'on vient de créer
+    // deviendrait orpheline. On n'apparie donc que parmi les sorties
+    // APPARUES, et le dépôt a déjà écrit la doctrine : comparer des ensembles
+    // de NOMS, jamais des nombres.
     let avant = match relever_topologie("avant création de sortie") {
         Ok(avant) => noms_attaches(&avant),
         Err(erreur) => {
@@ -82,17 +99,13 @@ pub(super) fn creer_sortie(
     // du pilote (voir la doc d'`attendre_une_sortie_neuve`).
     let apparues = attendre_une_sortie_neuve(pilote, &avant, LIMITE_RATTACHEMENT);
 
-    let Some(cible) = placement::sortie_pour_viewport(&apparues, largeur, hauteur, prises) else {
-        // Journaliser les CANDIDATS, pas seulement la demande. L'appariement
-        // par dimensions tolère `placement::TOLERANCE_PX` (quatre pixels, la
-        // tolérance du replacement) et rien de plus : l'égalité stricte était
-        // le choix initial, la recette D1 a montré qu'elle rendait l'ouverture
-        // impossible sur une course de rattachement de quelques pixels
-        // (1280×713 rendue 1280×720). Le facteur DPI de 1,5 que `CLAUDE.md`
-        // documente sur une sortie virtuelle reste, lui, très loin de cette
-        // tolérance, donc toujours refusé : si l'hôte applique une mise à
-        // l'échelle, AUCUNE fenêtre ne s'ouvrira jamais, et un journal qui ne
-        // redirait que la demande laisserait ce diagnostic entièrement à faire.
+    let Some(cible) = placement::sortie_pour_viewport(&apparues, largeur, hauteur, prises)
+    else {
+        // Ce refus ne peut plus venir d'une sortie née TROP GRANDE — c'est le
+        // leg 4 de D9, qui plafonnait le produit à trois fenêtres sur une VM
+        // au registre pollué. Il ne reste que deux causes : aucune sortie n'est
+        // apparue du tout, ou celle qui est apparue est plus PETITE que la
+        // demande de plus de `TOLERANCE_PX`.
         tracing::error!(
             session = %session.0,
             demande = format!("{largeur}x{hauteur}"),
@@ -100,21 +113,33 @@ pub(super) fn creer_sortie(
                 .iter()
                 .map(|s| format!("{} {}x{}", s.nom_sortie, s.rect.width, s.rect.height))
                 .collect::<Vec<_>>(),
-            "sortie créée mais introuvable dans la topologie DXGI — elle est rendue au pilote"
+            "aucune sortie apparue ne peut servir ce viewport — elle est rendue au pilote"
         );
         rendre_sans_apparier(sorties, id_pilote);
         envoyer(&VersLaShell::Refus {
             titre,
-            motif: "la sortie créée est introuvable dans la topologie d'affichage".into(),
+            motif: "aucune sortie d'affichage ne peut servir cette fenêtre".into(),
         });
         return table.enfant_mort(&session);
     };
 
+    // La sortie peut être bien plus grande que la fenêtre : c'est le cas
+    // nominal sur une VM dont le registre a été pollué. La fenêtre est posée à
+    // CETTE taille, à l'origine de la sortie, et la capture recadre le même
+    // rectangle dans la duplication de CETTE sortie — jamais dans celle du
+    // bureau, d'où l'absence du risque de fuite entre sessions que porte
+    // `ModeCapture::FenetreRecadree` (voir l'en-tête de
+    // `windows_source/sortie.rs`).
+    let retenue = placement::taille_retenue((largeur, hauteur), (cible.rect.width, cible.rect.height));
+
     let nom = cible.nom_sortie.clone();
     prises.push(nom.clone());
     // Les DEUX identifiants : celui du pilote pour la destruction, le nom
-    // DXGI pour la capture. Aucune relation calculable entre eux.
-    let suite = table.sortie_creee(&session, id_pilote, nom, (cible.rect.width, cible.rect.height));
+    // DXGI pour la capture. Aucune relation calculable entre eux. La table
+    // retient la taille RETENUE, pas celle de la sortie : c'est elle qui
+    // voyage ensuite jusqu'au capteur (tâches 8 et 9), et que le contrôle
+    // périodique de placement relit sans la recalculer.
+    let suite = table.sortie_creee(&session, id_pilote, nom, retenue);
 
     // Une table qui n'a rien à dire de cette sortie ne la retient nulle part :
     // `id_pilote` ne serait plus connu de personne (ni de la table, ni d'un
@@ -136,9 +161,15 @@ pub(super) fn creer_sortie(
     // dans les effets que la table VIENT de rendre, et non dans la file
     // globale : celle-ci peut porter le `LancerEnfant` d'une autre session,
     // et on placerait alors la mauvaise fenêtre.
+    //
+    // À l'origine de la sortie, mais à la taille RETENUE — pas à `cible.rect`,
+    // qui peut être bien plus grande (registre pollué, voir plus haut). Poser
+    // à la taille de la sortie couvrirait plus que ce que la capture recadre.
     if let Some(Effet::LancerEnfant { fenetre, .. }) = suite.first() {
         let hwnd = windows::Win32::Foundation::HWND(fenetre.0 as *mut core::ffi::c_void);
-        if let Err(erreur) = placement::poser(hwnd, &cible.rect) {
+        let rect =
+            Rect { x: cible.rect.x, y: cible.rect.y, width: retenue.0, height: retenue.1 };
+        if let Err(erreur) = placement::poser(hwnd, &rect) {
             tracing::warn!(session = %session.0, %erreur, "placement de la fenêtre échoué");
         }
     }
