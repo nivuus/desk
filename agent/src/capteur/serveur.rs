@@ -15,11 +15,8 @@
 
 #![cfg(windows)]
 
-use std::collections::HashMap;
 use std::io::{BufReader, BufWriter, Write};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{channel, Receiver, RecvTimeoutError, Sender};
-use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
@@ -28,6 +25,9 @@ use windows::Win32::Foundation::{CloseHandle, HANDLE};
 use crate::capteur::fenetre::Fenetre;
 use crate::capteur::protocole::{ecrire_json, lire_trame, DepuisCapteur, Trame, VersCapteur};
 use crate::capteur::tube::DUREE_OUVERTURE_MEDIA;
+
+mod attentes;
+use attentes::{attendre_le_media, oublier};
 
 mod instances;
 use instances::{connecter, creer_instance, SOUFFLE_CREATION_INSTANCE};
@@ -67,74 +67,6 @@ const DELAI_CONNEXION_MEDIA: Duration =
 /// transport absorbe déjà par un `warn!` — au lieu de le figer pour toujours.
 /// L'enfant, lui, n'a plus aucun délai sur sa lecture.
 const DELAI_REPONSE_FENETRE: Duration = Duration::from_secs(12);
-
-/// Sessions attachées sur leur connexion de commandes et attendant leur
-/// connexion média. Clé : l'identifiant de session ; valeur : le canal
-/// d'envoi de la connexion média à venir, et la GÉNÉRATION de cette attente
-/// (D10, leg 2 — voir `attendre_le_media` et `oublier`).
-///
-/// `Mutex` et non `RefCell` : la boucle d'acceptation et les fils de commandes
-/// y touchent tous deux.
-static EN_ATTENTE_DE_MEDIA: OnceLock<Mutex<HashMap<String, (Sender<std::fs::File>, u64)>>> =
-    OnceLock::new();
-
-/// Compteur qui frappe la génération de chaque `attendre_le_media`.
-///
-/// **`AtomicU64` et non un champ sous le même `Mutex` que le registre** :
-/// contrairement à `capteur::sommeil::registre::Etat::prochaine_generation`,
-/// qui vit sous verrou parce qu'il partage sa structure avec huit autres
-/// tables devant rester mutuellement cohérentes, ce registre-ci n'a qu'UNE
-/// seule autre donnée (le canal), et la monotonie d'un `fetch_add` ne dépend
-/// d'aucune autre. Le mettre sous le même verrou n'ajouterait rien.
-static PROCHAINE_GENERATION: AtomicU64 = AtomicU64::new(0);
-
-fn registre() -> &'static Mutex<HashMap<String, (Sender<std::fs::File>, u64)>> {
-    EN_ATTENTE_DE_MEDIA.get_or_init(|| Mutex::new(HashMap::new()))
-}
-
-/// Verrouille le registre en survivant à un empoisonnement : un fil de fenêtre
-/// qui panique ne doit pas emporter l'accueil de toutes les suivantes.
-fn registre_verrouille(
-) -> std::sync::MutexGuard<'static, HashMap<String, (Sender<std::fs::File>, u64)>> {
-    registre()
-        .lock()
-        .unwrap_or_else(|empoisonne| empoisonne.into_inner())
-}
-
-/// Inscrit l'attente de connexion média d'une session, et rend la génération
-/// qui vient de lui être attribuée.
-///
-/// **La génération est frappée ICI, à l'ATTACHE — pas transmise par le
-/// protocole, pas prise au lancement du processus.** Même correction que
-/// celle que la revue du sous-bloc D9 a imposée sur
-/// `capteur::sommeil::registre::inscrire` (voir son commentaire, et
-/// celui-ci, plus bas, de `oublier`) : la course F5 se joue entre deux
-/// attaches successives de la MÊME session (un enfant qui se rattache après
-/// une rupture de tube redit le même nom), jamais entre deux lancements de
-/// processus — un enfant relancé par le superviseur reçoit un nom NEUF
-/// (`Table::compteur`, `superviseur/table.rs`), donc aucune course. Seule
-/// une génération frappée à l'attache distingue les deux inscriptions qui,
-/// elles, PEUVENT se chevaucher.
-///
-/// L'appelant (`ouvrir_les_commandes`) retient la valeur rendue le temps du
-/// service de cette connexion et la redonne telle quelle à `oublier`.
-fn attendre_le_media(session: &str, media: Sender<std::fs::File>) -> u64 {
-    // Monotone au niveau du PROCESSUS, pas seulement de la session : ce n'est
-    // pas un rang par session, seulement une preuve d'ordre d'inscription —
-    // exactement le rôle de `prochaine_generation` dans
-    // `sommeil/registre.rs`, dont c'est ici la transposition.
-    let generation = PROCHAINE_GENERATION.fetch_add(1, Ordering::Relaxed) + 1;
-    // Un remplacement se journalise : il signale un enfant qui se rattache
-    // sans que la précédente attente ait été soldée. Laisser tomber l'ancien
-    // émetteur réveille aussitôt le fil de fenêtre correspondant.
-    if registre_verrouille()
-        .insert(session.to_string(), (media, generation))
-        .is_some()
-    {
-        tracing::warn!(%session, "attente de connexion média remplacée pour cette session");
-    }
-    generation
-}
 
 pub fn servir() -> Result<()> {
     // Vrai dès qu'un échec de `creer_instance` a été signalé — voir plus bas.
@@ -247,13 +179,11 @@ fn accueillir(tube: HANDLE) -> Result<()> {
         // et l'enfant n'y écrira plus rien — d'où le `lecteur` qu'on laisse
         // tomber juste après.
         VersCapteur::Identite { session } => {
-            let attendue = registre_verrouille().remove(&session);
+            // `retirer_pour_identite` ignore la génération : voir son
+            // commentaire dans `attentes.rs`.
+            let attendue = attentes::retirer_pour_identite(&session);
             match attendue {
-                // La génération n'a rien à dire ici : ce retrait apparie la
-                // connexion média à l'attente COURANTE, quelle qu'elle soit —
-                // ce n'est pas le chemin de la course F5, qui ne joue qu'entre
-                // deux appels à `oublier` (voir son commentaire).
-                Some((media, _generation)) => {
+                Some(media) => {
                     drop(lecteur);
                     if media.send(fichier).is_err() {
                         tracing::warn!(
@@ -409,30 +339,6 @@ fn tenir_la_fenetre(
     fenetre.servir(commandes, reponses, BufWriter::new(media))
 }
 
-/// Retire l'attente de connexion média d'une session — **si et seulement si**
-/// la génération présentée est bien la courante.
-///
-/// ✅ **C'est LITTÉRALEMENT la course F5 (D7), fermée ici sur le SECOND
-/// registre (D10, leg 2).** Le sous-bloc D9 l'avait fermée sur le registre de
-/// sommeil seul (`capteur/sommeil/registre.rs` : `inscrire` frappe une
-/// génération monotone, `retirer` s'efface si l'enregistrée est plus
-/// récente) — le brief de sa tâche 10 ne nommait que `sommeil`, et aucune
-/// revue par tâche ne pouvait voir ce jumeau. Relevé par la revue transverse
-/// de fin de branche D9, refermé ici avec le même patron.
-///
-/// Sans cette comparaison, un `remove` inconditionnel émis par un fil tardif
-/// — un abandon qui expire à l'instant précis où la même session vient de se
-/// réattacher — emporterait l'attente NEUVE : l'enfant qui vient de se
-/// rattacher attendrait alors un média que plus personne ne lui délivrerait.
-fn oublier(session: &str, generation: u64) {
-    let mut garde = registre_verrouille();
-    if garde.get(session).is_some_and(|(_, g)| *g != generation) {
-        tracing::info!(%session, generation, "oubli périmé ignoré");
-        return;
-    }
-    garde.remove(session);
-}
-
 /// La boucle de la connexion de commandes : lire une commande, la faire
 /// exécuter par le fil de fenêtre, écrire sa réponse. **Stricte alternance sur
 /// un seul fil** : jamais de lecture pendante pendant qu'on écrit.
@@ -492,9 +398,3 @@ fn boucler_les_commandes(
         }
     }
 }
-
-// Les tests vivent dans un fichier voisin : ce fichier-ci avait franchi 500
-// lignes en les accueillant (D10, tâche 16). Même montage que
-// `capteur/distante.rs` → `capteur/distante/tests.rs`.
-#[cfg(test)]
-mod tests;
