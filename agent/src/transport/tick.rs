@@ -288,9 +288,17 @@ impl Session {
         //
         //           Le verrou `audio_mort_signale` est ce qui empêche
         //           d'inonder le capteur d'`AudioMort` : une fois posé, il ne
-        //           retombe qu'à un rattachement — voir plus bas.
-        //           `audio_vivant_a_annoncer`, lui, se CONSOMME dès sa
-        //           lecture (même régime que `sommeil_a_annoncer` /
+        //           retombe QUE sur deux transitions — un rattachement (voir
+        //           plus bas), ou une RÉÉLECTION par le capteur
+        //           (`appliquer_audio`, a1quinquies), qui réapprovisionne
+        //           aussi le budget de tentatives. Sans ce second point de
+        //           chute, trouvé en revue de la tâche 12, le budget posé une
+        //           fois à la construction de la `Session` n'aurait permis
+        //           qu'un seul cycle mort → reconstruit → prouvé par session,
+        //           jamais plusieurs échecs CONSÉCUTIFS — l'inverse de ce que
+        //           `REARMEMENTS_MAX` (`capteur/sommeil.rs`) est censé
+        //           compter. `audio_vivant_a_annoncer`, lui, se CONSOMME dès
+        //           sa lecture (même régime que `sommeil_a_annoncer` /
         //           `part_a_appliquer`), donc ne peut pas non plus réémettre
         //           `AudioVivant` en boucle.
         //

@@ -136,6 +136,34 @@ impl Session {
     /// où, à une fenêtre par PID, **toutes** les fenêtres sont porteuses et le
     /// défaut préexistant revenait intact.
     pub(super) fn appliquer_audio(&mut self, actif: bool) {
+        // Correction apportée en revue de la tâche 12 (sous-bloc D10) : le
+        // budget de reconstruction (`reconstructions_restantes`) n'était posé
+        // qu'UNE FOIS, à la construction de la `Session`, et jamais
+        // réapprovisionné — le cycle mort → reconstruit → prouvé ne pouvait
+        // donc tourner qu'une seule fois par session (voir la doc du champ
+        // `audio_porteuse`, `transport.rs`).
+        //
+        // Une RÉÉLECTION — une TRANSITION vers `actif: true` — est
+        // littéralement le capteur qui dit « retente » : c'est le seul point
+        // de réapprovisionnement retenu. **Une transition, pas la seule
+        // présence d'un ordre `actif: true`** : le capteur ne réémet déjà que
+        // sur changement (`sommeil::porteurs::distribuer_l_audio`), mais s'y
+        // fier seul reporterait cette garantie sur un module distant, sur
+        // lequel ce fichier n'a aucune prise ; `audio_porteuse` la rend locale
+        // et vérifiable ici, sans dépendre de cette discipline distante. Sans
+        // cette restriction à la seule transition, un flot d'ordres `actif:
+        // true` identiques rendrait le budget infini.
+        if actif && !self.audio_porteuse {
+            self.reconstructions_restantes = crate::audio::RECONSTRUCTIONS_MAX;
+            self.prochaine_reconstruction = None;
+            // Lève le verrou qui, sinon, empêcherait `act_on_timeout`
+            // (branche a1sexies) de rappeler `reconstruire_ou_signaler` :
+            // sans cette ligne, le réapprovisionnement du budget ci-dessus
+            // serait sans effet, puisque la porte d'entrée resterait fermée.
+            self.audio_mort_signale = false;
+        }
+        self.audio_porteuse = actif;
+
         let mut capture_morte = false;
         if let Some(source) = self.audio_source.as_mut() {
             source.set_actif(actif);

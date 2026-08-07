@@ -217,21 +217,90 @@ fn audio_vivant_n_est_annonce_qu_apres_un_paquet_reel() {
         Ok(Box::new(SourceVivante::sans_paquet()) as Box<dyn AudioSource + Send>)
     }));
     session.reconstruire_ou_signaler(std::time::Instant::now());
-    assert!(
-        !annonces.load(std::sync::atomic::Ordering::Relaxed),
-        "reconstruite n'est pas entendue : aucune preuve encore"
-    );
 
     // Un `mid` factice fait passer la garde de négociation de `brancher_audio`
     // : `write_audio` échouera derrière (`rtc.writer` ne connaît pas ce mid,
     // aucune vraie négociation SDP n'a eu lieu ici), mais `next_packet()` aura
     // déjà été appelé AVANT cet échec — c'est lui, et lui seul, qui porte la
     // preuve que ce test vérifie (voir le commentaire de `brancher_audio`).
+    // Posé ICI, AVANT le premier tour de boucle : voir le commentaire
+    // ci-dessous sur pourquoi ce tour doit avoir lieu avant l'assertion qui
+    // suit.
     session.audio_mid = Some(str0m::media::Mid::new());
+
+    // ⚠️ **Trouvé en revue de la tâche 12** : sans CE tour de boucle,
+    // l'assertion qui suit s'exécuterait avant tout appel à `act_on_timeout`
+    // et serait donc vraie PAR CONSTRUCTION, quelle que soit l'implémentation
+    // — y compris une implémentation buguée qui poserait
+    // `audio_vivant_a_annoncer` dans le bras `Ok` de `reconstruire_ou_signaler`
+    // (le défaut exact que ce test existe pour attraper). Un tour SANS PAQUET
+    // disponible (`sans_paquet()` rend `None` à `next_packet()`) donne au
+    // mécanisme une occasion réelle de se manifester, et à l'assertion une
+    // chance réelle d'échouer si le drapeau était posé au mauvais endroit.
+    session
+        .act_on_timeout(std::time::Instant::now())
+        .expect("un tour sans paquet ne doit jamais faire échouer la session");
+    assert!(
+        !annonces.load(std::sync::atomic::Ordering::Relaxed),
+        "reconstruite n'est pas entendue : aucune preuve encore (sans_paquet ne produit rien)"
+    );
+
     session.set_audio_source(Box::new(SourceVivante::avec_un_paquet()));
     session.brancher_audio(); // le paquet qui repart EST la preuve
     session
         .act_on_timeout(std::time::Instant::now())
         .expect("annoncer une reprise audio ne doit jamais faire échouer la session");
     assert!(annonces.load(std::sync::atomic::Ordering::Relaxed));
+}
+
+/// Le remède à la revue de la tâche 12 (sous-bloc D10) : sans
+/// réapprovisionnement, `reconstructions_restantes` — posé UNE FOIS à la
+/// construction de la `Session`, décrémenté seulement — épuise le cycle pour
+/// TOUJOURS après le premier `AudioMort`, et le verrou `audio_mort_signale`
+/// (qui ne retombe qu'à un rattachement) empêche même de retenter. Une
+/// RÉÉLECTION — `appliquer_audio(true)` — doit réapprovisionner le budget ET
+/// lever ce verrou, pour que le cycle puisse tourner une SECONDE fois. Ce
+/// test le fait tourner deux fois, explicitement : c'est le seul moyen de
+/// savoir que la chaîne est réellement refermée.
+#[test]
+fn une_reelection_reapprovisionne_le_budget_et_leve_le_verrou() {
+    let mut session = session_d_essai();
+    session.set_audio_source(Box::new(SourceMorte::new()));
+    session.set_audio_reconstructeur(Box::new(|| anyhow::bail!("jamais")));
+
+    // Premier cycle : `RECONSTRUCTIONS_MAX` tentatives, toutes en échec,
+    // espacées de `REPIT_RECONSTRUCTION` (horloge avancée à la main, comme
+    // `un_reconstructeur_qui_echoue_toujours_finit_par_signaler`).
+    let mut t = std::time::Instant::now();
+    for essai in 0..crate::audio::RECONSTRUCTIONS_MAX {
+        assert!(!session.reconstruire_ou_signaler(t), "premier cycle, essai {essai}");
+        t += crate::audio::REPIT_RECONSTRUCTION;
+    }
+    assert!(session.reconstruire_ou_signaler(t), "premier épuisement : il faut signaler");
+    // C'est ce que fait `act_on_timeout` (branche a1sexies) au moment de
+    // signaler `AudioMort` — reproduit ici pour ne pas dépendre du reste de
+    // la liste de priorités, non pertinente pour ce test.
+    session.audio_mort_signale = true;
+
+    // Le capteur réélit cette session (répit expiré, plus aucune voisine à
+    // préférer) : sans le remède, ceci ne changerait rien.
+    session.appliquer_audio(true);
+    assert!(
+        !session.audio_mort_signale,
+        "une réélection doit lever le verrou, sinon a1sexies ne rappelle plus jamais \
+         reconstruire_ou_signaler"
+    );
+
+    // Second cycle : le budget doit être de nouveau plein.
+    for essai in 0..crate::audio::RECONSTRUCTIONS_MAX {
+        assert!(
+            !session.reconstruire_ou_signaler(t),
+            "second cycle, essai {essai} : le budget devait avoir été réapprovisionné"
+        );
+        t += crate::audio::REPIT_RECONSTRUCTION;
+    }
+    assert!(
+        session.reconstruire_ou_signaler(t),
+        "second épuisement : le cycle a bien tourné une seconde fois"
+    );
 }

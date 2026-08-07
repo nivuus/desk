@@ -105,6 +105,21 @@ const PERIODE_REARBITRAGE: Duration = Duration::from_millis(250);
 /// cycle de réarmements : voir `signaler_audio_vivant` plus bas, et le leg 6
 /// de D9 qu'il ferme (`capteur/sommeil/porteurs.rs`).
 ///
+/// ⚠️ **Précision apportée en REVUE de la tâche 12 : le rôle de la
+/// réélection ne s'arrête pas à « donner sa chance à une voisine ».** Le
+/// budget de tentatives (`crate::audio::RECONSTRUCTIONS_MAX`) n'est posé
+/// qu'UNE FOIS à la construction de la `Session`, et sans réapprovisionnement
+/// le cycle décrit ci-dessus ne pouvait tourner qu'une seule fois PAR
+/// SESSION : après le premier `AudioMort`, le verrou `audio_mort_signale` (qui
+/// ne retombe qu'à un rattachement) empêchait toute nouvelle tentative,
+/// quelle que soit la durée de vie restante de la session. C'est la
+/// réélection ELLE-MÊME — la transition vers `Audio { actif: true }`,
+/// `Session::appliquer_audio`, `transport/piste_audio.rs` — qui
+/// réapprovisionne ce budget et lève ce verrou. Sans ce second rôle,
+/// `REARMEMENTS_MAX` juste en dessous n'aurait jamais compté qu'un seul échec
+/// par session, jamais plusieurs échecs CONSÉCUTIFS — l'inverse de son
+/// intention.
+///
 /// ⚠️ **NON CALIBRÉE.** Aucune mesure ne la fonde : elle rejoint `BPP_MIN`,
 /// `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC` et
 /// `TAILLE_MAX_SORTIE`.

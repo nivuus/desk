@@ -30,16 +30,15 @@
 //! et réception UDP), `fixtures` (les échafaudages de test partagés).
 
 use std::collections::VecDeque;
-use std::net::{IpAddr, SocketAddr, UdpSocket};
-use std::time::{Duration, Instant};
+use std::net::{IpAddr, UdpSocket};
+use std::time::Instant;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use proto::control::{AgentControl, ClientControl};
 use proto::input::InputMessage;
-use str0m::bwe::Bitrate;
 use str0m::channel::ChannelId;
 use str0m::media::Mid;
-use str0m::{Candidate, Output, Rtc};
+use str0m::{Output, Rtc};
 
 use crate::audio::{AudioSource, Reconstructeur};
 use crate::congestion;
@@ -51,6 +50,7 @@ mod adaptation;
 mod cadence_video;
 mod controle;
 mod evenements;
+mod initialisation;
 mod part;
 mod piste_audio;
 mod piste_video;
@@ -59,7 +59,6 @@ mod relais;
 mod socket;
 mod tick;
 
-use adaptation::ESTIMATION_INITIALE_BPS;
 use piste_video::FRAME_INTERVAL;
 use socket::TimerResolutionGuard;
 use tick::Tick;
@@ -259,6 +258,24 @@ pub struct Session {
     /// D9 : `REARMEMENTS_MAX` (`capteur/sommeil.rs`) repart de zéro sur CE
     /// signal, jamais sur la seule décision de réélection.
     audio_vivant_a_annoncer: bool,
+    /// Vrai tant que le capteur nous demande de porter le son.
+    ///
+    /// **Sert UNIQUEMENT à détecter la TRANSITION vers `actif = true`** dans
+    /// `appliquer_audio` (`piste_audio.rs`) : c'est cette transition, et elle
+    /// seule, qui réapprovisionne le budget de reconstruction
+    /// (`reconstructions_restantes`) et lève le verrou `audio_mort_signale`.
+    ///
+    /// ⚠️ **Trouvé en revue de la tâche 12 (sous-bloc D10) : sans ce champ, le
+    /// cycle mort → reconstruit → prouvé ne tourne qu'UNE SEULE FOIS.**
+    /// `reconstructions_restantes` était posé une fois à la construction,
+    /// décrémenté, jamais rechargé ; une fois épuisé, `AudioMort` part et
+    /// `audio_mort_signale` reste vrai à jamais (il ne retombe qu'à un
+    /// rattachement) — donc `reconstruire_ou_signaler` n'est plus jamais
+    /// rappelée, donc `AudioVivant` ne peut plus jamais être émis, et le
+    /// garde-fou `REARMEMENTS_MAX` compte des échecs NON consécutifs sur toute
+    /// la vie de la session plutôt que de repartir de zéro (l'inverse exact de
+    /// ce que le Step 5 de cette tâche visait à corriger).
+    audio_porteuse: bool,
 }
 
 impl Session {
@@ -274,57 +291,10 @@ impl Session {
         clock_origin: Instant,
         plafond_bps: u32,
     ) -> Result<Self> {
-        let socket = UdpSocket::bind(SocketAddr::new(local_ip, 0))
-            .context("ouverture du socket UDP")?;
-        // Non bloquant une fois pour toutes : `act_on_timeout` ne dépend plus
-        // de `set_read_timeout`, dont le délai déborde massivement sous
-        // Windows (mesuré : dépassement moyen +12,7 ms, jusqu'à +37 ms sur un
-        // délai demandé de 617 µs — voir `poll_recv_or_timeout`). Le rythme
-        // d'attente est désormais entièrement piloté par notre propre boucle
-        // de sondage, indépendante de la précision du minuteur du socket.
-        socket.set_nonblocking(true).context("passage du socket UDP en non bloquant")?;
-        let addr = socket.local_addr()?;
-        tracing::info!(%addr, "socket UDP de l'agent");
-
-        // str0m 0.21 exige un fournisseur cryptographique installé pour le
-        // processus (vérifié dans les sources de la crate : la feature Cargo
-        // par défaut `aws-lc-rs` fournit `from_feature_flags()`, et
-        // `install_process_default(self)` est une méthode consommante sur
-        // `CryptoProvider`). Idempotent : `OnceLock::set` ignore silencieusement
-        // un second appel, donc appeler `Session::new` plusieurs fois par
-        // processus ne panique pas.
-        str0m::crypto::from_feature_flags().install_process_default();
-
-        // `enable_opus(true)` : sans cette ligne, aucun type de charge utile
-        // Opus n'est jamais proposé dans la réponse SDP, quoi que le pair
-        // négocie de son côté — `select_negotiated_opus_pt` ne trouverait
-        // alors jamais rien, et l'audio resterait muet même avec une source
-        // ouverte avec succès. Absente du brief original, ajoutée ici : sans
-        // elle, la piste audio ne se négocie tout simplement jamais (voir le
-        // rapport de tâche).
-        let mut rtc = Rtc::builder()
-            .clear_codecs()
-            .enable_h264(true)
-            .enable_opus(true)
-            // Sans cet appel, `Event::EgressBitrateEstimate` n'est JAMAIS
-            // émis et tout l'asservissement reste muet. L'estimation
-            // initiale est volontairement modeste : le sous-système sonde à
-            // la hausse vers `set_desired_bitrate` (posé plus bas), et
-            // partir trop haut ferait saturer le lien avant la première
-            // correction.
-            .enable_bwe(Some(Bitrate::bps(ESTIMATION_INITIALE_BPS as u64)))
-            .set_stats_interval(Some(Duration::from_secs(1)))
-            .build(Instant::now());
-
-        // Cible que le sondage cherche à atteindre : le plafond configuré.
-        rtc.bwe().set_desired_bitrate(Bitrate::bps(plafond_bps as u64));
-
-        // `add_local_candidate` ne renvoie pas de `Result` : elle retourne
-        // `Option<&Candidate>` (le candidat précédent s'il était déjà connu).
-        // Seule la construction du `Candidate` lui-même peut échouer.
-        rtc.add_local_candidate(
-            Candidate::host(addr, "udp").map_err(|e| anyhow!("candidat hôte invalide : {e}"))?,
-        );
+        // Socket UDP et `Rtc` str0m dans leur état initial : code
+        // auto-contenu, sans accès aux champs de `Session`, extrait vers
+        // `initialisation.rs` (revue de la tâche 12, sous-bloc D10).
+        let (socket, rtc) = initialisation::construire_rtc(local_ip, plafond_bps)?;
 
         let dimensions = source.dimensions();
         let mut session = Self {
@@ -398,6 +368,7 @@ impl Session {
             prochaine_reconstruction: None,
             audio_reconstruit_sans_preuve: false,
             audio_vivant_a_annoncer: false,
+            audio_porteuse: false,
         };
 
         // `add_local_candidate` est une mutation : on draine avant de rendre

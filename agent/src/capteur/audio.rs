@@ -208,8 +208,29 @@ mod tests {
         // elle vit. **Le cas majoritaire reste donc SANS REMÈDE, et c'est un
         // legs de D9.**
         //
+        // ✅ **CE LEGS EST FERMÉ — sous-bloc D10 (tâches 11 et 12), corrigé
+        // ICI même, où le commentaire ci-dessus disait explicitement qu'il
+        // fallait le corriger (sixième occurrence de ce défaut sur cette
+        // branche, la première où le code nommait lui-même l'endroit).** Le
+        // remède n'est PAS la réélection : c'est
+        // `Session::reconstruire_ou_signaler` (`transport/piste_audio.rs`),
+        // appelée AVANT tout signalement `AudioMort`, qui refabrique
+        // réellement la capture — la phrase « réélire seule ne reconstruit
+        // rien » reste vraie sur ce qu'elle décrivait, mais le produit ne
+        // compte plus SEULEMENT sur la réélection pour le cas majoritaire.
+        // Et la réélection a gagné un rôle qu'elle n'avait pas alors : elle
+        // réapprovisionne le budget de tentatives et lève le verrou
+        // `audio_mort_signale` (`appliquer_audio`, `piste_audio.rs`) — sans
+        // quoi, trouvé en revue de la tâche 12, le cycle mort → reconstruit →
+        // prouvé n'aurait tourné qu'une seule fois par session, et
+        // `REARMEMENTS_MAX` aurait compté des échecs non consécutifs sur
+        // toute sa vie plutôt que des échecs consécutifs.
+        //
         // Ce que ce test établit, et qui reste juste : la RÈGLE pure ne fait
-        // porter le son à personne quand tout le groupe est inapte.
+        // porter le son à personne quand tout le groupe est inapte — un état
+        // qui n'est plus PERMANENT pour la fenêtre seule de son groupe (le
+        // cas majoritaire) : le répit expire, elle redevient candidate, et sa
+        // propre reconstruction retente.
         let fenetres = vec![
             FenetreAudio { session: "w-1".into(), pid: 42, arrivee: 1, dernier_focus: 0, inapte: true },
             FenetreAudio { session: "w-2".into(), pid: 42, arrivee: 2, dernier_focus: 0, inapte: true },
