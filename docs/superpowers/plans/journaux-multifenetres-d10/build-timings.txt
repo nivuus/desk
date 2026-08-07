@@ -1,0 +1,24 @@
+Sous-bloc D10, tache 14 -- durees de build relevees, versees pour ne plus
+vivre seulement dans la prose du rapport (minor deja corrige une fois pour
+le step 5, reparu ici pour le meme motif).
+
+Toutes les lignes ci-dessous sont copiees telles quelles depuis la sortie de
+`scripts/build-agent.sh` (build release, sur la VM) ou `cargo check`
+(hote), au moment ou chaque commande a ete executee dans cette session.
+
+=== Rejeu du correctif ddd0b05 (avant le budget global) ===
+$ scripts/build-agent.sh
+    Finished `release` profile [optimized] target(s) in 10.77s
+Taille : 9349120 octets, LastWriteTime 07/08/2026 14:39:32
+(voir binsize-corrige-c2.txt)
+
+=== Correctif du budget global (fil.rs, ce tour-ci) ===
+$ cargo check --target x86_64-pc-windows-gnu (hote, apres `touch fil.rs`)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.35s
+EXITCODE=0, 9 avertissements (grep -c '^warning:' = 10, dont la ligne de
+synthese "agent (bin agent) generated 9 warnings")
+
+$ scripts/build-agent.sh (VM, release)
+    Finished `release` profile [optimized] target(s) in 10.59s
+Taille : 9335296 octets, LastWriteTime 07/08/2026 15:02:51
+(voir binsize-global-c2.txt)

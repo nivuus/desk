@@ -417,9 +417,23 @@ async function main() {
         log(`PID(s) chrome distincts relevés : ${JSON.stringify(idsUniques)} `
             + `(1 attendu pour un groupe unique, en excluant le pilote local qui tourne sur l'HÔTE, pas la VM)`);
 
-        // ---- Step 2 : stabilisation > REPORT_INTERVAL (30 s), puis relevé. ----
-        log(`>>> STABILISATION (${ATTENTE_S} s) avant le relevé décisif`);
-        await dodo(ATTENTE_S * 1000);
+        // ---- Relevé PRÉCOCE de fréquence (revue de la tâche 14 bis) : le
+        // budget global s'épuise dès la toute première capture (10 fautes,
+        // largement sous 15 s), donc l'AUDIBILITÉ réelle — si le correctif
+        // tient — n'a pas besoin des 30 s de `REPORT_INTERVAL` pour se
+        // manifester. Ce relevé juge SUR LA FRÉQUENCE seule ; le relevé
+        // décisif plus bas juge sur les DEUX (fréquence ET compteurs). ----
+        log('>>> RELEVÉ PRÉCOCE (15 s après ouverture) — la fréquence ne doit pas attendre 30 s');
+        await dodo(15000);
+        const freqsPrecoce = await frequencesToutes(cdp, 'précoce (15 s)', [HZ_A, HZ_B]);
+        releve.frequences_precoce = freqsPrecoce;
+
+        // ---- Step 2 : stabilisation > REPORT_INTERVAL (30 s) DEPUIS
+        // L'OUVERTURE, donc encore ~(ATTENTE_S - 15) s à attendre ici pour
+        // laisser au fil qui émet EFFECTIVEMENT (né vers t+1 s, cf. revue)
+        // le temps d'atteindre SON PROPRE premier rapport. ----
+        log(`>>> STABILISATION (${ATTENTE_S - 15} s de plus) avant le relevé décisif`);
+        await dodo((ATTENTE_S - 15) * 1000);
         const survie1 = vmVivante('après stabilisation');
         releve.survie_apres_stabilisation = survie1;
         const m1 = await marqueurs('critère ③ — relevé décisif');
@@ -428,8 +442,10 @@ async function main() {
         const freqs = await frequencesToutes(cdp, 'critère ③', [HZ_A, HZ_B]);
         releve.frequences_critere3 = freqs;
         const pageA = nomDe(appPages()[0]?.[1]?.url ?? '');
-        log(`Récapitulatif critère ③ : capture_reconstruite=${m1.capture_reconstruite} `
-            + `compteurs_audio(A)=${m1.compteurs_audio} compteurs_audio_actif_true(B)=${m1.compteurs_audio_actif_true}`);
+        log(`Récapitulatif critère ③ — LES DEUX JUGES : `
+            + `frequence_dominante_hz=${freqs[pageA]?.hz} frequence_db=${freqs[pageA]?.db} `
+            + `compteurs_audio_actif_true=${m1.compteurs_audio_actif_true} `
+            + `(capture_reconstruite=${m1.capture_reconstruite}, compteurs_audio=${m1.compteurs_audio})`);
 
         // ---- Step 4 (optionnel) : critère ④, reconstructeur voué à l'échec. ----
         if (CRITERE4) {
