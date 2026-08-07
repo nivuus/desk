@@ -5495,8 +5495,16 @@ x86_64-pc-windows-gnu` → **sortie 0, 11 avertissements**, tous `dead_code`, do
    `#[path]`. Un seul appelant. ⚠️ **« Déviation non justifiée » est INEXACT** :
    l'en-tête du fichier la justifie, en citant un AUTRE précédent
    (`geometry.rs`, `sortie_dxgi.rs`, tous deux posés directement à la racine,
-   sans `#[path]`). Ce qui reste vrai, c'est que la branche D9 a dans le même
-   mouvement **TRIPLÉ** la convention `#[path]` par ailleurs
+   sans `#[path]`). ❌ **Et « la branche D9 a TRIPLÉ la convention `#[path]` »,
+   écrit ici par la vague de correction finale, est FAUX à son tour** — relevé
+   par `git log -S` à la re-revue de cette même vague : `windows_source_sortie`
+   date de **D1** (`0529651`) et `capture_reprise` de **D2** (`9438e33`), tous
+   deux fusionnés sur `main` AVANT que cette branche ne diverge. **D9 en ajoute
+   UN SEUL** — `windows_source_telemetrie` (tâche 11). C'est 2 → 3, pas un
+   triplement. *Corriger une affirmation fausse peut en produire une autre : ce
+   fichier l'écrit depuis D6, et la vague qui corrigeait le leg l'a repayé.*
+   Ce qui reste vrai, c'est que la branche a ajouté un troisième emploi de la
+   convention par ailleurs
    (`windows_source_telemetrie`, tâche 11, s'ajoutant à `capture_reprise` et
    `windows_source_sortie`) sans réconcilier les deux conventions ni choisir
    entre elles pour ce fichier-ci.
@@ -5507,8 +5515,12 @@ x86_64-pc-windows-gnu` → **sortie 0, 11 avertissements**, tous `dead_code`, do
     fenêtre déjà ouverte, mécanisme non élucidé). **Ils sont toujours dans le
     rapport versé.**
 
-**Trois de plus, trouvés par la vague de correction unique de la revue finale
-de D9 (6 août 2026), et délibérément NON corrigés — legs, pas défauts actifs :**
+**DEUX de plus, trouvés par la vague de correction unique de la revue finale
+de D9 (6 août 2026), et délibérément NON corrigés — legs, pas défauts actifs.**
+*(Ce sous-titre annonçait « trois » pour deux entrées numérotées, quand
+l'en-tête du même commit en comptait deux — corrigé à la re-revue. Le n°11
+porte deux tests, ce qui explique probablement le glissement : on compte ici
+des LEGS, pas des problèmes individuels.)*
 
 11. ⛔ **Deux tests faibles, sans être morts, incapables de rendre l'autre
     valeur** :
