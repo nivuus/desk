@@ -476,7 +476,7 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > | `agent/src/diagnostics/multifenetre/mode_sortie/temoin.rs` | **200** | neuf |
 > | `agent/src/diagnostics/multifenetre/mode_sortie/combinaisons.rs` | **157** | neuf |
 > | `agent/src/diagnostics/multifenetre/mode_sortie/persistance.rs` | **107** | neuf |
-> | `agent/src/survie_verdict.rs` | **61** | neuf, **pur** — ⚠️ posé à la RACINE du crate alors que le dépôt a deux précédents (`capture_reprise`, `windows_source_sortie`) qui gardent le fichier chez le parent et n'y hissent que la déclaration par `#[path]`. Déviation relevée, non corrigée |
+> | `agent/src/survie_verdict.rs` | **61** | neuf, **pur** — ✅ **TRANCHÉ (7 août 2026, tâche 17, D10) : ce n'était PAS une déviation.** La convention retenue (§« Convention de module enfant… », tête de ce fichier) range un module par son NOM : `capture_reprise`/`windows_source_sortie` portent le préfixe de leur parent et se déclarent par `#[path]` ; `survie_verdict`, comme `geometry` et `sortie_dxgi`, n'en porte aucun et vit à la racine nue — où il était déjà. **Aucun fichier n'a bougé.** |
 > | `client/src/main.ts` | **352** | legs 7, 8 et 10 |
 > | `client/src/resize.ts` + `resize.test.ts` | **45** + **39** | neufs, **purs, sans DOM** |
 > | `agent/src/demarrage.rs` | ~~457~~ **464** | le champ `session` sur `contrôle reçu`, et le lecteur mort de `SOURCE_TRACE` retiré |
@@ -501,6 +501,61 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
   | grep -vE 'node_modules|package-lock|Cargo.lock|/dist/|testdata/|^docs/|^CLAUDE.md' \
   | xargs wc -l 2>/dev/null | sort -rn | awk '$1>500'
 ```
+
+### Convention de module enfant : `#[path]` chez le parent, ou racine nue
+
+**Tranché le 7 août 2026 (tâche 17, sous-bloc D10), après que le sous-bloc
+précédent a relevé `survie_verdict.rs` comme une « déviation » puis s'est
+lui-même trompé en la corrigeant (voir le leg n°9 de D9, plus bas). Ce dépôt
+avait deux conventions pour un module hors du `#[cfg(windows)]` de son parent
+logique, sans jamais avoir écrit la règle qui les départage.
+
+**Portée de la règle** : elle ne s'applique QU'aux modules qu'on extrait d'un
+fichier `#[cfg(windows)]` (ou autrement non portable) pour que leur logique
+*pure* compile et se teste sur l'hôte Linux, et qui doivent de ce fait devenir
+des **frères de premier niveau** de ce parent, déclarés dans `main.rs`. Un
+module `#[cfg(windows)]` ordinaire qui n'a pas besoin d'exister sur l'hôte
+reste un enfant normal, déclaré par un simple `mod` **à l'intérieur** de son
+parent gaté (`capture.rs::mod enumeration;`, `capture.rs::mod types;`,
+`windows_source.rs::mod redimensionnement;`) : il ne se pose jamais la
+question ci-dessous, faute d'avoir jamais besoin de sortir de l'arbre de son
+parent. Est également hors de portée l'usage de `#[path]` pour scinder un
+module de *tests* trop long À L'INTÉRIEUR d'un fichier par ailleurs portable
+(`superviseur/table.rs` déclare ainsi `#[path = "table/tests.rs"] mod tests;`
+et `#[path = "table/tests_relance.rs"] mod tests_relance;`, tous deux
+`#[cfg(test)]`, tous deux internes à `table.rs`, sans rapport avec une
+frontière `#[cfg(windows)]`) : c'est le même mécanisme Rust, employé pour une
+raison différente (la règle des 500 lignes), et il ne suit pas la convention
+ci-dessous.
+
+**La règle, pour les modules dans cette portée : le NOM du module tranche.**
+
+- **Le nom du module s'écrit `<parent>_<enfant>`**, où `<parent>` nomme un
+  module de premier niveau existant (déclaré dans `main.rs`) : le fichier
+  reste physiquement chez ce parent (`src/<parent>/<enfant>.rs`), et se
+  déclare dans `main.rs` par
+  `#[path = "<parent>/<enfant>.rs"] mod <parent>_<enfant>;` — c'est la
+  déclaration qui franchit le `#[cfg(windows)]` du parent, le fichier
+  physique, lui, n'a pas bougé de sous son parent. Exemples :
+  `capture_reprise` (`capture/reprise.rs`), `windows_source_sortie`
+  (`windows_source/sortie.rs`), `windows_source_telemetrie`
+  (`windows_source/telemetrie.rs`).
+- **Le nom du module se comprend SANS référence à un parent** — il ne porte
+  le préfixe d'aucun module de premier niveau existant (`geometry`,
+  `sortie_dxgi`, `survie_verdict`) : il vit à la racine nue, `mod <nom>;`
+  ordinaire dans `main.rs`, fichier `src/<nom>.rs`. **La profondeur du module
+  dont on l'extrait ne change rien** : `survie_verdict` vient de
+  `diagnostics::multifenetre::mode_sortie::persistance`, quatre niveaux plus
+  bas que `main.rs`, et n'a pourtant aucun nom de parent court et unique à
+  préfixer — la règle le range à la racine comme `geometry` et `sortie_dxgi`,
+  extraits pour la même raison (compiler sur l'hôte) d'un parent tout aussi
+  gaté (`capture.rs`, `window.rs`).
+
+**Vérifiée sur les six cas existants au 7 août 2026**
+(`grep -rn '#\[path' agent/src/`, `ls agent/src/*.rs`, depuis `agent/`) : les
+trois noms préfixés sont TOUS déclarés par `#[path]` chez leur parent, les
+trois noms autonomes sont TOUS à la racine nue. **Aucune exception.**
+`survie_verdict.rs` s'y conforme déjà — il n'a jamais eu besoin de bouger.
 
 ## Development Commands
 
@@ -5508,6 +5563,16 @@ x86_64-pc-windows-gnu` → **sortie 0, 11 avertissements**, tous `dead_code`, do
    (`windows_source_telemetrie`, tâche 11, s'ajoutant à `capture_reprise` et
    `windows_source_sortie`) sans réconcilier les deux conventions ni choisir
    entre elles pour ce fichier-ci.
+   ✅ **TRANCHÉ le 7 août 2026 (tâche 17, sous-bloc D10) : la règle est
+   maintenant écrite** (§« Convention de module enfant… », tête de ce
+   fichier) — un module dont le nom porte le préfixe d'un parent de premier
+   niveau (`<parent>_<enfant>`) se déclare par `#[path]` chez ce parent ; un
+   module au nom autonome vit à la racine nue. **`survie_verdict.rs` s'y
+   conforme DÉJÀ** : son nom ne préfixe aucun parent, la règle le range à la
+   racine, exactement où il vivait. **Ce leg est CLOS sans qu'aucun fichier
+   n'ait été déplacé ni renommé** ; la qualification de « déviation » (D9,
+   tableau de tête et cette entrée) était fausse depuis le début — corrigée
+   aux deux endroits.
 10. ⛔ **Neuf constats de revue PARQUÉS sur la tâche 14** (recette ①), dont
     l'A/B rouge/vert non propre, la pièce du critère (a) qui ne couvre qu'une
     page sur treize, et un « défaut d'instrument » qui est en réalité un
