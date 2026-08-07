@@ -79,6 +79,25 @@ pub(super) fn tourner(
     // courant : le flux n'a simplement rien de neuf à rendre.
     let mut lectures_echouees: u32 = 0;
 
+    // VARIABLE DE BANC, jamais une configuration livrée — même statut que
+    // `PART_SONDAGE`. Elle existe parce qu'aucun déclencheur naturel de mort
+    // de capture n'a pu être trouvé : les QUATRE de D9 (Restart-Service
+    // Audiosrv, Stop/Start, Stop-Process audiodg, Disable/Enable-PnpDevice)
+    // n'ont produit AUCUNE ligne `lecture audio échouée` sur neuf exécutions
+    // versées — la capture *process loopback* suit l'ARBRE DE PROCESSUS, pas
+    // le service ni le périphérique.
+    //
+    // ⚠️ Elle établit que le REMÈDE fonctionne, jamais qu'une cause naturelle
+    // existe. Ne pas lire une recette qui l'emploie comme une preuve de
+    // robustesse en production.
+    let mut fautes_a_injecter: u32 = std::env::var("AUDIO_FAUTE_LECTURE")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+    if fautes_a_injecter > 0 {
+        tracing::warn!(fautes_a_injecter, "injection de fautes de lecture audio ARMEE (banc)");
+    }
+
     while !arret_fil.load(Ordering::Relaxed) {
         let veut_emettre = emet_fil.load(Ordering::Relaxed);
         if veut_emettre != voulu_applique {
@@ -166,7 +185,14 @@ pub(super) fn tourner(
             continue;
         }
 
-        match capture.read() {
+        let lecture = if fautes_a_injecter > 0 {
+            fautes_a_injecter -= 1;
+            Err(anyhow::anyhow!("faute injectée (AUDIO_FAUTE_LECTURE)"))
+        } else {
+            capture.read()
+        };
+
+        match lecture {
             Ok(Some(bloc)) => {
                 lectures_echouees = 0;
                 assembleur.push(&bloc);
@@ -210,15 +236,25 @@ pub(super) fn tourner(
                     echantillons_jetes = assembleur.echantillons_jetes(),
                     "lecture audio échouée, capture arrêtée définitivement"
                 );
-                // ⚠️ **HORS PÉRIMÈTRE, et nommé pour le sous-bloc
-                // suivant** : le capteur ne peut PAS observer ce
-                // témoin — il vit dans l'enfant. La fenêtre reste
-                // donc porteuse de son groupe aux yeux de
-                // `capteur/audio.rs`, et sa voisine n'est jamais
-                // promue. Fermer ce trou demande un signal
-                // enfant→capteur (un `VersCapteur` neuf, puis un
-                // réarbitrage), c'est-à-dire un changement de
-                // protocole : à cadrer, pas à improviser ici.
+                // ⚠️ **CE COMMENTAIRE ANNONÇAIT UN TROU DÉJÀ COMBLÉ AU
+                // MOMENT OÙ IL A ÉTÉ ÉCRIT ICI** — orphelin trouvé par la
+                // tâche 13 du sous-bloc D10 (`git show
+                // c9b7a31:agent/src/windows_audio.rs`, le point de
+                // divergence de cette branche, porte déjà le signal qu'il
+                // dit manquant). Le témoin `capture_morte_fil` n'est
+                // effectivement pas observable par le capteur — il vit
+                // ici, dans l'enfant — mais `transport/tick.rs` (branche
+                // a1sexies) le lit et pousse `VersCapteur::AudioMort`
+                // (`capteur/protocole.rs`) depuis D9 ; ce N'EST PLUS « à
+                // cadrer ». **Et depuis D10 (tâches 11-12), ce n'est même
+                // plus le premier geste** : la session tente D'ABORD de
+                // reconstruire la capture (`reconstruire_ou_signaler`,
+                // `transport/piste_audio.rs`) ; `AudioMort` n'est que son
+                // repli, quand le budget de tentatives est épuisé — et
+                // c'est SEULEMENT dans ce repli que `capteur/audio.rs`
+                // peut promouvoir une voisine du même groupe de PID. Une
+                // fenêtre seule dans son groupe dépend donc entièrement de
+                // la reconstruction.
                 return;
             }
         }
