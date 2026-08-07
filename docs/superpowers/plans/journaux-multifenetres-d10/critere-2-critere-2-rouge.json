@@ -1,0 +1,102 @@
+{
+ "etiquette": "critere-2-rouge",
+ "audio_faute_lecture": "15",
+ "hz_a": 440,
+ "hz_b": 880,
+ "navigateur": "Chrome/151.0.7922.108",
+ "survie_avant": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ },
+ "ouvertures": {
+  "A": true,
+  "B": true
+ },
+ "pids_chrome_vm": "Id              : 17396\r\nMainWindowTitle : \r\n\r\nId              : 20408\r\nMainWindowTitle : \r\n\r\nId              : 27728\r\nMainWindowTitle : \r\n\r\nId              : 28132\r\nMainWindowTitle : \r\n\r\nId              : 31332\r\nMainWindowTitle : \r\n\r\nId              : 31716\r\nMainWindowTitle : \r\n\r\nId              : 31972\r\nMainWindowTitle : \r\n\r\nId              : 33004\r\nMainWindowTitle : \r\n\r\nId              : 37904\r\nMainWindowTitle : \r\n\r\nId              : 38368\r\nMainWindowTitle : \r\n\r\nId              : 38404\r\nMainWindowTitle : \r\n\r\nId              : 39812\r\nMainWindowTitle : \r\n\r\nId              : 40808\r\nMainWindowTitle :",
+ "pids_chrome_uniques": [
+  "17396",
+  "20408",
+  "27728",
+  "28132",
+  "31332",
+  "31716",
+  "31972",
+  "33004",
+  "37904",
+  "38368",
+  "38404",
+  "39812",
+  "40808"
+ ],
+ "survie_apres_stabilisation": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ },
+ "marqueurs_critere3": {
+  "lignes": 125,
+  "enfant_lance": 2,
+  "attachee_capteur": 2,
+  "cloture": 0,
+  "audio_active": 2,
+  "injection_armee": 0,
+  "lecture_echouee": 0,
+  "capture_arretee_definitivement": 0,
+  "capture_reconstruite": 0,
+  "reconstruction_refusee": 0,
+  "compteurs_audio": 2,
+  "compteurs_audio_actif_true": 1,
+  "ordre_audio_actif_true": 2,
+  "ordre_audio_actif_false": 2,
+  "erreurs": 0
+ },
+ "frequences_critere3": {
+  "w:w-2": {
+   "hz": 0,
+   "db": -1000,
+   "plancher_db": -1000,
+   "sample_rate": 44100,
+   "niveaux": [
+    {
+     "f": 440,
+     "db": -1000
+    },
+    {
+     "f": 880,
+     "db": -1000
+    }
+   ],
+   "piste_muted": false,
+   "piste_ready_state": "live",
+   "stats_audio": {
+    "bytes_recus": 37515,
+    "paquets_recus": 233
+   }
+  },
+  "w:w-4": {
+   "hz": 441,
+   "db": -40,
+   "plancher_db": -156,
+   "sample_rate": 44100,
+   "niveaux": [
+    {
+     "f": 440,
+     "db": -40
+    },
+    {
+     "f": 880,
+     "db": -41
+    }
+   ],
+   "piste_muted": false,
+   "piste_ready_state": "live",
+   "stats_audio": {
+    "bytes_recus": 697454,
+    "paquets_recus": 4332
+   }
+  }
+ },
+ "survie_finale": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ }
+}

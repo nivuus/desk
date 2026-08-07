@@ -1,0 +1,139 @@
+{
+ "etiquette": "critere-2-1",
+ "audio_faute_lecture": "15",
+ "hz_a": 440,
+ "hz_b": 880,
+ "navigateur": "Chrome/151.0.7922.108",
+ "survie_avant": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ },
+ "ouvertures": {
+  "A": true,
+  "B": true
+ },
+ "pids_chrome_vm": "Id              : 19892\r\nMainWindowTitle : \r\n\r\nId              : 20836\r\nMainWindowTitle : \r\n\r\nId              : 26504\r\nMainWindowTitle : \r\n\r\nId              : 27544\r\nMainWindowTitle : \r\n\r\nId              : 29600\r\nMainWindowTitle : \r\n\r\nId              : 32092\r\nMainWindowTitle : \r\n\r\nId              : 33916\r\nMainWindowTitle : \r\n\r\nId              : 35188\r\nMainWindowTitle : \r\n\r\nId              : 36484\r\nMainWindowTitle : \r\n\r\nId              : 37948\r\nMainWindowTitle : \r\n\r\nId              : 38828\r\nMainWindowTitle : \r\n\r\nId              : 39820\r\nMainWindowTitle : \r\n\r\nId              : 40520\r\nMainWindowTitle :",
+ "pids_chrome_uniques": [
+  "19892",
+  "20836",
+  "26504",
+  "27544",
+  "29600",
+  "32092",
+  "33916",
+  "35188",
+  "36484",
+  "37948",
+  "38828",
+  "39820",
+  "40520"
+ ],
+ "survie_apres_stabilisation": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ },
+ "marqueurs_critere3": {
+  "lignes": 174,
+  "enfant_lance": 2,
+  "attachee_capteur": 2,
+  "cloture": 0,
+  "audio_active": 2,
+  "injection_armee": 4,
+  "lecture_echouee": 18,
+  "capture_arretee_definitivement": 2,
+  "capture_reconstruite": 2,
+  "reconstruction_refusee": 1,
+  "compteurs_audio": 2,
+  "compteurs_audio_actif_true": 0,
+  "ordre_audio_actif_true": 2,
+  "ordre_audio_actif_false": 2,
+  "erreurs": 0
+ },
+ "frequences_critere3": {
+  "w:w-2": {
+   "hz": 0,
+   "db": -1000,
+   "plancher_db": -1000,
+   "sample_rate": 44100,
+   "niveaux": [
+    {
+     "f": 440,
+     "db": -1000
+    },
+    {
+     "f": 880,
+     "db": -1000
+    }
+   ],
+   "piste_muted": true,
+   "piste_ready_state": "live",
+   "stats_audio": null
+  },
+  "w:w-4": {
+   "hz": 0,
+   "db": -1000,
+   "plancher_db": -1000,
+   "sample_rate": 44100,
+   "niveaux": [
+    {
+     "f": 440,
+     "db": -1000
+    },
+    {
+     "f": 880,
+     "db": -1000
+    }
+   ],
+   "piste_muted": true,
+   "piste_ready_state": "live",
+   "stats_audio": null
+  }
+ },
+ "critere4_pids_tues": [
+  "19892",
+  "20836",
+  "26504",
+  "27544",
+  "29600",
+  "32092",
+  "33916",
+  "35188",
+  "36484",
+  "37948",
+  "38828",
+  "39820",
+  "40520"
+ ],
+ "survie_apres_critere4": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ },
+ "marqueurs_critere4": {
+  "lignes": 187,
+  "enfant_lance": 2,
+  "attachee_capteur": 2,
+  "cloture": 1,
+  "audio_active": 2,
+  "injection_armee": 4,
+  "lecture_echouee": 18,
+  "capture_arretee_definitivement": 2,
+  "capture_reconstruite": 2,
+  "reconstruction_refusee": 1,
+  "compteurs_audio": 2,
+  "compteurs_audio_actif_true": 0,
+  "ordre_audio_actif_true": 2,
+  "ordre_audio_actif_false": 2,
+  "erreurs": 0
+ },
+ "critere4_diagnostic": {
+  "audio_mort_occurrences_brutes": 0,
+  "lignes_ordre_actif_true": [
+   "ordre audio applique session=w-2 actif=true capture_morte=false\r",
+   "ordre audio applique session=w-4 actif=true capture_morte=false\r"
+  ]
+ },
+ "survie_finale": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ }
+}
