@@ -1,0 +1,76 @@
+{
+ "etiquette": "critere-2-corrige-1",
+ "audio_faute_lecture": "15",
+ "hz_a": 440,
+ "hz_b": 880,
+ "navigateur": "Chrome/151.0.7922.108",
+ "survie_avant": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ },
+ "ouvertures": {
+  "A": true,
+  "B": "sautee (SEULE_FENETRE=1)"
+ },
+ "pids_chrome_vm": "Id              : 5480\r\nMainWindowTitle : \r\n\r\nId              : 12552\r\nMainWindowTitle : \r\n\r\nId              : 18968\r\nMainWindowTitle : \r\n\r\nId              : 20088\r\nMainWindowTitle : \r\n\r\nId              : 22880\r\nMainWindowTitle : \r\n\r\nId              : 31952\r\nMainWindowTitle : \r\n\r\nId              : 33800\r\nMainWindowTitle : \r\n\r\nId              : 35912\r\nMainWindowTitle : \r\n\r\nId              : 36096\r\nMainWindowTitle : \r\n\r\nId              : 40272\r\nMainWindowTitle : \r\n\r\nId              : 40436\r\nMainWindowTitle : \r\n\r\nId              : 40808\r\nMainWindowTitle :",
+ "pids_chrome_uniques": [
+  "5480",
+  "12552",
+  "18968",
+  "20088",
+  "22880",
+  "31952",
+  "33800",
+  "35912",
+  "36096",
+  "40272",
+  "40436",
+  "40808"
+ ],
+ "survie_apres_stabilisation": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ },
+ "marqueurs_critere3": {
+  "lignes": 268,
+  "enfant_lance": 1,
+  "attachee_capteur": 1,
+  "cloture": 0,
+  "audio_active": 1,
+  "injection_armee": 14,
+  "lecture_echouee": 124,
+  "capture_arretee_definitivement": 13,
+  "capture_reconstruite": 13,
+  "reconstruction_refusee": 0,
+  "compteurs_audio": 0,
+  "compteurs_audio_actif_true": 0,
+  "ordre_audio_actif_true": 5,
+  "ordre_audio_actif_false": 4,
+  "erreurs": 0
+ },
+ "frequences_critere3": {
+  "w:w-2": {
+   "hz": 0,
+   "db": -1000,
+   "plancher_db": -1000,
+   "sample_rate": 44100,
+   "niveaux": [
+    {
+     "f": 440,
+     "db": -1000
+    },
+    {
+     "f": 880,
+     "db": -1000
+    }
+   ],
+   "piste_muted": true,
+   "piste_ready_state": "live",
+   "stats_audio": null
+  }
+ },
+ "survie_finale": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ }
+}

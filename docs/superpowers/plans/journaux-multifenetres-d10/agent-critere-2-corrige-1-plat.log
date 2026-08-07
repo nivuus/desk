@@ -1,0 +1,324 @@
+2026-08-07T12:40:40.806464Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-07T12:40:40.808891Z  INFO agent::superviseur::signalisation: superviseur enregistré sur la session de contrôle session="bureau"
+2026-08-07T12:40:40.811067Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-07T12:40:40.811107Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-07T12:40:40.811124Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=1 attachees=1
+2026-08-07T12:40:40.811135Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-07T12:40:43.813568Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-07T12:40:43.813602Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-07T12:40:43.813610Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-08-07T12:40:43.813629Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-07T12:40:43.813641Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=0 avant=1 apres=1
+2026-08-07T12:40:43.817529Z  INFO agent::superviseur::lanceur: capteur lancé pid=39112
+2026-08-07T12:40:43.824593Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-07T12:40:43.824626Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-08-07T12:40:47.943716Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-07T12:40:47.943749Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-07T12:40:47.943758Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=1 attachees=1
+2026-08-07T12:40:47.943762Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-07T12:40:47.944081Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=261 adaptateur_bas=61742 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430001 largeur=1280 hauteur=720 hertz=60
+2026-08-07T12:40:48.182864Z  INFO agent::superviseur::enfants: enfant lancé session=w-2 pid=35604 sortie=\\.\DISPLAY5
+2026-08-07T12:40:48.192672Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-07T12:40:48.192753Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY5 bitrate=8000000 fps=90
+2026-08-07T12:40:48.198321Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-07T12:40:48.198581Z  INFO agent::capteur::tube: attaché au capteur session=w-2 sortie=\\.\DISPLAY5 largeur=1280 hauteur=720
+2026-08-07T12:40:48.198842Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: fenêtre attachée au capteur session=w-2 sortie=\\.\DISPLAY5 largeur=1280 hauteur=720
+2026-08-07T12:40:48.198989Z  INFO fenetre{session=w-2}: agent::capteur::sommeil::parts: budget de debit de la session budget_bps=12000000
+2026-08-07T12:40:48.200843Z  INFO agent::signaling: agent enregistré auprès du signaling session="w-2"
+2026-08-07T12:40:48.200978Z  INFO agent::transport::initialisation: socket UDP de l'agent addr=192.168.3.2:58841
+2026-08-07T12:40:48.201399Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-07T12:40:48.233492Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=33800 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-07T12:40:48.233511Z  INFO agent::demarrage::audio: audio activé format="process loopback pid=33800 — 48000 Hz, 2 canaux, 16 bits entiers" pid=33800
+2026-08-07T12:40:48.233588Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-07T12:40:50.955129Z  INFO agent::demarrage: offre reçue
+2026-08-07T12:40:50.961199Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=réception pendant l'allocation TURN
+2026-08-07T12:40:50.963912Z  INFO agent::demarrage: réponse envoyée
+2026-08-07T12:40:50.964203Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=2.7329464s
+2026-08-07T12:40:50.971287Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:40:50.974395Z  INFO agent::transport::evenements: état ICE state=Connected écoulé=2.7431376s
+2026-08-07T12:40:50.987454Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video
+2026-08-07T12:40:50.987482Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio
+2026-08-07T12:40:50.987529Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=256000 endormie=true
+2026-08-07T12:40:50.987535Z  INFO agent::transport::piste_audio: ordre audio applique session=w-2 actif=true capture_morte=false
+2026-08-07T12:40:50.991814Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-07T12:40:50.997960Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-07T12:40:51.001710Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-07T12:40:51.001847Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-07T12:40:51.008107Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-07T12:40:51.028607Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-07T12:40:51.068928Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-07T12:40:51.087320Z  INFO agent::demarrage: contrôle reçu session=w-2 Visibility { version: 3, visible: true, focused: true }
+2026-08-07T12:40:51.106474Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-07T12:40:51.149434Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=6
+2026-08-07T12:40:51.199961Z  INFO fenetre{session=w-2}: agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-07T12:40:51.200327Z  INFO fenetre{session=w-2}: agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-07T12:40:51.201405Z  INFO fenetre{session=w-2}: agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-07T12:40:51.218208Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:40:51.222770Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:40:51.263407Z  INFO fenetre{session=w-2}: agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=327681
+2026-08-07T12:40:51.268834Z  INFO fenetre{session=w-2}: agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-07T12:40:51.269219Z  INFO fenetre{session=w-2}: agent::capteur::fenetre::transitions: fenêtre réveillée session=w-2 largeur=1280 hauteur=720 duree_ms=163
+2026-08-07T12:40:51.277744Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=12000000 endormie=false
+2026-08-07T12:40:51.293715Z  INFO agent::demarrage: contrôle reçu session=w-2 Resize { version: 3, width: 1280, height: 720 }
+2026-08-07T12:40:51.296275Z  INFO fenetre{session=w-2}: agent::windows_source::redimensionnement: redimensionnement ignoré : la source capture une sortie DXGI entière (voir le constat de mesure de capteur::plein_ecran, sous-bloc D9) width=1280 height=720 mode=SortieEntiere
+2026-08-07T12:40:51.309799Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=7
+2026-08-07T12:40:51.510658Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=8
+2026-08-07T12:40:51.711254Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=9
+2026-08-07T12:40:51.718220Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:40:51.721487Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=2 backoff_ms=4
+2026-08-07T12:40:51.911843Z  WARN agent::windows_audio::fil: lecture audio échouée, capture arrêtée définitivement erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=10 rejetes=0 complements=0 echantillons_jetes=0
+2026-08-07T12:40:51.914258Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=33800 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-07T12:40:51.914273Z  INFO agent::transport::piste_audio: capture audio reconstruite restantes=2
+2026-08-07T12:40:51.914359Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-07T12:40:51.914390Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-07T12:40:51.920021Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-07T12:40:51.931010Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-07T12:40:51.951163Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-07T12:40:51.991559Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-07T12:40:52.072169Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=6
+2026-08-07T12:40:52.232406Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=7
+2026-08-07T12:40:52.432528Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=8
+2026-08-07T12:40:52.632709Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=9
+2026-08-07T12:40:52.719146Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:40:52.833126Z  WARN agent::windows_audio::fil: lecture audio échouée, capture arrêtée définitivement erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=10 rejetes=0 complements=0 echantillons_jetes=0
+2026-08-07T12:40:53.720345Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:40:53.915991Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=33800 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-07T12:40:53.916007Z  INFO agent::transport::piste_audio: capture audio reconstruite restantes=1
+2026-08-07T12:40:53.916072Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-07T12:40:53.916105Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-07T12:40:53.921512Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-07T12:40:53.931971Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-07T12:40:53.952973Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-07T12:40:53.993118Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-07T12:40:54.073543Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=6
+2026-08-07T12:40:54.234029Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=7
+2026-08-07T12:40:54.434181Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=8
+2026-08-07T12:40:54.634329Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=9
+2026-08-07T12:40:54.727678Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:40:54.834563Z  WARN agent::windows_audio::fil: lecture audio échouée, capture arrêtée définitivement erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=10 rejetes=0 complements=0 echantillons_jetes=0
+2026-08-07T12:40:55.722578Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:40:55.917896Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=33800 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-07T12:40:55.917914Z  INFO agent::transport::piste_audio: capture audio reconstruite restantes=0
+2026-08-07T12:40:55.917976Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-07T12:40:55.918009Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-07T12:40:55.923662Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-07T12:40:55.933749Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-07T12:40:55.954853Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-07T12:40:55.995297Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-07T12:40:56.075670Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=6
+2026-08-07T12:40:56.236125Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=7
+2026-08-07T12:40:56.436391Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=8
+2026-08-07T12:40:56.636761Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=9
+2026-08-07T12:40:56.837074Z  WARN agent::windows_audio::fil: lecture audio échouée, capture arrêtée définitivement erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=10 rejetes=0 complements=0 echantillons_jetes=0
+2026-08-07T12:40:56.839665Z  INFO fenetre{session=w-2}: agent::capteur::sommeil: capture audio morte, réarmement programmé session=w-2 rearmement=1 repit=5s
+2026-08-07T12:40:56.858465Z  INFO agent::transport::piste_audio: ordre audio applique session=w-2 actif=false capture_morte=true
+2026-08-07T12:40:57.729350Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:40:58.200935Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=592 endormie=false cadence="59.2"
+2026-08-07T12:40:58.237562Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=596 cadence="59.6"
+2026-08-07T12:40:58.725307Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:41:00.732061Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:41:01.727030Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:41:01.977980Z  INFO agent::transport::piste_audio: ordre audio applique session=w-2 actif=true capture_morte=true
+2026-08-07T12:41:01.978274Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=33800 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-07T12:41:01.978287Z  INFO agent::transport::piste_audio: capture audio reconstruite restantes=2
+2026-08-07T12:41:01.978360Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-07T12:41:01.978394Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-07T12:41:01.983563Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-07T12:41:01.994079Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-07T12:41:02.014283Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-07T12:41:02.054444Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-07T12:41:02.135182Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=6
+2026-08-07T12:41:02.296100Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=7
+2026-08-07T12:41:02.496642Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=8
+2026-08-07T12:41:02.697529Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=9
+2026-08-07T12:41:02.897980Z  WARN agent::windows_audio::fil: lecture audio échouée, capture arrêtée définitivement erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=10 rejetes=0 complements=0 echantillons_jetes=0
+2026-08-07T12:41:03.732584Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:41:03.978227Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=33800 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-07T12:41:03.978243Z  INFO agent::transport::piste_audio: capture audio reconstruite restantes=1
+2026-08-07T12:41:03.978306Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-07T12:41:03.978340Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-07T12:41:03.983658Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-07T12:41:03.994041Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-07T12:41:04.014375Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-07T12:41:04.055030Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-07T12:41:04.135632Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=6
+2026-08-07T12:41:04.296074Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=7
+2026-08-07T12:41:04.496413Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=8
+2026-08-07T12:41:04.697064Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=9
+2026-08-07T12:41:04.729586Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:41:04.897726Z  WARN agent::windows_audio::fil: lecture audio échouée, capture arrêtée définitivement erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=10 rejetes=0 complements=0 echantillons_jetes=0
+2026-08-07T12:41:05.981177Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=33800 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-07T12:41:05.981201Z  INFO agent::transport::piste_audio: capture audio reconstruite restantes=0
+2026-08-07T12:41:05.981306Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-07T12:41:05.981340Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-07T12:41:05.986602Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-07T12:41:05.997123Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-07T12:41:06.017573Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-07T12:41:06.058056Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-07T12:41:06.138293Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=6
+2026-08-07T12:41:06.299178Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=7
+2026-08-07T12:41:06.499703Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=8
+2026-08-07T12:41:06.699826Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=9
+2026-08-07T12:41:06.735265Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:41:06.900735Z  WARN agent::windows_audio::fil: lecture audio échouée, capture arrêtée définitivement erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=10 rejetes=0 complements=0 echantillons_jetes=0
+2026-08-07T12:41:06.906781Z  INFO fenetre{session=w-2}: agent::capteur::sommeil: capture audio morte, réarmement programmé session=w-2 rearmement=2 repit=5s
+2026-08-07T12:41:06.917755Z  INFO agent::transport::piste_audio: ordre audio applique session=w-2 actif=false capture_morte=true
+2026-08-07T12:41:07.729569Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:41:08.208042Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=855 endormie=false cadence="85.4"
+2026-08-07T12:41:08.237852Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=854 cadence="85.4"
+2026-08-07T12:41:11.998015Z  INFO agent::transport::piste_audio: ordre audio applique session=w-2 actif=true capture_morte=true
+2026-08-07T12:41:11.998294Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=33800 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-07T12:41:11.998306Z  INFO agent::transport::piste_audio: capture audio reconstruite restantes=2
+2026-08-07T12:41:11.998377Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-07T12:41:11.998410Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-07T12:41:12.003601Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-07T12:41:12.013988Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-07T12:41:12.034119Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-07T12:41:12.074246Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-07T12:41:12.154656Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=6
+2026-08-07T12:41:12.315091Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=7
+2026-08-07T12:41:12.515723Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=8
+2026-08-07T12:41:12.716111Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=9
+2026-08-07T12:41:12.916376Z  WARN agent::windows_audio::fil: lecture audio échouée, capture arrêtée définitivement erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=10 rejetes=0 complements=0 echantillons_jetes=0
+2026-08-07T12:41:13.998319Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=33800 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-07T12:41:13.998338Z  INFO agent::transport::piste_audio: capture audio reconstruite restantes=1
+2026-08-07T12:41:13.998430Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-07T12:41:13.998469Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-07T12:41:14.003825Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-07T12:41:14.014346Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-07T12:41:14.034606Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-07T12:41:14.074889Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-07T12:41:14.155199Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=6
+2026-08-07T12:41:14.315443Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=7
+2026-08-07T12:41:14.515583Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=8
+2026-08-07T12:41:14.715849Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=9
+2026-08-07T12:41:14.916088Z  WARN agent::windows_audio::fil: lecture audio échouée, capture arrêtée définitivement erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=10 rejetes=0 complements=0 echantillons_jetes=0
+2026-08-07T12:41:16.000588Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=33800 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-07T12:41:16.000607Z  INFO agent::transport::piste_audio: capture audio reconstruite restantes=0
+2026-08-07T12:41:16.000679Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-07T12:41:16.000718Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-07T12:41:16.005886Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-07T12:41:16.016058Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-07T12:41:16.036718Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-07T12:41:16.077553Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-07T12:41:16.158010Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=6
+2026-08-07T12:41:16.318565Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=7
+2026-08-07T12:41:16.519031Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=8
+2026-08-07T12:41:16.719717Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=9
+2026-08-07T12:41:16.920052Z  WARN agent::windows_audio::fil: lecture audio échouée, capture arrêtée définitivement erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=10 rejetes=0 complements=0 echantillons_jetes=0
+2026-08-07T12:41:16.921948Z  INFO fenetre{session=w-2}: agent::capteur::sommeil: capture audio morte, réarmement programmé session=w-2 rearmement=3 repit=5s
+2026-08-07T12:41:16.937925Z  INFO agent::transport::piste_audio: ordre audio applique session=w-2 actif=false capture_morte=true
+2026-08-07T12:41:18.216519Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=861 endormie=false cadence="86.0"
+2026-08-07T12:41:18.238201Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=860 cadence="86.0"
+2026-08-07T12:41:22.018028Z  INFO agent::transport::piste_audio: ordre audio applique session=w-2 actif=true capture_morte=true
+2026-08-07T12:41:22.018260Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=33800 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-07T12:41:22.018270Z  INFO agent::transport::piste_audio: capture audio reconstruite restantes=2
+2026-08-07T12:41:22.018380Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-07T12:41:22.018435Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-07T12:41:22.023672Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-07T12:41:22.034483Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-07T12:41:22.054552Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-07T12:41:22.094977Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-07T12:41:22.175361Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=6
+2026-08-07T12:41:22.335658Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=7
+2026-08-07T12:41:22.536147Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=8
+2026-08-07T12:41:22.736346Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=9
+2026-08-07T12:41:22.936997Z  WARN agent::windows_audio::fil: lecture audio échouée, capture arrêtée définitivement erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=10 rejetes=0 complements=0 echantillons_jetes=0
+2026-08-07T12:41:24.018358Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=33800 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-07T12:41:24.018375Z  INFO agent::transport::piste_audio: capture audio reconstruite restantes=1
+2026-08-07T12:41:24.018446Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-07T12:41:24.018486Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-07T12:41:24.023700Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-07T12:41:24.034630Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-07T12:41:24.055222Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-07T12:41:24.095964Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-07T12:41:24.176216Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=6
+2026-08-07T12:41:24.336673Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=7
+2026-08-07T12:41:24.537013Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=8
+2026-08-07T12:41:24.737652Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=9
+2026-08-07T12:41:24.937846Z  WARN agent::windows_audio::fil: lecture audio échouée, capture arrêtée définitivement erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=10 rejetes=0 complements=0 echantillons_jetes=0
+2026-08-07T12:41:26.020815Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=33800 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-07T12:41:26.020830Z  INFO agent::transport::piste_audio: capture audio reconstruite restantes=0
+2026-08-07T12:41:26.020902Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-07T12:41:26.020941Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-07T12:41:26.026215Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-07T12:41:26.036680Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-07T12:41:26.057326Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-07T12:41:26.097515Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-07T12:41:26.177841Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=6
+2026-08-07T12:41:26.338006Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=7
+2026-08-07T12:41:26.538699Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=8
+2026-08-07T12:41:26.739183Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=9
+2026-08-07T12:41:26.939728Z  WARN agent::windows_audio::fil: lecture audio échouée, capture arrêtée définitivement erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=10 rejetes=0 complements=0 echantillons_jetes=0
+2026-08-07T12:41:26.947365Z  INFO fenetre{session=w-2}: agent::capteur::sommeil: capture audio morte, réarmement programmé session=w-2 rearmement=4 repit=5s
+2026-08-07T12:41:26.968011Z  INFO agent::transport::piste_audio: ordre audio applique session=w-2 actif=false capture_morte=true
+2026-08-07T12:41:28.226745Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=866 endormie=false cadence="86.5"
+2026-08-07T12:41:28.247557Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=866 cadence="86.5"
+2026-08-07T12:41:32.037719Z  INFO agent::transport::piste_audio: ordre audio applique session=w-2 actif=true capture_morte=true
+2026-08-07T12:41:32.037944Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=33800 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-07T12:41:32.037955Z  INFO agent::transport::piste_audio: capture audio reconstruite restantes=2
+2026-08-07T12:41:32.038026Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-07T12:41:32.038064Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-07T12:41:32.043155Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-07T12:41:32.053640Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-07T12:41:32.074144Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-07T12:41:32.115232Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-07T12:41:32.196135Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=6
+2026-08-07T12:41:32.356924Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=7
+2026-08-07T12:41:32.557102Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=8
+2026-08-07T12:41:32.757413Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=9
+2026-08-07T12:41:32.958130Z  WARN agent::windows_audio::fil: lecture audio échouée, capture arrêtée définitivement erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=10 rejetes=0 complements=0 echantillons_jetes=0
+2026-08-07T12:41:34.038270Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=33800 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-07T12:41:34.038288Z  INFO agent::transport::piste_audio: capture audio reconstruite restantes=1
+2026-08-07T12:41:34.038362Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-07T12:41:34.038401Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-07T12:41:34.043914Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-07T12:41:34.054010Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-07T12:41:34.074680Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-07T12:41:34.079014Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-07T12:41:34.079310Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:41:34.082450Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=2 backoff_ms=4
+2026-08-07T12:41:34.087342Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=3 backoff_ms=8
+2026-08-07T12:41:34.096615Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=4 backoff_ms=16
+2026-08-07T12:41:34.113656Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=5 backoff_ms=32
+2026-08-07T12:41:34.114979Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-07T12:41:34.146196Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=6 backoff_ms=64
+2026-08-07T12:41:34.195569Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=6
+2026-08-07T12:41:34.356022Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=7
+2026-08-07T12:41:34.556474Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=8
+2026-08-07T12:41:34.756811Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=9
+2026-08-07T12:41:34.957105Z  WARN agent::windows_audio::fil: lecture audio échouée, capture arrêtée définitivement erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=10 rejetes=0 complements=0 echantillons_jetes=0
+2026-08-07T12:41:35.082794Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:41:36.039089Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=33800 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-07T12:41:36.039105Z  INFO agent::transport::piste_audio: capture audio reconstruite restantes=0
+2026-08-07T12:41:36.039171Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-07T12:41:36.039208Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-07T12:41:36.044902Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-07T12:41:36.055266Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-07T12:41:36.076152Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-07T12:41:36.082501Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:41:36.116698Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-07T12:41:36.196900Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=6
+2026-08-07T12:41:36.357941Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=7
+2026-08-07T12:41:36.558404Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=8
+2026-08-07T12:41:36.758875Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=9
+2026-08-07T12:41:36.959962Z  WARN agent::windows_audio::fil: lecture audio échouée, capture arrêtée définitivement erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=10 rejetes=0 complements=0 echantillons_jetes=0
+2026-08-07T12:41:36.961234Z  INFO fenetre{session=w-2}: agent::capteur::sommeil: capture audio morte, réarmement programmé session=w-2 rearmement=5 repit=5s
+2026-08-07T12:41:36.981170Z  INFO agent::transport::piste_audio: ordre audio applique session=w-2 actif=false capture_morte=true
+2026-08-07T12:41:36.986244Z  WARN agent::transport::evenements: aucune estimation de bande passante reçue : l'adaptation reste indisponible et le débit demeure au plafond configuré
+2026-08-07T12:41:37.082582Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:41:38.083025Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:41:38.236153Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=877 endormie=false cadence="87.6"
+2026-08-07T12:41:38.251014Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=877 cadence="87.7"
+2026-08-07T12:41:39.093249Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:41:40.082578Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:41:41.082808Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:41:42.061125Z  INFO agent::transport::piste_audio: ordre audio applique session=w-2 actif=true capture_morte=true
+2026-08-07T12:41:42.061346Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=33800 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-07T12:41:42.061356Z  INFO agent::transport::piste_audio: capture audio reconstruite restantes=2
+2026-08-07T12:41:42.061493Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-07T12:41:42.061526Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-07T12:41:42.066698Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-07T12:41:42.077162Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-07T12:41:42.082840Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-07T12:41:42.098038Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4

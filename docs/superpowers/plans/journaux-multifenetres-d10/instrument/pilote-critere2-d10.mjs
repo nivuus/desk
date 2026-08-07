@@ -65,6 +65,12 @@ const DECLENCHEUR5 = process.env.DECLENCHEUR5 === '1';
 const ATTENTE_DECLENCHEUR5_S = Number(process.env.ATTENTE_DECLENCHEUR5_S ?? 20);
 const PREPARER = process.env.PREPARER !== '0';
 const BITRATE = process.env.BITRATE ?? '8000000';
+// Rejeu du 7 août 2026 (correctif ddd0b05) : éliminer le confondeur relevé
+// dans task-14-report.md (le focus imprévu de la seconde fenêtre à
+// l'attache, qui démeut w-2 avant même que sa reconstruction ait pu être
+// observée seule). N'ouvre QUE la fenêtre A, seule porteuse possible de son
+// groupe — immunisé au basculement de focus par construction.
+const SEULE_FENETRE = process.env.SEULE_FENETRE === '1';
 
 const t0 = Date.now();
 function log(...a) {
@@ -390,10 +396,16 @@ async function main() {
             return false;
         };
 
-        log(`>>> OUVERTURE — fenêtre A (porteuse attendue, ${HZ_A} Hz) puis fenêtre B (voisine, ${HZ_B} Hz)`);
-        const ouvA = await ouvrirFenetreTon(1, HZ_A, 0.25);
-        const ouvB = await ouvrirFenetreTon(2, HZ_B, 0.25);
-        releve.ouvertures = { A: ouvA, B: ouvB };
+        if (SEULE_FENETRE) {
+            log(`>>> OUVERTURE — fenêtre A SEULE (porteuse, ${HZ_A} Hz) — SEULE_FENETRE=1, aucune voisine`);
+            const ouvA = await ouvrirFenetreTon(1, HZ_A, 0.25);
+            releve.ouvertures = { A: ouvA, B: 'sautee (SEULE_FENETRE=1)' };
+        } else {
+            log(`>>> OUVERTURE — fenêtre A (porteuse attendue, ${HZ_A} Hz) puis fenêtre B (voisine, ${HZ_B} Hz)`);
+            const ouvA = await ouvrirFenetreTon(1, HZ_A, 0.25);
+            const ouvB = await ouvrirFenetreTon(2, HZ_B, 0.25);
+            releve.ouvertures = { A: ouvA, B: ouvB };
+        }
 
         // Step 1 : relever les PID chrome VM et vérifier le groupe unique.
         await dodo(3000);
