@@ -87,41 +87,11 @@ pub const RELANCES_MAX: u32 = 3;
 /// page-shell ne s'est pas connectée dans ce délai.
 pub const DELAI_ATTENTE_VIEWPORT_MAX: std::time::Duration = std::time::Duration::from_secs(30);
 
-/// Ce que la table demande au monde extérieur de faire. Le superviseur les
-/// exécute dans l'ordre rendu.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Effet {
-    AnnoncerOuverture { session: IdSession, titre: String },
-    /// `titre` accompagne la demande parce que le refus qui peut en découler
-    /// s'affiche à un humain. Sans lui, l'appelant n'a que l'identifiant de
-    /// session sous la main et la page-shell annonce « *« w-3 » n'a pas pu
-    /// s'ouvrir* » — un message qui ne désigne rien pour l'utilisateur.
-    CreerSortie { session: IdSession, titre: String, largeur: u32, hauteur: u32 },
-    LancerEnfant {
-        session: IdSession,
-        fenetre: IdFenetre,
-        /// Nom DXGI de la sortie (`\\.\DISPLAYn`), **et non un couple
-        /// d'index** : ceux-ci sont positionnels, l'enfant les résout à son
-        /// démarrage — donc plus tard — et une sortie apparue ou disparue
-        /// entre-temps le fait capturer autre chose, ou échouer.
-        nom_sortie: String,
-        /// Taille RETENUE, pas celle de la sortie — voir `Consigne::taille`.
-        taille: (u32, u32),
-    },
-    TuerEnfant { session: IdSession },
-    /// `sortie_pilote` est **l'identifiant du PILOTE**, pas le nom DXGI : le
-    /// pilote ne sait retirer une sortie que par ce qu'il a lui-même rendu à
-    /// la création ; lui présenter un nom DXGI ne détruirait rien, ou
-    /// détruirait la sortie d'autrui. Les deux identifiants désignent la même
-    /// sortie et n'ont aucune relation calculable — d'où les deux champs.
-    ///
-    /// `nom_sortie` accompagne la destruction parce que l'entrée a déjà
-    /// quitté la table quand cet effet est rendu : sans lui, l'appelant ne
-    /// pourrait plus savoir quelle place DXGI redevient libre.
-    DetruireSortie { sortie_pilote: u32, nom_sortie: String },
-    AnnoncerFermeture { session: IdSession },
-    AnnoncerRefus { titre: String, motif: String },
-}
+// Extrait dans un fichier voisin (tâche 9 du sous-bloc D10, à la revue) :
+// purement déclaratif, déjà lourdement documenté, et ce fichier-ci était à
+// marge 1 avant l'extraction. Voir la doc de tête de `table/effets.rs`.
+mod effets;
+pub use effets::Effet;
 
 #[derive(Debug)]
 struct Entree {

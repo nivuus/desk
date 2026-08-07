@@ -31,8 +31,10 @@ const EN_TETE_IMAGE: usize = 9;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum VersCapteur {
-    /// Premier message d'un enfant : il se décrit lui-même. Le capteur n'a
-    /// besoin d'aucune information venue du superviseur.
+    /// Premier message d'un enfant : il se décrit lui-même. Il n'existe
+    /// **aucun canal direct superviseur→capteur** ; ce qui vient du
+    /// superviseur (par exemple `taille`, ci-dessous) transite par l'enfant,
+    /// qui le lui redit ici.
     Attache {
         session: String,
         hwnd: u64,
