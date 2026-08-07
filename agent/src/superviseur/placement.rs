@@ -47,6 +47,43 @@ pub fn taille_compatible(a: (u32, u32), b: (u32, u32)) -> bool {
     proche(a.0, b.0) && proche(a.1, b.1)
 }
 
+/// Vrai si une sortie peut servir un viewport donné.
+///
+/// **Une inégalité, plus une égalité, et c'est tout le sous-bloc D10.** Une
+/// sortie virtuelle ne naît PAS à la taille demandée : elle naît à la dernière
+/// taille laissée au registre par un `CDS_UPDATEREGISTRY` antérieur (D8,
+/// tâche 3bis — confirmé, reproduit, jamais expliqué). Sur cette VM le registre
+/// est resté à 3840×2160, et l'égalité à quatre pixels près refusait donc
+/// TOUTE sortie : le produit plafonnait à trois fenêtres, aux six exécutions
+/// de la recette ③ de D9, sans exception.
+///
+/// Le produit n'écrit plus au registre depuis D9, mais **rien ne nettoie ce qui
+/// y est déjà écrit** — et la portée du blocage (par GUID ou globale) reste
+/// inconnue. D'où le choix de tolérer plutôt que de nettoyer : ainsi la
+/// question devient **sans objet**, et non résolue.
+///
+/// La tolérance de `TOLERANCE_PX` est conservée dans le sens du MANQUE, pour la
+/// course de rattachement relevée par la recette D1 (sortie créée à 1280×713,
+/// rendue à 1280×720 un essai sur deux).
+pub fn sortie_assez_grande(sortie: (u32, u32), demandee: (u32, u32)) -> bool {
+    let assez = |s: u32, d: u32| s as i64 + TOLERANCE_PX >= d as i64;
+    assez(sortie.0, demandee.0) && assez(sortie.1, demandee.1)
+}
+
+/// La taille à laquelle la fenêtre est posée, et que la capture recadre.
+///
+/// `min` axe par axe, **sans préserver le rapport d'aspect** : on recadre une
+/// texture, on ne la met pas à l'échelle. C'est l'inverse de
+/// `windows_source_sortie::borner_a_la_taille_max`, qui redimensionne et doit
+/// donc, lui, préserver ce rapport.
+///
+/// Dimensions paires (l'encodeur NV12 les exige) et jamais nulles (une boîte
+/// vidéo repliée émet `(0, 0)`, cas réel relevé en D8).
+pub fn taille_retenue(demandee: (u32, u32), sortie: (u32, u32)) -> (u32, u32) {
+    let retenir = |d: u32, s: u32| (d.min(s).max(2)) & !1;
+    (retenir(demandee.0, sortie.0), retenir(demandee.1, sortie.1))
+}
+
 /// Sortie DXGI correspondant à des dimensions demandées, parmi celles qui ne
 /// sont pas déjà attribuées.
 ///
@@ -320,5 +357,59 @@ mod tests_taille {
     #[test]
     fn le_facteur_dpi_reste_refuse() {
         assert!(!taille_compatible((1280, 720), (1920, 1080)));
+    }
+
+    /// Le fait produit de D9 : sur cette VM, les sorties naissent à 3840×2160
+    /// parce que le registre y est resté. `taille_compatible` refusait, et le
+    /// produit plafonnait à trois fenêtres.
+    #[test]
+    fn une_sortie_nee_trop_grande_convient_desormais() {
+        assert!(sortie_assez_grande((3840, 2160), (1280, 720)));
+    }
+
+    #[test]
+    fn une_sortie_nee_trop_petite_ne_convient_pas() {
+        assert!(!sortie_assez_grande((1024, 576), (1280, 720)));
+    }
+
+    /// La course de rattachement de D1 (1280×713 rendue 1280×720) reste
+    /// couverte : quatre pixels de tolérance, comme le replacement.
+    #[test]
+    fn un_manque_de_quatre_pixels_reste_accepte() {
+        assert!(sortie_assez_grande((1276, 716), (1280, 720)));
+    }
+
+    #[test]
+    fn un_manque_de_sept_pixels_est_refuse() {
+        assert!(!sortie_assez_grande((1280, 713), (1280, 720)));
+    }
+
+    #[test]
+    fn la_taille_retenue_recadre_une_sortie_trop_grande() {
+        assert_eq!(taille_retenue((1280, 720), (3840, 2160)), (1280, 720));
+    }
+
+    /// Née trop petite, la sortie est honorée à ce qu'elle offre : le client
+    /// met à l'échelle. Aucun cas ne rend plus une sortie au pilote pour une
+    /// question de taille.
+    #[test]
+    fn la_taille_retenue_se_borne_a_la_sortie_quand_celle_ci_est_plus_petite() {
+        assert_eq!(taille_retenue((1280, 720), (1024, 576)), (1024, 576));
+    }
+
+    /// L'encodeur NV12 exige des dimensions paires, et une sortie née à une
+    /// taille impaire est un cas réel (viewport impair, D1).
+    #[test]
+    fn la_taille_retenue_est_toujours_paire_et_jamais_nulle() {
+        assert_eq!(taille_retenue((1281, 721), (3840, 2160)), (1280, 720));
+        assert_eq!(taille_retenue((0, 0), (1280, 720)), (2, 2));
+    }
+
+    /// Les axes se bornent SÉPARÉMENT : on recadre, on ne met pas à
+    /// l'échelle, donc il n'y a aucun rapport d'aspect à préserver ici —
+    /// contrairement à `borner_a_la_taille_max`, qui, lui, redimensionne.
+    #[test]
+    fn les_deux_axes_se_bornent_separement() {
+        assert_eq!(taille_retenue((1920, 720), (1280, 2160)), (1280, 720));
     }
 }
