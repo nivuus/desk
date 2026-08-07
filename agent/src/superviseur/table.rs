@@ -281,12 +281,13 @@ impl Table {
     /// et `taille_sortie` restait figée à la taille de CRÉATION. **Ce chemin
     /// a été retiré au sous-bloc D9**, mesure à l'appui (voir le constat en
     /// tête de `capteur/plein_ecran.rs`) : plus rien, en production, ne
-    /// retaille une sortie après sa création. Le rafraîchissement périodique
-    /// (`placement_periodique.rs::controler_le_placement`) continue de
-    /// l'appeler à chaque relecture DXGI — inoffensif, la taille lue ne
-    /// devant plus jamais différer de celle mémorisée —, gardé pour ne pas
-    /// réintroduire cet écart si un futur mécanisme retaille une sortie hors
-    /// de cette table.
+    /// retaille une sortie après sa création. **Plus aucun appelant depuis le
+    /// sous-bloc D10** : `taille_sortie` porte désormais la taille RETENUE
+    /// (`sortie_pour_viewport` accepte une sortie plus grande que le
+    /// viewport), qui n'a plus de raison d'égaler la taille DXGI brute — le
+    /// rafraîchissement périodique l'aurait donc écrasée, et l'appel a été
+    /// retiré. Aucun filet de sécurité n'est câblé pour un futur retaillage
+    /// hors de cette table.
     pub fn rafraichir_taille_sortie(&mut self, session: &IdSession, taille: (u32, u32)) {
         if let Some(entree) = self.entrees.get_mut(session) {
             if entree.taille_sortie.is_some() {
@@ -296,8 +297,10 @@ impl Table {
     }
 
     /// Sessions dont l'enfant tourne, pour le contrôle périodique de
-    /// placement. Rendues par valeur : l'appelant mute la table pendant
-    /// qu'il les parcourt.
+    /// placement. Rendues par valeur, mais plus par nécessité d'emprunt
+    /// depuis le sous-bloc D10 : son unique appelant
+    /// (`placement_periodique.rs::controler_le_placement`) ne tient plus
+    /// qu'un `&Table`, et ne mute rien pendant qu'il les parcourt.
     pub fn sessions_vivantes(&self) -> Vec<IdSession> {
         self.entrees
             .iter()

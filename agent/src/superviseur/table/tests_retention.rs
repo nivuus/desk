@@ -283,11 +283,15 @@ fn l_abandon_d_une_entree_figee_rend_la_sortie() {
 /// Ex-IMPORTANT 5 (revue de la tâche 9) : `changer_mode_de_sortie` (D8)
 /// retaillait une sortie hors de cette table, et `rafraichir_taille_sortie`
 /// était le rattrapage. **Ce chemin a été retiré au sous-bloc D9**, mesure à
-/// l'appui (voir le constat en tête de `capteur/plein_ecran.rs`) — mais
-/// `rafraichir_taille_sortie` reste appelée par le contrôle périodique de
-/// placement sur chaque lecture DXGI fraîche, et ce test couvre toujours son
-/// comportement propre : la répercussion sur ce que `viewport_recu` comparera
-/// à la prochaine relance.
+/// l'appui (voir le constat en tête de `capteur/plein_ecran.rs`). **Et
+/// `rafraichir_taille_sortie` n'a plus aucun appelant depuis le sous-bloc
+/// D10** : le contrôle périodique de placement (`placement_periodique.rs`)
+/// l'appelait sur chaque lecture DXGI fraîche, mais `taille_sortie` porte
+/// désormais la taille RETENUE, sans plus de raison d'égaler la taille DXGI
+/// brute — ce rafraîchissement l'aurait donc écrasée, et l'appel a été
+/// retiré. Ce test couvre la méthode elle-même, générale et toujours
+/// exposée : la répercussion sur ce que `viewport_recu` comparera à la
+/// prochaine relance.
 #[test]
 fn rafraichir_la_taille_met_a_jour_une_sortie_deja_retenue() {
     let mut t = Table::nouvelle(4);
@@ -295,8 +299,10 @@ fn rafraichir_la_taille_met_a_jour_une_sortie_deja_retenue() {
     assert_eq!(t.taille_sortie_de(&session), Some((1280, 720)));
 
     // Une sortie retaillée par un mécanisme quelconque (aucun n'existe plus
-    // en production depuis D9, mais la méthode reste générale) : c'est ce que
-    // le contrôle périodique relirait sur DXGI.
+    // en production depuis D9, et depuis D10 plus aucun appelant n'invoque
+    // même cette méthode — voir la doc ci-dessus). Un futur mécanisme de ce
+    // genre devrait lui passer la taille RETENUE, pas relire la taille DXGI
+    // brute de la sortie.
     t.rafraichir_taille_sortie(&session, (1920, 1080));
 
     assert_eq!(t.taille_sortie_de(&session), Some((1920, 1080)));

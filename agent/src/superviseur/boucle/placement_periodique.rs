@@ -60,8 +60,11 @@ pub(super) fn controler_le_placement(table: &Table) {
 /// D10) : `sortie.rect` donne l'origine dans le bureau virtuel, mais
 /// `Table::taille_sortie_de` donne la taille RETENUE — celle, éventuellement
 /// bien plus petite que la sortie, à laquelle la fenêtre a été posée et que la
-/// capture recadre. Une session sans taille retenue (pas encore
-/// `Etat::Vivante`) n'a rien à replacer.
+/// capture recadre. Le second `let Some` ne peut, en pratique, jamais échouer
+/// une fois le premier passé : `sortie_creee` pose `nom_sortie` et
+/// `taille_sortie` ensemble, jamais l'un sans l'autre (`table.rs`) — ce n'est
+/// donc pas `Etat::Vivante` qui gouverne ici, mais cet invariant-là. Gardé
+/// tel quel plutôt que supposé, pour ne rien devoir à un fichier voisin.
 pub(super) fn replacer_si_besoin(table: &Table, session: &IdSession, toutes: &[SortieDxgi]) {
     let Some(nom) = table.nom_sortie_de(session) else {
         return;
