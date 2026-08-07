@@ -15,6 +15,32 @@ use crate::audio::{AudioPacket, AudioSource};
 use crate::h264::AccessUnit;
 use crate::source::VideoSource;
 
+/// Session minimale pour les tests qui n'exercent qu'un sous-système isolé
+/// (ici, la reconstruction audio) : vidéo de test, IP locale, horloge et
+/// plafond arbitraires — aucun de ces choix n'est inspecté par les tests qui
+/// l'emploient.
+pub(super) fn session_d_essai() -> Session {
+    let source = Box::new(crate::transport::fixtures::video_test_source());
+    Session::new(
+        source,
+        crate::transport::fixtures::local_ip(),
+        Instant::now(),
+        12_000_000,
+    )
+    .expect("session")
+}
+
+/// Paquet Opus minimal, horodaté à l'instant présent — suffisant pour les
+/// tests qui ne portent que sur le CHEMIN emprunté par un paquet, jamais sur
+/// son contenu.
+pub(super) fn paquet_d_essai() -> AudioPacket {
+    AudioPacket {
+        data: vec![0xAA],
+        pts_48k: 0,
+        captured_at: Instant::now(),
+    }
+}
+
 /// Source factice qui enregistre les appels à `set_awake` et rend une
 /// annonce de sommeil préparée une seule fois — comme le fait réellement
 /// `SourceDistante` (`Option` consommé par `take()`), sans dépendre du

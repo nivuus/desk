@@ -157,6 +157,61 @@ impl Session {
         );
     }
 
+    /// Confie de quoi refabriquer la source audio après la mort de sa capture.
+    pub fn set_audio_reconstructeur(&mut self, r: crate::audio::Reconstructeur) {
+        self.audio_reconstructeur = Some(r);
+    }
+
+    /// Rend `true` s'il faut signaler `AudioMort` au capteur — c'est-à-dire
+    /// quand il n'y a plus rien à reconstruire.
+    ///
+    /// **La reconstruction passe AVANT le signalement**, et c'est l'inversion
+    /// que D10 apporte : le signal au capteur cesse d'être le premier geste
+    /// pour devenir le repli. La promotion d'une voisine (la seule moitié de
+    /// D9 qui fonctionnait) garde alors son rôle exact — celui du cas où
+    /// l'arbre de processus a réellement disparu.
+    ///
+    /// ⚠️ **Cette méthode court sur le fil de `Session::run`**, et ouvrir une
+    /// source WASAPI y est un appel bloquant de durée non bornée. D'où le
+    /// répit : au plus une tentative par `REPIT_RECONSTRUCTION`. Si la mesure
+    /// montre qu'elle retarde le drainage, elle passera sur un fil — même
+    /// risque que `Drop for H264Encoder` porte déjà sur ce fil.
+    pub(super) fn reconstruire_ou_signaler(&mut self, maintenant: std::time::Instant) -> bool {
+        if !self.capture_audio_morte() {
+            return false;
+        }
+        let Some(reconstructeur) = self.audio_reconstructeur.as_ref() else {
+            return true;
+        };
+        if self.reconstructions_restantes == 0 {
+            return true;
+        }
+        if self.prochaine_reconstruction.is_some_and(|t| maintenant < t) {
+            return false;
+        }
+        self.reconstructions_restantes -= 1;
+        self.prochaine_reconstruction = Some(maintenant + crate::audio::REPIT_RECONSTRUCTION);
+        match reconstructeur() {
+            Ok(source) => {
+                tracing::info!(
+                    restantes = self.reconstructions_restantes,
+                    "capture audio reconstruite"
+                );
+                self.audio_source = Some(source);
+                self.audio_reconstruit_sans_preuve = true;
+                false
+            }
+            Err(erreur) => {
+                tracing::warn!(
+                    %erreur,
+                    restantes = self.reconstructions_restantes,
+                    "reconstruction de la capture audio refusée"
+                );
+                false
+            }
+        }
+    }
+
     /// Vrai si la capture audio de cette fenêtre a définitivement abandonné
     /// (`AudioSource::capture_morte`, posé après
     /// `crate::audio::LECTURES_ECHOUEES_MAX` erreurs de lecture WASAPI

@@ -59,6 +59,39 @@ pub trait AudioSource {
     }
 }
 
+/// De quoi refabriquer une source audio après la mort de sa capture.
+///
+/// **Le remède du leg 1 de D9.** Quand `capture.read()` échoue plus de
+/// `LECTURES_ECHOUEES_MAX` fois d'affilée, le fil de `windows_audio.rs` pose
+/// `capture_morte` et exécute un `return` DÉFINITIF. Rien, jusqu'à D10, ne
+/// reconstruisait la source : une fenêtre seule de son groupe de PID — le cas
+/// MAJORITAIRE, une application une fenêtre — perdait son son pour le restant
+/// de la session, et la « réélection après répit » du capteur ne faisait
+/// qu'écrire un booléen que ce fil mort ne relisait jamais.
+///
+/// Une fermeture plutôt qu'un trait : `transport/` ne doit rien connaître de
+/// Windows, et c'est `demarrage/audio.rs` — seul détenteur de `Config` et du
+/// `clock_origin` — qui sait refaire le bon choix de mode.
+pub type Reconstructeur = Box<dyn Fn() -> anyhow::Result<Box<dyn AudioSource + Send>> + Send>;
+
+/// Nombre de reconstructions tentées avant d'abandonner et de signaler.
+///
+/// ⚠️ **NON CALIBRÉE** — elle rejoint `BPP_MIN`, `FACTEUR_FOCUS`,
+/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`, `TAILLE_MAX_SORTIE`,
+/// `REPIT_REARMEMENT_AUDIO` et `REARMEMENTS_MAX` dans la liste des constantes
+/// qu'aucun jugement d'écoute n'a jugées.
+pub const RECONSTRUCTIONS_MAX: u32 = 3;
+
+/// Délai entre deux tentatives de reconstruction.
+///
+/// ⚠️ **Ne PAS réemployer `temporisation_de_reprise`** : elle cadence les
+/// relectures À L'INTÉRIEUR du fil de capture, pas les reconstructions de
+/// source. Deux durées de sens différent qui divergeraient en silence le jour
+/// où l'une changerait.
+///
+/// ⚠️ **NON CALIBRÉE** elle aussi.
+pub const REPIT_RECONSTRUCTION: std::time::Duration = std::time::Duration::from_secs(2);
+
 /// Nombre d'erreurs de lecture consécutives tolérées par le fil de capture
 /// avant qu'il n'abandonne définitivement.
 ///

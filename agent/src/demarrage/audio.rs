@@ -47,6 +47,24 @@ pub(super) fn brancher(config: &Config, session: &mut Session, clock_origin: Ins
                     "audio activé"
                 );
                 session.set_audio_source(Box::new(source_audio));
+
+                // Le MÊME choix de mode que ci-dessus, refait à l'identique.
+                // Le repli n'est JAMAIS le mix global : une fenêtre qui
+                // entendrait toutes les autres sous couvert d'isolation est
+                // l'arbitrage explicitement écarté au cadrage de D7.
+                let hwnd = config.fenetre_hwnd;
+                session.set_audio_reconstructeur(Box::new(move || {
+                    let source = match hwnd {
+                        Some(hwnd) => {
+                            windows_audio::WindowsAudioSource::pour_processus(
+                                pid_de_fenetre(hwnd)?,
+                                clock_origin,
+                            )?
+                        }
+                        None => windows_audio::WindowsAudioSource::new(clock_origin)?,
+                    };
+                    Ok(Box::new(source) as Box<dyn crate::audio::AudioSource + Send>)
+                }));
             }
             Err(e) => {
                 tracing::warn!(erreur = %e, "audio indisponible, la session continue sans son");

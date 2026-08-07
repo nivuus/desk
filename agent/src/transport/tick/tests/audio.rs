@@ -70,3 +70,121 @@ fn une_capture_audio_morte_est_signalee_une_fois_puis_de_nouveau_apres_un_rattac
         "un rattachement doit remettre le verrou à zéro et permettre un nouveau signalement"
     );
 }
+
+/// Capture morte : `capture_morte()` vrai, aucun paquet. C'est l'état dans
+/// lequel le fil de `windows_audio.rs` laisse la source après son `return`
+/// définitif.
+struct SourceMorte;
+impl SourceMorte {
+    fn new() -> Self {
+        Self
+    }
+}
+impl AudioSource for SourceMorte {
+    fn capture_morte(&self) -> bool {
+        true
+    }
+    fn next_packet(&mut self) -> Option<AudioPacket> {
+        None
+    }
+    fn set_actif(&mut self, _actif: bool) {}
+}
+
+/// Capture vivante, avec ou sans paquet en attente. `sans_paquet` sert à
+/// distinguer « reconstruite » de « entendue » — c'est toute la
+/// différence entre une décision et une preuve (leg 6).
+struct SourceVivante {
+    paquets: u32,
+}
+impl SourceVivante {
+    fn new() -> Self {
+        Self::avec_un_paquet()
+    }
+    fn sans_paquet() -> Self {
+        Self { paquets: 0 }
+    }
+    fn avec_un_paquet() -> Self {
+        Self { paquets: 1 }
+    }
+}
+impl AudioSource for SourceVivante {
+    fn capture_morte(&self) -> bool {
+        false
+    }
+    fn next_packet(&mut self) -> Option<AudioPacket> {
+        (self.paquets > 0).then(|| {
+            self.paquets -= 1;
+            paquet_d_essai()
+        })
+    }
+    fn set_actif(&mut self, _actif: bool) {}
+}
+
+/// Le fait réparé (D9 §4.3) : une capture morte n'était JAMAIS
+/// reconstruite. `set_actif(true)` n'écrit qu'un booléen atomique que le
+/// fil mort ne relit jamais, et réélire la même session ne fait rien.
+#[test]
+fn une_capture_morte_est_reconstruite_avant_tout_signalement() {
+    let mut session = session_d_essai();
+    session.set_audio_source(Box::new(SourceMorte::new()));
+    let essais = std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0));
+    let compte = std::sync::Arc::clone(&essais);
+    session.set_audio_reconstructeur(Box::new(move || {
+        compte.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        Ok(Box::new(SourceVivante::new()) as Box<dyn AudioSource + Send>)
+    }));
+
+    let t0 = std::time::Instant::now();
+    assert!(!session.reconstruire_ou_signaler(t0), "rien à signaler : on reconstruit");
+    assert_eq!(essais.load(std::sync::atomic::Ordering::Relaxed), 1);
+    assert!(!session.capture_audio_morte(), "la source neuve est vivante");
+}
+
+/// Le budget épuisé fait retomber sur le signalement : c'est là que la
+/// promotion d'une voisine par le capteur reprend son rôle — la seule
+/// moitié de D9 qui fonctionnait.
+#[test]
+fn un_reconstructeur_qui_echoue_toujours_finit_par_signaler() {
+    let mut session = session_d_essai();
+    session.set_audio_source(Box::new(SourceMorte::new()));
+    session.set_audio_reconstructeur(Box::new(|| anyhow::bail!("plus d'arbre de processus")));
+
+    let mut t = std::time::Instant::now();
+    for essai in 0..crate::audio::RECONSTRUCTIONS_MAX {
+        assert!(!session.reconstruire_ou_signaler(t), "essai {essai} : budget restant");
+        t += crate::audio::REPIT_RECONSTRUCTION;
+    }
+    assert!(session.reconstruire_ou_signaler(t), "budget épuisé : il faut signaler");
+}
+
+/// Le répit est respecté : sans lui, la boucle de tick tenterait une
+/// ouverture WASAPI à chaque tour.
+#[test]
+fn le_repit_espace_les_tentatives() {
+    let mut session = session_d_essai();
+    session.set_audio_source(Box::new(SourceMorte::new()));
+    let essais = std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0));
+    let compte = std::sync::Arc::clone(&essais);
+    session.set_audio_reconstructeur(Box::new(move || {
+        compte.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        anyhow::bail!("pas encore")
+    }));
+
+    let t0 = std::time::Instant::now();
+    session.reconstruire_ou_signaler(t0);
+    session.reconstruire_ou_signaler(t0);
+    assert_eq!(
+        essais.load(std::sync::atomic::Ordering::Relaxed),
+        1,
+        "deux appels dans le même instant ne font qu'une tentative"
+    );
+}
+
+/// Sans reconstructeur — chemin mono-fenêtre, ou `AUDIO=0` —, le
+/// comportement d'avant D10 doit être exactement conservé.
+#[test]
+fn sans_reconstructeur_on_signale_immediatement() {
+    let mut session = session_d_essai();
+    session.set_audio_source(Box::new(SourceMorte::new()));
+    assert!(session.reconstruire_ou_signaler(std::time::Instant::now()));
+}

@@ -41,7 +41,7 @@ use str0m::channel::ChannelId;
 use str0m::media::Mid;
 use str0m::{Candidate, Output, Rtc};
 
-use crate::audio::AudioSource;
+use crate::audio::{AudioSource, Reconstructeur};
 use crate::congestion;
 use crate::source::VideoSource;
 
@@ -223,6 +223,31 @@ pub struct Session {
     /// vers le capteur (`VideoSource::rattachement_survenu`, sous-bloc D9) —
     /// un capteur relancé a perdu la mémoire de tout signalement antérieur.
     audio_mort_signale: bool,
+    /// De quoi refabriquer la source audio après la mort de sa capture
+    /// (sous-bloc D10). Absent sur le chemin mono-fenêtre et quand
+    /// `AUDIO=0` : le comportement d'avant D10 — signaler immédiatement —
+    /// reste exactement conservé dans ce cas.
+    audio_reconstructeur: Option<Reconstructeur>,
+    /// Budget de tentatives de reconstruction restant, initialisé à
+    /// `crate::audio::RECONSTRUCTIONS_MAX`. Épuisé, `reconstruire_ou_signaler`
+    /// retombe sur le signalement — c'est là que la promotion d'une voisine
+    /// par le capteur reprend son rôle.
+    reconstructions_restantes: u32,
+    /// Instant à partir duquel une nouvelle tentative de reconstruction est
+    /// permise. `None` : aucune tentative n'a encore eu lieu, ou aucun répit
+    /// n'est en cours.
+    ///
+    /// **Sans ce répit**, `reconstruire_ou_signaler` court sur le fil de
+    /// `Session::run` et ouvrir une source WASAPI y est un appel bloquant de
+    /// durée non bornée : sans répit, la boucle de tick tenterait une
+    /// ouverture à chaque tour.
+    prochaine_reconstruction: Option<Instant>,
+    /// Vrai dès qu'une reconstruction a réussi, tant qu'aucun paquet n'est
+    /// encore venu la confirmer. Distingue une DÉCISION (la reconstruction a
+    /// rendu `Ok`) d'une PREUVE (un paquet a réellement été produit) — c'est
+    /// toute la différence que `SourceVivante::sans_paquet` existe pour
+    /// exercer (leg 6).
+    audio_reconstruit_sans_preuve: bool,
 }
 
 impl Session {
@@ -357,6 +382,10 @@ impl Session {
             unites_video_ecrites: 0,
             dernier_compte_video: Instant::now(),
             audio_mort_signale: false,
+            audio_reconstructeur: None,
+            reconstructions_restantes: crate::audio::RECONSTRUCTIONS_MAX,
+            prochaine_reconstruction: None,
+            audio_reconstruit_sans_preuve: false,
         };
 
         // `add_local_candidate` est une mutation : on draine avant de rendre
