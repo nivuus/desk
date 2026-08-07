@@ -1,0 +1,162 @@
+{
+ "etiquette": "arme-1",
+ "part_sondage_vu": "(absent -> arme)",
+ "n_fenetres": 8,
+ "bitrate": 12000000,
+ "palier_ab_s": 30,
+ "navigateur": "Chrome/151.0.7922.108",
+ "survie_avant_purge": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ },
+ "survie_apres_lancement": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ },
+ "construction": {
+  "ouvertes": 8,
+  "cible1": "w:w-2",
+  "scenario": {
+   "etats": {
+    "w:w-2": "false/true",
+    "w:w-4": "false/false",
+    "w:w-6": "false/false",
+    "w:w-8": "false/false",
+    "w:w-10": "false/false",
+    "w:w-12": "false/false",
+    "w:w-14": "false/false",
+    "w:w-16": "false/false"
+   },
+   "focalisees": [
+    "w:w-2"
+   ]
+  },
+  "pose": {
+   "stable": true,
+   "attente_s": 34,
+   "lignes_changement": 30
+  },
+  "survie": {
+   "virsh": "en cours d’exécution",
+   "acces": "OUI"
+  }
+ },
+ "fenetres_attachees": 8,
+ "controle_sondage_avant_palier": {
+  "present": false,
+  "occurrences": 0,
+  "extrait": []
+ },
+ "palier": {
+  "debut": "2026-08-07T13:47:51.312Z",
+  "fin": "2026-08-07T13:48:21.444Z",
+  "parFenetre": {
+   "w:w-2": {
+    "secondes": 30.084,
+    "octets_video": 7388449,
+    "mbps": 1.965,
+    "paquets_perdus": 0,
+    "paquets_recus": 7654,
+    "taille": "1024x576",
+    "cachee": false,
+    "focalisee": true
+   },
+   "w:w-4": {
+    "secondes": 30.079,
+    "octets_video": 3342075,
+    "mbps": 0.889,
+    "paquets_perdus": 0,
+    "paquets_recus": 3825,
+    "taille": "852x480",
+    "cachee": false,
+    "focalisee": false
+   },
+   "w:w-6": {
+    "secondes": 30.077,
+    "octets_video": 2478808,
+    "mbps": 0.659,
+    "paquets_perdus": 0,
+    "paquets_recus": 3015,
+    "taille": "852x480",
+    "cachee": false,
+    "focalisee": false
+   },
+   "w:w-8": {
+    "secondes": 30.077,
+    "octets_video": 3175779,
+    "mbps": 0.845,
+    "paquets_perdus": 0,
+    "paquets_recus": 3657,
+    "taille": "640x360",
+    "cachee": false,
+    "focalisee": false
+   },
+   "w:w-10": {
+    "secondes": 30.077,
+    "octets_video": 3833060,
+    "mbps": 1.02,
+    "paquets_perdus": 0,
+    "paquets_recus": 4443,
+    "taille": "852x480",
+    "cachee": false,
+    "focalisee": false
+   },
+   "w:w-12": {
+    "secondes": 30.075,
+    "octets_video": 3938004,
+    "mbps": 1.048,
+    "paquets_perdus": 0,
+    "paquets_recus": 4524,
+    "taille": "852x480",
+    "cachee": false,
+    "focalisee": false
+   },
+   "w:w-14": {
+    "secondes": 30.075,
+    "octets_video": 2921624,
+    "mbps": 0.777,
+    "paquets_perdus": 0,
+    "paquets_recus": 3439,
+    "taille": "852x480",
+    "cachee": false,
+    "focalisee": false
+   },
+   "w:w-16": {
+    "secondes": 30.075,
+    "octets_video": 3011970,
+    "mbps": 0.801,
+    "paquets_perdus": 0,
+    "paquets_recus": 3485,
+    "taille": "852x480",
+    "cachee": false,
+    "focalisee": false
+   }
+  },
+  "cumule": {
+   "fenetres_mesurees": 8,
+   "octets_video_cumules": 30089769,
+   "mbps_cumule": 8.004,
+   "paquets_perdus": 0,
+   "paquets_recus": 34042
+  },
+  "survie": {
+   "virsh": "en cours d’exécution",
+   "acces": "OUI"
+  }
+ },
+ "marqueurs_fin": {
+  "lignes": 963,
+  "attachee_capteur": 8,
+  "endormie": 1,
+  "part_appliquee": 109,
+  "sondage_desarme": 0,
+  "taille_changee": 34,
+  "taille_refusee": 0,
+  "erreurs": 0
+ },
+ "controle_sondage_fin": {
+  "present": false,
+  "occurrences": 0,
+  "extrait": []
+ }
+}
