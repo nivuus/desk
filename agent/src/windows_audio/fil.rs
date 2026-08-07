@@ -90,13 +90,31 @@ pub(super) fn tourner(
     // ⚠️ Elle établit que le REMÈDE fonctionne, jamais qu'une cause naturelle
     // existe. Ne pas lire une recette qui l'emploie comme une preuve de
     // robustesse en production.
-    let mut fautes_a_injecter: u32 = std::env::var("AUDIO_FAUTE_LECTURE")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0);
-    if fautes_a_injecter > 0 {
-        tracing::warn!(fautes_a_injecter, "injection de fautes de lecture audio ARMEE (banc)");
-    }
+    //
+    // ⚠️ **GLOBAL AU PROCESSUS, pas local à ce fil** (trouvé en recette VM,
+    // tâche 14) : un budget par fil se réarme intégralement à chaque
+    // reconstruction — `std::env::var` relu à l'identique par le fil neuf —,
+    // donc CHAQUE capture reconstruite meurt à son tour avant tout appel réel
+    // à `capture.read()`, quel que soit le nombre de reconstructions. Un
+    // contrôle qui ne peut jamais rendre l'autre valeur (« de la vraie audio
+    // après reconstruction ») n'en est pas un — exactement le patron que ce
+    // dépôt vient de payer sur ce même fichier. Un `static` partagé,
+    // décrémenté par `fetch_update`, fait que le budget s'épuise UNE FOIS
+    // pour tout le processus : le premier fil consomme les 10 fautes et
+    // meurt, et la toute première reconstruction trouve le compteur à zéro,
+    // atteint la branche `else`, et lit pour de vrai.
+    static FAUTES_A_INJECTER: std::sync::OnceLock<std::sync::atomic::AtomicU32> =
+        std::sync::OnceLock::new();
+    let fautes_a_injecter = FAUTES_A_INJECTER.get_or_init(|| {
+        let v: u32 = std::env::var("AUDIO_FAUTE_LECTURE")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0);
+        if v > 0 {
+            tracing::warn!(fautes_a_injecter = v, "injection de fautes de lecture audio ARMEE (banc)");
+        }
+        std::sync::atomic::AtomicU32::new(v)
+    });
 
     while !arret_fil.load(Ordering::Relaxed) {
         let veut_emettre = emet_fil.load(Ordering::Relaxed);
@@ -185,8 +203,16 @@ pub(super) fn tourner(
             continue;
         }
 
-        let lecture = if fautes_a_injecter > 0 {
-            fautes_a_injecter -= 1;
+        // `fetch_update` : décrémente atomiquement SI le budget global
+        // n'est pas déjà à zéro (`checked_sub(1)` rend `None` à zéro, ce qui
+        // fait échouer `fetch_update` sans y toucher). Un budget épuisé par
+        // un AUTRE fil (la toute première capture, typiquement) laisse donc
+        // celui-ci — et tout fil né après lui — lire réellement dès son
+        // premier tour.
+        let lecture = if fautes_a_injecter
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_sub(1))
+            .is_ok()
+        {
             Err(anyhow::anyhow!("faute injectée (AUDIO_FAUTE_LECTURE)"))
         } else {
             capture.read()
