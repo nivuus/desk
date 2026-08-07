@@ -172,7 +172,11 @@ impl Fenetre {
     /// connexion de commandes, que ce fil ne touche jamais. L'appelant écrit
     /// `Attachee { largeur, hauteur }` en cas de succès, `Refus` sinon.
     pub fn ouvrir(attache: VersCapteur) -> Result<Fenetre> {
-        let VersCapteur::Attache { session, hwnd, sortie, fps, debit, origine_qpc } = attache
+        // `taille` : non consommé ici. La tâche 9 du sous-bloc D10 fait
+        // voyager la taille demandée jusqu'à ce point ; la tâche 8, qui la
+        // consomme pour recadrer la capture, n'est pas encore faite.
+        let VersCapteur::Attache { session, hwnd, sortie, fps, debit, taille: _, origine_qpc } =
+            attache
         else {
             bail!("le premier message d'un enfant doit être une attache");
         };

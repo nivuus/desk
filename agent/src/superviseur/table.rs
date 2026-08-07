@@ -105,6 +105,8 @@ pub enum Effet {
         /// démarrage — donc plus tard — et une sortie apparue ou disparue
         /// entre-temps le fait capturer autre chose, ou échouer.
         nom_sortie: String,
+        /// Taille RETENUE, pas celle de la sortie — voir `Consigne::taille`.
+        taille: (u32, u32),
     },
     TuerEnfant { session: IdSession },
     /// `sortie_pilote` est **l'identifiant du PILOTE**, pas le nom DXGI : le

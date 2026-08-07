@@ -58,6 +58,11 @@ pub fn connecter(
     sortie: &str,
     fps: u32,
     debit: u32,
+    // La taille RETENUE que le superviseur a posée sur cette fenêtre — pas
+    // la taille de la sortie. `(u32::MAX, u32::MAX)` en son absence (chemin
+    // mono-fenêtre) : `taille_retenue`, côté capteur (tâche 8), la ramène
+    // alors à la taille de la sortie.
+    taille: (u32, u32),
     clock_origin: Instant,
 ) -> Result<SourceDistante> {
     let signalement = Signalement {
@@ -66,6 +71,7 @@ pub fn connecter(
         sortie: sortie.to_string(),
         fps,
         debit,
+        taille,
         clock_origin,
     };
     // La PREMIÈRE ouverture est patiente : l'enfant peut démarrer avant que le
@@ -115,6 +121,7 @@ fn attacher_sur(mut commandes: std::fs::File, signalement: &Signalement) -> Resu
             sortie: signalement.sortie.clone(),
             fps: signalement.fps,
             debit: signalement.debit,
+            taille: signalement.taille,
             origine_qpc,
         },
     )?;
@@ -199,6 +206,9 @@ struct Signalement {
     sortie: String,
     fps: u32,
     debit: u32,
+    /// La taille RETENUE demandée par le superviseur, redite à chaque
+    /// attache et à chaque rattachement (`connecter`, `Canal::rattacher`).
+    taille: (u32, u32),
     clock_origin: Instant,
 }
 

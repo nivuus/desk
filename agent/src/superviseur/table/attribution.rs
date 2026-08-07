@@ -47,12 +47,14 @@ impl Table {
             // trop petite, seul cas où la recréer peut apporter des pixels.
             if crate::superviseur::placement::sortie_assez_grande(taille, (largeur, hauteur)) {
                 entree.etat = Etat::Vivante;
-                entree.taille_sortie =
-                    Some(crate::superviseur::placement::taille_retenue((largeur, hauteur), taille));
+                let retenue =
+                    crate::superviseur::placement::taille_retenue((largeur, hauteur), taille);
+                entree.taille_sortie = Some(retenue);
                 return vec![Effet::LancerEnfant {
                     session: session.clone(),
                     fenetre: entree.fenetre,
                     nom_sortie: nom,
+                    taille: retenue,
                 }];
             }
         }
@@ -111,6 +113,7 @@ impl Table {
             session: session.clone(),
             fenetre: entree.fenetre,
             nom_sortie,
+            taille,
         }]
     }
 }

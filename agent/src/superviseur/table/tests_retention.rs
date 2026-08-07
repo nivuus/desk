@@ -156,6 +156,7 @@ fn une_sortie_retenue_compatible_est_reutilisee_sans_rien_creer() {
             session: neuve.clone(),
             fenetre: IdFenetre(1),
             nom_sortie: "\\\\.\\DISPLAY7".into(),
+            taille: (1280, 720),
         }],
         "ni DetruireSortie ni CreerSortie : c'est tout l'objet du correctif"
     );
@@ -187,6 +188,7 @@ fn une_sortie_retenue_plus_grande_est_reutilisee() {
             session: neuve.clone(),
             fenetre: IdFenetre(1),
             nom_sortie: "\\\\.\\DISPLAY8".into(),
+            taille: (1280, 720),
         }],
         "une sortie retenue assez grande ne doit être ni détruite ni recréée"
     );

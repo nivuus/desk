@@ -39,6 +39,14 @@ pub enum VersCapteur {
         sortie: String,
         fps: u32,
         debit: u32,
+        /// La taille RETENUE que le superviseur a posée sur cette fenêtre
+        /// (`TAILLE_FENETRE`), pas la taille de la sortie — qui peut être
+        /// bien plus grande sur un registre pollué. `(u32::MAX, u32::MAX)`
+        /// quand l'enfant ne la connaît pas (chemin mono-fenêtre, sans
+        /// superviseur) : `taille_retenue` la ramène alors à la taille de la
+        /// sortie, ce qui reproduit le comportement d'avant ce sous-bloc.
+        /// Non consommé avant la tâche 8 — voir `Fenetre::ouvrir`.
+        taille: (u32, u32),
         /// `QueryPerformanceCounter` lu par l'enfant au moment même où il crée
         /// son `clock_origin`. Un `Instant` n'a aucun sens dans un autre
         /// processus ; QPC, lui, est commun à toute la machine. Sans ce
@@ -227,6 +235,7 @@ mod tests {
             sortie: r"\\.\DISPLAY8".into(),
             fps: 90,
             debit: 8_000_000,
+            taille: (1280, 720),
             origine_qpc: 123_456_789,
         };
         let mut tampon = Vec::new();
