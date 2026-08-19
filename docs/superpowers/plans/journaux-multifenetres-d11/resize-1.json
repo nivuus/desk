@@ -1,0 +1,74 @@
+{
+ "etiquette": "resize-1",
+ "controle": false,
+ "n_fenetres": 5,
+ "viewport_impose": true,
+ "virsh_debut": "en cours d’exécution",
+ "loadavg_debut": "5.69 7.10 7.24 9/2780 630742",
+ "preparation": "PREP\r\nagent=0\r\nchrome=0\r\nmire=True",
+ "balises": [
+  {
+   "sessionId": "9F208609A00A66D845C013B3DCA02759",
+   "url": "http://192.168.3.1:5173/?session=w-2"
+  },
+  {
+   "sessionId": "11F5A42C70C3E00ACB6698A6DA091BF5",
+   "url": "http://192.168.3.1:5173/?session=w-4"
+  },
+  {
+   "sessionId": "7E6DED8364D6F8768E55FA66FB793B2B",
+   "url": "http://192.168.3.1:5173/?session=w-6"
+  },
+  {
+   "sessionId": "2DCBFDB6A53C32C4A0EB3A69329387CF",
+   "url": "http://192.168.3.1:5173/?session=w-8"
+  },
+  {
+   "sessionId": "22E5B7547BA7480072186CEE24ACC720",
+   "url": "http://192.168.3.1:5173/?session=w-10"
+  }
+ ],
+ "balises_posees": 5,
+ "balises_ressorties": 5,
+ "pages": [
+  {
+   "sessionId": "5FF7E51B8B9AFFEEA4E9A5EC32A0889D",
+   "url": "about:blank"
+  },
+  {
+   "sessionId": "0A24F94A76B2CE56F366851861470FB9",
+   "url": "http://192.168.3.1:5173/shell.html"
+  },
+  {
+   "sessionId": "9F208609A00A66D845C013B3DCA02759",
+   "url": "http://192.168.3.1:5173/?session=w-2"
+  },
+  {
+   "sessionId": "11F5A42C70C3E00ACB6698A6DA091BF5",
+   "url": "http://192.168.3.1:5173/?session=w-4"
+  },
+  {
+   "sessionId": "7E6DED8364D6F8768E55FA66FB793B2B",
+   "url": "http://192.168.3.1:5173/?session=w-6"
+  },
+  {
+   "sessionId": "2DCBFDB6A53C32C4A0EB3A69329387CF",
+   "url": "http://192.168.3.1:5173/?session=w-8"
+  },
+  {
+   "sessionId": "22E5B7547BA7480072186CEE24ACC720",
+   "url": "http://192.168.3.1:5173/?session=w-10"
+  }
+ ],
+ "marqueurs_journal": {
+  "attachee_capteur": 5,
+  "enfant_lance": 5,
+  "introuvable_topologie": 0,
+  "sortie_creee": 5,
+  "cloture": 0,
+  "erreurs": 0
+ },
+ "controles_recus": "1 session=w-10 Resize\n      1 session=w-10 Visibility\n      1 session=w-2 Resize\n      3 session=w-2 Visibility\n      1 session=w-4 Resize\n      3 session=w-4 Visibility\n      1 session=w-6 Resize\n      3 session=w-6 Visibility\n      1 session=w-8 Resize\n      3 session=w-8 Visibility",
+ "loadavg_fin": "6.72 6.97 7.16 18/2986 644133",
+ "virsh_fin": "en cours d’exécution"
+}

@@ -1,0 +1,31 @@
+{"t":"2026-08-19T12:50:32.628Z","sessionId":"DCB36D64796D65479BC7DF3A26AC9C4C","url":"http://192.168.3.1:5173/shell.html","type":"debug","args":["[vite] connecting..."]}
+{"t":"2026-08-19T12:50:32.630Z","sessionId":"DCB36D64796D65479BC7DF3A26AC9C4C","url":"http://192.168.3.1:5173/shell.html","type":"debug","args":["[vite] connected."]}
+{"t":"2026-08-19T12:50:45.725Z","sessionId":"66C79CBDFED4DE5DB2D180173D690523","url":"http://192.168.3.1:5173/?session=w-2","type":"debug","args":["[vite] connecting..."]}
+{"t":"2026-08-19T12:50:45.741Z","sessionId":"66C79CBDFED4DE5DB2D180173D690523","url":"http://192.168.3.1:5173/?session=w-2","type":"debug","args":["[vite] connected."]}
+{"t":"2026-08-19T12:50:48.795Z","sessionId":"66C79CBDFED4DE5DB2D180173D690523","url":"http://192.168.3.1:5173/?session=w-2","type":"debug","args":["[instrumentation resize] declenchement ResizeObserver","Object"]}
+{"t":"2026-08-19T12:50:48.999Z","sessionId":"66C79CBDFED4DE5DB2D180173D690523","url":"http://192.168.3.1:5173/?session=w-2","type":"debug","args":["[instrumentation resize] emission","Object"]}
+{"t":"2026-08-19T12:50:53.688Z","sessionId":"B6AE462DB5A585982C7AEB28FA8BF024","url":"http://192.168.3.1:5173/?session=w-3","type":"debug","args":["[vite] connecting..."]}
+{"t":"2026-08-19T12:50:53.695Z","sessionId":"B6AE462DB5A585982C7AEB28FA8BF024","url":"http://192.168.3.1:5173/?session=w-3","type":"debug","args":["[vite] connected."]}
+{"t":"2026-08-19T12:50:54.132Z","sessionId":"E03B278E1905B2D102760EE47486C86E","url":"http://192.168.3.1:5173/?session=w-4","type":"debug","args":["[vite] connecting..."]}
+{"t":"2026-08-19T12:50:54.145Z","sessionId":"E03B278E1905B2D102760EE47486C86E","url":"http://192.168.3.1:5173/?session=w-4","type":"debug","args":["[vite] connected."]}
+{"t":"2026-08-19T12:50:57.195Z","sessionId":"E03B278E1905B2D102760EE47486C86E","url":"http://192.168.3.1:5173/?session=w-4","type":"debug","args":["[instrumentation resize] declenchement ResizeObserver","Object"]}
+{"t":"2026-08-19T12:50:57.403Z","sessionId":"E03B278E1905B2D102760EE47486C86E","url":"http://192.168.3.1:5173/?session=w-4","type":"debug","args":["[instrumentation resize] emission","Object"]}
+{"t":"2026-08-19T12:51:02.104Z","sessionId":"2FAC0359A5B8292D6460723D36361001","url":"http://192.168.3.1:5173/?session=w-5","type":"debug","args":["[vite] connecting..."]}
+{"t":"2026-08-19T12:51:02.115Z","sessionId":"2FAC0359A5B8292D6460723D36361001","url":"http://192.168.3.1:5173/?session=w-5","type":"debug","args":["[vite] connected."]}
+{"t":"2026-08-19T12:51:02.496Z","sessionId":"31A47AB5CCDCE51AE4E847A90C38D47D","url":"http://192.168.3.1:5173/?session=w-6","type":"debug","args":["[vite] connecting..."]}
+{"t":"2026-08-19T12:51:02.524Z","sessionId":"31A47AB5CCDCE51AE4E847A90C38D47D","url":"http://192.168.3.1:5173/?session=w-6","type":"debug","args":["[vite] connected."]}
+{"t":"2026-08-19T12:51:07.612Z","sessionId":"31A47AB5CCDCE51AE4E847A90C38D47D","url":"http://192.168.3.1:5173/?session=w-6","type":"debug","args":["[instrumentation resize] declenchement ResizeObserver","Object"]}
+{"t":"2026-08-19T12:51:07.920Z","sessionId":"31A47AB5CCDCE51AE4E847A90C38D47D","url":"http://192.168.3.1:5173/?session=w-6","type":"debug","args":["[instrumentation resize] emission","Object"]}
+{"t":"2026-08-19T12:51:10.873Z","sessionId":"A2D584E527F404814D45B427090BD4B0","url":"http://192.168.3.1:5173/?session=w-8","type":"debug","args":["[vite] connecting..."]}
+{"t":"2026-08-19T12:51:10.890Z","sessionId":"A2D584E527F404814D45B427090BD4B0","url":"http://192.168.3.1:5173/?session=w-8","type":"debug","args":["[vite] connected."]}
+{"t":"2026-08-19T12:51:13.945Z","sessionId":"A2D584E527F404814D45B427090BD4B0","url":"http://192.168.3.1:5173/?session=w-8","type":"debug","args":["[instrumentation resize] declenchement ResizeObserver","Object"]}
+{"t":"2026-08-19T12:51:14.152Z","sessionId":"A2D584E527F404814D45B427090BD4B0","url":"http://192.168.3.1:5173/?session=w-8","type":"debug","args":["[instrumentation resize] emission","Object"]}
+{"t":"2026-08-19T12:51:19.458Z","sessionId":"EEC101779CED2F176047B33EDF0417D7","url":"http://192.168.3.1:5173/?session=w-10","type":"debug","args":["[vite] connecting..."]}
+{"t":"2026-08-19T12:51:19.472Z","sessionId":"EEC101779CED2F176047B33EDF0417D7","url":"http://192.168.3.1:5173/?session=w-10","type":"debug","args":["[vite] connected."]}
+{"t":"2026-08-19T12:51:22.515Z","sessionId":"EEC101779CED2F176047B33EDF0417D7","url":"http://192.168.3.1:5173/?session=w-10","type":"debug","args":["[instrumentation resize] declenchement ResizeObserver","Object"]}
+{"t":"2026-08-19T12:51:22.722Z","sessionId":"EEC101779CED2F176047B33EDF0417D7","url":"http://192.168.3.1:5173/?session=w-10","type":"debug","args":["[instrumentation resize] emission","Object"]}
+{"t":"2026-08-19T12:52:56.813Z","sessionId":"66C79CBDFED4DE5DB2D180173D690523","url":"http://192.168.3.1:5173/?session=w-2","type":"debug","args":["[sonde collecte] balise","http://192.168.3.1:5173/?session=w-2"]}
+{"t":"2026-08-19T12:52:56.815Z","sessionId":"E03B278E1905B2D102760EE47486C86E","url":"http://192.168.3.1:5173/?session=w-4","type":"debug","args":["[sonde collecte] balise","http://192.168.3.1:5173/?session=w-4"]}
+{"t":"2026-08-19T12:52:56.817Z","sessionId":"31A47AB5CCDCE51AE4E847A90C38D47D","url":"http://192.168.3.1:5173/?session=w-6","type":"debug","args":["[sonde collecte] balise","http://192.168.3.1:5173/?session=w-6"]}
+{"t":"2026-08-19T12:52:56.819Z","sessionId":"A2D584E527F404814D45B427090BD4B0","url":"http://192.168.3.1:5173/?session=w-8","type":"debug","args":["[sonde collecte] balise","http://192.168.3.1:5173/?session=w-8"]}
+{"t":"2026-08-19T12:52:56.821Z","sessionId":"EEC101779CED2F176047B33EDF0417D7","url":"http://192.168.3.1:5173/?session=w-10","type":"debug","args":["[sonde collecte] balise","http://192.168.3.1:5173/?session=w-10"]}
