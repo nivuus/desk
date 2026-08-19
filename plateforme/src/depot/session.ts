@@ -43,9 +43,12 @@ export const MOTIF_BALAYAGE = 'plateforme redémarrée';
 /// ⚠️ `utilisateurId` est FACULTATIF, et il doit le rester. Le rendre requis
 /// casserait les appelants de P1, et surtout il n'existe pas toujours : une
 /// session appariée par un pair `agent` seul — la session de contrôle
-/// `bureau` au démarrage d'une VM — n'a personne à inscrire, l'agent n'ayant
-/// aucune identité avant P3. La colonne naît donc NULL, exactement comme P1
-/// l'écrivait.
+/// `bureau` au démarrage d'une VM — n'a personne à inscrire. ⚠️ LA RAISON A
+/// CHANGÉ AU SOUS-BLOC P3, la conséquence non : l'agent a désormais une
+/// identité (le canal `/agent` la lui délivre), mais il ne REVENDIQUE
+/// toujours rien — sa session doit rester revendicable par le client humain
+/// qui la rejoindra (`identite/garde.ts`). La colonne naît donc NULL,
+/// exactement comme P1 l'écrivait.
 ///
 /// C'est cet argument qui rend le mot « enregistrée » du critère ③
 /// littéralement vrai : la DÉCISION est prise par le registre en mémoire

@@ -14,13 +14,25 @@
 // fermé — avant toute entrée dans la table d'appariement et avant tout envoi
 // d'`ice-config`.
 //
-// Mais un pair qui se déclare `{"role":"agent", session:"n-importe-quoi"}` est
-// TOUJOURS ACCEPTÉ SANS AUCUNE IDENTITÉ, et reçoit donc des identifiants TURN
-// valables 86 400 s (`ice.ts`) comme avant. Ce n'est pas un oubli : l'agent
-// Rust n'a pas d'identité avant P3 (`agent/src/signaling.rs`), et lui en
-// exiger une casserait le chantier D en cours. La fenêtre `agent` reste donc
-// un chemin ANONYME vers des identifiants TURN de 24 h, et c'est l'écoute
-// bornée sur `PLATEFORME_HOTE` qui la rend tolérable en attendant P3.
+// ❌ CE QUI SUIVAIT ICI EST DEVENU FAUX AU SOUS-BLOC P3, et l'énoncé est
+// corrigé plutôt que retiré. Il disait qu'un pair se déclarant
+// `{"role":"agent"}` était « TOUJOURS ACCEPTÉ SANS AUCUNE IDENTITÉ » et
+// recevait des identifiants TURN de 86 400 s — la « fenêtre anonyme »,
+// tolérée parce que l'agent Rust n'avait pas d'identité et qu'en exiger une
+// aurait cassé le chantier D en cours.
+//
+// ✅ ELLE EST FERMÉE. Le rôle `agent` exige désormais son jeton, de TYPE
+// `agent`, et dont le SUJET doit préfixer le nom de session demandé
+// (`identite/garde.ts`). L'identité vient du canal `/agent`
+// (`agents/canal.ts`), qui la délivre contre le secret d'enrôlement de la VM.
+// DEUX tests distincts la tiennent (`garde-fil.test.ts`) : le refus, et
+// l'absence d'`ice-config` — un service qui refuserait APRÈS avoir envoyé la
+// configuration ICE passerait le premier et laisserait fuir le second.
+//
+// ⚠️ Ce qui RESTE vrai de l'argument d'origine : l'écoute bornée sur
+// `PLATEFORME_HOTE` (`config.ts`) demeure la défense de premier rang du
+// service, et ce n'est pas parce que la fenêtre `agent` s'est refermée
+// qu'elle cesse de compter.
 
 import { WebSocket, WebSocketServer } from 'ws';
 import { Appariement, isRole, type Role } from './appariement';
@@ -34,9 +46,10 @@ import { configurationIce } from './ice';
 // sous-bloc P2, et c'est devenu faux DE MOITIÉ dans la branche même : un pair
 // `client` est désormais gardé, et n'atteint donc cette table qu'authentifié.
 // Le bornage des TYPES garde pourtant tout son sens, et pour deux raisons —
-// il borne ce qu'un pair `agent`, TOUJOURS anonyme jusqu'à P3, peut faire
-// transiter ; et il borne ce qu'un client authentifié peut diffuser à un
-// autre. Une identité n'est pas une autorisation de relayer n'importe quoi.
+// il borne ce qu'un pair `agent` peut faire transiter — même authentifié
+// depuis P3, il n'est autorisé QUE sur les sessions que son préfixe porte, ce
+// qui ne dit rien de ce qu'il a le droit d'y relayer ; et il borne ce qu'un
+// client authentifié peut diffuser à un autre. Une identité n'est pas une autorisation de relayer n'importe quoi.
 
 //
 // `fenetre-ouverte`, `fenetre-fermee`, `refus` et `viewport` portent la
@@ -98,9 +111,13 @@ export interface ObservateurDeSession {
     /// Les DEUX rôles sont désormais présents sur cette session.
     ///
     /// `utilisateurId` est celui du CLIENT quand la garde en a établi un ;
-    /// il est absent quand le second pair à arriver est l'agent, dont
-    /// l'identité n'existe pas avant P3. C'est ce qui rend le mot
-    /// « enregistrée » du critère ③ littéralement vrai en base.
+    /// il est absent quand le second pair à arriver est l'agent. ⚠️ LA RAISON
+    /// A CHANGÉ AU SOUS-BLOC P3 sans que la conséquence bouge : ce n'est plus
+    /// que l'agent n'a « aucune identité » — il en a une depuis le canal
+    /// `/agent` —, c'est qu'il ne REVENDIQUE toujours rien, sa session devant
+    /// rester revendicable par le client humain qui la rejoindra
+    /// (`identite/garde.ts`). C'est ce qui rend le mot « enregistrée » du
+    /// critère ③ littéralement vrai en base.
     apparie(nomSession: string, utilisateurId?: string): void;
     /// La session s'est vidée : plus aucun rôle ne l'occupe.
     separe(nomSession: string): void;
