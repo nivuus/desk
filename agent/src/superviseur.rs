@@ -67,6 +67,7 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
             std::env::current_exe().context("chemin de l'exécutable")?,
             signaling_url,
             local_ip,
+            prefixe.clone(),
         )?;
 
         let (tx_hook, rx_hook) = std::sync::mpsc::channel();
