@@ -57,6 +57,32 @@ pub fn session_de_controle(prefixe: &str) -> String {
     composer(prefixe, NOM_SESSION_DE_CONTROLE)
 }
 
+/// Nom réservé de la session de signaling du **pont fichiers**.
+///
+/// DISTINCT de [`NOM_SESSION_DE_CONTROLE`] : le relais n'accepte qu'un `agent`
+/// et un `client` par identifiant (`plateforme/src/signaling/appariement.ts`),
+/// et la page-shell occupe déjà le rôle `client` de `bureau`. Deux
+/// `PeerConnection` vers la même VM exigent donc deux identifiants.
+///
+/// ⚠️ **CE N'EST PAS UN IDENTIFIANT DE SESSION À LUI SEUL**, exactement comme
+/// son voisin depuis le sous-bloc P3 : passer par [`session_du_pont`], jamais
+/// par cette constante nue. Deux VMs qui ouvriraient toutes deux `fichiers` se
+/// disputeraient la même session sur la plateforme, et la seconde serait
+/// refusée en « un agent est déjà connecté ».
+///
+/// *(Le plan de F1 écrivait `pub const SESSION_DU_PONT: &str = "fichiers"`,
+/// employée telle quelle, et notait que l'identifiant « n'est pas namespacé
+/// par utilisateur ». Il a été écrit avant que P3 ne pose le préfixe : la
+/// remarque est donc CADUQUE — le préfixe est ce namespace — et la forme nue
+/// aurait réintroduit le défaut que P3 venait de corriger, sur la seule
+/// session qui l'aurait échappé.)*
+pub const NOM_SESSION_DU_PONT: &str = "fichiers";
+
+/// L'identifiant complet de la session du pont fichiers pour un préfixe donné.
+pub fn session_du_pont(prefixe: &str) -> String {
+    composer(prefixe, NOM_SESSION_DU_PONT)
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
 pub enum VersLaShell {
@@ -137,6 +163,26 @@ mod tests {
         assert_eq!(composer("", NOM_SESSION_DE_CONTROLE), "bureau");
         assert_eq!(composer("", "w-1"), "w-1");
         assert_eq!(session_de_controle(""), "bureau");
+    }
+
+    #[test]
+    fn la_session_du_pont_suit_le_prefixe_comme_celle_de_controle() {
+        // 🔴 Le pont a sa PROPRE session parce que le relais n'accepte qu'un
+        // `agent` et un `client` par identifiant, et que la page-shell occupe
+        // déjà le rôle `client` de `bureau`.
+        //
+        // Elle doit suivre le préfixe exactement comme sa voisine : le plan de
+        // F1, écrit avant le sous-bloc P3, prescrivait une constante NUE
+        // employée telle quelle. Deux VMs auraient alors ouvert toutes deux
+        // `fichiers`, et la seconde aurait été refusée en « un agent est déjà
+        // connecté » — le défaut même que P3 venait de corriger, réintroduit
+        // sur la seule session qui l'aurait échappé.
+        assert_eq!(session_du_pont(""), "fichiers");
+        assert_eq!(session_du_pont("Zm9vYmFy"), "Zm9vYmFy:fichiers");
+        // …et les deux sessions d'une même VM restent DISTINCTES, ce qui est
+        // toute la raison d'être de cette constante.
+        assert_ne!(session_du_pont("Zm9vYmFy"), session_de_controle("Zm9vYmFy"));
+        assert_ne!(session_du_pont(""), session_de_controle(""));
     }
 
     #[test]

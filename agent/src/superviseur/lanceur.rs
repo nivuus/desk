@@ -49,6 +49,8 @@ use windows::Win32::System::JobObjects::{
 
 use super::enfants::{Consigne, Lanceur};
 
+mod pont;
+
 /// Un enfant suivi, et le peu d'état qu'il faut retenir sur lui.
 struct Enfant {
     /// Retenu pour son HANDLE, pas pour son numéro — voir l'invariant 1 en
@@ -80,8 +82,17 @@ pub struct LanceurDeProcessus {
     /// `None` tant qu'aucun capteur n'a encore été lancé, ou juste après que
     /// le précédent a été constaté mort par `capteur_vivant`.
     capteur: Mutex<Option<Enfant>>,
-    /// Le job auquel tout enfant — et le capteur — est rattaché. Sa fermeture
-    /// les tue tous.
+    /// Le pont fichiers unique (sous-projet ③), suivi à part pour la même
+    /// raison que le capteur : il n'a pas de fenêtre, donc pas de place dans
+    /// `enfants`. Voir `lanceur/pont.rs`.
+    pont: Mutex<Option<Enfant>>,
+    /// Le préfixe de session de cette VM, délivré à l'enrôlement (sous-bloc
+    /// P3). `Table` le porte déjà pour composer les sessions des enfants ; le
+    /// lanceur en a besoin pour la seule session qu'il compose lui-même,
+    /// celle du pont.
+    prefixe: String,
+    /// Le job auquel tout enfant — le capteur et le pont compris — est
+    /// rattaché. Sa fermeture les tue tous.
     job: HANDLE,
 }
 
@@ -90,6 +101,7 @@ impl LanceurDeProcessus {
         executable: std::path::PathBuf,
         signaling_url: String,
         local_ip: String,
+        prefixe: String,
     ) -> Result<Self> {
         let job =
             unsafe { CreateJobObjectW(None, None) }.context("création du job object des enfants")?;
@@ -115,6 +127,8 @@ impl LanceurDeProcessus {
             local_ip,
             enfants: Mutex::new(HashMap::new()),
             capteur: Mutex::new(None),
+            pont: Mutex::new(None),
+            prefixe,
             job,
         })
     }
@@ -143,6 +157,11 @@ impl LanceurDeProcessus {
         self.capteur.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
     }
 
+    /// Même raison que `capteur` ci-dessus, pour le pont fichiers.
+    fn pont(&self) -> std::sync::MutexGuard<'_, Option<Enfant>> {
+        self.pont.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
+    }
+
     /// Lance le capteur unique de capture mutualisée (`agent/src/capteur.rs`) :
     /// même exécutable, `CAPTEUR=1`, **rattaché au même job object** que les
     /// enfants — sans quoi il survivrait au superviseur en tenant N
@@ -160,6 +179,15 @@ impl LanceurDeProcessus {
             // capteur qui hériterait de `SUPERVISEUR` se prendrait pour un
             // superviseur et lancerait ses propres enfants, indéfiniment.
             .env_remove("SUPERVISEUR")
+            // Et `PONT` par la même règle de symétrie. Le cas est INOFFENSIF
+            // aujourd'hui — `main.rs` teste `CAPTEUR` AVANT `PONT`, donc un
+            // capteur portant `PONT` reste un capteur —, à l'inverse exact du
+            // cas d'un pont qui hériterait de `CAPTEUR`, lui FATAL. On la
+            // retire quand même : **un ordre de test est une propriété qui
+            // change, un `env_remove` non**, et c'est le raisonnement que ce
+            // fichier tient déjà pour `SUPERVISEUR` ici et pour `CAPTEUR` dans
+            // `lancer`. Une dissymétrie est un piège dormant.
+            .env_remove("PONT")
             // Même motif que pour un enfant : ces deux variables changent le
             // SENS d'une source (un fichier de test à diffuser, une fenêtre à
             // chercher par titre) — et le capteur n'a pas de source unique
@@ -279,6 +307,16 @@ impl Lanceur for LanceurDeProcessus {
             // ne doit pas dépendre de l'ordre de deux `if` dans un autre
             // fichier.
             .env_remove("CAPTEUR")
+            // 🔴 **Et `PONT` — le seul des trois oublis qui casserait le
+            // produit.** La branche `PONT` de `main.rs` est placée APRÈS
+            // `CAPTEUR`, mais AVANT `config.superviseur` : un enfant qui
+            // hériterait de `PONT` se prendrait donc pour un pont, tiendrait
+            // une racine de virtualisation ProjFS, et ne capturerait JAMAIS
+            // rien. Contrairement aux deux autres, ce cas-là est atteignable
+            // dès aujourd'hui — il suffit qu'un superviseur soit lancé avec
+            // `PONT` dans son environnement, ce que `scripts/run-agent.sh`
+            // rend possible d'une variable.
+            .env_remove("PONT")
             .spawn()
             .with_context(|| format!("lancement de l'enfant {}", consigne.session.0))?;
         let pid = enfant.id();
