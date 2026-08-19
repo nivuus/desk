@@ -1,6 +1,8 @@
 // Établissement de la session WebRTC. Le navigateur est l'offrant : il déclare
-// la piste vidéo en réception seule et les deux canaux de données, puis attend
-// la réponse de l'agent relayée par le signaling.
+// la piste vidéo en réception seule, la piste audio descendante en réception
+// seule, la piste MONTANTE du micro en émission seule et SANS PISTE (chantier
+// E), et les deux canaux de données ; puis il attend la réponse de l'agent
+// relayée par le signaling.
 
 import { parseAgentControl, type AgentControl } from '../../proto/ts/control';
 import { jetonAcces } from './jeton';
@@ -27,6 +29,15 @@ export interface SessionHandle {
     pc: RTCPeerConnection;
     inputChannel: RTCDataChannel;
     controlChannel: RTCDataChannel;
+    /// L'émetteur de la piste MONTANTE (chantier E), déclaré SANS PISTE.
+    ///
+    /// C'est `client/src/micro.ts` qui le remplit par `replaceTrack`, au clic,
+    /// et le vide à l'extinction. Exposé ici parce que `connectSession` est le
+    /// seul endroit qui construise la `RTCPeerConnection` : le sender n'existe
+    /// pas avant elle, et rien d'autre ne peut le retrouver sans fouiller
+    /// `pc.getTransceivers()` par position — ce qui serait un index positionnel,
+    /// c'est-à-dire exactement ce que ce dépôt a déjà payé sur les sorties DXGI.
+    micSender: RTCRtpSender;
     close(): void;
 }
 
@@ -230,6 +241,25 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
     // son constructeur `Rtc` — sans quoi il répondrait sans piste audio.
     pc.addTransceiver('audio', { direction: 'recvonly' });
 
+    // Le micro (chantier E). Déclaré SANS PISTE : rien n'est capté, aucune
+    // permission n'est demandée, aucun octet n'est émis tant que
+    // `client/src/micro.ts` n'a pas appelé `replaceTrack`. C'est ce qui rend
+    // « à la demande » réalisable sans renégociation — `connectSession` fait
+    // un aller-retour UNIQUE (offre, puis réponse) et n'a AUCUN chemin pour
+    // une seconde offre. `replaceTrack` sur un sender existant ne change ni
+    // le codec ni les m-lines, donc ne demande pas de renégociation.
+    //
+    // ⚠️ L'ORDRE DES TROIS `addTransceiver` DÉCIDE LES `mid`, et l'agent en
+    // dépend. Ce transceiver-ci doit venir APRÈS l'audio descendant : il prend
+    // alors `mid:2`, et l'agent le voit en `RecvOnly` (str0m inverse la
+    // direction distante à l'acceptation de l'offre) — c'est ce qui range son
+    // `mid` dans `mic_mid` et non dans `audio_mid`
+    // (`agent/src/transport/evenements.rs`). Intervertir les deux lignes
+    // ferait partir le son DESCENDANT sur une piste que l'agent ne peut pas
+    // émettre, sans une seule erreur : c'est le défaut latent que la tâche 7
+    // du chantier E a exhibé puis corrigé.
+    const micTransceiver = pc.addTransceiver('audio', { direction: 'sendonly' });
+
     // Entrées : non fiable et non ordonné — une position de souris périmée n'a
     // aucune valeur, mieux vaut la perdre que retarder les suivantes.
     const inputChannel = pc.createDataChannel('input', {
@@ -292,7 +322,25 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
         pc,
         inputChannel,
         controlChannel,
+        micSender: micTransceiver.sender,
         close() {
+            // ⚠️ L'EXTINCTION DOIT ÊTRE RÉELLE (spec §9). `pc.close()` NE STOPPE
+            // PAS les pistes locales : l'indicateur de micro de Chrome resterait
+            // allumé après la fin de session, et le périphérique resterait pris.
+            // C'est précisément le « mensonge visuel » que la spec qualifie
+            // d'inacceptable sur cette fonction. `stop()` est idempotent : que
+            // `micro.ts` l'ait déjà appelé ne coûte rien.
+            //
+            // ⚠️ DIVERGENCE ASSUMÉE AVEC LE PLAN, qui écrit « `close()` appelle
+            // `detacher()` du micro ». Cela ferait dépendre `webrtc.ts` de
+            // `micro.ts`, lequel dépend déjà de `SessionHandle.micSender` : un
+            // cycle, et un cycle que la tâche 10 ne pourrait de toute façon pas
+            // écrire, `micro.ts` naissant à la tâche 11. On arrête donc la piste
+            // du sender directement — ce qui suffit à l'exigence, `detacher()`
+            // ne faisant rien de plus que `replaceTrack(null)` et ce `stop()`.
+            // `main.ts` appelle par ailleurs son propre détachement en fin de
+            // session, pour que l'ÉTAT du bouton suive lui aussi.
+            micTransceiver.sender.track?.stop();
             socket.close();
             pc.close();
         },
