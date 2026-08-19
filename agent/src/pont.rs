@@ -28,23 +28,47 @@
 pub mod chemins;
 pub mod decoupe;
 pub mod erreurs;
+pub mod notifications;
 #[cfg(windows)]
 pub mod projfs;
 pub mod resolution;
 pub mod table;
 pub mod transport;
 
-/// Point d'entrée du mode pont.
+/// Point d'entrée du mode pont : charge ProjFS, monte la racine, et la tient.
 ///
-/// ⚠️ **Squelette : il ne tient encore aucune racine de virtualisation.** Le
-/// transport arrive en tâche 11, ProjFS en tâches 12 à 14. Rendre `Ok(())`
-/// tout de suite ferait mourir le processus aussitôt lancé, et
-/// `surveillance_pont` le relancerait en boucle à la cadence de son
-/// espacement minimal — d'où le `bail!` explicite, qui dit ce qu'il en est
-/// plutôt que de simuler un succès.
+/// ⚠️ **Tâche 13 : la racine est montée et VIDE.** Aucune requête ne part vers
+/// le navigateur — les trois rappels asynchrones sont branchés en tâche 14.
+/// C'est le premier état observable sur la VM : le dossier
+/// `%USERPROFILE%\Mes Fichiers` apparaît, il est vide, et le pont s'arrête
+/// proprement.
+///
+/// ⚠️ **« S'arrête proprement » a une portée exacte** : le `Drop` de
+/// [`projfs::Virtualisation`] complète les commandes en vol puis appelle
+/// `PrjStopVirtualizing`. Il court sur une sortie NORMALE de cette fonction —
+/// jamais sur un `TerminateProcess`, qui est ce que le job object du
+/// superviseur inflige à ses enfants. **Une racine peut donc survivre à un
+/// arrêt brutal du superviseur**, et rien dans F1 ne la démonte alors : c'est
+/// le pendant exact des sorties virtuelles qui survivent à un
+/// `Stop-Process -Force` (sous-bloc D5), et ce n'est pas refermé ici.
 #[cfg(windows)]
 pub async fn executer(_config: crate::Config) -> anyhow::Result<()> {
-    anyhow::bail!("le pont fichiers n'est pas encore assemblé (tâches 11 à 14 du sous-bloc F1)")
+    // Charger AVANT de toucher au système de fichiers : une VM sans ProjFS
+    // doit échouer sur le chargement, avec un message qui nomme l'entrée
+    // manquante, et non après avoir créé un dossier « Mes Fichiers » vide que
+    // rien ne servirait jamais.
+    let projfs = projfs::chargement::charger()?;
+    let virtualisation = projfs::Virtualisation::demarrer(projfs)?;
+    let etat = virtualisation.etat();
+    tracing::info!(
+        racine = %virtualisation.racine().display(),
+        "pont fichiers prêt (tâche 13 : la racine est montée et VIDE, aucune requête \
+         ne part vers le navigateur avant la tâche 14)"
+    );
+    loop {
+        tokio::time::sleep(projfs::PERIODE_HYDRATATION).await;
+        etat.tracer_hydratation();
+    }
 }
 
 #[cfg(not(windows))]

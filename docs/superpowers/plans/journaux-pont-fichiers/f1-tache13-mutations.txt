@@ -1,0 +1,66 @@
+Tâche 13 du sous-bloc F1 — mutations jouées APRÈS le vert, le 20 août 2026.
+Source restaurée et vérifiée par empreinte MD5 après chaque mutation.
+
+Cible : `agent/src/pont/notifications.rs` — le REFUS D'ÉCRITURE, c'est-à-dire
+le périmètre de F1 lui-même. Le module est PUR, ce qui est une divergence
+déclarée d'avec le plan (qui laissait cette décision dans le rappel
+`#[cfg(windows)]`, où RIEN n'aurait pu l'éprouver).
+
+────────────────────────────────────────────────────────────────────────────
+M1. « PRE_CONVERT_TO_FULL n'est plus refusé »
+    Le bras du refus d'écriture perd son premier motif.
+    TUÉE par DEUX tests
+      les_trois_notifications_d_ecriture_sont_refusees_en_protege_en_ecriture
+        (tests.rs:11:9)  left: AccepterSansAttendre / right: Refuser(ProtegeEnEcriture)
+      chaque_bit_du_masque_a_une_decision_nommee (tests.rs:51:9)
+    C'est LA mutation qui compte : sans ce refus, l'écriture réussit
+    localement sur la VM et se perd en silence (spec §6.1).
+
+M2. « le masque demande une notification de plus » (FILE_OVERWRITTEN, 8)
+    TUÉE par DEUX tests
+      chaque_bit_du_masque_a_une_decision_nommee (tests.rs:51:9)
+      le_masque_demande_exactement_les_cinq_notifications_de_f1 (tests.rs:65:5)
+        left: 6 / right: 5
+
+M3. « le masque perd PRE_RENAME »
+    TUÉE — le_masque_demande_exactement_les_cinq_notifications_de_f1
+      (tests.rs:65:5)  left: 4 / right: 5
+      test result: FAILED. 5 passed; 1 failed
+
+M4. « PRE_CONVERT_TO_FULL transcrit à 4095 au lieu de 4096 »
+    (l'erreur de transcription d'une constante, exactement la classe de faute
+     que la doctrine « recopier avec le numéro de ligne source » vise)
+    TUÉE — chaque_bit_du_masque_a_une_decision_nommee (tests.rs:51:9)
+      test result: FAILED. 5 passed; 1 failed
+
+M5. « NEW_FILE_CREATED accepté en SILENCE » (bras retiré)
+    TUÉE par DEUX tests
+      chaque_bit_du_masque_a_une_decision_nommee (tests.rs:51:9)
+      un_fichier_neuf_est_accepte_mais_signale (tests.rs:36:5)
+        left: AccepterSansAttendre / right: AccepterEnSignalant
+
+────────────────────────────────────────────────────────────────────────────
+M6. « PRE_DELETE devient NonSupporte » — A SURVÉCU, PUIS PROUVÉE ÉQUIVALENTE
+────────────────────────────────────────────────────────────────────────────
+Mutation jouée : ajouter `PRE_DELETE |` au bras `NonSupporte`, en LAISSANT
+le bras du refus d'écriture intact.
+
+    test result: ok. 6 passed; 0 failed
+
+⚠️ **Elle est ÉQUIVALENTE, et la preuve est structurelle, pas statistique** :
+le `match` de `decider` évalue ses bras dans l'ordre, et `PRE_DELETE` figure
+encore dans le PREMIER. Le motif ajouté au second est donc INATTEIGNABLE, et
+le comportement est inchangé pour toute entrée. Ce n'est pas un trou de test :
+c'est une mutation qui ne change rien.
+
+La mutation RÉELLE — retirer `PRE_DELETE` du premier bras ET l'ajouter au
+second — a été jouée ensuite, et elle est TUÉE :
+
+    les_trois_notifications_d_ecriture_sont_refusees_en_protege_en_ecriture
+      (tests.rs:11:9)  left: Refuser(NonSupporte) / right: Refuser(ProtegeEnEcriture)
+      test result: FAILED. 5 passed; 1 failed
+
+Leçon, et elle vaut au-delà de ce fichier : **une mutation qui ajoute un motif
+à un `match` ordonné sans retirer l'ancien ne mute rien.** La juger « survivante »
+sans regarder l'ordre des bras aurait fait chercher un trou de test qui n'existe
+pas.
