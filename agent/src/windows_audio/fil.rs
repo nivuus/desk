@@ -103,18 +103,50 @@ pub(super) fn tourner(
     // pour tout le processus : le premier fil consomme les 10 fautes et
     // meurt, et la toute première reconstruction trouve le compteur à zéro,
     // atteint la branche `else`, et lit pour de vrai.
-    static FAUTES_A_INJECTER: std::sync::OnceLock<std::sync::atomic::AtomicU32> =
-        std::sync::OnceLock::new();
-    let fautes_a_injecter = FAUTES_A_INJECTER.get_or_init(|| {
-        let v: u32 = std::env::var("AUDIO_FAUTE_LECTURE")
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(0);
-        if v > 0 {
-            tracing::warn!(fautes_a_injecter = v, "injection de fautes de lecture audio ARMEE (banc)");
-        }
-        std::sync::atomic::AtomicU32::new(v)
-    });
+    //
+    // ⚠️ **`AUDIO_FAUTE_LECTURE_MS` borne cet armement DANS LE TEMPS**, et
+    // c'est ce qui rend le repli sur la promotion démontrable — voir
+    // `crate::audio::injection_encore_armee`, qui porte l'arithmétique
+    // complète. Absente : `None`, illimité, comportement de D10 strictement
+    // préservé.
+    //
+    // **L'origine est capturée à l'initialisation du BUDGET, pas au premier
+    // `read()`** : les deux processus — la porteuse et sa voisine — démarrent
+    // ensemble, et c'est ce qui leur donne la même origine sans qu'aucune
+    // session n'ait à être nommée.
+    static FAUTES_A_INJECTER: std::sync::OnceLock<(
+        std::sync::atomic::AtomicU32,
+        Option<Duration>,
+        std::time::Instant,
+    )> = std::sync::OnceLock::new();
+    let (fautes_a_injecter, fenetre_injection, origine_injection) =
+        FAUTES_A_INJECTER.get_or_init(|| {
+            let v: u32 = std::env::var("AUDIO_FAUTE_LECTURE")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(0);
+            let fenetre = std::env::var("AUDIO_FAUTE_LECTURE_MS")
+                .ok()
+                .and_then(|v| v.parse::<u64>().ok())
+                .map(Duration::from_millis);
+            if v > 0 {
+                // Un SEUL `warn!`, enrichi de `fenetre_ms` : deux traces au
+                // même instant se compteraient comme deux événements (piège
+                // maison du sous-bloc D6). `fenetre_ms` dit laquelle des deux
+                // configurations tourne — sans elle, un journal ne permet pas
+                // de distinguer un armement borné d'un armement illimité.
+                tracing::warn!(
+                    fautes_a_injecter = v,
+                    fenetre_ms = fenetre.map(|f| f.as_millis() as u64),
+                    "injection de fautes de lecture audio ARMEE (banc)"
+                );
+            }
+            (
+                std::sync::atomic::AtomicU32::new(v),
+                fenetre,
+                std::time::Instant::now(),
+            )
+        });
 
     while !arret_fil.load(Ordering::Relaxed) {
         let veut_emettre = emet_fil.load(Ordering::Relaxed);
@@ -209,7 +241,18 @@ pub(super) fn tourner(
         // un AUTRE fil (la toute première capture, typiquement) laisse donc
         // celui-ci — et tout fil né après lui — lire réellement dès son
         // premier tour.
-        let lecture = if fautes_a_injecter
+        //
+        // ⚠️ **L'ORDRE DES OPÉRANDES DU `&&` COMPTE** : `fetch_update`
+        // DÉCRÉMENTE. Le placer en second garantit qu'aucune faute n'est
+        // consommée une fois la fenêtre refermée — le court-circuit de `&&`
+        // n'évalue alors jamais la décrémentation. Inversés, la porteuse
+        // continuerait de brûler son budget après l'échéance, et la voisine
+        // promue le trouverait vide : le contrôle redeviendrait incapable de
+        // rendre l'autre valeur.
+        let lecture = if crate::audio::injection_encore_armee(
+            origine_injection.elapsed(),
+            *fenetre_injection,
+        ) && fautes_a_injecter
             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_sub(1))
             .is_ok()
         {

@@ -207,6 +207,46 @@ impl PacketRing {
     }
 }
 
+/// L'injection de fautes de lecture est-elle encore armée ?
+///
+/// `fenetre = None` : illimitée, donc toujours armée — c'est le comportement
+/// du sous-bloc D10, **strictement préservé** quand `AUDIO_FAUTE_LECTURE_MS`
+/// est absente.
+///
+/// **Pourquoi borner l'armement dans le temps.** Chaque fenêtre est son propre
+/// processus et **hérite l'environnement** du superviseur, qui ne retire que
+/// `SUPERVISEUR`, `TEST_FILE`, `WINDOW_TITLE` et `CAPTEUR`
+/// (`superviseur/lanceur.rs`) : chaque enfant reçoit donc un budget
+/// `AUDIO_FAUTE_LECTURE` **neuf**. Or seule la fenêtre PORTEUSE en consomme —
+/// le garde `if !emettait { … continue; }` de `windows_audio/fil.rs` fait
+/// qu'une source muette n'appelle jamais `read()`. La voisine reste donc
+/// intacte tant qu'elle se tait, **et meurt en ≈ 50 ms** (`LECTURES_ECHOUEES_MAX`
+/// = 10 × `POLL_INTERVAL` = 5 ms) dès qu'elle est promue, sur son budget resté
+/// plein — soit **1/600ᵉ** de `REPORT_INTERVAL`. Le critère « le repli sur la
+/// promotion » resterait alors non démontrable : la voisine promue mourrait
+/// avant d'avoir pu prouver quoi que ce soit.
+///
+/// Borner l'armement referme cela **sans nommer aucune session** : la porteuse
+/// consomme dans les premières millisecondes, la fenêtre se referme, et la
+/// voisine — promue au plus tôt `RECONSTRUCTIONS_MAX × REPIT_RECONSTRUCTION`
+/// = 6 s plus tard, plus `PERIODE_REARBITRAGE` — lit pour de vrai. Aucune
+/// reconnaissance préalable, aucun appel Win32 de plus.
+///
+/// **Borne EXCLUE** : à `depuis == fenetre`, désarmée. Choix explicite, et
+/// `la_borne_de_la_fenetre_est_incluse_ou_exclue_mais_dite` le fige.
+///
+/// Pur et testé sur l'hôte, à dessein : `windows_audio/fil.rs` est
+/// `#[cfg(windows)]` et rien de ce qui y vit ne peut être éprouvé ici.
+pub fn injection_encore_armee(
+    depuis: std::time::Duration,
+    fenetre: Option<std::time::Duration>,
+) -> bool {
+    match fenetre {
+        None => true,
+        Some(f) => depuis < f,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -314,5 +354,38 @@ mod tests {
         let copie = ring.clone();
         ring.push(paquet(0));
         assert_eq!(copie.pop().unwrap().pts_48k, 0);
+    }
+
+    // -- la fenêtre de temps de l'injection de fautes de lecture ------------
+    use std::time::Duration;
+
+    #[test]
+    fn sans_fenetre_l_injection_reste_armee_indefiniment() {
+        assert!(injection_encore_armee(Duration::from_secs(3600), None));
+    }
+
+    #[test]
+    fn dans_la_fenetre_l_injection_est_armee() {
+        assert!(injection_encore_armee(
+            Duration::from_millis(500),
+            Some(Duration::from_secs(3))
+        ));
+    }
+
+    #[test]
+    fn passe_la_fenetre_l_injection_est_desarmee() {
+        assert!(!injection_encore_armee(
+            Duration::from_secs(6),
+            Some(Duration::from_secs(3))
+        ));
+    }
+
+    #[test]
+    fn la_borne_de_la_fenetre_est_incluse_ou_exclue_mais_dite() {
+        // Choix explicite : `depuis < fenetre`. À la borne EXACTE, DÉSARMÉE.
+        assert!(!injection_encore_armee(
+            Duration::from_secs(3),
+            Some(Duration::from_secs(3))
+        ));
     }
 }
