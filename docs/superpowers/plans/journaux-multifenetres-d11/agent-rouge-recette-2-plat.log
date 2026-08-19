@@ -1,0 +1,213 @@
+2026-08-19T11:23:43.072014Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-19T11:23:43.077840Z  INFO agent::superviseur::signalisation: superviseur enregistré sur la session de contrôle session="bureau"
+2026-08-19T11:23:43.080070Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-19T11:23:43.080109Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-19T11:23:43.080129Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=3 attachees=3
+2026-08-19T11:23:43.080139Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-19T11:23:43.080143Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-19T11:23:43.080148Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-08-19T11:23:43.090892Z  INFO agent::moniteurs_virtuels::purge: sortie virtuelle retirée par la purge numero=1 guid=9C4A1F6E-2B73-4D51-9E08-677541430001
+2026-08-19T11:23:43.106790Z  INFO agent::moniteurs_virtuels::purge: sortie virtuelle retirée par la purge numero=2 guid=9C4A1F6E-2B73-4D51-9E08-677541430002
+2026-08-19T11:23:46.108189Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-19T11:23:46.108228Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-19T11:23:46.108238Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-08-19T11:23:46.108260Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-19T11:23:46.108268Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=2 avant=3 apres=1
+2026-08-19T11:23:46.112283Z  INFO agent::superviseur::lanceur: capteur lancé pid=8280
+2026-08-19T11:23:46.120190Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-19T11:23:46.120229Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-08-19T11:23:46.413888Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-19T11:23:46.413940Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-19T11:23:46.413956Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=1 attachees=1
+2026-08-19T11:23:46.413964Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-19T11:23:46.414233Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=258 adaptateur_bas=62078 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430001 largeur=780 hauteur=492 hertz=60
+2026-08-19T11:23:46.687179Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-19T11:23:46.687216Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-19T11:23:46.687225Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=2 attachees=2
+2026-08-19T11:23:46.687230Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-19T11:23:46.687236Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-19T11:23:46.687419Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=259 adaptateur_bas=62078 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430002 largeur=780 hauteur=492 hertz=60
+2026-08-19T11:23:46.820635Z  INFO agent::superviseur::enfants: enfant lancé session=w-2 pid=3048 sortie=\\.\DISPLAY5
+2026-08-19T11:23:46.825743Z  INFO agent::superviseur::enfants: enfant lancé session=w-1 pid=2172 sortie=\\.\DISPLAY6
+2026-08-19T11:23:46.834370Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-19T11:23:46.834442Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY5 bitrate=8000000 fps=90
+2026-08-19T11:23:46.843502Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-19T11:23:46.843550Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY6 bitrate=8000000 fps=90
+2026-08-19T11:23:46.845379Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-19T11:23:46.845505Z  INFO agent::capteur::tube: attaché au capteur session=w-2 sortie=\\.\DISPLAY5 largeur=780 hauteur=492
+2026-08-19T11:23:46.845703Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: fenêtre attachée au capteur session=w-2 sortie=\\.\DISPLAY5 largeur=780 hauteur=492
+2026-08-19T11:23:46.845883Z  INFO fenetre{session=w-2}: agent::capteur::sommeil::parts: budget de debit de la session budget_bps=12000000
+2026-08-19T11:23:46.846361Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-19T11:23:46.846438Z  INFO agent::capteur::tube: attaché au capteur session=w-1 sortie=\\.\DISPLAY6 largeur=780 hauteur=492
+2026-08-19T11:23:46.846561Z  INFO fenetre{session=w-1}: agent::capteur::fenetre: fenêtre attachée au capteur session=w-1 sortie=\\.\DISPLAY6 largeur=780 hauteur=492
+2026-08-19T11:23:46.848243Z  INFO agent::signaling: agent enregistré auprès du signaling session="w-2"
+2026-08-19T11:23:46.848356Z  INFO agent::transport::initialisation: socket UDP de l'agent addr=192.168.3.2:59534
+2026-08-19T11:23:46.848768Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-19T11:23:46.849538Z  INFO agent::signaling: agent enregistré auprès du signaling session="w-1"
+2026-08-19T11:23:46.849642Z  INFO agent::transport::initialisation: socket UDP de l'agent addr=192.168.3.2:59535
+2026-08-19T11:23:46.850865Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-19T11:23:46.888085Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=4864 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-19T11:23:46.888106Z  INFO agent::demarrage::audio: audio activé format="process loopback pid=4864 — 48000 Hz, 2 canaux, 16 bits entiers" pid=4864
+2026-08-19T11:23:46.888286Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-19T11:23:46.892353Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=4864 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-19T11:23:46.892370Z  INFO agent::demarrage::audio: audio activé format="process loopback pid=4864 — 48000 Hz, 2 canaux, 16 bits entiers" pid=4864
+2026-08-19T11:23:46.892440Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-19T11:23:49.342387Z  INFO agent::demarrage: offre reçue
+2026-08-19T11:23:49.347844Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=réception pendant l'allocation TURN
+2026-08-19T11:23:49.350580Z  INFO agent::demarrage: réponse envoyée
+2026-08-19T11:23:49.350878Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=2.4658265s
+2026-08-19T11:23:49.361134Z  INFO agent::transport::evenements: état ICE state=Completed écoulé=2.4760806s
+2026-08-19T11:23:49.368678Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video
+2026-08-19T11:23:49.368701Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio
+2026-08-19T11:23:49.368754Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=256000 endormie=true
+2026-08-19T11:23:49.368764Z  INFO agent::transport::piste_audio: ordre audio applique session=w-2 actif=true capture_morte=false
+2026-08-19T11:23:49.372911Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-19T11:23:49.378891Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-19T11:23:49.382479Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-19T11:23:49.382582Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-19T11:23:49.391608Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-19T11:23:49.405027Z  INFO agent::demarrage: contrôle reçu session=w-2 Visibility { version: 3, visible: true, focused: true }
+2026-08-19T11:23:49.409064Z  INFO agent::demarrage: offre reçue
+2026-08-19T11:23:49.412679Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-19T11:23:49.414634Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=réception pendant l'allocation TURN
+2026-08-19T11:23:49.416451Z  INFO fenetre{session=w-2}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-19T11:23:49.417023Z  INFO agent::demarrage: réponse envoyée
+2026-08-19T11:23:49.417259Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=2.5275122s
+2026-08-19T11:23:49.426344Z  INFO agent::transport::evenements: état ICE state=Completed écoulé=2.5365952s
+2026-08-19T11:23:49.432948Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video
+2026-08-19T11:23:49.432981Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio
+2026-08-19T11:23:49.433036Z  INFO agent::transport::part: part de budget appliquee session=w-1 part_bps=256000 endormie=true
+2026-08-19T11:23:49.433044Z  INFO agent::transport::piste_audio: ordre audio applique session=w-1 actif=false capture_morte=false
+2026-08-19T11:23:49.437832Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-19T11:23:49.437896Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-19T11:23:49.437981Z  INFO agent::demarrage: contrôle reçu session=w-1 Visibility { version: 3, visible: false, focused: false }
+2026-08-19T11:23:49.453318Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-19T11:23:49.524623Z  INFO fenetre{session=w-2}: agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-19T11:23:49.525113Z  INFO fenetre{session=w-2}: agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-19T11:23:49.526354Z  INFO fenetre{session=w-2}: agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-19T11:23:49.534344Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=6
+2026-08-19T11:23:49.612819Z  INFO agent::demarrage: contrôle reçu session=w-2 Resize { version: 3, width: 780, height: 493 }
+2026-08-19T11:23:49.614931Z  INFO fenetre{session=w-2}: agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=327681
+2026-08-19T11:23:49.620263Z  INFO fenetre{session=w-2}: agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-19T11:23:49.620711Z  INFO fenetre{session=w-2}: agent::capteur::fenetre::transitions: fenêtre réveillée session=w-2 largeur=780 hauteur=492 duree_ms=204
+2026-08-19T11:23:49.620738Z  INFO fenetre{session=w-2}: agent::windows_source::redimensionnement: redimensionnement ignoré : la source capture une sortie DXGI entière (voir le constat de mesure de capteur::plein_ecran, sous-bloc D9) width=780 height=493 mode=SortieEntiere
+2026-08-19T11:23:49.625722Z  INFO agent::transport::part: part de budget appliquee session=w-2 part_bps=11744000 endormie=false
+2026-08-19T11:23:49.695170Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=7
+2026-08-19T11:23:49.896184Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=8
+2026-08-19T11:23:50.096806Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=9
+2026-08-19T11:23:50.297109Z  WARN agent::windows_audio::fil: lecture audio échouée, capture arrêtée définitivement erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=10 rejetes=0 complements=0 echantillons_jetes=0
+2026-08-19T11:23:50.297800Z  WARN agent::transport::piste_audio: reconstruction de la capture audio refusée erreur="ouverture du process loopback du PID 4864: Initialize du client de process loopback (format impose : 48 kHz, 2 canaux, 16 bits): Défaillance irrémédiable (0x8000FFFF)" restantes=2
+2026-08-19T11:23:52.299050Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=4864 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-19T11:23:52.299072Z  INFO agent::transport::piste_audio: capture audio reconstruite restantes=1
+2026-08-19T11:23:52.299160Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-19T11:23:52.304332Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-19T11:23:52.314474Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-19T11:23:52.335062Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-19T11:23:52.375489Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-19T11:23:56.850573Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=599 endormie=false cadence="59.9"
+2026-08-19T11:23:56.852205Z  INFO fenetre{session=w-1}: agent::capteur::fenetre: cadence du capteur session=w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T11:23:56.889761Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=603 cadence="60.3"
+2026-08-19T11:23:56.893244Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-1 unites=0 cadence="0.0"
+2026-08-19T11:24:06.858675Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=849 endormie=false cadence="84.8"
+2026-08-19T11:24:06.858703Z  INFO fenetre{session=w-1}: agent::capteur::fenetre: cadence du capteur session=w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T11:24:06.899296Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=849 cadence="84.8"
+2026-08-19T11:24:06.903301Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-1 unites=0 cadence="0.0"
+2026-08-19T11:24:16.859052Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=837 endormie=false cadence="83.7"
+2026-08-19T11:24:16.867241Z  INFO fenetre{session=w-1}: agent::capteur::fenetre: cadence du capteur session=w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T11:24:16.895674Z  INFO agent::windows_audio::fil: compteurs audio pid=4864 actif=false rejetes=0 complements=0 echantillons_jetes=0
+2026-08-19T11:24:16.899863Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=836 cadence="83.6"
+2026-08-19T11:24:16.903833Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-1 unites=0 cadence="0.0"
+2026-08-19T11:24:22.301035Z  INFO agent::windows_audio::fil: compteurs audio pid=4864 actif=true rejetes=0 complements=0 echantillons_jetes=1920
+2026-08-19T11:24:26.865197Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=803 endormie=false cadence="80.3"
+2026-08-19T11:24:26.873519Z  INFO fenetre{session=w-1}: agent::capteur::fenetre: cadence du capteur session=w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T11:24:26.909187Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=804 cadence="80.3"
+2026-08-19T11:24:26.914190Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-1 unites=0 cadence="0.0"
+2026-08-19T11:24:36.867246Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=827 endormie=false cadence="82.7"
+2026-08-19T11:24:36.876208Z  INFO fenetre{session=w-1}: agent::capteur::fenetre: cadence du capteur session=w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T11:24:36.919188Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=827 cadence="82.6"
+2026-08-19T11:24:36.923699Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-1 unites=0 cadence="0.0"
+2026-08-19T11:24:46.875466Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=811 endormie=false cadence="81.0"
+2026-08-19T11:24:46.880330Z  INFO fenetre{session=w-1}: agent::capteur::fenetre: cadence du capteur session=w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T11:24:46.898775Z  INFO agent::windows_audio::fil: compteurs audio pid=4864 actif=false rejetes=0 complements=0 echantillons_jetes=0
+2026-08-19T11:24:46.919973Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=811 cadence="81.1"
+2026-08-19T11:24:46.933790Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-1 unites=0 cadence="0.0"
+2026-08-19T11:24:52.303181Z  INFO agent::windows_audio::fil: compteurs audio pid=4864 actif=true rejetes=0 complements=0 echantillons_jetes=1920
+2026-08-19T11:24:56.876284Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=839 endormie=false cadence="83.9"
+2026-08-19T11:24:56.888445Z  INFO fenetre{session=w-1}: agent::capteur::fenetre: cadence du capteur session=w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T11:24:56.929887Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=839 cadence="83.8"
+2026-08-19T11:24:56.943849Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-1 unites=0 cadence="0.0"
+2026-08-19T11:25:06.879948Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=831 endormie=false cadence="83.1"
+2026-08-19T11:25:06.894111Z  INFO fenetre{session=w-1}: agent::capteur::fenetre: cadence du capteur session=w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T11:25:06.939456Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=833 cadence="83.2"
+2026-08-19T11:25:06.944059Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-1 unites=0 cadence="0.0"
+2026-08-19T11:25:15.394690Z  WARN agent::transport::evenements: aucune estimation de bande passante reçue : l'adaptation reste indisponible et le débit demeure au plafond configuré
+2026-08-19T11:25:16.886773Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=834 endormie=false cadence="83.3"
+2026-08-19T11:25:16.897274Z  INFO fenetre{session=w-1}: agent::capteur::fenetre: cadence du capteur session=w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T11:25:16.903261Z  INFO agent::windows_audio::fil: compteurs audio pid=4864 actif=false rejetes=0 complements=0 echantillons_jetes=0
+2026-08-19T11:25:16.939891Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=833 cadence="83.3"
+2026-08-19T11:25:16.954070Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-1 unites=0 cadence="0.0"
+2026-08-19T11:25:22.307416Z  INFO agent::windows_audio::fil: compteurs audio pid=4864 actif=true rejetes=0 complements=0 echantillons_jetes=1920
+2026-08-19T11:25:26.889092Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=832 endormie=false cadence="83.2"
+2026-08-19T11:25:26.907033Z  INFO fenetre{session=w-1}: agent::capteur::fenetre: cadence du capteur session=w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T11:25:26.950362Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=832 cadence="83.1"
+2026-08-19T11:25:26.954321Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-1 unites=0 cadence="0.0"
+2026-08-19T11:25:36.896122Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=817 endormie=false cadence="81.6"
+2026-08-19T11:25:36.916101Z  INFO fenetre{session=w-1}: agent::capteur::fenetre: cadence du capteur session=w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T11:25:36.954456Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-1 unites=0 cadence="0.0"
+2026-08-19T11:25:36.960478Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=818 cadence="81.7"
+2026-08-19T11:25:46.900592Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=788 endormie=false cadence="78.8"
+2026-08-19T11:25:46.903551Z  INFO agent::windows_audio::fil: compteurs audio pid=4864 actif=false rejetes=0 complements=0 echantillons_jetes=0
+2026-08-19T11:25:46.921239Z  INFO fenetre{session=w-1}: agent::capteur::fenetre: cadence du capteur session=w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T11:25:46.961517Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=788 cadence="78.8"
+2026-08-19T11:25:46.964460Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-1 unites=0 cadence="0.0"
+2026-08-19T11:25:52.312938Z  INFO agent::windows_audio::fil: compteurs audio pid=4864 actif=true rejetes=0 complements=0 echantillons_jetes=1920
+2026-08-19T11:25:56.903938Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=814 endormie=false cadence="81.4"
+2026-08-19T11:25:56.928232Z  INFO fenetre{session=w-1}: agent::capteur::fenetre: cadence du capteur session=w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T11:25:56.969895Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=814 cadence="81.3"
+2026-08-19T11:25:56.974767Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-1 unites=0 cadence="0.0"
+2026-08-19T11:26:06.906951Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=829 endormie=false cadence="82.9"
+2026-08-19T11:26:06.934068Z  INFO fenetre{session=w-1}: agent::capteur::fenetre: cadence du capteur session=w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T11:26:06.970323Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=829 cadence="82.9"
+2026-08-19T11:26:06.984232Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-1 unites=0 cadence="0.0"
+2026-08-19T11:26:16.907506Z  INFO agent::windows_audio::fil: compteurs audio pid=4864 actif=false rejetes=0 complements=0 echantillons_jetes=0
+2026-08-19T11:26:16.908532Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=803 endormie=false cadence="80.3"
+2026-08-19T11:26:16.943325Z  INFO fenetre{session=w-1}: agent::capteur::fenetre: cadence du capteur session=w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T11:26:16.980164Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=801 cadence="80.0"
+2026-08-19T11:26:16.994199Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-1 unites=0 cadence="0.0"
+2026-08-19T11:26:22.314345Z  INFO agent::windows_audio::fil: compteurs audio pid=4864 actif=true rejetes=0 complements=0 echantillons_jetes=1920
+2026-08-19T11:26:23.716450Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-19T11:26:23.716815Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-19T11:26:23.721707Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:23.724738Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=2 backoff_ms=4
+2026-08-19T11:26:23.728919Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=3 backoff_ms=8
+2026-08-19T11:26:23.737842Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=4 backoff_ms=16
+2026-08-19T11:26:23.754372Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=5 backoff_ms=32
+2026-08-19T11:26:23.787052Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=6 backoff_ms=64
+2026-08-19T11:26:24.723348Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:25.721331Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:26.722715Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:26.915625Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=813 endormie=false cadence="81.2"
+2026-08-19T11:26:26.945960Z  INFO fenetre{session=w-1}: agent::capteur::fenetre: cadence du capteur session=w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T11:26:26.982805Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=815 cadence="81.5"
+2026-08-19T11:26:27.004215Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-1 unites=0 cadence="0.0"
+2026-08-19T11:26:27.718822Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:28.723184Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:29.722180Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:30.722764Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:31.723352Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:32.723538Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:33.723861Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:34.720914Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:35.721978Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:36.723443Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:36.923518Z  INFO fenetre{session=w-2}: agent::capteur::fenetre: cadence du capteur session=w-2 images=798 endormie=false cadence="79.7"
+2026-08-19T11:26:36.947740Z  INFO fenetre{session=w-1}: agent::capteur::fenetre: cadence du capteur session=w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T11:26:36.982925Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-2 unites=797 cadence="79.7"
+2026-08-19T11:26:37.014374Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=w-1 unites=0 cadence="0.0"
+2026-08-19T11:26:37.723219Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:38.723962Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:39.724905Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:40.720252Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:41.722718Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:42.723088Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:26:43.723063Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2

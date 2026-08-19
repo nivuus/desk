@@ -1,0 +1,13 @@
+diff --git a/agent/src/transport/piste_audio.rs b/agent/src/transport/piste_audio.rs
+index ac44bba..2ac9649 100644
+--- a/agent/src/transport/piste_audio.rs
++++ b/agent/src/transport/piste_audio.rs
+@@ -355,7 +355,7 @@ impl Session {
+                 // confirme explicitement le silence plutôt que de le
+                 // supposer) — voir
+                 // `une_session_non_porteuse_reconstruite_reste_muette`.
+-                source.set_actif(self.audio_porteuse);
++                source.set_actif(true); // ROUGE D11 t10 : jamais fusionne
+                 self.audio_source = Some(source);
+                 self.audio_reconstruit_sans_preuve = true;
+                 false

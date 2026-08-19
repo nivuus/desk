@@ -28,6 +28,7 @@
 //   node pilote-audio-d11.mjs --profil=2 --url=<page-shell> --duree=120
 //   node pilote-audio-d11.mjs --profil=3 --url=<page-shell> --duree=120
 
+import { spawnSync } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -42,6 +43,37 @@ const URLS = arg('url', 'http://127.0.0.1:5173/?session=demo').split(',').filter
 // Les fréquences ASSIGNÉES aux fenêtres, dont le niveau est relevé en plus de
 // la dominante — c'est ce qui rend « la voisine se tait » mesurable.
 const CIBLES = arg('hz', '440,660').split(',').map(Number).filter((n) => Number.isFinite(n));
+// `--shell` : la page-shell des recettes ② et ③, ouverte AVANT les pages
+// d'application (elle seule reçoit les annonces `fenetre-ouverte`, et le
+// signaling ne les mémorise pas — une annonce émise avant qu'elle ne soit
+// connectée est perdue sans trace, piège de D1).
+const URL_SHELL = arg('shell', '');
+// `--superviseur=1` : le pilote lance lui-même l'agent en mode multi-fenêtres,
+// APRÈS avoir ouvert la page-shell et AVANT d'ouvrir les fenêtres de la VM.
+//
+// ⚠️ CET ORDRE N'EST PAS NÉGOCIABLE, et il est celui de D10. Le signaling ne
+// mémorise que les offres SDP : une annonce `fenetre-ouverte` émise avant que
+// la page-shell ne soit connectée est PERDUE SANS TRACE (D1). Et depuis D3, une
+// entrée en attente de viewport plus de `DELAI_ATTENTE_VIEWPORT_MAX` = 30 s est
+// ABANDONNÉE, sans jamais être reproposée.
+//
+// ⚠️ Le pilote fait la séquence VM LUI-MÊME plutôt que de la laisser à
+// l'opérateur : une commande backgroundée par le harnais ne survit pas à la fin
+// du tour de l'agent qui l'a lancée, et D10 y a perdu deux exécutions.
+const SUPERVISEUR = arg('superviseur', '') === '1';
+// `--fenetres=440:C:\dev\p,660:C:\dev\p` — une par fenêtre à ouvrir sur la
+// VM, `<hz>:<dossier de profil chrome>`. MÊME dossier = un seul `chrome.exe`,
+// donc un seul groupe de PID : c'est CE QUI FAIT le critère des recettes ② et
+// ③. Deux `notepad.exe` seraient deux PID distincts et le contrôle ne pourrait
+// alors PAS échouer (piège de D8).
+const FENETRES = arg('fenetres', '').split(',').filter(Boolean)
+    // Découpe sur le PREMIER `:` seulement : un dossier de profil Windows en
+    // contient un (`C:\dev\…`), et un `split(':')` nu rendait `profil = 'C'`
+    // — la fenêtre ne s'ouvrait pas, et RIEN ne le disait sinon l'absence
+    // d'annonce `fenetre-ouverte`. Trouvé à la première exécution de la
+    // recette ②.
+    .map((x) => { const i = x.indexOf(':'); return { hz: x.slice(0, i), profil: x.slice(i + 1) }; });
+const AIDE_VM = new URL('./recette-audio-d11.sh', import.meta.url).pathname;
 const POINTS = (() => {
     const v = arg('points', '');
     return v ? v.split(',').map(Number).filter((n) => Number.isFinite(n)) : null;
@@ -136,11 +168,44 @@ const exprSpectre = (ciblesHz) => `(async () => {
   }
 })()`;
 
+// Hameçon sur le WebSocket de la page-shell. Il RELÈVE la correspondance
+// session ↔ titre de fenêtre au lieu de la SUPPOSER d'un ordre d'ouverture :
+// `document.title` de `ton.html` porte la fréquence assignée, et le
+// superviseur relaie ce texte comme `titre` dans `fenetre-ouverte`. C'est le
+// produit lui-même qui dit quelle session montre quelle tonalité.
+//
+// ⚠️ Résoudre par rang de nom (`noms[0]`, `noms[1]`) N'EST PAS FIABLE, même
+// sur une VM nettoyée : c'est ce qui a fait mesurer le critère ⑤ de D8 sur une
+// fenêtre dont on ignorait ce qu'elle jouait.
+const AMORCE_SHELL = `
+  (() => {
+    if (window.__hameconShell) return;
+    window.__hameconShell = true;
+    window.__fenetres = [];
+    const N = window.WebSocket;
+    window.WebSocket = function (...a) {
+      const w = new N(...a);
+      w.addEventListener('message', (e) => {
+        try {
+          const m = JSON.parse(e.data);
+          if (m && m.type === 'fenetre-ouverte') {
+            window.__fenetres.push({ t: Date.now(), session: m.session, titre: m.titre });
+          }
+        } catch (_) { }
+      });
+      return w;
+    };
+    window.WebSocket.prototype = N.prototype;
+    for (const k of ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED']) window.WebSocket[k] = N[k];
+  })();
+`;
+
 const dir = await mkdtemp(join(tmpdir(), `audio-d11-p${PROFIL}-`));
 // ⚠️ Profils ② et ③ : un SEUL `--user-data-dir`, donc un seul `chrome.exe`.
 const port = 9300 + PROFIL;
 const chrome = lancerChrome(port, dir, ['--autoplay-policy=no-user-gesture-required']);
 const releves = [];
+const assignations = [];
 try {
     const cdp = new Cdp((await attendreDevtools(port)).webSocketDebuggerUrl);
     const pages = new Map();
@@ -165,13 +230,55 @@ try {
         pages.set(m.params.targetInfo.targetId, { sid, url: m.params.targetInfo.url });
         await cdp.send('Runtime.enable', {}, sid).catch(() => { });
         await cdp.send('Page.enable', {}, sid).catch(() => { });
-        await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: AMORCE }, sid).catch(() => { });
+        const amorce = /shell/.test(m.params.targetInfo.url ?? '') ? AMORCE_SHELL : AMORCE;
+        await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: amorce }, sid).catch(() => { });
         // ⚠️ `addScriptToEvaluateOnNewDocument` NE COURT PAS sur une page déjà
         // ouverte par `window.open` (piège de D5) : on pose l'amorce aussi
         // explicitement, page par page.
-        await cdp.send('Runtime.evaluate', { expression: AMORCE }, sid).catch(() => { });
+        await cdp.send('Runtime.evaluate', { expression: amorce }, sid).catch(() => { });
+        await cdp.send('Runtime.runIfWaitingForDebugger', {}, sid).catch(() => { });
+        log('+ page attachée', sid.slice(0, 8), m.params.targetInfo.url);
     });
-    await cdp.send('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: false, flatten: true });
+    // `waitForDebuggerOnStart` + `setDiscoverTargets` : la recette de D10,
+    // éprouvée sur les pages ouvertes par `window.open` depuis la page-shell.
+    // Sans elles, la première exécution de la recette ② n'a attaché AUCUNE page
+    // d'application.
+    await cdp.send('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: true, flatten: true });
+    await cdp.send('Target.setDiscoverTargets', { discover: true });
+    // La page-shell d'abord, et son amorce posée AVANT que le superviseur
+    // n'annonce quoi que ce soit.
+    let sidShell = null;
+    if (URL_SHELL) {
+        await cdp.send('Target.createTarget', { url: URL_SHELL });
+        await dodo(3000);
+        sidShell = [...pages.values()].find((p) => /shell/.test(p.url ?? ''))?.sid ?? null;
+        log('page-shell attachée :', sidShell ? sidShell.slice(0, 8) : 'ABSENTE');
+    }
+    // ⚠️ LES FENÊTRES D'ABORD, LE SUPERVISEUR ENSUITE — et la page-shell avant
+    // les deux. Trouvé à la première exécution de la recette ② : `vm-it.sh`
+    // passe par une tâche planifiée dont la console PowerShell est ÉLIGIBLE à
+    // la capture, et le superviseur l'a détectée et lui a donné une session
+    // (`fenetre-ouverte w-1 powershell.EXE`) au lieu des fenêtres visées.
+    // Ouvrir les fenêtres AVANT laisse ces consoles mourir, et le superviseur
+    // les trouve alors par `enumerer_existantes` — le chemin que D1 a éprouvé.
+    // La page-shell restant connectée d'about en bout, aucune annonce n'est
+    // perdue et le garde-fou des 30 s de D3 ne mord pas.
+    for (const [i, f] of FENETRES.entries()) {
+        log(`>>> ouverture de la fenêtre VM ${i + 1} : ${f.hz} Hz, profil ${f.profil}`);
+        const r = spawnSync('bash', [AIDE_VM, 'ouvrir', String(i + 1), f.hz, f.profil],
+            { encoding: 'utf8', env: process.env });
+        if (r.status !== 0) log('!! ouverture échouée', (r.stderr ?? '').slice(0, 300));
+        await dodo(8000);
+    }
+    if (SUPERVISEUR) {
+        log('>>> lancement du superviseur');
+        const r = spawnSync('bash', ['-c',
+            `cd ${process.env.RACINE ?? '/home/mallanic/Projects/Guacamole'} && SUPERVISEUR=1 scripts/run-agent.sh`],
+            { encoding: 'utf8', env: process.env });
+        log('run-agent.sh :', (r.stdout ?? '').trim().split('\n').pop());
+        if ((r.stderr ?? '').trim()) log('run-agent.sh STDERR :', r.stderr.trim().slice(0, 300));
+        await dodo(8000);
+    }
     for (const u of URLS) {
         await cdp.send('Target.createTarget', { url: u });
         await dodo(1500);
@@ -198,10 +305,27 @@ try {
             return { t_s: t, debut: t0, fin: new Date().toISOString(), url: p.url, spectre: s };
         }));
         for (const r of lots) { releves.push(r); log(`t+${t}s`, r.url, JSON.stringify(r.spectre)); }
+        if (sidShell) {
+            const f = await cdp.evalBorne(sidShell, 'JSON.stringify(window.__fenetres || [])', 8000, false);
+            // Seconde voie, CORROBORANTE et non substituable : la liste du
+            // DOM de la page-shell porte les TITRES mais pas les sessions. Elle
+            // dit que les deux fenêtres ont bien été annoncées ; elle NE dit
+            // PAS laquelle est quelle session — résoudre par rang de nom n'est
+            // pas fiable (piège de D8), et l'assignation ci-dessus reste la
+            // seule source de la correspondance.
+            const listeShell = await cdp.evalBorne(sidShell,
+                "document.querySelector('#fenetres') && document.querySelector('#fenetres').textContent", 8000, false);
+            const statut = await cdp.evalBorne(sidShell,
+                "document.querySelector('#statut') && document.querySelector('#statut').textContent", 8000, false);
+            assignations.push({ t_s: t, fenetres: f, liste_shell: listeShell, statut_shell: statut });
+            log(`t+${t}s ASSIGNATIONS`, f, '| liste :', JSON.stringify(listeShell), '| statut :', JSON.stringify(statut));
+        }
     }
     await dodo(Math.max(0, DUREE - ecoule) * 1000);
 } finally {
-    await writeFile(SORTIE, JSON.stringify({ profil: PROFIL, duree_s: DUREE, urls: URLS, cibles_hz: CIBLES, releves }, null, 2));
+    await writeFile(SORTIE, JSON.stringify(
+        { profil: PROFIL, duree_s: DUREE, url_shell: URL_SHELL, urls: URLS, cibles_hz: CIBLES, assignations, releves },
+        null, 2));
     log('releves ecrits dans', SORTIE);
     chrome.kill('SIGKILL');
     await dodo(300);
