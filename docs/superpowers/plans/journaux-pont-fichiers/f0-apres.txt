@@ -1,0 +1,70 @@
+Sous-bloc F0 — état VERT, relevé PAR LA COMMANDE le 19 août 2026.
+
+⚠️ PROVENANCE : ce relevé-ci a été RÉEXÉCUTÉ par l'agent d'implémentation des
+tâches 1 à 11, dans son propre tour, après avoir démarré la VM (`virsh start
+Windows`, elle était « fermé »). Il ne recopie pas ce que l'orchestrateur avait
+transmis : il le revérifie.
+
+Script exécuté, écrit sur le partage et invoqué par `-File` — jamais en ligne de
+commande avec des guillemets, `nodejs-winrm` enveloppant tout dans
+`powershell -Command "& { … }"` :
+
+    node scripts/winrm.js 'powershell -ExecutionPolicy Bypass -File C:\dev\f0-controle.ps1'
+
+(source du script : `f0-controle.ps1`, versé à côté de ce fichier)
+
+Sortie intégrale :
+
+FeatureName : Client-ProjFS
+State       : Enabled
+ProjectedFSLib.dll : True
+PrjFlt.sys         : True
+service PrjFlt : Running / Automatic
+--- fltmc filters ---
+
+Nom de filtre                   Nom. d'instn.  Altitude      Cadre
+------------------------------  -------------  ------------  -----
+bindflt                                 0       409800         0
+WdFilter                                4       328010         0
+storqosflt                              0       244000         0
+wcifs                                   0       189900         0
+PrjFlt                                  0       189800         0
+CldFlt                                  0       180451         0
+FileCrypt                               0       141100         0
+luafv                                   1       135000         0
+UnionFS                                 0       130850         0
+npsvctrig                               1        46000         0
+Wof                                     1        40700         0
+
+CRITÈRE DE RÉCEPTION F0 — les TROIS conditions, une par une :
+
+  1. `State : Enabled`                                        ✅ TENU
+  2. `ProjectedFSLib.dll : True` ET `PrjFlt.sys : True`       ✅ TENU
+  3. le filtre est RÉELLEMENT CHARGÉ                          ✅ TENU, par les
+     DEUX voies acceptées par le plan, pas une seule : `fltmc filters` porte
+     `PrjFlt` à l'altitude 189800, ET `Get-Service PrjFlt` rend `Running`
+     (démarrage `Automatic`, donc il repartira au prochain amorçage).
+
+⚠️ POURQUOI la troisième condition existe, et pourquoi elle n'est pas
+décorative (plan, tâche 1) : elle n'est pas dans la spec, qui s'arrête à la
+présence du fichier. Un mini-filtre présent sur le disque mais NON CHARGÉ ferait
+échouer `PrjStartVirtualizing` à l'exécution, très loin d'ici, avec un `HRESULT`
+que personne ne rattacherait à F0. Le risque R1bis du plan. Elle est satisfaite.
+
+F0 est REÇU. Les tâches 2 et suivantes ont donc un sens : elles produiront du
+code que la VM peut exercer.
+
+⚠️ CE QUE CE RELEVÉ N'ÉTABLIT PAS :
+  - il ne prouve pas qu'un `PrjStartVirtualizing` réussisse — aucun appel n'a
+    été fait. Il lève l'obstacle éliminatoire, il ne mesure pas le mécanisme ;
+  - il ne dit rien de la persistance au redémarrage. `Automatic` la rend
+    attendue, non vérifiée : aucun redémarrage n'a été joué depuis l'activation ;
+  - une exécution.
+
+LEGS (plan, tâche 1, Step 6) : l'activation de `Client-ProjFS` doit être portée
+dans le PROVISIONNEMENT de l'image de base de la VM, jamais dans l'agent — un
+agent qui activerait une fonctionnalité Windows et redémarrerait la machine sous
+l'utilisateur n'est autorisé par rien dans le cadrage (spec §2.1). Aucun endroit
+de ce dépôt ne décrit aujourd'hui le provisionnement de la VM : c'est le
+sous-projet ⑤. L'exigence est donc inscrite ici comme legs, et non cachée dans
+`pont.rs`.
