@@ -49,7 +49,7 @@ export function observateurDeSession(
     const ouvertes = new Map<string, Promise<string | undefined>>();
 
     return {
-        apparie(nomSession) {
+        apparie(nomSession, utilisateurId) {
             // Une session déjà tracée ne rouvre pas de seconde ligne : un pair
             // qui se reconnecte pendant que l'autre reste en place rapparie la
             // session, et la première ligne resterait sinon orpheline — jamais
@@ -57,7 +57,10 @@ export function observateurDeSession(
             if (ouvertes.has(nomSession)) return;
             ouvertes.set(
                 nomSession,
-                ouvrirSession(base, nomSession, horloge()).catch((cause) => {
+                // L'identifiant vient du verdict de garde, relayé par le
+                // relais. Il est absent quand le second pair à arriver est
+                // l'agent, qui n'a aucune identité avant P3.
+                ouvrirSession(base, nomSession, horloge(), utilisateurId).catch((cause) => {
                     console.error(
                         `trace de session non écrite pour ${nomSession} : ${String(cause)}`,
                     );

@@ -39,15 +39,31 @@ export const MOTIF_BALAYAGE = 'plateforme redémarrée';
 ///
 /// L'identifiant est un UUID v4, jamais le nom de session : ce dernier n'est
 /// PAS unique dans le temps — `bureau` revient à chaque démarrage d'agent.
+///
+/// ⚠️ `utilisateurId` est FACULTATIF, et il doit le rester. Le rendre requis
+/// casserait les appelants de P1, et surtout il n'existe pas toujours : une
+/// session appariée par un pair `agent` seul — la session de contrôle
+/// `bureau` au démarrage d'une VM — n'a personne à inscrire, l'agent n'ayant
+/// aucune identité avant P3. La colonne naît donc NULL, exactement comme P1
+/// l'écrivait.
+///
+/// C'est cet argument qui rend le mot « enregistrée » du critère ③
+/// littéralement vrai : la DÉCISION est prise par le registre en mémoire
+/// (`signaling/propriete.ts`), l'ENREGISTREMENT durable se fait ici, et c'est
+/// de lui que P4 aura besoin.
 export async function ouvrirSession(
     p: Pilote,
     nomSession: string,
     maintenant: number,
+    utilisateurId?: string,
 ): Promise<string> {
     const id = randomUUID();
+    // La colonne est TOUJOURS nommée, et sa valeur TOUJOURS passée en
+    // paramètre — `null` compris. Écrire deux requêtes selon la présence de
+    // l'identifiant en ferait diverger une le jour où la table changerait.
     await p.executer(
-        'INSERT INTO session(id, nom_session, ouverte_a) VALUES(?, ?, ?)',
-        [id, nomSession, maintenant],
+        'INSERT INTO session(id, nom_session, utilisateur_id, ouverte_a) VALUES(?, ?, ?, ?)',
+        [id, nomSession, utilisateurId ?? null, maintenant],
     );
     return id;
 }

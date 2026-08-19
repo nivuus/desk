@@ -170,4 +170,25 @@ describe('le service entier', () => {
         await new Promise((r) => setTimeout(r, 300));
         expect(await lireParNom(base, 'trace-2')).toHaveLength(0);
     });
+
+    it('inscrit en base l’utilisateur du client authentifié qui apparie', async () => {
+        // ⚠️ CE TEST NE PEUT PAS ÊTRE CELUI D'UN CLIENT ANONYME : depuis que
+        // la garde est câblée, un client anonyme n'atteint jamais
+        // l'appariement. Un test qui en supposerait un mesurerait un état que
+        // le produit ne peut plus produire — vacueux par construction. Le cas
+        // réel est celui-ci : la session de contrôle `bureau`, où l'`agent`
+        // arrive seul et sans identité, et où le CLIENT, lui, est authentifié.
+        base = await baseNeuve('trace-appartenance');
+        service = await demarrerServeur(CONFIG, base);
+        const url = `ws://127.0.0.1:${service.port}/`;
+
+        const agent = await connecter(url, 'agent', 'bureau');
+        const client = await connecter(url, 'client', 'bureau', 'u-proprietaire');
+
+        const ligne = await attendreLigne(base, 'bureau', () => true, 'ouverte');
+        expect(ligne.utilisateur_id).toBe('u-proprietaire');
+
+        await fermer(agent);
+        await fermer(client);
+    });
 });

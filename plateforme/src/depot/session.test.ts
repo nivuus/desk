@@ -80,4 +80,26 @@ describe(`dépôt session, moteur=${MOTEUR}`, () => {
         expect(deux).not.toBe(un);
         expect(await lireParNom(base, 'bureau')).toHaveLength(2);
     });
+
+    it('écrit utilisateur_id NULL quand aucun n’est fourni — P1 est intact', async () => {
+        // 🔴 Le paramètre est FACULTATIF : le rendre requis casserait tous les
+        // appels de P1, et une session de contrôle `bureau` où l'agent arrive
+        // seul n'a personne à inscrire.
+        base = await baseNeuve('dep-sans-utilisateur');
+        await ouvrirSession(base, 'bureau', 1_000_000);
+        const [ligne] = await lireParNom(base, 'bureau');
+        expect(ligne.utilisateur_id).toBeNull();
+    });
+
+    it('écrit utilisateur_id quand la garde en a établi un', async () => {
+        // C'est ce qui rend le mot « enregistrée » du critère ③ littéralement
+        // vrai, et c'est ce dont P4 aura besoin pour attribuer une VM.
+        base = await baseNeuve('dep-avec-utilisateur');
+        await ouvrirSession(base, 'bureau', 1_000_000, 'u-42');
+        const [ligne] = await lireParNom(base, 'bureau');
+        expect(ligne.utilisateur_id).toBe('u-42');
+        // Et rien d'autre n'a bougé.
+        expect(Number(ligne.ouverte_a)).toBe(1_000_000);
+        expect(ligne.fermee_a).toBeNull();
+    });
 });
