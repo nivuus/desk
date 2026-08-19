@@ -1,0 +1,16 @@
+# Tache 17 — les trois pilotes CDP semen un jeton (E6)
+# Differentiel joue le 2026-08-19T15:38:25+02:00 : MEME binaire, MEME service, seules
+# RECETTE_EMAIL et RECETTE_MOTDEPASSE changent.
+
+## A — SANS jeton seme
+⚠️ aucun jeton semé : RECETTE_EMAIL et RECETTE_MOTDEPASSE ne sont pas posées. Depuis le sous-bloc P2, un pair `client` sans jeton est REFUSÉ par la garde (motif `jeton-absent`) et son socket fermé. Poser aussi PLATEFORME_URL si le service n'écoute pas sur http://127.0.0.1:8080.
+Navigation vers http://localhost:5173/?session=diff-sans (Chrome DevTools sur le port 10216)
+AVERTISSEMENT : aucune image décodée après 20s — relevés pris quand même pour diagnostic
+refus cotes service pendant cette execution : 1
+poignée de main refusée : poignée de main sans jeton sur la session diff-sans
+
+## B — AVEC jeton seme
+jeton de recette semé pour recette@exemple.test (http://127.0.0.1:8080)
+Navigation vers http://localhost:5173/?session=diff-avec (Chrome DevTools sur le port 10208)
+AVERTISSEMENT : aucune image décodée après 20s — relevés pris quand même pour diagnostic
+refus cotes service pendant cette execution : 0

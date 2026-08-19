@@ -1,0 +1,28 @@
+⚠️ aucun jeton semé : RECETTE_EMAIL et RECETTE_MOTDEPASSE ne sont pas posées. Depuis le sous-bloc P2, un pair `client` sans jeton est REFUSÉ par la garde (motif `jeton-absent`) et son socket fermé. Poser aussi PLATEFORME_URL si le service n'écoute pas sur http://127.0.0.1:8080.
+Navigation vers http://localhost:5173/?session=demo (Chrome DevTools sur le port 9702)
+AVERTISSEMENT : aucune image décodée après 20s — relevés pris quand même pour diagnostic
+--- Relevé 1 ---
+  aucune entrée inbound-rtp vidéo dans getStats()
+  aucune entrée inbound-rtp audio dans getStats()
+--- Relevé 2 (+4000ms) ---
+  aucune entrée inbound-rtp vidéo dans getStats()
+  aucune entrée inbound-rtp audio dans getStats()
+
+connectionState (final) : new
+iceConnectionState (final) : new
+Δ framesDecoded sur 4000ms : 0
+Δ framesReceived sur 4000ms : 0
+dimensions plausibles (>0, ≤ 8192px) : ÉCHEC (obtenu undefinedxundefined)
+
+Δ audio bytesReceived sur 4000ms : 0
+Δ audio packetsReceived sur 4000ms : 0
+audio packetsLost (relevé 2) : absent
+audio jitter (relevé 2) : 0.0 ms
+audio : aucun octet reçu sur les deux relevés (pas de piste audio active — session vidéo seule, ou silence total).
+décalage A/V : non mesurable (pas de piste audio active sur ce relevé).
+
+--- Console de la page ---
+[debug] [vite] connecting...
+[debug] [vite] connected.
+
+ÉCHEC : dimensions rapportées non plausibles (undefinedxundefined). Voir chrome://webrtc-internals pour le détail.

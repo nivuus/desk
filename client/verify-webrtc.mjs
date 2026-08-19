@@ -23,6 +23,8 @@
 // pure) ne fait jamais échouer le harnais.
 
 import { spawn } from 'node:child_process';
+import { attendreDevtools } from './recette/devtools.mjs';
+import { semerJeton } from './recette/jeton-recette.mjs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -99,19 +101,6 @@ class Cdp {
     }
 }
 
-async function waitForDevtools(port, attempts = 50) {
-    for (let i = 0; i < attempts; i += 1) {
-        try {
-            const response = await fetch(`http://127.0.0.1:${port}/json/version`);
-            if (response.ok) return;
-        } catch {
-            // Chrome pas encore prêt à accepter des connexions : on retente.
-        }
-        await new Promise((resolve) => setTimeout(resolve, 200));
-    }
-    throw new Error('Chrome DevTools ne répond pas après le délai imparti');
-}
-
 /// Extrait les compteurs `inbound-rtp` de la piste vidéo depuis un rapport
 /// `RTCStatsReport` sérialisé (tableau d'entrées `[id, stats]`).
 function extractVideoInboundStats(statsEntries) {
@@ -167,7 +156,7 @@ async function main() {
 
     let exitCode = 1;
     try {
-        await waitForDevtools(port);
+        await attendreDevtools(port);
 
         // Crée un onglet vierge puis s'y connecte, pour pouvoir injecter le
         // script de capture AVANT la navigation réelle vers `url`.
@@ -196,6 +185,8 @@ async function main() {
             `,
         });
 
+        // Sous-bloc P2 : sans jeton, la poignée de main `client` est refusée.
+        await semerJeton(cdp);
         console.log(`Navigation vers ${url} (Chrome DevTools sur le port ${port})`);
         await cdp.send('Page.navigate', { url });
 
