@@ -87,6 +87,8 @@ ${SUPERVISEUR_HOOK:+\$env:SUPERVISEUR_HOOK = '$SUPERVISEUR_HOOK'}
 ${AGENT_TRACE_EXCEPTIONS:+\$env:AGENT_TRACE_EXCEPTIONS = '$AGENT_TRACE_EXCEPTIONS'}
 ${AGENT_TRACE_EXCEPTIONS_FICHIER:+\$env:AGENT_TRACE_EXCEPTIONS_FICHIER = '$AGENT_TRACE_EXCEPTIONS_FICHIER'}
 ${AGENT_TRACE_EXCEPTIONS_AUTOTEST:+\$env:AGENT_TRACE_EXCEPTIONS_AUTOTEST = '$AGENT_TRACE_EXCEPTIONS_AUTOTEST'}
+${AGENT_VM:+\$env:AGENT_VM = '$AGENT_VM'}
+${AGENT_SECRET:+\$env:AGENT_SECRET = '$AGENT_SECRET'}
 # Le StreamWriter ci-dessous règle l'ÉCRITURE du fichier en UTF-8, mais pas la
 # LECTURE de la sortie de l'enfant : PowerShell décode le flux d'agent.exe
 # selon \$OutputEncoding / [Console]::OutputEncoding, qui vaut par défaut la
