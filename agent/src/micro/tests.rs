@@ -17,7 +17,8 @@ use std::time::Duration;
 fn trame(rtp_48k: u64, ms: u64) -> TrameMicro {
     let echantillons = (48_000 * ms / 1000) as usize;
     TrameMicro {
-        // Le contenu importe peu ici : ce module ne décode rien, il ordonne.
+        // Le contenu importe peu ici : CES TESTS-CI ne décodent rien, ils
+        // éprouvent l'ordre. (Le module, lui, décode — voir `tests_lecteur`.)
         // Un octet dérivé de l'horodatage suffit à identifier la trame.
         opus: vec![(rtp_48k % 251) as u8, 0x11],
         rtp_48k,
