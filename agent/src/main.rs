@@ -34,6 +34,10 @@ mod signaling;
 // module de `sortie_dxgi.rs`. `superviseur::placement` (tâche 7) en a besoin
 // pour se compiler et se tester sur Linux.
 mod sortie_dxgi;
+// Fréquence dominante d'un bloc d'échantillons (correction « A-bis »). Pur,
+// nom autonome : racine nue, comme `geometry` et `sortie_dxgi` — voir la
+// convention de module enfant de `CLAUDE.md`.
+mod spectre;
 // Pas de `#[cfg(windows)]` ici : le prédicat de PERSISTANCE (tâche 2bis, D9,
 // correction n°14 de la revue) est pur -- `Option<(u32, u32)> ×
 // Option<(u32, u32)> -> &str` -- et doit se compiler et se tester sur Linux,
