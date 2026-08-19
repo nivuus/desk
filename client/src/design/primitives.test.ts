@@ -1,0 +1,149 @@
+import { describe, expect, it } from 'vitest';
+import primitivesCss from './primitives.css?raw';
+
+/**
+ * LES GARDES DE FORME DES PRIMITIVES — sous-projet ⑥, sous-bloc S2.
+ *
+ * 🔴 CE FICHIER NE LIT UN TEXTE NON VIDE QUE GRÂCE À `test: { css: true }` de
+ * `client/vite.config.ts`. Sans cette ligne, Vitest court-circuite les fichiers
+ * CSS — la requête `?raw` comprise — et `primitivesCss` vaut la chaîne VIDE :
+ * les gardes ① à ④ ci-dessous, qui sont des tests d'ABSENCE, passeraient tous
+ * au vert EN NE MESURANT RIEN. C'est aussi pourquoi il n'y a délibérément pas
+ * de `client/vitest.config.ts` : il prendrait le pas sur la configuration Vite
+ * sans rien dire.
+ *
+ * 🔴 ET C'EST EXACTEMENT POURQUOI G5 EXISTE. G1 à G4 cherchent l'absence de
+ * quelque chose ; un `primitives.css` réduit à son en-tête les satisferait tous
+ * les quatre. G5 est le garde d'ATTEIGNABILITÉ : il exige qu'il y ait quelque
+ * chose à mesurer.
+ *
+ * 🔴 LE BLANCHIMENT DES COMMENTAIRES N'EST PAS UN DÉTAIL. L'en-tête de
+ * `primitives.css` explique POURQUOI `outline: none`, `opacity` et les
+ * longueurs littérales y sont interdits — il ÉCRIT donc ces chaînes. Un garde
+ * qui les chercherait dans le texte brut serait satisfait par sa propre
+ * justification, et resterait vert sur un fichier dont la règle a été retirée.
+ * C'est mot pour mot ce qui est arrivé au garde de l'amorce en S1.
+ *
+ * ⚠️ MAIS SA PORTÉE RÉELLE EST PLUS ÉTROITE QUE CELA, ET ELLE EST MESURÉE —
+ * l'écrire large serait affirmer au-delà du relevé. Neutraliser le blanchiment
+ * fait tomber G1 (et donc G5, qui lit les mêmes préludes) : le balayage
+ * `preludes` prend le texte d'un commentaire précédant un `{` pour une liste de
+ * sélecteurs, et G1 remonte alors 672 compounds parasites dont `/*`. G2, G3 et
+ * G4 restent VERTS sans lui, y compris avec un `outline: none;` écrit dans un
+ * commentaire posé À L'INTÉRIEUR d'un bloc (essayé) : ces trois-là ne cherchent
+ * pas une sous-chaîne, ils lisent une POSITION DE PROPRIÉTÉ dans une
+ * déclaration, et un `/* … outline` n'en est pas une. Le blanchiment reste
+ * requis — il est le seul rempart de G1 et de G5 —, et c'est la façon dont G2 à
+ * G4 sont écrits qui les met hors d'atteinte du piège, pas lui.
+ */
+
+/** Retire les commentaires `/* … *​/` — voir l'en-tête. */
+function sansCommentaires(css: string): string {
+    return css.replace(/\/\*[\s\S]*?\*\//g, ' ');
+}
+
+/** Tout ce qui précède un `{`. Les at-rules (`@media …`) commencent par `@`. */
+function preludes(css: string): string[] {
+    return [...css.matchAll(/([^{}]+)\{/g)].map((m) => m[1].trim()).filter(Boolean);
+}
+
+interface Declaration {
+    propriete: string;
+    valeur: string;
+}
+
+/**
+ * Les déclarations des blocs les plus intérieurs. `[^{}]*` ne franchit ni `{`
+ * ni `}` : le corps d'un `@media` n'est donc jamais pris pour une déclaration.
+ */
+function declarationsDe(css: string): Declaration[] {
+    const sortie: Declaration[] = [];
+    for (const bloc of css.matchAll(/\{([^{}]*)\}/g)) {
+        for (const morceau of bloc[1].split(';')) {
+            const coupe = morceau.indexOf(':');
+            if (coupe === -1) continue;
+            sortie.push({
+                propriete: morceau.slice(0, coupe).trim(),
+                valeur: morceau.slice(coupe + 1).trim(),
+            });
+        }
+    }
+    return sortie;
+}
+
+const CSS = sansCommentaires(primitivesCss);
+const SELECTEURS = preludes(CSS).filter((p) => !p.startsWith('@'));
+const DECLARATIONS = declarationsDe(CSS);
+
+/** `.carte > .carte__titre` rend `['.carte', '.carte__titre']`. */
+const compounds = (selecteur: string) => selecteur.split(/[\s>+~]+/).filter(Boolean);
+
+/** Les listes de sélecteurs qui citent une famille — l'outil de G5 et de G6. */
+const famille = (nom: string) => SELECTEURS.filter((s) => s.includes(`.${nom}`));
+
+describe('primitives.css — les gardes de forme', () => {
+    it('G1 — aucun sélecteur d’élément nu : tout compound porte une classe', () => {
+        // 🔴 C'EST CE GARDE QUI TIENT LA NEUTRALITÉ D'`index.html`. La fenêtre
+        // de session porte cinq éléments sans aucune classe de primitive, dont
+        // DEUX `<button>` : un `button { … }` écrit ici changerait son
+        // apparence sans qu'aucun des sept contrôles ne le dise.
+        const nus: string[] = [];
+        for (const liste of SELECTEURS) {
+            for (const selecteur of liste.split(',')) {
+                for (const compound of compounds(selecteur.trim())) {
+                    if (!compound.includes('.')) nus.push(compound);
+                }
+            }
+        }
+        expect(nus, 'sélecteurs d’élément nus dans primitives.css').toEqual([]);
+    });
+
+    it('G2 — l’anneau de focus n’est jamais effacé', () => {
+        // `base.css` pose `:focus-visible` GLOBALEMENT : aucune primitive n'a
+        // à le déclarer, et le seul risque est qu'une d'elles l'efface « pour
+        // faire propre ». Aucun des sept contrôles ne le verrait.
+        const effacements = DECLARATIONS.filter(
+            (d) =>
+                /^outline(-(width|style))?$/i.test(d.propriete) &&
+                /^(none|0|0px|0rem|0em)$/i.test(d.valeur),
+        ).map((d) => `${d.propriete}: ${d.valeur}`);
+        expect(effacements, 'effacements de l’anneau de focus').toEqual([]);
+    });
+
+    it('G3 — aucun état ne se dit par une composition d’exécution', () => {
+        // `opacity` et `filter` composent la couleur AU RENDU : la teinte
+        // effective échappe alors aux 52 paires du contrôle §7.1. Un état
+        // désactivé exprimé par une opacité serait le seul état du produit
+        // dont le contraste ne serait mesuré par rien.
+        const compositions = DECLARATIONS.filter((d) =>
+            ['opacity', 'filter', 'backdrop-filter'].includes(d.propriete.toLowerCase()),
+        ).map((d) => `${d.propriete}: ${d.valeur}`);
+        expect(compositions, 'compositions d’exécution dans primitives.css').toEqual([]);
+    });
+
+    it('G4 — aucune longueur hors échelle : toute unité passe par un token', () => {
+        // ⚠️ CE GARDE NE DIT PAS QUE LE BON TOKEN A ÉTÉ CHOISI. Il dit
+        // qu'aucune longueur ne s'écrit hors des échelles du §4.4 — ce
+        // qu'aucun des sept contrôles ne mesure, puisque aucun ne mesure une
+        // longueur.
+        const hors: string[] = [];
+        for (const d of DECLARATIONS) {
+            const reste = d.valeur.replace(/var\(\s*--[a-z0-9-]+\s*\)/gi, ' ');
+            const trouve = reste.match(/(\d+(?:\.\d+)?)(px|rem|em|ms|s|pt|ch|vw|vh)\b/);
+            if (trouve) hors.push(`${d.propriete}: ${d.valeur} → « ${trouve[0]} » hors token`);
+        }
+        expect(hors, 'longueurs littérales dans primitives.css').toEqual([]);
+    });
+
+    it('G5 — atteignabilité : le fichier déclare des règles, dont la famille bouton', () => {
+        // 🔴 SANS CE GARDE, LES QUATRE PRÉCÉDENTS NE PROUVENT RIEN : ce sont
+        // des tests d'absence, et un fichier vide les satisfait tous.
+        expect(
+            SELECTEURS.length,
+            'primitives.css ne déclare AUCUNE règle : G1 à G4 sont alors verts en ne mesurant rien',
+        ).toBeGreaterThan(0);
+        expect(famille('bouton'), 'la famille .bouton est absente de primitives.css').not.toEqual(
+            [],
+        );
+    });
+});

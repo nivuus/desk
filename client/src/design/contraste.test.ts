@@ -41,12 +41,17 @@ describe('rapportDeContraste — vecteurs extérieurs à notre palette', () => {
 });
 
 describe('PAIRES', () => {
-    it('en compte 50, et ce sont des paires DÉCLARÉES', () => {
+    it('en compte 52, et ce sont des paires DÉCLARÉES', () => {
         // Sept encres × trois fonds au seuil 4,5, plus `--bord-fort` sur les
         // trois fonds au seuil 3, plus `--sur-accent` sur `--accent` au
-        // seuil 4,5 — le tout × 2 thèmes. Un produit cartésien en donnerait
-        // bien davantage, et inclurait `--bord`.
-        expect(PAIRES).toHaveLength(50);
+        // seuil 4,5, plus `--sur-accent` sur `--accent-survol` au seuil 4,5
+        // — le tout × 2 thèmes. Un produit cartésien en donnerait bien
+        // davantage, et inclurait `--bord`.
+        //
+        // ⚠️ CE COMPTE EST CE QUI EMPÊCHE `PAIRES` DE RÉTRÉCIR EN SILENCE :
+        // une faute de frappe qui ferait disparaître une poussée dans
+        // `pairesDuTheme` laisserait `contraste.mjs` vert en mesurant moins.
+        expect(PAIRES).toHaveLength(52);
         expect(new Set(PAIRES.map((p) => p.theme))).toEqual(new Set(['sombre', 'clair']));
     });
 
@@ -70,9 +75,15 @@ function palette(couleurs: Record<string, [string, string]>): string {
 :root[data-theme="clair"] { color-scheme: light; ${clair} }`;
 }
 
+// ⚠️ `--accent-survol` EST ICI PARCE QU'UN TOKEN INTROUVABLE EST UN ÉCHEC, et
+// non une paire silencieusement sautée (voir l'en-tête d'`evaluer`) : l'ajouter
+// à `PAIRES` sans l'ajouter à cette palette synthétique fait tomber le test
+// ci-dessous sur deux échecs de rapport 0. C'est le comportement voulu, et il a
+// été observé ROUGE avant cette ligne.
 const TOUS = [
     '--fond-0', '--fond-1', '--fond-2', '--bord-fort', '--texte-fort', '--texte',
-    '--texte-faible', '--accent', '--sur-accent', '--succes', '--alerte', '--danger',
+    '--texte-faible', '--accent', '--accent-survol', '--sur-accent', '--succes',
+    '--alerte', '--danger',
 ];
 
 describe('evaluer', () => {
@@ -87,7 +98,7 @@ describe('evaluer', () => {
         );
         const resultat = evaluer(lireBlocsDeTheme(palette(conforme)));
         expect(resultat.echecs).toEqual([]);
-        expect(resultat.verifiees).toBe(50);
+        expect(resultat.verifiees).toBe(52);
         expect(resultat.minimum).toBeCloseTo(21, 5);
     });
 

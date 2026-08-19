@@ -53,7 +53,12 @@ const EXCLUS = new Map([
 ]);
 
 // ═══════════════════════════════════════════════════════════════════════════
-// LA LISTE D'ATTENTE — 28 tokens déclarés que le produit n'appelle pas ENCORE.
+// LA LISTE D'ATTENTE — 18 tokens déclarés que le produit n'appelle pas ENCORE.
+//
+// ⚠️ CE NOMBRE EST TENU À JOUR PAR LA TÂCHE QUI LE REND FAUX, jamais par une
+// tâche de ménage plus tard : elle en a 28 à la fin de S1, et chaque famille
+// de primitives de S2 le fait descendre dans SON commit. Un compte qui
+// n'appartient à personne dérive — ce dépôt l'a payé assez souvent.
 //
 // 🔴 CE N'EST PAS UN ASSOUPLISSEMENT DU CONTRÔLE, ET LA DIFFÉRENCE TIENT À UN
 // MOT : ÉGALITÉ, pas inclusion. Le contrôle exige que l'ensemble des orphelins
@@ -89,13 +94,6 @@ const EXCLUS = new Map([
 // ═══════════════════════════════════════════════════════════════════════════
 const EN_ATTENTE_D_APPELANT = new Map([
     // ── Couleurs — S2 (primitives) puis S3 (surfaces habillées) ───────────
-    ['--fond-1', 'S2 — le fond des cartes et des champs'],
-    ['--fond-2', 'S2 — le fond des éléments enfoncés et des en-têtes'],
-    ['--bord', 'S2 — le trait des cartes, des champs et des séparateurs'],
-    ['--bord-fort', 'S2 — le trait d’un champ au repos, et les bordures actives'],
-    ['--texte', 'S2 — le corps de texte des primitives'],
-    ['--texte-faible', 'S2 — les métadonnées et les libellés secondaires'],
-    ['--sur-accent', 'S2 — l’encre du bouton primaire'],
     ['--succes', 'S3 — l’écran d’état « connecté »'],
     ['--alerte', 'S3 — le bandeau d’avertissement'],
     ['--danger', 'S3 — l’écran d’état terminal, et le message d’erreur de connexion'],
@@ -115,12 +113,8 @@ const EN_ATTENTE_D_APPELANT = new Map([
     ['--e-6', 'S3 — la marge des sections'],
     ['--e-7', 'S3 — la marge de tête des surfaces'],
     // ── Rayons — S2 ───────────────────────────────────────────────────────
-    ['--r-1', 'S2 — les étiquettes et les petits éléments'],
     ['--r-3', 'S2 — les cartes'],
     ['--r-plein', 'S2 — les pastilles et les boutons ronds'],
-    // ── Durées et traits — S2 ─────────────────────────────────────────────
-    ['--duree-1', 'S2 — le survol et le focus des primitives'],
-    ['--trait', 'S2 — l’épaisseur de trait des cartes et des champs'],
     // ── Le cas particulier, et il est nommé ───────────────────────────────
     // 🔴 `--police-mono` N'A QU'UN SEUL APPELANT PRÉVU, `#stats`, et la spec
     // §4.3 laisse son sort ouvert : « si aucun appelant n'apparaît, le token

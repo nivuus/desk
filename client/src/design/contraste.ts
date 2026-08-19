@@ -82,6 +82,11 @@ function pairesDuTheme(theme: string): Paire[] {
         paires.push({ theme, encre: '--bord-fort', fond, seuil: SEUIL_COMPOSANT });
     }
     paires.push({ theme, encre: '--sur-accent', fond: '--accent', seuil: SEUIL_TEXTE });
+    // Le SURVOL du bouton principal (S2) : l'encre ne change pas, le fond si.
+    // Sans cette paire, l'état le plus fréquent du produit serait le seul dont
+    // le contraste ne serait mesuré par rien — c'est la raison pour laquelle
+    // `--accent-survol` est un TOKEN et non un `color-mix()` ou un `filter`.
+    paires.push({ theme, encre: '--sur-accent', fond: '--accent-survol', seuil: SEUIL_TEXTE });
     return paires;
 }
 

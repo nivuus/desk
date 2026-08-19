@@ -1,0 +1,154 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   LES PRIMITIVES D'INTERFACE — bouton, champ, surface, message (spec ⑥, §6).
+
+   Ce fichier NE DÉCLARE AUCUNE VALEUR : tout vient de `var(--…)`, donc de
+   `design/tokens.css`, qui en est la source unique. Le contrôle §7.2 le balaie
+   comme les autres feuilles de `client/src/`.
+
+   ── QUATRE RÈGLES DE FORME, ET ELLES SONT OUTILLÉES ───────────────────────
+   `client/src/design/primitives.test.ts` les vérifie, commentaires blanchis
+   d'abord — ce paragraphe-ci écrit les chaînes que ces gardes cherchent, et
+   sans le blanchiment ils seraient satisfaits par leur propre justification.
+
+   ① AUCUN SÉLECTEUR D'ÉLÉMENT NU — ni `button`, ni `input`, ni `a`, ni `*`,
+      ni `:root`. C'est ce qui garantit que ce fichier ne change RIEN à
+      `client/index.html`, dont les cinq éléments ne portent aucune classe de
+      primitive et dont DEUX sont des `<button>`. Un `button { … }` ici
+      changerait la fenêtre de session sans qu'aucun des sept contrôles ne le
+      dise.
+   ② L'ANNEAU DE FOCUS NE S'EFFACE JAMAIS. `design/base.css` le pose
+      globalement sur `:focus-visible` : les primitives l'ont toutes, y compris
+      celles qui n'existent pas encore. Le risque n'est pas son absence, c'est
+      qu'une règle écrive `outline: none` « pour faire propre ».
+   ③ AUCUN ÉTAT NE SE DIT PAR UNE COMPOSITION D'EXÉCUTION — ni `opacity`, ni
+      `filter`. La couleur qui en sortirait échapperait aux 52 paires du
+      contrôle §7.1, et l'état désactivé serait le seul du produit dont le
+      contraste ne serait mesuré par rien. Le désactivé se dit donc par des
+      TOKENS : `--texte-faible` sur `--fond-1`/`--fond-2`.
+   ④ AUCUNE LONGUEUR HORS ÉCHELLE. Un `4px` écrit ici ne serait vu par AUCUN
+      des sept contrôles — aucun ne mesure une longueur. Les seuls littéraux
+      autorisés sont `0`, `100%`, `1` et les mots-clés (`auto`, `inherit`,
+      `transparent`, `1fr`).
+
+   ⚠️ `transparent` EST LA SEULE VALEUR DE COULEUR NON-`var()` autorisée ici :
+   le contrôle §7.2 ne connaît que `black`, `white` et `red` parmi les
+   mots-clés, et `transparent` n'est pas une couleur, c'est une absence.
+
+   ── CE QUE CE FICHIER NE FAIT PAS ─────────────────────────────────────────
+   ⛔ AUCUNE SURFACE DU PRODUIT NE LE LIE. À la fin de S2 il n'est chargé que
+   par `client/primitives.html`, la galerie du jugement humain. Les tokens
+   qu'il fait sortir de la liste d'attente du §7.6 ont donc UN APPELANT ÉCRIT,
+   pas UN PIXEL RENDU : le périmètre « employé » de ce contrôle est le FICHIER,
+   jamais la surface. C'est S3 qui referme cet écart.
+
+   ⚠️ PORTE ARMÉE À 240 LIGNES, et non à 300 comme les autres fichiers de ⑥ :
+   une famille coûte de 40 à 80 lignes, si bien qu'une porte à 300 laisserait
+   la dernière la franchir PENDANT son écriture. Au-delà de 240, scinder en
+   `design/primitives/{bouton,champ,surface,message}.css` et faire de ce
+   fichier quatre `@import` — la forme exacte de `design/socle.css`. EXTRAIRE,
+   jamais compresser.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BOUTON — trois variantes, quatre états.
+
+   ⚠️ L'ÉTAT ACTIF (enfoncé) N'A PAS DE TOKEN, et c'est un arbitrage assumé : il
+   se dit, pour les trois variantes, par le RETOUR À LA VALEUR DE REPOS — le
+   survol se retire sous le doigt. Il faut l'écrire, parce que `:active`
+   implique `:hover` : sans ces trois règles, un bouton enfoncé garderait
+   simplement son apparence de survol et l'appui ne se verrait pas. Que ce
+   retour soit LISIBLE est un jugement humain, pas une mesure : aucune commande
+   ne le dira, et il rejoint les jugements du §8.
+
+   ⚠️ LE TRAIT DU BOUTON SECONDAIRE EST `--bord-fort`, PAS `--bord`. Il porte
+   l'information « ceci est un contrôle », et le §4.5 réserve `--bord` aux
+   séparateurs PUREMENT décoratifs, que WCAG 1.4.11 exempte. `--bord-fort` est
+   mesuré sur les trois fonds au seuil 3 par le contrôle §7.1 ; `--bord` ne
+   l'est pas, délibérément. ⚠️ AUCUNE COMMANDE NE VÉRIFIE CE CHOIX — c'est la
+   règle de revue que le §8 nomme. Le secondaire DÉSACTIVÉ retombe sur `--bord`
+   parce qu'il a cessé d'être un contrôle.
+
+   ⚠️ `:not(:disabled)` PLUTÔT QUE `:enabled` sur le survol et l'appui :
+   `:enabled` ne s'applique qu'aux éléments de formulaire, et une ancre portant
+   `.bouton` ne le satisferait jamais. Le jour où S3 posera un lien en bouton,
+   la règle vaudra sans être réécrite.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.bouton {
+    display: inline-block;
+    border: var(--trait) solid transparent;
+    border-radius: var(--r-1);
+    padding: var(--e-2) var(--e-3);
+    font: inherit;
+    font-size: var(--t-m);
+    line-height: var(--lh-normal);
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+        background var(--duree-1),
+        border-color var(--duree-1),
+        color var(--duree-1);
+}
+
+.bouton:disabled {
+    cursor: not-allowed;
+}
+
+/* ── Principal — l'action que la surface propose, et il n'y en a qu'une ──── */
+.bouton--principal {
+    background: var(--accent);
+    color: var(--sur-accent);
+}
+
+.bouton--principal:hover:not(:disabled) {
+    background: var(--accent-survol);
+}
+
+.bouton--principal:active:not(:disabled) {
+    background: var(--accent);
+}
+
+.bouton--principal:disabled {
+    background: var(--fond-2);
+    color: var(--texte-faible);
+}
+
+/* ── Secondaire — une action de même rang, sans la revendiquer ──────────── */
+.bouton--secondaire {
+    border-color: var(--bord-fort);
+    background: var(--fond-1);
+    color: var(--texte-fort);
+}
+
+.bouton--secondaire:hover:not(:disabled) {
+    background: var(--fond-2);
+}
+
+.bouton--secondaire:active:not(:disabled) {
+    background: var(--fond-1);
+}
+
+.bouton--secondaire:disabled {
+    border-color: var(--bord);
+    background: var(--fond-1);
+    color: var(--texte-faible);
+}
+
+/* ── Discret — une action de repli, qui ne pèse rien au repos ───────────── */
+.bouton--discret {
+    background: transparent;
+    color: var(--texte);
+}
+
+.bouton--discret:hover:not(:disabled) {
+    background: var(--fond-1);
+}
+
+.bouton--discret:active:not(:disabled) {
+    background: transparent;
+}
+
+.bouton--discret:disabled {
+    color: var(--texte-faible);
+}
