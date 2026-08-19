@@ -566,12 +566,62 @@ la taille de sortie demandée, **aux deux points d'entrée**), 6
 
 **Legs neufs de D10** :
 
-4. ⛔ **Construire `AUDIO_FAUTE_RECONSTRUCTION`** — la seule voie nommée pour
+4. 🔴 **En mono-fenêtre, le remède de reconstruction audio est INERTE.**
+   `audio_porteuse` naît `false` et n'a qu'un seul écrivain, `appliquer_audio`,
+   atteint uniquement par un ordre `Audio` du capteur — qu'un agent
+   mono-fenêtre ne reçoit jamais. Une capture reconstruite y est auto-émise à
+   `true` par `WindowsAudioSource::new`, puis **remise à `false`** par la ligne
+   de réarmement de `reconstruire_ou_signaler`. **Ce n'est PAS une régression**
+   (avant D10 rien n'était reconstruit et le son mourait de la même façon), et
+   **ce n'est PAS corrigé** : forcer `true` sans arbitrage réintroduirait le
+   défaut *pire* qu'`audio_porteuse` évite en multi-fenêtres — une fuite de son
+   vers une fenêtre qui doit se taire, qu'un test garde rouge.
+
+   ⚠️ **CE LEG A ÉTÉ OMIS DE CE §11 JUSQU'AU 19 AOÛT 2026**, alors qu'il est le
+   défaut le plus lourd de la revue transverse — le seul à avoir une
+   conséquence de **comportement**. Il n'existait qu'au **§8bis**, où le
+   diagnostic complet vit, et dans l'index (`CLAUDE.md`). **Le document que le
+   successeur ouvre pour connaître le détail ne le portait pas** : c'est le
+   naufrage du « 487 » sous sa forme la plus pure — une liste corrigée dans
+   l'index et pas dans sa source. Le diagnostic n'est **pas** dupliqué ici ;
+   voir le §8bis, qui reste le seul endroit où il est analysé.
+
+   **Le correctif existe et il est bon marché** : `demarrage/audio.rs::brancher`
+   connaît déjà `config.fenetre_hwnd`, et déclarer la session porteuse **dans
+   la seule branche `None`** laisserait le multi-fenêtres strictement inchangé.
+   Repris par le sous-bloc D11.
+5. ⛔ **Construire `AUDIO_FAUTE_RECONSTRUCTION`** — la seule voie nommée pour
    exercer le critère ④ (le repli sur la promotion) sans dépendre d'un kill de
    processus qui tue la fenêtre avec l'audio.
-5. ⛔ **La cause du refus de reconstruction n'est pas identifiée.**
-6. ⛔ **Le coût de la duplication d'une sortie surdimensionnée n'est mesuré par
+6. ⛔ **La cause du refus de reconstruction n'est pas identifiée.**
+7. ⛔ **Le coût de la duplication d'une sortie surdimensionnée n'est mesuré par
    rien** — c'est le prix assumé de la voie « tolérer et recadrer ».
-7. ⛔ **La séparation des flux entre fenêtres n'est toujours pas prouvée** : il
+8. ⛔ **La séparation des flux entre fenêtres n'est toujours pas prouvée** : il
    faut un contrôle qui résiste à la dérive commune de la source, ou un
    échantillonnage simultané.
+
+### Et DEUX legs de D9 qui ne sont jamais sortis de son propre registre
+
+Le §12 des legs de D9 en comptait douze ; **les deux derniers n'ont été repris
+nulle part** — ni dans la liste ci-dessus, ni dans le corps de ce document. Ils
+sont rétablis ici, à leur rang d'origine, et **repris par le sous-bloc D11**
+(sa tâche 6) :
+
+- ⛔ **D9 n°11 — deux tests faibles, incapables de rendre l'autre valeur.**
+  `agent/src/windows_source/telemetrie.rs` : `une_telemetrie_neuve_est_a_zero`
+  n'éprouve que `#[derive(Default)]`, jamais la logique propre de
+  `tick`/`capturee`/`produite` — il passerait quel que soit leur corps.
+  `client/src/resize.test.ts` : son titre annonce « quand le canal était fermé
+  au moment du geste », état que `RejeuResize` **ne peut pas atteindre** — le
+  type est pur et n'a aucune notion de canal ni de `readyState` ; le test se
+  contente d'omettre l'appel de confirmation, ce qui rend le même verdict pour
+  n'importe quelle autre raison de non-confirmation.
+- ⛔ **D9 n°12 — un invariant non écrit dans `client/src/main.ts`.** Le rejeu du
+  `Resize` (`addEventListener('open', emettreSiPossible)`) ne tient que parce
+  que le `.then()` qui le pose s'exécute **intégralement de façon synchrone**,
+  sans `await` intercalé entre la construction du rejeu / du `ResizeObserver`
+  et cet abonnement. Un `await` glissé là romprait le rejeu **en silence** si
+  le canal s'ouvrait pendant l'attente. Ni commenté, ni testé.
+
+  ⚠️ **Nommer le symbole, jamais la ligne** : ce site est passé de `:345` (D9)
+  à `:386` (19 août 2026) sans qu'aucune de ses mentions ne bouge.
