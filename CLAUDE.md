@@ -7694,6 +7694,393 @@ par `0002-identite.sql`, et **la consigne reste entière pour P4**).
    porte plus.
 ---
 
+## 🎨 Sous-projet ⑥ Design system — sous-bloc S1 : le socle, et les sept contrôles (19 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-19-design-system-s1-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-19-design-system-s1.md` (commit `f4cb8c0`).
+Spec : `docs/superpowers/specs/2026-08-19-design-system-design.md` (commit `5b6b830`).
+Journaux : `docs/superpowers/plans/journaux-design-s1/`.
+
+⚠️ **UNE SEULE FAMILLE DE LECTURE — la plus simple de tous les sous-blocs de ce
+dépôt, et c'est MESURÉ, pas supposé** :
+`grep -lP '\x1b\[' docs/superpowers/plans/journaux-design-s1/*` rend **la liste
+vide** — **aucune séquence ANSI, dans aucun fichier**. `file` rend « UTF-8 » ou
+« ASCII » partout, et **aucun fichier ne porte de `\r`**. Ce sont des sorties
+`npm`/`node` sur l'**hôte**, jamais du PowerShell distant : ni `sed`, ni
+`grep -a`, ni `iconv`. **Ils se `grep`ent à plat.**
+
+⛔ **AUCUNE TÂCHE DE S1 N'A EMPLOYÉ LA VM WINDOWS**, et ce n'est pas une gêne :
+⑥ est un sous-projet **navigateur**, et la spec §9 déclare qu'il n'a **aucune
+recette sur VM**. La VM était par ailleurs occupée par la recette du chantier
+microphone. La seule mesure hors terminal est la corroboration **hors critère**
+à deux fenêtres, faite dans un Chromium **de l'hôte**.
+
+### Les sept contrôles — verdict, et nombre d'exécutions
+
+**Deux exécutions de chacun, au commit `604f91c`. Aucun taux n'est revendiqué** :
+les sept contrôles sont **déterministes**, et deux exécutions y établissent la
+**reproductibilité**, jamais une fréquence.
+
+| # | Contrôle | Verdict | Le chiffre, **relevé** |
+| --- | --- | --- | --- |
+| §7.1 | contrastes WCAG | **VERT** | **50 paires, 0 échec, minimum 3,16** |
+| §7.2 | aucune couleur littérale hors `tokens.css` | **VERT** | **0** sur 46 fichiers — contre **onze** sur l'arbre intact |
+| §7.3 | toute surface bâtie porte les tokens | **VERT, DEUX assertions** | A : 0/4 pages ; B : 0, **évaluée sur 4 pages** contre **1** avant |
+| §7.4 | les trois blocs déclarent le même ensemble | **VERT** | **0 écart** |
+| §7.5 | la bascule atteint les N fenêtres | **VERT** | **10 tests** |
+| §7.6 | orphelins et `var()` non déclarés | **VERT, sous liste d'attente nommée** | ① **0 écart** ; ② **28 orphelins, 28 en attente déclarée** |
+| §7.7 | le poids CSS ne dérive pas | **VERT** | **3 503** octets / plafond **12 288** |
+
+`npm run design:verifier` → **6/6**. Le septième, §7.5, est un **test
+unitaire** et tourne dans `npm test` — le dire évite qu'un lecteur compte six et
+conclue qu'il en manque un.
+
+✅ **`scripts/verify-all.sh` sort 0 sur ses DIX étapes**, et **aucune étape
+étrangère n'a échoué** — ni `cargo test --workspace`, ni `clippy`, ni `proto`,
+ni les trois `plateforme` (Postgres compris). C'est à signaler parce que le plan
+prévoyait le contraire : P2 avait vu son témoin tomber « sur un test Rust du
+voisin », et le chantier E avait du travail non commité dans `agent/`. **Le
+risque était réel et ne s'est pas réalisé.**
+
+Comptes : `client` **179** tests, `proto` **37**, `typecheck` **exit 0**.
+
+### 🔵 Le fait le plus réutilisable : Node v24.9.0 importe un `.ts` depuis un `.mjs`
+
+**Mesuré, sans `tsx`, sans `ts-node`, sans `@types/node`, sans AUCUNE dépendance
+neuve.** C'est ce qui permet à **trois** contrôles (§7.1, §7.4, §7.6) de partager
+un seul parseur — `client/src/design/tokens.ts`, typechecké et testé — au lieu
+d'en recopier la logique. Le point de conception que cela sert est celui du
+§7.1 : « **un contrôle qui a sa propre copie des valeurs valide sa copie** ».
+
+⚠️ **Le coût, mesuré lui aussi : le retrait de types NE TYPECHECKE PAS, et il
+refuse le TypeScript NON EFFAÇABLE.** Un `export enum T { A, B }` importé de
+cette façon fait planter Node :
+
+```
+$ node runenum.mjs
+.../enum.ts:1
+export enum T { A, B }
+```
+
+**Tout module de `client/src/design/` importé par un outil doit donc rester
+« effaçable »** : pas d'`enum`, pas de `namespace`, pas de propriétés de
+constructeur, pas de décorateurs. Un commentaire de tête de chaque module
+concerné la porte.
+
+🔵 **Et S1 l'a exploité une SECONDE fois, au-delà de ce que le plan prévoyait** :
+`client/outils/tokens-orphelins.mjs` importe **`client/vite.config.ts`** pour
+lire la liste des entrées Vite, plutôt que de la recopier. C'est ce qui empêche
+son périmètre d'attraper `probe-coalesced.html` et `client/recette/*.html`, qui
+sont des **instruments de banc hors produit**.
+
+### 🔴 La décision des 28 tokens orphelins — refusée SUR MESURE, pas sur un goût
+
+À la fin de S1, `tokens.css` déclare **47** tokens et le produit en appelle
+**19** : **28 sont orphelins**, par construction — S1 pose la palette entière,
+S2 à S4 l'emploieront.
+
+**Élaguer la palette à ce qui sert** était la voie évidente. Elle est refusée
+sur un relevé :
+
+```
+paires totales : 50
+paires citant au moins un token sans appelant : 46
+```
+
+**Sur les 50 paires de contraste que §7.1 vérifie, 46 citent au moins un des 28
+tokens sans appelant.** Élaguer ferait tomber §7.1 **de 50 paires à 4** : on
+satisferait un contrôle en **vidant** l'autre — le geste que ce dépôt combat.
+
+**La forme retenue est une LISTE D'ATTENTE EXACTE, jamais un seuil.** Le
+contrôle exige l'**ÉGALITÉ** entre l'ensemble des orphelins et la liste, donc il
+échoue **dans les deux sens** : un orphelin **absent** de la liste
+(`NOUVEL ORPHELIN`), et un token de la liste qui **a gagné** un appelant
+(`À RETIRER DE LA LISTE`). **La seconde moitié est celle qui compte : elle rend
+la liste AUTO-NETTOYANTE.** Un seuil (« au plus 28 ») aurait pourri sur place ;
+une liste dont chaque retrait est **forcé** rétrécit toute seule, et **le jour
+où elle est vide, elle disparaît**. Les deux sens ont été vus rouges.
+
+⚠️ **Ce que ce contrôle mesure, dit sans le maquiller** : **pas** « la palette
+est-elle entièrement employée ? » — la réponse est non jusqu'à S4 —, mais que
+**l'écart entre la palette et son emploi soit CONNU, ÉNUMÉRÉ ET DÉCROISSANT**.
+C'est moins que ce que le §7.6 laissait espérer, c'est écrit dans le script à
+l'endroit où on le lit, et **cela peut échouer dès aujourd'hui**.
+
+### Les huit relevés PÉRIMÉS de la spec — valeur juste
+
+Corrigés par le plan à `8ad03a2`, et **repris après S1** là où S1 les a fait
+bouger à nouveau.
+
+| # | Ce que la spec écrit | Juste (`8ad03a2`) | Après S1 (`604f91c`) |
+| --- | --- | --- | --- |
+| 1 | « tout le style tient en **85 lignes** » | **139** | **181** + **207** + **73** + **8** (quatre feuilles) |
+| 2 | « **cinq** valeurs littérales comme couleurs » | **neuf** | **zéro** |
+| 3 | « `vite.config.ts:10-12` déclare **deux** entrées » | **trois**, en `:15-19` | **quatre** — `design.html` |
+| 4 | « **aucun écran de connexion**, P2 est à venir » | **il est arrivé** | et **il a sa feuille** |
+| 5 | « aucun jeton dans la poignée de main » | `shell-page.ts:62` en envoie un | inchangé par S1 |
+| 6 | « **25 737** octets, dont **1 055** de CSS » | **31 701** / **1 429** | CSS **3 503**, en **deux** actifs |
+| 7 | « la fenêtre de session a **quatre** éléments » | **cinq** | inchangé par S1 |
+| 8 | « `verify-webrtc.mjs` à **497** (marge 3) » | **494** (marge **6**) | **494** — **intouché par S1** |
+
+### Les onze divergences D1…D11, en une phrase chacune
+
+- **D1** — la spec annonce **trois** contrôles rouges, il n'y en a que **deux** :
+  §7.2 et §7.3 joués rouges sur l'arbre intact ; les quatre autres **n'avaient
+  rien à lire**, ce qui est un plantage, pas une mesure.
+- **D2** — **trois longueurs n'ont aucun cran** dans les échelles
+  (`padding: 6px`, `font-size: 18px`, `letter-spacing: 0.02em`) : elles restent
+  littérales, déclarées, et **la clause « aucune longueur hors échelle » du §8
+  est FAUSSE à la fin de S1**, de trois valeurs exactement.
+- **D3** — **deux des neuf couleurs ne sont pas des noirs** : six voiles hors
+  thème, valeurs reprises **verbatim**, aucun raccord à `--danger`/`--alerte`.
+- **D4** — **`--e-3` ne vaut 12 px que si `html` perd son `font-size`** ; et
+  « à l'identique » vaut **à racine 16 px, et là seulement**.
+- **D5** — la clé est **`guac.theme`**, préfixée comme les `guac.jeton.*` de P2,
+  et le test de robustesse emploie **la vraie clé voisine**, pas une inventée.
+- **D6** — un `.mjs` **importe** un `.ts` nativement (voir ci-dessus).
+- **D7** — **`client/vite.config.ts` n'est PAS typechecké** : une erreur y est
+  un **échec de build**, jamais une erreur `tsc`.
+- **D8** — le mot-clé **`red` lève un faux positif sur du français**
+  (« re**d**éclenche ») : §7.2 retire les commentaires d'abord.
+- **D9** — **`color-scheme` suit le thème**, sans être un token `--*` : c'est
+  lui qui décide de l'apparence **native** des `<input>` de l'écran de connexion.
+- **D10** — l'arbre est **partagé**, et l'événement s'est produit (voir plus bas).
+- **D11** — la galerie est la **4ᵉ entrée Vite**, **incluse** dans §7.2 et §7.3,
+  **exclue** de la seule moitié « employé » de §7.6.
+
+### Variables d'environnement : **AUCUNE**
+
+**S1 n'en introduit pas une seule**, ni pour l'agent, ni pour le service, ni
+pour le client — et c'est dit parce que le tableau du dépôt en compte beaucoup
+et qu'**une absence se déclare**. Corollaire : le piège maison « toute variable
+neuve doit être ajoutée à `scripts/run-agent.sh` » **ne s'applique pas**, et ce
+script **n'est pas modifié**. Même situation qu'en P1 et P2.
+
+### Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔴 **`injectTo` par défaut place le script AVANT `<meta charset>`.**
+  `HtmlTagDescriptor.injectTo` vaut `'head-prepend'` par défaut : le script
+  d'amorce sortirait avant la déclaration d'encodage, alors qu'il porte des
+  commentaires accentués. **`injectTo: 'head'`** le place après `<meta charset>`
+  et `<title>`, avant le module et la feuille — **et cela suffit à l'anti-FOUC**,
+  un script en ligne synchrone du `<head>` s'exécutant avant que `<body>` ne
+  soit analysé.
+- 🔴 **UN SCRIPT INJECTÉ PAR `transformIndexHtml` PART VERBATIM, COMMENTAIRES
+  COMPRIS — mesuré à 1 921 octets DANS CHACUNE des pages.** Il ne traverse aucun
+  transform, à l'inverse des commentaires d'un `.ts` que le bundler retire.
+  **Aucun des sept contrôles ne l'aurait dit** : §7.7 ne pèse que le CSS. Le
+  raisonnement long doit donc vivre là où il est **gratuit** — dans le greffon
+  (`vite.config.ts`, temps de build) et dans `theme.ts`.
+- 🔴 **UN GARDE PEUT ÊTRE SATISFAIT PAR SON PROPRE COMMENTAIRE.** Le garde qui
+  compare `CLE_THEME` au texte de `amorce-theme.js` a été **vu vacueux** : la
+  clé étant nommée entre quotes dans le commentaire d'en-tête de l'amorce, une
+  amorce réduite à `var t = null;` **passait les deux assertions**. Remède : la
+  clé ne s'écrit plus dans ce commentaire, et l'assertion porte sur l'**appel**
+  (`getItem('guac.theme')`), pas sur la présence de la chaîne quelque part.
+- 🔴 **UNE PERTURBATION QUI NE PERTURBE RIEN SE LIT COMME UN CONTRÔLE QUI NE
+  MORD PAS.** La rouge de §7.4 a d'abord rendu `exit=0` : elle ancrait sur
+  `@media (prefers-color-scheme: light)` et `:root[data-theme="clair"]`, qui
+  apparaissent **d'abord dans le commentaire d'en-tête** de `tokens.css`. Rien
+  n'était retiré. **Ancrer sur le sélecteur suivi d'une accolade**, et poser une
+  `assert` qui refuse de jouer si l'ancre est introuvable.
+- ⚠️ **`*/` DANS UN COMMENTAIRE DE BLOC : la sous-chaîne `src/**` suivie de
+  `/*.ts` ferme le commentaire.** Écrire un glob TypeScript dans un commentaire
+  de `vite.config.ts` a fait échouer le build sur `ERROR: Unexpected "*"` — et
+  **`tsc` n'en aurait rien dit** (D7).
+- ⚠️ **Le nom de l'actif CSS partagé n'est PAS prévisible** : Vite le dérive
+  d'un morceau JavaScript voisin. Balayer `dist/assets/*.css` sans présumer
+  d'aucun nom ; un script cherchant `socle-*.css` ne trouverait rien.
+- ⚠️ **`grep -c` compte des LIGNES, pas des occurrences** : le contrôle
+  « l'amorce est-elle injectée ? » rendait `2` par page tant que le commentaire
+  nommait la clé sur une autre ligne que le code.
+- ⚠️ **`pkill -f <motif>` depuis un shell dont la ligne de commande contient le
+  motif tue le shell** (exit 144). Piège déjà documenté par ce fichier, **payé
+  une fois de plus ici** en arrêtant un `vite preview`. Tuer par PID relevé.
+- ⚠️ **Vitest court-circuite le CSS par défaut**, `?raw` compris : un
+  `import css from './x.css?raw'` rend la chaîne **vide** et un test qui la
+  parserait **passerait au vert en ne mesurant rien**. `test: { css: true }` est
+  posé dans `client/vite.config.ts` — **et surtout, il n'y a délibérément PAS de
+  `client/vitest.config.ts`**, qui prendrait le pas sur lui **sans rien dire**.
+
+### ⚠️ La revue transverse de fin de branche — CINQ énoncés devenus faux
+
+Elle en a trouvé **cinq** en D7, **trois** en D8, **six** en D9, **douze** en
+D10, **sept** en D11, **huit** en P1 et **dix** en P2. **Cinq ici**, et ils ont
+la forme habituelle : **corrects des deux côtés pris séparément**.
+
+| # | Énoncé | Sort |
+| --- | --- | --- |
+| **1** | `client/src/design/tokens.css` — « **sans appelant, le token sort** », écrit par la tâche 7 à propos de `--police-mono`, **RÉFUTÉ par la tâche 12 de la même branche** : le token n'est pas sorti, il est sur une liste d'attente nommée dont **S4** décide | **CORRIGÉ** |
+| **2** | `client/src/design/theme.ts` — « la confirmation à deux fenêtres réelles **est prévue** » : la tâche 14 l'a **faite** | **CORRIGÉ**, avec son commit et ses réserves |
+| **3** | `client/connexion.html` — « cette page porte la structure **et rien d'autre** » : la tâche 11 lui a lié le socle, et **son rendu change** | **CORRIGÉ** sans retirer le bloc, qui appartient à **S3** |
+| **4** | `client/outils/surfaces-baties.mjs` — « B **est** rouge sur `dist/index.html` », un **présent** daté sans son commit, alors que B est verte sur quatre pages depuis la tâche 11 | **CORRIGÉ** en relevé daté (`71f3c36`) |
+| **5** | `client/outils/couleurs-litterales.mjs` — « le vert **arrive quand** la tâche 9 les fait migrer » : il est **arrivé** (`ab9e9b9`) | **CORRIGÉ** |
+
+🔵 **Et un énoncé du PLAN, réfuté par la mesure et non par une opinion — c'est
+le plus instructif du sous-bloc.** Le plan annonçait que §7.2 rendrait **neuf**
+sur l'arbre intact et prescrivait : « **s'il rend onze, le traitement des
+commentaires n'a pas été fait** ». **Il rend ONZE, et le diagnostic est faux des
+deux côtés** :
+
+- les deux de l'écart sont `style.css:3-4` — `--surface: #0b0d10` et
+  `--text: #e6e8eb` —, **des déclarations de token vivant hors de `tokens.css`**.
+  L'exclusion du §7.2 est par **FICHIER**, jamais par rôle, et une déclaration
+  hors de la source unique est **précisément la dérive que ce contrôle existe
+  pour voir** ;
+- **un défaut de traitement des commentaires rendrait TREIZE**, pas onze :
+  `resize.ts:7` et `resize.test.ts:30` portent le mot `red` en français.
+
+**Les deux moitiés sont vérifiées par la commande, sur l'arbre reconstruit à
+`71f3c36`** — `git archive` puis le contrôle avec `--racine` —, pas déduites.
+
+⚠️ **Le plan porte aussi QUATRE EXIGENCES QUI NE TIENNENT PAS ENSEMBLE**, et la
+quatrième cède : il demande que les `*.test.ts` soient balayés, **et** que
+`contraste.test.ts` porte les vecteurs `#000000`/`#ffffff`/`#808080` fixés par
+WCAG, **et** que `reprise.test.ts` compare `--fond-0` à `#0b0d10` exactement,
+**et** que §7.2 rende zéro. Les littéraux de ces deux tests sont
+**obligatoires** — les interdire rendrait les tâches impossibles. **L'exclusion
+est donc posée au plus étroit : `client/src/design/*.test.ts` seulement.** Sans
+elle, le contrôle rendrait **46**.
+
+⚠️ **Trois énoncés du plan et de la spec sont laissés FAUX, délibérément, faute
+d'être dans le périmètre de S1** — un index durable ne se commite pas avec une
+spec, et c'est la même décision que le legs n°11 de D8 :
+
+1. la spec §4.1 déclare qu'« **aucun appelant de `getComputedStyle` n'existe
+   aujourd'hui** » : `client/src/design/galerie.ts` en est le **premier**, et il
+   respecte la règle que le §4.1 écrivait pour lui (lecture **au changement de
+   thème**, jamais par image) ;
+2. la spec §8 porte « aucune longueur hors échelle », **faux de trois valeurs**
+   (D2) jusqu'à S4 ;
+3. le plan, tâche 12, prescrit de retirer `font-family: var(--police-mono)` de
+   `style.css` pour jouer une rouge — **cette ligne n'a jamais existé**, S1
+   n'ayant pas câblé le token.
+
+### ⚠️ L'arbre est PARTAGÉ, et il a bougé EN PLEINE RECETTE
+
+Le chantier E (microphone) a commité **`604f91c`** entre la première et la
+seconde salve de mesures, prises initialement à `c9bb8a7`. **Toutes les mesures
+ont été REPRISES à `604f91c`**, jamais recopiées — c'était le geste le moins
+cher et le seul honnête. Ce que ce commit touche dans `client/`, relevé par
+`git diff --stat` : **un seul fichier, `client/recette/micro-e1.mjs`**, un
+instrument de banc **hors du périmètre de chacun des sept contrôles** — vérifié
+par la sortie des contrôles eux-mêmes, pas supposé.
+
+**Aucun `git add -A` de tout le sous-bloc** ; chaque commit à pathspec explicite.
+
+### Le relevé de tailles, PAR LA COMMANDE, à `1bf93cf`
+
+**Le tableau de dette est INCHANGÉ, à deux lignes** — `agent/src/encode.rs`
+**1536**, `agent/src/windows_source.rs` **630**. **Aucun fichier de `client/` ne
+dépasse 500 lignes.**
+
+| Fichier | Lignes | Remarque |
+| --- | --- | --- |
+| `client/verify-webrtc.mjs` | **494** (marge **6**) | **INTOUCHÉ par S1** — la leçon de P2 (« une addition de commentaire peut annuler une extraction ») est respectée à la lettre |
+| `client/src/main.ts` | **451** | ⚠️ **DU VOISIN** : **392** au relevé D10, porté là par le chantier E. Relevé, **attribué au voisin**, pas repris à notre compte |
+| `client/outils/tokens-orphelins.mjs` | **233** | neuf |
+| `client/design.html` | **231** | neuf — la galerie |
+| `client/outils/couleurs-litterales.mjs` | **228** | neuf |
+| `client/src/design/tokens.css` | **207** | neuf — **la source unique** |
+| `client/src/design/galerie.ts` | **193** | neuf |
+| `client/src/style.css` | **181** | 139 → 181 |
+| `client/src/design/tokens.ts` | **176** | neuf — **pur**, partagé par trois contrôles |
+| `client/src/design/theme.test.ts` | **156** | neuf |
+| `client/src/design/contraste.ts` | **150** | neuf — **pur**, WCAG 2.1 et les 50 paires |
+| `client/src/design/tokens.test.ts` | **133** | neuf |
+| `client/src/design/contraste.test.ts` | **114** | neuf |
+| `client/outils/surfaces-baties.mjs` | **112** | neuf |
+| `client/src/design/theme.ts` | **107** | neuf — **pur, dépendances injectées** |
+| `client/vite.config.ts` | **106** | +le greffon d'amorce, +la 4ᵉ entrée |
+| `client/src/design/reprise.test.ts` | **95** | neuf |
+| `scripts/verify-all.sh` | **92** | **neuf → dix étapes** |
+| `client/outils/poids-css.mjs` | **89** | neuf |
+| `client/src/design/base.css` | **73** | neuf |
+| `client/outils/verifier-design.mjs` | **60** | neuf — l'agrégateur |
+| `client/connexion.html` | **47** | +le lien du socle, +l'annotation de revue |
+| `client/outils/contraste.mjs` | **44** | neuf |
+| `client/outils/blocs-de-theme.mjs` | **44** | neuf |
+| `client/src/design/amorce-theme.js` | **35** | neuf — **ni typechecké ni testé, et déclaré** |
+| `client/index.html` | **26** | +le lien du socle |
+| `client/shell.html` | **15** | **sa première feuille de style depuis D1** |
+| `client/src/design/socle.css` | **8** | neuf — le point d'entrée unique |
+
+⚠️ **La porte de S1 est à 300 lignes, pas à 500** (spec §10), et **aucun fichier
+ne l'approche** : le plus gros est à **233**. Ce dépôt a franchi le plafond
+**trois fois en D10** et **deux fois en D9**, et l'a rattrapé **après**, dont
+deux fois par une **compression** que ce fichier interdit nommément.
+
+**Poids CSS : 3 503 octets**, ligne de base **1 429** (avant S1), plafond
+**12 288**, marge **8 785**. ⚠️ **Le `<style>` en ligne de `client/design.html`
+n'est PAS compté** — §7.7 ne pèse que `dist/assets/*.css`. La galerie n'étant
+pas du produit ce n'est pas une lacune, mais c'est une **portée**.
+
+### Ce que S1 n'établit PAS
+
+- **Aucun taux.** Deux exécutions par contrôle, sur des contrôles
+  **déterministes** : reproductibilité, rien de plus.
+- 🔴 **Aucun jugement visuel n'a été porté sur aucune valeur, et les HUIT
+  jugements humains du §8 restent entiers** : que la direction soit « sobre » et
+  « pro », que `#7aa2f7` soit le bon bleu, que le ratio **1,2** soit le bon, que
+  **14 px** soit assez dense, que le pas de **4 px** soit le bon, que `--bord`
+  ait été employé là où il fallait, que le plafond de **12 Kio** soit au bon
+  endroit, que la galerie montre ce qu'il faut regarder. **Aucun ne deviendra
+  une mesure**, et ils rejoignent `BPP_MIN`, `FACTEUR_FOCUS`,
+  `PART_DORMANTE_BPS`, `HYSTERESIS`, `TAILLE_MAX_SORTIE` et les paramètres
+  `scrypt` de P2.
+- **Rien de l'anti-FOUC OBSERVÉ.** L'amorce est prouvée **injectée** (`1` par
+  page bâtie), **placée** (après `<meta charset>`) et **exécutée** — par
+  isolation sur `connexion.html`, qui n'importe **aucun** module de thème et
+  porte pourtant `data-theme`. **Qu'aucun éclair de mauvais thème ne soit
+  visible n'est mesuré par rien.**
+- **Que le thème atteigne les N fenêtres du PRODUIT** : la corroboration porte
+  sur **deux fenêtres de la galerie**, pas sur une page-shell qui ouvre N
+  sessions par `window.open`. Et elle est **HORS CRITÈRE**, une exécution.
+- **Trois longueurs restent hors échelle**, et **aucun des sept contrôles ne
+  mesure une longueur**.
+- **La reprise à l'identique vaut à racine 16 px, et là seulement.**
+- **Aucune primitive, aucune surface habillée** : c'est S2 et S3. `shell.html`
+  et `connexion.html` reçoivent les **tokens**, et **leur rendu change** — la
+  neutralité n'est promise que sur `index.html`.
+- **Aucune vérification hors d'un Chromium de bureau** : rien de Firefox, de
+  Safari, du mobile. **Rien du HiDPI** (`deviceScaleFactor` = 1).
+- **L'accessibilité au-delà du contraste** : navigation clavier complète,
+  lecteurs d'écran, `prefers-reduced-motion`, cibles tactiles. **Le contraste
+  est mesuré ; le reste ne l'est pas.**
+- **Aucune internationalisation** : rien ne dit que la mise en page survit à une
+  langue plus longue.
+- **Le legacy n'est pas touché**, et **aucun contrôle ne le balaie** : deux
+  directions visuelles coexistent dans le dépôt.
+- ⚠️ **La galerie n'a AUCUN test**, ni elle ni `galerie.ts` : **une galerie qui
+  cesserait de rendre une famille entière ne serait attrapée par aucun
+  contrôle**, seulement par l'œil — ce qui est précisément son statut
+  d'instrument de jugement humain.
+
+### Les legs
+
+1. ⛔ **`--police-mono` n'a qu'un appelant prévu et n'est pas câblé.** **S4
+   tranche : ou il le câble sur `#stats`, ou il le retire.** C'est le **seul**
+   des 28 tokens en attente dont le sort soit ouvert ; les 27 autres ont un
+   sous-bloc nommé. ⚠️ S'il est retiré, il faut aussi le retirer de la galerie,
+   qui l'emploie — l'inclusion ① de §7.6 le dirait.
+2. ⛔ **Les trois longueurs hors échelle de D2** — `padding: 6px`,
+   `font-size: 18px`, `letter-spacing: 0.02em` — sont à reprendre par **S4**,
+   seul sous-bloc autorisé à toucher ces éléments. **La clause « aucune longueur
+   hors échelle » du §8 reste fausse jusque-là.**
+3. ⛔ **Le plafond de 12 Kio n'est calibré par rien** : « un garde-fou contre une
+   addition massive, pas une cible de budget » (spec §7.7).
+4. ⛔ **`prefers-reduced-motion` est nommé et non pris** — le moins cher des
+   quatre manques d'accessibilité, et le premier à prendre.
+5. ⛔ **Les trois énoncés faux laissés dans la spec et le plan** (voir la revue
+   transverse) : l'appelant de `getComputedStyle`, la clause du §8, et la rouge
+   d'une ligne qui n'a jamais existé.
+6. ⛔ **La liste d'attente des 28 tokens doit RÉTRÉCIR à chaque sous-bloc.** Le
+   contrôle le force — il refuse un token de la liste qui a gagné un appelant —
+   mais **rien ne force S2 à en consommer** : c'est une règle de revue.
+
+---
+
 ## 🚀 Commandes de Développement Essentielles
 
 ### Build & Run
