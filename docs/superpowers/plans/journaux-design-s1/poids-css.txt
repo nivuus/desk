@@ -1,0 +1,2 @@
+1493	client/dist/assets/main-CXZaIG5L.css
+2010	client/dist/assets/socle-DZGKLock.css

@@ -1,0 +1,108 @@
+REJEU DES ROUGES A LA RECETTE — sous-bloc S1, tache 14
+commit : 604f91c   date : 2026-08-19T17:59:17+02:00
+
+Chaque rouge est jouee, son message capture VERBATIM, puis la source est
+restauree et comparee a HEAD. Les rouges des taches 1 a 3 portaient sur
+l'ARBRE INTACT et ne sont PAS rejouables : l'arbre est corrige depuis.
+
+########## 7.7 — le plafond abaisse (aucun fichier touche) ##########
+   1493  main-CXZaIG5L.css
+   2010  socle-DZGKLock.css
+feuilles émises : 2
+somme : 3503 octets
+plafond : 1024 octets (arbitraire, voir l'en-tête)
+DÉPASSEMENT de 2479 octets
+exit=1
+
+########## 7.4 — un token retire du SEUL bloc media-clair ##########
+-- controle de la perturbation : --succes doit n'apparaitre que 2 fois (racine + attribut-clair)
+2
+fichier : client/src/design/tokens.css
+  bloc racine : 47 token(s)
+  bloc media-clair : 12 token(s)
+  bloc attribut-clair : 13 token(s)
+écarts : 1
+  ÉCART  media-clair : --succes manquant
+exit=1
+
+########## 7.1 — --texte-faible perturbe vers un gris trop clair ##########
+ÉCHEC clair texte-faible/fond-0 = 2.19 < 4.5
+ÉCHEC clair texte-faible/fond-1 = 2.04 < 4.5
+ÉCHEC clair texte-faible/fond-2 = 1.88 < 4.5
+paires vérifiées : 50
+échecs : 3
+minimum global : 1.88
+exit=1
+
+########## 7.2 — une couleur litterale dans base.css ##########
+client/src/design/base.css:56: background: #fff;
+fichiers balayés : 46
+couleurs littérales : 1
+→ elles doivent vivre dans client/src/design/tokens.css
+exit=1
+
+########## 7.3 — assertion A : shell.html perd sa feuille ##########
+pages bâties : 4 (connexion.html, design.html, index.html, shell.html)
+
+assertion A — un <link rel="stylesheet"> par page : 1 échec(s)
+  ÉCHEC A  shell.html : aucune feuille de style liée
+assertion B — une feuille liée déclarant --fond-0 : 0 échec(s) (évaluée sur 3 page(s))
+
+total : 1 échec(s)
+exit=1
+
+########## REMISE EN ETAT ##########
+client/src/design/tokens.css : IDENTIQUE A HEAD
+client/src/design/base.css : IDENTIQUE A HEAD
+client/src/style.css : IDENTIQUE A HEAD
+client/shell.html : IDENTIQUE A HEAD
+
+═══ 6/6 contrôle(s) vert(s) ═══
+  §7.5 (la bascule de thème) est un test unitaire : il tourne dans `npm test`.
+
+########## 7.5 — appliquer('systeme') POSE l'attribut au lieu de le retirer ##########
+(la rouge que la spec designe : un data-theme='systeme' invente ne casse RIEN
+ visiblement, et c'est ce qui le rend durable)
+connexion.html
+design.html
+dist
+index.html
+node_modules
+outils
+package.json
+package-lock.json
+probe-coalesced.html
+recette
+shell.html
+src
+tsconfig.json
+verify-webrtc.mjs
+vite.config.ts
+     → expected true to be false // Object.is equality
+     → expected true to be false // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/design/theme.test.ts > surStockageModifie — une fenêtre VOISINE > retire l'attribut quand la voisine est repassée à « systeme »
+AssertionError: expected true to be false // Object.is equality
+ FAIL  src/design/theme.test.ts > appliquer > RETIRE `data-theme` pour « systeme », au lieu de poser l'attribut
+AssertionError: expected true to be false // Object.is equality
+      Tests  2 failed | 8 passed (10)
+exit=0
+
+-- remise en etat --
+client/src/design/theme.ts : IDENTIQUE A HEAD
+connexion.html
+design.html
+dist
+index.html
+node_modules
+outils
+package.json
+package-lock.json
+probe-coalesced.html
+recette
+shell.html
+src
+tsconfig.json
+verify-webrtc.mjs
+vite.config.ts
+      Tests  10 passed (10)

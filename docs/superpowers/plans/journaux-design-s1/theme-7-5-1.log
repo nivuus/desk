@@ -1,0 +1,25 @@
+connexion.html
+design.html
+dist
+index.html
+node_modules
+outils
+package.json
+package-lock.json
+probe-coalesced.html
+recette
+shell.html
+src
+tsconfig.json
+verify-webrtc.mjs
+vite.config.ts
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/client
+
+ ✓ src/design/theme.test.ts (10 tests) 10ms
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  18:00:19
+   Duration  653ms (transform 102ms, setup 0ms, collect 86ms, tests 10ms, environment 0ms, prepare 131ms)
+
