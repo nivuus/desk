@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="fr">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Galerie des primitives</title>
+        <link rel="stylesheet" href="/src/design/socle.css" />
+        <link rel="stylesheet" href="/src/design/primitives.css" />
+        <!--
+            ═══════════════════════════════════════════════════════════════════
+            LA GALERIE DES PRIMITIVES — L'INSTRUMENT D'UN JUGEMENT HUMAIN, PAS
+            UNE PREUVE.
+
+            🔴 ELLE EXISTE PARCE QUE `design.html` NE POUVAIT PAS L'ACCUEILLIR.
+            Cette page-là valait 231 lignes pour une porte armée à 300 : quatre
+            familles avec leurs variantes et leurs états n'entrent pas dans 69
+            lignes. La scission a donc été décidée AVANT l'addition — ce dépôt a
+            franchi le plafond trois fois sous D10 et deux fois sous D9, et l'a
+            rattrapé chaque fois APRÈS, dont deux fois par une compression que
+            `CLAUDE.md` interdit nommément. `design.html` n'est pas touché d'une
+            ligne par S2, hors le mot « treize » devenu « quatorze ».
+
+            🔴 CETTE PAGE EST EXCLUE DE LA MOITIÉ « EMPLOYÉ » DU CONTRÔLE §7.6,
+            pour la raison EXACTE qui y fait déjà vivre `design.html` : une page
+            de démonstration emploie des tokens par construction, et l'inclure
+            ferait sortir de la liste d'attente des tokens que LE PRODUIT
+            N'APPELLE PAS. La liste rétrécirait sans que rien n'ait été livré.
+            L'exclusion est éprouvée par une rouge, pas affirmée par une phrase :
+            `node client/outils/tokens-orphelins.mjs --sans-exclusion` sort à 1.
+
+            ⚠️ CE QU'ELLE NE DIT JAMAIS : que `#93b4f9` soit le bon survol, que
+            l'état actif dit « par le retour au repos » soit lisible, ni que
+            quatre tons de message distingués par la SEULE ENCRE suffisent. Ce
+            sont les trois jugements humains que S2 ajoute aux huit du §8, et
+            aucun ne deviendra une mesure.
+
+            ⚠️ DEUX ÉTATS NE SE MONTRENT PAS CÔTE À CÔTE : le survol et l'appui
+            demandent un pointeur. Il faut les essayer, pas les lire.
+
+            ⚠️ PORTE ARMÉE À 300 LIGNES : au-delà, scinder par famille.
+            ═══════════════════════════════════════════════════════════════════
+        -->
+        <style>
+            /* La mise en page de la page de démonstration, JAMAIS une
+               primitive — même clause que `design.html`. Aucune couleur
+               littérale : §7.2 balaie cette page comme les autres. */
+            body {
+                margin: 0 auto;
+                padding: var(--e-6) var(--e-5);
+                max-width: 60rem;
+            }
+            h1 {
+                font-size: var(--t-3xl);
+                line-height: var(--lh-serre);
+                margin: 0 0 var(--e-2);
+            }
+            h2 {
+                font-size: var(--t-xl);
+                line-height: var(--lh-serre);
+                margin: var(--e-7) 0 var(--e-3);
+                padding-block-end: var(--e-2);
+                border-block-end: var(--trait) solid var(--bord);
+            }
+            h3 {
+                font-size: var(--t-l);
+                margin: var(--e-5) 0 var(--e-2);
+                color: var(--texte-faible);
+                font-weight: normal;
+            }
+            p.note {
+                color: var(--texte-faible);
+                line-height: var(--lh-large);
+                margin: 0 0 var(--e-4);
+                max-width: 44rem;
+            }
+            .rangee {
+                display: flex;
+                flex-wrap: wrap;
+                gap: var(--e-3);
+                align-items: center;
+                margin-block-end: var(--e-3);
+            }
+            .colonne {
+                display: grid;
+                gap: var(--e-4);
+                max-width: 26rem;
+            }
+            #themes button {
+                border: var(--trait) solid var(--bord-fort);
+                border-radius: var(--r-2);
+                padding: var(--e-2) var(--e-4);
+                font: inherit;
+                font-size: var(--t-m);
+                color: var(--texte-fort);
+                background: var(--fond-2);
+                cursor: pointer;
+                transition: background var(--duree-1);
+            }
+            #themes button:hover {
+                background: var(--fond-1);
+            }
+            #themes button[aria-pressed='true'] {
+                color: var(--sur-accent);
+                background: var(--accent);
+                border-color: var(--accent);
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Galerie des primitives</h1>
+        <p class="note">
+            Quatre familles — bouton, champ, surface, message —, toutes écrites
+            en tokens et en rien d’autre. Cette page est le seul endroit qui les
+            charge : à la fin du sous-bloc S2, aucune surface du produit n’emploie
+            de primitive. C’est le sous-bloc suivant qui les pose.
+        </p>
+
+        <h2>Thème</h2>
+        <p class="note">
+            Les mêmes trois états que la galerie de tokens, et le même code —
+            <code>src/design/selecteur-theme.ts</code>, extrait avant que cette
+            page n’existe.
+        </p>
+        <p id="themes"></p>
+
+        <h2>Bouton — trois variantes, quatre états</h2>
+        <p class="note">
+            Le survol et l’appui demandent un pointeur : les essayer. L’appui se
+            dit par le <strong>retour à la valeur de repos</strong> — le survol
+            se retire sous le doigt —, et c’est un arbitrage, pas une mesure.
+        </p>
+        <h3>Repos, et au survol</h3>
+        <div class="rangee">
+            <button type="button" class="bouton bouton--principal">Se connecter</button>
+            <button type="button" class="bouton bouton--secondaire">Annuler</button>
+            <button type="button" class="bouton bouton--discret">Plus tard</button>
+        </div>
+        <h3>Désactivés — par les tokens, jamais par une opacité</h3>
+        <div class="rangee">
+            <button type="button" class="bouton bouton--principal" disabled>Se connecter</button>
+            <button type="button" class="bouton bouton--secondaire" disabled>Annuler</button>
+            <button type="button" class="bouton bouton--discret" disabled>Plus tard</button>
+        </div>
+        <h3>Focus — hérité de base.css, et jamais effacé</h3>
+        <p class="note">
+            Aucune primitive ne déclare d’anneau de focus : elles l’ont toutes,
+            depuis <code>:focus-visible</code> dans <code>base.css</code>.
+            Naviguer au clavier pour le voir.
+        </p>
+
+        <h2>Champ — étiquette, saisie, aide, erreur</h2>
+        <div class="colonne">
+            <p class="champ">
+                <label class="champ__etiquette" for="c1">Identifiant</label>
+                <input class="champ__saisie" id="c1" type="text" placeholder="prenom.nom" />
+                <span class="champ__aide">Celui de votre poste de travail.</span>
+            </p>
+            <p class="champ champ--erreur">
+                <label class="champ__etiquette" for="c2">Mot de passe</label>
+                <input class="champ__saisie" id="c2" type="password" value="mauvais" />
+                <span class="champ__erreur">Identifiant ou mot de passe refusé.</span>
+            </p>
+            <p class="champ">
+                <label class="champ__etiquette" for="c3">Domaine</label>
+                <input class="champ__saisie" id="c3" type="text" value="ATELIER" disabled />
+                <span class="champ__aide">Imposé par l’administrateur.</span>
+            </p>
+        </div>
+
+        <h2>Surface — carte et séparateur</h2>
+        <div class="colonne">
+            <div class="carte">
+                <h3 class="carte__titre">Poste 3 — atelier</h3>
+                <p class="carte__corps">
+                    Une carte INERTE porte <code>--bord</code>, que WCAG 1.4.11
+                    exempte comme décoratif. Une carte CLIQUABLE porterait
+                    <code>--bord-fort</code> — S2 n’en livre pas.
+                </p>
+                <hr class="separateur" />
+                <p class="carte__corps">Le séparateur est une classe, jamais un sélecteur d’élément.</p>
+            </div>
+        </div>
+
+        <h2>Message — quatre tons, dits par l’encre et jamais par le fond</h2>
+        <p class="note">
+            Un fond teinté placerait le texte sur une couleur qu’aucune des 52
+            paires du contrôle §7.1 ne mesure : ces trois tokens y sont des
+            <strong>encres</strong> sur les trois fonds, jamais des fonds.
+        </p>
+        <div class="colonne">
+            <p class="message">Session prête. Aucune action requise.</p>
+            <p class="message message--succes">Connecté au poste 3.</p>
+            <p class="message message--alerte">Le lien est lent : l’image sera réduite.</p>
+            <p class="message message--danger">Connexion refusée par le serveur.</p>
+        </div>
+
+        <script type="module" src="/src/design/galerie-primitives.ts"></script>
+    </body>
+</html>
