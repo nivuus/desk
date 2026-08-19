@@ -1,0 +1,42 @@
+
+=== ../flux-rouge.json  (étiquette flux-rouge, mires 3,3)
+loadavg 4.92 4.59 4.75 4/2871 395069 -> 5.06 4.54 4.71 1/3070 402869 | virsh en cours d’exécution -> en cours d’exécution
+marqueurs de journal : {"attachee_capteur":2,"enfant_lance":2,"introuvable_topologie":0,"sortie_creee":2,"cloture":0,"erreurs":0}
+  tour 0 : 2 pages, étalement 9 ms, 1 marqueur(s) distinct(s), collisions=1
+    9C6B9706:n=3(d=6)  CEEF20AE:n=3(d=6)
+    COLLISION marqueur=0-15-5 sessions=9C6B9706,CEEF20AE
+    tailles reçues : ["1280x720","1280x720"]
+  tour 1 : 2 pages, étalement 6 ms, 1 marqueur(s) distinct(s), collisions=1
+    9C6B9706:n=3(d=6)  CEEF20AE:n=3(d=6)
+    COLLISION marqueur=0-15-5 sessions=9C6B9706,CEEF20AE
+    tailles reçues : ["1280x720","1280x720"]
+  tour 2 : 2 pages, étalement 13 ms, 1 marqueur(s) distinct(s), collisions=1
+    9C6B9706:n=3(d=6)  CEEF20AE:n=3(d=6)
+    COLLISION marqueur=0-15-5 sessions=9C6B9706,CEEF20AE
+    tailles reçues : ["1280x720","1280x720"]
+
+=== ../flux-1.json  (étiquette flux-1, mires 1,2,3,4,5,6,7,8,9,10)
+loadavg 8.64 5.43 5.00 13/2889 404556 -> 12.29 8.08 6.04 1/3038 416834 | virsh en cours d’exécution -> en cours d’exécution
+marqueurs de journal : {"attachee_capteur":10,"enfant_lance":10,"introuvable_topologie":0,"sortie_creee":10,"cloture":0,"erreurs":0}
+  tour 0 : 10 pages, étalement 43 ms, 10 marqueur(s) distinct(s), collisions=0
+    2292C7EE:n=1(d=6,2e=9@62)  8CFCC849:n=2(d=31,2e=10@63)  C6A346AD:n=3(d=35,2e=10@105)  CBEE0316:n=4(d=20,2e=3@174)  00DF5755:n=5(d=11,2e=6@182)  FE6553E9:n=6(d=34,2e=7@144)  88BFF801:n=7(d=34,2e=8@132)  EEDEF0F8:n=8(d=15,2e=1@117)  959E989E:n=9(d=16,2e=1@42)  B734D638:n=10(d=39,2e=2@90)
+    tailles reçues : ["852x480","852x480","852x480","852x480","852x480","852x480","852x480","852x480","852x480","1024x576"]
+  tour 1 : 10 pages, étalement 50 ms, 10 marqueur(s) distinct(s), collisions=0
+    2292C7EE:n=1(d=6,2e=9@62)  8CFCC849:n=2(d=31,2e=10@63)  C6A346AD:n=3(d=35,2e=10@104)  CBEE0316:n=4(d=20,2e=3@174)  00DF5755:n=5(d=12,2e=6@182)  FE6553E9:n=6(d=34,2e=7@141)  88BFF801:n=7(d=33,2e=8@137)  EEDEF0F8:n=8(d=15,2e=1@117)  959E989E:n=9(d=16,2e=1@42)  B734D638:n=10(d=39,2e=2@90)
+    tailles reçues : ["852x480","852x480","852x480","852x480","852x480","852x480","852x480","852x480","852x480","1024x576"]
+  tour 2 : 10 pages, étalement 46 ms, 10 marqueur(s) distinct(s), collisions=0
+    2292C7EE:n=1(d=6,2e=9@62)  8CFCC849:n=2(d=31,2e=10@63)  C6A346AD:n=3(d=35,2e=10@108)  CBEE0316:n=4(d=21,2e=3@173)  00DF5755:n=5(d=12,2e=6@182)  FE6553E9:n=6(d=34,2e=7@141)  88BFF801:n=7(d=34,2e=8@137)  EEDEF0F8:n=8(d=15,2e=1@117)  959E989E:n=9(d=15,2e=1@41)  B734D638:n=10(d=39,2e=2@90)
+    tailles reçues : ["852x480","852x480","852x480","852x480","852x480","852x480","852x480","852x480","852x480","1024x576"]
+
+=== ../flux-2.json  (étiquette flux-2, mires 1,2,3,4,5,6,7,8,9,10)
+loadavg 7.59 7.45 5.94 8/2827 421549 -> 13.23 8.87 6.65 13/3112 436503 | virsh en cours d’exécution -> en cours d’exécution
+marqueurs de journal : {"attachee_capteur":10,"enfant_lance":10,"introuvable_topologie":0,"sortie_creee":10,"cloture":0,"erreurs":0}
+  tour 0 : 10 pages, étalement 37 ms, 10 marqueur(s) distinct(s), collisions=0
+    890C8BE0:n=1(d=6,2e=9@62)  7459837E:n=2(d=29,2e=10@64)  0A1A3901:n=3(d=35,2e=10@105)  02199C35:n=4(d=21,2e=3@173)  F424D59B:n=5(d=11,2e=6@182)  26F15AFA:n=6(d=34,2e=7@141)  E86F5C57:n=7(d=33,2e=8@137)  CA517CEE:n=8(d=15,2e=1@117)  07D30657:n=9(d=15,2e=1@41)  A5678603:n=10(d=39,2e=2@90)
+    tailles reçues : ["852x480","852x480","852x480","852x480","852x480","852x480","852x480","852x480","852x480","1024x576"]
+  tour 1 : 10 pages, étalement 45 ms, 10 marqueur(s) distinct(s), collisions=0
+    890C8BE0:n=1(d=6,2e=9@62)  7459837E:n=2(d=29,2e=10@64)  0A1A3901:n=3(d=34,2e=10@107)  02199C35:n=4(d=21,2e=3@170)  F424D59B:n=5(d=11,2e=6@182)  26F15AFA:n=6(d=34,2e=7@144)  E86F5C57:n=7(d=33,2e=8@137)  CA517CEE:n=8(d=15,2e=1@117)  07D30657:n=9(d=16,2e=1@42)  A5678603:n=10(d=39,2e=2@90)
+    tailles reçues : ["852x480","852x480","852x480","852x480","852x480","852x480","852x480","852x480","852x480","1024x576"]
+  tour 2 : 10 pages, étalement 49 ms, 10 marqueur(s) distinct(s), collisions=0
+    890C8BE0:n=1(d=6,2e=9@62)  7459837E:n=2(d=29,2e=10@64)  0A1A3901:n=3(d=34,2e=10@107)  02199C35:n=4(d=21,2e=3@173)  F424D59B:n=5(d=11,2e=6@182)  26F15AFA:n=6(d=34,2e=7@141)  E86F5C57:n=7(d=33,2e=8@138)  CA517CEE:n=8(d=15,2e=1@117)  07D30657:n=9(d=16,2e=1@42)  A5678603:n=10(d=39,2e=2@90)
+    tailles reçues : ["852x480","852x480","852x480","852x480","852x480","852x480","852x480","852x480","852x480","1024x576"]
