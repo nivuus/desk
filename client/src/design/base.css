@@ -71,3 +71,59 @@ body {
     outline: var(--trait-focus) solid var(--accent);
     outline-offset: var(--trait-focus);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOUVEMENT RÉDUIT — le legs n°4 du sous-bloc S1, pris par S2 parce que c'est
+   S2 qui introduit les transitions (`--duree-1` sur le survol des primitives).
+
+   🔴 ELLE NE PEUT PAS VIVRE DANS `tokens.css`, ET C'EST MESURÉ, PAS SUPPOSÉ.
+   La voie évidente — neutraliser les DURÉES à la source — y ajoute un second
+   `@media`. Or `lireBlocsDeTheme` (`design/tokens.ts`) nomme `media-clair` TOUT
+   bloc `:root` sous un `@media` qui ne porte pas `[data-theme="clair"]` : il
+   n'a pas de troisième nom. Relevé le 19 août 2026 sur une COPIE JETABLE de
+   `tokens.css` (`/tmp/s2-rm.css`, aucun fichier du dépôt touché), après y avoir
+   ajouté `@media (prefers-reduced-motion: reduce) { :root { --duree-1: 0.01ms; } }` :
+
+       $ node client/outils/blocs-de-theme.mjs --fichier /tmp/s2-rm.css
+         bloc racine : 48 token(s)
+         bloc media-clair : 14 token(s)
+         bloc attribut-clair : 14 token(s)
+         bloc media-clair : 1 token(s)          ← le QUATRIÈME bloc
+       écarts : 15
+         ÉCART  attribut-clair : --duree-1 manquant
+         ÉCART  media-clair : --accent manquant
+         … (treize autres)
+       exit=1
+
+   Le contrôle §7.4 compare ce quatrième bloc à la racine et tombe. ⚠️ LEGS,
+   nommé et NON pris : le jour où un sous-bloc voudra vraiment surcharger un
+   token sous une autre condition, c'est `lireBlocsDeTheme` qui doit apprendre à
+   nommer ses blocs — pas la règle qui doit se contorsionner.
+
+   ⚠️ CE QUE S2 PREND ICI EST LA SUPPRESSION DES TRANSITIONS, PAS LA GESTION DU
+   MOUVEMENT. Il n'y a aucune animation dans le produit aujourd'hui —
+   `grep -rn '@keyframes\|animation:' client/src` rend VIDE, lancé le 19 août
+   2026 — et LE JOUR OÙ IL Y EN AURA UNE, CETTE RÈGLE NE LA COUVRIRA PAS d'elle
+   même : il faudra y ajouter `animation-duration` et `animation-iteration-count`.
+
+   ⚠️ `!important` EST ICI L'USAGE PRÉVU DE LA PROPRIÉTÉ, et non un contournement
+   de spécificité : la règle doit l'emporter sur toute transition déclarée
+   ailleurs, y compris dans une feuille qui n'existe pas encore.
+
+   ⚠️ `0.01ms` ET NON `0` : une durée nulle empêche l'événement `transitionend`
+   d'être émis, ce que du code futur pourrait attendre. C'est un raisonnement
+   repris de l'usage courant, PAS une mesure faite ici.
+
+   ⚠️ CE QUE CELA CHANGE DANS LE PRODUIT, dit sans le maquiller : la seule
+   transition existante est celle de `#status` (`style.css:79`,
+   `transition: opacity var(--duree-2)`), et elle cesse — POUR LES SEULS
+   utilisateurs qui ont demandé du mouvement réduit. La neutralité que S1
+   promettait portait sur `index.html` à réglages système INCHANGÉS.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition-duration: 0.01ms !important;
+    }
+}
