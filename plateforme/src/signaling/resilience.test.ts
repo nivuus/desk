@@ -3,6 +3,15 @@
 // même coup toutes les sessions actives — un déni de service en une trame,
 // sans authentification requise.
 //
+// ⚠️ « sans authentification requise » décrit l'état d'ALORS, et il reste vrai
+// aujourd'hui pour une raison qu'il faut écrire, sinon on croira la phrase
+// périmée depuis la garde du sous-bloc P2 : le contrôle de forme court sur le
+// PREMIER message, donc AVANT que la garde ait vu un jeton (voir `relais.ts`,
+// `isJsonObject`), et le rôle `agent` reste de toute façon anonyme jusqu'à P3.
+// **Le déni de service en une trame est donc toujours ouvert à quiconque
+// atteint le port**, et c'est bien pourquoi ce fichier existe encore.
+//
+
 // Ce fichier ne teste PAS `createSignalingServer` en mémoire : vitest installe
 // son propre gestionnaire d'exceptions non interceptées, qui peut faire échouer
 // un test sans que le process qui l'exécute ne s'arrête réellement. Un test

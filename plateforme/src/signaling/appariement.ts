@@ -6,11 +6,18 @@
 // connexion. Le relais l'instancie en `Appariement<WebSocket>`.
 //
 // Extrait de l'ex-`server.ts` — aujourd'hui `relais.ts` — par le sous-bloc P1,
-// AVANT que P2 (garde
-// d'authentification), P3 (liaison agent ↔ VM) et P4 (appartenance de session)
-// n'y ajoutent quoi que ce soit. Ce dépôt a établi en D9 que l'extraction
-// faite AVANT l'addition rend sa marge, et que celle faite après se paie d'une
-// compression que `CLAUDE.md` interdit nommément.
+// AVANT que P2 (garde d'authentification), P3 (liaison agent ↔ VM) et P4
+// (appartenance de session) n'y ajoutent quoi que ce soit. Ce dépôt a établi
+// en D9 que l'extraction faite AVANT l'addition rend sa marge, et que celle
+// faite après se paie d'une compression que `CLAUDE.md` interdit nommément.
+//
+// ✅ P2 A EU LIEU (19 août 2026), ET LA MARGE A SERVI — mais PAS ici. Ce
+// module n'a pas gagné une ligne : la garde vit dans `identite/garde.ts`, la
+// propriété de session dans `signaling/propriete.ts`, et c'est `relais.ts`
+// seul qui a grossi de les appeler. **L'extraction a donc rendu sa marge au
+// fichier qui en avait besoin, ce qui est exactement ce qu'elle promettait.**
+// P3 et P4 restent à venir, et la phrase ci-dessus vaut toujours pour eux.
+
 
 export type Role = 'agent' | 'client';
 

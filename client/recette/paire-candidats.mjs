@@ -13,6 +13,12 @@
 //   node client/recette/paire-candidats.mjs [url] [dureeMs]
 //   FORCER_RELAIS=1 node client/recette/paire-candidats.mjs   (iceTransportPolicy: 'relay')
 //
+// ⚠️ DEPUIS LE SOUS-BLOC P2, CETTE INVOCATION NE SUFFIT PLUS face à un service
+// gardé : poser aussi `RECETTE_EMAIL`, `RECETTE_MOTDEPASSE`, et `PLATEFORME_URL`
+// si le service n'écoute pas sur http://127.0.0.1:8080. Voir
+// `recette/jeton-recette.mjs` — sans elles, l'outil AVERTIT et continue.
+
+//
 // `FORCER_RELAIS` s'applique en interceptant le constructeur de
 // `RTCPeerConnection` dans la page, sans toucher au code du client : la
 // modification n'a pas à être committée puis retirée, contrairement au réglage
