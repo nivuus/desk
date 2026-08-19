@@ -467,3 +467,26 @@ Les sondes 1, 2 et 4 exigent la VM démarrée : `virsh start Windows` (voir
   (§5). À rouvrir sur pièces si la sonde n°1 rend autre chose que 48 kHz.
 - **La sélection du périphérique par l'utilisateur.** Le périphérique par défaut
   suffit ; rien dans le produit ne permet aujourd'hui d'en choisir un autre.
+
+  > ❌ **RÉFUTÉ le 19 août 2026 par la correction « A-bis ».** Cette ligne parle
+  > du produit **au présent**, et les deux moitiés en sont fausses.
+  >
+  > **La prémisse d'abord** : « le périphérique par défaut suffit » s'est
+  > retournée sur pièces. L'installation de VB-Cable sur la VM (préparation du
+  > chantier E) a fait basculer le rendu par défaut de Windows sur un câble
+  > virtuel que **rien n'alimente** — le loopback du chantier A s'est mis à
+  > capter du silence, **sans qu'aucune ligne de journal ne dise pourquoi**.
+  > Suivre un défaut qu'on ne choisit pas est une dépendance implicite, et
+  > n'importe quelle installation audio future la rejouerait.
+  >
+  > **La conclusion ensuite** : la sélection existe désormais.
+  > `AUDIO_PERIPHERIQUE` désigne le périphérique par **nom convivial** (une
+  > sous-chaîne suffit, si elle n'est **pas ambiguë**) ou par **identifiant
+  > d'endpoint**. Règle **pure** dans `agent/src/wasapi/peripherique.rs`,
+  > moitié COM dans `agent/src/wasapi/rendu.rs`, et ce qui est réellement
+  > retenu est **journalisé à chaque ouverture**. Variable absente ou vide :
+  > le comportement est exactement celui d'avant.
+  >
+  > ⚠️ **Ce qui reste vrai de la ligne d'origine** : rien dans l'**interface**
+  > ne permet à un utilisateur final de choisir. `AUDIO_PERIPHERIQUE` est un
+  > levier d'**exploitant**, posé sur l'agent, pas une préférence de produit.

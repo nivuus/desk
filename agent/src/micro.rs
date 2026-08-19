@@ -1,12 +1,19 @@
 //! Le sens MONTANT du micro, côté agent : ce qui arrive du navigateur en
-//! Opus, remis dans l'ordre, débarrassé de ses doublons, borné en latence, et
-//! rendu prêt à décoder.
+//! Opus, remis dans l'ordre, débarrassé de ses doublons, borné en latence,
+//! décodé, et rendu prêt à jouer.
 //!
-//! **Ce module est PUR : il ne référence jamais le crate `windows`, n'ouvre
-//! aucun périphérique et ne décode rien.** C'est la ligne de partage de la
-//! spec §6, et elle est ce qui rend éprouvable sous Linux tout ce qui peut
-//! mal tourner — l'ordre, la gigue, la dérive, le silence. Le bloc E2 n'aura
-//! qu'à réveiller un fil WASAPI et appeler `LecteurMicro::remplir`.
+//! **Ce module est PUR : il ne référence jamais le crate `windows` et n'ouvre
+//! aucun périphérique.** C'est la ligne de partage de la spec §6, et elle est
+//! ce qui rend éprouvable sous Linux tout ce qui peut mal tourner — l'ordre,
+//! la gigue, la dérive, le décodage, le silence. Le bloc E2 n'aura qu'à
+//! réveiller un fil WASAPI et appeler `LecteurMicro::remplir`.
+//!
+//! ⚠️ **Il DÉCODE, en revanche, et l'en-tête a dit le contraire jusqu'à la
+//! clôture du chantier E** : `LecteurMicro` possède l'`OpusDecoder` (l. 278).
+//! Ce n'est pas une entorse à la pureté — libopus ne connaît ni Windows ni
+//! périphérique —, et c'est même ce qui rend le décodage, le PLC et le FEC
+//! éprouvables sous Linux. La phrase fausse datait de la tâche 4, qui n'avait
+//! que le tampon ; la tâche 6 a ajouté le décodeur sans la relire.
 //!
 //! **L'invariant du module** : `deposer` ne rend rien et ne peut donc jamais
 //! faire attendre la boucle de transport. C'est le miroir exact de la règle du
@@ -86,7 +93,12 @@ pub enum Retrait {
     /// d'un paquet reconstruit la trame qui le PRÉCÈDE. D'où la règle — le FEC
     /// ne sert que si la suivante est déjà arrivée, et jamais autrement.
     Reconstruire { suivante: Vec<u8> },
-    /// Rien à jouer : PLC si une trame a déjà été décodée, silence sinon.
+    /// Rien à jouer. **TROIS issues, pas deux** : dissimulation si une trame a
+    /// déjà été décodée ET que le budget de `micro/dissimulation.rs` n'est pas
+    /// épuisé ; silence dans les deux autres cas — rien n'a jamais été décodé,
+    /// ou `PLAFOND_DISSIMULATION` est atteint (compteur `plc_plafonnees`).
+    /// ⚠️ La troisième est NEUVE : sans elle, une famine prolongée dissimulait
+    /// sans fin et fabriquait un bourdon, mesuré sur 60 s par la recette E1.
     Manquante,
 }
 

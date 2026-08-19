@@ -125,8 +125,13 @@ pub struct LoopbackCapture {
 unsafe impl Send for LoopbackCapture {}
 
 impl LoopbackCapture {
-    /// Ouvre le loopback sur le périphérique de rendu par défaut et démarre la
-    /// capture.
+    /// Ouvre le loopback sur le périphérique qu'élit `rendu::resoudre` — celui
+    /// que désigne `AUDIO_PERIPHERIQUE`, ou le rendu par défaut de Windows à
+    /// défaut — et démarre la capture.
+    ///
+    /// ⚠️ Cette ligne a dit « le périphérique de rendu par défaut » jusqu'à la
+    /// clôture du chantier E, alors que l'en-tête de ce module, douze lignes
+    /// plus haut, disait déjà l'inverse depuis la correction « A-bis ».
     pub fn open() -> Result<Self> {
         unsafe {
             // `CoInitializeEx` doit être **vérifié**, pas ignoré : c'est la

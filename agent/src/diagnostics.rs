@@ -47,9 +47,16 @@ pub(crate) fn aiguiller() -> Result<bool> {
     }
 
     // Sonde audio (`AUDIO_PROBE=1`) : répond aux questions n°1 et n°2 de la
-    // spécification du chantier A — quel est le périphérique de rendu par
-    // défaut de CETTE session, quel est son format de mixage, et un loopback
-    // y capte-t-il bien ce que jouent les applications.
+    // spécification du chantier A — quel est le périphérique de rendu RETENU
+    // pour CETTE session, quel est son format de mixage, et un loopback y
+    // capte-t-il bien ce que jouent les applications.
+    //
+    // ⚠️ « Retenu », plus « par défaut », depuis la correction « A-bis » : la
+    // sonde passe par `LoopbackCapture::open`, donc par `AUDIO_PERIPHERIQUE`
+    // quand elle est posée. Elle rend en outre la FRÉQUENCE DOMINANTE de ce
+    // qu'elle capte, et pas seulement une crête — c'est ce qui en fait
+    // l'instrument de mesure d'A-bis, lancée deux fois, avec et sans la
+    // variable, sur la même machine.
     #[cfg(windows)]
     if std::env::var("AUDIO_PROBE").is_ok() {
         audio::executer_sonde_audio()?;

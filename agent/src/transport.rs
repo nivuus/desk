@@ -26,7 +26,8 @@
 //! dont `act_on_timeout`), `controle` (canal de contrôle et fin de session),
 //! `adaptation` (asservissement au réseau), `redimensionnement` (la fenêtre
 //! que l'utilisateur retaille), `evenements` (ce que str0m remonte),
-//! `piste_video` et `piste_audio` (les deux pistes média), `socket` (attente
+//! `piste_video`, `piste_audio` et `piste_micro` (les trois pistes média, la
+//! dernière étant la seule MONTANTE), `socket` (attente
 //! et réception UDP), `fixtures` (les échafaudages de test partagés).
 //! **Seul `initialisation` fait exception** : une fonction LIBRE
 //! (`construire_rtc`), pas une méthode de `Session` — elle construit le
@@ -122,7 +123,10 @@ pub struct Session {
     /// vidéo, plateforme sans audio, ou échec d'ouverture du loopback — dans
     /// tous les cas la session vidéo continue).
     audio_source: Option<Box<dyn AudioSource + Send>>,
-    /// `mid` de la piste audio, renseigné à la négociation.
+    /// `mid` de la piste audio DESCENDANTE (chantier A, agent → navigateur),
+    /// renseigné à la négociation. ⚠️ DEUX m-lines audio depuis le chantier E :
+    /// la montante a le sien, `mic_mid`, et c'est la DIRECTION qui les sépare
+    /// (`evenements.rs`, qui porte le défaut muet que ce champ a longtemps eu).
     audio_mid: Option<Mid>,
     /// `mid` de la piste du MICRO (chantier E), renseigné à la négociation.
     mic_mid: Option<Mid>,
