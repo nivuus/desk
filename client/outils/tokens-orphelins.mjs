@@ -50,6 +50,19 @@ const EXCLUS = new Map([
         'la galerie rend tous les tokens par construction ; l’inclure rendrait ' +
             'l’inclusion « déclaré ⊆ employé » vraie pour toujours',
     ],
+    [
+        // 🔴 LA RAISON POUR LAQUELLE CE FICHIER NE PEUT PAS FAIRE ÉCHOUER LE
+        // CONTRÔLE, et non celle pour laquelle il gênerait — c'est la clause de
+        // l'encadré ci-dessus. Mesurée, non supposée : avant cette entrée, la
+        // page faisait tomber CINQ lignes « À RETIRER DE LA LISTE » (--e-5,
+        // --e-6, --e-7, --lh-large, --t-3xl), toutes employées par sa SEULE
+        // mise en page de démonstration. La liste d'attente aurait rétréci de
+        // cinq sans que le produit ait gagné un seul appelant.
+        'client/primitives.html',
+        'une page de démonstration emploie des tokens par construction, dans sa ' +
+            'propre mise en page ; l’inclure ferait sortir de la liste d’attente ' +
+            'des tokens que le PRODUIT n’appelle pas',
+    ],
 ]);
 
 // ═══════════════════════════════════════════════════════════════════════════

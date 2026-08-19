@@ -81,6 +81,12 @@ export default defineConfig({
                 // moitié « employé » du §7.6, qu'elle rendrait incapable
                 // d'échouer. Voir `client/outils/tokens-orphelins.mjs`.
                 design: 'design.html',
+                // La galerie des PRIMITIVES (S2). Elle naît à part plutôt que
+                // dans `design.html`, qui était à 231 lignes pour une porte de
+                // 300 : la scission est décidée AVANT l'addition, jamais après.
+                // Elle aussi est EXCLUE de la moitié « employé » du §7.6, et
+                // pour la même raison — voir `client/outils/tokens-orphelins.mjs`.
+                primitives: 'primitives.html',
             },
         },
     },
