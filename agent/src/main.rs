@@ -139,6 +139,18 @@ struct Config {
     /// même tâche 9, avant que ce commentaire ne soit lu par personne.
     #[cfg_attr(not(windows), allow(dead_code))]
     audio: bool,
+    /// Vrai quand `MICRO_MESURE=1` arme le puits de mesure du micro
+    /// (chantier E, `demarrage/micro.rs`).
+    ///
+    /// ⚠️ **CONVENTION INVERSE de `AUDIO`, `SUPERVISEUR`, `PLEIN_ECRAN` et
+    /// `CAPTEUR`, et à dessein** : on désarme sur `=0` ce qui est LIVRÉ, on
+    /// **arme sur `=1`** ce qui ne l'est pas. Ce puits est un instrument de
+    /// banc — il consomme le flux montant pour le journaliser, il ne le joue
+    /// nulle part —, et une simple présence de la variable ne suffit donc pas :
+    /// il faut la valeur `1`. C'est la convention qu'avait
+    /// `PLEIN_ECRAN_MODE_SORTIE`, variable retirée par le sous-bloc D9 et qu'il
+    /// est donc inutile de chercher dans le code.
+    micro_mesure: bool,
 }
 
 fn config() -> Result<Config> {
@@ -205,6 +217,10 @@ fn config() -> Result<Config> {
         // capte le son de SON PROPRE processus (tâche 7), et c'est le capteur
         // qui arbitre entre les fenêtres qui en partagent un.
         audio: std::env::var("AUDIO").as_deref() != Ok("0"),
+        // La décision vit dans `demarrage::micro::arme`, où un test la garde :
+        // une variable posée à `0`, à vide, ou à quoi que ce soit d'autre
+        // laisse le puits DÉSARMÉ, comme son absence.
+        micro_mesure: demarrage::micro::arme(std::env::var("MICRO_MESURE").ok().as_deref()),
     })
 }
 

@@ -23,6 +23,11 @@ mod source;
 #[cfg(windows)]
 mod audio;
 
+/// Le puits de MESURE du micro (`MICRO_MESURE=1`, chantier E) — voir son
+/// commentaire de tête, qui porte tout le raisonnement. **Sans
+/// `#[cfg(windows)]`** : ce puits est pur, il se teste sur l'hôte.
+pub(crate) mod micro;
+
 pub(crate) async fn executer(config: Config) -> Result<()> {
     // Renseigné dans la branche Windows ci-dessous : la fenêtre capturée est
     // aussi celle qui reçoit les entrées injectées (tâche 12). `None` en
@@ -106,6 +111,11 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     // délibérément écarté.
     #[cfg(windows)]
     audio::brancher(&config, &mut session, clock_origin);
+
+    // Sans `MICRO_MESURE=1` il ne pose rien : `micro_disponible()` reste faux,
+    // `ready` porte `mic: false`, et le bouton du navigateur ne paraît pas —
+    // ce qu'on veut tant que le vrai câble (bloc E2) n'existe pas.
+    micro::brancher(&config, &mut session);
 
     // Surveillance du chemin réel (`SOURCE_TRACE=1`) : ce qui reste ici après
     // la tâche 11 de D9 est la partie ENCODEUR (tentatives/accumulation de
