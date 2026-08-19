@@ -60,13 +60,18 @@ body {
     line-height: var(--lh-normal);
 }
 
-/* Le SEUL ajout d'apparence de ce sous-bloc, et il est nommé : le point 1 du
+/* Le SEUL ajout d'apparence DU SOUS-BLOC S1, et il est nommé : le point 1 du
    §3 réserve l'accent à trois usages dont le focus, et `client/connexion.html`
    en a besoin dès aujourd'hui — il porte deux `<input>` et un `<button>` qui
    n'avaient aucun anneau de focus visible.
    ⚠️ `outline-offset` réemploie `--trait-focus` plutôt que d'introduire un
    littéral de plus : les deux valent 2 px et appartiennent au même anneau. Le
-   jour où ils doivent diverger, un token naît — pas un littéral. */
+   jour où ils doivent diverger, un token naît — pas un littéral.
+   ⚠️ « de ce sous-bloc » a été précisé en « du sous-bloc S1 » par la revue
+   transverse de S2 (20 août 2026) : S2 a ajouté À CE FICHIER un second bloc qui
+   change bien l'apparence — la règle de mouvement réduit ci-dessous, qui arrête
+   la transition de `#status`. La phrase était vraie de S1 et le reste ; elle
+   était devenue trompeuse faute de dire de quel sous-bloc elle parlait. */
 :focus-visible {
     outline: var(--trait-focus) solid var(--accent);
     outline-offset: var(--trait-focus);

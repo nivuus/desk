@@ -91,7 +91,8 @@ function pairesDuTheme(theme: string): Paire[] {
 }
 
 /**
- * Les 50 paires DÉCLARÉES — jamais un produit cartésien.
+ * Les 52 paires DÉCLARÉES — jamais un produit cartésien.
+ * (50 en S1 ; S2 en ajoute deux, `--sur-accent` sur `--accent-survol`.)
  *
  * 25 par thème : 7 encres × 3 fonds au seuil 4,5 ; `--bord-fort` sur les 3
  * fonds au seuil 3 ; `--sur-accent` sur `--accent` au seuil 4,5.
@@ -117,7 +118,7 @@ function blocDuTheme(blocs: BlocDeTheme[], theme: string): BlocDeTheme | undefin
 }
 
 /**
- * Évalue les 50 paires sur les blocs parsés.
+ * Évalue les 52 paires sur les blocs parsés.
  *
  * ⚠️ UN TOKEN INTROUVABLE EST UN ÉCHEC, jamais une paire silencieusement
  * sautée : sans cela, une faute de frappe dans un nom de token ferait BAISSER

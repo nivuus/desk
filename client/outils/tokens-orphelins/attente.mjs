@@ -66,8 +66,18 @@
 // était fausse. Fabriquer une pastille dans le seul but de vider trois lignes
 // aurait été vider un contrôle pour en verdir un autre — le geste même que
 // l'encadré ci-dessus refuse.
-// ⚠️ AUCUNE MITIGATION TECHNIQUE N'EST PROPOSÉE, et ce n'est pas un oubli : un
-// contrôle sur ces chaînes de prose ne pourrait pas échouer utilement.
+// ❌ « AUCUNE MITIGATION TECHNIQUE N'EST POSSIBLE : un contrôle sur ces chaînes
+// de prose ne pourrait pas échouer utilement » — le plan de S2 l'écrit trois
+// fois (l. 369, l. 1379-1380, table des risques), et c'est FAUX. Une mitigation
+// PARTIELLE existe, et elle POURRAIT échouer utilement : *aucune entrée ne doit
+// nommer un sous-bloc déjà clos*. Elle serait passée au rouge à la fin de S2 sur
+// les trois entrées annotées « S2 », FORÇANT la décision au lieu de la laisser à
+// une règle de revue.
+// ⚠️ PARTIELLE, et le mot est pesé : elle juge le SOUS-BLOC NOMMÉ, jamais le
+// CONTENU de l'annotation — « S3 — la gouttière entre cartes » changé en
+// « S3 — n'importe quoi » lui échapperait —, et elle exige que le dépôt sache
+// quel sous-bloc est courant, ce qu'aucun fichier ne dit aujourd'hui. Elle n'est
+// pas construite ici : hors du périmètre de S2, et LÉGUÉE.
 //
 // ── POURQUOI CETTE PALETTE N'EST PAS SIMPLEMENT RÉDUITE À CE QUI SERT ──────
 // C'était la voie évidente, et elle est REFUSÉE SUR MESURE, prise le 19 août

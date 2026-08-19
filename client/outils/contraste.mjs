@@ -11,7 +11,7 @@
 // employé au bon endroit (c'est une règle de revue, §8), ni les couleurs
 // composées à l'exécution, ni ce qui est posé au-dessus de la vidéo — dont le
 // fond n'est pas connaissable. Les six tokens hors thème (`--voile-*`,
-// `--video-letterbox`) sont HORS des 50 paires pour cette raison : leur
+// `--video-letterbox`) sont HORS des 52 paires pour cette raison : leur
 // lisibilité sur une vidéo quelconque n'est garantie par rien, et la spec §11
 // le déclare déjà.
 
