@@ -321,8 +321,20 @@ impl Session {
                 false
             }
             Err(erreur) => {
+                // `{erreur:#}` et non `%erreur` : le `Display` simple
+                // d'`anyhow` ne rend que le contexte le plus EXTERNE, et
+                // `windows_audio.rs` en pose justement un
+                // (« ouverture du process loopback du PID … »). Le HRESULT —
+                // seule donnée qui réponde au leg 6 de D10, « la cause du
+                // refus de reconstruction n'est pas identifiée » — restait
+                // donc dans les causes, jetée à l'écriture. La pièce est
+                // versée : `journaux-multifenetres-d10/agent-critere-2-1-plat.log`
+                // l. 97 porte `erreur=ouverture du process loopback du PID
+                // 27544` et rien d'autre. Même doctrine que
+                // `diagnostics/multifenetre/plafond/sonde.rs`, qui l'explique
+                // mot pour mot sur un HRESULT perdu de la même façon.
                 tracing::warn!(
-                    %erreur,
+                    erreur = format!("{erreur:#}"),
                     restantes = self.reconstructions_restantes,
                     "reconstruction de la capture audio refusée"
                 );
@@ -399,5 +411,21 @@ mod tests {
             Some(AUDIO_POLL_INTERVAL),
         );
         assert_eq!(court, Duration::from_micros(200));
+    }
+
+    /// Éprouve le FORMAT, pas le site d'appel : `{erreur:#}` rend la chaîne de
+    /// causes là où `{erreur}` ne rend que le contexte le plus externe. Le site
+    /// lui-même n'est pas observable sur l'hôte (c'est un `warn!` de
+    /// `tracing`) ; sa preuve est le journal de recette, pas ce test.
+    #[test]
+    fn le_format_diese_rend_la_chaine_de_causes() {
+        use anyhow::Context;
+
+        let cause = anyhow::anyhow!("0x88890004");
+        let e = Err::<(), _>(cause)
+            .context("ouverture du process loopback du PID 42")
+            .unwrap_err();
+        assert!(!format!("{e}").contains("0x88890004"), "le Display simple perd la cause");
+        assert!(format!("{e:#}").contains("0x88890004"), "{{:#}} doit la rendre");
     }
 }
