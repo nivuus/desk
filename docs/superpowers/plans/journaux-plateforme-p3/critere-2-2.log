@@ -1,0 +1,27 @@
+# CRITÈRE ② — un agent au mauvais secret est refusé, sans distinguer « VM inconnue » de « secret faux »
+# Exécution 2 — moteur postgres
+# Jouée le 2026-08-19T20:08:28.062Z, commit dded5b5
+#
+VM enrôlée (identifiant)          : 24f9851f-2cd7-494e-85d1-5e1e171d65f9
+longueur du secret tiré           : 43
+
+A — VM inconnue, refus BRUT       : {"type":"refus","v":1,"motif":"enrolement"}
+B — secret faux,  refus BRUT      : {"type":"refus","v":1,"motif":"enrolement"}
+longueurs (A, B)                  : [43,43]
+premier caractère divergent       : aucun
+les deux refus sont IDENTIQUES    : TENU
+
+A — fermeture                     : {"code":1008,"raison":"enrolement"}
+B — fermeture                     : {"code":1008,"raison":"enrolement"}
+les deux fermetures sont IDENTIQUES: TENU
+
+C — bon secret, type de réponse   : enrole
+le BON secret est accepté (témoin): TENU
+
+VERDICT                           : TOUT TENU
+
+# --- journal du service (sortie d’erreur), conservé tel quel ---
+enrôlement refusé pour la VM 11111111-2222-3333-4444-555555555555
+enrôlement refusé pour la VM 24f9851f-2cd7-494e-85d1-5e1e171d65f9
+
+# code de sortie de la sonde : 0 (0 = tout tenu)

@@ -1,0 +1,26 @@
+# E2 FERMÉE — le pair qui se déclare agent sans rien présenter
+# Exécution 2 — moteur postgres
+# Jouée le 2026-08-19T20:08:32.741Z, commit dded5b5
+#
+# La MÊME sonde que journaux-plateforme-p2/e2-role-agent-toujours-anonyme.log,
+# à lire ligne à ligne contre elle : un pair qui déclare
+# {"role":"agent","session":"x"} sans rien présenter.
+
+service                           : ws://127.0.0.1:39099/
+messages reçus                    : ["{\"type\":\"error\",\"reason\":\"authentification requise\",\"motif\":\"jeton-absent\"}"]
+a reçu ice-config                 : false
+a été refusé                      : true
+motif du refus                    : authentification requise
+le pair anonyme est REFUSÉ        : TENU
+il ne reçoit AUCUNE ice-config    : TENU
+le message est celui de la garde  : TENU
+
+# En P2, ce même relevé donnait : a reçu ice-config = true, a été
+# refusé = false, identifiants TURN présents et valables 86 400 s.
+
+VERDICT                           : TOUT TENU
+
+# --- journal du service (sortie d’erreur), conservé tel quel ---
+poignée de main refusée : poignée de main sans jeton sur la session x
+
+# code de sortie de la sonde : 0 (0 = tout tenu)

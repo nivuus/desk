@@ -1,0 +1,61 @@
+--- la mutation, en diff ---
+    --- /tmp/user/0/tmp.zmcKTYo0tl	2026-08-19 22:14:56.430990697 +0200
+    +++ proto/src/plateforme.rs	2026-08-19 22:14:56.470990876 +0200
+    @@ -132,7 +132,8 @@
+         },
+         /// Refus, avec son motif. Le socket se ferme ensuite.
+         Refus {
+    -        #[serde(rename = "v", deserialize_with = "verifie_version")]
+    +        // ROUGE 3-RUST : `verifie_version` est omise SUR CETTE SEULE VARIANTE.
+    +        #[serde(rename = "v")]
+             version: u8,
+             motif: MotifCanal,
+         },
+
+--- le contrôle, sur l'arbre MUTÉ ---
+   Compiling proto v0.1.0 (/home/mallanic/Projects/Guacamole/proto)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.70s
+     Running unittests src/lib.rs (target/debug/deps/proto-8d2cff7e4cd88971)
+
+running 18 tests
+test plateforme::tests::rejette_la_version_suivante_sur_enrole ... ok
+test plateforme::tests::rejette_la_version_suivante_sur_battement_recu ... ok
+test plateforme::tests::rejette_la_version_suivante_sur_battement ... ok
+test plateforme::tests::rejette_la_version_suivante_sur_enroler ... ok
+test plateforme::tests::rejette_un_champ_inconnu ... ok
+test plateforme::tests::rejette_un_type_inconnu ... ok
+test plateforme::tests::rejette_la_version_suivante_sur_refus ... FAILED
+test plateforme::tests::rejette_une_version_absente_sur_battement ... ok
+test plateforme::tests::rejette_une_version_absente_sur_battement_recu ... ok
+test plateforme::tests::rejette_une_version_absente_sur_enroler ... ok
+test plateforme::tests::rejette_une_version_absente_sur_refus ... ok
+test plateforme::tests::rejette_une_version_absente_sur_enrole ... ok
+test plateforme::tests::serialise_l_enrole_et_le_refus ... ok
+test plateforme::tests::round_trip_des_trois_reponses ... ok
+test plateforme::tests::serialise_le_battement ... ok
+test plateforme::tests::serialise_le_battement_recu_en_kebab_case ... ok
+test plateforme::tests::serialise_l_enrolement_en_kebab_case ... ok
+test plateforme::tests::conformite_aux_vecteurs_partages ... ok
+
+failures:
+
+---- plateforme::tests::rejette_la_version_suivante_sur_refus stdout ----
+
+thread 'plateforme::tests::rejette_la_version_suivante_sur_refus' (2867397) panicked at proto/src/plateforme.rs:288:9:
+assertion failed: serde_json::from_str::<DepuisLaPlateforme>(r#"{"type":"refus","v":2,"motif":"version"}"#).is_err()
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    plateforme::tests::rejette_la_version_suivante_sur_refus
+
+test result: FAILED. 17 passed; 1 failed; 0 ignored; 0 measured; 34 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p proto --lib`
+
+# code de sortie du contrôle sur l'arbre muté : 101
+# (un code NON NUL est ce qu'on cherche : le contrôle dénonce la mutation)
+
+# sha256 avant la mutation : 2b78aaee63ab7729e7836de80d17cedbab8935894fe24468412fa683cb03b605
+# sha256 après restauration: 2b78aaee63ab7729e7836de80d17cedbab8935894fe24468412fa683cb03b605
+# source RESTAURÉE À L'IDENTIQUE (empreintes égales)

@@ -1,0 +1,49 @@
+--- la mutation, en diff ---
+    --- /tmp/user/0/tmp.f0pash6QeE	2026-08-19 22:14:54.362981446 +0200
+    +++ proto/ts/plateforme.ts	2026-08-19 22:14:54.402981624 +0200
+    @@ -132,7 +132,7 @@
+     
+         // 🔴 STRICTE, ET SANS DÉFAUT : un `parsed.v ?? PLATEFORME_VERSION`
+         // accepterait un message SANS champ `v`, et un `v: null` avec lui.
+    -    if (parsed.v !== PLATEFORME_VERSION) return { ok: false, motif: 'version' };
+    +    /* ROUGE 3-TS-VERS : la comparaison de version est retiree */
+     
+         if (!TYPES_VERS.includes(parsed.type as (typeof TYPES_VERS)[number])) {
+             return { ok: false, motif: 'forme' };
+
+--- le contrôle, sur l'arbre MUTÉ ---
+# CRITÈRE ③ — une version de protocole incompatible est refusée des deux côtés
+# Exécution 1 — moteur sqlite
+# Jouée le 2026-08-19T20:14:55.112Z, commit dded5b5
+#
+PLATEFORME_VERSION                : 1
+version du vecteur éprouvé        : 2
+
+TS parseVersLaPlateforme          : {"ok":true,"message":{"type":"enroler","v":1,"vm":"w1","secret":"chut"}}
+TS (vers) refuse pour motif « version »: 🔴 NON TENU
+TS parseDepuisLaPlateforme        : Error: version de plateforme non supportée : 2
+TS (depuis) LÈVE sur la version suivante: TENU
+
+service — réponse BRUTE           : {"type":"refus","v":1,"motif":"enrolement"}
+service — fermeture               : {"code":1008,"raison":"enrolement"}
+le service répond refus/version   : 🔴 NON TENU
+le socket est FERMÉ (1008)        : TENU
+
+# Le côté RUST est éprouvé par `cargo test -p proto plateforme` — voir
+# critere-3-rust-*.log : cinq tests `rejette_la_version_suivante_sur_*`,
+# un par variante, plus la vérification de la clé `version` du fichier
+# de vecteurs, que seul le TypeScript contrôlait avant P3.
+
+VERDICT                           : 🔴 2 assertion(s) NON TENUE(S)
+
+# --- journal du service (sortie d’erreur), conservé tel quel ---
+enrôlement refusé pour la VM w1
+
+# code de sortie de la sonde : 1 (0 = tout tenu)
+
+# code de sortie du contrôle sur l'arbre muté : 1
+# (un code NON NUL est ce qu'on cherche : le contrôle dénonce la mutation)
+
+# sha256 avant la mutation : 28d8e0d1e56408ac3e5de71c379edb9f64c3ff6025655d4a2e6e25f02b8eb570
+# sha256 après restauration: 28d8e0d1e56408ac3e5de71c379edb9f64c3ff6025655d4a2e6e25f02b8eb570
+# source RESTAURÉE À L'IDENTIQUE (empreintes égales)

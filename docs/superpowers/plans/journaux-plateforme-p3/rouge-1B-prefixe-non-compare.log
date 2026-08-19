@@ -1,0 +1,59 @@
+--- la mutation, en diff ---
+    --- /tmp/user/0/tmp.5DB6rTgGU4	2026-08-19 22:14:51.462968467 +0200
+    +++ plateforme/src/identite/garde.ts	2026-08-19 22:14:51.502968646 +0200
+    @@ -128,7 +128,7 @@
+                     // occupe les sessions de la VM `ABC`, dont le préfixe le
+                     // prolonge — une collision qui ne se produirait qu'entre deux
+                     // VMs précises, donc jamais en essai et toujours en production.
+    -                if (!session.startsWith(verdict.sujet + SEPARATEUR)) {
+    +                if (false /* ROUGE 1B : la comparaison de prefixe est retiree */) {
+                         return {
+                             ok: false,
+                             motif: 'session-refusee',
+
+--- le contrôle, sur l'arbre MUTÉ ---
+# CRITÈRE ① — deux agents simulés, deux VMs, aucun conflit ; et chacun ne voit que sa session
+# Exécution 1 — moteur sqlite
+# Jouée le 2026-08-19T20:14:51.931Z, commit dded5b5
+#
+VM P — préfixe délivré            : 6cPSqfnpEZQZsqbiA8OWMg
+VM Q — préfixe délivré            : 7V-QG48cOOj2rvXlatEbPw
+longueur des deux préfixes        : [22,22]
+P — jeton (corps masqué)          : eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<charge:88>.<sig:43>
+Q — jeton (corps masqué)          : eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<charge:88>.<sig:43>
+préfixes DISTINCTS                : TENU
+jetons DISTINCTS                  : TENU
+
+agent P -> 6cPSqfnpEZQZsqbiA8OWMg:bureau: ACCEPTÉ
+agent P sert bureau               : TENU
+agent P -> 6cPSqfnpEZQZsqbiA8OWMg:w-1: ACCEPTÉ
+agent P sert w-1                  : TENU
+agent Q -> 7V-QG48cOOj2rvXlatEbPw:bureau: ACCEPTÉ
+agent Q sert bureau               : TENU
+agent Q -> 7V-QG48cOOj2rvXlatEbPw:w-1: ACCEPTÉ
+agent Q sert w-1                  : TENU
+
+aucun refus « déjà connecté »     : true
+un agent ACCEPTÉ reçoit bien une ice-config (témoin): TENU
+
+agent P -> <Q>:w-9 (session VIERGE): ACCEPTÉ
+trames reçues par l'intrus        : ["{\"type\":\"ice-config\",\"iceServers\":[{\"urls\":\"turn:127.0.0.1:3478\",\"username\":\"1787256892:7V-QG48cOOj2rvXlatEbPw:w-9\",\"credential\":\"Fk567HnHQ4FKuLRi03oDW84Oo0o=\"}]}"]
+agent P REFUSÉ sur une session vierge de Q: 🔴 NON TENU
+l'intrus n'a reçu AUCUNE ice-config: 🔴 NON TENU
+le refus ne dit ni à qui ni si elle existe: 🔴 NON TENU
+
+agent P -> <Q>:bureau (OCCUPÉE)   : un agent est déjà connecté à la session 7V-QG48cOOj2rvXlatEbPw:bureau
+la garde tranche AVANT l'appariement: 🔴 NON TENU
+
+VERDICT                           : 🔴 4 assertion(s) NON TENUE(S)
+
+# --- journal du service (sortie d’erreur), conservé tel quel ---
+
+# code de sortie de la sonde : 1 (0 = tout tenu)
+
+# code de sortie du contrôle sur l'arbre muté : 1
+# (un code NON NUL est ce qu'on cherche : le contrôle dénonce la mutation)
+
+# sha256 avant la mutation : 8ca5c3ea54f1c8a1e0b20499d5bf5eeadaab19f64a8f1d777d31dc1286ae4f26
+# sha256 après restauration: 8ca5c3ea54f1c8a1e0b20499d5bf5eeadaab19f64a8f1d777d31dc1286ae4f26
+# source RESTAURÉE À L'IDENTIQUE (empreintes égales)

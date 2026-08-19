@@ -1,0 +1,32 @@
+# HORS CRITÈRE — N enrôlements CONCURRENTS pour la MÊME VM (le superviseur et ses N-1 enfants)
+# Exécution 1 — moteur sqlite
+# Jouée le 2026-08-19T20:08:33.391Z, commit dded5b5
+#
+VM unique — préfixe attendu       : B_RcUG4pTwJI63W_0S7bFw
+canaux /agent ouverts de front    : 4
+# N = 4 : le superviseur, plus trois enfants — la configuration du
+# chantier D à trois fenêtres.
+
+types de réponse, canal par canal : ["enrole","enrole","enrole","enrole"]
+les N enrôlements sont ACCEPTÉS   : TENU
+préfixes distincts délivrés       : ["B_RcUG4pTwJI63W_0S7bFw"]
+tous reçoivent LE MÊME préfixe    : TENU
+aucun socket n’a été fermé        : TENU
+longueurs de jeton                : [169,169,169,169]
+
+battement du PREMIER canal        : battement-recu
+jeton rendu (corps masqué)        : eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<charge:88>.<sig:43>
+revendications                    : {"sub":"B_RcUG4pTwJI63W_0S7bFw","exp":1787170713801,"sty":"agent"}
+le premier canal est toujours enrôlé: TENU
+
+jeton n°0 -> B_RcUG4pTwJI63W_0S7bFw:bureau: ACCEPTÉ
+jeton n°1 -> B_RcUG4pTwJI63W_0S7bFw:w-1: ACCEPTÉ
+jeton n°2 -> B_RcUG4pTwJI63W_0S7bFw:w-2: ACCEPTÉ
+jeton n°3 -> B_RcUG4pTwJI63W_0S7bFw:w-3: ACCEPTÉ
+les N sessions de la MÊME VM sont servies: TENU
+
+VERDICT                           : TOUT TENU
+
+# --- journal du service (sortie d’erreur), conservé tel quel ---
+
+# code de sortie de la sonde : 0 (0 = tout tenu)

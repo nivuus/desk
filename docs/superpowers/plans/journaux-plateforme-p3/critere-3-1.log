@@ -1,0 +1,27 @@
+# CRITÈRE ③ — une version de protocole incompatible est refusée des deux côtés
+# Exécution 1 — moteur sqlite
+# Jouée le 2026-08-19T20:08:28.845Z, commit dded5b5
+#
+PLATEFORME_VERSION                : 1
+version du vecteur éprouvé        : 2
+
+TS parseVersLaPlateforme          : {"ok":false,"motif":"version"}
+TS (vers) refuse pour motif « version »: TENU
+TS parseDepuisLaPlateforme        : Error: version de plateforme non supportée : 2
+TS (depuis) LÈVE sur la version suivante: TENU
+
+service — réponse BRUTE           : {"type":"refus","v":1,"motif":"version"}
+service — fermeture               : {"code":1008,"raison":"version"}
+le service répond refus/version   : TENU
+le socket est FERMÉ (1008)        : TENU
+
+# Le côté RUST est éprouvé par `cargo test -p proto plateforme` — voir
+# critere-3-rust-*.log : cinq tests `rejette_la_version_suivante_sur_*`,
+# un par variante, plus la vérification de la clé `version` du fichier
+# de vecteurs, que seul le TypeScript contrôlait avant P3.
+
+VERDICT                           : TOUT TENU
+
+# --- journal du service (sortie d’erreur), conservé tel quel ---
+
+# code de sortie de la sonde : 0 (0 = tout tenu)
