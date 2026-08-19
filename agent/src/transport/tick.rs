@@ -290,10 +290,15 @@ impl Session {
         //           `reconstruire_ou_signaler`** : elle donnait à qui
         //           reprendra le legs n°1 le modèle mental exactement
         //           INVERSE du vrai. En mono-fenêtre la source EST
-        //           reconstruite — puis le réarmement la rend MUETTE,
-        //           `audio_porteuse` valant toujours `false` faute de
-        //           capteur pour l'écrire. Voir la conséquence complète et
-        //           son correctif auprès de
+        //           reconstruite — puis le réarmement la RENDAIT MUETTE,
+        //           `audio_porteuse` valant alors toujours `false` faute de
+        //           capteur pour l'écrire.
+        //
+        //           ✅ **CORRIGÉ AU SOUS-BLOC D11 (leg 4), et mesuré** :
+        //           `demarrage/audio.rs::brancher` pose
+        //           `audio_porteuse = true` dans sa seule branche
+        //           mono-fenêtre, et la recette ① relève 441 Hz reçus au
+        //           vert contre la sentinelle au rouge. Voir
         //           `Session::reconstruire_ou_signaler` (`piste_audio.rs`).
         //
         //           `appliquer_audio` (a1quinquies juste au-dessus) ne court

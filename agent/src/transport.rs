@@ -234,10 +234,11 @@ pub struct Session {
     /// ❌ **« Absent sur le chemin mono-fenêtre » figurait ici et c'est
     /// FAUX** : `demarrage/audio.rs::brancher` pose ce champ
     /// INCONDITIONNELLEMENT dans son bras `Ok`, branche `None` comprise. Le
-    /// mono-fenêtre reconstruit donc bien — et son défaut propre est que la
-    /// source reconstruite est réarmée à `false` (legs n°4 de D10, voir
-    /// `Session::reconstruire_ou_signaler`). ⚠️ **Troisième occurrence de
-    /// cette même phrase, et celle-ci n'a été trouvée ni par la revue
+    /// mono-fenêtre reconstruit donc bien — son défaut propre, la source
+    /// reconstruite y étant réarmée à `false`, ✅ **est le leg n°4 de D10,
+    /// CORRIGÉ en D11** (voir `reconstruire_ou_signaler`).
+    /// ⚠️ **Troisième occurrence
+    /// de cette même phrase, et celle-ci n'a été trouvée ni par la revue
     /// transverse ni par la revue finale de branche** : les deux ont corrigé
     /// les jumelles de `tick.rs` et de `tick/tests/audio.rs` sans balayer
     /// jusqu'ici. Le `grep -rn "mono-fenêtre" agent/src` la listait pourtant.

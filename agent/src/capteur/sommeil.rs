@@ -102,11 +102,14 @@ const PERIODE_REARBITRAGE: Duration = Duration::from_millis(250);
 /// ❌ **« Chemin mono-fenêtre » figurait dans cette liste, et c'est faux :
 /// `demarrage/audio.rs::brancher` pose un reconstructeur dans les DEUX
 /// modes** (revue transverse de fin de branche). Le mono-fenêtre reconstruit
-/// donc lui aussi, `RECONSTRUCTIONS_MAX` fois, avant de signaler. 🔴 **Mais
-/// le remède y est INERTE pour une autre raison, léguée et non corrigée** :
-/// la source reconstruite y est réarmée sur `audio_porteuse`, qu'aucun ordre
-/// de capteur ne vient jamais poser en l'absence de capteur — voir
-/// `Session::reconstruire_ou_signaler` (`transport/piste_audio.rs`). Ce que
+/// donc lui aussi, `RECONSTRUCTIONS_MAX` fois, avant de signaler. ⚠️ **Le
+/// remède y a été INERTE pour une autre raison** : la source reconstruite y
+/// était réarmée sur `audio_porteuse`, qu'aucun ordre de capteur ne venait
+/// jamais poser en l'absence de capteur. ✅ **« Léguée et non corrigée » ne
+/// l'est plus — leg n°4 de D10, CORRIGÉ au sous-bloc D11** : le branchement
+/// mono-fenêtre pose lui-même `audio_porteuse` (`demarrage/audio.rs`), et la
+/// recette ① mesure le son revenu (441 Hz contre la sentinelle au rouge) —
+/// voir `Session::reconstruire_ou_signaler` (`transport/piste_audio.rs`). Ce que
 /// CE mécanisme-ci (le répit et la
 /// promotion) continue de faire, inchangé : donner sa chance à une voisine du
 /// même groupe de PID, et éviter qu'un périphérique définitivement mort ne

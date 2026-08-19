@@ -2,8 +2,17 @@
 //!
 //! Le signaling ne fait que relayer : c'est ici que la forme des messages est
 //! décidée, et elle doit correspondre exactement à ce que `client/src/shell.ts`
-//! attend — et à ce que `signaling/src/server.ts` accepte de relayer
-//! (`TYPES_RELAYES`).
+//! attend — et à ce que `plateforme/src/signaling/relais.ts` accepte de
+//! relayer (`TYPES_RELAYES`).
+//!
+//! ❌ **Ce chemin disait `signaling/src/server.ts`, et ce fichier n'existe
+//! plus** : le paquet `signaling/` a été absorbé par `plateforme/` au
+//! sous-bloc P1 du sous-projet ⑤. **La propriété énoncée, elle, reste
+//! VRAIE** — `TYPES_RELAYES` porte toujours les mêmes six types (`offer`,
+//! `answer`, `fenetre-ouverte`, `fenetre-fermee`, `refus`, `viewport`),
+//! relus le 19 août 2026. Dette d'une ligne, laissée par P1 parce que
+//! `agent/` était alors le périmètre d'un travail concurrent, et soldée
+//! ici.
 //!
 //! **Pas de `#[cfg(windows)]`** : ces messages sont de la sérialisation pure,
 //! et c'est justement le genre de contrat qui doit être éprouvé sur l'hôte —
