@@ -63,6 +63,16 @@ etape "client : npm test"
 etape "client : npm run typecheck"
 (cd client && npm run typecheck) || echec "client : npm run typecheck"
 
+# Les sept contrôles du socle visuel (sous-projet ⑥, spec §7). Six d'entre eux
+# sont des scripts et vivent ici ; le septième, §7.5 (la bascule de thème), est
+# un test unitaire et tourne dans l'étape `client : npm test` ci-dessus — c'est
+# pourquoi on lit six verdicts et non sept.
+#
+# ⚠️ Sans cette étape, « appliqué en continu » (cadrage §5 ⑥) resterait un vœu :
+# les contrôles existeraient, et rien ne les lancerait.
+etape "client : npm run design:verifier"
+(cd client && npm run design:verifier) || echec "client : npm run design:verifier"
+
 etape "proto : npm test"
 (cd proto && npm test) || echec "proto : npm test"
 
