@@ -1,0 +1,71 @@
+2026-08-19T15:49:15.086251Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-19T15:49:15.086337Z  INFO agent::demarrage::source: capture de la fenêtre Windows (recadrage) bitrate=12000000 fps=90
+2026-08-19T15:49:15.088082Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 nom_sortie=\\.\DISPLAY1 attachee=true
+2026-08-19T15:49:15.177962Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-19T15:49:15.178253Z  INFO agent::capture: duplication de sortie établie desktop_width=2400 desktop_height=1080
+2026-08-19T15:49:15.179122Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-19T15:49:15.249139Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=327681
+2026-08-19T15:49:15.253662Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-19T15:49:15.256594Z  INFO agent::signaling: agent enregistré auprès du signaling session="e1-rouge-sans-variable"
+2026-08-19T15:49:15.256655Z  INFO agent::transport::initialisation: socket UDP de l'agent addr=192.168.3.2:53857
+2026-08-19T15:49:15.257520Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-19T15:49:15.284800Z  INFO agent::wasapi::rendu: périphérique audio de rendu retenu variable="AUDIO_PERIPHERIQUE" demande="(aucune)" retenu=Haut-parleurs (VB-Audio Virtual Cable) identifiant={0.0.0.00000000}.{deec1914-6490-47ee-9475-091b9a2ea537} critere="défaut de Windows" repli=false
+2026-08-19T15:49:15.294190Z  INFO agent::windows_audio: source audio démarrée format=48000 Hz, 2 canaux, 32 bits, flottant
+2026-08-19T15:49:15.294211Z  INFO agent::demarrage::audio: audio activé format="48000 Hz, 2 canaux, 32 bits, flottant"
+2026-08-19T15:49:37.114062Z  INFO agent::demarrage: offre reçue
+2026-08-19T15:49:37.120339Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=réception pendant l'allocation TURN
+2026-08-19T15:49:37.122509Z  INFO agent::demarrage: réponse envoyée
+2026-08-19T15:49:37.122935Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=21.839977s
+2026-08-19T15:49:37.131086Z  INFO agent::transport::evenements: état ICE state=Connected écoulé=21.8481257s
+2026-08-19T15:49:37.140052Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video direction=SendOnly
+2026-08-19T15:49:37.140074Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio direction=SendOnly
+2026-08-19T15:49:37.140078Z  INFO agent::transport::evenements: piste négociée mid=Mid(2) kind=Audio direction=RecvOnly
+2026-08-19T15:49:37.145309Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=e1-rouge-sans-variable unites=1 cadence="0.0"
+2026-08-19T15:49:37.156122Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-19T15:49:37.156196Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-19T15:49:37.272200Z  INFO agent::demarrage: contrôle reçu session=e1-rouge-sans-variable Visibility { version: 3, visible: true, focused: false }
+2026-08-19T15:49:37.289166Z  WARN agent::transport::piste_micro: piste micro négociée mais aucun puits installé, paquet abandonné
+2026-08-19T15:49:37.376507Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:37.380650Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:37.386625Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:37.474180Z  INFO agent::demarrage: contrôle reçu session=e1-rouge-sans-variable Resize { version: 3, width: 780, height: 493 }
+2026-08-19T15:49:37.525080Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 nom_sortie=\\.\DISPLAY1 attachee=true
+2026-08-19T15:49:37.560168Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-19T15:49:37.560417Z  INFO agent::capture: duplication de sortie établie desktop_width=2400 desktop_height=1080
+2026-08-19T15:49:37.560466Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-19T15:49:37.611450Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=524293
+2026-08-19T15:49:37.611657Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-19T15:49:37.611956Z  INFO agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-19T15:49:37.612377Z  INFO agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-19T15:49:37.630299Z  INFO agent::windows_source::redimensionnement: chaîne d'encodage reconstruite self.width=764 self.height=484
+2026-08-19T15:49:37.878044Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:37.882012Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:38.878203Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:39.880117Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:41.880331Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:41.887060Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:44.880771Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:44.888340Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:44.892918Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:45.294759Z  INFO agent::windows_audio::fil: compteurs audio actif=true rejetes=2180 complements=2999 echantillons_jetes=0
+2026-08-19T15:49:47.151599Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=e1-rouge-sans-variable unites=562 cadence="56.2"
+2026-08-19T15:49:47.880936Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:47.890467Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:47.893948Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:50.881160Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:50.891135Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:50.895803Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:53.882511Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:53.891111Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:53.896881Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:49:57.161102Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=e1-rouge-sans-variable unites=564 cadence="56.3"
+2026-08-19T15:50:07.161551Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=e1-rouge-sans-variable unites=573 cadence="57.3"
+2026-08-19T15:50:15.300018Z  INFO agent::windows_audio::fil: compteurs audio actif=true rejetes=2180 complements=5999 echantillons_jetes=0
+2026-08-19T15:50:17.171867Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=e1-rouge-sans-variable unites=573 cadence="57.2"
+2026-08-19T15:50:27.180812Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=e1-rouge-sans-variable unites=576 cadence="57.5"
+2026-08-19T15:50:35.718462Z  INFO agent::demarrage: contrôle reçu session=e1-rouge-sans-variable Visibility { version: 3, visible: false, focused: false }
+2026-08-19T15:50:35.721560Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-19T15:50:35.723012Z  INFO agent::transport::evenements: connexion fermée par le pair (close_notify DTLS)
+2026-08-19T15:50:35.723447Z  INFO agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-19T15:50:35.724146Z  INFO agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-19T15:50:35.761461Z  INFO agent::demarrage: session terminée

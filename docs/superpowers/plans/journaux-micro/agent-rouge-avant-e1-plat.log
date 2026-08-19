@@ -1,0 +1,67 @@
+2026-08-19T15:52:56.327485Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-19T15:52:56.327623Z  INFO agent::demarrage::source: capture de la fenêtre Windows (recadrage) bitrate=12000000 fps=90
+2026-08-19T15:52:56.329411Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 nom_sortie=\\.\DISPLAY1 attachee=true
+2026-08-19T15:52:56.420074Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-19T15:52:56.420400Z  INFO agent::capture: duplication de sortie établie desktop_width=2400 desktop_height=1080
+2026-08-19T15:52:56.421258Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-19T15:52:56.477732Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=327681
+2026-08-19T15:52:56.482661Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-19T15:52:56.485675Z  INFO agent::signaling: agent enregistré auprès du signaling session="e1-rouge-avant"
+2026-08-19T15:52:56.485771Z  INFO agent::transport::initialisation: socket UDP de l'agent addr=192.168.3.2:55007
+2026-08-19T15:52:56.486516Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-19T15:52:56.522390Z  INFO agent::windows_audio: source audio démarrée format=48000 Hz, 2 canaux, 32 bits, flottant
+2026-08-19T15:52:56.522406Z  INFO agent::demarrage::audio: audio activé format="48000 Hz, 2 canaux, 32 bits, flottant"
+2026-08-19T15:53:18.012782Z  INFO agent::demarrage: offre reçue
+2026-08-19T15:53:18.018311Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=réception pendant l'allocation TURN
+2026-08-19T15:53:18.020688Z  INFO agent::demarrage: réponse envoyée
+2026-08-19T15:53:18.021151Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=21.5090876s
+2026-08-19T15:53:18.026866Z  INFO agent::transport::evenements: état ICE state=Connected écoulé=21.5148015s
+2026-08-19T15:53:18.036212Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video
+2026-08-19T15:53:18.036242Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio
+2026-08-19T15:53:18.041652Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=e1-rouge-avant unites=1 cadence="0.0"
+2026-08-19T15:53:18.050734Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-19T15:53:18.050798Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-19T15:53:18.173912Z  INFO agent::demarrage: contrôle reçu session=e1-rouge-avant Visibility { version: 3, visible: true, focused: false }
+2026-08-19T15:53:18.273799Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:53:18.278459Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:53:18.374115Z  INFO agent::demarrage: contrôle reçu session=e1-rouge-avant Resize { version: 3, width: 780, height: 493 }
+2026-08-19T15:53:18.424984Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 nom_sortie=\\.\DISPLAY1 attachee=true
+2026-08-19T15:53:18.454809Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-19T15:53:18.455080Z  INFO agent::capture: duplication de sortie établie desktop_width=2400 desktop_height=1080
+2026-08-19T15:53:18.455132Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-19T15:53:18.506399Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=524293
+2026-08-19T15:53:18.506636Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-19T15:53:18.506956Z  INFO agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-19T15:53:18.507366Z  INFO agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-19T15:53:18.521826Z  INFO agent::windows_source::redimensionnement: chaîne d'encodage reconstruite self.width=764 self.height=484
+2026-08-19T15:53:18.774167Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:53:18.781772Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:53:19.776652Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:53:19.782927Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:53:20.777070Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:53:22.777082Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:53:22.789673Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:53:25.779315Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:53:25.791767Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:53:26.524424Z  INFO agent::windows_audio::fil: compteurs audio actif=true rejetes=2146 complements=2999 echantillons_jetes=0
+2026-08-19T15:53:28.042990Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=e1-rouge-avant unites=558 cadence="55.8"
+2026-08-19T15:53:28.782161Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:53:28.792301Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:53:31.782343Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:53:31.792479Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:53:34.782892Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:53:34.792638Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:53:38.053253Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=e1-rouge-avant unites=563 cadence="56.2"
+2026-08-19T15:53:48.063441Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=e1-rouge-avant unites=579 cadence="57.8"
+2026-08-19T15:53:56.527373Z  INFO agent::windows_audio::fil: compteurs audio actif=true rejetes=2146 complements=5999 echantillons_jetes=0
+2026-08-19T15:53:58.072587Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=e1-rouge-avant unites=568 cadence="56.7"
+2026-08-19T15:54:08.082468Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=e1-rouge-avant unites=546 cadence="54.5"
+2026-08-19T15:54:18.092434Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=e1-rouge-avant unites=558 cadence="55.7"
+2026-08-19T15:54:18.304142Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-19T15:54:18.304180Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T15:54:18.307366Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=2 backoff_ms=4
+2026-08-19T15:54:18.311826Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=3 backoff_ms=8
+2026-08-19T15:54:18.321459Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=4 backoff_ms=16
+2026-08-19T15:54:18.339060Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=5 backoff_ms=32
+2026-08-19T15:54:18.372075Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=6 backoff_ms=64
+2026-08-19T15:54:19.307237Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2

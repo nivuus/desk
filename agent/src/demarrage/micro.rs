@@ -183,6 +183,10 @@ fn consommer(lecteur: Arc<Mutex<LecteurMicro>>, session_id: String) {
     let mut fenetre = Fenetre::new(SAMPLE_RATE_HZ);
     let mut precedents = CompteursMicro::default();
     let mut echeance = Instant::now();
+    // Le maximum d'occupation sur la fenêtre d'observation. ⚠️ Un maximum, pas
+    // une moyenne : le critère ④ de la recette E1 est une BORNE, et une moyenne
+    // noierait la seule pointe qui la franchirait.
+    let mut occupation_max = Duration::ZERO;
 
     loop {
         // ⚠️ ÉCHÉANCE, PAS `sleep(PERIODE)`. Un `sleep` de période fixe dérive
@@ -200,14 +204,20 @@ fn consommer(lecteur: Arc<Mutex<LecteurMicro>>, session_id: String) {
             echeance = maintenant;
         }
 
-        let compteurs = {
+        let (compteurs, occupation) = {
             let Ok(mut lecteur) = lecteur.lock() else {
                 tracing::warn!("verrou du puits de mesure empoisonne, fil de mesure arrete");
                 return;
             };
+            // ⚠️ RELEVÉE AVANT `remplir`, jamais après : c'est ce que le tampon
+            // faisait attendre au moment où le consommateur s'est présenté.
+            // Après, la file vient d'être vidée et l'on relèverait toujours à
+            // peu près zéro — un contrôle incapable de franchir sa borne.
+            let occupation = lecteur.occupation();
             lecteur.remplir(&mut tampon);
-            lecteur.compteurs()
+            (lecteur.compteurs(), occupation)
         };
+        occupation_max = occupation_max.max(occupation);
 
         let Some(releve) = fenetre.absorber(&tampon) else {
             continue;
@@ -248,9 +258,16 @@ fn consommer(lecteur: Arc<Mutex<LecteurMicro>>, session_id: String) {
             jetees_saturation = d(compteurs.jetees_saturation, precedents.jetees_saturation),
             jetees_perimees = d(compteurs.jetees_perimees, precedents.jetees_perimees),
             deposees_total = compteurs.deposees,
+            // Le critère ④ de la recette E1 (spec §13) : la latence que le
+            // tampon de gigue ajoute à lui seul, bornée par `micro::PLAFOND`.
+            // ⚠️ Ce n'est PAS la latence de bout en bout — voir la doc de
+            // `LecteurMicro::occupation`.
+            occupation_ms = occupation.as_millis() as u64,
+            occupation_max_ms = occupation_max.as_millis() as u64,
             "micro mesuré"
         );
         precedents = compteurs;
+        occupation_max = Duration::ZERO;
     }
 }
 
@@ -396,5 +413,30 @@ mod tests {
         let releve = dernier.expect("une seconde absorbée");
         assert_eq!(releve.crete, 0.0);
         assert_eq!(releve.frequence_hz, None);
+    }
+
+    /// Le critère ④ de la recette E1 se lit sur `occupation_ms`, et rien
+    /// d'autre ne le porte. Ce test garde l'instrument lui-même : une
+    /// délégation oubliée — `Duration::ZERO` rendu sans regarder la file —
+    /// ferait relever une latence de tampon nulle sur un tampon plein, et le
+    /// critère passerait sans avoir rien mesuré.
+    #[test]
+    fn l_occupation_du_lecteur_est_celle_des_trames_en_attente() {
+        let mut lecteur = LecteurMicro::new().expect("décodeur Opus");
+        assert_eq!(lecteur.occupation(), Duration::ZERO, "à vide");
+
+        // Trois trames de 20 ms : 960 échantillons par canal chacune.
+        for i in 0..3u64 {
+            lecteur.deposer(TrameMicro {
+                opus: vec![0u8; 8],
+                rtp_48k: i * 960,
+                echantillons: 960,
+            });
+        }
+        assert_eq!(
+            lecteur.occupation(),
+            Duration::from_millis(60),
+            "trois trames de 20 ms font 60 ms d'attente"
+        );
     }
 }

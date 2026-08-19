@@ -1,0 +1,81 @@
+{
+  "scenario": "ton",
+  "session": "e1-rouge-sans-variable",
+  "freq": 440,
+  "duree": 60000,
+  "url": "http://192.168.3.1:5173/?session=e1-rouge-sans-variable",
+  "etapes": [
+    {
+      "quoi": "session",
+      "issue": "vivante",
+      "quand": "2026-08-19T15:49:37.242Z"
+    },
+    {
+      "quoi": "allumage",
+      "quand": "2026-08-19T15:49:37.244Z",
+      "compte": {
+        "hz": 440,
+        "etatContexte": "running",
+        "direction": "sendonly",
+        "directionCourante": "sendonly",
+        "pisteVivante": "live"
+      }
+    }
+  ],
+  "stats": [
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 23,
+          "packetsLost": 0,
+          "bytesReceived": 25
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 148,
+          "packetsLost": 0,
+          "bytesReceived": 156488,
+          "framesDecoded": 9,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 484
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 0,
+          "bytesSent": 0,
+          "mid": "2"
+        }
+      ],
+      "paire": {
+        "rtt": 0.001,
+        "recu": 166606,
+        "envoye": 2834
+      },
+      "horodatage": "2026-08-19T15:49:37.244Z",
+      "etiquette": "avant-injection"
+    },
+    {
+      "entrant": [],
+      "sortant": [],
+      "paire": null,
+      "horodatage": "2026-08-19T15:50:37.262Z",
+      "etiquette": "fin-ton"
+    }
+  ],
+  "sessionVivante": true,
+  "console": [
+    "[debug] [vite] connecting...",
+    "[debug] [vite] connected.",
+    "[debug] [instrumentation resize] declenchement ResizeObserver Object",
+    "[debug] [instrumentation resize] emission Object",
+    "[log] [vite] server connection lost. Polling for restart...",
+    "[debug] [vite] connecting...",
+    "[debug] [vite] connected."
+  ],
+  "erreursPage": [],
+  "code": 0
+}
