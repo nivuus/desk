@@ -1,0 +1,13 @@
+2026-08-19T10:36:54.858Z --- tirage 1 : MEME n (3 et 3) -> COLLISION attendue ---
+2026-08-19T10:36:59.103Z page A n=3 : {"marqueur":"9-9-7","rgb":"989e70","source":"780x493"} puis {"marqueur":"7-9-7","rgb":"759a70","source":"780x493"}
+2026-08-19T10:36:59.103Z page B n=3 : {"marqueur":"9-9-7","rgb":"999e70","source":"780x493"} puis {"marqueur":"7-9-7","rgb":"759a70","source":"780x493"}
+2026-08-19T10:36:59.103Z   invariance dans le temps, page A : NON
+2026-08-19T10:36:59.103Z   ECHEC : le marqueur DERIVE, il ne vaut rien
+2026-08-19T10:36:59.103Z   invariance dans le temps, page B : NON
+2026-08-19T10:36:59.103Z   ECHEC : le marqueur DERIVE, il ne vaut rien
+2026-08-19T10:36:59.103Z   collision detectee : OUI
+2026-08-19T10:36:59.103Z --- tirage 2 : n DIFFERENTS (3 et 4) -> DISTINCTION attendue ---
+2026-08-19T10:37:01.226Z page C n=4 : {"marqueur":"9-9-7","rgb":"989e70","source":"780x493"}
+2026-08-19T10:37:01.226Z   distinction detectee : NON
+2026-08-19T10:37:01.226Z   ECHEC : deux identites distinctes doivent DIFFERER
+2026-08-19T10:37:01.226Z CONTROLE REFUSE : 3 echec(s).

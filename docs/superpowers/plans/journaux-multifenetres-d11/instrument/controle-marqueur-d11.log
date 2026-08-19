@@ -1,0 +1,10 @@
+2026-08-19T10:37:13.447Z --- tirage 1 : MEME n (3 et 3) -> COLLISION attendue ---
+2026-08-19T10:37:17.696Z page A n=3 : {"marqueur":"0-15-5","rgb":"00ff59","source":"780x493"} puis {"marqueur":"0-15-5","rgb":"00ff59","source":"780x493"}
+2026-08-19T10:37:17.696Z page B n=3 : {"marqueur":"0-15-5","rgb":"00ff59","source":"780x493"} puis {"marqueur":"0-15-5","rgb":"00ff59","source":"780x493"}
+2026-08-19T10:37:17.696Z   invariance dans le temps, page A : OUI
+2026-08-19T10:37:17.697Z   invariance dans le temps, page B : OUI
+2026-08-19T10:37:17.697Z   collision detectee : OUI
+2026-08-19T10:37:17.697Z --- tirage 2 : n DIFFERENTS (3 et 4) -> DISTINCTION attendue ---
+2026-08-19T10:37:19.816Z page C n=4 : {"marqueur":"0-13-15","rgb":"00ddff","source":"780x493"}
+2026-08-19T10:37:19.816Z   distinction detectee : OUI
+2026-08-19T10:37:19.817Z CONTROLE RECU : le predicat discrimine.

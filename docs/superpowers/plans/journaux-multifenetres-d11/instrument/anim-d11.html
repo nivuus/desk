@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>chargement</title>
+<style>
+  html,body { margin:0; padding:0; background:#101018; overflow:hidden; }
+  canvas { display:block; width:100vw; height:100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// Mire de D11 = mire de D4/D10 (anim-d4.html), copiee VERBATIM, PLUS un
+// marqueur d'identite INVARIANT DANS LE TEMPS. Rien d'autre n'a change.
+//
+// POURQUOI. Le controle de distinction des flux de D10 echantillonnait un
+// sous-echantillon 8x8 de l'element <video> VIVANT, page par page, par des
+// allers-retours CDP independants (etalement mesure : 187 et 245 ms) sur une
+// source dont le fond DERIVE a chaque trame. Deux pages decodant le MEME flux
+// rendaient donc des empreintes differentes elles aussi : le controle ne
+// pouvait PAS signaler une collision. C'est le leg 8 de D10.
+//
+// LE MARQUEUR. Un aplat de couleur en haut a gauche, repeint a chaque trame
+// comme le reste, mais dont la COULEUR ne depend que de `n` -- jamais de `t`.
+// Deux pages sur le meme flux rendent alors le meme marqueur, par
+// construction, et deux pages sur des flux distincts en rendent deux
+// differents.
+//
+// PROPORTIONNEL, ET NON 64x64 PX FIXES. Le flux peut etre a n'importe quel
+// barreau de l'echelle d'encodage (640x360 comme 1280x720), et le pilote ne
+// connait PAS la taille de la source : il ne voit que `videoWidth`. Un carre
+// de taille fixe en pixels source serait donc a une fraction INCONNUE de la
+// trame recue, et ses coordonnees ne seraient pas derivables. A un HUITIEME
+// de chaque axe, le marqueur occupe le meme octant quel que soit le barreau,
+// et son centre est toujours a (videoWidth/16, videoHeight/16).
+//
+// LE FOND CONTINUE DE DERIVER : Desktop Duplication n'emet une trame qu'au
+// changement du bureau, et une mire immobile ferait mesurer zero image. Le
+// piege de la mire immobile n'est PAS reintroduit -- il est nomme ici pour
+// qu'aucune simplification ne le reintroduise.
+//
+// Source ANIMEE de la recette D4 (tache 11) : le bureau doit changer a chaque
+// trame, sans quoi Desktop Duplication n'emet rien -- piege documente dans
+// CLAUDE.md, et faiblesse que la recette 9 s'est elle-meme reprochee.
+// Le compteur de trames rAF affiche en grand rend l'animation verifiable, et
+// son debit est la borne haute de ce que la capture peut voir.
+const n = new URLSearchParams(location.search).get('n') || '0';
+document.title = 'Anim ' + n;
+// Increment 47, premier avec 360 : dix identites voisines sont ecartees au
+// maximum sur le cercle des teintes (n=0..9 -> 0,47,94,141,188,235,282,329,
+// 16,63 degres). Saturation et luminosite maximales pour survivre au
+// sous-echantillonnage chromatique de H.264.
+const TEINTE = (Number(n) * 47) % 360;
+const MARQUEUR = 'hsl(' + TEINTE + ',100%,50%)';
+const c = document.getElementById('c');
+const g = c.getContext('2d');
+let trames = 0;
+let debut = performance.now();
+let hz = 0;
+function taille() {
+  c.width = Math.max(1, Math.floor(window.innerWidth));
+  c.height = Math.max(1, Math.floor(window.innerHeight));
+}
+taille();
+window.addEventListener('resize', taille);
+function boucle(t) {
+  trames += 1;
+  if (t - debut >= 1000) { hz = (trames * 1000 / (t - debut)); trames = 0; debut = t; }
+  const L = c.width, H = c.height;
+  // Fond qui derive : chaque pixel change a chaque trame, donc l'encodeur
+  // travaille reellement, et non sur un delta nul.
+  const phase = (t / 20) % 360;
+  const grad = g.createLinearGradient(0, 0, L, H);
+  grad.addColorStop(0, 'hsl(' + phase + ',70%,22%)');
+  grad.addColorStop(1, 'hsl(' + ((phase + 120) % 360) + ',70%,42%)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, L, H);
+  const x = ((t / 6) % (L + 200)) - 100;
+  g.fillStyle = 'rgba(255,255,255,0.85)';
+  g.fillRect(x, 0, 40, H);
+  // Le texte est decale vers la droite de la largeur du marqueur, pour que
+  // rien ne vienne jamais se peindre PAR-DESSUS lui.
+  const MX = Math.floor(L / 8), MY = Math.floor(H / 8);
+  g.fillStyle = '#fff';
+  g.font = 'bold ' + Math.floor(H / 7) + 'px monospace';
+  g.textBaseline = 'top';
+  g.fillText('W' + n + '  ' + Math.floor(t), MX + 20, 20);
+  g.font = 'bold ' + Math.floor(H / 12) + 'px monospace';
+  g.fillText('rAF ' + hz.toFixed(1) + ' Hz', 20, 30 + Math.floor(H / 7));
+  g.fillText(L + 'x' + H, MX + 20, 40 + Math.floor(H / 7) + Math.floor(H / 12));
+  // LE MARQUEUR D'IDENTITE, peint EN DERNIER (donc jamais recouvert par la
+  // barre blanche mobile ni par le texte) et INVARIANT DANS LE TEMPS : sa
+  // couleur ne depend que de `n`. C'est toute la propriete.
+  g.fillStyle = MARQUEUR;
+  g.fillRect(0, 0, MX, MY);
+  requestAnimationFrame(boucle);
+}
+requestAnimationFrame(boucle);
+</script>
+</body>
+</html>
