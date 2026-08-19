@@ -6,6 +6,7 @@ import {
     surStockageModifie,
     themeStocke,
 } from './theme';
+import amorce from './amorce-theme.js?raw';
 
 /** Doublure de `localStorage` — voir l'en-tête de `theme.ts`. */
 function coffreFactice(initial: Record<string, string> = {}) {
@@ -112,5 +113,44 @@ describe('appliquer', () => {
         racine.attributs.set('data-theme', 'sombre');
         appliquer(racine, 'systeme');
         expect(racine.attributs.has('data-theme')).toBe(false);
+    });
+});
+
+/**
+ * LE GARDE ENTRE `theme.ts` ET `amorce-theme.js` — et pourquoi il existe.
+ *
+ * `client/src/design/amorce-theme.js` s'exécute AVANT tout module, en ligne
+ * dans le `<head>` : il ne peut donc RIEN importer, et il redit la chaîne
+ * `guac.theme` en littéral. C'est le seul recouvrement entre les deux
+ * fichiers, et il est assumé — mais un recouvrement assumé qui n'est gardé par
+ * rien devient une divergence muette : l'amorce lirait une clé que plus
+ * personne n'écrit, et le seul symptôme serait un éclair de mauvais thème que
+ * personne ne regarde en revue.
+ *
+ * ⚠️ Ce test est le patron exact que P2 a employé entre `client/src/jeton.ts`
+ * et `client/recette/jeton-recette.mjs`, et le garde de P2 A ÉTÉ VU LEVER.
+ * Celui-ci l'a été aussi : voir le document de résultats de S1, tâche 10.
+ *
+ * ⚠️ Il compare la CHAÎNE, jamais le comportement. Que l'amorce pose bien
+ * `data-theme` avant la première peinture n'est prouvé par aucun test — c'est
+ * le build qui prouve l'INJECTION (tâche 10, Step 3) et rien ne prouve
+ * l'absence d'éclair.
+ */
+describe('l’amorce anti-FOUC et `theme.ts` ne peuvent pas diverger sur la clé', () => {
+    it('`amorce-theme.js` LIT littéralement la valeur de `CLE_THEME`', () => {
+        // 🔴 L'assertion porte sur l'APPEL, pas sur la présence de la chaîne
+        // quelque part dans le fichier. Une première rédaction disait
+        // `toContain("'guac.theme'")` : elle était satisfaite par le
+        // commentaire d'en-tête, si bien qu'un amorce remplacé par
+        // `var t = null;` restait VERT sur les deux assertions. Vu, mesuré,
+        // et c'est pourquoi la clé ne s'écrit plus dans ce commentaire-là.
+        expect(amorce).toContain(`getItem('${CLE_THEME}')`);
+    });
+
+    it('`amorce-theme.js` ne porte AUCUNE autre clé `guac.*`', () => {
+        // Sans cette seconde assertion, ajouter une clé à l'amorce sans retirer
+        // l'ancienne passerait : `toContain` ne dit rien de ce qu'il y a autour.
+        const cles = [...amorce.matchAll(/'(guac\.[a-z.]+)'/g)].map((m) => m[1]);
+        expect([...new Set(cles)]).toEqual([CLE_THEME]);
     });
 });
