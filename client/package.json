@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "verify": "node verify-webrtc.mjs",
+    "design:verifier": "node outils/verifier-design.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
