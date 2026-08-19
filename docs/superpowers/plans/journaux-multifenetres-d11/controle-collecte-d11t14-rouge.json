@@ -1,0 +1,9 @@
+{
+ "etiquette": "resize-sans-etiquette",
+ "controle": true,
+ "n_fenetres": 5,
+ "virsh_debut": "en cours d’exécution",
+ "loadavg_debut": "5.38 7.21 7.24 8/2829 605546",
+ "loadavg_fin": "5.38 7.21 7.24 4/2979 605766",
+ "virsh_fin": "en cours d’exécution"
+}

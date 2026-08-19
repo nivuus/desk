@@ -1,0 +1,60 @@
+
+=== ../resize-1.json  (5 fenêtres, viewport imposé : true)
+  loadavg 5.69 7.10 7.24 -> 6.72 6.97 7.16 | marqueurs {"attachee_capteur":5,"enfant_lance":5,"introuvable_topologie":0,"sortie_creee":5,"cloture":0,"erreurs":0}
+  CONTRÔLE D'ATTEIGNABILITÉ : 5/5 page(s) d'application dont la console remonte — une absence de log EST donc une information
+    w-2   declenchement=1 emission=1 « Resize différé »=0 | client 1280x720 inner 1280x720 => issue ② ni l’observateur ni la mise en page
+    w-4   declenchement=1 emission=1 « Resize différé »=0 | client 1280x720 inner 1280x720 => issue ② ni l’observateur ni la mise en page
+    w-6   declenchement=1 emission=1 « Resize différé »=0 | client 1280x720 inner 1280x720 => issue ② ni l’observateur ni la mise en page
+    w-8   declenchement=1 emission=1 « Resize différé »=0 | client 1280x720 inner 1280x720 => issue ② ni l’observateur ni la mise en page
+    w-10  declenchement=1 emission=1 « Resize différé »=0 | client 1280x720 inner 1280x720 => issue ② ni l’observateur ni la mise en page
+  côté AGENT, `contrôle reçu` par session :
+    1 session=w-10 Resize
+    1 session=w-10 Visibility
+    1 session=w-2 Resize
+    3 session=w-2 Visibility
+    1 session=w-4 Resize
+    3 session=w-4 Visibility
+    1 session=w-6 Resize
+    3 session=w-6 Visibility
+    1 session=w-8 Resize
+    3 session=w-8 Visibility
+
+=== ../resize-2.json  (5 fenêtres, viewport imposé : true)
+  loadavg 6.28 6.83 7.10 -> 6.67 6.74 7.01 | marqueurs {"attachee_capteur":5,"enfant_lance":5,"introuvable_topologie":0,"sortie_creee":5,"cloture":0,"erreurs":0}
+  CONTRÔLE D'ATTEIGNABILITÉ : 5/5 page(s) d'application dont la console remonte — une absence de log EST donc une information
+    w-2   declenchement=1 emission=1 « Resize différé »=0 | client 1280x720 inner 1280x720 => issue ② ni l’observateur ni la mise en page
+    w-4   declenchement=1 emission=1 « Resize différé »=0 | client 1280x720 inner 1280x720 => issue ② ni l’observateur ni la mise en page
+    w-6   declenchement=1 emission=1 « Resize différé »=0 | client 1280x720 inner 1280x720 => issue ② ni l’observateur ni la mise en page
+    w-8   declenchement=1 emission=1 « Resize différé »=0 | client 1280x720 inner 1280x720 => issue ② ni l’observateur ni la mise en page
+    w-10  declenchement=1 emission=1 « Resize différé »=0 | client 1280x720 inner 1280x720 => issue ② ni l’observateur ni la mise en page
+  côté AGENT, `contrôle reçu` par session :
+    1 session=w-10 Resize
+    1 session=w-10 Visibility
+    1 session=w-2 Resize
+    3 session=w-2 Visibility
+    1 session=w-4 Resize
+    3 session=w-4 Visibility
+    1 session=w-6 Resize
+    3 session=w-6 Visibility
+    1 session=w-8 Resize
+    3 session=w-8 Visibility
+
+=== ../resize-sans-viewport.json  (5 fenêtres, viewport imposé : false)
+  loadavg 7.67 6.94 7.07 -> 7.25 7.84 7.42 | marqueurs {"attachee_capteur":5,"enfant_lance":5,"introuvable_topologie":0,"sortie_creee":5,"cloture":0,"erreurs":0}
+  CONTRÔLE D'ATTEIGNABILITÉ : 5/5 page(s) d'application dont la console remonte — une absence de log EST donc une information
+    w-2   declenchement=1 emission=1 « Resize différé »=0 | client 1280x633 inner 1280x633 => issue ② ni l’observateur ni la mise en page
+    w-4   declenchement=1 emission=1 « Resize différé »=0 | client 1280x633 inner 1280x633 => issue ② ni l’observateur ni la mise en page
+    w-6   declenchement=1 emission=1 « Resize différé »=0 | client 1280x633 inner 1280x633 => issue ② ni l’observateur ni la mise en page
+    w-8   declenchement=1 emission=1 « Resize différé »=0 | client 1280x633 inner 1280x633 => issue ② ni l’observateur ni la mise en page
+    w-10  declenchement=1 emission=1 « Resize différé »=0 | client 1280x633 inner 1280x633 => issue ② ni l’observateur ni la mise en page
+  côté AGENT, `contrôle reçu` par session :
+    1 session=w-10 Resize
+    1 session=w-10 Visibility
+    1 session=w-2 Resize
+    3 session=w-2 Visibility
+    1 session=w-4 Resize
+    3 session=w-4 Visibility
+    1 session=w-6 Resize
+    3 session=w-6 Visibility
+    1 session=w-8 Resize
+    3 session=w-8 Visibility
