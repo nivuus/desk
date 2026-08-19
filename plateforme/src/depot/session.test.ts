@@ -7,7 +7,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
-import { balayerLesOuvertes, clore, lireParNom, ouvrirSession } from './session';
+import {
+    balayerLesOuvertes,
+    clore,
+    compterOuvertesDe,
+    lireParNom,
+    ouvrirSession,
+} from './session';
 
 let base: Pilote | undefined;
 
@@ -135,5 +141,58 @@ describe(`dépôt session, moteur=${MOTEUR}`, () => {
         // Et rien d'autre n'a bougé.
         expect(Number(ligne.ouverte_a)).toBe(1_000_000);
         expect(ligne.fermee_a).toBeNull();
+    });
+});
+
+describe(`compterOuvertesDe, moteur=${MOTEUR}`, () => {
+    /// Une époque réelle, jamais un petit nombre commode : leçon de P1.
+    const MS = 1_787_136_773_742;
+
+    it('🔴 le compte passe de 0 À 1 — la TRANSITION est vue', async () => {
+        // 🔴 La rouge : rendre une constante. Le test doit voir le compte
+        // BOUGER, pas lire un nombre — c'est la forme du critère ④ de P3,
+        // appliquée ici. Un test qui n'asserterait que `1` serait vert sur un
+        // `return 1`.
+        base = await baseNeuve('sess-compte-transition');
+        expect(await compterOuvertesDe(base, 'u-ada')).toBe(0);
+        await ouvrirSession(base, 'PREFIXE:bureau', MS, 'u-ada');
+        expect(await compterOuvertesDe(base, 'u-ada')).toBe(1);
+        // 🔴 ET C'EST UN NOMBRE. Sans le `setTypeParser` de
+        // `base/pilote-postgres.ts`, un `COUNT(*)` — un `int8` — reviendrait
+        // en CHAÎNE, et `'0' == 0` mais `'0' !== 0`. Cette valeur
+        // n'appartenant à AUCUNE colonne, le balayage colonne par colonne de
+        // `pilotes.test.ts` ne la couvre pas.
+        expect(typeof (await compterOuvertesDe(base, 'u-ada'))).toBe('number');
+    });
+
+    it('🔴 une session CLOSE n’est pas comptée', async () => {
+        // 🔴 La rouge : omettre `AND fermee_a IS NULL`. Le compte deviendrait
+        // un historique, et le hub dirait « vous avez une session ouverte » à
+        // qui n'en a plus depuis des semaines.
+        base = await baseNeuve('sess-compte-close');
+        const id = await ouvrirSession(base, 'PREFIXE:bureau', MS, 'u-ada');
+        expect(await compterOuvertesDe(base, 'u-ada')).toBe(1);
+        await clore(base, id, MS + 60_000, 'les deux pairs sont partis');
+        expect(await compterOuvertesDe(base, 'u-ada')).toBe(0);
+    });
+
+    it('🔴 la session d’un AUTRE utilisateur n’est pas comptée', async () => {
+        // 🔴 La rouge : omettre le `WHERE utilisateur_id = ?`. Le compte
+        // deviendrait global, et chacun verrait le nombre de sessions de tous.
+        base = await baseNeuve('sess-compte-autrui');
+        await ouvrirSession(base, 'PREFIXE:bureau', MS, 'u-bob');
+        expect(await compterOuvertesDe(base, 'u-ada')).toBe(0);
+        expect(await compterOuvertesDe(base, 'u-bob')).toBe(1);
+    });
+
+    it('🔴 une session à `utilisateur_id` NUL n’est comptée pour PERSONNE', async () => {
+        // 🔴 La rouge : traiter `NULL` comme appartenant au demandeur (par
+        // exemple `utilisateur_id = ? OR utilisateur_id IS NULL`). C'est le cas
+        // NOMINAL d'une session de contrôle appariée par l'agent seul — chacun
+        // se verrait attribuer les sessions de toutes les VMs de la flotte.
+        base = await baseNeuve('sess-compte-nul');
+        await ouvrirSession(base, 'PREFIXE:bureau', MS);
+        expect(await compterOuvertesDe(base, 'u-ada')).toBe(0);
+        expect(await compterOuvertesDe(base, '')).toBe(0);
     });
 });
