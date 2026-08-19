@@ -3,12 +3,20 @@
 
 import { creerBureau } from './shell';
 import { jetonAcces } from './jeton';
+import { composer, lirePrefixe } from './prefixe';
 
 const params = new URLSearchParams(window.location.search);
 const signalingUrl = params.get('signaling') ?? `ws://${window.location.hostname}:8080`;
-// Identifiant réservé de la session de contrôle : le superviseur s'y déclare
-// en `agent`, cette page en `client`.
-const SESSION_DE_CONTROLE = 'bureau';
+// Nom réservé de la session de contrôle : le superviseur s'y déclare en
+// `agent`, cette page en `client`.
+//
+// ⚠️ CE N'EST PLUS UN IDENTIFIANT DE SESSION À LUI SEUL (sous-bloc P3) : il
+// est précédé du préfixe de la VM, sans quoi deux VMs ouvriraient toutes deux
+// `bureau` et la seconde serait refusée. Sans préfixe connu, la composition
+// rend `bureau` — exactement le nom d'avant P3.
+const NOM_SESSION_DE_CONTROLE = 'bureau';
+const prefixe = lirePrefixe();
+const SESSION_DE_CONTROLE = composer(prefixe, NOM_SESSION_DE_CONTROLE);
 
 const statut = document.querySelector<HTMLDivElement>('#statut')!;
 const liste = document.querySelector<HTMLUListElement>('#fenetres')!;
