@@ -873,6 +873,19 @@ est de relire les journaux contre le message, et non l'inverse.**
 - ⚠️ **`Runtime.consoleAPICalled` rend la chaîne `"Object"` pour tout argument
   objet.** Les champs se relèvent dans `preview.properties` — sans quoi une
   grille qui a besoin de nombres ne tranche que son issue dégénérée.
+- 🔴 **Un compte de tests n'est attribuable qu'assorti de son HEURE quand deux
+  chantiers partagent l'arbre.** Le compte client est passé de **107 (12
+  fichiers) à 15:16** à **120 (13 fichiers) à 15:38** sans qu'aucune tâche de
+  D11 n'y touche — le sous-projet ⑤ committait sur `client/` en parallèle. Et
+  le même partage a failli fausser une **marge de fichier** :
+  `client/verify-webrtc.mjs` vaut **497 au dépôt commité** et **488 dans
+  l'arbre de travail**. **Mesurer avec `git show HEAD:` quand l'arbre est
+  partagé**, et dater tout compte.
+- ⚠️ **Une commande `git commit -m` dont le message porte des accents graves
+  perd des morceaux de phrase** : le shell les interprète comme des
+  substitutions de commande. Trois phrases ont été mutilées ainsi dans ce
+  sous-bloc, rattrapées par un `--amend -F fichier`. **Passer les messages
+  longs par un fichier.**
 
 ---
 
