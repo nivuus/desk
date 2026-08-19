@@ -135,8 +135,15 @@ describe('waitForAnswer face à des messages malformés', () => {
 /// Point d'accès `RTCPeerConnection` factice. `createOffer` traduit
 /// fidèlement les transceivers demandés en lignes SDP : c'est cette
 /// traduction, fidèle à la demande, que les tests vérifient.
+/// Ce qu'un `addTransceiver` rend, réduit à ce dont `connectSession` se sert.
+interface FauxTransceiver {
+    kind: string;
+    direction?: string;
+    sender: { track: { stop(): void } | null };
+}
+
 class FakeRtcPeerConnection {
-    transceivers: Array<{ kind: string; direction?: string }> = [];
+    transceivers: FauxTransceiver[] = [];
     iceGatheringState = 'complete';
     connectionState = 'new';
     localDescription: { type: string; sdp: string } | null = null;
@@ -146,8 +153,21 @@ class FakeRtcPeerConnection {
         derniereInstancePc = this;
     }
 
-    addTransceiver(kind: string, opts?: { direction?: string }): void {
-        this.transceivers.push({ kind, direction: opts?.direction });
+    addTransceiver(kind: string, opts?: { direction?: string }): FauxTransceiver {
+        // Le faux RENVOIE désormais un transceiver, comme le vrai : c'est le
+        // `sender` de celui du micro que `connectSession` expose (chantier E).
+        // Un `void` ici faisait échouer les cinq tests de `connectSession` sur
+        // « Cannot read properties of undefined (reading 'sender') ».
+        const transceiver: FauxTransceiver = {
+            kind,
+            direction: opts?.direction,
+            // `track: null` est l'état d'un transceiver déclaré SANS PISTE —
+            // exactement ce que la spec §5 exige du micro : aucune capture,
+            // aucune permission demandée tant qu'on n'a pas cliqué.
+            sender: { track: null },
+        };
+        this.transceivers.push(transceiver);
+        return transceiver;
     }
 
     createDataChannel(label: string, _opts?: unknown) {
@@ -325,6 +345,98 @@ describe('connectSession — négociation promise par la spec §10', () => {
         // La seconde piste ne doit pas avoir chassé la première en
         // réassignant `srcObject` : même objet `flux` avant et après.
         expect(video.srcObject).toBe(flux);
+    });
+
+    // ── Le micro (chantier E, tâche 10) ─────────────────────────────────────
+    //
+    // ⚠️ LE PLAN DÉCLARE CES TROIS TESTS IMPOSSIBLES, ET IL A TORT. Il écrit
+    // que « `connectSession` exige un vrai `RTCPeerConnection` et n'est donc
+    // pas testé ici — c'est déjà le parti de `webrtc.test.ts`, qui n'exerce que
+    // `parseSignalingMessage` et `waitForAnswer` ». Ce n'est plus vrai depuis
+    // les deux tests de négociation ci-dessus, et depuis les trois tests du
+    // jeton (sous-bloc P2) : cinq tests traversent `connectSession` de bout en
+    // bout sur un faux `pc` dont le `createOffer` TRADUIT FIDÈLEMENT les
+    // transceivers demandés en lignes SDP.
+    //
+    // Le plan écartait ensuite « un test qui vérifie que `addTransceiver` a été
+    // appelé », au motif qu'il ne pourrait échouer que par suppression de la
+    // ligne. Le reproche vaut pour un test qui compterait les appels ; il ne
+    // vaut pas pour ceux-ci, qui portent sur l'ORDRE des m-lines et sur
+    // l'extinction — deux propriétés qu'on peut casser sans rien supprimer, et
+    // dont chacune a été vue tomber sous mutation (voir le rapport de tâche).
+    it("l'offre déclare une TROISIÈME m-line, `audio` en `sendonly`, APRÈS l'audio descendante", async () => {
+        vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
+        vi.stubGlobal('WebSocket', FakeSignalingSocket);
+        vi.stubGlobal('MediaStream', FakeMediaStream);
+
+        await connectSession({
+            signalingUrl: 'ws://signaling.invalid',
+            sessionId: 'test',
+            video: fauxVideo(),
+        });
+
+        // L'ORDRE est le fond du test, pas un détail de forme : c'est lui qui
+        // décide les `mid`, et l'agent range la piste audio dans `audio_mid` ou
+        // dans `mic_mid` selon sa direction (`transport/evenements.rs`).
+        // Intervertir les deux transceivers audio ferait partir le son
+        // DESCENDANT sur une piste inémissible, sans une seule erreur.
+        expect(derniereInstancePc!.transceivers.map((t) => [t.kind, t.direction])).toEqual([
+            ['video', 'recvonly'],
+            ['audio', 'recvonly'],
+            ['audio', 'sendonly'],
+        ]);
+
+        const lignes = derniereInstancePc!.localDescription!.sdp.split('\r\n');
+        const audios = lignes.flatMap((l, i) => (l.startsWith('m=audio ') ? [i] : []));
+        expect(audios).toHaveLength(2);
+        expect(lignes[audios[0] + 1]).toBe('a=recvonly');
+        expect(lignes[audios[1] + 1]).toBe('a=sendonly');
+    });
+
+    it('le sender du micro est exposé, et il naît SANS PISTE', async () => {
+        vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
+        vi.stubGlobal('WebSocket', FakeSignalingSocket);
+        vi.stubGlobal('MediaStream', FakeMediaStream);
+
+        const session = await connectSession({
+            signalingUrl: 'ws://signaling.invalid',
+            sessionId: 'test',
+            video: fauxVideo(),
+        });
+
+        // C'est le sender du TROISIÈME transceiver, pas d'un autre : sans cette
+        // égalité d'identité, `micro.ts` remplirait la piste descendante.
+        expect(session.micSender).toBe(derniereInstancePc!.transceivers[2].sender);
+        expect(session.micSender.track).toBeNull();
+    });
+
+    it("`close()` ARRÊTE la piste du micro, et pas seulement la connexion", async () => {
+        vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
+        vi.stubGlobal('WebSocket', FakeSignalingSocket);
+        vi.stubGlobal('MediaStream', FakeMediaStream);
+
+        const session = await connectSession({
+            signalingUrl: 'ws://signaling.invalid',
+            sessionId: 'test',
+            video: fauxVideo(),
+        });
+
+        // Ce que `micro.ts` aura fait au clic : `replaceTrack` pose la piste
+        // sur le sender.
+        let arretee = false;
+        (session.micSender as unknown as FauxTransceiver['sender']).track = {
+            stop() {
+                arretee = true;
+            },
+        };
+
+        session.close();
+
+        // ⚠️ `pc.close()` NE STOPPE PAS les pistes locales : sans le `stop()`
+        // explicite, l'indicateur de micro de Chrome resterait allumé après la
+        // fin de session et le périphérique resterait pris. C'est le « mensonge
+        // visuel » que la spec §9 qualifie d'inacceptable sur cette fonction.
+        expect(arretee).toBe(true);
     });
 });
 
