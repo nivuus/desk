@@ -49,182 +49,24 @@
    jamais compresser.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   BOUTON — trois variantes, quatre états.
+/* ── LES FAMILLES, UNE PAR FICHIER ────────────────────────────────────────
+   🔴 EXTRACTION FAITE AVANT L'ADDITION QUI L'EXIGEAIT, PAS APRÈS. Ce fichier
+   valait 230 lignes pour une porte armée à 240, et la famille surface en coûte
+   une quarantaine : l'écrire d'abord aurait franchi le plafond PENDANT la
+   tâche, ce que ce dépôt a payé cinq fois — et deux fois de plus en le
+   rattrapant par une COMPRESSION que `CLAUDE.md` interdit nommément.
 
-   ⚠️ L'ÉTAT ACTIF (enfoncé) N'A PAS DE TOKEN, et c'est un arbitrage assumé : il
-   se dit, pour les trois variantes, par le RETOUR À LA VALEUR DE REPOS — le
-   survol se retire sous le doigt. Il faut l'écrire, parce que `:active`
-   implique `:hover` : sans ces trois règles, un bouton enfoncé garderait
-   simplement son apparence de survol et l'appui ne se verrait pas. Que ce
-   retour soit LISIBLE est un jugement humain, pas une mesure : aucune commande
-   ne le dira, et il rejoint les jugements du §8.
+   ⚠️ L'`@import` fait ré-inliner chaque feuille dans toute entrée qui la
+   traverse. Ce fichier n'est lié que par `client/primitives.html` : rien n'est
+   donc dupliqué. Voir l'encadré mesuré de `client/src/style.css` (arrangements
+   A et B), qui est la raison pour laquelle `style.css`, lui, N'importe PAS le
+   socle.
 
-   ⚠️ LE TRAIT DU BOUTON SECONDAIRE EST `--bord-fort`, PAS `--bord`. Il porte
-   l'information « ceci est un contrôle », et le §4.5 réserve `--bord` aux
-   séparateurs PUREMENT décoratifs, que WCAG 1.4.11 exempte. `--bord-fort` est
-   mesuré sur les trois fonds au seuil 3 par le contrôle §7.1 ; `--bord` ne
-   l'est pas, délibérément. ⚠️ AUCUNE COMMANDE NE VÉRIFIE CE CHOIX — c'est la
-   règle de revue que le §8 nomme. Le secondaire DÉSACTIVÉ retombe sur `--bord`
-   parce qu'il a cessé d'être un contrôle.
-
-   ⚠️ `:not(:disabled)` PLUTÔT QUE `:enabled` sur le survol et l'appui :
-   `:enabled` ne s'applique qu'aux éléments de formulaire, et une ancre portant
-   `.bouton` ne le satisferait jamais. Le jour où S3 posera un lien en bouton,
-   la règle vaudra sans être réécrite.
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.bouton {
-    display: inline-block;
-    border: var(--trait) solid transparent;
-    border-radius: var(--r-1);
-    padding: var(--e-2) var(--e-3);
-    font: inherit;
-    font-size: var(--t-m);
-    line-height: var(--lh-normal);
-    text-align: center;
-    text-decoration: none;
-    cursor: pointer;
-    transition:
-        background var(--duree-1),
-        border-color var(--duree-1),
-        color var(--duree-1);
-}
-
-.bouton:disabled {
-    cursor: not-allowed;
-}
-
-/* ── Principal — l'action que la surface propose, et il n'y en a qu'une ──── */
-.bouton--principal {
-    background: var(--accent);
-    color: var(--sur-accent);
-}
-
-.bouton--principal:hover:not(:disabled) {
-    background: var(--accent-survol);
-}
-
-.bouton--principal:active:not(:disabled) {
-    background: var(--accent);
-}
-
-.bouton--principal:disabled {
-    background: var(--fond-2);
-    color: var(--texte-faible);
-}
-
-/* ── Secondaire — une action de même rang, sans la revendiquer ──────────── */
-.bouton--secondaire {
-    border-color: var(--bord-fort);
-    background: var(--fond-1);
-    color: var(--texte-fort);
-}
-
-.bouton--secondaire:hover:not(:disabled) {
-    background: var(--fond-2);
-}
-
-.bouton--secondaire:active:not(:disabled) {
-    background: var(--fond-1);
-}
-
-.bouton--secondaire:disabled {
-    border-color: var(--bord);
-    background: var(--fond-1);
-    color: var(--texte-faible);
-}
-
-/* ── Discret — une action de repli, qui ne pèse rien au repos ───────────── */
-.bouton--discret {
-    background: transparent;
-    color: var(--texte);
-}
-
-.bouton--discret:hover:not(:disabled) {
-    background: var(--fond-1);
-}
-
-.bouton--discret:active:not(:disabled) {
-    background: transparent;
-}
-
-.bouton--discret:disabled {
-    color: var(--texte-faible);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   CHAMP — l'enveloppe, l'étiquette, la saisie, l'aide, l'erreur.
-
-   ⚠️ `.champ--erreur` PORTE L'ÉTAT, `.champ__erreur` PORTE LE MESSAGE. Le
-   tiret double est le modificateur, le souligné double l'élément : une
-   confusion entre les deux produit une règle qui ne s'applique JAMAIS, et
-   aucun des sept contrôles ne verrait une règle morte. Le dépôt a déjà payé
-   exactement cela sous D9, sur un `~` qui ne pouvait pas s'appliquer.
-
-   ⚠️ L'ANNEAU DE FOCUS N'EST PAS DÉCLARÉ ICI, ET CE N'EST PAS UN OUBLI :
-   `design/base.css` le pose globalement sur `:focus-visible`. Une primitive
-   qui le redéclarerait le ferait diverger en silence le jour où le token
-   `--trait-focus` bougerait.
-
-   ⚠️ LE TRAIT AU REPOS EST `--bord-fort` : le contour d'un champ porte
-   l'information « ceci est un contrôle », et il est mesuré au seuil 3 par le
-   §7.1. En ERREUR il devient `--danger`, qui est mesuré au seuil 4,5 comme
-   encre sur les trois fonds — jamais comme fond, voir la famille message.
-
-   ⚠️ L'ÉCART INTERNE EST `--e-2` ET NON `--e-1` : `--e-1` est encore en liste
-   d'attente sous l'annotation « l'écart interne d'une étiquette », c'est-à-dire
-   d'une famille que la spec §6 ne confie PAS à S2. Le consommer ici pour vider
-   une ligne de liste serait satisfaire un contrôle en vidant l'autre.
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.champ {
-    display: grid;
-    gap: var(--e-2);
-}
-
-.champ__etiquette {
-    color: var(--texte);
-    font-size: var(--t-l);
-}
-
-.champ__saisie {
-    border: var(--trait) solid var(--bord-fort);
-    border-radius: var(--r-1);
-    padding: var(--e-2) var(--e-3);
-    background: var(--fond-1);
-    color: var(--texte-fort);
-    font: inherit;
-    font-size: var(--t-m);
-    transition:
-        background var(--duree-1),
-        border-color var(--duree-1);
-}
-
-.champ__saisie::placeholder {
-    color: var(--texte-faible);
-}
-
-.champ__saisie:hover:not(:disabled) {
-    background: var(--fond-2);
-}
-
-.champ__saisie:disabled {
-    background: var(--fond-1);
-    color: var(--texte-faible);
-    cursor: not-allowed;
-}
-
-.champ__aide {
-    color: var(--texte-faible);
-    font-size: var(--t-s);
-}
-
-.champ__erreur {
-    color: var(--danger);
-    font-size: var(--t-s);
-}
-
-.champ--erreur .champ__saisie {
-    border-color: var(--danger);
-}
+   🔴 ET LES GARDES DE FORME LISENT CES QUATRE FICHIERS, PAS CELUI-CI. Après
+   l'extraction, `primitives.css?raw` ne rend plus que les `@import` :
+   `primitives.test.ts` y aurait mesuré ZÉRO règle. Il lit donc chaque famille,
+   et G5 vérifie que la liste qu'il lit est EXACTEMENT celle importée ici — sans
+   quoi une cinquième famille naîtrait hors de portée des quatre gardes. */
+@import './primitives/bouton.css';
+@import './primitives/champ.css';
+@import './primitives/surface.css';
