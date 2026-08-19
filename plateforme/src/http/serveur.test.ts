@@ -85,6 +85,34 @@ describe('demarrerServeur', () => {
         await expect(tenter(`ws://127.0.0.1:${service.port}/inconnu`)).resolves.toBe('ferme');
     });
 
+    it('🔴 accepte la montée WebSocket sur /agent — la seconde branche', async () => {
+        // 🔴 La rouge : ne pas ajouter la branche. Le `404` écrit à la main
+        // pour tout chemin autre que `/` la ferme, et c'est exactement ce que
+        // le test « refuse la montée sur un chemin inconnu » éprouve.
+        service = await servir('http-agent');
+        await expect(tenter(`ws://127.0.0.1:${service.port}/agent`)).resolves.toBe('ouvert');
+    });
+
+    it('🔴 sert TOUJOURS le chemin racine — la branche est ÉTENDUE, pas remplacée', async () => {
+        // 🔴 La rouge : remplacer la comparaison au lieu de l'étendre. Le
+        // relais entier deviendrait injoignable, et le service serait vivant
+        // sans servir personne — panne muette de la classe que ce dépôt
+        // combat. Le premier test du fichier le voit aussi ; celui-ci le dit.
+        service = await servir('http-racine-toujours');
+        await expect(tenter(`ws://127.0.0.1:${service.port}/`)).resolves.toBe('ouvert');
+    });
+
+    it('🔴 refuse TOUJOURS un chemin inconnu — /agent n’ouvre pas le service', async () => {
+        // 🔴 La rouge : remplacer `if (chemin !== '/')` par une comparaison à
+        // une liste noire (`if (chemin === '/inconnu')`), ce qui rendrait le
+        // service ouvert à TOUT chemin. Le test l. 79 existe déjà et doit
+        // rester vert ; celui-ci ajoute la borne d'à côté — un chemin qui
+        // COMMENCE par `/agent` sans l'être n'est pas `/agent`.
+        service = await servir('http-inconnu-encore');
+        await expect(tenter(`ws://127.0.0.1:${service.port}/inconnu`)).resolves.toBe('ferme');
+        await expect(tenter(`ws://127.0.0.1:${service.port}/agentaire`)).resolves.toBe('ferme');
+    });
+
     it('sert le relais de signaling sur le chemin racine, poignée de main comprise', async () => {
         // Un pair 'agent' et un pair 'client' sur '/' : l'offre du client
         // parvient à l'agent — exactement ce que `server.test.ts` éprouve déjà,

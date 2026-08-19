@@ -1,10 +1,19 @@
 // Le serveur HTTP du service, et le routage de la montée WebSocket.
 //
-// `noServer` plutôt que `{ server }` : le routage du chemin est explicite, et
-// P3 y ajoutera `/agent` sans toucher au relais. Avec `{ server }`, `ws`
-// accepterait toute montée sur tout chemin — c'est le comportement
-// d'aujourd'hui (le `new WebSocketServer({ port })` de l'ex-`server.ts`, qui
-// ne posait ni `host` ni `path`), et il n'est pas extensible.
+// `noServer` plutôt que `{ server }` : le routage du chemin est explicite.
+// ✅ P3 Y A AJOUTÉ `/agent` SANS TOUCHER AU RELAIS, ce que cette phrase
+// annonçait : la branche est une seconde comparaison, et `wssRacine` n'a pas
+// bougé d'une ligne. Avec `{ server }`, `ws` accepterait toute montée sur tout
+// chemin — c'est le comportement d'avant P1 (le `new WebSocketServer({ port })`
+// de l'ex-`server.ts`, qui ne posait ni `host` ni `path`), et il n'est pas
+// extensible.
+//
+// ⚠️ DEUX CHEMINS, DEUX COMPARAISONS, PAS DE TABLE DE ROUTAGE. Une table pour
+// deux entrées serait de l'abstraction non payée, et elle rendrait moins
+// visible ce qui compte ici : le refus par DÉFAUT. Tout chemin qui n'est ni
+// `/` ni `/agent` reçoit un `404` et son socket se ferme — c'est une liste
+// blanche, jamais une liste noire, et c'est ce qui fait qu'un chemin ajouté un
+// jour par mégarde n'ouvre rien.
 //
 // ⚠️ Router sur `/` RESTREINT ce qui était accepté hier. C'est délibéré, et le
 // tableau des émetteurs réels a été relevé avant de le décider : la page de
@@ -21,6 +30,10 @@ import { servirAuth } from './routes-auth';
 import { createSignalingServer } from '../signaling/relais';
 import { ProprieteDeSession } from '../signaling/propriete';
 import { observateurDeSession } from '../signaling/trace';
+
+/// Le chemin du canal plateforme <-> agent (P3). ⚠️ Il est comparé
+/// EXACTEMENT : voir le routage plus bas.
+const CHEMIN_AGENT = '/agent';
 
 export interface ServicePlateforme {
     port: number;
@@ -64,6 +77,13 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     });
 
     const wssRacine = new WebSocketServer({ noServer: true });
+    // Le canal `/agent` (P3) : son propre `WebSocketServer`, qui ne partage
+    // avec le relais ni garde, ni registre d'appartenance, ni observateur de
+    // session. C'est la conséquence directe d'E4 : l'enrôlement est
+    // ASYNCHRONE (il lit `agent_enrole`), et la garde du relais est PURE et
+    // SYNCHRONE. Les faire cohabiter dans le même serveur obligerait l'un des
+    // deux à céder.
+    const wssAgent = new WebSocketServer({ noServer: true });
     // La garde est construite ICI, à partir du secret de configuration, et
     // c'est le SEUL endroit du service qui en fabrique une. Elle est REQUISE
     // par le relais : il n'existe aucun chemin qui produise une garde ouverte
@@ -86,7 +106,11 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         // `requete.url` peut porter une chaîne de requête ; seul le chemin
         // décide du routage.
         const chemin = new URL(requete.url ?? '/', 'http://placeholder').pathname;
-        if (chemin !== '/') {
+        // Comparaison EXACTE, jamais un `startsWith` : `/agentaire` n'est pas
+        // `/agent`, et un préfixe ouvrirait une famille entière de chemins que
+        // personne n'a décidés.
+        const wss = chemin === '/' ? wssRacine : chemin === CHEMIN_AGENT ? wssAgent : undefined;
+        if (wss === undefined) {
             // Refus explicite AVANT toute montée : le pair reçoit un 404 HTTP
             // et son socket se ferme, plutôt que de rester ouvert sur un
             // service qui ne l'écoutera jamais.
@@ -94,8 +118,8 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
             socket.destroy();
             return;
         }
-        wssRacine.handleUpgrade(requete, socket, tete, (client) => {
-            wssRacine.emit('connection', client, requete);
+        wss.handleUpgrade(requete, socket, tete, (client) => {
+            wss.emit('connection', client, requete);
         });
     });
 
@@ -116,6 +140,11 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         port,
         async close(): Promise<void> {
             await relais.close();
+            // ⚠️ Le second serveur se ferme AUSSI, et explicitement. Un
+            // `WebSocketServer` en `noServer` ne s'arrête pas avec le serveur
+            // HTTP : ses sockets déjà montés survivraient, et `close()`
+            // rendrait la main sur un service qui écoute encore.
+            await new Promise<void>((resolve) => wssAgent.close(() => resolve()));
             await new Promise<void>((resolve) => http.close(() => resolve()));
         },
     };
