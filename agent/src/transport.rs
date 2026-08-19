@@ -38,12 +38,11 @@ use std::collections::VecDeque;
 use std::net::{IpAddr, UdpSocket};
 use std::time::Instant;
 
-use anyhow::{anyhow, Result};
-use proto::control::{AgentControl, ClientControl};
-use proto::input::InputMessage;
+use anyhow::Result;
+use proto::control::AgentControl;
 use str0m::channel::ChannelId;
 use str0m::media::Mid;
-use str0m::{Output, Rtc};
+use str0m::Rtc;
 
 use crate::audio::{AudioSource, Reconstructeur};
 use crate::congestion;
@@ -54,6 +53,18 @@ mod fixtures;
 #[cfg(test)]
 mod sonde_montante;
 mod adaptation;
+/// La boucle de transport et les deux points de drainage antérieurs à `run`.
+///
+/// 🔴 EXTRAIT PARCE QUE CE FICHIER A FRANCHI 500 LIGNES — pour la SECONDE fois,
+/// et sur le même champ de bataille : le sous-bloc D10 l'avait déjà porté à 501
+/// et en avait sorti `initialisation.rs` (le constructeur du socket et du
+/// `Rtc`) ; le sous-bloc F1 l'y ramène en ajoutant `input_channel`, et en sort
+/// la boucle. Ce dépôt écrit depuis D6 que « la marge regagnée par une
+/// extraction se reperd à la ronde suivante si on la traite comme acquise » :
+/// c'est la cinquième fois qu'il le paie, et la deuxième sur ce fichier-ci.
+/// EXTRAIT, jamais compressé — la doctrine de `CLAUDE.md` interdit nommément
+/// de raccourcir un commentaire pour repasser sous la ligne.
+mod boucle;
 mod cadence_video;
 mod controle;
 mod evenements;
@@ -69,7 +80,6 @@ mod tick;
 
 use piste_video::FRAME_INTERVAL;
 use socket::TimerResolutionGuard;
-use tick::Tick;
 
 pub struct Session {
     rtc: Rtc,
@@ -82,6 +92,11 @@ pub struct Session {
     clock_origin: Instant,
     video_mid: Option<Mid>,
     control_channel: Option<ChannelId>,
+    /// Le canal `input`, retenu comme `control_channel` l'est — c'est ce qui
+    /// permet à `evenements::destination` d'aiguiller par CANAL plutôt que par
+    /// le seul drapeau binaire. `None` tant qu'aucun `ChannelOpen` ne l'a
+    /// nommé : une trame reçue d'ici là est refusée, pas devinée.
+    input_channel: Option<ChannelId>,
     started: Instant,
     /// Messages de contrôle en attente d'émission. `run()` en envoie un au
     /// plus par mutation, dès que le canal est ouvert.
@@ -342,6 +357,7 @@ impl Session {
             clock_origin,
             video_mid: None,
             control_channel: None,
+            input_channel: None,
             started: Instant::now(),
             pending_control: VecDeque::new(),
             outbound_control: None,
@@ -421,75 +437,4 @@ impl Session {
         Ok(session)
     }
 
-    /// Accepte l'offre du navigateur et produit la réponse SDP.
-    pub fn accept_offer(&mut self, offer_sdp: &str) -> Result<String> {
-        let offer = str0m::change::SdpOffer::from_sdp_string(offer_sdp)
-            .map_err(|e| anyhow!("offre SDP illisible : {e}"))?;
-        let answer = self
-            .rtc
-            .sdp_api()
-            .accept_offer(offer)
-            .map_err(|e| anyhow!("offre refusée : {e}"))?;
-
-        // Même raisonnement que dans `new()` : `accept_offer` mute `Rtc`, on
-        // draine avant de rendre la main, sans dépendre de ce que fera
-        // l'appelant ensuite.
-        self.drain_quietly()?;
-
-        Ok(answer.to_sdp_string())
-    }
-
-    /// Boucle de transport : tourne jusqu'à déconnexion ou erreur fatale.
-    ///
-    /// Bloque volontairement (lecture UDP synchrone) — à appeler depuis un
-    /// thread dédié (`tokio::task::spawn_blocking`), jamais depuis un
-    /// ouvrier async de tokio (voir le commentaire de module, I6 de la revue).
-    pub fn run(
-        &mut self,
-        on_input: &mut impl FnMut(InputMessage),
-        on_control: &mut impl FnMut(ClientControl),
-    ) -> Result<()> {
-        loop {
-            match self.rtc.poll_output().map_err(|e| anyhow!("poll_output : {e}"))? {
-                Output::Timeout(deadline) => {
-                    if let Tick::Disconnected = self.act_on_timeout(deadline)? {
-                        return Ok(());
-                    }
-                }
-                Output::Transmit(transmit) => {
-                    // Route vers le socket direct ou vers le relais TURN selon
-                    // la source que str0m indique. Corps dans `relais`.
-                    self.envoyer(&transmit);
-                }
-                Output::Event(event) => {
-                    if let Tick::Disconnected = self.handle_event(event, on_input, on_control) {
-                        return Ok(());
-                    }
-                }
-            }
-        }
-    }
-
-    /// Draine `poll_output` jusqu'à `Output::Timeout`, sans callbacks
-    /// applicatifs. Utilisé uniquement aux points de mutation antérieurs à
-    /// `run()` (`new`, `accept_offer`) : aucune piste ni canal ne peut
-    /// encore produire de données applicatives à ce stade.
-    fn drain_quietly(&mut self) -> Result<()> {
-        loop {
-            match self.rtc.poll_output().map_err(|e| anyhow!("poll_output : {e}"))? {
-                Output::Timeout(_) => return Ok(()),
-                Output::Transmit(transmit) => {
-                    // Même point d'émission unique que `run` : un paquet émis
-                    // pendant un drainage doit passer par le relais si c'est
-                    // par là qu'il doit sortir.
-                    self.envoyer(&transmit);
-                }
-                Output::Event(event) => {
-                    if let Tick::Disconnected = self.handle_event(event, &mut |_| {}, &mut |_| {}) {
-                        return Ok(());
-                    }
-                }
-            }
-        }
-    }
 }
