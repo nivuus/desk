@@ -1,0 +1,4 @@
+2026-08-19T15:13:12.744127Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-19T15:13:12.746757Z  INFO agent::wasapi::rendu: périphérique audio de rendu retenu variable="AUDIO_PERIPHERIQUE" demande="(aucune)" retenu=Haut-parleurs (VB-Audio Virtual Cable) identifiant={0.0.0.00000000}.{deec1914-6490-47ee-9475-091b9a2ea537} critere="défaut de Windows" repli=false
+2026-08-19T15:13:12.751065Z  INFO agent::diagnostics::audio: loopback ouvert format=48000 Hz, 2 canaux, 32 bits, flottant
+2026-08-19T15:13:24.756221Z  INFO agent::diagnostics::audio: sonde audio terminée echantillons=0 lectures_vides=2001 crete=0 silencieux=true

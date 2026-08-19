@@ -1,0 +1,4 @@
+2026-08-19T15:20:04.495349Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-19T15:20:04.497201Z  INFO agent::wasapi::rendu: périphérique audio de rendu retenu variable="AUDIO_PERIPHERIQUE" demande="{0.0.0.00000000}.{8695a111-abf2-4199-88c0-fe4a9176f3e9}" retenu=Haut-parleurs (Steam Streaming Speakers) identifiant={0.0.0.00000000}.{8695a111-abf2-4199-88c0-fe4a9176f3e9} critere="identifiant" repli=false
+2026-08-19T15:20:04.501503Z  INFO agent::diagnostics::audio: loopback ouvert format=48000 Hz, 2 canaux, 32 bits, flottant
+2026-08-19T15:20:17.196988Z  INFO agent::diagnostics::audio: sonde audio terminée echantillons=1152000 lectures_vides=803 crete=14744 silencieux=false dominante_hz=880.0 dominante_magnitude=466477056.0 resolution_hz=1.0
