@@ -199,7 +199,7 @@ impl Etat {
         flux: windows::core::GUID,
         restants: VecDeque<Morceau>,
     ) {
-        let entete = serde_json::to_string(&crate::pont::entetes::Lire {
+        let entete = serde_json::to_string(&proto::fichiers::entetes::Lire {
             chemin: chemin.to_string(),
             position: morceau.position,
             longueur: morceau.longueur,

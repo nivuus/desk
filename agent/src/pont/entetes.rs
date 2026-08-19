@@ -1,94 +1,32 @@
 //! Les en-têtes JSON des trames du pont. **PUR** — aucun `cfg`, aucune
-//! dépendance à `windows`, formes sur le fil **épinglées** par des tests
-//! d'hôte.
+//! dépendance à `windows`.
 //!
-//! # ⚠️ CE MODULE DEVRAIT VIVRE DANS `proto/`, ET C'EST UNE DETTE DÉCLARÉE
+//! # ✅ LA DETTE DÉCLARÉE ICI EST SOLDÉE : les formes vivent dans `proto/`
 //!
-//! La spec §4.2 nomme `proto/src/fichiers.rs` et `proto/ts/fichiers.ts` comme
-//! « schéma versionné partagé (**source de vérité unique**) ». `proto` porte
-//! bien la TRAME (version, type, corrélation, longueur d'en-tête), mais laisse
-//! l'en-tête en `&[u8]` de JSON non analysé : « le décodeur rend les octets,
-//! l'appelant les analyse ». Les formes ci-dessous sont donc, aujourd'hui,
-//! **définies d'un seul côté** — et le jumeau TypeScript (tâche 15) devra les
-//! reproduire à la main.
+//! Ce module portait les sept structures d'en-tête et déclarait en toutes
+//! lettres que c'était une dette : « **tant que ce n'est pas fait, un champ
+//! renommé ici casse le pont sans casser un seul test côté client** ». Le
+//! périmètre de la tâche qui les a écrites interdisait de toucher `proto/` ;
+//! la tâche 15, qui pouvait, l'a fait plutôt que de reproduire les formes à la
+//! main côté TypeScript.
 //!
-//! **C'est une divergence forcée par le périmètre de la tâche 14**, qui
-//! interdit de toucher `proto/`, et non une décision de conception. Le remède
-//! est nommé : porter ces structures dans `proto/src/fichiers.rs`, et leur
-//! jumeau dans `proto/ts/fichiers.ts`, avec les tests d'épinglage des deux
-//! côtés. **Tant que ce n'est pas fait, un champ renommé ici casse le pont sans
-//! casser un seul test côté client.**
+//! Elles sont désormais dans [`proto::fichiers::entetes`], épinglées par
+//! `proto/fichiers-vectors.json`, que **les deux** implémentations lisent —
+//! `proto/src/fichiers/entetes/tests.rs` et `proto/ts/fichiers-entetes.test.ts`.
+//! Un renommage n'a plus qu'un seul côté à casser pour être vu ROUGE.
 //!
-//! # Ce que les tests épinglent, et pourquoi
+//! Ce module ne garde donc que ce qui n'est PAS une forme sur le fil : **ce
+//! que l'agent FAIT des en-têtes que `proto` définit**, c'est-à-dire la
+//! conversion d'époque, qui est une affaire de Windows et n'a pas de jumeau
+//! navigateur.
 //!
-//! Ce dépôt a laissé passer une variante `battement-recu` verte sur cinquante
-//! tests parce que rien n'épinglait ses octets ; `proto::fichiers` épingle déjà
-//! ses sept codes d'échec pour cette raison. **Aucun `#[serde(default)]` nulle
-//! part** : un en-tête incomplet est rejeté, jamais silencieusement complété —
-//! la doctrine de version de `proto::control`, appliquée aux en-têtes.
-
-use serde::{Deserialize, Serialize};
-
-/// L'en-tête de `TYPE_LISTER` et de `TYPE_ATTRIBUTS`.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct Chemin {
-    /// Chemin logique, composants séparés par `/`, **normalisé** par
-    /// [`crate::pont::chemins`]. Vide = la racine.
-    pub chemin: String,
-}
-
-/// L'en-tête de `TYPE_LIRE`. La plage est **un morceau**, jamais le fichier
-/// entier : c'est [`crate::pont::decoupe`] qui la produit.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct Lire {
-    pub chemin: String,
-    pub position: u64,
-    pub longueur: u32,
-}
-
-/// Une entrée de répertoire, dans la réponse `TYPE_ENTREES`.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct EntreeJson {
-    pub nom: String,
-    pub repertoire: bool,
-    pub taille: u64,
-    /// `File.lastModified` : millisecondes depuis l'époque Unix, **signé** —
-    /// un fichier antérieur à 1970 en rend un négatif, et le refuser ferait
-    /// échouer une énumération pour une date.
-    pub modifie: i64,
-}
-
-/// L'en-tête de `TYPE_ENTREES`. Charge binaire **vide**.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct Entrees {
-    pub entrees: Vec<EntreeJson>,
-}
-
-/// L'en-tête de `TYPE_META`. Charge binaire **vide**.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct Meta {
-    pub repertoire: bool,
-    pub taille: u64,
-    pub modifie: i64,
-}
-
-/// L'en-tête de `TYPE_DONNEES`. **La charge porte les octets**, jamais encodés.
-///
-/// `longueur` est redondante avec la taille de la charge, **et c'est
-/// délibéré** : le décodeur peut ainsi refuser une trame dont l'en-tête et la
-/// charge se contredisent, plutôt que d'écrire dans le tampon de ProjFS une
-/// quantité d'octets que l'émetteur ne croyait pas envoyer.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct Donnees {
-    pub position: u64,
-    pub longueur: u32,
-}
-
-/// L'en-tête de `TYPE_ECHEC`.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct Echec {
-    pub code: proto::fichiers::CodeEchec,
-}
+//! ⚠️ **Il ne RÉ-EXPORTE délibérément pas les sept structures.** Un
+//! `pub use proto::fichiers::entetes::*` aurait évité de toucher les trois
+//! sites d'appel, au prix de deux choses : un avertissement `unused_imports`
+//! sur l'hôte, tous les consommateurs étant `#[cfg(windows)]`, et surtout une
+//! indirection qui cacherait au lecteur de `projfs/rappels.rs` l'endroit d'où
+//! viennent réellement ces formes. Les trois sites écrivent donc
+//! `use proto::fichiers::entetes;`, et le disent.
 
 /// Millisecondes depuis l'époque Unix → unités de 100 ns depuis l'époque
 /// FILETIME (1ᵉʳ janvier 1601).
@@ -106,6 +44,11 @@ pub struct Echec {
 /// interprété par Windows comme un temps **relatif**, ce qui donnerait à un
 /// fichier une date qui n'a rien à voir avec la sienne. Un débordement est
 /// saturé pour la même raison — en `release`, il boucle en silence.
+///
+/// ⚠️ **Elle reste ICI et non dans `proto/`**, à dessein : ce n'est pas une
+/// forme sur le fil mais une conversion propre à Windows. Le navigateur n'a
+/// jamais de FILETIME à produire ni à lire ; l'y porter donnerait à `proto` un
+/// jumeau TypeScript sans appelant.
 pub fn filetime_depuis_ms(ms: i64) -> i64 {
     /// Millisecondes entre le 1ᵉʳ janvier 1601 et le 1ᵉʳ janvier 1970.
     const DECALAGE_MS: i64 = 11_644_473_600_000;

@@ -28,7 +28,7 @@ use std::time::{Duration, Instant};
 use windows::core::HRESULT;
 use windows::Win32::Foundation::S_OK;
 
-use crate::pont::entetes;
+use proto::fichiers::entetes;
 use crate::pont::enumeration::Session;
 use crate::pont::erreurs::{hresult, Erreur};
 use crate::pont::projfs::{ContexteProjFs, Etat, PERIODE_HYDRATATION};
