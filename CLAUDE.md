@@ -17,7 +17,7 @@ fichier porte plus d'une responsabilité : il faut le découper avant d'y ajoute
 quoi que ce soit.
 
 **Portée** — la règle s'applique au code source écrit à la main :
-`agent/src/`, `client/src/`, `signaling/`, `proto/`, `src/`, `web/`, `scripts/`.
+`agent/src/`, `client/src/`, `plateforme/`, `proto/`, `src/`, `web/`, `scripts/`.
 
 **Exemptions explicites** :
 
