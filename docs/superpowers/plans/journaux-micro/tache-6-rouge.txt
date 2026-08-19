@@ -1,0 +1,54 @@
+=== TACHE 6 — chaque controle doit pouvoir rendre l'autre valeur ===
+Depot Guacamole, 19 aout 2026, chantier E bloc E1.
+
+--- MUTATION : residu : jeter le residu a chaque remplissage ---
+test micro::tests::le_residu_survit_d_un_remplissage_a_l_autre ... FAILED
+thread 'micro::tests::le_residu_survit_d_un_remplissage_a_l_autre' (1041131) panicked at agent/src/micro/tests.rs:362:9:
+divergence à l'échantillon 100 (-0.09640503 contre 0) : le résidu perd la queue des trames que le découpage coupe en deux
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 488 filtered out; finished in 0.02s
+
+--- MUTATION : silence : ne PAS completer au silence (laisser le tampon de l appelant) ---
+test micro::tests::un_lecteur_vide_rend_du_silence_et_jamais_une_erreur ... FAILED
+thread 'micro::tests::un_lecteur_vide_rend_du_silence_et_jamais_une_erreur' (1041631) panicked at agent/src/micro/tests.rs:382:5:
+le silence n'a pas été écrit
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 488 filtered out; finished in 0.00s
+
+--- MUTATION : frequence : retirer la bande morte (BANDE_MORTE = 0.0) ---
+test micro::tests::le_silence_et_le_bruit_ne_rendent_pas_une_frequence_credible ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 488 filtered out; finished in 0.01s
+
+--- MUTATION : frequence : rendre 0.0 au lieu de None sur un signal trop faible ---
+test micro::tests::le_silence_et_le_bruit_ne_rendent_pas_une_frequence_credible ... FAILED
+thread 'micro::tests::le_silence_et_le_bruit_ne_rendent_pas_une_frequence_credible' (1042438) panicked at agent/src/micro/tests.rs:410:5:
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 488 filtered out; finished in 0.00s
+
+--- MUTATION : bout en bout : le decodage FEC remplace le decodage normal ---
+test micro::tests::un_ton_encode_traverse_le_tampon_et_ressort_a_sa_frequence ... FAILED
+thread 'micro::tests::un_ton_encode_traverse_le_tampon_et_ressort_a_sa_frequence' (1042897) panicked at agent/src/micro/tests.rs:464:55:
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 488 filtered out; finished in 0.11s
+
+--- MUTATION : frequence : diviser par la duree une seule fois (oubli du facteur 2) ---
+test micro::tests::la_frequence_d_un_ton_pur_est_retrouvee_a_un_pour_cent ... FAILED
+thread 'micro::tests::la_frequence_d_un_ton_pur_est_retrouvee_a_un_pour_cent' (1043498) panicked at agent/src/micro/tests.rs:397:9:
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 488 filtered out; finished in 0.00s
+
+=== Toutes les mutations sont ANNULEES. ===
+
+⚠️ CONSTAT SUR LA MUTATION « retirer la bande morte » : elle laisse VERT
+   `le_silence_et_le_bruit_ne_rendent_pas_une_frequence_credible`. Sortie :
+       test result: ok. 1 passed; 0 failed
+   Le plan affirme pourtant que la bande morte est « exactement ce que
+   sanctionne le test bruit ». C'est FAUX : du bruit PUR rend ~12 000 Hz avec
+   ou sans bande morte, donc toujours a plus de 100 Hz de 440. AUCUN test
+   n'exercait la bande morte. Un test a ete ajoute pour cela —
+   `un_ton_bruite_reste_mesure_a_sa_frequence`, le cas MIXTE — et la mutation
+   est rejouee contre lui ci-dessous.
+
+--- MUTATION (rejeu) : BANDE_MORTE = 0.0, contre le test du ton bruite ---
+test micro::tests::un_ton_bruite_reste_mesure_a_sa_frequence ... FAILED
+thread 'micro::tests::un_ton_bruite_reste_mesure_a_sa_frequence' (1047011) panicked at agent/src/micro/tests.rs:449:5:
+un ton de 440 Hz légèrement bruité est mesuré 464 Hz : les traversées parasites autour de zéro sont comptées comme des passages
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 489 filtered out; finished in 0.01s
+
+=== Toutes les mutations sont ANNULEES. ===
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 472 filtered out; finished in 0.10s
