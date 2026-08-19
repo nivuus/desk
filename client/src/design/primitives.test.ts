@@ -4,6 +4,7 @@ import boutonCss from './primitives/bouton.css?raw';
 import champCss from './primitives/champ.css?raw';
 import surfaceCss from './primitives/surface.css?raw';
 import messageCss from './primitives/message.css?raw';
+import baseCss from './base.css?raw';
 
 /**
  * 🔴 LES GARDES LISENT LES FAMILLES, PAS `primitives.css`, qui n'est plus
@@ -90,6 +91,21 @@ function declarationsDe(css: string): Declaration[] {
         }
     }
     return sortie;
+}
+
+/** Le corps du bloc qui suit `index`, accolades appariées. */
+function blocApres(css: string, index: number): string {
+    const debut = css.indexOf('{', index);
+    if (debut === -1) return '';
+    let profondeur = 0;
+    for (let i = debut; i < css.length; i += 1) {
+        if (css[i] === '{') profondeur += 1;
+        else if (css[i] === '}') {
+            profondeur -= 1;
+            if (profondeur === 0) return css.slice(debut + 1, i);
+        }
+    }
+    return '';
 }
 
 const CSS = sansCommentaires([...FAMILLES.values()].join('\n'));
@@ -230,5 +246,25 @@ describe('primitives.css — les gardes de forme', () => {
             etatsManquants('message', ['.message--succes', '.message--alerte', '.message--danger']),
             'tons absents de la famille message',
         ).toEqual([]);
+    });
+
+    it('G7 — base.css neutralise les transitions sous prefers-reduced-motion', () => {
+        // 🔴 LE BLANCHIMENT EST ICI STRICTEMENT NÉCESSAIRE, et c'est ce garde
+        // qui le montre le mieux : l'en-tête de la règle RECOPIE la commande de
+        // mesure qui l'a imposée, donc la chaîne
+        // `@media (prefers-reduced-motion: reduce)` en toutes lettres. Un garde
+        // qui la chercherait dans le texte brut resterait VERT sur un
+        // `base.css` dont la règle a été retirée — c'est mot pour mot le garde
+        // de l'amorce de S1.
+        const base = sansCommentaires(baseCss);
+        const debut = base.search(/@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)/);
+        expect(
+            debut,
+            'aucune requête @media (prefers-reduced-motion: reduce) dans base.css, commentaires blanchis',
+        ).toBeGreaterThan(-1);
+        expect(
+            declarationsDe(blocApres(base, debut)).map((d) => d.propriete),
+            'la requête de mouvement réduit ne porte aucune déclaration',
+        ).toContain('transition-duration');
     });
 });
