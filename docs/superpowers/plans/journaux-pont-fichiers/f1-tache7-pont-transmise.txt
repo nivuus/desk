@@ -1,0 +1,50 @@
+Tache 7 -- run-agent.sh transmet PONT : le controle, et son ROUGE.
+
+Le plan (tache 7, Step 3) prescrit deux controles :
+
+    PONT=1 SUPERVISEUR=1 bash -n scripts/run-agent.sh
+    grep -c 'env:PONT' scripts/run-agent.sh    # attendu : 1
+
+...et dit lui-meme leur limite : << Un grep sur le script bash prouve qu'on a
+ecrit la ligne, jamais qu'elle produit la variable -- c'est precisement le
+raisonnement qui a echoue en D7. >> En D7 (AUDIO), implementeur ET relecteur
+avaient verifie la propriete EN TRACANT LE CODE ; le trace etait juste, et la
+valeur ne pouvait simplement pas atteindre le processus.
+
+Le plan renvoie donc le vrai controle a la tache 18 (recette VM). Il est
+possible de faire mieux SANS TOUCHER A LA VM, et c'est ce qui a ete fait : le
+heredoc qui ECRIT /media/vm/dev/run-agent.ps1 est extrait de
+`scripts/run-agent.sh` et expanse localement par bash. Ce qu'on lit alors est
+le CONTENU EXACT du .ps1 qui serait ecrit sur la VM -- pas le script qui
+l'ecrit.
+
+    awk '/^cat > \/media\/vm\/dev\/run-agent.ps1 <<PS1$/{f=1;next} f&&/^PS1$/{exit} f' \
+        scripts/run-agent.sh > /tmp/heredoc.txt        # 88 lignes
+    # puis expansion par `cat <<PS1 ... PS1` dans un environnement nu.
+
+RESULTATS, executes le 19 aout 2026 :
+
+  PONT non pose  -> 0 occurrence de `env:PONT` dans le .ps1 produit   [ROUGE]
+  PONT=1         -> $env:PONT = '1'                                    [VERT]
+  PONT=0         -> $env:PONT = '0'                                    [VERT]
+
+Les TROIS lignes comptent, et la troisieme n'est pas decorative : la
+convention de valeur de ce depot est que `PONT=0` DESACTIVE le mode. Si la
+forme `${PONT:+...}` avalait la valeur "0", ecrire `PONT=0` pour couper le pont
+ne produirait aucune variable -- et le pont s'allumerait. Elle ne l'avale pas :
+`:+` ne teste que la chaine VIDE.
+
+Le premier resultat est le rouge : sans la ligne, le .ps1 ne porte rien, et
+c'est exactement l'etat dans lequel D1 (SUPERVISEUR), D2
+(MULTIFENETRE_REPRISE) et D7 (AUDIO) ont chacun laisse le depot -- un agent
+qui demarre sans la variable et SANS RIEN SIGNALER.
+
+Controles du plan, joues aussi :
+
+    PONT=1 SUPERVISEUR=1 bash -n scripts/run-agent.sh   -> syntaxe ok
+    grep -c 'env:PONT' scripts/run-agent.sh            -> 1
+
+CE QUE CE CONTROLE N'ETABLIT PAS : que la tache planifiee lit bien ce .ps1, ni
+que l'agent lit bien la variable. Il etablit que la ligne PRODUIT la variable
+dans le fichier ecrit, ce qui est le maillon exact que D7 avait manque -- pas
+la chaine entiere. Le reste reste la tache 18.
