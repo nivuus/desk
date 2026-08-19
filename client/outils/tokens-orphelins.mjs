@@ -53,7 +53,7 @@ const EXCLUS = new Map([
 ]);
 
 // ═══════════════════════════════════════════════════════════════════════════
-// LA LISTE D'ATTENTE — 18 tokens déclarés que le produit n'appelle pas ENCORE.
+// LA LISTE D'ATTENTE — 16 tokens déclarés que le produit n'appelle pas ENCORE.
 //
 // ⚠️ CE NOMBRE EST TENU À JOUR PAR LA TÂCHE QUI LE REND FAUX, jamais par une
 // tâche de ménage plus tard : elle en a 28 à la fin de S1, et chaque famille
@@ -96,10 +96,8 @@ const EN_ATTENTE_D_APPELANT = new Map([
     // ── Couleurs — S2 (primitives) puis S3 (surfaces habillées) ───────────
     ['--succes', 'S3 — l’écran d’état « connecté »'],
     ['--alerte', 'S3 — le bandeau d’avertissement'],
-    ['--danger', 'S3 — l’écran d’état terminal, et le message d’erreur de connexion'],
     // ── Échelle typographique — S2 ────────────────────────────────────────
     ['--t-xs', 'S2 — la mention légale et les étiquettes'],
-    ['--t-l', 'S2 — le corps des surfaces autres que la fenêtre de session'],
     ['--t-xl', 'S2 — les titres de carte'],
     ['--t-2xl', 'S3 — le titre de l’écran de connexion'],
     ['--t-3xl', 'S3 — le titre du hub'],
