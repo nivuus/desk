@@ -13,6 +13,60 @@ use proto::control::{AgentControl, ClientControl};
 use proto::input::InputMessage;
 use str0m::{Event, IceConnectionState};
 
+/// Ce qu'il faut faire d'une trame reçue sur un canal de données.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Destination {
+    Entree,
+    Controle,
+    /// Le canal n'est ni `input` ni `control` — ou celui-là n'est pas encore
+    /// ouvert. La trame est **refusée**, jamais interprétée au hasard.
+    Ignoree,
+}
+
+/// Décide où va une trame, **par son CANAL et non par son drapeau binaire**.
+///
+/// 🔴 `binaire` N'EST PLUS UN PARAMÈTRE, ET C'EST TOUT LE CORRECTIF. L'ancienne
+/// version aiguillait sur lui seul : toute trame binaire, quel que soit son
+/// canal, partait dans `InputMessage::decode`. Le label était pourtant
+/// disponible dans `Event::ChannelOpen(id, label)` et simplement inutilisé.
+/// Désormais chaque canal porte le contrat de sa charge — `input` du binaire,
+/// `control` du JSON —, et une trame qui n'arrive par aucun des deux est
+/// refusée plutôt que devinée.
+///
+/// ⚠️ **Aucune trame existante ne change de destination** : aujourd'hui
+/// `control` écrit en `false` (`transport/controle.rs`) et `input` est le seul
+/// canal binaire d'une `PeerConnection` d'enfant. Ce qui change, c'est ce qui
+/// arrive à une trame d'un canal TIERS — hier une entrée souris décodée au
+/// hasard, aujourd'hui un refus nommé.
+///
+/// 🔴 **GÉNÉRIQUE SUR L'IDENTIFIANT, et c'est ce qui la rend éprouvable.**
+/// `str0m::channel::ChannelId` ne peut pas être construit hors du crate de
+/// str0m (« Deliberately not Deref or From to avoid this Id being created
+/// outside of this module ») : une signature qui l'exigerait ne laisserait
+/// éprouver que les cas qu'une négociation SDP réelle sait produire. Or le cas
+/// le plus important — une trame reçue AVANT le `ChannelOpen` de son canal,
+/// c'est-à-dire l'état INITIAL de toute session — n'en fait pas partie.
+/// ⚠️ **L'ORDRE DES DEUX COMPARAISONS EST INOBSERVABLE, et c'est MESURÉ, pas
+/// supposé** : la mutation qui les intervertit a été jouée et a SURVÉCU aux
+/// neuf tests. Elle est ÉQUIVALENTE, et la preuve tient en une phrase — un
+/// `Event::ChannelOpen(id, label)` porte UN label, str0m donne un `ChannelId`
+/// distinct par flux SCTP, donc `canal_entree` et `canal_controle` ne peuvent
+/// jamais porter le même identifiant. Écrire un test qui figerait la priorité
+/// épinglerait un comportement inatteignable ; c'est pourquoi il n'y en a pas.
+pub(super) fn destination<T: PartialEq>(
+    recu: T,
+    canal_entree: Option<T>,
+    canal_controle: Option<T>,
+) -> Destination {
+    if canal_entree.is_some_and(|c| c == recu) {
+        Destination::Entree
+    } else if canal_controle.is_some_and(|c| c == recu) {
+        Destination::Controle
+    } else {
+        Destination::Ignoree
+    }
+}
+
 use super::tick::Tick;
 use super::Session;
 use crate::congestion;
@@ -98,6 +152,13 @@ impl Session {
             }
             Event::ChannelOpen(id, label) => {
                 tracing::info!(%label, "canal de données ouvert");
+                // 🔴 LE LABEL EST RETENU POUR LES DEUX CANAUX, plus seulement
+                // pour `control`. Sans `input_channel`, `dispatch_channel_data`
+                // n'a que le drapeau binaire pour décider, et prend toute trame
+                // binaire pour une entrée souris.
+                if label == "input" {
+                    self.input_channel = Some(id);
+                }
                 if label == "control" {
                     self.control_channel = Some(id);
                     // I3 : envoyer `ready` ici, pas juste après la réponse
@@ -216,28 +277,51 @@ impl Session {
         Tick::Continue
     }
 
+    /// La destination d'une trame reçue, décidée par le CANAL et non par le
+    /// seul drapeau binaire.
+    ///
+    /// 🔴 Fonction LIBRE et PURE, et c'est ce qui la rend éprouvable : elle ne
+    /// prend pas de `ChannelId`, que str0m interdit délibérément de construire
+    /// hors de son crate (« Deliberately not Deref or From to avoid this Id
+    /// being created outside of this module »). Sans elle, le cas « une trame
+    /// binaire arrive AVANT tout `ChannelOpen` » — c'est-à-dire l'état INITIAL
+    /// de toute session — ne serait couvert par rien : aucun montage à pair
+    /// local ne peut le produire, str0m émettant toujours `ChannelOpen` en
+    /// premier.
     fn dispatch_channel_data(
         &mut self,
         data: &str0m::channel::ChannelData,
         on_input: &mut impl FnMut(InputMessage),
         on_control: &mut impl FnMut(ClientControl),
     ) {
-        if data.binary {
-            match InputMessage::decode(&data.data) {
+        match destination(data.id, self.input_channel, self.control_channel) {
+            Destination::Entree => match InputMessage::decode(&data.data) {
                 Ok(message) => on_input(message),
                 Err(e) => tracing::warn!(erreur = %e, "message d'entrée invalide"),
-            }
-        } else {
-            match std::str::from_utf8(&data.data).map(serde_json::from_str::<ClientControl>) {
-                Ok(Ok(message)) => {
-                    self.memoriser_controle(&message);
-                    on_control(message);
+            },
+            Destination::Controle => {
+                match std::str::from_utf8(&data.data).map(serde_json::from_str::<ClientControl>) {
+                    Ok(Ok(message)) => {
+                        self.memoriser_controle(&message);
+                        on_control(message);
+                    }
+                    Ok(Err(e)) => tracing::warn!(erreur = %e, "message de contrôle invalide"),
+                    Err(e) => tracing::warn!(erreur = %e, "contrôle non UTF-8"),
                 }
-                Ok(Err(e)) => tracing::warn!(erreur = %e, "message de contrôle invalide"),
-                Err(e) => tracing::warn!(erreur = %e, "contrôle non UTF-8"),
+            }
+            Destination::Ignoree => {
+                // ⚠️ `WARN` et non `debug` : c'est un canal que personne n'a
+                // négocié pour ce transport, ou une trame arrivée avant son
+                // `ChannelOpen`. Les deux méritent d'être vues.
+                tracing::warn!(
+                    binaire = data.binary,
+                    octets = data.data.len(),
+                    "trame reçue sur un canal ni `input` ni `control`, ignorée"
+                );
             }
         }
     }
+
 
     /// Mémorise un `ClientControl` reçu, sans jamais l'appliquer sur-le-champ.
     ///
