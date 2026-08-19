@@ -22,12 +22,14 @@
 // et l'agent (`agent/src/signaling.rs`) visent tous les trois le chemin
 // racine, sans aucun composant de chemin. Aucun pair connu n'en est affecté.
 
-import { createServer, type Server } from 'node:http';
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { WebSocketServer } from 'ws';
 import type { Config } from '../config';
 import type { Pilote } from '../base/pilote';
 import { garde } from '../identite/garde';
 import { servirAuth } from './routes-auth';
+import { servirVm } from './routes-vm';
+import { servirSession } from './routes-session';
 import { createSignalingServer } from '../signaling/relais';
 import { ProprieteDeSession } from '../signaling/propriete';
 import { observateurDeSession } from '../signaling/trace';
@@ -48,17 +50,48 @@ export interface ServicePlateforme {
 /// écrit. `demarrage.ts` garantit par ailleurs que le port ne s'ouvre qu'après
 /// la base et ses migrations.
 export async function demarrerServeur(config: Config, base: Pilote): Promise<ServicePlateforme> {
-    // Les routes d'authentification d'abord ; si elles ne reconnaissent pas
-    // le chemin, le 404 de P1 est conservé MOT POUR MOT. ⚠️ Ne pas changer son
+    // Les routeurs sont essayés DANS L'ORDRE ; si aucun ne reconnaît le
+    // chemin, le 404 de P1 est conservé MOT POUR MOT. ⚠️ Ne pas changer son
     // corps : rien ne le testait avant P2, et le changer serait un effet de
     // bord non déclaré. `routes-auth.test.ts` le fige désormais.
+    //
+    // 🔴 LE CHAÎNAGE SE FAIT ICI, DANS UNE FONCTION LOCALE, ET LA FORME
+    // `void … .then(servie => …).catch(…)` EST CONSERVÉE TELLE QUELLE. C'est
+    // ce que ce fichier s'impose depuis P1 : le `.catch` est la seule chose qui
+    // empêche une promesse rejetée dans un gestionnaire d'évènement Node
+    // d'abattre tout le processus, et une réécriture de ce corps le perdrait
+    // sans que rien ne le dise. Le diff sur le corps du `createServer` est
+    // ainsi d'une seule ligne — l'appel remplacé.
+    //
+    // ⚠️ LES TROIS ROUTEURS PARTAGENT LEURS DÉPENDANCES, et `Date.now` est
+    // passée ici comme à la garde, à la trace et au canal : aucun module du
+    // service ne lit d'horloge lui-même. C'est ce qui rend la borne de
+    // fraîcheur assertable sur une valeur exacte dans les tests de route.
+    const deps = {
+        base,
+        secretJeton: config.secretJeton,
+        origineClient: config.origineClient,
+        maintenant: Date.now,
+    };
+
+    /// Essaie les routeurs dans l'ordre, et rend `false` si aucun n'a servi.
+    ///
+    /// ⚠️ L'ORDRE EST SIGNIFIANT MAIS NON CONTRAIGNANT ICI : les trois jeux de
+    /// chemins sont DISJOINTS (`/auth/*`, `/vm*`, `/session`), et chacun compare
+    /// exactement plutôt que par préfixe. Un `await` de plus ne coûte donc rien
+    /// à personne — mais le jour où deux routeurs se disputeraient un chemin,
+    /// c'est cet ordre qui trancherait, en silence.
+    async function servirTout(
+        requete: IncomingMessage,
+        reponse: ServerResponse,
+    ): Promise<boolean> {
+        if (await servirAuth(requete, reponse, deps)) return true;
+        if (await servirVm(requete, reponse, deps)) return true;
+        return servirSession(requete, reponse, deps);
+    }
+
     const http: Server = createServer((requete, reponse) => {
-        void servirAuth(requete, reponse, {
-            base,
-            secretJeton: config.secretJeton,
-            origineClient: config.origineClient,
-            maintenant: Date.now,
-        })
+        void servirTout(requete, reponse)
             .then((servie) => {
                 if (servie) return;
                 reponse.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
@@ -70,7 +103,12 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
                 // défaillance que `signaling/relais.ts` documente déjà. La
                 // cause est journalisée SANS le corps de la requête, qui
                 // porterait le mot de passe (critère ④).
-                console.error(`route d'authentification en échec : ${String(cause)}`);
+                // ⚠️ LE LIBELLÉ NE NOMME PLUS « l'authentification » : depuis
+                // P4 ce `catch` couvre les TROIS routeurs, et un message qui
+                // désignerait le mauvais ferait chercher au mauvais endroit.
+                // C'est la seule ligne de ce bloc que P4 change, et elle est
+                // changée parce qu'elle serait devenue FAUSSE autrement.
+                console.error(`route HTTP en échec : ${String(cause)}`);
                 if (!reponse.headersSent) {
                     reponse.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
                     reponse.end(JSON.stringify({ refus: 'interne' }));

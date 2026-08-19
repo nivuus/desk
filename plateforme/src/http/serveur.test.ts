@@ -15,6 +15,7 @@ import type { Pilote } from '../base/pilote';
 import type { Config } from '../config';
 import { signer } from '../identite/jeton';
 import { demarrerServeur, type ServicePlateforme } from './serveur';
+import type { Pilote as TypePilote } from '../base/pilote';
 
 // Un secret de test EXPLICITE, jamais `''` : `lireConfig` refuse la chaîne
 // vide, et un littéral `Config` construit à la main doit porter une valeur
@@ -156,5 +157,85 @@ describe('demarrerServeur', () => {
         await expect(offreRecue).resolves.toBe('v=0 racine');
         agent.terminate();
         client.terminate();
+    });
+});
+
+describe('le chaînage des trois routeurs', () => {
+    it('🔴 les TROIS chemins répondent, et `/inconnu` rend le 404 MOT POUR MOT', async () => {
+        // 🔴 La rouge : retirer un maillon de la chaîne. Sa route rend alors
+        // 404 — et c'est la panne la plus discrète possible, puisque le service
+        // répond, écoute, et sert les deux autres.
+        service = await servir('http-chaine');
+        const url = `http://127.0.0.1:${service.port}`;
+
+        // `/auth/connexion` répond TOUJOURS : P2 n'est pas cassé par P4. Sans
+        // corps il rend 400 `{refus:'forme'}`, ce qui prouve qu'il a été SERVI
+        // — un 404 dirait qu'il ne l'a pas été.
+        const auth = await fetch(`${url}/auth/connexion`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: '{}',
+        });
+        expect(auth.status).toBe(400);
+
+        // `/vm` répond : sans jeton, 401 — pas 404.
+        const vm = await fetch(`${url}/vm`);
+        expect(vm.status).toBe(401);
+
+        // `/session` répond : sans jeton, 401 — pas 404.
+        const session = await fetch(`${url}/session`, { method: 'POST' });
+        expect(session.status).toBe(401);
+
+        // Et le 404 de P1 est intact, CARACTÈRE POUR CARACTÈRE.
+        const inconnu = await fetch(`${url}/inconnu`);
+        expect(inconnu.status).toBe(404);
+        expect(await inconnu.text()).toBe('introuvable\n');
+        expect(inconnu.headers.get('content-type')).toBe('text/plain; charset=utf-8');
+    });
+
+    it('🔴 une route qui REJETTE rend 500 { refus: interne }, et le processus SURVIT', async () => {
+        // 🔴 La rouge : retirer le `.catch`. Une promesse rejetée dans un
+        // gestionnaire d'évènement Node ABAT TOUT LE PROCESSUS — c'est le mode
+        // de défaillance que `serveur.ts` documente déjà, et le chaînage de P4
+        // ajoute deux routeurs qui touchent la base, donc deux sources neuves
+        // de rejet.
+        //
+        // La base est SABOTÉE : toute lecture lève. `GET /vm` avec un jeton
+        // valide atteint alors `orchestrateur.lister()` et rejette.
+        const sabotee: TypePilote = {
+            async interroger<T>(): Promise<T[]> {
+                throw new Error('base injoignable');
+            },
+            async executer() {
+                throw new Error('base injoignable');
+            },
+            async transaction<T>(corps: (p: TypePilote) => Promise<T>): Promise<T> {
+                return corps(sabotee);
+            },
+            async fermer() {},
+        };
+        service = await demarrerServeur(CONFIG, sabotee);
+        const url = `http://127.0.0.1:${service.port}`;
+        const r = await fetch(`${url}/vm`, {
+            headers: { authorization: `Bearer ${signer('u-ada', SECRET, Date.now())}` },
+        });
+        expect(r.status).toBe(500);
+        expect(await r.json()).toEqual({ refus: 'interne' });
+
+        // 🔴 LE PROCESSUS SURVIT : la requête suivante est servie. Sans cette
+        // seconde requête, un processus abattu se lirait exactement comme un
+        // processus sain — le test aurait déjà rendu son verdict.
+        const apres = await fetch(`${url}/inconnu`);
+        expect(apres.status).toBe(404);
+    });
+
+    it('🔴 les DEUX montées WebSocket sont INCHANGÉES', async () => {
+        // 🔴 La rouge : toucher au routage de l'`upgrade`. C'est hors sujet de
+        // cette tâche, et ce test le fige — le chaînage HTTP et le routage
+        // WebSocket vivent dans la même fonction, donc à portée de main.
+        service = await servir('http-chaine-ws');
+        await expect(tenter(`ws://127.0.0.1:${service.port}/`)).resolves.toBe('ouvert');
+        await expect(tenter(`ws://127.0.0.1:${service.port}/agent`)).resolves.toBe('ouvert');
+        await expect(tenter(`ws://127.0.0.1:${service.port}/vm`)).resolves.toBe('ferme');
     });
 });
