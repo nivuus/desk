@@ -91,9 +91,17 @@
        pour un gain purement esthétique. Le coût assumé : le rendu DIFFÈRE
        d'une machine à l'autre, ce qui interdit toute recette par comparaison
        d'images (§7.8).
-       ⚠️ `--police-mono` n'a QU'UN SEUL appelant prévu, `#stats`. Le contrôle
-       §7.6 le vérifiera ; sans appelant, le token sort — un token orphelin est
-       du code mort. */
+       ⚠️ `--police-mono` n'a QU'UN SEUL appelant prévu, `#stats`, ET IL N'EST
+       TOUJOURS PAS CÂBLÉ à la fin du sous-bloc S1.
+       ❌ « Sans appelant, le token sort » — écrit ici par la tâche 7 — A ÉTÉ
+       RÉFUTÉ par la tâche 12 de la MÊME branche : le token n'est pas sorti. Le
+       câbler CHANGERAIT l'apparence de `#stats`, qui hérite aujourd'hui de
+       `--police-ui`, et S1 s'interdit nommément de changer l'apparence
+       d'`index.html`. Il vit donc dans la liste d'attente nommée de
+       `client/outils/tokens-orphelins.mjs`, et c'est **S4** — le seul
+       sous-bloc qui a le droit de toucher la fenêtre de session — qui tranche :
+       ou il le câble, ou il le retire. C'est le SEUL des 28 tokens en attente
+       dont le sort soit encore ouvert ; les 27 autres ont un appelant nommé. */
     --police-ui: system-ui, -apple-system, "Segoe UI Variable Text", "Segoe UI",
         Roboto, "Helvetica Neue", Arial, sans-serif;
     --police-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", "SF Mono",

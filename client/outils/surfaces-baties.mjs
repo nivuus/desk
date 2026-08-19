@@ -22,10 +22,13 @@
 // sans aucun lien échoue A ; la compter aussi en B ferait remonter la même
 // panne deux fois et, surtout, MASQUERAIT B derrière A — le jour où A devient
 // verte, personne ne saurait si B avait jamais été éprouvée. C'est la rouge
-// que le sous-bloc P2 a dû rejouer après coup pour cette raison exacte. Sur
-// l'arbre intact du 19 août 2026, B est rouge sur `dist/index.html`, une page
-// qui passe A : les deux assertions sont donc réellement indépendantes, et on
-// le VOIT dans le même rapport.
+// que le sous-bloc P2 a dû rejouer après coup pour cette raison exacte.
+// B A ÉTÉ VUE ROUGE sur `dist/index.html` — une page qui passait A — sur
+// l'arbre intact du 19 août 2026, au commit `71f3c36` : les deux assertions
+// sont donc réellement indépendantes, et on le VOIT dans le même rapport.
+// ⚠️ Depuis la tâche 11 (`72fe0f1`), les DEUX assertions sont vertes et B est
+// évaluée sur QUATRE pages au lieu d'une. Ce paragraphe est un relevé DATÉ,
+// donc vrai comme histoire : ne pas le relire au présent.
 //
 // ────────────────────────────────────────────────────────────────────────────
 // PORTÉE HONNÊTE. Ce contrôle vérifie qu'une surface CHARGE les tokens, pas

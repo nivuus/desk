@@ -15,10 +15,17 @@
  * ────────────────────────────────────────────────────────────────────────────
  * CE QUE CES FONCTIONS NE PROUVENT PAS, mot pour mot d'après la spec §7.5 :
  * « il n'établit pas que le navigateur déclenche bien `storage` entre deux
- * fenêtres réelles. Il éprouve NOTRE gestionnaire, pas la plateforme. » La
- * confirmation à deux fenêtres réelles est prévue HORS CRITÈRE, en
- * corroboration — même statut que les confirmations sur VM réelle du
- * sous-projet ⑤.
+ * fenêtres réelles. Il éprouve NOTRE gestionnaire, pas la plateforme. »
+ *
+ * ✅ La confirmation à deux fenêtres réelles A ÉTÉ FAITE le 19 août 2026, au
+ * commit `604f91c`, et elle reste HORS CRITÈRE — même statut que les
+ * confirmations sur VM réelle du sous-projet ⑤. Deux onglets de
+ * `client/design.html` : la voisine suit la bascule ET se re-rend, et le
+ * retour à `systeme` lui RETIRE l'attribut. Pièce :
+ * `docs/superpowers/plans/journaux-design-s1/corroboration-deux-fenetres.md`.
+ * ⚠️ UNE exécution, UN navigateur (Chromium de bureau), et DEUX FENÊTRES DE LA
+ * GALERIE — pas une page-shell qui ouvre N sessions par `window.open`. Que le
+ * thème atteigne les N fenêtres du PRODUIT reste non mesuré.
  *
  * ⚠️ « `surStockageModifie` n'écrit rien dans le coffre » est garanti par la
  * SIGNATURE, pas par un test : la fonction ne reçoit aucun `Coffre`, donc elle

@@ -76,9 +76,9 @@
 //   `--text: #e6e8eb`. Ce sont bien des DÉCLARATIONS de token, mais elles
 //   vivent dans `style.css`, pas dans `tokens.css` : l'exclusion du §7.2 est
 //   par FICHIER, jamais par rôle, et une déclaration hors de la source unique
-//   est précisément la dérive que ce contrôle existe pour voir. Le vert
-//   arrive quand la tâche 9 les fait migrer, ce qu'elle prescrit déjà
-//   (« `:root` perd `--surface`, `--text` »). Le plan attribuait par ailleurs
+//   est précisément la dérive que ce contrôle existe pour voir. ✅ Le vert EST
+//   ARRIVÉ à la tâche 9 (`ab9e9b9`), qui a fait migrer les deux déclarations :
+//   ce contrôle rend ZÉRO sur 46 fichiers depuis. Le plan attribuait par ailleurs
 //   un compte de onze à un défaut de traitement des commentaires : les
 //   mutations ci-dessus le réfutent — un tel défaut rendrait TREIZE.
 // • 🔴 QUATRE EXIGENCES QUI NE PEUVENT PAS TENIR ENSEMBLE, et la quatrième
