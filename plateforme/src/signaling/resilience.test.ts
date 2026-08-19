@@ -25,7 +25,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const signalingRoot = path.join(__dirname, '..');
+const signalingRoot = path.join(__dirname, '..', '..');
 const tsxBin = path.join(signalingRoot, 'node_modules', '.bin', 'tsx');
 
 let child: ChildProcessWithoutNullStreams;

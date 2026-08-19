@@ -7,7 +7,7 @@ core.*
 !docs/superpowers/plans/**/*.log
 target/
 client/dist/
-signaling/dist/
+plateforme/dist/
 *.264
 !agent/testdata/testsrc.264
 
