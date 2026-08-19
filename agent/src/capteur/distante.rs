@@ -389,6 +389,15 @@ impl VideoSource for SourceDistante {
         }
     }
 
+    /// Voir le trait : prévient le capteur qu'un paquet réel a prouvé la
+    /// reprise de la capture audio — la PREUVE, pas la seule décision de
+    /// reconstruction (sous-bloc D10).
+    fn signaler_audio_vivant(&mut self) {
+        if let Err(erreur) = self.commander_simple(VersCapteur::AudioVivant) {
+            tracing::warn!(%erreur, "signalement de capture audio vivante non délivré");
+        }
+    }
+
     fn rattachement_survenu(&mut self) -> bool {
         std::mem::take(&mut self.rattache)
     }

@@ -29,8 +29,17 @@ pub enum Etat {
     AttendLaSortie,
     /// L'enfant tourne.
     Vivante,
-    /// L'enfant est mort et la sortie a été rendue, mais **la fenêtre Windows
-    /// est toujours là**. Le contrôle périodique la reproposera.
+    /// L'enfant est mort, mais **la fenêtre Windows est toujours là**. Le
+    /// contrôle périodique la reproposera.
+    ///
+    /// ❌ **« et la sortie a été rendue » figurait ici et est faux depuis le
+    /// sous-bloc D3** — contredit par `enfant_mort` deux cents lignes plus
+    /// bas, qui dit en toutes lettres « la sortie est RETENUE, et c'est le
+    /// correctif §7.1 du sous-bloc D3 ». Fausseté antérieure à D10, relevée
+    /// par sa revue transverse parce qu'elle survivait dans un fichier que la
+    /// branche a modifié. La rétention est **le** point du correctif : rendre
+    /// la sortie ferait recréer une sortie à la relance, et c'est la création
+    /// qui fait abandonner le mutex de toutes les duplications ouvertes.
     ///
     /// Sans cet état, `enfant_mort` retirait purement l'entrée : plus rien ne
     /// rappelait la fenêtre sauf un `SHOW` fortuit de Windows, et la shell
@@ -87,39 +96,11 @@ pub const RELANCES_MAX: u32 = 3;
 /// page-shell ne s'est pas connectée dans ce délai.
 pub const DELAI_ATTENTE_VIEWPORT_MAX: std::time::Duration = std::time::Duration::from_secs(30);
 
-/// Ce que la table demande au monde extérieur de faire. Le superviseur les
-/// exécute dans l'ordre rendu.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Effet {
-    AnnoncerOuverture { session: IdSession, titre: String },
-    /// `titre` accompagne la demande parce que le refus qui peut en découler
-    /// s'affiche à un humain. Sans lui, l'appelant n'a que l'identifiant de
-    /// session sous la main et la page-shell annonce « *« w-3 » n'a pas pu
-    /// s'ouvrir* » — un message qui ne désigne rien pour l'utilisateur.
-    CreerSortie { session: IdSession, titre: String, largeur: u32, hauteur: u32 },
-    LancerEnfant {
-        session: IdSession,
-        fenetre: IdFenetre,
-        /// Nom DXGI de la sortie (`\\.\DISPLAYn`), **et non un couple
-        /// d'index** : ceux-ci sont positionnels, l'enfant les résout à son
-        /// démarrage — donc plus tard — et une sortie apparue ou disparue
-        /// entre-temps le fait capturer autre chose, ou échouer.
-        nom_sortie: String,
-    },
-    TuerEnfant { session: IdSession },
-    /// `sortie_pilote` est **l'identifiant du PILOTE**, pas le nom DXGI : le
-    /// pilote ne sait retirer une sortie que par ce qu'il a lui-même rendu à
-    /// la création ; lui présenter un nom DXGI ne détruirait rien, ou
-    /// détruirait la sortie d'autrui. Les deux identifiants désignent la même
-    /// sortie et n'ont aucune relation calculable — d'où les deux champs.
-    ///
-    /// `nom_sortie` accompagne la destruction parce que l'entrée a déjà
-    /// quitté la table quand cet effet est rendu : sans lui, l'appelant ne
-    /// pourrait plus savoir quelle place DXGI redevient libre.
-    DetruireSortie { sortie_pilote: u32, nom_sortie: String },
-    AnnoncerFermeture { session: IdSession },
-    AnnoncerRefus { titre: String, motif: String },
-}
+// Extrait dans un fichier voisin (tâche 9 du sous-bloc D10, à la revue) :
+// purement déclaratif, déjà lourdement documenté, et ce fichier-ci était à
+// marge 1 avant l'extraction. Voir la doc de tête de `table/effets.rs`.
+mod effets;
+pub use effets::Effet;
 
 #[derive(Debug)]
 struct Entree {
@@ -135,10 +116,24 @@ struct Entree {
     /// Nom DXGI (`\\.\DISPLAYn`) de la même sortie, pour la capture et le
     /// placement. Stable, contrairement à une position d'énumération.
     nom_sortie: Option<String>,
-    /// Dimensions RÉELLEMENT rendues par DXGI pour cette sortie — et non
-    /// celles demandées. Le pilote quantifie (1280×632 demandé rend une sortie
-    /// 1280×720, mesuré au sous-bloc D2) : comparer un viewport ultérieur à la
-    /// demande jugerait réutilisable une sortie qui ne l'est pas.
+    /// ❌ **Ce champ portait « les dimensions RÉELLEMENT rendues par DXGI »,
+    /// et ce n'est plus vrai depuis le sous-bloc D10** (relevé par la revue
+    /// transverse : le fichier se contredisait lui-même, `rafraichir_taille_sortie`
+    /// plus bas et `boucle/placement_periodique.rs` disant tous deux le
+    /// contraire). Il porte la **taille RETENUE** — `min` axe par axe entre le
+    /// viewport borné et la taille DXGI réelle —, écrite par
+    /// `boucle::creation_sortie::creer_sortie` à la création et par
+    /// `table::attribution::viewport_recu` à la réutilisation. C'est la taille
+    /// à laquelle la fenêtre est posée, et celle que la capture recadre dans
+    /// la duplication de la sortie ; elle **n'a plus de raison d'égaler** la
+    /// taille DXGI brute, puisqu'une sortie peut naître plus grande que
+    /// demandé.
+    ///
+    /// Le raisonnement qui justifiait l'ancienne sémantique — le pilote
+    /// quantifie (1280×632 demandé rend 1280×720, mesuré au sous-bloc D2),
+    /// donc comparer un viewport ultérieur à la DEMANDE jugerait réutilisable
+    /// une sortie qui ne l'est pas — est **mort avec elle** : la réutilisation
+    /// ne compare plus une égalité mais `placement::sortie_assez_grande`.
     ///
     /// Posé et effacé en même temps que `sortie_pilote` et `nom_sortie` : les
     /// trois désignent la même sortie et ne se séparent jamais.
@@ -281,12 +276,13 @@ impl Table {
     /// et `taille_sortie` restait figée à la taille de CRÉATION. **Ce chemin
     /// a été retiré au sous-bloc D9**, mesure à l'appui (voir le constat en
     /// tête de `capteur/plein_ecran.rs`) : plus rien, en production, ne
-    /// retaille une sortie après sa création. Le rafraîchissement périodique
-    /// (`placement_periodique.rs::controler_le_placement`) continue de
-    /// l'appeler à chaque relecture DXGI — inoffensif, la taille lue ne
-    /// devant plus jamais différer de celle mémorisée —, gardé pour ne pas
-    /// réintroduire cet écart si un futur mécanisme retaille une sortie hors
-    /// de cette table.
+    /// retaille une sortie après sa création. **Plus aucun appelant depuis le
+    /// sous-bloc D10** : `taille_sortie` porte désormais la taille RETENUE
+    /// (`sortie_pour_viewport` accepte une sortie plus grande que le
+    /// viewport), qui n'a plus de raison d'égaler la taille DXGI brute — le
+    /// rafraîchissement périodique l'aurait donc écrasée, et l'appel a été
+    /// retiré. Aucun filet de sécurité n'est câblé pour un futur retaillage
+    /// hors de cette table.
     pub fn rafraichir_taille_sortie(&mut self, session: &IdSession, taille: (u32, u32)) {
         if let Some(entree) = self.entrees.get_mut(session) {
             if entree.taille_sortie.is_some() {
@@ -296,8 +292,10 @@ impl Table {
     }
 
     /// Sessions dont l'enfant tourne, pour le contrôle périodique de
-    /// placement. Rendues par valeur : l'appelant mute la table pendant
-    /// qu'il les parcourt.
+    /// placement. Rendues par valeur, mais plus par nécessité d'emprunt
+    /// depuis le sous-bloc D10 : son unique appelant
+    /// (`placement_periodique.rs::controler_le_placement`) ne tient plus
+    /// qu'un `&Table`, et ne mute rien pendant qu'il les parcourt.
     pub fn sessions_vivantes(&self) -> Vec<IdSession> {
         self.entrees
             .iter()

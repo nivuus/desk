@@ -101,7 +101,7 @@ struct Config {
     /// retombe sur la recherche par titre (`WINDOW_TITLE`), c'est-à-dire sur
     /// le comportement mono-fenêtre d'avant ce sous-bloc.
     ///
-    /// Les trois champs qui suivent ne sont lus que par la branche Windows de
+    /// Les quatre champs qui suivent ne sont lus que par la branche Windows de
     /// `demarrage` : sur l'hôte Linux ils sont morts par construction, et
     /// l'`allow` le dit plutôt que de laisser un avertissement s'installer.
     #[cfg_attr(not(windows), allow(dead_code))]
@@ -110,6 +110,16 @@ struct Config {
     /// l'agent capture le bureau et recadre la fenêtre.
     #[cfg_attr(not(windows), allow(dead_code))]
     sortie_dxgi: Option<String>,
+    /// La taille RETENUE (`superviseur::placement::taille_retenue`) à
+    /// laquelle le superviseur a posé cette fenêtre — posée par lui seul
+    /// (`lanceur.rs`), jamais par un opérateur. Absente — le chemin
+    /// mono-fenêtre, où `sortie_dxgi` l'est aussi —, la taille demandée au
+    /// capteur à l'attache reste `(u32::MAX, u32::MAX)`
+    /// (`capteur::tube::connecter`), et `taille_retenue` la ramène telle
+    /// quelle à la taille de la sortie : le comportement d'avant ce
+    /// sous-bloc, inchangé.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    taille_fenetre: Option<(u32, u32)>,
     /// Faux quand `AUDIO=0` coupe le son de cet agent.
     ///
     /// **Interrupteur GLOBAL, plus une consigne par fenêtre.** Jusqu'au
@@ -161,6 +171,27 @@ fn config() -> Result<Config> {
                 let nom = brut.trim().to_string();
                 anyhow::ensure!(!nom.is_empty(), "SORTIE_DXGI est vide");
                 Some(nom)
+            }
+            Err(_) => None,
+        },
+        // ABSENTE : mode mono-fenêtre légitime, aucun bruit — même cas que
+        // `SORTIE_DXGI`. PRÉSENTE MAIS MAL FORMÉE : échec du démarrage, même
+        // règle que `FENETRE_HWND` et `SORTIE_DXGI` — cette variable n'est
+        // posée QUE par le superviseur (`lanceur.rs`, forme `LxH`), donc une
+        // valeur illisible signale un bug du superviseur, pas une entrée
+        // d'opérateur à tolérer en silence.
+        taille_fenetre: match std::env::var("TAILLE_FENETRE") {
+            Ok(brut) => {
+                let (l, h) = brut
+                    .split_once('x')
+                    .with_context(|| format!("TAILLE_FENETRE « {brut} » : format attendu LxH"))?;
+                let largeur: u32 = l
+                    .parse()
+                    .with_context(|| format!("TAILLE_FENETRE « {brut} » : largeur illisible"))?;
+                let hauteur: u32 = h
+                    .parse()
+                    .with_context(|| format!("TAILLE_FENETRE « {brut} » : hauteur illisible"))?;
+                Some((largeur, hauteur))
             }
             Err(_) => None,
         },

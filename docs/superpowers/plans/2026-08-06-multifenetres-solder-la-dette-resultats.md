@@ -490,8 +490,17 @@ identifié.**
 
 ⚠️ **Le rapport de la tâche 14 déclare ce leg clos en sens inverse, et il n'a pas
 été corrigé** (ronde de correction interrompue de façon assumée par le
-propriétaire du dépôt ; arbre propre, aucun commit). **Le contredire est le
-premier travail de qui le relira.**
+propriétaire du dépôt ; arbre propre, aucun commit). ~~Le contredire est le
+premier travail de qui le relira.~~
+
+❌ **CETTE DERNIÈRE PHRASE EST FAUSSE (7 août 2026, tâche 18, D10) : il n'y aura
+personne à qui « le relire ».** Le rapport vivait dans l'espace de travail
+éphémère de D9 (`.superpowers/sdd/`), gitignoré et jamais commité — **vérifié
+par la commande** : `git log --all --diff-filter=A --name-only --
+'*task-14*'` ne rend aucun résultat pour ce chantier, sur aucune branche, dans
+aucun *stash*. **Il a disparu avec la session qui l'a écrit.** Ce paragraphe,
+et celui de `CLAUDE.md` qui le reprend, sont désormais la seule trace de la
+contradiction — pas un renvoi vers une pièce qu'on pourrait encore consulter.
 
 ---
 
@@ -628,8 +637,10 @@ Reprend le §11 de la conception, et l'étend de ce que l'exécution a ajouté.
 - **Le coût du HiDPI n'est pas mesuré** : `deviceScaleFactor = 2` n'a été exercé
   que sur la symétrie d'unité.
 - **Le cinquième déclencheur de mort de capture audio n'a pas été essayé.**
-- **Neuf constats de revue sont PARQUÉS sur la tâche 14** et vivent toujours dans
-  son rapport versé.
+- ~~Neuf constats de revue sont PARQUÉS sur la tâche 14 et vivent toujours dans
+  son rapport versé.~~ ❌ **FAUX (tâche 18, D10) : ce rapport a disparu — voir
+  le §13, legs n°10, pour le sort réel des neuf constats (trois traités,
+  six perdus).**
 
 ---
 
@@ -690,11 +701,30 @@ Repris intégralement dans `CLAUDE.md`, section « Sous-bloc D9 ».
 5. 🔴 **Borner la taille de sortie demandée** (transverse n°4).
 6. ⛔ **`REARMEMENTS_MAX` ne mord pas dans le cas majoritaire** (transverse n°6) —
    se referme avec le legs n°1.
-7. ⛔ **Le maillon fautif du leg 10 reste non identifié**, et le rapport de la
-   tâche 14 conclut l'inverse sans avoir été corrigé.
+7. ⛔ **Le maillon fautif du leg 10 reste non identifié**, et ~~le rapport de la
+   tâche 14 conclut l'inverse sans avoir été corrigé~~ — ❌ **ce rapport a
+   disparu (tâche 18, D10) : voir le §8 pour la correction complète.**
+   L'instrumentation `video.clientWidth`/`clientHeight` posée par la tâche 18
+   dans `client/src/main.ts` vise ce maillon, mais **désigne une hypothèse
+   parmi d'autres** — le canal de contrôle en reste une (§8). Non mesurée sur
+   la VM : différée à une session ultérieure.
 8. ⛔ **Le cinquième déclencheur de mort de capture audio, jamais essayé** : tuer
    le `chrome.exe` cible du process loopback.
 9. ⛔ **`agent/src/survie_verdict.rs` est posé à la racine du crate** contre deux
    précédents du dépôt.
-10. ⛔ **Neuf constats de revue PARQUÉS sur la tâche 14**, toujours dans son
-    rapport versé.
+10. ⛔ ~~Neuf constats de revue PARQUÉS sur la tâche 14, toujours dans son
+    rapport versé.~~
+
+    ✅ **REQUALIFIÉ (7 août 2026, tâche 18, D10) : le rapport a disparu**
+    (espace de travail éphémère, gitignoré, jamais commité — vérifié par
+    `git log --all --diff-filter=A --name-only -- '*task-14*'`, aucun
+    résultat pour ce chantier). **Trois des neuf constats survivent**, extraits
+    vers ce document et `CLAUDE.md` avant la disparition du rapport source —
+    **TRAITÉS** :
+    - l'A/B rouge/vert non propre du critère ①c (§ 3 ci-dessus) ;
+    - la pièce du critère (a) qui ne couvre qu'une page sur treize (§ 3) ;
+    - « le shell réémet `fenetre-ouverte` pour une fenêtre déjà ouverte » —
+      **REQUALIFIÉ** : ce n'est pas un défaut d'instrument mais un
+      **comportement du produit, mécanisme non élucidé**.
+    **Les six autres sont PERDUS**, sans pièce nulle part dans ce dépôt.
+    Inventer leur contenu serait pire que de le dire.

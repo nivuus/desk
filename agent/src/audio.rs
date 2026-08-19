@@ -59,17 +59,62 @@ pub trait AudioSource {
     }
 }
 
+/// De quoi refabriquer une source audio après la mort de sa capture.
+///
+/// **Le remède du leg 1 de D9.** Quand `capture.read()` échoue plus de
+/// `LECTURES_ECHOUEES_MAX` fois d'affilée, le fil de `windows_audio.rs` pose
+/// `capture_morte` et exécute un `return` DÉFINITIF. Rien, jusqu'à D10, ne
+/// reconstruisait la source : une fenêtre seule de son groupe de PID — le cas
+/// MAJORITAIRE, une application une fenêtre — perdait son son pour le restant
+/// de la session, et la « réélection après répit » du capteur ne faisait
+/// qu'écrire un booléen que ce fil mort ne relisait jamais.
+///
+/// Une fermeture plutôt qu'un trait : `transport/` ne doit rien connaître de
+/// Windows, et c'est `demarrage/audio.rs` — seul détenteur de `Config` et du
+/// `clock_origin` — qui sait refaire le bon choix de mode.
+pub type Reconstructeur = Box<dyn Fn() -> anyhow::Result<Box<dyn AudioSource + Send>> + Send>;
+
+/// Nombre de reconstructions tentées avant d'abandonner et de signaler.
+///
+/// ⚠️ **NON CALIBRÉE** — elle rejoint `BPP_MIN`, `FACTEUR_FOCUS`,
+/// `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`, `TAILLE_MAX_SORTIE`,
+/// `REPIT_REARMEMENT_AUDIO` et `REARMEMENTS_MAX` dans la liste des constantes
+/// qu'aucun jugement d'écoute n'a jugées.
+pub const RECONSTRUCTIONS_MAX: u32 = 3;
+
+/// Délai entre deux tentatives de reconstruction.
+///
+/// ⚠️ **Ne PAS réemployer `temporisation_de_reprise`** : elle cadence les
+/// relectures À L'INTÉRIEUR du fil de capture, pas les reconstructions de
+/// source. Deux durées de sens différent qui divergeraient en silence le jour
+/// où l'une changerait.
+///
+/// ⚠️ **NON CALIBRÉE** elle aussi.
+pub const REPIT_RECONSTRUCTION: std::time::Duration = std::time::Duration::from_secs(2);
+
 /// Nombre d'erreurs de lecture consécutives tolérées par le fil de capture
 /// avant qu'il n'abandonne définitivement.
 ///
 /// **Une erreur isolée ne doit pas condamner tout un groupe de PID.** Le fil
-/// de capture est le seul producteur de son de sa fenêtre, et sa mort est
+/// de capture est le seul producteur de son de sa fenêtre, et ~~sa mort est
 /// sans retour : le capteur continue de tenir cette session pour porteuse de
-/// son groupe, donc sa voisine reste muette et n'est jamais promue. Or les
+/// son groupe, donc sa voisine reste muette et n'est jamais promue~~. Or les
 /// causes connues d'un refus de lecture WASAPI — changement de périphérique,
 /// redémarrage du service audio, changement de format — sont **transitoires**.
 /// On retente donc, avec la temporisation croissante ci-dessous, et l'on
 /// n'abandonne qu'après `LECTURES_ECHOUEES_MAX` échecs d'affilée.
+///
+/// ✅ **La clause barrée ci-dessus a été réfutée par le sous-bloc D10, aux
+/// deux bouts à la fois** (relevé par la revue transverse ; le paragraphe
+/// suivant, `Reconstructeur`, énonçait déjà correctement le contraire, sans
+/// que celui-ci soit repris). La mort du fil n'est plus sans retour :
+/// `Session::reconstruire_ou_signaler` refabrique la source, jusqu'à
+/// `RECONSTRUCTIONS_MAX` fois, le budget étant réapprovisionné à chaque
+/// réélection. Et même en repli, `AudioMort` marque la session inapte côté
+/// capteur, ce qui promeut bien une voisine du même groupe de PID.
+/// **L'argument de fond, lui, tient sans changement** : les causes connues
+/// d'un refus de lecture sont transitoires, et retenter coûte moins que
+/// condamner.
 pub const LECTURES_ECHOUEES_MAX: u32 = 10;
 
 /// Bornes de la temporisation appliquée entre deux tentatives de lecture.

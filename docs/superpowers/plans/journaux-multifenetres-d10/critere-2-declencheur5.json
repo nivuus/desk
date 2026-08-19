@@ -1,0 +1,125 @@
+{
+ "etiquette": "declencheur5",
+ "audio_faute_lecture": "0",
+ "hz_a": 440,
+ "hz_b": 880,
+ "navigateur": "Chrome/151.0.7922.108",
+ "survie_avant": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ },
+ "ouvertures": {
+  "A": true,
+  "B": true
+ },
+ "pids_chrome_vm": "Id              : 9368\r\nMainWindowTitle : \r\n\r\nId              : 23040\r\nMainWindowTitle : \r\n\r\nId              : 33668\r\nMainWindowTitle : \r\n\r\nId              : 34492\r\nMainWindowTitle : \r\n\r\nId              : 35484\r\nMainWindowTitle : \r\n\r\nId              : 36956\r\nMainWindowTitle : \r\n\r\nId              : 37516\r\nMainWindowTitle : \r\n\r\nId              : 37564\r\nMainWindowTitle : \r\n\r\nId              : 39752\r\nMainWindowTitle : \r\n\r\nId              : 39784\r\nMainWindowTitle : \r\n\r\nId              : 39840\r\nMainWindowTitle : \r\n\r\nId              : 39920\r\nMainWindowTitle : \r\n\r\nId              : 40128\r\nMainWindowTitle :",
+ "pids_chrome_uniques": [
+  "9368",
+  "23040",
+  "33668",
+  "34492",
+  "35484",
+  "36956",
+  "37516",
+  "37564",
+  "39752",
+  "39784",
+  "39840",
+  "39920",
+  "40128"
+ ],
+ "survie_apres_stabilisation": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ },
+ "marqueurs_critere3": {
+  "lignes": 113,
+  "enfant_lance": 2,
+  "attachee_capteur": 2,
+  "cloture": 0,
+  "audio_active": 2,
+  "injection_armee": 0,
+  "lecture_echouee": 0,
+  "capture_arretee_definitivement": 0,
+  "capture_reconstruite": 0,
+  "reconstruction_refusee": 0,
+  "compteurs_audio": 0,
+  "compteurs_audio_actif_true": 0,
+  "ordre_audio_actif_true": 2,
+  "ordre_audio_actif_false": 2,
+  "erreurs": 0
+ },
+ "frequences_critere3": {
+  "w:w-2": {
+   "hz": 0,
+   "db": -1000,
+   "plancher_db": -1000,
+   "sample_rate": 44100,
+   "niveaux": [
+    {
+     "f": 440,
+     "db": -1000
+    },
+    {
+     "f": 880,
+     "db": -1000
+    }
+   ],
+   "piste_muted": false,
+   "piste_ready_state": "live",
+   "stats_audio": {
+    "bytes_recus": 38642,
+    "paquets_recus": 240
+   }
+  },
+  "w:w-4": {
+   "hz": 441,
+   "db": -40,
+   "plancher_db": -157,
+   "sample_rate": 44100,
+   "niveaux": [
+    {
+     "f": 440,
+     "db": -40
+    },
+    {
+     "f": 880,
+     "db": -40
+    }
+   ],
+   "piste_muted": false,
+   "piste_ready_state": "live",
+   "stats_audio": {
+    "bytes_recus": 296725,
+    "paquets_recus": 1843
+   }
+  }
+ },
+ "declencheur5_stop_process": "Le terminateur \" est manquant dans la cha\fne.\r\n    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException\r\n    + FullyQualifiedErrorId : TerminatorExpectedAtEndOfString",
+ "survie_apres_declencheur5": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ },
+ "marqueurs_declencheur5": {
+  "lignes": 125,
+  "enfant_lance": 2,
+  "attachee_capteur": 2,
+  "cloture": 0,
+  "audio_active": 2,
+  "injection_armee": 0,
+  "lecture_echouee": 0,
+  "capture_arretee_definitivement": 0,
+  "capture_reconstruite": 0,
+  "reconstruction_refusee": 0,
+  "compteurs_audio": 2,
+  "compteurs_audio_actif_true": 1,
+  "ordre_audio_actif_true": 2,
+  "ordre_audio_actif_false": 2,
+  "erreurs": 0
+ },
+ "declencheur5_delta_lecture_echouee": 0,
+ "survie_finale": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ }
+}

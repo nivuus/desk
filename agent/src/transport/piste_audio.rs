@@ -55,6 +55,15 @@ impl Session {
             .audio_source
             .as_mut()
             .and_then(|source| source.next_packet())?;
+        // Le leg 6 de D9 : la remise à zéro du compteur de réarmements se fait
+        // sur une PREUVE de son — ce paquet-ci —, jamais sur la décision
+        // d'arbitrage qui, elle, ne peut pas mordre dans le cas majoritaire
+        // (`sommeil/porteurs.rs`, une fenêtre seule de son groupe de PID
+        // redevient porteuse automatiquement à la sortie de répit).
+        if self.audio_reconstruit_sans_preuve {
+            self.audio_reconstruit_sans_preuve = false;
+            self.audio_vivant_a_annoncer = true;
+        }
         if self.write_audio(mid, paquet) {
             self.audio_write_pending_drain = true;
         }
@@ -127,6 +136,52 @@ impl Session {
     /// où, à une fenêtre par PID, **toutes** les fenêtres sont porteuses et le
     /// défaut préexistant revenait intact.
     pub(super) fn appliquer_audio(&mut self, actif: bool) {
+        // Correction apportée en revue de la tâche 12 (sous-bloc D10) : le
+        // budget de reconstruction (`reconstructions_restantes`) n'était posé
+        // qu'UNE FOIS, à la construction de la `Session`, et jamais
+        // réapprovisionné — le cycle mort → reconstruit → prouvé ne pouvait
+        // donc tourner qu'une seule fois par session (voir la doc du champ
+        // `audio_porteuse`, `transport.rs`).
+        //
+        // Une RÉÉLECTION — une TRANSITION vers `actif: true` — est
+        // littéralement le capteur qui dit « retente » : c'est le seul point
+        // de réapprovisionnement retenu. **Une transition, pas la seule
+        // présence d'un ordre `actif: true`** : le capteur ne réémet déjà que
+        // sur changement (`sommeil::porteurs::distribuer_l_audio`), mais s'y
+        // fier seul reporterait cette garantie sur un module distant, sur
+        // lequel ce fichier n'a aucune prise ; `audio_porteuse` la rend locale
+        // et vérifiable ici, sans dépendre de cette discipline distante. Sans
+        // cette restriction à la seule transition, un flot d'ordres `actif:
+        // true` identiques rendrait le budget infini.
+        if actif && !self.audio_porteuse {
+            self.reconstructions_restantes = crate::audio::RECONSTRUCTIONS_MAX;
+            // ⚠️ **Résidu trouvé en re-revue (sous-bloc D10), documenté et non
+            // corrigé : cette remise à `None` ANNULE l'espacement
+            // `REPIT_RECONSTRUCTION` à chaque réélection.** Pour une session
+            // déjà latchée morte, chaque transition `false → true` achète
+            // donc une tentative de reconstruction IMMÉDIATE au prochain tour
+            // — c'est-à-dire une ouverture *process loopback* bloquante sur
+            // le fil de `Session::run`, exactement le coût que le répit
+            // existe pour espacer. `REARMEMENTS_MAX` ne le borne pas : il ne
+            // compte que les cycles qui atteignent `AudioMort`, jamais les
+            // réélections elles-mêmes — un groupe qui bascule entre deux
+            // fenêtres du même PID peut donc réélire plus vite qu'un budget
+            // ne s'épuise. **Ce n'est pas une régression** : le débit reste
+            // borné par `PERIODE_REARBITRAGE` (250 ms, `capteur/sommeil.rs`),
+            // qui borne la fréquence à laquelle le registre peut faire
+            // basculer `actif`. Mais c'est un couplage NEUF entre le
+            // va-et-vient de l'arbitrage audio et du travail bloquant sur le
+            // fil de drainage, que rien n'empêchait avant que cette remise à
+            // zéro n'existe.
+            self.prochaine_reconstruction = None;
+            // Lève le verrou qui, sinon, empêcherait `act_on_timeout`
+            // (branche a1sexies) de rappeler `reconstruire_ou_signaler` :
+            // sans cette ligne, le réapprovisionnement du budget ci-dessus
+            // serait sans effet, puisque la porte d'entrée resterait fermée.
+            self.audio_mort_signale = false;
+        }
+        self.audio_porteuse = actif;
+
         let mut capture_morte = false;
         if let Some(source) = self.audio_source.as_mut() {
             source.set_actif(actif);
@@ -146,15 +201,134 @@ impl Session {
         // capture qui a définitivement abandonné laisse `set_actif` réussir —
         // il n'écrit qu'un atomique que plus personne ne lit —, et la trace
         // annonçait alors `actif=true` pour une fenêtre qui ne produira plus
-        // jamais un paquet. C'est le seul endroit du produit où cet état
-        // devienne observable ; le capteur, lui, ne le voit pas (voir le
-        // commentaire d'abandon dans `windows_audio.rs`).
+        // jamais un paquet. ~~C'est le seul endroit du produit où cet état
+        // devienne observable ; le capteur, lui, ne le voit pas.~~
+        //
+        // ❌ **Les deux clauses barrées sont fausses depuis le sous-bloc
+        // D10** (revue transverse). `capture_morte` est relu à CHAQUE tour par
+        // `capture_audio_morte` → `reconstruire_ou_signaler` (branche
+        // a1sexies), qui journalise « capture audio reconstruite » ou
+        // « reconstruction de la capture audio refusée » et pousse `AudioMort`
+        // en repli — le capteur le voit donc, l'inscrit dans ses `inaptes` et
+        // le journalise à son tour. Cette trace-ci n'est plus ni le seul
+        // observatoire ni la seule voie ; elle reste utile pour ce qu'elle
+        // est, un état lu au point d'application de l'ordre. Le renvoi au
+        // « commentaire d'abandon dans `windows_audio.rs` » a en outre suivi
+        // l'extraction de la tâche 3 : il vit dans `windows_audio/fil.rs`.
         tracing::info!(
             session = %self.session_id,
             actif,
             capture_morte,
             "ordre audio applique"
         );
+    }
+
+    /// Confie de quoi refabriquer la source audio après la mort de sa capture.
+    pub fn set_audio_reconstructeur(&mut self, r: crate::audio::Reconstructeur) {
+        self.audio_reconstructeur = Some(r);
+    }
+
+    /// Rend `true` s'il faut signaler `AudioMort` au capteur — c'est-à-dire
+    /// quand il n'y a plus rien à reconstruire.
+    ///
+    /// **La reconstruction passe AVANT le signalement**, et c'est l'inversion
+    /// que D10 apporte : le signal au capteur cesse d'être le premier geste
+    /// pour devenir le repli. La promotion d'une voisine (la seule moitié de
+    /// D9 qui fonctionnait) garde alors son rôle exact — celui du cas où
+    /// l'arbre de processus a réellement disparu.
+    ///
+    /// ⚠️ **Une reconstruction réussie RÉARME aussi la source, sur
+    /// `audio_porteuse`** (défaut trouvé en recette VM, corrigé dans le corps
+    /// ci-dessous) : `WindowsAudioSource::pour_processus` naît toujours
+    /// MUETTE, et sans ce réarmement une session porteuse dont la capture
+    /// vient d'être reconstruite ne produirait plus jamais aucun paquet, donc
+    /// aucune PREUVE, donc aucune réélection : un état ABSORBANT.
+    ///
+    /// ❌ **« Le seul chemin qu'emprunte un reconstructeur » était écrit ici,
+    /// et c'est FAUX — relevé par la revue transverse de fin de branche, et
+    /// c'est le défaut le plus lourd qu'elle ait trouvé, parce qu'il a une
+    /// conséquence de comportement.** `demarrage/audio.rs::brancher` pose un
+    /// reconstructeur dans les DEUX modes : sa branche `None`
+    /// (`config.fenetre_hwnd` absent — le chemin MONO-FENÊTRE) appelle
+    /// `WindowsAudioSource::new`, qui s'auto-émet.
+    ///
+    /// 🔴 **Conséquence, NON CORRIGÉE et léguée : en mono-fenêtre, le remède
+    /// de reconstruction est INERTE.** `audio_porteuse` naît `false`
+    /// (`transport.rs`) et n'est écrit que par `appliquer_audio`, c'est-à-dire
+    /// par un ordre `Audio` du capteur — qu'un agent mono-fenêtre ne reçoit
+    /// jamais. Une capture reconstruite y est donc auto-émise à `true` par
+    /// `new()`, puis **remise à `false`** par la ligne de réarmement
+    /// ci-dessous. **Ce n'est PAS une régression** — avant D10 rien n'était
+    /// reconstruit du tout, et le son était mort de la même façon — mais le
+    /// remède ne sauve pas le cas qu'il vise en mono-fenêtre.
+    ///
+    /// ⚠️ **Ne pas « corriger » en forçant `true` sans arbitrage** : c'est
+    /// exactement le défaut PIRE que le passage de `audio_porteuse` évite en
+    /// multi-fenêtres (une fuite de son vers une fenêtre qui doit se taire),
+    /// et un test l'y garde rouge. Le remède juste distingue les deux modes,
+    /// et demande sa propre couverture.
+    ///
+    /// ⚠️ **Cette méthode court sur le fil de `Session::run`**, et ouvrir une
+    /// source WASAPI y est un appel bloquant de durée non bornée. D'où le
+    /// répit : au plus une tentative par `REPIT_RECONSTRUCTION`. Si la mesure
+    /// montre qu'elle retarde le drainage, elle passera sur un fil — même
+    /// risque que `Drop for H264Encoder` porte déjà sur ce fil.
+    pub(super) fn reconstruire_ou_signaler(&mut self, maintenant: std::time::Instant) -> bool {
+        if !self.capture_audio_morte() {
+            return false;
+        }
+        let Some(reconstructeur) = self.audio_reconstructeur.as_ref() else {
+            return true;
+        };
+        if self.reconstructions_restantes == 0 {
+            return true;
+        }
+        if self.prochaine_reconstruction.is_some_and(|t| maintenant < t) {
+            return false;
+        }
+        self.reconstructions_restantes -= 1;
+        self.prochaine_reconstruction = Some(maintenant + crate::audio::REPIT_RECONSTRUCTION);
+        match reconstructeur() {
+            Ok(mut source) => {
+                tracing::info!(
+                    restantes = self.reconstructions_restantes,
+                    "capture audio reconstruite"
+                );
+                // Trouvé en recette VM (deux exécutions : `capture audio
+                // reconstruite` = 2, `compteurs_audio_actif_true` = 0 aux
+                // deux) : une source reconstruite par
+                // `WindowsAudioSource::pour_processus` NAÎT MUETTE
+                // (`windows_audio.rs::demarrer`) — à la différence du mode
+                // mono-fenêtre `new()`, qui s'émet lui-même. Sans cette
+                // ligne, RIEN ne réarme la source reconstruite : elle ne
+                // produit aucun paquet, donc aucune PREUVE
+                // (`audio_vivant_a_annoncer`), donc aucune réélection —
+                // muette pour toujours. Un état ABSORBANT, pas un retard.
+                //
+                // `audio_porteuse` — jamais l'ordre `actif` du dernier appel
+                // à `appliquer_audio`, capturé AVANT que cette fonction n'ait
+                // pu le modifier — est le miroir LOCAL du dernier ordre reçu
+                // du capteur (voir `appliquer_audio`) : la garantie ne dépend
+                // ainsi d'aucune discipline distante. Appliqué SANS
+                // condition, aussi bien pour une session porteuse (`true`,
+                // qui réarme) que pour une session muette (`false`, qui
+                // confirme explicitement le silence plutôt que de le
+                // supposer) — voir
+                // `une_session_non_porteuse_reconstruite_reste_muette`.
+                source.set_actif(self.audio_porteuse);
+                self.audio_source = Some(source);
+                self.audio_reconstruit_sans_preuve = true;
+                false
+            }
+            Err(erreur) => {
+                tracing::warn!(
+                    %erreur,
+                    restantes = self.reconstructions_restantes,
+                    "reconstruction de la capture audio refusée"
+                );
+                false
+            }
+        }
     }
 
     /// Vrai si la capture audio de cette fenêtre a définitivement abandonné

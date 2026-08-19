@@ -1,0 +1,23 @@
+{
+ "etiquette": "avant",
+ "n_cible": 10,
+ "navigateur": "Chrome/151.0.7922.108",
+ "preparation": "pret (registre NON touche)",
+ "marqueurs_finaux": {
+  "lignes": 1575,
+  "attachee_capteur": 3,
+  "introuvable_topologie": 32,
+  "aucune_sortie_apparue": 0,
+  "sortie_creee": 35,
+  "sortie_rendue": 0,
+  "creation_refusee": 0,
+  "enfant_lance": 3,
+  "enfant_termine": 0,
+  "cloture": 0,
+  "erreurs": 32
+ },
+ "survie_finale": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ }
+}

@@ -28,9 +28,17 @@ pub struct FenetreAudio {
     pub dernier_focus: u64,
     /// Cette fenêtre ne peut pas porter le son en ce moment.
     ///
-    /// Vrai quand sa capture WASAPI est morte — dix erreurs de lecture
-    /// consécutives (`crate::audio::LECTURES_ECHOUEES_MAX`) — et qu'elle
-    /// observe son répit de réarmement.
+    /// Vrai quand l'enfant a signalé `AudioMort` et que la session observe
+    /// son répit de réarmement.
+    ///
+    /// ⚠️ **Ce champ disait « quand sa capture WASAPI est morte — dix erreurs
+    /// de lecture consécutives (`LECTURES_ECHOUEES_MAX`) », et ce n'est plus
+    /// le déclencheur depuis le sous-bloc D10** (revue transverse ; même
+    /// correction que sur `VersCapteur::AudioMort`, `capteur/protocole.rs`).
+    /// Ces dix erreurs posent `capture_morte` côté enfant, rien de plus :
+    /// `AudioMort` — donc `inapte` — n'arrive qu'après épuisement du budget
+    /// de reconstruction (`crate::audio::RECONSTRUCTIONS_MAX`), ou en
+    /// l'absence de reconstructeur.
     ///
     /// ⚠️ **Un `bool`, jamais un `Instant`.** L'expiration du répit vit dans le
     /// registre, qui a l'horloge ; ce module garde sa doctrine — « un rang, pas
@@ -208,8 +216,43 @@ mod tests {
         // elle vit. **Le cas majoritaire reste donc SANS REMÈDE, et c'est un
         // legs de D9.**
         //
+        // ✅ **CE LEGS EST FERMÉ SUR PIÈCES — code plus tests d'hôte —,
+        // ~~NON EXERCÉ SUR LA VM~~ (sous-bloc D10, tâches 11 et 12).**
+        // ~~La recette audio qui l'exercerait est la tâche 14, et elle n'a pas
+        // encore tourné : ne pas lire ce qui suit comme mesuré.~~
+        //
+        // ✅ **ELLE A TOURNÉ, ET LE SON EST REVENU (7 août 2026, tâche 14 du
+        // MÊME sous-bloc — l'affirmation ci-dessus a été réfutée dans la
+        // branche qui l'écrivait, et c'est la revue transverse qui l'a
+        // relevée).** Sous injection de fautes (`AUDIO_FAUTE_LECTURE`), la
+        // capture est reconstruite et la fenêtre entend de nouveau sa propre
+        // tonalité : fréquence dominante **441 Hz à −40 dB** pour une cible
+        // assignée de 440 Hz, plancher à −158 dB, aux **deux** exécutions et
+        // aux deux points de contrôle (t+15 s et t+60 s), avec
+        // `compteurs audio … actif=true` relevé 2 fois par exécution.
+        // ⚠️ **Deux exécutions, aucun taux** — et la mort de capture y est
+        // INJECTÉE : rien n'établit qu'une cause naturelle existe. Corrigé ICI même, où
+        // le commentaire ci-dessus disait explicitement qu'il fallait le
+        // corriger — le code nommait lui-même l'endroit où corriger. Le
+        // remède n'est PAS la réélection : c'est
+        // `Session::reconstruire_ou_signaler` (`transport/piste_audio.rs`),
+        // appelée AVANT tout signalement `AudioMort`, qui refabrique
+        // réellement la capture — la phrase « réélire seule ne reconstruit
+        // rien » reste vraie sur ce qu'elle décrivait, mais le produit ne
+        // compte plus SEULEMENT sur la réélection pour le cas majoritaire.
+        // Et la réélection a gagné un rôle qu'elle n'avait pas alors : elle
+        // réapprovisionne le budget de tentatives et lève le verrou
+        // `audio_mort_signale` (`appliquer_audio`, `piste_audio.rs`) — sans
+        // quoi, trouvé en revue de la tâche 12, le cycle mort → reconstruit →
+        // prouvé n'aurait tourné qu'une seule fois par session, et
+        // `REARMEMENTS_MAX` aurait compté des échecs non consécutifs sur
+        // toute sa vie plutôt que des échecs consécutifs.
+        //
         // Ce que ce test établit, et qui reste juste : la RÈGLE pure ne fait
-        // porter le son à personne quand tout le groupe est inapte.
+        // porter le son à personne quand tout le groupe est inapte — un état
+        // qui n'est plus PERMANENT pour la fenêtre seule de son groupe (le
+        // cas majoritaire) : le répit expire, elle redevient candidate, et sa
+        // propre reconstruction retente.
         let fenetres = vec![
             FenetreAudio { session: "w-1".into(), pid: 42, arrivee: 1, dernier_focus: 0, inapte: true },
             FenetreAudio { session: "w-2".into(), pid: 42, arrivee: 2, dernier_focus: 0, inapte: true },

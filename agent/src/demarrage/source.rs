@@ -88,6 +88,14 @@ pub(super) fn construire(
                 nom_sortie,
                 fps,
                 bitrate,
+                // Posée par le superviseur (`TAILLE_FENETRE`, lu dans
+                // `Config`) ; absente — cas qui ne devrait pas se produire
+                // en pratique pour ce chemin, `sortie_dxgi` n'étant lui-même
+                // posé que par le superviseur —, `(u32::MAX, u32::MAX)`
+                // reproduit le comportement d'avant ce sous-bloc :
+                // `taille_retenue` la ramène à la taille de la sortie
+                // (tâche 8).
+                config.taille_fenetre.unwrap_or((u32::MAX, u32::MAX)),
                 clock_origin,
             )?)
         }

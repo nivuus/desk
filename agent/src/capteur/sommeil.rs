@@ -88,6 +88,48 @@ const PERIODE_REARBITRAGE: Duration = Duration::from_millis(250);
 /// `windows_audio.rs` (qui tient le fil et le témoin `capture_morte`) —
 /// légué au sous-bloc suivant.
 ///
+/// ✅ **CE CHEMIN EXISTE DÉSORMAIS, câblé de bout en bout (sous-bloc D10,
+/// tâches 11 et 12) : le cas MAJORITAIRE N'EST PLUS SANS REMÈDE.**
+/// `Session::reconstruire_ou_signaler` (`transport/piste_audio.rs`) tente
+/// D'ABORD de refabriquer la source — exactement à l'intersection nommée
+/// ci-dessus, `demarrage/audio.rs` fournissant le reconstructeur — et
+/// n'appelle `audio_mort` (donc ce répit et cette promotion) qu'en REPLI :
+/// quand son propre budget de tentatives (`crate::audio::RECONSTRUCTIONS_MAX`)
+/// est épuisé, ou qu'il n'existe aucun reconstructeur (`AUDIO=0`, ou toute
+/// session dont l'ouverture audio initiale a échoué : là, le comportement
+/// d'avant D10 — signaler immédiatement — reste exactement conservé).
+///
+/// ❌ **« Chemin mono-fenêtre » figurait dans cette liste, et c'est faux :
+/// `demarrage/audio.rs::brancher` pose un reconstructeur dans les DEUX
+/// modes** (revue transverse de fin de branche). Le mono-fenêtre reconstruit
+/// donc lui aussi, `RECONSTRUCTIONS_MAX` fois, avant de signaler. 🔴 **Mais
+/// le remède y est INERTE pour une autre raison, léguée et non corrigée** :
+/// la source reconstruite y est réarmée sur `audio_porteuse`, qu'aucun ordre
+/// de capteur ne vient jamais poser en l'absence de capteur — voir
+/// `Session::reconstruire_ou_signaler` (`transport/piste_audio.rs`). Ce que
+/// CE mécanisme-ci (le répit et la
+/// promotion) continue de faire, inchangé : donner sa chance à une voisine du
+/// même groupe de PID, et éviter qu'un périphérique définitivement mort ne
+/// fasse tourner le cycle sans fin. Et la preuve que la reconstruction a
+/// réellement rendu du son — pas seulement réussi à s'ouvrir — referme le
+/// cycle de réarmements : voir `signaler_audio_vivant` plus bas, et le leg 6
+/// de D9 qu'il ferme (`capteur/sommeil/porteurs.rs`).
+///
+/// ⚠️ **Précision apportée en REVUE de la tâche 12 : le rôle de la
+/// réélection ne s'arrête pas à « donner sa chance à une voisine ».** Le
+/// budget de tentatives (`crate::audio::RECONSTRUCTIONS_MAX`) n'est posé
+/// qu'UNE FOIS à la construction de la `Session`, et sans réapprovisionnement
+/// le cycle décrit ci-dessus ne pouvait tourner qu'une seule fois PAR
+/// SESSION : après le premier `AudioMort`, le verrou `audio_mort_signale` (qui
+/// ne retombe qu'à un rattachement) empêchait toute nouvelle tentative,
+/// quelle que soit la durée de vie restante de la session. C'est la
+/// réélection ELLE-MÊME — la transition vers `Audio { actif: true }`,
+/// `Session::appliquer_audio`, `transport/piste_audio.rs` — qui
+/// réapprovisionne ce budget et lève ce verrou. Sans ce second rôle,
+/// `REARMEMENTS_MAX` juste en dessous n'aurait jamais compté qu'un seul échec
+/// par session, jamais plusieurs échecs CONSÉCUTIFS — l'inverse de son
+/// intention.
+///
 /// ⚠️ **NON CALIBRÉE.** Aucune mesure ne la fonde : elle rejoint `BPP_MIN`,
 /// `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC` et
 /// `TAILLE_MAX_SORTIE`.
@@ -225,6 +267,20 @@ pub fn audio_mort(session: &str) {
         garde.inaptes.insert(session.to_string(), Instant::now() + REPIT_REARMEMENT_AUDIO);
     }
     porteurs::distribuer_l_audio(&mut garde);
+}
+
+/// Une session apporte la PREUVE que sa capture audio est repartie : un
+/// paquet réel, pas seulement une reconstruction qui a rendu `Ok` (sous-bloc
+/// D10, ferme le leg 6 de D9).
+///
+/// **Ne répond rien, et ne ré-arbitre rien** : contrairement à `audio_mort`,
+/// cette preuve ne concerne jamais qu'une seule session — la sienne — donc
+/// rien à distribuer à une voisine. Elle referme seulement le cycle de
+/// réarmements sur une PREUVE plutôt que sur la seule décision d'arbitrage
+/// (voir `sommeil/porteurs.rs`, dont la remise à zéro vivait ici jusqu'à ce
+/// signal).
+pub fn signaler_audio_vivant(session: &str) {
+    etat().rearmements.remove(session);
 }
 
 /// Retire du registre les inaptitudes dont le répit a expiré.

@@ -15,10 +15,8 @@
 
 #![cfg(windows)]
 
-use std::collections::HashMap;
 use std::io::{BufReader, BufWriter, Write};
 use std::sync::mpsc::{channel, Receiver, RecvTimeoutError, Sender};
-use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
@@ -27,6 +25,9 @@ use windows::Win32::Foundation::{CloseHandle, HANDLE};
 use crate::capteur::fenetre::Fenetre;
 use crate::capteur::protocole::{ecrire_json, lire_trame, DepuisCapteur, Trame, VersCapteur};
 use crate::capteur::tube::DUREE_OUVERTURE_MEDIA;
+
+mod attentes;
+use attentes::{attendre_le_media, oublier};
 
 mod instances;
 use instances::{connecter, creer_instance, SOUFFLE_CREATION_INSTANCE};
@@ -66,26 +67,6 @@ const DELAI_CONNEXION_MEDIA: Duration =
 /// transport absorbe déjà par un `warn!` — au lieu de le figer pour toujours.
 /// L'enfant, lui, n'a plus aucun délai sur sa lecture.
 const DELAI_REPONSE_FENETRE: Duration = Duration::from_secs(12);
-
-/// Sessions attachées sur leur connexion de commandes et attendant leur
-/// connexion média. Clé : l'identifiant de session.
-///
-/// `Mutex` et non `RefCell` : la boucle d'acceptation et les fils de commandes
-/// y touchent tous deux.
-static EN_ATTENTE_DE_MEDIA: OnceLock<Mutex<HashMap<String, Sender<std::fs::File>>>> =
-    OnceLock::new();
-
-fn registre() -> &'static Mutex<HashMap<String, Sender<std::fs::File>>> {
-    EN_ATTENTE_DE_MEDIA.get_or_init(|| Mutex::new(HashMap::new()))
-}
-
-/// Verrouille le registre en survivant à un empoisonnement : un fil de fenêtre
-/// qui panique ne doit pas emporter l'accueil de toutes les suivantes.
-fn registre_verrouille() -> std::sync::MutexGuard<'static, HashMap<String, Sender<std::fs::File>>> {
-    registre()
-        .lock()
-        .unwrap_or_else(|empoisonne| empoisonne.into_inner())
-}
 
 pub fn servir() -> Result<()> {
     // Vrai dès qu'un échec de `creer_instance` a été signalé — voir plus bas.
@@ -198,7 +179,9 @@ fn accueillir(tube: HANDLE) -> Result<()> {
         // et l'enfant n'y écrira plus rien — d'où le `lecteur` qu'on laisse
         // tomber juste après.
         VersCapteur::Identite { session } => {
-            let attendue = registre_verrouille().remove(&session);
+            // `retirer_pour_identite` ignore la génération : voir son
+            // commentaire dans `attentes.rs`.
+            let attendue = attentes::retirer_pour_identite(&session);
             match attendue {
                 Some(media) => {
                     drop(lecteur);
@@ -236,12 +219,10 @@ fn ouvrir_les_commandes(
     let session = session.clone();
 
     let (media, attente_media) = channel::<std::fs::File>();
-    // Un remplacement se journalise : il signale un enfant qui se rattache
-    // sans que la précédente attente ait été soldée. Laisser tomber l'ancien
-    // émetteur réveille aussitôt le fil de fenêtre correspondant.
-    if registre_verrouille().insert(session.clone(), media).is_some() {
-        tracing::warn!(%session, "attente de connexion média remplacée pour cette session");
-    }
+    // L'insertion et son journal de remplacement vivent désormais dans
+    // `attendre_le_media`, qui rend la génération de CETTE inscription — la
+    // valeur que ce fil doit redonner telle quelle à `oublier`.
+    let generation = attendre_le_media(&session, media);
 
     let (commandes, receveur_commandes) = channel::<VersCapteur>();
     let (reponses, receveur_reponses) = channel::<DepuisCapteur>();
@@ -251,9 +232,14 @@ fn ouvrir_les_commandes(
     // d'encodeur (`Drop for H264Encoder` peut geler).
     let session_fenetre = session.clone();
     std::thread::spawn(move || {
-        if let Err(erreur) =
-            tenir_la_fenetre(attache, session_fenetre, attente_media, receveur_commandes, reponses)
-        {
+        if let Err(erreur) = tenir_la_fenetre(
+            attache,
+            session_fenetre,
+            generation,
+            attente_media,
+            receveur_commandes,
+            reponses,
+        ) {
             tracing::warn!(%erreur, "fil de fenêtre terminé sur erreur");
         }
     });
@@ -269,7 +255,7 @@ fn ouvrir_les_commandes(
             // L'expéditeur retire l'entrée qu'il a inscrite : si le fil de
             // fenêtre est resté dans sa construction de source, il n'atteindra
             // jamais sa propre attente, donc jamais son propre retrait.
-            oublier(&session);
+            oublier(&session, generation);
             tracing::warn!(%session, %erreur, "aucune réponse à l'attache, canal abandonné");
             // Un REFUS explicite plutôt qu'une fermeture muette : l'enfant le
             // lit et échoue bruyamment, au lieu d'interpréter une fin de tube.
@@ -305,6 +291,7 @@ fn ouvrir_les_commandes(
 fn tenir_la_fenetre(
     attache: VersCapteur,
     session: String,
+    generation: u64,
     attente_media: Receiver<std::fs::File>,
     commandes: Receiver<VersCapteur>,
     reponses: Sender<DepuisCapteur>,
@@ -315,13 +302,13 @@ fn tenir_la_fenetre(
             // Le refus est ANNONCÉ à l'enfant, jamais silencieux : sans ce
             // message il attendrait une image qui ne viendra pas.
             let _ = reponses.send(DepuisCapteur::Refus { motif: format!("{erreur:#}") });
-            oublier(&session);
+            oublier(&session, generation);
             return Err(erreur);
         }
     };
     let (largeur, hauteur) = fenetre.dimensions();
     if reponses.send(DepuisCapteur::Attachee { largeur, hauteur }).is_err() {
-        oublier(&session);
+        oublier(&session, generation);
         bail!("le fil de commandes de {session} est parti avant la réponse à l'attache");
     }
 
@@ -333,7 +320,7 @@ fn tenir_la_fenetre(
         Err(RecvTimeoutError::Timeout) => {
             // Le receveur retire SA propre entrée : un enfant mort entre ses
             // deux connexions laisserait sinon une entrée éternelle.
-            oublier(&session);
+            oublier(&session, generation);
             tracing::warn!(
                 %session,
                 delai = ?DELAI_CONNEXION_MEDIA,
@@ -350,28 +337,6 @@ fn tenir_la_fenetre(
         }
     };
     fenetre.servir(commandes, reponses, BufWriter::new(media))
-}
-
-/// Retire l'entrée de cette session du registre.
-///
-/// ⚠️ **Ne distingue pas deux attentes successives de la même session.** Un
-/// abandon qui expire à l'instant précis où la même session vient de se
-/// réinscrire retirerait l'entrée neuve ; l'enfant s'en remet par sa fenêtre
-/// de reprise. Course jugée négligeable, pas inexistante.
-///
-/// ⚠️ **C'est LITTÉRALEMENT la course F5 (D7) que le sous-bloc D9 a fermée —
-/// sur l'AUTRE registre, et sur lui seul.** La tâche 10 de D9 a donné une
-/// génération monotone aux inscriptions du registre de sommeil
-/// (`capteur/sommeil/registre.rs` : `inscrire` la frappe, `retirer` devient
-/// sans effet si l'enregistrée est plus récente). Le registre d'attentes
-/// tenu ICI n'a rien reçu de tel, et son `remove` reste inconditionnel : le
-/// leg 2 est donc fermé sur `sommeil`, **pas sur `instances`**. Relevé par la
-/// revue transverse de fin de branche D9 — le brief de la tâche 10 ne nommait
-/// que `sommeil`, et aucune revue par tâche ne pouvait voir le jumeau.
-/// Le remède serait le même patron : `attendre_le_media` rend la génération
-/// qu'il vient d'inscrire, `oublier` la reçoit et se tait si elle est périmée.
-fn oublier(session: &str) {
-    registre_verrouille().remove(session);
 }
 
 /// La boucle de la connexion de commandes : lire une commande, la faire

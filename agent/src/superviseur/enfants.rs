@@ -22,6 +22,12 @@ pub struct Consigne {
     /// Nom DXGI de la sortie (`\\.\DISPLAYn`), stable — contrairement à un
     /// couple d'index d'énumération, positionnel.
     pub nom_sortie: String,
+    /// La taille RETENUE (`placement::taille_retenue`) à laquelle la table a
+    /// posé cette fenêtre — pas la taille de la sortie, qui peut être bien
+    /// plus grande. Posée sur l'enfant via `TAILLE_FENETRE` (`lanceur.rs`),
+    /// pour qu'il la redise au capteur à l'attache (tâche 9 du sous-bloc
+    /// D10), qui en aura besoin pour recadrer (tâche 8).
+    pub taille: (u32, u32),
 }
 
 pub trait Lanceur {
@@ -165,6 +171,7 @@ mod tests {
             session: IdSession(session.into()),
             fenetre: 0x1234,
             nom_sortie: "\\\\.\\DISPLAY1".into(),
+            taille: (1280, 720),
         }
     }
 

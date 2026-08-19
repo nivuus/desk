@@ -62,6 +62,7 @@ fn la_sortie_creee_declenche_le_lancement_de_l_enfant() {
             session: session.clone(),
             fenetre: IdFenetre(1),
             nom_sortie: "\\\\.\\DISPLAY4".into(),
+            taille: (1280, 720),
         }]
     );
     assert_eq!(t.etat(&session), Some(&Etat::Vivante));
@@ -87,6 +88,7 @@ fn deux_fenetres_en_vol_gardent_chacune_leur_fenetre_et_leur_sortie() {
             session: b,
             fenetre: IdFenetre(2),
             nom_sortie: "\\\\.\\DISPLAY5".into(),
+            taille: (1280, 720),
         }]
     );
 }
@@ -288,6 +290,7 @@ fn la_sortie_est_transmise_a_l_enfant_par_son_nom() {
             session: session.clone(),
             fenetre: IdFenetre(1),
             nom_sortie: "\\\\.\\DISPLAY7".into(),
+            taille: (1280, 720),
         }]
     );
     assert_eq!(t.nom_sortie_de(&session), Some("\\\\.\\DISPLAY7"));

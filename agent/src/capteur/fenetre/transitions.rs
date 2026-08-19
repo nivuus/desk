@@ -65,9 +65,19 @@ impl Fenetre {
             return Ok(());
         }
         let debut = Instant::now();
+        // `self.dimensions()` : la taille RETENUE, celle que `ouvrir` a
+        // résolue — jamais celle de la sortie, qui peut être plus grande
+        // (registre pollué, D9 §9). `resize` ne la met JAMAIS à jour : il est
+        // un no-op en mode `SortieEntiere` (`ModeCapture::redimensionne_la_fenetre`
+        // rend `false`, `WindowsSource::resize` retourne avant tout), et rien
+        // d'autre n'écrit `self.largeur`/`self.hauteur` entre deux réveils —
+        // seuls `ouvrir` et `reveiller` le font. Un réveil relit donc toujours
+        // la même valeur que le précédent, jamais une valeur périmée par un
+        // redimensionnement qui n'a jamais eu lieu.
+        let taille = self.dimensions();
         let p = &self.parametres;
         let mut source =
-            WindowsSource::sur_sortie(p.hwnd, &p.sortie, p.fps, p.debit, p.clock_origin)
+            WindowsSource::sur_sortie(p.hwnd, &p.sortie, taille, p.fps, p.debit, p.clock_origin)
                 .with_context(|| format!("réveil de la session {}", self.session))?;
         // `sur_sortie` en demande déjà une à la construction. Ce second appel
         // est une ceinture : sans image clé, le décodeur du navigateur n'aurait

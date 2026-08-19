@@ -1,0 +1,168 @@
+{
+ "etiquette": "desarme-4",
+ "part_sondage_vu": "0",
+ "n_fenetres": 8,
+ "bitrate": 12000000,
+ "palier_ab_s": 30,
+ "navigateur": "Chrome/151.0.7922.108",
+ "survie_avant_purge": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ },
+ "survie_apres_lancement": {
+  "virsh": "en cours d’exécution",
+  "acces": "OUI"
+ },
+ "construction": {
+  "ouvertes": 8,
+  "cible1": "w:w-2",
+  "scenario": {
+   "etats": {
+    "w:w-2": "false/true",
+    "w:w-4": "false/false",
+    "w:w-6": "false/false",
+    "w:w-8": "false/false",
+    "w:w-10": "false/false",
+    "w:w-12": "false/false",
+    "w:w-14": "false/false",
+    "w:w-16": "false/false"
+   },
+   "focalisees": [
+    "w:w-2"
+   ]
+  },
+  "pose": {
+   "stable": true,
+   "attente_s": 28,
+   "lignes_changement": 34
+  },
+  "survie": {
+   "virsh": "en cours d’exécution",
+   "acces": "OUI"
+  }
+ },
+ "fenetres_attachees": 8,
+ "controle_sondage_avant_palier": {
+  "present": true,
+  "occurrences": 8,
+  "extrait": [
+   "2026-08-07T14:07:31.526636Z  WARN agent::transport::part: objectif de sondage DESARME (PART_SONDAGE=0) : bras A/B, jamais une configuration livrée\r",
+   "2026-08-07T14:07:40.173449Z  WARN agent::transport::part: objectif de sondage DESARME (PART_SONDAGE=0) : bras A/B, jamais une configuration livrée\r"
+  ]
+ },
+ "palier": {
+  "debut": "2026-08-07T14:09:21.769Z",
+  "fin": "2026-08-07T14:09:51.907Z",
+  "parFenetre": {
+   "w:w-2": {
+    "secondes": 30.066,
+    "octets_video": 5996120,
+    "mbps": 1.595,
+    "paquets_perdus": 0,
+    "paquets_recus": 6183,
+    "taille": "1024x576",
+    "cachee": false,
+    "focalisee": true
+   },
+   "w:w-4": {
+    "secondes": 30.058,
+    "octets_video": 3581754,
+    "mbps": 0.953,
+    "paquets_perdus": 0,
+    "paquets_recus": 4057,
+    "taille": "852x480",
+    "cachee": false,
+    "focalisee": false
+   },
+   "w:w-6": {
+    "secondes": 30.079,
+    "octets_video": 2700320,
+    "mbps": 0.718,
+    "paquets_perdus": 0,
+    "paquets_recus": 3164,
+    "taille": "852x480",
+    "cachee": false,
+    "focalisee": false
+   },
+   "w:w-8": {
+    "secondes": 30.085,
+    "octets_video": 3084588,
+    "mbps": 0.82,
+    "paquets_perdus": 0,
+    "paquets_recus": 3541,
+    "taille": "852x480",
+    "cachee": false,
+    "focalisee": false
+   },
+   "w:w-10": {
+    "secondes": 30.084,
+    "octets_video": 3283192,
+    "mbps": 0.873,
+    "paquets_perdus": 0,
+    "paquets_recus": 3773,
+    "taille": "852x480",
+    "cachee": false,
+    "focalisee": false
+   },
+   "w:w-12": {
+    "secondes": 30.078,
+    "octets_video": 3719556,
+    "mbps": 0.989,
+    "paquets_perdus": 0,
+    "paquets_recus": 4257,
+    "taille": "852x480",
+    "cachee": false,
+    "focalisee": false
+   },
+   "w:w-14": {
+    "secondes": 30.077,
+    "octets_video": 3775478,
+    "mbps": 1.004,
+    "paquets_perdus": 0,
+    "paquets_recus": 4324,
+    "taille": "852x480",
+    "cachee": false,
+    "focalisee": false
+   },
+   "w:w-16": {
+    "secondes": 30.074,
+    "octets_video": 3790444,
+    "mbps": 1.008,
+    "paquets_perdus": 0,
+    "paquets_recus": 4317,
+    "taille": "852x480",
+    "cachee": false,
+    "focalisee": false
+   }
+  },
+  "cumule": {
+   "fenetres_mesurees": 8,
+   "octets_video_cumules": 29931452,
+   "mbps_cumule": 7.96,
+   "paquets_perdus": 0,
+   "paquets_recus": 33616
+  },
+  "survie": {
+   "virsh": "en cours d’exécution",
+   "acces": "OUI"
+  }
+ },
+ "marqueurs_fin": {
+  "lignes": 998,
+  "attachee_capteur": 8,
+  "endormie": 2,
+  "part_appliquee": 131,
+  "sondage_desarme": 8,
+  "taille_changee": 34,
+  "taille_refusee": 0,
+  "erreurs": 0
+ },
+ "controle_sondage_fin": {
+  "present": true,
+  "occurrences": 8,
+  "extrait": [
+   "2026-08-07T14:07:31.526636Z  WARN agent::transport::part: objectif de sondage DESARME (PART_SONDAGE=0) : bras A/B, jamais une configuration livrée\r",
+   "2026-08-07T14:07:40.173449Z  WARN agent::transport::part: objectif de sondage DESARME (PART_SONDAGE=0) : bras A/B, jamais une configuration livrée\r"
+  ]
+ }
+}

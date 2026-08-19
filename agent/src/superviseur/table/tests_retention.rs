@@ -9,13 +9,26 @@ use super::*;
 
 /// Ouvre une fenêtre et la mène jusqu'à `Vivante`, en rendant la session.
 fn session_vivante(t: &mut Table, fenetre: u64, titre: &str, sortie: u32, nom: &str) -> IdSession {
+    session_vivante_de_taille(t, fenetre, titre, sortie, nom, (1280, 720))
+}
+
+/// Même amorce, mais la sortie naît à une taille imposée — le cas d'une VM
+/// dont le registre a été pollué (D9 §9).
+fn session_vivante_de_taille(
+    t: &mut Table,
+    fenetre: u64,
+    titre: &str,
+    sortie: u32,
+    nom: &str,
+    taille: (u32, u32),
+) -> IdSession {
     let effets = t.fenetre_apparue(IdFenetre(fenetre), titre.into());
     let Some(Effet::AnnoncerOuverture { session, .. }) = effets.first() else {
         panic!("ouverture attendue, reçu {effets:?}");
     };
     let session = session.clone();
     t.viewport_recu(&session, 1280, 720);
-    t.sortie_creee(&session, sortie, nom.into(), (1280, 720));
+    t.sortie_creee(&session, sortie, nom.into(), taille);
     session
 }
 
@@ -143,10 +156,42 @@ fn une_sortie_retenue_compatible_est_reutilisee_sans_rien_creer() {
             session: neuve.clone(),
             fenetre: IdFenetre(1),
             nom_sortie: "\\\\.\\DISPLAY7".into(),
+            taille: (1280, 720),
         }],
         "ni DetruireSortie ni CreerSortie : c'est tout l'objet du correctif"
     );
     assert_eq!(t.etat(&neuve), Some(&Etat::Vivante));
+}
+
+/// Une sortie retenue plus GRANDE que le viewport resservira : la
+/// détruire et la recréer ferait abandonner le mutex des duplications
+/// voisines à chaque relance — exactement la recréation que le sous-bloc
+/// D3 existe pour supprimer, et la cause de ses 32 réouvertures parasites.
+#[test]
+fn une_sortie_retenue_plus_grande_est_reutilisee() {
+    let mut t = Table::nouvelle(4);
+    let session = session_vivante_de_taille(
+        &mut t, 1, "Bloc-notes", 42, "\\\\.\\DISPLAY8", (3840, 2160),
+    );
+    t.enfant_mort(&session);
+    let effets = t.relancer_les_orphelines(std::time::Instant::now());
+    let Some(Effet::AnnoncerOuverture { session: neuve, .. }) = effets.first() else {
+        panic!("réouverture attendue, reçu {effets:?}");
+    };
+    let neuve = neuve.clone();
+
+    let effets = t.viewport_recu(&neuve, 1280, 720);
+
+    assert_eq!(
+        effets,
+        vec![Effet::LancerEnfant {
+            session: neuve.clone(),
+            fenetre: IdFenetre(1),
+            nom_sortie: "\\\\.\\DISPLAY8".into(),
+            taille: (1280, 720),
+        }],
+        "une sortie retenue assez grande ne doit être ni détruite ni recréée"
+    );
 }
 
 /// La tolérance est celle de l'appariement — quatre pixels — et pas davantage.
@@ -283,11 +328,15 @@ fn l_abandon_d_une_entree_figee_rend_la_sortie() {
 /// Ex-IMPORTANT 5 (revue de la tâche 9) : `changer_mode_de_sortie` (D8)
 /// retaillait une sortie hors de cette table, et `rafraichir_taille_sortie`
 /// était le rattrapage. **Ce chemin a été retiré au sous-bloc D9**, mesure à
-/// l'appui (voir le constat en tête de `capteur/plein_ecran.rs`) — mais
-/// `rafraichir_taille_sortie` reste appelée par le contrôle périodique de
-/// placement sur chaque lecture DXGI fraîche, et ce test couvre toujours son
-/// comportement propre : la répercussion sur ce que `viewport_recu` comparera
-/// à la prochaine relance.
+/// l'appui (voir le constat en tête de `capteur/plein_ecran.rs`). **Et
+/// `rafraichir_taille_sortie` n'a plus aucun appelant depuis le sous-bloc
+/// D10** : le contrôle périodique de placement (`placement_periodique.rs`)
+/// l'appelait sur chaque lecture DXGI fraîche, mais `taille_sortie` porte
+/// désormais la taille RETENUE, sans plus de raison d'égaler la taille DXGI
+/// brute — ce rafraîchissement l'aurait donc écrasée, et l'appel a été
+/// retiré. Ce test couvre la méthode elle-même, générale et toujours
+/// exposée : la répercussion sur ce que `viewport_recu` comparera à la
+/// prochaine relance.
 #[test]
 fn rafraichir_la_taille_met_a_jour_une_sortie_deja_retenue() {
     let mut t = Table::nouvelle(4);
@@ -295,8 +344,10 @@ fn rafraichir_la_taille_met_a_jour_une_sortie_deja_retenue() {
     assert_eq!(t.taille_sortie_de(&session), Some((1280, 720)));
 
     // Une sortie retaillée par un mécanisme quelconque (aucun n'existe plus
-    // en production depuis D9, mais la méthode reste générale) : c'est ce que
-    // le contrôle périodique relirait sur DXGI.
+    // en production depuis D9, et depuis D10 plus aucun appelant n'invoque
+    // même cette méthode — voir la doc ci-dessus). Un futur mécanisme de ce
+    // genre devrait lui passer la taille RETENUE, pas relire la taille DXGI
+    // brute de la sortie.
     t.rafraichir_taille_sortie(&session, (1920, 1080));
 
     assert_eq!(t.taille_sortie_de(&session), Some((1920, 1080)));

@@ -21,27 +21,30 @@
 //! ouvrier async de tokio.
 //!
 //! Ce fichier ne porte plus que l'état de la session et la boucle qui
-//! l'anime. Le reste est réparti par thème dans les sous-modules, tous
-//! écrits en `impl Session` : `tick` (la liste de priorités d'un tour, dont
-//! `act_on_timeout`), `controle` (canal de contrôle et fin de session),
+//! l'anime. Le reste est réparti par thème dans les sous-modules, presque
+//! tous écrits en `impl Session` : `tick` (la liste de priorités d'un tour,
+//! dont `act_on_timeout`), `controle` (canal de contrôle et fin de session),
 //! `adaptation` (asservissement au réseau), `redimensionnement` (la fenêtre
 //! que l'utilisateur retaille), `evenements` (ce que str0m remonte),
 //! `piste_video` et `piste_audio` (les deux pistes média), `socket` (attente
 //! et réception UDP), `fixtures` (les échafaudages de test partagés).
+//! **Seul `initialisation` fait exception** : une fonction LIBRE
+//! (`construire_rtc`), pas une méthode de `Session` — elle construit le
+//! socket UDP et le `Rtc` str0m avant que `Session` elle-même n'existe, donc
+//! avant qu'il y ait un `self` à qui l'attacher.
 
 use std::collections::VecDeque;
-use std::net::{IpAddr, SocketAddr, UdpSocket};
-use std::time::{Duration, Instant};
+use std::net::{IpAddr, UdpSocket};
+use std::time::Instant;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use proto::control::{AgentControl, ClientControl};
 use proto::input::InputMessage;
-use str0m::bwe::Bitrate;
 use str0m::channel::ChannelId;
 use str0m::media::Mid;
-use str0m::{Candidate, Output, Rtc};
+use str0m::{Output, Rtc};
 
-use crate::audio::AudioSource;
+use crate::audio::{AudioSource, Reconstructeur};
 use crate::congestion;
 use crate::source::VideoSource;
 
@@ -51,6 +54,7 @@ mod adaptation;
 mod cadence_video;
 mod controle;
 mod evenements;
+mod initialisation;
 mod part;
 mod piste_audio;
 mod piste_video;
@@ -59,7 +63,6 @@ mod relais;
 mod socket;
 mod tick;
 
-use adaptation::ESTIMATION_INITIALE_BPS;
 use piste_video::FRAME_INTERVAL;
 use socket::TimerResolutionGuard;
 use tick::Tick;
@@ -223,6 +226,71 @@ pub struct Session {
     /// vers le capteur (`VideoSource::rattachement_survenu`, sous-bloc D9) —
     /// un capteur relancé a perdu la mémoire de tout signalement antérieur.
     audio_mort_signale: bool,
+    /// De quoi refabriquer la source audio après la mort de sa capture
+    /// (sous-bloc D10). Absent quand `AUDIO=0`, sous `TEST_FILE`, et quand
+    /// l'ouverture audio initiale a échoué : le comportement d'avant D10 —
+    /// signaler immédiatement — reste exactement conservé dans ces cas.
+    ///
+    /// ❌ **« Absent sur le chemin mono-fenêtre » figurait ici et c'est
+    /// FAUX** : `demarrage/audio.rs::brancher` pose ce champ
+    /// INCONDITIONNELLEMENT dans son bras `Ok`, branche `None` comprise. Le
+    /// mono-fenêtre reconstruit donc bien — et son défaut propre est que la
+    /// source reconstruite est réarmée à `false` (legs n°4 de D10, voir
+    /// `Session::reconstruire_ou_signaler`). ⚠️ **Troisième occurrence de
+    /// cette même phrase, et celle-ci n'a été trouvée ni par la revue
+    /// transverse ni par la revue finale de branche** : les deux ont corrigé
+    /// les jumelles de `tick.rs` et de `tick/tests/audio.rs` sans balayer
+    /// jusqu'ici. Le `grep -rn "mono-fenêtre" agent/src` la listait pourtant.
+    audio_reconstructeur: Option<Reconstructeur>,
+    /// Budget de tentatives de reconstruction restant, initialisé à
+    /// `crate::audio::RECONSTRUCTIONS_MAX`. Épuisé, `reconstruire_ou_signaler`
+    /// retombe sur le signalement — c'est là que la promotion d'une voisine
+    /// par le capteur reprend son rôle.
+    reconstructions_restantes: u32,
+    /// Instant à partir duquel une nouvelle tentative de reconstruction est
+    /// permise. `None` : aucune tentative n'a encore eu lieu, ou aucun répit
+    /// n'est en cours.
+    ///
+    /// **Sans ce répit**, `reconstruire_ou_signaler` court sur le fil de
+    /// `Session::run` et ouvrir une source WASAPI y est un appel bloquant de
+    /// durée non bornée : sans répit, la boucle de tick tenterait une
+    /// ouverture à chaque tour.
+    prochaine_reconstruction: Option<Instant>,
+    /// Vrai dès qu'une reconstruction a réussi, tant qu'aucun paquet n'est
+    /// encore venu la confirmer. Distingue une DÉCISION (la reconstruction a
+    /// rendu `Ok`) d'une PREUVE (un paquet a réellement été produit) — c'est
+    /// toute la différence que `SourceVivante::sans_paquet` existe pour
+    /// exercer (leg 6).
+    audio_reconstruit_sans_preuve: bool,
+    /// Vrai dès qu'un paquet RÉEL a confirmé — la PREUVE, pas la décision —
+    /// que la capture audio reconstruite produit de nouveau du son : reste à
+    /// annoncer `VersCapteur::AudioVivant` au capteur.
+    ///
+    /// Posé par `brancher_audio`, juste après qu'`audio_reconstruit_sans_preuve`
+    /// retombe (voir ce champ) ; consommé — remis à `false` — par la branche
+    /// a1sexies de `act_on_timeout`, qui appelle alors
+    /// `VideoSource::signaler_audio_vivant`. C'est ce qui referme le leg 6 de
+    /// D9 : `REARMEMENTS_MAX` (`capteur/sommeil.rs`) repart de zéro sur CE
+    /// signal, jamais sur la seule décision de réélection.
+    audio_vivant_a_annoncer: bool,
+    /// Vrai tant que le capteur nous demande de porter le son.
+    ///
+    /// **Sert UNIQUEMENT à détecter la TRANSITION vers `actif = true`** dans
+    /// `appliquer_audio` (`piste_audio.rs`) : c'est cette transition, et elle
+    /// seule, qui réapprovisionne le budget de reconstruction
+    /// (`reconstructions_restantes`) et lève le verrou `audio_mort_signale`.
+    ///
+    /// ⚠️ **Trouvé en revue de la tâche 12 (sous-bloc D10) : sans ce champ, le
+    /// cycle mort → reconstruit → prouvé ne tourne qu'UNE SEULE FOIS.**
+    /// `reconstructions_restantes` était posé une fois à la construction,
+    /// décrémenté, jamais rechargé ; une fois épuisé, `AudioMort` part et
+    /// `audio_mort_signale` reste vrai à jamais (il ne retombe qu'à un
+    /// rattachement) — donc `reconstruire_ou_signaler` n'est plus jamais
+    /// rappelée, donc `AudioVivant` ne peut plus jamais être émis, et le
+    /// garde-fou `REARMEMENTS_MAX` compte des échecs NON consécutifs sur toute
+    /// la vie de la session plutôt que de repartir de zéro (l'inverse exact de
+    /// ce que le Step 5 de cette tâche visait à corriger).
+    audio_porteuse: bool,
 }
 
 impl Session {
@@ -238,57 +306,10 @@ impl Session {
         clock_origin: Instant,
         plafond_bps: u32,
     ) -> Result<Self> {
-        let socket = UdpSocket::bind(SocketAddr::new(local_ip, 0))
-            .context("ouverture du socket UDP")?;
-        // Non bloquant une fois pour toutes : `act_on_timeout` ne dépend plus
-        // de `set_read_timeout`, dont le délai déborde massivement sous
-        // Windows (mesuré : dépassement moyen +12,7 ms, jusqu'à +37 ms sur un
-        // délai demandé de 617 µs — voir `poll_recv_or_timeout`). Le rythme
-        // d'attente est désormais entièrement piloté par notre propre boucle
-        // de sondage, indépendante de la précision du minuteur du socket.
-        socket.set_nonblocking(true).context("passage du socket UDP en non bloquant")?;
-        let addr = socket.local_addr()?;
-        tracing::info!(%addr, "socket UDP de l'agent");
-
-        // str0m 0.21 exige un fournisseur cryptographique installé pour le
-        // processus (vérifié dans les sources de la crate : la feature Cargo
-        // par défaut `aws-lc-rs` fournit `from_feature_flags()`, et
-        // `install_process_default(self)` est une méthode consommante sur
-        // `CryptoProvider`). Idempotent : `OnceLock::set` ignore silencieusement
-        // un second appel, donc appeler `Session::new` plusieurs fois par
-        // processus ne panique pas.
-        str0m::crypto::from_feature_flags().install_process_default();
-
-        // `enable_opus(true)` : sans cette ligne, aucun type de charge utile
-        // Opus n'est jamais proposé dans la réponse SDP, quoi que le pair
-        // négocie de son côté — `select_negotiated_opus_pt` ne trouverait
-        // alors jamais rien, et l'audio resterait muet même avec une source
-        // ouverte avec succès. Absente du brief original, ajoutée ici : sans
-        // elle, la piste audio ne se négocie tout simplement jamais (voir le
-        // rapport de tâche).
-        let mut rtc = Rtc::builder()
-            .clear_codecs()
-            .enable_h264(true)
-            .enable_opus(true)
-            // Sans cet appel, `Event::EgressBitrateEstimate` n'est JAMAIS
-            // émis et tout l'asservissement reste muet. L'estimation
-            // initiale est volontairement modeste : le sous-système sonde à
-            // la hausse vers `set_desired_bitrate` (posé plus bas), et
-            // partir trop haut ferait saturer le lien avant la première
-            // correction.
-            .enable_bwe(Some(Bitrate::bps(ESTIMATION_INITIALE_BPS as u64)))
-            .set_stats_interval(Some(Duration::from_secs(1)))
-            .build(Instant::now());
-
-        // Cible que le sondage cherche à atteindre : le plafond configuré.
-        rtc.bwe().set_desired_bitrate(Bitrate::bps(plafond_bps as u64));
-
-        // `add_local_candidate` ne renvoie pas de `Result` : elle retourne
-        // `Option<&Candidate>` (le candidat précédent s'il était déjà connu).
-        // Seule la construction du `Candidate` lui-même peut échouer.
-        rtc.add_local_candidate(
-            Candidate::host(addr, "udp").map_err(|e| anyhow!("candidat hôte invalide : {e}"))?,
-        );
+        // Socket UDP et `Rtc` str0m dans leur état initial : code
+        // auto-contenu, sans accès aux champs de `Session`, extrait vers
+        // `initialisation.rs` (revue de la tâche 12, sous-bloc D10).
+        let (socket, rtc) = initialisation::construire_rtc(local_ip, plafond_bps)?;
 
         let dimensions = source.dimensions();
         let mut session = Self {
@@ -357,6 +378,12 @@ impl Session {
             unites_video_ecrites: 0,
             dernier_compte_video: Instant::now(),
             audio_mort_signale: false,
+            audio_reconstructeur: None,
+            reconstructions_restantes: crate::audio::RECONSTRUCTIONS_MAX,
+            prochaine_reconstruction: None,
+            audio_reconstruit_sans_preuve: false,
+            audio_vivant_a_annoncer: false,
+            audio_porteuse: false,
         };
 
         // `add_local_candidate` est une mutation : on draine avant de rendre

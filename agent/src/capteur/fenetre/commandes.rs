@@ -109,6 +109,17 @@ fn executer_commande(
             crate::capteur::sommeil::audio_mort(ctx.session);
             return DepuisCapteur::Fait;
         }
+        // Sous-bloc D10 : la PREUVE (un paquet réel) que la capture audio de
+        // CETTE session est repartie. Traitée au même rang qu'`AudioMort` —
+        // avant la source, pas après — pour la même raison : elle ne touche
+        // ni encodeur ni duplication, seulement le registre de sommeil.
+        // Contrairement à `AudioMort`, elle ne ré-arbitre rien et ne revient
+        // jamais par une poussée sur la connexion média — elle ne fait que
+        // remettre à zéro le compteur de réarmements de cette session.
+        VersCapteur::AudioVivant => {
+            crate::capteur::sommeil::signaler_audio_vivant(ctx.session);
+            return DepuisCapteur::Fait;
+        }
         VersCapteur::Attache { .. } => {
             return DepuisCapteur::Erreur {
                 motif: "seconde attache sur un canal déjà attaché".into(),
@@ -132,7 +143,15 @@ fn executer_commande(
     //
     // ⚠️ **Ce qu'on accepte ainsi n'est ni appliqué ni retenu.** Le réveil
     // reconstruit la source par `sur_sortie`, donc à la taille d'encodage
-    // pleine et au débit d'attache. Le débit se rattrape seul —
+    // pleine et au débit d'attache.
+    //
+    // **Relu à la tâche 8 du sous-bloc D10 : toujours vrai, et « pleine »
+    // désigne désormais la taille RETENUE** (`superviseur::placement::taille_retenue`),
+    // pas la taille brute de la sortie DXGI — qui peut être plus grande sur
+    // un registre pollué. C'est même plus exact qu'avant : la « pleine
+    // résolution » reconstruite au réveil est celle que la fenêtre a
+    // réellement demandée, jamais celle, potentiellement gonflée, de la
+    // sortie. Le débit se rattrape seul —
     // `appliquer_decision` le repousse à chaque décision du contrôleur ; la
     // taille d'encodage, elle, ne se rattrape qu'au prochain changement de
     // barreau, la comparaison à `encode_size_appliquee` côté enfant croyant la
@@ -201,7 +220,8 @@ fn executer_commande(
         VersCapteur::Attache { .. }
         | VersCapteur::Identite { .. }
         | VersCapteur::Visibilite { .. }
-        | VersCapteur::AudioMort => {
+        | VersCapteur::AudioMort
+        | VersCapteur::AudioVivant => {
             return DepuisCapteur::Erreur {
                 motif: "commande déjà traitée hors de la source".into(),
             }

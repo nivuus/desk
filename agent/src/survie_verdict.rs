@@ -11,6 +11,19 @@
 //! compiler et se tester sur l'hôte Linux : même précédent que
 //! `geometry.rs` et `sortie_dxgi.rs`, extraits pour la même raison.
 //!
+//! **Racine nue, et non `#[path]` chez un parent** (convention tranchée
+//! tâche 17, sous-bloc D10, voir `CLAUDE.md` §« Convention de module
+//! enfant ») : un module dont le nom s'écrit `<parent>_<enfant>`
+//! (`capture_reprise`, `windows_source_sortie`, `windows_source_telemetrie`)
+//! reste physiquement chez ce parent et se hisse par
+//! `#[path]` dans `main.rs`. Un module dont le nom se comprend SANS
+//! préfixer un parent — c'est le cas ici, `survie_verdict` ne porte le nom
+//! d'aucun module de premier niveau — vit à la racine nue, comme
+//! `geometry.rs` et `sortie_dxgi.rs`. La profondeur d'où on l'extrait
+//! (`diagnostics::multifenetre::mode_sortie::persistance`, quatre niveaux)
+//! n'y change rien : il n'y a de toute façon aucun nom de parent court et
+//! unique à préfixer.
+//!
 //! C'est le prédicat même qui portait l'Important I4 de la revue de la
 //! tâche 2bis : l'ancienne version repliait une taille introuvable sur
 //! `(0, 0)`, si bien qu'une sortie disparue AVANT et APRÈS rendait

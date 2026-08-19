@@ -31,14 +31,24 @@ const EN_TETE_IMAGE: usize = 9;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum VersCapteur {
-    /// Premier message d'un enfant : il se décrit lui-même. Le capteur n'a
-    /// besoin d'aucune information venue du superviseur.
+    /// Premier message d'un enfant : il se décrit lui-même. Il n'existe
+    /// **aucun canal direct superviseur→capteur** ; ce qui vient du
+    /// superviseur (par exemple `taille`, ci-dessous) transite par l'enfant,
+    /// qui le lui redit ici.
     Attache {
         session: String,
         hwnd: u64,
         sortie: String,
         fps: u32,
         debit: u32,
+        /// La taille RETENUE que le superviseur a posée sur cette fenêtre
+        /// (`TAILLE_FENETRE`), pas la taille de la sortie — qui peut être
+        /// bien plus grande sur un registre pollué. `(u32::MAX, u32::MAX)`
+        /// quand l'enfant ne la connaît pas (chemin mono-fenêtre, sans
+        /// superviseur) : `taille_retenue` la ramène alors à la taille de la
+        /// sortie, ce qui reproduit le comportement d'avant ce sous-bloc.
+        /// Non consommé avant la tâche 8 — voir `Fenetre::ouvrir`.
+        taille: (u32, u32),
         /// `QueryPerformanceCounter` lu par l'enfant au moment même où il crée
         /// son `clock_origin`. Un `Instant` n'a aucun sens dans un autre
         /// processus ; QPC, lui, est commun à toute la machine. Sans ce
@@ -62,8 +72,24 @@ pub enum VersCapteur {
     /// L'effet revient par `DepuisCapteur::Sommeil`, poussé sur la connexion
     /// média de chaque fenêtre concernée.
     Visibilite { visible: bool, focalisee: bool },
-    /// La capture audio de cette fenêtre est morte définitivement, après
-    /// `crate::audio::LECTURES_ECHOUEES_MAX` erreurs de lecture consécutives.
+    /// La capture audio de cette fenêtre a cessé de produire du son, et
+    /// l'enfant a **épuisé ses moyens de la rétablir**.
+    ///
+    /// ❌ **Ce champ disait « morte DÉFINITIVEMENT, après
+    /// `LECTURES_ECHOUEES_MAX` erreurs de lecture consécutives », et les DEUX
+    /// moitiés sont fausses depuis le sous-bloc D10** — relevé par la revue
+    /// transverse, la tâche qui a ajouté `AudioVivant` juste en dessous
+    /// n'ayant pas relu la variante du dessus.
+    ///
+    /// - **Pas définitivement** : `Session::reconstruire_ou_signaler`
+    ///   (`transport/piste_audio.rs`) refabrique la capture, et
+    ///   `VersCapteur::AudioVivant` existe précisément pour prouver la
+    ///   reprise par un paquet réel.
+    /// - **Pas au bout de `LECTURES_ECHOUEES_MAX`** : ces dix erreurs posent
+    ///   `capture_morte`, rien de plus. Ce message-ci ne part **qu'en
+    ///   REPLI** — quand `crate::audio::RECONSTRUCTIONS_MAX` tentatives de
+    ///   reconstruction ont été épuisées, ou qu'il n'existe aucun
+    ///   reconstructeur.
     ///
     /// **Aucune charge utile** : la session est celle du canal, comme pour
     /// toutes les commandes — `capteur/fenetre/commandes.rs` la tire de son
@@ -74,6 +100,17 @@ pub enum VersCapteur {
     /// du même groupe de PID. L'effet revient par `DepuisCapteur::Audio`,
     /// poussé sur la connexion média. Même patron exactement que `Visibilite`.
     AudioMort,
+    /// La capture audio de cette fenêtre vient d'apporter la PREUVE qu'elle
+    /// est repartie : un paquet réel a été produit, pas seulement une
+    /// reconstruction qui a rendu `Ok` (sous-bloc D10, ferme le leg 6 de D9).
+    ///
+    /// **Aucune charge utile**, comme `AudioMort`. **Ne se répond pas par
+    /// `Fait` au sens de l'effet non plus** : elle ne fait que remettre à
+    /// zéro le compteur de réarmements de CETTE session
+    /// (`capteur::sommeil::signaler_audio_vivant`). À la différence
+    /// d'`AudioMort`, elle ne ré-arbitre rien : la preuve ne concerne que la
+    /// session qui l'apporte, jamais une AUTRE fenêtre du même groupe de PID.
+    AudioVivant,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -227,6 +264,7 @@ mod tests {
             sortie: r"\\.\DISPLAY8".into(),
             fps: 90,
             debit: 8_000_000,
+            taille: (1280, 720),
             origine_qpc: 123_456_789,
         };
         let mut tampon = Vec::new();

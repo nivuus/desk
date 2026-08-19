@@ -231,6 +231,10 @@ impl Lanceur for LanceurDeProcessus {
             .env("LOCAL_IP", &self.local_ip)
             .env("FENETRE_HWND", format!("{:#x}", consigne.fenetre))
             .env("SORTIE_DXGI", &consigne.nom_sortie)
+            // La taille RETENUE (`Consigne::taille`), pas celle de la
+            // sortie — voir sa doc. Lue par `demarrage`, redite au capteur à
+            // l'attache (tâche 9 du sous-bloc D10).
+            .env("TAILLE_FENETRE", format!("{}x{}", consigne.taille.0, consigne.taille.1))
             // Surtout PAS `SUPERVISEUR` : un enfant qui hériterait de la
             // variable se prendrait pour un superviseur et lancerait ses
             // propres enfants, indéfiniment.

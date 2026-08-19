@@ -180,8 +180,10 @@ impl WindowsSource {
         ))
     }
 
-    // `sur_sortie` (mode du sous-bloc D1 : sortie DXGI entière, plus rien à
-    // recadrer) est défini dans un second `impl WindowsSource`, situé dans
+    // `sur_sortie` (mode du sous-bloc D1 : une fenêtre par sortie virtuelle ;
+    // ⚠️ « plus rien à recadrer » était écrit ici et D10 l'a réfuté — voir
+    // l'en-tête de `windows_source/sortie.rs`) est défini dans un second
+    // `impl WindowsSource`, situé dans
     // `windows_source/sortie.rs` sous `#[cfg(windows)]`. Déplacé hors d'ici en
     // revue pour que ce fichier — déjà en dette de taille (voir `CLAUDE.md`) —
     // ne porte que le câblage ; il se termine, comme `new` ci-dessus, par un

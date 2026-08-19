@@ -1,0 +1,26 @@
+Step 5 (declencheur naturel) -- comptes de processus VM, avant/apres le
+Stop-Process du "renderer" pretendu.
+
+=== AVANT (juste apres l'etablissement de la session, avant le kill) ===
+$ node scripts/winrm.js 'Get-Process agent,chrome -ErrorAction SilentlyContinue | Group-Object ProcessName | Select-Object Name,Count'
+
+Name   Count
+----   -----
+agent      4
+chrome     9
+
+=== La commande du brief (corrigee en guillemets simples), sortie brute ===
+$ node scripts/winrm.js "Get-Process chrome | Where-Object { \$_.MainWindowTitle -eq '' } | Select-Object -First 1 | Stop-Process -Force -PassThru | Select-Object Id"
+
+Id
+--
+9368
+
+=== APRES (20 s plus tard) ===
+$ node scripts/winrm.js 'Get-Process agent,chrome -ErrorAction SilentlyContinue | Group-Object ProcessName | Select-Object Name,Count'
+
+Name  Count
+----  -----
+agent     2
+
+(chrome absent du tout de la sortie : 0 processus chrome restant)

@@ -63,7 +63,22 @@ pub(super) struct Etat {
     /// est pur et le reste.
     pub(super) inaptes: HashMap<String, Instant>,
     /// Nombre de réarmements consécutifs déjà accordés à chaque session.
-    /// Remis à zéro dès qu'elle porte le son sans mourir.
+    ///
+    /// ❌ **« Remis à zéro dès qu'elle porte le son sans mourir » décrit la
+    /// sémantique que le sous-bloc D10 a précisément RETIRÉE** (relevé par la
+    /// revue transverse : ce fichier n'a pas été touché par la branche, d'où
+    /// le résidu). La remise à zéro sur la **décision** d'arbitrage a quitté
+    /// `sommeil/porteurs.rs` ; `signaler_audio_vivant` (`capteur/sommeil.rs`)
+    /// en est désormais le seul point, et il ne court que sur une **PREUVE**
+    /// — un paquet réel, remonté par `VersCapteur::AudioVivant`. C'est le
+    /// leg 6 de D9, et c'était son objet : le compteur comptait des échecs
+    /// non consécutifs.
+    ///
+    /// **Conséquence assumée, à connaître** : une session peut « porter le
+    /// son sans mourir » et ne jamais voir son compteur retomber, si aucun
+    /// paquet n'arrive jamais. C'est voulu — c'est exactement l'état que la
+    /// recette ② de D10 a trouvé en production (une source reconstruite qui
+    /// naissait muette) et que le compteur doit dénoncer, pas absoudre.
     pub(super) rearmements: HashMap<String, u32>,
     /// Génération de la dernière inscription connue de chaque session (D9,
     /// F5 de D7 — course au `retirer` quand un nom se réinscrit). Posée par
