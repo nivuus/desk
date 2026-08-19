@@ -19,6 +19,9 @@
 // `base/sous-ensemble.test.ts`.
 
 import type { EtatAgent } from '../agents/fraicheur';
+// Import de TYPE seul, donc effacé à la compilation : le cycle
+// `interface.ts` <-> `refus.ts` n'existe pas à l'exécution.
+import type { Resultat } from './refus';
 
 /// L'état d'une VM, tel qu'un backend v1 peut le connaître.
 ///
@@ -97,3 +100,28 @@ export const OPERATIONS_HORS_HTTP = [
     'etat',
     'attribuer',
 ] as const satisfies readonly Operation[];
+
+/// Ce qu'un backend d'orchestration sait faire — et ce qu'il refuse.
+///
+/// 🔴 LES TROIS VERBES D'ACTION RENDENT UN `Resultat`, JAMAIS UN
+/// `Promise<void>`. C'est le point que la spec §3.6 appelle « la décision de
+/// forme la plus importante » : un `Promise<void>` qui ne fait rien serait
+/// indiscernable d'un `Promise<void>` qui fait le travail. Voir
+/// `orchestration/refus.ts`.
+///
+/// ⚠️ `lister` ET `etat` NE RENDENT PAS DE `Resultat`, et c'est délibéré : un
+/// inventaire vide est un inventaire, pas un refus, et une VM inconnue a un
+/// état — `injoignable` —, ce qui est vrai et suffisant. C'est déjà ce que
+/// `agents/fraicheur.ts` dit d'une VM jamais vue.
+export interface Orchestrateur {
+    /// L'inventaire ENTIER. Le filtrage par utilisateur appartient à
+    /// `orchestration/selection.ts`, qui est pur.
+    lister(): Promise<Vm[]>;
+    /// L'état d'une VM. Une VM inconnue rend `injoignable`, jamais une
+    /// exception.
+    etat(vm: string): Promise<EtatVm>;
+    demarrer(vm: string): Promise<Resultat>;
+    arreter(vm: string): Promise<Resultat>;
+    instantane(vm: string, nom: string): Promise<Resultat>;
+    attribuer(vm: string, utilisateur: string): Promise<Resultat>;
+}
