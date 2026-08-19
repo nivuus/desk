@@ -1,0 +1,31 @@
+# Sortie REELLE de `npm run admin:utilisateur`, relevee le 2026-08-19T14:02:10+02:00.
+# Base jetable : un fichier sqlite temporaire, detruit apres la sonde.
+
+$ node --version
+v24.9.0
+
+### 1. le refus du mot de passe sur l argv
+$ npm run admin:utilisateur -- --email ada@exemple.test --mot-de-passe secret
+--mot-de-passe est refusé : le mot de passe se lit sur l'entrée standard, jamais sur la ligne de commande — `ps` l'exposerait à tout utilisateur de la machine.
+(node:374126) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+code de sortie : 2
+
+### 2. la creation reelle, mot de passe sur l ENTREE STANDARD
+$ printf "un-mot-de-passe-ordinaire-42
+" | npm run admin:utilisateur -- --email ada@exemple.test
+mot de passe (entrée standard) : (node:374169) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+0671cbf2-79e8-4937-a290-e0a67d6d8d84
+code de sortie : 0
+
+### 3. le meme courriel une seconde fois : refuse, code non nul
+mot de passe (entrée standard) : (node:374253) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+création refusée : Error: UNIQUE constraint failed: utilisateur.email
+code de sortie : 1
+
+### 4. la ligne reellement ecrite en base (le mot de passe n y est PAS)
+{"id":"0671cbf2-79e8-4937-a290-e0a67d6d8d84","email":"ada@exemple.test","empreinte_mdp":"scrypt$16384$8$1$qQjP-xU1mXxXbTSYenLa6g$B9IBmP-zS3WYa-hY9CS58k8knGv8eGeyC2FU9ITvq-0","cree_a":1787140931964}
+(node:374278) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
