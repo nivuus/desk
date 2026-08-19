@@ -616,7 +616,8 @@ PowerShell distant.
 | `primitives-css-taille.log` | `primitives.css` commit par commit — 154 / 230 / 72 / 73 |
 | `contraste-survol.log` | les quatre contrastes de `--accent-survol`, relancés |
 | `tailles.txt` | le relevé de tailles du §7 |
-| `verify-all.log` | l'exécution complète, `exit=0` |
+| `verify-all.log` | l'exécution complète à la recette (commit `070b48b`), `exit=0` |
+| `verify-all-final.log` | la relance **après** les corrections de la revue transverse (commit `7b036b0`), `exit=0` |
 
 ---
 

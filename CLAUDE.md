@@ -9229,7 +9229,10 @@ marge **5 914**. Base S1 : **3 503** — **S2 ajoute 2 871 octets**, dont 2 702
 pour la seule feuille des primitives, **que S2 ne lie à aucune page du produit**.
 ⚠️ **Le plafond de 12 288 n'est calibré par rien**, et il le reste.
 
-**`scripts/verify-all.sh` sort à `0` en entier**, journal versé (3 186 lignes).
+**`scripts/verify-all.sh` sort à `0` en entier**, **deux fois** : à la recette
+(`verify-all.log`, commit `070b48b`, 3 186 lignes) et **relancé après les
+corrections de la revue transverse** (`verify-all-final.log`, commit `7b036b0`),
+**17** en-têtes `==>` les deux fois.
 ⚠️ **Aucune étape étrangère n'est tombée, et c'est à relever plutôt qu'à taire** :
 `cargo test --workspace` a passé sur un `agent/` que le chantier voisin du pont
 de fichiers modifiait au même instant, et `plateforme : npm run test:postgres` a
