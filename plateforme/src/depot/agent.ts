@@ -26,6 +26,13 @@ export interface LigneAgent {
     /// `null` tant que l'agent n'a jamais battu. ⚠️ Ce n'est PAS `0` : zéro se
     /// lirait comme une époque de 1970, donc comme un agent injoignable depuis
     /// cinquante-six ans, et les deux états sont distincts.
+    ///
+    /// ✅ `number` EST VRAI SUR LES DEUX MOTEURS, et ce ne l'a pas toujours
+    /// été : `pg` rend les `BIGINT` en chaîne, et cette déclaration était
+    /// FAUSSE en production jusqu'à ce que `base/pilote-postgres.ts` pose son
+    /// `setTypeParser` (recette de P3). `interroger<T>` faisant un `as T[]`,
+    /// aucun typage ne l'aurait attrapée — c'est `pilotes.test.ts` qui la
+    /// tient, colonne par colonne.
     vu_a: number | null;
 }
 

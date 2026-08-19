@@ -83,18 +83,26 @@ describe(`dépôt agent_enrole, moteur=${MOTEUR}`, () => {
         await expect(enroler(base, 'v-2', await hacher('secret-deux'), PREFIXE)).rejects.toThrow();
     });
 
-    it('marque vu_a à une MAGNITUDE D’ÉPOQUE, et la relit', async () => {
+    it('marque vu_a à une MAGNITUDE D’ÉPOQUE, et la relit EN `number`', async () => {
         // 🔴 Écrire `1_000` passerait sur les deux moteurs sans rien prouver :
-        // c'est l'angle mort exact que P1 a payé. `pg` rend les BIGINT en
-        // `string`, d'où le `Number(...)` — comme `pilotes.test.ts:100-140`.
+        // c'est l'angle mort exact que P1 a payé.
+        //
+        // ⚠️ CE TEST ENVELOPPAIT SES DEUX LECTURES DANS `Number(...)`, et ce
+        // `Number` CACHAIT le défaut au lieu de le mesurer : `pg` rendait ce
+        // `BIGINT` en **chaîne**, si bien que `LigneAgent.vu_a` déclarait
+        // `number | null` une valeur qui était une `string` en PRODUCTION.
+        // Relevé par la recette de P3, corrigé au PILOTE
+        // (`base/pilote-postgres.ts`, `setTypeParser`) parce que le défaut
+        // était de classe. L'assertion est donc désormais NUE — c'est elle
+        // qui tient la déclaration de type honnête.
         base = await baseNeuve('agent-vu');
         await avecVm(base, 'v-1');
         await enroler(base, 'v-1', await hacher('secret-un'), PREFIXE);
 
         await marquerVu(base, 'v-1', MS);
-        expect(Number((await lireParVm(base, 'v-1'))!.vu_a)).toBe(MS);
+        expect((await lireParVm(base, 'v-1'))!.vu_a).toBe(MS);
         // Le battement suivant AVANCE la valeur, il ne l'ajoute pas.
         await marquerVu(base, 'v-1', MS + 30_000);
-        expect(Number((await lireParVm(base, 'v-1'))!.vu_a)).toBe(MS + 30_000);
+        expect((await lireParVm(base, 'v-1'))!.vu_a).toBe(MS + 30_000);
     });
 });

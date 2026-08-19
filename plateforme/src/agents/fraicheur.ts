@@ -55,6 +55,17 @@ export type EtatAgent = 'prete' | 'injoignable';
 /// puisse l'assiéger des deux côtés — même forme que l'expiration de
 /// `identite/jeton.ts` (`maintenant >= exp`).
 ///
+/// ⚠️ CETTE FONCTION A SURVÉCU PAR ACCIDENT À UN DÉFAUT DE TYPE, et le noter
+/// vaut plus que la correction elle-même. Jusqu'à la recette de P3, `pg`
+/// rendait `agent_enrole.vu_a` en **chaîne** là où `node:sqlite` rendait un
+/// `number` : `vuA` recevait donc une `string` en production. Rien ne
+/// rougissait — `maintenant - vuA` convertit son opérande, et la comparaison
+/// qui suit porte sur deux nombres. **Mais `vuA === null` restait juste par
+/// chance, et tout `+`, tout `===` ou tout `>` posé ici aurait divergé selon
+/// le moteur** : `'1787136773742' + 90000` vaut une concaténation. Le défaut
+/// est corrigé au pilote (`base/pilote-postgres.ts`) ; le signataire du type
+/// est désormais vrai, et il ne l'était pas.
+///
 /// ⚠️ UN `vuA` DANS LE FUTUR REND `prete`, et ce n'est pas un cas construit :
 /// la plateforme et la VM n'ont pas la même horloge, et `vu_a` est écrit par
 /// la plateforme au reçu du battement. Un écart négatif est donc du silence
