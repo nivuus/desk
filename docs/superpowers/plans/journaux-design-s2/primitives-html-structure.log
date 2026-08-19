@@ -1,0 +1,13 @@
+# Contrôle STRUCTUREL de dist/primitives.html — CE N'EST PAS LE JUGEMENT VISUEL.
+# Il compte des occurrences de classes dans le HTML bâti. Il ne dit RIEN de l'apparence.
+-rw-r----- 1 root root 11839 20 août  00:06 client/dist/primitives.html
+bouton--principal      2
+bouton--secondaire     2
+bouton--discret        2
+champ__etiquette       3
+champ--erreur          1
+carte__titre           1
+separateur             1
+message--succes        1
+message--alerte        1
+message--danger        1

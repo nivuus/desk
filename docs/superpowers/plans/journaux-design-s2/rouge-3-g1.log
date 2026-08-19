@@ -1,0 +1,26 @@
+# ROUGE ③ — critère ③ : 'button { color: var(--texte); }' ajouté à primitives/bouton.css.
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/client
+ ❯ src/design/primitives.test.ts (9 tests | 1 failed) 10ms
+   × primitives.css — les gardes de forme > G1 — aucun sélecteur d’élément nu : tout compound porte une classe 6ms
+     → sélecteurs d’élément nus dans primitives.css: expected [ 'button' ] to deeply equal []
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/design/primitives.test.ts > primitives.css — les gardes de forme > G1 — aucun sélecteur d’élément nu : tout compound porte une classe
+AssertionError: sélecteurs d’élément nus dans primitives.css: expected [ 'button' ] to deeply equal []
+- Expected
++ Received
+- Array []
++ Array [
++   "button",
++ ]
+ ❯ src/design/primitives.test.ts:160:69
+    158|             }
+    159|         }
+    160|         expect(nus, 'sélecteurs d’élément nus dans primitives.css').to…
+       |                                                                     ^
+    161|     });
+    162| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 8 passed (9)
+   Start at  00:07:26
+   Duration  390ms (transform 120ms, setup 0ms, collect 103ms, tests 10ms, environment 0ms, prepare 91ms)

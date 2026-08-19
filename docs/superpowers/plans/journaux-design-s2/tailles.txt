@@ -1,0 +1,47 @@
+HEAD = 070b48b   (2026-08-20T00:08:06+02:00)
+--- depot entier, fichiers > 500 lignes ---
+  75368 total
+   1536 agent/src/encode.rs
+    630 agent/src/windows_source.rs
+--- client/, les 18 plus gros ---
+ 11677 total
+   494 client/verify-webrtc.mjs
+   451 client/src/main.ts
+   419 client/src/webrtc.session.test.ts
+   411 client/src/micro.test.ts
+   379 client/recette/harness.mjs
+   348 client/src/webrtc.ts
+   332 client/recette/micro-e1.mjs
+   327 client/src/fullscreen.test.ts
+   298 client/src/gamepad.test.ts
+   288 client/src/micro.ts
+   281 client/src/pointer.test.ts
+   270 client/src/design/primitives.test.ts
+   258 client/recette/paire-candidats.mjs
+   247 client/src/gamepad.ts
+   231 client/design.html
+   228 client/outils/couleurs-litterales.mjs
+   225 client/src/design/tokens.css
+   202 client/outils/tokens-orphelins.mjs
+--- les fichiers de S2, nommement ---
+   199 client/primitives.html
+   231 client/design.html
+   112 client/vite.config.ts
+   181 client/src/style.css
+    73 client/src/design/primitives.css
+   103 client/src/design/primitives/bouton.css
+    75 client/src/design/primitives/champ.css
+    52 client/src/design/primitives/message.css
+    44 client/src/design/primitives/surface.css
+   270 client/src/design/primitives.test.ts
+   225 client/src/design/tokens.css
+   129 client/src/design/base.css
+   155 client/src/design/contraste.ts
+   125 client/src/design/contraste.test.ts
+   162 client/src/design/galerie.ts
+    18 client/src/design/galerie-primitives.ts
+    84 client/src/design/selecteur-theme.ts
+   107 client/src/design/theme.ts
+   202 client/outils/tokens-orphelins.mjs
+   136 client/outils/tokens-orphelins/attente.mjs
+  2683 total

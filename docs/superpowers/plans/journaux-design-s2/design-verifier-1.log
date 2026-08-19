@@ -1,0 +1,80 @@
+
+> @guacamole/client@0.1.0 design:verifier
+> node outils/verifier-design.mjs
+
+==> npm run build (sans quoi §7.3 et §7.7 jugeraient le build d’avant)
+
+> @guacamole/client@0.1.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 39 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/shell.html                           2.59 kB │ gzip: 1.44 kB
+dist/index.html                           3.58 kB │ gzip: 1.86 kB
+dist/connexion.html                       4.31 kB │ gzip: 2.14 kB
+dist/primitives.html                     11.84 kB │ gzip: 4.27 kB
+dist/design.html                         11.86 kB │ gzip: 4.03 kB
+dist/assets/main-CXZaIG5L.css             1.49 kB │ gzip: 0.47 kB
+dist/assets/socle-ZRS7erzW.css            2.18 kB │ gzip: 0.93 kB
+dist/assets/primitives-GyKd6lAV.css       2.70 kB │ gzip: 0.63 kB
+dist/assets/primitives-CB43GhUe.js        0.25 kB │ gzip: 0.21 kB
+dist/assets/jeton-kqOyiZdD.js             0.26 kB │ gzip: 0.18 kB
+dist/assets/socle-Dd8_6xY7.js             0.71 kB │ gzip: 0.40 kB
+dist/assets/selecteur-theme-CXIgzib-.js   0.78 kB │ gzip: 0.43 kB
+dist/assets/connexion-QkiMkF67.js         0.98 kB │ gzip: 0.58 kB
+dist/assets/shell-dAvki8tw.js             2.47 kB │ gzip: 1.23 kB
+dist/assets/design-CD5XoMnd.js           15.57 kB │ gzip: 6.37 kB
+dist/assets/main-Batj3SNK.js             23.37 kB │ gzip: 8.20 kB
+✓ built in 392ms
+
+==> §7.4  les trois blocs de thème ne divergent pas
+fichier : client/src/design/tokens.css
+  bloc racine : 48 token(s)
+  bloc media-clair : 14 token(s)
+  bloc attribut-clair : 14 token(s)
+écarts : 0
+
+==> §7.1  les contrastes tiennent les seuils WCAG
+paires vérifiées : 52
+échecs : 0
+minimum global : 3.16
+
+==> §7.2  aucune couleur littérale hors de tokens.css
+fichiers balayés : 56
+couleurs littérales : 0
+
+==> §7.6  aucun token orphelin, aucun var() non déclaré
+source        : client/src/design/tokens.css — 48 token(s) déclaré(s)
+périmètre     : 11 fichier(s) — 38 token(s) employé(s)
+  balayés : client/src/design/base.css, client/src/design/primitives/bouton.css, client/src/design/primitives/champ.css, client/src/design/primitives/message.css, client/src/design/primitives/surface.css, client/src/design/primitives.css, client/src/design/socle.css, client/src/style.css, client/index.html, client/shell.html, client/connexion.html
+  exclu : client/design.html — la galerie rend tous les tokens par construction ; l’inclure rendrait l’inclusion « déclaré ⊆ employé » vraie pour toujours
+  exclu : client/primitives.html — une page de démonstration emploie des tokens par construction, dans sa propre mise en page ; l’inclure ferait sortir de la liste d’attente des tokens que le PRODUIT n’appelle pas
+
+inclusion ① — tout var(--…) est déclaré : 0 écart(s)
+inclusion ② — tout token déclaré a un appelant : 10 orphelin(s), dont 10 en attente déclarée
+
+total : 0 écart(s)
+les deux inclusions tiennent ; 10 token(s) restent en attente d'appelant, nommés dans tokens-orphelins/attente.mjs
+
+==> §7.3  toute surface bâtie porte les tokens
+pages bâties : 5 (connexion.html, design.html, index.html, primitives.html, shell.html)
+
+assertion A — un <link rel="stylesheet"> par page : 0 échec(s)
+assertion B — une feuille liée déclarant --fond-0 : 0 échec(s) (évaluée sur 5 page(s))
+
+les DEUX assertions sont vertes
+
+==> §7.7  le poids CSS ne dérive pas
+   1493  main-CXZaIG5L.css
+   2702  primitives-GyKd6lAV.css
+   2179  socle-ZRS7erzW.css
+feuilles émises : 3
+somme : 6374 octets
+plafond : 12288 octets (arbitraire, voir l'en-tête)
+marge : 5914 octets
+
+═══ 6/6 contrôle(s) vert(s) ═══
+  §7.5 (la bascule de thème) est un test unitaire : il tourne dans `npm test`.

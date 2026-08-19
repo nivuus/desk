@@ -1,0 +1,26 @@
+
+> @guacamole/client@0.1.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 39 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/shell.html                           2.59 kB │ gzip: 1.44 kB
+dist/index.html                           3.58 kB │ gzip: 1.86 kB
+dist/connexion.html                       4.31 kB │ gzip: 2.14 kB
+dist/primitives.html                     11.84 kB │ gzip: 4.27 kB
+dist/design.html                         11.86 kB │ gzip: 4.03 kB
+dist/assets/main-CXZaIG5L.css             1.49 kB │ gzip: 0.47 kB
+dist/assets/socle-ZRS7erzW.css            2.18 kB │ gzip: 0.93 kB
+dist/assets/primitives-GyKd6lAV.css       2.70 kB │ gzip: 0.63 kB
+dist/assets/primitives-CB43GhUe.js        0.25 kB │ gzip: 0.21 kB
+dist/assets/jeton-kqOyiZdD.js             0.26 kB │ gzip: 0.18 kB
+dist/assets/socle-Dd8_6xY7.js             0.71 kB │ gzip: 0.40 kB
+dist/assets/selecteur-theme-CXIgzib-.js   0.78 kB │ gzip: 0.43 kB
+dist/assets/connexion-QkiMkF67.js         0.98 kB │ gzip: 0.58 kB
+dist/assets/shell-dAvki8tw.js             2.47 kB │ gzip: 1.23 kB
+dist/assets/design-CD5XoMnd.js           15.57 kB │ gzip: 6.37 kB
+dist/assets/main-Batj3SNK.js             23.37 kB │ gzip: 8.20 kB
+✓ built in 279ms

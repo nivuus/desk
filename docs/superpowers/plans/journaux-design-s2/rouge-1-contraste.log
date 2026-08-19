@@ -1,0 +1,6 @@
+# ROUGE ① — critère ① : --accent-survol (clair) porté à #6f9bf5, encre --sur-accent blanche.
+ÉCHEC clair sur-accent/accent-survol = 2.73 < 4.5
+paires vérifiées : 52
+échecs : 1
+minimum global : 2.73
+exit=1

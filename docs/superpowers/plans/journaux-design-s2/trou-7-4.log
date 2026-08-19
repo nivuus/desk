@@ -1,0 +1,11 @@
+# MESURE du trou de §7.4 (20 août 2026) — ecartsEntreBlocs ne compare jamais racine ⊆ clair.
+# Mutation : --accent-survol retiré des DEUX blocs clairs, laissé à la racine seule.
+# declarations aux lignes [74, 194, 220] -> les deux dernieres retirees
+fichier : client/src/design/tokens.css
+  bloc racine : 48 token(s)
+  bloc media-clair : 13 token(s)
+  bloc attribut-clair : 13 token(s)
+écarts : 0
+exit=0
+# arbre restauré : git status --porcelain client/src/design/tokens.css ->
+(vide)
