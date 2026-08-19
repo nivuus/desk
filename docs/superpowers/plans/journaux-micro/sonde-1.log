@@ -1,0 +1,95 @@
+warning: variable does not need to be mutable
+   --> agent/src/capteur/repartiteur/tests.rs:129:9
+    |
+129 |     let mut fenetres: Vec<Fenetre> = regime_1.iter().map(|(fenetre, _)| fenetre.clone()).collect();
+    |         ----^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `actif` is never used
+   --> agent/src/capteur/plein_ecran.rs:118:8
+    |
+118 | pub fn actif() -> bool {
+    |        ^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `PERIODE_STYLE` is never used
+   --> agent/src/capteur/plein_ecran.rs:138:11
+    |
+138 | pub const PERIODE_STYLE: Duration = Duration::from_millis(250);
+    |           ^^^^^^^^^^^^^
+
+warning: constant `NOM_TUBE` is never used
+  --> agent/src/capteur/protocole.rs:15:11
+   |
+15 | pub const NOM_TUBE: &str = r"\\.\pipe\agent-capteur";
+   |           ^^^^^^^^
+
+warning: method `courant` is never used
+  --> agent/src/cursor.rs:49:12
+   |
+28 | impl Hysteresis {
+   | --------------- method in this implementation
+...
+49 |     pub fn courant(&self) -> bool {
+   |            ^^^^^^^
+
+warning: field `adaptateur` is never read
+  --> agent/src/sortie_dxgi.rs:19:9
+   |
+16 | pub struct SortieDxgi {
+   |            ---------- field in this struct
+...
+19 |     pub adaptateur: String,
+   |         ^^^^^^^^^^
+   |
+   = note: `SortieDxgi` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: constant `SESSION_DE_CONTROLE` is never used
+  --> agent/src/superviseur/protocole.rs:26:11
+   |
+26 | pub const SESSION_DE_CONTROLE: &str = "bureau";
+   |           ^^^^^^^^^^^^^^^^^^^
+
+warning: method `sessions_vivantes` is never used
+   --> agent/src/superviseur/table.rs:299:12
+    |
+188 | impl Table {
+    | ---------- method in this implementation
+...
+299 |     pub fn sessions_vivantes(&self) -> Vec<IdSession> {
+    |            ^^^^^^^^^^^^^^^^^
+
+warning: `agent` (bin "agent" test) generated 8 warnings (run `cargo fix --bin "agent" -p agent --tests` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.22s
+     Running unittests src/main.rs (/home/mallanic/Projects/Guacamole/target/debug/deps/agent-f71a44343b450757)
+
+running 1 test
+SONDE 1 : MediaData reçue — 5 octets, codec Opus, horloge RTP 48000 Hz
+test transport::sonde_montante::str0m_expose_l_opus_montant_via_media_data ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 467 filtered out; finished in 0.24s
+
+
+=== VERDICT DE LA SONDE 1 : OUI ===
+str0m 0.21.0 depaquetise l'Opus ENTRANT et l'expose via Event::MediaData :
+  - la charge utile traverse OCTET POUR OCTET (5 octets emis, 5 recus, identiques) ;
+  - d.params.spec().codec vaut Codec::Opus ;
+  - d.time.denom() vaut 48000.
+La prediction par lecture de code (plan, decision 1) est CONFIRMEE par la mesure.
+Le chantier E1 garde sa forme : aucune depaquetisation a ecrire.
+
+Fait annexe RELEVE par cette sonde, et non prevu par le plan :
+str0m n'emet Event::MediaAdded que du cote qui ACCEPTE l'offre. Le cote OFFRANT
+obtient son Mid du retour de `SdpApi::add_media`. Sans consequence sur l'agent,
+qui accepte toujours (`Session::accept_offer`) — mais la premiere redaction de
+cette sonde attendait un MediaAdded sur l'emetteur et expirait a 15 s.
+
+Divergence plan / code relevee ici :
+  - le plan (tache 1) ecrit `d.time.denominator()` ; str0m 0.21 expose `denom()`.
+  - `MediaData::data` est un `Arc<[u8]>`, pas un `Vec<u8>` : `.to_vec()` est
+    necessaire pour la comparaison. Consequence pour la tache 8, dont le plan
+    ecrit `opus = data.data.clone()` : le clone rend un Arc, pas un Vec.

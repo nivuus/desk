@@ -1,0 +1,40 @@
+=== SONDE 1 — les deux mutations qui prouvent qu'elle PEUT repondre NON ===
+Depot Guacamole, 19 aout 2026, chantier E bloc E1, tache 1 step 3.
+
+--- MUTATION 1 : le recepteur sans enable_opus (local_peer(ip, false)) ---
+
+thread 'transport::sonde_montante::str0m_expose_l_opus_montant_via_media_data' (915916) panicked at agent/src/transport/sonde_montante.rs:97:9:
+aucun `Event::MediaData` reçu en 15 s : str0m ne délivre pas l'Opus montant, ou la connexion ne s'est pas établie (au moins une écriture tentée : false)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test transport::sonde_montante::str0m_expose_l_opus_montant_via_media_data ... FAILED
+
+failures:
+
+failures:
+    transport::sonde_montante::str0m_expose_l_opus_montant_via_media_data
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 467 filtered out; finished in 15.12s
+
+error: test failed, to rerun pass `-p agent --bin agent`
+
+--- MUTATION 2 : asserter la charge egale a vec![0x00] au lieu de CHARGE ---
+
+thread 'transport::sonde_montante::str0m_expose_l_opus_montant_via_media_data' (919697) panicked at agent/src/transport/sonde_montante.rs:166:5:
+assertion `left == right` failed: la charge utile n'a pas traversé octet pour octet : str0m ne se comporte pas en passe-plat sur l'Opus entrant
+  left: [120, 222, 173, 190, 239]
+ right: [0]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test transport::sonde_montante::str0m_expose_l_opus_montant_via_media_data ... FAILED
+
+failures:
+
+failures:
+    transport::sonde_montante::str0m_expose_l_opus_montant_via_media_data
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 467 filtered out; finished in 0.26s
+
+error: test failed, to rerun pass `-p agent --bin agent`
+
+=== Les deux mutations sont ANNULEES. Le vert de reference suit. ===
+SONDE 1 : MediaData reçue — 5 octets, codec Opus, horloge RTP 48000 Hz
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 467 filtered out; finished in 0.26s
