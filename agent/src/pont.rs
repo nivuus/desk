@@ -29,6 +29,7 @@ pub mod chemins;
 pub mod decoupe;
 pub mod erreurs;
 pub mod table;
+pub mod transport;
 
 /// Point d'entrée du mode pont.
 ///

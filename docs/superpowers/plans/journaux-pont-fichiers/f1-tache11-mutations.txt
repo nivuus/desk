@@ -1,0 +1,94 @@
+Tache 11 -- ce que les MUTATIONS ont trouve, et que le vert cachait.
+
+Les quatre tests prescrits par le plan sont passes au vert du premier coup une
+fois l'echafaudage repare. Les mutations jouees ENSUITE ont montre que deux
+d'entre eux ne mesuraient pas ce qu'ils annoncaient.
+
+--------------------------------------------------------------------
+MUTANT SURVIVANT n°1 -- et c'etait le SUJET MEME de la tache
+--------------------------------------------------------------------
+Mutation : dans le bras Event::ChannelOpen, remplacer
+
+    if label == LABEL_FICHIERS {
+
+par
+
+    if true {
+
+Resultat : LES QUATRE TESTS RESTENT VERTS.
+
+Pourquoi : le test de l'intrus negociait les canaux dans l'ordre
+["autre-canal", "fichiers"]. Sans filtre sur le label, les DEUX ChannelOpen
+posaient le canal, et le DERNIER ecrasait le precedent -- soit "fichiers".
+Le test passait donc par l'ORDRE D'OUVERTURE, pas par le label. L'aiguillage
+par label, qui est le titre de la tache, n'etait exerce par rien.
+
+Remede -- deux tests neufs, aucun ne dependant d'un ordre :
+  - un_seul_canal_est_retenu_parmi_deux_et_c_est_celui_du_label : sur deux
+    canaux negocies, le pont ne doit annoncer QU'UNE ouverture. Le mutant en
+    annonce deux. Rouge vu : left 2, right 1, remontees [CanalOuvert,
+    CanalOuvert].
+  - un_canal_dont_le_label_n_est_pas_le_notre_n_est_jamais_retenu : l'ordre
+    INVERSE, en evenements synthetiques -- le canal etranger arrive EN DERNIER.
+
+--------------------------------------------------------------------
+MUTANT SURVIVANT n°2 -- un bras entier jamais emprunte
+--------------------------------------------------------------------
+Mutation : retirer le corps du bras Event::ChannelClose.
+Resultat : les quatre tests restent verts -- aucun n'empruntait ce chemin.
+Le test de fermeture passe par Event::Closed (close_notify DTLS), pas par
+ChannelClose.
+
+Ce qui a d'abord ete tente, et pourquoi cela ne pouvait pas marcher : faire
+fermer le canal par le pair via DirectApi::close_data_channel. VERIFIE DANS
+LES SOURCES de str0m 0.21 plutot que suppose --
+
+    change/direct.rs:178  close_data_channel -> ChannelHandler::close_channel
+    channel.rs:357        close_channel      -> RtcSctp::close_stream
+    sctp/mod.rs:516-520   close_stream       -> entry.do_close = true
+    sctp/mod.rs:838-841   do_close           -> SctpEvent::Close RENDU AU PAIR
+
+Rien n'est emis SUR LE FIL. Un pair str0m ne peut donc pas provoquer de
+Event::ChannelClose chez nous. Un vrai navigateur, lui, emet un stream-reset
+SCTP que str0m traite bien (sctp/mod.rs:740, 790, 808, 818 posent do_close
+depuis l'ENTREE) : le bras est utile en production, et seulement inatteignable
+depuis ce banc.
+
+Remede : evenements SYNTHETIQUES, sur le precedent de
+transport/evenements/tests.rs, qui remet des MediaAdded synthetiques a une
+session nue. Le test verifie AUSSI qu'une fermeture concernant un AUTRE canal
+ne remonte rien -- sans cette moitie il passerait sur un bras qui declare mort
+un canal bien vivant.
+
+--------------------------------------------------------------------
+DEFAUT DE PRODUIT trouve par un test, et non par la relecture
+--------------------------------------------------------------------
+Le test de fermeture echouait au budget de 10 s : traiter() ignorait
+Event::Closed, qui tombait dans son bras fourre-tout. Le pont n'aurait donc
+remarque le depart du pair qu'a l'EXPIRATION D'ICE -- des dizaines de secondes
+apres la fermeture de l'onglet --, pendant lesquelles toute commande en vol
+aurait attendu son DELAI au lieu de rendre ERROR_IO_DEVICE tout de suite.
+
+C'est exactement le correctif I1 de transport/evenements.rs, qui avait du etre
+fait la-bas pour la meme raison. Deux bras ajoutes : Event::Closed et
+IceConnectionStateChange(Disconnected).
+
+--------------------------------------------------------------------
+DEFAUT D'ECHAFAUDAGE, et sa signature
+--------------------------------------------------------------------
+La premiere redaction attendait un message sur `entrant` dans une fonction a
+part -- ce qui BLOQUAIT le seul fil qui pompe le pair. ICE et DTLS
+n'aboutissaient donc jamais. LES QUATRE tests echouaient a la MEME ligne avec
+le MEME message : la signature d'un defaut d'echafaudage, et non de quatre
+defauts de produit. Diagnostique plutot que suppose.
+
+Une seconde redaction a produit un controle incapable de REUSSIR : la condition
+d'arret de echanger() lisait un compteur que echanger() n'incremente jamais.
+C'est le pendant du controle incapable d'echouer, et il se lit pareil -- un
+budget depasse.
+
+--------------------------------------------------------------------
+ETAT FINAL
+--------------------------------------------------------------------
+Sept tests, six mutations, AUCUNE survivante. Empreinte de la source apres
+restauration : 5cfa959e6cecc5a0, identique a la reference.
