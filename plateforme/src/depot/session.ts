@@ -51,19 +51,29 @@ export const MOTIF_BALAYAGE = 'plateforme redémarrée';
 /// littéralement vrai : la DÉCISION est prise par le registre en mémoire
 /// (`signaling/propriete.ts`), l'ENREGISTREMENT durable se fait ici, et c'est
 /// de lui que P4 aura besoin.
+///
+/// ⚠️ `vmId` est FACULTATIF POUR LA MÊME RAISON, et il vient APRÈS
+/// `utilisateurId` pour ne déplacer aucun appelant existant. C'est la trace
+/// (`signaling/trace.ts`) qui le résout, en découpant le préfixe du nom de
+/// session puis en le cherchant dans `agent_enrole`. Une session `bureau`
+/// SANS préfixe — le mode d'essai local que la spec §10 pose comme légitime —
+/// n'a aucune VM honnête à inscrire, et une session à préfixe INCONNU non
+/// plus : dans les deux cas la colonne reste `null`, jamais une chaîne vide
+/// qui mentirait sur ce qu'on sait.
 export async function ouvrirSession(
     p: Pilote,
     nomSession: string,
     maintenant: number,
     utilisateurId?: string,
+    vmId?: string,
 ): Promise<string> {
     const id = randomUUID();
-    // La colonne est TOUJOURS nommée, et sa valeur TOUJOURS passée en
+    // Les colonnes sont TOUJOURS nommées, et leurs valeurs TOUJOURS passées en
     // paramètre — `null` compris. Écrire deux requêtes selon la présence de
     // l'identifiant en ferait diverger une le jour où la table changerait.
     await p.executer(
-        'INSERT INTO session(id, nom_session, utilisateur_id, ouverte_a) VALUES(?, ?, ?, ?)',
-        [id, nomSession, utilisateurId ?? null, maintenant],
+        'INSERT INTO session(id, nom_session, utilisateur_id, vm_id, ouverte_a) VALUES(?, ?, ?, ?, ?)',
+        [id, nomSession, utilisateurId ?? null, vmId ?? null, maintenant],
     );
     return id;
 }

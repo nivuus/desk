@@ -91,6 +91,40 @@ describe(`dépôt session, moteur=${MOTEUR}`, () => {
         expect(ligne.utilisateur_id).toBeNull();
     });
 
+    it('écrit vm_id NULL quand aucun n’est fourni — le mode d’essai local', async () => {
+        // 🔴 La rouge : rendre le paramètre OBLIGATOIRE. Une session `bureau`
+        // ouverte par un agent NON enrôlé — le mode d'essai local que la spec
+        // §10 pose comme légitime — n'a aucune VM honnête à inscrire, et la
+        // colonne reste NULLABLE pour cette raison, pas par dette.
+        base = await baseNeuve('dep-sans-vm');
+        await ouvrirSession(base, 'bureau', 1_000_000);
+        const [ligne] = await lireParNom(base, 'bureau');
+        expect(ligne.vm_id).toBeNull();
+    });
+
+    it('écrit vm_id quand la trace a résolu le préfixe — le legs n°3 de P2', async () => {
+        // `session.vm_id` restait entièrement NULL au sortir de P2. C'est la
+        // trace qui le résout (préfixe du nom de session -> VM), et c'est ici
+        // qu'elle l'inscrit.
+        base = await baseNeuve('dep-avec-vm');
+        await ouvrirSession(base, 'RhH1x2QmTz9kLpVbNc7dAw:bureau', 1_787_136_773_742, undefined, 'v-42');
+        const [ligne] = await lireParNom(base, 'RhH1x2QmTz9kLpVbNc7dAw:bureau');
+        expect(ligne.vm_id).toBe('v-42');
+        // L'utilisateur reste NULL : un agent seul n'a personne à inscrire.
+        expect(ligne.utilisateur_id).toBeNull();
+        // Et rien d'autre n'a bougé — la magnitude d'époque comprise.
+        expect(Number(ligne.ouverte_a)).toBe(1_787_136_773_742);
+        expect(ligne.fermee_a).toBeNull();
+    });
+
+    it('écrit les DEUX quand la garde et la trace ont chacune établi la leur', async () => {
+        base = await baseNeuve('dep-avec-les-deux');
+        await ouvrirSession(base, 'P:w-1', 1_000_000, 'u-42', 'v-42');
+        const [ligne] = await lireParNom(base, 'P:w-1');
+        expect(ligne.utilisateur_id).toBe('u-42');
+        expect(ligne.vm_id).toBe('v-42');
+    });
+
     it('écrit utilisateur_id quand la garde en a établi un', async () => {
         // C'est ce qui rend le mot « enregistrée » du critère ③ littéralement
         // vrai, et c'est ce dont P4 aura besoin pour attribuer une VM.
