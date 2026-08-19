@@ -4,7 +4,12 @@ import {
     PLATEFORME_VERSION,
     encodeEnroler,
     encodeBattement,
+    encodeEnrole,
+    encodeBattementRecu,
+    encodeRefus,
     parseDepuisLaPlateforme,
+    parseVersLaPlateforme,
+    type MotifCanal,
 } from './plateforme';
 
 /**
@@ -64,6 +69,26 @@ describe('vecteurs partagés du canal plateforme', () => {
             for (const champ of ['prefixe', 'jeton', 'expire_a', 'motif'] as const) {
                 if (c[champ] !== undefined) expect(lu[champ]).toBe(c[champ]);
             }
+        },
+    );
+
+    it.each(cas.filter((c) => c.sens === 'depuis'))(
+        '🔴 ENCODE « $name » exactement comme le vecteur',
+        (c) => {
+            // 🔴 CE CONTRÔLE MANQUAIT, et son absence était une asymétrie
+            // réelle : Rust sérialise les DEUX sens et compare la chaîne
+            // exacte (`plateforme.rs`), quand TypeScript ne faisait que RELIRE
+            // le sens `depuis`. Or c'est la PLATEFORME qui émet ces
+            // messages-là, en TypeScript. Personne ne fixait donc les octets
+            // qu'elle met réellement sur le fil — un ordre de champs qui
+            // divergerait du Rust ne se serait vu nulle part.
+            const produit =
+                c.kind === 'enrole'
+                    ? encodeEnrole(c.prefixe!, c.jeton!, c.expire_a!)
+                    : c.kind === 'battement-recu'
+                      ? encodeBattementRecu(c.jeton!, c.expire_a!)
+                      : encodeRefus(c.motif as MotifCanal);
+            expect(produit).toBe(c.json);
         },
     );
 
@@ -140,5 +165,103 @@ describe('miroir TypeScript du canal plateforme', () => {
         // une réponse — une confusion de sens qu'aucun autre test ne verrait.
         expect(() => parseDepuisLaPlateforme('{"type":"enroler","v":1,"vm":"w","secret":"s"}'))
             .toThrow(/type de message de plateforme inconnu/);
+    });
+});
+
+describe('le parseur du sens AGENT -> PLATEFORME', () => {
+    // ⚠️ CELUI-CI LIT CE QU'UN VRAI TIERS ÉCRIT. `parseDepuisLaPlateforme`
+    // valide à la frontière puis caste, parce que son émetteur est le service
+    // lui-même ; ici l'émetteur est un pair du réseau, qui n'a aucune raison
+    // d'être bien élevé. Les champs sont donc VÉRIFIÉS, un par un.
+    //
+    // ⚠️ IL REND UN VERDICT, IL NE LÈVE PAS, et c'est ce qui le distingue de
+    // son jumeau : la plateforme doit RÉPONDRE un motif typé au pair, pas
+    // seulement échouer.
+
+    it('lit un `enroler` bien formé', () => {
+        expect(parseVersLaPlateforme('{"type":"enroler","v":1,"vm":"w1","secret":"chut"}')).toEqual({
+            ok: true,
+            message: { type: 'enroler', v: 1, vm: 'w1', secret: 'chut' },
+        });
+    });
+
+    it('lit un `battement`', () => {
+        expect(parseVersLaPlateforme('{"type":"battement","v":1}')).toEqual({
+            ok: true,
+            message: { type: 'battement', v: 1 },
+        });
+    });
+
+    it('🔴 REJETTE une version PLATEFORME_VERSION + 1, motif `version`', () => {
+        // 🔴 C'est la moitié TypeScript du critère ③ vue depuis la PLATEFORME.
+        // Ne comparer que `type` laisserait entrer un message d'une version
+        // future, dont les champs pourraient dire tout autre chose.
+        expect(
+            parseVersLaPlateforme(
+                `{"type":"battement","v":${PLATEFORME_VERSION + 1}}`,
+            ),
+        ).toEqual({ ok: false, motif: 'version' });
+        // 🔴 ET LA VERSION PASSE AVANT LE TYPE : un message qui est mauvais
+        // sur les DEUX plans doit dire `version`, pas `forme`. Sans cette
+        // assertion, l'ordre des deux contrôles ne serait fixé par rien, et le
+        // pair qui lit le motif pour décider s'il doit se METTRE À JOUR ou se
+        // CORRIGER recevrait un jour la mauvaise réponse.
+        expect(parseVersLaPlateforme(`{"type":"vol","v":${PLATEFORME_VERSION + 1}}`)).toEqual({
+            ok: false,
+            motif: 'version',
+        });
+    });
+
+    it('🔴 REJETTE une version ABSENTE et une version NULLE', () => {
+        // La rouge réelle est d'écrire `parsed.v ?? PLATEFORME_VERSION` :
+        // `undefined ?? 1` et `null ?? 1` valent tous deux `1`. (Le `!=` au
+        // lieu de `!==` ne rougit PAS — mesuré sur l'autre parseur.)
+        expect(parseVersLaPlateforme('{"type":"battement"}')).toEqual({
+            ok: false,
+            motif: 'version',
+        });
+        expect(parseVersLaPlateforme('{"type":"battement","v":null}')).toEqual({
+            ok: false,
+            motif: 'version',
+        });
+    });
+
+    it('🔴 REJETTE un `type` du sens PLATEFORME -> AGENT, motif `forme`', () => {
+        // 🔴 La confusion de sens, gardée dans les DEUX directions. Accepter
+        // `enrole` ici ferait que la plateforme traiterait sa propre réponse
+        // comme une demande.
+        for (const brut of [
+            '{"type":"enrole","v":1,"prefixe":"P","jeton":"j","expire_a":1}',
+            '{"type":"battement-recu","v":1,"jeton":"j","expire_a":1}',
+            '{"type":"refus","v":1,"motif":"forme"}',
+        ]) {
+            expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });
+        }
+    });
+
+    it('REJETTE ce qui n’est pas un objet JSON, motif `forme`', () => {
+        // `null` est le cas dangereux : `null.type` LÈVE, là où un nombre ou
+        // une chaîne rendraient `undefined`. Même garde qu'`isJsonObject` du
+        // relais, et pour la même raison — une exception non rattrapée dans un
+        // gestionnaire `message` de `ws` abat tout le process Node.
+        for (const brut of ['null', '"une chaîne"', '42', '[]', 'pas du json']) {
+            expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });
+        }
+    });
+
+    it('🔴 REJETTE un `enroler` dont `vm` ou `secret` manque, motif `forme`', () => {
+        // 🔴 SANS CE CONTRÔLE, `undefined` traverserait jusqu'à la requête
+        // SQL : `lireParVm(p, undefined)` ne rend rien sur SQLite mais n'est
+        // pas la même requête sur Postgres, et surtout le refus qui en
+        // sortirait dirait `enrolement` — donc « secret faux » — pour un
+        // message qui n'a jamais porté de VM.
+        for (const brut of [
+            '{"type":"enroler","v":1,"secret":"chut"}',
+            '{"type":"enroler","v":1,"vm":"w1"}',
+            '{"type":"enroler","v":1,"vm":"","secret":"chut"}',
+            '{"type":"enroler","v":1,"vm":42,"secret":"chut"}',
+        ]) {
+            expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });
+        }
     });
 });
