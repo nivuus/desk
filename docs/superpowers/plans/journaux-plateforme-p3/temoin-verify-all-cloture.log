@@ -1,0 +1,26 @@
+# TÉMOIN DE CLÔTURE — scripts/verify-all.sh APRÈS les sept rouges
+# Jouée le 2026-08-19T22:28:03+02:00, commit a8c36d9
+#
+# 🔴 CE SECOND TÉMOIN N'EST PAS UNE RÉPÉTITION DU PREMIER. Cinq des sept rouges
+# ont MUTÉ du code de production — `identite/garde.ts`, `agents/enrolement.ts`,
+# `proto/ts/plateforme.ts` deux fois, `proto/src/plateforme.rs`. Chaque rouge
+# restaure sa source et le prouve par une empreinte sha256, mais une empreinte
+# ne dit rien des SIX AUTRES fichiers ; ce témoin-ci le dit.
+#
+# git status --porcelain plateforme/ proto/ agent/ client/ scripts/ : VIDE.
+
+test result: ok. 550 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.03s
+test result: ok. 52 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+ Test Files  21 passed (21)
+      Tests  187 passed (187)
+ Test Files  3 passed (3)
+      Tests  70 passed (70)
+ Test Files  28 passed (28)
+      Tests  194 passed (194)
+ Test Files  28 passed (28)
+      Tests  194 passed (194)
+
+Toutes les vérifications sont passées.
+
+# code de sortie de scripts/verify-all.sh : 0
