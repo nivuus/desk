@@ -34,6 +34,16 @@ export interface ReadyMessage {
     type: 'ready';
     width: number;
     height: number;
+    /**
+     * Le micro est-il disponible pour cette session (chantier E) ?
+     *
+     * OPTIONNEL à dessein, et sans bump de `CONTROL_VERSION` : face à un agent
+     * ancien le champ vaut `undefined`, donc falsy, donc aucun bouton n'est
+     * proposé — la règle de la spec §10, obtenue gratuitement. Ne jamais le
+     * rendre obligatoire : ce serait une rupture de compatibilité que le
+     * numéro de version ne signalerait pas.
+     */
+    mic?: boolean;
 }
 
 export interface SessionEndMessage {

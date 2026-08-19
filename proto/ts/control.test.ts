@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { ReadyMessage } from './control';
 import { CONTROL_VERSION, encodeResize, encodeVisibility, parseAgentControl } from './control';
 
 describe('protocole de contrôle', () => {
@@ -18,6 +19,25 @@ describe('protocole de contrôle', () => {
             width: 1,
             height: 720,
         });
+    });
+
+    // Chantier E : `mic` est OPTIONNEL, et son absence vaut « pas de micro ».
+    it('analyse un message ready SANS mic : le champ reste undefined', () => {
+        const msg = parseAgentControl(
+            `{"v":${CONTROL_VERSION},"type":"ready","width":800,"height":600}`,
+        ) as ReadyMessage;
+        expect(msg.mic).toBeUndefined();
+        // …et `undefined` est falsy : c'est ce qui fait qu'un client récent
+        // face à un agent ancien n'affiche AUCUN bouton, sans une ligne de
+        // code pour le décider.
+        expect(Boolean(msg.mic)).toBe(false);
+    });
+
+    it('analyse un message ready AVEC mic et le conserve', () => {
+        const msg = parseAgentControl(
+            `{"v":${CONTROL_VERSION},"type":"ready","width":800,"height":600,"mic":true}`,
+        ) as ReadyMessage;
+        expect(msg.mic).toBe(true);
     });
 
     it('analyse un message ready', () => {

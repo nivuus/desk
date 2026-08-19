@@ -1,0 +1,30 @@
+=== TACHE 9 — le rouge, et les mutations ===
+Depot Guacamole, 19 aout 2026, chantier E bloc E1.
+
+--- LE ROUGE : la signature de `ready` ne prend pas encore le troisieme argument
+error[E0061]: this function takes 2 arguments but 3 arguments were supplied   (x2)
+error: could not compile `proto` (lib test) due to 2 previous errors
+
+--- MUTATION : retirer #[serde(default)] sur `mic` ---
+test control::tests::un_ready_sans_micro_se_lit_avec_micro_faux ... FAILED
+  called `Result::unwrap()` on an `Err` value: Error("missing field `mic`", line: 0, column: 0)
+test result: FAILED. 0 passed; 1 failed
+(Le plan prevoyait exactement ce message, et il est obtenu.)
+test control::tests::deserialise_l_etat_du_lien ... ok
+test control::tests::deserialise_le_redimensionnement ... ok
+test control::tests::le_plein_ecran_fait_l_aller_retour ... ok
+test control::tests::ready_porte_la_disponibilite_du_micro ... ok
+test control::tests::rejette_la_version_de_controle_1_devenue_obsolete ... ok
+test control::tests::rejette_un_type_inconnu ... ok
+test control::tests::le_plein_ecran_se_serialise_en_kebab_case_avec_sa_version ... ok
+test control::tests::rejette_une_version_absente ... ok
+
+--- MUTATION : le champ `mic` n est pas serialise (skip) — le premier test doit tomber ---
+test control::tests::ready_porte_la_disponibilite_du_micro ... FAILED
+thread 'control::tests::ready_porte_la_disponibilite_du_micro' (1107110) panicked at proto/src/control.rs:451:9:
+  left: "{\"type\":\"ready\",\"v\":3,\"width\":1920,\"height\":1080}"
+ right: "{\"type\":\"ready\",\"v\":3,\"width\":1920,\"height\":1080,\"mic\":true}"
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 33 filtered out; finished in 0.00s
+
+=== Mutations ANNULEES. Vert de reference : ===
+test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s

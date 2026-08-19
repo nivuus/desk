@@ -106,7 +106,10 @@ impl Session {
                     // silencieusement perdu. Le client de la tâche 8 attend
                     // ce message pour effacer sa bannière de statut.
                     let (width, height) = self.dimensions;
-                    self.queue_control(AgentControl::ready(width, height));
+                    // Le micro (chantier E) : disponible seulement si une
+                    // piste montante a été négociée ET qu'un puits est là.
+                    let mic = self.micro_disponible();
+                    self.queue_control(AgentControl::ready(width, height, mic));
                 }
             }
             Event::ChannelData(data) => {
