@@ -220,8 +220,11 @@ fn le_repit_espace_les_tentatives() {
 /// test ne couvre donc PAS le mono-fenêtre**, contrairement à ce qu'il
 /// annonçait — il couvre l'absence de reconstructeur, qui est autre chose.
 /// Le mono-fenêtre a bien un reconstructeur, et son défaut propre (la
-/// source reconstruite est réarmée à `false`) n'est couvert par aucun test :
-/// voir le legs n°4 de D10.
+/// source reconstruite était réarmée à `false`) ✅ **est le leg n°4 de D10,
+/// corrigé au sous-bloc D11 — et il est désormais couvert, dans CE fichier,
+/// par `l_accesseur_public_rend_une_session_porteuse_et_sa_reconstruction_audible`
+/// (plus bas).** « N'est couvert par aucun test » a donc été rendu faux par
+/// un test ajouté deux cents lignes plus bas dans le même fichier.
 #[test]
 fn sans_reconstructeur_on_signale_immediatement() {
     let _verrou = verrou_injection();
@@ -418,8 +421,9 @@ fn une_session_non_porteuse_reconstruite_reste_muette() {
     );
 }
 
-/// Le leg 4 de D10 : en mono-fenêtre, `audio_porteuse` n'a AUCUN écrivain —
-/// `appliquer_audio`, son unique écrivain, n'est atteinte que par un ordre
+/// Le leg 4 de D10, tel qu'il se posait AVANT ce test : en mono-fenêtre,
+/// `audio_porteuse` n'avait AUCUN écrivain —
+/// `appliquer_audio`, son unique écrivain d'alors, n'est atteinte que par un ordre
 /// `Audio` du capteur (`tick.rs`, garde `self.source.audio_a_appliquer()`),
 /// qu'un agent mono-fenêtre ne reçoit jamais : `audio_a_appliquer` rend `None`
 /// par défaut (`source.rs`) et `capteur/distante.rs` en est la SEULE

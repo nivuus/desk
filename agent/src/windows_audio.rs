@@ -83,9 +83,15 @@ impl Capture {
     /// `set_actif(self.audio_porteuse)` **sans condition** à toute source
     /// reconstruite, et le reconstructeur de `demarrage/audio.rs` passe par
     /// `WindowsAudioSource::new` — donc par `Capture::Session` — quand
-    /// `config.fenetre_hwnd` est `None`. Un ordre externe atteint bien une
-    /// source en mode session, et il la fait taire. Voir la conséquence
-    /// complète auprès de `reconstruire_ou_signaler`.
+    /// `config.fenetre_hwnd` est `None`. Un ordre externe atteint donc bien
+    /// une source en mode session.
+    ///
+    /// ✅ **« Et il la fait taire » était écrit ici, et c'est FAUX depuis le
+    /// sous-bloc D11** (revue transverse) : `audio_porteuse` vaut désormais
+    /// `true` en mono-fenêtre, posé par `set_audio_porteuse` au branchement
+    /// (`demarrage/audio.rs`), et le réarmement RÉÉMET cette source au lieu
+    /// de la faire taire. **L'atteignabilité reste vraie, sa conséquence ne
+    /// l'est plus.** Voir `Session::reconstruire_ou_signaler`.
     fn emettre(&mut self, actif: bool) -> Result<()> {
         match self {
             Capture::Session(_) => Ok(()),
@@ -129,11 +135,14 @@ pub struct WindowsAudioSource {
     ///
     /// ❌ **« Le seul chemin qu'emprunte un reconstructeur » était écrit ici,
     /// et c'est faux : `demarrage/audio.rs` en pose un dans les DEUX modes.**
-    /// La conséquence — en mono-fenêtre le réarmement RETIRE le son que
+    /// La conséquence — en mono-fenêtre le réarmement RETIRAIT le son que
     /// `new()` venait de donner, faute d'ordre du capteur pour poser
     /// `audio_porteuse` — est documentée auprès de
-    /// `Session::reconstruire_ou_signaler`
-    /// (`transport/piste_audio.rs`), et léguée. C'est
+    /// `Session::reconstruire_ou_signaler` (`transport/piste_audio.rs`).
+    /// ✅ **« Et léguée » : plus depuis le sous-bloc D11** (leg 4, mesuré en
+    /// recette VM — 441 Hz reçus contre la sentinelle au bras rouge).
+    /// `demarrage/audio.rs::brancher` pose `audio_porteuse = true` dans sa
+    /// seule branche mono-fenêtre. C'est
     /// `Session::reconstruire_ou_signaler` (`transport/piste_audio.rs`) qui
     /// réarme désormais une source reconstruite, sur `audio_porteuse` — sans
     /// quoi une capture reconstruite pour une fenêtre porteuse restait
