@@ -27,6 +27,11 @@ mod micro;
 mod opus;
 #[cfg(windows)]
 mod pointer_settings;
+// Le client du canal `/agent` de la plateforme. Pas de `#[cfg(windows)]` :
+// le calcul du délai de reprise (`plateforme::repli`) est pur et doit se
+// compiler et se tester sur l'hôte Linux, et le socket lui-même n'a rien de
+// spécifique à Windows.
+mod plateforme;
 mod rebuild;
 mod signaling;
 // Pas de `#[cfg(windows)]` ici : c'est la part portable de `capture.rs`
