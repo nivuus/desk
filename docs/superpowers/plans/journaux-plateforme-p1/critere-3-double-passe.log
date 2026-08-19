@@ -1,0 +1,74 @@
+=== critere (3) : LA MEME suite contre les DEUX moteurs ===
+date: 2026-08-19T13:04:58+02:00
+moteur postgres : postgres (PostgreSQL) 16.15
+sqlite embarque : node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+3.50.4
+
+--- ROUGE : les horodatages repassent en INTEGER (l'angle mort du CHOIX DES VALEURS) ---
+  [sqlite] :
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+ Test Files  1 failed | 11 passed (12)
+      Tests  2 failed | 62 passed (64)
+  [postgres] :
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+error: value "1700000000000" is out of range for type integer
+ Test Files  6 failed | 6 passed (12)
+      Tests  23 failed | 41 passed (64)
+     → value "1700000000000" is out of range for type integer
+
+  ⇒ SQLite est VERT sur un schema que Postgres refuse. Ni le lint statique
+    ni une passe unique ne l'attrapent : c'est la DOUBLE passe, et le choix
+    d'une valeur de la magnitude d'une epoque, qui le rendent visible.
+
+--- VERT, apres retablissement, sur les DEUX moteurs ---
+  [sqlite] :
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+ Test Files  12 passed (12)
+      Tests  64 passed (64)
+  [postgres] :
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+ Test Files  12 passed (12)
+      Tests  64 passed (64)
+
+❌ CORRECTION DE CE JOURNAL, PAR SA PROPRE MESURE, ET DANS LE TOUR MEME
+   QUI L'A ECRITE. La phrase « SQLite est VERT sur un schema que Postgres
+   refuse » est FAUSSE telle qu'ecrite ci-dessus : le relevé juste
+   au-dessus montre sqlite a « 2 failed | 62 passed ».
+
+   Pourquoi : la rouge ci-dessus est jouee sur l'arbre D'AUJOURD'HUI, qui
+   porte deja le lint « _a INTEGER » et le controle de la definition
+   dupliquee de schema_migration -- deux gardes AJOUTES en meme temps que
+   le correctif BIGINT, et tous deux independants du moteur. Ce sont eux
+   les 2 echecs sqlite.
+
+   L'enonce EXACT, et il porte sa date : le 19 aout 2026, sur l'arbre
+   D'AVANT ces gardes (commit 4183b7e~1) et avec le seul harnais porte a
+   une magnitude d'epoque, la mesure etait
+       sqlite   : Test Files 11 passed (11) / Tests 57 passed (57)
+       postgres : Test Files 3 failed | 8 passed (11) / Tests 13 failed | 44 passed (57)
+   C'EST cette mesure-la qui etablit l'angle mort, et elle n'est plus
+   rejouable en l'etat : les gardes qui la refuteraient sont desormais la.
+
+   Ce que la rouge ci-dessus etablit, elle, et rien de plus : le schema
+   fautif est desormais attrape par DEUX voies independantes -- le lint,
+   sur les deux moteurs, et l'execution, sur Postgres seul.

@@ -1,0 +1,119 @@
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+
+> @guacamole/plateforme@0.1.0 test:postgres
+> PLATEFORME_BASE=postgres vitest run
+
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une offre du client vers l'agent
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+(node:24397) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24389) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24411) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une offre du client vers l'agent
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+(node:24387) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/config.test.ts (5 tests) 4ms
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une réponse de l'agent vers le client
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une réponse de l'agent vers le client
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/signaling/appariement.test.ts (5 tests) 4ms
+stderr | src/signaling/server.test.ts > serveur de signaling > isole les sessions entre elles
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > isole les sessions entre elles
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/base/sous-ensemble.test.ts (5 tests) 19ms
+ ✓ src/signaling/ice.test.ts (6 tests) 5ms
+ ✓ src/index.test.ts (3 tests) 105ms
+(node:24385) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/base/pilote.test.ts (6 tests) 6ms
+stderr | src/http/serveur.test.ts > demarrerServeur > sert le relais de signaling sur le chemin racine, poignée de main comprise
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/http/serveur.test.ts > demarrerServeur > sert le relais de signaling sur le chemin racine, poignée de main comprise
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/http/serveur.test.ts (3 tests) 279ms
+ ✓ src/depot/session.test.ts (5 tests) 395ms
+ ✓ src/signaling/resilience.test.ts (2 tests) 406ms
+ ✓ src/base/pilotes.test.ts (7 tests) 460ms
+stderr | src/signaling/trace.test.ts > le service entier > écrit une ligne à l’appariement, et la clôt à la déconnexion des deux pairs
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/trace.test.ts > le service entier > écrit une ligne à l’appariement, et la clôt à la déconnexion des deux pairs
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/trace.test.ts > le service entier > n’écrit rien quand un seul pair s’est déclaré
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/signaling/trace.test.ts (5 tests) 1315ms
+   ✓ le service entier > n’écrit rien quand un seul pair s’est déclaré 652ms
+stderr | src/signaling/server.test.ts > serveur de signaling > signale la disparition du pair
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > signale la disparition du pair
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un second agent sur la même session
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en premier message sans planter, et permet de retenter
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en premier message sans planter, et permet de retenter
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie les messages de la session de contrôle entre superviseur et shell
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > délivre à l'agent l'offre arrivée avant lui
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > ne délivre que la dernière offre, pas toutes celles reçues
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > oublie l'offre mémorisée quand la session se vide
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > oublie l'offre mémorisée quand la session se vide
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/signaling/server.test.ts (12 tests) 4158ms
+   ✓ serveur de signaling > isole les sessions entre elles 2019ms
+   ✓ serveur de signaling > oublie l'offre mémorisée quand la session se vide 2055ms
+
+ Test Files  12 passed (12)
+      Tests  64 passed (64)
+   Start at  13:02:38
+   Duration  4.60s (transform 374ms, setup 0ms, collect 900ms, tests 7.16s, environment 3ms, prepare 1.62s)
+

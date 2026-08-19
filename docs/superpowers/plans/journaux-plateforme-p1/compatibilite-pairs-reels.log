@@ -1,0 +1,18 @@
+=== compatibilite : les pairs d'aujourd'hui, sans recompilation ===
+date: 2026-08-19T13:06:07+02:00
+
+--- VERT : chemin racine, les octets exacts des pairs reels ---
+URL visee par les pairs : ws://127.0.0.1:43845/
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+agent  : ouvert | recu: []
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+client : ouvert | recu: []
+offre relayee vers l agent : v=0 pair-reel
+lignes session pour "bureau" : 1
+
+--- ROUGE : le meme service, mais les pairs viseraient /signaling ---
+URL visee par les pairs : ws://127.0.0.1:46275/signaling
+agent  : ferme: Unexpected server response: 404 | recu: []
+client : ferme: Unexpected server response: 404 | recu: []
+offre relayee vers l agent : (aucune offre relayee)
+lignes session pour "bureau" : 0

@@ -1,0 +1,9 @@
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+
+> @guacamole/plateforme@0.1.0 typecheck
+> tsc --noEmit
+

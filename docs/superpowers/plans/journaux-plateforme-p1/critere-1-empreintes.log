@@ -1,0 +1,59 @@
+=== critere (1) : le demenagement, prouve plutot que constate ===
+date: 2026-08-19T13:02:59+02:00
+
+--- empreintes d'aujourd'hui ---
+0b32514d39fd5b0bf4c80884fccf8fd89178e5ee56f2135a2f899bc1cbbbb99c  plateforme/src/signaling/ice.test.ts
+5e90b85437507b15fbbdf2c1906efe77f2b104dd5ddb4212c3b8db4506c07b98  plateforme/src/signaling/server.test.ts
+
+--- empreinte de l'original, AVANT le demenagement ---
+signaling/ supprime au commit 5c0ce436a23ad22d2341c771d67c26ab22564b31 ; l'original est en $C~1
+0b32514d39fd5b0bf4c80884fccf8fd89178e5ee56f2135a2f899bc1cbbbb99c  ice.test.ts (original)
+2a1304e0f623af7b52f2b76aa7e2b292b24fdcc361ec94bbe9d920bf49977aab  server.test.ts (original)
+
+--- ice.test.ts : diff avec l'original ---
+(AUCUN ecart : identique au bit pres)
+
+--- server.test.ts : diff avec l'original ---
+3c3
+< import { createSignalingServer } from './server';
+---
+> import { createSignalingServer } from './relais';
+(diff sortie=1 -- UNE seule ligne, la 3, celle de l'import renomme par la tache 4)
+
+--- resilience.test.ts : diff avec l'original ---
+28c28
+< const signalingRoot = path.join(__dirname, '..');
+---
+> const signalingRoot = path.join(__dirname, '..', '..');
+38c38
+<         const proc = spawn(tsxBin, [path.join(__dirname, 'index.ts')], {
+---
+>         const proc = spawn(tsxBin, [path.join(signalingRoot, 'src', 'index.ts')], {
+40c40,53
+<             env: { ...process.env, SIGNALING_PORT: '0' },
+---
+>             // `PLATEFORME_BASE` est FIXÉ, et n'hérite pas de l'environnement :
+>             // ce fichier éprouve la résilience du RELAIS, jamais le choix du
+>             // moteur. Sans ce garde, `npm run test:postgres` transmettrait
+>             // `PLATEFORME_BASE=postgres` à l'enfant sans lui transmettre
+>             // l'URL (que le harnais tient en dur), l'enfant retomberait sur
+>             // `:memory:` que `pg` prend pour un hôte, et mourrait sur
+>             // ECONNREFUSED — le service ayant RAISON de refuser de démarrer.
+>             env: {
+>                 ...process.env,
+>                 PLATEFORME_HOTE: '127.0.0.1',
+>                 PLATEFORME_PORT: '0',
+>                 PLATEFORME_BASE: 'sqlite',
+>                 PLATEFORME_BASE_URL: ':memory:',
+>             },
+(diff sortie=1)
+
+--- les 12 tests de server.test.ts, joues aujourd'hui ---
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+ ✓ src/signaling/server.test.ts (12 tests) 4095ms
+ Test Files  1 passed (1)
+      Tests  12 passed (12)

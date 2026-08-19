@@ -1,0 +1,73 @@
+=== critere (4) : l'ecoute est bornee -- la rouge du defaut ===
+date: 2026-08-19T13:04:09+02:00
+
+--- l'etat livre : PLATEFORME_HOTE n'a AUCUNE branche de defaut ---
+1:// PLATEFORME_HOTE n'a AUCUN défaut, et c'est le point de cette fonction.
+16:    /// PLATEFORME_HOTE — aucun défaut, voir le commentaire de tête.
+31:    const hote = env.PLATEFORME_HOTE;
+34:            "PLATEFORME_HOTE est obligatoire et n'a aucun défaut : nommer l'adresse " +
+
+--- ROUGE : on pose '0.0.0.0' par defaut ---
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+   × lireConfig > refuse de démarrer sans PLATEFORME_HOTE — il n'y a pas de défaut 5ms
+     → expected [Function] to throw an error
+AssertionError: expected [Function] to throw an error
+      Tests  1 failed | 4 passed (5)
+
+--- RETABLI ---
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+      Tests  5 passed (5)
+
+--- et le service REFUSE reellement de demarrer sans la variable ---
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:689:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.9.0
+(sortie du process ci-dessus : refus attendu)
+
+--- REPRISE : le message de refus, en entier ---
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+Error: PLATEFORME_HOTE est obligatoire et n'a aucun défaut : nommer l'adresse d'écoute, sans quoi le service écouterait sur toutes les interfaces.
+    at lireConfig (/home/mallanic/Projects/Guacamole/plateforme/src/config.ts:33:15)
+    at <anonymous> (/home/mallanic/Projects/Guacamole/plateforme/src/index.ts:18:16)
+    at ModuleJob.run (node:internal/modules/esm/module_job:377:25)
+
+--- et le service DEMARRE quand elle est nommee ---
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+plateforme à l'écoute sur 127.0.0.1, le port 40499
+
+⚠️ CORRECTION D'UNE ATTENTE DU PLAN, mesuree ci-dessus :
+   sa tache 1 step 5 annonce « les DEUX premiers tests echouent » quand on
+   pose le defaut '0.0.0.0'. UN SEUL echoue. La chaine vide n'est pas
+   nullish : `env.PLATEFORME_HOTE ?? '0.0.0.0'` ne s'y applique pas, et le
+   test « n'invente pas d'adresse quand la variable est vide » reste vert.
+   Le controle tient -- il PEUT echouer -- mais pas pour la raison ecrite.
+
+--- REPRISE 2 : le message de refus lui-meme (la ligne Error), sans la pile ---
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+Error: PLATEFORME_HOTE est obligatoire et n'a aucun défaut : nommer l'adresse d'écoute, sans quoi le service écouterait sur toutes les interfaces.

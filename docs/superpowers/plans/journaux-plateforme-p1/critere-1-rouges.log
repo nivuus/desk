@@ -1,0 +1,31 @@
+=== critere (1) : les DEUX rouges du demenagement ===
+date: 2026-08-19T13:03:23+02:00
+
+--- ROUGE A : la l.28 laissee sur '..' (racine du paquet mal calculee) ---
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+Error: spawn /home/mallanic/Projects/Guacamole/plateforme/src/node_modules/.bin/tsx ENOENT
+      Tests  2 skipped (2)
+
+--- ROUGE B : l'annonce du port change de forme (couplage au motif /le port (\d+)/) ---
+20:console.log(`plateforme à l'écoute sur ${config.hote}:${service.port}`);
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+Error: démarrage du process signaling expiré. stderr: (node:30009) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+     74|             reject(new Error(`démarrage du process signaling expiré. s…
+      Tests  2 skipped (2)
+
+--- RETABLI ---
+20:console.log(`plateforme à l'écoute sur ${config.hote}, le port ${service.port}`);
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+      Tests  2 passed (2)

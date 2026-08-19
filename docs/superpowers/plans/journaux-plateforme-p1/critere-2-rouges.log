@@ -1,0 +1,35 @@
+=== critere (2) : les DEUX rouges de la trace de session ===
+date: 2026-08-19T13:03:50+02:00
+
+--- ROUGE A : l'ecriture retiree (la rouge que la spec prescrit) ---
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+   × le service entier > écrit une ligne à l’appariement, et la clôt à la déconnexion des deux pairs 2030ms
+     → aucune ligne session ouverte pour trace-1 en 2000 ms
+Error: aucune ligne session ouverte pour trace-1 en 2000 ms
+     49|             throw new Error(`aucune ligne session ${quoi} pour ${nom} …
+      Tests  1 failed | 4 passed (5)
+
+--- ROUGE B : l'ecriture posee des la premiere declaration, non a l'appariement ---
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+stderr | src/signaling/trace.test.ts > le service entier > n’écrit rien quand un seul pair s’est déclaré
+   × le service entier > n’écrit rien quand un seul pair s’est déclaré 307ms
+     → expected [ { …(7) } ] to have a length of +0 but got 1
+ FAIL  src/signaling/trace.test.ts > le service entier > n’écrit rien quand un seul pair s’est déclaré
+AssertionError: expected [ { …(7) } ] to have a length of +0 but got 1
+      Tests  1 failed | 4 passed (5)
+
+--- RETABLI ---
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+      Tests  5 passed (5)
