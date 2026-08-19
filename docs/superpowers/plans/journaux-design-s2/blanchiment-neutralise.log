@@ -1,0 +1,11 @@
+# MESURE du 20 août 2026 : sansCommentaires() neutralisé SEUL (identité),
+# aucun autre fichier touché. C'est la source du chiffre 889 cité par
+# l'en-tête de primitives.test.ts (qui annonçait 672, mesuré à la tâche 2
+# quand bouton.css était seul) et par la section S2 de CLAUDE.md.
+   × primitives.css — les gardes de forme > G1 — aucun sélecteur d’élément nu : tout compound porte une classe 17ms
+   × primitives.css — les gardes de forme > G7 — base.css neutralise les transitions sous prefers-reduced-motion 2ms
+AssertionError: sélecteurs d’élément nus dans primitives.css: expected [ '/*', …(889) ] to deeply equal []
+AssertionError: la requête de mouvement réduit ne porte aucune déclaration: expected [ '--duree-1' ] to include 'transition-duration'
+      Tests  2 failed | 7 passed (9)
+# NOTE : G7 tombe AUSSI, sur un base.css INTACT — c'est le faux positif
+# décrit au §5.1 des résultats.

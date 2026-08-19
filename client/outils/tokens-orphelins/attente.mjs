@@ -33,8 +33,8 @@
 // LA LISTE D'ATTENTE — 10 tokens déclarés que le produit n'appelle pas ENCORE.
 //
 // ⚠️ CE NOMBRE EST TENU À JOUR PAR LA TÂCHE QUI LE REND FAUX, jamais par une
-// tâche de ménage plus tard : elle en avait 28 à la fin de S1, et les six
-// commits de S2 l'ont ramenée à 10 — chacun retirant, DANS SON PROPRE COMMIT,
+// tâche de ménage plus tard : elle en avait 28 à la fin de S1, et les QUATRE
+// commits de famille de S2 l'ont ramenée à 10 — chacun retirant, DANS SON COMMIT,
 // exactement les entrées que le contrôle venait de nommer « À RETIRER DE LA
 // LISTE ». Un compte qui n'appartient à personne dérive — ce dépôt l'a payé
 // assez souvent.

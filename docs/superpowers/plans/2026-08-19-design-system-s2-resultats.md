@@ -610,6 +610,7 @@ PowerShell distant.
 | `poids-css.txt` | les feuilles bâties et leur taille |
 | `rouge-{1..4}-*.log` | une rouge par critère de recette |
 | `rouges-rejouees.log` | G2, G3, G4, G5, G7 rejouées + la mesure du blanchiment |
+| `blanchiment-neutralise.log` | `sansCommentaires()` neutralisé **seul** — la source du **889** |
 | `primitives-html-structure.log` | le contrôle **structurel** de la galerie — **pas** le jugement visuel |
 | `trou-7-4.log` | la mesure du trou de §7.4 (§5.3) |
 | `primitives-css-taille.log` | `primitives.css` commit par commit — 154 / 230 / 72 / 73 |
