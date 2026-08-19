@@ -9,20 +9,97 @@ import { garde } from './garde';
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 const T0 = 1_787_000_000_000;
 
+/// Deux préfixes de la VRAIE longueur que `agents/prefixe.ts` produit — 22
+/// caractères de base64url. Une chaîne courte ne mesurerait pas la même chose.
+const P = 'RhH1x2QmTz9kLpVbNc7dAw';
+const Q = 'Zk4pQw8sXt2vBn6mLr0eYu';
+
 function neuve(maintenant: () => number = () => T0) {
     const proprietes = new ProprieteDeSession();
     return { proprietes, g: garde(SECRET, maintenant, proprietes) };
 }
 
 describe('garde de la poignée de main', () => {
-    it('accepte un pair `agent` SANS jeton — la fenêtre déclarée jusqu’à P3', () => {
-        // ⚠️ Ce test EXISTE pour rendre visible la moitié du trou que P2 ne
-        // ferme pas : `role:'agent'` demeure un chemin ANONYME vers des
-        // identifiants TURN de 24 h. L'agent Rust n'a pas d'identité avant P3,
-        // et lui en exiger une casserait le chantier D en cours. Le jour où P3
-        // l'inversera, il faudra réécrire ce test À DESSEIN, pas par surprise.
+    it('🔴 REFUSE un pair `agent` SANS jeton — la fenêtre de P2 est FERMÉE', () => {
+        // 🔴 CETTE ASSERTION EST L'INVERSE EXACT DE CELLE QUE P2 LIVRAIT, et
+        // c'est le geste central de P3. P2 écrivait ici « accepte un pair
+        // `agent` SANS jeton », en annonçant dans son propre commentaire que
+        // « le jour où P3 l'inversera, il faudra réécrire ce test À DESSEIN,
+        // pas par surprise ». C'est fait, et à dessein.
+        //
+        // 🔴 LA ROUGE EST GRATUITE : le binaire de P2 la porte. `garde.ts`
+        // ouvrait sur `if (role === 'agent') return { ok: true };`, et un pair
+        // qui se déclarait `{"role":"agent"}` obtenait des identifiants TURN
+        // valables 86 400 s sans présenter la moindre identité.
         const { g } = neuve();
-        expect(g.verifier({ role: 'agent', session: 'bureau' })).toEqual({ ok: true });
+        const v = g.verifier({ role: 'agent', session: 'bureau' });
+        expect(v.ok).toBe(false);
+        if (v.ok) return;
+        expect(v.motif).toBe('jeton-absent');
+    });
+
+    it('accepte un `agent` dont le jeton PRÉFIXE la session demandée', () => {
+        const { g } = neuve();
+        const jeton = signer(P, SECRET, T0, DUREE_JETON_ACCES_MS, 'agent');
+        expect(g.verifier({ role: 'agent', session: `${P}:bureau`, jeton }))
+            .toEqual({ ok: true });
+        // La même VM sur une de SES fenêtres.
+        expect(g.verifier({ role: 'agent', session: `${P}:w-1`, jeton }).ok).toBe(true);
+    });
+
+    it('🔴 REFUSE le MÊME jeton d’agent sur la session d’une AUTRE VM', () => {
+        // 🔴 La rouge : omettre la comparaison de préfixe. Un agent enrôlé
+        // occuperait alors la session de TOUTE autre VM — c'est le pendant
+        // `agent` du critère ③ de P2, et sans lui l'enrôlement n'authentifie
+        // que l'existence d'une VM, jamais LAQUELLE.
+        const { g } = neuve();
+        const jeton = signer(P, SECRET, T0, DUREE_JETON_ACCES_MS, 'agent');
+        const refus = g.verifier({ role: 'agent', session: `${Q}:bureau`, jeton });
+        expect(refus).toMatchObject({ ok: false, motif: 'session-refusee' });
+        if (refus.ok) return;
+        // Le message SUR LE FIL ne distingue pas les causes : il est le même
+        // que celui d'un client refusé pour appartenance. Le JOURNAL, lui,
+        // porte de quoi diagnostiquer.
+        expect(refus.message).toBe('accès refusé à la session demandée');
+        expect(refus.journal).toContain(`${Q}:bureau`);
+    });
+
+    it('🔴 REFUSE un préfixe qui n’est qu’un DÉBUT du sujet, sans le séparateur', () => {
+        // 🔴 La rouge : comparer par `session.startsWith(sujet)` SANS le
+        // séparateur. Un agent de préfixe `AB` occuperait alors les sessions
+        // de la VM `ABC`, dont le préfixe le prolonge — une collision qui ne
+        // se produirait qu'entre deux VMs précises, donc jamais en essai et
+        // toujours en production.
+        const { g } = neuve();
+        const jeton = signer('AB', SECRET, T0, DUREE_JETON_ACCES_MS, 'agent');
+        expect(g.verifier({ role: 'agent', session: 'ABC:bureau', jeton }))
+            .toMatchObject({ ok: false, motif: 'session-refusee' });
+    });
+
+    it('🔴 REFUSE un jeton HUMAIN présenté en `role:agent` — confusion, sens 1', () => {
+        // 🔴 La rouge : omettre `type === 'agent'`. Les deux jetons sont signés
+        // par le MÊME secret : un jeton humain volé ouvrirait un rôle `agent`,
+        // donc un `ice-config` sur toute session dont il préfixerait le nom.
+        //
+        // ⚠️ DEUX SENS DE CONFUSION, DEUX TESTS, jamais un seul à deux
+        // assertions : `expect` interrompt à la première, et la seconde ne
+        // serait éprouvée par rien. C'est la leçon ①A-bis de P2, appliquée
+        // d'avance.
+        const { g } = neuve();
+        const humain = signer(P, SECRET, T0);
+        expect(g.verifier({ role: 'agent', session: `${P}:bureau`, jeton: humain }))
+            .toMatchObject({ ok: false, motif: 'session-refusee' });
+    });
+
+    it('🔴 REFUSE un jeton d’AGENT présenté en `role:client` — confusion, sens 2', () => {
+        // 🔴 La rouge : omettre `type !== 'agent'`. Un jeton d'agent ouvrirait
+        // un rôle `client`, contournant l'appartenance de session que P2 a
+        // posée (`signaling/propriete.ts`) : l'agent deviendrait un
+        // utilisateur, sur la session de n'importe qui.
+        const { g } = neuve();
+        const agent = signer(P, SECRET, T0, DUREE_JETON_ACCES_MS, 'agent');
+        expect(g.verifier({ role: 'client', session: `${P}:bureau`, jeton: agent }))
+            .toMatchObject({ ok: false, motif: 'session-refusee' });
     });
 
     it('REFUSE un `client` sans jeton', () => {

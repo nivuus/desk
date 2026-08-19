@@ -201,15 +201,34 @@ describe('la garde, au niveau du socket', () => {
         deux.socket.terminate();
     });
 
-    it('un pair `agent` SANS jeton est toujours accepté — la fenêtre de E2', async () => {
-        // ⚠️ Ce test EXISTE pour rendre visible ce que P2 ne ferme PAS : le
-        // rôle `agent` demeure un chemin anonyme vers des identifiants TURN de
-        // 24 h. L'exiger casserait le chantier D en cours. Le jour où P3
-        // l'inversera, il faudra le réécrire À DESSEIN, pas par surprise.
+    it('🔴 un pair `agent` SANS jeton est REFUSÉ — la fenêtre de E2 est FERMÉE', async () => {
+        // 🔴 CE TEST EST L'INVERSE EXACT DE CELUI QUE P2 LIVRAIT, et P2 l'avait
+        // prévu : « Le jour où P3 l'inversera, il faudra le réécrire À DESSEIN,
+        // pas par surprise. » C'est fait, à dessein, et la rouge est GRATUITE —
+        // le binaire de P2 la porte.
         const port = demarrer();
         const agent = await poignee(port, { role: 'agent', session: 'bureau' });
-        expect(agent.messages.map((m) => m.type)).not.toContain('error');
-        expect(agent.messages.map((m) => m.type)).toContain('ice-config');
+        expect(agent.messages.map((m) => m.type)).toContain('error');
         agent.socket.terminate();
     });
+
+    // 🔴🔴 CE QUE LA TÂCHE 16 DOIT ENCORE ÉCRIRE ICI, ET QUI N'EST PAS FAIT :
+    //
+    //     it("… et il ne reçoit AUCUN `ice-config`", …)
+    //
+    // La réécriture ci-dessus est la MOITIÉ « refus » du critère d'E12, faite
+    // au titre du dommage collatéral de la tâche 10 — sans elle l'arbre restait
+    // rouge. La MOITIÉ « aucune fuite d'`ice-config` » est la substance propre
+    // de la tâche 16 et reste DUE.
+    //
+    // 🔴 ELLE DOIT VIVRE DANS UN TEST DISTINCT, jamais comme seconde assertion
+    // de celui du dessus : `expect` interrompt à la première, et la seconde —
+    // c'est-à-dire la FUITE MÊME qu'on veut fermer — ne serait éprouvée par
+    // rien. C'est littéralement la leçon ①A-bis de P2, qui a coûté une
+    // huitième rouge à ce dépôt.
+    //
+    // ✅ La condition qui la rend capable d'échouer est DÉJÀ REMPLIE ici :
+    // `TURN_URL` et `TURN_SECRET` sont posées en `beforeAll` (voir l'en-tête),
+    // donc `configurationIce` ne rend pas `undefined` et l'absence
+    // d'`ice-config` est une vraie mesure, pas une tautologie.
 });

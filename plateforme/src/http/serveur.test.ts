@@ -21,6 +21,10 @@ import { demarrerServeur, type ServicePlateforme } from './serveur';
 // qu'un service accepterait réellement.
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 
+/// Le préfixe de la VM simulée, de la vraie longueur qu'`agents/prefixe.ts`
+/// produit. La garde exige que le sujet du jeton d'agent préfixe la session.
+const P = 'RhH1x2QmTz9kLpVbNc7dAw';
+
 const CONFIG: Config = {
     hote: '127.0.0.1',
     port: 0,
@@ -91,7 +95,14 @@ describe('demarrerServeur', () => {
 
         const agent = new WebSocket(url);
         await new Promise((r) => agent.once('open', r));
-        agent.send(JSON.stringify({ role: 'agent', session: 'racine-1' }));
+        // 🔴 Le rôle `agent` exige lui aussi son jeton depuis P3 : la fenêtre
+        // anonyme de E2 est fermée. Le jeton est de TYPE `agent`, et son sujet
+        // est le PRÉFIXE que la session doit porter.
+        agent.send(JSON.stringify({
+            role: 'agent',
+            session: `${P}:racine-1`,
+            jeton: signer(P, SECRET, Date.now(), undefined, 'agent'),
+        }));
 
         const client = new WebSocket(url);
         await new Promise((r) => client.once('open', r));
@@ -100,7 +111,7 @@ describe('demarrerServeur', () => {
         // le secret que porte `CONFIG`, celui-là même dont le service se sert.
         client.send(JSON.stringify({
             role: 'client',
-            session: 'racine-1',
+            session: `${P}:racine-1`,
             jeton: signer('u-racine', SECRET, Date.now()),
         }));
 

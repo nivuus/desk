@@ -62,6 +62,11 @@ async function attendreLigne(
     }
 }
 
+/// Le préfixe de la VM simulée. Toutes les sessions de ce fichier le portent,
+/// parce que la garde exige désormais que le sujet du jeton d'agent PRÉFIXE la
+/// session demandée (sous-bloc P3).
+const P = 'RhH1x2QmTz9kLpVbNc7dAw';
+
 function connecter(
     url: string,
     role: string,
@@ -71,13 +76,17 @@ function connecter(
     return new Promise((resolve) => {
         const w = new WebSocket(url);
         w.once('open', () => {
-            // Le rôle `client` exige un jeton d'accès depuis le sous-bloc P2 :
-            // sans lui la garde refuse, le socket se ferme, et AUCUN
-            // appariement n'a lieu — donc aucune ligne de trace. Le jeton est
-            // signé avec le secret que porte `CONFIG`, celui du service.
+            // 🔴 LES DEUX RÔLES EXIGENT UN JETON. Le rôle `client` depuis P2 ;
+            // le rôle `agent` depuis P3, qui a fermé la fenêtre anonyme de E2.
+            // Sans jeton, la garde refuse, le socket se ferme, et AUCUN
+            // appariement n'a lieu — donc aucune ligne de trace, et ces tests
+            // mesureraient un service qui n'apparie jamais rien.
+            //
+            // Le jeton d'agent est de TYPE `agent` et son sujet est le PRÉFIXE
+            // de la VM : la garde exige que ce sujet préfixe la session.
             const jeton = role === 'client'
                 ? signer(sujet, CONFIG.secretJeton, Date.now())
-                : undefined;
+                : signer(P, CONFIG.secretJeton, Date.now(), undefined, 'agent');
             w.send(JSON.stringify({ role, session, jeton }));
             resolve(w);
         });
@@ -138,19 +147,19 @@ describe('le service entier', () => {
         service = await demarrerServeur(CONFIG, base);
         const url = `ws://127.0.0.1:${service.port}/`;
 
-        const agent = await connecter(url, 'agent', 'trace-1');
-        const client = await connecter(url, 'client', 'trace-1');
+        const agent = await connecter(url, 'agent', `${P}:trace-1`);
+        const client = await connecter(url, 'client', `${P}:trace-1`);
 
-        const ouverte = await attendreLigne(base, 'trace-1', () => true, 'ouverte');
+        const ouverte = await attendreLigne(base, `${P}:trace-1`, () => true, 'ouverte');
         expect(Number(ouverte.ouverte_a)).toBeGreaterThan(0);
         expect(ouverte.fermee_a).toBeNull();
 
         await fermer(agent);
         await fermer(client);
 
-        const close = await attendreLigne(base, 'trace-1', (l) => l.fermee_a !== null, 'close');
+        const close = await attendreLigne(base, `${P}:trace-1`, (l) => l.fermee_a !== null, 'close');
         expect(Number(close.fermee_a)).toBeGreaterThanOrEqual(Number(close.ouverte_a));
-        expect(await lireParNom(base, 'trace-1')).toHaveLength(1);
+        expect(await lireParNom(base, `${P}:trace-1`)).toHaveLength(1);
     });
 
     it('n’écrit rien quand un seul pair s’est déclaré', async () => {
@@ -162,13 +171,13 @@ describe('le service entier', () => {
         service = await demarrerServeur(CONFIG, base);
         const url = `ws://127.0.0.1:${service.port}/`;
 
-        const agent = await connecter(url, 'agent', 'trace-2');
+        const agent = await connecter(url, 'agent', `${P}:trace-2`);
         await new Promise((r) => setTimeout(r, 300));
-        expect(await lireParNom(base, 'trace-2')).toHaveLength(0);
+        expect(await lireParNom(base, `${P}:trace-2`)).toHaveLength(0);
 
         await fermer(agent);
         await new Promise((r) => setTimeout(r, 300));
-        expect(await lireParNom(base, 'trace-2')).toHaveLength(0);
+        expect(await lireParNom(base, `${P}:trace-2`)).toHaveLength(0);
     });
 
     it('inscrit en base l’utilisateur du client authentifié qui apparie', async () => {
@@ -182,10 +191,10 @@ describe('le service entier', () => {
         service = await demarrerServeur(CONFIG, base);
         const url = `ws://127.0.0.1:${service.port}/`;
 
-        const agent = await connecter(url, 'agent', 'bureau');
-        const client = await connecter(url, 'client', 'bureau', 'u-proprietaire');
+        const agent = await connecter(url, 'agent', `${P}:bureau`);
+        const client = await connecter(url, 'client', `${P}:bureau`, 'u-proprietaire');
 
-        const ligne = await attendreLigne(base, 'bureau', () => true, 'ouverte');
+        const ligne = await attendreLigne(base, `${P}:bureau`, () => true, 'ouverte');
         expect(ligne.utilisateur_id).toBe('u-proprietaire');
 
         await fermer(agent);
