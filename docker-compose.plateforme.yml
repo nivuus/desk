@@ -1,0 +1,43 @@
+# Instance Postgres de TEST du sous-projet ⑤ Plateforme.
+#
+# Fichier séparé du `docker-compose.yml` principal, et versionné, pour la même
+# raison que `docker-compose.coturn.yml` : ce dernier n'est pas versionné, il
+# porte les mots de passe Windows du Guacamole legacy en clair (voir
+# `.gitignore`). Ici, aucun secret n'apparaît.
+#
+# ⚠️ NE PAS le composer avec `docker-compose.yml` : celui-ci ne déclare aucun
+# service du nouveau produit, et il n'est pas versionné. Ce fichier se lance
+# SEUL :
+#
+#   docker compose -f docker-compose.plateforme.yml up -d
+#   docker compose -f docker-compose.plateforme.yml ps
+#   docker compose -f docker-compose.plateforme.yml down
+#
+# Puis, depuis `plateforme/` :
+#   npm run test:postgres
+#
+# 🔴 Les identifiants ci-dessous NE SONT PAS DES SECRETS, et c'est écrit ici
+# pour qu'un successeur ne les prenne pas pour tels : ils ne servent qu'à cette
+# instance de test, jetable, publiée sur la seule boucle locale. Une base de
+# production n'emploiera JAMAIS ce fichier — elle recevra son URL par
+# `PLATEFORME_BASE_URL`, hors de git.
+
+services:
+  postgres-plateforme:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      # Identifiants de test, en clair et assumés — voir l'en-tête.
+      POSTGRES_USER: plateforme
+      POSTGRES_PASSWORD: plateforme-test
+      POSTGRES_DB: plateforme_test
+    ports:
+      # Publié sur 127.0.0.1 UNIQUEMENT : sans cette adresse, Docker exposerait
+      # le port sur toutes les interfaces de l'hôte — c'est exactement l'écoute
+      # non nommée que le critère ④ de P1 existe pour empêcher côté service.
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plateforme -d plateforme_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

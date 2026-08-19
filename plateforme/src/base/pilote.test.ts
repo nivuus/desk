@@ -46,6 +46,6 @@ describe('discipline du paquet', () => {
         // `find node_modules -name '*.node'` serait rouge d'emblée, pour une
         // mauvaise raison.
         const deps = Object.keys(JSON.parse(pkg).dependencies).sort();
-        expect(deps).toEqual(['ws']);
+        expect(deps).toEqual(['pg', 'ws']);
     });
 });
