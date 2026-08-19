@@ -160,7 +160,17 @@ export function waitForAnswer(socket: WebSocket): Promise<string> {
 
 /// Attend que la collecte ICE soit terminée : sans trickle, le SDP doit déjà
 /// contenir tous les candidats.
-function waitForIceGathering(pc: RTCPeerConnection): Promise<void> {
+///
+/// ⚠️ EXPORTÉE PAR LE SOUS-BLOC F1, ET C'EST UNE MODIFICATION DÉCLARÉE.
+/// `client/src/fichiers/canal.ts` ouvre une `RTCPeerConnection` DÉDIÉE, sans
+/// média (décision D4 du plan de F1) : `connectSession` ne lui convient pas —
+/// elle exige un `HTMLVideoElement` et ajoute inconditionnellement trois
+/// transceivers. Le plan interdit de refactorer `connectSession` pour rendre la
+/// vidéo optionnelle : ce serait toucher le chemin critique de toutes les
+/// fenêtres pour un besoin qui a sa propre fonction. Il prescrit en revanche de
+/// RÉEMPLOYER les fonctions de signaling « sans les copier » — d'où cet export
+/// et celui d'`attendreConfigIce`. Aucun comportement n'est modifié.
+export function waitForIceGathering(pc: RTCPeerConnection): Promise<void> {
     if (pc.iceGatheringState === 'complete') return Promise.resolve();
     return new Promise((resolve) => {
         const check = () => {
@@ -183,7 +193,9 @@ function waitForIceGathering(pc: RTCPeerConnection): Promise<void> {
 /// Rend un tableau VIDE en cas d'absence : c'est le cas normal d'un
 /// déploiement sans relais, pas une erreur. Le message est retiré du flux
 /// pour ne pas être confondu plus tard avec une réponse SDP.
-function attendreConfigIce(socket: WebSocket, delaiMs: number): Promise<RTCIceServer[]> {
+///
+/// ⚠️ EXPORTÉE PAR LE SOUS-BLOC F1 — voir la note de `waitForIceGathering`.
+export function attendreConfigIce(socket: WebSocket, delaiMs: number): Promise<RTCIceServer[]> {
     return new Promise((resolve) => {
         const finir = (serveurs: RTCIceServer[]) => {
             socket.removeEventListener('message', onMessage);

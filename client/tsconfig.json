@@ -7,7 +7,7 @@
     "skipLibCheck": true,
     "noUnusedLocals": true,
     "noEmit": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "DOM.AsyncIterable"]
   },
   "include": ["src/**/*.ts", "../proto/ts/**/*.ts"]
 }

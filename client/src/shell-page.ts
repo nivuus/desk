@@ -4,6 +4,9 @@
 import { creerBureau } from './shell';
 import { jetonAcces } from './jeton';
 import { composer, lirePrefixe } from './prefixe';
+import { creerAdaptateur } from './fichiers/adaptateur';
+import { creerServeur } from './fichiers/protocole';
+import { choisirDossier, connecterCanalFichiers, sessionDuPont, type CanalFichiers } from './fichiers/canal';
 
 const params = new URLSearchParams(window.location.search);
 const signalingUrl = params.get('signaling') ?? `ws://${window.location.hostname}:8080`;
@@ -20,6 +23,8 @@ const SESSION_DE_CONTROLE = composer(prefixe, NOM_SESSION_DE_CONTROLE);
 
 const statut = document.querySelector<HTMLDivElement>('#statut')!;
 const liste = document.querySelector<HTMLUListElement>('#fenetres')!;
+const boutonDossier = document.querySelector<HTMLButtonElement>('#choisir-dossier')!;
+const etatFichiers = document.querySelector<HTMLDivElement>('#etat-fichiers')!;
 
 // 🔴 C'EST ICI, ET NULLE PART AILLEURS, QUE L'ON REDIRIGE VERS LA CONNEXION.
 // Cette page est l'entrée réelle de l'utilisateur ; les pages de session, elle
@@ -47,7 +52,73 @@ const bureau = creerBureau({
     afficher(message) {
         statut.textContent = message;
     },
+    afficherEtatFichiers(texte) {
+        etatFichiers.textContent = texte;
+    },
 });
+
+/* ── LE LECTEUR « MES FICHIERS » ──────────────────────────────────────────
+   Aucune règle ici non plus : les messages sont dans `shell.ts`, la logique de
+   protocole dans `fichiers/protocole.ts` et `fichiers/adaptateur.ts`, tous
+   trois testés. Ce bloc n'est que du câblage, comme le reste de ce fichier. */
+
+let pont: CanalFichiers | null = null;
+
+boutonDossier.addEventListener('click', () => {
+    // 🔴 `showDirectoryPicker()` EXIGE UNE ACTIVATION UTILISATEUR TRANSITOIRE,
+    // et c'est pourquoi il est appelé ici, dans le gestionnaire de clic, et
+    // jamais depuis un message de canal. Le gestionnaire n'est pas `async` : un
+    // `await` avant l'appel consommerait l'activation, et le sélecteur serait
+    // refusé sans que rien ne le dise. Même contrainte que `window.open()`, que
+    // cette page connaît déjà.
+    void monterLeLecteur();
+});
+
+async function monterLeLecteur(): Promise<void> {
+    // Un second clic remplace le dossier : l'ancien pont part d'abord, sans
+    // quoi deux `PeerConnection` se disputeraient la session `…:fichiers` et
+    // la seconde serait refusée par le relais.
+    pont?.close();
+    pont = null;
+    bureau.lecteurDemonte();
+
+    const choix = await choisirDossier().catch((e: unknown) => {
+        bureau.lecteurEchoue((e as Error).message);
+        return undefined;
+    });
+    // `null` = annulation délibérée, `undefined` = échec déjà signalé.
+    if (choix === null || choix === undefined) return;
+
+    const serveur = creerServeur(creerAdaptateur(choix.racine), (m) => console.warn(m));
+    try {
+        pont = await connecterCanalFichiers({
+            signalingUrl,
+            sessionId: sessionDuPont(),
+            onStatus: (m) => console.info(m),
+            traiter: (octets) => serveur.traiter(octets),
+        });
+    } catch (e) {
+        bureau.lecteurEchoue((e as Error).message);
+        return;
+    }
+    bureau.lecteurMonte(choix.nom);
+
+    // ⚠️ LE DÉMONTAGE SUIT LA CONNEXION, PAS LE CANAL SEUL : un canal fermé sur
+    // une connexion qui se rétablit serait rouvert par l'agent, alors qu'une
+    // connexion `failed` ou `closed` est définitive pour ce pont-ci.
+    //
+    // ⚠️ LE PONT COURANT EST CAPTURÉ, et l'écouteur se tait s'il n'est plus
+    // celui-là. Sans cette garde, la fermeture de l'ANCIEN pont — que le
+    // remontage vient de provoquer — effacerait l'état du NOUVEAU : un
+    // écouteur qui survit à son objet est le patron exact d'une course qu'on
+    // ne voit qu'en cliquant deux fois.
+    const ce = pont;
+    ce.pc.addEventListener('connectionstatechange', () => {
+        if (pont !== ce) return;
+        const etat = ce.pc.connectionState;
+        if (etat === 'failed' || etat === 'closed') bureau.lecteurDemonte();
+    });
+}
 
 function redessiner(): void {
     liste.replaceChildren();
