@@ -1,0 +1,50 @@
+# TÉMOIN — scripts/verify-all.sh sur l'arbre de la recette
+# Jouée le 2026-08-19T22:08:12+02:00, commit dded5b5
+#
+# git status --porcelain plateforme/ proto/ agent/ client/ scripts/ : VIDE
+# (relevé avant l'exécution ; les seuls fichiers non suivis de l'arbre sont
+# les sondes de cette recette, sous docs/, et les fichiers antérieurs à la
+# branche listés par le git status d'ouverture de session).
+#
+# ⚠️ LE SCRIPT COMPTE DIX-SEPT ÉTAPES, PAS DIX. Le brief de cette tâche en
+# annonçait dix ; la commande en énumère dix-sept — les sept étapes de
+# vérification de la feuille de style (sous-bloc S1, §7.x) s'y sont ajoutées
+# depuis. Relevé, pas supposé.
+#
+# Aucune étape n'a échoué pour une cause étrangère : le repli prévu par le
+# plan (jouer les sept étapes TypeScript à part) n'a pas eu à servir.
+
+==> cargo test --workspace
+==> cargo clippy --workspace
+==> client : npm test
+==> client : npm run typecheck
+==> client : npm run design:verifier
+==> npm run build (sans quoi §7.3 et §7.7 jugeraient le build d’avant)
+==> §7.4  les trois blocs de thème ne divergent pas
+==> §7.1  les contrastes tiennent les seuils WCAG
+==> §7.2  aucune couleur littérale hors de tokens.css
+==> §7.6  aucun token orphelin, aucun var() non déclaré
+==> §7.3  toute surface bâtie porte les tokens
+==> §7.7  le poids CSS ne dérive pas
+==> proto : npm test
+==> proto : npm run typecheck
+==> plateforme : npm run test:sqlite
+==> plateforme : npm run test:postgres
+==> plateforme : npm run typecheck
+
+--- les comptes, relevés dans la sortie ---
+test result: ok. 550 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.98s
+test result: ok. 52 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+ Test Files  21 passed (21)
+      Tests  187 passed (187)
+ Test Files  3 passed (3)
+      Tests  70 passed (70)
+ Test Files  28 passed (28)
+      Tests  194 passed (194)
+ Test Files  28 passed (28)
+      Tests  194 passed (194)
+
+Toutes les vérifications sont passées.
+
+# code de sortie de scripts/verify-all.sh : 0

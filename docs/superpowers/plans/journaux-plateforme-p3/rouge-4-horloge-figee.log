@@ -1,0 +1,52 @@
+--- la mutation, en diff ---
+    --- /tmp/user/0/tmp.31Xxf5U0dQ	2026-08-19 22:14:57.254994382 +0200
+    +++ docs/superpowers/plans/journaux-plateforme-p3/instrument/sonde.ts	2026-08-19 22:14:57.266994436 +0200
+    @@ -362,7 +362,8 @@
+         ] as const;
+         const etats: string[] = [];
+         for (const [nom, delta] of instants) {
+    -        const etat = etatDe(vuA, (vuA ?? 0) + delta);
+    +        void delta; /* ROUGE 4 : l'horloge est FIGEE a vu_a */
+    +        const etat = etatDe(vuA, vuA ?? 0);
+             etats.push(etat);
+             dire(ligne(nom, etat));
+         }
+
+--- le contrôle, sur l'arbre MUTÉ ---
+# CRITÈRE ④ — un agent muet est vu comme tel
+# Exécution 1 — moteur sqlite
+# Jouée le 2026-08-19T20:14:58.046Z, commit dded5b5
+#
+vu_a après l'enrôlement           : 1787170498402
+l'enrôlement pose vu_a            : TENU
+réponse au battement              : battement-recu
+vu_a après un battement           : 1787170498508
+le battement AVANCE vu_a          : TENU
+le battement rend un jeton FRAIS  : TENU
+
+typeof vu_a rendu par le dépôt    : number
+SEUIL_INJOIGNABLE_MS              : 90000
+t = vu_a                          : prete
+t = vu_a + seuil/2                : prete
+t = vu_a + seuil (borne)          : prete
+t = vu_a + seuil + 1 ms           : prete
+t = vu_a + 10 × seuil             : prete
+la borne exacte est encore « prete »: TENU
+une milliseconde de plus bascule  : 🔴 NON TENU
+le relevé VOIT la transition prete -> injoignable: 🔴 NON TENU
+
+une VM jamais vue (vu_a = null)   : injoignable
+une VM jamais vue est « injoignable »: TENU
+
+VERDICT                           : 🔴 2 assertion(s) NON TENUE(S)
+
+# --- journal du service (sortie d’erreur), conservé tel quel ---
+
+# code de sortie de la sonde : 1 (0 = tout tenu)
+
+# code de sortie du contrôle sur l'arbre muté : 1
+# (un code NON NUL est ce qu'on cherche : le contrôle dénonce la mutation)
+
+# sha256 avant la mutation : 592009d0a6c9d53893d7c82b6e66447372a21405a8eb1e7cc9efcf5b4ae57b49
+# sha256 après restauration: 592009d0a6c9d53893d7c82b6e66447372a21405a8eb1e7cc9efcf5b4ae57b49
+# source RESTAURÉE À L'IDENTIQUE (empreintes égales)

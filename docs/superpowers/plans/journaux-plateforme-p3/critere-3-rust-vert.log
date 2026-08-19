@@ -1,0 +1,36 @@
+# CRITÈRE ③, CÔTÉ RUST — le vecteur de version PLATEFORME_VERSION + 1
+# Jouée le 2026-08-19T22:13:38+02:00, commit dded5b5
+#
+# La sonde TypeScript (critere-3-1.log, critere-3-2.log) éprouve les deux
+# parseurs TS et le service sur le fil. Ce journal-ci éprouve le RUST, qui
+# est l'autre moitié du critère : « rejeté par le Rust ET par le
+# TypeScript ».
+
+$ cargo test -p proto plateforme
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.23s
+     Running unittests src/lib.rs (target/debug/deps/proto-8d2cff7e4cd88971)
+
+running 18 tests
+test plateforme::tests::rejette_la_version_suivante_sur_enrole ... ok
+test plateforme::tests::rejette_la_version_suivante_sur_refus ... ok
+test plateforme::tests::rejette_la_version_suivante_sur_enroler ... ok
+test plateforme::tests::rejette_la_version_suivante_sur_battement ... ok
+test plateforme::tests::rejette_la_version_suivante_sur_battement_recu ... ok
+test plateforme::tests::rejette_un_champ_inconnu ... ok
+test plateforme::tests::rejette_un_type_inconnu ... ok
+test plateforme::tests::rejette_une_version_absente_sur_battement ... ok
+test plateforme::tests::conformite_aux_vecteurs_partages ... ok
+test plateforme::tests::rejette_une_version_absente_sur_battement_recu ... ok
+test plateforme::tests::rejette_une_version_absente_sur_enrole ... ok
+test plateforme::tests::rejette_une_version_absente_sur_enroler ... ok
+test plateforme::tests::rejette_une_version_absente_sur_refus ... ok
+test plateforme::tests::serialise_l_enrole_et_le_refus ... ok
+test plateforme::tests::serialise_l_enrolement_en_kebab_case ... ok
+test plateforme::tests::round_trip_des_trois_reponses ... ok
+test plateforme::tests::serialise_le_battement ... ok
+test plateforme::tests::serialise_le_battement_recu_en_kebab_case ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 34 filtered out; finished in 0.00s
+
+
+# code de sortie : 0

@@ -1,0 +1,30 @@
+# CRITÈRE ④ — un agent muet est vu comme tel
+# Exécution 2 — moteur postgres
+# Jouée le 2026-08-19T20:09:17.612Z, commit dded5b5
+#
+vu_a après l'enrôlement           : 1787170157780
+l'enrôlement pose vu_a            : TENU
+réponse au battement              : battement-recu
+vu_a après un battement           : 1787170157886
+le battement AVANCE vu_a          : TENU
+le battement rend un jeton FRAIS  : TENU
+
+typeof vu_a rendu par le dépôt    : string
+SEUIL_INJOIGNABLE_MS              : 90000
+t = vu_a                          : prete
+t = vu_a + seuil/2                : prete
+t = vu_a + seuil (borne)          : prete
+t = vu_a + seuil + 1 ms           : injoignable
+t = vu_a + 10 × seuil             : injoignable
+la borne exacte est encore « prete »: TENU
+une milliseconde de plus bascule  : TENU
+le relevé VOIT la transition prete -> injoignable: TENU
+
+une VM jamais vue (vu_a = null)   : injoignable
+une VM jamais vue est « injoignable »: TENU
+
+VERDICT                           : TOUT TENU
+
+# --- journal du service (sortie d’erreur), conservé tel quel ---
+
+# code de sortie de la sonde : 0 (0 = tout tenu)

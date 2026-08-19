@@ -1,0 +1,40 @@
+# CRITÈRE ① — deux agents simulés, deux VMs, aucun conflit ; et chacun ne voit que sa session
+# Exécution 2 — moteur postgres
+# Jouée le 2026-08-19T20:12:01.632Z, commit dded5b5
+#
+VM P — préfixe délivré            : Bj47n45XlRdbe4nX8Pw6qQ
+VM Q — préfixe délivré            : fNHRRZkTQn9BxW4RVZMuzg
+longueur des deux préfixes        : [22,22]
+P — jeton (corps masqué)          : eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<charge:88>.<sig:43>
+Q — jeton (corps masqué)          : eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<charge:88>.<sig:43>
+préfixes DISTINCTS                : TENU
+jetons DISTINCTS                  : TENU
+
+agent P -> Bj47n45XlRdbe4nX8Pw6qQ:bureau: ACCEPTÉ
+agent P sert bureau               : TENU
+agent P -> Bj47n45XlRdbe4nX8Pw6qQ:w-1: ACCEPTÉ
+agent P sert w-1                  : TENU
+agent Q -> fNHRRZkTQn9BxW4RVZMuzg:bureau: ACCEPTÉ
+agent Q sert bureau               : TENU
+agent Q -> fNHRRZkTQn9BxW4RVZMuzg:w-1: ACCEPTÉ
+agent Q sert w-1                  : TENU
+
+aucun refus « déjà connecté »     : true
+un agent ACCEPTÉ reçoit bien une ice-config (témoin): TENU
+
+agent P -> <Q>:w-9 (session VIERGE): REFUSÉ (accès refusé à la session demandée)
+trames reçues par l'intrus        : ["{\"type\":\"error\",\"reason\":\"accès refusé à la session demandée\",\"motif\":\"session-refusee\"}"]
+agent P REFUSÉ sur une session vierge de Q: TENU
+l'intrus n'a reçu AUCUNE ice-config: TENU
+le refus ne dit ni à qui ni si elle existe: TENU
+
+agent P -> <Q>:bureau (OCCUPÉE)   : accès refusé à la session demandée
+la garde tranche AVANT l'appariement: TENU
+
+VERDICT                           : TOUT TENU
+
+# --- journal du service (sortie d’erreur), conservé tel quel ---
+poignée de main refusée : session fNHRRZkTQn9BxW4RVZMuzg:w-9 refusée à l'agent Bj47n45XlRdbe4nX8Pw6qQ : elle ne porte pas son préfixe
+poignée de main refusée : session fNHRRZkTQn9BxW4RVZMuzg:bureau refusée à l'agent Bj47n45XlRdbe4nX8Pw6qQ : elle ne porte pas son préfixe
+
+# code de sortie de la sonde : 0 (0 = tout tenu)

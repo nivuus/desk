@@ -1,0 +1,6 @@
+{
+  "name": "recette-p3-instrument",
+  "private": true,
+  "type": "module",
+  "description": "Marque ce répertoire comme ESM : sans lui, tsx compile les sondes en CommonJS et refuse leur `await` de tête. Aucune dépendance — les sondes n'importent que du code du dépôt et le WebSocket global de Node 24."
+}

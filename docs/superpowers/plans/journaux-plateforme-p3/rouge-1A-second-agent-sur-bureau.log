@@ -1,0 +1,17 @@
+# 🔴 ROUGE ①A — LA ROUGE GRATUITE, jouée sur le SERVICE DE P2
+# Commit du service mesuré : f0b2fca (dernier commit du sous-bloc P2)
+# Jouée le 2026-08-19T20:15:18.096Z
+#
+# Deux VMs, deux superviseurs, aucun préfixe — l'état d'avant P3.
+
+service                           : ws://127.0.0.1:41171/
+agent de la VM 1 -> bureau        : ["{\"type\":\"ice-config\",\"iceServers\":[{\"urls\":\"turn:127.0.0.1:3478\",\"username\":\"1787256918:bureau\",\"credential\":\"Nq4VyvC1VzdXYodUrajHEoLeTt4=\"}]}"]
+agent de la VM 2 -> bureau        : ["{\"type\":\"error\",\"reason\":\"un agent est déjà connecté à la session bureau\"}"]
+
+motif reçu par le SECOND, verbatim: un agent est déjà connecté à la session bureau
+motif attendu (spec §4 P3 ①)      : un agent est déjà connecté à la session bureau
+🔴 LA ROUGE EST VUE               : OUI
+
+# Sur le service de P3, ce même geste ne peut plus se produire : les deux
+# superviseurs nomment leur session <préfixe>:bureau, et les deux préfixes
+# sont tirés à 128 bits (voir critere-1-1.log et critere-1-2.log).

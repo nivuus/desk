@@ -1,0 +1,51 @@
+--- la mutation, en diff ---
+    --- /tmp/user/0/tmp.r36DsrcrPQ	2026-08-19 22:14:53.018975431 +0200
+    +++ plateforme/src/agents/enrolement.ts	2026-08-19 22:14:53.042975540 +0200
+    @@ -49,8 +49,9 @@
+     ): Promise<VerdictEnrolement> {
+         const ligne = await lireParVm(p, vmId);
+         if (ligne === undefined) {
+    -        journaliser(`enrôlement refusé pour la VM ${vmId}`);
+    -        return REFUS;
+    +        // ROUGE 2 : le refus DISTINGUE la VM inconnue du secret faux.
+    +        journaliser(`enrolement refuse pour la VM ${vmId}`);
+    +        return { ok: false, motif: 'forme' };
+         }
+     
+         if (!(await verifier(secret, ligne.empreinte_secret))) {
+
+--- le contrôle, sur l'arbre MUTÉ ---
+# CRITÈRE ② — un agent au mauvais secret est refusé, sans distinguer « VM inconnue » de « secret faux »
+# Exécution 1 — moteur sqlite
+# Jouée le 2026-08-19T20:14:53.586Z, commit dded5b5
+#
+VM enrôlée (identifiant)          : 36a1e4eb-3554-493f-a2cf-86749cbc0248
+longueur du secret tiré           : 43
+
+A — VM inconnue, refus BRUT       : {"type":"refus","v":1,"motif":"forme"}
+B — secret faux,  refus BRUT      : {"type":"refus","v":1,"motif":"enrolement"}
+longueurs (A, B)                  : [38,43]
+premier caractère divergent       : 31
+les deux refus sont IDENTIQUES    : 🔴 NON TENU
+
+A — fermeture                     : socket ouvert
+B — fermeture                     : {"code":1008,"raison":"enrolement"}
+les deux fermetures sont IDENTIQUES: 🔴 NON TENU
+
+C — bon secret, type de réponse   : enrole
+le BON secret est accepté (témoin): TENU
+
+VERDICT                           : 🔴 2 assertion(s) NON TENUE(S)
+
+# --- journal du service (sortie d’erreur), conservé tel quel ---
+enrolement refuse pour la VM 11111111-2222-3333-4444-555555555555
+enrôlement refusé pour la VM 36a1e4eb-3554-493f-a2cf-86749cbc0248
+
+# code de sortie de la sonde : 1 (0 = tout tenu)
+
+# code de sortie du contrôle sur l'arbre muté : 1
+# (un code NON NUL est ce qu'on cherche : le contrôle dénonce la mutation)
+
+# sha256 avant la mutation : 030fca6aeeb94080c48307d305e7caf6f1bfd3873187e441b4ed0833b2de7ab3
+# sha256 après restauration: 030fca6aeeb94080c48307d305e7caf6f1bfd3873187e441b4ed0833b2de7ab3
+# source RESTAURÉE À L'IDENTIQUE (empreintes égales)
