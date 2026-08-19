@@ -35,9 +35,9 @@ let port: number;
 // port d'écoute (SIGNALING_PORT=0 : le système en attribue un libre).
 function startRealServer(): Promise<{ child: ChildProcessWithoutNullStreams; port: number }> {
     return new Promise((resolve, reject) => {
-        const proc = spawn(tsxBin, [path.join(__dirname, 'index.ts')], {
+        const proc = spawn(tsxBin, [path.join(signalingRoot, 'src', 'index.ts')], {
             cwd: signalingRoot,
-            env: { ...process.env, SIGNALING_PORT: '0' },
+            env: { ...process.env, PLATEFORME_HOTE: '127.0.0.1', PLATEFORME_PORT: '0' },
         });
 
         let output = '';

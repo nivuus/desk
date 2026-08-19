@@ -63,8 +63,15 @@ export interface SignalingServer {
     close(): Promise<void>;
 }
 
-export function createSignalingServer(port: number): SignalingServer {
-    const wss = new WebSocketServer({ port });
+// Deux formes, à dessein. La forme `port` est celle qu'éprouve
+// `server.test.ts` depuis le jalon 1 : la garder intacte est ce qui permet de
+// dire que le déménagement du sous-bloc P1 n'a rien changé au relais. La forme
+// `wss` est celle qu'emploie le service, où le serveur HTTP possède le port.
+export function createSignalingServer(port: number): SignalingServer;
+export function createSignalingServer(wss: WebSocketServer): SignalingServer;
+export function createSignalingServer(portOuWss: number | WebSocketServer): SignalingServer {
+    const port = typeof portOuWss === 'number' ? portOuWss : 0;
+    const wss = typeof portOuWss === 'number' ? new WebSocketServer({ port }) : portOuWss;
     const sessions = new Map<string, Session>();
 
     function send(socket: WebSocket | undefined, payload: unknown): void {
