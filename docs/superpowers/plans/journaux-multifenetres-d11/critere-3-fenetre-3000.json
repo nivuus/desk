@@ -1,0 +1,79 @@
+{
+  "profil": 3,
+  "duree_s": 60,
+  "url_shell": "http://192.168.3.1:5173/shell.html",
+  "urls": [],
+  "cibles_hz": [
+    440,
+    660
+  ],
+  "assignations": [
+    {
+      "t_s": 50,
+      "fenetres": "[{\"t\":1787140484749,\"session\":\"w-1\",\"titre\":\"660 Hz\"},{\"t\":1787140484812,\"session\":\"w-2\",\"titre\":\"440 Hz\"}]",
+      "liste_shell": "660 Hz — ouverte 440 Hz — ouverte ",
+      "statut_shell": "bureau connecté"
+    }
+  ],
+  "releves": [
+    {
+      "t_s": 50,
+      "debut": "2026-08-19T11:55:39.555Z",
+      "fin": "2026-08-19T11:55:41.079Z",
+      "url": "http://192.168.3.1:5173/?session=w-1",
+      "spectre": {
+        "voie": "pc",
+        "etat_ctx": "running",
+        "dominante_hz": 0,
+        "niveau_db": -1000,
+        "plancher_db": -1000,
+        "niveaux": [
+          {
+            "f": 440,
+            "db": -1000
+          },
+          {
+            "f": 660,
+            "db": -1000
+          }
+        ],
+        "resolution_bin_hz": 5.38,
+        "sample_rate": 44100,
+        "piste_muted": true,
+        "piste_ready_state": "live",
+        "stats_audio": null
+      }
+    },
+    {
+      "t_s": 50,
+      "debut": "2026-08-19T11:55:39.555Z",
+      "fin": "2026-08-19T11:55:41.080Z",
+      "url": "http://192.168.3.1:5173/?session=w-2",
+      "spectre": {
+        "voie": "pc",
+        "etat_ctx": "running",
+        "dominante_hz": 441,
+        "niveau_db": -39.9,
+        "plancher_db": -157.4,
+        "niveaux": [
+          {
+            "f": 440,
+            "db": -39.9
+          },
+          {
+            "f": 660,
+            "db": -40.3
+          }
+        ],
+        "resolution_bin_hz": 5.38,
+        "sample_rate": 44100,
+        "piste_muted": false,
+        "piste_ready_state": "live",
+        "stats_audio": {
+          "bytes_recus": 846859,
+          "paquets_recus": 5259
+        }
+      }
+    }
+  ]
+}
