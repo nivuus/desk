@@ -1,0 +1,29 @@
+# CRITÈRE ③, la moitié « appartenance ENREGISTRÉE », sur le service VIVANT
+# Joué le 2026-08-19T15:49:22+02:00, service = HEAD, base sqlite /tmp/p2/recette.sqlite
+#
+# Les tests d'hôte couvrent déjà la colonne (`depot/session.test.ts`,
+# `signaling/trace.test.ts`). Ceci est la même chose sur le chemin RÉEL :
+# un pair `agent` et un pair `client` authentifié s'apparient, et la ligne
+# `session` porte l'identifiant de l'utilisateur qui a présenté le jeton.
+
+jeton obtenu : eyJhbGciOiJIUzI1NiIsInR5…
+agent <- {"type":"ice-config","iceServers":[{"urls":"turn:127.0.0.1:3…
+client <- {"type":"ice-config","iceServers":[{"urls":"turn:127.0.0.1:3…
+
+
+$ SELECT nom_session, utilisateur_id, fermee_a FROM session
+[
+  {
+    "nom_session": "s-appartenance-reelle",
+    "utilisateur_id": "a64cfa4b-77a7-4317-a901-d4357f257b1c",
+    "fermee_a": 1787147366048,
+    "motif": "les deux pairs sont partis"
+  }
+]
+--- le compte, pour comparaison ---
+[
+  {
+    "id": "a64cfa4b-77a7-4317-a901-d4357f257b1c",
+    "email": "recette@exemple.test"
+  }
+]

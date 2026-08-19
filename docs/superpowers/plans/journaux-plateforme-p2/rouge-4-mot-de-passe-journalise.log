@@ -1,0 +1,62 @@
+# ROUGE ④ — un `console.log(JSON.stringify(corps))` dans /auth/connexion
+# Jouée le 2026-08-19T15:42:35+02:00, commit 8879a4b
+# C'est le geste EXACT que le critère ④ existe pour attraper : journaliser
+# le corps de la requête pour diagnostiquer écrit le mot de passe en clair.
+
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+(node:897378) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | src/http/routes-auth.test.ts > routes d’authentification > connexion valide : l’accès est un jeton que le service accepte, et le rafraîchissement vaut
+{"email":"ada@exemple.test","motdepasse":"un-mot-de-passe-ordinaire-42"}
+
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > connexion valide : l’accès est un jeton que le service accepte, et le rafraîchissement vaut
+stdout | src/http/routes-auth.test.ts > routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message
+{"email":"ada@exemple.test","motdepasse":"ce-n-est-pas-le-bon-mot-de-passe"}
+
+stdout | src/http/routes-auth.test.ts > routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message
+{"email":"personne@exemple.test","motdepasse":"un-mot-de-passe-ordinaire-42"}
+
+stdout | src/http/routes-auth.test.ts > routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message
+{"email":"ada@exemple.test","motdepasse":"encore-faux"}
+
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 401ms
+stdout | src/http/routes-auth.test.ts > routes d’authentification > REJEU : rafraîchir deux fois le même jeton rend 401, et la famille tombe
+{"email":"ada@exemple.test","motdepasse":"un-mot-de-passe-ordinaire-42"}
+
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > REJEU : rafraîchir deux fois le même jeton rend 401, et la famille tombe
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > borne le corps à 4 KiB : 5 KiB rend 413
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > refuse une méthode autre que POST par 405, et un corps non-JSON par 400
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > OPTIONS rend 204, avec les en-têtes CORS SEULEMENT si une origine est autorisée
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > laisse le 404 de P1 intact sur un chemin qui n’est pas d’authentification
+ × src/http/routes-auth.test.ts > routes d’authentification > CRITÈRE ④ : aucune trace ni aucune réponse ne porte le CHAMP du mot de passe 372ms
+   → expected '{"email":"ada@exemple.test","motdepas…' not to match /motdepasse|mot_de_passe|empreinte_mdp/i
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/http/routes-auth.test.ts > routes d’authentification > CRITÈRE ④ : aucune trace ni aucune réponse ne porte le CHAMP du mot de passe
+AssertionError: expected '{"email":"ada@exemple.test","motdepas…' not to match /motdepasse|mot_de_passe|empreinte_mdp/i
+
+- Expected: 
+/motdepasse|mot_de_passe|empreinte_mdp/i
+
++ Received: 
+"{\"email\":\"ada@exemple.test\",\"motdepasse\":\"un-mot-de-passe-ordinaire-42\"}
+{\"email\":\"ada@exemple.test\",\"motdepasse\":\"ce-n-est-pas-le-bon\"}"
+
+ ❯ src/http/routes-auth.test.ts:208:40
+    206| 
+    207|         const balai = /motdepasse|mot_de_passe|empreinte_mdp/i;
+    208|         expect(capture.join('\n')).not.toMatch(balai);
+       |                                        ^
+    209|         expect(await reussie.text()).not.toMatch(balai);
+    210|         expect(await echouee.text()).not.toMatch(balai);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  15:42:36
+   Duration  2.57s (transform 258ms, setup 0ms, collect 366ms, tests 1.69s, environment 0ms, prepare 110ms)
+

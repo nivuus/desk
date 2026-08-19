@@ -1,0 +1,491 @@
+# Témoin, moitié TypeScript — exécution 1 sur 2
+# Joué le 2026-08-19T15:46:21+02:00, commit 8879a4b
+#
+# Ce sont les SIX étapes TypeScript de scripts/verify-all.sh, jouées
+# séparément parce que ses DEUX premières étapes (cargo) échouent sur du
+# travail NON COMMITÉ d'un autre chantier — voir verify-all-{1,2}.log et
+# temoin-cargo-arbre-propre.log.
+
+==> client : npm test
+connexion.html
+dist
+index.html
+node_modules
+package.json
+package-lock.json
+probe-coalesced.html
+recette
+shell.html
+src
+tsconfig.json
+verify-webrtc.mjs
+vite.config.ts
+
+> @guacamole/client@0.1.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/client
+
+stderr | src/fullscreen.test.ts > verrouillage du clavier > avale un rejet de lock sans le propager
+Keyboard Lock refusé Error: refusé
+    at /home/mallanic/Projects/Guacamole/client/src/fullscreen.test.ts:32:48
+    at file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:146:14
+    at file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:533:11
+    at runWithTimeout (file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:39:7)
+    at runTest (file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:1056:17)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at runSuite (file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests (file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:1271:3)
+
+ ✓ src/fullscreen.test.ts (16 tests) 163ms
+ ✓ src/status.test.ts (11 tests) 57ms
+ ✓ src/pointer.test.ts (12 tests) 52ms
+ ✓ src/audio.test.ts (11 tests) 57ms
+ ✓ src/gamepad.test.ts (16 tests) 150ms
+ ✓ src/jeton.test.ts (10 tests) 101ms
+stderr | src/webrtc.test.ts > waitForAnswer face à des messages malformés > un message brut `null` n'explose pas le gestionnaire et la réponse valide suivante est toujours acceptée
+message de signaling illisible ou de forme inattendue, ignoré
+
+stderr | src/webrtc.test.ts > waitForAnswer face à des messages malformés > les charges utiles non-objet successives (nombre, chaîne, tableau) sont toutes ignorées
+message de signaling illisible ou de forme inattendue, ignoré
+message de signaling illisible ou de forme inattendue, ignoré
+message de signaling illisible ou de forme inattendue, ignoré
+
+ ✓ src/webrtc.test.ts (13 tests) 59ms
+ ✓ src/resize.test.ts (5 tests) 10ms
+ ✓ src/scancodes.test.ts (4 tests) 63ms
+ ✓ src/shell.test.ts (8 tests) 50ms
+ ✓ src/lien.test.ts (4 tests) 29ms
+ ✓ src/visibilite.test.ts (6 tests) 24ms
+ ✓ src/viewport.test.ts (4 tests) 23ms
+
+ Test Files  13 passed (13)
+      Tests  120 passed (120)
+   Start at  15:46:24
+   Duration  3.39s (transform 2.42s, setup 0ms, collect 4.28s, tests 837ms, environment 30ms, prepare 5.13s)
+
+==> client : npm run typecheck
+connexion.html
+dist
+index.html
+node_modules
+package.json
+package-lock.json
+probe-coalesced.html
+recette
+shell.html
+src
+tsconfig.json
+verify-webrtc.mjs
+vite.config.ts
+
+> @guacamole/client@0.1.0 typecheck
+> tsc --noEmit
+
+==> proto : npm test
+Cargo.toml
+node_modules
+package.json
+package-lock.json
+src
+ts
+tsconfig.json
+vectors.json
+
+> @guacamole/proto@0.1.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/proto
+
+ ✓ ts/input.test.ts (20 tests) 29ms
+ ✓ ts/control.test.ts (15 tests) 16ms
+
+ Test Files  2 passed (2)
+      Tests  35 passed (35)
+   Start at  15:46:35
+   Duration  1.03s (transform 243ms, setup 0ms, collect 264ms, tests 45ms, environment 1ms, prepare 324ms)
+
+==> proto : npm run typecheck
+Cargo.toml
+node_modules
+package.json
+package-lock.json
+src
+ts
+tsconfig.json
+vectors.json
+
+> @guacamole/proto@0.1.0 typecheck
+> tsc --noEmit
+
+==> plateforme : npm run test:sqlite
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+
+> @guacamole/plateforme@0.1.0 test:sqlite
+> PLATEFORME_BASE=sqlite vitest run
+
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+(node:927081) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:927050) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:927059) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:927069) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une offre du client vers l'agent
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une offre du client vers l'agent
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config
+poignée de main refusée : poignée de main sans jeton sur la session s-1
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une réponse de l'agent vers le client
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/base/pilotes.test.ts (7 tests) 39ms
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une réponse de l'agent vers le client
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > isole les sessions entre elles
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > isole les sessions entre elles
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/depot/jeton.test.ts (7 tests) 64ms
+stderr | src/signaling/trace.test.ts > le service entier > écrit une ligne à l’appariement, et la clôt à la déconnexion des deux pairs
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/trace.test.ts > le service entier > écrit une ligne à l’appariement, et la clôt à la déconnexion des deux pairs
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > le socket est FERMÉ après le refus, et le message est arrivé AVANT
+poignée de main refusée : poignée de main sans jeton sur la session s-1
+
+stderr | src/signaling/trace.test.ts > le service entier > n’écrit rien quand un seul pair s’est déclaré
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/base/sous-ensemble.test.ts (7 tests) 34ms
+ ✓ src/identite/garde.test.ts (9 tests) 20ms
+ ✓ src/signaling/resilience.test.ts (2 tests) 982ms
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ② : un jeton dont la durée est écoulée est refusé jeton-expire
+poignée de main refusée : jeton refusé (expire) sur la session s-3
+
+stderr | src/signaling/trace.test.ts > le service entier > inscrit en base l’utilisateur du client authentifié qui apparie
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+(node:927370) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/signaling/trace.test.ts > le service entier > inscrit en base l’utilisateur du client authentifié qui apparie
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/signaling/trace.test.ts (6 tests) 1013ms
+   ✓ le service entier > n’écrit rien quand un seul pair s’est déclaré 629ms
+(node:927400) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/depot/session.test.ts (7 tests) 56ms
+stderr | src/http/serveur.test.ts > demarrerServeur > sert le relais de signaling sur le chemin racine, poignée de main comprise
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/http/serveur.test.ts > demarrerServeur > sert le relais de signaling sur le chemin racine, poignée de main comprise
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/identite/jeton.test.ts (7 tests) 20ms
+ ✓ src/http/serveur.test.ts (3 tests) 195ms
+(node:927457) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/config.test.ts (9 tests) 16ms
+ ✓ src/http/routes-auth.test.ts (8 tests) 1841ms
+   ✓ routes d’authentification > connexion valide : l’accès est un jeton que le service accepte, et le rafraîchissement vaut 311ms
+   ✓ routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 403ms
+stderr | src/signaling/server.test.ts > serveur de signaling > signale la disparition du pair
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > signale la disparition du pair
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un second agent sur la même session
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en premier message sans planter, et permet de retenter
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en premier message sans planter, et permet de retenter
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en premier message sans planter, et permet de retenter
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en premier message sans planter, et permet de retenter
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie les messages de la session de contrôle entre superviseur et shell
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie les messages de la session de contrôle entre superviseur et shell
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > délivre à l'agent l'offre arrivée avant lui
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > délivre à l'agent l'offre arrivée avant lui
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > ne délivre que la dernière offre, pas toutes celles reçues
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > ne délivre que la dernière offre, pas toutes celles reçues
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > oublie l'offre mémorisée quand la session se vide
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+(node:927491) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/signaling/server.test.ts > serveur de signaling > oublie l'offre mémorisée quand la session se vide
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/depot/utilisateur.test.ts (5 tests) 623ms
+ ✓ src/index.test.ts (3 tests) 86ms
+ ✓ src/signaling/ice.test.ts (6 tests) 14ms
+ ✓ src/http/cors.test.ts (5 tests) 9ms
+ ✓ src/signaling/garde-fil.test.ts (6 tests) 2801ms
+   ✓ la garde, au niveau du socket > CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config 580ms
+   ✓ la garde, au niveau du socket > CRITÈRE ② : un jeton dont la durée est écoulée est refusé jeton-expire 520ms
+   ✓ la garde, au niveau du socket > CRITÈRE ③ : u2 se voit refuser la session de u1, et le JOURNAL la nomme 546ms
+   ✓ la garde, au niveau du socket > après le départ des deux pairs, u2 PEUT prendre la session 625ms
+ ✓ src/base/pilote.test.ts (6 tests) 12ms
+(node:927629) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/admin/creer-utilisateur.test.ts (5 tests) 11ms
+ ✓ src/signaling/appariement.test.ts (5 tests) 11ms
+ ✓ src/signaling/propriete.test.ts (5 tests) 27ms
+ ✓ src/identite/mot-de-passe.test.ts (7 tests) 1266ms
+ ✓ src/signaling/server.test.ts (12 tests) 4277ms
+   ✓ serveur de signaling > isole les sessions entre elles 2020ms
+   ✓ serveur de signaling > oublie l'offre mémorisée quand la session se vide 2068ms
+
+ Test Files  22 passed (22)
+      Tests  137 passed (137)
+   Start at  15:46:41
+   Duration  5.48s (transform 1.92s, setup 0ms, collect 5.25s, tests 13.41s, environment 13ms, prepare 4.15s)
+
+==> plateforme : npm run test:postgres
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+
+> @guacamole/plateforme@0.1.0 test:postgres
+> PLATEFORME_BASE=postgres vitest run
+
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+(node:928510) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:928484) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:928504) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:928511) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config
+poignée de main refusée : poignée de main sans jeton sur la session s-1
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une offre du client vers l'agent
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une offre du client vers l'agent
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une réponse de l'agent vers le client
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une réponse de l'agent vers le client
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > isole les sessions entre elles
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > isole les sessions entre elles
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > le socket est FERMÉ après le refus, et le message est arrivé AVANT
+poignée de main refusée : poignée de main sans jeton sur la session s-1
+
+ ✓ src/signaling/resilience.test.ts (2 tests) 1049ms
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ② : un jeton dont la durée est écoulée est refusé jeton-expire
+poignée de main refusée : jeton refusé (expire) sur la session s-3
+
+ ✓ src/base/sous-ensemble.test.ts (7 tests) 15ms
+stderr | src/signaling/trace.test.ts > le service entier > écrit une ligne à l’appariement, et la clôt à la déconnexion des deux pairs
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/trace.test.ts > le service entier > écrit une ligne à l’appariement, et la clôt à la déconnexion des deux pairs
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/base/pilotes.test.ts (7 tests) 1553ms
+   ✓ sous-ensemble portable, moteur=postgres > applique les migrations, et le rejeu n’écrit rien de plus 316ms
+ ✓ src/depot/jeton.test.ts (7 tests) 1630ms
+   ✓ dépôt jeton_rafraichissement, moteur=postgres > émet un clair NEUF à chaque appel, et la base ne porte JAMAIS le clair 383ms
+stderr | src/signaling/trace.test.ts > le service entier > n’écrit rien quand un seul pair s’est déclaré
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/identite/garde.test.ts (9 tests) 30ms
+(node:928844) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/signaling/server.test.ts > serveur de signaling > signale la disparition du pair
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > signale la disparition du pair
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un second agent sur la même session
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en premier message sans planter, et permet de retenter
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en premier message sans planter, et permet de retenter
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en premier message sans planter, et permet de retenter
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en premier message sans planter, et permet de retenter
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie les messages de la session de contrôle entre superviseur et shell
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie les messages de la session de contrôle entre superviseur et shell
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > délivre à l'agent l'offre arrivée avant lui
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > délivre à l'agent l'offre arrivée avant lui
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > ne délivre que la dernière offre, pas toutes celles reçues
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > ne délivre que la dernière offre, pas toutes celles reçues
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > oublie l'offre mémorisée quand la session se vide
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+(node:928870) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/signaling/server.test.ts > serveur de signaling > oublie l'offre mémorisée quand la session se vide
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/identite/jeton.test.ts (7 tests) 19ms
+stderr | src/signaling/trace.test.ts > le service entier > inscrit en base l’utilisateur du client authentifié qui apparie
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/trace.test.ts > le service entier > inscrit en base l’utilisateur du client authentifié qui apparie
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/signaling/trace.test.ts (6 tests) 2392ms
+   ✓ observateur de session > ouvre à l’appariement et clôt au départ, sur des instants EXACTS 411ms
+   ✓ observateur de session > un second appariement ne rouvre pas une seconde ligne 356ms
+   ✓ le service entier > n’écrit rien quand un seul pair s’est déclaré 816ms
+ ✓ src/signaling/garde-fil.test.ts (6 tests) 2750ms
+   ✓ la garde, au niveau du socket > CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config 564ms
+   ✓ la garde, au niveau du socket > CRITÈRE ② : un jeton dont la durée est écoulée est refusé jeton-expire 519ms
+   ✓ la garde, au niveau du socket > CRITÈRE ③ : u2 se voit refuser la session de u1, et le JOURNAL la nomme 515ms
+   ✓ la garde, au niveau du socket > après le départ des deux pairs, u2 PEUT prendre la session 618ms
+stderr | src/http/serveur.test.ts > demarrerServeur > sert le relais de signaling sur le chemin racine, poignée de main comprise
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/http/serveur.test.ts > demarrerServeur > sert le relais de signaling sur le chemin racine, poignée de main comprise
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/http/serveur.test.ts (3 tests) 713ms
+   ✓ demarrerServeur > sert le relais de signaling sur le chemin racine, poignée de main comprise 303ms
+(node:928986) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/config.test.ts (9 tests) 16ms
+(node:929072) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/signaling/ice.test.ts (6 tests) 15ms
+ ✓ src/depot/session.test.ts (7 tests) 1580ms
+ ✓ src/index.test.ts (3 tests) 308ms
+ ✓ src/http/routes-auth.test.ts (8 tests) 3780ms
+   ✓ routes d’authentification > connexion valide : l’accès est un jeton que le service accepte, et le rafraîchissement vaut 636ms
+   ✓ routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 597ms
+   ✓ routes d’authentification > REJEU : rafraîchir deux fois le même jeton rend 401, et la famille tombe 451ms
+   ✓ routes d’authentification > OPTIONS rend 204, avec les en-têtes CORS SEULEMENT si une origine est autorisée 691ms
+   ✓ routes d’authentification > CRITÈRE ④ : aucune trace ni aucune réponse ne porte le CHAMP du mot de passe 573ms
+ ✓ src/identite/mot-de-passe.test.ts (7 tests) 1090ms
+ ✓ src/signaling/server.test.ts (12 tests) 4424ms
+   ✓ serveur de signaling > isole les sessions entre elles 2036ms
+   ✓ serveur de signaling > oublie l'offre mémorisée quand la session se vide 2065ms
+ ✓ src/http/cors.test.ts (5 tests) 20ms
+ ✓ src/depot/utilisateur.test.ts (5 tests) 1585ms
+   ✓ dépôt utilisateur, moteur=postgres > crée un compte et le relit par courriel, à l’époque EXACTE écrite 403ms
+   ✓ dépôt utilisateur, moteur=postgres > remplace l’empreinte, et RIEN d’autre 335ms
+ ✓ src/base/pilote.test.ts (6 tests) 32ms
+ ✓ src/signaling/appariement.test.ts (5 tests) 24ms
+(node:929213) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/admin/creer-utilisateur.test.ts (5 tests) 9ms
+ ✓ src/signaling/propriete.test.ts (5 tests) 32ms
+
+ Test Files  22 passed (22)
+      Tests  137 passed (137)
+   Start at  15:46:49
+   Duration  6.51s (transform 2.28s, setup 0ms, collect 5.67s, tests 23.07s, environment 17ms, prepare 4.28s)
+
+==> plateforme : npm run typecheck
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+
+> @guacamole/plateforme@0.1.0 typecheck
+> tsc --noEmit
+
+TOUTES LES ÉTAPES TYPESCRIPT SONT PASSÉES

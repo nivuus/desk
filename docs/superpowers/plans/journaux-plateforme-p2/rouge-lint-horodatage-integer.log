@@ -1,0 +1,41 @@
+# ROUGE lint — un horodatage `_a` en INTEGER dans la migration 0002
+# Jouée le 2026-08-19T15:42:38+02:00, commit 8879a4b
+# Mutation : `expire_a BIGINT NOT NULL` -> `expire_a INTEGER NOT NULL`.
+
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+ ✓ src/base/sous-ensemble.test.ts > sous-ensemble SQL portable > lit au moins un fichier de migration
+ ✓ src/base/sous-ensemble.test.ts > sous-ensemble SQL portable > 0001-socle.sql n'emploie aucun jeton hors du sous-ensemble
+ ✓ src/base/sous-ensemble.test.ts > sous-ensemble SQL portable > 0001-socle.sql ne porte aucune chaîne littérale
+ × src/base/sous-ensemble.test.ts > sous-ensemble SQL portable > 0002-identite.sql n'emploie aucun jeton hors du sous-ensemble
+   → expected 'un horodatage `_a` en INTEGER : 4 oct…' to be '' // Object.is equality
+ ✓ src/base/sous-ensemble.test.ts > sous-ensemble SQL portable > 0002-identite.sql ne porte aucune chaîne littérale
+ ✓ src/base/sous-ensemble.test.ts > la définition dupliquée de schema_migration > est la même dans migrations.ts et dans 0001-socle.sql
+ ✓ src/base/sous-ensemble.test.ts > la définition dupliquée de schema_migration > porte bien l'horodatage en BIGINT
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/base/sous-ensemble.test.ts > sous-ensemble SQL portable > 0002-identite.sql n'emploie aucun jeton hors du sous-ensemble
+AssertionError: expected 'un horodatage `_a` en INTEGER : 4 oct…' to be '' // Object.is equality
+
+- Expected
++ Received
+
++ un horodatage `_a` en INTEGER : 4 octets sur Postgres, où un Date.now() déborde — BIGINT
+
+ ❯ src/base/sous-ensemble.test.ts:80:41
+     78|             // un tableau à `[ Array(1) ]`, message qui ne nomme pas l…
+     79|             // fautif — un diagnostic qui n'aide en rien celui qui le …
+     80|             expect(trouves.join(' | ')).toBe('');
+       |                                         ^
+     81|         });
+     82| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  15:42:39
+   Duration  598ms (transform 101ms, setup 0ms, collect 68ms, tests 17ms, environment 0ms, prepare 116ms)
+

@@ -1,0 +1,51 @@
+# Critère 3 — exécution 2 sur 2, moteur postgres
+# Joué le 2026-08-19T15:40:37+02:00, commit 8879a4b
+# Les DEUX exécutions d'un critère diffèrent par le MOTEUR de base (sqlite,
+# puis postgres) : c'est une répétition plus forte que deux passes identiques
+# pour les critères qui touchent la base, et strictement identique pour ceux
+# qui sont purs. Aucun taux n'est revendiqué.
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+(node:885067) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:885066) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config
+poignée de main refusée : poignée de main sans jeton sur la session s-1
+
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > le socket est FERMÉ après le refus, et le message est arrivé AVANT
+poignée de main refusée : poignée de main sans jeton sur la session s-1
+
+stderr | src/signaling/trace.test.ts > le service entier > écrit une ligne à l’appariement, et la clôt à la déconnexion des deux pairs
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/trace.test.ts > le service entier > écrit une ligne à l’appariement, et la clôt à la déconnexion des deux pairs
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/depot/session.test.ts (7 tests) 839ms
+stderr | src/signaling/trace.test.ts > le service entier > n’écrit rien quand un seul pair s’est déclaré
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ② : un jeton dont la durée est écoulée est refusé jeton-expire
+poignée de main refusée : jeton refusé (expire) sur la session s-3
+
+stderr | src/signaling/trace.test.ts > le service entier > inscrit en base l’utilisateur du client authentifié qui apparie
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/trace.test.ts > le service entier > inscrit en base l’utilisateur du client authentifié qui apparie
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/signaling/trace.test.ts (6 tests) 1831ms
+   ✓ le service entier > n’écrit rien quand un seul pair s’est déclaré 747ms
+ ✓ src/signaling/garde-fil.test.ts (6 tests) 2701ms
+   ✓ la garde, au niveau du socket > CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config 529ms
+   ✓ la garde, au niveau du socket > CRITÈRE ② : un jeton dont la durée est écoulée est refusé jeton-expire 517ms
+   ✓ la garde, au niveau du socket > CRITÈRE ③ : u2 se voit refuser la session de u1, et le JOURNAL la nomme 514ms
+   ✓ la garde, au niveau du socket > après le départ des deux pairs, u2 PEUT prendre la session 616ms
+
+ Test Files  3 passed (3)
+      Tests  19 passed (19)
+   Start at  15:40:38
+   Duration  3.21s (transform 256ms, setup 0ms, collect 411ms, tests 5.37s, environment 1ms, prepare 383ms)
+

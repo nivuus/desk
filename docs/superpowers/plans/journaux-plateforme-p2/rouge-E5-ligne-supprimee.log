@@ -1,0 +1,195 @@
+# ROUGE E5 — la ligne SUPPRIMÉE à la rotation au lieu d'être marquée
+# Jouée le 2026-08-19T15:43:35+02:00, commit 8879a4b
+#
+# Mutation, FIDÈLE cette fois : le `UPDATE ... SET revoque_a = ?, remplace_par = ?`
+# devient `DELETE FROM jeton_rafraichissement WHERE id = ?` avec le SEUL
+# paramètre `ligne.id`. Une première rédaction gardait trois paramètres
+# (`AND ? IS NOT NULL`), ce qui ne supprimait RIEN et éprouvait donc « ni
+# supprimée ni marquée » — un autre défaut, décrit sous le nom de celui-ci.
+#
+# Attendu par le plan : « le rejeu rend inconnu, la famille survit ».
+# Les deux moteurs sont joués : le rejeu se décide en SQL.
+
+148:        await tx.executer('DELETE FROM jeton_rafraichissement WHERE id = ?', [ligne.id]); // MUTATION E5
+--- sqlite ---
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+(node:902485) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:902490) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/depot/jeton.test.ts > dépôt jeton_rafraichissement, moteur=sqlite > émet un clair NEUF à chaque appel, et la base ne porte JAMAIS le clair
+ ✓ src/depot/jeton.test.ts > dépôt jeton_rafraichissement, moteur=sqlite > écrit expire_a à l’époque EXACTE attendue, sur ce moteur
+ × src/depot/jeton.test.ts > dépôt jeton_rafraichissement, moteur=sqlite > tourne : le neuf vaut, l’ancien ne vaut plus, et la famille est la même
+   → expected [ { …(4) } ] to have a length of 2 but got 1
+ × src/depot/jeton.test.ts > dépôt jeton_rafraichissement, moteur=sqlite > REJEU : tourner deux fois le même clair révoque TOUTE la famille
+   → expected { ok: false, motif: 'inconnu' } to deeply equal { ok: false, motif: 'rejeu' }
+ ✓ src/depot/jeton.test.ts > dépôt jeton_rafraichissement, moteur=sqlite > une famille révoquée refuse AUSSI le jeton neuf, et le motif le DIT
+ ✓ src/depot/jeton.test.ts > dépôt jeton_rafraichissement, moteur=sqlite > refuse un clair inconnu, et un jeton expiré — sur une horloge qui VARIE
+ ✓ src/depot/jeton.test.ts > dépôt jeton_rafraichissement, moteur=sqlite > annule la TRANSACTION si l’insertion neuve échoue : l’ancien reste valide
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > connexion valide : l’accès est un jeton que le service accepte, et le rafraîchissement vaut
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 320ms
+ × src/http/routes-auth.test.ts > routes d’authentification > REJEU : rafraîchir deux fois le même jeton rend 401, et la famille tombe
+   → expected 'inconnu' to be 'rejeu' // Object.is equality
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > borne le corps à 4 KiB : 5 KiB rend 413
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > refuse une méthode autre que POST par 405, et un corps non-JSON par 400
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > OPTIONS rend 204, avec les en-têtes CORS SEULEMENT si une origine est autorisée
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > laisse le 404 de P1 intact sur un chemin qui n’est pas d’authentification
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > CRITÈRE ④ : aucune trace ni aucune réponse ne porte le CHAMP du mot de passe 366ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/depot/jeton.test.ts > dépôt jeton_rafraichissement, moteur=sqlite > tourne : le neuf vaut, l’ancien ne vaut plus, et la famille est la même
+AssertionError: expected [ { …(4) } ] to have a length of 2 but got 1
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ ❯ src/depot/jeton.test.ts:89:24
+     87| 
+     88|         const toutes = await lignes(p);
+     89|         expect(toutes).toHaveLength(2);
+       |                        ^
+     90|         // Une SEULE famille : le lien est ce qui permettra de tout ré…
+     91|         expect(new Set(toutes.map((l) => l.famille)).size).toBe(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/depot/jeton.test.ts > dépôt jeton_rafraichissement, moteur=sqlite > REJEU : tourner deux fois le même clair révoque TOUTE la famille
+AssertionError: expected { ok: false, motif: 'inconnu' } to deeply equal { ok: false, motif: 'rejeu' }
+
+- Expected
++ Received
+
+  Object {
+-   "motif": "rejeu",
++   "motif": "inconnu",
+    "ok": false,
+  }
+
+ ❯ src/depot/jeton.test.ts:103:50
+    101| 
+    102|         // Le voleur présente le clair déjà tourné.
+    103|         expect(await tourner(p, un, MS + 2_000)).toEqual({ ok: false, …
+       |                                                  ^
+    104| 
+    105|         // 🔴 Et le jeton NEUF, que le voleur détient, est mort lui aus…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/http/routes-auth.test.ts > routes d’authentification > REJEU : rafraîchir deux fois le même jeton rend 401, et la famille tombe
+AssertionError: expected 'inconnu' to be 'rejeu' // Object.is equality
+
+Expected: "rejeu"
+Received: "inconnu"
+
+ ❯ src/http/routes-auth.test.ts:123:46
+    121|         const rejeu = await poster(`${base_}/auth/rafraichir`, { rafra…
+    122|         expect(rejeu.status).toBe(401);
+    123|         expect((await corpsDe(rejeu)).refus).toBe('rejeu');
+       |                                              ^
+    124| 
+    125|         // Le jeton NEUF, que le voleur détiendrait, est mort lui auss…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+ Test Files  2 failed (2)
+      Tests  3 failed | 12 passed (15)
+   Start at  15:43:36
+   Duration  2.50s (transform 308ms, setup 0ms, collect 532ms, tests 1.65s, environment 1ms, prepare 282ms)
+
+--- postgres ---
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+(node:902905) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:902904) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/depot/jeton.test.ts > dépôt jeton_rafraichissement, moteur=postgres > émet un clair NEUF à chaque appel, et la base ne porte JAMAIS le clair
+ ✓ src/depot/jeton.test.ts > dépôt jeton_rafraichissement, moteur=postgres > écrit expire_a à l’époque EXACTE attendue, sur ce moteur
+ × src/depot/jeton.test.ts > dépôt jeton_rafraichissement, moteur=postgres > tourne : le neuf vaut, l’ancien ne vaut plus, et la famille est la même
+   → expected [ { …(4) } ] to have a length of 2 but got 1
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > connexion valide : l’accès est un jeton que le service accepte, et le rafraîchissement vaut 411ms
+ × src/depot/jeton.test.ts > dépôt jeton_rafraichissement, moteur=postgres > REJEU : tourner deux fois le même clair révoque TOUTE la famille
+   → expected { ok: false, motif: 'inconnu' } to deeply equal { ok: false, motif: 'rejeu' }
+ ✓ src/depot/jeton.test.ts > dépôt jeton_rafraichissement, moteur=postgres > une famille révoquée refuse AUSSI le jeton neuf, et le motif le DIT
+ ✓ src/depot/jeton.test.ts > dépôt jeton_rafraichissement, moteur=postgres > refuse un clair inconnu, et un jeton expiré — sur une horloge qui VARIE
+ ✓ src/depot/jeton.test.ts > dépôt jeton_rafraichissement, moteur=postgres > annule la TRANSACTION si l’insertion neuve échoue : l’ancien reste valide
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 517ms
+ × src/http/routes-auth.test.ts > routes d’authentification > REJEU : rafraîchir deux fois le même jeton rend 401, et la famille tombe 365ms
+   → expected 'inconnu' to be 'rejeu' // Object.is equality
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > borne le corps à 4 KiB : 5 KiB rend 413
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > refuse une méthode autre que POST par 405, et un corps non-JSON par 400 330ms
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > OPTIONS rend 204, avec les en-têtes CORS SEULEMENT si une origine est autorisée 597ms
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > laisse le 404 de P1 intact sur un chemin qui n’est pas d’authentification
+ ✓ src/http/routes-auth.test.ts > routes d’authentification > CRITÈRE ④ : aucune trace ni aucune réponse ne porte le CHAMP du mot de passe 390ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/depot/jeton.test.ts > dépôt jeton_rafraichissement, moteur=postgres > tourne : le neuf vaut, l’ancien ne vaut plus, et la famille est la même
+AssertionError: expected [ { …(4) } ] to have a length of 2 but got 1
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ ❯ src/depot/jeton.test.ts:89:24
+     87| 
+     88|         const toutes = await lignes(p);
+     89|         expect(toutes).toHaveLength(2);
+       |                        ^
+     90|         // Une SEULE famille : le lien est ce qui permettra de tout ré…
+     91|         expect(new Set(toutes.map((l) => l.famille)).size).toBe(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/depot/jeton.test.ts > dépôt jeton_rafraichissement, moteur=postgres > REJEU : tourner deux fois le même clair révoque TOUTE la famille
+AssertionError: expected { ok: false, motif: 'inconnu' } to deeply equal { ok: false, motif: 'rejeu' }
+
+- Expected
++ Received
+
+  Object {
+-   "motif": "rejeu",
++   "motif": "inconnu",
+    "ok": false,
+  }
+
+ ❯ src/depot/jeton.test.ts:103:50
+    101| 
+    102|         // Le voleur présente le clair déjà tourné.
+    103|         expect(await tourner(p, un, MS + 2_000)).toEqual({ ok: false, …
+       |                                                  ^
+    104| 
+    105|         // 🔴 Et le jeton NEUF, que le voleur détient, est mort lui aus…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/http/routes-auth.test.ts > routes d’authentification > REJEU : rafraîchir deux fois le même jeton rend 401, et la famille tombe
+AssertionError: expected 'inconnu' to be 'rejeu' // Object.is equality
+
+Expected: "rejeu"
+Received: "inconnu"
+
+ ❯ src/http/routes-auth.test.ts:123:46
+    121|         const rejeu = await poster(`${base_}/auth/rafraichir`, { rafra…
+    122|         expect(rejeu.status).toBe(401);
+    123|         expect((await corpsDe(rejeu)).refus).toBe('rejeu');
+       |                                              ^
+    124| 
+    125|         // Le jeton NEUF, que le voleur détiendrait, est mort lui auss…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+ Test Files  2 failed (2)
+      Tests  3 failed | 12 passed (15)
+   Start at  15:43:40
+   Duration  4.07s (transform 360ms, setup 0ms, collect 634ms, tests 4.12s, environment 1ms, prepare 314ms)
+

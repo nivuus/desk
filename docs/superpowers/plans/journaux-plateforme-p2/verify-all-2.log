@@ -1,0 +1,560 @@
+# Témoin de non-régression — exécution 2 sur 2
+# Joué le 2026-08-19T15:45:53+02:00, commit 8879a4b
+
+
+==> cargo test --workspace
+warning: variable does not need to be mutable
+   --> agent/src/capteur/repartiteur/tests.rs:129:9
+    |
+129 |     let mut fenetres: Vec<Fenetre> = regime_1.iter().map(|(fenetre, _)| fenetre.clone()).collect();
+    |         ----^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `actif` is never used
+   --> agent/src/capteur/plein_ecran.rs:118:8
+    |
+118 | pub fn actif() -> bool {
+    |        ^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `PERIODE_STYLE` is never used
+   --> agent/src/capteur/plein_ecran.rs:138:11
+    |
+138 | pub const PERIODE_STYLE: Duration = Duration::from_millis(250);
+    |           ^^^^^^^^^^^^^
+
+warning: constant `NOM_TUBE` is never used
+  --> agent/src/capteur/protocole.rs:15:11
+   |
+15 | pub const NOM_TUBE: &str = r"\\.\pipe\agent-capteur";
+   |           ^^^^^^^^
+
+warning: method `courant` is never used
+  --> agent/src/cursor.rs:49:12
+   |
+28 | impl Hysteresis {
+   | --------------- method in this implementation
+...
+49 |     pub fn courant(&self) -> bool {
+   |            ^^^^^^^
+
+warning: field `adaptateur` is never read
+  --> agent/src/sortie_dxgi.rs:19:9
+   |
+16 | pub struct SortieDxgi {
+   |            ---------- field in this struct
+...
+19 |     pub adaptateur: String,
+   |         ^^^^^^^^^^
+   |
+   = note: `SortieDxgi` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: constant `SESSION_DE_CONTROLE` is never used
+  --> agent/src/superviseur/protocole.rs:26:11
+   |
+26 | pub const SESSION_DE_CONTROLE: &str = "bureau";
+   |           ^^^^^^^^^^^^^^^^^^^
+
+warning: method `sessions_vivantes` is never used
+   --> agent/src/superviseur/table.rs:299:12
+    |
+188 | impl Table {
+    | ---------- method in this implementation
+...
+299 |     pub fn sessions_vivantes(&self) -> Vec<IdSession> {
+    |            ^^^^^^^^^^^^^^^^^
+
+warning: `agent` (bin "agent" test) generated 8 warnings (run `cargo fix --bin "agent" -p agent --tests` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.23s
+     Running unittests src/main.rs (target/debug/deps/agent-f71a44343b450757)
+
+running 468 tests
+test audio::tests::a_saturation_jette_le_plus_ancien_pas_le_plus_recent ... ok
+test audio::tests::dans_la_fenetre_l_injection_est_armee ... ok
+test audio::tests::la_borne_de_la_fenetre_est_incluse_ou_exclue_mais_dite ... ok
+test audio::tests::le_depot_ne_bloque_jamais_meme_saturee ... ok
+test audio::tests::passe_la_fenetre_l_injection_est_desarmee ... ok
+test audio::tests::compte_les_paquets_rejetes ... ok
+test audio::tests::sans_fenetre_l_injection_reste_armee_indefiniment ... ok
+test capteur::audio::tests::aucune_fenetre_rend_aucune_decision ... ok
+test audio::tests::la_temporisation_de_reprise_croit_puis_se_borne ... ok
+test audio::tests::la_tolerance_totale_reste_de_l_ordre_de_la_seconde ... ok
+test capteur::audio::tests::l_inaptitude_d_un_groupe_ne_touche_pas_un_autre_pid ... ok
+test capteur::audio::tests::la_decision_est_rendue_pour_chaque_session_meme_muette ... ok
+test capteur::audio::tests::un_groupe_qui_perd_tout_focus_garde_son_son_sur_la_derniere_focalisee ... ok
+test capteur::audio::tests::une_fenetre_inapte_ne_porte_jamais_le_son ... ok
+test capteur::audio::tests::une_fenetre_seule_de_son_processus_porte_le_son ... ok
+test capteur::audio::tests::une_inapte_recoit_quand_meme_son_verdict_false ... ok
+test capteur::distante::tests::deux_ordres_audio_arrives_avant_lecture_s_ecrasent ... ok
+test capteur::distante::tests::deux_parts_arrivees_avant_lecture_s_ecrasent ... ok
+test capteur::audio::tests::deux_fenetres_d_un_meme_processus_jamais_focalisees_la_premiere_arrivee_porte ... ok
+test capteur::audio::tests::l_oubli_du_porteur_fait_passer_le_son_a_la_suivante_du_groupe ... ok
+test capteur::audio::tests::un_groupe_entierement_inapte_reste_muet ... ok
+test audio::tests::rend_les_paquets_dans_l_ordre_de_depot ... ok
+test capteur::distante::tests::deux_sommeils_consecutifs_ne_retiennent_que_le_dernier ... ok
+test capteur::distante::tests::les_commandes_partent_sous_la_forme_attendue ... ok
+test capteur::distante::tests::les_images_sortent_dans_l_ordre_d_arrivee ... ok
+test capteur::distante::tests::set_awake_transmet_la_visibilite_au_capteur ... ok
+test capteur::audio::tests::le_focus_prend_le_son_a_sa_voisine_du_meme_processus ... ok
+test capteur::audio::tests::deux_processus_distincts_portent_chacun_le_leur ... ok
+test audio::tests::une_copie_partage_le_meme_tampon ... ok
+test capteur::distante::tests::un_canal_rompu_au_dela_de_la_fenetre_epuise_la_source ... ok
+test capteur::distante::tests::un_etat_intercale_met_a_jour_le_cache_sans_masquer_l_image_suivante ... ok
+test capteur::distante::tests::un_rattachement_remet_l_enfant_au_silence ... ok
+test capteur::distante::tests::un_ordre_audio_recu_est_rendu_une_seule_fois ... ok
+test capteur::distante::tests::un_rattachement_qui_echoue_jusqu_a_expiration_epuise_la_source ... ok
+test capteur::distante::tests::un_rattachement_qui_echoue_laisse_la_source_en_attente_sans_l_epuiser ... ok
+test capteur::distante::tests::un_rattachement_reussi_fait_revivre_la_source_et_reprend_ses_dimensions ... ok
+test capteur::distante::tests::un_redimensionnement_retient_la_taille_obtenue ... ok
+test capteur::distante::tests::un_vieillissement_du_pas_seul_relance_un_essai ... ok
+test capteur::distante::tests::une_erreur_du_capteur_remonte_en_erreur ... ok
+test capteur::distante::tests::une_fenetre_disparue_rend_la_source_non_vivante_et_epuisee ... ok
+test capteur::distante::tests::une_file_vide_rend_none_sans_epuiser_la_source ... ok
+test capteur::distante::tests::une_image_poussee_est_rendue_par_next_frame ... ok
+test capteur::distante::tests::une_part_recue_est_rendue_une_seule_fois ... ok
+test capteur::distante::tests::une_rafale_d_interrogations_ne_produit_qu_un_seul_essai ... ok
+test capteur::horloge::tests::une_frequence_nulle_retombe_sur_maintenant ... ok
+test capteur::horloge::tests::une_origine_anterieure_se_reconstruit_en_arriere ... ok
+test capteur::horloge::tests::une_origine_egale_a_maintenant_ne_recule_pas ... ok
+test capteur::horloge::tests::une_origine_posterieure_retombe_sur_maintenant ... ok
+test capteur::plein_ecran::tests::le_premier_observer_sur_l_etat_initial_n_annonce_rien ... ok
+test capteur::plein_ecran::tests::le_retour_de_la_bordure_annonce_la_sortie_du_plein_ecran ... ok
+test capteur::plein_ecran::tests::le_titre_seul_suffit_a_faire_une_bordure ... ok
+test capteur::plein_ecran::tests::un_aller_retour_complet_annonce_deux_fois_et_pas_davantage ... ok
+test capteur::plein_ecran::tests::une_fenetre_a_titre_et_cadre_a_une_bordure ... ok
+test capteur::plein_ecran::tests::une_fenetre_nee_sans_bordure_n_annonce_rien ... ok
+test capteur::plein_ecran::tests::une_fenetre_sans_titre_ni_cadre_n_a_pas_de_bordure ... ok
+test capteur::pont_media::tests::lire_le_media_relaie_etat_image_et_sommeil_dans_l_ordre ... ok
+test capteur::pont_media::tests::lire_le_media_survit_a_un_audio_et_le_transmet ... ok
+test capteur::pont_media::tests::lire_le_media_survit_a_un_plein_ecran_et_le_transmet ... ok
+test capteur::pont_media::tests::lire_le_media_survit_a_une_part_et_la_transmet ... ok
+test capteur::distante::tests::un_epuisement_autoritaire_interdit_tout_rattachement ... ok
+test capteur::pont_media::tests::une_trame_de_commande_egaree_sur_le_media_abandonne_le_fil ... ok
+test capteur::protocole::tests::deux_trames_a_la_suite_se_lisent_dans_l_ordre ... ok
+test capteur::distante::tests::un_canal_rompu_n_epuise_pas_la_source_dans_la_fenetre ... ok
+test capteur::protocole::tests::un_sommeil_traverse_le_canal_du_capteur ... ok
+test capteur::protocole::tests::une_identite_fait_l_aller_retour ... ok
+test capteur::protocole::tests::une_image_sans_en_tete_complet_est_refusee ... ok
+test capteur::protocole::tests::une_longueur_aberrante_est_refusee_avant_toute_allocation ... ok
+test capteur::protocole::tests::une_part_traverse_l_encodage_json ... ok
+test capteur::protocole::tests::une_trame_tronquee_est_refusee ... ok
+test capteur::protocole::tests::une_unite_d_acces_fait_l_aller_retour_sans_reencodage ... ok
+test capteur::protocole::tests::une_visibilite_traverse_le_canal_du_capteur ... ok
+test capteur::repartiteur::tests::la_focalisee_recoit_le_facteur_de_majoration ... ok
+test capteur::repartiteur::tests::la_somme_des_parts_ne_depasse_jamais_le_budget ... ok
+test capteur::repartiteur::tests::les_trois_regimes_sont_bornes_ou_jamais_paniquent ... ok
+test capteur::repartiteur::tests::plusieurs_focalisees_ne_donnent_qu_une_seule_majoration ... ok
+test capteur::protocole::tests::une_attache_fait_l_aller_retour ... ok
+test capteur::repartiteur::tests::sans_focalisee_les_eveillees_se_partagent_a_parts_egales ... ok
+test capteur::repartiteur::tests::toutes_endormies_recoivent_le_plancher_et_le_reste_n_est_donne_a_personne ... ok
+test capteur::repartiteur::tests::un_budget_inferieur_aux_planchers_ne_deborde_pas ... ok
+test capteur::repartiteur::tests::une_endormie_recoit_le_plancher_et_ne_partage_pas_le_reste ... ok
+test capteur::repartiteur::tests::une_focalisee_endormie_reste_au_plancher_et_les_eveillees_se_partagent_egalement ... ok
+test capteur::repartiteur::tests::une_seule_eveillee_recoit_tout_le_budget ... ok
+test capteur::reprise::tests::les_essais_de_rattachement_sont_espaces ... ok
+test capteur::reprise::tests::un_succes_referme_la_fenetre_et_rend_le_budget_entier ... ok
+test capteur::reprise::tests::un_succes_rend_aussi_le_droit_de_reessayer_immediatement ... ok
+test capteur::reprise::tests::une_rupture_ininterrompue_au_dela_de_la_fenetre_epuise ... ok
+test capteur::reprise::tests::une_rupture_n_epuise_pas_immediatement ... ok
+test capteur::protocole::tests::une_etiquette_inconnue_est_refusee ... ok
+test capteur::sommeil::parts::tests::l_arrivee_d_une_seconde_fenetre_reduit_la_part_de_la_premiere ... ok
+test capteur::sommeil::parts::tests::un_rattachement_a_topologie_inchangee_renvoie_une_part_sur_le_canal_neuf ... ok
+test capteur::sommeil::parts::tests::une_part_inchangee_n_est_pas_reemise ... ok
+test capteur::sommeil::parts::tests::une_session_qui_s_eveille_recoit_une_part_apres_son_ordre_de_reveil ... ok
+test capteur::sommeil::porteurs::tests::deux_fenetres_d_un_meme_pid_se_disputent_le_son_et_le_focus_tranche ... ok
+test capteur::sommeil::porteurs::tests::deux_pid_distincts_portent_chacun_leur_son ... ok
+test capteur::sommeil::porteurs::tests::un_ordre_audio_inchange_n_est_pas_reemis ... ok
+test capteur::sommeil::tests::le_repit_expire_et_rend_la_fenetre_apte ... ok
+test capteur::sommeil::tests::les_deux_raisons_ont_un_texte_stable_pour_le_client ... ok
+test capteur::sommeil::tests::un_canal_rompu_libere_aussi_le_focus_de_la_session_morte ... ok
+test capteur::sommeil::tests::un_echec_de_reveil_rendort_la_session_et_ne_la_reelit_pas_immediatement ... ok
+test capteur::sommeil::tests::un_rattachement_recoit_une_generation_neuve_et_le_retirer_precedent_est_perime ... ok
+test capteur::sommeil::tests::un_retirer_d_une_generation_posterieure_n_est_pas_perime ... ok
+test capteur::sommeil::tests::un_retirer_perime_n_emporte_pas_l_inscription_neuve ... ok
+test capteur::sommeil::tests::un_retirer_sur_une_session_inconnue_n_est_pas_perime ... ok
+test capteur::sommeil::tests::un_retrait_purge_l_inaptitude_et_le_compteur_de_rearmements ... ok
+test capteur::distante::tests::un_plein_ecran_pousse_est_annonce_une_seule_fois ... ok
+test capteur::distante::tests::un_sommeil_pousse_par_le_capteur_est_retenu_pour_le_client ... ok
+test capteur::repartiteur::tests::sans_aucune_fenetre_il_n_y_a_rien_a_repartir ... ok
+test capteur::plein_ecran::tests::la_perte_de_la_bordure_annonce_le_plein_ecran_une_seule_fois ... ok
+test capteur::protocole::tests::chaque_reponse_fait_l_aller_retour ... ok
+test capteur::plein_ecran::tests::le_cadre_seul_suffit_a_faire_une_bordure ... ok
+test capteur::sommeil::parts::tests::un_canal_rompu_detecte_par_les_parts_est_retire_du_vivier ... ok
+test capteur::sommeil::tests::un_signal_audio_mort_redondant_ne_recompte_pas_le_rearmement ... ok
+test capteur::sommeil::tests::une_inaptitude_dont_l_echeance_vaut_exactement_maintenant_est_purgee ... ok
+test capteur::sommeil::tests::une_session_retiree_ne_recoit_plus_rien ... ok
+test capteur::vivier::tests::l_hysteresis_empeche_d_evincer_une_fenetre_tout_juste_reveillee ... ok
+test capteur::sommeil::tests::une_session_inscrite_recoit_l_ordre_de_se_reveiller_quand_elle_devient_visible ... ok
+test capteur::vivier::tests::les_ordres_rendus_placent_tous_les_dormir_avant_tout_reveiller ... ok
+test capteur::vivier::tests::passee_l_hysteresis_la_rearbitration_periodique_debloque_le_reveil ... ok
+test capteur::vivier::tests::au_dela_du_plafond_la_moins_recemment_vue_est_evincee ... ok
+test capteur::vivier::tests::l_eviction_porte_la_raison_evincee_et_non_masquee ... ok
+test capteur::vivier::tests::retirer_une_fenetre_eveillee_rend_sa_place_a_une_endormie ... ok
+test capteur::vivier::tests::passé_le_répit_un_rearbitrer_repropose_bien_la_fenetre_en_echec ... ok
+test capteur::sommeil::tests::un_signal_audio_vivant_remet_le_compteur_de_rearmements_a_zero ... ok
+test capteur::vivier::tests::eveillees_rend_exactement_les_sessions_reveillees ... ok
+test capteur::vivier::tests::une_fenetre_inscrite_est_endormie_tant_qu_elle_n_est_pas_visible ... ok
+test capteur::vivier::tests::un_ordre_n_est_jamais_emis_deux_fois_pour_le_meme_etat ... ok
+test capteur::vivier::tests::un_signal_pour_une_session_inconnue_est_ignore_sans_paniquer ... ok
+test capteur::vivier::tests::une_fenetre_masquee_s_endort_avec_la_raison_masquee ... ok
+test capture_reprise::tests::l_expiration_se_compte_depuis_l_ouverture_et_non_depuis_la_derniere_tentative ... ok
+test capture_reprise::tests::la_fenetre_couvre_largement_la_stabilisation_de_la_topologie ... ok
+test capture_reprise::tests::la_fenetre_d_ouverture_est_plus_courte_que_celle_de_la_capture ... ok
+test capture_reprise::tests::la_fenetre_expire_au_bout_de_sa_duree ... ok
+test capteur::vivier::tests::un_focus_rafraichit_la_recence_et_protege_de_l_eviction ... ok
+test capture_reprise::tests::le_pas_ecoule_fait_rouvrir_a_nouveau ... ok
+test capteur::vivier::tests::un_reveil_qui_echoue_rend_l_entree_endormie_et_ne_la_réélit_pas_au_tour_suivant ... ok
+test capture_reprise::tests::la_premiere_perte_fait_rouvrir_tout_de_suite ... ok
+test capture_reprise::tests::un_succes_referme_la_fenetre_qui_rouvre_alors_pleine ... ok
+test capture_reprise::tests::une_ouverture_est_retentable_sur_indisponibilite_ou_perte_d_acces ... ok
+test capteur::vivier::tests::une_fenetre_en_repit_reste_exclue_des_candidates_jusqu_au_repit_ecoulé ... ok
+test capture_reprise::tests::une_ouverture_n_est_pas_retentable_sur_une_panne_franche ... ok
+test clock::tests::convertit_depuis_l_horloge_video_a_90_khz ... ok
+test clock::tests::ne_deborde_pas_sur_une_session_tres_longue ... ok
+test clock::tests::un_horodatage_nul_vaut_l_origine ... ok
+test clock::tests::une_frequence_nulle_rend_l_origine_plutot_que_de_paniquer ... ok
+test capteur::sommeil::tests::un_retrait_qui_libere_une_place_reveille_bien_la_session_qui_l_attendait ... ok
+test capteur::vivier::tests::une_fenetre_masquee_s_endort_meme_sous_l_hysteresis ... ok
+test capteur::vivier::tests::une_fenetre_visible_est_reveillee_quand_il_reste_de_la_place ... ok
+test congestion::controleur::tests::l_amorcage_ne_declenche_pas_de_fausse_alerte ... ok
+test capture_reprise::tests::une_seconde_tentative_trop_proche_fait_patienter ... ok
+test clock::tests::convertit_depuis_l_horloge_audio_a_48_khz ... ok
+test congestion::controleur::tests::la_premiere_estimation_rend_l_adaptation_active ... ok
+test congestion::controleur::tests::la_perte_est_convertie_en_pourcentage_et_plafonnee_a_vingt_cinq ... ok
+test congestion::controleur::tests::le_debit_ne_bouge_pas_pour_moins_de_dix_pour_cent_d_ecart ... ok
+test capture_reprise::tests::seule_la_perte_d_acces_est_recuperable ... ok
+test congestion::echelle::tests::l_echelle_a_quatre_barreaux_decroissants_et_pairs ... ok
+test congestion::controleur::tests::une_session_muette_ne_retranche_plus_le_budget_audio ... ok
+test congestion::echelle::tests::echelle_minuscule_sans_doublons ... ok
+test congestion::echelle::tests::le_barreau_finance_est_le_plus_haut_que_le_debit_paie ... ok
+test congestion::hysteresis::tests::cibler_un_second_barreau_sans_repasser_par_le_courant_redemarre_le_decompte ... ok
+test congestion::hysteresis::tests::descendre_exige_deux_secondes_sous_le_barreau ... ok
+test congestion::hysteresis::tests::remonter_exige_vingt_secondes_et_non_deux ... ok
+test congestion::controleur::tests::la_qualite_ne_ment_pas_pendant_la_fenetre_d_hysteresis ... ok
+test congestion::hysteresis::tests::un_repit_remet_le_compteur_de_descente_a_zero ... ok
+test congestion::controleur::tests::le_debit_ne_depasse_jamais_le_plafond ... ok
+test congestion::controleur::tests::sans_estimation_le_debit_reste_au_plafond_et_l_adaptation_est_indisponible ... ok
+test congestion::reconfiguration::tests::changer_source_conserve_le_barreau_courant_sur_un_agrandissement ... ok
+test congestion::reconfiguration::tests::changer_plafond_borne_la_decision_sans_toucher_l_echelle ... ok
+test congestion::controleur::tests::sous_le_plancher_la_qualite_est_declaree_insuffisante ... ok
+test congestion::reconfiguration::tests::changer_source_recalcule_les_seuils_min_bps_pour_la_nouvelle_taille ... ok
+test congestion::reconfiguration::tests::un_plafond_qui_monte_apres_une_estimation_perimee_ne_saute_pas_au_plafond ... ok
+test congestion::reconfiguration::tests::changer_source_borne_le_barreau_quand_la_nouvelle_echelle_est_plus_courte ... ok
+test congestion::reconfiguration::tests::un_plafond_qui_remonte_ne_depasse_pas_l_estimation_courante ... ok
+test congestion::controleur::tests::une_contrainte_durable_fait_descendre_un_barreau_et_marque_la_degradation ... ok
+test congestion::hysteresis::tests::le_temps_de_sejour_bloque_un_second_changement_trop_proche ... ok
+test congestion::reconfiguration::tests::un_plafond_qui_monte_est_suivi_tant_qu_aucune_estimation_n_est_jamais_arrivee ... ok
+test cursor::tests::une_oscillation_ne_bascule_jamais ... ok
+test cursor::tests::le_changement_n_est_annonce_qu_une_seule_fois ... ok
+test cursor::tests::un_retour_a_l_etat_courant_remet_le_compteur_a_zero ... ok
+test diagnostics::entree::tests::grand_pas_faible_repetition_donne_la_meme_amplitude ... ok
+test diagnostics::entree::tests::pas_negatif_part_pres_du_bord_bas_droit ... ok
+test diagnostics::entree::tests::refuse_juste_sous_la_limite_de_la_marge ... ok
+test diagnostics::entree::tests::refuse_un_ecran_trop_petit_pour_l_amplitude_demandee ... ok
+test disposition::tests::huit_places_ne_se_recouvrent_pas_et_tiennent_dans_le_bureau ... ok
+test disposition::tests::le_nombre_de_places_demande_est_respecte_meme_si_la_grille_est_plus_large ... ok
+test disposition::tests::les_places_ont_des_dimensions_paires ... ok
+test disposition::tests::un_bureau_trop_petit_fait_refuser_la_disposition ... ok
+test disposition::tests::une_place_unique_couvre_presque_tout_le_bureau ... ok
+test frames::tests::complete_par_du_silence_quand_rien_n_arrive_et_ne_saute_aucune_trame ... ok
+test cursor::tests::bascule_dans_les_deux_sens ... ok
+test diagnostics::entree::tests::pas_positif_part_pres_du_bord_haut_gauche ... ok
+test cursor::tests::trois_observations_contraires_retiennent_le_changement ... ok
+test frames::tests::emet_une_trame_pleine_quand_les_echantillons_sont_la ... ok
+test cursor::tests::un_etat_stable_ne_produit_aucun_changement ... ok
+test diagnostics::entree::tests::accepte_pile_a_la_limite_de_la_marge ... ok
+test diagnostics::entree::tests::amplitude_nulle_ne_demande_aucune_marge_particuliere ... ok
+test frames::tests::n_emet_rien_avant_que_la_premiere_trame_ne_soit_due ... ok
+test frames::tests::l_instant_de_capture_se_deduit_de_l_horodatage ... ok
+test frames::tests::jette_les_echantillons_les_plus_anciens_au_dela_du_retard_tolere ... ok
+test frames::tests::les_horodatages_avancent_de_480_sans_trou ... ok
+test frames::tests::s_ancre_sur_le_temps_ecoule_plutot_que_d_emettre_une_rafale ... ok
+test frames::tests::se_reancre_sur_le_temps_ecoule_plutot_que_de_rattraper_une_coupure ... ok
+test gamepad::tests::la_premiere_vibration_passe_immediatement ... ok
+test frames::tests::une_trame_partielle_est_completee_par_du_silence_en_fin ... ok
+test gamepad::tests::le_bouclage_de_la_sequence_est_franchi_correctement ... ok
+test gamepad::tests::seul_le_dernier_etat_differe_est_emis ... ok
+test gamepad::tests::un_changement_trop_rapproche_est_differe_puis_emis ... ok
+test gamepad::tests::un_etat_identique_est_rejete ... ok
+test gamepad::tests::un_etat_identique_n_est_pas_reemis ... ok
+test gamepad::tests::un_etat_plus_ancien_est_rejete ... ok
+test gamepad::tests::un_etat_plus_recent_est_accepte ... ok
+test geometry::tests::aligne_les_dimensions_impaires ... ok
+test geometry::tests::borne_aussi_la_largeur ... ok
+test geometry::tests::borne_les_debordements_sur_un_bureau_multi_ecrans ... ok
+test geometry::tests::borne_une_fenetre_a_coordonnees_negatives ... ok
+test geometry::tests::borne_une_fenetre_qui_deborde_a_droite ... ok
+test geometry::tests::borne_une_hauteur_qui_depasserait_le_bas_du_bureau ... ok
+test geometry::tests::centre_d_une_fenetre_decalee ... ok
+test geometry::tests::coin_inferieur_droit_d_une_fenetre_plein_ecran ... ok
+test geometry::tests::coin_superieur_gauche_d_une_fenetre_a_l_origine ... ok
+test geometry::tests::fenetre_entierement_visible ... ok
+test geometry::tests::fenetre_exactement_a_la_limite_de_l_ecran ... ok
+test geometry::tests::fenetre_plus_grande_que_l_ecran_dans_les_deux_dimensions ... ok
+test geometry::tests::gere_une_largeur_superieure_a_i32_max ... ok
+test geometry::tests::l_axe_horizontal_reste_intact_quand_seul_le_bas_deborde ... ok
+test geometry::tests::le_bas_de_l_image_vise_le_bas_de_ce_qui_est_montre ... ok
+test geometry::tests::le_milieu_de_l_image_vise_le_milieu_de_ce_qui_est_montre ... ok
+test geometry::tests::ne_deborde_ni_ne_panique_sur_des_coordonnees_extremes ... ok
+test geometry::tests::ne_deborde_pas_sur_des_coordonnees_extremes ... ok
+test geometry::tests::ne_touche_pas_a_une_taille_qui_tient_deja ... ok
+test geometry::tests::origine_d_une_fenetre_decalee ... ok
+test geometry::tests::rects_overlap_detecte_une_intersection ... ok
+test geometry::tests::ne_divise_jamais_par_zero ... ok
+test geometry::tests::rects_overlap_rejette_des_rectangles_disjoints ... ok
+test geometry::tests::rects_overlap_rejette_des_rectangles_qui_se_touchent_sans_se_recouvrir ... ok
+test geometry::tests::rejette_une_intersection_trop_petite ... ok
+test geometry::tests::rejette_une_largeur_ou_une_hauteur_nulle ... ok
+test geometry::tests::tient_compte_de_l_origine_de_la_fenetre ... ok
+test geometry::tests::une_fenetre_entierement_visible_est_mappee_a_l_identique ... ok
+test geometry::tests::une_fenetre_hors_ecran_ne_produit_aucune_coordonnee ... ok
+test geometry::tests::une_origine_negative_ne_produit_pas_une_taille_absurde ... ok
+test h264::tests::decoupe_avec_start_code_de_trois_octets ... ok
+test geometry::tests::rejette_une_fenetre_hors_ecran ... ok
+test h264::tests::decoupe_avec_start_code_de_quatre_octets ... ok
+test h264::tests::ignore_les_nal_vides ... ok
+test h264::tests::detecte_une_image_cle_sur_nal_idr ... ok
+test mire::tests::l_alternance_de_trame_change_le_vert_sans_toucher_a_l_identite ... ok
+test h264::tests::ignore_les_octets_avant_le_premier_start_code ... ok
+test h264::tests::regroupe_un_flux_vide_sans_panique ... ok
+test mire::tests::la_couleur_d_une_mire_identifie_sa_fenetre ... ok
+test mire::tests::la_rotation_ne_designe_jamais_une_voie_inexistante ... ok
+test mire::tests::la_mire_d_une_fenetre_voisine_est_rejetee ... ok
+test mire::tests::la_rotation_controle_chaque_voie_le_meme_nombre_de_fois ... ok
+test h264::tests::regroupe_des_images_multi_tranches_en_une_seule_unite ... ok
+test h264::tests::regroupe_en_unites_d_acces_horodatees ... ok
+test h264::tests::renvoie_rien_sans_start_code ... ok
+test mire::tests::un_ecart_de_lecture_dans_la_tolerance_reste_juste ... ok
+test mire::tests::une_couleur_etrangere_est_inconnue ... ok
+test mire::tests::sans_voie_il_n_y_a_rien_a_controler ... ok
+test moniteurs_virtuels::numeros::tests::huit_sorties_simultanees_renouvelees_restent_dans_la_plage ... ok
+test moniteurs_virtuels::numeros::tests::au_dela_du_plafond_la_creation_est_refusee ... ok
+test moniteurs_virtuels::tests::chaque_sortie_est_convertie_avec_son_propre_facteur ... ok
+test mire::tests::une_image_noire_est_rejetee ... ok
+test moniteurs_virtuels::numeros::tests::cent_ouvertures_fermetures_ne_font_pas_sortir_du_plafond ... ok
+test moniteurs_virtuels::tests::detruire_rend_la_sortie_au_pilote_et_l_oublie ... ok
+test moniteurs_virtuels::tests::des_dimensions_identiques_donnent_un_facteur_unite ... ok
+test moniteurs_virtuels::numeros::tests::les_numeros_se_suivent_tant_que_rien_n_est_rendu ... ok
+test moniteurs_virtuels::tests::detruire_une_sortie_inconnue_echoue_sans_rien_toucher ... ok
+test moniteurs_virtuels::numeros::tests::rendre_un_numero_inconnu_ou_deja_rendu_ne_cree_pas_de_doublon ... ok
+test moniteurs_virtuels::tests::la_garde_detruit_meme_quand_le_fil_panique ... ok
+test moniteurs_virtuels::tests::le_facteur_dpi_agrandit_la_region_et_son_origine ... ok
+test moniteurs_virtuels::tests::un_desaccord_de_longueur_est_refuse ... ok
+test moniteurs_virtuels::tests::le_piege_dpi_de_la_sonde_donne_un_facteur_de_un_et_demi ... ok
+test moniteurs_virtuels::tests::la_garde_detruit_tout_ce_qu_elle_a_cree ... ok
+test moniteurs_virtuels::tests::sans_echelle_ni_decalage_la_region_ne_bouge_pas ... ok
+test moniteurs_virtuels::tests::une_sortie_degeneree_est_refusee_plutot_que_supposee_a_l_unite ... ok
+test moniteurs_virtuels::tests::un_refus_du_pilote_ne_perd_pas_les_sorties_deja_creees ... ok
+test moniteurs_virtuels::tests::une_sortie_decalee_dans_le_bureau_virtuel_part_de_l_origine_de_sa_texture ... ok
+test moniteurs_virtuels::tests::une_sortie_decalee_ramene_la_region_a_l_origine_de_sa_texture ... ok
+test moniteurs_virtuels::tests::une_destruction_refusee_par_le_pilote_ne_fait_pas_oublier_la_sortie ... ok
+test opus::tests::le_pourcentage_de_perte_est_borne ... ok
+test opus::tests::une_trame_de_10_ms_vaut_480_echantillons_par_canal ... ok
+test moniteurs_virtuels::tests::une_annonce_degeneree_ne_donne_aucun_facteur ... ok
+test rebuild::tests::echec_des_deux_fabriques_produit_fatal ... ok
+test rebuild::tests::echec_principal_avec_secours_reussi_produit_recovered ... ok
+test rebuild::tests::la_fabrique_de_secours_n_est_jamais_appelee_si_la_principale_reussit ... ok
+test opus::tests::refuse_une_trame_de_mauvaise_taille ... ok
+test rebuild::tests::reussite_de_la_fabrique_principale_produit_rebuilt ... ok
+test source::tests::expose_ses_dimensions ... ok
+test source::tests::is_alive_par_defaut_vaut_toujours_vrai ... ok
+test source::tests::la_premiere_image_de_chaque_boucle_est_une_image_cle ... ok
+test source::tests::rejette_un_flux_sans_image ... ok
+test source::tests::rejette_un_flux_sans_image_cle ... ok
+test source::tests::rejoue_en_boucle_avec_des_horodatages_croissants ... ok
+test source::tests::resize_par_defaut_ignore_la_demande_et_ne_change_pas_les_dimensions ... ok
+test superviseur::enfants::tests::lancer_echoue_ne_laisse_rien_dans_la_comptabilite ... ok
+test superviseur::enfants::tests::lancer_transmet_la_consigne_au_lanceur ... ok
+test superviseur::enfants::tests::morts_rend_les_sessions_dont_le_processus_a_disparu ... ok
+test superviseur::enfants::tests::tuer_demande_la_mise_a_mort_du_bon_processus ... ok
+test superviseur::enfants::tests::tuer_une_session_inconnue_ne_fait_rien ... ok
+test superviseur::enfants::tests::une_session_morte_n_est_signalee_qu_une_fois ... ok
+test superviseur::enfants::tests::une_session_tuee_ne_ressort_pas_dans_les_morts ... ok
+test superviseur::fenetres::tests::le_masquage_dwm_prime_sur_app_window ... ok
+test superviseur::fenetres::tests::une_fenetre_invisible_est_ecartee ... ok
+test h264::tests::compte_les_memes_unites_que_ffprobe_sur_le_flux_reel ... ok
+test superviseur::fenetres::tests::une_fenetre_masquee_par_dwm_est_ecartee ... ok
+test superviseur::fenetres::tests::une_fenetre_possedee_est_ecartee ... ok
+test superviseur::fenetres::tests::une_fenetre_sans_titre_est_ecartee ... ok
+test superviseur::fenetres::tests::une_tool_window_est_ecartee ... ok
+test superviseur::fenetres::tests::une_tool_window_qui_est_aussi_app_window_est_gardee ... ok
+test superviseur::placement::tests::apparie_une_sortie_nee_beaucoup_plus_grande ... ok
+test superviseur::placement::tests::ignore_toujours_une_sortie_non_attachee ... ok
+test superviseur::placement::tests::ignore_une_sortie_deja_attribuee ... ok
+test superviseur::placement::tests::ignore_une_sortie_non_attachee ... ok
+test superviseur::placement::tests::n_apparie_pas_une_sortie_aux_mauvaises_dimensions ... ok
+test superviseur::placement::tests::n_apparie_pas_une_sortie_trop_petite ... ok
+test superviseur::placement::tests::ne_trouve_rien_quand_toutes_sont_prises ... ok
+test superviseur::placement::tests::trouve_la_sortie_aux_dimensions_demandees ... ok
+test superviseur::placement::tests::un_ecart_d_un_pixel_ne_declenche_pas_de_replacement ... ok
+test superviseur::placement::tests::un_ecart_dans_la_tolerance_apparie_quand_meme ... ok
+test superviseur::placement::tests::un_facteur_d_echelle_est_desormais_recadre_et_non_refuse ... ok
+test superviseur::fenetres::tests::une_fenetre_ordinaire_merite_une_fenetre_navigateur ... ok
+test superviseur::placement::tests::une_fenetre_deplacee_hors_de_sa_sortie_est_replacee ... ok
+test superviseur::placement::tests::une_fenetre_retaillee_par_l_application_est_replacee ... ok
+test superviseur::placement::tests::une_grande_sortie_deja_prise_n_est_pas_reattribuee ... ok
+test superviseur::placement::tests::une_sortie_deja_prise_est_ignoree ... ok
+test superviseur::placement::tests_taille::la_taille_retenue_est_toujours_paire_et_jamais_nulle ... ok
+test superviseur::placement::tests::une_fenetre_a_sa_place_n_est_pas_replacee ... ok
+test superviseur::placement::tests_taille::la_taille_retenue_se_borne_a_la_sortie_quand_celle_ci_est_plus_petite ... ok
+test superviseur::placement::tests_taille::les_deux_axes_se_bornent_separement ... ok
+test superviseur::placement::tests_taille::un_manque_de_quatre_pixels_reste_accepte ... ok
+test superviseur::placement::tests_taille::un_manque_de_sept_pixels_est_refuse ... ok
+test superviseur::placement::tests_taille::une_sortie_nee_trop_grande_convient_desormais ... ok
+test superviseur::placement::tests_taille::une_sortie_nee_trop_petite_ne_convient_pas ... ok
+test superviseur::protocole::tests::les_messages_de_service_du_signaling_ne_sont_pas_des_viewports ... ok
+test superviseur::protocole::tests::un_message_inconnu_de_la_shell_est_refuse_plutot_qu_ignore ... ok
+test superviseur::protocole::tests::un_viewport_de_la_shell_se_lit ... ok
+test superviseur::protocole::tests::une_fermeture_et_un_refus_se_serialisent_comme_la_shell_les_attend ... ok
+test superviseur::protocole::tests::une_ouverture_se_serialise_comme_la_shell_l_attend ... ok
+test superviseur::table::tests::deux_fenetres_en_vol_gardent_chacune_leur_fenetre_et_leur_sortie ... ok
+test superviseur::table::tests::la_destruction_porte_l_identifiant_pilote_et_le_nom_dxgi ... ok
+test superviseur::table::tests::la_fenetre_d_une_session_est_retrouvable ... ok
+test superviseur::table::tests::la_sortie_creee_declenche_le_lancement_de_l_enfant ... ok
+test superviseur::table::tests::la_sortie_est_transmise_a_l_enfant_par_son_nom ... ok
+test superviseur::table::tests::le_viewport_declenche_la_creation_de_la_sortie ... ok
+test superviseur::placement::tests_taille::la_taille_retenue_recadre_une_sortie_trop_grande ... ok
+test superviseur::table::tests::les_identifiants_de_session_sont_uniques ... ok
+test superviseur::table::tests::le_vivier_plein_refuse_la_fenetre_suivante_sans_rien_casser ... ok
+test superviseur::table::tests::un_enfant_qui_meurt_seul_retient_la_sortie_et_l_annonce_sans_le_tuer ... ok
+test superviseur::table::tests::un_second_viewport_pour_la_meme_session_est_ignore ... ok
+test superviseur::table::tests::un_viewport_pour_une_session_inconnue_est_ignore ... ok
+test superviseur::table::tests::une_fenetre_qui_disparait_avant_sa_sortie_ne_demande_aucune_destruction ... ok
+test superviseur::table::tests::une_fenetre_qui_apparait_est_annoncee_et_rien_de_plus ... ok
+test superviseur::table::tests::une_fenetre_reannoncee_ne_cree_pas_de_seconde_entree ... ok
+test superviseur::table::tests::une_fenetre_qui_disparait_tue_l_enfant_detruit_la_sortie_et_l_annonce ... ok
+test superviseur::table::tests::une_sortie_liberee_rouvre_la_place ... ok
+test superviseur::table::tests::une_reannonce_ne_declenche_pas_le_refus_meme_table_pleine ... ok
+test superviseur::table::tests_relance::un_second_enfant_mort_ne_fait_pas_fuir_la_sortie_retenue ... ok
+test superviseur::table::tests_relance::une_fenetre_dont_l_enfant_meurt_est_reproposee ... ok
+test superviseur::table::tests_relance::une_fenetre_neuve_qui_repond_dans_le_delai_n_est_pas_abandonnee ... ok
+test superviseur::table::tests_relance::une_fenetre_orpheline_qui_se_ferme_quitte_la_table ... ok
+test superviseur::table::tests_relance::une_fenetre_qui_echoue_sans_fin_finit_par_etre_abandonnee ... ok
+test superviseur::table::tests_relance::une_relance_qui_repond_a_temps_n_est_pas_abandonnee ... ok
+test superviseur::table::tests_relance::une_relance_qui_stagne_sans_viewport_finit_abandonnee ... ok
+test superviseur::table::tests_relance::une_fenetre_neuve_dont_la_shell_ne_repond_jamais_finit_par_etre_abandonnee ... ok
+test superviseur::table::tests_retention::l_abandon_apres_relances_max_rend_la_sortie ... ok
+test superviseur::table::tests_retention::l_abandon_d_une_entree_figee_rend_la_sortie ... ok
+test superviseur::table::tests_retention::l_entree_relancee_porte_encore_sa_sortie ... ok
+test superviseur::table::tests_retention::la_mort_de_l_enfant_ne_rend_plus_la_sortie_au_pilote ... ok
+test superviseur::table::tests_retention::la_table_retient_la_taille_reelle_de_la_sortie ... ok
+test superviseur::table::tests_retention::la_taille_survit_a_la_mort_de_l_enfant ... ok
+test superviseur::table::tests_retention::rafraichir_la_taille_met_a_jour_une_sortie_deja_retenue ... ok
+test superviseur::table::tests_retention::rafraichir_la_taille_n_invente_rien_sans_sortie_retenue ... ok
+test superviseur::table::tests_retention::sans_sortie_retenue_le_viewport_en_demande_une ... ok
+test superviseur::table::tests_retention::un_viewport_rejoue_apres_reutilisation_ne_fait_rien ... ok
+test superviseur::table::tests_retention::une_session_sans_sortie_n_a_pas_de_taille ... ok
+test superviseur::table::tests_retention::une_sortie_retenue_a_quatre_pixels_pres_est_reutilisee ... ok
+test superviseur::table::tests_retention::une_sortie_retenue_compatible_est_reutilisee_sans_rien_creer ... ok
+test superviseur::table::tests_retention::une_sortie_retenue_incompatible_est_rendue_puis_remplacee ... ok
+test superviseur::table::tests_retention::une_sortie_retenue_plus_grande_est_reutilisee ... ok
+test survie_verdict::tests::deux_mesures_differentes_rendent_false ... ok
+test survie_verdict::tests::deux_mesures_egales_rendent_true ... ok
+test survie_verdict::tests::une_mesure_absente_de_chaque_cote_rend_indetermine ... ok
+test tests::un_hwnd_hexadecimal_ou_decimal_est_accepte ... ok
+test tests::un_hwnd_mal_forme_fait_echouer_le_demarrage ... ok
+test opus::tests::le_silence_prolonge_retombe_a_quelques_octets_par_trame ... ok
+test opus::tests::un_ton_encode_puis_decode_reste_le_meme_ton ... ok
+test source::tests::charge_le_flux_de_test_reel ... ok
+test source::tests::boucle_avec_300_images_reelles_et_horodatages_strictement_croissants ... ok
+test transport::adaptation::tests::un_refus_repete_de_set_encode_size_ne_remonte_pas_dans_decision_courante ... ok
+test transport::adaptation::tests::une_estimation_perimee_bascule_l_adaptation_en_indisponible_et_l_annonce ... ok
+test transport::evenements::tests::un_message_de_visibilite_est_memorise_et_non_applique_sur_le_champ ... ok
+test transport::adaptation::tests::une_cible_deja_refusee_n_est_plus_soumise_a_la_source ... ok
+test transport::piste_audio::tests::borne_l_attente_quand_l_audio_est_negocie ... ok
+test transport::piste_audio::tests::la_frequence_rtp_audio_correspond_au_taux_d_echantillonnage_opus ... ok
+test transport::piste_audio::tests::le_format_diese_rend_la_chaine_de_causes ... ok
+test transport::piste_video::tests::cadence_normale_basee_sur_l_echeance_precedente_sans_derive ... ok
+test transport::piste_video::tests::ignore_les_codecs_non_h264_meme_en_mode_1 ... ok
+test transport::piste_video::tests::ignore_les_profils_sans_mode_1 ... ok
+test transport::part::tests::une_part_qui_remonte_ne_releve_pas_le_debit_au_dela_de_l_estimation ... ok
+test transport::piste_video::tests::rattrapage_borne_apres_un_long_blocage ... ok
+test transport::piste_video::tests::selectionne_le_mode_de_paquetisation_1 ... ok
+test opus::tests::une_perte_declaree_change_reellement_l_encodage ... ok
+test transport::part::tests::une_part_dormante_ne_borne_pas_le_controleur_et_le_reveil_est_suivi ... ok
+test transport::socket::tests::attente_bornee_par_l_echeance_d_image_la_plus_proche ... ok
+test transport::socket::tests::attente_bornee_par_l_echeance_rtc_si_plus_proche ... ok
+test transport::socket::tests::attente_dictee_par_rtc_seul_sans_piste_video ... ok
+test transport::socket::tests::backoff_croit_avec_le_nombre_d_erreurs_consecutives ... ok
+test transport::socket::tests::backoff_est_non_nul_des_la_premiere_erreur ... ok
+test transport::socket::tests::backoff_reste_borne_meme_apres_une_tres_longue_rafale ... ok
+test transport::socket::tests::connection_reset_est_transitoire ... ok
+test transport::socket::tests::erreurs_non_reconnues_sont_fatales ... ok
+test transport::socket::tests::interrupted_est_transitoire ... ok
+test transport::part::tests::une_part_recue_borne_le_plafond_du_controleur ... ok
+test transport::piste_video::tests::la_session_ancre_l_instant_de_capture_sur_son_origine ... ok
+test transport::redimensionnement::tests::un_redimensionnement_recalibre_le_controleur_sur_la_taille_obtenue ... ok
+test opus::tests::lbrr_est_reellement_decodable ... ok
+test transport::tick::tests::audio::audio_vivant_n_est_annonce_qu_apres_un_paquet_reel ... ok
+test transport::evenements::tests::relaie_une_demande_d_image_cle_du_pair_vers_la_source ... ok
+test transport::tick::tests::audio::injection::un_budget_superieur_a_RECONSTRUCTIONS_MAX_mene_a_AudioMort ... ok
+test transport::controle::tests::relaie_au_pair_un_controle_pousse_depuis_l_exterieur_de_la_boucle ... ok
+test transport::tick::tests::audio::sans_reconstructeur_on_signale_immediatement ... ok
+test transport::tick::tests::audio::injection::une_faute_injectee_fait_refuser_la_reconstruction ... ok
+test transport::tick::tests::audio::l_accesseur_public_rend_une_session_porteuse_et_sa_reconstruction_audible ... ok
+test transport::tick::tests::audio::une_reelection_reapprovisionne_le_budget_et_leve_le_verrou ... ok
+test transport::tick::tests::audio::injection::le_budget_epuise_laisse_la_reconstruction_reussir ... ok
+test transport::tick::tests::audio::un_reconstructeur_qui_echoue_toujours_finit_par_signaler ... ok
+test transport::tick::tests::audio::une_capture_audio_morte_est_signalee_une_fois_puis_de_nouveau_apres_un_rattachement ... ok
+test transport::tick::tests::audio::une_capture_morte_est_reconstruite_avant_tout_signalement ... ok
+test transport::tick::tests::reste::un_changement_de_sommeil_de_la_source_est_traduit_en_message_asleep ... ok
+test transport::tick::tests::reste::une_part_en_attente_est_appliquee_par_act_on_timeout ... ok
+test transport::tick::tests::audio::le_repit_espace_les_tentatives ... ok
+test turn::allocation::tests::le_rafraichissement_tombe_a_la_moitie_du_bail ... ok
+test turn::allocation::tests::la_premiere_emission_est_une_allocation_nue ... ok
+test turn::allocation::tests::un_nonce_perime_est_rejoue_et_non_abandonne ... ok
+test turn::allocation::tests::un_succes_rend_l_adresse_relayee_et_l_adresse_reflexive ... ok
+test turn::allocation::tests::une_reponse_a_channel_bind_ne_repousse_pas_l_echeance_du_bail ... ok
+test turn::canaux::tests::desencapsuler_refuse_une_trame_tronquee_ou_inconnue ... ok
+test transport::tick::tests::reste::une_visibilite_en_attente_est_appliquee_a_la_source_puis_relachee ... ok
+test turn::canaux::tests::desencapsuler_rend_le_pair_et_la_charge_utile ... ok
+test turn::allocation::tests::un_401_declenche_une_allocation_signee ... ok
+test turn::canaux::tests::encapsuler_refuse_un_pair_sans_canal ... ok
+test turn::canaux::tests::encapsuler_prefixe_le_numero_de_canal_et_la_longueur ... ok
+test turn::canaux::tests::le_premier_octet_departage_stun_de_channel_data ... ok
+test turn::canaux::tests::les_numeros_de_canal_restent_dans_la_plage_normative ... ok
+test turn::messages::tests::la_cle_longue_duree_est_le_md5_des_trois_champs ... ok
+test turn::canaux::tests::lier_un_canal_emet_permission_puis_channel_bind ... ok
+test turn::messages::tests::un_channel_bind_porte_le_numero_et_l_adresse ... ok
+test turn::canaux::tests::un_canal_lie_est_rafraichi_avant_l_expiration_de_la_permission ... ok
+test turn::messages::tests::une_allocation_nue_porte_requested_transport_et_pas_d_integrite ... ok
+test turn::messages::tests::une_permission_porte_l_adresse_du_pair_en_xor ... ok
+test windows_source_sortie::tests::l_alignement_pair_est_reellement_exerce_par_une_entree_impaire ... ok
+test windows_source_sortie::tests::la_region_part_de_l_origine_de_la_sortie ... ok
+test turn::messages::tests::une_allocation_signee_est_relue_et_verifiee_par_is_stun ... ok
+test windows_source_sortie::tests::le_bornage_preserve_le_rapport_d_aspect ... ok
+test windows_source_sortie::tests::le_bornage_rend_des_dimensions_paires ... ok
+test windows_source_sortie::tests::les_dimensions_impaires_sont_alignees_vers_le_bas ... ok
+test windows_source_sortie::tests::seul_le_mode_recadre_redimensionne_la_fenetre ... ok
+test windows_source_sortie::tests::une_sortie_degeneree_ne_donne_aucune_region ... ok
+test windows_source_sortie::tests::le_bornage_ne_rend_jamais_une_dimension_nulle ... ok
+test windows_source_sortie::tests::une_taille_4k_est_ramenee_au_plafond ... ok
+test windows_source_sortie::tests::une_taille_sous_le_plafond_passe_telle_quelle ... ok
+test windows_source_telemetrie::tests::une_telemetrie_remise_a_neuf_repart_de_zero ... ok
+test windows_source_telemetrie::tests::deux_telemetries_ne_se_melangent_pas ... ok
+test transport::tick::tests::audio::une_session_non_porteuse_reconstruite_reste_muette ... ok
+test transport::tick::tests::audio::une_session_porteuse_reconstruite_recoit_set_actif_true ... ok
+test transport::piste_video::tests::write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp ... ok
+test transport::tick::tests::reste::atteint_la_cadence_video_visee_avec_un_pair_local ... ok
+test transport::sonde_montante::str0m_expose_l_opus_montant_via_media_data ... FAILED
+
+failures:
+
+---- transport::sonde_montante::str0m_expose_l_opus_montant_via_media_data stdout ----
+
+thread 'transport::sonde_montante::str0m_expose_l_opus_montant_via_media_data' (917320) panicked at agent/src/transport/sonde_montante.rs:97:9:
+aucun `Event::MediaData` reçu en 15 s : str0m ne délivre pas l'Opus montant, ou la connexion ne s'est pas établie (au moins une écriture tentée : false)
+
+
+failures:
+    transport::sonde_montante::str0m_expose_l_opus_montant_via_media_data
+
+test result: FAILED. 467 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.49s
+
+error: test failed, to rerun pass `-p agent --bin agent`
+ÉCHEC : cargo test --workspace
+CODE DE SORTIE = 1

@@ -1,0 +1,41 @@
+# ROUGE ①A-bis — le refus TIENT, mais `ice-config` part AVANT lui
+# Jouée le 2026-08-19T15:41:52+02:00, commit 8879a4b
+#
+# POURQUOI CETTE SECONDE MUTATION EXISTE, et c'est une DIVERGENCE avec le
+# plan : celui-ci annonce que la rouge ①A fait tomber « les DEUX assertions
+# du critère ① ». Elle n'en fait tomber qu'UNE — la première — parce que
+# `expect` interrompt le test. La seconde assertion (« aucun ice-config »)
+# n'était donc PAS éprouvée par ①A, et rien ne disait qu'elle pouvait
+# échouer. Cette mutation-ci l'éprouve seule : la garde refuse toujours,
+# mais la configuration ICE est envoyée AVANT la vérification — c'est
+# EXACTEMENT la fuite d'identifiants TURN de 24 h que l'assertion existe
+# pour attraper, et la première assertion, elle, reste verte.
+
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config
+poignée de main refusée : poignée de main sans jeton sur la session s-1
+
+ × src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config 316ms
+   → expected [ 'ice-config', 'error' ] to not include 'ice-config'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config
+AssertionError: expected [ 'ice-config', 'error' ] to not include 'ice-config'
+ ❯ src/signaling/garde-fil.test.ts:109:56
+    107|         // `ice-config` passerait la première et laisserait fuir des
+    108|         // identifiants TURN de 24 h.
+    109|         expect(refuse.messages.map((m) => m.type)).not.toContain('ice-…
+       |                                                        ^
+    110| 
+    111|         // TÉMOIN, dans la même exécution : un client AUTHENTIFIÉ en r…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 skipped (6)
+   Start at  15:41:53
+   Duration  1.16s (transform 163ms, setup 0ms, collect 208ms, tests 320ms, environment 0ms, prepare 110ms)
+
