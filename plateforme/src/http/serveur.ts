@@ -17,6 +17,7 @@ import { WebSocketServer } from 'ws';
 import type { Config } from '../config';
 import type { Pilote } from '../base/pilote';
 import { garde } from '../identite/garde';
+import { servirAuth } from './routes-auth';
 import { createSignalingServer } from '../signaling/relais';
 import { ProprieteDeSession } from '../signaling/propriete';
 import { observateurDeSession } from '../signaling/trace';
@@ -32,11 +33,34 @@ export interface ServicePlateforme {
 /// écrit. `demarrage.ts` garantit par ailleurs que le port ne s'ouvre qu'après
 /// la base et ses migrations.
 export async function demarrerServeur(config: Config, base: Pilote): Promise<ServicePlateforme> {
-    // Toute route HTTP répond 404 : P2 (authentification) et P4
-    // (orchestration) en ajouteront, P1 n'en sert aucune.
-    const http: Server = createServer((_requete, reponse) => {
-        reponse.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
-        reponse.end('introuvable\n');
+    // Les routes d'authentification d'abord ; si elles ne reconnaissent pas
+    // le chemin, le 404 de P1 est conservé MOT POUR MOT. ⚠️ Ne pas changer son
+    // corps : rien ne le testait avant P2, et le changer serait un effet de
+    // bord non déclaré. `routes-auth.test.ts` le fige désormais.
+    const http: Server = createServer((requete, reponse) => {
+        void servirAuth(requete, reponse, {
+            base,
+            secretJeton: config.secretJeton,
+            origineClient: config.origineClient,
+            maintenant: Date.now,
+        })
+            .then((servie) => {
+                if (servie) return;
+                reponse.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
+                reponse.end('introuvable\n');
+            })
+            .catch((cause) => {
+                // Une promesse rejetée sans `catch` dans un gestionnaire
+                // d'évènement Node abat tout le process — c'est le mode de
+                // défaillance que `signaling/relais.ts` documente déjà. La
+                // cause est journalisée SANS le corps de la requête, qui
+                // porterait le mot de passe (critère ④).
+                console.error(`route d'authentification en échec : ${String(cause)}`);
+                if (!reponse.headersSent) {
+                    reponse.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
+                    reponse.end(JSON.stringify({ refus: 'interne' }));
+                }
+            });
     });
 
     const wssRacine = new WebSocketServer({ noServer: true });
