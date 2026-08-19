@@ -42,10 +42,44 @@ impl Session {
                 return Tick::Disconnected;
             }
             Event::MediaAdded(media) => {
-                tracing::info!(mid = ?media.mid, kind = ?media.kind, "piste négociée");
-                match media.kind {
-                    str0m::media::MediaKind::Video => self.video_mid = Some(media.mid),
-                    str0m::media::MediaKind::Audio => self.audio_mid = Some(media.mid),
+                // ⚠️ Le champ `direction` est porté par la trace À DESSEIN :
+                // avec DEUX m-lines audio, un journal de recette ne permet
+                // pas de distinguer les deux pistes sans lui. C'est la leçon
+                // « une trace non attribuable coûte une ré-imputation » (D6).
+                tracing::info!(
+                    mid = ?media.mid,
+                    kind = ?media.kind,
+                    direction = ?media.direction,
+                    "piste négociée"
+                );
+                // ⚠️ **La direction discrimine, et sans elle ce `match` est un
+                // défaut MUET.** Il posait `audio_mid` pour toute piste audio :
+                // dès qu'une SECONDE m-line audio existe — le micro du chantier
+                // E, `recvonly` de notre côté —, elle écrasait la première, et
+                // le son descendant du chantier A partait sur une piste que
+                // nous ne pouvons pas émettre. Aucune erreur, aucun `WARN`,
+                // juste le silence. Le rouge sémantique qui l'exhibe est versé
+                // dans `journaux-micro/tache-7-rouge.txt`.
+                //
+                // `MediaAdded::direction` est la direction LOCALE : str0m
+                // inverse la direction distante à l'acceptation d'une offre
+                // (`change/sdp.rs`, `let new_dir = m.direction().invert();`).
+                // Vérifié par la MESURE et non par la seule lecture — la
+                // sonde 1 (`transport::sonde_montante`) voit le récepteur
+                // annoncer `RecvOnly` sur une piste offerte en `SendOnly`.
+                use str0m::media::{Direction, MediaKind};
+                match (media.kind, media.direction) {
+                    (MediaKind::Video, _) => self.video_mid = Some(media.mid),
+                    // Le son du chantier A : l'agent ÉMET.
+                    (MediaKind::Audio, Direction::SendOnly | Direction::SendRecv) => {
+                        self.audio_mid = Some(media.mid)
+                    }
+                    // Le micro du chantier E : l'agent REÇOIT.
+                    (MediaKind::Audio, Direction::RecvOnly) => self.mic_mid = Some(media.mid),
+                    // Éteinte par le pair : ni l'une ni l'autre. La ranger
+                    // quelque part lui ferait prendre la place d'une piste
+                    // vivante.
+                    (MediaKind::Audio, Direction::Inactive) => {}
                 }
             }
             Event::ChannelOpen(id, label) => {
@@ -224,168 +258,5 @@ impl Session {
 }
 
 #[cfg(test)]
-mod tests {
-    use std::time::Duration;
-
-    use anyhow::Result;
-    use str0m::Output;
-
-    use super::*;
-    use crate::h264::AccessUnit;
-    use crate::source::VideoSource;
-    use crate::transport::fixtures;
-
-    /// `ClientControl::Visibility` reçu doit être mémorisé dans
-    /// `pending_visibility`, pas appliqué sur-le-champ.
-    ///
-    /// Même raison que pour `Resize` : ce code court pendant le drainage de
-    /// `poll_output`, et relâcher un encodeur y romprait l'invariant d'une
-    /// seule mutation de `Rtc` par appel. `dispatch_controle_de_test` est un
-    /// point d'entrée `#[cfg(test)]` qui court-circuite `ChannelData` (str0m
-    /// interdit délibérément sa construction hors du crate) tout en exerçant
-    /// exactement le même chemin de mémorisation que `dispatch_channel_data`.
-    #[test]
-    fn un_message_de_visibilite_est_memorise_et_non_applique_sur_le_champ() {
-        let source = Box::new(fixtures::video_test_source());
-        let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-            .expect("session");
-
-        let json = r#"{"type":"visibility","v":3,"visible":false,"focused":false}"#;
-        session.dispatch_controle_de_test(json);
-
-        assert_eq!(session.pending_visibility, Some((false, false)));
-    }
-
-    /// Preuve d'intégration que `Event::KeyframeRequest` (émis par str0m
-    /// quand le pair envoie un PLI/FIR RTCP — ce que fait un navigateur après
-    /// une perte de paquet détectée par son décodeur) est bien relayé jusqu'à
-    /// `VideoSource::request_keyframe`, sans passer par un mock du trait
-    /// `Event` : le pair local ici est un vrai second `Rtc` str0m, comme dans
-    /// `atteint_la_cadence_video_visee_avec_un_pair_local`.
-    ///
-    /// N'exerce PAS le chemin `WindowsSource`/`H264Encoder::request_keyframe`
-    /// réel (`#![cfg(windows)]`, indisponible sur la machine de compilation
-    /// Linux) : seul le relais `handle_event` → `Session::source` est prouvé
-    /// ici. Le câblage `WindowsSource::request_keyframe` →
-    /// `H264Encoder::request_keyframe` (`SetValue` sur
-    /// `CODECAPI_AVEncVideoForceKeyFrame`) reste vérifié par lecture et par
-    /// la compilation croisée Windows, pas par un test automatisé.
-    #[test]
-    fn relaie_une_demande_d_image_cle_du_pair_vers_la_source() {
-        use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
-        use std::sync::Arc;
-        use std::thread;
-        use str0m::change::SdpAnswer;
-        use str0m::media::{Direction, KeyframeRequestKind, MediaKind};
-
-        /// Enveloppe `FileSource` en comptant les appels à
-        /// `request_keyframe`, seule façon d'observer depuis ce test que le
-        /// relais a bien eu lieu (le compteur est partagé via `Arc` avant que
-        /// la source ne soit déplacée dans `Session`, qui la possède ensuite
-        /// depuis le thread dédié de `Session::run`).
-        struct CountingSource {
-            inner: crate::source::FileSource,
-            keyframe_requests: Arc<AtomicUsize>,
-        }
-
-        impl VideoSource for CountingSource {
-            fn next_frame(&mut self) -> Option<AccessUnit> {
-                self.inner.next_frame()
-            }
-            fn dimensions(&self) -> (u32, u32) {
-                self.inner.dimensions()
-            }
-            fn request_keyframe(&mut self) -> Result<()> {
-                self.keyframe_requests.fetch_add(1, AtomicOrdering::SeqCst);
-                Ok(())
-            }
-        }
-
-        let local_ip = fixtures::local_ip();
-        let keyframe_requests = Arc::new(AtomicUsize::new(0));
-        let source = Box::new(CountingSource {
-            inner: fixtures::video_test_source(),
-            keyframe_requests: keyframe_requests.clone(),
-        });
-
-        let mut session = Session::new(source, local_ip, Instant::now(), 12_000_000).expect("session");
-
-        let (peer_socket, peer_addr, mut peer_rtc) = fixtures::local_peer(local_ip, false);
-
-        let mut api = peer_rtc.sdp_api();
-        // Recvonly côté pair == la piste vidéo que le navigateur reçoit
-        // réellement de l'agent ; c'est sur ce `mid` que `writer(...)` émettra
-        // le PLI plus bas (str0m nomme cet accès « writer » indépendamment du
-        // sens du média — c'est l'API par laquelle la rétroaction RTCP sort).
-        let video_mid = api.add_media(MediaKind::Video, Direction::RecvOnly, None, None, None);
-        api.add_channel("control".to_string());
-        api.add_channel("input".to_string());
-        let (offer, pending) = api.apply().expect("offre non vide");
-
-        let answer_sdp = session.accept_offer(&offer.to_sdp_string()).expect("offre acceptée");
-        let answer = SdpAnswer::from_sdp_string(&answer_sdp).expect("réponse SDP valide");
-        peer_rtc
-            .sdp_api()
-            .accept_answer(pending, answer)
-            .expect("réponse acceptée par le pair");
-
-        thread::spawn(move || {
-            let mut on_input = |_| {};
-            let mut on_control = |_| {};
-            let _ = session.run(&mut on_input, &mut on_control);
-        });
-
-        let hard_deadline = Instant::now() + Duration::from_secs(10);
-        let mut keyframe_requested_at_peer = false;
-
-        loop {
-            let now = Instant::now();
-            if keyframe_requests.load(AtomicOrdering::SeqCst) > 0 {
-                break; // Preuve faite : le relais a atteint la source.
-            }
-            if now >= hard_deadline {
-                panic!(
-                    "délai dépassé : le pair local ne s'est jamais connecté, ou \
-                     Event::KeyframeRequest n'a jamais atteint VideoSource::request_keyframe \
-                     (compteur toujours à 0)"
-                );
-            }
-
-            match peer_rtc.poll_output().expect("poll_output du pair") {
-                Output::Timeout(t) => {
-                    let wait = t
-                        .saturating_duration_since(now)
-                        .min(hard_deadline.saturating_duration_since(now));
-                    if fixtures::poll_peer_socket(&mut peer_rtc, &peer_socket, peer_addr, now, wait) {
-                        continue;
-                    }
-                }
-                Output::Transmit(t) => {
-                    let _ = peer_socket.send_to(&t.contents, t.destination);
-                }
-                Output::Event(Event::Connected) => {
-                    if !keyframe_requested_at_peer {
-                        keyframe_requested_at_peer = true;
-                        // Exactement ce que fait un navigateur après une
-                        // perte de paquet détectée par son décodeur : demander
-                        // une image clé via un PLI RTCP. `fb_pli` est vrai par
-                        // défaut pour un codec vidéo dans str0m (voir
-                        // `format::payload_params::PayloadParams::new`), donc
-                        // cette négociation n'a rien de spécial à activer côté
-                        // offre/réponse SDP.
-                        let mut writer = peer_rtc.writer(video_mid).expect("writer vidéo");
-                        writer
-                            .request_keyframe(None, KeyframeRequestKind::Pli)
-                            .expect("PLI négocié par défaut sur un codec vidéo (fb_pli)");
-                    }
-                }
-                Output::Event(_) => {}
-            }
-        }
-
-        assert!(
-            keyframe_requests.load(AtomicOrdering::SeqCst) > 0,
-            "Event::KeyframeRequest du pair n'a jamais atteint VideoSource::request_keyframe"
-        );
-    }
-}
+#[path = "evenements/tests.rs"]
+mod tests;
