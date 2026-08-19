@@ -253,7 +253,7 @@ pub(super) fn prochain_morceau(restants: &mut VecDeque<Morceau>) -> Option<Morce
 }
 
 /// Convertit les entrées du protocole en entrées d'énumération.
-pub(super) fn entrees_depuis(json: Vec<crate::pont::entetes::EntreeJson>) -> Vec<Entree> {
+pub(super) fn entrees_depuis(json: Vec<proto::fichiers::entetes::EntreeJson>) -> Vec<Entree> {
     json.into_iter()
         .map(|e| Entree {
             nom: e.nom,

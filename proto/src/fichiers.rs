@@ -151,5 +151,7 @@ pub fn decoder(octets: &[u8]) -> Result<Trame<'_>, ErreurTrame> {
     Ok(Trame { version, type_message: octets[1], correlation, entete, charge })
 }
 
+pub mod entetes;
+
 #[cfg(test)]
 mod tests;

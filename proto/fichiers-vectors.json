@@ -1,0 +1,88 @@
+{
+  "comment": "Vecteurs partagés Rust/TypeScript des EN-TÊTES JSON du pont fichiers. La TRAME binaire, elle, est épinglée en dur dans proto/src/fichiers/tests.rs et proto/ts/fichiers.test.ts : elle n'a pas besoin d'un fichier, seize octets s'écrivent des deux côtés. Les en-têtes, eux, sont sept structures de champs nommés, et c'est précisément la forme qu'un renommage casse en silence. La clé version est vérifiée des DEUX côtés, comme dans plateforme-vectors.json et à la différence de vectors.json, dont seul le consommateur TypeScript la contrôle.",
+  "version": 1,
+  "cases": [
+    {
+      "name": "chemin",
+      "forme": "chemin",
+      "chemin": "dossier/note.txt",
+      "json": "{\"chemin\":\"dossier/note.txt\"}"
+    },
+    {
+      "name": "chemin_de_la_racine",
+      "forme": "chemin",
+      "chemin": "",
+      "json": "{\"chemin\":\"\"}"
+    },
+    {
+      "name": "chemin_accentue",
+      "forme": "chemin",
+      "chemin": "été/résumé final.txt",
+      "json": "{\"chemin\":\"été/résumé final.txt\"}"
+    },
+    {
+      "name": "lire",
+      "forme": "lire",
+      "chemin": "gros.bin",
+      "position": 65536,
+      "longueur": 4096,
+      "json": "{\"chemin\":\"gros.bin\",\"position\":65536,\"longueur\":4096}"
+    },
+    {
+      "name": "entrees",
+      "forme": "entrees",
+      "entrees": [
+        { "nom": "a.txt", "repertoire": false, "taille": 7, "modifie": 42 },
+        { "nom": "sous-dossier", "repertoire": true, "taille": 0, "modifie": -1 }
+      ],
+      "json": "{\"entrees\":[{\"nom\":\"a.txt\",\"repertoire\":false,\"taille\":7,\"modifie\":42},{\"nom\":\"sous-dossier\",\"repertoire\":true,\"taille\":0,\"modifie\":-1}]}"
+    },
+    {
+      "name": "entrees_vides",
+      "forme": "entrees",
+      "entrees": [],
+      "json": "{\"entrees\":[]}"
+    },
+    {
+      "name": "meta",
+      "forme": "meta",
+      "repertoire": false,
+      "taille": 1234,
+      "modifie": 1690000000000,
+      "json": "{\"repertoire\":false,\"taille\":1234,\"modifie\":1690000000000}"
+    },
+    {
+      "name": "meta_anterieure_a_1970",
+      "forme": "meta",
+      "repertoire": true,
+      "taille": 0,
+      "modifie": -86400000,
+      "json": "{\"repertoire\":true,\"taille\":0,\"modifie\":-86400000}"
+    },
+    {
+      "name": "donnees",
+      "forme": "donnees",
+      "position": 128,
+      "longueur": 64,
+      "json": "{\"position\":128,\"longueur\":64}"
+    },
+    {
+      "name": "echec_a_un_mot",
+      "forme": "echec",
+      "code": "introuvable",
+      "json": "{\"code\":\"introuvable\"}"
+    },
+    {
+      "name": "echec_a_deux_mots",
+      "forme": "echec",
+      "code": "chemin-introuvable",
+      "json": "{\"code\":\"chemin-introuvable\"}"
+    },
+    {
+      "name": "echec_a_trois_mots",
+      "forme": "echec",
+      "code": "protege-en-ecriture",
+      "json": "{\"code\":\"protege-en-ecriture\"}"
+    }
+  ]
+}

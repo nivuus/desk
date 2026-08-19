@@ -38,7 +38,7 @@ use windows::Win32::Storage::ProjectedFileSystem::{
 };
 
 use crate::pont::chemins;
-use crate::pont::entetes;
+use proto::fichiers::entetes;
 use crate::pont::erreurs::{hresult, Erreur, EN_COURS};
 use crate::pont::notifications;
 use crate::pont::projfs::{ContexteProjFs, Etat, FluxDonnees, TamponEntrees};
