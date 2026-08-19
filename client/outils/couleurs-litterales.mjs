@@ -81,6 +81,26 @@
 //   (« `:root` perd `--surface`, `--text` »). Le plan attribuait par ailleurs
 //   un compte de onze à un défaut de traitement des commentaires : les
 //   mutations ci-dessus le réfutent — un tel défaut rendrait TREIZE.
+// • 🔴 QUATRE EXIGENCES QUI NE PEUVENT PAS TENIR ENSEMBLE, et la quatrième
+//   cède. Le plan S1 demande à la fois : (T1) que les `*.test.ts` soient
+//   BALAYÉS, « une couleur codée en dur dans un test étant une valeur en
+//   double comme une autre » ; (T5) que `contraste.test.ts` porte les vecteurs
+//   `#000000`, `#ffffff` et `#808080`, dont la valeur est fixée par WCAG 2.1
+//   et non par nos tokens — c'est ce qui l'empêche de valider le produit
+//   contre lui-même ; (T9) que `reprise.test.ts` compare `--fond-0` à
+//   `#0b0d10` EXACTEMENT, ce qui est la comparaison qui PROUVE la reprise ;
+//   et (T9) que ce contrôle rende ZÉRO à la fin du sous-bloc. Les vecteurs de
+//   T5 et la comparaison de T9 sont des littéraux OBLIGATOIRES : les interdire
+//   rendrait ces deux tâches impossibles.
+//   ⚠️ L'exclusion est donc posée AU PLUS ÉTROIT : `client/src/design/*.test.ts`
+//   seulement. Tout autre test du paquet reste balayé — une couleur dans
+//   `resize.test.ts` ou `webrtc.test.ts` est toujours refusée, et aucun n'en
+//   porte aujourd'hui. Relevé de l'écart, sur l'arbre du 19 août 2026 : sans
+//   cette exclusion le contrôle rend 46, dont 35 viennent des deux seuls
+//   fichiers de test du socle et 11 de `style.css`, la vraie cible.
+//   ⚠️ Ce que cela coûte : un test du socle qui recopierait une couleur du
+//   produit sans raison ne serait plus attrapé. C'est une règle de revue, au
+//   même titre que « employer `--bord-fort` là où il porte une information ».
 // • Ce contrôle dit qu'aucune couleur n'est écrite en dur. Il ne dit RIEN de
 //   la justesse du token employé à la place — c'est une règle de revue
 //   (spec §8).
@@ -180,11 +200,15 @@ const args = process.argv.slice(2);
 const iRacine = args.indexOf('--racine');
 const racine = iRacine === -1 ? 'client' : args[iRacine + 1];
 
+// ⚠️ DEUX EXCLUSIONS, ET LA SECONDE EST UNE DIVERGENCE ASSUMÉE AVEC LE PLAN.
+// Voir l'encadré « QUATRE EXIGENCES QUI NE PEUVENT PAS TENIR ENSEMBLE ».
 const exclus = new Set([join(racine, 'src/design/tokens.css')]);
+const estTestDuSocle = (chemin) =>
+    chemin.startsWith(join(racine, 'src/design/')) && chemin.endsWith('.test.ts');
 const aBalayer = [
     ...fichiersSous(join(racine, 'src'), ['.css', '.ts']),
     ...entreesVite(racine),
-].filter((c) => !exclus.has(c));
+].filter((c) => !exclus.has(c) && !estTestDuSocle(c));
 
 let total = 0;
 for (const chemin of aBalayer) {

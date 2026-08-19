@@ -1,0 +1,199 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA SOURCE UNIQUE DE VALEURS VISUELLES DU PRODUIT (spec ⑥, §4.2 à §4.5).
+
+   Aucune couleur, aucune longueur d'échelle ne s'écrit ailleurs. Le contrôle
+   §7.2 (`client/outils/couleurs-litterales.mjs`) balaie tout `client/src/`
+   SAUF ce fichier, et refuse la moindre valeur littérale hors d'ici.
+
+   ⚠️ IL N'Y A PAS DE MIROIR TYPESCRIPT DE CES VALEURS, et c'est délibéré : les
+   contrôles §7.1, §7.4 et §7.6 PARSENT ce fichier plutôt que d'en recopier le
+   contenu. « Un contrôle qui a sa propre copie des valeurs valide sa copie »
+   (spec §7.1).
+
+   ── TROIS BLOCS, ET L'ORDRE COMPTE ────────────────────────────────────────
+   ① `:root`                                        palette SOMBRE, sans condition
+   ② `@media (prefers-color-scheme: light)`         palette CLAIRE, par préférence système
+      avec `:root:not([data-theme="sombre"])`
+   ③ `:root[data-theme="clair"]`                    palette CLAIRE, par choix explicite
+
+   Le sombre est le bloc SANS condition : c'est lui qui porte aussi les tokens
+   hors thème et toutes les échelles, que les deux blocs clairs ne redéclarent
+   jamais. L'ABSENCE de `data-theme` signifie « systeme » — voir `theme.ts`.
+
+   ⚠️ LA PALETTE CLAIRE EST ÉCRITE DEUX FOIS, ce qui est le coût du choix à
+   trois états du §4.2. Rien d'autre que le contrôle §7.4
+   (`client/outils/blocs-de-theme.mjs`) n'empêche les deux copies de diverger :
+   toute modification de l'une va dans l'autre, sans exception.
+
+   ⚠️ `color-scheme` SUIT LE THÈME (divergence D9) et n'est PAS un token `--*` :
+   il ne compte ni dans l'égalité d'ensembles de §7.4, ni dans les orphelins de
+   §7.6, et il est vérifié à part par un test de `tokens.ts`. Il décide de
+   l'apparence NATIVE des contrôles de formulaire — `client/connexion.html`
+   porte deux `<input>` dont un `type="password"` —, donc une page claire dont
+   les champs resteraient en rendu sombre serait le défaut le plus visible que
+   ce socle puisse introduire.
+
+   ⚠️ PORTE ARMÉE À 300 LIGNES (spec §10, décision de seuil du plan S1) : si ce
+   fichier les atteint, le scinder en `design/tokens/couleurs.css` et
+   `design/tokens/echelles.css` AVANT l'addition qui franchirait, jamais après.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    color-scheme: dark;
+
+    /* ── Palette SOMBRE — treize couleurs (spec §4.5) ──────────────────────
+       ⚠️ `--fond-0` et `--texte-fort` reprennent EXACTEMENT les deux valeurs
+       déjà en place avant ce socle (`style.css:3-4` : `--surface: #0b0d10` et
+       `--text: #e6e8eb`). Le thème sombre du produit ne change pas de teinte,
+       il gagne des voisins. `client/src/design/reprise.test.ts` le compare
+       caractère pour caractère — ce n'est pas une affirmation. */
+    --fond-0: #0b0d10;
+    --fond-1: #14171c;
+    --fond-2: #1c2027;
+    --bord: #2a2f38;
+    --bord-fort: #6a7484;
+    --texte-fort: #e6e8eb;
+    --texte: #c3c8d0;
+    --texte-faible: #8b94a3;
+    --accent: #7aa2f7;
+    --sur-accent: #0b0d10;
+    --succes: #6ec08a;
+    --alerte: #e0b55c;
+    --danger: #f07a7a;
+
+    /* ── Six voiles HORS THÈME — déclarés une fois, jamais redéfinis ───────
+       Ils sont posés SUR LA VIDÉO, dont le contenu ne suit aucun thème : un
+       encadrement clair autour d'une image vidéo se lit comme un défaut
+       d'affichage. Ils sont donc identiques dans les deux thèmes, et c'est
+       l'exception nommée au point 2 de §3.
+
+       ⚠️ ILS SONT HORS DES 50 PAIRES DE CONTRASTE, et pas par oubli : leur
+       lisibilité dépend de la vidéo qui est dessous, qui n'est pas
+       connaissable. La spec §11 le déclare déjà — « `--voile-flottant` ne
+       suffit pas sur une vidéo très claire, non mesuré ».
+
+       ⚠️ LES DEUX DERNIERS NE SONT PAS DES NOIRS, et ils ne se raccordent PAS
+       à `--danger` / `--alerte` (divergence D3). Les employer ferait CHANGER
+       DE COULEUR le bouton micro, et sa couleur suivrait le thème du produit
+       alors qu'elle est posée sur une vidéo qui n'en suit aucun. Ce serait un
+       changement d'apparence, que ce socle s'interdit. Le raccordement
+       sémantique du micro appartient au sous-bloc S4. */
+    --video-letterbox: #000;
+    --voile-flottant: rgb(0 0 0 / 0.72);
+    --voile-bouton: rgb(0 0 0 / 0.55);
+    --voile-bouton-survol: rgb(0 0 0 / 0.75);
+    --voile-micro-actif: rgb(220 38 38 / 0.85);
+    --voile-micro-refuse: rgb(120 53 15 / 0.85);
+
+    /* ── Deux piles de polices SYSTÈME — zéro octet embarqué (spec §4.3) ───
+       Aucun fichier de police, aucun CDN. Le produit entier pèse quelques
+       dizaines de kilo-octets ; une police variable en WOFF2 le doublerait
+       pour un gain purement esthétique. Le coût assumé : le rendu DIFFÈRE
+       d'une machine à l'autre, ce qui interdit toute recette par comparaison
+       d'images (§7.8).
+       ⚠️ `--police-mono` n'a QU'UN SEUL appelant prévu, `#stats`. Le contrôle
+       §7.6 le vérifiera ; sans appelant, le token sort — un token orphelin est
+       du code mort. */
+    --police-ui: system-ui, -apple-system, "Segoe UI Variable Text", "Segoe UI",
+        Roboto, "Helvetica Neue", Arial, sans-serif;
+    --police-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", "SF Mono",
+        "JetBrains Mono", Menlo, Consolas, monospace;
+
+    /* ── Échelle typographique — sept crans, ratio ≈ 1,2 (spec §4.4) ───────
+       En `rem`, sur une racine JAMAIS forcée : `base.css` retire la taille de
+       police de `html` précisément pour cela. Les équivalents en pixels valent
+       à racine 16 px, c'est-à-dire au réglage par défaut du navigateur.
+       ⚠️ PLANCHER DUR : rien sous `--t-xs`. Toute taille inférieure est un
+       défaut, pas un choix de densité. */
+    --t-xs: 0.6875rem;  /* 11 px */
+    --t-s: 0.75rem;     /* 12 px — #stats, métadonnées */
+    --t-m: 0.875rem;    /* 14 px — le corps, la valeur d'avant ce socle */
+    --t-l: 1rem;        /* 16 px */
+    --t-xl: 1.25rem;    /* 20 px */
+    --t-2xl: 1.5rem;    /* 24 px */
+    --t-3xl: 2rem;      /* 32 px */
+
+    /* ── Interlignes ──────────────────────────────────────────────────────── */
+    --lh-serre: 1.25;   /* titres, à partir de --t-xl */
+    --lh-normal: 1.5;   /* le corps, la valeur d'avant ce socle */
+    --lh-large: 1.7;    /* paragraphes longs */
+
+    /* ── Échelle d'espacement — pas de 4 px, huit crans (spec §4.4) ────────
+       ⚠️ `--e-3` VAUT 12 px À RACINE 16, et c'est la reprise exacte des
+       décalages des bandeaux d'avant ce socle. Cette égalité DÉPEND de ce que
+       `base.css` ne force pas la racine : avec le `font: 14px` que `style.css`
+       posait sur `html`, `0.75rem` vaudrait 10,5 px — et AUCUN des sept
+       contrôles ne mesure une longueur. */
+    --e-1: 0.25rem;     /* 4 px */
+    --e-2: 0.5rem;      /* 8 px */
+    --e-3: 0.75rem;     /* 12 px */
+    --e-4: 1rem;        /* 16 px */
+    --e-5: 1.5rem;      /* 24 px */
+    --e-6: 2rem;        /* 32 px */
+    --e-7: 3rem;        /* 48 px */
+    --e-8: 4rem;        /* 64 px */
+
+    /* ── Rayons — en PIXELS, délibérément ──────────────────────────────────
+       Un rayon qui grandit avec le réglage de police déforme les petits
+       éléments. `--r-2` est la valeur d'avant ce socle. */
+    --r-1: 4px;
+    --r-2: 6px;
+    --r-3: 10px;
+    --r-plein: 999px;
+
+    /* ── Durées — rien au-delà de 300 ms ───────────────────────────────────
+       `--duree-2` est la valeur d'avant ce socle (`transition: opacity 0.3s`). */
+    --duree-1: 120ms;   /* survol, focus */
+    --duree-2: 300ms;   /* apparition/disparition d'un bandeau */
+
+    /* ── Épaisseurs de trait ───────────────────────────────────────────────── */
+    --trait: 1px;
+    --trait-focus: 2px;
+}
+
+/* Palette CLAIRE ①/② — par préférence système.
+   Le `:not([data-theme="sombre"])` laisse un choix explicite de sombre
+   l'emporter sur la préférence du système. */
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="sombre"]) {
+        color-scheme: light;
+
+        --fond-0: #ffffff;
+        --fond-1: #f6f7f9;
+        --fond-2: #eceef2;
+        --bord: #d5dae2;
+        --bord-fort: #7d8695;
+        --texte-fort: #10131a;
+        --texte: #3d4450;
+        --texte-faible: #5c6675;
+        --accent: #2f5fd0;
+        --sur-accent: #ffffff;
+        --succes: #1d7a4a;
+        --alerte: #8a5a00;
+        --danger: #c02b2b;
+    }
+}
+
+/* Palette CLAIRE ②/② — par choix explicite, l'attribut posé par `theme.ts`.
+   ⚠️ CE BLOC DOIT ÊTRE MOT POUR MOT IDENTIQUE À CELUI CI-DESSUS. Le contrôle
+   §7.4 vérifie l'égalité des ENSEMBLES DE NOMS dans les deux sens ; il ne
+   compare pas les VALEURS — deux copies aux mêmes noms mais aux teintes
+   divergentes passeraient. C'est une règle de revue, comme le §8 en nomme
+   d'autres. */
+:root[data-theme="clair"] {
+    color-scheme: light;
+
+    --fond-0: #ffffff;
+    --fond-1: #f6f7f9;
+    --fond-2: #eceef2;
+    --bord: #d5dae2;
+    --bord-fort: #7d8695;
+    --texte-fort: #10131a;
+    --texte: #3d4450;
+    --texte-faible: #5c6675;
+    --accent: #2f5fd0;
+    --sur-accent: #ffffff;
+    --succes: #1d7a4a;
+    --alerte: #8a5a00;
+    --danger: #c02b2b;
+}
