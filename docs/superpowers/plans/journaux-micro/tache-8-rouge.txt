@@ -1,0 +1,55 @@
+=== TACHE 8 — chaque controle doit pouvoir rendre l'autre valeur ===
+Depot Guacamole, 19 aout 2026, chantier E bloc E1.
+
+--- MUTATION : avertissement : le journaliser a CHAQUE appel au lieu d une fois ---
+test transport::piste_micro::tests::sans_piste_micro_negociee_l_avertissement_ne_sort_qu_une_fois ... FAILED
+thread 'transport::piste_micro::tests::sans_piste_micro_negociee_l_avertissement_ne_sort_qu_une_fois' (1079689) panicked at agent/src/transport/piste_micro/tests.rs:53:5:
+assertion `left == right` failed: l'avertissement de négociation est sorti 50 fois
+  left: 50
+ right: 1
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 497 filtered out; finished in 0.08s
+
+--- MUTATION : refus : le puits factice ACCEPTE (accepte: true) — le compte doit tomber a 0 ---
+test transport::piste_micro::tests::un_puits_qui_refuse_ne_fait_journaliser_qu_une_fois_et_ne_tue_rien ... FAILED
+thread 'transport::piste_micro::tests::un_puits_qui_refuse_ne_fait_journaliser_qu_une_fois_et_ne_tue_rien' (1080099) panicked at agent/src/transport/piste_micro/tests.rs:81:5:
+assertion `left == right` failed: le refus a été journalisé 0 fois au lieu d'une
+  left: 0
+ right: 1
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 497 filtered out; finished in 0.09s
+
+--- MUTATION : video : la session se termine quand le micro refuse ---
+test transport::piste_micro::tests::un_micro_refusant_ne_compromet_pas_la_video ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 497 filtered out; finished in 0.15s
+
+--- MUTATION : integration : le bras MediaData ne depose plus (mid jamais apparie) ---
+test transport::piste_micro::tests::un_paquet_opus_montant_atteint_le_puits_de_la_session ... FAILED
+thread 'transport::piste_micro::tests::un_paquet_opus_montant_atteint_le_puits_de_la_session' (1081202) panicked at agent/src/transport/piste_micro/tests.rs:165:9:
+aucune trame micro n'a atteint le puits en 15 s
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 497 filtered out; finished in 15.15s
+
+--- MUTATION : integration : la duree est SUPPOSEE (960) au lieu d etre lue du paquet ---
+test transport::piste_micro::tests::un_paquet_opus_montant_atteint_le_puits_de_la_session ... FAILED
+thread 'transport::piste_micro::tests::un_paquet_opus_montant_atteint_le_puits_de_la_session' (1083031) panicked at agent/src/transport/piste_micro/tests.rs:212:5:
+assertion `left == right` failed: la durée n'a pas été LUE du paquet
+  left: 960
+ right: 480
+thread '<unnamed>' (1083075) panicked at agent/src/transport/piste_micro/tests.rs:30:28:
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 497 filtered out; finished in 0.16s
+
+⚠️ DEFAUT TROUVE PAR LA MUTATION « video » : elle passait au VERT.
+   Cause : le point d'entree `#[cfg(test)]` RECOPIAIT la logique de depot au
+   lieu d'y deleguer, si bien que les trois tests unitaires exercaient un
+   JUMEAU du chemin de production, pas le chemin lui-meme. Une mutation du
+   code de production ne pouvait donc pas les atteindre. Corrige : le depot
+   vit dans `deposer_trame_micro`, appelee par `deposer_micro` comme par le
+   point d'entree de test. Mutation rejouee ci-dessous.
+
+--- MUTATION (rejeu) : la session se termine quand le micro refuse ---
+test transport::piste_micro::tests::un_micro_refusant_ne_compromet_pas_la_video ... FAILED
+thread 'transport::piste_micro::tests::un_micro_refusant_ne_compromet_pas_la_video' (1086399) panicked at agent/src/transport/piste_micro/tests.rs:113:5:
+la session s'est terminée à cause du micro
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 497 filtered out; finished in 0.08s
+
+=== Toutes les mutations sont ANNULEES. Vert de reference : ===
+piste micro : 251 octets, rtp_48k=0, echantillons=480
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 494 filtered out; finished in 0.14s

@@ -114,6 +114,20 @@ impl OpusEncoder {
     }
 }
 
+/// Échantillons PAR CANAL que porte un paquet Opus, lus de son en-tête (TOC).
+///
+/// Fonction LIBRE, et c'est délibéré : la boucle de transport a besoin de cette
+/// lecture pour construire une `TrameMicro`, et elle n'a aucune raison de
+/// posséder un décodeur pour cela — le décodeur vit dans `LecteurMicro`, sur le
+/// fil qui décode. `OpusDecoder::echantillons_de` y délègue.
+///
+/// **Jamais supposé** (spec §7) : Chrome émet du 20 ms, le chantier A du
+/// 10 ms, et rien n'oblige un pair à s'y tenir.
+pub fn echantillons_de(paquet: &[u8]) -> Result<usize> {
+    ::opus::packet::get_nb_samples(paquet, SAMPLE_RATE_HZ)
+        .context("lecture de la durée d'un paquet Opus")
+}
+
 /// Décodeur Opus de la piste montante (chantier E).
 ///
 /// **Toujours STÉRÉO**, quel que soit le nombre de canaux qu'a réellement
@@ -144,8 +158,7 @@ impl OpusDecoder {
     /// sortie, et une constante à sa place tronquerait toute trame plus
     /// longue que celle qu'on aurait devinée.
     pub fn echantillons_de(&self, paquet: &[u8]) -> Result<usize> {
-        ::opus::packet::get_nb_samples(paquet, SAMPLE_RATE_HZ)
-            .context("lecture de la durée d'un paquet Opus")
+        echantillons_de(paquet)
     }
 
     /// Décode une trame normale. Rend le nombre d'échantillons PAR CANAL
