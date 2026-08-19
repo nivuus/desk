@@ -76,6 +76,11 @@ export default defineConfig({
                 main: 'index.html',
                 shell: 'shell.html',
                 connexion: 'connexion.html',
+                // La galerie de tokens : une surface bâtie comme les autres,
+                // donc soumise aux contrôles §7.2 et §7.3 — mais EXCLUE de la
+                // moitié « employé » du §7.6, qu'elle rendrait incapable
+                // d'échouer. Voir `client/outils/tokens-orphelins.mjs`.
+                design: 'design.html',
             },
         },
     },
