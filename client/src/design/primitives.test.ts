@@ -3,6 +3,7 @@ import primitivesCss from './primitives.css?raw';
 import boutonCss from './primitives/bouton.css?raw';
 import champCss from './primitives/champ.css?raw';
 import surfaceCss from './primitives/surface.css?raw';
+import messageCss from './primitives/message.css?raw';
 
 /**
  * 🔴 LES GARDES LISENT LES FAMILLES, PAS `primitives.css`, qui n'est plus
@@ -18,6 +19,7 @@ const FAMILLES = new Map([
     ['./primitives/bouton.css', boutonCss],
     ['./primitives/champ.css', champCss],
     ['./primitives/surface.css', surfaceCss],
+    ['./primitives/message.css', messageCss],
 ]);
 
 /**
@@ -219,5 +221,14 @@ describe('primitives.css — les gardes de forme', () => {
             'parties absentes de la famille carte',
         ).toEqual([]);
         expect(famille('separateur'), 'le séparateur est absent de primitives').not.toEqual([]);
+    });
+
+    it('G6 — la famille MESSAGE déclare ses quatre tons', () => {
+        // Le ton NEUTRE est `.message` elle-même : les trois autres ne
+        // changent que l'encre et le trait.
+        expect(
+            etatsManquants('message', ['.message--succes', '.message--alerte', '.message--danger']),
+            'tons absents de la famille message',
+        ).toEqual([]);
     });
 });
