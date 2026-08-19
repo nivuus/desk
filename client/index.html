@@ -4,6 +4,11 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Session distante</title>
+        <!-- Le socle EN PREMIER, la feuille de cette surface ensuite : l'ordre
+             porte la cascade. `style.css` n'importe rien de son côté, pour que
+             Vite PARTAGE le socle entre les pages au lieu de le ré-inliner
+             dans chacune — mesure au prototype, voir l'en-tête de style.css. -->
+        <link rel="stylesheet" href="/src/design/socle.css" />
         <link rel="stylesheet" href="/src/style.css" />
     </head>
     <body>

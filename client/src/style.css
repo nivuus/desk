@@ -1,40 +1,82 @@
-:root {
-    color-scheme: dark;
-    --surface: #0b0d10;
-    --text: #e6e8eb;
-}
+/* La feuille de la FENÊTRE DE SESSION, et d'elle seule.
+   Le socle de tokens est lié à part, depuis `index.html` — voir l'encadré
+   « POURQUOI CE FICHIER N'IMPORTE PAS LE SOCLE » plus bas.
 
-* {
-    box-sizing: border-box;
-}
+   ⚠️ CE FICHIER NE DÉCLARE PLUS AUCUNE COULEUR. Les treize couleurs par thème,
+   les six voiles hors thème et toutes les échelles vivent dans
+   `design/tokens.css`, qui en est la source unique. Le contrôle
+   `client/outils/couleurs-litterales.mjs` (§7.2) refuse toute valeur littérale
+   ici, et il rendait ONZE avant ce passage.
 
+   ═══════════════════════════════════════════════════════════════════════════
+   🔴 TROIS LONGUEURS RESTENT LITTÉRALES, ET C'EST DÉLIBÉRÉ.
+
+   `padding: 6px …` (deux bandeaux), `font-size: 18px` (deux boutons) et
+   `letter-spacing: 0.02em` (#stats) n'ont AUCUN cran dans les échelles du
+   §4.4 : l'espacement va 4, 8, 12, 16 ; la typographie 11, 12, 14, 16, 20,
+   24, 32 ; et aucune famille de crénage n'est déclarée.
+
+   Les aligner CHANGERAIT L'APPARENCE, ce que ce sous-bloc s'interdit — et
+   pour le `18px`, cela invaliderait une justification écrite : le commentaire
+   de `#fullscreen[data-actif="true"]`, plus bas, chiffre « une zone de
+   ~40×36 px en bas à droite » qui est le produit de `padding: 8px 12px` et
+   `font-size: 18px`. La spec §5.2 l'interdit nommément : « Toute reprise du
+   bouton doit conserver cette propriété ; changer sa taille change la zone
+   qu'il occupe. »
+
+   ⚠️ Conséquence à ne pas maquiller : la clause « aucune longueur hors
+   échelle » du §8 est FAUSSE à la fin de ce sous-bloc, et de trois valeurs
+   exactement. C'est une dette d'ÉNONCÉ, nommée ; aucun contrôle n'en souffre,
+   puisque aucun des sept ne mesure une longueur. Elle se solde au sous-bloc
+   qui a le droit de toucher ces éléments.
+
+   ═══════════════════════════════════════════════════════════════════════════
+   POURQUOI CE FICHIER N'IMPORTE PAS LE SOCLE — une mesure, pas un goût.
+
+   Deux arrangements ont été bâtis en prototype le 19 août 2026 :
+
+     A — `style.css` fait `@import './design/socle.css'`, et `index.html` ne
+         lie que `style.css`                     → 2 146 octets, DEUX actifs
+         CSS dont une COPIE du socle inlinée dans celui de `main`
+     B — `index.html` lie `socle.css` PUIS `style.css`, et `style.css`
+         n'importe rien                          → 1 788 octets, deux actifs
+         SANS duplication
+
+   L'`@import` fait ré-inliner le socle dans chaque entrée qui le traverse ;
+   le lier depuis le HTML laisse Vite le partager. C'est l'arrangement B.
+   ⚠️ Ce que le prototype établit est le RAPPORT entre les deux arrangements,
+   qui ne dépend pas du contenu — il tournait sur un `tokens.css` de cinq
+   tokens. Les deux sommes ci-dessus ne préjugent pas du chiffre final.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* `overflow: hidden` reste ICI, et n'est pas monté dans `base.css` : la vidéo
+   occupe 100vw/100vh, mais l'appliquer au hub ou à l'écran de connexion
+   couperait leur contenu sans aucun message. Tout le reste de l'ancien bloc
+   `html, body` — marges, hauteur, fond, encre, police, interligne — vit
+   désormais dans `design/base.css`, où la police se pose sur `body` SEUL pour
+   que la racine reste libre (voir l'encadré de ce fichier : `--e-3` en
+   dépend). */
 html,
 body {
-    margin: 0;
-    height: 100%;
     overflow: hidden;
-    background: var(--surface);
-    color: var(--text);
-    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
-
 #remote {
     display: block;
     width: 100vw;
     height: 100vh;
     object-fit: contain;
-    background: #000;
+    background: var(--video-letterbox);
 }
 
 #status {
     position: fixed;
-    inset-block-start: 12px;
-    inset-inline-start: 12px;
-    padding: 6px 12px;
-    border-radius: 6px;
-    background: rgb(0 0 0 / 0.72);
+    inset-block-start: var(--e-3);
+    inset-inline-start: var(--e-3);
+    padding: 6px var(--e-3);
+    border-radius: var(--r-2);
+    background: var(--voile-flottant);
     font-variant-numeric: tabular-nums;
-    transition: opacity 0.3s;
+    transition: opacity var(--duree-2);
 }
 
 #status[data-hidden="true"] {
@@ -44,33 +86,33 @@ body {
 
 #stats {
     position: fixed;
-    inset-block-end: 12px;
-    inset-inline-start: 12px;
-    padding: 6px 12px;
-    border-radius: 6px;
-    background: rgb(0 0 0 / 0.72);
+    inset-block-end: var(--e-3);
+    inset-inline-start: var(--e-3);
+    padding: 6px var(--e-3);
+    border-radius: var(--r-2);
+    background: var(--voile-flottant);
     font-variant-numeric: tabular-nums;
-    font-size: 12px;
+    font-size: var(--t-s);
     letter-spacing: 0.02em;
 }
 
 #fullscreen {
     position: fixed;
-    inset-block-end: 12px;
-    inset-inline-end: 12px;
+    inset-block-end: var(--e-3);
+    inset-inline-end: var(--e-3);
     z-index: 10;
     border: 0;
-    border-radius: 6px;
-    padding: 8px 12px;
+    border-radius: var(--r-2);
+    padding: var(--e-2) var(--e-3);
     font-size: 18px;
     line-height: 1;
-    color: var(--text);
-    background: rgb(0 0 0 / 0.55);
+    color: var(--texte-fort);
+    background: var(--voile-bouton);
     cursor: pointer;
 }
 
 #fullscreen:hover {
-    background: rgb(0 0 0 / 0.75);
+    background: var(--voile-bouton-survol);
 }
 
 /* En plein écran, le bouton ne doit pas rester sous le curseur d'un jeu. */
@@ -88,22 +130,22 @@ body {
    gauche : les deux boutons partagent le coin, jamais la place. */
 #micro {
     position: fixed;
-    inset-block-end: 12px;
+    inset-block-end: var(--e-3);
     /* 12 px de marge, plus la largeur du bouton plein écran et l'écart. */
-    inset-inline-end: 64px;
+    inset-inline-end: var(--e-8);
     z-index: 10;
     border: 0;
-    border-radius: 6px;
-    padding: 8px 12px;
+    border-radius: var(--r-2);
+    padding: var(--e-2) var(--e-3);
     font-size: 18px;
     line-height: 1;
-    color: var(--text);
-    background: rgb(0 0 0 / 0.55);
+    color: var(--texte-fort);
+    background: var(--voile-bouton);
     cursor: pointer;
 }
 
 #micro:hover {
-    background: rgb(0 0 0 / 0.75);
+    background: var(--voile-bouton-survol);
 }
 
 /* Le micro CAPTE : son état actif doit se voir sans ambiguïté, et de loin.
@@ -111,11 +153,11 @@ body {
    (spec §9), et un doute sur l'état du bouton est exactement le « mensonge
    visuel » que cette section de la spec écarte. */
 #micro[data-etat="actif"] {
-    background: rgb(220 38 38 / 0.85);
+    background: var(--voile-micro-actif);
 }
 
 #micro[data-etat="refuse"] {
-    background: rgb(120 53 15 / 0.85);
+    background: var(--voile-micro-refuse);
 }
 
 /* « Indisponible » : aucun périphérique d'entrée. Le bouton porte `disabled`
