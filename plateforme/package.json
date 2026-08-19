@@ -12,7 +12,8 @@
     "test:sqlite": "PLATEFORME_BASE=sqlite vitest run",
     "test:postgres": "PLATEFORME_BASE=postgres vitest run",
     "typecheck": "tsc --noEmit",
-    "admin:utilisateur": "tsx src/admin/creer-utilisateur.ts"
+    "admin:utilisateur": "tsx src/admin/creer-utilisateur.ts",
+    "admin:agent": "tsx src/admin/enroler-agent.ts"
   },
   "dependencies": {
     "pg": "^8.23.0",
