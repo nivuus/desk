@@ -100,17 +100,23 @@ export interface Trame {
 }
 
 /**
- * Encode une trame. `entete` est sérialisé en JSON ; `undefined` produit un
- * en-tête de longueur nulle, qui est licite.
+ * Encode une trame dont l'en-tête est DÉJÀ sérialisé.
+ *
+ * ⚠️ C'est le jumeau EXACT de `proto::fichiers::encoder`, dont la signature
+ * Rust prend `entete: &str`. La variante qui suit, `encoder`, prend un objet et
+ * le sérialise : commode pour les tests, mais elle laisse `JSON.stringify`
+ * décider de l'ordre des clés. Le produit passe donc par ici, avec les
+ * fonctions de `fichiers-entetes.ts` dont l'ordre est épinglé par
+ * `fichiers-vectors.json` — autrement, ces fonctions seraient épinglées sans
+ * appelant, et le vecteur ne garantirait rien de ce qui part réellement.
  */
-export function encoder(
+export function encoderTexte(
     type: number,
     correlation: number,
-    entete?: unknown,
+    enteteJson: string,
     charge?: Uint8Array,
 ): ArrayBuffer {
-    const enteteOctets =
-        entete === undefined ? new Uint8Array(0) : new TextEncoder().encode(JSON.stringify(entete));
+    const enteteOctets = new TextEncoder().encode(enteteJson);
     const chargeOctets = charge ?? new Uint8Array(0);
     const sortie = new Uint8Array(TAILLE_ENTETE_FIXE + enteteOctets.length + chargeOctets.length);
     const vue = new DataView(sortie.buffer);
@@ -121,6 +127,24 @@ export function encoder(
     sortie.set(enteteOctets, TAILLE_ENTETE_FIXE);
     sortie.set(chargeOctets, TAILLE_ENTETE_FIXE + enteteOctets.length);
     return sortie.buffer;
+}
+
+/**
+ * Encode une trame en sérialisant `entete` en JSON. `undefined` produit un
+ * en-tête de longueur nulle, qui est licite.
+ */
+export function encoder(
+    type: number,
+    correlation: number,
+    entete?: unknown,
+    charge?: Uint8Array,
+): ArrayBuffer {
+    return encoderTexte(
+        type,
+        correlation,
+        entete === undefined ? '' : JSON.stringify(entete),
+        charge,
+    );
 }
 
 /** Décode une trame, ou lève en disant précisément pourquoi elle est refusée. */
