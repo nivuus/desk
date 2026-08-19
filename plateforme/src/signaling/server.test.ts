@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
-import { createSignalingServer } from './server';
+import { createSignalingServer } from './relais';
 
 let server: ReturnType<typeof createSignalingServer>;
 

@@ -3,24 +3,8 @@
 // (jalon 1, réseau local).
 
 import { WebSocket, WebSocketServer } from 'ws';
+import { Appariement, isRole, type Role } from './appariement';
 import { configurationIce } from './ice';
-
-type Role = 'agent' | 'client';
-
-interface Session {
-    agent?: WebSocket;
-    client?: WebSocket;
-    /// Dernière offre reçue du client, retenue tant qu'aucun agent n'est là
-    /// pour la prendre.
-    ///
-    /// Le sous-bloc D1 renverse l'ordre d'arrivée : la page navigateur s'ouvre
-    /// et envoie son offre AVANT que le superviseur n'ait lancé l'agent de
-    /// cette fenêtre — c'est le viewport de cette page qui décide de la taille
-    /// de la sortie virtuelle, donc rien ne peut être lancé plus tôt. Sans
-    /// cette mémorisation, l'offre serait perdue en silence et la session ne
-    /// s'établirait jamais.
-    offreEnAttente?: string;
-}
 
 // Types que le serveur relaie au pair. Tout le reste est refusé — un relais
 // qui accepterait n'importe quoi deviendrait un canal de diffusion arbitraire
@@ -37,12 +21,6 @@ const TYPES_RELAYES = new Set([
     'refus',
     'viewport',
 ]);
-
-// Garde de type : nécessaire pour que TypeScript affine `message.role` (typé
-// `any`) en `Role` et autorise l'indexation de `Session` sous `strict`.
-function isRole(value: unknown): value is Role {
-    return value === 'agent' || value === 'client';
-}
 
 // Garde de type : un message JSON valide peut être `null`, un nombre, une chaîne
 // ou un tableau (tous acceptés par JSON.parse), pas seulement un objet
@@ -72,7 +50,7 @@ export function createSignalingServer(wss: WebSocketServer): SignalingServer;
 export function createSignalingServer(portOuWss: number | WebSocketServer): SignalingServer {
     const port = typeof portOuWss === 'number' ? portOuWss : 0;
     const wss = typeof portOuWss === 'number' ? new WebSocketServer({ port }) : portOuWss;
-    const sessions = new Map<string, Session>();
+    const sessions = new Appariement<WebSocket>();
 
     function send(socket: WebSocket | undefined, payload: unknown): void {
         if (socket && socket.readyState === WebSocket.OPEN) {
@@ -122,19 +100,14 @@ export function createSignalingServer(portOuWss: number | WebSocketServer): Sign
                     return;
                 }
 
-                const session = sessions.get(declaredSession) ?? {};
-                if (session[declaredRole]) {
-                    send(socket, {
-                        type: 'error',
-                        reason: `un ${declaredRole} est déjà connecté à la session ${declaredSession}`,
-                    });
+                const refus = sessions.declarer(declaredSession, declaredRole, socket);
+                if (refus) {
+                    send(socket, { type: 'error', reason: refus });
                     return;
                 }
 
                 role = declaredRole;
                 sessionId = declaredSession;
-                session[declaredRole] = socket;
-                sessions.set(declaredSession, session);
 
                 // Configuration ICE : envoyée à CHAQUE pair dès qu'il se
                 // déclare, agent comme client. Les deux en ont besoin — le
@@ -158,25 +131,20 @@ export function createSignalingServer(portOuWss: number | WebSocketServer): Sign
 
                 // Une offre arrivée avant cet agent l'attend : la lui remettre
                 // maintenant, sinon elle ne partira jamais.
-                if (declaredRole === 'agent' && session.offreEnAttente) {
-                    send(socket, { type: 'offer', sdp: session.offreEnAttente });
-                    session.offreEnAttente = undefined;
+                if (declaredRole === 'agent') {
+                    const offre = sessions.prendreOffre(declaredSession);
+                    if (offre) send(socket, { type: 'offer', sdp: offre });
                 }
                 return;
             }
 
             // Messages suivants : relais vers le pair.
-            const session = sessions.get(sessionId!);
-            if (!session) return;
-            const peer = role === 'client' ? session.agent : session.client;
+            const peer = sessions.pair(sessionId!, role);
 
             if (TYPES_RELAYES.has(message.type as string)) {
                 if (message.type === 'offer' && !peer) {
                     // Pas d'agent en face : on retient, plutôt que de perdre.
-                    // La dernière écrase les précédentes — une offre périmée
-                    // ne sert à rien, et en garder plusieurs n'aurait pas de
-                    // destinataire distinct.
-                    session.offreEnAttente = message.sdp as string;
+                    sessions.retenirOffre(sessionId!, message.sdp as string);
                     return;
                 }
                 send(peer, message);
@@ -187,16 +155,9 @@ export function createSignalingServer(portOuWss: number | WebSocketServer): Sign
 
         socket.on('close', () => {
             if (!role || !sessionId) return;
-            const session = sessions.get(sessionId);
-            if (!session) return;
-
-            delete session[role];
-            const peer = role === 'client' ? session.agent : session.client;
+            const peer = sessions.pair(sessionId, role);
+            sessions.retirer(sessionId, role);
             send(peer, { type: 'peer-gone' });
-
-            if (!session.agent && !session.client) {
-                sessions.delete(sessionId);
-            }
         });
     });
 

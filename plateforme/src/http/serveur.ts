@@ -15,7 +15,7 @@
 import { createServer, type Server } from 'node:http';
 import { WebSocketServer } from 'ws';
 import type { Config } from '../config';
-import { createSignalingServer } from '../signaling/server';
+import { createSignalingServer } from '../signaling/relais';
 
 export interface ServicePlateforme {
     port: number;
