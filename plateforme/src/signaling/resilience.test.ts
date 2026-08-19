@@ -44,6 +44,11 @@ const tsxBin = path.join(signalingRoot, 'node_modules', '.bin', 'tsx');
 /// main `client`, avec un diagnostic obscur.
 const SECRET_ENFANT = 'un-secret-de-plateforme-de-quarante-octets';
 
+/// Le préfixe de la VM simulée. La garde exige que le sujet du jeton d'agent
+/// préfixe la session demandée (sous-bloc P3) : toutes les sessions de ce
+/// fichier le portent donc.
+const P = 'RhH1x2QmTz9kLpVbNc7dAw';
+
 let child: ChildProcessWithoutNullStreams;
 let port: number;
 
@@ -107,13 +112,14 @@ function connectTo(targetPort: number, role: 'agent' | 'client', session: string
         const ws = new WebSocket(`ws://127.0.0.1:${targetPort}`);
         ws.on('error', reject);
         ws.on('open', () => {
-            // Le rôle `client` exige un jeton d'accès depuis le sous-bloc P2,
-            // signé avec le MÊME secret que celui posé dans l'`env` de
-            // l'enfant ci-dessus. Le rôle `agent` n'en exige aucun — c'est la
-            // fenêtre déclarée jusqu'à P3.
+            // 🔴 LES DEUX RÔLES exigent un jeton, signé avec le MÊME secret
+            // que celui posé dans l'`env` de l'enfant ci-dessus : le rôle
+            // `client` depuis P2, le rôle `agent` depuis P3, qui a fermé la
+            // fenêtre anonyme de E2. Le jeton d'agent est de TYPE `agent`, et
+            // son sujet est le PRÉFIXE que sa session doit porter.
             const jeton = role === 'client'
                 ? signer('u-resilience', SECRET_ENFANT, Date.now())
-                : undefined;
+                : signer(P, SECRET_ENFANT, Date.now(), undefined, 'agent');
             ws.send(JSON.stringify({ role, session, jeton }));
             resolve(ws);
         });
@@ -159,8 +165,8 @@ describe('résilience du process réel (index.ts) face à un message `null`', ()
 
         // Preuve n°2 : une session indépendante, ouverte après l'incident,
         // relaie normalement — le serveur répond toujours au réseau.
-        const agent = await connectTo(port, 'agent', 'preuve-null-premier');
-        const client = await connectTo(port, 'client', 'preuve-null-premier');
+        const agent = await connectTo(port, 'agent', `${P}:preuve-null-premier`);
+        const client = await connectTo(port, 'client', `${P}:preuve-null-premier`);
         client.send(JSON.stringify({ type: 'offer', sdp: 'toujours vivant (premier message)' }));
         expect(await nextMessage(agent)).toEqual({
             type: 'offer',
@@ -173,13 +179,13 @@ describe('résilience du process réel (index.ts) face à un message `null`', ()
     });
 
     it('survit à un `null` en message suivant : le fautif reçoit une erreur, une session tierce continue de fonctionner', async () => {
-        const agent = await connectTo(port, 'agent', 'preuve-null-suivant');
-        const client = await connectTo(port, 'client', 'preuve-null-suivant');
+        const agent = await connectTo(port, 'agent', `${P}:preuve-null-suivant`);
+        const client = await connectTo(port, 'client', `${P}:preuve-null-suivant`);
 
         // Session témoin ouverte avant l'incident, pour prouver qu'elle n'est
         // pas affectée par ce qui va arriver à la session précédente.
-        const agentTemoin = await connectTo(port, 'agent', 'temoin-null-suivant');
-        const clientTemoin = await connectTo(port, 'client', 'temoin-null-suivant');
+        const agentTemoin = await connectTo(port, 'agent', `${P}:temoin-null-suivant`);
+        const clientTemoin = await connectTo(port, 'client', `${P}:temoin-null-suivant`);
 
         const errorReceived = nextMessage(client);
         client.send('null');

@@ -15,15 +15,31 @@
 // même bloc synchrone du relais : il n'y a pas de course entre eux, et c'est
 // ce qui autorise à les séparer.
 //
-// ⚠️ CE QUE P2 NE FERME PAS, et il faut le lire ici plutôt que le découvrir :
-// un pair qui se déclare `{"role":"agent", session:"n-importe-quoi"}` est
-// ACCEPTÉ SANS JETON, et reçoit donc des identifiants TURN valables 86 400 s
-// (`signaling/ice.ts`). L'agent Rust n'a aucune identité avant P3
-// (`agent/src/signaling.rs`), et lui en exiger une casserait le chantier D en
-// cours. P2 ne ferme donc que la MOITIÉ `client` du trou, et c'est écrit dans
-// le libellé même de son critère ①.
+// ✅ CE QUE P2 NE FERMAIT PAS EST FERMÉ (sous-bloc P3). P2 acceptait ici tout
+// pair déclarant `{"role":"agent"}` SANS jeton, qui recevait donc des
+// identifiants TURN valables 86 400 s (`signaling/ice.ts`) sans présenter la
+// moindre identité — la moitié `agent` du trou, que le libellé du critère ① de
+// P2 déclarait explicitement. Le rôle `agent` exige désormais son jeton,
+// exactement comme le rôle `client`, et deux choses de plus :
+//
+//   1. le jeton doit être DE TYPE `agent` (`identite/jeton.ts`, claim `sty`) —
+//      sans quoi un jeton humain volé ouvrirait un rôle `agent` ; et
+//      réciproquement un jeton d'agent ne peut PAS ouvrir un rôle `client`,
+//      ce qui contournerait l'appartenance de session posée par P2 ;
+//   2. le SUJET du jeton doit PRÉFIXER le nom de session demandé — sans quoi
+//      un agent enrôlé occuperait la session de toute autre VM, et
+//      l'enrôlement n'authentifierait que l'existence d'une VM, jamais
+//      LAQUELLE.
+//
+// 🔴 LA GARDE NE LIT PAS `agent_enrole`, ET C'EST STRUCTUREL, pas une
+// économie. Elle est PURE ET SYNCHRONE (voir l'avertissement ci-dessus), et
+// une lecture de base y demanderait un `await` sur le chemin de la poignée de
+// main. L'identité a été établie AILLEURS — sur le canal `/agent`, qui est
+// asynchrone sans gêner personne et qui délivre le jeton ; la garde ne fait
+// que la relire dans ce jeton.
 
-import { verifierJeton } from './jeton';
+import { verifierJeton, type TypeSujet } from './jeton';
+import { SEPARATEUR } from '../agents/prefixe';
 import type { ProprieteDeSession } from '../signaling/propriete';
 import type { Role } from '../signaling/appariement';
 
@@ -67,10 +83,6 @@ export function garde(
 ): Garde {
     return {
         verifier({ role, session, jeton }): Verdict {
-            // Voir l'avertissement de tête : la fenêtre `agent` est déclarée,
-            // pas oubliée.
-            if (role === 'agent') return { ok: true };
-
             if (jeton === undefined || jeton === null || jeton === '') {
                 return {
                     ok: false,
@@ -94,6 +106,47 @@ export function garde(
                 };
             }
 
+            // 🔴 LE TYPE ATTENDU DÉPEND DU RÔLE, ET LES DEUX SENS SONT
+            // GARDÉS. Ne garder qu'un sens laisserait l'autre confusion
+            // ouverte, et chacune est grave à sa façon — voir l'en-tête.
+            const attendu: TypeSujet = role === 'agent' ? 'agent' : 'utilisateur';
+            if (verdict.type !== attendu) {
+                return {
+                    ok: false,
+                    motif: 'session-refusee',
+                    message: MESSAGE_SESSION_REFUSEE,
+                    journal:
+                        `session ${session} refusée à ${verdict.sujet} : ` +
+                        `jeton de type ${verdict.type} présenté pour le rôle ${role}`,
+                };
+            }
+
+            if (role === 'agent') {
+                // Le sujet d'un jeton d'agent EST le préfixe de sa VM. La
+                // comparaison porte le SÉPARATEUR, et ce n'est pas cosmétique :
+                // un `startsWith(sujet)` nu ferait qu'un agent de préfixe `AB`
+                // occupe les sessions de la VM `ABC`, dont le préfixe le
+                // prolonge — une collision qui ne se produirait qu'entre deux
+                // VMs précises, donc jamais en essai et toujours en production.
+                if (!session.startsWith(verdict.sujet + SEPARATEUR)) {
+                    return {
+                        ok: false,
+                        motif: 'session-refusee',
+                        message: MESSAGE_SESSION_REFUSEE,
+                        journal:
+                            `session ${session} refusée à l'agent ${verdict.sujet} : ` +
+                            `elle ne porte pas son préfixe`,
+                    };
+                }
+                // ⚠️ L'AGENT NE REVENDIQUE TOUJOURS RIEN, et `verifier` ne rend
+                // donc PAS d'`utilisateurId` ici. Sa session doit rester
+                // revendicable par le client humain qui la rejoindra — c'est
+                // ce que `revendiquer` documente juste en dessous, et le rendre
+                // ferait de l'agent le propriétaire de sa propre session, donc
+                // interdirait à quiconque de s'y connecter.
+                return { ok: true };
+            }
+
             const proprietaire = proprietes.proprietaire(session);
             if (proprietaire !== undefined && proprietaire !== verdict.sujet) {
                 return {
@@ -108,8 +161,10 @@ export function garde(
         },
 
         revendiquer(session, utilisateurId): void {
-            // Un `agent` n'a pas d'identité avant P3 : il ne revendique rien,
-            // et sa session reste revendicable par le client qui la rejoindra.
+            // Un `agent` a désormais une identité (P3), mais il ne revendique
+            // TOUJOURS rien : sa session doit rester revendicable par le client
+            // humain qui la rejoindra. `verifier` ne rend aucun `utilisateurId`
+            // pour le rôle `agent`, et c'est ce qui fait passer ce chemin-ci.
             if (utilisateurId === undefined) return;
             proprietes.revendiquer(session, utilisateurId);
         },
