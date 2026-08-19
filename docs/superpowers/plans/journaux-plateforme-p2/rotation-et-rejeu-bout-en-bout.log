@@ -1,0 +1,29 @@
+# La ROTATION et le REJEU, de bout en bout, sur le service VIVANT
+# Joué le 2026-08-19T15:49:59+02:00, service = HEAD, base sqlite
+#
+# ⚠️ Ce chemin porte un DÉFAUT RÉEL déjà trouvé et corrigé côté serveur :
+# /auth/rafraichir ouvrait une famille NEUVE à chaque appel, si bien que la
+# détection de rejeu ne protégeait rien. Les tests de dépôt seuls ne
+# pouvaient pas l'attraper — seul le bout en bout le pouvait.
+
+## exécution 1 sur 2
+1. connexion            -> 200  r0=nKYLDY82BnGT…
+2. rotation de r0       -> 200  r1=PxhDYi-e2LZL…  (r1 != r0 : true)
+3. rotation de r1       -> 200  r2=60E41057aYGb…
+4. REJEU de r0 (volé)   -> 401  {"refus":"rejeu"}
+5. r2, le plus RÉCENT, après le rejeu -> 401  {"refus":"revoque"}
+
+ATTENDU : 4 rend 401 rejeu, ET 5 rend 401 revoque — toute la FAMILLE tombe.
+C'est le point d'E5 : révoquer la seule ligne présentée ne protégerait rien,
+le voleur qui a tourné le premier gardant son jeton neuf.
+
+## exécution 2 sur 2
+1. connexion            -> 200  r0=isK3rWIimnlB…
+2. rotation de r0       -> 200  r1=FugzeELurEfL…  (r1 != r0 : true)
+3. rotation de r1       -> 200  r2=T8Gm6s8qsoT-…
+4. REJEU de r0 (volé)   -> 401  {"refus":"rejeu"}
+5. r2, le plus RÉCENT, après le rejeu -> 401  {"refus":"revoque"}
+
+ATTENDU : 4 rend 401 rejeu, ET 5 rend 401 revoque — toute la FAMILLE tombe.
+C'est le point d'E5 : révoquer la seule ligne présentée ne protégerait rien,
+le voleur qui a tourné le premier gardant son jeton neuf.

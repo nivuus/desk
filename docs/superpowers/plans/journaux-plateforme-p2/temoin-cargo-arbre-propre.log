@@ -1,0 +1,36 @@
+# Témoin — `cargo test --workspace` sur un arbre PROPRE de HEAD
+# Joué le 2026-08-19T15:48:59+02:00
+#
+# POURQUOI CE JOURNAL EXISTE : `scripts/verify-all.sh` échoue à sa PREMIÈRE
+# étape, aux DEUX exécutions, sur
+#     transport::sonde_montante::str0m_expose_l_opus_montant_via_media_data
+# Ce test vit dans `agent/src/transport/sonde_montante.rs`, qui était au
+# moment des deux exécutions un fichier NON SUIVI PAR GIT (`git ls-files`
+# ne le rendait pas, `git status` le donnait `??`), accompagné d'une
+# modification non commitée de `agent/src/transport.rs`. C'est le travail
+# du chantier E (microphone), conduit DANS LE MÊME ARBRE par un autre
+# agent ; il l'a commité depuis, sous `18ab224 sonde(e1)`.
+#
+# Ce journal l'établit plutôt que de l'affirmer : un `git worktree add` de
+# 8879a4b — le dernier commit de P2, AVANT 18ab224 —, donc sans le fichier
+# du chantier voisin, et le même cargo. 467 passed / 0 failed : exactement
+# les 467 qui passent dans l'arbre sale, où le 468e est celui du voisin.
+
+test result: ok. 467 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.35s
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+# Aucun des QUATRE commits de P2 ne touche `agent/`, vérifié un par un.
+# ⚠️ Un intervalle `a4a9890^..HEAD` ne le montrerait PAS : depuis que
+# 18ab224 est arrivé, cet intervalle contient aussi le commit du voisin, et
+# une première rédaction de ce journal a affiché ses 178 lignes sous le
+# titre « aucune ligne de P2 ne touche agent/ » — une pièce qui disait le
+# contraire de sa légende. C'est le commit qu'il faut nommer, pas la plage.
+$ git show --stat --oneline a4a9890 -- agent/
+  (aucun fichier)
+$ git show --stat --oneline 4be86ad -- agent/
+  (aucun fichier)
+$ git show --stat --oneline b229b98 -- agent/
+  (aucun fichier)
+$ git show --stat --oneline 8879a4b -- agent/
+  (aucun fichier)

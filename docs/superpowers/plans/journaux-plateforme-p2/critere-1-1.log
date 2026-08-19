@@ -1,0 +1,32 @@
+# Critère ① — exécution 1 sur 2, moteur sqlite
+# Joué le 2026-08-19T15:40:58+02:00, commit 8879a4b
+# Le fichier ENTIER est joué, sans filtre `-t` : une première rédaction
+# filtrait sur « CRITÈRE ① » et rendait « 1 passed | 5 skipped », ce qui
+# présente cinq tests non joués à côté du verdict. Le test qui porte le
+# critère est « CRITÈRE ① : un client sans jeton est refusé, et ne voit
+# AUCUN ice-config » ; ses DEUX assertions sont distinctes (le motif du refus,
+# et l'absence de tout message `ice-config` reçu).
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config
+poignée de main refusée : poignée de main sans jeton sur la session s-1
+
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > le socket est FERMÉ après le refus, et le message est arrivé AVANT
+poignée de main refusée : poignée de main sans jeton sur la session s-1
+
+ ✓ src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config 532ms
+ ✓ src/signaling/garde-fil.test.ts > la garde, au niveau du socket > le socket est FERMÉ après le refus, et le message est arrivé AVANT
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ② : un jeton dont la durée est écoulée est refusé jeton-expire
+poignée de main refusée : jeton refusé (expire) sur la session s-3
+
+ ✓ src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ② : un jeton dont la durée est écoulée est refusé jeton-expire 514ms
+ ✓ src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ③ : u2 se voit refuser la session de u1, et le JOURNAL la nomme 512ms
+ ✓ src/signaling/garde-fil.test.ts > la garde, au niveau du socket > après le départ des deux pairs, u2 PEUT prendre la session 612ms
+ ✓ src/signaling/garde-fil.test.ts > la garde, au niveau du socket > un pair `agent` SANS jeton est toujours accepté — la fenêtre de E2
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  15:40:59
+   Duration  3.17s (transform 110ms, setup 0ms, collect 116ms, tests 2.70s, environment 0ms, prepare 101ms)
+

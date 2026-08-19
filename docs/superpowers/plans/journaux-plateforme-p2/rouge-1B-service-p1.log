@@ -1,0 +1,41 @@
+# ROUGE ①B — la rouge « gratuite » de la spec §7.2, sur l'arbre de P1
+# Jouée le 2026-08-19T15:44:21+02:00
+#
+# Elle ne dépend d'AUCUNE modification de notre part : c'est le binaire du
+# sous-bloc précédent, sorti tel quel d'un `git worktree add /tmp/p1-rouge 19f6409`
+# (le lien symbolique de node_modules est le remède au piège de D4 — un
+# `npm start` depuis un worktree s'arrête EN SILENCE sans lui).
+# L'arbre de P1 n'a même pas de répertoire `plateforme/src/identite`.
+
+## A — le service de P1 (19f6409), port 8099, TURN_URL et TURN_SECRET posés
+service         : ws://127.0.0.1:8099
+messages reçus  : [
+  {
+    "type": "ice-config",
+    "iceServers": [
+      {
+        "urls": "turn:127.0.0.1:3478",
+        "username": "1787233461:x",
+        "credential": "***RETIRE-DE-L-HISTORIQUE***"
+      }
+    ]
+  }
+]
+a reçu ice-config : true
+identifiants TURN présents : [{"urls":"turn:127.0.0.1:3478","username":"1787233461:x","credential":"***RETIRE-DE-L-HISTORIQUE***"}]
+a été refusé    : false
+socket fermé    : non — toujours ouvert
+
+## B — le service de P2 (HEAD), port 8080, MÊME sonde, MÊMES variables TURN
+service         : ws://127.0.0.1:8080
+messages reçus  : [
+  {
+    "type": "error",
+    "reason": "authentification requise",
+    "motif": "jeton-absent"
+  }
+]
+a reçu ice-config : false
+identifiants TURN présents : null
+a été refusé    : true
+socket fermé    : {"code":1008,"reason":"jeton-absent"}

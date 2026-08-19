@@ -1,0 +1,136 @@
+# ROUGE ①A — la garde NEUTRALISÉE dans relais.ts (verdict forcé à ok)
+# Jouée le 2026-08-19T15:41:15+02:00, commit 8879a4b
+# Mutation : `const verdict = garde.verifier({...})` -> `const verdict = { ok: true };`
+
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+ × src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config
+   → expected [ { type: 'ice-config', …(1) } ] to deep equally contain ObjectContaining{…}
+ × src/signaling/garde-fil.test.ts > la garde, au niveau du socket > le socket est FERMÉ après le refus, et le message est arrivé AVANT 5004ms
+   → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ × src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ② : un jeton dont la durée est écoulée est refusé jeton-expire 523ms
+   → expected [ { type: 'ice-config', …(1) } ] to deep equally contain ObjectContaining{…}
+ × src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ③ : u2 se voit refuser la session de u1, et le JOURNAL la nomme 513ms
+   → expected undefined to be 'session-refusee' // Object.is equality
+ × src/signaling/garde-fil.test.ts > la garde, au niveau du socket > après le départ des deux pairs, u2 PEUT prendre la session
+   → expected undefined to be 'u1' // Object.is equality
+ ✓ src/signaling/garde-fil.test.ts > la garde, au niveau du socket > un pair `agent` SANS jeton est toujours accepté — la fenêtre de E2
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config
+AssertionError: expected [ { type: 'ice-config', …(1) } ] to deep equally contain ObjectContaining{…}
+
+- Expected: 
+ObjectContaining {
+  "motif": "jeton-absent",
+  "type": "error",
+}
+
++ Received: 
+Array [
+  Object {
+    "iceServers": Array [
+      Object {
+        "credential": "***RETIRE-DE-L-HISTORIQUE***",
+        "urls": "turn:127.0.0.1:3478",
+        "username": "1787233277:s-1",
+      },
+    ],
+    "type": "ice-config",
+  },
+]
+
+ ❯ src/signaling/garde-fil.test.ts:102:33
+    100| 
+    101|         // Première assertion : le refus est typé.
+    102|         expect(refuse.messages).toContainEqual(
+       |                                 ^
+    103|             expect.objectContaining({ type: 'error', motif: 'jeton-abs…
+    104|         );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  src/signaling/garde-fil.test.ts > la garde, au niveau du socket > le socket est FERMÉ après le refus, et le message est arrivé AVANT
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ② : un jeton dont la durée est écoulée est refusé jeton-expire
+AssertionError: expected [ { type: 'ice-config', …(1) } ] to deep equally contain ObjectContaining{…}
+
+- Expected: 
+ObjectContaining {
+  "motif": "jeton-expire",
+  "type": "error",
+}
+
++ Received: 
+Array [
+  Object {
+    "iceServers": Array [
+      Object {
+        "credential": "***RETIRE-DE-L-HISTORIQUE***",
+        "urls": "turn:127.0.0.1:3478",
+        "username": "1787233283:s-3",
+      },
+    ],
+    "type": "ice-config",
+  },
+]
+
+ ❯ src/signaling/garde-fil.test.ts:143:33
+    141|         maintenant = T0 + DUREE_JETON_ACCES_MS;
+    142|         const expire = await poignee(port, { role: 'client', session: …
+    143|         expect(expire.messages).toContainEqual(
+       |                                 ^
+    144|             expect.objectContaining({ type: 'error', motif: 'jeton-exp…
+    145|         );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ③ : u2 se voit refuser la session de u1, et le JOURNAL la nomme
+AssertionError: expected undefined to be 'session-refusee' // Object.is equality
+
+- Expected: 
+"session-refusee"
+
++ Received: 
+undefined
+
+ ❯ src/signaling/garde-fil.test.ts:166:30
+    164|         const erreur = deux.messages.find((m) => m.type === 'error');
+    165|         expect(erreur).toBeDefined();
+    166|         expect(erreur.motif).toBe('session-refusee');
+       |                              ^
+    167|         // Le message SUR LE FIL ne nomme ni la session ni son proprié…
+    168|         expect(erreur.reason).not.toContain('s-privee');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  src/signaling/garde-fil.test.ts > la garde, au niveau du socket > après le départ des deux pairs, u2 PEUT prendre la session
+AssertionError: expected undefined to be 'u1' // Object.is equality
+
+- Expected: 
+"u1"
+
++ Received: 
+undefined
+
+ ❯ src/signaling/garde-fil.test.ts:186:53
+    184|             jeton: signer('u1', SECRET, T0),
+    185|         });
+    186|         expect(proprietes.proprietaire('s-rendue')).toBe('u1');
+       |                                                     ^
+    187| 
+    188|         un.socket.close();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 1 passed (6)
+   Start at  15:41:16
+   Duration  7.69s (transform 138ms, setup 0ms, collect 203ms, tests 6.86s, environment 1ms, prepare 116ms)
+

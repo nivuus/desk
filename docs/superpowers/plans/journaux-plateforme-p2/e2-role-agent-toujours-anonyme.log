@@ -1,0 +1,26 @@
+# E2 — LA MOITIÉ DU TROU QUE P2 NE FERME PAS, mesurée sur le service de HEAD
+# Jouée le 2026-08-19T15:44:43+02:00, commit 8879a4b
+#
+# Un pair qui se déclare {"role":"agent","session":"x"} SANS aucune identité
+# est toujours accepté et reçoit des identifiants TURN valables 86 400 s.
+# Ce n'est pas un oubli : l'agent Rust n'a pas d'identité avant P3, et lui en
+# exiger une casserait le chantier D en cours (E2). Le critère ① est littéral :
+# il porte sur un pair `client`. C'est mesuré ici plutôt qu'affirmé.
+
+service         : ws://127.0.0.1:8080
+messages reçus  : [
+  {
+    "type": "ice-config",
+    "iceServers": [
+      {
+        "urls": "turn:127.0.0.1:3478",
+        "username": "1787233483:x",
+        "credential": "***RETIRE-DE-L-HISTORIQUE***"
+      }
+    ]
+  }
+]
+a reçu ice-config : true
+identifiants TURN présents : [{"urls":"turn:127.0.0.1:3478","username":"1787233483:x","credential":"***RETIRE-DE-L-HISTORIQUE***"}]
+a été refusé    : false
+socket fermé    : non — toujours ouvert

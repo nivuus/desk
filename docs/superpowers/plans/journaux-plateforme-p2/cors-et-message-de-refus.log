@@ -1,0 +1,37 @@
+# CORS — la prémisse de l'écran de connexion, éprouvée sur le service VIVANT
+# Joué le 2026-08-19T15:50:17+02:00, PLATEFORME_ORIGINE_CLIENT=http://localhost:5173
+#
+# `client/src/connexion.ts` n'est pas testé unitairement (c'est du câblage
+# DOM, convention déclarée). Ce qu'il PRÉSUPPOSE, en revanche, se mesure :
+# que le service autorise l'origine du navigateur, et elle SEULE.
+
+## préalable OPTIONS depuis l'origine autorisée
+HTTP/1.1 204 No Content
+Access-Control-Allow-Origin: http://localhost:5173
+Vary: Origin
+Access-Control-Allow-Methods: POST, OPTIONS
+Access-Control-Allow-Headers: content-type
+Date: Wed, 19 Aug 2026 13:50:17 GMT
+
+## POST depuis l'origine autorisée
+HTTP/1.1 401 Unauthorized
+content-type: application/json; charset=utf-8
+Access-Control-Allow-Origin: http://localhost:5173
+Vary: Origin
+Access-Control-Allow-Methods: POST, OPTIONS
+Access-Control-Allow-Headers: content-type
+Date: Wed, 19 Aug 2026 13:50:17 GMT
+Connection: keep-alive
+
+## POST depuis une AUTRE origine — aucun en-tête CORS ne doit sortir
+HTTP/1.1 401 Unauthorized
+content-type: application/json; charset=utf-8
+Date: Wed, 19 Aug 2026 13:50:18 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+{"refus":"identifiants"}
+## et le corps du refus ne distingue pas courriel inconnu de mot de passe faux
+compte INEXISTANT : {"refus":"identifiants"}
+mot de passe FAUX : {"refus":"identifiants"}

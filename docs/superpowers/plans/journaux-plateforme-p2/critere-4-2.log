@@ -1,0 +1,23 @@
+# Critère 4 — exécution 2 sur 2, moteur postgres
+# Joué le 2026-08-19T15:40:41+02:00, commit 8879a4b
+# Les DEUX exécutions d'un critère diffèrent par le MOTEUR de base (sqlite,
+# puis postgres) : c'est une répétition plus forte que deux passes identiques
+# pour les critères qui touchent la base, et strictement identique pour ceux
+# qui sont purs. Aucun taux n'est revendiqué.
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+(node:885814) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/http/routes-auth.test.ts (8 tests) 2394ms
+   ✓ routes d’authentification > connexion valide : l’accès est un jeton que le service accepte, et le rafraîchissement vaut 627ms
+   ✓ routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 460ms
+   ✓ routes d’authentification > REJEU : rafraîchir deux fois le même jeton rend 401, et la famille tombe 305ms
+   ✓ routes d’authentification > OPTIONS rend 204, avec les en-têtes CORS SEULEMENT si une origine est autorisée 302ms
+   ✓ routes d’authentification > CRITÈRE ④ : aucune trace ni aucune réponse ne porte le CHAMP du mot de passe 345ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  15:40:42
+   Duration  3.11s (transform 169ms, setup 0ms, collect 232ms, tests 2.39s, environment 0ms, prepare 100ms)
+
