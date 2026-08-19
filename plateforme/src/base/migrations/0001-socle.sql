@@ -23,6 +23,14 @@ CREATE TABLE schema_migration (
 -- `utilisateur` est créée par P1 et RESTE VIDE : P2 lui donne son
 -- comportement, pas sa table.
 --
+-- ✅ P2 L'A FAIT (19 août 2026) : la table n'est plus vide. `depot/utilisateur.ts`
+-- l'écrit et la relit, `admin/creer-utilisateur.ts` y crée un compte par la
+-- ligne de commande, et `identite/mot-de-passe.ts` remplit `empreinte_mdp` au
+-- format `scrypt$N$r$p$sel$empreinte`. **La table elle-même n'a PAS bougé** —
+-- c'est exactement ce que la phrase ci-dessus promettait, et c'est ce qui
+-- rendait la contrainte de D3 payante. `0002-identite.sql` s'y adosse.
+--
+
 -- Pourquoi elle ne peut pas attendre : `vm.utilisateur_id` la référence, et
 -- SQLite ne sait pas ajouter une contrainte par ALTER TABLE -- mesuré le
 -- 19 août 2026 sur SQLite 3.50.4 : near "CONSTRAINT": syntax error. Une clé
@@ -58,6 +66,14 @@ CREATE UNIQUE INDEX vm_un_utilisateur ON vm(utilisateur_id)
 -- honnête. Ils ne seront PAS resserrés plus tard -- voir le commentaire de
 -- `utilisateur` : SQLite exige une reconstruction de table, que Postgres ne
 -- fait pas de la même façon.
+--
+-- ✅ P2 RENSEIGNE `utilisateur_id` (19 août 2026), et la colonne reste NULLABLE
+-- POUR UNE RAISON QUI N'EST PAS DE LA DETTE : une session appariée par un pair
+-- `agent` seul -- la session de contrôle `bureau` au démarrage d'une VM -- n'a
+-- personne à inscrire, l'agent n'ayant aucune identité avant P3. `NOT NULL`
+-- serait donc FAUX, pas seulement coûteux. `vm_id`, lui, reste entièrement
+-- vide : c'est P3.
+
 CREATE TABLE session (
     id             TEXT PRIMARY KEY,
     nom_session    TEXT NOT NULL,

@@ -21,6 +21,12 @@
 //   node recette/harness.mjs stats   <url> <durationMs>
 //   node recette/harness.mjs latency <url> <trials>
 //
+// ⚠️ DEPUIS LE SOUS-BLOC P2, CETTE INVOCATION NE SUFFIT PLUS face à un service
+// gardé : poser aussi `RECETTE_EMAIL`, `RECETTE_MOTDEPASSE`, et `PLATEFORME_URL`
+// si le service n'écoute pas sur http://127.0.0.1:8080. Voir
+// `recette/jeton-recette.mjs` — sans elles, l'outil AVERTIT et continue.
+
+//
 // STATS_MODE=keyboard en variable d'environnement bascule le mode `stats`
 // sur un défilement par Espace (diagnostic) plutôt que par molette.
 

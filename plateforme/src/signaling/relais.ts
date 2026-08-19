@@ -28,8 +28,16 @@ import type { Garde } from '../identite/garde';
 import { configurationIce } from './ice';
 
 // Types que le serveur relaie au pair. Tout le reste est refusé — un relais
-// qui accepterait n'importe quoi deviendrait un canal de diffusion arbitraire
-// sur un serveur sans authentification.
+// qui accepterait n'importe quoi deviendrait un canal de diffusion arbitraire.
+//
+// ⚠️ Cette phrase disait « sur un serveur sans authentification » jusqu'au
+// sous-bloc P2, et c'est devenu faux DE MOITIÉ dans la branche même : un pair
+// `client` est désormais gardé, et n'atteint donc cette table qu'authentifié.
+// Le bornage des TYPES garde pourtant tout son sens, et pour deux raisons —
+// il borne ce qu'un pair `agent`, TOUJOURS anonyme jusqu'à P3, peut faire
+// transiter ; et il borne ce qu'un client authentifié peut diffuser à un
+// autre. Une identité n'est pas une autorisation de relayer n'importe quoi.
+
 //
 // `fenetre-ouverte`, `fenetre-fermee`, `refus` et `viewport` portent la
 // session de contrôle du sous-bloc D1, entre le superviseur (rôle `agent`) et
@@ -50,12 +58,22 @@ const TYPES_RELAYES = new Set([
 // `undefined` par auto-boxing), `null.role` lève une TypeError. Comme ce code
 // tourne dans un handler d'événement `message` d'un WebSocket exposé sans
 // authentification, une TypeError non interceptée y est fatale : elle abat tout
+
 // le process Node (aucun `uncaughtException` n'est installé dans le point
 // d'entrée — REVÉRIFIÉ au sous-bloc P1, qui l'a DÉPLACÉ : ce n'est plus
 // `signaling/src/index.ts` mais `plateforme/src/index.ts`, et il n'y installe
 // toujours qu'un `SIGINT`), donc
 // toutes les sessions actives avec elle. On rejette explicitement tout ce qui
 // n'est pas un objet simple avant d'accéder à la moindre propriété.
+//
+// ⚠️ « exposé sans authentification » RESTE VRAI après le sous-bloc P2, et il
+// faut dire POURQUOI, sans quoi un successeur croira la phrase périmée et
+// desserrera la garde de type. Ce contrôle court sur le PREMIER message, qui
+// arrive AVANT que la garde n'ait pu voir le moindre jeton : dans ce fichier,
+// `isJsonObject` est appelé une trentaine de lignes avant `garde.verifier`.
+// La poignée de main est donc, à cet instant précis, ouverte à quiconque
+// atteint le port — exactement comme avant P2.
+
 function isJsonObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

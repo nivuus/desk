@@ -113,6 +113,19 @@ navigateur à la mauvaise fenêtre » —, et c'est exactement le raisonnement q
 s'applique **entre VMs** dès qu'il y en a deux.
 
 **③ Les identifiants TURN sont délivrés sans aucune authentification.**
+
+> ⚠️ **ANNOTÉ le 19 août 2026, à la revue transverse du sous-bloc P2. Ce §2 est
+> un RELEVÉ DATÉ de l'état d'avant P1, et il n'est pas réécrit** — les chemins
+> `server.ts` / `ice.ts` qu'il cite ont d'ailleurs été déplacés par P1 vers
+> `plateforme/src/signaling/`. **Le titre ③ n'est plus vrai qu'À MOITIÉ** : P2
+> refuse un pair de rôle `client` sans jeton d'accès et ne lui envoie aucun
+> `ice-config` ; un pair de rôle `agent` est **toujours** servi sans aucune
+> identité, jusqu'à P3. C'est ce que le critère ① de P2 dit littéralement, et
+> ce que `journaux-plateforme-p2/e2-role-agent-toujours-anonyme.log` mesure.
+> Le §7.2 ci-dessous annonçait la ROUGE gratuite « le service de P1 délivre
+> `ice-config` à quiconque » : **elle a été JOUÉE**, sur un worktree de
+> `19f6409` (`journaux-plateforme-p2/rouge-1B-service-p1.log`).
+
 `server.ts:132-150` appelle `configurationIce(...)` et envoie le résultat
 **immédiatement après la déclaration de rôle**, à tout pair, quel qu'il soit.
 La validité est de `86_400` secondes (`ice.ts:16`). L'écoute n'est bornée à

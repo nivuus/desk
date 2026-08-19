@@ -13,6 +13,12 @@
 //   node client/verify-webrtc.mjs [url] [--duration=8000]
 //   EXPECT_AUDIO=1 node client/verify-webrtc.mjs [url] [--duration=8000]
 //
+// ⚠️ Depuis P2, il faut AUSSI `RECETTE_EMAIL`, `RECETTE_MOTDEPASSE` et, hors
+// http://127.0.0.1:8080, `PLATEFORME_URL` : sans jeton, un pair `client` est
+// refusé. Le pourquoi et le comment sont dans `recette/jeton-recette.mjs`.
+
+
+//
 // Sortie : deux relevés de `getStats()` espacés de `duration` ms, pour
 // prouver que `framesDecoded`/`framesReceived` (vidéo) et
 // `bytesReceived`/`packetsReceived` (audio, s'il y en a) augmentent — et pas

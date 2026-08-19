@@ -238,6 +238,17 @@ sa table des sessions en est **déjà sortie**.
   identifiants TURN valables 86 400 s à quiconque. **C'est P2**, et le critère ④
   est ce qui rend cette fenêtre tolérable — raison pour laquelle il est en P1 et
   non en P5.
+  > ⚠️ **ANNOTÉ le 19 août 2026, à la revue transverse du sous-bloc P2 — cet
+  > énoncé reste VRAI COMME RELEVÉ DE P1, et il n'est PAS réécrit.** Il n'est
+  > plus vrai que **de moitié** de l'état du dépôt : la garde de P2
+  > (`plateforme/src/identite/garde.ts`) refuse un pair de rôle **`client`**
+  > sans jeton — motif `jeton-absent`, socket fermé 1008 — et ne lui envoie
+  > aucun `ice-config`. Un pair qui se déclare **`{"role":"agent"}` reste
+  > accepté sans aucune identité** et reçoit ses identifiants TURN de 86 400 s,
+  > l'agent Rust n'ayant pas d'identité avant **P3** ; c'est mesuré sur le
+  > service de P2 (`journaux-plateforme-p2/e2-role-agent-toujours-anonyme.log`).
+  > **Le critère ④ de P1 reste donc ce qui borne cette moitié-là de la fenêtre.**
+
 - **La scalabilité horizontale** : la persistance ne la procure pas. Un
   WebSocket vit dans un processus et un seul.
 - **Aucune constante calibrée** : ni `DUREE_SECONDES = 86_400`, ni le port par

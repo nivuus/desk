@@ -10,6 +10,16 @@
 // il écoute. Une rupture bruyante vaut mieux qu'une écoute universelle
 // silencieuse.
 //
+// ⚠️ LA MOITIÉ DE CE « À QUICONQUE » A SURVÉCU AU SOUS-BLOC P2, et il faut
+// dire laquelle : la garde d'`identite/garde.ts` refuse un pair `client` sans
+// jeton, mais un pair qui se déclare `{"role":"agent"}` est TOUJOURS accepté
+// sans identité et reçoit ses identifiants TURN de 86 400 s — l'agent Rust
+// n'a pas d'identité avant P3. **C'est donc toujours `PLATEFORME_HOTE` qui
+// borne cette fenêtre-là**, et l'argument ci-dessus n'a rien perdu de sa
+// force ; il en a même gagné, la fenêtre restant ouverte plus longtemps que
+// P1 ne le prévoyait.
+
+//
 // La lecture d'environnement se fait ICI et nulle part ailleurs : `env` est un
 // paramètre, jamais `process.env` lu en douce, ce qui rend la fonction pure et
 // testable sans salir l'environnement du processus de test.
