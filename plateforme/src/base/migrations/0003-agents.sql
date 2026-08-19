@@ -1,0 +1,58 @@
+-- L'identite des agents : la table que le canal /agent lit et ecrit, et la
+-- table `application` qui nait avec ses contraintes et reste vide.
+--
+-- Les horodatages sont BIGINT et non INTEGER, et c'est MESURE par P1 :
+-- INTEGER vaut jusqu'a 8 octets sur SQLite et exactement 4 sur Postgres, ou
+-- le 19 aout 2026, sur PostgreSQL 16.15, un Date.now() rendait
+--     value "1787136773742" is out of range for type integer
+-- et le service ne pouvait pas appliquer ses PROPRES migrations. Ils portent
+-- tous la convention de nommage `_a`, sans laquelle le lint statique de
+-- `sous-ensemble.test.ts` ne pourrait pas les voir -- sa portee est bornee
+-- par cette convention, et par rien d'autre (leg n°8 de P1).
+--
+-- Aucune valeur litterale, pas meme un DEFAUT : `rendreMarqueurs` refuse tout
+-- SQL portant une apostrophe ou un guillemet.
+
+-- L'agent enrole d'une VM.
+--
+-- `vm_id` est la CLE PRIMAIRE et non un identifiant propre : une VM porte au
+-- plus un agent, et deux lignes pour la meme VM n'auraient aucun sens --
+-- laquelle serait la bonne ?
+--
+-- `empreinte_secret` porte le format `scrypt$N$r$p$sel$empreinte` de
+-- `identite/mot-de-passe.ts`, le MEME que les comptes humains. Une seconde
+-- derivation dans le meme service divergerait de la premiere le jour ou l'une
+-- des deux serait durcie.
+--
+-- 🔴 `prefixe_session` est UNIQUE, et cet index n'est pas decoratif : c'est
+-- lui qui rend `lireParPrefixe` DECIDABLE. Deux VMs de meme prefixe rendraient
+-- la resolution d'un nom de session ambigue, et le choix de la VM arbitraire
+-- -- c'est-a-dire exactement le probleme que le prefixe existe pour fermer.
+--
+-- `vu_a` nait NULL : une VM enrolee qui n'a jamais battu n'a rien d'honnete a
+-- y inscrire, et `0` se lirait comme une epoque de 1970 donc comme un agent
+-- injoignable depuis cinquante-six ans. `agents/fraicheur.ts` distingue les
+-- deux cas.
+CREATE TABLE agent_enrole (
+    vm_id            TEXT PRIMARY KEY REFERENCES vm(id),
+    empreinte_secret TEXT NOT NULL,
+    prefixe_session  TEXT NOT NULL UNIQUE,
+    vu_a             BIGINT NULL
+);
+
+-- `application` est creee par P3 et RESTE VIDE : son chemin d'ecriture est le
+-- sous-projet ④, qui empruntera le canal /agent pour la remplir.
+--
+-- Elle nait ici, et pas plus tard, POUR SA CLE ETRANGERE : SQLite ne sait pas
+-- ajouter une contrainte par ALTER TABLE -- mesure par P1 le 19 aout 2026 sur
+-- SQLite 3.50.4 : near "CONSTRAINT": syntax error. Une cle etrangere nait
+-- avec sa table ou n'existe jamais (leg n°2 de P1). Ce n'est donc PAS un
+-- oubli si aucun code ne l'ecrit : c'est le prix, connu et paye d'avance, de
+-- la contrainte qu'elle porte.
+CREATE TABLE application (
+    id     TEXT PRIMARY KEY,
+    vm_id  TEXT NOT NULL REFERENCES vm(id),
+    nom    TEXT NOT NULL,
+    chemin TEXT NOT NULL,
+    vue_a  BIGINT NOT NULL
+);

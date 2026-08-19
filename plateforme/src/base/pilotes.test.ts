@@ -30,12 +30,12 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
         // pourrait jamais échouer. Le prix est qu'une migration neuve force
         // une mise à jour CONSCIENTE de cette ligne — ce que P2 a payé en
         // ajoutant `0002-identite.sql`.
-        expect(suivi.map((l) => Number(l.version))).toEqual([1, 2]);
+        expect(suivi.map((l) => Number(l.version))).toEqual([1, 2, 3]);
         // Idempotence : le second passage n'applique rien.
         expect(await appliquerMigrations(base, REPERTOIRE_MIGRATIONS, 2_000)).toBe(0);
         const apres = await base.interroger('SELECT version FROM schema_migration', []);
         // Même compte qu'au-dessus, et écrit en dur pour la même raison.
-        expect(apres).toHaveLength(2);
+        expect(apres).toHaveLength(3);
     });
 
     it('tolère plusieurs VM non attribuées, et refuse une seconde attribution', async () => {
