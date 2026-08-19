@@ -1,0 +1,60 @@
+=== TACHE 4 — chaque test doit pouvoir rendre l'autre valeur ===
+Depot Guacamole, 19 aout 2026, chantier E bloc E1.
+
+--- MUTATION : ordre : insertion en queue au lieu du tri ---
+test micro::tests::une_arrivee_desordonnee_est_restituee_dans_l_ordre ... FAILED
+thread 'micro::tests::une_arrivee_desordonnee_est_restituee_dans_l_ordre' (1005732) panicked at agent/src/micro.rs:252:9:
+assertion `left == right` failed
+  left: [1920, 0, 960]
+ right: [0, 960, 1920]
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 479 filtered out; finished in 0.01s
+
+--- MUTATION : doublon : retirer la comparaison de rtp_48k ---
+test micro::tests::un_doublon_est_compte_et_jete ... FAILED
+thread 'micro::tests::un_doublon_est_compte_et_jete' (1006844) panicked at agent/src/micro.rs:267:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 479 filtered out; finished in 0.00s
+
+--- MUTATION : saturation : jeter la plus RECENTE au lieu de la plus ancienne ---
+test micro::tests::a_saturation_c_est_la_plus_ancienne_qui_part ... FAILED
+thread 'micro::tests::a_saturation_c_est_la_plus_ancienne_qui_part' (1007429) panicked at agent/src/micro.rs:296:9:
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 479 filtered out; finished in 0.00s
+
+--- MUTATION : famine : rendre une Trame par defaut au lieu de Manquante ---
+test micro::tests::en_famine_le_retrait_rend_manquante_sans_bloquer ... FAILED
+thread 'micro::tests::en_famine_le_retrait_rend_manquante_sans_bloquer' (1007847) panicked at agent/src/micro.rs:315:13:
+assertion failed: matches!(t.retirer(), Retrait::Manquante)
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 479 filtered out; finished in 0.00s
+
+--- MUTATION : FEC : inverser la condition « la suivante est la » ---
+test micro::tests::une_trame_absente_dont_la_suivante_est_la_donne_reconstruire ... FAILED
+test micro::tests::une_trame_absente_sans_suivante_donne_manquante ... ok
+thread 'micro::tests::une_trame_absente_dont_la_suivante_est_la_donne_reconstruire' (1008271) panicked at agent/src/micro.rs:334:22:
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 478 filtered out; finished in 0.00s
+
+--- MUTATION : perimee : ne plus jeter ce qui arrive apres son tour ---
+test micro::tests::une_trame_perimee_est_comptee_et_jetee ... FAILED
+thread 'micro::tests::une_trame_perimee_est_comptee_et_jetee' (1008701) panicked at agent/src/micro.rs:356:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 479 filtered out; finished in 0.00s
+
+=== Toutes les mutations sont ANNULEES. ===
+
+Note sur la ligne « FEC present / absent » de la table du plan : la mutation
+qui inverse la condition fait tomber `une_trame_absente_dont_la_suivante_est_la`
+mais LAISSE VERT `une_trame_absente_sans_suivante_donne_manquante`, et c'est
+correct — file vide, il n'y a aucune tete a comparer, donc la condition
+inversee n'est jamais atteinte. Ce second test est discrimine par la mutation
+« famine », qui le ferait tomber aussi.
+
+Note sur `deposer_ne_bloque_jamais_meme_a_saturation` : AUCUNE mutation ne peut
+le faire echouer sur la propriete qu'il annonce, et c'est note plutot
+qu'habille d'un controle de facade. La propriete « ne bloque jamais » est
+portee par la SIGNATURE (`fn deposer(&mut self, trame: TrameMicro)`, sans
+valeur de retour, sans Result) et tenue par le compilateur. Ce que le test
+verifie reellement, et qui PEUT echouer, c'est que 10 000 depots laissent le
+tampon BORNE : retirer la boucle de saturation le fait tomber.
