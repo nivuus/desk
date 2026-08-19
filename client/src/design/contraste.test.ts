@@ -34,7 +34,7 @@ describe('rapportDeContraste — vecteurs extérieurs à notre palette', () => {
         // canaux, donc une moyenne linéaire rendrait 0,5. La luminance
         // relative vraie vaut ≈ 0,2159. La faute est classique et rend des
         // rapports PLAUSIBLES mais faux sur toutes les couleurs
-        // intermédiaires — c'est-à-dire sur les 50 paires réelles, là où
+        // intermédiaires — c'est-à-dire sur les 52 paires réelles, là où
         // noir/blanc rend 21 dans les deux cas.
         expect(luminanceRelative('#808080')).toBeCloseTo(0.2159, 4);
     });

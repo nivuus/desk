@@ -50,7 +50,10 @@ const FAMILLES = new Map([
  * l'écrire large serait affirmer au-delà du relevé. Neutraliser le blanchiment
  * fait tomber G1 (et donc G5, qui lit les mêmes préludes) : le balayage
  * `preludes` prend le texte d'un commentaire précédant un `{` pour une liste de
- * sélecteurs, et G1 remonte alors 672 compounds parasites dont `/*`. G2, G3 et
+ * sélecteurs, et G1 remonte alors 889 compounds parasites dont `/*` (⚠️ 672 à
+ * la tâche 2, quand `bouton.css` était seul : le nombre a grossi avec les trois
+ * familles suivantes, et il a été REMESURÉ le 20 août 2026 plutôt que recopié).
+ * G2, G3 et
  * G4 restent VERTS sans lui, y compris avec un `outline: none;` écrit dans un
  * commentaire posé À L'INTÉRIEUR d'un bloc (essayé) : ces trois-là ne cherchent
  * pas une sous-chaîne, ils lisent une POSITION DE PROPRIÉTÉ dans une
@@ -249,13 +252,23 @@ describe('primitives.css — les gardes de forme', () => {
     });
 
     it('G7 — base.css neutralise les transitions sous prefers-reduced-motion', () => {
-        // 🔴 LE BLANCHIMENT EST ICI STRICTEMENT NÉCESSAIRE, et c'est ce garde
-        // qui le montre le mieux : l'en-tête de la règle RECOPIE la commande de
-        // mesure qui l'a imposée, donc la chaîne
-        // `@media (prefers-reduced-motion: reduce)` en toutes lettres. Un garde
-        // qui la chercherait dans le texte brut resterait VERT sur un
-        // `base.css` dont la règle a été retirée — c'est mot pour mot le garde
-        // de l'amorce de S1.
+        // 🔴 LE BLANCHIMENT EST ICI STRICTEMENT NÉCESSAIRE : l'en-tête de la
+        // règle RECOPIE la commande de mesure qui l'a imposée, donc la chaîne
+        // `@media (prefers-reduced-motion: reduce)` en toutes lettres, ET le
+        // bloc `{ :root { --duree-1: 0.01ms; } }` qui la suit dans le relevé.
+        //
+        // ❌ « Un garde qui la chercherait dans le texte brut resterait VERT sur
+        // un `base.css` dont la règle a été retirée » — écrit ici par la tâche 6
+        // et RÉFUTÉ PAR MESURE le 20 août 2026 (revue transverse, journal
+        // `journaux-design-s2/rouges-rejouees.log`). Il ne reste pas vert : sa
+        // PREMIÈRE assertion est bien satisfaite par le commentaire, mais la
+        // SECONDE lit alors le bloc du relevé et tombe —
+        //   `expected [ '--duree-1' ] to include 'transition-duration'`.
+        // ⚠️ ET C'EST PIRE QUE CE QUE L'ÉNONCÉ FAUX DÉCRIVAIT : sans blanchiment,
+        // ce garde rend CE MÊME ROUGE que la règle soit PRÉSENTE ou ABSENTE —
+        // il cesse de discriminer, et devient un faux positif sur un `base.css`
+        // parfaitement correct. Le blanchiment n'est pas ce qui l'empêche d'être
+        // vert à tort : c'est ce qui le rend capable de dire quoi que ce soit.
         const base = sansCommentaires(baseCss);
         const debut = base.search(/@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)/);
         expect(
