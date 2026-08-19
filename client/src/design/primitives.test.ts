@@ -81,6 +81,31 @@ const compounds = (selecteur: string) => selecteur.split(/[\s>+~]+/).filter(Bool
 /** Les listes de sélecteurs qui citent une famille — l'outil de G5 et de G6. */
 const famille = (nom: string) => SELECTEURS.filter((s) => s.includes(`.${nom}`));
 
+/**
+ * G6 — les états et les parties qu'une famille doit déclarer.
+ *
+ * 🔴 IL LIT DES SÉLECTEURS, PAS DE LA PROSE. Une règle retirée fait tomber ce
+ * garde ; le COMMENTAIRE qui la mentionne, blanchi d'entrée, ne le retient pas.
+ * C'est la seule façon de savoir qu'il mesure du code — S1 a payé deux fois un
+ * garde satisfait par sa propre justification.
+ *
+ * ⚠️ CE QU'IL NE DIT PAS : que l'état soit BIEN DIT. Qu'un champ en erreur se
+ * distingue, qu'un désactivé se lise comme inerte — ce sont des jugements
+ * humains du §8, et aucun ne deviendra une mesure.
+ */
+function etatsManquants(nom: string, attendus: string[]): string[] {
+    // 🔴 `:not(…)` EST RETIRÉ AVANT LA RECHERCHE, ET CE N'EST PAS UNE FINESSE :
+    // sans cela, `.champ__saisie:hover:not(:disabled)` contient la sous-chaîne
+    // `:disabled`, et le garde ne peut plus échouer quand la RÈGLE
+    // `.champ__saisie:disabled` disparaît. Mesuré : la rouge de T3 n'a d'abord
+    // rien fait tomber, sur une règle réellement retirée. C'est le patron du
+    // contrôle vacueux, attrapé ici sur le garde lui-même.
+    const selecteurs = famille(nom)
+        .map((s) => s.replace(/:not\([^)]*\)/g, ''))
+        .join('  ');
+    return attendus.filter((etat) => !selecteurs.includes(etat));
+}
+
 describe('primitives.css — les gardes de forme', () => {
     it('G1 — aucun sélecteur d’élément nu : tout compound porte une classe', () => {
         // 🔴 C'EST CE GARDE QUI TIENT LA NEUTRALITÉ D'`index.html`. La fenêtre
@@ -145,5 +170,20 @@ describe('primitives.css — les gardes de forme', () => {
         expect(famille('bouton'), 'la famille .bouton est absente de primitives.css').not.toEqual(
             [],
         );
+    });
+
+    it('G6 — la famille CHAMP déclare ses états et ses parties', () => {
+        expect(
+            etatsManquants('champ', [
+                '.champ__etiquette',
+                '.champ__saisie',
+                '.champ__aide',
+                '.champ__erreur',
+                '::placeholder',
+                ':disabled',
+                '.champ--erreur',
+            ]),
+            'états ou parties absents de la famille champ',
+        ).toEqual([]);
     });
 });
