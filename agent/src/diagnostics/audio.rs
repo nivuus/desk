@@ -1,6 +1,13 @@
-//! Sondes audio du chantier A : périphérique de rendu par défaut de la
-//! session et format de mixage (`AUDIO_PROBE`), et isolation de l'audio
-//! d'un seul processus (`PROCESS_LOOPBACK_PROBE`, requis par le chantier D).
+//! Sondes audio du chantier A : périphérique de rendu de la session et format
+//! de mixage (`AUDIO_PROBE`), et isolation de l'audio d'un seul processus
+//! (`PROCESS_LOOPBACK_PROBE`, requis par le chantier D).
+//!
+//! ⚠️ **`AUDIO_PROBE` ne sonde plus « le périphérique par défaut » mais celui
+//! que `LoopbackCapture::open` retient** — c'est-à-dire celui que désigne
+//! `AUDIO_PERIPHERIQUE`, ou le défaut de Windows à défaut (correction
+//! « A-bis », `wasapi/rendu.rs`). C'est ce qui en fait l'instrument de mesure
+//! de cette correction : lancée deux fois, avec et sans la variable, elle
+//! rend deux relevés opposés sur la même machine.
 
 use anyhow::{Context, Result};
 
@@ -19,12 +26,23 @@ pub(super) fn executer_sonde_audio() -> Result<()> {
     let mut echantillons = 0u64;
     let mut crete = 0i16;
     let mut lectures_vides = 0u64;
+    // Fenêtre d'analyse spectrale : les DERNIÈRES `FENETRE_ANALYSE` valeurs
+    // entrelacées. Bornée à dessein — accumuler dix secondes de son pour n'en
+    // analyser que la fin coûterait de la mémoire sans rien apporter, et
+    // garder le DÉBUT ferait juger la sonde sur ce qui précède la tonalité
+    // qu'on vient de jouer.
+    const FENETRE_ANALYSE: usize = 48_000 * 2 * 2; // 2 s de stéréo à 48 kHz
+    let mut fenetre: std::collections::VecDeque<i16> = std::collections::VecDeque::new();
     while debut.elapsed() < std::time::Duration::from_secs(secondes) {
         match capture.read()? {
             Some(bloc) => {
                 echantillons += bloc.len() as u64;
                 for v in bloc {
                     crete = crete.max(v.saturating_abs());
+                    fenetre.push_back(v);
+                    if fenetre.len() > FENETRE_ANALYSE {
+                        fenetre.pop_front();
+                    }
                 }
             }
             None => lectures_vides += 1,
@@ -32,11 +50,21 @@ pub(super) fn executer_sonde_audio() -> Result<()> {
         std::thread::sleep(std::time::Duration::from_millis(5));
     }
 
+    // La CRÊTE distingue « du son » de « rien ». Elle ne distingue pas « MON
+    // son » d'un autre — ce dépôt a établi au sous-bloc D7 que l'instrument
+    // qui le fait est la FRÉQUENCE DOMINANTE. Les deux sont donc rendues, et
+    // c'est la seconde qui juge (correction « A-bis »).
+    let mono = crate::spectre::mono(&Vec::from(fenetre), 2);
+    let dominante = crate::spectre::dominante(&mono, 48_000.0, 100.0, 4_000.0, 1.0);
+
     tracing::info!(
         echantillons,
         lectures_vides,
         crete,
         silencieux = crete == 0,
+        dominante_hz = dominante.map(|d| d.frequence_hz),
+        dominante_magnitude = dominante.map(|d| d.magnitude),
+        resolution_hz = dominante.map(|d| d.resolution_hz),
         "sonde audio terminée"
     );
     Ok(())
