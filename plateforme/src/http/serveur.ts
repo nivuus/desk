@@ -1,7 +1,8 @@
 // Le serveur HTTP du service, et le routage de la montée WebSocket.
 //
 // `noServer` plutôt que `{ server }` : le routage du chemin est explicite.
-// ✅ P3 Y A AJOUTÉ `/agent` SANS TOUCHER AU RELAIS, ce que cette phrase
+// ✅ P3 Y A AJOUTÉ `/agent` SANS TOUCHER AU RELAIS — la branche d'abord, puis
+// la BOUCLE du canal qu'elle sert (`agents/canal.ts`) —, ce que cette phrase
 // annonçait : la branche est une seconde comparaison, et `wssRacine` n'a pas
 // bougé d'une ligne. Avec `{ server }`, `ws` accepterait toute montée sur tout
 // chemin — c'est le comportement d'avant P1 (le `new WebSocketServer({ port })`
@@ -30,6 +31,7 @@ import { servirAuth } from './routes-auth';
 import { createSignalingServer } from '../signaling/relais';
 import { ProprieteDeSession } from '../signaling/propriete';
 import { observateurDeSession } from '../signaling/trace';
+import { servirLeCanalAgent } from '../agents/canal';
 
 /// Le chemin du canal plateforme <-> agent (P3). ⚠️ Il est comparé
 /// EXACTEMENT : voir le routage plus bas.
@@ -93,6 +95,22 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     // Son coût — il ne survit pas à un redémarrage — est écrit dans
     // `signaling/propriete.ts`.
     const gardeDuService = garde(config.secretJeton, Date.now, new ProprieteDeSession());
+    // 🔴 LE CANAL EST BRANCHÉ ICI, ET C'EST LA SEULE LIGNE QUI LE FAIT VIVRE.
+    // Sans elle, `wssAgent` accepterait toujours la montée sur `/agent` et
+    // n'écouterait RIEN : le pair verrait une connexion réussie, puis un
+    // silence — la panne muette exacte que ce fichier invoque déjà pour rendre
+    // `base` REQUISE. `canal.test.ts` la tient par un test dédié.
+    //
+    // `Date.now` est passée ici, comme à la garde et à la trace : les trois la
+    // reçoivent de cette fonction, et aucun module du service ne lit d'horloge
+    // lui-même. C'est ce qui rend l'expiration d'un jeton d'agent assertable
+    // sur une valeur EXACTE dans `canal.test.ts`.
+    servirLeCanalAgent(wssAgent, {
+        base,
+        secretJeton: config.secretJeton,
+        maintenant: Date.now,
+    });
+
     // `Date.now` est passée ICI, et une seule fois pour la trace : c'est le
     // seul endroit du chemin de la trace qui lise une horloge réelle, tout le
     // reste la reçoit.
