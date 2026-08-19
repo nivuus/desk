@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="fr">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Connexion</title>
+    </head>
+    <body>
+        <!--
+            AUCUNE DIRECTION VISUELLE ICI, et c'est délibéré : elle appartient
+            au sous-projet ⑥. Cette page porte la structure et rien d'autre ;
+            l'habiller maintenant obligerait à défaire ce travail-là.
+        -->
+        <h1>Connexion</h1>
+        <form id="connexion">
+            <p>
+                <label for="email">Courriel</label>
+                <input id="email" name="email" type="email" autocomplete="username" required />
+            </p>
+            <p>
+                <label for="motdepasse">Mot de passe</label>
+                <input
+                    id="motdepasse"
+                    name="motdepasse"
+                    type="password"
+                    autocomplete="current-password"
+                    required
+                />
+            </p>
+            <p><button id="valider" type="submit">Se connecter</button></p>
+        </form>
+        <div id="message" role="status"></div>
+        <script type="module" src="/src/connexion.ts"></script>
+    </body>
+</html>
