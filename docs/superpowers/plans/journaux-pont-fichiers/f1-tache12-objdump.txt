@@ -1,0 +1,68 @@
+Tâche 12 du sous-bloc F1 — le contrôle « aucun import statique de
+ProjectedFSLib.dll ». Relevé le 20 août 2026, PAR LA COMMANDE, sur l'hôte.
+
+⚠️ PORTÉE EXACTE, à ne pas élargir : ce contrôle porte sur le binaire
+`x86_64-pc-windows-gnu` bâti sur l'HÔTE, jamais sur le binaire `msvc` livré sur
+la VM. Il ne prouve donc PAS l'absence d'import dans le livrable. Le contrôle
+qui porte sur le vrai binaire est en recette (tâche 18) et il est d'une autre
+nature : renommer `ProjectedFSLib.dll` et vérifier que le superviseur, le
+capteur et un enfant démarrent quand même. L'un ne vaut pas l'autre.
+
+Outil réellement employé : x86_64-w64-mingw32-objdump (/usr/bin), présent.
+
+⚠️ Le chemin publié par le plan (`target/x86_64-pc-windows-gnu/...` depuis
+`agent/`) est FAUX : le dépôt est un espace de travail cargo, la cible vit à la
+RACINE. Chemin réel : `../target/x86_64-pc-windows-gnu/release/agent.exe`
+depuis `agent/`. Un `objdump` sur le chemin du plan rend
+« pas de tel fichier » — et le `|| echo "AUCUN import"` du plan traduit cette
+absence de fichier en VERT. Le contrôle du plan, écrit tel quel, ne peut donc
+pas échouer pour la raison qu'il surveille.
+
+────────────────────────────────────────────────────────────────────────────
+① VERT initial (sources de la tâche 12, aucun appel d'enveloppe)
+────────────────────────────────────────────────────────────────────────────
+$ cd agent && cargo build --release --target x86_64-pc-windows-gnu
+    Finished `release` profile [optimized] target(s) in 1m 49s
+$ ls -la ../target/x86_64-pc-windows-gnu/release/agent.exe
+-rwxr-x--- 2 root root 18502357 20 août  00:03 agent.exe
+$ x86_64-w64-mingw32-objdump -x ../target/.../agent.exe | grep -i projectedfslib
+AUCUN import ProjectedFSLib — c'est le vert attendu
+
+────────────────────────────────────────────────────────────────────────────
+② PREMIÈRE TENTATIVE DE ROUGE — ÉCHOUÉE, et c'est le fait le plus utile
+   de ce journal
+────────────────────────────────────────────────────────────────────────────
+Ajout d'une `pub unsafe fn rouge_objdump_temporaire` appelant l'enveloppe
+`windows::Win32::Storage::ProjectedFileSystem::PrjStopVirtualizing`, dans
+`pont/projfs.rs`, SANS aucun appelant.
+
+$ x86_64-w64-mingw32-objdump -x ../target/.../agent.exe | grep -i projectedfslib
+AUCUN import ProjectedFSLib
+
+⚠️ Le rouge N'EST PAS APPARU. `agent` est un binaire : une fonction `pub` que
+personne n'appelle n'est atteignable par rien, l'éditeur de liens l'élimine, et
+`raw-dylib` n'émet alors aucun import. La recette du plan — « ajouter
+temporairement, dans n'importe quel `#[cfg(windows)]` du crate, un appel à
+PrjStopVirtualizing » — est donc INSUFFISANTE telle qu'elle est écrite :
+l'appel doit être sur un chemin RÉELLEMENT ATTEIGNABLE depuis `main`. Un
+opérateur qui suivrait le plan à la lettre conclurait que son contrôle est
+correct alors qu'il vient d'échouer à devenir rouge.
+
+────────────────────────────────────────────────────────────────────────────
+③ ROUGE OBTENU — appel placé dans `pont::executer`, atteignable depuis `main`
+────────────────────────────────────────────────────────────────────────────
+$ x86_64-w64-mingw32-objdump -x ../target/.../agent.exe | grep -i projectedfslib
+	Nom DLL: projectedfslib.dll
+[68838](sec  7)(fl 0x00)(ty    0)(scl   2) (nx 0) 0x0000000000000104 _head__home_mallanic_Projects_Guacamole_target_x86_64_pc_windows_gnu_release_deps_rustcDNZWHt_projectedfslib_dll_imports_lib
+[72524](sec  7)(fl 0x00)(ty    0)(scl   2) (nx 0) 0x00000000000039e0 ___home_mallanic_Projects_Guacamole_target_x86_64_pc_windows_gnu_release_deps_rustcDNZWHt_projectedfslib_dll_imports_lib_iname
+
+Le contrôle DISCRIMINE : il distingue un binaire qui appelle une enveloppe
+d'un binaire qui n'en appelle aucune.
+
+────────────────────────────────────────────────────────────────────────────
+④ VERT rétabli — appel retiré, source restaurée
+────────────────────────────────────────────────────────────────────────────
+$ grep -c "PrjStopVirtualizing" src/pont.rs
+0
+$ x86_64-w64-mingw32-objdump -x ../target/.../agent.exe | grep -i projectedfslib
+AUCUN import ProjectedFSLib — c'est le vert attendu
