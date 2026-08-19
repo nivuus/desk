@@ -395,9 +395,20 @@ const CRETE_MINIMALE: f32 = 1.0 / 512.0;
 /// Fréquence dominante d'un signal supposé PÉRIODIQUE, par passages par zéro.
 ///
 /// ⚠️ **`pcm` est un signal MONO à `hz` échantillons par seconde.** Un tampon
-/// stéréo entrelacé doit être désentrelacé par l'appelant (`step_by(2)`) —
-/// l'analyser tel quel mélangerait deux canaux et doublerait la cadence
-/// apparente. *(Le plan décrivait l'implémentation comme opérant « sur le canal
+/// stéréo entrelacé doit être désentrelacé par l'appelant (`step_by(2)`).
+///
+/// ❌ **CETTE DOC A PORTÉ UN FAUX, et c'est la MESURE qui l'a réfuté** (tâche 13,
+/// chantier E). Elle disait que l'analyser tel quel « doublerait la cadence
+/// apparente ». **C'est l'inverse : la fréquence est DIVISÉE PAR DEUX** —
+/// relevé **219,5 Hz pour une tonalité de 440 Hz**, canaux identiques, en
+/// retirant le `step_by(2)` de `demarrage::micro::Fenetre` et en relançant son
+/// test. Le mécanisme est dans le calcul ci-dessous : `duree` vaut
+/// `pcm.len() / hz`, et un tampon entrelacé porte deux fois plus de valeurs que
+/// de trames — la durée calculée double, quand le nombre de passages par zéro
+/// ne bouge pas (dupliquer chaque échantillon n'ajoute aucun changement de
+/// signe). L'obligation de désentrelacer est INCHANGÉE ; seul le sens de
+/// l'erreur qu'on commet en l'oubliant était faux, et un lecteur qui aurait
+/// cherché un « x2 » dans un journal n'aurait rien trouvé. *(Le plan décrivait l'implémentation comme opérant « sur le canal
 /// gauche » tout en écrivant ses tests sur un tampon mono : les deux ne peuvent
 /// pas être vrais ensemble, et c'est la sémantique du test qui a été retenue,
 /// parce que c'est elle qui rend la fonction utilisable des deux façons.)*
