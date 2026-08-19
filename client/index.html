@@ -10,6 +10,11 @@
         <video id="remote" autoplay playsinline muted tabindex="0"></video>
         <div id="status" role="status">Connexion…</div>
         <div id="stats" role="status"></div>
+        <!-- `hidden` par défaut : le bouton n'apparaît QUE si l'agent annonce
+             `mic: true` dans son message `ready` (spec §10). Un agent d'avant le
+             chantier E ne porte pas le champ, et un bouton qui ne mènerait nulle
+             part est pire que pas de bouton. -->
+        <button id="micro" type="button" title="Microphone" hidden>🎤</button>
         <button id="fullscreen" type="button" title="Plein écran">⛶</button>
         <script type="module" src="/src/main.ts"></script>
     </body>
