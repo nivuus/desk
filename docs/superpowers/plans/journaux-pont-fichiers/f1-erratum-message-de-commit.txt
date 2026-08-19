@@ -1,0 +1,31 @@
+ERRATUM sur le message du commit 37abbd5 (tache 9).
+
+QUOI : deux fragments du message ont ete AVALES a l'ecriture. Le paragraphe
+
+    PIEGE RENCONTRE, et il est de la meme famille : la premiere insertion de
+     a atterri ENTRE un  et le module qu'il gardait.
+
+doit se lire
+
+    PIEGE RENCONTRE, et il est de la meme famille : la premiere insertion de
+    `mod pont;` a atterri ENTRE un `#[cfg(windows)]` et le module qu'il
+    gardait.
+
+POURQUOI : le message a ete passe entre GUILLEMETS DOUBLES a `git commit -m`,
+depuis un shell qui substitue les accents graves. `` `mod pont;` `` et
+`` `#[cfg(windows)]` `` ont donc ete executes comme des commandes -- d'ou le
+`command not found: mod` visible dans la sortie de ce tour -- et remplaces par
+leur sortie, vide.
+
+POURQUOI CET ERRATUM PLUTOT QU'UN AMEND : `git commit --amend` est interdit
+par la consigne de ce chantier. L'histoire n'est donc pas reecrite ; la
+correction vit a cote d'elle, et elle est versee.
+
+CE QUE CELA CHANGE AU FOND : rien. Le defaut decrit -- une insertion de `mod`
+atterrie entre un attribut `#[cfg]` et le module qu'il gardait, d'ou un module
+compile hors sur Linux et un `cargo test` rendant << 550 filtered out >> --
+a bien ete rencontre, diagnostique et corrige, et le code le porte.
+
+LECON, valable au-dela de ce commit : ne pas employer d'accents graves dans un
+message de commit passe entre guillemets doubles. Les commits suivants de ce
+chantier n'en portent aucun.
