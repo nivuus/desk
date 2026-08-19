@@ -1,0 +1,75 @@
+{
+  "profil": 1,
+  "duree_s": 120,
+  "urls": [
+    "http://192.168.3.1:5173/?session=demo"
+  ],
+  "cibles_hz": [
+    440,
+    660
+  ],
+  "releves": [
+    {
+      "t_s": 30,
+      "debut": "2026-08-19T11:04:57.078Z",
+      "fin": "2026-08-19T11:04:58.594Z",
+      "url": "http://192.168.3.1:5173/?session=demo",
+      "spectre": {
+        "voie": "pc",
+        "etat_ctx": "running",
+        "dominante_hz": 441,
+        "niveau_db": -39.9,
+        "plancher_db": -159.4,
+        "niveaux": [
+          {
+            "f": 440,
+            "db": -39.9
+          },
+          {
+            "f": 660,
+            "db": -114.2
+          }
+        ],
+        "resolution_bin_hz": 5.38,
+        "sample_rate": 44100,
+        "piste_muted": false,
+        "piste_ready_state": "live",
+        "stats_audio": {
+          "bytes_recus": 477365,
+          "paquets_recus": 2965
+        }
+      }
+    },
+    {
+      "t_s": 105,
+      "debut": "2026-08-19T11:06:13.595Z",
+      "fin": "2026-08-19T11:06:15.105Z",
+      "url": "http://192.168.3.1:5173/?session=demo",
+      "spectre": {
+        "voie": "pc",
+        "etat_ctx": "running",
+        "dominante_hz": 441,
+        "niveau_db": -39.9,
+        "plancher_db": -159.5,
+        "niveaux": [
+          {
+            "f": 440,
+            "db": -39.9
+          },
+          {
+            "f": 660,
+            "db": -119.9
+          }
+        ],
+        "resolution_bin_hz": 5.38,
+        "sample_rate": 44100,
+        "piste_muted": false,
+        "piste_ready_state": "live",
+        "stats_audio": {
+          "bytes_recus": 1709337,
+          "paquets_recus": 10617
+        }
+      }
+    }
+  ]
+}

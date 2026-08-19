@@ -1,0 +1,89 @@
+2026-08-19T11:01:31.434271Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-19T11:01:31.434438Z  INFO agent::demarrage::source: capture de la fenêtre Windows (recadrage) bitrate=8000000 fps=90
+2026-08-19T11:01:31.436707Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 nom_sortie=\\.\DISPLAY1 attachee=true
+2026-08-19T11:01:31.612481Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-19T11:01:31.612886Z  INFO agent::capture: duplication de sortie établie desktop_width=2400 desktop_height=1080
+2026-08-19T11:01:31.614115Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-19T11:01:31.716542Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=327681
+2026-08-19T11:01:31.723404Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-19T11:01:31.727423Z  INFO agent::signaling: agent enregistré auprès du signaling session="demo"
+2026-08-19T11:01:31.727590Z  INFO agent::transport::initialisation: socket UDP de l'agent addr=192.168.3.2:52340
+2026-08-19T11:01:31.727880Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-19T11:01:31.781009Z  INFO agent::windows_audio: source audio démarrée format=48000 Hz, 2 canaux, 32 bits, flottant
+2026-08-19T11:01:31.781028Z  INFO agent::demarrage::audio: audio activé format="48000 Hz, 2 canaux, 32 bits, flottant"
+2026-08-19T11:01:31.781270Z  WARN agent::windows_audio::fil: injection de fautes de lecture audio ARMEE (banc) fautes_a_injecter=15
+2026-08-19T11:01:31.781293Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-19T11:01:31.786621Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-19T11:01:31.797679Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-19T11:01:31.818634Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-19T11:01:31.859781Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-19T11:01:31.940456Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=6
+2026-08-19T11:01:32.101261Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=7
+2026-08-19T11:01:32.302265Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=8
+2026-08-19T11:01:32.502901Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=9
+2026-08-19T11:01:32.703418Z  WARN agent::windows_audio::fil: lecture audio échouée, capture arrêtée définitivement erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=10 rejetes=0 complements=0 echantillons_jetes=0
+2026-08-19T11:01:42.617478Z  INFO agent::demarrage: offre reçue
+2026-08-19T11:01:42.622972Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=réception pendant l'allocation TURN
+2026-08-19T11:01:42.625396Z  INFO agent::demarrage: réponse envoyée
+2026-08-19T11:01:42.628906Z  INFO agent::windows_audio: source audio démarrée format=48000 Hz, 2 canaux, 32 bits, flottant
+2026-08-19T11:01:42.628944Z  INFO agent::transport::piste_audio: capture audio reconstruite restantes=2
+2026-08-19T11:01:42.629040Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=1
+2026-08-19T11:01:42.629051Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=10.8605473s
+2026-08-19T11:01:42.631114Z  INFO agent::transport::evenements: état ICE state=Completed écoulé=10.86261s
+2026-08-19T11:01:42.634353Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video
+2026-08-19T11:01:42.634396Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio
+2026-08-19T11:01:42.634822Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=2
+2026-08-19T11:01:42.640296Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=demo unites=1 cadence="0.1"
+2026-08-19T11:01:42.643367Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-19T11:01:42.643504Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-19T11:01:42.645246Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=3
+2026-08-19T11:01:42.666229Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=4
+2026-08-19T11:01:42.689434Z  INFO agent::demarrage: contrôle reçu session=demo Visibility { version: 3, visible: true, focused: true }
+2026-08-19T11:01:42.706716Z  WARN agent::windows_audio::fil: lecture audio échouée, nouvelle tentative erreur=faute injectée (AUDIO_FAUTE_LECTURE) consecutives=5
+2026-08-19T11:01:42.891466Z  INFO agent::demarrage: contrôle reçu session=demo Resize { version: 3, width: 780, height: 493 }
+2026-08-19T11:01:42.942844Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 nom_sortie=\\.\DISPLAY1 attachee=true
+2026-08-19T11:01:42.985516Z  INFO agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-19T11:01:42.985755Z  INFO agent::capture: duplication de sortie établie desktop_width=2400 desktop_height=1080
+2026-08-19T11:01:42.985804Z  INFO agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-19T11:01:43.066044Z  INFO agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=524293
+2026-08-19T11:01:43.066338Z  INFO agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-19T11:01:43.066864Z  INFO agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-19T11:01:43.069004Z  INFO agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-19T11:01:43.088704Z  INFO agent::windows_source::redimensionnement: chaîne d'encodage reconstruite self.width=764 self.height=484
+2026-08-19T11:01:52.649996Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=demo unites=782 cadence="78.1"
+2026-08-19T11:02:02.650313Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=demo unites=785 cadence="78.5"
+2026-08-19T11:02:12.630404Z  INFO agent::windows_audio::fil: compteurs audio actif=true rejetes=9 complements=0 echantillons_jetes=15360
+2026-08-19T11:02:12.659765Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=demo unites=780 cadence="77.9"
+2026-08-19T11:02:22.669458Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=demo unites=777 cadence="77.6"
+2026-08-19T11:02:32.680380Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=demo unites=769 cadence="76.8"
+2026-08-19T11:02:34.651137Z  WARN agent::transport::evenements: aucune estimation de bande passante reçue : l'adaptation reste indisponible et le débit demeure au plafond configuré
+2026-08-19T11:02:42.630622Z  INFO agent::windows_audio::fil: compteurs audio actif=true rejetes=9 complements=0 echantillons_jetes=16320
+2026-08-19T11:02:42.689454Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=demo unites=764 cadence="76.3"
+2026-08-19T11:02:52.689743Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=demo unites=782 cadence="78.2"
+2026-08-19T11:03:02.699953Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=demo unites=781 cadence="78.0"
+2026-08-19T11:03:12.633377Z  INFO agent::windows_audio::fil: compteurs audio actif=true rejetes=9 complements=0 echantillons_jetes=17280
+2026-08-19T11:03:12.709847Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=demo unites=766 cadence="76.5"
+2026-08-19T11:03:22.719575Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=demo unites=777 cadence="77.6"
+2026-08-19T11:03:32.719659Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=demo unites=774 cadence="77.4"
+2026-08-19T11:03:42.635336Z  INFO agent::windows_audio::fil: compteurs audio actif=true rejetes=9 complements=0 echantillons_jetes=17280
+2026-08-19T11:03:42.730204Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=demo unites=794 cadence="79.3"
+2026-08-19T11:03:44.030986Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:03:44.034041Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=2 backoff_ms=4
+2026-08-19T11:03:44.034197Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-19T11:03:44.039498Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=3 backoff_ms=8
+2026-08-19T11:03:44.047787Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=4 backoff_ms=16
+2026-08-19T11:03:44.064920Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=5 backoff_ms=32
+2026-08-19T11:03:44.098767Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=6 backoff_ms=64
+2026-08-19T11:03:45.033258Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:03:46.033863Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:03:47.034124Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:03:48.034096Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:03:49.031142Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:03:50.034124Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:03:51.034280Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:03:52.034380Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:03:52.734271Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=demo unites=783 cadence="78.3"
+2026-08-19T11:03:53.034297Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:03:54.034489Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:03:55.033541Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-19T11:03:56.032424Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2

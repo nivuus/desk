@@ -1,0 +1,39 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>controle spectre</title>
+<!--
+  Contrôle d'ATTEIGNABILITÉ de l'instrument spectral de `pilote-audio-d11.mjs`,
+  joué sur l'HÔTE, sans la VM et sans aucun agent.
+
+  Il existe parce que le bras ROUGE de la recette ① a rendu `-Infinity` sur
+  tous les bins, et que RIEN, dans le relevé, ne permettait alors de distinguer
+  « la session ne produit aucun son » de « mon AudioContext est resté
+  suspended ». Un contrôle qu'on n'a jamais vu rendre l'AUTRE valeur n'est pas
+  un contrôle.
+
+  Deux bras, la seule différence étant `gain` :
+    ?hz=440&gain=0.25 → l'instrument DOIT lire une dominante à ~440 Hz ;
+    ?hz=440&gain=0    → l'instrument DOIT retomber sur la sentinelle.
+
+  La piste est exposée par `<video>.srcObject`, ce qui exerce du même coup le
+  REPLI ajouté à `exprSpectre` (défaut n°2) : `window.__pc` n'existe pas ici.
+-->
+<body style="background:#111;color:#0f0;font:24px monospace">
+<video id="remote" autoplay muted playsinline></video>
+<div id="info">…</div>
+<script>
+const p = new URLSearchParams(location.search);
+const hz = Number(p.get('hz') || 440);
+const g = p.has('gain') ? Number(p.get('gain')) : 0.25;
+const ctx = new AudioContext();
+const osc = ctx.createOscillator();
+osc.frequency.value = hz;
+const gain = ctx.createGain();
+gain.gain.value = g;
+const dst = ctx.createMediaStreamDestination();
+osc.connect(gain).connect(dst);
+osc.start();
+ctx.resume().catch(() => {});
+document.getElementById('remote').srcObject = dst.stream;
+document.getElementById('info').textContent = hz + ' Hz gain ' + g + ' ' + ctx.state;
+</script>

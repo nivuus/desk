@@ -1,0 +1,142 @@
+{
+  "profil": 1,
+  "duree_s": 120,
+  "releves": [
+    {
+      "t_s": 30,
+      "sessionId": "46CD66C634653540671F7CED94148DD5",
+      "url": "chrome-extension://nkeimhogjdpnpccoofpliimaahmaaome/background.html",
+      "spectre": {
+        "erreur": "aucune RTCPeerConnection"
+      }
+    },
+    {
+      "t_s": 30,
+      "sessionId": "BE0F92F2E0D775CAB7A2FAEFBF5BB42D",
+      "url": "chrome://omnibox-popup.top-chrome/",
+      "spectre": {
+        "erreur": "aucune RTCPeerConnection"
+      }
+    },
+    {
+      "t_s": 30,
+      "sessionId": "D5B5B0B932A56613BB4B50884E876B6B",
+      "url": "chrome://newtab/",
+      "spectre": {
+        "erreur": "aucune RTCPeerConnection"
+      }
+    },
+    {
+      "t_s": 30,
+      "sessionId": "D9D68B7C44E3D74656CA1B9A964C8DCA",
+      "url": "chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html",
+      "spectre": {
+        "erreur": "aucune RTCPeerConnection"
+      }
+    },
+    {
+      "t_s": 30,
+      "sessionId": "1D9832AAE097B42560E5CC43ED4873FA",
+      "url": "chrome-extension://fignfifoniblkonapihmkfakmlgkbkcf/service_worker.js",
+      "spectre": {
+        "__erreur": "Error: {\"exceptionId\":2,\"text\":\"Uncaught (in promise) ReferenceError: window is not defined\",\"lineNumber\":2,\"columnNumber\":14,\"scriptId\":\"9\",\"stackTrace\":{\"callFrames\":[{\"functionName\":\"\",\"scriptId\":\""
+      }
+    },
+    {
+      "t_s": 30,
+      "sessionId": "E737DE2EAC3CEC64BBBE58FA8BD01FC5",
+      "url": "http://192.168.3.1:5173/?session=demo",
+      "spectre": {
+        "dominante_hz": 0,
+        "niveau_db": null,
+        "plancher_db": null,
+        "resolution_bin_hz": 5.38,
+        "sample_rate": 44100
+      }
+    },
+    {
+      "t_s": 30,
+      "sessionId": "4976F7F9E9A87A07821E242F8450C4CF",
+      "url": "chrome-extension://ghbmnnjooekpmoecnnnilnnbdlolhkhi/service_worker_bin_prod.js",
+      "spectre": {
+        "erreur": "aucune RTCPeerConnection"
+      }
+    },
+    {
+      "t_s": 30,
+      "sessionId": "8C8B12AF723CF69C4813D23D7750D346",
+      "url": "",
+      "spectre": {
+        "__erreur": "Error: {\"code\":-32001,\"message\":\"Session with given id not found.\"}"
+      }
+    },
+    {
+      "t_s": 105,
+      "sessionId": "46CD66C634653540671F7CED94148DD5",
+      "url": "chrome-extension://nkeimhogjdpnpccoofpliimaahmaaome/background.html",
+      "spectre": {
+        "erreur": "aucune RTCPeerConnection"
+      }
+    },
+    {
+      "t_s": 105,
+      "sessionId": "BE0F92F2E0D775CAB7A2FAEFBF5BB42D",
+      "url": "chrome://omnibox-popup.top-chrome/",
+      "spectre": {
+        "erreur": "aucune RTCPeerConnection"
+      }
+    },
+    {
+      "t_s": 105,
+      "sessionId": "D5B5B0B932A56613BB4B50884E876B6B",
+      "url": "chrome://newtab/",
+      "spectre": {
+        "erreur": "aucune RTCPeerConnection"
+      }
+    },
+    {
+      "t_s": 105,
+      "sessionId": "D9D68B7C44E3D74656CA1B9A964C8DCA",
+      "url": "chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html",
+      "spectre": {
+        "erreur": "aucune RTCPeerConnection"
+      }
+    },
+    {
+      "t_s": 105,
+      "sessionId": "1D9832AAE097B42560E5CC43ED4873FA",
+      "url": "chrome-extension://fignfifoniblkonapihmkfakmlgkbkcf/service_worker.js",
+      "spectre": {
+        "__erreur": "Error: {\"exceptionId\":3,\"text\":\"Uncaught (in promise) ReferenceError: window is not defined\",\"lineNumber\":2,\"columnNumber\":14,\"scriptId\":\"9\",\"stackTrace\":{\"callFrames\":[{\"functionName\":\"\",\"scriptId\":\""
+      }
+    },
+    {
+      "t_s": 105,
+      "sessionId": "E737DE2EAC3CEC64BBBE58FA8BD01FC5",
+      "url": "http://192.168.3.1:5173/?session=demo",
+      "spectre": {
+        "dominante_hz": 0,
+        "niveau_db": null,
+        "plancher_db": null,
+        "resolution_bin_hz": 5.38,
+        "sample_rate": 44100
+      }
+    },
+    {
+      "t_s": 105,
+      "sessionId": "4976F7F9E9A87A07821E242F8450C4CF",
+      "url": "chrome-extension://ghbmnnjooekpmoecnnnilnnbdlolhkhi/service_worker_bin_prod.js",
+      "spectre": {
+        "erreur": "aucune RTCPeerConnection"
+      }
+    },
+    {
+      "t_s": 105,
+      "sessionId": "8C8B12AF723CF69C4813D23D7750D346",
+      "url": "",
+      "spectre": {
+        "__erreur": "Error: {\"code\":-32001,\"message\":\"Session with given id not found.\"}"
+      }
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "profil": 9,
+  "duree_s": 12,
+  "urls": [
+    "file:///home/mallanic/Projects/Guacamole/docs/superpowers/plans/journaux-multifenetres-d11/instrument/controle-spectre-d11.html?session=avec-ton&hz=440&gain=0.25",
+    "file:///home/mallanic/Projects/Guacamole/docs/superpowers/plans/journaux-multifenetres-d11/instrument/controle-spectre-d11.html?session=muet&hz=440&gain=0"
+  ],
+  "cibles_hz": [
+    440,
+    660
+  ],
+  "releves": [
+    {
+      "t_s": 8,
+      "debut": "2026-08-19T10:57:25.658Z",
+      "fin": "2026-08-19T10:57:27.165Z",
+      "url": "file:///home/mallanic/Projects/Guacamole/docs/superpowers/plans/journaux-multifenetres-d11/instrument/controle-spectre-d11.html?session=avec-ton&hz=440&gain=0.25",
+      "spectre": {
+        "voie": "video.srcObject",
+        "etat_ctx": "running",
+        "dominante_hz": 441,
+        "niveau_db": -39.9,
+        "plancher_db": -210.1,
+        "niveaux": [
+          {
+            "f": 440,
+            "db": -39.9
+          },
+          {
+            "f": 660,
+            "db": -156.5
+          }
+        ],
+        "resolution_bin_hz": 5.38,
+        "sample_rate": 44100,
+        "piste_muted": false,
+        "piste_ready_state": "live",
+        "stats_audio": null
+      }
+    },
+    {
+      "t_s": 8,
+      "debut": "2026-08-19T10:57:25.660Z",
+      "fin": "2026-08-19T10:57:27.170Z",
+      "url": "file:///home/mallanic/Projects/Guacamole/docs/superpowers/plans/journaux-multifenetres-d11/instrument/controle-spectre-d11.html?session=muet&hz=440&gain=0",
+      "spectre": {
+        "voie": "video.srcObject",
+        "etat_ctx": "running",
+        "dominante_hz": 0,
+        "niveau_db": -1000,
+        "plancher_db": -1000,
+        "niveaux": [
+          {
+            "f": 440,
+            "db": -1000
+          },
+          {
+            "f": 660,
+            "db": -1000
+          }
+        ],
+        "resolution_bin_hz": 5.38,
+        "sample_rate": 44100,
+        "piste_muted": false,
+        "piste_ready_state": "live",
+        "stats_audio": null
+      }
+    }
+  ]
+}
