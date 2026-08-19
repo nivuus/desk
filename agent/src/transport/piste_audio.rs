@@ -12,6 +12,15 @@ use super::tick::Tick;
 use super::Session;
 use crate::audio::{AudioPacket, AudioSource};
 
+/// L'injection de fautes de reconstruction (variable de banc
+/// `AUDIO_FAUTE_RECONSTRUCTION`), extraite ici parce que son addition portait
+/// `piste_audio.rs` à 513 lignes — au-dessus du plafond de 500 du dépôt. La
+/// règle est sans exception : **extraction, jamais compression**.
+///
+/// Pas de frontière `#[cfg(windows)]` ici, donc la convention `#[path]` de
+/// `CLAUDE.md` ne s'applique pas : un `mod` ordinaire suffit.
+pub(in crate::transport) mod injection;
+
 /// Plafond d'attente quand une piste audio est négociée.
 ///
 /// Les paquets audio arrivent d'un fil de capture indépendant : cette boucle
@@ -308,7 +317,18 @@ impl Session {
         }
         self.reconstructions_restantes -= 1;
         self.prochaine_reconstruction = Some(maintenant + crate::audio::REPIT_RECONSTRUCTION);
-        match reconstructeur() {
+        // L'injection de faute de banc est interposée devant le
+        // reconstructeur — voir `injection`, qui porte le budget, sa raison
+        // d'être globale au processus, et le contrat de ce point d'appel.
+        //
+        // ⚠️ Le bras `Err` qui s'ensuit est CELUI DU LEG 6 (`{erreur:#}`) : la
+        // faute injectée emprunte le même `warn!`, et le journal de recette
+        // porte donc `erreur=faute injectée (AUDIO_FAUTE_RECONSTRUCTION)`.
+        // C'est le contrôle d'ATTEIGNABILITÉ de ce leg — si cette chaîne
+        // n'apparaît pas alors que l'injection est armée, c'est le format qui
+        // ne marche pas, pas la cause qui manque.
+        let tentative = injection::intercepter(|| reconstructeur());
+        match tentative {
             Ok(mut source) => {
                 tracing::info!(
                     restantes = self.reconstructions_restantes,

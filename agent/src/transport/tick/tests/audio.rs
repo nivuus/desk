@@ -1,6 +1,13 @@
 use super::*;
 use crate::transport::fixtures;
 
+/// Les tests de l'injection de fautes de reconstruction, et le verrou qui
+/// sérialise TOUT test exerçant ce chemin. Extraits ici parce que leur
+/// addition portait ce fichier à 597 lignes — au-dessus du plafond de 500 du
+/// dépôt. Même mécanique que `tick/tests.rs`, qui déclare déjà `mod audio;`.
+mod injection;
+use injection::verrou_injection;
+
 /// Remède à la réserve I1 de la revue de la tâche 9 (sous-bloc D9) : la
 /// branche a1sexies n'avait aucun test — exactement le risque que le
 /// commentaire d'`une_part_en_attente_est_appliquee_par_act_on_timeout`
@@ -11,6 +18,7 @@ use crate::transport::fixtures;
 /// `rattachement_survenu()` devient vraie → elle REPART.
 #[test]
 fn une_capture_audio_morte_est_signalee_une_fois_puis_de_nouveau_apres_un_rattachement() {
+    let _verrou = verrou_injection();
     let inner = fixtures::video_test_source();
     let signalements = std::sync::Arc::new(std::sync::Mutex::new(0u32));
     let rattachement = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -143,6 +151,7 @@ impl AudioSource for SourceVivante {
 /// fil mort ne relit jamais, et réélire la même session ne fait rien.
 #[test]
 fn une_capture_morte_est_reconstruite_avant_tout_signalement() {
+    let _verrou = verrou_injection();
     let mut session = session_d_essai();
     session.set_audio_source(Box::new(SourceMorte::new()));
     let essais = std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0));
@@ -163,6 +172,7 @@ fn une_capture_morte_est_reconstruite_avant_tout_signalement() {
 /// moitié de D9 qui fonctionnait.
 #[test]
 fn un_reconstructeur_qui_echoue_toujours_finit_par_signaler() {
+    let _verrou = verrou_injection();
     let mut session = session_d_essai();
     session.set_audio_source(Box::new(SourceMorte::new()));
     session.set_audio_reconstructeur(Box::new(|| anyhow::bail!("plus d'arbre de processus")));
@@ -179,6 +189,7 @@ fn un_reconstructeur_qui_echoue_toujours_finit_par_signaler() {
 /// ouverture WASAPI à chaque tour.
 #[test]
 fn le_repit_espace_les_tentatives() {
+    let _verrou = verrou_injection();
     let mut session = session_d_essai();
     session.set_audio_source(Box::new(SourceMorte::new()));
     let essais = std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0));
@@ -213,6 +224,7 @@ fn le_repit_espace_les_tentatives() {
 /// voir le legs n°4 de D10.
 #[test]
 fn sans_reconstructeur_on_signale_immediatement() {
+    let _verrou = verrou_injection();
     let mut session = session_d_essai();
     session.set_audio_source(Box::new(SourceMorte::new()));
     assert!(session.reconstruire_ou_signaler(std::time::Instant::now()));
@@ -230,6 +242,7 @@ fn sans_reconstructeur_on_signale_immediatement() {
 /// downcast sur `Box<dyn VideoSource>`.
 #[test]
 fn audio_vivant_n_est_annonce_qu_apres_un_paquet_reel() {
+    let _verrou = verrou_injection();
     let annonces = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let source = Box::new(SourceAvecAudioMort {
         inner: fixtures::video_test_source(),
@@ -292,6 +305,7 @@ fn audio_vivant_n_est_annonce_qu_apres_un_paquet_reel() {
 /// savoir que la chaîne est réellement refermée.
 #[test]
 fn une_reelection_reapprovisionne_le_budget_et_leve_le_verrou() {
+    let _verrou = verrou_injection();
     let mut session = session_d_essai();
     session.set_audio_source(Box::new(SourceMorte::new()));
     session.set_audio_reconstructeur(Box::new(|| anyhow::bail!("jamais")));
@@ -349,6 +363,7 @@ fn une_reelection_reapprovisionne_le_budget_et_leve_le_verrou() {
 /// no-op.
 #[test]
 fn une_session_porteuse_reconstruite_recoit_set_actif_true() {
+    let _verrou = verrou_injection();
     let mut session = session_d_essai();
     session.set_audio_source(Box::new(SourceMorte::new()));
     let actif_recu = std::sync::Arc::new(std::sync::Mutex::new(None));
@@ -381,6 +396,7 @@ fn une_session_porteuse_reconstruite_recoit_set_actif_true() {
 /// ce test le PROUVE plutôt que de le supposer.
 #[test]
 fn une_session_non_porteuse_reconstruite_reste_muette() {
+    let _verrou = verrou_injection();
     let mut session = session_d_essai();
     session.set_audio_source(Box::new(SourceMorte::new()));
     let actif_recu = std::sync::Arc::new(std::sync::Mutex::new(None));
@@ -424,6 +440,7 @@ fn une_session_non_porteuse_reconstruite_reste_muette() {
 /// montrer le silence.
 #[test]
 fn l_accesseur_public_rend_une_session_porteuse_et_sa_reconstruction_audible() {
+    let _verrou = verrou_injection();
     let mut session = session_d_essai();
     session.set_audio_source(Box::new(SourceMorte::new()));
     let actif_recu = std::sync::Arc::new(std::sync::Mutex::new(None));
