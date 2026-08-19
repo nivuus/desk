@@ -62,6 +62,16 @@ pub struct CompteursMicro {
     pub insertions: u64,
     pub famines: u64,
     pub plc: u64,
+    /// Dissimulations REFUSÉES parce que `PLAFOND_DISSIMULATION` était
+    /// atteint : autant de trames rendues en SILENCE au lieu d'être
+    /// extrapolées.
+    ///
+    /// ⚠️ **Il est disjoint de `plc`, et c'est tout son intérêt** : sans lui,
+    /// une recette ne pourrait pas distinguer « la dissimulation travaille »
+    /// de « le plafond a mordu et le puits se tait », et la correction ne
+    /// serait pas falsifiable. `plc` compte ce qui a été extrapolé,
+    /// `plc_plafonnees` ce qui ne l'a délibérément pas été.
+    pub plc_plafonnees: u64,
     pub fec: u64,
 }
 
@@ -274,6 +284,10 @@ pub struct LecteurMicro {
     /// peut en vouloir 441, 480 ou 1024. Le résidu est la pièce qui recolle
     /// deux découpages sans rapport.
     residu: VecDeque<f32>,
+    /// Ce qui reste à dissimuler avant qu'on ne se taise. Voir
+    /// `micro/dissimulation.rs` pour le défaut mesuré qui l'a rendu
+    /// nécessaire, et pour ce que libopus fait — et ne fait pas — de son côté.
+    budget: BudgetDissimulation,
 }
 
 impl LecteurMicro {
@@ -282,6 +296,7 @@ impl LecteurMicro {
             tampon: TamponGigue::new(CIBLE, PLAFOND),
             decodeur: OpusDecoder::new()?,
             residu: VecDeque::new(),
+            budget: BudgetDissimulation::new(PLAFOND_DISSIMULATION),
         })
     }
 
@@ -363,6 +378,16 @@ impl LecteurMicro {
                 if n == 0 {
                     return false;
                 }
+                // ⚠️ **LE PLAFOND.** Au-delà de `PLAFOND_DISSIMULATION`
+                // dissimulée d'affilée, on rend du SILENCE : libopus ne
+                // s'arrête jamais de lui-même et converge vers du bruit de
+                // confort qu'il maintient sans terme — mesuré comme un bourdon
+                // continu sur 60 s de silence du navigateur. `false` fait
+                // compléter au silence par `remplir`, qui sait déjà le faire.
+                if !self.budget.consommer(duree_de(n)) {
+                    self.tampon.compteurs.plc_plafonnees += 1;
+                    return false;
+                }
                 let mut pcm = vec![0i16; n * CHANNELS];
                 let Ok(rendus) = self.decodeur.dissimuler(&mut pcm) else {
                     return false;
@@ -382,6 +407,13 @@ impl LecteurMicro {
         let Ok(rendus) = rendus else {
             return false;
         };
+        // Du vrai audio est revenu — reconstruit par le FEC ou décodé tel
+        // quel : le budget de dissimulation repart entier. Sans cette ligne,
+        // un plafond atteint une fois condamnerait la session au silence
+        // définitif.
+        if rendus > 0 {
+            self.budget.trame_reelle();
+        }
         self.pousser(&pcm[..rendus * CHANNELS]);
         rendus > 0
     }
@@ -392,76 +424,25 @@ impl LecteurMicro {
     }
 }
 
-/// Fraction de la crête sous laquelle un échantillon ne compte pas comme un
-/// passage : la bande morte.
+/// La fréquence dominante d'un signal périodique, par passages par zéro.
 ///
-/// **Sans elle, l'instrument prendrait du bruit pour un ton.** Le bruit de
-/// quantification autour de zéro multiplie les changements de signe, et c'est
-/// exactement ce que sanctionne
-/// `le_silence_et_le_bruit_ne_rendent_pas_une_frequence_credible`.
-const BANDE_MORTE: f32 = 0.25;
+/// ⚠️ **Extraite vers `micro/frequence.rs`** au titre de la règle des 500
+/// lignes, et ré-exportée ici pour qu'aucun site d'appel ne bouge : elle reste
+/// `crate::micro::frequence_par_passages_a_zero` pour `demarrage/micro.rs`
+/// comme pour les tests.
+pub use frequence::frequence_par_passages_a_zero;
 
-/// Amplitude crête sous laquelle le signal n'a pas de fréquence du tout.
-const CRETE_MINIMALE: f32 = 1.0 / 512.0;
+mod frequence;
 
-/// Fréquence dominante d'un signal supposé PÉRIODIQUE, par passages par zéro.
-///
-/// ⚠️ **`pcm` est un signal MONO à `hz` échantillons par seconde.** Un tampon
-/// stéréo entrelacé doit être désentrelacé par l'appelant (`step_by(2)`).
-///
-/// ❌ **CETTE DOC A PORTÉ UN FAUX, et c'est la MESURE qui l'a réfuté** (tâche 13,
-/// chantier E). Elle disait que l'analyser tel quel « doublerait la cadence
-/// apparente ». **C'est l'inverse : la fréquence est DIVISÉE PAR DEUX** —
-/// relevé **219,5 Hz pour une tonalité de 440 Hz**, canaux identiques, en
-/// retirant le `step_by(2)` de `demarrage::micro::Fenetre` et en relançant son
-/// test. Le mécanisme est dans le calcul ci-dessous : `duree` vaut
-/// `pcm.len() / hz`, et un tampon entrelacé porte deux fois plus de valeurs que
-/// de trames — la durée calculée double, quand le nombre de passages par zéro
-/// ne bouge pas (dupliquer chaque échantillon n'ajoute aucun changement de
-/// signe). L'obligation de désentrelacer est INCHANGÉE ; seul le sens de
-/// l'erreur qu'on commet en l'oubliant était faux, et un lecteur qui aurait
-/// cherché un « x2 » dans un journal n'aurait rien trouvé. *(Le plan décrivait l'implémentation comme opérant « sur le canal
-/// gauche » tout en écrivant ses tests sur un tampon mono : les deux ne peuvent
-/// pas être vrais ensemble, et c'est la sémantique du test qui a été retenue,
-/// parce que c'est elle qui rend la fonction utilisable des deux façons.)*
-///
-/// Rend `None` quand le signal est trop faible pour qu'un passage ait un sens :
-/// **un signal trop faible n'a pas de fréquence**, et rendre un nombre pour le
-/// silence ferait de cet instrument le compteur d'octets qu'il existe pour
-/// remplacer (doctrine du dépôt, payée en D7).
-pub fn frequence_par_passages_a_zero(pcm: &[f32], hz: u32) -> Option<f32> {
-    if pcm.len() < 2 || hz == 0 {
-        return None;
-    }
-    let crete = pcm.iter().fold(0.0f32, |m, e| m.max(e.abs()));
-    if crete < CRETE_MINIMALE {
-        return None;
-    }
-    let seuil = crete * BANDE_MORTE;
+/// Le plafond de dissimulation, et la règle pure qui le tient.
+pub use dissimulation::{BudgetDissimulation, PLAFOND_DISSIMULATION};
 
-    let mut passages = 0u64;
-    let mut signe: Option<bool> = None;
-    for &e in pcm {
-        if e.abs() <= seuil {
-            continue;
-        }
-        let positif = e > 0.0;
-        match signe {
-            Some(precedent) if precedent != positif => {
-                passages += 1;
-                signe = Some(positif);
-            }
-            None => signe = Some(positif),
-            _ => {}
-        }
-    }
-    if passages == 0 {
-        return None;
-    }
-    let duree = pcm.len() as f32 / hz as f32;
-    Some(passages as f32 / (2.0 * duree))
-}
+mod dissimulation;
 
 #[cfg(test)]
 #[path = "micro/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "micro/tests_lecteur.rs"]
+mod tests_lecteur;

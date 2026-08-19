@@ -251,6 +251,16 @@ fn consommer(lecteur: Arc<Mutex<LecteurMicro>>, session_id: String) {
             sauts = d(compteurs.sauts, precedents.sauts),
             insertions = d(compteurs.insertions, precedents.insertions),
             plc = d(compteurs.plc, precedents.plc),
+            // ⚠️ **`plc` et `plc_plafonnees` sont CÔTE À CÔTE, et c'est le fond
+            // de cette paire** : les deux naissent d'une trame manquante, et
+            // sans le second on ne peut pas distinguer « la dissimulation
+            // travaille » de « le plafond a mordu et le puits se tait ». C'est
+            // ce qui rend le correctif du plafond FALSIFIABLE — la recette E1
+            // relevait `plc = 50/s` pendant soixante secondes de silence, et
+            // ce qu'on doit y lire désormais est `plc = 0` avec
+            // `plc_plafonnees = 50/s`, `crete = 0.000` et `frequence_hz =
+            // aucune`. Voir `micro/dissimulation.rs`.
+            plc_plafonnees = d(compteurs.plc_plafonnees, precedents.plc_plafonnees),
             fec = d(compteurs.fec, precedents.fec),
             famines = d(compteurs.famines, precedents.famines),
             hors_ordre = d(compteurs.hors_ordre, precedents.hors_ordre),
