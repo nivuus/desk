@@ -2,7 +2,7 @@
    Le socle de tokens est lié à part, depuis `index.html` — voir l'encadré
    « POURQUOI CE FICHIER N'IMPORTE PAS LE SOCLE » plus bas.
 
-   ⚠️ CE FICHIER NE DÉCLARE PLUS AUCUNE COULEUR. Les treize couleurs par thème,
+   ⚠️ CE FICHIER NE DÉCLARE PLUS AUCUNE COULEUR. Les quatorze couleurs par thème,
    les six voiles hors thème et toutes les échelles vivent dans
    `design/tokens.css`, qui en est la source unique. Le contrôle
    `client/outils/couleurs-litterales.mjs` (§7.2) refuse toute valeur littérale

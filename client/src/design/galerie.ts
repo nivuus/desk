@@ -50,7 +50,7 @@ const dans = (noms: string[]) => NOMS.filter((n) => noms.includes(n));
 const COULEURS = [
     '--fond-0', '--fond-1', '--fond-2', '--bord', '--bord-fort',
     '--texte-fort', '--texte', '--texte-faible',
-    '--accent', '--sur-accent', '--succes', '--alerte', '--danger',
+    '--accent', '--accent-survol', '--sur-accent', '--succes', '--alerte', '--danger',
 ];
 
 function vide(id: string): HTMLElement {
