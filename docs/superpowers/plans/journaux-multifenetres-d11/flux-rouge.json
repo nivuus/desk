@@ -1,0 +1,112 @@
+{
+ "etiquette": "flux-rouge",
+ "mires": [
+  "3",
+  "3"
+ ],
+ "tours": [
+  {
+   "tour": 0,
+   "etalement_ms": 9,
+   "releve": [
+    {
+     "sessionId": "9C6B9706",
+     "url": "http://192.168.3.1:5173/?session=w-2",
+     "marqueur": "0-15-5",
+     "rgb": "00ff5f",
+     "source": "1280x720"
+    },
+    {
+     "sessionId": "CEEF20AE",
+     "url": "http://192.168.3.1:5173/?session=w-4",
+     "marqueur": "0-15-5",
+     "rgb": "00ff5f",
+     "source": "1280x720"
+    }
+   ],
+   "collisions": [
+    [
+     "0-15-5",
+     [
+      "9C6B9706",
+      "CEEF20AE"
+     ]
+    ]
+   ],
+   "pages_mesurees": 2
+  },
+  {
+   "tour": 1,
+   "etalement_ms": 6,
+   "releve": [
+    {
+     "sessionId": "9C6B9706",
+     "url": "http://192.168.3.1:5173/?session=w-2",
+     "marqueur": "0-15-5",
+     "rgb": "00ff5f",
+     "source": "1280x720"
+    },
+    {
+     "sessionId": "CEEF20AE",
+     "url": "http://192.168.3.1:5173/?session=w-4",
+     "marqueur": "0-15-5",
+     "rgb": "00ff5f",
+     "source": "1280x720"
+    }
+   ],
+   "collisions": [
+    [
+     "0-15-5",
+     [
+      "9C6B9706",
+      "CEEF20AE"
+     ]
+    ]
+   ],
+   "pages_mesurees": 2
+  },
+  {
+   "tour": 2,
+   "etalement_ms": 13,
+   "releve": [
+    {
+     "sessionId": "9C6B9706",
+     "url": "http://192.168.3.1:5173/?session=w-2",
+     "marqueur": "0-15-5",
+     "rgb": "00ff5f",
+     "source": "1280x720"
+    },
+    {
+     "sessionId": "CEEF20AE",
+     "url": "http://192.168.3.1:5173/?session=w-4",
+     "marqueur": "0-15-5",
+     "rgb": "00ff5f",
+     "source": "1280x720"
+    }
+   ],
+   "collisions": [
+    [
+     "0-15-5",
+     [
+      "9C6B9706",
+      "CEEF20AE"
+     ]
+    ]
+   ],
+   "pages_mesurees": 2
+  }
+ ],
+ "virsh_debut": "en cours d’exécution",
+ "loadavg_debut": "4.92 4.59 4.75 4/2871 395069",
+ "preparation": "PREP\r\nagent=0\r\nchrome=0\r\nmire=True",
+ "marqueurs_journal": {
+  "attachee_capteur": 2,
+  "enfant_lance": 2,
+  "introuvable_topologie": 0,
+  "sortie_creee": 2,
+  "cloture": 0,
+  "erreurs": 0
+ },
+ "loadavg_fin": "5.06 4.54 4.71 1/3070 402869",
+ "virsh_fin": "en cours d’exécution"
+}

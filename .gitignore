@@ -17,3 +17,7 @@ plateforme/dist/
 # Ils ne doivent jamais atterrir dans l'historique git via un `git add -A`.
 index.js
 docker-compose.yml
+
+# local Claude Code cache
+.claude/
+core.*
