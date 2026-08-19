@@ -53,7 +53,7 @@ const EXCLUS = new Map([
 ]);
 
 // ═══════════════════════════════════════════════════════════════════════════
-// LA LISTE D'ATTENTE — 16 tokens déclarés que le produit n'appelle pas ENCORE.
+// LA LISTE D'ATTENTE — 12 tokens déclarés que le produit n'appelle pas ENCORE.
 //
 // ⚠️ CE NOMBRE EST TENU À JOUR PAR LA TÂCHE QUI LE REND FAUX, jamais par une
 // tâche de ménage plus tard : elle en a 28 à la fin de S1, et chaque famille
@@ -98,20 +98,16 @@ const EN_ATTENTE_D_APPELANT = new Map([
     ['--alerte', 'S3 — le bandeau d’avertissement'],
     // ── Échelle typographique — S2 ────────────────────────────────────────
     ['--t-xs', 'S2 — la mention légale et les étiquettes'],
-    ['--t-xl', 'S2 — les titres de carte'],
     ['--t-2xl', 'S3 — le titre de l’écran de connexion'],
     ['--t-3xl', 'S3 — le titre du hub'],
-    // ── Interlignes — S2 ──────────────────────────────────────────────────
-    ['--lh-serre', 'S2 — les titres, à partir de --t-xl'],
+    // ── Interlignes ───────────────────────────────────────────────────────
     ['--lh-large', 'S3 — les paragraphes longs'],
     // ── Espacement — S2 et S3 ─────────────────────────────────────────────
     ['--e-1', 'S2 — l’écart interne d’une étiquette'],
-    ['--e-4', 'S2 — le rembourrage d’une carte'],
     ['--e-5', 'S3 — la gouttière entre cartes'],
     ['--e-6', 'S3 — la marge des sections'],
     ['--e-7', 'S3 — la marge de tête des surfaces'],
     // ── Rayons — S2 ───────────────────────────────────────────────────────
-    ['--r-3', 'S2 — les cartes'],
     ['--r-plein', 'S2 — les pastilles et les boutons ronds'],
     // ── Le cas particulier, et il est nommé ───────────────────────────────
     // 🔴 `--police-mono` N'A QU'UN SEUL APPELANT PRÉVU, `#stats`, et la spec

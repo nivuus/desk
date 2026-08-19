@@ -1,0 +1,44 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   SURFACE — la carte, et le séparateur.
+
+   🔴 LE TRAIT DE LA CARTE EST `--bord`, ET C'EST UNE DÉCISION, PAS UN DÉFAUT
+   DE CHOIX. Une carte INERTE est un conteneur décoratif, que WCAG 1.4.11
+   exempte explicitement ; `--bord` rend 1,45 en sombre et 1,40 en clair sur
+   `--fond-0`, et il est hors des 52 paires du §7.1 pour cette raison même.
+
+   ⚠️ UNE CARTE CLIQUABLE, ELLE, PORTE `--bord-fort` : son contour devient
+   alors le contour d'un contrôle, et il est mesuré au seuil 3. S2 NE LIVRE PAS
+   DE CARTE CLIQUABLE — c'est S3 qui en aura besoin pour la liste de fenêtres
+   de la page-shell, et c'est à lui de poser `--bord-fort`. ⚠️ AUCUNE COMMANDE
+   NE LE VÉRIFIERA : le §4.5 le déclare règle de revue, et le §8 la range parmi
+   les jugements humains.
+
+   ⚠️ LE SÉPARATEUR N'EST PAS UN `<hr>` : c'est une classe, comme tout ici. Un
+   sélecteur d'élément nu changerait l'apparence de surfaces que S2 s'interdit
+   de toucher — voir la règle ① de l'en-tête de `primitives.css`.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.carte {
+    border: var(--trait) solid var(--bord);
+    border-radius: var(--r-3);
+    padding: var(--e-4);
+    background: var(--fond-1);
+    color: var(--texte);
+}
+
+.carte__titre {
+    margin: 0;
+    color: var(--texte-fort);
+    font-size: var(--t-xl);
+    line-height: var(--lh-serre);
+}
+
+.carte__corps {
+    color: var(--texte);
+}
+
+.separateur {
+    border: 0;
+    border-block-start: var(--trait) solid var(--bord);
+    margin-block: var(--e-4);
+}

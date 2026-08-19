@@ -1,0 +1,103 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   BOUTON — trois variantes, quatre états.
+
+   ⚠️ L'ÉTAT ACTIF (enfoncé) N'A PAS DE TOKEN, et c'est un arbitrage assumé : il
+   se dit, pour les trois variantes, par le RETOUR À LA VALEUR DE REPOS — le
+   survol se retire sous le doigt. Il faut l'écrire, parce que `:active`
+   implique `:hover` : sans ces trois règles, un bouton enfoncé garderait
+   simplement son apparence de survol et l'appui ne se verrait pas. Que ce
+   retour soit LISIBLE est un jugement humain, pas une mesure : aucune commande
+   ne le dira, et il rejoint les jugements du §8.
+
+   ⚠️ LE TRAIT DU BOUTON SECONDAIRE EST `--bord-fort`, PAS `--bord`. Il porte
+   l'information « ceci est un contrôle », et le §4.5 réserve `--bord` aux
+   séparateurs PUREMENT décoratifs, que WCAG 1.4.11 exempte. `--bord-fort` est
+   mesuré sur les trois fonds au seuil 3 par le contrôle §7.1 ; `--bord` ne
+   l'est pas, délibérément. ⚠️ AUCUNE COMMANDE NE VÉRIFIE CE CHOIX — c'est la
+   règle de revue que le §8 nomme. Le secondaire DÉSACTIVÉ retombe sur `--bord`
+   parce qu'il a cessé d'être un contrôle.
+
+   ⚠️ `:not(:disabled)` PLUTÔT QUE `:enabled` sur le survol et l'appui :
+   `:enabled` ne s'applique qu'aux éléments de formulaire, et une ancre portant
+   `.bouton` ne le satisferait jamais. Le jour où S3 posera un lien en bouton,
+   la règle vaudra sans être réécrite.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.bouton {
+    display: inline-block;
+    border: var(--trait) solid transparent;
+    border-radius: var(--r-1);
+    padding: var(--e-2) var(--e-3);
+    font: inherit;
+    font-size: var(--t-m);
+    line-height: var(--lh-normal);
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+        background var(--duree-1),
+        border-color var(--duree-1),
+        color var(--duree-1);
+}
+
+.bouton:disabled {
+    cursor: not-allowed;
+}
+
+/* ── Principal — l'action que la surface propose, et il n'y en a qu'une ──── */
+.bouton--principal {
+    background: var(--accent);
+    color: var(--sur-accent);
+}
+
+.bouton--principal:hover:not(:disabled) {
+    background: var(--accent-survol);
+}
+
+.bouton--principal:active:not(:disabled) {
+    background: var(--accent);
+}
+
+.bouton--principal:disabled {
+    background: var(--fond-2);
+    color: var(--texte-faible);
+}
+
+/* ── Secondaire — une action de même rang, sans la revendiquer ──────────── */
+.bouton--secondaire {
+    border-color: var(--bord-fort);
+    background: var(--fond-1);
+    color: var(--texte-fort);
+}
+
+.bouton--secondaire:hover:not(:disabled) {
+    background: var(--fond-2);
+}
+
+.bouton--secondaire:active:not(:disabled) {
+    background: var(--fond-1);
+}
+
+.bouton--secondaire:disabled {
+    border-color: var(--bord);
+    background: var(--fond-1);
+    color: var(--texte-faible);
+}
+
+/* ── Discret — une action de repli, qui ne pèse rien au repos ───────────── */
+.bouton--discret {
+    background: transparent;
+    color: var(--texte);
+}
+
+.bouton--discret:hover:not(:disabled) {
+    background: var(--fond-1);
+}
+
+.bouton--discret:active:not(:disabled) {
+    background: transparent;
+}
+
+.bouton--discret:disabled {
+    color: var(--texte-faible);
+}

@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import primitivesCss from './primitives.css?raw';
+import boutonCss from './primitives/bouton.css?raw';
+import champCss from './primitives/champ.css?raw';
+import surfaceCss from './primitives/surface.css?raw';
+
+/**
+ * 🔴 LES GARDES LISENT LES FAMILLES, PAS `primitives.css`, qui n'est plus
+ * qu'une liste d'`@import` depuis l'extraction de T4. Le lire seul ferait
+ * mesurer ZÉRO règle aux quatre gardes d'absence — c'est G5 qui l'a attrapé,
+ * ROUGE, à l'extraction même.
+ *
+ * ⚠️ TOUTE FAMILLE NEUVE S'AJOUTE ICI **ET** DANS `primitives.css` : G5 compare
+ * les deux listes, si bien qu'une cinquième famille importée sans être lue ici
+ * — donc hors de portée de G1 à G4 — fait tomber le garde.
+ */
+const FAMILLES = new Map([
+    ['./primitives/bouton.css', boutonCss],
+    ['./primitives/champ.css', champCss],
+    ['./primitives/surface.css', surfaceCss],
+]);
 
 /**
  * LES GARDES DE FORME DES PRIMITIVES — sous-projet ⑥, sous-bloc S2.
@@ -71,7 +90,7 @@ function declarationsDe(css: string): Declaration[] {
     return sortie;
 }
 
-const CSS = sansCommentaires(primitivesCss);
+const CSS = sansCommentaires([...FAMILLES.values()].join('\n'));
 const SELECTEURS = preludes(CSS).filter((p) => !p.startsWith('@'));
 const DECLARATIONS = declarationsDe(CSS);
 
@@ -170,6 +189,13 @@ describe('primitives.css — les gardes de forme', () => {
         expect(famille('bouton'), 'la famille .bouton est absente de primitives.css').not.toEqual(
             [],
         );
+        // 🔴 ET QUE CE FICHIER LISE BIEN TOUT CE QUE `primitives.css` IMPORTE :
+        // une famille importée mais absente de `FAMILLES` échapperait à G1, G2,
+        // G3 et G4 sans qu'aucune commande ne le dise.
+        const importees = [...primitivesCss.matchAll(/@import\s+'([^']+)'/g)].map((m) => m[1]);
+        expect(importees.sort(), 'les familles importées et celles que ce test lit divergent').toEqual(
+            [...FAMILLES.keys()].sort(),
+        );
     });
 
     it('G6 — la famille CHAMP déclare ses états et ses parties', () => {
@@ -185,5 +211,13 @@ describe('primitives.css — les gardes de forme', () => {
             ]),
             'états ou parties absents de la famille champ',
         ).toEqual([]);
+    });
+
+    it('G6 — la famille SURFACE déclare ses parties, et le séparateur', () => {
+        expect(
+            etatsManquants('carte', ['.carte__titre', '.carte__corps']),
+            'parties absentes de la famille carte',
+        ).toEqual([]);
+        expect(famille('separateur'), 'le séparateur est absent de primitives').not.toEqual([]);
     });
 });

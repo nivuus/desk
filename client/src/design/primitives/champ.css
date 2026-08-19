@@ -1,0 +1,75 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHAMP — l'enveloppe, l'étiquette, la saisie, l'aide, l'erreur.
+
+   ⚠️ `.champ--erreur` PORTE L'ÉTAT, `.champ__erreur` PORTE LE MESSAGE. Le
+   tiret double est le modificateur, le souligné double l'élément : une
+   confusion entre les deux produit une règle qui ne s'applique JAMAIS, et
+   aucun des sept contrôles ne verrait une règle morte. Le dépôt a déjà payé
+   exactement cela sous D9, sur un `~` qui ne pouvait pas s'appliquer.
+
+   ⚠️ L'ANNEAU DE FOCUS N'EST PAS DÉCLARÉ ICI, ET CE N'EST PAS UN OUBLI :
+   `design/base.css` le pose globalement sur `:focus-visible`. Une primitive
+   qui le redéclarerait le ferait diverger en silence le jour où le token
+   `--trait-focus` bougerait.
+
+   ⚠️ LE TRAIT AU REPOS EST `--bord-fort` : le contour d'un champ porte
+   l'information « ceci est un contrôle », et il est mesuré au seuil 3 par le
+   §7.1. En ERREUR il devient `--danger`, qui est mesuré au seuil 4,5 comme
+   encre sur les trois fonds — jamais comme fond, voir la famille message.
+
+   ⚠️ L'ÉCART INTERNE EST `--e-2` ET NON `--e-1` : `--e-1` est encore en liste
+   d'attente sous l'annotation « l'écart interne d'une étiquette », c'est-à-dire
+   d'une famille que la spec §6 ne confie PAS à S2. Le consommer ici pour vider
+   une ligne de liste serait satisfaire un contrôle en vidant l'autre.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.champ {
+    display: grid;
+    gap: var(--e-2);
+}
+
+.champ__etiquette {
+    color: var(--texte);
+    font-size: var(--t-l);
+}
+
+.champ__saisie {
+    border: var(--trait) solid var(--bord-fort);
+    border-radius: var(--r-1);
+    padding: var(--e-2) var(--e-3);
+    background: var(--fond-1);
+    color: var(--texte-fort);
+    font: inherit;
+    font-size: var(--t-m);
+    transition:
+        background var(--duree-1),
+        border-color var(--duree-1);
+}
+
+.champ__saisie::placeholder {
+    color: var(--texte-faible);
+}
+
+.champ__saisie:hover:not(:disabled) {
+    background: var(--fond-2);
+}
+
+.champ__saisie:disabled {
+    background: var(--fond-1);
+    color: var(--texte-faible);
+    cursor: not-allowed;
+}
+
+.champ__aide {
+    color: var(--texte-faible);
+    font-size: var(--t-s);
+}
+
+.champ__erreur {
+    color: var(--danger);
+    font-size: var(--t-s);
+}
+
+.champ--erreur .champ__saisie {
+    border-color: var(--danger);
+}
