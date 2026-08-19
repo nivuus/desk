@@ -1,5 +1,8 @@
-// Point d'entrée du service : une seule lecture d'environnement, un serveur,
-// un arrêt propre.
+// Point d'entrée du service : une seule lecture d'environnement, la base
+// d'abord, le port ensuite, un arrêt propre.
+//
+// La séquence elle-même vit dans `demarrage.ts`, qui est testable ; ce fichier
+// n'est que le branchement sur `process.env` et sur les signaux.
 //
 // 🔴 COUPLAGE NOMMÉ, à ne pas casser par inadvertance : la ligne d'annonce
 // ci-dessous doit contenir la sous-chaîne `le port <n>`.
@@ -10,13 +13,13 @@
 // plutôt que subi, et le test le vérifie de lui-même en échouant.
 
 import { lireConfig } from './config';
-import { demarrerServeur } from './http/serveur';
+import { demarrer } from './demarrage';
 
 const config = lireConfig(process.env);
-const service = await demarrerServeur(config);
+const service = await demarrer(config);
 console.log(`plateforme à l'écoute sur ${config.hote}, le port ${service.port}`);
 
 process.on('SIGINT', async () => {
-    await service.close();
+    await service.arreter();
     process.exit(0);
 });

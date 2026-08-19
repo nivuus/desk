@@ -37,7 +37,20 @@ function startRealServer(): Promise<{ child: ChildProcessWithoutNullStreams; por
     return new Promise((resolve, reject) => {
         const proc = spawn(tsxBin, [path.join(signalingRoot, 'src', 'index.ts')], {
             cwd: signalingRoot,
-            env: { ...process.env, PLATEFORME_HOTE: '127.0.0.1', PLATEFORME_PORT: '0' },
+            // `PLATEFORME_BASE` est FIXÉ, et n'hérite pas de l'environnement :
+            // ce fichier éprouve la résilience du RELAIS, jamais le choix du
+            // moteur. Sans ce garde, `npm run test:postgres` transmettrait
+            // `PLATEFORME_BASE=postgres` à l'enfant sans lui transmettre
+            // l'URL (que le harnais tient en dur), l'enfant retomberait sur
+            // `:memory:` que `pg` prend pour un hôte, et mourrait sur
+            // ECONNREFUSED — le service ayant RAISON de refuser de démarrer.
+            env: {
+                ...process.env,
+                PLATEFORME_HOTE: '127.0.0.1',
+                PLATEFORME_PORT: '0',
+                PLATEFORME_BASE: 'sqlite',
+                PLATEFORME_BASE_URL: ':memory:',
+            },
         });
 
         let output = '';
