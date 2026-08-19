@@ -1,0 +1,24 @@
+Sous-bloc F0 — état ROUGE de ProjFS sur la VM Windows, AVANT activation.
+
+⚠️ PROVENANCE, dite plutôt que sous-entendue : ce relevé a été pris par
+l'ORCHESTRATEUR le 19 août 2026, avec l'accord explicite du propriétaire du
+dépôt, avant l'activation. L'agent d'implémentation des tâches 1 à 11 ne l'a PAS
+exécuté lui-même — il ne pouvait pas : l'activation avait déjà eu lieu quand il
+a pris la main, et rejouer ce relevé aurait rendu le vert, pas le rouge.
+Il est versé ici tel qu'il a été transmis, et c'est la seule pièce du sous-bloc
+qui ne soit pas de première main. Le vert de `f0-apres.txt`, lui, a été
+réexécuté par l'agent.
+
+    FeatureName : Client-ProjFS   State : Disabled   RestartRequired : Possible
+    %SystemRoot%\system32\ProjectedFSLib.dll     : False
+    %SystemRoot%\system32\drivers\PrjFlt.sys     : False
+
+C'est ce relevé, et lui seul, qui rend le critère de F0 falsifiable : sans lui,
+le vert d'après ne prouverait rien. Les deux `False` sont le rouge authentique
+et daté — la fonctionnalité était absente du disque, pas seulement désactivée
+au catalogue.
+
+⚠️ `RestartRequired : Possible` est ce que le CATALOGUE annonce avant
+activation, pas ce que l'activation a exigé. L'activation a rendu
+`RestartNeeded : False` (voir `f0-activation.txt`) : aucun redémarrage n'a été
+nécessaire, et aucun n'a eu lieu.

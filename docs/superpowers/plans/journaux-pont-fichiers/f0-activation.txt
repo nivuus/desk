@@ -1,0 +1,24 @@
+Sous-bloc F0 — l'activation elle-même.
+
+⚠️ PROVENANCE : geste conduit par l'ORCHESTRATEUR le 19 août 2026, avec l'accord
+explicite du propriétaire du dépôt, la tâche 1 du plan le réservant nommément
+(« Aucun agent d'implémentation ne l'exécute de sa propre initiative »).
+
+Commande employée :
+
+    Enable-WindowsOptionalFeature -Online -FeatureName Client-ProjFS -NoRestart -All
+
+Retour :
+
+    RestartNeeded : False
+
+⚠️ Le plan (tâche 1, Step 3) prescrivait la même commande SANS `-All`. Le `-All`
+a été employé : il installe aussi les fonctionnalités parentes dont dépend
+`Client-ProjFS`. La divergence est déclarée plutôt que tue ; le critère de
+réception, lui, ne porte pas sur la commande mais sur l'état obtenu, et cet état
+est relevé dans `f0-apres.txt`.
+
+⚠️ `Install-WindowsFeature Projected-File-System` n'a PAS été employé, et ne doit
+pas l'être : sur cette machine le nom vit au catalogue des fonctionnalités
+facultatives et non au gestionnaire de rôles — un tel script échouerait en
+silence (spec §2).
