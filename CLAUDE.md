@@ -815,6 +815,14 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > situation que le relevé de D11 a payée sur `verify-webrtc.mjs`. **Le
 > remesurer avant de s'y fier.**
 >
+> ✅ **RÉSERVE LEVÉE PAR LA MESURE, à la clôture de P3 (19 août 2026) :
+> `proto/src/control.rs` vaut TOUJOURS 470** (`wc -l`, après le dernier commit
+> de P3). P3 n'y a pas touché, et **c'était une décision et non un hasard** —
+> sa divergence E14 relève ces 470 lignes et en tire que le canal `/agent`
+> doit vivre dans un fichier NEUF (`proto/src/plateforme.rs`) plutôt que
+> d'être une variante de plus d'`AgentControl`. **La marge de 30 est
+> intacte.**
+>
 > **Fichiers que le chantier E a fait bouger, tous mesurés par la commande :**
 >
 > | Fichier | Lignes | Remarque |
@@ -7295,6 +7303,10 @@ heures**. Elle se clôt quand la table des sessions **se vide**.
 rencontrer de client **ne laisse aucune trace**. C'est une décision, pas un
 oubli ; elle se rouvrira quand on voudra observer les agents présents — sujet de
 P3 (`vu_a`), pas de P1.
+✅ **P3 A EU LIEU SANS LA ROUVRIR** (19 août 2026) : observer les agents ne
+passe pas par la trace de session mais par `agent_enrole.vu_a`, que le
+battement du canal `/agent` avance. **Le pronostic était juste sur le BESOIN et
+faux sur le LIEU** ; `signaling/trace.ts` n'a rien eu à changer de ce côté.
 
 🔴 **L'écriture ne doit JAMAIS pouvoir tuer une session.** Elle est lancée **sans
 être attendue**, avec un `.catch` qui journalise et n'interrompt rien : une
@@ -7354,6 +7366,15 @@ deux locales, et la sonde exigerait une machine hors du réseau.
   > **toujours** servi sans identité (mesuré, 1 exécution,
   > `journaux-plateforme-p2/e2-role-agent-toujours-anonyme.log`) : c'est **P3**.
   > Le critère ④ de P1 reste donc ce qui borne cette moitié-là.
+  >
+  > ✅ **RÉ-ANNOTÉ à la revue transverse de P3 (19 août 2026) : cette
+  > moitié-là est FERMÉE**, mesurée **2 exécutions**
+  > (`journaux-plateforme-p3/e2-ferme-{1,2}.log`). L'énoncé de P1 ci-dessus
+  > n'est donc plus vrai **d'aucune moitié**, et il reste un relevé daté que
+  > l'on n'écrase pas. ⚠️ **Ce que le critère ④ de P1 borne encore** : le
+  > déni de service en une trame, qui court AVANT toute garde
+  > (`signaling/resilience.test.ts`) et qu'aucune authentification ne peut
+  > fermer. Le frein est P5 ③.
 
 - **La scalabilité horizontale** : la persistance ne la procure pas. Un WebSocket
   vit dans un processus et un seul.
@@ -7456,7 +7477,7 @@ qui nomment leur ancien emplacement.
 
 | Où | Ce qui était devenu faux | Sort |
 | --- | --- | --- |
-| `plateforme/src/signaling/relais.ts:2` | « **Aucun état persistant** » — **P1 en pose un** | **CORRIGÉ**. ⚠️ « Aucune authentification » reste **VRAI** et n'est pas touché : les deux clauses de la même phrase n'ont pas le même sort. ❌ **CETTE SECONDE CLAUSE EST TOMBÉE À SON TOUR au sous-bloc P2** (19 août 2026), et c'est P2 qui l'a corrigée dans le fichier — elle y porte désormais la **moitié exacte** qui reste vraie (le rôle `agent`, anonyme jusqu'à P3). **Le pronostic de P1 n'était donc juste que pour un sous-bloc**, ce qui est la durée de vie ordinaire d'un « reste VRAI » |
+| `plateforme/src/signaling/relais.ts:2` | « **Aucun état persistant** » — **P1 en pose un** | **CORRIGÉ**. ⚠️ « Aucune authentification » reste **VRAI** et n'est pas touché : les deux clauses de la même phrase n'ont pas le même sort. ❌ **CETTE SECONDE CLAUSE EST TOMBÉE À SON TOUR au sous-bloc P2** (19 août 2026), et c'est P2 qui l'a corrigée dans le fichier — elle y porte désormais la **moitié exacte** qui reste vraie (le rôle `agent`, anonyme jusqu'à P3). **Le pronostic de P1 n'était donc juste que pour un sous-bloc**, ce qui est la durée de vie ordinaire d'un « reste VRAI ». ❌ **ET LA MOITIÉ QUE P2 AVAIT LAISSÉE EST TOMBÉE À SON TOUR AU SOUS-BLOC P3** (19 août 2026, commit `254fdd5`), qui l'a corrigée dans le même fichier. **La même phrase d'en-tête a donc été corrigée TROIS FOIS, une par sous-bloc — P1, P2, P3 —, et chaque correction a laissé derrière elle une « moitié qui reste vraie » que la suivante a dû reprendre.** C'est la mesure la plus nette qu'ait ce dépôt de ce que vaut un « reste VRAI » : un sous-bloc, jamais deux |
 
 | `plateforme/src/signaling/relais.ts` (`isJsonObject`) | « aucun `uncaughtException` n'est installé dans **index.ts** » — le point d'entrée a **changé de fichier** | **CORRIGÉ**, et la propriété a été **REVÉRIFIÉE** sur le nouveau : `plateforme/src/index.ts` n'installe qu'un `SIGINT` |
 | `plateforme/src/config.ts:3` | `signaling/src/server.ts:67` — chemin disparu | **CORRIGÉ** |
@@ -7495,18 +7516,40 @@ lui-même**, avec l'énoncé daté qui, lui, est exact.
    des identifiants TURN de 86 400 s sans aucune identité** — c'est P3.
    `utilisateur` **n'est plus vide** : P2 lui a donné son comportement, et
    **pas sa table**, exactement comme cette ligne le prévoyait.
+   ✅ **L'AUTRE MOITIÉ EST FAITE PAR P3 le 19 août 2026** : un pair
+   `{"role":"agent"}` sans identité reçoit `authentification requise` et
+   **aucun `ice-config`** — mesuré sur le fil, **2 exécutions**
+   (`journaux-plateforme-p3/e2-ferme-{1,2}.log`).
 2. ✅ **P2 et P4 — toute contrainte doit naître avec sa table** (D3) : SQLite ne
    sait pas l'ajouter par `ALTER TABLE`, et la reconstruction en douze étapes
    n'est pas portable. **P2 l'a APPLIQUÉ** : `0002-identite.sql` fait naître
    `famille` et `remplace_par` **avec** `jeton_rafraichissement`, ainsi que sa
    clé étrangère vers `utilisateur(id)`. **La consigne reste entière pour P4.**
 
-3. ⛔ **P3 — `session.utilisateur_id` et `session.vm_id` restent `NULL`**, et
-   **ne seront pas resserrés en `NOT NULL`**. C'est le coût de D4, assumé.
-4. ⛔ **P3 — observer les agents présents** (`vm.vue_a`) : un agent seul ne
-   laisse aujourd'hui **aucune trace** (voir ⑥).
-5. ⛔ **P3 — `relais.ts` accueillera le canal `/agent`** : le routage de chemin
-   existe déjà (`noServer`), il ne reste qu'à ajouter une branche.
+3. ✅ **P3 — `session.vm_id` EST RENSEIGNÉE** (19 août 2026) : le nom de
+   session porte la VM (`<préfixe>:bureau`), et `signaling/trace.ts` découpe le
+   préfixe pour le chercher dans `agent_enrole`. ⚠️ **`utilisateur_id` reste
+   `NULL` pour une session appariée par un agent seul, et les DEUX colonnes
+   restent nullables** — pas par dette : deux cas rendent `null` honnêtement
+   (session sans préfixe, préfixe inconnu de la base). C'est le coût de D4,
+   assumé, et il ne bouge pas.
+4. ✅ **P3 — observer les agents présents : FAIT, mais PAS SUR LA COLONNE QUE
+   CETTE LIGNE NOMMAIT.** Le pronostic disait `vm.vue_a` ; P3 a créé
+   `agent_enrole.vu_a`, avancé par le battement du canal `/agent`
+   (`agents/canal.ts`) et jugé par `agents/fraicheur.ts`. **`vm.vue_a` n'est
+   écrite par AUCUN code de production à ce jour** (relevé par `grep -rn
+   "vue_a" plateforme/src` le 19 août 2026 : seuls des tests l'écrivent).
+   ⚠️ Elle reste donc une colonne orpheline du socle, **signalée et non
+   retirée** : la retirer demanderait une reconstruction de table que SQLite ne
+   fait pas comme Postgres (leg n°2 de P1, en sens inverse).
+5. ❌ **P3 — le canal `/agent` N'EST PAS DANS `relais.ts`, et c'est délibéré.**
+   Ce pronostic s'est révélé faux **de lieu**, pas de besoin : le canal vit
+   dans `http/serveur.ts` (`CHEMIN_AGENT = '/agent'`), sur son **propre**
+   `WebSocketServer`. La raison est la divergence E4 du plan de P3 — la garde
+   du relais est **pure et synchrone**, l'enrôlement exige une lecture de base
+   donc un `await`, et le faire vivre dans le relais aurait rendu la garde
+   asynchrone. Le routage `noServer` existait bien, comme annoncé ; c'est la
+   branche qui a été posée ailleurs.
 6. ⛔ **P5 — l'inaccessibilité effective du service** depuis une autre interface
    n'est pas établie, et ne peut pas l'être sans une machine hors du réseau.
 7. ⛔ **P5 — le comportement de Postgres sous charge, en concurrence, après
@@ -7670,7 +7713,11 @@ supposée**.
 - **L'appartenance de session ne survit pas à un redémarrage** (E3) : le
   registre de décision est **en mémoire**, et après un redémarrage un nom de
   session libéré peut être revendiqué par un autre utilisateur. La vraie réponse
-  est le **préfixe opaque de P3**.
+  est le **préfixe opaque de P3**. ✅ **Il existe depuis le 19 août 2026**
+  (`agents/prefixe.ts`, 128 bits, durable dans `agent_enrole.prefixe_session`)
+  — ⚠️ **et il ne suffit pas** : étant **par VM** et non par session, il ferme
+  la devinabilité entre VMs sans fermer la revendication au sein d'une VM. Le
+  registre d'appartenance reste en mémoire. **Réduit, pas soldé.**
 - **Aucune protection contre le rejeu du jeton d'ACCÈS** : il est porteur, et
   quiconque l'obtient peut ouvrir une session jusqu'à son expiration.
 - **Aucune constante n'est calibrée** : `N`/`r`/`p`, `DUREE_JETON_ACCES_MS`
@@ -7885,20 +7932,29 @@ par `0002-identite.sql`, et **la consigne reste entière pour P4**).
 
 **Ce qui reste dû :**
 
-1. 🔴 **P3 — E2, LA MOITIÉ DU TROU QUE P2 NE FERME PAS.** Un pair
-   `{"role":"agent"}` obtient toujours des identifiants TURN de 86 400 s sans
-   aucune identité, **mesuré** (1 exécution). C'est le legs le plus lourd de
-   P2, il est **volontaire**, et il n'est borné aujourd'hui que par
-   `PLATEFORME_HOTE`. L'agent Rust doit recevoir une identité — et c'est
-   **P3 seul** : P2 n'a modifié aucune ligne d'`agent/`.
-2. ⛔ **P3 — le préfixe opaque de session**, seule vraie réponse au fait que
-   l'appartenance **ne survit pas à un redémarrage** (E3). Le registre de
-   décision est en mémoire ; après un redémarrage, un nom de session libéré
-   peut être revendiqué par un autre utilisateur.
-3. ⛔ **P3 — `session.vm_id` reste entièrement NULL.** `utilisateur_id`, lui,
-   est désormais renseigné, et la colonne **reste nullable pour une raison qui
-   n'est pas de la dette** : une session appariée par un agent seul (`bureau`)
-   n'a personne à inscrire. **`NOT NULL` serait FAUX, pas seulement coûteux.**
+1. ✅ **P3 — E2 EST FERMÉE, et c'est le fait n°1 du sous-bloc P3** (19 août
+   2026). Ce legs disait : « un pair `{"role":"agent"}` obtient toujours des
+   identifiants TURN de 86 400 s sans aucune identité, **mesuré** (1
+   exécution) ». **Il ne l'obtient plus** : `authentification requise`, et
+   **`a reçu ice-config : false`** — mesuré sur le fil, **2 exécutions**
+   (`journaux-plateforme-p3/e2-ferme-{1,2}.log`), à opposer au `true` suivi
+   d'identifiants TURN de la pièce de P2. C'était bien **P3 seul** : P3 a
+   modifié `agent/`, ce que ni P1 ni P2 n'avaient fait.
+2. ✅ **P3 — LE PRÉFIXE OPAQUE EXISTE** : 128 bits de `randomBytes` en
+   `base64url` (`agents/prefixe.ts`), rendus **durables** par
+   `agent_enrole.prefixe_session`. ⚠️ **MAIS IL NE RÈGLE PAS CE QUE CE LEGS LUI
+   DEMANDAIT** : il est **par VM**, pas par session, et le registre
+   d'appartenance de `signaling/propriete.ts` est toujours **en mémoire**.
+   Après un redémarrage, deux clients humains de la MÊME VM retrouvent le même
+   préfixe, et `<préfixe>:w-1` redevient revendicable. **Le préfixe ferme la
+   devinabilité ENTRE VMs ; il ne ferme pas la revendication AU SEIN d'une
+   VM.** Le legs est donc **réduit, pas soldé** — reformulé ici plutôt que
+   coché.
+3. ✅ **P3 — `session.vm_id` EST RENSEIGNÉE** (`signaling/trace.ts`, divergence
+   E10). ⚠️ **La colonne reste nullable, et la raison n'a pas changé** : une
+   session sans préfixe ou à préfixe inconnu n'a rien d'honnête à inscrire, pas
+   plus qu'une session appariée par un agent seul n'a d'utilisateur.
+   **`NOT NULL` serait FAUX, pas seulement coûteux.**
 4. ⛔ **P4 — l'appartenance en base est là, et elle attend son lecteur.**
    `session.utilisateur_id` porte l'`id` de l'utilisateur, vérifié sur le
    chemin réel (1 exécution, `critere-3-appartenance-en-base.log`). **C'est ce
@@ -8222,7 +8278,7 @@ dépasse 500 lignes.**
 | `client/src/design/theme.ts` | **107** | neuf — **pur, dépendances injectées** |
 | `client/vite.config.ts` | **106** | +le greffon d'amorce, +la 4ᵉ entrée |
 | `client/src/design/reprise.test.ts` | **95** | neuf |
-| `scripts/verify-all.sh` | **92** | **neuf → dix étapes** |
+| `scripts/verify-all.sh` | **92** | **neuf → dix étapes** ⚠️ **PRÉCISÉ à la revue transverse de P3 (19 août 2026) : « dix » est le compte des appels `etape` du script, et l'EXÉCUTION en affiche DIX-SEPT.** Relevé par la commande sur une exécution complète (`grep -c '^==>'` sur le journal de `./scripts/verify-all.sh`, sortie 0) : **10** en-têtes viennent de `verify-all.sh` lui-même, et **7** de l'intérieur de son étape `client : npm run design:verifier` — un `npm run build` plus les **six** contrôles du socle. Le septième contrôle du socle, §7.5, est un test unitaire et tourne dans `client : npm test`. **Les deux comptes sont vrais de choses différentes ; ni « dix » ni « dix-sept » ne se suffit sans dire lequel on compte** |
 | `client/outils/poids-css.mjs` | **89** | neuf |
 | `client/src/design/base.css` | **73** | neuf |
 | `client/outils/verifier-design.mjs` | **60** | neuf — l'agrégateur |

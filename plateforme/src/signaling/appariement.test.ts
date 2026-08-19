@@ -6,9 +6,16 @@ describe('Appariement', () => {
         const a = new Appariement<string>();
         expect(a.declarer('s', 'agent', 'sock-1')).toBeUndefined();
         // Le motif est repris MOT POUR MOT de l'ex-`server.ts:119-125` : le
-        // changer casserait un pair qui le lit. `agent/src/signaling.rs:130`
+        // changer casserait un pair qui le lit. `agent/src/signaling.rs:139`
         // journalise `reason` ; le navigateur le remonte dans une Error
-        // (`webrtc.ts:109`).
+        // (`webrtc.ts:130-131`).
+        //
+        // ❌ Ces deux numéros valaient `:130` et `:109`, et les DEUX étaient
+        // faux — le second depuis P2, le premier depuis le commit `5fbc89b`
+        // de P3. Corrigés à la revue transverse de fin de branche P3, ICI
+        // **et** dans `appariement.ts`, où la même paire vivait : « corrigé à
+        // sa place » est une affirmation de COMPLÉTUDE, et les places ont été
+        // énumérées par `grep -n` avant d'écrire.
         expect(a.declarer('s', 'agent', 'sock-2'))
             .toBe('un agent est déjà connecté à la session s');
     });

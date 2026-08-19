@@ -122,6 +122,20 @@ s'applique **entre VMs** dès qu'il y en a deux.
 > `ice-config` ; un pair de rôle `agent` est **toujours** servi sans aucune
 > identité, jusqu'à P3. C'est ce que le critère ① de P2 dit littéralement, et
 > ce que `journaux-plateforme-p2/e2-role-agent-toujours-anonyme.log` mesure.
+>
+> ✅ **RÉ-ANNOTÉ le 19 août 2026, à la revue transverse du sous-bloc P3 : la
+> moitié qui restait est FERMÉE, et l'annotation de P2 ci-dessus est donc
+> périmée à son tour.** Un pair `{"role":"agent"}` sans identité reçoit
+> désormais `authentification requise` et **`a reçu ice-config : false`** —
+> mesuré sur le fil, `journaux-plateforme-p3/e2-ferme-{1,2}.log`, **deux
+> exécutions** (exéc. 1 = sqlite, exéc. 2 = postgres), à opposer au `true`
+> suivi d'identifiants TURN de 86 400 s que la pièce de P2 relève. **Le
+> titre ③ n'est plus vrai du tout**, et ce §2 reste néanmoins un RELEVÉ DATÉ
+> de l'état d'avant P1, toujours pas réécrit.
+>
+> ⚠️ **Ce qui n'est PAS fermé pour autant** : le port, s'il est atteint, laisse
+> toujours ouvrir un socket et envoyer une trame — le contrôle de forme court
+> avant toute garde (`signaling/resilience.test.ts`). Le frein est P5 ③.
 > Le §7.2 ci-dessous annonçait la ROUGE gratuite « le service de P1 délivre
 > `ice-config` à quiconque » : **elle a été JOUÉE**, sur un worktree de
 > `19f6409` (`journaux-plateforme-p2/rouge-1B-service-p1.log`).
@@ -553,6 +567,14 @@ fonctionnel — sans direction visuelle, qui appartient à ⑥.
 ferme la moitié navigateur. Le critère ④ de P1 (écoute bornée) est ce qui rend
 cette fenêtre tolérable, et c'est pourquoi il est en P1 et non en P5.
 
+> ✅ **CETTE FENÊTRE EST REFERMÉE** (19 août 2026, sous-bloc P3, revue
+> transverse). Elle aura duré **le temps d'un sous-bloc**, et sa fermeture est
+> mesurée sur le fil : `journaux-plateforme-p3/e2-ferme-{1,2}.log`, **deux
+> exécutions**. Le paragraphe est **annoté et non réécrit** — il décrit
+> exactement ce qui a été vrai entre P2 et P3, et c'est ce que sert le mot
+> « déclarée » : la fenêtre a été nommée avant d'être ouverte, puis fermée à
+> la date prévue.
+
 ### P3 — L'identité des agents, et le canal plateforme ↔ agent
 
 **Livre** : table `agent_enrole` (secret d'enrôlement **haché**, par VM) ; la
@@ -864,15 +886,59 @@ Le chantier D est vivant, et ⑤ ne doit pas le suspendre. Trois engagements :
    nouveau côté comportement. Le client est modifié au même commit
    (`client/src/webrtc.ts:193` et `client/src/shell-page.ts:45`, les deux seuls
    sites d'émission côté navigateur).
+
+   > ❌ **CES DEUX NUMÉROS DE LIGNE ONT DÉRIVÉ, et P3 a déplacé le second**
+   > (relevé par la commande, 19 août 2026, revue transverse de P3) :
+   > `client/src/webrtc.ts` **:229** — P2 lui-même l'avait poussé de 36
+   > lignes en y ajoutant le jeton, ce que la divergence E2 du plan de P3
+   > relevait déjà —, et `client/src/shell-page.ts` **:70**, dont la dérive
+   > est en **deux temps** : P2 l'avait porté de 45 à 62, P3 de 62 à 70 en y
+   > lisant le préfixe. **« Les deux seuls sites d'émission côté navigateur »
+   > reste VRAI** ; seuls leurs numéros sont faux.
 3. **P3 touche exactement quatre sites nommés** (§3.4), tous listés avec leur
    ligne. C'est le seul sous-bloc qui modifie l'agent, et sa modification est
    d'une ligne par site : un préfixe.
+
+   > ❌ **RÉFUTÉ PAR L'EXÉCUTION DE P3 (19 août 2026), et le plan l'avait vu
+   > venir — c'est sa divergence E1.** Ces deux phrases sont vraies du
+   > **PRÉFIXE** et fausses de l'**AUTHENTIFICATION**, qui est pourtant
+   > l'objet central de P3. Fermer E2 exigeait que la garde cesse d'accepter
+   > un `{"role":"agent"}` anonyme ; dès lors P3 a aussi porté, dans
+   > `agent/` : le jeton dans les **deux** poignées de main
+   > (`signaling.rs`, `superviseur/signalisation.rs`), les variables
+   > `AGENT_VM` et `AGENT_SECRET` (`main.rs`), un **module neuf**
+   > `plateforme.rs` — le client du canal `/agent`, avec la première boucle
+   > de reprise que ce dépôt ait jamais donnée à un client WebSocket de
+   > l'agent (E9) —, son enfant pur `plateforme/repli.rs`, et une
+   > **extraction** de `superviseur/table.rs` pour lui rendre sa marge avant
+   > d'y écrire. « Une ligne par site » sous-estime le sous-bloc d'un ordre
+   > de grandeur.
+   >
+   > ⚠️ **Et la compatibilité est CASSÉE, franchement et sans interrupteur
+   > permissif** : un binaire d'agent antérieur à P3 n'établit plus **aucune**
+   > session. Le remède est un rebâtissage — `scripts/build-agent.sh`, puis
+   > `scripts/run-agent.sh` avec les deux variables neuves.
 
 ⚠️ **Ce que P3 impose au chantier D, et qu'il faut dire** : après P3, un
 superviseur lancé **sans** plateforme n'a pas de préfixe. La règle retenue est
 qu'**un préfixe absent vaut le préfixe vide**, ce qui restitue exactement le
 comportement d'aujourd'hui (`bureau`, `w-1`) — le mode d'essai local reste donc
-possible, `scripts/run-agent.sh` compris. **C'est un choix, et son coût est
+possible, `scripts/run-agent.sh` compris.
+
+> ❌ **« LE MODE D'ESSAI LOCAL RESTE DONC POSSIBLE » EST FAUX depuis
+> l'exécution de P3** (E1). La règle du préfixe vide, elle, est **tenue et
+> éprouvée** (`agents/prefixe.ts`, `client/src/prefixe.ts`,
+> `superviseur/table.rs::nouvelle`) : c'est la conclusion qui ne suit pas.
+> Sans `AGENT_VM` ni `AGENT_SECRET`, l'agent n'obtient aucun jeton et la
+> garde refuse ses deux poignées de main — **mesuré, deux exécutions**,
+> `journaux-plateforme-p3/vm-{1,2}-agent-sans-identite-plat.log`. Un essai
+> local exige donc désormais d'enrôler la VM (`npm run admin:agent`) et de
+> poser les deux variables.
+>
+> ⚠️ **La phrase suivante de ce paragraphe, elle, reste JUSTE** — « sans
+> enrôlement valide, aucune session ne s'établit du tout » : c'est
+> exactement ce que la mesure montre. **Ce document ne se contredit donc pas
+> : c'est sa phrase du milieu qui a vieilli, pas sa conclusion.** **C'est un choix, et son coût est
 qu'une plateforme mal configurée retombe silencieusement dans un espace de noms
 partagé.** Il est accepté parce que le refus d'enrôlement (P3 ②) le rend
 inatteignable dès que la plateforme est en jeu : sans enrôlement valide, aucune

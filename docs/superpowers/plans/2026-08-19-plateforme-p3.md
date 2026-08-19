@@ -606,6 +606,20 @@ Le motif « un agent est déjà connecté à la session … » vit dans
 `appariement.test.ts:12-13`, et il est **lu par les pairs** — `agent/src/signaling.rs:130`, relu et juste, et
 **`client/src/webrtc.ts:130-131`**.
 
+> ❌ **CE « RELU ET JUSTE » A ÉTÉ RENDU FAUX PAR L'EXÉCUTION DE CE PLAN
+> LUI-MÊME** (revue transverse de fin de branche, 19 août 2026). Le commit
+> `5fbc89b` — la tâche 19, celle qui met le jeton dans les deux poignées de
+> main — a poussé cette lecture de la ligne **130 à la ligne 139**. La
+> citation était **exacte quand ce plan a été écrit**, et fausse quand il a
+> fini de s'exécuter.
+>
+> ⚠️ **C'est une leçon que ce dépôt n'avait pas encore formulée ainsi** :
+> relire une citation `fichier:ligne` AVANT d'écrire ne suffit pas quand le
+> plan qui la porte prescrit par ailleurs de déplacer la ligne citée. Il faut
+> la relire **après avoir exécuté ce qui la déplace**. Corrigé aux deux places
+> du dépôt qui la portaient — `plateforme/src/signaling/appariement.ts` et
+> `appariement.test.ts` —, énumérées par `grep -n` avant l'édition.
+
 ⚠️ **Le commentaire d'`appariement.ts:48-51` qui porte cette liste cite, lui,
 `client/src/webrtc.ts:109`, et CE NUMÉRO A DÉRIVÉ** — la l. 109 est **vide**, la
 lecture réelle vit aux l. 130-131 (`message.type === 'error'`, puis
@@ -739,6 +753,24 @@ scripts/run-agent.sh             MODIFIÉ — deux lignes, tâche DÉDIÉE (D1)
 ⚠️ **`scripts/verify-all.sh` N'EST PAS MODIFIÉ** : ses neuf étapes couvrent déjà
 `proto/` (1, 5, 6), `plateforme/` (7, 8, 9), `client/` (3, 4). Relevé, pas
 supposé.
+
+> ❌ **« SES NEUF ÉTAPES » EST FAUX, et la numérotation qui suit l'est avec —
+> corrigé à la clôture de P3 (19 août 2026), par la commande.** Le script
+> compte **DIX** appels `etape` : `cargo test --workspace` (1),
+> `cargo clippy --workspace` (2), `client : npm test` (3),
+> `client : npm run typecheck` (4), **`client : npm run design:verifier` (5,
+> ajoutée par le sous-projet ⑥ / sous-bloc S1)**, `proto : npm test` (6),
+> `proto : npm run typecheck` (7), `plateforme : npm run test:sqlite` (8),
+> `plateforme : npm run test:postgres` (9), `plateforme : npm run typecheck`
+> (10). **La CONCLUSION du paragraphe survit sans une retouche** : `proto/`
+> est bien couvert (6, 7), `plateforme/` aussi (8, 9, 10), `client/` aussi
+> (3, 4, 5), et P3 n'a effectivement pas modifié ce script.
+>
+> ⚠️ **Et « dix » ne suffit pas non plus à décrire ce qu'on lit** : une
+> exécution complète affiche **DIX-SEPT** en-têtes `==>` — dix du script, et
+> **sept** de l'intérieur de l'étape 5 (un `npm run build`, puis les six
+> contrôles du socle ; le septième contrôle, §7.5, est un test unitaire et
+> tourne dans l'étape 3). **Deux comptes vrais de deux choses différentes.**
 
 ---
 
