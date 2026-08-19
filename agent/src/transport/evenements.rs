@@ -82,6 +82,20 @@ impl Session {
                     (MediaKind::Audio, Direction::Inactive) => {}
                 }
             }
+            Event::MediaData(data) => {
+                if Some(data.mid) == self.mic_mid {
+                    self.deposer_micro(&data);
+                }
+                // Tout autre `MediaData` est ignoré : l'agent ne reçoit aucun
+                // autre média. Ce bras tombait dans le `_ => {}` catch-all ; il
+                // est NOMMÉ ici pour que le prochain média entrant ne tombe pas
+                // en silence.
+                //
+                // ⚠️ Un bras catch-all a déjà coûté QUATRE fois dans ce dépôt
+                // (`capteur/pont_media.rs`, D5/D6/D7/D8). Celui-ci est bénin —
+                // il ignore, il ne tue rien —, mais le nommer coûte trois
+                // lignes et évite la cinquième.
+            }
             Event::ChannelOpen(id, label) => {
                 tracing::info!(%label, "canal de données ouvert");
                 if label == "control" {

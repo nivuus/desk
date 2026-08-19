@@ -59,6 +59,7 @@ mod evenements;
 mod initialisation;
 mod part;
 mod piste_audio;
+mod piste_micro;
 mod piste_video;
 mod redimensionnement;
 mod relais;
@@ -125,6 +126,18 @@ pub struct Session {
     audio_mid: Option<Mid>,
     /// `mid` de la piste du MICRO (chantier E), renseigné à la négociation.
     mic_mid: Option<Mid>,
+    // Les quatre champs du MICRO (chantier E). Leur raisonnement vit en
+    // entier dans `transport/piste_micro.rs`, auprès du code qui les emploie —
+    // c'est un PLACEMENT de la documentation neuve, pas une compression : ce
+    // fichier est à trois lignes de son plafond.
+    /// Puits du flux montant, absent tant qu'aucun n'a été installé.
+    puits_micro: Option<Box<dyn crate::micro::PuitsMicro + Send>>,
+    /// Négociation ou horloge inattendue : signalées une seule fois.
+    warned_micro_negotiation: bool,
+    /// Refus du puits (exclusivité non acquise) : signalé une seule fois.
+    refus_micro_signale: bool,
+    /// Lignes de journal réellement ÉMISES au sujet du micro.
+    journaux_micro: u64,
     /// Pendant audio de `video_write_pending_drain`. Distinct de lui : sans
     /// drapeau propre, une écriture audio suivie d'une écriture vidéo au tour
     /// suivant perdrait un drainage.
@@ -336,6 +349,10 @@ impl Session {
             audio_source: None,
             audio_mid: None,
             mic_mid: None,
+            puits_micro: None,
+            warned_micro_negotiation: false,
+            refus_micro_signale: false,
+            journaux_micro: 0,
             audio_write_pending_drain: false,
             warned_audio_negotiation: false,
             pending_resize: None,
