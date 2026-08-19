@@ -1478,8 +1478,33 @@ PID est promue et émet réellement**.
 | Variable | Valeur | Pourquoi exactement celle-là |
 | --- | --- | --- |
 | `AUDIO_FAUTE_LECTURE` | **15** | `> LECTURES_ECHOUEES_MAX = 10` : la porteuse meurt |
-| `AUDIO_FAUTE_LECTURE_MS` | **3000** | la fenêtre se referme à t+3 s, **avant** la promotion à t≈6,3 s |
-| `AUDIO_FAUTE_RECONSTRUCTION` | **5** | `> RECONSTRUCTIONS_MAX = 3` : les trois tentatives sont refusées |
+| `AUDIO_FAUTE_LECTURE_MS` | ~~**3000**~~ **5000** | ❌ **3000 REND LE CRITÈRE INATTEIGNABLE, réfuté PAR LA MESURE** (voir l'encadré ci-dessous) |
+| `AUDIO_FAUTE_RECONSTRUCTION` | ~~**5**~~ **30** | ❌ **5 NE TIENT PAS LA PROMOTION, réfuté PAR LA MESURE** ; le compte juste est `(REARMEMENTS_MAX + 1) × RECONSTRUCTIONS_MAX` = **18** |
+
+> ❌ **CES DEUX VALEURS DE CE PLAN SONT FAUSSES, et la chronologie calculée
+> ci-dessous l'est avec elles.** Réfutées par la recette de la tâche 11
+> (commit `8e81fb6`), **par la mesure et non par le raisonnement** — deux
+> exécutions de diagnostic versées, `agent-critere-3-fenetre-3000-plat.log` et
+> `agent-critere-3-budget-5-plat.log`.
+>
+> 1. **L'origine du budget d'injection est le DÉMARRAGE DU FIL, pas
+>    l'élection.** Le premier arbitrage du capteur n'arrive que **~2,7 s** après
+>    le démarrage du fil (relevé : `+2,707 s`), et l'élection de la porteuse à
+>    **+3,006 s** — soit **6 ms après** la fermeture d'une fenêtre de 3000 ms.
+>    Résultat : `capture arrêtée définitivement` = **0**, `réarmement
+>    programmé` = **0**. La ligne « t+0,05 s la porteuse a consommé 10 fautes »
+>    de la chronologie ci-dessous est donc fausse : la mort est mesurée à
+>    **+3,806 s**. **5000 est la valeur dérivée de la mesure.**
+> 2. **La fermeture arithmétique « les trois tentatives sont refusées » ne vaut
+>    que pour le PREMIER cycle** : ce plan ignore le **réarmement de D9**, qui
+>    réapprovisionne le budget de reconstruction après
+>    `REPIT_REARMEMENT_AUDIO`. Sous la valeur 5, la promotion tient **5,020 s**
+>    puis la porteuse récupère à sa **sixième** tentative. Le compte juste,
+>    vérifié dans le code (5 et 3) **et** dans la mesure (**18 exactement** aux
+>    deux exécutions vertes), est `(REARMEMENTS_MAX + 1) × RECONSTRUCTIONS_MAX`.
+>
+> Analyse complète : §5.1 de
+> `docs/superpowers/plans/2026-08-19-multifenetres-solder-les-legs-resultats.md`.
 
 **La chronologie attendue, calculée** :
 
