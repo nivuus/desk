@@ -1,0 +1,90 @@
+<!DOCTYPE HTML>
+<!--
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+      http://www.apache.org/licenses/LICENSE-2.0
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+-->
+<html>
+
+<head>
+    <title><%= name %></title>
+    <meta name="viewport"
+        content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="<%= name %>" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+
+    <link rel="apple-touch-icon" sizes="180x180" href="./image/180x180.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./image/32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href=./image/16x16.png">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="shortcut icon" href="./image/favicon.ico">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="msapplication-config" content="./browserconfig.xml">
+    <meta name="theme-color" content="rgb(<%= color.join(',') %>)">
+    <style>
+        html,
+        body {
+            padding: 0;
+            margin: 0;
+        }
+
+        #display {
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .closed, .loading {
+            position: absolute;
+            width: 100vw;
+            height: 100vh;
+            top: 0;
+            left: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgb(<%= color.join(',') %>);
+            transition: opacity 0.5s ease-in-out;
+            pointer-events: none;
+        }
+
+        .closed>span,
+        .loading>span {
+            color: rgba(<%= color.every(c => c > 125) ? '10, 10, 10' : '230, 230, 230' %>, 0.8);
+            font-family: Arial;
+            font-size: 24px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Display -->
+    <div id="display"></div>
+
+    <div class="loading" id="loading">
+        <span>Chargement</span>
+    </div>
+
+    <div class="closed" id="closed" style="opacity: 0">
+        <span>Déconnecté</span>
+    </div>
+    <!-- Guacamole JavaScript API -->
+    <script type="text/javascript" src="/dist/index.js"></script>
+
+</body>
+
+</html>
