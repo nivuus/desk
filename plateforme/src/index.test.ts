@@ -82,8 +82,11 @@ describe('démarrage du service', () => {
         });
         expect(service.port).toBeGreaterThan(0);
         await expect(connecterA(service.port)).resolves.toBeUndefined();
-        // Les migrations sont appliquées : la table existe et se lit.
+        // Les migrations sont appliquées : la table existe et se lit. Le
+        // compte est écrit en dur pour la raison donnée dans
+        // `base/pilotes.test.ts` — P2 l'a porté de 1 à 2 en ajoutant
+        // `0002-identite.sql`.
         expect(await service.base.interroger('SELECT version FROM schema_migration', []))
-            .toHaveLength(1);
+            .toHaveLength(2);
     });
 });
