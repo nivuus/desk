@@ -1,0 +1,55 @@
+=== TACHE 3 — les mutations qui prouvent que les tests PEUVENT echouer ===
+Depot Guacamole, 19 aout 2026, chantier E bloc E1.
+
+--- MUTATION 1 : la trame qui precede le PLC fait 10 ms au lieu de 40 ---
+(premiere execution de cette mutation, sur la PREMIERE redaction de
+ dissimuler(), rendait 'ok' : le test etait VACUEUX et la mutation a
+ revele un vrai defaut. Voir le commentaire de OpusDecoder::dissimuler.)
+test opus::tests::la_dissimulation_rend_la_duree_de_la_derniere_trame ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 471 filtered out; finished in 0.00s
+
+⚠️ DEFAUT DU PLAN : la mutation que le plan prescrit pour ce test
+   (« le faire preceder d'une trame de 10 ms au lieu de 40 -> l'assertion doit
+   tomber sur 480 != 1920 ») NE PEUT PAS ECHOUER. Elle change `par_canal`, qui
+   est A LA FOIS la duree encodee ET l'attente : les deux cotes bougent
+   ensemble et le test reste vert. Sortie de cette mutation, jouee :
+       test opus::tests::la_dissimulation_rend_la_duree_de_la_derniere_trame ... ok
+       test result: ok. 1 passed; 0 failed
+   La mutation qui MESURE la propriete frappe l'IMPLEMENTATION, pas le
+   parametre du test : rendre a `dissimuler` sa premiere redaction, qui
+   deleguait la duree au tampon.
+
+--- MUTATION 1bis : `dissimuler` delegue la duree a la taille du tampon ---
+thread 'opus::tests::la_dissimulation_rend_la_duree_de_la_derniere_trame' (978446) panicked at agent/src/opus.rs:583:9:
+assertion `left == right` failed: la dissimulation n'a pas rendu la durée de la dernière trame décodée
+  left: 2880
+ right: 1920
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 471 filtered out; finished in 0.01s
+
+--- MUTATION 2 : la reconstruction FEC decode avec fec=false ---
+FEC décodé : énergie avec perte déclarée=26442073.65, sans=201260.06
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 471 filtered out; finished in 0.20s
+
+=== Toutes les mutations sont ANNULEES. Le vert de reference : ===
+FEC décodé : énergie avec perte déclarée=585.02, sans=0.00
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 461 filtered out; finished in 0.18s
+
+⚠️ DEFAUT DU PLAN, LE SECOND : la mutation `fec = false` prescrite par le plan
+   NE FAIT PAS ECHOUER le test tel que le plan l'ecrit. Sortie de cette
+   mutation sur la premiere redaction (un seul rapport d'energie) :
+       FEC décodé : énergie avec perte déclarée=26442073.65, sans=201260.06
+       test result: ok. 1 passed; 0 failed
+   Decoder NORMALEMENT les deux paquets rend aussi un rapport superieur a 10.
+   Le fait qui distingue reellement le chemin FEC est que SANS redondance LBRR
+   il rend du SILENCE (0.00) : une seconde assertion `sans < 1.0` a ete ajoutee,
+   et c'est elle qui mesure. Rejouee ci-dessous.
+
+--- MUTATION 2bis : fec=false, contre l'assertion renforcee ---
+FEC décodé : énergie avec perte déclarée=26442073.65, sans=201260.06
+thread 'opus::tests::la_reconstruction_fec_restitue_un_signal_correle_a_l_original' (984136) panicked at agent/src/opus.rs:648:9:
+sans redondance LBRR, le décodage FEC devrait rendre du SILENCE et rend 201260.06 : le drapeau FEC n'a pas été honoré, et ce paquet a été décodé normalement
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 471 filtered out; finished in 0.16s
+
+=== Toutes les mutations ANNULEES. Vert de reference : ===
+FEC décodé : énergie avec perte déclarée=585.02, sans=0.00
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 461 filtered out; finished in 0.17s
