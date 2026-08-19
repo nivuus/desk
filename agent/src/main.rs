@@ -32,6 +32,7 @@ mod pointer_settings;
 // compiler et se tester sur l'hôte Linux, et le socket lui-même n'a rien de
 // spécifique à Windows.
 mod plateforme;
+mod pont;
 mod rebuild;
 mod signaling;
 // Pas de `#[cfg(windows)]` ici : c'est la part portable de `capture.rs`
@@ -422,6 +423,32 @@ async fn main() -> Result<()> {
             None
         }
     };
+
+    // Le mode pont ne capture rien et ne lance personne : il tient la racine
+    // de virtualisation ProjFS et la sert depuis le répertoire que la
+    // page-shell a ouvert. `PONT=0` DÉSACTIVE le mode, comme `CAPTEUR=0` et
+    // `SUPERVISEUR=0` — même piège d'exploitation, même parade : tester
+    // `is_ok()` ferait qu'écrire `PONT=0` pour COUPER le pont l'allumerait.
+    //
+    // Placée APRÈS `CAPTEUR` — un pont qui hériterait de `CAPTEUR` deviendrait
+    // un capteur, d'où l'`env_remove("CAPTEUR")` de `lancer_pont` — et AVANT
+    // la branche superviseur, d'où l'`env_remove("PONT")` de `lancer`.
+    //
+    // ⚠️ **Mais APRÈS L'ENRÔLEMENT ci-dessus, et c'est une DIVERGENCE assumée
+    // d'avec le plan de F1**, qui écrivait « après `CAPTEUR`, avant
+    // `superviseur` » à une date où ces deux branches se touchaient. Le
+    // sous-bloc P3 a intercalé l'enrôlement entre elles, et le pont en a
+    // besoin : il ouvre sa PROPRE `PeerConnection` vers la page-shell, donc il
+    // présente un jeton, exactement comme un enfant. Le placer avant
+    // l'enrôlement lui aurait laissé `config.jeton = None`, la plateforme
+    // aurait refusé la poignée de main, et **aucune session ne se serait
+    // établie** — sans que rien ne rattache la panne au placement d'un `if`.
+    //
+    // Le capteur, lui, est bien reparti AVANT l'enrôlement, et c'est cohérent :
+    // il ne parle à aucun signaling.
+    if matches!(std::env::var("PONT").as_deref(), Ok(v) if v != "0") {
+        return pont::executer(config).await;
+    }
 
     // Le mode superviseur ne capture rien : il détecte les fenêtres et lance
     // un enfant par fenêtre. Ses enfants n'héritent JAMAIS de `SUPERVISEUR`
