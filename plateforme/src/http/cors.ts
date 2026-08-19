@@ -33,7 +33,18 @@ export function entetesCors(
         // Sans `Vary`, un cache intermédiaire servirait la réponse d'une
         // origine à une autre.
         Vary: 'Origin',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'content-type',
+        // `GET` depuis P4 : `GET /vm` est la première route de ce service que
+        // le navigateur atteigne autrement qu'en `POST`.
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        // 🔴 `authorization` DEPUIS P4, ET SANS LUI RIEN N'EST ATTEIGNABLE.
+        // Les deux routes de P4 exigent `Authorization: Bearer`
+        // (`http/porteur.ts`), et cet en-tête rend la requête NON SIMPLE : le
+        // navigateur envoie une requête préalable portant
+        // `Access-Control-Request-Headers: authorization`, qu'un serveur ne
+        // répondant que `content-type` refuse. ⚠️ Comme tout ce que ce fichier
+        // règle, AUCUN test Node ne peut le voir — voir l'en-tête : les tests
+        // parlent en `fetch` Node, qui n'applique pas la politique d'origine.
+        // La garde est l'assertion de `cors.test.ts`, et rien d'autre.
+        'Access-Control-Allow-Headers': 'content-type, authorization',
     };
 }
