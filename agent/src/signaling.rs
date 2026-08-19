@@ -50,13 +50,22 @@ pub struct SignalingHandle {
 }
 
 /// Se connecte au signaling et démarre la boucle d'échange en tâche de fond.
-pub async fn run_signaling(url: &str, session: &str) -> Result<SignalingHandle> {
+/// `jeton` porte le jeton d'agent délivré par le canal `/agent`
+/// (`crate::plateforme`). **`None` fait refuser la poignée de main par la
+/// plateforme depuis le sous-bloc P3** : la garde n'accepte plus un
+/// `{"role":"agent"}` anonyme, et le socket se ferme sans qu'aucune session
+/// ne s'établisse.
+pub async fn run_signaling(
+    url: &str,
+    session: &str,
+    jeton: Option<&str>,
+) -> Result<SignalingHandle> {
     let (stream, _) = tokio_tungstenite::connect_async(url)
         .await
         .with_context(|| format!("connexion au signaling {url}"))?;
     let (mut sink, mut source) = stream.split();
 
-    let hello = serde_json::json!({ "role": "agent", "session": session });
+    let hello = serde_json::json!({ "role": "agent", "session": session, "jeton": jeton });
     sink.send(Message::Text(hello.to_string())).await?;
     tracing::info!(session, "agent enregistré auprès du signaling");
 
@@ -201,4 +210,57 @@ fn analyser_config_ice(message: &serde_json::Value) -> Option<ConfigIce> {
         });
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::net::TcpListener;
+
+    /// Rend l'URL d'un faux signaling et le premier message reçu.
+    async fn premiere_poignee_de_main(jeton: Option<&str>) -> String {
+        let ecoute = TcpListener::bind("127.0.0.1:0").await.expect("écoute locale");
+        let port = ecoute.local_addr().expect("adresse locale").port();
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        tokio::spawn(async move {
+            let (flux, _) = ecoute.accept().await.expect("connexion entrante");
+            let mut ws = tokio_tungstenite::accept_async(flux)
+                .await
+                .expect("montée WebSocket");
+            if let Some(Ok(Message::Text(texte))) = ws.next().await {
+                let _ = tx.send(texte);
+            }
+            std::future::pending::<()>().await;
+        });
+        let _handle = run_signaling(&format!("ws://127.0.0.1:{port}"), "P:w-1", jeton)
+            .await
+            .expect("connexion au faux signaling");
+        tokio::time::timeout(std::time::Duration::from_secs(5), rx)
+            .await
+            .expect("aucune poignée de main en 5 s")
+            .expect("le faux signaling n'a rien reçu")
+    }
+
+    /// 🔴 Sans le jeton sur le fil, la garde de la plateforme refuse la
+    /// poignée de main et AUCUNE session ne s'établit (sous-bloc P3). La
+    /// mutation qui rougit ce test — retirer la clé `jeton` du `json!` — ne
+    /// casse RIEN à la compilation, ni ici ni chez l'appelant : c'est une
+    /// panne de bout en bout que seul le fil peut révéler.
+    #[tokio::test]
+    async fn la_poignee_de_main_porte_le_jeton_d_agent() {
+        let poignee = premiere_poignee_de_main(Some("jwt.d.agent")).await;
+        assert_eq!(
+            poignee,
+            r#"{"jeton":"jwt.d.agent","role":"agent","session":"P:w-1"}"#
+        );
+    }
+
+    /// Sans jeton, le champ part à `null` — que la garde traite exactement
+    /// comme une absence. Ce test fige la forme, pour qu'un futur repli ne
+    /// puisse pas y glisser une chaîne vide qui aurait l'air d'un jeton.
+    #[tokio::test]
+    async fn sans_jeton_la_poignee_de_main_le_dit_au_lieu_de_l_inventer() {
+        let poignee = premiere_poignee_de_main(None).await;
+        assert_eq!(poignee, r#"{"jeton":null,"role":"agent","session":"P:w-1"}"#);
+    }
 }

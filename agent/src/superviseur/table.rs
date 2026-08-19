@@ -164,6 +164,17 @@ pub struct Table {
     /// identifiant réutilisé apparierait un message tardif du navigateur à la
     /// mauvaise fenêtre.
     compteur: u64,
+    /// Le préfixe de la VM, délivré par la plateforme à l'enrôlement
+    /// (sous-bloc P3). **Vide quand aucun enrôlement n'a eu lieu**, et le nom
+    /// de session est alors exactement celui d'avant P3.
+    ///
+    /// ⚠️ Il est reçu à la CONSTRUCTION et jamais posé après coup, à dessein :
+    /// un préfixe qui changerait en cours de route ferait cohabiter deux
+    /// espaces de noms dans la même table, et la seule façon d'y rester
+    /// honnête serait de ne pas réutiliser les identifiants déjà émis —
+    /// c'est-à-dire de ne surtout PAS remettre le compteur à zéro. Rendre
+    /// l'état impossible vaut mieux que le garder correct.
+    prefixe: String,
 }
 
 /// Effet de destruction d'une sortie retenue par une entrée qu'on retire.
@@ -186,12 +197,40 @@ fn rendre_la_sortie_de(entree: &Entree) -> Option<Effet> {
 }
 
 impl Table {
+    /// Une table sans préfixe : les sessions s'appellent `w-1`, `w-2`, …
+    /// exactement comme avant le sous-bloc P3.
+    ///
+    /// ⚠️ **Plus aucun appelant de PRODUCTION depuis P3** (`boucle.rs` passe
+    /// par `avec_prefixe`), et le lint le dit sur la compilation Windows.
+    /// Conservée parce qu'elle est le témoin du comportement d'avant P3 —
+    /// c'est elle que la vingtaine de tests de ce module emploie, et c'est par
+    /// elle que « préfixe vide = nom d'aujourd'hui » reste éprouvé.
     pub fn nouvelle(capacite: usize) -> Self {
+        Self::avec_prefixe(capacite, String::new())
+    }
+
+    /// Une table dont toutes les sessions portent le préfixe de leur VM.
+    pub fn avec_prefixe(capacite: usize, prefixe: String) -> Self {
         Self {
             capacite,
             entrees: HashMap::new(),
             compteur: 0,
+            prefixe,
         }
+    }
+
+    /// L'identifiant de la prochaine session, préfixe compris.
+    ///
+    /// Les DEUX sites qui attribuent un identifiant passent par ici
+    /// (`fenetre_apparue` et la relance de `orphelines.rs`) : un troisième
+    /// qui composerait à la main donnerait une session que le préfixe
+    /// n'atteint pas, et la garde de la plateforme la refuserait.
+    fn prochaine_session(&mut self) -> IdSession {
+        self.compteur += 1;
+        IdSession(super::protocole::composer(
+            &self.prefixe,
+            &format!("w-{}", self.compteur),
+        ))
     }
 
     pub fn etat(&self, session: &IdSession) -> Option<&Etat> {
@@ -235,8 +274,7 @@ impl Table {
                 motif: "plus aucune sortie virtuelle disponible".into(),
             }];
         }
-        self.compteur += 1;
-        let session = IdSession(format!("w-{}", self.compteur));
+        let session = self.prochaine_session();
         self.entrees.insert(
             session.clone(),
             Entree {

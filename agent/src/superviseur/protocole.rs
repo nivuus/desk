@@ -21,9 +21,41 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Identifiant réservé de la session de contrôle. Le superviseur s'y déclare
-/// en `agent`, la page-shell en `client`.
-pub const SESSION_DE_CONTROLE: &str = "bureau";
+/// Nom réservé de la session de contrôle. Le superviseur s'y déclare en
+/// `agent`, la page-shell en `client`.
+///
+/// ⚠️ **CE N'EST PLUS UN IDENTIFIANT DE SESSION À LUI SEUL** (sous-bloc P3) :
+/// c'est le nom qui suit le préfixe de la VM. Passer par
+/// [`session_de_controle`], jamais par cette constante nue — deux VMs qui
+/// ouvriraient toutes deux `bureau` se disputeraient la même session sur la
+/// plateforme, et la seconde serait refusée en « un agent est déjà connecté ».
+pub const NOM_SESSION_DE_CONTROLE: &str = "bureau";
+
+/// Le séparateur du préfixe, tel que la spec §3.4 l'écrit.
+///
+/// ⚠️ Il apparaît aussi dans l'identifiant TURN que la plateforme dérive
+/// (`<expiration>:<session>`), qui devient donc à trois segments. Le préfixe
+/// étant en `base64url` il ne peut pas en contenir : la première borne reste
+/// non ambiguë. **Propriété non éprouvée contre un coturn vivant.**
+pub const SEPARATEUR_PREFIXE: char = ':';
+
+/// Compose un identifiant de session : `<préfixe>:<nom>`, ou `<nom>` seul
+/// quand aucun préfixe n'est connu.
+///
+/// 🔴 **Le préfixe vide doit restituer EXACTEMENT le nom d'aujourd'hui.** Un
+/// `":bureau"` silencieux n'est le nom d'aucune session existante, et rien ne
+/// le signalerait.
+pub fn composer(prefixe: &str, nom: &str) -> String {
+    if prefixe.is_empty() {
+        return nom.to_string();
+    }
+    format!("{prefixe}{SEPARATEUR_PREFIXE}{nom}")
+}
+
+/// L'identifiant complet de la session de contrôle pour un préfixe donné.
+pub fn session_de_controle(prefixe: &str) -> String {
+    composer(prefixe, NOM_SESSION_DE_CONTROLE)
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
@@ -94,6 +126,23 @@ mod tests {
         let resultat: Result<DepuisLaShell, _> =
             serde_json::from_str(r#"{"type":"autre-chose"}"#);
         assert!(resultat.is_err());
+    }
+
+    #[test]
+    fn un_prefixe_vide_restitue_exactement_le_nom_d_aujourd_hui() {
+        // 🔴 LE TEST LE PLUS IMPORTANT DE CE FICHIER. Sans lui, poser le
+        // séparateur inconditionnellement donnerait `":bureau"` et `":w-1"` —
+        // qui ne sont le nom d'AUCUNE session existante, et rien ne le
+        // signalerait : la page-shell attendrait une fenêtre qui ne vient pas.
+        assert_eq!(composer("", NOM_SESSION_DE_CONTROLE), "bureau");
+        assert_eq!(composer("", "w-1"), "w-1");
+        assert_eq!(session_de_controle(""), "bureau");
+    }
+
+    #[test]
+    fn un_prefixe_pose_precede_le_nom_et_le_separe_par_deux_points() {
+        assert_eq!(composer("Zm9vYmFy", "w-1"), "Zm9vYmFy:w-1");
+        assert_eq!(session_de_controle("Zm9vYmFy"), "Zm9vYmFy:bureau");
     }
 
     /// Le signaling relaie aussi `ice-config` et `peer-gone` sur cette

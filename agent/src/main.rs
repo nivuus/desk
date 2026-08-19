@@ -169,6 +169,23 @@ struct Config {
     /// `PLEIN_ECRAN_MODE_SORTIE`, variable retirée par le sous-bloc D9 et qu'il
     /// est donc inutile de chercher dans le code.
     micro_mesure: bool,
+    /// Le nom de la VM enrôlée auprès de la plateforme, et son secret
+    /// d'enrôlement (sous-bloc P3). **Les deux ou aucun** : c'est le couple
+    /// que le canal `/agent` présente.
+    ///
+    /// ⚠️ **ABSENTS = aucun jeton d'agent, donc AUCUNE session.** Depuis P3 la
+    /// garde de la plateforme refuse un `{"role":"agent"}` anonyme, et il n'y
+    /// a pas d'interrupteur permissif. Leur absence n'est donc PAS un mode de
+    /// repli : c'est une panne, annoncée par un `warn!` qui la nomme, et non
+    /// un échec de démarrage — les sondes de `diagnostics` (`MULTIFENETRE_*`)
+    /// n'ouvrent aucun signaling et doivent continuer de tourner sans elles.
+    agent_vm: Option<String>,
+    agent_secret: Option<String>,
+    /// Le préfixe de session délivré à l'enrôlement, et le jeton d'agent qui
+    /// ouvre les deux poignées de main. Remplis par `main` APRÈS le
+    /// démarrage, jamais par `config()` : les obtenir demande un socket.
+    prefixe: String,
+    jeton: Option<String>,
 }
 
 fn config() -> Result<Config> {
@@ -239,7 +256,23 @@ fn config() -> Result<Config> {
         // une variable posée à `0`, à vide, ou à quoi que ce soit d'autre
         // laisse le puits DÉSARMÉ, comme son absence.
         micro_mesure: demarrage::micro::arme(std::env::var("MICRO_MESURE").ok().as_deref()),
+        // Une valeur vide vaut absence : `run-agent.sh` n'écrit la ligne que
+        // si la variable est définie, mais un `AGENT_VM=` posé à la main
+        // donnerait sinon un enrôlement au nom vide, que la plateforme
+        // refuserait sans qu'on sache pourquoi.
+        agent_vm: variable_non_vide("AGENT_VM"),
+        agent_secret: variable_non_vide("AGENT_SECRET"),
+        prefixe: String::new(),
+        jeton: None,
     })
+}
+
+/// Lit une variable d'environnement, en traitant la chaîne vide comme une
+/// absence.
+fn variable_non_vide(nom: &str) -> Option<String> {
+    let valeur = std::env::var(nom).ok()?;
+    let valeur = valeur.trim().to_string();
+    (!valeur.is_empty()).then_some(valeur)
 }
 
 /// Analyse un `HWND` tel que le superviseur le pose sur ses enfants :
@@ -335,7 +368,7 @@ async fn main() -> Result<()> {
         );
     }
 
-    let config = config()?;
+    let mut config = config()?;
 
     // Après la neutralisation ci-dessus, et avant tout assemblage de session :
     // c'est cet ordre que la sonde de linéarité suppose (voir `diagnostics`).
@@ -350,6 +383,45 @@ async fn main() -> Result<()> {
     if matches!(std::env::var("CAPTEUR").as_deref(), Ok(v) if v != "0") {
         return capteur::executer();
     }
+
+    // L'ENRÔLEMENT PRÉCÈDE TOUT SIGNALING (sous-bloc P3). Les deux poignées
+    // de main qui suivent — celle du superviseur sur sa session de contrôle,
+    // celle de l'enfant sur sa session média — présentent le jeton que ce
+    // canal délivre, et le préfixe qu'il rend nomme les sessions.
+    //
+    // Le canal reste ouvert pour toute la vie du processus : il porte le
+    // battement de cœur, donc `vu_a`, donc l'état `prête`/`injoignable` que
+    // la plateforme lit. Le lier à une variable et non à `_` n'est pas une
+    // coquetterie de lint — c'est ce qui le garde vivant.
+    //
+    // Le mode capteur, lui, est déjà reparti plus haut : il ne parle à aucun
+    // signaling et n'a donc aucune identité à présenter.
+    let _canal_plateforme = match (config.agent_vm.clone(), config.agent_secret.clone()) {
+        (Some(vm), Some(secret)) => {
+            let mut canal = plateforme::ouvrir(&config.signaling_url, vm, secret);
+            // Attente NON bornée, et c'est délibéré : sans identité, aucune
+            // session ne peut s'établir, et la boucle de reprise journalise
+            // chacune de ses tentatives. Elle ne rend `None` que si elle a
+            // RENONCÉ — un refus de version —, et il n'y a alors rien à
+            // attendre.
+            let Some(identite) = canal.attendre_identite().await else {
+                anyhow::bail!(
+                    "enrôlement abandonné par la plateforme : voir le journal du canal /agent"
+                );
+            };
+            config.prefixe = identite.prefixe;
+            config.jeton = Some(identite.jeton);
+            Some(canal)
+        }
+        _ => {
+            tracing::warn!(
+                "AGENT_VM ou AGENT_SECRET absent : aucun enrôlement, donc aucun jeton d'agent. \
+                 La plateforme REFUSERA la poignée de main et aucune session ne s'établira \
+                 (sous-bloc P3, sans interrupteur permissif)."
+            );
+            None
+        }
+    };
 
     // Le mode superviseur ne capture rien : il détecte les fenêtres et lance
     // un enfant par fenêtre. Ses enfants n'héritent JAMAIS de `SUPERVISEUR`

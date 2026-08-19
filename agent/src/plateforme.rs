@@ -119,11 +119,6 @@ pub fn ouvrir(signaling_url: &str, vm: String, secret: String) -> Canal {
 }
 
 impl Canal {
-    /// L'identité courante, ou `None` tant que l'enrôlement n'a pas abouti.
-    pub fn identite(&self) -> Option<Identite> {
-        self.identite.borrow().clone()
-    }
-
     /// Attend la première identité. Rend `None` si la boucle de reprise a
     /// renoncé — c'est-à-dire si l'attente est vaine, et non « pas encore ».
     pub async fn attendre_identite(&mut self) -> Option<Identite> {

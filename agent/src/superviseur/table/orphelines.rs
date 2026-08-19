@@ -51,8 +51,7 @@ impl Table {
                 });
                 continue;
             }
-            self.compteur += 1;
-            let session = IdSession(format!("w-{}", self.compteur));
+            let session = self.prochaine_session();
             self.entrees.insert(
                 session.clone(),
                 Entree {

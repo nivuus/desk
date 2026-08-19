@@ -91,10 +91,14 @@ pub fn tourner(
     rx_hook: std::sync::mpsc::Receiver<hook::EvenementFenetre>,
     rx_shell: std::sync::mpsc::Receiver<DepuisLaShell>,
     envoyer: impl Fn(&VersLaShell),
+    // Le préfixe de la VM, délivré par la plateforme (sous-bloc P3). Vide
+    // quand aucun enrôlement n'a eu lieu — les sessions gardent alors
+    // exactement le nom qu'elles avaient avant P3.
+    prefixe: String,
 ) -> Result<()> {
     let mut sorties = Sorties::nouvelles(pilote);
     let mut enfants = Enfants::nouveaux(lanceur);
-    let mut table = Table::nouvelle(CAPACITE);
+    let mut table = Table::avec_prefixe(CAPACITE, prefixe);
 
     // Le capteur, avant la moindre fenêtre — `surveillance_capteur::EtatCapteur`.
     let mut etat_capteur = surveillance_capteur::EtatCapteur::demarrer(lanceur)?;
