@@ -13,7 +13,8 @@
     "test:postgres": "PLATEFORME_BASE=postgres vitest run",
     "typecheck": "tsc --noEmit",
     "admin:utilisateur": "tsx src/admin/creer-utilisateur.ts",
-    "admin:agent": "tsx src/admin/enroler-agent.ts"
+    "admin:agent": "tsx src/admin/enroler-agent.ts",
+    "admin:attribuer": "tsx src/admin/attribuer-vm.ts"
   },
   "dependencies": {
     "pg": "^8.23.0",
