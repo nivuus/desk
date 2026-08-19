@@ -123,6 +123,8 @@ pub struct Session {
     audio_source: Option<Box<dyn AudioSource + Send>>,
     /// `mid` de la piste audio, renseigné à la négociation.
     audio_mid: Option<Mid>,
+    /// `mid` de la piste du MICRO (chantier E), renseigné à la négociation.
+    mic_mid: Option<Mid>,
     /// Pendant audio de `video_write_pending_drain`. Distinct de lui : sans
     /// drapeau propre, une écriture audio suivie d'une écriture vidéo au tour
     /// suivant perdrait un drainage.
@@ -333,6 +335,7 @@ impl Session {
             video_write_pending_drain: false,
             audio_source: None,
             audio_mid: None,
+            mic_mid: None,
             audio_write_pending_drain: false,
             warned_audio_negotiation: false,
             pending_resize: None,

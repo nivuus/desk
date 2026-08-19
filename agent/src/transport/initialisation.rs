@@ -64,6 +64,30 @@ pub(super) fn construire_rtc(local_ip: IpAddr, plafond_bps: u32) -> Result<(UdpS
         // saturer le lien avant la première correction.
         .enable_bwe(Some(Bitrate::bps(ESTIMATION_INITIALE_BPS as u64)))
         .set_stats_interval(Some(Duration::from_secs(1)))
+        // Profondeur du tampon de RÉORDONNANCEMENT audio en réception, ramenée
+        // de 15 (le défaut de str0m, `config.rs`) à 2.
+        //
+        // Ce tampon n'ajoute AUCUNE latence en régime nominal — une séquence
+        // contiguë sort immédiatement (`packet/buffer_rx.rs`,
+        // `wait_for_contiguity = !contiguous_seq && !more_than_hold_back`).
+        // Mais SUR UN TROU il retient jusqu'à `reordering_size_audio`
+        // segments, et à 20 ms par paquet — la durée de trame de Chrome —
+        // cela fait jusqu'à **300 ms de rétention**, qui :
+        //
+        //   1. crèvent le budget de 100 ms que le micro s'accorde en tout ;
+        //   2. **annulent le FEC in-band**, dont toute la mécanique est de
+        //      reconstruire une trame perdue à partir de la SUIVANTE — que
+        //      str0m ne délivrerait alors que 300 ms plus tard.
+        //
+        // Coût assumé : une rafale de trois pertes consécutives ou plus est
+        // délivrée comme un trou plutôt qu'attendue. C'est VOULU — le PLC du
+        // décodeur couvre le trou, et 300 ms de silence attendu seraient pires
+        // que 40 ms de dissimulation.
+        //
+        // ⚠️ Sans effet sur l'existant : c'est un réglage de RÉCEPTION, et
+        // avant le chantier E l'agent ne recevait aucun média (la vidéo comme
+        // l'audio du chantier A vont de l'agent vers le navigateur).
+        .set_reordering_size_audio(2)
         .build(Instant::now());
 
     // Cible que le sondage cherche à atteindre : le plafond configuré.

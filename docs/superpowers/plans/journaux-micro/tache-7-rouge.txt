@@ -1,0 +1,46 @@
+=== TACHE 7 — les deux rouges, dont le SEMANTIQUE ===
+Depot Guacamole, 19 aout 2026, chantier E bloc E1.
+
+--- ROUGE 1 (compilation) : le champ `mic_mid` n'existe pas encore ---
+error[E0609]: no field `mic_mid` on type `transport::Session`   (x4)
+error[E0425]: cannot find type `Mid` in this scope
+
+--- ROUGE 2 (SEMANTIQUE) : le champ AJOUTE, le `match` INCHANGE.
+    C'est celui qui prouve que le test mesure le DEFAUT, et pas seulement
+    l'absence d'un champ. Le defaut latent est ici EXHIBE : ---
+test transport::evenements::tests::une_piste_audio_recvonly_ne_devient_jamais_la_piste_de_sortie ... FAILED
+  assertion `left == right` failed: la piste audio RECVONLY (le micro) a écrasé la piste de sortie du chantier A
+    left: Some(Mid(m2))     <- la piste du MICRO, recvonly
+   right: Some(Mid(m1))     <- la piste du chantier A, sendonly
+test transport::evenements::tests::une_piste_audio_sendonly_reste_la_piste_de_sortie_meme_apres_le_micro ... FAILED
+  assertion `left == right` failed
+    left: None
+   right: Some(Mid(m0))
+test transport::evenements::tests::une_piste_audio_inactive_n_est_retenue_nulle_part ... FAILED
+  assertion `left == right` failed
+    left: Some(Mid(m1))     <- la piste INACTIVE a pris la place d'une piste vivante
+   right: Some(Mid(m0))
+test result: FAILED. 3 passed; 3 failed
+
+Note : `une_piste_audio_sendrecv_est_une_piste_de_sortie` reste VERT sous ce
+rouge, et c'est correct — l'ancien `match` rangeait deja tout l'audio dans
+`audio_mid`. C'est un test d'ABSENCE (`mic_mid == None`) ; il se discrimine par
+la mutation qui rangerait `SendRecv` du cote du micro.
+
+--- APRES la discrimination : ---
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 488 filtered out; finished in 0.14s
+
+--- MUTATION : SendRecv range du cote du MICRO ---
+test transport::evenements::tests::une_piste_audio_sendrecv_est_une_piste_de_sortie ... FAILED
+thread 'transport::evenements::tests::une_piste_audio_sendrecv_est_une_piste_de_sortie' (1058667) panicked at agent/src/transport/evenements.rs:498:9:
+  left: None
+ right: Some(Mid(m0))
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 493 filtered out; finished in 0.09s
+test transport::evenements::tests::une_piste_audio_sendrecv_est_une_piste_de_sortie ... FAILED
+  assertion `left == right` failed
+    left: None
+   right: Some(Mid(m0))
+test result: FAILED. 0 passed; 1 failed
+
+=== La mutation est ANNULEE. Vert de reference : ===
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 488 filtered out; finished in 0.33s
