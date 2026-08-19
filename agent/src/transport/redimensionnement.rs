@@ -64,7 +64,8 @@ impl Session {
                     .changer_source((actual_width, actual_height), Instant::now());
                 self.pending_decision = Some(decision);
 
-                self.queue_control(AgentControl::ready(actual_width, actual_height));
+                let mic = self.micro_disponible();
+                self.queue_control(AgentControl::ready(actual_width, actual_height, mic));
             }
             Err(e) => {
                 // Un échec de redimensionnement ne doit pas terminer la

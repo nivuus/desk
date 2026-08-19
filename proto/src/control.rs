@@ -114,6 +114,28 @@ pub enum AgentControl {
         version: u8,
         width: u32,
         height: u32,
+        /// Le micro est-il disponible pour cette session (chantier E) ?
+        ///
+        /// **Aucun bump de `CONTROL_VERSION` n'est nécessaire**, dans les deux
+        /// sens : le parseur TypeScript vérifie `v` puis `type` puis CASTE, si
+        /// bien qu'un champ supplémentaire est ignoré par un client ancien ; et
+        /// un client récent face à un agent ancien lit `mic === undefined`,
+        /// donc falsy, donc n'affiche pas de bouton — la règle de la spec §10,
+        /// obtenue gratuitement.
+        ///
+        /// ⚠️ **`#[serde(default)]` est OBLIGATOIRE, pas décoratif** :
+        /// `AgentControl` porte `deny_unknown_fields`, ce qui n'empêche pas
+        /// d'AJOUTER un champ, mais un champ MANQUANT reste une erreur de
+        /// désérialisation côté Rust.
+        ///
+        /// ⚠️ **Ce drapeau est décidé à l'ÉTABLISSEMENT et ne peut pas
+        /// exprimer un refus ultérieur** : l'exclusivité du câble s'acquiert au
+        /// premier paquet montant (bloc E2), donc après ce message. Un second
+        /// utilisateur verra le bouton et n'aura pas le son. Lacune NOMMÉE,
+        /// pas dissimulée — le refus est journalisé une fois côté agent
+        /// (`transport/piste_micro.rs`).
+        #[serde(default)]
+        mic: bool,
     },
     SessionEnd {
         #[serde(rename = "v", deserialize_with = "verifie_version")]
@@ -197,8 +219,8 @@ impl ClientControl {
 
 impl AgentControl {
     /// Construit un message "agent prêt" à la version courante du protocole.
-    pub fn ready(width: u32, height: u32) -> Self {
-        AgentControl::Ready { version: CONTROL_VERSION, width, height }
+    pub fn ready(width: u32, height: u32, mic: bool) -> Self {
+        AgentControl::Ready { version: CONTROL_VERSION, width, height, mic }
     }
 
     /// Construit un message de fin de session à la version courante du protocole.
@@ -270,8 +292,8 @@ mod tests {
     #[test]
     fn serialise_ready_et_session_end() {
         assert_eq!(
-            serde_json::to_string(&AgentControl::ready(1920, 1080)).unwrap(),
-            r#"{"type":"ready","v":3,"width":1920,"height":1080}"#
+            serde_json::to_string(&AgentControl::ready(1920, 1080, false)).unwrap(),
+            r#"{"type":"ready","v":3,"width":1920,"height":1080,"mic":false}"#
         );
         assert_eq!(
             serde_json::to_string(&AgentControl::session_end("fenêtre fermée")).unwrap(),
@@ -415,5 +437,34 @@ mod tests {
             let json = serde_json::to_string(&forme).expect("sérialisation");
             assert_eq!(json, format!("\"{attendu}\""));
         }
+    }
+
+    /// Chantier E : `Ready` porte la disponibilité du micro, **sans bump de
+    /// `CONTROL_VERSION`**.
+    ///
+    /// Le parseur TypeScript vérifie `v`, puis `type`, puis CASTE : un champ
+    /// supplémentaire est simplement ignoré par un client ancien. Et un client
+    /// RÉCENT parlant à un agent ANCIEN lit `mic === undefined`, donc falsy,
+    /// donc pas de bouton — exactement la règle de la spec §10, gratuitement.
+    #[test]
+    fn ready_porte_la_disponibilite_du_micro() {
+        assert_eq!(
+            serde_json::to_string(&AgentControl::ready(1920, 1080, true)).unwrap(),
+            r#"{"type":"ready","v":3,"width":1920,"height":1080,"mic":true}"#
+        );
+    }
+
+    /// « Le champ est optionnel à la lecture et SON ABSENCE VAUT `false` »
+    /// (spec §10) : un client récent face à un agent ancien n'affiche pas un
+    /// bouton qui ne mènerait nulle part.
+    ///
+    /// ⚠️ `AgentControl` porte `deny_unknown_fields` : cela ne gêne pas
+    /// l'AJOUT d'un champ, mais un champ MANQUANT est une erreur de
+    /// désérialisation en Rust. `#[serde(default)]` est donc OBLIGATOIRE.
+    #[test]
+    fn un_ready_sans_micro_se_lit_avec_micro_faux() {
+        let m: AgentControl =
+            serde_json::from_str(r#"{"type":"ready","v":3,"width":1,"height":1}"#).unwrap();
+        assert_eq!(m, AgentControl::ready(1, 1, false));
     }
 }
