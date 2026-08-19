@@ -38,7 +38,10 @@ const TYPES_RELAYES = new Set([
 // `undefined` par auto-boxing), `null.role` lève une TypeError. Comme ce code
 // tourne dans un handler d'événement `message` d'un WebSocket exposé sans
 // authentification, une TypeError non interceptée y est fatale : elle abat tout
-// le process Node (aucun `uncaughtException` n'est installé dans index.ts), donc
+// le process Node (aucun `uncaughtException` n'est installé dans le point
+// d'entrée — REVÉRIFIÉ au sous-bloc P1, qui l'a DÉPLACÉ : ce n'est plus
+// `signaling/src/index.ts` mais `plateforme/src/index.ts`, et il n'y installe
+// toujours qu'un `SIGINT`), donc
 // toutes les sessions actives avec elle. On rejette explicitement tout ce qui
 // n'est pas un objet simple avant d'accéder à la moindre propriété.
 function isJsonObject(value: unknown): value is Record<string, unknown> {

@@ -3,7 +3,7 @@
 **Date de la recette :** 19 août 2026.
 **Plan :** `docs/superpowers/plans/2026-08-19-plateforme-p1.md` (commit `0e335e5`).
 **Spécification :** `docs/superpowers/specs/2026-08-19-plateforme-design.md` (commit `217a765`).
-**Journaux :** `docs/superpowers/plans/journaux-plateforme-p1/` — **14 fichiers,
+**Journaux :** `docs/superpowers/plans/journaux-plateforme-p1/` — **15 fichiers,
 UTF-8, AUCUNE séquence ANSI** (Vitest ne colore pas quand sa sortie est
 redirigée) : ils se `grep`ent à plat, sans `sed`. Ils portent
 l'`ExperimentalWarning` de `node:sqlite`, **et c'est voulu** — il est la trace
@@ -203,7 +203,7 @@ P1. Les plus gros fichiers de `plateforme/` :
 | Fichier | Lignes | Marge |
 | --- | --- | --- |
 | `plateforme/src/signaling/server.test.ts` | 255 | 245 |
-| `plateforme/src/signaling/relais.ts` | 216 | 284 |
+| `plateforme/src/signaling/relais.ts` | 219 | 281 |
 | `plateforme/src/signaling/resilience.test.ts` | 181 | 319 |
 | `plateforme/src/signaling/trace.test.ts` | 151 | 349 |
 | `plateforme/src/base/pilotes.test.ts` | 135 | 365 |
@@ -211,7 +211,7 @@ P1. Les plus gros fichiers de `plateforme/` :
 | `plateforme/src/base/migrations.ts` | 118 | 382 |
 
 **Aucun fichier de `plateforme/` n'approche le plafond.** `relais.ts`, le seul
-fichier que P2, P3 et P4 feront grossir, dispose de **284** lignes de marge, et
+fichier que P2, P3 et P4 feront grossir, dispose de **281** lignes de marge, et
 sa table des sessions en est **déjà sortie**.
 
 ---
@@ -266,6 +266,7 @@ sa table des sessions en est **déjà sortie**.
 | `postgres-1.log`, `postgres-2.log` | les deux exécutions de `npm run test:postgres` |
 | `typecheck-1.log`, `typecheck-2.log` | les deux exécutions de `tsc --noEmit` |
 | `verify-all.log` | la vérification d'ensemble, sortie 0 |
+| `verify-all-final.log` | la **même, rejouée APRÈS la dernière édition de la ronde** — c'est elle qui porte les chiffres de `CLAUDE.md` |
 | `verify-all-rouge-postgres-absent.log` | la même, instance Postgres arrêtée — **elle ÉCHOUE** |
 | `critere-1-empreintes.log` | empreintes, et les trois `diff` contre l'original |
 | `critere-1-rouges.log` | les deux rouges du déménagement |

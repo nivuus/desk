@@ -1910,7 +1910,10 @@ L'agent est un client TURN à part entière (`agent/src/turn/`) : il alloue un
 relais **avant** de répondre à l'offre, publie le candidat relayé et le candidat
 réflexif, encapsule en ChannelData ce qui doit passer par le relais, et
 rafraîchit son bail. Le signaling délivre aux deux pairs des identifiants
-éphémères (`signaling/src/ice.ts`) dérivés d'un secret qui ne quitte jamais le
+éphémères (~~`signaling/src/ice.ts`~~ **`plateforme/src/signaling/ice.ts`**
+depuis le sous-bloc P1, 19 août 2026 — le paquet `signaling/` n'existe plus,
+voir la section « Sous-projet ⑤ Plateforme » en fin de fichier) dérivés d'un
+secret qui ne quitte jamais le
 serveur. Mesuré : le média traverse un relais réel pour **≈2 ms de RTT en plus**
 (2,0 → 4,0 ms), sans perte de cadence.
 
@@ -1935,6 +1938,14 @@ les identifiants expirent, mais c'est un relais joignable depuis Internet : à
 restreindre (`--listening-ip` ou pare-feu) avant tout déploiement durable.
 
 ### Le signaling doit être relancé AVEC l'environnement
+
+⚠️ **Le processus a changé de nom au sous-bloc P1 (19 août 2026) : ce n'est
+plus `signaling/`, c'est `plateforme/` — `cd plateforme && npm start`.** Le
+piège ci-dessous est **entier et inchangé**, et il s'est même AGGRAVÉ : le
+service lit désormais quatre variables de plus (`PLATEFORME_HOTE`,
+`PLATEFORME_PORT`, `PLATEFORME_BASE`, `PLATEFORME_BASE_URL`), dont la première
+**n'a aucun défaut** et casse le lancement. `TURN_URL` reste lue par le relais
+de signaling qui vit à l'intérieur.
 
 Piège rencontré : un serveur de signaling tournait depuis 36 h sans les variables
 TURN, et les sessions ne recevaient donc aucune configuration ICE — sans que rien
@@ -6279,6 +6290,383 @@ constats parqués **requalifiés : 3 survivent, 6 sont PERDUS**).
 8. ⛔ **La séparation des flux entre fenêtres n'est toujours pas prouvée** : il
    faut un contrôle qui résiste à la dérive commune de la source, ou un
    échantillonnage simultané.
+
+---
+
+## 🗄️ Sous-projet ⑤ Plateforme — sous-bloc P1 : le service naît, absorbe le signaling, et persiste (19 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-19-plateforme-p1-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-19-plateforme-p1.md`.
+Conception : `docs/superpowers/specs/2026-08-19-plateforme-design.md`.
+Journaux : `docs/superpowers/plans/journaux-plateforme-p1/` — **15 fichiers,
+UTF-8, AUCUNE séquence ANSI** (Vitest ne colore pas quand sa sortie est
+redirigée) : ils se `grep`ent à plat, **sans `sed`**, contrairement à tous les
+journaux du chantier D. **Une seule famille de lecture**, la plus simple du
+dépôt.
+
+⚠️ **Ils portent l'`ExperimentalWarning` de `node:sqlite`, et c'est VOULU** : il
+est la trace visible de la décision §3.2 de la spec, et un contrôle du
+sous-bloc interdit de l'éteindre. Ne pas le filtrer en les relisant.
+
+⛔ **Aucune tâche de P1 n'a employé la VM Windows**, et c'est une décision de
+conception, pas une commodité : ⑤ est un sous-projet serveur, et faire dépendre
+sa recette d'une ressource exclusive et lente rendrait chaque itération coûteuse
+et chaque échec ambigu.
+
+### ① Le fait n°1 : `signaling/` n'existe plus
+
+Les 284 lignes de production et les 483 lignes de test du paquet `signaling/`
+vivent désormais dans **`plateforme/src/signaling/`**, à l'intérieur d'un
+service qui porte aussi un serveur HTTP, une couche SQL portable et un dépôt.
+**Le paquet `signaling/` est SUPPRIMÉ** — laisser deux copies est la façon dont
+un fork dérive.
+
+**Le protocole du fil ne change pas** : même port, même chemin racine, mêmes six
+types relayés, même poignée de main `{role, session}`. **L'agent et le client
+d'aujourd'hui fonctionnent sans recompilation**, et ce n'est pas une déclaration :
+des pairs scriptés reproduisant **les octets exacts** d'`agent/src/signaling.rs`
+et de `client/src/shell-page.ts` sont joués sur le chemin racine, l'offre est
+relayée, et une ligne apparaît en base
+(`journaux-plateforme-p1/compatibilite-pairs-reels.log`).
+
+⚠️ **Ce qui change pour l'opérateur, et qui casse le lancement naïf :
+`PLATEFORME_HOTE` est OBLIGATOIRE et n'a AUCUN défaut.** Sans elle :
+
+```
+Error: PLATEFORME_HOTE est obligatoire et n'a aucun défaut : nommer l'adresse
+d'écoute, sans quoi le service écouterait sur toutes les interfaces.
+```
+
+**C'est délibéré.** L'ex-`server.ts` faisait `new WebSocketServer({ port })` sans
+`host` : le service écoutait sur toutes les interfaces et délivrait des
+identifiants TURN valables 86 400 s à quiconque atteignait le port. Poser un
+défaut — même `127.0.0.1` — ferait passer le critère ④ **sans rien garantir**.
+Une rupture bruyante vaut mieux qu'une écoute universelle silencieuse.
+
+⚠️ **`scripts/run-agent.sh` n'est PAS modifié par P1** : l'agent ne lit aucune
+des quatre variables neuves, elles sont toutes du côté serveur. Le piège maison
+« toute variable neuve doit être ajoutée à `run-agent.sh` », payé en D1, D2 et
+D7, **ne s'applique pas ici** — et le dire évite qu'un successeur cherche une
+ligne manquante.
+
+### ② Les quatre variables d'environnement neuves
+
+| Variable | Effet |
+| --- | --- |
+| `PLATEFORME_HOTE` | l'adresse d'écoute. 🔴 **AUCUN défaut** — le service REFUSE de démarrer sans elle. C'est **l'inverse** de la convention `=0 désarme` des variables de banc du chantier D : ici l'absence n'est pas un désarmement, c'est un refus |
+| `PLATEFORME_PORT` | défaut **8080**. Un port non entier est refusé, jamais ramené au défaut |
+| `PLATEFORME_BASE` | `sqlite` (défaut) ou `postgres`. **Une valeur inconnue LÈVE**, à deux endroits — `lireConfig` et `ouvrirBase` — plutôt que de retomber sur sqlite |
+| `PLATEFORME_BASE_URL` | chemin de fichier SQLite (défaut `:memory:`) ou URL `pg` |
+
+Instance Postgres de test, **versionnée et sans secret**, sur le modèle de
+`docker-compose.coturn.yml` :
+
+```bash
+docker compose -f docker-compose.plateforme.yml up -d
+```
+
+### ③ Le fait n°2 : le sous-ensemble SQL portable, et ses TROIS gardes
+
+Ce que cette couche échange : **une bibliothèque contre une discipline**. Aucun
+compilateur ne vérifie une chaîne SQL écrite à la main. Ce qui remplace le
+compilateur, ce sont des gardes — et **il est MESURÉ qu'aucun ne suffit seul** :
+
+| Garde | Ce qu'il attrape | Ce qu'il ne peut PAS voir |
+| --- | --- | --- |
+| **lint statique** des `.sql` | `SERIAL`, `AUTOINCREMENT`, `now()`, `UUID`, `JSONB`, `BOOLEAN`, `_a INTEGER`, toute chaîne littérale | une construction licite des deux côtés mais de sémantique divergente |
+| **double passe d'exécution** | la sémantique divergente | ce qui est licite ET de même sémantique aux valeurs employées |
+| **le CHOIX DES VALEURS** *(garde neuf de P1, voir ⑤)* | une colonne trop étroite pour une valeur réelle | ce qu'aucune valeur du jeu d'essai n'exerce |
+
+**Le relevé fondateur, 19 août 2026, SQLite 3.50.4** :
+
+```
+AUTOINCREMENT sqlite : ACCEPTE
+SERIAL sqlite : ACCEPTE (type libre)
+litteral avec ? : SQL valide
+```
+
+**SQLite accepte n'importe quel nom de type par affinité.** `SERIAL` y passe donc
+sans bruit — et il passe aussi sur Postgres, **où il signifie autre chose**. Deux
+passes vertes, deux schémas différents : **le test d'exécution ne peut pas
+attraper `SERIAL`**, seul le lint le peut.
+
+Et `SELECT '?' AS x` est du **SQL parfaitement valide** : une conversion naïve
+des marqueurs `?` → `$1..$n` le rendrait `SELECT '$1' AS x` et changerait
+silencieusement le sens de la requête. D'où la décision : **`rendreMarqueurs`
+LÈVE si le SQL porte une apostrophe ou un guillemet**, ce qui rend la règle
+« toute valeur passe en paramètre » **mécanique au lieu de documentaire**. Le
+coût est nommé : aucune migration, aucune requête ne peut porter de littérale,
+**pas même une valeur par défaut**.
+
+### ④ Les six divergences spec/code, tranchées AVANT d'écrire une ligne
+
+| # | Divergence | Ce qui a été tranché |
+| --- | --- | --- |
+| D1 | « les 483 lignes de tests restent INCHANGÉES » est **intenable** — `resilience.test.ts` lance le point d'entrée comme processus enfant par des chemins relatifs au paquet | **Aucune ASSERTION ne change**, le harnais change du minimum, et la preuve se fait par `sha256sum` et `git diff`, jamais par une impression |
+| D2 | renommer `server.ts` en `relais.ts` touche `server.test.ts:3` | Déménagement **verbatim** d'abord, renommage **isolé** ensuite : c'est ce qui permet de prouver le premier |
+| D3 | 🔴 `vm.utilisateur_id REFERENCES utilisateur(id)` **force P1 à créer `utilisateur`** | La table naît en P1 et **reste vide**. **SQLite ne sait pas ajouter une contrainte par `ALTER TABLE`** (mesuré : `near "CONSTRAINT": syntax error`) : une clé étrangère naît avec sa table ou n'existe jamais |
+| D4 | la table `session` de la spec n'a **aucune** colonne pour le nom de session du signaling | `nom_session TEXT NOT NULL` ajoutée — sans elle la ligne écrite ne désigne rien. `utilisateur_id` et `vm_id` naissent **`NULL`** et **ne seront PAS resserrés** (voir D3) |
+| D5 | `SERIAL` traverse les DEUX moteurs sans erreur | Deux gardes, pas un — et P1 en a découvert un **troisième** (voir ⑤) |
+| D6 | « quatre étapes » de `verify-all.sh` en désigne trois | **Trois**, et le compte de trois est écrit plutôt qu'une quatrième étape inventée pour honorer un nombre |
+
+⚠️ **D3 déborde P1 et doit être porté à P2 et P4** : toute contrainte que
+`utilisateur` ou `vm` recevra plus tard **doit naître avec sa table**, ou exiger
+une reconstruction en douze étapes — laquelle est elle-même un danger de
+portabilité, Postgres ne s'y prenant pas de la même façon.
+
+### ⑤ 🔴 Le défaut que la recette a trouvé : `INTEGER` ne tient pas un `Date.now()`
+
+**Le service ne pouvait pas démarrer du tout sur Postgres, et rien ne le
+disait.** Il échouait sur ses **PROPRES** migrations :
+
+```
+error: value "1787136797072" is out of range for type integer
+```
+
+`INTEGER` vaut jusqu'à **8 octets sur SQLite** et **exactement 4 sur Postgres**
+(16.15). Le service n'écrit que des `Date.now()` (≈ 1,79 × 10¹²). **SQLite
+l'acceptait sans un mot.**
+
+**Pourquoi les deux gardes ne l'ont pas vu — c'est le fait le plus réutilisable
+de P1** : le lint est **lexical**, et `INTEGER` est un type parfaitement licite ;
+la double passe d'exécution n'écrivait que de **petites valeurs** (`1_000`), qui
+tiennent dans quatre octets. **Ce n'est ni le lint ni la double passe qui
+manquaient : c'est le CHOIX DES VALEURS.** Une suite qui n'écrit que des `1_000`
+déclare portable un schéma qui refuse **toute écriture réelle** sur l'un des deux
+moteurs.
+
+**Mesure de l'angle mort**, arbre d'avant le correctif (`4183b7e~1`), harnais
+seul porté à une magnitude d'époque :
+
+| Moteur | Relevé |
+| --- | --- |
+| sqlite | `Test Files 11 passed (11)` / `Tests 57 passed (57)` |
+| postgres | `Test Files 3 failed \| 8 passed (11)` / `Tests 13 failed \| 44 passed (57)` |
+
+**Le remède, commit `4183b7e`, en trois pièces** : horodatages en **`BIGINT`**
+(dans `0001-socle.sql` **et** dans la définition en dur de `migrations.ts`) ; le
+harnais de test applique ses migrations à un instant de la **magnitude d'une
+époque** (`INSTANT_MIGRATION = 1_700_000_000_000`), de sorte que **toute la
+suite** exerce désormais la vraie magnitude ; et **deux gardes neufs, tous deux
+vus rouges** — le lint refuse un `_a INTEGER`, et la définition **dupliquée** de
+`schema_migration` est comparée entre `migrations.ts` et `0001-socle.sql`.
+
+⚠️ **Cette seconde affirmation — « les deux définitions sont à l'identique » —
+était portée par un commentaire QUE RIEN NE VÉRIFIAIT**, et elle aurait divergé
+en silence : une base créée par la ligne en dur n'aurait plus ressemblé au
+schéma que le socle décrit.
+
+⚠️ **La portée du remède est bornée par une CONVENTION DE NOMMAGE** : le lint
+reconnaît un horodatage à son nom en `_a` (`cree_a`, `vue_a`, `ouverte_a`,
+`fermee_a`, `applique_a`). **Une colonne d'horodatage nommée autrement y
+échapperait.**
+
+### ⑥ La trace de session : QUAND, exactement
+
+La ligne s'ouvre quand **les DEUX rôles sont présents**, jamais à la
+déclaration — un seul pair n'est pas un appariement, et le superviseur se
+déclare `agent` sur `bureau` au démarrage de la VM et peut y rester **seul des
+heures**. Elle se clôt quand la table des sessions **se vide**.
+
+⚠️ **Conséquence assumée** : un agent qui se déclare et repart sans jamais
+rencontrer de client **ne laisse aucune trace**. C'est une décision, pas un
+oubli ; elle se rouvrira quand on voudra observer les agents présents — sujet de
+P3 (`vu_a`), pas de P1.
+
+🔴 **L'écriture ne doit JAMAIS pouvoir tuer une session.** Elle est lancée **sans
+être attendue**, avec un `.catch` qui journalise et n'interrompt rien : une
+promesse rejetée dans un gestionnaire d'événement `ws` **abat tout le process
+Node**. La trace est une **observation** du signaling, jamais une **dépendance**.
+Le coût est nommé — une écriture perdue ne se voit qu'au journal —, et c'est
+pourquoi le test attend la ligne avec une **borne** et échoue sur expiration.
+
+⚠️ **Le balayage de démarrage MENT** sur les sessions qui ont réellement survécu
+à l'arrêt du service : le flux WebRTC ne dépend plus du signaling une fois
+l'offre et la réponse échangées. Limite nommée, non corrigée.
+
+### ⑦ Le verdict des quatre critères, avec leur nombre d'exécutions
+
+**Aucun taux n'est revendiqué nulle part.**
+
+| # | Critère | Verdict | Exéc. |
+| --- | --- | --- | --- |
+| ① | Le service apparie deux pairs simulés, le média négocie comme avant | **TENU** | 2 (+2 rouges) |
+| ② | Une session appariée laisse une trace en base | **TENU** | 2 (+2 rouges) |
+| ③ | La même suite passe sur `node:sqlite` **et** sur Postgres | **TENU** | 2 par moteur (+1 rouge) |
+| ④ | L'écoute est bornée | **TENU, dans une portée étroite** | 2 (+1 rouge) |
+
+Relevés : `Tests 64 passed (64)` sur **sqlite** comme sur **postgres**,
+`typecheck` sortie **0**, `./scripts/verify-all.sh` sortie **0** — cargo
+**467** + **32** + 0, client **107**, proto **35**, plateforme **64** / **64**.
+
+**NEUF rouges jouées**, chacune avec son message verbatim et les sources
+restaurées à l'identique après chacune (§2 du document de résultats).
+
+⚠️ **Le critère ④ ne porte que sur la MOITIÉ de son nom.** Ce qui est établi :
+sans `PLATEFORME_HOTE` le service ne démarre pas, et avec, il écoute sur cette
+adresse. Ce qui ne l'est **pas** : qu'il soit injoignable **ailleurs** — sur une
+machine de développement, `127.0.0.1` et l'adresse de l'interface sont toutes
+deux locales, et la sonde exigerait une machine hors du réseau.
+
+### ⑧ Ce que P1 n'établit PAS
+
+- **Aucun taux.** Deux exécutions par critère, jamais une campagne.
+- **Aucune latence, aucune charge.** La cible « < 3 s si VM chaude » n'est
+  mesurée par aucun critère ; le nombre de sessions simultanées soutenues est
+  **inconnu**.
+- **Aucune exécution avec l'agent ou le navigateur RÉELS.** Les pairs sont
+  simulés — jusqu'aux octets, mais simulés. La corroboration sur VM est prévue
+  en fin de P3, hors critère.
+- **L'inaccessibilité du service depuis une autre interface** (voir ⑦).
+- **Le comportement de Postgres sous charge, en concurrence, ou après
+  redémarrage** : la passe `test:postgres` éprouve un **dialecte**, pas un
+  déploiement. C'est le critère ① de P5.
+- **Aucune authentification.** Le port, s'il est atteint, délivre toujours des
+  identifiants TURN valables 86 400 s à quiconque. **C'est P2**, et le critère ④
+  est ce qui rend cette fenêtre tolérable — raison pour laquelle il est en P1.
+- **La scalabilité horizontale** : la persistance ne la procure pas. Un WebSocket
+  vit dans un processus et un seul.
+- **Aucune constante calibrée** : ni `DUREE_SECONDES = 86_400`, ni le port par
+  défaut, ni les bornes de temps des tests, ni `INSTANT_MIGRATION`. Elles
+  rejoignent la liste déjà longue de ce dépôt — `BPP_MIN`, `FACTEUR_FOCUS`,
+  `PART_DORMANTE_BPS`, `HYSTERESIS`, `TAILLE_MAX_SORTIE`.
+- **Aucune cause NATURELLE de perte d'écriture n'a été observée** : le `.catch`
+  de la trace **n'a jamais couru** en recette.
+- **La course entre l'appariement et la séparation** est fermée par un
+  enchaînement de promesses, **jamais éprouvée sous concurrence réelle**.
+
+### ⑨ Pièges neufs — à connaître avant de toucher à ce terrain
+
+- ⚠️ **`SERIAL` et `AUTOINCREMENT` traversent SQLite sans bruit**, par affinité
+  de type. Deux passes vertes peuvent décrire deux schémas différents.
+- ⚠️ **`SELECT '?' AS x` est du SQL VALIDE.** Une conversion de marqueurs qui ne
+  refuse pas les littérales change silencieusement le sens des requêtes.
+- 🔴 **`INTEGER` n'a pas la même largeur des deux côtés**, et une suite qui
+  n'écrit que de petites valeurs ne peut pas le voir. **Le choix des valeurs
+  d'essai est un garde à part entière** — écrire des magnitudes réelles, pas des
+  nombres commodes.
+- ⚠️ **Un commentaire qui affirme que deux définitions dupliquées sont
+  « à l'identique » doit être ÉPROUVÉ par un test**, sans quoi elles divergent en
+  silence. Celui-ci ne l'était pas.
+- ⚠️ **L'annonce du port du point d'entrée est COUPLÉE à une expression
+  régulière de test** : `resilience.test.ts` lit `/le port (\d+)/` sur la sortie
+  d'un processus enfant. Toute autre forme fait expirer le harnais au bout de
+  10 s sur `démarrage du process signaling expiré`, **sans que rien ne désigne la
+  cause**. Le couplage est écrit dans `plateforme/src/index.ts` plutôt que subi.
+- ⚠️ **`pg` prend `:memory:` pour un nom d'hôte.** Un test qui lance un
+  processus enfant en lui transmettant `PLATEFORME_BASE=postgres` **sans** l'URL
+  le fait mourir sur `ECONNREFUSED` — le service ayant **raison** de refuser de
+  démarrer. `resilience.test.ts` fixe donc les quatre variables au lieu d'hériter
+  de l'environnement.
+- ⚠️ **`env.X ?? 'défaut'` ne s'applique PAS à la chaîne vide.** Le plan
+  annonçait deux tests rouges en posant un défaut sur `PLATEFORME_HOTE` ; **un
+  seul** rougit. Le contrôle tient, mais pas pour la raison écrite.
+- ⚠️ **`node:sqlite` est EXPÉRIMENTAL sur Node 24** et crie à chaque import. Le
+  cri est **conservé délibérément** dans les journaux ; `engines` épingle la
+  majeure, et un changement de majeure impose de rejouer la suite **avant tout
+  autre travail**.
+- ⚠️ **Un `BEGIN` émis sur un POOL `pg` et un `COMMIT` émis ensuite sur le pool
+  prennent deux clients DIFFÉRENTS**, donc deux transactions différentes — et le
+  tout **silencieusement**, la première restant ouverte jusqu'à expiration. Le
+  client est pris une fois et gardé pour toute la durée du corps.
+
+### ⑩ Le relevé de tailles, PAR LA COMMANDE, après la dernière édition
+
+Le § « Portée » en tête de ce fichier liste désormais **`plateforme/`** au lieu
+de `signaling/`.
+
+**Le dépôt entier ne porte que DEUX fichiers de plus de 500 lignes**, et ce sont
+les deux lignes de la dette gelée — `agent/src/encode.rs` **1536** et
+`agent/src/windows_source.rs` **630** —, **ni l'un ni l'autre touché par P1**.
+Les plus gros fichiers de `plateforme/` :
+
+| Fichier | Lignes | Marge |
+| --- | --- | --- |
+| `plateforme/src/signaling/server.test.ts` | 255 | 245 |
+| `plateforme/src/signaling/relais.ts` | 219 | 281 |
+| `plateforme/src/signaling/resilience.test.ts` | 181 | 319 |
+| `plateforme/src/signaling/trace.test.ts` | 151 | 349 |
+| `plateforme/src/base/pilotes.test.ts` | 135 | 365 |
+| `plateforme/src/base/sous-ensemble.test.ts` | 125 | 375 |
+| `plateforme/src/base/migrations.ts` | 118 | 382 |
+
+**Aucun fichier de `plateforme/` n'approche le plafond.** `relais.ts` — le seul
+que P2, P3 et P4 feront grossir — dispose de **281** lignes de marge, et **sa
+table des sessions en est DÉJÀ SORTIE** (`signaling/appariement.ts`, **PUR**,
+générique, testable sans ouvrir un socket). **C'est le geste que ce dépôt a
+établi en D9** : l'extraction faite AVANT l'addition rend sa marge, celle faite
+après se paie d'une compression que ce fichier interdit nommément.
+
+⚠️ **La divergence texte/commande signalée par ce fichier depuis D10 n'est pas
+tranchée et P1 n'en crée pas de seconde** : le § « Portée » énumère des
+répertoires, la commande, elle, ne filtre que `node_modules`, les verrous,
+`dist/`, `testdata/`, `docs/` et `CLAUDE.md` — et attrape donc
+`client/verify-webrtc.mjs`, hors de `client/src/`. **Cette décision appartient au
+propriétaire du dépôt.**
+
+### ⑪ La revue transverse de fin de branche
+
+Sa cible propre : **les affirmations devenues fausses dans la branche
+elle-même**. Un déménagement en produit une classe entière — des commentaires
+qui nomment leur ancien emplacement.
+
+| Où | Ce qui était devenu faux | Sort |
+| --- | --- | --- |
+| `plateforme/src/signaling/relais.ts:2` | « **Aucun état persistant** » — **P1 en pose un** | **CORRIGÉ**. ⚠️ « Aucune authentification » reste **VRAI** et n'est pas touché : les deux clauses de la même phrase n'ont pas le même sort |
+| `plateforme/src/signaling/relais.ts` (`isJsonObject`) | « aucun `uncaughtException` n'est installé dans **index.ts** » — le point d'entrée a **changé de fichier** | **CORRIGÉ**, et la propriété a été **REVÉRIFIÉE** sur le nouveau : `plateforme/src/index.ts` n'installe qu'un `SIGINT` |
+| `plateforme/src/config.ts:3` | `signaling/src/server.ts:67` — chemin disparu | **CORRIGÉ** |
+| `plateforme/src/depot/session.ts:6` | `signaling/src/ice.ts:32-42` — chemin disparu | **CORRIGÉ** (les lignes 32-42, elles, ont été **relues** et sont justes) |
+| `plateforme/src/signaling/trace.ts:28` | `signaling/ice.ts` — chemin disparu, écrit **dans la branche même** | **CORRIGÉ** |
+| `plateforme/src/signaling/appariement.ts:8` | « extrait de `server.ts` » sans dire ce qu'est ce fichier aujourd'hui | **CORRIGÉ** |
+| `CLAUDE.md:1913` | `signaling/src/ice.ts` (chantier C volet 2) | **CORRIGÉ**, le piège « le signaling doit être relancé AVEC l'environnement » étant **conservé entier** et annoté du nom neuf du processus |
+| `.gitignore:10` | `signaling/dist/` ne désignait plus rien | **CORRIGÉ** en tâche 2 |
+| **`agent/src/superviseur/protocole.rs:5`** | « à ce que **`signaling/src/server.ts`** accepte de relayer » — ce fichier n'existe plus ; il est aujourd'hui `plateforme/src/signaling/relais.ts` | ❌ **NON CORRIGÉ, et c'est délibéré** : `agent/` est le périmètre d'un travail concurrent au moment de P1. **La propriété énoncée reste VRAIE** (les six types relayés sont inchangés) ; **seul le chemin est périmé.** Dette d'une ligne, à reprendre par qui touchera ce fichier |
+
+**Trois affirmations FABRIQUÉES par le plan lui-même**, et corrigées par la
+mesure plutôt que recopiées :
+
+1. 🔴 sa **tâche 12** attend `server.test.ts` à l'empreinte `2a1304e0…`, ce que
+   le renommage prescrit par sa **propre tâche 4** rend impossible. Réel :
+   **`5e90b854…`**. Le contrôle décidable est ailleurs, et il a été joué —
+   `diff` contre la version d'avant le déménagement rend **une seule ligne, la
+   3**, celle de l'import ;
+2. sa **tâche 1** annonce « les DEUX premiers tests échouent » ; **un seul**
+   échoue (voir ⑨) ;
+3. sa **tâche 2/3** promet `resilience.test.ts` à « 1 puis 2 lignes » ; le `diff`
+   porte **trois hunks**, tous dans le harnais, **aucune assertion touchée**.
+
+⚠️ **Et un journal de cette recette a porté sa PROPRE affirmation fausse, dans
+le tour qui l'écrivait** : `critere-3-double-passe.log` concluait « SQLite est
+VERT sur un schéma que Postgres refuse » alors que son relevé, **trois lignes
+plus haut**, montrait sqlite à `2 failed | 62 passed` — les deux gardes neufs
+étant, eux, indépendants du moteur. **La correction est portée dans le journal
+lui-même**, avec l'énoncé daté qui, lui, est exact.
+
+### ⑫ Ce que P1 lègue à P2, P3, P4 et P5
+
+1. ⛔ **P2 — l'authentification.** Le port, s'il est atteint, délivre toujours
+   des identifiants TURN valables 86 400 s à quiconque. `utilisateur` **existe et
+   est vide** : P2 lui donne son comportement, **pas sa table**.
+2. 🔴 **P2 et P4 — toute contrainte doit naître avec sa table** (D3) : SQLite ne
+   sait pas l'ajouter par `ALTER TABLE`, et la reconstruction en douze étapes
+   n'est pas portable.
+3. ⛔ **P3 — `session.utilisateur_id` et `session.vm_id` restent `NULL`**, et
+   **ne seront pas resserrés en `NOT NULL`**. C'est le coût de D4, assumé.
+4. ⛔ **P3 — observer les agents présents** (`vm.vue_a`) : un agent seul ne
+   laisse aujourd'hui **aucune trace** (voir ⑥).
+5. ⛔ **P3 — `relais.ts` accueillera le canal `/agent`** : le routage de chemin
+   existe déjà (`noServer`), il ne reste qu'à ajouter une branche.
+6. ⛔ **P5 — l'inaccessibilité effective du service** depuis une autre interface
+   n'est pas établie, et ne peut pas l'être sans une machine hors du réseau.
+7. ⛔ **P5 — le comportement de Postgres sous charge, en concurrence, après
+   redémarrage.** P1 éprouve un **dialecte**, pas un déploiement.
+8. ⚠️ **Tous — la convention de nommage `_a`** est ce qui rend le lint des
+   horodatages opérant. Une colonne d'horodatage nommée autrement y échapperait
+   (voir ⑤).
+9. ⚠️ **Tous — `verify-all.sh` exige désormais une instance Postgres.** C'est le
+   prix assumé du « un saut est un échec » : sans elle, l'étape **ÉCHOUE** et le
+   script s'arrête, il ne se saute pas avec un avertissement.
 
 ---
 

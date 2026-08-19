@@ -5,7 +5,8 @@
 // horloge —, et c'est ce qui le rend testable sans ouvrir la moindre
 // connexion. Le relais l'instancie en `Appariement<WebSocket>`.
 //
-// Extrait de `server.ts` par le sous-bloc P1, AVANT que P2 (garde
+// Extrait de l'ex-`server.ts` — aujourd'hui `relais.ts` — par le sous-bloc P1,
+// AVANT que P2 (garde
 // d'authentification), P3 (liaison agent ↔ VM) et P4 (appartenance de session)
 // n'y ajoutent quoi que ce soit. Ce dépôt a établi en D9 que l'extraction
 // faite AVANT l'addition rend sa marge, et que celle faite après se paie d'une

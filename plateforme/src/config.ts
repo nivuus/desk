@@ -1,6 +1,8 @@
 // PLATEFORME_HOTE n'a AUCUN défaut, et c'est le point de cette fonction.
 //
-// `signaling/src/server.ts:67` faisait `new WebSocketServer({ port })` sans
+// L'ex-`signaling/src/server.ts:67` — aujourd'hui `src/signaling/relais.ts`,
+// le paquet `signaling/` ayant disparu au sous-bloc P1 — faisait
+// `new WebSocketServer({ port })` sans
 // `host` : le service écoutait sur toutes les interfaces, et délivrait des
 // identifiants TURN valables 24 h (`ice.ts:16`) à quiconque atteignait le
 // port. Poser un défaut ici — même `127.0.0.1` — ferait passer le critère ④

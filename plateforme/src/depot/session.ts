@@ -3,7 +3,7 @@
 //
 // 🔴 L'HORLOGE EST UN PARAMÈTRE, jamais lue ici. C'est la règle du
 // sous-ensemble portable (spec §3.2 : les horodatages sont « toujours écrites
-// par l'application ») ET le précédent du dépôt : `signaling/src/ice.ts:32-42`
+// par l'application ») ET le précédent du dépôt : `src/signaling/ice.ts:32-42`
 // prend déjà `maintenant` en paramètre pour la même raison. Ce qui rend le
 // choix vérifiable plutôt que déclaratif : `session.test.ts` asserte des
 // VALEURS EXACTES, qu'un `Date.now()` caché ferait toutes échouer.

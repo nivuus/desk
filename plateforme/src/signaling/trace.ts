@@ -25,7 +25,7 @@
 // expiration, plutôt que de se contenter de « la ligne finit par exister ».
 //
 // L'horloge est un PARAMÈTRE, jamais lue ici : même règle que `depot/session.ts`
-// et `signaling/ice.ts`, et c'est ce qui rend les instants assertables sur des
+// et `src/signaling/ice.ts`, et c'est ce qui rend les instants assertables sur des
 // valeurs exactes.
 
 import type { Pilote } from '../base/pilote';
