@@ -70,6 +70,15 @@ mod capture_reprise;
 #[path = "windows_source/telemetrie.rs"]
 mod windows_source_telemetrie;
 
+// Même montage encore (correction « A-bis », 19 août 2026) : la règle qui
+// élit le point de terminaison audio de rendu à capter est pure — elle prend
+// une liste de noms et d'identifiants et rend un élu ou une raison de refus —
+// alors que `wasapi.rs` est `#![cfg(windows)]` dans son ensemble. Un
+// `mod peripherique;` DANS `wasapi` la rendrait absente de la compilation
+// hôte, donc inéprouvable, exactement comme pour `telemetrie` ci-dessus.
+#[path = "wasapi/peripherique.rs"]
+mod wasapi_peripherique;
+
 #[cfg(windows)]
 mod capture;
 #[cfg(windows)]

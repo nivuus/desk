@@ -1,8 +1,16 @@
 //! Capture du son que joue la machine, par WASAPI en mode loopback.
 //!
-//! Le périphérique visé est le **rendu par défaut** de la session : on capte ce
-//! qui sortirait des haut-parleurs, quelle que soit l'application qui le
-//! produit.
+//! Le périphérique visé est **celui que désigne `AUDIO_PERIPHERIQUE`**, ou le
+//! rendu par défaut de la session à défaut : on capte ce qui sortirait de ce
+//! périphérique, quelle que soit l'application qui le produit.
+//!
+//! ⚠️ **Ce fichier a longtemps dit « le rendu par défaut » sans condition, et
+//! c'était une dépendance implicite qui s'est retournée** : l'installation de
+//! VB-Cable sur la VM (19 août 2026, préparation du chantier E) a fait
+//! basculer ce défaut sur un câble virtuel que rien n'alimente, et le produit
+//! s'est mis à capter du silence sans qu'aucune ligne ne le dise. La
+//! résolution vit désormais dans `wasapi/rendu.rs`, et la règle qui élit —
+//! pure, éprouvée sur l'hôte — dans `wasapi/peripherique.rs`.
 //!
 //! **Sondage, pas événement.** `AUDCLNT_STREAMFLAGS_EVENTCALLBACK` n'est pas
 //! supporté en combinaison avec `AUDCLNT_STREAMFLAGS_LOOPBACK` : Microsoft
@@ -15,10 +23,12 @@
 #![cfg(windows)]
 
 pub mod process_loopback;
+/// Résolution du point de terminaison de rendu à capter (correction « A-bis »).
+pub mod rendu;
 
 use anyhow::{bail, Context, Result};
 use windows::Win32::Media::Audio::{
-    eConsole, eRender, IAudioCaptureClient, IAudioClient, IMMDeviceEnumerator, MMDeviceEnumerator,
+    IAudioCaptureClient, IAudioClient, IMMDeviceEnumerator, MMDeviceEnumerator,
     AUDCLNT_BUFFERFLAGS_SILENT, AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_LOOPBACK,
     WAVEFORMATEX, WAVEFORMATEXTENSIBLE,
 };
@@ -171,9 +181,12 @@ impl LoopbackCapture {
             let enumerateur: IMMDeviceEnumerator =
                 CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
                     .context("création de l'énumérateur de périphériques audio")?;
-            let peripherique = enumerateur
-                .GetDefaultAudioEndpoint(eRender, eConsole)
-                .context("aucun périphérique de rendu audio par défaut")?;
+            // Correction « A-bis » : plus de `GetDefaultAudioEndpoint` en dur
+            // ici. `rendu::resoudre` honore `AUDIO_PERIPHERIQUE` quand elle
+            // est posée, retombe sur le défaut de Windows sinon (comportement
+            // d'avant, inchangé), et TRACE dans tous les cas le périphérique
+            // réellement retenu — y compris quand il s'agit d'un repli.
+            let peripherique = rendu::resoudre(&enumerateur)?;
             let client: IAudioClient = peripherique
                 .Activate(CLSCTX_ALL, None)
                 .context("activation du client audio")?;
