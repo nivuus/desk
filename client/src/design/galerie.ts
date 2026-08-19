@@ -30,8 +30,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 import { lireBlocsDeTheme } from './tokens';
-import { CLE_THEME, appliquer, choisir, surStockageModifie, themeStocke } from './theme';
-import type { Theme } from './theme';
+import { installerSelecteurDeTheme } from './selecteur-theme';
 import tokensCss from './tokens.css?raw';
 
 const racine = document.documentElement;
@@ -148,46 +147,16 @@ function rendre(): void {
     }
 }
 
-/**
- * Les trois boutons de thème — le PREMIER ET SEUL appelant de `choisir()` du
- * sous-bloc S1, et il vit sur une page qui n'est pas le produit. Le sélecteur
- * de thème du produit appartient à S3.
+/*
+ * Les trois boutons de thème vivent désormais dans `selecteur-theme.ts` : la
+ * galerie des primitives (S2) les réemploie sans recopier quinze lignes.
+ * L'extraction a été faite AVANT cette seconde galerie, pas après.
+ *
+ * 🔴 AUCUN DES SEPT CONTRÔLES NE REGARDE LE DOM. `design.html` porte un
+ * `<p id="themes"></p>` vide : un appel qui n'installerait rien laisserait la
+ * page sans sélecteur de thème et passerait tout, `npm test` compris. La seule
+ * preuve est une rouge d'exécution, jouée à l'extraction — commenter la ligne
+ * ci-dessous, bâtir, et constater que les trois boutons ont disparu.
  */
-function boutons(): void {
-    const hote = vide('themes');
-    const etats: Theme[] = ['systeme', 'clair', 'sombre'];
-    const marquer = () => {
-        const courant = themeStocke(localStorage);
-        for (const bouton of hote.querySelectorAll('button')) {
-            bouton.setAttribute('aria-pressed', String(bouton.dataset.theme === courant));
-        }
-    };
-    for (const etat of etats) {
-        const bouton = document.createElement('button');
-        bouton.type = 'button';
-        bouton.dataset.theme = etat;
-        bouton.textContent = etat;
-        bouton.addEventListener('click', () => {
-            choisir(localStorage, racine, etat);
-            marquer();
-            rendre();
-        });
-        hote.append(bouton);
-    }
-    marquer();
-}
-
-// L'amorce a déjà posé l'attribut avant la première peinture ; ce rappel couvre
-// le cas où le stockage a changé entre l'amorce et l'exécution de ce module.
-appliquer(racine, themeStocke(localStorage));
-
-// La bascule venue d'une AUTRE fenêtre — c'est la moitié que `choisir()` ne
-// peut pas couvrir, `storage` ne se déclenchant jamais chez l'écrivain.
-window.addEventListener('storage', (evenement) => {
-    if (evenement.key !== CLE_THEME) return;
-    surStockageModifie(racine, evenement.key, evenement.newValue);
-    rendre();
-});
-
-boutons();
+installerSelecteurDeTheme(vide('themes'), racine, localStorage, rendre);
 rendre();
