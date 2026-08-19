@@ -1,0 +1,19 @@
+2026-08-19T12:18:13.279668Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-19T12:18:13.281731Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-19T12:18:13.281766Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-19T12:18:13.281778Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création" nombre=11 attachees=11
+2026-08-19T12:18:13.281786Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-19T12:18:13.281792Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-19T12:18:13.281796Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création" nom=\\.\DISPLAY6 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 attachee=true x=3680 y=0 largeur=1280 hauteur=720
+2026-08-19T12:18:13.281799Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création" nom=\\.\DISPLAY7 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=3 attachee=true x=4960 y=0 largeur=1280 hauteur=720
+2026-08-19T12:18:13.281802Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création" nom=\\.\DISPLAY8 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=4 attachee=true x=6240 y=0 largeur=1280 hauteur=720
+2026-08-19T12:18:13.281805Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création" nom=\\.\DISPLAY9 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=5 attachee=true x=7520 y=0 largeur=1280 hauteur=720
+2026-08-19T12:18:13.281808Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création" nom=\\.\DISPLAY10 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=6 attachee=true x=8800 y=0 largeur=1280 hauteur=720
+2026-08-19T12:18:13.281812Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création" nom=\\.\DISPLAY11 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=7 attachee=true x=10080 y=0 largeur=1280 hauteur=720
+2026-08-19T12:18:13.281816Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création" nom=\\.\DISPLAY12 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=8 attachee=true x=11360 y=0 largeur=1280 hauteur=720
+2026-08-19T12:18:13.281819Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création" nom=\\.\DISPLAY13 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=9 attachee=true x=12640 y=0 largeur=1280 hauteur=720
+2026-08-19T12:18:13.281822Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création" nom=\\.\DISPLAY14 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=10 attachee=true x=13920 y=0 largeur=1280 hauteur=720
+Error: création d'une sortie 1280x720@60 (IOCTL 0x00222000)
+System.Management.Automation.RemoteException
+Caused by:
+    La limite de nom pour la carte réseau de l’ordinateur local a été dépassée. (0x80070044)

@@ -1,0 +1,68 @@
+
+=== ../cout-sale-1.json  (8 fenêtres, budget 12000000, mode posé 3840x2160)
+  loadavg 5.81 6.63 6.43 -> 16.21 9.13 7.24 | établissement {"calme_s":12,"attente_s":42,"changements_barreau_cumules":20,"atteint":true}
+  marqueurs : {"attachee_capteur":8,"enfant_lance":8,"introuvable_topologie":0,"sortie_creee":8,"cloture":0,"erreurs":0}
+  surfaces dupliquées : [["w-2","1280x720"],["w-4","1280x720"],["w-6","1280x720"],["w-8","3840x2160"],["w-10","1280x720"],["w-12","1280x720"],["w-14","1280x720"],["w-16","1280x720"]]
+  ADMISSION du bras : NON OBTENU — 2 valeurs distinctes ["1280x720","3840x2160"]. MESURE DEUX BRAS DÉCLARÉE NON PRISE.
+  fenêtre utile 2026-08-19T12:28:34.963Z -> 2026-08-19T12:30:04.987Z (90 s)
+    w-2   surface=1280x720  encodage=852x480   relevés=9 cadence_moy=72.3 Hz
+    w-4   surface=1280x720  encodage=852x480   relevés=9 cadence_moy=72.2 Hz
+    w-6   surface=1280x720  encodage=852x480   relevés=9 cadence_moy=73.5 Hz
+    w-8   surface=3840x2160 encodage=852x480   relevés=9 cadence_moy=74.2 Hz
+    w-10  surface=1280x720  encodage=852x480   relevés=9 cadence_moy=72.9 Hz
+    w-12  surface=1280x720  encodage=852x480   relevés=9 cadence_moy=71 Hz
+    w-14  surface=1280x720  encodage=852x480   relevés=9 cadence_moy=69.7 Hz
+    w-16  surface=1280x720  encodage=1024x576  relevés=9 cadence_moy=73.3 Hz
+  APPARIÉ : surdimensionnée(s) w-8 = 74.2 Hz (n=1) | à la taille demandée = 72.1 Hz (n=7, min 69.7, max 73.5) | écart 2.1 Hz soit 2.9 %
+  navigateur (8 pages) : décodées/s 72.4 72.0 74.0 71.6 73.4 71.8 70.5 74.2 | jetées 175 149 0 264 0 0 1 0 | paquets perdus 0 0 0 0 0 0 0 0 | tailles ["852x480","1024x576"]
+
+=== ../cout-propre-1.json  (8 fenêtres, budget 12000000, mode posé 1280x720)
+  loadavg 7.06 7.93 6.98 -> 10.02 8.44 7.33 | établissement {"calme_s":12,"attente_s":18,"changements_barreau_cumules":20,"atteint":true}
+  marqueurs : {"attachee_capteur":8,"enfant_lance":8,"introuvable_topologie":0,"sortie_creee":8,"cloture":0,"erreurs":0}
+  surfaces dupliquées : [["w-2","1280x720"],["w-4","1280x720"],["w-6","1280x720"],["w-8","3840x2160"],["w-10","1280x720"],["w-12","1280x720"],["w-14","1280x720"],["w-16","1280x720"]]
+  ADMISSION du bras : NON OBTENU — 2 valeurs distinctes ["1280x720","3840x2160"]. MESURE DEUX BRAS DÉCLARÉE NON PRISE.
+  fenêtre utile 2026-08-19T12:35:18.774Z -> 2026-08-19T12:36:48.789Z (90 s)
+    w-2   surface=1280x720  encodage=852x480   relevés=9 cadence_moy=64.7 Hz
+    w-4   surface=1280x720  encodage=852x480   relevés=9 cadence_moy=66.4 Hz
+    w-6   surface=1280x720  encodage=852x480   relevés=9 cadence_moy=65.9 Hz
+    w-8   surface=3840x2160 encodage=852x480   relevés=9 cadence_moy=66.6 Hz
+    w-10  surface=1280x720  encodage=852x480   relevés=9 cadence_moy=63.7 Hz
+    w-12  surface=1280x720  encodage=852x480   relevés=9 cadence_moy=63.1 Hz
+    w-14  surface=1280x720  encodage=852x480   relevés=9 cadence_moy=65.3 Hz
+    w-16  surface=1280x720  encodage=1024x576  relevés=9 cadence_moy=64.2 Hz
+  APPARIÉ : surdimensionnée(s) w-8 = 66.6 Hz (n=1) | à la taille demandée = 64.8 Hz (n=7, min 63.1, max 66.4) | écart 1.8 Hz soit 2.8 %
+  navigateur (8 pages) : décodées/s 64.9 66.3 65.5 66.4 63.7 62.9 65.4 64.3 | jetées 0 10 0 0 0 0 0 0 | paquets perdus 0 0 0 0 0 0 0 0 | tailles ["852x480","1024x576"]
+
+=== ../cout-3.json  (8 fenêtres, budget 12000000, mode posé aucun)
+  loadavg 6.06 7.46 7.07 -> 11.18 8.38 7.43 | établissement {"calme_s":12,"attente_s":18,"changements_barreau_cumules":20,"atteint":true}
+  marqueurs : {"attachee_capteur":8,"enfant_lance":8,"introuvable_topologie":0,"sortie_creee":8,"cloture":0,"erreurs":0}
+  surfaces dupliquées : [["w-2","1280x720"],["w-4","1280x720"],["w-6","1280x720"],["w-8","3840x2160"],["w-10","1280x720"],["w-12","1280x720"],["w-14","1280x720"],["w-16","1280x720"]]
+  ADMISSION du bras : NON OBTENU — 2 valeurs distinctes ["1280x720","3840x2160"]. MESURE DEUX BRAS DÉCLARÉE NON PRISE.
+  fenêtre utile 2026-08-19T12:41:11.822Z -> 2026-08-19T12:42:41.846Z (90 s)
+    w-2   surface=1280x720  encodage=852x480   relevés=9 cadence_moy=69.9 Hz
+    w-4   surface=1280x720  encodage=852x480   relevés=9 cadence_moy=69.6 Hz
+    w-6   surface=1280x720  encodage=852x480   relevés=9 cadence_moy=70.4 Hz
+    w-8   surface=3840x2160 encodage=852x480   relevés=9 cadence_moy=67.2 Hz
+    w-10  surface=1280x720  encodage=852x480   relevés=9 cadence_moy=71.1 Hz
+    w-12  surface=1280x720  encodage=852x480   relevés=9 cadence_moy=70.1 Hz
+    w-14  surface=1280x720  encodage=852x480   relevés=9 cadence_moy=72.4 Hz
+    w-16  surface=1280x720  encodage=1024x576  relevés=9 cadence_moy=70.6 Hz
+  APPARIÉ : surdimensionnée(s) w-8 = 67.2 Hz (n=1) | à la taille demandée = 70.6 Hz (n=7, min 69.6, max 72.4) | écart -3.4 Hz soit -4.8 %
+  navigateur (8 pages) : décodées/s 68.2 70.4 71.1 67.7 71.1 67.9 72.8 71.1 | jetées 214 0 0 0 0 212 6 0 | paquets perdus 0 0 0 0 0 0 0 0 | tailles ["852x480","1024x576"]
+
+=== ../cout-4.json  (8 fenêtres, budget 12000000, mode posé aucun)
+  loadavg 8.73 8.00 7.32 -> 8.26 7.97 7.43 | établissement {"calme_s":12,"attente_s":18,"changements_barreau_cumules":24,"atteint":true}
+  marqueurs : {"attachee_capteur":8,"enfant_lance":8,"introuvable_topologie":0,"sortie_creee":8,"cloture":0,"erreurs":0}
+  surfaces dupliquées : [["w-2","1280x720"],["w-4","1280x720"],["w-6","1280x720"],["w-8","3840x2160"],["w-10","1280x720"],["w-12","1280x720"],["w-14","1280x720"],["w-16","1280x720"]]
+  ADMISSION du bras : NON OBTENU — 2 valeurs distinctes ["1280x720","3840x2160"]. MESURE DEUX BRAS DÉCLARÉE NON PRISE.
+  fenêtre utile 2026-08-19T12:46:04.165Z -> 2026-08-19T12:47:34.179Z (90 s)
+    w-2   surface=1280x720  encodage=852x480   relevés=9 cadence_moy=67.8 Hz
+    w-4   surface=1280x720  encodage=852x480   relevés=9 cadence_moy=67.7 Hz
+    w-6   surface=1280x720  encodage=852x480   relevés=9 cadence_moy=67.7 Hz
+    w-8   surface=3840x2160 encodage=852x480   relevés=9 cadence_moy=67.9 Hz
+    w-10  surface=1280x720  encodage=852x480   relevés=8 cadence_moy=64.6 Hz
+    w-12  surface=1280x720  encodage=852x480   relevés=9 cadence_moy=71.5 Hz
+    w-14  surface=1280x720  encodage=852x480   relevés=9 cadence_moy=66.7 Hz
+    w-16  surface=1280x720  encodage=1024x576  relevés=9 cadence_moy=64.6 Hz
+  APPARIÉ : surdimensionnée(s) w-8 = 67.9 Hz (n=1) | à la taille demandée = 67.2 Hz (n=7, min 64.6, max 71.5) | écart 0.7 Hz soit 1.0 %
+  navigateur (8 pages) : décodées/s 67.6 67.8 67.8 68.1 62.8 68.7 66.6 63.0 | jetées 0 0 0 1 150 237 0 154 | paquets perdus 0 0 0 0 0 0 0 0 | tailles ["852x480","1024x576"]
