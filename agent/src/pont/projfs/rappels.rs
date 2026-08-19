@@ -1,10 +1,17 @@
 //! Les **huit** rappels que ProjFS appelle, et le seul endroit du pont où du
 //! code s'exécute sur un fil que le SYSTÈME possède.
 //!
-//! ⚠️ **Squelette de la tâche 13 : les cinq rappels obligatoires existent tous,
-//! mais aucun ne demande encore quoi que ce soit au navigateur.** Trois d'entre
-//! eux — `GetPlaceholderInfo`, `GetFileData`, `GetDirectoryEnumeration` — sont
-//! branchés sur la table et le canal par la tâche 14. Ici, ils refusent.
+//! **TROIS d'entre eux sont ASYNCHRONES** — `GetPlaceholderInfo`,
+//! `GetFileData`, `GetDirectoryEnumeration` (plus `QueryFileName`, qui emprunte
+//! la même requête que le premier) : ils inscrivent une commande, poussent une
+//! requête, rendent `HRESULT_FROM_WIN32(ERROR_IO_PENDING)` et rendent la main.
+//!
+//! ⚠️ **La spec §8 annonce « les CINQ rappels obligatoires en mode
+//! asynchrone » ; c'est un écart d'énoncé, pas de conception, et sa propre
+//! table §4.3 le dit** : `StartDirectoryEnumeration` et
+//! `EndDirectoryEnumeration` y figurent comme « synchrone, `S_OK` », puisqu'ils
+//! ne consultent jamais le navigateur. **Cinq sont implémentés, trois sont
+//! asynchrones.**
 //!
 //! # Ce que chaque rappel a le droit de faire, et rien de plus
 //!
@@ -30,9 +37,12 @@ use windows::Win32::Storage::ProjectedFileSystem::{
     PRJ_NOTIFICATION_PARAMETERS, PRJ_QUERY_FILE_NAME_CB, PRJ_START_DIRECTORY_ENUMERATION_CB,
 };
 
-use crate::pont::erreurs::{hresult, Erreur};
+use crate::pont::chemins;
+use crate::pont::entetes;
+use crate::pont::erreurs::{hresult, Erreur, EN_COURS};
 use crate::pont::notifications;
-use crate::pont::projfs::Etat;
+use crate::pont::projfs::{ContexteProjFs, Etat, FluxDonnees, TamponEntrees};
+use crate::pont::table::{Attendue, DELAI_ATTRIBUTS, DELAI_LISTER};
 
 // ────────────────────────────────────────────────────────────────────────────
 // 🔵 LE SEUL GARDE D'ABI QUE CE DÉPÔT POSSÈDE, et il ne couvre QUE ces huit
@@ -98,6 +108,34 @@ unsafe fn etat<'a>(donnees: *const PRJ_CALLBACK_DATA) -> Option<&'a Etat> {
     Some(unsafe { &*contexte })
 }
 
+/// Le chemin livré par ProjFS, sous ses DEUX formes : celle que la File System
+/// Access API attend (logique, séparée par `/`, **normalisée et vérifiée**), et
+/// celle que ProjFS reprendra telle quelle.
+///
+/// ⚠️ **La normalisation n'est pas un confort : c'est la seule barrière.** La
+/// racine de virtualisation est traversée par n'importe quelle application de
+/// la session Windows, y compris hostile — remontées `..`, flux alternatifs
+/// NTFS, noms de périphérique réservés. `pont::chemins` les refuse, et il est
+/// PUR, donc éprouvé sur l'hôte.
+unsafe fn chemins_de(donnees: *const PRJ_CALLBACK_DATA) -> Option<(String, Vec<u16>)> {
+    let brut = unsafe { donnees.as_ref() }?.FilePathName;
+    if brut.is_null() {
+        // La racine elle-même : chemin vide des deux côtés.
+        return Some((String::new(), vec![0u16]));
+    }
+    // SÛRETÉ : ProjFS garantit un `PCWSTR` terminé par un nul.
+    let unites: Vec<u16> = unsafe { brut.as_wide() }.to_vec();
+    let logique = match chemins::normaliser_utf16(&unites) {
+        Ok(logique) => logique,
+        Err(refus) => {
+            tracing::warn!(?refus, "chemin ProjFS refusé par la normalisation");
+            return None;
+        }
+    };
+    let projfs = unites.into_iter().chain(std::iter::once(0)).collect();
+    Some((logique, projfs))
+}
+
 /// Le GUID d'une énumération, sous la forme que [`crate::pont::table`] emploie.
 ///
 /// `[u8; 16]` et non `GUID` : la table est **pure** et ne connaît pas
@@ -126,7 +164,7 @@ unsafe extern "system" fn debut_enumeration(
         // temps ouvrent deux sessions distinctes, et indexer par chemin ferait
         // que la seconde écraserait la première — l'une des deux recevrait un
         // répertoire vide (spec §7.2).
-        etat.enumerations.lock().expect("verrou des énumérations").insert(id);
+        etat.sessions.lock().expect("verrou des sessions").entry(id).or_default();
         S_OK
     })
 }
@@ -141,7 +179,10 @@ unsafe extern "system" fn fin_enumeration(
         else {
             return E_UNEXPECTED;
         };
-        etat.enumerations.lock().expect("verrou des énumérations").remove(&id);
+        // La session meurt ici : ses entrées ne survivent PAS à l'énumération.
+        // C'est ce qui distingue une session d'un cache d'énumération, qui n'est
+        // PAS livré en F1 (voir `pont::enumeration`).
+        etat.sessions.lock().expect("verrou des sessions").remove(&id);
         S_OK
     })
 }
@@ -152,30 +193,157 @@ unsafe extern "system" fn fin_enumeration(
 /// C'est l'état VERT que la tâche 13 vise — le dossier apparaît, et le pont
 /// s'arrête proprement. La tâche 14 y branche la requête `Lister`.
 unsafe extern "system" fn suite_enumeration(
-    _donnees: *const PRJ_CALLBACK_DATA,
-    _enumeration: *const GUID,
-    _expression: windows::core::PCWSTR,
-    _tampon: PRJ_DIR_ENTRY_BUFFER_HANDLE,
+    donnees: *const PRJ_CALLBACK_DATA,
+    enumeration: *const GUID,
+    expression: windows::core::PCWSTR,
+    tampon: PRJ_DIR_ENTRY_BUFFER_HANDLE,
 ) -> HRESULT {
-    garde("GetDirectoryEnumeration", || S_OK)
+    garde("GetDirectoryEnumeration", || {
+        let (Some(etat), Some(id)) = (unsafe { etat(donnees) }, unsafe { identifiant(enumeration) })
+        else {
+            return E_UNEXPECTED;
+        };
+        let Some((chemin, _)) = (unsafe { chemins_de(donnees) }) else {
+            return HRESULT(hresult(Erreur::CheminIntrouvable));
+        };
+        let motif = if expression.is_null() {
+            None
+        } else {
+            // SÛRETÉ : ProjFS garantit un `PCWSTR` terminé par un nul.
+            unsafe { expression.to_string() }.ok()
+        };
+        // ⚠️ `PRJ_CB_DATA_FLAG_ENUM_RESTART_SCAN` (`mod.rs:177`, valeur `1i32`)
+        // **doit être honoré** : il redémarre l'énumération en cours. L'ignorer
+        // ferait rendre un répertoire vide à toute application qui redemande
+        // depuis le début, silencieusement.
+        let redemarrer = unsafe { (*donnees).Flags }.0 & 1 != 0;
+
+        let mut sessions = match etat.sessions.lock() {
+            Ok(sessions) => sessions,
+            Err(_) => return E_UNEXPECTED,
+        };
+        let session = sessions.entry(id).or_default();
+        if redemarrer {
+            session.redemarrer();
+        }
+        if session.chargee() {
+            // ⚠️ **Chemin SYNCHRONE, et il est le cas nominal.** ProjFS rappelle
+            // `GetDirectoryEnumeration` jusqu'à épuisement ; seul le PREMIER
+            // appel d'une session consulte le navigateur. Repasser par la table
+            // à chaque tour ferait un aller-retour réseau par tampon plein,
+            // pour une liste qu'on a déjà.
+            return crate::pont::service::remplir_session(etat, session, tampon);
+        }
+        drop(sessions);
+
+        let entete = match serde_json::to_string(&entetes::Chemin { chemin: chemin.clone() }) {
+            Ok(entete) => entete,
+            Err(_) => return E_UNEXPECTED,
+        };
+        let demandee = etat.demander(
+            unsafe { (*donnees).CommandId },
+            Attendue::Lister { chemin, enumeration: id },
+            std::time::Instant::now() + DELAI_LISTER,
+            ContexteProjFs::Enumeration {
+                tampon: TamponEntrees(tampon),
+                expression: motif,
+            },
+            proto::fichiers::TYPE_LISTER,
+            &entete,
+        );
+        if demandee {
+            HRESULT(EN_COURS)
+        } else {
+            HRESULT(hresult(Erreur::CanalFerme))
+        }
+    })
 }
 
 /// Rend les métadonnées d'une entrée.
 ///
 /// ⚠️ **Tâche 13 : `ERROR_FILE_NOT_FOUND`.** Branché en tâche 14.
-unsafe extern "system" fn info_marqueur(_donnees: *const PRJ_CALLBACK_DATA) -> HRESULT {
-    garde("GetPlaceholderInfo", || HRESULT(hresult(Erreur::Introuvable)))
+unsafe extern "system" fn info_marqueur(donnees: *const PRJ_CALLBACK_DATA) -> HRESULT {
+    garde("GetPlaceholderInfo", || {
+        let Some(etat) = (unsafe { etat(donnees) }) else { return E_UNEXPECTED };
+        let Some((chemin, chemin_projfs)) = (unsafe { chemins_de(donnees) }) else {
+            return HRESULT(hresult(Erreur::CheminIntrouvable));
+        };
+        let entete = match serde_json::to_string(&entetes::Chemin { chemin: chemin.clone() }) {
+            Ok(entete) => entete,
+            Err(_) => return E_UNEXPECTED,
+        };
+        let demandee = etat.demander(
+            unsafe { (*donnees).CommandId },
+            Attendue::Attributs { chemin },
+            std::time::Instant::now() + DELAI_ATTRIBUTS,
+            ContexteProjFs::Attributs { chemin_projfs },
+            proto::fichiers::TYPE_ATTRIBUTS,
+            &entete,
+        );
+        if demandee {
+            HRESULT(EN_COURS)
+        } else {
+            HRESULT(hresult(Erreur::CanalFerme))
+        }
+    })
 }
 
 /// Rend le contenu d'un fichier.
 ///
 /// ⚠️ **Tâche 13 : `ERROR_FILE_NOT_FOUND`.** Branché en tâche 14.
 unsafe extern "system" fn donnees_fichier(
-    _donnees: *const PRJ_CALLBACK_DATA,
-    _position: u64,
-    _longueur: u32,
+    donnees: *const PRJ_CALLBACK_DATA,
+    position: u64,
+    longueur: u32,
 ) -> HRESULT {
-    garde("GetFileData", || HRESULT(hresult(Erreur::Introuvable)))
+    garde("GetFileData", || {
+        let Some(etat) = (unsafe { etat(donnees) }) else { return E_UNEXPECTED };
+        let Some((chemin, _)) = (unsafe { chemins_de(donnees) }) else {
+            return HRESULT(hresult(Erreur::CheminIntrouvable));
+        };
+        // ⚠️ **Le fichier entier n'entre JAMAIS en mémoire** : la plage est
+        // découpée par `pont::decoupe`, PUR et testé, et **un seul morceau est
+        // en vol à la fois** en F1. Le contrôle de flux par `bufferedAmount`
+        // est un livrable de F3 ; l'implémenter à moitié ici serait pire.
+        let mut morceaux: std::collections::VecDeque<_> = crate::pont::decoupe::decouper(
+            position,
+            u64::from(longueur),
+            proto::fichiers::TAILLE_TRAME_MAX,
+        )
+        .into();
+        let Some(premier) = morceaux.pop_front() else {
+            // Longueur nulle : rien à écrire, et rien à demander. Compléter
+            // tout de suite plutôt qu'inscrire une commande qui n'aurait
+            // jamais de réponse.
+            return S_OK;
+        };
+        let flux = unsafe { (*donnees).DataStreamId };
+        let entete = match serde_json::to_string(&entetes::Lire {
+            chemin: chemin.clone(),
+            position: premier.position,
+            longueur: premier.longueur,
+        }) {
+            Ok(entete) => entete,
+            Err(_) => return E_UNEXPECTED,
+        };
+        let demandee = etat.demander(
+            unsafe { (*donnees).CommandId },
+            Attendue::Lire {
+                chemin,
+                position: premier.position,
+                longueur: premier.longueur,
+            },
+            std::time::Instant::now() + crate::pont::table::DELAI_LIRE,
+            ContexteProjFs::Lecture { flux: FluxDonnees(flux), restants: morceaux },
+            proto::fichiers::TYPE_LIRE,
+            &entete,
+        );
+        if demandee {
+            HRESULT(EN_COURS)
+        } else {
+            HRESULT(hresult(Erreur::CanalFerme))
+        }
+    })
 }
 
 /// Dit si un nom existe. Consulté en permanence par Windows pour des chemins
@@ -183,8 +351,37 @@ unsafe extern "system" fn donnees_fichier(
 /// d'application) — d'où le cache négatif armé au démarrage.
 ///
 /// ⚠️ **Tâche 13 : `ERROR_FILE_NOT_FOUND`.** Branché en tâche 14.
-unsafe extern "system" fn nom_fichier(_donnees: *const PRJ_CALLBACK_DATA) -> HRESULT {
-    garde("QueryFileName", || HRESULT(hresult(Erreur::Introuvable)))
+unsafe extern "system" fn nom_fichier(donnees: *const PRJ_CALLBACK_DATA) -> HRESULT {
+    garde("QueryFileName", || {
+        let Some(etat) = (unsafe { etat(donnees) }) else { return E_UNEXPECTED };
+        let Some((chemin, _)) = (unsafe { chemins_de(donnees) }) else {
+            return HRESULT(hresult(Erreur::CheminIntrouvable));
+        };
+        let entete = match serde_json::to_string(&entetes::Chemin { chemin: chemin.clone() }) {
+            Ok(entete) => entete,
+            Err(_) => return E_UNEXPECTED,
+        };
+        // Même requête que `GetPlaceholderInfo` : « ce nom existe-t-il ? » et
+        // « quelles sont ses métadonnées ? » ont la même réponse côté
+        // navigateur. Le cache négatif de ProjFS
+        // (`PRJ_FLAG_USE_NEGATIVE_PATH_CACHE`) est ce qui empêche que les
+        // sondages permanents de Windows — `desktop.ini`, `Thumbs.db`,
+        // `folder.jpg`, les manifestes d'application — deviennent chacun un
+        // aller-retour navigateur (spec §7.4).
+        let demandee = etat.demander(
+            unsafe { (*donnees).CommandId },
+            Attendue::Attributs { chemin },
+            std::time::Instant::now() + DELAI_ATTRIBUTS,
+            ContexteProjFs::Existence,
+            proto::fichiers::TYPE_ATTRIBUTS,
+            &entete,
+        );
+        if demandee {
+            HRESULT(EN_COURS)
+        } else {
+            HRESULT(hresult(Erreur::CanalFerme))
+        }
+    })
 }
 
 /// **Le refus d'écriture, et c'est le PÉRIMÈTRE de F1**, pas une lacune.
@@ -256,8 +453,16 @@ unsafe extern "system" fn annulation(donnees: *const PRJ_CALLBACK_DATA) {
     let issue = std::panic::catch_unwind(|| {
         let Some(etat) = (unsafe { etat(donnees) }) else { return };
         let commande = unsafe { (*donnees).CommandId };
-        if let Some(correlation) = etat.table.lock().expect("verrou de la table").annuler(commande)
-        {
+        let correlation = etat.table.lock().expect("verrou de la table").annuler(commande);
+        if let Some(correlation) = correlation {
+            // ⚠️ **Le contexte ProjFS part AVEC l'entrée de table, sinon il
+            // fuit.** `Table::annuler` ne connaît que la table — elle est PURE
+            // — et le tampon d'énumération ou le flux de données d'une commande
+            // annulée resterait sinon dans `en_attente` pour toute la vie du
+            // pont, sans que rien ne le lise jamais.
+            if let Ok(mut attente) = etat.en_attente.lock() {
+                attente.remove(&correlation);
+            }
             tracing::debug!(commande, correlation, "commande ProjFS annulée par l'application");
         }
     });

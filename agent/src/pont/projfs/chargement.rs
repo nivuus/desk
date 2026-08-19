@@ -204,6 +204,31 @@ type EcrireInfoMarqueur = unsafe extern "system" fn(
     placeholderinfosize: u32,
 ) -> windows::core::HRESULT;
 
+/// Convertit une adresse en pointeur de fonction typé.
+///
+/// # Sûreté
+///
+/// L'appelant garantit qu'`adresse` est l'adresse réellement exportée pour
+/// l'entrée dont `T` est la transcription. **C'est là que le risque R7 est
+/// pris** : ni cette fonction ni le compilateur ne peuvent vérifier que `T`
+/// décrit la signature de la fonction qui vit à cette adresse.
+///
+/// L'assertion de taille n'y change rien, et elle n'est pas décorative pour
+/// autant : elle attrape un `T` qui ne serait **pas** un pointeur de fonction
+/// nu — un `Option<fn>` habitant une niche, une référence grasse —, cas que
+/// `transmute_copy` accepterait en silence **en lisant au-delà de la variable
+/// source**.
+unsafe fn depuis_adresse<T: Copy>(adresse: usize) -> T {
+    assert_eq!(
+        std::mem::size_of::<T>(),
+        std::mem::size_of::<usize>(),
+        "la cible d'une transcription ProjFS n'est pas un pointeur de fonction nu"
+    );
+    // SÛRETÉ : les tailles sont égales (assertion ci-dessus), et l'appelant
+    // garantit la correspondance de signature.
+    unsafe { std::mem::transmute_copy(&adresse) }
+}
+
 /// Les treize entrées, résolues une seule fois.
 ///
 /// **Aucune n'est `Option`** : [`charger`] échoue si une seule manque, donc un
@@ -211,8 +236,22 @@ type EcrireInfoMarqueur = unsafe extern "system" fn(
 /// chaque site d'appel une décision qui appartient au chargement.
 pub struct ProjFs {
     pub allouer_tampon_aligne: AllouerTamponAligne,
+    /// ⚠️ **Chargée sans appelant, DÉLIBÉRÉMENT.** Elle vide le cache négatif
+    /// de ProjFS, ce qu'aucun chemin de F1 ne demande : le seul moyen de le
+    /// solliciter est `Rafraichir`, un livrable de **F5**. Elle est résolue
+    /// dès maintenant pour que F5 n'ait pas à rouvrir cette couche — et parce
+    /// qu'une entrée absente doit être découverte au CHARGEMENT, avec un
+    /// message qui la nomme, jamais au premier appel.
+    #[allow(dead_code)]
     pub vider_cache_negatif: ViderCacheNegatif,
     pub completer_commande: CompleterCommande,
+    /// ⚠️ **Chargée sans appelant, DÉLIBÉRÉMENT**, pour la même raison :
+    /// **aucune politique d'éviction en F1**. Chaque fichier lu est hydraté sur
+    /// le disque de la VM et il y reste (spec §6.4, cas 4). Poser une politique
+    /// sans mesure serait exactement le geste que ce dépôt reproche à ses
+    /// constantes non calibrées ; la mesure appartient à F5, et l'entrée est
+    /// prête pour elle.
+    #[allow(dead_code)]
     pub supprimer_fichier: SupprimerFichier,
     pub comparer_noms: ComparerNoms,
     pub apparier_nom: ApparierNom,
@@ -278,11 +317,10 @@ pub fn charger() -> Result<ProjFs> {
     // deux de ces rangs SURVIVAIT à toute la suite de tests.
     macro_rules! transcrire {
         ($($champ:ident),+ $(,)?) => {
-            ProjFs { $( $champ: std::mem::transmute(adresses.$champ), )+ }
+            ProjFs { $( $champ: unsafe { depuis_adresse(adresses.$champ) }, )+ }
         };
     }
-    unsafe {
-        Ok(transcrire!(
+    Ok(transcrire!(
             allouer_tampon_aligne,
             vider_cache_negatif,
             completer_commande,
@@ -296,6 +334,5 @@ pub fn charger() -> Result<ProjFs> {
             arreter_virtualisation,
             ecrire_donnees,
             ecrire_info_marqueur,
-        ))
-    }
+    ))
 }

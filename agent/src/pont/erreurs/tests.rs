@@ -89,3 +89,23 @@ fn les_douze_codes_sont_epingles_un_a_un() {
         assert_eq!(hresult(e), code as i32, "{e:?}");
     }
 }
+
+/// `HRESULT_FROM_WIN32(ERROR_IO_PENDING)` vaut `0x800703E5`, et c'est la valeur
+/// que TOUT rappel asynchrone rend. Une erreur de transcription y ferait rendre
+/// un code d'échec là où ProjFS attend « en cours » : l'application recevrait
+/// une E/S en échec sur chaque lecture, et le pont attendrait indéfiniment une
+/// complétion que ProjFS n'accepterait plus.
+#[test]
+fn en_cours_vaut_le_hresult_de_error_io_pending() {
+    assert_eq!(EN_COURS, 0x8007_03E5u32 as i32);
+}
+
+/// `EN_COURS` n'est le `hresult` d'AUCUNE variante d'`Erreur`. S'il l'était,
+/// un échec réel serait indistinguable d'une opération en cours, et ProjFS
+/// attendrait une complétion qui ne viendrait jamais.
+#[test]
+fn en_cours_ne_collide_avec_aucune_cause_d_echec() {
+    for cause in Erreur::TOUTES {
+        assert_ne!(hresult(cause), EN_COURS, "{cause:?}");
+    }
+}

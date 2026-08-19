@@ -1,0 +1,92 @@
+Tâche 14 du sous-bloc F1 — mutations jouées APRÈS le vert, le 20 août 2026.
+Source restaurée et vérifiée par empreinte MD5 après chaque mutation (les deux
+empreintes de fin sont comparées à celles d'avant, et elles coïncident).
+
+Cibles : les deux modules PURS que la tâche 14 ajoute. Les trois rappels
+asynchrones eux-mêmes sont `#[cfg(windows)]` et appelés par le système : aucun
+test d'hôte ne peut les atteindre, ce qui est DÉCLARÉ (spec §4.4) et non
+contourné — d'où l'effort porté sur ce qui, en eux, est une décision.
+
+════════════════════════════════════════════════════════════════════════════
+A. `agent/src/pont/enumeration.rs` — l'ordre imposé, le filtre, le curseur
+════════════════════════════════════════════════════════════════════════════
+
+A1. « le tri retombe sur l'ordre lexicographique »
+    `sort_by(|a,b| comparer(...))` → `sort_by(|a,b| a.nom.cmp(&b.nom))`
+    TUÉE — l_ordre_suit_le_comparateur_injecte_et_non_l_ordre_lexicographique
+      left:  ["alpha", "bravo", "charlie"]
+      right: ["charlie", "bravo", "alpha"]
+
+    ⚠️ C'est le test que le comparateur À L'ENVERS rend capable d'échouer. À
+    comparateur lexicographique, un `sort()` oublié aurait rendu le même
+    resultat que l'appel au comparateur injecté, et le test serait passé sur un
+    code qui ignore `PrjFileNameCompare`.
+
+A2. « l'expression de recherche est ignorée »
+    `Some(motif) => …filter(apparier)…` → `Some(_) => entrees`
+    TUÉE — l_expression_de_recherche_est_appliquee_quand_elle_est_fournie
+      left:  ["autre.txt", "image.png", "note.txt"]
+      right: ["autre.txt", "note.txt"]
+
+A3. « redémarrer jette les entrées »
+    `redemarrer` remet aussi `self.entrees = None`
+    TUÉE — un_redemarrage_ramene_le_curseur_au_debut_sans_perdre_les_entrees
+
+A4. « poser ne remet pas le curseur à zéro »
+    TUÉE — reposer_des_entrees_remet_le_curseur_a_zero
+      left: None / right: Some("trois")
+
+════════════════════════════════════════════════════════════════════════════
+B. `agent/src/pont/entetes.rs` — les formes sur le fil, et l'époque FILETIME
+════════════════════════════════════════════════════════════════════════════
+
+B1. « le facteur FILETIME devient 10^6 »  (l'erreur qui NE SE VOIT PAS : elle
+    rend des dates plausibles et fausses)
+    TUÉE par DEUX tests
+      l_epoque_unix_devient_l_epoque_filetime
+        left: 11644473600000000 / right: 116444736000000000
+      une_date_anterieure_a_1601_est_ramenee_a_zero
+        left: 1000 / right: 10000
+
+B2. « le décalage d'époque est oublié »  (l'erreur qui SE VOIT : 369 ans)
+    TUÉE par les deux mêmes
+      left: 0 / right: 116444736000000000
+
+B3. « un champ d'en-tête est renommé sur le fil » (`position` → `offset`)
+    TUÉE — les_entetes_de_requete_ont_une_forme_epinglee_sur_le_fil
+      left:  {"chemin":"gros.bin","offset":65536,"longueur":4096}
+      right: {"chemin":"gros.bin","position":65536,"longueur":4096}
+
+    ⚠️ Cette mutation est la raison d'être de l'épinglage : sans lui, un champ
+    renommé casse le pont sans casser un seul test. Ce dépôt a laissé passer
+    une variante `battement-recu` verte sur cinquante tests pour cette raison.
+
+════════════════════════════════════════════════════════════════════════════
+C. DEUX DÉFAUTS TROUVÉS PAR RELECTURE, ET NON PAR UN TEST
+════════════════════════════════════════════════════════════════════════════
+
+C1. `QueryFileName` écrivait un MARQUEUR. Le rappel posait le même contexte
+    que `GetPlaceholderInfo` (`ContexteProjFs::Attributs`), et le fil du pont
+    répondait donc à une réponse `Meta` par `PrjWritePlaceholderInfo`. Or ProjFS
+    n'attend de `QueryFileName` que `S_OK` ou `ERROR_FILE_NOT_FOUND` : le rappel
+    n'est appelé que pour alimenter le cache négatif, et écrire un marqueur y
+    créerait un objet projeté pour un fichier que personne n'ouvre.
+    CORRIGÉ : variante `ContexteProjFs::Existence`, et un bras dédié dans le
+    fil du pont qui complète en `S_OK` sans rien écrire.
+
+    ⚠️ AUCUN test d'hôte ne pouvait l'attraper : les deux chemins sont
+    `#[cfg(windows)]` de bout en bout, et la seule différence observable est un
+    appel ProjFS qui a lieu ou non.
+
+C2. Une commande ANNULÉE laissait son contexte ProjFS derrière elle.
+    `Table::annuler` retire l'entrée de la table — elle est PURE et ne connaît
+    rien d'autre —, mais le tampon d'énumération ou le flux de données de la
+    commande restait dans `Etat::en_attente` pour toute la vie du pont, sans
+    que rien ne le lise jamais. Fuite bornée par le nombre d'annulations, donc
+    par ce qu'une application fait d'anormal — c'est-à-dire non bornée.
+    CORRIGÉ : le rappel `CancelCommand` retire les DEUX.
+
+⚠️ Ce que ces deux défauts ont en commun : ils vivent à la JOINTURE d'un module
+pur et d'un module gaté, et aucun des deux côtés pris séparément n'est fautif.
+C'est la forme exacte des défauts que les revues transverses de D7, D8, D9 et
+D10 ont trouvés, et qu'une revue par tâche ne peut structurellement pas voir.
