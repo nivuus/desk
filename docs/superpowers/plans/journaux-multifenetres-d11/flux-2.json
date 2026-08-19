@@ -1,0 +1,264 @@
+{
+ "etiquette": "flux-2",
+ "mires": [
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10"
+ ],
+ "tours": [
+  {
+   "tour": 0,
+   "etalement_ms": 37,
+   "releve": [
+    {
+     "sessionId": "890C8BE0",
+     "url": "http://192.168.3.1:5173/?session=w-2",
+     "marqueur": "15-12-0",
+     "rgb": "ffc201",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "7459837E",
+     "url": "http://192.168.3.1:5173/?session=w-4",
+     "marqueur": "6-14-0",
+     "rgb": "65e301",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "0A1A3901",
+     "url": "http://192.168.3.1:5173/?session=w-6",
+     "marqueur": "0-13-5",
+     "rgb": "00dc59",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "02199C35",
+     "url": "http://192.168.3.1:5173/?session=w-8",
+     "marqueur": "0-12-15",
+     "rgb": "00c8fd",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "F424D59B",
+     "url": "http://192.168.3.1:5173/?session=w-10",
+     "marqueur": "0-2-15",
+     "rgb": "0020fd",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "26F15AFA",
+     "url": "http://192.168.3.1:5173/?session=w-12",
+     "marqueur": "11-2-15",
+     "rgb": "bc21fc",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "E86F5C57",
+     "url": "http://192.168.3.1:5173/?session=w-14",
+     "marqueur": "15-2-8",
+     "rgb": "ff2184",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "CA517CEE",
+     "url": "http://192.168.3.1:5173/?session=w-16",
+     "marqueur": "15-5-0",
+     "rgb": "ff5301",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "07D30657",
+     "url": "http://192.168.3.1:5173/?session=w-18",
+     "marqueur": "15-15-0",
+     "rgb": "f5f002",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "A5678603",
+     "url": "http://192.168.3.1:5173/?session=w-20",
+     "marqueur": "1-13-0",
+     "rgb": "1cdb02",
+     "source": "1024x576"
+    }
+   ],
+   "collisions": [],
+   "pages_mesurees": 10
+  },
+  {
+   "tour": 1,
+   "etalement_ms": 45,
+   "releve": [
+    {
+     "sessionId": "890C8BE0",
+     "url": "http://192.168.3.1:5173/?session=w-2",
+     "marqueur": "15-12-0",
+     "rgb": "ffc201",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "7459837E",
+     "url": "http://192.168.3.1:5173/?session=w-4",
+     "marqueur": "6-14-0",
+     "rgb": "65e301",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "0A1A3901",
+     "url": "http://192.168.3.1:5173/?session=w-6",
+     "marqueur": "0-13-5",
+     "rgb": "00dd5c",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "02199C35",
+     "url": "http://192.168.3.1:5173/?session=w-8",
+     "marqueur": "0-12-15",
+     "rgb": "00c9fa",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "F424D59B",
+     "url": "http://192.168.3.1:5173/?session=w-10",
+     "marqueur": "0-2-15",
+     "rgb": "0020fd",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "26F15AFA",
+     "url": "http://192.168.3.1:5173/?session=w-12",
+     "marqueur": "11-2-15",
+     "rgb": "bc21ff",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "E86F5C57",
+     "url": "http://192.168.3.1:5173/?session=w-14",
+     "marqueur": "15-2-8",
+     "rgb": "ff2184",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "CA517CEE",
+     "url": "http://192.168.3.1:5173/?session=w-16",
+     "marqueur": "15-5-0",
+     "rgb": "ff5300",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "07D30657",
+     "url": "http://192.168.3.1:5173/?session=w-18",
+     "marqueur": "15-15-0",
+     "rgb": "f2f004",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "A5678603",
+     "url": "http://192.168.3.1:5173/?session=w-20",
+     "marqueur": "1-13-0",
+     "rgb": "1cdb03",
+     "source": "1024x576"
+    }
+   ],
+   "collisions": [],
+   "pages_mesurees": 10
+  },
+  {
+   "tour": 2,
+   "etalement_ms": 49,
+   "releve": [
+    {
+     "sessionId": "890C8BE0",
+     "url": "http://192.168.3.1:5173/?session=w-2",
+     "marqueur": "15-12-0",
+     "rgb": "ffc201",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "7459837E",
+     "url": "http://192.168.3.1:5173/?session=w-4",
+     "marqueur": "6-14-0",
+     "rgb": "65e301",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "0A1A3901",
+     "url": "http://192.168.3.1:5173/?session=w-6",
+     "marqueur": "0-13-5",
+     "rgb": "00dd5c",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "02199C35",
+     "url": "http://192.168.3.1:5173/?session=w-8",
+     "marqueur": "0-12-15",
+     "rgb": "00c8fd",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "F424D59B",
+     "url": "http://192.168.3.1:5173/?session=w-10",
+     "marqueur": "0-2-15",
+     "rgb": "0020fd",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "26F15AFA",
+     "url": "http://192.168.3.1:5173/?session=w-12",
+     "marqueur": "11-2-15",
+     "rgb": "be20fd",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "E86F5C57",
+     "url": "http://192.168.3.1:5173/?session=w-14",
+     "marqueur": "15-2-8",
+     "rgb": "ff2185",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "CA517CEE",
+     "url": "http://192.168.3.1:5173/?session=w-16",
+     "marqueur": "15-5-0",
+     "rgb": "ff5301",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "07D30657",
+     "url": "http://192.168.3.1:5173/?session=w-18",
+     "marqueur": "15-15-0",
+     "rgb": "f6f106",
+     "source": "852x480"
+    },
+    {
+     "sessionId": "A5678603",
+     "url": "http://192.168.3.1:5173/?session=w-20",
+     "marqueur": "1-13-0",
+     "rgb": "1cdb02",
+     "source": "1024x576"
+    }
+   ],
+   "collisions": [],
+   "pages_mesurees": 10
+  }
+ ],
+ "virsh_debut": "en cours d’exécution",
+ "loadavg_debut": "7.59 7.45 5.94 8/2827 421549",
+ "preparation": "PREP\r\nagent=0\r\nchrome=0\r\nmire=True",
+ "marqueurs_journal": {
+  "attachee_capteur": 10,
+  "enfant_lance": 10,
+  "introuvable_topologie": 0,
+  "sortie_creee": 10,
+  "cloture": 0,
+  "erreurs": 0
+ },
+ "loadavg_fin": "13.23 8.87 6.65 13/3112 436503",
+ "virsh_fin": "en cours d’exécution"
+}
