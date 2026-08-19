@@ -1,4 +1,6 @@
-//! Encodeur Opus pour la piste audio.
+//! Codec Opus des deux pistes audio : l'ENCODEUR de la piste descendante
+//! (chantier A, agent → navigateur) et le DÉCODEUR de la piste montante
+//! (chantier E, navigateur → agent).
 //!
 //! Media Foundation n'expose aucun encodeur Opus, et aucun codec que Chrome
 //! accepte en WebRTC n'est disponible nativement sous Windows : on passe donc
@@ -13,7 +15,7 @@ use anyhow::{bail, Context, Result};
 // lui-même `opus` (édition 2021), donc sans le `::`, un `use opus::...` désignerait
 // le module courant, pas le crate externe — d'où la compilation échouerait. Le `::` initial
 // force le parcours de la racine du crate, d'où le crate externe.
-use ::opus::{Application, Bitrate, Channels, Encoder};
+use ::opus::{Application, Bitrate, Channels, Decoder, Encoder};
 
 /// Fréquence d'échantillonnage de la piste audio, en hertz. C'est aussi la
 /// fréquence d'horloge RTP du type de charge utile Opus.
@@ -112,254 +114,113 @@ impl OpusEncoder {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+/// Décodeur Opus de la piste montante (chantier E).
+///
+/// **Toujours STÉRÉO**, quel que soit le nombre de canaux qu'a réellement
+/// encodé le pair : Chrome encode le micro en mono, et libopus duplique alors
+/// le canal unique sur les deux sorties. La spec §7 décrivait cette
+/// conversion comme un travail à écrire ; elle est faite par la bibliothèque,
+/// et `un_flux_mono_ressort_stereo_par_duplication` le VÉRIFIE plutôt que de
+/// le supposer.
+///
+/// **Aucune durée de trame n'est supposée** (spec §7). Chrome émet du 20 ms,
+/// le chantier A du 10 ms, et rien n'oblige un pair à s'y tenir : la durée se
+/// LIT du paquet (`echantillons_de`) avant toute allocation, et celle du PLC
+/// se lit de la dernière trame décodée (`derniere_duree`).
+pub struct OpusDecoder {
+    inner: Decoder,
+}
 
-    /// Énergie du signal à `freq` hertz sur le canal gauche, par l'algorithme
-    /// de Goertzel.
+impl OpusDecoder {
+    pub fn new() -> Result<Self> {
+        let inner = Decoder::new(SAMPLE_RATE_HZ, Channels::Stereo)
+            .context("création du décodeur Opus")?;
+        Ok(Self { inner })
+    }
+
+    /// Échantillons PAR CANAL que porte ce paquet, lus de son en-tête (TOC).
     ///
-    /// Insensible au retard : le codec introduit une latence algorithmique
-    /// (312 échantillons en `Application::Audio`, voir le docstring de
-    /// `OpusEncoder`), donc une comparaison échantillon par échantillon avec
-    /// l'entrée échouerait pour une raison qui n'a rien à voir avec la
-    /// fidélité.
-    fn energie_a(pcm: &[i16], freq: f64) -> f64 {
-        let n = pcm.len() / CHANNELS;
-        let w = 2.0 * std::f64::consts::PI * freq / SAMPLE_RATE_HZ as f64;
-        let coeff = 2.0 * w.cos();
-        let (mut s1, mut s2) = (0.0f64, 0.0f64);
-        for i in 0..n {
-            let s0 = pcm[i * CHANNELS] as f64 + coeff * s1 - s2;
-            s2 = s1;
-            s1 = s0;
+    /// **Jamais supposé** : c'est cette fonction qui dimensionne le tampon de
+    /// sortie, et une constante à sa place tronquerait toute trame plus
+    /// longue que celle qu'on aurait devinée.
+    pub fn echantillons_de(&self, paquet: &[u8]) -> Result<usize> {
+        ::opus::packet::get_nb_samples(paquet, SAMPLE_RATE_HZ)
+            .context("lecture de la durée d'un paquet Opus")
+    }
+
+    /// Décode une trame normale. Rend le nombre d'échantillons PAR CANAL
+    /// écrits ; `sortie` doit en contenir au moins autant fois `CHANNELS`.
+    pub fn decoder(&mut self, paquet: &[u8], sortie: &mut [i16]) -> Result<usize> {
+        self.inner
+            .decode(paquet, sortie, false)
+            .context("décodage Opus")
+    }
+
+    /// Reconstruit la trame PRÉCÉDENTE à partir de la redondance LBRR portée
+    /// par `suivante`.
+    ///
+    /// C'est le sens du FEC in-band, et il est contre-intuitif : on ne
+    /// reconstruit jamais une trame depuis elle-même — on la reconstruit
+    /// depuis celle qui la SUIT. D'où la règle du tampon de gigue
+    /// (`micro.rs`) : le FEC ne sert que si la suivante est DÉJÀ arrivée.
+    pub fn decoder_fec(&mut self, suivante: &[u8], sortie: &mut [i16]) -> Result<usize> {
+        self.inner
+            .decode(suivante, sortie, true)
+            .context("décodage Opus par reconstruction FEC")
+    }
+
+    /// Dissimulation de perte : aucun paquet n'est disponible, et pas même sa
+    /// suivante. libopus extrapole depuis son état interne.
+    ///
+    /// **La durée produite est celle de la DERNIÈRE TRAME DÉCODÉE, et c'est
+    /// NOUS qui l'imposons — pas libopus.** Le geste n'est pas cosmétique :
+    /// `opus_decode` appelé avec un paquet vide prend pour `frame_size` la
+    /// TAILLE DU TAMPON qu'on lui tend, et produit donc autant de PLC qu'on
+    /// lui offre de place, sans aucun rapport avec ce qui a été décodé avant.
+    /// Un appelant qui tendrait un tampon de 40 ms après une trame de 10 ms
+    /// obtiendrait 40 ms de dissimulation, et la ligne de temps de `micro.rs`
+    /// dériverait de 30 ms à chaque perte.
+    ///
+    /// Ce défaut a été trouvé par la MUTATION de
+    /// `la_dissimulation_rend_la_duree_de_la_derniere_trame` (tâche 3,
+    /// step 2) : la première rédaction déléguait la durée à libopus, et le
+    /// test passait encore quand on faisait précéder le PLC d'une trame de
+    /// 10 ms au lieu de 40. Il ne mesurait rien.
+    ///
+    /// Rend `Ok(0)` sans rien écrire tant qu'aucune trame n'a été décodée :
+    /// il n'y a alors pas de durée à dissimuler, et l'appelant doit rendre du
+    /// silence.
+    pub fn dissimuler(&mut self, sortie: &mut [i16]) -> Result<usize> {
+        let par_canal = self.derniere_duree()?;
+        if par_canal == 0 {
+            return Ok(0);
         }
-        (s1 * s1 + s2 * s2 - coeff * s1 * s2).sqrt() / n as f64
-    }
-
-    /// `n` échantillons entrelacés stéréo d'une sinusoïde à `freq` hertz,
-    /// démarrant à l'échantillon `depuis` pour rester continue d'une trame à
-    /// la suivante.
-    fn ton(freq: f64, depuis: usize, n: usize) -> Vec<i16> {
-        (0..n)
-            .flat_map(|i| {
-                let phase = (depuis + i) as f64 * 2.0 * std::f64::consts::PI * freq
-                    / SAMPLE_RATE_HZ as f64;
-                let v = (phase.sin() * 12_000.0) as i16;
-                [v, v]
-            })
-            .collect()
-    }
-
-    #[test]
-    fn une_trame_de_10_ms_vaut_480_echantillons_par_canal() {
-        assert_eq!(FRAME_SAMPLES, 480);
-        assert_eq!(FRAME_INTERLEAVED, 960);
-    }
-
-    #[test]
-    fn refuse_une_trame_de_mauvaise_taille() {
-        let mut encodeur = OpusEncoder::new().unwrap();
-        let err = encodeur.encode(&vec![0i16; 1000]).unwrap_err();
-        assert!(
-            err.to_string().contains("960"),
-            "le message doit nommer la taille attendue, obtenu : {err}"
-        );
-    }
-
-    #[test]
-    fn un_ton_encode_puis_decode_reste_le_meme_ton() {
-        // Vérifier que l'encodeur rend des octets ne prouverait rien : du
-        // bruit en rendrait tout autant. On décode en retour et on vérifie
-        // que l'énergie reste concentrée sur la fréquence d'origine.
-        let mut encodeur = OpusEncoder::new().unwrap();
-        // Contrairement aux `use`, les expressions résolvent le chemin `opus::` en parcourant
-        // d'abord l'arbre des modules du crate courant. N'y trouvant rien nommé `opus`,
-        // elles remontent au prélude (crates externes), d'où le crate `opus`. Pas de `::` requis.
-        let mut decodeur =
-            opus::Decoder::new(SAMPLE_RATE_HZ, opus::Channels::Stereo).unwrap();
-
-        let mut sortie: Vec<i16> = Vec::new();
-        for t in 0..20 {
-            let paquet = encodeur
-                .encode(&ton(440.0, t * FRAME_SAMPLES, FRAME_SAMPLES))
-                .unwrap();
-            let mut trame = vec![0i16; FRAME_INTERLEAVED];
-            decodeur.decode(&paquet, &mut trame, false).unwrap();
-            sortie.extend_from_slice(&trame);
+        let voulu = par_canal * CHANNELS;
+        if sortie.len() < voulu {
+            bail!(
+                "tampon de dissimulation de {} échantillons, {voulu} attendus                  (durée de la dernière trame décodée : {par_canal} par canal)",
+                sortie.len()
+            );
         }
-
-        let a_440 = energie_a(&sortie, 440.0);
-        let a_1500 = energie_a(&sortie, 1500.0);
-        assert!(
-            a_440 > 100.0 * a_1500,
-            "l'énergie doit rester concentrée sur 440 Hz : 440 Hz = {a_440:.1}, 1500 Hz = {a_1500:.1}"
-        );
-
-        let entree = energie_a(&ton(440.0, 0, 20 * FRAME_SAMPLES), 440.0);
-        let rapport = a_440 / entree;
-        assert!(
-            (0.8..=1.2).contains(&rapport),
-            "l'amplitude restituée doit rester proche de l'originale, rapport = {rapport:.3}"
-        );
+        self.inner
+            .decode(&[], &mut sortie[..voulu], false)
+            .context("dissimulation de perte Opus")
     }
 
-    #[test]
-    fn le_silence_prolonge_retombe_a_quelques_octets_par_trame() {
-        // DTX met plusieurs trames à converger : les cinq premières valent
-        // encore 217 puis 161 octets. Mesurer trop tôt conclurait à tort que
-        // DTX ne fonctionne pas. On regarde donc la QUEUE, pas le début.
-        let mut encodeur = OpusEncoder::new().unwrap();
-        let silence = vec![0i16; FRAME_INTERLEAVED];
-        let tailles: Vec<usize> = (0..40)
-            .map(|_| encodeur.encode(&silence).unwrap().len())
-            .collect();
-
-        let queue = &tailles[35..];
-        assert!(
-            queue.iter().all(|&t| t <= 8),
-            "en régime établi, une trame de silence doit tenir en quelques octets, obtenu : {queue:?}"
-        );
-    }
-
-    #[test]
-    fn le_pourcentage_de_perte_est_borne() {
-        let mut enc = OpusEncoder::new().expect("encodeur");
-
-        enc.set_packet_loss_perc(0).expect("0 accepté");
-        enc.set_packet_loss_perc(25).expect("25 accepté");
-
-        // Hors bornes : borné plutôt que refusé. Le contrôleur borne déjà,
-        // mais cette fonction est publique et ne doit pas laisser passer une
-        // valeur que libopus rejetterait avec une erreur opaque.
-        enc.set_packet_loss_perc(-5).expect("valeur négative bornée");
-        enc.set_packet_loss_perc(300).expect("valeur excessive bornée");
-    }
-
-    #[test]
-    fn une_perte_declaree_change_reellement_l_encodage() {
-        // Preuve que le FEC in-band n'est plus inerte.
-        //
-        // ATTENTION à la direction : ce test ne mesure PAS une augmentation de
-        // taille. Sous un débit cible fixe, LBRR ne s'ajoute pas aux octets,
-        // il les redistribue — `compute_silk_rate_for_hybrid`
-        // (opus_encoder.c:751) emploie des tables de débit différentes selon
-        // que le FEC est codé ou non. Les paquets peuvent donc RÉTRÉCIR.
-        //
-        // Ce qui fait preuve, c'est que la sortie DIFFÈRE : en mode CELT seul
-        // (`Application::LowDelay`), elle était bit à bit identique, parce que
-        // `decide_fec` (opus_encoder.c:721) rend 0 sans rien regarder d'autre.
-        // En mode SILK/hybride, le seul chemin par lequel `packet_loss_perc`
-        // influence l'encodage est `decide_fec` -> `LBRR_coded`.
-        //
-        // Un signal NON silencieux est indispensable : sous DTX, le silence
-        // retombe à 1 octet par trame quoi qu'on déclare.
-        let pcm: Vec<i16> = (0..FRAME_INTERLEAVED)
-            .map(|i| ((i as f32 * 0.05).sin() * 8000.0) as i16)
-            .collect();
-
-        let mut sans = OpusEncoder::new().expect("encodeur");
-        let mut avec = OpusEncoder::new().expect("encodeur");
-        avec.set_packet_loss_perc(20).expect("perte déclarée");
-
-        let mut total_sans = 0usize;
-        let mut total_avec = 0usize;
-        for _ in 0..100 {
-            total_sans += sans.encode(&pcm).expect("encodage").len();
-            total_avec += avec.encode(&pcm).expect("encodage").len();
-        }
-
-        assert_ne!(
-            total_avec, total_sans,
-            "sortie identique ({total_sans} octets des deux côtés) : \
-             `decide_fec` a pris son retour anticipé, donc aucune redondance \
-             LBRR n'est codée — c'est le symptôme du mode CELT seul"
-        );
-    }
-
-    #[test]
-    fn lbrr_est_reellement_decodable() {
-        // Test que la redondance LBRR codée est réellement présente et
-        // décodable. C'est la preuve sémantique que le FEC est opérant :
-        // on encode en déclarant une perte, on prend un paquet en régime
-        // établi, et on décode ce paquet avec le drapeau FEC sur un décodeur
-        // neuf (sans historique). On mesure l'énergie reconstruite.
-        //
-        // La stratégie : encoder la même trame 100 fois pour atteindre le
-        // régime établi. Prendre le paquet #99. Décoder ce paquet avec FEC
-        // sur deux décodeurs neufs : un depuis l'encodeur avec perte déclarée
-        // (attend la redondance LBRR), un depuis l'encodeur sans perte
-        // (pas de redondance, seulement du bruit de reconstruction).
-        //
-        // Attendu : énergie reconstruite(avec FEC) >> énergie reconstruite(sans).
-        let pcm: Vec<i16> = (0..FRAME_INTERLEAVED)
-            .map(|i| ((i as f32 * 0.05).sin() * 8000.0) as i16)
-            .collect();
-
-        let mut enc_sans = OpusEncoder::new().expect("encodeur");
-        let mut enc_avec = OpusEncoder::new().expect("encodeur");
-        enc_avec
-            .set_packet_loss_perc(20)
-            .expect("perte déclarée");
-
-        // Encoder 100 trames pour atteindre le régime établi.
-        let mut paquets_sans = Vec::new();
-        let mut paquets_avec = Vec::new();
-        for _ in 0..100 {
-            paquets_sans.push(enc_sans.encode(&pcm).expect("encodage sans"));
-            paquets_avec.push(enc_avec.encode(&pcm).expect("encodage avec"));
-        }
-
-        // Prendre le dernier paquet en régime établi.
-        let dernier_sans = &paquets_sans[99];
-        let dernier_avec = &paquets_avec[99];
-
-        // Décodeur neuf sans historique pour décoder le paquet comme une
-        // trame FEC (le décodeur reconstruit à partir de la redondance du
-        // paquet SUIVANT, ou simplement tente de masquer la perte).
-        let mut dec_pour_sans =
-            ::opus::Decoder::new(SAMPLE_RATE_HZ, ::opus::Channels::Stereo)
-                .expect("décodeur");
-        let mut dec_pour_avec =
-            ::opus::Decoder::new(SAMPLE_RATE_HZ, ::opus::Channels::Stereo)
-                .expect("décodeur");
-
-        let mut sortie_sans = vec![0i16; FRAME_INTERLEAVED];
-        let mut sortie_avec = vec![0i16; FRAME_INTERLEAVED];
-
-        // Décoder avec le drapeau FEC (simule une trame perdue).
-        dec_pour_sans
-            .decode(dernier_sans, &mut sortie_sans, true)
-            .expect("décodage sans avec FEC");
-        dec_pour_avec
-            .decode(dernier_avec, &mut sortie_avec, true)
-            .expect("décodage avec avec FEC");
-
-        // Mesurer l'énergie (somme des carrés normalisée).
-        let energie_sans: f64 = sortie_sans
-            .iter()
-            .map(|&s| (s as f64) * (s as f64))
-            .sum::<f64>()
-            / (FRAME_INTERLEAVED as f64);
-        let energie_avec: f64 = sortie_avec
-            .iter()
-            .map(|&s| (s as f64) * (s as f64))
-            .sum::<f64>()
-            / (FRAME_INTERLEAVED as f64);
-
-        eprintln!(
-            "Énergie reconstruite : sans FEC = {:.2}, avec FEC = {:.2}",
-            energie_sans, energie_avec
-        );
-
-        // Attend que la redondance LBRR produise du signal significatif.
-        // Si elle est présente, energie_avec >> energie_sans.
-        assert!(
-            energie_avec > energie_sans,
-            "pas de redondance LBRR décodable : \
-             énergie sans FEC = {:.2}, énergie avec FEC = {:.2} — \
-             le FEC n'a rien apporté à la reconstruction",
-            energie_sans, energie_avec
-        );
+    /// Durée de la dernière trame décodée, en échantillons PAR CANAL.
+    ///
+    /// Vaut 0 tant que rien n'a été décodé : il n'y a alors pas de durée à
+    /// dissimuler, et l'appelant doit rendre du silence plutôt que d'appeler
+    /// `dissimuler`.
+    pub fn derniere_duree(&mut self) -> Result<usize> {
+        let n = self
+            .inner
+            .get_last_packet_duration()
+            .context("lecture de la durée de la dernière trame Opus")?;
+        Ok(n as usize)
     }
 }
+
+#[cfg(test)]
+#[path = "opus/tests.rs"]
+mod tests;
