@@ -321,3 +321,43 @@ fn la_destruction_porte_l_identifiant_pilote_et_le_nom_dxgi() {
 // RELANCES_MAX et de staleness du viewport) sont extraits dans un fichier
 // voisin : leur ajout a fait franchir à ce fichier le plafond de 500 lignes
 // du projet. Voir `table/tests_relance.rs`.
+
+// ---- Le préfixe de VM (sous-bloc P3, tâche 19) --------------------------
+
+/// 🔴 **AUCUN test ne figeait le nom `w-1` avant celui-ci** : tous passent par
+/// `session_annoncee`, qui rend l'identifiant quel qu'il soit. Poser le
+/// séparateur inconditionnellement aurait donc donné `":w-1"` sans rien
+/// rougir — et `":w-1"` n'est le nom d'aucune session existante.
+#[test]
+fn sans_prefixe_une_session_garde_exactement_son_nom_d_aujourd_hui() {
+    let mut t = Table::nouvelle(10);
+    let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
+    assert_eq!(session, IdSession("w-1".into()));
+}
+
+#[test]
+fn avec_un_prefixe_la_session_le_porte_devant_son_nom() {
+    let mut t = Table::avec_prefixe(10, "Zm9vYmFy".into());
+    let session = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
+    assert_eq!(session, IdSession("Zm9vYmFy:w-1".into()));
+}
+
+/// 🔴 La propriété ACQUISE que P3 ne doit pas perdre en passant : le compteur
+/// croît sans jamais reculer, « un identifiant réutilisé apparierait un
+/// message tardif du navigateur à la mauvaise fenêtre » (`table.rs`). Le
+/// préfixe rend l'espace de noms global sans rien changer au mécanisme qui la
+/// porte — mutation qui rougit : dériver le compteur d'`entrees.len()`.
+#[test]
+fn le_compteur_ne_recule_jamais_meme_sous_un_prefixe() {
+    let mut t = Table::avec_prefixe(10, "Zm9vYmFy".into());
+    let premiere = session_annoncee(&t.fenetre_apparue(IdFenetre(1), "Bloc-notes".into()));
+    assert_eq!(premiere, IdSession("Zm9vYmFy:w-1".into()));
+    t.fenetre_disparue(IdFenetre(1));
+    let seconde = session_annoncee(&t.fenetre_apparue(IdFenetre(2), "Explorateur".into()));
+    assert_eq!(
+        seconde,
+        IdSession("Zm9vYmFy:w-2".into()),
+        "la table a REUTILISÉ un identifiant : un message tardif du navigateur \
+         s'apparierait à la mauvaise fenêtre"
+    );
+}

@@ -18,9 +18,15 @@ use super::protocole::{DepuisLaShell, VersLaShell};
 
 /// Ouvre la connexion, se déclare comme `agent` sur la session donnée, et rend
 /// de quoi envoyer et recevoir.
+///
+/// `jeton` porte le jeton d'agent délivré par le canal `/agent`
+/// (`crate::plateforme`). **`None` fait refuser la poignée de main par la
+/// plateforme depuis le sous-bloc P3** : la garde n'accepte plus un
+/// `{"role":"agent"}` anonyme.
 pub async fn connecter(
     url: &str,
     session: &str,
+    jeton: Option<&str>,
 ) -> Result<(
     std::sync::mpsc::Receiver<DepuisLaShell>,
     impl Fn(&VersLaShell) + Send + Sync + 'static,
@@ -32,7 +38,8 @@ pub async fn connecter(
 
     sortant
         .send(Message::Text(
-            serde_json::json!({ "role": "agent", "session": session }).to_string(),
+            serde_json::json!({ "role": "agent", "session": session, "jeton": jeton })
+                .to_string(),
         ))
         .await
         .context("déclaration du superviseur au signaling")?;

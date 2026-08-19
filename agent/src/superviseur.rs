@@ -25,10 +25,19 @@ pub mod signalisation;
 pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
     use anyhow::Context;
 
-    let (rx_shell, envoyer) =
-        signalisation::connecter(&config.signaling_url, protocole::SESSION_DE_CONTROLE).await?;
+    // La session de contrôle porte le préfixe de la VM depuis le sous-bloc
+    // P3 : sans lui, deux VMs ouvriraient toutes deux `bureau` et la seconde
+    // serait refusée en « un agent est déjà connecté à la session ».
+    let session_de_controle = protocole::session_de_controle(&config.prefixe);
+    let (rx_shell, envoyer) = signalisation::connecter(
+        &config.signaling_url,
+        &session_de_controle,
+        config.jeton.as_deref(),
+    )
+    .await?;
 
     let signaling_url = config.signaling_url.clone();
+    let prefixe = config.prefixe.clone();
     let local_ip = config.local_ip.to_string();
 
     // TOUT le reste court sur un fil bloquant, et pas sur un ouvrier async.
@@ -65,7 +74,7 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
         // le hook et arrêterait sa pompe de messages.
         let _garde_hook = hook::poser(tx_hook).context("pose du hook de détection")?;
 
-        boucle::tourner(&pilote, &lanceur, rx_hook, rx_shell, envoyer)
+        boucle::tourner(&pilote, &lanceur, rx_hook, rx_shell, envoyer, prefixe)
     })
     .await
     .context("le fil du superviseur a paniqué")?
