@@ -223,6 +223,23 @@ impl Session {
         );
     }
 
+    /// Déclare que cette session porte le son **sans qu'aucun capteur ne le
+    /// lui dise**. Réservé au mode MONO-FENÊTRE.
+    ///
+    /// ⚠️ **Ne JAMAIS appeler depuis une session servie par un capteur.** Le
+    /// capteur arbitre qui porte le son entre les fenêtres d'un même groupe de
+    /// PID, et `appliquer_audio` est le seul chemin légitime dans ce mode.
+    /// Poser `true` ici sur une session arbitrée ferait parler une fenêtre qui
+    /// doit se taire — deux fenêtres joueraient alors le même mix
+    /// désynchronisé, l'écho audible que le défaut F2 du sous-bloc D7 décrit.
+    /// `une_session_non_porteuse_reconstruite_reste_muette` le garde rouge.
+    ///
+    /// Son unique appelant de production est `demarrage/audio.rs::brancher`,
+    /// dans sa SEULE branche `config.fenetre_hwnd == None`.
+    pub fn set_audio_porteuse(&mut self, porteuse: bool) {
+        self.audio_porteuse = porteuse;
+    }
+
     /// Confie de quoi refabriquer la source audio après la mort de sa capture.
     pub fn set_audio_reconstructeur(&mut self, r: crate::audio::Reconstructeur) {
         self.audio_reconstructeur = Some(r);
@@ -252,21 +269,24 @@ impl Session {
     /// (`config.fenetre_hwnd` absent — le chemin MONO-FENÊTRE) appelle
     /// `WindowsAudioSource::new`, qui s'auto-émet.
     ///
-    /// 🔴 **Conséquence, NON CORRIGÉE et léguée : en mono-fenêtre, le remède
-    /// de reconstruction est INERTE.** `audio_porteuse` naît `false`
-    /// (`transport.rs`) et n'est écrit que par `appliquer_audio`, c'est-à-dire
-    /// par un ordre `Audio` du capteur — qu'un agent mono-fenêtre ne reçoit
-    /// jamais. Une capture reconstruite y est donc auto-émise à `true` par
-    /// `new()`, puis **remise à `false`** par la ligne de réarmement
-    /// ci-dessous. **Ce n'est PAS une régression** — avant D10 rien n'était
-    /// reconstruit du tout, et le son était mort de la même façon — mais le
-    /// remède ne sauve pas le cas qu'il vise en mono-fenêtre.
+    /// ✅ **La conséquence que D10 léguait ici — « en mono-fenêtre, le remède
+    /// de reconstruction est INERTE » — est CORRIGÉE (sous-bloc D11, leg 4).**
+    /// Elle tenait à ce qu'`audio_porteuse` naisse `false` (`transport.rs`)
+    /// avec `appliquer_audio` pour unique écrivain, c'est-à-dire un ordre
+    /// `Audio` du capteur qu'un agent mono-fenêtre ne reçoit jamais : une
+    /// capture reconstruite y était auto-émise à `true` par `new()`, puis
+    /// **remise à `false`** par la ligne de réarmement ci-dessous.
+    /// `demarrage/audio.rs::brancher` appelle désormais `set_audio_porteuse`
+    /// dans sa seule branche mono-fenêtre, et le champ a donc un second
+    /// écrivain — hors de ce module.
     ///
-    /// ⚠️ **Ne pas « corriger » en forçant `true` sans arbitrage** : c'est
-    /// exactement le défaut PIRE que le passage de `audio_porteuse` évite en
-    /// multi-fenêtres (une fuite de son vers une fenêtre qui doit se taire),
-    /// et un test l'y garde rouge. Le remède juste distingue les deux modes,
-    /// et demande sa propre couverture.
+    /// ⚠️ **Le remède ne force PAS `true` sans arbitrage**, et c'est la seule
+    /// forme sûre : forcer inconditionnellement ici réintroduirait le défaut
+    /// PIRE que le passage de `audio_porteuse` évite en multi-fenêtres (une
+    /// fuite de son vers une fenêtre qui doit se taire), et
+    /// `une_session_non_porteuse_reconstruite_reste_muette` l'y garde rouge.
+    /// Le correctif distingue les deux modes **au branchement**, là où le mode
+    /// est connu, jamais ici où il ne l'est pas.
     ///
     /// ⚠️ **Cette méthode court sur le fil de `Session::run`**, et ouvrir une
     /// source WASAPI y est un appel bloquant de durée non bornée. D'où le

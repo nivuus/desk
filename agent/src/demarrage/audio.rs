@@ -48,6 +48,26 @@ pub(super) fn brancher(config: &Config, session: &mut Session, clock_origin: Ins
                 );
                 session.set_audio_source(Box::new(source_audio));
 
+                // Mode MONO-FENÊTRE : aucun capteur n'arbitrera jamais cette
+                // session, donc `appliquer_audio` — l'unique écrivain de
+                // `audio_porteuse` côté `transport` — n'y sera jamais appelée
+                // (son garde est `VideoSource::audio_a_appliquer`, qui rend
+                // `None` par défaut et n'a `capteur/distante.rs` pour seule
+                // surcharge). Sans cette ligne, toute capture reconstruite est
+                // remise au silence par le réarmement
+                // `set_actif(self.audio_porteuse)` de
+                // `reconstruire_ou_signaler`, et le remède de D10 est INERTE
+                // dans le cas MAJORITAIRE — une application, une fenêtre.
+                // Leg 4 de D10.
+                //
+                // ⚠️ `is_none()` et non un `match` recopié : le `match` du
+                // choix de source ci-dessus a déjà consommé la valeur, et
+                // refaire ici un troisième embranchement sur le mode
+                // dupliquerait ce que ce fichier a déjà payé deux fois.
+                if config.fenetre_hwnd.is_none() {
+                    session.set_audio_porteuse(true);
+                }
+
                 // Le MÊME choix de mode que ci-dessus, refait à l'identique.
                 // Le repli n'est JAMAIS le mix global : une fenêtre qui
                 // entendrait toutes les autres sous couvert d'isolation est

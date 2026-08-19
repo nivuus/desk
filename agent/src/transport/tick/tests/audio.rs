@@ -401,3 +401,50 @@ fn une_session_non_porteuse_reconstruite_reste_muette() {
          propre reconstruction"
     );
 }
+
+/// Le leg 4 de D10 : en mono-fenêtre, `audio_porteuse` n'a AUCUN écrivain —
+/// `appliquer_audio`, son unique écrivain, n'est atteinte que par un ordre
+/// `Audio` du capteur (`tick.rs`, garde `self.source.audio_a_appliquer()`),
+/// qu'un agent mono-fenêtre ne reçoit jamais : `audio_a_appliquer` rend `None`
+/// par défaut (`source.rs`) et `capteur/distante.rs` en est la SEULE
+/// surcharge — or un agent mono-fenêtre n'a pas de `SourceDistante`.
+/// L'accesseur public est donc le seul chemin par lequel `demarrage/audio.rs`,
+/// hors du module `transport`, peut le dire.
+///
+/// ⚠️ **Ce test emprunte l'accesseur PUBLIC là où ses deux jumeaux ci-dessus
+/// écrivent le champ privé** : c'est délibéré, et c'est exactement ce qu'il
+/// éprouve — la voie que `demarrage/audio.rs` empruntera, et qu'aucun test
+/// n'exerçait.
+///
+/// ⚠️ **Un rouge de COMPILATION est le plus faible des rouges.** Celui de ce
+/// test prouve que l'accesseur n'existait pas, **pas** que le défaut existait.
+/// La preuve du défaut est double et vit ailleurs : la lecture de code
+/// ci-dessus (un argument de flot de contrôle complet), et le ROUGE VM de la
+/// recette ① joué sur le binaire de `main` — le seul contrôle capable de
+/// montrer le silence.
+#[test]
+fn l_accesseur_public_rend_une_session_porteuse_et_sa_reconstruction_audible() {
+    let mut session = session_d_essai();
+    session.set_audio_source(Box::new(SourceMorte::new()));
+    let actif_recu = std::sync::Arc::new(std::sync::Mutex::new(None));
+    let observe = actif_recu.clone();
+    session.set_audio_reconstructeur(Box::new(move || {
+        Ok(Box::new(SourceVivante::observant_actif(observe.clone()))
+            as Box<dyn AudioSource + Send>)
+    }));
+
+    // Le geste du mode mono-fenêtre, par l'accesseur PUBLIC et non par le
+    // champ privé — c'est cette voie-là que `demarrage/audio.rs` emprunte.
+    session.set_audio_porteuse(true);
+
+    session.reconstruire_ou_signaler(std::time::Instant::now());
+
+    assert_eq!(
+        *actif_recu.lock().unwrap(),
+        Some(true),
+        "une session déclarée porteuse par l'accesseur public doit voir sa \
+         capture reconstruite RÉÉMISE : sans quoi le remède de reconstruction \
+         de D10 reste inerte dans le cas majoritaire (une application, une \
+         fenêtre)"
+    );
+}

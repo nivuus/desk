@@ -273,23 +273,23 @@ pub struct Session {
     /// D9 : `REARMEMENTS_MAX` (`capteur/sommeil.rs`) repart de zéro sur CE
     /// signal, jamais sur la seule décision de réélection.
     audio_vivant_a_annoncer: bool,
-    /// Vrai tant que le capteur nous demande de porter le son.
+    /// Miroir LOCAL du dernier ordre audio reçu — ou, en mono-fenêtre, du mode
+    /// lui-même. **DEUX écrivains** : `appliquer_audio` sur ordre du capteur, et
+    /// `set_audio_porteuse` au branchement mono-fenêtre (`demarrage/audio.rs`,
+    /// leg 4 de D10), où aucun capteur n'arbitrera jamais cette session.
     ///
-    /// **Sert UNIQUEMENT à détecter la TRANSITION vers `actif = true`** dans
-    /// `appliquer_audio` (`piste_audio.rs`) : c'est cette transition, et elle
-    /// seule, qui réapprovisionne le budget de reconstruction
-    /// (`reconstructions_restantes`) et lève le verrou `audio_mort_signale`.
+    /// ❌ **« Sert UNIQUEMENT à détecter la TRANSITION vers `actif = true` » —
+    /// écrit ici, et FAUX depuis D10 lui-même.** Le champ a **deux** lecteurs :
+    /// la transition d'`appliquer_audio`, qui réapprovisionne
+    /// `reconstructions_restantes` et lève `audio_mort_signale` ; et le
+    /// réarmement `set_actif(self.audio_porteuse)` de
+    /// `reconstruire_ou_signaler`, qui n'en est pas une. La doc précède ce
+    /// second lecteur et n'a pas été relue quand il est arrivé.
     ///
-    /// ⚠️ **Trouvé en revue de la tâche 12 (sous-bloc D10) : sans ce champ, le
-    /// cycle mort → reconstruit → prouvé ne tourne qu'UNE SEULE FOIS.**
-    /// `reconstructions_restantes` était posé une fois à la construction,
-    /// décrémenté, jamais rechargé ; une fois épuisé, `AudioMort` part et
-    /// `audio_mort_signale` reste vrai à jamais (il ne retombe qu'à un
-    /// rattachement) — donc `reconstruire_ou_signaler` n'est plus jamais
-    /// rappelée, donc `AudioVivant` ne peut plus jamais être émis, et le
-    /// garde-fou `REARMEMENTS_MAX` compte des échecs NON consécutifs sur toute
-    /// la vie de la session plutôt que de repartir de zéro (l'inverse exact de
-    /// ce que le Step 5 de cette tâche visait à corriger).
+    /// ⚠️ **Sans ce champ, le cycle mort → reconstruit → prouvé ne tournerait
+    /// qu'UNE FOIS** (revue de la tâche 12, D10) : `reconstructions_restantes`
+    /// n'était jamais rechargé, et `audio_mort_signale`, jamais levé, fermait
+    /// définitivement la porte de `reconstruire_ou_signaler`.
     audio_porteuse: bool,
 }
 
