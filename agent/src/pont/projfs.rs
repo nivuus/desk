@@ -67,12 +67,15 @@
 //! **après**, `Table::resoudre` rend `None` et la réponse est **jetée**.
 
 pub mod chargement;
+mod etat;
 mod racine;
 mod rappels;
 
-use std::collections::HashSet;
+pub use etat::{ContexteProjFs, Etat, FluxDonnees, TamponEntrees};
+
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
 use anyhow::{bail, Result};
@@ -84,6 +87,7 @@ use windows::Win32::Storage::ProjectedFileSystem::{
 
 use crate::pont::erreurs::{hresult, Erreur};
 use crate::pont::table::Table;
+use crate::pont::transport::VersNavigateur;
 
 /// Période du relevé d'hydratation.
 ///
@@ -117,58 +121,6 @@ pub struct Contexte(pub PRJ_NAMESPACE_VIRTUALIZATION_CONTEXT);
 unsafe impl Send for Contexte {}
 unsafe impl Sync for Contexte {}
 
-/// L'état que les rappels partagent avec le fil du pont.
-///
-/// Il vit dans un `Arc` dont **un exemplaire est confié à ProjFS** comme
-/// `instancecontext` de `PrjStartVirtualizing`, et repris par
-/// [`Virtualisation::drop`] **après** `PrjStopVirtualizing`.
-pub struct Etat {
-    /// Les treize entrées. `pub` : le fil du pont les appelle aussi.
-    pub projfs: chargement::ProjFs,
-    /// Posé juste après `PrjStartVirtualizing`.
-    ///
-    /// ⚠️ **Il ne peut pas être posé avant** : c'est ce même appel qui le rend.
-    /// Or ProjFS peut appeler un rappel **pendant** cet appel — d'où le
-    /// `Mutex<Option<…>>` plutôt qu'un champ nu, et d'où le fait qu'un rappel
-    /// doive tolérer de ne pas encore le voir.
-    pub contexte: Mutex<Option<Contexte>>,
-    /// Les commandes en vol. **PURE**, sous verrou.
-    pub table: Mutex<Table>,
-    /// Les sessions d'énumération ouvertes, par GUID d'énumération.
-    pub enumerations: Mutex<HashSet<[u8; 16]>>,
-    /// Ce que CE processus a hydraté depuis son démarrage — voir
-    /// [`PERIODE_HYDRATATION`] et [`Etat::tracer_hydratation`].
-    pub octets_hydrates: AtomicU64,
-    pub entrees_hydratees: AtomicU64,
-}
-
-impl Etat {
-    /// Le relevé d'hydratation, à la période [`PERIODE_HYDRATATION`].
-    ///
-    /// ⚠️ **Il COMPTE ce que le pont a écrit ; il ne MESURE pas le disque, et
-    /// c'est une décision, pas une approximation de confort.** Mesurer la
-    /// taille occupée par la racine demanderait de la parcourir — donc de
-    /// traverser ProjFS, donc de déclencher nos propres rappels
-    /// d'énumération, qui inscrivent une commande que **le fil du pont** doit
-    /// compléter. Un parcours lancé depuis ce fil-là s'attendrait lui-même ;
-    /// lancé depuis un autre, il produirait un aller-retour navigateur réel à
-    /// chaque période. **L'instrument détruirait ce qu'il mesure** — la leçon
-    /// que ce dépôt a payée deux fois (la trace par paquet du chantier TURN,
-    /// la capture d'écran CDP du sous-bloc D1).
-    ///
-    /// **Ce que le chiffre dit exactement** : les octets et les entrées que
-    /// CETTE exécution du pont a hydratés. Pas ce que la racine porte
-    /// cumulativement d'exécutions antérieures. La mesure de fond appartient à
-    /// F5, avec la politique d'éviction qu'elle servira.
-    pub fn tracer_hydratation(&self) {
-        tracing::info!(
-            octets = self.octets_hydrates.load(Ordering::Relaxed),
-            entrees = self.entrees_hydratees.load(Ordering::Relaxed),
-            "racine hydratee (par CETTE execution du pont, pas par le disque)"
-        );
-    }
-}
-
 /// Une racine de virtualisation vivante. **Son `Drop` arrête la
 /// virtualisation** — c'est le seul chemin d'arrêt, et il n'est pas facultatif.
 pub struct Virtualisation {
@@ -186,13 +138,18 @@ unsafe impl Send for Virtualisation {}
 
 impl Virtualisation {
     /// Prépare la racine, la marque si besoin, et démarre la virtualisation.
-    pub fn demarrer(projfs: chargement::ProjFs) -> Result<Self> {
+    pub fn demarrer(
+        projfs: chargement::ProjFs,
+        sortant: std::sync::mpsc::Sender<VersNavigateur>,
+    ) -> Result<Self> {
         let racine = racine::racine()?;
         let etat = Arc::new(Etat {
             projfs,
             contexte: Mutex::new(None),
             table: Mutex::new(Table::nouvelle()),
-            enumerations: Mutex::new(HashSet::new()),
+            sessions: Mutex::new(HashMap::new()),
+            en_attente: Mutex::new(HashMap::new()),
+            sortant,
             octets_hydrates: AtomicU64::new(0),
             entrees_hydratees: AtomicU64::new(0),
         });

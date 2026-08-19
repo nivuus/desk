@@ -19,7 +19,8 @@
 /// l'installation `FACILITY_WIN32` (7), puis le code.
 const FACILITE_WIN32: u32 = 0x8007_0000;
 
-// Les douze codes Win32, transcrits avec leur ligne source.
+// Les TREIZE codes Win32, transcrits avec leur ligne source. (Douze causes
+// d'échec, plus `ERROR_IO_PENDING`, qui n'en est pas une — voir `EN_COURS`.)
 const ERROR_FILE_NOT_FOUND: u32 = 2; // Foundation/mod.rs:2355
 const ERROR_PATH_NOT_FOUND: u32 = 3; // Foundation/mod.rs:3689
 const ERROR_ACCESS_DENIED: u32 = 5; // Foundation/mod.rs:1143
@@ -32,6 +33,23 @@ const ERROR_SEM_TIMEOUT: u32 = 121; // Foundation/mod.rs:3943
 const ERROR_DIR_NOT_EMPTY: u32 = 145; // Foundation/mod.rs:1776
 const ERROR_OPERATION_ABORTED: u32 = 995; // Foundation/mod.rs:3632
 const ERROR_IO_DEVICE: u32 = 1117; // Foundation/mod.rs:3003
+const ERROR_IO_PENDING: u32 = 997; // Foundation/mod.rs:3005
+
+/// `HRESULT_FROM_WIN32(ERROR_IO_PENDING)` — **la valeur que rend TOUT rappel
+/// asynchrone**, et elle n'est pas une [`Erreur`].
+///
+/// ⚠️ **Elle n'a délibérément PAS de variante d'[`Erreur`]**, et ce n'est pas
+/// un oubli : `Erreur` énumère les causes d'un ÉCHEC, et son `NOMBRE` porte un
+/// garde structurel qui oblige à classer toute variante neuve. « L'opération
+/// est en cours » n'est pas un échec — lui donner une variante ferait qu'un
+/// balayage exhaustif des causes d'erreur inclurait un succès différé, et que
+/// `hresult` pourrait rendre `EN_COURS` là où un appelant attend un code de
+/// refus.
+///
+/// C'est la valeur qui fait tenir la discipline de fil : un rappel l'inscrit
+/// dans la table, la rend, et **rend la main immédiatement**. Y attendre un
+/// aller-retour navigateur figerait l'application qui lit le fichier.
+pub const EN_COURS: i32 = (FACILITE_WIN32 | ERROR_IO_PENDING) as i32;
 
 /// Ce qui a empêché une opération d'aboutir.
 ///

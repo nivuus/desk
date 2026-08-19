@@ -27,11 +27,15 @@
 
 pub mod chemins;
 pub mod decoupe;
+pub mod entetes;
+pub mod enumeration;
 pub mod erreurs;
 pub mod notifications;
 #[cfg(windows)]
 pub mod projfs;
 pub mod resolution;
+#[cfg(windows)]
+pub mod service;
 pub mod table;
 pub mod transport;
 
@@ -52,23 +56,90 @@ pub mod transport;
 /// le pendant exact des sorties virtuelles qui survivent à un
 /// `Stop-Process -Force` (sous-bloc D5), et ce n'est pas refermé ici.
 #[cfg(windows)]
-pub async fn executer(_config: crate::Config) -> anyhow::Result<()> {
-    // Charger AVANT de toucher au système de fichiers : une VM sans ProjFS
-    // doit échouer sur le chargement, avec un message qui nomme l'entrée
+pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
+    use anyhow::Context;
+
+    // Charger AVANT de toucher au système de fichiers et AVANT le signaling :
+    // une VM sans ProjFS doit échouer ici, avec un message qui nomme l'entrée
     // manquante, et non après avoir créé un dossier « Mes Fichiers » vide que
     // rien ne servirait jamais.
     let projfs = projfs::chargement::charger()?;
-    let virtualisation = projfs::Virtualisation::demarrer(projfs)?;
+
+    // Le socket et le `Rtc` **données seules** : ni piste, ni codec, ni BWE.
+    let (socket, mut rtc) = transport::construire_rtc_donnees(config.local_ip)?;
+
+    let crate::signaling::SignalingHandle { mut offers, answers, closed, .. } =
+        crate::signaling::run_signaling(
+            &config.signaling_url,
+            &config.session_id,
+            config.jeton.as_deref(),
+        )
+        .await?;
+
+    let offre = offers.recv().await.context("aucune offre SDP pour le pont fichiers")?;
+    let offre = str0m::change::SdpOffer::from_sdp_string(&offre)
+        .map_err(|e| anyhow::anyhow!("offre SDP illisible : {e}"))?;
+    let reponse = rtc
+        .sdp_api()
+        .accept_offer(offre)
+        .map_err(|e| anyhow::anyhow!("le pont refuse l'offre : {e}"))?;
+    answers.send(reponse.to_sdp_string()).await.context("envoi de la réponse SDP du pont")?;
+    tracing::info!("réponse SDP du pont envoyée");
+
+    // ⚠️ **Aucun relais TURN pour le pont, et c'est une DIVERGENCE assumée
+    // d'avec la session vidéo**, qui en alloue un avant sa réponse
+    // (`demarrage.rs`). `pont::transport` — dont la signature est fixée par le
+    // plan et livrée depuis la tâche 11 — n'expose aucun chemin d'allocation.
+    // Le pont ne traverse donc que ce que les candidats hôtes traversent.
+    // **Non couvert par F1**, à rouvrir le jour où la page-shell et la VM ne se
+    // voient pas directement.
+
+    // Le canal des requêtes : les rappels y poussent, le transport les émet.
+    let (vers_navigateur, requetes) = std::sync::mpsc::channel();
+    // Le canal des réponses : le transport y pousse, le fil du pont les lit.
+    let (vers_pont, reponses) = std::sync::mpsc::channel();
+
+    let virtualisation = projfs::Virtualisation::demarrer(projfs, vers_navigateur)?;
     let etat = virtualisation.etat();
-    tracing::info!(
-        racine = %virtualisation.racine().display(),
-        "pont fichiers prêt (tâche 13 : la racine est montée et VIDE, aucune requête \
-         ne part vers le navigateur avant la tâche 14)"
-    );
-    loop {
-        tokio::time::sleep(projfs::PERIODE_HYDRATATION).await;
-        etat.tracer_hydratation();
-    }
+    tracing::info!(racine = %virtualisation.racine().display(), "racine du pont fichiers montée");
+
+    // Fil 2 — le transport. Il possède le `Rtc` et le socket, et **ne connaît
+    // ni ProjFS ni Windows**.
+    let transport = std::thread::Builder::new()
+        .name("pont-transport".into())
+        .spawn(move || {
+            if let Err(erreur) = transport::tourner(rtc, socket, requetes, vers_pont) {
+                tracing::error!(%erreur, "transport du pont arrêté sur erreur");
+            }
+        })
+        .context("lancement du fil de transport du pont")?;
+
+    // I6, comme pour la session vidéo : une perte du signaling après l'échange
+    // initial doit être visible plutôt que silencieuse. Aucune renégociation
+    // n'est possible, donc on observe et on journalise — mais on observe.
+    let mut closed = closed;
+    tokio::spawn(async move {
+        if closed.changed().await.is_ok() && *closed.borrow() {
+            tracing::warn!("connexion de signaling du pont perdue (aucune renégociation)");
+        }
+    });
+
+    // Fil 3 — le fil du pont. Il possède la table et complète les commandes.
+    // `spawn_blocking` : sa boucle est bloquante et ne doit pas occuper un
+    // exécuteur tokio.
+    let etat_du_fil = std::sync::Arc::clone(&etat);
+    tokio::task::spawn_blocking(move || service::tourner(etat_du_fil, reponses))
+        .await
+        .context("le fil du pont fichiers a paniqué")?;
+
+    // Le transport s'arrête de lui-même quand `sortant` est lâché, c'est-à-dire
+    // quand `Etat` — donc `virtualisation` — est relâché. On l'attend AVANT de
+    // rendre la main, sans quoi le `Drop` ci-dessous courrait pendant qu'il
+    // émet encore.
+    drop(virtualisation);
+    let _ = transport.join();
+    tracing::info!("pont fichiers arrêté");
+    Ok(())
 }
 
 #[cfg(not(windows))]
