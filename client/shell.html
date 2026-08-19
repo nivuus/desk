@@ -9,6 +9,23 @@
   <body>
     <h1>Bureau</h1>
     <div id="statut"></div>
+
+    <!--
+      Le lecteur « Mes Fichiers ». Le bouton vit ICI et nulle part ailleurs :
+      la page-shell détient le répertoire, et elle seule (spec §3.3). Elle est
+      déjà la page unique par utilisateur, elle est le seul endroit où le geste
+      a un sens, et surtout AUCUNE FENÊTRE D'APPLICATION N'EST SPÉCIALE — c'est
+      l'invariant que la page-shell existe pour tenir.
+
+      Ni le bouton ni la zone d'état ne portent de classe de primitive : à la
+      fin de S2, `design/primitives.css` n'est lié que par `primitives.html`, et
+      le lier ici ferait sortir des tokens de la liste d'attente du contrôle
+      §7.6 sans qu'un seul pixel du produit ait changé. C'est S3 qui referme cet
+      écart, pour toutes les surfaces à la fois.
+    -->
+    <button id="choisir-dossier" type="button">Choisir mon dossier</button>
+    <div id="etat-fichiers"></div>
+
     <ul id="fenetres"></ul>
     <script type="module" src="/src/shell-page.ts"></script>
   </body>

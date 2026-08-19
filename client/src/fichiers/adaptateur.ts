@@ -53,18 +53,34 @@ export interface FichierLu {
     arrayBuffer(): Promise<ArrayBuffer>;
 }
 
-export interface PoigneeFichier {
-    readonly kind: 'file';
+/**
+ * Ce que toute poignée porte, quelle que soit sa nature.
+ *
+ * ⚠️ C'EST CE QUE `values()` REND, ET NON L'UNION DES DEUX NATURES — parce que
+ * c'est tout ce que la bibliothèque DOM de TypeScript garantit :
+ * `FileSystemDirectoryHandle.values()` y est typée
+ * `AsyncIterator<FileSystemHandle>`, la classe de BASE, alors que l'API réelle
+ * rend les sous-types concrets. Déclarer l'union ici rendrait la vraie poignée
+ * NON assignable, et le contrôle de compatibilité de `canal.ts` échouerait sur
+ * une divergence de la bibliothèque, pas du produit. L'adaptateur redescend
+ * donc vers `PoigneeFichier` après avoir lu `kind` — la même chose que ferait
+ * TypeScript tout seul si l'union était déclarée.
+ */
+export interface PoigneeBase {
+    readonly kind: 'file' | 'directory';
     readonly name: string;
+}
+
+export interface PoigneeFichier extends PoigneeBase {
+    readonly kind: 'file';
     getFile(): Promise<FichierLu>;
 }
 
-export interface PoigneeRepertoire {
+export interface PoigneeRepertoire extends PoigneeBase {
     readonly kind: 'directory';
-    readonly name: string;
     getDirectoryHandle(nom: string): Promise<PoigneeRepertoire>;
     getFileHandle(nom: string): Promise<PoigneeFichier>;
-    values(): AsyncIterable<PoigneeFichier | PoigneeRepertoire>;
+    values(): AsyncIterable<PoigneeBase>;
 }
 
 /** La racine choisie par l'utilisateur : un répertoire, et rien d'autre. */
@@ -183,7 +199,11 @@ export function creerAdaptateur(racine: Racine): Adaptateur {
                         // ouvrir le fichier, et ProjFS exige les deux dans son
                         // énumération. Un répertoire à mille entrées coûte
                         // mille ouvertures — mesurable en F4, pas ici.
-                        const f = await enfant.getFile();
+                        // Narrowing explicite : `kind` vaut `'file'`, donc la
+                        // poignée EST une `PoigneeFichier`. Voir la note de
+                        // `PoigneeBase` — c'est la bibliothèque DOM qui
+                        // sous-type `values()`, pas l'API.
+                        const f = await (enfant as PoigneeFichier).getFile();
                         entrees.push({
                             nom: enfant.name,
                             repertoire: false,

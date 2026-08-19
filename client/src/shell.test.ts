@@ -4,6 +4,7 @@ import { creerBureau } from './shell';
 function bureauDeTest() {
     const ouvertes = new Map<string, { closed: boolean; close: () => void }>();
     const envoyes: unknown[] = [];
+    const etatsFichiers: string[] = [];
     const bureau = creerBureau({
         ouvrirFenetre: (session) => {
             const f = { closed: false, close: () => { f.closed = true; } };
@@ -12,8 +13,9 @@ function bureauDeTest() {
         },
         envoyer: (message) => { envoyes.push(message); },
         afficher: () => {},
+        afficherEtatFichiers: (texte) => { etatsFichiers.push(texte); },
     });
-    return { bureau, ouvertes, envoyes };
+    return { bureau, ouvertes, envoyes, etatsFichiers };
 }
 
 describe('page-shell', () => {
@@ -73,6 +75,7 @@ describe('page-shell', () => {
             ouvrirFenetre: () => { throw new Error('rien ne doit être ouvert'); },
             envoyer: () => {},
             afficher: affiche,
+            afficherEtatFichiers: () => {},
         });
         bureau.refus('F9', 'plus aucune sortie virtuelle disponible');
         expect(affiche).toHaveBeenCalledWith(
@@ -89,9 +92,50 @@ describe('page-shell', () => {
             ouvrirFenetre: () => null,
             envoyer: () => {},
             afficher: affiche,
+            afficherEtatFichiers: () => {},
         });
         bureau.fenetreOuverte('w-1', 'Bloc-notes');
         expect(affiche).toHaveBeenCalledWith(expect.stringContaining('pop-up'));
         expect(bureau.liste()).toEqual([{ session: 'w-1', titre: 'Bloc-notes', ouverte: false }]);
+    });
+});
+
+describe('état du lecteur de fichiers', () => {
+    it('monter le lecteur affiche le nom du dossier', () => {
+        const { bureau, etatsFichiers } = bureauDeTest();
+        bureau.lecteurMonte('Mes documents');
+        expect(etatsFichiers.at(-1)).toContain('Mes documents');
+    });
+
+    it('🔴 démonter le lecteur EFFACE l’état', () => {
+        // 🔴 C'est le défaut relevé en D5 : le bandeau `#status` gardait son
+        // `textContent` après `expirer()`, si bien que lire le texte prouvait
+        // qu'un message était ARRIVÉ, jamais qu'il était AFFICHÉ. Une recette
+        // entière a lu un bandeau périmé en croyant lire l'état courant.
+        //
+        // La chaîne vide n'est donc pas un détail de présentation : c'est
+        // l'assertion elle-même.
+        const { bureau, etatsFichiers } = bureauDeTest();
+        bureau.lecteurMonte('Mes documents');
+        bureau.lecteurDemonte();
+        expect(etatsFichiers.at(-1)).toBe('');
+    });
+
+    it('un échec de montage se distingue d’un démontage', () => {
+        // « rien n'est partagé » et « le partage a raté, voici pourquoi »
+        // n'appellent pas le même geste de l'utilisateur : le second lui dit
+        // quoi corriger, le premier lui dit seulement de recommencer.
+        const { bureau, etatsFichiers } = bureauDeTest();
+        bureau.lecteurEchoue('signaling injoignable');
+        expect(etatsFichiers.at(-1)).toContain('signaling injoignable');
+        expect(etatsFichiers.at(-1)).not.toBe('');
+    });
+
+    it('un remontage remplace le nom précédent au lieu de s’y ajouter', () => {
+        const { bureau, etatsFichiers } = bureauDeTest();
+        bureau.lecteurMonte('Premier');
+        bureau.lecteurMonte('Second');
+        expect(etatsFichiers.at(-1)).toContain('Second');
+        expect(etatsFichiers.at(-1)).not.toContain('Premier');
     });
 });

@@ -19,6 +19,9 @@ export interface OptionsBureau {
     ouvrirFenetre(session: string, titre: string): Window | null;
     envoyer(message: unknown): void;
     afficher(message: string): void;
+    /// L'état du lecteur de fichiers, séparé du bandeau général : les deux
+    /// messages ne se chassent pas l'un l'autre.
+    afficherEtatFichiers(texte: string): void;
 }
 
 export interface Bureau {
@@ -28,6 +31,14 @@ export interface Bureau {
     viewportRecu(session: string, largeur: number, hauteur: number): void;
     liste(): FenetreConnue[];
     rouvrir(session: string): void;
+    /// Le lecteur `Mes Fichiers` est monté sur le dossier `nom`.
+    lecteurMonte(nom: string): void;
+    /// Le lecteur n'est plus monté : l'état est EFFACÉ, pas laissé en place.
+    lecteurDemonte(): void;
+    /// Le montage a échoué. DISTINCT de `lecteurDemonte` : « rien n'est
+    /// partagé » et « le partage a raté, voici pourquoi » n'appellent pas le
+    /// même geste de l'utilisateur.
+    lecteurEchoue(motif: string): void;
 }
 
 interface Entree {
@@ -88,6 +99,26 @@ export function creerBureau(options: OptionsBureau): Bureau {
             const entree = connues.get(session);
             if (!entree) return;
             ouvrir(session, entree.titre);
+        },
+
+        lecteurMonte(nom) {
+            options.afficherEtatFichiers(`Lecteur « Mes Fichiers » monté sur « ${nom} ».`);
+        },
+
+        lecteurDemonte() {
+            // 🔴 LA CHAÎNE VIDE, ET NON UN MESSAGE « démonté ». C'est le défaut
+            // relevé en D5 : le bandeau `#status` gardait son `textContent`
+            // après `expirer()`, si bien que lire le texte prouvait qu'un
+            // message était ARRIVÉ, jamais qu'il était AFFICHÉ — une recette
+            // entière a lu un bandeau périmé en croyant lire l'état courant.
+            // Un état de lecteur qui ne s'efface pas ferait croire à un dossier
+            // toujours partagé alors qu'il ne l'est plus, ce qui est pire qu'un
+            // texte périmé : c'est une affirmation fausse sur une permission.
+            options.afficherEtatFichiers('');
+        },
+
+        lecteurEchoue(motif) {
+            options.afficherEtatFichiers(`Le lecteur « Mes Fichiers » n’a pas pu être monté : ${motif}.`);
         },
     };
 }
