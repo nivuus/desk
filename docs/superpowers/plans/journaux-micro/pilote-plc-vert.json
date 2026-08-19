@@ -1,0 +1,194 @@
+{
+  "scenario": "silence",
+  "session": "e1-plc-vert",
+  "freq": 520,
+  "duree": 0,
+  "url": "http://192.168.3.1:5173/?session=e1-plc-vert",
+  "etapes": [
+    {
+      "quoi": "session",
+      "issue": "vivante",
+      "quand": "2026-08-19T18:47:15.697Z"
+    },
+    {
+      "quoi": "allumage",
+      "quand": "2026-08-19T18:47:15.707Z",
+      "compte": {
+        "hz": 520,
+        "etatContexte": "running",
+        "direction": "sendonly",
+        "directionCourante": "sendonly",
+        "pisteVivante": "live"
+      }
+    },
+    {
+      "quoi": "extinction",
+      "quand": "2026-08-19T18:47:35.734Z",
+      "compte": {
+        "eteint": true
+      }
+    },
+    {
+      "quoi": "rallumage",
+      "quand": "2026-08-19T18:48:35.798Z",
+      "compte": {
+        "hz": 520,
+        "etatContexte": "running",
+        "direction": "sendonly",
+        "directionCourante": "sendonly",
+        "pisteVivante": "live"
+      }
+    }
+  ],
+  "stats": [
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 24,
+          "packetsLost": 0,
+          "bytesReceived": 24
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 174,
+          "packetsLost": 0,
+          "bytesReceived": 187080,
+          "framesDecoded": 12,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 484
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 0,
+          "bytesSent": 0,
+          "mid": "2"
+        }
+      ],
+      "paire": {
+        "rtt": 0.003,
+        "recu": 198564,
+        "envoye": 3008
+      },
+      "horodatage": "2026-08-19T18:47:15.701Z",
+      "etiquette": "avant-injection"
+    },
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 2024,
+          "packetsLost": 0,
+          "bytesReceived": 2122
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 6190,
+          "packetsLost": 0,
+          "bytesReceived": 6280947,
+          "framesDecoded": 1143,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 484
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 1010,
+          "bytesSent": 81161,
+          "mid": "2"
+        }
+      ],
+      "paire": {
+        "rtt": 0.002,
+        "recu": 6700828,
+        "envoye": 149090
+      },
+      "horodatage": "2026-08-19T18:47:35.732Z",
+      "etiquette": "avant-silence"
+    },
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 8031,
+          "packetsLost": 0,
+          "bytesReceived": 8423
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 24491,
+          "packetsLost": 0,
+          "bytesReceived": 24692114,
+          "framesDecoded": 4678,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 484
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 1010,
+          "bytesSent": 81161,
+          "mid": "2"
+        }
+      ],
+      "paire": {
+        "rtt": 0.001,
+        "recu": 26292302,
+        "envoye": 204340
+      },
+      "horodatage": "2026-08-19T18:48:35.797Z",
+      "etiquette": "fin-silence"
+    },
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 11035,
+          "packetsLost": 0,
+          "bytesReceived": 11573
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 34231,
+          "packetsLost": 0,
+          "bytesReceived": 34470114,
+          "framesDecoded": 6568,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 484
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 2532,
+          "bytesSent": 202823,
+          "mid": "2"
+        }
+      ],
+      "paire": {
+        "rtt": 0.001,
+        "recu": 36714323,
+        "envoye": 422051
+      },
+      "horodatage": "2026-08-19T18:49:05.836Z",
+      "etiquette": "fin-reprise"
+    }
+  ],
+  "sessionVivante": true,
+  "console": [
+    "[debug] [vite] connecting...",
+    "[debug] [vite] connected.",
+    "[debug] [instrumentation resize] declenchement ResizeObserver Object",
+    "[debug] [instrumentation resize] emission Object"
+  ],
+  "erreursPage": [],
+  "code": 0
+}

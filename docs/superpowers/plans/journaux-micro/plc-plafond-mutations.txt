@@ -1,0 +1,153 @@
+Campagne de MUTATION du plafond de dissimulation (chantier E, correctif PLC).
+Capturee le 2026-08-19T18:56:57Z, sur le commit c17d7f5.
+
+Chaque mutation est appliquee a la source SAINE, jugee, puis la source est
+restauree ; les empreintes de debut et de fin sont relevees et doivent etre
+identiques. Une mutation SURVIVANTE serait un test incapable d'echouer.
+
+4d37dcb93872a3707ddd51a1ffbd487de138b569aec47d7a1c3f039fa6ec1369  src/micro.rs
+873011b071e605f882437dd38fbd7202ec03096981122d29a63438296d1bf0d7  src/micro/dissimulation.rs
+
+Reference, source saine :
+test result: ok. 534 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.88s
+
+################ M1 -- le plafond ne mord jamais (le defaut d'origine, remis en place)
+test micro::tests_lecteur::une_famine_prolongee_cesse_de_dissimuler_et_rend_du_silence ... FAILED
+test micro::tests_lecteur::apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier ... FAILED
+test micro::tests_lecteur::le_plafond_est_compte_a_part_de_la_dissimulation ... FAILED
+thread 'micro::tests_lecteur::une_famine_prolongee_cesse_de_dissimuler_et_rend_du_silence' (2425545) panicked at agent/src/micro/tests_lecteur.rs:309:5:
+assertion `left == right` failed: après 500 ms de famine le puits rend encore du signal (crête 0.044, fréquence Some(233.0)) : la dissimulation Opus n'est bornée par rien et fabrique un bourdon continu
+  left: 0.044128418
+ right: 0.0
+
+thread 'micro::tests_lecteur::apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier' (2425536) panicked at agent/src/micro/tests_lecteur.rs:390:5:
+le plafond n'a pas mordu : la suite du test ne prouverait rien — CompteursMicro { deposees: 30, hors_ordre: 0, doublons: 0, jetees_saturation: 0, jetees_perimees: 0, sauts: 0, insertions: 55, famines: 0, plc: 55, plc_plafonnees: 0, fec: 0 }
+
+---- micro::tests_lecteur::le_plafond_est_compte_a_part_de_la_dissimulation stdout ----
+
+thread 'micro::tests_lecteur::le_plafond_est_compte_a_part_de_la_dissimulation' (2425538) panicked at agent/src/micro/tests_lecteur.rs:336:5:
+le plafond a mordu (le puits se tait) mais rien ne le compte : une recette ne peut pas distinguer ce silence-là d'une dissimulation qui travaille — CompteursMicro { deposees: 30, hors_ordre: 0, doublons: 0, jetees_saturation: 0, jetees_perimees: 0, sauts: 0, insertions: 95, famines: 0, plc: 95, plc_plafonnees: 0, fec: 0 }
+
+
+failures:
+    micro::tests_lecteur::apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier
+    micro::tests_lecteur::le_plafond_est_compte_a_part_de_la_dissimulation
+    micro::tests_lecteur::une_famine_prolongee_cesse_de_dissimuler_et_rend_du_silence
+
+test result: FAILED. 35 passed; 3 failed; 0 ignored; 0 measured; 496 filtered out; finished in 0.21s
+test result: FAILED. 35 passed; 3 failed; 0 ignored; 0 measured; 496 filtered out; finished in 0.21s
+
+error: test failed, to rerun pass `-p agent --bin agent`
+
+################ M2 -- la remise a zero du budget n'a jamais lieu
+test micro::tests_lecteur::apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier ... FAILED
+thread 'micro::tests_lecteur::apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier' (2426155) panicked at agent/src/micro/tests_lecteur.rs:417:5:
+une perte courte survenue APRÈS que le plafond a mordu n'est plus dissimulée : le budget n'est pas rendu au retour de la parole — CompteursMicro { deposees: 30, hors_ordre: 0, doublons: 0, jetees_saturation: 0, jetees_perimees: 0, sauts: 0, insertions: 55, famines: 0, plc: 20, plc_plafonnees: 35, fec: 0 } puis CompteursMicro { deposees: 60, hors_ordre: 0, doublons: 0, jetees_saturation: 0, jetees_perimees: 0, sauts: 0, insertions: 58, famines: 0, plc: 20, plc_plafonnees: 38, fec: 0 }
+
+test result: FAILED. 37 passed; 1 failed; 0 ignored; 0 measured; 496 filtered out; finished in 0.22s
+
+################ M3 -- le compteur plc_plafonnees n'est jamais incremente
+test micro::tests_lecteur::le_plafond_est_compte_a_part_de_la_dissimulation ... FAILED
+test micro::tests_lecteur::apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier ... FAILED
+thread 'micro::tests_lecteur::le_plafond_est_compte_a_part_de_la_dissimulation' (2426777) panicked at agent/src/micro/tests_lecteur.rs:336:5:
+le plafond a mordu (le puits se tait) mais rien ne le compte : une recette ne peut pas distinguer ce silence-là d'une dissimulation qui travaille — CompteursMicro { deposees: 30, hors_ordre: 0, doublons: 0, jetees_saturation: 0, jetees_perimees: 0, sauts: 0, insertions: 95, famines: 0, plc: 20, plc_plafonnees: 0, fec: 0 }
+
+thread 'micro::tests_lecteur::apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier' (2426775) panicked at agent/src/micro/tests_lecteur.rs:390:5:
+le plafond n'a pas mordu : la suite du test ne prouverait rien — CompteursMicro { deposees: 30, hors_ordre: 0, doublons: 0, jetees_saturation: 0, jetees_perimees: 0, sauts: 0, insertions: 55, famines: 0, plc: 20, plc_plafonnees: 0, fec: 0 }
+
+
+failures:
+    micro::tests_lecteur::apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier
+    micro::tests_lecteur::le_plafond_est_compte_a_part_de_la_dissimulation
+
+test result: FAILED. 36 passed; 2 failed; 0 ignored; 0 measured; 496 filtered out; finished in 0.18s
+test result: FAILED. 36 passed; 2 failed; 0 ignored; 0 measured; 496 filtered out; finished in 0.18s
+
+error: test failed, to rerun pass `-p agent --bin agent`
+
+################ M4 -- le plafond passe de 200 ms a 60 s
+test micro::dissimulation::tests::le_plafond_est_une_duree_et_non_un_compte_de_trames ... FAILED
+test micro::dissimulation::tests::au_dela_du_plafond_la_dissimulation_est_refusee ... FAILED
+test micro::tests_lecteur::une_famine_prolongee_cesse_de_dissimuler_et_rend_du_silence ... FAILED
+test micro::tests_lecteur::le_plafond_est_compte_a_part_de_la_dissimulation ... FAILED
+test micro::tests_lecteur::apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier ... FAILED
+thread 'micro::dissimulation::tests::le_plafond_est_une_duree_et_non_un_compte_de_trames' (2427203) panicked at agent/src/micro/dissimulation.rs:219:9:
+assertion `left == right` failed
+  left: (3000, 60s)
+ right: (10, 60s)
+
+---- micro::dissimulation::tests::au_dela_du_plafond_la_dissimulation_est_refusee stdout ----
+
+thread 'micro::dissimulation::tests::au_dela_du_plafond_la_dissimulation_est_refusee' (2427202) panicked at agent/src/micro/dissimulation.rs:176:9:
+assertion `left == right` failed
+  left: 200ms
+ right: 60s
+
+thread 'micro::tests_lecteur::une_famine_prolongee_cesse_de_dissimuler_et_rend_du_silence' (2427227) panicked at agent/src/micro/tests_lecteur.rs:309:5:
+assertion `left == right` failed: après 500 ms de famine le puits rend encore du signal (crête 0.044, fréquence Some(233.0)) : la dissimulation Opus n'est bornée par rien et fabrique un bourdon continu
+  left: 0.044128418
+ right: 0.0
+
+---- micro::tests_lecteur::le_plafond_est_compte_a_part_de_la_dissimulation stdout ----
+
+thread 'micro::tests_lecteur::le_plafond_est_compte_a_part_de_la_dissimulation' (2427221) panicked at agent/src/micro/tests_lecteur.rs:336:5:
+le plafond a mordu (le puits se tait) mais rien ne le compte : une recette ne peut pas distinguer ce silence-là d'une dissimulation qui travaille — CompteursMicro { deposees: 30, hors_ordre: 0, doublons: 0, jetees_saturation: 0, jetees_perimees: 0, sauts: 0, insertions: 95, famines: 0, plc: 95, plc_plafonnees: 0, fec: 0 }
+
+---- micro::tests_lecteur::apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier stdout ----
+
+thread 'micro::tests_lecteur::apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier' (2427219) panicked at agent/src/micro/tests_lecteur.rs:390:5:
+le plafond n'a pas mordu : la suite du test ne prouverait rien — CompteursMicro { deposees: 30, hors_ordre: 0, doublons: 0, jetees_saturation: 0, jetees_perimees: 0, sauts: 0, insertions: 55, famines: 0, plc: 55, plc_plafonnees: 0, fec: 0 }
+
+
+failures:
+    micro::dissimulation::tests::au_dela_du_plafond_la_dissimulation_est_refusee
+    micro::dissimulation::tests::le_plafond_est_une_duree_et_non_un_compte_de_trames
+    micro::tests_lecteur::apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier
+    micro::tests_lecteur::le_plafond_est_compte_a_part_de_la_dissimulation
+    micro::tests_lecteur::une_famine_prolongee_cesse_de_dissimuler_et_rend_du_silence
+
+test result: FAILED. 33 passed; 5 failed; 0 ignored; 0 measured; 496 filtered out; finished in 0.23s
+test result: FAILED. 33 passed; 5 failed; 0 ignored; 0 measured; 496 filtered out; finished in 0.23s
+
+error: test failed, to rerun pass `-p agent --bin agent`
+
+################ M5 -- la comparaison >= devient > (decalage d'une trame)
+test micro::dissimulation::tests::au_dela_du_plafond_la_dissimulation_est_refusee ... FAILED
+test micro::dissimulation::tests::le_plafond_est_une_duree_et_non_un_compte_de_trames ... FAILED
+test micro::tests_lecteur::le_plafond_est_compte_a_part_de_la_dissimulation ... FAILED
+thread 'micro::dissimulation::tests::au_dela_du_plafond_la_dissimulation_est_refusee' (2427820) panicked at agent/src/micro/dissimulation.rs:177:9:
+la 11ᵉ trame a été dissimulée : le plafond ne mord pas
+
+thread 'micro::dissimulation::tests::le_plafond_est_une_duree_et_non_un_compte_de_trames' (2427821) panicked at agent/src/micro/dissimulation.rs:219:9:
+assertion `left == right` failed
+  left: (11, 220ms)
+ right: (10, 200ms)
+
+---- micro::tests_lecteur::le_plafond_est_compte_a_part_de_la_dissimulation stdout ----
+
+thread 'micro::tests_lecteur::le_plafond_est_compte_a_part_de_la_dissimulation' (2427839) panicked at agent/src/micro/tests_lecteur.rs:344:5:
+les dissimulations réellement produites devraient tenir dans les 200 ms du plafond (au plus 20 trames de 10 ms) — CompteursMicro { deposees: 30, hors_ordre: 0, doublons: 0, jetees_saturation: 0, jetees_perimees: 0, sauts: 0, insertions: 95, famines: 0, plc: 21, plc_plafonnees: 74, fec: 0 }
+
+
+failures:
+    micro::dissimulation::tests::au_dela_du_plafond_la_dissimulation_est_refusee
+    micro::dissimulation::tests::le_plafond_est_une_duree_et_non_un_compte_de_trames
+    micro::tests_lecteur::le_plafond_est_compte_a_part_de_la_dissimulation
+
+test result: FAILED. 35 passed; 3 failed; 0 ignored; 0 measured; 496 filtered out; finished in 0.19s
+test result: FAILED. 35 passed; 3 failed; 0 ignored; 0 measured; 496 filtered out; finished in 0.19s
+
+error: test failed, to rerun pass `-p agent --bin agent`
+
+################ M6 -- une duree nulle n'est plus refusee
+test micro::dissimulation::tests::une_duree_nulle_est_refusee_plutot_que_de_ne_jamais_epuiser_le_budget ... FAILED
+thread 'micro::dissimulation::tests::une_duree_nulle_est_refusee_plutot_que_de_ne_jamais_epuiser_le_budget' (2428209) panicked at agent/src/micro/dissimulation.rs:228:9:
+assertion failed: !b.consommer(Duration::ZERO)
+
+test result: FAILED. 37 passed; 1 failed; 0 ignored; 0 measured; 496 filtered out; finished in 0.19s
+
+Source restauree ; empreintes relevees APRES la campagne, a comparer a celles du debut :
+4d37dcb93872a3707ddd51a1ffbd487de138b569aec47d7a1c3f039fa6ec1369  src/micro.rs
+873011b071e605f882437dd38fbd7202ec03096981122d29a63438296d1bf0d7  src/micro/dissimulation.rs
+
+test result: ok. 534 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.93s

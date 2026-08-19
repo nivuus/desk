@@ -1,0 +1,102 @@
+{
+  "scenario": "ton",
+  "session": "e1-plc-vert-ton-440",
+  "freq": 440,
+  "duree": 60000,
+  "url": "http://192.168.3.1:5173/?session=e1-plc-vert-ton-440",
+  "etapes": [
+    {
+      "quoi": "session",
+      "issue": "vivante",
+      "quand": "2026-08-19T18:51:09.802Z"
+    },
+    {
+      "quoi": "allumage",
+      "quand": "2026-08-19T18:51:09.816Z",
+      "compte": {
+        "hz": 440,
+        "etatContexte": "running",
+        "direction": "sendonly",
+        "directionCourante": "sendonly",
+        "pisteVivante": "live"
+      }
+    }
+  ],
+  "stats": [
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 21,
+          "packetsLost": 0,
+          "bytesReceived": 23
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 111,
+          "packetsLost": 0,
+          "bytesReceived": 117214,
+          "framesDecoded": 8,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 484
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 0,
+          "bytesSent": 0,
+          "mid": "2"
+        }
+      ],
+      "paire": null,
+      "horodatage": "2026-08-19T18:51:09.814Z",
+      "etiquette": "avant-injection"
+    },
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 6026,
+          "packetsLost": 0,
+          "bytesReceived": 6320
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 19551,
+          "packetsLost": 0,
+          "bytesReceived": 19665996,
+          "framesDecoded": 3728,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 484
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 3036,
+          "bytesSent": 243097,
+          "mid": "2"
+        }
+      ],
+      "paire": {
+        "rtt": 0.001,
+        "recu": 20962481,
+        "envoye": 439212
+      },
+      "horodatage": "2026-08-19T18:52:09.904Z",
+      "etiquette": "fin-ton"
+    }
+  ],
+  "sessionVivante": true,
+  "console": [
+    "[debug] [vite] connecting...",
+    "[debug] [vite] connected.",
+    "[debug] [instrumentation resize] declenchement ResizeObserver Object",
+    "[debug] [instrumentation resize] emission Object"
+  ],
+  "erreursPage": [],
+  "code": 0
+}
