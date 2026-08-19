@@ -43,7 +43,23 @@ pub async fn connecter(
         ))
         .await
         .context("déclaration du superviseur au signaling")?;
-    tracing::info!(session, "superviseur enregistré sur la session de contrôle");
+    // 🔴 CETTE TRACE DISAIT « superviseur ENREGISTRÉ », ET C'ÉTAIT UN
+    // MENSONGE — relevé par la recette de P3, sur pièces
+    // (`journaux-plateforme-p3/vm-{1,2}-agent-sans-identite-plat.log`). Elle
+    // sortait à l'ÉMISSION de la poignée de main, donc AVANT que la
+    // plateforme ait pu la refuser ; aux deux exécutions sans secret
+    // d'enrôlement, elle s'affichait alors qu'AUCUNE session ne s'établissait,
+    // et la connexion tombait 5 ms plus tard. **Qui la cherchait au `grep`
+    // pour savoir si une session tient concluait l'inverse de la vérité.**
+    //
+    // Elle dit désormais ce qu'elle SAIT : la déclaration est partie. Ce que
+    // la plateforme en fait arrive plus tard, et sur un autre fil — d'où le
+    // bras `error` de la boucle de réception ci-dessous, qui est ce qui rend
+    // le refus observable.
+    tracing::info!(
+        session,
+        "déclaration du superviseur émise sur la session de contrôle (acceptation encore inconnue)"
+    );
 
     // Émission : une tâche tokio consomme une file, pour que l'envoi reste
     // appelable depuis la boucle synchrone du superviseur.
@@ -71,7 +87,25 @@ pub async fn connecter(
                 // Le signaling envoie aussi `ice-config` et `peer-gone`, qui
                 // ne concernent pas la session de contrôle : les ignorer est
                 // le comportement voulu, pas un défaut.
-                Err(_) => tracing::debug!(texte, "message ignoré sur la session de contrôle"),
+                //
+                // 🔴 MAIS `error` N'EST PAS DE CEUX-LÀ, et le traiter comme
+                // tel a coûté un diagnostic à la recette de P3 : le refus de
+                // poignée de main de la plateforme arrive sous cette forme
+                // (`{"type":"error","reason":…,"motif":…}`, `relais.ts`), et
+                // il partait en `debug!` — donc invisible sous le
+                // `RUST_LOG=info` de l'exploitation. Le seul signe restant
+                // était `connexion de contrôle au signaling perdue`, qui se
+                // lit comme une panne réseau et non comme un refus.
+                Err(_) => match serde_json::from_str::<serde_json::Value>(&texte) {
+                    Ok(valeur) if valeur.get("type").and_then(|t| t.as_str()) == Some("error") => {
+                        tracing::warn!(
+                            motif = %valeur.get("motif").and_then(|m| m.as_str()).unwrap_or("(absent)"),
+                            raison = %valeur.get("reason").and_then(|r| r.as_str()).unwrap_or("(absente)"),
+                            "session de contrôle REFUSÉE par la plateforme"
+                        );
+                    }
+                    _ => tracing::debug!(texte, "message ignoré sur la session de contrôle"),
+                },
             }
         }
         tracing::warn!("connexion de contrôle au signaling perdue");
