@@ -66,6 +66,19 @@ windows = { version = "0.62", features = [
     # `None`. Sans cette fonctionnalité, l'import ne résout pas.
     "Win32_Security",
     "Win32_Storage_FileSystem",
+    # Les TYPES de ProjFS (`PRJ_CALLBACKS`, `PRJ_CALLBACK_DATA`, les huit
+    # `PRJ_*_CB`, les constantes de notification…), et EUX SEULS. Les
+    # enveloppes `Prj*` de ce module passent par `windows_core::link!`, qui se
+    # développe en `#[link(kind = "raw-dylib")]` (`windows-link-0.2.1/src/lib.rs:22`
+    # pour x86_64) : les appeler poserait un import STATIQUE de
+    # `ProjectedFSLib.dll` dans le PE. Or `agent.exe` est un seul binaire pour
+    # tous les modes (`main.rs`) — un import non résolu ne tuerait pas « le
+    # pont », il tuerait la capture, la vidéo et l'entrée sur toute VM dépourvue
+    # de ProjFS. D'où la décision D1 : les treize entrées sont résolues à
+    # l'EXÉCUTION (`pont/projfs/chargement.rs`), et RIEN du crate ne doit
+    # appeler une enveloppe `Prj*`. Le contrôle est un `objdump` sur le binaire
+    # bâti — voir l'en-tête de `chargement.rs`.
+    "Win32_Storage_ProjectedFileSystem",
     "Win32_Storage_Xps",
     "Win32_System_Com",
     "Win32_System_Com_StructuredStorage",

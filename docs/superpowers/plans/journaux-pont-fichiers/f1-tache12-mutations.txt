@@ -1,0 +1,95 @@
+Tâche 12 du sous-bloc F1 — mutations jouées APRÈS le vert, le 20 août 2026.
+Source restaurée et vérifiée par empreinte MD5 après chaque mutation.
+
+════════════════════════════════════════════════════════════════════════════
+A. `agent/src/pont/resolution.rs` — PUR — mutations TOUTES TUÉES
+════════════════════════════════════════════════════════════════════════════
+
+A1. « accepter une adresse nulle »
+    `Some(adresse) if adresse != 0 => …`  →  `Some(adresse) => …`
+    TUÉE — une_adresse_nulle_vaut_une_entree_absente
+      panicked at agent/src/pont/resolution/tests.rs:75:18
+      test result: FAILED. 5 passed; 1 failed
+
+A2. « ne pas s'arrêter à la première manquante »
+    `_ => return Err(EntreeManquante { nom }),`  →  `_ => {}`
+    TUÉE par TROIS tests
+      la_resolution_s_arrete_a_la_premiere_entree_manquante (tests.rs:92:6)
+      chaque_entree_absente_est_nommee_par_l_erreur          (tests.rs:57:14)
+      une_adresse_nulle_vaut_une_entree_absente              (tests.rs:75:18)
+      test result: FAILED. 3 passed; 3 failed
+
+A3. « l'erreur ne nomme plus l'entrée »
+    Display : « n'exporte pas « {} » »  →  « n'exporte pas une entrée attendue »
+    TUÉE — chaque_entree_absente_est_nommee_par_l_erreur (tests.rs:59:9)
+      test result: FAILED. 5 passed; 1 failed
+
+A4. « comparer_noms et apparier_nom intervertis »  (après restructuration)
+    `comparer_noms: a[4], apparier_nom: a[5]` → `a[5], a[4]`
+    TUÉE — chaque_champ_recoit_l_adresse_de_son_entree (tests.rs:39:5)
+      left: 6 / right: 5
+
+A5. « ecrire_donnees prend l'adresse d'ecrire_info_marqueur »
+    `ecrire_donnees: a[11]` → `a[12]`
+    TUÉE — chaque_champ_recoit_l_adresse_de_son_entree (tests.rs:46:5)
+      left: 13 / right: 12
+
+A6. « deux noms de NOMS permutés » (PrjStartVirtualizing / PrjStopVirtualizing)
+    TUÉE — chaque_champ_recoit_l_adresse_de_son_entree (tests.rs:44:5)
+      left: 10 / right: 11
+
+⚠️ A4 EST LA MUTATION QUI A CHANGÉ LA CONCEPTION. Dans la PREMIÈRE rédaction,
+`resoudre` rendait un `[usize; 13]` et `chargement.rs` l'indexait par treize
+constantes de rang. La mutation « le rang de comparer_noms devient celui
+d'apparier_nom », jouée AU SITE DE CONSTRUCTION de `ProjFs`, a **SURVÉCU** :
+le test des rangs épinglait `NOMS[RANG]`, jamais l'appariement CHAMP ↔ RANG
+au site d'appel — c'est-à-dire précisément là où la faute se commet, et deux
+entrées échangées sont deux `transmute` vers la mauvaise signature.
+
+Remède, et il est structurel plutôt que testuel : `resoudre` rend désormais un
+`Adresses` à CHAMPS NOMMÉS, l'unique appariement positionnel restant vit dans
+le module PUR (donc balayé par A4/A5/A6), et `chargement.rs` construit `ProjFs`
+par une macro qui n'écrit chaque nom de champ QU'UNE FOIS, le même dans les
+deux structures. **Une interversion y est devenue impossible à écrire**, plus
+seulement détectable.
+
+════════════════════════════════════════════════════════════════════════════
+B. `agent/src/pont/projfs/chargement.rs` — LES TREIZE TRANSCRIPTIONS
+   🔴 TROIS MUTATIONS SUR TROIS ONT SURVÉCU
+════════════════════════════════════════════════════════════════════════════
+
+Contrôles opposés à chaque mutation : `cargo check --target
+x86_64-pc-windows-gnu` (sortie 0 attendue) ET `cargo test -p agent`.
+
+B1. « PrjStartVirtualizing perd son cinquième paramètre »
+    (le paramètre de SORTIE `namespacevirtualizationcontext`, celui que
+     l'enveloppe cache derrière son `Result` — piège n°1 du plan)
+    => SURVIT.  Aucune erreur de compilation, aucun test rouge.
+
+B2. « PrjStopVirtualizing reçoit un HRESULT de retour »
+    (la fonction ne rend RIEN — piège n°2 du plan)
+    => SURVIT.
+
+B3. « PrjAllocateAlignedBuffer rend un HRESULT au lieu d'un pointeur »
+    (piège n°3 du plan : NULL est l'échec)
+    => SURVIT.
+
+⚠️ C'EST LE RISQUE R7 DE LA SPEC, MESURÉ PLUTÔT QUE REDOUTÉ. Les trois pièges
+que le plan nomme sont exactement les trois mutations jouées, et **aucune n'est
+attrapée par quoi que ce soit dans ce dépôt** : ni le compilateur (le
+`transmute` accepte n'importe quelle signature), ni la compilation croisée, ni
+les 593 tests d'hôte. Elles ne se manifesteraient qu'à l'APPEL, sur la VM, par
+une corruption de pile sans diagnostic.
+
+Ce qui reste comme garde, et rien d'autre :
+  — chaque transcription porte, en commentaire, la ligne `link!` VERBATIM dont
+    elle est la copie, avec son numéro de ligne dans
+    windows-0.62.2/src/Windows/Win32/Storage/ProjectedFileSystem/mod.rs ;
+  — la relecture est donc une comparaison de TEXTE À TEXTE, jamais une
+    reconstruction de mémoire ;
+  — et l'exécution sur la VM (tâche 18) est le seul juge.
+
+⚠️ NE PAS LIRE « huit des treize entrées ont un type PRJ_*_CB auquel se
+comparer ». C'est faux, et le plan le dit lui-même en toutes lettres au step
+4b : les huit `PRJ_*_CB` typent les huit RAPPELS QUE NOUS ÉCRIVONS, un ensemble
+DISJOINT des treize entrées QUE NOUS APPELONS. Aucune des treize n'a de jumeau.

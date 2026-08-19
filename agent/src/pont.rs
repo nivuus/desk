@@ -28,6 +28,9 @@
 pub mod chemins;
 pub mod decoupe;
 pub mod erreurs;
+#[cfg(windows)]
+pub mod projfs;
+pub mod resolution;
 pub mod table;
 pub mod transport;
 
