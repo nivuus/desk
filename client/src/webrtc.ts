@@ -3,6 +3,7 @@
 // la réponse de l'agent relayée par le signaling.
 
 import { parseAgentControl, type AgentControl } from '../../proto/ts/control';
+import { jetonAcces } from './jeton';
 
 export interface SessionOptions {
     signalingUrl: string;
@@ -10,6 +11,16 @@ export interface SessionOptions {
     video: HTMLVideoElement;
     onControl?: (message: AgentControl) => void;
     onStatus?: (message: string) => void;
+    /// Le jeton d'accès porté dans la poignée de main (sous-bloc P2).
+    ///
+    /// ⚠️ FACULTATIF À DESSEIN : un champ requis obligerait à modifier
+    /// `main.ts`, unique appelant, qu'un autre chantier tient. Absent, le
+    /// jeton est lu dans le coffre du navigateur (`jeton.ts`) — ce qui laisse
+    /// UN SEUL lecteur du stockage dans tout le client, ce qui est meilleur en
+    /// soi. Le coût est nommé : ce module gagne une dépendance à un global de
+    /// navigateur, alors qu'il manipule déjà `WebSocket` et
+    /// `RTCPeerConnection` ; `jeton.ts`, lui, reste pur.
+    jeton?: string;
 }
 
 export interface SessionHandle {
@@ -190,7 +201,21 @@ export async function connectSession(options: SessionOptions): Promise<SessionHa
             once: true,
         });
     });
-    socket.send(JSON.stringify({ role: 'client', session: options.sessionId }));
+    // 🔴 LE CHAMP `jeton` EST AJOUTÉ, AUCUN N'EST RETIRÉ — spec §10.2. Un
+    // service du sous-bloc P1 ne lit que `role` et `session` (son relais ignore
+    // tout le reste) : ce client reste donc compatible avec un service
+    // antérieur à la garde. LA COMPATIBILITÉ NE VA QUE DANS CE SENS — un
+    // client d'avant P2, lui, sera refusé par un service de P2, et c'est
+    // précisément l'objet du sous-bloc.
+    //
+    // ⚠️ AUCUNE REDIRECTION ICI, et ce n'est pas un oubli. Sans jeton, la
+    // session est refusée et le refus s'affiche ; c'est `shell-page.ts` qui
+    // renvoie vers l'écran de connexion, parce qu'il est l'entrée réelle de
+    // l'utilisateur. Une page de session est TOUJOURS ouverte par la shell, sur
+    // la même origine, donc le jeton y est déjà. Rediriger depuis une
+    // bibliothèque lui donnerait un pouvoir sur la navigation de ses appelants.
+    const jeton = options.jeton ?? jetonAcces();
+    socket.send(JSON.stringify({ role: 'client', session: options.sessionId, jeton }));
 
     // La configuration ICE arrive juste après la déclaration de rôle, ou
     // jamais si aucun relais n'est déployé. On l'attend brièvement plutôt que

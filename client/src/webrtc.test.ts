@@ -12,6 +12,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { connectSession, parseSignalingMessage, waitForAnswer } from './webrtc';
+import { CLE_ACCES } from './jeton';
 
 describe('parseSignalingMessage', () => {
     it('ignore un message `null` plutôt que de lever une exception', () => {
@@ -226,6 +227,7 @@ class FakeSignalingSocket {
     }
 
     send(data: string): void {
+        messagesEnvoyes.push(data);
         const parsed = JSON.parse(data) as { type?: string; role?: string };
         // Configuration ICE vide, émise dès la déclaration de rôle, comme le
         // fait le serveur de signaling quand aucun relais n'est déployé.
@@ -251,6 +253,14 @@ class FakeSignalingSocket {
 }
 
 let derniereInstancePc: FakeRtcPeerConnection | undefined;
+/// Tout ce que le client a poussé sur le socket de signaling. C'est le seul
+/// instrument qui puisse dire ce que porte la POIGNÉE DE MAIN.
+let messagesEnvoyes: string[] = [];
+
+/// La déclaration de rôle, c'est-à-dire le premier message envoyé.
+function poigneeDeMain(): Record<string, unknown> {
+    return JSON.parse(messagesEnvoyes[0]) as Record<string, unknown>;
+}
 
 function fauxVideo(): HTMLVideoElement {
     return { srcObject: null } as unknown as HTMLVideoElement;
@@ -259,6 +269,7 @@ function fauxVideo(): HTMLVideoElement {
 describe('connectSession — négociation promise par la spec §10', () => {
     afterEach(() => {
         derniereInstancePc = undefined;
+        messagesEnvoyes = [];
         vi.unstubAllGlobals();
     });
 
@@ -314,5 +325,81 @@ describe('connectSession — négociation promise par la spec §10', () => {
         // La seconde piste ne doit pas avoir chassé la première en
         // réassignant `srcObject` : même objet `flux` avant et après.
         expect(video.srcObject).toBe(flux);
+    });
+});
+
+describe('la poignée de main porte le jeton (sous-bloc P2)', () => {
+    afterEach(() => {
+        messagesEnvoyes = [];
+        vi.unstubAllGlobals();
+    });
+
+    function armerLesFactices(): void {
+        vi.stubGlobal('RTCPeerConnection', FakeRtcPeerConnection);
+        vi.stubGlobal('WebSocket', FakeSignalingSocket);
+        vi.stubGlobal('MediaStream', FakeMediaStream);
+    }
+
+    it('envoie le jeton passé en option', async () => {
+        armerLesFactices();
+        await connectSession({
+            signalingUrl: 'ws://signaling.invalid',
+            sessionId: 'test',
+            video: fauxVideo(),
+            jeton: 'jeton-de-l-appelant',
+        });
+        expect(poigneeDeMain()).toEqual({
+            role: 'client',
+            session: 'test',
+            jeton: 'jeton-de-l-appelant',
+        });
+    });
+
+    it('retombe sur le coffre du navigateur quand aucun jeton n’est passé', async () => {
+        // E7 : le champ est FACULTATIF pour que `main.ts` — modifié par un
+        // autre chantier — n'ait pas à bouger. Le repli est donc le chemin
+        // NOMINAL, pas un cas de secours, et il doit être éprouvé comme tel.
+        armerLesFactices();
+        vi.stubGlobal('localStorage', {
+            getItem: (c: string) => (c === CLE_ACCES ? 'jeton-du-coffre' : null),
+            setItem: () => {},
+            removeItem: () => {},
+        });
+        await connectSession({
+            signalingUrl: 'ws://signaling.invalid',
+            sessionId: 'test',
+            video: fauxVideo(),
+        });
+        expect(poigneeDeMain().jeton).toBe('jeton-du-coffre');
+    });
+
+    it("n'ajoute AUCUN champ hors `jeton`, et n'en retire aucun", async () => {
+        // 🔴 Spec §10.2 : le champ est AJOUTÉ, aucun n'est retiré. Un service
+        // du sous-bloc P1 ne lit que `role` et `session` et ignore `jeton`,
+        // donc ce client reste compatible avec lui. La compatibilité ne va que
+        // dans ce sens, et c'est ce test qui garde la première moitié.
+        armerLesFactices();
+        vi.stubGlobal('localStorage', {
+            getItem: () => null,
+            setItem: () => {},
+            removeItem: () => {},
+        });
+        await connectSession({
+            signalingUrl: 'ws://signaling.invalid',
+            sessionId: 'test',
+            video: fauxVideo(),
+        });
+        // Sans jeton : la poignée de main d'avant P2, à l'identique.
+        expect(Object.keys(poigneeDeMain()).sort()).toEqual(['role', 'session']);
+
+        messagesEnvoyes = [];
+        await connectSession({
+            signalingUrl: 'ws://signaling.invalid',
+            sessionId: 'test',
+            video: fauxVideo(),
+            jeton: 'j',
+        });
+        // Avec jeton : EXACTEMENT un champ de plus.
+        expect(Object.keys(poigneeDeMain()).sort()).toEqual(['jeton', 'role', 'session']);
     });
 });
