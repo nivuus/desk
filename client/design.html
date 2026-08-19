@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="fr">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Galerie de tokens</title>
+        <link rel="stylesheet" href="/src/design/socle.css" />
+        <!--
+            ═══════════════════════════════════════════════════════════════════
+            LA GALERIE DE TOKENS — L'INSTRUMENT D'UN JUGEMENT HUMAIN, PAS UNE
+            PREUVE.
+
+            🔴 CE QU'ELLE NE DIT JAMAIS : que la palette soit sobre, que
+            `#7aa2f7` soit le bon bleu, que le ratio 1,2 soit le bon, que 14 px
+            soit assez dense, que le pas de 4 px soit le bon, que `--bord` ait
+            été employé là où il fallait, que le plafond de 12 Kio soit au bon
+            endroit, ni qu'elle montre elle-même ce qu'il faut regarder. Ce
+            sont les huit jugements humains du §8 de la spec, et AUCUN NE
+            DEVIENDRA UNE MESURE au fil des sous-blocs.
+
+            ⚠️ LA COMPARAISON D'IMAGES DE RÉFÉRENCE EST ÉCARTÉE (spec §7.8), et
+            sa première raison est éliminatoire : les polices système rendent
+            différemment d'une machine à l'autre, si bien qu'une référence
+            prise sur un poste échouerait sur le suivant POUR UNE RAISON QUI
+            N'EST PAS UN DÉFAUT. Il faudrait embarquer une police pour rendre
+            la recette possible — c'est-à-dire payer au bénéfice de
+            l'instrument le coût que le §4.3 refuse au bénéfice du produit.
+
+            🔴 CETTE PAGE EST EXCLUE DE LA MOITIÉ « EMPLOYÉ » DU CONTRÔLE §7.6
+            (`client/outils/tokens-orphelins.mjs`) : elle rend tous les tokens
+            par construction, donc l'y inclure rendrait ce contrôle incapable
+            d'échouer. Elle reste INCLUSE dans §7.2 (aucune couleur littérale
+            ici non plus — sans quoi elle montrerait autre chose que les
+            tokens) et dans §7.3 (c'est une surface bâtie comme les autres).
+
+            ⚠️ PORTE ARMÉE À 300 LIGNES (spec §10) : au-delà, scinder par
+            famille, au même rythme que les primitives de S2.
+            ═══════════════════════════════════════════════════════════════════
+        -->
+        <style>
+            /* La galerie n'emploie QUE des tokens : c'est ce qu'elle montre.
+               Ces règles sont la mise en page de la page de démonstration, pas
+               une primitive — S2 est le sous-bloc qui en pose. */
+            body {
+                margin: 0 auto;
+                padding: var(--e-6) var(--e-5);
+                max-width: 60rem;
+            }
+            h1 {
+                font-size: var(--t-3xl);
+                line-height: var(--lh-serre);
+                margin: 0 0 var(--e-2);
+            }
+            h2 {
+                font-size: var(--t-xl);
+                line-height: var(--lh-serre);
+                margin: var(--e-7) 0 var(--e-3);
+                padding-block-end: var(--e-2);
+                border-block-end: var(--trait) solid var(--bord);
+            }
+            p.note {
+                color: var(--texte-faible);
+                line-height: var(--lh-large);
+                margin: 0 0 var(--e-4);
+                max-width: 44rem;
+            }
+            .grille {
+                display: grid;
+                gap: var(--e-3);
+                grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+            }
+            .pastille {
+                border: var(--trait) solid var(--bord);
+                border-radius: var(--r-3);
+                overflow: hidden;
+                background: var(--fond-1);
+            }
+            .pastille .echantillon {
+                height: var(--e-8);
+            }
+            .pastille .nom {
+                display: block;
+                padding: var(--e-2) var(--e-3);
+                font-size: var(--t-s);
+                color: var(--texte);
+            }
+            .pastille .valeur {
+                display: block;
+                padding: 0 var(--e-3) var(--e-2);
+                font-family: var(--police-mono);
+                font-size: var(--t-xs);
+                color: var(--texte-faible);
+            }
+            .voiles {
+                display: grid;
+                gap: var(--e-3);
+                grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+                padding: var(--e-3);
+                border-radius: var(--r-3);
+                /* Un damier, pour que les voiles se lisent comme ils vivent :
+                   posés sur une image dont on ne sait rien. */
+                background:
+                    repeating-conic-gradient(var(--fond-2) 0 25%, var(--fond-0) 0 50%) 0 0 / var(--e-5)
+                    var(--e-5);
+            }
+            .voiles .pastille {
+                border-color: var(--bord-fort);
+                background: transparent;
+            }
+            .barre {
+                height: var(--e-2);
+                border-radius: var(--r-plein);
+                background: var(--accent);
+            }
+            .ligne {
+                display: flex;
+                gap: var(--e-3);
+                align-items: baseline;
+                padding-block: var(--e-1);
+            }
+            .ligne code {
+                flex: 0 0 7rem;
+                font-family: var(--police-mono);
+                font-size: var(--t-xs);
+                color: var(--texte-faible);
+            }
+            .etat {
+                display: inline-block;
+                padding: var(--e-1) var(--e-3);
+                border-radius: var(--r-1);
+                font-size: var(--t-s);
+                color: var(--sur-accent);
+            }
+            .transition {
+                display: inline-block;
+                padding: var(--e-2) var(--e-4);
+                border-radius: var(--r-2);
+                background: var(--fond-2);
+                color: var(--texte);
+            }
+            .transition.lente {
+                transition: background var(--duree-2);
+            }
+            .transition.vive {
+                transition: background var(--duree-1);
+            }
+            .transition:hover {
+                background: var(--accent);
+                color: var(--sur-accent);
+            }
+            #themes button {
+                border: var(--trait) solid var(--bord-fort);
+                border-radius: var(--r-2);
+                padding: var(--e-2) var(--e-4);
+                font: inherit;
+                font-size: var(--t-m);
+                color: var(--texte-fort);
+                background: var(--fond-2);
+                cursor: pointer;
+                transition: background var(--duree-1);
+            }
+            #themes button:hover {
+                background: var(--fond-1);
+            }
+            #themes button[aria-pressed='true'] {
+                color: var(--sur-accent);
+                background: var(--accent);
+                border-color: var(--accent);
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Galerie de tokens</h1>
+        <p class="note">
+            Tout ce que cette page affiche vient de
+            <code>src/design/tokens.css</code>. Rien n’y est écrit en littéral :
+            si une valeur bouge à la source, elle bouge ici, et nulle part
+            ailleurs. C’est aussi ce que le contrôle §7.2 vérifie sur cette page
+            comme sur les autres.
+        </p>
+
+        <h2>Thème</h2>
+        <p class="note">
+            Trois états, et l’absence d’attribut <code>data-theme</code>
+            signifie « système ». Ouvrir cette page dans deux fenêtres et
+            changer le thème dans l’une : l’autre suit, par l’événement
+            <code>storage</code>. La fenêtre qui écrit ne le reçoit pas — c’est
+            pourquoi <code>choisir()</code> applique aussi localement.
+        </p>
+        <p id="themes"></p>
+
+        <h2>Couleurs — treize par thème</h2>
+        <div class="grille" id="couleurs"></div>
+
+        <h2>Voiles — six, hors thème</h2>
+        <p class="note">
+            Ils sont posés sur la vidéo, dont le contenu ne suit aucun thème :
+            ils sont donc identiques en clair et en sombre, et ils sont
+            <strong>hors des cinquante paires de contraste</strong> — leur
+            lisibilité dépend d’une image qui n’est pas connaissable.
+        </p>
+        <div class="voiles" id="voiles"></div>
+
+        <h2>Typographie — sept crans, ratio ≈ 1,2</h2>
+        <div id="typo"></div>
+
+        <h2>Interlignes — trois</h2>
+        <div id="interlignes"></div>
+
+        <h2>Espacement — huit crans, pas de 4 px</h2>
+        <div id="espacement"></div>
+
+        <h2>Rayons — quatre</h2>
+        <div class="grille" id="rayons"></div>
+
+        <h2>Durées — deux, rien au-delà de 300 ms</h2>
+        <p class="note">Survoler les deux pavés : la différence est le token.</p>
+        <p>
+            <span class="transition vive">--duree-1</span>
+            <span class="transition lente">--duree-2</span>
+        </p>
+
+        <h2>Traits — deux épaisseurs</h2>
+        <div id="traits"></div>
+
+        <h2>Polices — deux piles système, zéro octet embarqué</h2>
+        <div id="polices"></div>
+
+        <script type="module" src="/src/design/galerie.ts"></script>
+    </body>
+</html>
