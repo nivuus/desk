@@ -93,7 +93,10 @@ pub struct TamponGigue {
     /// référence, plutôt qu'un zéro arbitraire qu'un navigateur n'a aucune
     /// raison d'employer (Chrome tire son horodatage RTP initial au hasard).
     prochain_du: Option<u64>,
-    #[allow(dead_code)] // consommée par la correction de dérive, tâche 5
+    /// Occupation VISÉE. Retenue pour la lecture d'un futur asservissement
+    /// fin ; la correction de dérive d'aujourd'hui n'emploie que les deux
+    /// seuils, qui bornent la bande morte autour d'elle.
+    #[allow(dead_code)]
     cible: Duration,
     plafond: Duration,
     compteurs: CompteursMicro,
@@ -172,6 +175,47 @@ impl TamponGigue {
             self.compteurs.famines += 1;
             return Retrait::Manquante;
         };
+
+        // --- correction de dérive (spec §8) ---------------------------------
+        //
+        // Deux horloges libres se croisent : celle du navigateur qui encode et
+        // celle du câble qui consomme. Rien ne les asservit l'une à l'autre, et
+        // l'écart, si petit soit-il, s'accumule sans terme.
+        //
+        // Le remède est GROSSIER et assumé : on saute une trame quand on a trop
+        // de retard, on en insère une quand on a trop d'avance. « Audible une
+        // fois par plusieurs minutes » — un rééchantillonnage adaptatif serait
+        // du travail écrit avant d'avoir constaté le besoin.
+        //
+        // ⚠️ **Les deux seuils forment une HYSTÉRÉSIS, et son absence ferait
+        // osciller le tampon à chaque trame** : sans bande morte entre eux, la
+        // correction qui rattrape un retard créerait aussitôt l'avance que
+        // l'autre correction viendrait défaire.
+        let occupation = self.occupation();
+        if occupation > SEUIL_SAUT {
+            let saute = self.file.pop_front().expect("tête relue");
+            self.compteurs.sauts += 1;
+            // Même raison qu'à la saturation : sans avancer le dû, le tour
+            // suivant réclamerait par FEC la trame qu'on vient délibérément de
+            // sauter, et le saut serait un no-op déguisé.
+            if self.prochain_du.is_none_or(|du| du <= saute.rtp_48k) {
+                self.prochain_du = self.file.front().map(|t| t.rtp_48k);
+            }
+            let Some(_) = self.file.front() else {
+                self.compteurs.famines += 1;
+                return Retrait::Manquante;
+            };
+        } else if occupation < SEUIL_INSERTION {
+            // ⚠️ **Une insertion ne CONSOMME PAS de trame.** Elle rend
+            // `Manquante` sans dépiler, ce qui laisse l'occupation croître
+            // jusqu'à la bande morte. Un `pop` accompagné d'une insertion
+            // serait un no-op déguisé — l'occupation ne bougerait pas d'un
+            // échantillon, et le test de l'hystérésis ne le verrait même pas.
+            self.compteurs.insertions += 1;
+            return Retrait::Manquante;
+        }
+
+        let tete = self.file.front().expect("tête relue").rtp_48k;
 
         let du = *self.prochain_du.get_or_insert(tete);
 
@@ -380,6 +424,95 @@ mod tests {
             t.occupation() <= PLAFOND,
             "le tampon a enflé sans borne : {:?}",
             t.occupation()
+        );
+    }
+
+    /// Spec §8 : au-dessus de 120 ms d'occupation on saute une trame, en
+    /// dessous de 20 ms on en insère une. « Grossier, audible une fois par
+    /// plusieurs minutes » — et assumé.
+    #[test]
+    fn au_dela_du_seuil_haut_une_trame_est_sautee_et_comptee() {
+        let mut t = tampon();
+        // 7 trames de 20 ms = 140 ms, au-dessus de SEUIL_SAUT (120 ms) et sous
+        // le PLAFOND (200 ms) : c'est la DÉRIVE qu'on exerce, pas la saturation.
+        for i in 0..7u64 {
+            t.deposer(trame(i * 960, 20));
+        }
+        assert_eq!(t.compteurs().jetees_saturation, 0, "c'est la dérive, pas la saturation");
+
+        match t.retirer() {
+            // La trame 0 a été sautée : c'est la 960 qui sort.
+            Retrait::Trame(tr) => assert_eq!(tr.rtp_48k, 960, "aucune trame n'a été sautée"),
+            autre => panic!("retrait inattendu : {autre:?}"),
+        }
+        assert_eq!(t.compteurs().sauts, 1);
+        assert_eq!(t.compteurs().insertions, 0);
+        // Et le saut n'est pas rattrapé par une reconstruction FEC du trou
+        // qu'il vient de creuser — ce serait un no-op déguisé.
+        assert_eq!(t.compteurs().fec, 0);
+    }
+
+    #[test]
+    fn en_dessous_du_seuil_bas_une_trame_est_inseree_et_comptee() {
+        let mut t = tampon();
+        // Une seule trame de 10 ms : 10 ms d'occupation, sous SEUIL_INSERTION.
+        t.deposer(trame(0, 10));
+
+        assert!(matches!(t.retirer(), Retrait::Manquante));
+        assert_eq!(t.compteurs().insertions, 1);
+        assert_eq!(t.compteurs().sauts, 0);
+        // ⚠️ L'insertion ne CONSOMME PAS : l'occupation n'a pas bougé, et c'est
+        // ce qui lui permet de croître jusqu'à la bande morte.
+        assert_eq!(t.occupation(), Duration::from_millis(10));
+        // …et ce n'est pas une famine : la trame est là, c'est nous qui
+        // attendons.
+        assert_eq!(t.compteurs().famines, 0);
+    }
+
+    /// Entre les deux seuils, RIEN ne bouge : c'est l'hystérésis, et son
+    /// absence ferait osciller le tampon à chaque trame.
+    #[test]
+    fn entre_les_deux_seuils_aucune_correction_n_est_appliquee() {
+        let mut t = tampon();
+        // 4 trames de 20 ms = 80 ms, franchement entre 20 et 120.
+        for i in 0..4u64 {
+            t.deposer(trame(i * 960, 20));
+        }
+        assert!(matches!(t.retirer(), Retrait::Trame(tr) if tr.rtp_48k == 0));
+        assert_eq!(t.compteurs().sauts, 0, "un saut dans la bande morte");
+        assert_eq!(t.compteurs().insertions, 0, "une insertion dans la bande morte");
+    }
+
+    /// « Aucun n'est silencieux » (spec §8). Chaque correction incrémente son
+    /// compteur, et ce test le vérifie sur les DEUX à la fois, dans une même
+    /// vie de tampon — un compteur partagé par les deux passerait les deux
+    /// tests précédents pris séparément.
+    #[test]
+    fn chaque_correction_a_son_compteur() {
+        let mut t = tampon();
+        for i in 0..7u64 {
+            t.deposer(trame(i * 960, 20));
+        }
+        // Trop de retard : on saute.
+        assert!(matches!(t.retirer(), Retrait::Trame(_)));
+        assert_eq!((t.compteurs().sauts, t.compteurs().insertions), (1, 0));
+
+        // On vide jusqu'à passer sous le seuil bas.
+        while t.occupation() >= SEUIL_INSERTION {
+            t.retirer();
+        }
+        let sauts_avant = t.compteurs().sauts;
+        // Il reste de quoi ne pas être en famine, mais pas assez pour jouer.
+        t.deposer(trame(100_000, 10));
+        assert!(t.occupation() < SEUIL_INSERTION);
+        assert!(matches!(t.retirer(), Retrait::Manquante));
+
+        assert_eq!(t.compteurs().insertions, 1, "l'insertion n'a pas son compteur");
+        assert_eq!(
+            t.compteurs().sauts,
+            sauts_avant,
+            "l'insertion a incrémenté le compteur des SAUTS : les deux corrections \
+             partagent un compteur"
         );
     }
 }
