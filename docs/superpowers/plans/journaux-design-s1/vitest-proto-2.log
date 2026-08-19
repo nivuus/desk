@@ -1,0 +1,19 @@
+Cargo.toml
+node_modules
+package.json
+package-lock.json
+src
+ts
+tsconfig.json
+vectors.json
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/proto
+
+ ✓ ts/control.test.ts (17 tests) 16ms
+ ✓ ts/input.test.ts (20 tests) 14ms
+
+ Test Files  2 passed (2)
+      Tests  37 passed (37)
+   Start at  18:00:31
+   Duration  635ms (transform 162ms, setup 0ms, collect 168ms, tests 30ms, environment 1ms, prepare 239ms)
+
