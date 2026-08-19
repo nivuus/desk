@@ -673,6 +673,27 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > `client/src/`, la commande l'attrape quand même). **Décision de convention,
 > non tranchée, et elle appartient au propriétaire du dépôt.**
 >
+> ❌ **CE PARAGRAPHE A ÉTÉ RATTRAPÉ PAR LES FAITS EN MOINS D'UNE JOURNÉE, sur
+> ses TROIS clauses** (relevé par la commande le 19 août 2026, clôture du
+> sous-bloc P2, `HEAD = 85ed23a`) :
+> - **le 488 non commité est commité** — c'était la tâche 17 de P2, qui tenait
+>   la porte des 500 par une **extraction** ; la revue transverse de P2 y a
+>   ensuite ajouté six lignes de commentaire, et le fichier vaut **494**
+>   (marge **6**) ;
+> - **« ce fichier n'est touché par aucun chantier » est donc FAUX** : il a été
+>   touché deux fois le jour même de ce relevé, par le chantier qui travaillait
+>   dans le même arbre ;
+> - **et il n'est plus la DEUXIÈME marge la plus serrée** : c'est
+>   `agent/src/micro/tests.rs`, **497 (marge 3)**, fichier **neuf du chantier E
+>   (microphone)**, commité pendant la clôture de P2.
+>
+> **La seule clause qui survit est la divergence de convention**, toujours non
+> tranchée. ⚠️ *Ce n'est pas une erreur de D11 : son relevé était juste à sa
+> date, et il le dit. C'est la démonstration de ce que son propre piège
+> annonce — « un compte n'est attribuable qu'assorti de son heure quand deux
+> chantiers partagent l'arbre » — appliquée au relevé qui l'énonce.*
+
+>
 > **Fichiers que D11 a fait bouger, tous mesurés par la commande :**
 >
 > | Fichier | Lignes | Remarque |
@@ -2012,10 +2033,22 @@ restreindre (`--listening-ip` ou pare-feu) avant tout déploiement durable.
 ⚠️ **Le processus a changé de nom au sous-bloc P1 (19 août 2026) : ce n'est
 plus `signaling/`, c'est `plateforme/` — `cd plateforme && npm start`.** Le
 piège ci-dessous est **entier et inchangé**, et il s'est même AGGRAVÉ : le
-service lit désormais quatre variables de plus (`PLATEFORME_HOTE`,
-`PLATEFORME_PORT`, `PLATEFORME_BASE`, `PLATEFORME_BASE_URL`), dont la première
-**n'a aucun défaut** et casse le lancement. `TURN_URL` reste lue par le relais
+service lit désormais ~~quatre~~ **SIX** variables de plus (`PLATEFORME_HOTE`,
+`PLATEFORME_PORT`, `PLATEFORME_BASE`, `PLATEFORME_BASE_URL`, et — depuis le
+sous-bloc P2, 19 août 2026 — **`PLATEFORME_SECRET_JETON`** et
+**`PLATEFORME_ORIGINE_CLIENT`**), dont ~~la première~~ **DEUX n'ont aucun
+défaut** et cassent le lancement : `PLATEFORME_HOTE` **et
+`PLATEFORME_SECRET_JETON`**, cette dernière étant en outre refusée si elle est
+plus courte que `LONGUEUR_SECRET_MIN`. `TURN_URL` reste lue par le relais
 de signaling qui vit à l'intérieur.
+
+⚠️ **`.env` ne porte AUCUNE `PLATEFORME_*`** (relevé le 19 août 2026 : il n'a
+que les `TURN_*`) : `cd plateforme && npm start` après un `source .env` **ne
+démarre donc pas**, et il dit pourquoi. C'est le comportement voulu — voir
+`plateforme/src/config.ts` — mais c'est aussi exactement le piège de cette
+section, sous une forme neuve : l'environnement qu'on croit complet ne l'est
+pas.
+
 
 Piège rencontré : un serveur de signaling tournait depuis 36 h sans les variables
 TURN, et les sessions ne recevaient donc aucune configuration ICE — sans que rien
@@ -6778,6 +6811,13 @@ chantiers partagent un arbre.*
   l'arbre de travail**, une modification non commitée du chantier voisin.
   **Mesurer avec `git show HEAD:` quand l'arbre est partagé**, et dater tout
   compte.
+  ⚠️ **CE PIÈGE A ÉTÉ REPAYÉ LE LENDEMAIN, DANS L'AUTRE SENS** (19 août 2026,
+  clôture de P2) : le 488 est commité, le fichier vaut **494**, et c'est
+  désormais le chantier E (microphone) qui bouge sous le sous-projet ⑤ — trois
+  commits pendant la seule tâche de clôture, `HEAD` passant de `f9cc330` à
+  `988e2ee` puis `85ed23a`. **La leçon n'a rien perdu ; elle a été confirmée
+  par le rôle inverse.**
+
 
 ### Ce que D11 lègue
 
@@ -6890,7 +6930,23 @@ des quatre variables neuves, elles sont toutes du côté serveur. Le piège mais
 D7, **ne s'applique pas ici** — et le dire évite qu'un successeur cherche une
 ligne manquante.
 
+> ✅ **TOUJOURS VRAI APRÈS P2, et pour la même raison** (relevé le 19 août 2026,
+> revue transverse de P2) : les **deux** variables que P2 ajoute
+> (`PLATEFORME_SECRET_JETON`, `PLATEFORME_ORIGINE_CLIENT`) sont elles aussi
+> entièrement du côté serveur, et `scripts/run-agent.sh` n'est pas davantage
+> touché. ⚠️ **Seul le compte « quatre » a vieilli : il y en a SIX.**
+
 ### ② Les quatre variables d'environnement neuves
+
+> ⚠️ **CE TITRE ET CE TABLEAU SONT LE RELEVÉ DE P1, ET LE COMPTE A VIEILLI : le
+> sous-bloc P2 en ajoute DEUX, soit SIX en tout.** `PLATEFORME_SECRET_JETON`
+> (**aucun défaut, le service REFUSE de démarrer sans elle**, et la refuse plus
+> courte que `LONGUEUR_SECRET_MIN`) et `PLATEFORME_ORIGINE_CLIENT`
+> (**facultative**, et son absence est un refus du navigateur, jamais une
+> ouverture). Leur description complète vit dans la section **P2**, en fin de
+> fichier — les quatre lignes ci-dessous ne sont pas fausses, elles sont
+> **incomplètes**, et c'est le tableau qu'un opérateur lira en premier.
+
 
 | Variable | Effet |
 | --- | --- |
@@ -7065,6 +7121,14 @@ deux locales, et la sonde exigerait une machine hors du réseau.
 - **Aucune authentification.** Le port, s'il est atteint, délivre toujours des
   identifiants TURN valables 86 400 s à quiconque. **C'est P2**, et le critère ④
   est ce qui rend cette fenêtre tolérable — raison pour laquelle il est en P1.
+  > ⚠️ **ANNOTÉ à la revue transverse de P2 (19 août 2026) : cet énoncé est le
+  > relevé de P1 et n'est PAS réécrit, mais il n'est plus vrai QUE DE MOITIÉ.**
+  > P2 refuse un pair de rôle **`client`** sans jeton — motif `jeton-absent`,
+  > socket fermé, **aucun `ice-config` envoyé**. Un pair `{"role":"agent"}` est
+  > **toujours** servi sans identité (mesuré, 1 exécution,
+  > `journaux-plateforme-p2/e2-role-agent-toujours-anonyme.log`) : c'est **P3**.
+  > Le critère ④ de P1 reste donc ce qui borne cette moitié-là.
+
 - **La scalabilité horizontale** : la persistance ne la procure pas. Un WebSocket
   vit dans un processus et un seul.
 - **Aucune constante calibrée** : ni `DUREE_SECONDES = 86_400`, ni le port par
@@ -7098,7 +7162,10 @@ deux locales, et la sonde exigerait une machine hors du réseau.
   processus enfant en lui transmettant `PLATEFORME_BASE=postgres` **sans** l'URL
   le fait mourir sur `ECONNREFUSED` — le service ayant **raison** de refuser de
   démarrer. `resilience.test.ts` fixe donc les quatre variables au lieu d'hériter
-  de l'environnement.
+  de l'environnement. ⚠️ **Elles sont CINQ depuis P2** (relevé par la commande le
+  19 août 2026) : `PLATEFORME_SECRET_JETON` s'y ajoute, sans quoi le processus
+  enfant refuserait de démarrer pour une raison de plus.
+
 - ⚠️ **`env.X ?? 'défaut'` ne s'applique PAS à la chaîne vide.** Le plan
   annonçait deux tests rouges en posant un défaut sur `PLATEFORME_HOTE` ; **un
   seul** rougit. Le contrôle tient, mais pas pour la raison écrite.
@@ -7123,13 +7190,23 @@ Les plus gros fichiers de `plateforme/` :
 
 | Fichier | Lignes | Marge |
 | --- | --- | --- |
-| `plateforme/src/signaling/server.test.ts` | 255 | 245 |
-| `plateforme/src/signaling/relais.ts` | 219 | 281 |
-| `plateforme/src/signaling/resilience.test.ts` | 181 | 319 |
-| `plateforme/src/signaling/trace.test.ts` | 151 | 349 |
-| `plateforme/src/base/pilotes.test.ts` | 135 | 365 |
+| `plateforme/src/signaling/server.test.ts` | ~~255~~ **272** (19 août 2026, P2) | ~~245~~ 228 |
+| `plateforme/src/signaling/relais.ts` | ~~219~~ **310** (19 août 2026, P2) | ~~281~~ 190 |
+| `plateforme/src/signaling/resilience.test.ts` | ~~181~~ **208** (19 août 2026, P2) | ~~319~~ 292 |
+| `plateforme/src/signaling/trace.test.ts` | ~~151~~ **194** (19 août 2026, P2) | ~~349~~ 306 |
+| `plateforme/src/base/pilotes.test.ts` | ~~135~~ **141** (19 août 2026, P2) | ~~365~~ 359 |
 | `plateforme/src/base/sous-ensemble.test.ts` | 125 | 375 |
 | `plateforme/src/base/migrations.ts` | 118 | 382 |
+
+> ⚠️ **CINQ des sept chiffres de ce tableau ont vieilli sous le sous-bloc P2, et
+> ils sont barrés À LEUR PLACE** (relevés par la commande le 19 août 2026, après
+> la dernière édition de la ronde de clôture de P2). Les deux derniers étaient
+> exacts. **Le plus gros mouvement est `relais.ts`, +91** : c'est le fichier que
+> la phrase ci-dessous désigne comme « le seul que P2, P3 et P4 feront
+> grossir », et il a fait exactement ce qui était annoncé. **Sa marge reste de
+> 190** — aucun plafond n'est approché, et l'extraction de P1 est ce qui le
+> permet.
+
 
 **Aucun fichier de `plateforme/` n'approche le plafond.** `relais.ts` — le seul
 que P2, P3 et P4 feront grossir — dispose de **281** lignes de marge, et **sa
@@ -7153,7 +7230,8 @@ qui nomment leur ancien emplacement.
 
 | Où | Ce qui était devenu faux | Sort |
 | --- | --- | --- |
-| `plateforme/src/signaling/relais.ts:2` | « **Aucun état persistant** » — **P1 en pose un** | **CORRIGÉ**. ⚠️ « Aucune authentification » reste **VRAI** et n'est pas touché : les deux clauses de la même phrase n'ont pas le même sort |
+| `plateforme/src/signaling/relais.ts:2` | « **Aucun état persistant** » — **P1 en pose un** | **CORRIGÉ**. ⚠️ « Aucune authentification » reste **VRAI** et n'est pas touché : les deux clauses de la même phrase n'ont pas le même sort. ❌ **CETTE SECONDE CLAUSE EST TOMBÉE À SON TOUR au sous-bloc P2** (19 août 2026), et c'est P2 qui l'a corrigée dans le fichier — elle y porte désormais la **moitié exacte** qui reste vraie (le rôle `agent`, anonyme jusqu'à P3). **Le pronostic de P1 n'était donc juste que pour un sous-bloc**, ce qui est la durée de vie ordinaire d'un « reste VRAI » |
+
 | `plateforme/src/signaling/relais.ts` (`isJsonObject`) | « aucun `uncaughtException` n'est installé dans **index.ts** » — le point d'entrée a **changé de fichier** | **CORRIGÉ**, et la propriété a été **REVÉRIFIÉE** sur le nouveau : `plateforme/src/index.ts` n'installe qu'un `SIGINT` |
 | `plateforme/src/config.ts:3` | `signaling/src/server.ts:67` — chemin disparu | **CORRIGÉ** |
 | `plateforme/src/depot/session.ts:6` | `signaling/src/ice.ts:32-42` — chemin disparu | **CORRIGÉ** (les lignes 32-42, elles, ont été **relues** et sont justes) |
@@ -7161,7 +7239,8 @@ qui nomment leur ancien emplacement.
 | `plateforme/src/signaling/appariement.ts:8` | « extrait de `server.ts` » sans dire ce qu'est ce fichier aujourd'hui | **CORRIGÉ** |
 | `CLAUDE.md:1913` | `signaling/src/ice.ts` (chantier C volet 2) | **CORRIGÉ**, le piège « le signaling doit être relancé AVEC l'environnement » étant **conservé entier** et annoté du nom neuf du processus |
 | `.gitignore:10` | `signaling/dist/` ne désignait plus rien | **CORRIGÉ** en tâche 2 |
-| **`agent/src/superviseur/protocole.rs:5`** | « à ce que **`signaling/src/server.ts`** accepte de relayer » — ce fichier n'existe plus ; il est aujourd'hui `plateforme/src/signaling/relais.ts` | ❌ **NON CORRIGÉ, et c'est délibéré** : `agent/` est le périmètre d'un travail concurrent au moment de P1. **La propriété énoncée reste VRAIE** (les six types relayés sont inchangés) ; **seul le chemin est périmé.** Dette d'une ligne, à reprendre par qui touchera ce fichier |
+| **`agent/src/superviseur/protocole.rs:5`** | « à ce que **`signaling/src/server.ts`** accepte de relayer » — ce fichier n'existe plus ; il est aujourd'hui `plateforme/src/signaling/relais.ts` | ❌ **NON CORRIGÉ, et c'est délibéré** : `agent/` est le périmètre d'un travail concurrent au moment de P1. **La propriété énoncée reste VRAIE** (les six types relayés sont inchangés) ; **seul le chemin est périmé.** Dette d'une ligne, à reprendre par qui touchera ce fichier. ✅ **SOLDÉE PAR D11, PAS PAR P2** — le fichier nomme aujourd'hui `plateforme/src/signaling/relais.ts` et dit à ses lignes 8-9 que l'ancien chemin n'existe plus. *(Relevé par la revue transverse de P2 le 19 août 2026, qui n'en est pas l'auteur : le tableau D11 en tête de ce fichier l'enregistrait déjà — `superviseur/protocole.rs` 101 → 110, « le chemin `signaling/` disparu ». **Ce ❌ contredisait donc ce ✅ depuis D11, dans le même fichier**, et personne ne l'avait rapproché.)* |
+
 
 **Trois affirmations FABRIQUÉES par le plan lui-même**, et corrigées par la
 mesure plutôt que recopiées :
@@ -7185,12 +7264,17 @@ lui-même**, avec l'énoncé daté qui, lui, est exact.
 
 ### ⑫ Ce que P1 lègue à P2, P3, P4 et P5
 
-1. ⛔ **P2 — l'authentification.** Le port, s'il est atteint, délivre toujours
-   des identifiants TURN valables 86 400 s à quiconque. `utilisateur` **existe et
-   est vide** : P2 lui donne son comportement, **pas sa table**.
-2. 🔴 **P2 et P4 — toute contrainte doit naître avec sa table** (D3) : SQLite ne
+1. ✅ **P2 — l'authentification. FAIT le 19 août 2026, ET DE MOITIÉ SEULEMENT.**
+   Un pair `client` sans jeton est refusé ; **un pair `agent` reçoit toujours
+   des identifiants TURN de 86 400 s sans aucune identité** — c'est P3.
+   `utilisateur` **n'est plus vide** : P2 lui a donné son comportement, et
+   **pas sa table**, exactement comme cette ligne le prévoyait.
+2. ✅ **P2 et P4 — toute contrainte doit naître avec sa table** (D3) : SQLite ne
    sait pas l'ajouter par `ALTER TABLE`, et la reconstruction en douze étapes
-   n'est pas portable.
+   n'est pas portable. **P2 l'a APPLIQUÉ** : `0002-identite.sql` fait naître
+   `famille` et `remplace_par` **avec** `jeton_rafraichissement`, ainsi que sa
+   clé étrangère vers `utilisateur(id)`. **La consigne reste entière pour P4.**
+
 3. ⛔ **P3 — `session.utilisateur_id` et `session.vm_id` restent `NULL`**, et
    **ne seront pas resserrés en `NOT NULL`**. C'est le coût de D4, assumé.
 4. ⛔ **P3 — observer les agents présents** (`vm.vue_a`) : un agent seul ne
@@ -7208,6 +7292,406 @@ lui-même**, avec l'énoncé daté qui, lui, est exact.
    prix assumé du « un saut est un échec » : sans elle, l'étape **ÉCHOUE** et le
    script s'arrête, il ne se saute pas avec un avertissement.
 
+---
+
+## 🔐 Sous-projet ⑤ Plateforme — sous-bloc P2 : l'identité des humains, et la moitié du trou que la garde ferme (19 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-19-plateforme-p2-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-19-plateforme-p2.md` (commit `826a16d`).
+Conception : `docs/superpowers/specs/2026-08-19-plateforme-design.md`, §3.5 et §4 « P2 ».
+Journaux : `docs/superpowers/plans/journaux-plateforme-p2/` — **29 fichiers
+suivis par git** (relevé par `git ls-files`), **tous UTF-8, AUCUNE séquence
+ANSI** (vérifié par `grep -lP '\x1b\['` : zéro fichier) : ils se `grep`ent à
+plat, **sans `sed`**. **Une seule famille de lecture**, comme P1 et
+contrairement au chantier D. Deux singularités sans conséquence :
+`cors-et-message-de-refus.log` mêle CRLF et LF, `verify-all-1.log` porte une
+ligne de 333 caractères.
+
+⛔ **Aucune tâche de P2 n'a employé la VM Windows**, comme P1, et pour la même
+raison : ⑤ est un sous-projet serveur.
+
+### ① Le fait n°1 : la garde mord, et elle ne ferme QUE LA MOITIÉ `client`
+
+Un pair qui se déclare `{"role":"client", session, jeton}` doit désormais
+présenter un **jeton d'accès valide**, sans quoi il est refusé, journalisé, son
+socket fermé (code 1008, motif `jeton-absent`) — **et il ne reçoit aucun
+`ice-config`**. La garde passe **AVANT** `Appariement::declarer`, et l'ordre
+n'est pas indifférent : un pair refusé qui serait entré dans la table y
+occuperait le rôle et empêcherait le pair légitime d'arriver, soit un déni de
+service ouvert à l'anonyme, obtenu **précisément en refusant de
+s'authentifier**.
+
+🔴 **UN PAIR `{"role":"agent"}` EST TOUJOURS ACCEPTÉ SANS AUCUNE IDENTITÉ, et
+reçoit ses identifiants TURN de 86 400 s.** Ce n'est pas une inférence : c'est
+**mesuré** sur le service de la branche (**1 exécution**,
+`e2-role-agent-toujours-anonyme.log`), où une sonde qui ne présente rien reçoit
+`turn:127.0.0.1:3478` avec son `username` et son `credential`, et n'est jamais
+refusée. L'agent Rust n'a pas d'identité avant **P3** (divergence E2), et lui en
+exiger une casserait le chantier D. **C'est donc toujours `PLATEFORME_HOTE` —
+le critère ④ de P1 — qui borne cette moitié-là de la fenêtre.**
+
+Le libellé du critère ① le dit littéralement : « un pair **`client`** non
+authentifié ». **Ne pas lire « le trou TURN est fermé ».**
+
+### ② Les deux variables d'environnement neuves — et trois de recette
+
+| Variable | Effet |
+| --- | --- |
+| `PLATEFORME_SECRET_JETON` | le secret HMAC des jetons d'accès. 🔴 **AUCUN défaut** — le service REFUSE de démarrer sans elle, **comme `PLATEFORME_HOTE`**, et la refuse aussi **plus courte que `LONGUEUR_SECRET_MIN = 32`**. Un défaut aléatoire invaliderait toutes les sessions à chaque redémarrage ; un secret court n'authentifie personne |
+| `PLATEFORME_ORIGINE_CLIENT` | l'origine autorisée pour CORS. **FACULTATIVE**, et **son défaut est le REFUS** : absente, aucun en-tête CORS n'est émis et le navigateur refuse — bruyamment. **Jamais `*`, sous aucune condition** (assertion de test, pas intention). L'asymétrie avec `PLATEFORME_HOTE` est raisonnée : une adresse d'écoute absente produirait une écoute universelle **silencieuse**, une origine absente produit un refus **visible** ; et refuser de démarrer pour elle casserait P5, où le proxy inverse met les deux sur la même origine |
+
+⚠️ **Trois variables de plus, qui ne sont PAS du service mais des OUTILS DE
+RECETTE** (`client/recette/jeton-recette.mjs`) : `RECETTE_EMAIL`,
+`RECETTE_MOTDEPASSE` et `PLATEFORME_URL` (défaut `http://127.0.0.1:8080`).
+**Aucune n'est lue par `config.ts`.** Sans les deux premières, les trois pilotes
+CDP **avertissent et continuent** — ils n'échouent pas, ce qui les laisse
+utilisables contre un service sans garde.
+
+⚠️ **`scripts/run-agent.sh` n'est PAS modifié par P2**, exactement comme en P1 :
+les deux variables du service sont côté serveur, l'agent n'en lit aucune. Le
+piège maison « toute variable neuve doit être ajoutée à `run-agent.sh` » ne
+s'applique toujours pas.
+
+⚠️ **`.env` ne porte aucune `PLATEFORME_*`** (relevé le 19 août 2026) : un
+`source .env` ne suffit donc pas à lancer le service, et il manque désormais
+**deux** variables sans défaut au lieu d'une.
+
+### ③ Le format de mot de passe porte son propre algorithme
+
+`scrypt$N$r$p$sel$empreinte`, sel et empreinte en `base64url`,
+`PARAMETRES_COURANTS = { N: 16384, r: 8, p: 1 }`, clé de 32 octets. **Le point
+n'est pas le choix des paramètres, c'est que le format les porte** : le jour où
+ils seront calibrés, `doitEtreRehache` le dit et un re-hachage à la connexion
+suivante suffit — **sans migration de données**.
+
+⚠️ **Ces paramètres NE SONT PAS CALIBRÉS.** Les 29 ms mesurés sont une mesure
+sur une machine, **pas un objectif atteint** : aucun objectif n'a été posé.
+
+### ④ Le rejeu d'un jeton de rafraîchissement fauche TOUTE la famille
+
+La spec §5 posait `jeton_rafraichissement(id, utilisateur_id, empreinte,
+expire_a, revoque_a)`. **Ces cinq colonnes ne permettent PAS de détecter un
+rejeu** (divergence E5) : rien n'y relie un jeton tourné à son successeur, si
+bien que présenter un jeton déjà tourné ne pourrait révoquer que la ligne **déjà
+révoquée** — et le voleur qui a tourné le premier garderait son jeton neuf.
+
+`0002-identite.sql` ajoute donc **`famille TEXT NOT NULL`** et **`remplace_par
+TEXT NULL`**, qui **naissent avec la table** (leçon D3 de P1 : SQLite ne sait
+pas ajouter une contrainte par `ALTER TABLE`). Règle : présenter un jeton dont
+la ligne porte `revoque_a` non nul est un **REJEU**, et **toute la famille est
+révoquée d'un coup**, refus typé `rejeu`.
+
+🔴 **LA RECETTE A TROUVÉ LÀ UN DÉFAUT RÉEL, QUE LA RELECTURE N'AVAIT PAS VU** :
+`/auth/rafraichir` ouvrait une famille **NEUVE** à chaque appel. La détection de
+rejeu révoquait alors une famille à laquelle le jeton volé n'appartenait plus,
+et **ne protégeait donc rien** — mécanisme présent, effet absent. Corrigé, et la
+preuve est de bout en bout sur le service vivant (**2 exécutions**,
+`rotation-et-rejeu-bout-en-bout.log`) : après le rejeu de `r0`, **c'est `r2`, le
+jeton le plus RÉCENT, qui tombe en `401 {"refus":"revoque"}`**. **La ligne qui
+compte est celle-là**, pas le refus du jeton rejoué.
+
+⚠️ **Aucun test de dépôt ne pouvait l'attraper** : chaque test partait d'une
+famille propre.
+
+### ⑤ Le verdict des quatre critères, avec leur nombre d'exécutions
+
+**Aucun taux n'est revendiqué nulle part.**
+
+| # | Critère | Verdict | Exéc. |
+| --- | --- | --- | --- |
+| ① | un pair `client` non authentifié est refusé **et ne reçoit aucun `ice-config`** | **TENU** | **2** |
+| ② | un jeton expiré est refusé, **horloge qui VARIE** | **TENU** | **2** |
+| ③ | un utilisateur ne peut pas rejoindre la session d'un autre, appartenance **enregistrée** | **TENU** | **2** (+1 sur le service vivant) |
+| ④ | un mot de passe n'est **jamais** journalisé ni renvoyé | **TENU** | **2** |
+
+⚠️ **LES DEUX EXÉCUTIONS D'UN CRITÈRE DIFFÈRENT PAR LE MOTEUR DE BASE** — sqlite
+pour la première, postgres pour la seconde. **Ce n'est pas ce que le plan
+prescrivait** (il disait « deux exécutions » sans dire lesquelles) : la décision
+est prise par la recette et déclarée dans l'en-tête de chaque journal. Elle est
+**plus forte** que deux passes identiques pour les critères qui touchent la
+base, et **strictement identique** pour ceux qui sont purs.
+
+**HUIT rouges jouées, là où le plan en annonçait SEPT**, chacune avec son
+message verbatim et les sources restaurées après chacune.
+
+🔴 **La huitième existe parce qu'une PRÉDICTION DU PLAN ÉTAIT FAUSSE.** Le plan
+annonçait que la rouge ①A ferait tomber « les **DEUX** assertions du critère ① ».
+**Elle n'en fait tomber qu'UNE** : `expect` interrompt le test à la première, si
+bien que la seconde — « aucun `ice-config` », c'est-à-dire la fuite
+d'identifiants TURN de 24 h — **n'était éprouvée par rien**. La rouge ①A-bis
+l'éprouve **seule** : la garde refuse toujours, mais la configuration ICE part
+**avant** la vérification, et l'assertion rougit. **C'est le patron que ce dépôt
+a déjà payé cinq fois — un contrôle qu'on n'a jamais vu rouge n'est pas un
+contrôle — et il se rejoue ici sur une assertion, pas sur un test.**
+
+🔵 **La rouge ①B est la plus décisive, et elle ne dépend d'AUCUNE modification
+de notre part** : `git worktree add /tmp/p1-rouge 19f6409` sort le service **de
+P1**, et la même sonde y reçoit de vrais identifiants TURN sans jamais être
+refusée. C'est la ROUGE gratuite que la spec §7.2 annonçait, **jouée et non
+supposée**.
+
+### ⑥ Ce que P2 n'établit PAS
+
+- **Aucun taux, nulle part** : deux exécutions par critère au mieux, une pour
+  plusieurs mesures de bout en bout.
+- 🔴 **Le rôle `agent` reste ANONYME** et reçoit toujours des identifiants TURN
+  de 86 400 s (voir ①). **Le trou n'est fermé qu'à moitié.**
+- **La garde ne s'applique qu'à la POIGNÉE DE MAIN.** Une session déjà ouverte
+  n'est **jamais** revérifiée : un jeton qui expire en cours de session ne coupe
+  rien tant que le socket vit. La spec §3.5 dit qu'un jeton court n'est pas
+  révocable **avant** expiration ; ici il ne l'est **même pas après**.
+- **L'appartenance de session ne survit pas à un redémarrage** (E3) : le
+  registre de décision est **en mémoire**, et après un redémarrage un nom de
+  session libéré peut être revendiqué par un autre utilisateur. La vraie réponse
+  est le **préfixe opaque de P3**.
+- **Aucune protection contre le rejeu du jeton d'ACCÈS** : il est porteur, et
+  quiconque l'obtient peut ouvrir une session jusqu'à son expiration.
+- **Aucune constante n'est calibrée** : `N`/`r`/`p`, `DUREE_JETON_ACCES_MS`
+  (600 000), `DUREE_RAFRAICHISSEMENT_MS` (30 jours), `LONGUEUR_SECRET_MIN`
+  (32), la marge de rafraîchissement du client, et `DUREE_SECONDES = 86 400`
+  que P2 **ne recalibre pas**. Elles rejoignent la liste déjà longue du dépôt —
+  `BPP_MIN`, `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`, `HYSTERESIS`,
+  `TAILLE_MAX_SORTIE`.
+- **L'égalisation temporelle du chemin de connexion n'est pas mesurée**, et ne
+  le sera pas ici : un test de temporisation serait instable. Ce qui **est**
+  éprouvé est le **message identique** entre compte inexistant et mot de passe
+  faux (`{"refus":"identifiants"}`, **1 exécution**), qui est décidable.
+- **AUCUN navigateur réel n'a authentifié quoi que ce soit** hors la tâche 17,
+  qui n'est pas un critère. **L'écran de connexion n'a jamais été employé par un
+  humain** : aucun clic, aucun formulaire soumis. Le chemin `connexion.html` →
+  `poser()` → `shell.html` est **raisonné et compilé**, pas observé. Et
+  **`shell-page.ts` n'a jamais redirigé** dans une exécution mesurée.
+- **Aucun frein sur les routes d'authentification** — c'est P5 ③. Conséquence à
+  assumer d'ici là : `/auth/connexion` est ouverte à la force brute, bornée
+  seulement par les ~29 ms de `scrypt` et par l'écoute restreinte de
+  `PLATEFORME_HOTE`. **C'est la même raison qui rend la fenêtre d'E2 tolérable,
+  et elle a la même fragilité.**
+- **Aucune terminaison TLS, aucun cookie, aucun en-tête de sécurité** : P5.
+- **Aucun audit par un tiers** : CSRF, fixation de session et attaques
+  temporelles sont traités par des choix **raisonnés, non éprouvés** (spec §8).
+- **Le jeton vit dans `localStorage`**, donc il est lisible par tout script de
+  la page. C'est un arbitrage écrit dans `jeton.ts`, **pas un oubli**, et il se
+  rouvrira en P5.
+
+### ⑦ Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔴 **`scrypt` REFUSE `N = 32768` avec le `maxmem` par défaut, et le message ne
+  parle PAS de `N`** — mesuré le 19 août 2026 sur Node v24.9.0 :
+  `Invalid scrypt params: error:030000AC:digital envelope
+  routines::memory limit exceeded`. La limite est celle de `maxmem` (32 MiB),
+  franchie dès que `128·N·r` la dépasse. **Le paramètre qu'on croirait meilleur
+  est celui qui casse**, et le diagnostic n'est pas dans le message.
+- 🔴 **`timingSafeEqual` LÈVE sur des longueurs différentes** —
+  `Input buffers must have the same byte length`. Une empreinte tronquée en base
+  ferait donc **lever** la vérification de mot de passe au lieu de rendre
+  `false` : l'appelant HTTP répondrait **500 là où il doit répondre 401**, et
+  l'écart de comportement serait à lui seul un oracle. **Comparer les longueurs
+  D'ABORD, partout** — mot de passe et signature JWT.
+- 🔵 **Un JWT HS256 s'écrit ENTIÈREMENT avec `node:crypto` : aucune dépendance
+  n'est nécessaire.** Le témoin en est le contrôle d'allow-list de P1
+  (`base/pilote.test.ts`), qui exige `['pg', 'ws']` et **n'a pas bougé** —
+  vérifié le 19 août 2026. Un sous-bloc entier d'authentification a donc été
+  livré à dépendances constantes.
+- ⚠️ **`localStorage` est le SEUL stockage partagé entre une page et les
+  fenêtres qu'elle ouvre par `window.open`**, et
+  `Page.addScriptToEvaluateOnNewDocument` **ne court PAS** sur ces fenêtres
+  (piège mesuré en D5). Un pilote CDP ne peut donc **pas** y injecter un jeton
+  après coup : c'est pourquoi le jeton doit vivre dans `localStorage`, et
+  pourquoi la page-shell (`client/src/shell-page.ts`, qui ouvre par
+  `window.open`) fonctionne sans injection supplémentaire.
+- ⚠️ **`client/` n'a pas `@types/node`** : un test écrit avec `Buffer` passe
+  sous Vitest et **casse `npm run typecheck`** (`TS2580 Cannot find name
+  'Buffer'`). Employer `btoa` / `TextEncoder`. C'est exactement la raison d'être
+  de `verify-all.sh` : Vitest et Vite reposent sur esbuild, qui transpile **sans
+  vérifier les types**.
+- 🔴 **`cd client && npx vitest run` NE COUVRE PAS `proto/ts/`.** La racine
+  Vitest est `client/`, donc les tests de `client/src/` seuls. **Un test posé
+  hors de `client/src/` ne tournerait pas, et personne ne le verrait** ;
+  `proto/` exige `cd proto && npm test`. Les deux comptes se relèvent
+  séparément, toujours.
+- 🔴 **UN COMPTE DE TESTS N'EST ATTRIBUABLE QU'ASSORTI DE SON COMMIT** quand
+  deux chantiers partagent l'arbre — piège hérité de D11, rejoué ici en sens
+  inverse : c'est P2 qui faisait bouger `client/` sous D11, et c'est le chantier
+  E (microphone) qui faisait bouger `agent/` sous P2. **Le témoin
+  `verify-all.sh` de la recette a échoué à sa PREMIÈRE étape sur un test Rust
+  du voisin**, non suivi par git au moment de la mesure. Ce n'était pas P2, et
+  la preuve n'est pas une affirmation : un `git worktree add` du dernier commit
+  de P2 rend `467 passed; 0 failed` (`temoin-cargo-arbre-propre.log`).
+- ⚠️ **Un jeton de recette doit être OBTENU, jamais FORGÉ.** Un script qui
+  signerait lui-même porterait `PLATEFORME_SECRET_JETON` dans un fichier
+  versionné ou dans l'`argv` d'un processus : **le trou serait DÉPLACÉ, pas
+  fermé**. `client/recette/jeton-recette.mjs` ne sait donc rien signer — il sait
+  appeler `POST /auth/connexion`.
+- ⚠️ **Deux constantes écrites dans DEUX LANGAGES sans `import` possible entre
+  eux divergent en silence.** Les clés du coffre vivent dans `client/src/jeton.ts`
+  (TypeScript) et dans `client/recette/jeton-recette.mjs` (JavaScript de
+  recette) : ce dernier **relit le fichier TypeScript** et refuse de semer si
+  elles ont divergé. **Le garde a été VU LEVER**, par mutation de la clé.
+- ⚠️ **Un mot de passe ne se passe JAMAIS en `argv`** : `ps` expose la ligne de
+  commande de tout processus à tout utilisateur de la machine.
+  `npm run admin:utilisateur` lit le mot de passe sur **l'entrée standard** et
+  **refuse explicitement** un `--mot-de-passe`, avec son motif — assertion de
+  test, dont la rouge est de l'accepter.
+
+### ⑧ Les onze divergences E1…E11, tranchées AVANT d'écrire une ligne
+
+Elles sont détaillées avec leur sort dans le §6 du document de résultats. En un
+mot chacune : **E1** la garde est un paramètre **REQUIS** de
+`createSignalingServer` (jamais optionnelle : un défaut « accepter » rendrait un
+service mal câblé indiscernable du bon) ; **E2** la moitié `agent` du trou reste
+ouverte, et le critère ① le dit littéralement ; **E3** la **décision**
+d'appartenance est prise par un registre pur et synchrone, l'**enregistrement**
+par `session.utilisateur_id` ; **E4** CORS naît, avec le refus pour défaut ;
+**E5** deux colonnes de plus, sans quoi la détection de rejeu ne protège rien ;
+**E6** les trois pilotes CDP **sèment** un jeton obtenu, pas d'interrupteur
+permissif ; **E7** `SessionOptions.jeton` est **facultatif**, et `main.ts` n'est
+pas touché ; **E8** `scrypt` à `N = 16384` faute de `maxmem` relevé ; **E9** les
+longueurs se comparent avant `timingSafeEqual` ; **E10** trois modules absents
+de l'arborescence de la spec §5 sont créés et la divergence déclarée ; **E11**
+la création de compte se fait par `npm run admin:utilisateur`, mot de passe sur
+stdin seul.
+
+### ⑨ La revue transverse de fin de branche
+
+Sa cible propre : **les affirmations devenues fausses dans la branche
+elle-même**. Elle a trouvé **5** défauts en D7, **3** en D8, **6** en D9,
+**douze** en D10, **huit** en P1, **sept** en D11. Elle trouve ici **DIX affirmations distinctes,
+réparties sur VINGT-TROIS PLACES** — plus **une** qui n'est **pas** imputable à
+P2 et le dit. Le tableau complet, une ligne par place, avec `fichier:ligne` et
+sort, vit au §10 du document de résultats.
+
+⚠️ **Les deux comptes ne mesurent pas la même chose, et il faut les donner
+ensemble** : « dix » est ce qu'un relecteur a trouvé, « vingt-trois » est ce
+qu'il a fallu ÉDITER — et c'est le second qui coûte, parce que « corrigé à sa
+place » est une affirmation de **complétude**. Les barèmes des sous-blocs
+précédents comptaient, eux, des **défauts**, pas des places : ils ne se
+comparent qu'à la colonne de gauche.
+
+**Ce que la classe a de particulier ici** : une branche qui **ferme** un trou
+rend fausses toutes les phrases qui **décrivaient** ce trou — et il y en avait
+beaucoup, parce que P1 avait pris soin de le nommer partout. **UNE SEULE
+affirmation — « le port délivre des identifiants TURN à quiconque » — occupe
+SEPT des vingt-trois places**, et aucune n'était fausse quand elle a été écrite.
+
+
+⚠️ **Le sort le plus fréquent n'est pas « corrigé » mais « annoté »** : un relevé
+de P1 reste **vrai comme histoire**, et le barrer le rendrait faux. Ce sont les
+**pronostics** qu'il faut reprendre — « reste VRAI », « c'est P2 », « AVANT que
+P2 n'y ajoute » —, jamais les mesures.
+
+🔵 **Une leçon neuve, et elle est petite** : « **une addition de commentaire
+peut annuler une extraction** ». La revue a ajouté aux trois pilotes CDP le
+`RECETTE_EMAIL` / `RECETTE_MOTDEPASSE` que leur bloc `Usage` avait oublié — et
+la première rédaction ramenait `client/verify-webrtc.mjs` **exactement à 497**,
+c'est-à-dire au chiffre d'avant l'extraction que P2 venait de payer pour tenir
+la porte des 500. Elle a été **resserrée sur place** : 488 → **494**, la somme
+reste négative face à 497, et **c'est déclaré plutôt que découvert**.
+
+### ⑩ Le relevé de tailles, PAR LA COMMANDE, après la dernière édition
+
+🔴 **Relevé le 19 août 2026, APRÈS la dernière édition de la ronde — y compris
+celles de la revue transverse.** Une table mesurée en début de ronde est fausse
+à la fin de la même ronde.
+
+🔴 **ET IL FAUT DIRE À QUEL COMMIT.** L'arbre est partagé avec le chantier E
+(microphone), qui a commité **trois fois pendant cette clôture** : `HEAD` est
+passé de `f9cc330` à `988e2ee` puis à **`85ed23a`** entre le début et la fin de
+la tâche 19. **Le relevé ci-dessous est celui de `85ed23a`**, arbre de travail
+portant en outre les éditions non commitées de P2 et un `M agent/src/opus.rs`
+du voisin.
+
+**Le dépôt entier ne porte que DEUX fichiers de plus de 500 lignes**, et ce sont
+les deux lignes de la dette gelée — `agent/src/encode.rs` **1536** et
+`agent/src/windows_source.rs` **630** —, **ni l'un ni l'autre touché par P2**
+(aucun commit de P2 ne touche `agent/`). **Aucun fichier de `plateforme/` ni de
+`client/src/` ne dépasse 500**, ni ne s'en approche.
+
+**Les plus gros du périmètre de P2** :
+
+| Fichier | Lignes | Marge |
+| --- | --- | --- |
+| `client/src/main.ts` | **408** | 92 — *et P2 n'y a pas touché (E7)* |
+| `client/src/webrtc.test.ts` | **405** | 95 |
+| `plateforme/src/signaling/relais.ts` | **310** | 190 |
+| `client/src/webrtc.ts` | **300** | 200 |
+| `plateforme/src/signaling/server.test.ts` | **272** | 228 |
+| `plateforme/src/http/routes-auth.ts` | **241** | 259 |
+| `plateforme/src/signaling/garde-fil.test.ts` | **215** | 285 |
+| `plateforme/src/http/routes-auth.test.ts` | **215** | 285 |
+| `plateforme/src/signaling/resilience.test.ts` | **208** | 292 |
+
+⚠️ **MARGES LES PLUS SERRÉES DU DÉPÔT à cette date, et la deuxième est NEUVE ET
+N'EST PAS DE P2** : `agent/src/encode/arret.rs` **500** (marge **0**),
+**`agent/src/micro/tests.rs` 497 (marge 3)** — fichier du **chantier E**,
+commité pendant cette clôture —, `client/verify-webrtc.mjs` **494** (marge
+**6**), `agent/src/superviseur/table.rs` **492** (8), `agent/src/capture.rs`
+**492** (8).
+
+🔴 **`client/verify-webrtc.mjs` : 497 → 488 → 494, et les trois chiffres
+comptent.** La tâche 17 devait y ajouter du code alors qu'il était à **497,
+marge 3** ; elle a tenu la porte des 500 **par une EXTRACTION** — `waitForDevtools`
+vivait à l'identique dans les **trois** pilotes CDP et vit désormais dans
+`client/recette/devtools.mjs` (**27** lignes) —, d'où **488**, somme **−9**.
+Puis la **revue transverse** y a ajouté l'invocation manquante et l'a porté à
+**494**. **La somme reste négative face à 497**, et ce +6 est **déclaré** : il
+est 100 % commentaire, et sa première rédaction ramenait le fichier
+**exactement à 497** avant d'être resserrée. **Quatrième fois que ce dépôt écrit
+que la marge regagnée par une extraction se reperd si on la traite comme
+acquise** — et la première fois qu'elle se reperd le jour même, dans la branche
+qui l'a gagnée.
+
+⚠️ **La divergence texte/commande relevée depuis D10 n'est toujours pas
+tranchée, et P2 n'en crée pas de seconde** : le § « Portée » énumère des
+répertoires (`client/src/` entre autres), la commande, elle, ne filtre que
+`node_modules`, les verrous, `dist/`, `testdata/`, `docs/` et `CLAUDE.md` — et
+attrape donc `client/verify-webrtc.mjs`, hors de `client/src/`. **Décision de
+convention, qui appartient au propriétaire du dépôt.**
+
+
+### ⑪ Ce que P2 lègue à P3, P4 et P5
+
+**Legs de P1 réglés** : n°1 (l'authentification — **faite, et DE MOITIÉ
+SEULEMENT** : voir ①) et n°2 (toute contrainte naît avec sa table — **appliqué**
+par `0002-identite.sql`, et **la consigne reste entière pour P4**).
+
+**Ce qui reste dû :**
+
+1. 🔴 **P3 — E2, LA MOITIÉ DU TROU QUE P2 NE FERME PAS.** Un pair
+   `{"role":"agent"}` obtient toujours des identifiants TURN de 86 400 s sans
+   aucune identité, **mesuré** (1 exécution). C'est le legs le plus lourd de
+   P2, il est **volontaire**, et il n'est borné aujourd'hui que par
+   `PLATEFORME_HOTE`. L'agent Rust doit recevoir une identité — et c'est
+   **P3 seul** : P2 n'a modifié aucune ligne d'`agent/`.
+2. ⛔ **P3 — le préfixe opaque de session**, seule vraie réponse au fait que
+   l'appartenance **ne survit pas à un redémarrage** (E3). Le registre de
+   décision est en mémoire ; après un redémarrage, un nom de session libéré
+   peut être revendiqué par un autre utilisateur.
+3. ⛔ **P3 — `session.vm_id` reste entièrement NULL.** `utilisateur_id`, lui,
+   est désormais renseigné, et la colonne **reste nullable pour une raison qui
+   n'est pas de la dette** : une session appariée par un agent seul (`bureau`)
+   n'a personne à inscrire. **`NOT NULL` serait FAUX, pas seulement coûteux.**
+4. ⛔ **P4 — l'appartenance en base est là, et elle attend son lecteur.**
+   `session.utilisateur_id` porte l'`id` de l'utilisateur, vérifié sur le
+   chemin réel (1 exécution, `critere-3-appartenance-en-base.log`). **C'est ce
+   dont P4 a besoin ; personne ne le lit encore.**
+5. ⛔ **P5 — le frein sur les routes d'authentification** (son critère ③).
+   `/auth/connexion` est ouverte à la force brute, bornée seulement par les
+   ~29 ms de `scrypt` et par l'écoute restreinte. **Même raison, même
+   fragilité que la fenêtre d'E2.**
+6. ⛔ **P5 — TLS, cookies, en-têtes de sécurité**, et la réouverture de
+   l'arbitrage `localStorage`.
+7. ⛔ **P5 — l'origine unique.** `PLATEFORME_ORIGINE_CLIENT` est facultative
+   **précisément parce que** P5 mettra le client et la plateforme derrière un
+   proxy inverse, sur la même origine, où aucune valeur n'a de sens. **Ne pas
+   la rendre obligatoire sans rouvrir cet arbitrage.**
+8. ⛔ **Tous — aucune constante de P2 n'est calibrée** (voir ⑥), et **aucun
+   jugement d'usage n'a été porté** : c'est la lacune que ce dépôt traîne
+   depuis `BPP_MIN`.
+9. ⛔ **Tous — la garde ne couvre que la POIGNÉE DE MAIN.** Revérifier une
+   session en cours est un changement de conception, pas un correctif : il
+   faudrait décider ce qu'on fait d'un média déjà établi, que le signaling ne
+   porte plus.
 ---
 
 ## 🚀 Commandes de Développement Essentielles
