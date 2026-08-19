@@ -1,0 +1,8 @@
+/* Le POINT D'ENTRÉE UNIQUE du socle visuel : c'est ce fichier que les pages
+   lient, jamais `tokens.css` ni `base.css` séparément.
+   ⚠️ Il est lié DEPUIS LE HTML, jamais importé depuis `style.css` : mesuré au
+   prototype, un `@import` fait RÉ-INLINER le socle dans chaque entrée qui le
+   traverse, là où le lier depuis le HTML laisse Vite le partager entre pages.
+   Voir la décision de liaison dans `style.css`. */
+@import './tokens.css';
+@import './base.css';
