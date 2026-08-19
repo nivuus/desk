@@ -1,0 +1,52 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   MESSAGE — quatre tons : neutre, succès, alerte, danger.
+
+   🔴 LE TON NE SE DIT JAMAIS PAR LE FOND, ET C'EST UNE DÉCISION MESURÉE, PAS
+   UNE PRÉFÉRENCE. Le contrôle §7.1 mesure `--succes`, `--alerte` et `--danger`
+   comme des ENCRES sur `--fond-0`, `--fond-1` et `--fond-2` — jamais comme des
+   fonds (`design/contraste.ts`, `ENCRES`/`FONDS`). Un `background:
+   var(--danger)` poserait donc le texte du message sur une couleur dont AUCUNE
+   des 52 paires ne dit rien, et l'état d'erreur — celui qu'un écran de
+   connexion montre le plus souvent — serait le seul du produit non mesuré.
+
+   *Coût, assumé et écrit* : les quatre tons se distinguent par l'ENCRE et le
+   TRAIT, pas par une plage colorée. C'est cohérent avec le point 3 du §3 — « la
+   hiérarchie se fait par la taille et la valeur, jamais par la couleur » — et
+   avec le point 1, où une couleur sémantique « ne peut apparaître que pour dire
+   un état ». ⚠️ QUE QUATRE TONS AINSI DISTINGUÉS SUFFISENT EST UN JUGEMENT
+   HUMAIN, et il s'ajoute aux huit du §8 : aucune commande ne le dira.
+
+   ⚠️ ET LA COULEUR SEULE NE PORTE PAS L'INFORMATION : le §3 l'interdit, et le
+   balisage de S3 devra donner au message son `role` et son libellé. S2 ne
+   livre que du CSS — il n'ajoute aucun rôle ARIA, et n'en retire aucun.
+
+   ⚠️ LE PIRE CAS CONNU DE LA PALETTE EST ICI : `--succes` sur `--fond-2` rend
+   4,59 en clair (spec §4.5), soit 0,09 au-dessus du seuil. Le fond du message
+   est `--fond-1`, pas `--fond-2` — mais la marge est ce qu'elle est, et le
+   §7.1 la mesure à chaque exécution.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.message {
+    border: var(--trait) solid var(--bord);
+    border-radius: var(--r-1);
+    padding: var(--e-2) var(--e-3);
+    background: var(--fond-1);
+    color: var(--texte);
+    font-size: var(--t-m);
+    line-height: var(--lh-normal);
+}
+
+.message--succes {
+    border-color: var(--succes);
+    color: var(--succes);
+}
+
+.message--alerte {
+    border-color: var(--alerte);
+    color: var(--alerte);
+}
+
+.message--danger {
+    border-color: var(--danger);
+    color: var(--danger);
+}

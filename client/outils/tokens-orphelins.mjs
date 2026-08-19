@@ -53,7 +53,7 @@ const EXCLUS = new Map([
 ]);
 
 // ═══════════════════════════════════════════════════════════════════════════
-// LA LISTE D'ATTENTE — 12 tokens déclarés que le produit n'appelle pas ENCORE.
+// LA LISTE D'ATTENTE — 10 tokens déclarés que le produit n'appelle pas ENCORE.
 //
 // ⚠️ CE NOMBRE EST TENU À JOUR PAR LA TÂCHE QUI LE REND FAUX, jamais par une
 // tâche de ménage plus tard : elle en a 28 à la fin de S1, et chaque famille
@@ -93,9 +93,6 @@ const EXCLUS = new Map([
 // au commit de la tâche 12 du sous-bloc S1.
 // ═══════════════════════════════════════════════════════════════════════════
 const EN_ATTENTE_D_APPELANT = new Map([
-    // ── Couleurs — S2 (primitives) puis S3 (surfaces habillées) ───────────
-    ['--succes', 'S3 — l’écran d’état « connecté »'],
-    ['--alerte', 'S3 — le bandeau d’avertissement'],
     // ── Échelle typographique — S2 ────────────────────────────────────────
     ['--t-xs', 'S2 — la mention légale et les étiquettes'],
     ['--t-2xl', 'S3 — le titre de l’écran de connexion'],
