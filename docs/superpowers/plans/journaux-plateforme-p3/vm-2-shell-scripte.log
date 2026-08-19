@@ -1,0 +1,16 @@
+# LA PAGE-SHELL SCRIPTÉE — journal des trames, côté humain
+# Session de contrôle : Gka-A3TWjuoqGE_-xQDlpA:bureau
+# Durée : 45 s
+#
+sessions de fenêtre rejointes : Gka-A3TWjuoqGE_-xQDlpA:w-1, Gka-A3TWjuoqGE_-xQDlpA:w-2
+
++    66 ms  -> poignée de main client sur Gka-A3TWjuoqGE_-xQDlpA:bureau
++    69 ms  <- [Gka-A3TWjuoqGE_-xQDlpA:bureau] {"type":"ice-config","iceServers":[{"urls":"turn:192.168.3.1:3478","username":"1787257414:Gka-A3TWjuoqGE_-xQDlpA:bureau","credential":"<masqué : dérivé du TURN_SECRET réel de .env>"}]}
++  2756 ms  <- [Gka-A3TWjuoqGE_-xQDlpA:bureau] {"type":"fenetre-ouverte","session":"Gka-A3TWjuoqGE_-xQDlpA:w-1","titre":"Sans titre - Bloc-notes"}
++  2756 ms  -> [Gka-A3TWjuoqGE_-xQDlpA:bureau] viewport Gka-A3TWjuoqGE_-xQDlpA:w-1 1280x720
++  2757 ms  <- [Gka-A3TWjuoqGE_-xQDlpA:bureau] {"type":"fenetre-ouverte","session":"Gka-A3TWjuoqGE_-xQDlpA:w-2","titre":"encode-test — Mozilla Firefox"}
++  2757 ms  -> [Gka-A3TWjuoqGE_-xQDlpA:bureau] viewport Gka-A3TWjuoqGE_-xQDlpA:w-2 1280x720
++  4766 ms  -> poignée de main client sur Gka-A3TWjuoqGE_-xQDlpA:w-1
++  4768 ms  -> poignée de main client sur Gka-A3TWjuoqGE_-xQDlpA:w-2
++  4768 ms  <- [Gka-A3TWjuoqGE_-xQDlpA:w-1] {"type":"ice-config","iceServers":[{"urls":"turn:192.168.3.1:3478","username":"1787257419:Gka-A3TWjuoqGE_-xQDlpA:w-1","credential":"<masqué : dérivé du TURN_SECRET réel de .env>"}]}
++  4770 ms  <- [Gka-A3TWjuoqGE_-xQDlpA:w-2] {"type":"ice-config","iceServers":[{"urls":"turn:192.168.3.1:3478","username":"1787257419:Gka-A3TWjuoqGE_-xQDlpA:w-2","credential":"<masqué : dérivé du TURN_SECRET réel de .env>"}]}
