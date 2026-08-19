@@ -8595,6 +8595,17 @@ paires citant au moins un token sans appelant : 46
 tokens sans appelant.** Élaguer ferait tomber §7.1 **de 50 paires à 4** : on
 satisferait un contrôle en **vidant** l'autre — le geste que ce dépôt combat.
 
+> ⚠️ **RELEVÉ DE S1, ET IL EST FAUX AU PRÉSENT DEPUIS S2 — il est laissé DATÉ
+> plutôt qu'effacé, parce qu'un relevé daté reste vrai comme histoire.** La même
+> commande, relancée le **20 août 2026** sur les dix entrées restantes, rend
+> `paires totales : 52 | citant un token en attente : 0`. **ZÉRO — et ce zéro dit
+> l'inverse de ce qu'on croirait y lire** : il montre que cette décision de S1 a
+> TENU jusqu'au bout, aucune des quatorze couleurs par thème n'étant plus
+> orpheline. ⚠️ **Corollaire qui mord : cet argument NE PROTÈGE PLUS RIEN** — un
+> élagage n'atteindrait aujourd'hui plus aucune couleur, et ce qui protège les
+> dix entrées restantes n'est plus que leur annotation, c'est-à-dire exactement
+> ce que rien ne contrôle. Voir la section S2, §②.
+
 **La forme retenue est une LISTE D'ATTENTE EXACTE, jamais un seuil.** Le
 contrôle exige l'**ÉGALITÉ** entre l'ensemble des orphelins et la liste, donc il
 échoue **dans les deux sens** : un orphelin **absent** de la liste
@@ -8881,6 +8892,417 @@ pas du produit ce n'est pas une lacune, mais c'est une **portée**.
 6. ⛔ **La liste d'attente des 28 tokens doit RÉTRÉCIR à chaque sous-bloc.** Le
    contrôle le force — il refuse un token de la liste qui a gagné un appelant —
    mais **rien ne force S2 à en consommer** : c'est une règle de revue.
+   ✅ **TENU PAR S2 (20 août 2026) : 28 → 10 en QUATRE commits**, chaque retrait
+   **lu dans la sortie du contrôle** et jamais deviné. La règle de revue a été
+   suivie, elle n'a pas été outillée : **rien ne force S3 à en consommer non
+   plus**, et le re-étiquetage de trois entrées par S2 montre par quelle porte on
+   assouplirait cette liste sans qu'aucune commande ne le dise. Voir la section
+   S2, §②.
+
+---
+
+## 🎨 Sous-projet ⑥ Design system — sous-bloc S2 : les primitives (20 août 2026)
+
+Recette : `docs/superpowers/plans/2026-08-19-design-system-s2-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-19-design-system-s2.md` (`0e27ee6`).
+Spécification : `docs/superpowers/specs/2026-08-19-design-system-design.md`
+(`5b6b830`), **non modifiée par S2**.
+Journaux : `docs/superpowers/plans/journaux-design-s2/` — **UNE SEULE FAMILLE DE
+LECTURE**, contrairement aux trois de D9 et aux quatre de D8, et c'est **mesuré,
+pas supposé** :
+
+| Famille | État | Ce qu'il faut faire |
+| --- | --- | --- |
+| **tous** les fichiers | **aucune séquence ANSI** (`grep -lP '\x1b\['` → aucun, `exit=1`), « ASCII text » ou « Unicode text, UTF-8 text » (`file`), **aucun `\r`** (`grep -lc $'\r'` → aucun) | **rien** — ils se `grep`ent à plat |
+
+**La raison de cette simplicité est structurelle** : ce sont des sorties
+`npm`/`node` sur l'**hôte**, jamais du PowerShell distant. Le défaut à deux
+réglages ne peut pas les atteindre.
+
+⛔ **AUCUNE TÂCHE DE S2 N'A EMPLOYÉ LA VM WINDOWS**, et ce n'est pas une
+omission : ⑥ est un sous-projet **navigateur**, et la spec §9 déclare qu'il n'a
+**aucune recette sur VM**.
+
+**Variables d'environnement introduites par S2 : AUCUNE**, et aucune n'est lue.
+*L'absence est déclarée parce qu'une absence se déclare.*
+
+S2 pose les quatre familles de primitives dont un écran de connexion a besoin —
+**bouton, champ, surface, message** —, **entièrement en tokens**, et fait tomber
+la liste d'attente des tokens orphelins **de 28 à 10 dans les commits mêmes qui
+mettent chaque token en service**.
+
+### ① Les quatre critères, avec leur nombre d'exécutions
+
+🔴 **DEUX EXÉCUTIONS ÉTABLISSENT LA REPRODUCTIBILITÉ, JAMAIS UN TAUX.** Les
+contrôles de ⑥ sont **déterministes** (spec §9) ; la question « combien de fois
+sur combien » ne se pose pas ici et **n'est pas empruntée** à une campagne qui,
+elle, l'aurait posée. Les deux exécutions rendent des sorties **identiques,
+chiffre pour chiffre**.
+
+| # | Critère | Verdict | Exéc. | Le chiffre, **relevé** |
+| --- | --- | --- | --- | --- |
+| ① | les sept contrôles restent verts | **TENU** | **2** | `6/6 contrôle(s) vert(s)` ; §7.1 **52 paires**, 0 échec, minimum **3,16** ; §7.5 **10** tests |
+| ② | la liste d'attente a **RÉTRÉCI**, 28 → 10 | **TENU** | **2** | **48** déclarés / **38** employés / **10** orphelins = **10** en attente, `0 écart` |
+| ③ | aucun sélecteur de `primitives.css` ne peut s'appliquer à `index.html` | **TENU** | **2** | `primitives.test.ts` **9 passed** — G1 à G7 |
+| ④ | le poids CSS reste sous le plafond | **TENU** | **2** | **6 374** octets / plafond **12 288**, marge **5 914** |
+| — | le **jugement visuel** de `primitives.html` | ⛔ **NON PORTÉ** | **0** | voir le §⑥ |
+
+Suites : `client` **196** tests (22 fichiers), `proto` **79** (4 fichiers),
+`typecheck` `exit 0` des deux côtés. ⚠️ **Le mouvement de `proto` (70 → 79)
+N'EST PAS DE S2** — aucune tâche du sous-bloc ne touche `proto/`.
+
+🔴 **LE CRITÈRE ③ NE DIT PAS « S2 NE CHANGE RIEN À LA FENÊTRE DE SESSION ».**
+`tokens.css` a gagné un token, donc `socle-*.css` change d'octets (2 010 →
+2 179, relevé) et `index.html` le charge. ③ établit qu'**aucune règle de
+`primitives.css` ne peut sélectionner un élément d'`index.html`** — la seule
+chose qui compte pour le rendu, et la seule qu'une commande sache dire.
+
+### ② 🔴 Le fait le plus réutilisable : une liste d'attente rétrécit parce qu'un contrôle la force
+
+Le contrôle §7.6 exige l'**ÉGALITÉ** entre l'ensemble des orphelins et une liste
+nommée — **pas une inclusion, pas un seuil**. Il échoue donc **dans les deux
+sens** : un orphelin **absent** de la liste (`NOUVEL ORPHELIN`), et une entrée de
+la liste qui **a gagné** un appelant (`À RETIRER DE LA LISTE`). **C'est la
+seconde moitié qui compte : elle rend la liste AUTO-NETTOYANTE.**
+
+**28 → 10 en QUATRE commits, et chaque retrait a été LU dans la sortie du contrôle,
+jamais deviné** (relevé par `git show <commit> -- client/outils/tokens-orphelins.mjs`) :
+
+| Tâche | Commit | Retirés | Compte |
+| --- | --- | --- | --- |
+| bouton | `78eb679` | `--fond-1` `--fond-2` `--bord` `--bord-fort` `--texte` `--texte-faible` `--sur-accent` `--r-1` `--duree-1` `--trait` | **10** |
+| champ | `b00099a` | `--danger` `--t-l` | **2** |
+| surface | `21393e0` | `--t-xl` `--lh-serre` `--e-4` `--r-3` | **4** |
+| message | `4c5d9e2` | `--succes` `--alerte` | **2** |
+| galerie | `b9c706d` | **aucun** — elle ajoute une **exclusion**, pas un appelant | **0** |
+
+**28 − 18 = 10.** ⚠️ **Le plan prédisait une AUTRE répartition** (8/2/5/3), et
+l'écart n'est pas une dérive d'exécution : **le plan se contredisait lui-même** —
+son tableau de prédiction assignait `--bord` à la tâche 4 et `--texte` à la
+tâche 5, quand le Step 4 de sa tâche 2 les prescrivait tous deux au bouton.
+L'implémenteur a suivi **le contrôle**, comme le plan l'ordonne lui-même. **La
+prédiction se trompait sur la répartition, jamais sur la somme.**
+
+⚠️ **L'EXCLUSION DES GALERIES EST PORTEUSE, ET C'EST MESURÉ** :
+`tokens-orphelins.mjs --sans-exclusion` rend **9 écarts**, `exit=1` — neuf tokens
+que **seules** `design.html` et `primitives.html` emploient, dans leur propre
+mise en page. Sans elle, la liste rétrécirait **sans que le produit ait gagné un
+seul appelant**.
+
+⚠️ **LE PÉRIMÈTRE « EMPLOYÉ » EST LE FICHIER, JAMAIS LA SURFACE.** À la fin de
+S2, les dix-huit tokens sortis ont **un appelant ÉCRIT, pas un pixel RENDU** :
+`primitives.css` n'est liée que par sa galerie. **C'est S3 qui referme cet
+écart.**
+
+### ③ 🔴 Deux mesures qui ont tranché une conception, et une troisième qui a réfuté le plan
+
+**a) `color-mix(…, black)` est refusé par le contrôle §7.2** — la voie
+« composer le survol au rendu » est fermée par une commande, pas par un avis.
+⚠️ **Relevé le 19 août 2026 par la CONCEPTION du plan (D2), pas rejoué par la
+recette** ; arbre jetable, aucun fichier du dépôt touché :
+
+```
+$ node client/outils/couleurs-litterales.mjs --racine /tmp/s2probe
+/tmp/s2probe/src/x.css:1: .b { background: color-mix(in oklab, var(--accent) 88%, black); }
+couleurs littérales : 1
+exit=1
+```
+
+D'où **un token neuf, `--accent-survol`**, quatorzième couleur par thème là où la
+spec en fixait treize. Contrastes **relancés par `rapportDeContraste` le 20 août
+2026** : sombre repos **7,73** → survol **9,39** ; clair repos **5,72** → survol
+**7,27**. Les deux survols **augmentent** le contraste, et le minimum global
+reste **3,16**. ⚠️ **Le CHOIX des teintes reste un jugement humain** ; seul leur
+contraste est mesuré.
+
+**b) `prefers-reduced-motion` NE PEUT PAS vivre dans `tokens.css`** — mesuré le
+19 août 2026 sur une **copie jetable** de `tokens.css`, relevé recopié dans
+l'en-tête de la règle (`client/src/design/base.css`), **pas rejoué par la
+recette** :
+
+```
+$ node client/outils/blocs-de-theme.mjs --fichier /tmp/s2-rm.css
+  bloc racine : 48 token(s)
+  bloc media-clair : 14 / attribut-clair : 14 / media-clair : 1   ← le QUATRIÈME bloc
+écarts : 15
+exit=1
+```
+
+`lireBlocsDeTheme` **ne sait nommer que trois blocs** : tout `:root` sous un
+`@media` sans `[data-theme="clair"]` s'appelle `media-clair`, et §7.4 compare
+alors ce quatrième bloc à la racine. **La règle vit donc dans `base.css`.**
+
+**c) 🔵 UN TROU DE §7.4, MESURÉ, ET IL SURVIVRA À CE SOUS-BLOC.**
+`ecartsEntreBlocs` compare **clair ⇄ clair** et **clair ⊆ racine** ; il ne
+compare **JAMAIS racine ⊆ clair**. `--accent-survol` retiré des **deux** blocs
+clairs et laissé à la racine seule :
+
+```
+  bloc racine : 48 token(s)
+  bloc media-clair : 13 token(s)
+  bloc attribut-clair : 13 token(s)
+écarts : 0
+exit=0
+```
+
+**Quarante-huit contre treize, et zéro écart.** ⚠️ **Conséquence directe : la
+rouge de §7.4 que le plan prescrivait était IMPOSSIBLE selon le bloc choisi** —
+elle n'est rouge que si le token est posé dans **un seul des deux blocs clairs**,
+et le libellé du plan ne le disait pas. **Un token de couleur oublié dans les
+deux blocs clairs est invisible à ce contrôle.**
+
+### ④ Les onze divergences du plan, en une phrase chacune
+
+| # | Sort |
+| --- | --- |
+| D1 | la liste rangeait `--succes`/`--alerte`/`--danger` en S3, la spec les confie à S2 : **la spec l'emporte**, et le contrôle l'aurait forcé |
+| D2 | l'état survol n'a aucun token, `color-mix` refusé **sur mesure** → **`--accent-survol`**, 50 → **52** paires, minimum inchangé |
+| D3 | `prefers-reduced-motion` **hors de `tokens.css`** — quinze écarts, mesurés |
+| D4 | `design.html` à 231 pour une porte à 300 → **cinquième entrée Vite**, `primitives.html`, **décidée AVANT l'addition** |
+| D5 | 🔴 `verify-all.sh` compte **DIX** étapes ; une **exécution complète** affiche **DIX-SEPT** en-têtes `==>` (10 + les 7 de `design:verifier`) ; une passe de `design:verifier` en affiche **SEPT**. **Ni « dix » ni « dix-sept » ne se suffit sans dire lequel on compte** — et cette fois les trois nombres sont **relevés**, plus sommés |
+| D6 | trois tokens annotés S2 décrivent une famille étiquette/pastille que la spec ne confie pas à S2 → **re-étiquetés avec leur raison** |
+| D7 | le périmètre « employé » de §7.6 est le **fichier**, jamais la surface → **tenu, et déclaré sans le maquiller** |
+| D8 | `--police-mono` reste à **S4** — **non rouvert**, et la raison est inscrite auprès de l'entrée |
+| D9 | les comptes de tests bougent sous les voisins → **arrivé** : `proto` 70 → 79, **pas de notre fait** |
+| D10 | aucun contrôle ne mesure une longueur → **G4**, rouge versée, et sa portée déclarée étroite |
+| D11 | l'anneau de focus existe déjà ; le risque est de l'**effacer** → **G2**, rouge versée |
+
+### ⑤ Chaque garde a été vu ROUGE, et une rouge ne vaut que pour son assertion
+
+Neuf gardes, et **douze mutations versées** (`rouge-{1..4}-*.log`,
+`rouges-rejouees.log`, `blanchiment-neutralise.log`), chacune jouée **seule**,
+arbre restauré et restauration **vérifiée** par `git status --porcelain client/`
+vide. Le compte `n failed | m passed` est la preuve que la mutation n'a
+fait tomber **que** l'assertion visée.
+
+🔴 **G5 EST LE SEUL GARDE D'ATTEIGNABILITÉ, ET SA ROUGE LE MONTRE** : sur des
+feuilles vidées de leurs règles, **G1 à G4 restent VERTS** — `4 failed |
+5 passed`, les quatre tombés étant G5 et les trois G6. **Sans G5, quatre gardes
+sur cinq ne prouveraient rien.**
+
+### ⑥ ⛔ Le jugement visuel : NON PORTÉ, et ce n'est de toute façon pas un critère
+
+Personne n'a ouvert `dist/primitives.html`. **C'est déclaré, pas remplacé par un
+« probablement ».** Un agent qui prendrait une capture d'écran ne porterait pas
+un jugement — il produirait une image que personne n'a regardée.
+
+Ce qui **a** été fait est une **mesure**, étiquetée comme telle : compter les
+classes dans le `dist/primitives.html` bâti (11 839 octets) — les dix classes
+attendues y sont. **Cela dit que la page mentionne les quatre familles. Cela ne
+dit RIEN de son apparence.**
+
+**Les huit jugements humains du §8 restent entiers, et S2 en ajoute TROIS** :
+que `#93b4f9`/`#2650b4` soient les **bonnes** valeurs de survol ; que l'état
+**actif** dit « par le retour au repos » soit lisible ; que **quatre tons de
+message distingués par la seule encre** suffisent. **Aucun des onze ne deviendra
+une mesure.**
+
+### ⑦ Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔴 **UN GARDE DE FORME EST UN TEST D'ABSENCE, DONC VERT SUR UN FICHIER VIDE.**
+  D'où **G5**. Mesuré, pas raisonné : feuilles vidées → G1 à G4 tous verts.
+- 🔴 **UN GARDE QUI CHERCHE UNE SOUS-CHAÎNE EST SATISFAIT PAR SON PROPRE
+  COMMENTAIRE**, puisque l'en-tête écrit ce qu'il interdit. D'où le blanchiment.
+  ⚠️ **Mais sa portée réelle est plus étroite qu'on ne l'écrit spontanément, et
+  elle est MESURÉE** : sans lui, **G1** remonte **889** compounds parasites dont
+  `/*` (et **G5** avec, il lit les mêmes préludes) ; **G2, G3 et G4 restent
+  verts** — ils lisent une **position de propriété** dans une déclaration, pas
+  une sous-chaîne.
+- 🔴 **UN GARDE PEUT ÊTRE FAUX EN SENS INVERSE DE CE QU'ON CRAINT.** G7 affirmait
+  que sans blanchiment il « resterait VERT ». **Mesuré : il ne reste pas vert.**
+  Sa première assertion est bien satisfaite par le commentaire, la seconde tombe
+  — et **elle tombe AUSSI sur un `base.css` intact**, le commentaire portant le
+  bloc `{ :root { --duree-1: … } }` du relevé. **Sans blanchiment, ce garde rend
+  le MÊME rouge que la règle soit présente ou absente : il cesse de
+  discriminer.** Le blanchiment n'est pas ce qui l'empêche d'être vert à tort,
+  c'est ce qui le rend capable de dire quoi que ce soit.
+- 🔴 **UNE ADDITION DE COMMENTAIRE ANNULE UNE EXTRACTION, et S2 l'a payé DEUX
+  fois dans le même fichier.** `tokens-orphelins.mjs` devait maigrir : 18 entrées
+  retirées (**−18**) contre **+49** de commentaire, **233 → 270**. Puis le
+  constat écrit pour le dire, posé en tête du fichier, l'a porté à **296 — marge
+  4** : *un encadré qui dénonçait la dérive la produisait.* **Remède du dépôt
+  appliqué — extraire, jamais compresser** : la liste part avec **toute sa
+  doctrine** vers `client/outils/tokens-orphelins/attente.mjs`, et le fichier
+  retombe à **202**.
+- ⚠️ **UN RE-ÉTIQUETAGE N'EST VU PAR AUCUN CONTRÔLE** — il compare des ensembles
+  de **noms**. C'est **le point le plus faible de S2**. ❌ **Et le plan avait tort
+  d'écrire qu'aucune mitigation n'est possible** : *aucune entrée ne doit nommer
+  un sous-bloc déjà clos* **pourrait échouer utilement**, et serait passée au
+  rouge à la fin de S2 sur les trois entrées annotées « S2 ».
+- ⚠️ **UNE PAGE ABSENTE DE `vite.config.ts` NE SORT PAS DU BUILD, ET RIEN NE LE
+  DIT.** Les contrôles §7.2, §7.3 et §7.6 **lisent** la liste des entrées Vite au
+  lieu de la recopier — c'est ce qui leur a fait attraper `primitives.html` sans
+  qu'aucune ligne de script ne change.
+- ⚠️ **UN HOOK `chpwd` DU SHELL DE L'HÔTE INJECTE UN `ls` DANS CHAQUE JOURNAL.**
+  La première passe de journaux de S2 portait une liste de fichiers en tête de
+  **chaque** log, à cause d'un `cd` dans un sous-shell. `unset -f chpwd` avant
+  toute collecte. **Un journal pollué par l'instrument est une pièce fausse.**
+- ⚠️ **`tokens.ts` ne sait nommer que TROIS blocs** : `tokens.css` ne peut donc
+  accueillir aucune autre requête média. Le jour où un sous-bloc en voudra une,
+  c'est `lireBlocsDeTheme` qui doit apprendre à nommer ses blocs, **pas la règle
+  qui doit se contorsionner**.
+
+### ⑧ La revue transverse — douze affirmations devenues fausses DANS la branche
+
+Elle a trouvé **cinq** défauts en D7, **trois** en D8, **six** en D9, **douze**
+en D10, **sept** en D11, **huit** en P1, **dix** en P2, **cinq** en S1, **neuf**
+sur le chantier E et **douze** en P3. **Douze ici**, et toutes ont la même forme :
+**correctes des deux côtés prises séparément.**
+
+- **Le compte des paires, 50 → 52**, corrigé aux **deux** endroits que le plan
+  nommait et laissé à **quatre** autres — dont **deux dans `contraste.ts` et
+  `contraste.test.ts`, les fichiers mêmes que la tâche 2 éditait**. C'est le
+  naufrage du « 487 » sous sa forme la plus banale.
+- **`672` compounds parasites** annoncé par l'en-tête de `primitives.test.ts` :
+  **remesuré 889**. Le 672 datait de la tâche 2, quand `bouton.css` était seul.
+- **G7 « resterait VERT »** : réfuté par mesure (§⑦).
+- **« Aucune mitigation du re-étiquetage n'est possible »** : réfuté (§⑦).
+- **Trois énoncés au FUTUR que S2 a rendus faux en ayant lieu** — `design.html`
+  promettait la scission « au même rythme que les primitives de S2 » (**elle a eu
+  lieu, mais ailleurs** : `primitives.html` est née à côté, et cette page-ci n'a
+  jamais franchi sa porte) et « S2 est le sous-bloc qui en pose ».
+- **Deux énoncés sans date devenus trompeurs** : « le SEUL ajout d'apparence de
+  ce sous-bloc » (`base.css`, où S2 a ajouté un second bloc qui change bien
+  l'apparence) et « à la fin de ce sous-bloc » (`style.css`).
+- **L'encadré `--police-mono` de `tokens.css`** portait « 28 tokens en attente »,
+  « les 27 autres », et un chemin qui n'existe plus.
+
+🔴 **ET LA REVUE TRANSVERSE EST ELLE-MÊME UNE SOURCE DE CROISSANCE : elle a
+ajouté ~48 lignes de commentaire à la branche, et fait tomber la marge de
+`primitives.test.ts` de 30 à 17.** C'est le piège de la ligne précédente rejoué
+par la ronde qui le dénonce, pour la deuxième fois du sous-bloc. **Déclaré, et
+la règle est armée** (§⑨).
+
+### ⑨ Tailles relevées **par la commande**, au commit `697735e`
+
+⚠️ **Chaque ligne a été mesurée APRÈS la dernière édition de code**, jamais
+relue d'un document. Journal : `journaux-design-s2/tailles.txt` (relevé
+antérieur, à `070b48b`) ; le tableau ci-dessous est le relevé **final**.
+
+**Dépôt entier, fichiers de plus de 500 lignes : DEUX**, les deux lignes de la
+dette gelée — `agent/src/encode.rs` **1536**, `agent/src/windows_source.rs`
+**630**. **Aucun fichier de `client/`.**
+
+| Fichier | Lignes | Porte | Marge |
+| --- | --- | --- | --- |
+| `client/src/design/primitives.test.ts` | **283** | 300 | 🔴 **17** |
+| `client/design.html` | **243** | 300 | 57 |
+| `client/src/design/tokens.css` | **232** | 300 | 68 |
+| `client/outils/tokens-orphelins.mjs` | **202** | 300 | 98 |
+| `client/primitives.html` | **199** | 300 | 101 |
+| `client/src/style.css` | **184** | 300 | 116 |
+| `client/src/design/galerie.ts` | **162** | 300 | 138 |
+| `client/src/design/contraste.ts` | **156** | 300 | 144 |
+| `client/outils/tokens-orphelins/attente.mjs` | **146** | 300 | 154 |
+| `client/src/design/base.css` | **134** | 300 | 166 |
+| `client/src/design/contraste.test.ts` | **125** | 300 | 175 |
+| `client/src/design/primitives/bouton.css` | **103** | 300 | 197 |
+| `client/src/design/selecteur-theme.ts` | **84** | 300 | 216 |
+| `client/src/design/primitives/champ.css` | **75** | 300 | 225 |
+| `client/src/design/primitives.css` | **73** | **240** | 167 |
+| `client/src/design/primitives/message.css` | **52** | 300 | 248 |
+| `client/src/design/primitives/surface.css` | **44** | 300 | 256 |
+| `client/src/design/galerie-primitives.ts` | **18** | 300 | 282 |
+
+🔴 **MARGE LA PLUS ÉTROITE DE S2 : `primitives.test.ts`, 283 pour une porte à
+300, marge 17** — elle valait **30** avant la revue transverse. **Toute addition
+substantielle à ce fichier appelle une EXTRACTION, jamais une compression**, et
+le point de chute est nommé d'avance : **scinder par objet** — les gardes de
+forme (G1 à G5, G7) d'un côté, les trois gardes de famille (G6) de l'autre.
+⚠️ **Attention en le faisant** : G5 compare la liste `FAMILLES` du test aux
+`@import` de `primitives.css`, et c'est ce qui empêche une cinquième famille
+d'échapper à G1-G4.
+
+✅ **`primitives.css` a été EXTRAIT AVANT de franchir sa porte, et c'est une
+première dans ce dépôt.** Relevé par `git cat-file -p <commit>:<chemin>` :
+**154** (bouton) → **230** (champ, marge **10**) → la tâche surface **extrait
+avant d'écrire** → **72** → **73**. **Le plafond n'a jamais été franchi**, là où
+ce dépôt l'a franchi trois fois en D10 et deux fois en D9, et rattrapé deux fois
+par une compression qu'il interdit.
+
+⚠️ **`client/verify-webrtc.mjs` vaut 494 (marge 6), INCHANGÉ** — aucune tâche de
+S2 ne le touche. ⚠️ **`client/src/main.ts` vaut 451, et ce n'est pas de S2** : il
+était à 392 en D10, le chantier E l'a porté là.
+
+**Poids CSS bâti** : 1 493 + 2 702 + 2 179 = **6 374** octets, plafond **12 288**,
+marge **5 914**. Base S1 : **3 503** — **S2 ajoute 2 871 octets**, dont 2 702
+pour la seule feuille des primitives, **que S2 ne lie à aucune page du produit**.
+⚠️ **Le plafond de 12 288 n'est calibré par rien**, et il le reste.
+
+**`scripts/verify-all.sh` sort à `0` en entier**, journal versé (3 186 lignes).
+⚠️ **Aucune étape étrangère n'est tombée, et c'est à relever plutôt qu'à taire** :
+`cargo test --workspace` a passé sur un `agent/` que le chantier voisin du pont
+de fichiers modifiait au même instant, et `plateforme : npm run test:postgres` a
+trouvé son instance. **Il n'y a donc rien à attribuer à personne.**
+
+### ⑩ Ce que S2 n'établit PAS
+
+- **Aucun taux, nulle part.** Deux exécutions par critère, contrôles
+  **déterministes** : reproductibilité, rien de plus.
+- ⛔ **AUCUNE SURFACE DU PRODUIT N'EMPLOIE UNE PRIMITIVE.** Les dix-huit tokens
+  sortis ont **un appelant écrit, pas un pixel rendu**.
+- 🔴 **Aucun jugement visuel n'a été porté**, et les **onze** jugements humains
+  attendent tous un œil.
+- **Rien hors d'un Chromium de bureau** : ni Firefox, ni Safari, ni mobile, ni
+  HiDPI.
+- **L'accessibilité au-delà du contraste et du mouvement réduit** n'est pas
+  mesurée : clavier complet, lecteurs d'écran, cibles tactiles, ordre de
+  tabulation. **Aucune primitive ne porte de rôle ARIA** — c'est du CSS.
+- **L'anneau de focus est vérifié NON EFFACÉ, jamais VISIBLE** : rien ne dit
+  qu'il se voie sur un bouton principal focalisé, dont le fond est `--accent`.
+  `outline-offset` l'en écarte de 2 px — **raisonnement, pas mesure**.
+- **Aucun contrôle ne mesure une longueur** : G4 vérifie qu'une longueur passe
+  par un token, **jamais que le bon token a été choisi**.
+- **La clause « aucune longueur hors échelle » du §8 reste FAUSSE** — les trois
+  littéraux de `style.css` vivent dans la fenêtre de session, **c'est S4**.
+- 🔴 **§7.4 ne compare jamais racine ⊆ clair** (§③c).
+- 🔴 **Les trois re-étiquetages ne sont vus par aucun contrôle.**
+- ⚠️ **Ni `primitives.html` ni `galerie-primitives.ts` n'ont de test**, comme
+  `design.html` et `galerie.ts` : **une galerie qui cesserait de rendre une
+  famille entière ne serait attrapée par aucun contrôle** — seulement par l'œil,
+  et l'œil n'est pas passé.
+- **Aucune internationalisation** ; **le legacy n'est pas touché** et aucun
+  contrôle ne le balaie.
+
+### ⑪ Ce que S2 lègue
+
+**À S3 :**
+
+1. ⛔ **Lier `primitives.css` aux surfaces du produit** (`shell.html`,
+   `connexion.html`) : c'est ce qui referme l'écart entre « un appelant écrit »
+   et « un pixel rendu ».
+2. ⛔ **Neuf entrées de liste d'attente**, dont **trois re-étiquetées** vers une
+   famille étiquette/pastille.
+3. ⛔ **Le sélecteur de thème du PRODUIT reste à écrire** :
+   `design/selecteur-theme.ts` est un **instrument**, sans test — statut
+   **déclaré, pas subi**.
+4. ⛔ **Ni `primitives.html` ni `galerie-primitives.ts` n'ont de test.**
+
+**À S4 :**
+
+5. ⛔ **`--police-mono`** — la seule entrée dont le sort soit encore ouvert : ou
+   S4 le câble sur `#stats`, ou il le retire. **S2 ne l'a pas rouvert**, et pas
+   par omission.
+6. ⛔ **Les trois longueurs hors échelle de `style.css`**, et la clause du §8
+   qu'elles rendent fausse.
+
+**Sans sous-bloc assigné :**
+
+7. 🔴 **Construire la mitigation partielle du re-étiquetage** — *aucune entrée ne
+   doit nommer un sous-bloc déjà clos*. Elle exige que le dépôt sache quel
+   sous-bloc est courant, ce qu'aucun fichier ne dit aujourd'hui.
+8. 🔴 **Fermer le trou de §7.4** : `ecartsEntreBlocs` doit aussi comparer
+   racine ⊆ clair, faute de quoi un token de couleur oublié dans les **deux**
+   blocs clairs lui reste invisible.
+9. ⛔ **`tokens.ts` ne sait nommer que trois blocs.**
+10. ⛔ **Le plafond de 12 288 octets n'est calibré par rien**, et S2 en consomme
+    **6 374**.
+11. 🔴 **`primitives.test.ts` est à 283 pour une porte à 300, marge 17** : toute
+    addition substantielle appelle une extraction, dont le point de chute est
+    nommé au §⑨.
+12. ⛔ **Le défaut à deux réglages de `build-agent.sh`/`run-agent.sh`** ne
+    concerne pas ⑥ — ses journaux sont propres —, mais il reste **non corrigé**
+    pour les chantiers qui passent par la VM.
 
 ---
 
