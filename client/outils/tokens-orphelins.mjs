@@ -29,11 +29,40 @@
 // la galerie fait précisément. Retirer `design.html` de `EXCLUS` fait passer
 // la rouge A au vert (rouge C de la tâche 12).
 // ═══════════════════════════════════════════════════════════════════════════
+//
+// ⚠️ TAILLE DE CE FICHIER — LA PRÉDICTION DU PLAN S2 EST FAUSSE, ET C'EST DIT
+// PLUTÔT QUE RABOTÉ. Le plan attendait de la tâche 8 un fichier « plus court
+// qu'à `56b975a` (233) », les 18 entrées retirées de la liste d'attente devant
+// le faire maigrir. Relevé par la commande à la tâche 8 de S2 :
+//
+//   entrées de liste  28 → 10   (−18)
+//   commentaires     104 → 153  (+49)
+//   code              87 →  93  (+6 : la seconde exclusion et `--sans-exclusion`)
+//   lignes vides      14 →  14
+//   TOTAL            233 → 270  (+37)
+//
+// **Les 18 entrées retirées ont été plus qu'annulées par du commentaire.**
+// C'est, en petit, la leçon que ce dépôt a payée en grand : « une addition de
+// commentaire peut annuler une extraction ». Les +49 ne sont pas du remplissage
+// — ce sont la raison MESURÉE de la seconde exclusion (tâche 7), l'encadré des
+// re-tags que rien ne contrôle, et le relevé de S1 refait au lieu d'être
+// effacé, trois blocs que le plan EXIGE. **Les raboter échangerait une vérité
+// contre un nombre**, ce que `CLAUDE.md` interdit nommément.
+//
+// 🔴 CE FICHIER NE FRANCHIT AUCUNE PORTE : 270 contre 300, marge 30. Mais la
+// marge n'est plus confortable, et la règle du dépôt s'applique — TOUTE
+// ADDITION SUBSTANTIELLE À CE FICHIER APPELLE UNE EXTRACTION, JAMAIS UNE
+// COMPRESSION. Le point de chute est nommé d'avance :
+// `client/outils/tokens-orphelins/attente.mjs`, qui emporterait
+// `EN_ATTENTE_D_APPELANT` **avec sa doctrine**, comme `serveur/instances.rs` a
+// emporté `TAMPON` avec le commentaire qui le justifie.
+// ═══════════════════════════════════════════════════════════════════════════
 
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { tokensDeclares, tokensReferences } from '../src/design/tokens.ts';
 import configVite from '../vite.config.ts';
+import { EN_ATTENTE_D_APPELANT } from './tokens-orphelins/attente.mjs';
 
 /** La source unique : elle DÉCLARE, elle n'emploie pas. Hors du périmètre. */
 const SOURCE = 'client/src/design/tokens.css';
@@ -66,82 +95,13 @@ const EXCLUS = new Map([
 ]);
 
 // ═══════════════════════════════════════════════════════════════════════════
-// LA LISTE D'ATTENTE — 10 tokens déclarés que le produit n'appelle pas ENCORE.
-//
-// ⚠️ CE NOMBRE EST TENU À JOUR PAR LA TÂCHE QUI LE REND FAUX, jamais par une
-// tâche de ménage plus tard : elle en a 28 à la fin de S1, et chaque famille
-// de primitives de S2 le fait descendre dans SON commit. Un compte qui
-// n'appartient à personne dérive — ce dépôt l'a payé assez souvent.
-//
-// 🔴 CE N'EST PAS UN ASSOUPLISSEMENT DU CONTRÔLE, ET LA DIFFÉRENCE TIENT À UN
-// MOT : ÉGALITÉ, pas inclusion. Le contrôle exige que l'ensemble des orphelins
-// soit EXACTEMENT cette liste. Il échoue donc dans LES DEUX SENS :
-//
-//   • un token orphelin absent de la liste  → « nouvel orphelin »   (rouge)
-//   • un token de la liste qui a un appelant → « à retirer d'ici »  (rouge)
-//
-// La seconde moitié est celle qui compte : elle rend la liste AUTO-NETTOYANTE.
-// Un seuil (« au plus 28 orphelins ») aurait pourri sur place ; une liste
-// nommée dont chaque retrait est FORCÉ par le contrôle rétrécit toute seule,
-// et le jour où elle est vide, ces trois blocs disparaissent avec elle.
-//
-// ── POURQUOI CETTE PALETTE N'EST PAS SIMPLEMENT RÉDUITE À CE QUI SERT ──────
-// ⚠️ LE RELEVÉ QUI SUIT EST DATÉ DU SOUS-BLOC S1, ET S2 L'A RENDU PÉRIMÉ : il
-// y a désormais 52 paires (`--accent-survol` en ajoute deux) et 10 orphelins,
-// non plus 50 et 28. Il reste VRAI COMME HISTOIRE — c'est ce qui a fondé la
-// décision —, et il est laissé DATÉ plutôt qu'effacé : un présent devient faux,
-// un relevé daté non. 🔴 LE REFAIRE EST LE TRAVAIL DE LA TÂCHE QUI SOLDE CETTE
-// LISTE, et le nouveau chiffre sera BAS : les dix tokens restants sont
-// typographiques et d'espacement, que les paires de contraste ne citent pas.
-// ⚠️ Cela NE RÉFUTE PAS la décision de S1 — elle portait sur la palette ENTIÈRE
-// au moment où elle a été prise, et c'est précisément parce qu'elle a tenu que
-// la liste a pu rétrécir de 28 à 10 au lieu d'être élaguée.
-//
-// C'était la voie évidente, et elle est REFUSÉE SUR MESURE, prise le 19 août
-// 2026 (relevé S1) : sur les 50 paires de contraste déclarées du §4.5 que le contrôle §7.1
-// vérifie, **46 citent au moins un token de cette liste**. Élaguer la palette
-// pour verdir §7.6 ferait tomber §7.1 de 50 paires à 4 — on satisferait un
-// contrôle en vidant l'autre, ce qui est exactement le geste que ce dépôt
-// combat. Relevé par la commande :
-//
-//   node --input-type=module -e "import {PAIRES} from './src/design/contraste.ts'; …"
-//   → paires totales : 50 | paires citant au moins un token sans appelant : 46
-//
-// ⚠️ CE CONTRÔLE EST DONC ROUGE PAR CONSTRUCTION JUSQU'À S4 SI ON LE PREND
-// COMME MESURE DE « la palette est-elle entièrement employée ? ». Ce n'est pas
-// ce qu'il mesure. Ce qu'il mesure, à partir de S1, c'est que **l'écart entre
-// la palette et son emploi soit CONNU, ÉNUMÉRÉ ET DÉCROISSANT** — et cela, il
-// peut l'échouer dès aujourd'hui, dans les deux sens.
-//
-// Chaque entrée nomme le sous-bloc qui la consommera. Relevé le 19 août 2026,
-// au commit de la tâche 12 du sous-bloc S1.
+// 🔴 LA LISTE D'ATTENTE VIT DANS `tokens-orphelins/attente.mjs`, AVEC TOUTE SA
+// DOCTRINE — extraite par la tâche 8 de S2, la donnée et sa justification
+// ensemble. Ce qu'il faut savoir ici tient en un mot : le contrôle exige
+// l'ÉGALITÉ entre l'ensemble des orphelins et cette liste, donc il échoue dans
+// LES DEUX SENS — un orphelin absent de la liste, comme une entrée de la liste
+// qui a gagné un appelant. C'est la seconde moitié qui la rend AUTO-NETTOYANTE.
 // ═══════════════════════════════════════════════════════════════════════════
-const EN_ATTENTE_D_APPELANT = new Map([
-    // ── Échelle typographique — S2 ────────────────────────────────────────
-    ['--t-xs', 'S2 — la mention légale et les étiquettes'],
-    ['--t-2xl', 'S3 — le titre de l’écran de connexion'],
-    ['--t-3xl', 'S3 — le titre du hub'],
-    // ── Interlignes ───────────────────────────────────────────────────────
-    ['--lh-large', 'S3 — les paragraphes longs'],
-    // ── Espacement — S2 et S3 ─────────────────────────────────────────────
-    ['--e-1', 'S2 — l’écart interne d’une étiquette'],
-    ['--e-5', 'S3 — la gouttière entre cartes'],
-    ['--e-6', 'S3 — la marge des sections'],
-    ['--e-7', 'S3 — la marge de tête des surfaces'],
-    // ── Rayons — S2 ───────────────────────────────────────────────────────
-    ['--r-plein', 'S2 — les pastilles et les boutons ronds'],
-    // ── Le cas particulier, et il est nommé ───────────────────────────────
-    // 🔴 `--police-mono` N'A QU'UN SEUL APPELANT PRÉVU, `#stats`, et la spec
-    // §4.3 laisse son sort ouvert : « si aucun appelant n'apparaît, le token
-    // sort ». Il N'A PAS été câblé par S1, et pas par oubli : `#stats` hérite
-    // aujourd'hui de `--police-ui`, si bien que lui poser la pile monospace
-    // CHANGERAIT SON APPARENCE — ce que S1 s'interdit nommément (« visuellement
-    // quasi neutre sur index.html »). C'est donc S4, le sous-bloc qui a le
-    // droit de toucher la fenêtre de session, qui tranche : ou il le câble, ou
-    // il le retire. Aucun autre sous-bloc n'a le droit de laisser cette ligne
-    // en place sans décider.
-    ['--police-mono', 'S4 — #stats, OU RETRAIT : le seul token dont le sort est encore ouvert'],
-]);
 
 const args = process.argv.slice(2);
 const iRacine = args.indexOf('--racine');
@@ -236,7 +196,7 @@ console.log(`\ntotal : ${echecs} écart(s)`);
 if (echecs === 0) {
     console.log(
         `les deux inclusions tiennent ; ${EN_ATTENTE_D_APPELANT.size} token(s) restent ` +
-            `en attente d'appelant, nommés dans ce script`,
+            `en attente d'appelant, nommés dans tokens-orphelins/attente.mjs`,
     );
 }
 process.exit(echecs > 0 ? 1 : 0);
