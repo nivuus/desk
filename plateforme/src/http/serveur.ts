@@ -16,7 +16,9 @@ import { createServer, type Server } from 'node:http';
 import { WebSocketServer } from 'ws';
 import type { Config } from '../config';
 import type { Pilote } from '../base/pilote';
+import { garde } from '../identite/garde';
 import { createSignalingServer } from '../signaling/relais';
+import { ProprieteDeSession } from '../signaling/propriete';
 import { observateurDeSession } from '../signaling/trace';
 
 export interface ServicePlateforme {
@@ -38,9 +40,23 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     });
 
     const wssRacine = new WebSocketServer({ noServer: true });
-    // `Date.now` est passée ICI, et une seule fois : c'est le seul endroit du
-    // chemin de la trace qui lise une horloge réelle, tout le reste la reçoit.
-    const relais = createSignalingServer(wssRacine, observateurDeSession(base, Date.now));
+    // La garde est construite ICI, à partir du secret de configuration, et
+    // c'est le SEUL endroit du service qui en fabrique une. Elle est REQUISE
+    // par le relais : il n'existe aucun chemin qui produise une garde ouverte
+    // hors d'un test, `PLATEFORME_SECRET_JETON` n'ayant aucun défaut.
+    //
+    // Le registre d'appartenance vit ici aussi, donc pour la durée du service.
+    // Son coût — il ne survit pas à un redémarrage — est écrit dans
+    // `signaling/propriete.ts`.
+    const gardeDuService = garde(config.secretJeton, Date.now, new ProprieteDeSession());
+    // `Date.now` est passée ICI, et une seule fois pour la trace : c'est le
+    // seul endroit du chemin de la trace qui lise une horloge réelle, tout le
+    // reste la reçoit.
+    const relais = createSignalingServer(
+        wssRacine,
+        gardeDuService,
+        observateurDeSession(base, Date.now),
+    );
 
     http.on('upgrade', (requete, socket, tete) => {
         // `requete.url` peut porter une chaîne de requête ; seul le chemin

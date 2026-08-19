@@ -23,10 +23,17 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
+import { signer } from '../identite/jeton';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const signalingRoot = path.join(__dirname, '..', '..');
 const tsxBin = path.join(signalingRoot, 'node_modules', '.bin', 'tsx');
+
+/// Le secret de signature du processus enfant, nommé UNE fois : il est posé
+/// dans son `env` ci-dessous et sert à signer les jetons que `connectTo`
+/// envoie. Deux valeurs divergentes feraient refuser toutes les poignées de
+/// main `client`, avec un diagnostic obscur.
+const SECRET_ENFANT = 'un-secret-de-plateforme-de-quarante-octets';
 
 let child: ChildProcessWithoutNullStreams;
 let port: number;
@@ -53,7 +60,7 @@ function startRealServer(): Promise<{ child: ChildProcessWithoutNullStreams; por
                 // `lireConfig` refuse désormais de démarrer sans secret de
                 // signature, et n'en invente aucun : sans cette ligne
                 // l'enfant meurt avant d'annoncer son port.
-                PLATEFORME_SECRET_JETON: 'un-secret-de-plateforme-de-quarante-octets',
+                PLATEFORME_SECRET_JETON: SECRET_ENFANT,
             },
         });
 
@@ -91,7 +98,14 @@ function connectTo(targetPort: number, role: 'agent' | 'client', session: string
         const ws = new WebSocket(`ws://127.0.0.1:${targetPort}`);
         ws.on('error', reject);
         ws.on('open', () => {
-            ws.send(JSON.stringify({ role, session }));
+            // Le rôle `client` exige un jeton d'accès depuis le sous-bloc P2,
+            // signé avec le MÊME secret que celui posé dans l'`env` de
+            // l'enfant ci-dessus. Le rôle `agent` n'en exige aucun — c'est la
+            // fenêtre déclarée jusqu'à P3.
+            const jeton = role === 'client'
+                ? signer('u-resilience', SECRET_ENFANT, Date.now())
+                : undefined;
+            ws.send(JSON.stringify({ role, session, jeton }));
             resolve(ws);
         });
     });

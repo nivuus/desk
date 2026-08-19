@@ -13,6 +13,7 @@ import { WebSocket } from 'ws';
 import { baseNeuve } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import type { Config } from '../config';
+import { signer } from '../identite/jeton';
 import { demarrerServeur, type ServicePlateforme } from './serveur';
 
 // Un secret de test EXPLICITE, jamais `''` : `lireConfig` refuse la chaîne
@@ -94,7 +95,14 @@ describe('demarrerServeur', () => {
 
         const client = new WebSocket(url);
         await new Promise((r) => client.once('open', r));
-        client.send(JSON.stringify({ role: 'client', session: 'racine-1' }));
+        // Le rôle `client` exige désormais un jeton d'accès (sous-bloc P2) :
+        // sans lui la garde refuse et ferme le socket. Le jeton est signé avec
+        // le secret que porte `CONFIG`, celui-là même dont le service se sert.
+        client.send(JSON.stringify({
+            role: 'client',
+            session: 'racine-1',
+            jeton: signer('u-racine', SECRET, Date.now()),
+        }));
 
         const offreRecue = new Promise<string>((resolve) => {
             agent.on('message', (brut) => {

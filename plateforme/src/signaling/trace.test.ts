@@ -18,6 +18,7 @@ import type { Pilote } from '../base/pilote';
 import type { Config } from '../config';
 import { lireParNom, type LigneSession } from '../depot/session';
 import { demarrerServeur, type ServicePlateforme } from '../http/serveur';
+import { signer } from '../identite/jeton';
 import { MOTIF_DEPART, observateurDeSession } from './trace';
 
 // Un secret de test EXPLICITE, jamais `''` : `lireConfig` refuse la chaîne
@@ -61,11 +62,23 @@ async function attendreLigne(
     }
 }
 
-function connecter(url: string, role: string, session: string): Promise<WebSocket> {
+function connecter(
+    url: string,
+    role: string,
+    session: string,
+    sujet = 'u-trace',
+): Promise<WebSocket> {
     return new Promise((resolve) => {
         const w = new WebSocket(url);
         w.once('open', () => {
-            w.send(JSON.stringify({ role, session }));
+            // Le rôle `client` exige un jeton d'accès depuis le sous-bloc P2 :
+            // sans lui la garde refuse, le socket se ferme, et AUCUN
+            // appariement n'a lieu — donc aucune ligne de trace. Le jeton est
+            // signé avec le secret que porte `CONFIG`, celui du service.
+            const jeton = role === 'client'
+                ? signer(sujet, CONFIG.secretJeton, Date.now())
+                : undefined;
+            w.send(JSON.stringify({ role, session, jeton }));
             resolve(w);
         });
     });

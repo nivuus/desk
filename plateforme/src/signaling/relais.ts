@@ -6,13 +6,25 @@
 // implémenté par `trace.ts`). Le relais lui-même reste sans état persistant —
 // il ne connaît ni la base ni le SQL —, mais le SERVICE en a un.
 //
-// « Aucune authentification » reste VRAI, et le restera jusqu'à P2 : le port,
-// s'il est atteint, délivre des identifiants TURN valables 86 400 s
-// (`ice.ts`) à quiconque. C'est ce que l'écoute bornée sur `PLATEFORME_HOTE`
-// rend tolérable en attendant, et non l'inverse.
+// 🔴 « Aucune authentification » N'EST PLUS VRAI depuis le sous-bloc P2, et
+// n'est PAS DEVENU FAUX POUR AUTANT — voici la moitié exacte qui reste vraie.
+//
+// Un pair de rôle `client` doit désormais présenter un jeton d'accès valide
+// (`identite/garde.ts`), sans quoi il est refusé, journalisé et son socket
+// fermé — avant toute entrée dans la table d'appariement et avant tout envoi
+// d'`ice-config`.
+//
+// Mais un pair qui se déclare `{"role":"agent", session:"n-importe-quoi"}` est
+// TOUJOURS ACCEPTÉ SANS AUCUNE IDENTITÉ, et reçoit donc des identifiants TURN
+// valables 86 400 s (`ice.ts`) comme avant. Ce n'est pas un oubli : l'agent
+// Rust n'a pas d'identité avant P3 (`agent/src/signaling.rs`), et lui en
+// exiger une casserait le chantier D en cours. La fenêtre `agent` reste donc
+// un chemin ANONYME vers des identifiants TURN de 24 h, et c'est l'écoute
+// bornée sur `PLATEFORME_HOTE` qui la rend tolérable en attendant P3.
 
 import { WebSocket, WebSocketServer } from 'ws';
 import { Appariement, isRole, type Role } from './appariement';
+import type { Garde } from '../identite/garde';
 import { configurationIce } from './ice';
 
 // Types que le serveur relaie au pair. Tout le reste est refusé — un relais
@@ -66,7 +78,12 @@ export interface SignalingServer {
 /// OBSERVATION du signaling, jamais une condition de son fonctionnement.
 export interface ObservateurDeSession {
     /// Les DEUX rôles sont désormais présents sur cette session.
-    apparie(nomSession: string): void;
+    ///
+    /// `utilisateurId` est celui du CLIENT quand la garde en a établi un ;
+    /// il est absent quand le second pair à arriver est l'agent, dont
+    /// l'identité n'existe pas avant P3. C'est ce qui rend le mot
+    /// « enregistrée » du critère ③ littéralement vrai en base.
+    apparie(nomSession: string, utilisateurId?: string): void;
     /// La session s'est vidée : plus aucun rôle ne l'occupe.
     separe(nomSession: string): void;
 }
@@ -75,10 +92,23 @@ export interface ObservateurDeSession {
 // `server.test.ts` depuis le jalon 1 : la garder intacte est ce qui permet de
 // dire que le déménagement du sous-bloc P1 n'a rien changé au relais. La forme
 // `wss` est celle qu'emploie le service, où le serveur HTTP possède le port.
-export function createSignalingServer(port: number, trace?: ObservateurDeSession): SignalingServer;
-export function createSignalingServer(wss: WebSocketServer, trace?: ObservateurDeSession): SignalingServer;
+//
+// 🔴 `garde` est un paramètre REQUIS, jamais optionnel, et jamais permissif
+// par défaut. Trois fichiers de test livrés par P1 ont dû changer pour cela
+// (leur HARNAIS, aucune de leurs assertions). L'alternative — une garde
+// optionnelle valant « accepter » — les aurait laissés verts sans une ligne de
+// changement, ET aurait laissé un service mal câblé n'authentifier PLUS
+// PERSONNE sans qu'aucun test ne rougisse. C'est le même argument que
+// `http/serveur.ts` porte déjà pour `base` : « REQUISE, jamais optionnelle ».
+//
+// Il n'existe par ailleurs aucun chemin qui produise une garde ouverte hors
+// d'un test : la seule fabrique de garde exige un secret, et
+// `PLATEFORME_SECRET_JETON` n'a AUCUN défaut (`config.ts`).
+export function createSignalingServer(port: number, garde: Garde, trace?: ObservateurDeSession): SignalingServer;
+export function createSignalingServer(wss: WebSocketServer, garde: Garde, trace?: ObservateurDeSession): SignalingServer;
 export function createSignalingServer(
     portOuWss: number | WebSocketServer,
+    garde: Garde,
     trace?: ObservateurDeSession,
 ): SignalingServer {
     const port = typeof portOuWss === 'number' ? portOuWss : 0;
@@ -133,11 +163,44 @@ export function createSignalingServer(
                     return;
                 }
 
+                // 🔴 LA GARDE PASSE AVANT `declarer`, ET L'ORDRE N'EST PAS
+                // INDIFFÉRENT. Un pair refusé qui serait entré dans la table
+                // d'appariement y occuperait le rôle et empêcherait le pair
+                // LÉGITIME d'arriver : un déni de service ouvert à l'anonyme,
+                // obtenu précisément en refusant de s'authentifier.
+                const verdict = garde.verifier({
+                    role: declaredRole,
+                    session: declaredSession,
+                    jeton: message.jeton,
+                });
+                if (!verdict.ok) {
+                    // Le journal porte le nom de session et l'identifiant du
+                    // demandeur ; le message qui part sur le fil ne porte ni
+                    // l'un ni l'autre (`identite/garde.ts`).
+                    console.warn(`poignée de main refusée : ${verdict.journal}`);
+                    // ⚠️ ENVOYER PUIS FERMER, jamais l'inverse : un
+                    // `terminate()` immédiat tronquerait le message, et le
+                    // pair verrait une fermeture sans motif.
+                    send(socket, { type: 'error', reason: verdict.message, motif: verdict.motif });
+                    // 🔴 Le socket est FERMÉ, alors qu'il reste OUVERT après un
+                    // message malformé (voir plus haut, délibéré depuis le
+                    // jalon 1). Spec §6 : « refus typé sur la poignée de main,
+                    // connexion fermée — contrairement au message malformé,
+                    // que le relais laisse retenter à dessein ».
+                    socket.close(1008, verdict.motif);
+                    return;
+                }
+
                 const refus = sessions.declarer(declaredSession, declaredRole, socket);
                 if (refus) {
                     send(socket, { type: 'error', reason: refus });
                     return;
                 }
+
+                // SEULEMENT MAINTENANT : `declarer` a accepté. Revendiquer
+                // plus tôt laisserait une appartenance fantôme derrière un
+                // pair refusé pour cause de rôle déjà occupé.
+                garde.revendiquer(declaredSession, verdict.utilisateurId);
 
                 role = declaredRole;
                 sessionId = declaredSession;
@@ -146,7 +209,7 @@ export function createSignalingServer(
                 // existe, donc les deux rôles sont là. `pair` rend le socket
                 // d'EN FACE — s'il est défini, ce pair-ci est le second.
                 if (sessions.pair(declaredSession, declaredRole)) {
-                    trace?.apparie(declaredSession);
+                    trace?.apparie(declaredSession, verdict.utilisateurId);
                 }
 
                 // Configuration ICE : envoyée à CHAQUE pair dès qu'il se
@@ -200,7 +263,17 @@ export function createSignalingServer(
             send(peer, { type: 'peer-gone' });
             // L'instant exact où la session est oubliée de la table : c'est
             // celui-là qui clôt la ligne, et pas le départ du premier pair.
-            if (vide) trace?.separe(sessionId);
+            //
+            // ⚠️ `garde.liberer` est appelée ICI et non dans `http/serveur.ts`
+            // par l'observateur : le relais s'emploie AUSSI sous sa forme
+            // `port`, sans observateur (`server.test.ts` depuis le jalon 1).
+            // Accrocher la libération à la trace ferait qu'un nom de session
+            // resterait pris à vie dans ce montage-là, sans que rien ne le
+            // dise.
+            if (vide) {
+                garde.liberer(sessionId);
+                trace?.separe(sessionId);
+            }
         });
     });
 

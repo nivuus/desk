@@ -1,6 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
+import type { Garde } from '../identite/garde';
 import { createSignalingServer } from './relais';
+
+/// Une garde qui accepte tout, LOCALE À CE FICHIER DE TEST et jamais exportée
+/// par du code de production.
+///
+/// Ces douze tests éprouvent le RELAIS — appariement, relais d'offre, isolation
+/// des sessions —, jamais l'authentification, qui a son propre fichier
+/// (`garde-fil.test.ts`). Leur donner une vraie garde y ajouterait un jeton
+/// signé sans rien mesurer de plus.
+///
+/// ⚠️ Rien de tel n'existe côté production : la seule fabrique de garde exige
+/// un secret, et `PLATEFORME_SECRET_JETON` n'a AUCUN défaut (`config.ts`).
+const GARDE_OUVERTE: Garde = {
+    verifier: () => ({ ok: true }),
+    revendiquer: () => {},
+    liberer: () => {},
+};
 
 let server: ReturnType<typeof createSignalingServer>;
 
@@ -37,7 +54,7 @@ function closeAndWait(ws: WebSocket): Promise<void> {
 }
 
 beforeEach(() => {
-    server = createSignalingServer(0);
+    server = createSignalingServer(0, GARDE_OUVERTE);
 });
 
 afterEach(async () => {
