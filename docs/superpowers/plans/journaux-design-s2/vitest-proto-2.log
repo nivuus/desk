@@ -1,0 +1,13 @@
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/proto
+
+ ✓ ts/fichiers.test.ts (9 tests) 6ms
+ ✓ ts/plateforme.test.ts (33 tests) 19ms
+ ✓ ts/input.test.ts (20 tests) 8ms
+ ✓ ts/control.test.ts (17 tests) 13ms
+
+ Test Files  4 passed (4)
+      Tests  79 passed (79)
+   Start at  00:05:50
+   Duration  435ms (transform 194ms, setup 0ms, collect 194ms, tests 46ms, environment 1ms, prepare 359ms)
+

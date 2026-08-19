@@ -1,0 +1,10 @@
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/client
+
+ ✓ src/design/theme.test.ts (10 tests) 5ms
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  00:05:37
+   Duration  502ms (transform 50ms, setup 0ms, collect 31ms, tests 5ms, environment 0ms, prepare 75ms)
+

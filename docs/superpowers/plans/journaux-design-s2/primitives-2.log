@@ -1,0 +1,10 @@
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/client
+
+ ✓ src/design/primitives.test.ts (9 tests) 7ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  00:05:54
+   Duration  411ms (transform 93ms, setup 0ms, collect 66ms, tests 7ms, environment 0ms, prepare 150ms)
+

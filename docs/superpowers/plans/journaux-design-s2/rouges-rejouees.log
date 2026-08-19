@@ -1,0 +1,53 @@
+# Rouges REJOUÉES le 20 août 2026 par la tâche 9 — messages verbatim.
+# (Les tâches 2 à 6 les avaient jouées à leur date ; leurs messages ne sont pas versés.
+#  Celles-ci sont rejouées sur le binaire de la recette, une mutation à la fois.)
+
+===== G2 — outline: none dans .bouton:focus-visible =====
+   × primitives.css — les gardes de forme > G2 — l’anneau de focus n’est jamais effacé 8ms
+AssertionError: effacements de l’anneau de focus: expected [ 'outline: none' ] to deeply equal []
+      Tests  1 failed | 8 passed (9)
+
+===== G3 — l'état désactivé dit par opacity: 0.5 =====
+   × primitives.css — les gardes de forme > G3 — aucun état ne se dit par une composition d’exécution 11ms
+AssertionError: compositions d’exécution dans primitives.css: expected [ 'opacity: 0.5' ] to deeply equal []
+      Tests  1 failed | 8 passed (9)
+
+===== G4 — var(--r-1) remplacé par 4px =====
+   × primitives.css — les gardes de forme > G4 — aucune longueur hors échelle : toute unité passe par un token 16ms
+AssertionError: longueurs littérales dans primitives.css: expected [ Array(1) ] to deeply equal []
+      Tests  1 failed | 8 passed (9)
+
+===== G5 — les quatre feuilles de famille vidées de leurs règles (en-têtes gardés) =====
+   × primitives.css — les gardes de forme > G5 — atteignabilité : le fichier déclare des règles, dont la famille bouton 9ms
+   × primitives.css — les gardes de forme > G6 — la famille CHAMP déclare ses états et ses parties 7ms
+   × primitives.css — les gardes de forme > G6 — la famille SURFACE déclare ses parties, et le séparateur 1ms
+   × primitives.css — les gardes de forme > G6 — la famille MESSAGE déclare ses quatre tons 1ms
+AssertionError: primitives.css ne déclare AUCUNE règle : G1 à G4 sont alors verts en ne mesurant rien: expected 0 to be greater than 0
+AssertionError: états ou parties absents de la famille champ: expected [ '.champ__etiquette', …(6) ] to deeply equal []
+AssertionError: parties absentes de la famille carte: expected [ '.carte__titre', '.carte__corps' ] to deeply equal []
+AssertionError: tons absents de la famille message: expected [ '.message--succes', …(2) ] to deeply equal []
+      Tests  4 failed | 5 passed (9)
+
+===== G7 — la règle prefers-reduced-motion retirée de base.css =====
+bloc retiré : '@media (prefers-reduced-motion: reduce) { :root { --duree-1:'
+   × primitives.css — les gardes de forme > G7 — base.css neutralise les transitions sous prefers-reduced-motion 5ms
+AssertionError: aucune requête @media (prefers-reduced-motion: reduce) dans base.css, commentaires blanchis: expected -1 to be greater than -1
+      Tests  1 failed | 8 passed (9)
+
+===== G7 (rejoué PRÉCISÉMENT) — SEULE la règle retirée, le commentaire D3 gardé =====
+# Le commentaire de base.css CITE la chaîne « @media (prefers-reduced-motion: reduce) ».
+# Le garde blanchit les commentaires : c'est ce qui fait qu'il tombe quand même.
+   × primitives.css — les gardes de forme > G7 — base.css neutralise les transitions sous prefers-reduced-motion 4ms
+AssertionError: aucune requête @media (prefers-reduced-motion: reduce) dans base.css, commentaires blanchis: expected -1 to be greater than -1
+      Tests  1 failed | 8 passed (9)
+
+===== MESURE : le blanchiment est-il PORTEUR pour G7 ? =====
+# Double mutation : la règle prefers-reduced-motion retirée de base.css,
+# ET sansCommentaires() neutralisé (identité). Si G7 reste VERT, le
+# blanchiment est bien son seul rempart — et l'en-tête du fichier, qui le
+# dit « le seul rempart de G1 et de G5 », est faux d'un garde.
+   × primitives.css — les gardes de forme > G1 — aucun sélecteur d’élément nu : tout compound porte une classe 10ms
+   × primitives.css — les gardes de forme > G7 — base.css neutralise les transitions sous prefers-reduced-motion 2ms
+AssertionError: sélecteurs d’élément nus dans primitives.css: expected [ '/*', …(889) ] to deeply equal []
+AssertionError: la requête de mouvement réduit ne porte aucune déclaration: expected [ '--duree-1' ] to include 'transition-duration'
+      Tests  2 failed | 7 passed (9)

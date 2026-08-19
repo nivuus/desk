@@ -1,0 +1,12 @@
+070b48b
+--- git status --porcelain ---
+ M agent/Cargo.toml
+ M agent/src/pont.rs
+?? .playwright-mcp/
+?? agent/src/pont/projfs.rs
+?? agent/src/pont/projfs/
+?? agent/src/pont/resolution.rs
+?? agent/src/pont/resolution/
+?? docs/superpowers/plans/journaux-design-s2/
+--- date ---
+2026-08-20T00:05:20+02:00

@@ -1,0 +1,7 @@
+# Taille de primitives.css commit par commit, par git cat-file -p (20 août 2026).
+78eb679  154 lignes  — design(s2): la famille bouton, le token de survol, et cinq gardes de forme
+b00099a  230 lignes  — design(s2): la famille champ, son etat d'erreur, et deux tokens de moins en attente
+21393e0  72 lignes  — design(s2): la famille surface, et le trait decoratif qui n'est pas celui d'un controle
+4c5d9e2  73 lignes  — design(s2): la famille message, quatre tons dits par l'encre et jamais par le fond
+b9c706d  73 lignes  — design(s2): la galerie des primitives, cinquieme entree, et son exclusion eprouvee
+# porte armée à 240 par le plan. Maximum atteint : 230 (T3), marge 10. JAMAIS franchie.

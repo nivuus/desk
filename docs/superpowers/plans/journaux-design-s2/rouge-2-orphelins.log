@@ -1,0 +1,5 @@
+# ROUGE ② — critère ② : la ligne --police-mono retirée de EN_ATTENTE_D_APPELANT.
+inclusion ② — tout token déclaré a un appelant : 10 orphelin(s), dont 9 en attente déclarée
+  NOUVEL ORPHELIN  --police-mono  déclaré et appelé par personne
+total : 1 écart(s)
+exit=1

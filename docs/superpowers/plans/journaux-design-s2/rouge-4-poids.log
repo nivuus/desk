@@ -1,0 +1,9 @@
+# ROUGE ④ — critère ④ : plafond abaissé à 6000 octets (aucun fichier touché).
+   1493  main-CXZaIG5L.css
+   2702  primitives-GyKd6lAV.css
+   2179  socle-ZRS7erzW.css
+feuilles émises : 3
+somme : 6374 octets
+plafond : 6000 octets (arbitraire, voir l'en-tête)
+DÉPASSEMENT de 374 octets
+exit=1
