@@ -172,13 +172,17 @@ et les deux empreintes sont égales dans chaque journal.
 | ①A — **gratuite** | rien : jouée sur le **service de P2** (`f0b2fca`) | `un agent est déjà connecté à la session bureau` | `rouge-1A-second-agent-sur-bureau.log` |
 | ①B | `garde.ts` : `if (!session.startsWith(verdict.sujet + SEPARATEUR))` → `if (false)` | `agent P -> <Q>:w-9 (session VIERGE): ACCEPTÉ` puis `trames reçues par l'intrus : ["{\"type\":\"ice-config\",…\"username\":\"1787256892:7V-QG48cOOj2rvXlatEbPw:w-9\"…}"]` — **4 assertions NON TENUES** | `rouge-1B-prefixe-non-compare.log` |
 | ② | `enrolement.ts` : le refus « VM inconnue » rend `motif: 'forme'` | `A : {"type":"refus","v":1,"motif":"forme"}` contre `B : …"motif":"enrolement"}` ; `longueurs (A, B) : [38,43]` ; `premier caractère divergent : 31` — **2 assertions NON TENUES** | `rouge-2-refus-qui-enumere.log` |
-| ③-rust | `proto/src/plateforme.rs` : `verifie_version` omise **sur la seule variante `Refus`** | `test plateforme::tests::rejette_la_version_suivante_sur_refus ... FAILED` (les **8** autres passent) | `rouge-3-rust-verifie-version-omise.log` |
+| ③-rust | `proto/src/plateforme.rs` : `verifie_version` omise **sur la seule variante `Refus`** | `test plateforme::tests::rejette_la_version_suivante_sur_refus ... FAILED`, et le bilan : `test result: FAILED. 17 passed; 1 failed` sur **18** | `rouge-3-rust-verifie-version-omise.log` |
 | ③-ts-vers | `proto/ts/plateforme.ts` : la vérification de `v` dans `parseVersLaPlateforme` | `TS (vers) refuse pour motif « version » : 🔴 NON TENU` — **2 assertions NON TENUES** | `rouge-3-ts-vers-la-plateforme.log` |
 | ③-ts-depuis | idem, `parseDepuisLaPlateforme` | `TS parseDepuisLaPlateforme : 🔴 N'A PAS LEVÉ` — **1 assertion NON TENUE** | `rouge-3-ts-depuis-la-plateforme.log` |
 | ④ | `fraicheur.ts` : l'horloge figée | `t = vu_a + 10 × seuil : prete` — **2 assertions NON TENUES** | `rouge-4-horloge-figee.log` |
 
 **La rouge ③-rust est la plus instructive du lot** : elle n'omet la
-vérification que sur **UNE** variante, et **un seul** test tombe sur neuf.
+vérification que sur **UNE** variante, et **un seul test tombe sur DIX-HUIT**
+(`17 passed; 1 failed`, relevé verbatim). ❌ *Une première rédaction écrivait
+« sur neuf » — le nombre de lignes `test …` que la première page du journal
+affiche, et non le compte du bilan. Un chiffre lu sur une page tronquée n'est
+pas un chiffre mesuré.*
 C'est ce qui établit que la vérification est branchée **variante par variante**
 et non une fois pour toutes — la propriété que `control.rs` documente et que le
 plan (D4) exigeait de reproduire.
