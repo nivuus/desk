@@ -15,7 +15,7 @@
 use std::collections::VecDeque;
 use std::time::Duration;
 
-use crate::opus::SAMPLE_RATE_HZ;
+use crate::opus::{OpusDecoder, CHANNELS, SAMPLE_RATE_HZ};
 
 /// Occupation visée du tampon : le compromis latence / résistance à la gigue.
 ///
@@ -253,6 +253,190 @@ impl TamponGigue {
 /// trait est la couture, et rien de plus.
 pub trait PuitsMicro {
     fn deposer(&mut self, trame: TrameMicro) -> bool;
+}
+
+/// Le tampon de gigue, le décodeur, et le résidu : tout ce qu'un fil WASAPI
+/// aura besoin d'appeler, et rien de plus.
+///
+/// **Pur, alors qu'il sert un fil WASAPI** — c'est la ligne de partage de la
+/// spec §6, et elle paie ici : le bloc E2 n'aura qu'à appeler
+/// `remplir(&mut [f32])` depuis le fil que WASAPI réveille, et **tout ce qui
+/// peut mal tourner — l'ordre, la gigue, la dérive, le décodage, le résidu, le
+/// silence — est éprouvé sous Linux.**
+pub struct LecteurMicro {
+    tampon: TamponGigue,
+    decodeur: OpusDecoder,
+    /// PCM décodé pas encore remis à l'appelant, stéréo entrelacé.
+    ///
+    /// **Sans lui, la queue de chaque trame serait jetée.** Le paquet que
+    /// réclame WASAPI ne fait presque jamais la taille d'une trame Opus : une
+    /// trame de 20 ms rend 960 échantillons par canal, et le tampon réclamé
+    /// peut en vouloir 441, 480 ou 1024. Le résidu est la pièce qui recolle
+    /// deux découpages sans rapport.
+    residu: VecDeque<f32>,
+}
+
+impl LecteurMicro {
+    pub fn new() -> anyhow::Result<Self> {
+        Ok(Self {
+            tampon: TamponGigue::new(CIBLE, PLAFOND),
+            decodeur: OpusDecoder::new()?,
+            residu: VecDeque::new(),
+        })
+    }
+
+    pub fn deposer(&mut self, trame: TrameMicro) {
+        self.tampon.deposer(trame);
+    }
+
+    pub fn compteurs(&self) -> CompteursMicro {
+        self.tampon.compteurs()
+    }
+
+    /// Remplit `sortie` (stéréo entrelacé, `f32`) avec ce qui est dû, complète
+    /// au silence, et **ne bloque JAMAIS**.
+    ///
+    /// Spec §8 « Silence » : le câble doit être alimenté EN CONTINU. Une
+    /// application qui écoute un tampon vide ne perçoit pas du silence — elle
+    /// voit un flux qui s'interrompt, ce qui n'est pas la même chose et
+    /// s'entend.
+    pub fn remplir(&mut self, sortie: &mut [f32]) {
+        let mut ecrit = 0;
+        while ecrit < sortie.len() {
+            // Le résidu d'abord : c'est lui qui recolle les découpages.
+            while ecrit < sortie.len() {
+                let Some(e) = self.residu.pop_front() else {
+                    break;
+                };
+                sortie[ecrit] = e;
+                ecrit += 1;
+            }
+            if ecrit == sortie.len() {
+                return;
+            }
+
+            // Rien en réserve : réclamer au tampon de quoi continuer.
+            if !self.produire_une_trame() {
+                // Plus rien à produire, et pas même une dissimulation. On
+                // complète au silence et on rend la main — **la boucle DOIT
+                // s'arrêter ici** : sans cette sortie, un lecteur qui n'a
+                // jamais rien décodé tournerait sans fin, `dissimuler` rendant
+                // zéro échantillon à chaque tour.
+                sortie[ecrit..].fill(0.0);
+                return;
+            }
+        }
+    }
+
+    /// Décode ce qui est dû dans le résidu. Rend `false` quand rien n'a pu
+    /// être produit — à l'appelant de compléter au silence.
+    fn produire_une_trame(&mut self) -> bool {
+        let (paquet, echantillons, fec) = match self.tampon.retirer() {
+            Retrait::Trame(t) => (t.opus, t.echantillons, false),
+            Retrait::Reconstruire { suivante } => {
+                // La durée reconstruite est celle de la trame MANQUANTE, qu'on
+                // ne connaît pas. Celle de la suivante en est le meilleur
+                // témoin disponible, et elle est LUE du paquet, jamais supposée.
+                let n = self.decodeur.echantillons_de(&suivante).unwrap_or(0);
+                if n == 0 {
+                    return false;
+                }
+                (suivante, n, true)
+            }
+            Retrait::Manquante => {
+                // Dissimulation : la durée vient de la dernière trame décodée,
+                // et vaut zéro tant que rien n'a été décodé — auquel cas il n'y
+                // a rien à dissimuler, et le silence est la bonne réponse.
+                let n = self.decodeur.derniere_duree().unwrap_or(0);
+                if n == 0 {
+                    return false;
+                }
+                let mut pcm = vec![0i16; n * CHANNELS];
+                let Ok(rendus) = self.decodeur.dissimuler(&mut pcm) else {
+                    return false;
+                };
+                self.pousser(&pcm[..rendus * CHANNELS]);
+                self.tampon.compteurs.plc += 1;
+                return rendus > 0;
+            }
+        };
+
+        let mut pcm = vec![0i16; echantillons * CHANNELS];
+        let rendus = if fec {
+            self.decodeur.decoder_fec(&paquet, &mut pcm)
+        } else {
+            self.decodeur.decoder(&paquet, &mut pcm)
+        };
+        let Ok(rendus) = rendus else {
+            return false;
+        };
+        self.pousser(&pcm[..rendus * CHANNELS]);
+        rendus > 0
+    }
+
+    fn pousser(&mut self, pcm: &[i16]) {
+        self.residu
+            .extend(pcm.iter().map(|&e| e as f32 / 32_768.0));
+    }
+}
+
+/// Fraction de la crête sous laquelle un échantillon ne compte pas comme un
+/// passage : la bande morte.
+///
+/// **Sans elle, l'instrument prendrait du bruit pour un ton.** Le bruit de
+/// quantification autour de zéro multiplie les changements de signe, et c'est
+/// exactement ce que sanctionne
+/// `le_silence_et_le_bruit_ne_rendent_pas_une_frequence_credible`.
+const BANDE_MORTE: f32 = 0.25;
+
+/// Amplitude crête sous laquelle le signal n'a pas de fréquence du tout.
+const CRETE_MINIMALE: f32 = 1.0 / 512.0;
+
+/// Fréquence dominante d'un signal supposé PÉRIODIQUE, par passages par zéro.
+///
+/// ⚠️ **`pcm` est un signal MONO à `hz` échantillons par seconde.** Un tampon
+/// stéréo entrelacé doit être désentrelacé par l'appelant (`step_by(2)`) —
+/// l'analyser tel quel mélangerait deux canaux et doublerait la cadence
+/// apparente. *(Le plan décrivait l'implémentation comme opérant « sur le canal
+/// gauche » tout en écrivant ses tests sur un tampon mono : les deux ne peuvent
+/// pas être vrais ensemble, et c'est la sémantique du test qui a été retenue,
+/// parce que c'est elle qui rend la fonction utilisable des deux façons.)*
+///
+/// Rend `None` quand le signal est trop faible pour qu'un passage ait un sens :
+/// **un signal trop faible n'a pas de fréquence**, et rendre un nombre pour le
+/// silence ferait de cet instrument le compteur d'octets qu'il existe pour
+/// remplacer (doctrine du dépôt, payée en D7).
+pub fn frequence_par_passages_a_zero(pcm: &[f32], hz: u32) -> Option<f32> {
+    if pcm.len() < 2 || hz == 0 {
+        return None;
+    }
+    let crete = pcm.iter().fold(0.0f32, |m, e| m.max(e.abs()));
+    if crete < CRETE_MINIMALE {
+        return None;
+    }
+    let seuil = crete * BANDE_MORTE;
+
+    let mut passages = 0u64;
+    let mut signe: Option<bool> = None;
+    for &e in pcm {
+        if e.abs() <= seuil {
+            continue;
+        }
+        let positif = e > 0.0;
+        match signe {
+            Some(precedent) if precedent != positif => {
+                passages += 1;
+                signe = Some(positif);
+            }
+            None => signe = Some(positif),
+            _ => {}
+        }
+    }
+    if passages == 0 {
+        return None;
+    }
+    let duree = pcm.len() as f32 / hz as f32;
+    Some(passages as f32 / (2.0 * duree))
 }
 
 #[cfg(test)]
