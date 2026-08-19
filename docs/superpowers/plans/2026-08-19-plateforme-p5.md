@@ -84,7 +84,7 @@ dans ce plan.**
 | ⑩ | `docker images` | `nginx:alpine`, `coturn/coturn:4.6`, `postgres:16-alpine` sont **déjà présentes localement** ; **aucune image `caddy` ni `traefik`** |
 | ⑪ | `ss -lntp` | **443/tcp est occupé par `envoy`** (pomerium), un tiers étranger à ce dépôt |
 | ⑫ | la commande des 500 lignes de `CLAUDE.md` | **deux** fichiers au-dessus du plafond : `agent/src/encode.rs` **1536**, `agent/src/windows_source.rs` **630** |
-| ⑬ | `git status --porcelain` | cinq lignes, **toutes non suivies**, toutes du chantier concurrent F1 (`.playwright-mcp/`, `journaux-pont-fichiers/…`) |
+| ⑬ | `git status --porcelain` | **cinq** lignes, toutes non suivies, toutes du chantier concurrent F1 (`.playwright-mcp/`, `journaux-pont-fichiers/…`). ⚠️ **Ce nombre a vieilli PENDANT la rédaction de ce plan** : relancé une heure plus tard, il en rend **seize** — F1 versait ses journaux. **Le nombre est sans importance ici ; ce qui compte est qu'il y en a, et que `git clean` les emporterait** (voir la tâche 11) |
 | ⑭ | `git log --oneline -1` | `0289a27 plateforme(p4): npm run admin:attribuer, et --detacher` |
 | ⑮ | `grep maxPayload plateforme/node_modules/ws/lib/websocket-server.js` | `:74` → `maxPayload: 100 * 1024 * 1024` — **100 Mio par défaut** |
 | ⑯ | `node -e` sur `http.createServer()` | `requestTimeout 300000`, `headersTimeout 60000`, `keepAliveTimeout 5000`, `maxHeaderSize 16384` |
@@ -1354,8 +1354,9 @@ s'applique en plein :**
    doit être suivi) ;
 3. lancer le test, le **voir rouge**, verser la sortie ;
 4. `git rm --cached essai-secret.env` **puis supprimer le fichier NOMMÉMENT** —
-   ⛔ **jamais `git clean`** : le chantier concurrent F1 a cinq fichiers non
-   suivis dans cet arbre (relevé ⑬), et `git clean` les emporterait ;
+   ⛔ **jamais `git clean`** : le chantier concurrent F1 a des fichiers non
+   suivis dans cet arbre — **cinq au relevé ⑬, seize une heure plus tard** —,
+   et `git clean` les emporterait tous ;
 5. `git status --porcelain` après, **identique** à celui d'avant.
 
 **Atteignable parce que** l'étape 2 crée exactement l'état que le balayage
