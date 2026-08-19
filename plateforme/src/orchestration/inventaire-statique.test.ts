@@ -285,6 +285,63 @@ describe(`inventaireStatique, moteur=${MOTEUR}`, () => {
         ).rejects.toThrow(/base injoignable/);
     });
 
+    it('🔴 la VIOLATION D’INDEX est traduite en `utilisateur-servi`, jamais relancée', async () => {
+        // 🔴 CE TEST EXISTE PARCE QU'UNE MUTATION EST RESTÉE VERTE SANS LUI, et
+        // c'est le seul qui atteigne le `catch`. Le test « attribuer à qui a
+        // déjà une VM » passe par la LECTURE PRÉALABLE et n'arrive jamais à
+        // l'écriture : rendre le `catch` entièrement relançant laissait donc
+        // les seize tests verts, et la troisième assertion du critère ② —
+        // « violation d'index traduite en refus typé, JAMAIS en 500 » —
+        // n'était éprouvée par RIEN. MESURÉ, puis réparé ici.
+        //
+        // Le cas est celui de la COURSE : entre la lecture et l'écriture,
+        // l'utilisateur a acquis une autre VM ailleurs. La lecture préalable ne
+        // peut structurellement pas le voir ; c'est l'index partiel qui LÈVE, et
+        // c'est la relecture d'après `ROLLBACK` qui l'explique.
+        //
+        // 🔴 La rouge : faire relancer le `catch` sans traduire. La couche HTTP
+        // rendrait alors 500 sur ce qui est un refus métier.
+        let lectures = 0;
+        const enCourse: Pilote = {
+            async interroger<T>(): Promise<T[]> {
+                lectures += 1;
+                const v1 = {
+                    id: 'v1', nom: 'w1', adresse: '192.168.3.2',
+                    utilisateur_id: null, prefixe_session: 'PREFIXEv1', vu_a: MS,
+                };
+                // La PREMIÈRE lecture, celle de la transaction, ne voit rien à
+                // l'utilisateur : les trois contrôles passent.
+                // La SECONDE, celle d'après le `ROLLBACK`, voit la VM qu'il
+                // vient d'acquérir — et c'est elle qui explique l'exception.
+                const v2 = {
+                    id: 'v2', nom: 'w2', adresse: '192.168.3.2',
+                    utilisateur_id: lectures === 1 ? null : 'u-ada',
+                    prefixe_session: 'PREFIXEv2', vu_a: MS,
+                };
+                return [v1, v2] as unknown as T[];
+            },
+            async executer() {
+                // Le texte imite un moteur, et AUCUN code ne le lit : les deux
+                // moteurs n'écrivent pas le même, et c'est l'état relu qui
+                // tranche.
+                throw new Error('UNIQUE constraint failed: vm.utilisateur_id');
+            },
+            async transaction<T>(corps: (p: Pilote) => Promise<T>): Promise<T> {
+                return corps(enCourse);
+            },
+            async fermer() {},
+        };
+
+        expect(await inventaireStatique(enCourse, horlogeA(MS)).attribuer('v1', 'u-ada')).toEqual({
+            ok: false,
+            motif: 'utilisateur-servi',
+            operation: 'attribuer',
+            backend: BACKEND_STATIQUE,
+        });
+        // La relecture a bien EU LIEU : sans elle, le motif serait deviné.
+        expect(lectures).toBe(2);
+    });
+
     it('le PERDANT d’une course séquentielle reçoit `vm-deja-attribuee`', async () => {
         // ⚠️ CE TEST EST SÉQUENTIEL ET NE MESURE PAS LA SÉRIALISATION : le
         // perdant joue APRÈS le gagnant. Il éprouve la TRADUCTION du refus, pas
