@@ -45,8 +45,18 @@ interface LigneJeton {
     utilisateur_id: string;
     famille: string;
     remplace_par: string | null;
-    expire_a: number | string;
-    revoque_a: number | string | null;
+    /// ⚠️ CES DEUX CHAMPS ONT ÉTÉ DÉCLARÉS `number | string`, ET C'ÉTAIT LE
+    /// SYMPTÔME LOCAL D'UN DÉFAUT DE CLASSE : `pg` rendait tout `BIGINT` en
+    /// chaîne, et ce module s'en tirait par un `Number(...)` à l'usage. Les
+    /// autres dépôts, eux, déclaraient `number` sans convertir — et
+    /// `LigneAgent.vu_a` s'est révélé être une `string` en production à la
+    /// recette de P3. Le défaut est corrigé AU PILOTE
+    /// (`base/pilote-postgres.ts`, `setTypeParser`), donc la déclaration
+    /// redevient vraie et la conversion locale disparaît. Ce qui la TIENT
+    /// désormais est `base/pilotes.test.ts`, qui éprouve les sept colonnes
+    /// `BIGINT` du schéma, `jeton_rafraichissement.expire_a` comprise.
+    expire_a: number;
+    revoque_a: number | null;
 }
 
 function nouveauClair(): string {
@@ -139,7 +149,7 @@ export async function tourner(
             return { ok: false, motif: 'rejeu' } as const;
         }
 
-        if (Number(ligne.expire_a) <= maintenant) {
+        if (ligne.expire_a <= maintenant) {
             return { ok: false, motif: 'expire' } as const;
         }
 

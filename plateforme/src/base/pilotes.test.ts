@@ -138,4 +138,114 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
             'SELECT cree_a FROM utilisateur WHERE id = ?', ['u-epoque']);
         expect(Number(u.cree_a)).toBe(MS);
     });
+
+    it('rend un BIGINT relu en `number` sur les DEUX moteurs, sans conversion de l’appelant', async () => {
+        // 🔴 CE TEST EXISTE PARCE QUE LE DÉFAUT EST DE CLASSE, PAS D'INSTANCE,
+        // et parce que le test d'époque ci-dessus ne pouvait PAS l'attraper :
+        // il enveloppe chaque lecture dans `Number(...)`, ce qui convertit la
+        // divergence au lieu de la mesurer. Relevé par la recette de P3 :
+        // `pg` rend tout `BIGINT` (OID 20) en **chaîne**, quand `node:sqlite`
+        // rend un `number` — si bien que `LigneAgent.vu_a`, `LigneSession`,
+        // `LigneUtilisateur` et `LigneJeton` déclaraient `number` une valeur
+        // qui était une `string` sur le moteur de PRODUCTION.
+        //
+        // ⚠️ Ce n'était pas une coquille de type : `etatDe` (`agents/fraicheur.ts`)
+        // survivait PAR ACCIDENT, sa soustraction convertissant l'opérande.
+        // Tout `+`, tout `===` et tout `>` aurait divergé selon le moteur — un
+        // `vu_a === maintenant` faux partout, un `vu_a + SEUIL` valant une
+        // concaténation.
+        //
+        // La mutation qui le rougit : retirer le `setTypeParser` de
+        // `base/pilote-postgres.ts`. Il rougit alors sous `test:postgres` et
+        // reste vert sous `test:sqlite` — c'est-à-dire exactement la
+        // divergence que la double passe existe pour trouver.
+        const MS = 1_787_136_773_742;
+        base = await baseNeuve('bigint-number');
+
+        await base.executer('INSERT INTO vm(id,nom,adresse,vue_a) VALUES(?,?,?,?)',
+            ['v-bigint', 'vm', '10.0.0.1', MS]);
+        await base.executer('INSERT INTO session(id,nom_session,ouverte_a,fermee_a) VALUES(?,?,?,?)',
+            ['s-bigint', 'bureau', MS, MS + 5]);
+        await base.executer('INSERT INTO utilisateur(id,email,empreinte_mdp,cree_a) VALUES(?,?,?,?)',
+            ['u-bigint', 'b@exemple.test', 'x', MS]);
+        await base.executer(
+            'INSERT INTO agent_enrole(vm_id,empreinte_secret,prefixe_session,vu_a) VALUES(?,?,?,?)',
+            ['v-bigint', 'x', 'RhH1x2QmTz9kLpVbNc7dAw', MS]);
+        await base.executer(
+            'INSERT INTO jeton_rafraichissement(id,utilisateur_id,famille,empreinte,cree_a,expire_a) VALUES(?,?,?,?,?,?)',
+            ['j-bigint', 'u-bigint', 'f-1', 'e-1', MS, MS + 7],
+        );
+
+        // Chaque colonne BIGINT que le SERVICE relit, sur son chemin réel.
+        const releves: Array<[string, unknown]> = [
+            ['vm.vue_a', (await base.interroger<{ vue_a: unknown }>(
+                'SELECT vue_a FROM vm WHERE id = ?', ['v-bigint']))[0].vue_a],
+            ['session.ouverte_a', (await base.interroger<{ ouverte_a: unknown }>(
+                'SELECT ouverte_a FROM session WHERE id = ?', ['s-bigint']))[0].ouverte_a],
+            ['session.fermee_a', (await base.interroger<{ fermee_a: unknown }>(
+                'SELECT fermee_a FROM session WHERE id = ?', ['s-bigint']))[0].fermee_a],
+            ['utilisateur.cree_a', (await base.interroger<{ cree_a: unknown }>(
+                'SELECT cree_a FROM utilisateur WHERE id = ?', ['u-bigint']))[0].cree_a],
+            ['agent_enrole.vu_a', (await base.interroger<{ vu_a: unknown }>(
+                'SELECT vu_a FROM agent_enrole WHERE vm_id = ?', ['v-bigint']))[0].vu_a],
+            ['jeton.expire_a', (await base.interroger<{ expire_a: unknown }>(
+                'SELECT expire_a FROM jeton_rafraichissement WHERE id = ?', ['j-bigint']))[0].expire_a],
+            ['schema_migration.applique_a', (await base.interroger<{ applique_a: unknown }>(
+                'SELECT applique_a FROM schema_migration WHERE version = ?', [1]))[0].applique_a],
+        ];
+
+        for (const [nom, valeur] of releves) {
+            // Le nom de la colonne entre dans l'assertion : sans lui, un échec
+            // ne dirait pas LAQUELLE des sept a divergé.
+            expect([nom, typeof valeur]).toEqual([nom, 'number']);
+        }
+
+        // Et la valeur elle-même, à l'identique — `'1787136773742'` n'est PAS
+        // `1787136773742`, et c'est tout le défaut.
+        const [ligne] = await base.interroger<{ vu_a: number | null }>(
+            'SELECT vu_a FROM agent_enrole WHERE vm_id = ?', ['v-bigint']);
+        expect(ligne.vu_a).toBe(MS);
+
+        // ⚠️ La borne est NOMMÉE plutôt que supposée : au-delà de
+        // `Number.MAX_SAFE_INTEGER`, la conversion perdrait des chiffres en
+        // silence. Une époque en millisecondes vaut ~1,8e12 et l'an 10000
+        // ~2,5e14 : la marge est de plus de quatre ordres de grandeur.
+        expect(MS).toBeLessThan(Number.MAX_SAFE_INTEGER);
+    });
+
+    it('REFUSE de convertir un BIGINT qui ne tient pas dans un entier sûr', async () => {
+        // 🔴 Une conversion silencieuse est pire que la divergence qu'elle
+        // répare : `Number('9007199254740993')` rend 9007199254740992, sans
+        // le dire. Le pilote LÈVE plutôt que d'arrondir.
+        //
+        // La mutation qui le rougit : remplacer le garde du `setTypeParser`
+        // par un `Number(v)` nu. Le test lit alors une valeur ARRONDIE au lieu
+        // de lever.
+        //
+        // ⚠️ Ce cas n'est PAS atteignable par le service, qui n'écrit que des
+        // `Date.now()` — c'est un contrôle du PILOTE, pas du schéma. Il ne
+        // tourne donc que sur Postgres, seul moteur qui ait un analyseur à
+        // garder ; sous SQLite il n'y a rien à éprouver, et le dire est plus
+        // honnête que de le sauter en silence.
+        base = await baseNeuve('bigint-hors-borne');
+        await base.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)',
+            ['v-hb', 'vm', '10.0.0.1']);
+        // 9007199254740993 = MAX_SAFE_INTEGER + 2. Littéral NUMÉRIQUE, seul
+        // moyen de le poser : le passer en paramètre depuis JavaScript le
+        // ferait déjà arrondir AVANT d'atteindre la base.
+        await base.executer('UPDATE vm SET vue_a = 9007199254740993 WHERE id = ?', ['v-hb']);
+
+        const lire = () => base!.interroger<{ vue_a: unknown }>(
+            'SELECT vue_a FROM vm WHERE id = ?', ['v-hb']);
+
+        if (MOTEUR === 'postgres') {
+            await expect(lire()).rejects.toThrow(/entier sûr/);
+        } else {
+            // Sous SQLite il n'y a AUCUN analyseur à garder : `node:sqlite`
+            // rend l'entier directement. Ce que fait ce moteur d'une valeur
+            // hors borne est RELEVÉ ici, pas prescrit — le service n'écrit
+            // que des `Date.now()`, et aucun chemin ne l'y conduit.
+            await expect(lire()).rejects.toThrow();
+        }
+    });
 });

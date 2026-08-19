@@ -13,6 +13,48 @@
 import pg from 'pg';
 import { type Pilote, rendreMarqueurs } from './pilote';
 
+/// 🔴 `pg` REND LES `BIGINT` EN CHAÎNE, ET C'EST MESURÉ, PAS SUPPOSÉ.
+///
+/// Relevé par la recette du sous-bloc P3, le 19 août 2026 : `typeof` d'un
+/// `vu_a` relu vaut `number` sous `node:sqlite` et `string` sous `pg`. La
+/// raison est que le protocole de PostgreSQL rend un `int8` en texte et que
+/// `pg` refuse par défaut de le convertir, un `int8` pouvant dépasser
+/// l'entier sûr de JavaScript.
+///
+/// **Sans cette ligne, le défaut est de CLASSE et non d'instance** :
+/// `LigneAgent.vu_a`, `LigneSession.ouverte_a` / `.fermee_a`,
+/// `LigneUtilisateur.cree_a` et les deux colonnes de `LigneJeton` déclarent
+/// toutes `number` une valeur qui est une `string` sur le moteur de
+/// PRODUCTION. Le typage ne le voit pas — `interroger<T>` fait un `as T[]`,
+/// donc l'affirmation est prise pour argent comptant.
+///
+/// ⚠️ CE QUE CE DÉFAUT NE FAISAIT PAS ÉCHOUER, et pourquoi c'est le pire cas :
+/// `agents/fraicheur.ts::etatDe` survivait PAR ACCIDENT, sa soustraction
+/// convertissant l'opérande. `depot/jeton.ts` s'en était tiré par un
+/// `Number(...)` local et un type `number | string`. Rien ne rougissait, et
+/// pourtant tout `+`, tout `===` et tout `>` aurait divergé selon le moteur.
+///
+/// La conversion LÈVE au-delà de `Number.MAX_SAFE_INTEGER` plutôt que
+/// d'arrondir en silence : `Number('9007199254740993')` rend
+/// `9007199254740992` sans le dire, et une seconde perdue sur un horodatage
+/// serait exactement le genre de faute qu'aucun test ne rattraperait. Le
+/// service n'écrit que des `Date.now()` (~1,8e12, soit quatre ordres de
+/// grandeur sous la borne) : ce chemin n'est pas atteignable par lui, et il
+/// est gardé quand même.
+///
+/// ⚠️ `setTypeParser` est GLOBAL AU PROCESSUS, et c'est déclaré : il n'existe
+/// aucun autre consommateur de `pg` ici, et un réglage par `Pool` se
+/// perdrait pour le pool d'administration que `base/harnais.ts` ouvre.
+pg.types.setTypeParser(pg.types.builtins.INT8, (texte: string) => {
+    const valeur = Number(texte);
+    if (!Number.isSafeInteger(valeur)) {
+        throw new Error(
+            `BIGINT hors de l'entier sûr de JavaScript, converti nulle part : ${texte}`,
+        );
+    }
+    return valeur;
+});
+
 export function ouvrirPostgres(url: string): Pilote {
     const pool = new pg.Pool({ connectionString: url });
     return {

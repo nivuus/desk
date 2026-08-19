@@ -1,0 +1,29 @@
+# Témoin VERT du correctif BIGINT (défaut légué n°1 par la recette de P3).
+# Exécution 1 = sqlite, exécution 2 = postgres. Une exécution par moteur.
+# La ROUGE correspondante : rouge-bigint-en-chaine-sur-postgres.log
+
+$ PLATEFORME_BASE=sqlite vitest run
+   ✓ serveur de signaling > isole les sessions entre elles 2016ms
+   ✓ serveur de signaling > oublie l'offre mémorisée quand la session se vide 2065ms
+
+ Test Files  28 passed (28)
+      Tests  196 passed (196)
+   Start at  22:36:47
+   Duration  5.28s (transform 1.31s, setup 0ms, collect 4.46s, tests 16.28s, environment 11ms, prepare 4.07s)
+
+
+$ PLATEFORME_BASE=postgres vitest run
+ ✓ src/signaling/appariement.test.ts (5 tests) 31ms
+ ✓ src/signaling/propriete.test.ts (5 tests) 11ms
+
+ Test Files  28 passed (28)
+      Tests  196 passed (196)
+   Start at  22:36:55
+   Duration  7.50s (transform 1.24s, setup 0ms, collect 4.26s, tests 32.30s, environment 11ms, prepare 4.36s)
+
+
+$ npm run typecheck
+> @guacamole/plateforme@0.1.0 typecheck
+> tsc --noEmit
+
+sortie=0
