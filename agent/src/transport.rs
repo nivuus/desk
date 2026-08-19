@@ -50,6 +50,8 @@ use crate::source::VideoSource;
 
 #[cfg(test)]
 mod fixtures;
+#[cfg(test)]
+mod sonde_montante;
 mod adaptation;
 mod cadence_video;
 mod controle;
