@@ -20,7 +20,16 @@ import { lireParNom, type LigneSession } from '../depot/session';
 import { demarrerServeur, type ServicePlateforme } from '../http/serveur';
 import { MOTIF_DEPART, observateurDeSession } from './trace';
 
-const CONFIG: Config = { hote: '127.0.0.1', port: 0, base: 'sqlite', urlBase: ':memory:' };
+// Un secret de test EXPLICITE, jamais `''` : `lireConfig` refuse la chaîne
+// vide, et un littéral `Config` construit à la main doit porter une valeur
+// qu'un service accepterait réellement.
+const CONFIG: Config = {
+    hote: '127.0.0.1',
+    port: 0,
+    base: 'sqlite',
+    urlBase: ':memory:',
+    secretJeton: 'un-secret-de-plateforme-de-quarante-octets',
+};
 
 let base: Pilote | undefined;
 let service: ServicePlateforme | undefined;

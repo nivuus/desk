@@ -36,6 +36,11 @@ function connecterA(port: number): Promise<void> {
 
 const PORT_MORT = 45_137;
 
+// Un secret de test EXPLICITE, jamais `''` : `lireConfig` refuse la chaîne
+// vide, et un littéral `Config` construit à la main doit porter une valeur
+// qu'un service accepterait réellement.
+const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
+
 describe('démarrage du service', () => {
     it("refuse de démarrer quand la base est injoignable, et n'ouvre aucun port", async () => {
         const config: Config = {
@@ -44,6 +49,7 @@ describe('démarrage du service', () => {
             base: 'postgres',
             // Un port sur lequel rien n'écoute : la connexion est refusée.
             urlBase: 'postgres://x:y@127.0.0.1:1/x',
+            secretJeton: SECRET,
         };
         // Deux assertions DISTINCTES, et la seconde est le point de ce test.
         await expect(demarrer(config)).rejects.toThrow(/base/i);
@@ -72,6 +78,7 @@ describe('démarrage du service', () => {
             port: 0,
             base: 'sqlite',
             urlBase: ':memory:',
+            secretJeton: SECRET,
         });
         expect(service.port).toBeGreaterThan(0);
         await expect(connecterA(service.port)).resolves.toBeUndefined();

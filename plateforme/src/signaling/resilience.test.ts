@@ -50,6 +50,10 @@ function startRealServer(): Promise<{ child: ChildProcessWithoutNullStreams; por
                 PLATEFORME_PORT: '0',
                 PLATEFORME_BASE: 'sqlite',
                 PLATEFORME_BASE_URL: ':memory:',
+                // `lireConfig` refuse désormais de démarrer sans secret de
+                // signature, et n'en invente aucun : sans cette ligne
+                // l'enfant meurt avant d'annoncer son port.
+                PLATEFORME_SECRET_JETON: 'un-secret-de-plateforme-de-quarante-octets',
             },
         });
 

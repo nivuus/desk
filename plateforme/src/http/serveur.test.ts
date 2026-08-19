@@ -15,11 +15,17 @@ import type { Pilote } from '../base/pilote';
 import type { Config } from '../config';
 import { demarrerServeur, type ServicePlateforme } from './serveur';
 
+// Un secret de test EXPLICITE, jamais `''` : `lireConfig` refuse la chaîne
+// vide, et un littéral `Config` construit à la main doit porter une valeur
+// qu'un service accepterait réellement.
+const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
+
 const CONFIG: Config = {
     hote: '127.0.0.1',
     port: 0,
     base: 'sqlite',
     urlBase: ':memory:',
+    secretJeton: SECRET,
 };
 
 let service: ServicePlateforme | undefined;
