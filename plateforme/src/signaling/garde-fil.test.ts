@@ -23,6 +23,10 @@ import { createSignalingServer } from './relais';
 
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 const T0 = 1_787_000_000_000;
+/// Le préfixe d'une VM simulée, de la VRAIE longueur que
+/// `agents/prefixe.ts` produit (22 caractères base64url). La garde exige
+/// que le sujet d'un jeton d'agent PRÉFIXE la session demandée.
+const P = 'RhH1x2QmTz9kLpVbNc7dAw';
 
 let serveur: ReturnType<typeof createSignalingServer> | undefined;
 let maintenant = T0;
@@ -212,23 +216,37 @@ describe('la garde, au niveau du socket', () => {
         agent.socket.terminate();
     });
 
-    // 🔴🔴 CE QUE LA TÂCHE 16 DOIT ENCORE ÉCRIRE ICI, ET QUI N'EST PAS FAIT :
-    //
-    //     it("… et il ne reçoit AUCUN `ice-config`", …)
-    //
-    // La réécriture ci-dessus est la MOITIÉ « refus » du critère d'E12, faite
-    // au titre du dommage collatéral de la tâche 10 — sans elle l'arbre restait
-    // rouge. La MOITIÉ « aucune fuite d'`ice-config` » est la substance propre
-    // de la tâche 16 et reste DUE.
-    //
-    // 🔴 ELLE DOIT VIVRE DANS UN TEST DISTINCT, jamais comme seconde assertion
-    // de celui du dessus : `expect` interrompt à la première, et la seconde —
-    // c'est-à-dire la FUITE MÊME qu'on veut fermer — ne serait éprouvée par
-    // rien. C'est littéralement la leçon ①A-bis de P2, qui a coûté une
-    // huitième rouge à ce dépôt.
-    //
-    // ✅ La condition qui la rend capable d'échouer est DÉJÀ REMPLIE ici :
-    // `TURN_URL` et `TURN_SECRET` sont posées en `beforeAll` (voir l'en-tête),
-    // donc `configurationIce` ne rend pas `undefined` et l'absence
-    // d'`ice-config` est une vraie mesure, pas une tautologie.
+    it('🔴 …et il ne reçoit AUCUN `ice-config` — LA FUITE d’E12 est fermée', async () => {
+        // 🔴 CE TEST EST LA SUBSTANCE D'E12, et le refus ci-dessus n'en était
+        // que la moitié. Un service qui refuserait APRÈS avoir envoyé
+        // `ice-config` passerait le test précédent mot pour mot, et laisserait
+        // pourtant fuir vers un ANONYME des identifiants TURN valables 86 400 s
+        // (`ice.ts`) — c'est-à-dire exactement ce que P2 avait nommé et laissé
+        // ouvert.
+        //
+        // 🔴 IL VIT DANS UN TEST DISTINCT, jamais comme seconde assertion du
+        // précédent : `expect` interrompt à la première, et cette fuite-ci —
+        // la seule que P3 ferme réellement — ne serait alors éprouvée par
+        // rien. C'est la leçon ①A-bis de P2, appliquée d'avance.
+        const port = demarrer();
+        const agent = await poignee(port, { role: 'agent', session: 'bureau' });
+        expect(agent.messages.map((m) => m.type)).not.toContain('ice-config');
+        agent.socket.terminate();
+
+        // TÉMOIN, DANS LA MÊME EXÉCUTION ET SUR LE MÊME RÔLE : un agent
+        // AUTHENTIFIÉ, lui, en reçoit un. Sans lui, l'assertion ci-dessus
+        // serait vraie quoi qu'il arrive le jour où `ice-config` cesserait
+        // d'être envoyé aux agents — et `TURN_URL`/`TURN_SECRET`, posées en
+        // `beforeAll`, ne prouvent que la moitié de cette non-vacuité.
+        //
+        // Le jeton est de TYPE `agent` et son sujet est le PRÉFIXE de la VM :
+        // la garde exige les deux (`identite/garde.ts`).
+        const admis = await poignee(port, {
+            role: 'agent',
+            session: `${P}:bureau`,
+            jeton: signer(P, SECRET, T0, undefined, 'agent'),
+        });
+        expect(admis.messages.map((m) => m.type)).toContain('ice-config');
+        admis.socket.terminate();
+    });
 });
