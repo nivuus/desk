@@ -557,7 +557,11 @@ L'instrument lui-même est versé : `journaux-plateforme-p3/instrument/`
 les deux correctifs des défauts légués (`373e331`, `c053fa4`) **et** la revue
 transverse (`e77fc0e`) —, **sortie 0**. Journal :
 `temoin-verify-all-cloture-finale.log`, versé, arbre propre sur les cinq
-paquets. *(Le témoin de la recette, `temoin-verify-all-cloture.log`, reste versé
+paquets. ⚠️ **Précision, parce que « après la dernière édition » est une
+affirmation qu'il faut tenir** : ce témoin est joué au commit `e77fc0e`, qui
+est le **dernier commit de CODE** de la branche. Les commits qui le suivent
+(`add387e`, et la correction du « sur neuf ») ne touchent que `CLAUDE.md` et
+ce document — que `verify-all.sh` ne lit pas. *(Le témoin de la recette, `temoin-verify-all-cloture.log`, reste versé
 à côté : il porte `plateforme` à 194, l'état d'avant les deux tests neufs.)*
 
 | Étape | Relevé |
