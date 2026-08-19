@@ -19,6 +19,20 @@
 // est perdu alors que le média continue. La vraie réponse est le PRÉFIXE
 // OPAQUE de P3 (spec §3.4), qui rend un nom de session non devinable.
 //
+// ✅ CE PRÉFIXE EXISTE DEPUIS LE 19 AOÛT 2026 (sous-bloc P3), et l'énoncé
+// ci-dessus cesse d'être un pronostic : `agents/prefixe.ts` tire 128 bits de
+// `randomBytes`, et `agent_enrole.prefixe_session` les rend DURABLES —
+// contrairement à ce registre-ci, le préfixe survit donc au redémarrage du
+// service, ce qui est exactement ce qui manquait.
+//
+// ⚠️ CE QUE LE PRÉFIXE NE RÉPARE PAS, et qu'il faut dire pour ne pas lire la
+// ligne ci-dessus comme une clôture : il est PAR VM, pas par session. Après un
+// redémarrage, deux clients humains de la MÊME VM retrouvent le même préfixe,
+// et le registre en mémoire qui décidait lequel possède `<préfixe>:w-1` est,
+// lui, toujours perdu. Le préfixe ferme la devinabilité entre VMs ; il ne
+// ferme pas la revendication d'une session au sein d'une VM. Le coût nommé
+// ci-dessus reste donc OUVERT, réduit et non supprimé.
+//
 // L'ENREGISTREMENT durable, lui, existe bien : `session.utilisateur_id` est
 // renseignée à l'appariement par la trace (tâche 13). C'est ce qui rend le mot
 // « enregistrée » du critère ③ littéralement vrai, et c'est ce dont P4 aura

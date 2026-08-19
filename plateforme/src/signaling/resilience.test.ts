@@ -7,9 +7,23 @@
 // aujourd'hui pour une raison qu'il faut écrire, sinon on croira la phrase
 // périmée depuis la garde du sous-bloc P2 : le contrôle de forme court sur le
 // PREMIER message, donc AVANT que la garde ait vu un jeton (voir `relais.ts`,
-// `isJsonObject`), et le rôle `agent` reste de toute façon anonyme jusqu'à P3.
-// **Le déni de service en une trame est donc toujours ouvert à quiconque
-// atteint le port**, et c'est bien pourquoi ce fichier existe encore.
+// `isJsonObject`). **Le déni de service en une trame est donc toujours ouvert
+// à quiconque atteint le port**, et c'est bien pourquoi ce fichier existe
+// encore.
+//
+// ❌ CETTE PHRASE PORTAIT UNE SECONDE RAISON, « et le rôle `agent` reste de
+// toute façon anonyme jusqu'à P3 », ET LE SOUS-BLOC P3 L'A RENDUE FAUSSE (19
+// août 2026, revue transverse de fin de branche). Le rôle `agent` exige
+// désormais un jeton de type `agent` dont le sujet préfixe la session
+// (`identite/garde.ts`), et un pair qui ne présente rien ne reçoit AUCUN
+// `ice-config` (`journaux-plateforme-p3/e2-ferme-{1,2}.log`, deux exécutions).
+//
+// ⚠️ CE N'EST PAS LA PHRASE PRINCIPALE QUI TOMBE, C'EST L'UNE DE SES DEUX
+// RAISONS — et la distinction est le sort que le plan de P3 prescrivait
+// d'avance pour cette ligne (E15) : **PRÉCISER, pas corriger**. La première
+// raison suffit à elle seule, et c'est bien elle qui porte : le contrôle de
+// forme est en amont de toute garde, donc AUCUNE authentification, pas même
+// celle de P3, ne peut fermer ce chemin-ci. Le frein est P5 ③.
 //
 
 // Ce fichier ne teste PAS `createSignalingServer` en mémoire : vitest installe

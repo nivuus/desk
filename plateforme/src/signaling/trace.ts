@@ -10,8 +10,20 @@
 //
 // ⚠️ CONSÉQUENCE ASSUMÉE : un agent qui se déclare et repart sans jamais
 // rencontrer de client NE LAISSE AUCUNE TRACE. C'est une décision, pas un
-// oubli ; elle se rouvrira le jour où l'on voudra observer les agents présents,
-// ce qui est le sujet de P3 (`vu_a`), pas de P1.
+// oubli.
+//
+// ✅ CETTE DÉCISION ANNONÇAIT SA PROPRE RÉOUVERTURE — « le jour où l'on voudra
+// observer les agents présents, ce qui est le sujet de P3 (`vu_a`) » —, ET
+// P3 A EU LIEU SANS LA ROUVRIR (19 août 2026, revue transverse de fin de
+// branche). Observer les agents ne passe PAS par la trace de session : c'est
+// `agent_enrole.vu_a`, avancé par le battement du canal `/agent`
+// (`agents/canal.ts`), et jugé par `agents/fraicheur.ts`. Un agent qui se
+// déclare et repart y est donc bien vu — simplement ailleurs, et par un
+// mécanisme qui ne dépend d'aucun appariement.
+//
+// **Le pronostic était juste sur le BESOIN et faux sur le LIEU**, et c'est la
+// forme la plus fréquente de pronostic périmé dans ce dépôt : ce module
+// n'avait rien à changer.
 //
 // 🔴 L'ÉCRITURE NE DOIT JAMAIS POUVOIR TUER UNE SESSION. `ouvrirSession` est
 // asynchrone, le gestionnaire `message` du relais est synchrone, et une

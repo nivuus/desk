@@ -73,8 +73,22 @@ CREATE UNIQUE INDEX vm_un_utilisateur ON vm(utilisateur_id)
 -- personne à inscrire : l'agent ne REVENDIQUE rien, sa session devant rester
 -- revendicable par le client humain qui la rejoindra (P3 lui a donné une
 -- identité, pas une propriété). `NOT NULL`
--- serait donc FAUX, pas seulement coûteux. `vm_id`, lui, reste entièrement
--- vide : c'est P3.
+-- serait donc FAUX, pas seulement coûteux.
+--
+-- ✅ `vm_id` EST RENSEIGNÉE DEPUIS P3 (19 août 2026), et cette ligne disait
+-- encore « reste entièrement vide : c'est P3 ». Le nom de session PORTE la VM
+-- (`<préfixe>:bureau`) : `signaling/trace.ts` découpe le préfixe, le cherche
+-- dans `agent_enrole` et inscrit l'identifiant trouvé.
+--
+-- ⚠️ ELLE RESTE NULLABLE, ET POUR UNE RAISON, PAS PAR DETTE : deux cas rendent
+-- `null` honnêtement -- une session sans préfixe (mode d'essai local, spec
+-- §10) et un préfixe inconnu de la base. `NOT NULL` refuserait alors d'écrire
+-- une trace qui est par ailleurs juste.
+--
+-- ⚠️ La correction de cette ligne a été MANQUÉE une première fois : le commit
+-- `254fdd5` de cette même branche a réécrit les six lignes qui précèdent sans
+-- balayer les deux suivantes. C'est le naufrage du « 487 » -- corriger une
+-- affirmation là où on nous l'a montrée, au lieu de la CHERCHER.
 
 CREATE TABLE session (
     id             TEXT PRIMARY KEY,

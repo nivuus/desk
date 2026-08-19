@@ -16,7 +16,16 @@
 // propriété de session dans `signaling/propriete.ts`, et c'est `relais.ts`
 // seul qui a grossi de les appeler. **L'extraction a donc rendu sa marge au
 // fichier qui en avait besoin, ce qui est exactement ce qu'elle promettait.**
-// P3 et P4 restent à venir, et la phrase ci-dessus vaut toujours pour eux.
+// ✅ P3 A EU LIEU (19 août 2026), ET LA PROPRIÉTÉ TIENT UNE SECONDE FOIS : ce
+// module n'a toujours pas gagné une ligne. Le préfixe de session vit dans
+// `agents/prefixe.ts`, l'identité de l'agent dans `agents/enrolement.ts` et
+// `identite/garde.ts`, le canal dans `agents/canal.ts` — et `Appariement` ne
+// sait rien de tout cela : il apparie des NOMS, et un nom préfixé reste un
+// nom. **C'est ce qui rend le préfixe si bon marché ici** ; deux VMs qui
+// ouvraient toutes deux `bureau` cessent de se rencontrer dans la même entrée
+// sans qu'une ligne de ce fichier ait bougé.
+//
+// P4 reste à venir, et la phrase ci-dessus vaut toujours pour lui.
 
 
 export type Role = 'agent' | 'client';
@@ -47,8 +56,22 @@ export class Appariement<S> {
 
     /// `undefined` = accepté ; sinon le motif de refus, mot pour mot celui que
     /// l'ex-`server.ts:119-125` produisait. Un pair le lit
-    /// (`agent/src/signaling.rs:130`, `client/src/webrtc.ts:109`) : le changer
-    /// serait un changement de protocole.
+    /// (`agent/src/signaling.rs:139`, `client/src/webrtc.ts:130-131`) : le
+    /// changer serait un changement de protocole.
+    ///
+    /// ❌ CES DEUX CITATIONS ÉTAIENT FAUSSES TOUTES LES DEUX, et l'une d'elles
+    /// A ÉTÉ RENDUE FAUSSE PAR P3 LUI-MÊME (revue transverse, 19 août 2026).
+    /// Elles portaient `signaling.rs:130` et `webrtc.ts:109` : la seconde avait
+    /// dérivé sous P2 (la l. 109 est **vide** ; la lecture réelle vit aux
+    /// l. 130-131), la première était **juste jusqu'au commit `5fbc89b` de
+    /// cette branche**, qui a ajouté le jeton à la poignée de main et poussé la
+    /// ligne de 130 à 139. **C'est le naufrage du « 487 » commis à
+    /// l'intérieur de la branche qui le dénonce.**
+    ///
+    /// ⚠️ Le plan de P3 (E11) déclarait `signaling.rs:130` « relu et juste » —
+    /// et il l'était **au moment où le plan a été écrit**. Relire une citation
+    /// avant d'écrire ne suffit donc pas : il faut la relire **après avoir
+    /// exécuté ce qui la déplace**.
     declarer(session: string, role: Role, socket: S): string | undefined {
         const entree = this.sessions.get(session) ?? {};
         if (entree[role]) {
