@@ -647,6 +647,76 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > le nombre. **Toucher une ligne d'un tableau de comptes oblige à remesurer son
 > compte**, même quand ce n'est pas l'objet de l'édition.
 
+> ✅ **Relance du 19 août 2026, fin du sous-bloc D11, PAR LA COMMANDE, APRÈS les
+> dernières éditions de la ronde** (revue transverse comprise). **Le tableau de
+> dette a toujours DEUX lignes, et les DEUX sont INCHANGÉES depuis D10** :
+> `encode.rs` **1536**, `windows_source.rs` **630**. D11 n'a touché ni l'un ni
+> l'autre. **Aucun autre fichier de code source ne dépasse 500 lignes.**
+>
+> ⚠️ **DEUX PORTES ARMÉES PAR LE PLAN SE SONT DÉCLENCHÉES, et les deux
+> extractions ont été jouées — jamais une compression** :
+> `agent/src/transport/piste_audio/injection.rs` (**71**) et
+> `agent/src/transport/tick/tests/audio/injection.rs` (**141**), toutes deux
+> déclarées par un `mod` ordinaire **à l'intérieur** de leur parent (aucune
+> frontière `#[cfg(windows)]` ici : la convention `#[path]` ci-dessous **ne
+> s'applique pas**). C'est le deuxième sous-bloc consécutif où aucune
+> compression n'est employée.
+>
+> ⚠️ **La marge la plus serrée du dépôt reste `agent/src/encode/arret.rs` à
+> 500 (marge 0)**, et la deuxième **`client/verify-webrtc.mjs` à 497 (marge
+> 3) — valeur du dépôt COMMITÉ** ⚠️ *(l'arbre de travail en portait 488 au
+> moment de ce relevé, une modification NON COMMITÉE du sous-projet ⑤ qui
+> travaillait sur `client/` en concurrence ; `git show HEAD:` rend bien 497)* —
+> **inchangée depuis D10, donc elle dérive toujours** : ce fichier
+> n'est touché par aucun chantier, et la **divergence de convention** que D10
+> a relevée sans la trancher tient toujours (le § « Portée » ne liste que
+> `client/src/`, la commande l'attrape quand même). **Décision de convention,
+> non tranchée, et elle appartient au propriétaire du dépôt.**
+>
+> **Fichiers que D11 a fait bouger, tous mesurés par la commande :**
+>
+> | Fichier | Lignes | Remarque |
+> | --- | --- | --- |
+> | `agent/src/transport/tick/tests/audio.rs` | ~~403~~ **471** (marge 29) | +68 : les tests du leg 4 et de l'injection. ⚠️ **Porte franchie à 480 en cours de tâche 4** → extraction de `tests/audio/injection.rs` |
+> | `agent/src/transport/piste_audio.rs` | ~~403~~ **471** (marge 29) | l'accesseur, `{erreur:#}`, le réarmement. ⚠️ **Même porte, même remède** : `piste_audio/injection.rs` |
+> | `agent/src/transport.rs` | ~~468~~ **469** (marge 31) | ⚠️ **+1, et il est DÉCLARÉ** : 100 % commentaire, la correction n°3 de la revue transverse. La porte du plan était à 480, non franchie |
+> | `client/src/main.ts` | ~~392~~ **408** | +16 : l'invariant du rejeu (leg D9 n°12) et sa grille de lecture |
+> | `agent/src/audio.rs` | ~~318~~ **391** | +73 : `injection_encore_armee`, **pur**, et ses tests d'hôte |
+> | `agent/src/windows_audio/fil.rs` | ~~339~~ **382** | +43 : `AUDIO_FAUTE_LECTURE_MS`, un **seul** `warn!` enrichi |
+> | `agent/src/transport/tick/tests/audio/injection.rs` | **141** | neuf — extraction de la porte |
+> | `agent/src/demarrage/audio.rs` | ~~95~~ **115** | +20 : `set_audio_porteuse(true)` dans la seule branche `None`, et sa raison |
+> | `agent/src/windows_source/telemetrie.rs` | ~~72~~ **93** | +21 : le test faible D9 n°11, resserré au triplet exact |
+> | `agent/src/transport/piste_audio/injection.rs` | **71** | neuf — extraction de la porte |
+> | `client/src/resize.test.ts` | ~~39~~ **47** | +8 : le second test faible D9 n°11 |
+> | `scripts/run-agent.sh` | ~~124~~ **126** | +2 : les deux variables de banc neuves (hors portée de la règle) |
+> | `agent/src/windows_audio.rs` | ~~283~~ **292** | revue transverse, commentaires seuls |
+> | `agent/src/capteur/sommeil.rs` | ~~325~~ **328** | idem |
+> | `agent/src/transport/tick.rs` | ~~398~~ **403** | idem |
+> | `agent/src/superviseur/protocole.rs` | ~~101~~ **110** | idem — le chemin `signaling/` disparu |
+>
+> ⚠️ **CINQ chiffres de ces deux tables avaient été écrits SANS être mesurés,
+> et les CINQ étaient faux** — quatre dans la table « Ce que le code livre » de
+> la section D11 (`piste_audio.rs` 472 pour **471**, `fil.rs` 392 pour **382**,
+> `telemetrie.rs` 97 pour **93**, `resize.test.ts` 39 pour **47**) et un dans la
+> table ci-dessus (`windows_audio.rs` 283 pour **292** — le chiffre d'AVANT la
+> branche, recopié comme s'il était celui d'après). Ils ont été attrapés
+> **avant le commit**, en relançant `wc -l` sur les deux tables entières plutôt
+> qu'en les relisant. **C'est le naufrage du « 487 » pris à sa source** : la
+> défense n'est pas de mieux se souvenir, c'est de **mesurer chaque ligne d'une
+> table de comptes au moment où on l'écrit**.
+>
+> ✅ **Chiffres voisins RELEVÉS et EXACTS ce jour-là**, à ne pas re-vérifier :
+> `encode/arret.rs` **500** (marge 0), `client/verify-webrtc.mjs` **497** (3),
+> `superviseur/table.rs` **492** (8), `capture.rs` **492** (8),
+> `transport/socket.rs` **481** (19), `demarrage.rs` **481** (19),
+> `transport/piste_video.rs` **477** (23), `capteur/distante/tests.rs` **474**
+> (26), `congestion/controleur.rs` **472** (28), `transport/adaptation.rs`
+> **468** (32), `diagnostics/multifenetre/reprise/passes.rs` **465**,
+> `moniteurs_virtuels/pilote.rs` **463**, `geometry.rs` **459**,
+> `diagnostics/multifenetre/montee.rs` **459**, `diagnostics/capture.rs`
+> **457**, `turn/allocation.rs` **456**, `moniteurs_virtuels.rs` **448**,
+> `superviseur/placement.rs` **441**.
+
 **Vérifier l'état** :
 
 ```bash
@@ -2433,6 +2503,9 @@ l'**enfant** ; et `main.rs:268` rend la main à `capteur::executer` avant que `d
 | `PLEIN_ECRAN=0` | **Sous-bloc D8** — **variable de PRODUIT**, pas de banc. **Désarme le mécanisme ENTIER** : ni relecture du style (`capteur/fenetre.rs`), ni changement de mode de sortie (`windows_source/redimensionnement.rs`). ⚠️ **`=0` désactive ; une simple PRÉSENCE n'active pas** — même convention qu'`AUDIO`, `SUPERVISEUR` et `CAPTEUR`, et pour la même raison : tester `is_ok()` activerait le plein écran en écrivant `PLEIN_ECRAN=0` pour le couper. Lue dans le **capteur** seul (`capteur/plein_ecran.rs:78`), par `OnceLock` — l'enfant ne fait que relayer. Transmise par `scripts/run-agent.sh:34`. Traces de contrôle : `plein ecran DESARME (PLEIN_ECRAN=0) : …` au démarrage du capteur, et `redimensionnement ignoré : PLEIN_ECRAN=0 …` à chaque `resize`. ⚠️ ~~**C'est la SEULE parade actuelle au défaut HiDPI ouvert**~~ — **plus vrai depuis la revue finale de branche de D8** : le changement de mode étant désormais désarmé PAR DÉFAUT (ligne suivante), le défaut HiDPI est inatteignable en configuration livrée, et `PLEIN_ECRAN=0` est devenu la parade du mécanisme **entier**, plus la seule parade d'un défaut |
 | ❌ ~~`PLEIN_ECRAN_MODE_SORTIE=1`~~ **CETTE VARIABLE N'EXISTE PLUS** (retirée le 6 août 2026, D9 tâche 3 — ni dans le code, ni dans `scripts/run-agent.sh` ; les legs 12 et 13 **cessent d'exister** au lieu d'être différés. Voir la section D9). Tout ce qui suit est le relevé de D8, conservé pour son diagnostic. | ~~**Sous-bloc D8, revue finale de branche (5 août 2026)** — **variable de PRODUIT**. **ARME** le changement de mode de la sortie virtuelle (`windows_source/redimensionnement/mode_sortie.rs`), **DÉSARMÉ PAR DÉFAUT**. ⚠️ **Convention INVERSE de `PLEIN_ECRAN`, à dessein** : on désarme sur `=0` ce qui est livré, on **arme sur `=1`** ce qui ne l'est pas — et ici la simple présence ne suffit pas non plus, il faut la valeur `1`. **Ce qui reste actif sans elle** : détection du style, annonce `PleinEcran`/`Fullscreen`, armement client. **Pourquoi** : critère ② **JAMAIS EXERCÉ** (`mode_sortie_demande=0` aux deux exécutions) et **deux Critiques ouvertes** — C1, la pollution du registre qui bloque les ouvertures de fenêtre ultérieures (portée inconnue : **cinq GUID SudoVDA distincts** au journal de recette) ; C2, la reprise D2 court-circuitée par une `Err` sur un échec **transitoire** de réouverture. **Les deux sont délibérément NON CORRIGÉES**, le désarmement les rendant inatteignables. Garde et raisons : `agent/src/capteur/plein_ecran.rs::changement_de_mode_arme`. Transmise par `scripts/run-agent.sh:35`. Traces : `changement de mode de sortie ARME (…)` au premier appel si armée, `redimensionnement ignoré : changement de mode de sortie DÉSARMÉ (…)` à chaque `resize` sinon.~~ **Ces deux traces n'existent plus** ; `resize` en mode `SortieEntiere` journalise désormais `redimensionnement ignoré : la source capture une sortie DXGI entière (voir le constat de mesure de capteur::plein_ecran, sous-bloc D9)` |
 | `PART_SONDAGE=0` | **Sous-bloc D9, tâche 12** — **variable de BANC, jamais une configuration livrée**. Neutralise l'appel `set_desired_bitrate` de `agent/src/transport/part.rs` : c'est le bras « désarmé » de l'A/B différentiel que D6 laissait dû (son leg n°4). ⚠️ **Convention de `PLEIN_ECRAN` — `=0` DÉSARME, une simple présence n'active pas** ; l'appel est armé par défaut. Lue dans l'**enfant**. Transmise par `scripts/run-agent.sh`. Trace, émise **seulement si désarmé** : `objectif de sondage DESARME (PART_SONDAGE=0) : bras A/B, jamais une configuration livrée` (`warn!`). ⚠️ **L'A/B qu'elle sert a été joué et N'ÉTABLIT RIEN** : 2 exécutions par bras, écart de trafic cumulé +23,2 % dans le sens attendu, mais **variance intra-bras +83,1 %** — plus grande que l'écart mesuré. Voir la section D9 |
+| `AUDIO_FAUTE_LECTURE=<n>` | **Sous-bloc D10, tâche 3** — **variable de BANC, jamais une configuration livrée**. Fait échouer les *n* prochaines **lectures** WASAPI (`agent/src/windows_audio/fil.rs`) ; au-delà de `LECTURES_ECHOUEES_MAX = 10` la capture se déclare morte, ce qui déclenche la reconstruction. **ABSENTE = DÉSARMÉE.** Budget **global au processus** depuis D10 — ⚠️ il était **relu par fil** au premier jet, et chaque capture reconstruite recevait alors un budget neuf : **le chiffre-juge ne pouvait pas quitter zéro**, sur un produit pourtant corrigé. Trace : `injection de fautes de lecture audio ARMEE (banc)`. Transmise par `scripts/run-agent.sh:42`. 🔵 **Le compte de fautes CONSOMMÉES est un témoin d'armement INDÉPENDANT du spectre** : le garde `if !emettait` précède l'injection, donc **une source muette ne peut pas consommer de faute**. ⚠️ **Cette ligne manquait à ce tableau depuis D10** ; ajoutée par la revue transverse de D11 |
+| `AUDIO_FAUTE_RECONSTRUCTION=<n>` | **Sous-bloc D11, tâche 4** — **variable de BANC, jamais une configuration livrée**. Fait échouer les *n* prochaines **reconstructions** de capture audio (`agent/src/transport/piste_audio/injection.rs`), et c'est ainsi que le critère ④ de D10 — « une capture irrécupérable retombe sur la promotion d'une voisine », que D10 déclarait *non démontrable par le protocole prescrit* — devient atteignable. ⚠️ **Convention INVERSE de `PLEIN_ECRAN` : ABSENTE = DÉSARMÉE**, présente et non nulle = armée (jamais `is_ok()`). ⚠️ **Budget GLOBAL AU PROCESSUS** (`OnceLock` + `AtomicU32`, `fetch_update`), **jamais par appel** — c'est la leçon que D10 a payée sur `AUDIO_FAUTE_LECTURE` : un budget relu par fil se réarme à chaque reconstruction, et le chiffre-juge qu'il sert devient **structurellement incapable de quitter zéro**. Lue dans l'**enfant**. Transmise par `scripts/run-agent.sh:44`. Trace, **seulement si armée** : `injection de fautes de RECONSTRUCTION audio ARMEE : banc, jamais une configuration livrée` (`warn!`). La faute emprunte le `warn!` du leg 6, d'où `erreur="faute injectée (AUDIO_FAUTE_RECONSTRUCTION)"` au journal. ⚠️ **Le compte à poser n'est PAS `> RECONSTRUCTIONS_MAX`** : le réarmement de D9 réapprovisionne le budget, et le compte juste est **`(REARMEMENTS_MAX + 1) × RECONSTRUCTIONS_MAX` = 18** — mesuré tel quel |
+| `AUDIO_FAUTE_LECTURE_MS=<ms>` | **Sous-bloc D11, tâche 5** — **variable de BANC**. Borne **dans le temps** l'armement de `AUDIO_FAUTE_LECTURE` (prédicat pur `crate::audio::injection_encore_armee`, testé sur l'hôte ; lue dans `windows_audio/fil.rs`). **ABSENTE = ILLIMITÉ**, donc le comportement de D10 est strictement préservé et ses recettes restent reproductibles. Sans elle, la voisine qu'on veut voir promue meurt **à l'instant même de sa promotion** et le critère reste non démontrable. Transmise par `scripts/run-agent.sh:43`. La trace est celle de `AUDIO_FAUTE_LECTURE`, **enrichie du champ `fenetre_ms`** — un seul `warn!`, à dessein : deux traces au même instant se compteraient comme deux événements (piège maison de D6). ⚠️ **L'ORIGINE DU BUDGET EST LE DÉMARRAGE DU FIL, PAS L'ÉLECTION** : `3000` rend le critère **inatteignable** (le premier arbitrage du capteur arrive ~2,7 s après le démarrage du fil, et la fenêtre se referme 6 ms avant l'élection de la porteuse), **`5000` est la valeur dérivée de la mesure**. ⚠️ **Non calibrée** : c'est une valeur de banc, pas une constante de produit |
 
 ---
 
@@ -4746,6 +4819,14 @@ premier travail de la recette qui armera ce chemin** :
   l'est pas — et **une seule écriture empoisonne TOUTES les sorties futures**.
   *(Le document de résultats parlait du « GUID de sortie virtuelle unique » :
   c'était faux, corrigé.)*
+  ✅ **CETTE ALTERNATIVE EST TRANCHÉE, dans le sens « par GUID » (19 août 2026,
+  sous-bloc D11, recette ⑤).** Dans une MÊME exécution, **sept** sorties
+  naissent à la taille demandée (1280×720) et **une seule** à celle du registre
+  (3840×2160) — et c'est **toujours la sortie du QUATRIÈME GUID**
+  (`…677541430004`), sur **SEPT exécutions**. **Une écriture n'empoisonne donc
+  PAS toutes les sorties futures.** ⚠️ **Ce que cela ne dit pas** : *pourquoi le
+  quatrième*, ni pourquoi la taille passée à la création est ignorée. Deux faits
+  mesurés, non expliqués.
 - **C2 — la reprise sur perte d'accès de D2 est court-circuitée.** Après un
   changement de mode, `reconstruire_sur_la_sortie` rend une `Err` sur un échec
   de réouverture **y compris transitoire** — la classe d'échec exacte que la
@@ -5449,6 +5530,14 @@ contre « une seule écriture empoisonne toutes les sorties futures » n'est
 **toujours pas tranchée** — D9 a établi l'attribution par GUID de la
 **pollution**, pas la portée du **blocage**.
 
+✅ **ELLE EST TRANCHÉE DEPUIS LE 19 AOÛT 2026 (sous-bloc D11, recette ⑤), et
+dans le sens « par GUID »** : sept sorties nées à la taille demandée coexistent
+avec **une seule** née à celle du registre — toujours celle du **quatrième
+GUID** — **dans la même exécution, sept exécutions sur sept**. La naissance à la
+mauvaise taille, qui est le mécanisme du blocage, est donc bien **par GUID**.
+⚠️ **Pourquoi le quatrième reste inexpliqué**, et **rien ne nettoie toujours le
+registre**.
+
 ⚠️ **Conséquence de méthode, à ne pas perdre** : **toutes les mesures de
 capacité de D9 portent sur TROIS fenêtres**, pas huit ni dix. Elles ne se
 comparent à aucune campagne de D4 à D6 sur un seul chiffre absolu.
@@ -5628,6 +5717,8 @@ x86_64-pc-windows-gnu` → **sortie 0, 11 avertissements**, tous `dead_code`, do
   régimes, **pas expliqué**, et un confondeur covarie avec leur frontière.
 - **La PORTÉE du blocage par pollution de registre** : par GUID, ou global ?
   Non tranchée. Et **rien dans le produit ne nettoie le registre**.
+  ✅ **TRANCHÉE PAR D11 : par GUID** (voir l'encadré ci-dessus). ⚠️ **La seconde
+  moitié de cette ligne TIENT INTÉGRALEMENT — rien ne nettoie le registre.**
 - **Le leg 1 n'a JAMAIS été exercé de bout en bout sur la VM** : aucun
   `AudioMort`, aucun `réarmement programmé`, aucun `abandon définitif` n'apparaît
   dans un seul journal. Le remède est raisonné, compilé et couvert par des tests
@@ -5733,6 +5824,11 @@ x86_64-pc-windows-gnu` → **sortie 0, 11 avertissements**, tous `dead_code`, do
    la même course F5, `remove` inconditionnel. Même patron de remède que
    `sommeil/registre.rs`.
 3. ⛔ **L'A/B sur `set_desired_bitrate` (D6 n°4)** — **joué, n'établit rien** :
+   ⚠️ **REJOUÉ PAR D10 à huit fenêtres — n'établit toujours rien —, puis
+   ÉCARTÉ PAR DÉCISION EN D11, avec sa condition de réouverture** : un montage
+   dont la charge d'hôte est **CONTRÔLÉE** (et non seulement appariée), sur **au
+   moins huit paires**. Chantier de banc à part entière, pas une tâche de solde.
+   *Cela n'affirme pas que l'appel est sans effet.*
    le bruit intra-bras (+83,1 %) dépasse le signal (+23,2 %). Il faut **plus
    d'exécutions**, pas un autre montage — et de préférence à plus de trois
    fenêtres, donc après le legs n°4.
@@ -5743,8 +5839,10 @@ x86_64-pc-windows-gnu` → **sortie 0, 11 avertissements**, tous `dead_code`, do
    le produit à **trois** fenêtres sur cette VM, aujourd'hui, et **rien ne
    nettoie derrière**. Deux voies, non arbitrées : purger le registre au
    démarrage du superviseur, ou **tolérer** une sortie née à la mauvaise taille
-   plutôt que la rendre au pilote (`superviseur/boucle.rs`). ⚠️ **Sa portée
-   reste inconnue** — par GUID, ou global ?
+   plutôt que la rendre au pilote (`superviseur/boucle.rs`). ⚠️ ~~**Sa portée
+   reste inconnue** — par GUID, ou global ?~~ ✅ **PAR GUID, tranché par D11
+   (recette ⑤, sept exécutions).** ⚠️ **Et la pollution subsiste : rien ne
+   nettoie derrière.**
 5. 🔴 **Borner la taille de sortie demandée** : le viewport passe désormais en
    pixels périphériques, donc ×4 les pixels à `dpr = 2`, et
    `borner_a_la_taille_max` (1920×1080) n'a plus d'appelant. **Aucun client
@@ -6047,6 +6145,17 @@ devenues fausses dans leur propre branche**.
 > `audio_porteuse` évite en multi-fenêtres — une fuite de son vers une fenêtre
 > qui doit se taire, qu'un test garde rouge. Documenté auprès de
 > `Session::reconstruire_ou_signaler`, et **légué**.
+>
+> ✅ **LE LEG EST FERMÉ, ET PAR LE CORRECTIF QUE CET ENCADRÉ NOMMAIT
+> (19 août 2026, sous-bloc D11, leg 4, commit `5c0ce43`)** :
+> `demarrage/audio.rs::brancher` pose `set_audio_porteuse(true)` **dans sa seule
+> branche `None`**, exactement comme cet encadré le prescrivait, le
+> multi-fenêtres est strictement inchangé et
+> `une_session_non_porteuse_reconstruite_reste_muette` reste vert. **Mesuré** :
+> 441 Hz reçus au vert contre la sentinelle au rouge, 2 exécutions par bras.
+> ⚠️ **Et D11 a trouvé SIX commentaires de plus portant cette même affirmation
+> devenue fausse** — dont un réfuté par un test ajouté **deux cents lignes plus
+> bas dans le même fichier, par la même tâche**. Voir la section D11.
 
 Les onze autres sont des affirmations devenues fausses, corrigées **à leur
 place** : le module d'en-tête et la variante `SortieEntiere` de
@@ -6139,9 +6248,22 @@ une **extraction** exigée en revue, jamais par une compression.
   tentative pour ④.
 - **La séparation des flux entre fenêtres n'est PAS prouvée** — le contrôle de
   distinction ne peut pas échouer sur une page vivante.
+  ✅ **PROUVÉE PAR D11 (recette ④, 19 août 2026)** : un marqueur d'identité
+  **invariant dans le temps** porté par la mire, **rouge joué sur la VM** (deux
+  fenêtres de même mire → même marqueur, collision signalée aux 3 tours), puis
+  10 marqueurs **distincts** aux 3 tours de chacune des 2 exécutions vertes,
+  0 collision. ⚠️ **Cela prouve que deux pages ne décodent pas le même flux,
+  PAS que chaque page montre la fenêtre Windows qu'elle prétend montrer.**
 - **La cause du refus de reconstruction n'est pas identifiée** : une ligne
   `reconstruction de la capture audio refusée` apparaît à l'exécution 2 du
   passage vert, sans explication.
+  ✅ **ELLE EST RÉPONDUE PAR UNE PIÈCE (D11, leg 6)** — et c'est la première
+  fois que `{erreur:#}` sert : `erreur="ouverture du process loopback du PID
+  <n>: Initialize du client de process loopback (format impose : 48 kHz,
+  2 canaux, 16 bits): Défaillance irrémédiable (0x8000FFFF)"`, la tentative
+  suivante réussissant après `REPIT_RECONSTRUCTION` (2,001 s relevés).
+  ⚠️ **Observable, PAS expliquée** : `0x8000FFFF` est le code le moins
+  informatif de sa famille.
 - **L'existence d'une cause NATURELLE de mort de capture audio reste
   inconnue.** Les quatre déclencheurs de D9 n'en produisent aucune, le cinquième
   (tuer le `chrome.exe` cible) **tue la fenêtre avant l'audio**, et tout ce qui
@@ -6149,10 +6271,24 @@ une **extraction** exigée en revue, jamais par une compression.
   remède fonctionne, jamais qu'une cause existe.
 - **Le remède de reconstruction est inerte en mono-fenêtre** (voir la revue
   transverse), et ce cas n'a été ni mesuré ni corrigé.
+  ✅ **CORRIGÉ ET MESURÉ PAR D11 (leg 4)** : `demarrage/audio.rs::brancher`
+  appelle `set_audio_porteuse(true)` dans sa seule branche mono-fenêtre, et la
+  recette ① relève **441 Hz à −39,8/−39,9 dB** au vert (2 exécutions) contre la
+  **sentinelle −1000 dB** au rouge, avec un témoin d'armement indépendant du
+  spectre (15 fautes consommées au vert contre 10 au rouge).
 - **La portée du blocage registre** est rendue **sans objet, pas résolue** — et
-  **rien ne nettoie le registre**.
+  **rien ne nettoie le registre**. ✅ **La PORTÉE est tranchée par D11 : PAR
+  GUID** (sept exécutions ; toujours le quatrième GUID). ⚠️ **« Rien ne nettoie
+  le registre » TIENT INTÉGRALEMENT.**
 - **Le coût de la duplication d'une sortie surdimensionnée** — dupliquer du
   3840×2160 pour n'en recadrer que 1280×720 — n'est mesuré par rien.
+  ✅ **MESURÉ PAR D11 (recette ⑤) : le coût n'est PAS DÉTECTABLE à ce montage.**
+  Écarts +2,9 / +2,8 / −4,8 / +1,0 % sur 4 exécutions, et l'argument qui porte
+  est l'**incohérence de SIGNE** (3 fois sur 4 la surdimensionnée est *plus
+  rapide* que ses témoins, ce qu'un coût ne peut pas produire) — **pas**
+  l'appartenance à l'étendue des témoins, que le message de commit affirmait à
+  tort. ⚠️ **Confondeur NON LEVÉ** : la sortie surdimensionnée est toujours la
+  **quatrième session ouverte**.
 - **Le plafond de 8 encodeurs au-delà de 720p** reste inconnu : le bornage à
   `TAILLE_MAX_SORTIE` (1920×1080, **non calibrée**) limite le risque sans le
   mesurer.
@@ -6254,6 +6390,23 @@ de module **tranchée**, et le leg déclaré **faux depuis le début** —
 `survie_verdict.rs` y était déjà conforme, aucun fichier déplacé), n°10 (les
 constats parqués **requalifiés : 3 survivent, 6 sont PERDUS**).
 
+> ✅ **CE QUE D11 A FAIT DE CETTE LISTE (19 août 2026), point par point.**
+> Détail, réserves et pièces : section « Sous-bloc D11 » plus bas, et
+> `docs/superpowers/plans/2026-08-19-multifenetres-solder-les-legs-resultats.md`.
+>
+> | Leg | Sort sous D11 |
+> | --- | --- |
+> | 1 — A/B `set_desired_bitrate` | ⛔ **ÉCARTÉ PAR DÉCISION, reste dû**, avec sa **condition de réouverture** : charge d'hôte **CONTRÔLÉE**, au moins **huit paires** |
+> | 2 — le maillon du `Resize` | ⛔ **LU, et TOUJOURS NON IDENTIFIÉ** — le silence de D9 n'est pas reproduit (15 sessions, 3 exécutions, **toutes en issue ②**). Les trois suspects sont montrés fonctionnels **dans cette configuration**, ce qui ne les disculpe pas en général |
+> | 3 — les six constats parqués | ⛔ **TOUJOURS PERDUS.** Rien à faire, et c'est le verdict |
+> | 4 🔴 — le remède inerte en mono-fenêtre | ✅ **CORRIGÉ ET MESURÉ** — 2 vertes, 2 rouges |
+> | 5 — construire `AUDIO_FAUTE_RECONSTRUCTION` | ✅ **FAIT**, budget **global au processus**, et il a servi : le critère ④ de D10, « non démontrable par le protocole prescrit », est **TENU** |
+> | 6 — la cause du refus de reconstruction | ✅ **RÉPONDUE PAR UNE PIÈCE** (`0x8000FFFF` sur `Initialize`) — **observable, pas expliquée** |
+> | 7 — le coût de la duplication surdimensionnée | ✅ **MESURÉ** : **non détectable à ce montage**. ⚠️ Confondeur non levé |
+> | 8 — la séparation des flux | ✅ **PROUVÉE**, rouge joué sur la VM. ⚠️ **L'attribution page ↔ fenêtre Windows, elle, ne l'est pas** |
+> | D9 n°11 — deux tests faibles | ✅ **CORRIGÉS** — et la précondition que le plan prescrivait restait VERTE sous le sabotage qu'il prescrivait lui-même |
+> | D9 n°12 — l'invariant non écrit | ✅ **ÉCRIT**, avec sa grille de lecture |
+
 **Ce qui reste dû :**
 
 1. ⛔ **L'A/B sur `set_desired_bitrate` (leg 3 de D9, n°4 de D6)** — rejoué à
@@ -6290,6 +6443,393 @@ constats parqués **requalifiés : 3 survivent, 6 sont PERDUS**).
 8. ⛔ **La séparation des flux entre fenêtres n'est toujours pas prouvée** : il
    faut un contrôle qui résiste à la dérive commune de la source, ou un
    échantillonnage simultané.
+
+---
+
+## 🔉 Sous-bloc D11 — solder les legs : le son revient au cas majoritaire (19 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-19-multifenetres-solder-les-legs-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-19-multifenetres-solder-les-legs.md`.
+Conception : `docs/superpowers/specs/2026-08-19-multifenetres-solder-les-legs-design.md`.
+Journaux : `docs/superpowers/plans/journaux-multifenetres-d11/` — **113 fichiers
+suivis par git** (92 au premier niveau, 21 sous `instrument/`), et **DEUX familles
+de lecture seulement**, relevées par `file`, `grep -acF` sur `ESC[`, et un
+balayage `tr -dc '\000'` :
+
+| Famille | État relevé | Ce qu'il faut faire |
+| --- | --- | --- |
+| les 27 `agent-*.log` **bruts** | UTF-8, **CRLF**, **séquences ANSI PRÉSENTES** (89 lignes sur `agent-critere-1-1.log`, 1081 sur `agent-cout-3.log`) | `sed 's/\x1b\[[0-9;]*m//g'` — ou lire le `-plat` jumeau, **versé pour chacun** |
+| tous les `*-plat.log`, les `*.json`, les `*.jsonl`, les `*-analyse.log`, le `.diff` | UTF-8, **ANSI déjà retirées** ; les `-plat` gardent le CRLF | rien |
+
+✅ **AUCUN octet NUL dans aucun fichier**, vérifié par balayage sur les 92 — à la
+différence de D10, dont `agent-ab-desarme-1.log` en portait 558 et faisait rendre
+à `grep` une sortie **vide** indiscernable d'un zéro.
+
+⚠️ **Contrôle positif du `ERROR = 0` qui revient partout** : `grep -al 'WARN'
+*-plat.log` rend **26** fichiers, `grep -al 'ERROR'` en rend **0**, et la seule
+occurrence de la chaîne `ERROR` du répertoire est `instrument/montage-d11.mjs:161`
+— **le compteur de l'instrument lui-même**, qui aurait donc rapporté des `ERROR`
+s'il y en avait eu. **Le zéro est réel, pas un artefact d'encodage.**
+
+D11 est un sous-bloc de **solde** : **deux lignes de code de production**
+changent un comportement, deux variables de banc rendent atteignables des chemins
+que D10 n'a pas pu exercer, et le reste est de l'instrument, de la mesure et du
+document.
+
+### ① Le fait n°1 : le son revient au cas MAJORITAIRE — une application, une fenêtre
+
+D10 laissait son remède de reconstruction audio **inerte en mono-fenêtre**, et
+c'était le seul de ses huit legs à avoir une conséquence de **comportement**. La
+chaîne : la capture était bien refabriquée, puis le réarmement
+`set_actif(self.audio_porteuse)` la faisait taire — `audio_porteuse` naissant
+`false` et n'ayant pour écrivain qu'un ordre `Audio` du capteur **qu'un agent
+mono-fenêtre ne reçoit jamais**.
+
+**Le correctif est celui que D10 avait nommé, et rien d'autre** :
+`demarrage/audio.rs::brancher` appelle `set_audio_porteuse(true)` **dans sa seule
+branche `None`**, là où le mode est connu — jamais dans
+`reconstruire_ou_signaler`, où forcer `true` réintroduirait le défaut *pire* que
+`audio_porteuse` évite en multi-fenêtres (une fuite de son vers une fenêtre qui
+doit se taire), et qu'un test garde rouge.
+
+| Bras | `capture audio reconstruite` | `compteurs audio` / `actif=true` | fautes consommées | dominante reçue |
+| --- | --- | --- | --- | --- |
+| **VERT** (`18d9591`), 2 exéc. | 1 | 4 / **4** | **15** | **441 Hz à −39,8 / −39,9 dB** |
+| **ROUGE** (`df03fc6`, `main`), 2 exéc. | 1 | 4 / **0** | **10** | **sentinelle −1000 dB** |
+
+**Le rouge a la FORME prescrite** : le mécanisme se déclenche — reconstruction à
+1 **des deux côtés** — et le son reste absent. Un rouge où la reconstruction ne
+partirait pas serait **vacueux**.
+
+🔵 **Et le compte de fautes est un témoin d'armement INDÉPENDANT du spectre** :
+le garde `if !emettait` précède l'injection, donc **une source muette ne peut pas
+consommer de faute**. 10 au rouge, 15 au vert.
+
+### ② Le fait n°2 : le repli sur la promotion, que D10 déclarait non démontrable
+
+`AUDIO_FAUTE_RECONSTRUCTION` est la voie que D10 avait **nommée sans la
+construire**. Elle est construite, et le critère ④ de D10 tombe : la porteuse
+épuise son budget, `AudioMort` part au capteur, **la voisine du même groupe de
+PID est promue ET ÉMET RÉELLEMENT** — 441 Hz à −39,9 dB aux quatre points,
+`bytesReceived` de 1 091 901 à 2 243 534, pendant que la porteuse est à −1000 dB.
+
+🔴 **DEUX valeurs du plan sont RÉFUTÉES, et par la mesure, pas par le
+raisonnement** :
+
+1. **`AUDIO_FAUTE_LECTURE_MS = 3000` rend le critère INATTEIGNABLE.** Le budget
+   d'injection prend son origine **au démarrage du fil, pas à l'élection**, et le
+   premier arbitrage du capteur met **~2,7 s** à arriver : la fenêtre se referme
+   **6 ms avant** l'élection de la porteuse. **5000 est la valeur dérivée de la
+   mesure.**
+2. **`AUDIO_FAUTE_RECONSTRUCTION = 5` ne tient pas la promotion**, et la
+   fermeture arithmétique « exactement 3 fautes » du plan ne vaut que pour le
+   **premier** cycle — il ignore le **réarmement de D9**, qui réapprovisionne le
+   budget. **Le compte juste est `(REARMEMENTS_MAX + 1) × RECONSTRUCTIONS_MAX`**,
+   vérifié **des deux côtés** : dans le code (5 et 3, donc **18**) et dans la
+   mesure (**18 exactement** aux deux verts). La promotion tient **5,020 s** sous
+   la valeur du plan, puis la porteuse récupère à sa sixième tentative.
+
+### ③ Le fait n°3 : la pollution de registre est PAR GUID — une alternative ouverte depuis D8
+
+`CLAUDE.md` porte depuis D8 l'alternative « ou le mode registre est **par GUID**,
+ou **une seule écriture empoisonne TOUTES les sorties futures** », et D9 la
+déclarait explicitement non tranchée. **Elle est tranchée : c'est par GUID.**
+
+Dans une **même** exécution, **sept** sorties naissent à la taille demandée
+(1280×720) et **une seule** à celle du registre (3840×2160) — et c'est
+**toujours la sortie du QUATRIÈME GUID du pilote** (`…677541430004`), sur **SEPT
+exécutions** (`flux-1`, `flux-2`, `cout-sale-0`, `cout-sale-1`, `cout-3`,
+`cout-4`, `cout-propre-1`). ⚠️ **Pourquoi le quatrième n'est pas expliqué**, et
+**rien ne nettoie toujours le registre**.
+
+### Les six critères, avec leur nombre d'exécutions
+
+**Aucun taux n'est revendiqué nulle part.**
+
+| # | Critère | Verdict | Exéc. |
+| --- | --- | --- | --- |
+| ① | En mono-fenêtre, une capture reconstruite redevient audible (leg 4) | **TENU** | 2 vertes + 2 rouges (⚠️ **1 seule rouge exploitable au spectre**) |
+| ② | À deux fenêtres d'un même PID, la voisine reconstruite se tait | **TENU sur ses deux moitiés** — mais **le ROUGE prescrit est VACUEUX, et c'est MESURÉ** | 2 vertes + 1 rouge |
+| ③ | Une capture irrécupérable retombe sur la promotion (leg 5) | **TENU** | 2 vertes + 1 rouge + 2 de diagnostic |
+| ④ | Deux fenêtres montrent deux flux distincts (leg 8) | **TENU** — 10 marqueurs distincts, 0 collision, aux 3 tours de chaque exécution | 2 vertes + 1 rouge |
+| ⑤ | Le coût de la duplication surdimensionnée (leg 7) | **A/B à deux bras NON PRIS** par sa propre règle d'admission ; mesuré en **apparié** — coût **non détectable** | 4 exploitées + 1 dont la sonde de pose a échoué |
+| ⑥ | Le maillon fautif du `Resize` (leg 2) | **SILENCE NON REPRODUIT** — maillon **toujours NON IDENTIFIÉ** | 3 interprétées + 1 écartée + 1 contrôle rouge/vert |
+
+### 🔴 Le ROUGE de ② est VACUEUX, et c'est MESURÉ — la lacune de D10 n'est pas comblée, elle est EXPLIQUÉE
+
+Un binaire **délibérément défectueux** (`set_actif(true)` inconditionnel, une
+ligne, diff versé dans `rouge-2-provenance.diff`, **jamais fusionné**) rend
+**EXACTEMENT** le même relevé que le vert. **La raison était lisible dans le code
+avant la mesure** : le garde `if !emettait` **précède** l'injection, donc une
+voisine **muette** ne consomme aucune faute, ne meurt jamais, **n'atteint jamais
+`reconstruire_ou_signaler`** — et la ligne que le rouge modifie **n'y court
+jamais**.
+
+⛔ **Conséquence à ne pas perdre : la discrimination entre le correctif livré et
+la version que le code déclare *pire* n'est portée QUE par le test d'hôte
+`une_session_non_porteuse_reconstruite_reste_muette`.** C'est la lacune que D10
+se reprochait à son §9 ; D11 ne la comble pas, il établit **pourquoi aucun
+montage de cette forme ne peut la combler** — il faudrait une session **non
+porteuse au moment de sa reconstruction**.
+
+### ⚠️ La revue transverse de fin de branche — SEPT affirmations, dont SIX la même
+
+Cinq défauts en D7, trois Critiques en D8, six en D9, douze en D10. **Sept ici**,
+et **tous franchissent une frontière de tâche**. Commit correcteur : `0eadc02`.
+
+**Six portent la MÊME affirmation** — « en mono-fenêtre le remède de
+reconstruction est INERTE » — devenue fausse au commit `5c0ce43` de cette branche
+même : `windows_audio.rs:87` (« et **il la fait taire** » — l'atteignabilité
+reste vraie, sa conséquence ne l'est plus) et `:136` (« et **léguée** ») ;
+`transport.rs:238`, **dans le fichier même dont la tâche 3 a corrigé les lignes
+276-293** ; `transport/tick.rs:293`, **le fichier qui APPELLE
+`reconstruire_ou_signaler`**, donc celui qui donne le modèle mental ;
+`capteur/sommeil.rs:106` ; et **`transport/tick/tests/audio.rs:223`**.
+
+🔴 **Ce dernier est le plus pur que ce dépôt ait produit, et il bat le « septième
+commentaire orphelin » de D10** : « son défaut propre … **n'est couvert par aucun
+test** » a été **rendu faux par un test ajouté DEUX CENTS LIGNES PLUS BAS DANS LE
+MÊME FICHIER, PAR LA MÊME TÂCHE**. La distance entre l'affirmation et sa
+réfutation n'est ni une tâche ni un fichier : c'est deux cents lignes du même
+commit.
+
+Le septième : `tick/tests/audio.rs:421`, « `appliquer_audio`, **son unique
+écrivain** » — **faux dans le commit même qui ajoute le second**.
+
+**Plus deux dettes d'index soldées au passage** :
+
+- `agent/src/superviseur/protocole.rs:5` nommait **`signaling/src/server.ts`**,
+  disparu au sous-bloc P1. `CLAUDE.md` l'enregistrait comme dette délibérée,
+  `agent/` étant alors le périmètre d'un travail concurrent. **La propriété
+  énoncée reste VRAIE** — `TYPES_RELAYES` porte toujours les mêmes six types,
+  **relus le 19 août 2026 dans `plateforme/src/signaling/relais.ts:37-44`** ;
+  seul le chemin était périmé. Il est aujourd'hui `plateforme/src/signaling/relais.ts`.
+- **`AUDIO_FAUTE_LECTURE` manquait au tableau des variables d'environnement
+  depuis D10** : ajoutée.
+
+⚠️ **Toutes les substitutions ont été faites en vérifiant leur COMPTE** — une
+attendue, une obtenue, sept fois. *Une substitution qui ne dit pas combien
+d'occurrences elle a touchées est une affirmation de complétude non vérifiée.*
+
+### 🔴 NEUF écarts trouvés DANS LES MESSAGES DE COMMIT, dont DEUX affirmations fausses
+
+Une relecture des journaux **indépendante des rapports de tâche** a comparé les
+cinq messages de commit de recette à leurs pièces. **Aucun écart ne renverse un
+verdict** ; **les journaux, eux, sont justes**. Le détail des neuf vit au §12 du
+document de résultats ; les deux qui comptent :
+
+- 🔴 **Recette ⑤** : « **TOUS** à l'intérieur de l'étendue des sept témoins » est
+  **FAUX — c'est UN sur quatre**, et les bornes qui le réfutent sont imprimées
+  dans le message même (74,2 > 73,5 ; 66,6 > 66,4 ; 67,2 < 69,6). ✅ **La
+  conclusion survit, mais par une AUTRE raison** : l'**incohérence de SIGNE** —
+  trois exécutions sur quatre placent la surdimensionnée **plus rapide** que ses
+  témoins, ce qu'un coût de duplication **ne peut pas produire**.
+- ⚠️ **Recette ⑤ encore** : le fait « GUID …0004 » se reproduit sur **SEPT**
+  exécutions et non six — `cout-propre-1`, **la plus probante des sept**, est
+  omise. *Le commit sous-vend sa propre preuve.*
+
+⚠️ **La leçon de méthode est neuve** : *un message de commit est une pièce du
+dépôt, et il n'est relu par personne.* Sept des neuf écarts n'existent que là.
+**Relire les journaux contre le message, jamais l'inverse** — et se méfier des
+**phrases d'interprétation**, qui sont exactement là où les deux faussetés se
+trouvent.
+
+### Ce que le code livre
+
+| Étage | Fichier | Nature |
+| --- | --- | --- |
+| le geste du mono-fenêtre | `agent/src/demarrage/audio.rs` (**115**) | `set_audio_porteuse(true)` dans la **seule** branche `None` — le mode est connu au branchement, jamais dans `reconstruire_ou_signaler` |
+| l'accesseur et le réarmement | `agent/src/transport/piste_audio.rs` (**471**) | `set_audio_porteuse`, et `{erreur:#}` au refus (leg 6) |
+| l'injection de reconstruction | `agent/src/transport/piste_audio/injection.rs` (**71**) | neuf — budget **global au processus**, `OnceLock` + `AtomicU32` + `fetch_update` |
+| le prédicat pur de la fenêtre de temps | `agent/src/audio.rs` (**391**) | `injection_encore_armee`, **pur, aucun `cfg`**, testé sur l'hôte |
+| l'injection de lecture bornée | `agent/src/windows_audio/fil.rs` (**382**) | `AUDIO_FAUTE_LECTURE_MS`, un **seul** `warn!` enrichi de `fenetre_ms` |
+| les tests de l'injection | `agent/src/transport/tick/tests/audio/injection.rs` (**141**) | neuf |
+| les deux tests faibles | `agent/src/windows_source/telemetrie.rs` (**93**), `client/src/resize.test.ts` (**47**) | legs D9 n°11 |
+| l'invariant du rejeu | `client/src/main.ts` (**408**) | legs D9 n°12 — écrit, avec sa grille de lecture |
+
+⚠️ **DEUX portes armées par le plan se sont déclenchées, et les extractions ont
+été jouées** — jamais une compression : `piste_audio/injection.rs` et
+`tick/tests/audio/injection.rs`, toutes deux déclarées par un `mod` ordinaire
+**à l'intérieur** de leur parent (aucune frontière `#[cfg(windows)]` ici, donc la
+convention `#[path]` de ce fichier **ne s'applique pas**).
+
+**Vérifications de fin de branche, les trois comptes annoncés AVANT d'être
+mesurés** : `cargo test -p agent` → **467 passed, 0 failed** — le plan
+annonçait **467**, et sa référence d'entrée mesurée était **458**, soit **+9** ;
+`cargo check --target
+x86_64-pc-windows-gnu` → **sortie 0, 9 avertissements, tous `dead_code`** (la
+nature est vérifiée, jamais le nombre, qui dérive avec la fraîcheur du build) ;
+`npx vitest run` côté client → **107 passed, 12 fichiers** ; et
+`scripts/verify-all.sh` **complet**, ses huit étapes comprises (dont
+`plateforme : npm run test:postgres`, qui a bien tourné — **137 passed** —
+l'instance Postgres étant en marche).
+
+⚠️ **Le compte client de 107 est daté du 19 août 2026 à 15:16, et il a
+CHANGÉ pendant la rédaction de cette section** : une relance à 15:38 rend
+**120 passed, 13 fichiers**. **L'écart n'est PAS imputable à D11** — il vient
+des commits `a4a9890`, `4be86ad` et `b229b98` du **sous-projet ⑤ (P2)**, qui
+travaillait sur `client/` en concurrence. **Le 107 est la mesure de D11 ; le
+120 est celle du dépôt à un instant où deux chantiers y avaient écrit.**
+*Un compte de tests n'est attribuable qu'assorti de son heure quand deux
+chantiers partagent un arbre.*
+
+### Ce que D11 n'établit PAS
+
+- **Aucun taux, nulle part.** Deux exécutions par critère au mieux.
+- 🔴 **L'existence d'une cause NATURELLE de mort de capture audio reste
+  inconnue.** Les quatre déclencheurs de D9 n'en produisent aucune, le cinquième
+  tue la fenêtre avant l'audio, et **tout ce que D11 mesure l'est SOUS INJECTION
+  DE FAUTE**. *L'injection établit que le remède fonctionne, jamais qu'une cause
+  existe.*
+- 🔴 **La discrimination `audio_porteuse` contre `true` ne vit que dans un test
+  d'hôte** — et D11 établit **pourquoi** aucun montage VM de cette forme ne peut
+  la porter.
+- **Le leg 6 devient observable, pas expliqué** : `0x8000FFFF` est le code le
+  moins informatif de sa famille.
+- 🔴 **Le maillon fautif du `Resize` reste NON IDENTIFIÉ.** Les trois suspects
+  sont montrés fonctionnels **dans cette configuration**, ce qui ne les disculpe
+  pas en général — la nuance exacte que la correction C3 de D8 avait payée.
+- **Le coût de la duplication n'est pas détectable à ce montage**, ce qui n'est
+  pas « il n'y en a pas ». **Le confondeur n'est pas levé** : la surdimensionnée
+  est toujours la **quatrième session ouverte**.
+- **La séparation des flux est prouvée, l'ATTRIBUTION ne l'est pas** : rien
+  n'établit que chaque page montre la fenêtre Windows qu'elle prétend montrer.
+- **Pourquoi le QUATRIÈME GUID**, et pourquoi la taille passée à la création est
+  ignorée : deux faits mesurés, **non expliqués**.
+- **Rien ne nettoie le registre**, et D11 n'y touche pas.
+- **Le couplage réélection / répit est EXERCÉ** (cinq fois par exécution en ③,
+  ce que ② ne faisait pas), **pas BORNÉ** : rien ne mesure le retard qu'il
+  inflige au fil de drainage.
+- **Le plafond de 8 encodeurs au-delà de 720p** reste inconnu, et **les trois
+  couches inconnues du chantier D** le restent : le plafond de 8 encodeurs, celui
+  de 4 processus, et le mécanisme de l'abandon du mutex DXGI.
+- **La latence de bout en bout**, qu'aucun sous-bloc du chantier D n'a jamais
+  mesurée.
+- **Aucune constante n'est calibrée** par un jugement visuel ou d'écoute — et
+  **`AUDIO_FAUTE_LECTURE_MS = 5000` n'en est pas une** : c'est une valeur de banc
+  dérivée d'une mesure de ce montage-ci.
+- **La visibilité et le focus restent imposés par le pilote de recette**, page
+  par page — limite héritée de D5, qu'aucun sous-bloc n'a levée.
+- **Aucun client réel, aucun HiDPI réel** : `deviceScaleFactor = 1` partout, donc
+  le legs HiDPI reste **inexercé**.
+- **Le chemin d'extinction propre du superviseur** n'a toujours jamais été
+  exercé, depuis D1.
+
+### Pièges neufs — à connaître avant de toucher à ce terrain
+
+- ⚠️ **Un budget d'injection dont l'origine est prise au DÉMARRAGE DU FIL ne
+  mesure pas ce qu'on croit.** `AUDIO_FAUTE_LECTURE_MS=3000` rendait le critère ③
+  inatteignable, la fenêtre se refermant **6 ms avant** l'élection de la porteuse.
+  **Lire l'origine d'un compteur de banc avant de dimensionner sa fenêtre.**
+- ⚠️ **Une fermeture arithmétique peut ne valoir que pour le PREMIER cycle** :
+  le plan calculait « exactement 3 fautes » en ignorant le réarmement de D9, qui
+  **recharge** le compteur. **Vérifier qu'un mécanisme voisin ne réapprovisionne
+  pas ce qu'on croit épuiser.**
+- 🔴 **Un ROUGE peut être VACUEUX parce que la ligne qu'il modifie n'est jamais
+  ATTEINTE par le montage.** **Avant de bâtir un binaire défectueux, vérifier que
+  sa ligne court.**
+- ⚠️ **Un jeton de protocole peut n'être journalisé NULLE PART** : `grep
+  'AudioMort'` rend **0 sur le vert comme sur le rouge**, et le compte réel se lit
+  sur l'effet côté capteur (`capture audio morte`, 6 contre 0). **Un `grep` de
+  recette doit viser une trace qui EXISTE, ce qui se vérifie sur le VERT avant de
+  conclure du rouge.**
+- 🔴 **Un message de commit est une pièce du dépôt, et personne ne le relit.**
+  Sept des neuf écarts de D11 n'existent que là. **Relire les journaux contre le
+  message, jamais l'inverse.**
+- ⚠️ **Un dénominateur « 5/5 » peut exclure silencieusement ce que la recette
+  cherchait** : les pages `?session=w-impair` de ⑥ ont la **forme** de l'issue ①.
+  L'exclusion est justifiée (aucune session agent derrière, pages fermées avant le
+  balisage), **elle n'était écrite nulle part**. *Énoncer la règle de sélection
+  avant de compter* — le piège de D6, rejoué sur des pages.
+- ⚠️ **Une provenance d'identité peut manquer sur une exécution et pas sur
+  l'autre** : `assignations = []` sur deux JSON, et l'identité y retombe **sur un
+  rang de nom** — la pratique que le protocole déclarait bannie. **Contrôler que
+  la garantie de méthode a produit sa pièce, exécution par exécution.**
+- ⚠️ **Un contexte audio suspendu rend `-Infinity` exactement comme un silence
+  réel** — le contrôle ne pouvait pas distinguer les deux sans `ctx.resume()` ni
+  `ctx.state`. Et **`-Infinity` se sérialise en `null`** : la sentinelle disparaît
+  du journal versé.
+- ⚠️ **Une sonde de pose lancée sur un vivier DÉJÀ PLEIN s'arrête sans verdict**,
+  en dix-neuf lignes (`0x80070044`, `ERROR_TOO_MANY_NAMES`) : dix sorties
+  orphelines survivent à un `Stop-Process`. **La purge passe AVANT la pose.**
+- ⚠️ **Un découpage sur `:` casse sur un chemin Windows** : `--fenetres=hz:profil`
+  donnait `profil = 'C'` sur `C:\dev\…`, **et le seul symptôme était l'absence
+  d'annonce**.
+- ⚠️ **L'ordre shell → superviseur → fenêtres fait capturer la console PowerShell
+  de la tâche planifiée** : ouvrir les fenêtres **avant** le superviseur, qui les
+  trouve par `enumerer_existantes`.
+- ⚠️ **Une précondition prescrite par un plan peut rester VERTE sous le sabotage
+  que le plan prescrit lui-même** (tâche 6). **Un plan n'immunise pas contre le
+  contrôle vacueux : il en est une source.**
+- ⚠️ **`Runtime.consoleAPICalled` rend la chaîne `"Object"` pour tout argument
+  objet** — donc pour les nombres dont une grille a besoin. Les champs se relèvent
+  dans `preview.properties`.
+- ⚠️ **Une commande `git commit -m` dont le message porte des accents graves
+  perd des morceaux de phrase** : le shell les interprète comme des substitutions
+  de commande. Trois phrases ont été mutilées ainsi dans ce sous-bloc, rattrapées
+  par un `--amend -F fichier`. **Passer les messages longs par un fichier.**
+- 🔴 **UN COMPTE DE TESTS N'EST ATTRIBUABLE QU'ASSORTI DE SON HEURE quand deux
+  chantiers partagent l'arbre.** Le compte client est passé de **107 (12
+  fichiers) à 15:16** à **120 (13 fichiers) à 15:38** sans qu'aucune tâche de
+  D11 n'y touche : le sous-projet ⑤ committait sur `client/` en parallèle. Le
+  même piège a failli fausser une **marge de fichier** —
+  `client/verify-webrtc.mjs` vaut **497 au dépôt commité** et **488 dans
+  l'arbre de travail**, une modification non commitée du chantier voisin.
+  **Mesurer avec `git show HEAD:` quand l'arbre est partagé**, et dater tout
+  compte.
+
+### Ce que D11 lègue
+
+**Legs de D10 réglés** : 4 (le remède inerte en mono-fenêtre — **corrigé ET
+mesuré**), 5 (`AUDIO_FAUTE_RECONSTRUCTION` — **construite, et le critère ④ de D10
+tombe**), 6 (la cause du refus — **répondue par une pièce, observable et non
+expliquée**), 7 (le coût de la duplication — **mesuré, non détectable**), 8 (la
+séparation des flux — **prouvée, rouge joué sur la VM**), **plus les deux legs
+froids de D9** (n°11 les deux tests faibles, n°12 l'invariant non écrit).
+
+**Ce qui reste dû :**
+
+1. ⛔ **L'A/B sur `set_desired_bitrate`** (leg 1 de D10, n°3 de D9, n°4 de D6) —
+   **écarté par décision**, joué deux fois sans rien trancher. **Condition de
+   réouverture** : un montage dont la charge d'hôte est **CONTRÔLÉE** — et non
+   seulement appariée —, sur **au moins huit paires**. Chantier de banc à part
+   entière, pas une tâche de solde. ⚠️ *Cela n'affirme pas que l'appel est sans
+   effet.*
+2. ⛔ **Le maillon fautif du `Resize`** (leg 2 de D10) — **lu, et NON IDENTIFIÉ**.
+   Piste déclarée comme piste : dans les deux exécutions **de D9**, la seule
+   session muette à coup sûr est celle qui n'a **jamais** annoncé `visible=true`,
+   et le basculement de sa voisine tombe **sous les 200 ms de lissage du
+   `ResizeObserver`**. **Corrélation sur les journaux de D9, mécanisme non
+   éprouvé.**
+3. ⛔ **Les SIX constats parqués de D9 restent PERDUS.** Inventer une liste serait
+   pire que de l'admettre.
+
+**Legs neufs de D11 :**
+
+4. ⛔ **Aucune cause NATURELLE de mort de capture audio n'est connue** : tout le
+   remède est éprouvé **sous injection**.
+5. ⛔ **La discrimination `audio_porteuse` contre `true` ne vit que dans un test
+   d'hôte.** Il faudrait un montage produisant une session **non porteuse au
+   moment de sa reconstruction** — état qu'aucun réglage du montage actuel ne
+   produit.
+6. ⛔ **Pourquoi le QUATRIÈME GUID** naît à la taille du registre quand les sept
+   autres naissent à la taille demandée. Fait reproduit **sept fois**, mécanisme
+   inconnu. ⚠️ **Et rien ne nettoie le registre.**
+7. ⛔ **Le confondeur de ⑤ n'est pas levé** : « sortie surdimensionnée » et
+   « quatrième session ouverte » sont confondus. Les départager demande un montage
+   où le rang d'ouverture et la taille de naissance varient indépendamment — ce
+   que D11 montre **non posable** par le levier de mode de sortie sur cette VM,
+   la combinaison gagnante y étant `aucun drapeau (dynamique, non persisté)`, qui
+   **par construction n'écrit pas le registre**.
+8. ⛔ **L'ATTRIBUTION page ↔ fenêtre Windows n'est pas prouvée** : ④ prouve la
+   distinction, pas la correspondance. Il y faudrait un identifiant porté de bout
+   en bout par la fenêtre, pas un appariement RGB.
+9. ⛔ **Le shell réémet `fenetre-ouverte` pour une fenêtre déjà ouverte** —
+   constat survivant de D9, requalifié par D10 en **comportement du PRODUIT**, et
+   dont la trace se relit dans ⑥ : une à trois pages d'application par exécution
+   **sans session agent derrière**. **Mécanisme toujours non élucidé.**
+10. ⛔ **Le couplage réélection / répit est exercé, pas borné.**
 
 ---
 
