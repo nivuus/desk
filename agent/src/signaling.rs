@@ -67,7 +67,16 @@ pub async fn run_signaling(
 
     let hello = serde_json::json!({ "role": "agent", "session": session, "jeton": jeton });
     sink.send(Message::Text(hello.to_string())).await?;
-    tracing::info!(session, "agent enregistré auprès du signaling");
+    // 🔴 « agent ENREGISTRÉ » ÉTAIT FAUX, exactement comme son jumeau de
+    // `superviseur/signalisation.rs` : la trace sort à l'ÉMISSION, donc avant
+    // tout verdict de la plateforme, et elle s'affichait aux deux exécutions
+    // de recette de P3 où AUCUNE session ne s'établissait. Ici le refus est
+    // déjà rendu visible plus bas (`Some("error") => tracing::error!`) ;
+    // c'est le seul libellé qui trompait.
+    tracing::info!(
+        session,
+        "déclaration de l'agent émise au signaling (acceptation encore inconnue)"
+    );
 
     let (offer_tx, offers) = mpsc::channel::<String>(4);
     let (answers, mut answer_rx) = mpsc::channel::<String>(4);
