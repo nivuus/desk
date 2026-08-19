@@ -1,0 +1,71 @@
+import { describe, expect, it } from 'vitest';
+import {
+    PLATEFORME_VERSION,
+    encodeEnroler,
+    encodeBattement,
+    parseDepuisLaPlateforme,
+} from './plateforme';
+
+describe('miroir TypeScript du canal plateforme', () => {
+    it('encode `enroler` exactement comme Rust', () => {
+        // La chaîne EXACTE, comparée à celle que `plateforme.rs` asserte de
+        // son côté. Une divergence d'un caractère et les deux bouts ne se
+        // parlent plus.
+        expect(encodeEnroler('w1', 'chut'))
+            .toBe('{"type":"enroler","v":1,"vm":"w1","secret":"chut"}');
+    });
+
+    it('encode `battement`', () => {
+        expect(encodeBattement()).toBe('{"type":"battement","v":1}');
+    });
+
+    it('lit un `enrole` bien formé', () => {
+        const m = parseDepuisLaPlateforme(
+            '{"type":"enrole","v":1,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}',
+        );
+        expect(m).toEqual({
+            type: 'enrole', v: 1, prefixe: 'PPP', jeton: 'jjj', expire_a: 1787136773742,
+        });
+    });
+
+    it('🔴 REJETTE une version PLATEFORME_VERSION + 1', () => {
+        // 🔴 La rouge : ne comparer que `parsed.type`. Le message passerait, et
+        // c'est la moitié TypeScript du critère ③.
+        expect(() => parseDepuisLaPlateforme(
+            `{"type":"refus","v":${PLATEFORME_VERSION + 1},"motif":"version"}`,
+        )).toThrow(/version de plateforme non supportée/);
+    });
+
+    it('🔴 REJETTE une version ABSENTE', () => {
+        // 🔴 La rouge nommée par le plan est de comparer par `!=` au lieu de
+        // `!==`. ⚠️ ELLE NE ROUGIT PAS, et c'est vérifié plutôt que supposé :
+        // `undefined != 1` vaut `true` en JavaScript, donc le refus tombe
+        // quand même. La mutation qui rougit RÉELLEMENT ce test est
+        // l'inverse — accepter l'absence, par exemple `parsed.v ?? VERSION`.
+        // Le plan nous demandait de le vérifier avant de le déclarer : c'est
+        // fait, et il avait raison de douter.
+        expect(() => parseDepuisLaPlateforme('{"type":"refus","motif":"version"}'))
+            .toThrow(/version de plateforme non supportée/);
+    });
+
+    it('🔴 REJETTE une version NULLE, que `?? ` laisserait passer', () => {
+        // Complément du test précédent : `null ?? 1` vaut `1`, donc une
+        // implémentation par valeur par défaut accepterait ce message-ci sans
+        // que rien d'autre ne bouge.
+        expect(() => parseDepuisLaPlateforme('{"type":"refus","v":null,"motif":"version"}'))
+            .toThrow(/version de plateforme non supportée/);
+    });
+
+    it('REJETTE un `type` inconnu', () => {
+        expect(() => parseDepuisLaPlateforme('{"type":"vol","v":1}'))
+            .toThrow(/type de message de plateforme inconnu/);
+    });
+
+    it('🔴 REJETTE un `type` du sens AGENT -> PLATEFORME', () => {
+        // 🔴 Le parseur ne lit QUE le sens plateforme -> agent. Accepter
+        // `enroler` ici ferait qu'un agent traiterait son propre message comme
+        // une réponse — une confusion de sens qu'aucun autre test ne verrait.
+        expect(() => parseDepuisLaPlateforme('{"type":"enroler","v":1,"vm":"w","secret":"s"}'))
+            .toThrow(/type de message de plateforme inconnu/);
+    });
+});
