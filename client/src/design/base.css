@@ -1,0 +1,73 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   REMISE À ZÉRO ET DÉFAUTS D'ÉLÉMENT — exprimés en tokens, jamais en valeurs.
+
+   Ce fichier reprend `client/src/style.css:7-19` d'avant le socle. Il ne
+   déclare AUCUNE valeur : tout vient de `tokens.css`.
+
+   ═══════════════════════════════════════════════════════════════════════════
+   🔴 LA RACINE NE PORTE PLUS DE TAILLE DE POLICE, ET C'EST PORTEUR.
+
+   Avant ce socle, `style.css:11-18` posait `font: 14px/1.5 …` sur le
+   sélecteur `html, body` : la RACINE valait donc 14 px. Or `rem` se mesure sur
+   la racine, et toute l'échelle du §4.4 est en `rem`. Avec `html` à 14 px :
+
+       --e-3 = 0.75rem = 0.75 × 14 = 10,5 px
+
+   au lieu des 12 px que les décalages des bandeaux valent depuis toujours
+   (`style.css:31` et suivantes). Avec la racine laissée au défaut du
+   navigateur, 16 px :
+
+       --e-3 = 0.75rem = 0.75 × 16 = 12 px    ← la reprise exacte
+
+   ⚠️ UN SUCCESSEUR QUI « RÉTABLIRAIT » LA TAILLE SUR `html` POUR LA SYMÉTRIE
+   RENDRAIT TOUS LES DÉCALAGES À 10,5 px SANS QU'AUCUN CONTRÔLE NE LE DISE.
+   Les sept contrôles du sous-projet ⑥ portent sur les couleurs, les
+   contrastes, les ensembles de noms, la bascule et le poids : AUCUN ne mesure
+   une longueur. Le seul garde est ce commentaire, et le test de
+   `reprise.test.ts` qui refuse tout `font-size` sur un sélecteur contenant
+   `html`.
+
+   ⚠️ ET « À L'IDENTIQUE » A UNE PORTÉE, qu'il faut écrire : la reprise vaut à
+   racine 16 px, c'est-à-dire au réglage PAR DÉFAUT du navigateur, et là
+   seulement. Pour un utilisateur qui a agrandi sa police, les décalages
+   d'avant (`12px` absolus) NE BOUGEAIENT PAS, tandis que ceux d'aujourd'hui
+   (`0.75rem`) GRANDISSENT avec son réglage. C'est le changement de
+   comportement VOULU — c'est l'argument d'accessibilité du §4.4 — mais c'en
+   est un, et le dire « à l'identique » sans réserve serait faux.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    height: 100%;
+}
+
+/* ⚠️ `overflow: hidden` NE MONTE PAS ICI, et c'est délibéré. C'est une
+   propriété de la FENÊTRE DE SESSION — la vidéo y occupe 100vw/100vh — et
+   l'appliquer à la page-shell ou à l'écran de connexion couperait leur contenu
+   dès qu'il dépasserait la fenêtre, sans aucun message. Il reste dans
+   `style.css`, qui est la feuille de cette seule surface. */
+
+body {
+    background: var(--fond-0);
+    color: var(--texte-fort);
+    font-family: var(--police-ui);
+    font-size: var(--t-m);
+    line-height: var(--lh-normal);
+}
+
+/* Le SEUL ajout d'apparence de ce sous-bloc, et il est nommé : le point 1 du
+   §3 réserve l'accent à trois usages dont le focus, et `client/connexion.html`
+   en a besoin dès aujourd'hui — il porte deux `<input>` et un `<button>` qui
+   n'avaient aucun anneau de focus visible.
+   ⚠️ `outline-offset` réemploie `--trait-focus` plutôt que d'introduire un
+   littéral de plus : les deux valent 2 px et appartiennent au même anneau. Le
+   jour où ils doivent diverger, un token naît — pas un littéral. */
+:focus-visible {
+    outline: var(--trait-focus) solid var(--accent);
+    outline-offset: var(--trait-focus);
+}
