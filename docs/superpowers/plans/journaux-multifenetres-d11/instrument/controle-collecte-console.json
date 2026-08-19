@@ -1,0 +1,23 @@
+{
+  "controle": true,
+  "journalConsole": [
+    {
+      "t": 1787136090296,
+      "sessionId": "C5706813C77A29AD97F0A1D67763C542",
+      "type": "debug",
+      "args": [
+        "[sonde collecte] balise",
+        "Object"
+      ]
+    },
+    {
+      "t": 1787136090296,
+      "sessionId": "8368837D4C46FB09B093BD77ED27546B",
+      "type": "debug",
+      "args": [
+        "[sonde collecte] balise",
+        "Object"
+      ]
+    }
+  ]
+}

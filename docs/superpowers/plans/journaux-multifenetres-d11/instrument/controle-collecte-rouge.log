@@ -1,0 +1,6 @@
+2026-08-19T10:41:17.366Z ABONNEMENT DESACTIVE (SANS_ABONNEMENT=1) : montage de D10 reproduit.
+2026-08-19T10:41:18.527Z entrees de console collectees : 0
+2026-08-19T10:41:18.527Z journal : []
+2026-08-19T10:41:18.527Z CONTROLE DE COLLECTE REFUSE : la balise NE ressort PAS.
+2026-08-19T10:41:18.527Z => LA RECETTE 6 EST ANNULEE, PAS INTERPRETEE.
+2026-08-19T10:41:18.528Z journal de console ecrit dans controle-collecte-rouge.json

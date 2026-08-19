@@ -1,0 +1,4 @@
+2026-08-19T10:41:31.097Z entrees de console collectees : 2
+2026-08-19T10:41:31.097Z journal : [{"t":1787136090296,"sessionId":"C5706813C77A29AD97F0A1D67763C542","type":"debug","args":["[sonde collecte] balise","Object"]},{"t":1787136090296,"sessionId":"8368837D4C46FB09B093BD77ED27546B","type":"debug","args":["[sonde collecte] balise","Object"]}]
+2026-08-19T10:41:31.097Z CONTROLE DE COLLECTE RECU : la balise ressort, une absence de log devient une information.
+2026-08-19T10:41:31.098Z journal de console ecrit dans controle-collecte-console.json
