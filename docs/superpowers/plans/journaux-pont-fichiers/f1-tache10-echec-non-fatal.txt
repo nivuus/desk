@@ -1,0 +1,47 @@
+Tache 10 -- l'echec du pont n'est PAS fatal : comment la propriete est tenue,
+et la preuve.
+
+LE PLAN dit (tache 10, Step 4) : << Le rouge est en recette (tache 18, Step 6) :
+tuer le pont par PID, le voir relance, et la video ne pas broncher. Aucun test
+d'hote ne peut le voir : boucle.rs est #[cfg(windows)]. >>
+
+C'est exact -- boucle.rs porte #![cfg(windows)] a sa ligne 7, verifie -- et le
+comportement de RELANCE ne se mesure effectivement qu'en recette. Mais la
+propriete << le demarrage n'est pas fatal >>, elle, n'a pas besoin d'un test :
+elle est portee par le TYPE, et cela se prouve mecaniquement.
+
+    EtatCapteur::demarrer(lanceur) -> Result<Self>   appele avec `?`  : FATAL
+    EtatPont::demarrer(lanceur)    -> Self           aucun `?` possible
+
+Il n'existe aucun chemin d'erreur a propager : demarrer ne rend pas de Result
+du tout. Rendre le pont fatal exigerait donc de CHANGER SA SIGNATURE, pas
+d'oublier une ligne.
+
+PREUVE EXECUTEE le 19 aout 2026 -- on ajoute `?` au site d'appel et l'on
+recompile :
+
+    error[E0277]: the `?` operator can only be applied to values that
+                  implement `Try`
+       --> agent/src/superviseur/boucle.rs:110:25
+        |
+    110 |     let mut etat_pont = surveillance_pont::EtatPont::demarrer(lanceur)?;
+    error: could not compile `agent` (bin "agent") due to 1 previous error
+
+Source restauree ensuite, empreinte 7f7163d3fe612764, compilation croisee
+verte.
+
+CE QUE CETTE PREUVE ETABLIT : qu'un echec de lancement du pont ne peut pas
+faire echouer boucle::tourner, donc ne peut pas tuer le superviseur, donc ne
+peut pas toucher la capture. C'est le principe 4 du cadrage rendu STRUCTUREL,
+et non confie a la vigilance d'un relecteur.
+
+CE QU'ELLE N'ETABLIT PAS, et il faut le dire :
+  - que la relance FONCTIONNE. Le pont mort est retente indefiniment par
+    EtatPont::surveiller, espace de PERIODE_RELANCE_PONT_MIN ; rien de cela
+    n'a tourne sur la VM. C'est la tache 18.
+  - que la video ne bronche pas quand le pont meurt en cours de session. Le
+    module ne touche ni a la table, ni aux enfants, ni aux sorties -- lisible
+    dans le code, jamais mesure.
+  - que PERIODE_RELANCE_PONT_MIN vaille 500 ms. Elle est REPRISE de sa jumelle,
+    NON CALIBREE, et delibrement propre a ce module : les coupler ferait qu'un
+    reglage du capteur deplacerait en silence celui du pont.

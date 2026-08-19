@@ -102,6 +102,12 @@ pub fn tourner(
 
     // Le capteur, avant la moindre fenêtre — `surveillance_capteur::EtatCapteur`.
     let mut etat_capteur = surveillance_capteur::EtatCapteur::demarrer(lanceur)?;
+    // Le pont fichiers, juste après — et son démarrage N'EST PAS FATAL, à la
+    // différence de celui du capteur : pas de `?` ici, et ce n'est pas un
+    // oubli. Le cadrage §4 principe 4 exige qu'une panne du côté fichiers ne
+    // touche jamais le flux vidéo ; `EtatPont::demarrer` ne rend donc aucun
+    // `Result`, et retente indéfiniment depuis `surveiller`.
+    let mut etat_pont = surveillance_pont::EtatPont::demarrer(lanceur);
     // Sorties DXGI déjà attribuées, pour que deux fenêtres au même viewport ne
     // se voient pas donner la même. La table porte déjà la correspondance
     // session -> sortie ; ceci n'est que l'ensemble des sorties occupées, par
@@ -211,6 +217,11 @@ pub fn tourner(
         // 5bis. Le capteur, même tour que les enfants — `EtatCapteur::surveiller`.
         etat_capteur.surveiller(lanceur);
 
+        // 5ter. Le pont fichiers, même tour — `EtatPont::surveiller`. Ne
+        // touche ni à la table, ni aux enfants, ni aux sorties : une panne du
+        // pont doit rester sans effet sur les sessions vidéo.
+        etat_pont.surveiller(lanceur);
+
         // 6. Les fenêtres sont-elles encore sur leur sortie ?
         //
         // Une application peut se déplacer ou se retailler d'elle-même, et une
@@ -258,6 +269,12 @@ use placement_periodique::{controler_le_placement, replacer_si_besoin};
 // `placement_periodique` ci-dessus. Nommé `surveillance_capteur` et non
 // `capteur` — voir l'en-tête de ce fichier (I7).
 mod surveillance_capteur;
+
+// Lancement et surveillance du pont fichiers (tâche 10 du sous-bloc F1) :
+// jumeau du module ci-dessus, extrait pour la même raison et le même schéma.
+// Nommé `surveillance_pont` et non `pont` — `crate::pont` désigne le processus
+// lui-même, et ce fichier fait `use super::*`.
+mod surveillance_pont;
 
 // Création d'une sortie virtuelle et restitution au pilote (tâche 1 du
 // sous-bloc D10) : extrait côté production, pour la même raison et le même
