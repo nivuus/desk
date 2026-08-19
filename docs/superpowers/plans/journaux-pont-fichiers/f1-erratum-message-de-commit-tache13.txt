@@ -1,0 +1,34 @@
+ERRATUM sur le message du commit e806f6a (tache 13).
+
+QUOI : un fragment du message a ete AVALE a l'ecriture. La ligne
+
+    - le controle d'ABI des huit rappels est un  et non un #[test] : le
+
+doit se lire
+
+    - le controle d'ABI des huit rappels est un `const _` et non un #[test] :
+
+POURQUOI : exactement la meme cause que l'erratum de 37abbd5, verse dans ce
+meme repertoire -- le message a ete passe entre GUILLEMETS DOUBLES a
+`git commit -m` depuis un shell qui substitue les accents graves. Le fragment
+`` `const _` `` a donc ete execute comme une commande (d'ou le
+`command not found: const` visible dans la sortie de ce tour) et remplace par
+sa sortie, vide.
+
+⚠️ LA LECON DE L'ERRATUM PRECEDENT ETAIT ECRITE, ET ELLE A ETE REPAYEE. Sa
+derniere phrase disait : « ne pas employer d'accents graves dans un message de
+commit passe entre guillemets doubles. Les commits suivants de ce chantier
+n'en portent aucun. » La seconde moitie de cette phrase est desormais fausse :
+le commit e806f6a en portait un. C'est le naufrage que CLAUDE.md documente
+sous le nom du << 487 >> -- une affirmation vraie a sa date, laissee comme si
+elle valait pour l'avenir.
+
+POURQUOI CET ERRATUM PLUTOT QU'UN AMEND : `git commit --amend` est interdit
+par la consigne de ce chantier.
+
+CE QUE CELA CHANGE AU FOND : rien. La divergence decrite est reelle et le code
+la porte : les huit controles d'ABI vivent dans
+`agent/src/pont/projfs/rappels.rs` sous forme de huit `const _`, pas de
+`#[test]`, precisement parce qu'un `#[test]` n'aurait ete compile par rien --
+`cargo check --target x86_64-pc-windows-gnu` ne compile pas le code de test,
+et cette cible n'est jamais testee.
