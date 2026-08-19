@@ -28,6 +28,8 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { attendreDevtools } from './devtools.mjs';
+import { semerJeton } from './jeton-recette.mjs';
 
 const mode = process.argv[2];
 const url = process.argv[3] ?? 'http://localhost:5173/?session=recette';
@@ -81,17 +83,6 @@ class Cdp {
     }
 }
 
-async function waitForDevtools(port, attempts = 50) {
-    for (let i = 0; i < attempts; i += 1) {
-        try {
-            const response = await fetch(`http://127.0.0.1:${port}/json/version`);
-            if (response.ok) return;
-        } catch {}
-        await new Promise((resolve) => setTimeout(resolve, 200));
-    }
-    throw new Error('Chrome DevTools ne répond pas après le délai imparti');
-}
-
 async function pollUntil(predicate, timeoutMs) {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
@@ -121,7 +112,7 @@ async function withChrome(fn) {
         { stdio: 'ignore' },
     );
     try {
-        await waitForDevtools(port);
+        await attendreDevtools(port);
         const created = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })).json();
         const cdp = new Cdp(created.webSocketDebuggerUrl);
         await cdp.send('Page.enable');
@@ -146,6 +137,8 @@ async function withChrome(fn) {
                 window.RTCPeerConnection.prototype = NativeRTCPeerConnection.prototype;
             `,
         });
+        // Sous-bloc P2 : sans jeton, la poignée de main `client` est refusée.
+        await semerJeton(cdp);
         await cdp.send('Page.navigate', { url });
         const pcAppeared = await pollUntil(() => cdp.eval('window.__pc !== null && window.__pc !== undefined'), 15_000);
         if (!pcAppeared) throw new Error('aucune RTCPeerConnection créée après 15s');

@@ -21,6 +21,8 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { attendreDevtools } from './devtools.mjs';
+import { semerJeton } from './jeton-recette.mjs';
 
 const url = process.argv[2] ?? 'http://127.0.0.1:5174/?session=demo';
 const durationMs = Number(process.argv[3] ?? 10000);
@@ -66,17 +68,6 @@ class Cdp {
     close() {
         this.ws.close();
     }
-}
-
-async function waitForDevtools(port) {
-    for (let i = 0; i < 50; i += 1) {
-        try {
-            const r = await fetch(`http://127.0.0.1:${port}/json/version`);
-            if (r.ok) return;
-        } catch {}
-        await new Promise((r) => setTimeout(r, 200));
-    }
-    throw new Error('devtools timeout');
 }
 
 /// Relève la paire employée, ses deux candidats, et les compteurs vidéo.
@@ -159,7 +150,7 @@ async function main() {
         { stdio: 'ignore' },
     );
     try {
-        await waitForDevtools(port);
+        await attendreDevtools(port);
         const created = await (
             await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })
         ).json();
@@ -198,6 +189,8 @@ async function main() {
                 window.RTCPeerConnection.prototype = N.prototype;
             `,
         });
+        // Sous-bloc P2 : sans jeton, la poignée de main `client` est refusée.
+        await semerJeton(cdp);
         await cdp.send('Page.navigate', { url });
 
         console.log(`mode : ${forcerRelais ? "RELAIS FORCÉ (iceTransportPolicy 'relay')" : 'libre (ICE choisit)'}`);
