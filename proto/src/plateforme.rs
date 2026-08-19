@@ -306,6 +306,95 @@ mod tests {
         .is_err());
     }
 
+    /// Conformité aux vecteurs partagés.
+    ///
+    /// 🔴 IL VÉRIFIE `doc["version"]`, ET C'EST LA LACUNE D'`input.rs` CORRIGÉE
+    /// POUR CE FICHIER-CI : `input.rs::conformite_aux_vecteurs_partages` lit
+    /// `vectors.json` sans jamais contrôler sa clé `version`, et le SEUL
+    /// endroit du dépôt qui la contrôle est `ts/input.test.ts`. Un vecteur dont
+    /// la version aurait dérivé passerait donc le Rust en silence — MESURÉ :
+    /// en retirant l'assertion ci-dessous et en portant le fichier à
+    /// `"version": 2`, les 52 tests restaient VERTS. Ici, les DEUX côtés la
+    /// vérifient.
+    #[test]
+    fn conformite_aux_vecteurs_partages() {
+        let raw = include_str!("../plateforme-vectors.json");
+        let doc: serde_json::Value = serde_json::from_str(raw).expect("vecteurs valides");
+
+        // 🔴 La version du fichier EST celle du protocole. Sans cette
+        // assertion, un bump d'un seul côté ne se verrait nulle part.
+        assert_eq!(
+            doc["version"].as_u64().expect("clé version"),
+            u64::from(PLATEFORME_VERSION),
+            "la version des vecteurs a dérivé de PLATEFORME_VERSION"
+        );
+
+        let cases = doc["cases"].as_array().expect("tableau de cas");
+        // 🔴 ANTI-TAUTOLOGIE : un fichier de vecteurs VIDE ferait passer toute
+        // la boucle sans rien éprouver. Même garde qu'`input.rs:326` et que
+        // `sous-ensemble.test.ts`.
+        assert!(!cases.is_empty(), "au moins un vecteur attendu");
+
+        let mut vus = 0;
+        for case in cases {
+            let name = case["name"].as_str().expect("nom");
+            let attendu = case["json"].as_str().expect("json attendu");
+
+            match case["sens"].as_str().expect("sens") {
+                "vers" => {
+                    let msg = match case["kind"].as_str().expect("kind") {
+                        "enroler" => VersLaPlateforme::enroler(
+                            case["vm"].as_str().unwrap(),
+                            case["secret"].as_str().unwrap(),
+                        ),
+                        "battement" => VersLaPlateforme::battement(),
+                        autre => panic!("kind inconnu dans le sens vers : {autre}"),
+                    };
+                    assert_eq!(
+                        serde_json::to_string(&msg).expect("sér."),
+                        attendu,
+                        "sérialisation du vecteur « {name} »"
+                    );
+                    let relu: VersLaPlateforme =
+                        serde_json::from_str(attendu).expect("désér.");
+                    assert_eq!(relu, msg, "désérialisation du vecteur « {name} »");
+                }
+                "depuis" => {
+                    let msg = match case["kind"].as_str().expect("kind") {
+                        "enrole" => DepuisLaPlateforme::enrole(
+                            case["prefixe"].as_str().unwrap(),
+                            case["jeton"].as_str().unwrap(),
+                            case["expire_a"].as_i64().unwrap(),
+                        ),
+                        "battement-recu" => DepuisLaPlateforme::battement_recu(
+                            case["jeton"].as_str().unwrap(),
+                            case["expire_a"].as_i64().unwrap(),
+                        ),
+                        "refus" => DepuisLaPlateforme::refus(
+                            serde_json::from_value(case["motif"].clone()).expect("motif"),
+                        ),
+                        autre => panic!("kind inconnu dans le sens depuis : {autre}"),
+                    };
+                    assert_eq!(
+                        serde_json::to_string(&msg).expect("sér."),
+                        attendu,
+                        "sérialisation du vecteur « {name} »"
+                    );
+                    let relu: DepuisLaPlateforme =
+                        serde_json::from_str(attendu).expect("désér.");
+                    assert_eq!(relu, msg, "désérialisation du vecteur « {name} »");
+                }
+                autre => panic!("sens inconnu : {autre}"),
+            }
+            vus += 1;
+        }
+        // 🔴 Le compte est ÉCRIT EN DUR : sans lui, un `sens` mal orthographié
+        // ferait sauter des cas en silence — le `panic!` ne les verrait pas,
+        // puisqu'il n'est atteint que par une valeur PRÉSENTE et inconnue, pas
+        // par un cas qu'une future refonte de la boucle sauterait.
+        assert_eq!(vus, cases.len(), "tous les cas doivent être exercés");
+    }
+
     #[test]
     fn round_trip_des_trois_reponses() {
         for message in [

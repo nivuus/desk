@@ -1,0 +1,73 @@
+{
+  "comment": "Vecteurs partagés Rust/TypeScript du canal plateforme <-> agent. Toute modification doit être répercutée des deux côtés. Fichier NEUF et distinct de vectors.json, qui est structuré pour le protocole d'entrée binaire seul : y ajouter des kind étrangers traverserait le match de input.rs. La clé version est vérifiée des DEUX côtés, ce qui corrige pour ce fichier-ci la lacune de vectors.json, dont seul le consommateur TypeScript la contrôle.",
+  "version": 1,
+  "cases": [
+    {
+      "name": "enroler",
+      "sens": "vers",
+      "kind": "enroler",
+      "vm": "w1",
+      "secret": "chut",
+      "json": "{\"type\":\"enroler\",\"v\":1,\"vm\":\"w1\",\"secret\":\"chut\"}"
+    },
+    {
+      "name": "enroler_a_nom_accentue",
+      "sens": "vers",
+      "kind": "enroler",
+      "vm": "vm-générale",
+      "secret": "sécret-éphémère",
+      "json": "{\"type\":\"enroler\",\"v\":1,\"vm\":\"vm-générale\",\"secret\":\"sécret-éphémère\"}"
+    },
+    {
+      "name": "battement",
+      "sens": "vers",
+      "kind": "battement",
+      "json": "{\"type\":\"battement\",\"v\":1}"
+    },
+    {
+      "name": "enrole",
+      "sens": "depuis",
+      "kind": "enrole",
+      "prefixe": "RhH1x2QmTz9kLpVbNc7dAw",
+      "jeton": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJQIn0.c2ln",
+      "expire_a": 1787136773742,
+      "json": "{\"type\":\"enrole\",\"v\":1,\"prefixe\":\"RhH1x2QmTz9kLpVbNc7dAw\",\"jeton\":\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJQIn0.c2ln\",\"expire_a\":1787136773742}"
+    },
+    {
+      "name": "battement_recu",
+      "sens": "depuis",
+      "kind": "battement-recu",
+      "jeton": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJRIn0.c2ln",
+      "expire_a": 1787136774342,
+      "json": "{\"type\":\"battement-recu\",\"v\":1,\"jeton\":\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJRIn0.c2ln\",\"expire_a\":1787136774342}"
+    },
+    {
+      "name": "refus_version",
+      "sens": "depuis",
+      "kind": "refus",
+      "motif": "version",
+      "json": "{\"type\":\"refus\",\"v\":1,\"motif\":\"version\"}"
+    },
+    {
+      "name": "refus_forme",
+      "sens": "depuis",
+      "kind": "refus",
+      "motif": "forme",
+      "json": "{\"type\":\"refus\",\"v\":1,\"motif\":\"forme\"}"
+    },
+    {
+      "name": "refus_enrolement",
+      "sens": "depuis",
+      "kind": "refus",
+      "motif": "enrolement",
+      "json": "{\"type\":\"refus\",\"v\":1,\"motif\":\"enrolement\"}"
+    },
+    {
+      "name": "refus_sequence",
+      "sens": "depuis",
+      "kind": "refus",
+      "motif": "sequence",
+      "json": "{\"type\":\"refus\",\"v\":1,\"motif\":\"sequence\"}"
+    }
+  ]
+}
