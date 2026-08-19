@@ -10,14 +10,19 @@
 // il écoute. Une rupture bruyante vaut mieux qu'une écoute universelle
 // silencieuse.
 //
-// ⚠️ LA MOITIÉ DE CE « À QUICONQUE » A SURVÉCU AU SOUS-BLOC P2, et il faut
-// dire laquelle : la garde d'`identite/garde.ts` refuse un pair `client` sans
-// jeton, mais un pair qui se déclare `{"role":"agent"}` est TOUJOURS accepté
-// sans identité et reçoit ses identifiants TURN de 86 400 s — l'agent Rust
-// n'a pas d'identité avant P3. **C'est donc toujours `PLATEFORME_HOTE` qui
-// borne cette fenêtre-là**, et l'argument ci-dessus n'a rien perdu de sa
-// force ; il en a même gagné, la fenêtre restant ouverte plus longtemps que
-// P1 ne le prévoyait.
+// ⚠️ UNE MOITIÉ DE CE « À QUICONQUE » AVAIT SURVÉCU AU SOUS-BLOC P2, ET ELLE
+// EST FERMÉE DEPUIS P3. Le texte disait ici qu'un pair se déclarant
+// `{"role":"agent"}` était toujours accepté sans identité et recevait ses
+// identifiants TURN de 86 400 s ; ce n'est plus vrai — le rôle `agent` exige
+// son jeton, de type `agent` et à sujet préfixant la session
+// (`identite/garde.ts`), et ce jeton s'obtient sur le canal `/agent` contre le
+// secret d'enrôlement de la VM.
+//
+// **L'argument ci-dessus n'en perd RIEN**, et c'est pourquoi le paragraphe est
+// corrigé plutôt que supprimé : `PLATEFORME_HOTE` borne QUI PEUT ATTEINDRE le
+// port, ce qui vaut avant toute authentification et pour les deux chemins —
+// le relais comme le canal d'enrôlement, dont les tentatives de secret ne sont
+// bridées par rien à ce jour (c'est le sujet de P5).
 
 //
 // La lecture d'environnement se fait ICI et nulle part ailleurs : `env` est un

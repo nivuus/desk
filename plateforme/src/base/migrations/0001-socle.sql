@@ -70,7 +70,9 @@ CREATE UNIQUE INDEX vm_un_utilisateur ON vm(utilisateur_id)
 -- ✅ P2 RENSEIGNE `utilisateur_id` (19 août 2026), et la colonne reste NULLABLE
 -- POUR UNE RAISON QUI N'EST PAS DE LA DETTE : une session appariée par un pair
 -- `agent` seul -- la session de contrôle `bureau` au démarrage d'une VM -- n'a
--- personne à inscrire, l'agent n'ayant aucune identité avant P3. `NOT NULL`
+-- personne à inscrire : l'agent ne REVENDIQUE rien, sa session devant rester
+-- revendicable par le client humain qui la rejoindra (P3 lui a donné une
+-- identité, pas une propriété). `NOT NULL`
 -- serait donc FAUX, pas seulement coûteux. `vm_id`, lui, reste entièrement
 -- vide : c'est P3.
 
