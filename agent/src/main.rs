@@ -23,6 +23,7 @@ mod mire;
 mod moniteurs_virtuels;
 mod h264;
 mod input;
+mod micro;
 mod opus;
 #[cfg(windows)]
 mod pointer_settings;
