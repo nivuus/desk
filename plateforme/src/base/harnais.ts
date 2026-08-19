@@ -21,6 +21,16 @@ const URL_POSTGRES =
     process.env.PLATEFORME_BASE_URL ??
     'postgres://plateforme:plateforme-test@127.0.0.1:5433/plateforme_test';
 
+/// L'instant auquel les migrations de test sont appliquées.
+///
+/// 🔴 C'est une valeur de la MAGNITUDE D'UNE ÉPOQUE EN MILLISECONDES, et non
+/// un petit nombre commode, parce qu'un petit nombre ne mesure rien.
+/// `1_000` tenait dans un entier 4 octets ; `Date.now()` n'y tient pas. Le
+/// service de production n'écrit que des `Date.now()` : une suite qui n'écrit
+/// que des `1_000` déclare portable un schéma qui refuse toute écriture réelle
+/// sur l'un des deux moteurs, sans qu'aucun test ne rougisse.
+export const INSTANT_MIGRATION = 1_700_000_000_000;
+
 /// Ouvre une base VIERGE et y applique les migrations.
 ///
 /// SQLite : une base en mémoire, donc neuve par construction.
@@ -31,7 +41,7 @@ const URL_POSTGRES =
 export async function baseNeuve(nom: string): Promise<Pilote> {
     if (MOTEUR === 'sqlite') {
         const p = ouvrirSqlite(':memory:');
-        await appliquerMigrations(p, REPERTOIRE_MIGRATIONS, 1_000);
+        await appliquerMigrations(p, REPERTOIRE_MIGRATIONS, INSTANT_MIGRATION);
         return p;
     }
 
@@ -46,7 +56,7 @@ export async function baseNeuve(nom: string): Promise<Pilote> {
     await admin.fermer();
 
     const p = ouvrirPostgres(`${URL_POSTGRES}?options=-c%20search_path%3D${schema}`);
-    await appliquerMigrations(p, REPERTOIRE_MIGRATIONS, 1_000);
+    await appliquerMigrations(p, REPERTOIRE_MIGRATIONS, INSTANT_MIGRATION);
     return p;
 }
 

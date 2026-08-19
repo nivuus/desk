@@ -7,7 +7,7 @@
 // de croire.
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { baseNeuve, MOTEUR } from './harnais';
+import { baseNeuve, INSTANT_MIGRATION, MOTEUR } from './harnais';
 import { appliquerMigrations, REPERTOIRE_MIGRATIONS } from './migrations';
 import type { Pilote } from './pilote';
 
@@ -90,5 +90,46 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
             }),
         ).rejects.toThrow(/délibéré/);
         expect(await base.interroger('SELECT id FROM vm', [])).toHaveLength(0);
+    });
+    it("porte un horodatage d'époque en millisecondes, sur les DEUX moteurs", async () => {
+        // 🔴 Ce test existe parce que le lint statique ne peut rien contre lui
+        // et que la double passe ne l'attrapait pas non plus : elle n'écrivait
+        // que de PETITES valeurs. `INTEGER` vaut jusqu'à 8 octets sur SQLite et
+        // exactement 4 sur Postgres — mesuré le 19 août 2026 sur PostgreSQL
+        // 16.15 : `value "1787136773742" is out of range for type integer`.
+        // Le service n'écrit pourtant que des `Date.now()` (≈ 1,79e12).
+        //
+        // C'est le troisième angle mort de la paire lint / double passe, et il
+        // n'est couvert que par le CHOIX DES VALEURS : une suite qui écrit
+        // `1_000` déclare portable un schéma qui refuse toute écriture réelle.
+        const MS = 1_787_136_773_742;
+        base = await baseNeuve('epoque');
+
+        // (1) la table de suivi des migrations, écrite par `baseNeuve`
+        const [suivi] = await base.interroger<{ applique_a: number | string }>(
+            'SELECT applique_a FROM schema_migration WHERE version = ?',
+            [1],
+        );
+        expect(Number(suivi.applique_a)).toBe(INSTANT_MIGRATION);
+
+        // (2) la table `session`, ouverte puis close aux deux bornes
+        await base.executer('INSERT INTO session(id,nom_session,ouverte_a) VALUES(?,?,?)',
+            ['s-epoque', 'bureau', MS]);
+        await base.executer('UPDATE session SET fermee_a = ? WHERE id = ?', [MS + 5, 's-epoque']);
+        const [ligne] = await base.interroger<{ ouverte_a: number | string; fermee_a: number | string }>(
+            'SELECT ouverte_a, fermee_a FROM session WHERE id = ?',
+            ['s-epoque'],
+        );
+        expect(Number(ligne.ouverte_a)).toBe(MS);
+        expect(Number(ligne.fermee_a)).toBe(MS + 5);
+
+        // (3) les deux autres colonnes d'horodatage du socle
+        await base.executer('INSERT INTO utilisateur(id,email,empreinte_mdp,cree_a) VALUES(?,?,?,?)',
+            ['u-epoque', 'e@exemple.test', 'x', MS]);
+        await base.executer('INSERT INTO vm(id,nom,adresse,vue_a) VALUES(?,?,?,?)',
+            ['v-epoque', 'vm', '10.0.0.1', MS]);
+        const [u] = await base.interroger<{ cree_a: number | string }>(
+            'SELECT cree_a FROM utilisateur WHERE id = ?', ['u-epoque']);
+        expect(Number(u.cree_a)).toBe(MS);
     });
 });

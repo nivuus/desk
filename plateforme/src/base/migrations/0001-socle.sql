@@ -1,10 +1,23 @@
 -- Sous-ensemble portable (spec §3.2) : identifiants TEXT/UUID v4, horodatages
--- INTEGER en millisecondes TOUJOURS écrites par l'application, booléens
+-- BIGINT en millisecondes TOUJOURS écrites par l'application, booléens
 -- INTEGER 0/1, aucune valeur littérale.
+--
+-- Les horodatages sont BIGINT et non INTEGER, et c'est MESURÉ, pas prudentiel.
+-- `INTEGER` vaut jusqu'à 8 octets sur SQLite et exactement 4 sur Postgres :
+-- le 19 août 2026, sur PostgreSQL 16.15, écrire un `Date.now()` dans une
+-- colonne INTEGER rendait
+--     value "1787136773742" is out of range for type integer
+-- et le service ne pouvait pas appliquer ses PROPRES migrations. SQLite
+-- l'acceptait sans un mot -- c'est un quatrième angle mort du couple
+-- lint / double passe, celui du CHOIX DES VALEURS.
+--
+-- Convention qui rend la règle contrôlable : toute colonne d'horodatage porte
+-- un nom en `_a` (cree_a, vue_a, ouverte_a, fermee_a, applique_a), et le lint
+-- de `sous-ensemble.test.ts` refuse un `_a INTEGER`.
 
 CREATE TABLE schema_migration (
     version    INTEGER PRIMARY KEY,
-    applique_a INTEGER NOT NULL
+    applique_a BIGINT NOT NULL
 );
 
 -- `utilisateur` est créée par P1 et RESTE VIDE : P2 lui donne son
@@ -18,7 +31,7 @@ CREATE TABLE utilisateur (
     id            TEXT PRIMARY KEY,
     email         TEXT NOT NULL UNIQUE,
     empreinte_mdp TEXT NOT NULL,
-    cree_a        INTEGER NOT NULL
+    cree_a        BIGINT NOT NULL
 );
 
 CREATE TABLE vm (
@@ -26,7 +39,7 @@ CREATE TABLE vm (
     nom            TEXT NOT NULL,
     adresse        TEXT NOT NULL,
     utilisateur_id TEXT NULL REFERENCES utilisateur(id),
-    vue_a          INTEGER NULL
+    vue_a          BIGINT NULL
 );
 
 -- Index unique PARTIEL : plusieurs VM non attribuées coexistent, une seconde
@@ -50,8 +63,8 @@ CREATE TABLE session (
     nom_session    TEXT NOT NULL,
     utilisateur_id TEXT NULL,
     vm_id          TEXT NULL,
-    ouverte_a      INTEGER NOT NULL,
-    fermee_a       INTEGER NULL,
+    ouverte_a      BIGINT NOT NULL,
+    fermee_a       BIGINT NULL,
     motif          TEXT NULL
 );
 

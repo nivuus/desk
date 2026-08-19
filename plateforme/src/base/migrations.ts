@@ -68,8 +68,18 @@ export async function appliquerMigrations(
     // `0001-socle.sql`, à l'identique, parce qu'aucune des deux ne peut
     // s'appuyer sur l'autre : la première migration a besoin de la table pour
     // s'enregistrer.
+    //
+    // ⚠️ Cette duplication est DÉLIBÉRÉE, donc elle peut diverger — et une
+    // divergence de TYPE serait muette : la base créée par cette ligne-ci ne
+    // ressemblerait plus à celle que décrit le socle, sans qu'aucune erreur ne
+    // le dise. `sous-ensemble.test.ts` compare les deux définitions ; ne pas
+    // toucher l'une sans l'autre.
+    //
+    // `applique_a` est BIGINT et non INTEGER : voir l'en-tête de
+    // `0001-socle.sql` -- sur Postgres, INTEGER vaut 4 octets et un
+    // `Date.now()` n'y tient pas.
     await p.executer(
-        'CREATE TABLE IF NOT EXISTS schema_migration (version INTEGER PRIMARY KEY, applique_a INTEGER NOT NULL)',
+        'CREATE TABLE IF NOT EXISTS schema_migration (version INTEGER PRIMARY KEY, applique_a BIGINT NOT NULL)',
         [],
     );
 
