@@ -86,8 +86,19 @@ const EXCLUS = new Map([
 // et le jour où elle est vide, ces trois blocs disparaissent avec elle.
 //
 // ── POURQUOI CETTE PALETTE N'EST PAS SIMPLEMENT RÉDUITE À CE QUI SERT ──────
+// ⚠️ LE RELEVÉ QUI SUIT EST DATÉ DU SOUS-BLOC S1, ET S2 L'A RENDU PÉRIMÉ : il
+// y a désormais 52 paires (`--accent-survol` en ajoute deux) et 10 orphelins,
+// non plus 50 et 28. Il reste VRAI COMME HISTOIRE — c'est ce qui a fondé la
+// décision —, et il est laissé DATÉ plutôt qu'effacé : un présent devient faux,
+// un relevé daté non. 🔴 LE REFAIRE EST LE TRAVAIL DE LA TÂCHE QUI SOLDE CETTE
+// LISTE, et le nouveau chiffre sera BAS : les dix tokens restants sont
+// typographiques et d'espacement, que les paires de contraste ne citent pas.
+// ⚠️ Cela NE RÉFUTE PAS la décision de S1 — elle portait sur la palette ENTIÈRE
+// au moment où elle a été prise, et c'est précisément parce qu'elle a tenu que
+// la liste a pu rétrécir de 28 à 10 au lieu d'être élaguée.
+//
 // C'était la voie évidente, et elle est REFUSÉE SUR MESURE, prise le 19 août
-// 2026 : sur les 50 paires de contraste déclarées du §4.5 que le contrôle §7.1
+// 2026 (relevé S1) : sur les 50 paires de contraste déclarées du §4.5 que le contrôle §7.1
 // vérifie, **46 citent au moins un token de cette liste**. Élaguer la palette
 // pour verdir §7.6 ferait tomber §7.1 de 50 paires à 4 — on satisferait un
 // contrôle en vidant l'autre, ce qui est exactement le geste que ce dépôt
