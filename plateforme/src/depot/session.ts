@@ -116,3 +116,39 @@ export async function lireParNom(p: Pilote, nomSession: string): Promise<LigneSe
         [nomSession],
     );
 }
+
+/// Combien de sessions de cet utilisateur sont OUVERTES.
+///
+/// 🔴 C'EST LE PREMIER LECTEUR DE PRODUCTION DE `session.utilisateur_id`. La
+/// colonne est écrite depuis P2 par la chaîne `identite/garde.ts` →
+/// `signaling/relais.ts` → `signaling/trace.ts` → `ouvrirSession` ci-dessus, et
+/// le seul `SELECT` qui la ramenait était `lireParNom`, dont aucun appelant
+/// n'est du code de production. C'est le legs n°4 de P2 / n°3 de P3.
+///
+/// ⚠️ CE QUE CE COMPTE N'ÉTABLIT PAS, et c'est pourquoi le champ que la route
+/// en tire s'appelle `sessions_ouvertes` et non `sessions_actives` : il compte
+/// des LIGNES non closes, jamais des sessions média vivantes. L'avertissement
+/// de tête de ce fichier dit l'écart dans les deux sens — le média survit au
+/// redémarrage du service alors que `balayerLesOuvertes` a clos sa ligne, et
+/// une ligne peut rester ouverte pour un pair parti sans que sa déconnexion
+/// ait été vue. Le nom porte la réserve ; ne pas le renommer sans la lever.
+///
+/// ⚠️ UNE LIGNE À `utilisateur_id` NUL N'EST COMPTÉE POUR PERSONNE. C'est le
+/// cas NOMINAL d'une session de contrôle appariée par l'agent seul
+/// (`identite/garde.ts`, et le commentaire d'`ouvrirSession` ci-dessus) :
+/// l'égalité SQL avec `NULL` ne rend jamais vrai, et cette propriété est tenue
+/// par un test plutôt que laissée à la sémantique du moteur.
+export async function compterOuvertesDe(p: Pilote, utilisateurId: string): Promise<number> {
+    const lignes = await p.interroger<{ n: number }>(
+        'SELECT COUNT(*) AS n FROM session WHERE utilisateur_id = ? AND fermee_a IS NULL',
+        [utilisateurId],
+    );
+    // ⚠️ AUCUN `Number(...)` ICI, DÉLIBÉRÉMENT. Un `COUNT(*)` est un `int8` sur
+    // Postgres, que `pg` rendrait en CHAÎNE sans le `setTypeParser` de
+    // `base/pilote-postgres.ts` — mesuré à travers le pilote du service :
+    // `[{"n":1}] typeof = number`. Envelopper d'un `Number()` rendrait le
+    // compte juste ET masquerait la disparition du parseur, dont dépendent
+    // sept colonnes ailleurs. Le test asserte donc le TYPE, pas seulement la
+    // valeur, et c'est cette assertion qui tient le remède du pilote.
+    return lignes[0].n;
+}
