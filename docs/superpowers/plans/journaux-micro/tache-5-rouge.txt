@@ -1,0 +1,48 @@
+=== TACHE 5 — le rouge, et les mutations ===
+Depot Guacamole, 19 aout 2026, chantier E bloc E1.
+
+--- LE ROUGE : le bloc de correction de derive RETIRE (l'etat d'AVANT
+    l'implementation), les quatre tests joues contre lui ---
+test micro::tests::chaque_correction_a_son_compteur ... FAILED
+test micro::tests::en_dessous_du_seuil_bas_une_trame_est_inseree_et_comptee ... FAILED
+test micro::tests::au_dela_du_seuil_haut_une_trame_est_sautee_et_comptee ... FAILED
+test micro::tests::entre_les_deux_seuils_aucune_correction_n_est_appliquee ... ok
+thread 'micro::tests::chaque_correction_a_son_compteur' (1018136) panicked at agent/src/micro.rs:459:9:
+assertion `left == right` failed
+  left: (0, 0)
+ right: (1, 0)
+thread 'micro::tests::en_dessous_du_seuil_bas_une_trame_est_inseree_et_comptee' (1018138) panicked at agent/src/micro.rs:422:9:
+assertion failed: matches!(t.retirer(), Retrait::Manquante)
+thread 'micro::tests::au_dela_du_seuil_haut_une_trame_est_sautee_et_comptee' (1018135) panicked at agent/src/micro.rs:406:35:
+assertion `left == right` failed: aucune trame n'a été sautée
+  left: 0
+ right: 960
+test result: FAILED. 9 passed; 3 failed; 0 ignored; 0 measured; 472 filtered out; finished in 0.02s
+
+Note : `entre_les_deux_seuils_aucune_correction_n_est_appliquee` reste VERT sans
+le mecanisme, et c'est correct — pas de mecanisme, pas de correction parasite.
+C'est un test d'ABSENCE, il se discrimine par la mutation ci-dessous.
+
+--- MUTATION : SEUIL_SAUT et SEUIL_INSERTION echanges ---
+test micro::tests::au_dela_du_seuil_haut_une_trame_est_sautee_et_comptee ... ok
+test micro::tests::chaque_correction_a_son_compteur ... FAILED
+test micro::tests::en_dessous_du_seuil_bas_une_trame_est_inseree_et_comptee ... ok
+test micro::tests::entre_les_deux_seuils_aucune_correction_n_est_appliquee ... FAILED
+thread 'micro::tests::chaque_correction_a_son_compteur' (1020609) panicked at agent/src/micro.rs:508:9:
+thread 'micro::tests::entre_les_deux_seuils_aucune_correction_n_est_appliquee' (1020613) panicked at agent/src/micro.rs:481:9:
+thread 'micro::tests::un_doublon_est_compte_et_jete' (1020614) panicked at agent/src/micro.rs:312:9:
+thread 'micro::tests::une_arrivee_desordonnee_est_restituee_dans_l_ordre' (1020615) panicked at agent/src/micro.rs:297:26:
+thread 'micro::tests::une_trame_absente_dont_la_suivante_est_la_donne_reconstruire' (1020616) panicked at agent/src/micro.rs:373:9:
+thread 'micro::tests::une_trame_perimee_est_comptee_et_jetee' (1020618) panicked at agent/src/micro.rs:401:9:
+thread 'micro::tests::une_trame_absente_sans_suivante_donne_manquante' (1020617) panicked at agent/src/micro.rs:389:9:
+test result: FAILED. 5 passed; 7 failed; 0 ignored; 0 measured; 472 filtered out; finished in 0.03s
+
+⚠️ DEFAUT DU PLAN : il prescrit cette mutation en annoncant que « les deux
+   premiers tests doivent tomber ENSEMBLE ; s'ils n'en tombent qu'un, l'un des
+   deux ne mesure rien ». La mesure dit autre chose : les deux premiers restent
+   VERTS et c'est le troisieme, l'hysteresis, qui tombe. La raison est
+   arithmetique — a 140 ms d'occupation, `140 > 20` declenche encore le saut,
+   et a 10 ms, `10 < 120` declenche encore l'insertion : l'echange ne change
+   rien pour des occupations aussi eloignees des deux bornes. Il ne mord que
+   DANS la bande morte, qui est precisement ce que le troisieme test occupe.
+   La regle du plan aurait fait conclure a tort qu'un test ne mesure rien.
