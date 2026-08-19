@@ -58,7 +58,10 @@ describe('sous-ensemble SQL portable', () => {
 
         it(`${fichier} n'emploie aucun jeton hors du sous-ensemble`, () => {
             const trouves = INTERDITS.filter(([motif]) => motif.test(sql)).map(([, raison]) => raison);
-            expect(trouves).toEqual([]);
+            // Comparé comme une CHAÎNE et non comme un tableau : vitest tronque
+            // un tableau à `[ Array(1) ]`, message qui ne nomme pas le jeton
+            // fautif — un diagnostic qui n'aide en rien celui qui le lira.
+            expect(trouves.join(' | ')).toBe('');
         });
 
         it(`${fichier} ne porte aucune chaîne littérale`, () => {

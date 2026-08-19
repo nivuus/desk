@@ -16,8 +16,34 @@
 // successeur qui croirait pouvoir lancer deux requêtes de front sur ce pilote
 // se tromperait. L'asynchronie est celle de l'interface, pas celle du moteur.
 
-import { DatabaseSync } from 'node:sqlite';
+import { createRequire } from 'node:module';
+import type { DatabaseSync as TypeDatabaseSync } from 'node:sqlite';
 import type { Pilote } from './pilote';
+
+// 🔴 `node:sqlite` est chargé par `createRequire`, et JAMAIS par un `import`
+// statique. La cause est MESURÉE, pas devinée (19 août 2026, vitest 2.1.9,
+// vite 5.4.21, Node v24.9.0) :
+//
+//     node --input-type=module -e "
+//       import { isNodeBuiltin } from './node_modules/vite-node/dist/utils.mjs';
+//       console.log(isNodeBuiltin('node:sqlite'), isNodeBuiltin('node:http'));"
+//     -> false true
+//
+// `vite-node/dist/utils.mjs` — le résolveur de VITEST, distinct de celui de
+// vite, dont l'`isNodeBuiltin` accepte pourtant tout `node:*` — dépouille le
+// préfixe `node:` puis cherche `sqlite` dans sa propre liste de builtins, qui
+// ne le contient pas. Il conclut que c'est un paquet npm et échoue sur
+// « Failed to load url sqlite (resolved id: sqlite). Does the file exist? ».
+// `test.server.deps.external` n'y change rien : l'échec a lieu à la
+// RÉSOLUTION, avant toute décision d'externalisation.
+//
+// ⚠️ Ceci ne masque RIEN : le module chargé est le vrai, et
+// l'`ExperimentalWarning` paraît toujours. Le jour où vite-node connaîtra
+// `sqlite`, l'`import` statique redeviendra possible — et ce détour pourra
+// être défait.
+const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as {
+    DatabaseSync: typeof TypeDatabaseSync;
+};
 
 export function ouvrirSqlite(cheminOuMemoire: string): Pilote {
     const base = new DatabaseSync(cheminOuMemoire);
@@ -29,7 +55,7 @@ export function ouvrirSqlite(cheminOuMemoire: string): Pilote {
     return pilote(base);
 }
 
-function pilote(base: DatabaseSync): Pilote {
+function pilote(base: TypeDatabaseSync): Pilote {
     return {
         async executer(sql, params) {
             const r = base.prepare(sql).run(...(params as never[]));

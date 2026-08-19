@@ -9,8 +9,8 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "test": "vitest run",
-    "test:sqlite": "vitest run",
-    "test:postgres": "vitest run",
+    "test:sqlite": "PLATEFORME_BASE=sqlite vitest run",
+    "test:postgres": "PLATEFORME_BASE=postgres vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
