@@ -8139,7 +8139,8 @@ témoin `verify-all.sh`** a été joué après elles, parce qu'une empreinte ne 
 rien des six autres fichiers.
 
 🔵 **La plus instructive est ③-rust** : la mutation omet `verifie_version` sur
-**UNE SEULE** variante (`Refus`), et **un seul** test tombe sur neuf. C'est ce
+**UNE SEULE** variante (`Refus`), et **un seul test tombe sur DIX-HUIT**
+(`test result: FAILED. 17 passed; 1 failed`, relevé verbatim). C'est ce
 qui établit que la vérification est branchée **variante par variante** et non
 une fois pour toutes.
 
