@@ -7978,6 +7978,524 @@ par `0002-identite.sql`, et **la consigne reste entière pour P4**).
    porte plus.
 ---
 
+## 🤖 Sous-projet ⑤ Plateforme — sous-bloc P3 : l'identité des agents, et le canal plateforme ↔ agent (19 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-19-plateforme-p3-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-19-plateforme-p3.md` (commit `d280745`).
+Conception : `docs/superpowers/specs/2026-08-19-plateforme-design.md`
+(commit `217a765`), §3.3, §3.4 et §4 « P3 ».
+Journaux : `docs/superpowers/plans/journaux-plateforme-p3/` — **47 fichiers
+suivis par git** (relevé par `git ls-files`), **tous UTF-8** (vérifié fichier
+par fichier par `iconv -f UTF-8 -t UTF-8` : aucun non-UTF-8). **DEUX familles
+de lecture**, contrairement à P1 et P2 qui n'en avaient qu'une :
+
+| Famille | Fichiers | Ce qu'il faut faire |
+| --- | --- | --- |
+| tout le reste — sondes, rouges, témoins, `instrument/`, les `-plat` | **43** | rien : LF, aucune séquence ANSI, `grep`-ables à plat |
+| les **quatre** journaux d'agent bruts, `vm-{1,2}-agent-{avec,sans}-identite.log` | **4** | **CRLF et séquences ANSI de `tracing` PRÉSENTES** : `sed 's/\x1b\[[0-9;]*m//g'`, **ou** lire le `-plat` jumeau, versé pour chacun |
+
+⚠️ **Neuf fichiers portent des CRLF** (ces quatre, leurs quatre jumeaux `-plat`,
+et `vm-2-pilote.log`) : ils viennent de la VM. Cela ne gêne aucun `grep`.
+
+⚠️ **CONTRAIREMENT À P1 ET P2, CE SOUS-BLOC A EMPLOYÉ LA VM WINDOWS** — la
+tâche 23, et elle seule, **hors critère** (spec §4).
+
+**Vingt-cinq tâches, numérotées 1 à 26 sans le 5** : le plan déclare l'absence
+plutôt que de renuméroter, « une renumérotation tardive étant exactement le
+geste par lequel une référence survit à ce qu'elle désigne ».
+
+### ① Le fait n°1 : E2 est fermée, et c'est mesuré sur le fil
+
+Un pair qui se déclare `{"role":"agent"}` **sans rien présenter** ne reçoit plus
+d'identifiants TURN. **La même sonde qu'en P2**, à lire ligne à ligne contre
+elle, **2 exécutions** (exéc. 1 = `sqlite`, exéc. 2 = `postgres`,
+`e2-ferme-{1,2}.log`) :
+
+```
+messages reçus   : ["{\"type\":\"error\",\"reason\":\"authentification requise\",\"motif\":\"jeton-absent\"}"]
+a reçu ice-config : false
+a été refusé      : true
+```
+
+En P2, le même relevé donnait `a reçu ice-config = true`, `a été refusé = false`,
+et les identifiants TURN de 86 400 s présents
+(`journaux-plateforme-p2/e2-role-agent-toujours-anonyme.log`).
+
+🔴 **Le rôle `agent` exige désormais TROIS choses, pas une** : un jeton, **de
+type `agent`** (*claim* `sty`, relevé verbatim sur le fil :
+`{"sub":"…","exp":…,"sty":"agent"}`), et dont le **sujet PRÉFIXE** le nom de
+session demandé. Sans le *claim* de type, un jeton humain volé ouvrirait un rôle
+`agent` et réciproquement — **deux rouges distinctes, une par sens de
+confusion**, et pas une seule à deux `expect`, précisément à cause de la leçon
+①A-bis de P2.
+
+🔴 **LA COMPATIBILITÉ EST CASSÉE, franchement et sans interrupteur permissif**
+(divergence E1) : **un binaire d'agent antérieur à P3 n'établit plus AUCUNE
+session**. Le remède est un rebâtissage — `scripts/build-agent.sh`, puis
+`scripts/run-agent.sh` avec les deux variables neuves.
+
+### ② Les deux variables d'environnement neuves — les PREMIÈRES du sous-projet ⑤ que `scripts/run-agent.sh` transmet
+
+P1 et P2 n'avaient touché ni `agent/` ni ce script. P3 y ajoute **deux lignes**,
+et **par une tâche DÉDIÉE qui ne fait que cela** (tâche 20).
+
+| Variable | Effet |
+| --- | --- |
+| `AGENT_VM` | le nom de la VM enrôlée |
+| `AGENT_SECRET` | le secret d'enrôlement, échangé sur le canal `/agent` contre un **préfixe** et un **jeton d'agent** |
+
+⚠️ **LES DEUX OU AUCUNE**, et l'absence est BRUYANTE — c'est la rouge de la
+tâche 20, mesurée sur la VM, **2 exécutions** :
+
+```
+WARN agent: AGENT_VM ou AGENT_SECRET absent : aucun enrôlement, donc aucun
+jeton d'agent. La plateforme REFUSERA la poignée de main et aucune session
+ne s'établira (sous-bloc P3, sans interrupteur permissif).
+```
+
+côté service `poignée de main refusée : poignée de main sans jeton sur la
+session bureau`, puis **5,1 ms** (exéc. 1) et **8,2 ms** (exéc. 2) plus tard
+`connexion de contrôle au signaling perdue`. **Aucune session, aucun enfant
+lancé.**
+
+🔴 **La tâche dédiée est ce qui a évité le piège que ce dépôt a payé TROIS
+fois** — `SUPERVISEUR` en D1, `MULTIFENETRE_REPRISE` en D2, `AUDIO` en D7 : un
+agent qui démarre sans la variable et sans rien signaler. En D7 l'implémenteur
+**et** le relecteur avaient vérifié la propriété en traçant le code ; le tracé
+était juste, la valeur ne pouvait simplement pas atteindre le processus.
+
+⚠️ **Le coût est nommé** : le secret apparaît en clair dans
+`C:\dev\run-agent.ps1`, sur un partage CIFS lisible depuis l'hôte, comme les 57
+autres variables. Il n'est **pas** dans `argv` — la leçon de P2 (`ps` expose la
+ligne de commande) est respectée. **À rouvrir en P5.**
+
+### ③ Le préfixe : 128 bits, et il ne coûte RIEN à la table d'appariement
+
+**16 octets de `randomBytes` en `base64url` — 22 caractères**, séparateur `:`,
+émis par la plateforme à l'enrôlement et durable dans
+`agent_enrole.prefixe_session`. `<préfixe>:bureau`, `<préfixe>:w-1`.
+
+**Le fait de conception qui survivra au code** : `signaling/appariement.ts`
+**n'a pas gagné une ligne**. Il apparie des NOMS, et un nom préfixé reste un
+nom — deux VMs qui ouvraient toutes deux `bureau` cessent de se rencontrer dans
+la même entrée **sans qu'une ligne de ce fichier ait bougé**. La propriété
+acquise du compteur — il ne recule jamais — n'est pas touchée non plus, et un
+test neuf la tient sous préfixe
+(`superviseur/table/tests.rs::le_compteur_ne_recule_jamais_meme_sous_un_prefixe`).
+
+⚠️ **La collision avec le format d'identifiant TURN est levée par l'ALPHABET,
+pas par chance.** `deriverIdentifiants` compose `` `${expiration}:${session}` ``,
+donc `4600:<préfixe>:bureau` — **trois** segments. Le préfixe étant en
+`base64url` (`A-Za-z0-9_-`) il **ne peut pas contenir de `:`**, et la première
+borne reste non ambiguë. **Figé par un test** :
+`expect(username).toBe('4600:AAAAAAAAAAAAAAAAAAAAAA:bureau')`. 🔴 **Aucun coturn
+vivant n'a été sollicité** : « coturn coupe sur le premier `:` » reste une
+lecture de la convention `use-auth-secret`, **non éprouvée**.
+
+⚠️ **Un préfixe absent vaut le préfixe vide**, ce qui restitue exactement
+`bureau` et `w-1` — et c'est éprouvé des deux côtés (`agents/prefixe.ts`,
+`client/src/prefixe.ts`, `superviseur/table.rs::nouvelle`).
+
+### ④ Le verdict des quatre critères, avec leur nombre d'exécutions
+
+**Deux exécutions par critère** — exéc. 1 = `sqlite`, exéc. 2 = `postgres`,
+déclaré dans l'en-tête de chaque journal. **Aucun taux n'est revendiqué.**
+
+| # | Critère | Verdict | Exéc. |
+| --- | --- | --- | --- |
+| ① | Le préfixe cloisonne, et un agent refusé n'obtient **aucune** `ice-config` | **TENU** | **2** |
+| ② | Les deux refus d'enrôlement sont **indistinguables** | **TENU** | **2** |
+| ③ | Une version divergente est refusée **des deux côtés du canal** | **TENU** | **2** |
+| ④ | Un agent muet est vu comme tel, et la **transition** est VUE | **TENU** | **2** |
+
+**① en détail** : l'agent P demandant `<Q>:w-9`, une session **vierge**, reçoit
+`accès refusé à la session demandée` et **aucune trame `ice-config`** ; sur
+`<Q>:bureau`, **occupée**, il reçoit **le même** message — et non « un agent est
+déjà connecté ». **La garde tranche AVANT l'appariement**, si bien que la
+réponse ne révèle pas si la session existe. ⚠️ Le **journal du service**, lui,
+nomme tout, et c'est délibéré.
+
+**② en détail** : les deux refus sont identiques **caractère pour caractère**
+(43 caractères, `premier caractère divergent : aucun`), **et leurs fermetures
+aussi** — `{"code":1008,"raison":"enrolement"}` des deux côtés. Comparer les
+seuls refus aurait laissé passer le même oracle d'énumération sous une autre
+forme. ⚠️ **Ce critère compare des MESSAGES, jamais des DURÉES** : l'attaque
+temporelle sur l'écart entre « lire une ligne absente » et « vérifier un
+`scrypt` » n'est mesurée par rien.
+
+**④ en détail** : `t = vu_a + seuil` rend encore `prete`, `t = vu_a + seuil + 1
+ms` rend `injoignable`. **La transition est VUE, pas déduite** — ce que rend
+possible l'horloge en paramètre, et la raison pour laquelle
+`agents/fraicheur.ts` est **pur**.
+
+### ⑤ Sept rouges, là où le plan en nommait six
+
+La rouge ③ a été jouée **en trois** — une par bout du canal : Rust, puis les
+**deux** sens du parseur TypeScript —, pour qu'aucun sens ne reste non éprouvé.
+Cinq des sept **mutent du code de production** ; chacune porte son `sha256`
+avant et après restauration, **et les deux empreintes sont égales**. Un **second
+témoin `verify-all.sh`** a été joué après elles, parce qu'une empreinte ne dit
+rien des six autres fichiers.
+
+🔵 **La plus instructive est ③-rust** : la mutation omet `verifie_version` sur
+**UNE SEULE** variante (`Refus`), et **un seul** test tombe sur neuf. C'est ce
+qui établit que la vérification est branchée **variante par variante** et non
+une fois pour toutes.
+
+🔵 **La ①A ne mute RIEN, et c'est ce qui fait sa valeur** : elle est jouée sur le
+binaire du sous-bloc **précédent** (`f0b2fca`), où le défaut est réel et non
+simulé — `un agent est déjà connecté à la session bureau`, verbatim.
+
+### ⑥ Deux hypothèses non mesurées, tranchées — favorablement
+
+- **Les enrôlements concurrents pour la MÊME VM.** Le superviseur **et chacun
+  de ses enfants** ouvrent leur propre canal `/agent` avec le même `AGENT_VM`.
+  Le sous-bloc l'avait **déduit d'une lecture de `canal.ts`**. Mesuré :
+  **4 canaux de front au banc** (2 exécutions), **3 sur le produit réel**
+  (2 exécutions), **même préfixe pour tous, aucun refus, aucun socket fermé**.
+  ⚠️ **AUCUN PLAFOND N'A ÉTÉ CHERCHÉ.**
+- **L'agent sans secret échoue bruyamment** — voir ②.
+
+### ⑦ Les DEUX défauts que la recette a trouvés, et légués à la clôture
+
+La recette les a relevés **sans les corriger**. Ils le sont désormais.
+
+🔴 **`pg` REND LES `BIGINT` EN CHAÎNE — ET C'EST UN DÉFAUT DE CLASSE**
+(commit `373e331`). `LigneAgent.vu_a` est déclaré `number | null` ; `typeof`
+rend `number` sous `node:sqlite` et **`string` sous `pg`**, qui rend tout `int8`
+en texte. `interroger<T>` faisant un `as T[]`, **aucun typage ne pouvait
+l'attraper**.
+
+> ⚠️ **CE N'ÉTAIT PAS UNE COQUILLE DE TYPE, et c'est ce qui en fait le pire
+> cas.** `agents/fraicheur.ts::etatDe` survivait **PAR ACCIDENT** — sa
+> soustraction convertit l'opérande —, et `depot/jeton.ts` s'en tirait par un
+> `Number(...)` local avec un type `number | string`. **Rien ne rougissait**, et
+> pourtant tout `+`, tout `===` et tout `>` aurait divergé selon le moteur :
+> `'1787136773742' + 90000` vaut une concaténation.
+>
+> **SEPT colonnes `BIGINT` sont relues par le service** — `vm.vue_a`,
+> `session.ouverte_a`, `session.fermee_a`, `utilisateur.cree_a`,
+> `agent_enrole.vu_a`, `jeton_rafraichissement.expire_a`,
+> `schema_migration.applique_a`. Corrigé **AU PILOTE**, une fois, par
+> `pg.types.setTypeParser(INT8)` — pas colonne par colonne.
+>
+> **ROUGE VUE**, une exécution par moteur, journal versé :
+> `expected [ 'vm.vue_a', 'string' ] to deeply equal [ 'vm.vue_a', 'number' ]`.
+> ⚠️ **Elle rougit sous `test:postgres` et reste VERTE sous `test:sqlite`** :
+> c'est exactement la divergence que la double passe existe pour trouver.
+>
+> 🔵 **ET LE TEST D'ÉPOQUE DE P1 NE POUVAIT PAS LA VOIR** — il enveloppe chaque
+> lecture dans `Number(...)`, ce qui **CONVERTIT la divergence au lieu de la
+> mesurer**. `agent.test.ts` faisait de même. **Une conversion défensive dans un
+> test est un masque, pas une ceinture** : les assertions sont désormais nues.
+>
+> La conversion **LÈVE** au-delà de `Number.MAX_SAFE_INTEGER` plutôt que
+> d'arrondir en silence. ⚠️ Chemin **non atteignable par le service**
+> (`Date.now()` ≈ 1,8e12, quatre ordres de grandeur sous la borne) ; gardé
+> quand même, et éprouvé.
+
+🔴 **DEUX TRACES ANNONÇAIENT UNE SESSION QUE LA PLATEFORME REFUSAIT**
+(commit `c053fa4`). L'agent écrivait `superviseur enregistré sur la session de
+contrôle session="bureau"` à l'**ÉMISSION** de la poignée de main, donc avant
+d'apprendre qu'elle est refusée. Aux **deux** exécutions sans secret, la ligne
+sort alors qu'**aucune session ne s'établit**, et la connexion tombe 5 ms plus
+tard. **Qui la cherche au `grep` pour savoir si une session tient conclut
+l'inverse de la vérité.**
+
+> ⚠️ **`agent/src/signaling.rs:70` portait le MÊME mensonge** (« agent
+> enregistré auprès du signaling »), que le legs ne nommait pas : **le défaut
+> était de forme, pas d'instance.** Les deux disent désormais ce qu'elles
+> savent — la déclaration est partie, l'acceptation n'est pas encore connue.
+>
+> **Et le refus devient observable** : `superviseur/signalisation.rs` classait
+> le `{"type":"error",…}` du relais dans son bras `Err(_) => debug!`, avec
+> `ice-config` et `peer-gone` — donc **invisible sous `RUST_LOG=info`**. Le seul
+> signe restant était « connexion de contrôle au signaling perdue », qui se lit
+> comme une panne réseau et non comme un refus.
+>
+> ⚠️ **CE BRAS N'A PAS TOURNÉ SUR LA VM** : `#[cfg(windows)]`, hors de portée de
+> tout test d'hôte, et les recettes étaient jouées. Vérifié par
+> `cargo check --target x86_64-pc-windows-gnu` et `cargo test --workspace`
+> (550 + 52, inchangé). **Déclaré plutôt que dissimulé.**
+
+### ⑧ La corroboration sur VM réelle — HORS CRITÈRE, 2 exécutions
+
+Binaire rebâti **9 620 480** octets, contre **9 401 856** pour celui que P3 rend
+périmé. `cargo clean --release -p proto -p agent` a dû précéder la compilation :
+P3 modifie `proto`, et l'horloge de la VM avance sur celle de l'hôte, ce qui
+fait sauter le rlib à cargo.
+
+| | exéc. 1 | exéc. 2 |
+| --- | --- | --- |
+| `agent enrôlé auprès de la plateforme` | **3** | **3** |
+| préfixes distincts délivrés | **1** | **1** |
+| sessions d'agent acceptées | **3** | **3** |
+| `ERROR` ou `WARN`, phase « avec identité » | **0** | **0** |
+
+Les **trois** lignes de `session` portent leur `vm_id`, résolu depuis le
+**préfixe** du nom de session.
+
+⚠️ **CE QUE CETTE CORROBORATION N'EST PAS** : la page-shell est **scriptée**
+(elle signe elle-même son jeton), **aucune session WebRTC n'est négociée**,
+aucune image décodée, aucune latence mesurée, aucun `coturn` ne tournait. Ce qui
+est établi est l'**enrôlement**, le **préfixe** et l'acceptation des **poignées
+de main**.
+
+⚠️ **Une troisième tentative a AVORTÉ et n'est pas versée** : la VM s'était
+éteinte d'elle-même (piège documenté depuis D1), et le port 8080 était tenu par
+un service de plateforme d'une recette antérieure. **Dit plutôt que tu.**
+
+### ⑨ Ce que P3 n'établit PAS
+
+- **Aucun taux, nulle part.** Deux exécutions par critère ; jamais une campagne.
+- 🔴 **La reprise du canal `/agent` (E9) n'a JAMAIS été exercée** : aucune
+  coupure n'a été provoquée, ni au banc ni sur la VM. Le calcul du délai est pur
+  et testé ; le comportement du socket, non. **C'est du comportement NEUF que ni
+  `signaling.rs` ni `signalisation.rs` n'avaient**, et il n'a jamais couru.
+- **Le bras `error` neuf de `superviseur/signalisation.rs` n'a pas tourné sur la
+  VM.**
+- **Aucun plafond d'enrôlements concurrents cherché** : 4 au banc, 3 sur le
+  produit.
+- **Aucun `coturn` vivant** (E6).
+- **Aucune session WebRTC négociée sur la VM**, aucune image, aucune latence.
+- **Aucune constante calibrée** : `SEUIL_INJOIGNABLE_MS`, `REPLI_MIN_MS`,
+  `REPLI_MAX_MS`, `OCTETS_PREFIXE`, plus celles de P1/P2. **Aucun jugement
+  d'usage** — la lacune que ce dépôt traîne depuis `BPP_MIN`.
+- **Le déni de service en une trame reste OUVERT** (E15) : le contrôle de forme
+  court **avant** toute garde, et **aucune authentification ne peut fermer ce
+  chemin-là**. Le frein est P5 ③.
+- **Aucune attaque temporelle mesurée.**
+- **Aucune revérification d'une session en cours** — legs n°9 de P2, reconduit.
+- **Rien du comportement d'un agent qui perd son canal pendant une session
+  établie.**
+- **`vm.vue_a` reste une colonne ORPHELINE** : P3 a créé `agent_enrole.vu_a` et
+  n'écrit jamais dans `vm.vue_a` (relevé par `grep -rn "vue_a" plateforme/src` :
+  seuls des tests l'écrivent).
+- **`application` reste VIDE** : son chemin d'écriture est le sous-projet ④.
+- **Aucune protection du secret d'enrôlement sur la VM** (voir ②).
+
+### ⑩ Les seize divergences E1…E16, tranchées AVANT d'écrire une ligne
+
+P1 en avait six, P2 onze, P3 **seize** — chacune avec le relevé qui la fonde. Le
+détail et le sort de chacune vivent au §7 du document de résultats. **Les cinq
+qui gouvernent** :
+
+- **E1 — P3 casse la compatibilité, et la spec §10.3 ne le disait pas.** Ses
+  deux phrases sont vraies du **PRÉFIXE** et fausses de l'**AUTHENTIFICATION**.
+  ⚠️ **La spec ne se contredit pas pour autant** : sa conclusion (« sans
+  enrôlement valide, aucune session ne s'établit du tout ») reste juste ; **c'est
+  sa phrase du milieu qui a vieilli.**
+- **E4 — la garde de P2 est PURE et SYNCHRONE : l'enrôlement ne peut pas y
+  vivre.** Vérifier un secret haché exige une lecture de base, donc un `await`,
+  **sur le chemin de la poignée de main**. D'où le canal `/agent` **hors du
+  relais**, dans `http/serveur.ts`, sur son **propre** `WebSocketServer`. **La
+  garde ne gagne pas une ligne d'accès à la base.**
+- **E5 — jeton d'agent et jeton humain sont signés par le MÊME secret** : sans
+  *claim* de type, ils sont interchangeables **dans les deux sens**. L'absence du
+  *claim* vaut `'utilisateur'`, de sorte qu'aucun jeton émis par P2 et encore en
+  vol ne soit invalidé.
+- **E8 — `proto/vectors.json` est structuré pour `input` SEUL**, et sa clé
+  `version` n'est vérifiée **que du côté TypeScript**. D'où un fichier **neuf**,
+  `proto/plateforme-vectors.json`, dont la version est vérifiée **des deux
+  côtés** — la lacune est corrigée **pour le fichier neuf**, sans réécrire
+  rétroactivement un test qui n'appartient pas à P3.
+- **E9 — aucun des deux clients WebSocket de l'agent n'a de reprise**, et le
+  canal `/agent` en exige une : il porte le battement, donc `vu_a`. Sans reprise,
+  **la première coupure réseau rendrait la VM `injoignable` définitivement**, et
+  le critère ④ punirait une coupure de réseau comme une panne d'agent. ⚠️ **Un
+  refus `version` ne se réessaie PAS** — une incompatibilité de version qui se
+  déguiserait en boucle de reconnexion infinie est le mode de panne le plus
+  coûteux à diagnostiquer.
+
+### ⑪ La revue transverse de fin de branche — DOUZE défauts, QUINZE places
+
+Barème : **5** en D7, **3** en D8, **6** en D9, **douze** en D10, **sept** en
+D11, **huit** en P1, **dix** en P2. **Douze ici, sur quinze places**, toutes
+énumérées par `grep -n` **avant** l'édition et relues place par place **après**.
+Le tableau complet vit au §8 du document de résultats. **Les trois qui
+enseignent :**
+
+1. 🔵 **UNE CITATION `fichier:ligne` A ÉTÉ RENDUE FAUSSE PAR LA BRANCHE
+   ELLE-MÊME.** `signaling/appariement.ts:50` cite le pair qui lit le motif de
+   refus : `agent/src/signaling.rs:130`. **C'était juste**, et la divergence E11
+   du plan le déclarait en toutes lettres « relu et juste » — puis le commit
+   `5fbc89b` de cette branche, celui qui met le jeton dans les poignées de main,
+   l'a poussé à **139**.
+   **Leçon neuve, que ce dépôt n'avait pas formulée : relire une citation avant
+   d'écrire ne suffit pas quand le plan prescrit par ailleurs de DÉPLACER la
+   ligne citée. Il faut la relire APRÈS avoir exécuté ce qui la déplace.**
+   *(La seconde citation de la même ligne, `client/src/webrtc.ts:109`, était
+   fausse depuis P2 — la l. 109 est **vide**.)*
+2. 🔴 **LE NAUFRAGE DU « 487 », À L'INTÉRIEUR DU COMMIT QUI LE DÉNONÇAIT.**
+   `0001-socle.sql` disait encore « `vm_id`, lui, reste entièrement vide : c'est
+   P3 » — alors que P3 la remplit. Le commit `254fdd5` de cette même branche a
+   réécrit les **six** lignes qui précèdent **sans balayer les deux suivantes**,
+   dans un message de commit qui revendiquait d'avoir « énuméré les places par
+   `grep` AVANT d'écrire ».
+3. 🔵 **« DIX » ET « DIX-SEPT » SONT VRAIS DE DEUX CHOSES DIFFÉRENTES.** Le
+   tableau S1 de ce fichier annonçait « neuf → dix étapes », le plan de P3
+   « ses neuf étapes ». **Mesuré** sur une exécution complète, sortie **0** :
+   **DIX** appels `etape` dans le script, et **DIX-SEPT** en-têtes `==>` à
+   l'écran — les sept derniers venant de l'intérieur de l'étape
+   `client : npm run design:verifier` (un `npm run build`, plus les **six**
+   contrôles du socle ; le septième, §7.5, est un test unitaire et tourne dans
+   `client : npm test`). **Le plan disait « neuf », ce qui est faux des deux
+   façons de compter.**
+
+🔵 **Et une mesure de doctrine que ce dépôt n'avait pas** : l'en-tête de
+`plateforme/src/signaling/relais.ts` a été corrigé **TROIS FOIS, une par
+sous-bloc** — P1, P2, P3 —, et **chaque correction a laissé derrière elle une
+« moitié qui reste vraie » que la suivante a dû reprendre**. La durée de vie
+d'un « reste VRAI » dans ce dépôt est d'**UN sous-bloc**.
+
+⚠️ **Relevé, NON corrigé, hors périmètre** :
+`docs/superpowers/specs/2026-08-19-design-system-design.md:145` affirme « aucun
+jeton dans la poignée de main » sur `client/src/shell-page.ts:45`. **Faux depuis
+P2** (le fichier envoie bien `jeton`), et le numéro vaut **70**. C'est une
+affirmation du sous-projet ⑥ ; **laissée à son propriétaire.**
+
+### ⑫ Le relevé de tailles, PAR LA COMMANDE, APRÈS la dernière édition
+
+Relevé au commit de clôture, **après** les deux correctifs des défauts légués
+**et** la revue transverse — une table mesurée en début de ronde serait fausse à
+la fin de la même ronde (erreur de D8).
+
+**Le tableau de dette est INCHANGÉ, et il a toujours DEUX lignes** :
+`agent/src/encode.rs` **1536**, `agent/src/windows_source.rs` **630**. **Aucun
+autre fichier de code source ne dépasse 500 lignes.**
+
+**59 fichiers touchés par les commits `(p3)`.** Les plus gros, et ceux dont la
+marge bouge :
+
+| Fichier | Avant P3 (`d280745`) | Après | Remarque |
+| --- | --- | --- | --- |
+| ⚠️ `agent/src/demarrage.rs` | 481 | **491** (marge **9**) | ❌ **CE +10 N'EST PAS DE P3, et je l'ai d'abord écrit tel quel avant de le mesurer.** `git log --numstat` : le chantier **E1** y met **+10/−0** (`f2f8e05`, le puits de micro), P3 **+1/−1**, soit **net zéro**. Le plan de P3 disait « rien si le câblage passe par `superviseur.rs` et `main.rs` — **à re-mesurer avant la tâche 19** » : **c'était juste**. La marge de 9 est **déjà signalée par la section du chantier E** ci-dessus. **Toute addition future appelle une extraction** |
+| ✅ `agent/src/superviseur/table.rs` | **492** (marge 8) | **433** (marge 67) | **L'EXTRACTION A ÉTÉ FAITE AVANT L'ADDITION** (tâche 17, `aa220ba`), et elle a tenu : `table/orphelines.rs` (**121**) est né, puis la tâche 19 y a écrit son préfixe sans franchir quoi que ce soit. C'est le geste que **D9 (tâche 6) a inventé** et que **D10 a joué trois fois** (ses tâches 1 à 3) ; P3 le reconduit. ❌ *Une première rédaction écrivait ici « deuxième fois seulement dans ce dépôt » : c'est FAUX, et la place qui le réfute est la section D10 de ce fichier même, qui compte trois extractions jouées avant leurs additions.* |
+| `agent/src/main.rs` | 329 | **435** | dont **+77 net par P3** (`AGENT_VM`, `AGENT_SECRET`, le câblage de l'enrôlement) et **+29 par les chantiers A-bis et E1** — attribution relevée par `git log --numstat`, pas déduite de l'écart |
+| `proto/src/plateforme.rs` | — | **410** | neuf — `verifie_version` **variante par variante** |
+| `plateforme/src/agents/canal.test.ts` | — | **361** | neuf |
+| `plateforme/src/signaling/relais.ts` | 310 | **327** | +17, presque entièrement du commentaire |
+| `agent/src/plateforme.rs` | — | **277** | neuf — le client du canal, avec sa reprise |
+| `proto/ts/plateforme.test.ts` | — | **267** | neuf |
+| `plateforme/src/base/pilotes.test.ts` | 141 | **251** | +110 : les deux tests du défaut `BIGINT` |
+| `proto/ts/plateforme.ts` | — | **207** | neuf |
+| `plateforme/src/agents/canal.ts` | — | **198** | neuf |
+| `plateforme/src/admin/enroler-agent.ts` | — | **162** | neuf |
+| `agent/src/superviseur/table/orphelines.rs` | — | **121** | neuf — l'extraction de la tâche 17 |
+| `plateforme/src/signaling/appariement.ts` | 97 | **120** | +23, entièrement du commentaire de revue transverse |
+| `plateforme/src/base/pilote-postgres.ts` | 76 | **118** | +42 : le `setTypeParser` et sa justification |
+| `agent/src/plateforme/repli.rs` | — | **89** | neuf — **pur** |
+| `plateforme/src/agents/fraicheur.ts` | — | **76** | neuf — **pur** |
+| `proto/plateforme-vectors.json` | — | **73** | neuf |
+| `client/src/prefixe.ts` | — | **72** | neuf — **pur, sans DOM** |
+| `plateforme/src/agents/prefixe.ts` | — | **68** | neuf — **pur** |
+| `plateforme/src/agents/enrolement.ts` | — | **65** | neuf |
+| `plateforme/src/base/migrations/0003-agents.sql` | — | **58** | neuf — `agent_enrole` **et** `application` |
+
+⚠️ **`agent/src/transport.rs` est à 495 lignes, marge 5** — **la deuxième plus
+serrée du dépôt** après `encode/arret.rs` (500, marge 0), devant
+`client/verify-webrtc.mjs` (494, marge 6). Le plan de P3 le relevait à **491**.
+❌ **Une première rédaction ajoutait ici « et qu'aucun document ne signalait » :
+c'est FAUX, et la place qui le réfute est dans CE fichier** — la section du
+chantier **E1** le déclare en toutes lettres, avec son attribution
+(469 → 491 par E1, → 495 par sa propre revue transverse) et l'injonction
+d'extraction. **P3 n'y a pas touché, et n'a rien à y corriger** ; la ligne reste
+ici parce qu'un lecteur de la section P3 doit connaître la marge dont il
+dispose, pas parce qu'elle serait neuve.
+
+**Témoin de clôture** : `./scripts/verify-all.sh` relancé **après la dernière
+édition**, **sortie 0** — `cargo test --workspace` **550** + **52**,
+`client : npm test` **187**, `design:verifier` **6/6**, `proto : npm test`
+**70**, `plateforme` **196** sur `sqlite` **et** sur `postgres`, trois
+`typecheck` à 0. Journal versé :
+`journaux-plateforme-p3/temoin-verify-all-cloture-finale.log`.
+⚠️ **`plateforme` passe de 194 à 196, et les +2 étaient ANNONCÉS avant d'être
+lus** : ce sont les deux tests neufs du défaut `BIGINT`.
+
+### ⑬ Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔴 **Une conversion défensive dans un TEST masque un défaut au lieu de le
+  mesurer.** Le test d'époque de P1 enveloppe chaque lecture de `BIGINT` dans
+  `Number(...)` ; il ne pouvait **structurellement pas** voir que `pg` rend une
+  chaîne. Un test qui normalise ce qu'il éprouve n'éprouve plus rien.
+- 🔴 **Un type déclaré sur un retour de base n'est pas vérifié par le
+  compilateur** : `interroger<T>` fait un `as T[]`. **`T` est une affirmation,
+  pas une contrainte** — elle se tient par un test, ou pas du tout.
+- 🔴 **Une trace émise à l'envoi ne dit rien du verdict.** Deux traces `info`
+  annonçaient une session enregistrée avant que la plateforme n'ait répondu, et
+  sortaient telles quelles quand elle refusait. **Une trace doit dire ce qu'elle
+  SAIT à l'instant où elle sort.**
+- 🔴 **Un `match` catch-all qui range un refus avec des messages inintéressants
+  le rend invisible.** Le `{"type":"error"}` du relais tombait dans le même
+  `debug!` qu'`ice-config` et `peer-gone` : sous `RUST_LOG=info`, un refus de
+  poignée de main se lisait comme une panne réseau.
+- ⚠️ **Un `grep -n` avant édition ne suffit pas si le chantier DÉPLACE la ligne
+  citée** — voir ⑪ n°1. La relecture doit être **postérieure à l'exécution**.
+- ⚠️ **Un compte d'étapes peut être vrai de deux façons** : dix `etape`,
+  dix-sept en-têtes. **Dire lequel on compte.**
+- ⚠️ **Un service de recette laissé vivant tient un port pendant des heures** et
+  fait échouer la mesure suivante sans rien dire : une exécution de la
+  corroboration VM a été perdue ainsi (port 8080, cinq heures d'ancienneté),
+  cumulée avec la VM éteinte d'elle-même. **Vérifier le port ET
+  `Get-Process agent` avant chaque tentative.**
+- ⚠️ **`cargo clean --release -p proto -p agent` est obligatoire quand P3
+  modifie `proto`** : l'horloge de la VM avance sur celle de l'hôte, et cargo
+  saute la reconstruction du rlib. **Vérifier la TAILLE du binaire** — 9 620 480
+  contre 9 401 856.
+
+### ⑭ Ce que P3 lègue à P4 et à P5
+
+**Legs de P1 réglés** : n°1 (l'authentification, **entièrement** cette fois),
+n°3 (`session.vm_id`), n°4 (observer les agents — ⚠️ **mais pas sur la colonne
+que le pronostic nommait** : `agent_enrole.vu_a`, pas `vm.vue_a`), n°5 (le canal
+`/agent` — ⚠️ **mais pas au lieu que le pronostic nommait** : `http/serveur.ts`,
+pas `relais.ts`, et c'est E4 qui l'impose).
+**Legs de P2 réglés** : n°1 (E2), n°3 (`session.vm_id`). ⚠️ **Le n°2 est
+RÉDUIT, pas soldé** — voir le point 4 ci-dessous.
+
+**Ce qui reste dû :**
+
+1. ⛔ **P4 — la route qui rend un préfixe à un navigateur.**
+   `client/src/prefixe.ts` lit le coffre puis la chaîne de requête, et **rend la
+   chaîne vide à défaut** (E3). C'est un **paramètre sans source** : P4 doit
+   brancher la sienne, avec l'attribution d'une VM à un utilisateur. ⚠️ **Coût
+   nommé par la spec §10 elle-même** : une plateforme mal configurée retombe
+   silencieusement dans un espace de noms partagé.
+2. ⛔ **P4 — `agents/fraicheur.ts` n'a AUCUN appelant de production**, et c'est
+   **déclaré plutôt que dissimulé**. Ce qu'il décide n'est lu par personne tant
+   qu'aucune vue ne liste les VMs. Lui inventer un appelant reviendrait à décider
+   à la place de P4 où l'état s'affiche.
+3. ⛔ **P4 — `session.utilisateur_id` attend toujours son lecteur**, et
+   `application` attend son écrivain (sous-projet ④, qui empruntera le canal
+   `/agent`).
+4. 🔴 **P4 ou P5 — le préfixe ne ferme PAS la revendication au sein d'une VM.**
+   Il est **par VM**, et le registre d'appartenance de `signaling/propriete.ts`
+   est **en mémoire** : après un redémarrage du service, deux clients humains de
+   la même VM retrouvent le même préfixe et `<préfixe>:w-1` redevient
+   revendicable. **Le préfixe ferme la devinabilité ENTRE VMs ; il ne ferme pas
+   la revendication AU SEIN d'une VM.**
+5. ⛔ **P5 — le frein sur `/auth/connexion` ET sur `/agent`.** Les tentatives de
+   secret d'enrôlement ne sont bridées par **rien** : même fragilité que
+   `/auth/connexion`, sur un chemin neuf.
+6. ⛔ **P5 — le secret d'enrôlement en clair sur la VM**, nommé d'avance par la
+   décision D1 du plan et explicitement renvoyé à P5.
+7. ⛔ **P5 — TLS, cookies, en-têtes de sécurité, `/sante`, `coturn` restreint**,
+   et le déni de service en une trame (E15).
+8. ⛔ **Tous — la reprise du canal `/agent` n'a JAMAIS été exercée** (E9). Sans
+   elle, une coupure réseau rendrait une VM `injoignable` définitivement — la
+   raison même pour laquelle elle existe, et rien ne l'a éprouvée.
+9. ⛔ **Tous — la garde ne couvre que la POIGNÉE DE MAIN.** Legs n°9 de P2,
+   reconduit sans changement.
+10. ⚠️ **Hors P3 — `agent/src/transport.rs` est à 495 lignes, marge 5**, portée
+    là par le chantier E1, **qui la signale déjà lui-même**. Reprise ici pour
+    mémoire, non corrigée : hors périmètre.
+11. ⚠️ **Hors P3 — `docs/…/2026-08-19-design-system-design.md:145`** affirme
+    « aucun jeton dans la poignée de main » sur `shell-page.ts:45`. Faux depuis
+    P2, et le numéro vaut 70. Laissé à son propriétaire.
+
+---
+
 ## 🎨 Sous-projet ⑥ Design system — sous-bloc S1 : le socle, et les sept contrôles (19 août 2026)
 
 Résultats complets :
