@@ -1,0 +1,92 @@
+{
+  "scenario": "ton",
+  "session": "e1-rouge-avant",
+  "freq": 440,
+  "duree": 60000,
+  "url": "http://192.168.3.1:5273/?session=e1-rouge-avant",
+  "etapes": [
+    {
+      "quoi": "session",
+      "issue": "vivante",
+      "quand": "2026-08-19T15:53:18.150Z"
+    },
+    {
+      "quoi": "allumage",
+      "quand": "2026-08-19T15:53:18.155Z",
+      "compte": {
+        "erreur": "aucun transceiver sendonly",
+        "directions": [
+          "recvonly/recvonly",
+          "recvonly/recvonly"
+        ]
+      }
+    }
+  ],
+  "stats": [
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 23,
+          "packetsLost": 0,
+          "bytesReceived": 25
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 128,
+          "packetsLost": 0,
+          "bytesReceived": 136559,
+          "framesDecoded": 9,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 484
+        }
+      ],
+      "sortant": [],
+      "paire": {
+        "rtt": 0.001,
+        "recu": 145475,
+        "envoye": 2809
+      },
+      "horodatage": "2026-08-19T15:53:18.153Z",
+      "etiquette": "avant-injection"
+    },
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 6025,
+          "packetsLost": 0,
+          "bytesReceived": 6319
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 18363,
+          "packetsLost": 0,
+          "bytesReceived": 18587840,
+          "framesDecoded": 3384,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 484
+        }
+      ],
+      "sortant": [],
+      "paire": {
+        "rtt": 0.003,
+        "recu": 19774292,
+        "envoye": 74145
+      },
+      "horodatage": "2026-08-19T15:54:18.220Z",
+      "etiquette": "fin-ton"
+    }
+  ],
+  "sessionVivante": true,
+  "console": [
+    "[debug] [vite] connecting...",
+    "[debug] [vite] connected.",
+    "[debug] [instrumentation resize] declenchement ResizeObserver Object",
+    "[debug] [instrumentation resize] emission Object"
+  ],
+  "erreursPage": [],
+  "code": 0
+}

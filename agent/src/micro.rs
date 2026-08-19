@@ -293,6 +293,18 @@ impl LecteurMicro {
         self.tampon.compteurs()
     }
 
+    /// Durée d'audio déposée et pas encore rendue — c'est-à-dire la latence que
+    /// le tampon de gigue AJOUTE, à elle seule.
+    ///
+    /// ⚠️ **Ce n'est PAS la latence de bout en bout**, que ce chantier ne mesure
+    /// pas plus que les précédents : le trajet réseau, l'encodage du navigateur
+    /// et — au bloc E2 — l'écriture sur le câble en sont absents. C'est la borne
+    /// « dépôt → retrait » de la recette E1, et rien de plus. Bornée par
+    /// construction à `PLAFOND` (voir `TamponGigue::deposer`).
+    pub fn occupation(&self) -> Duration {
+        self.tampon.occupation()
+    }
+
     /// Remplit `sortie` (stéréo entrelacé, `f32`) avec ce qui est dû, complète
     /// au silence, et **ne bloque JAMAIS**.
     ///

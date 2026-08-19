@@ -1,0 +1,106 @@
+{
+  "scenario": "ton",
+  "session": "e1-ton-660-2",
+  "freq": 660,
+  "duree": 60000,
+  "url": "http://192.168.3.1:5173/?session=e1-ton-660-2",
+  "etapes": [
+    {
+      "quoi": "session",
+      "issue": "vivante",
+      "quand": "2026-08-19T15:44:41.819Z"
+    },
+    {
+      "quoi": "allumage",
+      "quand": "2026-08-19T15:44:41.821Z",
+      "compte": {
+        "hz": 660,
+        "etatContexte": "running",
+        "direction": "sendonly",
+        "directionCourante": "sendonly",
+        "pisteVivante": "live"
+      }
+    }
+  ],
+  "stats": [
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 19,
+          "packetsLost": 0,
+          "bytesReceived": 19
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 51,
+          "packetsLost": 0,
+          "bytesReceived": 51787,
+          "framesDecoded": 6,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 484
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 0,
+          "bytesSent": 0,
+          "mid": "2"
+        }
+      ],
+      "paire": {
+        "rtt": 0.002,
+        "recu": 57060,
+        "envoye": 2832
+      },
+      "horodatage": "2026-08-19T15:44:41.820Z",
+      "etiquette": "avant-injection"
+    },
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 6020,
+          "packetsLost": 0,
+          "bytesReceived": 6314
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 19042,
+          "packetsLost": 0,
+          "bytesReceived": 19172244,
+          "framesDecoded": 3713,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 484
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 3036,
+          "bytesSent": 243348,
+          "mid": "2"
+        }
+      ],
+      "paire": {
+        "rtt": 0.003,
+        "recu": 20445660,
+        "envoye": 439445
+      },
+      "horodatage": "2026-08-19T15:45:41.893Z",
+      "etiquette": "fin-ton"
+    }
+  ],
+  "sessionVivante": true,
+  "console": [
+    "[debug] [vite] connecting...",
+    "[debug] [vite] connected.",
+    "[debug] [instrumentation resize] declenchement ResizeObserver Object",
+    "[debug] [instrumentation resize] emission Object"
+  ],
+  "erreursPage": [],
+  "code": 0
+}
