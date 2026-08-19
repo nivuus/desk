@@ -11,14 +11,16 @@
 // une écriture perdue ne se manifeste que par une ligne qui n'arrive pas. Un
 // test qui bouclerait sans borne pendrait au lieu de rougir.
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
 import { baseNeuve } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import type { Config } from '../config';
+import { enroler } from '../depot/agent';
 import { lireParNom, type LigneSession } from '../depot/session';
 import { demarrerServeur, type ServicePlateforme } from '../http/serveur';
 import { signer } from '../identite/jeton';
+import { hacher } from '../identite/mot-de-passe';
 import { MOTIF_DEPART, observateurDeSession } from './trace';
 
 // Un secret de test EXPLICITE, jamais `''` : `lireConfig` refuse la chaîne
@@ -138,6 +140,99 @@ describe('observateur de session', () => {
         obs.separe('jamais-apparie');
         await new Promise((r) => setTimeout(r, 100));
         expect(await lireParNom(base, 'jamais-apparie')).toHaveLength(0);
+    });
+});
+
+/// Enrôle une VM à laquelle la session pourra se rattacher.
+///
+/// ⚠️ LA LIGNE `vm` D'ABORD : `agent_enrole.vm_id` la RÉFÉRENCE
+/// (`0003-agents.sql`), et SQLite applique la clé étrangère. L'empreinte est
+/// une VRAIE empreinte `scrypt`, jamais une chaîne courte — même règle que
+/// `depot/agent.test.ts`, et pour la même raison : une valeur commode ne
+/// mesure aucune longueur de colonne.
+async function enrolerUneVm(p: Pilote, vmId: string, prefixe: string): Promise<void> {
+    await p.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)', [
+        vmId,
+        `vm-${vmId}`,
+        '192.168.3.2',
+    ]);
+    await enroler(p, vmId, await hacher('un-secret-d-enrolement-de-la-vraie-longueur'), prefixe);
+}
+
+describe('la colonne session.vm_id', () => {
+    // 🔴 C'EST LE LEGS N°3 DE P2 QUI SE FERME ICI : « `session.vm_id` reste
+    // entièrement NULL ». Le préfixe du nom de session désigne la VM, et
+    // c'est la TRACE qui le résout — jamais le relais, dont `apparie` reste
+    // synchrone et sans retour (E10). La résolution est donc éprouvée au
+    // niveau de l'observateur, là où elle vit.
+
+    it('une session préfixée par une VM ENRÔLÉE inscrit son vm_id', async () => {
+        base = await baseNeuve('trace-vm-connue');
+        await enrolerUneVm(base, 'v-1', P);
+        const obs = observateurDeSession(base, () => 5_000_000_000);
+
+        obs.apparie(`${P}:bureau`);
+        const ligne = await attendreLigne(base, `${P}:bureau`, () => true, 'ouverte');
+        expect(ligne.vm_id).toBe('v-1');
+    });
+
+    it('une session SANS préfixe laisse vm_id à `null`', async () => {
+        // Le mode d'essai local que la spec §10 pose comme LÉGITIME : un
+        // agent lancé sans `AGENT_VM` nomme sa session `bureau`, tout court.
+        // Lever, ou inscrire une chaîne vide, casserait ce mode — et une
+        // chaîne vide mentirait en prétendant connaître une VM.
+        base = await baseNeuve('trace-vm-sans-prefixe');
+        await enrolerUneVm(base, 'v-1', P);
+        const obs = observateurDeSession(base, () => 5_000_000_000);
+
+        obs.apparie('bureau');
+        const ligne = await attendreLigne(base, 'bureau', () => true, 'ouverte');
+        expect(ligne.vm_id).toBeNull();
+    });
+
+    it('🔴 l’instant est lu SYNCHRONEMENT à l’appariement, PAS après la lecture de base', async () => {
+        // 🔴 CE TEST EXISTE PARCE QU'UNE MUTATION EST RESTÉE VERTE SANS LUI.
+        // La résolution du préfixe intercale une lecture de base entre
+        // `apparie()` et l'INSERT : lire l'horloge dans l'appel à
+        // `ouvrirSession` daterait donc `ouverte_a` de la FIN D'UNE REQUÊTE et
+        // non de l'appariement. Aucun des trois tests ci-dessus ne le voyait —
+        // ils ne bougent pas leur horloge —, et le commentaire de `trace.ts`
+        // affirmait la règle sans que rien ne la tienne.
+        base = await baseNeuve('trace-instant-synchrone');
+        await enrolerUneVm(base, 'v-1', P);
+        let instant = 5_000_000_000;
+        const obs = observateurDeSession(base, () => instant);
+
+        obs.apparie(`${P}:bureau`);
+        // 🔴 CETTE LIGNE COURT AVANT QUE LA RÉSOLUTION N'AIT ABOUTI, et c'est
+        // ce qui rend le test décidable : `resoudreVm` est asynchrone, donc
+        // `apparie` a rendu la main ici sans que la base ait répondu. Une
+        // horloge lue plus tard verrait 9 000 000 000.
+        instant = 9_000_000_000;
+
+        const ligne = await attendreLigne(base, `${P}:bureau`, () => true, 'ouverte');
+        expect(Number(ligne.ouverte_a)).toBe(5_000_000_000);
+        expect(ligne.vm_id).toBe('v-1');
+    });
+
+    it('🔴 une session à préfixe INCONNU laisse vm_id à `null`, et le JOURNALISE', async () => {
+        // 🔴 LES DEUX MOITIÉS COMPTENT. Inscrire quand même ferait MENTIR la
+        // colonne — elle nommerait une VM que la base ne connaît pas. Et se
+        // taire rendrait le cas indiscernable du précédent : un agent dont
+        // l'enrôlement a été révoqué apparierait des sessions sans que rien,
+        // nulle part, ne le signale.
+        base = await baseNeuve('trace-vm-inconnue');
+        const journal = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const inconnu = 'Zz9QmRhH1x2kLpVbNc7dAw';
+        const obs = observateurDeSession(base, () => 5_000_000_000);
+
+        obs.apparie(`${inconnu}:bureau`);
+        const ligne = await attendreLigne(base, `${inconnu}:bureau`, () => true, 'ouverte');
+        expect(ligne.vm_id).toBeNull();
+
+        const lignes = journal.mock.calls.map((c) => String(c[0])).join('\n');
+        expect(lignes).toContain(inconnu);
+        journal.mockRestore();
     });
 });
 
