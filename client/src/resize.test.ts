@@ -15,8 +15,16 @@ describe('RejeuResize', () => {
         expect(r.aEmettre()).toBeUndefined();
     });
 
-    it('REJOUE la dernière taille quand le canal était fermé au moment du geste', () => {
-        // Le cas du leg 10 : le ResizeObserver a vu la taille, mais
+    it("rend la taille observée tant qu'aucune émission n'a été confirmée", () => {
+        // ⚠️ Ce test n'exerce AUCUN état de canal : `RejeuResize` est pur et
+        // n'en connaît aucun (leg n°11 de D9 — son titre annonçait « quand le
+        // canal était fermé au moment du geste », état qu'il ne pouvait pas
+        // atteindre, et il rendait le même verdict pour n'importe quelle autre
+        // raison de non-confirmation). L'état de canal vit dans `main.ts`,
+        // chez `emettreSiPossible`, et c'est là qu'il se teste — pas ici.
+        //
+        // MOTIVATION du mécanisme, et non ce que ce test éprouve : le cas du
+        // leg 10 est celui où le ResizeObserver a vu la taille mais
         // `readyState !== 'open'` a fait abandonner l'envoi. À l'ouverture du
         // canal, la taille doit repartir — sans quoi elle est perdue à jamais,
         // l'observateur ne se redéclenchant que sur un NOUVEAU changement.

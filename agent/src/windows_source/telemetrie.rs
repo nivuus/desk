@@ -65,8 +65,29 @@ mod tests {
         assert_eq!(b.lire(), (0, 0, 1));
     }
 
+    /// Une télémétrie remise à neuf repart de zéro — et ce test le PROUVE en
+    /// l'ayant d'abord fait compter sur ses TROIS compteurs.
+    ///
+    /// ⚠️ **Il remplace `une_telemetrie_neuve_est_a_zero` (leg n°11 de D9),
+    /// qui n'éprouvait que `#[derive(Default)]` et ne pouvait pas rendre
+    /// l'autre valeur** : il passait quel que soit le corps de
+    /// `tick`/`capturee`/`produite`. La faiblesse a été PROUVÉE, pas
+    /// affirmée — `tick()` rendu no-op, l'ancien test reste VERT quand
+    /// celui-ci vire au rouge sur `left: (0, 1, 1)`.
+    ///
+    /// La précondition compare le triplet EXACT et non « différent de
+    /// zéro » : saboter un seul des trois compteurs laisserait un
+    /// `assert_ne!(…, (0,0,0))` vert, les deux autres suffisant à le
+    /// satisfaire. C'est la première rédaction de ce test, et elle a été
+    /// mesurée verte sous le sabotage qu'elle devait dénoncer.
     #[test]
-    fn une_telemetrie_neuve_est_a_zero() {
-        assert_eq!(Telemetrie::default().lire(), (0, 0, 0));
+    fn une_telemetrie_remise_a_neuf_repart_de_zero() {
+        let mut t = Telemetrie::default();
+        t.tick();
+        t.capturee();
+        t.produite();
+        assert_eq!(t.lire(), (1, 1, 1), "précondition : les TROIS compteurs ont compté");
+        t = Telemetrie::default();
+        assert_eq!(t.lire(), (0, 0, 0));
     }
 }

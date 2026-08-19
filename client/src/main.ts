@@ -383,6 +383,22 @@ connectSession({
         });
         observer.observe(video);
         // Le rejeu : à l'ouverture du canal, la taille retenue repart.
+        //
+        // ⚠️ INVARIANT NON ÉVIDENT (leg n°12 de D9) : ce `.then()` doit
+        // s'exécuter INTÉGRALEMENT DE FAÇON SYNCHRONE, sans `await` intercalé
+        // entre la construction de `rejeu` / du `ResizeObserver` ci-dessus et
+        // cet `addEventListener`. Un `await` glissé là rendrait la main à la
+        // boucle d'événements : si le canal s'ouvrait pendant l'attente,
+        // l'écouteur serait posé APRÈS l'événement `open`, il ne serait jamais
+        // appelé, et le rejeu serait rompu EN SILENCE — aucune erreur, aucun
+        // log, juste une taille perdue. C'est exactement le mode de
+        // défaillance que le rejeu existe pour réparer.
+        //
+        // Aucun test ne garde cet invariant, et c'est une décision, pas un
+        // oubli : le voir rouge exigerait de simuler `RTCDataChannel` et tout
+        // le cycle de `createSession`, c'est-à-dire de mocker la session
+        // entière. Un test qu'on ne peut pas voir rouge à coût raisonnable
+        // n'ajouterait rien à ce que ce commentaire dit déjà.
         session.controlChannel.addEventListener('open', emettreSiPossible);
     })
     .catch((error: unknown) => {
