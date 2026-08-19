@@ -9,6 +9,53 @@
 // donne pas d'horodatage traversant ces étages). Voir le document de recette
 // pour la mesure indépendante (motif visuel chronométré) qui comble ce trou.
 
+/// Un relevé de la piste MONTANTE (le micro, chantier E).
+export interface InstantaneMontant {
+    octets: number;
+    paquets: number;
+    horodatage: number;
+}
+
+/// La ligne du micro, et l'instantané à mémoriser pour le tour suivant.
+///
+/// ⚠️ **`bytesSent` est un COMPTE D'OCTETS, et ce dépôt sait qu'un compte
+/// d'octets ne prouve pas qu'on entend quelque chose.** Le sous-bloc D7 a relevé
+/// un `bytesReceived` en croissance régulière sur un spectre à −1000 dB : la
+/// piste vivait, le son était absent. Ces deux nombres sont affichés **pour
+/// DIAGNOSTIQUER** — savoir si l'on émet, et à quel rythme —, **jamais pour
+/// juger un critère de recette.** Le chiffre-juge du micro est la fréquence
+/// dominante relevée côté agent (`MICRO_MESURE`), pas ce qui est écrit ici.
+///
+/// **`courant` absent = AUCUNE `outbound-rtp` audio**, ce qui n'est pas la même
+/// chose qu'un débit nul : la première dit que rien n'est négocié ou qu'aucun
+/// paquet n'est encore parti, la seconde qu'une piste vit et se tait. Les
+/// confondre ferait passer une session sans micro pour un micro silencieux —
+/// exactement la distinction que la ligne `audioLine` fait déjà pour l'audio
+/// descendante, et pour la même raison.
+export function suivreMontant(
+    precedent: InstantaneMontant | undefined,
+    courant: InstantaneMontant | undefined,
+): { ligne: string; memoire: InstantaneMontant | undefined } {
+    // La mémoire est OUBLIÉE quand la piste disparaît : sans cela, une piste
+    // renégociée (SSRC neuf, compteurs repartis de zéro) calculerait son
+    // premier débit contre les compteurs d'un autre flux.
+    if (!courant) return { ligne: 'micro absent', memoire: undefined };
+
+    let kbps = 0;
+    if (precedent) {
+        const secondes = (courant.horodatage - precedent.horodatage) / 1000;
+        // `> 0` et non `!== 0` : un horodatage figé rendrait une division par
+        // zéro, un horodatage qui recule un débit négatif.
+        if (secondes > 0) {
+            kbps = ((courant.octets - precedent.octets) * 8) / secondes / 1000;
+        }
+    }
+    return {
+        ligne: `micro ${kbps.toFixed(0)} kb/s  ·  paquets ${courant.paquets}`,
+        memoire: courant,
+    };
+}
+
 interface Snapshot {
     framesDecoded: number;
     bytesReceived: number;
@@ -18,11 +65,13 @@ interface Snapshot {
 export function attachStats(pc: RTCPeerConnection, element: HTMLElement): () => void {
     let previous: Snapshot | undefined;
     let previousAudio: Snapshot | undefined;
+    let precedentMontant: InstantaneMontant | undefined;
 
     const timer = window.setInterval(async () => {
         const report = await pc.getStats();
         let inbound: RTCInboundRtpStreamStats | undefined;
         let inboundAudio: RTCInboundRtpStreamStats | undefined;
+        let outboundAudio: RTCOutboundRtpStreamStats | undefined;
         let pair: RTCIceCandidatePairStats | undefined;
 
         report.forEach((stat) => {
@@ -34,6 +83,12 @@ export function attachStats(pc: RTCPeerConnection, element: HTMLElement): () => 
             }
             if (stat.type === 'candidate-pair' && (stat as any).nominated) {
                 pair = stat as RTCIceCandidatePairStats;
+            }
+            // La piste MONTANTE (chantier E). `kind === 'audio'` discrimine :
+            // il y a aussi une `outbound-rtp` vidéo dès que l'agent émet, et
+            // sans ce filtre on afficherait son débit sous le nom du micro.
+            if (stat.type === 'outbound-rtp' && (stat as any).kind === 'audio') {
+                outboundAudio = stat as RTCOutboundRtpStreamStats;
             }
         });
         if (!inbound) return;
@@ -102,6 +157,18 @@ export function attachStats(pc: RTCPeerConnection, element: HTMLElement): () => 
             ? `audio ${audioKbps.toFixed(0)} kb/s  ·  perdus ${(inboundAudio as any).packetsLost ?? 0}  ·  gigue ${(((inboundAudio as any).jitter ?? 0) * 1000).toFixed(1)} ms`
             : 'audio absente';
 
+        const montant = suivreMontant(
+            precedentMontant,
+            outboundAudio
+                ? {
+                      octets: (outboundAudio as any).bytesSent ?? 0,
+                      paquets: (outboundAudio as any).packetsSent ?? 0,
+                      horodatage: outboundAudio.timestamp,
+                  }
+                : undefined,
+        );
+        precedentMontant = montant.memoire;
+
         element.textContent = [
             `${fps.toFixed(1)} i/s`,
             `${width}×${height}`,
@@ -111,6 +178,7 @@ export function attachStats(pc: RTCPeerConnection, element: HTMLElement): () => 
             `≈ ${glassToGlassMs.toFixed(1)} ms`,
             `perdues ${(inbound as any).framesDropped ?? 0}`,
             audioLine,
+            montant.ligne,
         ].join('  ·  ');
     }, 1000);
 

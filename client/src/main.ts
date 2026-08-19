@@ -10,12 +10,14 @@ import { texteLien } from './lien';
 import { viewportPair } from './viewport';
 import { RejeuResize } from './resize';
 import { attachVisibilite } from './visibilite';
+import { attacherBoutonMicro } from './micro';
 import { encodeResize } from '../../proto/ts/control';
 
 const video = document.querySelector<HTMLVideoElement>('#remote')!;
 const statusElement = document.querySelector<HTMLDivElement>('#status')!;
 const statsElement = document.querySelector<HTMLDivElement>('#stats')!;
 const fullscreenElement = document.querySelector<HTMLButtonElement>('#fullscreen')!;
+const microElement = document.querySelector<HTMLButtonElement>('#micro')!;
 
 // Point d'écriture unique du bandeau de statut : protège un message TERMINAL
 // (fin de session, échec) contre l'écrasement par un message ordinaire
@@ -101,6 +103,17 @@ let manette: ReturnType<typeof attachGamepadAuDOM> | undefined;
 let detacherPleinEcran: ReturnType<typeof attachFullscreenAuDOM> | undefined;
 let detacherArmement: (() => void) | undefined;
 let detacherVisibilite: ReturnType<typeof attachVisibilite> | undefined;
+// Le micro (chantier E). Déclaré ici pour la même raison que ses voisins :
+// `onControl` est câblé AVANT que la promesse de `connectSession` ne résolve,
+// et le message `ready` — qui décide si le bouton paraît — peut arriver avant
+// le `.then()` qui construit le contrôle.
+let micro: ReturnType<typeof attacherBoutonMicro> | undefined;
+// `mic` tel que l'agent l'a annoncé, `undefined` compris. Mémorisé parce que
+// `ready` peut précéder la construction du bouton : sans cela, une annonce
+// arrivée tôt serait perdue et le bouton resterait caché pour toujours,
+// SANS RIEN pour le dire — le mode de défaillance silencieux que ce dépôt
+// a payé sur l'annonce de visibilité (voir plus bas).
+let micAnnonce: boolean | undefined;
 let manetteAnnoncee = false;
 let bandeauManette: number | undefined;
 
@@ -119,6 +132,12 @@ connectSession({
         if (message.type === 'ready') {
             statut.afficher(`prêt — ${message.width}×${message.height}`);
             setTimeout(() => statut.masquer(), 1500);
+            // Le bouton micro ne paraît QUE si l'agent dit avoir le câble
+            // (spec §10). `message.mic` est passé TEL QUEL : la règle « son
+            // absence vaut false » vit dans `micro.ts`, où un test la garde,
+            // plutôt que dans un `if` d'ici que rien n'exercerait.
+            micAnnonce = message.mic;
+            micro?.annoncerDisponibilite(micAnnonce);
         } else if (message.type === 'session-end') {
             window.clearTimeout(bandeau);
             window.clearTimeout(bandeauManette);
@@ -133,6 +152,10 @@ connectSession({
             detacherPleinEcran?.();
             detacherArmement?.();
             detacherVisibilite?.();
+            // Fin de session : l'extinction du micro doit être RÉELLE, et
+            // `session.close()` n'est pas appelé sur ce chemin. Sans ceci
+            // l'indicateur de Chrome resterait allumé après la fin (spec §9).
+            micro?.detacher();
             statut.afficher(`session terminée : ${message.reason}`, { terminal: true });
         } else if (message.type === 'pointer') {
             pointeur?.surMessagePointeur(message.visible, message.shape);
@@ -243,6 +266,26 @@ connectSession({
         }, 4000);
 
         detacherPleinEcran = attachFullscreenAuDOM({ bouton: fullscreenElement, cible: document.documentElement });
+
+        // Le micro. `micSender` vient du transceiver `sendonly` déclaré sans
+        // piste dans l'offre initiale : allumer n'est qu'un `replaceTrack`, et
+        // ne demande aucune renégociation.
+        micro = attacherBoutonMicro({
+            bouton: microElement,
+            sender: session.micSender,
+            // La permission n'est demandée qu'ICI, au clic, jamais à
+            // l'ouverture de session (spec §9).
+            demanderFlux: (contraintes) => navigator.mediaDevices.getUserMedia(contraintes),
+            // Les deux états d'échec seulement portent un message ; il dit
+            // COMMENT rétablir la permission, pas seulement qu'elle manque.
+            // `persistant` : l'utilisateur doit avoir le temps de le lire et
+            // d'aller le suivre, une minuterie voisine ne doit pas l'effacer.
+            surMessage: (texte) => statut.afficher(texte, { persistant: true }),
+        });
+        // `ready` a pu arriver AVANT ce point : le rejouer est le seul moyen
+        // que le bouton paraisse dans ce cas. Le rappel est inoffensif si
+        // l'annonce n'est pas encore venue (`undefined` laisse caché).
+        micro.annoncerDisponibilite(micAnnonce);
 
         // Le son démarre coupé et s'active au premier geste. Un bandeau ne
         // s'affiche que si aucun geste n'est venu au bout de quelques

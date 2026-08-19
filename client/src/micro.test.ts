@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { attacherMicro, type EtatMicro } from './micro';
+import { attacherBoutonMicro, attacherMicro, type EtatMicro } from './micro';
 
 /// Piste factice : ce que ce module fait d'une `MediaStreamTrack` se réduit à
 /// `stop()`, et c'est précisément l'appel que la spec §9 rend obligatoire.
@@ -246,5 +246,166 @@ describe('attacherMicro — la bascule et ses quatre états', () => {
         await expect(micro.basculer()).resolves.toBe('refuse');
         await expect(micro.basculer()).resolves.toBe('actif');
         expect(demanderFlux).toHaveBeenCalledTimes(2);
+    });
+});
+
+/// Bouton factice : ce que le module écrit dessus, et rien d'autre. Un vrai
+/// `HTMLButtonElement` exigerait un DOM, que `client/src` évite partout par
+/// injection de dépendances (`audio.ts`, `fullscreen.ts`, `visibilite.ts`).
+function fauxBouton() {
+    const ecouteurs = new Map<string, Set<EventListener>>();
+    return {
+        hidden: true,
+        disabled: false,
+        title: '',
+        dataset: {} as { etat?: string },
+        addEventListener(type: string, e: EventListener) {
+            if (!ecouteurs.has(type)) ecouteurs.set(type, new Set());
+            ecouteurs.get(type)!.add(e);
+        },
+        removeEventListener(type: string, e: EventListener) {
+            ecouteurs.get(type)?.delete(e);
+        },
+        cliquer() {
+            for (const e of [...(ecouteurs.get('click') ?? [])]) e(new Event('click'));
+        },
+        nombreEcouteurs: () => (ecouteurs.get('click')?.size ?? 0),
+    };
+}
+
+describe('attacherBoutonMicro — le bouton et ses états', () => {
+    it("le bouton reste CACHÉ tant que l'agent n'a pas annoncé `mic: true`", () => {
+        const bouton = fauxBouton();
+        attacherBoutonMicro({
+            bouton,
+            sender: fauxSender(),
+            demanderFlux: async () => fauxFlux(faussePiste()),
+        });
+
+        expect(bouton.hidden).toBe(true);
+    });
+
+    it("`mic` ABSENT laisse le bouton caché — un agent ancien ne le porte pas", () => {
+        const bouton = fauxBouton();
+        const controle = attacherBoutonMicro({
+            bouton,
+            sender: fauxSender(),
+            demanderFlux: async () => fauxFlux(faussePiste()),
+        });
+
+        // ⚠️ Spec §10 : le champ est optionnel et SON ABSENCE VAUT `false`. Un
+        // client récent parlant à un agent d'avant le chantier E ne doit pas
+        // proposer un bouton qui ne mènerait nulle part. La règle vit ICI, dans
+        // le module testé, plutôt que dans un `if` de `main.ts` que rien
+        // n'exercerait.
+        controle.annoncerDisponibilite(undefined);
+        expect(bouton.hidden).toBe(true);
+        controle.annoncerDisponibilite(false);
+        expect(bouton.hidden).toBe(true);
+        controle.annoncerDisponibilite(true);
+        expect(bouton.hidden).toBe(false);
+    });
+
+    it('un clic allume, un second éteint, et le bouton porte son état', async () => {
+        const bouton = fauxBouton();
+        const piste = faussePiste();
+        const sender = fauxSender();
+        const controle = attacherBoutonMicro({
+            bouton,
+            sender,
+            demanderFlux: async () => fauxFlux(piste),
+        });
+        controle.annoncerDisponibilite(true);
+
+        expect(bouton.dataset.etat).toBe('ferme');
+
+        bouton.cliquer();
+        await controle.enCours();
+        expect(bouton.dataset.etat).toBe('actif');
+        expect(sender.recus).toEqual([piste]);
+
+        bouton.cliquer();
+        await controle.enCours();
+        expect(bouton.dataset.etat).toBe('ferme');
+        expect(piste.arretee).toBe(true);
+    });
+
+    it('« indisponible » DÉSACTIVE le bouton, « refusé » le laisse cliquable', async () => {
+        const bouton = fauxBouton();
+        let nom = 'NotFoundError';
+        const controle = attacherBoutonMicro({
+            bouton,
+            sender: fauxSender(),
+            demanderFlux: async () => {
+                throw erreurDom(nom);
+            },
+        });
+        controle.annoncerDisponibilite(true);
+
+        bouton.cliquer();
+        await controle.enCours();
+        // Spec §10, ligne « aucun périphérique d'entrée » : bouton DÉSACTIVÉ.
+        expect(bouton.dataset.etat).toBe('indisponible');
+        expect(bouton.disabled).toBe(true);
+
+        nom = 'NotAllowedError';
+        const autre = fauxBouton();
+        const second = attacherBoutonMicro({
+            bouton: autre,
+            sender: fauxSender(),
+            demanderFlux: async () => {
+                throw erreurDom(nom);
+            },
+        });
+        second.annoncerDisponibilite(true);
+        autre.cliquer();
+        await second.enCours();
+        // Spec §10, ligne « permission refusée » : le message dit comment la
+        // rétablir, donc le bouton doit rester cliquable pour retenter.
+        expect(autre.dataset.etat).toBe('refuse');
+        expect(autre.disabled).toBe(false);
+    });
+
+    it("le détail des deux états d'échec est remonté à l'appelant", async () => {
+        const bouton = fauxBouton();
+        const messages: string[] = [];
+        const controle = attacherBoutonMicro({
+            bouton,
+            sender: fauxSender(),
+            demanderFlux: async () => {
+                throw erreurDom('NotAllowedError');
+            },
+            surMessage: (texte) => messages.push(texte),
+        });
+        controle.annoncerDisponibilite(true);
+
+        bouton.cliquer();
+        await controle.enCours();
+
+        // Un seul message, et il porte le remède — pas seulement le fait du
+        // refus (spec §10).
+        expect(messages).toHaveLength(1);
+        expect(messages[0]).toMatch(/barre d'adresse/);
+    });
+
+    it('`detacher` éteint la piste, cache le bouton et retire son écouteur', async () => {
+        const bouton = fauxBouton();
+        const piste = faussePiste();
+        const controle = attacherBoutonMicro({
+            bouton,
+            sender: fauxSender(),
+            demanderFlux: async () => fauxFlux(piste),
+        });
+        controle.annoncerDisponibilite(true);
+        bouton.cliquer();
+        await controle.enCours();
+
+        controle.detacher();
+
+        // Sans le retrait de l'écouteur, un clic après la fin de session
+        // relancerait une demande de permission sur une session morte.
+        expect(piste.arretee).toBe(true);
+        expect(bouton.hidden).toBe(true);
+        expect(bouton.nombreEcouteurs()).toBe(0);
     });
 });

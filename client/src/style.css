@@ -83,3 +83,57 @@ body {
        voir fullscreen.ts), donc retirer le bouton du flux ne piège personne. */
     pointer-events: none;
 }
+
+/* Le micro (chantier E). Même gabarit que `#fullscreen`, posé juste à sa
+   gauche : les deux boutons partagent le coin, jamais la place. */
+#micro {
+    position: fixed;
+    inset-block-end: 12px;
+    /* 12 px de marge, plus la largeur du bouton plein écran et l'écart. */
+    inset-inline-end: 64px;
+    z-index: 10;
+    border: 0;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--text);
+    background: rgb(0 0 0 / 0.55);
+    cursor: pointer;
+}
+
+#micro:hover {
+    background: rgb(0 0 0 / 0.75);
+}
+
+/* Le micro CAPTE : son état actif doit se voir sans ambiguïté, et de loin.
+   C'est la seule fonction du produit qui écoute l'utilisateur chez lui
+   (spec §9), et un doute sur l'état du bouton est exactement le « mensonge
+   visuel » que cette section de la spec écarte. */
+#micro[data-etat="actif"] {
+    background: rgb(220 38 38 / 0.85);
+}
+
+#micro[data-etat="refuse"] {
+    background: rgb(120 53 15 / 0.85);
+}
+
+/* « Indisponible » : aucun périphérique d'entrée. Le bouton porte `disabled`
+   (voir micro.ts) ; le grisé le dit à l'œil. */
+#micro:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ⚠️ AUCUNE RÈGLE D'ATTÉNUATION EN PLEIN ÉCRAN ICI, contrairement à
+   `#fullscreen` ci-dessus, et c'est délibéré. Une première rédaction en portait
+   une, écrite `#fullscreen[data-actif="true"] ~ #micro` — elle NE POUVAIT PAS
+   S'APPLIQUER : `~` est le combinateur de frère SUIVANT, et `#micro` précède
+   `#fullscreen` dans le document. Une règle morte est pire qu'une règle
+   absente : elle se lit comme une protection existante.
+
+   Le fond, une fois la coquille écartée : le micro capte l'utilisateur chez
+   lui, et couper son micro ne doit jamais demander de quitter le plein écran
+   d'abord. Le rendre discret ou hors du flux d'événements irait contre la
+   spec §9. S'il s'avérait un jour qu'il avale des clics de jeu, c'est une
+   mesure — pas une règle CSS écrite à l'aveugle. */

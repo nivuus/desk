@@ -193,3 +193,96 @@ export function attacherMicro(options: OptionsMicro): Micro {
         },
     };
 }
+
+// ── Le bouton ───────────────────────────────────────────────────────────────
+//
+// Séparé de `attacherMicro` pour la même raison que `attachFullscreen` l'est de
+// `armerPleinEcran` : la bascule est une machine à états qui ne connaît aucun
+// DOM, le bouton est ce qui la montre. Le second dépend du premier, jamais
+// l'inverse.
+
+/// Ce dont ce module a besoin du bouton, et rien de plus.
+export interface BoutonMicro {
+    hidden: boolean;
+    disabled: boolean;
+    title: string;
+    dataset: { etat?: string };
+    addEventListener(type: string, ecouteur: EventListener): void;
+    removeEventListener(type: string, ecouteur: EventListener): void;
+}
+
+export interface OptionsBoutonMicro extends OptionsMicro {
+    bouton: BoutonMicro;
+    /// Le message destiné à l'utilisateur, sur les deux états d'échec
+    /// seulement. `main.ts` le pousse dans le bandeau de statut.
+    surMessage?: (texte: string) => void;
+}
+
+export interface ControleBoutonMicro {
+    /// À appeler sur le message `ready` de l'agent, avec `message.mic` TEL
+    /// QUEL — `undefined` compris.
+    annoncerDisponibilite(mic: boolean | undefined): void;
+    /// La bascule en cours, pour que le test puisse l'attendre. En production
+    /// personne ne l'attend : un clic est asynchrone par nature.
+    enCours(): Promise<unknown>;
+    detacher(): void;
+}
+
+/// Ce que le bouton affiche en survol, par état.
+const TITRES: Record<EtatMicro, string> = {
+    ferme: 'Microphone — cliquez pour parler',
+    actif: 'Microphone actif — cliquez pour couper',
+    refuse: 'Microphone refusé — voir le message',
+    indisponible: 'Aucun microphone disponible',
+};
+
+export function attacherBoutonMicro(options: OptionsBoutonMicro): ControleBoutonMicro {
+    const { bouton, surMessage } = options;
+    let enVol: Promise<unknown> = Promise.resolve();
+
+    const micro = attacherMicro({
+        ...options,
+        surEtat(etat, detail) {
+            bouton.dataset.etat = etat;
+            bouton.title = TITRES[etat];
+            // ⚠️ SEUL « indisponible » désactive. Un refus de permission laisse
+            // le bouton cliquable, parce que son message dit d'aller rétablir
+            // la permission puis de recliquer (spec §10) : le désactiver
+            // rendrait ce conseil inapplicable.
+            bouton.disabled = etat === 'indisponible';
+            if (detail) surMessage?.(detail);
+            options.surEtat?.(etat, detail);
+        },
+    });
+
+    // L'état initial est écrit tout de suite : sans lui, le CSS n'aurait aucun
+    // sélecteur à accrocher avant le premier clic.
+    bouton.dataset.etat = micro.etat();
+    bouton.title = TITRES[micro.etat()];
+
+    const onClick = (): void => {
+        // `basculer` ne rejette jamais (spec §10) ; le `catch` est une ceinture
+        // pour que rien ne remonte en « unhandled rejection » si cet invariant
+        // venait à être rompu par une évolution future.
+        enVol = micro.basculer().catch((erreur: unknown) => {
+            console.warn('bascule micro en échec', erreur);
+        });
+    };
+    bouton.addEventListener('click', onClick);
+
+    return {
+        annoncerDisponibilite(mic) {
+            // ⚠️ `mic` est lu TEL QUEL, et son absence vaut `false` (spec §10) :
+            // un agent d'avant le chantier E ne porte pas le champ, et un
+            // bouton qui ne mènerait nulle part est pire que pas de bouton.
+            // `!!` et non `!== false` : c'est la falsité qui décide.
+            bouton.hidden = !mic;
+        },
+        enCours: () => enVol,
+        detacher() {
+            bouton.removeEventListener('click', onClick);
+            micro.detacher();
+            bouton.hidden = true;
+        },
+    };
+}
