@@ -15,14 +15,21 @@
 import { createServer, type Server } from 'node:http';
 import { WebSocketServer } from 'ws';
 import type { Config } from '../config';
+import type { Pilote } from '../base/pilote';
 import { createSignalingServer } from '../signaling/relais';
+import { observateurDeSession } from '../signaling/trace';
 
 export interface ServicePlateforme {
     port: number;
     close(): Promise<void>;
 }
 
-export async function demarrerServeur(config: Config): Promise<ServicePlateforme> {
+/// `base` est REQUISE, jamais optionnelle : un service qui apparierait sans
+/// rien enregistrer serait indiscernable du bon fonctionnement (spec §6), et
+/// c'est la classe exacte de panne muette contre laquelle tout ce dépôt est
+/// écrit. `demarrage.ts` garantit par ailleurs que le port ne s'ouvre qu'après
+/// la base et ses migrations.
+export async function demarrerServeur(config: Config, base: Pilote): Promise<ServicePlateforme> {
     // Toute route HTTP répond 404 : P2 (authentification) et P4
     // (orchestration) en ajouteront, P1 n'en sert aucune.
     const http: Server = createServer((_requete, reponse) => {
@@ -31,7 +38,9 @@ export async function demarrerServeur(config: Config): Promise<ServicePlateforme
     });
 
     const wssRacine = new WebSocketServer({ noServer: true });
-    const relais = createSignalingServer(wssRacine);
+    // `Date.now` est passée ICI, et une seule fois : c'est le seul endroit du
+    // chemin de la trace qui lise une horloge réelle, tout le reste la reçoit.
+    const relais = createSignalingServer(wssRacine, observateurDeSession(base, Date.now));
 
     http.on('upgrade', (requete, socket, tete) => {
         // `requete.url` peut porter une chaîne de requête ; seul le chemin

@@ -10,6 +10,8 @@
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
+import { baseNeuve } from '../base/harnais';
+import type { Pilote } from '../base/pilote';
 import type { Config } from '../config';
 import { demarrerServeur, type ServicePlateforme } from './serveur';
 
@@ -21,11 +23,23 @@ const CONFIG: Config = {
 };
 
 let service: ServicePlateforme | undefined;
+let base: Pilote | undefined;
 
 afterEach(async () => {
     await service?.close();
     service = undefined;
+    await base?.fermer();
+    base = undefined;
 });
+
+/// Le serveur exige une base : elle est REQUISE, pas optionnelle (voir
+/// `demarrerServeur`). Ces trois tests-ci ne mesurent pas la trace — c'est
+/// `signaling/trace.test.ts` qui la mesure —, ils ont seulement besoin d'une
+/// base vivante pour démarrer.
+async function servir(nom: string): Promise<ServicePlateforme> {
+    base = await baseNeuve(nom);
+    return demarrerServeur(CONFIG, base);
+}
 
 /// Ouvre un socket et rend son issue : `ouvert` s'il a atteint `open`, sinon
 /// `ferme`. Une borne de temps évite qu'un test pende indéfiniment.
@@ -50,13 +64,13 @@ function tenter(url: string, borneMs = 3000): Promise<'ouvert' | 'ferme'> {
 
 describe('demarrerServeur', () => {
     it("n'écoute QUE sur l'adresse nommée", async () => {
-        service = await demarrerServeur(CONFIG);
+        service = await servir('http-adresse');
         expect(service.port).toBeGreaterThan(0);
         await expect(tenter(`ws://127.0.0.1:${service.port}/`)).resolves.toBe('ouvert');
     });
 
     it('refuse la montée WebSocket sur un chemin inconnu', async () => {
-        service = await demarrerServeur(CONFIG);
+        service = await servir('http-chemin');
         await expect(tenter(`ws://127.0.0.1:${service.port}/inconnu`)).resolves.toBe('ferme');
     });
 
@@ -65,7 +79,7 @@ describe('demarrerServeur', () => {
         // parvient à l'agent — exactement ce que `server.test.ts` éprouve déjà,
         // rejoué ici à travers le serveur HTTP pour prouver que le passage par
         // l'upgrade ne change rien.
-        service = await demarrerServeur(CONFIG);
+        service = await servir('http-racine');
         const url = `ws://127.0.0.1:${service.port}/`;
 
         const agent = new WebSocket(url);

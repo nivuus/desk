@@ -45,7 +45,7 @@ export async function demarrer(config: Config, maintenant = Date.now()): Promise
     // LE PORT NE S'OUVRE QU'ICI, après la base et ses migrations.
     let service: ServicePlateforme;
     try {
-        service = await demarrerServeur(config);
+        service = await demarrerServeur(config, base);
     } catch (cause) {
         // La base est déjà ouverte : la refermer plutôt que de laisser une
         // connexion pendante derrière un démarrage avorté.

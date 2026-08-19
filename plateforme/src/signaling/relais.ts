@@ -1,6 +1,15 @@
 // Serveur de signaling : met en relation un agent et un client par session et
-// relaie l'offre et la réponse SDP. Aucun état persistant, aucune authentification
-// (jalon 1, réseau local).
+// relaie l'offre et la réponse SDP.
+//
+// ⚠️ « Aucun état persistant » N'EST PLUS VRAI depuis le sous-bloc P1 : une
+// session appariée laisse une ligne en base (`ObservateurDeSession` ci-dessous,
+// implémenté par `trace.ts`). Le relais lui-même reste sans état persistant —
+// il ne connaît ni la base ni le SQL —, mais le SERVICE en a un.
+//
+// « Aucune authentification » reste VRAI, et le restera jusqu'à P2 : le port,
+// s'il est atteint, délivre des identifiants TURN valables 86 400 s
+// (`ice.ts`) à quiconque. C'est ce que l'écoute bornée sur `PLATEFORME_HOTE`
+// rend tolérable en attendant, et non l'inverse.
 
 import { WebSocket, WebSocketServer } from 'ws';
 import { Appariement, isRole, type Role } from './appariement';
@@ -41,13 +50,34 @@ export interface SignalingServer {
     close(): Promise<void>;
 }
 
+/// Ce que le relais SIGNALE d'une session, sans rien savoir de ce qu'on en
+/// fait. C'est un port, pas une dépendance : l'implémentation de production
+/// est `trace.ts`, qui écrit en base, et le relais reste ignorant de la base
+/// comme il l'était.
+///
+/// 🔴 Les deux méthodes sont SYNCHRONES et ne rendent rien, à dessein. Le
+/// gestionnaire `message` d'un socket `ws` est synchrone, et une promesse
+/// rejetée y abat tout le process Node (voir `isJsonObject` ci-dessus). Une
+/// signature qui rendrait une promesse inviterait un appelant à l'attendre —
+/// donc à faire dépendre le signaling de sa propre trace. La trace est une
+/// OBSERVATION du signaling, jamais une condition de son fonctionnement.
+export interface ObservateurDeSession {
+    /// Les DEUX rôles sont désormais présents sur cette session.
+    apparie(nomSession: string): void;
+    /// La session s'est vidée : plus aucun rôle ne l'occupe.
+    separe(nomSession: string): void;
+}
+
 // Deux formes, à dessein. La forme `port` est celle qu'éprouve
 // `server.test.ts` depuis le jalon 1 : la garder intacte est ce qui permet de
 // dire que le déménagement du sous-bloc P1 n'a rien changé au relais. La forme
 // `wss` est celle qu'emploie le service, où le serveur HTTP possède le port.
-export function createSignalingServer(port: number): SignalingServer;
-export function createSignalingServer(wss: WebSocketServer): SignalingServer;
-export function createSignalingServer(portOuWss: number | WebSocketServer): SignalingServer {
+export function createSignalingServer(port: number, trace?: ObservateurDeSession): SignalingServer;
+export function createSignalingServer(wss: WebSocketServer, trace?: ObservateurDeSession): SignalingServer;
+export function createSignalingServer(
+    portOuWss: number | WebSocketServer,
+    trace?: ObservateurDeSession,
+): SignalingServer {
     const port = typeof portOuWss === 'number' ? portOuWss : 0;
     const wss = typeof portOuWss === 'number' ? new WebSocketServer({ port }) : portOuWss;
     const sessions = new Appariement<WebSocket>();
@@ -109,6 +139,13 @@ export function createSignalingServer(portOuWss: number | WebSocketServer): Sign
                 role = declaredRole;
                 sessionId = declaredSession;
 
+                // L'APPARIEMENT, et non la déclaration : le pair d'en face
+                // existe, donc les deux rôles sont là. `pair` rend le socket
+                // d'EN FACE — s'il est défini, ce pair-ci est le second.
+                if (sessions.pair(declaredSession, declaredRole)) {
+                    trace?.apparie(declaredSession);
+                }
+
                 // Configuration ICE : envoyée à CHAQUE pair dès qu'il se
                 // déclare, agent comme client. Les deux en ont besoin — le
                 // relais TURN n'est utile que si les deux extrémités peuvent
@@ -156,8 +193,11 @@ export function createSignalingServer(portOuWss: number | WebSocketServer): Sign
         socket.on('close', () => {
             if (!role || !sessionId) return;
             const peer = sessions.pair(sessionId, role);
-            sessions.retirer(sessionId, role);
+            const { vide } = sessions.retirer(sessionId, role);
             send(peer, { type: 'peer-gone' });
+            // L'instant exact où la session est oubliée de la table : c'est
+            // celui-là qui clôt la ligne, et pas le départ du premier pair.
+            if (vide) trace?.separe(sessionId);
         });
     });
 
