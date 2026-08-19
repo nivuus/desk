@@ -1,0 +1,16 @@
+# LA PAGE-SHELL SCRIPTÉE — journal des trames, côté humain
+# Session de contrôle : VJjykJrTjGbTgcprKSdvag:bureau
+# Durée : 45 s
+#
+sessions de fenêtre rejointes : VJjykJrTjGbTgcprKSdvag:w-1, VJjykJrTjGbTgcprKSdvag:w-2
+
++   148 ms  -> poignée de main client sur VJjykJrTjGbTgcprKSdvag:bureau
++   160 ms  <- [VJjykJrTjGbTgcprKSdvag:bureau] {"type":"ice-config","iceServers":[{"urls":"turn:192.168.3.1:3478","username":"1787257275:VJjykJrTjGbTgcprKSdvag:bureau","credential":"<masqué : dérivé du TURN_SECRET réel de .env>"}]}
++  3330 ms  <- [VJjykJrTjGbTgcprKSdvag:bureau] {"type":"fenetre-ouverte","session":"VJjykJrTjGbTgcprKSdvag:w-1","titre":"Sans titre - Bloc-notes"}
++  3330 ms  -> [VJjykJrTjGbTgcprKSdvag:bureau] viewport VJjykJrTjGbTgcprKSdvag:w-1 1280x720
++  3332 ms  <- [VJjykJrTjGbTgcprKSdvag:bureau] {"type":"fenetre-ouverte","session":"VJjykJrTjGbTgcprKSdvag:w-2","titre":"encode-test — Mozilla Firefox"}
++  3332 ms  -> [VJjykJrTjGbTgcprKSdvag:bureau] viewport VJjykJrTjGbTgcprKSdvag:w-2 1280x720
++  5343 ms  -> poignée de main client sur VJjykJrTjGbTgcprKSdvag:w-1
++  5346 ms  -> poignée de main client sur VJjykJrTjGbTgcprKSdvag:w-2
++  5348 ms  <- [VJjykJrTjGbTgcprKSdvag:w-1] {"type":"ice-config","iceServers":[{"urls":"turn:192.168.3.1:3478","username":"1787257280:VJjykJrTjGbTgcprKSdvag:w-1","credential":"<masqué : dérivé du TURN_SECRET réel de .env>"}]}
++  5348 ms  <- [VJjykJrTjGbTgcprKSdvag:w-2] {"type":"ice-config","iceServers":[{"urls":"turn:192.168.3.1:3478","username":"1787257280:VJjykJrTjGbTgcprKSdvag:w-2","credential":"<masqué : dérivé du TURN_SECRET réel de .env>"}]}

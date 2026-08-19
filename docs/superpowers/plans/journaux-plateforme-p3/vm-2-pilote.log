@@ -1,0 +1,42 @@
+[22:23:24] === 0. état de la VM ===
+     ID   Nom       État
+    --------------------------------------
+     7    Windows   en cours d’exécution
+    
+[22:23:24] attente de WinRM puis du montage…
+[22:23:24] agent.exe sur la VM : 9620480 octets, 2026-08-19 21:59:43.999632300 +0200
+[22:23:25] Get-Process agent avant lancement : 0 (brut : 0)
+[22:23:25] === 1. démarrage du service de plateforme ===
+    plateforme à l'écoute sur 192.168.3.1, le port 8081
+[22:23:26] === 2. enrôlement de la VM (npm run admin:agent) ===
+[22:23:27]     vm_id   = 5bde0b0a-6116-40b5-8480-cefdc0b30077
+[22:23:27]     prefixe = Gka-A3TWjuoqGE_-xQDlpA
+[22:23:27]     secret  = <non imprimé — 43 caractères>
+[22:23:27] === 3. ouverture d’une fenêtre éligible dans la session interactive ===
+    Opration russie : la tche planifie "p3-fenetre" a t cre.
+    Opration russie : tentative d'excution de la tche planifie "p3-fenetre".[22:23:33] === 4. lancement de l’agent, AVEC AGENT_VM et AGENT_SECRET ===
+    Opration russie : la tche planifie "guacamole-agent" a t  supprime.
+    Opration russie : la tche planifie "guacamole-agent" a t cre.
+    Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[22:23:34] === 5. page-shell scriptée, 45 s ===
+[22:24:19]     shell : 16 lignes
+[22:24:19] === 6. arrêt de l’agent et copie des pièces ===
+    agents restants : 0[22:24:24]     agent.log : 63 lignes
+[22:24:24] === 7. la table session, telle que la plateforme l’a écrite ===
+        {"id":"c00cd10d-c200-4c41-bd95-9fc9ac1a4225","utilisateur_id":"recette-p3","vm_id":"5bde0b0a-6116-40b5-8480-cefdc0b30077","ouverte_a":1787171014605,"fermee_a":1787171059936}
+        {"id":"ea155680-6504-49af-adf0-33565ebe325d","utilisateur_id":"recette-p3","vm_id":"5bde0b0a-6116-40b5-8480-cefdc0b30077","ouverte_a":1787171019305,"fermee_a":1787171059935}
+        {"id":"ce6aae3b-c048-428d-b936-4e656a00274e","utilisateur_id":"recette-p3","vm_id":"5bde0b0a-6116-40b5-8480-cefdc0b30077","ouverte_a":1787171019309,"fermee_a":1787171059937}
+    (node:2919102) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+    (Use `node --trace-warnings ...` to show where the warning was created)
+[22:24:24] === 8. 🔴 la même chose SANS AGENT_VM ni AGENT_SECRET ===
+    Opration russie : la tche planifie "guacamole-agent" a t  supprime.
+    Opration russie : la tche planifie "guacamole-agent" a t cre.
+    Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[22:24:51]     agent.log : 21 lignes
+[22:24:51] === 9. état final de la VM ===
+     ID   Nom       État
+    --------------------------------------
+     7    Windows   en cours d’exécution
+    
+    agents restants : 0
+[22:24:52] terminé

@@ -1,0 +1,100 @@
+# TÂCHE 23 — LA CORROBORATION SUR VM RÉELLE, HORS CRITÈRE
+#
+# DEUX exécutions complètes, jouées le 19 août 2026 à 22:21 et 22:23 (heure de
+# l'hôte). Pièces : vm-1-* et vm-2-*. ⚠️ UNE TROISIÈME TENTATIVE, ANTÉRIEURE,
+# A AVORTÉ et n'est pas versée : la VM s'était éteinte d'elle-même entre la
+# compilation et le lancement (piège documenté), et le port 8080 était tenu par
+# un service de plateforme d'une recette ANTÉRIEURE, vieux de près de cinq
+# heures. Rien n'en a été mesuré.
+#
+# ⚠️ CE QUE CETTE CORROBORATION N'EST PAS. La page-shell est SCRIPTÉE
+# (instrument/shell-scripte.ts) : elle signe elle-même son jeton d'utilisateur
+# au lieu de passer par la route d'authentification, et elle ne négocie AUCUNE
+# session WebRTC. Aucune image n'est décodée, aucune latence n'est mesurée. Ce
+# qui est établi est l'ENRÔLEMENT, le PRÉFIXE et l'acceptation des POIGNÉES DE
+# MAIN — ce qui est exactement l'objet de la tâche, la spec §4 la rangeant hors
+# critère. Aucun coturn ne tournait : les identifiants TURN sont délivrés mais
+# aucun relais n'existe.
+#
+# Le service tournait sur le port 8081, PAS 8080 (voir l'en-tête du pilote).
+
+--- LE BINAIRE MESURÉ ---
+agent.exe rebâti le 19 août 2026 à 21:59:43, 9 620 480 octets.
+Le binaire précédent, celui que P3 rend périmé, faisait 9 401 856 octets.
+`cargo clean --release -p proto -p agent` a précédé la compilation : P3 modifie
+`proto`, et l'horloge de la VM avance sur celle de l'hôte, ce qui fait sauter
+le rlib de `proto` à cargo si on ne le nettoie pas explicitement.
+
+--- CE QUI EST RELEVÉ, LES DEUX EXÉCUTIONS ---
+                                         exéc. 1    exéc. 2
+lignes « agent enrôlé auprès de la plateforme »  3          3
+préfixes distincts délivrés                      1          1
+   exéc. 1 : VJjykJrTjGbTgcprKSdvag
+   exéc. 2 : Gka-A3TWjuoqGE_-xQDlpA
+sessions d'agent acceptées                       3          3
+   <P>:bureau   (superviseur), <P>:w-1 et <P>:w-2 (les deux enfants)
+lignes ERROR ou WARN, phase « avec identité »    0          0
+refus de poignée de main côté service            1          1
+   ⚠️ CE REFUS APPARTIENT À LA PHASE « SANS IDENTITÉ », et cela se lit à son
+   TEXTE, pas à un horodatage : « sur la session bureau », sans préfixe — un
+   nom qu'aucun agent enrôlé ne peut produire. Le service n'horodate pas ses
+   lignes et les deux phases partagent le même fichier ; l'attribution est
+   faite sur le contenu, et elle est dite plutôt que supposée.
+
+--- 🔴 LES TROIS ENRÔLEMENTS SONT LE FAIT LE PLUS IMPORTANT ---
+Le superviseur ET CHACUN DE SES DEUX ENFANTS ouvrent leur propre canal
+`/agent` et s'enrôlent séparément pour la MÊME VM, avec le même `AGENT_VM` et
+le même `AGENT_SECRET` hérités par l'environnement. Les trois reçoivent le
+MÊME préfixe, et aucun n'est refusé.
+C'est l'hypothèse que le sous-bloc avait DÉDUITE d'une lecture de `canal.ts`
+sans jamais la mesurer. Elle est ici CORROBORÉE SUR LE PRODUIT RÉEL, et
+mesurée à part sur un service isolé jusqu'à quatre canaux de front
+(enrolements-concurrents-1.log et -2.log).
+⚠️ Portée : TROIS enrôlements concurrents ici, QUATRE au banc. Rien n'est
+établi au-delà, et aucun plafond n'a été cherché.
+
+--- 🔴 LA ROUGE DE LA TÂCHE 20 : SANS AGENT_VM NI AGENT_SECRET ---
+L'agent échoue BRUYAMMENT, et le journal le dit — les deux exécutions :
+
+  WARN agent: AGENT_VM ou AGENT_SECRET absent : aucun enrôlement, donc aucun
+  jeton d'agent. La plateforme REFUSERA la poignée de main et aucune session
+  ne s'établira (sous-bloc P3, sans interrupteur permissif).
+
+et, du côté du service :
+
+  poignée de main refusée : poignée de main sans jeton sur la session bureau
+
+suivi, 5,1 ms (exéc. 1) et 8,2 ms (exéc. 2) plus tard côté agent, de :
+
+  WARN agent::superviseur::signalisation: connexion de contrôle au signaling
+  perdue
+
+Aucune session ne s'établit, et aucun enfant n'est lancé.
+
+--- ⚠️ UNE TRACE QUI SE LIT COMME UN SUCCÈS ALORS QUE TOUT A ÉCHOUÉ ---
+Dans la phase SANS identité, l'agent écrit
+
+  INFO agent::superviseur::signalisation: superviseur enregistré sur la
+  session de contrôle session="bureau"
+
+**AVANT** d'apprendre que la plateforme l'a refusé — la ligne part à l'ÉMISSION
+de la poignée de main, pas à son acceptation. Un lecteur qui chercherait
+« superviseur enregistré » dans un journal pour savoir si une session tient
+conclurait exactement à l'inverse de la vérité. Relevé ici, NON corrigé :
+c'est un constat de recette, pas un changement de comportement en fin de
+branche.
+
+--- LA TABLE `session`, ÉCRITE PAR LA PLATEFORME (exécution 2) ---
+{"id":"c00cd10d-…","utilisateur_id":"recette-p3","vm_id":"5bde0b0a-6116-40b5-8480-cefdc0b30077",…}
+{"id":"ea155680-…","utilisateur_id":"recette-p3","vm_id":"5bde0b0a-6116-40b5-8480-cefdc0b30077",…}
+{"id":"ce6aae3b-…","utilisateur_id":"recette-p3","vm_id":"5bde0b0a-6116-40b5-8480-cefdc0b30077",…}
+Les TROIS lignes portent leur `vm_id`, résolu depuis le PRÉFIXE du nom de
+session (`signaling/trace.ts`) — c'est la tâche 16 du plan, vue sur le produit.
+⚠️ À l'exécution 1, la première ligne porte `utilisateur_id: null` : la session
+de contrôle y a été appariée par l'agent avant que la shell scriptée n'ait
+revendiqué. `vm_id` y est rempli tout de même, sur les trois lignes.
+
+--- ÉTAT DE LA VM À LA FIN ---
+Windows « en cours d'exécution », `Get-Process agent` = 0.
+Deux sorties virtuelles créées puis retirées par la purge du lancement suivant
+(`purge terminée retirees=2 avant=3 apres=1`).

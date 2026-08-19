@@ -1,0 +1,63 @@
+2026-08-19T20:23:34.232443Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-19T20:23:34.338594Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8081/agent" prefixe=Gka-A3TWjuoqGE_-xQDlpA expire_a=1787171614281
+2026-08-19T20:23:34.340545Z  INFO agent::superviseur::signalisation: superviseur enregistré sur la session de contrôle session="Gka-A3TWjuoqGE_-xQDlpA:bureau"
+2026-08-19T20:23:34.342740Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-19T20:23:34.342774Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-19T20:23:34.342786Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=1 attachees=1
+2026-08-19T20:23:34.342791Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-19T20:23:37.344823Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-19T20:23:37.344855Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-19T20:23:37.344863Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-08-19T20:23:37.344866Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-19T20:23:37.344872Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=0 avant=1 apres=1
+2026-08-19T20:23:37.348925Z  INFO agent::superviseur::lanceur: capteur lancé pid=5748
+2026-08-19T20:23:37.356209Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-19T20:23:37.356248Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-08-19T20:23:37.449598Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-19T20:23:37.449631Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-19T20:23:37.449640Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=1 attachees=1
+2026-08-19T20:23:37.449643Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-19T20:23:37.449862Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=257 adaptateur_bas=62078 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430001 largeur=1280 hauteur=720 hertz=60
+2026-08-19T20:23:37.663925Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-19T20:23:37.663960Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-19T20:23:37.663968Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=2 attachees=2
+2026-08-19T20:23:37.663973Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-19T20:23:37.663979Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-19T20:23:37.664131Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=256 adaptateur_bas=62078 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430002 largeur=1280 hauteur=720 hertz=60
+2026-08-19T20:23:37.836842Z  INFO agent::superviseur::enfants: enfant lancé session=Gka-A3TWjuoqGE_-xQDlpA:w-1 pid=12736 sortie=\\.\DISPLAY5
+2026-08-19T20:23:37.838708Z  INFO agent::superviseur::enfants: enfant lancé session=Gka-A3TWjuoqGE_-xQDlpA:w-2 pid=19604 sortie=\\.\DISPLAY6
+2026-08-19T20:23:37.844131Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-19T20:23:37.845020Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-19T20:23:37.986539Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8081/agent" prefixe=Gka-A3TWjuoqGE_-xQDlpA expire_a=1787171617931
+2026-08-19T20:23:37.986629Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY5 bitrate=12000000 fps=90
+2026-08-19T20:23:37.991979Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-19T20:23:37.992162Z  INFO agent::capteur::tube: attaché au capteur session=Gka-A3TWjuoqGE_-xQDlpA:w-1 sortie=\\.\DISPLAY5 largeur=1280 hauteur=720
+2026-08-19T20:23:37.992497Z  INFO fenetre{session=Gka-A3TWjuoqGE_-xQDlpA:w-1}: agent::capteur::fenetre: fenêtre attachée au capteur session=Gka-A3TWjuoqGE_-xQDlpA:w-1 sortie=\\.\DISPLAY5 largeur=1280 hauteur=720
+2026-08-19T20:23:37.992639Z  INFO fenetre{session=Gka-A3TWjuoqGE_-xQDlpA:w-1}: agent::capteur::sommeil::parts: budget de debit de la session budget_bps=12000000
+2026-08-19T20:23:37.992754Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8081/agent" prefixe=Gka-A3TWjuoqGE_-xQDlpA expire_a=1787171617937
+2026-08-19T20:23:37.992825Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY6 bitrate=12000000 fps=90
+2026-08-19T20:23:37.994228Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-19T20:23:37.994347Z  INFO agent::capteur::tube: attaché au capteur session=Gka-A3TWjuoqGE_-xQDlpA:w-2 sortie=\\.\DISPLAY6 largeur=1280 hauteur=720
+2026-08-19T20:23:37.994474Z  INFO fenetre{session=Gka-A3TWjuoqGE_-xQDlpA:w-2}: agent::capteur::fenetre: fenêtre attachée au capteur session=Gka-A3TWjuoqGE_-xQDlpA:w-2 sortie=\\.\DISPLAY6 largeur=1280 hauteur=720
+2026-08-19T20:23:37.994605Z  INFO agent::signaling: agent enregistré auprès du signaling session="Gka-A3TWjuoqGE_-xQDlpA:w-1"
+2026-08-19T20:23:37.994693Z  INFO agent::transport::initialisation: socket UDP de l'agent addr=192.168.3.2:56949
+2026-08-19T20:23:37.995939Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-19T20:23:38.004891Z  INFO agent::signaling: agent enregistré auprès du signaling session="Gka-A3TWjuoqGE_-xQDlpA:w-2"
+2026-08-19T20:23:38.005010Z  INFO agent::transport::initialisation: socket UDP de l'agent addr=192.168.3.2:56950
+2026-08-19T20:23:38.012959Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-19T20:23:38.023566Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=17248 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-19T20:23:38.023579Z  INFO agent::demarrage::audio: audio activé format="process loopback pid=17248 — 48000 Hz, 2 canaux, 16 bits entiers" pid=17248
+2026-08-19T20:23:38.033586Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=13324 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-19T20:23:38.033602Z  INFO agent::demarrage::audio: audio activé format="process loopback pid=13324 — 48000 Hz, 2 canaux, 16 bits entiers" pid=13324
+2026-08-19T20:23:47.996161Z  INFO fenetre{session=Gka-A3TWjuoqGE_-xQDlpA:w-2}: agent::capteur::fenetre: cadence du capteur session=Gka-A3TWjuoqGE_-xQDlpA:w-2 images=0 endormie=true cadence="0.0"
+2026-08-19T20:23:47.996174Z  INFO fenetre{session=Gka-A3TWjuoqGE_-xQDlpA:w-1}: agent::capteur::fenetre: cadence du capteur session=Gka-A3TWjuoqGE_-xQDlpA:w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T20:23:58.002220Z  INFO fenetre{session=Gka-A3TWjuoqGE_-xQDlpA:w-2}: agent::capteur::fenetre: cadence du capteur session=Gka-A3TWjuoqGE_-xQDlpA:w-2 images=0 endormie=true cadence="0.0"
+2026-08-19T20:23:58.002241Z  INFO fenetre{session=Gka-A3TWjuoqGE_-xQDlpA:w-1}: agent::capteur::fenetre: cadence du capteur session=Gka-A3TWjuoqGE_-xQDlpA:w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T20:24:08.012369Z  INFO fenetre{session=Gka-A3TWjuoqGE_-xQDlpA:w-2}: agent::capteur::fenetre: cadence du capteur session=Gka-A3TWjuoqGE_-xQDlpA:w-2 images=0 endormie=true cadence="0.0"
+2026-08-19T20:24:08.012369Z  INFO fenetre{session=Gka-A3TWjuoqGE_-xQDlpA:w-1}: agent::capteur::fenetre: cadence du capteur session=Gka-A3TWjuoqGE_-xQDlpA:w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T20:24:08.024566Z  INFO agent::windows_audio::fil: compteurs audio pid=17248 actif=false rejetes=0 complements=0 echantillons_jetes=0
+2026-08-19T20:24:08.035094Z  INFO agent::windows_audio::fil: compteurs audio pid=13324 actif=false rejetes=0 complements=0 echantillons_jetes=0
+2026-08-19T20:24:18.020458Z  INFO fenetre{session=Gka-A3TWjuoqGE_-xQDlpA:w-1}: agent::capteur::fenetre: cadence du capteur session=Gka-A3TWjuoqGE_-xQDlpA:w-1 images=0 endormie=true cadence="0.0"
+2026-08-19T20:24:18.021419Z  INFO fenetre{session=Gka-A3TWjuoqGE_-xQDlpA:w-2}: agent::capteur::fenetre: cadence du capteur session=Gka-A3TWjuoqGE_-xQDlpA:w-2 images=0 endormie=true cadence="0.0"
+2026-08-19T20:24:19.678254Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-19T20:24:19.685458Z  INFO agent::signaling: le client s'est déconnecté
