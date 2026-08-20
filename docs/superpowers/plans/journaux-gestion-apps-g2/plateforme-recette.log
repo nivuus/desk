@@ -1,0 +1,26 @@
+
+> @guacamole/plateforme@0.1.0 start
+> tsx src/index.ts
+
+magasin d icones : /tmp/g2-magasin
+(node:2068679) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+plateforme à l'écoute sur 192.168.3.1, le port 8090
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+poignée de main refusée : jeton refusé (signature) sur la session y4FQP1ev5fYOd_Pzr9XWUw:w-3
+poignée de main refusée : jeton refusé (signature) sur la session y4FQP1ev5fYOd_Pzr9XWUw:bureau
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+poignée de main refusée : jeton refusé (signature) sur la session y4FQP1ev5fYOd_Pzr9XWUw:w-3
+poignée de main refusée : jeton refusé (signature) sur la session y4FQP1ev5fYOd_Pzr9XWUw:bureau
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais

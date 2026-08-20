@@ -1,0 +1,154 @@
+05539f5462ea1280cd90d9b92abc17cf6556ccd01b0fabeea5eb4d7857446959 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Disk Cleanup.lnk
+0a50c1a4919e44629253f7fac212e461d1e62a40c28de15a4d3de7965cc374ba C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Python 3.8\\Python 3.8 Manuals (64-bit).lnk
+0dd41477e41562f1fb7cd6b8813819e5af1b45c31b02cb8e018daee14259f036 C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\LM Studio.lnk
+0e8aa04f3eda9824477f152c174fd8ce8d56eff2088e9638d5447d39a620ba4e C:\\Users\\Public\\Desktop\\NVIDIA App.lnk
+1160c1498bcefded6bf321c6725b89102b597512a7c9f9849c2465dcf9297c06 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\Nsight Systems 2024.6.2\\Nsight Systems 2024.6.2.lnk
+1263d635e302a84f9140de2bf5c1df9400f111297ab91cf1d15a29b262e431e9 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Resource Monitor.lnk
+12be673d6cc3f9efaa2a716644525c4b56cb7fcf933c4bf2ddf1731be147663e C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Adobe Illustrator 2024.lnk
+15ef27975a6836da10abe821b6bd732ec79e46fd0f1a095c3a981b7bad25055a C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Navigation privée de Firefox.lnk
+1711658502292938cf3b66efa58282ea1937a36a9584f0ef80b31d4d933ed4fb C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Adobe Premiere Pro 2024.lnk
+17288b4483cba248ca380f1539c58826e639da0eb34424e15398394f8f804b3c C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Android Studio\\Android Studio.lnk
+1a5588f3bd54c47f7e28de785c36e32a43f5e51637846526a7c0ed5431a9e37b C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Accessibility\\Magnify.lnk
+1b16e0357a3f48973d39cb5745cd66446417d5a22695525683cea672fe5c8aff C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\CMake\\CMake (cmake-gui).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Documentation\\drivedb.h update help (ps1).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\drivedb.h update (ps1).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\All info (-x).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\Identify drive (-i).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\SMART attributes (-A -f brief).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\SMART capabilities (-c).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\SMART error log (-l error).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\SMART health status (-H).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\SMART selftest log (-l selftest).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\Start long selftest (-t long).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\Start offline test (-t offline).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\Start short selftest (-t short).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\Stop(Abort) selftest (-X).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\Turn SMART off (-s off).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\Turn SMART on (-s on).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Daemon start, eventlog.lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Daemon start, smartd.log.lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Daemon stop.lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Debug mode (-d).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Do all tests once (-q onecheck).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Service install, eventlog, 30min.lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Service install, smartd.log, 10min.lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Service install, smartd.log, 30min.lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Service remove.lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Service start.lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Service stop.lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Windows Kits\\Application Verifier (X64)\\Application Verifier (X64).lnk
+1efd8fb20d7babce07773e3098cfa423dc28083f96b09715a9230a0e7d4eaf09 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Windows Kits\\Application Verifier (X86)\\Application Verifier (WOW).lnk
+1f8ef2140c64be761957c0a2b57ca14c1c2afde36c3cffd2c71f3bf818a97ef0 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl (Admin CMD).lnk
+1f8ef2140c64be761957c0a2b57ca14c1c2afde36c3cffd2c71f3bf818a97ef0 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio 2022\\Visual Studio Tools\\Developer Command Prompt for VS 2022.lnk
+1f8ef2140c64be761957c0a2b57ca14c1c2afde36c3cffd2c71f3bf818a97ef0 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio 2022\\Visual Studio Tools\\VC\\x64 Native Tools Command Prompt for VS 2022.lnk
+1f8ef2140c64be761957c0a2b57ca14c1c2afde36c3cffd2c71f3bf818a97ef0 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio 2022\\Visual Studio Tools\\VC\\x64_x86 Cross Tools Command Prompt for VS 2022.lnk
+1f8ef2140c64be761957c0a2b57ca14c1c2afde36c3cffd2c71f3bf818a97ef0 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio 2022\\Visual Studio Tools\\VC\\x86 Native Tools Command Prompt for VS 2022.lnk
+1f8ef2140c64be761957c0a2b57ca14c1c2afde36c3cffd2c71f3bf818a97ef0 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio 2022\\Visual Studio Tools\\VC\\x86_x64 Cross Tools Command Prompt for VS 2022.lnk
+1f8ef2140c64be761957c0a2b57ca14c1c2afde36c3cffd2c71f3bf818a97ef0 C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\System Tools\\Command Prompt.lnk
+2592da89d2272640942640d16c818b2e99c2251844a2d101e43a52ce8a944e48 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio Installer.lnk
+25a5e65d1b44a74f85b2e2e003821af727910efedc49371692d6c930fc8e2b3d C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\IIS Manager.lnk
+28dbdb94f8edd0bf3d4f4065c251f5286f1546707f6e36a3b087b30c758cd64b C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Xbox 360 Accessories\\Rechercher des mises à jour.lnk
+2aa796f8318677b2b1dbf32efba34363fbbf0e24e8b3b74db9d9f90d31afeedc C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\RecoveryDrive.lnk
+2b6e2970fe3459a3b03270e941e3706fb0c15350b46c03244a19689a5d6f84b4 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\7-Zip\\7-Zip File Manager.lnk
+2bfbadcc34c68e74244af879bff5ee65dc3a3c7ea726a6d48eec3604cbf81327 C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\System Tools\\Administrative Tools.lnk
+2c917ead0614668e709ee1719426bb170efd67f5af9912f91f6dad71a00be2b2 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Maxon\\Maxon Cinema 4D\\Commandline 2024.lnk
+2c917ead0614668e709ee1719426bb170efd67f5af9912f91f6dad71a00be2b2 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Maxon\\Maxon Cinema 4D\\Maxon Cinema 4D 2024.lnk
+2c917ead0614668e709ee1719426bb170efd67f5af9912f91f6dad71a00be2b2 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Maxon\\Maxon Cinema 4D\\Team Render Client 2024.lnk
+2c917ead0614668e709ee1719426bb170efd67f5af9912f91f6dad71a00be2b2 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Maxon\\Maxon Cinema 4D\\Team Render Server 2024.lnk
+3b0913a3f6e1cdded4d345c6deb6e695da9bbb31a54808eedcf5a04eaa5ffa0d C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\Nsight Systems 2020.4.3\\Nsight Systems 2020.4.3.lnk
+3b094decb8bfa74340de6f9c5f4c8e705c299b997c5aca2c263dfa1e0122f398 C:\\Users\\Public\\Desktop\\Battle.net.lnk
+3b18c59e5e1f361f3c89b56e37c0b2b024fb00d7e78608f255e4729c268e4b43 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Memory Diagnostics Tool.lnk
+403dec0a98b32831c42cfeef4cd1b99043105e1634bec81cfbb5f0095fc31891 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessibility\\Speech Recognition.lnk
+47de8dbfec13f9fc2344fb88a5c02572fdbe4381c96107576842fc56fff12a5c C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Revo Uninstaller\\Désinstaller Revo Uninstaller.lnk
+47de8dbfec13f9fc2344fb88a5c02572fdbe4381c96107576842fc56fff12a5c C:\\Users\\Public\\Desktop\\Revo Uninstaller.lnk
+48a399e3b4cb3c8fe9996cfc4c3fe660713778048ebe4afb02c553bec04e94ec C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\iSCSI Initiator.lnk
+4ba7fcc386649f8a188cc049c2d593d5259c562398840120600a768a690577de C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\Nsight Compute 2020.3.0\\Nsight Compute.lnk
+4da85ba802c9710a1fdf224de46eab00568296f6887e571acebe9e091b791bb2 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Adobe Dreamweaver 2021.lnk
+4e91debc18fcb0aec7218201235ba192b99578914590293e6eee8f025f57f951 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Remote Desktop Connection.lnk
+4ebc44923a4050a8c0c149639fd071943bc428f193ef4ba348e4821e1bf67bff C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Accessibility\\Narrator.lnk
+4f79ccd722da154fa5dbdf9cbde8f6bbe31935348c7ed72e31875bf425bd5bda C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Adobe Creative Cloud.lnk
+526b457f82ba812a86e0123b781f521b92adf453aa0211d699ccbffd5f7ed477 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\GSmartControl.lnk
+56e18cda57ca716f34f10b60c1bb144e03c0f0609fd3c235be51710fc283213d C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\Nsight Visual Studio Edition 2025.1\\Nsight Monitor.lnk
+5968df01ee699c9245279bdec423ae824245ea442e7f35bfabd70d2c2e44ea69 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Adobe Photoshop 2024.lnk
+5a26dcb8a946ce28f000c920a4d869eb7b778bd1757d5523f75a3812628a9b00 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Adobe After Effects 2024.lnk
+5b01440871be37107c467fa6fad92ce573db479de3ac3576967ba32833a73811 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Immersive Control Panel.lnk
+5d7cfee2f36d9babcb9c823531d9f28ab87f1753d23265185d005d110e45dc34 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Snipping Tool.lnk
+5db2ccb6c18f4a75802a95a137e1f8c702e049cb97966202abbc9ce156f9d410 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\CMake\\Uninstall CMake.lnk
+5db2ccb6c18f4a75802a95a137e1f8c702e049cb97966202abbc9ce156f9d410 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\Nsight Compute 2020.3.0\\Uninstall NVIDIA Nsight Compute 2020.3.0.lnk
+5db2ccb6c18f4a75802a95a137e1f8c702e049cb97966202abbc9ce156f9d410 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\Nsight Systems 2020.4.3\\Uninstall NVIDIA Nsight Systems 2020.4.3.lnk
+5db2ccb6c18f4a75802a95a137e1f8c702e049cb97966202abbc9ce156f9d410 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\Nsight Systems 2024.6.2\\Uninstall NVIDIA Nsight Systems 2024.6.2.lnk
+600b12567ac1a79d754e068a2107a18a5485faabd0992b2b699be725741837bf C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\System Tools\\Character Map.lnk
+614160c9eb2195a4c70881781c12adfac5fb9ed99b1bbcc603702f71fbf04ad2 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Wordpad.lnk
+6405aa254cfd1c2fa87340bb0968aaa05e8402c54429804702b93c1c321af1e7 C:\\Users\\Public\\Desktop\\CCleaner.lnk
+68b0e27fa1c744c09c4d158ea794c8c829df5c09d7c9371851fd51e8e4a915e2 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Calculator.lnk
+6b1d1a2371b4ae85018746bac20150dc540a91c58159aec56d76561e6e0f5d5d C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Apollo\\Uninstall.lnk
+6b1d1a2371b4ae85018746bac20150dc540a91c58159aec56d76561e6e0f5d5d C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Sunshine\\Uninstall.lnk
+6ca38ef5a3e84438c1e3f74faf69c9b05f8dca02c1ae286e547e53b0c5a9640e C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Registry Editor.lnk
+715883e65aec15fe65942fd9103f4b3aefc2db7ca799cbc38cc5d922da95dfe0 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Google\u{a0}Chrome.lnk
+71f7857aa4097370cba8956526593065e34678824872b01a3ae176a1ca3efb1e C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Math Input Panel.lnk
+7b733c25e6e311d867a7b69edc5b4e42c576c71fd9b4d5295cf4084a08a3b9e8 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Windows PowerShell\\Windows PowerShell ISE.lnk
+7b733c25e6e311d867a7b69edc5b4e42c576c71fd9b4d5295cf4084a08a3b9e8 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Windows PowerShell\\Windows PowerShell ISE (x86).lnk
+7ba5ca8865272b88de516bc33c84153295660a273aed96dba23acca195879f16 C:\\Users\\Administrateur\\Desktop\\Panneau de configuration.lnk
+7c2afb1194b8fcf5c74b86bd84b5fef8836bba5ceb3a782b5fffd7ef7f63770c C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\RetroArch\\RetroArch.lnk
+7ccc4b01284cf3e3b5714f3c902f22194d5dfd4aac8910d0107bb10316db4eba C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Windows Media Player.lnk
+7d00337bc0869b581941975630bdf2b6f7069c12aa12524ce9c8e0bfde9b466b C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\System Tools\\Task Manager.lnk
+7d00337bc0869b581941975630bdf2b6f7069c12aa12524ce9c8e0bfde9b466b C:\\Users\\Administrateur\\Desktop\\Gestionnaire des tâches.lnk
+8485fb90fd9eca4258d0ad04f978ff990ca9ce3bb52853abb520edfbe7fc17bf C:\\Users\\Public\\Desktop\\Visual Studio Code.lnk
+8889738bdae0348e9f8027172f35252e95f255073fdf071eab75fed4fee51c69 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Server Manager.lnk
+891e2af6f5224316eb09065048b9fcfc2de3b014b8e522d857eda0db9bef9092 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Adobe Character Animator 2024.lnk
+8ac97ce835f3cd228d7bc4a71bd157064fbcc6477a1bcf9fe805344cfddb4063 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Minecraft Launcher\\Minecraft Launcher.lnk
+8b9e748786d6ad4c0218b26f1856be1fcf7f5d94f656c608a0d023ccd85a4440 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Firefox.lnk
+8bcf94246b476fcb30af09653fc2803f812a5e323897481e0f01d90afe3bc703 C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Internet Explorer.lnk
+8c08b9d244f13c6ca6b7679e3d8e202089928dce4637e4e8dbdfcc077a104a5d C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\µTorrent.lnk
+8c2638946296898cd84b1309e26386c327395171c7569024f693537914e31be2 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Novabench 5.lnk
+8fafa7c0829ee19f8f4eebf6509ae7d09687bf31cdf13cdae0195692edfdedd1 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Remote Desktop Services\\RD Licensing Manager.lnk
+942863256cd6fc92fce1c1f26fa60b32e64653bdb565a5005f3ec08dc33a28ba C:\\Users\\Administrateur\\Desktop\\Steam.lnk
+9f63bd4437cb9179a7afeb4eea77d1123319fddc728014739c34a011a0d687f5 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Microsoft Azure services.lnk
+a04203bb742afc53d3320eeb770c82c7b1991c00013e0b3b0cba46213b844bab C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Sunshine\\Sunshine.lnk
+a0ff3249cee21cbda2ab713c78e56c44705d0fde326dc934468615e1b267e550 C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Python 3.8\\IDLE (Python 3.8 64-bit).lnk
+a0ff3249cee21cbda2ab713c78e56c44705d0fde326dc934468615e1b267e550 C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Python 3.8\\Python 3.8 Module Docs (64-bit).lnk
+a165af6fd5a22aef7e68d75d75d064405f60568dcea1909aa7b6e02fee65b208 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\PowerShell\\PowerShell 7 (x64).lnk
+a27560da76e6b7e02c0e2f763a270146e6dd27aedd050bd0d1cbc60a2bd50353 C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Applications Chrome\\Text.lnk
+a27c88bb43885b4596e422e91c9479d00871772ffb34b05b9a36a317ce018ee3 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Java\\A propos de Java.lnk
+a27c88bb43885b4596e422e91c9479d00871772ffb34b05b9a36a317ce018ee3 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Java\\Configurer Java.lnk
+a27c88bb43885b4596e422e91c9479d00871772ffb34b05b9a36a317ce018ee3 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Java\\Rechercher les mises à jour.lnk
+a4a02f8e0983ad9a7ed649b52017759b10293a5715aaf6af934a38cac5add072 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Uninstall smartmontools.lnk
+a5421ed562fd9bde4a823a1de787a500db0932f14efa60d20a64081703e54dad C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Accessibility\\On-Screen Keyboard.lnk
+a8ddc606b5a70476748c1bbf072254a1938028940924286377a8a3e0ec7bd70a C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\System Information.lnk
+aa5012db3b5489510e470c262c91f14fc07d2e74ab035245662fd33104a2aa5f C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Xbox 360 Accessories\\État de Microsoft Xbox 360 Accessories.lnk
+acd0bad4c5437b34dd0d29fbf8cd17306a96cc25c2da2121277f43b4f01c8f5d C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Azure Arc Setup.lnk
+b051f67877c23e5ab2e21066725e2850fabe1d2c95d77bdc90129da3a7929a47 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\dfrgui.lnk
+b0e325513f52b2d9b3579292955a5b705b9de43fe82d914d462296c973af44d3 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Adobe InDesign 2024.lnk
+b286471fe366ea6104addd73d842f2e63ecacb75599efc698176d7e9731193d4 C:\\Users\\Administrateur\\Desktop\\yuzu.lnk
+bc80c63f8c05008966143fcf88daa9938e54495f969b7a50dacb2677051adac2 C:\\Users\\Public\\Desktop\\RSI Launcher.lnk
+bedba44b01bc21a27ca8097ca3945af8925332538b58be82efecae118068d65d C:\\Users\\Public\\Desktop\\Hearthstone.lnk
+bf96b5190fac82a4b7c85659d06d13ee2557185cf3e517b0bc3728809ecb49a9 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Novabench.lnk
+c1f1f4c1b2d013f0b140358c5e5054da9663f1d9cd6f0c3b3691767535f67be2 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Windows Kits\\Windows App Certification Kit\\Windows App Cert Kit.lnk
+c7539c2b4cd8de405b1cf953fecde1be5ea0f377795a42fde6ed84c8108e5f8c C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\blender\\Blender 3.6.lnk
+cd4805eea90a3c3bc81b75d86f06dc0ea9d6007a4113f96baa9412c78eb5942f C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Blue Ripple Sound\\Rapture3D - Speaker Layout.lnk
+ce2b3a4d5c89fc7c15d6ecef0f94db078269d2ddd03db45152961cd4b5d0f010 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio 2022\\Visual Studio Tools\\Debuggable Package Manager.lnk
+ce2b3a4d5c89fc7c15d6ecef0f94db078269d2ddd03db45152961cd4b5d0f010 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio 2022\\Visual Studio Tools\\Developer PowerShell for VS 2022.lnk
+ce2b3a4d5c89fc7c15d6ecef0f94db078269d2ddd03db45152961cd4b5d0f010 C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Windows PowerShell\\Windows PowerShell.lnk
+ce2b3a4d5c89fc7c15d6ecef0f94db078269d2ddd03db45152961cd4b5d0f010 C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Windows PowerShell\\Windows PowerShell (x86).lnk
+d04846851ba37bba4cfd621c5385eb43b1be231162c77c1196b4f6560dc6ddf1 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Windows Kits\\Windows Software Development Kit\\Windows Software Development Kit.lnk
+d2f0a82a1296c52447d42a291377cafce7affdacfe11b8172c9ef61b70c6bdff C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Python 3.8\\Python 3.8 (64-bit).lnk
+d50cd0b0f1b00ba7d95da76e8abc1f4f8397c35272c45f8985725ad3f2032969 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\RetroArch\\Uninstall RetroArch.lnk
+dccc3987b3dc6334f9802aa3672842ed2fc81b7aaa051c6fa9cd32ad258a0d35 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Paint.lnk
+de6dad19ba050b0df68a003d0e99981bf9faa2851ea0e08297f6224effb4fbf4 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Adobe Media Encoder 2024.lnk
+e0cbecd306b451b9bb3ce3c5463a4d7d6096915388b138ea83b03ee50910c8f7 C:\\Users\\Public\\Desktop\\Studio 2.0.lnk
+e2b638875784b547456f7755ac0d2d195cc5750fcb473e0a74a5aad541abf32b C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\System Configuration.lnk
+eb8332495ead255efff1d15f926c3bab3897597df7a2f2a0ed5cde13f1273a55 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\ODBC Data Sources (32-bit).lnk
+eb8332495ead255efff1d15f926c3bab3897597df7a2f2a0ed5cde13f1273a55 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\ODBC Data Sources (64-bit).lnk
+edf46c0544f94b16af5a89d793929d28c8d20d76e56ea3ae8b7298ef72efac18 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Steps Recorder.lnk
+ef669ee496b9f0952aa88720cfd3b377d2474fdde3a4ae82a9a3a44e9ea3e174 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\FastestVPN\\FastestVPN.lnk
+ef669ee496b9f0952aa88720cfd3b377d2474fdde3a4ae82a9a3a44e9ea3e174 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\FastestVPN\\Uninstall FastestVPN.lnk
+f118d8c2baceed97d3073b89db78577826728b7a91a8247ab969dcc05da914ad C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Notepad.lnk
+f118d8c2baceed97d3073b89db78577826728b7a91a8247ab969dcc05da914ad C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Documentation\\drivedb-add.h (create, edit).lnk
+f118d8c2baceed97d3073b89db78577826728b7a91a8247ab969dcc05da914ad C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Documentation\\drivedb.h (view).lnk
+f118d8c2baceed97d3073b89db78577826728b7a91a8247ab969dcc05da914ad C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Documentation\\smartd.conf sample.lnk
+f118d8c2baceed97d3073b89db78577826728b7a91a8247ab969dcc05da914ad C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\smartd.conf (edit).lnk
+f118d8c2baceed97d3073b89db78577826728b7a91a8247ab969dcc05da914ad C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\smartd.log (view).lnk
+f118d8c2baceed97d3073b89db78577826728b7a91a8247ab969dcc05da914ad C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\smartd_mailer.conf.ps1 (create, edit).lnk
+f118d8c2baceed97d3073b89db78577826728b7a91a8247ab969dcc05da914ad C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\smartd_mailer.conf.sample.ps1 (view).lnk
+f5f8c5394ffcea46162a35fd3cecccf0d608b839e964f637b2de416bd760c3e2 C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Apollo\\Apollo.lnk
+ff6a423d2eff69552fd3e27ddf52687bbaf69611432677136a0e934d7aaed7cf C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\XPS Viewer.lnk

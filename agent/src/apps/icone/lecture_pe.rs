@@ -18,7 +18,7 @@ use anyhow::{bail, Context, Result};
 use windows::core::PCWSTR;
 use windows::Win32::Foundation::{FreeLibrary, HMODULE};
 use windows::Win32::System::LibraryLoader::{
-    FindResourceW, LoadLibraryExW, LoadResource, LockResource, SizeofResource,
+    EnumResourceNamesW, FindResourceW, LoadLibraryExW, LoadResource, LockResource, SizeofResource,
     LOAD_LIBRARY_AS_DATAFILE, LOAD_LIBRARY_AS_IMAGE_RESOURCE,
 };
 
@@ -76,12 +76,68 @@ pub fn grpicondir(module: &Path, index: i32) -> Result<Vec<u8>> {
     resultat
 }
 
+/// Le rappel d'énumération : il RETIENT le premier nom et s'arrête.
+///
+/// SÉCURITÉ : `param` est le `*mut Option<PCWSTR>` que `lire_groupe` passe à
+/// `EnumResourceNamesW`, et il vit pour toute la durée de l'appel.
+unsafe extern "system" fn premier_nom(
+    _module: HMODULE,
+    _type_: PCWSTR,
+    nom: PCWSTR,
+    param: isize,
+) -> windows::core::BOOL {
+    let sortie = param as *mut Option<PCWSTR>;
+    if !sortie.is_null() {
+        unsafe { *sortie = Some(nom) };
+    }
+    // `FALSE` ARRÊTE l'énumération : on ne veut que le premier.
+    windows::core::BOOL(0)
+}
+
 fn lire_groupe(handle: HMODULE, index: i32) -> Result<Vec<u8>> {
+    // 🔴 UN NOM NUL N'EST PAS « LA PREMIÈRE RESSOURCE », ET C'EST LE DÉFAUT
+    // QUE LA MESURE DU 21 AOÛT 2026 A TROUVÉ. Une première rédaction passait
+    // `PCWSTR(null())` à `FindResourceW` pour un index de 0, en croyant
+    // demander le premier groupe : `FindResourceW` cherche alors une ressource
+    // dont le NOM est nul, et n'en trouve aucune. **Mesuré : 148 des 154
+    // applications rendaient `aucune ressource RT_GROUP_ICON`, y compris des
+    // modules qui en portent manifestement — `steam.exe`.** Le catalogue
+    // restait juste et les icônes étaient servies ; seule la PROVENANCE
+    // tombait à `NonMesuree`, c'est-à-dire très exactement ce que le sous-bloc
+    // existe pour mesurer.
+    //
+    // Le premier groupe s'obtient donc par ÉNUMÉRATION, comme la sonde M1 du
+    // plan le faisait et comme la tâche 9 le prescrivait — `EnumResourceNamesW`
+    // figurait dans sa liste d'appels, et son omission est ce qui a produit le
+    // défaut.
+    let mut premier: Option<PCWSTR> = None;
+    if index <= 0 {
+        // SÉCURITÉ : appel FFI. `handle` est vivant, et le pointeur passé en
+        // `param` vise une variable de cette pile, qui survit à l'appel.
+        // `EnumResourceNamesW` rend `Err` quand le rappel arrête l'énumération
+        // — ce que le nôtre fait toujours —, donc son résultat est ignoré au
+        // profit de ce que le rappel a RETENU.
+        let _ = unsafe {
+            EnumResourceNamesW(
+                Some(handle),
+                RT_GROUP_ICON,
+                Some(premier_nom),
+                &mut premier as *mut _ as isize,
+            )
+        };
+    }
     // ⚠️ Un index NÉGATIF désigne une ressource par son identifiant ; un index
     // positif est un RANG. Ce module ne sait suivre que le second cas, et il
-    // retombe sur le premier groupe pour l'autre — voir la réserve en tête de
-    // [`grpicondir`].
-    let nom = PCWSTR(if index > 0 { index as usize as *const u16 } else { std::ptr::null() });
+    // retombe sur le premier groupe énuméré pour l'autre — voir la réserve en
+    // tête de [`grpicondir`].
+    let nom = if index > 0 {
+        PCWSTR(index as usize as *const u16)
+    } else {
+        match premier {
+            Some(n) => n,
+            None => bail!("aucun groupe d'icones enumere dans ce module"),
+        }
+    };
     // SÉCURITÉ : appel FFI. `handle` est vivant (son `FreeLibrary` est dans
     // l'appelant), et `nom` est soit un identifiant entier déguisé, soit nul.
     let bloc = unsafe { FindResourceW(Some(handle), nom, RT_GROUP_ICON) };

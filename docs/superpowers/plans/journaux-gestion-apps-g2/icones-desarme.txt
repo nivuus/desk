@@ -1,0 +1,10 @@
+=== ICONES=0 — LE DERNIER SAUT, PowerShell -> agent.exe ===
+ligne dans le run-agent.ps1 genere : 1
+trace « extraction d'icones DESARMEE » : 1
+2026-08-20T22:17:25.753041Z  WARN agent::apps::icone::extraction: extraction d'icones DESARMEE (ICONES=0) : le catalogue reste complet, mais aucune application ne portera d'icone
+
+🔴 LE CONTROLE QUI VAUT N'EST PAS LA TRACE — elle prouve que la variable a
+   ATTEINT le processus, pas que le mecanisme est coupe. Voici les comptes :
+lignes « icone extraite » sur DEUX periodes : 0
+2026-08-20T22:17:25.756018Z  INFO agent::apps::boucle: catalogue reconcilie total=220 retenus=169 cles=156 icones=0 icones_echouees=156 icones_distinctes=0 apparues=156 modifiees=0 disparues=0 duree_ms=96
+2026-08-20T22:17:55.827215Z  INFO agent::apps::boucle: catalogue reconcilie total=220 retenus=169 cles=156 icones=0 icones_echouees=0 icones_distinctes=0 apparues=0 modifiees=0 disparues=0 duree_ms=69

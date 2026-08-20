@@ -1,0 +1,4 @@
+[2m2026-08-20T22:16:14.540834Z[0m [32m INFO[0m [2magent[0m[2m:[0m accélération pointeur neutralisée [3mrapport[0m[2m=[0m"seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+[2m2026-08-20T22:16:14.572884Z[0m [33m WARN[0m [2magent::plateforme[0m[2m:[0m la plateforme REFUSE la version du canal /agent : aucune reprise, il faut rebâtir l'agent ou la plateforme [3murl[0m[2m=[0m"ws://192.168.3.1:8090/agent" [3mversion_emise[0m[2m=[0m2 [3mversion_recue[0m[2m=[0m3
+[2m2026-08-20T22:16:14.573003Z[0m [33m WARN[0m [2magent::plateforme[0m[2m:[0m canal /agent abandonné DÉFINITIVEMENT : aucune reprise ne le rattrapera [3murl[0m[2m=[0m"ws://192.168.3.1:8090/agent"
+Error: enrôlement abandonné par la plateforme : voir le journal du canal /agent

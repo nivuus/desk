@@ -1,0 +1,32 @@
+=== CRITERE 4 — NonMesuree n'est JAMAIS rendue comme un nombre ===
+  occurrences de "non-mesuree" dans la charge JSON : 71
+  occurrences de "source_max":0  : 0
+  occurrences de {"pixels":0}     : 0
+  applications a Pixels(0)        : 0
+  -> aucune provenance inconnue ne se presente comme un nombre.
+
+=== CRITERE 1 — dimensions et canal alpha des octets SERVIS ===
+  7-Zip File Manager                 256x256 8bpc couleur=6 (1363 o) image/png
+  A propos de Java                   256x256 8bpc couleur=6 (4568 o) image/png
+  Administrative Tools               256x256 8bpc couleur=6 (13211 o) image/png
+  Adobe After Effects 2024           256x256 8bpc couleur=6 (6821 o) image/png
+  Adobe Character Animator 2024      256x256 8bpc couleur=6 (5973 o) image/png
+  Adobe Creative Cloud               256x256 8bpc couleur=6 (48441 o) image/png
+  Cache-Control : private, max-age=31536000, immutable
+  -> couleur=6 = RVBA : LE CANAL ALPHA EST PRESENT dans le PNG.
+
+=== CRITERE 1 (suite) — ALPHA NON TRIVIAL, sur les 96 PNG DISTINCTS du magasin ===
+  PNG lus                    : 96
+  en 256x256                 : 96 / 96
+  a ALPHA NON TRIVIAL        : 92 / 96  (95 %)
+  poids DEDUPLIQUE du magasin: 3213415 octets  (moyenne 33473 o/icone)
+
+  ⚠️ LE CRITERE NE PEUT PAS EXIGER « TOUTES » : la mesure M3 du plan relevait
+     149 sur 153, donc QUATRE sans alpha, et cet etat n'est pas atteignable.
+     Ce qui est eprouve est le MECANISME — il existe des icones a alpha partiel,
+     et leur compte est du meme ordre. La rouge est WICBitmapIgnoreAlpha, une
+     CONSTANTE NOMMEE, qui ferait tomber ce compte a ZERO.
+
+  🔴 ET LE CRITERE NE VAUT RIEN SUR LA TAILLE : mesure M2, deux fois. Un .ico
+     ne contenant QUE du 48x48 rend 256x256 32bpp. Le 256 ci-dessus ne prouve
+     donc RIEN de la provenance — c'est source_max qui la porte.
