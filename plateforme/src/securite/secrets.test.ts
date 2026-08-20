@@ -88,7 +88,9 @@ const EXCEPTIONS: readonly Exception[] = [
     {
         fichier: 'docs/superpowers/plans/2026-08-19-plateforme-p5.md',
         nom: 'POSTGRES_PASSWORD',
-        empreinte: '921c3773f8e7b716',
+        // La MÊME empreinte que la ligne du fichier de composition : c'est la
+        // même valeur, et l'épinglage le montre plutôt que de l'affirmer.
+        empreinte: '3b132f52b3b4ad4d',
         raison:
             'Le plan de P5 CITE la ligne du fichier de composition ci-dessus, pour ' +
             "expliquer pourquoi elle est exemptée. C'est la même valeur de fixture, " +
@@ -201,7 +203,32 @@ function valeurApres(reste: string): string {
     const cite = /^(['"`])(.*?)\1/.exec(t);
     if (cite) return cite[2];
     // Sinon, jusqu'au premier séparateur.
-    return /^[^\s,;)}\]]*/.exec(t)?.[0] ?? '';
+    //
+    // ⚠️ L'ACCENT GRAVE EST UN SÉPARATEUR, ET CE N'EST PAS UN DÉTAIL : il
+    // ferme une portion de code en Markdown, et ce dépôt est écrit en
+    // Markdown. Sans lui, la phrase « `TURN_SECRET=` ne porte rien » d'un
+    // commentaire fait extraire la valeur « ` », qu'aucune branche
+    // d'`inoffensive` ne rattrape — et le balayage se dénonce LUI-MÊME.
+    //
+    // 🔴 C'EST ARRIVÉ, ET LA FAÇON DONT CE FUT MANQUÉ EST LA LEÇON. Le test
+    // est passé VERT avant d'être commité — donc avant d'être suivi par git,
+    // donc AVANT QUE `git ls-files` NE LE VOIE. Un balayage qui lit
+    // `git ls-files` ne se mesure lui-même qu'une fois SUIVI : le vert
+    // d'avant le commit ne mesurait pas le dépôt d'après. Il n'a rougi qu'à
+    // la rouge de `essai-secret.env`, qui l'a révélé par accident.
+    //
+    // ⚠️ CETTE TOLÉRANCE NE CRÉE PAS DE TROU. Un nom suivi de « = » puis
+    // d'une vraie valeur, à l'intérieur d'une portion de code Markdown, rend
+    // toujours cette valeur, qui reste dénoncée. Seule une affectation
+    // IMMÉDIATEMENT suivie d'un accent grave — donc VIDE — devient
+    // inoffensive, et une affectation vide l'est de toute façon.
+    //
+    // ⚠️ ET CE COMMENTAIRE-CI EN A FAIT LA DÉMONSTRATION : sa première
+    // rédaction portait l'exemple littéral, le balayage l'a dénoncé, et il a
+    // fallu le reformuler. Le test se surveille donc lui-même, ce qui est la
+    // propriété qu'on lui demande — mais cela oblige à ÉCRIRE ses exemples
+    // sans jamais les composer.
+    return /^[^\s,;)}\]`]*/.exec(t)?.[0] ?? '';
 }
 
 function balayer(): Trouvaille[] {
