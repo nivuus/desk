@@ -94,3 +94,35 @@ export async function lireParPrefixe(
 export async function marquerVu(p: Pilote, vmId: string, maintenant: number): Promise<void> {
     await p.executer('UPDATE agent_enrole SET vu_a = ? WHERE vm_id = ?', [maintenant, vmId]);
 }
+
+/// Remplace l'empreinte du secret d'enrôlement d'une VM, et RIEN D'AUTRE.
+///
+/// 🔴 `prefixe_session` N'EST PAS TOUCHÉ, ET C'EST LE POINT DE CETTE FONCTION.
+/// Le préfixe compose le nom des sessions VIVANTES de cette VM
+/// (`agents/prefixe.ts`, spec §3.4) : le faire tourner en même temps que le
+/// secret couperait toute session en cours. **Rotation du secret n'est pas
+/// rotation de l'identité**, et les deux n'ont pas la même urgence — un secret
+/// se remplace le jour où il fuite, une identité ne se remplace jamais en
+/// urgence.
+///
+/// Rend le nombre de lignes touchées. Une VM inconnue en touche ZÉRO et ne lève
+/// PAS : c'est ce qui permet à `admin/enroler-agent.ts` de rendre un refus
+/// MOTIVÉ plutôt qu'une exception. ⚠️ Le raisonnement d'oracle qui vaut pour
+/// `lireParVm` ne s'applique PAS ici — l'appelant est l'administrateur, pas un
+/// inconnu au bout d'un canal, et lui cacher qu'il s'est trompé de VM lui
+/// ferait croire à une rotation qui n'a pas eu lieu.
+///
+/// ⚠️ CE QU'ELLE NE FAIT PAS : révoquer les jetons d'agent DÉJÀ délivrés, qui
+/// restent valides jusqu'à leur expiration. Même propriété que les jetons
+/// humains (spec §3.5), et elle borne la fenêtre à `DUREE_JETON_ACCES_MS`.
+export async function remplacerEmpreinte(
+    p: Pilote,
+    vmId: string,
+    empreinte: string,
+): Promise<number> {
+    const r = await p.executer(
+        'UPDATE agent_enrole SET empreinte_secret = ? WHERE vm_id = ?',
+        [empreinte, vmId],
+    );
+    return r.lignes;
+}

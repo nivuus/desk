@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { hacher } from '../identite/mot-de-passe';
-import { enroler, lireParPrefixe, lireParVm, marquerVu } from './agent';
+import { enroler, lireParPrefixe, lireParVm, marquerVu, remplacerEmpreinte } from './agent';
 
 let base: Pilote | undefined;
 
@@ -104,5 +104,55 @@ describe(`dépôt agent_enrole, moteur=${MOTEUR}`, () => {
         // Le battement suivant AVANCE la valeur, il ne l'ajoute pas.
         await marquerVu(base, 'v-1', MS + 30_000);
         expect((await lireParVm(base, 'v-1'))!.vu_a).toBe(MS + 30_000);
+    });
+});
+
+describe(`remplacerEmpreinte, moteur=${MOTEUR}`, () => {
+    it("remplace l'empreinte de la VM nommée, et rend le nombre de lignes touchées", async () => {
+        base = await baseNeuve('agent-rotation');
+        await avecVm(base, 'v-1');
+        const ancienne = await hacher('le-secret-d-origine-de-la-vraie-longueur');
+        await enroler(base, 'v-1', ancienne, PREFIXE);
+
+        const neuve = await hacher('le-secret-de-remplacement-tout-aussi-long');
+        expect(await remplacerEmpreinte(base, 'v-1', neuve)).toBe(1);
+
+        const ligne = await lireParVm(base, 'v-1');
+        expect(ligne!.empreinte_secret).toBe(neuve);
+    });
+
+    it("🔴 NE TOUCHE PAS le préfixe de session — relu des DEUX côtés de l'appel", async () => {
+        // 🔴 LA ROUGE : faire tourner le préfixe en même temps que le secret.
+        // Il compose le nom des sessions VIVANTES de cette VM
+        // (`agents/prefixe.ts`) : le changer couperait toute session en cours.
+        // Rotation du secret n'est pas rotation de l'identité.
+        base = await baseNeuve('agent-rotation-prefixe');
+        await avecVm(base, 'v-1');
+        await enroler(base, 'v-1', await hacher('le-secret-d-origine-tres-long'), PREFIXE);
+
+        const avant = (await lireParVm(base, 'v-1'))!.prefixe_session;
+        await remplacerEmpreinte(base, 'v-1', await hacher('un-tout-autre-secret-aussi-long'));
+        const apres = (await lireParVm(base, 'v-1'))!.prefixe_session;
+
+        expect(apres).toBe(avant);
+        expect(apres).toBe(PREFIXE);
+    });
+
+    it("🔴 ne touche AUCUNE autre VM, et ne lève pas sur une VM inconnue", async () => {
+        // 🔴 LA ROUGE : oublier la clause WHERE. Toutes les VMs partageraient
+        // alors le même secret, ce qu'aucun test à une seule VM ne verrait.
+        base = await baseNeuve('agent-rotation-portee');
+        await avecVm(base, 'v-1');
+        await avecVm(base, 'v-2');
+        const gardee = await hacher('le-secret-de-la-vm-voisine-bien-long');
+        await enroler(base, 'v-1', await hacher('le-secret-a-remplacer-bien-long'), PREFIXE);
+        await enroler(base, 'v-2', gardee, 'Zk4pQ7mNr2xTvB9wLcHd1s');
+
+        await remplacerEmpreinte(base, 'v-1', await hacher('le-secret-neuf-tout-aussi-long'));
+        expect((await lireParVm(base, 'v-2'))!.empreinte_secret).toBe(gardee);
+
+        // Une VM inconnue : zéro ligne touchée, et surtout AUCUNE exception —
+        // c'est ce qui permet à l'appelant de rendre un refus motivé.
+        expect(await remplacerEmpreinte(base, 'v-jamais-enrolee', 'peu-importe')).toBe(0);
     });
 });
