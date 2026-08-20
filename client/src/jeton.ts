@@ -14,8 +14,17 @@
 // une injection de script. `sessionStorage` ne convient pas — la page-shell
 // ouvre ses fenêtres par `window.open` (`shell-page.ts`), et le stockage de
 // session n'est pas garanti partagé avec elles, ce qui obligerait chaque
-// fenêtre à se reconnecter. C'est un ARBITRAGE, pas un oubli, et l'endroit où
-// il se rouvrira est le sous-bloc P5, avec les en-têtes de sécurité.
+// fenêtre à se reconnecter. C'est un ARBITRAGE, pas un oubli.
+//
+// ⚠️ **P5 EST PASSÉ, ET L'ARBITRAGE N'A PAS ÉTÉ ROUVERT** (revue transverse,
+// 20 août 2026). Cette phrase annonçait qu'« il se rouvrira[it] [au] sous-bloc
+// P5, avec les en-têtes de sécurité » : les en-têtes ont été livrés — deux par
+// le service (`plateforme/src/http/entetes.ts`), le reste par le proxy
+// (`deploiement/nginx.conf`, dont une CSP à `script-src 'self'`) — et **le
+// stockage n'a pas changé**. Ce n'est pas un oubli non plus : une CSP réduit
+// la surface d'injection sans la supprimer, et le remède réel — un cookie
+// `HttpOnly` — reste **hors du périmètre de ⑤**, qui n'a livré aucun cookie.
+// **L'arbitrage tient, et il est désormais DÛ plutôt qu'ANNONCÉ.**
 //
 // ⚠️ `exp` EST EN MILLISECONDES, et ce n'est pas une erreur de lecture :
 // `plateforme/src/identite/jeton.ts` déclare cette divergence délibérée avec

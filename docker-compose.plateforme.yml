@@ -78,11 +78,21 @@
 #
 # 🔴 UNE INSTANCE DE `plateforme`, ET UNE SEULE. Ce n'est pas un réglage de
 # capacité, c'est une CONTRAINTE DE CORRECTION, et elle est la dette la plus
-# lourde de tout ⑤. Trois états de routage vivent en mémoire du processus :
+# lourde de tout ⑤. QUATRE états de routage vivent en mémoire du processus :
 #
 #   `signaling/appariement.ts`  la table des sessions et leurs deux pairs ;
 #   `signaling/propriete.ts`    qui possède quel nom de session ;
-#   `securite/frein.ts`         les échecs récents.
+#   `securite/frein.ts`         les échecs récents ;
+#   `agents/registre.ts`        la VM et son socket d'agent courant, plus les
+#                               ordres en vol dont la réponse n'est pas arrivée.
+#
+# ⚠️ LE QUATRIÈME MANQUAIT À CETTE LISTE, ET C'EST LE PLUS COÛTEUX DES QUATRE
+# (revue transverse, 20 août 2026). `agents/registre.ts` est né du sous-bloc
+# G1, CONCURRENT de P5 : personne, à l'échelle d'une tâche, ne pouvait le voir
+# apparaître. Sa carte `sockets` est la table VM → socket d'agent — à deux
+# instances, un `POST /session` traité par l'instance qui NE tient PAS le
+# socket de la VM ne trouve rien, et c'est la même panne muette que pour
+# l'appariement, sur le chemin le plus fréquenté du produit.
 #
 # À deux instances, **deux pairs de la même session ne s'apparient JAMAIS** —
 # chacun attend l'autre, et rien ne le dit. C'est une panne MUETTE, la classe
@@ -138,9 +148,26 @@ services:
     ports:
       # 🔴 5434, ET NON 5433 : le port DISTINGUE les deux instances. Les deux
       # sont des Postgres 16 ; une suite verte ne dirait pas laquelle elle a
-      # touchée si elles partageaient un port. Le discriminant du critère ① est
-      # `SELECT current_database(), inet_server_port(), version()`, et il n'a de
-      # sens que parce que ce port-ci diffère.
+      # touchée si elles partageaient un port.
+      #
+      # 🔴 MAIS LE DISCRIMINANT QUE LE PLAN PRESCRIVAIT NE DISCRIMINE PAS, ET
+      # LA RECETTE L'A MESURÉ (20 août 2026,
+      # `journaux-plateforme-p5/recette/01-critere1-postgres-deploye.log`).
+      # La décision D15 nommait `SELECT current_database(),
+      # inet_server_port(), version()`. Or `inet_server_port()` rend **5432
+      # des DEUX côtés** — c'est le port du serveur DANS son conteneur, jamais
+      # celui publié sur l'hôte —, et `version()` est identique mot pour mot,
+      # les deux instances portant la même image, ce que le commentaire
+      # ci-dessus revendique comme voulu. Le seul champ prescrit qui distingue
+      # est `current_database()`, et il ne distingue que par une CONVENTION DE
+      # NOM.
+      #
+      # **CE QUI DISCRIMINE VRAIMENT est l'identité de GRAPPE**,
+      # `pg_control_system().system_identifier`, posée par `initdb` et
+      # infalsifiable sans refaire la grappe : relevée à 7676031821417750562
+      # ici et 7675690416090275874 sur l'instance de test. Le port publié
+      # distinct reste utile — il permet de VISER l'une ou l'autre —, il ne
+      # permet simplement pas de PROUVER laquelle a répondu.
       #
       # Sur 127.0.0.1 UNIQUEMENT, même raison que l'instance de test : rien de
       # ceci n'a à être joignable depuis une autre machine. Le service, lui,

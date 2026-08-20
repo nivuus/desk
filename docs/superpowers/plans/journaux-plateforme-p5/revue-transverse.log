@@ -1,0 +1,600 @@
+=== TACHE 18 — LA REVUE TRANSVERSE DE FIN DE BRANCHE (sous-bloc P5) ===
+
+Date : 20 août 2026. Commit revu : c372fe9 (après la recette, avant CLAUDE.md
+et le document de résultats).
+
+Barème connu, et donc rien à négocier : D7 5, D8 3, D9 6, D10 douze, D11 sept,
+P1 huit, P2 dix, S1 cinq, E neuf, P3 douze, S2 douze, F1 onze, P4 huit, S3
+treize, G1 huit, S4 vingt-sept. **Un rapport qui ne trouve rien est un rapport
+qui n'a pas cherché.**
+
+Sa cible propre, nommée d'avance par le plan : les défauts qui FRANCHISSENT UNE
+FRONTIÈRE DE TÂCHE — corrects des deux côtés pris séparément.
+
+⚠️ MÉTHODE, ET ELLE N'EST PAS NÉGOCIABLE : chaque correction « à sa place » est
+une affirmation de COMPLÉTUDE. Les places sont donc ÉNUMÉRÉES PAR `grep -n`
+AVANT d'écrire, l'énumération est versée ici, et le `grep` est RELU place par
+place APRÈS l'édition. Le dépôt a payé sept fois le « naufrage du 487 », dont
+une fois DANS la vague qui le corrigeait ailleurs.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+ A. LES AFFIRMATIONS DE CODE DEVENUES FAUSSES DANS LEUR PROPRE BRANCHE
+═══════════════════════════════════════════════════════════════════════════════
+
+── A1. 🔴 `docker-compose.plateforme.yml:142` PRESCRIT UN DISCRIMINANT QUI NE
+        DISCRIMINE PAS, ET LA RECETTE DE LA MÊME BRANCHE L'A MESURÉ ──────────
+
+  Le fichier écrit, à propos des deux instances Postgres :
+
+    « Le discriminant du critère ① est
+      `SELECT current_database(), inet_server_port(), version()`, et il n'a de
+      sens que parce que ce port-ci diffère. »
+
+  MESURÉ le 20 août 2026, critère ① de la recette (01-critere1-postgres-deploye.log) :
+
+    inet_server_port()  = 5432  SUR LES DEUX INSTANCES
+    version()           = « PostgreSQL 16.15 on x86_64-pc-linux-musl … »  IDENTIQUE
+
+  `inet_server_port()` rend le port du serveur DANS SON CONTENEUR, jamais le
+  port publié sur l'hôte. `version()` est identique parce que les deux
+  instances portent la même image — ce que la ligne 129 du même fichier
+  revendique explicitement comme voulu. Le seul champ prescrit qui distingue
+  est `current_database()`, et il ne distingue que par une CONVENTION DE NOM.
+
+  La phrase « il n'a de sens que parce que ce port-ci diffère » est donc FAUSSE
+  DEUX FOIS : le port relu n'est pas celui qui diffère, et ce n'est pas lui qui
+  porte le sens.
+
+  🔴 C'EST UN CONTRÔLE QUI NE POUVAIT PAS ÉCHOUER, et il vient du PLAN, pas de
+     l'exécution : la décision D15 du plan (l. 815) l'écrit à l'identique. Ni la
+     tâche 13 (qui a recopié la phrase dans le fichier) ni le plan ne l'ont
+     éprouvé — il a fallu le LANCER.
+
+  REMÈDE APPLIQUÉ : la ligne du fichier dit désormais ce que la mesure a trouvé,
+  et nomme le discriminant qui marche — `pg_control_system().system_identifier`,
+  l'identité de grappe posée par `initdb` (7676031821417750562 pour le
+  déploiement, 7675690416090275874 pour le test).
+
+── A2. 🔴 TROIS PLACES DÉCLARENT « TROIS ÉTATS DE ROUTAGE EN MÉMOIRE ». IL Y EN
+        A QUATRE, ET LE QUATRIÈME EST LE PLUS COÛTEUX ────────────────────────
+
+  Places, énumérées par `grep -n` AVANT correction :
+    docker-compose.plateforme.yml:81-85   « Trois états de routage vivent en
+                                            mémoire du processus » + la liste
+    deploiement/README.md:21-23           le tableau des trois porteurs
+
+  Les deux listes nomment `signaling/appariement.ts`, `signaling/propriete.ts`
+  et `securite/frein.ts`. Elles OMETTENT `agents/registre.ts`, qui porte DEUX
+  cartes de plus :
+
+    plateforme/src/agents/registre.ts:72   `sockets`  la VM et son socket courant
+    plateforme/src/agents/registre.ts:74   `enVol`    les ordres sans réponse
+
+  ⚠️ CE N'EST PAS UN OUBLI DE DÉTAIL : `sockets` est la carte VM → socket
+  d'agent. À deux instances, un `POST /session` traité par l'instance qui NE
+  tient PAS le socket de la VM ne trouve rien — la panne est la même que celle
+  que l'encadré décrit pour l'appariement, sur le chemin le plus fréquenté.
+
+  POURQUOI PERSONNE NE POUVAIT LE VOIR EN TÂCHE : `agents/registre.ts` est né
+  du sous-bloc G1 (`0a719a2`), CONCURRENT de P5. Le plan de P5 affirme même
+  l'inverse — voir B1.
+
+  REMÈDE APPLIQUÉ : les deux listes portent le quatrième, avec sa conséquence.
+
+── A3. ⚠️ `obs/journal.ts:6-9` PORTE UN COMPTE QUE LA TÂCHE 8 DE LA MÊME BRANCHE
+        A PÉRIMÉ ─────────────────────────────────────────────────────────────
+
+  Le fichier (tâche 4) écrit : « `console.<methode>` hors tests et hors harnais
+  rend DIX-NEUF occurrences dans ONZE fichiers … DIX-HUIT sites réels. Les plus
+  chargés : `agents/canal.ts` (5) … ».
+
+  REMESURÉ par la commande le 20 août 2026, même motif :
+
+    occurrences hors tests          21   (et non 19)
+    fichiers                        11   (inchangé)
+    dont une CHAÎNE DE CODE          1   (`base/pilote-sqlite.ts:29`, inchangé)
+    `agents/canal.ts`                6   (et non 5)
+
+  Les DEUX occurrences neuves sont les lignes de journal STRUCTURÉES que P5
+  a lui-même posées après la tâche 4 — `routes-auth.ts:262` et `canal.ts:399`,
+  toutes deux passant par `ligne(...)`.
+
+  ⚠️ LE CHIFFRE QUI COMPTE, LUI, N'A PAS BOUGÉ : la DETTE de migration — les
+  sites de FORME LIBRE — vaut toujours 18. Le compte périmé est celui des
+  occurrences brutes, pas celui de la dette. C'est pourquoi ce constat est
+  classé ⚠️ et non 🔴 : l'affirmation est fausse, sa conclusion tient.
+
+  REMÈDE APPLIQUÉ : le commentaire porte les deux nombres et dit lequel est la
+  dette.
+
+── A4. ⚠️ LE PLAN ANNONÇAIT « LES QUATRE ROUTEURS » ; IL Y EN A CINQ ──────────
+
+  Plan de P5, tâche 10 : « Task 10 : les en-têtes de sécurité sur les quatre
+  routeurs » (l. 1306). Mesuré : CINQ routeurs importent `ENTETES_SECURITE` —
+  `routes-auth`, `routes-vm`, `routes-session`, `routes-applications`,
+  `routes-sante` —, plus `serveur.ts` qui n'est pas un routeur.
+
+  ✅ CE CONSTAT EST DÉJÀ FERMÉ, ET PAR L'IMPLÉMENTEUR LUI-MÊME : le test le dit
+     en toutes lettres — `entetes-routeurs.test.ts:92` : « (4) `routes-applications`
+     les pose — le CINQUIÈME routeur, ajouté par G1 ». Il est consigné ici pour
+     que le PLAN ne reste pas la seule pièce lue, et parce qu'il partage sa
+     cause avec A2 et B1 : G1 a bougé sous P5.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+ B. LE PLAN A VIEILLI SOUS G1 — TROIS AFFIRMATIONS, UNE SEULE CAUSE
+═══════════════════════════════════════════════════════════════════════════════
+
+── B1. 🔴 « E1 — La spec nomme `agents/registre.ts` ; ce fichier n'existe pas »
+        (plan, l. 829) EST FAUX ──────────────────────────────────────────────
+
+  `plateforme/src/agents/registre.ts` EXISTE — 8502 octets, créé par le commit
+  `0a719a2` (« apps(g1): le registre des sockets d'agent vivants, et la course
+  qu'il fallait fermer »), avec son jumeau `registre.test.ts`.
+
+  La spec avait raison, le plan a eu tort — et il a eu tort parce qu'il a été
+  écrit pendant que G1 le rendait faux. C'est la cause commune de A2, A4 et B2.
+
+── B2. ⚠️ LE COÛT DE LA MIGRATION DE JOURNALISATION QUE D12 CHIFFRE EST PÉRIMÉ ─
+
+  D12 du plan (l. 708-712) : « 15 occurrences dans 9 fichiers … cinq fichiers
+  de test qui capturent la console ».
+  Mesuré ce jour : 21 occurrences dans 11 fichiers, et HUIT fichiers de test.
+
+  ⚠️ CE N'EST PAS UNE ERREUR DU PLAN, et `obs/journal.ts:18-20` le disait déjà :
+  l'écart vient de G1. Ce qui est neuf ici, c'est que le compte de `journal.ts`
+  a lui aussi vieilli (A3) : DEUX niveaux d'annotation successifs, tous deux
+  périmés par la même branche.
+
+── B3. ⚠️ LES TAILLES DE FICHIERS DE LA TABLE DU PLAN ÉTAIENT DÉJÀ FAUSSES ────
+
+  Relevé par la commande, `git show bb5a40f:<fichier> | wc -l` pour l'entrée :
+
+    fichier                    plan   entrée réelle   aujourd'hui   croissance annoncée / réelle
+    agents/canal.ts             198        287            417            ~30 / +130
+    http/serveur.ts             207        236            371            ~35 / +135
+    http/routes-auth.ts         241        241            397            ~45 / +156
+    http/routes-auth.test.ts    215        215            398            ~90 / +183
+    admin/enroler-agent.ts      162        162            260            ~45 /  +98
+
+  DEUX chiffres de la table du plan étaient FAUX À SA DATE (`canal.ts` 198 pour
+  287 réels, `serveur.ts` 207 pour 236) — G1 encore. Et les cinq croissances
+  annoncées sont sous-estimées d'un facteur 2 à 4.
+
+  ✅ LA PORTE À 450 A TENU MALGRÉ TOUT, et c'est un fait, pas une chance : le
+     plus gros fichier que P5 touche est `agents/canal.ts` à 417 (marge 83).
+     Aucune extraction n'a été requise. Mais l'écart est assez grand pour que la
+     conclusion du plan — « aucun fichier du périmètre n'approche 450 » — ait
+     tenu par 33 lignes et non par la marge confortable qu'il annonçait.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+ C. LES CONTRÔLES QUI NE PEUVENT PAS ÉCHOUER
+═══════════════════════════════════════════════════════════════════════════════
+
+── C1. 🔴 `agents/canal.test.ts` « (a) la n+1ᵉ tentative sur la MÊME VM est
+        refusée par le frein » RESTE VERT QUAND LE FREIN EST RETIRÉ ──────────
+
+  Trouvé par la ROUGE B du critère ③ (03-critere3-frein.log). En neutralisant
+  l'UNIQUE site d'application du frein sur `/agent` (`canal.ts:270`), DEUX
+  tests tombent — (b) et (e) — et QUATRE restent verts, dont (a), (c), (d), (f).
+
+  La cause n'est pas un défaut du produit : le test n'affirme que
+  `type === 'refus'`, or le refus freiné et le refus par mauvais secret sont
+  IDENTIQUES PAR CONCEPTION — c'est l'oracle d'énumération que le test (c)
+  existe pour verrouiller. Ce test ne peut donc STRUCTURELLEMENT pas distinguer
+  les deux, quel que soit le produit. Son TITRE promet plus que sa mesure.
+
+  ✅ LE COMPORTEMENT EST COUVERT : par (b) et (e), tous deux par le même
+     discriminant `compteur.acces() === 0` — « le refus freiné n'a RIEN lu en
+     base ». C'est ce discriminant, et lui seul, qui porte le critère ③ côté
+     `/agent`.
+
+  DÉCISION : consigné, NON corrigé. Renommer le test serait juste ; lui donner
+  une assertion discriminante demanderait un compteur d'accès dans (a), c'est-
+  à-dire de le dupliquer avec (e). Légué.
+
+── C2. 🔴 LA ROUGE QUE LE PLAN PRESCRIT POUR LA TÂCHE 14 EST VACUEUSE ─────────
+
+  Plan, tâche 14 : « Ce qui la rend ROUGE : retirer `connect-src wss:` de la
+  CSP — le critère ⑤ doit alors relever une violation dans la console. »
+
+  ✅ DÉJÀ TROUVÉ ET MESURÉ PAR LA TÂCHE 14 ELLE-MÊME (14-nginx-mesure.log) :
+     `'self'` couvre déjà une montée `wss://` de MÊME ORIGINE. Retirer `wss:`
+     ne casse rien, 3 exécutions sur 3. La rouge qui discrimine est
+     `connect-src 'none'`, et elle est nommée dans `deploiement/nginx.conf:220`
+     à cet effet.
+
+  ✅ LA RECETTE A JOUÉ CELLE-LÀ : rouge n°2 du critère ⑤ (05-critere5-navigateur.log),
+     qui fait tomber (b), (c) ET (d) ensemble.
+
+  Consigné parce que le PLAN, lui, porte toujours la rouge vacueuse, et que
+  c'est le plan qu'un successeur relira.
+
+── C3. ✅ LES HUIT ASSERTIONS DE LA TÂCHE 1 ET LES SIX DE LA TÂCHE 2 ONT TOUTES
+        LEUR ROUGE VERSÉE ────────────────────────────────────────────────────
+
+  `mutations-t1-frein.log` porte six mutations nommées (T1-b, T1-c ×2, T1-d,
+  T1-e, T1-f+g, T1-h), chacune avec sa sortie de test rouge.
+  `mutations-t2-adresse-source.log` en porte six (T2-a, T2-b, T2-d ×2, T2-e,
+  T2-f). Aucune assertion de ces deux tâches n'est restée sans témoin.
+
+  ⚠️ RÉSERVE : le bilan de la branche déclare 40 mutations jouées, dont TROIS
+  revenues vertes — une par test faible (code mort retiré), deux par mauvaise
+  mutation (rejouées fidèlement). Cette revue n'a pas rejoué les 40 ; elle a
+  vérifié que les journaux existent et que chaque mutation y porte sa sortie.
+
+── C4. ⚠️ DEUX MAUVAISES MUTATIONS DE LA RECETTE, DÉCLARÉES PLUTÔT QUE COMPTÉES
+
+  (a) « ROUGE B bis » du critère ③ : elle rougissait (12 échecs) mais cassait
+      le module AU-DELÀ du frein — des tests étrangers tombaient et deux
+      crochets expiraient. Écartée du raisonnement, et INUTILE de surcroît :
+      les deux sites qu'elle ajoutait ne sont pas des sites d'APPLICATION du
+      frein mais de sa JOURNALISATION.
+  (b) Première extraction d'adresse du critère ② : un `sed` glouton rendait
+      « 3478 » pour adresse. Passe écartée et rejouée.
+
+  Les deux sont consignées DANS leur journal, à leur place.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+ D. CE QUE LE CADRAGE PROMET ET QUE ⑤ NE TIENT PAS
+═══════════════════════════════════════════════════════════════════════════════
+
+── D1. 🔴 « SCALABILITÉ HORIZONTALE POSSIBLE (PLUS D'ÉTAT EN MÉMOIRE) » ────────
+
+  Cadrage produit, `docs/superpowers/specs/2026-07-27-refonte-produit-design.md:225`.
+
+  ⚠️ LA PHRASE EST TROMPEUSE, ET ELLE L'EST DEPUIS LE CADRAGE, PAS DEPUIS P5.
+  Une base retire de la mémoire l'état DURABLE ; elle ne retire pas l'état de
+  ROUTAGE, parce qu'un WebSocket vit dans un processus et un seul.
+
+  ✅ LA SPEC DE ⑤ LE DIT DÉJÀ, ET DEUX FOIS : l. 259-266 (« Ce que l'absorption
+     ne procure PAS ») et l. 902-903 (« Rien de la scalabilité horizontale …
+     contrairement à ce que le cadrage laisse entendre »).
+
+  🔴 CE QUI MANQUE EST DANS `CLAUDE.md`, ET C'EST L'ENDROIT QU'ON LIT. Les
+     quatre sections P1 à P4 nomment bien des états en mémoire un par un
+     (7379, 7719, 7725, 7952, 8502, 8977) mais AUCUNE ne rassemble le compte ni
+     ne dit que la promesse du cadrage n'est pas tenue par ⑤. C'est un item de
+     la tâche 19, et il y est porté.
+
+  ⚠️ ET LE COMPTE EST DE QUATRE, PAS DE TROIS (voir A2) : appariement,
+     propriété, frein, ET le registre des sockets d'agent.
+
+── D2. 🔴 LA CIBLE « RÉSEAUX RESTRICTIFS » N'EST PAS COUVERTE ─────────────────
+
+  Cadrage produit, l. 223 : « Signaling WebRTC + serveur TURN pour les réseaux
+  restrictifs ». TURNS sur 443 n'est PAS livré (D9 du plan), pour deux raisons
+  écrites dans `docker-compose.coturn.yml` : 443 est occupé par un tiers sur la
+  machine de mesure, et il y a un conflit structurel sur une adresse unique.
+
+  ⚠️ AUCUNE des quatre sections P1 à P4 de `CLAUDE.md` ne nomme TURNS ni les
+  réseaux restrictifs — vérifié par balayage. Il n'y a donc rien à corriger,
+  mais il y a tout à ÉCRIRE : c'est un item explicite de la tâche 19.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+ E. DEUX DETTES DE TAILLE QUI NE FIGURENT DANS AUCUN TABLEAU
+═══════════════════════════════════════════════════════════════════════════════
+
+  RELEVÉ PAR LA COMMANDE de `CLAUDE.md` (§ « Vérifier l'état »), 20 août 2026,
+  APRÈS le commit c372fe9 :
+
+    1536  agent/src/encode.rs            <- au tableau de dette
+     630  agent/src/windows_source.rs    <- au tableau de dette
+     561  proto/src/plateforme/tests.rs  <- ABSENT DE TOUT TABLEAU
+     512  proto/ts/plateforme.test.ts    <- ABSENT DE TOUT TABLEAU
+
+  Les deux derniers sont nés du sous-bloc G1 (`457a7f8`). Ils ne sont pas
+  corrigés ici — ils appartiennent à un autre chantier, et P5 ne touche ni
+  `proto/` ni `agent/`. Ils sont INSCRITS, parce qu'une dette non écrite est
+  une dette qu'on redécouvre.
+
+  ⚠️ MARGES ÉTROITES QU'AUCUN TABLEAU NE SIGNALE, relevées au même moment :
+    494 (marge  6)  client/verify-webrtc.mjs        <- 497 au relevé D10 : il a MAIGRI
+    491 (marge  9)  agent/src/demarrage.rs
+    488 (marge 12)  agent/src/superviseur/lanceur.rs
+    488 (marge 12)  agent/src/pont/projfs/rappels.rs
+    480 (marge 20)  plateforme/src/http/routes-applications.test.ts   <- le seul de ⑤
+
+  Le dernier est le seul du sous-projet ⑤ ; il vient de G1, P5 ne le touche pas,
+  et il est DÉJÀ au-dessus de la porte à 450 que le plan de P5 s'imposait — ce
+  que la clôture des tâches 0 à 11 avait relevé et déclaré.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+ F. LES LEGS DE SÉCURITÉ : CE QUI SE FERME, ET CE QUI NE SE FERME QU'À MOITIÉ
+═══════════════════════════════════════════════════════════════════════════════
+
+🔴 LE CONSTAT LE PLUS IMPORTANT DE CETTE SECTION EST UN LEG QUI NE SE FERME
+   QU'À MOITIÉ, ET QU'IL AURAIT ÉTÉ FACILE DE COCHER EN ENTIER.
+
+  `CLAUDE.md:8998-9000` (legs de P4) : « P5 — le frein sur /auth/connexion,
+  /agent, ET les DEUX routes neuves. GET /vm et POST /session sont ouvertes à
+  la force brute exactement comme /auth/connexion l'est. »
+
+  MESURÉ — tous les sites de consultation du frein dans le produit :
+    plateforme/src/http/routes-auth.ts:180, 255, 256
+    plateforme/src/agents/canal.ts:270, 381, 382, 398
+
+  `GET /vm` et `POST /session` NE SONT PAS FREINÉES. `grep -n frein
+  plateforme/src/http/routes-vm.ts plateforme/src/http/routes-session.ts` rend
+  ZÉRO ligne. Le leg est donc fermé sur `/auth/connexion`, `/auth/rafraichir`
+  et `/agent`, et RESTE DÛ sur les deux routes neuves de P4.
+
+  ⚠️ Ces deux routes exigent un jeton porteur valide, ce qui n'est pas rien —
+  mais l'énoncé du leg ne dit pas « bridées par l'authentification », il dit
+  « ouvertes à la force brute exactement comme /auth/connexion ». Il reste vrai
+  de la partie qu'il nomme.
+
+  Le détail leg par leg, avec la place de chacun, est porté à la tâche 19 : ce
+  journal ne le duplique pas.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+ G. L'ENUMERATION DES PLACES, FAITE AVANT TOUTE EDITION
+═══════════════════════════════════════════════════════════════════════════════
+
+🔴 « CORRIGE A SA PLACE » EST UNE AFFIRMATION DE COMPLETUDE. Elle s'enumere
+   AVANT d'ecrire, et le grep se relit place par place APRES. Voici l'avant.
+
+--- grep -rn 'P5' plateforme/src client/src proto/ts ---
+  plateforme/src/config.ts:25:// bridées par rien à ce jour (c'est le sujet de P5).
+  plateforme/src/config.ts:125:    // démarrer pour elle casserait par ailleurs le déploiement de P5, où le
+  plateforme/src/config.ts:158:    // client : P5 ne livre pas la chaîne à N sauts, et
+  plateforme/src/http/serveur.ts:72:/// ⚠️ CE QU'ELLE NE FERME PAS, et qu'aucune tâche de P5 ne ferme : un pair
+  plateforme/src/http/serveur.ts:108:/// et son en-tête l'écrivait avant P5.
+  plateforme/src/http/entetes.ts:35:// le reste de P5, qui ne termine jamais TLS (spec §9).
+  plateforme/src/obs/journal.ts:1:// La ligne de journal des évènements NEUFS de P5. Fonction PURE : elle REND la
+  plateforme/src/obs/journal.ts:19://   NE SONT PAS CEUX DU PLAN DE P5 — qui annonce 15 occurrences, 9 fichiers et
+  plateforme/src/obs/journal.ts:34:// CE QUE CE MODULE SERT DONC : les évènements NEUFS de P5 — `frein`, `sante`,
+  plateforme/src/http/adresse-source.ts:25:// PROXY, pas celle du client. P5 ne livre pas la chaîne à N sauts : la
+  plateforme/src/http/entetes-routeurs.test.ts:12:// DE TEST DE ROUTE, et c'est une divergence assumée avec le plan de P5 (qui
+  plateforme/src/http/entetes-routeurs.test.ts:17:// d'ajouter un routeur sans que personne ne s'en aperçoive côté P5 : c'est
+  plateforme/src/http/entetes-routeurs.test.ts:93:        // ⚠️ CE ROUTEUR N'EST PAS DANS LE PLAN DE P5, qui compte « les quatre
+  plateforme/src/securite/secrets.test.ts:15:// `docker compose … config`, dont le plan de P5 relève qu'il imprime
+  plateforme/src/securite/secrets.test.ts:95:            'Le plan de P5 CITE la ligne du fichier de composition ci-dessus, pour ' +
+  plateforme/src/agents/canal.ts:105:/// P5 doit freiner. Fermer ne l'empêche pas de se reconnecter — cela lui en
+  plateforme/src/agents/canal.ts:265:            // au-dessus le jour où on voudra le brider ». P5 est ce jour-là.
+  plateforme/src/agents/canal.test.ts:131:        // même connexion : c'est le déni de service que P5 doit freiner, et
+  plateforme/src/config.test.ts:74:        // Refuser de démarrer pour elle casserait le déploiement de P5, où le
+  plateforme/src/signaling/resilience.test.ts:26:// celle de P3, ne peut fermer ce chemin-ci. Le frein est P5 ③.
+  plateforme/src/signaling/resilience.test.ts:231:describe('résilience du process réel face à une trame TROP GRANDE (P5)', () => {
+  plateforme/src/base/pilote-postgres.ts:69:/// `max_connections = 100` de l'instance de test. Le jour où P5 a ajouté ses
+  plateforme/src/admin/enroler-agent.ts:19:// 🔴 LE SOUS-BLOC P5 A ROUVERT CE POINT, ET IL NE LE CORRIGE PAS : IL LE REND
+  client/src/jeton.ts:18:// il se rouvrira est le sous-bloc P5, avec les en-têtes de sécurité.
+  client/src/adresse-plateforme.test.ts:5:// qui n'est pas la console. Le déploiement de P5 serait donc livré non
+  client/src/adresse-plateforme.ts:4:// 🔴 CE MODULE EXISTE POUR UNE PANNE QUE LE DÉPLOIEMENT DE P5 AURAIT RENDUE
+
+  compte total = 26
+  fichiers     = 16
+  proto/ts     = 0  (zero : rien a corriger la-bas)
+
+--- L'APRES : grep -rn 'P5', RELU PLACE PAR PLACE ---
+  compte total = 32   (26 avant ; la hausse est celle des ANNOTATIONS)
+
+  Les SIX affirmations que la revue declare DEVENUES FAUSSES, relues une par une :
+    plateforme/src/config.ts                       « sujet de P5 » -> 1 occurrence(s) restante(s)
+    plateforme/src/agents/canal.ts                 « P5 doit freiner » -> 1 occurrence(s) restante(s)
+    plateforme/src/agents/canal.test.ts            « P5 doit freiner » -> 0 occurrence(s) restante(s)
+    plateforme/src/signaling/resilience.test.ts    « Le frein est P5 » -> 0 occurrence(s) restante(s)
+    client/src/jeton.ts                            « il se rouvrira est le sous-bloc P5 » -> 0 occurrence(s) restante(s)
+
+  ⚠️ LIRE CE TABLEAU CORRECTEMENT — DEUX LIGNES RENDENT 1, ET C'EST VOULU.
+     Le depot annote plutot qu'il n'efface : chaque correction CITE la phrase
+     qu'elle refute. Les deux « 1 » restants sont donc les CITATIONS a
+     l'interieur des annotations neuves, verifiees ligne par ligne :
+       config.ts:28  -> dans le bloc « ✅ P5 A LIVRE CE QUE CETTE PHRASE ANNONCAIT »
+       canal.ts:110  -> dans le bloc « ✅ CET ETAGE EXISTE DEPUIS P5 »
+     Aucune des deux n'est l'affirmation d'origine. Les trois autres motifs
+     rendent bien ZERO, la formulation d'origine n'ayant pas ete reprise
+     verbatim dans leur annotation.
+
+     🔴 C'EST EXACTEMENT LE GENRE DE LECTURE QU'UN `grep -c` SEUL REND FAUX :
+        un compte non nul apres correction n'est pas une correction manquee, et
+        un compte nul n'est pas une preuve de completude. Les places ont ete
+        RELUES, pas comptees.
+
+  ❌ LA SIXIEME N'EST PAS CORRIGEE, ET C'EST DELIBERE :
+    79:    // et **rien ne borne cette demande** — `windows_source/sortie.rs::
+     Elle porte sur 'borner_a_la_taille_max' (agent/src/), qui a DEUX appelants
+     de production aujourd'hui — VERIFIE PAR LA COMMANDE, non recopie d'un
+     rapport : `grep -rn borner_a_la_taille_max agent/src` rend
+     superviseur/boucle/creation_sortie.rs:58 et
+     superviseur/table/attribution.rs:35 —, donc l'affirmation est fausse.
+     🔴 MAIS C'EST D10 QUI L'A RENDUE FAUSSE, PAS P5, et 'client/src/main.ts'
+     est tenu par un chantier CONCURRENT (presse-papier) : y ecrire ecraserait
+     son travail. CONSIGNEE, NON CORRIGEE, et leguee nommement.
+
+--- les DEUX places du compte des etats en memoire, relues ---
+    (le motif ci-dessous ne matche que le compose : le README porte un retour a
+     la ligne au milieu de la phrase — releve, et verifie separement en dessous)
+    docker-compose.plateforme.yml:81:# lourde de tout ⑤. QUATRE états de routage vivent en mémoire du processus :
+    deploiement/README.md:16:**Ne jamais répliquer le service.** **Quatre** états de routage vivent en
+    registre.ts nomme dans les deux ? compose=2  README=2
+    (README:22 le porte en ligne de tableau, README:27 dans l'annotation)
+
+--- la place du discriminant, relue ---
+    157:      # inet_server_port(), version()`. Or `inet_server_port()` rend **5432
+    system_identifier nomme ? 1
+
+
+═══════════════════════════════════════════════════════════════════════════════
+ H. LES PLACES DE `CLAUDE.md` — ENUMEREES ICI, EDITEES A LA TACHE 19
+═══════════════════════════════════════════════════════════════════════════════
+
+⚠️ `CLAUDE.md` N'EST PAS EDITE PAR CETTE TACHE. Un chantier CONCURRENT
+   (presse-papier) y ecrit au moment ou ces lignes sont ecrites — `git diff
+   --stat` le montre. Les places sont donc RELEVEES ici, avec leur numero de
+   ligne au commit c372fe9, et l'edition est faite a la tache 19, APRES une
+   relecture du fichier.
+
+Sections du sous-projet ⑤ : P1 7110-7570, P2 7571-7992, P3 7993-8526,
+P4 8527-9016 (bornes relevees, la fin de chacune etant la ligne precedant le
+`##` suivant).
+
+── H1. LE FREIN — ce qui se ferme ──────────────────────────────────────────────
+  7377        « Le frein est P5 ③. »
+  7743-7747   « Aucun frein sur les routes d'authentification — c'est P5 ③ … »
+  7974-7977   legs P2 n°5 : « P5 — le frein sur les routes d'authentification »
+  8278-8280   « Le deni de service en une trame reste OUVERT (E15) … Le frein
+              est P5 ③. »   ⚠️ DOUBLEMENT FAUX : ce n'est pas le frein qui
+              ferme E15, c'est `maxPayload` (voir A/F et l'annotation de
+              `resilience.test.ts`)
+  8506-8508   legs P3 n°5 : « P5 — le frein sur /auth/connexion ET sur /agent »
+  8512        « et le deni de service en une trame (E15) »
+  8890-8893   « ni TLS, ni cookies, ni en-tetes de securite, ni frein, ni
+              coturn restreint, ni /sante … C'est P5. »
+  8998-9000   legs P4 n°7 : « P5 — le frein sur /auth/connexion, /agent, ET les
+              DEUX routes neuves »
+
+  🔴 LA DERNIERE NE SE FERME QU'A MOITIE — voir la section F. `GET /vm` et
+     `POST /session` NE SONT PAS FREINEES. Mesure : les sept sites de
+     consultation du frein sont tous dans `routes-auth.ts` et `canal.ts` ;
+     `grep -n frein` sur `routes-vm.ts` et `routes-session.ts` rend ZERO.
+
+── H2. TLS, EN-TETES, /sante, coturn ───────────────────────────────────────────
+  7748        « Aucune terminaison TLS, aucun cookie, aucun en-tete de
+              securite : P5. »   ⚠️ « cookie » reste VRAI
+  7978-7979   legs P2 n°6 : « P5 — TLS, cookies, en-tetes de securite »
+  8511        legs P3 n°7 : « P5 — TLS, cookies, en-tetes, /sante, coturn restreint »
+  9003        legs P4 n°9 : idem
+  2240-2243   🔴 HORS DES SECTIONS P, ET C'EST LA PLACE QU'UN `grep P5` NE
+              TROUVE PAS : « coturn ecoute sur toutes les interfaces de
+              l'hote, dont l'adresse publique … a restreindre (--listening-ip
+              ou pare-feu) avant tout deploiement durable. » La ligne 2243
+              NOMME LITTERALEMENT le remede que P5 a applique.
+              ⚠️ ANNOTER, PAS SUPPRIMER : elle reste vraie comme releve date du
+              30 juillet 2026.
+
+── H3. LE SECRET D'ENROLEMENT — a REQUALIFIER, jamais a cocher ─────────────────
+  8080-8083   « A rouvrir en P5. »  -> le seul terme perime
+  8292        « Aucune protection du secret d'enrolement sur la VM »
+  8509-8510   legs P3 n°6
+  9001-9002   legs P4 n°8
+  🔴 P5 NE RETIRE PAS LE SECRET EN CLAIR : il le rend REPARABLE (rotation).
+     `admin/enroler-agent.ts:19` le dit deja, au passe et correctement.
+
+── H4. L'ORIGINE UNIQUE — un pronostic CONFIRME ────────────────────────────────
+  7616        « casserait P5, ou le proxy inverse met les deux sur la meme origine »
+  7980-7983   legs P2 n°7 : « P5 — l'origine unique »
+  ✅ Confirme par le profil `deploiement` : page et API sur la meme origine.
+     `PLATEFORME_ORIGINE_CLIENT` reste FACULTATIVE, et c'est le cas nominal.
+
+── H5. CE QUI RESTE VRAI, ET QU'IL NE FAUT PAS COCHER ──────────────────────────
+  7356-7358 / 7560-7561  « le comportement de Postgres sous CHARGE, en
+              concurrence, ou apres redemarrage » — ⚠️ NON MESURE par P5. Le
+              critere ① eprouve un SOUS-ENSEMBLE SQL contre l'instance
+              deployee ; il ne mesure ni charge, ni concurrence, ni
+              redemarrage. Ce leg RESTE DU.
+  7558-7559   « l'inaccessibilite effective du service depuis une autre
+              interface n'est pas etablie » — ⚠️ RESTE VRAI : le profil
+              `deploiement` ne publie aucun port pour la plateforme, mais
+              c'est une CONFIGURATION, pas une MESURE. Meme reserve que
+              pour coturn (section F du journal du critere ②).
+  7379-7380, 7719, 7725, 7952-7953, 8502, 8977-8978  l'etat en memoire —
+              VRAIS, et P5 les AGGRAVE d'un quatrieme porteur (A2).
+
+── H6. CE QUI N'A AUCUN ANTECEDENT, ET QU'IL FAUT DONC ECRIRE ──────────────────
+  Balaye et absent des quatre sections : TURNS, « reseaux restrictifs »,
+  `maxPayload`, le balayage de secrets, le compte des routeurs.
+  🔴 « La cible reseaux restrictifs n'est pas couverte » est un item EXPLICITE
+     de la tache 19, et il n'a nulle part ou etre corrige : il doit etre ECRIT.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+ I. LES NOMBRES, TOUS REMESURES PAR LA COMMANDE LE 20 AOUT 2026
+═══════════════════════════════════════════════════════════════════════════════
+
+⚠️ « EDITER UNE LIGNE DE TABLEAU NE FAIT PAS RELIRE LE NOMBRE QU'ELLE PORTE »
+   — lecon payee deux fois en D10. Tout ce qui suit est LANCE, pas recopie.
+
+  plateforme  npm run test:sqlite     433 tests / 49 fichiers   sortie 0
+  plateforme  npm run test:postgres   433 tests / 49 fichiers   sortie 0
+              (dont DEUX executions contre l'instance DEPLOYEE, critere ①)
+  client      npm test                304 tests / 33 fichiers
+  proto       npm test                142 tests /  5 fichiers
+  ./scripts/verify-all.sh             sortie 0 — « Les 10 étapes sont passées. »
+
+  🔴 DIX ETAPES DANS LE SCRIPT, DIX-HUIT EN-TETES A L'ECRAN, ET JE DIS LEQUEL
+     JE COMPTE. `grep -c '^ *etape "' scripts/verify-all.sh` rend **10** ; le
+     script ne contient qu'UNE seule occurrence litterale de `==>`, dans le
+     corps de la fonction (l. 40). La sortie, elle, porte **18** lignes `==>` :
+     les 10 etapes, plus **8** emises par `client : npm run design:verifier`,
+     qui imprime ses propres sous-titres (`§7.1` a `§7.9` et le `npm run
+     build`). **Le chiffre que je retiens est DIX**, celui des etapes ; le 18
+     est celui de la SORTIE, et il depend d'un outil tiers.
+     ⚠️ P3 et P4 annoncaient DIX-SEPT en-tetes ; il y en a DIX-HUIT
+     aujourd'hui. Le script n'a pas change (10 etapes aux deux dates) : c'est
+     `verifier-design.mjs` qui en a gagne un. Un nombre juste a sa date.
+
+  REGLE DES 500 LIGNES, par la commande de `CLAUDE.md` :
+    1536  agent/src/encode.rs            <- dette declaree
+     630  agent/src/windows_source.rs    <- dette declaree
+     561  proto/src/plateforme/tests.rs  <- 🔴 DETTE NON DECLAREE (G1, 457a7f8)
+     512  proto/ts/plateforme.test.ts    <- 🔴 DETTE NON DECLAREE (G1, 457a7f8)
+
+  ⚠️ AUCUN fichier de `plateforme/` ni de `client/src/` ne depasse 500 ni meme
+     450, hormis `plateforme/src/http/routes-applications.test.ts` a **480**,
+     qui vient de G1 et que P5 ne touche pas. Le plus gros que P5 touche est
+     `agents/canal.ts` a **417** (marge 83).
+
+
+═══════════════════════════════════════════════════════════════════════════════
+ J. LES PIECES
+═══════════════════════════════════════════════════════════════════════════════
+
+  Aucune sortie de commande fabriquee. Chaque chiffre de ce journal vient d'une
+  commande lancee dans la ronde qui l'ecrit.
+  Aucune preuve dans un fichier gitignore : tous les journaux vivent sous
+  `docs/superpowers/plans/journaux-plateforme-p5/`, suivis par git. Les seuls
+  fichiers non versionnes employes sont ceux que le depot IMPOSE de ne pas
+  versionner — `.env`, `deploiement/*.env`, `deploiement/tls/` —, et aucun
+  n'est cite comme preuve.
+  Le compte `git ls-files … | wc -l` est consigne au commit de cette tache.
+  Le controle des secrets de la tache 17 a ete rejoue sur TOUTES les pieces
+  versees : TOTAL = 0 (06-controle-secrets-des-pieces.log), et une seconde
+  fois APRES indexation, le balayage lisant `git ls-files`.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+ K. CE QUE CETTE REVUE LEGUE, ET QU'ELLE NE CORRIGE PAS
+═══════════════════════════════════════════════════════════════════════════════
+
+  1. 🔴 `GET /vm` et `POST /session` ne sont pas freinees (section F). Le legs
+     n°7 de P4 reste DU sur sa seconde moitie.
+  2. 🔴 Le relais de signaling n'est couvert par AUCUN frein : `relais.ts`
+     n'importe pas `Frein`. Un pair peut ouvrir beaucoup de connexions, et
+     des connexions MUETTES ne sont comptees par rien — ni par le frein, qui
+     compte des tentatives, ni par nginx, qui ne pose ni `limit_conn` ni
+     `limit_req`. `http/serveur.ts` le disait deja ; c'est confirme ici.
+  3. ⚠️ `agents/canal.test.ts` « (a) … refusee par le frein » ne peut pas
+     echouer (C1). Titre a resserrer, ou assertion a rendre discriminante.
+  4. ⚠️ `client/src/main.ts:79` affirme que `borner_a_la_taille_max` « n'est
+     plus branchee nulle part » : FAUX, deux appelants. Non corrige — fichier
+     tenu par un chantier concurrent, et la faute est celle de D10.
+  5. ⚠️ `plateforme/src/base/pilote-postgres.ts:69` parle de « ses trois
+     fichiers de test » pour P5, qui en a ajoute SEPT. Defendable si la phrase
+     designe la derniere fournee, ambigue telle qu'ecrite. Non corrige.
+  6. ⚠️ `plateforme/src/agents/fraicheur.ts:21-26` se contredit lui-meme a sept
+     lignes d'intervalle (l. 14-16 declarent que le paragraphe du bas « N'EST
+     DONC PLUS VRAI »). Conservation vraisemblablement deliberee — le depot
+     annote plutot qu'il ne supprime — mais un lecteur qui n'entre qu'en bas
+     repart avec le faux. Anterieur a P5, non corrige.
+  7. ⚠️ Le PLAN de P5 porte toujours, lui, la rouge vacueuse de la tache 14 et
+     le discriminant qui ne discrimine pas (D15). Un plan est un journal
+     d'execution : il n'est pas reecrit apres coup. Les deux sont annotes la
+     ou le CODE les portait, et consignes ici.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+ L. LE COMPTE DES PIECES, AU MOMENT DE COMMITTER CETTE TACHE
+═══════════════════════════════════════════════════════════════════════════════
+
+  git ls-files docs/superpowers/plans/journaux-plateforme-p5 | wc -l
+    -> 35
+
+  Detail : 8 dans t12-16/, 13 dans recette/ (dont 6 d'instrument),
+  le reste au premier niveau.

@@ -23,7 +23,23 @@
 // d'avance pour cette ligne (E15) : **PRÉCISER, pas corriger**. La première
 // raison suffit à elle seule, et c'est bien elle qui porte : le contrôle de
 // forme est en amont de toute garde, donc AUCUNE authentification, pas même
-// celle de P3, ne peut fermer ce chemin-ci. Le frein est P5 ③.
+// celle de P3, ne peut fermer ce chemin-ci.
+//
+// ⚠️ **CETTE LIGNE DISAIT « LE FREIN EST P5 ③ », ET C'ÉTAIT LE MAUVAIS REMÈDE**
+// (revue transverse, 20 août 2026). Le frein de P5 est posé sur
+// `/auth/connexion`, `/auth/rafraichir` et `/agent` ; **il ne couvre PAS le
+// relais** — `signaling/relais.ts` n'importe pas `Frein`, et
+// `createSignalingServer` n'en reçoit aucun. Ce qui ferme réellement le déni
+// de service en une trame est `TRAME_MAX_OCTETS` (`http/serveur.ts`), posé en
+// `maxPayload` sur les DEUX serveurs WebSocket, donc appliqué par `ws` AVANT
+// que la trame n'atteigne le moindre contrôle de forme — et il est éprouvé
+// par le `describe` de ce fichier même, plus bas.
+//
+// ⚠️ **CE QUI RESTE OUVERT, ET QUE `maxPayload` NE FERME PAS** : un pair peut
+// toujours ouvrir BEAUCOUP DE CONNEXIONS, et des connexions muettes ne sont
+// comptées par rien — ni par le frein, qui compte des tentatives, ni par
+// `deploiement/nginx.conf`, qui ne pose ni `limit_conn` ni `limit_req`.
+// `http/serveur.ts` le dit déjà auprès de la constante.
 //
 
 // Ce fichier ne teste PAS `createSignalingServer` en mémoire : vitest installe
