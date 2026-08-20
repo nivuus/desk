@@ -1,0 +1,27 @@
+# Ce que le contexte de construction de `plateforme/Dockerfile` NE DOIT PAS
+# porter.
+#
+# 🔴 IL EST NOMMÉ D'APRÈS SON DOCKERFILE, ET C'EST DÉLIBÉRÉ. BuildKit lit
+# `<chemin-du-dockerfile>.dockerignore` en priorité sur le `.dockerignore` de
+# la racine du contexte. Poser un `.dockerignore` À LA RACINE aurait borné
+# AUSSI la construction de `./Dockerfile`, l'image du Guacamole historique, qui
+# n'appartient pas au sous-projet ⑤ — un fichier partagé qu'on change de sens
+# sans le dire est le mode de défaillance que ce dépôt paie le plus souvent.
+#
+# Le contexte est la racine du dépôt parce que trois fichiers de production
+# importent `proto/ts/` ; voir l'encadré en tête de `plateforme/Dockerfile`.
+
+# Tout est exclu, puis on rouvre exactement ce que l'image copie.
+*
+
+!plateforme/package.json
+!plateforme/package-lock.json
+!plateforme/tsconfig.json
+!plateforme/src
+!proto/ts
+
+# ⚠️ RÉ-EXCLUSIONS, APRÈS les négations : une négation ne peut pas rouvrir ce
+# qu'une règle POSTÉRIEURE referme, et c'est ce qui borne réellement la taille
+# du contexte.
+plateforme/node_modules
+proto/ts/**/*.test.ts
