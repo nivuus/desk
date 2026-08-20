@@ -8285,7 +8285,10 @@ un service de plateforme d'une recette antérieure. **Dit plutôt que tu.**
 - **`vm.vue_a` reste une colonne ORPHELINE** : P3 a créé `agent_enrole.vu_a` et
   n'écrit jamais dans `vm.vue_a` (relevé par `grep -rn "vue_a" plateforme/src` :
   seuls des tests l'écrivent).
-- **`application` reste VIDE** : son chemin d'écriture est le sous-projet ④.
+- ~~**`application` reste VIDE** : son chemin d'écriture est le sous-projet ④.~~
+  ✅ **CLOS par G1 (20 août 2026) — c'est-à-dire par ④ lui-même.** `agents/canal.ts`
+  l'écrit à chaque message `catalogue`, via `apps/catalogue.ts::fusionner` et
+  `depot/application.ts::appliquer`. **154 lignes** pour la VM de développement.
 - **Aucune protection du secret d'enrôlement sur la VM** (voir ②).
 
 ### ⑩ Les seize divergences E1…E16, tranchées AVANT d'écrire une ligne
@@ -8488,9 +8491,12 @@ RÉDUIT, pas soldé** — voir le point 4 ci-dessous.
    deux côtés (`critere-4-{1,2}.log`, 2 exécutions).
 3. ⚠️ **À MOITIÉ FERMÉ PAR P4 (20 août 2026).** ~~⛔ **P4 —
    `session.utilisateur_id` attend toujours son lecteur.**~~ Elle a le sien
-   (`compterOuvertesDe`, voir le legs n°4 de P2 et sa réserve de nom). **Mais
+   (`compterOuvertesDe`, voir le legs n°4 de P2 et sa réserve de nom). ~~**Mais
    `application` attend toujours son écrivain** — sous-projet ④, qui empruntera
-   le canal `/agent`, et P4 ne l'approche pas : sa table reste vide.
+   le canal `/agent`, et P4 ne l'approche pas : sa table reste vide.~~
+   ✅ **ELLE L'A, depuis G1 (20 août 2026).** ④ a emprunté le canal comme
+   annoncé : `agents/canal.ts` applique `apps/catalogue.ts::fusionner` à chaque
+   message `catalogue` de l'agent. **Ce legs est CLOS.**
 4. 🔴 **P4 ou P5 — le préfixe ne ferme PAS la revendication au sein d'une VM.**
    Il est **par VM**, et le registre d'appartenance de `signaling/propriete.ts`
    est **en mémoire** : après un redémarrage du service, deux clients humains de
@@ -8891,7 +8897,8 @@ dans `plateforme/src/http/routes-vm.ts`, dans le document de résultats, et ici.
   `DUREE_JETON_ACCES_MS`, `OCTETS_PREFIXE`, `DUREE_SECONDES`, et la borne de
   250 ms du critère ③. ⚠️ **Celle-là est MESURÉE avant d'être fixée, ce qui
   n'est pas la même chose qu'être calibrée.**
-- **La table `application` reste vide** : son écrivain est le sous-projet ④.
+- ~~**La table `application` reste vide** : son écrivain est le sous-projet ④.~~
+  ✅ **CLOS par G1 (20 août 2026).** Voir la section G1.
 
 ### ⑪ Le témoin de clôture — DEUX témoins, et pourquoi le second sort en 1
 
@@ -11072,6 +11079,328 @@ dette gelée, inchangées (`encode.rs` **1536**, `windows_source.rs` **630**) :
     `Renommer`, `Supprimer` et `Tronquer` **n'existent nulle part dans le code**,
     non plus que `Rafraichir`, qui va dans l'autre sens. `FICHIERS_VERSION` vaut
     **1** précisément pour que leur arrivée soit une rupture visible.
+
+---
+
+## 📦 Sous-projet ④ Gestion d'apps — sous-bloc G1 : le catalogue naît, et on peut lancer ce qu'il contient (20 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-19-gestion-apps-g1-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-19-gestion-apps-g1.md`.
+Conception : `docs/superpowers/specs/2026-08-19-gestion-apps-design.md`.
+Journaux : `docs/superpowers/plans/journaux-gestion-apps/` — **dix fichiers
+suivis par git, UTF-8, séquences ANSI DÉJÀ RETIRÉES** : ils se `grep`ent à plat,
+sans `sed`, comme ceux de D4, D5 et D10. **Une seule famille de lecture**, la
+plus simple depuis le début du dépôt.
+
+**Binaire mesuré** : `agent.exe` **10 035 712** octets, rebâti après
+`cargo clean --release -p proto -p agent` ; le binaire d'avant G1 pesait
+**9 914 368** octets. **Plateforme** lancée au commit `0bb1d87`.
+
+### Le fait n°1 : un catalogue de 154 applications, et un lancement qui ouvre la bonne fenêtre
+
+L'agent lit les quatre racines de raccourcis par `SHGetKnownFolderPath`, résout
+chaque `.lnk` par **`IShellLinkW`**, filtre, déduplique par un triplet
+(cible, arguments, répertoire), et pousse un **diff** à la plateforme sur le
+canal `/agent`. `GET /applications?vm=…` le rend ;
+`POST /application/:id/lancer` fait lancer, **par le `.lnk` lui-même**.
+
+**Les six critères sont TENUS**, avec leur nombre d'exécutions :
+
+| # | Critère | Verdict | Exéc. |
+| --- | --- | --- | --- |
+| ① | 154 applications pour 218 raccourcis | **TENU** | **2** |
+| ② | Un raccourci neuf apparaît sans redémarrer l'agent | **TENU** | **2** |
+| ③ | Un raccourci retiré quitte le catalogue **sans que sa ligne disparaisse** | **TENU**, par le renvoi complet, **pas** par le chemin incrémental | **2** |
+| ④ | Les raccourcis sans cible sont exclus **ET** journalisés | **TENU** — **7** | **2** |
+| ⑤ | Un lancement ouvre la bonne fenêtre, **par le raccourci** | **TENU** sur ses deux assertions | **2** + 5 tentatives HTTP |
+| ⑥ | Le lancement honore le répertoire de travail | **TENU** | **3** lancements |
+
+⚠️ **Aucun taux n'est revendiqué nulle part.**
+
+### ✅ Le corpus de la spec est CONFIRMÉ par `IShellLinkW` — la divergence E16 est fermée
+
+Les **218 / 167 / 154** de la spec avaient été mesurés par `WScript.Shell` ;
+`agent/src/apps/lecture.rs` est `#[cfg(windows)]` et **n'avait jamais tourné**.
+Les deux voies s'accordent **à l'unité** sur les quatre chiffres observables :
+
+| Grandeur | Compte |
+| --- | --- |
+| raccourcis lus | **218** |
+| écartés `cible-vide` | **7** |
+| écartés `extension` | 41 |
+| écartés `cible-absente` | 3 |
+| **retenus** (218 − 51) | **167** |
+| **clés distinctes** | **154** |
+
+**Aucun écart à écrire.** ⚠️ **Portée exacte** : ce sont les **agrégats** qui
+sont confirmés. Les champs **par entrée** du corpus versé
+(`agent/testdata/gapps-corpus-vm.json`) restent ceux de `WScript.Shell` — un
+désaccord sur un raccourci **individuel** qui se compenserait dans les totaux ne
+serait pas vu. L'agent n'a **aucun mode de vidage de corpus**, et en écrire un
+n'est pas une tâche de recette.
+
+⚠️ **Le champ `retenus` de la trace de réconciliation ne compte PAS les 167** :
+il vaut `lancables.len()`, une table indexée par **clé**, donc toujours égal à
+`cles`. Les 167 se dérivent de `218 − écartés` et **ne sont émis nulle part**.
+
+### 🔴 Le défaut n°1, trouvé PAR LA MESURE : le pont s'évince avec son père
+
+**94** `agent enrôlé` et **93** fermetures `reason: "remplace"` en **64 s**,
+pour **zéro** `enfant lancé`.
+
+**Attribution, sur pièces** : trois `agent.exe` relevés par `Win32_Process`, le
+superviseur et ses deux enfants ; `pont fichiers lancé pid=…` à `04:54:37.305`,
+**première** fermeture `remplace` **93 ms plus tard**. Le capteur est hors de
+cause (il retourne avant l'enrôlement, divergence E3). Le **pont**, lui, est
+placé **après** l'enrôlement délibérément — `main.rs` l'écrit — et
+`lancer_pont` retire `SUPERVISEUR`, `CAPTEUR`, `TEST_FILE`, `WINDOW_TITLE`,
+**mais pas `AGENT_VM` ni `AGENT_SECRET`** (`grep -rn env_remove agent/src/` ne
+rend aucune occurrence de ces deux noms).
+
+Le pont s'enrôle donc sous le **même `vm_id`** que son père, et la décision D8
+de G1 — « le dernier enrôlement gagne, l'ancien socket est fermé » — les fait
+s'évincer mutuellement **sans terme**, à ~1,5 Hz. Le pont meurt en outre sur
+« aucune offre SDP » faute de page-shell, et `surveillance_pont` le relance
+toutes les 500 ms : c'est ce qui entretient le cycle.
+
+**Ce que cela coûte, mesuré** : le catalogue complet est renvoyé à chaque cycle ;
+les messages montants **incrémentaux se perdent** (c'est la réserve de ③) ; les
+réponses `Lancee` se perdent (c'est le `504` de ⑤) ; et **deux boucles de
+découverte tournent au lieu d'une**, `apps::brancher` étant appelée avant
+l'aiguillage `PONT`.
+
+**Défaut de FRONTIÈRE entre trois chantiers** — l'enrôlement de P3, le pont de
+F1, le registre de G1 — **correct de chaque côté pris séparément**. **NON
+CORRIGÉ** : donner au pont sa propre identité, l'empêcher de s'enrôler, ou faire
+tolérer au registre plusieurs sockets par VM sont trois décisions différentes.
+
+### 🔴 Le défaut n°2 : un refus de version ne peut pas être LU, et la VM boucle
+
+Un agent **v1** contre une plateforme **v2**, **UNE exécution** : **0** ligne
+`la plateforme REFUSE la version`, **10** couples
+`message de la plateforme illisible (version divergente ?)` /
+`reprise du canal /agent`, jusqu'au palier de 30 s, **sans terme**.
+
+**Cause structurelle** : `verifie_version` (`proto/src/plateforme.rs`) est un
+`deserialize_with` posé sur le champ `v` de **tout** message, **le refus
+compris**, et la plateforme émet son refus avec **sa** version —
+`{"type":"refus","v":2,"motif":"version"}`. Un agent de version N ne peut donc
+**jamais lire** le refus d'une plateforme de version M ≠ N : il tombe dans la
+branche « illisible », qui est **reprenable**. Le bras `MotifCanal::Version` de
+`sur_refus` n'est atteignable que si les deux bouts s'accordent déjà sur `v` —
+**c'est-à-dire jamais dans le seul cas pour lequel il existe.**
+
+⚠️ **Le fait de D10 tient — la plateforme REFUSE bien.** C'est sa **conséquence**
+qui est fausse, et les deux commentaires qui la promettaient **nommaient
+eux-mêmes le mode de panne obtenu** : « sans quoi une incompatibilité de version
+se déguiserait en **boucle de reconnexion infinie**, qui est le mode de panne le
+plus coûteux à diagnostiquer », et « la VM **se tait sans boucler** ».
+
+✅ **Ce que la mesure confirme sans réserve** : déployer agent et plateforme **au
+même commit** est la **seule** parade qui existe aujourd'hui.
+
+### La variable neuve : `APPS`, et son dernier saut est ENFIN vérifié
+
+| Variable | Effet |
+| --- | --- |
+| `APPS=0` | **Désarme** la découverte d'applications. ⚠️ **`=0` désarme ; une simple présence n'active pas** — même convention que `PLEIN_ECRAN`, `AUDIO`, `SUPERVISEUR`, `CAPTEUR`, `PART_SONDAGE`, et pour la même raison : tester `is_ok()` activerait le mécanisme en écrivant `APPS=0` pour le couper. Lue dans `agent/src/apps.rs`. Trace : `decouverte d'applications DESARMEE (APPS=0)` |
+
+🔴 **Le dernier saut — PowerShell → `agent.exe` — n'avait JAMAIS été vérifié**,
+faute de VM au moment des tâches 1 à 12. **Il l'est** : `scripts/run-agent.sh`
+écrit bien `$env:APPS = '0'` (ligne 12 du `run-agent.ps1` généré), l'agent
+journalise son désarmement, et rend **0** `catalogue reconcilie` et **0**
+`raccourci ecarte` sur **63 s**, soit plus de deux périodes. C'est le piège payé
+en D1 (`SUPERVISEUR`), D2 (`MULTIFENETRE_REPRISE`) et D7 (`AUDIO`) — évité ici
+par une tâche dédiée, **et confirmé par la mesure**.
+
+### Les relevés annexes
+
+| Relevé | Valeur | Exéc. |
+| --- | --- | --- |
+| Durée d'une réconciliation complète | **84** et **92 ms** à froid ; **2 032 ms** au tout premier tour d'un processus (init COM) ; **49 à 63 ms** à chaud | 2 + 1 |
+| Taille d'un `Catalogue` complet **SUR LE FIL** | **56 145 octets** de charge utile TCP montante, dont **160** de handshake HTTP, soit **55 985 octets**. **MESURÉ par `tshark`**, pas calculé | 1 |
+| — à opposer à | **~46 Kio CALCULÉS** par la décision D3 | — |
+| `.lnk` de **zéro octet** | catalogue **complet**, et une trace le nomme (`motif="cible-vide"`) | 1 |
+
+✅ **La décision D3 est EXERCÉE et TENUE dans son rôle de filet** : aux **deux**
+exécutions de ③, c'est le **renvoi complet du réenrôlement** qui a posé
+`disparue_a`, le message incrémental s'étant perdu. « Ce renvoi complet rend la
+perte d'un message montant sans conséquence » — c'est la première fois que ce
+filet est éprouvé sur le chemin réel.
+
+### 🔴 La divergence de sécurité `403` / `404`, VIVANTE dans le produit et NON TRANCHÉE
+
+**Le même service rend aujourd'hui deux réponses différentes selon la route,
+pour la même situation.**
+
+| Route | Chantier | Réponse à une VM qu'on n'a pas le droit de voir |
+| --- | --- | --- |
+| `plateforme/src/http/routes-applications.ts` | **G1** (décision D9) | `403 { refus: 'vm-etrangere' }`, **distinct** de `vm-inconnue` |
+| `plateforme/src/http/routes-vm.ts` | **P4** | `404 { refus: 'vm-inconnue' }`, **indistinguable** |
+
+Le `403` de G1 est un **ORACLE D'ÉNUMÉRATION** : un utilisateur apprend par
+tâtonnement quelles VMs existent. Le `404` de P4 suit `routes-auth.ts` et
+`agents/enrolement.ts`, qui refusent tous deux de distinguer « inconnu » de
+« faux ». **Les deux chantiers ne peuvent pas avoir raison en même temps.**
+
+Chacun a écrit la divergence **en tête de son propre fichier** ; **aucun ne l'a
+tranchée**. ⚠️ **Unifier est une DÉCISION, pas une correction, et elle
+appartient au propriétaire du dépôt.** Elle est signalée plutôt que prise en
+douce.
+
+### La revue transverse — huit défauts, seize places
+
+Barème : **5** en D7, **3** en D8, **6** en D9, **douze** en D10, **sept** en
+D11, **huit** en P1, **dix** en P2 (sur **vingt-trois** places), **cinq** en S1,
+**neuf** dans le chantier E, **douze** en P3, **douze** en S2, **onze** en F1,
+**huit** en P4, **huit** en G1 (**seize** places).
+
+**Les six premiers franchissent une frontière de tâche ou de chantier**, et sont
+corrects de chaque côté pris séparément : les trois affirmations de
+`0003-agents.sql` que ④ a prises au mot (« RESTE VIDE », « **empruntera** le
+canal », « PAS un oubli si **aucun code ne l'écrit** ») ; l'en-tête de
+`agents/canal.ts` qui annonçait un canal d'identité seule ; son « ni **registre
+d'appartenance** », vrai du registre du RELAIS mais le canal en tient désormais
+**un autre**, le sien ; l'en-tête d'`agent/src/plateforme.rs` (« porte une
+IDENTITÉ ») ; sa doc de `Canal` (« le lâcher arrête le battement de cœur » — il
+arrête aussi la **découverte**) ; et **la mesure qui réfute le commentaire du
+protocole** (défaut n°2 ci-dessus, **trois** places).
+
+Deux documents **ANNOTÉS plutôt que réécrits**, ce sont des relevés datés : la
+spec de ④ (**4** places : §3.3 complété par E7 et E8, §5 critères ④ et ⑤, §6
+portée et hub) et le plan de P3 (**2** places : « ses **neuf** étapes » pour
+**dix**, et le legs « ④ empruntera le canal », **CLOS**).
+
+**Vérifié PAR LA COMMANDE et non supposé** : aucun des **47** fichiers touchés
+par les commits `(g1)` n'est sous `agent/src/capteur/`,
+`agent/src/superviseur/`, `src/`, `web/` ni `client/` — E18 et D12 tiennent, et
+le bras catch-all `Ok(autre)` de `capteur/pont_media.rs` est intact.
+
+### Ce que G1 n'établit PAS
+
+- **Aucun taux, nulle part.** Deux exécutions par critère au mieux, **une seule**
+  pour plusieurs relevés annexes et pour la rouge de version.
+- **Le chemin INCRÉMENTAL de `disparues` n'est pas démontré** : aux deux
+  exécutions, c'est le renvoi complet qui a réparé.
+- **La recette a été conduite SOUS le défaut n°1**, non corrigé. Toutes les
+  mesures de catalogue portent cette condition.
+- **Aucun mode mono-processus long n'existe sans navigateur** : le mono-fenêtre
+  meurt sur « le signaling s'est fermé avant l'offre », `PONT=1` sur « aucune
+  offre SDP ». **`SUPERVISEUR` est le seul mode qui tienne**, et c'est celui qui
+  porte le churn.
+- **Une seule VM, un seul catalogue** de 218 raccourcis. Rien de la charge, rien
+  de plusieurs VMs, rien d'un catalogue plus grand, rien de la latence.
+- **Aucune isolation entre utilisateurs** (D9) : `vm.utilisateur_id` est NULL, et
+  la ligne `vm non attribuee, acces accorde sans isolation …` a bien été
+  observée **à chaque requête**.
+- **Aucune icône, aucun téléversement, aucune surveillance, aucune PWA, aucune
+  page de hub** — G2 à G5.
+- **Aucune constante calibrée** : `PERIODE_RECONCILIATION` (30 s),
+  `DELAI_LANCEMENT_MS`, `FILE_EMISSION` (32). Elles rejoignent `BPP_MIN`,
+  `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`,
+  `TAILLE_MAX_SORTIE`, `SEUIL_INJOIGNABLE_MS`, `REPLI_MIN_MS`, `REPLI_MAX_MS`,
+  `OCTETS_PREFIXE`.
+- **Rien d'un antivirus** : l'état de celui de la VM n'a **pas** été relevé.
+- **Aucun audit de sécurité** de l'authentification introduite par D9.
+
+### Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔴 **`scripts/verify-all.sh` N'EST PAS HERMÉTIQUE, et il échoue précisément
+  pour qui suit la procédure du dépôt.** Avec `TURN_URL`/`TURN_SECRET` dans
+  l'environnement — c'est-à-dire **après le `set -a && source .env` que tout
+  travail sur la VM exige** — **six** tests de `src/signaling/server.test.ts`
+  échouent (ils attendent un premier message et reçoivent `ice-config`) ;
+  **12 passed** sans eux. **Sensibilité PRÉEXISTANTE**, vérifiée : aucun fichier
+  de signaling n'a été touché par G1. Le **même arbre, au même commit**, sort à
+  **0** depuis un shell propre et à **1** depuis un shell où `.env` a été sourcé.
+  **Lancer `verify-all.sh` depuis un shell propre, ou `env -u TURN_URL -u
+  TURN_SECRET`.**
+- ⚠️ **`AGENT_VM` attend l'IDENTIFIANT de la VM, pas son nom.** `npm run
+  admin:agent -- --vm g1 …` prend un **nom** et affiche un `vm_id=<uuid>` ;
+  c'est **cet uuid** que l'agent doit recevoir (`verifierEnrolement` fait
+  `lireParVm(p, vmId)` sur `agent_enrole.vm_id`). Posé au nom, l'enrôlement est
+  refusé **indistinctement**, et le journal de la plateforme dit
+  `enrôlement refusé pour la VM g1` — c'est-à-dire le nom qu'on lui a donné, ce
+  qui **ressemble à une VM trouvée**.
+- ⚠️ **Le corps de `POST /auth/connexion` attend `motdepasse`, en un mot** — pas
+  `motDePasse`. Un `400 {"refus":"forme"}` sans plus de détail est la seule
+  indication.
+- ⚠️ **Le jeton d'accès expire en quelques minutes** : une recette qui enchaîne
+  des `curl` doit le **redemander à chaque appel**, sinon elle lit
+  `401 {"refus":"jeton-expire"}` au milieu d'une série et croit à un défaut
+  d'autorisation.
+- ⚠️ **Un `grep` de contrôle qui compte un symbole compte AUSSI les commentaires
+  qui disent qu'on ne l'emploie pas.** Le contrôle « `Resolve` n'est jamais
+  appelée » rendait `2` avant mutation et `3` après : **non discriminant**. La
+  forme corrigée **blanchit les commentaires de ligne** avant de compter, et rend
+  **0** sur l'arbre réel contre **1** dès qu'un appel est injecté.
+- ⚠️ **Un `rename_all` est INOBSERVABLE sur un enum dont toutes les variantes
+  sont d'un seul mot.** `IssueLancement` (`raccourci`, `cible`, `inconnue`,
+  `echec`) : passer `kebab-case` en `snake_case` laisse `cargo test -p proto` à
+  **75 passed, 0 failed**. La **même** mutation sur l'enum qui porte
+  `BattementRecu` — deux mots — fait **échouer**
+  `conformite_aux_vecteurs_partages`. **Lacune inscrite dans le code** ; la
+  première variante écrite en deux mots la refermera d'elle-même.
+- ⚠️ **`agent.log` ne peut pas être supprimé depuis l'hôte tant qu'un agent le
+  tient**, et un `rm` qui échoue laisse lire un journal **périmé** mélangé au
+  neuf. Le supprimer **depuis Windows**, après avoir tué l'agent.
+- ⚠️ **Le binaire ne peut pas être réécrit tant qu'un agent tourne** :
+  `build-agent.sh` échoue en `Accès refusé (os error 5)`. Tuer l'agent **avant**
+  toute reconstruction.
+- ⚠️ **Un `cd` dans une commande de journalisation fait injecter un `ls` par le
+  hook `chpwd` du shell hôte.** `unset -f chpwd` avant tout relevé.
+- ⚠️ **La VM s'est hibernée seule en cours de recette** (05:08:41), piège déjà
+  documenté depuis D1. Vérifier `virsh list --all` après toute séquence longue.
+
+### Les tailles, RELEVÉES PAR LA COMMANDE APRÈS la dernière édition de la ronde
+
+Relevé le **20 août 2026**, sur l'arbre au commit **`ee56e1e`** — l'arbre est
+partagé, et deux autres chantiers y ont commité pendant celui-ci.
+
+**Le tableau de dette est INCHANGÉ, et ses deux lignes portent les mêmes
+nombres qu'avant G1** : `agent/src/encode.rs` **1536**,
+`agent/src/windows_source.rs` **630**. **Aucun autre fichier de code source ne
+dépasse 500 lignes.** G1 n'a fait grossir ni l'un ni l'autre.
+
+**Aucun fichier de G1 n'approche le plafond** — le plus gros est
+`agent/src/plateforme.rs` à **429** (marge 71), suivi de
+`proto/src/plateforme.rs` **343**, `plateforme/src/agents/canal.ts` **287**,
+`agent/src/apps/lecture.rs` **281**,
+`plateforme/src/http/routes-applications.ts` **251**,
+`agent/src/apps/boucle.rs` **213**, `plateforme/src/depot/application.ts`
+**186**, `plateforme/src/agents/registre.ts` **175**,
+`agent/src/apps/sha256.rs` **168**, `agent/src/apps/raccourci.rs` **159**,
+`agent/src/apps.rs` **137**.
+
+✅ **Deux extractions ont précédé leur addition**, comme la règle l'exige et
+sans qu'aucune compression ne soit employée : le module de tests de
+`proto/src/plateforme.rs` (tâche 1, **avant** toute addition, le fichier étant à
+410 lignes pour 90 de marge), et le harnais de `plateforme/src/agents/canal.test.ts`
+(tâche 17, **avant** d'y ajouter une famille de cas).
+
+⚠️ **`plateforme/` EST DÉJÀ au § « Portée » de ce fichier** (ligne 20, relue
+avant d'écrire) : la spec de ④ demandait de l'y ajouter, **c'était fait**, et il
+n'y avait rien à faire (divergence E1).
+
+### Les legs de G1
+
+1. 🔴 **Le pont hérite de l'identité d'enrôlement de son père.** Trois remèdes
+   possibles, aucun tranché. **C'est le legs le plus lourd** : il mord en
+   permanence, **en configuration livrée**.
+2. 🔴 **Un refus de version ne peut pas être lu par le pair qui en a besoin.**
+   Décision de protocole : lire `v` et `type` avant de valider, par exemple.
+3. 🔴 **La divergence `403 vm-etrangere` / `404 vm-inconnue`.** Décision du
+   propriétaire du dépôt, signalée dans les deux fichiers concernés.
+4. ⛔ **Le chemin incrémental de `disparues` n'est pas démontré** : il le sera
+   quand le legs n°1 sera fermé.
+5. ⛔ **`verify-all.sh` n'est pas hermétique.**
+6. ⛔ **Le corpus reste celui de `WScript.Shell` par entrée.** Le fermer demande
+   un mode de vidage dans l'agent.
+7. ⛔ **Le champ `retenus` de la trace ne compte pas ce que son nom dit.**
+8. ⛔ **Deux boucles de découverte tournent** quand le superviseur est actif —
+   conséquence du legs n°1.
+9. ⛔ **La lacune de nommage d'`IssueLancement`** est inscrite, pas fermée.
 
 ---
 
