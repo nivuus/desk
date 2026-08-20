@@ -117,6 +117,7 @@ F3, et ce plan le déclare plutôt que de le jouer à moitié. La conséquence e
 > silencieuse » que l'en-tête de `notifications.rs:31-39` existe pour
 > interdire.
 
+✅ *(R-F2-1 a été LEVÉ le 21 août 2026 — voir l'encadré du §8.)*
 ⚠️ **Et cela porte un risque qui peut rendre F2 non livrable — voir §8, R-F2-1 :
 si le Bloc-notes de CETTE VM emploie l'idiome temp+rename, le critère 1 de F2
 échoue lui aussi.** C'est pourquoi la tâche 14 est une **sonde préalable** qui
@@ -1631,6 +1632,14 @@ aggravé.**
 | # | Risque | Ce qu'on en sait, et la parade |
 | --- | --- | --- |
 | **R-F2-1** | 🔴 **Aucun outil d'écriture de cette VM n'écrit EN PLACE** — tous emploient temp+rename, que F2 refuse par construction (§0.2) | **Éliminatoire pour la RECETTE, pas pour le code.** C'est la tâche 14 qui tranche, **avant** la tâche 15. Si c'est le cas : F2 est **codé et non recevable**, et le critère ① part en F3 avec le critère 2. **Il n'y a pas de repli** : accepter le renommage sans le pousser produirait la perte silencieuse que tout ce sous-projet existe pour interdire |
+
+> ✅ **R-F2-1 EST LEVÉ (21 août 2026, tâche 14, 2 exécutions — session 0 et
+> session 1).** Les **cinq** outils éprouvés écrivent **EN PLACE** :
+> `WriteAllText`, `Add-Content`, `cmd >`, `Set-Content`, et `notepad.exe`.
+> ⚠️ **Portée exacte** : mesuré sur un répertoire NTFS **ordinaire**, pas dans
+> une racine ProjFS, et cela ne dit **rien** de LibreOffice ni de Word.
+> **F2 est donc livrable ET recevable** : son critère ① est tenu, 2 exécutions.
+
 | **R-F2-2** | 🔴 **`PRE_CONVERT_TO_FULL` n'existe pas en pratique sur cette VM** — jamais émise, ou émise après l'hydratation | **Non tranché, et jamais exercé** (legs 8 de F1). Si elle n'arrive jamais, **F2 fonctionne quand même** (le write-back est déclenché par les POST) mais **perd son unique porte de refus** : plus aucune écriture ne peut être refusée, même canal fermé. **Dégrade, ne bloque pas.** C'est le critère ② |
 | **R-F2-3** | **Lire le fichier hydraté ré-entre dans nos propres rappels** | **Inférence, non mesurée** (§ tâche 8). Ne provoque **pas** d'interblocage grâce au fil dédié, mais ferait relire nos octets à travers le navigateur. Visible au journal ; le critère ④ le montrerait |
 | **R-F2-4** | **La fenêtre de perte est trop longue pour être acceptable** | **Non mesurable ici** : le seul chiffre du dépôt varie d'un facteur ~120. F2 l'instrumente ; **F4 la juge.** ⚠️ *Ne dégrade rien : elle existe de toute façon* |

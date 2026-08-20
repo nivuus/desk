@@ -2928,6 +2928,7 @@ l'**enfant** ; et `main.rs:268` rend la main à `capteur::executer` avant que `d
 | `MICRO_MESURE=1` | **Chantier E, bloc E1** — **variable de BANC, jamais une configuration livrée**. Arme le **puits de mesure du micro** (`agent/src/demarrage/micro.rs`) : un consommateur qui joue le rôle du futur fil WASAPI d'E2, retire du tampon à la cadence réelle et journalise ce qu'il obtient. ⚠️ **Convention `=1` qui ARME** — et non `=0` qui désarmerait : le puits n'est **pas** livré, donc c'est sa présence qu'il faut déclarer, pas son absence. Trace de contrôle, dont **l'absence prouve que la variable n'a pas atteint le processus** : `micro de mesure ARME (MICRO_MESURE=1) : instrument de banc, jamais une configuration livree`. Trace périodique : `micro mesuré`, portant `crete` et `frequence_hz` **côte à côte** (une crête sans fréquence est du bruit), `plc` et `plc_plafonnees` **côte à côte** (le second est **disjoint** du premier — c'est ce qui rend le plafond de dissimulation observable), plus `deposees`, `famines`, `occupation_ms` et `occupation_max_ms`. Transmise par `scripts/run-agent.sh` |
 | `PRESSE_PAPIER=0` | **Sous-projet ① Divers — presse-papier, sous-bloc P1** (20 août 2026) — **variable de PRODUIT**, pas de banc. Désarme le mécanisme ENTIER : `Sondeur::tour` teste le garde **AVANT toute lecture**, donc `PRESSE_PAPIER=0` empêche jusqu'à la lecture du compteur de séquence, pas seulement l'envoi. ⚠️ **`=0` DÉSACTIVE ; une simple PRÉSENCE n'active pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR` et `PART_SONDAGE`, et pour la même raison : tester `is_ok()` armerait le mécanisme en écrivant `PRESSE_PAPIER=0` pour le couper. Lue dans le **capteur** (le propriétaire, D1), par `OnceLock`. Transmise par `scripts/run-agent.sh:37`. Trace, **émise seulement si désarmé** : `presse-papier DESARME (PRESSE_PAPIER=0) : le contenu copie dans la VM n'est plus pousse au navigateur` (`warn!`). 🔴 **LE CONTRÔLE QUI VAUT EST LE ZÉRO DE MESSAGES, PAS LA TRACE** : la trace prouve que la variable a atteint le processus, elle ne prouve pas que le mécanisme est coupé — et un zéro seul serait rendu par un produit entièrement en panne. C'est le bras SANS la variable, avec ses 4 messages, qui rend le zéro discriminant (2 exécutions par bras, recette P1) |
 | `PRESSE_PAPIER_SONDE=<secondes>` | **Sous-projet ① Divers — presse-papier, sous-bloc P1, sonde P0** — **variable de BANC, jamais une configuration livrée**. ⚠️ **Convention INVERSE de la ligne ci-dessus, et les deux sont écrites côte à côte pour qu'on ne les confonde pas : ABSENTE = DÉSARMÉE**, présente = armée (la valeur est une durée, pas un interrupteur). Mesure les cinq questions de la porte éliminatoire sur `GetClipboardSequenceNumber` (`agent/src/diagnostics/presse_papier.rs`). Transmise par `scripts/run-agent.sh:89`. ⚠️ **Elle ÉCRIT le presse-papier de la VM** en phases C et D, et le détruit donc ; le produit, lui, ne l'écrit jamais en P1. 🔴 **Ne jamais la poser en même temps que `SUPERVISEUR`** : `main()` appelle `diagnostics::aiguiller()` en `main.rs:172`, AVANT la branche `CAPTEUR` (`:180`) et avant `PONT` (`:279`) — **quel que soit le mode demandé**, un agent qui la porte exécute la sonde et s'arrête. ⚠️ **La menace que la divergence E10 du plan lui prêtait est FAUSSE** : elle annonçait un capteur exécutant la sonde pendant qu'un superviseur vivant le relance en boucle, ce qui supposerait que l'enfant porte la variable et pas son père — or `Command` hérite de l'environnement, donc le père se serait arrêté le premier. La consigne ne change pas, sa raison si |
+| `PONT_ECRITURE=0` | **Sous-projet ③ Pont fichiers, sous-bloc F2** (21 août 2026) — **variable de BANC, jamais une configuration livrée**. Désarme la **POUSSÉE** d'écriture : le pont continue de détecter, de journaliser et de compter les écritures dues, **et n'en pousse aucune**. ⚠️ **`=0` DÉSARME ; une simple PRÉSENCE n'active pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR`, `PART_SONDAGE`, `PRESSE_PAPIER`, `APPS` et `PONT`. 🔴 **Le PLAN de F2 se contredisait en une phrase à son sujet** : il écrivait « `=0` désarme » ET prescrivait `matches!(…, Ok(v) if v != "0")`, **qui rend `false` en l'ABSENCE de la variable** — pris à la lettre, il aurait livré un pont **MUET PAR DÉFAUT**, sans un `ERROR`. Lue dans le **pont** (`agent/src/pont.rs`). Transmise par `scripts/run-agent.sh`, **par une tâche dédiée**. Trace, **émise seulement si désarmé** : `poussee d'ecriture DESARMEE (PONT_ECRITURE=0) : bras de banc, jamais une configuration livree` (`warn!`). 🔴 **LE CONTRÔLE QUI VAUT EST LE ZÉRO DE POUSSÉES, PAS LA TRACE** : un zéro seul serait rendu par un produit entièrement en panne, et c'est le bras SANS la variable, avec ses six acquittements, qui le rend discriminant |
 | `MICRO=0` | **Chantier E, bloc E2** — **variable de PRODUIT**. Désarme le microphone **entier** : aucun puits n'est posé, `micro_disponible()` reste faux, `ready` porte `mic: false`, et le bouton du navigateur ne paraît pas. ⚠️ **`=0` DÉSARME ; une simple présence n'arme pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR`, `PRESSE_PAPIER` et `PART_SONDAGE`, et pour la même raison : tester `is_ok()` allumerait le micro chez qui écrit `MICRO=0` pour le couper. Un test garde le prédicat (`demarrage/micro.rs::arme_micro`). Trace, **émise au branchement** donc avant toute session : `micro DESARME (MICRO=0)`. **Mesurée** (recette E2) : bouton caché sur une session `ice=connected`, **0** ligne `windows_micro`, juge à `AMPLITUDE=0,000000` |
 | `MICRO_PERIPHERIQUE=<nom ou identifiant>` | **Chantier E, bloc E2** — **variable de PRODUIT**. Désigne le point de terminaison de **rendu** sur lequel le micro écrit. Convention **VALUÉE**, celle d'`AUDIO_PERIPHERIQUE` et de `MULTIFENETRE_SORTIE`. 🔴 **DEUX DIFFÉRENCES DÉLIBÉRÉES AVEC `AUDIO_PERIPHERIQUE`** : ① **absente, elle ne vaut PAS le défaut de Windows mais la désignation INTÉGRÉE `"VB-Audio"`** — retomber sur `GetDefaultAudioEndpoint` ferait sortir la voix de l'utilisateur **par les haut-parleurs de la VM** sur une machine où le défaut est la carte son ; ② **il n'y a AUCUN repli** — `Choix::Introuvable` et `Choix::Ambigu` valent **échec**, pas de fil de rendu, `mic: false`, un `warn!` avec l'inventaire. A-bis se replie parce que « du son, peut-être le mauvais » vaut mieux que rien ; ici l'arbitrage s'**inverse** : « la voix de l'utilisateur, peut-être dans le mauvais tuyau » n'est pas un moindre mal, c'est une **fuite**. Règle de sélection : `wasapi_peripherique::choisir`. Trace : `cable de rendu retenu pour l'ecriture du micro … integree=true … critere="nom partiel"` — **comparer la valeur RETENUE, jamais la seule présence de la ligne** |
 | `MICRO_FAUTE_ECRITURE=<n>` | **Chantier E, bloc E2** — **variable de BANC, jamais une configuration livrée**. Fait échouer les *n* prochaines **écritures** WASAPI sur le câble. ⚠️ **ABSENTE = DÉSARMÉE**, et **budget GLOBAL AU PROCESSUS** (`OnceLock`) — c'est la leçon que D10 a payée sur `AUDIO_FAUTE_LECTURE` : un budget relu par fil se réarme à chaque reconstruction, et le chiffre-juge qu'il sert devient **structurellement incapable de quitter zéro**. Transmise par `scripts/run-agent.sh`. 🔴 **JAMAIS ARMÉE À CE JOUR** : le chemin d'échec d'écriture WASAPI **n'a jamais couru** (recette E2, legs n°9) |
@@ -12102,8 +12103,12 @@ une du Step 3, deux du rouge (i).
    irrefusable**, et seuls les trois chemins `PRE_` sont refusés. La formulation
    juste : *écrire dans un fichier PROJETÉ rend `ERROR_WRITE_PROTECT` ; un
    fichier créé de toutes pièces vit sur la VM et n'est jamais poussé.*
-   ⚠️ **Et `PRE_CONVERT_TO_FULL` — l'écriture d'un fichier EXISTANT — n'a JAMAIS
-   été exercé.**
+   ⚠️ ~~**Et `PRE_CONVERT_TO_FULL` — l'écriture d'un fichier EXISTANT — n'a
+   JAMAIS été exercé.**~~ ✅ **Il l'est depuis la recette de F2** (21 août 2026,
+   2 exécutions) : la porte est traversée et **acceptée**. ⚠️ **Et la première
+   phrase de ce point-ci reste vraie et le devient DAVANTAGE** : F2 recopie bien
+   un fichier créé de toutes pièces sur la VM — c'est son objet — mais **le
+   refus d'écriture ne refuse toujours pas**, puisqu'une POST est irrefusable.
 3. **ÉNUMÉRATION VIDE PAR INTERMITTENCE**, sur racine neuve, sans erreur ni
    trace. ⚠️ **Une occurrence porte un CONFONDEUR** : deux exécutions se sont
    recouvertes de 2 min 23 s — voir le piège ci-dessous — et **le journal
@@ -12326,8 +12331,13 @@ dette gelée, inchangées (`encode.rs` **1536**, `windows_source.rs` **630**) :
 6. **Le condensat de bout en bout** (critère 2) — premier geste de toute recette
    suivante.
 7. **Les rouges (ii) et (iii)**, et **(iii) doit d'abord être RÉÉCRIT**.
-8. **`PRE_CONVERT_TO_FULL` n'a jamais été exercé** : la moitié vraie de la
-   promesse de lecture seule n'a aucun témoin.
+8. ✅ ~~**`PRE_CONVERT_TO_FULL` n'a jamais été exercé**~~ — **EXERCÉ ET ACCEPTÉ
+   par la recette de F2 (21 août 2026), 2 exécutions.** ⚠️ **La preuve est de
+   CONDUITE et non de trace** : la voie `Autoriser` n'émet rien, à dessein. Ce
+   qui l'établit est qu'un marque-page ne peut pas devenir complet sans passer
+   par cette porte, et que l'écriture a réussi sur un fichier **projeté**
+   (`present_avant=true, taille_avant=52`). **Legs neuf de F2** : lui donner un
+   `debug!`, sans quoi F3 n'observera pas ses propres refus.
 9. **R7** : cinq entrées sans jumeau `PRJ_*_CB`.
 10. **Une racine ProjFS survit à un arrêt brutal**, et rien ne la démonte.
 
@@ -12340,11 +12350,361 @@ dette gelée, inchangées (`encode.rs` **1536**, `windows_source.rs` **630**) :
 12. **Un seul morceau en vol à la fois** : le contrôle de flux par
     `bufferedAmount`/`SEUIL_TAMPON` relève de **F3**. *Déclaré, pas implémenté à
     moitié.*
-13. **Cinq verbes ne sont pas livrés.** `proto/src/fichiers.rs` ne définit que
-    `TYPE_LISTER`, `TYPE_ATTRIBUTS` et `TYPE_LIRE` ; `Ecrire`, `Creer`,
-    `Renommer`, `Supprimer` et `Tronquer` **n'existent nulle part dans le code**,
-    non plus que `Rafraichir`, qui va dans l'autre sens. `FICHIERS_VERSION` vaut
-    **1** précisément pour que leur arrivée soit une rupture visible.
+13. ⚠️ **Cinq verbes ne sont pas livrés** — **relevé de F1, et il en reste DEUX
+    depuis F2** (21 août 2026) : `Ecrire` et `Creer` existent, plus une
+    **troisième famille** de messages (`Dues`, une ANNONCE, qui n'attend aucune
+    réponse). **`Renommer`, `Supprimer` et `Tronquer` n'existent toujours nulle
+    part**, non plus que `Rafraichir` ; les numéros **7 et 8 sont réservés à
+    F3**. ⚠️ **`FICHIERS_VERSION` vaut TOUJOURS 1, et c'est délibéré** : la
+    rupture de F2 est **ADDITIVE** — un client d'avant F2 ignore les verbes
+    neufs sans se casser —, et la monter aurait été une rupture annoncée que
+    rien ne justifie.
+
+---
+
+## ✍️ Sous-projet ③ Pont fichiers — sous-bloc F2 : la VM enregistre, le poste local reçoit (21 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-20-pont-fichiers-f2-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-20-pont-fichiers-f2.md`.
+Conception : `docs/superpowers/specs/2026-08-19-pont-fichiers-design.md`.
+Journaux : `docs/superpowers/plans/journaux-pont-fichiers-f2/` — **44 fichiers
+suivis par git** (36 au premier niveau, 8 sous `instrument/`), et **DEUX familles
+de lecture**, relevées par la commande **après la dernière écriture** :
+
+| Famille | État | Ce qu'il faut faire |
+| --- | --- | --- |
+| tout ce qui vient de l'hôte (`f2-*.txt`, `pilote-*.log`, `pilote-*.json`, `instrument/`) et les `agent-*-plat.log` | UTF-8, **aucune séquence ANSI** | rien : ils se `grep`ent à plat |
+| les **sept** `agent-*.log` **bruts**, copiés de la VM | UTF-8, **CRLF**, **séquences ANSI de `tracing` PRÉSENTES** | `sed 's/\x1b\[[0-9;]*m//g'` — ou lire le `-plat` jumeau, **versé pour chacun** |
+
+✅ **AUCUN fichier ne porte d'octet NUL**, et c'est **mesuré** : contrairement aux
+journaux de pilote de P1 et de D10, **`grep -a` n'est obligatoire nulle part
+ici**. ⚠️ *Le premier contrôle écrit pour l'établir matchait les 36 fichiers —
+`grep -qa $'\000'` cherche la **chaîne vide**. Refait en Python.*
+
+F2 livre le sens **VM → poste local** : ce qu'une application Windows enregistre
+dans la racine du pont est recopié dans le répertoire que l'utilisateur a choisi
+au navigateur. **Le renommage et la suppression restent à F3** — donc l'idiome
+« écrire un temporaire, renommer, supprimer » de LibreOffice et de Word **n'est
+pas couvert**.
+
+### ⛔ Le fait qui gouverne tout le sous-bloc : ProjFS n'est JAMAIS sur le chemin d'écriture
+
+Le fournisseur n'apprend une écriture qu'à la **fermeture du handle**, par une
+notification **POST**. Une POST ne se refuse pas : `NEW_FILE_CREATED`,
+`FILE_OVERWRITTEN` et `FILE_HANDLE_CLOSED_FILE_MODIFIED` **arrivent une fois que
+l'application a déjà enregistré**, et **aucun `HRESULT` ne remonte à personne**.
+
+🔴 **IL N'Y A DONC AUCUNE CONTRE-PRESSION SUR LE CHEMIN D'ÉCRITURE**, et deux
+leviers seulement subsistent : **refuser en amont sur un ÉTAT** (la seule porte
+refusable est `PRE_CONVERT_TO_FULL`), et **dénoncer après coup** (journal,
+compteur, `beforeunload`). C'est ce qui explique la forme entière de F2 — et
+c'est pourquoi `TAILLE_MAX_FICHIER` de la spec §3.5.2 **n'est pas implémenté** :
+un refus de taille serait **invisible** au write-back et `ERROR_DISK_FULL`
+n'atteindrait personne. F2 pose un plafond de **journal**, pas de fichier.
+
+⚠️ **Deux types Windows portent les mêmes valeurs et ne sont pas
+interchangeables** : `PRJ_NOTIFICATION_*` (`i32`, ce que le rappel **reçoit**) et
+`PRJ_NOTIFY_*` (`u32`, ce que le masque **demande**). Le masque passe de **cinq à
+sept** bits.
+
+### ① La recette sur VM — SIX exécutions, quatre critères tenus
+
+**Jouée le 21 août 2026**, une fois la VM rendue par le sous-projet ④.
+⚠️ **AUCUN TAUX n'est revendiqué nulle part** ; les nombres d'exécutions sont
+dans chaque énoncé.
+
+| # | Critère | Verdict | Exéc. |
+| --- | --- | --- | --- |
+| ① | les octets traversent, **à l'identique** | **TENU** — 1 572 869 octets, **25 morceaux**, SHA-256 `5d040545…` **des deux côtés**, 16 636 / 16 642 ms | **2** |
+| ② | `PRE_CONVERT_TO_FULL` traversée et **acceptée** | **TENU** — `present_avant=true, taille_avant=52, ecriture=OK` | **2** |
+| ③ | le journal est **rejoué** après une mort du pont | **TENU** — 5 dues sur 6 poussées ; la 6ᵉ reste, **et c'est le bon comportement** | **2** |
+| ④ | `PONT_ECRITURE=0` désarme | **TENU** — `dues=6` qui ne redescend **jamais** sur 59 échantillons | **1** + 1 côté produit |
+| — | la garde de casse en conditions réelles | **TENU** — `code=CasseAmbigue`, `Casse.txt` **intact à 15 octets** | **2** |
+| ⑥ | la vidéo ne perd pas une image | **NON MESURABLE** à ce montage | 2 |
+
+S'y ajoutent, aux deux exécutions armées : un fichier **vide** (0 octet), un
+**répertoire neuf**, et un fichier **dans** ce répertoire.
+
+✅ **LE LEGS 8 DE F1 TOMBE : `PRE_CONVERT_TO_FULL` a été exercée.** ⚠️ **Mais la
+preuve est de CONDUITE, pas de trace** — `Reponse::Autoriser` **n'émet rien**, à
+dessein (il n'y a rien à faire). Ce qui l'établit est qu'**un marque-page ne peut
+pas devenir complet sans passer par cette porte**, et que l'écriture a réussi sur
+un fichier **projeté**. *C'est un legs : F3 refusera renommage et suppression à
+cette même porte, et n'aura aucun moyen d'observer ses propres décisions.*
+
+✅ **R-F2-1 EST LEVÉ** (sonde d'idiome, 2 exécutions, session 0 **et** session 1) :
+les **cinq** outils éprouvés écrivent **EN PLACE** — `WriteAllText`,
+`Add-Content`, `cmd >`, `Set-Content`, et `notepad.exe` en session interactive.
+⚠️ **Portée exacte** : mesuré sur un répertoire NTFS **ordinaire**, pas dans une
+racine ProjFS, et il ne dit **rien** de LibreOffice ni de Word.
+
+🔵 **`reprise-1` a traversé une HIBERNATION COMPLÈTE de la VM** — la machine s'est
+éteinte d'elle-même à `23:11:11` (piège documenté depuis D1, déclencheur toujours
+non identifié) entre le bras désarmé et le rejeu. **Le journal des écritures dues
+a survécu à l'extinction de la machine, octet pour octet** (196, contenu identique
+relevé avant et après). Ce n'était pas prévu au protocole ; c'est une épreuve plus
+forte que celle qui l'était.
+
+⚠️ **Le journal ne redevient PAS vide, et c'est le comportement juste** : il
+retient exactement `CASSE.TXT`, que l'écrivain refuse pour ambiguïté de casse.
+*Une écriture refusée DOIT rester due.* Le critère ③ du plan écrit « le journal
+redevient vide » : **sa formulation ignorait le cas du refus légitime.**
+
+### 🔴 ② Le défaut que la recette a trouvé : une fenêtre de 30 s où le COMPTEUR MENT
+
+**Reproduit 2 fois sur 2.** Une écriture poussée **entre l'ouverture du canal et
+l'installation de l'écrivain côté navigateur** n'obtient **aucune réponse**, et
+n'est rattrapée qu'au bout de `DELAI_ECRIRE` (30 s) :
+
+| | `reprise-1` | `reprise-2` |
+| --- | --- | --- |
+| poussée du rejeu | `23:15:47.876` | `23:31:59.278` |
+| `commande expirée … correlation=0` | `23:16:18.092` (**+30,2 s**) | `23:32:29` (**+30,0 s**) |
+| montage annoncé par le navigateur | `23:15:48.677` — **0,8 s APRÈS la poussée** | idem |
+| issue | rejeu **réussi**, 5 acquittements | idem |
+
+🔵 **LES OCTETS NE SONT JAMAIS PERDUS** — c'est exactement ce pour quoi le journal
+existe. **C'est la LATENCE qui l'est.**
+
+🔴 **Et le pire n'est pas la latence, c'est l'indicateur** : l'annonce `Dues` part
+dans la **même** fenêtre, donc le compteur du navigateur affiche **`dues: 0`**
+pendant que **six** écritures attendent. **L'indicateur qui existe pour dénoncer
+la perte est MUET pendant trente secondes.**
+
+### La variable neuve : `PONT_ECRITURE`
+
+| Variable | Effet |
+| --- | --- |
+| `PONT_ECRITURE=0` | **Désarme la POUSSÉE d'écriture** : le pont continue de détecter, de journaliser et de compter les écritures dues, **et n'en pousse aucune**. ⚠️ **`=0` DÉSARME ; une simple PRÉSENCE n'active pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR`, `PART_SONDAGE`, `PRESSE_PAPIER` et `APPS`. Lue dans le **pont** (`agent/src/pont.rs`). Transmise par `scripts/run-agent.sh`, **par une tâche dédiée qui ne fait que cela**. Trace, **émise seulement si désarmé** : `poussee d'ecriture DESARMEE (PONT_ECRITURE=0) : bras de banc, jamais une configuration livree` (`warn!`) |
+
+🔴 **LE PLAN SE CONTREDISAIT EN UNE PHRASE SUR CETTE VARIABLE**, et la divergence
+vaut d'être connue : il écrivait « `=0` désarme » **et** prescrivait la forme
+`matches!(std::env::var("PONT_ECRITURE").as_deref(), Ok(v) if v != "0")`, **qui
+rend `false` en l'ABSENCE de la variable**. Prise à la lettre, elle aurait livré
+un pont **MUET PAR DÉFAUT** — c'est-à-dire un sous-bloc entier dont rien
+n'arrive, sans un `ERROR`. Forme retenue : celle de `PLEIN_ECRAN`.
+
+🔵 **LE CONTRÔLE QUI VAUT EST LE ZÉRO DE POUSSÉES, PAS LA TRACE** : la trace
+prouve que la variable a atteint le processus, elle ne prouve pas que le mécanisme
+est coupé — et un zéro seul serait rendu par un produit entièrement en panne.
+C'est le bras SANS la variable, avec ses **six** acquittements, qui rend le zéro
+discriminant.
+
+### Ce que le code livre
+
+| Étage | Fichier | Nature |
+| --- | --- | --- |
+| le protocole | `proto/src/fichiers.rs` (**219**), `fichiers/entetes.rs` (**172**) + jumeaux TS | **PUR** — 3 verbes neufs, **9 formes** épinglées par `proto/fichiers-vectors.json`, lu des **DEUX** côtés |
+| la décision | `agent/src/pont/notifications.rs` (**227**) | **PUR, aucun `cfg`** — `decider` prend un **ÉTAT**, et le masque passe à 7 bits |
+| le journal de reprise | `agent/src/pont/journal.rs` (**194**) | **PUR** — ajout seul, chemins en JSON, **dernière ligne tronquée tolérée** |
+| la file | `agent/src/pont/ecriture.rs` (**207**) | **PUR** — une poussée en vol, un rejeu jamais perdu, FIFO |
+| le fil d'écriture | `agent/src/pont/ecriture/fil.rs` (**438**) + `fil/disque.rs` (**103**) | **PUR**, éprouvé sur un **répertoire temporaire RÉEL** de l'hôte |
+| le rappel | `agent/src/pont/projfs/rappels/notification.rs` (**121**) | `#[cfg(windows)]` — **il pousse et rend la main**, aucune E/S |
+| l'écrivain | `client/src/fichiers/ecriture.ts` (**265**) | **PUR** — la **garde de casse**, un flux par chemin, **jamais `keepExistingData`** |
+| le compteur | `client/src/shell.ts` (**252**), `shell.html` | `data-dues` **et** `data-vues`, `beforeunload` |
+
+**Le journal de reprise vit HORS de la racine** — `%LOCALAPPDATA%\Guacamole\pont\ecritures.journal` —, sans quoi il se projetterait lui-même.
+
+✅ **DEUX extractions jouées AVANT leur addition, et le plafond n'a JAMAIS été
+franchi** : `projfs/rappels/{listage,notification}.rs` (`rappels.rs` **488 →
+320**), puis `ecriture/fil/disque.rs` à **494** pour une porte de 500. **Aucune
+compression n'a été employée.**
+
+### 🔴 Trois divergences du plan qui auraient livré un défaut
+
+**Sept en tout**, toutes écrites dans le code à l'endroit où elles vivent. Les
+trois qui coûtent :
+
+1. **`PRE_CONVERT_TO_FULL` autorisée rendait `AccepterSansAttendre`** : la
+   prescription faisait retomber un bit **DEMANDÉ par le masque** dans le bras
+   fourre-tout, donc **échouer** le garde d'exhaustivité — et le remède évident,
+   l'exclure du balayage, aurait **VIDÉ le garde**. *Un plan n'immunise pas contre
+   le contrôle vacueux : il en est une source.* Livré : `Reponse::Autoriser`.
+2. **Un fichier de taille nulle devait produire « une création et zéro
+   morceau »** : livré avec un **morceau VIDE**. Une création n'a **aucun effet**
+   sur un fichier local existant — un fichier **tronqué à zéro** sur la VM aurait
+   gardé son ancien contenu sur le poste local. **Corruption silencieuse.**
+3. **`PONT_ECRITURE`** — voir ci-dessus.
+
+### Ce que F2 n'établit PAS
+
+- **Aucun taux, nulle part.** Deux exécutions par critère au mieux.
+- **Rien du renommage ni de la suppression**, donc **rien de l'idiome
+  d'enregistrement atomique** : le critère 2 de la spec §8 est **déplacé en F3**.
+- **Rien de la latence.** F2 journalise `duree_ms` ; il n'en tire aucune loi.
+- **Le défaut de casse n'est corrigé qu'en ÉCRITURE** : `casse.txt` continuera de
+  rendre le contenu de `Casse.txt` en **lecture** (legs 1 de F1).
+- 🔴 **La garde de casse ne voit pas la NORMALISATION UNICODE** : macOS stocke en
+  NFD, Windows en NFC ; elle créerait un **doublon** au lieu d'écraser.
+- **Aucun contrôle de flux** : un morceau en vol à la fois.
+- **`showDirectoryPicker()` n'est toujours jamais appelé**, ni
+  `queryPermission`/`requestPermission`, ni **le mode `readwrite`** que F2 pose :
+  l'instrument est OPFS, qui n'a **aucun modèle de permission**.
+- **Aucun arrêt du pont PENDANT une poussée en vol** : il a toujours été tué
+  **entre** deux écritures.
+- **Aucune constante calibrée** : `DELAI_ECRIRE` (30 s),
+  `TAILLE_ECRITURE_SIGNALEE` (64 Mio), `TAILLE_JOURNAL_COMPACTAGE` (256 Kio) —
+  elles rejoignent `BPP_MIN`, `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`,
+  `HYSTERESIS`, `TAILLE_MAX_SORTIE` et les quatre de F1.
+- **Aucun test d'hôte ne couvre `pont/projfs/`** ; la compilation croisée vérifie
+  types, emprunts et durées de vie — **jamais le comportement**.
+- **L'énumération vide intermittente de F1 (legs 3) et les lectures qui calent
+  sans expirer (legs 4)** ne sont ni expliquées ni refermées.
+- **Le chemin d'extinction propre du superviseur** n'a toujours jamais été
+  exercé, depuis D1.
+
+### Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔴 **`cp -p` PRÉSERVE LA MTIME, ET CARGO GARDE ALORS L'ARTEFACT DE LA VERSION
+  MUTÉE.** Restaurer un fichier après une rouge par une copie `-p` a fait tourner
+  la suite sur du code **muté** : symptôme relevé,
+  `ChargeTropGrande { recu: 65536, max: 65536 }` — une contradiction qu'aucune
+  lecture de la source n'explique. **Le pire cas est l'inverse : une suite VERTE
+  qui court sur du code muté.** Restaurer **sans `-p`**.
+- 🔴 **`git checkout -- <fichier>` RESTAURE HEAD, PAS L'ÉTAT D'AVANT LA
+  MUTATION** — il a effacé du travail non commité **deux fois**. Et un garde
+  « le diff est-il vide ? » fondé sur `git diff` est **VACUEUX** sur un fichier
+  qui porte déjà du travail. Le harnais sauvegarde et restaure par une **copie**.
+- 🔴 **`evalBorne` REND UN OBJET quand elle expire** (`{__timeout}`), jamais une
+  chaîne : un `JSON.parse` posé dessus reçoit « [object Object] » et **LÈVE**.
+  C'est ce qui a tué le pilote d'une exécution à son 51ᵉ échantillon **alors que
+  le produit poussait correctement**. Un échantillon illisible se **CONSERVE**
+  plutôt que se sauter — *un trou silencieux dans une série se lit comme une série
+  continue.*
+- 🔴 **TROIS assertions dans UN test ne prouvent que la première** : `expect`
+  s'arrête au premier échec, donc l'assertion de **perte de données** de la garde
+  de casse n'était prouvée par **rien**. Scindé en trois tests. *C'est la leçon
+  ①A-bis de P2, rejouée sur une garde d'écriture.*
+- ⚠️ **`expect(x).toBe(y, 'message')` est SILENCIEUSEMENT IGNORÉ par Vitest** —
+  attrapé par `tsc --noEmit`, et par lui seul. C'est la raison d'être de l'étape
+  de typecheck à côté de vitest.
+- ⚠️ **`pgrep -f <motif>` depuis un shell dont la ligne de commande contient le
+  motif matche le shell lui-même** : le contrôle anti-chevauchement rendait
+  « une exécution tourne encore » alors qu'aucune ne tournait. Piège maison, payé
+  une fois de plus — il porte désormais sur le **pilote**, pas sur le lanceur.
+- ⚠️ **`grep -qa $'\000'` cherche la CHAÎNE VIDE et matche TOUS les fichiers.**
+  Un contrôle d'octets NUL écrit ainsi ne peut pas échouer.
+- ⚠️ **Une injection CDP qui court sur TOUTES les pages détruit la mesure** :
+  l'amorce peuplait OPFS à chaque page, donc les fenêtres d'application purgeaient
+  et repeuplaient le répertoire **pendant que le pont écrivait**. Le symptôme —
+  des fichiers qui disparaissent — se lit **exactement** comme un défaut du
+  produit. Garde : `const EST_SHELL = location.pathname.endsWith('/shell.html')`.
+- ⚠️ **`execFileSync` BLOQUE la boucle d'événements de Node**, donc le pilote
+  cesse de lire son WebSocket CDP, donc le rendu de la page se fige : 20
+  `commande expirée` puis 20 `réponse tardive` **dans la seconde où l'appel
+  rend**. **L'instrument détruisait ce qu'il mesurait.** `promisify(execFile)`.
+- ⚠️ **Une sonde invoquée directement par `winrm.js` ne rend que ses deux
+  premières lignes**, sans erreur — une sonde qui rend deux lignes au lieu de
+  quarante se lit comme une sonde qui a échoué. Rediriger **tous** les flux vers
+  un fichier (`*>&1 | Out-File`) et le lire depuis l'hôte.
+
+### Le relevé de tailles, PAR LA COMMANDE, APRÈS la dernière édition
+
+Relevé au commit **`4ea99d9`**, **relancé après la dernière édition** de la
+branche (documents compris) et rendant le même verdict.
+⚠️ **L'arbre est PARTAGÉ, et par TROIS chantiers** : le sous-projet ①
+(presse-papier, P2) y commitait pendant cette clôture, le sous-projet ④ (G2)
+venait d'en sortir, et **un troisième y portait 1 234 lignes NON SUIVIES**
+(`agent/src/apps/installation/`, `proto/src/plateforme/champs.rs`, …) que la
+commande balaie puisqu'elle lit `git ls-files --others`. **Aucune ne dépasse
+500**, et **aucune n'est de F2** — le total de la commande a bougé de +1 227
+entre deux relevés séparés de quelques minutes, sans qu'une seule ligne de F2
+change. *Un total de lignes n'est attribuable qu'assorti de son heure quand
+plusieurs chantiers partagent l'arbre.*
+
+**Le tableau de dette a DEUX lignes, et F2 n'y change rien** :
+`agent/src/encode.rs` **1536**, `agent/src/windows_source.rs` **630**. **Aucun
+autre fichier de code source ne dépasse 500 lignes.** ⚠️ **Les deux entrées de
+`proto/` que le relevé d'entrée de F2 montrait ne sont PAS de F2 et ont été
+résorbées par G2 pendant cette branche** — le dire évite de s'en attribuer le
+mérite.
+
+**Fichiers de F2, tous mesurés par la commande :**
+
+| Fichier | Lignes | Remarque |
+| --- | --- | --- |
+| `agent/src/pont/ecriture/fil.rs` | **438** | le fil d'écriture — **PUR**, éprouvé sur un répertoire temporaire réel |
+| `agent/src/pont/projfs/rappels.rs` | ~~488~~ **320** (marge 180) | **allégé par l'extraction jouée AVANT toute addition** |
+| `proto/ts/fichiers-entetes.ts` | **318** | |
+| `client/src/fichiers/ecriture.ts` | **265** | l'écrivain, et la garde de casse |
+| `client/src/shell.ts` | **252** | le compteur, `data-dues` et `data-vues` |
+| `client/src/fichiers/protocole.ts` | **251** | la **troisième famille** de messages |
+| `agent/src/pont.rs` | **238** | le **quatrième** fil |
+| `agent/src/pont/table.rs` | **238** | `command_id: Option<i32>` |
+| `agent/src/pont/notifications.rs` | **227** | **PUR**, le masque à 7 bits |
+| `proto/src/fichiers.rs` | **219** | 3 verbes neufs |
+| `agent/src/pont/ecriture.rs` | **207** | **PUR** — la file |
+| `agent/src/pont/journal.rs` | **194** | **PUR** — le journal de reprise |
+| `agent/src/pont/projfs/rappels/listage.rs` | **165** | neuf — l'extraction |
+| `agent/src/pont/projfs/rappels/notification.rs` | **121** | neuf — l'extraction |
+| `agent/src/pont/ecriture/fil/disque.rs` | **103** | neuf — extrait à **494**, pour une porte de 500 |
+
+⚠️ **MARGES ÉTROITES relevées ce jour-là, et AUCUNE n'est de F2** :
+`agent/src/encode/arret.rs` **500** (marge 0), `client/verify-webrtc.mjs` **494**
+(6), `agent/src/capture.rs` **492** (8), `agent/src/plateforme.rs` **490** (10),
+`agent/src/superviseur/lanceur.rs` **488** (12), `agent/src/micro.rs` **483**
+(17), `agent/src/transport.rs` **482** (18). Le plus gros fichier **de F2** est
+`pont/ecriture/fil.rs` à **438**, marge 62.
+
+⚠️ **`scripts/run-agent.sh` vaut 158** : F2 y a mis **une** ligne, le reste est du
+voisin (`PRESSE_PAPIER_GARDE`).
+
+### Les comptes de fin de branche, ANNONCÉS avant d'être mesurés
+
+⚠️ **Les six comptes ont été annoncés d'avance, et QUATRE sont plus hauts que
+l'annonce.** **Les quatre écarts sont attribués PAR LA COMMANDE** (`git log` sur
+les chemins concernés) au sous-projet ① (presse-papier, P2), qui commitait dans
+le même arbre — **jamais supposés**.
+
+| Commande | Annoncé | **Relevé** | Écart |
+| --- | --- | --- | --- |
+| `cargo test -p agent` | 778 | **808** | +30, P2 |
+| `cargo test -p proto` | 93 | **99** | +6, P2 |
+| `cargo check --target x86_64-pc-windows-gnu` | 0 erreur, **19** avertissements | **19**, **tous famille `dead_code`** | — |
+| `cd client && npx vitest run` | 337 / 34 | **378** / 36 | +41, P2 |
+| `cd client && npx vitest run --dir ../proto` | 176 / 6 | **179** / 6 | +3, P2 |
+| `cd client && npx tsc --noEmit` | 0 | **0** | — |
+
+🔴 **`cd client && npx vitest run` NE COUVRE PAS `proto/ts/`** — la racine Vitest
+est `client/`. **Deux commandes, jamais une.**
+
+⚠️ **La nature des avertissements est vérifiée, jamais leur seul nombre** : les 19
+sont tous « never used » / « never constructed » / « never read ». **Quatre sont
+de F2 et délibérés** — `File::en_vol`, `attend`, `oublier`, `en_attente` sont les
+points d'entrée que **le plan de F3 nomme** pour ses deux règles d'entrelacement.
+⚠️ *Un `grep -c '^warning'` compte AUSSI la ligne de résumé : le compte de cargo
+fait foi.*
+
+### Ce que F2 lègue
+
+**À F3, et son plan les attend déjà :**
+
+1. ✅ **La file d'écritures dues est livrée et INDEXÉE PAR CHEMIN**, avec les
+   trois points que le §0.3 de F3 exige — `File::attend`, `File::oublier`,
+   `File::en_vol`. Ils sont **`dead_code` aujourd'hui**, et c'est déclaré.
+2. ✅ **Les numéros de verbe 7 et 8 sont RÉSERVÉS**, et le code le dit.
+3. ✅ **L'extraction de `rappels.rs` est faite, sous les noms que F3 nomme** —
+   `listage.rs` et `notification.rs`. **Sa tâche 3 n'a rien à faire.**
+4. ⛔ **La casse en LECTURE**, et le **canonicaliseur**, qui devra aussi porter la
+   normalisation Unicode.
+5. ⛔ **Le contrôle de flux** (`bufferedAmount` / `SEUIL_TAMPON`).
+6. ⛔ **Donner un `debug!` à la voie `Autoriser`** : F3 refusera renommage et
+   suppression à cette porte, et n'a aujourd'hui **aucun moyen d'observer ses
+   propres décisions**.
+
+**Neufs, nés de la recette :**
+
+7. 🔴 **LA FENÊTRE DE TRENTE SECONDES**, et le compteur qui affiche `dues: 0`
+   pendant que six écritures attendent. Remède nommé : que le pont n'ouvre son
+   canal d'écriture qu'**après** un acquittement de l'écrivain, plutôt qu'à
+   l'ouverture du canal de données.
+8. ⛔ **Le critère ⑥ n'est pas mesurable au montage de recette** — `window.__pc`
+   absent, fenêtre `endormie=true`. **Limite héritée de D5, qu'aucun sous-bloc
+   n'a levée.**
+9. ⛔ **La page-shell a cessé de répondre aux `eval` pendant une exécution**,
+   cause non établie. C'est la seule exécution abandonnée de la campagne, et son
+   côté **produit** est versé.
 
 ---
 
