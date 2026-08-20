@@ -21,3 +21,8 @@ docker-compose.yml
 # local Claude Code cache
 .claude/
 core.*
+
+# Traces de l'outillage Playwright MCP (captures de page, journaux de
+# console). Ce sont des sorties d'outil, jamais des preuves : celles-ci sont
+# versées sous docs/superpowers/plans/journaux-*/.
+.playwright-mcp/

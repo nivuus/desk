@@ -25,7 +25,14 @@
 // ouvraient toutes deux `bureau` cessent de se rencontrer dans la même entrée
 // sans qu'une ligne de ce fichier ait bougé.
 //
-// P4 reste à venir, et la phrase ci-dessus vaut toujours pour lui.
+// ✅ P4 A EU LIEU (20 août 2026), ET LA PROPRIÉTÉ TIENT UNE TROISIÈME FOIS :
+// ce module n'a toujours pas gagné une ligne. L'orchestration vit dans
+// `orchestration/`, les deux routes neuves dans `http/routes-vm.ts` et
+// `http/routes-session.ts`, et aucune ne parle à `Appariement` — la
+// plateforme décide QUI a droit à quelle VM avant qu'un seul nom de session ne
+// soit appariée. ⚠️ La phrase « P4 reste à venir » qui occupait cette ligne
+// était donc FAUSSE dès la fusion de P4, et c'est la revue transverse de P4
+// qui l'a corrigée.
 
 
 export type Role = 'agent' | 'client';

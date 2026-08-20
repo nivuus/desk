@@ -8,6 +8,16 @@
 // l'intérieur rendrait impossible : il n'y aurait qu'un seul instant
 // observable, et le seuil ne serait jamais franchi dans une exécution de test.
 //
+// ✅ IL A SON APPELANT DE PRODUCTION DEPUIS LE SOUS-BLOC P4 (20 août 2026), ET
+// LE PARAGRAPHE CI-DESSOUS EST DEVENU DE L'HISTOIRE. `etatDe` est appelée par
+// `orchestration/inventaire-statique.ts::etat`, que `GET /vm` et
+// `POST /session` lisent toutes deux ; c'est le legs n°2 de P3, fermé. La
+// phrase « ses deux lecteurs à ce jour sont son propre test et la recette du
+// critère ④ » N'EST DONC PLUS VRAIE, et la déclaration d'orphelinat non plus.
+// Ce qui reste vrai, et qui est la raison d'être de ce module : il est PUR,
+// son instant est un PARAMÈTRE, et c'est l'orchestrateur qui lui donne son
+// horloge — ce qui rend la transition du critère ④ observable.
+//
 // 🔴 IL N'A AUCUN APPELANT DE PRODUCTION DANS P3, ET C'EST DÉCLARÉ PLUTÔT QUE
 // DISSIMULÉ. Le plan de P3 ne lui en prescrit aucun : ce qu'il décide — l'état
 // d'une VM — n'est lu par personne tant qu'aucune vue ne liste les VMs, ce qui

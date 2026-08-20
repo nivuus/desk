@@ -10,7 +10,18 @@
 //
 // 🔴 CE FICHIER DEMANDE AUSSI SA SESSION, ET LES DEUX BRANCHES QUI SUIVENT
 // SONT DU CÂBLAGE, PAS DES RÈGLES — c'est ce qui les autorise ici malgré la
-// clause ci-dessus. Les règles vivent aux deux bouts, et toutes deux sont
+// clause ci-dessus. ⚠️ LE PLAN DE P4 SE CONTREDISAIT SUR CE POINT — sa tâche
+// 14 interdit toute condition dans ce fichier, puis en prescrit les branches
+// —, l'implémenteur l'a signalé sans le trancher, et LA REVUE TRANSVERSE DE P4
+// L'A ARBITRÉ ICI (20 août 2026) : ce que la clause interdit est qu'une RÈGLE
+// vive dans un fichier non testé, pas qu'un `if` y apparaisse. Le critère qui
+// départage est REPRODUCTIBLE : une condition est une règle si la changer
+// change ce que le PRODUIT décide ; elle est du câblage si elle ne fait que
+// router une décision déjà prise ailleurs, et testée là-bas. Les deux branches
+// ci-dessous relèvent du second cas — elles lisent une décision que
+// `routes-session.ts` a prise et que ses tests couvrent. **La clause est donc
+// resserrée, pas assouplie**, et le prochain `if` qui apparaîtra ici doit
+// passer ce critère ou descendre. Les règles vivent aux deux bouts, et toutes deux sont
 // testées : ce qu'un préfixe a le droit d'être est dans `prefixe.ts`
 // (`poserPrefixe` LÈVE sur la chaîne vide), et ce que valent 200, 409 et 503
 // est dans `plateforme/src/http/routes-session.ts`. Ce qui reste ici décide
@@ -113,6 +124,21 @@ formulaire.addEventListener('submit', async (evenement) => {
         } else if (sien?.motif === 'aucune-vm') {
             // ② Aucune VM : le coffre est nettoyé, sans quoi le préfixe d'hier
             // survivrait à l'attribution qu'on vient de perdre.
+            //
+            // 🔴 CE LITTÉRAL EST UNE COPIE, ET RIEN NE LA CONFRONTE À SA
+            // SOURCE (relevé à la revue transverse de P4, non corrigé). Sa
+            // source canonique est `MOTIFS` dans
+            // `plateforme/src/orchestration/refus.ts`, un tableau `as const`
+            // dont le type DÉRIVE, précisément pour qu'ajouter un motif sans
+            // lui donner son code HTTP soit une erreur de compilation. Cette
+            // propriété s'arrête à la frontière du paquet : `client/` ne peut
+            // pas importer de `plateforme/`, et le seul paquet partagé est
+            // `proto/`, que P4 s'interdit de toucher (sa version appartient au
+            // sous-bloc G1). CONSÉQUENCE À CONNAÎTRE : renommer `aucune-vm`
+            // côté service laisserait ce test toujours faux, donc le préfixe
+            // périmé au coffre — une panne MUETTE, que ni `npm run typecheck`
+            // ni aucun test de ce dépôt ne verrait. Le remède est de faire
+            // descendre `MOTIFS` dans `proto/ts` ; il est LÉGUÉ, pas fait.
             effacerPrefixe(window.localStorage);
         }
 

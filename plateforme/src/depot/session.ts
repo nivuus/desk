@@ -55,6 +55,10 @@ export const MOTIF_BALAYAGE = 'plateforme redémarrée';
 /// (`signaling/propriete.ts`), l'ENREGISTREMENT durable se fait ici, et c'est
 /// de lui que P4 aura besoin.
 ///
+/// ✅ P4 EN A EU BESOIN : `compterOuvertesDe`, plus bas dans ce fichier, est
+/// son lecteur de production, et `GET /vm` en rend `sessions_ouvertes`. Le
+/// futur de la phrase ci-dessus est du passé depuis le 20 août 2026.
+///
 /// ⚠️ `vmId` est FACULTATIF POUR LA MÊME RAISON, et il vient APRÈS
 /// `utilisateurId` pour ne déplacer aucun appelant existant. C'est la trace
 /// (`signaling/trace.ts`) qui le résout, en découpant le préfixe du nom de
