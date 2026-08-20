@@ -1,0 +1,198 @@
+2026-08-20T05:16:26.559103Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T05:16:26.686677Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203586640
+2026-08-20T05:16:26.688081Z  INFO agent::superviseur::signalisation: déclaration du superviseur émise sur la session de contrôle (acceptation encore inconnue) session="_AXxNIlw-MDltKE2lCMPOw:bureau"
+2026-08-20T05:16:26.692110Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-20T05:16:26.692144Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-20T05:16:26.692170Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=1 attachees=1
+2026-08-20T05:16:26.692175Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-20T05:16:26.772973Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\g1-vide.lnk motif="cible-vide"
+2026-08-20T05:16:26.772995Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\Gestionnaire de périphériques.lnk motif="extension" extension=msc
+2026-08-20T05:16:26.773037Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\Paramètres Windows.lnk motif="cible-vide"
+2026-08-20T05:16:26.773040Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\Services.lnk motif="extension" extension=msc
+2026-08-20T05:16:26.773286Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\computer.lnk motif="cible-vide"
+2026-08-20T05:16:26.773293Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\Control Panel.lnk motif="cible-vide"
+2026-08-20T05:16:26.773295Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\File Explorer.lnk motif="cible-vide"
+2026-08-20T05:16:26.773297Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\Run.lnk motif="cible-vide"
+2026-08-20T05:16:26.773389Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\IDLE (Python 3.13 64-bit).lnk motif="cible-absente"
+2026-08-20T05:16:26.773403Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\Python 3.13 (64-bit).lnk motif="cible-absente"
+2026-08-20T05:16:26.773407Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\Python 3.13 Manuals (64-bit).lnk motif="extension" extension=html
+2026-08-20T05:16:26.773417Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\Python 3.13 Module Docs (64-bit).lnk motif="cible-absente"
+2026-08-20T05:16:26.773807Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Documentation for Desktop Apps.lnk motif="extension" extension=url
+2026-08-20T05:16:26.773815Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Documentation for UWP Apps.lnk motif="extension" extension=url
+2026-08-20T05:16:26.773817Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Sample Desktop Apps.lnk motif="extension" extension=url
+2026-08-20T05:16:26.773820Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Sample UWP Apps.lnk motif="extension" extension=url
+2026-08-20T05:16:26.773822Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Tools for Desktop Apps.lnk motif="extension" extension=url
+2026-08-20T05:16:26.773824Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Tools for UWP Apps.lnk motif="extension" extension=url
+2026-08-20T05:16:26.774070Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\smartmontools Daily Builds.lnk motif="cible-vide"
+2026-08-20T05:16:26.774076Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\smartmontools Home Page.lnk motif="cible-vide"
+2026-08-20T05:16:26.774414Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\ChangeLog.lnk motif="extension" extension=txt
+2026-08-20T05:16:26.774420Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\COPYING.lnk motif="extension" extension=txt
+2026-08-20T05:16:26.774460Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\NEWS.lnk motif="extension" extension=txt
+2026-08-20T05:16:26.774463Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartctl manual page (html).lnk motif="extension" extension=html
+2026-08-20T05:16:26.774465Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartctl manual page (pdf).lnk motif="extension" extension=pdf
+2026-08-20T05:16:26.774469Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd manual page (html).lnk motif="extension" extension=html
+2026-08-20T05:16:26.774471Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd manual page (pdf).lnk motif="extension" extension=pdf
+2026-08-20T05:16:26.774473Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd.conf manual page (html).lnk motif="extension" extension=html
+2026-08-20T05:16:26.774476Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd.conf manual page (pdf).lnk motif="extension" extension=pdf
+2026-08-20T05:16:26.774518Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Revo Uninstaller\Revo Uninstaller Help.lnk motif="extension" extension=pdf
+2026-08-20T05:16:26.774535Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\RetroArch\RetroArch Website.lnk motif="extension" extension=url
+2026-08-20T05:16:26.774590Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\NVIDIA Tools Extension (64 bit)\Browse NVIDIA Tools Extension.lnk motif="extension" extension=
+2026-08-20T05:16:26.774611Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\Nsight Visual Studio Edition 2025.1\Nsight Redistributable.lnk motif="extension" extension=msi
+2026-08-20T05:16:26.774697Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\CUDA Toolkit\v11.2\Visual Profiler.lnk motif="extension" extension=bat
+2026-08-20T05:16:26.774701Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\CUDA Samples\v11.2\Browse CUDA Samples.lnk motif="extension" extension=2
+2026-08-20T05:16:26.774717Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Microsoft Xbox 360 Accessories\Aide de Microsoft Xbox 360 Accessories.lnk motif="extension" extension=chm
+2026-08-20T05:16:26.774876Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\CMake\CMake Documentation.lnk motif="extension" extension=html
+2026-08-20T05:16:26.774906Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Blue Ripple Sound\Rapture3D - Help.lnk motif="extension" extension=chm
+2026-08-20T05:16:26.774973Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Component Services.lnk motif="extension" extension=msc
+2026-08-20T05:16:26.774977Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Computer Management.lnk motif="extension" extension=msc
+2026-08-20T05:16:26.775010Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Event Viewer.lnk motif="extension" extension=msc
+2026-08-20T05:16:26.775073Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Network Policy Server.lnk motif="extension" extension=msc
+2026-08-20T05:16:26.775109Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Performance Monitor.lnk motif="extension" extension=msc
+2026-08-20T05:16:26.775155Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Security Configuration Management.lnk motif="extension" extension=msc
+2026-08-20T05:16:26.775190Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\services.lnk motif="extension" extension=msc
+2026-08-20T05:16:26.775223Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Task Scheduler.lnk motif="extension" extension=msc
+2026-08-20T05:16:26.775227Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Windows Defender Firewall with Advanced Security.lnk motif="extension" extension=msc
+2026-08-20T05:16:26.775230Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Windows Server Backup.lnk motif="extension" extension=msc
+2026-08-20T05:16:26.775237Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Remote Desktop Services\RD Gateway Manager.lnk motif="extension" extension=msc
+2026-08-20T05:16:26.775257Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Remote Desktop Services\Remote Desktop Licensing Diagnosis.lnk motif="extension" extension=msc
+2026-08-20T05:16:26.775436Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Accessories\System Tools\Windows Server Backup.lnk motif="extension" extension=msc
+2026-08-20T05:16:26.775470Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\7-Zip\7-Zip Help.lnk motif="extension" extension=chm
+2026-08-20T05:16:26.775547Z  INFO agent::apps::boucle: catalogue reconcilie total=220 retenus=155 cles=155 apparues=155 modifiees=0 disparues=0 duree_ms=88
+2026-08-20T05:16:29.695160Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-20T05:16:29.695196Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-20T05:16:29.695205Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-08-20T05:16:29.695208Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-20T05:16:29.695218Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=0 avant=1 apres=1
+2026-08-20T05:16:29.699958Z  INFO agent::superviseur::lanceur: capteur lancé pid=5200
+2026-08-20T05:16:29.702166Z  INFO agent::superviseur::lanceur::pont: pont fichiers lancé pid=17044 session="_AXxNIlw-MDltKE2lCMPOw:fichiers"
+2026-08-20T05:16:29.702327Z  WARN agent::superviseur::boucle::surveillance_pont: pont fichiers lancé ou relancé (tentatives suivantes silencieuses tant que le cycle se répète) pid_neuf=17044
+2026-08-20T05:16:29.707909Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T05:16:29.707945Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-08-20T05:16:29.708707Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T05:16:29.830813Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:16:29.830900Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:16:29.831205Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203589785
+2026-08-20T05:16:29.832025Z  INFO agent::pont::transport: socket UDP du pont fichiers addr=192.168.3.2:58454
+2026-08-20T05:16:29.860416Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="_AXxNIlw-MDltKE2lCMPOw:fichiers"
+2026-08-20T05:16:29.913703Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\g1-vide.lnk motif="cible-vide"
+2026-08-20T05:16:29.913723Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\Gestionnaire de périphériques.lnk motif="extension" extension=msc
+2026-08-20T05:16:29.913764Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\Paramètres Windows.lnk motif="cible-vide"
+2026-08-20T05:16:29.913767Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\Services.lnk motif="extension" extension=msc
+2026-08-20T05:16:29.914012Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\computer.lnk motif="cible-vide"
+2026-08-20T05:16:29.914018Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\Control Panel.lnk motif="cible-vide"
+2026-08-20T05:16:29.914020Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\File Explorer.lnk motif="cible-vide"
+2026-08-20T05:16:29.914022Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\Run.lnk motif="cible-vide"
+2026-08-20T05:16:29.914116Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\IDLE (Python 3.13 64-bit).lnk motif="cible-absente"
+2026-08-20T05:16:29.914129Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\Python 3.13 (64-bit).lnk motif="cible-absente"
+2026-08-20T05:16:29.914132Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\Python 3.13 Manuals (64-bit).lnk motif="extension" extension=html
+2026-08-20T05:16:29.914141Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\Python 3.13 Module Docs (64-bit).lnk motif="cible-absente"
+2026-08-20T05:16:29.914527Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Documentation for Desktop Apps.lnk motif="extension" extension=url
+2026-08-20T05:16:29.914532Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Documentation for UWP Apps.lnk motif="extension" extension=url
+2026-08-20T05:16:29.914535Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Sample Desktop Apps.lnk motif="extension" extension=url
+2026-08-20T05:16:29.914537Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Sample UWP Apps.lnk motif="extension" extension=url
+2026-08-20T05:16:29.914539Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Tools for Desktop Apps.lnk motif="extension" extension=url
+2026-08-20T05:16:29.914541Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Tools for UWP Apps.lnk motif="extension" extension=url
+2026-08-20T05:16:29.914782Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\smartmontools Daily Builds.lnk motif="cible-vide"
+2026-08-20T05:16:29.914786Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\smartmontools Home Page.lnk motif="cible-vide"
+2026-08-20T05:16:29.915123Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\ChangeLog.lnk motif="extension" extension=txt
+2026-08-20T05:16:29.915128Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\COPYING.lnk motif="extension" extension=txt
+2026-08-20T05:16:29.915167Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\NEWS.lnk motif="extension" extension=txt
+2026-08-20T05:16:29.915169Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartctl manual page (html).lnk motif="extension" extension=html
+2026-08-20T05:16:29.915172Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartctl manual page (pdf).lnk motif="extension" extension=pdf
+2026-08-20T05:16:29.915174Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd manual page (html).lnk motif="extension" extension=html
+2026-08-20T05:16:29.915176Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd manual page (pdf).lnk motif="extension" extension=pdf
+2026-08-20T05:16:29.915178Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd.conf manual page (html).lnk motif="extension" extension=html
+2026-08-20T05:16:29.915180Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd.conf manual page (pdf).lnk motif="extension" extension=pdf
+2026-08-20T05:16:29.915219Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Revo Uninstaller\Revo Uninstaller Help.lnk motif="extension" extension=pdf
+2026-08-20T05:16:29.915232Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\RetroArch\RetroArch Website.lnk motif="extension" extension=url
+2026-08-20T05:16:29.915285Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\NVIDIA Tools Extension (64 bit)\Browse NVIDIA Tools Extension.lnk motif="extension" extension=
+2026-08-20T05:16:29.915303Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\Nsight Visual Studio Edition 2025.1\Nsight Redistributable.lnk motif="extension" extension=msi
+2026-08-20T05:16:29.915385Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\CUDA Toolkit\v11.2\Visual Profiler.lnk motif="extension" extension=bat
+2026-08-20T05:16:29.915389Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\CUDA Samples\v11.2\Browse CUDA Samples.lnk motif="extension" extension=2
+2026-08-20T05:16:29.915404Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Microsoft Xbox 360 Accessories\Aide de Microsoft Xbox 360 Accessories.lnk motif="extension" extension=chm
+2026-08-20T05:16:29.915564Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\CMake\CMake Documentation.lnk motif="extension" extension=html
+2026-08-20T05:16:29.915593Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Blue Ripple Sound\Rapture3D - Help.lnk motif="extension" extension=chm
+2026-08-20T05:16:29.915658Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Component Services.lnk motif="extension" extension=msc
+2026-08-20T05:16:29.915662Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Computer Management.lnk motif="extension" extension=msc
+2026-08-20T05:16:29.915696Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Event Viewer.lnk motif="extension" extension=msc
+2026-08-20T05:16:29.915761Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Network Policy Server.lnk motif="extension" extension=msc
+2026-08-20T05:16:29.915794Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Performance Monitor.lnk motif="extension" extension=msc
+2026-08-20T05:16:29.915840Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Security Configuration Management.lnk motif="extension" extension=msc
+2026-08-20T05:16:29.915859Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\services.lnk motif="extension" extension=msc
+2026-08-20T05:16:29.915891Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Task Scheduler.lnk motif="extension" extension=msc
+2026-08-20T05:16:29.915896Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Windows Defender Firewall with Advanced Security.lnk motif="extension" extension=msc
+2026-08-20T05:16:29.915898Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Windows Server Backup.lnk motif="extension" extension=msc
+2026-08-20T05:16:29.915900Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Remote Desktop Services\RD Gateway Manager.lnk motif="extension" extension=msc
+2026-08-20T05:16:29.915917Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Remote Desktop Services\Remote Desktop Licensing Diagnosis.lnk motif="extension" extension=msc
+2026-08-20T05:16:29.916089Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Accessories\System Tools\Windows Server Backup.lnk motif="extension" extension=msc
+2026-08-20T05:16:29.916124Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\7-Zip\7-Zip Help.lnk motif="extension" extension=chm
+2026-08-20T05:16:29.916199Z  INFO agent::apps::boucle: catalogue reconcilie total=220 retenus=155 cles=155 apparues=155 modifiees=0 disparues=0 duree_ms=83
+2026-08-20T05:16:30.205530Z  INFO agent::superviseur::boucle::surveillance_pont: pont fichiers de nouveau stable pid=17044
+2026-08-20T05:16:30.491305Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:16:30.491408Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:16:30.491594Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203590445
+2026-08-20T05:16:30.585861Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-20T05:16:31.121772Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:16:31.121832Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:16:31.121917Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203591076
+2026-08-20T05:16:31.320109Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-20T05:16:31.763236Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:16:31.763311Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:16:31.763613Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203591718
+2026-08-20T05:16:31.788926Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-20T05:16:32.439678Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:16:32.439754Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:16:32.439941Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203592394
+2026-08-20T05:16:32.522961Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-20T05:16:33.100953Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:16:33.101029Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:16:33.101397Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203593055
+2026-08-20T05:16:33.192771Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-20T05:16:33.739991Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:16:33.740065Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:16:33.740364Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203593694
+2026-08-20T05:16:33.927721Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-20T05:16:34.335473Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:16:34.335545Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:16:34.335718Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203594290
+2026-08-20T05:16:34.396154Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-20T05:16:34.933775Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:16:34.933824Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203594888
+2026-08-20T05:16:34.933850Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:16:35.131747Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-20T05:16:35.528202Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:16:35.528287Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:16:35.528464Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203595482
+2026-08-20T05:16:35.599350Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-20T05:16:36.125955Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:16:36.126029Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:16:36.126234Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203596080
+2026-08-20T05:16:36.134735Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-20T05:16:36.787136Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:16:36.787212Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:16:36.787359Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203596741
+2026-08-20T05:16:36.802653Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-20T05:16:37.414079Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:16:37.414153Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:16:37.415072Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203597369
+2026-08-20T05:16:37.539124Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-20T05:16:38.006408Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:16:38.006480Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:16:38.006792Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203597961
+2026-08-20T05:16:38.205707Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-20T05:16:38.624660Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:16:38.624731Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:16:38.625117Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203598579
+2026-08-20T05:16:38.742938Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-20T05:16:39.310517Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:16:39.310587Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:16:39.310719Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203599265
+2026-08-20T05:16:39.408424Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-20T05:16:39.971827Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:16:39.971904Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:16:39.972100Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203599926
+2026-08-20T05:16:40.147099Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-20T05:16:40.564129Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:16:40.564210Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:16:40.564363Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203600519
+2026-08-20T05:16:40.611277Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
