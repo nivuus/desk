@@ -22,6 +22,9 @@ import type { Pilote } from '../base/pilote';
 import type { Config } from '../config';
 import { demarrerServeur, type ServicePlateforme } from '../http/serveur';
 import { garde as fabriquerGarde } from '../identite/garde';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { DUREE_JETON_ACCES_MS, verifierJeton } from '../identite/jeton';
 import { ProprieteDeSession } from '../signaling/propriete';
 import { servirLeCanalAgent } from './canal';
@@ -266,6 +269,7 @@ describe('le canal, CÂBLÉ dans le service entier', () => {
             // Aucun proxy declare : voir `config.ts`, l'ensemble vide est le
             // defaut et signifie « ne croire l'adresse annoncee par personne ».
             proxyDeConfiance: new Set(),
+            repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
         };
         base = await baseNeuve('canal-service');
         await enrolerUneVm(base, 'v-1');

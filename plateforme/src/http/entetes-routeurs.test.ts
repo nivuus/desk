@@ -25,6 +25,9 @@ import { creerUtilisateur } from '../depot/utilisateur';
 import { hacher } from '../identite/mot-de-passe';
 import { ENTETES_SECURITE } from './entetes';
 import { demarrerServeur, type ServicePlateforme } from './serveur';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 const MOT_DE_PASSE = 'un-mot-de-passe-ordinaire-42';
@@ -37,6 +40,7 @@ const CONFIG: Config = {
     urlBase: ':memory:',
     secretJeton: SECRET,
     proxyDeConfiance: new Set(),
+    repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
 };
 
 let base: Pilote | undefined;
@@ -123,6 +127,24 @@ describe('les en-têtes de sécurité, un routeur à la fois', () => {
         expect(r.status).toBe(200);
         expect(r.headers.get('cache-control')).toBe('no-store');
         porteLesEntetes(r, '200 de /auth/connexion');
+    });
+
+    it('(6bis) `routes-icone` les pose — LE SIXIÈME ROUTEUR', async () => {
+        // 🔴 G2 AJOUTE LE SIXIÈME ROUTEUR, et l'en-tête de ce fichier nomme le
+        // précédent : « G1 vient d'ajouter un routeur sans que personne ne
+        // s'en aperçoive côté P5 ». Ne pas rejouer le défaut que ce fichier
+        // existe pour empêcher.
+        const url = await servir('entetes-icone');
+        // Sans jeton : un 401, donc une réponse d'ERREUR — celle qu'un
+        // correctif hâtif oublierait.
+        const r = await fetch(`${url}/icone/${'a'.repeat(64)}`, { method: 'PUT' });
+        expect(r.status).toBe(401);
+        porteLesEntetes(r, '401 de /icone/:sha256');
+
+        // Et sur l'autre chemin de ce même routeur.
+        const g = await fetch(`${url}/application/x/icone?e=${'a'.repeat(64)}`);
+        expect(g.status).toBe(401);
+        porteLesEntetes(g, '401 de /application/:id/icone');
     });
 
     it('(7) le 404 générique et le 500 les portent aussi', async () => {

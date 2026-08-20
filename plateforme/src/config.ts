@@ -67,6 +67,18 @@ export interface Config {
     /// (« n'émets aucun en-tête ») là où celle-ci n'en a qu'un (« ne crois
     /// personne »), déjà porté par l'ensemble vide.
     proxyDeConfiance: ReadonlySet<string>;
+    /// PLATEFORME_ICONES — FACULTATIVE, défaut `donnees/icones`. Le répertoire
+    /// du magasin d'icônes adressé par contenu (sous-bloc G2).
+    ///
+    /// ⚠️ **ASYMÉTRIE ASSUMÉE AVEC `PLATEFORME_HOTE`, ET IL FAUT DIRE
+    /// POURQUOI.** Le commentaire de tête de ce fichier fonde l'absence de
+    /// défaut sur le fait qu'un mauvais défaut EXPOSERAIT le service. Ici, un
+    /// mauvais répertoire coûte **un retéléversement, borné et automatique** :
+    /// le magasin se reconstruit tout seul à la réconciliation suivante, parce
+    /// que la plateforme demande ce qui lui manque en interrogeant son DISQUE.
+    /// Une rupture bruyante ne serait pas proportionnée — mais un silence non
+    /// plus, d'où la ligne de journal à l'ouverture du magasin.
+    repertoireIcones: string;
 }
 
 const BASES = ['sqlite', 'postgres'] as const;
@@ -98,6 +110,14 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
     }
 
     const urlBase = env.PLATEFORME_BASE_URL ?? ':memory:';
+
+    // ⚠️ LE TEST DE LA CHAÎNE VIDE EST DISTINCT DE CELUI DE L'ABSENCE :
+    // `env.X ?? 'defaut'` ne rattrape PAS `''`, et P1 a payé cette erreur
+    // exacte. Un `PLATEFORME_ICONES=` vide doit retomber sur le défaut, pas
+    // faire du magasin le répertoire courant.
+    const brutIcones = env.PLATEFORME_ICONES;
+    const repertoireIcones =
+        brutIcones === undefined || brutIcones === '' ? 'donnees/icones' : brutIcones;
 
     // 🔴 AUCUN DÉFAUT, et surtout pas un défaut ALÉATOIRE. Un secret tiré au
     // démarrage passerait tous les tests de forme, puis invaliderait à chaque
@@ -179,5 +199,14 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
             .filter((entree) => entree !== ''),
     );
 
-    return { hote, port, base, urlBase, secretJeton, origineClient, proxyDeConfiance };
+    return {
+        hote,
+        port,
+        base,
+        urlBase,
+        secretJeton,
+        origineClient,
+        proxyDeConfiance,
+        repertoireIcones,
+    };
 }

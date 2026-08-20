@@ -47,10 +47,13 @@ import type { WebSocket, WebSocketServer } from 'ws';
 import {
     encodeBattementRecu,
     encodeEnrole,
+    encodeIconesManquantes,
     encodeRefus,
     parseVersLaPlateforme,
+    type CatalogueMessage,
     type MotifCanal,
 } from '../../../proto/ts/plateforme';
+import type { Magasin } from '../apps/icones';
 import type { Pilote } from '../base/pilote';
 import { fusionner } from '../apps/catalogue';
 import { marquerVu } from '../depot/agent';
@@ -68,6 +71,32 @@ import {
 } from '../securite/frein';
 import { verifierEnrolement } from './enrolement';
 import type { RegistreAgents } from './registre';
+
+/// Demande à l'agent les icônes que le magasin n'a PAS.
+///
+/// 🔴 ELLE N'ÉMET RIEN QUAND L'ENSEMBLE EST VIDE. Une liste vide coûterait un
+/// message par réconciliation sur un disque au repos — c'est-à-dire toutes les
+/// trente secondes, pour toujours —, et c'est très exactement ce que le diff
+/// du sous-bloc G1 existe pour éviter. Le critère ⑤ de recette se juge là.
+///
+/// 🔴 L'INVENTAIRE INTERROGE LE DISQUE, PAS UNE TABLE. Une table de
+/// comptabilité divergerait du magasin le jour où un fichier serait perdu — et
+/// c'est PRÉCISÉMENT le jour où l'on a besoin de le savoir. C'est ce qui rend
+/// le magasin AUTO-RECONSTRUCTIBLE, et donc le disque acceptable.
+function reclamerLesIcones(
+    socket: WebSocket,
+    magasin: Magasin | undefined,
+    message: CatalogueMessage,
+): void {
+    if (magasin === undefined) return;
+    const annoncees = message.applications
+        .map((a) => a.icone)
+        .filter((e): e is string => e !== null);
+    if (annoncees.length === 0) return;
+    const manque = magasin.manquantes(annoncees);
+    if (manque.length === 0) return;
+    envoyer(socket, encodeIconesManquantes(manque));
+}
 
 export interface OptionsCanal {
     base: Pilote;
@@ -87,6 +116,15 @@ export interface OptionsCanal {
     /// rendrait `agent-injoignable`. Panne muette, et de celles qu'on ne
     /// diagnostique qu'en lisant ce fichier.
     registre: RegistreAgents;
+    /// Le magasin d'icônes, interrogé après chaque `catalogue` pour savoir ce
+    /// qui MANQUE. `undefined` = aucun inventaire n'est poussé.
+    ///
+    /// ⚠️ FACULTATIF, contrairement à `registre`, et l'asymétrie est dans les
+    /// conséquences : un registre absent rend TOUT lancement injoignable —
+    /// panne muette —, là qu'un magasin absent coûte seulement des icônes qui
+    /// n'arrivent pas. Les tests du canal qui ne parlent pas d'icônes n'ont
+    /// donc pas à en monter un.
+    magasin?: Magasin;
     /// Le frein, PARTAGÉ avec les routes d'authentification — une seule table,
     /// jamais deux. Deux freins distincts divergeraient le jour où l'un serait
     /// durci, et leurs budgets d'ADRESSE s'additionneraient : un attaquant
@@ -129,7 +167,7 @@ const MOTIFS_FERMANTS: readonly MotifCanal[] = ['enrolement', 'version'];
 const FERMETURE_POLITIQUE = 1008;
 
 export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal): void {
-    const { base, secretJeton, maintenant, registre, frein, proxyDeConfiance } = options;
+    const { base, secretJeton, maintenant, registre, frein, proxyDeConfiance, magasin } = options;
     const dureeJetonMs = options.dureeJetonMs ?? DUREE_JETON_ACCES_MS;
 
     // ⚠️ LA REQUÊTE DE MONTÉE EST DÉSORMAIS REÇUE, et c'est `ws` qui la
@@ -247,6 +285,7 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                 // divergence sans que personne n'ait à réessayer.
                 void lireConnues(base, identifiant)
                     .then((connues) => appliquer(base, identifiant, fusionner(connues, message), instant))
+                    .then(() => reclamerLesIcones(socket, magasin, message))
                     .catch((cause) => {
                         console.error(
                             `catalogue non écrit pour la VM ${identifiant} : ${String(cause)}`,

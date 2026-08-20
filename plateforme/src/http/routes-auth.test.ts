@@ -15,6 +15,9 @@ import { verifierJeton } from '../identite/jeton';
 import { creerUtilisateur } from '../depot/utilisateur';
 import { demarrerServeur, type ServicePlateforme } from './serveur';
 import { ECHECS_MAX_ADRESSE, ECHECS_MAX_COMPTE } from '../securite/frein';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 const ORIGINE = 'http://127.0.0.1:5173';
@@ -32,6 +35,7 @@ function config(origineClient?: string): Config {
         // Aucun proxy declare : voir `config.ts`, l'ensemble vide est le defaut
         // et signifie « ne croire l'adresse annoncee par personne ».
         proxyDeConfiance: new Set(),
+        repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
     };
 }
 

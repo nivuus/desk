@@ -32,3 +32,8 @@ core.*
 deploiement/postgres.env
 deploiement/plateforme.env
 deploiement/tls/
+
+# Le magasin d'icones de la plateforme (defaut de PLATEFORME_ICONES,
+# sous-bloc G2) : des octets adresses par contenu, reconstruits tout seuls.
+plateforme/donnees/
+donnees/

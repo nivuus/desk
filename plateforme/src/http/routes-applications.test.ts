@@ -12,15 +12,22 @@ import { createServer, type Server } from 'node:http';
 import { DELAI_LANCEMENT_MS, RegistreAgents, type SocketAgent } from '../agents/registre';
 import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
-import { appliquer, lireParVm } from '../depot/application';
+import { parseDepuisLaPlateforme } from '../../../proto/ts/plateforme';
 import { creerUtilisateur } from '../depot/utilisateur';
-import { signer } from '../identite/jeton';
-import { parseDepuisLaPlateforme, type Application } from '../../../proto/ts/plateforme';
+// 🔴 LE HARNAIS EST EXTRAIT, ET IL L'A ÉTÉ AVANT L'ADDITION de la famille de
+// la route d'icône : ce fichier était à 480 lignes pour un plafond de 500.
+import {
+    app,
+    attribuer,
+    avec,
+    jetonDe,
+    MS,
+    ORIGINE,
+    poserApp,
+    poserVm,
+    SECRET,
+} from './routes-harnais';
 import { servirApplications } from './routes-applications';
-
-const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
-const ORIGINE = 'http://127.0.0.1:5173';
-const MS = 1_787_136_773_742;
 
 let base: Pilote | undefined;
 let http: Server | undefined;
@@ -64,45 +71,6 @@ async function servir(nom: string, origineClient?: string): Promise<string> {
     await new Promise<void>((r) => http!.listen(0, '127.0.0.1', () => r()));
     const a = http!.address();
     return `http://127.0.0.1:${typeof a === 'object' && a ? a.port : 0}`;
-}
-
-async function poserVm(p: Pilote, id: string): Promise<void> {
-    await p.executer('INSERT INTO vm(id, nom, adresse) VALUES(?, ?, ?)', [id, `vm-${id}`, '192.168.3.2']);
-}
-
-async function attribuer(p: Pilote, vmId: string, email: string): Promise<string> {
-    const u = await creerUtilisateur(p, email, 'empreinte-opaque-de-test', MS);
-    await p.executer('UPDATE vm SET utilisateur_id = ? WHERE id = ?', [u, vmId]);
-    return u;
-}
-
-function app(nom: string, cle: string): Application {
-    return {
-        cle,
-        nom,
-        chemin: `C:\\Users\\guacamole\\Desktop\\${nom}.lnk`,
-        cible: `c:\\program files\\${nom}\\${nom}.exe`,
-        arguments: '',
-        repertoire: `c:\\program files\\${nom}`,
-    };
-}
-
-async function poserApp(p: Pilote, vmId: string, nom: string, cle: string): Promise<string> {
-    await appliquer(p, vmId, {
-        aInserer: [app(nom, cle)],
-        aMettreAJour: [],
-        aMarquerDisparues: [],
-        aRessusciter: [],
-    }, MS);
-    return (await lireParVm(p, vmId)).find((l) => l.nom === nom)!.id;
-}
-
-function jetonDe(sujet: string, type: 'utilisateur' | 'agent' = 'utilisateur'): string {
-    return signer(sujet, SECRET, MS, undefined, type);
-}
-
-function avec(jeton?: string, autres: Record<string, string> = {}): Record<string, string> {
-    return jeton === undefined ? autres : { authorization: `Bearer ${jeton}`, ...autres };
 }
 
 /// Un socket qui répond à tout ordre par l'issue donnée — ou qui se tait.

@@ -11,6 +11,9 @@ import type { Config } from './config';
 import { demarrer, type Service } from './demarrage';
 import { baseNeuve } from './base/harnais';
 import { ouvrirSession } from './depot/session';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 let service: Service | undefined;
 
@@ -53,6 +56,7 @@ describe('démarrage du service', () => {
             // Aucun proxy declare : voir `config.ts`, l'ensemble vide est le
             // defaut et signifie « ne croire l'adresse annoncee par personne ».
             proxyDeConfiance: new Set(),
+            repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
         };
         // Deux assertions DISTINCTES, et la seconde est le point de ce test.
         await expect(demarrer(config)).rejects.toThrow(/base/i);
@@ -86,6 +90,7 @@ describe('démarrage du service', () => {
             // `X-Forwarded-For` de personne, ce qui est le défaut de
             // `lireConfig` et l'état d'un déploiement sans proxy inverse.
             proxyDeConfiance: new Set(),
+            repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
         });
         expect(service.port).toBeGreaterThan(0);
         await expect(connecterA(service.port)).resolves.toBeUndefined();
@@ -101,6 +106,6 @@ describe('démarrage du service', () => {
         // cherche. Les deux se trouvent par
         // `grep -rn "schema_migration" src/ | grep -i test`.
         expect(await service.base.interroger('SELECT version FROM schema_migration', []))
-            .toHaveLength(4);
+            .toHaveLength(5);
     });
 });

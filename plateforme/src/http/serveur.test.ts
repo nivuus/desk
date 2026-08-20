@@ -16,6 +16,9 @@ import type { Config } from '../config';
 import { signer } from '../identite/jeton';
 import { demarrerServeur, TRAME_MAX_OCTETS, type ServicePlateforme } from './serveur';
 import type { Pilote as TypePilote } from '../base/pilote';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 // Un secret de test EXPLICITE, jamais `''` : `lireConfig` refuse la chaîne
 // vide, et un littéral `Config` construit à la main doit porter une valeur
@@ -35,6 +38,7 @@ const CONFIG: Config = {
     // Aucun proxy declare : voir `config.ts`, l'ensemble vide est le defaut
     // et signifie « ne croire l'adresse annoncee par personne ».
     proxyDeConfiance: new Set(),
+    repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
 };
 
 let service: ServicePlateforme | undefined;

@@ -51,7 +51,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import type { RegistreAgents } from '../agents/registre';
 import type { Pilote } from '../base/pilote';
-import { lireParId, lireParVm } from '../depot/application';
+import { lireParId, lireParVm, sourceMaxDepuis } from '../depot/application';
 import { lireParId as lireVm } from '../depot/vm';
 import { entetesCors } from './cors';
 import { ENTETES_SECURITE } from './entetes';
@@ -256,7 +256,26 @@ export async function servirApplications(
         repondre(
             rep,
             200,
-            { applications: lignes.map((l) => ({ id: l.id, nom: l.nom })) },
+            {
+                applications: lignes.map((l) => ({
+                    id: l.id,
+                    nom: l.nom,
+                    // ⚠️ CES DEUX-LÀ TRAVERSENT, ET LE RAISONNEMENT CI-DESSUS
+                    // NE S'Y OPPOSE PAS : une empreinte n'est le chemin de
+                    // rien, et `source_max` est une propriété de l'IMAGE. Ce
+                    // que le paragraphe précédent tait, ce sont des chemins du
+                    // disque de la VM ; ceux-ci n'en sont pas.
+                    //
+                    // 🔴 `source_max` PASSE PAR `sourceMaxDepuis`, ÉCRITE UNE
+                    // SEULE FOIS AU DÉPÔT. Reconstruire ici ferait vivre la
+                    // règle `null -> non-mesuree` à deux endroits, et les deux
+                    // divergeraient le jour où l'une déciderait que `null`
+                    // vaut `0` — c'est-à-dire ferait dire à une provenance
+                    // INCONNUE qu'elle vaut quelque chose.
+                    icone: l.icone,
+                    source_max: sourceMaxDepuis(l.source_max_px),
+                })),
+            },
             cors,
         );
         return true;

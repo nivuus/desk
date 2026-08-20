@@ -1,0 +1,83 @@
+-- Les icones des applications : leur empreinte, et la PROVENANCE de leur
+-- image. Sous-bloc G2.
+--
+-- 🔴 POURQUOI CES DEUX COLONNES SONT NULLABLES, LA OU CELLES DE 0004 SONT NOT
+-- NULL. Ce n est PAS un relachement : c est la mesure de 0004 appliquee a un
+-- etat qui a change. Sur SQLite 3.50.4, un ALTER TABLE ADD COLUMN NOT NULL
+-- sans DEFAUT est REFUSE des que la table porte une seule ligne --
+--     Cannot add a NOT NULL column with default value NULL
+-- Or `application` N EST PLUS VIDE depuis la recette de G1 : elle porte 154
+-- lignes sur la VM de developpement. Les deux colonnes de G2 sont donc
+-- NULLABLES, ET IL N Y A PAS D ALTERNATIVE.
+--
+-- ⚠️ SUR UNE BASE NEUVE, LA TABLE EST VIDE ET UN NOT NULL PASSERAIT. C est
+-- exactement le piege de la divergence E8 de G1 : le test qui garde cette
+-- propriete doit INSERER une application AVANT d appliquer cette migration,
+-- sans quoi sa rouge n est pas atteignable.
+--
+-- 🔴 ET C EST POURQUOI `NonMesuree` EST REPRESENTEE PAR NULL, JAMAIS PAR 0 NI
+-- PAR 256. La colonne est INTEGER : elle NE PEUT PAS porter le mot
+-- `non-mesuree`, donc elle porte NULL. La reconstruction est sans ambiguite
+-- parce que l invariant est ECRIT, et il a TROIS cas -- le quatrieme est
+-- INTERDIT :
+--
+--   icone   source_max_px   sens                                   sur le fil
+--   NULL    NULL            aucune icone : l extraction a echoue   icone:null,
+--                                                                  "non-mesuree"
+--   non nul NULL            l icone existe, sa provenance n est    icone:"<hex>",
+--                           pas lisible                            "non-mesuree"
+--   non nul n               l icone existe, et sa source portait   icone:"<hex>",
+--                           une entree de n px                     {"pixels":n}
+--   NULL    n               🔴 INTERDIT -- aucun chemin ne l ecrit, et un test
+--                           le NOMME pour qu il ne naisse pas d une inattention
+--
+-- 🔴 CE QUE LA COLONNE `source_max_px` N EST PAS : la taille RENDUE. Mesure le
+-- 20 aout 2026 sur deux temoins fabriques (agent/testdata/g2-temoin-*.ico) :
+-- un .ico ne contenant QU UNE entree 48x48, interroge a 256, rend 256x256
+-- 32bpp -- par IShellItemImageFactory comme par PrivateExtractIconsW, sans
+-- SIIGBF_SCALEUP et MEME avec SIIGBF_BIGGERSIZEOK. Les quatre lignes de rendu
+-- des deux temoins sont identiques ; seule la ligne ICONDIR differe. Une
+-- colonne qui porterait la taille rendue vaudrait donc 256 partout, et ne
+-- dirait rien.
+--
+-- L empreinte est celle des OCTETS PNG, jamais des pixels : la plateforme
+-- RECALCULE l empreinte de ce qu elle recoit, et adresser par les pixels
+-- l obligerait a DECODER le PNG pour verifier -- c est-a-dire a embarquer un
+-- decodeur PNG en TypeScript, une dependance de production neuve que ce
+-- sous-bloc refuse.
+--
+-- 🔴 LES OCTETS EUX-MEMES NE SONT PAS ICI, ET C EST UNE DECISION. Ils vivent
+-- sur le DISQUE, un fichier par empreinte. Trois raisons, dans l ordre de leur
+-- poids :
+--   1. UN BLOB NE TRAVERSE PAS LA DOUBLE PASSE SANS MENTIR. PostgreSQL n a pas
+--      de type BLOB (il a bytea) ; SQLite, lui, accepte N IMPORTE QUEL nom de
+--      type par affinite -- le lint de sous-ensemble.test.ts le documente pour
+--      SERIAL, mesure a l appui. Ecrire BYTEA passerait donc les DEUX passes
+--      en signifiant deux choses differentes : c est le piege SERIAL a
+--      l envers, et aucun des deux gardes du depot ne l attrape.
+--   2. La doctrine est deja ecrite par la spec elle-meme, qui tranche pour la
+--      reprise de televersement en faveur d un LISTAGE DE REPERTOIRE, jamais
+--      d une table de comptabilite qui pourrait diverger du disque.
+--   3. Le volume : 4 576 398 octets mesures pour ce seul catalogue, dans un
+--      fichier SQLite qui porte par ailleurs des sessions et des jetons.
+--
+-- Aucun index n est ajoute : on ne cherche JAMAIS une application PAR son
+-- icone. Aucune cle etrangere non plus -- SQLite ne sait pas en ajouter par
+-- ALTER TABLE (leg n°2 de P1). Et ADD COLUMN plutot que DROP/CREATE, pour la
+-- raison que 0004 ecrit : entre deux gestes qui supposent la meme chose, on
+-- prend celui qui CRIE quand la supposition est fausse.
+
+-- L empreinte SHA-256 du PNG, en hexadecimal minuscule. NULL = l extraction a
+-- echoue, et ce n est PAS une erreur : une application sans icone vaut mieux
+-- qu une application absente.
+ALTER TABLE application ADD COLUMN icone TEXT NULL;
+
+-- La plus grande entree reellement PRESENTE dans le repertoire d icones de la
+-- source. NULL = `SourceMax::NonMesuree` -- voir l invariant a trois cas
+-- ci-dessus.
+--
+-- ⚠️ ELLE NE PORTE PAS LA CONVENTION `_a` et n en a pas besoin : ce n est pas
+-- un horodatage, et le lint des horodatages de sous-ensemble.test.ts ne la
+-- regarde donc pas. INTEGER suffit -- une taille d icone tient tres largement
+-- dans les 4 octets de Postgres, contrairement a un Date.now().
+ALTER TABLE application ADD COLUMN source_max_px INTEGER NULL;

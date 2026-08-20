@@ -11,6 +11,10 @@
 // d'une VM qu'il n'a pas authentifiée — c'est le trou exact que le refus du
 // battement ferme déjà, par une autre porte.
 
+import { createHash } from 'node:crypto';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WebSocketServer } from 'ws';
 import {
@@ -27,6 +31,7 @@ import { servirLeCanalAgent } from './canal';
 import { enrolerUneVm, ouvrir, SECRET, SECRET_VM, T0, type Pair } from './canal-harnais';
 import { RegistreAgents } from './registre';
 import { Frein } from '../securite/frein';
+import { ouvrirMagasin, type Magasin } from '../apps/icones';
 
 let base: Pilote | undefined;
 let wss: WebSocketServer | undefined;
@@ -44,9 +49,19 @@ afterEach(async () => {
     vi.restoreAllMocks();
 });
 
-async function demarrer(p: Pilote): Promise<number> {
+/// Le magasin du montage courant — `undefined` tant qu'aucun test n'en demande.
+let magasin: Magasin | undefined;
+let racinesIcones: string[] = [];
+
+async function demarrer(p: Pilote, avecMagasin = false): Promise<number> {
     maintenant = T0;
     registre = new RegistreAgents();
+    magasin = undefined;
+    if (avecMagasin) {
+        const r = mkdtempSync(join(tmpdir(), 'g2-canal-icones-'));
+        racinesIcones.push(r);
+        magasin = ouvrirMagasin(join(r, 'icones'), () => {});
+    }
     wss = new WebSocketServer({ port: 0, host: '127.0.0.1' });
     await new Promise<void>((r) => wss!.once('listening', () => r()));
     servirLeCanalAgent(wss, {
@@ -60,12 +75,13 @@ async function demarrer(p: Pilote): Promise<number> {
         frein: new Frein(),
         // Aucun proxy declare : la cle d'adresse est celle du pair reel.
         proxyDeConfiance: new Set(),
+        magasin,
     });
     const adresse = wss.address();
     return typeof adresse === 'object' && adresse ? adresse.port : 0;
 }
 
-function app(nom: string, cle: string): Application {
+function app(nom: string, cle: string, icone: string | null = null): Application {
     return {
         cle,
         nom,
@@ -73,6 +89,8 @@ function app(nom: string, cle: string): Application {
         cible: `c:\\program files\\${nom}\\${nom}.exe`,
         arguments: '',
         repertoire: `c:\\program files\\${nom}`,
+        icone,
+        source_max: icone === null ? 'non-mesuree' : { pixels: 256 },
     };
 }
 
@@ -235,5 +253,121 @@ describe('le canal /agent, côté applications', () => {
         // s'est lancé ».
         expect(await enVol).toBe('raccourci');
         pair.socket.terminate();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Sous-bloc G2 — l'inventaire des icônes manquantes.
+// ---------------------------------------------------------------------------
+
+/// 🔴 LES EMPREINTES SONT DÉRIVÉES DE LEUR CONTENU, JAMAIS INVENTÉES. Une
+/// première rédaction posait `'a'.repeat(64)` et déposait des octets
+/// quelconques dessous : `ecrire` l'a REFUSÉ — c'est la garde de recalcul
+/// faisant exactement son travail, sur le test qui l'ignorait.
+const OCTETS_1 = Buffer.from('\x89PNG-un');
+const OCTETS_2 = Buffer.from('\x89PNG-deux');
+const E1 = createHash('sha256').update(OCTETS_1).digest('hex');
+const E2 = createHash('sha256').update(OCTETS_2).digest('hex');
+
+/// Attend le prochain message poussé, ou rend `undefined` s'il n'en vient
+/// aucun.
+///
+/// 🔴 IL FAUT UNE ATTENTE POSITIVE POUR POUVOIR CONCLURE À L'ABSENCE. Le
+/// message est poussé APRÈS l'écriture du catalogue, qui est délibérément
+/// lancée SANS être attendue : conclure trop tôt rendrait le critère ⑤ vert
+/// sur un produit qui pousse bel et bien un message. `recevoir()` est bornée à
+/// 2 000 ms et LÈVE sur expiration — c'est cette levée qui vaut « aucun ».
+async function pousseOuRien(pair: Pair): Promise<Record<string, unknown> | undefined> {
+    try {
+        return await pair.recevoir();
+    } catch {
+        return undefined;
+    }
+}
+
+describe("l'inventaire des icônes manquantes", () => {
+    afterEach(() => {
+        for (const r of racinesIcones) rmSync(r, { recursive: true, force: true });
+        racinesIcones = [];
+    });
+
+    it('réclame les empreintes que le magasin n’a PAS', async () => {
+        base = await baseNeuve('canal-icones-manque');
+        const port = await demarrer(base, true);
+        await enrolerUneVm(base, 'v-1');
+        const pair = await ouvrir(port);
+        await enrole(pair);
+        pair.socket.send(encodeCatalogue(true, [app('A', 'c-a', E1), app('B', 'c-b', E2)], []));
+        const message = await pousseOuRien(pair);
+        expect(message, "l'inventaire doit être poussé").toBeDefined();
+        expect(message!.type).toBe('icones-manquantes');
+        expect(message!.empreintes).toEqual([E1, E2]);
+        expect(message!.v).toBe(PLATEFORME_VERSION);
+        pair.socket.close();
+    });
+
+    it('🔴 NE POUSSE RIEN quand le magasin a déjà tout — critère ⑤', async () => {
+        // 🔴 UNE LISTE VIDE COÛTERAIT UN MESSAGE PAR RÉCONCILIATION SUR UN
+        // DISQUE AU REPOS, c'est-à-dire toutes les trente secondes, pour
+        // toujours. C'est très exactement ce que le diff de G1 existe pour
+        // éviter, et c'est là que le critère ⑤ se juge.
+        base = await baseNeuve('canal-icones-rien');
+        const port = await demarrer(base, true);
+        magasin!.ecrire(E1, OCTETS_1);
+        magasin!.ecrire(E2, OCTETS_2);
+        await enrolerUneVm(base, 'v-1');
+        const pair = await ouvrir(port);
+        await enrole(pair);
+        pair.socket.send(encodeCatalogue(true, [app('A', 'c-a', E1), app('B', 'c-b', E2)], []));
+        // 🔴 LE CATALOGUE EST BIEN ARRIVÉ — sans quoi ce « rien » serait celui
+        // d'un produit EN PANNE, et ne dirait rien du tout.
+        await attendreCatalogue(base, 'v-1', (n) => n.includes('A'), 'écrit');
+        expect(await pousseOuRien(pair)).toBeUndefined();
+        pair.socket.close();
+    });
+
+    it('ne réclame QUE ce qui manque, et ignore les applications SANS icône', async () => {
+        base = await baseNeuve('canal-icones-partiel');
+        const port = await demarrer(base, true);
+        magasin!.ecrire(E1, OCTETS_1);
+        await enrolerUneVm(base, 'v-1');
+        const pair = await ouvrir(port);
+        await enrole(pair);
+        pair.socket.send(
+            encodeCatalogue(true, [app('A', 'c-a', E1), app('B', 'c-b', E2), app('C', 'c-c')], []),
+        );
+        const message = await pousseOuRien(pair);
+        expect(message!.empreintes).toEqual([E2]);
+        pair.socket.close();
+    });
+
+    it('🔴 REDEMANDE une icône dont le FICHIER a disparu — critère ⑦', async () => {
+        // 🔴 L'INVENTAIRE INTERROGE LE DISQUE, PAS UNE TABLE. Une table de
+        // comptabilité ne verrait pas la perte, et l'icône serait perdue POUR
+        // TOUJOURS. C'est ce qui rend le magasin AUTO-RECONSTRUCTIBLE, et donc
+        // le disque acceptable.
+        base = await baseNeuve('canal-icones-perdu');
+        const port = await demarrer(base, true);
+        magasin!.ecrire(E1, OCTETS_1);
+        rmSync(join(magasin!.repertoire, E1));
+        await enrolerUneVm(base, 'v-1');
+        const pair = await ouvrir(port);
+        await enrole(pair);
+        pair.socket.send(encodeCatalogue(true, [app('A', 'c-a', E1)], []));
+        const message = await pousseOuRien(pair);
+        expect(message!.empreintes).toEqual([E1]);
+        pair.socket.close();
+    });
+
+    it('sans magasin, aucun inventaire — et le catalogue s’écrit quand même', async () => {
+        base = await baseNeuve('canal-icones-sans-magasin');
+        const port = await demarrer(base, false);
+        await enrolerUneVm(base, 'v-1');
+        const pair = await ouvrir(port);
+        await enrole(pair);
+        pair.socket.send(encodeCatalogue(true, [app('A', 'c-a', E1)], []));
+        await attendreCatalogue(base, 'v-1', (n) => n.includes('A'), 'écrit');
+        expect(await pousseOuRien(pair)).toBeUndefined();
+        pair.socket.close();
     });
 });

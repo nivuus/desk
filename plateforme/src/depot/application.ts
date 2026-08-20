@@ -25,6 +25,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Pilote } from '../base/pilote';
 import type { Connue, Fusion } from '../apps/catalogue';
+import type { SourceMax } from '../../../proto/ts/plateforme';
 
 export interface LigneApplication {
     id: string;
@@ -59,12 +60,36 @@ export interface LigneApplication {
     disparue_a: number | null;
     /// Le geste explicite qui masque une entrée. ⚠️ AUCUN ÉCRIVAIN EN G1.
     masquee_a: number | null;
+    /// L'empreinte SHA-256 du PNG, en hexadécimal minuscule. `null` =
+    /// l'extraction a échoué, et ce n'est PAS une erreur.
+    icone: string | null;
+    /// 🔴 `null` = `SourceMax.NonMesuree`, JAMAIS `0` NI `256`. La colonne est
+    /// `INTEGER` : elle ne peut pas porter le mot `non-mesuree`. Voir
+    /// l'invariant à trois cas de `0005-icones.sql`, et la quatrième
+    /// combinaison qui y est INTERDITE.
+    source_max_px: number | null;
+}
+
+/// Reconstruit la `SourceMax` du fil depuis les deux colonnes.
+///
+/// 🔴 ÉCRITE UNE SEULE FOIS, ICI, ET C'EST DÉLIBÉRÉ : deux reconstructions
+/// divergeraient le jour où l'une déciderait que `null` vaut `0`. C'est le
+/// critère ④ jusqu'au bout de la chaîne — `NonMesuree` n'est JAMAIS rendue
+/// comme un nombre.
+export function sourceMaxDepuis(px: number | null): SourceMax {
+    return px === null ? 'non-mesuree' : { pixels: px };
+}
+
+/// L'inverse : ce qu'on écrit en colonne pour une `SourceMax` du fil.
+export function pxDepuisSourceMax(source: SourceMax): number | null {
+    return source === 'non-mesuree' ? null : source.pixels;
 }
 
 /// Les colonnes sont ÉNUMÉRÉES, jamais `SELECT *` : une colonne ajoutée un
 /// jour n'apparaîtrait pas toute seule dans un type qui ne la déclare pas.
 const COLONNES =
-    'id, vm_id, nom, chemin, vue_a, cle, cible, arguments, repertoire, apparue_a, disparue_a, masquee_a';
+    'id, vm_id, nom, chemin, vue_a, cle, cible, arguments, repertoire, apparue_a, disparue_a,'
+    + ' masquee_a, icone, source_max_px';
 
 /// Le catalogue AFFICHABLE d'une VM : ni les disparues, ni les masquées.
 ///
@@ -130,7 +155,11 @@ export async function appliquer(
     await p.transaction(async (tx) => {
         for (const app of fusion.aInserer) {
             await tx.executer(
-                `INSERT INTO application(${COLONNES}) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                // 🔴 QUATORZE MARQUEURS POUR QUATORZE COLONNES. Un `INSERT`
+                // mal compté LÈVE sur les DEUX moteurs — c'est le garde le
+                // moins cher du fichier, et il est gratuit.
+                `INSERT INTO application(${COLONNES})`
+                    + ' VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
                     randomUUID(),
                     vmId,
@@ -147,6 +176,8 @@ export async function appliquer(
                     maintenant,
                     null,
                     null,
+                    app.icone,
+                    pxDepuisSourceMax(app.source_max),
                 ],
             );
         }
@@ -160,10 +191,26 @@ export async function appliquer(
             // elle qu'on a trouvé la ligne, et elle est l'identité. La
             // réécrire n'aurait aucun effet dans le meilleur des cas, et
             // violerait `application_cle` dans le pire.
+            // ⚠️ `icone` ET `source_max_px` SONT DANS CE `SET`, contrairement
+            // à `cle` et `apparue_a`. Une icône CHANGE quand l'application se
+            // met à jour, et c'est le cas nominal, pas l'exception : les
+            // omettre ferait qu'une icône neuve n'atteindrait jamais la base,
+            // et le seul symptôme serait une image périmée que rien
+            // n'expliquerait.
             await tx.executer(
                 'UPDATE application SET nom = ?, chemin = ?, cible = ?, arguments = ?,'
-                    + ' repertoire = ?, vue_a = ? WHERE id = ?',
-                [app.nom, app.chemin, app.cible, app.arguments, app.repertoire, maintenant, id],
+                    + ' repertoire = ?, vue_a = ?, icone = ?, source_max_px = ? WHERE id = ?',
+                [
+                    app.nom,
+                    app.chemin,
+                    app.cible,
+                    app.arguments,
+                    app.repertoire,
+                    maintenant,
+                    app.icone,
+                    pxDepuisSourceMax(app.source_max),
+                    id,
+                ],
             );
         }
 
