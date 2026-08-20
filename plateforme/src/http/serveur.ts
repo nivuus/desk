@@ -30,6 +30,7 @@ import { garde } from '../identite/garde';
 import { servirAuth } from './routes-auth';
 import { servirVm } from './routes-vm';
 import { servirSession } from './routes-session';
+import { servirApplications } from './routes-applications';
 import { createSignalingServer } from '../signaling/relais';
 import { ProprieteDeSession } from '../signaling/propriete';
 import { observateurDeSession } from '../signaling/trace';
@@ -68,26 +69,52 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     // passée ici comme à la garde, à la trace et au canal : aucun module du
     // service ne lit d'horloge lui-même. C'est ce qui rend la borne de
     // fraîcheur assertable sur une valeur exacte dans les tests de route.
+    // Le registre des sockets d'agent vivants, construit UNE FOIS et partagé
+    // entre le canal (qui y inscrit) et les routes (qui y lancent). C'est le
+    // seul endroit du service qui en fabrique un.
+    //
+    // ⚠️ IL A LE MÊME COÛT QUE `ProprieteDeSession`, ET IL EST NOMMÉ AU MÊME
+    // ENDROIT : il ne survit pas à un redémarrage. Après un redémarrage, aucun
+    // agent n'y figure tant qu'il ne s'est pas ré-enrôlé, et tout lancement
+    // rend `agent-injoignable` — bruyamment. Le rattrapage est la reconnexion
+    // de l'agent, qui le reconstitue sans que personne ne le persiste.
+    const registreAgents = new RegistreAgents();
+
     const deps = {
         base,
         secretJeton: config.secretJeton,
         origineClient: config.origineClient,
         maintenant: Date.now,
+        // ⚠️ SEUL `servirApplications` LE LIT ; les trois autres routeurs
+        // l'ignorent. Il est posé ici plutôt que passé à part pour que le
+        // chaînage reste une seule ligne par routeur, et parce qu'un objet de
+        // dépendances par routeur ferait quatre listes à tenir à jour.
+        registre: registreAgents,
     };
 
     /// Essaie les routeurs dans l'ordre, et rend `false` si aucun n'a servi.
     ///
-    /// ⚠️ L'ORDRE EST SIGNIFIANT MAIS NON CONTRAIGNANT ICI : les trois jeux de
-    /// chemins sont DISJOINTS (`/auth/*`, `/vm*`, `/session`), et chacun compare
-    /// exactement plutôt que par préfixe. Un `await` de plus ne coûte donc rien
-    /// à personne — mais le jour où deux routeurs se disputeraient un chemin,
-    /// c'est cet ordre qui trancherait, en silence.
+    /// ⚠️ L'ORDRE EST SIGNIFIANT MAIS NON CONTRAIGNANT ICI : les quatre jeux de
+    /// chemins sont DISJOINTS (`/auth/*`, `/vm*`, `/session`, `/application*`),
+    /// et chacun compare exactement plutôt que par préfixe. Un `await` de plus
+    /// ne coûte donc rien à personne — mais le jour où deux routeurs se
+    /// disputeraient un chemin, c'est cet ordre qui trancherait, en silence.
+    ///
+    /// 🔴 LE ROUTEUR DES APPLICATIONS EST CHAÎNÉ AVANT LE 404, ET C'EST LA
+    /// SEULE LIGNE QUI LE FAIT VIVRE. Sans elle, ses deux routes rendraient le
+    /// 404 générique — c'est-à-dire la panne la plus discrète possible : le
+    /// service répond, écoute, et sert les trois autres. `serveur.test.ts` la
+    /// tient par un test dédié, comme il tient déjà le canal `/agent`.
+    ///
+    /// ⚠️ LE CORPS DU 404 N'EST PAS TOUCHÉ : « rien ne le testait avant P2, et
+    /// le changer serait un effet de bord non déclaré ».
     async function servirTout(
         requete: IncomingMessage,
         reponse: ServerResponse,
     ): Promise<boolean> {
         if (await servirAuth(requete, reponse, deps)) return true;
         if (await servirVm(requete, reponse, deps)) return true;
+        if (await servirApplications(requete, reponse, deps)) return true;
         return servirSession(requete, reponse, deps);
     }
 
@@ -134,16 +161,6 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     // Son coût — il ne survit pas à un redémarrage — est écrit dans
     // `signaling/propriete.ts`.
     const gardeDuService = garde(config.secretJeton, Date.now, new ProprieteDeSession());
-    // Le registre des sockets d'agent vivants, construit UNE FOIS et partagé
-    // entre le canal (qui y inscrit) et les routes (qui y lancent). C'est le
-    // seul endroit du service qui en fabrique un.
-    //
-    // ⚠️ IL A LE MÊME COÛT QUE `ProprieteDeSession`, ET IL EST NOMMÉ AU MÊME
-    // ENDROIT : il ne survit pas à un redémarrage. Après un redémarrage, aucun
-    // agent n'y figure tant qu'il ne s'est pas ré-enrôlé, et tout lancement
-    // rend `agent-injoignable` — bruyamment. Le rattrapage est la reconnexion
-    // de l'agent, qui le reconstitue sans que personne ne le persiste.
-    const registreAgents = new RegistreAgents();
     // 🔴 LE CANAL EST BRANCHÉ ICI, ET C'EST LA SEULE LIGNE QUI LE FAIT VIVRE.
     // Sans elle, `wssAgent` accepterait toujours la montée sur `/agent` et
     // n'écouterait RIEN : le pair verrait une connexion réussie, puis un
