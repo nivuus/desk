@@ -1,0 +1,202 @@
+════════ RECETTE S4 ════════
+date        : 2026-08-20T08:21:54+02:00
+arbre       : 25fb6c6  (design(s4): le WCO -- la regle est livree, et le garde prouve qu'elle est INERTE)
+base du ③   : 23e9b89  (corrige(g1): inscrire la lacune de couverture du nommage, et prouver R)
+git status --porcelain client/ : []
+
+════════ ① LES NEUF CONTRÔLES SONT VERTS ════════
+--- sept scripts, par l'agrégateur ---
+design:verifier exit=0
+==> npm run build (sans quoi §7.3 et §7.7 jugeraient le build d’avant)
+
+> @guacamole/client@0.1.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 47 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                           5.38 kB │ gzip: 2.59 kB
+dist/connexion.html                       5.41 kB │ gzip: 2.24 kB
+dist/shell.html                           6.47 kB │ gzip: 2.94 kB
+dist/design.html                         12.67 kB │ gzip: 4.35 kB
+dist/primitives.html                     13.58 kB │ gzip: 4.86 kB
+dist/assets/connexion-CyWgt4IO.css        0.56 kB │ gzip: 0.28 kB
+dist/assets/shell-DOxLHPYF.css            1.10 kB │ gzip: 0.45 kB
+dist/assets/main-Dlm3yd2-.css             1.85 kB │ gzip: 0.64 kB
+dist/assets/socle-DxxXR2Fj.css            2.28 kB │ gzip: 0.96 kB
+dist/assets/primitives-Cdify15A.css       2.83 kB │ gzip: 0.66 kB
+dist/assets/primitives-YI7rsRjD.js        0.25 kB │ gzip: 0.21 kB
+dist/assets/jeton-kqOyiZdD.js             0.26 kB │ gzip: 0.18 kB
+dist/assets/prefixe-iK9obSCN.js           0.62 kB │ gzip: 0.40 kB
+dist/assets/socle-BZq00WiM.js             0.71 kB │ gzip: 0.40 kB
+dist/assets/selecteur-theme-sHUmq49u.js   1.05 kB │ gzip: 0.55 kB
+dist/assets/connexion-BObhQM_F.js         2.03 kB │ gzip: 1.00 kB
+dist/assets/webrtc-DpgdNYJG.js            3.71 kB │ gzip: 1.65 kB
+dist/assets/shell-YrBwGQ-0.js            10.65 kB │ gzip: 4.27 kB
+dist/assets/design-B7SQywqj.js           19.98 kB │ gzip: 8.17 kB
+dist/assets/main-_lJy3IEu.js             20.28 kB │ gzip: 7.12 kB
+✓ built in 916ms
+
+==> §7.4  les trois blocs de thème ne divergent pas
+fichier : client/src/design/tokens.css
+  bloc racine : 52 token(s)
+  bloc media-clair : 14 token(s)
+  bloc attribut-clair : 14 token(s)
+portée : ① clair ≡ clair, ② clair ⊆ racine, ③ couleurs de racine ⊆ clair sauf 7 hors-thème nommés
+écarts : 0
+
+==> §7.1  les contrastes tiennent les seuils WCAG
+paires vérifiées : 53
+échecs : 0
+minimum global : 3.16
+
+==> §7.2  aucune couleur littérale hors de tokens.css
+fichiers balayés : 69
+couleurs littérales : 0
+
+==> §7.6  aucun token orphelin, aucun var() non déclaré
+source        : client/src/design/tokens.css — 52 token(s) déclaré(s)
+périmètre     : 14 fichier(s) — 52 token(s) employé(s)
+  balayés : client/src/connexion.css, client/src/design/base.css, client/src/design/primitives/bouton.css, client/src/design/primitives/champ.css, client/src/design/primitives/message.css, client/src/design/primitives/surface.css, client/src/design/primitives.css, client/src/design/socle.css, client/src/session/etat-terminal.css, client/src/shell.css, client/src/style.css, client/index.html, client/shell.html, client/connexion.html
+  exclu : client/design.html — la galerie rend tous les tokens par construction ; l’inclure rendrait l’inclusion « déclaré ⊆ employé » vraie pour toujours
+  exclu : client/primitives.html — une page de démonstration emploie des tokens par construction, dans sa propre mise en page ; l’inclure ferait sortir de la liste d’attente des tokens que le PRODUIT n’appelle pas
+
+inclusion ① — tout var(--…) est déclaré : 0 écart(s)
+inclusion ② — tout token déclaré a un appelant : 0 orphelin(s), dont 0 en attente déclarée
+
+inclusion ③ — aucune entrée ne nomme un sous-bloc clos (S1, S2, S3, S4) : 0 écart(s)
+
+total : 0 écart(s)
+les trois assertions tiennent ; 0 token(s) restent en attente d'appelant, nommés dans tokens-orphelins/attente.mjs
+
+==> §7.9  toute classe employée est déclarée, et une primitive atteint le produit
+déclarées : 58 classe(s)
+employées : 56 classe(s)
+familles de primitives : bouton, champ, message, surface
+
+① toute classe employée est déclarée : 0 écart(s)
+
+② A — les primitives atteignent le PRODUIT, CHACUNE des trois surfaces :
+  client/index.html : message, surface
+  client/shell.html : bouton, message, surface
+  client/connexion.html : bouton, champ, message, surface
+
+③ B — chaque famille est rendue par client/primitives.html :
+  bouton : 4 classe(s) employée(s) sur 4 déclarée(s)
+  champ : 6 classe(s) employée(s) sur 6 déclarée(s)
+  message : 5 classe(s) employée(s) sur 5 déclarée(s)
+  surface : 4 classe(s) employée(s) sur 4 déclarée(s)
+
+total : 0 écart(s)
+
+==> §7.3  toute surface bâtie porte les tokens
+pages bâties : 5 (connexion.html, design.html, index.html, primitives.html, shell.html)
+
+assertion A — un <link rel="stylesheet"> par page : 0 échec(s)
+assertion B — une feuille liée déclarant --fond-0 : 0 échec(s) (évaluée sur 5 page(s))
+
+les DEUX assertions sont vertes
+
+==> §7.7  le poids CSS ne dérive pas
+    563  connexion-CyWgt4IO.css
+   1849  main-Dlm3yd2-.css
+   2830  primitives-Cdify15A.css
+   1098  shell-DOxLHPYF.css
+   2276  socle-DxxXR2Fj.css
+feuilles émises : 5
+somme : 8616 octets
+plafond : 12288 octets (arbitraire, voir l'en-tête)
+marge : 3672 octets
+
+═══ 7/7 contrôle(s) vert(s) ═══
+  §7.5 (la bascule de thème) est un test unitaire : il tourne dans `npm test`.
+
+--- deux tests unitaires : §7.5 (bascule de thème) et §7.10 (longueurs) ---
+stdout | src/design/longueurs.test.ts
+§7.10  feuilles de surface : 4
+       déclarations lues : 126, dont 67 par un token
+       hors token : 0 occurrence(s), 0 valeur(s) distincte(s)
+ ✓ src/design/longueurs.test.ts (2 tests) 17ms
+stdout | src/style.test.ts
+garde WCO  feuilles de client/src/ : 12
+           env(titlebar-area-*) lus : 2
+           client/src/session/etat-terminal.css  env(titlebar-area-height, 0px)
+           client/src/style.css  env(titlebar-area-height, 0px)
+ ✓ src/style.test.ts (6 tests) 12ms
+ ✓ src/design/selecteur-theme.test.ts (8 tests) 19ms
+ ✓ src/design/reprise.test.ts (6 tests) 19ms
+ ✓ src/ecran-terminal.test.ts (6 tests) 9ms
+ Test Files  30 passed (30)
+      Tests  279 passed (279)
+
+════════ ③ LA FENÊTRE DE SESSION A BOUGÉ ════════
+--- git diff --stat 23e9b89..HEAD sur les deux fichiers du critère ③ de S3 ---
+ client/index.html    |  28 +++++++-
+ client/src/style.css | 197 ++++++++++++++++++++++++++++++++++++++++-----------
+ 2 files changed, 182 insertions(+), 43 deletions(-)
+
+--- les CINQ actifs CSS bâtis : base contre HEAD ---
+[base]
+b283b1baeb20c4ca932f3c777366fa4a51fc3a00baea2b2a3bbd380e6c93a401  dist/index.html
+916f258441ef320335a2a8e88d6185bc7a1f365d2d36a95f090a52b20052c105  connexion-BM9rYjiV.css
+5168f3fe137ba39ad9df5b78251e9d0f13e338ba95c4fbf196289e92905a690c  main-CXZaIG5L.css
+2143a99f15667248bdc971057792873d71529c414cf8a6584dce8320dc31a3b6  primitives-D5YB3zNP.css
+a97a68e179dcaa53260d8c56d8016cb536c3253a427c9d8add0d467b74eef23e  shell-C87uhTzH.css
+aa669b75847d36a8261fcb305976618a5cf8dd748352cbfa3625cfef631b5efe  socle-ZRS7erzW.css
+[HEAD]
+6857647940c8622927542ba0de40823b1179e3d94e7a4d463f936868562549a8  dist/index.html
+38a21f159d4ea612a389ddea18168c5c09316240ca7960d7ae329aab5e7fc878  connexion-CyWgt4IO.css
+f775105cdb72b947dfbed237553a560fadbc6d759ba47756c7e366a954ed873e  main-Dlm3yd2-.css
+5afab4bc3e92fd2f54d1282545192de87b7ccd2658972dc5da21968fd5fe30c5  primitives-Cdify15A.css
+7411fc06fa00a22e8cc0b50b41d3bd8cd1f6ce203f5da21cea28d4ed6a4ce483  shell-DOxLHPYF.css
+5b4b73f4fabb495ea8f00d9f907c16f29dcafaa12fad1e14a9e5c98528d1b47c  socle-DxxXR2Fj.css
+
+--- poids CSS, base contre HEAD ---
+base : 8011
+HEAD : 8616
+
+--- le balisage arrive-t-il dans le bâti ? ---
+dist/index.html porte id="fin" : 1
+
+════════ SYNTHÈSE, CRITÈRE PAR CRITÈRE ════════
+① les NEUF contrôles :
+   ═══ 7/7 contrôle(s) vert(s) ═══  (sept scripts)
+    Test Files  30 passed (30)  /        Tests  279 passed (279)  (deux tests unitaires dedans : §7.5, §7.10)
+   §7.5 :  ✓ src/design/selecteur-theme.test.ts (8 tests) 19ms
+   §7.10 : stdout | src/design/longueurs.test.ts
+ ✓ src/design/longueurs.test.ts (2 tests) 17ms
+② la liste d'attente est VIDE :
+   source        : client/src/design/tokens.css — 52 token(s) déclaré(s)
+   périmètre     : 14 fichier(s) — 52 token(s) employé(s)
+   inclusion ② — tout token déclaré a un appelant : 0 orphelin(s), dont 0 en attente déclarée
+   les trois assertions tiennent ; 0 token(s) restent en attente d'appelant, nommés dans tokens-orphelins/attente.mjs
+④ la fenêtre de session emploie des primitives (§7.9) :
+   total : 0 écart(s)
+   ① toute classe employée est déclarée : 0 écart(s)
+     client/index.html : message, surface
+     client/shell.html : bouton, message, surface
+     client/connexion.html : bouton, champ, message, surface
+   total : 0 écart(s)
+⑤ plus aucune longueur hors token (§7.10) :
+   §7.10  feuilles de surface : 4
+          hors token : 0 occurrence(s), 0 valeur(s) distincte(s)
+   à la NAISSANCE du contrôle (commit ee56e1e) : 8 occurrence(s), 6 valeur(s)
+⑥ les contrastes (§7.1) :
+   paires vérifiées : 53
+   échecs : 0
+   minimum global : 3.16
+⑦ le poids CSS (§7.7) :
+       563  connexion-CyWgt4IO.css
+      1849  main-Dlm3yd2-.css
+      2830  primitives-Cdify15A.css
+      1098  shell-DOxLHPYF.css
+      2276  socle-DxxXR2Fj.css
+   feuilles émises : 5
+   somme : 8616 octets
+   plafond : 12288 octets (arbitraire, voir l'en-tête)
+   marge : 3672 octets
+   base 23e9b89 : 8011 octets (relevé par la commande, plus haut)
+— le jugement visuel : NON PORTÉ, et il ne l'a jamais été sur ⑥ (§10 du plan)
+════════ fin ════════
