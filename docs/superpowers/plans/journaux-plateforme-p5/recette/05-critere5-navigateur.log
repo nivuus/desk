@@ -1,0 +1,264 @@
+=== CRITERE ⑤ — le chemin NAVIGATEUR REEL, derriere le VRAI proxy ===
+Date UTC : 2026-08-20T08:53:18Z
+Commit au demarrage : d9dc3715c81526e77a023ccb2275e17a829c5d55
+Montage : profil 'deploiement' COMPLET — postgres-deploiement + plateforme + proxy nginx,
+          TLS termine par nginx sur 127.0.0.1:8443, certificat auto-signe ENGENDRE DANS /tmp
+          puis copie dans 'deploiement/tls/' (repertoire GITIGNORE, verifie par git check-ignore).
+Navigateur : Google Chrome 151.0.7922.169 , pilote par CDP.
+
+########## 🔴 DEFAUT DE PRODUIT TROUVE EN EXECUTANT — LE SERVICE NE DEMARRE PAS ##########
+
+Premier demarrage du profil complet, 20 aout 2026. nginx demarre, postgres est sain,
+et le service 'plateforme' MEURT au chargement :
+
+plateforme-1  |     throw new ERR_MODULE_NOT_FOUND(
+plateforme-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/opt/proto/ts/plateforme' imported from /opt/plateforme/src/agents/canal.ts
+plateforme-1  |   code: 'ERR_MODULE_NOT_FOUND',
+plateforme-1  |   url: 'file:///opt/proto/ts/plateforme'
+
+CAUSE : le contexte de construction de l'image est './plateforme' (docker-compose.
+plateforme.yml, service 'plateforme'), et le Dockerfile n'y copie que 'src'. Or TROIS
+fichiers de PRODUCTION importent '../../../proto/ts/plateforme' :
+    plateforme/src/agents/registre.ts:26:import type { IssueLancement } from '../../../proto/ts/plateforme';
+    plateforme/src/agents/registre.ts:27:import { encodeLancer } from '../../../proto/ts/plateforme';
+    plateforme/src/agents/canal.ts:53:} from '../../../proto/ts/plateforme';
+    plateforme/src/apps/catalogue.ts:24:import type { Application, CatalogueMessage } from '../../../proto/ts/plateforme';
+
+L'image ne porte donc pas 'proto/ts/', et le service ne peut PAS demarrer. Ni les 433
+tests, ni 'nginx -t', ni 'docker compose config', ni 'docker build' ne le voyaient :
+l'image se CONSTRUIT sans erreur, elle ne DEMARRE pas.
+
+⚠️ CE DEFAUT ETAIT INATTEIGNABLE AVANT CE CRITERE. Le Dockerfile est ne a la tache 13
+   (« un manque du plan, comble au plus petit », dit son propre en-tete) et n'avait
+   jamais ete LANCE — seulement bati. C'est exactement ce que le critere ⑤ existe pour
+   fermer : « ce qu'un navigateur exige et qu'un test serveur ne voit pas », etendu ici
+   a « ce qu'un DEMARRAGE exige et qu'une CONSTRUCTION ne voit pas ».
+
+########## LE MONTAGE, APRES CORRECTION ##########
+
+guacamole-plateforme-1  Up 4 minutes  
+guacamole-postgres-deploiement-1  Up 14 minutes (healthy)  127.0.0.1:5434->5432/tcp
+guacamole-postgres-plateforme-1  Up 22 hours (healthy)  127.0.0.1:5433->5432/tcp
+guacamole-proxy-1  Up 6 minutes  80/tcp, 127.0.0.1:8443->443/tcp
+
+service : plateforme-1  | plateforme à l'écoute sur plateforme, le port 8080
+PLATEFORME_PROXY_DE_CONFIANCE dans le conteneur = 172.18.0.5
+  (invariant ③ du runbook : l'adresse INTERNE du proxy, relue dans le processus ;
+   et le service a ete RELANCE avec — invariant ④.)
+
+⚠️ SECOND OBSTACLE DE MONTAGE, RENCONTRE ET CONSIGNE : nginx rendait 403 sur la page
+   et 500 sur ses ressources. Cause : 'client/dist' est en 0750 root:root (l'umask de
+   ce depot), et le WORKER nginx tourne en utilisateur 'nginx'. Ce n'est pas un defaut
+   du produit, c'est une condition de deploiement que le runbook ne dit pas ; elle est
+   ajoutee a 'deploiement/README.md'. Remede applique : chmod -R a+rX client/dist.
+
+########## LES DEUX EXECUTIONS VERTES ##########
+Dockerfile
+Dockerfile.dockerignore
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+--- [execution 1 — CSP LIVREE] ---
+  url                    : https://localhost:8443/recette-p5.html
+  contexte               : {"protocole":"https:","securise":true}
+  SCRIPT_OK (le script a tourne) : true
+  (a) protocole de la page      : https:
+  (b) violations CSP dans la page : 0
+  (c) montee wss://localhost:8443/ : WS-OUVERT
+  (d) POST /auth/connexion      : statut 200, corps lisible = true
+      champs du corps (NOMS seuls) : ["acces","expire_a","rafraichissement"]
+  journal console — entrees mentionnant la CSP : 0
+  journal console — entrees d'erreur : 0
+Dockerfile
+Dockerfile.dockerignore
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+--- [execution 2 — CSP LIVREE] ---
+  url                    : https://localhost:8443/recette-p5.html
+  contexte               : {"protocole":"https:","securise":true}
+  SCRIPT_OK (le script a tourne) : true
+  (a) protocole de la page      : https:
+  (b) violations CSP dans la page : 0
+  (c) montee wss://localhost:8443/ : WS-OUVERT
+  (d) POST /auth/connexion      : statut 200, corps lisible = true
+      champs du corps (NOMS seuls) : ["acces","expire_a","rafraichissement"]
+  journal console — entrees mentionnant la CSP : 0
+  journal console — entrees d'erreur : 0
+
+########## ROUGE n°1 — GRATUITE : le client D'AVANT la tache 16 ##########
+La page rouge reprend la ligne EXACTE de 'git show 7566b12^:client/src/main.ts' :
+    34:const url = `ws://${window.location.hostname}:8080`;
+Tout le reste de la page est identique caractere pour caractere a la page verte.
+
+Dockerfile
+Dockerfile.dockerignore
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+--- [ROUGE — client d avant t16, ws:// depuis une page https://] ---
+  url                    : https://localhost:8443/rouge-t16.html
+  contexte               : {"protocole":"https:","securise":true}
+  SCRIPT_OK (le script a tourne) : true
+  (a) protocole de la page      : https:
+  (b) violations CSP dans la page : 1
+        connect-src bloque ws://localhost:8080/
+  (c) montee ws://localhost:8080 : WS-REFUSE
+  (d) POST /auth/connexion      : statut 200, corps lisible = true
+      champs du corps (NOMS seuls) : ["acces","expire_a","rafraichissement"]
+  journal console — entrees mentionnant la CSP : 1
+        [security/error] Connecting to 'ws://localhost:8080/' violates the following Content Security Policy directive: "connect-src 'self' wss: https:". The action has been blocked.
+  journal console — entrees d'erreur : 1
+        Connecting to 'ws://localhost:8080/' violates the following Content Security Policy directive: "connect-src 'self' wss: https:". The action has been blocked.
+
+=> FORME de la rouge n°1 : 1 violation CSP, WS-REFUSE, et le journal la NOMME.
+   ⚠️ NUANCE HONNETE : ce qui refuse ici est la CSP ('connect-src self wss: https:'
+   n'autorise pas le schema 'ws:'), et non le bloqueur de contenu mixte. Les deux
+   auraient attrape ce cas ; le journal ne montre que le premier a avoir mordu.
+   Ce que la rouge etablit sans ambiguite : la page d'avant t16 N'OUVRE PAS son canal
+   depuis une page https, la ou celle d'apres t16 l'ouvre — deux executions chacune.
+
+########## ROUGE n°2 — LA ROUGE QUI DISCRIMINE LA CSP : connect-src 'none' ##########
+
+🔴 LA ROUGE QUE LE PLAN PRESCRIT POUR LA TACHE 14 EST VACUEUSE, ET LA TACHE 14 L'A
+   DEJA MESURE : « retirer connect-src wss: » ne casse RIEN, parce que 'self' couvre
+   deja une montee wss:// de MEME ORIGINE. La rouge discriminante est 'connect-src
+   none', nommee dans le commentaire de la ligne CSP a cet effet. C'est celle-ci.
+
+Mutation, sur la copie MONTEE dans le proxy (deploiement/nginx.conf), restauree apres :
+-            add_header Content-Security-Policy "default-src 'self'; connect-src 'self' wss: https:; img-src 'self' data: blob:; media-src 'self' blob:; script-src 'self'; style-src 'self' 'unsafe-inl
++            add_header Content-Security-Policy "default-src 'self'; connect-src 'none'; img-src 'self' data: blob:; media-src 'self' blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; font-s
+Dockerfile
+Dockerfile.dockerignore
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+--- [ROUGE — CSP connect-src none] ---
+  url                    : https://localhost:8443/recette-p5.html
+  contexte               : {"protocole":"https:","securise":true}
+  SCRIPT_OK (le script a tourne) : true
+  (a) protocole de la page      : https:
+  (b) violations CSP dans la page : 2
+        connect-src bloque wss://localhost:8443/
+        connect-src bloque https://localhost:8443/auth/connexion
+  (c) montee wss://localhost:8443/ : WS-REFUSE
+  (d) POST /auth/connexion      : statut null, corps lisible = false
+      champs du corps (NOMS seuls) : null
+      erreur : TypeError: Failed to fetch
+  journal console — entrees mentionnant la CSP : 3
+        [security/error] Connecting to 'wss://localhost:8443/' violates the following Content Security Policy directive: "connect-src 'none'". The action has been blocked.
+        [security/error] Connecting to 'https://localhost:8443/auth/connexion' violates the following Content Security Policy directive: "connect-src 'none'". The action has been blocked.
+        [javascript/error] Fetch API cannot load https://localhost:8443/auth/connexion. Refused to connect because it violates the document's Content Security Policy.
+  journal console — entrees d'erreur : 3
+        Connecting to 'wss://localhost:8443/' violates the following Content Security Policy directive: "connect-src 'none'". The action has been blocked.
+        Connecting to 'https://localhost:8443/auth/connexion' violates the following Content Security Policy directive: "connect-src 'none'". The action has been blocked.
+        Fetch API cannot load https://localhost:8443/auth/connexion. Refused to connect because it violates the document's Content Security Policy.
+restauration de nginx.conf : 0 ligne(s) de diff residuel (0 = restaure)
+
+=> FORME de la rouge n°2 : les TROIS assertions du critere tombent ensemble —
+   (b) 2 violations dans la page, (c) WS-REFUSE, (d) 'Failed to fetch', corps illisible.
+   Les trois sont donc CAPABLES d'echouer, ce qui est ce qu'on demande d'un controle.
+   Seul « WS-REFUSE » vaut comme preuve de refus (defaut d'instrument caracterise a la
+   tache 14) : c'est bien ce que rend cette rouge, et la decision de politique y est
+   SYNCHRONE, donc insensible au minutage.
+
+########## (d), SA SECONDE MOITIE : LA REQUETE PREALABLE 'OPTIONS' ##########
+
+🔴 IL FAUT DIRE CE QUE LE MONTAGE NOMINAL FAIT, ET NON CE QU'ON ESPERAIT MESURER :
+   la page et l'API sont servies par le MEME proxy, donc sur la MEME ORIGINE. Un
+   navigateur n'emet alors AUCUNE requete prealable — il n'y a pas de CORS a negocier.
+   C'est la configuration que 'docker-compose.plateforme.yml' documente comme nominale
+   ('PLATEFORME_ORIGINE_CLIENT ... FACULTATIVE ... la page et l'API etant servies par
+   le meme proxy, donc sur la MEME origine').
+
+   La moitie mesurable est donc : le proxy ACHEMINE-T-IL la methode OPTIONS jusqu'au
+   service, et le service la traite-t-il ? Mesure directe, a travers le proxy :
+
+$ curl -X OPTIONS https://localhost:8443/auth/connexion -H 'Origin: https://ailleurs.example' -H 'Access-Control-Request-Method: POST'
+HTTP/2 204 
+server: nginx
+date: Thu, 20 Aug 2026 09:00:20 GMT
+x-content-type-options: nosniff
+cache-control: no-store
+
+
+$ curl -X OPTIONS https://localhost:8443/session  (l'autre routeur qui traite OPTIONS)
+http=204
+
+⚠️ LECTURE : le service REPOND a OPTIONS a travers le proxy (statut ci-dessus), et il
+   ne pose AUCUN en-tete CORS — ce qui est le comportement voulu ici, puisque
+   PLATEFORME_ORIGINE_CLIENT n'est pas posee : aucune origine tierce n'est autorisee.
+   Un navigateur d'une AUTRE origine se verrait donc refuser la requete, et c'est le
+   reglage de deploiement, pas un defaut.
+
+⚠️ CE QUI N'EST DONC PAS MESURE : le chemin CORS avec une origine tierce autorisee
+   (PLATEFORME_ORIGINE_CLIENT posee). Il est couvert par les tests d'hote
+   ('http/cors.test.ts', 'routes-auth.test.ts' (f)), JAMAIS par un navigateur reel.
+
+########## CONTROLE SUPPLEMENTAIRE : X-Forwarded-For MORD-IL VRAIMENT ? ##########
+
+🔴 C'est l'invariant ③ du runbook, et le defaut n°2 que la tache 14 a trouve EN
+   EXECUTANT (nginx REMPLACE les proxy_set_header au lieu de les fusionner). Il a ete
+   ferme sur un amont d'ESSAI ; ceci le mesure sur le SERVICE REEL.
+
+Le budget par ADRESSE vaut ECHECS_MAX_ADRESSE = 50 (securite/frein.ts:94) : douze
+tentatives ne le franchissent pas — premiere passe ecartee, rejouee a 51 ci-dessous.
+51 tentatives, courriels TOUS DISTINCTS (aucun budget de compte ne peut mordre) :
+  statut de la 52e = 429   (429 = freine PAR L ADRESSE)
+
+la ligne de journal du frein, telle que le service l'ecrit (format cle=valeur, pas JSON) :
+    frein route=/auth/connexion adresse=172.18.0.1 cles="compte:balayage-38@p5.local adr:172.18.0.1" retry_apres_s=866 entrees=51 evictions=0
+
+  adresse INTERNE du proxy (PLATEFORME_PROXY_DE_CONFIANCE) : 172.18.0.5
+
+=> 🔴 LE DISCRIMINANT : l'adresse journalisee est 172.18.0.1 — la passerelle du pont
+   Docker, c'est-a-dire LE CLIENT tel que le proxy le voit —, et NON 172.18.0.5, le
+   proxy lui-meme. X-Forwarded-For est donc bien pose par nginx ET cru par le service
+   (parce que le pair EST le proxy de confiance). Le frein par adresse n'a PAS degenere
+   en frein global : c'est le defaut n°2 de la tache 14, ferme sur le SERVICE REEL.
+
+⚠️ CE QUE CE CONTROLE N'ETABLIT PAS : que le frein distingue DEUX clients differents.
+   Toutes les requetes de cette recette arrivent par la meme passerelle Docker, donc
+   sous la meme adresse. La distinction elle-meme est couverte par les tests d'hote
+   ('routes-auth.test.ts' (b), 'adresse-source.test.ts'), pas ici.
+
+########## VERDICT ⑤ ##########
+
+TENU, apres UNE CORRECTION DE PRODUIT que ce critere a rendue necessaire.
+
+DEUX executions vertes du pilote, sur le montage complet (postgres-deploiement +
+plateforme + nginx, TLS termine par le proxy). Les quatre relevés, identiques aux deux :
+  (a) la page se charge en https:      -> protocole 'https:', isSecureContext = true
+  (b) aucune violation CSP             -> 0 dans la page, 0 au journal de console
+  (c) la montee wss:// s'etablit       -> WS-OUVERT sur wss://localhost:8443/
+  (d) POST /auth/connexion lisible     -> statut 200, corps lisible, champs
+                                          ["acces","expire_a","rafraichissement"]
+      + OPTIONS servi a travers le proxy : 204 sur /auth/connexion et sur /session
+
+DEUX rouges, toutes deux VUES, et leurs formes sont distinctes :
+  n°1 (gratuite, le client d'avant t16) : 1 violation, WS-REFUSE, ws://…:8080 bloque ;
+                                          (d) reste vert — la rouge ne touche que (b) et (c).
+  n°2 (CSP connect-src 'none')          : 2 violations, WS-REFUSE, ET 'Failed to fetch' ;
+                                          (b), (c) et (d) tombent ENSEMBLE.
+Les trois assertions sont donc capables d'echouer, et la n°1 montre en plus qu'elles
+ne tombent pas toutes ensemble par construction.
+
+⚠️ CE QUE ⑤ N'ETABLIT PAS :
+  - aucun taux : DEUX executions vertes, UNE par rouge ;
+  - le certificat est AUTO-SIGNE et sa cle publique est EPINGLEE au navigateur
+    (--ignore-certificate-errors-spki-list). Aucune chaine de confiance reelle n'est
+    eprouvee, et aucun HSTS n'est verifie a l'usage ;
+  - le proxy ecoute sur 127.0.0.1:8443, pas sur 443 : sur cette machine 443 est occupe
+    par un tiers (envoy/pomerium). Rien n'est donc mesure d'une exposition publique ;
+  - la montee wss:// est ETABLIE, mais aucune session WebRTC n'est negociee : le
+    critere mesure le CHEMIN, pas le produit media ;
+  - le chemin CORS avec une origine tierce autorisee n'est pas exerce (voir ci-dessus) ;
+  - un seul navigateur (Chrome 151), sans interface, en --no-sandbox impose par root.

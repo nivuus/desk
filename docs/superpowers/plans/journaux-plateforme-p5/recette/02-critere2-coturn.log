@@ -1,0 +1,145 @@
+=== CRITERE ② — coturn n'ouvre que sur l'adresse nommee ===
+Date UTC : 2026-08-20T08:48:40Z
+Commit : d9dc3715c81526e77a023ccb2275e17a829c5d55
+Moteur : sans objet (aucune base). Binaire : image coturn/coturn:4.6.
+Discriminant d'instance : sans objet.
+
+⚠️ PROJET COMPOSE JETABLE ('-p p5-recette-coturn'), pour ne PAS toucher au conteneur
+   'guacamole-coturn-1' du produit historique, TROUVE en 'Exited (0) 2 weeks ago' et
+   qui doit y rester. Etat verifie aux prealables (00-prealables.log).
+
+🔴 AUCUN SECRET N'EST IMPRIME. La sortie de coturn est FILTREE PAR LISTE BLANCHE de
+   motifs — 'Listener opened', 'Relay address', 'relay ', 'realm' — jamais versee brute :
+   coturn journalise ses arguments de ligne de commande, dont --static-auth-secret.
+   Le controle final (grep -c -F -f) le verifie sur la piece livree.
+
+   Valeurs NON secretes en vigueur : TURN_LISTENING_IP=192.168.3.1  TURN_RELAY_IP=192.168.3.1
+
+########## (i) LA MOITIE STATIQUE — l'ecoute est OBLIGATOIRE ##########
+$ docker compose -f docker-compose.coturn.yml --env-file /dev/null config
+sortie = 1  (attendu : 1)
+message (premiere variable nommee) :
+time="2026-08-20T10:48:52+02:00" level=warning msg="The \"TURN_SECRET\" variable is not set. Defaulting to a blank string."
+time="2026-08-20T10:48:52+02:00" level=warning msg="The \"TURN_REALM\" variable is not set. Defaulting to a blank string."
+time="2026-08-20T10:48:52+02:00" level=warning msg="The \"TURN_EXTERNAL_IP\" variable is not set. Defaulting to a blank string."
+
+port 3478 libre avant la mesure ?
+  ecoutes UDP sur 3478 = 0
+  (l'erreur elle-meme, apres les avertissements :)
+error while interpolating services.coturn.command.[]: required variable TURN_LISTENING_IP is missing a value: TURN_LISTENING_IP est obligatoire - l adresse sur laquelle coturn ecoute. Sans elle il ecouterait sur TOUTES les interfaces de l hote, adresse publique comprise
+error while interpolating services.coturn.command.[]: required variable TURN_RELAY_IP is missing a value: TURN_RELAY_IP est obligatoire - l adresse depuis laquelle coturn relaie. Borner la seule ecoute laisse les allocations de relais sur toutes les interfaces
+
+########## (ii) LA MOITIE DYNAMIQUE — DEUX lancements du fichier LIVRE ##########
+(une premiere passe a ete jouee avec une extraction d'adresse FAUTIVE — un `sed`
+ glouton rendait « 3478 » pour adresse ; elle est ecartee et rejouee ci-dessous.)
+--- [lancement 1 — fichier LIVRE (apres t12)] ---
+  lignes 'listener opened on'            : 25
+  adresses d'ecoute DISTINCTES (port retire) :
+    192.168.3.1
+  nombre d'adresses DISTINCTES           : 1
+  'Relay address to use'                 :
+    192.168.3.1
+  adresse PUBLIQUE de l'hote             : 90.87.35.18
+  lignes d'ecoute la portant             : 0
+  lignes d'ecoute portant 0.0.0.0        : 0
+--- [lancement 2 — fichier LIVRE (apres t12)] ---
+  lignes 'listener opened on'            : 25
+  adresses d'ecoute DISTINCTES (port retire) :
+    192.168.3.1
+  nombre d'adresses DISTINCTES           : 1
+  'Relay address to use'                 :
+    192.168.3.1
+  adresse PUBLIQUE de l'hote             : 90.87.35.18
+  lignes d'ecoute la portant             : 0
+  lignes d'ecoute portant 0.0.0.0        : 0
+
+########## LA ROUGE — GRATUITE : le fichier D'AVANT la tache 12 ##########
+Source : git show 0228f77^:docker-compose.coturn.yml  (aucune edition de l'arbre)
+Il ne porte NI --listening-ip NI --relay-ip (compte des deux motifs = 0, verifie).
+
+(i) sa moitie statique : la commande qui doit ECHOUER reussit.
+    $ ... --env-file /dev/null config  -> sortie = 0  (le fichier livre rend 1 ; celui-ci rend 0)
+docker-compose.coturn.yml
+--- [ROUGE — fichier AVANT t12, sans --listening-ip] ---
+  lignes 'listener opened on'            : 575
+  adresses d'ecoute DISTINCTES (port retire) :
+    ::1
+    127.0.0.1
+    172.17.0.1
+    172.18.0.1
+    172.19.0.1
+    172.20.0.1
+    172.21.0.1
+    172.22.0.1
+    172.23.0.1
+    172.24.0.1
+    172.25.0.1
+    172.27.0.1
+    192.168.0.1
+    192.168.2.1
+    192.168.3.1
+    90.87.35.18
+    fd34:7b91:777b:c11::1
+    fdb0:916c:b74f:73cf:0:ff:fe00:0
+    fdb0:916c:b74f:73cf:0:ff:fe00:fc10
+    fdb0:916c:b74f:73cf:0:ff:fe00:fc11
+    fdb0:916c:b74f:73cf:0:ff:fe00:fc38
+    fdb0:916c:b74f:73cf:f50b:69d0:b77d:b15d
+    fdeb:2b9:f74e:1:89b7:e3fc:d95:b432
+  nombre d'adresses DISTINCTES           : 23
+  'Relay address to use'                 :
+    172.17.0.1
+    172.18.0.1
+    172.19.0.1
+    172.20.0.1
+    172.21.0.1
+    172.22.0.1
+    172.23.0.1
+    172.24.0.1
+    172.25.0.1
+    172.27.0.1
+    192.168.0.1
+    192.168.2.1
+    192.168.3.1
+    90.87.35.18
+    fd34:7b91:777b:c11::1
+    fdb0:916c:b74f:73cf:0:ff:fe00:0
+    fdb0:916c:b74f:73cf:0:ff:fe00:fc10
+    fdb0:916c:b74f:73cf:0:ff:fe00:fc11
+    fdb0:916c:b74f:73cf:0:ff:fe00:fc38
+    fdb0:916c:b74f:73cf:f50b:69d0:b77d:b15d
+    fdeb:2b9:f74e:1:89b7:e3fc:d95:b432
+  adresse PUBLIQUE de l'hote             : 90.87.35.18
+  lignes d'ecoute la portant             : 25
+  lignes d'ecoute portant 0.0.0.0        : 0
+
+########## VERDICT ② ##########
+
+TENU. DEUX lancements du fichier LIVRE, et une ROUGE gratuite.
+
+                                   LIVRE (t12)      ROUGE (avant t12)
+  lignes 'listener opened on'         25                 575
+  adresses d'ecoute DISTINCTES        1 / 1              23
+  l'adresse PUBLIQUE 90.87.35.18      0 ligne            25 lignes
+  'Relay address to use'              192.168.3.1        (l'hote entier)
+  '--env-file /dev/null config'       sortie 1           sortie 0
+                                      en NOMMANT
+                                      TURN_LISTENING_IP
+
+Les deux lancements du fichier livre sont identiques : 25 lignes d'ecoute,
+UNE seule adresse, 0 sur l'adresse publique, 0 sur 0.0.0.0.
+
+🔴 CE QUE ② N'ETABLIT PAS, ET C'EST ECRIT DEPUIS LE PLAN (spec §4, §8) :
+   l'INACCESSIBILITE DU RELAIS DEPUIS INTERNET. Ce verdict est une RELECTURE
+   DU JOURNAL DE COTURN, pas une sonde. Il etablit ce que le processus DIT
+   avoir ouvert ; il n'etablit pas ce qu'une machine hors de ce reseau peut
+   joindre. Une telle sonde exigerait une machine exterieure, que ce chantier
+   n'a pas — et le plan ne la prescrit pas.
+
+⚠️ ET IL PORTE UNE SECONDE BORNE : coturn tourne en 'network_mode: host'. Ce
+   qui est mesure est donc bien l'ecoute sur les interfaces de l'HOTE, ce qui
+   est le cas reel — mais aucune regle de pare-feu n'a ete posee ni verifiee.
+
+⚠️ ETAT LAISSE : aucun. Les deux projets jetables ('p5-recette-coturn',
+   'p5-rouge-coturn', plus 'p5-probe' d'une inspection de format) ont ete
+   'down -v' apres chaque mesure. 'guacamole-coturn-1' n'a jamais ete touche.
