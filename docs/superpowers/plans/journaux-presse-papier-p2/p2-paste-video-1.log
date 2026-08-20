@@ -1,0 +1,38 @@
+navigateur Chrome/151.0.7922.169 | sans interface (--headless=new)
+permissions   clipboard-read=denied clipboard-write=granted
+readText()    THROW:NotAllowedError
+writeText()   THROW:NotAllowedError | userActivation={"isActive":false,"hasBeenActive":false}
+isSecureContext=true hasFocus=true
+
+cellule 01  cible=body       regime=produit  ctrl+v        active=BODY#            pastes=0 texte=— cibleEvt=— juste=false
+cellule 02  cible=body       regime=produit  shift+insert  active=BODY#            pastes=0 texte=— cibleEvt=— juste=false
+cellule 03  cible=body       regime=etroit   ctrl+v        active=BODY#            pastes=1 texte="P2-1-03" cibleEvt=BODY# juste=true
+cellule 04  cible=body       regime=etroit   shift+insert  active=BODY#            pastes=1 texte="P2-1-04" cibleEvt=BODY# juste=true
+cellule 05  cible=body       regime=aucun    ctrl+v        active=BODY#            pastes=1 texte="P2-1-05" cibleEvt=BODY# juste=true
+cellule 06  cible=body       regime=aucun    shift+insert  active=BODY#            pastes=1 texte="P2-1-06" cibleEvt=BODY# juste=true
+cellule 07  cible=video      regime=produit  ctrl+v        active=VIDEO#remote     pastes=0 texte=— cibleEvt=— juste=false
+cellule 08  cible=video      regime=produit  shift+insert  active=VIDEO#remote     pastes=0 texte=— cibleEvt=— juste=false
+cellule 09  cible=video      regime=etroit   ctrl+v        active=VIDEO#remote     pastes=1 texte="P2-1-09" cibleEvt=VIDEO#remote juste=true
+cellule 10  cible=video      regime=etroit   shift+insert  active=VIDEO#remote     pastes=1 texte="P2-1-10" cibleEvt=VIDEO#remote juste=true
+cellule 11  cible=video      regime=aucun    ctrl+v        active=VIDEO#remote     pastes=1 texte="P2-1-11" cibleEvt=VIDEO#remote juste=true
+cellule 12  cible=video      regime=aucun    shift+insert  active=VIDEO#remote     pastes=1 texte="P2-1-12" cibleEvt=VIDEO#remote juste=true
+cellule 13  cible=conteneur  regime=produit  ctrl+v        active=DIV#conteneur    pastes=0 texte=— cibleEvt=— juste=false
+cellule 14  cible=conteneur  regime=produit  shift+insert  active=DIV#conteneur    pastes=0 texte=— cibleEvt=— juste=false
+cellule 15  cible=conteneur  regime=etroit   ctrl+v        active=DIV#conteneur    pastes=1 texte="P2-1-15" cibleEvt=DIV#conteneur juste=true
+cellule 16  cible=conteneur  regime=etroit   shift+insert  active=DIV#conteneur    pastes=1 texte="P2-1-16" cibleEvt=DIV#conteneur juste=true
+cellule 17  cible=conteneur  regime=aucun    ctrl+v        active=DIV#conteneur    pastes=1 texte="P2-1-17" cibleEvt=DIV#conteneur juste=true
+cellule 18  cible=conteneur  regime=aucun    shift+insert  active=DIV#conteneur    pastes=1 texte="P2-1-18" cibleEvt=DIV#conteneur juste=true
+cellule 19  cible=html       regime=produit  ctrl+v        active=BODY#            pastes=0 texte=— cibleEvt=— juste=false
+cellule 20  cible=html       regime=produit  shift+insert  active=BODY#            pastes=0 texte=— cibleEvt=— juste=false
+cellule 21  cible=html       regime=etroit   ctrl+v        active=BODY#            pastes=1 texte="P2-1-21" cibleEvt=BODY# juste=true
+cellule 22  cible=html       regime=etroit   shift+insert  active=BODY#            pastes=1 texte="P2-1-22" cibleEvt=BODY# juste=true
+cellule 23  cible=html       regime=aucun    ctrl+v        active=BODY#            pastes=1 texte="P2-1-23" cibleEvt=BODY# juste=true
+cellule 24  cible=html       regime=aucun    shift+insert  active=BODY#            pastes=1 texte="P2-1-24" cibleEvt=BODY# juste=true
+
+=== VERDICT ===
+verdict                       : FAVORABLE
+motif                         : paste de confiance recu avec le focus sur le <video>, portant le dernier texte copie
+temoin de mesurabilite        : body/etroit/ctrl+v pastes=1 juste=true
+rouge de l'instrument         : regime "produit" (input.ts:94-98) rend zero paste partout : true
+cellules avec paste            : body/etroit/ctrl+v, body/etroit/shift+insert, body/aucun/ctrl+v, body/aucun/shift+insert, video/etroit/ctrl+v, video/etroit/shift+insert, video/aucun/ctrl+v, video/aucun/shift+insert, conteneur/etroit/ctrl+v, conteneur/etroit/shift+insert, conteneur/aucun/ctrl+v, conteneur/aucun/shift+insert, html/etroit/ctrl+v, html/etroit/shift+insert, html/aucun/ctrl+v, html/aucun/shift+insert
+releve ecrit                  : p2-paste-video-1.json

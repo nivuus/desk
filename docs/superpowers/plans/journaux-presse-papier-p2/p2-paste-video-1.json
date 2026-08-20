@@ -1,0 +1,789 @@
+{
+  "etiquette": "1",
+  "date": "2026-08-20T10:03:41.581Z",
+  "navigateur": "Chrome/151.0.7922.169",
+  "permissions": {
+    "lecture": "denied",
+    "ecriture": "granted"
+  },
+  "readText": "THROW:NotAllowedError",
+  "writeTextAmorce": "THROW:NotAllowedError",
+  "activation": "{\"isActive\":false,\"hasBeenActive\":false}",
+  "verdict": "FAVORABLE",
+  "motif": "paste de confiance recu avec le focus sur le <video>, portant le dernier texte copie",
+  "temoinMesurabilite": {
+    "pastes": 1,
+    "juste": true
+  },
+  "rougeInstrumentZeroPartout": true,
+  "cellules": [
+    {
+      "cible": "body",
+      "regime": "produit",
+      "raccourci": "ctrl+v",
+      "activeElement": "BODY#",
+      "hasFocus": true,
+      "attendu": "P2-1-01",
+      "keydowns": [
+        {
+          "code": "ControlLeft",
+          "ctrl": true,
+          "shift": false,
+          "dp": true,
+          "trusted": true
+        },
+        {
+          "code": "KeyV",
+          "ctrl": true,
+          "shift": false,
+          "dp": true,
+          "trusted": true
+        }
+      ],
+      "pastes": [],
+      "pasteJuste": false
+    },
+    {
+      "cible": "body",
+      "regime": "produit",
+      "raccourci": "shift+insert",
+      "activeElement": "BODY#",
+      "hasFocus": true,
+      "attendu": "P2-1-02",
+      "keydowns": [
+        {
+          "code": "ShiftLeft",
+          "ctrl": false,
+          "shift": true,
+          "dp": true,
+          "trusted": true
+        },
+        {
+          "code": "Insert",
+          "ctrl": false,
+          "shift": true,
+          "dp": true,
+          "trusted": true
+        }
+      ],
+      "pastes": [],
+      "pasteJuste": false
+    },
+    {
+      "cible": "body",
+      "regime": "etroit",
+      "raccourci": "ctrl+v",
+      "activeElement": "BODY#",
+      "hasFocus": true,
+      "attendu": "P2-1-03",
+      "keydowns": [
+        {
+          "code": "ControlLeft",
+          "ctrl": true,
+          "shift": false,
+          "dp": true,
+          "trusted": true
+        },
+        {
+          "code": "KeyV",
+          "ctrl": true,
+          "shift": false,
+          "dp": false,
+          "trusted": true
+        }
+      ],
+      "pastes": [
+        {
+          "trusted": true,
+          "texte": "P2-1-03",
+          "types": [
+            "text/plain"
+          ],
+          "cible": "BODY#"
+        }
+      ],
+      "pasteJuste": true
+    },
+    {
+      "cible": "body",
+      "regime": "etroit",
+      "raccourci": "shift+insert",
+      "activeElement": "BODY#",
+      "hasFocus": true,
+      "attendu": "P2-1-04",
+      "keydowns": [
+        {
+          "code": "ShiftLeft",
+          "ctrl": false,
+          "shift": true,
+          "dp": true,
+          "trusted": true
+        },
+        {
+          "code": "Insert",
+          "ctrl": false,
+          "shift": true,
+          "dp": false,
+          "trusted": true
+        }
+      ],
+      "pastes": [
+        {
+          "trusted": true,
+          "texte": "P2-1-04",
+          "types": [
+            "text/plain"
+          ],
+          "cible": "BODY#"
+        }
+      ],
+      "pasteJuste": true
+    },
+    {
+      "cible": "body",
+      "regime": "aucun",
+      "raccourci": "ctrl+v",
+      "activeElement": "BODY#",
+      "hasFocus": true,
+      "attendu": "P2-1-05",
+      "keydowns": [
+        {
+          "code": "ControlLeft",
+          "ctrl": true,
+          "shift": false,
+          "dp": false,
+          "trusted": true
+        },
+        {
+          "code": "KeyV",
+          "ctrl": true,
+          "shift": false,
+          "dp": false,
+          "trusted": true
+        }
+      ],
+      "pastes": [
+        {
+          "trusted": true,
+          "texte": "P2-1-05",
+          "types": [
+            "text/plain"
+          ],
+          "cible": "BODY#"
+        }
+      ],
+      "pasteJuste": true
+    },
+    {
+      "cible": "body",
+      "regime": "aucun",
+      "raccourci": "shift+insert",
+      "activeElement": "BODY#",
+      "hasFocus": true,
+      "attendu": "P2-1-06",
+      "keydowns": [
+        {
+          "code": "ShiftLeft",
+          "ctrl": false,
+          "shift": true,
+          "dp": false,
+          "trusted": true
+        },
+        {
+          "code": "Insert",
+          "ctrl": false,
+          "shift": true,
+          "dp": false,
+          "trusted": true
+        }
+      ],
+      "pastes": [
+        {
+          "trusted": true,
+          "texte": "P2-1-06",
+          "types": [
+            "text/plain"
+          ],
+          "cible": "BODY#"
+        }
+      ],
+      "pasteJuste": true
+    },
+    {
+      "cible": "video",
+      "regime": "produit",
+      "raccourci": "ctrl+v",
+      "activeElement": "VIDEO#remote",
+      "hasFocus": true,
+      "attendu": "P2-1-07",
+      "keydowns": [
+        {
+          "code": "ControlLeft",
+          "ctrl": true,
+          "shift": false,
+          "dp": true,
+          "trusted": true
+        },
+        {
+          "code": "KeyV",
+          "ctrl": true,
+          "shift": false,
+          "dp": true,
+          "trusted": true
+        }
+      ],
+      "pastes": [],
+      "pasteJuste": false
+    },
+    {
+      "cible": "video",
+      "regime": "produit",
+      "raccourci": "shift+insert",
+      "activeElement": "VIDEO#remote",
+      "hasFocus": true,
+      "attendu": "P2-1-08",
+      "keydowns": [
+        {
+          "code": "ShiftLeft",
+          "ctrl": false,
+          "shift": true,
+          "dp": true,
+          "trusted": true
+        },
+        {
+          "code": "Insert",
+          "ctrl": false,
+          "shift": true,
+          "dp": true,
+          "trusted": true
+        }
+      ],
+      "pastes": [],
+      "pasteJuste": false
+    },
+    {
+      "cible": "video",
+      "regime": "etroit",
+      "raccourci": "ctrl+v",
+      "activeElement": "VIDEO#remote",
+      "hasFocus": true,
+      "attendu": "P2-1-09",
+      "keydowns": [
+        {
+          "code": "ControlLeft",
+          "ctrl": true,
+          "shift": false,
+          "dp": true,
+          "trusted": true
+        },
+        {
+          "code": "KeyV",
+          "ctrl": true,
+          "shift": false,
+          "dp": false,
+          "trusted": true
+        }
+      ],
+      "pastes": [
+        {
+          "trusted": true,
+          "texte": "P2-1-09",
+          "types": [
+            "text/plain"
+          ],
+          "cible": "VIDEO#remote"
+        }
+      ],
+      "pasteJuste": true
+    },
+    {
+      "cible": "video",
+      "regime": "etroit",
+      "raccourci": "shift+insert",
+      "activeElement": "VIDEO#remote",
+      "hasFocus": true,
+      "attendu": "P2-1-10",
+      "keydowns": [
+        {
+          "code": "ShiftLeft",
+          "ctrl": false,
+          "shift": true,
+          "dp": true,
+          "trusted": true
+        },
+        {
+          "code": "Insert",
+          "ctrl": false,
+          "shift": true,
+          "dp": false,
+          "trusted": true
+        }
+      ],
+      "pastes": [
+        {
+          "trusted": true,
+          "texte": "P2-1-10",
+          "types": [
+            "text/plain"
+          ],
+          "cible": "VIDEO#remote"
+        }
+      ],
+      "pasteJuste": true
+    },
+    {
+      "cible": "video",
+      "regime": "aucun",
+      "raccourci": "ctrl+v",
+      "activeElement": "VIDEO#remote",
+      "hasFocus": true,
+      "attendu": "P2-1-11",
+      "keydowns": [
+        {
+          "code": "ControlLeft",
+          "ctrl": true,
+          "shift": false,
+          "dp": false,
+          "trusted": true
+        },
+        {
+          "code": "KeyV",
+          "ctrl": true,
+          "shift": false,
+          "dp": false,
+          "trusted": true
+        }
+      ],
+      "pastes": [
+        {
+          "trusted": true,
+          "texte": "P2-1-11",
+          "types": [
+            "text/plain"
+          ],
+          "cible": "VIDEO#remote"
+        }
+      ],
+      "pasteJuste": true
+    },
+    {
+      "cible": "video",
+      "regime": "aucun",
+      "raccourci": "shift+insert",
+      "activeElement": "VIDEO#remote",
+      "hasFocus": true,
+      "attendu": "P2-1-12",
+      "keydowns": [
+        {
+          "code": "ShiftLeft",
+          "ctrl": false,
+          "shift": true,
+          "dp": false,
+          "trusted": true
+        },
+        {
+          "code": "Insert",
+          "ctrl": false,
+          "shift": true,
+          "dp": false,
+          "trusted": true
+        }
+      ],
+      "pastes": [
+        {
+          "trusted": true,
+          "texte": "P2-1-12",
+          "types": [
+            "text/plain"
+          ],
+          "cible": "VIDEO#remote"
+        }
+      ],
+      "pasteJuste": true
+    },
+    {
+      "cible": "conteneur",
+      "regime": "produit",
+      "raccourci": "ctrl+v",
+      "activeElement": "DIV#conteneur",
+      "hasFocus": true,
+      "attendu": "P2-1-13",
+      "keydowns": [
+        {
+          "code": "ControlLeft",
+          "ctrl": true,
+          "shift": false,
+          "dp": true,
+          "trusted": true
+        },
+        {
+          "code": "KeyV",
+          "ctrl": true,
+          "shift": false,
+          "dp": true,
+          "trusted": true
+        }
+      ],
+      "pastes": [],
+      "pasteJuste": false
+    },
+    {
+      "cible": "conteneur",
+      "regime": "produit",
+      "raccourci": "shift+insert",
+      "activeElement": "DIV#conteneur",
+      "hasFocus": true,
+      "attendu": "P2-1-14",
+      "keydowns": [
+        {
+          "code": "ShiftLeft",
+          "ctrl": false,
+          "shift": true,
+          "dp": true,
+          "trusted": true
+        },
+        {
+          "code": "Insert",
+          "ctrl": false,
+          "shift": true,
+          "dp": true,
+          "trusted": true
+        }
+      ],
+      "pastes": [],
+      "pasteJuste": false
+    },
+    {
+      "cible": "conteneur",
+      "regime": "etroit",
+      "raccourci": "ctrl+v",
+      "activeElement": "DIV#conteneur",
+      "hasFocus": true,
+      "attendu": "P2-1-15",
+      "keydowns": [
+        {
+          "code": "ControlLeft",
+          "ctrl": true,
+          "shift": false,
+          "dp": true,
+          "trusted": true
+        },
+        {
+          "code": "KeyV",
+          "ctrl": true,
+          "shift": false,
+          "dp": false,
+          "trusted": true
+        }
+      ],
+      "pastes": [
+        {
+          "trusted": true,
+          "texte": "P2-1-15",
+          "types": [
+            "text/plain"
+          ],
+          "cible": "DIV#conteneur"
+        }
+      ],
+      "pasteJuste": true
+    },
+    {
+      "cible": "conteneur",
+      "regime": "etroit",
+      "raccourci": "shift+insert",
+      "activeElement": "DIV#conteneur",
+      "hasFocus": true,
+      "attendu": "P2-1-16",
+      "keydowns": [
+        {
+          "code": "ShiftLeft",
+          "ctrl": false,
+          "shift": true,
+          "dp": true,
+          "trusted": true
+        },
+        {
+          "code": "Insert",
+          "ctrl": false,
+          "shift": true,
+          "dp": false,
+          "trusted": true
+        }
+      ],
+      "pastes": [
+        {
+          "trusted": true,
+          "texte": "P2-1-16",
+          "types": [
+            "text/plain"
+          ],
+          "cible": "DIV#conteneur"
+        }
+      ],
+      "pasteJuste": true
+    },
+    {
+      "cible": "conteneur",
+      "regime": "aucun",
+      "raccourci": "ctrl+v",
+      "activeElement": "DIV#conteneur",
+      "hasFocus": true,
+      "attendu": "P2-1-17",
+      "keydowns": [
+        {
+          "code": "ControlLeft",
+          "ctrl": true,
+          "shift": false,
+          "dp": false,
+          "trusted": true
+        },
+        {
+          "code": "KeyV",
+          "ctrl": true,
+          "shift": false,
+          "dp": false,
+          "trusted": true
+        }
+      ],
+      "pastes": [
+        {
+          "trusted": true,
+          "texte": "P2-1-17",
+          "types": [
+            "text/plain"
+          ],
+          "cible": "DIV#conteneur"
+        }
+      ],
+      "pasteJuste": true
+    },
+    {
+      "cible": "conteneur",
+      "regime": "aucun",
+      "raccourci": "shift+insert",
+      "activeElement": "DIV#conteneur",
+      "hasFocus": true,
+      "attendu": "P2-1-18",
+      "keydowns": [
+        {
+          "code": "ShiftLeft",
+          "ctrl": false,
+          "shift": true,
+          "dp": false,
+          "trusted": true
+        },
+        {
+          "code": "Insert",
+          "ctrl": false,
+          "shift": true,
+          "dp": false,
+          "trusted": true
+        }
+      ],
+      "pastes": [
+        {
+          "trusted": true,
+          "texte": "P2-1-18",
+          "types": [
+            "text/plain"
+          ],
+          "cible": "DIV#conteneur"
+        }
+      ],
+      "pasteJuste": true
+    },
+    {
+      "cible": "html",
+      "regime": "produit",
+      "raccourci": "ctrl+v",
+      "activeElement": "BODY#",
+      "hasFocus": true,
+      "attendu": "P2-1-19",
+      "keydowns": [
+        {
+          "code": "ControlLeft",
+          "ctrl": true,
+          "shift": false,
+          "dp": true,
+          "trusted": true
+        },
+        {
+          "code": "KeyV",
+          "ctrl": true,
+          "shift": false,
+          "dp": true,
+          "trusted": true
+        }
+      ],
+      "pastes": [],
+      "pasteJuste": false
+    },
+    {
+      "cible": "html",
+      "regime": "produit",
+      "raccourci": "shift+insert",
+      "activeElement": "BODY#",
+      "hasFocus": true,
+      "attendu": "P2-1-20",
+      "keydowns": [
+        {
+          "code": "ShiftLeft",
+          "ctrl": false,
+          "shift": true,
+          "dp": true,
+          "trusted": true
+        },
+        {
+          "code": "Insert",
+          "ctrl": false,
+          "shift": true,
+          "dp": true,
+          "trusted": true
+        }
+      ],
+      "pastes": [],
+      "pasteJuste": false
+    },
+    {
+      "cible": "html",
+      "regime": "etroit",
+      "raccourci": "ctrl+v",
+      "activeElement": "BODY#",
+      "hasFocus": true,
+      "attendu": "P2-1-21",
+      "keydowns": [
+        {
+          "code": "ControlLeft",
+          "ctrl": true,
+          "shift": false,
+          "dp": true,
+          "trusted": true
+        },
+        {
+          "code": "KeyV",
+          "ctrl": true,
+          "shift": false,
+          "dp": false,
+          "trusted": true
+        }
+      ],
+      "pastes": [
+        {
+          "trusted": true,
+          "texte": "P2-1-21",
+          "types": [
+            "text/plain"
+          ],
+          "cible": "BODY#"
+        }
+      ],
+      "pasteJuste": true
+    },
+    {
+      "cible": "html",
+      "regime": "etroit",
+      "raccourci": "shift+insert",
+      "activeElement": "BODY#",
+      "hasFocus": true,
+      "attendu": "P2-1-22",
+      "keydowns": [
+        {
+          "code": "ShiftLeft",
+          "ctrl": false,
+          "shift": true,
+          "dp": true,
+          "trusted": true
+        },
+        {
+          "code": "Insert",
+          "ctrl": false,
+          "shift": true,
+          "dp": false,
+          "trusted": true
+        }
+      ],
+      "pastes": [
+        {
+          "trusted": true,
+          "texte": "P2-1-22",
+          "types": [
+            "text/plain"
+          ],
+          "cible": "BODY#"
+        }
+      ],
+      "pasteJuste": true
+    },
+    {
+      "cible": "html",
+      "regime": "aucun",
+      "raccourci": "ctrl+v",
+      "activeElement": "BODY#",
+      "hasFocus": true,
+      "attendu": "P2-1-23",
+      "keydowns": [
+        {
+          "code": "ControlLeft",
+          "ctrl": true,
+          "shift": false,
+          "dp": false,
+          "trusted": true
+        },
+        {
+          "code": "KeyV",
+          "ctrl": true,
+          "shift": false,
+          "dp": false,
+          "trusted": true
+        }
+      ],
+      "pastes": [
+        {
+          "trusted": true,
+          "texte": "P2-1-23",
+          "types": [
+            "text/plain"
+          ],
+          "cible": "BODY#"
+        }
+      ],
+      "pasteJuste": true
+    },
+    {
+      "cible": "html",
+      "regime": "aucun",
+      "raccourci": "shift+insert",
+      "activeElement": "BODY#",
+      "hasFocus": true,
+      "attendu": "P2-1-24",
+      "keydowns": [
+        {
+          "code": "ShiftLeft",
+          "ctrl": false,
+          "shift": true,
+          "dp": false,
+          "trusted": true
+        },
+        {
+          "code": "Insert",
+          "ctrl": false,
+          "shift": true,
+          "dp": false,
+          "trusted": true
+        }
+      ],
+      "pastes": [
+        {
+          "trusted": true,
+          "texte": "P2-1-24",
+          "types": [
+            "text/plain"
+          ],
+          "cible": "BODY#"
+        }
+      ],
+      "pasteJuste": true
+    }
+  ]
+}
