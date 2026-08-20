@@ -85,7 +85,8 @@ describe('démarrage du service', () => {
         // Les migrations sont appliquées : la table existe et se lit. Le
         // compte est écrit en dur pour la raison donnée dans
         // `base/pilotes.test.ts` — P2 l'a porté de 1 à 2 en ajoutant
-        // `0002-identite.sql`, et P3 de 2 à 3 en ajoutant `0003-agents.sql`.
+        // `0002-identite.sql`, P3 de 2 à 3 en ajoutant `0003-agents.sql`, et
+        // G1 de 3 à 4 en ajoutant `0004-applications.sql`.
         //
         // ⚠️ C'est la SECONDE place du dépôt qui fige ce compte, et la seule
         // que `pilotes.test.ts` ne nomme pas : mettre l'une à jour sans
@@ -93,6 +94,6 @@ describe('démarrage du service', () => {
         // cherche. Les deux se trouvent par
         // `grep -rn "schema_migration" src/ | grep -i test`.
         expect(await service.base.interroger('SELECT version FROM schema_migration', []))
-            .toHaveLength(3);
+            .toHaveLength(4);
     });
 });
