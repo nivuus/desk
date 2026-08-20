@@ -1,4 +1,5 @@
-# Instance Postgres de TEST du sous-projet ⑤ Plateforme.
+# Le sous-projet ⑤ Plateforme : son instance Postgres de TEST, et — sous un
+# PROFIL — sa configuration de DÉPLOIEMENT.
 #
 # Fichier séparé du `docker-compose.yml` principal, et versionné, pour la même
 # raison que `docker-compose.coturn.yml` : ce dernier n'est pas versionné, il
@@ -16,11 +17,85 @@
 # Puis, depuis `plateforme/` :
 #   npm run test:postgres
 #
-# 🔴 Les identifiants ci-dessous NE SONT PAS DES SECRETS, et c'est écrit ici
-# pour qu'un successeur ne les prenne pas pour tels : ils ne servent qu'à cette
-# instance de test, jetable, publiée sur la seule boucle locale. Une base de
-# production n'emploiera JAMAIS ce fichier — elle recevra son URL par
-# `PLATEFORME_BASE_URL`, hors de git.
+# 🔴 CES TROIS COMMANDES N'ONT PAS CHANGÉ DE SENS, et c'est délibéré. Le
+# sous-bloc P5 ajoute trois services, mais TOUS sous `profiles: [deploiement]` :
+# un service portant un profil n'est démarré que si ce profil est demandé. Un
+# `up -d` sans `--profile` démarre donc exactement ce qu'il démarrait avant —
+# la seule instance de test. C'est la propriété qui a manqué à ce dépôt chaque
+# fois qu'un fichier partagé a changé.
+#
+# 🔴 Les identifiants de l'instance de TEST NE SONT PAS DES SECRETS, et c'est
+# écrit ici pour qu'un successeur ne les prenne pas pour tels : ils ne servent
+# qu'à cette instance de test, jetable, publiée sur la seule boucle locale. Une
+# base de production n'emploiera JAMAIS ce service-là — elle emploie le profil
+# `deploiement` ci-dessous, dont AUCUNE valeur n'est écrite dans ce fichier.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# LE PROFIL `deploiement`
+# ─────────────────────────────────────────────────────────────────────────────
+#
+#   docker compose -f docker-compose.plateforme.yml --profile deploiement up -d
+#
+# Il porte trois services — `postgres-deploiement`, `plateforme`, `proxy` — et
+# **aucun littéral de secret** : les valeurs sensibles vivent dans deux fichiers
+# `env_file` NON VERSIONNÉS, dont `deploiement/README.md` donne les gabarits.
+#
+# 🔴 POURQUOI `env_file` ET NON `${VAR:?message}`, ALORS QUE `docker-compose.
+# coturn.yml` EMPLOIE LE SECOND — LA RAISON EST MESURÉE, PAS ESTHÉTIQUE.
+# **Docker compose interpole le fichier ENTIER, profils non demandés compris.**
+# Un `${VAR:?}` posé dans un service `deploiement` fait donc échouer
+# `docker compose -f docker-compose.plateforme.yml up -d` — la commande de la
+# suite de tests, que l'en-tête ci-dessus promet inchangée. Mesuré le 21 août
+# 2026 : la première rédaction de ce fichier employait `${VAR:?}` et faisait
+# passer `… config` (sans profil) de la sortie 0 à la sortie 1, cassant
+# `npm run test:postgres` pour tout le monde.
+#
+# `env_file`, lui, est évalué PAR PROFIL — mesuré le même jour, sur une maquette
+# hors du dépôt : fichier absent et profil non demandé, sortie **0** ; fichier
+# absent et profil demandé, sortie **1** nommant le fichier. C'est exactement la
+# propriété qu'il fallait, et `${VAR:?}` ne l'a pas.
+#
+# 🔴 ET IL DÉPLACE AUSSI LA FUITE, CE QUI EST MESURÉ : `docker compose …
+# --profile deploiement config` **RECOPIE LE CONTENU DES `env_file` DANS LE
+# BLOC `environment:` QU'IL IMPRIME**. Vérifié le 21 août 2026 sur des valeurs
+# de fixture : `PLATEFORME_SECRET_JETON` et le mot de passe de
+# `PLATEFORME_BASE_URL` apparaissent en clair sur la sortie standard. C'est
+# exactement le piège que `docker-compose.coturn.yml` documente pour
+# `--static-auth-secret`, sous une autre forme.
+#
+# **La sortie de `config` AVEC le profil ne se verse donc JAMAIS telle quelle.**
+# Filtrer par LISTE BLANCHE de lignes — `ports`, `published`, `host_ip`,
+# `replicas`, `image`, le message d'erreur — puis prouver l'absence du secret
+# par un `grep -c -F -f` qui rend un COMPTE. Sans le profil, la question ne se
+# pose pas : aucun `env_file` n'est lu.
+#
+# ⚠️ CE QUE CE CHOIX DÉPLACE ENCORE, ET IL FAUT LE DIRE : compose ne vérifie
+# plus que chaque VARIABLE est posée, seulement que le FICHIER existe. Ce qui reprend le
+# relais est le code lui-même — `plateforme/src/config.ts` LÈVE sur un
+# `PLATEFORME_HOTE` absent et sur un `PLATEFORME_SECRET_JETON` absent ou trop
+# court, sans aucun défaut. La rupture reste donc bruyante ; elle a seulement
+# lieu au démarrage du service au lieu de l'analyse du fichier.
+#
+# 🔴 UNE INSTANCE DE `plateforme`, ET UNE SEULE. Ce n'est pas un réglage de
+# capacité, c'est une CONTRAINTE DE CORRECTION, et elle est la dette la plus
+# lourde de tout ⑤. Trois états de routage vivent en mémoire du processus :
+#
+#   `signaling/appariement.ts`  la table des sessions et leurs deux pairs ;
+#   `signaling/propriete.ts`    qui possède quel nom de session ;
+#   `securite/frein.ts`         les échecs récents.
+#
+# À deux instances, **deux pairs de la même session ne s'apparient JAMAIS** —
+# chacun attend l'autre, et rien ne le dit. C'est une panne MUETTE, la classe
+# exacte contre laquelle ce dépôt est écrit. Le budget du frein serait par
+# ailleurs multiplié par le nombre d'instances.
+#
+# ⚠️ RIEN DANS LE CODE NE L'EMPÊCHE. `deploy.replicas: 1` ci-dessous et
+# l'unique cible amont de `deploiement/nginx.conf` sont des DÉCLARATIONS, pas
+# des gardes : un exploitant qui passerait `--scale plateforme=2` obtiendrait
+# la panne muette. Le remède minimal est nommé et NON LIVRÉ — refuser de
+# démarrer si une seconde instance est détectée, par un verrou consultatif en
+# base (`pg_advisory_lock`, sans équivalent SQLite) —, ce qui échangerait la
+# panne muette contre une rupture bruyante.
 
 services:
   postgres-plateforme:
@@ -41,3 +116,138 @@ services:
       interval: 2s
       timeout: 3s
       retries: 30
+
+  # ── profil `deploiement` ────────────────────────────────────────────────────
+
+  postgres-deploiement:
+    profiles: [deploiement]
+    # 🔴 LA MÊME IMAGE que l'instance de test, à dessein. Le critère ① exige que
+    # la suite soit verte « contre la configuration déployée », et son énoncé
+    # prévient qu'« une configuration de test qui diffère de celle de
+    # déploiement ne prouve rien ». En gardant le même MOTEUR, le mot « diffère »
+    # ne porte plus que sur la configuration — ce qu'on veut mesurer.
+    image: postgres:16-alpine
+    restart: unless-stopped
+    # 🔴 AUCUN LITTÉRAL, ET LE FICHIER N'EST PAS VERSIONNÉ. Il porte
+    # `POSTGRES_USER`, `POSTGRES_PASSWORD` et `POSTGRES_DB`. Absent, la commande
+    # échoue EN LE NOMMANT — mais seulement quand le profil `deploiement` est
+    # demandé, ce qui laisse la suite de tests intacte (voir l'en-tête).
+    # Gabarit : `deploiement/postgres.env.exemple`.
+    env_file:
+      - ./deploiement/postgres.env
+    ports:
+      # 🔴 5434, ET NON 5433 : le port DISTINGUE les deux instances. Les deux
+      # sont des Postgres 16 ; une suite verte ne dirait pas laquelle elle a
+      # touchée si elles partageaient un port. Le discriminant du critère ① est
+      # `SELECT current_database(), inet_server_port(), version()`, et il n'a de
+      # sens que parce que ce port-ci diffère.
+      #
+      # Sur 127.0.0.1 UNIQUEMENT, même raison que l'instance de test : rien de
+      # ceci n'a à être joignable depuis une autre machine. Le service, lui,
+      # atteint la base par le réseau interne, sans passer par ce port publié.
+      - "127.0.0.1:5434:5432"
+    volumes:
+      # ⚠️ UN VOLUME NOMMÉ, contrairement à l'instance de test qui est JETABLE.
+      # C'est la différence de configuration qui compte : un déploiement dont
+      # les données disparaissent au `down` n'est pas un déploiement.
+      - postgres-deploiement:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  plateforme:
+    profiles: [deploiement]
+    build:
+      context: ./plateforme
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres-deploiement:
+        condition: service_healthy
+    # 🔴 AUCUN `ports:`, ET C'EST LE POINT. La plateforme ne termine JAMAIS TLS
+    # (spec §9) : elle écoute en clair, et son écoute doit n'être joignable que
+    # par le proxy. Publier un port ici la rendrait joignable en clair depuis
+    # l'hôte, contournant la terminaison TLS que tout le reste met en place.
+    environment:
+      # 🔴 `PLATEFORME_HOTE` N'A AUCUN DÉFAUT (`plateforme/src/config.ts`), et
+      # la valeur posée ici est LE NOM DU SERVICE. Ce n'est pas une commodité :
+      # Node résout le nom d'hôte passé à `listen()` et se lie à L'ADRESSE
+      # RÉSOLUE, pas à toutes les interfaces — vérifié par la mesure le 21 août
+      # 2026 (`listen(0, hostname())` rend `address: 127.0.1.1`, et non
+      # `0.0.0.0`). Le nom du service résolvant à l'adresse du conteneur sur le
+      # réseau interne, l'écoute est donc bornée à ce réseau, et le fait qu'il
+      # n'y ait aucun port publié n'est pas la seule chose qui la protège.
+      PLATEFORME_HOTE: plateforme
+      PLATEFORME_PORT: "8080"
+      PLATEFORME_BASE: postgres
+    # 🔴 LE RESTE VIENT D'UN FICHIER NON VERSIONNÉ, et chacune de ses entrées a
+    # sa raison — voir `deploiement/plateforme.env.exemple`, qui les porte :
+    #
+    #   PLATEFORME_BASE_URL           l'URL pg complète, mot de passe compris,
+    #                                 visant `postgres-deploiement:5432` sur le
+    #                                 réseau interne (jamais le port publié) ;
+    #   PLATEFORME_SECRET_JETON       la clé de signature. `lireConfig` LÈVE si
+    #                                 elle manque, et refuse en plus tout secret
+    #                                 plus court que `LONGUEUR_SECRET_MIN` ;
+    #   PLATEFORME_PROXY_DE_CONFIANCE l'adresse du proxy sur le réseau interne,
+    #                                 ET RIEN D'AUTRE. `adresse-source.ts` ne
+    #                                 croit `X-Forwarded-For` que d'un pair
+    #                                 figurant ici. Mal posée, elle fait
+    #                                 dégénérer le frein par adresse en frein
+    #                                 GLOBAL : toutes les requêtes arrivant du
+    #                                 proxy partageraient une seule clé, et le
+    #                                 premier attaquant bloquerait tout le
+    #                                 monde. Absente, l'en-tête n'est pas cru du
+    #                                 tout — c'est le défaut SÛR ;
+    #   PLATEFORME_ORIGINE_CLIENT     FACULTATIVE. Absente, aucun en-tête CORS
+    #                                 n'est posé — le cas nominal ici, la page
+    #                                 et l'API étant servies par le même proxy,
+    #                                 donc sur la MÊME origine.
+    env_file:
+      - ./deploiement/plateforme.env
+    # 🔴 UNE SEULE. Voir l'encadré de l'en-tête : c'est une contrainte de
+    # correction, pas de capacité, et ceci la DÉCLARE sans la garantir.
+    deploy:
+      replicas: 1
+
+  proxy:
+    profiles: [deploiement]
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      - plateforme
+    ports:
+      # ⚠️ L'ADRESSE D'ÉCOUTE EST UNE VARIABLE, ET SON DÉFAUT EST LA BOUCLE
+      # LOCALE. Deux raisons, et la première est mesurée : sur la machine de
+      # mesure, **443/tcp est occupé par un tiers** (`envoy`/pomerium, relevé
+      # le 21 août 2026), donc publier sur 443 y échouerait. La seconde est
+      # doctrinale : un défaut qui expose sur toutes les interfaces est
+      # exactement ce que ce sous-bloc combat ailleurs. Ouvrir vers l'extérieur
+      # est un geste EXPLICITE — `PROXY_ECOUTE=0.0.0.0:443`.
+      - "${PROXY_ECOUTE:-127.0.0.1:8443}:443"
+    volumes:
+      - ./deploiement/nginx.conf:/etc/nginx/nginx.conf:ro
+      # 🔴 LE MATÉRIEL TLS EST OBLIGATOIRE, sans défaut. Un défaut ferait
+      # démarrer nginx sans certificat lisible, donc échouer au premier
+      # handshake — une panne tardive et obscure là où celle-ci est immédiate
+      # et nommée. Le répertoire doit porter `fullchain.pem` et `privkey.pem` ;
+      # `deploiement/README.md` dit comment en fabriquer pour une recette.
+      #
+      # ⚠️ CE CHEMIN EST FIXE, ET NON UNE VARIABLE, pour la raison mesurée en
+      # tête de fichier : une `${VAR:?}` dans un `volumes:` est interpolée même
+      # quand le profil n'est pas demandé, et casserait la suite de tests.
+      # La rupture reste bruyante et immédiate : **nginx REFUSE de démarrer** si
+      # `ssl_certificate` ne se lit pas, en nommant le fichier. Le répertoire
+      # doit porter `fullchain.pem` et `privkey.pem` ; `deploiement/README.md`
+      # dit comment en fabriquer pour une recette.
+      - ./deploiement/tls:/etc/nginx/tls:ro
+      # La page et ses ressources, servies par le proxy sur la MÊME origine que
+      # l'API — c'est ce qui rend `PLATEFORME_ORIGINE_CLIENT` facultative.
+      - ./client/dist:/usr/share/nginx/html:ro
+
+volumes:
+  postgres-deploiement:

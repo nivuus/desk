@@ -1,0 +1,84 @@
+=== Tâche 13 — le profil 'deploiement' : rouge, casse, et vert ===
+Date : 21 août 2026. UNE exécution par contrôle.
+
+─── ROUGE : le fichier D'AVANT, profil demandé ───
+  docker compose -f docker-compose.plateforme.yml --profile deploiement --env-file /dev/null config
+  SORTIE MESURÉE = 0, et les services déclarés étaient :
+      postgres-plateforme:
+      default:
+  => le profil ne désignait RIEN. Demander 'deploiement' était silencieusement sans effet.
+
+─── 🔴 CASSE INTERMÉDIAIRE, TROUVÉE PAR LE CONTRÔLE QUE LE PLAN EXIGE ───
+
+  La PREMIÈRE rédaction employait ${VAR:?message} pour chaque valeur
+  sensible, comme le fait docker-compose.coturn.yml. Le contrôle « la
+  commande SANS profil ne change pas de sens » l'a réfutée :
+
+    docker compose -f docker-compose.plateforme.yml config    SORTIE = 1
+    docker compose -f docker-compose.plateforme.yml ps        SORTIE = 1
+
+  Cause : DOCKER COMPOSE INTERPOLE LE FICHIER ENTIER, profils non demandés
+  compris. La suite de tests (npm run test:postgres, qui exige l'instance
+  de test lancée par 'up -d') aurait été cassée pour tout le monde.
+
+  ⚠️ LES DEUX EXIGENCES DU PLAN POUR CETTE TÂCHE SONT INCOMPATIBLES SOUS
+     ${VAR:?} : « aucun littéral de secret / variables obligatoires » et
+     « up -d ne change pas de sens ». Le plan prescrit les deux.
+
+  Résolution, MESURÉE sur une maquette hors du dépôt avant d'être retenue :
+  'env_file' est évalué PAR PROFIL, contrairement à l'interpolation.
+    fichier absent, profil NON demandé : SORTIE 0
+    fichier absent, profil DEMANDÉ     : SORTIE 1, 'env file ... not found'
+  C'est la propriété qu'il fallait. Ce que le choix déplace est écrit dans
+  l'en-tête du fichier : compose ne vérifie plus chaque VARIABLE, seulement
+  le FICHIER — et c'est 'plateforme/src/config.ts' qui reprend le relais,
+  en levant sur PLATEFORME_HOTE absent et PLATEFORME_SECRET_JETON absent
+  ou trop court.
+
+─── VERT ① : SANS profil, le sens de la commande est INTACT ───
+  SORTIE MESURÉE = 0, services démarrés par défaut :
+      postgres-plateforme:
+      default:
+  => 'postgres-plateforme' seul, exactement comme avant P5.
+
+─── VERT ② : AVEC le profil, fichiers env ABSENTS ───
+  SORTIE MESURÉE = 1, et le fichier manquant est NOMMÉ :
+    env file <racine>/deploiement/plateforme.env not found: stat <racine>/deploiement/plateforme.env: no such file or directory
+
+─── VERT ③ : AVEC le profil et les fichiers posés (valeurs de FIXTURE) ───
+  SORTIE MESURÉE = 0. Ports publiés, relus dans la sortie de 'config' :
+    plateforme            : AUCUN port publié   <- le point de D9
+    postgres-deploiement  : 127.0.0.1:5434 -> 5432
+    postgres-plateforme   : 127.0.0.1:5433 -> 5432
+    proxy                 : 127.0.0.1:8443 -> 443
+  => les TROIS publications sont sur la boucle locale, et le service
+     lui-même n'est joignable que par le proxy, sur le réseau interne.
+  replicas de 'plateforme' : 1 (relu dans la sortie de config)
+
+─── 🔴 PIÈGE NEUF, MESURÉ : 'config' RECOPIE LES env_file EN CLAIR ───
+
+  'docker compose ... --profile deploiement config' expand les env_file
+  dans le bloc 'environment:' qu'il imprime. Mesuré sur des fixtures :
+  PLATEFORME_SECRET_JETON et le mot de passe de PLATEFORME_BASE_URL
+  apparaissent en clair (2 occurrences de la valeur de fixture).
+
+  C'est le jumeau exact du piège '--static-auth-secret' de coturn. La
+  sortie de 'config' AVEC le profil ne se verse jamais telle quelle ;
+  l'avertissement est porté par l'en-tête du fichier de composition.
+
+  ⚠️ Les fichiers env employés ici portaient des valeurs de FIXTURE,
+     jamais de vraies, et ils ont été détruits juste après la mesure.
+
+─── DIVERGENCE DÉCLARÉE : 'plateforme/Dockerfile' n'est PAS au plan ───
+  La « Structure des fichiers » du plan liste deploiement/nginx.conf et
+  deploiement/README.md, mais AUCUNE image pour le service 'plateforme'
+  que la tâche 13 demande pourtant de déclarer. Sans elle le profil se
+  décrit mais ne se lance pas. Le fichier est écrit, au plus petit, et la
+  divergence est déclarée ici et dans son en-tête.
+
+  ⚠️ IL DÉPEND DE L'IMAGE 'node:24-alpine', QUI N'EST PAS PRÉSENTE
+     LOCALEMENT (relevé le 21 août 2026 : aucune image 'node' locale).
+     La recette de la tâche 17 devra donc la tirer du réseau — exactement
+     la dépendance réseau que le plan écarte pour nginx (relevé ⑩). C'est
+     signalé, pas résolu : bâtir l'image AVANT la recette évite qu'un
+     échec réseau se lise comme un échec du produit.
