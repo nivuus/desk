@@ -1,0 +1,79 @@
+=== CLOTURE FINALE DES TACHES 0 A 11 (20 aout 2026) ===
+
+Toutes les valeurs ci-dessous ont ete obtenues en lancant reellement la
+commande, apres le dernier commit de P5. Aucune n'est recopiee.
+
+| Mesure                      | Entree (tache 0) | Sortie      | Ecart |
+| plateforme test:sqlite      | 423 / 49 f       | 423 / 49 f  | --    |
+| plateforme test:postgres    | 423 / 49 f       | 423 / 49 f  | --    |
+| plateforme typecheck        | sortie 0         | sortie 0    | --    |
+| client npm test             | 295 / 32 f       | 295 / 32 f  | --    |
+| proto npm test              | 142 / 5 f        | 142 / 5 f   | --    |
+| grep -cE '^etape ' verify   | 10               | 10          | --    |
+
+⚠️ LA COLONNE « ENTREE » N'EST PAS CELLE DE LA TACHE 0, ET IL FAUT LE DIRE.
+La tache 0 avait mesure plateforme 341/42, client 279/30, proto 138/5. Les
+chiffres ci-dessus incluent :
+- les +82 tests et +7 fichiers que P5 ajoute a `plateforme/` ;
+- les +16 tests de `client/` et les +4 de `proto/` que le CHANTIER CONCURRENT
+  (presse-papier) a ajoutes pendant l'execution de P5. P5 n'a touche NI
+  `client/` NI `proto/` -- verifie commit par commit, voir plus bas.
+
+Detail des +82 tests de `plateforme/` :
+  securite/frein.test.ts            11   (neuf)
+  http/adresse-source.test.ts       11   (neuf)
+  http/entetes.test.ts               3   (neuf)
+  obs/journal.test.ts                8   (neuf)
+  config.test.ts                    +4
+  http/serveur.test.ts              +4
+  http/routes-auth.test.ts         +11
+  agents/canal.test.ts              +6
+  signaling/resilience.test.ts      +1
+  http/routes-sante.test.ts         10   (neuf)
+  http/entetes-routeurs.test.ts      8   (neuf)
+  securite/secrets.test.ts           4   (neuf)
+                                  ----
+                                    81
+⚠️ LE COMPTE ANNONCE EST 82 ET LA SOMME CI-DESSUS EN FAIT 81 : l'ecart d'UNE
+unite est le test `(g bis)` de `frein.test.ts` (« une entree EXPIREE est purgee
+avant qu'on evince une vivante »), ajoute au-dela des huit assertions que le
+plan enumere. 341 + 82 = 423, verifie par la commande.
+
+=== PERIMETRE : verifie commit par commit ===
+Les 15 commits de code de P5 (bb5a40f .. 89ac12c) plus les deux commits de
+journaux ne touchent QUE `plateforme/` et
+`docs/superpowers/plans/journaux-plateforme-p5/`. AUCUN fichier de `agent/`,
+`proto/`, `client/`, `scripts/`, ni `CLAUDE.md`.
+
+=== TEMOIN DE D13 : aucune dependance de production ajoutee ===
+`plateforme/package.json` dependencies = ["pg","ws"], inchange.
+`base/pilote.test.ts:49` reste VERT.
+
+=== REGLE DES 500 LIGNES ===
+Aucun fichier de `plateforme/` ne depasse 500 lignes. Le plus gros est
+`http/routes-applications.test.ts` a 480, un fichier de G1 que P5 ne touche
+pas -- il est AU-DESSUS de la porte a 450 du plan, et c'etait deja le cas a
+l'entree (releve de la tache 0).
+Le plus gros fichier que P5 TOUCHE est `agents/canal.ts` a 417 (marge 83).
+Hors `plateforme/`, quatre fichiers depassent 500 : `agent/src/encode.rs` 1536
+et `agent/src/windows_source.rs` 630 (dette gelee), plus
+`proto/src/plateforme/tests.rs` 561 et `proto/ts/plateforme.test.ts` 512, tous
+hors perimetre. ⚠️ `agent/src/main.rs`, releve a 505 a la tache 0, est repasse
+SOUS 500 pendant l'execution : c'est le chantier concurrent, pas P5.
+
+=== INCIDENT D'INFRASTRUCTURE, resolu ===
+L'instance Postgres de test a plante en cours d'execution
+(`too many clients already`, puis `signal 11: Segmentation fault`, puis
+`recovery mode`), faisant passer la suite a 181 echecs sur un code sain.
+Cause : la suite ouvre 128 bases sur 22 fichiers paralleles, chaque `baseNeuve`
+ouvrant DEUX pilotes `pg` de 10 clients par defaut -- soit exactement le
+`max_connections = 100`. Corrige par un `maxClients` pose PAR LE HARNAIS DE
+TEST seul (commit 89ac12c). Pic de connexions releve apres correctif : 25/100.
+Trois executions consecutives a 423/423.
+
+=== INCIDENT TRANSITOIRE, non imputable a P5 ===
+Une execution de `client/npm test` a rendu « 5 failed | 290 passed » alors que
+P5 n'a jamais touche `client/`. Relancee, elle rend 295/295 et sortie 0. Le
+chantier concurrent commitait `client/src/presse-papier.ts` a cet instant
+(`5a43719`) : la lecture a attrape un arbre en cours d'ecriture. Consigne
+plutot que passe sous silence, et NON reproduit.
