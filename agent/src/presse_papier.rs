@@ -84,6 +84,50 @@ pub fn actif() -> bool {
     })
 }
 
+/// `PRESSE_PAPIER_GARDE=0` désarme les gardes anti-écho de `apres_notre_ecriture`.
+///
+/// ⚠️ **VARIABLE DE BANC, JAMAIS UNE CONFIGURATION LIVRÉE** — même statut que
+/// `PART_SONDAGE`. Elle existe pour un seul usage : rendre ATTEIGNABLE la rouge
+/// du critère ④ de P2, qui compte les messages `clipboard` revenant vers la
+/// fenêtre après un collage.
+///
+/// **`=0` DÉSARME ; une simple présence n'arme pas.** Les gardes sont armés par
+/// défaut, et tester `is_ok()` les désarmerait en écrivant
+/// `PRESSE_PAPIER_GARDE=0` pour... les désarmer. Convention de `PLEIN_ECRAN`,
+/// `AUDIO`, `SUPERVISEUR`, `CAPTEUR`, `PART_SONDAGE` et `PRESSE_PAPIER`.
+///
+/// 🔴 **ELLE DÉSARME LES DEUX GARDES, PAS LE SEUL N°1, ET C'EST LE POINT.**
+/// La spécification prescrivait de désarmer le n°1 et d'attendre un compte qui
+/// « croît sans borne » ; **il reste à un, et la spec avait prévu ce cas**.
+/// Sans armement du n°2, le `Sondeur` relit notre texte, l'annonce **une**
+/// fois, puis pose lui-même `dernier_emis` et `reference` — au tour suivant
+/// `observer` sort sur sa première ligne. Et rien ne relance : le client
+/// n'émet vers l'agent que sur un `paste`, donc sur un GESTE HUMAIN, jamais à
+/// la réception d'un `clipboard`. Désarmer le seul n°1 rendrait donc **zéro
+/// message aussi**, et la rouge serait vacueuse une seconde fois.
+///
+/// 🔵 **Conséquence de conception, et elle contredit une phrase de D5** : dans
+/// l'architecture livrée, **aucune oscillation auto-entretenue n'est
+/// possible**, chaque tour exigeant un geste humain. Ce que les gardes
+/// suppriment est **un aller-retour par collage**, pas une divergence.
+/// ⚠️ Déduit du code, pas d'une mesure : `client/src/presse-papier-dom.ts`
+/// n'écrit que localement à la réception et n'émet rien. La condition qui
+/// rendrait la boucle réelle est nommée — un client qui réémettrait ce qu'il
+/// reçoit —, et c'est précisément ce que le garde n°3 empêche côté page.
+fn gardes_armes() -> bool {
+    static ARMES: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ARMES.get_or_init(|| {
+        let armes = std::env::var("PRESSE_PAPIER_GARDE").as_deref() != Ok("0");
+        if !armes {
+            tracing::warn!(
+                "garde anti-echo du presse-papier DESARME (PRESSE_PAPIER_GARDE=0) : \
+                 bras de banc, jamais une configuration livree"
+            );
+        }
+        armes
+    })
+}
+
 /// Ramène toutes les fins de ligne à `\n`.
 ///
 /// Windows écrit `\r\n` ; d'anciennes applications écrivent un `\r` **seul**.
@@ -284,6 +328,22 @@ impl Sondeur {
     /// **C'est le comportement voulu** : le garde reste exact au sens de D5, et
     /// un test le vérifie.
     pub fn apres_notre_ecriture(&mut self, seq: u32, texte: &str) {
+        self.armer(gardes_armes(), seq, texte);
+    }
+
+    /// Le cœur d'`apres_notre_ecriture`, avec l'état du garde **injecté**.
+    ///
+    /// 🔴 **C'est ce qui rend le bras désarmé ÉPROUVABLE SUR L'HÔTE.**
+    /// `gardes_armes()` est un `OnceLock` : un test ne peut ni le piloter ni le
+    /// réinitialiser, et un contrôle écrit contre lui ne pourrait donc **pas
+    /// rendre l'autre valeur** — c'est-à-dire pas échouer. Même patron que la
+    /// fermeture de lecture d'`observer`, et pour la même raison.
+    pub fn armer(&mut self, armes: bool, seq: u32, texte: &str) {
+        // Le bras désarmé du critère ④ : voir `gardes_armes`, qui dit pourquoi
+        // il désarme les DEUX et non le seul n°1.
+        if !armes {
+            return;
+        }
         self.reference = Some(seq);
         self.dernier_emis = Some(normaliser(texte));
     }
