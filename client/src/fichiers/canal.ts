@@ -165,7 +165,15 @@ export async function connecterCanalFichiers(options: OptionsCanal): Promise<Can
  * que la traversée de l'arborescence dans le sélecteur, jamais le geste. Un
  * clic par chargement de la page-shell, et c'est tout.
  *
- * `mode: 'read'` — F1 vit tout entier en lecture seule (spec §8).
+ * ❌ `mode: 'read'` N'EST PLUS VRAI — F2 demande `'readwrite'`, sans quoi la
+ * File System Access API refuserait `createWritable()` et toute écriture serait
+ * perdue APRÈS que l'application a cru avoir enregistré.
+ *
+ * ⚠️ ET CE MODE N'EST PAS EXERCÉ PAR LA RECETTE : son instrument est **OPFS**,
+ * dont `navigator.storage.getDirectory()` rend une vraie
+ * `FileSystemDirectoryHandle` **sans aucun modèle de permission** (F1 résultats
+ * §3). `queryPermission` / `requestPermission` et l'activation utilisateur
+ * transitoire restent NON COUVERTS, comme en F1. Déclaré.
  *
  * ⚠️ REND `null` QUAND L'UTILISATEUR ANNULE. Le navigateur signale l'annulation
  * par une `AbortError`, c'est-à-dire par le même canal qu'une vraie panne :
@@ -193,7 +201,7 @@ export async function choisirDossier(): Promise<{ racine: Racine; nom: string } 
     }
     let poignee: FileSystemDirectoryHandle;
     try {
-        poignee = await global.showDirectoryPicker({ mode: 'read' });
+        poignee = await global.showDirectoryPicker({ mode: 'readwrite' });
     } catch (e) {
         if (e instanceof DOMException && e.name === 'AbortError') return null;
         throw e;

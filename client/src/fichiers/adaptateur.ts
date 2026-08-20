@@ -11,23 +11,26 @@
 // valeurs et lève des `EchecFichiers`. C'est `protocole.ts` qui les met sur le
 // fil.
 //
-// ⚠️ LA CASSE N'EST TRAITÉE NULLE PART, ET C'EST UN LEGS DÉCLARÉ. Windows est
-// insensible à la casse, la File System Access API ne l'est pas : l'Explorateur
-// peut demander `NOTE.TXT` là où le répertoire local porte `note.txt`, et
-// `getFileHandle` lèvera `NotFoundError`.
+// ⚠️ EN LECTURE, LA CASSE N'EST TRAITÉE NULLE PART, ET C'EST UN LEGS DÉCLARÉ.
+// Windows est insensible à la casse, la File System Access API ne l'est pas :
+// l'Explorateur peut demander `NOTE.TXT` là où le répertoire local porte
+// `note.txt`, et `getFileHandle` lèvera `NotFoundError`.
 //
 // ❌ CE N'EST PAS CE QUE LA RECETTE DE F1 A MESURÉ, ET LE VRAI DÉFAUT EST PIRE :
 // avec `Casse.txt` sur le poste local, `casse.txt` ET `CASSE.TXT` rendent tous
 // deux le CONTENU de `Casse.txt`, sans erreur — trois exécutions sur trois. La
-// `NotFoundError` promise ici n'arrive que pour un fichier jamais hydraté
+// `NotFoundError` promise ci-dessus n'arrive que pour un fichier jamais hydraté
 // (`GROS.BIN`, même exécution). Le mécanisme le plus vraisemblable est que NTFS
 // résout la casse sur le fichier local DÉJÀ hydraté, sans jamais atteindre cet
 // adaptateur. Voir l'en-tête d'`agent/src/pont/chemins.rs`.
 //
-// Le plan de F1 le nomme comme un legs
-// à OBSERVER en recette, pas à résoudre ici — une correspondance insensible à
-// la casse exigerait d'énumérer le répertoire à chaque résolution, ce qui est
-// une décision de conception et un coût, pas un correctif.
+// ❌ ET CE LEGS NE VAUT PLUS DE L'ÉCRITURE : `fichiers/ecriture.ts` REFUSE
+// d'écrire dans un homonyme qui ne diffère que par la casse. La raison est que
+// l'erreur n'y a pas la même conséquence — en lecture c'est un mauvais fichier
+// RENDU, en écriture c'est un fichier ÉCRASÉ. Le remède complet, une table de
+// correspondance alimentée par l'énumération, reste F3 ; la garde d'écriture,
+// elle, énumère le répertoire parent à CHAQUE écriture, et ce coût est déclaré
+// là-bas.
 
 import type { CodeEchec } from '../../../proto/ts/fichiers';
 import { TAILLE_TRAME_MAX } from '../../../proto/ts/fichiers';
@@ -127,7 +130,7 @@ export class EchecFichiers extends Error {
  * dont l'Explorateur ne dit pas la même chose : un composant INTERMÉDIAIRE
  * manquant rend `chemin-introuvable`, le composant FINAL rend `introuvable`.
  */
-function classer(e: unknown, siAbsent: CodeEchec): EchecFichiers {
+export function classer(e: unknown, siAbsent: CodeEchec): EchecFichiers {
     if (e instanceof EchecFichiers) return e;
     const nom = e instanceof DOMException ? e.name : '';
     const texte = e instanceof Error ? e.message : String(e);
@@ -138,6 +141,21 @@ function classer(e: unknown, siAbsent: CodeEchec): EchecFichiers {
         case 'NotAllowedError':
         case 'SecurityError':
             return new EchecFichiers('acces-refuse', texte);
+        // ── LES DEUX CAUSES DE F2 ──────────────────────────────────────────
+        // Elles n'existaient pas en lecture seule, et sans elles les deux
+        // tomberaient dans `interne` : le journal ne dirait plus POURQUOI une
+        // écriture a échoué, et l'utilisateur ne saurait pas s'il doit libérer
+        // de la place ou rendre une permission.
+        //
+        // ⚠️ **`TypeMismatchError` N'EST PAS CLASSÉ EN `deja-present`**, contre
+        // la lettre du plan de F2 : il est DÉJÀ classé en absence, deux lignes
+        // plus haut, et c'est ce qui permet à `attributs` de retenter en
+        // fichier après avoir échoué en répertoire. Le classer deux fois est
+        // impossible ; le classer ici casserait la lecture.
+        case 'QuotaExceededError':
+            return new EchecFichiers('disque-plein', texte);
+        case 'InvalidModificationError':
+            return new EchecFichiers('deja-present', texte);
         default:
             // Tout le reste est `interne` : inventer un code plus précis
             // reviendrait à deviner, et l'agent le traduirait en un HRESULT

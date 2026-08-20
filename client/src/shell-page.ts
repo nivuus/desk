@@ -6,6 +6,7 @@ import { installerSelecteurDeThemeAuDOM } from './design/selecteur-theme';
 import { jetonAcces } from './jeton';
 import { composer, lirePrefixe } from './prefixe';
 import { creerAdaptateur } from './fichiers/adaptateur';
+import { creerEcrivain, type RacineInscriptible } from './fichiers/ecriture';
 import { creerServeur } from './fichiers/protocole';
 import { choisirDossier, connecterCanalFichiers, sessionDuPont, type CanalFichiers } from './fichiers/canal';
 import { adresseSignaling } from './adresse-plateforme';
@@ -31,6 +32,7 @@ const statut = document.querySelector<HTMLDivElement>('#statut')!;
 const liste = document.querySelector<HTMLUListElement>('#fenetres')!;
 const boutonDossier = document.querySelector<HTMLButtonElement>('#choisir-dossier')!;
 const etatFichiers = document.querySelector<HTMLDivElement>('#etat-fichiers')!;
+const ecrituresDues = document.querySelector<HTMLDivElement>('#ecritures-dues')!;
 const modeleFenetre = document.querySelector<HTMLTemplateElement>('#modele-fenetre')!;
 
 // Le sélecteur de thème du produit (spec §5.2, famille 3). Il n'y a AUCUNE
@@ -95,6 +97,38 @@ const bureau = creerBureau({
         etatFichiers.textContent = texte;
         poserTon(etatFichiers, ton);
     },
+    afficherEcrituresDues(dues, vues, texte, ton) {
+        // 🔴 LES NOMBRES VONT DANS DES ATTRIBUTS `data-*`, LE TEXTE DANS LA
+        // PAGE. Le pilote de recette lit `data-dues` et `data-vues`, JAMAIS le
+        // texte — piège de F1, payé neuf minutes sur deux messages qui
+        // partageaient une sous-chaîne.
+        ecrituresDues.dataset.dues = String(dues);
+        ecrituresDues.dataset.vues = String(vues);
+        ecrituresDues.textContent = texte;
+        poserTon(ecrituresDues, ton);
+    },
+});
+
+/* ── `beforeunload`, ET SES TROIS LIMITES ─────────────────────────────────
+   ⛔ ① LE MESSAGE PERSONNALISÉ EST IGNORÉ par tous les navigateurs modernes :
+      ils n'affichent qu'un libellé générique de leur choix. La spec §6.2
+      demande « un texte qui nomme les fichiers » — CE TEXTE N'EXISTE PAS. Les
+      fichiers sont nommés DANS LA PAGE, à côté du compteur.
+   ⛔ ② IL NE SE DÉCLENCHE PAS DU TOUT si l'onglet est tué par le gestionnaire
+      de tâches, si le navigateur plante, si la machine s'éteint, ou si l'onglet
+      est écarté faute de mémoire.
+   ⛔ ③ IL NE PEUT RIEN VIDER. L'événement est SYNCHRONE, et un envoi sur un
+      `RTCDataChannel` amorcé dedans n'a aucune garantie de partir.
+
+   🔴 `beforeunload` AVERTIT ; IL NE SAUVE PAS. Ce qui sauve est le journal du
+   pont, et lui seul.
+
+   ⚠️ Il exige en outre une ACTIVATION UTILISATEUR PERSISTANTE pour afficher son
+   dialogue. Elle est acquise : monter le lecteur passe par un clic. */
+window.addEventListener('beforeunload', (evenement) => {
+    // La RÈGLE est dans `shell.ts`, qui est testé ; ici il n'y a que le câblage.
+    if (!bureau.doitPrevenir()) return;
+    evenement.preventDefault();
 });
 
 /* ── LE LECTEUR « MES FICHIERS » ──────────────────────────────────────────
@@ -129,7 +163,18 @@ async function monterLeLecteur(): Promise<void> {
     // `null` = annulation délibérée, `undefined` = échec déjà signalé.
     if (choix === null || choix === undefined) return;
 
-    const serveur = creerServeur(creerAdaptateur(choix.racine), (m) => console.warn(m));
+    // 🔴 LA MÊME POIGNÉE SERT À LIRE ET À ÉCRIRE, et le transtypage est le
+    // CONTRÔLE DE COMPATIBILITÉ STRUCTURELLE de F2 : `RacineInscriptible`
+    // décrit un sous-ensemble de `FileSystemDirectoryHandle`, et si la vraie
+    // poignée cessait de le satisfaire, `tsc --noEmit` le dirait ICI plutôt
+    // qu'en session réelle.
+    const racineInscriptible: RacineInscriptible = choix.racine as RacineInscriptible;
+    const ecrivain = creerEcrivain(racineInscriptible);
+    const serveur = creerServeur(creerAdaptateur(choix.racine), (m) => console.warn(m), {
+        ecrivain,
+        onDues: (dues) => bureau.ecrituresDues(dues),
+        onEchecEcriture: (chemin, code) => bureau.ecritureEchouee(chemin, code),
+    });
     try {
         pont = await connecterCanalFichiers({
             signalingUrl,
@@ -158,6 +203,10 @@ async function monterLeLecteur(): Promise<void> {
         const etat = ce.pc.connectionState;
         if (etat === 'failed' || etat === 'closed') bureau.lecteurDemonte();
     });
+    // ⚠️ **LES FLUX OUVERTS SE FERMENT AVEC LE CANAL.** Un flux
+    // `createWritable()` laissé ouvert garde son fichier d'échange, et son
+    // fichier de destination reste INCHANGÉ — la committaison est au `close()`.
+    ce.canal.addEventListener('close', () => ecrivain.abandonner());
 }
 
 function redessiner(): void {
