@@ -129,18 +129,42 @@ pub(crate) fn aiguiller() -> Result<bool> {
     // donc. Le produit, lui, ne l'écrit jamais en P1.
     //
     // 🔴 **Cette variable ne doit JAMAIS coexister avec `SUPERVISEUR`** — c'est la
-    // divergence E10 du plan. `main()` appelle `diagnostics::aiguiller()` AVANT de
-    // regarder `CAPTEUR`, et `superviseur/lanceur.rs::lancer_capteur` lance le capteur
-    // en héritant de l'environnement : il n'en retire que `SUPERVISEUR`, `PONT`,
-    // `TEST_FILE`, `WINDOW_TITLE` et les trois variables d'identité — **aucune
-    // variable de diagnostic**. Un `PRESSE_PAPIER_SONDE` resté posé ferait donc
-    // exécuter la sonde par le processus CAPTEUR, qui s'arrêterait aussitôt — et le
-    // superviseur le relancerait en boucle. La sonde se lance SEULE.
+    // divergence E10 du plan. `main()` appelle `diagnostics::aiguiller()` en
+    // `main.rs:172`, AVANT la branche `CAPTEUR` (`:180`), avant l'enrôlement,
+    // avant `PONT` (`:279`) et avant la branche superviseur : **quel que soit le
+    // mode demandé**, un agent qui porte cette variable exécute la sonde et
+    // s'arrête.
     //
-    // ⚠️ Le plan ne pose PAS d'`env_remove` pour cette variable, et le dit : ce
-    // serait une convention que les huit `MULTIFENETRE_*` existantes ne suivent
-    // pas. Le prix est celui, connu, d'une garantie qui tient à un ordre plutôt
-    // qu'à un retrait — la dissymétrie est ici DÉCLARÉE, pas dormante.
+    // ❌ **LE MÉCANISME QUE E10 DÉCRIT N'EST PAS ATTEIGNABLE, et l'écrire ici
+    // vaut mieux que de laisser courir une menace fausse** (tâche 14, 20 août
+    // 2026). E10 annonce que la sonde serait exécutée « par le processus
+    // CAPTEUR, qui s'arrêterait aussitôt — et le superviseur le relancerait en
+    // boucle ». Cela supposerait que l'ENFANT porte la variable et pas son PÈRE.
+    // Or `superviseur/lanceur.rs` lance ses enfants par `std::process::Command`,
+    // qui hérite de l'environnement du père : si le capteur la porte, le
+    // superviseur la portait déjà — et il s'est donc arrêté à `main.rs:172`,
+    // AVANT d'avoir lancé quoi que ce soit. Il n'existe aucun chemin, dans ce
+    // dépôt, qui pose cette variable sur un enfant sans l'avoir posée sur son
+    // père : `run-agent.sh` écrit un unique script d'amorçage, et `lanceur.rs`
+    // n'ajoute jamais de variable de diagnostic.
+    //
+    // ✅ **CE QUI EST VRAI, ET SUFFIT À JUSTIFIER LA MÊME CONSIGNE** : la
+    // variable dégénère TOUT lancement d'agent en sonde, superviseur compris.
+    // Le symptôme n'est pas une boucle mais un silence — aucune session ne
+    // s'établit, et la sortie de la sonde est le seul indice. **La sonde se
+    // lance SEULE**, sans `SUPERVISEUR`.
+    //
+    // ⚠️ Le plan ne pose PAS d'`env_remove` pour cette variable, et sa raison
+    // (« ce serait une convention que les huit `MULTIFENETRE_*` ne suivent
+    // pas ») est faible au regard de la doctrine que `lanceur.rs` porte dans son
+    // propre code — « un ordre de test est une propriété qui change, un
+    // `env_remove` non », écrite le 20 août 2026 en retirant l'identité de
+    // plateforme aux enfants. **Mais la conclusion tient pour une AUTRE raison,
+    // et elle est décisive** : le père s'arrête avant d'atteindre `lanceur.rs`,
+    // donc un `env_remove` posé là ne préviendrait RIEN. Le seul remède qui
+    // mordrait serait de déplacer l'aiguillage des sondes après les branches de
+    // mode, ce qui changerait le contrat de `diagnostics::aiguiller` pour ses
+    // douze variables — hors périmètre de P1, et nommé ici plutôt que dormant.
     #[cfg(windows)]
     if let Ok(secondes) = std::env::var("PRESSE_PAPIER_SONDE") {
         presse_papier::executer(&secondes)?;
