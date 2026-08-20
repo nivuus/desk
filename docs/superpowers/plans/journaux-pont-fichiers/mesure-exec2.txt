@@ -1,0 +1,25 @@
+racine=C:\Users\Administrateur\Mes Fichiers
+racine_presente=True
+=== NOMS DEBUT ===
+D|sous-dossier
+F|casse.txt|42
+F|Casse.txt|42
+F|gros.bin|12582912
+F|éphémère été.txt|25
+F|sous-dossier\imbrique.txt|43
+noms_total=6
+=== NOMS FIN ===
+=== SONDE LECTURE DEBUT ===
+sonde|petit|OK|46 ms|MAJUSCULE - ce fichier sappelle Casse.txt
+=== SONDE PETITE FIN ===
+=== CASSE DEBUT ===
+casse|Casse.txt|OK|MAJUSCULE - ce fichier sappelle Casse.txt
+casse|casse.txt|OK|MAJUSCULE - ce fichier sappelle Casse.txt
+casse|CASSE.TXT|OK|MAJUSCULE - ce fichier sappelle Casse.txt
+casse|GROS.BIN|ECHEC|Exception lors de l'appel de « ReadAllText » avec « 1 » argument(s) : « Le fichier 'C:\Users\Administrateur\Mes Fichiers\GROS.BIN' est introuvable. »
+=== CASSE FIN ===
+=== CREATION DEBUT ===
+creation|CREEE (DIVERGENCE : attendu ERROR_WRITE_PROTECT)
+creation_presente=True
+=== CREATION FIN ===
+=== LECTURES DEBUT ===

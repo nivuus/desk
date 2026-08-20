@@ -1,0 +1,33 @@
+=== [exec4] nettoyage de la VM ===
+--- processus restants ---
+agent : 0
+chrome : 0
+notepad : 0
+firefox : 0
+--- racine du pont ---
+racine presente apres nettoyage : False=== [exec4] ouverture de la mire (session interactive) ===
+=== [exec4] pilote (la shell d'abord, l'agent ensuite) ===
+[2026-08-20T02:17:19.365Z] obtention du jeton de recette
+[2026-08-20T02:17:19.866Z] chrome : Chrome/151.0.7922.169
+[2026-08-20T02:17:20.075Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=H8vbQk50BJdfQk1Q4Q4R8g
+[2026-08-20T02:17:24.209Z] etat initial : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=H8vbQk50BJdfQk1Q4Q4R8g","f1":{"peuple":6,"erreurs":[]}}
+[2026-08-20T02:17:24.211Z] OPFS peuple : 6 entrees
+[2026-08-20T02:17:24.211Z] la page-shell est connectee : lancement de l agent
+[2026-08-20T02:17:24.681Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-20T02:18:55.062Z] AUCUNE fenetre d application apres 90 s
+[2026-08-20T02:18:55.066Z] diagnostic page-shell : {"statut":"bureau connecté","nbLi":0}
+[2026-08-20T02:18:55.066Z] clic sur #choisir-dossier
+[2026-08-20T02:18:58.093Z] #etat-fichiers : "Le lecteur « Mes Fichiers » n’a pas pu être monté : premier message invalide : {role, session} attendu."
+[2026-08-20T02:18:58.094Z] lecteur monte : repos de 8000 ms avant la mesure
+[2026-08-20T02:19:06.106Z] mesure cote VM
+[2026-08-20T02:28:09.441Z] mesure VM : 5 lignes
+[2026-08-20T02:28:19.495Z] echantillon 1 : {"t":10,"fenetres":0,"flux":[]}
+[2026-08-20T02:28:29.528Z] echantillon 2 : {"t":20,"fenetres":0,"flux":[]}
+[2026-08-20T02:28:39.560Z] echantillon 3 : {"t":30,"fenetres":0,"flux":[]}
+[2026-08-20T02:28:49.592Z] echantillon 4 : {"t":40,"fenetres":0,"flux":[]}
+[2026-08-20T02:28:59.631Z] echantillon 5 : {"t":50,"fenetres":0,"flux":[]}
+[2026-08-20T02:29:09.665Z] echantillon 6 : {"t":60,"fenetres":0,"flux":[]}
+[2026-08-20T02:29:09.669Z] #etat-fichiers (fin) : "Le lecteur « Mes Fichiers » n’a pas pu être monté : premier message invalide : {role, session} attendu."
+[2026-08-20T02:29:09.670Z] resultat ecrit : /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/214a7bc1-b5e4-4649-807c-1a82dd8a7d41/scratchpad/f1/pilote-exec4.json
+=== [exec4] copie du journal d'agent (APRES la fin reelle) ===
+=== [exec4] code de sortie du pilote : 0 ===

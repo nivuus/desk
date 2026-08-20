@@ -1,0 +1,23 @@
+2026-08-19T23:35:44.469278Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-19T23:35:44.634339Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8080/agent" prefixe=H8vbQk50BJdfQk1Q4Q4R8g expire_a=1787183144604
+2026-08-19T23:35:44.636514Z  INFO agent::superviseur::signalisation: déclaration du superviseur émise sur la session de contrôle (acceptation encore inconnue) session="H8vbQk50BJdfQk1Q4Q4R8g:bureau"
+2026-08-19T23:35:44.639436Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-19T23:35:44.639472Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-19T23:35:44.639483Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=1 attachees=1
+2026-08-19T23:35:44.639489Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-19T23:35:47.641729Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-19T23:35:47.641765Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-19T23:35:47.641774Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-08-19T23:35:47.641783Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-19T23:35:47.641789Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=0 avant=1 apres=1
+2026-08-19T23:35:47.646099Z  INFO agent::superviseur::lanceur: capteur lancé pid=11040
+2026-08-19T23:35:47.647709Z  INFO agent::superviseur::lanceur::pont: pont fichiers lancé pid=2484 session="H8vbQk50BJdfQk1Q4Q4R8g:fichiers"
+2026-08-19T23:35:47.647726Z  WARN agent::superviseur::boucle::surveillance_pont: pont fichiers lancé ou relancé (tentatives suivantes silencieuses tant que le cycle se répète) pid_neuf=2484
+2026-08-19T23:35:47.653616Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-19T23:35:47.653650Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-08-19T23:35:47.654444Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-19T23:35:47.793943Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8080/agent" prefixe=H8vbQk50BJdfQk1Q4Q4R8g expire_a=1787183147764
+2026-08-19T23:35:47.794658Z  INFO agent::pont::transport: socket UDP du pont fichiers addr=192.168.3.2:52990
+2026-08-19T23:35:47.821340Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="H8vbQk50BJdfQk1Q4Q4R8g:fichiers"
+2026-08-19T23:35:47.822483Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-19T23:35:48.149789Z  INFO agent::superviseur::boucle::surveillance_pont: pont fichiers de nouveau stable pid=2484

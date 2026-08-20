@@ -1,0 +1,19 @@
+# Rouge (i), PREMIERE version : le PID etait DEVINE, pas releve. Piece
+# conservee parce que c'est le defaut, pas le resultat.
+#
+# L'heuristique « le pont est le plus jeune des agents » est FAUSSE : l'ordre de
+# lancement est superviseur, capteur, pont, PUIS l'enfant de chaque fenetre.
+# C'est donc l'ENFANT qui a ete tue. Le releve ci-dessous ne mesure pas ce que
+# son titre annonce.
+racine_presente=True
+agents_avant=4
+agent|2376|04:01:46.304
+agent|16484|04:01:49.411
+agent|10336|04:01:49.415
+agent|5192|04:01:49.857
+lecture en vol depuis 8 s : mise a mort du pont
+pont_tue_pid=5192          <-- l'ENFANT, pas le pont
+issue|LECTURE|ECHEC|18873|« Une erreur interne s'est produite. »
+delai_apres_mort_ms=11038
+agents_apres=3
+FIN ROUGE I

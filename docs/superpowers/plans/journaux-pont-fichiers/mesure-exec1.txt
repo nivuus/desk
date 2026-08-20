@@ -1,0 +1,27 @@
+# Mesure VM de l'execution 1 (relevee a 120 s, puis a la fin du run).
+# `C:\dev\mesure.txt` est ECRASE a chaque execution : cette copie est celle
+# d'exec1, prise avant le lancement d'exec2. Le fichier s'arrete la ou le
+# script s'est arrete -- voir le releve de blocage du document de resultats.
+racine=C:\Users\Administrateur\Mes Fichiers
+racine_presente=True
+=== NOMS DEBUT ===
+D|sous-dossier
+F|casse.txt|42
+F|Casse.txt|42
+F|gros.bin|12582912
+F|éphémère été.txt|25
+F|sous-dossier\imbrique.txt|43
+noms_total=6
+=== NOMS FIN ===
+=== SONDE LECTURE DEBUT ===
+sonde|petit|OK|74 ms|MAJUSCULE - ce fichier sappelle Casse.txt
+=== SONDE PETITE FIN ===
+=== CASSE DEBUT ===
+casse|Casse.txt|OK|MAJUSCULE - ce fichier sappelle Casse.txt
+casse|casse.txt|OK|MAJUSCULE - ce fichier sappelle Casse.txt
+casse|CASSE.TXT|OK|MAJUSCULE - ce fichier sappelle Casse.txt
+casse|GROS.BIN|ECHEC|Exception lors de l'appel de « ReadAllText » avec « 1 » argument(s) : « Le fichier 'C:\Users\Administrateur\Mes Fichiers\GROS.BIN' est introuvable. »
+=== CASSE FIN ===
+=== CREATION DEBUT ===
+# (le script s'arrete ici : la creation locale n'a pas rendu la main dans la
+#  fenetre de mesure de 540 s)

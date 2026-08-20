@@ -1,0 +1,6 @@
+./Casse.txt
+./casse.txt
+./gros.bin
+./sous-dossier
+./sous-dossier/imbrique.txt
+./éphémère été.txt

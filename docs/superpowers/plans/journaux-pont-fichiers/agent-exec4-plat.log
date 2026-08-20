@@ -1,0 +1,164 @@
+2026-08-20T02:17:24.861674Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T02:17:24.933379Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8080/agent" prefixe=H8vbQk50BJdfQk1Q4Q4R8g expire_a=1787192844895
+2026-08-20T02:17:24.934715Z  INFO agent::superviseur::signalisation: déclaration du superviseur émise sur la session de contrôle (acceptation encore inconnue) session="H8vbQk50BJdfQk1Q4Q4R8g:bureau"
+2026-08-20T02:17:24.937377Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-20T02:17:24.937416Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-20T02:17:24.937429Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=2 attachees=2
+2026-08-20T02:17:24.937434Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-20T02:17:24.937439Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-20T02:17:24.950177Z  INFO agent::moniteurs_virtuels::purge: sortie virtuelle retirée par la purge numero=1 guid=9C4A1F6E-2B73-4D51-9E08-677541430001
+2026-08-20T02:17:27.952393Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-20T02:17:27.952426Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-20T02:17:27.952434Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-08-20T02:17:27.952442Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-20T02:17:27.952447Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=1 avant=2 apres=1
+2026-08-20T02:17:27.956489Z  INFO agent::superviseur::lanceur: capteur lancé pid=13824
+2026-08-20T02:17:27.958132Z  INFO agent::superviseur::lanceur::pont: pont fichiers lancé pid=5748 session="H8vbQk50BJdfQk1Q4Q4R8g:fichiers"
+2026-08-20T02:17:27.958148Z  WARN agent::superviseur::boucle::surveillance_pont: pont fichiers lancé ou relancé (tentatives suivantes silencieuses tant que le cycle se répète) pid_neuf=5748
+2026-08-20T02:17:27.964473Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T02:17:27.964510Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-08-20T02:17:27.965611Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T02:17:28.046269Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8080/agent" prefixe=H8vbQk50BJdfQk1Q4Q4R8g expire_a=1787192848008
+2026-08-20T02:17:28.047079Z  INFO agent::pont::transport: socket UDP du pont fichiers addr=192.168.3.2:52131
+2026-08-20T02:17:28.073967Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="H8vbQk50BJdfQk1Q4Q4R8g:fichiers"
+2026-08-20T02:17:28.074577Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-20T02:17:28.159414Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-20T02:17:28.159453Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-20T02:17:28.159462Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=1 attachees=1
+2026-08-20T02:17:28.159467Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-20T02:17:28.159754Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=262 adaptateur_bas=62078 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430001 largeur=780 hauteur=492 hertz=60
+2026-08-20T02:17:28.387462Z  INFO agent::superviseur::enfants: enfant lancé session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 pid=12636 sortie=\\.\DISPLAY5
+2026-08-20T02:17:28.397869Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T02:17:28.487716Z  INFO agent::superviseur::boucle::surveillance_pont: pont fichiers de nouveau stable pid=5748
+2026-08-20T02:17:28.557633Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8080/agent" prefixe=H8vbQk50BJdfQk1Q4Q4R8g expire_a=1787192848520
+2026-08-20T02:17:28.557701Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY5 bitrate=12000000 fps=90
+2026-08-20T02:17:28.561678Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-20T02:17:28.561779Z  INFO agent::capteur::tube: attaché au capteur session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 sortie=\\.\DISPLAY5 largeur=780 hauteur=492
+2026-08-20T02:17:28.561968Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::fenetre: fenêtre attachée au capteur session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 sortie=\\.\DISPLAY5 largeur=780 hauteur=492
+2026-08-20T02:17:28.562069Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::sommeil::parts: budget de debit de la session budget_bps=12000000
+2026-08-20T02:17:28.563340Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="H8vbQk50BJdfQk1Q4Q4R8g:w-1"
+2026-08-20T02:17:28.563433Z  INFO agent::transport::initialisation: socket UDP de l'agent addr=192.168.3.2:52133
+2026-08-20T02:17:28.564394Z  INFO agent::signaling: configuration TURN reçue serveur=192.168.3.1:3478
+2026-08-20T02:17:28.594771Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=20612 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-20T02:17:28.594853Z  INFO agent::demarrage::audio: audio activé format="process loopback pid=20612 — 48000 Hz, 2 canaux, 16 bits entiers" pid=20612
+2026-08-20T02:17:31.099930Z  INFO agent::demarrage: offre reçue
+2026-08-20T02:17:31.105919Z  WARN agent::demarrage: allocation TURN impossible : la session continue sans relais erreur=réception pendant l'allocation TURN
+2026-08-20T02:17:31.108658Z  INFO agent::demarrage: réponse envoyée
+2026-08-20T02:17:31.108958Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=2.5163905s
+2026-08-20T02:17:31.115713Z  INFO agent::transport::evenements: état ICE state=Connected écoulé=2.5231437s
+2026-08-20T02:17:31.124213Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video direction=SendOnly
+2026-08-20T02:17:31.124243Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio direction=SendOnly
+2026-08-20T02:17:31.124246Z  INFO agent::transport::evenements: piste négociée mid=Mid(2) kind=Audio direction=RecvOnly
+2026-08-20T02:17:31.124286Z  INFO agent::transport::part: part de budget appliquee session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 part_bps=256000 endormie=true
+2026-08-20T02:17:31.124292Z  INFO agent::transport::piste_audio: ordre audio applique session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 actif=true capture_morte=false
+2026-08-20T02:17:31.129140Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-20T02:17:31.129237Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-20T02:17:31.136345Z  INFO agent::demarrage: contrôle reçu session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 Visibility { version: 3, visible: true, focused: true }
+2026-08-20T02:17:31.155072Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-20T02:17:31.235055Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-20T02:17:31.235379Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-20T02:17:31.236327Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-20T02:17:31.293987Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=327681
+2026-08-20T02:17:31.299516Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-20T02:17:31.299920Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::fenetre::transitions: fenêtre réveillée session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 largeur=780 hauteur=492 duree_ms=145
+2026-08-20T02:17:31.305048Z  INFO agent::transport::part: part de budget appliquee session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 part_bps=12000000 endormie=false
+2026-08-20T02:17:31.341239Z  INFO agent::demarrage: contrôle reçu session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 Resize { version: 3, width: 780, height: 493 }
+2026-08-20T02:17:31.351255Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::windows_source::redimensionnement: redimensionnement ignoré : la source capture une sortie DXGI entière (voir le constat de mesure de capteur::plein_ecran, sous-bloc D9) width=780 height=493 mode=SortieEntiere
+2026-08-20T02:17:31.362467Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:31.367572Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:31.370526Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=2 backoff_ms=4
+2026-08-20T02:17:31.864603Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:31.869114Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:32.865185Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:33.866977Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:35.866843Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:35.874538Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:38.571545Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::fenetre: cadence du capteur session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 images=640 endormie=false cadence="63.9"
+2026-08-20T02:17:38.594675Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 unites=643 cadence="64.3"
+2026-08-20T02:17:38.867313Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:38.876145Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:38.882133Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:41.869702Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:41.875306Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:41.884388Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:42.112149Z  WARN agent::transport::evenements: aucune estimation de bande passante reçue : l'adaptation reste indisponible et le débit demeure au plafond configuré
+2026-08-20T02:17:44.870408Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:44.876958Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:44.885341Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:47.872583Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:47.877184Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:47.885129Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:17:48.579626Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::fenetre: cadence du capteur session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 images=878 endormie=false cadence="87.7"
+2026-08-20T02:17:48.595094Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 unites=877 cadence="87.7"
+2026-08-20T02:17:58.580025Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::fenetre: cadence du capteur session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 images=868 endormie=false cadence="86.8"
+2026-08-20T02:17:58.595410Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 unites=868 cadence="86.8"
+2026-08-20T02:17:58.595897Z  INFO agent::windows_audio::fil: compteurs audio pid=20612 actif=true rejetes=0 complements=1 echantillons_jetes=0
+2026-08-20T02:18:08.584358Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::fenetre: cadence du capteur session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 images=864 endormie=false cadence="86.4"
+2026-08-20T02:18:08.605482Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 unites=863 cadence="86.2"
+2026-08-20T02:18:18.584602Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::fenetre: cadence du capteur session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 images=864 endormie=false cadence="86.4"
+2026-08-20T02:18:18.605800Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 unites=864 cadence="86.4"
+2026-08-20T02:18:28.589418Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::fenetre: cadence du capteur session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 images=855 endormie=false cadence="85.5"
+2026-08-20T02:18:28.600081Z  INFO agent::windows_audio::fil: compteurs audio pid=20612 actif=true rejetes=0 complements=1 echantillons_jetes=0
+2026-08-20T02:18:28.606259Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 unites=856 cadence="85.6"
+2026-08-20T02:18:38.594495Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::fenetre: cadence du capteur session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 images=854 endormie=false cadence="85.4"
+2026-08-20T02:18:38.606467Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 unites=854 cadence="85.4"
+2026-08-20T02:18:48.601757Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::fenetre: cadence du capteur session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 images=854 endormie=false cadence="85.3"
+2026-08-20T02:18:48.615969Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 unites=854 cadence="85.3"
+2026-08-20T02:18:58.604292Z  INFO agent::windows_audio::fil: compteurs audio pid=20612 actif=true rejetes=0 complements=1 echantillons_jetes=0
+2026-08-20T02:18:58.610928Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::fenetre: cadence du capteur session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 images=861 endormie=false cadence="86.0"
+2026-08-20T02:18:58.616468Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 unites=860 cadence="86.0"
+2026-08-20T02:19:08.613545Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::fenetre: cadence du capteur session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 images=864 endormie=false cadence="86.4"
+2026-08-20T02:19:08.626221Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 unites=865 cadence="86.4"
+2026-08-20T02:19:18.623190Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::fenetre: cadence du capteur session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 images=866 endormie=false cadence="86.5"
+2026-08-20T02:19:18.626699Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 unites=865 cadence="86.5"
+2026-08-20T02:19:28.610619Z  INFO agent::windows_audio::fil: compteurs audio pid=20612 actif=true rejetes=0 complements=1 echantillons_jetes=0
+2026-08-20T02:19:28.627247Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 unites=856 cadence="85.6"
+2026-08-20T02:19:28.628232Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::fenetre: cadence du capteur session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 images=857 endormie=false cadence="85.7"
+2026-08-20T02:19:38.633035Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::fenetre: cadence du capteur session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 images=865 endormie=false cadence="86.5"
+2026-08-20T02:19:38.637018Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 unites=866 cadence="86.5"
+2026-08-20T02:19:42.346675Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:19:42.350817Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:19:42.352998Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=2 backoff_ms=4
+2026-08-20T02:19:42.354757Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-20T02:19:42.354796Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-20T02:19:42.358090Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=3 backoff_ms=8
+2026-08-20T02:19:42.366740Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=4 backoff_ms=16
+2026-08-20T02:19:42.384062Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=5 backoff_ms=32
+2026-08-20T02:19:43.344283Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:19:44.344741Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:19:45.346952Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:19:46.347270Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:19:47.356313Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:19:48.347006Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:19:48.638895Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::fenetre: cadence du capteur session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 images=857 endormie=false cadence="85.7"
+2026-08-20T02:19:48.646746Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 unites=857 cadence="85.6"
+2026-08-20T02:19:49.347343Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:19:50.347833Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:19:51.346113Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:19:52.346791Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:19:53.349129Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:19:54.348537Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:19:55.347262Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:19:56.344324Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:19:57.346629Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:19:58.345751Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:19:58.615509Z  INFO agent::windows_audio::fil: compteurs audio pid=20612 actif=true rejetes=0 complements=1 echantillons_jetes=0
+2026-08-20T02:19:58.644794Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::fenetre: cadence du capteur session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 images=856 endormie=false cadence="85.6"
+2026-08-20T02:19:58.657564Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 unites=857 cadence="85.6"
+2026-08-20T02:19:59.347070Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:20:00.345054Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:20:01.349357Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:20:02.347278Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:20:03.347050Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:20:04.348573Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:20:05.346147Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T02:20:05.434589Z  INFO agent::transport::evenements: état ICE state=Completed écoulé=156.8393424s
+2026-08-20T02:20:05.447374Z  WARN agent::transport::evenements: ICE déconnecté
+2026-08-20T02:20:05.447861Z  INFO agent::demarrage: session terminée
+2026-08-20T02:20:05.451959Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::capteur::fenetre: fin de la fenêtre côté capteur session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 images=587 motif="l'enfant a fermé le canal"
+2026-08-20T02:20:05.452115Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::encode::arret: IMFShutdown::Shutdown : avant mft="encodeur"
+2026-08-20T02:20:05.452900Z  INFO fenetre{session=H8vbQk50BJdfQk1Q4Q4R8g:w-1}: agent::encode::arret: IMFShutdown::Shutdown : après mft="encodeur"
+2026-08-20T02:20:05.526643Z  INFO agent::superviseur::lanceur: enfant terminé pid=12636 code=ExitStatus(ExitStatus(0))
+2026-08-20T02:20:05.526717Z  WARN agent::superviseur::enfants: enfant mort de lui-même session=H8vbQk50BJdfQk1Q4Q4R8g:w-1 pid=Some(12636)
+2026-08-20T02:20:35.999478Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle détruite id=262
+2026-08-20T02:20:35.999508Z  INFO agent::superviseur::boucle::creation_sortie: sortie virtuelle rendue au pilote sortie_pilote=262
