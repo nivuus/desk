@@ -286,6 +286,25 @@ const RELEVE_STATS = `
             if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded') {
                 out.paire = { rtt: r.currentRoundTripTime, recu: r.bytesReceived, envoye: r.bytesSent };
             }
+            // ⚠️ LES CANDIDATS SONT RELEVÉS, PAS SEULEMENT LA PAIRE NOMINÉE.
+            // Une paire nulle ne dit pas POURQUOI : sans les candidats des deux
+            // côtés, « le pair n'a proposé aucune adresse joignable » et « les
+            // deux se sont proposés et rien n'est passé » se lisent pareil, et
+            // ce sont deux pannes opposées. Précédent : client/recette/paire-candidats.mjs.
+            if (r.type === 'local-candidate' || r.type === 'remote-candidate') {
+                (out.candidats ??= []).push({
+                    cote: r.type === 'local-candidate' ? 'local' : 'distant',
+                    typeCandidat: r.candidateType, protocole: r.protocol,
+                    adresse: r.address, port: r.port,
+                });
+            }
+            if (r.type === 'candidate-pair') {
+                (out.paires ??= []).push({
+                    etat: r.state, nominee: r.nominated,
+                    demandesEnvoyees: r.requestsSent, reponsesRecues: r.responsesReceived,
+                    demandesRecues: r.requestsReceived,
+                });
+            }
         });
         out.etatIce = pc.iceConnectionState;
         out.etatCnx = pc.connectionState;
