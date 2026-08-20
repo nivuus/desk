@@ -431,3 +431,15 @@ impl DepuisLaPlateforme {
 #[cfg(test)]
 #[path = "plateforme/tests.rs"]
 mod tests;
+
+// 🔴 LE SECOND FICHIER DE TESTS EST NÉ D'UNE DETTE INSCRITE, PAS D'UN GOÛT.
+// `plateforme/tests.rs` était à 561 lignes — au-dessus du plafond de 500 de
+// `CLAUDE.md`, qui l'inscrivait au tableau de dette SANS point de chute. Le
+// sous-bloc G2 travaille dedans, donc il l'a découpé : cycle de vie ici,
+// gestion d'apps là. C'est le même mécanisme `#[path]` que la ligne ci-dessus,
+// employé pour la même raison — la règle des 500 lignes —, et NON la
+// « Convention de module enfant » de `CLAUDE.md`, qui vise les modules extraits
+// d'un parent `#[cfg(windows)]`.
+#[cfg(test)]
+#[path = "plateforme/tests_apps.rs"]
+mod tests_apps;
