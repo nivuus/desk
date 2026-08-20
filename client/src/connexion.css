@@ -80,3 +80,14 @@
 .connexion__theme {
     margin-block-start: var(--e-5);
 }
+
+/* Le groupe des trois boutons de thème. Même forme que `.bureau__actions` de
+   `shell.css` — mais la règle N'EST PAS IDENTIQUE (celle-ci porte en plus
+   l'alignement centré propre à une carte), donc elle ne remonte pas dans les
+   primitives : le §6.3 ne fait remonter que ce qui est écrit PAREIL. */
+.connexion__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-2);
+    justify-content: center;
+}

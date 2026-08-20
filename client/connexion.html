@@ -46,6 +46,19 @@
                     </p>
                 </form>
                 <div id="message" class="message connexion__message" role="status"></div>
+
+                <!-- LE SÉLECTEUR DE THÈME, ici par EXTENSION RAISONNÉE de la
+                     spec §5.2 : cet écran est souvent la première surface, et
+                     parfois la seule, qu'un utilisateur non authentifié voie.
+                     Un défaut sombre qu'on ne pourrait pas changer avant de
+                     s'être connecté est ce que le §11 range sous « réversible
+                     en un clic dès S3 ». Coût : zéro — même module. -->
+                <p
+                    id="themes"
+                    class="connexion__theme connexion__actions"
+                    role="group"
+                    aria-label="Thème"
+                ></p>
             </div>
         </main>
         <script type="module" src="/src/connexion.ts"></script>

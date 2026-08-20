@@ -10,9 +10,9 @@
  * change — le rappel `apres` est délibérément vide, les primitives suivant le
  * thème par leurs seuls `var(--…)`.
  */
-import { installerSelecteurDeTheme } from './selecteur-theme';
+import { installerSelecteurDeThemeAuDOM } from './selecteur-theme';
 
 const hote = document.getElementById('themes');
 if (!hote) throw new Error('la galerie des primitives attend un élément #themes');
 
-installerSelecteurDeTheme(hote, document.documentElement, localStorage, () => {});
+installerSelecteurDeThemeAuDOM(hote, () => {});
