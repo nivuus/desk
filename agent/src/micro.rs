@@ -285,7 +285,7 @@ pub trait PuitsMicro {
 /// aura besoin d'appeler, et rien de plus.
 ///
 /// **Pur, alors qu'il sert un fil WASAPI** — c'est la ligne de partage de la
-/// spec §6, et elle paie ici : le bloc E2 n'aura qu'à appeler
+/// spec §6, et elle a payé : le bloc E2 appelle exactement
 /// `remplir(&mut [f32])` depuis le fil que WASAPI réveille, et **tout ce qui
 /// peut mal tourner — l'ordre, la gigue, la dérive, le décodage, le résidu, le
 /// silence — est éprouvé sous Linux.**

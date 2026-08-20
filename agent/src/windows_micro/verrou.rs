@@ -19,6 +19,13 @@
 //! `SeCreateGlobalPrivilege`, que l'utilisateur interactif ne détient pas
 //! toujours ; sur refus (`ERROR_ACCESS_DENIED`) on retombe sur `Local\`.
 //!
+//! ✅ **MESURÉ (recette E2, tâche 12, 20 août 2026) : c'est `Global\` qui est
+//! obtenu, aux CINQ exécutions vertes** — `espace_mutex="Global"`, sans une
+//! seule occurrence du repli. L'utilisateur interactif de cette VM détient donc
+//! bien `SeCreateGlobalPrivilege`. ⚠️ **Le repli ci-dessous est par conséquent
+//! du code LIVRÉ ET JAMAIS COURU**, et il ne faut pas le lire comme un chemin
+//! employé : sa `warn!` n'a jamais été émise, sur aucune machine.
+//!
 //! ⚠️ **Ce repli rétrécit la portée de la garantie à UNE session Windows, et il
 //! est donc JOURNALISÉ, jamais silencieux.** Un repli muet sur une garantie
 //! d'exclusivité est exactement la classe de panne que la correction « A-bis »
@@ -157,6 +164,13 @@ impl Verrou for MutexNomme {
         // `WAIT_ABANDONED` : le propriétaire précédent est mort sans relâcher.
         // Windows nous donne quand même la propriété — c'est le cas NOMINAL de
         // la reprise après la mort d'une fenêtre voisine, pas une anomalie.
+        //
+        // ✅ OBSERVÉ, et ce n'est plus un raisonnement (recette E2, tâche 12) :
+        // un processus tiers acquiert le mutex, est TUÉ par `Stop-Process
+        // -Force` — donc sans jamais appeler `ReleaseMutex` —, et l'agent
+        // obtient le câble 46 s après son refus (`cable acquis apres un
+        // refus`), le juge repassant de 0,000000 à 440,0 Hz sur CABLE Output.
+        // C'est le seul chemin par lequel il pouvait l'obtenir.
         self.tenu = issue == WAIT_OBJECT_0 || issue == WAIT_ABANDONED;
         self.tenu
     }

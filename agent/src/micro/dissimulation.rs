@@ -58,6 +58,23 @@
 //! - un **silence de l'émetteur** (le DTX de Chrome) est potentiellement
 //!   INFINI : le navigateur cesse simplement d'émettre.
 //!
+//! ⚠️ **IL Y A DEUX SILENCES, ET LA RECETTE E2 A RENCONTRÉ LE SECOND** (tâche
+//! 12, critère ④, 20 août 2026). Ce module décrit celui de E1 : la SOURCE de la
+//! piste s'arrête (`OscillatorNode` éteint), Chrome n'a plus rien à encoder,
+//! `packetsSent` se fige — et c'est bien du DTX. E2 a mesuré l'autre : un
+//! périphérique de capture **vivant qui produit du silence numérique** (le WAV
+//! silencieux du périphérique factice). Là, **Chrome n'engage PAS le DTX** — il
+//! émet **50 paquets/s sans interruption**, donc `plc=0` **ET**
+//! `plc_plafonnees=0` : aucune trame ne manque, et il n'y a rien à dissimuler.
+//!
+//! **Cela ne réfute rien de ce qui précède** — les deux relevés portent sur des
+//! situations différentes, et le plafond reste nécessaire pour la première.
+//! Mais cela **borne** la portée du mot « silence » dans ce fichier, et cela
+//! réfute la moitié « `plc_plafonnees` court » du critère ④ tel que le plan E2
+//! l'écrivait. **Le plafond a bien été vu courir, sur une piste ARRÊTÉE**
+//! (`plc_plafonnees=100/s`), et le câble y est resté à 3,1 × 10⁻⁵ là où E1
+//! relevait une crête de 0,53 à 0,67.
+//!
 //! **Le code ne peut pas les distinguer, et c'est structurel.** Ce qui atteint
 //! `TamponGigue` est l'absence d'un paquet RTP ; rien, dans ce que
 //! `transport/piste_micro.rs` reçoit, ne dit « je me tais » — un émetteur en

@@ -81,11 +81,18 @@ const WAVE_FORMAT_IEEE_FLOAT: u16 = 3;
 ///
 /// La spec §6 affirme que `AUDCLNT_STREAMFLAGS_EVENTCALLBACK` « fonctionne
 /// ici, car il s'agit d'un flux de rendu ordinaire et non d'un loopback ».
-/// C'est une **prédiction** : aucun code de ce dépôt n'avait jamais ouvert un
+/// C'était une **prédiction** : aucun code de ce dépôt n'avait jamais ouvert un
 /// flux de rendu WASAPI avant ce bloc. On le tente donc, on se replie sur une
 /// boucle à échéance si `Initialize` le refuse, **et le mode réellement obtenu
 /// est journalisé** — faute de quoi une recette ne saurait pas ce qu'elle
 /// mesure (Décision 8 du plan E2).
+///
+/// ✅ **CE N'EST PLUS UNE PRÉDICTION (recette E2, tâche 12, 20 août 2026).**
+/// `reveil="evenement"` aux **CINQ** exécutions vertes, sans exception : le
+/// câble accepte `AUDCLNT_STREAMFLAGS_EVENTCALLBACK`, et la spec §6 avait
+/// raison. ⚠️ **Corollaire à ne pas perdre : [`Reveil::Echeance`] n'a donc
+/// JAMAIS COURU sur ce chemin** — c'est du code livré et jamais emprunté, au
+/// même titre que le repli `Local\` de `windows_micro/verrou.rs`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Reveil {
     /// `SetEventHandle` a été accepté : WASAPI signale l'événement à chaque
@@ -93,6 +100,10 @@ pub enum Reveil {
     Evenement,
     /// Repli : on sonde `GetCurrentPadding` à échéance. C'est le mode que le
     /// fil de mesure de E1 emploie déjà (`demarrage/micro/mesure.rs`).
+    ///
+    /// ⚠️ **JAMAIS OBTENU sur la VM** : la recette E2 relève `Evenement` aux
+    /// cinq exécutions vertes. Ce bras est raisonné et compilé, **pas
+    /// éprouvé**.
     Echeance,
 }
 
