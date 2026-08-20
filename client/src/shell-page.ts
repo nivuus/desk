@@ -8,9 +8,14 @@ import { composer, lirePrefixe } from './prefixe';
 import { creerAdaptateur } from './fichiers/adaptateur';
 import { creerServeur } from './fichiers/protocole';
 import { choisirDossier, connecterCanalFichiers, sessionDuPont, type CanalFichiers } from './fichiers/canal';
+import { adresseSignaling } from './adresse-plateforme';
 
 const params = new URLSearchParams(window.location.search);
-const signalingUrl = params.get('signaling') ?? `ws://${window.location.hostname}:8080`;
+// 🔴 L'ADRESSE SUIT LE PROTOCOLE ET LE PORT DE LA PAGE, elle n'est plus le
+// littéral `ws://<hôte>:8080` — qui était du contenu mixte derrière le proxy
+// TLS, donc refusé par le navigateur sans qu'aucun test Node ne le voie.
+// `?signaling=` reste prioritaire, pour les essais locaux.
+const signalingUrl = adresseSignaling(window.location, params.get('signaling'));
 // Nom réservé de la session de contrôle : le superviseur s'y déclare en
 // `agent`, cette page en `client`.
 //

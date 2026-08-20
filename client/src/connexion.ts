@@ -55,12 +55,19 @@ import { poser } from './jeton';
 import type { Ton } from './shell';
 import { installerSelecteurDeThemeAuDOM } from './design/selecteur-theme';
 import { effacerPrefixe, poserPrefixe } from './prefixe';
+import { adressePlateforme } from './adresse-plateforme';
 
 const params = new URLSearchParams(window.location.search);
 // La MÊME convention que le signaling de `shell-page.ts` : un paramètre de
-// requête, sinon l'hôte de la page et le port 8080. Inventer une seconde
-// convention obligerait à savoir laquelle s'applique où.
-const plateformeUrl = params.get('plateforme') ?? `http://${window.location.hostname}:8080`;
+// requête, sinon L'ORIGINE DE LA PAGE. Inventer une seconde convention
+// obligerait à savoir laquelle s'applique où.
+//
+// 🔴 CE N'EST PLUS `http://<hôte>:8080`, ET LE CHANGEMENT N'EST PAS COSMÉTIQUE.
+// Derrière le proxy TLS de `deploiement/nginx.conf`, la page est servie en
+// `https://` sur 443 : un `http://…:8080` y serait du contenu mixte, refusé
+// par le navigateur, et rien n'écoute 8080 depuis l'extérieur de toute façon.
+// La règle vit dans `adresse-plateforme.ts`, qui est PUR et testé.
+const plateformeUrl = adressePlateforme(window.location, params.get('plateforme'));
 // Où l'on repart une fois connecté. Le paramètre existe pour que l'écran
 // puisse renvoyer vers la page qui a exigé la connexion, et pas seulement vers
 // la shell.
