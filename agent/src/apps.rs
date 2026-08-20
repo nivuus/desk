@@ -49,13 +49,29 @@ pub fn desarme(valeur: Option<&str>) -> bool {
 /// Branche la découverte, ou rend `None` en DISANT laquelle des trois raisons.
 ///
 /// ⚠️ « PAS DE CANAL » N'EST PAS « `APPS=0` », ET UN SILENCE LES CONFONDRAIT.
-/// Sans `AGENT_VM`/`AGENT_SECRET` il n'y a pas de canal, donc nulle part où
-/// envoyer un catalogue ; c'est un état DIFFÉRENT d'un désarmement explicite,
-/// et il doit se lire comme tel dans le journal.
+/// Sans canal il n'y a nulle part où envoyer un catalogue ; c'est un état
+/// DIFFÉRENT d'un désarmement explicite, et il doit se lire comme tel dans le
+/// journal.
 ///
 /// ⚠️ RIEN N'EST BRANCHÉ EN MODE CAPTEUR, et ce n'est pas un oubli : le mode
 /// `CAPTEUR` retourne AVANT l'enrôlement dans `main.rs`, donc un capteur n'a
 /// ni canal, ni jeton, ni préfixe, et ne peut porter aucun catalogue.
+///
+/// ⚠️ **RIEN N'EST BRANCHÉ NON PLUS DANS LE PONT NI DANS UN ENFANT DE FENÊTRE,
+/// ET C'EST DEVENU LE CAS ORDINAIRE** (correction du 20 août 2026). Ils tiennent
+/// leur jeton du superviseur par `AGENT_JETON` et n'ouvrent aucun canal, pour
+/// qu'un seul socket par VM existe. **C'était même une des conséquences du
+/// défaut corrigé** : avant, le pont s'enrôlait, donc réconciliait lui aussi,
+/// et le travail COM/Shell était fait DEUX FOIS toutes les trente secondes —
+/// mesuré, 6 réconciliations en 64 s contre 3 après correction.
+///
+/// 🔴 D'OÙ LE LIBELLÉ DU `warn!` CI-DESSOUS, QUI NOMME LES DEUX CAUSES SANS
+/// PRÉTENDRE LES DISTINGUER : cette fonction ne reçoit qu'une `Option`, elle ne
+/// peut pas savoir si le canal manque parce que l'identité est héritée (normal)
+/// ou parce que `AGENT_VM`/`AGENT_SECRET` manquent (panne). Les nommer toutes
+/// deux vaut mieux qu'un « inactive » sec qui se lit comme une panne dans le
+/// cas devenu le plus fréquent. Le processus qui HÉRITE, lui, écrit sa propre
+/// ligne juste avant (`main.rs`), et les deux se lisent ensemble.
 ///
 /// Elle prend l'`Option` plutôt que le canal pour que `main.rs` ne reçoive
 /// qu'un appel : c'est la règle des 500 lignes appliquée là où elle mord, le
@@ -64,7 +80,10 @@ pub fn brancher(
     canal: Option<&mut crate::plateforme::Canal>,
 ) -> Option<std::thread::JoinHandle<()>> {
     let Some(canal) = canal else {
-        tracing::warn!("decouverte d'applications inactive : aucun canal /agent");
+        tracing::warn!(
+            "decouverte d'applications inactive : ce processus n'a pas de canal /agent \
+             (identité héritée du superviseur, ou AGENT_VM/AGENT_SECRET absents)"
+        );
         return None;
     };
     demarrer(canal)
