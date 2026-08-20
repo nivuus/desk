@@ -15,6 +15,18 @@
 //
 // Les dépendances sont injectées, comme dans `audio.ts`, pour rester
 // testable sans DOM.
+//
+// ── L'ÉCRAN TERMINAL (sous-bloc S4, tâche 9) ────────────────────────────
+// Une SECONDE cible, OPTIONNELLE, reçoit les messages TERMINAUX — et eux
+// seuls. Elle est branchée ICI plutôt que dans `main.ts` pour la raison même
+// qui a fait naître ce module : c'est le point d'écriture unique, et un
+// appelant qui écrirait `ecran.montrer(...)` à côté de `statut.afficher(...)`
+// serait deux écritures que rien n'oblige à rester d'accord. Sans cible, le
+// comportement est celui d'avant S4, à la ligne près : les onze tests de
+// `status.test.ts` passent INCHANGÉS, et s'ils devaient changer, c'est que la
+// garde terminale aurait été affaiblie.
+
+import type { EcranTerminal, TonTerminal } from './ecran-terminal';
 
 /// Ce dont ce module a besoin d'un élément d'affichage.
 export interface CibleStatut {
@@ -33,6 +45,10 @@ export interface OptionsAffichage {
     /// minuterie d'un bandeau voisin arrivé avant lui, minuterie que
     /// l'appelant n'a aucun moyen de connaître.
     persistant?: boolean;
+    /// Le TON d'un message terminal, lu par l'écran seul : une fin normale
+    /// n'est pas une erreur. Sans effet sur le bandeau, et sans effet du tout
+    /// hors d'un message terminal. Défaut : `neutre`.
+    ton?: TonTerminal;
 }
 
 export interface Statut {
@@ -58,7 +74,7 @@ export interface Statut {
     expirer(): void;
 }
 
-export function creerStatut(element: CibleStatut): Statut {
+export function creerStatut(element: CibleStatut, ecran?: EcranTerminal): Statut {
     let terminal = false;
     let persistant = false;
 
@@ -78,6 +94,10 @@ export function creerStatut(element: CibleStatut): Statut {
             persistant = options?.persistant ?? false;
             element.textContent = message;
             element.dataset.hidden = 'false';
+            // APRÈS la garde ci-dessus, donc jamais pour un message ordinaire
+            // ni persistant, et de nouveau pour un SECOND terminal — qui
+            // remplace le premier, à l'écran comme au bandeau.
+            if (estTerminal) ecran?.montrer(message, options?.ton ?? 'neutre');
         },
         masquer,
         expirer() {

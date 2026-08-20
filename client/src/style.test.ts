@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import styleCss from './style.css?raw';
+import etatTerminalCss from './session/etat-terminal.css?raw';
 import { declarationsDe, preludes, sansCommentaires } from './design/css';
 
 /**
@@ -37,10 +38,11 @@ import { declarationsDe, preludes, sansCommentaires } from './design/css';
 
 const CSS = sansCommentaires(styleCss);
 const SELECTEURS = preludes(CSS).filter((p) => !p.startsWith('@'));
+const CSS_TERMINAL = sansCommentaires(etatTerminalCss);
 
 /** Les déclarations du bloc dont le prélude est exactement `selecteur`. */
-function declarationsDuBloc(selecteur: string): string[] {
-    const regles = [...CSS.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+function declarationsDuBloc(css: string, selecteur: string): string[] {
+    const regles = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
     return regles
         .filter((r) => r[1].trim() === selecteur)
         .flatMap((r) => declarationsDe(`{${r[2]}}`))
@@ -72,8 +74,27 @@ describe('style.css — les gardes de la fenêtre de session', () => {
         // inconnue de tous ici. Que la zone occupée soit la bonne est un
         // JUGEMENT HUMAIN (spec §8), et il n'a pas été porté.
         expect(
-            declarationsDuBloc('#fullscreen[data-actif="true"]'),
+            declarationsDuBloc(CSS, '#fullscreen[data-actif="true"]'),
             'la règle #fullscreen[data-actif="true"] ne déclare pas pointer-events: none',
         ).toContain('pointer-events: none');
+    });
+
+    it('③ l’écran terminal reste MASQUÉ tant qu’il porte `hidden`', () => {
+        // 🔴 `[hidden]` PERD CONTRE UNE RÈGLE D'AUTEUR. Le
+        // `[hidden] { display: none }` qui rend l'attribut efficace vit dans la
+        // feuille de l'agent utilisateur, et la cascade compare l'ORIGINE avant
+        // la spécificité : `.ecran { display: grid }` l'emporte, fût-elle moins
+        // spécifique. Sans la règle explicite que cette assertion exige,
+        // l'écran plein cadre serait VISIBLE DÈS LE CHARGEMENT, sur toutes les
+        // sessions, par-dessus la vidéo — et aucun autre contrôle ne le verrait.
+        //
+        // ⚠️ ANCRÉE SUR LA RÈGLE ENTIÈRE : le sélecteur est comparé par égalité
+        // exacte, et la déclaration est lue APRÈS blanchiment. Un `.ecran[hidden]`
+        // écrit dans un commentaire ne satisfait donc pas ce garde — c'est le
+        // piège que ce dépôt a payé trois fois.
+        expect(
+            declarationsDuBloc(CSS_TERMINAL, '.ecran[hidden]'),
+            'session/etat-terminal.css ne déclare pas .ecran[hidden] { display: none }',
+        ).toContain('display: none');
     });
 });

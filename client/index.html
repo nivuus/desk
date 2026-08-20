@@ -29,6 +29,22 @@
              part est pire que pas de bouton. -->
         <button id="micro" type="button" title="Microphone" hidden>🎤</button>
         <button id="fullscreen" type="button" title="Plein écran">⛶</button>
+        <!-- L'ÉCRAN PLEIN CADRE DES ÉTATS TERMINAUX (sous-bloc S4, tâche 9).
+             `hidden` par défaut, et la feuille `src/session/etat-terminal.css`
+             pose `.ecran[hidden] { display: none }` EXPLICITEMENT : la cascade
+             compare l'origine avant la spécificité, donc `.ecran { display:
+             grid }`, règle d'auteur, l'emporterait sur le `[hidden]` de
+             l'agent utilisateur et l'écran serait visible dès le chargement.
+             ⚠️ LE TITRE NAÎT VIDE, ET C'EST VOULU : `ecran-terminal.ts` l'écrit
+             depuis le TON, un titre statique étant faux de l'un des deux cas
+             (« Session terminée » ment sur un échec où aucune session n'a
+             commencé). L'y recopier ferait deux libellés à tenir d'accord. -->
+        <div id="fin" class="ecran" hidden>
+            <div class="carte ecran__carte">
+                <h1 class="ecran__titre"></h1>
+                <p class="message" id="fin-raison" role="status"></p>
+            </div>
+        </div>
         <script type="module" src="/src/main.ts"></script>
     </body>
 </html>
