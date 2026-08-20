@@ -1,0 +1,114 @@
+=== Tâche 14 — nginx.conf : ce que la MESURE a trouvé, et que nginx -t ne voit pas ===
+Date : 21 août 2026. UNE exécution par contrôle. Montage : nginx:alpine en
+réseau hôte, un amont WebSocket d'essai sur 127.0.0.1:18081 qui RENVOIE les
+en-têtes qu'il a reçus, TLS auto-signé, ports décalés (18443/18080) parce que
+443 est occupé par un tiers sur cette machine.
+
+⚠️ LA COPIE MESURÉE DIFFÈRE DU FICHIER LIVRÉ PAR TROIS SUBSTITUTIONS, ET
+   TROIS SEULEMENT : la cible amont (plateforme:8080 -> 127.0.0.1:18081) et
+   les deux ports d'écoute. La logique jugée — aiguillage par Upgrade,
+   en-têtes, CSP — est identique caractère pour caractère.
+
+─── 🔴 DÉFAUT 1, TROUVÉ EN EXÉCUTANT : LA MONTÉE SUR LA RACINE NE PASSAIT PAS ───
+
+  Rédaction d'origine : location / { if ($vers_plateforme) { proxy_pass ... }
+                                     ... try_files $uri $uri/ /index.html; }
+  Mesure : ÉCHEC: Unexpected server response: 200
+
+  nginx a rendu LA PAGE à un client WebSocket. 'try_files', de la phase de
+  réécriture, l'emporte sur le proxy_pass d'un 'if'. AUCUNE session n'aurait
+  pu s'établir — c'est-à-dire le produit entier —, et 'nginx -t' déclarait
+  la configuration « syntax is ok ».
+
+  Remède : un 'error_page 418 = @relais' et un location NOMMÉ, l'idiome que
+  la documentation nginx recommande là où 'if' est réputé dangereux.
+
+─── 🔴 DÉFAUT 2, TROUVÉ PAR LE MÊME MONTAGE : X-Forwarded-For ÉTAIT ABSENT ───
+
+  Rédaction d'origine : X-Forwarded-For dans le bloc 'server',
+                        Upgrade/Connection dans 'location = /agent'.
+  Mesure, LUE À L'AMONT :
+    {"chemin":"/agent","xff":null,"proto":null}
+
+  NGINX N'HÉRITE PAS LES 'proxy_set_header' PAR FUSION MAIS PAR REMPLACEMENT :
+  le location qui en déclarait deux a effacé les quatre du server. Le service
+  aurait vu l'adresse du PROXY pour tous les agents, et le frein par adresse
+  aurait dégénéré en frein GLOBAL — la panne exacte que l'invariant ③ du
+  runbook décrit, livrée par le fichier censé l'éviter.
+
+  Remède : les quatre en-têtes déclarés UNE SEULE FOIS au niveau 'http',
+  et aucun 'proxy_set_header' nulle part ailleurs.
+
+─── 🔴 DÉFAUT 3 : 'daemon off;' fait REFUSER LE DÉMARRAGE ───
+  « [emerg] "daemon" directive is duplicate » — l'image nginx:alpine le pose
+  déjà. 'nginx -t' ne le voit pas : il n'applique pas la ligne de commande de
+  l'image. Une configuration « syntax is ok » peut refuser de démarrer.
+
+─── VERT : les quatre contrôles, sur le fichier LIVRÉ ───
+
+  ① GET / sans Upgrade  -> le FICHIER : <!doctype html><title>page</title>PAGE-STATIQ
+  ② les en-têtes de la page :
+       content-security-policy: default-src 'self'; connect-src 'self' wss: https:; img-src 'self' data: blob:; media-src 'self' blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+       x-frame-options: DENY
+       strict-transport-security: max-age=31536000; includeSubDomains
+       referrer-policy: no-referrer
+       x-content-type-options: nosniff
+  ③ GET / AVEC Upgrade  -> le SERVICE :
+     AMONT A VU: {"chemin":"/","xff":"127.0.0.1","proto":"https"}
+  ④ GET /agent          -> le SERVICE :
+     AMONT A VU: {"chemin":"/agent","xff":"127.0.0.1","proto":"https"}
+  ⑤ GET /auth/connexion -> le SERVICE : AMONT:/auth/connexion
+  ⑥ GET /sante          -> le SERVICE : AMONT:/sante
+  ⑦ GET /session        -> le SERVICE : AMONT:/session
+  ⑧ GET /vm             -> le SERVICE : AMONT:/vm
+  ⑨ le clair est redirigé : 301 -> https://127.0.0.1:18443/shell.html
+
+  => ③ et ④ portent tous deux xff ET proto : les deux défauts sont fermés,
+     et la fermeture est LUE À L'AMONT, pas déduite de la configuration.
+
+─── 🔴 LA ROUGE QUE LE PLAN PRESCRIT EST VACUEUSE — MESURÉ ───
+
+Le plan écrit : « Ce qui la rend ROUGE : retirer connect-src wss: de la CSP
+— le critère ⑤ doit alors relever une violation dans la console. »
+
+C'EST FAUX POUR CE DÉPLOIEMENT, et la mesure le dit. Trois valeurs servies
+tour à tour à un NAVIGATEUR RÉEL (google-chrome sans interface) ouvrant
+wss:// vers la MÊME ORIGINE que la page :
+
+    connect-src 'none'              -> WS-REFUSE   (3 exécutions sur 3)
+    connect-src 'self'              -> WS-OUVERT
+    connect-src 'self' wss: https:  -> WS-OUVERT
+
+  'self' COUVRE DÉJÀ une montée wss: de même origine. Retirer 'wss:' ne
+  casse donc RIEN, et une recette qui prendrait ce retrait pour sa rouge
+  mesurerait un contrôle incapable d'échouer — le patron exact que ce
+  dépôt a payé quatre fois.
+
+  LA ROUGE QUI DISCRIMINE EST 'connect-src none', reproductible 3/3.
+  Elle est nommée dans le commentaire de la ligne CSP, pour que la
+  recette de la tâche 17 joue celle-là et non celle du plan.
+
+  ⚠️ CE QUE CELA DIT DE LA LIGNE LIVRÉE : 'wss:' et 'https:' ne servent
+     PAS l'origine unique. Ils ne servent que les deux échappatoires
+     d'essai du client (?signaling=, ?plateforme=), qui visent un AUTRE
+     hôte. Leur coût est écrit dans le fichier : un schéma nu autorise
+     n'importe quel hôte. Un exploitant qui ne s'en sert pas DOIT
+     resserrer à 'connect-src self', et la mesure établit que rien ne
+     s'en trouvera cassé.
+
+─── ⚠️ DÉFAUT DE L'INSTRUMENT, CARACTÉRISÉ PLUTÔT QUE MASQUÉ ───
+
+  '--virtual-time-budget' de Chrome n'attend PAS une E/S réseau réelle :
+  sur la CSP livrée, 5 exécutions ont rendu WS-OUVERT 3 fois et 'attente'
+  2 fois, à budget 8 s comme à 20 s. 'attente' est donc un FAUX NÉGATIF
+  de l'instrument, jamais une preuve de refus.
+
+  🔴 SEUL 'WS-REFUSE' VAUT COMME PREUVE DE REFUS, et c'est ce que la
+     rouge 'none' rend, 3 fois sur 3 — la décision de politique y est
+     synchrone, donc insensible au budget.
+
+  La page d'essai porte un marqueur 'SCRIPT-OK' pour cette raison : sans
+  lui, « aucune bascule » serait indiscernable d'« aucun script exécuté ».
+  Il a servi : la PREMIÈRE version de la page portait un script EN LIGNE,
+  que 'script-src self' bloque — la page rendait 'attente' sans que rien
+  ne dise que le script n'avait jamais tourné.
