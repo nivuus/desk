@@ -162,8 +162,18 @@ services:
   plateforme:
     profiles: [deploiement]
     build:
-      context: ./plateforme
-      dockerfile: Dockerfile
+      # 🔴 LA RACINE DU DÉPÔT, ET NON `./plateforme`. Trois fichiers de
+      # production importent `../../../proto/ts/plateforme` : un contexte borné
+      # à `plateforme/` ne peut pas les servir, et le service MEURT au
+      # chargement — mesuré le 20 août 2026, à la première tentative de
+      # démarrage de ce profil (critère ⑤ de la recette P5). L'image se
+      # CONSTRUISAIT pourtant sans erreur.
+      #
+      # Le contexte est borné par `plateforme/Dockerfile.dockerignore`, nommé
+      # d'après son Dockerfile pour ne pas s'appliquer à l'image du Guacamole
+      # historique bâtie depuis `./Dockerfile`.
+      context: .
+      dockerfile: plateforme/Dockerfile
     restart: unless-stopped
     depends_on:
       postgres-deploiement:

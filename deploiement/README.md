@@ -135,7 +135,20 @@ C'est voulu : une rupture immédiate plutôt qu'un échec au premier handshake.
 
 ```bash
 cd client && npm ci && npm run build     # produit client/dist/, que le proxy sert
+chmod -R a+rX dist                       # ⚠️ obligatoire — voir juste en dessous
 ```
+
+🔴 **`client/dist/` doit être lisible par l'utilisateur `nginx`, et ce n'est pas
+automatique.** Le *master* nginx tourne en `root`, mais ses **workers** tournent
+en `nginx` : sur un dépôt cloné avec un umask restrictif, `client/dist` est en
+`0750 root:root` et le worker ne peut rien lire. **Mesuré le 20 août 2026, au
+critère ⑤ de la recette P5** : `GET /` rendait **403** et ses ressources
+**500**, sur une pile par ailleurs entièrement saine — le service, la base et
+le routage fonctionnaient tous. Rien dans les journaux d'agent ne le dit ; seul
+le journal d'erreur de nginx nomme la permission.
+
+⚠️ **C'est un piège de DÉPLOIEMENT, pas un défaut du produit**, et il ne se voit
+ni aux tests, ni à `nginx -t`, ni à `docker compose config`.
 
 ### 4. Démarrer
 
