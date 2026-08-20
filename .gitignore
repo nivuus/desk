@@ -26,3 +26,9 @@ core.*
 # console). Ce sont des sorties d'outil, jamais des preuves : celles-ci sont
 # versées sous docs/superpowers/plans/journaux-*/.
 .playwright-mcp/
+
+# Sous-bloc P5 — les valeurs du profil `deploiement`. Les GABARITS
+# (`*.env.exemple`) sont versionnés ; les fichiers réels ne le sont JAMAIS.
+deploiement/postgres.env
+deploiement/plateforme.env
+deploiement/tls/
