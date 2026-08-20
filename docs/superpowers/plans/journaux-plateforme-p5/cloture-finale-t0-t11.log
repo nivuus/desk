@@ -19,25 +19,38 @@ chiffres ci-dessus incluent :
   (presse-papier) a ajoutes pendant l'execution de P5. P5 n'a touche NI
   `client/` NI `proto/` -- verifie commit par commit, voir plus bas.
 
-Detail des +82 tests de `plateforme/` :
-  securite/frein.test.ts            11   (neuf)
-  http/adresse-source.test.ts       11   (neuf)
-  http/entetes.test.ts               3   (neuf)
-  obs/journal.test.ts                8   (neuf)
-  config.test.ts                    +4
-  http/serveur.test.ts              +4
-  http/routes-auth.test.ts         +11
-  agents/canal.test.ts              +6
-  signaling/resilience.test.ts      +1
-  http/routes-sante.test.ts         10   (neuf)
-  http/entetes-routeurs.test.ts      8   (neuf)
-  securite/secrets.test.ts           4   (neuf)
+Detail des +82 tests de `plateforme/`, RELEVE PAR LA COMMANDE (les « avant »
+viennent de `git show bb5a40f:<fichier>`, pas d'une soustraction) :
+
+  FICHIERS NEUFS
+  securite/frein.test.ts            11
+  http/adresse-source.test.ts       11
+  http/routes-sante.test.ts         10
+  obs/journal.test.ts                8
+  http/entetes-routeurs.test.ts      8
+  securite/secrets.test.ts           4
+  http/entetes.test.ts               3
                                   ----
-                                    81
-⚠️ LE COMPTE ANNONCE EST 82 ET LA SOMME CI-DESSUS EN FAIT 81 : l'ecart d'UNE
-unite est le test `(g bis)` de `frein.test.ts` (« une entree EXPIREE est purgee
-avant qu'on evince une vivante »), ajoute au-dela des huit assertions que le
-plan enumere. 341 + 82 = 423, verifie par la commande.
+                                    55
+
+  FICHIERS EXISTANTS      avant  apres  delta
+  http/routes-auth.test.ts    8     19    +11
+  agents/canal.test.ts        8     14     +6
+  http/serveur.test.ts        9     14     +5
+  config.test.ts              9     13     +4
+  signaling/resilience.test.ts 2     3     +1
+                                        ----
+                                          +27
+
+  55 + 27 = 82, et 341 + 82 = 423. Verifie par la commande.
+
+⚠️ UNE PREMIERE REDACTION DE CE TABLEAU SOMMAIT A 81 ET LE DECLARAIT : elle
+donnait `http/serveur.test.ts` a +4 (c'est +5 : le test « (d) LE PROCESSUS
+SURVIT » a ete ajoute apres coup, quand la mutation a revele que `maxPayload`
+tuait le process), et imputait l'unite manquante au test `(g bis)` de
+`frein.test.ts`. C'ETAIT FAUX : `(g bis)` est bien compte dans les 11 de
+`frein.test.ts`. Les deltas ci-dessus sont desormais RELEVES fichier par
+fichier, pas reconstitues de memoire.
 
 === PERIMETRE : verifie commit par commit ===
 Les 15 commits de code de P5 (bb5a40f .. 89ac12c) plus les deux commits de
