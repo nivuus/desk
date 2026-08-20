@@ -1,18 +1,25 @@
 #!/usr/bin/env node
 // L'AGRÉGATEUR DES CONTRÔLES DU SOCLE VISUEL — sous-projet ⑥, spec §7.
 //
-// Il lance les SIX contrôles qui sont des scripts, imprime le verdict de
+// Il lance les SEPT contrôles qui sont des scripts, imprime le verdict de
 // chacun, et sort non nul si l'un d'eux échoue.
+//
+// ⚠️ ILS ÉTAIENT SIX JUSQU'AU SOUS-BLOC S3, qui a ajouté §7.9 — le contrôle
+// que la spec ne prévoit pas, et qui est déclaré comme une ADDITION DE PLAN.
+// Il existe parce qu'aucun des sept autres ne peut voir qu'une surface du
+// produit EMPLOIE réellement une primitive : §7.6 compte des `var(--…)` dans
+// des fichiers, §7.3 ne vérifie qu'un chargement, §7.2 ne voit que des
+// couleurs. Sa raison longue vit dans `classes-employees.mjs`.
 //
 // ⚠️ IL NE S'ARRÊTE PAS AU PREMIER ÉCHEC, et c'est délibéré : un opérateur doit
 // voir tous les défauts d'un coup plutôt qu'un par relance. C'est l'inverse du
 // choix de `scripts/verify-all.sh`, qui s'arrête net — la différence tient à ce
-// qu'ici les six contrôles sont indépendants et rapides, là-bas les étapes sont
+// qu'ici les sept contrôles sont indépendants et rapides, là-bas les étapes sont
 // longues et une étape cassée rend souvent les suivantes illisibles.
 //
-// 🔴 LE SEPTIÈME CONTRÔLE, §7.5 (la bascule de thème), N'EST PAS ICI : c'est un
+// 🔴 LE HUITIÈME CONTRÔLE, §7.5 (la bascule de thème), N'EST PAS ICI : c'est un
 // test unitaire, il tourne dans `npm test`. Le dire évite qu'un lecteur compte
-// six et conclue qu'il en manque un.
+// sept et conclue qu'il en manque un.
 //
 // ⚠️ IL BÂTIT D'ABORD. §7.3 et §7.7 lisent `dist/`, et un `dist/` périmé rendrait
 // un verdict sur le build d'avant — on mesurerait l'état précédent en croyant
@@ -27,12 +34,13 @@ const outils = dirname(fileURLToPath(import.meta.url));
 const paquet = join(outils, '..');
 const racine = join(paquet, '..');
 
-/** Les six, dans l'ordre où ils se lisent : d'abord la source, puis le bâti. */
+/** Les sept, dans l'ordre où ils se lisent : d'abord la source, puis le bâti. */
 const CONTROLES = [
     ['§7.4  les trois blocs de thème ne divergent pas', 'blocs-de-theme.mjs'],
     ['§7.1  les contrastes tiennent les seuils WCAG', 'contraste.mjs'],
     ['§7.2  aucune couleur littérale hors de tokens.css', 'couleurs-litterales.mjs'],
     ['§7.6  aucun token orphelin, aucun var() non déclaré', 'tokens-orphelins.mjs'],
+    ['§7.9  toute classe employée est déclarée, et une primitive atteint le produit', 'classes-employees.mjs'],
     ['§7.3  toute surface bâtie porte les tokens', 'surfaces-baties.mjs'],
     ['§7.7  le poids CSS ne dérive pas', 'poids-css.mjs'],
 ];
