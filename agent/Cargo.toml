@@ -90,6 +90,13 @@ windows = { version = "0.62", features = [
     # adresses de retour en `module+décalage` sans allouer au moment de la faute.
     "Win32_System_Diagnostics_Debug",
     "Win32_System_Diagnostics_ToolHelp",
+    # `ExpandEnvironmentStringsW` : les raccourcis d'installeurs stockent
+    # `%ProgramFiles%\…` et `SLGP_RAWPATH` les rend tels quels, sans les
+    # développer. Sans ce développement, la règle « le fichier cible existe »
+    # les écarterait tous. C'est la SEULE addition de G1 à ce fichier, et
+    # c'est une fonctionnalité d'un crate déjà présent — aucune dépendance
+    # nouvelle, ni ici ni ailleurs.
+    "Win32_System_Environment",
     "Win32_System_Kernel",
     "Win32_System_IO",
     # Job Object des enfants du superviseur : `KILL_ON_JOB_CLOSE` fait mourir

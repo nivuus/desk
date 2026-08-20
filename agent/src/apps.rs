@@ -8,4 +8,7 @@
 
 pub mod raccourci;
 pub mod reconciliation;
+
+#[cfg(windows)]
+pub mod lecture;
 pub mod sha256;
