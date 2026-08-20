@@ -81,6 +81,25 @@ const FILE_EMISSION: usize = 32;
 /// /agent fermé : découverte d'applications arrêtée ». `main` le garde vivant
 /// pour toute la durée du processus, et c'est désormais vrai pour deux
 /// mécanismes au lieu d'un.
+/// Ce que la plateforme demande à la boucle d'applications.
+///
+/// 🔴 UN ENUM PLUTÔT QU'UNE SECONDE FILE, ET C'EST UNE DÉCISION. Les deux
+/// messages descendants vont au MÊME consommateur — la boucle d'apps, sur son
+/// fil COM dédié —, et deux files l'obligeraient à interroger les deux à
+/// chaque tour d'attente, avec le risque qu'un ajout futur en oublie une. Un
+/// enum rend l'exhaustivité vérifiable par le compilateur là où deux files la
+/// laisseraient à la vigilance.
+///
+/// ⚠️ IL NE TRANSPORTE AUCUN OCTET D'IMAGE. `IconesManquantes` ne porte qu'un
+/// inventaire d'empreintes ; les images montent par `PUT /icone/:sha256`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Ordre {
+    /// Lancer une application, par sa clé. `demande` apparie la réponse.
+    Lancer { demande: String, cle: String },
+    /// Téléverser les icônes que la plateforme n'a pas.
+    IconesManquantes { empreintes: Vec<String> },
+}
+
 pub struct Canal {
     identite: watch::Receiver<Option<Identite>>,
     /// Le fil de reprise. Jamais attendu — il ne se termine que sur un refus
@@ -105,7 +124,14 @@ pub struct Canal {
     /// Les ordres descendants. `Option` parce qu'un seul consommateur peut la
     /// prendre : deux se voleraient les ordres l'un à l'autre, et chacun n'en
     /// verrait qu'une partie.
-    ordres: Option<mpsc::UnboundedReceiver<(String, String)>>,
+    ordres: Option<mpsc::UnboundedReceiver<Ordre>>,
+    /// L'URL du signaling telle qu'on l'a reçue — sous-bloc G2.
+    ///
+    /// ⚠️ ELLE EST RETENUE PLUTÔT QUE RELUE DE L'ENVIRONNEMENT : le
+    /// téléversement d'icônes en dérive son adresse HTTP, et relire
+    /// `SIGNALING_URL` ailleurs ferait vivre la même valeur à deux endroits,
+    /// donc diverger le jour où l'un des deux serait changé.
+    signaling_url: String,
 }
 
 /// De quoi émettre sans tenir le [`Canal`] entier.
@@ -200,6 +226,7 @@ pub fn ouvrir(signaling_url: &str, vm: String, secret: String) -> Canal {
         tache,
         emission,
         ordres: Some(ordres_rx),
+        signaling_url: signaling_url.to_string(),
     }
 }
 
@@ -222,8 +249,14 @@ impl Canal {
     ///
     /// Un seul consommateur, parce que deux se voleraient les ordres l'un à
     /// l'autre et que le symptôme serait « un lancement sur deux ne part pas ».
-    pub fn ordres(&mut self) -> Option<mpsc::UnboundedReceiver<(String, String)>> {
+    pub fn ordres(&mut self) -> Option<mpsc::UnboundedReceiver<Ordre>> {
         self.ordres.take()
+    }
+
+    /// L'URL du signaling, dont le téléversement d'icônes dérive son adresse
+    /// HTTP (sous-bloc G2).
+    pub fn url_signaling(&self) -> &str {
+        &self.signaling_url
     }
 
     /// Un émetteur détachable, pour le fil de découverte.
@@ -251,7 +284,7 @@ async fn une_session(
     secret: &str,
     tx: &watch::Sender<Option<Identite>>,
     a_emettre: &mut mpsc::Receiver<VersLaPlateforme>,
-    ordres: &mpsc::UnboundedSender<(String, String)>,
+    ordres: &mpsc::UnboundedSender<Ordre>,
 ) -> Fin {
     let mut socket = match connecter(url).await {
         Ok(socket) => socket,
@@ -356,8 +389,26 @@ async fn une_session(
                         // n'est plus là — l'agent s'arrête, ou personne n'a
                         // pris la file. On le journalise sans tuer le canal :
                         // le battement de cœur doit continuer.
-                        if ordres.send((demande, cle)).is_err() {
+                        if ordres.send(Ordre::Lancer { demande, cle }).is_err() {
                             tracing::warn!(url, "aucun consommateur d'ordres, lancement abandonné");
+                        }
+                    }
+                    // 🔴 CE BRAS DOIT EXISTER, POUR LA RAISON EXACTE DU BRAS
+                    // CI-DESSUS. Sans lui, un inventaire parfaitement valide
+                    // tomberait dans le bras `Err`, qui rend `Fin::Reprenable` :
+                    // le canal se reprendrait à CHAQUE réconciliation qui
+                    // annonce une icône neuve, et la trace accuserait une
+                    // divergence de version qui n'existe pas.
+                    Ok(DepuisLaPlateforme::IconesManquantes { empreintes, .. }) => {
+                        tracing::info!(
+                            url, manquantes = empreintes.len(),
+                            "inventaire d'icones manquantes reçu"
+                        );
+                        if ordres.send(Ordre::IconesManquantes { empreintes }).is_err() {
+                            tracing::warn!(
+                                url,
+                                "aucun consommateur d'ordres, televersement d'icones abandonne"
+                            );
                         }
                     }
                     // 🔴 CE CAS EST TRÈS PROBABLEMENT UNE DIVERGENCE DE

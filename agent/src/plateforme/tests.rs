@@ -277,7 +277,7 @@ async fn un_message_pousse_dans_la_file_arrive_au_serveur() {
     let texte = attendre_message(&mut recus, |t| t.contains("catalogue")).await;
     assert_eq!(
         texte,
-        r#"{"type":"catalogue","v":2,"complet":true,"applications":[],"disparues":[]}"#
+        r#"{"type":"catalogue","v":3,"complet":true,"applications":[],"disparues":[]}"#
     );
 }
 
@@ -294,21 +294,21 @@ async fn un_ordre_de_lancement_arrive_au_consommateur_et_ne_ferme_pas_la_session
     let mut recu_ordres = canal.ordres().expect("la file d'ordres n'est prise qu'une fois");
 
     ordres
-        .send(r#"{"type":"lancer","v":2,"demande":"d-7","cle":"a1b2"}"#.into())
+        .send(r#"{"type":"lancer","v":3,"demande":"d-7","cle":"a1b2"}"#.into())
         .expect("envoi de l'ordre");
 
     let ordre = tokio::time::timeout(Duration::from_secs(5), recu_ordres.recv())
         .await
         .expect("aucun ordre reçu en 5 s")
         .expect("la file d'ordres est fermée");
-    assert_eq!(ordre, ("d-7".to_string(), "a1b2".to_string()));
+    assert_eq!(ordre, Ordre::Lancer { demande: "d-7".into(), cle: "a1b2".into() });
 
     // La session vit toujours : l'émission suivante arrive.
     canal.emetteur().emettre(VersLaPlateforme::lancee("d-7", IssueLancement::Raccourci));
     let texte = attendre_message(&mut recus, |t| t.contains("lancee")).await;
     assert_eq!(
         texte,
-        r#"{"type":"lancee","v":2,"demande":"d-7","issue":"raccourci"}"#
+        r#"{"type":"lancee","v":3,"demande":"d-7","issue":"raccourci"}"#
     );
 }
 

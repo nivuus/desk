@@ -8,11 +8,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Instant;
 
-use proto::plateforme::{Application, IssueLancement, VersLaPlateforme};
+use proto::plateforme::{Application, IssueLancement, SourceMax, VersLaPlateforme};
 use tokio::sync::{mpsc, watch};
 
+use super::icone::{self, magasin::Magasin};
 use super::{lancement, lecture, raccourci, reconciliation};
-use crate::plateforme::Identite;
+use crate::plateforme::{Identite, Ordre};
 
 /// Ce que la boucle retient d'un tour à l'autre.
 #[derive(Default)]
@@ -26,6 +27,26 @@ struct Memoire {
     /// plateforme peut être vieille d'une réconciliation quand celle-ci vient
     /// d'être lue sur le disque.
     lancables: BTreeMap<String, (String, i32)>,
+    /// 🔴 LES ICÔNES DU CATALOGUE COURANT, ADRESSÉES PAR CONTENU. Sur ce
+    /// corpus, **153 applications rendent 99 PNG distincts** — 54
+    /// téléversements évités. Il est REMPLACÉ à chaque réconciliation, jamais
+    /// accumulé : sur un processus qui vit des jours, fusionner le ferait
+    /// croître sans terme.
+    icones: Magasin,
+    /// L'empreinte et la provenance déjà connues d'une clé, plus le `chemin`
+    /// du `.lnk` au moment où on les a mesurées.
+    ///
+    /// 🔴 C'EST CE QUI ÉVITE DE RÉEXTRAIRE À CHAQUE TOUR. L'extraction coûte
+    /// **2 298 ms pour 153 icônes** au premier tour (mesuré) : la refaire
+    /// toutes les trente secondes ferait de la découverte d'applications le
+    /// poste le plus cher de l'agent, pour un disque qui ne bouge pas.
+    ///
+    /// ⚠️ **TROU NOMMÉ, PAS OUBLIÉ** : une application qui se met à jour en
+    /// réécrivant son `.exe` EN PLACE — même chemin, même icône déclarée,
+    /// image différente — ne sera PAS revue. Le fermer demanderait un
+    /// horodatage ou une empreinte de la source, donc un accès disque par
+    /// application et par tour.
+    vues: BTreeMap<String, (String, Option<String>, SourceMax)>,
     /// Les chemins déjà signalés écartés.
     ///
     /// 🔴 SANS CET ENSEMBLE, LES SEPT ÉCARTS DE CETTE VM FERAIENT 20 160
@@ -69,13 +90,51 @@ fn reconcilier(memoire: &mut Memoire) -> (reconciliation::Diff, Vec<Application>
     let mut catalogue = Vec::new();
     let mut lancables = BTreeMap::new();
     let mut ecartes = BTreeSet::new();
+    // 🔴 LE LEGS N°7 DE G1, FERMÉ ICI. Le champ `retenus` émis plus bas valait
+    // `lancables.len()` — une table indexée par CLÉ, donc TOUJOURS égale à
+    // `cles`. Les raccourcis réellement retenus n'étaient émis NULLE PART, et
+    // le champ mentait sur son nom. Sur ce corpus : **167 retenus pour 154
+    // clés**, deux nombres différents, donc un contrôle qui peut échouer.
+    let mut retenus = 0usize;
+    let mut icones = Magasin::new();
+    let mut vues = BTreeMap::new();
+    let mut extraites = 0usize;
+    let mut echecs_icone = 0usize;
     for r in brutes {
         match raccourci::retenir(&r.brut, &existe) {
             Ok(()) => {
+                retenus += 1;
                 let chemin_lnk = r.brut.chemin.clone();
-                let app = raccourci::depuis_brut(r.brut);
-                lancables.insert(app.cle.clone(), (chemin_lnk, r.montrer));
+                let icone_location = r.icone.clone();
+                let mut app = raccourci::depuis_brut(r.brut);
+                lancables.insert(app.cle.clone(), (chemin_lnk.clone(), r.montrer));
                 if vus.insert(app.cle.clone()) {
+                    // 🔴 EXTRAIRE SEULEMENT SI LA CLÉ EST NEUVE OU SI LE `.lnk`
+                    // A CHANGÉ DE PLACE — jamais à chaque tour.
+                    match memoire.vues.get(&app.cle) {
+                        Some((ancien, empreinte, source)) if *ancien == chemin_lnk => {
+                            app.icone = empreinte.clone();
+                            app.source_max = *source;
+                            // Les octets restent nécessaires : le magasin est
+                            // remplacé à chaque tour, et la plateforme peut
+                            // redemander une icône qu'elle a perdue.
+                            if let Some(e) = empreinte {
+                                if let Some(o) = memoire.icones.octets(e) {
+                                    icones.ajouter(o.to_vec());
+                                }
+                            }
+                        }
+                        _ => {
+                            let (e, s) = mesurer(&chemin_lnk, &icone_location, &app.cible, &mut icones);
+                            if e.is_some() { extraites += 1 } else { echecs_icone += 1 }
+                            app.icone = e;
+                            app.source_max = s;
+                        }
+                    }
+                    vues.insert(
+                        app.cle.clone(),
+                        (chemin_lnk, app.icone.clone(), app.source_max),
+                    );
                     catalogue.push(app);
                 }
             }
@@ -106,8 +165,11 @@ fn reconcilier(memoire: &mut Memoire) -> (reconciliation::Diff, Vec<Application>
     let diff = reconciliation::diff(&memoire.catalogue, &catalogue);
     tracing::info!(
         total,
-        retenus = lancables.len(),
+        retenus,
         cles = catalogue.len(),
+        icones = extraites,
+        icones_echouees = echecs_icone,
+        icones_distinctes = icones.len(),
         apparues = diff.apparues.len(),
         modifiees = diff.modifiees.len(),
         disparues = diff.disparues.len(),
@@ -118,7 +180,43 @@ fn reconcilier(memoire: &mut Memoire) -> (reconciliation::Diff, Vec<Application>
     memoire.catalogue = catalogue.clone();
     memoire.lancables = lancables;
     memoire.ecartes = ecartes;
+    memoire.vues = vues;
+    // 🔴 REMPLACER, JAMAIS FUSIONNER : le magasin porte le catalogue COURANT.
+    memoire.icones.remplacer(icones);
     (diff, catalogue)
+}
+
+/// Extrait l'icône d'un raccourci, et mesure sa PROVENANCE.
+///
+/// 🔴 `source_max` VIENT DE LA RESSOURCE, JAMAIS DU PNG. Un code qui la
+/// déduirait de la taille rendue donnerait `256` à TOUT — mesuré deux fois sur
+/// deux témoins fabriqués, et c'est tout l'objet du sous-bloc.
+///
+/// ⚠️ **UN ÉCHEC N'EST PAS UNE APPLICATION PERDUE** : une application sans
+/// icône vaut mieux qu'une application absente (spécification §7). L'échec est
+/// journalisé, `icone` vaut `None`, et `source_max` vaut `NonMesuree`.
+fn mesurer(
+    lnk: &str,
+    icone_location: &str,
+    cible: &str,
+    icones: &mut Magasin,
+) -> (Option<String>, SourceMax) {
+    if !icone::armee() {
+        return (None, SourceMax::NonMesuree);
+    }
+    match icone::extraire(std::path::Path::new(lnk)) {
+        Ok(png) => {
+            let empreinte = icones.ajouter(png);
+            // ⚠️ LA PROVENANCE EST MESURÉE MÊME QUAND ELLE EST INCONNUE : elle
+            // rend `NonMesuree` sans erreur, et ce n'est pas une panne — 37 des
+            // 153 applications de cette VM sont dans ce cas.
+            (Some(empreinte), icone::provenance_de(icone_location, cible))
+        }
+        Err(erreur) => {
+            tracing::warn!(lnk, %erreur, "extraction d'icone echouee : l'application reste au catalogue, sans icone");
+            (None, SourceMax::NonMesuree)
+        }
+    }
 }
 
 /// Honore un ordre de lancement, et rend son issue.
@@ -148,8 +246,9 @@ fn honorer(memoire: &Memoire, demande: &str, cle: &str) -> IssueLancement {
 /// sur un fil de pool que tokio pourrait changer entre deux tours.
 pub fn tourner(
     canal_emission: impl Fn(VersLaPlateforme) + Send + 'static,
-    mut ordres: mpsc::UnboundedReceiver<(String, String)>,
+    mut ordres: mpsc::UnboundedReceiver<Ordre>,
     mut identite: watch::Receiver<Option<Identite>>,
+    base_plateforme: String,
     periode: std::time::Duration,
 ) {
     if let Err(erreur) = lecture::initialiser_com() {
@@ -191,9 +290,18 @@ pub fn tourner(
                 break;
             }
             match ordres.try_recv() {
-                Ok((demande, cle)) => {
+                Ok(Ordre::Lancer { demande, cle }) => {
                     let issue = honorer(&memoire, &demande, &cle);
                     canal_emission(VersLaPlateforme::lancee(demande, issue));
+                    continue;
+                }
+                Ok(Ordre::IconesManquantes { empreintes }) => {
+                    icone::televersement::honorer(
+                        &memoire.icones,
+                        &empreintes,
+                        &base_plateforme,
+                        &identite,
+                    );
                     continue;
                 }
                 Err(mpsc::error::TryRecvError::Disconnected) => {

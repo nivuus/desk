@@ -11,7 +11,7 @@
 //! corpus — aucune n'existe sur l'hôte — et le test serait inerte tout en
 //! restant vert.
 
-use proto::plateforme::Application;
+use proto::plateforme::{Application, SourceMax};
 
 use super::sha256;
 
@@ -151,6 +151,17 @@ pub fn depuis_brut(brut: Brut) -> Application {
         cible: normaliser_chemin(&brut.cible),
         arguments: brut.arguments,
         repertoire: normaliser_chemin(&brut.repertoire),
+        // ⚠️ L'ICÔNE N'EST PAS CONNUE ICI, ET CE MODULE NE DOIT PAS LA
+        // CHERCHER : il est PUR, et l'extraction ouvre COM. C'est
+        // `apps::boucle` qui remplit ces deux champs quand la clé est neuve ou
+        // que le `.lnk` a changé — jamais à chaque tour.
+        //
+        // 🔴 `None` / `NonMesuree` EST DONC L'ÉTAT DE DÉPART, ET IL EST
+        // HONNÊTE : une application sans icône vaut mieux qu'une application
+        // absente. La combinaison inverse — une icône nulle et une taille
+        // mesurée — est INTERDITE, et aucun chemin ne l'écrit.
+        icone: None,
+        source_max: SourceMax::NonMesuree,
     }
 }
 
