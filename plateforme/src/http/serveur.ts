@@ -32,6 +32,7 @@ import { servirVm } from './routes-vm';
 import { servirSession } from './routes-session';
 import { servirApplications } from './routes-applications';
 import { CacheSante, servirSante } from './routes-sante';
+import { ENTETES_SECURITE } from './entetes';
 import { createSignalingServer } from '../signaling/relais';
 import { ProprieteDeSession } from '../signaling/propriete';
 import { observateurDeSession } from '../signaling/trace';
@@ -234,7 +235,16 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         void servirTout(requete, reponse)
             .then((servie) => {
                 if (servie) return;
-                reponse.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
+                // ⚠️ LE 404 NE VIENT D'AUCUN ROUTEUR, et c'est pourquoi il
+                // doit être traité ici : sans cette ligne, un chemin inconnu
+                // serait la SEULE réponse du service à ne pas porter
+                // `nosniff`. Le CORPS du 404 n'est pas touché — « rien ne le
+                // testait avant P2, et le changer serait un effet de bord non
+                // déclaré ».
+                reponse.writeHead(404, {
+                    'content-type': 'text/plain; charset=utf-8',
+                    ...ENTETES_SECURITE,
+                });
                 reponse.end('introuvable\n');
             })
             .catch((cause) => {
@@ -250,7 +260,10 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
                 // changée parce qu'elle serait devenue FAUSSE autrement.
                 console.error(`route HTTP en échec : ${String(cause)}`);
                 if (!reponse.headersSent) {
-                    reponse.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
+                    reponse.writeHead(500, {
+                        'content-type': 'application/json; charset=utf-8',
+                        ...ENTETES_SECURITE,
+                    });
                     reponse.end(JSON.stringify({ refus: 'interne' }));
                 }
             });
