@@ -280,6 +280,10 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         secretJeton: config.secretJeton,
         maintenant: Date.now,
         registre: registreAgents,
+        // Le MÊME frein que les routes d'authentification : voir sa
+        // construction plus haut.
+        frein,
+        proxyDeConfiance: config.proxyDeConfiance,
     });
 
     // `Date.now` est passée ICI, et une seule fois pour la trace : c'est le

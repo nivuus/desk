@@ -17,7 +17,7 @@ import {
     encodeBattement,
     encodeEnroler,
 } from '../../../proto/ts/plateforme';
-import { baseNeuve } from '../base/harnais';
+import { baseNeuve, piloteCompteur } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import type { Config } from '../config';
 import { demarrerServeur, type ServicePlateforme } from '../http/serveur';
@@ -26,6 +26,7 @@ import { DUREE_JETON_ACCES_MS, verifierJeton } from '../identite/jeton';
 import { ProprieteDeSession } from '../signaling/propriete';
 import { servirLeCanalAgent } from './canal';
 import { RegistreAgents } from './registre';
+import { ECHECS_MAX_ADRESSE, ECHECS_MAX_COMPTE, Frein } from '../securite/frein';
 import {
     attendreVu,
     enrolerUneVm,
@@ -58,7 +59,7 @@ afterEach(async () => {
 /// Monte le canal sur un port attribué par le système, avec l'horloge du
 /// fichier. On attend `listening` : lire `address()` avant que le socket ne
 /// soit lié rendrait `null`, et le test se connecterait à un port inexistant.
-async function demarrer(p: Pilote): Promise<number> {
+async function demarrer(p: Pilote, frein: Frein = new Frein()): Promise<number> {
     maintenant = T0;
     wss = new WebSocketServer({ port: 0, host: '127.0.0.1' });
     await new Promise<void>((r) => wss!.once('listening', () => r()));
@@ -67,6 +68,10 @@ async function demarrer(p: Pilote): Promise<number> {
         secretJeton: SECRET,
         maintenant: () => maintenant,
         registre: new RegistreAgents(),
+        frein,
+        // Aucun proxy declare : `adresseSource` ignorera donc tout
+        // `X-Forwarded-For`, et la cle d'adresse sera celle du pair reel.
+        proxyDeConfiance: new Set(),
     });
     const adresse = wss.address();
     return typeof adresse === 'object' && adresse ? adresse.port : 0;
@@ -269,4 +274,126 @@ describe('le canal, CÂBLÉ dans le service entier', () => {
         expect(rep.prefixe).toBe(P);
         surLeChemin.socket.terminate();
     });
+});
+
+describe('le frein du canal /agent', () => {
+    /// Une tentative d'enrôlement complète : ouvrir, dire, lire le refus.
+    ///
+    /// ⚠️ UN SOCKET NEUF À CHAQUE FOIS, et ce n'est pas du zèle : le motif
+    /// `enrolement` FERME le socket (`MOTIFS_FERMANTS`), et réutiliser le pair
+    /// mesurerait un socket mort.
+    async function tenter(port: number, vm: string, secret: string): Promise<Record<string, unknown>> {
+        const pair = await ouvrir(port);
+        const rep = await pair.dire(encodeEnroler(vm, secret));
+        pair.socket.terminate();
+        return rep;
+    }
+
+    it('(a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein', async () => {
+        base = await baseNeuve('canal-frein-vm');
+        await enrolerUneVm(base, 'v-1');
+        const port = await demarrer(base);
+        for (let i = 0; i < ECHECS_MAX_COMPTE; i++) {
+            expect((await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret')).type).toBe('refus');
+        }
+        // Le refus est le MÊME (voir (c)) ; ce qui a changé est son COÛT,
+        // que (e) mesure.
+        expect((await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret')).type).toBe('refus');
+    }, 30000);
+
+    it("(b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée", async () => {
+        const reel = await baseNeuve('canal-frein-adresse');
+        base = reel;
+        const compteur = piloteCompteur(reel);
+        const port = await demarrer(compteur.pilote);
+        // Aucun budget de VM ne peut mordre : chaque nom est essayé UNE fois.
+        for (let i = 0; i < ECHECS_MAX_ADRESSE; i++) {
+            await tenter(port, `inconnue-${i}`, 'peu-importe');
+        }
+        compteur.remettre();
+        expect((await tenter(port, 'encore-une-autre', 'peu-importe')).type).toBe('refus');
+        // 🔴 Le discriminant : la tentative freinée n'a RIEN lu en base.
+        expect(compteur.acces()).toBe(0);
+    }, 60000);
+
+    it('(c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement', async () => {
+        // 🔴 UN MOTIF `frein` DISTINCT RENDRAIT À L'ATTAQUANT L'INFORMATION
+        // « cette VM existe et je l'ai fait déclencher » : c'est exactement
+        // l'ORACLE D'ÉNUMÉRATION que `agents/enrolement.ts` ferme sur trois
+        // paragraphes, rouvert par la porte du frein. Les deux refus sont
+        // produits DANS LE MÊME TEST et comparés objet pour objet.
+        base = await baseNeuve('canal-frein-oracle');
+        await enrolerUneVm(base, 'v-1');
+        const port = await demarrer(base);
+
+        const refusNonFreine = await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret');
+        for (let i = 0; i < ECHECS_MAX_COMPTE; i++) {
+            await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret');
+        }
+        const refusFreine = await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret');
+        expect(refusFreine).toEqual(refusNonFreine);
+    }, 30000);
+
+    it('(d) le JOURNAL, lui, distingue les deux', async () => {
+        // Même partage que `identite/garde.ts` : `message` sur le fil,
+        // `journal` chez nous. Le demandeur n'apprend rien ; l'exploitant, si.
+        const avertir = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        base = await baseNeuve('canal-frein-journal');
+        await enrolerUneVm(base, 'v-1');
+        const port = await demarrer(base);
+        for (let i = 0; i < ECHECS_MAX_COMPTE; i++) {
+            await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret');
+        }
+        await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret');
+        const lignes = avertir.mock.calls.map((c) => String(c[0]));
+        // Le refus d'enrôlement ordinaire, écrit par `enrolement.ts`.
+        expect(lignes.some((l) => l.includes('enrôlement refusé pour la VM v-1'))).toBe(true);
+        // Et la ligne du frein, qui n'existe QUE côté exploitant.
+        const freinees = lignes.filter((l) => l.startsWith('frein '));
+        expect(freinees.length).toBeGreaterThanOrEqual(1);
+        expect(freinees[0]).toContain('route=/agent');
+        expect(freinees[0]).toContain('adresse=');
+    }, 30000);
+
+    it('(e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`', async () => {
+        // 🔴 C'EST LE POINT DE TOUTE LA TÂCHE. `verifierEnrolement` lit
+        // `agent_enrole` PUIS dérive une empreinte `scrypt`, à mémoire dure et
+        // délibérément chère (68 ms mesurés le 20 août 2026). Un frein posté
+        // APRÈS ne protège rien : il compte des tentatives qu'il a déjà payées,
+        // et un attaquant épuise le service sans jamais deviner un secret.
+        const reel = await baseNeuve('canal-frein-sans-scrypt');
+        base = reel;
+        await enrolerUneVm(reel, 'v-1');
+        const compteur = piloteCompteur(reel);
+        const port = await demarrer(compteur.pilote);
+        for (let i = 0; i < ECHECS_MAX_COMPTE; i++) {
+            await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret');
+        }
+        compteur.remettre();
+        await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret');
+        expect(compteur.acces()).toBe(0);
+    }, 30000);
+
+    it('(f) un enrôlement RÉUSSI remet le compteur de la VM à zéro', async () => {
+        // Même règle que `/auth/connexion` : le succès efface la clé de la VM,
+        // JAMAIS celle de l'adresse — sinon un attaquant qui possède une VM
+        // valide se blanchirait entre deux rafales.
+        base = await baseNeuve('canal-frein-succes');
+        await enrolerUneVm(base, 'v-1');
+        const port = await demarrer(base);
+        for (let i = 0; i < ECHECS_MAX_COMPTE - 1; i++) {
+            await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret');
+        }
+        expect((await tenter(port, 'v-1', SECRET_VM)).type).toBe('enrole');
+        // Sans la remise à zéro, la dernière de cette seconde série serait
+        // freinée, donc n'atteindrait jamais la base.
+        const reel2 = base;
+        const compteur = piloteCompteur(reel2);
+        void compteur;
+        for (let i = 0; i < ECHECS_MAX_COMPTE - 1; i++) {
+            expect((await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret')).type).toBe('refus');
+        }
+        // Et le succès reste possible : la VM n'est pas verrouillée.
+        expect((await tenter(port, 'v-1', SECRET_VM)).type).toBe('enrole');
+    }, 30000);
 });

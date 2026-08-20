@@ -42,6 +42,7 @@
 // `signaling/relais.ts` et `signaling/trace.ts` documentent tous deux. Tout ce
 // qui est asynchrone ici part par `void … .catch(…)`.
 
+import type { IncomingMessage } from 'node:http';
 import type { WebSocket, WebSocketServer } from 'ws';
 import {
     encodeBattementRecu,
@@ -55,6 +56,16 @@ import { fusionner } from '../apps/catalogue';
 import { marquerVu } from '../depot/agent';
 import { appliquer, lireConnues } from '../depot/application';
 import { DUREE_JETON_ACCES_MS, signer } from '../identite/jeton';
+import { adresseSource } from '../http/adresse-source';
+import { ligne as ligneDeJournal } from '../obs/journal';
+import {
+    BUDGET_ADRESSE,
+    BUDGET_COMPTE,
+    cleAdresse,
+    cleVm,
+    type Budget,
+    type Frein,
+} from '../securite/frein';
 import { verifierEnrolement } from './enrolement';
 import type { RegistreAgents } from './registre';
 
@@ -76,6 +87,14 @@ export interface OptionsCanal {
     /// rendrait `agent-injoignable`. Panne muette, et de celles qu'on ne
     /// diagnostique qu'en lisant ce fichier.
     registre: RegistreAgents;
+    /// Le frein, PARTAGÉ avec les routes d'authentification — une seule table,
+    /// jamais deux. Deux freins distincts divergeraient le jour où l'un serait
+    /// durci, et leurs budgets d'ADRESSE s'additionneraient : un attaquant
+    /// obtiendrait le double de ce que les constantes annoncent en alternant
+    /// les deux portes.
+    frein: Frein;
+    /// Les proxys dont on croit l'en-tête `X-Forwarded-For`. VIDE par défaut.
+    proxyDeConfiance: ReadonlySet<string>;
     dureeJetonMs?: number;
 }
 
@@ -104,10 +123,26 @@ const MOTIFS_FERMANTS: readonly MotifCanal[] = ['enrolement', 'version'];
 const FERMETURE_POLITIQUE = 1008;
 
 export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal): void {
-    const { base, secretJeton, maintenant, registre } = options;
+    const { base, secretJeton, maintenant, registre, frein, proxyDeConfiance } = options;
     const dureeJetonMs = options.dureeJetonMs ?? DUREE_JETON_ACCES_MS;
 
-    wss.on('connection', (socket: WebSocket) => {
+    // ⚠️ LA REQUÊTE DE MONTÉE EST DÉSORMAIS REÇUE, et c'est `ws` qui la
+    // fournit : `http/serveur.ts` fait déjà `wss.emit('connection', client,
+    // requete)`, et un `WebSocketServer` autonome la passe nativement. C'est
+    // le seul endroit d'où l'adresse du pair soit lisible — un WebSocket, une
+    // fois monté, ne la porte plus.
+    wss.on('connection', (socket: WebSocket, requete?: IncomingMessage) => {
+        // Lue UNE FOIS par connexion : elle ne change pas en cours de route,
+        // et la relire à chaque message coûterait sans rien apprendre.
+        const adresse = adresseSource(
+            requete?.socket.remoteAddress,
+            Array.isArray(requete?.headers['x-forwarded-for'])
+                ? requete.headers['x-forwarded-for'].join(',')
+                : requete?.headers['x-forwarded-for'],
+            proxyDeConfiance,
+        );
+        const parAdresse: readonly [string, Budget] = [cleAdresse(adresse), BUDGET_ADRESSE];
+
         // L'état de CETTE connexion, et rien d'autre. Il naît vide : tant
         // qu'un enrôlement n'a pas abouti, ce pair n'est personne.
         let vmId: string | undefined;
@@ -215,6 +250,36 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
             }
 
             const { vm, secret } = lecture.message;
+
+            // 🔴 LE FREIN EST CONSULTÉ ICI, ET C'EST LA POSITION QUI COMPTE :
+            // AVANT `verifierEnrolement`, donc avant qu'il ne lise
+            // `agent_enrole` ET avant qu'il ne dérive une empreinte `scrypt`.
+            // `scrypt` est à mémoire dure et coûte délibérément cher (68 ms
+            // mesurés le 20 août 2026) : un attaquant qui le déclenche à
+            // volonté épuise le service sans jamais deviner un secret. UN
+            // FREIN POSTÉ APRÈS LA VÉRIFICATION NE PROTÈGE RIEN.
+            //
+            // Ce fichier annonçait ce jour depuis P3, dans le commentaire de
+            // `MOTIFS_FERMANTS` : « fermer ne l'empêche pas de se reconnecter
+            // — cela rend le nombre de tentatives comptable à l'étage
+            // au-dessus le jour où on voudra le brider ». P5 est ce jour-là.
+            const cles: readonly (readonly [string, Budget])[] = [
+                [cleVm(vm), BUDGET_COMPTE],
+                parAdresse,
+            ];
+            if (frein.consulter(cles, maintenant()).freine) {
+                // 🔴 LE MOTIF EST `enrolement`, ET RIEN D'AUTRE. Un motif
+                // `frein` distinct rendrait à l'attaquant l'information
+                // « cette VM existe et je l'ai fait déclencher » : c'est
+                // l'ORACLE D'ÉNUMÉRATION que `agents/enrolement.ts` ferme sur
+                // trois paragraphes, rouvert par la porte du frein. Le
+                // JOURNAL, lui, distingue les deux — même partage que
+                // `identite/garde.ts` (`message` sur le fil, `journal` chez
+                // nous).
+                journaliserLeFrein(frein, cles, adresse, maintenant());
+                refuser('enrolement');
+                return;
+            }
             // ⚠️ LE `catch` EST OBLIGATOIRE ET IL N'EST PAS DÉCORATIF :
             // `verifierEnrolement` LÈVE sur une empreinte écrite par une
             // version future du service (`identite/mot-de-passe.ts` refuse un
@@ -226,9 +291,16 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
             void verifierEnrolement(base, vm, secret, (ligne) => console.warn(ligne))
                 .then((verdict) => {
                     if (!verdict.ok) {
+                        compterLEchec(frein, cles, adresse, maintenant());
                         refuser(verdict.motif);
                         return;
                     }
+                    // 🔴 LE SUCCÈS EFFACE LA CLÉ DE LA VM, JAMAIS CELLE DE
+                    // L'ADRESSE — même règle que `/auth/connexion`. L'effacer
+                    // aussi blanchirait un attaquant qui possède une VM
+                    // valide : il lui suffirait de s'enrôler entre deux
+                    // rafales pour rendre son budget d'adresse à zéro.
+                    frein.succes(cleVm(verdict.vmId));
                     vmId = verdict.vmId;
                     prefixe = verdict.prefixe;
                     // 🔴 C'EST ICI, ET NULLE PART AILLEURS, QUE LA VM DEVIENT
@@ -262,6 +334,12 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                     // d'être refusé, le réécrire ailleurs n'aurait aucun sens
                     // et l'exposerait dans un fichier de traces.
                     console.error(`enrôlement en échec pour la VM ${vm} : ${String(cause)}`);
+                    // ⚠️ CE CHEMIN COMPTE AUSSI. Une empreinte écrite par une
+                    // version future du service fait LEVER `verifier` : sans
+                    // ce comptage, un attaquant qui trouverait de quoi la
+                    // faire lever aurait un chemin de coût plein et non
+                    // freiné.
+                    compterLEchec(frein, cles, adresse, maintenant());
                     refuser('enrolement');
                 });
         });
@@ -278,6 +356,58 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
             if (vmId !== undefined) registre.retirer(vmId, socket);
         });
     });
+}
+
+/// Enregistre l'échec, et journalise SI ET SEULEMENT SI le frein vient de
+/// mordre.
+///
+/// 🔴 POURQUOI PAS UNE LIGNE PAR REFUS — même raison qu'`http/routes-auth.ts`,
+/// et elle est plus mordante ici : une tentative d'enrôlement refusée FERME le
+/// socket, si bien qu'un attaquant en boucle ouvre une connexion par
+/// tentative. Une trace par refus ferait donc écrire une ligne par connexion,
+/// sur le chemin même que le frein vient de rendre gratuit. `CLAUDE.md` porte
+/// la règle depuis le chantier TURN : « compter ou échantillonner, jamais
+/// tracer par paquet ».
+///
+/// La transition est détectée en reconsultant APRÈS l'échec : la tentative
+/// suivante est refusée AVANT d'atteindre `verifierEnrolement`, donc n'appelle
+/// jamais cette fonction. Il y a EXACTEMENT une ligne par clé et par fenêtre.
+function compterLEchec(
+    frein: Frein,
+    cles: readonly (readonly [string, Budget])[],
+    adresse: string,
+    instant: number,
+): void {
+    frein.echec(cles, instant);
+    if (!frein.consulter(cles, instant).freine) return;
+    journaliserLeFrein(frein, cles, adresse, instant);
+}
+
+/// La ligne que l'exploitant lit, et que le demandeur ne verra jamais.
+///
+/// ⚠️ ELLE NOMME L'ADRESSE RETENUE, et c'est le SEUL remède au mode de
+/// défaillance de `http/adresse-source.ts` : un exploitant qui a posé un proxy
+/// sans déclarer sa confiance verra ici l'adresse de son proxy sur toutes les
+/// lignes, et comprendra que son frein par adresse est devenu GLOBAL.
+function journaliserLeFrein(
+    frein: Frein,
+    cles: readonly (readonly [string, Budget])[],
+    adresse: string,
+    instant: number,
+): void {
+    const verdict = frein.consulter(cles, instant);
+    console.warn(
+        ligneDeJournal('frein', {
+            route: '/agent',
+            adresse,
+            cles: cles.map(([cle]) => cle).join(' '),
+            retry_apres_s: verdict.retryApresS,
+            // Sans ces deux-là, la SATURATION du frein serait invisible : sous
+            // saturation une éviction rend son budget à une VM visée.
+            entrees: frein.taille(),
+            evictions: frein.evictions(),
+        }),
+    );
 }
 
 /// N'écrit que sur un socket OUVERT. Un `send` sur un socket en cours de
