@@ -39,7 +39,10 @@ use super::{distribuer as distribuer_les_ordres, etat, oublier, Etat, Message};
 /// **Aucun filtre d'écrasement ici**, à la différence de
 /// `parts::distribuer_les_parts` : le `Sondeur` n'appelle cette fonction qu'au
 /// CHANGEMENT — c'est lui qui porte le garde d'égalité de contenu (garde n°2
-/// de D5) et le garde de refus répété. Refiltrer ici doublerait une décision
+/// de D5) et le garde de refus répété. **Depuis P2, c'est AUSSI lui qui porte
+/// le garde n°1** (`apres_notre_ecriture`, armé par `armer_les_gardes` juste
+/// en dessous) : un texte que nous venons d'écrire nous-mêmes n'arrive donc
+/// jamais jusqu'ici. Refiltrer ici doublerait une décision
 /// déjà prise, et la doublerait *mal* : le registre ne connaît pas le texte
 /// précédemment émis, et un second garde par session divergerait du premier
 /// dès qu'une fenêtre s'inscrit ou se retire.

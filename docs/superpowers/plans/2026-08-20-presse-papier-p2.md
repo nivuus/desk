@@ -179,7 +179,7 @@ Relevé **par la commande**, le 20 août 2026 :
 | 🔴 `agent/src/capteur/protocole.rs` | **464** | **36** | +1 variante `VersCapteur` **avec sa doc** ⟹ **EXTRACTION PRÉALABLE** de son bloc de tests (`:298-464`, 167 lignes ⟹ **297**), tâche 2 |
 | 🔴 `agent/src/presse_papier.rs` | **428** | **72** | +garde n°1, +décision d'écriture, +tests ⟹ **EXTRACTION PRÉALABLE** de son bloc de tests (`:242-428`, 187 lignes ⟹ **241**), tâche 1 |
 | `agent/src/capteur/distante.rs` | 446 | 54 | +1 méthode |
-| `agent/src/transport/tick.rs` | 421 | 79 | +1 branche `a1octies` |
+| 🔴 `agent/src/transport/tick.rs` | 421 | 79 | ❌ **BUDGET FAUX.** « +1 branche » suggère quelques lignes ; le corps de `a1octies` en fait **plus de soixante-dix**, car il porte tout le raisonnement de D6. Le fichier est monté à **493, MARGE 7**. Mesuré AVANT commit, extraction jouée : `transport/collage.rs` (neuf) le ramène à **441**. **Le plafond n'a jamais été franchi dans un commit** |
 | `agent/src/source.rs` | 414 | 86 | +1 méthode de trait, à défaut inerte |
 | `client/src/main.ts` | 414 | 86 | +câblage seul — **toute la logique va ailleurs** |
 | `agent/src/transport/evenements.rs` | 363 | 137 | +1 bras dans un `match` exhaustif |
@@ -194,6 +194,8 @@ Relevé **par la commande**, le 20 août 2026 :
 | `client/src/presse-papier-dom.ts` | 101 | 399 | l'écouteur `paste` |
 | `agent/src/presse_papier/win32.rs` | 98 | 402 | `ecrire_texte` |
 | `agent/src/transport/boucle.rs` | 93 | 407 | +le drainage de l'injection |
+| 🔴 `agent/src/transport.rs` | **448** | **52** | ❌ **ABSENT DE CETTE TABLE, et c'est là que vivent les DEUX champs** (`pending_clipboard`, `collage_a_injecter`) — la tâche 14 le savait (« le champ dans la structure de session, il n'est pas dans ce fichier ») sans le budgéter. Réel : **479, marge 21**, soit +31/−0 dont **quatre lignes de code** et vingt-sept de commentaire. ⚠️ Ce fichier a franchi 501 **deux fois** (D10, puis F2 qui l'a ramené à 448 par extraction) : P2 reprend 31 des 52 regagnés. **Toute addition future y appelle une extraction**, point de chute `transport/initialisation.rs` |
+| `agent/src/transport/collage.rs` | — | — | **NEUF**, né de l'extraction ci-dessus : les DEUX moitiés de l'ordre de D6 au même endroit |
 
 ⚠️ **Aucun fichier de la dette gelée n'est touché** : ni `encode.rs` (1536), ni
 `windows_source.rs` (630), ni `encode/arret.rs` (500, marge 0), ni
@@ -941,7 +943,7 @@ précisément pour cela. **Aucune extraction n'est due ici.**
 | --- | --- |
 | `encodeClipboard('x')` rend `{"v":3,"type":"clipboard","text":"x"}` | rouge = l'encodeur absent |
 | 🔴 `CapabilitiesMessage.clipboard` est **optionnel** (`clipboard?: boolean`) | rouge = le rendre obligatoire — un agent d'avant P2 ne le porte pas, et `undefined` doit valoir `false` **gratuitement**, exactement comme `mic` (`proto/ts/control.ts`, doc de `ReadyMessage.mic`) |
-| 🔴 `parseAgentControl` accepte un `capabilities` **sans** `clipboard` | rouge = un parseur qui exigerait le champ. ⚠️ **Ce test ne peut échouer que si le parseur valide les champs** ; s'il ne valide que `v` et `type`, **le dire dans le rapport** plutôt que de laisser croire à un contrôle |
+| ❌ ~~`parseAgentControl` accepte un `capabilities` **sans** `clipboard`~~ **CE TEST N'A PAS ÉTÉ ÉCRIT** | ✅ **La réserve du plan se vérifie : `parseAgentControl` ne valide QUE `v` et `type`, puis CASTE** (`parsed as AgentControl`). Le test aurait été **incapable d'échouer**. Ce qui porte la propriété est le TYPAGE (`clipboard?: boolean`), et ce qui la mesure est une annotation explicite dans `control.test.ts` — dont la rouge est `tsc`, pas vitest : rendre le champ obligatoire fait sortir `TS2741`. Constat inscrit **dans le code**, au-dessus de `parseAgentControl` |
 
 - [ ] **Step 2 : 🔴 NE PAS écrire de `TYPES_CLIENT`, et écrire pourquoi.**
       `ClientControl` n'est **jamais** parsé côté TypeScript — le client encode
@@ -1257,6 +1259,15 @@ où l'ordre de D6 est produit.
       trop lourd, dire pourquoi et déplacer la couverture sur `raccourcis.ts`
       (tâche 6) — mais ALORS le rapport doit écrire que la LIAISON entre le
       prédicat et l'écouteur n'est couverte par rien**, et c'est un legs.
+      ✅ **CE REPLI N'A PAS ÉTÉ EMPRUNTÉ.** Le montage était bien impossible tel
+      quel — la suite du client tourne en environnement `node`, sans DOM, et
+      `window.addEventListener` y lève —, et le remède est celui que ce dépôt
+      emploie partout ailleurs : **injecter la cible**. `CibleClavier` rejoint
+      `CibleFocus` (`presse-papier-dom.ts`) et `CibleEcran` (`fullscreen.ts`),
+      et `client/src/input.test.ts` (neuf, **10 tests**) couvre la liaison,
+      **dont les trois cas du risque R5**. ⚠️ Ce que ce fichier ne couvre pas et
+      le dit en tête : le pointeur, la molette et le menu contextuel, sans
+      couverture avant P2 et qui le restent.
 
 | Test | Ce qui le rend ROUGE |
 | --- | --- |

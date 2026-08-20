@@ -125,13 +125,18 @@ export interface FullscreenMessage {
 
 /// Le presse-papier de la VM a changé.
 ///
-/// L'interface s'appelle `ClipboardAgentMessage` et non `ClipboardMessage`,
-/// alors qu'elle est seule aujourd'hui : le sous-bloc P2 ajoutera un
-/// `ClipboardClientMessage` portant le MÊME tag `'clipboard'` dans l'autre
-/// sens. Aucune collision réelle — `parseAgentControl` n'analyse que
-/// `AgentControl`, et un message client ne passe jamais par là — mais les
-/// deux interfaces ne peuvent pas porter le même nom. Nommer celle-ci
-/// maintenant évite à P2 de renommer du code livré.
+/// L'interface s'appelle `ClipboardAgentMessage` et non `ClipboardMessage`
+/// parce qu'elle a un jumeau dans l'autre sens, `ClipboardClientMessage`,
+/// portant le MÊME tag `'clipboard'`. Aucune collision réelle —
+/// `parseAgentControl` n'analyse que `AgentControl`, et un message client ne
+/// passe jamais par là — mais les deux interfaces ne peuvent pas porter le
+/// même nom.
+///
+/// ✅ **Ce paragraphe disait « alors qu'elle est SEULE aujourd'hui : le
+/// sous-bloc P2 AJOUTERA un `ClipboardClientMessage` […] Nommer celle-ci
+/// maintenant évite à P2 de renommer du code livré ». P2 a eu lieu, et le pari
+/// a tenu : rien n'a été renommé.** Corrigé par la revue transverse du 21 août
+/// 2026 — un pronostic qui se réalise cesse d'être un pronostic.
 ///
 /// ⚠️ **`text` est `string | null`, jamais optionnel.** L'agent l'émet
 /// toujours ; un `?` ferait passer un message tronqué en route pour un refus.

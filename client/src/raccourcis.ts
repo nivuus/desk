@@ -6,13 +6,25 @@
 //
 // 🔴 **Ce prédicat est la SEULE défense contre le risque R5 de la spec**, et
 // c'est pourquoi il vit à part plutôt qu'inliné dans l'écouteur de
-// `input.ts`. Aujourd'hui `input.ts` appelle `preventDefault()` SANS CONDITION
-// sur chaque `keydown` : le navigateur ne voit passer aucun raccourci, ce qui
-// est précisément ce qui rend la fenêtre de session utilisable — `Ctrl+W` n'y
-// ferme rien, `Ctrl+T` n'y ouvre rien. P2 y perce une exception, et **toute
-// condition trop large rendrait le navigateur au clavier**. Une condition
-// inlinée dans un écouteur ne se teste pas ; celle-ci porte une table de
-// vérité de treize cas, dont neuf refus.
+// `input.ts`.
+//
+// ❌ **Ce paragraphe disait « AUJOURD'HUI `input.ts` appelle `preventDefault()`
+// SANS CONDITION sur chaque `keydown` », et la tâche 18 de CETTE MÊME BRANCHE
+// l'a rendu faux quelques commits plus tard.** Relevé par la revue transverse
+// du 21 août 2026 ; c'est le mode de défaillance dominant de ce dépôt.
+//
+// L'état d'AVANT P2 — vrai jusqu'au commit `4cf2206` — était bien un
+// `preventDefault()` inconditionnel : le navigateur ne voyait passer aucun
+// raccourci, ce qui est précisément ce qui rend la fenêtre de session
+// utilisable, `Ctrl+W` n'y fermant rien et `Ctrl+T` n'y ouvrant rien.
+// **Aujourd'hui l'exception existe, elle est exactement celle que ce prédicat
+// décrit, et TOUTE condition plus large rendrait le navigateur au clavier.**
+//
+// Une condition inlinée dans un écouteur ne se teste pas ; celle-ci porte une
+// table de vérité de **quinze cas, dont treize refus** — comptés par
+// `npx vitest run src/raccourcis.test.ts` le 21 août 2026, `it.each` expansé,
+// et non estimés. ⚠️ Une première rédaction annonçait « treize cas, dont neuf
+// refus » : les DEUX nombres étaient faux, relevés par la revue transverse.
 //
 // ⚠️ **L'exception peut être aussi étroite, et c'est MESURÉ, pas supposé.** La
 // sonde du 20 août 2026 (`docs/superpowers/plans/journaux-presse-papier-p2/`,

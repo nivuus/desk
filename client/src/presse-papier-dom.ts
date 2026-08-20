@@ -1,5 +1,10 @@
-// Le branchement du presse-papier sur le navigateur : la seule ligne de DOM du
-// mécanisme, et rien d'autre.
+// Le branchement du presse-papier sur le navigateur, DANS LES DEUX SENS : la
+// seule ligne de DOM du mécanisme, et rien d'autre.
+//
+// ⚠️ Ce titre disait « la seule ligne de DOM du mécanisme » d'un module qui
+// n'écoutait qu'un `focus` ; le sous-bloc P2 y a ajouté le `paste`, donc le
+// sens navigateur → VM. La clause reste vraie — c'est toujours le seul module
+// du mécanisme à toucher un écouteur —, sa portée a doublé.
 //
 // **Extrait AVANT d'écrire quoi que ce soit dans `main.ts`** (tâche 15, 20 août
 // 2026) : `main.ts` était à 460 lignes pour un plafond de projet à 500, et le
@@ -8,8 +13,8 @@
 // préalable a un second bénéfice, que le plan déclarait hors d'atteinte : le
 // câblage devient ÉPROUVABLE. `main.ts` n'a aucune couverture ; ce fichier en a
 // une, parce qu'il ne touche ni `document` ni `navigator` directement mais
-// reçoit `ecrire`, `focalise` et `cible` par injection — le patron de
-// `attachFullscreenAuDOM` et de `armerLeSon`.
+// reçoit `ecrire`, `focalise`, `cible` et — depuis P2 — `emettre` par
+// injection : le patron de `attachFullscreenAuDOM` et de `armerLeSon`.
 //
 // 🔴 **`navigator.clipboard.readText` n'est appelée NULLE PART, ni ici ni
 // ailleurs, ni au focus ni au clic ni jamais.** C'était le geste de l'ancien
