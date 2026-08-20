@@ -5,7 +5,7 @@
 Spécification : `docs/superpowers/specs/2026-08-19-design-system-design.md`
 (`5b6b830`) — **modifiée par S3**, et sur un seul point : la clause « aucune
 longueur hors échelle » du §8, que la revue transverse corrige (voir le §6).
-Journaux : `docs/superpowers/plans/journaux-design-s3/` — **51 fichiers**,
+Journaux : `docs/superpowers/plans/journaux-design-s3/` — **52 fichiers**,
 **UNE SEULE FAMILLE DE LECTURE**, et c'est **mesuré, pas supposé**
 (`familles-de-lecture.txt`).
 
@@ -513,7 +513,7 @@ pas reprise du document : 6 374** — donc **+1 637**, dont **+546** pour
 
 ## 10. Les journaux versés
 
-**51 fichiers**, tous sous `docs/superpowers/plans/journaux-design-s3/`.
+**52 fichiers**, tous sous `docs/superpowers/plans/journaux-design-s3/`.
 **Une seule famille de lecture** — aucune séquence ANSI, aucun `\r`, UTF-8
 partout : ils se `grep`ent **à plat**, sans `sed`. **Mesuré**
 (`familles-de-lecture.txt`), pas supposé.

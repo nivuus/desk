@@ -9849,7 +9849,7 @@ Spécification : `docs/superpowers/specs/2026-08-19-design-system-design.md`
 (`5b6b830`) — **MODIFIÉE par S3**, contrairement à S1 et S2 : son §7 gagne le
 **§7.9**, son §7.4 porte l'encadré de sa portée élargie, et son §8 celui de la
 clause « aucune longueur hors échelle », **fausse de SIX valeurs**.
-Journaux : `docs/superpowers/plans/journaux-design-s3/` — **51 fichiers**,
+Journaux : `docs/superpowers/plans/journaux-design-s3/` — **52 fichiers**,
 **UNE SEULE FAMILLE DE LECTURE**, et c'est **mesuré, pas supposé**
 (`familles-de-lecture.txt`) :
 
