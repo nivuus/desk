@@ -90,3 +90,69 @@ describe('PressePapierLocal', () => {
         expect(pp.refusADire()).toBeUndefined();
     });
 });
+
+// ---------------------------------------------------------------------------
+// Sous-bloc P2 — le garde n°3 de D5 : la page ne réémet JAMAIS vers l'agent un
+// contenu qu'elle vient de recevoir de lui.
+// ---------------------------------------------------------------------------
+
+describe('PressePapierLocal.aEmettre — le garde n°3', () => {
+    // 🔴 C'EST LE GARDE N°3. ROUGE si `aEmettre` rend toujours son argument :
+    // l'agent écrit T dans le presse-papier Windows, le Sondeur le relit, le
+    // pousse à la page, la page l'écrit localement — et si l'utilisateur colle
+    // alors, la page le renvoie à l'agent. Un aller-retour par collage.
+    it('tait un texte qu on vient de recevoir', () => {
+        const etat = new PressePapierLocal();
+        etat.recevoir({ texte: 'x', octets: 1 });
+        expect(etat.aEmettre('x')).toBeUndefined();
+    });
+
+    // ROUGE si le garde bloquait TOUT après une réception. Sans ce test, un
+    // `aEmettre` qui rendrait toujours `undefined` passerait le précédent — et
+    // le collage ne marcherait plus du tout.
+    it('laisse passer un texte différent', () => {
+        const etat = new PressePapierLocal();
+        etat.recevoir({ texte: 'x', octets: 1 });
+        expect(etat.aEmettre('y')).toBe('y');
+    });
+
+    // ROUGE si l'état initial comparait à la chaîne vide : un collage de chaîne
+    // vide serait alors muet dès le premier geste.
+    it('laisse passer avant toute réception', () => {
+        const etat = new PressePapierLocal();
+        expect(etat.aEmettre('x')).toBe('x');
+        expect(etat.aEmettre('')).toBe('');
+    });
+
+    // 🔴 Le garde ne vaut que pour le PREMIER renvoi. Un utilisateur qui colle
+    // deux fois le même texte le veut deux fois — et l'agent, lui, ne réécrira
+    // pas pour rien : c'est son garde n°2 qui absorbe le doublon, côté VM.
+    // ROUGE si le témoin est permanent au lieu d'être consommable.
+    it('ne tait que le PREMIER renvoi', () => {
+        const etat = new PressePapierLocal();
+        etat.recevoir({ texte: 'x', octets: 1 });
+        expect(etat.aEmettre('x')).toBeUndefined();
+        expect(etat.aEmettre('x')).toBe('x');
+    });
+
+    // ROUGE si le garde prenait un REFUS pour un contenu reçu : rien n'a été
+    // écrit localement, donc rien ne peut être un écho.
+    it('un refus n arme pas le garde', () => {
+        const etat = new PressePapierLocal();
+        etat.recevoir({ texte: null, octets: 100_000 });
+        expect(etat.aEmettre('x')).toBe('x');
+    });
+
+    // ROUGE si le témoin était posé par `recevoir` d'un texte QUI N'A PAS ÉTÉ
+    // ÉCRIT : un texte reçu sans focus reste en attente, et l'utilisateur peut
+    // très bien coller entre-temps un texte identique venu d'ailleurs. Le cas
+    // est indiscernable et le choix est de se taire — mais alors le témoin
+    // doit venir de `recevoir`, et ce test fige ce choix plutôt que de le
+    // laisser dépendre du focus.
+    it('arme le garde même quand l écriture locale n a pas encore eu lieu', () => {
+        const etat = new PressePapierLocal();
+        etat.recevoir({ texte: 'x', octets: 1 });
+        expect(etat.aEcrire(false)).toBeUndefined();
+        expect(etat.aEmettre('x')).toBeUndefined();
+    });
+});

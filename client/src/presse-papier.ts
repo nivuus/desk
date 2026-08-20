@@ -63,6 +63,16 @@ export class PressePapierLocal {
     /// Le refus à dire, **consommable** : sinon le bandeau se réafficherait à
     /// chaque tour.
     private refus: string | undefined;
+    /// Le dernier texte REÇU de l'agent et pas encore réémis — le **garde n°3
+    /// de D5**, et il se **consomme**.
+    ///
+    /// Il est posé par `recevoir`, jamais par `confirmer` : un texte reçu sans
+    /// focus reste en attente d'écriture, et l'utilisateur peut coller
+    /// entre-temps. Les deux cas sont indiscernables de l'extérieur, et le
+    /// choix est de se taire — un aller-retour évité de trop coûte un collage
+    /// répété que l'utilisateur peut refaire, là où un aller-retour de trop
+    /// est du trafic que rien ne borne (legs n°4 de P1).
+    private recuNonReemis: string | undefined;
 
     /// Un message est arrivé de l'agent. **Toujours mémorisé**, même sans
     /// focus : c'est le dépôt différé.
@@ -74,6 +84,8 @@ export class PressePapierLocal {
             return;
         }
         this.enAttente = recu.texte;
+        // Arme le garde n°3 : ce texte-là ne repartira pas vers l'agent.
+        this.recuNonReemis = recu.texte;
     }
 
     /// Ce qu'il faut écrire MAINTENANT, ou `undefined`.
@@ -101,6 +113,22 @@ export class PressePapierLocal {
     echouer(): string | undefined {
         this.echecs += 1;
         return this.echecs >= ECHECS_AVANT_MESSAGE ? MESSAGE_ECHEC : undefined;
+    }
+
+    /// Rend le texte à émettre vers l'agent, ou `undefined` si c'est l'écho
+    /// d'un contenu qu'on vient de recevoir de lui — **le garde n°3 de D5**.
+    ///
+    /// **Il ne vaut que pour le PREMIER renvoi**, et c'est délibéré : un
+    /// utilisateur qui colle deux fois le même texte le veut deux fois. Le
+    /// doublon n'en coûte rien côté VM — le garde n°2 de l'agent l'absorbe,
+    /// le presse-papier Windows portant déjà ce contenu.
+    ///
+    /// ⚠️ **Un refus n'arme pas ce garde** : rien n'a été écrit localement,
+    /// donc rien ne peut en être l'écho.
+    aEmettre(texte: string): string | undefined {
+        const recu = this.recuNonReemis;
+        this.recuNonReemis = undefined;
+        return recu === texte ? undefined : texte;
     }
 
     /// Le refus à dire, ou `undefined`. **Se consomme.**
