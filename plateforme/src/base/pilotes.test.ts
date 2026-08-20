@@ -30,12 +30,12 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
         // pourrait jamais échouer. Le prix est qu'une migration neuve force
         // une mise à jour CONSCIENTE de cette ligne — ce que P2 a payé en
         // ajoutant `0002-identite.sql`.
-        expect(suivi.map((l) => Number(l.version))).toEqual([1, 2, 3]);
+        expect(suivi.map((l) => Number(l.version))).toEqual([1, 2, 3, 4]);
         // Idempotence : le second passage n'applique rien.
         expect(await appliquerMigrations(base, REPERTOIRE_MIGRATIONS, 2_000)).toBe(0);
         const apres = await base.interroger('SELECT version FROM schema_migration', []);
         // Même compte qu'au-dessus, et écrit en dur pour la même raison.
-        expect(apres).toHaveLength(3);
+        expect(apres).toHaveLength(4);
     });
 
     it('tolère plusieurs VM non attribuées, et refuse une seconde attribution', async () => {
@@ -211,6 +211,87 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
         // silence. Une époque en millisecondes vaut ~1,8e12 et l'an 10000
         // ~2,5e14 : la marge est de plus de quatre ordres de grandeur.
         expect(MS).toBeLessThan(Number.MAX_SAFE_INTEGER);
+    });
+
+    it("écrit et relit une ligne `application` COMPLÈTE, aux valeurs d'époque", async () => {
+        // 🔴 CE TEST EXISTE PARCE QUE `0004-applications.sql` AJOUTE TROIS
+        // COLONNES D'HORODATAGE, et que l'angle mort mesuré de la double passe
+        // est le CHOIX DES VALEURS : une suite qui n'écrit que `1_000`
+        // déclarerait portable un schéma qui refuse toute écriture réelle. Les
+        // trois `_a` de cette table portent donc la même magnitude d'époque que
+        // celles du socle, et elles sont RELUES.
+        //
+        // ⚠️ Il éprouve aussi que les quatre colonnes NOT NULL ajoutées par
+        // `ALTER TABLE` acceptent bien une écriture : la migration les ajoute à
+        // une table VIDE, et rien d'autre ne prouverait qu'elle a produit un
+        // schéma utilisable plutôt qu'un schéma seulement appliqué.
+        const MS = 1_787_136_773_742;
+        base = await baseNeuve('application-epoque');
+        await base.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)',
+            ['v-app', 'vm', '10.0.0.1']);
+        await base.executer(
+            'INSERT INTO application(id,vm_id,nom,chemin,vue_a,cle,cible,arguments,repertoire,apparue_a,disparue_a,masquee_a)'
+                + ' VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+            ['a-1', 'v-app', 'Bloc-notes', 'C:\\Bureau\\Bloc-notes.lnk', MS,
+             'cle-1', 'c:\\windows\\notepad.exe', '', 'c:\\windows', MS - 9, MS + 5, null],
+        );
+
+        const [ligne] = await base.interroger<{
+            vue_a: unknown; apparue_a: unknown; disparue_a: unknown;
+            masquee_a: unknown; arguments: unknown; cible: unknown;
+        }>(
+            'SELECT vue_a, apparue_a, disparue_a, masquee_a, arguments, cible FROM application WHERE id = ?',
+            ['a-1'],
+        );
+
+        // 🔴 COMPARÉES SANS `Number(...)`, et c'est le point : envelopper la
+        // lecture CONVERTIRAIT la divergence au lieu de la mesurer. `pg` rend
+        // tout BIGINT en chaîne, et seul le `setTypeParser` du pilote fait que
+        // ces trois-là sont des `number` sur les DEUX moteurs.
+        expect(['vue_a', ligne.vue_a]).toEqual(['vue_a', MS]);
+        expect(['apparue_a', ligne.apparue_a]).toEqual(['apparue_a', MS - 9]);
+        expect(['disparue_a', ligne.disparue_a]).toEqual(['disparue_a', MS + 5]);
+        // `masquee_a` est nullable et personne ne l'écrit en G1 : elle doit
+        // rendre `null`, jamais `0` — les deux états sont distincts, comme
+        // pour `agent_enrole.vu_a`.
+        expect(['masquee_a', ligne.masquee_a]).toEqual(['masquee_a', null]);
+        // ⚠️ Une chaîne VIDE, jamais NULL : c'est le contrat de `arguments`,
+        // et un `NOT NULL` qui la refuserait rendrait la colonne inutilisable
+        // pour les applications sans argument, c'est-à-dire la majorité.
+        expect(['arguments', ligne.arguments]).toEqual(['arguments', '']);
+        expect(['cible', ligne.cible]).toEqual(['cible', 'c:\\windows\\notepad.exe']);
+    });
+
+    it('applique application_cle sur le COUPLE (vm_id, cle), et non sur la clé seule', async () => {
+        // 🔴 LES DEUX MOITIÉS SONT NÉCESSAIRES, et la seconde est celle qui
+        // décide : sans elle, un index posé sur `cle` SEULE passerait ce test
+        // — il refuserait bien le doublon de la première moitié. C'est
+        // exactement le contrôle qui ne peut pas échouer, et il est fermé ici
+        // en éprouvant AUSSI ce que l'index doit LAISSER PASSER.
+        //
+        // Ce que la seconde moitié protège, concrètement : la clé est
+        // l'empreinte d'un triplet de chemins Windows, donc deux VMs portant
+        // la même application au même endroit produisent la MÊME clé. Un index
+        // sur `cle` seule empêcherait la seconde VM d'enregistrer son
+        // catalogue.
+        const MS = 1_787_136_773_742;
+        base = await baseNeuve('application-unicite');
+        await base.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)', ['v-a', 'a', '10.0.0.1']);
+        await base.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)', ['v-b', 'b', '10.0.0.2']);
+
+        const inserer = (id: string, vmId: string, cle: string) =>
+            base!.executer(
+                'INSERT INTO application(id,vm_id,nom,chemin,vue_a,cle,cible,arguments,repertoire,apparue_a)'
+                    + ' VALUES(?,?,?,?,?,?,?,?,?,?)',
+                [id, vmId, 'App', 'C:\\App.lnk', MS, cle, 'c:\\app.exe', '', 'c:\\', MS],
+            );
+
+        await inserer('a-1', 'v-a', 'meme-cle');
+        // Même VM, même clé : refusé par l'index.
+        await expect(inserer('a-2', 'v-a', 'meme-cle')).rejects.toThrow();
+        // Autre VM, même clé : accepté — et c'est la moitié qui discrimine.
+        await inserer('a-3', 'v-b', 'meme-cle');
+        expect(await base.interroger('SELECT id FROM application', [])).toHaveLength(2);
     });
 
     it('REFUSE de convertir un BIGINT qui ne tient pas dans un entier sûr', async () => {
