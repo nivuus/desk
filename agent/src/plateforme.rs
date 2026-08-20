@@ -91,6 +91,21 @@ pub struct Canal {
     ordres: Option<mpsc::UnboundedReceiver<(String, String)>>,
 }
 
+/// De quoi émettre sans tenir le [`Canal`] entier.
+#[derive(Clone)]
+pub struct Emetteur {
+    file: mpsc::Sender<VersLaPlateforme>,
+}
+
+impl Emetteur {
+    /// Voir [`Canal::emettre`] : mêmes garanties, même perte assumée.
+    pub fn emettre(&self, message: VersLaPlateforme) {
+        if let Err(erreur) = self.file.try_send(message) {
+            tracing::warn!(%erreur, "message montant abandonné : canal coupé ou file pleine");
+        }
+    }
+}
+
 /// Pourquoi une session du canal s'est terminée.
 enum Fin {
     /// Il n'y a rien à réessayer : la même tentative rendrait le même refus.
@@ -199,6 +214,15 @@ impl Canal {
     /// l'autre et que le symptôme serait « un lancement sur deux ne part pas ».
     pub fn ordres(&mut self) -> Option<mpsc::UnboundedReceiver<(String, String)>> {
         self.ordres.take()
+    }
+
+    /// Un émetteur détachable, pour le fil de découverte.
+    ///
+    /// Le `Canal` lui-même n'est pas `Send` vers un fil bloquant qui le
+    /// garderait indéfiniment : c'est la file, et elle seule, qui doit
+    /// traverser. Un `Sender` de tokio est `Send` et `Clone`.
+    pub fn emetteur(&self) -> Emetteur {
+        Emetteur { file: self.emission.clone() }
     }
 
     /// Observe les changements d'identité — un réenrôlement en est un.
