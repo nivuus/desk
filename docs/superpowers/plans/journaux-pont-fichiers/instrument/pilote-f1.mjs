@@ -226,7 +226,16 @@ try {
     // Elle DOIT courir ici : la racine ProjFS ne sert rien sans le navigateur
     // qui la nourrit, et une mesure prise apres la fermeture de la page lirait
     // soit un cache, soit un echec, sans qu'on puisse les distinguer.
-    if (process.env.PENDANT_MAINTIEN && monte && monte.includes('mont')) {
+    // ⚠️ LE TEST PORTE SUR LE SUCCES, PAS SUR LA SOUS-CHAINE « mont ».
+    // `shell.ts` ecrit « Lecteur ... monte sur ... » en cas de succes et
+    // « Le lecteur ... n'a pas pu etre monte : ... » en cas d'echec : les DEUX
+    // contiennent « mont ». Une premiere version testait `includes('mont')` et
+    // a donc lance la mesure sur un pont NON MONTE (execution `exec4`), qui a
+    // rendu des « introuvable » partout -- indiscernables, pour qui lit le seul
+    // fichier de mesure, d'un pont monte mais vide.
+    const bienMonte = typeof monte === 'string' && !monte.includes('n’a pas pu')
+        && !monte.includes("n'a pas pu") && /mont[ée]/.test(monte);
+    if (process.env.PENDANT_MAINTIEN && bienMonte) {
         // ⚠️ REPOS APRES LE MONTAGE, ET IL EST DECLARE.
         // `#etat-fichiers` passe a « monte » quand le canal s'ouvre COTE
         // CLIENT ; le service du pont, lui, s'arme un peu plus tard cote
@@ -251,7 +260,7 @@ try {
             dire(`mesure VM ECHOUEE : ${String(e).slice(0, 300)}`);
         }
     } else if (process.env.PENDANT_MAINTIEN) {
-        dire('lecteur NON monte : la mesure cote VM est SAUTEE (elle n aurait rien a lire)');
+        dire(`lecteur NON monte : la mesure cote VM est SAUTEE (elle n aurait rien a lire) — etat lu : ${JSON.stringify(monte)}`);
     }
 
     // ── Maintien, et echantillonnage de `framesDecoded` (critere 4) ─────────
