@@ -1,0 +1,323 @@
+===== MUTATION T8-ae : le consulter est deplace APRES verifierEnrolement (donc apres scrypt) =====
+fichier   : src/agents/canal.ts
+sha AVANT : f3f20e5caea5005a4024fb7211256d1f22ac9f125a709c4539b24abaca7a4091
+sha MUTE  : aa51c6a046eed1ec538d77e05e1292854f4a262f2e8254b747ce04920c51fd95
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/agents/canal.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -269,3 +269,3 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
+             ];
+-            if (frein.consulter(cles, maintenant()).freine) {
++            await1: if (false as boolean && frein.consulter(cles, maintenant()).freine) {
+                 // 🔴 LE MOTIF EST `enrolement`, ET RIEN D'AUTRE. Un motif
+--- SORTIE DU TEST SOUS MUTATION ---
+     → expected 1 to be +0 // Object.is equality
+   ✓ le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro 529ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+AssertionError: expected 1 to be +0 // Object.is equality
+- Expected
++ Received
+- 0
++ 1
+ ❯ src/agents/canal.test.ts:316:34
+    314|         expect((await tenter(port, 'encore-une-autre', 'peu-importe'))…
+    315|         // 🔴 Le discriminant : la tentative freinée n'a RIEN lu en bas…
+    316|         expect(compteur.acces()).toBe(0);
+       |                                  ^
+    317|     }, 60000);
+    318| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+AssertionError: expected 1 to be +0 // Object.is equality
+- Expected
++ Received
+- 0
++ 1
+ ❯ src/agents/canal.test.ts:374:34
+    372|         compteur.remettre();
+    373|         await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret');
+    374|         expect(compteur.acces()).toBe(0);
+       |                                  ^
+    375|     }, 30000);
+    376| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+ Test Files  1 failed (1)
+      Tests  2 failed | 12 passed (14)
+   Start at  09:33:35
+   Duration  4.27s (transform 479ms, setup 0ms, collect 656ms, tests 3.24s, environment 0ms, prepare 114ms)
+--- RESTAURATION ---
+sha APRES : f3f20e5caea5005a4024fb7211256d1f22ac9f125a709c4539b24abaca7a4091
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T8-b : seule la cle de VM est posee (le balayage de VMs repasse) =====
+fichier   : src/agents/canal.ts
+sha AVANT : f3f20e5caea5005a4024fb7211256d1f22ac9f125a709c4539b24abaca7a4091
+sha MUTE  : aad3d57a6fafe6a6110d0f961ebe62e82b908c9b2b7aeac4d6e4444eb0cd7023
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/agents/canal.ts | 1 -
+ 1 file changed, 1 deletion(-)
+@@ -267,3 +267,2 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
+                 [cleVm(vm), BUDGET_COMPTE],
+-                parAdresse,
+             ];
+--- SORTIE DU TEST SOUS MUTATION ---
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+ ❯ src/agents/canal.test.ts (14 tests | 1 failed) 4139ms
+   ✓ la boucle du canal /agent > `enroler` avec le BON secret rend `enrole`, avec préfixe et jeton 372ms
+   ✓ le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein 356ms
+   × le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée 202ms
+     → expected 1 to be +0 // Object.is equality
+   ✓ le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement 563ms
+   ✓ le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt` 355ms
+   ✓ le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro 799ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+AssertionError: expected 1 to be +0 // Object.is equality
+- Expected
++ Received
+- 0
++ 1
+ ❯ src/agents/canal.test.ts:316:34
+    314|         expect((await tenter(port, 'encore-une-autre', 'peu-importe'))…
+    315|         // 🔴 Le discriminant : la tentative freinée n'a RIEN lu en bas…
+    316|         expect(compteur.acces()).toBe(0);
+       |                                  ^
+    317|     }, 60000);
+    318| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 passed (14)
+   Start at  09:33:40
+   Duration  5.02s (transform 402ms, setup 0ms, collect 566ms, tests 4.14s, environment 0ms, prepare 90ms)
+--- RESTAURATION ---
+sha APRES : f3f20e5caea5005a4024fb7211256d1f22ac9f125a709c4539b24abaca7a4091
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T8-c : 🔴 le refus freine porte un motif DISTINCT (l oracle rouvre) =====
+fichier   : src/agents/canal.ts
+sha AVANT : f3f20e5caea5005a4024fb7211256d1f22ac9f125a709c4539b24abaca7a4091
+sha MUTE  : dc19003452e9122154054ce940266ab728cc4e6baaff61e7265b0d4d1b68f623
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/agents/canal.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -279,3 +279,3 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
+                 journaliserLeFrein(frein, cles, adresse, maintenant());
+-                refuser('enrolement');
++                refuser("version");
+                 return;
+--- SORTIE DU TEST SOUS MUTATION ---
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+ ❯ src/agents/canal.test.ts (14 tests | 1 failed) 3419ms
+   ✓ la boucle du canal /agent > 🔴 le jeton rendu est VÉRIFIABLE PAR LA GARDE, et de type `agent` 318ms
+   ✓ le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein 415ms
+   × le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement 303ms
+     → expected { type: 'refus', v: 2, …(1) } to deeply equal { type: 'refus', v: 2, …(1) }
+   ✓ le frein du canal /agent > (d) le JOURNAL, lui, distingue les deux 405ms
+   ✓ le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt` 366ms
+   ✓ le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro 508ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+AssertionError: expected { type: 'refus', v: 2, …(1) } to deeply equal { type: 'refus', v: 2, …(1) }
+- Expected
++ Received
+  Object {
+-   "motif": "enrolement",
++   "motif": "version",
+    "type": "refus",
+    "v": 2,
+  }
+ ❯ src/agents/canal.test.ts:334:29
+    332|         }
+    333|         const refusFreine = await tenter(port, 'v-1', 'ce-n-est-pas-le…
+    334|         expect(refusFreine).toEqual(refusNonFreine);
+       |                             ^
+    335|     }, 30000);
+    336| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 passed (14)
+   Start at  09:33:46
+   Duration  4.27s (transform 384ms, setup 0ms, collect 514ms, tests 3.42s, environment 0ms, prepare 56ms)
+--- RESTAURATION ---
+sha APRES : f3f20e5caea5005a4024fb7211256d1f22ac9f125a709c4539b24abaca7a4091
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T8-d : le frein ne journalise plus rien =====
+fichier   : src/agents/canal.ts
+sha AVANT : f3f20e5caea5005a4024fb7211256d1f22ac9f125a709c4539b24abaca7a4091
+sha MUTE  : d4758a8bd59a3d508f348b2b3f3a46cdb3878a6ef9ff805c5e6f27ff0a49612e
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/agents/canal.ts | 3 +++
+ 1 file changed, 3 insertions(+)
+@@ -391,2 +391,5 @@ function compterLEchec(
+ /// lignes, et comprendra que son frein par adresse est devenu GLOBAL.
++function journaliserLeFrein_inerte(
++    _a: unknown, _b: unknown, _c: unknown, _d: unknown,
++): void {}
+ function journaliserLeFrein(
+--- SORTIE DU TEST SOUS MUTATION ---
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+ ✓ src/agents/canal.test.ts (14 tests) 3268ms
+   ✓ la boucle du canal /agent > `enroler` avec le BON secret rend `enrole`, avec préfixe et jeton 320ms
+   ✓ le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement 347ms
+   ✓ le frein du canal /agent > (d) le JOURNAL, lui, distingue les deux 370ms
+   ✓ le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt` 347ms
+   ✓ le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro 949ms
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  09:33:51
+   Duration  4.21s (transform 456ms, setup 0ms, collect 625ms, tests 3.27s, environment 0ms, prepare 77ms)
+--- RESTAURATION ---
+sha APRES : f3f20e5caea5005a4024fb7211256d1f22ac9f125a709c4539b24abaca7a4091
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T8-f : le succes n efface plus la cle de la VM =====
+fichier   : src/agents/canal.ts
+sha AVANT : f3f20e5caea5005a4024fb7211256d1f22ac9f125a709c4539b24abaca7a4091
+sha MUTE  : 18c9e05c3e87c217afe7a6b5b8be7be87c40940356568d3282c7418f937eccb2
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/agents/canal.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -302,3 +302,3 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
+                     // rafales pour rendre son budget d'adresse à zéro.
+-                    frein.succes(cleVm(verdict.vmId));
++
+                     vmId = verdict.vmId;
+--- SORTIE DU TEST SOUS MUTATION ---
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+ ❯ src/agents/canal.test.ts (14 tests | 1 failed) 4184ms
+   ✓ le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein 635ms
+   ✓ le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement 302ms
+   ✓ le frein du canal /agent > (d) le JOURNAL, lui, distingue les deux 597ms
+   ✓ le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt` 423ms
+   × le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro 855ms
+     → expected 'refus' to be 'enrole' // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+AssertionError: expected 'refus' to be 'enrole' // Object.is equality
+Expected: "enrole"
+Received: "refus"
+ ❯ src/agents/canal.test.ts:397:61
+    395|         }
+    396|         // Et le succès reste possible : la VM n'est pas verrouillée.
+    397|         expect((await tenter(port, 'v-1', SECRET_VM)).type).toBe('enro…
+       |                                                             ^
+    398|     }, 30000);
+    399| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 passed (14)
+   Start at  09:33:57
+   Duration  4.96s (transform 281ms, setup 0ms, collect 367ms, tests 4.18s, environment 0ms, prepare 102ms)
+--- RESTAURATION ---
+sha APRES : f3f20e5caea5005a4024fb7211256d1f22ac9f125a709c4539b24abaca7a4091
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+### RELANCE de T8-d. La premiere tentative etait une MAUVAISE MUTATION :
+(eval):6: command not found: journaliserLeFrein
+### elle renommait une COPIE en _inerte et redefinissait 
+### juste apres, si bien que la vraie fonction restait appelee. Le fichier
+### changeait (sha different), la semantique non. Ici, la fonction rend la
+### main avant d'ecrire quoi que ce soit.
+===== MUTATION T8-d : le frein ne journalise plus rien =====
+fichier   : src/agents/canal.ts
+sha AVANT : f3f20e5caea5005a4024fb7211256d1f22ac9f125a709c4539b24abaca7a4091
+sha MUTE  : 8e91df7f71422a7ad93e03e811721cfe7196a081657b5c17a9e928a0bc55fd15
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/agents/canal.ts | 1 +
+ 1 file changed, 1 insertion(+)
+@@ -397,2 +397,3 @@ function journaliserLeFrein(
+ ): void {
++    if (instant >= 0) return;
+     const verdict = frein.consulter(cles, instant);
+--- SORTIE DU TEST SOUS MUTATION ---
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+ ❯ src/agents/canal.test.ts (14 tests | 1 failed) 3634ms
+   ✓ la boucle du canal /agent > 🔴 le jeton rendu est VÉRIFIABLE PAR LA GARDE, et de type `agent` 306ms
+   ✓ le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein 348ms
+   × le frein du canal /agent > (d) le JOURNAL, lui, distingue les deux 371ms
+     → expected 0 to be greater than or equal to 1
+   ✓ le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt` 452ms
+   ✓ le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro 724ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (d) le JOURNAL, lui, distingue les deux
+AssertionError: expected 0 to be greater than or equal to 1
+ ❯ src/agents/canal.test.ts:353:33
+    351|         // Et la ligne du frein, qui n'existe QUE côté exploitant.
+    352|         const freinees = lignes.filter((l) => l.startsWith('frein '));
+    353|         expect(freinees.length).toBeGreaterThanOrEqual(1);
+       |                                 ^
+    354|         expect(freinees[0]).toContain('route=/agent');
+    355|         expect(freinees[0]).toContain('adresse=');
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 passed (14)
+   Start at  09:34:22
+   Duration  4.89s (transform 554ms, setup 0ms, collect 827ms, tests 3.63s, environment 0ms, prepare 136ms)
+--- RESTAURATION ---
+sha APRES : f3f20e5caea5005a4024fb7211256d1f22ac9f125a709c4539b24abaca7a4091
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+

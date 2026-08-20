@@ -1,0 +1,257 @@
+===== MUTATION T2-a : l'en-tete est lu SANS condition de confiance =====
+fichier   : src/http/adresse-source.ts
+sha AVANT : ba2ab1273023c37e8dac42af16a5ce71baf50adddc7fde8e1890c8e4ea9e99e3
+sha MUTE  : 476baaff7c4aa153437648020e531e557ace3f0bc42b458097478b630b6c7d23
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/adresse-source.ts | 1 -
+ 1 file changed, 1 deletion(-)
+@@ -81,3 +81,2 @@ export function adresseSource(
+     }
+-    if (!deConfiance) return pair;
+ 
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+ ❯ src/http/adresse-source.test.ts (11 tests | 2 failed) 40ms
+   × adresseSource > (a) 🔴 une source NON de confiance voit son en-tête IGNORÉ 28ms
+     → expected '172.18.0.5' to be '203.0.113.7' // Object.is equality
+   × adresseSource > (a bis) la confiance VIDE est le défaut, et elle ne croit personne 2ms
+     → expected '203.0.113.7' to be '172.18.0.5' // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/adresse-source.test.ts > adresseSource > (a) 🔴 une source NON de confiance voit son en-tête IGNORÉ
+AssertionError: expected '172.18.0.5' to be '203.0.113.7' // Object.is equality
+Expected: "203.0.113.7"
+Received: "172.18.0.5"
+ ❯ src/http/adresse-source.test.ts:21:87
+     19|         // le dire. Croire cet en-tête serait une usurpation d'identit…
+     20|         // rendrait le frein par adresse contournable en une ligne d'e…
+     21|         expect(adresseSource(CLIENT, `${INTERMEDIAIRE}, ${PROXY}`, AUC…
+       |                                                                                       ^
+     22|     });
+     23| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+ FAIL  src/http/adresse-source.test.ts > adresseSource > (a bis) la confiance VIDE est le défaut, et elle ne croit personne
+AssertionError: expected '203.0.113.7' to be '172.18.0.5' // Object.is equality
+Expected: "172.18.0.5"
+Received: "203.0.113.7"
+ ❯ src/http/adresse-source.test.ts:25:64
+     23| 
+     24|     it("(a bis) la confiance VIDE est le défaut, et elle ne croit pers…
+     25|         expect(adresseSource(PROXY, CLIENT, AUCUNE_CONFIANCE)).toBe(PR…
+       |                                                                ^
+     26|     });
+     27| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+ Test Files  1 failed (1)
+      Tests  2 failed | 9 passed (11)
+   Start at  09:06:23
+   Duration  620ms (transform 120ms, setup 0ms, collect 138ms, tests 40ms, environment 0ms, prepare 116ms)
+--- RESTAURATION ---
+sha APRES : ba2ab1273023c37e8dac42af16a5ce71baf50adddc7fde8e1890c8e4ea9e99e3
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T2-b : on prend le PREMIER element au lieu du dernier (la faute classique) =====
+fichier   : src/http/adresse-source.ts
+sha AVANT : ba2ab1273023c37e8dac42af16a5ce71baf50adddc7fde8e1890c8e4ea9e99e3
+sha MUTE  : 387d680303ea0a740f5a6845f70196e8cb3e3ee8393d5769be9daa92b9347c52
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/adresse-source.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -88,3 +88,3 @@ export function adresseSource(
+     const elements = enteteXff.split(',');
+-    for (let i = elements.length - 1; i >= 0; i--) {
++    for (let i = 0; i < elements.length; i++) {
+         const element = elements[i].trim();
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+ ❯ src/http/adresse-source.test.ts (11 tests | 1 failed) 22ms
+   × adresseSource > (b) 🔴 une source de confiance : on prend le DERNIER élément, jamais le premier 12ms
+     → expected '203.0.113.7' to be '198.51.100.4' // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/adresse-source.test.ts > adresseSource > (b) 🔴 une source de confiance : on prend le DERNIER élément, jamais le premier
+AssertionError: expected '203.0.113.7' to be '198.51.100.4' // Object.is equality
+Expected: "198.51.100.4"
+Received: "203.0.113.7"
+ ❯ src/http/adresse-source.test.ts:36:14
+     34|         // écrit lui-même.
+     35|         expect(adresseSource(PROXY, `${CLIENT}, ${INTERMEDIAIRE}`, PRO…
+     36|             .toBe(INTERMEDIAIRE);
+       |              ^
+     37|     });
+     38| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 passed (11)
+   Start at  09:06:25
+   Duration  590ms (transform 115ms, setup 0ms, collect 76ms, tests 22ms, environment 1ms, prepare 165ms)
+--- RESTAURATION ---
+sha APRES : ba2ab1273023c37e8dac42af16a5ce71baf50adddc7fde8e1890c8e4ea9e99e3
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T2-d : les elements vides ne sont plus filtres =====
+fichier   : src/http/adresse-source.ts
+sha AVANT : ba2ab1273023c37e8dac42af16a5ce71baf50adddc7fde8e1890c8e4ea9e99e3
+sha MUTE  : ba2ab1273023c37e8dac42af16a5ce71baf50adddc7fde8e1890c8e4ea9e99e3
+🔴 ECHEC DU HARNAIS : la mutation n'a RIEN change. Test non joue.
+===== MUTATION T2-e : la normalisation IPv4-mappee est retiree =====
+fichier   : src/http/adresse-source.ts
+sha AVANT : ba2ab1273023c37e8dac42af16a5ce71baf50adddc7fde8e1890c8e4ea9e99e3
+sha MUTE  : 622b4817504b851190525ca72363b97d913eacbb3890d5421cbbd9a814fe3c4c
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/adresse-source.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -60,3 +60,3 @@ const PREFIXE_MAPPE = '::ffff:';
+ function normaliser(adresse: string): string {
+-    return adresse.startsWith(PREFIXE_MAPPE) ? adresse.slice(PREFIXE_MAPPE.length) : adresse;
++    return adresse;
+ }
+--- SORTIE DU TEST SOUS MUTATION ---
+     57|         // pile employée, et son budget de frein double.
+     58|         expect(adresseSource(`::ffff:${CLIENT}`, undefined, AUCUNE_CON…
+     59|             .toBe(adresseSource(CLIENT, undefined, AUCUNE_CONFIANCE));
+       |              ^
+     60|         expect(adresseSource(`::ffff:${CLIENT}`, undefined, AUCUNE_CON…
+     61|     });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+ FAIL  src/http/adresse-source.test.ts > adresseSource > (e bis) la CONFIANCE se juge sur la forme normalisée, des deux côtés
+AssertionError: expected '::ffff:172.18.0.5' to be '203.0.113.7' // Object.is equality
+Expected: "203.0.113.7"
+Received: "::ffff:172.18.0.5"
+ ❯ src/http/adresse-source.test.ts:68:78
+     66|         // échouer la confiance en silence — et le frein par adresse
+     67|         // dégénérerait en frein GLOBAL sans qu'aucune ligne ne le dis…
+     68|         expect(adresseSource(`::ffff:${PROXY}`, CLIENT, PROXY_DE_CONFI…
+       |                                                                              ^
+     69|         // Et la configuration écrite sous forme encapsulée vaut la nu…
+     70|         expect(adresseSource(PROXY, CLIENT, new Set([`::ffff:${PROXY}`…
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+ FAIL  src/http/adresse-source.test.ts > adresseSource > (e ter) l'élément d'en-tête retenu est normalisé lui aussi
+AssertionError: expected '::ffff:203.0.113.7' to be '203.0.113.7' // Object.is equality
+Expected: "203.0.113.7"
+Received: "::ffff:203.0.113.7"
+ ❯ src/http/adresse-source.test.ts:74:78
+     72| 
+     73|     it("(e ter) l'élément d'en-tête retenu est normalisé lui aussi", (…
+     74|         expect(adresseSource(PROXY, `::ffff:${CLIENT}`, PROXY_DE_CONFI…
+       |                                                                              ^
+     75|     });
+     76| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+ Test Files  1 failed (1)
+      Tests  3 failed | 8 passed (11)
+   Start at  09:06:27
+   Duration  754ms (transform 84ms, setup 0ms, collect 73ms, tests 27ms, environment 0ms, prepare 123ms)
+--- RESTAURATION ---
+sha APRES : ba2ab1273023c37e8dac42af16a5ce71baf50adddc7fde8e1890c8e4ea9e99e3
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T2-f : un pair sans adresse rend la chaine interpolee au lieu d une valeur nommee =====
+fichier   : src/http/adresse-source.ts
+sha AVANT : ba2ab1273023c37e8dac42af16a5ce71baf50adddc7fde8e1890c8e4ea9e99e3
+sha MUTE  : 6f496621b86ad37bef2ef5d601cb8dcfcacf96ef9e9d9fbcd9bce599f3c18c1d
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/adresse-source.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -68,3 +68,3 @@ export function adresseSource(
+ ): string {
+-    if (remote === undefined || remote === '') return ADRESSE_INCONNUE;
++    if (remote === undefined || remote === "") return String(remote);
+     const pair = normaliser(remote);
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+ ❯ src/http/adresse-source.test.ts (11 tests | 2 failed) 27ms
+   × adresseSource > (f) 🔴 un pair sans adresse rend une valeur NOMMÉE, jamais « undefined » 14ms
+     → expected 'undefined' to be 'adresse-inconnue' // Object.is equality
+   × adresseSource > (f bis) un pair sans adresse ne devient JAMAIS de confiance 2ms
+     → expected 'undefined' to be 'adresse-inconnue' // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/adresse-source.test.ts > adresseSource > (f) 🔴 un pair sans adresse rend une valeur NOMMÉE, jamais « undefined »
+AssertionError: expected 'undefined' to be 'adresse-inconnue' // Object.is equality
+Expected: "adresse-inconnue"
+Received: "undefined"
+ ❯ src/http/adresse-source.test.ts:83:23
+     81|         // documente pour `process.env`, et il se rejoue ici.
+     82|         const rendu = adresseSource(undefined, undefined, AUCUNE_CONFI…
+     83|         expect(rendu).toBe(ADRESSE_INCONNUE);
+       |                       ^
+     84|         expect(rendu).not.toBe('undefined');
+     85|         expect(rendu.length).toBeGreaterThan(0);
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+ FAIL  src/http/adresse-source.test.ts > adresseSource > (f bis) un pair sans adresse ne devient JAMAIS de confiance
+AssertionError: expected 'undefined' to be 'adresse-inconnue' // Object.is equality
+Expected: "adresse-inconnue"
+Received: "undefined"
+ ❯ src/http/adresse-source.test.ts:91:79
+     89|         // Si `ADRESSE_INCONNUE` figurait par mégarde dans l'ensemble …
+     90|         // confiance, tous les pairs anonymes pourraient forger leur a…
+     91|         expect(adresseSource(undefined, CLIENT, new Set([ADRESSE_INCON…
+       |                                                                               ^
+     92|     });
+     93| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+ Test Files  1 failed (1)
+      Tests  2 failed | 9 passed (11)
+   Start at  09:06:29
+   Duration  795ms (transform 90ms, setup 0ms, collect 76ms, tests 27ms, environment 0ms, prepare 123ms)
+--- RESTAURATION ---
+sha APRES : ba2ab1273023c37e8dac42af16a5ce71baf50adddc7fde8e1890c8e4ea9e99e3
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+### RELANCE de T2-d : le motif perl de la premiere tentative ne matchait pas,
+### et le HARNAIS a refuse de jouer le test plutot que de rendre un faux vert.
+===== MUTATION T2-d : les elements vides ne sont plus filtres =====
+fichier   : src/http/adresse-source.ts
+sha AVANT : ba2ab1273023c37e8dac42af16a5ce71baf50adddc7fde8e1890c8e4ea9e99e3
+sha MUTE  : 8bf4ffc2ba3bf6dbb2f68de89733eba988ad56eb2385e7d9e09b320a1fdefd23
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/adresse-source.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -90,3 +90,3 @@ export function adresseSource(
+         const element = elements[i].trim();
+-        if (element !== '') return normaliser(element);
++        return normaliser(element);
+     }
+--- SORTIE DU TEST SOUS MUTATION ---
+   × adresseSource > (d) en-tête présent mais vide ou blanc ⇒ l’adresse du pair 25ms
+     → expected '' to be '172.18.0.5' // Object.is equality
+   × adresseSource > (d bis) les éléments vides de FIN sont sautés, pas pris pour le dernier 3ms
+     → expected '' to be '203.0.113.7' // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/adresse-source.test.ts > adresseSource > (d) en-tête présent mais vide ou blanc ⇒ l’adresse du pair
+AssertionError: expected '' to be '172.18.0.5' // Object.is equality
+- Expected
++ Received
+- 172.18.0.5
+ ❯ src/http/adresse-source.test.ts:44:65
+     42| 
+     43|     it('(d) en-tête présent mais vide ou blanc ⇒ l’adresse du pair', (…
+     44|         expect(adresseSource(PROXY, ' , ', PROXY_DE_CONFIANCE)).toBe(P…
+       |                                                                 ^
+     45|         expect(adresseSource(PROXY, '', PROXY_DE_CONFIANCE)).toBe(PROX…
+     46|     });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+ FAIL  src/http/adresse-source.test.ts > adresseSource > (d bis) les éléments vides de FIN sont sautés, pas pris pour le dernier
+AssertionError: expected '' to be '203.0.113.7' // Object.is equality
+- Expected
++ Received
+- 203.0.113.7
+ ❯ src/http/adresse-source.test.ts:52:73
+     50|         // prendre rendrait une clé de frein vide, que toutes les requ…
+     51|         // mal formées partageraient.
+     52|         expect(adresseSource(PROXY, `${CLIENT}, `, PROXY_DE_CONFIANCE)…
+       |                                                                         ^
+     53|     });
+     54| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+ Test Files  1 failed (1)
+      Tests  2 failed | 9 passed (11)
+   Start at  09:06:45
+   Duration  646ms (transform 125ms, setup 0ms, collect 133ms, tests 48ms, environment 0ms, prepare 108ms)
+--- RESTAURATION ---
+sha APRES : ba2ab1273023c37e8dac42af16a5ce71baf50adddc7fde8e1890c8e4ea9e99e3
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+

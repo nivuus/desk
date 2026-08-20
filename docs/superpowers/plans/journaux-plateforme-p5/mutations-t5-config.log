@@ -1,0 +1,147 @@
+===== MUTATION T5-a : absente, l'ensemble contient toutes les adresses (defaut permissif) =====
+fichier   : src/config.ts
+sha AVANT : 83a00f376fac22694fd5b4f95c4768119262e95d2871168bd0586830308f7e8c
+sha MUTE  : 4cfe363d9f88a60430d5c39ef4c92f3624941806e459dac21c9bd6ef30840c20
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/config.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -166,3 +166,3 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
+     const proxyDeConfiance: ReadonlySet<string> = new Set(
+-        (brutProxy ?? '')
++        (brutProxy ?? "0.0.0.0,172.18.0.5,10.0.0.1")
+             .split(',')
+--- SORTIE DU TEST SOUS MUTATION ---
+-   "proxyDeConfiance": Set {},
++   "proxyDeConfiance": Set {
++     "0.0.0.0",
++     "172.18.0.5",
++     "10.0.0.1",
++   },
+    "secretJeton": "un-secret-de-plateforme-de-quarante-octets",
+    "urlBase": ":memory:",
+  }
+ ❯ src/config.test.ts:24:19
+     22|         // c'est le sujet des trois tests suivants.
+     23|         const c = lireConfig({ PLATEFORME_HOTE: '127.0.0.1', PLATEFORM…
+     24|         expect(c).toEqual({
+       |                   ^
+     25|             hote: '127.0.0.1',
+     26|             port: 8080,
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+ FAIL  src/config.test.ts > lireConfig > (a) PLATEFORME_PROXY_DE_CONFIANCE absente ⇒ on ne croit PERSONNE
+AssertionError: expected 3 to be +0 // Object.is equality
+- Expected
++ Received
+- 0
++ 3
+ ❯ src/config.test.ts:109:56
+    107|         // lui-même, donc le frein par adresse contournable en une lig…
+    108|         // d'en-tête.
+    109|         expect(lireConfig(BASE).proxyDeConfiance.size).toBe(0);
+       |                                                        ^
+    110|     });
+    111| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+ Test Files  1 failed (1)
+      Tests  2 failed | 11 passed (13)
+   Start at  09:13:11
+   Duration  819ms (transform 209ms, setup 0ms, collect 217ms, tests 64ms, environment 0ms, prepare 160ms)
+--- RESTAURATION ---
+sha APRES : 83a00f376fac22694fd5b4f95c4768119262e95d2871168bd0586830308f7e8c
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T5-b : la chaine vide produit une entree vide (le ?? ne rattrape pas) =====
+fichier   : src/config.ts
+sha AVANT : 83a00f376fac22694fd5b4f95c4768119262e95d2871168bd0586830308f7e8c
+sha MUTE  : 6116f090843ee92761327bf73320f7d2997579d2801192a99ccc81379c12e235
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/config.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -171,3 +171,3 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
+             // vide — et `'  '` en porterait une aussi, après `trim`.
+-            .filter((entree) => entree !== ''),
++            .filter(() => true),
+     );
+--- SORTIE DU TEST SOUS MUTATION ---
+    110|     });
+    111| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+ FAIL  src/config.test.ts > lireConfig > (b) chaîne VIDE ⇒ ensemble vide, et non une entrée vide
+AssertionError: expected 1 to be +0 // Object.is equality
+- Expected
++ Received
+- 0
++ 1
+ ❯ src/config.test.ts:116:14
+    114|         // exacte à sa tâche 1, où un des deux rouges annoncés était v…
+    115|         expect(lireConfig({ ...BASE, PLATEFORME_PROXY_DE_CONFIANCE: ''…
+    116|             .toBe(0);
+       |              ^
+    117|     });
+    118| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+ FAIL  src/config.test.ts > lireConfig > (d) une entrée vide entre deux virgules est IGNORÉE
+AssertionError: expected 3 to be 2 // Object.is equality
+- Expected
++ Received
+- 2
++ 3
+ ❯ src/config.test.ts:132:41
+    130|     it("(d) une entrée vide entre deux virgules est IGNORÉE", () => {
+    131|         const c = lireConfig({ ...BASE, PLATEFORME_PROXY_DE_CONFIANCE:…
+    132|         expect(c.proxyDeConfiance.size).toBe(2);
+       |                                         ^
+    133|         // Une entrée vide dans l'ensemble de confiance rendrait de co…
+    134|         // tout pair dont l'adresse est vide — c'est-à-dire `ADRESSE_I…
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+ Test Files  1 failed (1)
+      Tests  4 failed | 9 passed (13)
+   Start at  09:13:14
+   Duration  728ms (transform 124ms, setup 0ms, collect 134ms, tests 78ms, environment 0ms, prepare 111ms)
+--- RESTAURATION ---
+sha APRES : 83a00f376fac22694fd5b4f95c4768119262e95d2871168bd0586830308f7e8c
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T5-c : les espaces ne sont pas retirees =====
+fichier   : src/config.ts
+sha AVANT : 83a00f376fac22694fd5b4f95c4768119262e95d2871168bd0586830308f7e8c
+sha MUTE  : d71427c8d96d6641dbb74f786f7e3acc5d3d9bae621e8c0115d936d97906e6d2
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/config.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -168,3 +168,3 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
+             .split(',')
+-            .map((entree) => entree.trim())
++            .map((entree) => entree)
+             // Sans ce filtre, `'172.18.0.5,,10.0.0.1'` porterait une entrée
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+ ❯ src/config.test.ts (13 tests | 1 failed) 64ms
+   × lireConfig > (c) une liste séparée par des virgules, espaces RETIRÉES 33ms
+     → expected false to be true // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/config.test.ts > lireConfig > (c) une liste séparée par des virgules, espaces RETIRÉES
+AssertionError: expected false to be true // Object.is equality
+- Expected
++ Received
+- true
++ false
+ ❯ src/config.test.ts:127:52
+    125|         // frein global sans qu'aucune ligne ne le dise.
+    126|         expect(c.proxyDeConfiance.has('172.18.0.5')).toBe(true);
+    127|         expect(c.proxyDeConfiance.has('10.0.0.1')).toBe(true);
+       |                                                    ^
+    128|     });
+    129| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 12 passed (13)
+   Start at  09:13:16
+   Duration  762ms (transform 123ms, setup 0ms, collect 137ms, tests 64ms, environment 0ms, prepare 101ms)
+--- RESTAURATION ---
+sha APRES : 83a00f376fac22694fd5b4f95c4768119262e95d2871168bd0586830308f7e8c
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+

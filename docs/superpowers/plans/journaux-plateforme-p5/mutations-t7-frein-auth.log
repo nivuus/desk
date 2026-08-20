@@ -1,0 +1,426 @@
+===== MUTATION T7-a : l'appel consulter est retire (le frein ne refuse plus rien) =====
+fichier   : src/http/routes-auth.ts
+sha AVANT : c0c598c68477ac6134c87376c5b22c007e57710d0fe6679bc126f65c61c2cac8
+sha MUTE  : 088303a3e921aafccd778dfb3ad990ee9c83c958758baf3911f3da427cbc0f3e
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/routes-auth.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -173,3 +173,3 @@ export async function servirAuth(
+     const verdict = deps.frein.consulter(contexte.cles, deps.maintenant());
+-    if (verdict.freine) {
++    if (false as boolean && verdict.freine) {
+         // ⚠️ LE 429 PORTE LES EN-TÊTES CORS COMME TOUTES LES AUTRES RÉPONSES.
+--- SORTIE DU TEST SOUS MUTATION ---
+    357|     }, 60000);
+    358| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+ FAIL  src/http/routes-auth.test.ts > le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS
+AssertionError: expected 401 to be 429 // Object.is equality
+- Expected
++ Received
+- 429
++ 401
+ ❯ src/http/routes-auth.test.ts:371:30
+    369|         const refus = await poster(`${url}/auth/connexion`,
+    370|             { email: 'ada@exemple.test', motdepasse: 'faux' }, { origi…
+    371|         expect(refus.status).toBe(429);
+       |                              ^
+    372|         const retry = refus.headers.get('retry-after');
+    373|         expect(retry).not.toBeNull();
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+ FAIL  src/http/routes-auth.test.ts > le frein des routes d’authentification > (h) `/auth/rafraichir` est freiné par l'ADRESSE seule
+AssertionError: expected 401 to be 429 // Object.is equality
+- Expected
++ Received
+- 429
++ 401
+ ❯ src/http/routes-auth.test.ts:408:30
+    406|         }
+    407|         const refus = await poster(`${url}/auth/rafraichir`, { rafraic…
+    408|         expect(refus.status).toBe(429);
+       |                              ^
+    409|     }, 60000);
+    410| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯
+ Test Files  1 failed (1)
+      Tests  8 failed | 11 passed (19)
+   Start at  09:26:21
+   Duration  18.27s (transform 523ms, setup 0ms, collect 752ms, tests 16.99s, environment 0ms, prepare 139ms)
+--- RESTAURATION ---
+sha APRES : c0c598c68477ac6134c87376c5b22c007e57710d0fe6679bc126f65c61c2cac8
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T7-b : seule la cle de COMPTE est posee (le balayage de comptes repasse) =====
+fichier   : src/http/routes-auth.ts
+sha AVANT : c0c598c68477ac6134c87376c5b22c007e57710d0fe6679bc126f65c61c2cac8
+sha MUTE  : 83f1b562460be08ba7f3b32d804e07666e1e442451a2a4422dd5ff0d33e5a3c5
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/routes-auth.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -223,3 +223,3 @@ function clesDe(
+     const cle = cleCompte(email);
+-    return { cles: [[cle, BUDGET_COMPTE], parAdresse], adresse, cleDuCompte: cle };
++    return { cles: [[cle, BUDGET_COMPTE]], adresse, cleDuCompte: cle };
+ }
+--- SORTIE DU TEST SOUS MUTATION ---
+   ✓ le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS 511ms
+   ✓ le frein des routes d’authentification > (g) la trace NOMME l'adresse retenue 647ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/routes-auth.test.ts > le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée
+AssertionError: expected 401 to be 429 // Object.is equality
+- Expected
++ Received
+- 429
++ 401
+ ❯ src/http/routes-auth.test.ts:309:77
+    307|             expect((await echouer(url, `n${i}@exemple.test`)).status).…
+    308|         }
+    309|         expect((await echouer(url, 'encore-un-autre@exemple.test')).st…
+       |                                                                             ^
+    310|     }, 60000);
+    311| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+ FAIL  src/http/routes-auth.test.ts > le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro
+AssertionError: expected 401 to be 429 // Object.is equality
+- Expected
++ Received
+- 429
++ 401
+ ❯ src/http/routes-auth.test.ts:356:69
+    354|         // …et la suivante est refusée. Si le succès avait effacé l'ad…
+    355|         // elle serait à 1 et celle-ci passerait.
+    356|         expect((await echouer(url, 'dernier@exemple.test')).status).to…
+       |                                                                     ^
+    357|     }, 60000);
+    358| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+ Test Files  1 failed (1)
+      Tests  2 failed | 17 passed (19)
+   Start at  09:26:41
+   Duration  18.95s (transform 551ms, setup 0ms, collect 815ms, tests 17.57s, environment 0ms, prepare 115ms)
+--- RESTAURATION ---
+sha APRES : c0c598c68477ac6134c87376c5b22c007e57710d0fe6679bc126f65c61c2cac8
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T7-c : consulter est deplace APRES lireParEmail (le frein paie ce qu'il compte) =====
+fichier   : src/http/routes-auth.ts
+sha AVANT : c0c598c68477ac6134c87376c5b22c007e57710d0fe6679bc126f65c61c2cac8
+sha MUTE  : e0156e61b919e15f490deef6f4c907a1503f2f4f825a49c6618e3f14865df48f
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/routes-auth.ts | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+@@ -284,3 +284,4 @@ async function connexion(
+ 
+-    const utilisateur = await lireParEmail(deps.base, email);
++    const utilisateur = await lireParEmail(deps.base, corps.email as string);
++    void utilisateur;
+     if (!utilisateur) {
+--- SORTIE DU TEST SOUS MUTATION ---
+(node:2376832) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:n49@exemple.test adr:127.0.0.1" retry_apres_s=896 entrees=51 evictions=0
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:avant-dernier@exemple.test adr:127.0.0.1" retry_apres_s=896 entrees=51 evictions=0
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (h) `/auth/rafraichir` est freiné par l'ADRESSE seule
+frein route=/auth/rafraichir adresse=127.0.0.1 cles=adr:127.0.0.1 retry_apres_s=900 entrees=1 evictions=0
+ ✓ src/http/routes-auth.test.ts (19 tests) 16387ms
+   ✓ routes d’authentification > connexion valide : l’accès est un jeton que le service accepte, et le rafraîchissement vaut 381ms
+   ✓ routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 405ms
+   ✓ routes d’authentification > REJEU : rafraîchir deux fois le même jeton rend 401, et la famille tombe 318ms
+   ✓ le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein 589ms
+   ✓ le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe 545ms
+   ✓ le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf 667ms
+   ✓ le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée 5135ms
+   ✓ le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt 693ms
+   ✓ le frein des routes d’authentification > (d) un SUCCÈS remet le compteur du COMPTE à zéro 733ms
+   ✓ le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro 4485ms
+   ✓ le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS 559ms
+   ✓ le frein des routes d’authentification > (g) la trace NOMME l'adresse retenue 426ms
+ Test Files  1 passed (1)
+      Tests  19 passed (19)
+   Start at  09:27:01
+   Duration  17.50s (transform 442ms, setup 0ms, collect 603ms, tests 16.39s, environment 0ms, prepare 147ms)
+--- RESTAURATION ---
+sha APRES : c0c598c68477ac6134c87376c5b22c007e57710d0fe6679bc126f65c61c2cac8
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T7-d : le succes n'efface plus la cle de compte =====
+fichier   : src/http/routes-auth.ts
+sha AVANT : c0c598c68477ac6134c87376c5b22c007e57710d0fe6679bc126f65c61c2cac8
+sha MUTE  : b5bedb1ed5dc46a03580838adf1cc346f1b3639803954fcd422d0dbe286d6651
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/routes-auth.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -327,3 +327,3 @@ async function connexion(
+     // budget d'adresse à zéro, et le frein par adresse ne fermerait plus rien.
+-    if (contexte.cleDuCompte !== undefined) deps.frein.succes(contexte.cleDuCompte);
++
+ 
+--- SORTIE DU TEST SOUS MUTATION ---
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (h) `/auth/rafraichir` est freiné par l'ADRESSE seule
+frein route=/auth/rafraichir adresse=127.0.0.1 cles=adr:127.0.0.1 retry_apres_s=900 entrees=1 evictions=0
+ ❯ src/http/routes-auth.test.ts (19 tests | 1 failed) 14969ms
+   ✓ routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 316ms
+   ✓ le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein 517ms
+   ✓ le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe 539ms
+   ✓ le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf 460ms
+   ✓ le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée 4466ms
+   ✓ le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt 625ms
+   × le frein des routes d’authentification > (d) un SUCCÈS remet le compteur du COMPTE à zéro 716ms
+     → expected 429 to be 401 // Object.is equality
+   ✓ le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro 4461ms
+   ✓ le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS 654ms
+   ✓ le frein des routes d’authentification > (g) la trace NOMME l'adresse retenue 603ms
+   ✓ le frein des routes d’authentification > (h bis) 🔴 un échec sur `/auth/rafraichir` ne consomme AUCUN budget de compte 301ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/routes-auth.test.ts > le frein des routes d’authentification > (d) un SUCCÈS remet le compteur du COMPTE à zéro
+AssertionError: expected 429 to be 401 // Object.is equality
+- Expected
++ Received
+- 401
++ 429
+ ❯ src/http/routes-auth.test.ts:338:69
+    336|         // franchirait le budget et rendrait 429.
+    337|         for (let i = 0; i < ECHECS_MAX_COMPTE - 1; i++) {
+    338|             expect((await echouer(url, 'ada@exemple.test')).status).to…
+       |                                                                     ^
+    339|         }
+    340|     }, 30000);
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 18 passed (19)
+   Start at  09:27:20
+   Duration  16.02s (transform 365ms, setup 0ms, collect 525ms, tests 14.97s, environment 0ms, prepare 96ms)
+--- RESTAURATION ---
+sha APRES : c0c598c68477ac6134c87376c5b22c007e57710d0fe6679bc126f65c61c2cac8
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T7-e : le succes efface AUSSI la cle d adresse (l attaquant se blanchit) =====
+fichier   : src/http/routes-auth.ts
+sha AVANT : c0c598c68477ac6134c87376c5b22c007e57710d0fe6679bc126f65c61c2cac8
+sha MUTE  : a100c1717ddc47174ad0465f1cbe1a17cb07b6e91c35509a54d8fbaf3559df0c
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/routes-auth.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -327,3 +327,3 @@ async function connexion(
+     // budget d'adresse à zéro, et le frein par adresse ne fermerait plus rien.
+-    if (contexte.cleDuCompte !== undefined) deps.frein.succes(contexte.cleDuCompte);
++    for (const [cle] of contexte.cles) deps.frein.succes(cle);
+ 
+--- SORTIE DU TEST SOUS MUTATION ---
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (h) `/auth/rafraichir` est freiné par l'ADRESSE seule
+frein route=/auth/rafraichir adresse=127.0.0.1 cles=adr:127.0.0.1 retry_apres_s=900 entrees=1 evictions=0
+ ❯ src/http/routes-auth.test.ts (19 tests | 1 failed) 16581ms
+   ✓ routes d’authentification > connexion valide : l’accès est un jeton que le service accepte, et le rafraîchissement vaut 332ms
+   ✓ routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 328ms
+   ✓ le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein 444ms
+   ✓ le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe 733ms
+   ✓ le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf 719ms
+   ✓ le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée 5080ms
+   ✓ le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt 598ms
+   ✓ le frein des routes d’authentification > (d) un SUCCÈS remet le compteur du COMPTE à zéro 854ms
+   × le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro 5164ms
+     → expected 401 to be 429 // Object.is equality
+   ✓ le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS 556ms
+   ✓ le frein des routes d’authentification > (g) la trace NOMME l'adresse retenue 556ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/routes-auth.test.ts > le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro
+AssertionError: expected 401 to be 429 // Object.is equality
+- Expected
++ Received
+- 429
++ 401
+ ❯ src/http/routes-auth.test.ts:356:69
+    354|         // …et la suivante est refusée. Si le succès avait effacé l'ad…
+    355|         // elle serait à 1 et celle-ci passerait.
+    356|         expect((await echouer(url, 'dernier@exemple.test')).status).to…
+       |                                                                     ^
+    357|     }, 60000);
+    358| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 18 passed (19)
+   Start at  09:27:37
+   Duration  17.77s (transform 429ms, setup 0ms, collect 598ms, tests 16.58s, environment 0ms, prepare 115ms)
+--- RESTAURATION ---
+sha APRES : c0c598c68477ac6134c87376c5b22c007e57710d0fe6679bc126f65c61c2cac8
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T7-f : le 429 perd son Retry-After =====
+fichier   : src/http/routes-auth.ts
+sha AVANT : c0c598c68477ac6134c87376c5b22c007e57710d0fe6679bc126f65c61c2cac8
+sha MUTE  : e174feb0d01b541b965e9a4f5190300f5dd082d571d787acbf1f1b7e712a6c56
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/routes-auth.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -177,3 +177,3 @@ export async function servirAuth(
+         // voit un échec opaque au lieu de « réessayez dans n minutes ».
+-        rep.setHeader('Retry-After', String(verdict.retryApresS));
++
+         repondre(rep, 429, { refus: 'trop-de-tentatives' }, cors);
+--- SORTIE DU TEST SOUS MUTATION ---
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:avant-dernier@exemple.test adr:127.0.0.1" retry_apres_s=896 entrees=51 evictions=0
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (h) `/auth/rafraichir` est freiné par l'ADRESSE seule
+frein route=/auth/rafraichir adresse=127.0.0.1 cles=adr:127.0.0.1 retry_apres_s=900 entrees=1 evictions=0
+ ❯ src/http/routes-auth.test.ts (19 tests | 1 failed) 16765ms
+   ✓ routes d’authentification > connexion valide : l’accès est un jeton que le service accepte, et le rafraîchissement vaut 427ms
+   ✓ routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 429ms
+   ✓ routes d’authentification > REJEU : rafraîchir deux fois le même jeton rend 401, et la famille tombe 318ms
+   ✓ le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein 487ms
+   ✓ le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe 647ms
+   ✓ le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf 555ms
+   ✓ le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée 4748ms
+   ✓ le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt 613ms
+   ✓ le frein des routes d’authentification > (d) un SUCCÈS remet le compteur du COMPTE à zéro 1191ms
+   ✓ le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro 5013ms
+   × le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS 654ms
+     → expected null not to be null
+   ✓ le frein des routes d’authentification > (g) la trace NOMME l'adresse retenue 535ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/routes-auth.test.ts > le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS
+AssertionError: expected null not to be null
+ ❯ src/http/routes-auth.test.ts:373:27
+    371|         expect(refus.status).toBe(429);
+    372|         const retry = refus.headers.get('retry-after');
+    373|         expect(retry).not.toBeNull();
+       |                           ^
+    374|         // En SECONDES, un entier positif — jamais 0, qui inviterait le
+    375|         // demandeur à revenir immédiatement.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 18 passed (19)
+   Start at  09:27:56
+   Duration  18.00s (transform 483ms, setup 0ms, collect 685ms, tests 16.77s, environment 0ms, prepare 127ms)
+--- RESTAURATION ---
+sha APRES : c0c598c68477ac6134c87376c5b22c007e57710d0fe6679bc126f65c61c2cac8
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T7-g : le frein ne journalise plus rien =====
+fichier   : src/http/routes-auth.ts
+sha AVANT : c0c598c68477ac6134c87376c5b22c007e57710d0fe6679bc126f65c61c2cac8
+sha MUTE  : 873fdec27152605d00b62596779dc60d0b7e2265747a8491b188d124d3e62481
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/routes-auth.ts | 1 +
+ 1 file changed, 1 insertion(+)
+@@ -250,2 +250,3 @@ function compterLEchec(deps: DependancesAuth, contexte: ContexteFrein, chemin: s
+     if (!apres.freine) return;
++    if (apres.freine) return;
+     // ⚠️ L'ADRESSE EST NOMMÉE, ET C'EST LE SEUL REMÈDE au mode de défaillance
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+(node:2382898) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ src/http/routes-auth.test.ts (19 tests | 1 failed) 14516ms
+   ✓ routes d’authentification > connexion valide : l’accès est un jeton que le service accepte, et le rafraîchissement vaut 318ms
+   ✓ routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 529ms
+   ✓ routes d’authentification > CRITÈRE ④ : aucune trace ni aucune réponse ne porte le CHAMP du mot de passe 325ms
+   ✓ le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein 637ms
+   ✓ le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe 709ms
+   ✓ le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf 484ms
+   ✓ le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée 4181ms
+   ✓ le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt 489ms
+   ✓ le frein des routes d’authentification > (d) un SUCCÈS remet le compteur du COMPTE à zéro 738ms
+   ✓ le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro 3699ms
+   ✓ le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS 652ms
+   × le frein des routes d’authentification > (g) la trace NOMME l'adresse retenue 579ms
+     → expected 0 to be greater than or equal to 1
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/routes-auth.test.ts > le frein des routes d’authentification > (g) la trace NOMME l'adresse retenue
+AssertionError: expected 0 to be greater than or equal to 1
+ ❯ src/http/routes-auth.test.ts:393:33
+    391|         const lignes = avertir.mock.calls.map((c) => String(c[0]));
+    392|         const freinees = lignes.filter((l) => l.startsWith('frein '));
+    393|         expect(freinees.length).toBeGreaterThanOrEqual(1);
+       |                                 ^
+    394|         expect(freinees[0]).toContain('adresse=');
+    395|         expect(freinees[0]).toContain('route=/auth/connexion');
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 18 passed (19)
+   Start at  09:28:16
+   Duration  15.83s (transform 533ms, setup 0ms, collect 787ms, tests 14.52s, environment 0ms, prepare 101ms)
+--- RESTAURATION ---
+sha APRES : c0c598c68477ac6134c87376c5b22c007e57710d0fe6679bc126f65c61c2cac8
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+### RELANCE de T7-c. La premiere tentative etait une MAUVAISE MUTATION, pas
+### un test faible : elle remplacait l'argument de lireParEmail par une
+### expression equivalente, sans jamais DEPLACER le consulter. Le fichier
+### changeait bien (sha different, diff non vide), mais la semantique non.
+### Ici, un acces a la base est intercale AVANT le consulter : c'est
+### exactement « un frein poste apres l'acces a la base ».
+===== MUTATION T7-c : un acces a la base precede le consulter (le frein paie ce qu'il compte) =====
+fichier   : src/http/routes-auth.ts
+sha AVANT : c0c598c68477ac6134c87376c5b22c007e57710d0fe6679bc126f65c61c2cac8
+sha MUTE  : 1b953576b11d7d69538bdd843e7c0d9d45032e8a10562a1e2574a4abf65f8476
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/routes-auth.ts | 1 +
+ 1 file changed, 1 insertion(+)
+@@ -172,2 +172,3 @@ export async function servirAuth(
+     const contexte = clesDe(chemin, corps, req, deps);
++    await deps.base.interroger("SELECT 1", []);
+     const verdict = deps.frein.consulter(contexte.cles, deps.maintenant());
+--- SORTIE DU TEST SOUS MUTATION ---
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (h) `/auth/rafraichir` est freiné par l'ADRESSE seule
+frein route=/auth/rafraichir adresse=127.0.0.1 cles=adr:127.0.0.1 retry_apres_s=900 entrees=1 evictions=0
+ ❯ src/http/routes-auth.test.ts (19 tests | 1 failed) 16074ms
+   ✓ routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 325ms
+   ✓ le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein 469ms
+   ✓ le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe 544ms
+   ✓ le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf 457ms
+   ✓ le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée 4988ms
+   × le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt 920ms
+     → expected 1 to be +0 // Object.is equality
+   ✓ le frein des routes d’authentification > (d) un SUCCÈS remet le compteur du COMPTE à zéro 990ms
+   ✓ le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro 4587ms
+   ✓ le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS 584ms
+   ✓ le frein des routes d’authentification > (g) la trace NOMME l'adresse retenue 762ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/routes-auth.test.ts > le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt
+AssertionError: expected 1 to be +0 // Object.is equality
+- Expected
++ Received
+- 0
++ 1
+ ❯ src/http/routes-auth.test.ts:325:25
+    323|         const refus = await echouer(url, 'ada@exemple.test');
+    324|         expect(refus.status).toBe(429);
+    325|         expect(acces()).toBe(0);
+       |                         ^
+    326|     }, 30000);
+    327| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 18 passed (19)
+   Start at  09:28:59
+   Duration  17.22s (transform 371ms, setup 0ms, collect 529ms, tests 16.07s, environment 0ms, prepare 138ms)
+--- RESTAURATION ---
+sha APRES : c0c598c68477ac6134c87376c5b22c007e57710d0fe6679bc126f65c61c2cac8
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+

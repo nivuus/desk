@@ -1,0 +1,278 @@
+===== MUTATION T9-d : le cache est retire (une requete SQL par requete HTTP anonyme) =====
+fichier   : src/http/routes-sante.ts
+sha AVANT : 1758530ef9a86733425848ef744feecff606f086cf1a0f54744cbc07738b5423
+sha MUTE  : 4aab42f7b6c47a23e9a44b8c0238719655b33ce95698b5af160338a68134fd52
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/routes-sante.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -66,3 +66,3 @@ export class CacheSante {
+     verdict(base: Pilote, maintenant: number): Promise<boolean> {
+-        if (this.verdictRetenu !== undefined && maintenant - this.prisA < PERIODE_SANTE_MS) {
++        if (false as boolean) {
+             return Promise.resolve(this.verdictRetenu);
+--- SORTIE DU TEST SOUS MUTATION ---
+   × GET /sante > (e) après la période, une NOUVELLE requête a lieu 2ms
+     → expected 2 to be 1 // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/routes-sante.test.ts > GET /sante > (d) 🔴 N appels dans la période ne font QU’UNE requête
+AssertionError: expected 5 to be 1 // Object.is equality
+- Expected
++ Received
+- 1
++ 5
+ ❯ src/http/routes-sante.test.ts:92:34
+     90|             expect(await cache.verdict(deps.base, deps.maintenant())).…
+     91|         }
+     92|         expect(compteur.acces()).toBe(1);
+       |                                  ^
+     93|     });
+     94| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+ FAIL  src/http/routes-sante.test.ts > GET /sante > (e) après la période, une NOUVELLE requête a lieu
+AssertionError: expected 2 to be 1 // Object.is equality
+- Expected
++ Received
+- 1
++ 2
+ ❯ src/http/routes-sante.test.ts:104:34
+    102|         // Juste sous la période : toujours le verdict en cache.
+    103|         expect(await cache.verdict(compteur.pilote, T0 + PERIODE_SANTE…
+    104|         expect(compteur.acces()).toBe(1);
+       |                                  ^
+    105|         // Au-delà : on redemande.
+    106|         expect(await cache.verdict(compteur.pilote, T0 + PERIODE_SANTE…
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+ Test Files  1 failed (1)
+      Tests  2 failed | 8 passed (10)
+   Start at  09:37:00
+   Duration  1.25s (transform 524ms, setup 0ms, collect 734ms, tests 142ms, environment 0ms, prepare 121ms)
+--- RESTAURATION ---
+sha APRES : 1758530ef9a86733425848ef744feecff606f086cf1a0f54744cbc07738b5423
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T9-dbis : la deduplication de la requete EN VOL est retiree =====
+fichier   : src/http/routes-sante.ts
+sha AVANT : 1758530ef9a86733425848ef744feecff606f086cf1a0f54744cbc07738b5423
+sha MUTE  : 4405590e3073df9134ea7b0967eb057fc8891aed43a91f5af053272407856613
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/routes-sante.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -69,3 +69,3 @@ export class CacheSante {
+         }
+-        if (this.enVol !== undefined) return this.enVol;
++
+ 
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+(node:2442675) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ src/http/routes-sante.test.ts (10 tests | 1 failed) 165ms
+   × GET /sante > (d bis) 🔴 N appels CONCURRENTS ne font QU’UNE requête non plus 8ms
+     → expected 8 to be 1 // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/routes-sante.test.ts > GET /sante > (d bis) 🔴 N appels CONCURRENTS ne font QU’UNE requête non plus
+AssertionError: expected 8 to be 1 // Object.is equality
+- Expected
++ Received
+- 1
++ 8
+ ❯ src/http/routes-sante.test.ts:123:34
+    121|         );
+    122|         expect(tous).toEqual(Array.from({ length: 8 }, () => true));
+    123|         expect(compteur.acces()).toBe(1);
+       |                                  ^
+    124|     });
+    125| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 passed (10)
+   Start at  09:37:03
+   Duration  1.22s (transform 547ms, setup 0ms, collect 796ms, tests 165ms, environment 0ms, prepare 99ms)
+--- RESTAURATION ---
+sha APRES : 1758530ef9a86733425848ef744feecff606f086cf1a0f54744cbc07738b5423
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T9-e : le cache n expire jamais (une panne resterait invisible) =====
+fichier   : src/http/routes-sante.ts
+sha AVANT : 1758530ef9a86733425848ef744feecff606f086cf1a0f54744cbc07738b5423
+sha MUTE  : 9c521a476f1db7cca8af2f896bb43dae8fba76ee498f34f66d32c343193c1d69
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/routes-sante.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -66,3 +66,3 @@ export class CacheSante {
+     verdict(base: Pilote, maintenant: number): Promise<boolean> {
+-        if (this.verdictRetenu !== undefined && maintenant - this.prisA < PERIODE_SANTE_MS) {
++        if (this.verdictRetenu !== undefined && true) {
+             return Promise.resolve(this.verdictRetenu);
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+(node:2443393) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ src/http/routes-sante.test.ts (10 tests | 1 failed) 174ms
+   × GET /sante > (e) après la période, une NOUVELLE requête a lieu 14ms
+     → expected 1 to be 2 // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/routes-sante.test.ts > GET /sante > (e) après la période, une NOUVELLE requête a lieu
+AssertionError: expected 1 to be 2 // Object.is equality
+- Expected
++ Received
+- 2
++ 1
+ ❯ src/http/routes-sante.test.ts:107:34
+    105|         // Au-delà : on redemande.
+    106|         expect(await cache.verdict(compteur.pilote, T0 + PERIODE_SANTE…
+    107|         expect(compteur.acces()).toBe(2);
+       |                                  ^
+    108|     });
+    109| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 passed (10)
+   Start at  09:37:05
+   Duration  1.35s (transform 517ms, setup 0ms, collect 782ms, tests 174ms, environment 0ms, prepare 49ms)
+--- RESTAURATION ---
+sha APRES : 1758530ef9a86733425848ef744feecff606f086cf1a0f54744cbc07738b5423
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T9-b : une base morte rend quand meme 200 ok =====
+fichier   : src/http/routes-sante.ts
+sha AVANT : 1758530ef9a86733425848ef744feecff606f086cf1a0f54744cbc07738b5423
+sha MUTE  : 475034ca51987d5447c91c7d24d820d4f65aba1544ecf8ba77c6df69821bc3de
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/routes-sante.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -96,3 +96,3 @@ export class CacheSante {
+             // moment possible pour l'enfreindre.
+-            vivante = false;
++            vivante = true;
+         }
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+(node:2444049) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ src/http/routes-sante.test.ts (10 tests | 1 failed) 283ms
+   × GET /sante > (b) base en échec ⇒ 503 et `{"etat":"degrade"}` 69ms
+     → expected 200 to be 503 // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/routes-sante.test.ts > GET /sante > (b) base en échec ⇒ 503 et `{"etat":"degrade"}`
+AssertionError: expected 200 to be 503 // Object.is equality
+- Expected
++ Received
+- 503
++ 200
+ ❯ src/http/routes-sante.test.ts:61:26
+     59|         service = await demarrerServeur(CONFIG, piloteMort());
+     60|         const r = await fetch(`http://127.0.0.1:${service.port}/sante`…
+     61|         expect(r.status).toBe(503);
+       |                          ^
+     62|         expect(await r.json()).toEqual({ etat: 'degrade' });
+     63|     });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 passed (10)
+   Start at  09:37:08
+   Duration  1.33s (transform 487ms, setup 0ms, collect 676ms, tests 283ms, environment 0ms, prepare 76ms)
+--- RESTAURATION ---
+sha APRES : 1758530ef9a86733425848ef744feecff606f086cf1a0f54744cbc07738b5423
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T9-c : la reponse porte AUSSI la version (l inventaire rouvre) =====
+fichier   : src/http/routes-sante.ts
+sha AVANT : 1758530ef9a86733425848ef744feecff606f086cf1a0f54744cbc07738b5423
+sha MUTE  : e1f559f1344666b44f17e1c69aedde645b3f20c407bc62b4ebe740c72170ba89
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/routes-sante.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -147,3 +147,3 @@ export async function servirSante(
+     // service sans la déclarer définitivement morte.
+-    repondre(rep, vivante ? 200 : 503, { etat: vivante ? 'ok' : 'degrade' }, cors);
++    repondre(rep, vivante ? 200 : 503, { etat: vivante ? "ok" : "degrade", version: "0.1.0", moteur: "sqlite" }, cors);
+     return true;
+--- SORTIE DU TEST SOUS MUTATION ---
++ Received
+  Object {
+    "etat": "degrade",
++   "moteur": "sqlite",
++   "version": "0.1.0",
+  }
+ ❯ src/http/routes-sante.test.ts:62:32
+     60|         const r = await fetch(`http://127.0.0.1:${service.port}/sante`…
+     61|         expect(r.status).toBe(503);
+     62|         expect(await r.json()).toEqual({ etat: 'degrade' });
+       |                                ^
+     63|     });
+     64| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+ FAIL  src/http/routes-sante.test.ts > GET /sante > (c) 🔴 la réponse ne porte RIEN D'AUTRE
+AssertionError: expected [ 'etat', 'version', 'moteur' ] to deeply equal [ 'etat' ]
+- Expected
++ Received
+  Array [
+    "etat",
++   "version",
++   "moteur",
+  ]
+ ❯ src/http/routes-sante.test.ts:74:36
+     72|         service = await demarrerServeur(CONFIG, base);
+     73|         const corps = (await (await fetch(`http://127.0.0.1:${service.…
+     74|         expect(Object.keys(corps)).toEqual(['etat']);
+       |                                    ^
+     75|     });
+     76| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+ Test Files  1 failed (1)
+      Tests  3 failed | 7 passed (10)
+   Start at  09:37:10
+   Duration  1.25s (transform 527ms, setup 0ms, collect 797ms, tests 143ms, environment 0ms, prepare 102ms)
+--- RESTAURATION ---
+sha APRES : 1758530ef9a86733425848ef744feecff606f086cf1a0f54744cbc07738b5423
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T9-f : toute methode est acceptee =====
+fichier   : src/http/routes-sante.ts
+sha AVANT : 1758530ef9a86733425848ef744feecff606f086cf1a0f54744cbc07738b5423
+sha MUTE  : 03a9c40266591b40e8418ed3938781c8bd4af2e30bf1f0705a7ca97573106192
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/routes-sante.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -138,3 +138,3 @@ export async function servirSante(
+     }
+-    if (req.method !== 'GET') {
++    if (false as boolean) {
+         repondre(rep, 405, { refus: 'methode' }, cors);
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+(node:2445377) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ src/http/routes-sante.test.ts (10 tests | 1 failed) 146ms
+   × GET /sante > (f) une méthode autre que GET rend 405 9ms
+     → expected 200 to be 405 // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/routes-sante.test.ts > GET /sante > (f) une méthode autre que GET rend 405
+AssertionError: expected 200 to be 405 // Object.is equality
+- Expected
++ Received
+- 405
++ 200
+ ❯ src/http/routes-sante.test.ts:130:26
+    128|         service = await demarrerServeur(CONFIG, base);
+    129|         const r = await fetch(`http://127.0.0.1:${service.port}/sante`…
+    130|         expect(r.status).toBe(405);
+       |                          ^
+    131|         expect(await r.json()).toEqual({ refus: 'methode' });
+    132|     });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 passed (10)
+   Start at  09:37:12
+   Duration  1.08s (transform 412ms, setup 0ms, collect 579ms, tests 146ms, environment 0ms, prepare 78ms)
+--- RESTAURATION ---
+sha APRES : 1758530ef9a86733425848ef744feecff606f086cf1a0f54744cbc07738b5423
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+

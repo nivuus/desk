@@ -1,0 +1,203 @@
+===== MUTATION T6-a : maxPayload retire du serveur RACINE =====
+fichier   : src/http/serveur.ts
+sha AVANT : 63fc48c343f9ace4152ec8b5a1941ebbc6866511debebc12802a0ea9d7fe2586
+sha MUTE  : b1edb1bfaa8b173db7e2146dd6a4e1c60d9abf50b8fb44ed2206a1e54be01d18
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/serveur.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -230,3 +230,3 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
+     // forme du relais courant avant la garde.
+-    const wssRacine = new WebSocketServer({ noServer: true, maxPayload: TRAME_MAX_OCTETS });
++    const wssRacine = new WebSocketServer({ noServer: true });
+     encaisserLesErreursDeSocket(wssRacine);
+--- SORTIE DU TEST SOUS MUTATION ---
+   × la trame maximale acceptée avant toute authentification > (d) 🔴 LE PROCESSUS SURVIT à la trame refusée, et sert la requête suivante 1513ms
+     → expected 'servi' to be 1009 // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/serveur.test.ts > la trame maximale acceptée avant toute authentification > (a) 🔴 une trame TROP GRANDE ferme le socket en 1009, sur `/`
+AssertionError: expected 'servi' to be 1009 // Object.is equality
+- Expected: 
+1009
++ Received: 
+"servi"
+ ❯ src/http/serveur.test.ts:303:9
+    301|         service = await servir('trame-racine');
+    302|         // 1009 = « message trop grand » (RFC 6455).
+    303|         await expect(pousser(`ws://127.0.0.1:${service.port}/`, TRAME_…
+       |         ^
+    304|             .resolves.toBe(1009);
+    305|     });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+ FAIL  src/http/serveur.test.ts > la trame maximale acceptée avant toute authentification > (d) 🔴 LE PROCESSUS SURVIT à la trame refusée, et sert la requête suivante
+AssertionError: expected 'servi' to be 1009 // Object.is equality
+- Expected: 
+1009
++ Received: 
+"servi"
+ ❯ src/http/serveur.test.ts:343:9
+    341|         service = await servir('trame-survie');
+    342|         const url = `http://127.0.0.1:${service.port}`;
+    343|         await expect(pousser(`ws://127.0.0.1:${service.port}/`, TRAME_…
+       |         ^
+    344|             .resolves.toBe(1009);
+    345|         await expect(pousser(`ws://127.0.0.1:${service.port}/agent`, T…
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+ Test Files  1 failed (1)
+      Tests  2 failed | 12 passed (14)
+   Start at  09:18:16
+   Duration  6.46s (transform 616ms, setup 0ms, collect 907ms, tests 5.04s, environment 0ms, prepare 131ms)
+--- RESTAURATION ---
+sha APRES : 63fc48c343f9ace4152ec8b5a1941ebbc6866511debebc12802a0ea9d7fe2586
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T6-abis : maxPayload retire du serveur AGENT (l'autre porte anonyme) =====
+fichier   : src/http/serveur.ts
+sha AVANT : 63fc48c343f9ace4152ec8b5a1941ebbc6866511debebc12802a0ea9d7fe2586
+sha MUTE  : 5eaed43ba60536cebfc994f58fe88b6aeb8f1d5e0bc3af810a8206bbe3263448
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/serveur.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -238,3 +238,3 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
+     // deux à céder.
+-    const wssAgent = new WebSocketServer({ noServer: true, maxPayload: TRAME_MAX_OCTETS });
++    const wssAgent = new WebSocketServer({ noServer: true });
+     encaisserLesErreursDeSocket(wssAgent);
+--- SORTIE DU TEST SOUS MUTATION ---
+   × la trame maximale acceptée avant toute authentification > (d) 🔴 LE PROCESSUS SURVIT à la trame refusée, et sert la requête suivante 1531ms
+     → expected 'servi' to be 1009 // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/serveur.test.ts > la trame maximale acceptée avant toute authentification > (a bis) 🔴 et sur `/agent` AUSSI, qui est l’autre porte anonyme
+AssertionError: expected 'servi' to be 1009 // Object.is equality
+- Expected: 
+1009
++ Received: 
+"servi"
+ ❯ src/http/serveur.test.ts:311:9
+    309|         // seulement sur `/` laisserait la moitié du problème entière.
+    310|         service = await servir('trame-agent');
+    311|         await expect(pousser(`ws://127.0.0.1:${service.port}/agent`, T…
+       |         ^
+    312|             .resolves.toBe(1009);
+    313|     });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+ FAIL  src/http/serveur.test.ts > la trame maximale acceptée avant toute authentification > (d) 🔴 LE PROCESSUS SURVIT à la trame refusée, et sert la requête suivante
+AssertionError: expected 'servi' to be 1009 // Object.is equality
+- Expected: 
+1009
++ Received: 
+"servi"
+ ❯ src/http/serveur.test.ts:345:9
+    343|         await expect(pousser(`ws://127.0.0.1:${service.port}/`, TRAME_…
+    344|             .resolves.toBe(1009);
+    345|         await expect(pousser(`ws://127.0.0.1:${service.port}/agent`, T…
+       |         ^
+    346|             .resolves.toBe(1009);
+    347|         // Sans cette requête, un processus abattu se lirait exactemen…
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+ Test Files  1 failed (1)
+      Tests  2 failed | 12 passed (14)
+   Start at  09:18:24
+   Duration  6.50s (transform 639ms, setup 0ms, collect 946ms, tests 4.98s, environment 0ms, prepare 123ms)
+--- RESTAURATION ---
+sha APRES : 63fc48c343f9ace4152ec8b5a1941ebbc6866511debebc12802a0ea9d7fe2586
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T6-b : la borne devient 1 octet (un refus de service pose de nos mains) =====
+fichier   : src/http/serveur.ts
+sha AVANT : 63fc48c343f9ace4152ec8b5a1941ebbc6866511debebc12802a0ea9d7fe2586
+sha MUTE  : 6541f6b8a159d6cf1ae6d305eef12a8d93d997d0466f8f4213e4db0a10ba65d8
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/serveur.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -71,3 +71,3 @@ const CHEMIN_AGENT = '/agent';
+ /// compte les tentatives ; il ne compte pas les sockets ouverts et MUETS.
+-export const TRAME_MAX_OCTETS = 256 * 1024;
++export const TRAME_MAX_OCTETS = 1;
+ 
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+(node:2328300) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/http/serveur.test.ts > le chaînage des quatre routeurs > 🔴 une route qui REJETTE rend 500 { refus: interne }, et le processus SURVIT
+route HTTP en échec : Error: base injoignable
+ ❯ src/http/serveur.test.ts (14 tests | 2 failed) 6782ms
+   × demarrerServeur > sert le relais de signaling sur le chemin racine, poignée de main comprise 5003ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ la trame maximale acceptée avant toute authentification > (b) 🔴 une trame JUSTE SOUS la borne est acceptée et servie 1507ms
+   × la trame maximale acceptée avant toute authentification > (c) la borne est celle que le module annonce, et elle est grande 23ms
+     → expected 1 to be 262144 // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/serveur.test.ts > demarrerServeur > sert le relais de signaling sur le chemin racine, poignée de main comprise
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+ FAIL  src/http/serveur.test.ts > la trame maximale acceptée avant toute authentification > (c) la borne est celle que le module annonce, et elle est grande
+AssertionError: expected 1 to be 262144 // Object.is equality
+- Expected
++ Received
+- 262144
++ 1
+ ❯ src/http/serveur.test.ts:357:34
+    355|         // l'en-tête de `serveur.ts`. Ce test fige la valeur pour qu'un
+    356|         // changement soit un geste délibéré.
+    357|         expect(TRAME_MAX_OCTETS).toBe(256 * 1024);
+       |                                  ^
+    358|     });
+    359| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+ Test Files  1 failed (1)
+      Tests  2 failed | 12 passed (14)
+   Start at  09:18:31
+   Duration  7.77s (transform 355ms, setup 0ms, collect 499ms, tests 6.78s, environment 0ms, prepare 141ms)
+--- RESTAURATION ---
+sha APRES : 63fc48c343f9ace4152ec8b5a1941ebbc6866511debebc12802a0ea9d7fe2586
+✅ source RESTAUREE (sha identique)
+🔴 git status A CHANGE
+5a6,7
+>  M proto/src/control.rs
+>  M proto/src/control/tests.rs
+
+===== MUTATION T6-survie : l'ecouteur d'erreur de socket est retire =====
+fichier   : src/http/serveur.ts
+sha AVANT : 63fc48c343f9ace4152ec8b5a1941ebbc6866511debebc12802a0ea9d7fe2586
+sha MUTE  : ac36efd8c7eb037dd9f5020ca883f39b264caebbe1d24791e19961e87e68bada
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/serveur.ts | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+@@ -124,3 +124,4 @@ function encaisserLesErreursDeSocket(wss: WebSocketServer): void {
+     // socket avant que quoi que ce soit d'autre ne lui parle.
+-    wss.on('connection', (socket) => {
++    if (wss) return;
++    wss.on("connection", (socket) => {
+         socket.on('error', () => {
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+ ❯ src/signaling/resilience.test.ts (3 tests | 1 failed) 1349ms
+   × résilience du process réel face à une trame TROP GRANDE (P5) > 🔴 survit à une trame au-delà de `maxPayload`, sur `/` comme sur `/agent` 66ms
+     → connect ECONNREFUSED 127.0.0.1:43321
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/signaling/resilience.test.ts > résilience du process réel face à une trame TROP GRANDE (P5) > 🔴 survit à une trame au-delà de `maxPayload`, sur `/` comme sur `/agent`
+Error: connect ECONNREFUSED 127.0.0.1:43321
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  09:18:41
+   Duration  2.63s (transform 583ms, setup 0ms, collect 838ms, tests 1.35s, environment 0ms, prepare 103ms)
+--- RESTAURATION ---
+sha APRES : 63fc48c343f9ace4152ec8b5a1941ebbc6866511debebc12802a0ea9d7fe2586
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+
+=== NOTE SUR LE « git status A CHANGE » DE LA MUTATION T6-b ===
+Les deux lignes apparues sont ` M proto/src/control.rs` et
+` M proto/src/control/tests.rs`. Elles ne viennent PAS de la mutation : c'est le
+CHANTIER CONCURRENT (presse-papier) qui travaille dans `proto/` pendant que P5
+travaille dans `plateforme/`. Le harnais compare `git status` sur TOUT le depot,
+il a donc raison de le signaler, et il a raison de ne rien en conclure.
+Verification : `plateforme/` ne porte aucune ligne modifiee, et le `sha256` du
+fichier mute est identique avant et apres. AUCUN fichier de `proto/` n'a jamais
+ete ajoute a l'index par P5 -- tous ses commits nomment leurs chemins.
