@@ -398,7 +398,7 @@ async fn main() -> Result<()> {
     //
     // Le mode capteur, lui, est déjà reparti plus haut : il ne parle à aucun
     // signaling et n'a donc aucune identité à présenter.
-    let _canal_plateforme = match (config.agent_vm.clone(), config.agent_secret.clone()) {
+    let mut _canal_plateforme = match (config.agent_vm.clone(), config.agent_secret.clone()) {
         (Some(vm), Some(secret)) => {
             let mut canal = plateforme::ouvrir(&config.signaling_url, vm, secret);
             // Attente NON bornée, et c'est délibéré : sans identité, aucune
@@ -424,6 +424,13 @@ async fn main() -> Result<()> {
             None
         }
     };
+
+    // La découverte d'applications vit ICI, entre l'enrôlement et les
+    // aiguillages : elle a besoin du canal, et doit courir dans les DEUX modes
+    // qui en ont un — superviseur et mono-fenêtre. Le capteur, lui, est déjà
+    // reparti bien plus haut, AVANT l'enrôlement. Lié comme `_canal_plateforme`
+    // et POUR LA MÊME RAISON : le lâcher terminerait le fil de découverte.
+    let _apps = apps::brancher(_canal_plateforme.as_mut());
 
     // Le mode pont ne capture rien et ne lance personne : il tient la racine
     // de virtualisation ProjFS et la sert depuis le répertoire que la
