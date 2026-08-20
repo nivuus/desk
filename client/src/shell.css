@@ -43,8 +43,16 @@
 
    ⚠️ AUCUN CONTRÔLE NE MESURE UNE LONGUEUR — ni celles-ci, ni les trois de
    `style.css` que S4 doit reprendre. La clause « aucune longueur hors échelle »
-   du §8 de la spec reste FAUSSE à la fin de S3, désormais de CINQ valeurs et
-   non de trois, et c'est déclaré plutôt que compensé.
+   du §8 de la spec reste FAUSSE à la fin de S3, et de SIX valeurs.
+   ❌ CETTE PHRASE DISAIT « CINQ », ET ELLE ÉTAIT JUSTE À SA DATE : à la tâche 4,
+   `connexion.css` n'existait pas. La tâche 5 en a ajouté une (`26rem`) sans
+   reprendre cette ligne — c'est la revue transverse qui l'a relevée.
+   ⚠️ LA RÈGLE DE COMPTE EST CELLE DE `style.css`, ÉNONCÉE AVANT DE COMPTER :
+   un remplissage de fenêtre n'est pas une valeur hors échelle — `style.css`
+   ne compte NI son `100vw` NI son `100vh` dans ses trois, et `100dvh` de
+   `connexion.css` est exclu de la même façon. Les six sont donc `6px`, `18px`,
+   `0.02em` (`style.css`), `72rem`, `18rem` (ici), `26rem` (`connexion.css`).
+   Si l'on comptait aussi les trois remplissages de fenêtre, ce serait NEUF.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .bureau {

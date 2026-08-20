@@ -19,8 +19,13 @@
 
    ⚠️ `:not(:disabled)` PLUTÔT QUE `:enabled` sur le survol et l'appui :
    `:enabled` ne s'applique qu'aux éléments de formulaire, et une ancre portant
-   `.bouton` ne le satisferait jamais. Le jour où S3 posera un lien en bouton,
-   la règle vaudra sans être réécrite.
+   `.bouton` ne le satisferait jamais. ⚠️ CETTE PRÉCAUTION N'A TOUJOURS AUCUN
+   APPELANT : cet encadré disait « le jour où S3 posera un lien en bouton, la
+   règle vaudra sans être réécrite », et S3 N'A POSÉ AUCUN LIEN — les deux
+   surfaces qu'il habille n'emploient pas une seule ancre (mesuré, divergence
+   D11 de son plan), et ⑥ ne livre aucune primitive « lien ». La règle reste
+   donc juste et non exercée ; elle vaudra pour le sous-bloc qui posera la
+   première ancre, quel qu'il soit.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .bouton {

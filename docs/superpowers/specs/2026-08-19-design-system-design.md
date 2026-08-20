@@ -673,6 +673,14 @@ Sept contrôles. Pour chacun : ce qu'il vérifie, la commande, et **l'état qui 
 rend ROUGE**. Trois sont **rouges aujourd'hui sans rien casser** — ce n'est pas
 une hypothèse, c'est le relevé du §2.
 
+> ✅ **ILS SONT HUIT DEPUIS LE SOUS-BLOC S3 (20 août 2026), et le huitième
+> n'est pas de cette spécification : c'est une ADDITION DE PLAN, déclarée comme
+> telle.** Voir le **§7.9** ci-dessous. La phrase « sept contrôles » reste vraie
+> comme HISTOIRE — c'est ce que ⑥ prévoyait — et elle est fausse au présent.
+> ⚠️ **Le nombre à ne pas confondre** : `npm run design:verifier` en lance
+> **SEPT**, parce que le §7.5 est un test unitaire qui tourne dans `npm test`.
+> Sept scripts, huit contrôles.
+
 ### 7.1 Les contrastes tiennent les seuils WCAG
 
 **Comment.** `client/outils/contraste.mjs` **parse `tokens.css`** — il ne
@@ -745,6 +753,19 @@ deux sens.
 écrite deux fois, et rien d'autre que ce contrôle n'empêche les deux copies de
 diverger.
 
+> ⚠️ **CE QUI EST ÉCRIT CI-DESSUS N'EST PLUS L'ÉNONCÉ DU CONTRÔLE, et le titre
+> de ce §7.4 non plus** — S3 (tâche 1) a ÉLARGI sa portée, sur un trou que S2
+> avait mesuré et laissé ouvert. « Égalité d'ensembles dans les deux sens » n'a
+> jamais été ce qu'il faisait : il comparait **clair ⇄ clair** et
+> **clair ⊆ racine**, jamais **racine ⊆ clair** — si bien qu'un token de couleur
+> retiré des DEUX blocs clairs et laissé à la racine passait, 48 contre 13, zéro
+> écart (mesuré par S2). **L'énoncé exact est désormais** : ① clair ≡ clair,
+> ② clair ⊆ racine, ③ **les COULEURS de racine ⊆ clair**, sauf six tokens hors
+> thème nommés. ⚠️ **La clause ③ est restreinte aux COULEURS à dessein** : les
+> échelles (espacement, typographie, rayons, durées) ne vivent que dans la
+> racine et n'ont pas de contrepartie claire. La rouge de la clause ③ est versée
+> — `journaux-design-s3/rouge-1-7-4-couleur-hors-clair.log`.
+
 ### 7.5 La bascule de thème atteint les N fenêtres, y compris celle qui l'a demandée
 
 **Comment.** Tests unitaires sur `theme.ts`, dépendances injectées, **deux
@@ -801,6 +822,38 @@ une bibliothèque CSS tierce.
 aucune mesure de performance : c'est un garde-fou contre une addition massive,
 pas une cible de budget. Il rejoint la liste du §8.
 
+### 7.9 Une primitive atteint réellement une surface du produit — ADDITION DE S3
+
+> 🔴 **CE CONTRÔLE N'ÉTAIT PAS PRÉVU PAR CETTE SPÉCIFICATION.** Il est ajouté
+> par le sous-bloc S3 (tâche 2), et il est inscrit ici parce qu'un contrôle qui
+> ne vit que dans un plan de sous-bloc se perd. **Numéroté 7.9 et non 7.8** :
+> le §7.8 existe déjà et dit ce qui n'est PAS un contrôle.
+
+**Comment.** `client/outils/classes-employees.mjs`. Trois assertions :
+① toute classe employée par une surface ou un module est **déclarée** par une
+feuille ou un `<style>` en ligne ; ② **au moins une famille de primitives est
+employée par une surface du PRODUIT** (`index.html`, `shell.html`,
+`connexion.html`) ; ③ **chaque famille est rendue par la galerie**
+`primitives.html`. Les familles sont **dérivées** des fichiers de
+`src/design/primitives/`, jamais énumérées : une cinquième famille entre dans
+② et ③ sans qu'une ligne du script ne change.
+
+**Pourquoi.** Aucun des sept autres ne peut voir l'écart que S2 a lui-même
+nommé — *« les dix-huit tokens sortis de la liste ont un appelant ÉCRIT, pas un
+pixel RENDU »*. §7.6 compte des `var(--…)` dans des **fichiers**, §7.3 ne
+vérifie qu'un **chargement**, §7.2 ne voit que des couleurs.
+
+**ROUGE.** Retirer les classes de primitive des **deux** surfaces habillées
+(assertion ②) ; employer une classe que rien ne déclare (①) ; retirer une
+famille de la galerie (③). ⚠️ **L'assertion ② A a été ROUGE SUR L'ARBRE INTACT**
+entre les tâches 2 et 4 de S3 — c'est sa preuve d'atteignabilité, et non un
+raisonnement. Les trois rouges sont versées sous
+`docs/superpowers/plans/journaux-design-s3/`.
+
+**Ce qu'il NE fait PAS.** Il n'a pas le sens inverse — *toute classe déclarée
+est employée* —, qui exigerait une seconde liste d'attente. Il relève
+l'écart (52 déclarées / 51 employées à la fin de S3) **sans le juger**.
+
 ### 7.8 Ce qui n'est PAS un contrôle de ⑥, et pourquoi
 
 **La comparaison d'images de référence est ÉCARTÉE pour S1 à S4.** Trois
@@ -835,10 +888,37 @@ par négligence** :
 | le **choix des teintes** — que `#7aa2f7` soit le bon bleu | leur **contraste** (§7.1). Une centaine d'autres bleus passeraient les mêmes seuils |
 | que le ratio **1,2** de l'échelle typographique soit le bon | que l'échelle ait sept crans nommés et un plancher dur à 11 px |
 | que **14 px** soit assez dense sans être trop petit | qu'il soit exprimé en `rem` sur une racine libre, donc réglable (§4.4) |
-| que le pas de **4 px** d'espacement soit le bon | qu'il soit unique — aucune longueur hors échelle |
+| que le pas de **4 px** d'espacement soit le bon | qu'il soit unique — ~~aucune longueur hors échelle~~ **voir l'encadré ci-dessous : cette clause est FAUSSE de SIX valeurs** |
 | que `--bord` ait été employé là où il fallait, et non `--bord-fort` | que `--bord-fort` tienne 3:1 (§7.1). **Le bon emploi est une règle de revue** |
 | que le **plafond de 12 Kio** (§7.7) soit au bon endroit | la ligne de base, 1 055 octets, elle mesurée |
 | que la **galerie** montre ce qu'il faut regarder | qu'elle existe et qu'elle soit exclue de §7.6 |
+
+> ❌ **LA CLAUSE « aucune longueur hors échelle » EST FAUSSE, ET DE SIX
+> VALEURS** (relevé par la revue transverse de S3, 20 août 2026 ; journal
+> `journaux-design-s3/longueurs-hors-echelle.log`). **Elle l'était déjà de
+> trois à la fin de S1**, ce que l'en-tête de `client/src/style.css` déclare
+> depuis, et **S3 en ajoute trois** en habillant deux surfaces :
+>
+> | Feuille | Valeurs hors échelle |
+> | --- | --- |
+> | `client/src/style.css` (fenêtre de session, S1) | `6px`, `18px`, `0.02em` |
+> | `client/src/shell.css` (S3) | `72rem`, `18rem` |
+> | `client/src/connexion.css` (S3) | `26rem` |
+>
+> ⚠️ **LA RÈGLE DE COMPTE EST ÉNONCÉE AVANT LE COMPTE, et c'est celle que
+> `style.css` applique depuis S1** : un **remplissage de fenêtre** n'est pas une
+> valeur hors échelle — `style.css` ne compte ni son `100vw` ni son `100vh`, et
+> `100dvh` de `connexion.css` est exclu de la même façon. **Si on les comptait,
+> ce serait NEUF.** ⚠️ **Un énoncé intermédiaire de S3 a publié CINQ** (en-tête
+> de `shell.css`, tâche 4) : il était juste à sa date, `connexion.css`
+> n'existant pas encore, et la tâche 5 ne l'a pas repris. Corrigé à sa place.
+>
+> ⚠️ **AUCUN CONTRÔLE NE MESURE UNE LONGUEUR** — le §7 n'en a aucun qui le
+> puisse. Le seul garde est **G4** de `client/src/design/primitives.test.ts`,
+> et il ne porte que sur `primitives.css` : il vérifie qu'une longueur passe par
+> un token, **jamais que le bon token a été choisi**. C'est une dette d'ÉNONCÉ,
+> nommée ; elle se solde au sous-bloc qui aura le droit de toucher ces
+> éléments — **S4** pour les trois de `style.css`.
 
 **Aucune de ces lignes ne se transformera en mesure au fil des sous-blocs.**
 Les déclarer ici est la seule chose honnête à en faire.

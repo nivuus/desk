@@ -21,7 +21,7 @@
 
    ⚠️ UN SUCCESSEUR QUI « RÉTABLIRAIT » LA TAILLE SUR `html` POUR LA SYMÉTRIE
    RENDRAIT TOUS LES DÉCALAGES À 10,5 px SANS QU'AUCUN CONTRÔLE NE LE DISE.
-   Les sept contrôles du sous-projet ⑥ portent sur les couleurs, les
+   Les huit contrôles du sous-projet ⑥ portent sur les couleurs, les
    contrastes, les ensembles de noms, la bascule et le poids : AUCUN ne mesure
    une longueur. Le seul garde est ce commentaire, et le test de
    `reprise.test.ts` qui refuse tout `font-size` sur un sélecteur contenant

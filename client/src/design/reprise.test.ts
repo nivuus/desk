@@ -37,7 +37,7 @@ describe('les couleurs déjà en place sont reprises caractère pour caractère'
 describe('les longueurs reprises rendent le MÊME nombre de pixels', () => {
     it('chaque cran employé rend, à racine 16 px, le littéral d’avant', () => {
         // 🔴 Poser `--e-3: 0.8rem` rendrait 12,8 px : plausible, et faux. C'est
-        // exactement le genre d'erreur qu'aucun des sept contrôles n'attrape,
+        // exactement le genre d'erreur qu'aucun des huit contrôles n'attrape,
         // puisque aucun ne mesure une longueur.
         const attendus: Array<[string, string, number]> = [
             ['--e-2', '0.5rem', 8],
@@ -82,7 +82,7 @@ describe('la précondition de tout ce qui précède : la racine est LIBRE', () =
         // CI-DESSUS. `--e-3` ne vaut 12 px que si `1rem` vaut 16 px, donc que
         // si la racine n'est pas forcée. Avec le `font: 14px/1.5` que
         // `style.css` posait sur `html, body` avant ce socle, `0.75rem`
-        // vaudrait 10,5 px — et AUCUN des sept contrôles ne le dirait.
+        // vaudrait 10,5 px — et AUCUN des huit contrôles ne le dirait.
         const regles = [...baseCss.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
         const fautives = regles
             .filter(([, selecteur]) => /(^|[\s,>+~])html\b/.test(selecteur))

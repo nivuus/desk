@@ -105,19 +105,20 @@
 // 🔴 CE RELEVÉ EST DATÉ DE S1, ET IL EST FAUX AU PRÉSENT — il est laissé DATÉ
 // plutôt qu'effacé, parce qu'un relevé daté reste vrai comme histoire et que
 // c'est lui qui a fondé la décision. REFAIT PAR S2 (tâche 8) LE 20 AOÛT 2026,
-// même commande, sur les dix entrées ci-dessous :
+// même commande, sur les DIX entrées d'alors (S3 les a ramenées à UNE) :
 //
 //   → paires totales : 52 | citant un token en attente : 0
 //
 // **ZÉRO — et ce zéro dit l'inverse de ce qu'on croirait y lire.** Il ne réfute
 // pas S1 : il montre que la décision de S1 a TENU JUSQU'AU BOUT. Aucune des
-// quatorze couleurs par thème n'est plus orpheline ; les dix entrées restantes
-// sont typographiques, d'espacement, de rayon et de police, et les paires de
+// quatorze couleurs par thème n'est plus orpheline ; les dix entrées d'alors
+// étaient typographiques, d'espacement, de rayon et de police, et les paires de
 // contraste ne citent que des couleurs. Élaguer en S1 aurait retiré des
-// couleurs que S2 emploie aujourd'hui.
+// couleurs que S2 emploie aujourd'hui. ⚠️ LE ZÉRO TIENT APRÈS S3, ET SANS ÊTRE
+// REFAIT : `--police-mono`, seule entrée restante, n'est pas une couleur.
 // ⚠️ ET CELA RETIRE SON ARGUMENT À CE BLOC-CI : « §7.1 tomberait de 50 paires
 // à 4 » NE PROTÈGE PLUS RIEN, puisqu'un élagage n'atteindrait plus aucune
-// couleur. Ce qui protège les dix restants n'est plus qu'une chose — leur
+// couleur. Ce qui protège l'entrée restante n'est plus qu'une chose — son
 // annotation, et le sous-bloc qui la porte. Voir l'encadré des re-tags.
 //
 // ⚠️ CE CONTRÔLE EST DONC ROUGE PAR CONSTRUCTION JUSQU'À S4 SI ON LE PREND

@@ -14,7 +14,7 @@
       ni `:root`. C'est ce qui garantit que ce fichier ne change RIEN à
       `client/index.html`, dont les cinq éléments ne portent aucune classe de
       primitive et dont DEUX sont des `<button>`. Un `button { … }` ici
-      changerait la fenêtre de session sans qu'aucun des sept contrôles ne le
+      changerait la fenêtre de session sans qu'aucun des huit contrôles ne le
       dise.
    ② L'ANNEAU DE FOCUS NE S'EFFACE JAMAIS. `design/base.css` le pose
       globalement sur `:focus-visible` : les primitives l'ont toutes, y compris
@@ -26,7 +26,7 @@
       contraste ne serait mesuré par rien. Le désactivé se dit donc par des
       TOKENS : `--texte-faible` sur `--fond-1`/`--fond-2`.
    ④ AUCUNE LONGUEUR HORS ÉCHELLE. Un `4px` écrit ici ne serait vu par AUCUN
-      des sept contrôles — aucun ne mesure une longueur. Les seuls littéraux
+      des huit contrôles — aucun ne mesure une longueur. Les seuls littéraux
       autorisés sont `0`, `100%`, `1` et les mots-clés (`auto`, `inherit`,
       `transparent`, `1fr`).
 
@@ -34,12 +34,24 @@
    le contrôle §7.2 ne connaît que `black`, `white` et `red` parmi les
    mots-clés, et `transparent` n'est pas une couleur, c'est une absence.
 
-   ── CE QUE CE FICHIER NE FAIT PAS ─────────────────────────────────────────
-   ⛔ AUCUNE SURFACE DU PRODUIT NE LE LIE. À la fin de S2 il n'est chargé que
-   par `client/primitives.html`, la galerie du jugement humain. Les tokens
-   qu'il fait sortir de la liste d'attente du §7.6 ont donc UN APPELANT ÉCRIT,
-   pas UN PIXEL RENDU : le périmètre « employé » de ce contrôle est le FICHIER,
-   jamais la surface. C'est S3 qui referme cet écart.
+   ── CE QUE CE FICHIER FAIT, DEPUIS LE SOUS-BLOC S3 ────────────────────────
+   ✅ DEUX SURFACES DU PRODUIT LE LIENT — `client/shell.html` et
+   `client/connexion.html`. À la fin de S2, cet encadré disait l'inverse :
+   « AUCUNE SURFACE DU PRODUIT NE LE LIE […] les tokens qu'il fait sortir de la
+   liste d'attente ont UN APPELANT ÉCRIT, pas UN PIXEL RENDU […] C'est S3 qui
+   referme cet écart. » S3 l'a refermé, et ce n'est pas une intention mais un
+   RELEVÉ : le contrôle §7.9, né avec S3, rend à chaque exécution
+
+       ② A — les primitives atteignent le PRODUIT :
+         client/shell.html : bouton, message, surface
+         client/connexion.html : bouton, champ, message, surface
+
+   et son assertion ② A a été ROUGE sur l'arbre intact, entre les tâches 2 et 4,
+   ce qui est sa preuve d'atteignabilité.
+
+   ⛔ `client/index.html` — la fenêtre de session — N'EN LIE AUCUNE, et c'est la
+   règle ① ci-dessus, mesurée par le critère ③ de la recette S3 : ses deux
+   actifs bâtis sont octet pour octet ceux d'avant la branche.
 
    ⚠️ PORTE ARMÉE À 240 LIGNES, et non à 300 comme les autres fichiers de ⑥ :
    une famille coûte de 40 à 80 lignes, si bien qu'une porte à 300 laisserait
