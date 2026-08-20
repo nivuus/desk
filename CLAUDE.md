@@ -13356,10 +13356,26 @@ qu'assorti de son arbre** — leçon de D11, repayée ici.
 8. ⛔ **`magasin::manquantes` (agent) n'a aucun appelant de production** —
    conservé et **déclaré**. ⚠️ Ce dépôt n'a **toujours pas** de doctrine sur le
    code orphelin.
-9. ⚠️ **DEUX raccourcis témoins RESTENT sur le Bureau de la VM**
-   (`G2 Temoin 48.lnk`, `G2 Temoin 256.lnk`, **arguments distincts**). C'est ce
-   qui rend le critère ② rejouable — **et cela porte le corpus de 154 à 156**.
-   Un chantier suivant qui compterait 154 les cherchera.
+9. ⚠️ **CE QUE G2 LAISSE SUR LA VM, DÉCLARÉ — c'est ce qui rend ses critères
+   REJOUABLES, et il ne faut donc pas le balayer sans le savoir :**
+   - **deux raccourcis témoins sur le Bureau** — `G2 Temoin 48.lnk` et
+     `G2 Temoin 256.lnk`, à **arguments distincts** (`--g2-temoin-48`,
+     `--g2-temoin-256`), sans quoi leur clé serait la même et le catalogue n'en
+     garderait qu'un. Ils rendent le **critère ②** rejouable, **et ils portent
+     le corpus de 154 à 156** : un chantier qui compterait 154 les cherchera ;
+   - `C:\dev\g2-temoin-{48,256}.ico`, les deux fichiers qu'ils pointent — ils
+     sont aussi versés dans `agent/testdata/`, avec leur script de fabrication ;
+   - 🔴 **`C:\dev\agent-v2-avant-g2.exe` (10 160 640 octets), le binaire
+     d'AVANT le bump de version.** C'est le seul témoin qui rende le
+     **critère ⑧** rejouable — un agent v2 face à une plateforme v3 —, et il ne
+     se refabrique qu'en rebâtissant un commit antérieur ;
+   - `C:\dev\agent-g2.exe` (10 233 344), copie du binaire de clôture, à
+     l'identique de `target/release/agent.exe`.
+   ✅ **Ce que G2 ne laisse PAS** : aucune sortie virtuelle orpheline — vérifié
+   par `MULTIFENETRE_DXGI=1` depuis un processus neuf, **une seule sortie
+   attachée, `\\.\DISPLAY1`, le bureau physique**. Ses exécutions n'en ont
+   créé aucune (0 `sortie virtuelle créée`, 0 `enfant lancé` sur les sept
+   journaux) : aucune fenêtre n'était éligible.
 10. ⛔ **La lacune de nommage d'`IssueLancement` reste OUVERTE.** G2 ajoute un
     second témoin (`SourceMax::NonMesuree`, deux mots) sans refermer celle-là.
 
