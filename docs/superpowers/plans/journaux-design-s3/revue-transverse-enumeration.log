@@ -1,0 +1,186 @@
+=== REVUE TRANSVERSE S3 — ÉNUMÉRATION AVANT ÉDITION ===
+2026-08-20T04:45:21Z
+Les places sont ÉNUMÉRÉES ICI, par grep -n, AVANT qu'une seule ne soit modifiée.
+« Corrigé à sa place » est une affirmation de COMPLÉTUDE, et le naufrage du « 487 »
+s'est rejoué sept fois dans ce dépôt, dont une à l'intérieur de la ronde qui le dénonçait.
+
+########## ① « les sept contrôles » — le compte passe à HUIT ##########
+client/src/design/primitives.css:17:      changerait la fenêtre de session sans qu'aucun des sept contrôles ne le
+client/src/design/primitives.css:29:      des sept contrôles — aucun ne mesure une longueur. Les seuls littéraux
+client/src/design/amorce-theme.js:9:   aucun des sept contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+client/src/design/base.css:24:   Les sept contrôles du sous-projet ⑥ portent sur les couleurs, les
+client/src/design/reprise.test.ts:40:        // exactement le genre d'erreur qu'aucun des sept contrôles n'attrape,
+client/src/design/reprise.test.ts:85:        // vaudrait 10,5 px — et AUCUN des sept contrôles ne le dirait.
+client/src/design/galerie.ts:155: * 🔴 AUCUN DES SEPT CONTRÔLES NE REGARDE LE DOM. `design.html` porte un
+client/src/design/primitives.test.ts:154:        // apparence sans qu'aucun des sept contrôles ne le dise.
+client/src/design/primitives.test.ts:169:        // faire propre ». Aucun des sept contrôles ne le verrait.
+client/src/design/primitives.test.ts:192:        // qu'aucun des sept contrôles ne mesure, puisque aucun ne mesure une
+client/src/design/primitives/champ.css:7:   aucun des sept contrôles ne verrait une règle morte. Le dépôt a déjà payé
+client/outils/verifier-design.mjs:17:// qu'ici les sept contrôles sont indépendants et rapides, là-bas les étapes sont
+client/outils/classes-employees.mjs:6:// déclarée comme telle. Il existe parce qu'AUCUN des sept contrôles précédents
+client/dist/shell.html:19:   aucun des sept contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+client/dist/primitives.html:114:   aucun des sept contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+client/dist/connexion.html:19:   aucun des sept contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+client/dist/index.html:19:   aucun des sept contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+client/dist/design.html:190:   aucun des sept contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+  → compte : 18
+
+########## ①bis autres formulations du compte : « six contrôles », « 6/6 », « 7/7 » ##########
+client/src/design/primitives/champ.css:7:   aucun des sept contrôles ne verrait une règle morte. Le dépôt a déjà payé
+client/dist/design.html:190:   aucun des sept contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+client/src/style.css:33:   puisque aucun des sept ne mesure une longueur. Elle se solde au sous-bloc
+client/src/design/amorce-theme.js:9:   aucun des sept contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+client/src/design/primitives.css:17:      changerait la fenêtre de session sans qu'aucun des sept contrôles ne le
+client/src/design/primitives.css:29:      des sept contrôles — aucun ne mesure une longueur. Les seuls littéraux
+client/dist/shell.html:19:   aucun des sept contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+client/src/design/primitives.test.ts:154:        // apparence sans qu'aucun des sept contrôles ne le dise.
+client/src/design/primitives.test.ts:169:        // faire propre ». Aucun des sept contrôles ne le verrait.
+client/src/design/primitives.test.ts:192:        // qu'aucun des sept contrôles ne mesure, puisque aucun ne mesure une
+client/src/design/reprise.test.ts:40:        // exactement le genre d'erreur qu'aucun des sept contrôles n'attrape,
+client/src/design/reprise.test.ts:85:        // vaudrait 10,5 px — et AUCUN des sept contrôles ne le dirait.
+client/outils/verifier-design.mjs:4:// Il lance les SEPT contrôles qui sont des scripts, imprime le verdict de
+client/outils/verifier-design.mjs:9:// Il existe parce qu'aucun des sept autres ne peut voir qu'une surface du
+client/outils/classes-employees.mjs:6:// déclarée comme telle. Il existe parce qu'AUCUN des sept contrôles précédents
+client/dist/connexion.html:19:   aucun des sept contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+client/dist/index.html:19:   aucun des sept contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+client/dist/primitives.html:114:   aucun des sept contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+client/dist/assets/design-ClB_1QSM.js:156:       posait sur \`html\`, \`0.75rem\` vaudrait 10,5 px — et AUCUN des sept
+client/src/design/tokens.css:156:       posait sur `html`, `0.75rem` vaudrait 10,5 px — et AUCUN des sept
+
+########## ② « aucune surface du produit » / appelant écrit, pas un pixel rendu ##########
+client/primitives.html:114:            charge : à la fin du sous-bloc S2, aucune surface du produit n’emploie
+client/src/design/primitives.css:38:   ⛔ AUCUNE SURFACE DU PRODUIT NE LE LIE. À la fin de S2 il n'est chargé que
+client/dist/primitives.html:153:            charge : à la fin du sous-bloc S2, aucune surface du produit n’emploie
+client/outils/classes-employees.mjs:8:// de la liste ont un appelant ÉCRIT, pas un pixel RENDU ». Et ce n'est pas une
+client/outils/classes-employees.mjs:181:            'les primitives ont un appelant ÉCRIT, pas un pixel RENDU',
+
+########## ③ les entrées de liste d'attente citées comme « encore en attente » ##########
+client/src/design/primitives.css:40:   qu'il fait sortir de la liste d'attente du §7.6 ont donc UN APPELANT ÉCRIT,
+
+########## ④ ce que « S3 » est censé faire, au FUTUR ##########
+client/src/connexion.ts:81:   en-tête. Les branches ci-dessous existaient toutes AVANT le sous-bloc S3 ;
+client/src/shell.test.ts:6: * sous-bloc S3 posait `afficher: () => {}` — un NO-OP, exactement le patron que
+client/src/shell.css:18:   session appartient à S4, et S3 n'a pas le droit d'y toucher.
+client/src/design/selecteur-theme.ts:19: * la spec §11 range sous « réversible par un utilisateur en un clic dès S3 ».
+client/src/design/selecteur-theme.ts:156: * plan S3 est ce qui rend ce contrôle utile.
+client/src/design/tokens.test.ts:137:    // 🔴 L'ANGLE MORT QUE S3 FERME. Jusqu'ici `ecartsEntreBlocs` comparait
+client/src/design/classes.ts:211: * §6.4 du plan S3 — les classes s'écrivent en littéral, dans le HTML de
+client/src/design/primitives.css:42:   jamais la surface. C'est S3 qui referme cet écart.
+client/src/design/primitives/surface.css:11:   DE CARTE CLIQUABLE — c'est S3 qui en aura besoin pour la liste de fenêtres
+client/src/design/primitives/bouton.css:22:   `.bouton` ne le satisferait jamais. Le jour où S3 posera un lien en bouton,
+client/src/design/primitives/message.css:20:   balisage de S3 devra donner au message son `role` et son libellé. S2 ne
+client/outils/tokens-orphelins.mjs:200://   re-étiquetage, bâtie au sous-bloc S3 (tâche 7).
+client/outils/tokens-orphelins.mjs:204:// entrée de « S2 » à « S3 » ne les fait bouger ni l'une ni l'autre — c'est le
+client/outils/tokens-orphelins/attente.mjs:55:// Le contrôle compare des ENSEMBLES DE NOMS. Changer « S2 » en « S3 » dans une
+client/outils/tokens-orphelins/attente.mjs:87:// ⚠️ ET APRÈS S3 ELLE NE GARDE QU'UNE ENTRÉE — un mécanisme pour une ligne.
+client/outils/tokens-orphelins/attente.mjs:147:// ⚠️ LA FAMILLE ÉTIQUETTE / PASTILLE ÉTAIT RE-TAGUÉE « S3 ou plus tard » PAR
+client/outils/tokens-orphelins/attente.mjs:169://      hub ne figure PAS dans ce découpage ». L'entrée attribuait donc à S3 un
+client/outils/tokens-orphelins/attente.mjs:170://      appelant que S3 ne pouvait pas écrire, et elle serait restée en attente
+client/outils/tokens-orphelins/attente.mjs:191: * bonne — si l'une des deux devait re-étiqueter une entrée vers « S3 », le
+client/outils/tokens-orphelins/attente.mjs:193: * que S3 n'a PAS consommé ne doit pas réclamer S3. Aucune des deux ne
+client/connexion.html:55:                     en un clic dès S3 ». Coût : zéro — même module. -->
+
+########## ⑤ les chiffres : 52 / 48 / 10 / 6 374 / dix-sept ##########
+--- 52 ---
+client/src/shell.css:129:   dont AUCUNE des 52 paires ne dit rien, et l'état d'une fenêtre serait le seul
+client/src/design/contraste.test.ts:37:        // intermédiaires — c'est-à-dire sur les 52 paires réelles, là où
+client/src/design/contraste.test.ts:44:    it('en compte 52, et ce sont des paires DÉCLARÉES', () => {
+client/src/design/contraste.test.ts:54:        expect(PAIRES).toHaveLength(52);
+client/src/design/contraste.test.ts:101:        expect(resultat.verifiees).toBe(52);
+client/outils/tokens-orphelins/attente.mjs:110://   → paires totales : 52 | citant un token en attente : 0
+client/outils/tokens-orphelins/attente.mjs:150:// que son contraste reste dans les 52 paires mesurées du §7.1.
+client/src/design/contraste.ts:94: * Les 52 paires DÉCLARÉES — jamais un produit cartésien.
+client/src/design/contraste.ts:121: * Évalue les 52 paires sur les blocs parsés.
+client/src/design/primitives.test.ts:180:        // effective échappe alors aux 52 paires du contrôle §7.1. Un état
+client/src/design/primitives/surface.css:7:   `--fond-0`, et il est hors des 52 paires du §7.1 pour cette raison même.
+client/src/design/primitives.css:24:      `filter`. La couleur qui en sortirait échapperait aux 52 paires du
+client/src/design/tokens.css:68:       Ici il l'est : deux paires de plus, 50 → 52, et le survol contraste
+docs/superpowers/specs/2026-08-19-design-system-design.md:332:et qui porte déjà `font-variant-numeric: tabular-nums` (`style.css:52`) pour
+client/src/design/primitives/message.css:9:   des 52 paires ne dit rien, et l'état d'erreur — celui qu'un écran de
+client/outils/contraste.mjs:14:// `--video-letterbox`) sont HORS des 52 paires pour cette raison : leur
+--- 48 ---
+client/src/shell.css:26:   soit une carte de 64 px. Les inventer en tokens changerait le compte de 48
+client/src/connexion.css:23:   inventer en tokens changerait le compte de 48 que trois documents publient.
+client/src/design/tokens.ts:150: * rendait `bloc racine : 48 / media-clair : 13 / attribut-clair : 13`,
+client/src/design/tokens.ts:164: * par `lireBlocsDeTheme` sur `tokens.css` : racine **48** tokens dont **20**
+client/src/design/base.css:93:         bloc racine : 48 token(s)
+docs/superpowers/specs/2026-08-19-design-system-design.md:382:| `--e-3` | 0.75 | **12** | `--e-7` | 3 | 48 |
+client/src/design/tokens.css:164:    --e-7: 3rem;        /* 48 px */
+--- 10 orphelin ---
+--- 6 374 ---
+--- 6374 ---
+--- dix-sept ---
+--- DIX-SEPT ---
+
+########## ⑥ toutes les mentions de « S3 » dans le code source de client/ ##########
+client/src/connexion.ts:81:   en-tête. Les branches ci-dessous existaient toutes AVANT le sous-bloc S3 ;
+client/src/connexion.css:2:   LA FEUILLE DE L'ÉCRAN DE CONNEXION, ET DE LUI SEUL — sous-bloc S3.
+client/src/connexion.css:17:   extension raisonnée, déclarée au §6.2 du plan S3.
+client/src/shell.test.ts:6: * sous-bloc S3 posait `afficher: () => {}` — un NO-OP, exactement le patron que
+client/src/shell.test.ts:96:        // sous-bloc S3 a ajouté le second argument, et une assertion à un seul
+client/src/shell.css:2:   LA FEUILLE DE LA PAGE-SHELL, ET D'ELLE SEULE — sous-projet ⑥, sous-bloc S3.
+client/src/shell.css:9:   l'arrangement B, mesuré par S1 et reconfirmé par le plan S3 : un `@import`
+client/src/shell.css:18:   session appartient à S4, et S3 n'a pas le droit d'y toucher.
+client/src/shell.css:46:   du §8 de la spec reste FAUSSE à la fin de S3, désormais de CINQ valeurs et
+client/src/shell.css:98:   commande ne le dira. Il s'ajoute aux onze du dépôt à l'entrée de S3.
+client/src/design/selecteur-theme.ts:4: * ✅ CE MODULE EST DU PRODUIT DEPUIS LE SOUS-BLOC S3, et il a des tests.
+client/src/design/selecteur-theme.ts:7: * sélecteur de thème du produit : celui-là appartient à S3, qui décidera s'il
+client/src/design/selecteur-theme.ts:8: * le réemploie tel quel ou le réécrit ». S3 a décidé : il le RÉEMPLOIE. Il n'y
+client/src/design/selecteur-theme.ts:19: * la spec §11 range sous « réversible par un utilisateur en un clic dès S3 ».
+client/src/design/selecteur-theme.ts:104:    // ✅ IL RAPPELLE `marquer()`, ET C'EST UNE CORRECTION DU SOUS-BLOC S3.
+client/src/design/selecteur-theme.ts:156: * plan S3 est ce qui rend ce contrôle utile.
+client/src/design/selecteur-theme.test.ts:126:        // 🔴 LA ROUGE DE LA CORRECTION, et elle tombe sur le code d'avant S3.
+client/src/design/tokens.ts:145: *      restreinte aux couleurs (sous-bloc S3).
+client/src/design/tokens.ts:147: * 🔴 ③ EST L'ANGLE MORT QUE S3 A FERMÉ, ET LE TROU ÉTAIT MESURÉ. Le sous-bloc
+client/src/design/tokens.test.ts:137:    // 🔴 L'ANGLE MORT QUE S3 FERME. Jusqu'ici `ecartsEntreBlocs` comparait
+client/src/design/classes.ts:211: * §6.4 du plan S3 — les classes s'écrivent en littéral, dans le HTML de
+client/src/design/primitives.css:42:   jamais la surface. C'est S3 qui referme cet écart.
+client/src/design/primitives/surface.css:11:   DE CARTE CLIQUABLE — c'est S3 qui en aura besoin pour la liste de fenêtres
+client/src/design/primitives/bouton.css:22:   `.bouton` ne le satisferait jamais. Le jour où S3 posera un lien en bouton,
+client/src/design/primitives/message.css:20:   balisage de S3 devra donner au message son `role` et son libellé. S2 ne
+client/src/design/primitives/message.css:36:   🔴 ELLE EST MONTÉE ICI PLUTÔT QU'ÉCRITE DEUX FOIS. Le sous-bloc S3 en avait
+client/outils/tokens-orphelins.mjs:14://      la mitigation partielle du re-étiquetage, bâtie au sous-bloc S3, et que
+client/outils/tokens-orphelins.mjs:200://   re-étiquetage, bâtie au sous-bloc S3 (tâche 7).
+client/outils/tokens-orphelins.mjs:204:// entrée de « S2 » à « S3 » ne les fait bouger ni l'une ni l'autre — c'est le
+client/outils/tokens-orphelins.mjs:211:// doctrine complète, et l'objection qu'elle ne garde qu'une entrée après S3,
+client/outils/tokens-orphelins/attente.mjs:55:// Le contrôle compare des ENSEMBLES DE NOMS. Changer « S2 » en « S3 » dans une
+client/outils/tokens-orphelins/attente.mjs:76:// ✅ ELLE EST CONSTRUITE — SOUS-BLOC S3, TÂCHE 7. `SOUS_BLOCS_CLOS` ci-dessous
+client/outils/tokens-orphelins/attente.mjs:78:// est celui qui s'apprêtait à en avoir besoin : S3 a re-étiqueté DEUX entrées
+client/outils/tokens-orphelins/attente.mjs:87:// ⚠️ ET APRÈS S3 ELLE NE GARDE QU'UNE ENTRÉE — un mécanisme pour une ligne.
+client/outils/tokens-orphelins/attente.mjs:133:// 🔴 SEPT ENTRÉES SONT SORTIES À LA TÂCHE 4 DU SOUS-BLOC S3, dans le commit
+client/outils/tokens-orphelins/attente.mjs:147:// ⚠️ LA FAMILLE ÉTIQUETTE / PASTILLE ÉTAIT RE-TAGUÉE « S3 ou plus tard » PAR
+client/outils/tokens-orphelins/attente.mjs:153:// 🔴 DEUX ENTRÉES DE PLUS SONT SORTIES À LA TÂCHE 5 DE S3, avec leurs appelants
+client/outils/tokens-orphelins/attente.mjs:169://      hub ne figure PAS dans ce découpage ». L'entrée attribuait donc à S3 un
+client/outils/tokens-orphelins/attente.mjs:170://      appelant que S3 ne pouvait pas écrire, et elle serait restée en attente
+client/outils/tokens-orphelins/attente.mjs:188: * ⚠️ `S3` S'Y INSCRIT LUI-MÊME, ET IL FAUT DIRE CE QUE CELA VEUT DIRE : au
+client/outils/tokens-orphelins/attente.mjs:189: * moment où cette ligne est écrite, la recette et la revue transverse de S3
+client/outils/tokens-orphelins/attente.mjs:191: * bonne — si l'une des deux devait re-étiqueter une entrée vers « S3 », le
+client/outils/tokens-orphelins/attente.mjs:193: * que S3 n'a PAS consommé ne doit pas réclamer S3. Aucune des deux ne
+client/outils/tokens-orphelins/attente.mjs:197:const SOUS_BLOCS_CLOS = new Set(['S1', 'S2', 'S3']);
+client/shell.html:29:          ⚠️ HABILLER N'EST PAS DÉPLACER : le sous-bloc S3 a donné à ce bouton sa
+client/outils/blocs-de-theme.mjs:21:// 🔴 LA PORTÉE DE CE CONTRÔLE A ÉTÉ ÉLARGIE PAR LE SOUS-BLOC S3, et son énoncé
+client/connexion.html:55:                     en un clic dès S3 ». Coût : zéro — même module. -->
+client/outils/classes-employees.mjs:5:// 🔴 CE CONTRÔLE N'EST PAS DANS LA SPEC : c'est une ADDITION du sous-bloc S3,
+client/outils/verifier-design.mjs:7:// ⚠️ ILS ÉTAIENT SIX JUSQU'AU SOUS-BLOC S3, qui a ajouté §7.9 — le contrôle
+
+########## ⑦ les mentions de « S2 » qui décrivent un présent périmé ##########
+client/src/design/primitives.css:38:   ⛔ AUCUNE SURFACE DU PRODUIT NE LE LIE. À la fin de S2 il n'est chargé que
+client/outils/tokens-orphelins/attente.mjs:73:// nommer un sous-bloc déjà clos*. Elle serait passée au rouge à la fin de S2 sur
+client/primitives.html:114:            charge : à la fin du sous-bloc S2, aucune surface du produit n’emploie
+
+########## ⑧ les chiffres de la spec ##########
+838:| que le pas de **4 px** d'espacement soit le bon | qu'il soit unique — aucune longueur hors échelle |
+
+########## ⑨ SECONDE PASSE : les chiffres qui pourraient avoir vieilli ##########
+--- « dix entrées » ---
+client/outils/tokens-orphelins/attente.mjs:108:// même commande, sur les dix entrées ci-dessous :
+client/outils/tokens-orphelins/attente.mjs:114:// quatorze couleurs par thème n'est plus orpheline ; les dix entrées restantes
+--- « onze du dépôt » ---
+client/src/shell.css:106:   commande ne le dira. Il s'ajoute aux onze du dépôt à l'entrée de S3.
+--- « aux huit du » ---
+client/src/design/primitives/message.css:17:   HUMAIN, et il s'ajoute aux huit du §8 : aucune commande ne le dira.
+client/primitives.html:34:            sont les trois jugements humains que S2 ajoute aux huit du §8, et
+--- « huit du §8 » ---
+client/src/design/primitives/message.css:17:   HUMAIN, et il s'ajoute aux huit du §8 : aucune commande ne le dira.
+client/primitives.html:34:            sont les trois jugements humains que S2 ajoute aux huit du §8, et
+[fin de la seconde passe]

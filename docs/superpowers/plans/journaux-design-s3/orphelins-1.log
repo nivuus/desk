@@ -1,0 +1,17 @@
+=== exécution 1 — node client/outils/tokens-orphelins.mjs (critère ②) ===
+2026-08-20T04:29:22Z
+
+source        : client/src/design/tokens.css — 48 token(s) déclaré(s)
+périmètre     : 13 fichier(s) — 47 token(s) employé(s)
+  balayés : client/src/connexion.css, client/src/design/base.css, client/src/design/primitives/bouton.css, client/src/design/primitives/champ.css, client/src/design/primitives/message.css, client/src/design/primitives/surface.css, client/src/design/primitives.css, client/src/design/socle.css, client/src/shell.css, client/src/style.css, client/index.html, client/shell.html, client/connexion.html
+  exclu : client/design.html — la galerie rend tous les tokens par construction ; l’inclure rendrait l’inclusion « déclaré ⊆ employé » vraie pour toujours
+  exclu : client/primitives.html — une page de démonstration emploie des tokens par construction, dans sa propre mise en page ; l’inclure ferait sortir de la liste d’attente des tokens que le PRODUIT n’appelle pas
+
+inclusion ① — tout var(--…) est déclaré : 0 écart(s)
+inclusion ② — tout token déclaré a un appelant : 1 orphelin(s), dont 1 en attente déclarée
+
+inclusion ③ — aucune entrée ne nomme un sous-bloc clos (S1, S2, S3) : 0 écart(s)
+
+total : 0 écart(s)
+les trois assertions tiennent ; 1 token(s) restent en attente d'appelant, nommés dans tokens-orphelins/attente.mjs
+exit=0

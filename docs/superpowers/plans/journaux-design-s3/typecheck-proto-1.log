@@ -1,0 +1,8 @@
+=== exécution 1 — cd proto && npm run typecheck ===
+2026-08-20T04:26:15Z
+
+
+> @guacamole/proto@0.1.0 typecheck
+> tsc --noEmit
+
+exit=0

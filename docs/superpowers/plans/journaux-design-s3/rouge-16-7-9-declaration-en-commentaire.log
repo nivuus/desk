@@ -1,0 +1,39 @@
+=== ROUGE « 16-7-9-declaration-en-commentaire-ne-declare-rien » ===
+2026-08-20T04:36:14Z
+objet : le pendant EXIGEANT du blanchiment. Une classe déclarée SEULEMENT dans un
+        commentaire CSS ne compte pas comme déclarée — donc l'employer doit ROUGIR.
+        C'est le piège que ce dépôt a payé trois fois : « un garde satisfait par le
+        commentaire du fichier qu'il analyse ».
+① sha256 AVANT : shell.css=ad78e28ed79a64823100f0ac95c977148fc2dc4e2e2ea708bc4ebb4c967d5f93  shell.html=0e4fd4c9b08bbd40bfc1f1a0b8ffce082d7531184cf62413ac605399e7d37c8d
+
+③ PREUVE que les DEUX mutations ont muté :
+     client/shell.html    | 2 +-
+     client/src/shell.css | 2 ++
+     2 files changed, 3 insertions(+), 1 deletion(-)
+    lignes de diff : 23
+
+④ contrôle : node client/outils/classes-employees.mjs
+    déclarées : 52 classe(s)
+    employées : 52 classe(s)
+    familles de primitives : bouton, champ, message, surface
+    
+    ① toute classe employée est déclarée : 1 écart(s)
+      NON DÉCLARÉE  bureau__fantome  employée par client/shell.html
+    
+    ② A — les primitives atteignent le PRODUIT :
+      client/index.html : aucune famille
+      client/shell.html : bouton, message, surface
+      client/connexion.html : bouton, champ, message, surface
+    
+    ③ B — chaque famille est rendue par client/primitives.html :
+      bouton : 4 classe(s) employée(s) sur 4 déclarée(s)
+      champ : 6 classe(s) employée(s) sur 6 déclarée(s)
+      message : 4 classe(s) employée(s) sur 4 déclarée(s)
+      surface : 4 classe(s) employée(s) sur 4 déclarée(s)
+    
+    total : 1 écart(s)
+    exit=1
+
+⑥ sha256 APRÈS : shell.css=ad78e28ed79a64823100f0ac95c977148fc2dc4e2e2ea708bc4ebb4c967d5f93  shell.html=0e4fd4c9b08bbd40bfc1f1a0b8ffce082d7531184cf62413ac605399e7d37c8d
+   les DEUX restaurés
+   git status --porcelain : []

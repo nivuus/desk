@@ -1,0 +1,51 @@
+=== ROUGE « 3-7-9-aucune-famille-au-produit » (REFAITE — voir la note en fin de fichier) ===
+2026-08-20T04:32:28Z
+fichiers mutés : client/shell.html ET client/connexion.html
+mutation : retirer des attributs class= les 18 classes déclarées par src/design/primitives/*.css,
+           SANS en introduire aucune neuve — pour que l'écart vienne de ② A SEUL.
+① sha256 AVANT : shell=0e4fd4c9b08bbd40bfc1f1a0b8ffce082d7531184cf62413ac605399e7d37c8d  connexion=be6630e6706c15e6578af2d930b3b35f62d171712ba2d7f41f0ddc37bdcf2ce9
+
+③ PREUVE que la mutation a MUTÉ :
+     client/connexion.html | 18 +++++++++---------
+     client/shell.html     | 14 +++++++-------
+     2 files changed, 16 insertions(+), 16 deletions(-)
+    lignes de diff : 96
+
+④ contrôle : node client/outils/classes-employees.mjs
+    déclarées : 52 classe(s)
+    employées : 51 classe(s)
+    familles de primitives : bouton, champ, message, surface
+    
+    ① toute classe employée est déclarée : 0 écart(s)
+    
+    ② A — les primitives atteignent le PRODUIT :
+      client/index.html : aucune famille
+      client/shell.html : aucune famille
+      client/connexion.html : aucune famille
+      AUCUNE classe de primitive employée par une surface du produit : les primitives ont un appelant ÉCRIT, pas un pixel RENDU
+    
+    ③ B — chaque famille est rendue par client/primitives.html :
+      bouton : 4 classe(s) employée(s) sur 4 déclarée(s)
+      champ : 6 classe(s) employée(s) sur 6 déclarée(s)
+      message : 4 classe(s) employée(s) sur 4 déclarée(s)
+      surface : 4 classe(s) employée(s) sur 4 déclarée(s)
+    
+    total : 1 écart(s)
+    exit=1
+
+⑥ sha256 APRÈS : shell=0e4fd4c9b08bbd40bfc1f1a0b8ffce082d7531184cf62413ac605399e7d37c8d  connexion=be6630e6706c15e6578af2d930b3b35f62d171712ba2d7f41f0ddc37bdcf2ce9
+   les DEUX sha256 sont identiques à l'avant : restaurés
+   git status --porcelain : []
+
+⚠️ NOTE DE MÉTHODE — LE PREMIER ESSAI DE CETTE ROUGE N'ISOLAIT PAS L'ASSERTION ② A.
+   Il ne mutait que `client/shell.html`, et il y remplaçait des classes de primitive par des
+   noms inventés (`rien`, `bureau__carte-titre`). Deux défauts, tous deux fatals au propos :
+     ① `client/connexion.html` gardait ses quatre familles, donc l'assertion ② A — « AU MOINS
+        une surface du produit emploie une primitive » — restait SATISFAITE ;
+     ② les noms inventés faisaient rougir la clause ① (« classe non déclarée »), 3 écarts,
+        et le contrôle sortait en 1 POUR CETTE RAISON-LÀ. Le journal aurait porté « exit=1 »
+        sous le titre « aucune famille au produit » alors que ② A n'avait pas échoué.
+   La rouge refaite ci-dessus mute LES DEUX surfaces et ne retire QUE des classes déclarées :
+   la clause ① rend 0 écart, et l'unique écart du contrôle est ② A. C'est la même assertion
+   que le commit 45f5521 (tâche 2) a vue rouge sur l'arbre intact, avant que la tâche 4 ne
+   l'éteigne en habillant la page-shell.

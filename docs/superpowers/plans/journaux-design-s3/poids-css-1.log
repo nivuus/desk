@@ -1,0 +1,27 @@
+=== exécution 1 — node client/outils/poids-css.mjs, DEPUIS LA RACINE (critère ⑤) ===
+2026-08-20T04:29:21Z
+
+    546  connexion-BM9rYjiV.css
+   1493  main-CXZaIG5L.css
+   2730  primitives-D5YB3zNP.css
+   1063  shell-C87uhTzH.css
+   2179  socle-ZRS7erzW.css
+feuilles émises : 5
+somme : 8011 octets
+plafond : 12288 octets (arbitraire, voir l'en-tête)
+marge : 4277 octets
+exit=0
+
+--- le DELTA, mesuré des deux côtés (pas repris d'un document) ---
+  côté BASE (88bc963), même outil, même dist reconstruit :
+       1493  main-CXZaIG5L.css
+       2702  primitives-GyKd6lAV.css
+       2179  socle-ZRS7erzW.css
+    feuilles émises : 3
+    somme : 6374 octets
+    plafond : 12288 octets (arbitraire, voir l'en-tête)
+    marge : 5914 octets
+    exit=0
+
+  côté HEAD : somme 8011 (ci-dessus)
+  Le document de résultats de S2 publiait 6 374 : à revérifier contre la ligne « somme » du côté BASE.

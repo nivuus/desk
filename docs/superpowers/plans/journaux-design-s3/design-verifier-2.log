@@ -1,0 +1,113 @@
+=== exécution 2 — cd client && npm run design:verifier ===
+2026-08-20T04:25:36Z
+
+
+> @guacamole/client@0.1.0 design:verifier
+> node outils/verifier-design.mjs
+
+==> npm run build (sans quoi §7.3 et §7.7 jugeraient le build d’avant)
+
+> @guacamole/client@0.1.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 46 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                           3.66 kB │ gzip: 1.88 kB
+dist/connexion.html                       5.41 kB │ gzip: 2.24 kB
+dist/shell.html                           6.47 kB │ gzip: 2.94 kB
+dist/primitives.html                     11.84 kB │ gzip: 4.27 kB
+dist/design.html                         12.67 kB │ gzip: 4.35 kB
+dist/assets/connexion-BM9rYjiV.css        0.55 kB │ gzip: 0.28 kB
+dist/assets/shell-C87uhTzH.css            1.06 kB │ gzip: 0.44 kB
+dist/assets/main-CXZaIG5L.css             1.49 kB │ gzip: 0.47 kB
+dist/assets/socle-ZRS7erzW.css            2.18 kB │ gzip: 0.93 kB
+dist/assets/primitives-D5YB3zNP.css       2.73 kB │ gzip: 0.64 kB
+dist/assets/primitives-XWhMZEAM.js        0.25 kB │ gzip: 0.21 kB
+dist/assets/jeton-kqOyiZdD.js             0.26 kB │ gzip: 0.18 kB
+dist/assets/prefixe-iK9obSCN.js           0.62 kB │ gzip: 0.40 kB
+dist/assets/socle-Dd8_6xY7.js             0.71 kB │ gzip: 0.40 kB
+dist/assets/selecteur-theme-sHUmq49u.js   1.05 kB │ gzip: 0.55 kB
+dist/assets/connexion-B-nENsTV.js         2.03 kB │ gzip: 1.00 kB
+dist/assets/webrtc-DpgdNYJG.js            3.71 kB │ gzip: 1.65 kB
+dist/assets/shell-6Ol5ktB-.js            10.65 kB │ gzip: 4.27 kB
+dist/assets/design-ClB_1QSM.js           16.02 kB │ gzip: 6.57 kB
+dist/assets/main-D_ugls83.js             19.77 kB │ gzip: 6.94 kB
+✓ built in 303ms
+
+==> §7.4  les trois blocs de thème ne divergent pas
+fichier : client/src/design/tokens.css
+  bloc racine : 48 token(s)
+  bloc media-clair : 14 token(s)
+  bloc attribut-clair : 14 token(s)
+portée : ① clair ≡ clair, ② clair ⊆ racine, ③ couleurs de racine ⊆ clair sauf 6 hors-thème nommés
+écarts : 0
+
+==> §7.1  les contrastes tiennent les seuils WCAG
+paires vérifiées : 52
+échecs : 0
+minimum global : 3.16
+
+==> §7.2  aucune couleur littérale hors de tokens.css
+fichiers balayés : 64
+couleurs littérales : 0
+
+==> §7.6  aucun token orphelin, aucun var() non déclaré
+source        : client/src/design/tokens.css — 48 token(s) déclaré(s)
+périmètre     : 13 fichier(s) — 47 token(s) employé(s)
+  balayés : client/src/connexion.css, client/src/design/base.css, client/src/design/primitives/bouton.css, client/src/design/primitives/champ.css, client/src/design/primitives/message.css, client/src/design/primitives/surface.css, client/src/design/primitives.css, client/src/design/socle.css, client/src/shell.css, client/src/style.css, client/index.html, client/shell.html, client/connexion.html
+  exclu : client/design.html — la galerie rend tous les tokens par construction ; l’inclure rendrait l’inclusion « déclaré ⊆ employé » vraie pour toujours
+  exclu : client/primitives.html — une page de démonstration emploie des tokens par construction, dans sa propre mise en page ; l’inclure ferait sortir de la liste d’attente des tokens que le PRODUIT n’appelle pas
+
+inclusion ① — tout var(--…) est déclaré : 0 écart(s)
+inclusion ② — tout token déclaré a un appelant : 1 orphelin(s), dont 1 en attente déclarée
+
+inclusion ③ — aucune entrée ne nomme un sous-bloc clos (S1, S2, S3) : 0 écart(s)
+
+total : 0 écart(s)
+les trois assertions tiennent ; 1 token(s) restent en attente d'appelant, nommés dans tokens-orphelins/attente.mjs
+
+==> §7.9  toute classe employée est déclarée, et une primitive atteint le produit
+déclarées : 52 classe(s)
+employées : 51 classe(s)
+familles de primitives : bouton, champ, message, surface
+
+① toute classe employée est déclarée : 0 écart(s)
+
+② A — les primitives atteignent le PRODUIT :
+  client/index.html : aucune famille
+  client/shell.html : bouton, message, surface
+  client/connexion.html : bouton, champ, message, surface
+
+③ B — chaque famille est rendue par client/primitives.html :
+  bouton : 4 classe(s) employée(s) sur 4 déclarée(s)
+  champ : 6 classe(s) employée(s) sur 6 déclarée(s)
+  message : 4 classe(s) employée(s) sur 4 déclarée(s)
+  surface : 4 classe(s) employée(s) sur 4 déclarée(s)
+
+total : 0 écart(s)
+
+==> §7.3  toute surface bâtie porte les tokens
+pages bâties : 5 (connexion.html, design.html, index.html, primitives.html, shell.html)
+
+assertion A — un <link rel="stylesheet"> par page : 0 échec(s)
+assertion B — une feuille liée déclarant --fond-0 : 0 échec(s) (évaluée sur 5 page(s))
+
+les DEUX assertions sont vertes
+
+==> §7.7  le poids CSS ne dérive pas
+    546  connexion-BM9rYjiV.css
+   1493  main-CXZaIG5L.css
+   2730  primitives-D5YB3zNP.css
+   1063  shell-C87uhTzH.css
+   2179  socle-ZRS7erzW.css
+feuilles émises : 5
+somme : 8011 octets
+plafond : 12288 octets (arbitraire, voir l'en-tête)
+marge : 4277 octets
+
+═══ 7/7 contrôle(s) vert(s) ═══
+  §7.5 (la bascule de thème) est un test unitaire : il tourne dans `npm test`.
+exit=0

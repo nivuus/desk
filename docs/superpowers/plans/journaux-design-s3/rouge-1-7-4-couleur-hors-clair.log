@@ -1,0 +1,55 @@
+=== ROUGE « 1-7-4-couleur-hors-clair » ===
+2026-08-20T04:31:23Z
+fichier muté  : client/src/design/tokens.css
+mutation      : perl -0pi -e 's/^ *--bord-fort: #7d8695;
+//mg' client/src/design/tokens.css
+contrôle joué : node client/outils/blocs-de-theme.mjs
+
+① sha256 AVANT : 174d50d980cc21b15dd5f45c96525584b93d5725852db82aaca409e351469c6f
+
+② mutation appliquée (code 0)
+
+③ PREUVE que la mutation a MUTÉ — git diff -- client/src/design/tokens.css :
+    @@ -193,7 +193,6 @@
+             --fond-1: #f6f7f9;
+             --fond-2: #eceef2;
+             --bord: #d5dae2;
+    -        --bord-fort: #7d8695;
+             --texte-fort: #10131a;
+             --texte: #3d4450;
+             --texte-faible: #5c6675;
+    @@ -219,7 +218,6 @@
+         --fond-1: #f6f7f9;
+         --fond-2: #eceef2;
+         --bord: #d5dae2;
+    -    --bord-fort: #7d8695;
+         --texte-fort: #10131a;
+         --texte: #3d4450;
+         --texte-faible: #5c6675;
+    lignes de diff : 20
+
+④ contrôle :
+    fichier : client/src/design/tokens.css
+      bloc racine : 48 token(s)
+      bloc media-clair : 13 token(s)
+      bloc attribut-clair : 13 token(s)
+    portée : ① clair ≡ clair, ② clair ⊆ racine, ③ couleurs de racine ⊆ clair sauf 6 hors-thème nommés
+    écarts : 1
+      ÉCART  blocs clairs : --bord-fort est une couleur de la racine sans contrepartie claire
+    exit=1
+
+⑤ restauration : git checkout -- client/src/design/tokens.css
+⑥ sha256 APRÈS : 174d50d980cc21b15dd5f45c96525584b93d5725852db82aaca409e351469c6f
+   sha256 IDENTIQUE à l'avant : restauré
+   git status --porcelain client/src/design/tokens.css : []
+   (crochets vides = propre)
+
+⚠️ NOTE DE MÉTHODE — LE PREMIER ESSAI DE CETTE ROUGE NE MESURAIT PAS CE QU'ELLE PRÉTENDAIT.
+   Sa mutation était `s/^    --bord-fort: #7d8695;\n//mg` (quatre espaces exactement) : elle
+   n'a atteint QUE le bloc `attribut-clair`, le bloc `media-clair` étant indenté de huit
+   espaces à l'intérieur de son `@media`. Le contrôle a bien rougi — mais sur
+   « attribut-clair : --bord-fort manquant », c'est-à-dire sur la clause ① (clair ≡ clair),
+   PRÉEXISTANTE, et non sur la clause ③ que la tâche 1 de S3 a ajoutée. Une rouge qui rougit
+   pour la mauvaise raison ne prouve pas ce qu'on lui fait dire. Corrigé en `^ *--bord-fort`,
+   qui retire la ligne des DEUX blocs clairs : les deux tombent alors à 13, la clause ① tient,
+   et seule la clause ③ échoue — ce qui est la preuve d'atteignabilité de l'élargissement.

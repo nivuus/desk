@@ -1,0 +1,24 @@
+=== Recette S3 — état du dépôt au moment de la collecte ===
+2026-08-20T04:25:24Z
+
+--- HEAD ---
+9da33a1 apps(g1): les deux branches du canal, et l'arbre redevient VERT
+
+--- les sept commits de S3 (tâches 1 à 7) ---
+2bfc2b6 design(s3): la mitigation du re-étiquetage, que S2 déclarait impossible
+7361405 design(s3): le sélecteur de thème du PRODUIT, et le défaut qu'il obligeait à corriger
+cdc5199 design(s3): l'écran de connexion habillé, et la liste tombe à UNE entrée
+83f4bbf design(s3): la page-shell habillée, et l'écart de S2 refermé
+b854b32 design(s3): le TON du bandeau, et la fin du double NO-OP
+45f5521 design(s3): le contrôle §7.9, et il naît ROUGE sur l'arbre intact
+715e21e design(s3): l'angle mort de §7.4, et la portée qu'il élargit
+
+--- base de comparaison retenue pour le critère 3 : 88bc963 (parent du premier commit S3) ---
+88bc963 apps(g1): le canal /agent devient bidirectionnel
+
+--- git status --porcelain (arbre ENTIER) ---
+?? docs/superpowers/plans/journaux-design-s3/
+
+--- git status --porcelain client/ docs/ CLAUDE.md (le périmètre de S3) ---
+?? docs/superpowers/plans/journaux-design-s3/
+(vide ci-dessus = le périmètre de S3 est propre)

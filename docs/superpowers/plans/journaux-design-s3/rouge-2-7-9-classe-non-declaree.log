@@ -1,0 +1,49 @@
+=== ROUGE « 2-7-9-classe-non-declaree » ===
+2026-08-20T04:31:44Z
+fichier muté  : client/shell.html
+mutation      : perl -pi -e 's/class="bureau__titre"/class="bureau__titre bureau__titre--inexistant"/' client/shell.html
+contrôle joué : node client/outils/classes-employees.mjs
+
+① sha256 AVANT : 0e4fd4c9b08bbd40bfc1f1a0b8ffce082d7531184cf62413ac605399e7d37c8d
+
+② mutation appliquée (code 0)
+
+③ PREUVE que la mutation a MUTÉ — git diff -- client/shell.html :
+    @@ -14,7 +14,7 @@
+       </head>
+       <body>
+         <main class="bureau">
+    -      <h1 class="bureau__titre">Bureau</h1>
+    +      <h1 class="bureau__titre bureau__titre--inexistant">Bureau</h1>
+           <div id="statut" class="message bureau__bandeau" role="status"></div>
+     
+           <section class="bureau__section">
+    lignes de diff : 13
+
+④ contrôle :
+    déclarées : 52 classe(s)
+    employées : 52 classe(s)
+    familles de primitives : bouton, champ, message, surface
+    
+    ① toute classe employée est déclarée : 1 écart(s)
+      NON DÉCLARÉE  bureau__titre--inexistant  employée par client/shell.html
+    
+    ② A — les primitives atteignent le PRODUIT :
+      client/index.html : aucune famille
+      client/shell.html : bouton, message, surface
+      client/connexion.html : bouton, champ, message, surface
+    
+    ③ B — chaque famille est rendue par client/primitives.html :
+      bouton : 4 classe(s) employée(s) sur 4 déclarée(s)
+      champ : 6 classe(s) employée(s) sur 6 déclarée(s)
+      message : 4 classe(s) employée(s) sur 4 déclarée(s)
+      surface : 4 classe(s) employée(s) sur 4 déclarée(s)
+    
+    total : 1 écart(s)
+    exit=1
+
+⑤ restauration : git checkout -- client/shell.html
+⑥ sha256 APRÈS : 0e4fd4c9b08bbd40bfc1f1a0b8ffce082d7531184cf62413ac605399e7d37c8d
+   sha256 IDENTIQUE à l'avant : restauré
+   git status --porcelain client/shell.html : []
+   (crochets vides = propre)

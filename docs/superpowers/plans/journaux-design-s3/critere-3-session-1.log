@@ -1,0 +1,88 @@
+=== Critère ③ — la fenêtre de session n'a pas bougé ===
+2026-08-20T04:26:34Z
+base = 88bc963 (parent du premier commit S3), HEAD = 9da33a1
+
+--- (a) git diff 88bc963..HEAD -- client/index.html client/src/style.css ---
+[fin du diff — rien au-dessus de cette ligne = diff VIDE]
+octets du diff : 0
+
+--- (a bis) le diff ENTIER de S3 sur client/, par fichier (pour situer) ---
+ client/connexion.html                      |  87 ++++++-----
+ client/outils/blocs-de-theme.mjs           |  22 ++-
+ client/outils/classes-employees.mjs        | 202 +++++++++++++++++++++++++
+ client/outils/tokens-orphelins.mjs         |  45 +++++-
+ client/outils/tokens-orphelins/attente.mjs | 116 ++++++++++++---
+ client/outils/verifier-design.mjs          |  18 ++-
+ client/shell.html                          |  88 +++++++++--
+ client/src/connexion.css                   |  93 ++++++++++++
+ client/src/connexion.ts                    |  45 +++++-
+ client/src/design/classes.test.ts          | 163 +++++++++++++++++++++
+ client/src/design/classes.ts               | 227 +++++++++++++++++++++++++++++
+ client/src/design/galerie-primitives.ts    |   4 +-
+ client/src/design/galerie.ts               |   4 +-
+ client/src/design/primitives/message.css   |  19 +++
+ client/src/design/selecteur-theme.test.ts  | 171 ++++++++++++++++++++++
+ client/src/design/selecteur-theme.ts       | 179 ++++++++++++++++++-----
+ client/src/design/tokens.test.ts           | 108 ++++++++++++++
+ client/src/design/tokens.ts                |  74 +++++++++-
+ client/src/shell-page.ts                   |  67 +++++++--
+ client/src/shell.css                       | 159 ++++++++++++++++++++
+ client/src/shell.test.ts                   |  85 ++++++++++-
+ client/src/shell.ts                        |  42 +++++-
+ 22 files changed, 1869 insertions(+), 149 deletions(-)
+
+--- (b) les <link rel=stylesheet> de dist/index.html ---
+href="/assets/socle-ZRS7erzW.css"
+href="/assets/main-CXZaIG5L.css"
+compte : 2
+
+--- (b bis) pour comparaison, les feuilles liées par les autres pages bâties ---
+  dist/connexion.html : href="/assets/socle-ZRS7erzW.css" href="/assets/connexion-BM9rYjiV.css" href="/assets/primitives-D5YB3zNP.css" 
+  dist/shell.html : href="/assets/socle-ZRS7erzW.css" href="/assets/shell-C87uhTzH.css" href="/assets/primitives-D5YB3zNP.css" 
+  dist/primitives.html : href="/assets/socle-ZRS7erzW.css" href="/assets/primitives-D5YB3zNP.css" 
+  dist/design.html : href="/assets/socle-ZRS7erzW.css" 
+
+--- (c) les deux actifs de la fenêtre de session, RELEVÉS DES DEUX CÔTÉS ---
+La base a été RECONSTRUITE : git archive 88bc963 client proto -> arbre jetable hors dépôt,
+node_modules lié depuis client/, puis npx vite build. Journal : build-base-88bc963.log
+
+  côté BASE (88bc963) :
+    dist/assets/main-CXZaIG5L.css
+    dist/assets/socle-ZRS7erzW.css
+    aa669b75847d36a8261fcb305976618a5cf8dd748352cbfa3625cfef631b5efe  dist/assets/socle-ZRS7erzW.css
+    5168f3fe137ba39ad9df5b78251e9d0f13e338ba95c4fbf196289e92905a690c  dist/assets/main-CXZaIG5L.css
+
+  côté HEAD (9da33a1) :
+    dist/assets/main-CXZaIG5L.css
+    dist/assets/socle-ZRS7erzW.css
+    aa669b75847d36a8261fcb305976618a5cf8dd748352cbfa3625cfef631b5efe  dist/assets/socle-ZRS7erzW.css
+    5168f3fe137ba39ad9df5b78251e9d0f13e338ba95c4fbf196289e92905a690c  dist/assets/main-CXZaIG5L.css
+
+  --- comparaison octet à octet des deux fichiers, des deux côtés ---
+    socle-ZRS7erzW.css : IDENTIQUE
+    main-CXZaIG5L.css : IDENTIQUE
+
+  --- dist/index.html lui-même, des deux côtés ---
+    a73ab478e4956a23eab32f9894328092055d50f02ac89246ac0ef4b6a637165e  /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/38dfbdff-6ff8-4fcc-b60c-f9c36ea58b66/scratchpad/base-88bc963/client/dist/index.html
+    a73ab478e4956a23eab32f9894328092055d50f02ac89246ac0ef4b6a637165e  client/dist/index.html
+    dist/index.html : IDENTIQUE
+
+  --- ce qui a BOUGÉ dans dist/assets entre la base et HEAD (contre-épreuve : le montage sait voir un changement) ---
+1,2c1,3
+< connexion-CEB4Dws6.js
+< design-Cm7EA0rE.js
+---
+> connexion-BM9rYjiV.css
+> connexion-B-nENsTV.js
+> design-ClB_1QSM.js
+7,10c8,12
+< primitives-CB43GhUe.js
+< primitives-GyKd6lAV.css
+< selecteur-theme-CXIgzib-.js
+< shell-CYVu6ZSZ.js
+---
+> primitives-D5YB3zNP.css
+> primitives-XWhMZEAM.js
+> selecteur-theme-sHUmq49u.js
+> shell-6Ol5ktB-.js
+> shell-C87uhTzH.css

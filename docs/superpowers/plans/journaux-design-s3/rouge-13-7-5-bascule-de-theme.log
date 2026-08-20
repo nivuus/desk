@@ -1,0 +1,84 @@
+=== ROUGE « 13-7-5-bascule-de-theme » ===
+2026-08-20T04:34:57Z
+fichier muté  : client/src/design/theme.ts
+mutation      : perl -0pi -e 's/export function surStockageModifie\(racine: Racine, cle: string \| null, valeur: string \| null\): void \{/export function surStockageModifie(racine: Racine, cle: string | null, valeur: string | null): void {
+    if (cle !== null) return;/' client/src/design/theme.ts
+contrôle joué : (cd client && npx vitest run src/design/theme.test.ts)
+
+① sha256 AVANT : 65a69e7b87b93ec816584bcc1b5951fa56303e303370c4bfccde20269e3d2d10
+
+② mutation appliquée (code 0)
+
+③ PREUVE que la mutation a MUTÉ — git diff -- client/src/design/theme.ts :
+    @@ -102,6 +102,7 @@ export function choisir(coffre: Coffre, racine: Racine, theme: Theme): void {
+      * vaudrait un JWT.
+      */
+     export function surStockageModifie(racine: Racine, cle: string | null, valeur: string | null): void {
+    +    if (cle !== null) return;
+         if (cle !== CLE_THEME) return;
+         appliquer(racine, estTheme(valeur) ? valeur : 'systeme');
+     }
+    lignes de diff : 12
+
+④ contrôle :
+    
+     RUN  v2.1.9 /home/mallanic/Projects/Guacamole/client
+    
+     ❯ src/design/theme.test.ts (10 tests | 2 failed) 13ms
+       × surStockageModifie — une fenêtre VOISINE > pose `data-theme` à partir de l'événement d'une autre fenêtre 7ms
+         → expected undefined to be 'sombre' // Object.is equality
+       × surStockageModifie — une fenêtre VOISINE > retire l'attribut quand la voisine est repassée à « systeme » 2ms
+         → expected true to be false // Object.is equality
+    
+    ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+    
+     FAIL  src/design/theme.test.ts > surStockageModifie — une fenêtre VOISINE > pose `data-theme` à partir de l'événement d'une autre fenêtre
+    AssertionError: expected undefined to be 'sombre' // Object.is equality
+    
+    - Expected: 
+    "sombre"
+    
+    + Received: 
+    undefined
+    
+     ❯ src/design/theme.test.ts:65:52
+         63|         const racine = racineFactice();
+         64|         surStockageModifie(racine, CLE_THEME, 'sombre');
+         65|         expect(racine.attributs.get('data-theme')).toBe('sombre');
+           |                                                    ^
+         66|     });
+         67| 
+    
+    ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+    
+     FAIL  src/design/theme.test.ts > surStockageModifie — une fenêtre VOISINE > retire l'attribut quand la voisine est repassée à « systeme »
+    AssertionError: expected true to be false // Object.is equality
+    
+    - Expected
+    + Received
+    
+    - false
+    + true
+    
+     ❯ src/design/theme.test.ts:80:52
+         78|         racine.attributs.set('data-theme', 'clair');
+         79|         surStockageModifie(racine, CLE_THEME, null);
+         80|         expect(racine.attributs.has('data-theme')).toBe(false);
+           |                                                    ^
+         81|     });
+         82| 
+    
+    ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+    
+     Test Files  1 failed (1)
+          Tests  2 failed | 8 passed (10)
+       Start at  06:34:58
+       Duration  467ms (transform 69ms, setup 0ms, collect 46ms, tests 13ms, environment 0ms, prepare 144ms)
+    
+    exit=1
+
+⑤ restauration : git checkout -- client/src/design/theme.ts
+⑥ sha256 APRÈS : 65a69e7b87b93ec816584bcc1b5951fa56303e303370c4bfccde20269e3d2d10
+   sha256 IDENTIQUE à l'avant : restauré
+   git status --porcelain client/src/design/theme.ts : []
+   (crochets vides = propre)

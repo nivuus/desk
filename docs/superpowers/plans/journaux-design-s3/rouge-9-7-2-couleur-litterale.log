@@ -1,0 +1,37 @@
+=== ROUGE « 9-7-2-couleur-litterale » ===
+2026-08-20T04:33:33Z
+fichier muté  : client/src/shell.css
+mutation      : printf '
+.bureau__inexistant {
+    color: #ff00aa;
+}
+' >> client/src/shell.css
+contrôle joué : node client/outils/couleurs-litterales.mjs
+
+① sha256 AVANT : ad78e28ed79a64823100f0ac95c977148fc2dc4e2e2ea708bc4ebb4c967d5f93
+
+② mutation appliquée (code 0)
+
+③ PREUVE que la mutation a MUTÉ — git diff -- client/src/shell.css :
+    @@ -157,3 +157,7 @@
+     .bureau__pastille--fermee {
+         color: var(--texte-faible);
+     }
+    +
+    +.bureau__inexistant {
+    +    color: #ff00aa;
+    +}
+    lignes de diff : 12
+
+④ contrôle :
+    client/src/shell.css:162: color: #ff00aa;
+    fichiers balayés : 64
+    couleurs littérales : 1
+    → elles doivent vivre dans client/src/design/tokens.css
+    exit=1
+
+⑤ restauration : git checkout -- client/src/shell.css
+⑥ sha256 APRÈS : ad78e28ed79a64823100f0ac95c977148fc2dc4e2e2ea708bc4ebb4c967d5f93
+   sha256 IDENTIQUE à l'avant : restauré
+   git status --porcelain client/src/shell.css : []
+   (crochets vides = propre)

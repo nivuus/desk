@@ -1,0 +1,74 @@
+=== Critère ③ — TROISIÈME relevé, APRÈS la revue transverse (tâche 9) ===
+2026-08-20T04:54:11Z
+
+🔴 POURQUOI CE TROISIÈME RELEVÉ EXISTE, ET IL FAUT LE DIRE : la revue transverse a
+   corrigé UN MOT dans un COMMENTAIRE de client/src/style.css (« aucun des sept ne
+   mesure une longueur » → « aucun des huit »), et un autre dans un commentaire de
+   client/src/design/tokens.css. Le volet (a) du critère ③ — « git diff VIDE » — n'est
+   donc PLUS vide après la revue, et le taire aurait été maquiller un relevé.
+
+--- (a) git diff 88bc963..HEAD -- client/index.html client/src/style.css ---
+diff --git a/client/src/style.css b/client/src/style.css
+index a4cdb2b..cbdaf2b 100644
+--- a/client/src/style.css
++++ b/client/src/style.css
+@@ -30,7 +30,7 @@
+    transverse) : S2 n'en ajoute aucune — le garde G4 de `primitives.test.ts`
+    l'interdit dans `primitives.css`, rouge versée — et n'en retire aucune, les
+    trois vivant ici, dans la fenêtre de session. C'est une dette d'ÉNONCÉ, nommée ; aucun contrôle n'en souffre,
+-   puisque aucun des sept ne mesure une longueur. Elle se solde au sous-bloc
++   puisque aucun des huit ne mesure une longueur. Elle se solde au sous-bloc
+    qui a le droit de toucher ces éléments.
+ 
+    ═══════════════════════════════════════════════════════════════════════════
+octets du diff : 875
+
+--- (b) feuilles liées par dist/index.html ---
+href="/assets/socle-ZRS7erzW.css"
+href="/assets/main-CXZaIG5L.css"
+compte de <link rel=stylesheet> : 2
+
+--- (c) sha256 des deux actifs, des deux côtés — LE VOLET QUI DÉCIDE ---
+  BASE aa669b75847d36a8261fcb305976618a5cf8dd748352cbfa3625cfef631b5efe  dist/assets/socle-ZRS7erzW.css
+  BASE 5168f3fe137ba39ad9df5b78251e9d0f13e338ba95c4fbf196289e92905a690c  dist/assets/main-CXZaIG5L.css
+  HEAD aa669b75847d36a8261fcb305976618a5cf8dd748352cbfa3625cfef631b5efe  dist/assets/socle-ZRS7erzW.css
+  HEAD 5168f3fe137ba39ad9df5b78251e9d0f13e338ba95c4fbf196289e92905a690c  dist/assets/main-CXZaIG5L.css
+  socle-ZRS7erzW.css : IDENTIQUE
+  main-CXZaIG5L.css : IDENTIQUE
+  dist/index.html : DIFFÈRE
+
+--- CE QUE CE RELEVÉ ÉTABLIT ---
+  Le volet (a) n'est plus littéralement vide : il porte UN MOT de commentaire.
+  Les volets (b) et (c) sont INCHANGÉS, et ce sont eux qui portent la propriété
+  produit : les minificateurs CSS retirent les commentaires, si bien que les deux
+  actifs de la fenêtre de session gardent leur hachage de contenu et leur NOM,
+  octet pour octet, ainsi que dist/index.html lui-même.
+  ⚠️ Le critère ③ tel qu'il a été MESURÉ À LA RECETTE — diff de 0 octet — l'a été
+     au commit de fin des tâches 1 à 7, AVANT la revue. Les deux relevés sont versés.
+
+🔵 ET LE « dist/index.html : DIFFÈRE » CI-DESSUS EST UNE TROUVAILLE, PAS UN BRUIT.
+   Diff intégral entre les deux dist/index.html :
+     19c19
+     <    aucun des sept contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+     ---
+     >    aucun des huit contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+   Tailles : 3661 octets contre 3661 — IDENTIQUES.
+
+   CE QUE CELA APPREND, et le fichier le disait de lui-même :
+   client/src/design/amorce-theme.js PART VERBATIM DANS CHAQUE PAGE BÂTIE,
+   COMMENTAIRES COMPRIS — le greffon « guac-amorce-theme » de vite.config.ts lit son
+   texte BRUT et le rend tel quel dans le <head>, sans passer par aucun transform.
+   Un mot corrigé dans un commentaire de CE fichier-là n'est donc pas gratuit : il
+   arrive dans les CINQ pages bâties, index.html compris.
+   ⚠️ Ici le coût est NUL en octets — « sept » et « huit » font quatre lettres — mais
+   la règle est générale, et c'est exactement ce que l'en-tête de l'amorce affirme :
+   « un en-tête de raisonnement de 1 921 octets pesait 1 921 octets DANS CHACUNE des
+   pages, et aucun des huit contrôles ne l'aurait dit (§7.7 ne pèse que le CSS) ».
+
+   ⚠️ CE QUE LE CRITÈRE ③ EXIGEAIT, LITTÉRALEMENT, EST TOUJOURS TENU : ses volets (b)
+   et (c) portent sur les <link> de dist/index.html et sur le hachage des DEUX ACTIFS
+   socle-*.css et main-*.css. Les trois sont inchangés. La comparaison octet à octet de
+   dist/index.html LUI-MÊME est une exigence que CETTE RECETTE s'est ajoutée ; elle
+   tenait à la recette (avant la revue) et ne tient plus qu'à un mot de commentaire.
+   ⛔ LE MOT N'A PAS ÉTÉ REMIS À « sept » POUR FAIRE PASSER LE CONTRÔLE : il était
+   FAUX, et ce dépôt n'échange pas une vérité contre un nombre.

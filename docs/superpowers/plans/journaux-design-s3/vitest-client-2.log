@@ -1,0 +1,64 @@
+=== exécution 2 — cd client && npm test ===
+2026-08-20T04:26:02Z
+
+
+> @guacamole/client@0.1.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/client
+
+ ✓ src/design/classes.test.ts (15 tests) 6ms
+ ✓ src/audio.test.ts (11 tests) 6ms
+ ✓ src/prefixe.test.ts (12 tests) 4ms
+ ✓ src/micro.test.ts (17 tests) 9ms
+ ✓ src/design/selecteur-theme.test.ts (8 tests) 5ms
+ ✓ src/fichiers/adaptateur.test.ts (10 tests) 7ms
+stderr | src/fullscreen.test.ts > verrouillage du clavier > avale un rejet de lock sans le propager
+Keyboard Lock refusé Error: refusé
+    at /home/mallanic/Projects/Guacamole/client/src/fullscreen.test.ts:32:48
+    at file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:146:14
+    at file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:533:11
+    at runWithTimeout (file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:39:7)
+    at runTest (file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:1056:17)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at runSuite (file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests (file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:1271:3)
+
+ ✓ src/pointer.test.ts (12 tests) 16ms
+ ✓ src/visibilite.test.ts (6 tests) 5ms
+ ✓ src/fullscreen.test.ts (16 tests) 18ms
+ ✓ src/stats.test.ts (5 tests) 4ms
+ ✓ src/jeton.test.ts (10 tests) 9ms
+ ✓ src/shell.test.ts (17 tests) 21ms
+ ✓ src/status.test.ts (11 tests) 9ms
+ ✓ src/design/tokens.test.ts (17 tests) 17ms
+stderr | src/webrtc.test.ts > waitForAnswer face à des messages malformés > un message brut `null` n'explose pas le gestionnaire et la réponse valide suivante est toujours acceptée
+message de signaling illisible ou de forme inattendue, ignoré
+
+stderr | src/webrtc.test.ts > waitForAnswer face à des messages malformés > les charges utiles non-objet successives (nombre, chaîne, tableau) sont toutes ignorées
+message de signaling illisible ou de forme inattendue, ignoré
+message de signaling illisible ou de forme inattendue, ignoré
+message de signaling illisible ou de forme inattendue, ignoré
+
+ ✓ src/resize.test.ts (5 tests) 5ms
+ ✓ src/design/contraste.test.ts (8 tests) 15ms
+ ✓ src/webrtc.session.test.ts (8 tests) 8ms
+ ✓ src/design/theme.test.ts (10 tests) 5ms
+ ✓ src/webrtc.test.ts (8 tests) 11ms
+ ✓ src/gamepad.test.ts (16 tests) 9ms
+ ✓ src/design/reprise.test.ts (6 tests) 7ms
+ ✓ src/design/primitives.test.ts (9 tests) 16ms
+ ✓ src/fichiers/protocole.test.ts (9 tests) 23ms
+ ✓ src/lien.test.ts (4 tests) 5ms
+ ✓ src/viewport.test.ts (4 tests) 6ms
+ ✓ src/scancodes.test.ts (4 tests) 11ms
+
+ Test Files  26 passed (26)
+      Tests  258 passed (258)
+   Start at  06:26:02
+   Duration  1.00s (transform 1.54s, setup 0ms, collect 3.39s, tests 257ms, environment 7ms, prepare 2.91s)
+
+exit=0

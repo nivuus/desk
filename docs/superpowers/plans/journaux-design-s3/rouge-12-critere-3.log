@@ -1,0 +1,46 @@
+=== ROUGE « 12-critere-3-la-fenetre-de-session-bouge » ===
+2026-08-20T04:34:19Z
+objet : le critère ③ n'est pas une observation, c'est un contrôle — et il DOIT pouvoir échouer.
+fichier muté : client/src/style.css (une seule déclaration ajoutée)
+① sha256 AVANT : 4f8f97abf85774101c0b2a9dc9e5691eb52c367af069e7b6fcea0db276e568f3
+
+③ PREUVE que la mutation a MUTÉ :
+    @@ -182,3 +182,7 @@ body {
+        d'abord. Le rendre discret ou hors du flux d'événements irait contre la
+        spec §9. S'il s'avérait un jour qu'il avale des clics de jeu, c'est une
+        mesure — pas une règle CSS écrite à l'aveugle. */
+    +
+    +#stats {
+    +    opacity: 0.99;
+    +}
+    lignes de diff : 12
+
+④ le critère ③ rejoué, ses trois volets :
+  (a) git diff 88bc963..(arbre) -- client/index.html client/src/style.css
+      octets du diff contre la base : 418  → NON VIDE, le volet (a) ÉCHOUE
+  (b) feuilles liées par dist/index.html :
+      href="/assets/socle-ZRS7erzW.css"
+      href="/assets/main-BMQobqa0.css"
+  (c) sha256 des deux actifs, des deux côtés :
+(eval):24: no matches found: dist/assets/socle-*.css
+      HEAD aa669b75847d36a8261fcb305976618a5cf8dd748352cbfa3625cfef631b5efe  dist/assets/socle-ZRS7erzW.css
+      HEAD 5135eae0fa0b243aa91ec2ad02a362a66680c68e53f6a15d691fdacf4877ea8c  dist/assets/main-BMQobqa0.css
+      → le nom même de l'actif principal a changé : le volet (c) ÉCHOUE
+
+⑤ restauration : git checkout -- client/src/style.css
+⑥ sha256 APRÈS : 4f8f97abf85774101c0b2a9dc9e5691eb52c367af069e7b6fcea0db276e568f3
+   IDENTIQUE : restauré
+   dist rebâti ; feuilles de dist/index.html revenues à :
+      href="/assets/socle-ZRS7erzW.css"
+      href="/assets/main-CXZaIG5L.css"
+   git status --porcelain client/src/style.css : []
+
+⚠️ CORRECTION D'UNE LIGNE DE CE JOURNAL, portée ici plutôt qu'effacée : la ligne
+   « BASE » du volet (c) n'a rien rendu — « no matches found: dist/assets/socle-*.css » —
+   parce que la variable de chemin pointait le dossier PARENT de l'arbre de base, pas son
+   client/. Ce n'est PAS un échec de mesure du côté base ; c'est une faute de chemin de
+   l'instrument. Le côté base, relevé correctement :
+      BASE aa669b75847d36a8261fcb305976618a5cf8dd748352cbfa3625cfef631b5efe  dist/assets/socle-ZRS7erzW.css
+      BASE 5168f3fe137ba39ad9df5b78251e9d0f13e338ba95c4fbf196289e92905a690c  dist/assets/main-CXZaIG5L.css
+   Et c'est bien ce qu'il fallait pour la démonstration : sous mutation, HEAD portait
+   main-BMQobqa0.css (5135eae0…) là où la base porte main-CXZaIG5L.css (5168f3fe…).

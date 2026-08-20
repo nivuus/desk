@@ -1,0 +1,45 @@
+=== ROUGE « 8-7-1-contraste-sous-le-seuil » ===
+2026-08-20T04:33:32Z
+fichier muté  : client/src/design/tokens.css
+mutation      : perl -pi -e 's/--texte-faible: #5c6675;/--texte-faible: #c8ccd2;/' client/src/design/tokens.css
+contrôle joué : node client/outils/contraste.mjs
+
+① sha256 AVANT : 174d50d980cc21b15dd5f45c96525584b93d5725852db82aaca409e351469c6f
+
+② mutation appliquée (code 0)
+
+③ PREUVE que la mutation a MUTÉ — git diff -- client/src/design/tokens.css :
+    @@ -196,7 +196,7 @@
+             --bord-fort: #7d8695;
+             --texte-fort: #10131a;
+             --texte: #3d4450;
+    -        --texte-faible: #5c6675;
+    +        --texte-faible: #c8ccd2;
+             --accent: #2f5fd0;
+             --accent-survol: #2650b4;
+             --sur-accent: #ffffff;
+    @@ -222,7 +222,7 @@
+         --bord-fort: #7d8695;
+         --texte-fort: #10131a;
+         --texte: #3d4450;
+    -    --texte-faible: #5c6675;
+    +    --texte-faible: #c8ccd2;
+         --accent: #2f5fd0;
+         --accent-survol: #2650b4;
+         --sur-accent: #ffffff;
+    lignes de diff : 22
+
+④ contrôle :
+    ÉCHEC clair texte-faible/fond-0 = 1.61 < 4.5
+    ÉCHEC clair texte-faible/fond-1 = 1.50 < 4.5
+    ÉCHEC clair texte-faible/fond-2 = 1.39 < 4.5
+    paires vérifiées : 52
+    échecs : 3
+    minimum global : 1.39
+    exit=1
+
+⑤ restauration : git checkout -- client/src/design/tokens.css
+⑥ sha256 APRÈS : 174d50d980cc21b15dd5f45c96525584b93d5725852db82aaca409e351469c6f
+   sha256 IDENTIQUE à l'avant : restauré
+   git status --porcelain client/src/design/tokens.css : []
+   (crochets vides = propre)
