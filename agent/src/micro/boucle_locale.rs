@@ -26,6 +26,8 @@
 //! mono-fenêtre, c'est-à-dire dans le mode où toutes les recettes audio de ce
 //! dépôt se jouent.
 
+use crate::wasapi_peripherique::{choisir, Choix, Peripherique};
+
 /// Ce que la garde conclut.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Boucle {
@@ -59,6 +61,42 @@ pub fn evaluer(capte: Option<&str>, cable: &str) -> Boucle {
         Boucle::Risque
     } else {
         Boucle::Aucune
+    }
+}
+
+/// Ce que le loopback de CE processus capterait, **sans ouvrir quoi que ce
+/// soit** : `Some(identifiant)` quand `AUDIO_PERIPHERIQUE` élit un
+/// périphérique, `None` quand c'est le défaut de Windows qui sera capté.
+///
+/// 🔴 **Cette fonction DOIT rendre le même verdict que `wasapi::rendu::resoudre`,
+/// et c'est tout ce qu'elle a à faire de difficile.** La garde ci-dessus compare
+/// ce qu'on capte à ce sur quoi on écrit : si les deux règles divergeaient d'un
+/// cas, la garde comparerait le mauvais périphérique et se tromperait dans les
+/// deux sens — laisser passer une boucle réelle, ou couper un micro sain. Les
+/// trois branches de repli de `resoudre` (`Defaut`, `Introuvable`, `Ambigu`)
+/// rendent donc toutes `None` ici, exactement comme elle retombe toutes trois
+/// sur `GetDefaultAudioEndpoint`.
+///
+/// ⚠️ **Pourquoi elle vit ICI et non dans `wasapi/peripherique.rs`.** Deux
+/// raisons, dans cet ordre : c'est la garde de boucle qui a besoin de ce
+/// verdict et personne d'autre, et `peripherique.rs` est à 461 lignes (marge
+/// 39) quand ce fichier-ci en a près de 400 — ce dépôt extrait avant
+/// d'ajouter, il ne comprime pas après.
+///
+/// ⚠️ **`None` n'est PAS « aucun périphérique capté ».** C'est « le défaut de
+/// Windows », que seul un appel COM peut nommer. Le cas « rien n'est capté du
+/// tout » — process loopback, `AUDIO=0` — ne passe pas par ici : il se décide
+/// avant, chez l'appelant, et arrive à [`evaluer`] sous la forme d'un `None`
+/// de son propre paramètre `capte`.
+pub fn identifiant_capte(
+    disponibles: &[Peripherique],
+    demande: Option<&str>,
+) -> Option<String> {
+    match choisir(disponibles, demande) {
+        Choix::Elu { peripherique, .. } => Some(peripherique.identifiant.clone()),
+        // Les trois replis de `resoudre`, réunis : dans les trois cas c'est le
+        // défaut de Windows qui sera capté.
+        Choix::Defaut | Choix::Introuvable { .. } | Choix::Ambigu { .. } => None,
     }
 }
 
@@ -110,3 +148,7 @@ mod tests {
         assert_eq!(evaluer(Some(CABLE), ""), Boucle::Aucune);
     }
 }
+
+#[cfg(test)]
+#[path = "boucle_locale/tests_capte.rs"]
+mod tests_capte;

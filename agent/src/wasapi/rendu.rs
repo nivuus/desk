@@ -1,5 +1,30 @@
-//! Résolution du point de terminaison audio de **rendu** que capte le loopback
-//! de session : la moitié Windows de la correction « A-bis ».
+//! Résolution d'un point de terminaison audio de **rendu**, pour DEUX
+//! consommateurs aux politiques opposées.
+//!
+//! | Consommateur | Ce qu'il cherche | Ce qu'il fait d'un échec |
+//! | --- | --- | --- |
+//! | [`resoudre`] — le loopback (correction « A-bis », `wasapi.rs`) | le rendu que la machine JOUE, à capter | **se replie** sur le défaut de Windows, en `warn!` |
+//! | [`resoudre_cable`] — le micro (bloc E2, `windows_micro.rs`) | le rendu du CÂBLE, sur lequel écrire | **refuse**, et il n'y a pas de micro |
+//!
+//! 🔴 **Cette asymétrie de repli est le fait de conception de ce module, et
+//! elle n'est pas une inconséquence.** A-bis se replie parce que « du son,
+//! peut-être le mauvais, et un `warn!` qui le dit » vaut mieux que « aucun
+//! son ». Pour le micro l'arbitrage **s'inverse** : « la voix de l'utilisateur,
+//! peut-être dans le mauvais périphérique » n'est pas un moindre mal, c'est une
+//! **fuite** — sur une machine où le défaut de Windows est la carte son, cette
+//! voix sortirait des haut-parleurs de la VM. Mieux vaut pas de micro qu'un
+//! micro dans le mauvais tuyau.
+//!
+//! ⚠️ **Le module n'a jamais eu qu'un seul sens : RÉSOUDRE.** Ce sont ses
+//! appelants qui ont des sens contraires — l'un capte, l'autre écrit — et
+//! chacun garde le sien. C'est ce qui a fait préférer, au bloc E2, un second
+//! point d'entrée ici plutôt qu'une centaine de lignes de COM recopiées
+//! ailleurs : le jumeau du chemin de production que la tâche 8 de E1 avait
+//! précisément dû supprimer.
+//!
+//! ⚠️ **[`defaut`] n'est atteignable que par [`resoudre`].** Le chemin du câble
+//! ne l'appelle jamais, et un test garde le prédicat pur qui le lui interdit
+//! (`wasapi_peripherique::demande_cable`, qui ne rend jamais `None`).
 //!
 //! La règle de sélection, elle, est **pure** et vit dans
 //! `agent/src/wasapi/peripherique.rs` (hissée à la racine du crate par
@@ -39,7 +64,7 @@
 
 #![cfg(windows)]
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use windows::core::PCWSTR;
 use windows::Win32::Devices::FunctionDiscovery::PKEY_Device_FriendlyName;
 use windows::Win32::Media::Audio::{
@@ -47,10 +72,19 @@ use windows::Win32::Media::Audio::{
 };
 use windows::Win32::System::Com::{CoTaskMemFree, STGM_READ};
 
-use crate::wasapi_peripherique::{choisir, inventaire, Choix, Peripherique};
+use crate::micro::boucle_locale;
+use crate::wasapi_peripherique::{choisir, demande_cable, inventaire, Choix, Peripherique};
 
-/// Nom de la variable d'environnement. Voir la convention en tête de module.
+/// Nom de la variable d'environnement du LOOPBACK. Voir la convention en tête
+/// de module.
 pub const VARIABLE: &str = "AUDIO_PERIPHERIQUE";
+
+/// Nom de la variable d'environnement du CÂBLE. Convention **valuée** elle
+/// aussi, et pour la même raison : il n'y a rien à armer ni à désarmer, il y a
+/// une cible à nommer. Absente, la désignation INTÉGRÉE
+/// (`wasapi_peripherique::DESIGNATION_CABLE`) s'applique — jamais le défaut de
+/// Windows.
+pub const VARIABLE_CABLE: &str = "MICRO_PERIPHERIQUE";
 
 /// Élit le périphérique de rendu à capter et le rend, **après avoir tracé
 /// lequel a été retenu**.
@@ -122,6 +156,109 @@ pub fn resoudre(enumerateur: &IMMDeviceEnumerator) -> Result<IMMDevice> {
     );
 
     Ok(peripherique)
+}
+
+/// Élit le **CÂBLE** sur lequel écrire le micro, et rend son `IMMDevice` avec
+/// son identifiant d'endpoint. **AUCUN REPLI** (Décision 4 du plan E2).
+///
+/// `MICRO_PERIPHERIQUE` désigne la cible ; absente ou vide, c'est
+/// `DESIGNATION_CABLE` qui s'applique. La demande n'est donc **jamais** `None`,
+/// et `Choix::Defaut` est par construction inatteignable par ce chemin — c'est
+/// ce qui garantit qu'on n'appellera jamais [`defaut`] ici. Un test pur garde
+/// ce prédicat (`wasapi_peripherique::demande_cable`).
+///
+/// `Introuvable` **et** `Ambigu` valent échec, tous deux avec l'inventaire dans
+/// le message : l'appelant journalise, ne pose aucun puits, et la session
+/// continue sans micro. Sur une machine portant deux câbles VB-Audio, la
+/// désignation intégrée devient ambiguë et le micro est indisponible — c'est le
+/// comportement voulu, pas un défaut.
+///
+/// L'**identifiant** rendu n'est pas un ornement : c'est lui que la garde de
+/// boucle locale (`micro/boucle_locale::evaluer`) compare à ce que le loopback
+/// capterait, et une comparaison sur le nom convivial ne vaudrait rien — cette
+/// VM porte deux rendus dont le nom commence par « Haut-parleurs ( ».
+pub fn resoudre_cable(enumerateur: &IMMDeviceEnumerator) -> Result<(IMMDevice, String)> {
+    let brut = std::env::var(VARIABLE_CABLE).ok();
+    let demande = demande_cable(brut.as_deref());
+    let disponibles = enumerer(enumerateur)?;
+
+    let (peripherique, critere) = match choisir(&disponibles, Some(demande)) {
+        Choix::Elu {
+            peripherique,
+            critere,
+        } => (
+            ouvrir_par_identifiant(enumerateur, &peripherique.identifiant)?,
+            critere.libelle(),
+        ),
+        Choix::Introuvable { demande } => {
+            bail!(
+                "aucun peripherique de rendu ne correspond a « {demande} » ({VARIABLE_CABLE}) :                  pas de micro. Disponibles : {}. Le cable virtuel est-il installe ?",
+                inventaire(&disponibles)
+            );
+        }
+        Choix::Ambigu { demande, candidats } => {
+            bail!(
+                "« {demande} » ({VARIABLE_CABLE}) designe plusieurs peripheriques de rendu et la                  regle refuse de trancher : pas de micro, plutot qu'un micro dans le mauvais                  tuyau. Candidats : {}. Disponibles : {}. Precisez la demande, ou donnez                  l'identifiant d'endpoint",
+                candidats.join(" | "),
+                inventaire(&disponibles)
+            );
+        }
+        // ⚠️ INATTEIGNABLE : `demande_cable` ne rend jamais de demande vide, et
+        // `choisir` ne rend `Defaut` que pour une demande absente ou vide. Le
+        // bras existe pour que le compilateur garde cette propriété si l'un des
+        // deux changeait — et il ECHOUE plutôt que de retomber sur le défaut de
+        // Windows, qui est exactement la fuite que ce chemin existe pour
+        // empêcher.
+        Choix::Defaut => bail!(
+            "incoherence interne : la demande de cable ne peut pas etre vide              (voir wasapi_peripherique::demande_cable)"
+        ),
+    };
+
+    // La trace qui rend la Décision 4 falsifiable : sans elle, on ne peut pas
+    // savoir sur QUOI le micro a été écrit, ni si `MICRO_PERIPHERIQUE` a
+    // seulement atteint le processus. Même patron que celle de `resoudre`.
+    let (nom, identifiant) = decrire(&peripherique);
+    tracing::info!(
+        variable = VARIABLE_CABLE,
+        demande = %demande,
+        integree = brut.is_none(),
+        retenu = %nom,
+        identifiant = %identifiant,
+        critere,
+        "cable de rendu retenu pour l'ecriture du micro"
+    );
+
+    Ok((peripherique, identifiant))
+}
+
+/// L'identifiant d'endpoint que le loopback de session capterait, **sans rien
+/// journaliser ni ouvrir de flux**.
+///
+/// La garde de boucle locale a besoin de le connaître **avant** que
+/// `LoopbackCapture::open` ne soit appelé — le fil de rendu du micro démarre
+/// avant, ou en même temps, et il ne doit pas ouvrir le câble si c'est lui que
+/// l'agent capte.
+///
+/// ⚠️ **Elle ne journalise RIEN, et c'est délibéré.** [`resoudre`] émet déjà sa
+/// ligne « périphérique audio de rendu retenu » ; une seconde, identique et
+/// sans cause visible, ferait croire à deux ouvertures — et `agent.log` mêle
+/// le superviseur et tous ses enfants depuis D4.
+///
+/// La décision elle-même est **pure** et vit dans
+/// `micro::boucle_locale::identifiant_capte`, où les quatre branches sont
+/// éprouvées sur l'hôte contre celles de [`resoudre`]. Ici on ne fait que
+/// l'alimenter, et résoudre son `None` — « le défaut de Windows » — par le seul
+/// appel COM qui puisse le nommer.
+pub fn identifiant_capte(enumerateur: &IMMDeviceEnumerator) -> Result<String> {
+    let demande = std::env::var(VARIABLE).ok();
+    let disponibles = enumerer(enumerateur)?;
+    match boucle_locale::identifiant_capte(&disponibles, demande.as_deref()) {
+        Some(identifiant) => Ok(identifiant),
+        None => {
+            let peripherique = defaut(enumerateur)?;
+            Ok(decrire(&peripherique).1)
+        }
+    }
 }
 
 /// Le rendu par défaut de la session — l'ancien comportement, désormais

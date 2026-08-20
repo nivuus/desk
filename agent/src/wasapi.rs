@@ -31,7 +31,8 @@ pub mod process_loopback;
 /// Résolution d'un point de terminaison audio de **rendu** — celui que capte
 /// le loopback (correction « A-bis »), **et** celui du câble sur lequel le
 /// micro écrit (bloc E2). Deux consommateurs, deux politiques de repli
-/// opposées : voir l'en-tête du module.
+/// opposées — le premier se replie, le second refuse : voir l'en-tête du
+/// module, qui porte la table et la raison.
 pub mod rendu;
 
 use anyhow::{bail, Context, Result};
