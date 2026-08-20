@@ -61,7 +61,7 @@ impl Canal for CanalFactice {
 /// `_capacite` est conservée pour ne pas changer la signature appelée par
 /// les tests existants, mais `source_rattachable` fixe la sienne à 4 —
 /// ce qui couvre tous les usages actuels de `source_avec`.
-fn source_avec(
+pub(super) fn source_avec(
     _capacite: usize,
 ) -> (
     SourceDistante,
@@ -73,7 +73,7 @@ fn source_avec(
 }
 
 #[allow(clippy::type_complexity)]
-fn source_rattachable(
+pub(super) fn source_rattachable(
     rattachements: Vec<Option<u32>>,
 ) -> (
     SourceDistante,
@@ -336,139 +336,4 @@ fn une_rafale_d_interrogations_ne_produit_qu_un_seul_essai() {
         assert!(source.next_frame().is_none());
     }
     assert_eq!(*essais.lock().unwrap(), 1, "un seul essai dans la rafale");
-}
-
-/// `set_awake` relaie la visibilité telle quelle au capteur : c'est lui qui
-/// arbitre globalement (tâche 7). `source_avec` sert ici de canal espion, par
-/// son troisième élément (`recus`), pour vérifier le message ÉMIS.
-#[test]
-fn set_awake_transmet_la_visibilite_au_capteur() {
-    let (mut source, _tx, recus) = source_avec(4);
-    source.set_awake(false, false).expect("le capteur accepte");
-    assert_eq!(
-        recus.lock().unwrap().as_slice(),
-        &[VersCapteur::Visibilite { visible: false, focalisee: false }]
-    );
-}
-
-/// Un `Sommeil` poussé par le capteur est retenu, pas ignoré : c'est
-/// `sommeil_a_annoncer` qui le rend disponible à la boucle de transport, et
-/// une seule fois — la réémettre à chaque tour inonderait le canal de
-/// contrôle vers le navigateur. `source_avec` sert ici de file injectable par
-/// son deuxième élément (`tx`).
-#[test]
-fn un_sommeil_pousse_par_le_capteur_est_retenu_pour_le_client() {
-    let (mut source, tx, _recus) = source_avec(4);
-    tx.send(Recu::Sommeil { endormie: true, raison: "evincee".into() }).expect("dépôt");
-    // Le sommeil est consommé par le tour de boucle qui cherche une image.
-    assert!(source.next_frame().is_none());
-    assert_eq!(source.sommeil_a_annoncer(), Some((true, "evincee".to_string())));
-    assert_eq!(source.sommeil_a_annoncer(), None, "une annonce ne se répète pas");
-}
-
-/// `sommeil` est un état COURANT, pas un historique : deux `Sommeil` reçus
-/// avant toute lecture s'écrasent, et seul le dernier doit survivre — sans
-/// quoi la boucle de transport annoncerait au navigateur un état déjà
-/// périmé, ou pire, une file d'annonces grandirait sans jamais se vider.
-#[test]
-fn deux_sommeils_consecutifs_ne_retiennent_que_le_dernier() {
-    let (mut source, tx, _recus) = source_avec(4);
-    tx.send(Recu::Sommeil { endormie: true, raison: "masquee".into() }).expect("dépôt");
-    tx.send(Recu::Sommeil { endormie: true, raison: "evincee".into() }).expect("dépôt");
-    assert!(source.next_frame().is_none());
-    assert_eq!(
-        source.sommeil_a_annoncer(),
-        Some((true, "evincee".to_string())),
-        "seul le dernier sommeil reçu doit survivre"
-    );
-    assert_eq!(source.sommeil_a_annoncer(), None);
-}
-
-/// Une part reçue est retenue jusqu'à ce que la boucle de transport la
-/// consomme, et ne se rend qu'une fois — même patron que
-/// `un_sommeil_pousse_par_le_capteur_est_retenu_pour_le_client` plus haut.
-#[test]
-fn une_part_recue_est_rendue_une_seule_fois() {
-    let (mut source, tx, _recus) = source_avec(4);
-    tx.send(Recu::Part { bps: 4_000_000 }).expect("dépôt");
-    // `next_frame` est ce qui draine le canal : sans lui, rien n'est lu.
-    assert_eq!(source.next_frame(), None);
-    assert_eq!(source.part_a_appliquer(), Some(4_000_000));
-    assert_eq!(source.part_a_appliquer(), None, "une part ne se réapplique pas");
-}
-
-/// Deux parts arrivées entre deux lectures s'écrasent : c'est un état
-/// courant, pas un historique — même régime que `Etat` et `Sommeil`.
-#[test]
-fn deux_parts_arrivees_avant_lecture_s_ecrasent() {
-    let (mut source, tx, _recus) = source_avec(4);
-    tx.send(Recu::Part { bps: 4_000_000 }).expect("dépôt");
-    tx.send(Recu::Part { bps: 2_000_000 }).expect("dépôt");
-    assert_eq!(source.next_frame(), None);
-    assert_eq!(source.part_a_appliquer(), Some(2_000_000), "seule la dernière survit");
-}
-
-/// Un ordre audio reçu est retenu jusqu'à ce que la boucle de transport le
-/// consomme, et ne se rend qu'une fois — même patron que
-/// `une_part_recue_est_rendue_une_seule_fois` plus haut.
-#[test]
-fn un_ordre_audio_recu_est_rendu_une_seule_fois() {
-    let (mut source, tx, _recus) = source_avec(4);
-    tx.send(Recu::Audio { actif: true }).expect("dépôt");
-    // `next_frame` est ce qui draine le canal : sans lui, rien n'est lu.
-    assert_eq!(source.next_frame(), None);
-    assert_eq!(source.audio_a_appliquer(), Some(true));
-    assert_eq!(source.audio_a_appliquer(), None, "un ordre audio ne se réapplique pas");
-}
-
-/// **Au rattachement, l'enfant REDEVIENT MUET** (conception §4.4 ; F2, revue
-/// finale de branche).
-///
-/// Ce que ce test attrape, et que rien n'attrapait : une porteuse dont le
-/// canal casse gardait son drapeau `emet` d'avant la rupture, parce que le
-/// rattachement ne remettait à zéro que l'ordre EN ATTENTE (`None`, « rien à
-/// changer ») et jamais l'état de la source. Deux fenêtres d'un même PID
-/// jouaient alors le même mix, désynchronisées, jusqu'à ce que l'ordre
-/// d'extinction arrive — un écho audible.
-#[test]
-fn un_rattachement_remet_l_enfant_au_silence() {
-    let (mut source, tx, _recus, _rattachements, _essais) = source_rattachable(vec![Some(1600)]);
-    // La fenêtre porte le son, et la boucle de transport a consommé l'ordre :
-    // il ne reste plus rien en attente, seul l'état réel de la source le sait.
-    tx.send(Recu::Audio { actif: true }).expect("dépôt");
-    assert_eq!(source.next_frame(), None);
-    assert_eq!(source.audio_a_appliquer(), Some(true));
-
-    // Le capteur meurt, l'enfant se rattache.
-    drop(tx);
-    assert_eq!(source.next_frame(), None, "le tour de la rupture ne rend pas d'image");
-
-    assert_eq!(
-        source.audio_a_appliquer(),
-        Some(false),
-        "un rattachement doit ORDONNER le silence, pas se taire sur la question"
-    );
-}
-
-/// Deux ordres audio arrivés entre deux lectures s'écrasent : même régime
-/// que `deux_parts_arrivees_avant_lecture_s_ecrasent` juste au-dessus.
-#[test]
-fn deux_ordres_audio_arrives_avant_lecture_s_ecrasent() {
-    let (mut source, tx, _recus) = source_avec(4);
-    tx.send(Recu::Audio { actif: true }).expect("dépôt");
-    tx.send(Recu::Audio { actif: false }).expect("dépôt");
-    assert_eq!(source.next_frame(), None);
-    assert_eq!(source.audio_a_appliquer(), Some(false), "seul le dernier ordre survit");
-}
-
-/// Même régime que `sommeil_a_annoncer` : l'annonce est un CHANGEMENT, elle
-/// se consomme. Sans quoi la branche de transport qui l'interroge à ~100 Hz
-/// inonderait le canal de contrôle.
-#[test]
-fn un_plein_ecran_pousse_est_annonce_une_seule_fois() {
-    let (mut source, tx, _recus) = source_avec(4);
-    tx.send(Recu::PleinEcran { actif: true }).expect("dépôt");
-    assert_eq!(source.next_frame(), None);
-    assert_eq!(source.plein_ecran_a_annoncer(), Some(true));
-    assert_eq!(source.plein_ecran_a_annoncer(), None, "une annonce ne se répète pas");
 }

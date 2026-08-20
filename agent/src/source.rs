@@ -152,6 +152,27 @@ pub trait VideoSource {
         None
     }
 
+    /// Rend le presse-papier de la VM en attente d'annonce, et le consomme.
+    ///
+    /// `None` dans le premier membre du couple signale un REFUS de taille : le
+    /// contenu dépassait `presse_papier::PRESSE_PAPIER_MAX` et a été refusé,
+    /// jamais tronqué. Le second membre porte alors la taille refusée, en
+    /// octets d'UTF-8 après normalisation des fins de ligne.
+    ///
+    /// **État courant, pas un historique** : deux copies arrivées entre deux
+    /// lectures s'écrasent — même régime que `plein_ecran_a_annoncer` juste
+    /// au-dessus. Comme elle consomme, la branche `a1septies` de
+    /// `transport/tick.rs`, qui l'interroge à ~100 Hz, ne peut pas inonder le
+    /// canal de contrôle.
+    ///
+    /// Par défaut sans effet : une source fichier n'a pas de presse-papier, et
+    /// une `WindowsSource` tenue en direct par son propre processus n'a pas de
+    /// capteur pour le lui pousser — c'est le capteur qui détient le
+    /// presse-papier de la VM, et lui seul (sous-bloc P1).
+    fn presse_papier_a_annoncer(&mut self) -> Option<(Option<String>, u32)> {
+        None
+    }
+
     /// Vrai tant que le capteur tient cette fenêtre pour ENDORMIE — encodeur
     /// et duplication relâchés (sous-bloc D5), aucune image produite.
     ///
