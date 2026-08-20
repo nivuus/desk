@@ -73,11 +73,23 @@
 // nommer un sous-bloc déjà clos*. Elle serait passée au rouge à la fin de S2 sur
 // les trois entrées annotées « S2 », FORÇANT la décision au lieu de la laisser à
 // une règle de revue.
-// ⚠️ PARTIELLE, et le mot est pesé : elle juge le SOUS-BLOC NOMMÉ, jamais le
-// CONTENU de l'annotation — « S3 — la gouttière entre cartes » changé en
-// « S3 — n'importe quoi » lui échapperait —, et elle exige que le dépôt sache
-// quel sous-bloc est courant, ce qu'aucun fichier ne dit aujourd'hui. Elle n'est
-// pas construite ici : hors du périmètre de S2, et LÉGUÉE.
+// ✅ ELLE EST CONSTRUITE — SOUS-BLOC S3, TÂCHE 7. `SOUS_BLOCS_CLOS` ci-dessous
+// la nomme, et `tokens-orphelins.mjs` la fait échouer. Le sous-bloc qui la bâtit
+// est celui qui s'apprêtait à en avoir besoin : S3 a re-étiqueté DEUX entrées
+// (`--t-2xl` et `--t-3xl`, interverties par rapport à la spec, la seconde
+// nommant un hub que ⑥ ne livre pas), et construire un garde-fou dans le
+// sous-bloc qui va s'en servir est la seule façon de savoir qu'il mord.
+// ⚠️ PARTIELLE, et le mot reste pesé : elle juge le SOUS-BLOC NOMMÉ, jamais le
+// CONTENU de l'annotation — « S4 — la gouttière entre cartes » changé en
+// « S4 — n'importe quoi » lui échappe —, et elle DÉPEND D'UNE LISTE TENUE À LA
+// MAIN : un sous-bloc qui ne s'y déclare pas la neutralise. C'est une règle de
+// revue de plus, et elle est déclarée plutôt que dissimulée.
+// ⚠️ ET APRÈS S3 ELLE NE GARDE QU'UNE ENTRÉE — un mécanisme pour une ligne.
+// C'est une objection, et voici la réponse : cette ligne-là est précisément
+// celle dont la prose dit qu'« aucun sous-bloc n'a le droit de la laisser en
+// place sans décider », une injonction que RIEN n'appliquait ; et une
+// mitigation construite APRÈS la faute qu'elle devait empêcher n'aurait plus
+// rien à empêcher.
 //
 // ── POURQUOI CETTE PALETTE N'EST PAS SIMPLEMENT RÉDUITE À CE QUI SERT ──────
 // C'était la voie évidente, et elle est REFUSÉE SUR MESURE, prise le 19 août
@@ -164,6 +176,32 @@
 // non-redémarrage, cause réseau citée en entier. Le paragraphe long existait
 // déjà ; en fabriquer un aurait été vider un contrôle pour en verdir un autre.
 // ═══════════════════════════════════════════════════════════════════════════
+/**
+ * LES SOUS-BLOCS CLOS DE ⑥ — aucune entrée de la liste ci-dessous n'a le droit
+ * d'en nommer un.
+ *
+ * 🔴 SA CLAUSE DE TENUE EST CELLE DE LA LISTE ELLE-MÊME : « ce nombre est tenu
+ * à jour par la tâche qui le rend faux, jamais par une tâche de ménage plus
+ * tard ». Un sous-bloc s'y inscrit dans le commit qui achève son
+ * implémentation.
+ *
+ * ⚠️ `S3` S'Y INSCRIT LUI-MÊME, ET IL FAUT DIRE CE QUE CELA VEUT DIRE : au
+ * moment où cette ligne est écrite, la recette et la revue transverse de S3
+ * n'ont pas encore tourné. C'est délibéré, et la propriété obtenue est la
+ * bonne — si l'une des deux devait re-étiqueter une entrée vers « S3 », le
+ * contrôle rougirait, ce qui est exactement le comportement voulu : un token
+ * que S3 n'a PAS consommé ne doit pas réclamer S3. Aucune des deux ne
+ * re-étiquette quoi que ce soit ; la tâche 7 elle-même n'en re-étiquette
+ * aucune — elle change la FORME, pas le contenu.
+ */
+const SOUS_BLOCS_CLOS = new Set(['S1', 'S2', 'S3']);
+
+/**
+ * ⚠️ LE SOUS-BLOC EST UN CHAMP STRUCTURÉ, IL N'EST PLUS NOYÉ DANS UNE PHRASE.
+ * C'est ce qui rend la mitigation possible : tant que « S4 » n'était qu'un
+ * préfixe de prose, aucune commande ne pouvait le lire sans deviner. Le champ
+ * `raison` porte le reste, et lui reste hors de toute portée automatique.
+ */
 const EN_ATTENTE_D_APPELANT = new Map([
     // ── Le cas particulier, et il est nommé ───────────────────────────────
     // 🔴 `--police-mono` N'A QU'UN SEUL APPELANT PRÉVU, `#stats`, et la spec
@@ -176,7 +214,13 @@ const EN_ATTENTE_D_APPELANT = new Map([
     // il le retire. Aucun autre sous-bloc n'a le droit de laisser cette ligne
     // en place sans décider. ⚠️ S2 NE L'A PAS ROUVERT, et pas par omission :
     // aucune de ses quatre familles n'a besoin d'une pile monospace.
-    ['--police-mono', 'S4 — #stats, OU RETRAIT : le seul token dont le sort est encore ouvert'],
+    [
+        '--police-mono',
+        {
+            sousBloc: 'S4',
+            raison: '#stats, OU RETRAIT : le seul token dont le sort est encore ouvert',
+        },
+    ],
 ]);
 
-export { EN_ATTENTE_D_APPELANT };
+export { EN_ATTENTE_D_APPELANT, SOUS_BLOCS_CLOS };

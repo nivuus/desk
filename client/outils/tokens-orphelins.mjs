@@ -1,14 +1,19 @@
 #!/usr/bin/env node
 // Contrôle §7.6 de la spec ⑥ — AUCUN TOKEN ORPHELIN, AUCUN `var()` NON DÉCLARÉ.
 //
-// Deux inclusions, dans les deux sens, entre les tokens DÉCLARÉS par
-// `tokens.css` et les tokens EMPLOYÉS par les feuilles de production :
+// TROIS assertions — deux inclusions dans les deux sens entre les tokens
+// DÉCLARÉS par `tokens.css` et les tokens EMPLOYÉS par les feuilles de
+// production, plus une sur la liste d'attente elle-même :
 //
 //   ① employé ⊆ déclaré — un `var(--fond-O)` (lettre O au lieu du zéro) est une
 //      faute de frappe que le navigateur avale en silence : la propriété prend
 //      sa valeur de repli, ou rien, et la page reste debout mais fausse ;
 //   ② déclaré ⊆ employé — un token que personne n'appelle est du code mort, et
-//      un code mort dans une source unique de valeurs se recopie longtemps.
+//      un code mort dans une source unique de valeurs se recopie longtemps ;
+//   ③ aucune entrée de la liste d'attente ne nomme un sous-bloc DÉJÀ CLOS —
+//      la mitigation partielle du re-étiquetage, bâtie au sous-bloc S3, et que
+//      le plan de S2 déclarait impossible TROIS fois. Sa doctrine et son
+//      objection vivent auprès de la liste.
 //
 // Il ne porte AUCUNE règle de parsing : `tokensDeclares` et `tokensReferences`
 // vivent dans `client/src/design/tokens.ts`, qui est typechecké et testé.
@@ -62,7 +67,7 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { tokensDeclares, tokensReferences } from '../src/design/tokens.ts';
 import configVite from '../vite.config.ts';
-import { EN_ATTENTE_D_APPELANT } from './tokens-orphelins/attente.mjs';
+import { EN_ATTENTE_D_APPELANT, SOUS_BLOCS_CLOS } from './tokens-orphelins/attente.mjs';
 
 /** La source unique : elle DÉCLARE, elle n'emploie pas. Hors du périmètre. */
 const SOURCE = 'client/src/design/tokens.css';
@@ -191,11 +196,39 @@ for (const token of aRetirer) {
     );
 }
 
-const echecs = nonDeclares.length + nouveaux.length + aRetirer.length;
+// ③ AUCUNE ENTRÉE NE NOMME UN SOUS-BLOC DÉJÀ CLOS — la mitigation partielle du
+//   re-étiquetage, bâtie au sous-bloc S3 (tâche 7).
+//
+// 🔴 CE QU'ELLE ATTRAPE, ET QU'AUCUNE AUTRE ASSERTION NE VOIT : les deux
+// inclusions ci-dessus comparent des ENSEMBLES DE NOMS DE TOKENS. Déplacer une
+// entrée de « S2 » à « S3 » ne les fait bouger ni l'une ni l'autre — c'est le
+// point le plus faible du dispositif, et la porte par laquelle une liste
+// d'attente s'assouplit indéfiniment sans qu'aucune commande ne le dise.
+//
+// ⚠️ ELLE EST PARTIELLE, et le mot est pesé : elle juge le SOUS-BLOC NOMMÉ,
+// jamais le CONTENU de la raison, et elle dépend d'une liste de sous-blocs clos
+// TENUE À LA MAIN — un sous-bloc qui ne s'y déclare pas la neutralise. La
+// doctrine complète, et l'objection qu'elle ne garde qu'une entrée après S3,
+// vivent auprès de la liste, dans `tokens-orphelins/attente.mjs`.
+const surSousBlocClos = [...EN_ATTENTE_D_APPELANT.entries()]
+    .filter(([, entree]) => SOUS_BLOCS_CLOS.has(entree.sousBloc))
+    .sort(([a], [b]) => a.localeCompare(b));
+console.log(
+    `\ninclusion ③ — aucune entrée ne nomme un sous-bloc clos ` +
+        `(${[...SOUS_BLOCS_CLOS].join(', ')}) : ${surSousBlocClos.length} écart(s)`,
+);
+for (const [token, entree] of surSousBlocClos) {
+    console.log(
+        `  SOUS-BLOC CLOS  ${token}  nommait ${entree.sousBloc}, qui est clos : ` +
+            `décider ou re-étiqueter avec sa raison`,
+    );
+}
+
+const echecs = nonDeclares.length + nouveaux.length + aRetirer.length + surSousBlocClos.length;
 console.log(`\ntotal : ${echecs} écart(s)`);
 if (echecs === 0) {
     console.log(
-        `les deux inclusions tiennent ; ${EN_ATTENTE_D_APPELANT.size} token(s) restent ` +
+        `les trois assertions tiennent ; ${EN_ATTENTE_D_APPELANT.size} token(s) restent ` +
             `en attente d'appelant, nommés dans tokens-orphelins/attente.mjs`,
     );
 }
