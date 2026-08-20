@@ -17,9 +17,13 @@
 //
 // ⚠️ `position`, `taille` et `longueur` sont des entiers 64 bits côté Rust et
 // des `number` ici : au-delà de 2^53 les deux implémentations divergeraient en
-// silence. F1 est en lecture seule sur un répertoire local ouvert par la File
-// System Access API, où un fichier de 9 pétaoctets n'existe pas ; la borne est
-// nommée, pas gardée.
+// silence. Le pont sert un répertoire local ouvert par la File System Access
+// API, où un fichier de 9 pétaoctets n'existe pas ; la borne est nommée, pas
+// gardée.
+//
+// ⚠️ *Cette phrase disait « F1 est en lecture seule » : F2 a ouvert l'écriture,
+// et la borne vaut désormais aussi pour la `position` d'un morceau écrit et
+// pour les `octets` d'une écriture due. Elle n'est pas davantage gardée.*
 
 import { CODES_ECHEC, type CodeEchec } from './fichiers';
 

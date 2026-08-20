@@ -12,6 +12,13 @@
 //!
 //! **Trois catégories de fils, et la frontière entre elles est stricte.**
 //!
+//! ⚠️ **QUATRE FILS DEPUIS F2, POUR TROIS CATÉGORIES.** Le **fil d'écriture**
+//! (`pont::ecriture::fil`) rejoint la catégorie 3 : il ne complète aucune
+//! commande, mais il partage sa propriété essentielle — **il ne court sur
+//! aucun fil du système**. Il lit des fichiers de la racine, ce que le fil du
+//! pont ne doit JAMAIS faire (voir `pont/service.rs` : « il s'attendrait
+//! lui-même »), et c'est précisément pourquoi il lui est distinct.
+//!
 //! 1. **Les fils de RAPPEL, que le SYSTÈME possède.** ProjFS en tient un vivier
 //!    dimensionné par `PRJ_STARTVIRTUALIZING_OPTIONS.PoolThreadCount` /
 //!    `ConcurrentThreadCount` (windows-rs, `ProjectedFileSystem/mod.rs:518-523`).
@@ -192,9 +199,9 @@ impl Virtualisation {
         // le chemin est RELATIF à la racine de virtualisation.
         let racine_relative = Box::leak(Box::new([0u16; 1]));
         let mappings = Box::leak(Box::new([PRJ_NOTIFICATION_MAPPING {
-            // Le masque vit dans le module PUR, où il est épinglé : cinq bits
-            // exactement, et aucun d'eux ne retombe dans le bras fourre-tout
-            // de `notifications::decider`.
+            // Le masque vit dans le module PUR, où il est épinglé : SEPT bits
+            // exactement depuis F2 — cinq en F1 —, et aucun d'eux ne retombe
+            // dans le bras fourre-tout de `notifications::decider`.
             NotificationBitMask: windows::Win32::Storage::ProjectedFileSystem::PRJ_NOTIFY_TYPES(
                 crate::pont::notifications::MASQUE,
             ),

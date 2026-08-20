@@ -1,5 +1,10 @@
-//! Découpe d'une plage de lecture en trames bornées. **PUR** : aucun `cfg`,
-//! testé isolément sur l'hôte.
+//! Découpe d'une plage en trames bornées. **PUR** : aucun `cfg`, testé
+//! isolément sur l'hôte.
+//!
+//! ⚠️ *Ce module disait « une plage de LECTURE » : depuis F2, le **fil
+//! d'écriture** l'emploie aussi pour découper un fichier local à pousser — et
+//! les trois défauts décrits ci-dessous y coûtent alors le fichier de
+//! l'utilisateur, sur SON poste, plutôt qu'une hydratation fausse.*
 //!
 //! ⚠️ **C'est le module où vivent les erreurs d'unité, et c'est pour cela
 //! qu'il est pur et testé à part** (spec §7.3). Le critère (2) de la recette
