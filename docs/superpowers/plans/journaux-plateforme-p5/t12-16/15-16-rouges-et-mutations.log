@@ -1,0 +1,98 @@
+=== Tâches 15 et 16 — les rouges vues, et les mutations jouées ===
+Date : 21 août 2026. Chaque message ci-dessous est celui d'une exécution RÉELLE.
+
+⚠️ MÉTHODE, appliquée à chaque mutation : commit AVANT de muter (la restauration
+   d'un fichier suivi est décidable, celle d'un fichier non suivi ne l'est pas),
+   `sha256sum` relevé avant et revérifié après, `git diff --stat` pour prouver
+   que le diff n'est pas vide, et `git status --porcelain` identique en sortie.
+   Le harnais de mutation LÈVE si son motif est introuvable — sans quoi une
+   mutation non jouée se lirait comme un test qui résiste.
+
+───────────────────────────────────────────────────────────────────────────────
+TÂCHE 15 — la rotation du secret d'enrôlement
+───────────────────────────────────────────────────────────────────────────────
+
+ROUGES DE PREMIÈRE ÉCRITURE (avant toute implémentation)
+
+  depot/agent.test.ts, 3 tests :
+    TypeError: remplacerEmpreinte is not a function
+
+  admin/enroler-agent.test.ts, 6 tests :
+    TypeError: roterLeSecret is not a function
+    AssertionError: expected { vm: 'w1', adresse: '192.168.3.2' } to deeply
+      equal { mode: 'enroler', vm: 'w1', …(1) }
+    AssertionError: expected { Object (refus) } to deeply equal
+      { mode: 'roter', vm: 'w1' }
+
+MUTATIONS APRÈS LE VERT
+
+  15-A — faire tourner le PRÉFIXE en même temps que le secret
+         (la rouge que le plan nomme, assertion (b))
+    FAIL  🔴 (b) le PRÉFIXE DE SESSION est inchangé — relu des deux côtés
+    AssertionError: expected '3XYu7IeCqlmjTVQchCcugw'
+                    to be 'r38QGOHJ2CzIctqZmLdvow'
+    → 1 échec sur 13. La mutation ne fait tomber QUE le test qui la vise.
+
+  15-B — succès silencieux sur une VM inconnue (`if (false)`)
+    FAIL  🔴 (c) une VM INCONNUE rend un refus MOTIVÉ, jamais une exception
+    TypeError: Cannot read properties of undefined (reading 'prefixe_session')
+    → 1 échec sur 13.
+
+  15-C — retirer la clause WHERE de `remplacerEmpreinte`
+    FAIL  🔴 ne touche AUCUNE autre VM, et ne lève pas sur une VM inconnue
+    AssertionError: expected 'scrypt$16384$8$1$68VXTxz20drogcKh6hrv…'
+                    to be 'scrypt$16384$8$1$LAhFSu7z5YO7RnZtgA3D…'
+    → 1 échec sur 8. C'est le test à DEUX VMs qui l'attrape ; un test à une
+      seule VM serait resté vert, et toutes les VMs auraient partagé un secret.
+
+  Restauration : sha256sum -c → « Réussi » sur les deux fichiers.
+
+───────────────────────────────────────────────────────────────────────────────
+TÂCHE 16 — l'adresse dérivée de `location`
+───────────────────────────────────────────────────────────────────────────────
+
+ROUGE DE PREMIÈRE ÉCRITURE
+
+  Error: Failed to load url ./adresse-plateforme (resolved id:
+    ./adresse-plateforme) in .../client/src/adresse-plateforme.test.ts.
+    Does the file exist?
+
+MUTATIONS APRÈS LE VERT
+
+  16-A — garder `ws://` EN DUR (la rouge que le plan nomme)
+    4 échecs sur 9, dont :
+    FAIL (a) une page en https: donne https: et wss:
+    AssertionError: expected 'ws://plateforme.exemple.fr'
+                    to be 'wss://plateforme.exemple.fr'
+    FAIL 🔴 (d bis) sous TLS, JAMAIS de ws: ni de http: — c'est le contenu mixte
+    AssertionError: expected false to be true
+
+  16-B — reprendre `hostname` au lieu de `host` (le PORT de la page est perdu)
+    2 échecs sur 9 :
+    FAIL (e) le PORT de la page est conservé, pas remplacé par 8080
+    AssertionError: expected 'ws://localhost' to be 'ws://localhost:5173'
+    FAIL (f) un port NON standard sous TLS est conservé lui aussi
+    AssertionError: expected 'wss://exemple.fr' to be 'wss://exemple.fr:8443'
+    → c'est exactement la moitié du défaut d'origine : le code d'avant employait
+      `location.hostname`, et c'est ce qui lui faisait perdre le port pour le
+      remplacer par 8080.
+
+  16-C — traiter un paramètre VIDE comme explicite
+    FAIL (g) un paramètre VIDE ou absent ne l'emporte pas
+    AssertionError: expected '' to be 'wss://plateforme.exemple.fr'
+    → 1 échec sur 9. Sans ce test, `?signaling=` produirait une adresse vide,
+      donc une panne sans message.
+
+  Restauration : sha256sum -c → « Réussi ».
+
+───────────────────────────────────────────────────────────────────────────────
+LA PREUVE QUI PORTE SUR L'ARTEFACT, PAS SUR LA SOURCE
+───────────────────────────────────────────────────────────────────────────────
+
+  `npx vite build` puis `grep -c 8080 client/dist/assets/*.js` :
+  ZÉRO occurrence de 8080 dans le bundle livré, et `wss` présent dans
+  `client/dist/assets/adresse-plateforme-*.js`.
+
+  ⚠️ CE QUE CELA N'ÉTABLIT PAS : qu'un navigateur réel ouvre bien la session
+  derrière le proxy TLS. C'est le critère ⑤ de la recette (tâche 17), et il n'a
+  pas été joué ici.
