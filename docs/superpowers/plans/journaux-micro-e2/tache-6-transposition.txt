@@ -1,0 +1,14 @@
+test result: ok. 685 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.75s
+--- controle de transposition, ANNONCE AVANT d'etre mesure : 685 ---
+--- et plus fort que le compte : la LISTE des noms de test, avant/apres,
+    normalisee sur le chemin du module (demarrage::micro::mesure:: -> demarrage::micro::) ---
+466c466
+< test result: ok. 685 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.82s
+---
+> test result: ok. 685 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.83s
+(seule la ligne de duree differe)
+
+--- tailles par la commande ---
+   76 src/demarrage/micro.rs
+  413 src/demarrage/micro/mesure.rs
+  489 total
