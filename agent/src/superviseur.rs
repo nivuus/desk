@@ -22,7 +22,10 @@ pub mod lanceur;
 pub mod signalisation;
 
 #[cfg(windows)]
-pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
+pub async fn executer(
+    config: crate::Config,
+    identite: Option<tokio::sync::watch::Receiver<Option<crate::plateforme::Identite>>>,
+) -> anyhow::Result<()> {
     use anyhow::Context;
 
     // La session de contrôle porte le préfixe de la VM depuis le sous-bloc
@@ -68,6 +71,7 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
             signaling_url,
             local_ip,
             prefixe.clone(),
+            identite,
         )?;
 
         let (tx_hook, rx_hook) = std::sync::mpsc::channel();
@@ -82,6 +86,9 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
 }
 
 #[cfg(not(windows))]
-pub async fn executer(_config: crate::Config) -> anyhow::Result<()> {
+pub async fn executer(
+    _config: crate::Config,
+    _identite: Option<tokio::sync::watch::Receiver<Option<crate::plateforme::Identite>>>,
+) -> anyhow::Result<()> {
     anyhow::bail!("le mode superviseur n'existe que sur Windows")
 }

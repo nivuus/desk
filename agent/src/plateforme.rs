@@ -24,6 +24,7 @@
 //! définitivement, et la plateforme punirait une coupure de réseau comme une
 //! panne d'agent.
 
+pub mod identite;
 pub mod repli;
 
 // Tests extraits dans un fichier voisin (même mécanisme et même raison que

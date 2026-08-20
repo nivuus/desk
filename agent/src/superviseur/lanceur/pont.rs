@@ -38,7 +38,8 @@ impl LanceurDeProcessus {
         // préfixe de la VM. Le pont, lui, s'enrôlera pour son propre JETON —
         // le préfixe qu'il en tirera n'a pas à recomposer ce nom.
         let session = crate::superviseur::protocole::session_du_pont(&self.prefixe);
-        let mut pont = std::process::Command::new(&self.executable)
+        let mut commande = std::process::Command::new(&self.executable);
+        commande
             .env("PONT", "1")
             .env("SESSION_ID", &session)
             .env("SIGNALING_URL", &self.signaling_url)
@@ -58,9 +59,27 @@ impl LanceurDeProcessus {
             // source du tout, et `scripts/run-agent.sh` pose `TEST_FILE` dès
             // qu'elle est définie dans l'environnement d'appel.
             .env_remove("TEST_FILE")
-            .env_remove("WINDOW_TITLE")
-            .spawn()
-            .context("lancement du pont fichiers")?;
+            .env_remove("WINDOW_TITLE");
+        // 🔴 **ET L'IDENTITÉ — C'EST LE DÉFAUT MESURÉ LE 20 AOÛT 2026, ET IL
+        // ÉTAIT DANS CETTE LISTE-CI.** `AGENT_VM` et `AGENT_SECRET` n'y
+        // figuraient pas : le pont s'enrôlait sous la MÊME identité que son
+        // père, la plateforme n'admet qu'un socket par VM, et les deux
+        // s'évinçaient sans terme — **95 enrôlements, 94 évictions en 64 s**,
+        // à ~1,5 Hz, avec pour prix des messages incrémentaux perdus, des
+        // réponses de lancement perdues, et deux boucles de découverte
+        // d'applications au lieu d'une.
+        //
+        // ⚠️ **LE PONT A BIEN BESOIN D'UNE IDENTITÉ — mais d'un JETON, PAS
+        // D'UN CANAL.** Il ouvre sa propre `PeerConnection` vers la page-shell
+        // (c'est ce que dit `main.rs`, et c'est pourquoi il est placé APRÈS
+        // l'enrôlement), donc il présente un jeton comme un enfant. Ce qu'il
+        // ne fait JAMAIS du canal, en revanche : il ne bat pas le cœur de la
+        // VM, ne pousse aucun catalogue, ne reçoit aucun ordre de lancement.
+        // La question « identité propre, ou pas d'enrôlement du tout ? » se
+        // tranche donc sur cet usage réel : **pas d'enrôlement**, et le jeton
+        // du père par `AGENT_JETON`.
+        self.identite_heritee(&mut commande);
+        let mut pont = commande.spawn().context("lancement du pont fichiers")?;
         let pid = pont.id();
         let handle = HANDLE(pont.as_raw_handle() as *mut core::ffi::c_void);
         if let Err(erreur) = unsafe { AssignProcessToJobObject(self.job, handle) } {

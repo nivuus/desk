@@ -398,8 +398,35 @@ async fn main() -> Result<()> {
     //
     // Le mode capteur, lui, est déjà reparti plus haut : il ne parle à aucun
     // signaling et n'a donc aucune identité à présenter.
-    let mut _canal_plateforme = match (config.agent_vm.clone(), config.agent_secret.clone()) {
-        (Some(vm), Some(secret)) => {
+    //
+    // 🔴 **UN SEUL PROCESSUS PAR VM OUVRE CE CANAL, ET C'EST LE CORRECTIF DU
+    // 20 août 2026.** Le pont fichiers et les enfants de fenêtre héritaient de
+    // `AGENT_VM`/`AGENT_SECRET` et s'enrôlaient sous la MÊME identité que le
+    // superviseur ; le registre de la plateforme n'admettant qu'un socket par
+    // VM, ils s'évinçaient l'un l'autre sans terme — 95 enrôlements et
+    // 94 évictions en 64 s, mesurés. Ils reçoivent désormais `AGENT_JETON` du
+    // superviseur (`superviseur/lanceur.rs`) et n'ouvrent aucun canal. La
+    // règle qui tranche est PURE et testée sur l'hôte : `plateforme::identite`.
+    let mut _canal_plateforme = match plateforme::identite::source(
+        variable_non_vide("AGENT_JETON").as_deref(),
+        config.agent_vm.as_deref(),
+        config.agent_secret.as_deref(),
+    ) {
+        plateforme::identite::SourceIdentite::Heritee(jeton) => {
+            // ⚠️ AUCUN PRÉFIXE N'EST HÉRITÉ, et ce n'est pas un oubli :
+            // `config.prefixe` n'est lu que par le mode superviseur, qui
+            // compose sa session de contrôle avec. Un enfant reçoit sa session
+            // toute faite dans `SESSION_ID`, et le pont la sienne — toutes deux
+            // composées par le superviseur, qui connaît le préfixe. Hériter
+            // d'un préfixe inutilisé ne ferait qu'inviter à s'en servir.
+            tracing::info!(
+                "identité héritée du superviseur (AGENT_JETON) : ce processus n'ouvre \
+                 aucun canal /agent, un seul socket par VM"
+            );
+            config.jeton = Some(jeton);
+            None
+        }
+        plateforme::identite::SourceIdentite::Enrolement { vm, secret } => {
             let mut canal = plateforme::ouvrir(&config.signaling_url, vm, secret);
             // Attente NON bornée, et c'est délibéré : sans identité, aucune
             // session ne peut s'établir, et la boucle de reprise journalise
@@ -415,11 +442,11 @@ async fn main() -> Result<()> {
             config.jeton = Some(identite.jeton);
             Some(canal)
         }
-        _ => {
+        plateforme::identite::SourceIdentite::Aucune => {
             tracing::warn!(
-                "AGENT_VM ou AGENT_SECRET absent : aucun enrôlement, donc aucun jeton d'agent. \
-                 La plateforme REFUSERA la poignée de main et aucune session ne s'établira \
-                 (sous-bloc P3, sans interrupteur permissif)."
+                "AGENT_VM ou AGENT_SECRET absent, et aucun AGENT_JETON hérité : aucun \
+                 jeton d'agent. La plateforme REFUSERA la poignée de main et aucune \
+                 session ne s'établira (sous-bloc P3, sans interrupteur permissif)."
             );
             None
         }
@@ -463,7 +490,15 @@ async fn main() -> Result<()> {
     // (voir `superviseur::lanceur`), sans quoi chacun se prendrait pour un
     // superviseur et lancerait les siens, indéfiniment.
     if config.superviseur {
-        return superviseur::executer(config).await;
+        // 🔴 LA VEILLE D'IDENTITÉ, ET NON `config.jeton`, EST CE QUI PART AU
+        // LANCEUR. Un superviseur vit des heures ; le jeton d'agent, lui, dure
+        // dix minutes et se renouvelle à chaque battement. Passer l'instantané
+        // du démarrage ferait qu'une fenêtre ouverte une heure plus tard
+        // recevrait un jeton mort, que la garde de la plateforme refuserait —
+        // et aucune session ne s'établirait, sans qu'aucune trace ne rattache
+        // la panne à l'âge d'une variable.
+        let veille = _canal_plateforme.as_ref().map(plateforme::Canal::veille_identite);
+        return superviseur::executer(config, veille).await;
     }
 
     demarrage::executer(config).await
