@@ -1,0 +1,29 @@
+=== CONTRE-ÉPREUVE DE BLANCHIMENT « 7-2-couleur-en-commentaire » ===
+2026-08-20T04:35:54Z
+objet : le contrôle doit rester VERT — ce qui est glissé dans un COMMENTAIRE ne compte pas.
+fichier muté : client/src/shell.css
+mutation : printf '
+/* une couleur littérale en commentaire : #ff00aa, rgb(1,2,3), hsl(4 5%% 6%%) */
+' >> client/src/shell.css
+contrôle : node client/outils/couleurs-litterales.mjs
+
+① sha256 AVANT : ad78e28ed79a64823100f0ac95c977148fc2dc4e2e2ea708bc4ebb4c967d5f93
+
+③ PREUVE que la mutation a MUTÉ :
+    @@ -157,3 +157,5 @@
+     .bureau__pastille--fermee {
+         color: var(--texte-faible);
+     }
+    +
+    +/* une couleur littérale en commentaire : #ff00aa, rgb(1,2,3), hsl(4 5% 6%) */
+    lignes de diff : 10
+
+④ contrôle :
+    fichiers balayés : 64
+    couleurs littérales : 0
+    exit=0
+    ✅ VERT : le blanchiment tient.
+
+⑥ sha256 APRÈS : ad78e28ed79a64823100f0ac95c977148fc2dc4e2e2ea708bc4ebb4c967d5f93
+   restauré
+   git status --porcelain client/src/shell.css : []

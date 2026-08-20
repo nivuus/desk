@@ -1,0 +1,20 @@
+=== Critère ③ — exécution 2 (les deux dist/ SUPPRIMÉS puis rebâtis) ===
+2026-08-20T04:27:32Z
+base = 88bc963, HEAD = 9da33a1
+
+--- (a) git diff 88bc963..HEAD -- client/index.html client/src/style.css ---
+octets du diff : 0
+
+--- (b) feuilles liées par dist/index.html ---
+href="/assets/socle-ZRS7erzW.css"
+href="/assets/main-CXZaIG5L.css"
+compte de <link rel=stylesheet> : 2
+
+--- (c) sha256 des deux actifs, des deux côtés ---
+  BASE aa669b75847d36a8261fcb305976618a5cf8dd748352cbfa3625cfef631b5efe  dist/assets/socle-ZRS7erzW.css
+  BASE 5168f3fe137ba39ad9df5b78251e9d0f13e338ba95c4fbf196289e92905a690c  dist/assets/main-CXZaIG5L.css
+  HEAD aa669b75847d36a8261fcb305976618a5cf8dd748352cbfa3625cfef631b5efe  dist/assets/socle-ZRS7erzW.css
+  HEAD 5168f3fe137ba39ad9df5b78251e9d0f13e338ba95c4fbf196289e92905a690c  dist/assets/main-CXZaIG5L.css
+  socle-ZRS7erzW.css : IDENTIQUE
+  main-CXZaIG5L.css : IDENTIQUE
+  dist/index.html : IDENTIQUE

@@ -1,0 +1,59 @@
+=== TOUTES LES ROUGES ET CONTRE-ÉPREUVES, EN UNE TABLE ===
+2026-08-20T04:36:30Z
+Chacune a son journal complet à côté. Discipline appliquée à chacune, sans exception :
+sha256 avant → mutation → PREUVE que le diff est non vide → contrôle → git checkout →
+sha256 après identique → git status --porcelain VIDE.
+
+ROUGE                                      exit     ce qui a rougi
+10-7-7-poids-au-dessus-du-plafond          exit=1  
+11-7-3-surface-sans-feuille-de-tokens      exit=1  
+12-critere-3                                       
+13-7-5-bascule-de-theme                    exit=1  
+14-T3-ton-du-bandeau                       exit=1  
+15-T6-selecteur-rappelle-marquer           exit=1  
+16-7-9-declaration-en-commentaire          exit=1  
+1-7-4-couleur-hors-clair                   exit=1  
+2-7-9-classe-non-declaree                  exit=1  
+3-7-9-aucune-famille-au-produit            exit=1  
+4-7-9-famille-absente-de-la-galerie        exit=1  
+5-7-6-var-non-declaree                     exit=1  
+6-7-6-nouvel-orphelin                      exit=1  
+7-7-6-sous-bloc-clos-mitigation-T7         exit=1  
+8-7-1-contraste-sous-le-seuil              exit=1  
+9-7-2-couleur-litterale                    exit=1  
+
+CONTRE-ÉPREUVE (vert attendu)              exit    
+7-2-couleur-en-commentaire                 exit=0  
+7-9-classes-en-commentaire                 exit=0  
+
+--- toutes les mutations ont-elles MUTÉ ? (une seule ligne « n'a rien muté » invaliderait sa rouge) ---
+  aucune : les 16 rouges et 2 contre-épreuves ont toutes un diff non vide
+
+--- l'arbre est-il revenu à l'identique ? ---
+git status --porcelain client/ : []
+git status --porcelain (tout)  :
+    ?? docs/superpowers/plans/journaux-design-s3/
+
+⚠️ DEUX PRÉCISIONS QUE LA TABLE CI-DESSUS NE PORTE PAS.
+
+① « 12-critere-3 » n'a pas de ligne « exit= » et ce n'est pas un oubli : son contrôle
+   n'est pas une commande unique mais le critère ③ lui-même, en trois volets. Les trois
+   échouent sous mutation, et le journal les montre un par un (diff de 418 octets contre
+   la base, hachage de main-*.css passé de 5168f3fe… à 5135eae0…, nom d'actif changé).
+
+② QUATRE des seize rouges ont dû être REFAITES parce que leur premier essai ne mesurait
+   pas ce qu'il prétendait. C'est le mode de défaillance que ce dépôt paie le plus souvent,
+   et il est déclaré plutôt que dissimulé :
+   • 1-7-4  : la mutation n'atteignait qu'UN des deux blocs clairs (indentation), donc la
+              rouge tombait sur la clause ① PRÉEXISTANTE et non sur la clause ③ que S3
+              ajoute. Note complète en fin de son journal.
+   • 3-7-9  : elle ne mutait qu'une surface sur deux et introduisait des classes inventées ;
+              l'écart venait de la clause ①, pas de l'assertion ② A visée. Note en fin de
+              son journal.
+   • 4-7-9  : le premier lancement a été fait AVANT d'écrire le script de mutation. Le
+              harnais l'a dit lui-même — « LA MUTATION N'A RIEN MUTÉ », 0 ligne de diff,
+              exit=0 — et c'est exactement pourquoi l'étape ③ existe. Rejouée ensuite.
+   • 15-T6  : la première expression de substitution ne correspondait à rien dans le
+              fichier (0 ligne de diff, exit=0). Même détection par l'étape ③, rejouée.
+   Les journaux de 4 et 15 portent leur SECOND essai, celui qui mute ; ceux de 1 et 3
+   portent leur second essai PLUS la note du premier.

@@ -1,0 +1,296 @@
+=== Critère ② — la liste d'attente a rétréci, et chaque sortie a son appelant ÉCRIT ===
+2026-08-20T04:27:47Z
+
+--- l'entrée : la liste au commit de base 88bc963 ---
+  --e-1
+  --e-5
+  --e-6
+  --e-7
+  --lh-large
+  --police-mono
+  --r-plein
+  --t-2xl
+  --t-3xl
+  --t-xs
+  compte : 10
+
+--- la sortie : la liste à HEAD ---
+  --police-mono
+  compte : 1
+
+--- les entrées SORTIES entre la base et HEAD ---
+  SORTI  --e-1
+  SORTI  --e-5
+  SORTI  --e-6
+  SORTI  --e-7
+  SORTI  --lh-large
+  SORTI  --r-plein
+  SORTI  --t-2xl
+  SORTI  --t-3xl
+  SORTI  --t-xs
+--- les entrées ENTRÉES (aucune attendue) ---
+[rien au-dessus = aucune entrée ajoutée]
+
+--- la liste, commit par commit ---
+  88bc963  0  entrée(s)  apps(g1): le canal /agent devient bidirectionnel
+  715e21e  0  entrée(s)  design(s3): l'angle mort de §7.4, et la portée qu'il élargit
+  45f5521  0  entrée(s)  design(s3): le contrôle §7.9, et il naît ROUGE sur l'arbre intact
+  b854b32  0  entrée(s)  design(s3): le TON du bandeau, et la fin du double NO-OP
+  83f4bbf  0  entrée(s)  design(s3): la page-shell habillée, et l'écart de S2 refermé
+  cdc5199  0  entrée(s)  design(s3): l'écran de connexion habillé, et la liste tombe à UNE entrée
+  7361405  0  entrée(s)  design(s3): le sélecteur de thème du PRODUIT, et le défaut qu'il obligeait à corriger
+  2bfc2b6  0  entrée(s)  design(s3): la mitigation du re-étiquetage, que S2 déclarait impossible
+
+--- la liste, commit par commit (REFAIT — voir la note ci-dessous) ---
+  88bc963  10 entrée(s)  apps(g1): le canal /agent devient bidirectionnel
+  715e21e  10 entrée(s)  design(s3): l'angle mort de §7.4, et la portée qu'il élargit
+  45f5521  10 entrée(s)  design(s3): le contrôle §7.9, et il naît ROUGE sur l'arbre intact
+  b854b32  10 entrée(s)  design(s3): le TON du bandeau, et la fin du double NO-OP
+  83f4bbf   3 entrée(s)  design(s3): la page-shell habillée, et l'écart de S2 refermé
+  cdc5199   1 entrée(s)  design(s3): l'écran de connexion habillé, et la liste tombe à UNE entrée
+  7361405   1 entrée(s)  design(s3): le sélecteur de thème du PRODUIT, et le défaut qu'il obligeait à corriger
+  2bfc2b6   1 entrée(s)  design(s3): la mitigation du re-étiquetage, que S2 déclarait impossible
+
+  ⚠️ Le premier essai de cette boucle a rendu 0 partout, y compris pour 88bc963 dont
+     les dix entrées sont listées plus haut : en zsh, "$c:client/..." fait manger le
+     ':c' comme modificateur de paramètre et git reçoit '88bc963lient/...'. Le compte
+     de 0 était indiscernable d'une mesure. Corrigé en "${c}:client/...".
+
+--- le diff de attente.mjs, commit par commit (git show <commit> -- attente.mjs) ---
+
+########## 715e21e — design(s3): l'angle mort de §7.4, et la portée qu'il élargit ##########
+[fin — rien au-dessus = ce commit ne touche pas attente.mjs]
+
+########## 45f5521 — design(s3): le contrôle §7.9, et il naît ROUGE sur l'arbre intact ##########
+[fin — rien au-dessus = ce commit ne touche pas attente.mjs]
+
+########## b854b32 — design(s3): le TON du bandeau, et la fin du double NO-OP ##########
+[fin — rien au-dessus = ce commit ne touche pas attente.mjs]
+
+########## 83f4bbf — design(s3): la page-shell habillée, et l'écart de S2 refermé ##########
+diff --git a/client/outils/tokens-orphelins/attente.mjs b/client/outils/tokens-orphelins/attente.mjs
+index 003457a..2ead37c 100644
+--- a/client/outils/tokens-orphelins/attente.mjs
++++ b/client/outils/tokens-orphelins/attente.mjs
+@@ -117,18 +117,30 @@
+ // Chaque entrée nomme le sous-bloc qui la consommera. Relevé le 20 août 2026,
+ // au commit de la tâche 8 du sous-bloc S2.
+ // ═══════════════════════════════════════════════════════════════════════════
++//
++// 🔴 SEPT ENTRÉES SONT SORTIES À LA TÂCHE 4 DU SOUS-BLOC S3, dans le commit
++// même qui a écrit leurs appelants — `client/src/shell.css`, la feuille de la
++// page-shell. Le contrôle exige l'ÉGALITÉ : les retirer sans écrire l'appelant
++// aurait rendu `NOUVEL ORPHELIN`, l'écrire sans les retirer
++// `À RETIRER DE LA LISTE`, et les deux sens ont été vus rouges en S1.
++//
++//   --t-2xl    le titre de la page-shell        (.bureau__titre)
++//   --e-5      la gouttière entre cartes        (.bureau__fenetres)
++//   --e-6      la marge des sections            (.bureau__section)
++//   --e-7      la marge de tête de la surface   (.bureau)
++//   --t-xs     l'étiquette de la pastille       (.bureau__pastille)
++//   --e-1      son écart interne                (.bureau__pastille)
++//   --r-plein  sa forme                         (.bureau__pastille)
++//
++// ⚠️ LA FAMILLE ÉTIQUETTE / PASTILLE ÉTAIT RE-TAGUÉE « S3 ou plus tard » PAR
++// S2, faute de savoir si une pastille existerait. Elle existe : c'est l'état
++// ouverte / fermée d'une fenêtre, dit par l'ENCRE et jamais par un fond, pour
++// que son contraste reste dans les 52 paires mesurées du §7.1.
++// ═══════════════════════════════════════════════════════════════════════════
+ const EN_ATTENTE_D_APPELANT = new Map([
+-    // ── Famille ÉTIQUETTE / PASTILLE — RE-TAGUÉE S2 → S3+ par S2 (tâche 8) ─
+-    ['--t-xs', 'S3 ou plus tard — la mention légale et les étiquettes'],
+-    ['--e-1', 'S3 ou plus tard — l’écart interne d’une étiquette'],
+-    ['--r-plein', 'S3 ou plus tard — les pastilles et les boutons ronds'],
+-    // ── Typographie, interligne et espacement — S3 ────────────────────────
+-    ['--t-2xl', 'S3 — le titre de l’écran de connexion'],
++    // ── Typographie et interligne — S3 ────────────────────────────────────
+     ['--t-3xl', 'S3 — le titre du hub'],
+     ['--lh-large', 'S3 — les paragraphes longs'],
+-    ['--e-5', 'S3 — la gouttière entre cartes'],
+-    ['--e-6', 'S3 — la marge des sections'],
+-    ['--e-7', 'S3 — la marge de tête des surfaces'],
+     // ── Le cas particulier, et il est nommé ───────────────────────────────
+     // 🔴 `--police-mono` N'A QU'UN SEUL APPELANT PRÉVU, `#stats`, et la spec
+     // §4.3 laisse son sort ouvert : « si aucun appelant n'apparaît, le token
+[fin — rien au-dessus = ce commit ne touche pas attente.mjs]
+
+########## cdc5199 — design(s3): l'écran de connexion habillé, et la liste tombe à UNE entrée ##########
+diff --git a/client/outils/tokens-orphelins/attente.mjs b/client/outils/tokens-orphelins/attente.mjs
+index 2ead37c..e21223b 100644
+--- a/client/outils/tokens-orphelins/attente.mjs
++++ b/client/outils/tokens-orphelins/attente.mjs
+@@ -137,10 +137,34 @@
+ // ouverte / fermée d'une fenêtre, dit par l'ENCRE et jamais par un fond, pour
+ // que son contraste reste dans les 52 paires mesurées du §7.1.
+ // ═══════════════════════════════════════════════════════════════════════════
++//
++// 🔴 DEUX ENTRÉES DE PLUS SONT SORTIES À LA TÂCHE 5 DE S3, avec leurs appelants
++// dans `client/src/connexion.css` :
++//
++//   --t-3xl     le titre de l'écran de connexion  (.connexion__titre)
++//   --lh-large  l'interligne de son bandeau       (.connexion__message)
++//
++// ⚠️ ET LEURS DEUX ANNOTATIONS ÉTAIENT FAUSSES, CHACUNE À SA FAÇON — corrigé
++// ici plutôt que recopié, comme la règle de revue de ce fichier l'exige.
++//
++//   ① `--t-2xl` et `--t-3xl` ÉTAIENT INTERVERTIS par rapport à la spec. Le
++//      §4.4 de la spec écrit « --t-2xl … titre de page » et « --t-3xl … titre
++//      d'écran de connexion » ; cette liste disait l'inverse. LA SPEC L'EMPORTE
++//      — le cran de 32 px va au titre que la page n'a qu'une fois, celui de
++//      24 px au titre d'une page qui porte des sections sous lui.
++//   ② `--t-3xl` NOMMAIT « le titre du hub », c'est-à-dire une surface que le
++//      sous-projet ⑥ NE LIVRE PAS : sa spec §6 l'écrit en toutes lettres, « le
++//      hub ne figure PAS dans ce découpage ». L'entrée attribuait donc à S3 un
++//      appelant que S3 ne pouvait pas écrire, et elle serait restée en attente
++//      pour toujours si la spec n'avait pas tranché.
++//
++// ⚠️ `--lh-large` ÉTAIT LE PLUS FRAGILE DES NEUF, et il n'a PAS été consommé
++// pour vider une ligne : le bandeau de l'écran de connexion porte les plus
++// longues proses du produit — motif de refus, état de la VM, aveu de
++// non-redémarrage, cause réseau citée en entier. Le paragraphe long existait
++// déjà ; en fabriquer un aurait été vider un contrôle pour en verdir un autre.
++// ═══════════════════════════════════════════════════════════════════════════
+ const EN_ATTENTE_D_APPELANT = new Map([
+-    // ── Typographie et interligne — S3 ────────────────────────────────────
+-    ['--t-3xl', 'S3 — le titre du hub'],
+-    ['--lh-large', 'S3 — les paragraphes longs'],
+     // ── Le cas particulier, et il est nommé ───────────────────────────────
+     // 🔴 `--police-mono` N'A QU'UN SEUL APPELANT PRÉVU, `#stats`, et la spec
+     // §4.3 laisse son sort ouvert : « si aucun appelant n'apparaît, le token
+[fin — rien au-dessus = ce commit ne touche pas attente.mjs]
+
+########## 7361405 — design(s3): le sélecteur de thème du PRODUIT, et le défaut qu'il obligeait à corriger ##########
+[fin — rien au-dessus = ce commit ne touche pas attente.mjs]
+
+########## 2bfc2b6 — design(s3): la mitigation du re-étiquetage, que S2 déclarait impossible ##########
+diff --git a/client/outils/tokens-orphelins/attente.mjs b/client/outils/tokens-orphelins/attente.mjs
+index e21223b..4fe0481 100644
+--- a/client/outils/tokens-orphelins/attente.mjs
++++ b/client/outils/tokens-orphelins/attente.mjs
+@@ -73,11 +73,23 @@
+ // nommer un sous-bloc déjà clos*. Elle serait passée au rouge à la fin de S2 sur
+ // les trois entrées annotées « S2 », FORÇANT la décision au lieu de la laisser à
+ // une règle de revue.
+-// ⚠️ PARTIELLE, et le mot est pesé : elle juge le SOUS-BLOC NOMMÉ, jamais le
+-// CONTENU de l'annotation — « S3 — la gouttière entre cartes » changé en
+-// « S3 — n'importe quoi » lui échapperait —, et elle exige que le dépôt sache
+-// quel sous-bloc est courant, ce qu'aucun fichier ne dit aujourd'hui. Elle n'est
+-// pas construite ici : hors du périmètre de S2, et LÉGUÉE.
++// ✅ ELLE EST CONSTRUITE — SOUS-BLOC S3, TÂCHE 7. `SOUS_BLOCS_CLOS` ci-dessous
++// la nomme, et `tokens-orphelins.mjs` la fait échouer. Le sous-bloc qui la bâtit
++// est celui qui s'apprêtait à en avoir besoin : S3 a re-étiqueté DEUX entrées
++// (`--t-2xl` et `--t-3xl`, interverties par rapport à la spec, la seconde
++// nommant un hub que ⑥ ne livre pas), et construire un garde-fou dans le
++// sous-bloc qui va s'en servir est la seule façon de savoir qu'il mord.
++// ⚠️ PARTIELLE, et le mot reste pesé : elle juge le SOUS-BLOC NOMMÉ, jamais le
++// CONTENU de l'annotation — « S4 — la gouttière entre cartes » changé en
++// « S4 — n'importe quoi » lui échappe —, et elle DÉPEND D'UNE LISTE TENUE À LA
++// MAIN : un sous-bloc qui ne s'y déclare pas la neutralise. C'est une règle de
++// revue de plus, et elle est déclarée plutôt que dissimulée.
++// ⚠️ ET APRÈS S3 ELLE NE GARDE QU'UNE ENTRÉE — un mécanisme pour une ligne.
++// C'est une objection, et voici la réponse : cette ligne-là est précisément
++// celle dont la prose dit qu'« aucun sous-bloc n'a le droit de la laisser en
++// place sans décider », une injonction que RIEN n'appliquait ; et une
++// mitigation construite APRÈS la faute qu'elle devait empêcher n'aurait plus
++// rien à empêcher.
+ //
+ // ── POURQUOI CETTE PALETTE N'EST PAS SIMPLEMENT RÉDUITE À CE QUI SERT ──────
+ // C'était la voie évidente, et elle est REFUSÉE SUR MESURE, prise le 19 août
+@@ -164,6 +176,32 @@
+ // non-redémarrage, cause réseau citée en entier. Le paragraphe long existait
+ // déjà ; en fabriquer un aurait été vider un contrôle pour en verdir un autre.
+ // ═══════════════════════════════════════════════════════════════════════════
++/**
++ * LES SOUS-BLOCS CLOS DE ⑥ — aucune entrée de la liste ci-dessous n'a le droit
++ * d'en nommer un.
++ *
++ * 🔴 SA CLAUSE DE TENUE EST CELLE DE LA LISTE ELLE-MÊME : « ce nombre est tenu
++ * à jour par la tâche qui le rend faux, jamais par une tâche de ménage plus
++ * tard ». Un sous-bloc s'y inscrit dans le commit qui achève son
++ * implémentation.
++ *
++ * ⚠️ `S3` S'Y INSCRIT LUI-MÊME, ET IL FAUT DIRE CE QUE CELA VEUT DIRE : au
++ * moment où cette ligne est écrite, la recette et la revue transverse de S3
++ * n'ont pas encore tourné. C'est délibéré, et la propriété obtenue est la
++ * bonne — si l'une des deux devait re-étiqueter une entrée vers « S3 », le
++ * contrôle rougirait, ce qui est exactement le comportement voulu : un token
++ * que S3 n'a PAS consommé ne doit pas réclamer S3. Aucune des deux ne
++ * re-étiquette quoi que ce soit ; la tâche 7 elle-même n'en re-étiquette
++ * aucune — elle change la FORME, pas le contenu.
++ */
++const SOUS_BLOCS_CLOS = new Set(['S1', 'S2', 'S3']);
++
++/**
++ * ⚠️ LE SOUS-BLOC EST UN CHAMP STRUCTURÉ, IL N'EST PLUS NOYÉ DANS UNE PHRASE.
++ * C'est ce qui rend la mitigation possible : tant que « S4 » n'était qu'un
++ * préfixe de prose, aucune commande ne pouvait le lire sans deviner. Le champ
++ * `raison` porte le reste, et lui reste hors de toute portée automatique.
++ */
+ const EN_ATTENTE_D_APPELANT = new Map([
+     // ── Le cas particulier, et il est nommé ───────────────────────────────
+     // 🔴 `--police-mono` N'A QU'UN SEUL APPELANT PRÉVU, `#stats`, et la spec
+@@ -176,7 +214,13 @@ const EN_ATTENTE_D_APPELANT = new Map([
+     // il le retire. Aucun autre sous-bloc n'a le droit de laisser cette ligne
+     // en place sans décider. ⚠️ S2 NE L'A PAS ROUVERT, et pas par omission :
+     // aucune de ses quatre familles n'a besoin d'une pile monospace.
+-    ['--police-mono', 'S4 — #stats, OU RETRAIT : le seul token dont le sort est encore ouvert'],
++    [
++        '--police-mono',
++        {
++            sousBloc: 'S4',
++            raison: '#stats, OU RETRAIT : le seul token dont le sort est encore ouvert',
++        },
++    ],
+ ]);
+ 
+-export { EN_ATTENTE_D_APPELANT };
++export { EN_ATTENTE_D_APPELANT, SOUS_BLOCS_CLOS };
+[fin — rien au-dessus = ce commit ne touche pas attente.mjs]
+
+--- l'appelant RÉEL de chacune des neuf sorties, dans le PÉRIMÈTRE de §7.6 ---
+(périmètre relevé par le contrôle lui-même : les 13 fichiers listés dans design-verifier-1.log)
+
+  ### --e-1
+    src/shell.css:147:    padding: var(--e-1) var(--e-2);
+
+  ### --e-5
+    src/connexion.css:39:    padding: var(--e-5);
+    src/connexion.css:49:    margin-block: 0 var(--e-5);
+    src/connexion.css:81:    margin-block-start: var(--e-5);
+    src/shell.css:57:    padding-inline: var(--e-5);
+    src/shell.css:61:    margin-block: 0 var(--e-5);
+    src/shell.css:108:    gap: var(--e-5);
+
+  ### --e-6
+    src/shell.css:71:    margin-block-start: var(--e-6);
+
+  ### --e-7
+    src/shell.css:55:    margin-block: var(--e-7);
+
+  ### --lh-large
+    src/connexion.css:77:    line-height: var(--lh-large);
+
+  ### --r-plein
+    src/shell.css:145:    border-radius: var(--r-plein);
+
+  ### --t-2xl
+    src/shell.css:65:    font-size: var(--t-2xl);
+
+  ### --t-3xl
+    src/connexion.css:57:    font-size: var(--t-3xl);
+
+  ### --t-xs
+    src/shell.css:149:    font-size: var(--t-xs);
+
+--- et --police-mono, la SEULE qui reste en attente : aucun appelant attendu ---
+    ../client/design.html:102:                font-family: var(--police-mono);
+    ../client/design.html:135:                font-family: var(--police-mono);
+    [rien au-dessus = aucun appelant, ce qui est l'état déclaré]
+
+  ❌ CORRECTION de la ligne ci-dessus, écrite avant d'avoir lu sa propre sortie :
+     « rien au-dessus » est FAUX — --police-mono a DEUX appelants, tous deux dans
+     client/design.html, qui est EXCLU du périmètre de §7.6 (la galerie rend tous les
+     tokens par construction). C'est précisément pourquoi il reste orphelin AU SENS DU
+     PRODUIT et donc en liste d'attente. Le grep ci-dessus balayait src ET ../client/*.html,
+     donc plus large que le périmètre. Contrôle refait sur le périmètre RÉEL :
+     [rien au-dessus = aucun appelant DANS LE PÉRIMÈTRE — c'est l'état déclaré]

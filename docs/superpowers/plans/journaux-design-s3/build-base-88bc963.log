@@ -1,0 +1,25 @@
+vite v6.4.3 building for production...
+transforming...
+✓ 44 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/shell.html                           3.63 kB │ gzip: 1.92 kB
+dist/index.html                           3.66 kB │ gzip: 1.88 kB
+dist/connexion.html                       4.39 kB │ gzip: 2.15 kB
+dist/primitives.html                     11.84 kB │ gzip: 4.27 kB
+dist/design.html                         12.67 kB │ gzip: 4.35 kB
+dist/assets/main-CXZaIG5L.css             1.49 kB │ gzip: 0.47 kB
+dist/assets/socle-ZRS7erzW.css            2.18 kB │ gzip: 0.93 kB
+dist/assets/primitives-GyKd6lAV.css       2.70 kB │ gzip: 0.63 kB
+dist/assets/primitives-CB43GhUe.js        0.25 kB │ gzip: 0.21 kB
+dist/assets/jeton-kqOyiZdD.js             0.26 kB │ gzip: 0.18 kB
+dist/assets/prefixe-iK9obSCN.js           0.62 kB │ gzip: 0.40 kB
+dist/assets/socle-Dd8_6xY7.js             0.71 kB │ gzip: 0.40 kB
+dist/assets/selecteur-theme-CXIgzib-.js   0.78 kB │ gzip: 0.43 kB
+dist/assets/connexion-CEB4Dws6.js         1.67 kB │ gzip: 0.85 kB
+dist/assets/webrtc-DpgdNYJG.js            3.71 kB │ gzip: 1.65 kB
+dist/assets/shell-CYVu6ZSZ.js            10.03 kB │ gzip: 4.06 kB
+dist/assets/design-Cm7EA0rE.js           16.03 kB │ gzip: 6.58 kB
+dist/assets/main-D_ugls83.js             19.77 kB │ gzip: 6.94 kB
+✓ built in 337ms
+exit=0

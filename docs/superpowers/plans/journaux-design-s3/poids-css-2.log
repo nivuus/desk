@@ -1,0 +1,13 @@
+=== exécution 2 — node client/outils/poids-css.mjs, DEPUIS LA RACINE (critère ⑤) ===
+2026-08-20T04:29:23Z
+
+    546  connexion-BM9rYjiV.css
+   1493  main-CXZaIG5L.css
+   2730  primitives-D5YB3zNP.css
+   1063  shell-C87uhTzH.css
+   2179  socle-ZRS7erzW.css
+feuilles émises : 5
+somme : 8011 octets
+plafond : 12288 octets (arbitraire, voir l'en-tête)
+marge : 4277 octets
+exit=0

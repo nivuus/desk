@@ -1,0 +1,22 @@
+=== exécution 1 — cd proto && npm test ===
+2026-08-20T04:26:13Z
+
+
+> @guacamole/proto@0.1.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/proto
+
+ ✓ ts/control.test.ts (17 tests) 5ms
+ ✓ ts/fichiers.test.ts (9 tests) 16ms
+ ✓ ts/fichiers-entetes.test.ts (32 tests) 8ms
+ ✓ ts/input.test.ts (20 tests) 4ms
+ ✓ ts/plateforme.test.ts (52 tests) 11ms
+
+ Test Files  5 passed (5)
+      Tests  130 passed (130)
+   Start at  06:26:15
+   Duration  444ms (transform 344ms, setup 0ms, collect 439ms, tests 45ms, environment 1ms, prepare 509ms)
+
+exit=0

@@ -1,0 +1,22 @@
+=== exécution 1 — node client/outils/classes-employees.mjs (critère ④, §7.9) ===
+2026-08-20T04:29:22Z
+
+déclarées : 52 classe(s)
+employées : 51 classe(s)
+familles de primitives : bouton, champ, message, surface
+
+① toute classe employée est déclarée : 0 écart(s)
+
+② A — les primitives atteignent le PRODUIT :
+  client/index.html : aucune famille
+  client/shell.html : bouton, message, surface
+  client/connexion.html : bouton, champ, message, surface
+
+③ B — chaque famille est rendue par client/primitives.html :
+  bouton : 4 classe(s) employée(s) sur 4 déclarée(s)
+  champ : 6 classe(s) employée(s) sur 6 déclarée(s)
+  message : 4 classe(s) employée(s) sur 4 déclarée(s)
+  surface : 4 classe(s) employée(s) sur 4 déclarée(s)
+
+total : 0 écart(s)
+exit=0

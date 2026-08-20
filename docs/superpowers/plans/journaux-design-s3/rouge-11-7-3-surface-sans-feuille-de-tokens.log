@@ -1,0 +1,37 @@
+=== ROUGE « 11-7-3-surface-sans-feuille-de-tokens » ===
+2026-08-20T04:33:53Z
+fichier muté  : client/shell.html
+mutation      : perl -pi -e 's{<link rel="stylesheet" href="/src/design/socle.css" />}{}' client/shell.html
+contrôle joué : (cd client && npx vite build > /dev/null 2>&1); node client/outils/surfaces-baties.mjs
+
+① sha256 AVANT : 0e4fd4c9b08bbd40bfc1f1a0b8ffce082d7531184cf62413ac605399e7d37c8d
+
+② mutation appliquée (code 0)
+
+③ PREUVE que la mutation a MUTÉ — git diff -- client/shell.html :
+    @@ -8,7 +8,7 @@
+              primitives, puis la feuille de cette surface. Trois `<link>` et aucun
+              `@import` : c'est ce qui laisse Vite PARTAGER `primitives.css` entre
+              les pages qui la lient, au lieu de la ré-inliner dans chacune. -->
+    -    <link rel="stylesheet" href="/src/design/socle.css" />
+    +    
+         <link rel="stylesheet" href="/src/design/primitives.css" />
+         <link rel="stylesheet" href="/src/shell.css" />
+       </head>
+    lignes de diff : 13
+
+④ contrôle :
+    pages bâties : 5 (connexion.html, design.html, index.html, primitives.html, shell.html)
+    
+    assertion A — un <link rel="stylesheet"> par page : 0 échec(s)
+    assertion B — une feuille liée déclarant --fond-0 : 1 échec(s) (évaluée sur 5 page(s))
+      ÉCHEC B  shell.html : lie /assets/shell-C87uhTzH.css, /assets/primitives-D5YB3zNP.css, aucune ne déclare --fond-0
+    
+    total : 1 échec(s)
+    exit=1
+
+⑤ restauration : git checkout -- client/shell.html
+⑥ sha256 APRÈS : 0e4fd4c9b08bbd40bfc1f1a0b8ffce082d7531184cf62413ac605399e7d37c8d
+   sha256 IDENTIQUE à l'avant : restauré
+   git status --porcelain client/shell.html : []
+   (crochets vides = propre)

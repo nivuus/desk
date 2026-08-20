@@ -1,0 +1,46 @@
+=== ROUGE « 5-7-6-var-non-declaree » ===
+2026-08-20T04:33:10Z
+fichier muté  : client/src/shell.css
+mutation      : printf '
+.bureau__inexistant {
+    color: var(--nexiste-pas);
+}
+' >> client/src/shell.css
+contrôle joué : node client/outils/tokens-orphelins.mjs
+
+① sha256 AVANT : ad78e28ed79a64823100f0ac95c977148fc2dc4e2e2ea708bc4ebb4c967d5f93
+
+② mutation appliquée (code 0)
+
+③ PREUVE que la mutation a MUTÉ — git diff -- client/src/shell.css :
+    @@ -157,3 +157,7 @@
+     .bureau__pastille--fermee {
+         color: var(--texte-faible);
+     }
+    +
+    +.bureau__inexistant {
+    +    color: var(--nexiste-pas);
+    +}
+    lignes de diff : 12
+
+④ contrôle :
+    source        : client/src/design/tokens.css — 48 token(s) déclaré(s)
+    périmètre     : 13 fichier(s) — 48 token(s) employé(s)
+      balayés : client/src/connexion.css, client/src/design/base.css, client/src/design/primitives/bouton.css, client/src/design/primitives/champ.css, client/src/design/primitives/message.css, client/src/design/primitives/surface.css, client/src/design/primitives.css, client/src/design/socle.css, client/src/shell.css, client/src/style.css, client/index.html, client/shell.html, client/connexion.html
+      exclu : client/design.html — la galerie rend tous les tokens par construction ; l’inclure rendrait l’inclusion « déclaré ⊆ employé » vraie pour toujours
+      exclu : client/primitives.html — une page de démonstration emploie des tokens par construction, dans sa propre mise en page ; l’inclure ferait sortir de la liste d’attente des tokens que le PRODUIT n’appelle pas
+    
+    inclusion ① — tout var(--…) est déclaré : 1 écart(s)
+      NON DÉCLARÉ  --nexiste-pas  employé par client/src/shell.css
+    inclusion ② — tout token déclaré a un appelant : 1 orphelin(s), dont 1 en attente déclarée
+    
+    inclusion ③ — aucune entrée ne nomme un sous-bloc clos (S1, S2, S3) : 0 écart(s)
+    
+    total : 1 écart(s)
+    exit=1
+
+⑤ restauration : git checkout -- client/src/shell.css
+⑥ sha256 APRÈS : ad78e28ed79a64823100f0ac95c977148fc2dc4e2e2ea708bc4ebb4c967d5f93
+   sha256 IDENTIQUE à l'avant : restauré
+   git status --porcelain client/src/shell.css : []
+   (crochets vides = propre)

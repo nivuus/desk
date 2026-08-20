@@ -1,0 +1,72 @@
+=== LES FAMILLES DE LECTURE DES JOURNAUX DE S3 — MESURÉES, PAS SUPPOSÉES ===
+2026-08-20T04:39:24Z
+
+⚠️ CE FICHIER A DÛ ÊTRE REFAIT, ET LA RAISON EST INSTRUCTIVE : sa première rédaction
+   écrivait ses propres motifs de recherche avec `echo "grep -lP '\x1b\['"` et
+   `echo "grep -lc $'\r'"`. En zsh, `echo` interprète les échappements : le fichier
+   a donc reçu un VRAI octet ESC et un VRAI retour chariot, et `file(1)` l'a classé
+   « with CR, LF line terminators, with escape sequences ». L'INSTRUMENT SE POLLUAIT
+   LUI-MÊME, et un lecteur pressé aurait conclu que S3 verse des journaux CRLF.
+   Refait avec des heredocs entre quotes, qui n'interprètent rien.
+
+--- ① séquences ANSI : grep -lP (ESC-crochet) sur tous les fichiers ---
+  [rien au-dessus = AUCUN fichier ne porte de séquence ANSI : ils se grepent tous
+   à plat, sans sed, comme ceux de D10 et contrairement à ceux de D6 et D9]
+
+--- ② fins de ligne : présence d'un retour chariot ---
+  [rien au-dessus = tous en LF pur]
+
+--- ③ classement de file(1), fichier par fichier ---
+  build-base-88bc963.log:                          Unicode text, UTF-8 text
+  classes-employees-1.log:                         Unicode text, UTF-8 text
+  classes-employees-2.log:                         Unicode text, UTF-8 text
+  commit.txt:                                      Unicode text, UTF-8 text
+  contraste-1.log:                                 Unicode text, UTF-8 text
+  contraste-2.log:                                 Unicode text, UTF-8 text
+  contre-7-2-couleur-en-commentaire.log:           Unicode text, UTF-8 text
+  contre-7-9-classes-en-commentaire.log:           HTML document, Unicode text, UTF-8 text
+  critere-2-attente.log:                           unified diff output text, 1st line "=== Crit\303\250re \342\221\241 \342\200\224 la liste d'attente a r\303\251tr\303\251ci, et chaque sortie a son appelant \303\211CRIT ===", 2nd line "2026-08-20T04:27:47Z", 3rd line "", Unicode text, UTF-8 text
+  critere-3-session-1.log:                         Unicode text, UTF-8 text
+  critere-3-session-2.log:                         Unicode text, UTF-8 text
+  design-verifier-1.log:                           Unicode text, UTF-8 text, with very long lines (397)
+  design-verifier-2.log:                           Unicode text, UTF-8 text, with very long lines (397)
+  design-verifier-3-apres-rouges.log:              Unicode text, UTF-8 text, with very long lines (397)
+  familles-de-lecture.txt:                         Unicode text, UTF-8 text
+  orphelins-1.log:                                 Unicode text, UTF-8 text, with very long lines (397)
+  orphelins-2.log:                                 Unicode text, UTF-8 text, with very long lines (397)
+  poids-css-1.log:                                 Unicode text, UTF-8 text
+  poids-css-2.log:                                 Unicode text, UTF-8 text
+  rouge-10-7-7-poids-au-dessus-du-plafond.log:     Unicode text, UTF-8 text
+  rouge-11-7-3-surface-sans-feuille-de-tokens.log: Unicode text, UTF-8 text
+  rouge-12-critere-3.log:                          Unicode text, UTF-8 text
+  rouge-13-7-5-bascule-de-theme.log:               Unicode text, UTF-8 text
+  rouge-14-T3-ton-du-bandeau.log:                  Unicode text, UTF-8 text
+  rouge-15-T6-selecteur-rappelle-marquer.log:      Unicode text, UTF-8 text
+  rouge-16-7-9-declaration-en-commentaire.log:     Unicode text, UTF-8 text
+  rouge-1-7-4-couleur-hors-clair.log:              Unicode text, UTF-8 text
+  rouge-2-7-9-classe-non-declaree.log:             Unicode text, UTF-8 text
+  rouge-3-7-9-aucune-famille-au-produit.log:       Unicode text, UTF-8 text
+  rouge-4-7-9-famille-absente-de-la-galerie.log:   Unicode text, UTF-8 text
+  rouge-5-7-6-var-non-declaree.log:                Unicode text, UTF-8 text, with very long lines (401)
+  rouge-6-7-6-nouvel-orphelin.log:                 Unicode text, UTF-8 text, with very long lines (401)
+  rouge-7-7-6-sous-bloc-clos-mitigation-T7.log:    Unicode text, UTF-8 text, with very long lines (401)
+  rouge-8-7-1-contraste-sous-le-seuil.log:         Unicode text, UTF-8 text
+  rouge-9-7-2-couleur-litterale.log:               Unicode text, UTF-8 text
+  rouges-rejouees.log:                             Unicode text, UTF-8 text
+  typecheck-client-1.log:                          Unicode text, UTF-8 text
+  typecheck-client-2.log:                          Unicode text, UTF-8 text
+  typecheck-proto-1.log:                           Unicode text, UTF-8 text
+  typecheck-proto-2.log:                           Unicode text, UTF-8 text
+  verify-all-2.log:                                Unicode text, UTF-8 text
+  verify-all.log:                                  Unicode text, UTF-8 text
+  vitest-client-1.log:                             Unicode text, UTF-8 text
+  vitest-client-2.log:                             Unicode text, UTF-8 text
+  vitest-proto-1.log:                              Unicode text, UTF-8 text
+  vitest-proto-2.log:                              Unicode text, UTF-8 text
+
+--- ④ deux classements de file(1) à ne pas mal lire ---
+  • contre-7-9-classes-en-commentaire.log est classé « HTML document » : il contient
+    le commentaire HTML que la contre-épreuve a inséré, recopié par le git diff.
+  • critere-2-attente.log est classé « unified diff output text » : il contient les
+    sorties de `git show -- attente.mjs`, qui SONT des diffs unifiés.
+  Les deux sont de l'UTF-8 en LF pur, lisibles et grepables tels quels.

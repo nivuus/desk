@@ -1,0 +1,137 @@
+=== ROUGE « 14-T3-ton-du-bandeau » ===
+2026-08-20T04:35:18Z
+fichier muté  : client/src/shell.ts
+mutation      : perl -pi -e "s/^(\s+)'danger',$/\1'neutre',/" client/src/shell.ts
+contrôle joué : (cd client && npx vitest run src/shell.test.ts)
+
+① sha256 AVANT : 29592992d1fbda5581bc5232275dd304061e914c965bb835623f11dafcdbf00e
+
+② mutation appliquée (code 0)
+
+③ PREUVE que la mutation a MUTÉ — git diff -- client/src/shell.ts :
+    @@ -71,7 +71,7 @@ export function creerBureau(options: OptionsBureau): Bureau {
+                 options.afficher(
+                     `« ${titre} » n'a pas pu s'ouvrir : le navigateur a bloqué la pop-up. ` +
+                     `Autorisez les pop-ups pour ce site, puis rouvrez la fenêtre.`,
+    -                'danger',
+    +                'neutre',
+                 );
+             }
+             connues.set(session, { titre, fenetre });
+    @@ -147,7 +147,7 @@ export function creerBureau(options: OptionsBureau): Bureau {
+                 // pas le même geste que « le partage a raté, voici pourquoi ».
+                 options.afficherEtatFichiers(
+                     `Le lecteur « Mes Fichiers » n’a pas pu être monté : ${motif}.`,
+    -                'danger',
+    +                'neutre',
+                 );
+             },
+         };
+    lignes de diff : 22
+
+④ contrôle :
+    
+     RUN  v2.1.9 /home/mallanic/Projects/Guacamole/client
+    
+     ❯ src/shell.test.ts (17 tests | 3 failed) 24ms
+       × page-shell > signale un blocage de pop-up plutôt que de l'ignorer 9ms
+         → expected "spy" to be called with arguments: [ StringContaining "pop-up", 'danger' ]
+    
+    Received: 
+    
+      1st spy call:
+    
+      Array [
+    -   StringContaining "pop-up",
+    -   "danger",
+    +   "« Bloc-notes » n'a pas pu s'ouvrir : le navigateur a bloqué la pop-up. Autorisez les pop-ups pour ce site, puis rouvrez la fenêtre.",
+    +   "neutre",
+      ]
+    
+    
+    Number of calls: 1
+    
+       × page-shell — le TON du bandeau > donne le ton DANGER à une pop-up bloquée 3ms
+         → expected 'neutre' to be 'danger' // Object.is equality
+       × page-shell — le TON du bandeau > distingue le montage RÉUSSI de l’ÉCHEC par le ton, pas seulement par le texte 2ms
+         → expected [ 'succes', 'neutre' ] to deeply equal [ 'succes', 'danger' ]
+    
+    ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+    
+     FAIL  src/shell.test.ts > page-shell > signale un blocage de pop-up plutôt que de l'ignorer
+    AssertionError: expected "spy" to be called with arguments: [ StringContaining "pop-up", 'danger' ]
+    
+    Received: 
+    
+      1st spy call:
+    
+      Array [
+    -   StringContaining "pop-up",
+    -   "danger",
+    +   "« Bloc-notes » n'a pas pu s'ouvrir : le navigateur a bloqué la pop-up. Autorisez les pop-ups pour ce site, puis rouvrez la fenêtre.",
+    +   "neutre",
+      ]
+    
+    
+    Number of calls: 1
+    
+     ❯ src/shell.test.ts:116:25
+        114|         });
+        115|         bureau.fenetreOuverte('w-1', 'Bloc-notes');
+        116|         expect(affiche).toHaveBeenCalledWith(expect.stringContaining('…
+           |                         ^
+        117|         expect(bureau.liste()).toEqual([{ session: 'w-1', titre: 'Bloc…
+        118|     });
+    
+    ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+    
+     FAIL  src/shell.test.ts > page-shell — le TON du bandeau > donne le ton DANGER à une pop-up bloquée
+    AssertionError: expected 'neutre' to be 'danger' // Object.is equality
+    
+    Expected: "danger"
+    Received: "neutre"
+    
+     ❯ src/shell.test.ts:185:33
+        183|         sansPopup.fenetreOuverte('w-1', 'Bloc-notes');
+        184|         expect(bandeaux).toHaveLength(1);
+        185|         expect(bandeaux[0].ton).toBe('danger');
+           |                                 ^
+        186|         expect(bandeaux[0].message).toContain('bloqué la pop-up');
+        187|     });
+    
+    ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+    
+     FAIL  src/shell.test.ts > page-shell — le TON du bandeau > distingue le montage RÉUSSI de l’ÉCHEC par le ton, pas seulement par le texte
+    AssertionError: expected [ 'succes', 'neutre' ] to deeply equal [ 'succes', 'danger' ]
+    
+    - Expected
+    + Received
+    
+      Array [
+        "succes",
+    -   "danger",
+    +   "neutre",
+      ]
+    
+     ❯ src/shell.test.ts:196:41
+        194|         bureau.lecteurMonte('Documents');
+        195|         bureau.lecteurEchoue('permission refusée');
+        196|         expect(etats.map((e) => e.ton)).toEqual(['succes', 'danger']);
+           |                                         ^
+        197|     });
+        198| 
+    
+    ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+    
+     Test Files  1 failed (1)
+          Tests  3 failed | 14 passed (17)
+       Start at  06:35:19
+       Duration  425ms (transform 143ms, setup 0ms, collect 119ms, tests 24ms, environment 0ms, prepare 98ms)
+    
+    exit=1
+
+⑤ restauration : git checkout -- client/src/shell.ts
+⑥ sha256 APRÈS : 29592992d1fbda5581bc5232275dd304061e914c965bb835623f11dafcdbf00e
+   sha256 IDENTIQUE à l'avant : restauré
+   git status --porcelain client/src/shell.ts : []
+   (crochets vides = propre)

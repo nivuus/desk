@@ -1,0 +1,43 @@
+=== CONTRE-ÉPREUVE DE BLANCHIMENT « 7-9-classes-en-commentaire » ===
+2026-08-20T04:35:55Z
+objet : le contrôle doit rester VERT — ce qui est glissé dans un COMMENTAIRE ne compte pas.
+fichier muté : client/shell.html
+mutation : printf '<!-- class="classe-tout-a-fait-inexistante" et .une-fausse-declaration -->
+' >> client/shell.html
+contrôle : node client/outils/classes-employees.mjs
+
+① sha256 AVANT : 0e4fd4c9b08bbd40bfc1f1a0b8ffce082d7531184cf62413ac605399e7d37c8d
+
+③ PREUVE que la mutation a MUTÉ :
+    @@ -86,3 +86,4 @@
+         <script type="module" src="/src/shell-page.ts"></script>
+       </body>
+     </html>
+    +<!-- class="classe-tout-a-fait-inexistante" et .une-fausse-declaration -->
+    lignes de diff : 9
+
+④ contrôle :
+    déclarées : 52 classe(s)
+    employées : 51 classe(s)
+    familles de primitives : bouton, champ, message, surface
+    
+    ① toute classe employée est déclarée : 0 écart(s)
+    
+    ② A — les primitives atteignent le PRODUIT :
+      client/index.html : aucune famille
+      client/shell.html : bouton, message, surface
+      client/connexion.html : bouton, champ, message, surface
+    
+    ③ B — chaque famille est rendue par client/primitives.html :
+      bouton : 4 classe(s) employée(s) sur 4 déclarée(s)
+      champ : 6 classe(s) employée(s) sur 6 déclarée(s)
+      message : 4 classe(s) employée(s) sur 4 déclarée(s)
+      surface : 4 classe(s) employée(s) sur 4 déclarée(s)
+    
+    total : 0 écart(s)
+    exit=0
+    ✅ VERT : le blanchiment tient.
+
+⑥ sha256 APRÈS : 0e4fd4c9b08bbd40bfc1f1a0b8ffce082d7531184cf62413ac605399e7d37c8d
+   restauré
+   git status --porcelain client/shell.html : []

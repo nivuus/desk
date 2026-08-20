@@ -1,0 +1,62 @@
+=== ROUGE « 15-T6-selecteur-rappelle-marquer » ===
+2026-08-20T04:35:32Z
+fichier muté  : client/src/design/selecteur-theme.ts
+mutation      : perl -0pi -e 's/surStockageModifie\(racine, evenement\.key, evenement\.newValue\);
+        marquer\(\);
+/surStockageModifie(racine, evenement.key, evenement.newValue);
+/s' client/src/design/selecteur-theme.ts
+contrôle joué : (cd client && npx vitest run src/design/selecteur-theme.test.ts)
+
+① sha256 AVANT : 5cc88a3e1f0c5a449e815693e17e4960331562f36b3e5c265fe2ce88e97f56e3
+
+② mutation appliquée (code 0)
+
+③ PREUVE que la mutation a MUTÉ — git diff -- client/src/design/selecteur-theme.ts :
+    @@ -124,7 +124,6 @@ export function installerSelecteurDeTheme(options: OptionsSelecteurDeTheme): voi
+         source.addEventListener('storage', (evenement) => {
+             if (evenement.key !== CLE_THEME) return;
+             surStockageModifie(racine, evenement.key, evenement.newValue);
+    -        marquer();
+             apres();
+         });
+     
+    lignes de diff : 12
+
+④ contrôle :
+    
+     RUN  v2.1.9 /home/mallanic/Projects/Guacamole/client
+    
+     ❯ src/design/selecteur-theme.test.ts (8 tests | 1 failed) 13ms
+       × installerSelecteurDeTheme > `aria-pressed` suit un `storage` VENU D'UNE AUTRE FENÊTRE 9ms
+         → expected 'false' to be 'true' // Object.is equality
+    
+    ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+    
+     FAIL  src/design/selecteur-theme.test.ts > installerSelecteurDeTheme > `aria-pressed` suit un `storage` VENU D'UNE AUTRE FENÊTRE
+    AssertionError: expected 'false' to be 'true' // Object.is equality
+    
+    Expected: "true"
+    Received: "false"
+    
+     ❯ src/design/selecteur-theme.test.ts:139:36
+        137|         expect(b.presse('systeme')).toBe('true');
+        138|         b.emettreStorage(CLE_THEME, 'sombre');
+        139|         expect(b.presse('sombre')).toBe('true');
+           |                                    ^
+        140|         expect(b.presse('systeme')).toBe('false');
+        141|     });
+    
+    ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+    
+     Test Files  1 failed (1)
+          Tests  1 failed | 7 passed (8)
+       Start at  06:35:33
+       Duration  453ms (transform 53ms, setup 0ms, collect 45ms, tests 13ms, environment 0ms, prepare 141ms)
+    
+    exit=1
+
+⑤ restauration : git checkout -- client/src/design/selecteur-theme.ts
+⑥ sha256 APRÈS : 5cc88a3e1f0c5a449e815693e17e4960331562f36b3e5c265fe2ce88e97f56e3
+   sha256 IDENTIQUE à l'avant : restauré
+   git status --porcelain client/src/design/selecteur-theme.ts : []
+   (crochets vides = propre)
