@@ -7,6 +7,43 @@
 //! le mapping l'y rejoint plutôt que de dupliquer `Rect`). Ce module ne
 //! porte donc que l'appel système `SendInput`, propre à Windows.
 
+/// Les quatre événements clavier d'un collage : `Ctrl`↓, `V`↓, `V`↑, `Ctrl`↑.
+///
+/// **Hors du `#[cfg(windows)]`, à dessein** : c'est une table, pas un appel
+/// système, et l'appelant (`transport/boucle.rs`) n'est pas gaté.
+///
+/// 🔴 **AUTO-SUFFISANTE EN MODIFICATEURS, et ce n'est pas de la prudence.**
+/// Le canal d'entrées du client est `ordered: false, maxRetransmits: 0`
+/// (`client/src/webrtc.ts`) : l'état des modificateurs côté VM au moment de
+/// l'injection **n'est pas connaissable** — le `Ctrl`↓ que le client a envoyé
+/// peut être arrivé, avoir été perdu, ou arriver après. Poser soi-même les
+/// quatre événements rend le geste indépendant de tout cela ; un `Ctrl`↑ de
+/// trop est inoffensif, un `Ctrl`↓ manquant ne collerait rien.
+///
+/// 🔴 **LES QUATRE, ET DANS CET ORDRE.** Omettre le `Ctrl`↑ final laisserait
+/// l'application avec un modificateur ENFONCÉ, et **toute frappe suivante
+/// deviendrait un raccourci** — le défaut le plus insidieux de ce chemin, et
+/// celui qu'un test garde rouge.
+///
+/// Scancodes relevés sur `client/src/scancodes.ts`, la table que le client
+/// emploie déjà : `ControlLeft` = `0x1d`, `KeyV` = `0x2f`, `extended: false`
+/// aux deux. Les reprendre de là plutôt que de les redécouvrir garantit que
+/// la VM reçoit exactement ce qu'elle reçoit d'une frappe humaine.
+///
+/// ⚠️ **La portée du dépôt sur `SetForegroundWindow` n'est PAS élargie par
+/// cette table.** Le bras `InputMessage::Key` de `InputInjector` appelle déjà
+/// `au_premier_plan()`, ce dont ce chemin hérite gratuitement — mais ce qui
+/// est MESURÉ (D2) est « une frappe par fenêtre, sonde séquentielle, aucune
+/// frappe concurrente », et `SendInput` reste GLOBAL à la session Windows.
+/// **Deux collages simultanés depuis deux fenêtres restent hors de ce qui est
+/// établi** ; P3 est le sous-bloc qui les rencontrera.
+pub const TOUCHES_COLLAGE: [proto::input::InputMessage; 4] = [
+    proto::input::InputMessage::Key { scancode: 0x1d, pressed: true, extended: false },
+    proto::input::InputMessage::Key { scancode: 0x2f, pressed: true, extended: false },
+    proto::input::InputMessage::Key { scancode: 0x2f, pressed: false, extended: false },
+    proto::input::InputMessage::Key { scancode: 0x1d, pressed: false, extended: false },
+];
+
 #[cfg(windows)]
 mod win {
     use crate::geometry::{to_virtual_desktop_visible, Rect};

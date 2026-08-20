@@ -61,10 +61,12 @@ impl Session {
     /// détectée localement, `AudioMort` en repli si le budget de tentatives
     /// est épuisé, et annonce d'une reprise PROUVÉE par un paquet réel
     /// (sous-bloc D9, remède complet apporté par D10) ; a1septies : annonce
-    /// d'un changement du presse-papier de la VM (sous-bloc P1) ; a2 :
+    /// d'un changement du presse-papier de la VM (sous-bloc P1) ; a1octies :
+    /// écriture d'un collage venu du navigateur dans le presse-papier de la VM,
+    /// puis armement de l'injection de `Ctrl+V` (sous-bloc P2) ; a2 :
     /// vérification de la fenêtre) ne mettent JAMAIS en file, avant de rendre
     /// la main, une écriture qui resterait à drainer — c'est l'invariant que
-    /// cette énumération existe pour auditer. **Dix d'entre elles (toutes sauf
+    /// cette énumération existe pour auditer. **Onze d'entre elles (toutes sauf
     /// a1quater) ne touchent même pas `self.rtc`** : seulement `self.source`,
     /// `self.audio_source`, le budget de reconstruction audio (a1sexies
     /// seule) et/ou `self.pending_control`, au plus en y mettant en file un
@@ -366,6 +368,24 @@ impl Session {
         //            que rend la méthode, qui porte « rien à annoncer ».
         if let Some((texte, octets)) = self.source.presse_papier_a_annoncer() {
             self.queue_control(AgentControl::clipboard(texte, octets));
+            return Ok(Tick::Continue);
+        }
+
+        // a1octies) Le navigateur a collé (sous-bloc P2). 🔴 **C'EST ICI QUE
+        //           L'ORDRE DE D6 EST PRODUIT** — écrire le presse-papier de la
+        //           VM d'abord, n'armer l'injection de `Ctrl+V` qu'ensuite, et
+        //           seulement si l'écriture a RÉUSSI. Corps dans `collage`, qui
+        //           porte aussi la seconde moitié de cet ordre (l'injection
+        //           elle-même, drainée par `boucle::run`) : les deux maillons
+        //           se lisent au même endroit plutôt qu'à deux fichiers d'écart.
+        //
+        //           **Cette branche ne mute PAS `self.rtc`** — comme a1quater
+        //           et a1quinquies. Elle touche `self.source` (par le tube du
+        //           capteur) et deux champs propres, et ne met aucun paquet en
+        //           file : l'invariant de drainage audité en tête de fonction
+        //           est préservé.
+        if let Some(texte) = self.pending_clipboard.take() {
+            self.traiter_le_collage(&texte);
             return Ok(Tick::Continue);
         }
 
