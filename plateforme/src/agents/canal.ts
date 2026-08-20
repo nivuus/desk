@@ -37,9 +37,12 @@ import {
     type MotifCanal,
 } from '../../../proto/ts/plateforme';
 import type { Pilote } from '../base/pilote';
+import { fusionner } from '../apps/catalogue';
 import { marquerVu } from '../depot/agent';
+import { appliquer, lireConnues } from '../depot/application';
 import { DUREE_JETON_ACCES_MS, signer } from '../identite/jeton';
 import { verifierEnrolement } from './enrolement';
+import type { RegistreAgents } from './registre';
 
 export interface OptionsCanal {
     base: Pilote;
@@ -50,6 +53,15 @@ export interface OptionsCanal {
     /// rend l'expiration d'un jeton assertable sur une valeur EXACTE, et ce
     /// qui permet au test de voir un jeton frais succéder à un jeton mort.
     maintenant: () => number;
+    /// Le registre des sockets d'agent vivants.
+    ///
+    /// 🔴 IL EST REQUIS, JAMAIS OPTIONNEL, et pour la raison exacte qui rend
+    /// `base` requise dans `http/serveur.ts` : un canal qui n'inscrirait
+    /// personne serait indiscernable du bon fonctionnement vu du pair — il
+    /// s'enrôlerait, battrait, pousserait son catalogue, et TOUT lancement
+    /// rendrait `agent-injoignable`. Panne muette, et de celles qu'on ne
+    /// diagnostique qu'en lisant ce fichier.
+    registre: RegistreAgents;
     dureeJetonMs?: number;
 }
 
@@ -78,7 +90,7 @@ const MOTIFS_FERMANTS: readonly MotifCanal[] = ['enrolement', 'version'];
 const FERMETURE_POLITIQUE = 1008;
 
 export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal): void {
-    const { base, secretJeton, maintenant } = options;
+    const { base, secretJeton, maintenant, registre } = options;
     const dureeJetonMs = options.dureeJetonMs ?? DUREE_JETON_ACCES_MS;
 
     wss.on('connection', (socket: WebSocket) => {
@@ -144,6 +156,50 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                 return;
             }
 
+            if (lecture.message.type === 'catalogue' || lecture.message.type === 'lancee') {
+                if (vmId === undefined) {
+                    // 🔴 NI CATALOGUE NI ISSUE SANS ENRÔLEMENT. Accepter un
+                    // catalogue ici laisserait un pair anonyme ÉCRIRE DANS LA
+                    // TABLE `application` d'une VM qu'il n'a pas authentifiée ;
+                    // accepter une issue lui laisserait résoudre la demande
+                    // d'un autre, et faire croire à un lancement qui n'a pas eu
+                    // lieu. C'est le trou que le refus `sequence` du battement
+                    // ferme déjà, par deux autres portes.
+                    refuser('sequence');
+                    return;
+                }
+
+                if (lecture.message.type === 'lancee') {
+                    // ⚠️ SYNCHRONE, et rien à écrire : `resoudre` ne touche
+                    // qu'une `Map` en mémoire, et IGNORE une demande inconnue
+                    // plutôt que de lever (`agents/registre.ts`).
+                    registre.resoudre(lecture.message.demande, lecture.message.issue);
+                    return;
+                }
+
+                const message = lecture.message;
+                const identifiant = vmId;
+                const instant = maintenant();
+                // ⚠️ LANCÉE SANS ÊTRE ATTENDUE, avec son `catch`, exactement
+                // comme `marquerVu` ci-dessus et pour la même raison : un
+                // `await` ici ferait qu'une base momentanément indisponible
+                // ABATTRAIT LA CONNEXION d'un agent qui va très bien, et une
+                // promesse rejetée sans `catch` abattrait tout le process.
+                //
+                // Le coût est nommé : un catalogue perdu ne se voit qu'au
+                // journal. Il se rattrape tout seul — l'agent renvoie un état
+                // COMPLET à chaque (ré)enrôlement, ce qui donne un terme à la
+                // divergence sans que personne n'ait à réessayer.
+                void lireConnues(base, identifiant)
+                    .then((connues) => appliquer(base, identifiant, fusionner(connues, message), instant))
+                    .catch((cause) => {
+                        console.error(
+                            `catalogue non écrit pour la VM ${identifiant} : ${String(cause)}`,
+                        );
+                    });
+                return;
+            }
+
             const { vm, secret } = lecture.message;
             // ⚠️ LE `catch` EST OBLIGATOIRE ET IL N'EST PAS DÉCORATIF :
             // `verifierEnrolement` LÈVE sur une empreinte écrite par une
@@ -161,6 +217,13 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                     }
                     vmId = verdict.vmId;
                     prefixe = verdict.prefixe;
+                    // 🔴 C'EST ICI, ET NULLE PART AILLEURS, QUE LA VM DEVIENT
+                    // JOIGNABLE. L'inscription suit l'authentification et ne la
+                    // précède jamais : un pair qui n'a pas prouvé son secret ne
+                    // doit pas pouvoir recevoir les ordres de lancement d'une
+                    // VM. Le DERNIER inscrit gagne, et l'ancien socket est
+                    // fermé (`agents/registre.ts`).
+                    registre.inscrire(verdict.vmId, socket);
 
                     const instant = maintenant();
                     // ⚠️ L'ENRÔLEMENT AVANCE `vu_a` LUI AUSSI, et ce n'est pas
@@ -187,6 +250,18 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                     console.error(`enrôlement en échec pour la VM ${vm} : ${String(cause)}`);
                     refuser('enrolement');
                 });
+        });
+
+        socket.on('close', () => {
+            // ⚠️ LE SOCKET EST PASSÉ, ET IL COMPTE. Un agent qui se relance
+            // s'inscrit AVANT que la fermeture du précédent ne soit notifiée :
+            // un retrait nu effacerait alors l'inscription du NEUF, et la VM
+            // deviendrait injoignable au moment même où elle se reconnecte.
+            //
+            // Sans ce retrait, une VM morte resterait « joignable » jusqu'au
+            // prochain enrôlement, et chaque lancement coûterait
+            // `DELAI_LANCEMENT_MS` avant d'échouer sur un silence.
+            if (vmId !== undefined) registre.retirer(vmId, socket);
         });
     });
 }

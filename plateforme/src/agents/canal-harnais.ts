@@ -51,6 +51,15 @@ export interface Pair {
     /// Envoie un message brut et rend la réponse. BORNÉE, jamais une attente
     /// infinie : un canal muet doit rougir, pas pendre.
     dire(brut: string): Promise<Record<string, unknown>>;
+    /// Attend le prochain message POUSSÉ par le canal, SANS rien envoyer.
+    ///
+    /// 🔴 ELLE N'EST PAS UN `dire('')`. Le canal `/agent` pousse désormais des
+    /// ordres que rien n'a demandés au pair (`lancer`), et les attendre par un
+    /// envoi bidon serait une COURSE : `dire` n'envoie que si aucun message
+    /// n'est déjà arrivé, si bien que le test enverrait — ou n'enverrait pas —
+    /// selon l'ordonnancement, et provoquerait un refus `forme` une fois sur
+    /// deux. Bornée pour la même raison que `dire`.
+    recevoir(): Promise<Record<string, unknown>>;
 }
 
 /// Ouvre un pair sur une URL complète — le chemin compte, le service en
@@ -64,6 +73,20 @@ export function ouvrirUrl(url: string): Promise<Pair> {
             socket: w,
             ordre: [],
             ferme: new Promise((r) => w.once('close', () => r())),
+            recevoir() {
+                return new Promise((r, rej) => {
+                    const minuteur = setTimeout(
+                        () => rej(new Error('aucun message poussé par le canal en 2000 ms')),
+                        2000,
+                    );
+                    enAttente.push((m) => {
+                        clearTimeout(minuteur);
+                        r(m);
+                    });
+                    const dejaLa = recus.shift();
+                    if (dejaLa) enAttente.shift()!(dejaLa);
+                });
+            },
             dire(brut) {
                 return new Promise((r, rej) => {
                     const minuteur = setTimeout(
