@@ -27,9 +27,11 @@
 
 pub mod chemins;
 pub mod decoupe;
+pub mod ecriture;
 pub mod entetes;
 pub mod enumeration;
 pub mod erreurs;
+pub mod journal;
 pub mod notifications;
 #[cfg(windows)]
 pub mod projfs;
@@ -101,10 +103,65 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
     let (vers_navigateur, requetes) = std::sync::mpsc::channel();
     // Le canal des réponses : le transport y pousse, le fil du pont les lit.
     let (vers_pont, reponses) = std::sync::mpsc::channel();
+    // Le canal du fil d'ÉCRITURE : le rappel de notification y pousse ses
+    // événements, le fil du pont y relaie les acquittements.
+    let (vers_ecriture, ordres_ecriture) = std::sync::mpsc::channel();
 
-    let virtualisation = projfs::Virtualisation::demarrer(projfs, vers_navigateur)?;
+    // ⚠️ **`PONT_ECRITURE=0` DÉSARME, et une simple PRÉSENCE n'active pas** —
+    // la convention de `SUPERVISEUR`, `CAPTEUR`, `PONT`, `AUDIO`,
+    // `PLEIN_ECRAN`, `PRESSE_PAPIER` et `APPS`, et pour la même raison :
+    // tester `is_ok()` **armerait** le mécanisme en écrivant `PONT_ECRITURE=0`
+    // pour le couper.
+    //
+    // 🔴 **C'est une variable de BANC, jamais une configuration livrée.** Elle
+    // n'existe que pour rendre ROUGE le compteur d'écritures dues de la
+    // page-shell : désarmée, le fil journalise et annonce, mais ne pousse
+    // jamais, et le compteur monte sans redescendre.
+    //
+    // ⚠️ **DIVERGENCE DÉCLARÉE AVEC LE PLAN DE F2, qui se contredit lui-même.**
+    // Il écrit « `PONT_ECRITURE=0` **désarme** » — donc l'absence ARME — et
+    // prescrit dans la même phrase la forme
+    // `matches!(std::env::var(…).as_deref(), Ok(v) if v != "0")`, qui est celle
+    // de `CAPTEUR` et de `PONT` et qui rend **`false` en l'absence de la
+    // variable**. Prise à la lettre, elle aurait livré un pont **muet par
+    // défaut** : aucune écriture poussée sans qu'on pose une variable de banc.
+    // La forme retenue est celle de `PLEIN_ECRAN` (`capteur/plein_ecran.rs`),
+    // qui est la convention réellement décrite.
+    let ecriture_armee = std::env::var("PONT_ECRITURE").as_deref() != Ok("0");
+
+    let virtualisation = projfs::Virtualisation::demarrer(
+        projfs,
+        vers_navigateur.clone(),
+        vers_ecriture,
+        ecriture_armee,
+    )?;
     let etat = virtualisation.etat();
     tracing::info!(racine = %virtualisation.racine().display(), "racine du pont fichiers montée");
+
+    // Fil 4 — **le fil d'ÉCRITURE**, et il est DÉDIÉ.
+    //
+    // 🔴 **Il ne peut être ni le fil du pont, ni un fil de rappel.** Il lit des
+    // fichiers de la racine : `pont/service.rs` écrit déjà pourquoi le fil du
+    // pont ne doit jamais le faire — « il s'attendrait lui-même ». Et un fil de
+    // rappel appartient au système, où toute E/S fige l'application qui lit.
+    let chemin_journal = projfs::dossier_etat()?.join("ecritures.journal");
+    let racine_du_fil = virtualisation.racine().to_path_buf();
+    let table_du_fil = std::sync::Arc::clone(&etat.table);
+    let ecriture = std::thread::Builder::new()
+        .name("pont-ecriture".into())
+        .spawn(move || {
+            ecriture::fil::tourner(
+                ecriture::fil::Config {
+                    racine: racine_du_fil,
+                    chemin_journal,
+                    table: table_du_fil,
+                    vers_navigateur,
+                    armee: ecriture_armee,
+                },
+                ordres_ecriture,
+            )
+        })
+        .context("lancement du fil d'écriture du pont")?;
 
     // Fil 2 — le transport. Il possède le `Rtc` et le socket, et **ne connaît
     // ni ProjFS ni Windows**.
@@ -135,11 +192,39 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
         .await
         .context("le fil du pont fichiers a paniqué")?;
 
-    // Le transport s'arrête de lui-même quand `sortant` est lâché, c'est-à-dire
-    // quand `Etat` — donc `virtualisation` — est relâché. On l'attend AVANT de
-    // rendre la main, sans quoi le `Drop` ci-dessous courrait pendant qu'il
-    // émet encore.
+    // 🔴 **L'EXEMPLAIRE LOCAL D'`Arc<Etat>` DOIT ÊTRE RELÂCHÉ ICI, ET F1 NE LE
+    // FAISAIT PAS.**
+    //
+    // Les DEUX `Sender` — celui du transport (`sortant`) et celui du fil
+    // d'écriture (`vers_ecriture`) — vivent **dans `Etat`**. Un récepteur ne se
+    // déconnecte que lorsque le **dernier** exemplaire de son `Sender` est
+    // parti : tant que cette variable locale tient un `Arc<Etat>`, les deux
+    // fils tournent, et les `join` ci-dessous **ne rendent jamais la main**.
+    //
+    // ⚠️ **F1 portait déjà cette latence, et son commentaire l'énonçait à
+    // l'envers** — « le transport s'arrête quand `Etat`, DONC `virtualisation`,
+    // est relâché » : `virtualisation` n'en détient qu'un exemplaire sur deux.
+    // Elle n'y avait pas de conséquence visible, `transport::tourner` pouvant
+    // rendre pour une autre raison ; **F2 la rendrait bloquante**, en ajoutant
+    // un second `join` sur un fil qui, lui, n'a aucune autre raison de sortir.
+    drop(etat);
+
+    // ⚠️ **L'ARRÊT A DÉSORMAIS QUATRE FILS À ORDONNER, et l'ordre compte.**
+    //
+    // 0. **Le fil d'ÉCRITURE d'abord** : il est le seul à pouvoir pousser une
+    //    trame après que la table a été vidée. Le laisser vivre lui ferait
+    //    émettre sur un `Sender` dont l'autre bout est parti, et son entrée de
+    //    journal resterait sans que rien ne le dise.
+    // 1. le `Drop` de `virtualisation` vide la table et complète chaque
+    //    commande AYANT un `command_id` ;
+    // 2. `PrjStopVirtualizing` ;
+    // 3. l'`Arc` confié est repris.
+    //
+    // Le canal du fil d'écriture se ferme quand `Etat` — donc
+    // `virtualisation` — est relâché ; l'attendre AVANT ferait un interblocage.
+    // On relâche donc, puis on joint.
     drop(virtualisation);
+    let _ = ecriture.join();
     let _ = transport.join();
     tracing::info!("pont fichiers arrêté");
     Ok(())

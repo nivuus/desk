@@ -31,7 +31,7 @@ cd "$racine" || exit 2
 echo "=== ROUGE : $etiquette"
 echo "--- fichier : $fichier"
 sauvegarde="$(mktemp)"
-cp -p "$fichier" "$sauvegarde"
+cp "$fichier" "$sauvegarde"
 avant="$(sha256sum "$fichier" | cut -d' ' -f1)"
 echo "--- sha256 AVANT : $avant"
 
@@ -41,7 +41,7 @@ sed -i "$sedcmd" "$fichier"
 # contrôle qui suit ne dirait alors rien du produit.
 if diff -q "$sauvegarde" "$fichier" >/dev/null; then
     echo "!!! LA MUTATION N'A RIEN MUTÉ : cette rouge NE COMPTE PAS."
-    cp -p "$sauvegarde" "$fichier"; rm -f "$sauvegarde"
+    cp "$sauvegarde" "$fichier"; rm -f "$sauvegarde"
     exit 3
 fi
 echo "--- diff de la MUTATION SEULE (contre la copie prise à l'instant) :"
@@ -51,7 +51,16 @@ echo "--- contrôle :"
 "$@" 2>&1 | tail -40
 echo "--- (le code de sortie du contrôle est celui de la commande ci-dessus)"
 
-cp -p "$sauvegarde" "$fichier"; rm -f "$sauvegarde"
+# 🔴 `cp` SANS `-p`, ET C'EST LE CONTRAIRE DE CE QU'ON ÉCRIT SPONTANÉMENT.
+# Payé sur place, le 20 août 2026, sur `proto/src/fichiers.rs` : `cp -p`
+# préserve la date de modification, si bien que le fichier RESTAURÉ paraît
+# INCHANGÉ à cargo — qui garde alors l'artefact compilé de la version MUTÉE.
+# Le symptôme est un test correct qui échoue pour une raison INVISIBLE DANS LA
+# SOURCE : ici, `charge.len() > TAILLE_TRAME_MAX` refusait une charge de 65536
+# contre un maximum de 65536, ce qu'aucune lecture du fichier ne peut
+# expliquer. Le pire cas est l'inverse : une suite VERTE exécutant encore le
+# code muté.
+cp "$sauvegarde" "$fichier"; rm -f "$sauvegarde"
 apres="$(sha256sum "$fichier" | cut -d' ' -f1)"
 echo "--- sha256 APRÈS restauration : $apres"
 if [ "$avant" = "$apres" ]; then echo "--- restauration VÉRIFIÉE"; else echo "!!! RESTAURATION FAUSSE"; exit 4; fi

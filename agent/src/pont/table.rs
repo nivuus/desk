@@ -34,10 +34,28 @@ use std::time::{Duration, Instant};
 /// unique ne peut pas être juste pour une opération qui doit répondre en
 /// millisecondes et pour une qui transfère des mégaoctets.
 ///
-/// Le quatrième budget, celui de l'écriture, appartient à F2.
+/// ✅ **Le quatrième budget est arrivé : c'est [`DELAI_ECRIRE`], et F2 le pose.**
+/// *(Cette ligne annonçait « il appartient à F2 » ; elle est corrigée ici
+/// plutôt que laissée au futur, par la branche même qui la réalise.)*
 pub const DELAI_ATTRIBUTS: Duration = Duration::from_secs(2);
 pub const DELAI_LIRE: Duration = Duration::from_secs(5);
 pub const DELAI_LISTER: Duration = Duration::from_secs(20);
+
+/// Le budget d'un MORCEAU d'écriture — pas d'un fichier.
+///
+/// ⚠️ **NON CALIBRÉE**, comme les trois ci-dessus. Elle est plus large que
+/// [`DELAI_LIRE`] pour une raison de forme, pas de mesure : le navigateur doit
+/// **écrire** sur le disque du poste local, et le morceau `dernier` déclenche
+/// en plus le `close()` de `createWritable()`, c'est-à-dire la committaison —
+/// une copie du fichier d'échange vers sa destination, dont le coût croît avec
+/// la taille du fichier et qu'aucune mesure de ce dépôt ne borne.
+///
+/// 🔴 **CE BUDGET NE PROTÈGE PERSONNE, et c'est ce qui le distingue des trois
+/// autres.** Les leurs bornent l'attente d'une APPLICATION bloquée dans un
+/// rappel ProjFS ; celui-ci borne l'attente du **fil d'écriture**, qui ne fait
+/// attendre personne. Son dépassement ne rend aucun `HRESULT` : il laisse
+/// l'entrée AU JOURNAL et la nomme.
+pub const DELAI_ECRIRE: Duration = Duration::from_secs(30);
 
 /// Ce qu'une commande en vol attend, et de quoi la réponse devra être
 /// interprétée.
@@ -50,6 +68,21 @@ pub enum Attendue {
         chemin: String,
         position: u64,
         longueur: u32,
+    },
+    /// Un morceau d'écriture poussé vers le navigateur.
+    ///
+    /// ⚠️ **`dernier` est retenu ici parce que c'est lui qui décide de ce que
+    /// le `Fait` signifie** : sur le dernier morceau, il vaut « le fichier est
+    /// commis, l'entrée peut sortir du journal » ; sur les autres, seulement
+    /// « demande le suivant ». Le relire de l'en-tête émis serait le relire
+    /// d'une source que le pair aurait pu déformer.
+    Ecrire {
+        chemin: String,
+        dernier: bool,
+    },
+    /// Une création d'entrée poussée vers le navigateur.
+    Creer {
+        chemin: String,
     },
     Lister {
         chemin: String,
@@ -64,7 +97,15 @@ pub enum Attendue {
 
 #[derive(Debug)]
 struct EnVol {
-    command_id: i32,
+    /// La commande ProjFS à compléter, **s'il y en a une**.
+    ///
+    /// 🔴 **`None` POUR UNE ÉCRITURE, et ce n'est pas un cas dégénéré : c'est
+    /// la nature du write-back.** Une écriture ne complète AUCUN rappel — elle
+    /// naît d'une notification POST, qui a déjà rendu la main à l'application.
+    /// Il n'y a donc rien à compléter, et appeler `PrjCompleteCommand(0)` sur
+    /// une commande inexistante serait un appel au système sur un identifiant
+    /// qui appartient à quelqu'un d'autre.
+    command_id: Option<i32>,
     quoi: Attendue,
     echeance: Instant,
 }
@@ -94,8 +135,31 @@ impl Table {
         Self { prochaine, ..Self::default() }
     }
 
-    /// Inscrit une commande et rend sa corrélation.
+    /// Inscrit une commande ProjFS et rend sa corrélation.
     pub fn inscrire(&mut self, command_id: i32, quoi: Attendue, echeance: Instant) -> u32 {
+        self.inscrire_interne(Some(command_id), quoi, echeance)
+    }
+
+    /// Inscrit une opération qui ne complète **aucun** rappel ProjFS — une
+    /// écriture — et rend sa corrélation.
+    ///
+    /// 🔴 **POURQUOI LA MÊME TABLE, ET NON UNE SECONDE SOURCE DE CORRÉLATIONS.**
+    /// Le canal est unique, et la corrélation est un `u32` monotone avec
+    /// recherche d'un libre. Deux compteurs indépendants sur le même canal se
+    /// collisionneraient, et **la collision serait SILENCIEUSE** : une réponse
+    /// appliquée à la mauvaise commande. C'est exactement le défaut que
+    /// [`Table::corrélation_libre`] documente déjà contre le rebouclage —
+    /// obtenir la corrélation d'ailleurs le rejouerait par la porte de derrière.
+    pub fn inscrire_sans_commande(&mut self, quoi: Attendue, echeance: Instant) -> u32 {
+        self.inscrire_interne(None, quoi, echeance)
+    }
+
+    fn inscrire_interne(
+        &mut self,
+        command_id: Option<i32>,
+        quoi: Attendue,
+        echeance: Instant,
+    ) -> u32 {
         let correlation = self.corrélation_libre();
         self.en_vol.insert(correlation, EnVol { command_id, quoi, echeance });
         correlation
@@ -119,7 +183,7 @@ impl Table {
 
     /// Rend la commande d'une corrélation, ou `None` si elle a été annulée,
     /// expirée, ou n'a jamais existé — la réponse tardive est alors **jetée**.
-    pub fn resoudre(&mut self, correlation: u32) -> Option<(i32, Attendue)> {
+    pub fn resoudre(&mut self, correlation: u32) -> Option<(Option<i32>, Attendue)> {
         self.en_vol.remove(&correlation).map(|e| (e.command_id, e.quoi))
     }
 
@@ -128,7 +192,7 @@ impl Table {
         let correlation = *self
             .en_vol
             .iter()
-            .find(|(_, e)| e.command_id == command_id)
+            .find(|(_, e)| e.command_id == Some(command_id))
             .map(|(c, _)| c)?;
         self.en_vol.remove(&correlation);
         Some(correlation)
@@ -139,7 +203,7 @@ impl Table {
     /// L'échéance est **atteinte**, pas dépassée : une commande dont
     /// l'échéance vaut exactement `maintenant` est expirée. Le contraire ferait
     /// dépendre l'expiration de la granularité de l'horloge.
-    pub fn expirees(&mut self, maintenant: Instant) -> Vec<(i32, u32)> {
+    pub fn expirees(&mut self, maintenant: Instant) -> Vec<(Option<i32>, u32)> {
         let echues: Vec<u32> = self
             .en_vol
             .iter()
@@ -155,8 +219,8 @@ impl Table {
     /// Retire et rend TOUT. Appelée **avant** `PrjStopVirtualizing` : une
     /// commande laissée en vol y attendrait une réponse que plus rien ne peut
     /// délivrer, et ProjFS attendrait sa complétion indéfiniment.
-    pub fn vider(&mut self) -> Vec<(i32, u32)> {
-        let mut tout: Vec<(i32, u32)> =
+    pub fn vider(&mut self) -> Vec<(Option<i32>, u32)> {
+        let mut tout: Vec<(Option<i32>, u32)> =
             self.en_vol.drain().map(|(c, e)| (e.command_id, c)).collect();
         // Ordre déterministe : un `HashMap` n'en a aucun, et un appelant qui
         // journaliserait cette liste produirait un ordre différent à chaque

@@ -1,0 +1,494 @@
+//! Le fil d'écriture : il lit le fichier local, le découpe, pousse les trames,
+//! attend le `Fait`, tient le journal, et annonce les dues.
+//!
+//! # 🔵 Pourquoi ce module est PUR, alors qu'il lit un fichier « de ProjFS »
+//!
+//! Après `FILE_HANDLE_CLOSED_FILE_MODIFIED`, le fichier est **complet** dans la
+//! racine : ProjFS n'appelle `GetFileData` que sur un **substitut**. Le lire est
+//! donc un `std::fs::File::open` **ordinaire**, portable, testable sur Linux
+//! avec un répertoire temporaire réel.
+//!
+//! ⚠️ **C'est une INFÉRENCE du modèle de ProjFS, pas une mesure.** Si elle est
+//! fausse, la lecture ré-entre dans nos propres rappels. **Elle ne provoquerait
+//! pas d'interblocage** — les commandes ainsi créées sont complétées par le
+//! **fil du pont**, un fil distinct —, mais le pont relirait ses propres octets
+//! à travers le navigateur, ce qui serait **visible au journal** : des `Lire`
+//! sur un chemin en cours d'écriture. Le critère ④ de la recette existe pour
+//! trancher.
+//!
+//! # 🔴 LE FIL EST DÉDIÉ, ET JAMAIS CELUI DU PONT
+//!
+//! `pont/service.rs` l'écrit déjà pour le relevé d'hydratation : « un `read_dir`
+//! sur la racine traverserait ProjFS, donc déclencherait nos propres rappels
+//! d'énumération, qui inscrivent une commande que **ce fil-ci** doit compléter :
+//! **il s'attendrait lui-même** ». **La même phrase vaut ici, et c'est la
+//! raison d'être de ce fil.**
+//!
+//! # L'ordre de la séquence n'est PAS négociable
+//!
+//! 1. l'événement arrive ;
+//! 2. **le journal est écrit ET VIDÉ (`sync_all`) AVANT la première trame** —
+//!    une entrée poussée avant d'être journalisée est une entrée qu'un arrêt
+//!    brutal perd ;
+//! 3. `TYPE_DUES` est annoncé ;
+//! 4. le fichier local est lu et découpé ;
+//! 5. **un morceau en vol à la fois** — le contrôle de flux par
+//!    `bufferedAmount` / `SEUIL_TAMPON` est un livrable de **F3**, et
+//!    l'implémenter à moitié ici serait pire que de ne pas l'implémenter ;
+//! 6. sur le `Fait` du **dernier** morceau : `journal.retirer`, **puis**
+//!    `TYPE_DUES` réannoncé ;
+//! 7. sur un `Echec` ou une expiration : **l'entrée RESTE au journal**, un
+//!    `warn!` nomme le chemin et le code.
+
+use std::collections::VecDeque;
+use std::io::Write;
+use std::path::PathBuf;
+use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
+
+use super::{Evenement, File};
+use crate::pont::decoupe::{decouper, Morceau};
+use crate::pont::journal::Journal;
+use crate::pont::table::{Attendue, Table, DELAI_ECRIRE};
+use crate::pont::transport::VersNavigateur;
+use proto::fichiers::{entetes, CodeEchec};
+
+/// La corrélation portée par une **annonce**.
+///
+/// ⚠️ **Elle n'identifie RIEN** : une annonce n'attend aucune réponse, et le
+/// navigateur ne s'en sert pas. Elle n'est là que pour le journal du transport,
+/// qui trace `correlation` sur chaque émission.
+///
+/// ⚠️ **Elle n'est PAS réservée dans [`Table`]** : la lui faire enjamber
+/// coûterait un cas particulier dans la distribution des corrélations pour un
+/// gain de lisibilité de journal. Une collision exigerait 2^32 inscriptions
+/// dans une même exécution du pont.
+const CORRELATION_ANNONCE: u32 = u32::MAX;
+
+/// Au-delà de cette taille, une écriture due est journalisée en `warn!` et
+/// **nommée** à la page-shell.
+///
+/// 🔴 **CE N'EST PAS UN PLAFOND DE REFUS, et la distinction est de fond.** Le
+/// seul endroit où un refus de taille serait **visible par l'application** est
+/// `PRE_CONVERT_TO_FULL` — mais on n'y connaît que la taille **d'AVANT**
+/// l'écriture, qui ne borne pas celle d'après. Un plafond appliqué au
+/// write-back, lui, serait **invisible** : le handle est refermé depuis
+/// longtemps. La spec §3.5.2 prescrivait `TAILLE_MAX_FICHIER` avec
+/// `ERROR_DISK_FULL` ; **ce code d'erreur n'atteindrait personne.**
+///
+/// ⚠️ **NON CALIBRÉE.**
+pub const TAILLE_ECRITURE_SIGNALEE: u64 = 64 * 1024 * 1024;
+
+/// Ce que le fil d'écriture reçoit.
+///
+/// ⚠️ **UN SEUL CANAL, et c'est une divergence déclarée avec le plan de F2**,
+/// dont la signature prend **deux** `Receiver` (les événements, les faits).
+/// Deux récepteurs sur un fil bloquant imposeraient un sondage alterné, donc
+/// une latence bornée par un délai arbitraire de plus — et un test qui dépend
+/// d'un `sleep`. Un canal unique rend la boucle déterministe, donc testable
+/// sans dormir : la propriété que `pont::table` s'est donnée pour l'expiration.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Ordre {
+    /// Une notification ProjFS a désigné un chemin.
+    Survenu(Evenement),
+    /// Le navigateur a acquitté un morceau.
+    Fait { correlation: u32 },
+    /// Le navigateur a refusé, ou la commande a expiré.
+    Echec { correlation: u32, code: CodeEchec },
+}
+
+/// Ce dont le fil a besoin pour tourner.
+pub struct Config {
+    /// La racine de virtualisation, où vivent les fichiers hydratés.
+    pub racine: PathBuf,
+    /// Le journal de reprise, **hors de la racine**.
+    pub chemin_journal: PathBuf,
+    /// **La MÊME table que les lectures** : deux sources de corrélations sur un
+    /// canal unique se collisionneraient en silence.
+    pub table: Arc<Mutex<Table>>,
+    pub vers_navigateur: Sender<VersNavigateur>,
+    /// `PONT_ECRITURE` : `false` = le bras désarmé de l'A/B.
+    pub armee: bool,
+}
+
+/// La boucle du fil. Rend quand le canal des ordres se ferme.
+pub fn tourner(config: Config, ordres: Receiver<Ordre>) {
+    let mut fil = Fil::demarrer(config);
+    while let Ok(ordre) = ordres.recv() {
+        fil.traiter(ordre);
+    }
+    tracing::info!("fil d'ecriture du pont arrete");
+}
+
+struct EnCours {
+    chemin: String,
+    restants: VecDeque<Morceau>,
+    correlation: u32,
+    dernier_envoye: bool,
+    octets: u64,
+    debut: Instant,
+}
+
+struct Fil {
+    config: Config,
+    journal: Journal,
+    file: File,
+    en_cours: Option<EnCours>,
+}
+
+impl Fil {
+    fn demarrer(config: Config) -> Self {
+        if !config.armee {
+            tracing::warn!(
+                "poussee d'ecriture DESARMEE (PONT_ECRITURE=0) : bras de banc, jamais une \
+                 configuration livree"
+            );
+        }
+        let contenu = std::fs::read_to_string(&config.chemin_journal).unwrap_or_default();
+        let (journal, ignorees) = Journal::relire(&contenu);
+        if ignorees > 0 {
+            // Une ligne partielle est le seul dommage qu'un arrêt brutal puisse
+            // causer à un fichier en ajout. La compter la rend visible ; la
+            // taire ferait croire à un journal intact.
+            tracing::warn!(ignorees, "lignes illisibles jetees au rechargement du journal");
+        }
+        let mut fil = Self { config, journal, file: File::nouvelle(), en_cours: None };
+        fil.reprendre();
+        fil
+    }
+
+    /// Au démarrage : annoncer les dues **avant** toute poussée, puis les
+    /// repousser **dans l'ordre d'inscription**.
+    fn reprendre(&mut self) {
+        if self.journal.est_vide() {
+            return;
+        }
+        tracing::warn!(
+            dues = self.journal.compte(),
+            "des ecritures etaient dues au demarrage du pont : elles sont repoussees"
+        );
+        self.annoncer_les_dues();
+        let a_reprendre: Vec<String> =
+            self.journal.dues().iter().map(|(c, _)| c.clone()).collect();
+        for chemin in a_reprendre {
+            let local = self.local(&chemin);
+            let evenement = match std::fs::metadata(&local) {
+                Ok(m) if m.is_dir() => Evenement::Cree { chemin, repertoire: true },
+                Ok(_) => Evenement::Modifie { chemin },
+                Err(erreur) => {
+                    // 🔴 **La racine a été recréée, et le fichier est parti avec
+                    // elle** (spec §6.4 cas 3). Boucler sur le réessai ferait
+                    // repousser indéfiniment un fichier qui n'existe plus ; le
+                    // retirer EN LE NOMMANT est tout ce qui reste — *savoir ce
+                    // qu'on a perdu n'est pas l'avoir*.
+                    tracing::warn!(
+                        chemin, %erreur,
+                        "ecriture due abandonnee : le fichier local n'existe plus"
+                    );
+                    let ligne = self.journal.retirer(&chemin);
+                    self.ecrire_journal(&ligne);
+                    continue;
+                }
+            };
+            if let Some(a_pousser) = self.file.signaler(evenement) {
+                self.commencer(a_pousser);
+            }
+        }
+        self.annoncer_les_dues();
+    }
+
+    fn traiter(&mut self, ordre: Ordre) {
+        match ordre {
+            Ordre::Survenu(evenement) => {
+                let chemin = evenement.chemin().to_string();
+                let octets = self.taille_de(&chemin);
+                // ÉTAPE 2 : le journal AVANT la première trame.
+                let ligne = self.journal.inscrire(&chemin, octets);
+                self.ecrire_journal(&ligne);
+                if octets > TAILLE_ECRITURE_SIGNALEE {
+                    tracing::warn!(
+                        chemin, octets, seuil = TAILLE_ECRITURE_SIGNALEE,
+                        "ecriture due volumineuse : elle restera longtemps dans la fenetre de perte"
+                    );
+                }
+                // ÉTAPE 3.
+                self.annoncer_les_dues();
+                if let Some(a_pousser) = self.file.signaler(evenement) {
+                    self.commencer(a_pousser);
+                }
+            }
+            Ordre::Fait { correlation } => self.acquitte(correlation),
+            Ordre::Echec { correlation, code } => self.refuse(correlation, code),
+        }
+    }
+
+    fn commencer(&mut self, evenement: Evenement) {
+        let chemin = evenement.chemin().to_string();
+        if !self.config.armee {
+            // Le bras DÉSARMÉ : on journalise et on annonce, on ne pousse
+            // JAMAIS. L'entrée reste donc due, et le compteur de la page-shell
+            // monte sans jamais redescendre — c'est ce qui le rend rouge.
+            if let Some(suivant) = self.file.terminee(&chemin) {
+                self.commencer(suivant);
+            }
+            return;
+        }
+        if evenement.est_repertoire() {
+            // Règle 4 : un répertoire ne porte AUCUN contenu.
+            self.pousser_creation(&chemin, true);
+            return;
+        }
+        if matches!(evenement, Evenement::Cree { .. }) {
+            self.pousser_creation(&chemin, false);
+            return;
+        }
+        let octets = self.taille_de(&chemin);
+        let mut morceaux: VecDeque<Morceau> =
+            decouper(0, octets, proto::fichiers::TAILLE_TRAME_MAX).into();
+        if morceaux.is_empty() {
+            // 🔴 **UN FICHIER VIDE EST LE CAS NOMINAL D'UN « NOUVEAU DOCUMENT »
+            // ENREGISTRÉ AUSSITÔT**, et `decouper` rend délibérément ZÉRO
+            // morceau pour une longueur nulle. Sans ce cas particulier, aucun
+            // `dernier` ne serait jamais émis, l'entrée ne sortirait JAMAIS du
+            // journal, et l'utilisateur verrait une alerte permanente pour un
+            // fichier correctement transmis. *Un compteur qui ne redescend
+            // jamais est aussi faux qu'un compteur qui ne monte jamais.*
+            //
+            // ⚠️ **ET C'EST UN MORCEAU VIDE, PAS UNE CRÉATION**, contre la
+            // lettre du plan de F2 (« un fichier de taille nulle produit une
+            // création et zéro morceau »). Une création n'a aucun effet sur un
+            // fichier local qui existe déjà : un fichier TRONQUÉ À ZÉRO sur la
+            // VM garderait son ancien contenu sur le poste local, ce qui est
+            // une corruption silencieuse. Le morceau vide, lui, ouvre le flux
+            // sans `keepExistingData` et le referme : le fichier local devient
+            // vide, ce qu'il doit être.
+            morceaux.push_back(Morceau { position: 0, longueur: 0 });
+        }
+        self.en_cours = Some(EnCours {
+            chemin,
+            restants: morceaux,
+            correlation: 0,
+            dernier_envoye: false,
+            octets,
+            debut: Instant::now(),
+        });
+        self.pousser_morceau(true);
+    }
+
+    fn pousser_creation(&mut self, chemin: &str, repertoire: bool) {
+        let entete = serde_json::to_string(&entetes::Creer {
+            chemin: chemin.to_string(),
+            repertoire,
+        })
+        .expect("un en-tete Creer se serialise toujours");
+        let correlation = self.inscrire(Attendue::Creer { chemin: chemin.to_string() });
+        self.en_cours = Some(EnCours {
+            chemin: chemin.to_string(),
+            restants: VecDeque::new(),
+            correlation,
+            dernier_envoye: true,
+            octets: 0,
+            debut: Instant::now(),
+        });
+        self.emettre(proto::fichiers::TYPE_CREER, correlation, &entete, &[]);
+        tracing::debug!(chemin, repertoire, correlation, "creation poussee");
+    }
+
+    /// Pousse le morceau suivant. `premier` n'est vrai qu'au tout premier.
+    fn pousser_morceau(&mut self, premier: bool) {
+        let Some(en_cours) = self.en_cours.as_mut() else { return };
+        let Some(morceau) = en_cours.restants.pop_front() else { return };
+        let dernier = en_cours.restants.is_empty();
+        let chemin = en_cours.chemin.clone();
+        let entete = serde_json::to_string(&entetes::Ecrire {
+            chemin: chemin.clone(),
+            position: morceau.position,
+            longueur: morceau.longueur,
+            premier,
+            dernier,
+        })
+        .expect("un en-tete Ecrire se serialise toujours");
+
+        let octets = match self.lire(&chemin, morceau) {
+            Ok(octets) => octets,
+            Err(erreur) => {
+                tracing::warn!(chemin, %erreur, "lecture du fichier local echouee : ecriture due RETENUE");
+                self.terminer(&chemin, false);
+                return;
+            }
+        };
+        let correlation = self.inscrire(Attendue::Ecrire { chemin: chemin.clone(), dernier });
+        if let Some(en_cours) = self.en_cours.as_mut() {
+            en_cours.correlation = correlation;
+            en_cours.dernier_envoye = dernier;
+        }
+        self.emettre(proto::fichiers::TYPE_ECRIRE, correlation, &entete, &octets);
+        tracing::debug!(
+            chemin, correlation,
+            position = morceau.position, longueur = morceau.longueur, premier, dernier,
+            "ecriture poussee"
+        );
+    }
+
+    fn acquitte(&mut self, correlation: u32) {
+        let Some(en_cours) = self.en_cours.as_ref() else { return };
+        if en_cours.correlation != correlation {
+            // Un `Fait` tardif, arrivé après une expiration. Le jeter est
+            // l'invariant de `Table::resoudre`, transposé.
+            tracing::debug!(correlation, "acquittement tardif ou inconnu : jete");
+            return;
+        }
+        if !en_cours.dernier_envoye {
+            self.pousser_morceau(false);
+            return;
+        }
+        let chemin = en_cours.chemin.clone();
+        let octets = en_cours.octets;
+        let duree_ms = en_cours.debut.elapsed().as_millis();
+        // ÉTAPE 6 : le journal, PUIS l'annonce.
+        tracing::info!(
+            chemin, octets, duree_ms,
+            "ecriture acquittee : les octets sont sur le poste local"
+        );
+        self.terminer(&chemin, true);
+    }
+
+    fn refuse(&mut self, correlation: u32, code: CodeEchec) {
+        let Some(en_cours) = self.en_cours.as_ref() else { return };
+        if en_cours.correlation != correlation {
+            return;
+        }
+        let chemin = en_cours.chemin.clone();
+        // 🔴 **L'ENTRÉE RESTE AU JOURNAL.** La retirer serait la perte de
+        // données que ce module existe pour empêcher.
+        tracing::warn!(
+            chemin, ?code,
+            "ecriture due retenue : le navigateur a refuse, l'entree reste au journal"
+        );
+        self.terminer(&chemin, false);
+    }
+
+    /// Clôt la poussée en cours. `acquittee` décide si l'entrée sort du journal.
+    fn terminer(&mut self, chemin: &str, acquittee: bool) {
+        self.en_cours = None;
+        if acquittee {
+            let ligne = self.journal.retirer(chemin);
+            self.ecrire_journal(&ligne);
+        }
+        self.annoncer_les_dues();
+        if let Some(suivant) = self.file.terminee(chemin) {
+            self.commencer(suivant);
+        }
+    }
+
+    fn annoncer_les_dues(&self) {
+        let dues: Vec<entetes::Due> = self
+            .journal
+            .dues()
+            .iter()
+            .map(|(chemin, octets)| entetes::Due { chemin: chemin.clone(), octets: *octets })
+            .collect();
+        let entete = serde_json::to_string(&entetes::Dues { dues })
+            .expect("un en-tete Dues se serialise toujours");
+        self.emettre(proto::fichiers::TYPE_DUES, CORRELATION_ANNONCE, &entete, &[]);
+    }
+
+    fn emettre(&self, type_message: u8, correlation: u32, entete: &str, charge: &[u8]) {
+        let trame = proto::fichiers::encoder(type_message, correlation, entete, charge);
+        if self
+            .config
+            .vers_navigateur
+            .send(VersNavigateur::Requete { correlation, trame })
+            .is_err()
+        {
+            tracing::warn!(correlation, "transport du pont parti : trame d'ecriture non emise");
+        }
+    }
+
+    fn inscrire(&self, quoi: Attendue) -> u32 {
+        let echeance = Instant::now() + DELAI_ECRIRE;
+        match self.config.table.lock() {
+            Ok(mut table) => table.inscrire_sans_commande(quoi, echeance),
+            Err(empoisonne) => empoisonne.into_inner().inscrire_sans_commande(quoi, echeance),
+        }
+    }
+
+    fn local(&self, chemin: &str) -> PathBuf {
+        let mut local = self.config.racine.clone();
+        for composant in chemin.split('/').filter(|c| !c.is_empty()) {
+            local.push(composant);
+        }
+        local
+    }
+
+    fn taille_de(&self, chemin: &str) -> u64 {
+        std::fs::metadata(self.local(chemin)).map(|m| if m.is_dir() { 0 } else { m.len() }).unwrap_or(0)
+    }
+
+    fn lire(&self, chemin: &str, morceau: Morceau) -> std::io::Result<Vec<u8>> {
+        use std::io::{Read, Seek, SeekFrom};
+        if morceau.longueur == 0 {
+            // Un fichier vide : rien à lire, et le flux se ferme sur un morceau
+            // sans octet. `File::open` échouerait tout de même si le fichier a
+            // disparu entre-temps, ce qu'on veut savoir.
+            std::fs::File::open(self.local(chemin))?;
+            return Ok(Vec::new());
+        }
+        let mut fichier = std::fs::File::open(self.local(chemin))?;
+        fichier.seek(SeekFrom::Start(morceau.position))?;
+        let mut tampon = vec![0u8; morceau.longueur as usize];
+        let lus = fichier.read(&mut tampon)?;
+        // ⚠️ **La longueur ANNONCÉE doit être celle RÉELLEMENT lue.** Le fichier
+        // a pu rétrécir entre le `metadata` et la lecture ; annoncer la demande
+        // ferait diverger l'en-tête de la charge, et le navigateur écrirait des
+        // zéros de remplissage.
+        tampon.truncate(lus);
+        Ok(tampon)
+    }
+
+    /// Ajoute une ligne au journal, **et la vide sur le disque**.
+    ///
+    /// ⚠️ **`sync_all` et non un simple `write`** : une ligne restée dans le
+    /// cache du système ne survit pas à un arrêt brutal, et c'est exactement le
+    /// cas que ce journal existe pour couvrir.
+    ///
+    /// ⚠️ **Un échec d'écriture du journal n'empêche PAS la poussée.** Ne pas
+    /// pousser perdrait la donnée tout autant, et sans même la nommer. Le
+    /// `warn!` est tout ce qu'on peut faire.
+    fn ecrire_journal(&mut self, ligne: &str) {
+        let issue = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&self.config.chemin_journal)
+            .and_then(|mut f| {
+                f.write_all(ligne.as_bytes())?;
+                f.sync_all()
+            });
+        if let Err(erreur) = issue {
+            tracing::warn!(
+                %erreur, chemin = %self.config.chemin_journal.display(),
+                "journal des ecritures dues non ecrit : une reprise apres arret brutal perdrait cette entree"
+            );
+            return;
+        }
+        self.compacter_si_possible();
+    }
+
+    fn compacter_si_possible(&self) {
+        let Ok(meta) = std::fs::metadata(&self.config.chemin_journal) else { return };
+        if !self.journal.compactable(meta.len()) {
+            return;
+        }
+        // Le journal est VIDE : le tronquer ne perd rien. Le tronquer alors
+        // qu'il porte une due la perdrait exactement quand elle sert.
+        if let Err(erreur) = std::fs::write(&self.config.chemin_journal, b"") {
+            tracing::warn!(%erreur, "compactage du journal des ecritures echoue");
+        } else {
+            tracing::info!(octets = meta.len(), "journal des ecritures compacte (aucune due)");
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests;
