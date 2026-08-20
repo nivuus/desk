@@ -9,7 +9,7 @@
 //! geste que `CLAUDE.md` interdit nommément.
 
 use std::collections::{HashMap, VecDeque};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::Mutex;
 
@@ -102,13 +102,43 @@ pub struct Etat {
     /// doive tolérer de ne pas encore le voir.
     pub contexte: Mutex<Option<Contexte>>,
     /// Les commandes en vol. **PURE**, sous verrou.
-    pub table: Mutex<Table>,
+    ///
+    /// ⚠️ **Un `Arc` depuis F2**, parce que le **fil d'écriture** y inscrit ses
+    /// corrélations lui aussi — et il doit prendre les siennes dans CETTE table.
+    /// Deux sources de corrélations sur un canal unique se collisionneraient, et
+    /// la collision serait **silencieuse** : une réponse appliquée à la mauvaise
+    /// commande. Voir `Table::inscrire_sans_commande`.
+    pub table: std::sync::Arc<Mutex<Table>>,
     /// Les sessions d'énumération ouvertes, par GUID d'énumération.
     pub sessions: Mutex<HashMap<[u8; 16], Session>>,
     /// Les handles ProjFS des commandes en vol, par corrélation.
     pub en_attente: Mutex<HashMap<u32, ContexteProjFs>>,
     /// Par où les rappels poussent leurs requêtes vers le transport.
     pub sortant: Sender<VersNavigateur>,
+    /// Par où le rappel de notification pousse vers le **fil d'écriture**.
+    ///
+    /// 🔴 **UN CANAL, ET RIEN D'AUTRE : le rappel ne lit AUCUN fichier.** Il
+    /// s'exécute sur un fil que le système possède ; y ouvrir le fichier
+    /// hydraté ferait une E/S sur ce fil, ce que la discipline de
+    /// [`super`] interdit — et la lecture traverserait la racine, donc nos
+    /// propres rappels.
+    pub vers_ecriture: Sender<crate::pont::ecriture::fil::Ordre>,
+    /// La racine accepte-t-elle l'écriture ? Posé une fois au démarrage.
+    ///
+    /// ⚠️ **`false` REND EXACTEMENT LE COMPORTEMENT DE F1** : `PRE_CONVERT_TO_FULL`
+    /// est alors refusée en `ERROR_WRITE_PROTECT`, et rien n'est jamais poussé.
+    pub inscriptible: bool,
+    /// Le canal du pont est-il ouvert ?
+    ///
+    /// 🔴 **C'est le SEUL instant où une application peut encore apprendre que
+    /// le navigateur est parti** : refuser à `PRE_CONVERT_TO_FULL` rend
+    /// `ERROR_IO_DEVICE` avant que l'écriture ne commence. Après, le handle est
+    /// refermé et plus aucun `HRESULT` n'atteint personne.
+    ///
+    /// ⚠️ **Un `AtomicBool` et non un champ nu** : il est écrit par le fil du
+    /// pont (sur `CanalOuvert` / `CanalFerme`) et lu par les fils de rappel du
+    /// système.
+    pub canal_ouvert: AtomicBool,
     /// Ce que CE processus a hydraté depuis son démarrage — voir
     /// [`PERIODE_HYDRATATION`] et [`Etat::tracer_hydratation`].
     pub octets_hydrates: AtomicU64,
@@ -183,6 +213,14 @@ impl Etat {
             return false;
         }
         true
+    }
+
+    /// L'état que [`crate::pont::notifications::decider`] attend.
+    pub fn etat_de_notification(&self) -> crate::pont::notifications::Etat {
+        crate::pont::notifications::Etat {
+            inscriptible: self.inscriptible,
+            canal_ouvert: self.canal_ouvert.load(Ordering::Relaxed),
+        }
     }
 
     /// Demande le morceau suivant d'une lecture déjà entamée.

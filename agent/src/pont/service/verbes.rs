@@ -75,7 +75,21 @@ impl Drop for TamponAligne<'_> {
 }
 
 /// Complète une commande ProjFS, sans paramètres étendus.
-pub(super) fn completer(etat: &Etat, commande: i32, resultat: HRESULT) {
+///
+/// 🔴 **UN `command_id` ABSENT N'EST PAS UNE ERREUR : c'est une ÉCRITURE.**
+/// Elle naît d'une notification POST, qui a déjà rendu la main à
+/// l'application — il n'y a donc **aucun rappel à compléter**. Appeler
+/// `PrjCompleteCommand(0)` compléterait une commande qui appartient à
+/// quelqu'un d'autre.
+///
+/// ⚠️ **Le cas est journalisé à `debug!`, jamais tu.** Le silence ferait qu'un
+/// `None` inattendu — venu d'une lecture dont on aurait perdu l'identifiant —
+/// serait indiscernable du cas nominal.
+pub(super) fn completer(etat: &Etat, commande: Option<i32>, resultat: HRESULT) {
+    let Some(commande) = commande else {
+        tracing::debug!(%resultat, "aucune commande ProjFS a completer : c'est une ecriture");
+        return;
+    };
     let Some(Contexte(contexte)) = etat.contexte() else {
         tracing::warn!(commande, "complétion impossible : aucun contexte de virtualisation");
         return;

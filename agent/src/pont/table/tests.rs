@@ -34,7 +34,7 @@ fn une_commande_expiree_ne_reste_pas_en_table() {
 
     // À l'échéance EXACTE : elle expire. Faire dépendre l'expiration d'un
     // dépassement strict la ferait dépendre de la granularité de l'horloge.
-    assert_eq!(t.expirees(debut + DELAI_ATTRIBUTS), vec![(7, c)]);
+    assert_eq!(t.expirees(debut + DELAI_ATTRIBUTS), vec![(Some(7), c)]);
     assert_eq!(t.en_vol(), 0, "en_vol() doit être décrémenté");
     // …et une seconde passe ne la rend pas deux fois.
     assert!(t.expirees(debut + DELAI_LISTER).is_empty());
@@ -77,7 +77,7 @@ fn vider_rend_tout_et_laisse_la_table_vide() {
 
     let tout = t.vider();
     assert_eq!(tout.len(), 3, "vider doit rendre TOUT");
-    assert_eq!(tout, vec![(11, c1), (22, c2), (33, c3)]);
+    assert_eq!(tout, vec![(Some(11), c1), (Some(22), c2), (Some(33), c3)]);
     assert_eq!(t.en_vol(), 0);
     assert!(t.vider().is_empty());
     // …et plus aucune réponse n'est appliquée après.
@@ -118,10 +118,10 @@ fn deux_enumerations_du_meme_chemin_coexistent() {
     assert_eq!(t.en_vol(), 2, "les deux sessions doivent COEXISTER");
     // …et chacune se résout sur SA session, pas sur celle de l'autre.
     let (id1, quoi1) = t.resoudre(c1).expect("la première session existe");
-    assert_eq!(id1, 100);
+    assert_eq!(id1, Some(100));
     assert_eq!(quoi1, Attendue::Lister { chemin: "dossier".into(), enumeration: g1 });
     let (id2, quoi2) = t.resoudre(c2).expect("la seconde session existe");
-    assert_eq!(id2, 200);
+    assert_eq!(id2, Some(200));
     assert_eq!(quoi2, Attendue::Lister { chemin: "dossier".into(), enumeration: g2 });
 }
 
@@ -159,5 +159,94 @@ fn un_debordement_du_compteur_de_correlation_ne_reutilise_pas_une_correlation_en
     );
     assert_eq!(t.en_vol(), 3);
     // La commande d'origine répond toujours pour ELLE.
-    assert_eq!(t.resoudre(zero).map(|(id, _)| id), Some(10));
+    assert_eq!(t.resoudre(zero).map(|(id, _)| id), Some(Some(10)));
+}
+
+/// 🔴 **UNE ÉCRITURE ET UNE LECTURE NE PARTAGENT JAMAIS UNE CORRÉLATION.**
+///
+/// C'est la raison pour laquelle `inscrire_sans_commande` passe par CETTE
+/// table, et non par un second compteur : deux compteurs indépendants sur le
+/// même canal se collisionneraient, et la collision serait **silencieuse** —
+/// une réponse appliquée à la mauvaise commande.
+#[test]
+fn une_ecriture_et_une_lecture_ne_partagent_jamais_une_correlation() {
+    let e = maintenant() + DELAI_LIRE;
+    let mut t = Table::nouvelle();
+    let mut vues = std::collections::HashSet::new();
+    for i in 0..64 {
+        // Les deux sortes s'entrelacent, comme sur le chemin réel : un fil
+        // d'écriture pousse pendant qu'une application lit.
+        let lecture = t.inscrire(i, attributs(&format!("l{i}")), e);
+        let ecriture = t.inscrire_sans_commande(
+            Attendue::Ecrire { chemin: format!("e{i}"), dernier: false },
+            e,
+        );
+        assert!(vues.insert(lecture), "corrélation {lecture} distribuée deux fois");
+        assert!(vues.insert(ecriture), "corrélation {ecriture} distribuée deux fois");
+    }
+    assert_eq!(t.en_vol(), 128);
+}
+
+/// Une inscription sans commande reçoit une corrélation **et aucun
+/// `command_id`** : `verbes::completer` doit pouvoir la distinguer.
+#[test]
+fn une_inscription_sans_commande_n_a_pas_de_command_id() {
+    let e = maintenant() + DELAI_ECRIRE;
+    let mut t = Table::nouvelle();
+    let c = t.inscrire_sans_commande(Attendue::Creer { chemin: "neuf.txt".into() }, e);
+    let (commande, quoi) = t.resoudre(c).expect("inscrite à l'instant");
+    assert_eq!(commande, None, "une écriture ne complète AUCUN rappel ProjFS");
+    assert_eq!(quoi, Attendue::Creer { chemin: "neuf.txt".into() });
+}
+
+/// 🔴 **`vider` REND LES ÉCRITURES AVEC UN `command_id` ABSENT.**
+///
+/// Rendre `Some(0)` ferait appeler `PrjCompleteCommand(0)` à l'arrêt du pont,
+/// c'est-à-dire compléter une commande qui appartient à quelqu'un d'autre.
+#[test]
+fn vider_rend_les_ecritures_avec_un_command_id_absent() {
+    let e = maintenant() + DELAI_ECRIRE;
+    let mut t = Table::nouvelle();
+    let lecture = t.inscrire(42, attributs("a"), e);
+    let ecriture =
+        t.inscrire_sans_commande(Attendue::Ecrire { chemin: "b".into(), dernier: true }, e);
+    let tout = t.vider();
+    assert_eq!(tout.len(), 2);
+    assert!(tout.contains(&(Some(42), lecture)));
+    assert!(tout.contains(&(None, ecriture)), "l'écriture doit sortir SANS command_id");
+}
+
+/// Une écriture expirée est retirée comme les autres.
+///
+/// L'exclure du balayage la laisserait en table **pour toujours** : rien
+/// d'autre ne la retire, puisqu'aucun rappel ProjFS ne l'a inscrite et
+/// qu'aucune annulation ne peut la viser.
+#[test]
+fn une_ecriture_expiree_est_retiree_comme_les_autres() {
+    let debut = maintenant();
+    let mut t = Table::nouvelle();
+    let c = t.inscrire_sans_commande(
+        Attendue::Ecrire { chemin: "gros.bin".into(), dernier: false },
+        debut + DELAI_ECRIRE,
+    );
+    assert!(t.expirees(debut).is_empty());
+    assert_eq!(t.expirees(debut + DELAI_ECRIRE), vec![(None, c)]);
+    assert_eq!(t.en_vol(), 0);
+}
+
+/// `annuler` ne peut pas viser une écriture — elle n'a pas de `command_id`.
+///
+/// ⚠️ **Sans cette assertion, `annuler(0)` pourrait apparier une écriture dont
+/// le `command_id` est `None`** le jour où la comparaison serait écrite à
+/// l'envers. Une application qui abandonne son E/S emporterait alors une
+/// écriture due, qui ne serait jamais poussée ET jamais retirée du journal.
+#[test]
+fn annuler_ne_vise_jamais_une_ecriture() {
+    let e = maintenant() + DELAI_ECRIRE;
+    let mut t = Table::nouvelle();
+    let ecriture =
+        t.inscrire_sans_commande(Attendue::Ecrire { chemin: "a".into(), dernier: true }, e);
+    assert_eq!(t.annuler(0), None, "aucune commande ProjFS 0 n'existe");
+    assert_eq!(t.en_vol(), 1, "l'écriture est toujours là");
+    assert!(t.resoudre(ecriture).is_some());
 }

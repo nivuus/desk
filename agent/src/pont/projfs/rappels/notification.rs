@@ -15,12 +15,13 @@
 //! revue puisse comparer l'un et l'autre.
 
 use windows::core::HRESULT;
-use windows::Win32::Foundation::S_OK;
+use windows::Win32::Foundation::{E_UNEXPECTED, S_OK};
 use windows::Win32::Storage::ProjectedFileSystem::{
     PRJ_CALLBACK_DATA, PRJ_NOTIFICATION, PRJ_NOTIFICATION_CB, PRJ_NOTIFICATION_PARAMETERS,
 };
 
-use super::garde;
+use super::{chemins_de, etat, garde};
+use crate::pont::ecriture::{fil::Ordre, Evenement};
 use crate::pont::erreurs::hresult;
 use crate::pont::notifications;
 
@@ -32,56 +33,89 @@ use crate::pont::notifications;
 // ────────────────────────────────────────────────────────────────────────────
 const _: PRJ_NOTIFICATION_CB = Some(notification);
 
-/// **Le refus d'écriture, et c'est le PÉRIMÈTRE de F1**, pas une lacune.
+/// **La décision d'écriture, et le seul rappel de F2 qui change ce qu'une
+/// application obtient.**
 ///
-/// ⚠️ **Le naïf ne marche pas, et c'est pour cela que ce rappel existe.** Avec
-/// `showDirectoryPicker({ mode: 'read' })`, la File System Access API refuse
-/// bien l'écriture côté navigateur — mais **côté VM, l'écriture RÉUSSIT
-/// localement** : ProjFS hydrate le fichier et l'application écrit sur le
-/// fichier NTFS local. Le fournisseur n'est prévenu qu'APRÈS coup, à la
-/// fermeture du handle (spec §6.1). Une application verrait donc son
-/// enregistrement réussir, et rien n'arriverait jamais côté poste local.
-/// **C'est pire qu'une erreur : c'est une perte silencieuse.**
+/// ⚠️ **Il ne DÉCIDE de rien lui-même** : la décision vit dans
+/// [`crate::pont::notifications`], qui est **PUR** et éprouvé sur l'hôte. Ce
+/// rappel traduit, il n'arbitre pas.
 ///
-/// Le levier est `PRJ_NOTIFICATION_FILE_PRE_CONVERT_TO_FULL` — « une
-/// application est sur le point d'écrire, il faut hydrater complètement ».
-/// C'est une notification **`PRE_`, donc REFUSABLE** : rendre
-/// `HRESULT_FROM_WIN32(ERROR_WRITE_PROTECT)` fait échouer l'écriture **avant**
-/// qu'elle ait commencé.
+/// # 🔴 Ce qu'il ne fait JAMAIS, et pourquoi
 ///
-/// Les quatre notifications refusées sont **synchrones et ne consultent jamais
-/// le navigateur** (spec §4.3) : leur seul rôle est d'autoriser ou de refuser,
-/// et la décision se prend sans quitter le fil. C'est ce qui impose qu'aucune
-/// règle d'autorisation ne dépende d'un état distant.
+/// **Aucune lecture de fichier, aucun verrou tenu, aucune attente.** Il court
+/// sur un fil que le SYSTÈME possède : y ouvrir le fichier hydraté ferait une
+/// E/S sur ce fil, et la lecture traverserait la racine — donc nos propres
+/// rappels. Tout ce qu'il fait est **pousser un événement sur un `mpsc` et
+/// rendre `S_OK` immédiatement** ; c'est le fil d'écriture, dédié, qui lit.
+///
+/// # ⚠️ `PRJ_NOTIFICATION_PARAMETERS` N'EST PAS DÉRÉFÉRENCÉ, ET C'EST DÉLIBÉRÉ
+///
+/// C'est une **UNION** (`mod.rs:352-356`, membres décrits en `mod.rs:364-376`),
+/// et **lire le mauvais membre est un comportement indéfini**. F2 n'a besoin
+/// d'aucun des trois : `PostCreate.NotificationMask` et
+/// `FileRenamed.NotificationMask` servent à **changer le masque** pour ce
+/// fichier, ce que F2 ne fait pas, et `FileDeletedOnHandleClose.IsFileModified`
+/// concerne la suppression, qui est **F3**. Le paramètre reste donc
+/// `_parametres` — **ne pas la lire du tout est le seul moyen sûr**, et le dire
+/// évite qu'un successeur y voie un oubli.
+///
+/// ⚠️ **`_destination` non plus** : elle ne porte un nom que pour
+/// `PRE_RENAME` / `FILE_RENAMED`, que F2 refuse (F3 les livrera).
 pub(super) unsafe extern "system" fn notification(
     donnees: *const PRJ_CALLBACK_DATA,
-    _est_repertoire: bool,
+    est_repertoire: bool,
     notification: PRJ_NOTIFICATION,
     _destination: windows::core::PCWSTR,
     _parametres: *mut PRJ_NOTIFICATION_PARAMETERS,
 ) -> HRESULT {
-    garde("Notification", || match notifications::decider(notification.0) {
-        notifications::Reponse::Refuser(cause) => HRESULT(hresult(cause)),
-        notifications::Reponse::AccepterEnSignalant => {
-            let chemin = unsafe { donnees.as_ref() }
-                .and_then(|d| unsafe { d.FilePathName.to_string() }.ok())
-                .unwrap_or_default();
-            tracing::warn!(
-                chemin,
-                "fichier créé dans la racine du pont : il vit sur la VM et ne sera JAMAIS \
-                 poussé vers le poste local (F1 est en lecture seule ; la notification \
-                 NEW_FILE_CREATED est une POST, elle ne se refuse pas)"
-            );
-            S_OK
-        }
-        // Une notification que le masque n'aurait pas dû livrer. Accepter EN
-        // SILENCE ferait qu'un masque élargi par erreur passerait inaperçu.
-        notifications::Reponse::AccepterSansAttendre => {
-            tracing::warn!(
-                code = notification.0,
-                "notification ProjFS non attendue par le masque de F1 : acceptée sans effet"
-            );
-            S_OK
+    garde("Notification", || {
+        let Some(etat) = (unsafe { etat(donnees) }) else { return E_UNEXPECTED };
+        match notifications::decider(notification.0, etat.etat_de_notification()) {
+            notifications::Reponse::Refuser(cause) => HRESULT(hresult(cause)),
+            // 🔵 L'écriture est autorisée. **Il n'y a rien de plus à faire
+            // ici** : les octets ne nous concernent qu'à la fermeture du
+            // handle, par une POST.
+            notifications::Reponse::Autoriser => S_OK,
+            notifications::Reponse::Pousser(quoi) => {
+                // ⚠️ **La normalisation de `pont::chemins` reste la SEULE
+                // barrière** contre les remontées `..`, les flux alternatifs
+                // NTFS (`:`) et les noms de périphérique réservés. Elle est
+                // PURE, donc éprouvée sur l'hôte.
+                let Some((chemin, _)) = (unsafe { chemins_de(donnees) }) else {
+                    // Un chemin refusé par la normalisation : on ne pousse
+                    // RIEN, et `chemins_de` a déjà journalisé le refus. Rendre
+                    // S_OK est le seul choix — la notification est une POST,
+                    // et refuser n'empêcherait rien.
+                    return S_OK;
+                };
+                let evenement = match quoi {
+                    notifications::Poussee::Creation => {
+                        Evenement::Cree { chemin, repertoire: est_repertoire }
+                    }
+                    notifications::Poussee::Contenu => Evenement::Modifie { chemin },
+                };
+                if etat.vers_ecriture.send(Ordre::Survenu(evenement)).is_err() {
+                    // 🔴 **Le fil d'écriture est parti, et l'application a DÉJÀ
+                    // enregistré.** Rien ne peut plus lui être dit : c'est
+                    // l'absence de contre-pression que l'en-tête de
+                    // `pont::notifications` décrit. Le `warn!` est tout ce qui
+                    // reste.
+                    tracing::warn!(
+                        "fil d'ecriture du pont parti : une ecriture ne sera JAMAIS poussee"
+                    );
+                }
+                S_OK
+            }
+            // Une notification que le masque n'aurait pas dû livrer. Accepter
+            // EN SILENCE ferait qu'un masque élargi par erreur passerait
+            // inaperçu.
+            notifications::Reponse::AccepterSansAttendre => {
+                tracing::warn!(
+                    code = notification.0,
+                    "notification ProjFS non attendue par le masque de F2 : acceptee sans effet"
+                );
+                S_OK
+            }
         }
     })
 }

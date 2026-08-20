@@ -84,6 +84,7 @@ mod racine;
 mod rappels;
 
 pub use etat::{ContexteProjFs, Etat, FluxDonnees, TamponEntrees};
+pub use racine::dossier_etat;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -153,15 +154,25 @@ impl Virtualisation {
     pub fn demarrer(
         projfs: chargement::ProjFs,
         sortant: std::sync::mpsc::Sender<VersNavigateur>,
+        vers_ecriture: std::sync::mpsc::Sender<crate::pont::ecriture::fil::Ordre>,
+        inscriptible: bool,
     ) -> Result<Self> {
         let racine = racine::racine()?;
         let etat = Arc::new(Etat {
             projfs,
             contexte: Mutex::new(None),
-            table: Mutex::new(Table::nouvelle()),
+            table: Arc::new(Mutex::new(Table::nouvelle())),
             sessions: Mutex::new(HashMap::new()),
             en_attente: Mutex::new(HashMap::new()),
             sortant,
+            vers_ecriture,
+            inscriptible,
+            // ⚠️ **`false` AU DÉPART, et ce n'est pas une précaution de style** :
+            // ProjFS peut appeler un rappel PENDANT `PrjStartVirtualizing`,
+            // c'est-à-dire bien avant que le navigateur n'ait ouvert son canal.
+            // Partir de `true` autoriserait une écriture qui n'aurait personne
+            // à qui être poussée.
+            canal_ouvert: std::sync::atomic::AtomicBool::new(false),
             octets_hydrates: AtomicU64::new(0),
             entrees_hydratees: AtomicU64::new(0),
         });
@@ -282,6 +293,19 @@ impl Drop for Virtualisation {
         };
         let echec = windows::core::HRESULT(hresult(Erreur::CanalFerme));
         for (commande, correlation) in &restantes {
+            // 🔴 **UNE ÉCRITURE EN VOL EST VIDÉE DE LA TABLE COMME LES AUTRES,
+            // MAIS N'EST PAS RETIRÉE DU JOURNAL** — c'est exactement le cas que
+            // le journal existe pour couvrir. Le pont relancé la repoussera.
+            //
+            // Il n'y a rien à compléter : `command_id` est `None`, et il
+            // n'existe aucun rappel ProjFS derrière une écriture.
+            let Some(commande) = commande else {
+                tracing::debug!(
+                    correlation,
+                    "écriture en vol à l'arrêt : rien à compléter, l'entrée RESTE au journal"
+                );
+                continue;
+            };
             // SÛRETÉ : contexte valide (la virtualisation n'est pas encore
             // arrêtée), `commande` vient de la table, et le quatrième paramètre
             // est nul — `PrjCompleteCommand` accepte l'absence de paramètres

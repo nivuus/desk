@@ -45,7 +45,13 @@ pub(super) fn racine() -> Result<PathBuf> {
 }
 
 /// `%LOCALAPPDATA%\Guacamole\pont`.
-fn dossier_etat() -> Result<PathBuf> {
+///
+/// ⚠️ **`pub` depuis F2** : le **journal des écritures dues** y vit
+/// aussi, pour la raison écrite en tête de [`SOUS_DOSSIER_ETAT`] — un état qui
+/// vivrait DANS la racine serait lui-même un objet projeté, donc dépendant du
+/// pont pour être lu, et il disparaîtrait avec la racine **exactement le jour
+/// où il sert**.
+pub fn dossier_etat() -> Result<PathBuf> {
     let local = std::env::var("LOCALAPPDATA")
         .context("LOCALAPPDATA absent : impossible de situer l'état du pont fichiers")?;
     Ok(PathBuf::from(local).join(SOUS_DOSSIER_ETAT))

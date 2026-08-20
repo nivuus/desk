@@ -29,6 +29,7 @@ use windows::core::HRESULT;
 use windows::Win32::Foundation::S_OK;
 
 use proto::fichiers::entetes;
+use crate::pont::ecriture::fil::Ordre;
 use crate::pont::enumeration::Session;
 use crate::pont::erreurs::{hresult, Erreur};
 use crate::pont::projfs::{ContexteProjFs, Etat, PERIODE_HYDRATATION};
@@ -49,9 +50,15 @@ pub fn tourner(etat: Arc<Etat>, entrant: Receiver<DuNavigateur>) {
     loop {
         match entrant.recv_timeout(PERIODE_BALAYAGE) {
             Ok(DuNavigateur::CanalOuvert) => {
+                // 🔴 **C'est ce drapeau qui arme le refus d'écriture par ÉTAT.**
+                // Tant qu'il est faux, `PRE_CONVERT_TO_FULL` rend
+                // `ERROR_IO_DEVICE` — le seul instant où une application peut
+                // encore apprendre que le navigateur n'est pas là.
+                etat.canal_ouvert.store(true, Ordering::Relaxed);
                 tracing::info!("canal du pont ouvert : le navigateur peut servir les requêtes");
             }
             Ok(DuNavigateur::CanalFerme) => {
+                etat.canal_ouvert.store(false, Ordering::Relaxed);
                 tracing::warn!("canal du pont fermé : les commandes en vol sont abandonnées");
                 tout_completer(&etat, Erreur::CanalFerme);
                 return;
@@ -83,8 +90,30 @@ fn tout_completer(etat: &Etat, cause: Erreur) {
     };
     for (commande, correlation) in restantes {
         oublier_contexte(etat, correlation);
+        // ⚠️ **Une écriture abandonnée doit être DITE au fil d'écriture**, sans
+        // quoi sa poussée resterait « en vol » à jamais et la file n'avancerait
+        // plus. L'entrée, elle, RESTE au journal — c'est le fil qui décide, et
+        // c'est ce qui la rend récupérable.
+        prevenir_l_ecriture(etat, commande, correlation, cause);
         verbes::completer(etat, commande, HRESULT(hresult(cause)));
     }
+}
+
+/// Dit au fil d'écriture qu'une de ses corrélations est morte.
+///
+/// **Rien n'est fait pour une commande ProjFS** : le fil d'écriture ne connaît
+/// que les siennes, et lui en signaler une autre lui ferait clore une poussée
+/// qui n'est pas la sienne.
+fn prevenir_l_ecriture(etat: &Etat, commande: Option<i32>, correlation: u32, cause: Erreur) {
+    if commande.is_some() {
+        return;
+    }
+    let code = match cause {
+        Erreur::DelaiDepasse => proto::fichiers::CodeEchec::Interne,
+        Erreur::CanalFerme => proto::fichiers::CodeEchec::AccesRefuse,
+        _ => proto::fichiers::CodeEchec::Interne,
+    };
+    let _ = etat.vers_ecriture.send(Ordre::Echec { correlation, code });
 }
 
 /// Retire les commandes échues et les complète en délai dépassé.
@@ -98,8 +127,9 @@ fn balayer(etat: &Etat) {
         Err(_) => return,
     };
     for (commande, correlation) in echues {
-        tracing::warn!(commande, correlation, "commande expirée : le navigateur n'a pas répondu");
+        tracing::warn!(?commande, correlation, "commande expirée : le navigateur n'a pas répondu");
         oublier_contexte(etat, correlation);
+        prevenir_l_ecriture(etat, commande, correlation, Erreur::DelaiDepasse);
         verbes::completer(etat, commande, HRESULT(hresult(Erreur::DelaiDepasse)));
     }
 }
@@ -137,7 +167,21 @@ fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
                 Erreur::Inattendue
             }
         };
-        tracing::debug!(commande, correlation, ?cause, "le navigateur refuse");
+        tracing::debug!(?commande, correlation, ?cause, "le navigateur refuse");
+        // Une écriture refusée : le code du protocole voyage TEL QUEL vers le
+        // fil, qui le nomme au journal. Le traduire en `Erreur` d'abord
+        // perdrait la distinction entre « disque plein » et « casse ambiguë »,
+        // que `pont::erreurs` ne porte pas — et c'est le journal, pas le
+        // `HRESULT`, qui est le seul destinataire (voir `pont::notifications`).
+        if commande.is_none() {
+            let _ = etat.vers_ecriture.send(Ordre::Echec {
+                correlation,
+                code: match serde_json::from_slice::<entetes::Echec>(trame.entete) {
+                    Ok(echec) => echec.code,
+                    Err(_) => proto::fichiers::CodeEchec::Interne,
+                },
+            });
+        }
         return terminer(etat, commande, contexte, HRESULT(hresult(cause)));
     }
 
@@ -158,11 +202,19 @@ enum Suite {
 
 /// Complète, en tenant compte du fait qu'une énumération exige des paramètres
 /// étendus.
-fn terminer(etat: &Etat, commande: i32, contexte: Option<ContexteProjFs>, resultat: HRESULT) {
+fn terminer(
+    etat: &Etat,
+    commande: Option<i32>,
+    contexte: Option<ContexteProjFs>,
+    resultat: HRESULT,
+) {
     match contexte {
-        Some(ContexteProjFs::Enumeration { tampon, .. }) => {
-            verbes::completer_enumeration(etat, commande, tampon.0, resultat)
-        }
+        Some(ContexteProjFs::Enumeration { tampon, .. }) => match commande {
+            Some(commande) => verbes::completer_enumeration(etat, commande, tampon.0, resultat),
+            // Un contexte d'énumération sans commande n'existe pas ; le dire
+            // plutôt que de l'ignorer.
+            None => tracing::warn!("contexte d'énumération sans commande ProjFS : ignoré"),
+        },
         _ => verbes::completer(etat, commande, resultat),
     }
 }
@@ -170,7 +222,7 @@ fn terminer(etat: &Etat, commande: i32, contexte: Option<ContexteProjFs>, result
 fn appliquer(
     etat: &Etat,
     correlation: u32,
-    commande: i32,
+    commande: Option<i32>,
     attendue: Attendue,
     trame: &proto::fichiers::Trame<'_>,
     contexte: Option<&ContexteProjFs>,
@@ -234,6 +286,12 @@ fn appliquer(
             let mut restants = restants.clone();
             match verbes::prochain_morceau(&mut restants) {
                 Some(morceau) => {
+                    // Une lecture porte TOUJOURS une commande ProjFS : c'est un
+                    // rappel `GetFileData` qui l'a inscrite.
+                    let Some(commande) = commande else {
+                        tracing::warn!(chemin, "lecture sans commande ProjFS : impossible");
+                        return Suite::Termine(HRESULT(hresult(Erreur::Inattendue)));
+                    };
                     etat.demander_lecture(commande, &chemin, morceau, flux.0, restants);
                     Suite::Poursuit
                 }
@@ -265,6 +323,37 @@ fn appliquer(
             let session = sessions.entry(enumeration).or_insert_with(Session::nouvelle);
             session.poser(entrees);
             Suite::Termine(verbes::remplir(etat, session, tampon.0))
+        }
+        // 🔴 **LES DEUX BRAS DE L'ÉCRITURE.** Ils ne complètent AUCUN rappel —
+        // `command_id` est `None` — et ne font que relayer l'acquittement au
+        // fil d'écriture, qui décide s'il pousse le morceau suivant ou retire
+        // l'entrée du journal.
+        //
+        // ⚠️ **Le contexte ProjFS est `None` ici, et ce n'est pas une anomalie**
+        // : une écriture n'a ni tampon d'énumération, ni flux de données.
+        (Attendue::Ecrire { chemin, dernier }, None) => {
+            if trame.type_message != proto::fichiers::TYPE_FAIT {
+                tracing::warn!(
+                    chemin, correlation, type_message = trame.type_message,
+                    "réponse d'un type inattendu à une écriture : jetée"
+                );
+                return Suite::Termine(HRESULT(hresult(Erreur::Inattendue)));
+            }
+            tracing::debug!(chemin, correlation, dernier, "morceau d'écriture acquitté");
+            let _ = etat.vers_ecriture.send(Ordre::Fait { correlation });
+            Suite::Termine(S_OK)
+        }
+        (Attendue::Creer { chemin }, None) => {
+            if trame.type_message != proto::fichiers::TYPE_FAIT {
+                tracing::warn!(
+                    chemin, correlation, type_message = trame.type_message,
+                    "réponse d'un type inattendu à une création : jetée"
+                );
+                return Suite::Termine(HRESULT(hresult(Erreur::Inattendue)));
+            }
+            tracing::debug!(chemin, correlation, "création acquittée");
+            let _ = etat.vers_ecriture.send(Ordre::Fait { correlation });
+            Suite::Termine(S_OK)
         }
         // Une réponse dont le type ne correspond pas à ce que la commande
         // attendait. Elle n'est pas appliquée « au mieux » : le navigateur et
