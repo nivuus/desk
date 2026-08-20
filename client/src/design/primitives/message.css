@@ -58,6 +58,44 @@
     line-height: var(--lh-normal);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   `.message--flottant` — LE BANDEAU POSÉ SUR LA VIDÉO (sous-bloc S4, tâche 5).
+
+   🔴 IL RÉSOUT UNE CONTRADICTION DE LA SPEC, ET LA SPEC NE LA VOIT PAS. Son §6
+   demande « la reprise des trois bandeaux sur les primitives *message* » ; son
+   §5.2 exige que ces bandeaux-ci portent `--voile-flottant`, « d'où
+   `--voile-flottant`, qui est l'exception nommée au point 2 de §3 ». Or
+   `.message` pose `background: var(--fond-1)`, un fond OPAQUE qui suit le
+   thème : `.message` nue sur `#status` mettrait, en thème clair, un panneau
+   clair et opaque au-dessus d'une image vidéo — exactement ce que
+   `tokens.css:81-84` interdit en une phrase, « un encadrement clair autour
+   d'une image vidéo se lit comme un défaut d'affichage ».
+
+   La variante tient les DEUX : elle hérite de `.message` son remplissage, son
+   rayon, son interligne et sa règle `:empty`, et ne remplace que ce qui doit
+   l'être. RÉSOUDRE, jamais abandonner l'une des deux exigences.
+
+   ⚠️ `transparent` EST L'UN DES QUATRE MOTS-CLÉS QUE §7.2 AUTORISE, avec
+   `currentColor`, `inherit` et `none` : la bordure de `.message` reste PRÉSENTE
+   — donc la géométrie ne bouge pas — et cesse d'être visible sur la vidéo.
+
+   ⚠️ ELLE VIT ICI PLUTÔT QUE DANS `style.css`, et c'est l'arbitrage que S3 a
+   rendu pour `.message:empty` : une règle qui décrit la famille remonte dans la
+   famille. Le coût est qu'un lecteur de `style.css` ne voit pas cette règle ;
+   le gain est qu'elle ne peut pas diverger d'une surface à l'autre le jour où
+   une seconde surface pose un bandeau sur une image.
+
+   ⚠️ ELLE N'OUVRE AUCUNE CINQUIÈME FAMILLE : les familles sont dérivées des
+   FICHIERS de `client/src/design/primitives/` (`classes-employees.mjs`), et
+   cette variante n'en crée aucun. Un fichier de plus dans ce répertoire créerait
+   une famille que §7.9 ③ B exigerait de la galerie — à savoir avant d'y écrire.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.message--flottant {
+    border-color: transparent;
+    background: var(--voile-flottant);
+    color: var(--sur-voile);
+}
+
 .message--succes {
     border-color: var(--succes);
     color: var(--succes);

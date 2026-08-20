@@ -88,6 +88,19 @@
                 gap: var(--e-4);
                 max-width: 26rem;
             }
+            /* Un damier, pour que `.message--flottant` se lise comme il vit :
+               posé sur une image dont on ne sait rien. Repris de la section
+               « voiles » de `design.html`, qui le pose pour la même raison —
+               DUPLICATION DÉCLARÉE : la mise en page d'une page de
+               démonstration n'est pas une primitive, et la monter dans
+               `client/src/design/` en ferait une. */
+            .damier {
+                padding: var(--e-3);
+                border-radius: var(--r-3);
+                background:
+                    repeating-conic-gradient(var(--fond-2) 0 25%, var(--fond-0) 0 50%) 0 0 / var(--e-5)
+                    var(--e-5);
+            }
             #themes button {
                 border: var(--trait) solid var(--bord-fort);
                 border-radius: var(--r-2);
@@ -196,6 +209,18 @@
             <p class="message message--succes">Connecté au poste 3.</p>
             <p class="message message--alerte">Le lien est lent : l’image sera réduite.</p>
             <p class="message message--danger">Connexion refusée par le serveur.</p>
+        </div>
+        <p class="note">
+            La variante <code>message--flottant</code> est celle des bandeaux
+            posés <strong>sur la vidéo</strong> : elle troque le fond opaque
+            contre le voile hors thème, et sa bordure devient
+            <code>transparent</code>. Rendue ici sur un damier, pour qu’on la
+            lise comme elle vit — un fond clair et opaque au-dessus d’une image
+            vidéo se lirait comme un défaut d’affichage.
+        </p>
+        <div class="colonne damier">
+            <p class="message message--flottant">Connexion…</p>
+            <p class="message message--flottant">12,4 Mb/s — 1280×720 — 58 i/s</p>
         </div>
 
         <script type="module" src="/src/design/galerie-primitives.ts"></script>

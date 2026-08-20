@@ -13,8 +13,16 @@
     </head>
     <body>
         <video id="remote" autoplay playsinline muted tabindex="0"></video>
-        <div id="status" role="status">Connexion…</div>
-        <div id="stats" role="status"></div>
+        <!-- Les deux bandeaux prennent la famille `message` et sa variante
+             FLOTTANTE (sous-bloc S4, tâche 5) : `.message` seule poserait, en
+             thème clair, un panneau clair et opaque au-dessus de la vidéo —
+             ce que `tokens.css` interdit en une phrase. La variante troque le
+             fond opaque contre `--voile-flottant`, hors thème.
+             ⚠️ `#stats` naît VIDE, et `.message:empty` le fait DISPARAÎTRE au
+             lieu d'en laisser un cadre : c'est le comportement voulu, écrit
+             dans `primitives/message.css` depuis S3. -->
+        <div id="status" class="message message--flottant" role="status">Connexion…</div>
+        <div id="stats" class="message message--flottant" role="status"></div>
         <!-- `hidden` par défaut : le bouton n'apparaît QUE si l'agent annonce
              `mic: true` dans son message `ready` (spec §10). Un agent d'avant le
              chantier E ne porte pas le champ, et un bouton qui ne mènerait nulle
