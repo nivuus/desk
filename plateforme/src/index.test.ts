@@ -50,6 +50,9 @@ describe('démarrage du service', () => {
             // Un port sur lequel rien n'écoute : la connexion est refusée.
             urlBase: 'postgres://x:y@127.0.0.1:1/x',
             secretJeton: SECRET,
+            // Aucun proxy declare : voir `config.ts`, l'ensemble vide est le
+            // defaut et signifie « ne croire l'adresse annoncee par personne ».
+            proxyDeConfiance: new Set(),
         };
         // Deux assertions DISTINCTES, et la seconde est le point de ce test.
         await expect(demarrer(config)).rejects.toThrow(/base/i);
@@ -79,6 +82,10 @@ describe('démarrage du service', () => {
             base: 'sqlite',
             urlBase: ':memory:',
             secretJeton: SECRET,
+            // Aucun proxy déclaré : le service ne croira l'en-tête
+            // `X-Forwarded-For` de personne, ce qui est le défaut de
+            // `lireConfig` et l'état d'un déploiement sans proxy inverse.
+            proxyDeConfiance: new Set(),
         });
         expect(service.port).toBeGreaterThan(0);
         await expect(connecterA(service.port)).resolves.toBeUndefined();

@@ -32,6 +32,9 @@ const CONFIG: Config = {
     base: 'sqlite',
     urlBase: ':memory:',
     secretJeton: SECRET,
+    // Aucun proxy declare : voir `config.ts`, l'ensemble vide est le defaut
+    // et signifie « ne croire l'adresse annoncee par personne ».
+    proxyDeConfiance: new Set(),
 };
 
 let service: ServicePlateforme | undefined;

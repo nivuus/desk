@@ -30,6 +30,10 @@ describe('lireConfig', () => {
             // Absente, donc `undefined` : aucun en-tête CORS ne sera émis, et
             // le refus est le défaut.
             origineClient: undefined,
+            // Absente, donc ensemble VIDE : on ne croit l'en-tête
+            // `X-Forwarded-For` d'aucune source. Voir les quatre tests dédiés
+            // en fin de fichier.
+            proxyDeConfiance: new Set(),
         });
     });
 
@@ -85,5 +89,50 @@ describe('lireConfig', () => {
             PLATEFORME_ORIGINE_CLIENT: '',
         });
         expect(vide.origineClient).toBeUndefined();
+    });
+
+    /// ⚠️ AUCUN DE CES TESTS NE LIT `process.env`, ET C'EST LA PROPRIÉTÉ DU
+    /// MODULE, PAS UNE PRÉCAUTION DU TEST : `lireConfig` reçoit son
+    /// environnement en PARAMÈTRE, et son en-tête l'écrit en toutes lettres —
+    /// « la lecture d'environnement se fait ICI et nulle part ailleurs ». Il
+    /// n'y a donc RIEN à poser ni à restaurer, contrairement à
+    /// `signaling/turn-harnais.ts`, dont le harnais existe précisément parce
+    /// que `relais.ts` lit `process.env` en douce. Ajouter une variable à
+    /// `Config` n'a pas rendu un seul test dépendant du shell qui le lance.
+    const BASE = { PLATEFORME_HOTE: '127.0.0.1', PLATEFORME_SECRET_JETON: SECRET };
+
+    it("(a) PLATEFORME_PROXY_DE_CONFIANCE absente ⇒ on ne croit PERSONNE", () => {
+        // 🔴 Le défaut est de ne rien croire, jamais de tout croire. Un défaut
+        // permissif ici rendrait l'adresse du client FORGEABLE par le client
+        // lui-même, donc le frein par adresse contournable en une ligne
+        // d'en-tête.
+        expect(lireConfig(BASE).proxyDeConfiance.size).toBe(0);
+    });
+
+    it("(b) chaîne VIDE ⇒ ensemble vide, et non une entrée vide", () => {
+        // ⚠️ `env.X ?? 'defaut'` ne rattrape pas `''` — P1 a payé cette erreur
+        // exacte à sa tâche 1, où un des deux rouges annoncés était vert.
+        expect(lireConfig({ ...BASE, PLATEFORME_PROXY_DE_CONFIANCE: '' }).proxyDeConfiance.size)
+            .toBe(0);
+    });
+
+    it("(c) une liste séparée par des virgules, espaces RETIRÉES", () => {
+        const c = lireConfig({ ...BASE, PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5, 10.0.0.1' });
+        expect(c.proxyDeConfiance.size).toBe(2);
+        // Sans le `trim`, la seconde entrée serait ` 10.0.0.1` et ne
+        // correspondrait JAMAIS à une adresse de pair — la confiance
+        // échouerait en silence, et le frein par adresse dégénérerait en
+        // frein global sans qu'aucune ligne ne le dise.
+        expect(c.proxyDeConfiance.has('172.18.0.5')).toBe(true);
+        expect(c.proxyDeConfiance.has('10.0.0.1')).toBe(true);
+    });
+
+    it("(d) une entrée vide entre deux virgules est IGNORÉE", () => {
+        const c = lireConfig({ ...BASE, PLATEFORME_PROXY_DE_CONFIANCE: '172.18.0.5,,10.0.0.1' });
+        expect(c.proxyDeConfiance.size).toBe(2);
+        // Une entrée vide dans l'ensemble de confiance rendrait de confiance
+        // tout pair dont l'adresse est vide — c'est-à-dire `ADRESSE_INCONNUE`
+        // s'il venait à valoir `''`.
+        expect(c.proxyDeConfiance.has('')).toBe(false);
     });
 });
