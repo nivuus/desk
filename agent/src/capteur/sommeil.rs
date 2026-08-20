@@ -255,12 +255,6 @@ pub fn echec_de_reveil(session: &str) {
     porteurs::distribuer_l_audio(&mut garde);
 }
 
-/// Une session signale que sa capture audio est morte.
-///
-/// **Ne répond rien, et c'est voulu** : l'arbitrage est global et la décision
-/// peut concerner une AUTRE fenêtre. L'effet revient par
-/// `DepuisCapteur::Audio`, poussé sur la connexion média de chaque fenêtre
-/// concernée — exactement le patron de `signaler`.
 /// Écrit `texte` dans le presse-papier de la VM (sens navigateur → VM).
 ///
 /// **Le capteur est le seul propriétaire du presse-papier** (D1) : c'est
@@ -273,6 +267,12 @@ pub fn ecrire_le_presse_papier(texte: &str) -> anyhow::Result<()> {
     presse_papier::ecrire(texte)
 }
 
+/// Une session signale que sa capture audio est morte.
+///
+/// **Ne répond rien, et c'est voulu** : l'arbitrage est global et la décision
+/// peut concerner une AUTRE fenêtre. L'effet revient par
+/// `DepuisCapteur::Audio`, poussé sur la connexion média de chaque fenêtre
+/// concernée — exactement le patron de `signaler`.
 pub fn audio_mort(session: &str) {
     let mut garde = etat();
     // Une session déjà inapte (répit en cours, ou abandon définitif) qui
