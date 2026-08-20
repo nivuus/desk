@@ -1,0 +1,144 @@
+=== references-t0 : releve du 2026-08-20T08:57:30+02:00 ===
+
+--- git log -1 ---
+ed39517 corrige(verify): la barriere mesurait le shell de qui la lancait, pas le service
+
+--- git status --porcelain ---
+ M agent/Cargo.toml
+ M agent/src/diagnostics.rs
+ M scripts/run-agent.sh
+?? agent/src/diagnostics/presse_papier.rs
+?? docs/superpowers/plans/journaux-plateforme-p5/
+
+--- P4 clos ? ---
+-rw-r----- 1 root root 41805 20 août  05:43 docs/superpowers/plans/2026-08-19-plateforme-p4-resultats.md
+
+--- node --version ---
+v24.9.0
+
+--- grep -cE '^etape ' scripts/verify-all.sh ---
+10
+
+--- docker ps ---
+guacamole-postgres-plateforme-1	Up 20 hours (healthy)	127.0.0.1:5433->5432/tcp
+pomerium	Up 22 hours	
+gcpdynamicdns	Up 22 hours	
+pomerium-postgres	Up 22 hours (healthy)	127.0.0.1:5432->5432/tcp
+mediamanager-bazarr-1	Up 22 hours	0.0.0.0:6767->6767/tcp, [::]:6767->6767/tcp
+mediamanager-seerr-1	Up 22 hours (healthy)	127.0.0.1:5055->5055/tcp
+mediamanager-sonarr-1	Up 22 hours (healthy)	0.0.0.0:8989->8989/tcp, [::]:8989->8989/tcp
+mediamanager-radarr-1	Up 22 hours (healthy)	0.0.0.0:7878->7878/tcp, [::]:7878->7878/tcp
+mediamanager-prowlarr-1	Up 22 hours	0.0.0.0:9696->9696/tcp, [::]:9696->9696/tcp
+mediamanager-tdarr-node-1	Up 22 hours	8265-8266/tcp
+mediamanager-tdarr-1	Up 22 hours (healthy)	0.0.0.0:8265-8266->8265-8266/tcp, [::]:8265-8266->8265-8266/tcp
+mediamanager-plex-1	Up 22 hours	
+mediamanager-sabnzbd-1	Up 22 hours	0.0.0.0:8086->8080/tcp, [::]:8086->8080/tcp
+mediamanager-rdtclient-1	Up 22 hours (healthy)	0.0.0.0:6500->6500/tcp, [::]:6500->6500/tcp
+mediamanager-ygege-1	Restarting (1) 13 seconds ago	
+mediamanager-tautulli-1	Up 22 hours	0.0.0.0:8181->8181/tcp, [::]:8181->8181/tcp
+mediamanager-openai-whisper-asr-webservice-1	Up 22 hours	0.0.0.0:9000->9000/tcp, [::]:9000->9000/tcp
+mediamanager-flaresolverr-1	Up 22 hours	8191-8192/tcp
+homeassistant	Up 11 hours	
+otbr	Up 22 hours	
+zigbee2mqtt	Up 22 hours	
+grocy	Up 22 hours	443/tcp, 0.0.0.0:9283->80/tcp, [::]:9283->80/tcp
+docker-socket-proxy	Up 22 hours	127.0.0.1:2375->2375/tcp
+allanicme-frontend-1	Up 22 hours (healthy)	0.0.0.0:7888->80/tcp, [::]:7888->80/tcp
+nivuus-ollama-proxy	Up 3 days	
+matterjs-server	Up 3 days (healthy)	
+mosquitto	Up 3 days	0.0.0.0:1883-1884->1883-1884/tcp, [::]:1883-1884->1883-1884/tcp, 0.0.0.0:8883-8884->8883-8884/tcp, [::]:8883-8884->8883-8884/tcp
+
+--- plateforme test:sqlite ---
+Test Files  42 passed (42) / Tests  341 passed (341)
+--- plateforme test:postgres ---
+Test Files  42 passed (42) / Tests  341 passed (341)
+--- plateforme typecheck ---
+sortie 0
+--- client npm test ---
+Test Files  30 passed (30) / Tests  279 passed (279)
+--- proto npm test ---
+Test Files  5 passed (5) / Tests  138 passed (138)
+
+--- commande des 500 lignes ---
+  92633 total
+   1536 agent/src/encode.rs
+    630 agent/src/windows_source.rs
+    561 proto/src/plateforme/tests.rs
+    512 proto/ts/plateforme.test.ts
+    505 agent/src/main.rs
+
+--- plateforme/ : les 12 plus gros fichiers ---
+ 13619 total
+   480 plateforme/src/http/routes-applications.test.ts
+   369 plateforme/src/orchestration/inventaire-statique.test.ts
+   340 plateforme/src/signaling/server.test.ts
+   332 plateforme/src/base/pilotes.test.ts
+   327 plateforme/src/signaling/relais.ts
+   323 plateforme/src/http/routes-vm.test.ts
+   308 plateforme/src/http/routes-applications.ts
+   298 plateforme/src/signaling/trace.test.ts
+   289 plateforme/src/http/routes-session.test.ts
+   287 plateforme/src/agents/canal.ts
+   269 plateforme/src/agents/canal.test.ts
+   262 plateforme/src/signaling/garde-fil.test.ts
+
+=== VERDICT DE LA TACHE 0 ===
+
+P4 EST CLOS : le document de resultats existe (41805 octets), et `git log`
+porte ses taches 13 a 19 -- `74df6b1 docs(p4): les resultats du sous-bloc`,
+`de67fbf docs(p4): la section P4 de CLAUDE.md`. P5 peut demarrer.
+
+AUCUN conteneur coturn ne tourne (releve `docker ps` ci-dessus). L'instance
+Postgres de test tourne bien : guacamole-postgres-plateforme-1, healthy,
+127.0.0.1:5433.
+
+REFERENCES DE NON-REGRESSION DE P5, mesurees ce jour et faisant foi :
+
+| Mesure                      | Valeur     | Releve du plan | Ecart |
+| plateforme test:sqlite      | 341 / 42 f | 284 / 37 f     | +57   |
+| plateforme test:postgres    | 341 / 42 f | 284 / 37 f     | +57   |
+| plateforme typecheck        | sortie 0   | sortie 0       | =     |
+| client npm test             | 279 / 30 f | 219 / 24 f     | +60   |
+| proto npm test              | 138 / 5 f  | 111 / 5 f      | +27   |
+| grep -cE '^etape ' verify   | 10         | 10             | =     |
+
+Les ecarts s'expliquent : le sous-bloc G1 (gestion d'apps) a ete execute
+ENTIEREMENT depuis la redaction du plan -- voir les divergences ci-dessous.
+
+=== DIVERGENCES ENTRE LE PLAN ET LE CODE REEL, relevees a la tache 0 ===
+
+D-T0-1 -- E1 DU PLAN EST DEVENUE FAUSSE. Le plan affirme (E1, D14) que
+`plateforme/src/agents/registre.ts` « N'EXISTE PAS », verifie par
+`grep -rln registre plateforme/src`. Il EXISTE : cree par G1, commit
+`0a719a2 apps(g1): le registre des sockets d'agent vivants`. C'est un
+TROISIEME etat de routage en memoire, que le tableau de D14 ignore.
+
+D-T0-2 -- LE PLAN COMPTE QUATRE ROUTEURS ; IL Y EN A CINQ. La tache 10 dit
+« les quatre routeurs » et nomme routes-auth, routes-vm, routes-session,
+routes-sante. G1 a ajoute `plateforme/src/http/routes-applications.ts` (308
+lignes, commit `a97f902`), chaine dans serveur.ts (`0bb1d87`). Il sert du
+JSON comme les autres et doit porter les en-tetes de securite : sans quoi la
+propriete « toute reponse JSON du service » de D7 serait fausse le jour de sa
+livraison. TRAITE : la tache 10 couvre CINQ routeurs, un it() chacun.
+
+D-T0-3 -- LA PERIPHERIE ③ DU PLAN A VIEILLI. Le plan dit de G1 « son plan
+existe et n'a pas encore ete execute (aucun commit `(g1)`) ». Il est execute
+et clos, y compris sa section `CLAUDE.md` (`c90c5ca`). Le conseil « ne pas
+demarrer si un fichier du perimetre y figure comme modifie » est sans objet :
+`git status --porcelain` ne porte aucun fichier `plateforme/` ni `client/`.
+
+D-T0-4 -- LA TABLE DES 500 LIGNES DU PLAN A VIEILLI. Le plus gros fichier de
+`plateforme/` n'est plus `signaling/relais.ts` (327) mais
+`http/routes-applications.test.ts` a 480 -- au-dessus de la porte a 450 que le
+plan pose, mais c'est un fichier de G1 que P5 ne touche pas. Aucun fichier du
+perimetre P5 n'approche 450 ; la conclusion du plan (aucune extraction requise)
+TIENT, sa table ne tient pas.
+
+D-T0-5 -- TROIS FICHIERS DEPASSENT 500 HORS TABLE DE DETTE :
+`proto/src/plateforme/tests.rs` 561, `proto/ts/plateforme.test.ts` 512,
+`agent/src/main.rs` 505. Hors perimetre P5, signales, non touches.
+
+=== ETAT DE L'ARBRE, chantier concurrent ===
+Le chantier presse-papier travaille dans `agent/Cargo.toml`,
+`agent/src/diagnostics.rs`, `agent/src/diagnostics/presse_papier.rs` et
+`scripts/run-agent.sh`. AUCUN recouvrement avec le perimetre P5.
