@@ -6,12 +6,18 @@
    exempte explicitement ; `--bord` rend 1,45 en sombre et 1,40 en clair sur
    `--fond-0`, et il est hors des 52 paires du §7.1 pour cette raison même.
 
-   ⚠️ UNE CARTE CLIQUABLE, ELLE, PORTE `--bord-fort` : son contour devient
-   alors le contour d'un contrôle, et il est mesuré au seuil 3. S2 NE LIVRE PAS
-   DE CARTE CLIQUABLE — c'est S3 qui en aura besoin pour la liste de fenêtres
-   de la page-shell, et c'est à lui de poser `--bord-fort`. ⚠️ AUCUNE COMMANDE
-   NE LE VÉRIFIERA : le §4.5 le déclare règle de revue, et le §8 la range parmi
-   les jugements humains.
+   ⚠️ UNE CARTE CLIQUABLE, ELLE, PORTERAIT `--bord-fort` : son contour
+   deviendrait alors le contour d'un contrôle, et il est mesuré au seuil 3.
+   ❌ S3 N'EN A PAS POSÉ, ET CET ENCADRÉ ANNONÇAIT LE CONTRAIRE : il disait
+   « c'est S3 qui en aura besoin pour la liste de fenêtres de la page-shell, et
+   c'est à lui de poser `--bord-fort` ». S3 a fait AUTREMENT — la carte reste
+   INERTE, et c'est un `.bouton--discret` POSÉ DANS la carte qui porte l'action
+   « Rouvrir » (`client/shell.html`, `<template id="modele-fenetre">`). Le
+   contour cliquable est donc celui du bouton, que `bouton.css` mesure déjà ;
+   la carte reste le conteneur décoratif que WCAG 1.4.11 exempte, et
+   `--bord-fort` N'EST TOUJOURS PAS POSÉ ICI. ⚠️ AUCUNE COMMANDE NE VÉRIFIE CE
+   CHOIX : le §4.5 le déclare règle de revue, et le §8 le range parmi les
+   jugements humains.
 
    ⚠️ LE SÉPARATEUR N'EST PAS UN `<hr>` : c'est une classe, comme tout ici. Un
    sélecteur d'élément nu changerait l'apparence de surfaces que S2 s'interdit

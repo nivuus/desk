@@ -9768,7 +9768,14 @@ trouvé son instance. **Il n'y a donc rien à attribuer à personne.**
   par un token, **jamais que le bon token a été choisi**.
 - **La clause « aucune longueur hors échelle » du §8 reste FAUSSE** — les trois
   littéraux de `style.css` vivent dans la fenêtre de session, **c'est S4**.
-- 🔴 **§7.4 ne compare jamais racine ⊆ clair** (§③c).
+  ❌ **ELLE EST FAUSSE DE SIX, PAS DE TROIS, DEPUIS S3** (`72rem`, `18rem` dans
+  `shell.css` ; `26rem` dans `connexion.css`), et **la spec §8 porte désormais
+  l'encadré qui le dit**, avec sa règle de compte. Les trois de `style.css`
+  restent bien à S4.
+- 🔴 **§7.4 ne compare jamais racine ⊆ clair** (§③c). ✅ **FERMÉ PAR S3
+  (tâche 1)** : la clause ③ compare désormais **les COULEURS de racine ⊆ clair**,
+  hors six tokens hors thème nommés, et sa rouge est versée
+  (`journaux-design-s3/rouge-1-7-4-couleur-hors-clair.log`).
 - 🔴 **Les trois re-étiquetages ne sont vus par aucun contrôle.**
 - ⚠️ **Ni `primitives.html` ni `galerie-primitives.ts` n'ont de test**, comme
   `design.html` et `galerie.ts` : **une galerie qui cesserait de rendre une
@@ -9781,15 +9788,22 @@ trouvé son instance. **Il n'y a donc rien à attribuer à personne.**
 
 **À S3 :**
 
-1. ⛔ **Lier `primitives.css` aux surfaces du produit** (`shell.html`,
-   `connexion.html`) : c'est ce qui referme l'écart entre « un appelant écrit »
-   et « un pixel rendu ».
-2. ⛔ **Neuf entrées de liste d'attente**, dont **trois re-étiquetées** vers une
-   famille étiquette/pastille.
-3. ⛔ **Le sélecteur de thème du PRODUIT reste à écrire** :
-   `design/selecteur-theme.ts` est un **instrument**, sans test — statut
-   **déclaré, pas subi**.
-4. ⛔ **Ni `primitives.html` ni `galerie-primitives.ts` n'ont de test.**
+1. ✅ **FAIT (S3, tâches 4 et 5).** `primitives.css` est lié par `shell.html` et
+   `connexion.html`, et **ce n'est pas une intention mais un relevé** : le
+   contrôle **§7.9**, né avec S3, mesure que les quatre familles atteignent le
+   produit. ~~Lier `primitives.css` aux surfaces du produit.~~
+2. ✅ **FAIT (S3, tâches 4 et 5) : neuf sur neuf sortent**, chacune dans le
+   commit qui écrit son appelant. La liste tombe de **10 à 1**. ⚠️ Les **trois
+   re-étiquetées** vers une famille étiquette/pastille ont bien trouvé cette
+   famille — c'est la pastille d'état d'une fenêtre, `.bureau__pastille`.
+3. ✅ **FAIT (S3, tâche 6) : le sélecteur est PROMU au produit**, il a des tests,
+   et sa promotion a obligé à corriger un défaut déclaré (il ne rappelait pas
+   `marquer()` après un `storage` venu d'une autre fenêtre — rouge versée).
+4. ❌ **NON FAIT, et ce n'est plus tout à fait le même legs** : ni
+   `primitives.html` ni `galerie-primitives.ts` n'ont de test. **Mais §7.9
+   assertion ③ B en prend une part** — « une famille cesse d'être rendue par la
+   galerie » est désormais attrapé par une commande. **Un module de galerie
+   cassé, non.**
 
 **À S4 :**
 
@@ -9797,25 +9811,463 @@ trouvé son instance. **Il n'y a donc rien à attribuer à personne.**
    S4 le câble sur `#stats`, ou il le retire. **S2 ne l'a pas rouvert**, et pas
    par omission.
 6. ⛔ **Les trois longueurs hors échelle de `style.css`**, et la clause du §8
-   qu'elles rendent fausse.
+   qu'elles rendent fausse. ⚠️ **Elles sont SIX à la fin de S3** — voir le §⑩
+   ci-dessus ; les trois de `style.css` restent celles que S4 doit reprendre.
 
 **Sans sous-bloc assigné :**
 
-7. 🔴 **Construire la mitigation partielle du re-étiquetage** — *aucune entrée ne
-   doit nommer un sous-bloc déjà clos*. Elle exige que le dépôt sache quel
-   sous-bloc est courant, ce qu'aucun fichier ne dit aujourd'hui.
-8. 🔴 **Fermer le trou de §7.4** : `ecartsEntreBlocs` doit aussi comparer
-   racine ⊆ clair, faute de quoi un token de couleur oublié dans les **deux**
-   blocs clairs lui reste invisible.
+7. ✅ **CONSTRUITE PAR S3 (tâche 7).** `SOUS_BLOCS_CLOS = {S1, S2, S3}` vit dans
+   `attente.mjs`, le sous-bloc est devenu un **champ structuré**, et
+   `tokens-orphelins.mjs` rend rouge toute entrée réclamant un sous-bloc clos —
+   rouge versée. ⚠️ **PARTIELLE, et le mot reste pesé** : elle juge le sous-bloc
+   NOMMÉ, jamais le CONTENU de l'annotation, et dépend d'une liste tenue à la
+   main. ⚠️ **Et elle ne garde plus qu'UNE entrée après S3.**
+8. ✅ **FERMÉ PAR S3 (tâche 1).** `ecartsEntreBlocs` compare désormais les
+   **COULEURS** de racine ⊆ clair, hors six tokens hors thème nommés. ⚠️ **La
+   restriction aux couleurs est délibérée** : les échelles ne vivent que dans la
+   racine et n'ont aucune contrepartie claire.
 9. ⛔ **`tokens.ts` ne sait nommer que trois blocs.**
 10. ⛔ **Le plafond de 12 288 octets n'est calibré par rien**, et S2 en consomme
-    **6 374**.
+    **6 374**. ⚠️ **S3 en consomme 8 011**, marge **4 277** — le plafond n'est
+    toujours calibré par rien.
 11. 🔴 **`primitives.test.ts` est à 283 pour une porte à 300, marge 17** : toute
     addition substantielle appelle une extraction, dont le point de chute est
-    nommé au §⑨.
+    nommé au §⑨. ⚠️ **INCHANGÉ APRÈS S3, À 283** : aucune tâche n'y a ajouté
+    d'assertion, et la revue transverse n'y a modifié que trois mots de
+    commentaire (« sept » → « huit »), à longueur égale.
 12. ⛔ **Le défaut à deux réglages de `build-agent.sh`/`run-agent.sh`** ne
     concerne pas ⑥ — ses journaux sont propres —, mais il reste **non corrigé**
     pour les chantiers qui passent par la VM.
+
+---
+
+## 🎨 Sous-projet ⑥ Design system — sous-bloc S3 : les deux surfaces habillées (20 août 2026)
+
+Recette : `docs/superpowers/plans/2026-08-19-design-system-s3-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-19-design-system-s3.md` (`b57e6b8`).
+Spécification : `docs/superpowers/specs/2026-08-19-design-system-design.md`
+(`5b6b830`) — **MODIFIÉE par S3**, contrairement à S1 et S2 : son §7 gagne le
+**§7.9**, son §7.4 porte l'encadré de sa portée élargie, et son §8 celui de la
+clause « aucune longueur hors échelle », **fausse de SIX valeurs**.
+Journaux : `docs/superpowers/plans/journaux-design-s3/` — **51 fichiers**,
+**UNE SEULE FAMILLE DE LECTURE**, et c'est **mesuré, pas supposé**
+(`familles-de-lecture.txt`) :
+
+| Famille | État | Ce qu'il faut faire |
+| --- | --- | --- |
+| **tous** les fichiers | **aucune séquence ANSI** (`grep -lP '\x1b\['` → aucun), **aucun `\r`**, UTF-8 partout (`file`) | **rien** — ils se `grep`ent à plat |
+
+⚠️ **`familles-de-lecture.txt` a dû être REFAIT parce qu'il se polluait
+lui-même** : sa première rédaction écrivait ses propres motifs avec
+`echo "…\x1b\[…"`, et **zsh interprète les échappements** — le fichier a reçu un
+vrai octet ESC et un vrai retour chariot, et `file(1)` l'a classé « with CR, LF
+line terminators, with escape sequences ». **Un lecteur pressé aurait conclu que
+S3 verse des journaux CRLF.**
+
+⛔ **AUCUNE TÂCHE DE S3 N'A EMPLOYÉ LA VM WINDOWS** (spec §9).
+**Variables d'environnement introduites : AUCUNE.** *Une absence se déclare.*
+
+🔴 **S3 EST LE PREMIER SOUS-BLOC DE ⑥ OÙ L'APPARENCE DU PRODUIT BOUGE.** S1
+s'interdisait tout changement ; S2 n'a lié ses primitives à aucune surface et
+l'a écrit — *« un appelant ÉCRIT, pas un pixel RENDU »*. **Cet écart est
+refermé, et c'est un contrôle qui le dit.**
+
+### ① Les cinq critères, avec leur nombre d'exécutions
+
+🔴 **DEUX EXÉCUTIONS ÉTABLISSENT LA REPRODUCTIBILITÉ, JAMAIS UN TAUX.** Les
+contrôles de ⑥ sont **déterministes** (spec §9) ; « combien de fois sur
+combien » **ne se pose pas ici et n'est pas emprunté** à une campagne qui, elle,
+l'aurait posé. Les deux exécutions rendent des sorties **identiques, caractère
+pour caractère** — seule la durée de build diffère (721 ms contre 303 ms).
+
+| # | Critère | Verdict | Exéc. | Le chiffre, **relevé** |
+| --- | --- | --- | --- | --- |
+| ① | **les HUIT contrôles sont verts** | **TENU** | **2** | `7/7 contrôle(s) vert(s)`, `exit=0`, plus §7.5 dans `npm test`. **§7.1 INCHANGÉ : 52 paires, 0 échec, minimum 3,16** |
+| ② | la liste d'attente a **RÉTRÉCI**, **10 → 1** | **TENU** | **2** | **48** déclarés / **47** employés / **1** orphelin = **1** en attente, `0 écart`, **13** fichiers au périmètre |
+| ③ | 🔴 **la fenêtre de session N'A PAS BOUGÉ** | **TENU sur ses TROIS volets** | **2** | (a) diff de **0 octet** ; (b) `dist/index.html` lie `socle-ZRS7erzW.css` et `main-CXZaIG5L.css`, **et rien d'autre** ; (c) les deux actifs **octet pour octet** ceux de la base |
+| ④ | les primitives **atteignent le produit** | **RELEVÉ** | **2** | §7.9 : **52** déclarées / **51** employées, **0 écart** |
+| ⑤ | le poids CSS sous le plafond | **TENU** | **2** | **8 011** / **12 288**, marge **4 277** ; **+1 637** contre S2 |
+| — | le **jugement visuel** des deux surfaces | ⛔ **NON PORTÉ** | **0** | voir le §⑤ |
+
+**Suites** : `client` **258** tests / **26** fichiers (219 / 24 à l'écriture du
+plan), `proto` **130** / **5**, `typecheck` `exit 0` des deux côtés, **deux
+exécutions chacun**. ⚠️ **Le mouvement de `proto` n'est pas de S3** — aucune
+tâche du sous-bloc ne touche `proto/`.
+
+🔵 **LE CRITÈRE ③ A ÉTÉ MESURÉ CONTRE UNE BASE RECONSTRUITE, PAS SUPPOSÉE** :
+`git archive 88bc963 client proto` vers un arbre jetable hors du dépôt,
+`node_modules` lié, `npx vite build`. **Base `88bc963`, parent du premier commit
+de S3 — et non le `920a1eb` du plan** : des chantiers voisins ont touché
+`client/` entre les deux (`connexion.ts`, `fichiers/adaptateur.ts`,
+`prefixe.ts`, relevé), et prendre `920a1eb` aurait attribué à S3 leur travail.
+🔵 **Et le montage sait voir un changement, dans la même exécution** : **sept**
+actifs de `dist/assets` changent de nom entre la base et HEAD, et **deux
+feuilles CSS neuves apparaissent**. Un montage qui rendrait « identique » sur
+tout ne prouverait rien.
+
+### ② Ce que S3 change VISUELLEMENT — le contrat, et un huitième point hors plan
+
+Le §5.1 du plan est un **CONTRAT** : tout ce qui n'y figure pas est une
+régression. Ses **sept** lignes sont livrées — page-shell composée (grille de
+cartes), écran de connexion en carte centrée, **trois boutons de thème
+apparaissent** sur les deux surfaces, et **trois bandeaux prennent un TON**
+(neutre / danger), testé.
+
+🔵 **UN HUITIÈME CHANGEMENT, HORS PLAN, DÉCLARÉ PLUTÔT QUE DISSIMULÉ** :
+`.message:empty { display: none }` — **un bandeau vide disparaît, il ne devient
+pas un cadre vide.** Sans elle, l'état initial des trois bandeaux et
+l'effacement délibéré de `shell.ts::lecteurDemonte` laisseraient un rectangle
+bordé sans texte : *l'effacement se lirait comme un défaut d'affichage.*
+⚠️ **Elle touche une PRIMITIVE de S2**, donc la galerie — et deux choses la
+rendent acceptable, la seconde **mesurée** : le §6.3 du plan exige qu'une règle
+écrite à l'identique dans les deux feuilles de surface **remonte** dans les
+primitives, et `primitives.html` **n'a aucun `.message` vide**, vérifié avant
+l'écriture. ⚠️ **Divergence de point de chute déclarée** : le plan nommait
+`primitives/surface.css` ; la règle vit dans `primitives/message.css`, auprès de
+ce qu'elle décrit.
+
+### ③ La liste d'attente : 10 → 1, et la mitigation que S2 déclarait impossible
+
+**Commit par commit** (`critere-2-attente.log`) : 10 à la base, **3** après la
+tâche 4 (page-shell), **1** après la tâche 5 (connexion), inchangé ensuite.
+**Aucune entrée n'est ENTRÉE.** Les neuf sorties, avec leur appelant relevé par
+`grep` **dans le périmètre du contrôle** : `--e-1` `--e-5` `--e-6` `--e-7`
+`--r-plein` `--t-2xl` `--t-xs` (`shell.css`), `--t-3xl` `--lh-large`
+(`connexion.css`). **Aucun appelant n'a été fabriqué pour vider une ligne.**
+
+🔵 **S2 ÉCRIVAIT TROIS FOIS QU'AUCUNE MITIGATION DU RE-ÉTIQUETAGE N'EST
+POSSIBLE. C'EST FAUX, ET S3 L'A CONSTRUITE** (tâche 7) : le sous-bloc nommé est
+devenu un **champ structuré** (`sousBloc: 'S4'`), et
+`SOUS_BLOCS_CLOS = {S1, S2, S3}` rend rouge toute entrée réclamant un sous-bloc
+clos — **rouge versée**, `SOUS-BLOC CLOS --police-mono nommait S3, qui est clos`.
+⚠️ **PARTIELLE, et le mot reste pesé** : elle juge le sous-bloc **NOMMÉ**, jamais
+le **CONTENU** de l'annotation, et dépend d'une liste tenue à la main.
+⚠️ **Et après S3 elle ne garde qu'UNE entrée — un mécanisme pour une ligne.**
+L'objection est réelle ; la réponse est qu'une mitigation construite **après** la
+faute qu'elle devait empêcher n'aurait plus rien à empêcher.
+
+### ④ Les deux contrôles que S3 change — §7.4 élargi, §7.9 neuf
+
+🔵 **§7.4 : L'ANGLE MORT QUE S2 AVAIT MESURÉ EST FERMÉ.** Son énoncé n'est plus
+« les trois blocs déclarent le même ensemble de noms » : c'est ① clair ≡ clair,
+② clair ⊆ racine, ③ **les COULEURS de racine ⊆ clair**, sauf **six** tokens hors
+thème nommés. ⚠️ **La restriction aux couleurs est délibérée** — les échelles ne
+vivent que dans la racine. **Rouge versée**, et il a fallu la refaire (§⑥).
+
+🔵 **§7.9 EST UNE ADDITION DE PLAN, PAS DE LA SPEC**, et elle y est désormais
+inscrite. Trois assertions : ① toute classe employée est **déclarée** ; ② A **au
+moins une famille atteint une surface du PRODUIT** ; ③ B **chaque famille est
+rendue par la galerie**. **Les familles sont DÉRIVÉES des fichiers de
+`src/design/primitives/`, jamais énumérées** : une cinquième entre dans ② et ③
+sans qu'une ligne du script ne change.
+🔴 **L'assertion ② A EST NÉE ROUGE SUR L'ARBRE INTACT** (commit `45f5521`) et
+la branche l'a portée rouge jusqu'à `83f4bbf` — **c'est sa preuve
+d'atteignabilité**, et c'est ce que S1 avait fait entre ses tâches 1 et 9.
+Relevé final :
+
+```
+② A — les primitives atteignent le PRODUIT :
+  client/index.html : aucune famille
+  client/shell.html : bouton, message, surface
+  client/connexion.html : bouton, champ, message, surface
+```
+
+⚠️ **`index.html` n'en emploie AUCUNE, et c'est voulu** : c'est la règle ① des
+primitives, et le critère ③ la mesure.
+
+### ⑤ ⛔ Le jugement visuel : NON PORTÉ — et S3 ajoute QUATRE jugements humains
+
+**Personne n'a ouvert `dist/shell.html` ni `dist/connexion.html`.** Déclaré,
+**jamais remplacé par un « probablement »**, jamais par une capture que personne
+n'a regardée. **Ce n'est pas un critère** (plan, risque n°10), et S2 ne l'avait
+pas porté non plus.
+
+🔴 **TOTAL À LA FIN DE S3 : QUINZE JUGEMENTS HUMAINS** — huit de la spec §8,
+trois de S2, **quatre de S3** : que la **grille de cartes** soit la bonne forme
+pour une liste de fenêtres ; que la **carte de connexion centrée** soit à la
+bonne largeur ; que l'état **ouverte / fermée** dit par la seule **encre** d'une
+pastille se distingue assez ; que **trois boutons côte à côte** soient la bonne
+forme de sélecteur de thème. **Aucun des quinze ne deviendra une mesure.**
+⚠️ Pour le troisième, ce qui **est** mesuré est **le contraste** de l'encre
+employée, sur les trois fonds (§7.1) — **distinguer deux états n'est pas lire un
+texte**, et WCAG ne le mesure pas ici.
+
+### ⑥ 🔴 Le résultat de MÉTHODE : quatre rouges sur seize ne prouvaient rien
+
+**16 rouges et 2 contre-épreuves de blanchiment**, une mutation à la fois, avec
+la même discipline **sans exception** : `sha256` avant → mutation → **PREUVE que
+le diff est non vide** → contrôle → `git checkout --` → `sha256` identique →
+`git status --porcelain` vide. **Le harnais est le vrai livrable de méthode : il
+refuse de compter une rouge dont le diff est vide.**
+
+**QUATRE ont dû être REFAITES, et c'est ce qu'il faut retenir :**
+
+- **§7.4** — la mutation portait `^    --bord-fort` (quatre espaces) et
+  n'atteignait qu'**UN** des deux blocs clairs, l'autre étant indenté de huit
+  sous son `@media`. Le contrôle rougissait bien… **sur la clause ①
+  PRÉEXISTANTE**, pas sur la clause ③ que S3 ajoute. **Une rouge qui rougit pour
+  la mauvaise raison ne prouve pas ce qu'on lui fait dire.**
+- **§7.9 ② A** — elle ne mutait qu'**une** surface sur deux, et y introduisait
+  des classes inventées : `connexion.html` gardant ses quatre familles, ② A
+  restait **satisfaite**, et l'`exit=1` venait de la clause ①. Refaite sur **les
+  deux** surfaces en ne retirant **que** des classes déclarées.
+- **§7.9 ③ B** et **le sélecteur de thème** — leurs mutations **n'ont rien
+  muté** (0 ligne de diff, `exit=0`). **Le harnais l'a dit lui-même.**
+
+🔵 **LE BLANCHIMENT EST ÉPROUVÉ DANS LES DEUX SENS**, ce que S2 n'avait fait que
+dans un : une couleur littérale dans un **commentaire CSS** laisse §7.2 **vert**,
+un `class="…"` dans un **commentaire HTML** laisse §7.9 **vert** — **et** une
+classe déclarée *seulement* dans un commentaire CSS **ne compte pas comme
+déclarée**, donc l'employer **rougit**. C'est le piège maison — *« un garde
+satisfait par le commentaire du fichier qu'il analyse »* — attrapé des deux
+côtés.
+
+### ⑦ La revue transverse — treize affirmations devenues fausses DANS la branche
+
+Elle a trouvé **cinq** défauts en D7, **trois** en D8, **six** en D9, **douze**
+en D10, **sept** en D11, **huit** en P1, **dix** en P2, **cinq** en S1, **neuf**
+sur le chantier E, **douze** en P3, **douze** en S2 et **onze** en F1. **Treize
+ici**, et toutes ont la même forme : **correctes des deux côtés prises
+séparément.**
+
+🔴 **LE COMPTE DE CONTRÔLES, « sept » → « huit » : TREIZE places, et QUATRE où
+« sept » est JUSTE et ne doit PAS bouger.** Les places ont été **énumérées par
+`grep -n` AVANT toute édition** (`revue-transverse-enumeration.log`), corrigées
+**une par une par NUMÉRO DE LIGNE** — jamais par substitution globale — puis
+**relues place par place APRÈS**. Les treize : `primitives.css` ×2,
+`amorce-theme.js`, `base.css`, `reprise.test.ts` ×2, `galerie.ts`,
+`primitives.test.ts` ×3, `primitives/champ.css`, `style.css`, `tokens.css`.
+⚠️ **Les quatre intouchées le sont pour une raison mesurée** :
+`verifier-design.mjs` ×3 et `classes-employees.mjs` parlent des **SEPT
+SCRIPTS** que l'agrégateur lance, pas des huit contrôles — `verifier-design.mjs`
+nomme lui-même §7.5 « LE HUITIÈME CONTRÔLE ». **Sept scripts, huit contrôles.**
+⚠️ Trois autres « sept » sont les **sept crans typographiques** : rien à voir.
+
+**Les douze autres, chacune avec sa place :**
+
+| Affirmation | Place | Sort |
+| --- | --- | --- |
+| « ⛔ AUCUNE SURFACE DU PRODUIT NE LE LIE […] C'est S3 qui referme cet écart » | `primitives.css:38-42` | **corrigée** — deux surfaces le lient, et le relevé de §7.9 est inscrit |
+| « à la fin du sous-bloc S2, aucune surface du produit n'emploie de primitive » | `primitives.html:114` | **corrigée** |
+| « `--e-1` est encore en liste d'attente » | `primitives/champ.css:20` | **corrigée** — il est sorti à la tâche 4 ; le choix `--e-2` ne bouge pas, sa RAISON si |
+| « c'est S3 qui en aura besoin […] et c'est à lui de poser `--bord-fort` » | `primitives/surface.css:11` | **corrigée** — S3 a fait AUTREMENT : la carte reste INERTE et c'est un `.bouton--discret` **posé dans** la carte qui porte l'action. **`--bord-fort` n'est toujours pas posé** |
+| « le jour où S3 posera un lien en bouton » | `primitives/bouton.css:22` | **corrigée** — S3 n'a posé **aucune ancre** (D11, mesuré) ; la règle reste juste et **non exercée** |
+| « le balisage de S3 **devra** donner au message son `role` » | `primitives/message.css:20` | **corrigée** — fait : trois `role="status"` dans le HTML |
+| « désormais de **CINQ** valeurs et non de trois » | `shell.css:46` | **corrigée en SIX** — juste à sa date (tâche 4), réfutée par la tâche 5 qui a ajouté `26rem` sans reprendre la phrase |
+| la clause « aucune longueur hors échelle » | **spec §8** | **corrigée** — encadré, tableau des six, et **la règle de compte énoncée AVANT de compter** |
+| « Sept contrôles » | **spec §7** | **corrigée** — encadré : huit, dont §7.9, **addition de plan** |
+| « les trois blocs déclarent le même ensemble de noms » | **spec §7.4** | **corrigée** — encadré de la portée élargie, avec le trou mesuré par S2 |
+| « les **dix** entrées ci-dessous » / « les dix restants » (×3) | `attente.mjs:108,114,121` | **corrigées** — déictiques cassés : il en reste **une** |
+| « les trois jugements humains que S2 ajoute aux huit » | `primitives.html:34` | **complétée** — ils sont **quinze** à la fin de S3 |
+
+🔴 **ET LA REVUE TRANSVERSE EST ELLE-MÊME UNE SOURCE DE CROISSANCE : +54 lignes
+de commentaire.** `shell.css` 159 → **167**, `primitives.css` 73 → **85**,
+`connexion.css` 93 → **103**, `bouton.css` 103 → **108**, `champ.css` 75 →
+**80**, `surface.css` 44 → **50**, `message.css` 71 → **74**, `primitives.html`
+199 → **203**, `attente.mjs` 226 → **227**. **C'est le piège que S2 avait déjà
+payé** — sa propre revue avait fait tomber la marge de `primitives.test.ts` de
+30 à 17. ✅ **Ce fichier-là n'a PAS bougé cette fois : 283, marge 17** — trois
+mots de commentaire, à longueur égale.
+
+🔵 **ET LA REVUE A TROUVÉ QUELQUE CHOSE QU'AUCUNE TÂCHE N'AURAIT PU VOIR :
+`client/src/design/amorce-theme.js` PART VERBATIM DANS CHAQUE PAGE BÂTIE,
+COMMENTAIRES COMPRIS.** Le greffon `guac-amorce-theme` de `vite.config.ts` lit
+son texte **brut** et le rend tel quel dans le `<head>`, sans aucun transform —
+le fichier le dit de lui-même. **Conséquence mesurée** : la correction d'**un
+mot** dans son commentaire fait différer `dist/index.html` de celui de la base,
+**à taille rigoureusement égale (3 661 octets des deux côtés)**, sur **une seule
+ligne**. ⚠️ **Le critère ③ tel que le plan l'exige reste TENU** — ses volets (b)
+et (c) portent sur les `<link>` et sur les **deux actifs**, tous inchangés ; la
+comparaison octet à octet de `dist/index.html` est une exigence que la recette
+s'est **ajoutée**. ⛔ **Le mot n'a pas été remis à « sept » pour faire passer le
+contrôle : il était FAUX, et ce dépôt n'échange pas une vérité contre un
+nombre.**
+
+### ⑧ `verify-all.sh` : DIX-HUIT en-têtes, `exit 0`, deux fois
+
+```
+$ grep -c '^==> ' verify-all.log
+18
+```
+
+**DIX-HUIT, et c'est RELEVÉ, jamais sommé** — dix étapes du script plus les
+**huit** en-têtes d'une passe de `design:verifier` (un build et **sept**
+contrôles). C'est la divergence D5 de S2, qui se rejoue à chaque addition ; le
+plan prédisait dix-huit, **la mesure le confirme, elle ne le remplace pas**. Les
+deux exécutions rendent la **même liste** (`diff` vide).
+
+🔵 **AUCUNE ÉTAPE ÉTRANGÈRE N'EST TOMBÉE, ET IL FAUT DIRE POURQUOI C'EST
+REMARQUABLE.** Le brief de cette recette annonçait `verify-all.sh` **ROUGE** sur
+`plateforme : npm run typecheck` — `agents/canal.ts:147`, du fait de
+l'élargissement d'union livré par **G1** (`3bb7487`). **Remesuré au moment
+d'écrire : l'étape passe.** La réparation est arrivée **pendant** cette recette,
+par le chantier voisin, commit **`9da33a1` — « apps(g1) : les deux branches du
+canal, et l'arbre redevient VERT »**. ⚠️ **Ni le rouge ni sa réparation ne sont
+de S3** : aucune tâche du sous-bloc ne touche `plateforme/`. **Nommé ici pour
+que personne ne le porte au débit de ⑥** — et parce qu'une recette qui trouve
+l'arbre vert sans dire qu'elle l'attendait rouge laisse croire qu'elle n'a rien
+regardé. ⚠️ Un `test:sqlite` **transitoirement** rouge avait été signalé hors
+périmètre de S3 : **il n'a pas été revu ici**, les deux exécutions le passent.
+
+### ⑨ Tailles relevées **par la commande**, APRÈS les éditions de la revue
+
+⚠️ **Le journal `tailles.txt` porte LES DEUX relevés** — avant et après la revue
+— pour qu'on voie ce qu'elle a coûté. **Celui-ci est le second, et il fait foi.**
+
+**Dépôt entier, fichiers de plus de 500 lignes : DEUX**, les deux lignes de la
+dette gelée — `agent/src/encode.rs` **1536**, `agent/src/windows_source.rs`
+**630**. **Aucun fichier de `client/`.**
+
+| Fichier | Lignes | Porte | Marge |
+| --- | --- | --- | --- |
+| `client/verify-webrtc.mjs` | **494** | 500 | 🔴 **6** — ⚠️ **intouché par S3** |
+| `client/src/design/primitives.test.ts` | **283** | 300 | 🔴 **17** — **inchangé** |
+| `client/src/design/tokens.ts` | **244** | 300 | 56 |
+| `client/design.html` | **243** | 300 | 57 |
+| `client/src/design/tokens.test.ts` | **241** | 300 | 59 |
+| `client/outils/tokens-orphelins.mjs` | **235** | 300 | 65 |
+| `client/src/design/tokens.css` | **232** | 300 | 68 |
+| `client/src/design/classes.ts` | **227** | 300 | 73 |
+| `client/outils/tokens-orphelins/attente.mjs` | **227** | 300 | 73 — 🔴 **13 avant le seuil d'extraction de 240** |
+| `client/src/shell.test.ts` | **216** | 300 | 84 |
+| `client/src/shell-page.ts` | **216** | 300 | 84 |
+| `client/primitives.html` | **203** | 300 | 97 |
+| `client/outils/classes-employees.mjs` | **202** | 300 | 98 |
+| `client/src/design/selecteur-theme.ts` | **189** | 300 | 111 |
+| `client/src/style.css` | **184** | 300 | 116 |
+| `client/src/design/selecteur-theme.test.ts` | **171** | 300 | 129 |
+| `client/src/shell.css` | **167** | 300 | 133 |
+| `client/src/design/classes.test.ts` | **163** | 300 | 137 |
+| `client/src/shell.ts` | **154** | 300 | 146 |
+| `client/src/design/primitives/bouton.css` | **108** | 300 | 192 |
+| `client/src/connexion.css` | **103** | 300 | 197 |
+| `client/shell.html` | **88** | 300 | 212 |
+| `client/src/design/primitives.css` | **85** | **240** | 155 |
+| `client/src/design/primitives/champ.css` | **80** | 300 | 220 |
+| `client/src/design/primitives/message.css` | **74** | 300 | 226 |
+| `client/connexion.html` | **66** | 300 | 234 |
+| `client/src/design/primitives/surface.css` | **50** | 300 | 250 |
+| `client/src/design/amorce-theme.js` | **35** | 300 | 265 |
+
+🔴 **LA MARGE À SURVEILLER EST CELLE D'`attente.mjs` : 227 lignes pour un seuil
+d'extraction conditionnel à 240 — treize.** Le plan le nomme : *« si l'addition
+de doctrine porte le fichier au-delà de 240, extraire — jamais compresser, et la
+doctrine part avec sa donnée »*. S2 y a payé **deux fois** la leçon « une
+addition de commentaire annule une extraction » ; S3 l'a porté de 146 à 227.
+**La prochaine addition substantielle appelle l'extraction.**
+
+**Poids CSS bâti**, et **la revue ne l'a pas changé d'un octet** — les
+minificateurs retirent les commentaires : `546 + 1 493 + 2 730 + 1 063 + 2 179 =
+**8 011**`, plafond **12 288**, marge **4 277**. **Base S2 REMESURÉE sur l'arbre
+reconstruit, pas reprise du document : 6 374** — donc **+1 637**, dont **+546**
+`connexion.css`, **+1 063** `shell.css`, **+28** `primitives.css`
+(`.message:empty`). **`main` et `socle` n'ont pas bougé d'un octet.**
+⚠️ **Le plafond de 12 288 n'est calibré par rien**, et il le reste.
+
+### ⑩ Ce que S3 n'établit PAS
+
+- **Aucun taux, nulle part.** Deux exécutions par critère, contrôles
+  **déterministes** : reproductibilité, rien de plus.
+- 🔴 **Aucun jugement visuel n'a été porté**, et les **quinze** jugements humains
+  attendent tous un œil. **Aucune page n'a été ouverte dans un navigateur.**
+- **Rien hors d'un Chromium de bureau** : ni Firefox, ni Safari, ni mobile,
+  **ni HiDPI**.
+- **L'accessibilité au-delà du contraste et du mouvement réduit** : clavier
+  complet, lecteurs d'écran, cibles tactiles, ordre de tabulation. **Aucune
+  primitive ne porte de rôle ARIA** — la sémantique reste au balisage.
+- 🔴 **L'anneau de focus reste vérifié NON EFFACÉ, jamais VISIBLE** — et S3 est
+  le premier sous-bloc où un `.bouton--principal` focalisé **existe réellement**
+  sur une page du produit, **sans que rien ne mesure qu'on le voie sur
+  `--accent`**.
+- **Aucun contrôle ne mesure une longueur** : G4 vérifie qu'une longueur passe
+  par un token, **jamais que le bon token a été choisi**. **La clause du §8 est
+  fausse de SIX valeurs**, et la spec le porte désormais.
+- **La bascule de thème entre deux fenêtres RÉELLES du produit** n'est pas
+  éprouvée : `selecteur-theme.test.ts` la couvre par **injection** (`client/` n'a
+  ni jsdom ni happy-dom), et S1 l'avait corroborée hors critère entre deux
+  onglets de la **galerie** — **jamais entre une page-shell et les N sessions
+  qu'elle ouvre**.
+- **`galerie-primitives.ts` et `galerie.ts` n'ont toujours pas de test.** §7.9 ③ B
+  attrape « une famille cesse d'être rendue » ; **pas un module de galerie
+  cassé**.
+- **Le sens « toute classe déclarée est employée » n'existe pas** dans §7.9 : il
+  relève l'écart (52 / 51) **sans le juger**.
+- **Aucune primitive « lien »**, **aucune ancre** dans aucune des deux entrées.
+- **Aucune internationalisation** ; **le legacy n'est pas touché** et aucun
+  contrôle ne le balaie.
+- ⚠️ **Le legs n°9 de S2 reste entier** : `lireBlocsDeTheme` ne sait toujours
+  nommer que **trois** blocs — la tâche 1 ne l'a pas touché.
+
+### ⑪ Ce que S3 lègue
+
+**À S4 :**
+
+1. ⛔ **`--police-mono`** — la seule entrée de liste d'attente dont le sort soit
+   encore ouvert : ou S4 le câble sur `#stats`, ou il le retire. **S3 ne l'a pas
+   rouvert**, et la mitigation de la tâche 7 empêchera qu'il soit re-étiqueté en
+   silence.
+2. ⛔ **Les SIX longueurs hors échelle**, et **non trois** — `6px`, `18px`,
+   `0.02em` (`style.css`), `72rem`, `18rem` (`shell.css`), `26rem`
+   (`connexion.css`). **Les trois de `style.css` sont celles que S4 doit
+   reprendre**, la fenêtre de session lui appartenant.
+3. ⛔ **L'écran plein cadre des états terminaux** et le **Window Controls
+   Overlay** (spec §6). ⚠️ **WCO dépend du manifest de ②**, que ⑥ ne livre pas.
+4. ⛔ **La fenêtre de session tout entière** — S3 ne l'a pas touchée, et le
+   critère ③ le **mesure**. C'est le dernier sous-bloc où cette phrase est vraie.
+5. 🔴 **`attente.mjs` à 227 pour un seuil d'extraction à 240** : la prochaine
+   addition de doctrine **extrait**.
+
+**Sans sous-bloc assigné :**
+
+6. ⛔ **Le hub** — il n'existe pas, son contenu dépend de ④, et **⑥ ne le livre
+   pas** (spec §6, §9).
+7. ⛔ **Aucune primitive « lien »** ; **aucune ancre** dans aucune entrée. Poser
+   une famille sans appelant serait le code mort que §7.6 refuse.
+8. ⛔ **`galerie-primitives.ts` et `galerie.ts` sans test.**
+9. ⛔ **Le legs n°9 de S2** : `lireBlocsDeTheme` ne nomme que trois blocs.
+10. ⛔ **Le plafond de poids CSS n'est calibré par rien.**
+11. ⛔ **Le sens « toute classe déclarée est employée »** de §7.9 : il exigerait
+    une seconde liste d'attente. **C'est `primitives.html` et l'œil qui le
+    tiennent** — et l'œil n'est pas passé.
+12. ⛔ **`primitives.test.ts` à 283 pour une porte à 300, marge 17** : toute
+    addition appelle une **extraction**, dont le point de chute est nommé depuis
+    S2 — les gardes de forme d'un côté, les gardes de famille de l'autre, **sans
+    séparer G5 de sa source**.
+13. ⛔ **Le défaut à deux réglages de `build-agent.sh`/`run-agent.sh`** ne
+    concerne pas ⑥ — ses journaux sont propres —, mais il reste **non corrigé**.
+
+### ⑫ Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔴 **UNE ROUGE QUI ROUGIT POUR LA MAUVAISE RAISON NE PROUVE RIEN**, et elle
+  est **indiscernable d'une bonne** si l'on ne lit que son `exit=1`. Quatre sur
+  seize étaient dans ce cas. **Le remède est un harnais** : exiger, entre la
+  mutation et le contrôle, une **preuve que le diff est non vide** — et lire
+  QUELLE assertion a rougi, jamais seulement le code de sortie.
+- 🔴 **`client/src/design/amorce-theme.js` PART VERBATIM DANS CHAQUE PAGE
+  BÂTIE, COMMENTAIRES COMPRIS.** Corriger un mot de son en-tête change les cinq
+  pages de `dist/`. **Aucun des huit contrôles ne le dirait** : §7.7 ne pèse que
+  le CSS.
+- ⚠️ **UN JOURNAL PEUT SE POLLUER LUI-MÊME** : `echo` en zsh interprète `\x1b`
+  et `\r`, si bien qu'un fichier qui **décrit** ses motifs de recherche les
+  **contient**. `file(1)` l'a alors classé « with escape sequences ». **Écrire
+  ces motifs avec un heredoc entre quotes.**
+- ⚠️ **`"$var:chemin"` EN ZSH MANGE LE `:c`** comme modificateur de paramètre :
+  `git show "$c:client/…"` a rendu `88bc963lient/…` et un compte de **0** pour
+  **toutes** les lignes d'un tableau — **indiscernable d'une mesure**. Écrire
+  `"${c}:client/…"`.
+- ⚠️ **LES OUTILS DE `client/outils/` SE LANCENT DEPUIS LA RACINE DU DÉPÔT**,
+  pas depuis `client/` : `poids-css.mjs` y résout `--dist` à `client/dist` et
+  rend « dist/assets est absent », `exit=2`. C'est `npm run design:verifier` qui
+  masque la contrainte.
+- ⚠️ **UN `grep` SANS `-a` CLASSE « BINAIRE » ET REND UNE SORTIE VIDE, PAS
+  ZÉRO** — piège de D10, à connaître pour tout journal.
+- ⚠️ **UN HOOK `chpwd` DU SHELL DE L'HÔTE INJECTE UN `ls` DANS CHAQUE JOURNAL**
+  dès qu'un `cd` court dans un sous-shell (S2 a dû reprendre une passe entière).
+  **`unset -f chpwd` avant toute collecte** — appliqué ici sans exception.
+- ⚠️ **UNE BASE DE COMPARAISON SE CHOISIT SUR LES COMMITS, PAS SUR UNE DATE** :
+  le plan nommait `920a1eb`, mais des chantiers voisins avaient touché `client/`
+  entre lui et le premier commit de S3. **Prendre le parent du premier commit du
+  sous-bloc**, sinon on s'attribue le travail des voisins.
 
 ---
 

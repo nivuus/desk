@@ -6,7 +6,7 @@
    le `<head>`. À l'inverse des commentaires de `theme.ts`, que le bundler
    retire, ceux-ci sont livrés — mesuré le 19 août 2026 : un en-tête de
    raisonnement de 1 921 octets pesait 1 921 octets DANS CHACUNE des pages, et
-   aucun des sept contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+   aucun des huit contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
    C'est pourquoi le raisonnement vit là où il est GRATUIT : le greffon, dans
    `vite.config.ts`, qui n'est que du temps de build, et `theme.ts`.
 

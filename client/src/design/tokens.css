@@ -153,7 +153,7 @@
        ⚠️ `--e-3` VAUT 12 px À RACINE 16, et c'est la reprise exacte des
        décalages des bandeaux d'avant ce socle. Cette égalité DÉPEND de ce que
        `base.css` ne force pas la racine : avec le `font: 14px` que `style.css`
-       posait sur `html`, `0.75rem` vaudrait 10,5 px — et AUCUN des sept
+       posait sur `html`, `0.75rem` vaudrait 10,5 px — et AUCUN des huit
        contrôles ne mesure une longueur. */
     --e-1: 0.25rem;     /* 4 px */
     --e-2: 0.5rem;      /* 8 px */

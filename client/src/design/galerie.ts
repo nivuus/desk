@@ -152,7 +152,7 @@ function rendre(): void {
  * galerie des primitives (S2) les réemploie sans recopier quinze lignes.
  * L'extraction a été faite AVANT cette seconde galerie, pas après.
  *
- * 🔴 AUCUN DES SEPT CONTRÔLES NE REGARDE LE DOM. `design.html` porte un
+ * 🔴 AUCUN DES HUIT CONTRÔLES NE REGARDE LE DOM. `design.html` porte un
  * `<p id="themes"></p>` vide : un appel qui n'installerait rien laisserait la
  * page sans sélecteur de thème et passerait tout, `npm test` compris. La seule
  * preuve est une rouge d'exécution, jouée à l'extraction — commenter la ligne

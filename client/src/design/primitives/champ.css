@@ -4,7 +4,7 @@
    ⚠️ `.champ--erreur` PORTE L'ÉTAT, `.champ__erreur` PORTE LE MESSAGE. Le
    tiret double est le modificateur, le souligné double l'élément : une
    confusion entre les deux produit une règle qui ne s'applique JAMAIS, et
-   aucun des sept contrôles ne verrait une règle morte. Le dépôt a déjà payé
+   aucun des huit contrôles ne verrait une règle morte. Le dépôt a déjà payé
    exactement cela sous D9, sur un `~` qui ne pouvait pas s'appliquer.
 
    ⚠️ L'ANNEAU DE FOCUS N'EST PAS DÉCLARÉ ICI, ET CE N'EST PAS UN OUBLI :
@@ -17,10 +17,15 @@
    §7.1. En ERREUR il devient `--danger`, qui est mesuré au seuil 4,5 comme
    encre sur les trois fonds — jamais comme fond, voir la famille message.
 
-   ⚠️ L'ÉCART INTERNE EST `--e-2` ET NON `--e-1` : `--e-1` est encore en liste
-   d'attente sous l'annotation « l'écart interne d'une étiquette », c'est-à-dire
-   d'une famille que la spec §6 ne confie PAS à S2. Le consommer ici pour vider
-   une ligne de liste serait satisfaire un contrôle en vidant l'autre.
+   ⚠️ L'ÉCART INTERNE EST `--e-2` ET NON `--e-1`, ET CE CHOIX N'A PAS BOUGÉ —
+   mais sa raison, elle, a été périmée par S3. Elle disait : « `--e-1` est
+   encore en liste d'attente sous l'annotation "l'écart interne d'une
+   étiquette", c'est-à-dire d'une famille que la spec §6 ne confie PAS à S2 ».
+   `--e-1` EST SORTI DE LA LISTE au sous-bloc S3, tâche 4 : la pastille d'état
+   de la page-shell le consomme (`client/src/shell.css`, `.bureau__pastille`).
+   Ce qui tient toujours est le fond de l'argument — le consommer ICI pour
+   vider une ligne de liste aurait été satisfaire un contrôle en vidant
+   l'autre, et l'écart interne d'un champ n'est pas celui d'une étiquette.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .champ {

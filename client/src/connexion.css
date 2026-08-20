@@ -25,6 +25,16 @@
    l'inclusion ① du §7.6 exige qu'un `var(--…)` soit déclaré par `tokens.css`,
    la source unique — leçon payée par `shell.css` à la tâche 4, qui avait
    affirmé le contraire et que le contrôle a réfuté.
+
+   ⚠️ UNE SEULE DES DEUX COMPTE DANS LA CLAUSE « aucune longueur hors échelle »
+   DU §8 DE LA SPEC, ET C'EST `26rem` (revue transverse de S3). La règle de
+   compte est celle que `style.css` applique depuis S1 : un REMPLISSAGE DE
+   FENÊTRE n'est pas une valeur hors échelle — `style.css` ne compte ni son
+   `100vw` ni son `100vh` dans ses trois, et `100dvh` est de même nature.
+   L'étiquette « hors échelle » posée deux fois plus bas est donc plus LARGE
+   que le compte : elle dit « ne vient d'aucun cran », ce qui est vrai des
+   deux ; le compte, lui, en retient une. Total à la fin de S3 : SIX, énuméré
+   dans l'en-tête de `shell.css`.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ⚠️ LA CARTE EST CENTRÉE, ET SA LARGEUR EST UN JUGEMENT HUMAIN : aucune

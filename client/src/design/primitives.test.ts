@@ -151,7 +151,7 @@ describe('primitives.css — les gardes de forme', () => {
         // 🔴 C'EST CE GARDE QUI TIENT LA NEUTRALITÉ D'`index.html`. La fenêtre
         // de session porte cinq éléments sans aucune classe de primitive, dont
         // DEUX `<button>` : un `button { … }` écrit ici changerait son
-        // apparence sans qu'aucun des sept contrôles ne le dise.
+        // apparence sans qu'aucun des huit contrôles ne le dise.
         const nus: string[] = [];
         for (const liste of SELECTEURS) {
             for (const selecteur of liste.split(',')) {
@@ -166,7 +166,7 @@ describe('primitives.css — les gardes de forme', () => {
     it('G2 — l’anneau de focus n’est jamais effacé', () => {
         // `base.css` pose `:focus-visible` GLOBALEMENT : aucune primitive n'a
         // à le déclarer, et le seul risque est qu'une d'elles l'efface « pour
-        // faire propre ». Aucun des sept contrôles ne le verrait.
+        // faire propre ». Aucun des huit contrôles ne le verrait.
         const effacements = DECLARATIONS.filter(
             (d) =>
                 /^outline(-(width|style))?$/i.test(d.propriete) &&
@@ -189,7 +189,7 @@ describe('primitives.css — les gardes de forme', () => {
     it('G4 — aucune longueur hors échelle : toute unité passe par un token', () => {
         // ⚠️ CE GARDE NE DIT PAS QUE LE BON TOKEN A ÉTÉ CHOISI. Il dit
         // qu'aucune longueur ne s'écrit hors des échelles du §4.4 — ce
-        // qu'aucun des sept contrôles ne mesure, puisque aucun ne mesure une
+        // qu'aucun des huit contrôles ne mesure, puisque aucun ne mesure une
         // longueur.
         const hors: string[] = [];
         for (const d of DECLARATIONS) {
