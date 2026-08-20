@@ -13,6 +13,7 @@ import { attachVisibilite } from './visibilite';
 import { attacherBoutonMicro } from './micro';
 import { attacherPressePapierAuDOM } from './presse-papier-dom';
 import { attacherResizeAuDOM } from './resize-dom';
+import { adresseSignaling } from './adresse-plateforme';
 
 const video = document.querySelector<HTMLVideoElement>('#remote')!;
 const statusElement = document.querySelector<HTMLDivElement>('#status')!;
@@ -29,10 +30,16 @@ const statut = creerStatut(statusElement, creerEcranTerminalAuDOM());
 
 // La session et le signaling sont paramétrables par l'URL pour faciliter les
 // essais : ?session=demo&signaling=ws://192.168.3.2:8080
+//
+// 🔴 SANS PARAMÈTRE, L'ADRESSE SUIT LE PROTOCOLE DE LA PAGE — `wss:` si la page
+// est en `https:`, `ws:` sinon —, ET SON PORT. Le littéral d'avant,
+// `ws://<hôte>:8080`, était du CONTENU MIXTE derrière le proxy TLS : le
+// navigateur refusait la connexion, la page se chargeait quand même, et le
+// média ne s'établissait jamais. La règle vit dans `adresse-plateforme.ts`,
+// qui est PUR et testé — aucun test Node ne peut voir un refus de contenu mixte.
 const params = new URLSearchParams(window.location.search);
 const sessionId = params.get('session') ?? 'demo';
-const signalingUrl =
-    params.get('signaling') ?? `ws://${window.location.hostname}:8080`;
+const signalingUrl = adresseSignaling(window.location, params.get('signaling'));
 
 // Annonce du viewport à la page-shell qui nous a ouverts.
 //
