@@ -61,6 +61,18 @@
 //! dépasse, c'est la **commande** qu'il a inscrite. Le balayage du fil du pont
 //! retire les échues de la table et les complète par
 //! `PrjCompleteCommand(command_id, HRESULT_FROM_WIN32(ERROR_SEM_TIMEOUT))`.
+//!
+//! ⚠️ **CE CHEMIN N'A JAMAIS ÉTÉ OBSERVÉ.** `commande expirée` vaut **0** aux
+//! cinq exécutions nominales de la recette F1, et la seule occurrence de tout
+//! le corpus (`agent-dbg-plat.log`, une ligne) tombe **après** que le pilote a
+//! fermé le navigateur. Or la même recette montre des lectures qui **calent
+//! sans expirer** — la mesure VM d'`exec1` ne rend pas la main en 540 s. Ce que
+//! l'absence de trace établit est que le balayage n'a rien retiré ; elle ne dit
+//! **pas où** le blocage se produit, et un blocage EN AMONT de l'inscription en
+//! table laisserait ce paragraphe littéralement vrai tout en décrivant un
+//! chemin que rien n'atteint. **Trancher demanderait une trace à
+//! l'inscription, qui n'existe pas.**
+//!
 //! L'application reçoit une E/S expirée ; **rien n'est rejoué**, jamais — une
 //! commande expirée dont on rejouerait la requête produirait une seconde
 //! réponse sans destinataire (spec §5.3). Si la réponse du navigateur arrive

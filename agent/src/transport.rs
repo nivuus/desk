@@ -20,15 +20,23 @@
 //! dédié — `tokio::task::spawn_blocking` côté `demarrage.rs` — jamais depuis un
 //! ouvrier async de tokio.
 //!
-//! Ce fichier ne porte plus que l'état de la session et la boucle qui
-//! l'anime. Le reste est réparti par thème dans les sous-modules, presque
+//! Ce fichier ne porte plus que l'état de la session. ❌ *Il portait « et la
+//! boucle qui l'anime » : faux depuis le sous-bloc F1, qui a extrait
+//! `Session::run` — avec `accept_offer` et `drain_quietly` — vers
+//! [`boucle`], le fichier ayant franchi 500 lignes (495 → 501 → 440). Les
+//! deux paragraphes ci-dessus, qui décrivent `run()` au présent, sont dans le
+//! même cas : ils décrivent une fonction qui vit maintenant dans `boucle`.*
+//! Le reste est réparti par thème dans les sous-modules, presque
 //! tous écrits en `impl Session` : `tick` (la liste de priorités d'un tour,
 //! dont `act_on_timeout`), `controle` (canal de contrôle et fin de session),
 //! `adaptation` (asservissement au réseau), `redimensionnement` (la fenêtre
 //! que l'utilisateur retaille), `evenements` (ce que str0m remonte),
 //! `piste_video`, `piste_audio` et `piste_micro` (les trois pistes média, la
 //! dernière étant la seule MONTANTE), `socket` (attente
-//! et réception UDP), `fixtures` (les échafaudages de test partagés).
+//! et réception UDP), `boucle` (`run` et le drainage), `fixtures` (les
+//! échafaudages de test partagés). ⚠️ *Cette liste n'est pas exhaustive et ne
+//! l'a jamais été — `cadence_video`, `part` et `relais` y manquaient avant
+//! F1 ; seule la clause de clôture ci-dessous porte une affirmation.*
 //! **Seul `initialisation` fait exception** : une fonction LIBRE
 //! (`construire_rtc`), pas une méthode de `Session` — elle construit le
 //! socket UDP et le `Rtc` str0m avant que `Session` elle-même n'existe, donc

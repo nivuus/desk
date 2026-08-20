@@ -80,6 +80,8 @@ pub enum Erreur {
     /// Création d'une entrée qui existe déjà (F2).
     DejaPresent,
     /// **F1 vit tout entier dans cet état** : le lecteur est en lecture seule.
+    /// ⚠️ *Sauf pour un fichier créé DE TOUTES PIÈCES, que ProjFS ne laisse
+    /// pas refuser (POST) — mesuré en recette F1.*
     ProtegeEnEcriture,
     /// Tout le reste. Une seule variante fourre-tout, et elle est nommée comme
     /// telle — c'est ce qui empêche qu'elle avale les onze autres.

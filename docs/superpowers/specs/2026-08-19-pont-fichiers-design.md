@@ -35,6 +35,18 @@ ligne, et c'est de lui que sortent trois décisions de périmètre de cette spec
 
 ## 2. Préalable — l'état de ProjFS sur la VM, relevé
 
+> ✅ **CE RELEVÉ EST DE L'HISTOIRE DEPUIS LE 19 AOÛT 2026 : le sous-bloc F0 a
+> ACTIVÉ ProjFS**, et toutes les phrases de cette spec qui parlent de l'état
+> « **aujourd'hui** » ou du « **ROUGE aujourd'hui** » (ici, et aux §3.1, §8 et
+> §10) décrivent désormais un état révolu. Elles sont **datées, donc vraies
+> comme histoire**, et conservées telles quelles — mais le mot « aujourd'hui »
+> ne porte pas sa date au niveau de la phrase, d'où cet encadré.
+> État courant, relevé par la commande : `State : Enabled`,
+> `ProjectedFSLib.dll : True`, `PrjFlt.sys : True`, filtre `PrjFlt` chargé à
+> l'altitude 189800, service `Running`/`Automatic`
+> (`docs/superpowers/plans/journaux-pont-fichiers/f0-apres.txt`).
+> La recette de F1 a dû **renommer la DLL** pour reconstituer le rouge.
+
 **Relevé le 19 août 2026, par WinRM, en lecture seule**, sur la VM `Windows`
 (`virsh list --all` : « en cours d'exécution »). Aucune activation, aucune
 installation, aucune compilation n'a été faite ; l'agent concurrent qui
@@ -155,8 +167,12 @@ exact où se trouve la VM aujourd'hui (§2). *Ceci est déduit du fonctionnement
 des tables d'import PE, pas mesuré ici.*
 
 **Ce que cela coûterait est disproportionné et il faut le dire en toutes
-lettres** : `agent.exe` est **un seul binaire** pour les trois modes
-(superviseur, capteur, enfant — `agent/src/main.rs:303-327`). Un import
+lettres** : `agent.exe` est **un seul binaire** pour les ~~trois~~ **QUATRE**
+modes (superviseur, capteur, enfant, **et le pont depuis la tâche 9 de F1** —
+`agent/src/main.rs:449` pour la branche `PONT` ; ⚠️ *le renvoi
+`agent/src/main.rs:303-327` publié ici ne désigne plus l'aiguillage mais le
+`#[cfg(test)] mod tests` d'`analyser_hwnd`*). Le fond du raisonnement est
+INCHANGÉ, et le pont l'a même renforcé : un import
 non résolu ne tuerait donc pas « le pont » : il tuerait **la capture, la vidéo
 et l'input** sur toute VM sans ProjFS. Le cadrage §4 principe 4 exige
 l'inverse, et §7 exige « vidéo intacte ».
@@ -339,7 +355,14 @@ média (`enable_h264`, `enable_opus`, `enable_bwe`, `set_stats_interval`,
   **elle rendrait faux le principe 4 du cadrage** : SCTP et RTP partagent alors
   le même transport DTLS, la même file, la même estimation.
   ⚠️ **Fait de code à connaître avant toute tentative de la reprendre**, parce
-  qu'il est invisible depuis le client : `agent/src/transport/evenements.rs:168-189`
+  qu'il est invisible depuis le client : ❌ **CE FAIT DE CODE N'EN EST PLUS UN**
+  — la tâche 17 de F1 (commit `df7fd4d`) a corrigé le défaut :
+  `dispatch_channel_data` appelle désormais
+  `destination(data.id, self.input_channel, self.control_channel)`, donc il
+  regarde le canal. ⚠️ *Et la plage `:168-189` publiée ci-dessous n'a jamais
+  désigné cette fonction — elle vivait en `:219-239` avant la tâche 17.* Texte
+  d'origine, conservé pour son diagnostic :
+  `agent/src/transport/evenements.rs:168-189`
   (`dispatch_channel_data`) **ne regarde jamais le label du canal** — il aiguille
   sur le seul `data.binary`, tout ce qui est binaire allant à
   `InputMessage::decode`. Un canal `fichiers` binaire ajouté à cette
@@ -971,12 +994,29 @@ rend `True`.
   versionnement ;
 - le processus `PONT=1`, son lancement et sa surveillance par le superviseur ;
 - la `RTCPeerConnection` dédiée et le canal `fichiers` ;
-- les **cinq rappels obligatoires** de ProjFS en mode asynchrone, plus
+- les **cinq rappels obligatoires** de ProjFS *(⚠️ « en mode asynchrone » est
+  faux, et la table du §4.3 de cette même spec le dit : `StartDirectoryEnumeration`
+  et `EndDirectoryEnumeration` sont SYNCHRONES. Livré : cinq implémentés,
+  **trois** asynchrones)*, plus
   `QueryFileName` et `CancelCommand` ;
 - le bouton de la page-shell, `showDirectoryPicker({ mode: 'read' })`.
 
 **Toute tentative d'écriture rend `ERROR_WRITE_PROTECT` (0x80070013).** C'est
 un périmètre, pas une lacune.
+
+> ❌ **CETTE PHRASE EST FAUSSE POUR UN FICHIER CRÉÉ DE TOUTES PIÈCES, et la
+> recette de F1 l'a mesuré** (20 août 2026 ; `mesure-exec2.txt` et
+> `mesure-exec5.txt`, les **deux** exécutions dont la mesure VM a atteint cette
+> phase — `mesure-exec1.txt` s'est arrêtée avant) : créer un fichier dans la
+> racine depuis la VM **RÉUSSIT**, et le journal porte le `warn!` prévu pour ce
+> cas. **Le code n'a pas dévié — c'est la spec qui promettait trop** :
+> `agent/src/pont/notifications.rs` documente que `NEW_FILE_CREATED` est une
+> notification **POST**, donc **irrefusable**, et que seuls les trois chemins
+> `PRE_` (convert-to-full, rename, delete) sont refusés. Un fichier neuf n'en
+> traverse aucun. **Le §3.5 et le §6 ne sont pas touchés** : la formulation
+> juste est « toute tentative d'écrire dans un fichier PROJETÉ rend
+> `ERROR_WRITE_PROTECT` ; un fichier créé de toutes pièces vit sur la VM et
+> n'est jamais poussé ». Refermer ce cas est du ressort de **F2**.
 
 **Reçu si**, sur la VM, avec un répertoire du poste local contenant au moins un
 sous-répertoire et un fichier de plus de 10 Mio :
@@ -997,6 +1037,22 @@ pont en pleine lecture — l'Explorateur doit rendre une erreur d'E/S en moins d
 `5 s`, jamais se figer, et la vidéo doit continuer ; (ii) en fermant la
 page-shell pendant une copie ; (iii) en démarrant le pont **avant** que le
 répertoire n'ait été choisi.
+
+> ⚠️ **DE CES TROIS ROUGES, SEUL (i) A ÉTÉ PROVOQUÉ** (deux exécutions, 20 août
+> 2026) ; (ii) et (iii) **ne l'ont pas été**, et le document de résultats le
+> déclare.
+>
+> ❌ **Et (iii), tel qu'il est écrit ici, décrit un état que F1 ne peut pas
+> atteindre par ce chemin** : « la racine existe et toute lecture rend
+> `ERROR_IO_DEVICE` » suppose que le pont monte sa racine à son démarrage. Il
+> ne le fait pas — `agent/src/pont.rs::executer` n'appelle
+> `Virtualisation::demarrer` qu'**après** avoir accepté l'offre SDP de la
+> page-shell, donc après que le répertoire a été choisi. Relevé de recette
+> concordant : `racine presente apres nettoyage : False` avant chaque
+> exécution, et l'exécution « sans ProjFS » (DLL renommée) ne fait apparaître
+> **aucune** racine. Le seul chemin qui produirait cet état est une racine
+> **survivante** d'une exécution précédente tuée brutalement — cas que
+> `pont.rs` nomme déjà et que F1 ne referme pas.
 
 ⚠️ **Le critère (2) — le condensat — est le seul qui ne puisse pas être satisfait
 par accident.** Un critère qui se contenterait de « le fichier s'ouvre » serait

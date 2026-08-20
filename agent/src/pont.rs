@@ -41,11 +41,14 @@ pub mod transport;
 
 /// Point d'entrée du mode pont : charge ProjFS, monte la racine, et la tient.
 ///
-/// ⚠️ **Tâche 13 : la racine est montée et VIDE.** Aucune requête ne part vers
-/// le navigateur — les trois rappels asynchrones sont branchés en tâche 14.
-/// C'est le premier état observable sur la VM : le dossier
-/// `%USERPROFILE%\Mes Fichiers` apparaît, il est vide, et le pont s'arrête
-/// proprement.
+/// ❌ **CE COMMENTAIRE A ÉTÉ FAUX, ET C'EST LA MÊME BRANCHE QUI L'A RÉFUTÉ.**
+/// Il annonçait « la racine est montée et VIDE, aucune requête ne part vers le
+/// navigateur » : c'était l'état de la **tâche 13**, et la **tâche 14** y a
+/// branché les trois rappels asynchrones. La racine montre l'arborescence du
+/// poste local — relevé en recette, 6 entrées sur 6, trois exécutions
+/// (`docs/superpowers/plans/2026-08-19-pont-fichiers-f1-resultats.md`).
+/// *Une revue par tâche ne pouvait pas le voir : la tâche qui écrit la phrase
+/// et celle qui la réfute ne se relisent jamais l'une l'autre.*
 ///
 /// ⚠️ **« S'arrête proprement » a une portée exacte** : le `Drop` de
 /// [`projfs::Virtualisation`] complète les commandes en vol puis appelle

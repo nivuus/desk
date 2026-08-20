@@ -158,7 +158,7 @@ dérive.
 | `agent/src/superviseur/lanceur.rs` | **367** | 133 | `mod pont;` + `env_remove("PONT")` en **deux** endroits (`:158`ss et `:229`ss). **L'essentiel va dans `lanceur/pont.rs`** |
 | `agent/src/superviseur/boucle.rs` | **263** | 237 | `mod surveillance_pont;` + le câblage (≈ 15 lignes) |
 | `agent/src/superviseur/protocole.rs` | **110** | 390 | +1 constante `SESSION_DU_PONT` |
-| `agent/src/transport/evenements.rs` | **391** | 109 | tâche 17 seulement — l'aiguillage par canal, et ses tests |
+| `agent/src/transport/evenements.rs` | ❌ ~~**391**~~ **279** | ❌ ~~109~~ 221 | tâche 17 seulement — l'aiguillage par canal, et ses tests. ⚠️ **Le 391 n'a JAMAIS été vrai** : le fichier en faisait 279 quand ce plan a été écrit, et 363 après la tâche 17. Le `wc -l … # attendu : 391` du Step 3 de la tâche 17 s'appuyait dessus |
 | `client/src/shell.ts` | **93** | 407 | l'état « lecteur monté », injecté comme le reste |
 | `client/src/shell-page.ts` | **71** | 429 | le bouton, le second WebSocket, le câblage |
 | `client/shell.html` | **14** | — | +1 bouton, +1 zone d'état |
@@ -1252,6 +1252,22 @@ il pourrait aussi bien dire qu'`objdump` a échoué ou que le motif est mal écr
 `x86_64-w64-mingw32-nm -D` ou, à défaut, `strings agent.exe | grep -i projectedfs` —
 **et déclarer l'outil réellement employé** dans le rapport.
 
+> ❌ **CE CONTRÔLE, ÉCRIT TEL QUEL, PORTE DEUX DÉFAUTS QUI L'EMPÊCHENT D'ÊTRE
+> ROUGE — les deux relevés à l'exécution** (`f1-tache12-objdump.txt`, versé) :
+>
+> 1. **le chemin est FAUX.** Le dépôt est un espace de travail cargo : la cible
+>    vit à la RACINE, donc `../target/x86_64-pc-windows-gnu/release/agent.exe`
+>    depuis `agent/`. Sur le chemin publié ci-dessus, `objdump` rend « pas de
+>    tel fichier », et le `|| echo "AUCUN import…"` **traduit cette absence de
+>    fichier en VERT** ;
+> 2. **la recette du rouge est INSUFFISANTE.** Une `pub fn` qui appelle
+>    l'enveloppe **sans aucun appelant** ne rend pas le contrôle rouge : `agent`
+>    est un binaire, l'éditeur de liens élimine la fonction inatteignable, et
+>    `raw-dylib` n'émet alors aucun import. **Mesuré : le rouge n'est pas
+>    apparu.** L'appel doit être sur un chemin réellement atteignable depuis
+>    `main` — placé dans `pont::executer`, le rouge est venu
+>    (`Nom DLL: projectedfslib.dll`), puis le vert est revenu au retrait.
+
 ⚠️ **Portée exacte du contrôle** : il porte sur le binaire `-gnu` de l'hôte, pas
 sur le binaire `msvc` de la VM. Il ne prouve pas l'absence d'import dans le
 livrable. **Le contrôle qui porte sur le vrai binaire est en recette**
@@ -1964,6 +1980,14 @@ node scripts/winrm.js 'Rename-Item C:\Windows\System32\ProjectedFSLib.dll.absent
 une session vidéo s'établit, et le journal du pont porte une erreur qui **nomme
 la DLL** (`ERROR_MOD_NOT_FOUND`, spec §3.1).
 
+> ❌ **`ERROR_MOD_NOT_FOUND` N'EST ÉMISE NULLE PART**, et ce `grep` rendrait
+> donc `0` sur une exécution où le contrôle a parfaitement réussi. La chaîne
+> ne vit que dans cette page et dans la spec. Ce que le journal porte
+> réellement (`agent-sans-projfs-plat.log`, 20 août 2026) est le contexte
+> `anyhow` **`chargement de ProjectedFSLib.dll`** suivi de
+> **`Le module spécifié est introuvable. (0x8007007E)`** — **366** occurrences.
+> **Grepper `ProjectedFSLib`.**
+
 ⚠️ **C'est le contrôle qui prouve que la résolution à l'exécution fait ce pour
 quoi elle a été choisie**, et il est **atteignable et provoqué** — l'état est
 littéralement celui de la VM avant la tâche 1. Sans lui, D1 est une intention.
@@ -1985,6 +2009,14 @@ devient visible** : un enfant qui aurait hérité de `PONT` ne capturerait rien,
 un pont qui aurait hérité de `CAPTEUR` serait un second capteur. Relever aussi
 `grep -c 'pont lancé'` (attendu : 1) et `grep -c 'capteur lancé'` (attendu : 1).
 
+> ❌ **`pont lancé` N'EXISTE PAS : la trace est `pont fichiers lancé`**, et
+> l'attendu de **1** est faux lui aussi — **DEUX** lignes distinctes la portent
+> à chaque lancement, l'une de `superviseur::lanceur::pont` (`INFO`, avec le
+> `pid` et la session), l'autre de `superviseur::boucle::surveillance_pont`
+> (`WARN`). Relevé : **2** aux cinq exécutions nominales. `capteur lancé`, lui,
+> est exact et vaut **1**. *Un `grep` faux sur une chaîne inexistante aurait
+> fait lire un succès comme un pont absent.*
+
 - [ ] **Step 5 : les quatre critères de réception de F1** (spec §8)
 
 ```bash
@@ -1995,7 +2027,7 @@ sed 's/\x1b\[[0-9;]*m//g' agent.log > agent-f1-1-plat.log
 | --- | --- | --- |
 | 1 | `%USERPROFILE%\Mes Fichiers` montre **exactement** l'arborescence choisie, **aux deux niveaux** | `Get-ChildItem -Recurse` sur la VM, comparé **par ensemble de NOMS** à `find` côté hôte |
 | 2 | le fichier de plus de 10 Mio, copié vers `C:\`, a **le même condensat SHA-256** | `Get-FileHash`, comparé à `sha256-origine.txt` |
-| 3 | aucune opération de l'Explorateur ne dépasse les budgets du §5.3 | `grep -c 'ERROR_SEM_TIMEOUT\|delai depasse'` → **0** |
+| 3 | aucune opération de l'Explorateur ne dépasse les budgets du §5.3 | ❌ **CONTRÔLE VACUEUX** : `grep -c 'ERROR_SEM_TIMEOUT\|delai depasse'` → **0**, mais **aucune de ces deux chaînes n'est jamais émise par le produit**. Le témoin réel est `commande expirée` (`agent/src/pont/service.rs`), et il vaut **0 aux cinq exécutions nominales** — un zéro qui, lui non plus, n'établit rien, puisque **aucune lecture de `gros.bin` n'y est allée à son terme**. *Un contrôle qui ne peut pas échouer, pour la troisième fois dans ce dépôt.* |
 | 4 | **une session vidéo tourne pendant TOUTE la recette et ne perd pas une image** | `framesDecoded` monotone dans la page d'application, **0** `clôture de session amorcée` dans `agent.log`, **et la souris répond** (tâche 17) |
 
 ⚠️ **Le critère 2 est le seul qui ne puisse pas être satisfait par accident**
@@ -2035,7 +2067,12 @@ prouve rien. **Les provoquer est obligatoire.**
   **avant** et **après** la copie du fichier de 10 Mio. Le disque de la VM a
   grossi d'au moins cette taille, **et il ne redescend pas** ;
 - **la création locale** : créer un fichier dans la racine depuis l'Explorateur.
-  **Attendu : refusé** (`ERROR_WRITE_PROTECT`) par
+  ❌ **CET ATTENDU EST FAUX, et la mesure l'a montré** : le fichier est **CRÉÉ**
+  (2 exécutions versées sur 2 qui atteignent cette phase). Ce n'est pas une
+  divergence du code : `PRJ_NOTIFY_FILE_PRE_CONVERT_TO_FULL` ne concerne pas un
+  fichier NEUF, et `agent/src/pont/notifications.rs` documentait déjà que
+  `NEW_FILE_CREATED` est une **POST**, donc irrefusable. **C'est le plan et la
+  spec §8 qui promettaient trop.** ~~Attendu : refusé~~ (`ERROR_WRITE_PROTECT`) par
   `PRJ_NOTIFY_FILE_PRE_CONVERT_TO_FULL`. Si Windows le crée quand même,
   relever le `warn!` de la tâche 13 Step 4 et **le consigner comme divergence**,
   pas comme succès.
@@ -2256,7 +2293,7 @@ plan.
 | 9 | La spec §7.4 pose un cache d'énumération dès F1, mais **`Rafraichir` — le seul moyen de l'invalider — est un livrable de F5** | Tâche 14 Step 4 : **aucun cache d'énumération en F1**. Un cache que rien ne vide reproduirait le défaut de l'ancien pont (`src/file.js:232-241`, cache **sans TTL**) |
 | 10 | La spec §4.3 nomme le contrôle de flux par `bufferedAmount`/`SEUIL_TAMPON` sans dire de quel sous-bloc il relève ; le §8 le range en **F3** | Tâche 14 Step 2 : **un morceau en vol à la fois** en F1. Déclaré, pas implémenté à moitié |
 | 11 | La spec ne prévoit rien pour la **casse** : Windows est insensible, la FSA ne l'est pas | Tâche 3 : documenté et remonté en `Introuvable` ; **legs**, exercé en recette (tâche 18 Step 7) |
-| 12 | **Vérifications favorables** : les 13 entrées, les 8 types `PRJ_*_CB`, les 19 entrées `Prj*`, les 621 lignes du module, `Win32_Storage_ProjectedFileSystem` (Cargo.toml:554), `evenements.rs:168-189` et `:51-63`, `main.rs:315`, `lanceur.rs:156-188`, `proto/src/control.rs:14,37-40,41-52`, `input.rs:14,98,145`, `signaling.rs:53`, `initialisation.rs:27`, et les tailles du §9 (328 / 367 / 263 / 148 / 4 / 71 / 93) sont **toutes exactes** | rien à corriger |
+| 12 | **Vérifications favorables** : les 13 entrées, les 8 types `PRJ_*_CB`, les 19 entrées `Prj*`, les 621 lignes du module, `Win32_Storage_ProjectedFileSystem` (Cargo.toml:554), `evenements.rs:168-189` et `:51-63`, `main.rs:315`, `lanceur.rs:156-188`, `proto/src/control.rs:14,37-40,41-52`, `input.rs:14,98,145`, `signaling.rs:53`, `initialisation.rs:27`, et les tailles du §9 (328 / 367 / 263 / 148 / 4 / 71 / 93) sont **toutes exactes** | ❌ **« TOUTES EXACTES » EST FAUX D'AU MOINS UNE** : `evenements.rs:168-189` ne désignait pas `dispatch_channel_data`, qui vivait en `:219-239` — relevé par la tâche 17 elle-même (message de `df7fd4d`), **sans que ce tableau soit corrigé**. Le FOND de la citation, lui, était exact. *Une ligne de tableau qui affirme la complétude d'une vérification est une affirmation de complétude comme une autre.* |
 
 ---
 
