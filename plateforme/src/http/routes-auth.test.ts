@@ -7,7 +7,7 @@
 // fois par ce dépôt.
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { baseNeuve } from '../base/harnais';
+import { baseNeuve, piloteCompteur } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import type { Config } from '../config';
 import { hacher } from '../identite/mot-de-passe';
@@ -51,33 +51,6 @@ async function servir(nom: string, origineClient?: string): Promise<string> {
     await creerUtilisateur(base, 'ada@exemple.test', await hacher(MOT_DE_PASSE), MS);
     service = await demarrerServeur(config(origineClient), base);
     return `http://127.0.0.1:${service.port}`;
-}
-
-/// Un DÉCORATEUR autour du pilote réel, qui compte les accès à la base.
-///
-/// 🔴 CE N'EST PAS UN FAUX, ET C'EST LE POINT. Un pilote factice mesurerait
-/// autre chose que la production ; celui-ci délègue tout, et n'ajoute qu'un
-/// compteur. C'est ce qui rend l'assertion « le refus freiné ne touche pas la
-/// base » DÉCIDABLE, là où la mesurer en temps serait instable.
-function piloteCompteur(reel: Pilote): { pilote: Pilote; acces: () => number; remettre: () => void } {
-    let n = 0;
-    const pilote: Pilote = {
-        async executer(sql, params) {
-            n += 1;
-            return reel.executer(sql, params);
-        },
-        async interroger<T>(sql: string, params: unknown[]): Promise<T[]> {
-            n += 1;
-            return reel.interroger<T>(sql, params);
-        },
-        transaction(corps) {
-            return reel.transaction(corps);
-        },
-        fermer() {
-            return reel.fermer();
-        },
-    };
-    return { pilote, acces: () => n, remettre: () => { n = 0; } };
 }
 
 /// `Response.json()` rend `unknown` : ce petit typage évite d'éparpiller des

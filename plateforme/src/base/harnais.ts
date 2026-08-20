@@ -64,3 +64,42 @@ let n = 0;
 function compteur(): number {
     return ++n;
 }
+
+/// Un DÉCORATEUR autour d'un pilote réel, qui COMPTE les accès à la base.
+///
+/// 🔴 CE N'EST PAS UN FAUX, ET C'EST LE POINT. Un pilote factice mesurerait
+/// autre chose que la production ; celui-ci délègue TOUT, et n'ajoute qu'un
+/// compteur. C'est ce qui rend décidable l'assertion « le refus freiné ne
+/// touche pas la base » — donc « il ne dérive aucun `scrypt` » —, là où la
+/// mesurer en TEMPS serait instable et où la mesurer par un faux ne dirait
+/// rien du chemin réel.
+///
+/// ⚠️ IL VIT ICI PLUTÔT QUE DANS UN FICHIER DE TEST parce que DEUX fichiers
+/// l'emploient — `http/routes-auth.test.ts` et `agents/canal.test.ts` — et que
+/// deux copies divergeraient à la première correction portée sur une seule.
+/// C'est la raison exacte pour laquelle `agents/canal-harnais.ts` a été
+/// extrait au sous-bloc G1.
+export function piloteCompteur(reel: Pilote): {
+    pilote: Pilote;
+    acces: () => number;
+    remettre: () => void;
+} {
+    let n = 0;
+    const pilote: Pilote = {
+        async executer(sql, params) {
+            n += 1;
+            return reel.executer(sql, params);
+        },
+        async interroger<T>(sql: string, params: unknown[]): Promise<T[]> {
+            n += 1;
+            return reel.interroger<T>(sql, params);
+        },
+        transaction(corps) {
+            return reel.transaction(corps);
+        },
+        fermer() {
+            return reel.fermer();
+        },
+    };
+    return { pilote, acces: () => n, remettre: () => { n = 0; } };
+}

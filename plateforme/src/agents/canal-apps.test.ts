@@ -26,6 +26,7 @@ import { lireParVm } from '../depot/application';
 import { servirLeCanalAgent } from './canal';
 import { enrolerUneVm, ouvrir, SECRET, SECRET_VM, T0, type Pair } from './canal-harnais';
 import { RegistreAgents } from './registre';
+import { Frein } from '../securite/frein';
 
 let base: Pilote | undefined;
 let wss: WebSocketServer | undefined;
@@ -53,6 +54,12 @@ async function demarrer(p: Pilote): Promise<number> {
         secretJeton: SECRET,
         maintenant: () => maintenant,
         registre,
+        // Un frein NEUF par montage : ce fichier eprouve le catalogue et le
+        // lancement, pas le freinage, et un frein partage entre tests ferait
+        // deborder les budgets d'ADRESSE (127.0.0.1 est la meme pour tous).
+        frein: new Frein(),
+        // Aucun proxy declare : la cle d'adresse est celle du pair reel.
+        proxyDeConfiance: new Set(),
     });
     const adresse = wss.address();
     return typeof adresse === 'object' && adresse ? adresse.port : 0;
