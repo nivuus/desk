@@ -14,7 +14,7 @@ import { baseNeuve } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import type { Config } from '../config';
 import { signer } from '../identite/jeton';
-import { demarrerServeur, type ServicePlateforme } from './serveur';
+import { demarrerServeur, TRAME_MAX_OCTETS, type ServicePlateforme } from './serveur';
 import type { Pilote as TypePilote } from '../base/pilote';
 
 // Un secret de test EXPLICITE, jamais `''` : `lireConfig` refuse la chaîne
@@ -255,5 +255,105 @@ describe('le chaînage des quatre routeurs', () => {
         await expect(tenter(`ws://127.0.0.1:${service.port}/`)).resolves.toBe('ouvert');
         await expect(tenter(`ws://127.0.0.1:${service.port}/agent`)).resolves.toBe('ouvert');
         await expect(tenter(`ws://127.0.0.1:${service.port}/vm`)).resolves.toBe('ferme');
+    });
+});
+
+describe('la trame maximale acceptée avant toute authentification', () => {
+    /// Ouvre un socket sur `url`, y envoie `octets` octets, et rend le code de
+    /// fermeture — ou `'servi'` si le socket est toujours ouvert au bout de
+    /// la borne.
+    ///
+    /// ⚠️ BORNÉE, jamais une attente infinie : un serveur qui n'appliquerait
+    /// aucune borne laisserait le socket ouvert, et le test doit ROUGIR, pas
+    /// pendre.
+    function pousser(url: string, octets: number): Promise<number | 'servi'> {
+        return new Promise((resolve, rejeter) => {
+            const w = new WebSocket(url);
+            const minuteur = setTimeout(() => {
+                w.terminate();
+                resolve('servi');
+            }, 1500);
+            w.once('open', () => {
+                // 🔴 UNE TRAME UNIQUE, et son contenu est du JSON VALIDE une
+                // fois tronqué mentalement : ce qui est mesuré est la TAILLE,
+                // pas la forme. `ws` doit fermer AVANT que le gestionnaire
+                // `message` ne voie quoi que ce soit.
+                w.send('x'.repeat(octets));
+            });
+            w.once('close', (code) => {
+                clearTimeout(minuteur);
+                resolve(code);
+            });
+            w.once('error', () => {
+                // Un socket fermé en cours d'écriture lève côté client : ce
+                // n'est pas un échec du test, c'est la fermeture qu'il mesure.
+            });
+            setTimeout(() => rejeter(new Error('ni fermeture ni verdict en 3000 ms')), 3000);
+        });
+    }
+
+    it('(a) 🔴 une trame TROP GRANDE ferme le socket en 1009, sur `/`', async () => {
+        // Le pair est ANONYME : `signaling/relais.ts:84-86` dit lui-même que
+        // le contrôle de FORME court une trentaine de lignes AVANT
+        // `garde.verifier`. Sans borne, `JSON.parse` sur la trame est une
+        // allocation puis un pic CPU, par socket et par trame, offerts à
+        // quiconque atteint le port.
+        service = await servir('trame-racine');
+        // 1009 = « message trop grand » (RFC 6455).
+        await expect(pousser(`ws://127.0.0.1:${service.port}/`, TRAME_MAX_OCTETS + 1))
+            .resolves.toBe(1009);
+    });
+
+    it('(a bis) 🔴 et sur `/agent` AUSSI, qui est l’autre porte anonyme', async () => {
+        // Le canal d'enrôlement est ouvert avant toute identité : le borner
+        // seulement sur `/` laisserait la moitié du problème entière.
+        service = await servir('trame-agent');
+        await expect(pousser(`ws://127.0.0.1:${service.port}/agent`, TRAME_MAX_OCTETS + 1))
+            .resolves.toBe(1009);
+    });
+
+    it('(b) 🔴 une trame JUSTE SOUS la borne est acceptée et servie', async () => {
+        // 🔴 SANS CE TEST, UN `maxPayload: 1` PASSERAIT LE TEST (a). C'est la
+        // moitié qui empêche la borne de devenir un refus de service posé de
+        // nos propres mains.
+        service = await servir('trame-sous-borne');
+        // Le socket reste ouvert : le message est mal formé, et le relais
+        // laisse retenter un message malformé plutôt que de fermer.
+        await expect(pousser(`ws://127.0.0.1:${service.port}/`, TRAME_MAX_OCTETS - 1))
+            .resolves.toBe('servi');
+    });
+
+    it('(d) 🔴 LE PROCESSUS SURVIT à la trame refusée, et sert la requête suivante', async () => {
+        // 🔴 CE TEST EXISTE PARCE QUE LE CORRECTIF DE (a) A FAILLI ÊTRE PIRE
+        // QUE LE DÉFAUT. Poser `maxPayload` fait émettre `error` par `ws` sur
+        // le socket SERVEUR ; or aucun socket serveur de ce service n'avait
+        // d'écouteur `error` (vérifié le 20 août 2026 :
+        // `grep -n "on('error'" relais.ts canal.ts serveur.ts` ne rendait que
+        // le `http.once('error', reject)` du démarrage). Un `EventEmitter` qui
+        // émet `error` sans écouteur LÈVE, et une exception non attrapée dans
+        // un gestionnaire d'évènement Node ABAT TOUT LE PROCESS — le mode de
+        // défaillance exact que `signaling/relais.ts` et `signaling/trace.ts`
+        // documentent tous deux.
+        //
+        // Autrement dit : sans l'écouteur, UNE SEULE TRAME ANONYME TUAIT LE
+        // SERVICE, là où avant elle ne faisait que le ralentir. Vitest l'a vu
+        // (« Vitest caught 2 unhandled errors »), et ce test le fige.
+        service = await servir('trame-survie');
+        const url = `http://127.0.0.1:${service.port}`;
+        await expect(pousser(`ws://127.0.0.1:${service.port}/`, TRAME_MAX_OCTETS + 1))
+            .resolves.toBe(1009);
+        await expect(pousser(`ws://127.0.0.1:${service.port}/agent`, TRAME_MAX_OCTETS + 1))
+            .resolves.toBe(1009);
+        // Sans cette requête, un processus abattu se lirait exactement comme
+        // un processus sain — le test aurait déjà rendu son verdict.
+        const apres = await fetch(`${url}/inconnu`);
+        expect(apres.status).toBe(404);
+    });
+
+    it('(c) la borne est celle que le module annonce, et elle est grande', () => {
+        // ⚠️ NON CALIBRÉE, et son plancher est RAISONNÉ, pas mesuré : voir
+        // l'en-tête de `serveur.ts`. Ce test fige la valeur pour qu'un
+        // changement soit un geste délibéré.
+        expect(TRAME_MAX_OCTETS).toBe(256 * 1024);
     });
 });

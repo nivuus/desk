@@ -46,6 +46,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
+import { TRAME_MAX_OCTETS } from '../http/serveur';
 import { signer } from '../identite/jeton';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -225,4 +226,57 @@ describe('résilience du process réel (index.ts) face à un message `null`', ()
         agentTemoin.close();
         clientTemoin.close();
     });
+});
+
+describe('résilience du process réel face à une trame TROP GRANDE (P5)', () => {
+    /// 🔴 CE TEST VIT ICI, ET NON DANS `http/serveur.test.ts`, POUR LA RAISON
+    /// EXACTE QUE L'EN-TÊTE DE CE FICHIER DONNE : « vitest installe son propre
+    /// gestionnaire d'exceptions non interceptées », si bien qu'un test
+    /// exécuté DANS vitest ne peut pas prouver qu'un process Node réel
+    /// survivrait. `serveur.test.ts` éprouve que la trame est REFUSÉE ; seul
+    /// ce fichier-ci peut éprouver que le service y SURVIT.
+    ///
+    /// 🔴 ET LE DANGER EST NEUF, INTRODUIT PAR LE CORRECTIF LUI-MÊME. Poser
+    /// `maxPayload` fait émettre `error` par `ws` sur le socket SERVEUR ; or
+    /// aucun socket serveur de ce service n'avait d'écouteur `error` — relevé
+    /// le 20 août 2026, `grep -n "on('error'" relais.ts canal.ts serveur.ts`
+    /// ne rendait que le `http.once('error', reject)` du démarrage. Un
+    /// `EventEmitter` qui émet `error` sans écouteur LÈVE, et une exception
+    /// non attrapée dans un gestionnaire d'évènement Node abat tout le
+    /// process. Sans l'écouteur, LE CORRECTIF ANTI-DÉNI-DE-SERVICE AURAIT
+    /// DONNÉ UN DÉNI DE SERVICE PIRE : une trame anonyme unique tuant le
+    /// service au lieu de le ralentir.
+    it('🔴 survit à une trame au-delà de `maxPayload`, sur `/` comme sur `/agent`', async () => {
+        for (const chemin of ['/', '/agent']) {
+            const gros = new WebSocket(`ws://127.0.0.1:${port}${chemin}`);
+            await new Promise((resolve, reject) => {
+                gros.on('open', resolve);
+                gros.on('error', reject);
+            });
+            const ferme = new Promise<number>((resolve) => gros.once('close', resolve));
+            // Un écouteur `error` CÔTÉ CLIENT : c'est le pair fautif, et son
+            // socket lève quand le serveur le coupe en cours d'écriture.
+            gros.on('error', () => {});
+            gros.send('x'.repeat(TRAME_MAX_OCTETS + 1));
+            // 1009 = « message trop grand » (RFC 6455).
+            expect(await ferme).toBe(1009);
+        }
+
+        // Preuve n°1 : le process n'est pas mort.
+        expect(child.exitCode).toBeNull();
+        expect(child.killed).toBe(false);
+
+        // Preuve n°2 : une session ouverte APRÈS l'incident relaie
+        // normalement. Sans elle, un process abattu se lirait exactement
+        // comme un process sain — `exitCode` ne bascule pas instantanément.
+        const agent = await connectTo(port, 'agent', `${P}:preuve-trame-geante`);
+        const client = await connectTo(port, 'client', `${P}:preuve-trame-geante`);
+        client.send(JSON.stringify({ type: 'offer', sdp: 'vivant apres la trame geante' }));
+        expect(await nextMessage(agent)).toEqual({
+            type: 'offer',
+            sdp: 'vivant apres la trame geante',
+        });
+        agent.close();
+        client.close();
+    }, 20000);
 });
