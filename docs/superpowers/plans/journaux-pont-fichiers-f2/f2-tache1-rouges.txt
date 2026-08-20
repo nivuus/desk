@@ -1,0 +1,160 @@
+# Tâche 1 — les états ROUGES du protocole, JOUÉS.
+# Mutation par NUMÉRO DE LIGNE ; le harnais refuse une rouge au diff vide.
+# Date : 2026-08-20T23:46:03+02:00
+
+## (a) renommage côté RUST SEUL — ligne 126 de proto/src/fichiers.rs
+## attendu : le VECTEUR PARTAGÉ le voit, côté Rust seul.
+=== ROUGE : renommer DisquePlein en Plein
+--- fichier : proto/src/fichiers.rs
+--- sha256 AVANT : c554d3c52aaa5c85d6fc001d71b5b708d71170630677cce26c2e73960074ee64
+--- diff de la MUTATION SEULE (contre la copie prise à l'instant) :
+@@ -123,7 +123,7 @@
+     /// handle et cru avoir enregistré : il n'y a plus aucune commande ProjFS à
+     /// compléter. Ce code sert au JOURNAL et au compteur d'écritures dues de la
+     /// page-shell, jamais à un `HRESULT` rendu à qui que ce soit.
+-    DisquePlein,
++    Plein,
+     /// Une entrée du même nom existe déjà (F2).
+     DejaPresent,
+     /// 🔴 **Le poste local porte un homonyme qui ne diffère QUE par la casse, et
+--- contrôle :
+error[E0599]: no variant, associated function, or constant named `DisquePlein` found for enum `fichiers::CodeEchec` in the current scope
+error: could not compile `proto` (lib test) due to 1 previous error
+--- (le code de sortie du contrôle est celui de la commande ci-dessus)
+--- sha256 APRÈS restauration : c554d3c52aaa5c85d6fc001d71b5b708d71170630677cce26c2e73960074ee64
+--- restauration VÉRIFIÉE
+
+## (b) une forme SANS son vecteur — retirer les deux cas « ecrire » du fichier de vecteurs.
+## attendu : les DEUX implémentations rendent rouge.
+=== ROUGE : retirer la forme ecrire des vecteurs
+--- fichier : proto/fichiers-vectors.json
+--- sha256 AVANT : c1462aac20f77c3d58458ec03b95d3da9e677065e801dc3572dd6d0126740462
+--- diff de la MUTATION SEULE (contre la copie prise à l'instant) :
+@@ -68,7 +68,7 @@
+     },
+     {
+       "name": "ecrire_premier_et_dernier",
+-      "forme": "ecrire",
++      "forme": "ecrire-renommee",
+       "chemin": "note.txt",
+       "position": 0,
+       "longueur": 12,
+@@ -78,7 +78,7 @@
+     },
+     {
+       "name": "ecrire_morceau_du_milieu",
+-      "forme": "ecrire",
++      "forme": "ecrire-renommee",
+       "chemin": "dossier/gros.bin",
+       "position": 65536,
+       "longueur": 65536,
+--- contrôle :
+thread 'fichiers::entetes::tests::les_neuf_formes_ont_leur_vecteur' (1961625) panicked at proto/src/fichiers/entetes/tests.rs:198:5:
+assertion `left == right` failed: une forme du protocole n'a pas de vecteur, ou un vecteur n'a pas de forme
+  left: ["chemin", "creer", "donnees", "dues", "echec", "ecrire-renommee", "entrees", "lire", "meta"]
+ right: ["chemin", "creer", "donnees", "dues", "echec", "ecrire", "entrees", "lire", "meta"]
+thread 'fichiers::entetes::tests::conformite_aux_vecteurs_partages' (1961624) panicked at proto/src/fichiers/entetes/tests.rs:126:22:
+forme inconnue dans les vecteurs : ecrire-renommee
+test result: FAILED. 91 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+--- (le code de sortie du contrôle est celui de la commande ci-dessus)
+--- sha256 APRÈS restauration : c1462aac20f77c3d58458ec03b95d3da9e677065e801dc3572dd6d0126740462
+--- restauration VÉRIFIÉE
+
+=== ROUGE : retirer la forme ecrire des vecteurs (côté TS)
+--- fichier : proto/fichiers-vectors.json
+--- sha256 AVANT : c1462aac20f77c3d58458ec03b95d3da9e677065e801dc3572dd6d0126740462
+--- diff de la MUTATION SEULE (contre la copie prise à l'instant) :
+@@ -68,7 +68,7 @@
+     },
+     {
+       "name": "ecrire_premier_et_dernier",
+-      "forme": "ecrire",
++      "forme": "ecrire-renommee",
+       "chemin": "note.txt",
+       "position": 0,
+       "longueur": 12,
+@@ -78,7 +78,7 @@
+     },
+     {
+       "name": "ecrire_morceau_du_milieu",
+-      "forme": "ecrire",
++      "forme": "ecrire-renommee",
+       "chemin": "dossier/gros.bin",
+       "position": 65536,
+       "longueur": 65536,
+--- contrôle :
+     → forme inconnue dans les vecteurs : ecrire-renommee
+     → forme inconnue dans les vecteurs : ecrire-renommee
+     → forme inconnue dans les vecteurs : ecrire-renommee
+     → forme inconnue dans les vecteurs : ecrire-renommee
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+Error: forme inconnue dans les vecteurs : ecrire-renommee
+--- (le code de sortie du contrôle est celui de la commande ci-dessus)
+--- sha256 APRÈS restauration : c1462aac20f77c3d58458ec03b95d3da9e677065e801dc3572dd6d0126740462
+--- restauration VÉRIFIÉE
+
+## (c) un type neuf ABSENT de TYPES_CONNUS — tsc doit REFUSER.
+## ligne 82 de proto/ts/fichiers.ts
+=== ROUGE : retirer TYPE_ECRIRE de TYPES_CONNUS
+--- fichier : proto/ts/fichiers.ts
+--- sha256 AVANT : 72be91eb5fafd52df8ee08b7ec5d7a57a50423d5d98014f7a261aa03a8f8d072
+--- diff de la MUTATION SEULE (contre la copie prise à l'instant) :
+@@ -79,7 +79,6 @@
+     [TYPE_LISTER]: true,
+     [TYPE_ATTRIBUTS]: true,
+     [TYPE_LIRE]: true,
+-    [TYPE_ECRIRE]: true,
+     [TYPE_CREER]: true,
+     [TYPE_DUES]: true,
+     [TYPE_ENTREES]: true,
+--- contrôle :
+../proto/ts/fichiers.ts(78,7): error TS2741: Property '4' is missing in type '{ 1: true; 2: true; 3: true; 5: true; 6: true; 64: true; 65: true; 66: true; 67: true; 127: true; }' but required in type 'Readonly<Record<TypeMessage, true>>'.
+(sortie tsc ci-dessus)
+--- (le code de sortie du contrôle est celui de la commande ci-dessus)
+--- sha256 APRÈS restauration : 72be91eb5fafd52df8ee08b7ec5d7a57a50423d5d98014f7a261aa03a8f8d072
+--- restauration VÉRIFIÉE
+
+## (d) borner la charge par TAILLE_TRAME_MAX - taille_entete.
+## attendu : une trame ECRIRE pleine, en-tête compris, cesse de passer.
+## ligne 207 de proto/src/fichiers.rs
+=== ROUGE : borner la charge en comptant l'en-tete
+--- fichier : proto/src/fichiers.rs
+--- sha256 AVANT : c554d3c52aaa5c85d6fc001d71b5b708d71170630677cce26c2e73960074ee64
+--- diff de la MUTATION SEULE (contre la copie prise à l'instant) :
+@@ -204,7 +204,7 @@
+         });
+     }
+     let (entete, charge) = reste.split_at(longueur_entete as usize);
+-    if charge.len() > TAILLE_TRAME_MAX {
++    if charge.len() + entete.len() > TAILLE_TRAME_MAX {
+         return Err(ErreurTrame::ChargeTropGrande {
+             recu: charge.len(),
+             max: TAILLE_TRAME_MAX,
+--- contrôle :
+thread 'fichiers::tests::la_charge_maximale_de_taille_trame_max_passe' (1962855) panicked at proto/src/fichiers/tests.rs:89:34:
+thread 'fichiers::tests::une_trame_ecrire_pleine_passe_entete_compris' (1962863) panicked at proto/src/fichiers/tests.rs:190:34:
+test result: FAILED. 91 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+--- (le code de sortie du contrôle est celui de la commande ci-dessus)
+--- sha256 APRÈS restauration : c554d3c52aaa5c85d6fc001d71b5b708d71170630677cce26c2e73960074ee64
+--- restauration VÉRIFIÉE
+
+
+## ⚠️ CE QUE CES QUATRE ROUGES N'ÉTABLISSENT PAS, dit plutôt que tu
+
+- ROUGE (d) fait tomber DEUX tests, dont UN PRÉEXISTANT
+  (`la_charge_maximale_de_taille_trame_max_passe`). **Le test neuf
+  `une_trame_ecrire_pleine_passe_entete_compris` n'est donc PAS le seul
+  discriminant de cette mutation.** Ce qu'il apporte est ailleurs : il exerce le
+  chemin `TYPE_ECRIRE` avec un en-tête RÉEL de plusieurs dizaines d'octets, là
+  où le test préexistant se contente de `{}`. Le dire est la règle du dépôt —
+  « une rouge qui rougit pour la mauvaise raison ne prouve rien », et lire
+  QUELLE assertion a rougi, jamais le seul code de sortie.
+
+- ROUGE (b) est jouée DEUX FOIS, une par implémentation, sur la MÊME mutation.
+  Une seule exécution aurait laissé croire que le vecteur est partagé alors
+  qu'un seul côté le lit.
+
+- ROUGE (a) rougit à la COMPILATION de `proto` et non sur une assertion : le
+  vecteur nomme `disque-plein`, et le test Rust nomme la variante. C'est ce qui
+  est attendu — mais **ce n'est pas la même chose qu'une assertion rouge**, et
+  la distinction se perd si l'on ne lit que « ça a échoué ».

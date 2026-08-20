@@ -99,11 +99,74 @@ pub struct Donnees {
     pub longueur: u32,
 }
 
+/// L'en-tête de `TYPE_ECRIRE`. **La charge porte les octets**, jamais encodés.
+///
+/// ⚠️ **`premier` et `dernier` ne sont PAS déductibles de `position` et
+/// `longueur`.** Un fichier d'un seul morceau les porte tous deux à `true` ;
+/// un fichier de taille NULLE n'a aucun morceau du tout et passe par
+/// [`Creer`]. Surtout, `position == 0` ne suffit pas à dire « premier » le jour
+/// où une écriture partielle existera : c'est le drapeau qui décide, et lui
+/// seul, parce que c'est lui qui commande l'ouverture du flux **sans**
+/// `keepExistingData`.
+///
+/// 🔵 **`dernier` EST LA COMMITTAISON.** `createWritable()` du navigateur écrit
+/// dans un fichier d'échange et ne commet qu'au `close()` : c'est le morceau
+/// `dernier` qui déclenche ce `close()`, et donc le seul instant où le fichier
+/// du poste local change. Une poussée interrompue avant lui laisse le fichier
+/// local **inchangé** — pas à moitié écrit. ⚠️ *Inférence de la spécification
+/// de la File System Access API, non mesurée par ce sous-bloc.*
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct Ecrire {
+    pub chemin: String,
+    pub position: u64,
+    pub longueur: u32,
+    /// Premier morceau : le flux s'ouvre **sans** `keepExistingData`.
+    pub premier: bool,
+    /// Dernier morceau : le flux se ferme, et **c'est la committaison**.
+    pub dernier: bool,
+}
+
+/// L'en-tête de `TYPE_CREER`. Charge binaire **vide**.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct Creer {
+    pub chemin: String,
+    pub repertoire: bool,
+}
+
+/// Une écriture DUE : des octets qui vivent sur la VM et pas encore sur le
+/// poste local.
+///
+/// 🔴 **C'est la fenêtre de perte, rendue NOMMABLE.** ProjFS ne met jamais le
+/// fournisseur sur le chemin de l'écriture : quand nous l'apprenons,
+/// l'application a déjà refermé son handle et cru avoir enregistré. Ce que
+/// cette structure porte est donc ce que l'utilisateur risque de perdre s'il
+/// referme son onglet maintenant — et le nommer est tout ce qu'on peut faire.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct Due {
+    pub chemin: String,
+    pub octets: u64,
+}
+
+/// L'en-tête de `TYPE_DUES`. Charge binaire **vide**.
+///
+/// ⚠️ **C'est une ANNONCE : elle n'attend aucune réponse**, et le navigateur ne
+/// doit rien renvoyer. Voir le commentaire de `TYPE_DUES` dans
+/// [`crate::fichiers`].
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct Dues {
+    pub dues: Vec<Due>,
+}
+
 /// L'en-tête de `TYPE_ECHEC`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Echec {
     pub code: super::CodeEchec,
 }
+
+// ⚠️ **`TYPE_FAIT` n'a PAS d'en-tête propre : sa trame porte `{}`.** Lui donner
+// une structure vide ferait une forme à épingler qui n'épingle rien, et un
+// vecteur partagé qui ne peut pas casser. Ce qui identifie l'écriture
+// acquittée est la CORRÉLATION de la trame, pas son en-tête.
 
 #[cfg(test)]
 mod tests;

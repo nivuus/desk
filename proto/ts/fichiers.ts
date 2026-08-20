@@ -23,24 +23,43 @@ export const TAILLE_TRAME_MAX = 64 * 1024;
 /** Version, type, corrélation, longueur d'en-tête. */
 export const TAILLE_ENTETE_FIXE = 1 + 1 + 4 + 4;
 
-// Requêtes pont → navigateur (v1).
+// Requêtes pont → navigateur — elles ATTENDENT une réponse.
 export const TYPE_LISTER = 1;
 export const TYPE_ATTRIBUTS = 2;
 export const TYPE_LIRE = 3;
-// Réponses navigateur → pont (v1).
+export const TYPE_ECRIRE = 4; // F2 — en-tête `Ecrire`, la charge porte les octets
+export const TYPE_CREER = 5; // F2 — en-tête `Creer`, charge vide
+
+// Annonces pont → navigateur — elles n'attendent RIEN.
+//
+// 🔴 TROISIÈME FAMILLE. Une ANNONCE ne reçoit aucune réponse : aucune entrée de
+// table ne lui correspond côté pont, et n'y pas répondre ne laisse donc rien en
+// vol. LA LISTE DES ANNONCES EST CLOSE — c'est ce qui empêche cette famille de
+// devenir le bras fourre-tout silencieux payé quatre fois sur
+// `capteur/pont_media.rs`.
+export const TYPE_DUES = 6; // F2 — en-tête `Dues`, charge vide
+
+// Réponses navigateur → pont.
 export const TYPE_ENTREES = 64;
 export const TYPE_META = 65;
 export const TYPE_DONNEES = 66;
+export const TYPE_FAIT = 67; // F2 — en-tête VIDE `{}`, charge vide
 export const TYPE_ECHEC = 127;
 
-/** L'union des types de message v1. */
+// ⚠️ 7 et 8 sont RÉSERVÉS à F3 (`TYPE_RENOMMER`, `TYPE_SUPPRIMER`).
+
+/** L'union des types de message. */
 export type TypeMessage =
     | typeof TYPE_LISTER
     | typeof TYPE_ATTRIBUTS
     | typeof TYPE_LIRE
+    | typeof TYPE_ECRIRE
+    | typeof TYPE_CREER
+    | typeof TYPE_DUES
     | typeof TYPE_ENTREES
     | typeof TYPE_META
     | typeof TYPE_DONNEES
+    | typeof TYPE_FAIT
     | typeof TYPE_ECHEC;
 
 /**
@@ -60,9 +79,13 @@ const TYPES_CONNUS: Readonly<Record<TypeMessage, true>> = {
     [TYPE_LISTER]: true,
     [TYPE_ATTRIBUTS]: true,
     [TYPE_LIRE]: true,
+    [TYPE_ECRIRE]: true,
+    [TYPE_CREER]: true,
+    [TYPE_DUES]: true,
     [TYPE_ENTREES]: true,
     [TYPE_META]: true,
     [TYPE_DONNEES]: true,
+    [TYPE_FAIT]: true,
     [TYPE_ECHEC]: true,
 };
 
@@ -71,11 +94,15 @@ export const TOUS_LES_TYPES: readonly TypeMessage[] = Object.keys(TYPES_CONNUS).
 ) as TypeMessage[];
 
 /**
- * Les sept causes d'échec, dans leur forme EXACTE sur le fil.
+ * Les DIX causes d'échec, dans leur forme EXACTE sur le fil.
  *
  * ⚠️ Doit correspondre caractère pour caractère au `#[serde(rename_all =
  * "kebab-case")]` de `CodeEchec` côté Rust. Les variantes à deux mots sont
- * celles qui se cassent en silence.
+ * celles qui se cassent en silence — et les TROIS neuves de F2 en sont.
+ *
+ * 🔴 `disque-plein` N'ATTEINT AUCUNE APPLICATION WINDOWS : il naît d'une
+ * poussée d'écriture, donc APRÈS que l'application a refermé son handle. Il
+ * sert au journal et au compteur d'écritures dues, jamais à un `HRESULT`.
  */
 export const CODES_ECHEC = [
     'introuvable',
@@ -85,6 +112,9 @@ export const CODES_ECHEC = [
     'non-supporte',
     'trop-grand',
     'interne',
+    'disque-plein',
+    'deja-present',
+    'casse-ambigue',
 ] as const;
 
 export type CodeEchec = (typeof CODES_ECHEC)[number];

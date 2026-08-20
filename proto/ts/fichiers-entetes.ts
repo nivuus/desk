@@ -63,6 +63,43 @@ export interface EnteteDonnees {
     longueur: number;
 }
 
+/**
+ * L'en-tête de `TYPE_ECRIRE`. **La charge porte les octets.**
+ *
+ * ⚠️ `premier` et `dernier` NE SONT PAS DÉDUCTIBLES de `position` et
+ * `longueur` : c'est `premier` qui commande l'ouverture du flux SANS
+ * `keepExistingData`, et `dernier` qui déclenche le `close()`, donc la
+ * COMMITTAISON.
+ */
+export interface EnteteEcrire {
+    chemin: string;
+    position: number;
+    longueur: number;
+    premier: boolean;
+    dernier: boolean;
+}
+
+/** L'en-tête de `TYPE_CREER`. Charge binaire **vide**. */
+export interface EnteteCreer {
+    chemin: string;
+    repertoire: boolean;
+}
+
+/** Une écriture DUE : des octets qui vivent sur la VM et pas encore ici. */
+export interface Due {
+    chemin: string;
+    octets: number;
+}
+
+/**
+ * L'en-tête de `TYPE_DUES`. Charge binaire **vide**.
+ *
+ * ⚠️ C'est une ANNONCE : elle n'attend AUCUNE réponse.
+ */
+export interface EnteteDues {
+    dues: Due[];
+}
+
 /** L'en-tête de `TYPE_ECHEC`. */
 export interface EnteteEchec {
     code: CodeEchec;
@@ -105,6 +142,35 @@ export function encodeDonnees(position: number, longueur: number): string {
 
 export function encodeEchec(code: CodeEchec): string {
     return JSON.stringify({ code } satisfies EnteteEchec);
+}
+
+export function encodeEcrire(
+    chemin: string,
+    position: number,
+    longueur: number,
+    premier: boolean,
+    dernier: boolean,
+): string {
+    return JSON.stringify({
+        chemin,
+        position,
+        longueur,
+        premier,
+        dernier,
+    } satisfies EnteteEcrire);
+}
+
+export function encodeCreer(chemin: string, repertoire: boolean): string {
+    return JSON.stringify({ chemin, repertoire } satisfies EnteteCreer);
+}
+
+export function encodeDues(dues: Due[]): string {
+    // Chaque due est reconstruite champ par champ, comme `encodeEntrees` : un
+    // objet venu de l'appelant pourrait porter des clés en trop, ou dans un
+    // autre ordre — et l'ordre est ce que le vecteur fige.
+    return JSON.stringify({
+        dues: dues.map((d) => ({ chemin: d.chemin, octets: d.octets })),
+    } satisfies EnteteDues);
 }
 
 /* ── ANALYSE ──────────────────────────────────────────────────────────────
@@ -193,6 +259,46 @@ export function parseDonnees(brut: unknown): EnteteDonnees {
     return {
         position: entier(o, 'position', 'Donnees'),
         longueur: entier(o, 'longueur', 'Donnees'),
+    };
+}
+
+export function parseEcrire(brut: unknown): EnteteEcrire {
+    const o = objet(brut, 'Ecrire');
+    return {
+        chemin: chaine(o, 'chemin', 'Ecrire'),
+        position: entier(o, 'position', 'Ecrire'),
+        longueur: entier(o, 'longueur', 'Ecrire'),
+        // 🔴 Les DEUX drapeaux sont exigés. Sans `premier`, le flux s'ouvrirait
+        // avec `keepExistingData` et un fichier réécrit plus court garderait sa
+        // queue d'octets — le défaut EXACT de l'ancien pont. Sans `dernier`, le
+        // `close()` ne viendrait jamais et rien ne serait jamais commis.
+        premier: booleen(o, 'premier', 'Ecrire'),
+        dernier: booleen(o, 'dernier', 'Ecrire'),
+    };
+}
+
+export function parseCreer(brut: unknown): EnteteCreer {
+    const o = objet(brut, 'Creer');
+    return {
+        chemin: chaine(o, 'chemin', 'Creer'),
+        repertoire: booleen(o, 'repertoire', 'Creer'),
+    };
+}
+
+export function parseDues(brut: unknown): EnteteDues {
+    const o = objet(brut, 'Dues');
+    const liste = o.dues;
+    if (!Array.isArray(liste)) {
+        throw new Error('en-tête Dues : champ « dues » absent ou non tableau');
+    }
+    return {
+        dues: liste.map((d) => {
+            const item = objet(d, 'Due');
+            return {
+                chemin: chaine(item, 'chemin', 'Due'),
+                octets: entier(item, 'octets', 'Due'),
+            };
+        }),
     };
 }
 
