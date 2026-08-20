@@ -1,0 +1,3669 @@
+=== scripts/verify-all.sh — TÉMOIN DE CLÔTURE, après les deux commits de S3 ===
+2026-08-20T05:01:28Z
+HEAD=611bfe7
+  611bfe7 docs(s3): la revue transverse — treize affirmations fausses, et QUATRE « sept » qui ne devaient PAS bouger
+  a481f35 recette(g1): le pont herite de l'identite d'enrolement, et s'evince avec son pere
+
+
+==> cargo test --workspace
+warning: unused import: `Event`
+  --> agent/src/transport/piste_micro/tests.rs:16:13
+   |
+16 | use str0m::{Event, Output};
+   |             ^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> agent/src/capteur/repartiteur/tests.rs:129:9
+    |
+129 |     let mut fenetres: Vec<Fenetre> = regime_1.iter().map(|(fenetre, _)| fenetre.clone()).collect();
+    |         ----^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `tete`
+   --> agent/src/micro.rs:196:18
+    |
+196 |         let Some(tete) = self.file.front().map(|t| t.rtp_48k) else {
+    |                  ^^^^ help: if this is intentional, prefix it with an underscore: `_tete`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> agent/src/micro/tests_lecteur.rs:371:9
+    |
+371 |     let mut reveil = |l: &mut LecteurMicro| {
+    |         ----^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: function `actif` is never used
+   --> agent/src/capteur/plein_ecran.rs:118:8
+    |
+118 | pub fn actif() -> bool {
+    |        ^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `PERIODE_STYLE` is never used
+   --> agent/src/capteur/plein_ecran.rs:138:11
+    |
+138 | pub const PERIODE_STYLE: Duration = Duration::from_millis(250);
+    |           ^^^^^^^^^^^^^
+
+warning: constant `NOM_TUBE` is never used
+  --> agent/src/capteur/protocole.rs:15:11
+   |
+15 | pub const NOM_TUBE: &str = r"\\.\pipe\agent-capteur";
+   |           ^^^^^^^^
+
+warning: method `courant` is never used
+  --> agent/src/cursor.rs:49:12
+   |
+28 | impl Hysteresis {
+   | --------------- method in this implementation
+...
+49 |     pub fn courant(&self) -> bool {
+   |            ^^^^^^^
+
+warning: method `veille_identite` is never used
+   --> agent/src/plateforme.rs:229:12
+    |
+193 | impl Canal {
+    | ---------- method in this implementation
+...
+229 |     pub fn veille_identite(&self) -> watch::Receiver<Option<Identite>> {
+    |            ^^^^^^^^^^^^^^^
+
+warning: variant `Lire` is never constructed
+  --> agent/src/pont/table.rs:49:5
+   |
+45 | pub enum Attendue {
+   |          -------- variant in this enum
+...
+49 |     Lire {
+   |     ^^^^
+   |
+   = note: `Attendue` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: field `adaptateur` is never read
+  --> agent/src/sortie_dxgi.rs:19:9
+   |
+16 | pub struct SortieDxgi {
+   |            ---------- field in this struct
+...
+19 |     pub adaptateur: String,
+   |         ^^^^^^^^^^
+   |
+   = note: `SortieDxgi` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: method `sessions_vivantes` is never used
+   --> agent/src/superviseur/table.rs:337:12
+    |
+199 | impl Table {
+    | ---------- method in this implementation
+...
+337 |     pub fn sessions_vivantes(&self) -> Vec<IdSession> {
+    |            ^^^^^^^^^^^^^^^^^
+
+warning: function `une_application_absente_d_aujourdhui_disparait_PAR_SA_CLE` should have a snake case name
+  --> agent/src/apps/reconciliation/tests.rs:58:4
+   |
+58 | fn une_application_absente_d_aujourdhui_disparait_PAR_SA_CLE() {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `une_application_absente_d_aujourdhui_disparait_par_sa_cle`
+   |
+   = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: `agent` (bin "agent" test) generated 13 warnings (run `cargo fix --bin "agent" -p agent --tests` to apply 4 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.44s
+     Running unittests src/main.rs (target/debug/deps/agent-f71a44343b450757)
+
+running 643 tests
+test apps::raccourci::tests::deux_raccourcis_au_meme_triplet_rendent_une_seule_application ... ok
+test apps::raccourci::tests::deux_applications_de_meme_nom_a_triplets_differents_restent_deux ... ok
+test apps::raccourci::tests::ecarte_toute_extension_qui_n_est_pas_exe ... ok
+test apps::raccourci::tests::ecarte_une_cible_vide ... ok
+test apps::raccourci::tests::la_cle_replie_la_casse_de_la_cible_et_du_repertoire_mais_pas_des_arguments ... ok
+test apps::raccourci::tests::ecarte_une_cible_absente_et_c_est_le_predicat_injecte_qui_le_dit ... ok
+test apps::raccourci::tests::la_cle_ne_confond_pas_deux_decoupages_du_meme_texte ... ok
+test apps::reconciliation::tests::deux_catalogues_identiques_rendent_un_diff_entierement_vide ... ok
+test apps::reconciliation::tests::un_doublon_de_cle_dans_la_lecture_du_jour_ne_produit_qu_une_application ... ok
+test apps::reconciliation::tests::un_chemin_de_lnk_qui_change_est_une_modification ... ok
+test apps::reconciliation::tests::le_diff_est_deterministe_et_trie_quel_que_soit_l_ordre_d_entree ... ok
+test apps::raccourci::tests::n_ecarte_rien_par_le_nom ... ok
+test apps::reconciliation::tests::une_application_absente_d_aujourdhui_disparait_PAR_SA_CLE ... ok
+test apps::raccourci::tests::n_ecarte_rien_par_le_chemin ... ok
+test apps::sha256::tests::les_vecteurs_de_reponse_connue_de_fips_180_4 ... ok
+test apps::reconciliation::tests::une_application_neuve_est_apparue_et_pas_modifiee ... ok
+test apps::reconciliation::tests::un_nom_qui_change_a_cle_egale_est_une_modification ... ok
+test apps::reconciliation::tests::un_catalogue_d_hier_vide_rend_tout_en_apparues_et_rien_en_disparues ... ok
+test apps::reconciliation::tests::une_application_qui_revient_est_apparue ... ok
+test apps::tests::la_periode_de_reconciliation_laisse_la_place_a_son_propre_cout ... ok
+test apps::tests::seule_la_valeur_zero_desarme_la_decouverte ... ok
+test audio::tests::compte_les_paquets_rejetes ... ok
+test audio::tests::dans_la_fenetre_l_injection_est_armee ... ok
+test audio::tests::la_borne_de_la_fenetre_est_incluse_ou_exclue_mais_dite ... ok
+test audio::tests::la_temporisation_de_reprise_croit_puis_se_borne ... ok
+test audio::tests::a_saturation_jette_le_plus_ancien_pas_le_plus_recent ... ok
+test audio::tests::la_tolerance_totale_reste_de_l_ordre_de_la_seconde ... ok
+test audio::tests::passe_la_fenetre_l_injection_est_desarmee ... ok
+test audio::tests::une_copie_partage_le_meme_tampon ... ok
+test audio::tests::le_depot_ne_bloque_jamais_meme_saturee ... ok
+test audio::tests::rend_les_paquets_dans_l_ordre_de_depot ... ok
+test capteur::audio::tests::aucune_fenetre_rend_aucune_decision ... ok
+test capteur::audio::tests::deux_fenetres_d_un_meme_processus_jamais_focalisees_la_premiere_arrivee_porte ... ok
+test capteur::audio::tests::deux_processus_distincts_portent_chacun_le_leur ... ok
+test capteur::audio::tests::l_inaptitude_d_un_groupe_ne_touche_pas_un_autre_pid ... ok
+test capteur::audio::tests::la_decision_est_rendue_pour_chaque_session_meme_muette ... ok
+test capteur::audio::tests::l_oubli_du_porteur_fait_passer_le_son_a_la_suivante_du_groupe ... ok
+test capteur::audio::tests::un_groupe_entierement_inapte_reste_muet ... ok
+test capteur::audio::tests::le_focus_prend_le_son_a_sa_voisine_du_meme_processus ... ok
+test capteur::audio::tests::un_groupe_qui_perd_tout_focus_garde_son_son_sur_la_derniere_focalisee ... ok
+test capteur::audio::tests::une_fenetre_inapte_ne_porte_jamais_le_son ... ok
+test audio::tests::sans_fenetre_l_injection_reste_armee_indefiniment ... ok
+test capteur::audio::tests::une_fenetre_seule_de_son_processus_porte_le_son ... ok
+test capteur::distante::tests::deux_parts_arrivees_avant_lecture_s_ecrasent ... ok
+test capteur::distante::tests::deux_ordres_audio_arrives_avant_lecture_s_ecrasent ... ok
+test capteur::distante::tests::les_commandes_partent_sous_la_forme_attendue ... ok
+test capteur::audio::tests::une_inapte_recoit_quand_meme_son_verdict_false ... ok
+test capteur::distante::tests::deux_sommeils_consecutifs_ne_retiennent_que_le_dernier ... ok
+test capteur::distante::tests::les_images_sortent_dans_l_ordre_d_arrivee ... ok
+test capteur::distante::tests::un_canal_rompu_n_epuise_pas_la_source_dans_la_fenetre ... ok
+test capteur::distante::tests::set_awake_transmet_la_visibilite_au_capteur ... ok
+test capteur::distante::tests::un_ordre_audio_recu_est_rendu_une_seule_fois ... ok
+test apps::sha256::tests::une_longueur_de_message_pile_sur_la_frontiere_du_bourrage ... ok
+test capteur::distante::tests::un_plein_ecran_pousse_est_annonce_une_seule_fois ... ok
+test capteur::distante::tests::un_epuisement_autoritaire_interdit_tout_rattachement ... ok
+test capteur::distante::tests::un_canal_rompu_au_dela_de_la_fenetre_epuise_la_source ... ok
+test capteur::distante::tests::un_rattachement_qui_echoue_jusqu_a_expiration_epuise_la_source ... ok
+test capteur::distante::tests::un_rattachement_qui_echoue_laisse_la_source_en_attente_sans_l_epuiser ... ok
+test apps::raccourci::tests::le_corpus_ne_porte_aucune_cible_hors_exe_parmi_les_retenus ... ok
+test capteur::distante::tests::un_redimensionnement_retient_la_taille_obtenue ... ok
+test capteur::distante::tests::un_vieillissement_du_pas_seul_relance_un_essai ... ok
+test capteur::distante::tests::un_etat_intercale_met_a_jour_le_cache_sans_masquer_l_image_suivante ... ok
+test capteur::distante::tests::un_rattachement_reussi_fait_revivre_la_source_et_reprend_ses_dimensions ... ok
+test capteur::distante::tests::une_fenetre_disparue_rend_la_source_non_vivante_et_epuisee ... ok
+test capteur::distante::tests::un_sommeil_pousse_par_le_capteur_est_retenu_pour_le_client ... ok
+test capteur::distante::tests::un_rattachement_remet_l_enfant_au_silence ... ok
+test capteur::distante::tests::une_file_vide_rend_none_sans_epuiser_la_source ... ok
+test capteur::horloge::tests::une_frequence_nulle_retombe_sur_maintenant ... ok
+test capteur::distante::tests::une_part_recue_est_rendue_une_seule_fois ... ok
+test capteur::horloge::tests::une_origine_anterieure_se_reconstruit_en_arriere ... ok
+test capteur::horloge::tests::une_origine_egale_a_maintenant_ne_recule_pas ... ok
+test capteur::horloge::tests::une_origine_posterieure_retombe_sur_maintenant ... ok
+test capteur::plein_ecran::tests::le_premier_observer_sur_l_etat_initial_n_annonce_rien ... ok
+test capteur::plein_ecran::tests::le_cadre_seul_suffit_a_faire_une_bordure ... ok
+test capteur::plein_ecran::tests::le_retour_de_la_bordure_annonce_la_sortie_du_plein_ecran ... ok
+test capteur::plein_ecran::tests::le_titre_seul_suffit_a_faire_une_bordure ... ok
+test capteur::plein_ecran::tests::un_aller_retour_complet_annonce_deux_fois_et_pas_davantage ... ok
+test capteur::distante::tests::une_rafale_d_interrogations_ne_produit_qu_un_seul_essai ... ok
+test capteur::plein_ecran::tests::une_fenetre_a_titre_et_cadre_a_une_bordure ... ok
+test capteur::plein_ecran::tests::une_fenetre_sans_titre_ni_cadre_n_a_pas_de_bordure ... ok
+test capteur::plein_ecran::tests::une_fenetre_nee_sans_bordure_n_annonce_rien ... ok
+test capteur::plein_ecran::tests::la_perte_de_la_bordure_annonce_le_plein_ecran_une_seule_fois ... ok
+test capteur::pont_media::tests::lire_le_media_survit_a_un_audio_et_le_transmet ... ok
+test capteur::pont_media::tests::lire_le_media_survit_a_une_part_et_la_transmet ... ok
+test capteur::pont_media::tests::une_trame_de_commande_egaree_sur_le_media_abandonne_le_fil ... ok
+test capteur::pont_media::tests::lire_le_media_relaie_etat_image_et_sommeil_dans_l_ordre ... ok
+test capteur::pont_media::tests::lire_le_media_survit_a_un_plein_ecran_et_le_transmet ... ok
+test capteur::distante::tests::une_image_poussee_est_rendue_par_next_frame ... ok
+test capteur::distante::tests::une_erreur_du_capteur_remonte_en_erreur ... ok
+test capteur::protocole::tests::une_identite_fait_l_aller_retour ... ok
+test capteur::protocole::tests::une_attache_fait_l_aller_retour ... ok
+test capteur::protocole::tests::un_sommeil_traverse_le_canal_du_capteur ... ok
+test capteur::protocole::tests::une_image_sans_en_tete_complet_est_refusee ... ok
+test capteur::protocole::tests::chaque_reponse_fait_l_aller_retour ... ok
+test capteur::protocole::tests::une_longueur_aberrante_est_refusee_avant_toute_allocation ... ok
+test capteur::protocole::tests::une_trame_tronquee_est_refusee ... ok
+test capteur::protocole::tests::une_part_traverse_l_encodage_json ... ok
+test capteur::protocole::tests::une_unite_d_acces_fait_l_aller_retour_sans_reencodage ... ok
+test capteur::protocole::tests::une_visibilite_traverse_le_canal_du_capteur ... ok
+test capteur::repartiteur::tests::la_focalisee_recoit_le_facteur_de_majoration ... ok
+test capteur::repartiteur::tests::les_trois_regimes_sont_bornes_ou_jamais_paniquent ... ok
+test capteur::repartiteur::tests::plusieurs_focalisees_ne_donnent_qu_une_seule_majoration ... ok
+test capteur::protocole::tests::une_etiquette_inconnue_est_refusee ... ok
+test capteur::repartiteur::tests::la_somme_des_parts_ne_depasse_jamais_le_budget ... ok
+test capteur::protocole::tests::deux_trames_a_la_suite_se_lisent_dans_l_ordre ... ok
+test capteur::repartiteur::tests::sans_aucune_fenetre_il_n_y_a_rien_a_repartir ... ok
+test capteur::repartiteur::tests::sans_focalisee_les_eveillees_se_partagent_a_parts_egales ... ok
+test capteur::repartiteur::tests::toutes_endormies_recoivent_le_plancher_et_le_reste_n_est_donne_a_personne ... ok
+test capteur::repartiteur::tests::une_endormie_recoit_le_plancher_et_ne_partage_pas_le_reste ... ok
+test capteur::repartiteur::tests::une_seule_eveillee_recoit_tout_le_budget ... ok
+test capteur::repartiteur::tests::une_focalisee_endormie_reste_au_plancher_et_les_eveillees_se_partagent_egalement ... ok
+test capteur::reprise::tests::les_essais_de_rattachement_sont_espaces ... ok
+test capteur::reprise::tests::un_succes_rend_aussi_le_droit_de_reessayer_immediatement ... ok
+test capteur::reprise::tests::un_succes_referme_la_fenetre_et_rend_le_budget_entier ... ok
+test capteur::reprise::tests::une_rupture_n_epuise_pas_immediatement ... ok
+test capteur::reprise::tests::une_rupture_ininterrompue_au_dela_de_la_fenetre_epuise ... ok
+test capteur::repartiteur::tests::un_budget_inferieur_aux_planchers_ne_deborde_pas ... ok
+test apps::raccourci::tests::le_corpus_reel_rend_218_lus_167_retenus_154_cles_et_104_par_la_cible_seule ... ok
+test capteur::sommeil::parts::tests::un_canal_rompu_detecte_par_les_parts_est_retire_du_vivier ... ok
+test capteur::sommeil::parts::tests::un_rattachement_a_topologie_inchangee_renvoie_une_part_sur_le_canal_neuf ... ok
+test capteur::sommeil::tests::les_deux_raisons_ont_un_texte_stable_pour_le_client ... ok
+test capteur::sommeil::tests::le_repit_expire_et_rend_la_fenetre_apte ... ok
+test capteur::sommeil::parts::tests::l_arrivee_d_une_seconde_fenetre_reduit_la_part_de_la_premiere ... ok
+test capteur::sommeil::tests::un_echec_de_reveil_rendort_la_session_et_ne_la_reelit_pas_immediatement ... ok
+test capteur::sommeil::parts::tests::une_part_inchangee_n_est_pas_reemise ... ok
+test capteur::sommeil::tests::un_retirer_d_une_generation_posterieure_n_est_pas_perime ... ok
+test capteur::sommeil::tests::un_retirer_perime_n_emporte_pas_l_inscription_neuve ... ok
+test capteur::sommeil::tests::un_retirer_sur_une_session_inconnue_n_est_pas_perime ... ok
+test capteur::sommeil::porteurs::tests::deux_pid_distincts_portent_chacun_leur_son ... ok
+test capteur::sommeil::porteurs::tests::un_ordre_audio_inchange_n_est_pas_reemis ... ok
+test capteur::sommeil::parts::tests::une_session_qui_s_eveille_recoit_une_part_apres_son_ordre_de_reveil ... ok
+test capteur::sommeil::tests::une_inaptitude_dont_l_echeance_vaut_exactement_maintenant_est_purgee ... ok
+test capteur::sommeil::porteurs::tests::deux_fenetres_d_un_meme_pid_se_disputent_le_son_et_le_focus_tranche ... ok
+test capteur::sommeil::tests::un_canal_rompu_libere_aussi_le_focus_de_la_session_morte ... ok
+test capteur::vivier::tests::au_dela_du_plafond_la_moins_recemment_vue_est_evincee ... ok
+test capteur::sommeil::tests::un_rattachement_recoit_une_generation_neuve_et_le_retirer_precedent_est_perime ... ok
+test capteur::vivier::tests::eveillees_rend_exactement_les_sessions_reveillees ... ok
+test capteur::sommeil::tests::un_retrait_purge_l_inaptitude_et_le_compteur_de_rearmements ... ok
+test capteur::vivier::tests::l_eviction_porte_la_raison_evincee_et_non_masquee ... ok
+test capteur::vivier::tests::l_hysteresis_empeche_d_evincer_une_fenetre_tout_juste_reveillee ... ok
+test capteur::vivier::tests::les_ordres_rendus_placent_tous_les_dormir_avant_tout_reveiller ... ok
+test capteur::vivier::tests::passee_l_hysteresis_la_rearbitration_periodique_debloque_le_reveil ... ok
+test capteur::vivier::tests::passé_le_répit_un_rearbitrer_repropose_bien_la_fenetre_en_echec ... ok
+test capteur::vivier::tests::retirer_une_fenetre_eveillee_rend_sa_place_a_une_endormie ... ok
+test capteur::vivier::tests::un_focus_rafraichit_la_recence_et_protege_de_l_eviction ... ok
+test capteur::vivier::tests::un_reveil_qui_echoue_rend_l_entree_endormie_et_ne_la_réélit_pas_au_tour_suivant ... ok
+test capteur::vivier::tests::un_signal_pour_une_session_inconnue_est_ignore_sans_paniquer ... ok
+test capteur::vivier::tests::un_ordre_n_est_jamais_emis_deux_fois_pour_le_meme_etat ... ok
+test capteur::vivier::tests::une_fenetre_inscrite_est_endormie_tant_qu_elle_n_est_pas_visible ... ok
+test capteur::vivier::tests::une_fenetre_masquee_s_endort_meme_sous_l_hysteresis ... ok
+test capteur::vivier::tests::une_fenetre_visible_est_reveillee_quand_il_reste_de_la_place ... ok
+test capture_reprise::tests::l_expiration_se_compte_depuis_l_ouverture_et_non_depuis_la_derniere_tentative ... ok
+test capture_reprise::tests::la_fenetre_couvre_largement_la_stabilisation_de_la_topologie ... ok
+test capture_reprise::tests::la_fenetre_d_ouverture_est_plus_courte_que_celle_de_la_capture ... ok
+test capture_reprise::tests::la_fenetre_expire_au_bout_de_sa_duree ... ok
+test capteur::vivier::tests::une_fenetre_masquee_s_endort_avec_la_raison_masquee ... ok
+test capteur::vivier::tests::une_fenetre_en_repit_reste_exclue_des_candidates_jusqu_au_repit_ecoulé ... ok
+test capture_reprise::tests::la_premiere_perte_fait_rouvrir_tout_de_suite ... ok
+test capture_reprise::tests::le_pas_ecoule_fait_rouvrir_a_nouveau ... ok
+test capture_reprise::tests::une_ouverture_est_retentable_sur_indisponibilite_ou_perte_d_acces ... ok
+test capture_reprise::tests::un_succes_referme_la_fenetre_qui_rouvre_alors_pleine ... ok
+test capture_reprise::tests::seule_la_perte_d_acces_est_recuperable ... ok
+test capture_reprise::tests::une_ouverture_n_est_pas_retentable_sur_une_panne_franche ... ok
+test capture_reprise::tests::une_seconde_tentative_trop_proche_fait_patienter ... ok
+test capteur::sommeil::tests::un_retrait_qui_libere_une_place_reveille_bien_la_session_qui_l_attendait ... ok
+test clock::tests::convertit_depuis_l_horloge_audio_a_48_khz ... ok
+test clock::tests::convertit_depuis_l_horloge_video_a_90_khz ... ok
+test clock::tests::ne_deborde_pas_sur_une_session_tres_longue ... ok
+test capteur::sommeil::tests::un_signal_audio_mort_redondant_ne_recompte_pas_le_rearmement ... ok
+test clock::tests::un_horodatage_nul_vaut_l_origine ... ok
+test capteur::sommeil::tests::un_signal_audio_vivant_remet_le_compteur_de_rearmements_a_zero ... ok
+test capteur::sommeil::tests::une_session_inscrite_recoit_l_ordre_de_se_reveiller_quand_elle_devient_visible ... ok
+test congestion::controleur::tests::l_amorcage_ne_declenche_pas_de_fausse_alerte ... ok
+test capteur::sommeil::tests::une_session_retiree_ne_recoit_plus_rien ... ok
+test congestion::controleur::tests::la_perte_est_convertie_en_pourcentage_et_plafonnee_a_vingt_cinq ... ok
+test congestion::controleur::tests::la_premiere_estimation_rend_l_adaptation_active ... ok
+test congestion::controleur::tests::la_qualite_ne_ment_pas_pendant_la_fenetre_d_hysteresis ... ok
+test congestion::controleur::tests::le_debit_ne_bouge_pas_pour_moins_de_dix_pour_cent_d_ecart ... ok
+test congestion::controleur::tests::le_debit_ne_depasse_jamais_le_plafond ... ok
+test congestion::controleur::tests::sans_estimation_le_debit_reste_au_plafond_et_l_adaptation_est_indisponible ... ok
+test clock::tests::une_frequence_nulle_rend_l_origine_plutot_que_de_paniquer ... ok
+test congestion::echelle::tests::l_echelle_a_quatre_barreaux_decroissants_et_pairs ... ok
+test congestion::echelle::tests::le_barreau_finance_est_le_plus_haut_que_le_debit_paie ... ok
+test congestion::hysteresis::tests::cibler_un_second_barreau_sans_repasser_par_le_courant_redemarre_le_decompte ... ok
+test congestion::controleur::tests::une_contrainte_durable_fait_descendre_un_barreau_et_marque_la_degradation ... ok
+test congestion::controleur::tests::sous_le_plancher_la_qualite_est_declaree_insuffisante ... ok
+test congestion::controleur::tests::une_session_muette_ne_retranche_plus_le_budget_audio ... ok
+test congestion::hysteresis::tests::descendre_exige_deux_secondes_sous_le_barreau ... ok
+test congestion::hysteresis::tests::remonter_exige_vingt_secondes_et_non_deux ... ok
+test congestion::echelle::tests::echelle_minuscule_sans_doublons ... ok
+test congestion::hysteresis::tests::un_repit_remet_le_compteur_de_descente_a_zero ... ok
+test congestion::reconfiguration::tests::changer_plafond_borne_la_decision_sans_toucher_l_echelle ... ok
+test congestion::hysteresis::tests::le_temps_de_sejour_bloque_un_second_changement_trop_proche ... ok
+test congestion::reconfiguration::tests::changer_source_borne_le_barreau_quand_la_nouvelle_echelle_est_plus_courte ... ok
+test congestion::reconfiguration::tests::changer_source_conserve_le_barreau_courant_sur_un_agrandissement ... ok
+test congestion::reconfiguration::tests::changer_source_recalcule_les_seuils_min_bps_pour_la_nouvelle_taille ... ok
+test congestion::reconfiguration::tests::un_plafond_qui_monte_est_suivi_tant_qu_aucune_estimation_n_est_jamais_arrivee ... ok
+test congestion::reconfiguration::tests::un_plafond_qui_monte_apres_une_estimation_perimee_ne_saute_pas_au_plafond ... ok
+test cursor::tests::bascule_dans_les_deux_sens ... ok
+test cursor::tests::le_changement_n_est_annonce_qu_une_seule_fois ... ok
+test cursor::tests::trois_observations_contraires_retiennent_le_changement ... ok
+test cursor::tests::un_etat_stable_ne_produit_aucun_changement ... ok
+test cursor::tests::un_retour_a_l_etat_courant_remet_le_compteur_a_zero ... ok
+test cursor::tests::une_oscillation_ne_bascule_jamais ... ok
+test demarrage::micro::tests::l_occupation_du_lecteur_est_celle_des_trames_en_attente ... ok
+test demarrage::micro::tests::seule_la_valeur_1_arme_le_puits ... ok
+test diagnostics::entree::tests::accepte_pile_a_la_limite_de_la_marge ... ok
+test diagnostics::entree::tests::amplitude_nulle_ne_demande_aucune_marge_particuliere ... ok
+test congestion::reconfiguration::tests::un_plafond_qui_remonte_ne_depasse_pas_l_estimation_courante ... ok
+test diagnostics::entree::tests::pas_negatif_part_pres_du_bord_bas_droit ... ok
+test diagnostics::entree::tests::pas_positif_part_pres_du_bord_haut_gauche ... ok
+test diagnostics::entree::tests::refuse_un_ecran_trop_petit_pour_l_amplitude_demandee ... ok
+test disposition::tests::huit_places_ne_se_recouvrent_pas_et_tiennent_dans_le_bureau ... ok
+test diagnostics::entree::tests::refuse_juste_sous_la_limite_de_la_marge ... ok
+test diagnostics::entree::tests::grand_pas_faible_repetition_donne_la_meme_amplitude ... ok
+test disposition::tests::les_places_ont_des_dimensions_paires ... ok
+test disposition::tests::le_nombre_de_places_demande_est_respecte_meme_si_la_grille_est_plus_large ... ok
+test demarrage::micro::tests::la_crete_voit_les_deux_canaux_pas_seulement_celui_qu_on_analyse ... ok
+test disposition::tests::un_bureau_trop_petit_fait_refuser_la_disposition ... ok
+test disposition::tests::une_place_unique_couvre_presque_tout_le_bureau ... ok
+test demarrage::micro::tests::le_silence_ne_rend_aucune_frequence_mais_rend_sa_crete ... ok
+test frames::tests::complete_par_du_silence_quand_rien_n_arrive_et_ne_saute_aucune_trame ... ok
+test frames::tests::emet_une_trame_pleine_quand_les_echantillons_sont_la ... ok
+test frames::tests::s_ancre_sur_le_temps_ecoule_plutot_que_d_emettre_une_rafale ... ok
+test frames::tests::jette_les_echantillons_les_plus_anciens_au_dela_du_retard_tolere ... ok
+test frames::tests::se_reancre_sur_le_temps_ecoule_plutot_que_de_rattraper_une_coupure ... ok
+test gamepad::tests::la_premiere_vibration_passe_immediatement ... ok
+test gamepad::tests::le_bouclage_de_la_sequence_est_franchi_correctement ... ok
+test frames::tests::n_emet_rien_avant_que_la_premiere_trame_ne_soit_due ... ok
+test gamepad::tests::seul_le_dernier_etat_differe_est_emis ... ok
+test gamepad::tests::un_changement_trop_rapproche_est_differe_puis_emis ... ok
+test gamepad::tests::un_etat_identique_est_rejete ... ok
+test gamepad::tests::un_etat_identique_n_est_pas_reemis ... ok
+test frames::tests::les_horodatages_avancent_de_480_sans_trou ... ok
+test gamepad::tests::un_etat_plus_recent_est_accepte ... ok
+test gamepad::tests::un_etat_plus_ancien_est_rejete ... ok
+test frames::tests::une_trame_partielle_est_completee_par_du_silence_en_fin ... ok
+test geometry::tests::aligne_les_dimensions_impaires ... ok
+test geometry::tests::borne_une_fenetre_a_coordonnees_negatives ... ok
+test geometry::tests::borne_aussi_la_largeur ... ok
+test geometry::tests::borne_une_fenetre_qui_deborde_a_droite ... ok
+test geometry::tests::borne_les_debordements_sur_un_bureau_multi_ecrans ... ok
+test geometry::tests::coin_superieur_gauche_d_une_fenetre_a_l_origine ... ok
+test geometry::tests::borne_une_hauteur_qui_depasserait_le_bas_du_bureau ... ok
+test geometry::tests::centre_d_une_fenetre_decalee ... ok
+test geometry::tests::fenetre_entierement_visible ... ok
+test geometry::tests::fenetre_exactement_a_la_limite_de_l_ecran ... ok
+test geometry::tests::gere_une_largeur_superieure_a_i32_max ... ok
+test geometry::tests::fenetre_plus_grande_que_l_ecran_dans_les_deux_dimensions ... ok
+test geometry::tests::l_axe_horizontal_reste_intact_quand_seul_le_bas_deborde ... ok
+test geometry::tests::le_bas_de_l_image_vise_le_bas_de_ce_qui_est_montre ... ok
+test geometry::tests::le_milieu_de_l_image_vise_le_milieu_de_ce_qui_est_montre ... ok
+test geometry::tests::coin_inferieur_droit_d_une_fenetre_plein_ecran ... ok
+test geometry::tests::ne_deborde_pas_sur_des_coordonnees_extremes ... ok
+test geometry::tests::ne_touche_pas_a_une_taille_qui_tient_deja ... ok
+test geometry::tests::origine_d_une_fenetre_decalee ... ok
+test geometry::tests::ne_deborde_ni_ne_panique_sur_des_coordonnees_extremes ... ok
+test geometry::tests::rects_overlap_detecte_une_intersection ... ok
+test geometry::tests::rects_overlap_rejette_des_rectangles_disjoints ... ok
+test geometry::tests::rects_overlap_rejette_des_rectangles_qui_se_touchent_sans_se_recouvrir ... ok
+test geometry::tests::rejette_une_intersection_trop_petite ... ok
+test geometry::tests::tient_compte_de_l_origine_de_la_fenetre ... ok
+test geometry::tests::rejette_une_fenetre_hors_ecran ... ok
+test geometry::tests::rejette_une_largeur_ou_une_hauteur_nulle ... ok
+test geometry::tests::une_fenetre_entierement_visible_est_mappee_a_l_identique ... ok
+test geometry::tests::une_origine_negative_ne_produit_pas_une_taille_absurde ... ok
+test geometry::tests::une_fenetre_hors_ecran_ne_produit_aucune_coordonnee ... ok
+test h264::tests::decoupe_avec_start_code_de_quatre_octets ... ok
+test demarrage::micro::tests::la_frequence_est_celle_du_signal_et_non_son_double ... ok
+test geometry::tests::ne_divise_jamais_par_zero ... ok
+test frames::tests::l_instant_de_capture_se_deduit_de_l_horodatage ... ok
+test h264::tests::decoupe_avec_start_code_de_trois_octets ... ok
+test h264::tests::detecte_une_image_cle_sur_nal_idr ... ok
+test h264::tests::ignore_les_octets_avant_le_premier_start_code ... ok
+test h264::tests::regroupe_en_unites_d_acces_horodatees ... ok
+test micro::dissimulation::tests::au_dela_du_plafond_la_dissimulation_est_refusee ... ok
+test micro::dissimulation::tests::le_plafond_est_une_duree_et_non_un_compte_de_trames ... ok
+test micro::dissimulation::tests::une_duree_nulle_est_refusee_plutot_que_de_ne_jamais_epuiser_le_budget ... ok
+test micro::dissimulation::tests::une_perte_courte_est_dissimulee_sans_reserve ... ok
+test micro::dissimulation::tests::une_vraie_trame_rend_le_budget_entier ... ok
+test micro::tests::a_saturation_c_est_la_plus_ancienne_qui_part ... ok
+test micro::tests::au_dela_du_seuil_haut_une_trame_est_sautee_et_comptee ... ok
+test micro::tests::chaque_correction_a_son_compteur ... ok
+test h264::tests::regroupe_un_flux_vide_sans_panique ... ok
+test h264::tests::ignore_les_nal_vides ... ok
+test demarrage::micro::tests::une_fenetre_ne_se_cloture_qu_a_la_seconde_pleine ... ok
+test h264::tests::renvoie_rien_sans_start_code ... ok
+test h264::tests::regroupe_des_images_multi_tranches_en_une_seule_unite ... ok
+test micro::tests::en_dessous_du_seuil_bas_une_trame_est_inseree_et_comptee ... ok
+test micro::tests::en_famine_le_retrait_rend_manquante_sans_bloquer ... ok
+test micro::tests::une_trame_absente_dont_la_suivante_est_la_donne_reconstruire ... ok
+test micro::tests::une_trame_absente_sans_suivante_donne_manquante ... ok
+test micro::tests::entre_les_deux_seuils_aucune_correction_n_est_appliquee ... ok
+test micro::tests::une_trame_perimee_est_comptee_et_jetee ... ok
+test micro::tests::un_doublon_est_compte_et_jete ... ok
+test micro::tests::une_arrivee_desordonnee_est_restituee_dans_l_ordre ... ok
+test demarrage::micro::tests::une_fenetre_repart_a_zero_apres_sa_cloture ... ok
+test micro::tests_lecteur::un_lecteur_vide_rend_du_silence_et_jamais_une_erreur ... ok
+test micro::tests::deposer_ne_bloque_jamais_meme_a_saturation ... ok
+test micro::tests_lecteur::un_ton_bruite_reste_mesure_a_sa_frequence ... ok
+test h264::tests::compte_les_memes_unites_que_ffprobe_sur_le_flux_reel ... ok
+test mire::tests::l_alternance_de_trame_change_le_vert_sans_toucher_a_l_identite ... ok
+test micro::tests_lecteur::le_silence_et_le_bruit_ne_rendent_pas_une_frequence_credible ... ok
+test mire::tests::la_couleur_d_une_mire_identifie_sa_fenetre ... ok
+test mire::tests::la_rotation_controle_chaque_voie_le_meme_nombre_de_fois ... ok
+test mire::tests::la_rotation_ne_designe_jamais_une_voie_inexistante ... ok
+test mire::tests::sans_voie_il_n_y_a_rien_a_controler ... ok
+test mire::tests::un_ecart_de_lecture_dans_la_tolerance_reste_juste ... ok
+test mire::tests::une_couleur_etrangere_est_inconnue ... ok
+test mire::tests::une_image_noire_est_rejetee ... ok
+test micro::tests_lecteur::le_residu_survit_d_un_remplissage_a_l_autre ... ok
+test mire::tests::la_mire_d_une_fenetre_voisine_est_rejetee ... ok
+test moniteurs_virtuels::numeros::tests::au_dela_du_plafond_la_creation_est_refusee ... ok
+test moniteurs_virtuels::numeros::tests::huit_sorties_simultanees_renouvelees_restent_dans_la_plage ... ok
+test moniteurs_virtuels::numeros::tests::les_numeros_se_suivent_tant_que_rien_n_est_rendu ... ok
+test moniteurs_virtuels::numeros::tests::rendre_un_numero_inconnu_ou_deja_rendu_ne_cree_pas_de_doublon ... ok
+test moniteurs_virtuels::tests::chaque_sortie_est_convertie_avec_son_propre_facteur ... ok
+test moniteurs_virtuels::tests::des_dimensions_identiques_donnent_un_facteur_unite ... ok
+test moniteurs_virtuels::tests::detruire_une_sortie_inconnue_echoue_sans_rien_toucher ... ok
+test micro::tests_lecteur::la_frequence_d_un_ton_pur_est_retrouvee_a_un_pour_cent ... ok
+test moniteurs_virtuels::numeros::tests::cent_ouvertures_fermetures_ne_font_pas_sortir_du_plafond ... ok
+test moniteurs_virtuels::tests::la_garde_detruit_tout_ce_qu_elle_a_cree ... ok
+test moniteurs_virtuels::tests::le_facteur_dpi_agrandit_la_region_et_son_origine ... ok
+test moniteurs_virtuels::tests::sans_echelle_ni_decalage_la_region_ne_bouge_pas ... ok
+test moniteurs_virtuels::tests::un_desaccord_de_longueur_est_refuse ... ok
+test moniteurs_virtuels::tests::un_refus_du_pilote_ne_perd_pas_les_sorties_deja_creees ... ok
+test moniteurs_virtuels::tests::une_annonce_degeneree_ne_donne_aucun_facteur ... ok
+test moniteurs_virtuels::tests::une_destruction_refusee_par_le_pilote_ne_fait_pas_oublier_la_sortie ... ok
+test moniteurs_virtuels::tests::une_sortie_decalee_dans_le_bureau_virtuel_part_de_l_origine_de_sa_texture ... ok
+test moniteurs_virtuels::tests::une_sortie_decalee_ramene_la_region_a_l_origine_de_sa_texture ... ok
+test moniteurs_virtuels::tests::une_sortie_degeneree_est_refusee_plutot_que_supposee_a_l_unite ... ok
+test moniteurs_virtuels::tests::le_piege_dpi_de_la_sonde_donne_un_facteur_de_un_et_demi ... ok
+test moniteurs_virtuels::tests::detruire_rend_la_sortie_au_pilote_et_l_oublie ... ok
+test moniteurs_virtuels::tests::la_garde_detruit_meme_quand_le_fil_panique ... ok
+test opus::tests::la_dissimulation_rend_la_duree_de_la_derniere_trame ... ok
+test opus::tests::des_trames_de_dix_vingt_et_quarante_millisecondes_passent_toutes ... ok
+test opus::tests::le_pourcentage_de_perte_est_borne ... ok
+test opus::tests::refuse_une_trame_de_mauvaise_taille ... ok
+test micro::tests_lecteur::le_plafond_est_compte_a_part_de_la_dissimulation ... ok
+test opus::tests::un_flux_mono_ressort_stereo_par_duplication ... ok
+test micro::tests_lecteur::une_famine_prolongee_cesse_de_dissimuler_et_rend_du_silence ... ok
+test opus::tests::une_trame_de_10_ms_vaut_480_echantillons_par_canal ... ok
+test plateforme::repli::tests::la_premiere_reprise_attend_le_minimum ... ok
+test plateforme::repli::tests::le_delai_croit_avec_la_tentative ... ok
+test plateforme::repli::tests::le_delai_est_borne_par_le_plafond ... ok
+test plateforme::repli::tests::le_delai_ne_deborde_pas_sur_une_tentative_enorme ... ok
+test opus::tests::un_ton_encode_puis_decode_reste_le_meme_ton ... ok
+test plateforme::tests::l_url_du_canal_ne_double_jamais_la_barre ... ok
+test opus::tests::le_silence_prolonge_retombe_a_quelques_octets_par_trame ... ok
+test plateforme::tests::la_file_d_ordres_ne_se_prend_qu_une_fois ... ok
+test plateforme::tests::un_message_pousse_dans_la_file_arrive_au_serveur ... ok
+test micro::tests_lecteur::apres_le_plafond_la_parole_qui_revient_rend_le_budget_entier ... ok
+test plateforme::tests::un_ordre_de_lancement_arrive_au_consommateur_et_ne_ferme_pas_la_session ... ok
+test micro::tests_lecteur::un_ton_encode_traverse_le_tampon_et_ressort_a_sa_frequence ... ok
+test plateforme::tests::un_refus_de_version_rend_l_attente_vaine ... ok
+test opus::tests::la_reconstruction_fec_restitue_un_signal_correle_a_l_original ... ok
+test pont::chemins::tests::des_unites_utf16_invalides_sont_refusees_avant_toute_normalisation ... ok
+test pont::chemins::tests::la_casse_est_conservee_mais_la_comparaison_ne_l_est_pas ... ok
+test pont::chemins::tests::la_racine_elle_meme_est_la_chaine_vide_et_est_licite ... ok
+test pont::chemins::tests::les_contre_obliques_deviennent_des_barres ... ok
+test pont::chemins::tests::un_chemin_absolu_est_refuse ... ok
+test pont::chemins::tests::un_flux_alternatif_est_refuse ... ok
+test pont::chemins::tests::un_nom_reserve_est_refuse ... ok
+test pont::chemins::tests::une_remontee_deguisee_est_refusee ... ok
+test pont::chemins::tests::une_remontee_sort_de_la_racine_et_est_refusee ... ok
+test pont::decoupe::tests::la_somme_des_longueurs_egale_la_longueur_demandee ... ok
+test pont::decoupe::tests::le_premier_morceau_part_de_la_position_demandee ... ok
+test pont::decoupe::tests::les_morceaux_sont_contigus_et_croissants ... ok
+test pont::decoupe::tests::un_max_plus_grand_que_u32_max_ne_deborde_pas_a_la_conversion ... ok
+test opus::tests::lbrr_est_reellement_decodable ... ok
+test pont::decoupe::tests::une_plage_de_taille_exactement_taille_trame_max_fait_un_seul_morceau ... ok
+test pont::decoupe::tests::une_plage_de_taille_nulle_ne_fait_aucun_morceau ... ok
+test pont::entetes::tests::l_epoque_unix_devient_l_epoque_filetime ... ok
+test pont::entetes::tests::une_date_absurde_ne_deborde_pas ... ok
+test pont::entetes::tests::une_date_anterieure_a_1601_est_ramenee_a_zero ... ok
+test pont::enumeration::tests::l_expression_de_recherche_est_appliquee_quand_elle_est_fournie ... ok
+test pont::enumeration::tests::l_ordre_suit_le_comparateur_injecte_et_non_l_ordre_lexicographique ... ok
+test pont::decoupe::tests::une_longueur_superieure_a_u32_max_se_decoupe_quand_meme ... ok
+test pont::enumeration::tests::reposer_des_entrees_remet_le_curseur_a_zero ... ok
+test pont::enumeration::tests::un_redemarrage_ramene_le_curseur_au_debut_sans_perdre_les_entrees ... ok
+test pont::enumeration::tests::sans_expression_l_apparieur_n_est_pas_consulte ... ok
+test pont::enumeration::tests::une_session_chargee_rend_ses_entrees_dans_l_ordre_puis_s_epuise ... ok
+test pont::erreurs::tests::aucun_code_rendu_n_est_un_succes ... ok
+test pont::erreurs::tests::deux_causes_distinctes_ne_partagent_jamais_un_code ... ok
+test pont::erreurs::tests::en_cours_ne_collide_avec_aucune_cause_d_echec ... ok
+test pont::erreurs::tests::en_cours_vaut_le_hresult_de_error_io_pending ... ok
+test pont::enumeration::tests::une_session_neuve_n_est_pas_chargee ... ok
+test pont::erreurs::tests::la_protection_en_ecriture_rend_0x80070013 ... ok
+test pont::erreurs::tests::le_balayage_couvre_reellement_chaque_variante ... ok
+test pont::erreurs::tests::le_canal_ferme_rend_bien_error_io_device ... ok
+test pont::erreurs::tests::les_douze_codes_sont_epingles_un_a_un ... ok
+test pont::notifications::tests::chaque_bit_du_masque_a_une_decision_nommee ... ok
+test pont::notifications::tests::le_masque_demande_exactement_les_cinq_notifications_de_f1 ... ok
+test pont::notifications::tests::les_liens_durs_sont_refuses_en_non_supporte ... ok
+test pont::notifications::tests::les_trois_notifications_d_ecriture_sont_refusees_en_protege_en_ecriture ... ok
+test pont::notifications::tests::un_fichier_neuf_est_accepte_mais_signale ... ok
+test pont::notifications::tests::une_notification_hors_masque_est_acceptee_sans_attendre ... ok
+test pont::resolution::tests::chaque_champ_recoit_l_adresse_de_son_entree ... ok
+test pont::resolution::tests::chaque_entree_absente_est_nommee_par_l_erreur ... ok
+test pont::resolution::tests::la_resolution_s_arrete_a_la_premiere_entree_manquante ... ok
+test pont::resolution::tests::les_treize_noms_sont_distincts ... ok
+test pont::resolution::tests::une_adresse_nulle_vaut_une_entree_absente ... ok
+test pont::table::tests::deux_enumerations_du_meme_chemin_coexistent ... ok
+test pont::table::tests::les_correlations_sont_monotones_et_ne_se_reutilisent_pas ... ok
+test pont::table::tests::un_debordement_du_compteur_de_correlation_ne_reutilise_pas_une_correlation_en_vol ... ok
+test pont::table::tests::une_commande_expiree_ne_reste_pas_en_table ... ok
+test pont::table::tests::une_correlation_inconnue_rend_none_sans_paniquer ... ok
+test pont::table::tests::une_reponse_arrivee_apres_annulation_est_jetee ... ok
+test pont::table::tests::une_reponse_arrivee_apres_expiration_est_jetee ... ok
+test pont::table::tests::vider_rend_tout_et_laisse_la_table_vide ... ok
+test opus::tests::une_perte_declaree_change_reellement_l_encodage ... ok
+test pont::transport::tests::la_fermeture_du_canal_seul_remonte_canal_ferme_et_seulement_pour_le_bon_id ... ok
+test pont::transport::tests::un_canal_dont_le_label_n_est_pas_le_notre_n_est_jamais_retenu ... ok
+test pont::transport::tests::la_fermeture_du_canal_remonte_canal_ferme ... ok
+test plateforme::tests::un_refus_d_enrolement_se_reessaie ... ok
+test plateforme::tests::l_identite_est_reannoncee_a_chaque_reenrolement ... ok
+test rebuild::tests::echec_des_deux_fabriques_produit_fatal ... ok
+test plateforme::tests::un_message_mis_en_file_alors_que_le_socket_est_tombe_est_perdu_sans_tuer_le_canal ... ok
+test rebuild::tests::echec_principal_avec_secours_reussi_produit_recovered ... ok
+test rebuild::tests::la_fabrique_de_secours_n_est_jamais_appelee_si_la_principale_reussit ... ok
+test rebuild::tests::reussite_de_la_fabrique_principale_produit_rebuilt ... ok
+test signaling::tests::la_poignee_de_main_porte_le_jeton_d_agent ... ok
+test signaling::tests::sans_jeton_la_poignee_de_main_le_dit_au_lieu_de_l_inventer ... ok
+test source::tests::boucle_avec_300_images_reelles_et_horodatages_strictement_croissants ... ok
+test source::tests::expose_ses_dimensions ... ok
+test source::tests::is_alive_par_defaut_vaut_toujours_vrai ... ok
+test source::tests::la_premiere_image_de_chaque_boucle_est_une_image_cle ... ok
+test source::tests::rejette_un_flux_sans_image ... ok
+test source::tests::rejette_un_flux_sans_image_cle ... ok
+test source::tests::rejoue_en_boucle_avec_des_horodatages_croissants ... ok
+test source::tests::resize_par_defaut_ignore_la_demande_et_ne_change_pas_les_dimensions ... ok
+test source::tests::charge_le_flux_de_test_reel ... ok
+test plateforme::tests::une_coupure_reelle_du_socket_fait_reprendre_le_canal ... ok
+test spectre::tests::la_magnitude_suit_la_valeur_analytique_de_goertzel ... ok
+test spectre::tests::le_mono_moyenne_les_canaux_et_ignore_une_trame_incomplete ... ok
+test spectre::tests::la_raie_porteuse_domine_nettement_ses_voisines ... ok
+test spectre::tests::une_grille_degeneree_ne_rend_rien_plutot_qu_un_verdict_invente ... ok
+test pont::transport::tests::une_trame_du_pair_remonte_avec_sa_correlation ... ok
+test pont::transport::tests::un_channeldata_venu_d_un_autre_canal_est_refuse_et_journalise ... ok
+test superviseur::enfants::tests::lancer_echoue_ne_laisse_rien_dans_la_comptabilite ... ok
+test superviseur::enfants::tests::lancer_transmet_la_consigne_au_lanceur ... ok
+test superviseur::enfants::tests::morts_rend_les_sessions_dont_le_processus_a_disparu ... ok
+test superviseur::enfants::tests::tuer_demande_la_mise_a_mort_du_bon_processus ... ok
+test superviseur::enfants::tests::tuer_une_session_inconnue_ne_fait_rien ... ok
+test superviseur::enfants::tests::une_session_morte_n_est_signalee_qu_une_fois ... ok
+test superviseur::enfants::tests::une_session_tuee_ne_ressort_pas_dans_les_morts ... ok
+test superviseur::fenetres::tests::le_masquage_dwm_prime_sur_app_window ... ok
+test superviseur::fenetres::tests::une_fenetre_invisible_est_ecartee ... ok
+test superviseur::fenetres::tests::une_fenetre_masquee_par_dwm_est_ecartee ... ok
+test superviseur::fenetres::tests::une_fenetre_ordinaire_merite_une_fenetre_navigateur ... ok
+test superviseur::fenetres::tests::une_fenetre_possedee_est_ecartee ... ok
+test superviseur::fenetres::tests::une_fenetre_sans_titre_est_ecartee ... ok
+test superviseur::fenetres::tests::une_tool_window_est_ecartee ... ok
+test superviseur::fenetres::tests::une_tool_window_qui_est_aussi_app_window_est_gardee ... ok
+test superviseur::placement::tests::apparie_une_sortie_nee_beaucoup_plus_grande ... ok
+test superviseur::placement::tests::ignore_toujours_une_sortie_non_attachee ... ok
+test superviseur::placement::tests::ignore_une_sortie_deja_attribuee ... ok
+test superviseur::placement::tests::ignore_une_sortie_non_attachee ... ok
+test superviseur::placement::tests::n_apparie_pas_une_sortie_aux_mauvaises_dimensions ... ok
+test superviseur::placement::tests::n_apparie_pas_une_sortie_trop_petite ... ok
+test superviseur::placement::tests::ne_trouve_rien_quand_toutes_sont_prises ... ok
+test superviseur::placement::tests::trouve_la_sortie_aux_dimensions_demandees ... ok
+test superviseur::placement::tests::un_ecart_d_un_pixel_ne_declenche_pas_de_replacement ... ok
+test superviseur::placement::tests::un_ecart_dans_la_tolerance_apparie_quand_meme ... ok
+test superviseur::placement::tests::un_facteur_d_echelle_est_desormais_recadre_et_non_refuse ... ok
+test superviseur::placement::tests::une_fenetre_a_sa_place_n_est_pas_replacee ... ok
+test superviseur::placement::tests::une_fenetre_deplacee_hors_de_sa_sortie_est_replacee ... ok
+test superviseur::placement::tests::une_fenetre_retaillee_par_l_application_est_replacee ... ok
+test superviseur::placement::tests::une_grande_sortie_deja_prise_n_est_pas_reattribuee ... ok
+test superviseur::placement::tests::une_sortie_deja_prise_est_ignoree ... ok
+test superviseur::placement::tests_taille::la_taille_retenue_est_toujours_paire_et_jamais_nulle ... ok
+test superviseur::placement::tests_taille::la_taille_retenue_recadre_une_sortie_trop_grande ... ok
+test superviseur::placement::tests_taille::la_taille_retenue_se_borne_a_la_sortie_quand_celle_ci_est_plus_petite ... ok
+test superviseur::placement::tests_taille::les_deux_axes_se_bornent_separement ... ok
+test superviseur::placement::tests_taille::un_manque_de_quatre_pixels_reste_accepte ... ok
+test superviseur::placement::tests_taille::un_manque_de_sept_pixels_est_refuse ... ok
+test superviseur::placement::tests_taille::une_sortie_nee_trop_grande_convient_desormais ... ok
+test superviseur::placement::tests_taille::une_sortie_nee_trop_petite_ne_convient_pas ... ok
+test superviseur::protocole::tests::la_session_du_pont_suit_le_prefixe_comme_celle_de_controle ... ok
+test superviseur::protocole::tests::les_messages_de_service_du_signaling_ne_sont_pas_des_viewports ... ok
+test superviseur::protocole::tests::un_message_inconnu_de_la_shell_est_refuse_plutot_qu_ignore ... ok
+test superviseur::protocole::tests::un_prefixe_pose_precede_le_nom_et_le_separe_par_deux_points ... ok
+test superviseur::protocole::tests::un_prefixe_vide_restitue_exactement_le_nom_d_aujourd_hui ... ok
+test superviseur::protocole::tests::un_viewport_de_la_shell_se_lit ... ok
+test superviseur::protocole::tests::une_fermeture_et_un_refus_se_serialisent_comme_la_shell_les_attend ... ok
+test superviseur::protocole::tests::une_ouverture_se_serialise_comme_la_shell_l_attend ... ok
+test superviseur::table::tests::avec_un_prefixe_la_session_le_porte_devant_son_nom ... ok
+test superviseur::table::tests::deux_fenetres_en_vol_gardent_chacune_leur_fenetre_et_leur_sortie ... ok
+test superviseur::table::tests::la_destruction_porte_l_identifiant_pilote_et_le_nom_dxgi ... ok
+test superviseur::table::tests::la_fenetre_d_une_session_est_retrouvable ... ok
+test superviseur::table::tests::la_sortie_creee_declenche_le_lancement_de_l_enfant ... ok
+test superviseur::table::tests::la_sortie_est_transmise_a_l_enfant_par_son_nom ... ok
+test superviseur::table::tests::le_compteur_ne_recule_jamais_meme_sous_un_prefixe ... ok
+test superviseur::table::tests::le_viewport_declenche_la_creation_de_la_sortie ... ok
+test superviseur::table::tests::le_vivier_plein_refuse_la_fenetre_suivante_sans_rien_casser ... ok
+test superviseur::table::tests::les_identifiants_de_session_sont_uniques ... ok
+test superviseur::table::tests::sans_prefixe_une_session_garde_exactement_son_nom_d_aujourd_hui ... ok
+test superviseur::table::tests::un_enfant_qui_meurt_seul_retient_la_sortie_et_l_annonce_sans_le_tuer ... ok
+test superviseur::table::tests::un_second_viewport_pour_la_meme_session_est_ignore ... ok
+test superviseur::table::tests::un_viewport_pour_une_session_inconnue_est_ignore ... ok
+test superviseur::table::tests::une_fenetre_qui_apparait_est_annoncee_et_rien_de_plus ... ok
+test spectre::tests::un_silence_n_a_aucune_dominante ... ok
+test superviseur::table::tests::une_fenetre_qui_disparait_avant_sa_sortie_ne_demande_aucune_destruction ... ok
+test superviseur::table::tests::une_fenetre_reannoncee_ne_cree_pas_de_seconde_entree ... ok
+test superviseur::table::tests::une_reannonce_ne_declenche_pas_le_refus_meme_table_pleine ... ok
+test superviseur::table::tests::une_sortie_liberee_rouvre_la_place ... ok
+test superviseur::table::tests::une_fenetre_qui_disparait_tue_l_enfant_detruit_la_sortie_et_l_annonce ... ok
+test superviseur::table::tests_relance::un_second_enfant_mort_ne_fait_pas_fuir_la_sortie_retenue ... ok
+test superviseur::table::tests_relance::une_fenetre_dont_l_enfant_meurt_est_reproposee ... ok
+test superviseur::table::tests_relance::une_fenetre_neuve_dont_la_shell_ne_repond_jamais_finit_par_etre_abandonnee ... ok
+test superviseur::table::tests_relance::une_fenetre_neuve_qui_repond_dans_le_delai_n_est_pas_abandonnee ... ok
+test superviseur::table::tests_relance::une_fenetre_orpheline_qui_se_ferme_quitte_la_table ... ok
+test superviseur::table::tests_relance::une_relance_qui_repond_a_temps_n_est_pas_abandonnee ... ok
+test superviseur::table::tests_relance::une_fenetre_qui_echoue_sans_fin_finit_par_etre_abandonnee ... ok
+test superviseur::table::tests_relance::une_relance_qui_stagne_sans_viewport_finit_abandonnee ... ok
+test superviseur::table::tests_retention::l_abandon_apres_relances_max_rend_la_sortie ... ok
+test superviseur::table::tests_retention::l_abandon_d_une_entree_figee_rend_la_sortie ... ok
+test superviseur::table::tests_retention::la_mort_de_l_enfant_ne_rend_plus_la_sortie_au_pilote ... ok
+test superviseur::table::tests_retention::la_table_retient_la_taille_reelle_de_la_sortie ... ok
+test superviseur::table::tests_retention::la_taille_survit_a_la_mort_de_l_enfant ... ok
+test superviseur::table::tests_retention::rafraichir_la_taille_met_a_jour_une_sortie_deja_retenue ... ok
+test superviseur::table::tests_retention::l_entree_relancee_porte_encore_sa_sortie ... ok
+test superviseur::table::tests_retention::rafraichir_la_taille_n_invente_rien_sans_sortie_retenue ... ok
+test superviseur::table::tests_retention::sans_sortie_retenue_le_viewport_en_demande_une ... ok
+test superviseur::table::tests_retention::une_session_sans_sortie_n_a_pas_de_taille ... ok
+test superviseur::table::tests_retention::un_viewport_rejoue_apres_reutilisation_ne_fait_rien ... ok
+test superviseur::table::tests_retention::une_sortie_retenue_a_quatre_pixels_pres_est_reutilisee ... ok
+test superviseur::table::tests_retention::une_sortie_retenue_compatible_est_reutilisee_sans_rien_creer ... ok
+test superviseur::table::tests_retention::une_sortie_retenue_incompatible_est_rendue_puis_remplacee ... ok
+test survie_verdict::tests::deux_mesures_differentes_rendent_false ... ok
+test superviseur::table::tests_retention::une_sortie_retenue_plus_grande_est_reutilisee ... ok
+test survie_verdict::tests::deux_mesures_egales_rendent_true ... ok
+test tests::un_hwnd_hexadecimal_ou_decimal_est_accepte ... ok
+test survie_verdict::tests::une_mesure_absente_de_chaque_cote_rend_indetermine ... ok
+test tests::un_hwnd_mal_forme_fait_echouer_le_demarrage ... ok
+test pont::transport::tests::un_seul_canal_est_retenu_parmi_deux_et_c_est_celui_du_label ... ok
+test transport::adaptation::tests::une_cible_deja_refusee_n_est_plus_soumise_a_la_source ... ok
+test pont::transport::tests::une_trame_emise_par_le_pont_arrive_au_pair_en_binaire ... ok
+test transport::adaptation::tests::un_refus_repete_de_set_encode_size_ne_remonte_pas_dans_decision_courante ... ok
+test transport::evenements::tests::l_aiguillage_nomme_ses_deux_canaux_et_refuse_les_autres ... ok
+test transport::adaptation::tests::une_estimation_perimee_bascule_l_adaptation_en_indisponible_et_l_annonce ... ok
+test transport::evenements::tests::une_piste_audio_inactive_n_est_retenue_nulle_part ... ok
+test transport::evenements::tests::un_message_de_visibilite_est_memorise_et_non_applique_sur_le_champ ... ok
+test transport::evenements::tests::une_piste_audio_recvonly_ne_devient_jamais_la_piste_de_sortie ... ok
+test transport::evenements::tests::une_piste_audio_sendonly_reste_la_piste_de_sortie_meme_apres_le_micro ... ok
+test transport::evenements::tests::une_trame_arrivee_avant_tout_channel_open_est_refusee ... ok
+test transport::evenements::tests::relaie_une_demande_d_image_cle_du_pair_vers_la_source ... ok
+test transport::evenements::tests::une_piste_audio_sendrecv_est_une_piste_de_sortie ... ok
+test transport::controle::tests::relaie_au_pair_un_controle_pousse_depuis_l_exterieur_de_la_boucle ... ok
+test transport::part::tests::une_part_qui_remonte_ne_releve_pas_le_debit_au_dela_de_l_estimation ... ok
+test transport::piste_audio::tests::borne_l_attente_quand_l_audio_est_negocie ... ok
+test transport::piste_audio::tests::la_frequence_rtp_audio_correspond_au_taux_d_echantillonnage_opus ... ok
+test transport::piste_audio::tests::le_format_diese_rend_la_chaine_de_causes ... ok
+test transport::part::tests::une_part_dormante_ne_borne_pas_le_controleur_et_le_reveil_est_suivi ... ok
+test transport::part::tests::une_part_recue_borne_le_plafond_du_controleur ... ok
+test transport::piste_micro::tests::sans_piste_micro_negociee_l_avertissement_ne_sort_qu_une_fois ... ok
+test transport::piste_micro::tests::un_micro_refusant_ne_compromet_pas_la_video ... ok
+test transport::piste_video::tests::cadence_normale_basee_sur_l_echeance_precedente_sans_derive ... ok
+test transport::piste_video::tests::ignore_les_codecs_non_h264_meme_en_mode_1 ... ok
+test transport::piste_video::tests::ignore_les_profils_sans_mode_1 ... ok
+test transport::piste_micro::tests::un_puits_qui_refuse_ne_fait_journaliser_qu_une_fois_et_ne_tue_rien ... ok
+test transport::piste_video::tests::rattrapage_borne_apres_un_long_blocage ... ok
+test transport::piste_video::tests::selectionne_le_mode_de_paquetisation_1 ... ok
+test transport::piste_video::tests::la_session_ancre_l_instant_de_capture_sur_son_origine ... ok
+test transport::redimensionnement::tests::un_redimensionnement_recalibre_le_controleur_sur_la_taille_obtenue ... ok
+test transport::socket::tests::attente_bornee_par_l_echeance_d_image_la_plus_proche ... ok
+test transport::socket::tests::attente_bornee_par_l_echeance_rtc_si_plus_proche ... ok
+test transport::socket::tests::attente_dictee_par_rtc_seul_sans_piste_video ... ok
+test transport::socket::tests::backoff_croit_avec_le_nombre_d_erreurs_consecutives ... ok
+test transport::socket::tests::backoff_est_non_nul_des_la_premiere_erreur ... ok
+test transport::socket::tests::backoff_reste_borne_meme_apres_une_tres_longue_rafale ... ok
+test transport::socket::tests::connection_reset_est_transitoire ... ok
+test transport::socket::tests::erreurs_non_reconnues_sont_fatales ... ok
+test transport::socket::tests::interrupted_est_transitoire ... ok
+test transport::piste_micro::tests::un_paquet_opus_montant_atteint_le_puits_de_la_session ... ok
+test transport::tick::tests::audio::audio_vivant_n_est_annonce_qu_apres_un_paquet_reel ... ok
+test transport::tick::tests::audio::injection::le_budget_epuise_laisse_la_reconstruction_reussir ... ok
+test spectre::tests::une_tonalite_sur_un_seul_canal_survit_au_repliement ... ok
+test spectre::tests::une_tonalite_pure_est_retrouvee_a_la_resolution_de_la_grille ... ok
+test transport::tick::tests::audio::injection::un_budget_superieur_a_RECONSTRUCTIONS_MAX_mene_a_AudioMort ... ok
+test transport::sonde_montante::str0m_expose_l_opus_montant_via_media_data ... ok
+test transport::tick::tests::audio::injection::une_faute_injectee_fait_refuser_la_reconstruction ... ok
+test transport::tick::tests::audio::l_accesseur_public_rend_une_session_porteuse_et_sa_reconstruction_audible ... ok
+test transport::tick::tests::audio::le_repit_espace_les_tentatives ... ok
+test transport::tick::tests::audio::sans_reconstructeur_on_signale_immediatement ... ok
+test transport::tick::tests::audio::un_reconstructeur_qui_echoue_toujours_finit_par_signaler ... ok
+test transport::tick::tests::audio::une_capture_audio_morte_est_signalee_une_fois_puis_de_nouveau_apres_un_rattachement ... ok
+test transport::tick::tests::audio::une_capture_morte_est_reconstruite_avant_tout_signalement ... ok
+test transport::tick::tests::audio::une_reelection_reapprovisionne_le_budget_et_leve_le_verrou ... ok
+test transport::tick::tests::audio::une_session_non_porteuse_reconstruite_reste_muette ... ok
+test transport::tick::tests::reste::un_changement_de_sommeil_de_la_source_est_traduit_en_message_asleep ... ok
+test transport::evenements::tests::une_trame_binaire_du_canal_input_atteint_on_input_et_un_canal_inconnu_est_refuse ... ok
+test turn::allocation::tests::la_premiere_emission_est_une_allocation_nue ... ok
+test turn::allocation::tests::le_rafraichissement_tombe_a_la_moitie_du_bail ... ok
+test turn::allocation::tests::un_401_declenche_une_allocation_signee ... ok
+test turn::allocation::tests::un_nonce_perime_est_rejoue_et_non_abandonne ... ok
+test turn::allocation::tests::un_succes_rend_l_adresse_relayee_et_l_adresse_reflexive ... ok
+test turn::allocation::tests::une_reponse_a_channel_bind_ne_repousse_pas_l_echeance_du_bail ... ok
+test turn::canaux::tests::desencapsuler_refuse_une_trame_tronquee_ou_inconnue ... ok
+test turn::canaux::tests::desencapsuler_rend_le_pair_et_la_charge_utile ... ok
+test turn::canaux::tests::encapsuler_prefixe_le_numero_de_canal_et_la_longueur ... ok
+test turn::canaux::tests::encapsuler_refuse_un_pair_sans_canal ... ok
+test transport::tick::tests::reste::une_visibilite_en_attente_est_appliquee_a_la_source_puis_relachee ... ok
+test turn::canaux::tests::les_numeros_de_canal_restent_dans_la_plage_normative ... ok
+test turn::canaux::tests::lier_un_canal_emet_permission_puis_channel_bind ... ok
+test turn::canaux::tests::un_canal_lie_est_rafraichi_avant_l_expiration_de_la_permission ... ok
+test turn::messages::tests::la_cle_longue_duree_est_le_md5_des_trois_champs ... ok
+test turn::messages::tests::un_channel_bind_porte_le_numero_et_l_adresse ... ok
+test turn::messages::tests::une_allocation_nue_porte_requested_transport_et_pas_d_integrite ... ok
+test turn::messages::tests::une_allocation_signee_est_relue_et_verifiee_par_is_stun ... ok
+test transport::tick::tests::audio::une_session_porteuse_reconstruite_recoit_set_actif_true ... ok
+test wasapi_peripherique::tests::l_identifiant_est_essaye_avant_le_nom ... ok
+test turn::messages::tests::une_permission_porte_l_adresse_du_pair_en_xor ... ok
+test turn::canaux::tests::le_premier_octet_departage_stun_de_channel_data ... ok
+test wasapi_peripherique::tests::l_identifiant_tranche_la_ou_le_nom_est_ambigu ... ok
+test wasapi_peripherique::tests::l_inventaire_nomme_chaque_peripherique_avec_son_identifiant ... ok
+test wasapi_peripherique::tests::la_sous_chaine_ignore_la_casse_et_les_espaces_de_bord ... ok
+test wasapi_peripherique::tests::le_libelle_du_critere_distingue_les_trois_cas ... ok
+test wasapi_peripherique::tests::le_nom_exact_est_essaye_avant_la_sous_chaine ... ok
+test wasapi_peripherique::tests::sans_demande_on_garde_le_defaut_de_windows ... ok
+test wasapi_peripherique::tests::le_defaut_n_est_pas_un_repli_mais_l_echec_en_est_un ... ok
+test wasapi_peripherique::tests::un_nom_absent_est_introuvable_et_reporte_la_demande_rognee ... ok
+test wasapi_peripherique::tests::une_sous_chaine_ambigue_refuse_de_trancher_et_nomme_les_candidats ... ok
+test wasapi_peripherique::tests::une_sous_chaine_unique_elit_les_haut_parleurs_malgre_le_defaut_windows ... ok
+test wasapi_peripherique::tests::une_demande_sur_une_liste_vide_est_introuvable ... ok
+test wasapi_peripherique::tests::le_nom_complet_est_reconnu_comme_exact_et_non_comme_partiel ... ok
+test windows_source_sortie::tests::l_alignement_pair_est_reellement_exerce_par_une_entree_impaire ... ok
+test windows_source_sortie::tests::le_bornage_ne_rend_jamais_une_dimension_nulle ... ok
+test transport::tick::tests::reste::une_part_en_attente_est_appliquee_par_act_on_timeout ... ok
+test windows_source_sortie::tests::le_bornage_preserve_le_rapport_d_aspect ... ok
+test windows_source_sortie::tests::les_dimensions_impaires_sont_alignees_vers_le_bas ... ok
+test windows_source_sortie::tests::seul_le_mode_recadre_redimensionne_la_fenetre ... ok
+test windows_source_sortie::tests::le_bornage_rend_des_dimensions_paires ... ok
+test windows_source_sortie::tests::une_taille_4k_est_ramenee_au_plafond ... ok
+test windows_source_sortie::tests::une_taille_sous_le_plafond_passe_telle_quelle ... ok
+test windows_source_telemetrie::tests::deux_telemetries_ne_se_melangent_pas ... ok
+test windows_source_telemetrie::tests::une_telemetrie_remise_a_neuf_repart_de_zero ... ok
+test windows_source_sortie::tests::une_sortie_degeneree_ne_donne_aucune_region ... ok
+test windows_source_sortie::tests::la_region_part_de_l_origine_de_la_sortie ... ok
+test plateforme::tests::un_refus_de_version_n_ouvre_aucune_seconde_connexion ... ok
+test spectre::tests::deux_tonalites_differentes_rendent_deux_dominantes_differentes ... ok
+test transport::piste_video::tests::write_frame_annonce_l_instant_de_capture_au_pair_via_le_sender_report_rtcp ... ok
+test transport::tick::tests::reste::atteint_la_cadence_video_visee_avec_un_pair_local ... ok
+
+test result: ok. 643 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.65s
+
+     Running unittests src/lib.rs (target/debug/deps/proto-8d2cff7e4cd88971)
+
+running 75 tests
+test control::tests::deserialise_l_etat_du_lien ... ok
+test control::tests::deserialise_le_redimensionnement ... ok
+test control::tests::rejette_la_version_de_controle_1_devenue_obsolete ... ok
+test control::tests::rejette_une_version_inconnue ... ok
+test control::tests::round_trip_des_capacites ... ok
+test control::tests::round_trip_du_message_de_vibration ... ok
+test control::tests::le_plein_ecran_fait_l_aller_retour ... ok
+test control::tests::rejette_un_type_inconnu ... ok
+test control::tests::ready_porte_la_disponibilite_du_micro ... ok
+test control::tests::rejette_une_version_absente ... ok
+test control::tests::le_plein_ecran_se_serialise_en_kebab_case_avec_sa_version ... ok
+test control::tests::toutes_les_formes_de_curseur_sont_des_valeurs_css ... ok
+test control::tests::serialise_l_etat_du_lien ... ok
+test control::tests::serialise_le_message_de_pointeur_en_kebab_case ... ok
+test control::tests::serialise_le_redimensionnement ... ok
+test control::tests::un_ready_sans_micro_se_lit_avec_micro_faux ... ok
+test control::tests::un_sommeil_s_ecrit_avec_son_type_en_tete_et_sa_raison ... ok
+test control::tests::une_visibilite_de_mauvaise_version_est_rejetee ... ok
+test control::tests::serialise_ready_et_session_end ... ok
+test control::tests::une_visibilite_se_relit_telle_qu_ecrite ... ok
+test fichiers::entetes::tests::un_entete_incomplet_est_rejete_plutot_que_complete ... ok
+test fichiers::tests::les_types_de_message_ne_se_chevauchent_pas ... ok
+test fichiers::tests::un_aller_retour_conserve_les_octets_bruts ... ok
+test fichiers::tests::une_charge_vide_et_un_entete_vide_sont_licites ... ok
+test fichiers::tests::une_trame_de_version_2_est_refusee ... ok
+test fichiers::entetes::tests::conformite_aux_vecteurs_partages ... ok
+test fichiers::tests::une_trame_sans_version_est_refusee ... ok
+test fichiers::tests::un_entete_dont_la_longueur_deborde_la_trame_est_refuse ... ok
+test fichiers::tests::la_charge_maximale_de_taille_trame_max_passe ... ok
+test fichiers::tests::un_code_d_echec_a_une_forme_epinglee_sur_le_fil ... ok
+test input::tests::rejette_bouton_inconnu ... ok
+test input::tests::rejette_la_version_1_devenue_obsolete ... ok
+test fichiers::tests::le_vecteur_epingle_se_decode_comme_annonce ... ok
+test input::tests::encodage_petit_boutiste ... ok
+test input::tests::rejette_message_tronque ... ok
+test input::tests::rejette_message_vide ... ok
+test input::tests::rejette_type_inconnu ... ok
+test input::tests::conformite_aux_vecteurs_partages ... ok
+test input::tests::round_trip_key ... ok
+test input::tests::round_trip_manette ... ok
+test input::tests::round_trip_mouse_button ... ok
+test input::tests::round_trip_mouse_move ... ok
+test input::tests::round_trip_mouvement_relatif ... ok
+test input::tests::round_trip_wheel ... ok
+test plateforme::tests::les_variantes_de_p3_rejettent_desormais_la_version_1 ... ok
+test plateforme::tests::rejette_la_version_suivante_sur_battement_recu ... ok
+test plateforme::tests::rejette_la_version_suivante_sur_enrole ... ok
+test plateforme::tests::rejette_la_version_suivante_sur_enroler ... ok
+test plateforme::tests::rejette_la_version_suivante_sur_lancee ... ok
+test plateforme::tests::rejette_la_version_suivante_sur_catalogue ... ok
+test plateforme::tests::rejette_la_version_suivante_sur_lancer ... ok
+test plateforme::tests::rejette_la_version_suivante_sur_refus ... ok
+test plateforme::tests::rejette_un_champ_inconnu ... ok
+test input::tests::rejette_version_inconnue ... ok
+test plateforme::tests::rejette_une_version_absente_sur_battement ... ok
+test plateforme::tests::rejette_un_type_inconnu ... ok
+test plateforme::tests::rejette_la_version_suivante_sur_battement ... ok
+test plateforme::tests::conformite_aux_vecteurs_partages ... ok
+test plateforme::tests::rejette_un_champ_inconnu_sur_lancer ... ok
+test plateforme::tests::rejette_une_version_absente_sur_battement_recu ... ok
+test plateforme::tests::rejette_une_version_absente_sur_catalogue ... ok
+test plateforme::tests::rejette_une_version_absente_sur_enrole ... ok
+test plateforme::tests::rejette_une_version_absente_sur_enroler ... ok
+test plateforme::tests::rejette_une_version_absente_sur_lancee ... ok
+test plateforme::tests::rejette_une_version_absente_sur_refus ... ok
+test plateforme::tests::serialise_l_enrole_et_le_refus ... ok
+test plateforme::tests::serialise_l_enrolement_en_kebab_case ... ok
+test plateforme::tests::round_trip_des_trois_reponses ... ok
+test plateforme::tests::serialise_le_battement ... ok
+test plateforme::tests::serialise_la_lancee ... ok
+test plateforme::tests::serialise_le_battement_recu_en_kebab_case ... ok
+test plateforme::tests::rejette_une_version_absente_sur_lancer ... ok
+test plateforme::tests::serialise_le_catalogue ... ok
+test plateforme::tests::serialise_le_lancer ... ok
+test plateforme::tests::serialise_les_quatre_issues ... ok
+
+test result: ok. 75 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+   Doc-tests proto
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+==> cargo clippy --workspace
+warning: unused imports: `inscrire` and `retirer`
+  --> agent/src/capteur/sommeil.rs:33:20
+   |
+33 | pub use registre::{inscrire, retirer};
+   |                    ^^^^^^^^  ^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `tete`
+   --> agent/src/micro.rs:196:18
+    |
+196 |         let Some(tete) = self.file.front().map(|t| t.rtp_48k) else {
+    |                  ^^^^ help: if this is intentional, prefix it with an underscore: `_tete`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `PERIODE_RECONCILIATION` is never used
+  --> agent/src/apps.rs:34:11
+   |
+34 | pub const PERIODE_RECONCILIATION: Duration = Duration::from_secs(30);
+   |           ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `desarme` is never used
+  --> agent/src/apps.rs:45:8
+   |
+45 | pub fn desarme(valeur: Option<&str>) -> bool {
+   |        ^^^^^^^
+
+warning: struct `Brut` is never constructed
+  --> agent/src/apps/raccourci.rs:20:12
+   |
+20 | pub struct Brut {
+   |            ^^^^
+
+warning: enum `Ecart` is never used
+  --> agent/src/apps/raccourci.rs:40:10
+   |
+40 | pub enum Ecart {
+   |          ^^^^^
+
+warning: constant `EXTENSIONS_RETENUES` is never used
+  --> agent/src/apps/raccourci.rs:63:7
+   |
+63 | const EXTENSIONS_RETENUES: &[&str] = &["exe"];
+   |       ^^^^^^^^^^^^^^^^^^^
+
+warning: function `extension_de` is never used
+  --> agent/src/apps/raccourci.rs:67:4
+   |
+67 | fn extension_de(chemin: &str) -> String {
+   |    ^^^^^^^^^^^^
+
+warning: function `retenir` is never used
+  --> agent/src/apps/raccourci.rs:78:8
+   |
+78 | pub fn retenir(brut: &Brut, existe: &dyn Fn(&str) -> bool) -> Result<(), Ecart> {
+   |        ^^^^^^^
+
+warning: function `normaliser_chemin` is never used
+   --> agent/src/apps/raccourci.rs:106:8
+    |
+106 | pub fn normaliser_chemin(chemin: &str) -> String {
+    |        ^^^^^^^^^^^^^^^^^
+
+warning: function `cle` is never used
+   --> agent/src/apps/raccourci.rs:130:8
+    |
+130 | pub fn cle(cible: &str, arguments: &str, repertoire: &str) -> String {
+    |        ^^^
+
+warning: function `depuis_brut` is never used
+   --> agent/src/apps/raccourci.rs:146:8
+    |
+146 | pub fn depuis_brut(brut: Brut) -> Application {
+    |        ^^^^^^^^^^^
+
+warning: struct `Diff` is never constructed
+  --> agent/src/apps/reconciliation.rs:20:12
+   |
+20 | pub struct Diff {
+   |            ^^^^
+
+warning: method `est_vide` is never used
+  --> agent/src/apps/reconciliation.rs:32:12
+   |
+29 | impl Diff {
+   | --------- method in this implementation
+...
+32 |     pub fn est_vide(&self) -> bool {
+   |            ^^^^^^^^
+
+warning: function `diff` is never used
+  --> agent/src/apps/reconciliation.rs:55:8
+   |
+55 | pub fn diff(hier: &[Application], aujourdhui: &[Application]) -> Diff {
+   |        ^^^^
+
+warning: constant `K` is never used
+  --> agent/src/apps/sha256.rs:23:7
+   |
+23 | const K: [u32; 64] = [
+   |       ^
+
+warning: constant `ETAT_INITIAL` is never used
+  --> agent/src/apps/sha256.rs:34:7
+   |
+34 | const ETAT_INITIAL: [u32; 8] = [
+   |       ^^^^^^^^^^^^
+
+warning: function `comprimer` is never used
+  --> agent/src/apps/sha256.rs:38:4
+   |
+38 | fn comprimer(etat: &mut [u32; 8], bloc: &[u8; 64]) {
+   |    ^^^^^^^^^
+
+warning: function `condenser` is never used
+  --> agent/src/apps/sha256.rs:79:8
+   |
+79 | pub fn condenser(message: &[u8]) -> [u8; 32] {
+   |        ^^^^^^^^^
+
+warning: function `hex` is never used
+   --> agent/src/apps/sha256.rs:112:8
+    |
+112 | pub fn hex(message: &[u8]) -> String {
+    |        ^^^
+
+warning: constant `LECTURES_ECHOUEES_MAX` is never used
+   --> agent/src/audio.rs:118:11
+    |
+118 | pub const LECTURES_ECHOUEES_MAX: u32 = 10;
+    |           ^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `REPRISE_LECTURE_BASE` is never used
+   --> agent/src/audio.rs:126:7
+    |
+126 | const REPRISE_LECTURE_BASE: std::time::Duration = std::time::Duration::from_millis(5);
+    |       ^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `REPRISE_LECTURE_MAX` is never used
+   --> agent/src/audio.rs:127:7
+    |
+127 | const REPRISE_LECTURE_MAX: std::time::Duration = std::time::Duration::from_millis(200);
+    |       ^^^^^^^^^^^^^^^^^^^
+
+warning: function `temporisation_de_reprise` is never used
+   --> agent/src/audio.rs:140:8
+    |
+140 | pub fn temporisation_de_reprise(consecutives: u32) -> std::time::Duration {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `PacketRing` is never constructed
+   --> agent/src/audio.rs:162:12
+    |
+162 | pub struct PacketRing {
+    |            ^^^^^^^^^^
+
+warning: associated items `new`, `push`, `pop`, `rejetes`, and `verrou` are never used
+   --> agent/src/audio.rs:169:12
+    |
+168 | impl PacketRing {
+    | --------------- associated items in this implementation
+169 |     pub fn new(capacite: usize) -> Self {
+    |            ^^^
+...
+179 |     pub fn push(&self, packet: AudioPacket) {
+    |            ^^^^
+...
+189 |     pub fn pop(&self) -> Option<AudioPacket> {
+    |            ^^^
+...
+194 |     pub fn rejetes(&self) -> u64 {
+    |            ^^^^^^^
+...
+205 |     fn verrou(&self) -> std::sync::MutexGuard<'_, VecDeque<AudioPacket>> {
+    |        ^^^^^^
+
+warning: function `injection_encore_armee` is never used
+   --> agent/src/audio.rs:240:8
+    |
+240 | pub fn injection_encore_armee(
+    |        ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `FenetreAudio` is never constructed
+  --> agent/src/capteur/audio.rs:18:12
+   |
+18 | pub struct FenetreAudio {
+   |            ^^^^^^^^^^^^
+
+warning: function `arbitrer` is never used
+  --> agent/src/capteur/audio.rs:54:8
+   |
+54 | pub fn arbitrer(fenetres: &[FenetreAudio]) -> Vec<(String, bool)> {
+   |        ^^^^^^^^
+
+warning: function `l_emporte` is never used
+  --> agent/src/capteur/audio.rs:85:4
+   |
+85 | fn l_emporte(candidat: &FenetreAudio, actuel: &FenetreAudio) -> bool {
+   |    ^^^^^^^^^
+
+warning: trait `Canal` is never used
+  --> agent/src/capteur/distante.rs:20:11
+   |
+20 | pub trait Canal {
+   |           ^^^^^
+
+warning: struct `Rattachee` is never constructed
+  --> agent/src/capteur/distante.rs:29:12
+   |
+29 | pub struct Rattachee {
+   |            ^^^^^^^^^
+
+warning: enum `Recu` is never used
+  --> agent/src/capteur/distante.rs:37:10
+   |
+37 | pub enum Recu {
+   |          ^^^^
+
+warning: struct `SourceDistante` is never constructed
+  --> agent/src/capteur/distante.rs:57:12
+   |
+57 | pub struct SourceDistante {
+   |            ^^^^^^^^^^^^^^
+
+warning: associated items `nouvelle` and `commander_simple` are never used
+   --> agent/src/capteur/distante.rs:125:12
+    |
+124 | impl SourceDistante {
+    | ------------------- associated items in this implementation
+125 |     pub fn nouvelle(
+    |            ^^^^^^^^
+...
+149 |     fn commander_simple(&mut self, message: VersCapteur) -> Result<()> {
+    |        ^^^^^^^^^^^^^^^^
+
+warning: function `origine_depuis_qpc` is never used
+  --> agent/src/capteur/horloge.rs:21:8
+   |
+21 | pub fn origine_depuis_qpc(
+   |        ^^^^^^^^^^^^^^^^^^
+
+warning: function `lire_le_media` is never used
+  --> agent/src/capteur/pont_media.rs:23:15
+   |
+23 | pub(crate) fn lire_le_media<R: Read>(mut lecteur: R, images: SyncSender<Recu>) {
+   |               ^^^^^^^^^^^^^
+
+warning: constant `WS_CAPTION_BIT` is never used
+  --> agent/src/capteur/plein_ecran.rs:63:11
+   |
+63 | pub const WS_CAPTION_BIT: u32 = 0x00C0_0000;
+   |           ^^^^^^^^^^^^^^
+
+warning: constant `WS_THICKFRAME_BIT` is never used
+  --> agent/src/capteur/plein_ecran.rs:65:11
+   |
+65 | pub const WS_THICKFRAME_BIT: u32 = 0x0004_0000;
+   |           ^^^^^^^^^^^^^^^^^
+
+warning: function `est_sans_bordure` is never used
+  --> agent/src/capteur/plein_ecran.rs:68:8
+   |
+68 | pub fn est_sans_bordure(style: u32) -> bool {
+   |        ^^^^^^^^^^^^^^^^
+
+warning: struct `SuiviBordure` is never constructed
+  --> agent/src/capteur/plein_ecran.rs:77:12
+   |
+77 | pub struct SuiviBordure {
+   |            ^^^^^^^^^^^^
+
+warning: associated items `nouveau` and `observer` are never used
+  --> agent/src/capteur/plein_ecran.rs:82:12
+   |
+81 | impl SuiviBordure {
+   | ----------------- associated items in this implementation
+82 |     pub fn nouveau(style_initial: u32) -> Self {
+   |            ^^^^^^^
+...
+87 |     pub fn observer(&mut self, style: u32) -> Option<bool> {
+   |            ^^^^^^^^
+
+warning: function `actif` is never used
+   --> agent/src/capteur/plein_ecran.rs:118:8
+    |
+118 | pub fn actif() -> bool {
+    |        ^^^^^
+
+warning: constant `PERIODE_STYLE` is never used
+   --> agent/src/capteur/plein_ecran.rs:138:11
+    |
+138 | pub const PERIODE_STYLE: Duration = Duration::from_millis(250);
+    |           ^^^^^^^^^^^^^
+
+warning: constant `NOM_TUBE` is never used
+  --> agent/src/capteur/protocole.rs:15:11
+   |
+15 | pub const NOM_TUBE: &str = r"\\.\pipe\agent-capteur";
+   |           ^^^^^^^^
+
+warning: constant `TAILLE_MAX` is never used
+  --> agent/src/capteur/protocole.rs:23:11
+   |
+23 | pub const TAILLE_MAX: usize = 8 * 1024 * 1024;
+   |           ^^^^^^^^^^
+
+warning: constant `ETIQUETTE_JSON` is never used
+  --> agent/src/capteur/protocole.rs:25:11
+   |
+25 | pub const ETIQUETTE_JSON: u8 = 1;
+   |           ^^^^^^^^^^^^^^
+
+warning: constant `ETIQUETTE_IMAGE` is never used
+  --> agent/src/capteur/protocole.rs:26:11
+   |
+26 | pub const ETIQUETTE_IMAGE: u8 = 2;
+   |           ^^^^^^^^^^^^^^^
+
+warning: constant `EN_TETE_IMAGE` is never used
+  --> agent/src/capteur/protocole.rs:29:7
+   |
+29 | const EN_TETE_IMAGE: usize = 9;
+   |       ^^^^^^^^^^^^^
+
+warning: enum `VersCapteur` is never used
+  --> agent/src/capteur/protocole.rs:33:10
+   |
+33 | pub enum VersCapteur {
+   |          ^^^^^^^^^^^
+
+warning: enum `DepuisCapteur` is never used
+   --> agent/src/capteur/protocole.rs:118:10
+    |
+118 | pub enum DepuisCapteur {
+    |          ^^^^^^^^^^^^^
+
+warning: enum `Trame` is never used
+   --> agent/src/capteur/protocole.rs:183:10
+    |
+183 | pub enum Trame {
+    |          ^^^^^
+
+warning: function `ecrire_trame` is never used
+   --> agent/src/capteur/protocole.rs:188:4
+    |
+188 | fn ecrire_trame<W: Write>(sortie: &mut W, etiquette: u8, corps: &[u8]) -> io::Result<()> {
+    |    ^^^^^^^^^^^^
+
+warning: function `ecrire_json` is never used
+   --> agent/src/capteur/protocole.rs:201:8
+    |
+201 | pub fn ecrire_json<W: Write, T: Serialize>(sortie: &mut W, message: &T) -> io::Result<()> {
+    |        ^^^^^^^^^^^
+
+warning: function `ecrire_image` is never used
+   --> agent/src/capteur/protocole.rs:206:8
+    |
+206 | pub fn ecrire_image<W: Write>(sortie: &mut W, unite: &AccessUnit) -> io::Result<()> {
+    |        ^^^^^^^^^^^^
+
+warning: function `lire_trame` is never used
+   --> agent/src/capteur/protocole.rs:214:8
+    |
+214 | pub fn lire_trame<R: Read>(entree: &mut R) -> io::Result<Trame> {
+    |        ^^^^^^^^^^
+
+warning: constant `FACTEUR_FOCUS` is never used
+  --> agent/src/capteur/repartiteur.rs:36:11
+   |
+36 | pub const FACTEUR_FOCUS: u32 = 2;
+   |           ^^^^^^^^^^^^^
+
+warning: constant `PART_DORMANTE_BPS` is never used
+  --> agent/src/capteur/repartiteur.rs:62:11
+   |
+62 | pub const PART_DORMANTE_BPS: u32 = 256_000;
+   |           ^^^^^^^^^^^^^^^^^
+
+warning: struct `Fenetre` is never constructed
+  --> agent/src/capteur/repartiteur.rs:66:12
+   |
+66 | pub struct Fenetre {
+   |            ^^^^^^^
+
+warning: function `repartir` is never used
+   --> agent/src/capteur/repartiteur.rs:104:8
+    |
+104 | pub fn repartir(budget_bps: u32, fenetres: &[Fenetre]) -> Vec<(String, u32)> {
+    |        ^^^^^^^^
+
+warning: constant `DUREE_FENETRE_CANAL` is never used
+  --> agent/src/capteur/reprise.rs:21:11
+   |
+21 | pub const DUREE_FENETRE_CANAL: Duration = Duration::from_secs(15);
+   |           ^^^^^^^^^^^^^^^^^^^
+
+warning: constant `PAS_RATTACHEMENT` is never used
+  --> agent/src/capteur/reprise.rs:31:11
+   |
+31 | pub const PAS_RATTACHEMENT: Duration = Duration::from_millis(250);
+   |           ^^^^^^^^^^^^^^^^
+
+warning: struct `FenetreCanal` is never constructed
+  --> agent/src/capteur/reprise.rs:37:12
+   |
+37 | pub struct FenetreCanal {
+   |            ^^^^^^^^^^^^
+
+warning: associated items `nouvelle`, `rupture`, `peut_reessayer`, and `succes` are never used
+  --> agent/src/capteur/reprise.rs:45:12
+   |
+44 | impl FenetreCanal {
+   | ----------------- associated items in this implementation
+45 |     pub fn nouvelle() -> Self {
+   |            ^^^^^^^^
+...
+51 |     pub fn rupture(&mut self, maintenant: Instant) -> bool {
+   |            ^^^^^^^
+...
+63 |     pub fn peut_reessayer(&mut self, maintenant: Instant) -> bool {
+   |            ^^^^^^^^^^^^^^
+...
+76 |     pub fn succes(&mut self) {
+   |            ^^^^^^
+
+warning: constant `PERIODE_REARBITRAGE` is never used
+  --> agent/src/capteur/sommeil.rs:52:7
+   |
+52 | const PERIODE_REARBITRAGE: Duration = Duration::from_millis(250);
+   |       ^^^^^^^^^^^^^^^^^^^
+
+warning: constant `REPIT_REARMEMENT_AUDIO` is never used
+   --> agent/src/capteur/sommeil.rs:139:11
+    |
+139 | pub const REPIT_REARMEMENT_AUDIO: Duration = Duration::from_secs(5);
+    |           ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `REARMEMENTS_MAX` is never used
+   --> agent/src/capteur/sommeil.rs:149:11
+    |
+149 | pub const REARMEMENTS_MAX: u32 = 5;
+    |           ^^^^^^^^^^^^^^^
+
+warning: enum `Message` is never used
+   --> agent/src/capteur/sommeil.rs:172:10
+    |
+172 | pub enum Message {
+    |          ^^^^^^^
+
+warning: function `signaler` is never used
+   --> agent/src/capteur/sommeil.rs:190:8
+    |
+190 | pub fn signaler(session: &str, visible: bool, focalisee: bool) {
+    |        ^^^^^^^^
+
+warning: function `echec_de_reveil` is never used
+   --> agent/src/capteur/sommeil.rs:215:8
+    |
+215 | pub fn echec_de_reveil(session: &str) {
+    |        ^^^^^^^^^^^^^^^
+
+warning: function `audio_mort` is never used
+   --> agent/src/capteur/sommeil.rs:229:8
+    |
+229 | pub fn audio_mort(session: &str) {
+    |        ^^^^^^^^^^
+
+warning: function `signaler_audio_vivant` is never used
+   --> agent/src/capteur/sommeil.rs:285:8
+    |
+285 | pub fn signaler_audio_vivant(session: &str) {
+    |        ^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `purger_les_inaptitudes` is never used
+   --> agent/src/capteur/sommeil.rs:295:15
+    |
+295 | pub(super) fn purger_les_inaptitudes(inaptes: &mut HashMap<String, Instant>, maintenant: Instant) {
+    |               ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `retirer_est_perime` is never used
+   --> agent/src/capteur/sommeil.rs:305:15
+    |
+305 | pub(super) fn retirer_est_perime(
+    |               ^^^^^^^^^^^^^^^^^^
+
+warning: function `raison_en_texte` is never used
+   --> agent/src/capteur/sommeil.rs:317:8
+    |
+317 | pub fn raison_en_texte(raison: Raison) -> &'static str {
+    |        ^^^^^^^^^^^^^^^
+
+warning: function `budget_bps` is never used
+  --> agent/src/capteur/sommeil/parts.rs:76:4
+   |
+76 | fn budget_bps() -> u32 {
+   |    ^^^^^^^^^^
+
+warning: function `distribuer_les_parts` is never used
+   --> agent/src/capteur/sommeil/parts.rs:104:15
+    |
+104 | pub(super) fn distribuer_les_parts(garde: &mut MutexGuard<'static, Etat>) {
+    |               ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `distribuer_l_audio` is never used
+  --> agent/src/capteur/sommeil/porteurs.rs:28:15
+   |
+28 | pub(super) fn distribuer_l_audio(garde: &mut MutexGuard<'static, Etat>) {
+   |               ^^^^^^^^^^^^^^^^^^
+
+warning: struct `Etat` is never constructed
+  --> agent/src/capteur/sommeil/registre.rs:29:19
+   |
+29 | pub(super) struct Etat {
+   |                   ^^^^
+
+warning: static `ETAT` is never used
+   --> agent/src/capteur/sommeil/registre.rs:119:8
+    |
+119 | static ETAT: OnceLock<Mutex<Etat>> = OnceLock::new();
+    |        ^^^^
+
+warning: function `etat` is never used
+   --> agent/src/capteur/sommeil/registre.rs:121:15
+    |
+121 | pub(super) fn etat() -> MutexGuard<'static, Etat> {
+    |               ^^^^
+
+warning: function `demarrer_le_tour_de_roue` is never used
+   --> agent/src/capteur/sommeil/registre.rs:154:4
+    |
+154 | fn demarrer_le_tour_de_roue() {
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `distribuer` is never used
+   --> agent/src/capteur/sommeil/registre.rs:186:15
+    |
+186 | pub(super) fn distribuer(garde: &mut MutexGuard<'static, Etat>, ordres: Vec<(String, Ordre)>) {
+    |               ^^^^^^^^^^
+
+warning: function `oublier` is never used
+   --> agent/src/capteur/sommeil/registre.rs:226:15
+    |
+226 | pub(super) fn oublier(garde: &mut MutexGuard<'static, Etat>, session: &str) -> Vec<(String, Ordre)> {
+    |               ^^^^^^^
+
+warning: function `inscrire` is never used
+   --> agent/src/capteur/sommeil/registre.rs:278:8
+    |
+278 | pub fn inscrire(session: &str, pid: u32) -> (Receiver<Message>, u64) {
+    |        ^^^^^^^^
+
+warning: function `retirer` is never used
+   --> agent/src/capteur/sommeil/registre.rs:330:8
+    |
+330 | pub fn retirer(session: &str, generation: u64) {
+    |        ^^^^^^^
+
+warning: constant `PLAFOND_EVEIL` is never used
+  --> agent/src/capteur/vivier.rs:23:11
+   |
+23 | pub const PLAFOND_EVEIL: usize = 8;
+   |           ^^^^^^^^^^^^^
+
+warning: constant `HYSTERESIS` is never used
+  --> agent/src/capteur/vivier.rs:35:11
+   |
+35 | pub const HYSTERESIS: Duration = Duration::from_secs(2);
+   |           ^^^^^^^^^^
+
+warning: constant `REPIT_APRES_ECHEC` is never used
+  --> agent/src/capteur/vivier.rs:43:11
+   |
+43 | pub const REPIT_APRES_ECHEC: Duration = Duration::from_millis(500);
+   |           ^^^^^^^^^^^^^^^^^
+
+warning: enum `Raison` is never used
+  --> agent/src/capteur/vivier.rs:48:10
+   |
+48 | pub enum Raison {
+   |          ^^^^^^
+
+warning: enum `Ordre` is never used
+  --> agent/src/capteur/vivier.rs:56:10
+   |
+56 | pub enum Ordre {
+   |          ^^^^^
+
+warning: struct `Entree` is never constructed
+  --> agent/src/capteur/vivier.rs:61:8
+   |
+61 | struct Entree {
+   |        ^^^^^^
+
+warning: struct `Vivier` is never constructed
+  --> agent/src/capteur/vivier.rs:77:12
+   |
+77 | pub struct Vivier {
+   |            ^^^^^^
+
+warning: multiple associated items are never used
+   --> agent/src/capteur/vivier.rs:84:12
+    |
+ 83 | impl Vivier {
+    | ----------- associated items in this implementation
+ 84 |     pub fn nouveau(plafond: usize, hysteresis: Duration) -> Vivier {
+    |            ^^^^^^^
+...
+ 88 |     pub fn inscrire(&mut self, session: &str, maintenant: Instant) -> Vec<(String, Ordre)> {
+    |            ^^^^^^^^
+...
+105 |     pub fn retirer(&mut self, session: &str, maintenant: Instant) -> Vec<(String, Ordre)> {
+    |            ^^^^^^^
+...
+110 |     pub fn signaler(
+    |            ^^^^^^^^
+...
+136 |     pub fn echec_de_reveil(&mut self, session: &str, maintenant: Instant) -> Vec<(String, Ordre)> {
+    |            ^^^^^^^^^^^^^^^
+...
+153 |     pub fn rearbitrer(&mut self, maintenant: Instant) -> Vec<(String, Ordre)> {
+    |            ^^^^^^^^^^
+...
+157 |     pub fn eveillee(&self, session: &str) -> Option<bool> {
+    |            ^^^^^^^^
+...
+167 |     pub fn eveillees(&self) -> Vec<String> {
+    |            ^^^^^^^^^
+...
+183 |     fn arbitrer(&mut self, maintenant: Instant) -> Vec<(String, Ordre)> {
+    |        ^^^^^^^^
+
+warning: constant `SEUIL` is never used
+  --> agent/src/cursor.rs:15:11
+   |
+15 | pub const SEUIL: u8 = 3;
+   |           ^^^^^
+
+warning: struct `Hysteresis` is never constructed
+  --> agent/src/cursor.rs:23:12
+   |
+23 | pub struct Hysteresis {
+   |            ^^^^^^^^^^
+
+warning: associated items `new`, `observer`, and `courant` are never used
+  --> agent/src/cursor.rs:29:12
+   |
+28 | impl Hysteresis {
+   | --------------- associated items in this implementation
+29 |     pub fn new(initial: bool) -> Self {
+   |            ^^^
+...
+33 |     pub fn observer(&mut self, observe: bool) -> Option<bool> {
+   |            ^^^^^^^^
+...
+49 |     pub fn courant(&self) -> bool {
+   |            ^^^^^^^
+
+warning: function `point_depart_lineaire` is never used
+  --> agent/src/diagnostics/entree.rs:25:4
+   |
+25 | fn point_depart_lineaire(
+   |    ^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `TUILE_MIN_LARGEUR` is never used
+  --> agent/src/disposition.rs:11:11
+   |
+11 | pub const TUILE_MIN_LARGEUR: u32 = 320;
+   |           ^^^^^^^^^^^^^^^^^
+
+warning: constant `TUILE_MIN_HAUTEUR` is never used
+  --> agent/src/disposition.rs:12:11
+   |
+12 | pub const TUILE_MIN_HAUTEUR: u32 = 240;
+   |           ^^^^^^^^^^^^^^^^^
+
+warning: function `tuiles` is never used
+  --> agent/src/disposition.rs:20:8
+   |
+20 | pub fn tuiles(bureau: Rect, n: u32) -> Option<Vec<Rect>> {
+   |        ^^^^^^
+
+warning: constant `MAX_BACKLOG_FRAMES` is never used
+  --> agent/src/frames.rs:23:7
+   |
+23 | const MAX_BACKLOG_FRAMES: usize = 3;
+   |       ^^^^^^^^^^^^^^^^^^
+
+warning: struct `Frame` is never constructed
+  --> agent/src/frames.rs:27:12
+   |
+27 | pub struct Frame {
+   |            ^^^^^
+
+warning: struct `FrameAssembler` is never constructed
+  --> agent/src/frames.rs:37:12
+   |
+37 | pub struct FrameAssembler {
+   |            ^^^^^^^^^^^^^^
+
+warning: multiple associated items are never used
+   --> agent/src/frames.rs:48:12
+    |
+ 47 | impl FrameAssembler {
+    | ------------------- associated items in this implementation
+ 48 |     pub fn new(origin: Instant) -> Self {
+    |            ^^^
+...
+ 63 |     pub fn push(&mut self, pcm: &[i16]) {
+    |            ^^^^
+...
+ 79 |     pub fn drain_due(&mut self, maintenant: Instant) -> Vec<Frame> {
+    |            ^^^^^^^^^
+...
+115 |     pub fn reancrer(&mut self) {
+    |            ^^^^^^^^
+...
+120 |     pub fn complements(&self) -> u64 {
+    |            ^^^^^^^^^^^
+...
+125 |     pub fn echantillons_jetes(&self) -> u64 {
+    |            ^^^^^^^^^^^^^^^^^^
+...
+136 |     fn former_trame(&mut self, pts_par_canal: u64) -> Frame {
+    |        ^^^^^^^^^^^^
+...
+151 |     fn echantillons_ecoules(origin: Instant, maintenant: Instant) -> u64 {
+    |        ^^^^^^^^^^^^^^^^^^^^
+...
+159 |     fn duree_de(echantillons: u64) -> Duration {
+    |        ^^^^^^^^
+
+warning: constant `PERIODE_MIN` is never used
+  --> agent/src/gamepad.rs:24:11
+   |
+24 | pub const PERIODE_MIN: Duration = Duration::from_millis(20);
+   |           ^^^^^^^^^^^
+
+warning: function `plus_recent` is never used
+  --> agent/src/gamepad.rs:30:8
+   |
+30 | pub fn plus_recent(nouveau: u16, courant: u16) -> bool {
+   |        ^^^^^^^^^^^
+
+warning: struct `LimiteurVibration` is never constructed
+  --> agent/src/gamepad.rs:40:12
+   |
+40 | pub struct LimiteurVibration {
+   |            ^^^^^^^^^^^^^^^^^
+
+warning: associated items `new`, `observer`, `echu`, and `emettre` are never used
+  --> agent/src/gamepad.rs:53:12
+   |
+52 | impl LimiteurVibration {
+   | ---------------------- associated items in this implementation
+53 |     pub fn new() -> Self {
+   |            ^^^
+...
+61 |     pub fn observer(&mut self, maintenant: Instant, etat: (u8, u8)) -> Option<(u8, u8)> {
+   |            ^^^^^^^^
+...
+76 |     pub fn echu(&mut self, maintenant: Instant) -> Option<(u8, u8)> {
+   |            ^^^^
+...
+91 |     fn emettre(&mut self, maintenant: Instant, etat: (u8, u8)) -> Option<(u8, u8)> {
+   |        ^^^^^^^
+
+warning: struct `Rect` is never constructed
+ --> agent/src/geometry.rs:5:12
+  |
+5 | pub struct Rect {
+  |            ^^^^
+
+warning: function `crop_region` is never used
+  --> agent/src/geometry.rs:28:8
+   |
+28 | pub fn crop_region(window: Rect, desktop_width: u32, desktop_height: u32) -> Option<Rect> {
+   |        ^^^^^^^^^^^
+
+warning: function `to_virtual_desktop` is never used
+  --> agent/src/geometry.rs:78:8
+   |
+78 | pub fn to_virtual_desktop(x: u16, y: u16, window: Rect, desktop: Rect) -> (i32, i32) {
+   |        ^^^^^^^^^^^^^^^^^^
+
+warning: function `clamp_normalized` is never used
+  --> agent/src/geometry.rs:96:4
+   |
+96 | fn clamp_normalized(value: f64) -> i32 {
+   |    ^^^^^^^^^^^^^^^^
+
+warning: function `to_virtual_desktop_visible` is never used
+   --> agent/src/geometry.rs:114:8
+    |
+114 | pub fn to_virtual_desktop_visible(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `borner_au_bureau` is never used
+   --> agent/src/geometry.rs:134:8
+    |
+134 | pub fn borner_au_bureau(
+    |        ^^^^^^^^^^^^^^^^
+
+warning: function `rects_overlap` is never used
+   --> agent/src/geometry.rs:158:8
+    |
+158 | pub fn rects_overlap(a: Rect, b: Rect) -> bool {
+    |        ^^^^^^^^^^^^^
+
+warning: constant `MIRES_MAX` is never used
+  --> agent/src/mire.rs:11:11
+   |
+11 | pub const MIRES_MAX: u8 = 8;
+   |           ^^^^^^^^^
+
+warning: constant `BASE_IDENTITE` is never used
+  --> agent/src/mire.rs:15:7
+   |
+15 | const BASE_IDENTITE: u8 = 16;
+   |       ^^^^^^^^^^^^^
+
+warning: constant `PAS_IDENTITE` is never used
+  --> agent/src/mire.rs:19:7
+   |
+19 | const PAS_IDENTITE: u8 = 24;
+   |       ^^^^^^^^^^^^
+
+warning: constant `BLEU_MIRE` is never used
+  --> agent/src/mire.rs:21:7
+   |
+21 | const BLEU_MIRE: u8 = 96;
+   |       ^^^^^^^^^
+
+warning: constant `VERT_PAIR` is never used
+  --> agent/src/mire.rs:24:7
+   |
+24 | const VERT_PAIR: u8 = 32;
+   |       ^^^^^^^^^
+
+warning: constant `VERT_IMPAIR` is never used
+  --> agent/src/mire.rs:25:7
+   |
+25 | const VERT_IMPAIR: u8 = 224;
+   |       ^^^^^^^^^^^
+
+warning: constant `TOLERANCE` is never used
+  --> agent/src/mire.rs:27:7
+   |
+27 | const TOLERANCE: i16 = 4;
+   |       ^^^^^^^^^
+
+warning: constant `SEUIL_NOIR` is never used
+  --> agent/src/mire.rs:29:7
+   |
+29 | const SEUIL_NOIR: u8 = 12;
+   |       ^^^^^^^^^^
+
+warning: enum `Verdict` is never used
+  --> agent/src/mire.rs:33:10
+   |
+33 | pub enum Verdict {
+   |          ^^^^^^^
+
+warning: function `couleur_mire` is never used
+  --> agent/src/mire.rs:45:8
+   |
+45 | pub fn couleur_mire(id: u8, trame: u64) -> (u8, u8, u8) {
+   |        ^^^^^^^^^^^^
+
+warning: function `proche` is never used
+  --> agent/src/mire.rs:52:4
+   |
+52 | fn proche(valeur: u8, attendu: u8) -> bool {
+   |    ^^^^^^
+
+warning: function `identifier` is never used
+  --> agent/src/mire.rs:57:8
+   |
+57 | pub fn identifier(pixel: (u8, u8, u8)) -> Option<u8> {
+   |        ^^^^^^^^^^
+
+warning: function `verdict` is never used
+  --> agent/src/mire.rs:80:8
+   |
+80 | pub fn verdict(attendu: u8, pixel: (u8, u8, u8)) -> Verdict {
+   |        ^^^^^^^
+
+warning: function `voie_controlee` is never used
+   --> agent/src/mire.rs:105:8
+    |
+105 | pub fn voie_controlee(tour: u64, nombre: usize) -> Option<usize> {
+    |        ^^^^^^^^^^^^^^
+
+warning: type alias `IdSortie` is never used
+  --> agent/src/moniteurs_virtuels.rs:44:10
+   |
+44 | pub type IdSortie = u32;
+   |          ^^^^^^^^
+
+warning: trait `PiloteAffichageVirtuel` is never used
+  --> agent/src/moniteurs_virtuels.rs:52:11
+   |
+52 | pub trait PiloteAffichageVirtuel {
+   |           ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `Sorties` is never constructed
+  --> agent/src/moniteurs_virtuels.rs:61:12
+   |
+61 | pub struct Sorties<'p> {
+   |            ^^^^^^^
+
+warning: associated items `nouvelles`, `creer`, `nombre`, and `detruire` are never used
+  --> agent/src/moniteurs_virtuels.rs:67:12
+   |
+66 | impl<'p> Sorties<'p> {
+   | -------------------- associated items in this implementation
+67 |     pub fn nouvelles(pilote: &'p dyn PiloteAffichageVirtuel) -> Self {
+   |            ^^^^^^^^^
+...
+74 |     pub fn creer(&mut self, largeur: u32, hauteur: u32, hertz: u32) -> Result<IdSortie> {
+   |            ^^^^^
+...
+80 |     pub fn nombre(&self) -> usize {
+   |            ^^^^^^
+...
+97 |     pub fn detruire(&mut self, id: IdSortie) -> Result<()> {
+   |            ^^^^^^^^
+
+warning: function `facteur_echelle` is never used
+   --> agent/src/moniteurs_virtuels.rs:136:8
+    |
+136 | pub fn facteur_echelle(annonce: (u32, u32), texture: (u32, u32)) -> Option<(f64, f64)> {
+    |        ^^^^^^^^^^^^^^^
+
+warning: function `vers_texture` is never used
+   --> agent/src/moniteurs_virtuels.rs:152:8
+    |
+152 | pub fn vers_texture(region: Rect, sortie: Rect, facteur: (f64, f64)) -> Rect {
+    |        ^^^^^^^^^^^^
+
+warning: function `places_texture_par_sortie` is never used
+   --> agent/src/moniteurs_virtuels.rs:176:8
+    |
+176 | pub fn places_texture_par_sortie(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `PLAFOND_NUMEROS` is never used
+  --> agent/src/moniteurs_virtuels/numeros.rs:41:11
+   |
+41 | pub const PLAFOND_NUMEROS: u16 = 16;
+   |           ^^^^^^^^^^^^^^^
+
+warning: struct `Numeros` is never constructed
+  --> agent/src/moniteurs_virtuels/numeros.rs:45:12
+   |
+45 | pub struct Numeros {
+   |            ^^^^^^^
+
+warning: methods `attribuer`, `rendre`, and `en_vol` are never used
+  --> agent/src/moniteurs_virtuels/numeros.rs:58:12
+   |
+53 | impl Numeros {
+   | ------------ methods in this implementation
+...
+58 |     pub fn attribuer(&mut self) -> Result<u16> {
+   |            ^^^^^^^^^
+...
+82 |     pub fn rendre(&mut self, numero: u16) {
+   |            ^^^^^^
+...
+90 |     pub fn en_vol(&self) -> usize {
+   |            ^^^^^^
+
+warning: method `consecutif` is never used
+   --> agent/src/micro/dissimulation.rs:146:12
+    |
+117 | impl BudgetDissimulation {
+    | ------------------------ method in this implementation
+...
+146 |     pub fn consecutif(&self) -> Duration {
+    |            ^^^^^^^^^^
+
+warning: constant `FRAME_MS` is never used
+  --> agent/src/opus.rs:28:11
+   |
+28 | pub const FRAME_MS: u64 = 10;
+   |           ^^^^^^^^
+
+warning: constant `FRAME_SAMPLES` is never used
+  --> agent/src/opus.rs:31:11
+   |
+31 | pub const FRAME_SAMPLES: usize = (SAMPLE_RATE_HZ as u64 * FRAME_MS / 1000) as usize;
+   |           ^^^^^^^^^^^^^
+
+warning: constant `FRAME_INTERLEAVED` is never used
+  --> agent/src/opus.rs:35:11
+   |
+35 | pub const FRAME_INTERLEAVED: usize = FRAME_SAMPLES * CHANNELS;
+   |           ^^^^^^^^^^^^^^^^^
+
+warning: constant `MAX_PACKET_BYTES` is never used
+  --> agent/src/opus.rs:47:7
+   |
+47 | const MAX_PACKET_BYTES: usize = 4_000;
+   |       ^^^^^^^^^^^^^^^^
+
+warning: struct `OpusEncoder` is never constructed
+  --> agent/src/opus.rs:60:12
+   |
+60 | pub struct OpusEncoder {
+   |            ^^^^^^^^^^^
+
+warning: associated items `new`, `set_packet_loss_perc`, and `encode` are never used
+   --> agent/src/opus.rs:65:12
+    |
+ 64 | impl OpusEncoder {
+    | ---------------- associated items in this implementation
+ 65 |     pub fn new() -> Result<Self> {
+    |            ^^^
+...
+ 92 |     pub fn set_packet_loss_perc(&mut self, perc: i32) -> Result<()> {
+    |            ^^^^^^^^^^^^^^^^^^^^
+...
+104 |     pub fn encode(&mut self, pcm: &[i16]) -> Result<Vec<u8>> {
+    |            ^^^^^^
+
+warning: fields `emission` and `ordres` are never read
+  --> agent/src/plateforme.rs:91:5
+   |
+71 | pub struct Canal {
+   |            ----- fields in this struct
+...
+91 |     emission: mpsc::Sender<VersLaPlateforme>,
+   |     ^^^^^^^^
+...
+95 |     ordres: Option<mpsc::UnboundedReceiver<(String, String)>>,
+   |     ^^^^^^
+
+warning: struct `Emetteur` is never constructed
+   --> agent/src/plateforme.rs:100:12
+    |
+100 | pub struct Emetteur {
+    |            ^^^^^^^^
+
+warning: method `emettre` is never used
+   --> agent/src/plateforme.rs:119:12
+    |
+104 | impl Emetteur {
+    | ------------- method in this implementation
+...
+119 |     pub fn emettre(&self, message: VersLaPlateforme) {
+    |            ^^^^^^^
+
+warning: methods `ordres`, `emetteur`, and `veille_identite` are never used
+   --> agent/src/plateforme.rs:212:12
+    |
+193 | impl Canal {
+    | ---------- methods in this implementation
+...
+212 |     pub fn ordres(&mut self) -> Option<mpsc::UnboundedReceiver<(String, String)>> {
+    |            ^^^^^^
+...
+221 |     pub fn emetteur(&self) -> Emetteur {
+    |            ^^^^^^^^
+...
+229 |     pub fn veille_identite(&self) -> watch::Receiver<Option<Identite>> {
+    |            ^^^^^^^^^^^^^^^
+
+warning: enum `CheminRefuse` is never used
+  --> agent/src/pont/chemins.rs:50:10
+   |
+50 | pub enum CheminRefuse {
+   |          ^^^^^^^^^^^^
+
+warning: constant `NOMS_RESERVES` is never used
+  --> agent/src/pont/chemins.rs:70:7
+   |
+70 | const NOMS_RESERVES: &[&str] = &[
+   |       ^^^^^^^^^^^^^
+
+warning: function `normaliser_utf16` is never used
+  --> agent/src/pont/chemins.rs:80:8
+   |
+80 | pub fn normaliser_utf16(unites: &[u16]) -> Result<String, CheminRefuse> {
+   |        ^^^^^^^^^^^^^^^^
+
+warning: function `normaliser` is never used
+  --> agent/src/pont/chemins.rs:92:8
+   |
+92 | pub fn normaliser(brut: &str) -> Result<String, CheminRefuse> {
+   |        ^^^^^^^^^^
+
+warning: function `est_reserve` is never used
+   --> agent/src/pont/chemins.rs:136:4
+    |
+136 | fn est_reserve(composant: &str) -> bool {
+    |    ^^^^^^^^^^^
+
+warning: struct `Morceau` is never constructed
+  --> agent/src/pont/decoupe.rs:21:12
+   |
+21 | pub struct Morceau {
+   |            ^^^^^^^
+
+warning: function `decouper` is never used
+  --> agent/src/pont/decoupe.rs:38:8
+   |
+38 | pub fn decouper(position: u64, longueur: u64, max: usize) -> Vec<Morceau> {
+   |        ^^^^^^^^
+
+warning: function `filetime_depuis_ms` is never used
+  --> agent/src/pont/entetes.rs:52:8
+   |
+52 | pub fn filetime_depuis_ms(ms: i64) -> i64 {
+   |        ^^^^^^^^^^^^^^^^^^
+
+warning: struct `Entree` is never constructed
+  --> agent/src/pont/enumeration.rs:42:12
+   |
+42 | pub struct Entree {
+   |            ^^^^^^
+
+warning: function `preparer` is never used
+  --> agent/src/pont/enumeration.rs:59:8
+   |
+59 | pub fn preparer(
+   |        ^^^^^^^^
+
+warning: struct `Session` is never constructed
+  --> agent/src/pont/enumeration.rs:86:12
+   |
+86 | pub struct Session {
+   |            ^^^^^^^
+
+warning: associated items `nouvelle`, `chargee`, `poser`, `redemarrer`, `prochaine`, and `avancer` are never used
+   --> agent/src/pont/enumeration.rs:92:12
+    |
+ 91 | impl Session {
+    | ------------ associated items in this implementation
+ 92 |     pub fn nouvelle() -> Self {
+    |            ^^^^^^^^
+...
+101 |     pub fn chargee(&self) -> bool {
+    |            ^^^^^^^
+...
+110 |     pub fn poser(&mut self, entrees: Vec<Entree>) {
+    |            ^^^^^
+...
+122 |     pub fn redemarrer(&mut self) {
+    |            ^^^^^^^^^^
+...
+127 |     pub fn prochaine(&self) -> Option<&Entree> {
+    |            ^^^^^^^^^
+...
+134 |     pub fn avancer(&mut self) {
+    |            ^^^^^^^
+
+warning: constant `FACILITE_WIN32` is never used
+  --> agent/src/pont/erreurs.rs:20:7
+   |
+20 | const FACILITE_WIN32: u32 = 0x8007_0000;
+   |       ^^^^^^^^^^^^^^
+
+warning: constant `ERROR_FILE_NOT_FOUND` is never used
+  --> agent/src/pont/erreurs.rs:24:7
+   |
+24 | const ERROR_FILE_NOT_FOUND: u32 = 2; // Foundation/mod.rs:2355
+   |       ^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `ERROR_PATH_NOT_FOUND` is never used
+  --> agent/src/pont/erreurs.rs:25:7
+   |
+25 | const ERROR_PATH_NOT_FOUND: u32 = 3; // Foundation/mod.rs:3689
+   |       ^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `ERROR_ACCESS_DENIED` is never used
+  --> agent/src/pont/erreurs.rs:26:7
+   |
+26 | const ERROR_ACCESS_DENIED: u32 = 5; // Foundation/mod.rs:1143
+   |       ^^^^^^^^^^^^^^^^^^^
+
+warning: constant `ERROR_WRITE_PROTECT` is never used
+  --> agent/src/pont/erreurs.rs:27:7
+   |
+27 | const ERROR_WRITE_PROTECT: u32 = 19; // Foundation/mod.rs:4657
+   |       ^^^^^^^^^^^^^^^^^^^
+
+warning: constant `ERROR_GEN_FAILURE` is never used
+  --> agent/src/pont/erreurs.rs:28:7
+   |
+28 | const ERROR_GEN_FAILURE: u32 = 31; // Foundation/mod.rs:2435
+   |       ^^^^^^^^^^^^^^^^^
+
+warning: constant `ERROR_NOT_SUPPORTED` is never used
+  --> agent/src/pont/erreurs.rs:29:7
+   |
+29 | const ERROR_NOT_SUPPORTED: u32 = 50; // Foundation/mod.rs:3498
+   |       ^^^^^^^^^^^^^^^^^^^
+
+warning: constant `ERROR_FILE_EXISTS` is never used
+  --> agent/src/pont/erreurs.rs:30:7
+   |
+30 | const ERROR_FILE_EXISTS: u32 = 80; // Foundation/mod.rs:2347
+   |       ^^^^^^^^^^^^^^^^^
+
+warning: constant `ERROR_DISK_FULL` is never used
+  --> agent/src/pont/erreurs.rs:31:7
+   |
+31 | const ERROR_DISK_FULL: u32 = 112; // Foundation/mod.rs:1781
+   |       ^^^^^^^^^^^^^^^
+
+warning: constant `ERROR_SEM_TIMEOUT` is never used
+  --> agent/src/pont/erreurs.rs:32:7
+   |
+32 | const ERROR_SEM_TIMEOUT: u32 = 121; // Foundation/mod.rs:3943
+   |       ^^^^^^^^^^^^^^^^^
+
+warning: constant `ERROR_DIR_NOT_EMPTY` is never used
+  --> agent/src/pont/erreurs.rs:33:7
+   |
+33 | const ERROR_DIR_NOT_EMPTY: u32 = 145; // Foundation/mod.rs:1776
+   |       ^^^^^^^^^^^^^^^^^^^
+
+warning: constant `ERROR_OPERATION_ABORTED` is never used
+  --> agent/src/pont/erreurs.rs:34:7
+   |
+34 | const ERROR_OPERATION_ABORTED: u32 = 995; // Foundation/mod.rs:3632
+   |       ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `ERROR_IO_DEVICE` is never used
+  --> agent/src/pont/erreurs.rs:35:7
+   |
+35 | const ERROR_IO_DEVICE: u32 = 1117; // Foundation/mod.rs:3003
+   |       ^^^^^^^^^^^^^^^
+
+warning: constant `ERROR_IO_PENDING` is never used
+  --> agent/src/pont/erreurs.rs:36:7
+   |
+36 | const ERROR_IO_PENDING: u32 = 997; // Foundation/mod.rs:3005
+   |       ^^^^^^^^^^^^^^^^
+
+warning: constant `EN_COURS` is never used
+  --> agent/src/pont/erreurs.rs:52:11
+   |
+52 | pub const EN_COURS: i32 = (FACILITE_WIN32 | ERROR_IO_PENDING) as i32;
+   |           ^^^^^^^^
+
+warning: enum `Erreur` is never used
+  --> agent/src/pont/erreurs.rs:60:10
+   |
+60 | pub enum Erreur {
+   |          ^^^^^^
+
+warning: constant `NOMBRE` is never used
+   --> agent/src/pont/erreurs.rs:100:11
+    |
+100 | pub const NOMBRE: usize = 12;
+    |           ^^^^^^
+
+warning: associated constant `TOUTES` is never used
+   --> agent/src/pont/erreurs.rs:104:15
+    |
+102 | impl Erreur {
+    | ----------- associated constant in this implementation
+103 |     /// Toutes les variantes. Le balayage exhaustif des tests s'appuie dessus.
+104 |     pub const TOUTES: [Erreur; NOMBRE] = [
+    |               ^^^^^^
+
+warning: function `index` is never used
+   --> agent/src/pont/erreurs.rs:122:10
+    |
+122 | const fn index(e: Erreur) -> usize {
+    |          ^^^^^
+
+warning: function `hresult` is never used
+   --> agent/src/pont/erreurs.rs:144:8
+    |
+144 | pub fn hresult(e: Erreur) -> i32 {
+    |        ^^^^^^^
+
+warning: constant `PRE_CONVERT_TO_FULL` is never used
+  --> agent/src/pont/notifications.rs:64:11
+   |
+64 | pub const PRE_CONVERT_TO_FULL: i32 = 4096; // mod.rs:340
+   |           ^^^^^^^^^^^^^^^^^^^
+
+warning: constant `PRE_RENAME` is never used
+  --> agent/src/pont/notifications.rs:65:11
+   |
+65 | pub const PRE_RENAME: i32 = 32; // mod.rs:378
+   |           ^^^^^^^^^^
+
+warning: constant `PRE_DELETE` is never used
+  --> agent/src/pont/notifications.rs:66:11
+   |
+66 | pub const PRE_DELETE: i32 = 16; // mod.rs:377
+   |           ^^^^^^^^^^
+
+warning: constant `PRE_SET_HARDLINK` is never used
+  --> agent/src/pont/notifications.rs:67:11
+   |
+67 | pub const PRE_SET_HARDLINK: i32 = 64; // mod.rs:379
+   |           ^^^^^^^^^^^^^^^^
+
+warning: constant `HARDLINK_CREATED` is never used
+  --> agent/src/pont/notifications.rs:68:11
+   |
+68 | pub const HARDLINK_CREATED: i32 = 256; // mod.rs:342
+   |           ^^^^^^^^^^^^^^^^
+
+warning: constant `NEW_FILE_CREATED` is never used
+  --> agent/src/pont/notifications.rs:69:11
+   |
+69 | pub const NEW_FILE_CREATED: i32 = 4; // mod.rs:349
+   |           ^^^^^^^^^^^^^^^^
+
+warning: constant `NOTIFY_FILE_PRE_CONVERT_TO_FULL` is never used
+  --> agent/src/pont/notifications.rs:72:11
+   |
+72 | pub const NOTIFY_FILE_PRE_CONVERT_TO_FULL: u32 = 4096; // mod.rs:385
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `NOTIFY_PRE_RENAME` is never used
+  --> agent/src/pont/notifications.rs:73:11
+   |
+73 | pub const NOTIFY_PRE_RENAME: u32 = 32; // mod.rs:391
+   |           ^^^^^^^^^^^^^^^^^
+
+warning: constant `NOTIFY_PRE_DELETE` is never used
+  --> agent/src/pont/notifications.rs:74:11
+   |
+74 | pub const NOTIFY_PRE_DELETE: u32 = 16; // mod.rs:390
+   |           ^^^^^^^^^^^^^^^^^
+
+warning: constant `NOTIFY_PRE_SET_HARDLINK` is never used
+  --> agent/src/pont/notifications.rs:75:11
+   |
+75 | pub const NOTIFY_PRE_SET_HARDLINK: u32 = 64; // mod.rs:392
+   |           ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `NOTIFY_NEW_FILE_CREATED` is never used
+  --> agent/src/pont/notifications.rs:76:11
+   |
+76 | pub const NOTIFY_NEW_FILE_CREATED: u32 = 4; // mod.rs:388
+   |           ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `MASQUE` is never used
+  --> agent/src/pont/notifications.rs:88:11
+   |
+88 | pub const MASQUE: u32 = NOTIFY_FILE_PRE_CONVERT_TO_FULL
+   |           ^^^^^^
+
+warning: enum `Reponse` is never used
+  --> agent/src/pont/notifications.rs:96:10
+   |
+96 | pub enum Reponse {
+   |          ^^^^^^^
+
+warning: function `decider` is never used
+   --> agent/src/pont/notifications.rs:112:8
+    |
+112 | pub fn decider(code: i32) -> Reponse {
+    |        ^^^^^^^
+
+warning: constant `NOMBRE` is never used
+  --> agent/src/pont/resolution.rs:27:11
+   |
+27 | pub const NOMBRE: usize = 13;
+   |           ^^^^^^
+
+warning: constant `NOMS` is never used
+  --> agent/src/pont/resolution.rs:37:11
+   |
+37 | pub const NOMS: [&str; NOMBRE] = [
+   |           ^^^^
+
+warning: struct `Adresses` is never constructed
+  --> agent/src/pont/resolution.rs:68:12
+   |
+68 | pub struct Adresses {
+   |            ^^^^^^^^
+
+warning: struct `EntreeManquante` is never constructed
+  --> agent/src/pont/resolution.rs:91:12
+   |
+91 | pub struct EntreeManquante {
+   |            ^^^^^^^^^^^^^^^
+
+warning: function `resoudre` is never used
+   --> agent/src/pont/resolution.rs:115:8
+    |
+115 | pub fn resoudre(
+    |        ^^^^^^^^
+
+warning: constant `DELAI_ATTRIBUTS` is never used
+  --> agent/src/pont/table.rs:38:11
+   |
+38 | pub const DELAI_ATTRIBUTS: Duration = Duration::from_secs(2);
+   |           ^^^^^^^^^^^^^^^
+
+warning: constant `DELAI_LIRE` is never used
+  --> agent/src/pont/table.rs:39:11
+   |
+39 | pub const DELAI_LIRE: Duration = Duration::from_secs(5);
+   |           ^^^^^^^^^^
+
+warning: constant `DELAI_LISTER` is never used
+  --> agent/src/pont/table.rs:40:11
+   |
+40 | pub const DELAI_LISTER: Duration = Duration::from_secs(20);
+   |           ^^^^^^^^^^^^
+
+warning: enum `Attendue` is never used
+  --> agent/src/pont/table.rs:45:10
+   |
+45 | pub enum Attendue {
+   |          ^^^^^^^^
+
+warning: struct `EnVol` is never constructed
+  --> agent/src/pont/table.rs:66:8
+   |
+66 | struct EnVol {
+   |        ^^^^^
+
+warning: struct `Table` is never constructed
+  --> agent/src/pont/table.rs:74:12
+   |
+74 | pub struct Table {
+   |            ^^^^^
+
+warning: multiple associated items are never used
+   --> agent/src/pont/table.rs:82:12
+    |
+ 81 | impl Table {
+    | ---------- associated items in this implementation
+ 82 |     pub fn nouvelle() -> Self {
+    |            ^^^^^^^^
+...
+ 98 |     pub fn inscrire(&mut self, command_id: i32, quoi: Attendue, echeance: Instant) -> u32 {
+    |            ^^^^^^^^
+...
+110 |     fn corrélation_libre(&mut self) -> u32 {
+    |        ^^^^^^^^^^^^^^^^^
+...
+122 |     pub fn resoudre(&mut self, correlation: u32) -> Option<(i32, Attendue)> {
+    |            ^^^^^^^^
+...
+127 |     pub fn annuler(&mut self, command_id: i32) -> Option<u32> {
+    |            ^^^^^^^
+...
+142 |     pub fn expirees(&mut self, maintenant: Instant) -> Vec<(i32, u32)> {
+    |            ^^^^^^^^
+...
+158 |     pub fn vider(&mut self) -> Vec<(i32, u32)> {
+    |            ^^^^^
+...
+168 |     pub fn en_vol(&self) -> usize {
+    |            ^^^^^^
+
+warning: constant `LABEL_FICHIERS` is never used
+  --> agent/src/pont/transport.rs:27:11
+   |
+27 | pub const LABEL_FICHIERS: &str = "fichiers";
+   |           ^^^^^^^^^^^^^^
+
+warning: constant `TAMPON_UDP` is never used
+  --> agent/src/pont/transport.rs:32:7
+   |
+32 | const TAMPON_UDP: usize = 2048;
+   |       ^^^^^^^^^^
+
+warning: constant `ATTENTE_MAX` is never used
+  --> agent/src/pont/transport.rs:38:7
+   |
+38 | const ATTENTE_MAX: Duration = Duration::from_millis(20);
+   |       ^^^^^^^^^^^
+
+warning: enum `VersNavigateur` is never used
+  --> agent/src/pont/transport.rs:42:10
+   |
+42 | pub enum VersNavigateur {
+   |          ^^^^^^^^^^^^^^
+
+warning: enum `DuNavigateur` is never used
+  --> agent/src/pont/transport.rs:48:10
+   |
+48 | pub enum DuNavigateur {
+   |          ^^^^^^^^^^^^
+
+warning: function `construire_rtc_donnees` is never used
+  --> agent/src/pont/transport.rs:71:8
+   |
+71 | pub fn construire_rtc_donnees(local_ip: IpAddr) -> Result<(UdpSocket, Rtc)> {
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `tourner` is never used
+  --> agent/src/pont/transport.rs:97:8
+   |
+97 | pub fn tourner(
+   |        ^^^^^^^
+
+warning: function `traiter` is never used
+   --> agent/src/pont/transport.rs:175:4
+    |
+175 | fn traiter(
+    |    ^^^^^^^
+
+warning: function `emettre` is never used
+   --> agent/src/pont/transport.rs:268:4
+    |
+268 | fn emettre(rtc: &mut Rtc, canal: Option<ChannelId>, correlation: u32, trame: &[u8]) {
+    |    ^^^^^^^
+
+warning: enum `RebuildOutcome` is never used
+  --> agent/src/rebuild.rs:25:10
+   |
+25 | pub enum RebuildOutcome<T, C> {
+   |          ^^^^^^^^^^^^^^
+
+warning: function `rebuild_or_recover` is never used
+  --> agent/src/rebuild.rs:49:8
+   |
+49 | pub fn rebuild_or_recover<T, C>(
+   |        ^^^^^^^^^^^^^^^^^^
+
+warning: struct `SortieDxgi` is never constructed
+  --> agent/src/sortie_dxgi.rs:16:12
+   |
+16 | pub struct SortieDxgi {
+   |            ^^^^^^^^^^
+
+warning: function `magnitude` is never used
+  --> agent/src/spectre.rs:28:8
+   |
+28 | pub fn magnitude(echantillons: &[f32], frequence_hz: f32, taux_hz: f32) -> f32 {
+   |        ^^^^^^^^^
+
+warning: function `mono` is never used
+  --> agent/src/spectre.rs:48:8
+   |
+48 | pub fn mono(entrelace: &[i16], canaux: usize) -> Vec<f32> {
+   |        ^^^^
+
+warning: struct `Dominante` is never constructed
+  --> agent/src/spectre.rs:63:12
+   |
+63 | pub struct Dominante {
+   |            ^^^^^^^^^
+
+warning: function `dominante` is never used
+  --> agent/src/spectre.rs:79:8
+   |
+79 | pub fn dominante(
+   |        ^^^^^^^^^
+
+warning: function `verdict_persistance` is never used
+  --> agent/src/survie_verdict.rs:40:15
+   |
+40 | pub(crate) fn verdict_persistance(
+   |               ^^^^^^^^^^^^^^^^^^^
+
+warning: struct `Consigne` is never constructed
+  --> agent/src/superviseur/enfants.rs:16:12
+   |
+16 | pub struct Consigne {
+   |            ^^^^^^^^
+
+warning: trait `Lanceur` is never used
+  --> agent/src/superviseur/enfants.rs:33:11
+   |
+33 | pub trait Lanceur {
+   |           ^^^^^^^
+
+warning: struct `Enfants` is never constructed
+  --> agent/src/superviseur/enfants.rs:56:12
+   |
+56 | pub struct Enfants<'l> {
+   |            ^^^^^^^
+
+warning: associated items `nouveaux`, `lancer`, `tuer`, and `morts` are never used
+   --> agent/src/superviseur/enfants.rs:62:12
+    |
+ 61 | impl<'l> Enfants<'l> {
+    | -------------------- associated items in this implementation
+ 62 |     pub fn nouveaux(lanceur: &'l dyn Lanceur) -> Self {
+    |            ^^^^^^^^
+...
+ 66 |     pub fn lancer(&mut self, consigne: Consigne) -> Result<()> {
+    |            ^^^^^^
+...
+ 91 |     pub fn tuer(&mut self, session: &IdSession) {
+    |            ^^^^
+...
+104 |     pub fn morts(&mut self) -> Vec<IdSession> {
+    |            ^^^^^
+
+warning: struct `DescriptionFenetre` is never constructed
+  --> agent/src/superviseur/fenetres.rs:11:12
+   |
+11 | pub struct DescriptionFenetre {
+   |            ^^^^^^^^^^^^^^^^^^
+
+warning: function `merite_une_fenetre` is never used
+  --> agent/src/superviseur/fenetres.rs:32:8
+   |
+32 | pub fn merite_une_fenetre(d: &DescriptionFenetre) -> bool {
+   |        ^^^^^^^^^^^^^^^^^^
+
+warning: constant `TOLERANCE_PX` is never used
+  --> agent/src/superviseur/placement.rs:36:7
+   |
+36 | const TOLERANCE_PX: i64 = 4;
+   |       ^^^^^^^^^^^^
+
+warning: function `sortie_assez_grande` is never used
+  --> agent/src/superviseur/placement.rs:56:8
+   |
+56 | pub fn sortie_assez_grande(sortie: (u32, u32), demandee: (u32, u32)) -> bool {
+   |        ^^^^^^^^^^^^^^^^^^^
+
+warning: function `taille_retenue` is never used
+  --> agent/src/superviseur/placement.rs:70:8
+   |
+70 | pub fn taille_retenue(demandee: (u32, u32), sortie: (u32, u32)) -> (u32, u32) {
+   |        ^^^^^^^^^^^^^^
+
+warning: function `sortie_pour_viewport` is never used
+  --> agent/src/superviseur/placement.rs:90:8
+   |
+90 | pub fn sortie_pour_viewport(
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `doit_etre_replacee` is never used
+   --> agent/src/superviseur/placement.rs:112:8
+    |
+112 | pub fn doit_etre_replacee(actuel: &Rect, cible: &Rect) -> bool {
+    |        ^^^^^^^^^^^^^^^^^^
+
+warning: constant `NOM_SESSION_DE_CONTROLE` is never used
+  --> agent/src/superviseur/protocole.rs:32:11
+   |
+32 | pub const NOM_SESSION_DE_CONTROLE: &str = "bureau";
+   |           ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `SEPARATEUR_PREFIXE` is never used
+  --> agent/src/superviseur/protocole.rs:40:11
+   |
+40 | pub const SEPARATEUR_PREFIXE: char = ':';
+   |           ^^^^^^^^^^^^^^^^^^
+
+warning: function `composer` is never used
+  --> agent/src/superviseur/protocole.rs:48:8
+   |
+48 | pub fn composer(prefixe: &str, nom: &str) -> String {
+   |        ^^^^^^^^
+
+warning: function `session_de_controle` is never used
+  --> agent/src/superviseur/protocole.rs:56:8
+   |
+56 | pub fn session_de_controle(prefixe: &str) -> String {
+   |        ^^^^^^^^^^^^^^^^^^^
+
+warning: constant `NOM_SESSION_DU_PONT` is never used
+  --> agent/src/superviseur/protocole.rs:79:11
+   |
+79 | pub const NOM_SESSION_DU_PONT: &str = "fichiers";
+   |           ^^^^^^^^^^^^^^^^^^^
+
+warning: function `session_du_pont` is never used
+  --> agent/src/superviseur/protocole.rs:82:8
+   |
+82 | pub fn session_du_pont(prefixe: &str) -> String {
+   |        ^^^^^^^^^^^^^^^
+
+warning: enum `VersLaShell` is never used
+  --> agent/src/superviseur/protocole.rs:88:10
+   |
+88 | pub enum VersLaShell {
+   |          ^^^^^^^^^^^
+
+warning: enum `DepuisLaShell` is never used
+  --> agent/src/superviseur/protocole.rs:99:10
+   |
+99 | pub enum DepuisLaShell {
+   |          ^^^^^^^^^^^^^
+
+warning: struct `IdFenetre` is never constructed
+  --> agent/src/superviseur/table.rs:15:12
+   |
+15 | pub struct IdFenetre(pub u64);
+   |            ^^^^^^^^^
+
+warning: struct `IdSession` is never constructed
+  --> agent/src/superviseur/table.rs:21:12
+   |
+21 | pub struct IdSession(pub String);
+   |            ^^^^^^^^^
+
+warning: enum `Etat` is never used
+  --> agent/src/superviseur/table.rs:24:10
+   |
+24 | pub enum Etat {
+   |          ^^^^
+
+warning: constant `RELANCES_MAX` is never used
+  --> agent/src/superviseur/table.rs:70:11
+   |
+70 | pub const RELANCES_MAX: u32 = 3;
+   |           ^^^^^^^^^^^^
+
+warning: constant `DELAI_ATTENTE_VIEWPORT_MAX` is never used
+  --> agent/src/superviseur/table.rs:97:11
+   |
+97 | pub const DELAI_ATTENTE_VIEWPORT_MAX: std::time::Duration = std::time::Duration::from_secs(30);
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `Entree` is never constructed
+   --> agent/src/superviseur/table.rs:106:8
+    |
+106 | struct Entree {
+    |        ^^^^^^
+
+warning: struct `Table` is never constructed
+   --> agent/src/superviseur/table.rs:157:12
+    |
+157 | pub struct Table {
+    |            ^^^^^
+
+warning: function `rendre_la_sortie_de` is never used
+   --> agent/src/superviseur/table.rs:188:4
+    |
+188 | fn rendre_la_sortie_de(entree: &Entree) -> Option<Effet> {
+    |    ^^^^^^^^^^^^^^^^^^^
+
+warning: multiple associated items are never used
+   --> agent/src/superviseur/table.rs:208:12
+    |
+199 | impl Table {
+    | ---------- associated items in this implementation
+...
+208 |     pub fn nouvelle(capacite: usize) -> Self {
+    |            ^^^^^^^^
+...
+213 |     pub fn avec_prefixe(capacite: usize, prefixe: String) -> Self {
+    |            ^^^^^^^^^^^^
+...
+228 |     fn prochaine_session(&mut self) -> IdSession {
+    |        ^^^^^^^^^^^^^^^^^
+...
+236 |     pub fn etat(&self, session: &IdSession) -> Option<&Etat> {
+    |            ^^^^
+...
+245 |     pub fn fenetre_de(&self, session: &IdSession) -> Option<IdFenetre> {
+    |            ^^^^^^^^^^
+...
+249 |     pub fn fenetre_apparue(&mut self, fenetre: IdFenetre, titre: String) -> Vec<Effet> {
+    |            ^^^^^^^^^^^^^^^
+...
+296 |     pub fn nom_sortie_de(&self, session: &IdSession) -> Option<&str> {
+    |            ^^^^^^^^^^^^^
+...
+301 |     pub fn taille_sortie_de(&self, session: &IdSession) -> Option<(u32, u32)> {
+    |            ^^^^^^^^^^^^^^^^
+...
+324 |     pub fn rafraichir_taille_sortie(&mut self, session: &IdSession, taille: (u32, u32)) {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+337 |     pub fn sessions_vivantes(&self) -> Vec<IdSession> {
+    |            ^^^^^^^^^^^^^^^^^
+...
+345 |     pub fn fenetre_disparue(&mut self, fenetre: IdFenetre) -> Vec<Effet> {
+    |            ^^^^^^^^^^^^^^^^
+...
+367 |     pub fn enfant_mort(&mut self, session: &IdSession) -> Vec<Effet> {
+    |            ^^^^^^^^^^^
+
+warning: enum `Effet` is never used
+  --> agent/src/superviseur/table/effets.rs:16:10
+   |
+16 | pub enum Effet {
+   |          ^^^^^
+
+warning: methods `viewport_recu` and `sortie_creee` are never used
+  --> agent/src/superviseur/table/attribution.rs:15:12
+   |
+11 | impl Table {
+   | ---------- methods in this implementation
+...
+15 |     pub fn viewport_recu(&mut self, session: &IdSession, largeur: u32, hauteur: u32) -> Vec<Effet> {
+   |            ^^^^^^^^^^^^^
+...
+95 |     pub fn sortie_creee(
+   |            ^^^^^^^^^^^^
+
+warning: method `relancer_les_orphelines` is never used
+  --> agent/src/superviseur/table/orphelines.rs:36:12
+   |
+16 | impl Table {
+   | ---------- method in this implementation
+...
+36 |     pub fn relancer_les_orphelines(&mut self, maintenant: std::time::Instant) -> Vec<Effet> {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: methods `set_audio_source`, `set_audio_porteuse`, and `set_audio_reconstructeur` are never used
+   --> agent/src/transport/piste_audio.rs:35:12
+    |
+ 32 | impl Session {
+    | ------------ methods in this implementation
+...
+ 35 |     pub fn set_audio_source(&mut self, source: Box<dyn AudioSource + Send>) {
+    |            ^^^^^^^^^^^^^^^^
+...
+248 |     pub fn set_audio_porteuse(&mut self, porteuse: bool) {
+    |            ^^^^^^^^^^^^^^^^^^
+...
+253 |     pub fn set_audio_reconstructeur(&mut self, r: crate::audio::Reconstructeur) {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: enum `ModeCapture` is never used
+  --> agent/src/windows_source/sortie.rs:41:10
+   |
+41 | pub enum ModeCapture {
+   |          ^^^^^^^^^^^
+
+warning: method `redimensionne_la_fenetre` is never used
+  --> agent/src/windows_source/sortie.rs:82:12
+   |
+60 | impl ModeCapture {
+   | ---------------- method in this implementation
+...
+82 |     pub fn redimensionne_la_fenetre(self) -> bool {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `TAILLE_MAX_SORTIE` is never used
+  --> agent/src/windows_source/sortie.rs:95:11
+   |
+95 | pub const TAILLE_MAX_SORTIE: (u32, u32) = (1920, 1080);
+   |           ^^^^^^^^^^^^^^^^^
+
+warning: function `borner_a_la_taille_max` is never used
+   --> agent/src/windows_source/sortie.rs:129:8
+    |
+129 | pub fn borner_a_la_taille_max((l, h): (u32, u32)) -> (u32, u32) {
+    |        ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `region_de_sortie` is never used
+   --> agent/src/windows_source/sortie.rs:157:8
+    |
+157 | pub fn region_de_sortie(largeur: u32, hauteur: u32) -> Option<Rect> {
+    |        ^^^^^^^^^^^^^^^^
+
+warning: constant `ACCES_PERDU` is never used
+  --> agent/src/capture/reprise.rs:18:11
+   |
+18 | pub const ACCES_PERDU: i32 = 0x887A0026u32 as i32;
+   |           ^^^^^^^^^^^
+
+warning: constant `NON_DISPONIBLE` is never used
+  --> agent/src/capture/reprise.rs:26:11
+   |
+26 | pub const NON_DISPONIBLE: i32 = 0x887A0022u32 as i32;
+   |           ^^^^^^^^^^^^^^
+
+warning: constant `DEVICE_REMOVED` is never used
+  --> agent/src/capture/reprise.rs:30:11
+   |
+30 | pub const DEVICE_REMOVED: i32 = 0x887A0005u32 as i32;
+   |           ^^^^^^^^^^^^^^
+
+warning: constant `ATTENTE_EXPIREE` is never used
+  --> agent/src/capture/reprise.rs:35:11
+   |
+35 | pub const ATTENTE_EXPIREE: i32 = 0x887A0027u32 as i32;
+   |           ^^^^^^^^^^^^^^^
+
+warning: constant `DUREE_FENETRE_REPRISE` is never used
+  --> agent/src/capture/reprise.rs:50:11
+   |
+50 | pub const DUREE_FENETRE_REPRISE: std::time::Duration = std::time::Duration::from_secs(8);
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `PAS_REPRISE` is never used
+  --> agent/src/capture/reprise.rs:61:11
+   |
+61 | pub const PAS_REPRISE: std::time::Duration = std::time::Duration::from_millis(150);
+   |           ^^^^^^^^^^^
+
+warning: constant `DUREE_FENETRE_OUVERTURE` is never used
+  --> agent/src/capture/reprise.rs:72:11
+   |
+72 | pub const DUREE_FENETRE_OUVERTURE: std::time::Duration = std::time::Duration::from_secs(3);
+   |           ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `est_acces_perdu` is never used
+  --> agent/src/capture/reprise.rs:74:8
+   |
+74 | pub fn est_acces_perdu(code: i32) -> bool {
+   |        ^^^^^^^^^^^^^^^
+
+warning: function `est_ouverture_retentable` is never used
+  --> agent/src/capture/reprise.rs:79:8
+   |
+79 | pub fn est_ouverture_retentable(code: i32) -> bool {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: enum `Tentative` is never used
+  --> agent/src/capture/reprise.rs:85:10
+   |
+85 | pub enum Tentative {
+   |          ^^^^^^^^^
+
+warning: struct `FenetreDeReprise` is never constructed
+   --> agent/src/capture/reprise.rs:108:12
+    |
+108 | pub struct FenetreDeReprise {
+    |            ^^^^^^^^^^^^^^^^
+
+warning: associated items `nouvelle`, `tenter`, `succes`, and `tentatives` are never used
+   --> agent/src/capture/reprise.rs:115:12
+    |
+114 | impl FenetreDeReprise {
+    | --------------------- associated items in this implementation
+115 |     pub fn nouvelle() -> Self {
+    |            ^^^^^^^^
+...
+119 |     pub fn tenter(&mut self, maintenant: std::time::Instant) -> Tentative {
+    |            ^^^^^^
+...
+136 |     pub fn succes(&mut self) {
+    |            ^^^^^^
+...
+142 |     pub fn tentatives(&self) -> u32 {
+    |            ^^^^^^^^^^
+
+warning: struct `Telemetrie` is never constructed
+  --> agent/src/windows_source/telemetrie.rs:17:12
+   |
+17 | pub struct Telemetrie {
+   |            ^^^^^^^^^^
+
+warning: methods `tick`, `capturee`, `produite`, and `lire` are never used
+  --> agent/src/windows_source/telemetrie.rs:25:12
+   |
+23 | impl Telemetrie {
+   | --------------- methods in this implementation
+24 |     /// Un tour de boucle de capture.
+25 |     pub fn tick(&self) {
+   |            ^^^^
+...
+30 |     pub fn capturee(&self) {
+   |            ^^^^^^^^
+...
+35 |     pub fn produite(&self) {
+   |            ^^^^^^^^
+...
+40 |     pub fn lire(&self) -> (u64, u64, u64) {
+   |            ^^^^
+
+warning: struct `Peripherique` is never constructed
+  --> agent/src/wasapi/peripherique.rs:64:12
+   |
+64 | pub struct Peripherique {
+   |            ^^^^^^^^^^^^
+
+warning: enum `Critere` is never used
+  --> agent/src/wasapi/peripherique.rs:75:10
+   |
+75 | pub enum Critere {
+   |          ^^^^^^^
+
+warning: method `libelle` is never used
+  --> agent/src/wasapi/peripherique.rs:86:12
+   |
+84 | impl Critere {
+   | ------------ method in this implementation
+85 |     /// Libellé court pour le journal.
+86 |     pub fn libelle(self) -> &'static str {
+   |            ^^^^^^^
+
+warning: enum `Choix` is never used
+  --> agent/src/wasapi/peripherique.rs:99:10
+   |
+99 | pub enum Choix<'a> {
+   |          ^^^^^
+
+warning: method `est_repli` is never used
+   --> agent/src/wasapi/peripherique.rs:125:12
+    |
+122 | impl Choix<'_> {
+    | -------------- method in this implementation
+...
+125 |     pub fn est_repli(&self) -> bool {
+    |            ^^^^^^^^^
+
+warning: function `normaliser` is never used
+   --> agent/src/wasapi/peripherique.rs:133:4
+    |
+133 | fn normaliser(texte: &str) -> String {
+    |    ^^^^^^^^^^
+
+warning: function `choisir` is never used
+   --> agent/src/wasapi/peripherique.rs:145:8
+    |
+145 | pub fn choisir<'a>(disponibles: &'a [Peripherique], demande: Option<&str>) -> Choix<'a> {
+    |        ^^^^^^^
+
+warning: function `correspond` is never used
+   --> agent/src/wasapi/peripherique.rs:180:4
+    |
+180 | fn correspond(peripherique: &Peripherique, cible: &str, critere: Critere) -> bool {
+    |    ^^^^^^^^^^
+
+warning: function `inventaire` is never used
+   --> agent/src/wasapi/peripherique.rs:191:8
+    |
+191 | pub fn inventaire(disponibles: &[Peripherique]) -> String {
+    |        ^^^^^^^^^^
+
+warning: this `map_or` can be simplified
+   --> agent/src/capteur/vivier.rs:225:24
+    |
+225 |                       && e.dernier_echec.map_or(true, |t| {
+    |  ________________________^
+226 | |                         maintenant.saturating_duration_since(t) >= REPIT_APRES_ECHEC
+227 | |                     })
+    | |______________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#unnecessary_map_or
+    = note: `#[warn(clippy::unnecessary_map_or)]` on by default
+help: use `is_none_or` instead
+    |
+225 -                     && e.dernier_echec.map_or(true, |t| {
+225 +                     && e.dernier_echec.is_none_or(|t| {
+    |
+
+warning: manual implementation of `.is_multiple_of()`
+  --> agent/src/mire.rs:48:19
+   |
+48 |     let vert = if trame % 2 == 0 { VERT_PAIR } else { VERT_IMPAIR };
+   |                   ^^^^^^^^^^^^^^ help: replace with: `trame.is_multiple_of(2)`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#manual_is_multiple_of
+   = note: `#[warn(clippy::manual_is_multiple_of)]` on by default
+
+warning: redundant closure
+   --> agent/src/transport/piste_audio.rs:330:48
+    |
+330 |         let tentative = injection::intercepter(|| reconstructeur());
+    |                                                ^^^^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `reconstructeur`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_closure
+    = note: `#[warn(clippy::redundant_closure)]` on by default
+
+warning: `agent` (bin "agent") generated 289 warnings (run `cargo clippy --fix --bin "agent" -p agent -- ` to apply 5 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.27s
+
+==> client : npm test
+
+> @guacamole/client@0.1.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/client
+
+ ✓ src/micro.test.ts (17 tests) 27ms
+ ✓ src/pointer.test.ts (12 tests) 25ms
+stderr | src/fullscreen.test.ts > verrouillage du clavier > avale un rejet de lock sans le propager
+Keyboard Lock refusé Error: refusé
+    at /home/mallanic/Projects/Guacamole/client/src/fullscreen.test.ts:32:48
+    at file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:146:14
+    at file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:533:11
+    at runWithTimeout (file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:39:7)
+    at runTest (file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:1056:17)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at runSuite (file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests (file:///home/mallanic/Projects/Guacamole/client/node_modules/@vitest/runner/dist/index.js:1271:3)
+
+ ✓ src/fullscreen.test.ts (16 tests) 37ms
+ ✓ src/gamepad.test.ts (16 tests) 25ms
+ ✓ src/webrtc.session.test.ts (8 tests) 19ms
+ ✓ src/design/primitives.test.ts (9 tests) 14ms
+ ✓ src/design/tokens.test.ts (17 tests) 77ms
+ ✓ src/shell.test.ts (17 tests) 30ms
+ ✓ src/design/selecteur-theme.test.ts (8 tests) 18ms
+ ✓ src/design/theme.test.ts (10 tests) 18ms
+ ✓ src/fichiers/adaptateur.test.ts (10 tests) 29ms
+ ✓ src/audio.test.ts (11 tests) 27ms
+ ✓ src/fichiers/protocole.test.ts (9 tests) 23ms
+ ✓ src/design/classes.test.ts (15 tests) 17ms
+ ✓ src/jeton.test.ts (10 tests) 18ms
+ ✓ src/prefixe.test.ts (12 tests) 23ms
+ ✓ src/status.test.ts (11 tests) 17ms
+stderr | src/webrtc.test.ts > waitForAnswer face à des messages malformés > un message brut `null` n'explose pas le gestionnaire et la réponse valide suivante est toujours acceptée
+message de signaling illisible ou de forme inattendue, ignoré
+
+stderr | src/webrtc.test.ts > waitForAnswer face à des messages malformés > les charges utiles non-objet successives (nombre, chaîne, tableau) sont toutes ignorées
+message de signaling illisible ou de forme inattendue, ignoré
+message de signaling illisible ou de forme inattendue, ignoré
+message de signaling illisible ou de forme inattendue, ignoré
+
+ ✓ src/webrtc.test.ts (8 tests) 19ms
+ ✓ src/design/contraste.test.ts (8 tests) 53ms
+ ✓ src/design/reprise.test.ts (6 tests) 27ms
+ ✓ src/visibilite.test.ts (6 tests) 15ms
+ ✓ src/stats.test.ts (5 tests) 14ms
+ ✓ src/resize.test.ts (5 tests) 26ms
+ ✓ src/scancodes.test.ts (4 tests) 13ms
+ ✓ src/lien.test.ts (4 tests) 8ms
+ ✓ src/viewport.test.ts (4 tests) 22ms
+
+ Test Files  26 passed (26)
+      Tests  258 passed (258)
+   Start at  07:01:34
+   Duration  3.09s (transform 1.81s, setup 0ms, collect 3.26s, tests 640ms, environment 10ms, prepare 4.79s)
+
+
+==> client : npm run typecheck
+
+> @guacamole/client@0.1.0 typecheck
+> tsc --noEmit
+
+
+==> client : npm run design:verifier
+
+> @guacamole/client@0.1.0 design:verifier
+> node outils/verifier-design.mjs
+
+==> npm run build (sans quoi §7.3 et §7.7 jugeraient le build d’avant)
+
+> @guacamole/client@0.1.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 46 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                           3.66 kB │ gzip: 1.88 kB
+dist/connexion.html                       5.41 kB │ gzip: 2.24 kB
+dist/shell.html                           6.47 kB │ gzip: 2.94 kB
+dist/primitives.html                     12.17 kB │ gzip: 4.41 kB
+dist/design.html                         12.67 kB │ gzip: 4.35 kB
+dist/assets/connexion-BM9rYjiV.css        0.55 kB │ gzip: 0.28 kB
+dist/assets/shell-C87uhTzH.css            1.06 kB │ gzip: 0.44 kB
+dist/assets/main-CXZaIG5L.css             1.49 kB │ gzip: 0.47 kB
+dist/assets/socle-ZRS7erzW.css            2.18 kB │ gzip: 0.93 kB
+dist/assets/primitives-D5YB3zNP.css       2.73 kB │ gzip: 0.64 kB
+dist/assets/primitives-XWhMZEAM.js        0.25 kB │ gzip: 0.21 kB
+dist/assets/jeton-kqOyiZdD.js             0.26 kB │ gzip: 0.18 kB
+dist/assets/prefixe-iK9obSCN.js           0.62 kB │ gzip: 0.40 kB
+dist/assets/socle-Dd8_6xY7.js             0.71 kB │ gzip: 0.40 kB
+dist/assets/selecteur-theme-sHUmq49u.js   1.05 kB │ gzip: 0.55 kB
+dist/assets/connexion-B-nENsTV.js         2.03 kB │ gzip: 1.00 kB
+dist/assets/webrtc-DpgdNYJG.js            3.71 kB │ gzip: 1.65 kB
+dist/assets/shell-6Ol5ktB-.js            10.65 kB │ gzip: 4.27 kB
+dist/assets/design-BGqdSC5V.js           16.02 kB │ gzip: 6.57 kB
+dist/assets/main-D_ugls83.js             19.77 kB │ gzip: 6.94 kB
+✓ built in 952ms
+
+==> §7.4  les trois blocs de thème ne divergent pas
+fichier : client/src/design/tokens.css
+  bloc racine : 48 token(s)
+  bloc media-clair : 14 token(s)
+  bloc attribut-clair : 14 token(s)
+portée : ① clair ≡ clair, ② clair ⊆ racine, ③ couleurs de racine ⊆ clair sauf 6 hors-thème nommés
+écarts : 0
+
+==> §7.1  les contrastes tiennent les seuils WCAG
+paires vérifiées : 52
+échecs : 0
+minimum global : 3.16
+
+==> §7.2  aucune couleur littérale hors de tokens.css
+fichiers balayés : 64
+couleurs littérales : 0
+
+==> §7.6  aucun token orphelin, aucun var() non déclaré
+source        : client/src/design/tokens.css — 48 token(s) déclaré(s)
+périmètre     : 13 fichier(s) — 47 token(s) employé(s)
+  balayés : client/src/connexion.css, client/src/design/base.css, client/src/design/primitives/bouton.css, client/src/design/primitives/champ.css, client/src/design/primitives/message.css, client/src/design/primitives/surface.css, client/src/design/primitives.css, client/src/design/socle.css, client/src/shell.css, client/src/style.css, client/index.html, client/shell.html, client/connexion.html
+  exclu : client/design.html — la galerie rend tous les tokens par construction ; l’inclure rendrait l’inclusion « déclaré ⊆ employé » vraie pour toujours
+  exclu : client/primitives.html — une page de démonstration emploie des tokens par construction, dans sa propre mise en page ; l’inclure ferait sortir de la liste d’attente des tokens que le PRODUIT n’appelle pas
+
+inclusion ① — tout var(--…) est déclaré : 0 écart(s)
+inclusion ② — tout token déclaré a un appelant : 1 orphelin(s), dont 1 en attente déclarée
+
+inclusion ③ — aucune entrée ne nomme un sous-bloc clos (S1, S2, S3) : 0 écart(s)
+
+total : 0 écart(s)
+les trois assertions tiennent ; 1 token(s) restent en attente d'appelant, nommés dans tokens-orphelins/attente.mjs
+
+==> §7.9  toute classe employée est déclarée, et une primitive atteint le produit
+déclarées : 52 classe(s)
+employées : 51 classe(s)
+familles de primitives : bouton, champ, message, surface
+
+① toute classe employée est déclarée : 0 écart(s)
+
+② A — les primitives atteignent le PRODUIT :
+  client/index.html : aucune famille
+  client/shell.html : bouton, message, surface
+  client/connexion.html : bouton, champ, message, surface
+
+③ B — chaque famille est rendue par client/primitives.html :
+  bouton : 4 classe(s) employée(s) sur 4 déclarée(s)
+  champ : 6 classe(s) employée(s) sur 6 déclarée(s)
+  message : 4 classe(s) employée(s) sur 4 déclarée(s)
+  surface : 4 classe(s) employée(s) sur 4 déclarée(s)
+
+total : 0 écart(s)
+
+==> §7.3  toute surface bâtie porte les tokens
+pages bâties : 5 (connexion.html, design.html, index.html, primitives.html, shell.html)
+
+assertion A — un <link rel="stylesheet"> par page : 0 échec(s)
+assertion B — une feuille liée déclarant --fond-0 : 0 échec(s) (évaluée sur 5 page(s))
+
+les DEUX assertions sont vertes
+
+==> §7.7  le poids CSS ne dérive pas
+    546  connexion-BM9rYjiV.css
+   1493  main-CXZaIG5L.css
+   2730  primitives-D5YB3zNP.css
+   1063  shell-C87uhTzH.css
+   2179  socle-ZRS7erzW.css
+feuilles émises : 5
+somme : 8011 octets
+plafond : 12288 octets (arbitraire, voir l'en-tête)
+marge : 4277 octets
+
+═══ 7/7 contrôle(s) vert(s) ═══
+  §7.5 (la bascule de thème) est un test unitaire : il tourne dans `npm test`.
+
+==> proto : npm test
+
+> @guacamole/proto@0.1.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/proto
+
+ ✓ ts/fichiers.test.ts (9 tests) 16ms
+ ✓ ts/control.test.ts (17 tests) 18ms
+ ✓ ts/input.test.ts (20 tests) 18ms
+ ✓ ts/fichiers-entetes.test.ts (32 tests) 20ms
+ ✓ ts/plateforme.test.ts (52 tests) 47ms
+
+ Test Files  5 passed (5)
+      Tests  130 passed (130)
+   Start at  07:01:45
+   Duration  855ms (transform 455ms, setup 0ms, collect 672ms, tests 119ms, environment 2ms, prepare 748ms)
+
+
+==> proto : npm run typecheck
+
+> @guacamole/proto@0.1.0 typecheck
+> tsc --noEmit
+
+
+==> plateforme : npm run test:sqlite
+
+> @guacamole/plateforme@0.1.0 test:sqlite
+> PLATEFORME_BASE=sqlite vitest run
+
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+(node:1535831) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1535838) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1535851) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1535839) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1535845) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1535837) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1535868) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/base/pilotes.test.ts (11 tests) 60ms
+stderr | src/orchestration/inventaire-statique.test.ts > inventaireStatique, moteur=sqlite > 🔴 `instantane` REFUSE par un type — motif, opération, backend
+opération refusée : instantane n'est pas supportée par le backend inventaire-statique, qui ne pilote aucun hyperviseur — il inventorie ce qu'un administrateur a enrôlé, et n'écrit que vm.utilisateur_id.
+
+stderr | src/orchestration/inventaire-statique.test.ts > inventaireStatique, moteur=sqlite > `demarrer` refuse de même
+opération refusée : demarrer n'est pas supportée par le backend inventaire-statique, qui ne pilote aucun hyperviseur — il inventorie ce qu'un administrateur a enrôlé, et n'écrit que vm.utilisateur_id.
+
+stderr | src/orchestration/inventaire-statique.test.ts > inventaireStatique, moteur=sqlite > `arreter` refuse de même
+opération refusée : arreter n'est pas supportée par le backend inventaire-statique, qui ne pilote aucun hyperviseur — il inventorie ce qu'un administrateur a enrôlé, et n'écrit que vm.utilisateur_id.
+
+ ✓ src/orchestration/inventaire-statique.test.ts (17 tests) 77ms
+stderr | src/http/routes-vm.test.ts > routes /vm, moteur=sqlite > 🔴 `POST /vm/<id>/instantane` → 501 et un corps TYPÉ — le critère ①
+opération refusée : instantane n'est pas supportée par le backend inventaire-statique, qui ne pilote aucun hyperviseur — il inventorie ce qu'un administrateur a enrôlé, et n'écrit que vm.utilisateur_id.
+
+stderr | src/http/routes-vm.test.ts > routes /vm, moteur=sqlite > `POST /vm/<id>/demarrer` → 501
+opération refusée : demarrer n'est pas supportée par le backend inventaire-statique, qui ne pilote aucun hyperviseur — il inventorie ce qu'un administrateur a enrôlé, et n'écrit que vm.utilisateur_id.
+
+stderr | src/http/routes-vm.test.ts > routes /vm, moteur=sqlite > `POST /vm/<id>/arreter` → 501
+opération refusée : arreter n'est pas supportée par le backend inventaire-statique, qui ne pilote aucun hyperviseur — il inventorie ce qu'un administrateur a enrôlé, et n'écrit que vm.utilisateur_id.
+
+ ✓ src/http/routes-vm.test.ts (15 tests) 294ms
+ ✓ src/http/routes-session.test.ts (10 tests) 323ms
+(node:1535993) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1536000) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/depot/application.test.ts (10 tests) 67ms
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une offre du client vers l'agent
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une offre du client vers l'agent
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une réponse de l'agent vers le client
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une réponse de l'agent vers le client
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > isole les sessions entre elles
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/http/serveur.test.ts > demarrerServeur > sert le relais de signaling sur le chemin racine, poignée de main comprise
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/http/serveur.test.ts > demarrerServeur > sert le relais de signaling sur le chemin racine, poignée de main comprise
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+session RhH1x2QmTz9kLpVbNc7dAw:racine-1 : préfixe RhH1x2QmTz9kLpVbNc7dAw inconnu de agent_enrole, vm_id non inscrit
+
+stderr | src/signaling/server.test.ts > serveur de signaling > isole les sessions entre elles
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config
+poignée de main refusée : poignée de main sans jeton sur la session s-1
+
+stderr | src/http/serveur.test.ts > le chaînage des quatre routeurs > 🔴 une route qui REJETTE rend 500 { refus: interne }, et le processus SURVIT
+route HTTP en échec : Error: base injoignable
+
+ ✓ src/http/serveur.test.ts (9 tests) 268ms
+stderr | src/signaling/trace.test.ts > le service entier > écrit une ligne à l’appariement, et la clôt à la déconnexion des deux pairs
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/trace.test.ts > le service entier > écrit une ligne à l’appariement, et la clôt à la déconnexion des deux pairs
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+session RhH1x2QmTz9kLpVbNc7dAw:trace-1 : préfixe RhH1x2QmTz9kLpVbNc7dAw inconnu de agent_enrole, vm_id non inscrit
+
+stderr | src/signaling/trace.test.ts > le service entier > n’écrit rien quand un seul pair s’est déclaré
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > le socket est FERMÉ après le refus, et le message est arrivé AVANT
+poignée de main refusée : poignée de main sans jeton sur la session s-1
+
+(node:1536102) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/agents/canal.test.ts (8 tests) 1169ms
+stderr | src/signaling/trace.test.ts > le service entier > inscrit en base l’utilisateur du client authentifié qui apparie
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/trace.test.ts > le service entier > inscrit en base l’utilisateur du client authentifié qui apparie
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+session RhH1x2QmTz9kLpVbNc7dAw:bureau : préfixe RhH1x2QmTz9kLpVbNc7dAw inconnu de agent_enrole, vm_id non inscrit
+
+ ✓ src/signaling/trace.test.ts (10 tests) 1445ms
+   ✓ le service entier > n’écrit rien quand un seul pair s’est déclaré 620ms
+ ✓ src/signaling/resilience.test.ts (2 tests) 692ms
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ② : un jeton dont la durée est écoulée est refusé jeton-expire
+poignée de main refusée : jeton refusé (expire) sur la session s-3
+
+ ✓ src/identite/garde.test.ts (14 tests) 27ms
+(node:1536227) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1536233) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/depot/session.test.ts (14 tests) 61ms
+ ✓ src/depot/vm.test.ts (9 tests) 51ms
+ ✓ src/agents/canal-apps.test.ts (6 tests) 853ms
+(node:1536254) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/admin/attribuer-vm.test.ts (9 tests) 41ms
+(node:1536285) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/agents/registre.test.ts (9 tests) 23ms
+ ✓ src/identite/jeton.test.ts (11 tests) 16ms
+(node:1536331) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/depot/jeton.test.ts (7 tests) 56ms
+stderr | src/signaling/server.test.ts > serveur de signaling > signale la disparition du pair
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > signale la disparition du pair
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un second agent sur la même session
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en premier message sans planter, et permet de retenter
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en premier message sans planter, et permet de retenter
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en premier message sans planter, et permet de retenter
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en premier message sans planter, et permet de retenter
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie les messages de la session de contrôle entre superviseur et shell
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie les messages de la session de contrôle entre superviseur et shell
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > délivre à l'agent l'offre arrivée avant lui
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > délivre à l'agent l'offre arrivée avant lui
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > ne délivre que la dernière offre, pas toutes celles reçues
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > ne délivre que la dernière offre, pas toutes celles reçues
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > oublie l'offre mémorisée quand la session se vide
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/apps/catalogue.test.ts (8 tests) 14ms
+stderr | src/signaling/server.test.ts > serveur de signaling > oublie l'offre mémorisée quand la session se vide
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/base/sous-ensemble.test.ts (11 tests) 12ms
+ ✓ src/http/porteur.test.ts (6 tests) 13ms
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > 🔴 un pair `agent` SANS jeton est REFUSÉ — la fenêtre de E2 est FERMÉE
+poignée de main refusée : poignée de main sans jeton sur la session bureau
+
+(node:1536434) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1536453) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > 🔴 …et il ne reçoit AUCUN `ice-config` — LA FUITE d’E12 est fermée
+poignée de main refusée : poignée de main sans jeton sur la session bureau
+
+(node:1536502) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/depot/agent.test.ts (5 tests) 381ms
+ ✓ src/agents/enrolement.test.ts (5 tests) 526ms
+ ✓ src/admin/enroler-agent.test.ts (6 tests) 315ms
+ ✓ src/http/routes-auth.test.ts (8 tests) 1312ms
+   ✓ routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 312ms
+ ✓ src/signaling/garde-fil.test.ts (7 tests) 3193ms
+   ✓ la garde, au niveau du socket > CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config 539ms
+   ✓ la garde, au niveau du socket > CRITÈRE ② : un jeton dont la durée est écoulée est refusé jeton-expire 509ms
+   ✓ la garde, au niveau du socket > CRITÈRE ③ : u2 se voit refuser la session de u1, et le JOURNAL la nomme 510ms
+   ✓ la garde, au niveau du socket > après le départ des deux pairs, u2 PEUT prendre la session 613ms
+   ✓ la garde, au niveau du socket > 🔴 …et il ne reçoit AUCUN `ice-config` — LA FUITE d’E12 est fermée 508ms
+ ✓ src/http/cors.test.ts (7 tests) 13ms
+ ✓ src/config.test.ts (9 tests) 12ms
+(node:1536568) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/orchestration/selection.test.ts (5 tests) 14ms
+(node:1536583) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/index.test.ts (3 tests) 64ms
+ ✓ src/depot/utilisateur.test.ts (5 tests) 356ms
+ ✓ src/orchestration/interface.test.ts (4 tests) 9ms
+ ✓ src/agents/prefixe.test.ts (7 tests) 41ms
+ ✓ src/signaling/server.test.ts (12 tests) 4249ms
+   ✓ serveur de signaling > isole les sessions entre elles 2032ms
+   ✓ serveur de signaling > oublie l'offre mémorisée quand la session se vide 2060ms
+ ✓ src/orchestration/refus.test.ts (4 tests) 10ms
+ ✓ src/agents/fraicheur.test.ts (4 tests) 6ms
+ ✓ src/signaling/appariement.test.ts (5 tests) 10ms
+ ✓ src/signaling/ice.test.ts (6 tests) 10ms
+ ✓ src/identite/mot-de-passe.test.ts (7 tests) 859ms
+ ✓ src/base/pilote.test.ts (6 tests) 11ms
+ ✓ src/http/routes-applications.test.ts (17 tests) 5431ms
+   ✓ routes /applications, moteur=sqlite > 🔴 rend 504 quand l'agent NE RÉPOND PAS, jamais 202 sans attendre 5012ms
+(node:1536825) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/admin/creer-utilisateur.test.ts (5 tests) 11ms
+ ✓ src/signaling/propriete.test.ts (5 tests) 23ms
+
+ Test Files  42 passed (42)
+      Tests  338 passed (338)
+   Start at  07:01:49
+   Duration  6.62s (transform 1.51s, setup 0ms, collect 5.33s, tests 22.42s, environment 16ms, prepare 5.23s)
+
+
+==> plateforme : npm run test:postgres
+
+> @guacamole/plateforme@0.1.0 test:postgres
+> PLATEFORME_BASE=postgres vitest run
+
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+(node:1537097) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1537123) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1537103) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1537096) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1537116) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1537104) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1537115) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/orchestration/inventaire-statique.test.ts > inventaireStatique, moteur=postgres > 🔴 `instantane` REFUSE par un type — motif, opération, backend
+opération refusée : instantane n'est pas supportée par le backend inventaire-statique, qui ne pilote aucun hyperviseur — il inventorie ce qu'un administrateur a enrôlé, et n'écrit que vm.utilisateur_id.
+
+stderr | src/orchestration/inventaire-statique.test.ts > inventaireStatique, moteur=postgres > `demarrer` refuse de même
+opération refusée : demarrer n'est pas supportée par le backend inventaire-statique, qui ne pilote aucun hyperviseur — il inventorie ce qu'un administrateur a enrôlé, et n'écrit que vm.utilisateur_id.
+
+stderr | src/orchestration/inventaire-statique.test.ts > inventaireStatique, moteur=postgres > `arreter` refuse de même
+opération refusée : arreter n'est pas supportée par le backend inventaire-statique, qui ne pilote aucun hyperviseur — il inventorie ce qu'un administrateur a enrôlé, et n'écrit que vm.utilisateur_id.
+
+stderr | src/http/routes-vm.test.ts > routes /vm, moteur=postgres > 🔴 `POST /vm/<id>/instantane` → 501 et un corps TYPÉ — le critère ①
+opération refusée : instantane n'est pas supportée par le backend inventaire-statique, qui ne pilote aucun hyperviseur — il inventorie ce qu'un administrateur a enrôlé, et n'écrit que vm.utilisateur_id.
+
+stderr | src/http/routes-vm.test.ts > routes /vm, moteur=postgres > `POST /vm/<id>/demarrer` → 501
+opération refusée : demarrer n'est pas supportée par le backend inventaire-statique, qui ne pilote aucun hyperviseur — il inventorie ce qu'un administrateur a enrôlé, et n'écrit que vm.utilisateur_id.
+
+stderr | src/http/routes-vm.test.ts > routes /vm, moteur=postgres > `POST /vm/<id>/arreter` → 501
+opération refusée : arreter n'est pas supportée par le backend inventaire-statique, qui ne pilote aucun hyperviseur — il inventorie ce qu'un administrateur a enrôlé, et n'écrit que vm.utilisateur_id.
+
+ ✓ src/base/pilotes.test.ts (11 tests) 2452ms
+   ✓ sous-ensemble portable, moteur=postgres > rend un BIGINT relu en `number` sur les DEUX moteurs, sans conversion de l’appelant 325ms
+stderr | src/signaling/trace.test.ts > le service entier > écrit une ligne à l’appariement, et la clôt à la déconnexion des deux pairs
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+ ✓ src/http/routes-session.test.ts (10 tests) 2670ms
+   ✓ route POST /session, moteur=postgres > sans jeton → 401 307ms
+   ✓ route POST /session, moteur=postgres > 🔴 ③b — la réponse arrive SOUS LA BORNE mesurée 377ms
+   ✓ route POST /session, moteur=postgres > 🔴 ④c — la TRANSITION est vue : 200 à vu_a + SEUIL, 503 une ms plus tard 402ms
+stderr | src/signaling/trace.test.ts > le service entier > écrit une ligne à l’appariement, et la clôt à la déconnexion des deux pairs
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/trace.test.ts > le service entier > écrit une ligne à l’appariement, et la clôt à la déconnexion des deux pairs
+session RhH1x2QmTz9kLpVbNc7dAw:trace-1 : préfixe RhH1x2QmTz9kLpVbNc7dAw inconnu de agent_enrole, vm_id non inscrit
+
+(node:1537719) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/signaling/trace.test.ts > le service entier > n’écrit rien quand un seul pair s’est déclaré
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+(node:1537756) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/agents/canal.test.ts (8 tests) 2938ms
+   ✓ la boucle du canal /agent > `enroler` avec le BON secret rend `enrole`, avec préfixe et jeton 462ms
+   ✓ la boucle du canal /agent > 🔴 le jeton rendu est VÉRIFIABLE PAR LA GARDE, et de type `agent` 348ms
+   ✓ la boucle du canal /agent > 🔴 `enroler` au MAUVAIS secret rend `refus` et FERME le socket, sans écrire le secret au journal 338ms
+   ✓ la boucle du canal /agent > 🔴 un message de version PLATEFORME_VERSION + 1 est refusé, motif `version` 381ms
+   ✓ la boucle du canal /agent > 🔴 `battement` AVANT `enroler` est refusé, motif `sequence`, et ne délivre AUCUN jeton 316ms
+   ✓ la boucle du canal /agent > 🔴 `battement` après `enroler` AVANCE `vu_a` en base 390ms
+   ✓ la boucle du canal /agent > 🔴 `battement` rend un jeton FRAIS, valide à un instant où le précédent est EXPIRÉ 362ms
+   ✓ le canal, CÂBLÉ dans le service entier > 🔴 le chemin `/agent` du service sert réellement le canal 334ms
+ ✓ src/orchestration/inventaire-statique.test.ts (17 tests) 3311ms
+   ✓ inventaireStatique, moteur=postgres > 🔴 `etat` d’une VM JAMAIS VUE rend `injoignable` 305ms
+ ✓ src/http/routes-vm.test.ts (15 tests) 3498ms
+   ✓ routes /vm, moteur=postgres > `GET /vm` SANS en-tête → 401 jeton-absent 309ms
+   ✓ routes /vm, moteur=postgres > 🔴 `POST /vm/<id>/instantane` → 501 et un corps TYPÉ — le critère ① 305ms
+   ✓ routes /vm, moteur=postgres > `POST /vm/<id>/demarrer` → 501 317ms
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une offre du client vers l'agent
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une offre du client vers l'agent
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une réponse de l'agent vers le client
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie une réponse de l'agent vers le client
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > isole les sessions entre elles
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > isole les sessions entre elles
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/trace.test.ts > le service entier > inscrit en base l’utilisateur du client authentifié qui apparie
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/trace.test.ts > le service entier > inscrit en base l’utilisateur du client authentifié qui apparie
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/trace.test.ts > le service entier > inscrit en base l’utilisateur du client authentifié qui apparie
+session RhH1x2QmTz9kLpVbNc7dAw:bureau : préfixe RhH1x2QmTz9kLpVbNc7dAw inconnu de agent_enrole, vm_id non inscrit
+
+ ✓ src/signaling/trace.test.ts (10 tests) 3588ms
+   ✓ observateur de session > un second appariement ne rouvre pas une seconde ligne 371ms
+   ✓ observateur de session > un départ sans appariement préalable n’écrit rien 320ms
+   ✓ la colonne session.vm_id > une session préfixée par une VM ENRÔLÉE inscrit son vm_id 343ms
+   ✓ la colonne session.vm_id > une session SANS préfixe laisse vm_id à `null` 425ms
+   ✓ la colonne session.vm_id > 🔴 l’instant est lu SYNCHRONEMENT à l’appariement, PAS après la lecture de base 307ms
+   ✓ le service entier > n’écrit rien quand un seul pair s’est déclaré 808ms
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config
+poignée de main refusée : poignée de main sans jeton sur la session s-1
+
+(node:1537891) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > le socket est FERMÉ après le refus, et le message est arrivé AVANT
+poignée de main refusée : poignée de main sans jeton sur la session s-1
+
+stderr | src/http/serveur.test.ts > demarrerServeur > sert le relais de signaling sur le chemin racine, poignée de main comprise
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/http/serveur.test.ts > demarrerServeur > sert le relais de signaling sur le chemin racine, poignée de main comprise
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/http/serveur.test.ts > demarrerServeur > sert le relais de signaling sur le chemin racine, poignée de main comprise
+session RhH1x2QmTz9kLpVbNc7dAw:racine-1 : préfixe RhH1x2QmTz9kLpVbNc7dAw inconnu de agent_enrole, vm_id non inscrit
+
+ ✓ src/depot/application.test.ts (10 tests) 1835ms
+stderr | src/http/serveur.test.ts > le chaînage des quatre routeurs > 🔴 une route qui REJETTE rend 500 { refus: interne }, et le processus SURVIT
+route HTTP en échec : Error: base injoignable
+
+ ✓ src/signaling/resilience.test.ts (2 tests) 703ms
+ ✓ src/http/serveur.test.ts (9 tests) 1529ms
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > CRITÈRE ② : un jeton dont la durée est écoulée est refusé jeton-expire
+poignée de main refusée : jeton refusé (expire) sur la session s-3
+
+ ✓ src/identite/garde.test.ts (14 tests) 29ms
+(node:1538002) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1538044) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1538087) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/signaling/server.test.ts > serveur de signaling > signale la disparition du pair
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > signale la disparition du pair
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un second agent sur la même session
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en premier message sans planter, et permet de retenter
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en premier message sans planter, et permet de retenter
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en premier message sans planter, et permet de retenter
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en premier message sans planter, et permet de retenter
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > rejette un message racine `null` en message suivant sans planter, et la session continue de fonctionner
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie les messages de la session de contrôle entre superviseur et shell
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > relaie les messages de la session de contrôle entre superviseur et shell
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > délivre à l'agent l'offre arrivée avant lui
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > délivre à l'agent l'offre arrivée avant lui
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > ne délivre que la dernière offre, pas toutes celles reçues
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > ne délivre que la dernière offre, pas toutes celles reçues
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > oublie l'offre mémorisée quand la session se vide
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/server.test.ts > serveur de signaling > oublie l'offre mémorisée quand la session se vide
+aucun serveur TURN configuré (TURN_URL/TURN_SECRET) : session sans relais
+
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > 🔴 un pair `agent` SANS jeton est REFUSÉ — la fenêtre de E2 est FERMÉE
+poignée de main refusée : poignée de main sans jeton sur la session bureau
+
+ ✓ src/agents/canal-apps.test.ts (6 tests) 2051ms
+   ✓ le canal /agent, côté applications > un `catalogue` valide est FUSIONNÉ et ÉCRIT 475ms
+   ✓ le canal /agent, côté applications > 🔴 l'écriture du catalogue n'est PAS ATTENDUE, et son échec n'abat pas la connexion 341ms
+   ✓ le canal /agent, côté applications > l'enrôlement INSCRIT la VM au registre, et la fermeture l'en RETIRE 357ms
+   ✓ le canal /agent, côté applications > un `lancee` RÉSOUT la demande en vol, avec son issue 343ms
+stderr | src/signaling/garde-fil.test.ts > la garde, au niveau du socket > 🔴 …et il ne reçoit AUCUN `ice-config` — LA FUITE d’E12 est fermée
+poignée de main refusée : poignée de main sans jeton sur la session bureau
+
+(node:1538232) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/admin/attribuer-vm.test.ts (9 tests) 1157ms
+ ✓ src/depot/vm.test.ts (9 tests) 1620ms
+ ✓ src/signaling/garde-fil.test.ts (7 tests) 3201ms
+   ✓ la garde, au niveau du socket > CRITÈRE ① : un client sans jeton est refusé, et ne voit AUCUN ice-config 537ms
+   ✓ la garde, au niveau du socket > CRITÈRE ② : un jeton dont la durée est écoulée est refusé jeton-expire 512ms
+   ✓ la garde, au niveau du socket > CRITÈRE ③ : u2 se voit refuser la session de u1, et le JOURNAL la nomme 517ms
+   ✓ la garde, au niveau du socket > après le départ des deux pairs, u2 PEUT prendre la session 614ms
+   ✓ la garde, au niveau du socket > 🔴 …et il ne reçoit AUCUN `ice-config` — LA FUITE d’E12 est fermée 507ms
+ ✓ src/agents/registre.test.ts (9 tests) 29ms
+ ✓ src/identite/jeton.test.ts (11 tests) 18ms
+(node:1538302) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/apps/catalogue.test.ts (8 tests) 13ms
+ ✓ src/depot/session.test.ts (14 tests) 2343ms
+ ✓ src/base/sous-ensemble.test.ts (11 tests) 10ms
+ ✓ src/signaling/server.test.ts (12 tests) 4218ms
+   ✓ serveur de signaling > isole les sessions entre elles 2013ms
+   ✓ serveur de signaling > oublie l'offre mémorisée quand la session se vide 2061ms
+ ✓ src/http/porteur.test.ts (6 tests) 14ms
+(node:1538419) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1538513) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1538520) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/http/cors.test.ts (7 tests) 11ms
+(node:1538657) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/depot/jeton.test.ts (7 tests) 1546ms
+   ✓ dépôt jeton_rafraichissement, moteur=postgres > REJEU : tourner deux fois le même clair révoque TOUTE la famille 311ms
+ ✓ src/http/routes-applications.test.ts (17 tests) 9030ms
+   ✓ routes /applications, moteur=postgres > rend `false` sur un chemin étranger : le 404 du serveur suit 345ms
+   ✓ routes /applications, moteur=postgres > rend les applications de la VM demandée, et rien d’autre 358ms
+   ✓ routes /applications, moteur=postgres > 🔴 rend 504 quand l'agent NE RÉPOND PAS, jamais 202 sans attendre 5212ms
+ ✓ src/admin/enroler-agent.test.ts (6 tests) 783ms
+   ✓ enrolerLaVm, moteur=postgres > 🔴 tire le secret AU SORT : deux appels de MÊMES ARGUMENTS diffèrent 433ms
+   ✓ enrolerLaVm, moteur=postgres > 🔴 écrit l’EMPREINTE en base, JAMAIS le secret en clair 340ms
+ ✓ src/config.test.ts (9 tests) 15ms
+ ✓ src/orchestration/selection.test.ts (5 tests) 17ms
+ ✓ src/depot/agent.test.ts (5 tests) 1581ms
+   ✓ dépôt agent_enrole, moteur=postgres > enrôle, puis relit par VM 432ms
+   ✓ dépôt agent_enrole, moteur=postgres > REFUSE un second enrôlement sur le MÊME préfixe 369ms
+   ✓ dépôt agent_enrole, moteur=postgres > marque vu_a à une MAGNITUDE D’ÉPOQUE, et la relit EN `number` 306ms
+(node:1538736) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/orchestration/interface.test.ts (4 tests) 8ms
+ ✓ src/agents/enrolement.test.ts (5 tests) 1760ms
+   ✓ enrôlement d'un agent, moteur=postgres > accepte le bon couple, et rend le préfixe de la VM 457ms
+   ✓ enrôlement d'un agent, moteur=postgres > 🔴 refuse une VM INCONNUE et un SECRET FAUX du MÊME refus, mot pour mot 348ms
+   ✓ enrôlement d'un agent, moteur=postgres > journalise le refus AVEC le nom de VM demandé 328ms
+   ✓ enrôlement d'un agent, moteur=postgres > 🔴 rend un refus, JAMAIS une exception, sur une empreinte TRONQUÉE 382ms
+ ✓ src/agents/prefixe.test.ts (7 tests) 51ms
+ ✓ src/index.test.ts (3 tests) 299ms
+ ✓ src/http/routes-auth.test.ts (8 tests) 3337ms
+   ✓ routes d’authentification > connexion valide : l’accès est un jeton que le service accepte, et le rafraîchissement vaut 432ms
+   ✓ routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 484ms
+   ✓ routes d’authentification > REJEU : rafraîchir deux fois le même jeton rend 401, et la famille tombe 395ms
+   ✓ routes d’authentification > borne le corps à 4 KiB : 5 KiB rend 413 414ms
+   ✓ routes d’authentification > OPTIONS rend 204, avec les en-têtes CORS SEULEMENT si une origine est autorisée 586ms
+   ✓ routes d’authentification > CRITÈRE ④ : aucune trace ni aucune réponse ne porte le CHAMP du mot de passe 473ms
+ ✓ src/depot/utilisateur.test.ts (5 tests) 1419ms
+   ✓ dépôt utilisateur, moteur=postgres > REFUSE un second compte au même courriel 325ms
+   ✓ dépôt utilisateur, moteur=postgres > remplace l’empreinte, et RIEN d’autre 308ms
+   ✓ dépôt utilisateur, moteur=postgres > donne un identifiant distinct à chaque compte 310ms
+ ✓ src/orchestration/refus.test.ts (4 tests) 11ms
+ ✓ src/agents/fraicheur.test.ts (4 tests) 7ms
+ ✓ src/signaling/appariement.test.ts (5 tests) 20ms
+ ✓ src/signaling/ice.test.ts (6 tests) 16ms
+ ✓ src/base/pilote.test.ts (6 tests) 13ms
+ ✓ src/identite/mot-de-passe.test.ts (7 tests) 971ms
+(node:1538968) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/signaling/propriete.test.ts (5 tests) 9ms
+ ✓ src/admin/creer-utilisateur.test.ts (5 tests) 8ms
+
+ Test Files  42 passed (42)
+      Tests  338 passed (338)
+   Start at  07:01:57
+   Duration  12.03s (transform 1.75s, setup 0ms, collect 5.99s, tests 58.14s, environment 18ms, prepare 6.16s)
+
+
+==> plateforme : npm run typecheck
+
+> @guacamole/plateforme@0.1.0 typecheck
+> tsc --noEmit
+
+
+Toutes les vérifications sont passées.
+exit=0

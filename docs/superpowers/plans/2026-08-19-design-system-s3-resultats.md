@@ -371,8 +371,16 @@ l'arbre vert sans dire qu'on l'attendait rouge laisserait croire qu'elle n'a
 rien regardé.
 ⚠️ **`plateforme : npm run test:sqlite` avait échoué TRANSITOIREMENT** lors d'une
 exécution antérieure au périmètre de S3, la suite repassant seule ensuite. **Il
-n'a pas été revu ici** : les deux exécutions le passent. Rapporté tel quel, sans
+n'a pas été revu ici** : les trois exécutions le passent. Rapporté tel quel, sans
 diagnostic — S3 n'en a pas.
+
+✅ **UNE TROISIÈME EXÉCUTION, APRÈS LES DEUX COMMITS DE S3, SERT DE TÉMOIN DE
+CLÔTURE** (`verify-all-3-cloture.log`) : `exit=0`, **18** en-têtes, `client`
+**258**, `proto` **130**, `plateforme` **338** deux fois (SQLite puis Postgres).
+⚠️ **Elle tourne sur un arbre que le chantier voisin G1 a modifié entre les deux
+commits de S3** (`a481f35`) : elle établit que **l'arbre entier** est vert à la
+clôture, pas que S3 seul le soit — c'est le §11 des risques du plan, et il est
+respecté en le disant plutôt qu'en l'imputant.
 
 ---
 
