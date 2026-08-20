@@ -9,29 +9,28 @@
    ici, et il rendait ONZE avant ce passage.
 
    ═══════════════════════════════════════════════════════════════════════════
-   🔴 TROIS LONGUEURS RESTENT LITTÉRALES, ET C'EST DÉLIBÉRÉ.
+   ✅ IL NE RESTE PLUS AUCUNE LONGUEUR LITTÉRALE ICI — sous-bloc S4.
 
-   `padding: 6px …` (deux bandeaux), `font-size: 18px` (deux boutons) et
-   `letter-spacing: 0.02em` (#stats) n'ont AUCUN cran dans les échelles du
-   §4.4 : l'espacement va 4, 8, 12, 16 ; la typographie 11, 12, 14, 16, 20,
-   24, 32 ; et aucune famille de crénage n'est déclarée.
+   ❌ « TROIS LONGUEURS RESTENT LITTÉRALES, ET C'EST DÉLIBÉRÉ » — écrit ici par
+   S1, reconduit par S2, et RÉFUTÉ PAR S4, le sous-bloc qui a le droit de
+   toucher ces éléments. Les trois sont tombées, chacune pour une raison de
+   fond et non de comptage :
 
-   Les aligner CHANGERAIT L'APPARENCE, ce que ce sous-bloc s'interdit — et
-   pour le `18px`, cela invaliderait une justification écrite : le commentaire
-   de `#fullscreen[data-actif="true"]`, plus bas, chiffre « une zone de
-   ~40×36 px en bas à droite » qui est le produit de `padding: 8px 12px` et
-   `font-size: 18px`. La spec §5.2 l'interdit nommément : « Toute reprise du
-   bouton doit conserver cette propriété ; changer sa taille change la zone
-   qu'il occupe. »
+     `padding: 6px …` (deux bandeaux)  → parti avec la reprise sur `.message`,
+        dont le remplissage est `var(--e-2) var(--e-3)`            (tâche 5)
+     `letter-spacing: 0.02em` (#stats) → parti avec le câblage de
+        `--police-mono` : le crénage et la pile monospace servent la MÊME fin,
+        et la spec §4.3 désigne la pile comme le moyen              (tâche 6)
+     `font-size: 18px` (deux boutons)  → devient `var(--t-xl)`, 20 px à racine
+        16, la propriété que la spec §5.2 protège étant désormais gardée par un
+        test (`client/src/style.test.ts`)                           (tâche 7)
 
-   ⚠️ Conséquence à ne pas maquiller : la clause « aucune longueur hors
-   échelle » du §8 est FAUSSE à la fin du sous-bloc S1, et de trois valeurs
-   exactement. ⚠️ ELLE L'EST ENCORE À LA FIN DE S2 (20 août 2026, revue
-   transverse) : S2 n'en ajoute aucune — le garde G4 de `primitives.test.ts`
-   l'interdit dans `primitives.css`, rouge versée — et n'en retire aucune, les
-   trois vivant ici, dans la fenêtre de session. C'est une dette d'ÉNONCÉ, nommée ; aucun contrôle n'en souffre,
-   puisque aucun des huit ne mesure une longueur. Elle se solde au sous-bloc
-   qui a le droit de toucher ces éléments.
+   ⚠️ ET LA CLAUSE « AUCUNE LONGUEUR HORS ÉCHELLE » DU §8 CESSE D'ÊTRE UNE
+   DETTE D'ÉNONCÉ. Elle était fausse depuis S1, nommée comme telle, et
+   INVÉRIFIABLE : « aucun des huit contrôles ne mesure une longueur » était
+   écrit à cinq endroits du dépôt. S4 livre **§7.10**
+   (`client/src/design/longueurs.test.ts`), le premier contrôle de ⑥ qui en
+   mesure une, et il est NÉ ROUGE de huit occurrences sur l'arbre intact.
 
    ═══════════════════════════════════════════════════════════════════════════
    POURQUOI CE FICHIER N'IMPORTE PAS LE SOCLE — une mesure, pas un goût.
@@ -162,7 +161,7 @@ body {
     border: 0;
     border-radius: var(--r-2);
     padding: var(--e-2) var(--e-3);
-    font-size: 18px;
+    font-size: var(--t-xl);
     line-height: 1;
     color: var(--sur-voile);
     background: var(--voile-bouton);
@@ -176,11 +175,30 @@ body {
 /* En plein écran, le bouton ne doit pas rester sous le curseur d'un jeu. */
 #fullscreen[data-actif="true"] {
     opacity: 0.15;
-    /* Discret ne suffit pas : sans ceci, une zone de ~40×36 px en bas à
-       droite reste dans le flux d'événements et avale les clics destinés au
-       jeu (minimap, boutique...) en mode absolu plein écran. La sortie du
-       plein écran reste possible par appui long sur Échap (Keyboard Lock,
-       voir fullscreen.ts), donc retirer le bouton du flux ne piège personne. */
+    /* Discret ne suffit pas : sans ceci, une zone de coin reste dans le flux
+       d'événements et avale les clics destinés au jeu (minimap, boutique...)
+       en mode absolu plein écran. La sortie du plein écran reste possible par
+       appui long sur Échap (Keyboard Lock, voir fullscreen.ts), donc retirer
+       le bouton du flux ne piège personne.
+
+       ⚠️ CETTE DÉCLARATION EST DÉSORMAIS GARDÉE PAR UNE COMMANDE, et c'est ce
+       qui a permis de toucher à la taille : `client/src/style.test.ts`, écrit
+       et vu ROUGE AVANT le changement. La spec §5.2 l'exigeait par une phrase
+       — « toute reprise du bouton doit conserver cette propriété » —, et une
+       phrase n'attrape rien.
+
+       ⚠️ LE CHIFFRE DE CE COMMENTAIRE A CHANGÉ, ET SA NATURE AVEC. Il disait
+       « une zone de ~40×36 px », produit de `padding: 8px 12px` et
+       `font-size: 18px`. La hauteur vaut maintenant
+       `var(--e-2) + var(--e-2) + var(--t-xl)` = 8 + 8 + 20 = **36 px
+       exactement à racine 16** — c'est un CALCUL, pas une mesure, et il
+       dépend de `line-height: 1` juste au-dessus. ⚠️ LA LARGEUR CESSE D'ÊTRE
+       CHIFFRÉE : elle vaut 24 px de remplissage plus l'avance du glyphe `⛶`,
+       que personne ici ne connaît — aucune page n'a été ouverte, aucun pixel
+       mesuré. Le « ~40 » d'avant était donc une estimation dont l'origine
+       n'est écrite nulle part ; la remplacer par un second chiffre non mesuré
+       serait reconduire le défaut sous un autre nombre.
+       ⚠️ QUE 20 px SOIT LA BONNE TAILLE EST UN JUGEMENT HUMAIN (spec §8). */
     pointer-events: none;
 }
 
@@ -189,13 +207,21 @@ body {
 #micro {
     position: fixed;
     inset-block-end: var(--e-3);
-    /* 12 px de marge, plus la largeur du bouton plein écran et l'écart. */
+    /* 12 px de marge, plus la largeur du bouton plein écran et l'écart.
+       ⚠️ CE CHIFFRE DÉPEND D'UNE LARGEUR QUI VIENT DE CHANGER — le glyphe de
+       `#fullscreen` est passé de 18 px à `--t-xl` (20 px) à la tâche 7 de S4 —
+       et il n'a PAS été recalculé, faute de connaître l'avance du glyphe `⛶`.
+       `--e-8` (64 px) est reconduit tel quel. Si les deux boutons devaient se
+       chevaucher, cela se verrait à l'œil et ne se mesure par rien ici : c'est
+       un JUGEMENT HUMAIN, et il n'a pas été porté. Le déclarer coûte trois
+       lignes ; le taire aurait laissé un chiffre justifié par une largeur qui
+       n'est plus la sienne. */
     inset-inline-end: var(--e-8);
     z-index: 10;
     border: 0;
     border-radius: var(--r-2);
     padding: var(--e-2) var(--e-3);
-    font-size: 18px;
+    font-size: var(--t-xl);
     line-height: 1;
     color: var(--sur-voile);
     background: var(--voile-bouton);
