@@ -53,6 +53,20 @@ impl Session {
                     if let Tick::Disconnected = self.act_on_timeout(deadline)? {
                         return Ok(());
                     }
+                    // 🔴 **JUSTE APRÈS `act_on_timeout`, ET C'EST LE SECOND
+                    // MAILLON DE L'ORDRE DE D6** (sous-bloc P2). La branche
+                    // `a1octies` vient peut-être d'écrire le presse-papier de
+                    // la VM et d'armer ce drapeau ; l'injection de `Ctrl+V` ne
+                    // peut donc pas précéder l'écriture.
+                    //
+                    // **Ici et pas dans `act_on_timeout`** : cette fonction-là
+                    // ne reçoit ni `on_input` ni `on_control`, quand `run` les
+                    // reçoit tous deux. Lui ajouter un paramètre pour une seule
+                    // branche serait un coût permanent sur une fonction qui
+                    // porte onze branches et soixante lignes d'audit
+                    // d'invariant, contre un gain nul (D-P2-1). Corps dans
+                    // `collage`, aux côtés de l'écriture qu'il suit.
+                    self.injecter_le_collage(on_input);
                 }
                 Output::Transmit(transmit) => {
                     // Route vers le socket direct ou vers le relais TURN selon

@@ -74,6 +74,9 @@ mod adaptation;
 /// de raccourcir un commentaire pour repasser sous la ligne.
 mod boucle;
 mod cadence_video;
+/// Le collage venu du navigateur : les DEUX moitiés de l'ordre de D6, écrites
+/// au même endroit. Voir son commentaire de tête.
+mod collage;
 mod controle;
 mod evenements;
 mod initialisation;
