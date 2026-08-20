@@ -23,6 +23,14 @@ enum Scenario {
     EnroleEtTient(&'static str),
     /// Refuse, avec son motif, puis ferme.
     Refuse(MotifCanal),
+    /// Refuse en écrivant la trame BRUTE, sans passer par nos encodeurs.
+    ///
+    /// 🔴 C'EST LE SEUL MOYEN DE JOUER UNE PLATEFORME D'UNE AUTRE VERSION QUE
+    /// LA NÔTRE. `DepuisLaPlateforme::refus` pose toujours
+    /// `PLATEFORME_VERSION` : un scénario qui l'emploierait ne pourrait pas
+    /// rougir sur le défaut mesuré en recette G1, où les deux bouts ont
+    /// justement des versions différentes.
+    RefuseBrut(&'static str),
 }
 
 /// Un faux canal `/agent`. Rend son URL et la file des messages
@@ -57,6 +65,11 @@ async fn faux_canal(mut scenarios: Vec<Scenario>) -> (String, mpsc::UnboundedRec
                     Some(Scenario::EnroleEtTient(prefixe)) => {
                         envoyer_enrole(&mut ws, prefixe).await;
                         std::future::pending::<()>().await;
+                    }
+                    Some(Scenario::RefuseBrut(trame)) => {
+                        let _ = ws.send(Message::Text(trame.to_string())).await;
+                        tokio::time::sleep(Duration::from_millis(50)).await;
+                        drop(ws);
                     }
                     Some(Scenario::Refuse(motif)) => {
                         let texte = serde_json::to_string(&DepuisLaPlateforme::refus(motif))
@@ -352,4 +365,65 @@ async fn la_file_d_ordres_ne_se_prend_qu_une_fois() {
     canal.attendre_identite().await.expect("enrôlement");
     assert!(canal.ordres().is_some());
     assert!(canal.ordres().is_none());
+}
+
+// ---------------------------------------------------------------------------
+// Correction du 20 août 2026 — le refus d'une plateforme d'une AUTRE version.
+// ---------------------------------------------------------------------------
+
+/// 🔴 LA ROUGE DE BOUT EN BOUT DU DÉFAUT 2. La recette G1 a relevé, sur un
+/// agent v1 face à une plateforme v2 : **0** ligne « la plateforme REFUSE la
+/// version » et **10** reprises, jusqu'au palier de 30 s, sans terme. Ce test
+/// joue la trame telle qu'elle arrive sur le fil — version de l'ÉMETTEUR, pas
+/// la nôtre — et exige que la boucle RENONCE.
+#[tokio::test]
+async fn un_refus_de_version_emis_dans_une_autre_version_rend_l_attente_vaine() {
+    let (url, _connexions) =
+        faux_canal(vec![Scenario::RefuseBrut(r#"{"type":"refus","v":97,"motif":"version"}"#)]).await;
+    let mut canal = ouvrir(&url, "vm-1".into(), "chut".into());
+
+    let verdict = tokio::time::timeout(Duration::from_secs(3), canal.attendre_identite())
+        .await
+        .expect("la boucle doit RENONCER, pas boucler : c'est le défaut mesuré en recette G1");
+    assert!(
+        verdict.is_none(),
+        "un refus de version émis dans une autre version doit rendre l'attente vaine"
+    );
+}
+
+/// L'autre moitié, écrite en deux tests pour la raison déjà donnée plus haut
+/// (`expect` interrompt au premier échec) : aucune seconde connexion.
+#[tokio::test]
+async fn un_refus_de_version_emis_dans_une_autre_version_n_ouvre_aucune_seconde_connexion() {
+    let (url, mut connexions) =
+        faux_canal(vec![Scenario::RefuseBrut(r#"{"type":"refus","v":97,"motif":"version"}"#)]).await;
+    let _canal = ouvrir(&url, "vm-1".into(), "chut".into());
+
+    connexions.recv().await.expect("premier enrôlement");
+    tokio::time::sleep(Duration::from_millis(1_500)).await;
+    assert!(
+        connexions.try_recv().is_err(),
+        "une seconde connexion a eu lieu : c'est la boucle sans terme de la recette G1"
+    );
+}
+
+/// Un motif qu'AUCUNE version de ce dépôt ne connaît doit rester lisible, se
+/// journaliser tel quel, et se réessayer — c'est la classe « le pair peut s'en
+/// relever ». Sans cette tolérance, le remède ci-dessus ne tiendrait que
+/// jusqu'au premier motif ajouté par une version future, et le mode de panne
+/// reviendrait à l'identique.
+#[tokio::test]
+async fn un_refus_a_motif_inconnu_se_reessaie_au_lieu_de_devenir_illisible() {
+    let (url, _connexions) = faux_canal(vec![
+        Scenario::RefuseBrut(r#"{"type":"refus","v":98,"motif":"quota-depasse"}"#),
+        Scenario::EnroleEtTient("APRES-MOTIF-INCONNU"),
+    ])
+    .await;
+    let mut canal = ouvrir(&url, "vm-1".into(), "chut".into());
+
+    let identite = tokio::time::timeout(Duration::from_secs(5), canal.attendre_identite())
+        .await
+        .expect("aucune reprise en 5 s après un refus à motif inconnu")
+        .expect("la boucle a renoncé sur un motif qui n'est PAS `version`");
+    assert_eq!(identite.prefixe, "APRES-MOTIF-INCONNU");
 }

@@ -1,5 +1,5 @@
 {
-  "comment": "Vecteurs partagés Rust/TypeScript du canal plateforme <-> agent. Toute modification doit être répercutée des deux côtés. Fichier NEUF et distinct de vectors.json, qui est structuré pour le protocole d'entrée binaire seul : y ajouter des kind étrangers traverserait le match de input.rs. La clé version est vérifiée des DEUX côtés, ce qui corrige pour ce fichier-ci la lacune de vectors.json, dont seul le consommateur TypeScript la contrôle.",
+  "comment": "Vecteurs partagés Rust/TypeScript du canal plateforme <-> agent. Toute modification doit être répercutée des deux côtés. Fichier NEUF et distinct de vectors.json, qui est structuré pour le protocole d'entrée binaire seul : y ajouter des kind étrangers traverserait le match de input.rs. La clé version est vérifiée des DEUX côtés, ce qui corrige pour ce fichier-ci la lacune de vectors.json, dont seul le consommateur TypeScript la contrôle. La clé refus_lisibles est NEUVE (correction du 20 août 2026) : elle porte des refus émis dans d'AUTRES versions que la nôtre, que les deux bouts doivent savoir LIRE — le refus est le seul message hors versionnement du protocole. Elle est séparée de cases parce que ces trames ne sont pas des round-trips : ce dépôt ne sait pas les émettre, il doit seulement les lire.",
   "version": 2,
   "cases": [
     {
@@ -158,6 +158,32 @@
       "demande": "d-7",
       "cle": "3f2a",
       "json": "{\"type\":\"lancer\",\"v\":2,\"demande\":\"d-7\",\"cle\":\"3f2a\"}"
+    }
+  ],
+  "refus_lisibles": [
+    {
+      "name": "refus_version_future",
+      "json": "{\"type\":\"refus\",\"v\":97,\"motif\":\"version\"}",
+      "v": 97,
+      "motif": "version"
+    },
+    {
+      "name": "refus_version_passee",
+      "json": "{\"type\":\"refus\",\"v\":1,\"motif\":\"enrolement\"}",
+      "v": 1,
+      "motif": "enrolement"
+    },
+    {
+      "name": "refus_de_notre_version",
+      "json": "{\"type\":\"refus\",\"v\":2,\"motif\":\"sequence\"}",
+      "v": 2,
+      "motif": "sequence"
+    },
+    {
+      "name": "refus_a_motif_inconnu_en_deux_mots",
+      "json": "{\"type\":\"refus\",\"v\":98,\"motif\":\"quota-depasse\"}",
+      "v": 98,
+      "motif": "quota-depasse"
     }
   ]
 }

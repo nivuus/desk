@@ -126,10 +126,35 @@ fn rejette_la_version_suivante_sur_battement_recu() {
     .is_err());
 }
 
+/// ❌ **CE TEST ÉPINGLAIT LE DÉFAUT 2, ET IL EST RETOURNÉ LE 20 AOÛT 2026.**
+/// Il exigeait qu'un refus d'une version voisine soit REJETÉ — c'est-à-dire
+/// exactement ce qui empêchait un agent périmé de lire pourquoi il l'était.
+/// La propriété qu'il gardait (« chaque variante entrante contrôle sa
+/// version ») reste gardée par ses quatre jumeaux ci-dessus et par
+/// `les_messages_autres_que_le_refus_restent_refuses_sur_une_version_divergente` ;
+/// **le refus, lui, en est retiré à dessein**, et c'est ce que ce test dit
+/// désormais. Le champ `v` reste OBLIGATOIRE : la tolérance porte sur sa
+/// VALEUR, jamais sur sa présence.
 #[test]
-fn rejette_la_version_suivante_sur_refus() {
+fn le_refus_tolere_toute_version_mais_exige_le_champ() {
+    let lu: DepuisLaPlateforme =
+        serde_json::from_str(r#"{"type":"refus","v":3,"motif":"version"}"#).expect("lisible");
+    assert_eq!(lu, DepuisLaPlateforme::Refus { version: 3, motif: "version".into() });
+    // Sans `v`, en revanche, c'est toujours une forme invalide : un message
+    // sans version n'est pas un message d'une version que nous ignorons. Et
+    // `v: null` non plus — c'est le trou exact que `verifie_version` ferme
+    // pour les autres variantes, et que `version_toleree` ne rouvre pas.
+    assert!(serde_json::from_str::<DepuisLaPlateforme>(r#"{"type":"refus","motif":"version"}"#)
+        .is_err());
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        r#"{"type":"refus","v":3,"motif":"version"}"#
+        r#"{"type":"refus","v":null,"motif":"version"}"#
+    )
+    .is_err());
+    // Et la forme reste GELÉE : un champ de plus est refusé
+    // (`deny_unknown_fields`), ce qui est la clause 3 de l'en-tête du module —
+    // écrite comme une contrainte sur les versions FUTURES, éprouvée ici.
+    assert!(serde_json::from_str::<DepuisLaPlateforme>(
+        r#"{"type":"refus","v":3,"motif":"version","detail":"x"}"#
     )
     .is_err());
 }
@@ -225,8 +250,15 @@ fn conformite_aux_vecteurs_partages() {
                         case["jeton"].as_str().unwrap(),
                         case["expire_a"].as_i64().unwrap(),
                     ),
+                    // ⚠️ `depuis_mot` ET NON `serde_json::from_value` : le
+                    // motif n'est plus une forme serde depuis la correction du
+                    // 20 août 2026, c'est un mot. Un vecteur portant un mot
+                    // inconnu échoue donc ICI, ce qui est le comportement
+                    // voulu — un vecteur de round-trip ne peut porter qu'un
+                    // motif que la plateforme sait ÉMETTRE.
                     "refus" => DepuisLaPlateforme::refus(
-                        serde_json::from_value(case["motif"].clone()).expect("motif"),
+                        MotifCanal::depuis_mot(case["motif"].as_str().expect("motif"))
+                            .expect("motif connu"),
                     ),
                     "lancer" => DepuisLaPlateforme::lancer(
                         case["demande"].as_str().unwrap(),
@@ -411,8 +443,119 @@ fn les_variantes_de_p3_rejettent_desormais_la_version_1() {
         r#"{"type":"battement-recu","v":1,"jeton":"j","expire_a":1}"#
     )
     .is_err());
+    // ⚠️ LE REFUS EST DÉLIBÉRÉMENT ABSENT DE CETTE LISTE depuis la correction
+    // du 20 août 2026 : il est la SEULE variante hors versionnement, et un
+    // agent v1 doit précisément pouvoir lire le refus qui lui apprend qu'il
+    // est périmé. Voir `le_refus_tolere_toute_version_mais_exige_le_champ`.
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
         r#"{"type":"refus","v":1,"motif":"version"}"#
     )
-    .is_err());
+    .is_ok());
+}
+
+// ---------------------------------------------------------------------------
+// Correction du 20 août 2026 — UN REFUS DOIT ÊTRE LISIBLE PAR SON DESTINATAIRE.
+// ---------------------------------------------------------------------------
+
+/// 🔴 LA ROUGE DU DÉFAUT 2, ET C'EST EXACTEMENT LE CAS MESURÉ EN RECETTE G1 :
+/// un agent v1 face à une plateforme v2 reçoit `{"type":"refus","v":2,
+/// "motif":"version"}` et ne peut pas le lire, parce que `verifie_version`
+/// s'applique AUSSI au refus. Il tombe dans la branche « illisible », qui est
+/// reprenable, et boucle sans terme — 0 ligne de refus, 10 reprises relevées.
+///
+/// Le cas est écrit dans le sens SYMÉTRIQUE (nous v2, l'émetteur v97) parce
+/// que c'est celui que ce dépôt peut jouer sans figer une version morte : la
+/// propriété exigée est « quelle que soit la version de l'émetteur », et elle
+/// ne connaît pas de sens.
+#[test]
+fn un_refus_reste_lisible_quelle_que_soit_la_version_de_son_emetteur() {
+    for brut in [
+        r#"{"type":"refus","v":97,"motif":"version"}"#,
+        r#"{"type":"refus","v":1,"motif":"enrolement"}"#,
+    ] {
+        let lu = serde_json::from_str::<DepuisLaPlateforme>(brut);
+        assert!(
+            lu.is_ok(),
+            "refus illisible alors qu'il DOIT l'être : {brut} -> {:?}",
+            lu.err()
+        );
+    }
+}
+
+/// L'autre moitié, sans laquelle la tolérance ci-dessus pourrait s'obtenir en
+/// ne vérifiant plus RIEN : tout message qui n'est pas un refus reste refusé
+/// sur une version divergente. Un `enrole` d'une version inconnue peut porter
+/// un sens que nous ignorons, et l'accepter serait pire que de le rejeter.
+#[test]
+fn les_messages_autres_que_le_refus_restent_refuses_sur_une_version_divergente() {
+    for brut in [
+        r#"{"type":"enrole","v":97,"prefixe":"P","jeton":"j","expire_a":1}"#,
+        r#"{"type":"battement-recu","v":97,"jeton":"j","expire_a":1}"#,
+        r#"{"type":"lancer","v":97,"demande":"d","cle":"c"}"#,
+    ] {
+        assert!(
+            serde_json::from_str::<DepuisLaPlateforme>(brut).is_err(),
+            "message d'une version inconnue accepté : {brut}"
+        );
+    }
+}
+
+/// La table des motifs, parcourue dans les DEUX SENS sur les quatre variantes.
+///
+/// 🔴 C'EST CE QUI REMPLACE LE `rename_all` RETIRÉ, ET C'EST STRICTEMENT PLUS
+/// FORT QUE LUI. La lacune que ce fichier documente pour `IssueLancement` —
+/// « aucune variante n'a deux mots, donc `kebab-case` et `snake_case`
+/// produisent les mêmes chaînes, et aucun test ne peut rougir sur un
+/// changement de convention » — vaut à l'identique pour `MotifCanal`, dont les
+/// quatre variantes sont d'un seul mot. Une table explicite, elle, rougit sur
+/// n'importe quel changement de mot, à un mot comme à deux.
+#[test]
+fn la_table_des_motifs_fait_l_aller_retour_sur_les_quatre() {
+    let attendus = [
+        (MotifCanal::Version, "version"),
+        (MotifCanal::Forme, "forme"),
+        (MotifCanal::Enrolement, "enrolement"),
+        (MotifCanal::Sequence, "sequence"),
+    ];
+    // 🔴 ANTI-OUBLI : `TOUS` doit couvrir exactement l'énumération ci-dessus.
+    // Une variante ajoutée sans sa ligne ici rendrait ce compte faux.
+    assert_eq!(MotifCanal::TOUS.len(), attendus.len());
+    for (motif, mot) in attendus {
+        assert!(MotifCanal::TOUS.contains(&motif), "{mot} absent de TOUS");
+        assert_eq!(motif.mot(), mot);
+        assert_eq!(MotifCanal::depuis_mot(mot), Some(motif));
+    }
+    // Un mot que nous ne connaissons pas ne devient JAMAIS un motif par
+    // défaut : il se rend `None`, et l'appelant le journalise tel quel.
+    assert_eq!(MotifCanal::depuis_mot("quota-depasse"), None);
+    assert_eq!(MotifCanal::depuis_mot(""), None);
+    assert_eq!(MotifCanal::depuis_mot("Version"), None);
+}
+
+/// Les refus que les DEUX bouts doivent savoir lire, figés dans le fichier de
+/// vecteurs partagés — `ts/plateforme.test.ts` lit exactement les mêmes.
+///
+/// 🔴 SANS CE VECTEUR PARTAGÉ, LE REMÈDE POURRAIT NE VIVRE QUE D'UN CÔTÉ, et
+/// c'est précisément le mode de divergence que `plateforme-vectors.json`
+/// existe pour fermer.
+#[test]
+fn conformite_aux_refus_lisibles_partages() {
+    let raw = include_str!("../../plateforme-vectors.json");
+    let doc: serde_json::Value = serde_json::from_str(raw).expect("vecteurs valides");
+    let refus = doc["refus_lisibles"].as_array().expect("tableau refus_lisibles");
+    // 🔴 ANTI-TAUTOLOGIE, et le compte est ÉCRIT EN DUR : un tableau vide, ou
+    // amputé d'un cas, ferait passer la boucle sans rien éprouver.
+    assert_eq!(refus.len(), 4, "quatre refus lisibles attendus");
+
+    for cas in refus {
+        let name = cas["name"].as_str().expect("nom");
+        let brut = cas["json"].as_str().expect("json");
+        let lu: DepuisLaPlateforme = serde_json::from_str(brut)
+            .unwrap_or_else(|erreur| panic!("refus « {name} » illisible : {erreur}"));
+        let DepuisLaPlateforme::Refus { version, motif } = lu else {
+            panic!("le vecteur « {name} » n'a pas été lu comme un refus");
+        };
+        assert_eq!(u64::from(version), cas["v"].as_u64().expect("v"), "version de « {name} »");
+        assert_eq!(motif, cas["motif"].as_str().expect("motif"), "motif de « {name} »");
+    }
 }

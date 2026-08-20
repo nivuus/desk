@@ -27,29 +27,53 @@
 //! version se déguiserait en boucle de reconnexion infinie, qui est le mode de
 //! panne le plus coûteux à diagnostiquer.
 //!
-//! ❌ **CE PARAGRAPHE EST RÉFUTÉ PAR LA MESURE, ET C'EST EXACTEMENT LE MODE DE
-//! PANNE QU'IL NOMME QUI SE PRODUIT** (recette du sous-bloc G1, 20 août 2026,
-//! UNE exécution, journal
-//! `docs/superpowers/plans/journaux-gestion-apps/step3-version-v1-contre-v2-plat.log`).
-//! Un agent v1 opposé à une plateforme v2 a journalisé **0** ligne « la
+//! ⚠️ **CE PARAGRAPHE A ÉTÉ RÉFUTÉ PAR LA MESURE, ET IL EST REDEVENU VRAI PAR
+//! LA CORRECTION DU 20 AOÛT 2026.** Le relevé qui l'a réfuté (recette du
+//! sous-bloc G1, UNE exécution, journal
+//! `docs/superpowers/plans/journaux-gestion-apps/step3-version-v1-contre-v2-plat.log`) :
+//! un agent v1 opposé à une plateforme v2 a journalisé **0** ligne « la
 //! plateforme REFUSE la version » et **10** couples « message de la plateforme
 //! illisible (version divergente ?) » / « reprise du canal /agent », jusqu'au
 //! palier de 30 s, sans terme.
 //!
-//! **La cause est dans ce fichier**, et elle est structurelle : `verifie_version`
-//! est un `deserialize_with` posé sur le champ `v` de **tout** message, le
-//! refus compris, et la plateforme émet son refus avec SA version —
-//! `{"type":"refus","v":2,"motif":"version"}`. Un agent de version N ne peut
-//! donc JAMAIS LIRE le refus d'une plateforme de version M ≠ N : il tombe dans
-//! la branche « illisible », qui est reprenable. Le bras
-//! `MotifCanal::Version` de `sur_refus` n'est atteignable que si les deux
-//! bouts s'accordent déjà sur `v` — c'est-à-dire jamais dans le seul cas pour
+//! **La cause était dans ce fichier**, et elle était structurelle :
+//! `verifie_version` est un `deserialize_with` posé sur le champ `v` de
+//! **tout** message, et la plateforme émet son refus avec SA version —
+//! `{"type":"refus","v":2,"motif":"version"}`. Un agent de version N ne
+//! pouvait donc JAMAIS LIRE le refus d'une plateforme de version M ≠ N : il
+//! tombait dans la branche « illisible », qui est reprenable, et le bras
+//! `version` de `sur_refus` n'était atteignable que si les deux bouts
+//! s'accordaient déjà sur `v` — c'est-à-dire jamais dans le seul cas pour
 //! lequel il existe.
 //!
-//! **Constat, pas correctif.** Le remède demande de décider comment lire un
-//! message dont la version diverge sans le désérialiser entièrement (lire `v`
-//! et `type` avant de valider, par exemple), et c'est une décision de
-//! protocole qui appartient au propriétaire du dépôt.
+//! 🔴 **LA DÉCISION DE PROTOCOLE, ET SON PRIX.** Le refus n'est plus un message
+//! versionné comme les autres : c'est une **ENVELOPPE MINIMALE HORS
+//! VERSIONNEMENT**, et cela se lit en trois clauses.
+//!
+//!   1. **Son champ `v` est TOLÉRÉ, jamais vérifié** (`version_toleree`). Il
+//!      reste OBLIGATOIRE et reste un entier — il dit qui parle, et c'est
+//!      journalisé — mais aucune valeur ne le fait rejeter. Un refus est le
+//!      seul message dont le sens ne dépend d'aucune version : il dit « je ne
+//!      te servirai pas », et cela se comprend sans négociation.
+//!   2. **Son champ `motif` est un MOT LIBRE sur le fil** (`String`), pas un
+//!      enum fermé. Sans cette seconde clause le remède ne tiendrait que
+//!      jusqu'au premier motif ajouté par une version future : le refus
+//!      redeviendrait illisible, dans la branche « illisible », et le mode de
+//!      panne reviendrait à l'identique. La table des motifs connus vit dans
+//!      [`MotifCanal::depuis_mot`] ; ce qu'elle ne reconnaît pas est
+//!      journalisé **verbatim** plutôt que perdu.
+//!   3. 🔴 **SA FORME EST GELÉE : `type`, `v`, `motif`, ET RIEN D'AUTRE,
+//!      JAMAIS.** Cet enum porte `deny_unknown_fields` ; un champ ajouté au
+//!      refus par une version future serait rejeté par les versions
+//!      antérieures, et rendrait à lui seul les clauses 1 et 2 sans effet.
+//!      C'est le prix de la décision, et il est écrit ici parce que rien dans
+//!      le type ne l'empêche.
+//!
+//! **Ce qui n'a PAS changé, et ne doit pas changer** : tous les autres
+//! messages restent strictement versionnés. Un `enrole` d'une version inconnue
+//! peut donner à un champ connu un sens que nous ignorons ; l'accepter serait
+//! pire que le rejeter. Deux tests gardent chaque moitié, sur chacun des deux
+//! bouts.
 
 use serde::{Deserialize, Serialize};
 
@@ -89,14 +113,36 @@ where
     Ok(v)
 }
 
+/// Lit le champ `v` d'un REFUS **sans le vérifier** — voir la clause 1 de
+/// l'en-tête de ce module.
+///
+/// 🔴 CE N'EST PAS « SANS `v` » : le champ reste obligatoire et reste un
+/// entier. Le rendre facultatif rouvrirait le trou que
+/// [`verifie_version`] refuse — un `v: null`, ou un `v` absent, deviendrait
+/// acceptable — et priverait le journal de la seule information qui dise
+/// QUELLE version nous refuse.
+fn version_toleree<'de, D>(deserializer: D) -> Result<u8, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    u8::deserialize(deserializer)
+}
+
 /// Pourquoi la plateforme refuse.
 ///
 /// ⚠️ `Enrolement` NE DISTINGUE PAS « VM inconnue » de « secret faux », et
 /// c'est délibéré : les distinguer donnerait à quiconque ouvre le canal un
 /// oracle d'énumération des VMs enrôlées. Le diagnostic vit dans le journal de
 /// la plateforme, jamais sur le fil.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
+/// ⚠️ **PLUS DE `Serialize`/`Deserialize` DEPUIS LA CORRECTION DU 20 AOÛT
+/// 2026, ET C'EST DÉLIBÉRÉ.** Le motif voyage en MOT LIBRE dans
+/// [`DepuisLaPlateforme::Refus`] (clause 2 de l'en-tête) : cet enum n'est plus
+/// une forme de fil, c'est la table des motifs que NOUS savons interpréter.
+/// La correspondance mot ↔ variante est écrite une seule fois, dans
+/// [`MotifCanal::mot`] et [`MotifCanal::depuis_mot`], et un test la parcourt
+/// dans les deux sens sur les quatre variantes — ce qu'un `rename_all` ne
+/// permettait pas de faire rougir tant qu'aucune variante n'a deux mots.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MotifCanal {
     /// La version du message reçu n'est pas [`PLATEFORME_VERSION`].
     /// 🔴 CELUI-CI NE SE RÉESSAIE PAS.
@@ -107,6 +153,35 @@ pub enum MotifCanal {
     Enrolement,
     /// Un `battement` est arrivé avant tout `enroler`.
     Sequence,
+}
+
+impl MotifCanal {
+    /// Les quatre variantes, dans l'ordre où un test les parcourt.
+    ///
+    /// 🔴 ANTI-OUBLI : une variante ajoutée sans sa ligne ici serait absente
+    /// du test de correspondance, qui compare cette liste à un `match`
+    /// EXHAUSTIF — le compilateur exige la branche, et le test exige l'entrée.
+    pub const TOUS: [Self; 4] =
+        [Self::Version, Self::Forme, Self::Enrolement, Self::Sequence];
+
+    /// Le mot exact qui voyage sur le fil.
+    pub fn mot(self) -> &'static str {
+        match self {
+            Self::Version => "version",
+            Self::Forme => "forme",
+            Self::Enrolement => "enrolement",
+            Self::Sequence => "sequence",
+        }
+    }
+
+    /// Le motif que ce mot désigne, ou `None` si nous ne le connaissons pas.
+    ///
+    /// 🔴 `None` N'EST PAS UNE ERREUR : c'est un motif d'une version qui nous
+    /// dépasse, et l'appelant doit le journaliser tel quel plutôt que de le
+    /// perdre. C'est la clause 2 de l'en-tête de ce module.
+    pub fn depuis_mot(mot: &str) -> Option<Self> {
+        Self::TOUS.into_iter().find(|candidat| candidat.mot() == mot)
+    }
 }
 
 /// Une application telle que l'agent la découvre sur le disque de la VM.
@@ -282,10 +357,21 @@ pub enum DepuisLaPlateforme {
         expire_a: i64,
     },
     /// Refus, avec son motif. Le socket se ferme ensuite.
+    ///
+    /// 🔴 **LA SEULE VARIANTE HORS VERSIONNEMENT DE TOUT CE PROTOCOLE**, et
+    /// les trois clauses qui la gouvernent sont en tête de module. En deux
+    /// mots : `v` est toléré, `motif` est un mot libre, et **la forme est
+    /// gelée — aucun champ ne doit jamais s'y ajouter**.
     Refus {
-        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        /// La version de l'ÉMETTEUR, telle qu'elle arrive. Peut différer de
+        /// [`PLATEFORME_VERSION`] : c'est même le seul cas pour lequel cette
+        /// variante existe.
+        #[serde(rename = "v", deserialize_with = "version_toleree")]
         version: u8,
-        motif: MotifCanal,
+        /// Le mot brut. [`MotifCanal::depuis_mot`] l'interprète quand elle le
+        /// peut ; l'appelant journalise le mot lui-même quand elle ne le peut
+        /// pas.
+        motif: String,
     },
     /// Lancer une application de la VM.
     ///
@@ -322,10 +408,14 @@ impl DepuisLaPlateforme {
         }
     }
 
+    /// ⚠️ PREND LA VARIANTE TYPÉE, ET NON UN MOT : c'est ce qui garantit que la
+    /// plateforme ne peut pas mettre sur le fil un motif que sa propre table
+    /// ne connaît pas. La tolérance de la clause 2 est une tolérance de
+    /// LECTURE ; en écriture, rien n'est libre.
     pub fn refus(motif: MotifCanal) -> Self {
         Self::Refus {
             version: PLATEFORME_VERSION,
-            motif,
+            motif: motif.mot().to_string(),
         }
     }
 

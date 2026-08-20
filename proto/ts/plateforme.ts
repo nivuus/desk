@@ -107,7 +107,25 @@ export interface BattementRecuMessage {
     jeton: string;
     expire_a: number;
 }
-export interface RefusMessage { v: number; type: 'refus'; motif: MotifCanal }
+/**
+ * Le refus, et LA SEULE ENVELOPPE HORS VERSIONNEMENT de ce protocole.
+ *
+ * 🔴 `motif` EST UNE `string`, PAS UN `MotifCanal`, ET C'EST DÉLIBÉRÉ
+ * (correction du 20 août 2026, miroir de `proto/src/plateforme.rs`). Un
+ * lecteur doit pouvoir lire un refus émis par une version qu'il ne connaît
+ * pas — sans quoi un agent périmé ne peut jamais apprendre POURQUOI il est
+ * refusé et boucle sans terme, ce que la recette G1 a mesuré : 0 ligne de
+ * refus, 10 reprises. Un motif ajouté par une version future doit donc rester
+ * lisible et journalisable tel quel.
+ *
+ * ⚠️ EN ÉCRITURE, RIEN N'EST LIBRE : `encodeRefus` prend un `MotifCanal`. La
+ * tolérance est une tolérance de LECTURE.
+ *
+ * 🔴 SA FORME EST GELÉE — `type`, `v`, `motif`, et rien d'autre, jamais. Un
+ * champ ajouté ici serait rejeté par les lecteurs Rust antérieurs
+ * (`deny_unknown_fields`) et annulerait à lui seul toute la tolérance.
+ */
+export interface RefusMessage { v: number; type: 'refus'; motif: string }
 /**
  * Lancer une application de la VM.
  *
@@ -382,14 +400,30 @@ export function encodeLancer(demande: string, cle: string): string {
  * DÉFAUT. Un `parsed.v ?? PLATEFORME_VERSION` accepterait un message SANS
  * champ `v`, et un message `v: null` avec lui — c'est exactement le trou que
  * `verifie_version` refuse côté Rust, et que son commentaire nomme.
+ *
+ * 🔴 LE `refus` EN EST EXEMPTÉ, ET LE TYPE EST DONC CONTRÔLÉ AVANT LA VERSION
+ * ICI — à l'inverse exact de `parseVersLaPlateforme`, qui contrôle la version
+ * d'abord. L'asymétrie est le remède du 20 août 2026 : un refus dit « je ne te
+ * servirai pas », ce qui se comprend sans négociation de version, et c'est le
+ * SEUL message qu'un pair périmé doive pouvoir lire. Le champ `v` y reste
+ * obligatoire et reste un nombre — seule sa VALEUR est tolérée —, sans quoi on
+ * rouvrirait le trou du `v` absent que le paragraphe ci-dessus ferme.
+ *
+ * ⚠️ CETTE FONCTION N'EST APPELÉE PAR AUCUN CODE DE LA PLATEFORME, qui ÉMET
+ * les `DepuisLaPlateforme` sans jamais en lire. Elle est le miroir exécutable
+ * du lecteur Rust, et c'est `plateforme-vectors.json` (clé `refus_lisibles`)
+ * qui force les deux à s'accorder.
  */
 export function parseDepuisLaPlateforme(raw: string): DepuisLaPlateforme {
     const parsed = JSON.parse(raw) as Partial<DepuisLaPlateforme>;
-    if (parsed.v !== PLATEFORME_VERSION) {
-        throw new Error(`version de plateforme non supportée : ${parsed.v}`);
-    }
     if (!TYPES_DEPUIS.includes(parsed.type as (typeof TYPES_DEPUIS)[number])) {
         throw new Error(`type de message de plateforme inconnu : ${parsed.type}`);
+    }
+    if (typeof parsed.v !== 'number') {
+        throw new Error(`version de plateforme absente ou non numérique : ${parsed.v}`);
+    }
+    if (parsed.type !== 'refus' && parsed.v !== PLATEFORME_VERSION) {
+        throw new Error(`version de plateforme non supportée : ${parsed.v}`);
     }
     return parsed as DepuisLaPlateforme;
 }

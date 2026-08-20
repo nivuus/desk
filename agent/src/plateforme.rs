@@ -340,8 +340,8 @@ async fn une_session(
                         tracing::debug!(url, expire_a, "jeton d'agent rafraîchi");
                         let _ = tx.send(Some(Identite { prefixe, jeton, expire_a }));
                     }
-                    Ok(DepuisLaPlateforme::Refus { motif, .. }) => {
-                        return sur_refus(url, motif);
+                    Ok(DepuisLaPlateforme::Refus { version, motif }) => {
+                        return sur_refus(url, version, &motif);
                     }
                     // 🔴 CE BRAS DOIT EXISTER, ET IL NE DOIT SURTOUT PAS
                     // FERMER LA SESSION. Sans lui, un ordre parfaitement
@@ -390,29 +390,52 @@ async fn une_session(
 /// qu'un enrôlement refusé cesse de l'être dès que l'exploitant enrôle la VM,
 /// sans que personne n'ait à redémarrer l'agent.
 ///
-/// ❌ **CE BRAS EST INATTEIGNABLE DANS LE SEUL CAS POUR LEQUEL IL EXISTE, et
-/// c'est mesuré** (recette G1, 20 août 2026, UNE exécution). Pour l'atteindre
-/// il faudrait avoir DÉSÉRIALISÉ un `refus`, donc avoir accepté son champ
-/// `v` — or la plateforme émet son refus avec SA version, et
-/// `proto::plateforme::verifie_version` rejette tout `v` divergent avant que
-/// le `motif` ne soit seulement lu. Un agent v1 face à une plateforme v2
-/// tombe donc dans la branche « illisible » de `une_session`, qui est
-/// reprenable, et reprend indéfiniment. Le raisonnement ci-dessus reste juste ;
-/// c'est son ATTEIGNABILITÉ qui est fausse. Voir l'en-tête de
-/// `proto/src/plateforme.rs` pour le relevé et le remède non tranché.
-fn sur_refus(url: &str, motif: MotifCanal) -> Fin {
-    match motif {
-        MotifCanal::Version => {
+/// ⚠️ **CE BRAS A ÉTÉ INATTEIGNABLE DANS LE SEUL CAS POUR LEQUEL IL EXISTE, et
+/// c'était mesuré** (recette G1, 20 août 2026, UNE exécution) : pour
+/// l'atteindre il fallait avoir DÉSÉRIALISÉ un `refus`, donc avoir accepté son
+/// champ `v` — or la plateforme émet son refus avec SA version. Un agent v1
+/// face à une plateforme v2 tombait donc dans la branche « illisible » de
+/// [`une_session`], qui est reprenable, et reprenait indéfiniment.
+/// **Le refus est hors versionnement depuis la correction du même jour**
+/// (`proto/src/plateforme.rs`, clauses 1 à 3 de son en-tête) : ce bras est
+/// désormais atteignable, et deux tests de bout en bout le jouent contre un
+/// faux canal qui écrit la trame BRUTE d'une autre version.
+///
+/// 🔴 **`version_emise` ET `version_recue` SONT TOUTES DEUX AU JOURNAL, et
+/// c'est le seul endroit du dépôt où l'écart se lit.** Une seule des deux ne
+/// dirait pas dans quel sens rattraper — rebâtir l'agent, ou la plateforme.
+fn sur_refus(url: &str, version_recue: u8, motif: &str) -> Fin {
+    match MotifCanal::depuis_mot(motif) {
+        Some(MotifCanal::Version) => {
             tracing::warn!(
                 url,
                 version_emise = proto::plateforme::PLATEFORME_VERSION,
+                version_recue,
                 "la plateforme REFUSE la version du canal /agent : aucune reprise, \
                  il faut rebâtir l'agent ou la plateforme"
             );
             Fin::Definitive
         }
-        autre => {
-            tracing::warn!(url, ?autre, "canal /agent refusé par la plateforme");
+        Some(autre) => {
+            tracing::warn!(url, ?autre, version_recue, "canal /agent refusé par la plateforme");
+            Fin::Reprenable
+        }
+        // 🔴 UN MOTIF QUE NOUS NE CONNAISSONS PAS SE JOURNALISE **VERBATIM** ET
+        // SE RÉESSAIE. Le journaliser est ce qui empêche le mode de panne de
+        // revenir par la porte du motif : sans cette branche, un motif ajouté
+        // par une version future retomberait dans « message illisible », qui
+        // n'en dit pas le nom. Le réessayer est le choix prudent — nous ne
+        // savons pas s'il est définitif, et la reprise est bornée par le repli
+        // exponentiel (30 s) tout en écrivant CETTE ligne à chaque tour.
+        None => {
+            tracing::warn!(
+                url,
+                motif,
+                version_recue,
+                version_emise = proto::plateforme::PLATEFORME_VERSION,
+                "canal /agent refusé pour un motif que cette version de l'agent ne \
+                 connaît pas : réessai, et le motif est journalisé tel quel"
+            );
             Fin::Reprenable
         }
     }
