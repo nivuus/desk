@@ -8,6 +8,20 @@
 // Toute la logique est ici, séparée du DOM et du WebSocket, pour être
 // testable : `creerBureau` reçoit ses effets par injection.
 
+/**
+ * Le TON d'un bandeau — l'un des quatre de la famille `message` des primitives
+ * (sous-bloc S2). C'est une RÈGLE, et elle vit ici plutôt que dans le câblage :
+ * `shell-page.ts` ne fait que poser la classe correspondante, et une condition
+ * qui apparaîtrait là-bas serait au mauvais endroit.
+ *
+ * ⚠️ `alerte` N'A AUCUN APPELANT DANS CE FICHIER, et c'est délibéré : la page-
+ * shell n'a aujourd'hui aucun état qui soit un avertissement sans être un
+ * refus. Le ton existe dans la famille de primitives, et le type le nomme pour
+ * que le jour où un tel état apparaît, il ne soit pas dit en `danger` faute
+ * d'avoir le mot sous la main.
+ */
+export type Ton = 'neutre' | 'succes' | 'alerte' | 'danger';
+
 export interface FenetreConnue {
     session: string;
     titre: string;
@@ -18,10 +32,10 @@ export interface OptionsBureau {
     /// Rend `null` si le navigateur a bloqué l'ouverture.
     ouvrirFenetre(session: string, titre: string): Window | null;
     envoyer(message: unknown): void;
-    afficher(message: string): void;
+    afficher(message: string, ton: Ton): void;
     /// L'état du lecteur de fichiers, séparé du bandeau général : les deux
     /// messages ne se chassent pas l'un l'autre.
-    afficherEtatFichiers(texte: string): void;
+    afficherEtatFichiers(texte: string, ton: Ton): void;
 }
 
 export interface Bureau {
@@ -52,9 +66,12 @@ export function creerBureau(options: OptionsBureau): Bureau {
     function ouvrir(session: string, titre: string): void {
         const fenetre = options.ouvrirFenetre(session, titre);
         if (!fenetre) {
+            // DANGER : l'utilisateur doit AGIR — autoriser les pop-ups. Un
+            // ton neutre laisserait croire que la fenêtre est en route.
             options.afficher(
                 `« ${titre} » n'a pas pu s'ouvrir : le navigateur a bloqué la pop-up. ` +
                 `Autorisez les pop-ups pour ce site, puis rouvrez la fenêtre.`,
+                'danger',
             );
         }
         connues.set(session, { titre, fenetre });
@@ -74,7 +91,8 @@ export function creerBureau(options: OptionsBureau): Bureau {
         },
 
         refus(titre, motif) {
-            options.afficher(`« ${titre} » n'a pas pu s'ouvrir : ${motif}.`);
+            // DANGER : la fenêtre n'existera pas.
+            options.afficher(`« ${titre} » n'a pas pu s'ouvrir : ${motif}.`, 'danger');
         },
 
         viewportRecu(session, largeur, hauteur) {
@@ -102,7 +120,8 @@ export function creerBureau(options: OptionsBureau): Bureau {
         },
 
         lecteurMonte(nom) {
-            options.afficherEtatFichiers(`Lecteur « Mes Fichiers » monté sur « ${nom} ».`);
+            // SUCCÈS — et c'est le seul état positif du produit.
+            options.afficherEtatFichiers(`Lecteur « Mes Fichiers » monté sur « ${nom} ».`, 'succes');
         },
 
         lecteurDemonte() {
@@ -114,11 +133,22 @@ export function creerBureau(options: OptionsBureau): Bureau {
             // Un état de lecteur qui ne s'efface pas ferait croire à un dossier
             // toujours partagé alors qu'il ne l'est plus, ce qui est pire qu'un
             // texte périmé : c'est une affirmation fausse sur une permission.
-            options.afficherEtatFichiers('');
+            //
+            // 🔴 ET LE TON RESTE `neutre` : un bandeau VIDE ne doit pas porter
+            // de couleur. Une pastille colorée sans texte serait une alarme
+            // sans énoncé — le pire des deux mondes, et l'exact symétrique du
+            // défaut ci-dessus. Le texte vide et le ton neutre sont DEUX
+            // propriétés, et `shell.test.ts` les éprouve séparément.
+            options.afficherEtatFichiers('', 'neutre');
         },
 
         lecteurEchoue(motif) {
-            options.afficherEtatFichiers(`Le lecteur « Mes Fichiers » n’a pas pu être monté : ${motif}.`);
+            // DANGER : le partage a raté, et « rien n'est partagé » n'appelle
+            // pas le même geste que « le partage a raté, voici pourquoi ».
+            options.afficherEtatFichiers(
+                `Le lecteur « Mes Fichiers » n’a pas pu être monté : ${motif}.`,
+                'danger',
+            );
         },
     };
 }
