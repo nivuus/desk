@@ -217,20 +217,28 @@ const CONTROLE_INSTRUMENT = (secondes) => `
         const tries = Array.from(cumul).sort((a, b) => a - b);
         const medianeDb = 10 * Math.log10(Math.max(tries[Math.floor(tries.length / 2)], 1e-30) / Math.max(tours, 1));
 
+        // ⚠️ RELEVÉ AVANT l'arrêt de la piste. Une première rédaction le lisait après, et
+        // rendait donc « ended » sur une piste parfaitement saine : le champ
+        // décrivait le geste de l'instrument, pas l'état mesuré.
+        const etatPiste = piste.readyState;
         piste.stop();
         await ctx.close();
+        // ⚠️ Un -Infinity se sérialise en null dans un JSON, et un null se
+        // lit comme « pas mesuré » alors qu'il veut dire « rigoureusement
+        // aucune énergie ». On le nomme.
+        const lisible = (x) => (Number.isFinite(x) ? x : String(x));
         return JSON.stringify({
             pisteObtenue: true,
             etiquette: piste.label,
-            etatPiste: piste.readyState,
+            etatPiste,
             reglages: piste.getSettings ? piste.getSettings() : undefined,
             contraintesAppliquees: piste.getConstraints ? piste.getConstraints() : undefined,
             tours,
             resolutionHz: parBac,
             dominanteHz: iMax * parBac,
-            dominanteDb,
-            medianeDb,
-            detachementDb: dominanteDb - medianeDb,
+            dominanteDb: lisible(dominanteDb),
+            medianeDb: lisible(medianeDb),
+            detachementDb: lisible(dominanteDb - medianeDb),
             creteTemporelle,
         });
     })()
