@@ -82,6 +82,12 @@ windows = { version = "0.62", features = [
     "Win32_Storage_Xps",
     "Win32_System_Com",
     "Win32_System_Com_StructuredStorage",
+    # `GetClipboardSequenceNumber`, `OpenClipboard`, `GetClipboardData` et leurs
+    # voisines vivent ici ; `GlobalLock` / `GlobalAlloc` dans `Win32_System_Memory`
+    # juste en dessous. C'est la SEULE addition de P1 (presse-papier) à ce
+    # fichier, et ce sont deux fonctionnalités d'un crate DÉJÀ présent :
+    # **P1 n'ajoute aucune dépendance**, ni Rust ni TypeScript.
+    "Win32_System_DataExchange",
     # Filtre d'exception de `diagnostics::exceptions` : `EXCEPTION_POINTERS` et
     # `CONTEXT` vivent dans `Diagnostics_Debug` mais sont gardés derrière
     # `System_Kernel` (ils y référencent `FLOATING_SAVE_AREA`) — les deux
@@ -99,6 +105,9 @@ windows = { version = "0.62", features = [
     "Win32_System_Environment",
     "Win32_System_Kernel",
     "Win32_System_IO",
+    # `GlobalLock` / `GlobalUnlock` / `GlobalAlloc` : le presse-papier Windows
+    # rend un `HGLOBAL`, jamais un pointeur — voir `Win32_System_DataExchange`.
+    "Win32_System_Memory",
     # Job Object des enfants du superviseur : `KILL_ON_JOB_CLOSE` fait mourir
     # les N processus agent avec le superviseur, y compris si celui-ci est tué
     # net — aucun code en espace utilisateur ne couvre ce cas.
