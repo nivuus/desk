@@ -1,0 +1,65 @@
+# ROUGE 4b-aveu-retire — critère 4, moteur sqlite
+# Jouée le 2026-08-20T05:05:52+02:00, commit 3e11b4f
+#
+--- le fichier muté est-il SUIVI par git ? (sans quoi checkout ne le restaurerait pas) ---
+SUIVI : oui
+
+--- la mutation, en diff ---
+    diff --git a/plateforme/src/http/routes-session.ts b/plateforme/src/http/routes-session.ts
+    index 0de6a93..6658353 100644
+    --- a/plateforme/src/http/routes-session.ts
+    +++ b/plateforme/src/http/routes-session.ts
+    @@ -141,11 +141,7 @@ export async function servirSession(
+                 {
+                     ...commun,
+                     motif: 'agent-injoignable',
+    -                redemarrage: {
+    -                    possible: false,
+    -                    motif: 'non-supporte',
+    -                    backend: BACKEND_STATIQUE,
+    -                },
+    +                /* ROUGE 4b : le champ redemarrage disparait */
+                 },
+                 cors,
+             );
+
+--- le contrôle, sur l'arbre MUTÉ ---
+# CRITÈRE ④ — une VM dont l’agent n’a pas été vu est ANNONCÉE injoignable, et l’API AVOUE ne pas savoir la redémarrer
+# Exécution 1 — moteur sqlite
+# Jouée le 2026-08-20T03:05:53.451Z, commit 3e11b4f
+#
+mise en place : la VM est à dave              : TENU
+SEUIL_INJOIGNABLE_MS                          : 90000
+vu_a = maintenant — code HTTP                 : 200
+vu_a = maintenant — corps                     : {"vm":"f887375c-b01f-430f-89ff-99a94459556c","nom":"w-dave","prefixe":"79avCWcu20g-fusLfr-D8Q","etat":"prete"}
+④c avant la transition : 200                  : TENU
+④c avant la transition : `prete`              : TENU
+④c et le préfixe est délivré                  : TENU
+vu_a = maintenant − SEUIL − 1 — code HTTP     : 503
+vu_a = maintenant − SEUIL − 1 — corps         : {"vm":"f887375c-b01f-430f-89ff-99a94459556c","nom":"w-dave","prefixe":"79avCWcu20g-fusLfr-D8Q","etat":"injoignable","motif":"agent-injoignable"}
+④a l’état annoncé est `injoignable`           : TENU
+④a et le code est 503 — un état du monde, pas une erreur de requête: TENU
+④a le préfixe est rendu QUAND MÊME — il est connu et juste: TENU
+④b le champ `redemarrage` EXISTE              : 🔴 NON TENU — obtenu false, attendu true
+④b et il AVOUE, avec son motif et son backend : 🔴 NON TENU — obtenu undefined, attendu {"possible":false,"motif":"non-supporte","backend":"inventaire-statique"}
+t = vu_a + SEUIL (la borne EXACTE)            : prete
+t = vu_a + SEUIL + 1 ms                       : injoignable
+④c à la borne exacte, encore `prete`          : TENU
+④c une milliseconde plus tard, `injoignable`  : TENU
+④c la TRANSITION est donc VUE, des deux côtés : TENU
+④c une VM JAMAIS vue est `injoignable`, pas « peut-être »: TENU
+
+VERDICT                                       : 🔴 AU MOINS UNE ASSERTION NON TENUE
+
+# --- journal du service (sortie d’erreur), conservé tel quel ---
+
+# code de sortie de la sonde : 1 (0 = tout tenu)
+
+--- restauration ---
+sha256 AVANT mutation    : 50c8caa936ba586152ab8f790202da878085e2583f09e6883049deeb4b76f238
+sha256 APRÈS restauration: 50c8caa936ba586152ab8f790202da878085e2583f09e6883049deeb4b76f238
+les deux empreintes CONCORDENT : le fichier est rendu à l'octet près.
+
+# code de sortie de la sonde SOUS MUTATION : 1
+# (1 = au moins une assertion NON TENUE = la rouge a bien rougi ;
+#  0 = 🔴 LA MUTATION EST RESTÉE VERTE, l'assertion visée n'éprouve rien)

@@ -1,0 +1,28 @@
+# CRITÈRE ② — deux utilisateurs ne partagent pas une VM, un utilisateur n’en a pas deux, et JAMAIS un 500
+# Exécution 2 — moteur postgres
+# Jouée le 2026-08-20T03:06:21.837Z, commit 3e11b4f
+#
+mise en place : v1 est à alice                : TENU
+lignes touchées par l’UPDATE de vol           : 0
+propriétaire de v1 après le vol               : alice
+②a l’UPDATE de vol ne touche AUCUNE ligne     : TENU
+②a et la ligne porte TOUJOURS son propriétaire: TENU
+②a l’orchestrateur, lui, refuse par un TYPE   : TENU
+l’UPDATE d’une SECONDE VM pour alice          : error: duplicate key value violates unique constraint "vm_un_utilisateur"
+②b l’index partiel LÈVE plutôt que d’attribuer: TENU
+②b et v2 est resté LIBRE                      : TENU
+②b l’orchestrateur, lui, refuse par un TYPE et NE LÈVE PAS: TENU
+lectures faites par la course                 : 2
+issue de la course                            : {"ok":false,"motif":"utilisateur-servi","operation":"attribuer","backend":"inventaire-statique"}
+②c AUCUNE exception ne s’échappe — c’est elle qui ferait le 500: TENU
+②c la violation d’index est traduite en refus TYPÉ: TENU
+②c la RELECTURE a bien eu lieu — le motif est lu, pas deviné: TENU
+code HTTP de ce motif                         : 409
+②c et son code HTTP n’est PAS 500             : TENU
+②c aucun des motifs de refus ne vaut 500      : TENU
+
+VERDICT                                       : TOUT TENU
+
+# --- journal du service (sortie d’erreur), conservé tel quel ---
+
+# code de sortie de la sonde : 0 (0 = tout tenu)

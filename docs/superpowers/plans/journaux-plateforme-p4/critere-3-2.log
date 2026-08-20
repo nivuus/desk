@@ -1,0 +1,21 @@
+# CRITÈRE ③ — un utilisateur sans VM reçoit un refus IMMÉDIAT
+# Exécution 2 — moteur postgres
+# Jouée le 2026-08-20T03:06:24.436Z, commit 3e11b4f
+#
+mise en place : la VM est à quelqu’un d’AUTRE : TENU
+code HTTP rendu                               : 409
+corps rendu                                   : {"motif":"aucune-vm"}
+③a le code est 409, jamais 200                : TENU
+③a et 409 est ce que la table de codes dit d’`aucune-vm`: TENU
+③a le corps porte le motif, et AUCUN préfixe  : TENU
+③a le corps ne porte pas de champ `prefixe` — un préfixe vide au coffre serait la panne muette: TENU
+20 appels — médiane (ms)                      : 7.6
+20 appels — pire cas (ms)                     : 14.3
+borne MESURÉE du critère (ms)                 : 250
+③b le pire des 20 refus reste sous la borne   : TENU (14.30 < 250)
+
+VERDICT                                       : TOUT TENU
+
+# --- journal du service (sortie d’erreur), conservé tel quel ---
+
+# code de sortie de la sonde : 0 (0 = tout tenu)
