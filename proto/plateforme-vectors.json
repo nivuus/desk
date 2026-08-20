@@ -1,6 +1,6 @@
 {
   "comment": "Vecteurs partagés Rust/TypeScript du canal plateforme <-> agent. Toute modification doit être répercutée des deux côtés. Fichier NEUF et distinct de vectors.json, qui est structuré pour le protocole d'entrée binaire seul : y ajouter des kind étrangers traverserait le match de input.rs. La clé version est vérifiée des DEUX côtés, ce qui corrige pour ce fichier-ci la lacune de vectors.json, dont seul le consommateur TypeScript la contrôle.",
-  "version": 1,
+  "version": 2,
   "cases": [
     {
       "name": "enroler",
@@ -8,7 +8,7 @@
       "kind": "enroler",
       "vm": "w1",
       "secret": "chut",
-      "json": "{\"type\":\"enroler\",\"v\":1,\"vm\":\"w1\",\"secret\":\"chut\"}"
+      "json": "{\"type\":\"enroler\",\"v\":2,\"vm\":\"w1\",\"secret\":\"chut\"}"
     },
     {
       "name": "enroler_a_nom_accentue",
@@ -16,13 +16,13 @@
       "kind": "enroler",
       "vm": "vm-générale",
       "secret": "sécret-éphémère",
-      "json": "{\"type\":\"enroler\",\"v\":1,\"vm\":\"vm-générale\",\"secret\":\"sécret-éphémère\"}"
+      "json": "{\"type\":\"enroler\",\"v\":2,\"vm\":\"vm-générale\",\"secret\":\"sécret-éphémère\"}"
     },
     {
       "name": "battement",
       "sens": "vers",
       "kind": "battement",
-      "json": "{\"type\":\"battement\",\"v\":1}"
+      "json": "{\"type\":\"battement\",\"v\":2}"
     },
     {
       "name": "enrole",
@@ -31,7 +31,7 @@
       "prefixe": "RhH1x2QmTz9kLpVbNc7dAw",
       "jeton": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJQIn0.c2ln",
       "expire_a": 1787136773742,
-      "json": "{\"type\":\"enrole\",\"v\":1,\"prefixe\":\"RhH1x2QmTz9kLpVbNc7dAw\",\"jeton\":\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJQIn0.c2ln\",\"expire_a\":1787136773742}"
+      "json": "{\"type\":\"enrole\",\"v\":2,\"prefixe\":\"RhH1x2QmTz9kLpVbNc7dAw\",\"jeton\":\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJQIn0.c2ln\",\"expire_a\":1787136773742}"
     },
     {
       "name": "battement_recu",
@@ -39,35 +39,125 @@
       "kind": "battement-recu",
       "jeton": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJRIn0.c2ln",
       "expire_a": 1787136774342,
-      "json": "{\"type\":\"battement-recu\",\"v\":1,\"jeton\":\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJRIn0.c2ln\",\"expire_a\":1787136774342}"
+      "json": "{\"type\":\"battement-recu\",\"v\":2,\"jeton\":\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJRIn0.c2ln\",\"expire_a\":1787136774342}"
     },
     {
       "name": "refus_version",
       "sens": "depuis",
       "kind": "refus",
       "motif": "version",
-      "json": "{\"type\":\"refus\",\"v\":1,\"motif\":\"version\"}"
+      "json": "{\"type\":\"refus\",\"v\":2,\"motif\":\"version\"}"
     },
     {
       "name": "refus_forme",
       "sens": "depuis",
       "kind": "refus",
       "motif": "forme",
-      "json": "{\"type\":\"refus\",\"v\":1,\"motif\":\"forme\"}"
+      "json": "{\"type\":\"refus\",\"v\":2,\"motif\":\"forme\"}"
     },
     {
       "name": "refus_enrolement",
       "sens": "depuis",
       "kind": "refus",
       "motif": "enrolement",
-      "json": "{\"type\":\"refus\",\"v\":1,\"motif\":\"enrolement\"}"
+      "json": "{\"type\":\"refus\",\"v\":2,\"motif\":\"enrolement\"}"
     },
     {
       "name": "refus_sequence",
       "sens": "depuis",
       "kind": "refus",
       "motif": "sequence",
-      "json": "{\"type\":\"refus\",\"v\":1,\"motif\":\"sequence\"}"
+      "json": "{\"type\":\"refus\",\"v\":2,\"motif\":\"sequence\"}"
+    },
+    {
+      "name": "catalogue_complet",
+      "sens": "vers",
+      "kind": "catalogue",
+      "complet": true,
+      "applications": [
+        {
+          "cle": "3f2a",
+          "nom": "Bloc-notes",
+          "chemin": "C:\\Users\\u\\Desktop\\Bloc-notes.lnk",
+          "cible": "c:\\windows\\system32\\notepad.exe",
+          "arguments": "",
+          "repertoire": "c:\\windows\\system32"
+        }
+      ],
+      "disparues": [],
+      "json": "{\"type\":\"catalogue\",\"v\":2,\"complet\":true,\"applications\":[{\"cle\":\"3f2a\",\"nom\":\"Bloc-notes\",\"chemin\":\"C:\\\\Users\\\\u\\\\Desktop\\\\Bloc-notes.lnk\",\"cible\":\"c:\\\\windows\\\\system32\\\\notepad.exe\",\"arguments\":\"\",\"repertoire\":\"c:\\\\windows\\\\system32\"}],\"disparues\":[]}"
+    },
+    {
+      "name": "catalogue_delta",
+      "sens": "vers",
+      "kind": "catalogue",
+      "complet": false,
+      "applications": [
+        {
+          "cle": "3f2a",
+          "nom": "Bloc-notes",
+          "chemin": "C:\\Users\\u\\Desktop\\Bloc-notes.lnk",
+          "cible": "c:\\windows\\system32\\notepad.exe",
+          "arguments": "",
+          "repertoire": "c:\\windows\\system32"
+        }
+      ],
+      "disparues": [
+        "ab12",
+        "cd34"
+      ],
+      "json": "{\"type\":\"catalogue\",\"v\":2,\"complet\":false,\"applications\":[{\"cle\":\"3f2a\",\"nom\":\"Bloc-notes\",\"chemin\":\"C:\\\\Users\\\\u\\\\Desktop\\\\Bloc-notes.lnk\",\"cible\":\"c:\\\\windows\\\\system32\\\\notepad.exe\",\"arguments\":\"\",\"repertoire\":\"c:\\\\windows\\\\system32\"}],\"disparues\":[\"ab12\",\"cd34\"]}"
+    },
+    {
+      "name": "catalogue_vide",
+      "sens": "vers",
+      "kind": "catalogue",
+      "complet": true,
+      "applications": [],
+      "disparues": [],
+      "json": "{\"type\":\"catalogue\",\"v\":2,\"complet\":true,\"applications\":[],\"disparues\":[]}"
+    },
+    {
+      "name": "catalogue_a_nom_accentue",
+      "sens": "vers",
+      "kind": "catalogue",
+      "complet": true,
+      "applications": [
+        {
+          "cle": "9c7e",
+          "nom": "Éditeur générique",
+          "chemin": "C:\\Users\\u\\Desktop\\Éditeur générique.lnk",
+          "cible": "c:\\program files\\éditeur\\edit.exe",
+          "arguments": "--profil Général",
+          "repertoire": "c:\\program files\\éditeur"
+        }
+      ],
+      "disparues": [],
+      "json": "{\"type\":\"catalogue\",\"v\":2,\"complet\":true,\"applications\":[{\"cle\":\"9c7e\",\"nom\":\"Éditeur générique\",\"chemin\":\"C:\\\\Users\\\\u\\\\Desktop\\\\Éditeur générique.lnk\",\"cible\":\"c:\\\\program files\\\\éditeur\\\\edit.exe\",\"arguments\":\"--profil Général\",\"repertoire\":\"c:\\\\program files\\\\éditeur\"}],\"disparues\":[]}"
+    },
+    {
+      "name": "lancee_raccourci",
+      "sens": "vers",
+      "kind": "lancee",
+      "demande": "d-7",
+      "issue": "raccourci",
+      "json": "{\"type\":\"lancee\",\"v\":2,\"demande\":\"d-7\",\"issue\":\"raccourci\"}"
+    },
+    {
+      "name": "lancee_echec",
+      "sens": "vers",
+      "kind": "lancee",
+      "demande": "d-8",
+      "issue": "echec",
+      "json": "{\"type\":\"lancee\",\"v\":2,\"demande\":\"d-8\",\"issue\":\"echec\"}"
+    },
+    {
+      "name": "lancer",
+      "sens": "depuis",
+      "kind": "lancer",
+      "demande": "d-7",
+      "cle": "3f2a",
+      "json": "{\"type\":\"lancer\",\"v\":2,\"demande\":\"d-7\",\"cle\":\"3f2a\"}"
     }
   ]
 }
