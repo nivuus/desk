@@ -194,7 +194,24 @@ avec 40 ms d'avance, celle-ci est généralement déjà présente. À défaut, P
 ### Silence
 
 Chrome cesse d'émettre quand l'utilisateur se tait (DTX). Le câble doit
-néanmoins être alimenté **en continu** : une application qui écoute un tampon
+néanmoins être alimenté **en continu** :
+
+> ⚠️ **LA PRÉMISSE EST PLUS ÉTROITE QUE CETTE PHRASE, ET C'EST MESURÉ (recette
+> E2, tâche 12, critère ④, 20 août 2026). LA CONCLUSION, ELLE, TIENT SANS
+> CHANGEMENT.** Chrome cesse d'émettre quand la **source de la piste** s'arrête
+> — c'est le silence que E1 a mesuré, `packetsSent` figé. Mais un
+> **périphérique de capture vivant qui produit du silence** fait émettre Chrome
+> **50 paquets/s sans interruption** : il n'y a alors ni DTX, ni trame
+> manquante, ni dissimulation. **Un utilisateur qui se tait devant un micro
+> branché est probablement dans ce second cas, et non dans le premier** —
+> ⚠️ *probablement, car la recette E2 a mesuré du silence NUMÉRIQUE, pas une
+> pièce calme, et l'écart entre les deux n'est éprouvé par rien.*
+>
+> ✅ **« Le câble doit être alimenté en continu » reste juste, et pour les deux
+> silences** : le fil de rendu écrit du silence par défaut, et le juge relève
+> `AMPLITUDE = 0,000000` aussi bien micro allumé sur du silence que piste
+> arrêtée.
+ une application qui écoute un tampon
 vide n'entend pas « du silence », elle voit un flux qui s'interrompt. Le fil de
 rendu écrit donc du silence par défaut — le pendant exact du complément de
 silence de A §5, et pour une raison de même nature : la continuité de la ligne

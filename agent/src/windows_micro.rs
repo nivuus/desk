@@ -46,6 +46,12 @@
 //! compte ses **retards d'échéance** (`retards` de la trace périodique). Si ce
 //! compteur reste à zéro, la question est tranchée ; s'il monte, elle se pose
 //! avec un chiffre. Sans lui, on l'aurait tranchée par opinion.
+//!
+//! ✅ **LE COMPTEUR EST RESTÉ À ZÉRO, DONC LA QUESTION EST TRANCHÉE** (recette
+//! E2, tâches 12 et 13, 20 août 2026) : `retards=0` à chacune des exécutions,
+//! et **cumul 0 sur DEUX épreuves de dix minutes** (615 puis 630 lignes de
+//! trace). Le `Mutex` reste, et ce n'est plus un pari — une file sans verrou
+//! serait du travail écrit contre un besoin mesuré nul.
 
 #![cfg(windows)]
 
