@@ -1,0 +1,61 @@
+LES JOURNAUX DU SOUS-BLOC S4 — FAMILLES DE LECTURE
+==================================================
+
+⚠️ CE FICHIER EST ÉCRIT AVEC UN HEREDOC ENTRE QUOTES, JAMAIS AVEC `echo`.
+En zsh, `echo` interprète `\x1b` et `\r` : un fichier qui DÉCRIT des séquences
+ANSI et des fins de ligne finirait pollué par ce qu'il décrit. S3 a dû le
+refaire pour cette raison.
+
+UNE SEULE FAMILLE, ET C'EST LA PREMIÈRE FOIS DU SOUS-PROJET
+-----------------------------------------------------------
+Tous les journaux de S4 sont en UTF-8 valide, SANS séquence ANSI, SANS `\r`,
+SANS octet NUL. Ils se `grep`ent à plat, sans `sed`, sans `grep -a`.
+
+  Aucune conversion. Aucune précaution.
+
+RELEVÉ PAR LA COMMANDE, le 20 août 2026, APRÈS la dernière écriture :
+
+  fichier                    encodage      CR  NUL  ESC[  lignes  octets
+  recette-1.log              UTF-8 valide   0    0     0     202   10014
+  recette-2.log              UTF-8 valide   0    0     0     202   10015
+  rouges-t10.log             UTF-8 valide   0    0     0     121    8722
+  rouges-t9.log              UTF-8 valide   0    0     0      63    4760
+  instrument/recette-s4.sh   UTF-8 valide   0    0     0      77    4717
+
+  (commande : un script python3 qui compte les octets 13, 0 et la
+   sous-chaîne ESC-crochet sur chaque fichier, et tente un decode('utf-8'))
+
+POURQUOI IL N'Y A PAS DE SECONDE FAMILLE, ET CE N'EST PAS UN MÉRITE
+--------------------------------------------------------------------
+Les trois familles de D6, les quatre de D8 et les trois de D9 viennent toutes
+d'un chemin qui passe par la VM Windows : `run-agent.sh` et `build-agent.sh`
+ne posent pas `[Console]::OutputEncoding`, et `tracing` colore sa sortie.
+
+⛔ S4 N'A PAS TOUCHÉ LA VM. Le sous-projet ⑥ est un sous-projet NAVIGATEUR
+(spec §9) : ses commandes sont `npm`, `node` et `git`, toutes locales. Le
+défaut à deux réglages de la VM reste entier — il n'est pas corrigé, il n'est
+simplement pas rencontré.
+
+CE QU'IL Y A DANS CHAQUE FICHIER
+---------------------------------
+  recette-1.log, recette-2.log
+      Les DEUX exécutions de la recette (tâche 11), sept critères chacune,
+      produites par instrument/recette-s4.sh.
+      ⚠️ DEUX EXÉCUTIONS ÉTABLISSENT LA REPRODUCTIBILITÉ, JAMAIS UN TAUX :
+      les neuf contrôles de ⑥ sont déterministes (spec §9).
+      Les deux journaux ne diffèrent QUE par l'ORDRE d'arrivée de deux lignes
+      de vitest (fichiers de test exécutés en parallèle) : AUCUN nombre ne
+      change. Un `diff` qui neutralise les horodatages le montre.
+
+  rouges-t9.log
+      Les trois rouges de l'écran terminal, harnais du §9 du plan en sept
+      étapes, PREUVE DE DIFF NON VIDE comprise.
+
+  rouges-t10.log
+      Les rouges du garde WCO : ① repli non nul, ② requête média,
+      ③ atteignabilité en deux temps (vider UNE feuille ne suffit pas —
+      la portée est dérivée), plus les DEUX SENS du blanchiment.
+
+  instrument/recette-s4.sh
+      L'instrument de la recette, versé dans son état final — celui des
+      deux exécutions ci-dessus.

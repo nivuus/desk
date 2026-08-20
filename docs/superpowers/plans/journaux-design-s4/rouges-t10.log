@@ -1,0 +1,121 @@
+=== ROUGES DE LA TACHE 10 (garde WCO) — harnais du §9 ===
+arbre commité : 25fb6c6
+
+───────────────────────────────────────────────────────────────
+ROUGE : T10-① — repli non nul : env(titlebar-area-height, 8px)
+① sha256 AVANT : 4dfd26098b069d39c101fb590f8a635ec0de133456182ae871562bb1f744db7e  client/src/style.css
+③ PREUVE DE DIFF NON VIDE — git diff --numstat :
+1	1	client/src/style.css
+④ le contrôle, et QUELLE assertion rougit :
+   × le Window Controls Overlay — la règle est livrée, et elle est INERTE > ① tout env(titlebar-area-*) porte le repli 0px 14ms
+     → un env(titlebar-area-*) sans le repli « , 0px » change la mise en page AUJOURD’HUI: expected [ Array(1) ] to deeply equal []
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/style.test.ts > le Window Controls Overlay — la règle est livrée, et elle est INERTE > ① tout env(titlebar-area-*) porte le repli 0px
+AssertionError: un env(titlebar-area-*) sans le repli « , 0px » change la mise en page AUJOURD’HUI: expected [ Array(1) ] to deeply equal []
+    142|             envs.filter((e) => e.repli !== ', 0px').map((e) => `${e.fi…
+    143|             'un env(titlebar-area-*) sans le repli « , 0px » change la…
+      Tests  1 failed | 5 passed (6)
+⑤ git checkout
+⑥ sha256 APRÈS : 4dfd26098b069d39c101fb590f8a635ec0de133456182ae871562bb1f744db7e  client/src/style.css
+⑦ git status --porcelain client/ :
+   (vide = restauré)
+
+───────────────────────────────────────────────────────────────
+ROUGE : T10-② — ajouter @media (display-mode: window-controls-overlay)
+① sha256 AVANT : f16e8493841f4e9484afbfbdf50efc188ca6054c454e59ac7b08ca47d1ca3a5f  client/src/session/etat-terminal.css
+③ PREUVE DE DIFF NON VIDE — git diff --numstat :
+6	0	client/src/session/etat-terminal.css
+④ le contrôle, et QUELLE assertion rougit :
+   × le Window Controls Overlay — la règle est livrée, et elle est INERTE > ② aucune requête @media conditionnelle au WCO 14ms
+     → une @media (display-mode: window-controls-overlay) peut changer la mise en page sans qu’aucune commande ne le dise: expected [ Array(1) ] to deeply equal []
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: une @media (display-mode: window-controls-overlay) peut changer la mise en page sans qu’aucune commande ne le dise: expected [ Array(1) ] to deeply equal []
++   "client/src/session/etat-terminal.css  @media (display-mode: window-controls-overlay)",
+    151|             'une @media (display-mode: window-controls-overlay) peut c…
+      Tests  1 failed | 5 passed (6)
+⑤ git checkout
+⑥ sha256 APRÈS : f16e8493841f4e9484afbfbdf50efc188ca6054c454e59ac7b08ca47d1ca3a5f  client/src/session/etat-terminal.css
+⑦ git status --porcelain client/ :
+   (vide = restauré)
+
+───────────────────────────────────────────────────────────────
+ROUGE : T10-③a — vider client/src/style.css SEULE : ③ doit rester VERTE (contre-épreuve)
+① sha256 AVANT :
+4dfd26098b069d39c101fb590f8a635ec0de133456182ae871562bb1f744db7e  client/src/style.css
+f16e8493841f4e9484afbfbdf50efc188ca6054c454e59ac7b08ca47d1ca3a5f  client/src/session/etat-terminal.css
+③ PREUVE DE DIFF NON VIDE :
+0	299	client/src/style.css
+④ le contrôle — on lit QUELLE assertion rougit, et laquelle NON :
+           env(titlebar-area-*) lus : 1
+   × style.css — les gardes de la fenêtre de session > ② atteignabilité : la feuille déclare des règles 8ms
+   × style.css — les gardes de la fenêtre de session > ① le bouton plein écran actif est HORS du flux d’événements 5ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  2 failed | 4 passed (6)
+⑤ git checkout
+⑥ sha256 APRÈS :
+4dfd26098b069d39c101fb590f8a635ec0de133456182ae871562bb1f744db7e  client/src/style.css
+f16e8493841f4e9484afbfbdf50efc188ca6054c454e59ac7b08ca47d1ca3a5f  client/src/session/etat-terminal.css
+⑦ git status --porcelain client/ :
+   (vide = restauré)
+
+───────────────────────────────────────────────────────────────
+ROUGE : T10-③b — vider LES DEUX porteuses : ③ tombe
+① sha256 AVANT :
+4dfd26098b069d39c101fb590f8a635ec0de133456182ae871562bb1f744db7e  client/src/style.css
+f16e8493841f4e9484afbfbdf50efc188ca6054c454e59ac7b08ca47d1ca3a5f  client/src/session/etat-terminal.css
+③ PREUVE DE DIFF NON VIDE :
+0	80	client/src/session/etat-terminal.css
+0	299	client/src/style.css
+④ le contrôle :
+   × le Window Controls Overlay — la règle est livrée, et elle est INERTE > ③ atteignabilité : il existe au moins un env(titlebar-area-) à lire 11ms
+     → aucun env(titlebar-area-) dans client/src/ : le garde WCO est vert en ne mesurant rien: expected 0 to be greater than 0
+   × style.css — les gardes de la fenêtre de session > ② atteignabilité : la feuille déclare des règles 1ms
+   × style.css — les gardes de la fenêtre de session > ① le bouton plein écran actif est HORS du flux d’événements 5ms
+   × style.css — les gardes de la fenêtre de session > ③ l’écran terminal reste MASQUÉ tant qu’il porte `hidden` 1ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: aucun env(titlebar-area-) dans client/src/ : le garde WCO est vert en ne mesurant rien: expected 0 to be greater than 0
+AssertionError: style.css ne déclare AUCUNE règle : le garde ① est alors vert en ne mesurant rien: expected 0 to be greater than 0
+AssertionError: la règle #fullscreen[data-actif="true"] ne déclare pas pointer-events: none: expected [] to include 'pointer-events: none'
+AssertionError: session/etat-terminal.css ne déclare pas .ecran[hidden] { display: none }: expected [] to include 'display: none'
+      Tests  4 failed | 2 passed (6)
+⑤ git checkout
+⑥ sha256 APRÈS :
+4dfd26098b069d39c101fb590f8a635ec0de133456182ae871562bb1f744db7e  client/src/style.css
+f16e8493841f4e9484afbfbdf50efc188ca6054c454e59ac7b08ca47d1ca3a5f  client/src/session/etat-terminal.css
+⑦ git status --porcelain client/ :
+   (vide = restauré)
+
+───────────────────────────────────────────────────────────────
+CONTRE-ÉPREUVE A (blanchiment, sens 1) — env(titlebar-area-height, 8px) dans un COMMENTAIRE : VERT attendu
+① sha256 AVANT : f16e8493841f4e9484afbfbdf50efc188ca6054c454e59ac7b08ca47d1ca3a5f  client/src/session/etat-terminal.css
+③ PREUVE DE DIFF NON VIDE :
+3	0	client/src/session/etat-terminal.css
+④ le contrôle — VERT attendu :
+           env(titlebar-area-*) lus : 2
+ ✓ src/style.test.ts (6 tests) 20ms
+      Tests  6 passed (6)
+⑤ git checkout
+⑥ sha256 APRÈS : f16e8493841f4e9484afbfbdf50efc188ca6054c454e59ac7b08ca47d1ca3a5f  client/src/session/etat-terminal.css
+⑦ git status --porcelain client/ :
+   (vide = restauré)
+
+───────────────────────────────────────────────────────────────
+CONTRE-ÉPREUVE B (blanchiment, sens 2) — les DEUX déclarations réelles COMMENTÉES : ③ tombe (un commentaire ne DÉCLARE pas)
+① sha256 AVANT :
+4dfd26098b069d39c101fb590f8a635ec0de133456182ae871562bb1f744db7e  client/src/style.css
+f16e8493841f4e9484afbfbdf50efc188ca6054c454e59ac7b08ca47d1ca3a5f  client/src/session/etat-terminal.css
+③ PREUVE DE DIFF NON VIDE :
+1	1	client/src/session/etat-terminal.css
+1	1	client/src/style.css
+④ le contrôle :
+           env(titlebar-area-*) lus : 0
+   × le Window Controls Overlay — la règle est livrée, et elle est INERTE > ③ atteignabilité : il existe au moins un env(titlebar-area-) à lire 22ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: aucun env(titlebar-area-) dans client/src/ : le garde WCO est vert en ne mesurant rien: expected 0 to be greater than 0
+      Tests  1 failed | 5 passed (6)
+⑤ git checkout
+⑥ sha256 APRÈS :
+4dfd26098b069d39c101fb590f8a635ec0de133456182ae871562bb1f744db7e  client/src/style.css
+f16e8493841f4e9484afbfbdf50efc188ca6054c454e59ac7b08ca47d1ca3a5f  client/src/session/etat-terminal.css
+⑦ git status --porcelain client/ :
+   (vide = restauré)

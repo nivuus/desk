@@ -1,0 +1,63 @@
+=== ROUGES DE LA TACHE 9 — harnais du §9 du plan (7 étapes) ===
+arbre commité : 674b5ca
+
+───────────────────────────────────────────────────────────────
+ROUGE : T9-1 — l'écran se lève sur un message ORDINAIRE (sens inverse)
+① sha256 AVANT : 9501245cb70796f830abdc52e55854fae865952301f5fe6e4c3bedc399f0842e  client/src/status.ts
+③ PREUVE DE DIFF NON VIDE — git diff --numstat client/src/status.ts :
+1	1	client/src/status.ts
+④ le contrôle, et QUELLE assertion rougit :
+   × écran terminal > ② un message ORDINAIRE ne lève pas l’écran 26ms
+     → expected false to be true // Object.is equality
+   × écran terminal > ③ un message PERSISTANT ne lève pas l’écran 4ms
+     → expected false to be true // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/ecran-terminal.test.ts > écran terminal > ② un message ORDINAIRE ne lève pas l’écran
+AssertionError: expected false to be true // Object.is equality
+     51|         statut.afficher('prêt — 1280×720');
+ FAIL  src/ecran-terminal.test.ts > écran terminal > ③ un message PERSISTANT ne lève pas l’écran
+AssertionError: expected false to be true // Object.is equality
+      Tests  2 failed | 4 passed (6)
+⑤ git checkout -- client/src/status.ts
+⑥ sha256 APRÈS : 9501245cb70796f830abdc52e55854fae865952301f5fe6e4c3bedc399f0842e  client/src/status.ts
+⑦ git status --porcelain client/ :
+   (vide ci-dessus = arbre restauré)
+
+───────────────────────────────────────────────────────────────
+ROUGE : T9-2 — retirer .ecran[hidden] { display: none }
+① sha256 AVANT : 990a3e5e7eb4759452d02764f982137cbd5f4a87c48fb18bcdd24108d03aeef6  client/src/session/etat-terminal.css
+③ PREUVE DE DIFF NON VIDE — git diff --numstat client/src/session/etat-terminal.css :
+0	3	client/src/session/etat-terminal.css
+④ le contrôle, et QUELLE assertion rougit :
+   × style.css — les gardes de la fenêtre de session > ③ l’écran terminal reste MASQUÉ tant qu’il porte `hidden` 24ms
+     → session/etat-terminal.css ne déclare pas .ecran[hidden] { display: none }: expected [] to include 'display: none'
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/style.test.ts > style.css — les gardes de la fenêtre de session > ③ l’écran terminal reste MASQUÉ tant qu’il porte `hidden`
+AssertionError: session/etat-terminal.css ne déclare pas .ecran[hidden] { display: none }: expected [] to include 'display: none'
+     97|             'session/etat-terminal.css ne déclare pas .ecran[hidden] {…
+      Tests  1 failed | 2 passed (3)
+⑤ git checkout -- client/src/session/etat-terminal.css
+⑥ sha256 APRÈS : 990a3e5e7eb4759452d02764f982137cbd5f4a87c48fb18bcdd24108d03aeef6  client/src/session/etat-terminal.css
+⑦ git status --porcelain client/ :
+   (vide ci-dessus = arbre restauré)
+
+───────────────────────────────────────────────────────────────
+ROUGE : T9-3 — retirer l'écriture du TEXTE dans l'écran
+① sha256 AVANT : 4e8036dcd034204f8f7c2469c260f10ec476adca068c2eaa21ec033b36c3d8ab  client/src/ecran-terminal.ts
+③ PREUVE DE DIFF NON VIDE — git diff --numstat client/src/ecran-terminal.ts :
+0	1	client/src/ecran-terminal.ts
+④ le contrôle, et QUELLE assertion rougit :
+   × écran terminal > ① un message TERMINAL lève l’écran et y écrit le texte 36ms
+     → expected '' to be 'session terminée : fermeture demandée' // Object.is equality
+   × écran terminal > ⑤ un second état terminal REMPLACE le premier, ton compris 3ms
+     → expected '' to be 'session terminée : fermeture demandée' // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/ecran-terminal.test.ts > écran terminal > ① un message TERMINAL lève l’écran et y écrit le texte
+AssertionError: expected '' to be 'session terminée : fermeture demandée' // Object.is equality
+ FAIL  src/ecran-terminal.test.ts > écran terminal > ⑤ un second état terminal REMPLACE le premier, ton compris
+AssertionError: expected '' to be 'session terminée : fermeture demandée' // Object.is equality
+      Tests  2 failed | 4 passed (6)
+⑤ git checkout -- client/src/ecran-terminal.ts
+⑥ sha256 APRÈS : 4e8036dcd034204f8f7c2469c260f10ec476adca068c2eaa21ec033b36c3d8ab  client/src/ecran-terminal.ts
+⑦ git status --porcelain client/ :
+   (vide ci-dessus = arbre restauré)
