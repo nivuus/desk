@@ -71,6 +71,26 @@ body {
     background: var(--video-letterbox);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔴 `--sur-voile` SUR LES QUATRE ÉLÉMENTS QUI PORTENT DE L'ENCRE, ET C'EST LA
+   RÉPARATION D'UN DÉFAUT RÉEL DU THÈME CLAIR (sous-bloc S4, tâche 4).
+
+   `base.css` pose `color: var(--texte-fort)` sur `body` ; en thème clair
+   `--texte-fort` vaut `#10131a`, une encre quasi noire ; et les voiles sont
+   HORS THÈME, donc noirs dans les deux. `#status` et `#stats` héritaient donc
+   du quasi-noir sur un voile quasi-noir, et `#fullscreen` et `#micro` le
+   déclaraient explicitement. AUCUN des huit contrôles ne pouvait le voir.
+
+   ⚠️ AUCUN CHANGEMENT D'APPARENCE EN SOMBRE : `--sur-voile` vaut `#e6e8eb`,
+   exactement `--texte-fort` de la racine, et exactement l'encre que cette
+   feuille portait avant S1.
+
+   ⚠️ QUATRE APPELANTS, PAS CINQ, et la divergence est déclarée : le §4 du plan
+   dit « les cinq éléments », mais le cinquième est `#remote`, un `<video>` qui
+   ne rend AUCUN texte. Lui poser une encre serait écrire une règle morte, et
+   « une règle morte est pire qu'une règle absente : elle se lit comme une
+   protection existante » — cette feuille le dit déjà d'une autre.
+   ═══════════════════════════════════════════════════════════════════════════ */
 #status {
     position: fixed;
     inset-block-start: var(--e-3);
@@ -78,6 +98,7 @@ body {
     padding: 6px var(--e-3);
     border-radius: var(--r-2);
     background: var(--voile-flottant);
+    color: var(--sur-voile);
     font-variant-numeric: tabular-nums;
     transition: opacity var(--duree-2);
 }
@@ -94,6 +115,7 @@ body {
     padding: 6px var(--e-3);
     border-radius: var(--r-2);
     background: var(--voile-flottant);
+    color: var(--sur-voile);
     font-variant-numeric: tabular-nums;
     font-size: var(--t-s);
     letter-spacing: 0.02em;
@@ -109,7 +131,7 @@ body {
     padding: var(--e-2) var(--e-3);
     font-size: 18px;
     line-height: 1;
-    color: var(--texte-fort);
+    color: var(--sur-voile);
     background: var(--voile-bouton);
     cursor: pointer;
 }
@@ -142,7 +164,7 @@ body {
     padding: var(--e-2) var(--e-3);
     font-size: 18px;
     line-height: 1;
-    color: var(--texte-fort);
+    color: var(--sur-voile);
     background: var(--voile-bouton);
     cursor: pointer;
 }

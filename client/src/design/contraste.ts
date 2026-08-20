@@ -91,8 +91,48 @@ function pairesDuTheme(theme: string): Paire[] {
 }
 
 /**
- * Les 52 paires DÉCLARÉES — jamais un produit cartésien.
- * (50 en S1 ; S2 en ajoute deux, `--sur-accent` sur `--accent-survol`.)
+ * LA 53ᵉ PAIRE — `--sur-voile` sur `--video-letterbox` (sous-bloc S4, tâche 4).
+ *
+ * 🔴 ELLE RÉPARE UN DÉFAUT RÉEL, ET AUCUN DES HUIT CONTRÔLES NE POUVAIT LE
+ * VOIR. `base.css` pose `color: var(--texte-fort)` sur `body` ; en thème clair
+ * `--texte-fort` vaut `#10131a`, une encre quasi noire ; et les voiles sont
+ * HORS THÈME, donc noirs dans les deux. Sous le thème clair, les cinq éléments
+ * de la fenêtre de session écrivaient donc du quasi-noir sur un voile
+ * quasi-noir. Ce n'est pas une régression du produit d'origine : c'est un effet
+ * de bord de S1, qui a donné un thème clair à une surface qui n'en avait pas.
+ *
+ * ⚠️ POURQUOI AUCUN CONTRÔLE NE LE VOYAIT, et l'argument est juste À MOITIÉ :
+ * `tokens.css` place les voiles hors des paires, « leur lisibilité dépend de la
+ * vidéo qui est dessous, qui n'est pas connaissable ». C'est vrai DU VOILE ; ça
+ * ne l'est pas de L'ENCRE qu'on y pose, qui, elle, est parfaitement
+ * connaissable dès que le fond l'est.
+ *
+ * ⚠️ ET CETTE PAIRE NE MESURE QU'UNE RÉGION : la bande que laisse
+ * `object-fit: contain` autour de l'image (`#remote { background:
+ * var(--video-letterbox) }`), la SEULE où le fond sous l'encre soit connu.
+ * Au-dessus de l'image, le fond reste inconnaissable, et la réserve du §11 de
+ * la spec tient entière — « `--voile-flottant` ne suffit pas sur une vidéo très
+ * claire, non mesuré ».
+ *
+ * ⚠️ ELLE N'EST DANS AUCUN DES DEUX THÈMES, d'où son libellé : ses deux tokens
+ * sont hors thème, donc elle vaut à l'identique en clair et en sombre. La
+ * compter par thème mesurerait deux fois la même chose. `evaluer` la résout par
+ * son repli sur le bloc `racine`, où les deux tokens vivent.
+ *
+ * ⚠️ QUE `#e6e8eb` SOIT LA BONNE ENCRE SUR UN VOILE EST UN JUGEMENT HUMAIN
+ * (spec §8) : seule sa lisibilité SUR LA BANDE NOIRE est mesurée ici.
+ */
+const PAIRE_HORS_THEME: Paire = {
+    theme: 'hors thème',
+    encre: '--sur-voile',
+    fond: '--video-letterbox',
+    seuil: SEUIL_TEXTE,
+};
+
+/**
+ * Les 53 paires DÉCLARÉES — jamais un produit cartésien.
+ * (50 en S1 ; S2 en ajoute deux, `--sur-accent` sur `--accent-survol` ; S4 en
+ * ajoute une, hors thème, ci-dessus.)
  *
  * 25 par thème : 7 encres × 3 fonds au seuil 4,5 ; `--bord-fort` sur les 3
  * fonds au seuil 3 ; `--sur-accent` sur `--accent` au seuil 4,5.
@@ -107,7 +147,11 @@ function pairesDuTheme(theme: string): Paire[] {
  * `--bord` là où il fallait `--bord-fort`. C'est une RÈGLE DE REVUE, et la
  * spec §8 la nomme comme telle.
  */
-export const PAIRES: readonly Paire[] = [...pairesDuTheme('sombre'), ...pairesDuTheme('clair')];
+export const PAIRES: readonly Paire[] = [
+    ...pairesDuTheme('sombre'),
+    ...pairesDuTheme('clair'),
+    PAIRE_HORS_THEME,
+];
 
 /** Le bloc qui porte la palette d'un thème. Les deux blocs clairs sont égaux (§7.4). */
 function blocDuTheme(blocs: BlocDeTheme[], theme: string): BlocDeTheme | undefined {
@@ -118,7 +162,7 @@ function blocDuTheme(blocs: BlocDeTheme[], theme: string): BlocDeTheme | undefin
 }
 
 /**
- * Évalue les 52 paires sur les blocs parsés.
+ * Évalue les 53 paires sur les blocs parsés.
  *
  * ⚠️ UN TOKEN INTROUVABLE EST UN ÉCHEC, jamais une paire silencieusement
  * sautée : sans cela, une faute de frappe dans un nom de token ferait BAISSER

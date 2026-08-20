@@ -77,16 +77,28 @@
     --alerte: #e0b55c;
     --danger: #f07a7a;
 
-    /* ── Six voiles HORS THÈME — déclarés une fois, jamais redéfinis ───────
+    /* ── Sept tokens HORS THÈME — déclarés une fois, jamais redéfinis ─────
        Ils sont posés SUR LA VIDÉO, dont le contenu ne suit aucun thème : un
        encadrement clair autour d'une image vidéo se lit comme un défaut
        d'affichage. Ils sont donc identiques dans les deux thèmes, et c'est
        l'exception nommée au point 2 de §3.
 
-       ⚠️ ILS SONT HORS DES 50 PAIRES DE CONTRASTE, et pas par oubli : leur
-       lisibilité dépend de la vidéo qui est dessous, qui n'est pas
+       ⚠️ LES SIX VOILES SONT HORS DES PAIRES DE CONTRASTE, et pas par oubli :
+       leur lisibilité dépend de la vidéo qui est dessous, qui n'est pas
        connaissable. La spec §11 le déclare déjà — « `--voile-flottant` ne
        suffit pas sur une vidéo très claire, non mesuré ».
+       ❌ ET CET ARGUMENT N'EST JUSTE QU'À MOITIÉ — réfuté par le sous-bloc S4,
+       tâche 4. Il vaut DU VOILE ; il ne vaut pas de L'ENCRE qu'on y pose, qui
+       est parfaitement connaissable dès que le fond l'est. Tant que personne
+       ne l'avait relevé, `base.css` posait `color: var(--texte-fort)` sur
+       `body`, `--texte-fort` valait `#10131a` en thème clair, et les cinq
+       éléments de la fenêtre de session écrivaient du quasi-noir sur un voile
+       quasi-noir. AUCUN des huit contrôles ne pouvait le voir.
+       ✅ D'où `--sur-voile`, le SEPTIÈME hors-thème, et la 53ᵉ paire de
+       contraste : `--sur-voile` sur `--video-letterbox`, la SEULE région où le
+       fond sous l'encre soit connu — les bandes que laisse `object-fit:
+       contain`. Au-dessus de l'image, le fond reste inconnaissable et la
+       réserve du §11 tient entière.
 
        ⚠️ LES DEUX DERNIERS NE SONT PAS DES NOIRS, et ils ne se raccordent PAS
        à `--danger` / `--alerte` (divergence D3). Les employer ferait CHANGER
@@ -100,6 +112,12 @@
     --voile-bouton-survol: rgb(0 0 0 / 0.75);
     --voile-micro-actif: rgb(220 38 38 / 0.85);
     --voile-micro-refuse: rgb(120 53 15 / 0.85);
+    /* L'ENCRE POSÉE SUR LES VOILES — hors thème pour la même raison qu'eux, et
+       AUCUN changement d'apparence en SOMBRE : `#e6e8eb` est exactement
+       `--texte-fort` de la racine, quinze lignes plus haut, et exactement
+       l'encre que la fenêtre de session portait avant S1 (`style.css:4`,
+       `--text: #e6e8eb`). En CLAIR, c'est la réparation du défaut ci-dessus. */
+    --sur-voile: #e6e8eb;
 
     /* ── Deux piles de polices SYSTÈME — zéro octet embarqué (spec §4.3) ───
        Aucun fichier de police, aucun CDN. Le produit entier pèse quelques

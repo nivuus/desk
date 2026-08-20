@@ -34,14 +34,14 @@ describe('rapportDeContraste — vecteurs extérieurs à notre palette', () => {
         // canaux, donc une moyenne linéaire rendrait 0,5. La luminance
         // relative vraie vaut ≈ 0,2159. La faute est classique et rend des
         // rapports PLAUSIBLES mais faux sur toutes les couleurs
-        // intermédiaires — c'est-à-dire sur les 52 paires réelles, là où
+        // intermédiaires — c'est-à-dire sur les 53 paires réelles, là où
         // noir/blanc rend 21 dans les deux cas.
         expect(luminanceRelative('#808080')).toBeCloseTo(0.2159, 4);
     });
 });
 
 describe('PAIRES', () => {
-    it('en compte 52, et ce sont des paires DÉCLARÉES', () => {
+    it('en compte 53, et ce sont des paires DÉCLARÉES', () => {
         // Sept encres × trois fonds au seuil 4,5, plus `--bord-fort` sur les
         // trois fonds au seuil 3, plus `--sur-accent` sur `--accent` au
         // seuil 4,5, plus `--sur-accent` sur `--accent-survol` au seuil 4,5
@@ -51,8 +51,16 @@ describe('PAIRES', () => {
         // ⚠️ CE COMPTE EST CE QUI EMPÊCHE `PAIRES` DE RÉTRÉCIR EN SILENCE :
         // une faute de frappe qui ferait disparaître une poussée dans
         // `pairesDuTheme` laisserait `contraste.mjs` vert en mesurant moins.
-        expect(PAIRES).toHaveLength(52);
-        expect(new Set(PAIRES.map((p) => p.theme))).toEqual(new Set(['sombre', 'clair']));
+        //
+        // ⚠️ LA 53ᵉ N'EST DANS AUCUN DES DEUX THÈMES, et c'est ce que son
+        // libellé dit : `--sur-voile` sur `--video-letterbox`, deux tokens HORS
+        // THÈME, donc une paire qui vaut à l'identique en clair et en sombre.
+        // La compter deux fois mesurerait deux fois la même chose (sous-bloc
+        // S4, tâche 4).
+        expect(PAIRES).toHaveLength(53);
+        expect(new Set(PAIRES.map((p) => p.theme))).toEqual(
+            new Set(['sombre', 'clair', 'hors thème']),
+        );
     });
 
     it("ne porte JAMAIS `--bord`, et c'est une décision", () => {
@@ -84,21 +92,29 @@ const TOUS = [
     '--fond-0', '--fond-1', '--fond-2', '--bord-fort', '--texte-fort', '--texte',
     '--texte-faible', '--accent', '--accent-survol', '--sur-accent', '--succes',
     '--alerte', '--danger',
+    // La 53ᵉ paire (S4, tâche 4). `--video-letterbox` joue ici le rôle d'un
+    // FOND, `--sur-voile` celui d'une encre : c'est ce qu'ils sont dans le
+    // produit — l'encre des cinq éléments de la fenêtre de session, sur la
+    // bande que laisse `object-fit: contain`.
+    '--video-letterbox', '--sur-voile',
 ];
+/** Les tokens que la palette synthétique traite comme des FONDS. */
+const FONDS_SYNTHETIQUES = (n: string) =>
+    n.startsWith('--fond') || n === '--sur-accent' || n === '--video-letterbox';
 
 describe('evaluer', () => {
     it('rend aucun échec sur une palette conforme', () => {
         const conforme = Object.fromEntries(
             TOUS.map((n) => [
                 n,
-                n.startsWith('--fond') || n === '--sur-accent'
+                FONDS_SYNTHETIQUES(n)
                     ? (['#ffffff', '#000000'] as [string, string])
                     : (['#000000', '#ffffff'] as [string, string]),
             ]),
         );
         const resultat = evaluer(lireBlocsDeTheme(palette(conforme)));
         expect(resultat.echecs).toEqual([]);
-        expect(resultat.verifiees).toBe(52);
+        expect(resultat.verifiees).toBe(53);
         expect(resultat.minimum).toBeCloseTo(21, 5);
     });
 
@@ -107,7 +123,7 @@ describe('evaluer', () => {
         const fautif = Object.fromEntries(
             TOUS.map((n) => [
                 n,
-                n.startsWith('--fond') || n === '--sur-accent'
+                FONDS_SYNTHETIQUES(n)
                     ? (['#ffffff', '#000000'] as [string, string])
                     : n === '--texte-faible'
                       ? (['#eeeeee', '#111111'] as [string, string]) // sombre : clair sur clair
