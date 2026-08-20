@@ -1,0 +1,9 @@
+navigateur Chrome/151.0.7922.169
+AVANT tout geste : {"isActive":false,"hasBeenActive":false,"hasFocus":true} → writeText THROW:NotAllowedError
+APRES un Ctrl+C de confiance : {"isActive":true,"hasBeenActive":true,"hasFocus":true} → writeText OK
+
+=== ANNEXE ===
+hypothese (R1 mesure sous activation) : CORROBOREE — writeText refuse sans activation, accepte apres. NON ETABLIE : le geste n'est pas la seule variable.
+⚠️ Cette sonde n'etablit RIEN du prealable de P2, et rien du sens VM → navigateur,
+   que P1 a recette par ailleurs (4 executions).
+releve ecrit : p2-annexe-writetext-2.json
