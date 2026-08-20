@@ -1,0 +1,22 @@
+=== ROUGE DE LA REVUE TRANSVERSE (T12) — l ATTEIGNABILITE DEDOUBLEE ===
+arbre commité : a9c3026
+
+POURQUOI ELLE EXISTE : l extraction a déplacé la règle du garde ① hors de
+client/src/style.css. Sans une seconde assertion d atteignabilité, vider la
+feuille NEUVE laisserait ① vert en ne mesurant rien — le défaut de portée que
+design/longueurs.test.ts a déjà mesuré, rejoué ici par une simple extraction.
+
+① sha256 AVANT : 5b22ca551a62f72413e84acd9b13170525751f47a015b67ad360b075e04a3ea1  client/src/session/boutons-de-coin.css
+③ PREUVE DE DIFF NON VIDE :
+0	138	client/src/session/boutons-de-coin.css
+④ le contrôle, et QUELLES assertions rougissent :
+   × style.css — les gardes de la fenêtre de session > ② atteignabilité : la feuille déclare des règles 22ms
+   × style.css — les gardes de la fenêtre de session > ① le bouton plein écran actif est HORS du flux d’événements 11ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: session/boutons-de-coin.css ne déclare AUCUNE règle : le garde ① est alors vert en ne mesurant rien: expected 0 to be greater than 0
+AssertionError: session/boutons-de-coin.css : la règle #fullscreen[data-actif="true"] ne déclare pas pointer-events: none: expected [] to include 'pointer-events: none'
+      Tests  2 failed | 4 passed (6)
+⑤ git checkout
+⑥ sha256 APRÈS : 5b22ca551a62f72413e84acd9b13170525751f47a015b67ad360b075e04a3ea1  client/src/session/boutons-de-coin.css
+⑦ git status --porcelain client/ :
+   (vide = restauré)
