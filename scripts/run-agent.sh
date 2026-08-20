@@ -37,6 +37,16 @@ ${PLEIN_ECRAN:+\$env:PLEIN_ECRAN = '$PLEIN_ECRAN'}
 ${PRESSE_PAPIER:+\$env:PRESSE_PAPIER = '$PRESSE_PAPIER'}
 ${APPS:+\$env:APPS = '$APPS'}
 ${MICRO_MESURE:+\$env:MICRO_MESURE = '$MICRO_MESURE'}
+# Chantier E, bloc E2 — les TROIS variables du microphone, plus
+# MICRO_MESURE ci-dessus. Sans ces lignes l'agent demarre sans elles ET
+# SANS RIEN SIGNALER : piege paye en D1 (SUPERVISEUR), D2
+# (MULTIFENETRE_REPRISE) et D7 (AUDIO). Le controle qui vaut n'est pas la
+# lecture de ce script mais la TRACE — pour MICRO_PERIPHERIQUE, la ligne
+# « cable de rendu retenu pour l'ecriture du micro » porte la valeur
+# RETENUE, jamais la seule presence d'une ligne.
+${MICRO:+\$env:MICRO = '$MICRO'}
+${MICRO_PERIPHERIQUE:+\$env:MICRO_PERIPHERIQUE = '$MICRO_PERIPHERIQUE'}
+${MICRO_FAUTE_ECRITURE:+\$env:MICRO_FAUTE_ECRITURE = '$MICRO_FAUTE_ECRITURE'}
 ${TEST_FILE:+\$env:TEST_FILE = '$TEST_FILE'}
 ${CAPTURE_TEST:+\$env:CAPTURE_TEST = '$CAPTURE_TEST'}
 ${SOURCE_TRACE:+\$env:SOURCE_TRACE = '$SOURCE_TRACE'}

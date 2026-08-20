@@ -73,6 +73,35 @@ pub struct MutexNomme {
     tenu: bool,
 }
 
+// SÉCURITÉ : `MutexNomme` porte un `HANDLE`, c'est-à-dire un `*mut c_void`,
+// que Rust ne marque pas `Send` par défaut. Le marquer ici est **nécessaire** —
+// `Session::set_puits_micro` exige `Box<dyn PuitsMicro + Send>`, la session
+// étant prise par valeur par `run()` sur un fil bloquant — et il est **correct**
+// pour trois raisons, dans cet ordre :
+//
+// 1. **Un handle de mutex nommé est un objet du NOYAU, valide pour tout le
+//    processus**, pas une référence liée à un appartement COM ni à un fil. Ce
+//    n'est pas le cas de `LoopbackCapture`, dont l'`unsafe impl Send` doit
+//    s'appuyer sur une vérification d'appartement à l'ouverture : ici il n'y a
+//    aucun appartement en jeu.
+// 2. **Rien n'est POSSÉDÉ au moment du transfert.** `creer` passe
+//    `bInitialOwner = false` : l'acquisition est paresseuse, au premier dépôt,
+//    donc sur le fil de transport — celui-là même qui appellera `tenter`
+//    ensuite. La propriété d'un mutex Windows est per-fil ; ce qui traverse la
+//    frontière n'est qu'un handle sans propriétaire.
+// 3. **`Send` et non `Sync`**, et l'écart est le fond de l'argument : le puits
+//    est déplacé UNE fois, de la construction vers le fil de transport, et n'est
+//    ensuite touché que par lui. `Send` autorise exactement ce transfert, et
+//    rien de plus — deux fils appelant `tenter` concurremment resteraient
+//    interdits par le typage, et c'est bien ainsi : le drapeau `tenu`
+//    ci-dessous suppose un seul appelant.
+//
+// **Ce qui invaliderait cette promesse**, à vérifier avant d'y toucher :
+// partager le puits derrière un `Arc` (il faudrait alors `Sync`, que rien
+// n'établit), ou ajouter un `ReleaseMutex` — qui doit venir du fil
+// PROPRIÉTAIRE, et rendrait donc le fil d'appel significatif.
+unsafe impl Send for MutexNomme {}
+
 impl MutexNomme {
     /// Crée (ou ouvre) le mutex. **N'acquiert rien** : l'acquisition est
     /// paresseuse, au premier dépôt.

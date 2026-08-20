@@ -1,0 +1,102 @@
+# Tâche 10 — les rouges et les mutations, relevées le 20 août 2026
+
+## ROUGE — l'aiguillage, tests écrits AVANT toute implémentation
+$ cd agent && cargo test -p agent demarrage::micro
+error[E0425]: cannot find function `choisir_puits` in this scope   (x4)
+error[E0433]: cannot find type `Puits` in this scope               (x4)
+
+Puis, l'aiguillage écrit mais le champ de configuration pas encore :
+error[E0609]: no field `micro` on type `&configuration::Config`
+   --> agent/src/demarrage/micro.rs:112:32
+   = note: available fields are: `signaling_url`, `session_id`, `local_ip`,
+           `test_file`, `superviseur` ... and 9 others
+
+VERT après le champ : 706 passed.
+
+## MUTATIONS sur `demarrage/micro.rs`
+Source sauvegardée, `diff` non vide relevé avant chaque exécution, restauration
+vérifiée par `sha256sum -c`.
+
+M13 « le câble prend le pas sur l'instrument de banc »
+  diff non vide : 6 lignes
+  test ...le_puits_de_mesure_PREND_LE_PAS_sur_le_cable ... FAILED
+    left: Cable / right: Mesure
+  test result: FAILED. 10 passed; 1 failed.                            -> TUÉE
+
+M14 « MICRO=0 ne désarme plus l'instrument de banc »
+  diff non vide : 4 lignes
+  test ...micro_desarme_ne_pose_aucun_puits ... FAILED
+    left: Mesure / right: Aucun
+  test result: FAILED. 10 passed; 1 failed.                            -> TUÉE
+
+M15 « `arme_micro` devient un `is_ok()` » — LE piège que la convention nomme
+  diff non vide : 4 lignes
+  test ...seule_la_valeur_zero_desarme_le_micro ... FAILED
+  test result: FAILED. 10 passed; 1 failed.                            -> TUÉE
+
+M16 « MICRO adopte la convention INVERSE (arme sur `=1`) »
+  diff non vide : 4 lignes
+  test ...seule_la_valeur_zero_desarme_le_micro ... FAILED
+  test result: FAILED. 10 passed; 1 failed.                            -> TUÉE
+
+Restauration vérifiée : `sha256sum -c` -> src/demarrage/micro.rs: Réussi
+
+## 🔴 CE QUE LE CONTRÔLE WINDOWS A TROUVÉ, ET QU'AUCUN TEST D'HÔTE N'AURAIT VU
+$ cargo check --target x86_64-pc-windows-gnu
+error[E0277]: `*mut c_void` cannot be sent between threads safely
+    --> agent/src/demarrage/micro.rs:145:46
+     |
+ 145 |         Ok(puits) => session.set_puits_micro(Box::new(puits)),
+     = help: within `PuitsCable`, the trait `std::marker::Send` is not
+             implemented for `*mut c_void`
+
+`set_puits_micro` exige `Box<dyn PuitsMicro + Send>` — la session est prise par
+valeur par `run()` sur un fil bloquant — et le `HANDLE` du mutex nommé n'est pas
+`Send`. L'argument existe et il est propre : un handle de mutex nommé est un
+objet du NOYAU valide pour tout le processus (pas une référence liée à un
+appartement COM), `creer` passe `bInitialOwner = false` donc **rien n'est
+possédé au moment du transfert**, et c'est `Send` qui est réclamé — pas `Sync`.
+Écrit en toutes lettres auprès de l'`unsafe impl`, avec ce qui l'invaliderait.
+
+## DEUX AFFIRMATIONS QUE CETTE BRANCHE A RENDUES FAUSSES, corrigées à leur place
+- `demarrage/micro.rs::brancher` : « Installe le puits de mesure […] tant que le
+  vrai câble (bloc E2) n'existe pas ». Le câble existe depuis la tâche 9 du
+  MÊME bloc.
+- `demarrage/micro/mesure.rs` : « Le bloc E2, lui, […] devra trancher autrement
+  — une file sans verrou, ou un double tampon ». C'était une PRÉDICTION, et le
+  bloc E2 a tranché dans l'autre sens (le `Mutex` est gardé, et le besoin est
+  rendu observable par le compteur `retards`).
+
+## CONTRÔLES DE FIN DE TÂCHE
+$ cargo test -p agent                            -> 706 passed; 0 failed
+$ cargo check --target x86_64-pc-windows-gnu     -> sortie 0, 16 avertissements
+   TOUS `dead_code` — vérifié par filtrage, zéro d'une autre catégorie.
+   ⚠️ **16, contre 23 À L'ENTRÉE DE LA BRANCHE** : les tâches 7 à 10 consomment
+   les 9 items neufs des tâches 3 à 5, et davantage. **Un seul item des tâches
+   3 à 5 reste inconsommé** : `Exclusivite::tenue`, redondant avec `Issue` sur
+   le seul site d'appel (`PuitsCable::deposer`). Il fait partie des interfaces
+   fixées par le plan et est conservé tel quel.
+
+## LIGNES, PAR LA COMMANDE (fin de mes quatre tâches)
+   483 agent/src/micro.rs                  INCHANGÉ — la marge de 17 est intacte
+   446 agent/src/wasapi/ecriture.rs        neuf
+   424 agent/src/windows_micro.rs          neuf
+   424 agent/src/demarrage/micro/mesure.rs (+11, la prédiction corrigée)
+   359 agent/src/wasapi/rendu.rs           (216 à l'entrée)
+   261 agent/src/configuration.rs          (244 à l'entrée)
+   236 agent/src/wasapi/format.rs          neuf, PUR
+   234 agent/src/demarrage/micro.rs        (76 après extraction de la tâche 6)
+   171 agent/src/windows_micro/verrou.rs   neuf
+   155 scripts/run-agent.sh                (145 à l'entrée)
+   154 agent/src/micro/boucle_locale.rs    (112 à l'entrée)
+    62 agent/src/micro/boucle_locale/tests_capte.rs  neuf
+Aucun fichier neuf au-dessus de 500 ; aucun fichier du chemin n'a franchi le
+plafond, et aucune compression n'a été employée.
+
+## LES TROIS VARIABLES AJOUTÉES À `scripts/run-agent.sh`, ET QUI LES LIT
+   MICRO                  -> `configuration.rs` (`demarrage::micro::arme_micro`)
+   MICRO_PERIPHERIQUE     -> `wasapi/rendu.rs::resoudre_cable` (VARIABLE_CABLE)
+   MICRO_FAUTE_ECRITURE   -> `wasapi/ecriture.rs::faute_a_injecter` (OnceLock)
+`MICRO_MESURE` y était déjà. **Le contrôle qui vaut est la TRACE, pas ce
+script** : la ligne « cable de rendu retenu pour l'ecriture du micro » porte la
+valeur RETENUE et le drapeau `integree`, jamais la seule présence d'une ligne.

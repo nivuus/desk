@@ -77,6 +77,18 @@ pub(crate) struct Config {
     /// même tâche 9, avant que ce commentaire ne soit lu par personne.
     #[cfg_attr(not(windows), allow(dead_code))]
     pub(crate) audio: bool,
+    /// Faux quand `MICRO=0` coupe le microphone de cet agent.
+    ///
+    /// ⚠️ **Convention d'`AUDIO`, `SUPERVISEUR`, `PLEIN_ECRAN` et `CAPTEUR` —
+    /// et donc INVERSE de celle de `micro_mesure` juste en dessous, à
+    /// dessein** : on désarme sur `=0` ce qui est LIVRÉ, on arme sur `=1` ce
+    /// qui ne l'est pas. Le micro est livré depuis le bloc E2 ; le puits de
+    /// mesure ne le sera jamais.
+    ///
+    /// La décision vit dans `demarrage::micro::arme_micro`, où un test la
+    /// garde : **jamais `is_ok()`**, sans quoi quelqu'un qui écrirait
+    /// `MICRO=0` pour être sûr de le couper l'allumerait.
+    pub(crate) micro: bool,
     /// Vrai quand `MICRO_MESURE=1` arme le puits de mesure du micro
     /// (chantier E, `demarrage/micro.rs`).
     ///
@@ -175,6 +187,11 @@ pub(crate) fn config() -> Result<Config> {
         // La décision vit dans `demarrage::micro::arme`, où un test la garde :
         // une variable posée à `0`, à vide, ou à quoi que ce soit d'autre
         // laisse le puits DÉSARMÉ, comme son absence.
+        // Le micro est actif par défaut depuis le bloc E2 : un agent lancé à
+        // la main doit retrouver le comportement livré. `MICRO=0` DÉSACTIVE,
+        // comme `AUDIO=0` — et le prédicat vit chez `demarrage::micro`, où un
+        // test interdit le `is_ok()` qui inverserait le sens de la variable.
+        micro: demarrage::micro::arme_micro(std::env::var("MICRO").ok().as_deref()),
         micro_mesure: demarrage::micro::arme(std::env::var("MICRO_MESURE").ok().as_deref()),
         // Une valeur vide vaut absence : `run-agent.sh` n'écrit la ligne que
         // si la variable est définie, mais un `AGENT_VM=` posé à la main

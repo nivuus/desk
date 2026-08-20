@@ -43,8 +43,19 @@ const TRAMES_PAR_REVEIL: usize = 480;
 /// `LecteurMicro::remplir` (le décodage d'au plus une poignée de trames Opus)
 /// de l'autre : des fenêtres de l'ordre de la dizaine de microsecondes, contre
 /// une boucle de transport qui tourne au rythme de la vidéo. C'est acceptable
-/// **pour un banc**. Le bloc E2, lui, aura un vrai fil WASAPI à échéance dure
-/// et devra trancher autrement — une file sans verrou, ou un double tampon.
+/// **pour un banc**.
+///
+/// ⚠️ **La suite de cette phrase annonçait que « le bloc E2, lui, aura un vrai
+/// fil WASAPI à échéance dure et devra trancher autrement — une file sans
+/// verrou, ou un double tampon ». C'était une PRÉDICTION, et le bloc E2 a
+/// tranché dans l'autre sens** : `windows_micro.rs` garde le `Mutex`, parce que
+/// le fil de rendu ne le tient que le temps de `remplir` — de l'ordre de la
+/// dizaine de microsecondes — contre une échéance WASAPI de l'ordre de 10 ms,
+/// trois ordres de grandeur au-dessus. Une file sans verrou serait du travail
+/// écrit avant d'avoir constaté le besoin. **Et le besoin est rendu
+/// OBSERVABLE** : le fil de rendu compte ses retards d'échéance (`retards` de
+/// sa trace périodique), ce qui rend la question décidable au lieu de
+/// conjecturale.
 pub(super) struct PuitsDeMesure {
     pub(super) lecteur: Arc<Mutex<LecteurMicro>>,
 }
