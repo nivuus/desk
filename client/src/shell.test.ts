@@ -1,10 +1,21 @@
 import { describe, it, expect, vi } from 'vitest';
-import { creerBureau } from './shell';
+import { creerBureau, type Ton } from './shell';
 
+/**
+ * 🔴 `afficher` COLLECTE, IL NE FAIT PLUS RIEN. La version d'avant le
+ * sous-bloc S3 posait `afficher: () => {}` — un NO-OP, exactement le patron que
+ * le sous-bloc D10 a nommé : « une source factice qui implémente un effet de
+ * bord en NO-OP rend une famille entière de défauts invisible aux tests
+ * d'hôte », 456 tests verts sur un produit muet. Tant qu'il était là, AUCUN des
+ * quatre tests de ton ci-dessous ne pouvait échouer — et le bandeau lui-même
+ * n'était vérifié par rien.
+ */
 function bureauDeTest() {
     const ouvertes = new Map<string, { closed: boolean; close: () => void }>();
     const envoyes: unknown[] = [];
     const etatsFichiers: string[] = [];
+    const bandeaux: Array<{ message: string; ton: Ton }> = [];
+    const etats: Array<{ texte: string; ton: Ton }> = [];
     const bureau = creerBureau({
         ouvrirFenetre: (session) => {
             const f = { closed: false, close: () => { f.closed = true; } };
@@ -12,10 +23,13 @@ function bureauDeTest() {
             return f as unknown as Window;
         },
         envoyer: (message) => { envoyes.push(message); },
-        afficher: () => {},
-        afficherEtatFichiers: (texte) => { etatsFichiers.push(texte); },
+        afficher: (message, ton) => { bandeaux.push({ message, ton }); },
+        afficherEtatFichiers: (texte, ton) => {
+            etatsFichiers.push(texte);
+            etats.push({ texte, ton });
+        },
     });
-    return { bureau, ouvertes, envoyes, etatsFichiers };
+    return { bureau, ouvertes, envoyes, etatsFichiers, bandeaux, etats };
 }
 
 describe('page-shell', () => {
@@ -78,8 +92,12 @@ describe('page-shell', () => {
             afficherEtatFichiers: () => {},
         });
         bureau.refus('F9', 'plus aucune sortie virtuelle disponible');
+        // Le motif du refus est REPRIS TEL QUEL, et le ton l'accompagne : le
+        // sous-bloc S3 a ajouté le second argument, et une assertion à un seul
+        // argument cesserait de décrire l'appel réel.
         expect(affiche).toHaveBeenCalledWith(
             expect.stringContaining('plus aucune sortie virtuelle disponible'),
+            'danger',
         );
     });
 
@@ -95,7 +113,7 @@ describe('page-shell', () => {
             afficherEtatFichiers: () => {},
         });
         bureau.fenetreOuverte('w-1', 'Bloc-notes');
-        expect(affiche).toHaveBeenCalledWith(expect.stringContaining('pop-up'));
+        expect(affiche).toHaveBeenCalledWith(expect.stringContaining('pop-up'), 'danger');
         expect(bureau.liste()).toEqual([{ session: 'w-1', titre: 'Bloc-notes', ouverte: false }]);
     });
 });
@@ -137,5 +155,62 @@ describe('état du lecteur de fichiers', () => {
         bureau.lecteurMonte('Second');
         expect(etatsFichiers.at(-1)).toContain('Second');
         expect(etatsFichiers.at(-1)).not.toContain('Premier');
+    });
+});
+
+describe('page-shell — le TON du bandeau', () => {
+    // La règle est ICI, dans `shell.ts`, et non dans le câblage : `shell-page.ts`
+    // ne fait que relayer. Une condition qui apparaîtrait là-bas serait au
+    // mauvais endroit.
+
+    it('donne le ton DANGER à un refus', () => {
+        const { bureau, bandeaux } = bureauDeTest();
+        bureau.refus('Bloc-notes', 'plus aucune sortie disponible');
+        expect(bandeaux).toHaveLength(1);
+        expect(bandeaux[0].ton).toBe('danger');
+    });
+
+    it('donne le ton DANGER à une pop-up bloquée', () => {
+        // L'utilisateur doit AGIR — autoriser les pop-ups. Un bandeau neutre
+        // dirait que la fenêtre est en route ; elle n'existera jamais.
+        const bandeaux: Array<{ message: string; ton: Ton }> = [];
+        const sansPopup = creerBureau({
+            ouvrirFenetre: () => null,
+            envoyer: () => {},
+            afficher: (message, ton) => { bandeaux.push({ message, ton }); },
+            afficherEtatFichiers: () => {},
+        });
+        sansPopup.fenetreOuverte('w-1', 'Bloc-notes');
+        expect(bandeaux).toHaveLength(1);
+        expect(bandeaux[0].ton).toBe('danger');
+        expect(bandeaux[0].message).toContain('bloqué la pop-up');
+    });
+
+    it('distingue le montage RÉUSSI de l’ÉCHEC par le ton, pas seulement par le texte', () => {
+        // `shell.ts` exige déjà que les deux textes soient distincts ; le ton
+        // ne doit pas défaire cette distinction en les rendant identiques à
+        // l'œil.
+        const { bureau, etats } = bureauDeTest();
+        bureau.lecteurMonte('Documents');
+        bureau.lecteurEchoue('permission refusée');
+        expect(etats.map((e) => e.ton)).toEqual(['succes', 'danger']);
+    });
+
+    it('sur un démontage, la chaîne reste VIDE', () => {
+        const { bureau, etats } = bureauDeTest();
+        bureau.lecteurDemonte();
+        expect(etats).toHaveLength(1);
+        expect(etats[0].texte).toBe('');
+    });
+
+    it("sur un démontage, le bandeau ne prend AUCUN ton — assertion séparée", () => {
+        // 🔴 SÉPARÉE DE LA PRÉCÉDENTE À DESSEIN : la vacuité du texte et la
+        // neutralité du ton sont deux propriétés, et `expect` interrompt au
+        // premier échec. Les fondre ferait qu'un ton `danger` sur un bandeau
+        // vide — une couleur sans message — passerait inaperçu dès que
+        // l'assertion de texte tomberait la première.
+        const { bureau, etats } = bureauDeTest();
+        bureau.lecteurDemonte();
+        expect(etats[0].ton).toBe('neutre');
     });
 });
