@@ -50,7 +50,7 @@ impl Session {
     /// `write_frame` (une mutation) suivi directement de `handle_input`
     /// (une seconde) violerait la même règle.
     ///
-    /// Dix branches supplémentaires (a0bis : drainage d'un message de
+    /// Onze branches supplémentaires (a0bis : drainage d'un message de
     /// contrôle produit hors boucle vers `pending_control` ; a0ter :
     /// décision d'adaptation en attente ; a1 : redimensionnement en attente ;
     /// a1bis : visibilité en attente ; a1ter : annonce d'un changement de
@@ -60,10 +60,11 @@ impl Session {
     /// (sous-bloc D7) ; a1sexies : reconstruction d'une capture audio morte
     /// détectée localement, `AudioMort` en repli si le budget de tentatives
     /// est épuisé, et annonce d'une reprise PROUVÉE par un paquet réel
-    /// (sous-bloc D9, remède complet apporté par D10) ; a2 : vérification de
-    /// la fenêtre) ne mettent JAMAIS en file, avant de rendre la main, une
-    /// écriture qui resterait à drainer — c'est l'invariant que cette
-    /// énumération existe pour auditer. **Neuf d'entre elles (toutes sauf
+    /// (sous-bloc D9, remède complet apporté par D10) ; a1septies : annonce
+    /// d'un changement du presse-papier de la VM (sous-bloc P1) ; a2 :
+    /// vérification de la fenêtre) ne mettent JAMAIS en file, avant de rendre
+    /// la main, une écriture qui resterait à drainer — c'est l'invariant que
+    /// cette énumération existe pour auditer. **Dix d'entre elles (toutes sauf
     /// a1quater) ne touchent même pas `self.rtc`** : seulement `self.source`,
     /// `self.audio_source`, le budget de reconstruction audio (a1sexies
     /// seule) et/ou `self.pending_control`, au plus en y mettant en file un
@@ -348,6 +349,23 @@ impl Session {
         if self.audio_vivant_a_annoncer {
             self.audio_vivant_a_annoncer = false;
             self.source.signaler_audio_vivant();
+            return Ok(Tick::Continue);
+        }
+
+        // a1septies) Le presse-papier de la VM a changé (sous-bloc P1). Même
+        //            régime qu'a1ter-bis : `presse_papier_a_annoncer` CONSOMME,
+        //            donc aucun message n'est jamais réémis et cette branche ne
+        //            peut pas inonder le canal de contrôle même à ~100 Hz. Ce
+        //            point compte davantage ici qu'ailleurs : le texte peut
+        //            peser jusqu'à `presse_papier::PRESSE_PAPIER_MAX` (64 Kio),
+        //            là où un `Asleep` ou un `Fullscreen` pèse quelques octets.
+        //
+        //            `texte` à `None` n'est PAS « rien à annoncer » : c'est un
+        //            REFUS de taille, que le navigateur doit dire à
+        //            l'utilisateur (D-P1-1). C'est le `Option` EXTÉRIEUR, celui
+        //            que rend la méthode, qui porte « rien à annoncer ».
+        if let Some((texte, octets)) = self.source.presse_papier_a_annoncer() {
+            self.queue_control(AgentControl::clipboard(texte, octets));
             return Ok(Tick::Continue);
         }
 

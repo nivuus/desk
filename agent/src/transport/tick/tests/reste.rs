@@ -311,3 +311,60 @@ fn atteint_la_cadence_video_visee_avec_un_pair_local() {
          ou write_audio échoue-t-il silencieusement ?)"
     );
 }
+
+/// Branche a1septies (sous-bloc P1) : un presse-papier rendu par la source
+/// doit être traduit en `AgentControl::Clipboard` mis en file pour le
+/// navigateur. Même patron que
+/// `un_changement_de_sommeil_de_la_source_est_traduit_en_message_asleep` et
+/// `une_part_en_attente_est_appliquee_par_act_on_timeout` ci-dessus : la
+/// source factice consomme son annonce, exactement comme `SourceDistante`.
+#[test]
+fn un_presse_papier_de_la_source_est_traduit_en_message_clipboard() {
+    let inner = fixtures::video_test_source();
+    let source = Box::new(SourceAvecPressePapier {
+        inner,
+        presse_papier_prepare: Some((Some("bonjour".to_string()), 7)),
+    });
+    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
+        .expect("session");
+
+    session
+        .act_on_timeout(Instant::now())
+        .expect("annoncer un presse-papier ne doit jamais faire échouer la session");
+
+    assert!(
+        session.pending_control.iter().any(|message| matches!(
+            message,
+            proto::control::AgentControl::Clipboard { text: Some(texte), bytes: 7, .. }
+                if texte == "bonjour"
+        )),
+        "le message Clipboard attendu n'est pas en file : {:?}",
+        session.pending_control
+    );
+}
+
+/// Le REFUS de taille (D-P1-1) doit traverser la même branche : `text` à
+/// `None` et `bytes` portant la taille refusée. Sans cela, le bandeau du
+/// navigateur ne saurait jamais qu'une copie a été refusée — et un refus
+/// silencieux est exactement ce que la spécification interdit.
+#[test]
+fn un_refus_de_taille_est_traduit_en_message_clipboard_sans_texte() {
+    let inner = fixtures::video_test_source();
+    let source =
+        Box::new(SourceAvecPressePapier { inner, presse_papier_prepare: Some((None, 100_000)) });
+    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
+        .expect("session");
+
+    session
+        .act_on_timeout(Instant::now())
+        .expect("annoncer un refus ne doit jamais faire échouer la session");
+
+    assert!(
+        session.pending_control.iter().any(|message| matches!(
+            message,
+            proto::control::AgentControl::Clipboard { text: None, bytes: 100_000, .. }
+        )),
+        "le refus attendu n'est pas en file : {:?}",
+        session.pending_control
+    );
+}
