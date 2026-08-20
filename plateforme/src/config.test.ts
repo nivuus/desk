@@ -34,7 +34,26 @@ describe('lireConfig', () => {
             // `X-Forwarded-For` d'aucune source. Voir les quatre tests dédiés
             // en fin de fichier.
             proxyDeConfiance: new Set(),
+            // Absente, donc le défaut. ⚠️ L'ASYMÉTRIE AVEC `PLATEFORME_HOTE`
+            // est assumée : un mauvais répertoire coûte un retéléversement
+            // borné et automatique, là où une mauvaise adresse d'écoute
+            // exposerait le service.
+            repertoireIcones: 'donnees/icones',
         });
+    });
+
+    it('retient le répertoire d’icônes qu’on lui NOMME', () => {
+        // 🔴 LA ROUGE : la variable posée et IGNORÉE. Le magasin se
+        // reconstruirait ailleurs, en silence, en retéléversant tout.
+        expect(lireConfig({ ...BASE, PLATEFORME_ICONES: '/var/lib/guac/ic' }).repertoireIcones)
+            .toBe('/var/lib/guac/ic');
+    });
+
+    it('🔴 un PLATEFORME_ICONES VIDE retombe sur le défaut, pas sur le répertoire courant', () => {
+        // `env.X ?? 'defaut'` ne rattrape PAS la chaîne vide — P1 a payé cette
+        // erreur exacte, où un des deux rouges annoncés était en réalité vert.
+        expect(lireConfig({ ...BASE, PLATEFORME_ICONES: '' }).repertoireIcones)
+            .toBe('donnees/icones');
     });
 
     it('refuse un PLATEFORME_BASE inconnu, plutôt que de retomber sur sqlite', () => {

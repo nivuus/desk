@@ -31,6 +31,8 @@ import { servirAuth } from './routes-auth';
 import { servirVm } from './routes-vm';
 import { servirSession } from './routes-session';
 import { servirApplications } from './routes-applications';
+import { servirIcone } from './routes-icone';
+import { ouvrirMagasin } from '../apps/icones';
 import { CacheSante, servirSante } from './routes-sante';
 import { ENTETES_SECURITE } from './entetes';
 import { createSignalingServer } from '../signaling/relais';
@@ -181,6 +183,14 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     // Un cache par requête ne cacherait rien.
     const cacheSante = new CacheSante();
 
+    // Le magasin d'icônes, ouvert UNE fois pour la durée du service. Il crée
+    // son répertoire s'il manque et JOURNALISE le chemin retenu : la variable
+    // étant facultative, c'est la seule chose qui rende visible à l'opérateur
+    // le magasin sur lequel il travaille réellement.
+    const magasin = ouvrirMagasin(config.repertoireIcones, (chemin) => {
+        console.info(`magasin d icones : ${chemin}`);
+    });
+
     const deps = {
         base,
         secretJeton: config.secretJeton,
@@ -196,6 +206,9 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         frein,
         proxyDeConfiance: config.proxyDeConfiance,
         cache: cacheSante,
+        // ⚠️ SEUL `servirIcone` LE LIT — même raison que `registre` et `frein`
+        // ci-dessus.
+        magasin,
     };
 
     /// Essaie les routeurs dans l'ordre, et rend `false` si aucun n'a servi.
@@ -221,11 +234,12 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         if (await servirAuth(requete, reponse, deps)) return true;
         if (await servirVm(requete, reponse, deps)) return true;
         if (await servirApplications(requete, reponse, deps)) return true;
+        if (await servirIcone(requete, reponse, deps)) return true;
         if (await servirSession(requete, reponse, deps)) return true;
         // ⚠️ `/sante` EST CHAÎNÉE EN DERNIER, et l'ordre n'est pas indifférent
         // ici : c'est la seule route NON AUTHENTIFIÉE du service, et la placer
         // en tête ferait courir sa comparaison de chemin avant celles des
-        // routes gardées. Les cinq jeux de chemins restent DISJOINTS, donc
+        // routes gardées. Les SIX jeux de chemins restent DISJOINTS, donc
         // aucun ne peut voler le chemin d'un autre ; l'ordre est une ceinture,
         // pas une garantie.
         return servirSante(requete, reponse, deps);
@@ -311,6 +325,10 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         // construction plus haut.
         frein,
         proxyDeConfiance: config.proxyDeConfiance,
+        // Le MÊME magasin que la route d'icône, jamais un second : deux
+        // magasins divergeraient, et l'inventaire des manquantes désignerait
+        // un disque que la route ne sert pas.
+        magasin,
     });
 
     // `Date.now` est passée ICI, et une seule fois pour la trace : c'est le

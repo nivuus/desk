@@ -21,6 +21,8 @@ function app(cle: string, nom = cle): Application {
         cible: `c:\\programmes\\${nom}.exe`,
         arguments: '',
         repertoire: 'c:\\programmes',
+        icone: null,
+        source_max: 'non-mesuree',
     };
 }
 

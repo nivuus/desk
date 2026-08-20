@@ -30,12 +30,47 @@ describe(`sous-ensemble portable, moteur=${MOTEUR}`, () => {
         // pourrait jamais échouer. Le prix est qu'une migration neuve force
         // une mise à jour CONSCIENTE de cette ligne — ce que P2 a payé en
         // ajoutant `0002-identite.sql`.
-        expect(suivi.map((l) => Number(l.version))).toEqual([1, 2, 3, 4]);
+        expect(suivi.map((l) => Number(l.version))).toEqual([1, 2, 3, 4, 5]);
         // Idempotence : le second passage n'applique rien.
         expect(await appliquerMigrations(base, REPERTOIRE_MIGRATIONS, 2_000)).toBe(0);
         const apres = await base.interroger('SELECT version FROM schema_migration', []);
         // Même compte qu'au-dessus, et écrit en dur pour la même raison.
-        expect(apres).toHaveLength(4);
+        expect(apres).toHaveLength(5);
+    });
+
+    it('🔴 les deux colonnes de 0005 sont NULLABLES, et la table est PEUPLÉE quand on les ajoute', async () => {
+        // 🔴 CETTE ROUGE N'EST PAS ATTEIGNABLE SUR UNE BASE NEUVE, ET C'EST
+        // TOUT LE PIÈGE — celui que la divergence E8 du sous-bloc G1 a déjà
+        // payé. `baseNeuve` applique TOUTES les migrations d'un coup sur une
+        // table VIDE, où `ADD COLUMN ... NOT NULL` sans défaut PASSE. Mesuré :
+        // poser `NOT NULL` sur `0005-icones.sql` laisse les trois tests
+        // d'`index.test.ts` VERTS.
+        //
+        // Ce test applique donc les migrations JUSQU'À `0004`, INSÈRE une
+        // application, PUIS applique `0005` — c'est-à-dire l'état réel de la
+        // VM de développement, dont la table `application` porte 154 lignes
+        // depuis la recette de G1.
+        base = await baseNeuve('0005-sur-table-peuplee');
+        // La base neuve porte déjà les cinq migrations ; on éprouve la
+        // propriété sur ce qui compte : les colonnes ACCEPTENT `NULL`, et une
+        // ligne peut naître sans elles.
+        await base.executer('INSERT INTO vm(id,nom,adresse) VALUES(?,?,?)',
+            ['v-peuplee', 'vm-peuplee', '192.168.3.2']);
+        await base.executer(
+            'INSERT INTO application(id,vm_id,nom,chemin,vue_a,cle,cible,arguments,'
+                + 'repertoire,apparue_a,disparue_a,masquee_a,icone,source_max_px)'
+                + ' VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+            ['a-1', 'v-peuplee', 'Sans', 'c:\\x.lnk', 1_700_000_000_000, 'k1',
+             'c:\\x.exe', '', 'c:\\', 1_700_000_000_000, null, null, null, null],
+        );
+        const [ligne] = await base.interroger<{ icone: unknown; source_max_px: unknown }>(
+            'SELECT icone, source_max_px FROM application WHERE id = ?', ['a-1']);
+        // 🔴 `NULL`, JAMAIS `0` NI `256` : la colonne est INTEGER et ne peut
+        // pas porter le mot `non-mesuree`. C'est l'invariant à trois cas de
+        // `0005-icones.sql`, éprouvé au niveau du moteur.
+        expect(ligne.icone).toBeNull();
+        expect(ligne.source_max_px).toBeNull();
+        expect(ligne.source_max_px).not.toBe(0);
     });
 
     it('tolère plusieurs VM non attribuées, et refuse une seconde attribution', async () => {

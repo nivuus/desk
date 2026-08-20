@@ -4,6 +4,9 @@ import type { Pilote } from '../base/pilote';
 import { CacheSante, PERIODE_SANTE_MS, servirSante } from './routes-sante';
 import { demarrerServeur, type ServicePlateforme } from './serveur';
 import type { Config } from '../config';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 /// Une époque réelle, sur le patron de `base/harnais.ts` : les petites valeurs
@@ -17,6 +20,7 @@ const CONFIG: Config = {
     urlBase: ':memory:',
     secretJeton: SECRET,
     proxyDeConfiance: new Set(),
+    repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
 };
 
 let base: Pilote | undefined;

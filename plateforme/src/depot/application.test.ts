@@ -12,7 +12,14 @@ import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import type { Application } from '../../../proto/ts/plateforme';
 import type { Fusion } from '../apps/catalogue';
-import { appliquer, lireConnues, lireParId, lireParVm } from './application';
+import {
+    appliquer,
+    lireConnues,
+    lireParId,
+    lireParVm,
+    pxDepuisSourceMax,
+    sourceMaxDepuis,
+} from './application';
 
 let base: Pilote | undefined;
 
@@ -36,6 +43,8 @@ function app(nom: string, cle: string): Application {
         cible: `c:\\program files\\${nom}\\${nom}.exe`,
         arguments: '',
         repertoire: `c:\\program files\\${nom}`,
+        icone: null,
+        source_max: 'non-mesuree',
     };
 }
 
@@ -258,5 +267,60 @@ describe(`dépôt application, moteur=${MOTEUR}`, () => {
         );
         await lireConnues(base, 'v-1');
         await expect(lireParId(base, une.id)).resolves.toBeDefined();
+    });
+
+    it('🔴 `NULL` se relit `non-mesuree`, JAMAIS `{pixels:0}` — le critère ④', async () => {
+        // 🔴 REPRÉSENTER `NonMesuree` PAR UN NOMBRE FERAIT DIRE À UNE
+        // PROVENANCE INCONNUE QU'ELLE VAUT QUELQUE CHOSE, et c'est tout ce que
+        // le sous-bloc G2 existe pour empêcher. La règle est écrite UNE SEULE
+        // FOIS, au dépôt, précisément pour qu'elle ne puisse pas diverger.
+        expect(sourceMaxDepuis(null)).toBe('non-mesuree');
+        expect(sourceMaxDepuis(null)).not.toEqual({ pixels: 0 });
+        expect(sourceMaxDepuis(256)).toEqual({ pixels: 256 });
+        expect(sourceMaxDepuis(48)).toEqual({ pixels: 48 });
+        // Et l'inverse, qui doit refermer l'aller-retour.
+        expect(pxDepuisSourceMax('non-mesuree')).toBeNull();
+        expect(pxDepuisSourceMax({ pixels: 256 })).toBe(256);
+    });
+
+    it('🔴 les deux champs d’icône font l’ALLER-RETOUR par la base', async () => {
+        base = await baseNeuve('app-icones');
+        const p = base;
+        await avecVm(p, 'v-ico');
+        await appliquer(p, 'v-ico', {
+            aInserer: [
+                { ...app('Avec', 'k-avec'), icone: 'f'.repeat(64), source_max: { pixels: 256 } },
+                { ...app('Sans', 'k-sans'), icone: null, source_max: 'non-mesuree' },
+            ],
+            aMettreAJour: [],
+            aMarquerDisparues: [],
+            aRessusciter: [],
+        }, 1_700_000_000_000);
+        const lignes = await lireParVm(p, 'v-ico');
+        const avec = lignes.find((l) => l.nom === 'Avec')!;
+        const sans = lignes.find((l) => l.nom === 'Sans')!;
+        expect(avec.icone).toBe('f'.repeat(64));
+        expect(sourceMaxDepuis(avec.source_max_px)).toEqual({ pixels: 256 });
+        // 🔴 LA COMBINAISON INTERDITE — `icone` nul et une taille mesurée —
+        // N'EST ÉCRITE PAR AUCUN CHEMIN. Le test la NOMME pour qu'elle ne
+        // naisse pas d'une inattention.
+        expect(sans.icone).toBeNull();
+        expect(sans.source_max_px).toBeNull();
+        expect(sourceMaxDepuis(sans.source_max_px)).toBe('non-mesuree');
+
+        // Une icône qui CHANGE atteint bien la base : c'est le cas nominal
+        // d'une application qui se met à jour, pas l'exception.
+        const id = avec.id;
+        await appliquer(p, 'v-ico', {
+            aInserer: [],
+            aMettreAJour: [
+                { id, app: { ...app('Avec', 'k-avec'), icone: 'e'.repeat(64), source_max: { pixels: 48 } } },
+            ],
+            aMarquerDisparues: [],
+            aRessusciter: [],
+        }, 1_700_000_001_000);
+        const relu = (await lireParVm(p, 'v-ico')).find((l) => l.id === id)!;
+        expect(relu.icone).toBe('e'.repeat(64));
+        expect(sourceMaxDepuis(relu.source_max_px)).toEqual({ pixels: 48 });
     });
 });
