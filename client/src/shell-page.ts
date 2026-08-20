@@ -2,6 +2,7 @@
 // l'autre. Aucune règle ici — elles sont dans `shell.ts`, qui est testé.
 
 import { creerBureau, type Ton } from './shell';
+import { installerSelecteurDeThemeAuDOM } from './design/selecteur-theme';
 import { jetonAcces } from './jeton';
 import { composer, lirePrefixe } from './prefixe';
 import { creerAdaptateur } from './fichiers/adaptateur';
@@ -26,6 +27,11 @@ const liste = document.querySelector<HTMLUListElement>('#fenetres')!;
 const boutonDossier = document.querySelector<HTMLButtonElement>('#choisir-dossier')!;
 const etatFichiers = document.querySelector<HTMLDivElement>('#etat-fichiers')!;
 const modeleFenetre = document.querySelector<HTMLTemplateElement>('#modele-fenetre')!;
+
+// Le sélecteur de thème du produit (spec §5.2, famille 3). Il n'y a AUCUNE
+// règle ici non plus : le module pose ses trois boutons et gère le multi-
+// fenêtres, et il est testé.
+installerSelecteurDeThemeAuDOM(document.querySelector<HTMLElement>('#themes')!);
 
 /* ── LE TON D'UN BANDEAU : UNE TABLE, PAS UNE RÈGLE ───────────────────────
    QUEL ton porte quel message est décidé dans `shell.ts`, qui est testé. Ce

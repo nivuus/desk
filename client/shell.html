@@ -42,6 +42,15 @@
         <h2 class="bureau__section-titre">Mes fenêtres</h2>
         <ul id="fenetres" class="bureau__fenetres"></ul>
       </section>
+
+      <!-- LE SÉLECTEUR DE THÈME. La spec §5.2 le prescrit nommément pour cette
+           page ; `selecteur-theme.ts` y pose ses trois boutons. Le `role` et le
+           libellé du groupe vivent ICI, dans le balisage : les primitives sont
+           du CSS et ne portent aucun rôle ARIA. -->
+      <section class="bureau__section">
+        <h2 class="bureau__section-titre" id="titre-theme">Thème</h2>
+        <p id="themes" class="bureau__actions" role="group" aria-labelledby="titre-theme"></p>
+      </section>
     </main>
 
     <!--

@@ -30,7 +30,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 import { lireBlocsDeTheme } from './tokens';
-import { installerSelecteurDeTheme } from './selecteur-theme';
+import { installerSelecteurDeThemeAuDOM } from './selecteur-theme';
 import tokensCss from './tokens.css?raw';
 
 const racine = document.documentElement;
@@ -158,5 +158,5 @@ function rendre(): void {
  * preuve est une rouge d'exécution, jouée à l'extraction — commenter la ligne
  * ci-dessous, bâtir, et constater que les trois boutons ont disparu.
  */
-installerSelecteurDeTheme(vide('themes'), racine, localStorage, rendre);
+installerSelecteurDeThemeAuDOM(vide('themes'), rendre);
 rendre();

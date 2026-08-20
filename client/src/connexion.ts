@@ -53,6 +53,7 @@
 
 import { poser } from './jeton';
 import type { Ton } from './shell';
+import { installerSelecteurDeThemeAuDOM } from './design/selecteur-theme';
 import { effacerPrefixe, poserPrefixe } from './prefixe';
 
 const params = new URLSearchParams(window.location.search);
@@ -70,6 +71,10 @@ const champEmail = document.querySelector<HTMLInputElement>('#email')!;
 const champMotDePasse = document.querySelector<HTMLInputElement>('#motdepasse')!;
 const bouton = document.querySelector<HTMLButtonElement>('#valider')!;
 const message = document.querySelector<HTMLDivElement>('#message')!;
+
+// Le sélecteur de thème — extension raisonnée de la spec §5.2, justifiée dans
+// l'en-tête de `design/selecteur-theme.ts`.
+installerSelecteurDeThemeAuDOM(document.querySelector<HTMLElement>('#themes')!);
 
 /* ── LE TON DU BANDEAU : UNE TABLE, PAS UNE RÈGLE ─────────────────────────
    🔴 AUCUNE CONDITION N'EST AJOUTÉE À CE FICHIER, et c'est la clause de son
