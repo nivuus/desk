@@ -1,0 +1,82 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA FEUILLE DE L'ÉCRAN DE CONNEXION, ET DE LUI SEUL — sous-bloc S3.
+
+   Trois surfaces, trois feuilles, une convention : `style.css` pour la fenêtre
+   de session, `shell.css` pour le bureau, celle-ci pour la connexion. Aucune ne
+   connaît les deux autres, et aucun sélecteur d'élément nu n'y apparaît — c'est
+   ce qui garantit qu'elle ne peut RIEN changer aux deux autres surfaces.
+
+   🔴 ELLE SE LIE DEPUIS `connexion.html`, ELLE NE S'IMPORTE JAMAIS —
+   l'arrangement B mesuré par S1 : un `@import` ré-inline, un `<link>` laisse
+   Vite partager.
+
+   ⚠️ CET ÉCRAN EST SOUVENT LA PREMIÈRE SURFACE, ET PARFOIS LA SEULE, qu'un
+   utilisateur non authentifié voie : `shell-page.ts` y redirige tout visiteur
+   sans jeton. C'est la raison pour laquelle le sélecteur de thème y figure,
+   alors que la spec §5.2 ne le nomme que pour la page-shell et le hub —
+   extension raisonnée, déclarée au §6.2 du plan S3.
+
+   ── DEUX MESURES DE CONTENANT, HORS ÉCHELLE ET DÉCLARÉES ─────────────────
+   ⚠️ La hauteur de la scène (`100dvh`) et la largeur maximale de la carte
+   (26rem) ne passent par aucun cran d'échelle. Les échelles du §4.4 couvrent
+   l'ESPACEMENT et la TYPOGRAPHIE, jamais une mesure de contenant, et les
+   inventer en tokens changerait le compte de 48 que trois documents publient.
+   Elles sont écrites en LITTÉRAL et non en propriété personnalisée locale :
+   l'inclusion ① du §7.6 exige qu'un `var(--…)` soit déclaré par `tokens.css`,
+   la source unique — leçon payée par `shell.css` à la tâche 4, qui avait
+   affirmé le contraire et que le contrôle a réfuté.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ⚠️ LA CARTE EST CENTRÉE, ET SA LARGEUR EST UN JUGEMENT HUMAIN : aucune
+   commande ne dira qu'elle est bonne. Seules sa gouttière et ses marges
+   viennent de l'échelle. */
+.connexion {
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
+    /* Mesure de CONTENANT, hors échelle — voir l'en-tête. */
+    min-block-size: 100dvh;
+    padding: var(--e-5);
+}
+
+.connexion__carte {
+    inline-size: 100%;
+    /* Mesure de CONTENANT, hors échelle — voir l'en-tête. */
+    max-inline-size: 26rem;
+}
+
+.connexion__titre {
+    margin-block: 0 var(--e-5);
+    color: var(--texte-fort);
+    /* `--t-3xl` : le titre de l'ÉCRAN DE CONNEXION (spec §4.4).
+       ⚠️ La liste d'attente attribuait ce cran au « titre du hub », que le
+       sous-projet ⑥ ne livre PAS et dont la spec §6 exclut explicitement le
+       découpage. Les deux crans y étaient INTERVERTIS par rapport à la spec ;
+       la spec l'emporte, et l'annotation a été corrigée dans le commit qui
+       retire l'entrée. */
+    font-size: var(--t-3xl);
+    line-height: var(--lh-serre);
+}
+
+.connexion__formulaire {
+    display: grid;
+    gap: var(--e-4);
+}
+
+/* ⚠️ `--lh-large` EST APPLIQUÉ ICI, ET LE CHOIX SE JUSTIFIE PLUTÔT QU'IL NE
+   VIDE UNE LIGNE DE LISTE. Ce bandeau porte les plus longues proses du
+   produit : le motif d'un refus, l'état d'une VM et l'aveu que la plateforme
+   ne sait pas la redémarrer, ou une cause réseau citée en entier — des phrases
+   qui courent sur plusieurs lignes, là où les bandeaux de la page-shell tiennent
+   sur une. `.message` pose `--lh-normal` pour le cas court ; ce cran-ci est
+   celui des paragraphes longs, ce que l'annotation de la liste d'attente lui
+   assignait. Fabriquer un paragraphe pour consommer le token aurait été vider
+   un contrôle pour en verdir un autre ; celui-ci existait déjà. */
+.connexion__message {
+    margin-block-start: var(--e-4);
+    line-height: var(--lh-large);
+}
+
+.connexion__theme {
+    margin-block-start: var(--e-5);
+}

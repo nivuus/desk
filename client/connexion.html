@@ -4,44 +4,50 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Connexion</title>
+        <!-- L'ORDRE PORTE LA CASCADE : socle (tokens + base), primitives, puis
+             la feuille de cette surface. Trois `<link>` et aucun `@import` :
+             c'est ce qui laisse Vite PARTAGER `primitives.css` avec la
+             page-shell au lieu de la ré-inliner dans chacune. -->
         <link rel="stylesheet" href="/src/design/socle.css" />
+        <link rel="stylesheet" href="/src/design/primitives.css" />
+        <link rel="stylesheet" href="/src/connexion.css" />
     </head>
     <body>
-        <!--
-            AUCUNE DIRECTION VISUELLE ICI, et c'est délibéré : elle appartient
-            au sous-projet ⑥. Cette page porte la structure et rien d'autre ;
-            l'habiller maintenant obligerait à défaire ce travail-là.
-
-            ⚠️ « ET RIEN D'AUTRE » A CESSÉ D'ÊTRE EXACT AU SOUS-BLOC S1, qui a
-            lié `design/socle.css` dans le `<head>` ci-dessus. Le rendu de cette
-            page CHANGE donc : fond `--fond-0`, encre `--texte-fort`, police
-            `--police-ui`, anneau de focus, et un `color-scheme` qui suit le
-            thème — c'est lui qui accorde le rendu NATIF des deux `<input>`
-            ci-dessous, dont celui de mot de passe. Ce n'est pas une entorse :
-            la neutralité visuelle que S1 promet ne porte que sur `index.html`.
-            Ce qui reste vrai, et qui est le fond de ce commentaire : la page ne
-            porte AUCUNE primitive — ni bouton, ni champ, ni carte habillée.
-            C'est **S3** qui les pose, et c'est lui qui retirera ce bloc.
-        -->
-        <h1>Connexion</h1>
-        <form id="connexion">
-            <p>
-                <label for="email">Courriel</label>
-                <input id="email" name="email" type="email" autocomplete="username" required />
-            </p>
-            <p>
-                <label for="motdepasse">Mot de passe</label>
-                <input
-                    id="motdepasse"
-                    name="motdepasse"
-                    type="password"
-                    autocomplete="current-password"
-                    required
-                />
-            </p>
-            <p><button id="valider" type="submit">Se connecter</button></p>
-        </form>
-        <div id="message" role="status"></div>
+        <main class="connexion">
+            <div class="carte connexion__carte">
+                <h1 class="connexion__titre">Connexion</h1>
+                <form id="connexion" class="connexion__formulaire">
+                    <p class="champ">
+                        <label class="champ__etiquette" for="email">Courriel</label>
+                        <input
+                            class="champ__saisie"
+                            id="email"
+                            name="email"
+                            type="email"
+                            autocomplete="username"
+                            required
+                        />
+                    </p>
+                    <p class="champ">
+                        <label class="champ__etiquette" for="motdepasse">Mot de passe</label>
+                        <input
+                            class="champ__saisie"
+                            id="motdepasse"
+                            name="motdepasse"
+                            type="password"
+                            autocomplete="current-password"
+                            required
+                        />
+                    </p>
+                    <p>
+                        <button id="valider" type="submit" class="bouton bouton--principal">
+                            Se connecter
+                        </button>
+                    </p>
+                </form>
+                <div id="message" class="message connexion__message" role="status"></div>
+            </div>
+        </main>
         <script type="module" src="/src/connexion.ts"></script>
     </body>
 </html>

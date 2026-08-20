@@ -137,10 +137,34 @@
 // ouverte / fermée d'une fenêtre, dit par l'ENCRE et jamais par un fond, pour
 // que son contraste reste dans les 52 paires mesurées du §7.1.
 // ═══════════════════════════════════════════════════════════════════════════
+//
+// 🔴 DEUX ENTRÉES DE PLUS SONT SORTIES À LA TÂCHE 5 DE S3, avec leurs appelants
+// dans `client/src/connexion.css` :
+//
+//   --t-3xl     le titre de l'écran de connexion  (.connexion__titre)
+//   --lh-large  l'interligne de son bandeau       (.connexion__message)
+//
+// ⚠️ ET LEURS DEUX ANNOTATIONS ÉTAIENT FAUSSES, CHACUNE À SA FAÇON — corrigé
+// ici plutôt que recopié, comme la règle de revue de ce fichier l'exige.
+//
+//   ① `--t-2xl` et `--t-3xl` ÉTAIENT INTERVERTIS par rapport à la spec. Le
+//      §4.4 de la spec écrit « --t-2xl … titre de page » et « --t-3xl … titre
+//      d'écran de connexion » ; cette liste disait l'inverse. LA SPEC L'EMPORTE
+//      — le cran de 32 px va au titre que la page n'a qu'une fois, celui de
+//      24 px au titre d'une page qui porte des sections sous lui.
+//   ② `--t-3xl` NOMMAIT « le titre du hub », c'est-à-dire une surface que le
+//      sous-projet ⑥ NE LIVRE PAS : sa spec §6 l'écrit en toutes lettres, « le
+//      hub ne figure PAS dans ce découpage ». L'entrée attribuait donc à S3 un
+//      appelant que S3 ne pouvait pas écrire, et elle serait restée en attente
+//      pour toujours si la spec n'avait pas tranché.
+//
+// ⚠️ `--lh-large` ÉTAIT LE PLUS FRAGILE DES NEUF, et il n'a PAS été consommé
+// pour vider une ligne : le bandeau de l'écran de connexion porte les plus
+// longues proses du produit — motif de refus, état de la VM, aveu de
+// non-redémarrage, cause réseau citée en entier. Le paragraphe long existait
+// déjà ; en fabriquer un aurait été vider un contrôle pour en verdir un autre.
+// ═══════════════════════════════════════════════════════════════════════════
 const EN_ATTENTE_D_APPELANT = new Map([
-    // ── Typographie et interligne — S3 ────────────────────────────────────
-    ['--t-3xl', 'S3 — le titre du hub'],
-    ['--lh-large', 'S3 — les paragraphes longs'],
     // ── Le cas particulier, et il est nommé ───────────────────────────────
     // 🔴 `--police-mono` N'A QU'UN SEUL APPELANT PRÉVU, `#stats`, et la spec
     // §4.3 laisse son sort ouvert : « si aucun appelant n'apparaît, le token
