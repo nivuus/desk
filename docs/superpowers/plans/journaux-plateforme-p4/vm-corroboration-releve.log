@@ -1,0 +1,147 @@
+# TÂCHE 16 — LA CORROBORATION SUR VM RÉELLE, HORS CRITÈRE ET CONDITIONNELLE
+#
+# DEUX exécutions complètes, jouées le 20 août 2026 à 05:26 et 05:28 (heure de
+# l'hôte), sur le commit e4671e6. Pièces : vm-1-* et vm-2-*, plus l'instrument
+# (instrument/vm-corroboration.sh, instrument/verdict-vm.mjs).
+# Une TROISIÈME exécution, ANTÉRIEURE (05:22), n'est pas versée : elle a avorté
+# au démarrage du service, le port 8082 étant tenu par `otbr-agent`. Rien n'en
+# a été mesuré, et le port a été changé pour 8090.
+#
+# ⚠️ FAMILLE DE LECTURE. `vm-N-agent.log` porte les séquences ANSI de `tracing`
+# et des CRLF ; son jumeau `vm-N-agent-plat.log` est versé pour chacun
+# (`sed 's/\x1b\[[0-9;]*m//g'`). Tous les autres fichiers se `grep`ent à plat.
+
+================================================================================
+🔴 LE VERDICT : LA CORROBORATION EST **PARTIELLE**, ET SA CAUSE EST MESURÉE
+================================================================================
+
+Sur les quatorze assertions du relevé, **DIX sont TENUES aux deux exécutions et
+QUATRE sont NON TENUES aux deux**. Les quatre qui tombent ont toutes la même
+cause, et cette cause n'est PAS un défaut de P4 :
+
+    l'agent Windows présent sur la VM parle `PLATEFORME_VERSION = 1` ;
+    le service, bâti depuis `e4671e6`, parle `PLATEFORME_VERSION = 2`.
+
+Relevé VERBATIM du journal de l'agent, aux deux exécutions :
+
+    WARN agent::plateforme: message de la plateforme illisible (version
+    divergente ?) url="ws://192.168.3.1:8090/agent"
+    erreur=version de plateforme non supportée : 2
+    texte="{\"type\":\"refus\",\"v\":2,\"motif\":\"version\"}"
+
+L'agent n'est donc jamais enrôlé, `agent_enrole.vu_a` reste `null`, et
+`agents/fraicheur.ts` en déduit correctement `injoignable`. **La plateforme
+n'a rien fait de faux : elle a fait exactement ce que le sous-bloc lui demande
+de faire d'une VM dont l'agent ne bat pas.**
+
+--------------------------------------------------------------------------------
+CE QUE CETTE CAUSE EST : LA COLLISION QUE LA DÉCISION D6 DU PLAN AVAIT NOMMÉE
+--------------------------------------------------------------------------------
+
+D6 écrivait, avant tout dispatch : « `PLATEFORME_VERSION` a un seul
+propriétaire à la fois, et c'est G1. […] Deux chantiers qui monteraient tous
+deux vers « 2 » produiraient deux protocoles différents portant le même numéro.
+[…] Si G1 a déjà été fusionné quand P4 se recette, c'est G1 qui impose le
+rebâtissage, pas P4. »
+
+**C'est arrivé pendant cette tâche même.** Relevé par la commande : `HEAD` est
+passé de `b4b9adb` (clôture de P4) à `deab3f0` puis `e4671e6`
+(« apps(g1): les trois variantes du catalogue, et PLATEFORME_VERSION = 2 »)
+entre le début et la fin de cette clôture. Le binaire de la VM date du
+2026-08-20 01:16:35, soit AVANT ces deux commits.
+
+🔵 **ET LA COLLISION EST BRUYANTE, PAS MUETTE — c'est le fait le plus utile de
+cette tâche.** La vérification de version existe précisément pour cela : le
+service REFUSE (`{"type":"refus","v":2,"motif":"version"}`), l'agent JOURNALISE
+chacun de ses essais, et rien ne se dégrade en silence. Une plateforme qui
+aurait accepté un message de version inconnue aurait produit un agent à moitié
+enrôlé, et c'est cette panne-là que P3 a payé pour rendre impossible.
+
+--------------------------------------------------------------------------------
+🔴 POURQUOI L'AGENT N'A PAS ÉTÉ REBÂTI — DÉCISION, PAS OMISSION
+--------------------------------------------------------------------------------
+
+1. **P4 n'exige aucun rebâtissage** : il ne touche ni `agent/` ni `proto/`.
+   Le plan le dit (D6, corollaire opérationnel).
+2. **Rebâtir aurait été agir dans le périmètre de G1**, qui est actif dans le
+   même arbre en ce moment et dont la recette a besoin de ce binaire. Le plan
+   de P4 range la VM comme ressource EXCLUSIVE et prescrit, en cas de conflit,
+   de REPORTER plutôt que de simuler.
+3. **La première exécution de cette tâche a été tentée alors que `proto/` était
+   MODIFIÉ ET NON COMMITÉ** par G1 : `scripts/build-agent.sh` rsynchronise les
+   sources, donc une compilation d'ici aurait poussé son travail à demi fait
+   sur la VM.
+
+--------------------------------------------------------------------------------
+CE QUE LES DEUX EXÉCUTIONS ÉTABLISSENT MALGRÉ TOUT, SUR LE PRODUIT RÉEL
+--------------------------------------------------------------------------------
+
+Tout ce qui est en amont de l'agent est exercé de bout en bout, contre le VRAI
+service HTTP (curl, aucun code à nous entre la surface et le relevé), avec un
+VRAI jeton obtenu par `POST /auth/connexion`, sur une base SQLite neuve :
+
+  ⓐ `POST /session` sans attribution      -> 409 `{"motif":"aucune-vm"}`,
+                                             et AUCUN préfixe délivré ;
+  ⓑ `POST /session` attribuée, agent muet -> 503, `etat: "injoignable"`,
+                                             `redemarrage.possible: false`
+                                             (`non-supporte`, backend
+                                             `inventaire-statique`),
+                                             ET LE PRÉFIXE RENDU QUAND MÊME ;
+  ⓒ le préfixe rendu par la route est CELUI de la VM enrôlée ;
+  ⓓ la page-shell compose `<préfixe>:bureau` À PARTIR DU PRÉFIXE RENDU PAR LA
+     ROUTE, sa poignée de main est ACCEPTÉE, et le relais lui délivre son
+     `ice-config` pour cette session-là ;
+  ⓔ `GET /vm` porte `sessions_ouvertes` — le lecteur de
+     `session.utilisateur_id` que P3 léguait sans appelant de production.
+
+Et les trois commandes d'administration ont été jouées à la suite sur une base
+neuve : `admin:agent`, `admin:utilisateur`, `admin:attribuer`. **C'est la
+première fois que le chemin d'attribution complet tourne hors des tests.**
+
+--------------------------------------------------------------------------------
+✅ UN LEGS DE P3 EXERCÉ PAR ACCIDENT, ET IL FAUT DIRE EXACTEMENT LEQUEL
+--------------------------------------------------------------------------------
+
+E9 — « la reprise du canal `/agent` n'a jamais été exercée » — était encore due
+au sortir de P3 et de P4. Les deux journaux d'agent portent **SEPT** reprises,
+avec leur échelle de temporisation doublante relevée verbatim :
+
+    tentative=0 delai_ms=500    tentative=4 delai_ms=8000
+    tentative=1 delai_ms=1000   tentative=5 delai_ms=16000
+    tentative=2 delai_ms=2000   tentative=6 delai_ms=30000
+    tentative=3 delai_ms=4000
+
+⚠️ **CE QUE CELA N'ÉTABLIT PAS, ET C'EST L'ESSENTIEL** : l'échec ici est
+PERMANENT (une divergence de version ne se répare pas d'elle-même). Ce qui est
+exercé est donc **l'ÉCHELLE DE RÉESSAI et son plafonnement à 30 s**, jamais une
+reprise RÉUSSIE. Le legs reste dû dans sa moitié utile — un canal qui se rompt
+puis se rétablit —, et il est désormais dû avec une pièce plutôt qu'avec rien.
+
+--------------------------------------------------------------------------------
+CE QUE CETTE CORROBORATION N'EST PAS
+--------------------------------------------------------------------------------
+
+- Elle n'établit ni latence, ni cadence, ni durée. Aucune image n'est décodée :
+  la page-shell est SCRIPTÉE (instrument de P3, réemployé tel quel) et ne
+  négocie aucune session WebRTC.
+- Elle ne dit rien d'un second utilisateur, ni de deux VMs.
+- Elle est HORS CRITÈRE : la spec §4 l'y range explicitement, et les quatre
+  critères de P4 sont tenus sans elle (deux exécutions chacun, journaux
+  `critere-*.log`).
+- Le binaire employé (9 914 368 octets, modifié le 2026-08-20 01:16:35) n'est
+  attribuable À AUCUN commit de P4, et sa provenance exacte n'a pas été
+  cherchée. P4 ne touchant aucun fichier Rust, cela ne le disqualifie pas —
+  mais c'est dit, pas tu.
+- Aucun `coturn` ne tournait : les identifiants TURN sont délivrés, aucun relais
+  n'existe derrière.
+
+--------------------------------------------------------------------------------
+CE QU'IL FAUDRAIT POUR LA RENDRE COMPLÈTE — nommé, non fait
+--------------------------------------------------------------------------------
+
+Rebâtir l'agent depuis un arbre où `PLATEFORME_VERSION` est stable, et rejouer
+`instrument/vm-corroboration.sh`. Les quatre assertions qui tombent ici
+(`etat: "prete"` sur `POST /session` et sur `GET /vm`, l'absence d'aveu de
+redémarrage, et l'enrôlement au journal de l'agent) sont écrites et prêtes ;
+le script n'a pas une ligne à changer. **C'est un legs de P4 à P5, ou à qui
+possédera la VM après G1.**

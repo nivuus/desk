@@ -1,0 +1,8 @@
+# LA PAGE-SHELL SCRIPTÉE — journal des trames, côté humain
+# Session de contrôle : jiUbVTmOjaVKA0nZQnAGqQ:bureau
+# Durée : 40 s
+#
+sessions de fenêtre rejointes : <aucune>
+
++   126 ms  -> poignée de main client sur jiUbVTmOjaVKA0nZQnAGqQ:bureau
++   129 ms  <- [jiUbVTmOjaVKA0nZQnAGqQ:bureau] {"type":"ice-config","iceServers":[{"urls":"turn:192.168.3.1:3478","username":"1787282801:jiUbVTmOjaVKA0nZQnAGqQ:bureau","credential":"***RETIRE-DE-L-HISTORIQUE***"}]}
