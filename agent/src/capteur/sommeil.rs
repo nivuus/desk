@@ -21,8 +21,15 @@
 mod parts;
 mod porteurs;
 // `presse_papier` porte la DISTRIBUTION du presse-papier de la VM, extraite
-// pour la même raison que `parts` et `porteurs` : ce fichier-ci est proche de
-// son plafond. Il ne s'appelle pas comme le module racine
+// au même endroit que `parts` et `porteurs` — mais PAS pour la même raison, et
+// il faut le dire : `parts` a été extrait d'un fichier qui avait FRANCHI 500
+// lignes, alors que celui-ci en fait 352 et garde 148 de marge. Ce qui la
+// justifie est que le module inliné, ses trois tests compris, aurait porté
+// `sommeil.rs` au-delà du plafond. ⚠️ La rédaction initiale disait « ce
+// fichier-ci est proche de son plafond » : c'était faux à l'écriture (328
+// lignes alors), et corrigé par la revue transverse du 20 août 2026 — **le
+// geste était bon, sa raison écrite ne l'était pas**.
+// Il ne s'appelle pas comme le module racine
 // `crate::presse_papier` par confusion — celui-là porte la RÈGLE pure, celui-ci
 // sa seule branche sur ce registre.
 mod presse_papier;
@@ -199,9 +206,13 @@ pub enum Message {
     /// taille refusée : le contenu est refusé, jamais tronqué, et le refus est
     /// DIT à l'utilisateur (D4). Un `None` n'est donc pas « rien à annoncer ».
     ///
-    /// ⚠️ **C'est le plus gros message de ce canal, de deux ordres de
-    /// grandeur** : jusqu'à `crate::presse_papier::PRESSE_PAPIER_MAX`
-    /// (64 Kio), là où `Sommeil`, `Part` et `Audio` pèsent quelques octets. Le
+    /// ⚠️ **C'est de très loin le plus gros message de ce canal** : jusqu'à
+    /// `crate::presse_papier::PRESSE_PAPIER_MAX` (64 Kio), là où `Sommeil`,
+    /// `Part` et `Audio` pèsent quelques octets — **quatre** ordres de
+    /// grandeur, et non « deux » comme cette phrase l'annonçait d'abord. Le
+    /// « deux ordres de grandeur » de `protocole.rs`, sa voisine, est exact
+    /// (8 Mio contre 64 Kio) : les deux phrases n'employaient pas la même
+    /// échelle (revue transverse, 20 août 2026). Le
     /// canal du registre est NON BORNÉ (`std::sync::mpsc::channel`), donc
     /// `send` ne bloque jamais — mais un fil de fenêtre bloqué accumulerait
     /// ces messages. Borné en pratique par le fait qu'on n'émet qu'au

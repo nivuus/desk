@@ -285,9 +285,14 @@ impl AgentControl {
     /// ci-dessus et `parseAgentControl` côté TypeScript — sont des **égalités
     /// strictes** : monter la version ferait rejeter **tous** les messages,
     /// `Ready` et `SessionEnd` compris. Une incompatibilité TOTALE
-    /// remplacerait une dégradation PAR MESSAGE. Le précédent est à trois
-    /// lignes d'ici : le champ `mic` a été ajouté à `Ready` sans monter la
-    /// version, pour la même raison.
+    /// remplacerait une dégradation PAR MESSAGE. Le précédent est le
+    /// constructeur `ready` de cette même `impl` (le champ `mic` a été ajouté
+    /// à `Ready` sans monter la version, pour la même raison).
+    ///
+    /// ⚠️ Cette phrase disait « à TROIS lignes d'ici » : `pub fn ready` est
+    /// trente-deux lignes plus haut, et l'était déjà à l'écriture. **Un
+    /// déictique de distance vieillit à la première insertion** ; nommer la
+    /// chose, jamais compter les lignes qui l'en séparent.
     pub fn clipboard(text: Option<String>, bytes: u32) -> AgentControl {
         AgentControl::Clipboard { version: CONTROL_VERSION, text, bytes }
     }

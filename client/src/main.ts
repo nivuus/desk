@@ -171,7 +171,7 @@ connectSession({
             // `session.close()` n'est pas appelé sur ce chemin. Sans ceci
             // l'indicateur de Chrome resterait allumé après la fin (spec §9).
             micro?.detacher();
-            // Même raison que les quatre détachements ci-dessus : l'écouteur
+            // Même raison que les détachements ci-dessus : l'écouteur
             // `focus` survivrait sinon à la fin de session et écrirait le
             // presse-papier local pour une session morte.
             pressePapier?.detacher();

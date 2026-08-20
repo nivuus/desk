@@ -75,8 +75,11 @@ pub(crate) fn lire_le_media<R: Read>(mut lecteur: R, images: SyncSender<Recu>) {
                 // Tâche 9, sous-bloc P1 (presse-papier) : **la CINQUIÈME fois
                 // que ce point de passage doit être relié**, après `Sommeil`
                 // (D5), `Part` (D6), `Audio` (D7) et `PleinEcran` (D8). Chacun
-                // des quatre précédents nomme son rang juste au-dessus, et
-                // chacun a été payé de la même façon : le bras manquant ne se
+                // des quatre précédents porte son avertissement juste au-dessus
+                // — ⚠️ mais AUCUN ne nomme son rang, contrairement à ce que
+                // cette phrase a d'abord affirmé (revue transverse, 20 août
+                // 2026) : c'est cette occurrence-ci qui inaugure le décompte.
+                // Chacun a été payé de la même façon : le bras manquant ne se
                 // signale par AUCUNE erreur de compilation — il fait tomber le
                 // message dans `Ok(autre)` ci-dessous, qui tue ce fil en
                 // silence, affame `SourceDistante` et jette la session dans sa

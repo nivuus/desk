@@ -2,9 +2,19 @@
 // quoi dire quand ça ne marche pas.
 //
 // **PUR — aucun `document`, aucun `navigator`, aucune promesse.** Ce module
-// décide ; c'est `main.ts` qui appelle `navigator.clipboard.writeText` et lui
-// rapporte le résultat. C'est le patron de `status.ts` et de `resize.ts`, et
-// c'est ce qui le rend éprouvable sans DOM.
+// décide ; c'est `presse-papier-dom.ts` qui appelle `writeText` — reçue par
+// injection, depuis `main.ts` — et qui lui rapporte le résultat (`confirmer`,
+// `echouer`). C'est le patron de `status.ts` et de `resize.ts`, et c'est ce
+// qui le rend éprouvable sans DOM.
+//
+// ⚠️ **Cette phrase disait « c'est `main.ts` qui […] lui rapporte le
+// résultat », et c'était vrai quand elle a été écrite.** L'extraction de
+// `presse-papier-dom.ts` — jouée AVANT l'addition, dans la même branche — a
+// déplacé le câblage : `main.ts` ne construit plus `PressePapierLocal` et ne
+// lui rapporte plus rien (`grep -c PressePapierLocal client/src/main.ts`
+// rend **0**). Corrigée par la revue transverse du 20 août 2026. C'est le
+// mode de défaillance dominant de ce dépôt : une affirmation devenue fausse
+// **dans sa propre branche**.
 //
 // Il n'importe rien de `proto/ts/control.ts` : il prend une `Recu` locale.
 // C'est délibéré — le découpler du protocole est ce qui le garde pur, et un
