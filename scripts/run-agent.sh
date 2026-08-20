@@ -91,6 +91,17 @@ ${AGENT_TRACE_EXCEPTIONS_FICHIER:+\$env:AGENT_TRACE_EXCEPTIONS_FICHIER = '$AGENT
 ${AGENT_TRACE_EXCEPTIONS_AUTOTEST:+\$env:AGENT_TRACE_EXCEPTIONS_AUTOTEST = '$AGENT_TRACE_EXCEPTIONS_AUTOTEST'}
 ${AGENT_VM:+\$env:AGENT_VM = '$AGENT_VM'}
 ${AGENT_SECRET:+\$env:AGENT_SECRET = '$AGENT_SECRET'}
+# 🔴 AGENT_JETON N'EST PAS TRANSMIS ICI, ET C'EST DÉLIBÉRÉ — le seul manquement
+# volontaire de ce fichier, écrit plutôt que subi. Ce dépôt a payé trois fois
+# l'oubli d'une variable neuve dans ce script (SUPERVISEUR en D1,
+# MULTIFENETRE_REPRISE en D2, AUDIO en D7) ; celle-ci n'est pas du même genre.
+# AGENT_JETON est une variable de PASSATION entre processus, posée par le
+# superviseur sur ses enfants et sur le pont (agent/src/superviseur/lanceur.rs)
+# pour qu'un seul processus par VM ouvre le canal /agent. La poser à la main
+# ferait SAUTER l'enrôlement du processus racine : il ne battrait plus le cœur
+# de la VM, ne pousserait aucun catalogue, ne recevrait aucun ordre de
+# lancement, et son jeton mourrait au bout de dix minutes sans se renouveler.
+# Un opérateur pose AGENT_VM et AGENT_SECRET ; la passation ne le regarde pas.
 # Le StreamWriter ci-dessous règle l'ÉCRITURE du fichier en UTF-8, mais pas la
 # LECTURE de la sortie de l'enfant : PowerShell décode le flux d'agent.exe
 # selon \$OutputEncoding / [Console]::OutputEncoding, qui vaut par défaut la

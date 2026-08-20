@@ -91,6 +91,17 @@ pub struct LanceurDeProcessus {
     /// lanceur en a besoin pour la seule session qu'il compose lui-même,
     /// celle du pont.
     prefixe: String,
+    /// La veille sur l'identité de plateforme — le jeton d'agent COURANT.
+    ///
+    /// 🔴 UNE VEILLE, ET NON UNE CHAÎNE FIGÉE : le jeton dure dix minutes et
+    /// se renouvelle à chaque battement de cœur, quand un superviseur vit des
+    /// heures. Un instantané pris au démarrage ferait qu'une fenêtre ouverte
+    /// plus tard recevrait un jeton MORT, et sa session ne s'établirait pas.
+    ///
+    /// `None` quand ce superviseur n'a pas de canal (`AGENT_VM`/`AGENT_SECRET`
+    /// absents) : ses enfants n'auront pas de jeton non plus, ce qui est
+    /// exactement l'état d'avant — annoncé par un `warn!`, jamais silencieux.
+    identite: Option<tokio::sync::watch::Receiver<Option<crate::plateforme::Identite>>>,
     /// Le job auquel tout enfant — le capteur et le pont compris — est
     /// rattaché. Sa fermeture les tue tous.
     job: HANDLE,
@@ -102,6 +113,7 @@ impl LanceurDeProcessus {
         signaling_url: String,
         local_ip: String,
         prefixe: String,
+        identite: Option<tokio::sync::watch::Receiver<Option<crate::plateforme::Identite>>>,
     ) -> Result<Self> {
         let job =
             unsafe { CreateJobObjectW(None, None) }.context("création du job object des enfants")?;
@@ -129,6 +141,7 @@ impl LanceurDeProcessus {
             capteur: Mutex::new(None),
             pont: Mutex::new(None),
             prefixe,
+            identite,
             job,
         })
     }
@@ -162,6 +175,67 @@ impl LanceurDeProcessus {
         self.pont.lock().unwrap_or_else(|empoisonne| empoisonne.into_inner())
     }
 
+    /// Le jeton d'agent COURANT, relu à chaque lancement.
+    ///
+    /// `None` si ce superviseur n'a pas de canal, ou si l'enrôlement n'a pas
+    /// encore abouti. La veille conserve la dernière identité connue même
+    /// canal coupé : un jeton peut donc être périmé, et c'est assumé — un
+    /// jeton périmé se refuse bruyamment à la poignée de main, là où l'absence
+    /// de jeton la refuse tout autant. Le remède réel d'une coupure longue est
+    /// la reprise du canal, pas une abstention ici.
+    fn jeton_courant(&self) -> Option<String> {
+        let veille = self.identite.as_ref()?;
+        let courante = veille.borrow();
+        courante.as_ref().map(|identite| identite.jeton.clone())
+    }
+
+    /// Pose sur un processus enfant l'identité HÉRITÉE, et retire celle du père.
+    ///
+    /// 🔴 **LE SECRET D'ENRÔLEMENT NE FRANCHIT JAMAIS CETTE LIGNE**, et c'est
+    /// le correctif du 20 août 2026. Un enfant qui héritait de `AGENT_VM` et
+    /// `AGENT_SECRET` ouvrait SON PROPRE canal `/agent` sous la même identité
+    /// que son père : la plateforme n'admettant qu'un socket par VM, chacun
+    /// évinçait l'autre, l'évincé reprenait aussitôt, et le cycle n'avait
+    /// aucun terme — **95 enrôlements et 94 évictions en 64 s**, relevés sur
+    /// la VM avec deux processus seulement, le superviseur et le pont.
+    ///
+    /// Ce qui se transmet est le JETON, parce qu'un enfant et le pont en ont
+    /// besoin — chacun ouvre sa propre `PeerConnection`, et la garde refuse une
+    /// poignée de main d'agent sans jeton depuis P3 — et parce qu'ils n'ont
+    /// besoin de RIEN d'autre du canal : ils ne battent aucun cœur, ne
+    /// poussent aucun catalogue, ne reçoivent aucun ordre de lancement.
+    ///
+    /// ⚠️ **`AGENT_JETON` EST RETIRÉ QUAND IL N'Y EN A PAS**, plutôt que laissé
+    /// à l'héritage : un superviseur lancé à la main dans un environnement qui
+    /// en porterait un vieux le repasserait sinon à tous ses enfants, et la
+    /// panne — poignées de main refusées, aucune session — n'aurait aucune
+    /// trace qui la rattache à une variable d'environnement oubliée.
+    fn identite_heritee(&self, commande: &mut std::process::Command) {
+        commande.env_remove("AGENT_VM").env_remove("AGENT_SECRET");
+        match self.jeton_courant() {
+            Some(jeton) => commande.env("AGENT_JETON", jeton),
+            None => commande.env_remove("AGENT_JETON"),
+        };
+    }
+
+    /// Retire TOUTE identité de plateforme — pour le seul processus qui n'en a
+    /// aucun besoin, le capteur.
+    ///
+    /// ⚠️ **LE CAPTEUR N'ÉTAIT PAS EN CAUSE**, et c'est vérifié plutôt que
+    /// supposé : `main.rs` lui rend la main AVANT l'enrôlement, donc un
+    /// capteur portant `AGENT_VM` ne s'est jamais enrôlé. On les retire quand
+    /// même, par la règle que ce fichier s'impose déjà trois fois pour
+    /// `SUPERVISEUR`, `CAPTEUR` et `PONT` : **un ordre de test est une
+    /// propriété qui change, un `env_remove` non.** Le jour où un capteur
+    /// aurait besoin de parler au signaling, il traverserait l'enrôlement et
+    /// rouvrirait le défaut, sans que rien ne l'ait annoncé.
+    fn sans_identite(commande: &mut std::process::Command) {
+        commande
+            .env_remove("AGENT_VM")
+            .env_remove("AGENT_SECRET")
+            .env_remove("AGENT_JETON");
+    }
+
     /// Lance le capteur unique de capture mutualisée (`agent/src/capteur.rs`) :
     /// même exécutable, `CAPTEUR=1`, **rattaché au même job object** que les
     /// enfants — sans quoi il survivrait au superviseur en tenant N
@@ -173,7 +247,8 @@ impl LanceurDeProcessus {
     /// seul post-traitement faillible, et il tue donc lui-même le capteur
     /// avant de rendre `Err`.
     pub fn lancer_capteur(&self) -> Result<u32> {
-        let mut capteur = std::process::Command::new(&self.executable)
+        let mut commande = std::process::Command::new(&self.executable);
+        commande
             .env("CAPTEUR", "1")
             // Même motif que pour un enfant (voir `lancer` ci-dessous) : un
             // capteur qui hériterait de `SUPERVISEUR` se prendrait pour un
@@ -194,9 +269,9 @@ impl LanceurDeProcessus {
             // désignée par elles, il en tient N, chacune décrite par l'enfant
             // qui s'y rattache via le tube nommé.
             .env_remove("TEST_FILE")
-            .env_remove("WINDOW_TITLE")
-            .spawn()
-            .context("lancement du capteur")?;
+            .env_remove("WINDOW_TITLE");
+        Self::sans_identite(&mut commande);
+        let mut capteur = commande.spawn().context("lancement du capteur")?;
         let pid = capteur.id();
         let handle = HANDLE(capteur.as_raw_handle() as *mut core::ffi::c_void);
         if let Err(erreur) = unsafe { AssignProcessToJobObject(self.job, handle) } {
@@ -253,7 +328,8 @@ impl LanceurDeProcessus {
 
 impl Lanceur for LanceurDeProcessus {
     fn lancer(&self, consigne: &Consigne) -> Result<u32> {
-        let mut enfant = std::process::Command::new(&self.executable)
+        let mut commande = std::process::Command::new(&self.executable);
+        commande
             .env("SESSION_ID", &consigne.session.0)
             .env("SIGNALING_URL", &self.signaling_url)
             .env("LOCAL_IP", &self.local_ip)
@@ -316,7 +392,14 @@ impl Lanceur for LanceurDeProcessus {
             // dès aujourd'hui — il suffit qu'un superviseur soit lancé avec
             // `PONT` dans son environnement, ce que `scripts/run-agent.sh`
             // rend possible d'une variable.
-            .env_remove("PONT")
+            .env_remove("PONT");
+        // 🔴 ET L'IDENTITÉ, dont l'oubli est le défaut du 20 août 2026. Un
+        // enfant traverse l'enrôlement de `main.rs` exactement comme le pont :
+        // la recette G1 ne l'a pas vu parce qu'aucune fenêtre n'était ouverte,
+        // donc aucun enfant lancé — le défaut y était invisible sur cette
+        // moitié-là, et il aurait mordu à la première fenêtre.
+        self.identite_heritee(&mut commande);
+        let mut enfant = commande
             .spawn()
             .with_context(|| format!("lancement de l'enfant {}", consigne.session.0))?;
         let pid = enfant.id();
