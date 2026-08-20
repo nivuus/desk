@@ -78,16 +78,9 @@
     line-height: var(--lh-serre);
 }
 
-/* ⚠️ LE BANDEAU VIDE DISPARAÎT, IL NE DEVIENT PAS UN CADRE VIDE. `.message`
-   porte un trait et un fond ; sans cette règle, `lecteurDemonte()` — qui émet
-   délibérément la CHAÎNE VIDE — laisserait un rectangle bordé sans texte, et
-   l'effacement que ce vide existe pour dire se lirait comme un défaut
-   d'affichage. La règle du ton reste dans `shell.ts` ; celle-ci ne fait que
-   ne rien montrer quand il n'y a rien à dire. */
-.bureau__bandeau:empty {
-    display: none;
-}
-
+/* Le bandeau VIDE disparaît, et cette règle-là vit dans
+   `design/primitives/message.css` : l'écran de connexion en a besoin à
+   l'identique, et le §6.3 interdit de l'écrire deux fois. */
 .bureau__bandeau {
     margin-block-start: var(--e-4);
 }

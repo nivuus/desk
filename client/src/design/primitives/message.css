@@ -26,6 +26,25 @@
    §7.1 la mesure à chaque exécution.
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* ⚠️ UN BANDEAU VIDE DISPARAÎT, IL NE DEVIENT PAS UN CADRE VIDE. `.message`
+   porte un trait et un fond ; sans cette règle, un bandeau dont le texte a été
+   EFFACÉ — ce que `shell.ts::lecteurDemonte` fait délibérément, et ce qu'est
+   l'état initial des trois bandeaux du produit — laisserait un rectangle bordé
+   sans texte, et l'effacement que ce vide existe pour dire se lirait comme un
+   défaut d'affichage.
+
+   🔴 ELLE EST MONTÉE ICI PLUTÔT QU'ÉCRITE DEUX FOIS. Le sous-bloc S3 en avait
+   besoin à l'identique dans `shell.css` et dans `connexion.css` ; le §6.3 de
+   son plan exige qu'une règle écrite pareil dans les deux feuilles de surface
+   remonte dans les primitives. ⚠️ DIVERGENCE DÉCLARÉE : le plan nommait
+   `primitives/surface.css` comme point de chute ; celle-ci porte sur la
+   famille `message`, et c'est ici qu'elle se lit auprès de ce qu'elle décrit.
+   Aucune des quatre familles ne change d'apparence : la galerie
+   `primitives.html` n'a aucun `.message` vide, vérifié avant l'écriture. */
+.message:empty {
+    display: none;
+}
+
 .message {
     border: var(--trait) solid var(--bord);
     border-radius: var(--r-1);

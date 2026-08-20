@@ -52,6 +52,7 @@
 // depuis le seul endroit où personne ne penserait à la chercher.
 
 import { poser } from './jeton';
+import type { Ton } from './shell';
 import { effacerPrefixe, poserPrefixe } from './prefixe';
 
 const params = new URLSearchParams(window.location.search);
@@ -70,10 +71,39 @@ const champMotDePasse = document.querySelector<HTMLInputElement>('#motdepasse')!
 const bouton = document.querySelector<HTMLButtonElement>('#valider')!;
 const message = document.querySelector<HTMLDivElement>('#message')!;
 
+/* ── LE TON DU BANDEAU : UNE TABLE, PAS UNE RÈGLE ─────────────────────────
+   🔴 AUCUNE CONDITION N'EST AJOUTÉE À CE FICHIER, et c'est la clause de son
+   en-tête. Les branches ci-dessous existaient toutes AVANT le sous-bloc S3 ;
+   il ne fait que donner à chacune la classe de ton qui lui correspond. Le
+   critère de la revue transverse de P4 s'applique tel quel : une condition est
+   une RÈGLE si la changer change ce que le produit décide. Changer un ton ne
+   change aucune décision — ni le jeton posé, ni le préfixe écrit, ni la
+   redirection. C'est de la présentation.
+
+   ⚠️ CES TROIS CLASSES SONT INVISIBLES AU CONTRÔLE §7.9, limite connue et
+   déclarée : il ne lit que les littéraux de `classList.add('…')` et de
+   `className = '…'`, jamais une classe qui transite par une variable. Elles
+   sont bien déclarées par `design/primitives/message.css` et employées par
+   `primitives.html` — c'est la galerie et l'œil qui le disent ici, pas la
+   commande. Même arbitrage que `shell-page.ts`. */
+const CLASSE_DE_TON: Record<Ton, string> = {
+    neutre: '',
+    succes: 'message--succes',
+    alerte: 'message--alerte',
+    danger: 'message--danger',
+};
+
+function afficher(texte: string, ton: Ton): void {
+    message.textContent = texte;
+    message.classList.remove('message--succes', 'message--alerte', 'message--danger');
+    const classe = CLASSE_DE_TON[ton];
+    if (classe !== '') message.classList.add(classe);
+}
+
 formulaire.addEventListener('submit', async (evenement) => {
     evenement.preventDefault();
     bouton.disabled = true;
-    message.textContent = 'connexion…';
+    afficher('connexion…', 'neutre');
 
     try {
         const reponse = await fetch(`${plateformeUrl}/auth/connexion`, {
@@ -88,7 +118,7 @@ formulaire.addEventListener('submit', async (evenement) => {
 
         if (!reponse.ok) {
             // Le motif du service, tel quel — voir l'en-tête.
-            message.textContent = `refusé : ${corps?.refus ?? reponse.status}`;
+            afficher(`refusé : ${corps?.refus ?? reponse.status}`, 'danger');
             return;
         }
 
@@ -101,7 +131,7 @@ formulaire.addEventListener('submit', async (evenement) => {
         // le retrouve pas rempli.
         champMotDePasse.value = '';
 
-        message.textContent = 'recherche de votre machine…';
+        afficher('recherche de votre machine…', 'neutre');
         const session = await fetch(`${plateformeUrl}/session`, {
             method: 'POST',
             // 🔴 L'EN-TÊTE `Authorization` REND LA REQUÊTE NON SIMPLE, donc
@@ -154,7 +184,7 @@ formulaire.addEventListener('submit', async (evenement) => {
                 sien?.redemarrage?.possible === false
                     ? ` — la plateforme ne sait pas la redémarrer (${sien.redemarrage.motif}, backend ${sien.redemarrage.backend})`
                     : '';
-            message.textContent = `${sien?.motif ?? sien?.refus ?? session.status}${etat}${aveu}`;
+            afficher(`${sien?.motif ?? sien?.refus ?? session.status}${etat}${aveu}`, 'danger');
             return;
         }
 
@@ -164,7 +194,7 @@ formulaire.addEventListener('submit', async (evenement) => {
         // symptôme d'une `PLATEFORME_ORIGINE_CLIENT` absente côté service
         // (`plateforme/src/config.ts`), et le confondre avec un refus
         // d'identifiants enverrait chercher le défaut au mauvais endroit.
-        message.textContent = `plateforme injoignable (${String(cause)})`;
+        afficher(`plateforme injoignable (${String(cause)})`, 'danger');
     } finally {
         bouton.disabled = false;
     }
