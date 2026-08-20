@@ -36,6 +36,7 @@ import { ProprieteDeSession } from '../signaling/propriete';
 import { observateurDeSession } from '../signaling/trace';
 import { servirLeCanalAgent } from '../agents/canal';
 import { RegistreAgents } from '../agents/registre';
+import { Frein } from '../securite/frein';
 
 /// Le chemin du canal plateforme <-> agent (P3). ⚠️ Il est comparé
 /// EXACTEMENT : voir le routage plus bas.
@@ -160,6 +161,19 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     // de l'agent, qui le reconstitue sans que personne ne le persiste.
     const registreAgents = new RegistreAgents();
 
+    // 🔴 UN SEUL FREIN POUR TOUT LE SERVICE, construit ICI et partagé entre
+    // les routes d'authentification et le canal `/agent`. Deux freins
+    // distincts DIVERGERAIENT le jour où l'un serait durci (D4), et leurs
+    // budgets d'adresse s'additionneraient : un attaquant obtiendrait le
+    // double de ce que les constantes annoncent en alternant les deux portes.
+    //
+    // ⚠️ IL A LE MÊME COÛT QUE `ProprieteDeSession` ET `RegistreAgents`, ET IL
+    // EST NOMMÉ AU MÊME ENDROIT : il ne survit pas à un redémarrage, et LE
+    // FREIN D'UNE INSTANCE NE PROTÈGE QUE CETTE INSTANCE. Deux instances
+    // multiplieraient chaque budget par deux, sans que rien ne le dise — c'est
+    // l'une des raisons pour lesquelles le déploiement n'en déclare qu'une.
+    const frein = new Frein();
+
     const deps = {
         base,
         secretJeton: config.secretJeton,
@@ -170,6 +184,10 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         // chaînage reste une seule ligne par routeur, et parce qu'un objet de
         // dépendances par routeur ferait quatre listes à tenir à jour.
         registre: registreAgents,
+        // ⚠️ SEUL `servirAuth` LES LIT aujourd'hui ; les autres routeurs les
+        // ignorent, comme ils ignorent `registre`.
+        frein,
+        proxyDeConfiance: config.proxyDeConfiance,
     };
 
     /// Essaie les routeurs dans l'ordre, et rend `false` si aucun n'a servi.
