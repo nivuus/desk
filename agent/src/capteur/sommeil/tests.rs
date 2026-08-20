@@ -48,6 +48,7 @@ pub(super) fn premier_ordre(canal: &Receiver<Message>) -> Option<Ordre> {
             Ok(Message::Sommeil(ordre)) => return Some(ordre),
             Ok(Message::Part { .. }) => continue,
             Ok(Message::Audio { .. }) => continue,
+            Ok(Message::PressePapier { .. }) => continue,
             Err(_) => return None,
         }
     }

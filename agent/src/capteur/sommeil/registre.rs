@@ -24,7 +24,7 @@ use std::time::Instant;
 
 use crate::capteur::vivier::{Ordre, Vivier, HYSTERESIS, PLAFOND_EVEIL};
 
-use super::{parts, porteurs, purger_les_inaptitudes, retirer_est_perime, Message, PERIODE_REARBITRAGE};
+use super::{parts, porteurs, presse_papier, purger_les_inaptitudes, retirer_est_perime, Message, PERIODE_REARBITRAGE};
 
 pub(super) struct Etat {
     pub(super) vivier: Vivier,
@@ -152,15 +152,46 @@ pub(super) fn etat() -> MutexGuard<'static, Etat> {
 /// qu'elle se termine — la réentrance qui paniquerait serait celle du *même*
 /// fil, qui n'a pas lieu ici. Le `sleep` n'est qu'une cadence, pas une garde.
 fn demarrer_le_tour_de_roue() {
-    std::thread::spawn(|| loop {
-        std::thread::sleep(PERIODE_REARBITRAGE);
-        let mut garde = etat();
-        let maintenant = Instant::now();
-        let ordres = garde.vivier.rearbitrer(maintenant);
-        distribuer(&mut garde, ordres);
-        parts::distribuer_les_parts(&mut garde);
-        purger_les_inaptitudes(&mut garde.inaptes, Instant::now());
-        porteurs::distribuer_l_audio(&mut garde);
+    std::thread::spawn(|| {
+        let mut sondeur = crate::presse_papier::Sondeur::nouveau();
+        loop {
+            std::thread::sleep(PERIODE_REARBITRAGE);
+
+            // 🔴 **HORS DU VERROU, ET C'EST TOUT L'INTÉRÊT DE CETTE LIGNE.**
+            // `sondeur.tour()` fait une E/S Win32 — `GetClipboardSequenceNumber`,
+            // puis `OpenClipboard`/`GetClipboardData` quand le compteur a bougé.
+            // `OpenClipboard` est une ressource CONTENDUE de la station de
+            // fenêtres : il échoue, ou attend, dès qu'une autre application la
+            // tient. Placée sous `etat()` — le verrou GLOBAL du registre, un
+            // unique `Mutex<Etat>` pour tout le processus —, elle bloquerait
+            // pendant tout ce temps `inscrire`, `retirer`, `signaler` et
+            // `echec_de_reveil`, c'est-à-dire l'attache et le retrait de TOUTES
+            // les fenêtres, et le retour d'un réveil refusé.
+            //
+            // La spécification place le sondage « sur le tour de roue » sans
+            // dire de quel côté du verrou ; c'est le plan (D-P1-3, divergence
+            // E3) qui a tranché, et c'est un défaut corrigé avant d'exister.
+            //
+            // Seul le RÉSULTAT — une `Annonce` déjà normalisée, bornée et
+            // dédupliquée — entre sous le verrou, plus bas.
+            //
+            // Le garde d'armement `presse_papier::actif()` vit à l'intérieur de
+            // `tour()`, AVANT toute lecture : `PRESSE_PAPIER=0` empêche donc
+            // jusqu'à la lecture du compteur, pas seulement l'envoi. Le
+            // dupliquer ici doublerait une décision déjà prise au bon endroit.
+            let annonce = sondeur.tour();
+
+            let mut garde = etat();
+            let maintenant = Instant::now();
+            let ordres = garde.vivier.rearbitrer(maintenant);
+            distribuer(&mut garde, ordres);
+            parts::distribuer_les_parts(&mut garde);
+            purger_les_inaptitudes(&mut garde.inaptes, Instant::now());
+            porteurs::distribuer_l_audio(&mut garde);
+            if let Some(annonce) = annonce {
+                presse_papier::distribuer(&mut garde, annonce);
+            }
+        }
     });
 }
 

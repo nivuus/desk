@@ -20,6 +20,12 @@
 // la RÈGLE pure ; celui-ci ne porte que sa BRANCHE sur ce registre.
 mod parts;
 mod porteurs;
+// `presse_papier` porte la DISTRIBUTION du presse-papier de la VM, extraite
+// pour la même raison que `parts` et `porteurs` : ce fichier-ci est proche de
+// son plafond. Il ne s'appelle pas comme le module racine
+// `crate::presse_papier` par confusion — celui-là porte la RÈGLE pure, celui-ci
+// sa seule branche sur ce registre.
+mod presse_papier;
 
 // Le registre lui-même — `Etat`, `etat`, le tour de roue, `distribuer`,
 // `oublier`, `inscrire`, `retirer` — extrait pour rester sous le plafond de
@@ -185,6 +191,24 @@ pub enum Message {
     /// seraient audibles ensemble — sans la fermer : la borne réelle est
     /// l'ordonnancement des deux fils, pas ce canal.
     Audio { actif: bool },
+    /// Le presse-papier de la VM a changé (sous-bloc P1). Poussé **au
+    /// changement seulement**, comme `Part` et `Audio` — c'est
+    /// `crate::presse_papier::Sondeur` qui porte les gardes, pas ce registre.
+    ///
+    /// `texte` vaut `None` sur un REFUS de taille, `octets` portant alors la
+    /// taille refusée : le contenu est refusé, jamais tronqué, et le refus est
+    /// DIT à l'utilisateur (D4). Un `None` n'est donc pas « rien à annoncer ».
+    ///
+    /// ⚠️ **C'est le plus gros message de ce canal, de deux ordres de
+    /// grandeur** : jusqu'à `crate::presse_papier::PRESSE_PAPIER_MAX`
+    /// (64 Kio), là où `Sommeil`, `Part` et `Audio` pèsent quelques octets. Le
+    /// canal du registre est NON BORNÉ (`std::sync::mpsc::channel`), donc
+    /// `send` ne bloque jamais — mais un fil de fenêtre bloqué accumulerait
+    /// ces messages. Borné en pratique par le fait qu'on n'émet qu'au
+    /// changement et que le garde d'égalité de contenu supprime les
+    /// répétitions ; nommé ici plutôt que découvert, et à surveiller si P3
+    /// mesure une fenêtre lente.
+    PressePapier { texte: Option<String>, octets: u32 },
 }
 
 pub fn signaler(session: &str, visible: bool, focalisee: bool) {
