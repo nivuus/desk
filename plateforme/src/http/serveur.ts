@@ -31,6 +31,7 @@ import { servirAuth } from './routes-auth';
 import { servirVm } from './routes-vm';
 import { servirSession } from './routes-session';
 import { servirApplications } from './routes-applications';
+import { CacheSante, servirSante } from './routes-sante';
 import { createSignalingServer } from '../signaling/relais';
 import { ProprieteDeSession } from '../signaling/propriete';
 import { observateurDeSession } from '../signaling/trace';
@@ -174,6 +175,11 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     // l'une des raisons pour lesquelles le déploiement n'en déclare qu'une.
     const frein = new Frein();
 
+    // Le cache de `/sante`, construit UNE fois et vivant pour la durée du
+    // service — comme `ProprieteDeSession`, `RegistreAgents` et le frein.
+    // Un cache par requête ne cacherait rien.
+    const cacheSante = new CacheSante();
+
     const deps = {
         base,
         secretJeton: config.secretJeton,
@@ -188,6 +194,7 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         // ignorent, comme ils ignorent `registre`.
         frein,
         proxyDeConfiance: config.proxyDeConfiance,
+        cache: cacheSante,
     };
 
     /// Essaie les routeurs dans l'ordre, et rend `false` si aucun n'a servi.
@@ -213,7 +220,14 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         if (await servirAuth(requete, reponse, deps)) return true;
         if (await servirVm(requete, reponse, deps)) return true;
         if (await servirApplications(requete, reponse, deps)) return true;
-        return servirSession(requete, reponse, deps);
+        if (await servirSession(requete, reponse, deps)) return true;
+        // ⚠️ `/sante` EST CHAÎNÉE EN DERNIER, et l'ordre n'est pas indifférent
+        // ici : c'est la seule route NON AUTHENTIFIÉE du service, et la placer
+        // en tête ferait courir sa comparaison de chemin avant celles des
+        // routes gardées. Les cinq jeux de chemins restent DISJOINTS, donc
+        // aucun ne peut voler le chemin d'un autre ; l'ordre est une ceinture,
+        // pas une garantie.
+        return servirSante(requete, reponse, deps);
     }
 
     const http: Server = createServer((requete, reponse) => {
