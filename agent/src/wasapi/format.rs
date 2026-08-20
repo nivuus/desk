@@ -86,6 +86,31 @@ pub fn verifier(frequence: u32, canaux: usize, bits: u16, flottant: bool) -> Res
     Ok(())
 }
 
+/// Combien de **trames par canal**, dans `pcm` (entrelacé), sont entièrement
+/// silencieuses.
+///
+/// ⚠️ **Pourquoi ce compteur existe, et pourquoi il vit dans CE module.**
+/// `LecteurMicro::remplir` ne bloque jamais et complète au silence (spec §8) :
+/// une trace qui ne dirait que « on a écrit 48 000 trames dans la seconde » ne
+/// distinguerait pas un micro qui parle d'un micro qui se tait, et les deux
+/// s'écrivent exactement pareil sur le câble. C'est le seul endroit du chemin
+/// qui puisse le mesurer, et c'est une mesure du tampon RÉELLEMENT posé, pas un
+/// rapport de `remplir` — qui n'en fait aucun.
+///
+/// Quant à sa place : `wasapi/ecriture.rs`, son unique appelant, est
+/// `#![cfg(windows)]` et ne se teste pas sur l'hôte ; `micro.rs` est à 483
+/// lignes (marge 17, la plus étroite du chemin) et ce dépôt extrait avant
+/// d'ajouter plutôt que de comprimer après. Ce module-ci est pur, hissé, déjà
+/// éprouvé, et il parle déjà de ce que l'écriture pose sur le câble.
+pub fn trames_de_silence(pcm: &[f32], canaux: usize) -> usize {
+    if canaux == 0 {
+        return 0;
+    }
+    pcm.chunks_exact(canaux)
+        .filter(|trame| trame.iter().all(|e| *e == 0.0))
+        .count()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -162,6 +187,45 @@ mod tests {
     #[test]
     fn le_multicanal_est_refuse() {
         assert!(verifier(48_000, 6, 32, true).is_err());
+    }
+
+    /// 🔴 Le compteur qui rend la trace périodique LISIBLE. Sans lui, « on a
+    /// écrit 48 000 trames » ne distingue pas un micro qui parle d'un micro
+    /// qui se tait — et `remplir` complète au silence sans jamais le dire.
+    #[test]
+    fn le_silence_pur_est_compte_trame_par_trame() {
+        assert_eq!(trames_de_silence(&[0.0; 8], 2), 4);
+    }
+
+    #[test]
+    fn un_signal_plein_ne_compte_aucune_trame_de_silence() {
+        assert_eq!(trames_de_silence(&[0.5, -0.5, 0.25, -0.25], 2), 2 - 2);
+    }
+
+    /// ⚠️ **Une trame n'est silencieuse que si TOUS ses canaux le sont.** Un
+    /// canal droit muet sur un canal gauche qui parle est un défaut de
+    /// mixage, pas du silence, et le compter comme tel masquerait exactement
+    /// ce défaut.
+    #[test]
+    fn une_trame_dont_UN_SEUL_canal_parle_n_est_pas_du_silence() {
+        assert_eq!(trames_de_silence(&[0.0, 0.3, 0.0, 0.0], 2), 1);
+    }
+
+    /// Le zéro négatif est du silence : `-0.0 == 0.0` en IEEE 754, et une
+    /// comparaison qui les distinguerait rendrait le compteur faux sans
+    /// qu'aucun son ne change.
+    #[test]
+    fn le_zero_negatif_est_du_silence() {
+        assert_eq!(trames_de_silence(&[-0.0, -0.0], 2), 1);
+    }
+
+    /// Une queue incomplète — moins d'échantillons qu'une trame entière — est
+    /// ignorée plutôt que comptée pour une trame. Le cas ne se produit pas
+    /// (l'écriture pose toujours des trames entières), et c'est justement
+    /// pour cela qu'il doit être défini ici plutôt que découvert ailleurs.
+    #[test]
+    fn une_queue_incomplete_ne_compte_pour_aucune_trame() {
+        assert_eq!(trames_de_silence(&[0.0, 0.0, 0.0], 2), 1);
     }
 
     #[test]

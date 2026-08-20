@@ -123,6 +123,15 @@ mod window;
 mod wasapi;
 #[cfg(windows)]
 mod windows_audio;
+/// L'ecriture du micro sur le cable virtuel (bloc E2).
+///
+/// ⚠️ **Racine nue, et c'est vérifié contre la convention** (§ « Convention de
+/// module enfant », tête de `CLAUDE.md`) : `windows_micro` ne porte le préfixe
+/// `<parent>_` d'aucun module de premier niveau existant — `window` exigerait
+/// `window_`, et il n'existe aucun `mod windows;`. Il rejoint `windows_audio`
+/// et `windows_source`, à la racine nue pour la même raison. **Aucun `#[path]`.**
+#[cfg(windows)]
+mod windows_micro;
 #[cfg(windows)]
 mod windows_source;
 

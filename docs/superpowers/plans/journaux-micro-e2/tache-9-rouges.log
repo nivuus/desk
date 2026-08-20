@@ -1,0 +1,60 @@
+# Tâche 9 — les rouges et les mutations, relevées le 20 août 2026
+
+## ROUGE — `wasapi_format::trames_de_silence`, tests écrits AVANT toute
+## implémentation (l'ordre est tenu, cette fois)
+$ cd agent && cargo test -p agent wasapi_format
+error[E0425]: cannot find function `trames_de_silence` in this scope   (x4)
+
+VERT après implémentation : 13 passed.
+
+## MUTATIONS
+Source sauvegardée, `diff` non vide relevé avant chaque exécution, restauration
+vérifiée par `sha256sum -c`.
+
+M10 « une trame dont UN canal est nul compte pour du silence » (`all` -> `any`)
+  diff non vide : 4 lignes
+  test ...une_trame_dont_UN_SEUL_canal_parle_n_est_pas_du_silence ... FAILED
+    left: 2 / right: 1
+  test result: FAILED. 12 passed; 1 failed.                            -> TUÉE
+
+M11 « une queue incomplète compte pour une trame » (`chunks_exact` -> `chunks`)
+  diff non vide : 4 lignes
+  test ...une_queue_incomplete_ne_compte_pour_aucune_trame ... FAILED
+    left: 2 / right: 1
+  test result: FAILED. 12 passed; 1 failed.                            -> TUÉE
+
+M12 « le zéro négatif cesse d'être du silence » (`*e == 0.0` -> `e.to_bits() == 0`)
+  diff non vide : 4 lignes
+  test ...le_zero_negatif_est_du_silence ... FAILED
+    left: 0 / right: 1
+  test result: FAILED. 12 passed; 1 failed.                            -> TUÉE
+
+Restauration vérifiée : `sha256sum -c` -> src/wasapi/format.rs: Réussi
+
+## CE QUI N'A PAS DE ROUGE, ET POURQUOI
+`windows_micro.rs` et `windows_micro/verrou.rs` sont `#![cfg(windows)]` : le fil
+de rendu, le mutex nommé et la trace périodique ne sont éprouvés par AUCUN test
+d'hôte. Leur seul contrôle ici est `cargo check --target x86_64-pc-windows-gnu`.
+Ce que ce contrôle NE couvre pas, et qu'il faut mesurer sur la VM (tâche 12) :
+  - que `Global\` soit obtenu ou refusé, et donc quel espace de nommage sert ;
+  - que `WAIT_ABANDONED` survienne réellement à la mort d'une fenêtre voisine ;
+  - que la garde de boucle locale se déclenche sur la VM, où le rendu par
+    défaut EST le câble — c'est le chemin le plus probable, pas un cas limite ;
+  - le compteur `retards`, dont TOUT l'objet est de rendre décidable la
+    question du `Mutex` du lecteur. S'il reste à zéro, la question est close.
+
+## CONTRÔLES DE FIN DE TÂCHE
+$ cargo test -p agent                            -> 702 passed; 0 failed  (697 à l'entrée, +5)
+$ cargo check --target x86_64-pc-windows-gnu     -> sortie 0, 55 avertissements
+   TOUS `dead_code` — vérifié par filtrage : 55 avertissements au total, 55
+   dont le libellé est « never used » / « never constructed » / « never read »,
+   donc ZÉRO d'une autre catégorie. Le saut 41 -> 55 est `windows_micro` tout
+   entier, que rien n'appelle encore : la tâche 10 le consomme.
+
+## LIGNES, PAR LA COMMANDE
+  424 src/windows_micro.rs         (neuf)
+  142 src/windows_micro/verrou.rs  (neuf, extrait DÈS l'écriture)
+  359 src/wasapi/rendu.rs          (+6 : `enumerer` devient `pub`, avec sa raison)
+  236 src/wasapi/format.rs         (+64)
+  320 src/main.rs                  (+9)
+  483 src/micro.rs                 (INCHANGÉ, marge 17 preservee)

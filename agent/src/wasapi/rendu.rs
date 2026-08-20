@@ -293,11 +293,17 @@ fn ouvrir_par_identifiant(
 
 /// Photographie les périphériques de rendu ACTIFS.
 ///
+/// ⚠️ **`pub` depuis le bloc E2**, et pour une seule raison : quand la garde de
+/// boucle locale refuse le micro, son message doit porter l'inventaire des
+/// rendus disponibles — sans quoi le remède qu'il nomme
+/// (`AUDIO_PERIPHERIQUE=<un autre>`) ne dit pas *lequel*. C'est le patron du
+/// bras `Choix::Ambigu` de [`resoudre`], qui énumère déjà ses candidats.
+///
 /// `DEVICE_STATE_ACTIVE` seul, à dessein : un périphérique débranché ou
 /// désactivé ne peut rien rendre, et le proposer à la sélection ferait élire
 /// une cible qui ne produira jamais un octet — la panne même qu'on corrige,
 /// sous une autre forme.
-fn enumerer(enumerateur: &IMMDeviceEnumerator) -> Result<Vec<Peripherique>> {
+pub fn enumerer(enumerateur: &IMMDeviceEnumerator) -> Result<Vec<Peripherique>> {
     // SAFETY : voir `defaut`. Chaque `Item` rend une référence comptée que le
     // `Drop` de `IMMDevice` relâche.
     unsafe {
