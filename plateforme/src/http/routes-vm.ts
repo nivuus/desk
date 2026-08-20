@@ -19,12 +19,22 @@
 // apprendrait quelles VMs existent en lisant le code de retour. Troisième
 // application de la règle après `routes-auth.ts` et `agents/enrolement.ts`.
 //
-// ⚠️ DIVERGENCE DÉCLARÉE AVEC LE SOUS-BLOC G1, non tranchée ici : sa décision
-// D9 retient `403 {refus:'vm-etrangere'}` sur une VM appartenant à autrui,
-// c'est-à-dire un ORACLE, distinct du 404 d'une VM inconnue. Les deux
-// chantiers ne peuvent pas avoir raison en même temps. P4 retient le refus non
-// énumérant ; unifier est une décision qui appartient au propriétaire du
-// dépôt, pas à la seconde branche arrivée.
+// 🔴 LA DIVERGENCE AVEC LE SOUS-BLOC G1 EST TRANCHÉE, PAR LE PROPRIÉTAIRE DU
+// DÉPÔT, EN FAVEUR DE CE FICHIER — et ce module n'a donc pas changé d'une
+// ligne. Sa décision D9 retenait `403 {refus:'vm-etrangere'}` sur une VM
+// appartenant à autrui, c'est-à-dire un ORACLE D'ÉNUMÉRATION distinct du 404
+// d'une VM inconnue ; `http/routes-applications.ts` s'est aligné sur le refus
+// indistinguable ci-dessus, et le motif `vm-etrangere` n'existe plus nulle
+// part dans le service.
+//
+// ⚠️ LA CONTREPARTIE VIT LÀ-BAS, PAS ICI, et c'est une asymétrie assumée :
+// `routes-applications.ts` pose une ligne de journal qui nomme le cas réel,
+// pour que l'exploitant garde le diagnostic que la réponse HTTP lui refuse.
+// CE FICHIER N'EN A PAS, et pas par oubli — il ne SAIT pas distinguer les deux
+// cas : sa recherche se fait dans `siennes`, où une VM d'autrui est absente
+// exactement comme une VM inexistante. Il n'y a ici aucun verdict à
+// journaliser, et en fabriquer un demanderait une seconde lecture de la base
+// dont le seul usage serait la trace.
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Pilote } from '../base/pilote';
