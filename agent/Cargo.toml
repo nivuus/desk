@@ -108,6 +108,16 @@ windows = { version = "0.62", features = [
     # Tube nommé du capteur (`capteur::serveur`) : `CreateNamedPipeW` et
     # `ConnectNamedPipe` vivent ici, distinct de `Win32_System_IO` qui ne
     # porte que `OVERLAPPED`.
+    # `ShellExecuteExW` est gardee derriere `Win32_System_Registry` dans
+    # windows-rs 0.62 : `SHELLEXECUTEINFOW` porte un champ `hkeyClass: HKEY`,
+    # donc la STRUCTURE ENTIERE et la fonction qui la prend le sont aussi
+    # (`Win32/UI/Shell/mod.rs`, le `#[cfg(feature = "Win32_System_Registry")]`
+    # pose juste au-dessus de la fonction). RELU DANS LES BINDINGS, pas
+    # suppose : le plan G1 (divergence E10) annoncait `Win32_UI_Shell` seule,
+    # et la compilation l'a refute — `unresolved imports`. Aucune dependance
+    # nouvelle pour autant : c'est la SECONDE fonctionnalite d'un crate deja
+    # present, et G1 n'en ajoute pas d'autre.
+    "Win32_System_Registry",
     "Win32_System_Pipes",
     "Win32_System_Performance",
     "Win32_System_Threading",

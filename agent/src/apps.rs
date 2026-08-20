@@ -11,4 +11,7 @@ pub mod reconciliation;
 
 #[cfg(windows)]
 pub mod lecture;
+
+#[cfg(windows)]
+pub mod lancement;
 pub mod sha256;
