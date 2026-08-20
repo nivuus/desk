@@ -13,6 +13,7 @@ import {
     type Application,
     type IssueLancement,
     encodeCatalogue,
+    encodeIconesManquantes,
     encodeLancee,
     encodeLancer,
     typesDepuis,
@@ -42,6 +43,7 @@ interface CasVecteur {
     demande?: string;
     issue?: string;
     cle?: string;
+    empreintes?: string[];
 }
 
 const cas: CasVecteur[] = vecteurs.cases as CasVecteur[];
@@ -69,6 +71,7 @@ function encodeDepuis(c: CasVecteur): string {
         case 'battement-recu': return encodeBattementRecu(c.jeton!, c.expire_a!);
         case 'refus': return encodeRefus(c.motif as MotifCanal);
         case 'lancer': return encodeLancer(c.demande!, c.cle!);
+        case 'icones-manquantes': return encodeIconesManquantes(c.empreintes!);
         default: throw new Error(`kind inconnu dans le sens depuis : ${c.kind}`);
     }
 }
@@ -106,6 +109,9 @@ describe('vecteurs partagés du canal plateforme', () => {
             for (const champ of ['prefixe', 'jeton', 'expire_a', 'motif', 'demande', 'cle'] as const) {
                 if (c[champ] !== undefined) expect(lu[champ]).toBe(c[champ]);
             }
+            // ⚠️ `empreintes` est un TABLEAU : `toBe` y comparerait les
+            // références et passerait pour la mauvaise raison sur `undefined`.
+            if (c.empreintes !== undefined) expect(lu.empreintes).toEqual(c.empreintes);
         },
     );
 
@@ -141,19 +147,19 @@ describe('miroir TypeScript du canal plateforme', () => {
         // son côté. Une divergence d'un caractère et les deux bouts ne se
         // parlent plus.
         expect(encodeEnroler('w1', 'chut'))
-            .toBe('{"type":"enroler","v":2,"vm":"w1","secret":"chut"}');
+            .toBe('{"type":"enroler","v":3,"vm":"w1","secret":"chut"}');
     });
 
     it('encode `battement`', () => {
-        expect(encodeBattement()).toBe('{"type":"battement","v":2}');
+        expect(encodeBattement()).toBe('{"type":"battement","v":3}');
     });
 
     it('lit un `enrole` bien formé', () => {
         const m = parseDepuisLaPlateforme(
-            '{"type":"enrole","v":2,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}',
+            '{"type":"enrole","v":3,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}',
         );
         expect(m).toEqual({
-            type: 'enrole', v: 2, prefixe: 'PPP', jeton: 'jjj', expire_a: 1787136773742,
+            type: 'enrole', v: 3, prefixe: 'PPP', jeton: 'jjj', expire_a: 1787136773742,
         });
     });
 
@@ -197,7 +203,7 @@ describe('miroir TypeScript du canal plateforme', () => {
     });
 
     it('REJETTE un `type` inconnu', () => {
-        expect(() => parseDepuisLaPlateforme('{"type":"vol","v":2}'))
+        expect(() => parseDepuisLaPlateforme('{"type":"vol","v":3}'))
             .toThrow(/type de message de plateforme inconnu/);
     });
 
@@ -205,7 +211,7 @@ describe('miroir TypeScript du canal plateforme', () => {
         // 🔴 Le parseur ne lit QUE le sens plateforme -> agent. Accepter
         // `enroler` ici ferait qu'un agent traiterait son propre message comme
         // une réponse — une confusion de sens qu'aucun autre test ne verrait.
-        expect(() => parseDepuisLaPlateforme('{"type":"enroler","v":2,"vm":"w","secret":"s"}'))
+        expect(() => parseDepuisLaPlateforme('{"type":"enroler","v":3,"vm":"w","secret":"s"}'))
             .toThrow(/type de message de plateforme inconnu/);
     });
 });
@@ -221,16 +227,16 @@ describe('le parseur du sens AGENT -> PLATEFORME', () => {
     // seulement échouer.
 
     it('lit un `enroler` bien formé', () => {
-        expect(parseVersLaPlateforme('{"type":"enroler","v":2,"vm":"w1","secret":"chut"}')).toEqual({
+        expect(parseVersLaPlateforme('{"type":"enroler","v":3,"vm":"w1","secret":"chut"}')).toEqual({
             ok: true,
-            message: { type: 'enroler', v: 2, vm: 'w1', secret: 'chut' },
+            message: { type: 'enroler', v: 3, vm: 'w1', secret: 'chut' },
         });
     });
 
     it('lit un `battement`', () => {
-        expect(parseVersLaPlateforme('{"type":"battement","v":2}')).toEqual({
+        expect(parseVersLaPlateforme('{"type":"battement","v":3}')).toEqual({
             ok: true,
-            message: { type: 'battement', v: 2 },
+            message: { type: 'battement', v: 3 },
         });
     });
 
@@ -273,9 +279,9 @@ describe('le parseur du sens AGENT -> PLATEFORME', () => {
         // `enrole` ici ferait que la plateforme traiterait sa propre réponse
         // comme une demande.
         for (const brut of [
-            '{"type":"enrole","v":2,"prefixe":"P","jeton":"j","expire_a":1}',
-            '{"type":"battement-recu","v":2,"jeton":"j","expire_a":1}',
-            '{"type":"refus","v":2,"motif":"forme"}',
+            '{"type":"enrole","v":3,"prefixe":"P","jeton":"j","expire_a":1}',
+            '{"type":"battement-recu","v":3,"jeton":"j","expire_a":1}',
+            '{"type":"refus","v":3,"motif":"forme"}',
         ]) {
             expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });
         }
@@ -298,10 +304,10 @@ describe('le parseur du sens AGENT -> PLATEFORME', () => {
         // sortirait dirait `enrolement` — donc « secret faux » — pour un
         // message qui n'a jamais porté de VM.
         for (const brut of [
-            '{"type":"enroler","v":2,"secret":"chut"}',
-            '{"type":"enroler","v":2,"vm":"w1"}',
-            '{"type":"enroler","v":2,"vm":"","secret":"chut"}',
-            '{"type":"enroler","v":2,"vm":42,"secret":"chut"}',
+            '{"type":"enroler","v":3,"secret":"chut"}',
+            '{"type":"enroler","v":3,"vm":"w1"}',
+            '{"type":"enroler","v":3,"vm":"","secret":"chut"}',
+            '{"type":"enroler","v":3,"vm":42,"secret":"chut"}',
         ]) {
             expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });
         }
@@ -309,12 +315,12 @@ describe('le parseur du sens AGENT -> PLATEFORME', () => {
 });
 
 
-describe('la version 2, et les listes blanches DÉRIVÉES de l’union', () => {
-    it('🔴 annonce la version 2, et REFUSE un message v1', () => {
+describe('la version 3, et les listes blanches DÉRIVÉES de l’union', () => {
+    it('🔴 annonce la version 3, et REFUSE un message v1', () => {
         // 🔴 Oublier le bump côté TypeScript ferait diverger les deux bouts EN
-        // SILENCE : le Rust émettrait `v:2`, ce parseur attendrait `v:1`, et
+        // SILENCE : le Rust émettrait `v:3`, ce parseur attendrait `v:2`, et
         // seuls les vecteurs partagés le diraient.
-        expect(PLATEFORME_VERSION).toBe(2);
+        expect(PLATEFORME_VERSION).toBe(3);
         // ⚠️ CE CAS PORTAIT UN `refus` JUSQU'AU 20 AOÛT 2026, et il épinglait
         // le défaut au lieu de le garder : le refus est désormais la SEULE
         // variante hors versionnement, précisément pour qu'un agent v1 puisse
@@ -338,7 +344,7 @@ describe('la version 2, et les listes blanches DÉRIVÉES de l’union', () => {
         // la main, que rien ne confronte à son union — et dont l'oubli ne
         // casse « ni compilation ni test ». Ici l'oubli casse le typecheck.
         expect([...typesDepuis()].sort()).toEqual(
-            ['battement-recu', 'enrole', 'lancer', 'refus'],
+            ['battement-recu', 'enrole', 'icones-manquantes', 'lancer', 'refus'],
         );
         expect([...typesVers()].sort()).toEqual(['battement', 'catalogue', 'enroler', 'lancee']);
     });

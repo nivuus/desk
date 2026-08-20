@@ -23,13 +23,13 @@ use super::*;
 #[test]
 fn serialise_l_enrolement_en_kebab_case() {
     let json = serde_json::to_string(&VersLaPlateforme::enroler("w1", "chut")).expect("sér.");
-    assert_eq!(json, r#"{"type":"enroler","v":2,"vm":"w1","secret":"chut"}"#);
+    assert_eq!(json, r#"{"type":"enroler","v":3,"vm":"w1","secret":"chut"}"#);
 }
 
 #[test]
 fn serialise_le_battement() {
     let json = serde_json::to_string(&VersLaPlateforme::battement()).expect("sér.");
-    assert_eq!(json, r#"{"type":"battement","v":2}"#);
+    assert_eq!(json, r#"{"type":"battement","v":3}"#);
 }
 
 #[test]
@@ -45,7 +45,7 @@ fn serialise_le_battement_recu_en_kebab_case() {
         .expect("sér.");
     assert_eq!(
         json,
-        r#"{"type":"battement-recu","v":2,"jeton":"kkk","expire_a":1787136774000}"#
+        r#"{"type":"battement-recu","v":3,"jeton":"kkk","expire_a":1787136774000}"#
     );
 }
 
@@ -55,11 +55,11 @@ fn serialise_l_enrole_et_le_refus() {
         .expect("sér.");
     assert_eq!(
         json,
-        r#"{"type":"enrole","v":2,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}"#
+        r#"{"type":"enrole","v":3,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}"#
     );
     let json = serde_json::to_string(&DepuisLaPlateforme::refus(MotifCanal::Enrolement))
         .expect("sér.");
-    assert_eq!(json, r#"{"type":"refus","v":2,"motif":"enrolement"}"#);
+    assert_eq!(json, r#"{"type":"refus","v":3,"motif":"enrolement"}"#);
 }
 
 // 🔴 UN TEST DE VERSION PAR VARIANTE ENTRANTE, jamais un seul pour toutes.
@@ -106,7 +106,7 @@ fn rejette_une_version_absente_sur_refus() {
 #[test]
 fn rejette_la_version_suivante_sur_enroler() {
     assert!(serde_json::from_str::<VersLaPlateforme>(
-        r#"{"type":"enroler","v":3,"vm":"w","secret":"s"}"#
+        r#"{"type":"enroler","v":4,"vm":"w","secret":"s"}"#
     )
     .is_err());
 }
@@ -114,14 +114,14 @@ fn rejette_la_version_suivante_sur_enroler() {
 #[test]
 fn rejette_la_version_suivante_sur_battement() {
     assert!(
-        serde_json::from_str::<VersLaPlateforme>(r#"{"type":"battement","v":3}"#).is_err()
+        serde_json::from_str::<VersLaPlateforme>(r#"{"type":"battement","v":4}"#).is_err()
     );
 }
 
 #[test]
 fn rejette_la_version_suivante_sur_enrole() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        r#"{"type":"enrole","v":3,"prefixe":"P","jeton":"j","expire_a":1}"#
+        r#"{"type":"enrole","v":4,"prefixe":"P","jeton":"j","expire_a":1}"#
     )
     .is_err());
 }
@@ -129,7 +129,7 @@ fn rejette_la_version_suivante_sur_enrole() {
 #[test]
 fn rejette_la_version_suivante_sur_battement_recu() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        r#"{"type":"battement-recu","v":3,"jeton":"j","expire_a":1}"#
+        r#"{"type":"battement-recu","v":4,"jeton":"j","expire_a":1}"#
     )
     .is_err());
 }
@@ -146,8 +146,8 @@ fn rejette_la_version_suivante_sur_battement_recu() {
 #[test]
 fn le_refus_tolere_toute_version_mais_exige_le_champ() {
     let lu: DepuisLaPlateforme =
-        serde_json::from_str(r#"{"type":"refus","v":3,"motif":"version"}"#).expect("lisible");
-    assert_eq!(lu, DepuisLaPlateforme::Refus { version: 3, motif: "version".into() });
+        serde_json::from_str(r#"{"type":"refus","v":4,"motif":"version"}"#).expect("lisible");
+    assert_eq!(lu, DepuisLaPlateforme::Refus { version: 4, motif: "version".into() });
     // Sans `v`, en revanche, c'est toujours une forme invalide : un message
     // sans version n'est pas un message d'une version que nous ignorons. Et
     // `v: null` non plus — c'est le trou exact que `verifie_version` ferme
@@ -162,15 +162,15 @@ fn le_refus_tolere_toute_version_mais_exige_le_champ() {
     // (`deny_unknown_fields`), ce qui est la clause 3 de l'en-tête du module —
     // écrite comme une contrainte sur les versions FUTURES, éprouvée ici.
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        r#"{"type":"refus","v":3,"motif":"version","detail":"x"}"#
+        r#"{"type":"refus","v":4,"motif":"version","detail":"x"}"#
     )
     .is_err());
 }
 
 #[test]
 fn rejette_un_type_inconnu() {
-    assert!(serde_json::from_str::<VersLaPlateforme>(r#"{"type":"vol","v":2}"#).is_err());
-    assert!(serde_json::from_str::<DepuisLaPlateforme>(r#"{"type":"vol","v":2}"#).is_err());
+    assert!(serde_json::from_str::<VersLaPlateforme>(r#"{"type":"vol","v":3}"#).is_err());
+    assert!(serde_json::from_str::<DepuisLaPlateforme>(r#"{"type":"vol","v":3}"#).is_err());
 }
 
 #[test]
@@ -178,7 +178,7 @@ fn rejette_un_champ_inconnu() {
     // `deny_unknown_fields` : un champ de trop est une divergence de
     // format, pas une extension tolérable — le canal n'a qu'une version.
     assert!(serde_json::from_str::<VersLaPlateforme>(
-        r#"{"type":"battement","v":2,"bonus":1}"#
+        r#"{"type":"battement","v":3,"bonus":1}"#
     )
     .is_err());
 }
@@ -271,6 +271,10 @@ fn conformite_aux_vecteurs_partages() {
                     "lancer" => DepuisLaPlateforme::lancer(
                         case["demande"].as_str().unwrap(),
                         case["cle"].as_str().unwrap(),
+                    ),
+                    "icones-manquantes" => DepuisLaPlateforme::icones_manquantes(
+                        serde_json::from_value(case["empreintes"].clone())
+                            .expect("empreintes"),
                     ),
                     autre => panic!("kind inconnu dans le sens depuis : {autre}"),
                 };

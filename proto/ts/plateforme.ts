@@ -13,7 +13,7 @@
  * parce que l'émetteur est le service lui-même, jamais un tiers.
  */
 
-export const PLATEFORME_VERSION = 2;
+export const PLATEFORME_VERSION = 3;
 
 /** Pourquoi la plateforme refuse. `enrolement` est INDISTINCT par
  * construction : distinguer « VM inconnue » de « secret faux » serait un
@@ -39,9 +39,46 @@ export interface Application {
     /** BRUTS (voir ci-dessus). Vide = `''`, jamais absent. */
     arguments: string;
     repertoire: string;
+    /**
+     * L'empreinte SHA-256 du PNG de l'icône, en hexadécimal minuscule — ou
+     * `null` quand l'extraction a échoué.
+     *
+     * ⚠️ UNE APPLICATION SANS ICÔNE VAUT MIEUX QU'UNE APPLICATION ABSENTE.
+     * `null` n'est pas une erreur, et le champ reste PRÉSENT sur le fil.
+     */
+    icone: string | null;
+    /** Toujours présent. Vaut `'non-mesuree'` quand `icone` est `null`. */
+    source_max: SourceMax;
 }
 
-/** Le CHAMP de `Application` à valider, un par un — voir `estApplication`. */
+/**
+ * D'où vient l'image : la plus grande entrée réellement PRÉSENTE dans le
+ * répertoire d'icônes de la source.
+ *
+ * 🔴 CE N'EST PAS LA TAILLE RENDUE. Mesuré le 20 août 2026 sur deux témoins
+ * fabriqués (`agent/testdata/g2-temoin-{48,256}.ico`) : un `.ico` ne contenant
+ * QU'UNE entrée 48×48, interrogé à 256, rend 256×256 32bpp — par
+ * `IShellItemImageFactory` comme par `PrivateExtractIconsW`, sans
+ * `SIIGBF_SCALEUP` et MÊME avec `SIIGBF_BIGGERSIZEOK`. Un critère qui
+ * comparerait la taille rendue à 256 NE PEUT PAS ÉCHOUER.
+ *
+ * 🔵 `'non-mesuree'` s'écrit avec un TIRET, jamais un tiret bas : c'est le
+ * `rename_all = "kebab-case"` du Rust sur une variante à DEUX MOTS, donc la
+ * seule du module dont la convention soit observable.
+ */
+export type SourceMax = { pixels: number } | 'non-mesuree';
+
+/**
+ * Le CHAMP `string` de `Application` à valider, un par un — voir
+ * `estApplication`.
+ *
+ * 🔴 `icone` ET `source_max` N'Y SONT PAS, ET LES Y METTRE SERAIT UN DÉFAUT
+ * SILENCIEUX. Cette liste est parcourue par `estChaine` : y ajouter `icone`
+ * ferait REFUSER TOUT CATALOGUE dont une seule application n'a pas d'icône —
+ * `null` n'est pas une chaîne —, avec le motif `forme`, c'est-à-dire un
+ * catalogue entier perdu sans qu'aucune trace ne dise pourquoi. Les deux
+ * champs neufs ont donc leurs propres gardes.
+ */
 const CHAMPS_APPLICATION: ReadonlyArray<keyof Application> = [
     'cle', 'nom', 'chemin', 'cible', 'arguments', 'repertoire',
 ];
@@ -136,11 +173,30 @@ export interface RefusMessage { v: number; type: 'refus'; motif: string }
  */
 export interface LancerMessage { v: number; type: 'lancer'; demande: string; cle: string }
 
+/**
+ * Les empreintes que la plateforme n'a PAS, parmi celles que le dernier
+ * `catalogue` a annoncées.
+ *
+ * 🔴 ELLE N'EST PAS ÉMISE QUAND L'ENSEMBLE EST VIDE : une liste vide coûterait
+ * un message par réconciliation sur un disque au repos, ce que le diff de G1
+ * existe précisément pour éviter. La règle vit chez l'appelant
+ * (`plateforme/src/agents/canal.ts`), qui seul connaît l'ensemble.
+ *
+ * ⚠️ LES OCTETS NE L'EMPRUNTENT JAMAIS : ce message ne porte qu'un inventaire.
+ * Les images passent par `PUT /icone/:sha256`.
+ */
+export interface IconesManquantesMessage {
+    v: number;
+    type: 'icones-manquantes';
+    empreintes: string[];
+}
+
 export type DepuisLaPlateforme =
     | EnroleMessage
     | BattementRecuMessage
     | RefusMessage
-    | LancerMessage;
+    | LancerMessage
+    | IconesManquantesMessage;
 
 /**
  * Les seuls `type` que ce parseur accepte — le sens PLATEFORME -> AGENT.
@@ -165,6 +221,7 @@ const TOUS_DEPUIS: Record<DepuisLaPlateforme['type'], true> = {
     'battement-recu': true,
     refus: true,
     lancer: true,
+    'icones-manquantes': true,
 };
 const TYPES_DEPUIS = Object.keys(TOUS_DEPUIS) as DepuisLaPlateforme['type'][];
 
@@ -260,8 +317,36 @@ function estChaine(valeur: unknown): valeur is string {
     return typeof valeur === 'string';
 }
 
+/**
+ * ⚠️ `null` EST UNE VALEUR ATTENDUE, PAS UNE ABSENCE. La garde exige que la
+ * clé soit PRÉSENTE — `'icone' in valeur` — puis que sa valeur soit `null` ou
+ * une chaîne. Se contenter de `=== null || typeof === 'string'` accepterait
+ * un objet SANS le champ, `valeur.icone` valant alors `undefined`… qui n'est
+ * ni `null` ni une chaîne, donc le cas serait refusé par accident. Écrire la
+ * présence explicitement rend la propriété lisible plutôt qu'heureuse.
+ */
+function estIcone(valeur: Record<string, unknown>): boolean {
+    if (!('icone' in valeur)) return false;
+    return valeur.icone === null || estChaine(valeur.icone);
+}
+
+/**
+ * 🔴 UN OBJET QUELCONQUE NE PASSE PAS. `{"pixels":"gros"}` est refusé, et
+ * `{"pixels":256,"bonus":1}` aussi : la forme est exactement l'une des deux
+ * que le Rust sait émettre, et rien d'autre.
+ */
+function estSourceMax(valeur: unknown): valeur is SourceMax {
+    if (valeur === 'non-mesuree') return true;
+    if (!estObjetJson(valeur)) return false;
+    const cles = Object.keys(valeur);
+    if (cles.length !== 1 || cles[0] !== 'pixels') return false;
+    return typeof valeur.pixels === 'number' && Number.isInteger(valeur.pixels);
+}
+
 function estApplication(valeur: unknown): valeur is Application {
-    return estObjetJson(valeur) && CHAMPS_APPLICATION.every((champ) => estChaine(valeur[champ]));
+    if (!estObjetJson(valeur)) return false;
+    if (!CHAMPS_APPLICATION.every((champ) => estChaine(valeur[champ]))) return false;
+    return estIcone(valeur) && estSourceMax(valeur.source_max);
 }
 
 function estIssue(valeur: unknown): valeur is IssueLancement {
@@ -390,6 +475,20 @@ export function encodeRefus(motif: MotifCanal): string {
 
 export function encodeLancer(demande: string, cle: string): string {
     const message: LancerMessage = { type: 'lancer', v: PLATEFORME_VERSION, demande, cle };
+    return JSON.stringify(message);
+}
+
+/**
+ * ⚠️ L'APPELANT DOIT VÉRIFIER QUE `empreintes` N'EST PAS VIDE avant d'appeler :
+ * cet encodeur ne le fait pas pour lui, parce qu'il ne saurait pas quoi rendre
+ * à la place.
+ */
+export function encodeIconesManquantes(empreintes: string[]): string {
+    const message: IconesManquantesMessage = {
+        type: 'icones-manquantes',
+        v: PLATEFORME_VERSION,
+        empreintes,
+    };
     return JSON.stringify(message);
 }
 
