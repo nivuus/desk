@@ -203,11 +203,13 @@ fn traiter(
         Event::ChannelOpen(id, label) => {
             // ⚠️ **L'AIGUILLAGE EST PAR LABEL, DÈS LE PREMIER JOUR.**
             //
-            // `transport/evenements.rs::dispatch_channel_data` aiguille sur le
-            // seul `data.binary` et ignore `data.id`, pourtant disponible : un
-            // canal tiers y serait traité comme `control` ou `input` selon son
-            // seul mode d'écriture. Le défaut est réel et corrigé ailleurs ; on
-            // ne le rejoue pas ici. Retenir l'id du label attendu, et refuser
+            // ❌ *Ce commentaire décrivait AU PRÉSENT un défaut de
+            // `transport/evenements.rs::dispatch_channel_data` — « aiguille
+            // sur le seul `data.binary` et ignore `data.id` ». La tâche 17 de
+            // la MÊME branche l'a corrigé : il appelle désormais
+            // `destination(data.id, …)`, donc il regarde le canal.* La raison
+            // de ce bloc-ci ne change pas : retenir l'id du label attendu, et
+            // refuser
             // tout le reste, coûte trois lignes maintenant et une recette
             // entière plus tard.
             if label == LABEL_FICHIERS {

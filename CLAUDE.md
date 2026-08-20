@@ -9706,6 +9706,413 @@ dont l'exercice est un critère de E2 — **avec deux fenêtres qui jouent du so
 
 ---
 
+## 🗂️ Sous-projet ③ Pont fichiers — sous-blocs F0 et F1 : un lecteur en lecture seule (20 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-19-pont-fichiers-f1-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-19-pont-fichiers-f1.md`.
+Conception : `docs/superpowers/specs/2026-08-19-pont-fichiers-design.md`.
+Journaux : `docs/superpowers/plans/journaux-pont-fichiers/` — **DEUX familles de
+lecture seulement**, et une seule demande un `sed` :
+
+| Famille | État | Ce qu'il faut faire |
+| --- | --- | --- |
+| `agent-*-plat.log`, tous les `.txt`, tous les `.json` | UTF-8, **ANSI déjà retirées** | rien |
+| `agent-*.log` (bruts) | UTF-8, **séquences ANSI PRÉSENTES** | `sed 's/\x1b\[[0-9;]*m//g'` — ou lire le `-plat` jumeau, versé pour chacun |
+
+⚠️ **Toujours `grep -a`** : un journal à queue d'octets NUL est classé
+« binaire » et `grep` rend alors une sortie **vide**, indiscernable d'un compte
+nul (piège de D10).
+
+⚠️ **COLLISION DE NOM, à connaître avant de lire ce fichier au `grep`** : « F1 »
+désigne ici le **sous-bloc** du pont fichiers, mais **`**F1**` désigne aussi, à
+la ligne 4867 et dans la section D7, le premier défaut de la revue transverse de
+D7** (le détecteur de panne muette). Les deux n'ont aucun rapport.
+
+F0/F1 remplacent, pour la première fois, le pont FUSE historique
+(`src/file.js`) : un processus `PONT=1` tient une racine **ProjFS** sur la VM et
+sert chaque rappel par une requête au **navigateur**, via la File System Access
+API, sur une `RTCPeerConnection` **dédiée** et **données seules**.
+
+### ⛔ Le fait le plus réutilisable : ProjFS s'active par le CATALOGUE, pas par les RÔLES
+
+```powershell
+Enable-WindowsOptionalFeature -Online -FeatureName Client-ProjFS -NoRestart -All
+```
+
+- Sur cette VM (**Windows Server 2022**, build 20348), l'activation a rendu
+  **`RestartNeeded : False`** : aucun redémarrage nécessaire, aucun n'a eu lieu.
+  ⚠️ **Ne pas lire le `RestartRequired : Possible` du catalogue comme une
+  prédiction** : c'est ce que le catalogue annonce **avant** activation, pas ce
+  que l'activation exige. **Deux champs différents, deux questions différentes.**
+- ⚠️ **`Install-WindowsFeature Projected-File-System` ne doit PAS être employé.**
+  Le nom vit au catalogue des **fonctionnalités facultatives**
+  (`Get-WindowsOptionalFeature`) et **pas** au gestionnaire de rôles :
+  `Get-WindowsFeature | Select -Expand Name` filtré sur `Proj` ne rend **aucune
+  correspondance**. ⚠️ **Que la commande « échoue en silence » est une
+  INFÉRENCE de ce relevé, pas une mesure : elle n'a jamais été lancée.**
+- ⚠️ **Le contrôle qui manque à la spec, et qui coûte une ligne** : le
+  mini-filtre doit être **RÉELLEMENT CHARGÉ**, pas seulement présent sur le
+  disque — `fltmc filters` doit porter `PrjFlt` (altitude **189800**) **et**
+  `Get-Service PrjFlt` rendre `Running`. Un filtre présent et non chargé ferait
+  échouer `PrjStartVirtualizing` très loin de là, avec un `HRESULT` que personne
+  ne rattacherait à ProjFS. C'est le risque **R1bis**.
+- **État courant, relevé par la commande** : `State : Enabled`,
+  `ProjectedFSLib.dll : True`, `PrjFlt.sys : True`, filtre chargé, service
+  `Automatic`. **Le rouge d'avant est versé** (`f0-avant.txt` : `Disabled`, les
+  deux `False`) — c'est lui, et lui seul, qui rend le critère falsifiable.
+
+### 🔴 `cd client && npx vitest run` ne couvre PAS `proto/ts/` — DEUX commandes, pas une
+
+La racine Vitest est `client/`. **Aucun document du dépôt ne le disait avant
+F1**, et sans cela `proto/ts/fichiers-entetes.test.ts` n'aurait jamais tourné :
+le vecteur partagé `proto/fichiers-vectors.json`, dont tout l'intérêt est
+qu'un renommage n'ait **qu'un seul côté à casser** pour être vu rouge, n'aurait
+épinglé qu'une implémentation sur deux.
+
+```bash
+cd client && npx vitest run                # client/src/ seul
+cd client && npx vitest run --dir ../proto # proto/ts/
+```
+
+### La variable `PONT`, et les QUATRE modes d'`agent.exe`
+
+⚠️ **La phrase « `agent.exe` a trois sortes de processus » est désormais FAUSSE
+partout où elle figure.** Il en a **quatre** : superviseur, capteur, **pont**,
+enfant.
+
+| Variable | Convention | Où elle est lue |
+| --- | --- | --- |
+| `PONT=0` | **`=0` DÉSARME ; une simple présence n'active pas** — même convention que `SUPERVISEUR`, `CAPTEUR`, `AUDIO` et `PLEIN_ECRAN`, et pour la même raison : tester `is_ok()` ferait qu'écrire `PONT=0` pour **couper** le pont l'allumerait | `agent/src/main.rs`, branche placée **après** `CAPTEUR` et **avant** le superviseur |
+
+- **Transmise par `scripts/run-agent.sh`** — tâche **dédiée**, jouée **avant**
+  que quiconque en ait besoin. *Piège payé en D1 (`SUPERVISEUR`), en D2
+  (`MULTIFENETRE_REPRISE`), évité en D3 et en D6 : toute variable neuve doit y
+  être ajoutée explicitement, sinon l'agent démarre sans elle et sans rien
+  signaler.*
+- **La symétrie d'environnement va dans les TROIS sens** : le pont reçoit un
+  `env_remove("CAPTEUR")` (sans quoi il serait un second capteur), les enfants
+  un `env_remove("PONT")` (sans quoi ils ne captureraient rien), et le
+  superviseur un `env_remove("SUPERVISEUR")` pour ses enfants. **C'est le Step 4
+  de la recette qui le rend visible**, et c'est le seul endroit où l'oubli d'un
+  `env_remove` se voit.
+- **Traces** : `pont fichiers lancé` (`superviseur::lanceur::pont`, `INFO`) et
+  `pont fichiers lancé ou relancé` (`superviseur::boucle::surveillance_pont`,
+  `WARN`, **silencieux ensuite tant que le cycle se répète**).
+
+### 🔵 La liaison ProjFS est RÉSOLUE À L'EXÉCUTION, et le contrôle qui le prouve PASSE
+
+**Décision D1** : `LoadLibraryW` + `GetProcAddress` sur les **treize** entrées,
+jamais un import statique — sans quoi `agent.exe`, **un seul binaire pour les
+quatre modes**, ne se chargerait plus du tout sur une machine sans ProjFS, et
+cela tuerait **la capture et la vidéo**, pas seulement le pont.
+
+**Contrôle en conditions réelles, sur la VM** : `ProjectedFSLib.dll` renommée,
+une exécution complète. **Relevé** — `capteur lancé` **1**, session vidéo
+établie, `framesDecoded` **15 122** monotone, `packetsLost` **0**,
+`chargement de ProjectedFSLib.dll` + `0x8007007E` **366** fois, **367** relances
+du pont, et **`0 ERROR` sur 3 064 lignes** : *la panne du pont est un `warn!`,
+jamais un `error!`*. **D1 est validée par la mesure, pas par le raisonnement.**
+
+⚠️ **`ERROR_MOD_NOT_FOUND` N'EST ÉMISE NULLE PART** — la chaîne ne vit que dans
+la spec et le plan. **Grepper `ProjectedFSLib`.** Le `grep` prescrit rendait `0`,
+ce qui se serait lu comme un contrôle échoué sur une exécution parfaite.
+
+### La discipline de fil des rappels ProjFS — pourquoi une panique y est un abandon de processus
+
+Les rappels sont appelés **par le système**, sur des fils que nous ne possédons
+pas, à travers une frontière FFI. **Une panique Rust qui traverserait cette
+frontière est un comportement indéfini** : d'où un `catch_unwind` **à chaque**
+frontière. Et c'est la décision **D2** — le pont est un **processus séparé** —
+qui rend le pire cas acceptable : *le pont meurt, le superviseur le relance, la
+vidéo ne bronche pas.* **Mesuré** : pont tué par PID relevé,
+`delai_apres_mort_ms=44`, 4 processus `agent` avant et **4 après** avec un PID
+neuf.
+
+**Ce que cela achète, et c'est la pièce la plus forte du chantier** : sur une
+exécution, **le pont est resté calé neuf minutes** pendant que la session vidéo
+de la même VM continuait — `framesDecoded` monotone, `packetsLost` **0**, **0**
+`clôture de session amorcée`, **0** `ERROR`.
+
+⚠️ **« Vidéo intacte » ne s'étend PAS à l'application.** Pendant ces neuf
+minutes l'Explorateur était figé : *les images arrivent, le contenu ne bouge
+plus.* **`framesDecoded` ne dit rien de cela.**
+
+### Ce que F1 livre, et les quatre critères
+
+| # | Critère | Verdict | Exéc. |
+| --- | --- | --- | --- |
+| 1 | l'arborescence, **aux deux niveaux** | **TENU** — 6 entrées sur 6, ensembles de noms identiques à `find` côté hôte, nom accentué avec espace compris | **3** |
+| 2 | même **condensat SHA-256** pour le fichier > 10 Mio | **NON ÉTABLI** — aucune copie menée à terme. ⚠️ **PAS RÉFUTÉ** : la même lecture a rendu **12 582 912 octets en 1 937 ms** sur l'état rouge, et le condensat OPFS côté page a été relevé **égal** à celui de l'hôte | **0** |
+| 3 | aucun dépassement de budget | **NON DÉMONTRABLE, contrôle VACUEUX** | 5 |
+| 4 | la vidéo ne perd pas une image | **TENU** | **6** |
+
+**Aucun taux.** Cinq exécutions du chemin nominal — dont **trois** exploitables —,
+une du Step 3, deux du rouge (i).
+
+### 🔴 Les trois défauts que seule la recette pouvait trouver
+
+1. **LA CASSE REND LE MAUVAIS FICHIER, EN SILENCE — pire que le legs annoncé.**
+   Le legs promettait `Introuvable` ; **trois exécutions sur trois** montrent que
+   `casse.txt` **et** `CASSE.TXT` rendent le **contenu** de `Casse.txt`, sans
+   erreur. **Et le comportement n'est pas cohérent avec lui-même** : `GROS.BIN`
+   rend bien « introuvable » dans la même exécution. ⚠️ **Le mécanisme est une
+   HYPOTHÈSE** : l'écart suit l'**hydratation** (`racine hydratee … octets=42
+   entrees=1` — `Casse.txt` seul vivait localement, et NTFS le retrouve **sans
+   jamais atteindre le pont**). **Observé, non corrigé.**
+2. **LE REFUS D'ÉCRITURE NE REFUSE PAS — mais c'est la SPEC qui promettait
+   trop.** Une création locale **RÉUSSIT** (2 exécutions versées sur 2). Ce n'est
+   **pas** une divergence du code : `agent/src/pont/notifications.rs`
+   documentait déjà que `NEW_FILE_CREATED` est une notification **POST, donc
+   irrefusable**, et seuls les trois chemins `PRE_` sont refusés. La formulation
+   juste : *écrire dans un fichier PROJETÉ rend `ERROR_WRITE_PROTECT` ; un
+   fichier créé de toutes pièces vit sur la VM et n'est jamais poussé.*
+   ⚠️ **Et `PRE_CONVERT_TO_FULL` — l'écriture d'un fichier EXISTANT — n'a JAMAIS
+   été exercé.**
+3. **ÉNUMÉRATION VIDE PAR INTERMITTENCE**, sur racine neuve, sans erreur ni
+   trace. ⚠️ **Une occurrence porte un CONFONDEUR** : deux exécutions se sont
+   recouvertes de 2 min 23 s — voir le piège ci-dessous — et **le journal
+   d'agent versé sous le nom de la première est en réalité celui de la
+   seconde**. Cause ouverte.
+
+### 🔴 Quatre contrôles de recette étaient incapables de rendre leur verdict
+
+**Trois cherchaient des chaînes que le produit n'émet pas** (`pont lancé` — la
+trace est `pont fichiers lancé`, et **deux** lignes la portent, pas une ;
+`ERROR_MOD_NOT_FOUND` ; `ERROR_SEM_TIMEOUT\|delai depasse`, dont le témoin réel
+est `commande expirée`). **Deux d'entre eux auraient fait lire un succès comme
+un échec.**
+
+**Le quatrième, l'`objdump` qui prouve l'absence d'import statique, portait DEUX
+défauts** : le chemin publié était faux (le dépôt est un espace de travail
+cargo, la cible vit à la **racine**) et le `|| echo "AUCUN import"` **traduisait
+un fichier absent en VERT** ; et sa recette de rouge était insuffisante — **une
+`pub fn` sans appelant ne rend pas ce contrôle rouge**, `agent` étant un binaire,
+l'éditeur de liens élimine l'inatteignable et `raw-dylib` n'émet alors aucun
+import. **Mesuré : le rouge n'est pas apparu.** Il l'est devenu une fois l'appel
+placé sur un chemin atteignable depuis `main`.
+
+### La revue transverse — ONZE affirmations, toutes franchissant une frontière de tâche
+
+Barème du dépôt : D7 5, D8 3, D9 6, D10 douze, D11 sept, P1 huit, P2 dix, S1
+cinq, E neuf, P3 douze, S2 douze. **Onze ici.** Les plus instructives :
+
+- **cinq commentaires disaient l'état de la TÂCHE 13, que la TÂCHE 14 de la même
+  branche a réfuté** — `agent/src/pont.rs` (« la racine est montée et VIDE,
+  aucune requête ne part vers le navigateur ») et **quatre** rappels de
+  `pont/projfs/rappels.rs` documentés comme rendant `S_OK` vide ou
+  `ERROR_FILE_NOT_FOUND`, alors que **la ligne suivante** appelle
+  `etat.demander(…)` et rend `EN_COURS`. *Ce sont les quatre points d'entrée du
+  pont, et leur documentation disait littéralement l'inverse de leur corps ;*
+- **`agent/src/pont/transport.rs` décrivait AU PRÉSENT** le défaut d'aiguillage
+  qu'une autre tâche de la même branche venait de corriger ;
+- **`agent/src/transport.rs` disait porter « la boucle qui l'anime »** alors que
+  la même branche avait extrait `Session::run` vers `transport/boucle.rs` ;
+- **`agent/src/pont/notifications.rs` citait en en-tête un absolu que son propre
+  corps réfutait cinquante lignes plus bas** (le refus d'écriture) — c'est le
+  seul cas où *le module avait raison contre la spec qu'il citait* ;
+- **la spec comptait « trois modes » et renvoyait à `main.rs:303-327`**, plage
+  qui ne désigne plus l'aiguillage mais un `#[cfg(test)] mod tests`.
+
+**Et le sous-projet a lui-même trouvé deux nombres faux dans son plan** :
+`evenements.rs` y était annoncé à **391** lignes (il en faisait **279** à la
+rédaction, **363** aujourd'hui — *le 391 n'a jamais été vrai*), et une ligne de
+tableau déclarait douze vérifications « **toutes exactes** » alors qu'au moins
+une ne l'était pas. *Une ligne qui affirme la complétude d'une vérification est
+une affirmation de complétude comme une autre.*
+
+### Les chiffres, RELEVÉS PAR LA COMMANDE après la dernière édition
+
+| Vérification | Référence d'entrée | **Relevé** |
+| --- | --- | --- |
+| `cargo test -p agent` | 467 | **614 passed, 0 failed** |
+| `cargo check --target x86_64-pc-windows-gnu` | 9 avertissements | **16**, tous famille `dead_code` |
+| `cd client && npx vitest run` | 107 | **223 passed** (24 fichiers) |
+| `cd client && npx vitest run --dir ../proto` | 35 | **111 passed** (5 fichiers) |
+
+**Les 16 avertissements se décomposent, et la décomposition est vérifiée** : 11
+préexistants, **2** venus du chantier Microphone (`micro.rs:196`,
+`micro/dissimulation.rs:146` — F0/F1 n'a touché ni l'un ni l'autre), **5**
+imputables à F1 et tous délibérés (quatre dans `pont/erreurs.rs`, les variantes
+réservées à F2–F3 ; un dans `pont/table.rs`).
+
+⚠️ **L'arbre est PARTAGÉ avec un agent concurrent** (sous-projet ⑤). Un premier
+passage de `npx vitest run` a rendu 4 échecs, disparus au passage suivant sans
+qu'aucune de mes éditions ne les concerne.
+
+**Tailles, relevées par la commande de ce fichier après la dernière édition** —
+**aucun fichier de code source ne dépasse 500 lignes** hors les deux entrées de
+dette gelée, inchangées (`encode.rs` **1536**, `windows_source.rs` **630**) :
+
+| Fichier | Lignes | Remarque |
+| --- | --- | --- |
+| `agent/src/encode/arret.rs` | **500** | marge 0, inchangé |
+| `client/verify-webrtc.mjs` | **494** | ⚠️ voir l'encadré ci-dessous |
+| `agent/src/capture.rs` | 492 | |
+| `agent/src/demarrage.rs` | 491 | |
+| `agent/src/pont/projfs/rappels.rs` | **488** (marge **12**) | neuf — le plus serré du sous-projet. Il était à **489** : les corrections de la revue transverse lui ont **rendu** une ligne |
+| `agent/src/pont/transport/tests.rs` | **474** | neuf |
+| `agent/src/transport.rs` | **448** | 495 → 501 (plafond FRANCHI) → **440** par **extraction** de `transport/boucle.rs` (93), puis 448 par les corrections de la revue transverse. **CINQUIÈME fois que ce dépôt paie « la marge regagnée par une extraction se reperd à la ronde suivante »** — D10 l'avait déjà porté à 501 et en avait sorti `initialisation.rs` |
+| `agent/src/transport/evenements.rs` | **363** | |
+| `agent/src/pont/projfs/chargement.rs` | **338** | neuf — les treize transcriptions |
+| `agent/src/pont/service.rs` | **325** | neuf |
+| `agent/src/pont/projfs.rs` | **323** | neuf |
+| `client/src/design/primitives.test.ts` | **283** | inchangé par F1 |
+| `agent/src/pont/transport.rs` | **290** | neuf |
+| `agent/src/pont/projfs/etat.rs` | **267** | neuf |
+| `agent/src/pont/table.rs` | **174** | neuf |
+| `agent/src/superviseur/boucle/surveillance_pont.rs` | **172** | neuf |
+| `agent/src/pont/erreurs.rs` | **163** | neuf |
+| `proto/src/fichiers.rs` | **157** | neuf |
+| `agent/src/pont/projfs/racine.rs` | **153** | neuf |
+| `agent/src/pont.rs` | **151** | neuf |
+| `agent/src/pont/resolution.rs` | **146** | neuf |
+| `agent/src/pont/chemins.rs` | **143** | neuf — **pur**, testé sur l'hôte |
+| `agent/src/pont/enumeration.rs` | **140** | neuf |
+| `agent/src/pont/notifications.rs` | **134** | neuf — **pur** |
+| `agent/src/superviseur/lanceur/pont.rs` | **117** | neuf |
+| `proto/src/fichiers/entetes.rs` | **109** | neuf — les sept en-têtes, épinglées par `proto/fichiers-vectors.json` que **les deux** implémentations lisent |
+| `agent/src/transport/boucle.rs` | **93** | neuf — l'extraction ci-dessus |
+| `agent/src/pont/decoupe.rs` | **62** | neuf — **pur** |
+| `agent/src/pont/entetes.rs` | **61** | ne garde que `filetime_depuis_ms` : les formes sont parties dans `proto/` |
+
+> ⚠️ **`client/verify-webrtc.mjs` vaut 494, et `CLAUDE.md` le publie à 497 en
+> QUATRE endroits** — l. **598**, **666**, **669** et **750**, énumérés par
+> `grep -n '497' CLAUDE.md` **avant** d'écrire cette ligne. **Ils ne sont pas
+> réécrits, et c'est délibéré** : ce sont des énoncés **datés** (relevés D10 et
+> D11) qui étaient vrais à leur date. Le changement vient du **sous-projet ⑤**
+> (commit `69f3442`, revue transverse de P2), **pas de F1**. La marge n'est donc
+> plus 3 mais **6**, et c'est ce chiffre-ci qui fait foi.
+
+### Ce que F0 et F1 n'établissent PAS
+
+- **Aucun taux.** Cinq exécutions nominales dont **trois** exploitables, une du
+  Step 3, deux du rouge (i).
+- **Le condensat SHA-256 de bout en bout** — le critère que la spec désigne comme
+  *le seul qui ne puisse pas être satisfait par accident*. Ni établi, ni réfuté.
+- **La latence n'est mesurée par rien** (objet de F4, risque R2 : *le lecteur
+  peut fonctionner et rester inutilisable*). La seule mesure de débit disponible
+  est incohérente d'un **facteur ~120** — 6,5 Mio/s contre 52–55 Kio/s —, **sans
+  explication**.
+- **Des lectures CALENT sans jamais expirer** : `commande expirée` reste à **0**
+  pendant qu'un `Get-ChildItem` ne rend pas la main en 540 s. **On ne sait pas où
+  le blocage se produit**, faute d'une trace à l'inscription en table.
+- **Aucune constante n'est calibrée** : `TAILLE_TRAME_MAX`, `DELAI_ATTRIBUTS`,
+  `DELAI_LIRE`, `DELAI_LISTER` — elles rejoignent `BPP_MIN`, `FACTEUR_FOCUS`,
+  `PART_DORMANTE_BPS`, `HYSTERESIS`, `REPIT_APRES_ECHEC`, `TAILLE_MAX_SORTIE`,
+  `REPIT_REARMEMENT_AUDIO` et `REARMEMENTS_MAX`.
+- **Aucun test d'hôte ne couvre `pont/projfs.rs`** ; `cargo check --target
+  x86_64-pc-windows-gnu` en vérifie types, emprunts et durées de vie — **jamais
+  le comportement**.
+- **R7 reste OUVERT** : les treize transcriptions ont tenu sur les **sept**
+  journaux qui portent `racine du pont fichiers montée`, mais **cinq entrées
+  n'ont aucun jumeau `PRJ_*_CB`**, et un mauvais `transmute` de fonction est un
+  défaut que rien n'attrape avant l'exécution. ⚠️ **Les ~367 relances du Step 3
+  ne comptent pas** : la DLL n'y chargeait pas, **aucune transcription n'a jamais
+  été appelée**.
+- 🔴 **`showDirectoryPicker()` N'A JAMAIS ÉTÉ APPELÉ**, et c'est MESURÉ :
+  **aucune commande CDP n'existe pour ACCEPTER un sélecteur de fichiers**
+  (`Page.handleFileChooser` et `Page.fileChooserAccepted` rendent `-32601`,
+  `Page.setInterceptFileChooserDialog` **intercepte = annule**), et l'hôte n'a ni
+  `DISPLAY`, ni `Xvfb`, ni `xdotool`. **La parade est OPFS**, dont
+  `navigator.storage.getDirectory()` rend une **vraie**
+  `FileSystemDirectoryHandle` : tout le code produit tourne inchangé derrière,
+  le point d'injection étant `globalThis.showDirectoryPicker` lu **à l'appel**.
+  **Non couverts** : l'appel lui-même, le modèle de permission
+  (`queryPermission`/`requestPermission`), et l'activation utilisateur
+  transitoire.
+- **Deux des trois rouges** (fermer la page-shell pendant une copie ; démarrer le
+  pont avant le choix) **n'ont pas été provoqués**. ⚠️ **Et le troisième décrit
+  un état inatteignable par ce chemin** : le pont ne monte sa racine qu'**après**
+  avoir accepté l'offre SDP de la page-shell.
+- **Aucun relais TURN pour le pont** — divergence assumée d'avec la session
+  vidéo, à rouvrir le jour où la page-shell et la VM ne se voient pas directement.
+- **Rien d'un client réel** : Chrome sans interface, décodage logiciel, sur
+  l'hôte qui porte la VM. La File System Access API n'existe ni sur Firefox ni
+  sur Safari — limite du **produit**.
+- **Rien de plusieurs utilisateurs** : une VM, une racine, `SESSION_DU_PONT` non
+  namespacé. **Rien à travers une reconnexion WebRTC.**
+- **Rien de l'ancien pont** : ni modifié, ni retiré, ni comparé chiffre à chiffre.
+- **Le chemin d'extinction propre du superviseur** n'a toujours jamais été
+  exercé, depuis D1. ⚠️ **Et une racine ProjFS peut survivre à un arrêt brutal**
+  — le `Drop` ne court pas sur un `TerminateProcess` —, exactement comme les
+  sorties virtuelles de D5, et rien dans F1 ne la démonte.
+
+### Pièges neufs — à connaître avant de toucher à ce terrain
+
+- ⚠️ **DEUX EXÉCUTIONS DE RECETTE NE DOIVENT JAMAIS SE CHEVAUCHER, et le
+  symptôme n'est pas celui qu'on croit.** Deux se sont recouvertes de 2 min 23 s :
+  la seconde a tué l'agent de la première **en pleine mesure**, la première a
+  fait échouer la seconde au signaling (« premier message invalide »), et **le
+  journal versé sous le nom de la première est celui de la seconde** — même
+  horodatage de début à la microseconde près. On lit alors une panne de produit
+  là où il y a une collision de protocole. *C'est le piège de D8 rejoué à
+  l'envers : là-bas on relisait le journal PÉRIMÉ, ici celui de la SUIVANTE.*
+- ⚠️ **Une heuristique de PID est un piège.** « Le pont est le plus jeune des
+  `agent` » est **faux** : l'ordre est superviseur, capteur, pont, **puis** les
+  enfants. Le rouge de mise à mort a d'abord tué un **enfant** et rendu un relevé
+  qui se lisait comme un succès. **Relever le PID dans le journal d'agent.**
+- ⚠️ **Deux messages d'interface qui partagent une sous-chaîne font un instrument
+  faux.** « Lecteur … **mont**é » et « n'a pas pu être **mont**é » : le pilote
+  testait `includes('mont')` et a lancé une mesure de neuf minutes sur un pont
+  **non monté**. Corrigé côté **pilote** ; **le produit garde l'ambiguïté**, et
+  le prochain instrument tombera dedans.
+- ⚠️ **Un `||` de repli transforme « fichier absent » en « contrôle vert ».**
+- ⚠️ **Une `pub fn` sans appelant ne rend pas rouge un contrôle d'import** :
+  l'éditeur de liens élimine l'inatteignable, et `raw-dylib` n'émet alors rien.
+- ⚠️ **Le nom d'un `grep` de recette se vérifie contre le CODE, jamais contre la
+  spec.** Trois des quatre contrôles de F1 cherchaient des chaînes inexistantes.
+- ⚠️ **Une sonde peut ne pas borner ce que son nom annonce** : la longueur passée
+  à `FileStream.Read` **n'est pas** celle que ProjFS demande au rappel
+  `GetFileData` — ProjFS choisit sa propre granularité et peut hydrater bien
+  au-delà de la tranche demandée.
+- ⚠️ **Nettoyer `agent` seul ne suffit pas quand le chantier touche `proto`** :
+  `cargo clean --release -p proto -p agent` avant `scripts/build-agent.sh`, et
+  **vérifier la taille du binaire** — une compilation de 0,13 s est un aveu.
+
+### Ce que F1 lègue
+
+**Défauts observés, NON corrigés :**
+
+1. 🔴 **La casse rend le mauvais fichier en silence**, de façon **incohérente
+   avec elle-même**. ⚠️ **Le legs a changé de nature : ce n'est plus “on ne
+   trouve pas”, c'est “on rend autre chose”.** Remède : une table de
+   correspondance alimentée par l'énumération (**F3**).
+2. 🔴 **Une création locale réussit.** Le produit la journalise ; il ne peut pas
+   l'empêcher — notification POST. **F2.**
+3. 🔴 **Énumération vide par intermittence**, cause inconnue, journal d'agent
+   perdu pour l'occurrence exploitable.
+4. 🔴 **Des lectures calent sans jamais expirer** — le legs le plus proche de
+   rendre le lecteur inutilisable. **F4.**
+5. **Le débit varie d'un facteur ~120** entre deux exécutions, sans explication.
+
+**Mesures dues :**
+
+6. **Le condensat de bout en bout** (critère 2) — premier geste de toute recette
+   suivante.
+7. **Les rouges (ii) et (iii)**, et **(iii) doit d'abord être RÉÉCRIT**.
+8. **`PRE_CONVERT_TO_FULL` n'a jamais été exercé** : la moitié vraie de la
+   promesse de lecture seule n'a aucun témoin.
+9. **R7** : cinq entrées sans jumeau `PRJ_*_CB`.
+10. **Une racine ProjFS survit à un arrêt brutal**, et rien ne la démonte.
+
+**Choix de conception assumés, à rouvrir le jour venu :**
+
+11. **Aucun cache d'énumération en F1** — délibérément écarté : `Rafraichir`,
+    seul moyen de l'invalider, est un livrable de **F5**, et un cache que rien ne
+    vide reproduirait le défaut de l'ancien pont (`src/file.js`, cache **sans
+    TTL**).
+12. **Un seul morceau en vol à la fois** : le contrôle de flux par
+    `bufferedAmount`/`SEUIL_TAMPON` relève de **F3**. *Déclaré, pas implémenté à
+    moitié.*
+13. **Cinq verbes ne sont pas livrés.** `proto/src/fichiers.rs` ne définit que
+    `TYPE_LISTER`, `TYPE_ATTRIBUTS` et `TYPE_LIRE` ; `Ecrire`, `Creer`,
+    `Renommer`, `Supprimer` et `Tronquer` **n'existent nulle part dans le code**,
+    non plus que `Rafraichir`, qui va dans l'autre sens. `FICHIERS_VERSION` vaut
+    **1** précisément pour que leur arrivée soit une rupture visible.
+
+---
+
 ## 🚀 Commandes de Développement Essentielles
 
 ### Build & Run

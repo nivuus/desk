@@ -189,9 +189,8 @@ unsafe extern "system" fn fin_enumeration(
 
 /// Rend les entrées d'un répertoire.
 ///
-/// ⚠️ **Tâche 13 : `S_OK` avec un tampon vide**, donc la racine paraît vide.
-/// C'est l'état VERT que la tâche 13 vise — le dossier apparaît, et le pont
-/// s'arrête proprement. La tâche 14 y branche la requête `Lister`.
+/// ❌ *Annonçait « `S_OK`, tampon vide, racine vide » : l'état de la tâche 13.
+/// La tâche 14 de la MÊME branche l'a réfuté — `Lister` part vraiment.*
 unsafe extern "system" fn suite_enumeration(
     donnees: *const PRJ_CALLBACK_DATA,
     enumeration: *const GUID,
@@ -261,7 +260,7 @@ unsafe extern "system" fn suite_enumeration(
 
 /// Rend les métadonnées d'une entrée.
 ///
-/// ⚠️ **Tâche 13 : `ERROR_FILE_NOT_FOUND`.** Branché en tâche 14.
+/// ❌ *Annonçait `ERROR_FILE_NOT_FOUND` : état de la tâche 13, réfuté par 14.*
 unsafe extern "system" fn info_marqueur(donnees: *const PRJ_CALLBACK_DATA) -> HRESULT {
     garde("GetPlaceholderInfo", || {
         let Some(etat) = (unsafe { etat(donnees) }) else { return E_UNEXPECTED };
@@ -290,7 +289,7 @@ unsafe extern "system" fn info_marqueur(donnees: *const PRJ_CALLBACK_DATA) -> HR
 
 /// Rend le contenu d'un fichier.
 ///
-/// ⚠️ **Tâche 13 : `ERROR_FILE_NOT_FOUND`.** Branché en tâche 14.
+/// ❌ *Annonçait `ERROR_FILE_NOT_FOUND` : état de la tâche 13, réfuté par 14.*
 unsafe extern "system" fn donnees_fichier(
     donnees: *const PRJ_CALLBACK_DATA,
     position: u64,
@@ -350,7 +349,7 @@ unsafe extern "system" fn donnees_fichier(
 /// qui n'existent pas (`desktop.ini`, `Thumbs.db`, les manifestes
 /// d'application) — d'où le cache négatif armé au démarrage.
 ///
-/// ⚠️ **Tâche 13 : `ERROR_FILE_NOT_FOUND`.** Branché en tâche 14.
+/// ❌ *Annonçait `ERROR_FILE_NOT_FOUND` : état de la tâche 13, réfuté par 14.*
 unsafe extern "system" fn nom_fichier(donnees: *const PRJ_CALLBACK_DATA) -> HRESULT {
     garde("QueryFileName", || {
         let Some(etat) = (unsafe { etat(donnees) }) else { return E_UNEXPECTED };

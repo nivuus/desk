@@ -12,15 +12,32 @@
 //! ⚠️ **La CASSE est le piège structurel de ce module, et F1 ne le résout
 //! pas.** Windows est insensible à la casse ; la File System Access API ne
 //! l'est **pas** : `getFileHandle("Rapport.txt")` échoue là où NTFS aurait
-//! ouvert `rapport.txt`. Une application Windows qui demande un chemin dans une
-//! casse différente de celle du disque local du navigateur obtiendra donc
-//! `Introuvable`. Ce module **conserve la casse** telle que ProjFS l'a livrée —
-//! la replier serait pire, puisque la FSA ne retrouverait plus rien du tout —
-//! et le défaut est **documenté, pas masqué**. Le remède (une table de
+//! ouvert `rapport.txt`. Ce module **conserve la casse** telle que ProjFS l'a
+//! livrée — la replier serait pire, puisque la FSA ne retrouverait plus rien
+//! du tout — et le défaut est **documenté, pas masqué**. Le remède (une table de
 //! correspondance alimentée par l'énumération, qui seule connaît la casse
 //! réelle du disque) appartient à F3 ou plus tard, et il est inscrit comme
 //! legs. *Le déclarer résolu sans l'avoir mesuré serait exactement le geste que
 //! ce dépôt reproche à ses constantes non calibrées.*
+//!
+//! ❌ **CE MODULE ANNONÇAIT « obtiendra donc `Introuvable` », ET LA RECETTE DE
+//! F1 L'A RÉFUTÉ : le défaut réel est PIRE, parce qu'il est SILENCIEUX.**
+//! Mesuré sur la VM, **trois exécutions sur trois** (`mesure-exec{1,2,5}.txt`,
+//! sous `docs/superpowers/plans/journaux-pont-fichiers/`) : avec `Casse.txt`
+//! sur le poste local, `casse.txt` **et** `CASSE.TXT` rendent tous deux le
+//! CONTENU de `Casse.txt`, sans erreur — l'application reçoit le mauvais
+//! fichier et ne peut pas le savoir. **Et le comportement n'est pas cohérent
+//! avec lui-même** : dans la même exécution, `GROS.BIN` rend bien
+//! « introuvable ».
+//!
+//! ⚠️ **Le mécanisme est une HYPOTHÈSE cohérente avec les pièces, pas une
+//! mesure.** L'écart suit exactement l'HYDRATATION : la trace
+//! `racine hydratee … octets=42 entrees=1` dit qu'une seule entrée de 42
+//! octets — `Casse.txt`, lu par la sonde juste avant — vivait en local, et
+//! NTFS, insensible à la casse, la retrouve alors **sans jamais atteindre ce
+//! module** ; `gros.bin`, jamais hydraté, retombe sur le rappel, qui demande
+//! au navigateur une casse qu'il ne connaît pas. **Rien ne l'établit** : il
+//! faudrait une exécution où l'ordre d'hydratation est renversé.
 //!
 //! La comparaison, elle, **replie bien la casse** là où Windows le fait :
 //! `CON.txt`, `con.txt` et `Con.TXT` désignent tous le même périphérique

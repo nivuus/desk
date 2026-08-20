@@ -5,7 +5,22 @@
 //!
 //! **C'est le PÉRIMÈTRE de F1, et c'est donc la décision la plus importante du
 //! sous-bloc** : « toute tentative d'écriture rend `ERROR_WRITE_PROTECT`. C'est
-//! un périmètre, pas une lacune » (spec §8). Laissée dans
+//! un périmètre, pas une lacune » (spec §8).
+//!
+//! ❌ **CETTE PHRASE DE LA SPEC EST FAUSSE POUR UN FICHIER CRÉÉ DE TOUTES
+//! PIÈCES, et la recette de F1 l'a MESURÉ** (2 exécutions versées sur 2 qui
+//! atteignent cette phase) : la création RÉUSSIT. **Ce module avait raison
+//! contre elle** — son [`decider`] classe `NEW_FILE_CREATED` en POST,
+//! irrefusable, cinquante lignes plus bas. C'est donc l'en-tête qui citait un
+//! absolu que son propre corps réfutait. La formulation juste : *écrire dans
+//! un fichier PROJETÉ rend `ERROR_WRITE_PROTECT` ; un fichier neuf vit sur la
+//! VM et n'est jamais poussé.*
+//!
+//! ⚠️ **Et le levier qui porte la moitié VRAIE de la phrase —
+//! `PRE_CONVERT_TO_FULL`, l'écriture d'un fichier EXISTANT — n'a JAMAIS été
+//! exercé** : aucune pièce de la recette ne le confirme ni ne l'infirme.
+//!
+//! La décision est ici et non dans le rappel : laissée dans
 //! `pont/projfs/rappels.rs`, elle serait `#[cfg(windows)]`, appelée par le
 //! système, et **aucun test ne pourrait l'éprouver** — alors que ce qu'elle
 //! fait est un pur appariement d'un code entier à une décision.

@@ -2,7 +2,10 @@ use super::*;
 
 /// 🔴 **LE contrôle du périmètre de F1.** « Toute tentative d'écriture rend
 /// `ERROR_WRITE_PROTECT` (0x80070013). C'est un périmètre, pas une lacune »
-/// (spec §8). Si l'une de ces trois notifications cessait d'être refusée,
+/// (spec §8). ⚠️ *Cette phrase de la spec est FAUSSE pour un fichier créé de
+/// toutes pièces, et la recette F1 l'a mesuré : la création RÉUSSIT. Ce test
+/// n'en est pas affaibli — il porte sur les TROIS `PRE_`, qui sont bien les
+/// seules refusables.* Si l'une de ces trois notifications cessait d'être refusée,
 /// l'écriture RÉUSSIRAIT localement sur la VM et se perdrait en silence — la
 /// perte silencieuse que le rappel `PRE_CONVERT_TO_FULL` existe pour empêcher.
 #[test]

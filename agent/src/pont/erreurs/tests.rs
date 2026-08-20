@@ -61,8 +61,11 @@ fn le_canal_ferme_rend_bien_error_io_device() {
 
 #[test]
 fn la_protection_en_ecriture_rend_0x80070013() {
-    // F1 vit tout entier dans cet état : toute écriture, toute création, toute
-    // suppression y aboutit.
+    // ❌ *Ce commentaire disait « toute écriture, toute CRÉATION, toute
+    // suppression y aboutit ». La recette de F1 a réfuté la création : un
+    // fichier créé de toutes pièces dans la racine RÉUSSIT (2 exécutions
+    // versées sur 2 qui atteignent cette phase). `NEW_FILE_CREATED` est une
+    // notification POST, donc irrefusable — voir `pont::notifications`.*
     assert_eq!(hresult(Erreur::ProtegeEnEcriture), 0x8007_0013u32 as i32);
 }
 

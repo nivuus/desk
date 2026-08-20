@@ -14,7 +14,17 @@
 // ⚠️ LA CASSE N'EST TRAITÉE NULLE PART, ET C'EST UN LEGS DÉCLARÉ. Windows est
 // insensible à la casse, la File System Access API ne l'est pas : l'Explorateur
 // peut demander `NOTE.TXT` là où le répertoire local porte `note.txt`, et
-// `getFileHandle` lèvera `NotFoundError`. Le plan de F1 le nomme comme un legs
+// `getFileHandle` lèvera `NotFoundError`.
+//
+// ❌ CE N'EST PAS CE QUE LA RECETTE DE F1 A MESURÉ, ET LE VRAI DÉFAUT EST PIRE :
+// avec `Casse.txt` sur le poste local, `casse.txt` ET `CASSE.TXT` rendent tous
+// deux le CONTENU de `Casse.txt`, sans erreur — trois exécutions sur trois. La
+// `NotFoundError` promise ici n'arrive que pour un fichier jamais hydraté
+// (`GROS.BIN`, même exécution). Le mécanisme le plus vraisemblable est que NTFS
+// résout la casse sur le fichier local DÉJÀ hydraté, sans jamais atteindre cet
+// adaptateur. Voir l'en-tête d'`agent/src/pont/chemins.rs`.
+//
+// Le plan de F1 le nomme comme un legs
 // à OBSERVER en recette, pas à résoudre ici — une correspondance insensible à
 // la casse exigerait d'énumérer le répertoire à chaque résolution, ce qui est
 // une décision de conception et un coût, pas un correctif.
