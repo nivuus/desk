@@ -1,0 +1,30 @@
+# CRITÈRE ④ — une VM dont l’agent n’a pas été vu est ANNONCÉE injoignable, et l’API AVOUE ne pas savoir la redémarrer
+# Exécution 1 — moteur sqlite
+# Jouée le 2026-08-20T03:06:25.931Z, commit 3e11b4f
+#
+mise en place : la VM est à dave              : TENU
+SEUIL_INJOIGNABLE_MS                          : 90000
+vu_a = maintenant — code HTTP                 : 200
+vu_a = maintenant — corps                     : {"vm":"5c77e931-c393-43ba-9b17-3d72b3f96224","nom":"w-dave","prefixe":"cZIhGilp8lrenslvWWvRdg","etat":"prete"}
+④c avant la transition : 200                  : TENU
+④c avant la transition : `prete`              : TENU
+④c et le préfixe est délivré                  : TENU
+vu_a = maintenant − SEUIL − 1 — code HTTP     : 503
+vu_a = maintenant − SEUIL − 1 — corps         : {"vm":"5c77e931-c393-43ba-9b17-3d72b3f96224","nom":"w-dave","prefixe":"cZIhGilp8lrenslvWWvRdg","etat":"injoignable","motif":"agent-injoignable","redemarrage":{"possible":false,"motif":"non-supporte","backend":"inventaire-statique"}}
+④a l’état annoncé est `injoignable`           : TENU
+④a et le code est 503 — un état du monde, pas une erreur de requête: TENU
+④a le préfixe est rendu QUAND MÊME — il est connu et juste: TENU
+④b le champ `redemarrage` EXISTE              : TENU
+④b et il AVOUE, avec son motif et son backend : TENU
+t = vu_a + SEUIL (la borne EXACTE)            : prete
+t = vu_a + SEUIL + 1 ms                       : injoignable
+④c à la borne exacte, encore `prete`          : TENU
+④c une milliseconde plus tard, `injoignable`  : TENU
+④c la TRANSITION est donc VUE, des deux côtés : TENU
+④c une VM JAMAIS vue est `injoignable`, pas « peut-être »: TENU
+
+VERDICT                                       : TOUT TENU
+
+# --- journal du service (sortie d’erreur), conservé tel quel ---
+
+# code de sortie de la sonde : 0 (0 = tout tenu)

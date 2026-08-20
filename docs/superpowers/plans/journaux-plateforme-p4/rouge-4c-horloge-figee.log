@@ -1,0 +1,62 @@
+# ROUGE 4c-horloge-figee — critère 4, moteur sqlite
+# Jouée le 2026-08-20T05:05:53+02:00, commit 3e11b4f
+#
+--- le fichier muté est-il SUIVI par git ? (sans quoi checkout ne le restaurerait pas) ---
+SUIVI : oui
+
+--- la mutation, en diff ---
+    diff --git a/plateforme/src/orchestration/inventaire-statique.ts b/plateforme/src/orchestration/inventaire-statique.ts
+    index e44c7b1..c54fec7 100644
+    --- a/plateforme/src/orchestration/inventaire-statique.ts
+    +++ b/plateforme/src/orchestration/inventaire-statique.ts
+    @@ -89,7 +89,8 @@ export function inventaireStatique(base: Pilote, maintenant: () => number): Orch
+                 // sous-bloc : « il n'a aucun appelant de production dans P3, et
+                 // c'est déclaré plutôt que dissimulé […] ce qui est le sujet de
+                 // P4 ».
+    -            return etatDe(cible.vuA, maintenant());
+    +            /* ROUGE 4c : l'horloge injectee est FIGEE a vu_a */
+    +            return etatDe(cible.vuA, cible.vuA ?? 0);
+             },
+     
+             async demarrer(vm: string): Promise<Resultat> {
+
+--- le contrôle, sur l'arbre MUTÉ ---
+# CRITÈRE ④ — une VM dont l’agent n’a pas été vu est ANNONCÉE injoignable, et l’API AVOUE ne pas savoir la redémarrer
+# Exécution 1 — moteur sqlite
+# Jouée le 2026-08-20T03:05:54.782Z, commit 3e11b4f
+#
+mise en place : la VM est à dave              : TENU
+SEUIL_INJOIGNABLE_MS                          : 90000
+vu_a = maintenant — code HTTP                 : 200
+vu_a = maintenant — corps                     : {"vm":"400baaa6-06aa-4f98-934c-9c47f2efd883","nom":"w-dave","prefixe":"splbiZN_2JH9Lt0edf2nHg","etat":"prete"}
+④c avant la transition : 200                  : TENU
+④c avant la transition : `prete`              : TENU
+④c et le préfixe est délivré                  : TENU
+vu_a = maintenant − SEUIL − 1 — code HTTP     : 200
+vu_a = maintenant − SEUIL − 1 — corps         : {"vm":"400baaa6-06aa-4f98-934c-9c47f2efd883","nom":"w-dave","prefixe":"splbiZN_2JH9Lt0edf2nHg","etat":"prete"}
+④a l’état annoncé est `injoignable`           : 🔴 NON TENU — obtenu "prete", attendu "injoignable"
+④a et le code est 503 — un état du monde, pas une erreur de requête: 🔴 NON TENU — obtenu 200, attendu 503
+④a le préfixe est rendu QUAND MÊME — il est connu et juste: TENU
+④b le champ `redemarrage` EXISTE              : 🔴 NON TENU — obtenu false, attendu true
+④b et il AVOUE, avec son motif et son backend : 🔴 NON TENU — obtenu undefined, attendu {"possible":false,"motif":"non-supporte","backend":"inventaire-statique"}
+t = vu_a + SEUIL (la borne EXACTE)            : prete
+t = vu_a + SEUIL + 1 ms                       : prete
+④c à la borne exacte, encore `prete`          : TENU
+④c une milliseconde plus tard, `injoignable`  : 🔴 NON TENU — obtenu "prete", attendu "injoignable"
+④c la TRANSITION est donc VUE, des deux côtés : 🔴 NON TENU — obtenu "prete->prete", attendu "prete->injoignable"
+④c une VM JAMAIS vue est `injoignable`, pas « peut-être »: TENU
+
+VERDICT                                       : 🔴 AU MOINS UNE ASSERTION NON TENUE
+
+# --- journal du service (sortie d’erreur), conservé tel quel ---
+
+# code de sortie de la sonde : 1 (0 = tout tenu)
+
+--- restauration ---
+sha256 AVANT mutation    : 90184761875a42f0ab0341b407594ac6b20ed8baa56b85ca976f48d06221d797
+sha256 APRÈS restauration: 90184761875a42f0ab0341b407594ac6b20ed8baa56b85ca976f48d06221d797
+les deux empreintes CONCORDENT : le fichier est rendu à l'octet près.
+
+# code de sortie de la sonde SOUS MUTATION : 1
+# (1 = au moins une assertion NON TENUE = la rouge a bien rougi ;
+#  0 = 🔴 LA MUTATION EST RESTÉE VERTE, l'assertion visée n'éprouve rien)

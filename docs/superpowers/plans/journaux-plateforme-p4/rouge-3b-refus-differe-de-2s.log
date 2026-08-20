@@ -1,0 +1,52 @@
+# ROUGE 3b-refus-differe-de-2s — critère 3, moteur sqlite
+# Jouée le 2026-08-20T05:05:07+02:00, commit 3e11b4f
+#
+--- le fichier muté est-il SUIVI par git ? (sans quoi checkout ne le restaurerait pas) ---
+SUIVI : oui
+
+--- la mutation, en diff ---
+    diff --git a/plateforme/src/http/routes-session.ts b/plateforme/src/http/routes-session.ts
+    index 0de6a93..d59f770 100644
+    --- a/plateforme/src/http/routes-session.ts
+    +++ b/plateforme/src/http/routes-session.ts
+    @@ -98,6 +98,8 @@ export async function servirSession(
+         // UN CORPS DEVIENDRA NÉCESSAIRE, LA BORNE LE DEVIENDRA AUSSI. Sans borne,
+         // un pair authentifié ferait grossir la mémoire du service à volonté ; la
+         // seule raison pour laquelle elle manque ici est qu'il n'y a rien à lire.
+    +    /* ROUGE 3b : le refus n'est plus immediat */
+    +    await new Promise((r) => setTimeout(r, 2000));
+         const orchestrateur = inventaireStatique(deps.base, deps.maintenant);
+         // `laVmDe` et non `find` : elle LÈVE si l'inventaire portait deux VMs pour
+         // le même utilisateur, ce que l'index partiel rend impossible en base — et
+
+--- le contrôle, sur l'arbre MUTÉ ---
+# CRITÈRE ③ — un utilisateur sans VM reçoit un refus IMMÉDIAT
+# Exécution 1 — moteur sqlite
+# Jouée le 2026-08-20T03:05:08.602Z, commit 3e11b4f
+#
+mise en place : la VM est à quelqu’un d’AUTRE : TENU
+code HTTP rendu                               : 409
+corps rendu                                   : {"motif":"aucune-vm"}
+③a le code est 409, jamais 200                : TENU
+③a et 409 est ce que la table de codes dit d’`aucune-vm`: TENU
+③a le corps porte le motif, et AUCUN préfixe  : TENU
+③a le corps ne porte pas de champ `prefixe` — un préfixe vide au coffre serait la panne muette: TENU
+20 appels — médiane (ms)                      : 2006.93
+20 appels — pire cas (ms)                     : 2016.17
+borne MESURÉE du critère (ms)                 : 250
+③b le pire des 20 refus reste sous la borne   : 🔴 NON TENU — 2016.17 ≥ 250
+
+VERDICT                                       : 🔴 AU MOINS UNE ASSERTION NON TENUE
+
+# --- journal du service (sortie d’erreur), conservé tel quel ---
+
+# code de sortie de la sonde : 1 (0 = tout tenu)
+
+--- restauration ---
+sha256 AVANT mutation    : 50c8caa936ba586152ab8f790202da878085e2583f09e6883049deeb4b76f238
+sha256 APRÈS restauration: 50c8caa936ba586152ab8f790202da878085e2583f09e6883049deeb4b76f238
+les deux empreintes CONCORDENT : le fichier est rendu à l'octet près.
+
+# code de sortie de la sonde SOUS MUTATION : 1
+# (1 = au moins une assertion NON TENUE = la rouge a bien rougi ;
+#  0 = 🔴 LA MUTATION EST RESTÉE VERTE, l'assertion visée n'éprouve rien)

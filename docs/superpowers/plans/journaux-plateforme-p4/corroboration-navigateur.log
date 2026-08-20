@@ -1,0 +1,69 @@
+# CORROBORATION NAVIGATEUR de la TÂCHE 14 — hors critère, sur un vrai Chrome
+# Jouée le 2026-08-20T05:09:28+02:00, commit 3e11b4f
+#
+# 🔴 POURQUOI ELLE EXISTE. La tâche 14 n'a PAS de test unitaire, et c'est une
+# décision du plan : `connexion.ts` est du câblage DOM. Mais ce sous-bloc a
+# trouvé DEUX défauts CORS — l'en-tête `Authorization` non permis, la requête
+# préalable `OPTIONS` non traitée — qui rendaient les deux routes
+# INATTEIGNABLES depuis un navigateur, et qu'AUCUN test de Node ne pouvait
+# voir. La classe « ce qu'un navigateur exige et qu'un test serveur ne voit
+# pas » est donc ouverte, et la tâche 14 est précisément côté navigateur.
+#
+# ⚠️ CE N'EST NI UN CRITÈRE, NI LA TÂCHE 16. Aucune VM Windows n'est allumée,
+# aucun agent ne bat : les trois situations sont fabriquées en base. Ce qui est
+# corroboré est le CÂBLAGE de bout en bout — origine croisée comprise —, pas le
+# produit en session réelle.
+#
+# Montage : service RÉEL sur 127.0.0.1:8099 (sqlite en mémoire, origine client
+# déclarée), client servi par vite sur 127.0.0.1:5199, donc ORIGINE CROISÉE —
+# c'est ce qui met la politique du navigateur dans le chemin.
+
+--- requête préalable, relevée par curl AVANT toute manipulation de page ---
+OPTIONS /session, Origin: http://127.0.0.1:5199, Request-Headers: authorization
+  HTTP/1.1 204 No Content
+  Access-Control-Allow-Origin: http://127.0.0.1:5199
+  Access-Control-Allow-Methods: GET, POST, OPTIONS
+  Access-Control-Allow-Headers: content-type, authorization
+  -> l'en-tête `authorization` EST permis, et la préalable EST servie.
+
+--- coffre AVANT toute connexion ---
+localStorage                                  : {} (vide)
+
+--- ① un utilisateur DONT LA VM RÉPOND (prete@essai.local) ---
+préfixe semé par le montage                   : zD-_M3uYj3-4v5LpP0JjlQ
+URL après soumission                          : /shell.html
+guac.prefixe relu dans le navigateur          : zD-_M3uYj3-4v5LpP0JjlQ
+guac.jeton.acces présent                      : true
+①  le préfixe écrit est CELUI DE SA VM        : TENU
+①  et la page a bien REDIRIGÉ vers la suite   : TENU
+
+--- ② un utilisateur SANS AUCUNE VM (sansvm@essai.local) ---
+# ⚠️ LE COFFRE PORTE ENCORE LE PRÉFIXE DE ①, ET C'EST VOULU : c'est la seule
+#   façon de montrer qu'`effacerPrefixe` EFFACE, plutôt que de constater qu'un
+#   coffre déjà vide le reste. Sans ce résidu, l'assertion ne pourrait pas
+#   échouer.
+guac.prefixe AVANT                            : zD-_M3uYj3-4v5LpP0JjlQ
+URL après soumission                          : /connexion.html
+guac.prefixe APRÈS                            : null
+message affiché                               : aucune-vm
+②  le préfixe périmé est EFFACÉ               : TENU
+②  et la page NE REDIRIGE PAS                 : TENU
+
+--- ③ un utilisateur dont L'AGENT S'EST TU (muette@essai.local) ---
+préfixe semé par le montage                   : axgm6y98L7pe_ffSB97Y1A
+URL après soumission                          : /connexion.html
+guac.prefixe relu dans le navigateur          : axgm6y98L7pe_ffSB97Y1A
+message affiché                               : agent-injoignable (état : injoignable) — la plateforme ne sait pas la redémarrer (non-supporte, backend inventaire-statique)
+③  le préfixe est écrit QUAND MÊME — il est connu et juste: TENU
+③  la page NE REDIRIGE PAS                    : TENU
+③  le message porte L'ÉTAT                    : TENU
+③  et l'AVEU : la plateforme ne sait pas redémarrer: TENU
+
+--- console du navigateur, conservée telle quelle ---
+[ERROR] Failed to load resource: the server responded with a status of 409 (Conflict) @ /session
+[ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ /session
+# ⚠️ CES DEUX LIGNES NE SONT PAS DES DÉFAUTS : ce sont les refus ② et ③
+#   eux-mêmes, que le navigateur journalise pour tout code >= 400. Leur ABSENCE
+#   signalerait au contraire que les refus n'ont pas eu lieu.
+
+VERDICT                                       : LES TROIS ISSUES DE `connexion.ts` SE COMPORTENT COMME ÉCRIT

@@ -1,0 +1,22 @@
+# CRITÈRE ① — `instantane` REFUSE explicitement, en 501, et le JOURNALISE
+# Exécution 1 — moteur sqlite
+# Jouée le 2026-08-20T03:06:17.708Z, commit 3e11b4f
+#
+attribution préalable                         : TENU
+code HTTP rendu                               : 501
+corps rendu                                   : {"motif":"non-supporte","operation":"instantane","backend":"inventaire-statique"}
+①a le code est 501, jamais 500                : TENU
+①a le corps est le refus TYPÉ, entier         : TENU
+①a et 501 est bien ce que la table de codes dit de ce motif: TENU
+lignes de journal émises pendant l’appel      : 1
+  ligne                                       : opération refusée : instantane n'est pas supportée par le backend inventaire-statique, qui ne pilote aucun hyperviseur — il inventorie ce qu'un administrateur a enrôlé, et n'écrit que vm.utilisateur_id.
+①b le refus a produit EXACTEMENT une ligne de journal: TENU
+①b elle nomme l’opération refusée             : TENU
+①b elle nomme le backend qui refuse           : TENU
+
+VERDICT                                       : TOUT TENU
+
+# --- journal du service (sortie d’erreur), conservé tel quel ---
+opération refusée : instantane n'est pas supportée par le backend inventaire-statique, qui ne pilote aucun hyperviseur — il inventorie ce qu'un administrateur a enrôlé, et n'écrit que vm.utilisateur_id.
+
+# code de sortie de la sonde : 0 (0 = tout tenu)

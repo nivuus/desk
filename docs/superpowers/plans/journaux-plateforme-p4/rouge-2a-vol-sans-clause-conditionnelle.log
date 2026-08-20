@@ -1,0 +1,59 @@
+# ROUGE 2a-vol-sans-clause-conditionnelle — critère 2, moteur sqlite
+# Jouée le 2026-08-20T05:04:53+02:00, commit 3e11b4f
+#
+--- le fichier muté est-il SUIVI par git ? (sans quoi checkout ne le restaurerait pas) ---
+SUIVI : oui
+
+--- la mutation, en diff ---
+    diff --git a/plateforme/src/depot/vm.ts b/plateforme/src/depot/vm.ts
+    index eb61003..2d199f2 100644
+    --- a/plateforme/src/depot/vm.ts
+    +++ b/plateforme/src/depot/vm.ts
+    @@ -122,7 +122,7 @@ export async function attribuerSiLibre(
+         utilisateurId: string,
+     ): Promise<number> {
+         const r = await p.executer(
+    -        'UPDATE vm SET utilisateur_id = ? WHERE id = ? AND utilisateur_id IS NULL',
+    +        /* ROUGE 2a : la clause conditionnelle retiree */ 'UPDATE vm SET utilisateur_id = ? WHERE id = ?',
+             [utilisateurId, vmId],
+         );
+         return r.lignes;
+
+--- le contrôle, sur l'arbre MUTÉ ---
+# CRITÈRE ② — deux utilisateurs ne partagent pas une VM, un utilisateur n’en a pas deux, et JAMAIS un 500
+# Exécution 1 — moteur sqlite
+# Jouée le 2026-08-20T03:04:54.472Z, commit 3e11b4f
+#
+mise en place : v1 est à alice                : TENU
+lignes touchées par l’UPDATE de vol           : 1
+propriétaire de v1 après le vol               : 88cbd3cb-13bd-4b62-a672-c34b057c2bcf
+②a l’UPDATE de vol ne touche AUCUNE ligne     : 🔴 NON TENU — obtenu 1, attendu 0
+②a et la ligne porte TOUJOURS son propriétaire: 🔴 NON TENU — obtenu "88cbd3cb-13bd-4b62-a672-c34b057c2bcf", attendu "ee80bbf8-124a-4de9-a28e-700622454214"
+②a l’orchestrateur, lui, refuse par un TYPE   : TENU
+l’UPDATE d’une SECONDE VM pour alice          : AUCUNE exception, 1 ligne(s)
+②b l’index partiel LÈVE plutôt que d’attribuer: 🔴 NON TENU — obtenu false, attendu true
+②b et v2 est resté LIBRE                      : 🔴 NON TENU — obtenu "ee80bbf8-124a-4de9-a28e-700622454214", attendu null
+②b l’orchestrateur, lui, refuse par un TYPE et NE LÈVE PAS: 🔴 NON TENU — obtenu {"ok":false,"motif":"vm-deja-attribuee","operation":"attribuer","backend":"inventaire-statique"}, attendu {"ok":false,"motif":"utilisateur-servi","operation":"attribuer","backend":"inventaire-statique"}
+lectures faites par la course                 : 1
+issue de la course                            : {"ok":false,"motif":"utilisateur-servi","operation":"attribuer","backend":"inventaire-statique"}
+②c AUCUNE exception ne s’échappe — c’est elle qui ferait le 500: TENU
+②c la violation d’index est traduite en refus TYPÉ: TENU
+②c la RELECTURE a bien eu lieu — le motif est lu, pas deviné: 🔴 NON TENU — obtenu 1, attendu 2
+code HTTP de ce motif                         : 409
+②c et son code HTTP n’est PAS 500             : TENU
+②c aucun des motifs de refus ne vaut 500      : TENU
+
+VERDICT                                       : 🔴 AU MOINS UNE ASSERTION NON TENUE
+
+# --- journal du service (sortie d’erreur), conservé tel quel ---
+
+# code de sortie de la sonde : 1 (0 = tout tenu)
+
+--- restauration ---
+sha256 AVANT mutation    : d713204d3d530c13c2117192544725a1a0938cf5179bf6693190fdaef48d8f44
+sha256 APRÈS restauration: d713204d3d530c13c2117192544725a1a0938cf5179bf6693190fdaef48d8f44
+les deux empreintes CONCORDENT : le fichier est rendu à l'octet près.
+
+# code de sortie de la sonde SOUS MUTATION : 1
+# (1 = au moins une assertion NON TENUE = la rouge a bien rougi ;
+#  0 = 🔴 LA MUTATION EST RESTÉE VERTE, l'assertion visée n'éprouve rien)
