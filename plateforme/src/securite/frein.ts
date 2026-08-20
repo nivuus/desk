@@ -139,11 +139,26 @@ export class Frein {
         for (const [cle, budget] of cles) {
             const entree = this.entrees.get(cle);
             if (entree === undefined) continue;
-            if (this.expiree(entree, maintenant)) continue;
             // `>=`, jamais `>` : au budget exactement, on refuse. Un `>`
             // accorderait un essai de plus que ce que la constante annonce.
             if (entree.compte >= budget.max) {
                 const restant = entree.premierA + entree.fenetreMs - maintenant;
+                // 🔴 UN RESTE NON POSITIF *EST* L'EXPIRATION, et c'est pourquoi
+                // il n'y a PAS de second test d'expiration ici. `restantMs`
+                // part de 0 : une entree dont la fenetre est close rend un
+                // reste <= 0, qui ne peut donc jamais l'elever.
+                //
+                // ⚠️ CE COMMENTAIRE A ETE ECRIT APRES UNE MUTATION QUI N'A RIEN
+                // PERTURBE. Un `if (this.expiree(entree, maintenant)) continue;`
+                // vivait deux lignes plus haut, et le RETIRER laissait les onze
+                // tests VERTS : il etait EXACTEMENT redondant avec la
+                // comparaison ci-dessous, `maintenant - premierA >= fenetreMs`
+                // etant la meme proposition que `premierA + fenetreMs -
+                // maintenant <= 0`. Une ligne qu'aucun test ne peut faire
+                // tomber n'est pas une ceinture : c'est du code mort qui donne
+                // l'APPARENCE d'une garde, et qui aurait fait croire l'an
+                // prochain que l'expiration est decidee la. Elle est decidee
+                // ICI, et la mutation `T1-c` porte desormais sur cette ligne.
                 if (restant > restantMs) restantMs = restant;
             }
         }
