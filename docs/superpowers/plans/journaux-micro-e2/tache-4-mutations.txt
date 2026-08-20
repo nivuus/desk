@@ -1,0 +1,100 @@
+=== MUTATION : Risque rendu partout ===
+--- preuve que le diff n'est pas vide ---
+@@ -55,11 +55,8 @@
+     if capte.is_empty() || cable.is_empty() {
+         return Boucle::Aucune;
+     }
+-    if capte.eq_ignore_ascii_case(cable) {
+-        Boucle::Risque
+-    } else {
+-        Boucle::Aucune
+-    }
++    let _ = (capte, cable);
++    Boucle::Risque
+ }
+ 
+ #[cfg(test)]
+--- resultat ---
+test micro::boucle_locale::tests::le_cable_capte_par_le_loopback_est_un_RISQUE ... ok
+test micro::boucle_locale::tests::la_comparaison_est_INSENSIBLE_a_la_casse_de_l_identifiant ... ok
+test micro::boucle_locale::tests::deux_endpoints_distincts_ne_bouclent_pas ... FAILED
+test micro::boucle_locale::tests::sans_capture_il_n_y_a_pas_de_boucle ... ok
+test micro::boucle_locale::tests::un_identifiant_VIDE_ne_boucle_pas ... ok
+thread 'micro::boucle_locale::tests::deux_endpoints_distincts_ne_bouclent_pas' (3304809) panicked at agent/src/micro/boucle_locale.rs:80:9:
+assertion `left == right` failed
+  left: Risque
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 676 filtered out; finished in 0.00s
+
+=== MUTATION : comparaison octet a octet, sensible a la casse ===
+--- preuve que le diff n'est pas vide ---
+@@ -55,7 +55,7 @@
+     if capte.is_empty() || cable.is_empty() {
+         return Boucle::Aucune;
+     }
+-    if capte.eq_ignore_ascii_case(cable) {
++    if capte == cable {
+         Boucle::Risque
+     } else {
+         Boucle::Aucune
+--- resultat ---
+test micro::boucle_locale::tests::deux_endpoints_distincts_ne_bouclent_pas ... ok
+test micro::boucle_locale::tests::le_cable_capte_par_le_loopback_est_un_RISQUE ... ok
+test micro::boucle_locale::tests::la_comparaison_est_INSENSIBLE_a_la_casse_de_l_identifiant ... FAILED
+test micro::boucle_locale::tests::sans_capture_il_n_y_a_pas_de_boucle ... ok
+test micro::boucle_locale::tests::un_identifiant_VIDE_ne_boucle_pas ... ok
+thread 'micro::boucle_locale::tests::la_comparaison_est_INSENSIBLE_a_la_casse_de_l_identifiant' (3305613) panicked at agent/src/micro/boucle_locale.rs:97:9:
+assertion `left == right` failed
+  left: Aucune
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 676 filtered out; finished in 0.00s
+
+=== MUTATION : le vide cesse d etre ecarte ===
+--- preuve que le diff n'est pas vide ---
+@@ -52,9 +52,6 @@
+     // sur un périphérique indescriptible, et deux vides seraient égaux. Sans
+     // cet écart, un agent dont le périphérique capté est indescriptible
+     // perdrait son micro sans qu'aucune boucle n'existe.
+-    if capte.is_empty() || cable.is_empty() {
+-        return Boucle::Aucune;
+-    }
+     if capte.eq_ignore_ascii_case(cable) {
+         Boucle::Risque
+     } else {
+--- resultat ---
+test micro::boucle_locale::tests::deux_endpoints_distincts_ne_bouclent_pas ... ok
+test micro::boucle_locale::tests::la_comparaison_est_INSENSIBLE_a_la_casse_de_l_identifiant ... ok
+test micro::boucle_locale::tests::sans_capture_il_n_y_a_pas_de_boucle ... ok
+test micro::boucle_locale::tests::le_cable_capte_par_le_loopback_est_un_RISQUE ... ok
+test micro::boucle_locale::tests::un_identifiant_VIDE_ne_boucle_pas ... FAILED
+thread 'micro::boucle_locale::tests::un_identifiant_VIDE_ne_boucle_pas' (3306158) panicked at agent/src/micro/boucle_locale.rs:105:9:
+assertion `left == right` failed
+  left: Risque
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 676 filtered out; finished in 0.00s
+
+=== MUTATION : None traite comme une capture ===
+--- preuve que le diff n'est pas vide ---
+@@ -45,9 +45,10 @@
+ /// « Haut-parleurs (…) » —, et le dépôt a payé en D1 pour avoir désigné une
+ /// sortie par un rang plutôt que par un identifiant stable.
+ pub fn evaluer(capte: Option<&str>, cable: &str) -> Boucle {
+-    let Some(capte) = capte else {
+-        return Boucle::Aucune;
+-    };
++    let capte = capte.unwrap_or("");
++    if capte.is_empty() && cable.is_empty() {
++        return Boucle::Risque;
++    }
+     // ⚠️ Le vide n'est PAS un identifiant : `decrire` rend `String::new()`
+     // sur un périphérique indescriptible, et deux vides seraient égaux. Sans
+     // cet écart, un agent dont le périphérique capté est indescriptible
+--- resultat ---
+test micro::boucle_locale::tests::deux_endpoints_distincts_ne_bouclent_pas ... ok
+test micro::boucle_locale::tests::sans_capture_il_n_y_a_pas_de_boucle ... ok
+test micro::boucle_locale::tests::la_comparaison_est_INSENSIBLE_a_la_casse_de_l_identifiant ... ok
+test micro::boucle_locale::tests::le_cable_capte_par_le_loopback_est_un_RISQUE ... ok
+test micro::boucle_locale::tests::un_identifiant_VIDE_ne_boucle_pas ... FAILED
+thread 'micro::boucle_locale::tests::un_identifiant_VIDE_ne_boucle_pas' (3306780) panicked at agent/src/micro/boucle_locale.rs:109:9:
+assertion `left == right` failed
+  left: Risque
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 676 filtered out; finished in 0.00s
+
+sha256 avant=061a3cb4d30f7e3d apres=061a3cb4d30f7e3d identiques=OUI

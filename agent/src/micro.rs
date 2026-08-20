@@ -464,6 +464,11 @@ mod frequence;
 /// `crate::micro::exclusivite::Exclusivite`.
 pub mod exclusivite;
 
+/// La garde de boucle locale : le câble est-il ce que le loopback capte ?
+/// **Mesurée nécessaire le 20 août 2026** — la spec §3 affirmait l'inverse.
+/// `pub mod` pour la raison écrite juste au-dessus.
+pub mod boucle_locale;
+
 /// Le plafond de dissimulation, et la règle pure qui le tient.
 pub use dissimulation::{BudgetDissimulation, PLAFOND_DISSIMULATION};
 
