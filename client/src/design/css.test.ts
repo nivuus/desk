@@ -17,9 +17,16 @@ import { blocApres, compounds, declarationsDe, preludes, sansCommentaires } from
  */
 describe('css.ts — le lecteur de feuille', () => {
     it('① un commentaire ne déclare RIEN : le blanchiment le retire avant analyse', () => {
+        // 🔴 LE COMMENTAIRE EST DANS LE BLOC, ET C'EST TOUT CE QUI FAIT LA
+        // VALEUR DE CE TEST. Une première rédaction le posait AU-DESSUS de la
+        // règle : `declarationsDe` ne lit que l'intérieur des `{ … }`, si bien
+        // que la déclaration fantôme n'était de toute façon jamais lue — le
+        // test passait VERT sur un blanchiment neutralisé, mesuré. C'est le
+        // patron du contrôle vacueux, attrapé ici sur le test lui-même, et le
+        // dépôt le paie assez souvent pour qu'il soit écrit à sa place.
         const css = `
-            /* padding: 6px; — une valeur citée dans une PROSE, pas une règle */
             .a {
+                /* padding: 6px; — une valeur citée dans une PROSE, pas une règle */
                 padding: var(--e-2);
             }
         `;
