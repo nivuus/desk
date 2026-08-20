@@ -2264,6 +2264,28 @@ constaté (`UDP listener opened on: 90.87.35.18:3478`). L'accès est authentifi�
 les identifiants expirent, mais c'est un relais joignable depuis Internet : à
 restreindre (`--listening-ip` ou pare-feu) avant tout déploiement durable.
 
+> ✅ **CE PARAGRAPHE N'EST PLUS VRAI DU FICHIER, ET IL EST ANNOTÉ PLUTÔT QUE
+> SUPPRIMÉ : il reste exact comme relevé daté du 30 juillet 2026.** Le sous-bloc
+> **P5** (20 août 2026) a posé `--listening-ip=${TURN_LISTENING_IP:?…}` et
+> `--relay-ip=${TURN_RELAY_IP:?…}`, **tous deux OBLIGATOIRES** — la commande
+> échoue en les NOMMANT si l'un manque. C'est littéralement le remède que la
+> dernière phrase ci-dessus réclamait.
+>
+> **Mesuré, deux lancements** (`journaux-plateforme-p5/recette/02-critere2-coturn.log`) :
+>
+> | | fichier LIVRÉ | le fichier d'AVANT P5 |
+> | --- | --- | --- |
+> | lignes `listener opened on` | 25 | **575** |
+> | adresses d'écoute DISTINCTES | **1** (`192.168.3.1`) | **23** |
+> | lignes portant `90.87.35.18` | **0** | **25** |
+> | `Relay address to use` | `192.168.3.1` | l'hôte entier |
+>
+> 🔴 **CE QUI RESTE ENTIÈREMENT VRAI, ET QU'IL NE FAUT PAS LIRE COMME FERMÉ** :
+> ceci est une **RELECTURE DU JOURNAL DE COTURN**, pas une sonde. Elle établit
+> ce que le processus DIT avoir ouvert, jamais ce qu'une machine extérieure peut
+> joindre. **L'inaccessibilité depuis Internet n'est établie par rien**, et elle
+> exigerait une machine hors de ce réseau — que ce dépôt n'a pas.
+
 ### Le signaling doit être relancé AVEC l'environnement
 
 ⚠️ **Le processus a changé de nom au sous-bloc P1 (19 août 2026) : ce n'est
@@ -7380,6 +7402,11 @@ deux locales, et la sonde exigerait une machine hors du réseau.
 - **Le comportement de Postgres sous charge, en concurrence, ou après
   redémarrage** : la passe `test:postgres` éprouve un **dialecte**, pas un
   déploiement. C'est le critère ① de P5.
+  ⛔ **ET LE CRITÈRE ① DE P5 NE LE LÈVE PAS — il aurait été facile de le croire
+  fermé.** P5 a bien joué la suite contre l'instance du profil `deploiement`
+  (deux exécutions, 433/433, identité de grappe relevée des deux côtés), **mais
+  il éprouve toujours un SOUS-ENSEMBLE SQL** : aucune charge, aucune
+  concurrence, aucun redémarrage. **Ce legs reste DÛ après la clôture de ⑤.**
 - **Aucune authentification.** Le port, s'il est atteint, délivre toujours des
   identifiants TURN valables 86 400 s à quiconque. **C'est P2**, et le critère ④
   est ce qui rend cette fenêtre tolérable — raison pour laquelle il est en P1.
@@ -7399,6 +7426,17 @@ deux locales, et la sonde exigerait une machine hors du réseau.
   > déni de service en une trame, qui court AVANT toute garde
   > (`signaling/resilience.test.ts`) et qu'aucune authentification ne peut
   > fermer. Le frein est P5 ③.
+  >
+  > ⚠️ **CE RENVOI EST PÉRIMÉ, ET IL DÉSIGNAIT LE MAUVAIS REMÈDE** (P5, 20 août
+  > 2026). Le frein de P5 est posé sur `/auth/connexion`, `/auth/rafraichir` et
+  > `/agent` ; **il ne couvre PAS le relais de signaling** — `signaling/relais.ts`
+  > n'importe même pas `Frein`. Ce qui ferme le déni de service en une trame est
+  > **`TRAME_MAX_OCTETS`** (`http/serveur.ts`), posé en `maxPayload` sur les DEUX
+  > serveurs WebSocket, donc appliqué par `ws` AVANT tout contrôle de forme.
+  > ⚠️ **Ce que `maxPayload` ne ferme pas** : un pair peut toujours ouvrir
+  > BEAUCOUP de connexions, et des connexions **muettes** ne sont comptées par
+  > rien — ni par le frein, qui compte des tentatives, ni par
+  > `deploiement/nginx.conf`, qui ne pose ni `limit_conn` ni `limit_req`.
 
 - **La scalabilité horizontale** : la persistance ne la procure pas. Un WebSocket
   vit dans un processus et un seul.
@@ -7764,12 +7802,25 @@ supposée**.
   humain** : aucun clic, aucun formulaire soumis. Le chemin `connexion.html` →
   `poser()` → `shell.html` est **raisonné et compilé**, pas observé. Et
   **`shell-page.ts` n'a jamais redirigé** dans une exécution mesurée.
+- ✅ **FERMÉ PAR P5 (20 août 2026)** : le frein existe, deux clés (compte et
+  adresse), consulté **avant** tout accès à la base et **avant** tout `scrypt`.
+  Rouge jouée : retirer la consultation fait tomber **8** tests, tous dans
+  `routes-auth.test.ts`. Le paragraphe d'origine est conservé ci-dessous ; il
+  décrit l'état d'avant P5, et il reste juste à sa date.
 - **Aucun frein sur les routes d'authentification** — c'est P5 ③. Conséquence à
   assumer d'ici là : `/auth/connexion` est ouverte à la force brute, bornée
   seulement par les ~29 ms de `scrypt` et par l'écoute restreinte de
   `PLATEFORME_HOTE`. **C'est la même raison qui rend la fenêtre d'E2 tolérable,
   et elle a la même fragilité.**
 - **Aucune terminaison TLS, aucun cookie, aucun en-tête de sécurité** : P5.
+  ✅ **DEUX TIERS FERMÉS PAR P5** : TLS est terminé par **nginx**
+  (`deploiement/nginx.conf`, le service ne termine JAMAIS TLS — spec §9), et
+  deux en-têtes sont posés par le service sur **cinq** routeurs
+  (`http/entetes.ts`), le reste par le proxy (CSP, HSTS, `Referrer-Policy`,
+  `frame-ancestors`).
+  ⛔ **« aucun cookie » RESTE VRAI** : ⑤ n'en livre aucun, et l'arbitrage
+  `localStorage` de `client/src/jeton.ts` **n'a pas été rouvert** — il passe
+  d'ANNONCÉ à **DÛ**, le remède réel (`HttpOnly`) étant hors du périmètre de ⑤.
 - **Aucun audit par un tiers** : CSRF, fixation de session et attaques
   temporelles sont traités par des choix **raisonnés, non éprouvés** (spec §8).
 - **Le jeton vit dans `localStorage`**, donc il est lisible par tout script de
@@ -7999,12 +8050,27 @@ par `0002-identite.sql`, et **la consigne reste entière pour P4**).
    `/auth/connexion` est ouverte à la force brute, bornée seulement par les
    ~29 ms de `scrypt` et par l'écoute restreinte. **Même raison, même
    fragilité que la fenêtre d'E2.**
+   ✅ **FERMÉ PAR P5 (20 août 2026)** — `securite/frein.ts`, deux clés, consulté
+   **avant** la base et **avant** `scrypt`. `/auth/rafraichir` est freinée par
+   l'ADRESSE seule, un échec n'y consommant AUCUN budget de compte.
 6. ⛔ **P5 — TLS, cookies, en-têtes de sécurité**, et la réouverture de
    l'arbitrage `localStorage`.
+   ✅ **TLS et EN-TÊTES : FERMÉS PAR P5.** ⛔ **COOKIES : NON LIVRÉS**, et
+   **l'arbitrage `localStorage` N'A PAS ÉTÉ ROUVERT** — `client/src/jeton.ts`
+   annonçait « il se rouvrira au sous-bloc P5, avec les en-têtes de sécurité » ;
+   les en-têtes sont là, **le stockage n'a pas changé**. Le remède réel
+   (`HttpOnly`) est hors du périmètre de ⑤. **Ce legs passe d'ANNONCÉ à DÛ.**
 7. ⛔ **P5 — l'origine unique.** `PLATEFORME_ORIGINE_CLIENT` est facultative
    **précisément parce que** P5 mettra le client et la plateforme derrière un
    proxy inverse, sur la même origine, où aucune valeur n'a de sens. **Ne pas
    la rendre obligatoire sans rouvrir cet arbitrage.**
+   ✅ **PRONOSTIC CONFIRMÉ PAR P5, ET MESURÉ PAR UN NAVIGATEUR RÉEL.** Le profil
+   `deploiement` sert la page ET l'API par le même `server` 443 ; le client
+   dérive son adresse de `location` (`client/src/adresse-plateforme.ts`) ; la
+   page se charge en `https:`, la montée `wss://` s'établit et le `POST
+   /auth/connexion` est LISIBLE — **avec `PLATEFORME_ORIGINE_CLIENT` absente**,
+   donc sans un seul en-tête CORS. **Elle reste facultative, et c'est le cas
+   nominal.**
 8. ⛔ **Tous — aucune constante de P2 n'est calibrée** (voir ⑥), et **aucun
    jugement d'usage n'a été porté** : c'est la lacune que ce dépôt traîne
    depuis `BPP_MIN`.
@@ -8105,6 +8171,10 @@ agent qui démarre sans la variable et sans rien signaler. En D7 l'implémenteur
 `C:\dev\run-agent.ps1`, sur un partage CIFS lisible depuis l'hôte, comme les 57
 autres variables. Il n'est **pas** dans `argv` — la leçon de P2 (`ps` expose la
 ligne de commande) est respectée. **À rouvrir en P5.**
+> ⚠️ **ROUVERT PAR P5, ET REFERMÉ À MOITIÉ SEULEMENT** (20 août 2026) : le
+> secret reste en clair sur la VM — P5 ne touche pas `scripts/` —, mais il est
+> désormais **RÉPARABLE** : `npm run admin:agent -- --roter`. La décision est
+> écrite et assumée (D11 du plan de P5), pas subie.
 
 ### ③ Le préfixe : 128 bits, et il ne coûte RIEN à la table d'appariement
 
@@ -8302,6 +8372,11 @@ un service de plateforme d'une recette antérieure. **Dit plutôt que tu.**
 - **Le déni de service en une trame reste OUVERT** (E15) : le contrôle de forme
   court **avant** toute garde, et **aucune authentification ne peut fermer ce
   chemin-là**. Le frein est P5 ③.
+  ✅ **FERMÉ PAR P5 — MAIS PAS PAR LE FREIN.** C'est `TRAME_MAX_OCTETS`
+  (`http/serveur.ts`), posé en `maxPayload` sur les DEUX serveurs WebSocket,
+  donc appliqué par `ws` **avant** que la trame n'atteigne le moindre contrôle
+  de forme. Le frein, lui, ne couvre pas le relais. ⚠️ **Ce qui reste ouvert** :
+  beaucoup de connexions, et des connexions **muettes**, que rien ne compte.
 - **Aucune attaque temporelle mesurée.**
 - **Aucune revérification d'une session en cours** — legs n°9 de P2, reconduit.
 - **Rien du comportement d'un agent qui perd son canal pendant une session
@@ -8530,10 +8605,24 @@ RÉDUIT, pas soldé** — voir le point 4 ci-dessous.
 5. ⛔ **P5 — le frein sur `/auth/connexion` ET sur `/agent`.** Les tentatives de
    secret d'enrôlement ne sont bridées par **rien** : même fragilité que
    `/auth/connexion`, sur un chemin neuf.
+   ✅ **FERMÉ PAR P5 (20 août 2026)** sur les DEUX chemins, et la rouge le
+   prouve chemin par chemin : neutraliser la consultation dans `routes-auth.ts`
+   fait tomber **8** tests, tous chez lui ; la neutraliser dans `canal.ts` en
+   fait tomber **2**, tous chez lui. **Aucune ne touche l'autre chemin.**
 6. ⛔ **P5 — le secret d'enrôlement en clair sur la VM**, nommé d'avance par la
    décision D1 du plan et explicitement renvoyé à P5.
+   ⚠️ **RÉDUIT, PAS FERMÉ — et il faut le lire ainsi.** P5 **ne retire pas** le
+   secret en clair de `C:\dev\run-agent.ps1` : il le rend **RÉPARABLE**, par
+   `npm run admin:agent -- --roter`, qui tire un secret neuf, remplace
+   l'empreinte, l'imprime UNE fois, et **ne touche PAS `prefixe_session`**. Le
+   coût demeure ; la contrepartie est nommée.
 7. ⛔ **P5 — TLS, cookies, en-têtes de sécurité, `/sante`, `coturn` restreint**,
    et le déni de service en une trame (E15).
+   ✅ **FERMÉ PAR P5 (20 août 2026)** **sauf les cookies** : TLS par nginx,
+   deux en-têtes sur cinq routeurs, `/sante` avec son cache borné, coturn borné
+   à une adresse (1 contre 23), et le déni de service en une trame fermé par
+   **`maxPayload`** — ⚠️ **pas par le frein**, contrairement à ce que le renvoi
+   « le frein est P5 ③ » laissait croire (voir l'annotation de la section P1).
 8. ⛔ **Tous — la reprise du canal `/agent` n'a JAMAIS été exercée** (E9). Sans
    elle, une coupure réseau rendrait une VM `injoignable` définitivement — la
    raison même pour laquelle elle existe, et rien ne l'a éprouvée.
@@ -8915,6 +9004,12 @@ dans `plateforme/src/http/routes-vm.ts`, dans le document de résultats, et ici.
   sécurité, ni frein, ni `coturn` restreint, ni `/sante`. **Les deux routes
   neuves sont ouvertes à la force brute exactement comme `/auth/connexion`
   l'est.** C'est P5.
+  ✅ **CINQ CLAUSES SUR SIX SONT FERMÉES PAR P5** : TLS (nginx), en-têtes (cinq
+  routeurs), frein, `coturn` restreint, `/sante`. ⛔ **« ni cookies » RESTE
+  VRAI.**
+  🔴 **ET LA PHRASE EN GRAS RESTE VRAIE ELLE AUSSI** : `GET /vm` et
+  `POST /session` **ne sont toujours pas freinées** — voir le legs n°7 de P4
+  plus bas. C'est la seule clause de sécurité de ⑤ qui se ferme à moitié.
 - **AUCUNE CONSTANTE N'EST CALIBRÉE**, et aucune ne l'a été depuis `BPP_MIN` :
   `SEUIL_INJOIGNABLE_MS` et `PERIODE_BATTEMENT` — qui se recalibrent
   **ENSEMBLE** et vivent dans **DEUX DÉPÔTS DISTINCTS** —,
@@ -9022,9 +9117,21 @@ préfixe, pas sa **portée**.
 7. ⛔ **P5 — le frein sur `/auth/connexion`, `/agent`, ET les DEUX routes
    neuves.** `GET /vm` et `POST /session` sont ouvertes à la force brute
    exactement comme `/auth/connexion` l'est.
+   🔴 **CE LEGS NE SE FERME QU'À MOITIÉ, ET IL AURAIT ÉTÉ FACILE DE LE COCHER
+   EN ENTIER** (revue transverse de P5). Le frein couvre `/auth/connexion`,
+   `/auth/rafraichir` et `/agent` — **PAS `GET /vm`, PAS `POST /session`**.
+   Mesuré : les sept sites de consultation du frein sont tous dans
+   `http/routes-auth.ts` et `agents/canal.ts` ; `grep -n frein` sur
+   `routes-vm.ts` et `routes-session.ts` rend **ZÉRO**. Ces deux routes exigent
+   un jeton porteur valide, ce qui n'est pas rien — **mais l'énoncé ci-dessus
+   ne dit pas cela.** ⛔ **La seconde moitié reste DUE après la clôture de ⑤.**
 8. ⛔ **P5 — le secret d'enrôlement en clair dans `C:\dev\run-agent.ps1`** :
    intouché, P4 n'écrit pas dans `scripts/`.
+   ⚠️ **RÉDUIT, PAS FERMÉ** : voir le legs n°6 de P3 ci-dessus. La rotation
+   existe ; le secret est toujours en clair sur la VM.
 9. ⛔ **P5 — TLS, cookies, en-têtes de sécurité, `/sante`, `coturn` restreint.**
+   ✅ **FERMÉ PAR P5 (20 août 2026)** **sauf les cookies** — même détail qu'au
+   legs n°7 de P3.
 10. ⛔ **Tous — `vm.vue_a` reste ORPHELINE** et `depot/session.ts::lireParNom`
     **sans appelant de production**. Le `SELECT` de `depot/vm.ts` exclut
     explicitement `vue_a`, avec son commentaire : c'est la seule garde bon
@@ -9038,6 +9145,358 @@ préfixe, pas sa **portée**.
     cas n'est pas atteignable — **déclaré, non corrigé**.
 
 ---
+## 🛡️ Sous-projet ⑤ Plateforme — sous-bloc P5 : le durcissement, le déploiement, et la CLÔTURE de ⑤ (20 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-19-plateforme-p5-resultats.md`.
+Conception : `docs/superpowers/specs/2026-08-19-plateforme-design.md`.
+Plan : `docs/superpowers/plans/2026-08-19-plateforme-p5.md`.
+Journaux : `docs/superpowers/plans/journaux-plateforme-p5/` — **36 fichiers
+suivis par git**, et **UNE seule famille de lecture** : tout est en UTF-8, sans
+séquence ANSI, sans octet de contrôle. **Ils se `grep`ent à plat, sans `sed`** —
+c'est le sous-bloc le plus simple du dépôt de ce point de vue.
+
+⚠️ **Deux réserves de lecture, relevées plutôt que subies** : les journaux
+capturent la sortie d'un shell dont le profil lance un `ls`, donc quelques
+listings de répertoire s'y intercalent (inoffensifs, **non nettoyés** — nettoyer
+une pièce après coup est ce que ce dépôt refuse) ; et
+`recette/03-critere3-frein.log` fait **2 046 lignes**, ses verdicts étant en fin
+de fichier.
+
+**C'est le DERNIER sous-bloc du sous-projet ⑤.** Le § « Ce que ⑤ laisse
+ouvert » plus bas est la partie à lire si l'on n'en lit qu'une.
+
+### 🔴 Le fait n°1 : le critère ⑤ a trouvé un défaut que RIEN d'autre ne pouvait voir
+
+**Le profil `deploiement` n'avait jamais été LANCÉ, seulement BÂTI.** À la
+première tentative de démarrage, nginx démarre, Postgres est sain, et le service
+meurt au chargement sur `ERR_MODULE_NOT_FOUND … file:///opt/proto/ts/plateforme`.
+
+Trois fichiers de **production** importent `../../../proto/ts/plateforme` —
+`agents/canal.ts`, `agents/registre.ts`, `apps/catalogue.ts` —, c'est-à-dire un
+chemin qui **sort** de `plateforme/`, quand le contexte de construction y était
+borné. **L'image se construisait sans erreur et ne démarrait pas.**
+
+**Ce qui rend ce défaut instructif est la liste de ce qui ne le voyait pas** :
+les 433 tests (ils tournent depuis l'arbre, où le chemin relatif existe),
+`docker build` (rien n'est résolu à la construction), `docker compose config`
+(il analyse, il ne démarre pas), `nginx -t` (aucune opinion sur l'amont),
+`tsc --noEmit` (il résout depuis l'arbre).
+
+🔴 **C'est exactement ce que le critère ⑤ existe pour fermer — « ce qu'un
+navigateur exige et qu'un test serveur ne voit pas » —, étendu à « ce qu'un
+DÉMARRAGE exige et qu'une CONSTRUCTION ne voit pas ».**
+
+Correctif : le contexte devient la racine du dépôt, `proto/ts` est copié à
+`/opt/proto/ts` (l'adresse n'est pas libre : c'est celle que Node nommait), et
+le contexte est borné par **`plateforme/Dockerfile.dockerignore`**, nommé
+d'après son Dockerfile pour ne pas s'appliquer aussi à l'image du Guacamole
+historique bâtie depuis `./Dockerfile`. **Aucun fichier de `proto/` n'est
+touché** : il est seulement copié.
+
+**Second obstacle, de déploiement celui-là, et il est au runbook** : `GET /`
+rendait **403** et ses ressources **500**, sur une pile entièrement saine.
+`client/dist` est en `0750 root:root` (l'umask de ce dépôt) et le **worker**
+nginx tourne en utilisateur `nginx`. Seul le journal d'erreur de nginx le dit.
+`deploiement/README.md` porte désormais le `chmod -R a+rX dist` et sa raison.
+
+### Le verdict des cinq critères, avec leur nombre d'exécutions
+
+**Aucun taux n'est revendiqué nulle part.**
+
+| # | Critère | Verdict | Exéc. |
+| --- | --- | --- | --- |
+| ① | la suite est verte sur le Postgres **déployé** | **TENU** — 433/433 sur 49 fichiers | **2** |
+| ② | coturn n'ouvre que sur l'adresse nommée | **TENU** — **1** adresse contre **23** | **2** lancements |
+| ③ | les tentatives sont freinées, sur les **deux** chemins | **TENU** — 33/33, deux rouges distinctes | **2** (sqlite, postgres) |
+| ④ | aucun secret dans un fichier versionné | **TENU** | **2** |
+| ⑤ | le chemin navigateur réel, derrière le proxy | **TENU**, après le correctif ci-dessus | **2** |
+
+### 🔴 Le discriminant que le plan prescrivait NE DISCRIMINE PAS
+
+La décision D15 du plan nommait `SELECT current_database(), inet_server_port(),
+version()` pour distinguer l'instance de test (5433) de celle de déploiement
+(5434). **Mesuré** :
+
+| Champ | Déployée | Test | Discrimine ? |
+| --- | --- | --- | --- |
+| `inet_server_port()` | 5432 | 5432 | **NON** — port du serveur *dans son conteneur* |
+| `version()` | PostgreSQL 16.15 … | PostgreSQL 16.15 … | **NON** — même image, à dessein |
+| `current_database()` | `plateforme` | `plateforme_test` | par CONVENTION DE NOM seulement |
+| `pg_control_system().system_identifier` | **7676031821417750562** | **7675690416090275874** | **OUI** |
+
+**La rouge du critère ① n'est pas « casser le service » : c'est pointer la suite
+sur l'instance de TEST et vérifier que le discriminant LE DIT.** Jouée : la
+suite est **verte aussi** (433/433) et l'identité de grappe bascule. C'est tout
+le point — *une suite verte, seule, ne dit pas quelle instance elle a touchée.*
+**Le discriminant a été VU distinguer.**
+
+⚠️ **Corroboration au passage** : le pilote du service a **refusé** le
+`system_identifier` brut (« BIGINT hors de l'entier sûr de JavaScript »). Le
+discriminant emprunte donc bien le chemin du service, garde comprise, et non un
+`psql`.
+
+### 🔴 Un test qui ne peut pas échouer, trouvé par une rouge
+
+`agents/canal.test.ts` « (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le
+frein » **RESTE VERT** quand l'unique site d'application du frein sur `/agent`
+est neutralisé. Il n'affirme que `type === 'refus'`, or le refus freiné et le
+refus par mauvais secret sont **identiques par conception** — c'est l'oracle
+d'énumération que le test (c) existe pour verrouiller. **Ce test ne peut donc
+structurellement pas distinguer les deux, quel que soit le produit** ; son titre
+promet plus que sa mesure.
+
+✅ **Le comportement EST couvert**, par (b) et (e), tous deux par le même
+discriminant `compteur.acces() === 0` — « le refus freiné n'a RIEN lu en base ».
+Consigné, non corrigé, légué.
+
+### Les décisions qui survivront au code
+
+- **D1 — le frein a DEUX clés, en mémoire, et rend un REFUS immédiat, jamais un
+  délai.** Un délai occuperait un fil et ferait du frein lui-même une arme.
+  `ECHECS_MAX_COMPTE = 5`, `ECHECS_MAX_ADRESSE = 50`, `FENETRE_MS = 15 min`.
+  ⚠️ **`consulter` et `echec` sont DEUX fonctions, jamais une** : une fonction
+  unique ferait payer un échec à une simple consultation.
+- **D3 — on ne croit `X-Forwarded-For` de personne par défaut, et on lit le
+  DERNIER élément.** `PLATEFORME_PROXY_DE_CONFIANCE` absente ⇒ l'en-tête n'est
+  pas cru **du tout**, ce qui est le défaut SÛR. Mal posée, elle fait dégénérer
+  le frein par adresse en frein **GLOBAL**, et le premier attaquant bloque tout
+  le monde. **La ligne de journal du frein NOMME l'adresse retenue** — c'est le
+  seul endroit où un exploitant voit sa méprise.
+- **D5 — `maxPayload` sur les DEUX serveurs WebSocket.** Le défaut de `ws` est
+  **100 Mio par trame** ; `TRAME_MAX_OCTETS` vaut 256 Kio, appliqué **avant**
+  tout contrôle de forme.
+- **D9 — TLS n'est JAMAIS terminé dans le processus**, et **TURNS sur 443 n'est
+  PAS livré**.
+- **D10 — `--listening-ip` ET `--relay-ip`, tous deux OBLIGATOIRES.** Borner la
+  seule écoute laisserait les allocations de relais sur toutes les interfaces.
+- **D11 — le secret d'enrôlement en clair sur la VM n'est pas RETIRÉ, il est
+  rendu RÉPARABLE.** `npm run admin:agent -- --roter` tire un secret neuf,
+  remplace l'empreinte, l'imprime une fois, et **ne touche PAS
+  `prefixe_session`**.
+- **D14 — une instance, et une seule.** Voir ci-dessous : ce n'est pas un
+  réglage de capacité.
+
+### Les variables neuves, et leurs conventions
+
+| Variable | Effet |
+| --- | --- |
+| `PLATEFORME_PROXY_DE_CONFIANCE` | **variable de PRODUIT.** L'adresse du proxy sur le réseau interne, **et rien d'autre**. `http/adresse-source.ts` ne croit `X-Forwarded-For` que d'un pair figurant ici. 🔴 **ABSENTE, l'en-tête n'est PAS CRU DU TOUT — c'est le défaut SÛR.** ⚠️ **MAL POSÉE, le frein par adresse dégénère en frein GLOBAL** : toutes les requêtes venant du proxy partagent une clé, et le premier attaquant bloque tout le monde. Le seul endroit où cela se voit est la **ligne de journal du frein**, qui NOMME l'adresse retenue |
+| `TURN_LISTENING_IP` | **OBLIGATOIRE**, `${…:?}` : l'adresse sur laquelle coturn écoute. Sans elle, il écoutait sur **toutes** les interfaces de l'hôte, adresse publique comprise (23 adresses relevées contre 1) |
+| `TURN_RELAY_IP` | **OBLIGATOIRE**, `${…:?}` : l'adresse depuis laquelle coturn relaie. Borner la seule écoute laisserait les allocations de relais sur toutes les interfaces |
+| `PROXY_ECOUTE` | l'adresse publiée du proxy, **défaut `127.0.0.1:8443`**. Ouvrir vers l'extérieur est un geste EXPLICITE. ⚠️ Sur la machine de mesure, **443 est occupé par un tiers** (`envoy`/pomerium) |
+
+⚠️ **DEUX IDIOMES COEXISTENT, ET C'EST MESURÉ, PAS ESTHÉTIQUE.**
+`docker-compose.coturn.yml` emploie `${VAR:?message}` ; le profil `deploiement`
+de `docker-compose.plateforme.yml` emploie `env_file`. Raison : **compose
+interpole le fichier ENTIER, profils non demandés compris** — un `${VAR:?}` posé
+dans un service `deploiement` ferait échouer `docker compose … up -d`, la
+commande de la suite de tests, que l'en-tête du fichier promet inchangée.
+`env_file`, lui, est évalué **PAR PROFIL**.
+
+### 🔴 QUATRE états de routage vivent en mémoire, pas trois
+
+`docker-compose.plateforme.yml` et `deploiement/README.md` en annonçaient
+**trois**. Il y en a **QUATRE** :
+
+| Fichier | Ce qu'il retient | Ce que deux instances font |
+| --- | --- | --- |
+| `signaling/appariement.ts` | les sessions et leurs deux pairs | **les deux pairs ne s'apparient JAMAIS** |
+| `agents/registre.ts` | la VM et son socket d'agent, plus les ordres en vol | **`POST /session` ne trouve aucun socket** |
+| `signaling/propriete.ts` | qui possède quel nom de session | la même session revendiquée deux fois |
+| `securite/frein.ts` | les échecs récents | le budget est **multiplié** par le nombre d'instances |
+
+**Le quatrième manquait, et c'est le plus fréquenté.** Il est né du sous-bloc
+**G1**, concurrent de P5 : aucune revue à l'échelle d'une tâche ne pouvait le
+voir apparaître. Corrigé aux deux places.
+
+⚠️ **RIEN DANS LE CODE NE L'EMPÊCHE.** `deploy.replicas: 1` et l'unique amont de
+`deploiement/nginx.conf` sont des **déclarations**, pas des gardes :
+`--scale plateforme=2` donne la panne muette. Le remède minimal est nommé et
+**non livré** — un verrou consultatif en base (`pg_advisory_lock`, sans
+équivalent SQLite), qui échangerait la panne muette contre une rupture bruyante.
+
+### 🔴 Ce que ⑤ LAISSE OUVERT, après son dernier sous-bloc
+
+**Deux promesses du cadrage produit que ⑤ NE TIENT PAS**, et un index qui les
+tairait ferait croire le contraire :
+
+1. 🔴 **« Scalabilité horizontale possible (plus d'état en mémoire) »**
+   (`specs/2026-07-27-refonte-produit-design.md:225`). **La phrase est
+   trompeuse.** Une base retire de la mémoire l'état **durable** ; elle ne
+   retire pas l'état de **routage**, parce qu'un WebSocket vit dans un processus
+   et un seul. Les quatre porteurs ci-dessus le montrent. **Une instance, et une
+   seule**, est la règle — écrite dans le proxy, dans le fichier de composition
+   et dans le runbook, et garantie par aucun d'eux. *(La spec de ⑤ le disait
+   déjà, deux fois ; c'est ici qu'il manquait.)*
+2. 🔴 **« Serveur TURN pour les réseaux restrictifs »**
+   (`specs/2026-07-27-refonte-produit-design.md:223`). **TURNS sur 443 n'est PAS
+   livré**, pour deux raisons écrites dans `docker-compose.coturn.yml` : 443 est
+   occupé par un tiers sur la machine de mesure, et il y a un conflit structurel
+   sur une adresse unique. **LA CIBLE « RÉSEAUX RESTRICTIFS » N'EST DONC PAS
+   COUVERTE** — un client derrière un pare-feu qui ne laisse passer que 443 ne
+   joindra pas ce relais.
+
+**Et les legs propres :**
+
+3. 🔴 **`GET /vm` et `POST /session` ne sont pas freinées.** Le legs n°7 de P4
+   se ferme sur `/auth/*` et `/agent`, **et reste dû sur les deux routes
+   neuves**.
+4. 🔴 **Le relais de signaling n'est couvert par AUCUN frein**, et les
+   connexions **muettes** ne sont comptées par rien — ni par le frein, qui
+   compte des tentatives, ni par nginx, qui ne pose ni `limit_conn` ni
+   `limit_req`.
+5. 🔴 **Le comportement de Postgres sous charge, en concurrence, après
+   redémarrage** — legs de P1, **non levé** par le critère ①, qui éprouve un
+   sous-ensemble SQL. *Il aurait été facile de le croire fermé.*
+6. 🔴 **L'inaccessibilité effective du service ET du relais** : deux
+   configurations, aucune mesure. Elles exigeraient une machine extérieure.
+7. ⚠️ **L'arbitrage `localStorage` passe d'ANNONCÉ à DÛ** : `client/src/jeton.ts`
+   promettait sa réouverture « au sous-bloc P5, avec les en-têtes de sécurité » ;
+   les en-têtes sont là, le stockage n'a pas changé, et le remède réel
+   (`HttpOnly`) est hors du périmètre de ⑤.
+8. ⚠️ **18 sites de journalisation de forme libre**, chiffrés et non migrés.
+9. ⚠️ **`client/src/main.ts:79`** affirme que `borner_a_la_taille_max` « n'est
+   plus branchée nulle part » : **FAUX**, deux appelants vérifiés par la
+   commande (`superviseur/boucle/creation_sortie.rs:58`,
+   `superviseur/table/attribution.rs:35`). **Non corrigé** — c'est **D10** qui
+   l'a rendue fausse, pas P5, et le fichier était tenu par un chantier
+   concurrent.
+10. ⚠️ **`canal.test.ts` « (a) … refusée par le frein » ne peut pas échouer**
+    (voir plus haut).
+
+### Ce que P5 n'établit PAS
+
+- **Aucun taux, nulle part** : deux exécutions par critère au mieux, une par
+  rouge.
+- **L'inaccessibilité du relais coturn depuis Internet** : ② est une **relecture
+  de journal**, pas une sonde.
+- **Que le déploiement FONCTIONNE**, au sens du produit : ① est un dialecte SQL,
+  ⑤ est un chemin navigateur. **Aucune session WebRTC n'est négociée de bout en
+  bout, aucune VM n'est pilotée.**
+- **Le certificat de la recette est auto-signé et sa clé publique est épinglée**
+  au navigateur (`--ignore-certificate-errors-spki-list`, jamais un
+  `--ignore-certificate-errors` global). Aucune chaîne de confiance réelle,
+  aucun HSTS vérifié à l'usage.
+- **Le proxy écoute sur `127.0.0.1:8443`, pas sur 443** — occupé par un tiers.
+  Rien n'est mesuré d'une exposition publique.
+- **Le chemin CORS avec une origine tierce autorisée n'est pas exercé par un
+  navigateur** : page et API sont sur la MÊME origine, donc le navigateur
+  n'émet **aucune** requête préalable. Couvert par les seuls tests d'hôte.
+- **Un seul navigateur** (Chrome 151), sans interface, en `--no-sandbox` imposé
+  par l'exécution en root.
+- **Aucune calibration** : `FENETRE_MS`, `ECHECS_MAX_COMPTE`,
+  `ECHECS_MAX_ADRESSE`, `ENTREES_MAX`, `TRAME_MAX_OCTETS`, `PERIODE_SANTE_MS`
+  rejoignent la liste que ce dépôt tient depuis le chantier C.
+
+### Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔴 **Une image qui SE CONSTRUIT n'est pas une image qui DÉMARRE.** Un contexte
+  de construction trop étroit ne se voit ni au `build`, ni aux tests, ni au
+  `typecheck`, ni à `compose config`. **La seule mesure est de la lancer.**
+- 🔴 **`docker compose config` AVEC un profil RECOPIE le contenu des `env_file`
+  en clair** dans le bloc `environment:` qu'il imprime — jumeau exact du
+  `--static-auth-secret` de coturn, déjà documenté par ce dépôt. **Filtrer par
+  liste blanche, puis prouver l'absence par un `grep -c -F -f` qui rend un
+  COMPTE.**
+- 🔴 **`${VAR:?message}` engage TOUTES les sous-commandes**, profils non demandés
+  compris : un `docker compose … logs` sans les variables rend le message
+  d'interpolation **à la place du journal**. C'est pourquoi le profil
+  `deploiement` emploie `env_file`, évalué **par profil**, là où
+  `docker-compose.coturn.yml` emploie `${VAR:?}` — deux idiomes, deux raisons
+  mesurées.
+- ⚠️ **Un `.dockerignore` à la RACINE s'applique à TOUS les Dockerfile du
+  dépôt.** BuildKit lit `<chemin-du-dockerfile>.dockerignore` en priorité :
+  c'est ce qui permet de borner un contexte sans changer le sens d'un build qui
+  ne nous appartient pas.
+- ⚠️ **`client/dist` doit être lisible par l'utilisateur `nginx`** : le master
+  tourne en root, les workers non.
+- ⚠️ **Chrome refuse de démarrer en root sans `--no-sandbox`**, et le message ne
+  sort que sur son stderr — le pilote, lui, voit « CDP injoignable ».
+- ⚠️ **`inet_server_port()` rend le port du serveur DANS son conteneur**, jamais
+  le port publié. Un discriminant bâti dessus ne discrimine rien.
+- ⚠️ **Un `sed` glouton sur `clé : valeur:port` mange jusqu'au dernier `:`** :
+  la première extraction d'adresse coturn rendait « 3478 » pour adresse. Passe
+  écartée et rejouée.
+- ⚠️ **Une mutation qui casse plus que ce qu'elle vise ne mesure rien.** La
+  « ROUGE B bis » rougissait en cassant le module **au-delà** du frein ;
+  écartée, et **inutile de surcroît** — les deux sites qu'elle ajoutait ne sont
+  pas des sites d'application du frein mais de sa **journalisation**.
+- ⚠️ **Un `grep -c` après correction ne prouve rien dans les deux sens** : un
+  compte non nul n'est pas une correction manquée (ce dépôt annote en CITANT la
+  phrase réfutée), et un compte nul n'est pas une preuve de complétude. **Les
+  places se RELISENT, pas se comptent.**
+
+### Le témoin de clôture, relancé APRÈS la dernière édition de code
+
+```
+./scripts/verify-all.sh   ->   SORTIE 0 — « Les 10 étapes sont passées. »
+```
+
+Pièce versée : `journaux-plateforme-p5/verify-all-cloture.log`. Comptes de cette
+exécution : `cargo` **671** + **83** + 0, `client` **304** / 33 fichiers,
+`proto` **142** / 5, `plateforme` **433** / 49 **sur les deux moteurs**, trois
+`typecheck` à 0.
+
+🔴 **DIX étapes dans le script, DIX-HUIT en-têtes `==>` à l'écran, et je dis
+lequel je compte.** `grep -c '^ *etape "'` rend **10** ; le script ne contient
+qu'UNE occurrence littérale de `==>`, dans le corps de la fonction. Les **8**
+lignes supplémentaires viennent de `client : npm run design:verifier`, qui
+imprime ses propres sous-titres. **Le chiffre retenu est DIX.**
+⚠️ **P3 et P4 annonçaient DIX-SEPT en-têtes ; il y en a DIX-HUIT aujourd'hui.**
+Le script n'a pas changé — 10 étapes aux deux dates. C'est `verifier-design.mjs`
+qui en a gagné un. **Un nombre juste à sa date.**
+
+### Le relevé de tailles, PAR LA COMMANDE, APRÈS la dernière édition
+
+**Le tableau de dette a QUATRE lignes, et P5 n'en ajoute aucune** : `encode.rs`
+**1536**, `windows_source.rs` **630**, `proto/src/plateforme/tests.rs` **561**,
+`proto/ts/plateforme.test.ts` **512**. ✅ **Les deux dernières ont été inscrites
+le même jour par le sous-bloc P1 du chantier presse-papier** ; P5 les a relevées
+indépendamment, aux **mêmes valeurs**, et confirme l'inscription plutôt que de
+la dupliquer.
+
+**Aucun fichier de `plateforme/` ni de `client/src/` ne dépasse 500**, ni même
+450, hormis `plateforme/src/http/routes-applications.test.ts` à **480** — né de
+G1, que P5 ne touche pas, et **déjà au-dessus de la porte à 450** que le plan de
+P5 s'imposait. Le plus gros fichier que P5 touche est `agents/canal.ts` à
+**417** (marge 83).
+
+⚠️ **MARGES ÉTROITES qu'aucun tableau ne signalait, relevées ce jour** :
+`agent/src/demarrage.rs` **491** (marge 9), `agent/src/superviseur/lanceur.rs`
+**488** (12), `agent/src/pont/projfs/rappels.rs` **488** (12). Et
+`client/verify-webrtc.mjs` vaut **494** (marge 6) : il valait **497** au relevé
+D10 — **il a MAIGRI**, ce qui n'arrive presque jamais dans ce fichier.
+
+⚠️ **La table de tailles du PLAN de P5 portait deux chiffres FAUX À SA DATE**
+(`canal.ts` annoncé 198 pour **287** réels, `serveur.ts` 207 pour **236**), et
+ses cinq croissances annoncées sont sous-estimées d'un facteur 2 à 4 —
+`routes-auth.ts` : « ~45 » annoncé, **+156** réel. **La porte à 450 a tenu**,
+mais par 33 lignes, pas par la marge confortable annoncée. **Cause commune avec
+les trois constats suivants : G1 a bougé sous P5.**
+
+### 🔴 Le plan a vieilli sous un chantier concurrent — quatre affirmations, une cause
+
+- **E1 du plan est FAUX** : « la spec nomme `agents/registre.ts` ; ce fichier
+  n'existe pas ». **Il existe** (`0a719a2`, G1). **La spec avait raison.**
+- **« les quatre routeurs »** (tâche 10) : il y en a **CINQ** — déjà relevé et
+  fermé par l'implémenteur, dont le test le dit en toutes lettres.
+- **D12 chiffrait 15 occurrences dans 9 fichiers et 5 fichiers de test** ; c'est
+  **21**, **11** et **8**. Et `obs/journal.ts`, qui portait déjà la correction,
+  **a vieilli à son tour** — périmé par la **tâche 8 de sa propre branche**,
+  deux tâches après sa rédaction. ⚠️ **La DETTE, elle, n'a pas bougé : 18 sites
+  de forme libre**, les deux additions étant structurées.
+- **Le quatrième état de routage en mémoire** (voir plus haut).
+
+**Six affirmations de code devenues fausses DANS LEUR PROPRE BRANCHE**, toutes
+corrigées à leur place : `config.ts:25`, `agents/canal.ts:105` (le remède
+existait **cent soixante lignes plus bas dans le même fichier**),
+`agents/canal.test.ts:131`, `signaling/resilience.test.ts:26` (**faux deux
+fois** : le futur est passé, ET c'était le mauvais remède — c'est `maxPayload`
+qui ferme E15, pas le frein), `client/src/jeton.ts:18`, `obs/journal.ts:6-9`.
+
+---
+
 ## 🎨 Sous-projet ⑥ Design system — sous-bloc S1 : le socle, et les sept contrôles (19 août 2026)
 
 Résultats complets :
