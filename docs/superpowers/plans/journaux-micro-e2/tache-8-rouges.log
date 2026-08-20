@@ -1,0 +1,69 @@
+# Tâche 8 — les rouges et les mutations, relevées le 20 août 2026
+
+## ⚠️ AVEU D'ORDRE, à lire avant le reste
+Pour `micro::boucle_locale::identifiant_capte`, **l'implémentation et ses tests
+ont été écrits dans la MÊME édition**, et sont donc passés au vert du premier
+coup. L'ordre prescrit — test d'abord, vu ROUGE, puis le vert — n'a PAS été
+tenu sur cette fonction. Le rouge a été joué **par RETRAIT** de
+l'implémentation, les tests restant en place :
+
+$ cd agent && cargo test -p agent boucle_locale
+error[E0432]: unresolved import `super::identifiant_capte`
+error: could not compile `agent` (bin "agent" test) due to 1 previous error; 4 warnings emitted
+
+puis restauration -> test result: ok. 9 passed; 0 failed.
+
+C'est un rouge RÉEL — cet état du code échoue vraiment — mais ce n'est pas
+l'ordre, et ce qui manque ne se rattrape pas. Compensé par quatre mutations,
+toutes tuées, ci-dessous. **Déclaré plutôt que dissimulé.**
+
+## MUTATIONS sur `micro/boucle_locale.rs`
+Source sauvegardée, `diff` non vide relevé avant chaque exécution, source
+restaurée et vérifiée par `sha256sum -c` à la fin.
+
+M6 « une demande introuvable rend la demande au lieu du repli »
+  diff non vide : 6 lignes
+  test ...une_demande_introuvable_retombe_sur_le_defaut_comme_resoudre ... FAILED
+    left: Some("Realtek") / right: None
+  test result: FAILED. 8 passed; 1 failed.                              -> TUÉE
+
+M7 « une demande ambiguë élit le premier candidat »
+  diff non vide : 6 lignes
+  test ...une_demande_ambigue_retombe_sur_le_defaut_comme_resoudre ... FAILED
+    left: Some("Haut-parleurs (Steam Streaming Speakers)") / right: None
+  test result: FAILED. 8 passed; 1 failed.                              -> TUÉE
+
+M8 « l'élu est désigné par son NOM et non son identifiant »
+  diff non vide : 4 lignes
+  test ...une_demande_qui_elit_rend_son_identifiant ... FAILED
+    left: Some("Haut-parleurs (Steam Streaming Speakers)")
+    right: Some("{0.0.0.00000000}.{8695a111}")
+  test result: FAILED. 8 passed; 1 failed.                              -> TUÉE
+
+M9 « la comparaison de la garde redevient sensible à la casse »
+  diff non vide : 4 lignes
+  test ...la_comparaison_est_INSENSIBLE_a_la_casse_de_l_identifiant ... FAILED
+    left: Aucune / right: Risque
+  test result: FAILED. 8 passed; 1 failed.                              -> TUÉE
+
+Restauration vérifiée : `sha256sum -c` -> src/micro/boucle_locale.rs: Réussi
+
+## CE QUI N'A PAS DE ROUGE, ET POURQUOI
+`wasapi/rendu.rs` est `#![cfg(windows)]` : `resoudre_cable` et la moitié COM
+d'`identifiant_capte` ne sont éprouvées par AUCUN test d'hôte. Leur seul
+contrôle ici est `cargo check --target x86_64-pc-windows-gnu` — types, emprunts,
+visibilités, durées de vie ; **pas l'édition de liens**, ni le comportement.
+C'est exactement ce que le plan prévoit (« ce qui reste ici est de la plomberie
+COM que seule la tâche 12 éprouve »), et ce que la tâche 12 devra mesurer.
+
+## CONTRÔLES DE FIN DE TÂCHE
+$ cargo test -p agent                            -> 697 passed; 0 failed  (693 à l'entrée de la tâche, +4)
+$ cargo check --target x86_64-pc-windows-gnu     -> sortie 0, 41 avertissements
+   TOUS `dead_code` — vérifié par filtrage : aucun avertissement dont le libellé
+   ne soit « never used » / « never constructed » / « never read ».
+
+## LIGNES, PAR LA COMMANDE
+  353 src/wasapi/rendu.rs                        (216 à l'entrée, +137)
+  154 src/micro/boucle_locale.rs                 (112 à l'entrée, +42)
+   62 src/micro/boucle_locale/tests_capte.rs     (neuf)
+  483 src/micro.rs                               (INCHANGÉ)
