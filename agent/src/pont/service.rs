@@ -302,6 +302,24 @@ fn cause_de(code: proto::fichiers::CodeEchec) -> Erreur {
         // d'exécution.
         CodeEchec::TropGrand => Erreur::Inattendue,
         CodeEchec::Interne => Erreur::Inattendue,
+        // Les TROIS codes de F2. Ils naissent d'une poussée d'ÉCRITURE, donc
+        // d'une commande qui ne complète aucun rappel ProjFS.
+        //
+        // 🔴 **AUCUN D'EUX N'ATTEINT UNE APPLICATION WINDOWS, et la traduction
+        // ci-dessous ne sert QU'AU JOURNAL.** À l'instant où ils arrivent,
+        // l'application a refermé son handle depuis longtemps et cru avoir
+        // enregistré : il n'y a plus rien à compléter. Sans cette phrase, un
+        // successeur lirait `ERROR_DISK_FULL` comme un code rendu à quelqu'un.
+        CodeEchec::DisquePlein => Erreur::DisquePlein,
+        CodeEchec::DejaPresent => Erreur::DejaPresent,
+        // ⚠️ `CasseAmbigue` PARTAGE `Inattendue` avec `TropGrand`, et c'est
+        // délibéré : `pont::erreurs` n'a pas de variante pour ce refus, en
+        // créer une appartiendrait à la table complète des douze `HRESULT` de
+        // **F3**, et la spec §5.1 interdit qu'un même code serve deux causes
+        // distinctes — la contrainte porte sur le CODE, pas sur le fourre-tout,
+        // dont c'est précisément le rôle d'être nommé comme tel. Ce qui porte
+        // la cause est le JOURNAL et la page-shell, qui nomment le fichier.
+        CodeEchec::CasseAmbigue => Erreur::Inattendue,
     }
 }
 
