@@ -52,6 +52,17 @@ pub enum Recu {
     /// par `SourceDistante::plein_ecran` jusqu'à ce que
     /// `plein_ecran_a_annoncer` le consomme.
     PleinEcran { actif: bool },
+    /// Le presse-papier de la VM a changé (sous-bloc P1). Poussé non
+    /// sollicité, **au changement seulement** : c'est le capteur qui détient
+    /// le presse-papier et qui sonde son numéro de séquence.
+    ///
+    /// `texte` vaut `None` sur un REFUS de taille (au-delà de
+    /// `presse_papier::PRESSE_PAPIER_MAX`) — le contenu est refusé, jamais
+    /// tronqué —, et `octets` porte alors la taille refusée, pour que le
+    /// bandeau du navigateur puisse la dire. Retenu par
+    /// `SourceDistante::presse_papier` jusqu'à ce que
+    /// `presse_papier_a_annoncer` le consomme.
+    PressePapier { texte: Option<String>, octets: u32 },
 }
 
 pub struct SourceDistante {
@@ -94,6 +105,14 @@ pub struct SourceDistante {
     /// d'état courant jumeau ici, contrairement à `sommeil`/`endormie` : rien
     /// dans l'enfant n'a besoin de relire le plein écran hors de l'annonce.
     plein_ecran: Option<bool>,
+    /// Dernier presse-papier reçu du capteur, en attente d'être annoncé au
+    /// navigateur. Consommé par `presse_papier_a_annoncer`.
+    ///
+    /// **Même régime d'écrasement que `plein_ecran`** : deux copies arrivées
+    /// entre deux lectures s'écrasent, seule la dernière survit. C'est correct
+    /// — le presse-papier EST un état, pas un historique, et le navigateur
+    /// n'aurait rien à faire d'une copie que l'utilisateur a déjà remplacée.
+    presse_papier: Option<(Option<String>, u32)>,
     /// État de sommeil COURANT, tel que le capteur le décrit.
     ///
     /// **Distinct de `sommeil` juste au-dessus, et non redondant avec lui** :
@@ -140,6 +159,7 @@ impl SourceDistante {
             part: None,
             audio: None,
             plein_ecran: None,
+            presse_papier: None,
             endormie: true,
             rattache: false,
         }
@@ -190,6 +210,9 @@ impl VideoSource for SourceDistante {
                 }
                 Ok(Recu::PleinEcran { actif }) => {
                     self.plein_ecran = Some(actif);
+                }
+                Ok(Recu::PressePapier { texte, octets }) => {
+                    self.presse_papier = Some((texte, octets));
                 }
                 // Le cas COURANT et normal : rien de neuf ce tour-ci. La
                 // boucle de transport interroge à 100 Hz une source qui
@@ -378,6 +401,11 @@ impl VideoSource for SourceDistante {
         self.plein_ecran.take()
     }
 
+    /// Rend le presse-papier en attente d'annonce, et le consomme.
+    fn presse_papier_a_annoncer(&mut self) -> Option<(Option<String>, u32)> {
+        self.presse_papier.take()
+    }
+
     /// Rend l'état de sommeil courant, sans le consommer.
     fn est_endormie(&self) -> bool {
         self.endormie
@@ -407,3 +435,12 @@ impl VideoSource for SourceDistante {
 // pour un plafond de projet à 500. Voir l'en-tête de `distante/tests.rs`.
 #[cfg(test)]
 mod tests;
+
+// Les tests des ÉTATS poussés par le capteur (visibilité, sommeil, part,
+// audio, plein écran, presse-papier) vivent dans un TROISIÈME fichier :
+// `distante/tests.rs` était à 474 lignes pour ce même plafond de 500, et le
+// test du presse-papier (sous-bloc P1, tâche 10) en aurait entamé la marge.
+// Voir l'en-tête de `distante/tests_etats.rs`.
+#[cfg(test)]
+#[path = "distante/tests_etats.rs"]
+mod tests_etats;
