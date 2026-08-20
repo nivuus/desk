@@ -783,6 +783,17 @@ lecture du texte, le trajet complet capteur → enfant → client, et
 n'est nécessaire : à ce stade **l'agent n'écrit jamais** le presse-papier, la
 boucle ne peut pas exister.
 
+> ⚠️ **PRÉMISSE JUSTE, CONCLUSION TROMPEUSE — annoté le 20 août 2026, revue
+> transverse de fin de P1.** P1 n'écrit effectivement jamais le presse-papier,
+> et la boucle d'écho ne peut effectivement pas exister. **Mais P1 LIVRE
+> POURTANT le garde n°2 de D5** (`agent/src/presse_papier.rs`, comparaison au
+> dernier contenu émis), et pour une raison que cette phrase ne pouvait pas
+> anticiper : la sonde P0 a **MESURÉ** que `GetClipboardSequenceNumber` **bouge
+> sur une réécriture identique** (`q2="bouge"`, deux exécutions). Le garde
+> n'absorbe donc pas un écho — il absorbe un **faux positif du compteur**. Un
+> lecteur qui repartirait de cette ligne conclurait que P1 n'embarque aucun
+> garde, et le retirerait.
+
 Chemin : `GetClipboardSequenceNumber` → `DepuisCapteur::PressePapier { texte }`
 poussé sur la connexion média → **bras dans `pont_media.rs`** → `Recu::PressePapier`
 → champ consommé sur `SourceDistante` → branche `a1…` de `tick.rs` →
@@ -800,6 +811,27 @@ poussé sur la connexion média → **bras dans `pont_media.rs`** → `Recu::Pre
 trace `presse-papier` apparaît ». Elle apparaîtrait aussi sur un mécanisme qui ne
 lit rien. **Le critère ① se juge sur le CONTENU collé localement**, pas sur une
 ligne de journal — c'est la leçon de F1 (D7), payée trois fois.
+
+> ⚠️ **CE QUE LA RECETTE DE P1 A RÉELLEMENT PU JUGER — annoté le 20 août 2026.**
+> Deux lignes de ce tableau ont vieilli, et une exigence n'a pas pu être tenue :
+>
+> - **① « collable dans une application locale » n'a PAS pu être jugé.** Le
+>   témoin de mesurabilité (E11 du plan), joué avant tout critère, établit que
+>   **le niveau 2 est NON MESURABLE sur ce montage** : aucun serveur X n'est
+>   joignable, `xclip` et `wl-paste` sont absents, `xsel` refuse en « Can't open
+>   display ». Ce que la recette a jugé est le **niveau 1** — le texte
+>   réellement passé à `writeText`, la résolution de sa promesse, et la
+>   relecture par la page elle-même. **Ce n'est pas un échec du produit, c'est
+>   une mesure non prise**, et ce n'est PAS le niveau 2 : un presse-papier
+>   interne au processus Chromium suffirait à le satisfaire.
+> - **② « fait déclaré non mesuré, §8 » : IL EST MESURÉ.** La sonde P0 rend
+>   `q2="bouge"` sur **deux exécutions** — le compteur bouge bien sur une
+>   réécriture identique. **Le critère est donc MESURABLE**, et il a été tenu :
+>   1 message après la copie neuve, **1** après la recopie identique, 2 après
+>   une copie différente.
+> - **③ et ④ ont été tenus tels qu'écrits**, deux exécutions chacun.
+>
+> Détail et pièces : `docs/superpowers/plans/2026-08-19-presse-papier-p1-resultats.md`.
 
 ### P2 — Le navigateur colle dans la VM
 
@@ -957,13 +989,26 @@ extractions préalables et n'en a payé aucune.
 
 - **Aucun taux.** Comme tous les sous-blocs de ce dépôt, une exécution par
   critère au mieux. Aucun énoncé ne portera de fréquence de succès.
-- **Rien du presse-papier Windows n'est MESURÉ à ce jour.**
+- ~~**Rien du presse-papier Windows n'est MESURÉ à ce jour.**
   `GetClipboardSequenceNumber`, `AddClipboardFormatListener`, le comportement du
   compteur sur une réécriture identique, et le fait qu'une écriture par nos soins
   fasse bien bouger le compteur : **tout cela est de la documentation d'API**, pas
-  un relevé. La VM était tenue par un chantier concurrent. **Le premier geste de
+  un relevé. La VM était tenue par un chantier concurrent.~~ **Le premier geste de
   P1 est de le mesurer**, et le critère ② de P1 dit explicitement quoi faire si le
   compteur ne se comporte pas comme annoncé.
+  > ✅ **FAIT, et c'est la seule ligne de ce §8 que le chantier a déjà réfutée
+  > (20 août 2026, sonde P0, DEUX exécutions).** `GetClipboardSequenceNumber`
+  > est **stable au repos**, **bouge à chaque copie** (5 mouvements, 5 lectures,
+  > **0 échec d'ouverture**), **bouge sur une réécriture identique**
+  > (`q2="bouge"`) et **bouge sur notre propre écriture** (`q3="bouge"`).
+  > `AddClipboardFormatListener` n'a, lui, **pas** été mesuré : D2 l'écarte, et
+  > la sonde ne l'a pas éprouvé — cette moitié-là de la ligne tient toujours.
+  > Pièces : `journaux-presse-papier-p1/p0-sonde-{1,2}.log`.
+  > ⚠️ **L'instrument de cette sonde a rendu un FAUX verdict éliminatoire à sa
+  > première exécution** (trois zéros sur une VM saine, parce que rien n'avait
+  > été copié depuis le démarrage de la station de fenêtres) : **un verdict
+  > négatif exige que la chose mesurée soit ABSENTE, pas seulement nulle.**
+  > Journal du défaut conservé : `p0-sonde-0-instrument-defectueux.log`.
 - **Rien d'un navigateur autre que Chromium**, et rien d'un Chromium **avec
   interface**. Les relevés du §3 sont sans interface, une exécution chacun. Une
   fenêtre de dialogue de permission n'a jamais été affichée à un humain.
