@@ -31,6 +31,24 @@ const URL_POSTGRES =
 /// sur l'un des deux moteurs, sans qu'aucun test ne rougisse.
 export const INSTANT_MIGRATION = 1_700_000_000_000;
 
+/// Le nombre de connexions qu'UNE base de test garde ouvertes.
+///
+/// 🔴 SANS CETTE BORNE, LA SUITE FAIT TOMBER SON INSTANCE — mesuré le 20 août
+/// 2026. Le défaut de `pg` est DIX clients par pilote ; la suite ouvre
+/// cent vingt-huit bases sur vingt-deux fichiers que vitest exécute EN
+/// PARALLÈLE, et chaque `baseNeuve` ouvre DEUX pilotes. Dix bases concurrentes
+/// suffisent alors à atteindre le `max_connections = 100` de l'instance :
+/// elle a rendu `FATAL: sorry, too many clients already`, puis un backend a
+/// été `terminated by signal 11: Segmentation fault` en pleine migration, et
+/// la suite est repassée en 181 échecs sur un code parfaitement sain.
+///
+/// ⚠️ DEUX, ET NON UN : `transaction` PREND un client pour toute la durée de
+/// son corps (voir le piège nommé dans `pilote-postgres.ts`), et une requête
+/// émise sur le pool pendant ce temps-là attendrait indéfiniment un second
+/// client si le pool n'en avait qu'un. ⚠️ NON CALIBRÉE au-delà de ce
+/// raisonnement : aucune mesure n'a cherché la valeur optimale.
+const MAX_CLIENTS_TEST = 2;
+
 /// Ouvre une base VIERGE et y applique les migrations.
 ///
 /// SQLite : une base en mémoire, donc neuve par construction.
@@ -50,12 +68,15 @@ export async function baseNeuve(nom: string): Promise<Pilote> {
     // pas être un paramètre de requête, sur aucun moteur. Il est construit
     // ici, à partir de valeurs que seul ce fichier fournit, et filtré sur
     // [a-z0-9_] — aucune entrée extérieure n'y arrive.
-    const admin = ouvrirPostgres(URL_POSTGRES);
+    const admin = ouvrirPostgres(URL_POSTGRES, MAX_CLIENTS_TEST);
     await admin.executer(`DROP SCHEMA IF EXISTS ${schema} CASCADE`, []);
     await admin.executer(`CREATE SCHEMA ${schema}`, []);
     await admin.fermer();
 
-    const p = ouvrirPostgres(`${URL_POSTGRES}?options=-c%20search_path%3D${schema}`);
+    const p = ouvrirPostgres(
+        `${URL_POSTGRES}?options=-c%20search_path%3D${schema}`,
+        MAX_CLIENTS_TEST,
+    );
     await appliquerMigrations(p, REPERTOIRE_MIGRATIONS, INSTANT_MIGRATION);
     return p;
 }

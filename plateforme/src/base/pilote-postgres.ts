@@ -55,8 +55,29 @@ pg.types.setTypeParser(pg.types.builtins.INT8, (texte: string) => {
     return valeur;
 });
 
-export function ouvrirPostgres(url: string): Pilote {
-    const pool = new pg.Pool({ connectionString: url });
+/// `maxClients` borne le nombre de connexions que CE pilote garde ouvertes.
+///
+/// 🔴 IL EXISTE POUR LES TESTS, ET LE DÉFAUT EST CELUI DE `pg` (dix), qui est
+/// le bon pour un SERVICE : une instance ouvre exactement UN pilote, pour
+/// toute sa vie, et lui rogner sa concurrence n'aurait aucun sens.
+///
+/// ⚠️ MESURÉ LE 20 AOÛT 2026, ET CE N'EST PAS UNE PRÉCAUTION THÉORIQUE : la
+/// suite ouvre CENT VINGT-HUIT bases (`grep -c 'baseNeuve('`), réparties sur
+/// vingt-deux fichiers que vitest exécute EN PARALLÈLE, et chaque `baseNeuve`
+/// ouvre DEUX pilotes (un d'administration, un de travail). À dix clients
+/// chacun, dix bases concurrentes atteignent exactement le
+/// `max_connections = 100` de l'instance de test. Le jour où P5 a ajouté ses
+/// trois fichiers de test, l'instance a rendu
+/// `FATAL: sorry, too many clients already` PUIS un backend a été
+/// `terminated by signal 11: Segmentation fault` en pleine migration : la
+/// suite entière est repassée en 181 échecs, sur un code parfaitement sain.
+/// La cause était la SUITE, pas le service — mais une suite qui fait tomber
+/// son instance ne mesure plus rien.
+export function ouvrirPostgres(url: string, maxClients?: number): Pilote {
+    const pool = new pg.Pool({
+        connectionString: url,
+        ...(maxClients === undefined ? {} : { max: maxClients }),
+    });
     return {
         async executer(sql, params) {
             const r = await pool.query(rendreMarqueurs(sql), params);
