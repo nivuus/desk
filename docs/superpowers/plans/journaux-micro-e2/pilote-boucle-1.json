@@ -1,0 +1,231 @@
+{
+  "scenario": "ecoute",
+  "session": "njM-lkUQyT-n8oXT_4pEdg:e2-boucle-1",
+  "wav": "/tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/38dfbdff-6ff8-4fcc-b60c-f9c36ea58b66/scratchpad/e2/wav/ton-440.wav",
+  "url": "http://127.0.0.1:5173/?session=njM-lkUQyT-n8oXT_4pEdg%3Ae2-boucle-1&plateforme=http%3A%2F%2F127.0.0.1%3A8091&signaling=ws%3A%2F%2F127.0.0.1%3A8091",
+  "duree": 5000,
+  "debut": "2026-08-20T20:29:58.651Z",
+  "etapes": [
+    {
+      "quoi": "ready",
+      "issue": "le bouton #micro est resté masqué 90 s"
+    }
+  ],
+  "stats": [
+    {
+      "etiquette": "apres-ready",
+      "entrant": [],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 0,
+          "bytesSent": 0,
+          "mid": "2"
+        }
+      ],
+      "paire": null,
+      "candidats": [
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.0.1",
+          "port": 33338
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.18.0.1",
+          "port": 40260
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.17.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.2.1",
+          "port": 58461
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.2.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.1",
+          "port": 50283
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.20.0.1",
+          "port": 50492
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.23.0.1",
+          "port": 46452
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "90.87.35.18",
+          "port": 58091
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.18.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.19.0.1",
+          "port": 35891
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.17.0.1",
+          "port": 55154
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.20.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "90.87.35.18",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.23.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.3.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.27.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.22.0.1",
+          "port": 54539
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.19.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 34806
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.22.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 36054
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.27.0.1",
+          "port": 57237
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.0.1",
+          "port": 9
+        }
+      ],
+      "etatIce": "disconnected",
+      "etatCnx": "failed",
+      "horodatage": "2026-08-20T20:31:29.399Z"
+    }
+  ],
+  "boutonParait": false,
+  "etatBoutonInitial": {
+    "hidden": true,
+    "disabled": false,
+    "etat": "ferme",
+    "titre": "Microphone — cliquez pour parler"
+  },
+  "console": [
+    "[debug] [vite] connecting...",
+    "[debug] [vite] connected.",
+    "[debug] [instrumentation resize] declenchement ResizeObserver Object",
+    "[warning] Resize différé : canal de contrôle non ouvert"
+  ],
+  "erreursPage": [],
+  "code": 1
+}
