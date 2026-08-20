@@ -9395,10 +9395,18 @@ pas du produit ce n'est pas une lacune, mais c'est une **portée**.
    des 28 tokens en attente dont le sort soit ouvert ; les 27 autres ont un
    sous-bloc nommé. ⚠️ S'il est retiré, il faut aussi le retirer de la galerie,
    qui l'emploie — l'inclusion ① de §7.6 le dirait.
+   ✅ **TRANCHÉ PAR S4 (20 août 2026) : IL EST CÂBLÉ**, sur `#stats`, l'appelant
+   unique que la spec §4.3 désigne. **La liste d'attente est VIDE** — 52 tokens
+   déclarés pour 52 employés — et **elle ne disparaît pas pour autant** : c'est
+   l'ÉGALITÉ de §7.6 qui vaut, pas la liste.
 2. ⛔ **Les trois longueurs hors échelle de D2** — `padding: 6px`,
    `font-size: 18px`, `letter-spacing: 0.02em` — sont à reprendre par **S4**,
    seul sous-bloc autorisé à toucher ces éléments. **La clause « aucune longueur
    hors échelle » du §8 reste fausse jusque-là.**
+   ✅ **REPRISES PAR S4, ET LA CLAUSE EST DEVENUE UNE COMMANDE** : elles étaient
+   **SIX** à la fin de S3 (les trois de `shell.css` et `connexion.css` s'étant
+   ajoutées), et **§7.10** — le premier contrôle de ⑥ qui mesure une longueur —
+   les fait toutes tomber : **0 occurrence, 0 valeur**.
 3. ⛔ **Le plafond de 12 Kio n'est calibré par rien** : « un garde-fou contre une
    addition massive, pas une cible de budget » (spec §7.7).
 4. ⛔ **`prefers-reduced-motion` est nommé et non pris** — le moins cher des
@@ -9817,9 +9825,11 @@ trouvé son instance. **Il n'y a donc rien à attribuer à personne.**
 5. ⛔ **`--police-mono`** — la seule entrée dont le sort soit encore ouvert : ou
    S4 le câble sur `#stats`, ou il le retire. **S2 ne l'a pas rouvert**, et pas
    par omission.
+   ✅ **S4 A CÂBLÉ (20 août 2026)**, et la liste d'attente est VIDE.
 6. ⛔ **Les trois longueurs hors échelle de `style.css`**, et la clause du §8
    qu'elles rendent fausse. ⚠️ **Elles sont SIX à la fin de S3** — voir le §⑩
    ci-dessus ; les trois de `style.css` restent celles que S4 doit reprendre.
+   ✅ **LES SIX SONT TOMBÉES (S4)**, et la clause est mesurée par **§7.10**.
 
 **Sans sous-bloc assigné :**
 
@@ -9842,6 +9852,12 @@ trouvé son instance. **Il n'y a donc rien à attribuer à personne.**
     nommé au §⑨. ⚠️ **INCHANGÉ APRÈS S3, À 283** : aucune tâche n'y a ajouté
     d'assertion, et la revue transverse n'y a modifié que trois mots de
     commentaire (« sept » → « huit »), à longueur égale.
+    ✅ **TRAITÉ PAR S4, ET AVANT L'ADDITION** (tâche 1) : le lecteur de feuille
+    est extrait vers `client/src/design/css.ts`, **pour que les gardes neufs de
+    S4 le réemploient au lieu de le recopier**. Le fichier est à **245** après la
+    revue transverse — relevé par la commande. ⚠️ **Le point de chute nommé au
+    §⑨ reste ouvert** : cette extraction sort l'OUTIL, pas les gardes, et laisse
+    G5 auprès de sa source. Elle est **complémentaire, pas substitutive**.
 12. ⛔ **Le défaut à deux réglages de `build-agent.sh`/`run-agent.sh`** ne
     concerne pas ⑥ — ses journaux sont propres —, mais il reste **non corrigé**
     pour les chantiers qui passent par la VM.
@@ -10213,16 +10229,35 @@ reconstruit, pas reprise du document : 6 374** — donc **+1 637**, dont **+546*
    encore ouvert : ou S4 le câble sur `#stats`, ou il le retire. **S3 ne l'a pas
    rouvert**, et la mitigation de la tâche 7 empêchera qu'il soit re-étiqueté en
    silence.
+   ✅ **CÂBLÉ PAR S4 (tâche 6)** : la liste d'attente est **VIDE**, 52 déclarés
+   pour 52 employés, et elle **reste** — supprimer le fichier supprimerait
+   l'ÉGALITÉ elle-même. **L'énoncé de S1 « le jour où elle est vide, tout ce bloc
+   disparaît avec elle » est CORRIGÉ plutôt qu'exécuté.**
 2. ⛔ **Les SIX longueurs hors échelle**, et **non trois** — `6px`, `18px`,
    `0.02em` (`style.css`), `72rem`, `18rem` (`shell.css`), `26rem`
    (`connexion.css`). **Les trois de `style.css` sont celles que S4 doit
    reprendre**, la fenêtre de session lui appartenant.
+   ✅ **LES SIX SONT TOMBÉES (S4, tâches 5 à 8)**, et la clause du §8 cesse d'être
+   une dette d'énoncé : **§7.10** la mesure, et rend **0 occurrence, 0 valeur**
+   contre **8 occurrences / 6 valeurs** à sa naissance.
 3. ⛔ **L'écran plein cadre des états terminaux** et le **Window Controls
    Overlay** (spec §6). ⚠️ **WCO dépend du manifest de ②**, que ⑥ ne livre pas.
+   ✅ **L'ÉCRAN EST LIVRÉ (S4, tâche 9)**, avec ses six tests, dont celui du SENS
+   INVERSE. 🔴 **LE WCO EST LIVRÉ SANS AUCUN CRITÈRE DE RECETTE, et c'est
+   délibéré** : aucun manifeste n'existant, aucun état atteignable ne fait agir la
+   règle, et un critère vacueux se lirait comme une preuve. Un **garde de forme**
+   prouve qu'elle est **INERTE**, jamais qu'elle fonctionne. **Destinataire nommé
+   du legs : la recette du sous-bloc G5 de la gestion d'apps.**
 4. ⛔ **La fenêtre de session tout entière** — S3 ne l'a pas touchée, et le
    critère ③ le **mesure**. C'est le dernier sous-bloc où cette phrase est vraie.
+   ✅ **ET ELLE L'EST : S4 L'A TOUCHÉE**, et son critère ③ le mesure **dans le sens
+   inverse, par le même montage** — `git diff --stat` non vide, et **les CINQ**
+   actifs CSS bâtis changent de hachage.
 5. 🔴 **`attente.mjs` à 227 pour un seuil d'extraction à 240** : la prochaine
    addition de doctrine **extrait**.
+   ✅ **TENU PAR S4 (tâche 6)** : la doctrine est partie vers
+   `client/outils/tokens-orphelins/sous-blocs-clos.mjs`, et `attente.mjs` est à
+   **221** — relevé par la commande après la revue transverse.
 
 **Sans sous-bloc assigné :**
 
@@ -10275,6 +10310,295 @@ reconstruit, pas reprise du document : 6 374** — donc **+1 637**, dont **+546*
   le plan nommait `920a1eb`, mais des chantiers voisins avaient touché `client/`
   entre lui et le premier commit de S3. **Prendre le parent du premier commit du
   sous-bloc**, sinon on s'attribue le travail des voisins.
+
+
+---
+
+## 🎨 Sous-projet ⑥ Design system — sous-bloc S4 : la fenêtre de session (20 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-20-design-system-s4-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-20-design-system-s4.md`.
+Spécification : `docs/superpowers/specs/2026-08-19-design-system-design.md`.
+Journaux : `docs/superpowers/plans/journaux-design-s4/` — **UNE SEULE FAMILLE DE
+LECTURE, et c'est la première fois du sous-projet** :
+
+| Famille | État | Ce qu'il faut faire |
+| --- | --- | --- |
+| **tous** les fichiers de ce répertoire | UTF-8 valide, **ni séquence ANSI, ni `\r`, ni octet NUL** — relevé par la commande APRÈS la dernière écriture (`familles-de-lecture.txt`) | **rien** : ils se `grep`ent à plat, sans `sed`, sans `grep -a` |
+
+⚠️ **Ce n'est pas un mérite** : les trois familles de D6, les quatre de D8 et les
+trois de D9 viennent toutes d'un chemin qui passe par la **VM Windows**, dont
+`run-agent.sh` et `build-agent.sh` ne posent pas `[Console]::OutputEncoding`.
+⛔ **S4 n'a pas touché la VM** — ⑥ est un sous-projet **navigateur** (spec §9).
+Le défaut à deux réglages reste entier ; il n'est simplement pas rencontré.
+
+**S4 est le DERNIER sous-bloc de ⑥.** Il reprend la fenêtre de session — la seule
+surface que ⑥ n'avait jamais touchée — et solde les trois questions que la
+spécification lui laissait.
+
+### ① Le fait qui gouverne le sous-bloc n'était dans aucun document : un défaut d'ENCRE
+
+**Sous le thème clair, la fenêtre de session écrivait du quasi-noir sur un voile
+quasi-noir.** `base.css` pose `color: var(--texte-fort)` sur `body` ; en clair
+`--texte-fort` vaut `#10131a` ; et les six voiles sont **hors thème**, donc noirs
+dans les deux.
+
+**Ce n'est pas une régression du produit d'origine : c'est un effet de bord de
+S1.** Avant lui, `style.css` posait `color-scheme: dark` en dur et une encre
+unique — **la fenêtre de session n'avait pas de thème clair**. S1 lui en a donné
+un, et rien n'a remarqué que les voiles, eux, ne suivaient pas.
+
+**Aucun contrôle ne pouvait le voir, et pour une raison écrite** : les six voiles
+sont hors des paires de contraste, « leur lisibilité dépend de la vidéo qui est
+dessous, qui n'est pas connaissable ». ⚠️ **L'argument est juste pour le VOILE ; il
+ne l'est pas pour l'ENCRE**, qui, elle, est parfaitement connaissable. Remède : un
+**septième** token hors thème, `--sur-voile: #e6e8eb`, et une **53ᵉ** paire —
+`--sur-voile` sur `--video-letterbox`, la **seule** région où le fond sous l'encre
+soit connu (les bandes que laisse `object-fit: contain`).
+
+### ② Les sept critères, avec le nombre d'exécutions dans chaque énoncé
+
+⚠️ **DEUX EXÉCUTIONS ÉTABLISSENT LA REPRODUCTIBILITÉ, JAMAIS UN TAUX.** Les neuf
+contrôles de ⑥ sont **déterministes** : la question « combien de fois sur
+combien » **ne se pose pas ici et ne doit pas être empruntée** à une campagne qui,
+elle, l'aurait posée.
+
+| # | Critère | Verdict | Exéc. | Le chiffre, **relevé** |
+| --- | --- | --- | --- | --- |
+| ① | les **NEUF** contrôles sont verts | **TENU** | 2 | `7/7` scripts, `exit=0` ; **279** tests / **30** fichiers |
+| ② | la liste d'attente est **VIDE** | **TENU** | 2 | **52** déclarés / **52** employés — **ÉGAUX**, `0 orphelin` |
+| ③ | la fenêtre de session **A BOUGÉ** | **TENU** | 2 | **182 insertions / 43 suppressions** ; **les CINQ** actifs CSS changent de hachage |
+| ④ | elle emploie des primitives | **TENU** | 2 | `index.html : message, surface` ; **les TROIS** surfaces couvertes |
+| ⑤ | plus aucune longueur hors token | **TENU** | 2 | **0 occurrence, 0 valeur**, contre **8 / 6** à la naissance du contrôle |
+| ⑥ | les contrastes | **TENU** | 2 | **53** paires, **0** échec, minimum global **3,16** — inchangé |
+| ⑦ | le poids CSS | **TENU** | 2 | **8 616** octets, plafond **12 288**, marge **3 672** (base : **8 011**) |
+| — | le **jugement visuel** | ⛔ **NON PORTÉ** | 0 | voir ⑥ ci-dessous |
+
+**La base du critère ③ est le PARENT DU PREMIER COMMIT du sous-bloc** (`23e9b89`),
+jamais une date — leçon que S3 avait déjà payée. ⚠️ **Les deux exécutions ne
+diffèrent que par l'ORDRE d'arrivée de deux lignes de `vitest`** : aucun nombre ne
+change.
+
+### ③ 🔴 Le WCO : la règle est livrée, et AUCUN critère de recette ne la couvre
+
+**Il n'existe AUCUN manifeste dans ce dépôt** — mesuré. Sans
+`display_override: ["window-controls-overlay"]`, les variables `titlebar-area-*`
+ne sont **jamais définies** : il n'y a donc **aucun état atteignable** où la règle
+agisse. **Un critère qui prétendrait l'exercer serait vacueux PAR CONSTRUCTION,
+et un critère vacueux est pire qu'un critère absent : il se lit comme une preuve.**
+
+Ce qui est livré à la place est un **garde de forme** (`client/src/style.test.ts`)
+à trois assertions : ① tout `env(titlebar-area-*)` porte le repli `0px` ;
+② **aucune** `@media (display-mode: window-controls-overlay)` — car un repli
+neutralise un `env()`, mais **rien ne neutralise un bloc `@media`** ;
+③ **atteignabilité**.
+
+**Sa rouge a une conséquence RÉELLE aujourd'hui** : un repli non nul descend le
+bandeau **maintenant**, sur toutes les sessions. Ce n'est donc pas un contrôle qui
+valide sa propre écriture. 🔴 **Mais il prouve l'INERTIE, jamais le COMPORTEMENT.**
+**Destinataire nommé du legs : la recette du sous-bloc G5 de la gestion d'apps**,
+celui qui pose le manifeste.
+
+### ④ La revue transverse — VINGT-SEPT affirmations, et un plafond franchi
+
+Barème : cinq en D7, trois en D8, six en D9, douze en D10, sept en D11, huit en
+P1, dix en P2, cinq en S1, neuf sur E, douze en P3, douze en S2, onze en F1, huit
+en P4, **treize** en S3, huit en G1.
+
+🔴 **LE FAIT LE PLUS NET : trois affirmations étaient DÉJÀ FAUSSES LE JOUR OÙ
+ELLES ONT ÉTÉ ÉCRITES.** Les trois « aucun des huit contrôles » posés par la
+**tâche 4** (`tokens.css`, `style.css`, `design/contraste.ts`) décrivent la suite
+de contrôles telle qu'elle était **avant la tâche 2**, qui l'avait déjà changée —
+`git merge-base --is-ancestor ee56e1e fb629ea` l'établit. **Deux commits d'écart,
+dans la même branche.**
+
+**LE TRI COMPTE AUTANT QUE LES CORRECTIONS**, et c'est la leçon de S3 rejouée :
+`grep -rniE 'huit contrôles?'` rendait **17** places — dont **DEUX que le `grep`
+sensible à la casse manquait**. **QUINZE** étaient fausses au présent et sont
+corrigées ; **TROIS** sont des **citations** en style direct et **restent
+justes** ; et **NEUF autres emplois du mot « huit » nomment un AUTRE compte**
+(crans d'espacement, jugements humains du §8, dix-huit tokens, huit fenêtres,
+huit occurrences), **tous vérifiés INTACTS après coup**. Une substitution globale
+les aurait abîmés.
+
+**SEPT étaient fausses EN SUBSTANCE** : « aucun ne mesure une longueur » ne l'est
+plus, et **ce qui laisse `client/src/design/` découvert est désormais une PORTÉE**
+— §7.10 l'exclut, G4 y garde les quatre familles — **et non une absence de
+contrôle**.
+
+**TRANCHÉ PLUTÔT QU'EXÉCUTÉ** : « le raccordement sémantique du micro appartient
+au sous-bloc S4 » (S1). Le faire ferait suivre au bouton **le thème du produit**
+alors qu'il est posé sur une vidéo qui n'en suit aucun — **mot pour mot
+l'argument que la même page emploie six lignes plus haut**. **La phrase promettait
+ce que sa propre page réfute.**
+
+**§7.10 EST INSCRIT DANS LA SPEC**, « parce qu'un contrôle qui ne vit que dans un
+plan de sous-bloc se perd ». La spec passe de huit à **NEUF** contrôles et dit
+**sept scripts, neuf contrôles** ; sa clause §8 cesse d'être fausse ; la réserve
+de portée de `--police-mono` est levée ; et **deux numéros de ligne qui avaient
+dérivé sont RETIRÉS plutôt que corrigés**.
+
+🔴 **LE PLAFOND A ÉTÉ FRANCHI, ET RATTRAPÉ PAR UNE EXTRACTION.**
+`client/src/style.css` est monté à **301 pour une porte à 300** ; les deux boutons
+de coin partent **VERBATIM** vers `client/src/session/boutons-de-coin.css`
+(**138**), et `style.css` retombe à **194**. Ce dépôt a franchi ce plafond **trois
+fois en D10 et deux fois en D9**, et l'a rattrapé **deux fois par une compression
+qu'il interdit nommément**.
+
+### ⑤ Les tailles, PAR LA COMMANDE, APRÈS la revue transverse
+
+⚠️ **La revue transverse est une source de croissance connue** — S2 y a perdu 13
+lignes de marge, S3 y a ajouté **+54 lignes**. **Le relevé qui fait foi est celui
+d'APRÈS**, jamais celui d'avant.
+
+| Fichier | Lignes | Porte | Marge |
+| --- | --- | --- | --- |
+| 🔴 `client/src/design/tokens.css` | **300** | 300 | **0** |
+| `client/src/design/primitives.test.ts` | 245 | 300 | 55 |
+| `client/outils/tokens-orphelins/attente.mjs` | 221 | 240 | 19 |
+| `client/src/style.test.ts` | 219 | 300 | 81 |
+| `client/src/style.css` | **194** | 300 | 106 (**301** avant l'extraction) |
+| `client/src/session/boutons-de-coin.css` | 138 | 300 | 162 (**neuf**) |
+| `client/src/ecran-terminal.test.ts` | 108 | 300 | 192 (**neuf**) |
+| `client/src/ecran-terminal.ts` | 105 | 300 | 195 (**neuf**) |
+| `client/src/session/etat-terminal.css` | 80 | 300 | 220 (**neuf**) |
+| `client/src/main.ts` | **460** | — | **+9** depuis la base (le plan en autorisait dix) |
+| `client/verify-webrtc.mjs` | **494** | 500 | 🔴 **6** — ⛔ **intouché par S4**, comme par S1, S2 et S3 |
+
+🔴 **`design/tokens.css` est à 300 EXACTEMENT : sa marge est NULLE.** Son point de
+chute est nommé dans le fichier lui-même — scinder en `tokens/couleurs.css` et
+`tokens/echelles.css` — et **la prochaine addition l'exige, jamais une
+compression**. ⚠️ **Cette injonction ne peut pas être écrite DANS le fichier
+qu'elle concerne : l'y écrire le ferait franchir.** Elle vit donc ici. La
+scission a été **délibérément écartée** en fin de branche : **SEPT lecteurs**
+nomment `tokens.css` par son chemin (`outils/contraste.mjs`,
+`outils/couleurs-litterales.mjs`, `outils/blocs-de-theme.mjs`,
+`outils/tokens-orphelins.mjs`, et trois `?raw` — `design/reprise.test.ts`,
+`design/tokens.test.ts`, `design/galerie.ts`), et le legs n°9 de S2 est encore
+ouvert.
+
+**Aucun fichier du dépôt ne dépasse sa porte du fait de S4.**
+
+### ⑥ Les jugements humains — VINGT-CINQ, et aucun n'a été porté
+
+**Quinze à la fin de S3** (huit de la spec §8, trois de S2, quatre de S3 — relevé
+par le document de résultats de S3). **S4 en ajoute DIX, ÉNUMÉRÉS par `git blame`
+et non recopiés** : la pile monospace ; 20 px la taille des boutons ; `#e6e8eb`
+l'encre sur un voile ; l'écran plein cadre comme forme ; qu'il reste **sans
+action** ; les trois mesures de contenant ; le rayon 6 → 4 px ; ⚠️ **la ZONE
+occupée** par le bouton, distincte de sa taille ; ⚠️ `--e-8` comme marge du micro
+après ce changement ; ⚠️ les **deux libellés de titre** de l'écran terminal.
+
+⚠️ **Le plan en prévoyait SEPT ; il y en a DIX.** Les trois derniers sont des
+décisions esthétiques prises à l'exécution, et **les taire les aurait déguisées en
+mesures**.
+
+🔴 **ET LE JUGEMENT VISUEL N'A JAMAIS ÉTÉ PORTÉ SUR ⑥, D'UN BOUT À L'AUTRE :
+aucune page du sous-projet n'a été ouverte dans un navigateur, ni en S1, ni en S2,
+ni en S3, ni en S4.** S4 était la **dernière occasion**, et **il la laisse passer
+en le déclarant** — un agent qui prendrait une capture d'écran **ne porterait pas
+un jugement**, il produirait une image que personne n'a regardée. Ce n'est pas une
+lacune d'exécution : c'est la conséquence assumée du §7.8, qui écarte la
+comparaison d'images parce que les polices système rendent différemment d'une
+machine à l'autre. **La galerie existe pour cela, et personne ne l'a regardée.**
+
+### ⑦ Les rouges, et celle qui n'a pas de journal
+
+**Onze rouges versées** (`rouges-t9.log`, `rouges-t10.log`, `rouges-t12.log`),
+toutes au harnais en sept étapes, **preuve de `git diff --numstat` non vide
+comprise** et `sha256` identique après restauration. Le blanchiment est éprouvé
+**dans les DEUX sens** : une valeur interdite en commentaire laisse **vert**, et
+une déclaration écrite **seulement** en commentaire **ne compte pas comme
+déclarée**. **Aucune rouge n'a dû être refaite.**
+
+❌ **LES ROUGES DES TÂCHES 1 À 8 N'ONT AUCUN JOURNAL VERSÉ.** Elles ne sont
+rapportées que par leurs **messages de commit** — en git, donc permanents, mais ce
+ne sont pas des journaux —, et **deux de ces huit commits (`aa27fb8`, `1c05dde`)
+ne contiennent pas même le mot « rouge »**. **La leçon pour un plan suivant : la
+consigne de verser doit valoir à la tâche qui JOUE la rouge, pas à celle qui
+recette.**
+
+### ⑧ Ce que S4 n'établit PAS
+
+- **Aucun taux, nulle part.**
+- 🔴 **Rien du WCO en fonctionnement** — le garde prouve l'inertie, et rien d'autre.
+- 🔴 **Aucun jugement visuel**, et les **vingt-cinq** jugements attendent un œil.
+- **La lisibilité d'un voile sur une vidéo quelconque** : seule la bande noire est
+  mesurée ; **la composition alpha n'est pas outillée**.
+- **La zone occupée par les boutons de coin** : l'avance du glyphe `⛶` reste
+  inconnue, et le commentaire **cesse de la chiffrer** plutôt que de remplacer une
+  estimation par une autre.
+- **L'anneau de focus reste vérifié NON EFFACÉ, jamais VISIBLE.**
+- **L'accessibilité au-delà du contraste et du mouvement réduit.**
+- **Rien hors d'un Chromium de bureau**, ni HiDPI, ni internationalisation.
+- **`galerie.ts` et `galerie-primitives.ts` n'ont toujours aucun test.**
+
+### ⑨ Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔴 **`[hidden]` PERD CONTRE UNE RÈGLE D'AUTEUR, ET CE N'EST PAS UNE QUESTION DE
+  SPÉCIFICITÉ** : le `[hidden] { display: none }` vit dans la feuille de l'**agent
+  utilisateur**, et la cascade compare l'**ORIGINE** avant la spécificité. Une
+  `.ecran { display: grid }` l'emporte, fût-elle moins spécifique — l'écran serait
+  **visible dès le chargement**.
+- 🔴 **UNE EXTRACTION DÉPLACE CE QU'UN GARDE D'ABSENCE DOIT SURVEILLER.** Sortir
+  une règle d'un fichier laisse le garde **vert** sur le fichier vidé. **Toute
+  extraction qui déplace une règle gardée oblige à déplacer, ou à DÉDOUBLER, son
+  assertion d'atteignabilité** — payé ici, et la rouge est versée.
+- ⚠️ **UN CONTRÔLE À PORTÉE DÉRIVÉE NE SE VIDE PAS EN VIDANT UN FICHIER** : sa
+  rouge d'atteignabilité doit vider **TOUS** les porteurs. Une prescription de plan
+  qui nomme un fichier unique est **fausse d'une portée dérivée** — mesuré deux
+  fois dans ce sous-bloc.
+- ⚠️ **UN `grep` SENSIBLE À LA CASSE MANQUE CE QUE LES MAJUSCULES CACHENT** : deux
+  des dix-sept places de la revue étaient écrites `HUIT CONTRÔLES`.
+- ⚠️ **UN COMPTE DE MENTIONS N'EST PAS UN COMPTE DE CHOSES** : `grep -c 'jugement
+  humain'` rend **22** lignes pour **25** jugements. **Énumérer par `git blame`.**
+- ⚠️ **ZSH NE DÉCOUPE PAS LES VARIABLES EN MOTS** : `git add $FICHIERS` y passe la
+  liste entière comme **un seul chemin**, et échoue sans dire pourquoi.
+- ⚠️ **DES BACKTICKS DANS UN `echo` DE JOURNAL EXÉCUTENT UNE COMMANDE** — un
+  journal de rouge a porté `command not found: style.css` au milieu de sa prose.
+  **Guillemets simples pour toute prose journalisée.**
+- ⚠️ **UN FICHIER NE PEUT PAS CONTENIR SA PROPRE TAILLE FINALE** : la ligne que
+  `familles-de-lecture.txt` porte sur lui-même est celle de sa rédaction
+  **précédente**, conservée telle quelle plutôt que devinée.
+- ⚠️ **`design/amorce-theme.js` PART VERBATIM DANS CHAQUE PAGE BÂTIE**,
+  commentaires compris : y corriger un mot fait différer les cinq pages de
+  `dist/`. Piège de S3, rencontré ici **par la revue transverse**, et une
+  **troisième exécution de recette** relève la conséquence exacte — **deux**
+  hachages bougent, et **quatre actifs CSS restent octet pour octet identiques**.
+
+### ⑩ Ce que ⑥ laisse ouvert APRÈS S4 — la liste est COMPLÈTE
+
+**S4 étant le dernier sous-bloc, rien de ce qui suit n'a de destinataire dans ⑥.**
+**Ce que S4 solde** : `--police-mono`, les six longueurs hors échelle et la clause
+§8, l'écran terminal, la reprise des bandeaux sur les primitives, le raccordement
+du micro (**tranché non**), et le défaut d'encre du thème clair.
+
+1. ⛔ **Le WCO n'a jamais été rendu** — destinataire nommé : **la recette de ④ G5**.
+2. ⛔ **Le hub n'existe pas** ; son contenu dépend de ④.
+3. ⛔ **Aucune primitive « lien », aucune ancre.**
+4. ⛔ **`galerie.ts` et `galerie-primitives.ts` sans test.**
+5. ⛔ **Legs n°9 de S2** : `lireBlocsDeTheme` ne sait nommer que **trois** blocs.
+6. ⛔ **Le plafond de poids CSS n'est calibré par rien.**
+7. ⛔ **Le sens « toute classe déclarée est employée » n'existe pas** — c'est
+   `primitives.html` et l'œil qui le tiennent, **et l'œil n'est pas passé**.
+8. ⛔ **`Ton` et `CLASSE_DE_TON` sont dupliqués** entre `shell.ts`, `connexion.ts`
+   et `ecran-terminal.ts`. Point de chute d'une unification : la couche `design/`.
+9. ⛔ **La lisibilité d'un voile sur une vidéo quelconque n'est pas outillée** — la
+   composition alpha est un calcul **pur**, donc à portée de `design/contraste.ts`.
+10. ⛔ **L'anneau de focus n'a jamais été vu VISIBLE.**
+11. ⛔ **`prefers-reduced-motion` est le seul des quatre manques d'accessibilité
+    qui soit pris.**
+12. ⛔ **`client/verify-webrtc.mjs` est à 494 pour une porte à 500 — marge 6**, et
+    **la divergence de convention que D10 a signalée n'a jamais été tranchée** :
+    le § « Portée » ci-dessus ne liste que `client/src/`, la commande l'attrape
+    quand même. **C'est une décision de convention, et elle appartient au
+    propriétaire du dépôt.**
+13. ⛔ **Le défaut à deux réglages de `build-agent.sh` / `run-agent.sh`** ne
+    concerne pas ⑥, et reste **non corrigé**.
+14. 🔴 **`design/tokens.css` est à 300 pour une porte à 300 : marge NULLE.**
+15. ⛔ **Les rouges des tâches 1 à 8 n'ont pas de journal versé.**
+16. 🔴 **AUCUN JUGEMENT VISUEL N'A ÉTÉ PORTÉ SUR ⑥, D'UN BOUT À L'AUTRE.**
 
 ---
 
