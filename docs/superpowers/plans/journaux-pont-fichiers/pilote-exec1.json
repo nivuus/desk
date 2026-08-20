@@ -1,0 +1,169 @@
+{
+ "maintien_s": 60,
+ "prefixe": "H8vbQk50BJdfQk1Q4Q4R8g",
+ "journal": [
+  "[2026-08-20T01:27:46.754Z] obtention du jeton de recette",
+  "[2026-08-20T01:27:47.315Z] chrome : Chrome/151.0.7922.169",
+  "[2026-08-20T01:27:47.691Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=H8vbQk50BJdfQk1Q4Q4R8g",
+  "[2026-08-20T01:27:51.810Z] etat initial : {\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=H8vbQk50BJdfQk1Q4Q4R8g\",\"f1\":{\"peuple\":6,\"erreurs\":[]}}",
+  "[2026-08-20T01:27:51.812Z] OPFS peuple : 6 entrees",
+  "[2026-08-20T01:27:51.813Z] la page-shell est connectee : lancement de l agent",
+  "[2026-08-20T01:27:52.219Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+  "[2026-08-20T01:27:56.263Z] 1 fenetre(s) d application ouverte(s) apres 4 s",
+  "[2026-08-20T01:27:56.264Z] clic sur #choisir-dossier",
+  "[2026-08-20T01:28:00.301Z] #etat-fichiers : \"Lecteur « Mes Fichiers » monté sur « Mes documents ».\"",
+  "[2026-08-20T01:28:00.304Z] lecteur monte : repos de 8000 ms avant la mesure",
+  "[2026-08-20T01:28:08.316Z] mesure cote VM",
+  "[2026-08-20T01:37:11.428Z] mesure VM : 23 lignes",
+  "[2026-08-20T01:37:21.488Z] echantillon 1 : {\"t\":10,\"fenetres\":1,\"flux\":[{\"url\":\"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1\",\"v\":\"{\\\"framesDecoded\\\":48001,\\\"packetsLost\\\":0,\\\"octets\\\":807435851}\"}]}",
+  "[2026-08-20T01:37:31.506Z] echantillon 2 : {\"t\":20,\"fenetres\":1,\"flux\":[{\"url\":\"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1\",\"v\":\"{\\\"framesDecoded\\\":48873,\\\"packetsLost\\\":0,\\\"octets\\\":822068181}\"}]}",
+  "[2026-08-20T01:37:41.526Z] echantillon 3 : {\"t\":30,\"fenetres\":1,\"flux\":[{\"url\":\"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1\",\"v\":\"{\\\"framesDecoded\\\":49732,\\\"packetsLost\\\":0,\\\"octets\\\":836393586}\"}]}",
+  "[2026-08-20T01:37:51.539Z] echantillon 4 : {\"t\":40,\"fenetres\":1,\"flux\":[{\"url\":\"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1\",\"v\":\"{\\\"framesDecoded\\\":50591,\\\"packetsLost\\\":0,\\\"octets\\\":850812379}\"}]}",
+  "[2026-08-20T01:38:01.552Z] echantillon 5 : {\"t\":50,\"fenetres\":1,\"flux\":[{\"url\":\"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1\",\"v\":\"{\\\"framesDecoded\\\":51448,\\\"packetsLost\\\":0,\\\"octets\\\":865116822}\"}]}",
+  "[2026-08-20T01:38:11.572Z] echantillon 6 : {\"t\":60,\"fenetres\":1,\"flux\":[{\"url\":\"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1\",\"v\":\"{\\\"framesDecoded\\\":52301,\\\"packetsLost\\\":0,\\\"octets\\\":879373355}\"}]}",
+  "[2026-08-20T01:38:11.574Z] #etat-fichiers (fin) : \"Lecteur « Mes Fichiers » monté sur « Mes documents ».\""
+ ],
+ "etapes": [],
+ "erreurs": [],
+ "chrome": "Chrome/151.0.7922.169",
+ "console_page": [
+  {
+   "t": 1787189267988,
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": 1787189267998,
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": 1787189279348,
+   "niveau": "info",
+   "texte": "offre du pont envoyée, attente de l’agent…"
+  },
+  {
+   "t": 1787189279353,
+   "niveau": "info",
+   "texte": "pont fichiers : réponse reçue"
+  },
+  {
+   "t": 1787189279353,
+   "niveau": "info",
+   "texte": "pont fichiers : connecting"
+  },
+  {
+   "t": 1787189279532,
+   "niveau": "info",
+   "texte": "pont fichiers : connected"
+  },
+  {
+   "t": 1787189279619,
+   "niveau": "info",
+   "texte": "canal fichiers ouvert"
+  },
+  {
+   "t": 1787189831431,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 10 : A requested file or directory could not be found at the time an operation was processed."
+  },
+  {
+   "t": 1787189831433,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 11 : A requested file or directory could not be found at the time an operation was processed."
+  }
+ ],
+ "etat_initial": "{\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=H8vbQk50BJdfQk1Q4Q4R8g\",\"f1\":{\"peuple\":6,\"erreurs\":[]}}",
+ "opfs_entrees": 6,
+ "fenetres_ouvertes": 1,
+ "etat_fichiers": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+ "trace_page": {
+  "etapes": [
+   {
+    "t": 1787189268295,
+    "m": "sha256 OPFS de gros.bin : 2d7d5440ab54fd6c362b472e29b4782c099c410d87087a5a16958f856311f8b9"
+   },
+   {
+    "t": 1787189268295,
+    "m": "OPFS peuple : 6 entrees"
+   },
+   {
+    "t": 1787189276282,
+    "m": "showDirectoryPicker appele, mode=read"
+   },
+   {
+    "t": 1787189276282,
+    "m": "poignee OPFS rendue, name=Mes documents, kind=directory"
+   }
+  ],
+  "erreurs": [],
+  "sha_opfs": "2d7d5440ab54fd6c362b472e29b4782c099c410d87087a5a16958f856311f8b9",
+  "taille_opfs": 12582912,
+  "peuple": 6
+ },
+ "mesure_vm": "# DELAI DE 540 s DEPASSE : mesure INCOMPLETE, telle quelle\nracine=C:\\Users\\Administrateur\\Mes Fichiers\r\nracine_presente=True\r\n=== NOMS DEBUT ===\r\nD|sous-dossier\r\nF|casse.txt|42\r\nF|Casse.txt|42\r\nF|gros.bin|12582912\r\nF|éphémère été.txt|25\r\nF|sous-dossier\\imbrique.txt|43\r\nnoms_total=6\r\n=== NOMS FIN ===\r\n=== SONDE LECTURE DEBUT ===\r\nsonde|petit|OK|74 ms|MAJUSCULE - ce fichier sappelle Casse.txt\r\n=== SONDE PETITE FIN ===\r\n=== CASSE DEBUT ===\r\ncasse|Casse.txt|OK|MAJUSCULE - ce fichier sappelle Casse.txt\r\ncasse|casse.txt|OK|MAJUSCULE - ce fichier sappelle Casse.txt\r\ncasse|CASSE.TXT|OK|MAJUSCULE - ce fichier sappelle Casse.txt\r\ncasse|GROS.BIN|ECHEC|Exception lors de l'appel de « ReadAllText » avec « 1 » argument(s) : « Le fichier 'C:\\Users\\Administrateur\\Mes Fichiers\\GROS.BIN' est introuvable. »\r\n=== CASSE FIN ===\r\n=== CREATION DEBUT ===\r\n",
+ "echantillons": [
+  {
+   "t": 10,
+   "fenetres": 1,
+   "flux": [
+    {
+     "url": "73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1",
+     "v": "{\"framesDecoded\":48001,\"packetsLost\":0,\"octets\":807435851}"
+    }
+   ]
+  },
+  {
+   "t": 20,
+   "fenetres": 1,
+   "flux": [
+    {
+     "url": "73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1",
+     "v": "{\"framesDecoded\":48873,\"packetsLost\":0,\"octets\":822068181}"
+    }
+   ]
+  },
+  {
+   "t": 30,
+   "fenetres": 1,
+   "flux": [
+    {
+     "url": "73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1",
+     "v": "{\"framesDecoded\":49732,\"packetsLost\":0,\"octets\":836393586}"
+    }
+   ]
+  },
+  {
+   "t": 40,
+   "fenetres": 1,
+   "flux": [
+    {
+     "url": "73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1",
+     "v": "{\"framesDecoded\":50591,\"packetsLost\":0,\"octets\":850812379}"
+    }
+   ]
+  },
+  {
+   "t": 50,
+   "fenetres": 1,
+   "flux": [
+    {
+     "url": "73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1",
+     "v": "{\"framesDecoded\":51448,\"packetsLost\":0,\"octets\":865116822}"
+    }
+   ]
+  },
+  {
+   "t": 60,
+   "fenetres": 1,
+   "flux": [
+    {
+     "url": "73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1",
+     "v": "{\"framesDecoded\":52301,\"packetsLost\":0,\"octets\":879373355}"
+    }
+   ]
+  }
+ ],
+ "etat_fichiers_fin": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+ "ok": true
+}

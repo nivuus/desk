@@ -1,0 +1,24 @@
+[2026-08-20T01:39:04.851Z] obtention du jeton de recette
+[2026-08-20T01:39:05.397Z] chrome : Chrome/151.0.7922.169
+[2026-08-20T01:39:05.681Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=H8vbQk50BJdfQk1Q4Q4R8g
+[2026-08-20T01:39:09.754Z] etat initial : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=H8vbQk50BJdfQk1Q4Q4R8g","f1":{"peuple":6,"erreurs":[]}}
+[2026-08-20T01:39:09.758Z] OPFS peuple : 6 entrees
+[2026-08-20T01:39:09.758Z] la page-shell est connectee : lancement de l agent
+[2026-08-20T01:39:10.244Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-20T01:39:14.276Z] 1 fenetre(s) d application ouverte(s) apres 4 s
+[2026-08-20T01:39:14.277Z] clic sur #choisir-dossier
+[2026-08-20T01:39:33.353Z] #etat-fichiers : "Le lecteur « Mes Fichiers » n’a pas pu être monté : l'agent n'a pas répondu — vérifiez qu'il est bien lancé et connecté à cette session."
+[2026-08-20T01:39:33.355Z] lecteur monte : repos de 8000 ms avant la mesure
+[2026-08-20T01:39:41.366Z] mesure cote VM
+[2026-08-20T01:40:42.596Z] mesure VM : 5 lignes
+[2026-08-20T01:40:52.654Z] echantillon 1 : {"t":10,"fenetres":1,"flux":[{"url":"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1","v":"{\"framesDecoded\":8263,\"packetsLost\":0,\"octets\":134836163}"}]}
+[2026-08-20T01:41:02.674Z] echantillon 2 : {"t":20,"fenetres":1,"flux":[{"url":"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1","v":"{\"framesDecoded\":9127,\"packetsLost\":0,\"octets\":149343533}"}]}
+[2026-08-20T01:41:12.689Z] echantillon 3 : {"t":30,"fenetres":1,"flux":[{"url":"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1","v":"{\"framesDecoded\":9990,\"packetsLost\":0,\"octets\":163720470}"}]}
+[2026-08-20T01:41:22.714Z] echantillon 4 : {"t":40,"fenetres":1,"flux":[{"url":"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1","v":"{\"framesDecoded\":10849,\"packetsLost\":0,\"octets\":178192576}"}]}
+[2026-08-20T01:41:32.735Z] echantillon 5 : {"t":50,"fenetres":1,"flux":[{"url":"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1","v":"{\"framesDecoded\":11709,\"packetsLost\":0,\"octets\":192477296}"}]}
+[2026-08-20T01:41:42.748Z] echantillon 6 : {"t":60,"fenetres":1,"flux":[{"url":"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1","v":"{\"framesDecoded\":12564,\"packetsLost\":0,\"octets\":206826820}"}]}
+[2026-08-20T01:41:52.761Z] echantillon 7 : {"t":70,"fenetres":1,"flux":[{"url":"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1","v":"{\"framesDecoded\":13412,\"packetsLost\":0,\"octets\":220953095}"}]}
+[2026-08-20T01:42:02.775Z] echantillon 8 : {"t":80,"fenetres":1,"flux":[{"url":"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1","v":"{\"framesDecoded\":14269,\"packetsLost\":0,\"octets\":235304354}"}]}
+[2026-08-20T01:42:12.789Z] echantillon 9 : {"t":90,"fenetres":1,"flux":[{"url":"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1","v":"{\"framesDecoded\":15122,\"packetsLost\":0,\"octets\":249620987}"}]}
+[2026-08-20T01:42:12.790Z] #etat-fichiers (fin) : "Le lecteur « Mes Fichiers » n’a pas pu être monté : l'agent n'a pas répondu — vérifiez qu'il est bien lancé et connecté à cette session."
+[2026-08-20T01:42:12.790Z] resultat ecrit : /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/214a7bc1-b5e4-4649-807c-1a82dd8a7d41/scratchpad/f1/pilote-sans-projfs.json

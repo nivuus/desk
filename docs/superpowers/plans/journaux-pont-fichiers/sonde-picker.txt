@@ -1,0 +1,57 @@
+SONDE : showDirectoryPicker() est-il pilotable sous Chrome sans interface ?
+Hote : Linux, Google Chrome 151.0.7922.169, node v24.9.0. 20 aout 2026.
+Contexte securise : page servie par http://127.0.0.1 (localhost est securise).
+
+Ces quatre releves DECIDENT le choix d'instrument de la recette F1. Ils sont MESURES,
+pas supposes.
+
+1. SANS interception CDP
+   window.showDirectoryPicker({mode:'read'})
+   -> AbortError : "The user aborted a request."
+   -> aucun evenement Page.fileChooserOpened
+   Lecture : il n'y a AUCUNE interface pour afficher le selecteur ; Chrome
+   avorte de lui-meme.
+
+2. AVEC Page.setInterceptFileChooserDialog({enabled:true})
+   -> evenement Page.fileChooserOpened emis :
+      {"frameId":"...","mode":"selectSingle"}
+   -> l'appel rend AbortError :
+      "Failed to execute 'showDirectoryPicker' on 'Window':
+       Intercepted by Page.setInterceptFileChooserDialog()."
+   Lecture : CDP voit le selecteur et l'INTERCEPTE, mais interception =
+   annulation.
+
+3. Commandes CDP qui ACCEPTERAIENT le selecteur : AUCUNE n'existe
+   Page.handleFileChooser    -> {"code":-32601,"message":"... wasn't found"}
+   Page.fileChooserAccepted  -> {"code":-32601,"message":"... wasn't found"}
+   (testees sur la cible PAGE, ou Page.setInterceptFileChooserDialog repond
+   bien {} : ce n'est donc pas un probleme de cible.)
+   Page.setInterceptFileChooserDialog({enabled:true, cancel:false}) : accepte,
+   SANS effet -- l'appel rend le meme AbortError d'interception.
+
+4. Aucune interface graphique disponible sur l'hote
+   DISPLAY vide, WAYLAND_DISPLAY vide, /tmp/.X11-unix absent,
+   `which Xvfb` et `which xdotool` : introuvables.
+
+CONCLUSION : showDirectoryPicker() ne peut pas etre ACCEPTE dans ce montage.
+
+LA PARADE RETENUE : navigator.storage.getDirectory() (OPFS), qui rend une VRAIE
+poignee, sans selecteur et sans geste. Verifie par la meme sonde :
+   classeRacine        : [object FileSystemDirectoryHandle]
+   root instanceof FileSystemDirectoryHandle : true
+   getDirectoryHandle / getFileHandle / values / entries : function
+   fh instanceof FileSystemFileHandle        : true
+   getFile() instanceof File                 : true
+   sous-repertoire imbrique                  : OK ("niveau2:directory")
+   nom accentue                              : OK ("accentué é.txt:file")
+   f.slice(1,4).arrayBuffer()                : [2,3,4] -- tranche REELLE
+
+Ce que cela couvre : tout `adaptateur.ts`, `protocole.ts`, `canal.ts` et le
+gestionnaire de clic de `shell-page.ts` tournent INCHANGES, sur une poignee de
+la meme classe que celle qu'un vrai selecteur rendrait.
+
+Ce que cela NE couvre PAS, et qu'aucun critere de cette recette n'etablit :
+l'appel `showDirectoryPicker()` lui-meme, le modele de permission des
+repertoires choisis par l'utilisateur (`queryPermission`/`requestPermission` --
+que `choisirDossier` n'appelle d'ailleurs pas), et l'activation utilisateur
+transitoire.

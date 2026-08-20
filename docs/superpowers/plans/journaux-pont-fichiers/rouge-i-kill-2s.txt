@@ -1,0 +1,16 @@
+racine_presente=True
+agents_avant=4
+agent|18200|04:07:04.371
+agent|16232|04:07:07.486
+agent|10728|04:07:07.489
+agent|16532|04:07:07.908
+lecture en vol depuis 2 s : mise a mort du pont
+pont_pid_du_journal=10728
+issue|LECTURE|OK|1937|lus=12582912
+delai_apres_mort_ms=44
+agents_apres=4
+agent_apres|16232
+agent_apres|16532
+agent_apres|16604
+agent_apres|18200
+FIN ROUGE I

@@ -1,0 +1,32 @@
+=== [exec3] nettoyage de la VM ===
+--- processus restants ---
+agent : 0
+chrome : 0
+notepad : 0
+firefox : 0
+--- racine du pont ---
+racine presente apres nettoyage : False=== [exec3] ouverture de la mire (session interactive) ===
+=== [exec3] pilote (la shell d'abord, l'agent ensuite) ===
+[2026-08-20T02:09:20.187Z] obtention du jeton de recette
+[2026-08-20T02:09:20.932Z] chrome : Chrome/151.0.7922.169
+[2026-08-20T02:09:21.095Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=H8vbQk50BJdfQk1Q4Q4R8g
+[2026-08-20T02:09:25.133Z] etat initial : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=H8vbQk50BJdfQk1Q4Q4R8g","f1":{"peuple":6,"erreurs":[]}}
+[2026-08-20T02:09:25.135Z] OPFS peuple : 6 entrees
+[2026-08-20T02:09:25.136Z] la page-shell est connectee : lancement de l agent
+[2026-08-20T02:09:25.647Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-20T02:09:29.681Z] 1 fenetre(s) d application ouverte(s) apres 4 s
+[2026-08-20T02:09:29.681Z] clic sur #choisir-dossier
+[2026-08-20T02:09:33.720Z] #etat-fichiers : "Lecteur « Mes Fichiers » monté sur « Mes documents »."
+[2026-08-20T02:09:33.722Z] lecteur monte : repos de 8000 ms avant la mesure
+[2026-08-20T02:09:41.735Z] mesure cote VM
+[2026-08-20T02:18:42.078Z] mesure VM : 3 lignes
+[2026-08-20T02:18:52.140Z] echantillon 1 : {"t":10,"fenetres":1,"flux":[{"url":"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1","v":"{\"framesDecoded\":6979,\"packetsLost\":0,\"octets\":114769671}"}]}
+[2026-08-20T02:19:02.160Z] echantillon 2 : {"t":20,"fenetres":1,"flux":[{"url":"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1","v":"{\"framesDecoded\":7846,\"packetsLost\":0,\"octets\":129226315}"}]}
+[2026-08-20T02:19:12.183Z] echantillon 3 : {"t":30,"fenetres":1,"flux":[{"url":"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1","v":"{\"framesDecoded\":8714,\"packetsLost\":0,\"octets\":143726575}"}]}
+[2026-08-20T02:19:22.199Z] echantillon 4 : {"t":40,"fenetres":1,"flux":[{"url":"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1","v":"{\"framesDecoded\":9574,\"packetsLost\":0,\"octets\":158155313}"}]}
+[2026-08-20T02:19:32.214Z] echantillon 5 : {"t":50,"fenetres":1,"flux":[{"url":"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1","v":"{\"framesDecoded\":10437,\"packetsLost\":0,\"octets\":172540574}"}]}
+[2026-08-20T02:19:42.239Z] echantillon 6 : {"t":60,"fenetres":1,"flux":[{"url":"73/?session=H8vbQk50BJdfQk1Q4Q4R8g%3Aw-1","v":"{\"framesDecoded\":11303,\"packetsLost\":0,\"octets\":187066661}"}]}
+[2026-08-20T02:19:42.242Z] #etat-fichiers (fin) : ""
+[2026-08-20T02:19:42.243Z] resultat ecrit : /tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/214a7bc1-b5e4-4649-807c-1a82dd8a7d41/scratchpad/f1/pilote-exec3.json
+=== [exec3] copie du journal d'agent (APRES la fin reelle) ===
+=== [exec3] code de sortie du pilote : 0 ===

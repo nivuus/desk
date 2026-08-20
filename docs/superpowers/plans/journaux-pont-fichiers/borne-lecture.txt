@@ -1,0 +1,24 @@
+# Sonde de borne de lecture, jouee sur un pont MONTE (20 aout 2026).
+# Une seule execution.
+racine_presente=True
+borne|65536|ECHEC|127865 ms|Exception lors de l'appel de « Read » : « Une erreur interne s'est produite. »
+borne|65537|ECHEC|10263 ms|Exception lors de l'appel de « Read » : « Une erreur interne s'est produite. »
+FIN BORNE
+
+# ⚠️ CETTE SONDE NE BORNE PAS CE QUE SON NOM ANNONCE, et il faut le dire :
+# la longueur passee a `FileStream.Read` n'est PAS la longueur que ProjFS
+# demande au rappel `GetFileData`. ProjFS choisit sa propre granularite et peut
+# hydrater bien au-dela de la tranche demandee. Les deux lignes ci-dessus ne
+# separent donc PAS « une trame » de « deux trames » ; elles montrent seulement
+# que toute lecture de `gros.bin` echoue apres un temps long.
+#
+# Ce qui EST etabli, par le journal d'agent correspondant :
+#   - l'hydratation a progresse pendant cette sonde :
+#     octets=42 -> 3145770 -> 6422570 en deux intervalles de 60 s,
+#     soit environ 52 a 55 Kio/s ;
+#   - les `commande expiree` n'apparaissent qu'a 01:07:57 et suivantes,
+#     c'est-a-dire APRES `ICE deconnecte sur le pont fichiers` (01:08:15 pour
+#     la deconnexion, les expirations la precedant de peu) -- autrement dit
+#     quand le PILOTE a ferme le navigateur, pas du fait du produit.
+#     L'« erreur interne » finale est donc imputable a la fin du maintien du
+#     pilote, PAS au pont.
