@@ -14,6 +14,7 @@ import { hacher } from '../identite/mot-de-passe';
 import { verifierJeton } from '../identite/jeton';
 import { creerUtilisateur } from '../depot/utilisateur';
 import { demarrerServeur, type ServicePlateforme } from './serveur';
+import { ECHECS_MAX_ADRESSE, ECHECS_MAX_COMPTE } from '../securite/frein';
 
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 const ORIGINE = 'http://127.0.0.1:5173';
@@ -50,6 +51,33 @@ async function servir(nom: string, origineClient?: string): Promise<string> {
     await creerUtilisateur(base, 'ada@exemple.test', await hacher(MOT_DE_PASSE), MS);
     service = await demarrerServeur(config(origineClient), base);
     return `http://127.0.0.1:${service.port}`;
+}
+
+/// Un DÉCORATEUR autour du pilote réel, qui compte les accès à la base.
+///
+/// 🔴 CE N'EST PAS UN FAUX, ET C'EST LE POINT. Un pilote factice mesurerait
+/// autre chose que la production ; celui-ci délègue tout, et n'ajoute qu'un
+/// compteur. C'est ce qui rend l'assertion « le refus freiné ne touche pas la
+/// base » DÉCIDABLE, là où la mesurer en temps serait instable.
+function piloteCompteur(reel: Pilote): { pilote: Pilote; acces: () => number; remettre: () => void } {
+    let n = 0;
+    const pilote: Pilote = {
+        async executer(sql, params) {
+            n += 1;
+            return reel.executer(sql, params);
+        },
+        async interroger<T>(sql: string, params: unknown[]): Promise<T[]> {
+            n += 1;
+            return reel.interroger<T>(sql, params);
+        },
+        transaction(corps) {
+            return reel.transaction(corps);
+        },
+        fermer() {
+            return reel.fermer();
+        },
+    };
+    return { pilote, acces: () => n, remettre: () => { n = 0; } };
 }
 
 /// `Response.json()` rend `unknown` : ce petit typage évite d'éparpiller des
@@ -215,4 +243,183 @@ describe('routes d’authentification', () => {
         console.log('témoin de capture');
         expect(capture.join('\n')).toContain('témoin de capture');
     });
+});
+
+describe('le frein des routes d’authentification', () => {
+    /// Comme `servir`, mais rend AUSSI le compteur d'accès à la base.
+    async function servirCompte(
+        nom: string,
+        origineClient?: string,
+    ): Promise<{ url: string; acces: () => number; remettre: () => void }> {
+        const reel = await baseNeuve(nom);
+        base = reel;
+        await creerUtilisateur(reel, 'ada@exemple.test', await hacher(MOT_DE_PASSE), MS);
+        const compteur = piloteCompteur(reel);
+        service = await demarrerServeur(config(origineClient), compteur.pilote);
+        return { url: `http://127.0.0.1:${service.port}`, acces: compteur.acces, remettre: compteur.remettre };
+    }
+
+    function echouer(url: string, email: string) {
+        return poster(`${url}/auth/connexion`, { email, motdepasse: 'ce-n-est-pas-le-bon' });
+    }
+
+    it('(a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein', async () => {
+        const url = await servir('frein-compte');
+        for (let i = 0; i < ECHECS_MAX_COMPTE; i++) {
+            expect((await echouer(url, 'ada@exemple.test')).status).toBe(401);
+        }
+        // 🔴 La n+1ᵉ ne coûte plus rien au service : elle est refusée AVANT
+        // toute vérification.
+        const refus = await echouer(url, 'ada@exemple.test');
+        expect(refus.status).toBe(429);
+        expect((await corpsDe(refus)).refus).toBe('trop-de-tentatives');
+    }, 30000);
+
+    it('(a bis) le frein du compte mord même avec le BON mot de passe', async () => {
+        // ⚠️ C'est l'arbitrage assumé de D1, et il se retourne contre
+        // l'utilisateur légitime : un attaquant peut brûler le budget d'un
+        // compte qu'il vise et en refuser l'accès à son propriétaire pendant
+        // la fenêtre. Il est éprouvé ici plutôt que laissé implicite.
+        const url = await servir('frein-compte-legitime');
+        for (let i = 0; i < ECHECS_MAX_COMPTE; i++) await echouer(url, 'ada@exemple.test');
+        const legitime = await poster(`${url}/auth/connexion`, {
+            email: 'ada@exemple.test',
+            motdepasse: MOT_DE_PASSE,
+        });
+        expect(legitime.status).toBe(429);
+    }, 30000);
+
+    it('(a ter) la casse du courriel ne donne PAS un budget neuf', async () => {
+        // Sans normalisation en minuscules, `ADA@exemple.test` serait une
+        // seconde clé, et le budget du compte se multiplierait par le nombre
+        // de casses que l'attaquant sait écrire.
+        const url = await servir('frein-compte-casse');
+        for (let i = 0; i < ECHECS_MAX_COMPTE; i++) await echouer(url, 'ada@exemple.test');
+        expect((await echouer(url, 'ADA@Exemple.TEST')).status).toBe(429);
+    }, 30000);
+
+    it('(b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée', async () => {
+        // Aucun budget de compte ne peut mordre ici : chaque courriel est
+        // essayé UNE seule fois. Seule la clé d'adresse peut refuser — c'est
+        // le seul frein qui ferme le BALAYAGE de comptes.
+        const url = await servir('frein-adresse');
+        for (let i = 0; i < ECHECS_MAX_ADRESSE; i++) {
+            expect((await echouer(url, `n${i}@exemple.test`)).status).toBe(401);
+        }
+        expect((await echouer(url, 'encore-un-autre@exemple.test')).status).toBe(429);
+    }, 60000);
+
+    it('(c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt', async () => {
+        // 🔴 C'EST L'ASSERTION QUI DONNE SON SENS AU FREIN. Un frein posté
+        // APRÈS le hachage compterait des échecs qu'il a déjà payés au prix
+        // fort : `scrypt` est à mémoire dure et coûte délibérément cher
+        // (mesuré ce jour : 68 ms par hachage), et un attaquant qui le
+        // déclenche à volonté épuise le service sans jamais deviner un secret.
+        const { url, acces, remettre } = await servirCompte('frein-sans-base');
+        for (let i = 0; i < ECHECS_MAX_COMPTE; i++) await echouer(url, 'ada@exemple.test');
+        // Le compteur est remis à zéro APRÈS les tentatives payées, pour que
+        // la mesure ne porte QUE sur la requête freinée.
+        remettre();
+        const refus = await echouer(url, 'ada@exemple.test');
+        expect(refus.status).toBe(429);
+        expect(acces()).toBe(0);
+    }, 30000);
+
+    it('(d) un SUCCÈS remet le compteur du COMPTE à zéro', async () => {
+        const url = await servir('frein-succes-compte');
+        for (let i = 0; i < ECHECS_MAX_COMPTE - 1; i++) await echouer(url, 'ada@exemple.test');
+        expect((await poster(`${url}/auth/connexion`, {
+            email: 'ada@exemple.test',
+            motdepasse: MOT_DE_PASSE,
+        })).status).toBe(200);
+        // Sans la remise à zéro, la `max`-ième de cette seconde série
+        // franchirait le budget et rendrait 429.
+        for (let i = 0; i < ECHECS_MAX_COMPTE - 1; i++) {
+            expect((await echouer(url, 'ada@exemple.test')).status).toBe(401);
+        }
+    }, 30000);
+
+    it("(e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro", async () => {
+        // 🔴 Le passer sur la clé d'adresse BLANCHIRAIT un attaquant qui
+        // possède un compte valide : il lui suffirait de s'y connecter entre
+        // deux rafales pour rendre son budget d'adresse à zéro.
+        const url = await servir('frein-succes-adresse');
+        for (let i = 0; i < ECHECS_MAX_ADRESSE - 1; i++) await echouer(url, `m${i}@exemple.test`);
+        expect((await poster(`${url}/auth/connexion`, {
+            email: 'ada@exemple.test',
+            motdepasse: MOT_DE_PASSE,
+        })).status).toBe(200);
+        // L'adresse est à `max - 1` ; cette tentative la porte à `max`…
+        expect((await echouer(url, 'avant-dernier@exemple.test')).status).toBe(401);
+        // …et la suivante est refusée. Si le succès avait effacé l'adresse,
+        // elle serait à 1 et celle-ci passerait.
+        expect((await echouer(url, 'dernier@exemple.test')).status).toBe(429);
+    }, 60000);
+
+    it('(f) le 429 porte `Retry-After` ET les en-têtes CORS', async () => {
+        // 🔴 Sans les en-têtes CORS, le NAVIGATEUR ne peut pas lire le refus,
+        // et l'utilisateur voit un échec opaque au lieu de « réessayez dans
+        // n minutes ». Aucun test Node ne le verrait — `fetch` Node n'applique
+        // pas la politique d'origine — d'où l'assertion sur l'en-tête lui-même.
+        const url = await servir('frein-entetes', ORIGINE);
+        for (let i = 0; i < ECHECS_MAX_COMPTE; i++) {
+            await poster(`${url}/auth/connexion`, { email: 'ada@exemple.test', motdepasse: 'faux' },
+                { origin: ORIGINE });
+        }
+        const refus = await poster(`${url}/auth/connexion`,
+            { email: 'ada@exemple.test', motdepasse: 'faux' }, { origin: ORIGINE });
+        expect(refus.status).toBe(429);
+        const retry = refus.headers.get('retry-after');
+        expect(retry).not.toBeNull();
+        // En SECONDES, un entier positif — jamais 0, qui inviterait le
+        // demandeur à revenir immédiatement.
+        expect(Number(retry)).toBeGreaterThan(0);
+        expect(Number.isInteger(Number(retry))).toBe(true);
+        expect(refus.headers.get('access-control-allow-origin')).toBe(ORIGINE);
+    }, 30000);
+
+    it("(g) la trace NOMME l'adresse retenue", async () => {
+        // ⚠️ C'est le SEUL remède au mode de défaillance nommé dans
+        // `http/adresse-source.ts` : un exploitant qui pose un proxy sans
+        // déclarer sa confiance verra son frein par adresse dégénérer en frein
+        // GLOBAL, et la seule chose qui le lui dira est cette ligne, où il
+        // reconnaîtra l'adresse de son proxy.
+        const avertir = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const url = await servir('frein-trace');
+        for (let i = 0; i < ECHECS_MAX_COMPTE; i++) await echouer(url, 'ada@exemple.test');
+        await echouer(url, 'ada@exemple.test');
+        const lignes = avertir.mock.calls.map((c) => String(c[0]));
+        const freinees = lignes.filter((l) => l.startsWith('frein '));
+        expect(freinees.length).toBeGreaterThanOrEqual(1);
+        expect(freinees[0]).toContain('adresse=');
+        expect(freinees[0]).toContain('route=/auth/connexion');
+    }, 30000);
+
+    it("(h) `/auth/rafraichir` est freiné par l'ADRESSE seule", async () => {
+        // ⚠️ Le demandeur n'y présente AUCUN courriel, seulement un jeton
+        // opaque : prendre ce jeton pour clé reviendrait à indexer une table
+        // sur un secret.
+        const url = await servir('frein-rafraichir');
+        for (let i = 0; i < ECHECS_MAX_ADRESSE; i++) {
+            expect((await poster(`${url}/auth/rafraichir`, { rafraichissement: `faux-${i}` })).status)
+                .toBe(401);
+        }
+        const refus = await poster(`${url}/auth/rafraichir`, { rafraichissement: 'encore-faux' });
+        expect(refus.status).toBe(429);
+    }, 60000);
+
+    it("(h bis) 🔴 un échec sur `/auth/rafraichir` ne consomme AUCUN budget de compte", async () => {
+        // Sinon, un attaquant qui ne connaît aucun courriel pourrait tout de
+        // même verrouiller des comptes — ou, plus subtil, la clé de compte
+        // serait le jeton lui-même.
+        const url = await servir('frein-rafraichir-compte');
+        for (let i = 0; i < ECHECS_MAX_COMPTE + 2; i++) {
+            await poster(`${url}/auth/rafraichir`, { rafraichissement: `faux-${i}` });
+        }
+        // Le compte d'Ada n'a jamais été nommé : sa connexion doit passer.
+        expect((await poster(`${url}/auth/connexion`, {
+            email: 'ada@exemple.test',
+            motdepasse: MOT_DE_PASSE,
+        })).status).toBe(200);
+    }, 30000);
 });

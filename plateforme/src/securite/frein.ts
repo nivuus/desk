@@ -104,6 +104,35 @@ export const ECHECS_MAX_ADRESSE = 50;
 /// mieux que la mémoire.
 export const ENTREES_MAX = 10_000;
 
+/// Les deux budgets du service, construits UNE fois.
+///
+/// ⚠️ ILS SONT ICI, ET NON CHEZ LEURS APPELANTS, POUR QUE `/auth/*` ET
+/// `/agent` NE PUISSENT PAS DIVERGER. D4 le dit : « pas de seconde table —
+/// deux freins distincts divergeraient le jour où l'un serait durci ». La même
+/// raison vaut pour les budgets et pour la forme des clés ci-dessous.
+export const BUDGET_COMPTE: Budget = { max: ECHECS_MAX_COMPTE, fenetreMs: FENETRE_MS };
+export const BUDGET_ADRESSE: Budget = { max: ECHECS_MAX_ADRESSE, fenetreMs: FENETRE_MS };
+
+/// 🔴 LES CLÉS SONT PRÉFIXÉES, ET LES PRÉFIXES SONT DISJOINTS. Sans eux, une
+/// VM nommée `203.0.113.7` partagerait le budget de l'adresse `203.0.113.7`, et
+/// un attaquant pourrait épuiser l'un pour fermer l'autre. Les trois
+/// constructeurs vivent ici pour que personne n'en écrive un quatrième.
+
+/// ⚠️ LE COURRIEL EST NORMALISÉ EN MINUSCULES ET DÉTOURÉ. Sans quoi
+/// `ADA@exemple.test` serait une seconde clé, et le budget d'un compte se
+/// multiplierait par le nombre de casses qu'un attaquant sait écrire.
+export function cleCompte(email: string): string {
+    return `compte:${email.trim().toLowerCase()}`;
+}
+
+export function cleAdresse(adresse: string): string {
+    return `adr:${adresse}`;
+}
+
+export function cleVm(vmId: string): string {
+    return `agent:${vmId}`;
+}
+
 interface Entree {
     compte: number;
     /// L'instant du PREMIER échec de la série — voir l'en-tête : c'est lui qui
