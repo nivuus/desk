@@ -7,4 +7,5 @@
 //! aucun module ne franchit ici de frontière `#[cfg(windows)]`.
 
 pub mod raccourci;
+pub mod reconciliation;
 pub mod sha256;
