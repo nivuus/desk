@@ -1,0 +1,43 @@
+﻿sonde-idiome, 2026-08-21T00:41:25.7335669+02:00
+session Windows : 1 (0 = WinRM, 1 = interactive)
+
+=== io-file-writealltext
+    issue          : OK
+    evenements     : Changed document.txt | Changed document.txt
+    fichiers restes: document.txt
+    contenu final  : contenu reecrit par WriteAllText
+    VERDICT        : EN PLACE
+
+=== add-content
+    issue          : OK
+    evenements     : Changed document.txt
+    fichiers restes: document.txt
+    contenu final  : contenu initial\nune ligne de plus\n
+    VERDICT        : EN PLACE
+
+=== cmd-redirection
+    issue          : OK
+    evenements     : Changed document.txt | Changed document.txt
+    fichiers restes: document.txt
+    contenu final  : reecrit par cmd\n
+    VERDICT        : EN PLACE
+
+=== set-content
+    issue          : OK
+    evenements     : Changed document.txt | Changed document.txt
+    fichiers restes: document.txt
+    contenu final  : reecrit par Set-Content\n
+    VERDICT        : EN PLACE
+
+=== notepad
+    issue          : OK
+    evenements     : Changed document.txt
+    fichiers restes: document.txt
+    contenu final  : reecrit par le Bloc-notescontenu initial\n
+    VERDICT        : EN PLACE
+
+
+LECTURE DU RESULTAT :
+  au moins un EN PLACE  -> il devient l instrument du critere (1) de F2 ;
+  aucun EN PLACE        -> F2 n est pas recevable sans F3 (risque R-F2-1),
+                           et la recette le DECLARE au lieu de mesurer autre chose.

@@ -1,0 +1,26 @@
+[2026-08-20T22:48:05.528Z] jeton de recette obtenu
+[2026-08-20T22:48:06.079Z] chrome : Chrome/151.0.7922.169
+[2026-08-20T22:48:06.214Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+[2026-08-20T22:48:10.288Z] OPFS peuple : 5 entrees
+[2026-08-20T22:48:10.289Z] la page-shell est connectee : lancement de l agent
+[2026-08-20T22:48:10.758Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-20T22:48:14.781Z] 1 fenetre(s) d application apres 4 s
+[2026-08-20T22:48:14.781Z] clic sur #choisir-dossier
+[2026-08-20T22:48:17.823Z] #etat-fichiers : "Lecteur « Mes Fichiers » monté sur « Mes documents »."
+[2026-08-20T22:48:17.823Z] repos de 8000 ms avant la mesure
+[2026-08-20T22:48:25.834Z] compteur AVANT : {"dues":0,"vues":0,"texte":""}
+[2026-08-20T22:48:25.834Z] mesure cote VM (ecriture dans la racine)
+[2026-08-20T22:50:24.873Z] mesure VM : JSON lu
+[2026-08-20T22:51:26.565Z] compteur FINAL : {"t":59,"dues":0,"vues":0,"texte":""}
+[2026-08-20T22:51:26.571Z] relecture ecrit-par-la-vm.bin : {"present":false,"erreur":"NotFoundError: A requested file or directory could not be found at the time an operation was processed."}
+[2026-08-20T22:51:26.588Z] relecture projete.txt : {"present":true,"taille":52,"sha256":"8c9605738f6e92bf92f59d84196dc4bcb9cbd136181a471a5f3b4ad86f2fb0f3"}
+[2026-08-20T22:51:26.592Z] relecture vide.txt : {"present":false,"erreur":"NotFoundError: A requested file or directory could not be found at the time an operation was processed."}
+[2026-08-20T22:51:26.597Z] relecture dossier-neuf/dedans.txt : {"present":false,"erreur":"NotFoundError: A requested file or directory could not be found at the time an operation was processed."}
+[2026-08-20T22:51:26.625Z] relecture Casse.txt : {"present":true,"taille":15,"sha256":"2c7f4c21a3c14c7c42ced552981f8f1cbe36c5775d7a0a773f739f10fa5ee870"}
+[2026-08-20T22:51:26.642Z] relecture CASSE.TXT : {"present":false,"erreur":"NotFoundError: A requested file or directory could not be found at the time an operation was processed."}
+[2026-08-20T22:51:26.660Z] arbre OPFS : [{"chemin":"sous-dossier","type":"d"},{"chemin":"sous-dossier/autre.txt","type":"f","taille":35},{"chemin":"projete.txt","type":"f","taille":52},{"chemin":"gros-lecture.bin","type":"f","taille":300000},{"chemin":"Casse.txt","type":"f","taille":15}]
+[2026-08-20T22:51:36.676Z] echantillon : {"t":10,"fenetres":1,"flux":[{"url":"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1","v":"{\"sansPc\":true}"}]}
+[2026-08-20T22:51:46.688Z] echantillon : {"t":20,"fenetres":1,"flux":[{"url":"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1","v":"{\"sansPc\":true}"}]}
+[2026-08-20T22:51:56.697Z] echantillon : {"t":30,"fenetres":1,"flux":[{"url":"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1","v":"{\"sansPc\":true}"}]}
+[2026-08-20T22:52:06.710Z] echantillon : {"t":40,"fenetres":1,"flux":[{"url":"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1","v":"{\"sansPc\":true}"}]}
+[2026-08-20T22:52:06.711Z] resultat ecrit : /tmp/f2/pilote-arme-1.json
