@@ -1,0 +1,36 @@
+=== Tache 17 — PREALABLES de la recette P5 ===
+Date UTC : 2026-08-20T08:36:47Z
+Commit mesure : d9dc3715c81526e77a023ccb2275e17a829c5d55  (banc(p5): les rouges et les six mutations des taches 15 et 16)
+Binaire : n/a — service TypeScript, lance par 'tsx src/index.ts' (aucune compilation).
+
+--- (a) aucune recette voisine ne tourne : aucun coturn EN MARCHE ---
+(aucun conteneur coturn en marche)
+etat de guacamole-coturn-1 tel que TROUVE :
+guacamole-coturn-1	Exited (0) 2 weeks ago
+
+--- (b) la VM Windows n'est PAS employee ---
+ ID   Nom       État
+--------------------------------------
+ 15   Windows   en cours d’exécution
+
+
+--- (c) l'arbre est propre sur plateforme/ et client/ ---
+git status --porcelain -- plateforme client deploiement docker-compose.plateforme.yml docker-compose.coturn.yml :
+(vide ci-dessus = propre)
+
+--- (d) l'arbre COMPLET, pour memoire : les non-suivis appartiennent au chantier concurrent presse-papier ---
+?? docs/superpowers/plans/journaux-plateforme-p5/recette/
+?? docs/superpowers/plans/journaux-presse-papier-p1/agent-arme-1-plat.log
+?? docs/superpowers/plans/journaux-presse-papier-p1/agent-arme-1.log
+?? docs/superpowers/plans/journaux-presse-papier-p1/critere-arme-1.log
+?? docs/superpowers/plans/journaux-presse-papier-p1/instrument/
+?? docs/superpowers/plans/journaux-presse-papier-p1/pp-arme-1.json
+?? docs/superpowers/plans/journaux-presse-papier-p1/temoin-mesurabilite.json
+?? docs/superpowers/plans/journaux-presse-papier-p1/temoin-mesurabilite.log
+
+--- (e) outils ---
+node    : v24.9.0
+npm     : 11.6.0
+chrome  : Google Chrome 151.0.7922.169 
+docker  : Docker version 29.7.2, build a7dcaa6
+openssl : OpenSSL 3.5.6 7 Apr 2026 (Library: OpenSSL 3.5.6 7 Apr 2026)

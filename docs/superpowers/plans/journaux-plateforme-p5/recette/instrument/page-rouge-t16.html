@@ -1,0 +1,17 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>recette P5</title>
+<!--
+  La page du critere ⑤. Elle est SERVIE PAR LE PROXY, sur la MEME origine que
+  l'API — c'est la configuration nominale du deploiement.
+
+  🔴 SON SCRIPT EST EXTERNE, ET C'EST LA MESURE DE D8 QUI L'EXIGE. La CSP livree
+  porte `script-src 'self'` : un script EN LIGNE serait bloque, la page rendrait
+  « attente » et rien ne dirait que le script n'a jamais tourne. Le journal de la
+  tache 14 a paye exactement ce piege.
+-->
+<body>
+<pre id="sortie">amorce…</pre>
+<script src="./recette-p5-ident.js"></script>
+<script src="./rouge-t16.js"></script>
+</body>

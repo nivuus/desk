@@ -1,0 +1,238 @@
+=== CRITERE ① — la suite de depot est verte sur le Postgres DEPLOYE ===
+Date UTC : 2026-08-20T08:46:08Z
+Commit : d9dc3715c81526e77a023ccb2275e17a829c5d55
+Binaire : n/a — service TypeScript.
+Moteur : postgres, aux DEUX executions (declare).
+Cible : l'instance du profil 'deploiement', publiee sur 127.0.0.1:5434, volume NOMME.
+
+🔴 LE DISCRIMINANT DE D15 EST INSUFFISANT, ET LA MESURE LE DIT.
+   D15 prescrit 'SELECT current_database(), inet_server_port(), version()'.
+   Or inet_server_port() rend 5432 des DEUX cotes (c'est le port du serveur DANS son
+   conteneur, jamais le port publie), et version() est identique mot pour mot puisque
+   les deux instances portent la MEME image — ce qui est justement voulu par D15.
+   Le seul champ prescrit qui distingue est current_database(), et il ne distingue que
+   par une CONVENTION DE NOM. L'instrument ajoute donc l'identite de GRAPPE
+   (pg_control_system().system_identifier), posee par initdb et unique par instance.
+
+--- les deux instances, cote a cote, AVANT toute suite ---
+Dockerfile
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+DISCRIMINANT [DEPLOIEMENT 127.0.0.1:5434]
+  url visee           = postgres://plateforme:***MASQUE***@127.0.0.1:5434/plateforme
+  base                = plateforme
+  identite de GRAPPE  = 7676031821417750562   <- LE discriminant
+  demarree a          = 2026-08-20T08:43:52.087Z
+  inet_server_port()  = 5432   <- NE DISCRIMINE PAS (port interne au conteneur)
+  version             = PostgreSQL 16.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit   <- NE DISCRIMINE PAS (meme image)
+Dockerfile
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+DISCRIMINANT [TEST 127.0.0.1:5433 (temoin)]
+  url visee           = postgres://plateforme:***MASQUE***@127.0.0.1:5433/plateforme_test
+  base                = plateforme_test
+  identite de GRAPPE  = 7675690416090275874   <- LE discriminant
+  demarree a          = 2026-08-19T11:01:22.811Z
+  inet_server_port()  = 5432   <- NE DISCRIMINE PAS (port interne au conteneur)
+  version             = PostgreSQL 16.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit   <- NE DISCRIMINE PAS (meme image)
+
+=> les deux identites de grappe DIFFERENT : le discriminant distingue reellement.
+
+########## EXECUTION 1 — suite COMPLETE contre 127.0.0.1:5434 ##########
+heure : 08:46:22Z
+--- discriminant AVANT ---
+Dockerfile
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+DISCRIMINANT [avant exec.1]
+  url visee           = postgres://plateforme:***MASQUE***@127.0.0.1:5434/plateforme
+  base                = plateforme
+  identite de GRAPPE  = 7676031821417750562   <- LE discriminant
+  demarree a          = 2026-08-20T08:43:52.087Z
+  inet_server_port()  = 5432   <- NE DISCRIMINE PAS (port interne au conteneur)
+  version             = PostgreSQL 16.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit   <- NE DISCRIMINE PAS (meme image)
+--- la suite ---
+Dockerfile
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+ ✓ src/http/routes-auth.test.ts (19 tests) 20622ms
+   ✓ routes d’authentification > connexion valide : l’accès est un jeton que le service accepte, et le rafraîchissement vaut 879ms
+   ✓ routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 696ms
+   ✓ routes d’authentification > REJEU : rafraîchir deux fois le même jeton rend 401, et la famille tombe 462ms
+   ✓ routes d’authentification > borne le corps à 4 KiB : 5 KiB rend 413 360ms
+   ✓ routes d’authentification > refuse une méthode autre que POST par 405, et un corps non-JSON par 400 375ms
+   ✓ routes d’authentification > OPTIONS rend 204, avec les en-têtes CORS SEULEMENT si une origine est autorisée 639ms
+   ✓ routes d’authentification > CRITÈRE ④ : aucune trace ni aucune réponse ne porte le CHAMP du mot de passe 457ms
+   ✓ le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein 655ms
+   ✓ le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe 691ms
+   ✓ le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf 730ms
+   ✓ le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée 4319ms
+   ✓ le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt 939ms
+   ✓ le frein des routes d’authentification > (d) un SUCCÈS remet le compteur du COMPTE à zéro 1148ms
+   ✓ le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro 5369ms
+   ✓ le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS 1159ms
+   ✓ le frein des routes d’authentification > (g) la trace NOMME l'adresse retenue 681ms
+   ✓ le frein des routes d’authentification > (h) `/auth/rafraichir` est freiné par l'ADRESSE seule 374ms
+   ✓ le frein des routes d’authentification > (h bis) 🔴 un échec sur `/auth/rafraichir` ne consomme AUCUN budget de compte 439ms
+
+ Test Files  49 passed (49)
+      Tests  433 passed (433)
+   Start at  10:46:24
+   Duration  22.21s (transform 2.23s, setup 0ms, collect 7.77s, tests 98.84s, environment 18ms, prepare 7.25s)
+
+sortie exec.1 = 0
+--- discriminant APRES ---
+Dockerfile
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+DISCRIMINANT [apres exec.1]
+  url visee           = postgres://plateforme:***MASQUE***@127.0.0.1:5434/plateforme
+  base                = plateforme
+  identite de GRAPPE  = 7676031821417750562   <- LE discriminant
+  demarree a          = 2026-08-20T08:43:52.087Z
+  inet_server_port()  = 5432   <- NE DISCRIMINE PAS (port interne au conteneur)
+  version             = PostgreSQL 16.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit   <- NE DISCRIMINE PAS (meme image)
+
+########## EXECUTION 2 — suite COMPLETE contre 127.0.0.1:5434 ##########
+heure : 08:46:48Z
+--- discriminant AVANT ---
+Dockerfile
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+DISCRIMINANT [avant exec.2]
+  url visee           = postgres://plateforme:***MASQUE***@127.0.0.1:5434/plateforme
+  base                = plateforme
+  identite de GRAPPE  = 7676031821417750562   <- LE discriminant
+  demarree a          = 2026-08-20T08:43:52.087Z
+  inet_server_port()  = 5432   <- NE DISCRIMINE PAS (port interne au conteneur)
+  version             = PostgreSQL 16.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit   <- NE DISCRIMINE PAS (meme image)
+--- la suite ---
+Dockerfile
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+ ✓ src/http/routes-auth.test.ts (19 tests) 22081ms
+   ✓ routes d’authentification > connexion valide : l’accès est un jeton que le service accepte, et le rafraîchissement vaut 674ms
+   ✓ routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 752ms
+   ✓ routes d’authentification > REJEU : rafraîchir deux fois le même jeton rend 401, et la famille tombe 520ms
+   ✓ routes d’authentification > borne le corps à 4 KiB : 5 KiB rend 413 422ms
+   ✓ routes d’authentification > refuse une méthode autre que POST par 405, et un corps non-JSON par 400 408ms
+   ✓ routes d’authentification > OPTIONS rend 204, avec les en-têtes CORS SEULEMENT si une origine est autorisée 807ms
+   ✓ routes d’authentification > laisse le 404 de P1 intact sur un chemin qui n’est pas d’authentification 316ms
+   ✓ routes d’authentification > CRITÈRE ④ : aucune trace ni aucune réponse ne porte le CHAMP du mot de passe 464ms
+   ✓ le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein 748ms
+   ✓ le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe 730ms
+   ✓ le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf 757ms
+   ✓ le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée 5224ms
+   ✓ le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt 777ms
+   ✓ le frein des routes d’authentification > (d) un SUCCÈS remet le compteur du COMPTE à zéro 1307ms
+   ✓ le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro 5591ms
+   ✓ le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS 861ms
+   ✓ le frein des routes d’authentification > (g) la trace NOMME l'adresse retenue 785ms
+   ✓ le frein des routes d’authentification > (h) `/auth/rafraichir` est freiné par l'ADRESSE seule 643ms
+
+ Test Files  49 passed (49)
+      Tests  433 passed (433)
+   Start at  10:46:50
+   Duration  23.63s (transform 2.48s, setup 0ms, collect 8.19s, tests 111.27s, environment 22ms, prepare 7.95s)
+
+sortie exec.2 = 0
+--- discriminant APRES ---
+Dockerfile
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+DISCRIMINANT [apres exec.2]
+  url visee           = postgres://plateforme:***MASQUE***@127.0.0.1:5434/plateforme
+  base                = plateforme
+  identite de GRAPPE  = 7676031821417750562   <- LE discriminant
+  demarree a          = 2026-08-20T08:43:52.087Z
+  inet_server_port()  = 5432   <- NE DISCRIMINE PAS (port interne au conteneur)
+  version             = PostgreSQL 16.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit   <- NE DISCRIMINE PAS (meme image)
+
+########## LA ROUGE DU CRITERE ① ##########
+
+🔴 LA ROUGE N'EST PAS « CASSER LE SERVICE » (D15) : c'est POINTER LA SUITE SUR
+   L'INSTANCE DE TEST et verifier que le DISCRIMINANT LE DIT. Un discriminant
+   qu'on n'a pas vu distinguer ne distingue rien.
+
+⚠️ LA SUITE EST DONC ATTENDUE VERTE ICI AUSSI, et c'est exactement le point :
+   une suite verte, seule, NE DIT PAS quelle instance elle a touchee. Ce qui
+   rend cette rouge concluante n'est pas un echec de test, c'est le CHANGEMENT
+   de l'identite de grappe rapportee.
+
+--- discriminant AVANT la rouge ---
+Dockerfile
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+DISCRIMINANT [ROUGE : suite pointee sur 127.0.0.1:5433]
+  url visee           = postgres://plateforme:***MASQUE***@127.0.0.1:5433/plateforme_test
+  base                = plateforme_test
+  identite de GRAPPE  = 7675690416090275874   <- LE discriminant
+  demarree a          = 2026-08-19T11:01:22.811Z
+  inet_server_port()  = 5432   <- NE DISCRIMINE PAS (port interne au conteneur)
+  version             = PostgreSQL 16.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit   <- NE DISCRIMINE PAS (meme image)
+--- la suite, sur l'instance de TEST ---
+Dockerfile
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+   ✓ le frein des routes d’authentification > (d) un SUCCÈS remet le compteur du COMPTE à zéro 1257ms
+   ✓ le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro 5464ms
+   ✓ le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS 791ms
+   ✓ le frein des routes d’authentification > (g) la trace NOMME l'adresse retenue 707ms
+   ✓ le frein des routes d’authentification > (h) `/auth/rafraichir` est freiné par l'ADRESSE seule 525ms
+   ✓ le frein des routes d’authentification > (h bis) 🔴 un échec sur `/auth/rafraichir` ne consomme AUCUN budget de compte 419ms
+
+ Test Files  49 passed (49)
+      Tests  433 passed (433)
+   Start at  10:47:46
+   Duration  22.14s (transform 2.29s, setup 0ms, collect 7.67s, tests 109.34s, environment 33ms, prepare 7.77s)
+
+sortie ROUGE = 0
+
+=> VERDICT DE LA ROUGE : la suite est VERTE (433/433), et le discriminant rapporte
+   l'identite de grappe 7675690416090275874 — celle de l'instance de TEST —, la ou
+   les deux executions du critere rapportaient 7676031821417750562. LE DISCRIMINANT
+   A ETE VU DISTINGUER. Sans lui, les trois executions se liraient identiquement.
+
+########## VERDICT ① ##########
+TENU. DEUX executions, toutes deux sur le moteur postgres, toutes deux contre
+l'instance du profil 'deploiement' (identite de grappe 7676031821417750562) :
+433 tests sur 49 fichiers, verts, sortie 0 chacune.
+
+⚠️ CE QUE ① N'ETABLIT PAS (D15, mot pour mot) : que le deploiement FONCTIONNE.
+   Il etablit que le SOUS-ENSEMBLE SQL du service est vert contre l'instance
+   deployee. Le service lui-meme est eprouve par le critere ⑤.
+
+⚠️ ET IL N'ETABLIT PAS NON PLUS que la CONFIGURATION deployee differe utilement
+   de celle de test sur autre chose que le port publie, le nom de base et le
+   volume nomme. Les deux instances portent la meme image, la meme version, et
+   la mesure ci-dessus le montre plutot qu'elle ne le cache.

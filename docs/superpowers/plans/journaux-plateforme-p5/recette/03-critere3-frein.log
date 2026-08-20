@@ -1,0 +1,2046 @@
+=== CRITERE ③ — les tentatives sont freinees, sur les DEUX chemins ===
+Date UTC : 2026-08-20T08:38:08Z
+Commit : d9dc3715c81526e77a023ccb2275e17a829c5d55
+Portee : le frein de /auth/connexion et /auth/rafraichir (routes-auth.test.ts) ET celui de
+         /agent (canal.test.ts). DEUX executions : une par MOTEUR.
+Discriminant d'instance : sqlite en memoire pour l'exec. 1 ; pour l'exec. 2, le harnais vise
+         l'instance de TEST (127.0.0.1:5433) — le critere ③ ne porte pas sur le deploiement,
+         c'est le critere ① qui vise 5434.
+
+########## EXECUTION 1 — moteur sqlite ##########
+Dockerfile
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+(node:2819121) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:2819120) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-2
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-3
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-4
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-5
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-6
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-7
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-8
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-9
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-10
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-11
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-12
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-13
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-14
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-15
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-16
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-17
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-18
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-19
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-20
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-21
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-22
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-23
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-24
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-25
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-26
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-27
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-28
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-29
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-30
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-31
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-32
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-33
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-34
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-35
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-36
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-37
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-38
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-39
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-40
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-41
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-42
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-43
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-44
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-45
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-46
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-47
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-48
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-49
+frein route=/agent adresse=127.0.0.1 cles="agent:inconnue-49 adr:127.0.0.1" retry_apres_s=900 entrees=51 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+frein route=/agent adresse=127.0.0.1 cles="agent:encore-une-autre adr:127.0.0.1" retry_apres_s=900 entrees=51 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+ ✓ src/agents/canal.test.ts (14 tests) 4919ms
+   ✓ le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein 551ms
+   ✓ le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement 564ms
+   ✓ le frein du canal /agent > (d) le JOURNAL, lui, distingue les deux 601ms
+   ✓ le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt` 663ms
+   ✓ le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro 960ms
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:n49@exemple.test adr:127.0.0.1" retry_apres_s=896 entrees=51 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:avant-dernier@exemple.test adr:127.0.0.1" retry_apres_s=896 entrees=51 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (h) `/auth/rafraichir` est freiné par l'ADRESSE seule
+frein route=/auth/rafraichir adresse=127.0.0.1 cles=adr:127.0.0.1 retry_apres_s=900 entrees=1 evictions=0
+
+ ✓ src/http/routes-auth.test.ts (19 tests) 16397ms
+   ✓ routes d’authentification > connexion valide : l’accès est un jeton que le service accepte, et le rafraîchissement vaut 351ms
+   ✓ routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 385ms
+   ✓ le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein 607ms
+   ✓ le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe 534ms
+   ✓ le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf 596ms
+   ✓ le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée 5235ms
+   ✓ le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt 534ms
+   ✓ le frein des routes d’authentification > (d) un SUCCÈS remet le compteur du COMPTE à zéro 778ms
+   ✓ le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro 5105ms
+   ✓ le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS 434ms
+   ✓ le frein des routes d’authentification > (g) la trace NOMME l'adresse retenue 465ms
+
+ Test Files  2 passed (2)
+      Tests  33 passed (33)
+   Start at  10:38:10
+   Duration  17.93s (transform 851ms, setup 0ms, collect 1.98s, tests 21.32s, environment 1ms, prepare 245ms)
+
+sortie exec.1 = 0
+
+########## EXECUTION 2 — moteur postgres ##########
+Dockerfile
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+(node:2820532) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:2820531) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-2
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-3
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-4
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-5
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-6
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-7
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-8
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-9
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-10
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-11
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-12
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-13
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-14
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-15
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-16
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-17
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-18
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-19
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-20
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-21
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-22
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-23
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-24
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-25
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-26
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-27
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-28
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-29
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-30
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-31
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-32
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-33
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-34
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-35
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-36
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-37
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-38
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-39
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-40
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-41
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-42
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-43
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-44
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-45
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-46
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-47
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-48
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-49
+frein route=/agent adresse=127.0.0.1 cles="agent:inconnue-49 adr:127.0.0.1" retry_apres_s=900 entrees=51 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+frein route=/agent adresse=127.0.0.1 cles="agent:encore-une-autre adr:127.0.0.1" retry_apres_s=900 entrees=51 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+ ✓ src/agents/canal.test.ts (14 tests) 7642ms
+   ✓ la boucle du canal /agent > `enroler` avec le BON secret rend `enrole`, avec préfixe et jeton 527ms
+   ✓ la boucle du canal /agent > 🔴 le jeton rendu est VÉRIFIABLE PAR LA GARDE, et de type `agent` 333ms
+   ✓ la boucle du canal /agent > 🔴 `enroler` au MAUVAIS secret rend `refus` et FERME le socket, sans écrire le secret au journal 335ms
+   ✓ la boucle du canal /agent > 🔴 `battement` après `enroler` AVANCE `vu_a` en base 580ms
+   ✓ la boucle du canal /agent > 🔴 `battement` rend un jeton FRAIS, valide à un instant où le précédent est EXPIRÉ 412ms
+   ✓ le canal, CÂBLÉ dans le service entier > 🔴 le chemin `/agent` du service sert réellement le canal 304ms
+   ✓ le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein 613ms
+   ✓ le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée 382ms
+   ✓ le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement 721ms
+   ✓ le frein du canal /agent > (d) le JOURNAL, lui, distingue les deux 777ms
+   ✓ le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt` 714ms
+   ✓ le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro 1428ms
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:n49@exemple.test adr:127.0.0.1" retry_apres_s=895 entrees=51 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:avant-dernier@exemple.test adr:127.0.0.1" retry_apres_s=896 entrees=51 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (h) `/auth/rafraichir` est freiné par l'ADRESSE seule
+frein route=/auth/rafraichir adresse=127.0.0.1 cles=adr:127.0.0.1 retry_apres_s=900 entrees=1 evictions=0
+
+ ✓ src/http/routes-auth.test.ts (19 tests) 19852ms
+   ✓ routes d’authentification > connexion valide : l’accès est un jeton que le service accepte, et le rafraîchissement vaut 569ms
+   ✓ routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 513ms
+   ✓ routes d’authentification > REJEU : rafraîchir deux fois le même jeton rend 401, et la famille tombe 349ms
+   ✓ routes d’authentification > refuse une méthode autre que POST par 405, et un corps non-JSON par 400 347ms
+   ✓ routes d’authentification > OPTIONS rend 204, avec les en-têtes CORS SEULEMENT si une origine est autorisée 651ms
+   ✓ routes d’authentification > CRITÈRE ④ : aucune trace ni aucune réponse ne porte le CHAMP du mot de passe 362ms
+   ✓ le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein 620ms
+   ✓ le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe 635ms
+   ✓ le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf 771ms
+   ✓ le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée 5684ms
+   ✓ le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt 650ms
+   ✓ le frein des routes d’authentification > (d) un SUCCÈS remet le compteur du COMPTE à zéro 932ms
+   ✓ le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro 4445ms
+   ✓ le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS 830ms
+   ✓ le frein des routes d’authentification > (g) la trace NOMME l'adresse retenue 881ms
+   ✓ le frein des routes d’authentification > (h) `/auth/rafraichir` est freiné par l'ADRESSE seule 685ms
+   ✓ le frein des routes d’authentification > (h bis) 🔴 un échec sur `/auth/rafraichir` ne consomme AUCUN budget de compte 465ms
+
+ Test Files  2 passed (2)
+      Tests  33 passed (33)
+   Start at  10:38:29
+   Duration  21.19s (transform 641ms, setup 0ms, collect 1.52s, tests 27.49s, environment 1ms, prepare 255ms)
+
+sortie exec.2 = 0
+
+########## LES DEUX ROUGES, DISTINCTES ##########
+
+--- ROUGE A : retirer la CONSULTATION du frein dans http/routes-auth.ts ---
+Mutation (le site est neutralise, la consultation n'a plus lieu) :
+--- /tmp/p5r/routes-auth.ts.orig	2026-08-20 10:39:18.374242972 +0200
++++ plateforme/src/http/routes-auth.ts	2026-08-20 10:39:18.382242979 +0200
+@@ -177,7 +177,7 @@
+     // Le corps est lu d'abord, parce que la clé de compte en dépend ; il est
+     // borné à `CORPS_MAX_OCTETS` et ne coûte donc rien de comparable.
+     const contexte = clesDe(chemin, corps, req, deps);
+-    const verdict = deps.frein.consulter(contexte.cles, deps.maintenant());
++    const verdict = { freine: false, retryApresS: 0 }; // ROUGE P5 : consultation retiree
+     if (verdict.freine) {
+         // ⚠️ LE 429 PORTE LES EN-TÊTES CORS COMME TOUTES LES AUTRES RÉPONSES.
+         // Sans eux, le NAVIGATEUR ne peut pas lire le refus : l'utilisateur
+(diff ci-dessus ; le harnais de mutation exige que le motif soit TROUVE — il l'est, le diff n'est pas vide)
+Dockerfile
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+(node:2823795) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:2823789) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-2
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-3
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-4
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-5
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-6
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-7
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-8
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-9
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-10
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-11
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-12
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-13
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-14
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-15
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-16
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-17
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-18
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-19
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-20
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-21
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-22
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-23
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-24
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-25
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-26
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-27
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-28
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-29
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-30
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-31
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-32
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-33
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-34
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-35
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-36
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-37
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-38
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-39
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-40
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-41
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-42
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-43
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-44
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-45
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-46
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-47
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-48
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-49
+frein route=/agent adresse=127.0.0.1 cles="agent:inconnue-49 adr:127.0.0.1" retry_apres_s=900 entrees=51 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+frein route=/agent adresse=127.0.0.1 cles="agent:encore-une-autre adr:127.0.0.1" retry_apres_s=900 entrees=51 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+ ✓ src/agents/canal.test.ts (14 tests) 4812ms
+   ✓ le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein 522ms
+   ✓ le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement 629ms
+   ✓ le frein du canal /agent > (d) le JOURNAL, lui, distingue les deux 503ms
+   ✓ le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt` 507ms
+   ✓ le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro 948ms
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:n49@exemple.test adr:127.0.0.1" retry_apres_s=896 entrees=51 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:encore-un-autre@exemple.test adr:127.0.0.1" retry_apres_s=896 entrees=52 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:avant-dernier@exemple.test adr:127.0.0.1" retry_apres_s=896 entrees=51 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:dernier@exemple.test adr:127.0.0.1" retry_apres_s=896 entrees=52 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (h) `/auth/rafraichir` est freiné par l'ADRESSE seule
+frein route=/auth/rafraichir adresse=127.0.0.1 cles=adr:127.0.0.1 retry_apres_s=900 entrees=1 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (h) `/auth/rafraichir` est freiné par l'ADRESSE seule
+frein route=/auth/rafraichir adresse=127.0.0.1 cles=adr:127.0.0.1 retry_apres_s=900 entrees=1 evictions=0
+
+ ❯ src/http/routes-auth.test.ts (19 tests | 8 failed) 16171ms
+   ✓ routes d’authentification > connexion valide : l’accès est un jeton que le service accepte, et le rafraîchissement vaut 322ms
+   ✓ routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 344ms
+   × le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein 682ms
+     → expected 401 to be 429 // Object.is equality
+   × le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe 689ms
+     → expected 200 to be 429 // Object.is equality
+   × le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf 571ms
+     → expected 401 to be 429 // Object.is equality
+   × le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée 4333ms
+     → expected 401 to be 429 // Object.is equality
+   × le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt 568ms
+     → expected 401 to be 429 // Object.is equality
+   ✓ le frein des routes d’authentification > (d) un SUCCÈS remet le compteur du COMPTE à zéro 707ms
+   × le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro 4813ms
+     → expected 401 to be 429 // Object.is equality
+   × le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS 679ms
+     → expected 401 to be 429 // Object.is equality
+   ✓ le frein des routes d’authentification > (g) la trace NOMME l'adresse retenue 781ms
+   × le frein des routes d’authentification > (h) `/auth/rafraichir` est freiné par l'ADRESSE seule 230ms
+     → expected 401 to be 429 // Object.is equality
+   ✓ le frein des routes d’authentification > (h bis) 🔴 un échec sur `/auth/rafraichir` ne consomme AUCUN budget de compte 351ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/http/routes-auth.test.ts > le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein
+AssertionError: expected 401 to be 429 // Object.is equality
+
+- Expected
++ Received
+
+- 429
++ 401
+
+ ❯ src/http/routes-auth.test.ts:247:30
+    245|         // toute vérification.
+    246|         const refus = await echouer(url, 'ada@exemple.test');
+    247|         expect(refus.status).toBe(429);
+       |                              ^
+    248|         expect((await corpsDe(refus)).refus).toBe('trop-de-tentatives'…
+    249|     }, 30000);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  src/http/routes-auth.test.ts > le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe
+AssertionError: expected 200 to be 429 // Object.is equality
+
+- Expected
++ Received
+
+- 429
++ 200
+
+ ❯ src/http/routes-auth.test.ts:262:33
+    260|             motdepasse: MOT_DE_PASSE,
+    261|         });
+    262|         expect(legitime.status).toBe(429);
+       |                                 ^
+    263|     }, 30000);
+    264| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  src/http/routes-auth.test.ts > le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf
+AssertionError: expected 401 to be 429 // Object.is equality
+
+- Expected
++ Received
+
+- 429
++ 401
+
+ ❯ src/http/routes-auth.test.ts:271:65
+    269|         const url = await servir('frein-compte-casse');
+    270|         for (let i = 0; i < ECHECS_MAX_COMPTE; i++) await echouer(url,…
+    271|         expect((await echouer(url, 'ADA@Exemple.TEST')).status).toBe(4…
+       |                                                                 ^
+    272|     }, 30000);
+    273| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  src/http/routes-auth.test.ts > le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée
+AssertionError: expected 401 to be 429 // Object.is equality
+
+- Expected
++ Received
+
+- 429
++ 401
+
+ ❯ src/http/routes-auth.test.ts:282:77
+    280|             expect((await echouer(url, `n${i}@exemple.test`)).status).…
+    281|         }
+    282|         expect((await echouer(url, 'encore-un-autre@exemple.test')).st…
+       |                                                                             ^
+    283|     }, 60000);
+    284| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  src/http/routes-auth.test.ts > le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt
+AssertionError: expected 401 to be 429 // Object.is equality
+
+- Expected
++ Received
+
+- 429
++ 401
+
+ ❯ src/http/routes-auth.test.ts:297:30
+    295|         remettre();
+    296|         const refus = await echouer(url, 'ada@exemple.test');
+    297|         expect(refus.status).toBe(429);
+       |                              ^
+    298|         expect(acces()).toBe(0);
+    299|     }, 30000);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  src/http/routes-auth.test.ts > le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro
+AssertionError: expected 401 to be 429 // Object.is equality
+
+- Expected
++ Received
+
+- 429
++ 401
+
+ ❯ src/http/routes-auth.test.ts:329:69
+    327|         // …et la suivante est refusée. Si le succès avait effacé l'ad…
+    328|         // elle serait à 1 et celle-ci passerait.
+    329|         expect((await echouer(url, 'dernier@exemple.test')).status).to…
+       |                                                                     ^
+    330|     }, 60000);
+    331| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ FAIL  src/http/routes-auth.test.ts > le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS
+AssertionError: expected 401 to be 429 // Object.is equality
+
+- Expected
++ Received
+
+- 429
++ 401
+
+ ❯ src/http/routes-auth.test.ts:344:30
+    342|         const refus = await poster(`${url}/auth/connexion`,
+    343|             { email: 'ada@exemple.test', motdepasse: 'faux' }, { origi…
+    344|         expect(refus.status).toBe(429);
+       |                              ^
+    345|         const retry = refus.headers.get('retry-after');
+    346|         expect(retry).not.toBeNull();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+
+ FAIL  src/http/routes-auth.test.ts > le frein des routes d’authentification > (h) `/auth/rafraichir` est freiné par l'ADRESSE seule
+AssertionError: expected 401 to be 429 // Object.is equality
+
+- Expected
++ Received
+
+- 429
++ 401
+
+ ❯ src/http/routes-auth.test.ts:381:30
+    379|         }
+    380|         const refus = await poster(`${url}/auth/rafraichir`, { rafraic…
+    381|         expect(refus.status).toBe(429);
+       |                              ^
+    382|     }, 60000);
+    383| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  8 failed | 25 passed (33)
+   Start at  10:39:19
+   Duration  17.48s (transform 734ms, setup 0ms, collect 1.51s, tests 20.98s, environment 1ms, prepare 221ms)
+
+sortie ROUGE A = 1  (attendu : non nul)
+restauration : 0 ligne(s) de diff residuel (0 = restaure)
+
+🔴 FORME de la ROUGE A : 8 echecs, TOUS dans routes-auth.test.ts, AUCUN dans canal.test.ts.
+   C'est ce qui rend les deux rouges DISTINCTES : chacune ne fait tomber que SON chemin.
+
+--- ROUGE B : retirer la CONSULTATION du frein dans agents/canal.ts ---
+--- /tmp/p5r/canal.ts.orig	2026-08-20 10:39:49.858272823 +0200
++++ plateforme/src/agents/canal.ts	2026-08-20 10:39:49.862272828 +0200
+@@ -267,7 +267,7 @@
+                 [cleVm(vm), BUDGET_COMPTE],
+                 parAdresse,
+             ];
+-            if (frein.consulter(cles, maintenant()).freine) {
++            if (false) { // ROUGE P5 : consultation retiree
+                 // 🔴 LE MOTIF EST `enrolement`, ET RIEN D'AUTRE. Un motif
+                 // `frein` distinct rendrait à l'attaquant l'information
+                 // « cette VM existe et je l'ai fait déclencher » : c'est
+Dockerfile
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+(node:2826820) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:2826819) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+enrôlement refusé pour la VM v-1
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-2
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-3
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-4
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-5
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-6
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-7
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-8
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-9
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-10
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-11
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-12
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-13
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-14
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-15
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-16
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-17
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-18
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-19
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-20
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-21
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-22
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-23
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-24
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-25
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-26
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-27
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-28
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-29
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-30
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-31
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-32
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-33
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-34
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-35
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-36
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-37
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-38
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-39
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-40
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-41
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-42
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-43
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-44
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-45
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-46
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-47
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-48
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM inconnue-49
+frein route=/agent adresse=127.0.0.1 cles="agent:inconnue-49 adr:127.0.0.1" retry_apres_s=900 entrees=51 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+enrôlement refusé pour la VM encore-une-autre
+frein route=/agent adresse=127.0.0.1 cles="agent:encore-une-autre adr:127.0.0.1" retry_apres_s=900 entrees=52 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+enrôlement refusé pour la VM v-1
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+enrôlement refusé pour la VM v-1
+frein route=/agent adresse=127.0.0.1 cles="agent:v-1 adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+stderr | src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+enrôlement refusé pour la VM v-1
+
+ ❯ src/agents/canal.test.ts (14 tests | 2 failed) 4016ms
+   ✓ le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein 481ms
+   × le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée 151ms
+     → expected 1 to be +0 // Object.is equality
+   ✓ le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement 577ms
+   ✓ le frein du canal /agent > (d) le JOURNAL, lui, distingue les deux 481ms
+   × le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt` 493ms
+     → expected 1 to be +0 // Object.is equality
+   ✓ le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro 756ms
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:n49@exemple.test adr:127.0.0.1" retry_apres_s=896 entrees=51 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:avant-dernier@exemple.test adr:127.0.0.1" retry_apres_s=897 entrees=51 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (h) `/auth/rafraichir` est freiné par l'ADRESSE seule
+frein route=/auth/rafraichir adresse=127.0.0.1 cles=adr:127.0.0.1 retry_apres_s=900 entrees=1 evictions=0
+
+ ✓ src/http/routes-auth.test.ts (19 tests) 13865ms
+   ✓ routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 300ms
+   ✓ le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein 467ms
+   ✓ le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe 419ms
+   ✓ le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf 410ms
+   ✓ le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée 4287ms
+   ✓ le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt 565ms
+   ✓ le frein des routes d’authentification > (d) un SUCCÈS remet le compteur du COMPTE à zéro 794ms
+   ✓ le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro 3987ms
+   ✓ le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS 487ms
+   ✓ le frein des routes d’authentification > (g) la trace NOMME l'adresse retenue 640ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/agents/canal.test.ts:316:34
+    314|         expect((await tenter(port, 'encore-une-autre', 'peu-importe'))…
+    315|         // 🔴 Le discriminant : la tentative freinée n'a RIEN lu en bas…
+    316|         expect(compteur.acces()).toBe(0);
+       |                                  ^
+    317|     }, 60000);
+    318| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/agents/canal.test.ts:374:34
+    372|         compteur.remettre();
+    373|         await tenter(port, 'v-1', 'ce-n-est-pas-le-bon-secret');
+    374|         expect(compteur.acces()).toBe(0);
+       |                                  ^
+    375|     }, 30000);
+    376| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  2 failed | 31 passed (33)
+   Start at  10:39:50
+   Duration  15.32s (transform 837ms, setup 0ms, collect 1.58s, tests 17.88s, environment 1ms, prepare 287ms)
+
+sortie ROUGE B = 1  (attendu : non nul)
+restauration : 0 ligne(s) de diff residuel (0 = restaure)
+
+⚠️ HONNETETE SUR LA ROUGE B : la mutation ci-dessus n'a neutralise QU'UN des TROIS sites
+   de consultation de canal.ts (l. 270 ; restent l. 382 et 398). Le test (a) — le frein
+   par VM — est donc reste vert, capte par un autre site. La forme est bonne (seuls les
+   tests de canal.test.ts tombent), mais la mutation etait PARTIELLE. Rejouee complete :
+
+--- ROUGE B bis : les TROIS sites de consultation de canal.ts, neutralises ensemble ---
+--- /tmp/p5r/canal.ts.orig2	2026-08-20 10:40:25.774312920 +0200
++++ plateforme/src/agents/canal.ts	2026-08-20 10:40:25.790312939 +0200
+@@ -1,3 +1,4 @@
++const consulterNEUTRALISEE = () => ({ freine: false, retryApresS: 0 }); // ROUGE P5
+ // La boucle du canal `/agent` : enrôlement, battement, jeton frais — et,
+ // depuis le sous-bloc G1, le CATALOGUE qui monte et les ORDRES DE LANCEMENT
+ // qui descendent.
+@@ -267,7 +268,7 @@
+                 [cleVm(vm), BUDGET_COMPTE],
+                 parAdresse,
+             ];
+-            if (frein.consulter(cles, maintenant()).freine) {
++            if (frein.consulterNEUTRALISEE().freine) {
+                 // 🔴 LE MOTIF EST `enrolement`, ET RIEN D'AUTRE. Un motif
+                 // `frein` distinct rendrait à l'attaquant l'information
+                 // « cette VM existe et je l'ai fait déclencher » : c'est
+@@ -379,7 +380,7 @@
+     instant: number,
+ ): void {
+     frein.echec(cles, instant);
+-    if (!frein.consulter(cles, instant).freine) return;
++    if (!frein.consulterNEUTRALISEE().freine) return;
+     journaliserLeFrein(frein, cles, adresse, instant);
+ }
+ 
+@@ -395,7 +396,7 @@
+     adresse: string,
+     instant: number,
+ ): void {
+-    const verdict = frein.consulter(cles, instant);
++    const verdict = frein.consulterNEUTRALISEE();
+     console.warn(
+         ligneDeJournal('frein', {
+             route: '/agent',
+Dockerfile
+node_modules
+package.json
+package-lock.json
+src
+tsconfig.json
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+
+(node:2828845) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:2828844) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:n49@exemple.test adr:127.0.0.1" retry_apres_s=897 entrees=51 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:avant-dernier@exemple.test adr:127.0.0.1" retry_apres_s=896 entrees=51 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS
+frein route=/auth/connexion adresse=127.0.0.1 cles="compte:ada@exemple.test adr:127.0.0.1" retry_apres_s=900 entrees=2 evictions=0
+
+stderr | src/http/routes-auth.test.ts > le frein des routes d’authentification > (h) `/auth/rafraichir` est freiné par l'ADRESSE seule
+frein route=/auth/rafraichir adresse=127.0.0.1 cles=adr:127.0.0.1 retry_apres_s=900 entrees=1 evictions=0
+
+ ✓ src/http/routes-auth.test.ts (19 tests) 13749ms
+   ✓ routes d’authentification > mot de passe faux et courriel inconnu rendent le MÊME message 316ms
+   ✓ le frein des routes d’authentification > (a) la n+1ᵉ tentative sur le MÊME compte est refusée par le frein 442ms
+   ✓ le frein des routes d’authentification > (a bis) le frein du compte mord même avec le BON mot de passe 461ms
+   ✓ le frein des routes d’authentification > (a ter) la casse du courriel ne donne PAS un budget neuf 436ms
+   ✓ le frein des routes d’authentification > (b) la n+1ᵉ depuis la MÊME adresse, comptes tous DISTINCTS, est refusée 3740ms
+   ✓ le frein des routes d’authentification > (c) 🔴 le refus freiné NE TOUCHE PAS la base — donc aucun scrypt 446ms
+   ✓ le frein des routes d’authentification > (d) un SUCCÈS remet le compteur du COMPTE à zéro 742ms
+   ✓ le frein des routes d’authentification > (e) 🔴 un succès ne remet PAS le compteur de l'ADRESSE à zéro 4512ms
+   ✓ le frein des routes d’authentification > (f) le 429 porte `Retry-After` ET les en-têtes CORS 616ms
+   ✓ le frein des routes d’authentification > (g) la trace NOMME l'adresse retenue 461ms
+ ❯ src/agents/canal.test.ts (14 tests | 12 failed) 95451ms
+   × la boucle du canal /agent > `enroler` avec le BON secret rend `enrole`, avec préfixe et jeton 2131ms
+     → aucune réponse du canal en 2000 ms à {"type":"enroler","v":2,"vm":"v-1","secret":"un-secret-d-enrolement-de-la-vraie-longueur"}
+   × la boucle du canal /agent > 🔴 le jeton rendu est VÉRIFIABLE PAR LA GARDE, et de type `agent` 2095ms
+     → aucune réponse du canal en 2000 ms à {"type":"enroler","v":2,"vm":"v-1","secret":"un-secret-d-enrolement-de-la-vraie-longueur"}
+   × la boucle du canal /agent > 🔴 `enroler` au MAUVAIS secret rend `refus` et FERME le socket, sans écrire le secret au journal 2089ms
+     → aucune réponse du canal en 2000 ms à {"type":"enroler","v":2,"vm":"v-1","secret":"un-autre-secret-de-la-vraie-longueur"}
+   × la boucle du canal /agent > 🔴 `battement` après `enroler` AVANCE `vu_a` en base 2093ms
+     → aucune réponse du canal en 2000 ms à {"type":"enroler","v":2,"vm":"v-1","secret":"un-secret-d-enrolement-de-la-vraie-longueur"}
+   × la boucle du canal /agent > 🔴 `battement` rend un jeton FRAIS, valide à un instant où le précédent est EXPIRÉ 2085ms
+     → aucune réponse du canal en 2000 ms à {"type":"enroler","v":2,"vm":"v-1","secret":"un-secret-d-enrolement-de-la-vraie-longueur"}
+   × le canal, CÂBLÉ dans le service entier > 🔴 le chemin `/agent` du service sert réellement le canal 12104ms
+     → aucune réponse du canal en 2000 ms à {"type":"enroler","v":2,"vm":"v-1","secret":"un-secret-d-enrolement-de-la-vraie-longueur"}
+     → Hook timed out in 10000ms.
+If this is a long-running hook, pass a timeout value as the last argument or configure it globally with "hookTimeout".
+   × le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein 12194ms
+     → aucune réponse du canal en 2000 ms à {"type":"enroler","v":2,"vm":"v-1","secret":"ce-n-est-pas-le-bon-secret"}
+     → Hook timed out in 10000ms.
+If this is a long-running hook, pass a timeout value as the last argument or configure it globally with "hookTimeout".
+   × le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée 12016ms
+     → aucune réponse du canal en 2000 ms à {"type":"enroler","v":2,"vm":"inconnue-0","secret":"peu-importe"}
+     → Hook timed out in 10000ms.
+If this is a long-running hook, pass a timeout value as the last argument or configure it globally with "hookTimeout".
+   × le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement 12198ms
+     → aucune réponse du canal en 2000 ms à {"type":"enroler","v":2,"vm":"v-1","secret":"ce-n-est-pas-le-bon-secret"}
+     → Hook timed out in 10000ms.
+If this is a long-running hook, pass a timeout value as the last argument or configure it globally with "hookTimeout".
+   × le frein du canal /agent > (d) le JOURNAL, lui, distingue les deux 12089ms
+     → aucune réponse du canal en 2000 ms à {"type":"enroler","v":2,"vm":"v-1","secret":"ce-n-est-pas-le-bon-secret"}
+     → Hook timed out in 10000ms.
+If this is a long-running hook, pass a timeout value as the last argument or configure it globally with "hookTimeout".
+   × le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt` 12091ms
+     → aucune réponse du canal en 2000 ms à {"type":"enroler","v":2,"vm":"v-1","secret":"ce-n-est-pas-le-bon-secret"}
+     → Hook timed out in 10000ms.
+If this is a long-running hook, pass a timeout value as the last argument or configure it globally with "hookTimeout".
+   × le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro 12080ms
+     → aucune réponse du canal en 2000 ms à {"type":"enroler","v":2,"vm":"v-1","secret":"ce-n-est-pas-le-bon-secret"}
+     → Hook timed out in 10000ms.
+If this is a long-running hook, pass a timeout value as the last argument or configure it globally with "hookTimeout".
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 12 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/agents/canal.test.ts > la boucle du canal /agent > `enroler` avec le BON secret rend `enrole`, avec préfixe et jeton
+ FAIL  src/agents/canal.test.ts > la boucle du canal /agent > 🔴 le jeton rendu est VÉRIFIABLE PAR LA GARDE, et de type `agent`
+ FAIL  src/agents/canal.test.ts > la boucle du canal /agent > 🔴 `battement` après `enroler` AVANCE `vu_a` en base
+ FAIL  src/agents/canal.test.ts > la boucle du canal /agent > 🔴 `battement` rend un jeton FRAIS, valide à un instant où le précédent est EXPIRÉ
+ FAIL  src/agents/canal.test.ts > le canal, CÂBLÉ dans le service entier > 🔴 le chemin `/agent` du service sert réellement le canal
+Error: aucune réponse du canal en 2000 ms à {"type":"enroler","v":2,"vm":"v-1","secret":"un-secret-d-enrolement-de-la-vraie-longueur"}
+ ❯ Timeout._onTimeout src/agents/canal-harnais.ts:93:35
+     91|                 return new Promise((r, rej) => {
+     92|                     const minuteur = setTimeout(
+     93|                         () => rej(new Error(`aucune réponse du canal e…
+       |                                   ^
+     94|                         2000,
+     95|                     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/19]⎯
+
+ FAIL  src/agents/canal.test.ts > la boucle du canal /agent > 🔴 `enroler` au MAUVAIS secret rend `refus` et FERME le socket, sans écrire le secret au journal
+Error: aucune réponse du canal en 2000 ms à {"type":"enroler","v":2,"vm":"v-1","secret":"un-autre-secret-de-la-vraie-longueur"}
+ ❯ Timeout._onTimeout src/agents/canal-harnais.ts:93:35
+     91|                 return new Promise((r, rej) => {
+     92|                     const minuteur = setTimeout(
+     93|                         () => rej(new Error(`aucune réponse du canal e…
+       |                                   ^
+     94|                         2000,
+     95|                     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/19]⎯
+
+ FAIL  src/agents/canal.test.ts > le canal, CÂBLÉ dans le service entier > 🔴 le chemin `/agent` du service sert réellement le canal
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (d) le JOURNAL, lui, distingue les deux
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+Error: Hook timed out in 10000ms.
+If this is a long-running hook, pass a timeout value as the last argument or configure it globally with "hookTimeout".
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/19]⎯
+
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (d) le JOURNAL, lui, distingue les deux
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (f) un enrôlement RÉUSSI remet le compteur de la VM à zéro
+Error: aucune réponse du canal en 2000 ms à {"type":"enroler","v":2,"vm":"v-1","secret":"ce-n-est-pas-le-bon-secret"}
+ ❯ Timeout._onTimeout src/agents/canal-harnais.ts:93:35
+     91|                 return new Promise((r, rej) => {
+     92|                     const minuteur = setTimeout(
+     93|                         () => rej(new Error(`aucune réponse du canal e…
+       |                                   ^
+     94|                         2000,
+     95|                     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/19]⎯
+
+ FAIL  src/agents/canal.test.ts > le frein du canal /agent > (b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée
+Error: aucune réponse du canal en 2000 ms à {"type":"enroler","v":2,"vm":"inconnue-0","secret":"peu-importe"}
+ ❯ Timeout._onTimeout src/agents/canal-harnais.ts:93:35
+     91|                 return new Promise((r, rej) => {
+     92|                     const minuteur = setTimeout(
+     93|                         () => rej(new Error(`aucune réponse du canal e…
+       |                                   ^
+     94|                         2000,
+     95|                     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/19]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 12 unhandled errors during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+TypeError: frein.consulterNEUTRALISEE is not a function
+ ❯ WebSocket.<anonymous> src/agents/canal.ts:271:23
+    269|                 parAdresse,
+    270|             ];
+    271|             if (frein.consulterNEUTRALISEE().freine) {
+       |                       ^
+    272|                 // 🔴 LE MOTIF EST `enrolement`, ET RIEN D'AUTRE. Un mo…
+    273|                 // `frein` distinct rendrait à l'attaquant l'informati…
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write node_modules/ws/lib/receiver.js:117:10
+ ❯ writeOrBuffer node:internal/streams/writable:570:12
+ ❯ _write node:internal/streams/writable:499:10
+
+This error originated in "src/agents/canal.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "`enroler` avec le BON secret rend `enrole`, avec préfixe et jeton". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+TypeError: frein.consulterNEUTRALISEE is not a function
+ ❯ WebSocket.<anonymous> src/agents/canal.ts:271:23
+    269|                 parAdresse,
+    270|             ];
+    271|             if (frein.consulterNEUTRALISEE().freine) {
+       |                       ^
+    272|                 // 🔴 LE MOTIF EST `enrolement`, ET RIEN D'AUTRE. Un mo…
+    273|                 // `frein` distinct rendrait à l'attaquant l'informati…
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write node_modules/ws/lib/receiver.js:117:10
+ ❯ writeOrBuffer node:internal/streams/writable:570:12
+ ❯ _write node:internal/streams/writable:499:10
+
+This error originated in "src/agents/canal.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "🔴 le jeton rendu est VÉRIFIABLE PAR LA GARDE, et de type `agent`". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+TypeError: frein.consulterNEUTRALISEE is not a function
+ ❯ WebSocket.<anonymous> src/agents/canal.ts:271:23
+    269|                 parAdresse,
+    270|             ];
+    271|             if (frein.consulterNEUTRALISEE().freine) {
+       |                       ^
+    272|                 // 🔴 LE MOTIF EST `enrolement`, ET RIEN D'AUTRE. Un mo…
+    273|                 // `frein` distinct rendrait à l'attaquant l'informati…
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write node_modules/ws/lib/receiver.js:117:10
+ ❯ writeOrBuffer node:internal/streams/writable:570:12
+ ❯ _write node:internal/streams/writable:499:10
+
+This error originated in "src/agents/canal.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "🔴 `enroler` au MAUVAIS secret rend `refus` et FERME le socket, sans écrire le secret au journal". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+TypeError: frein.consulterNEUTRALISEE is not a function
+ ❯ WebSocket.<anonymous> src/agents/canal.ts:271:23
+    269|                 parAdresse,
+    270|             ];
+    271|             if (frein.consulterNEUTRALISEE().freine) {
+       |                       ^
+    272|                 // 🔴 LE MOTIF EST `enrolement`, ET RIEN D'AUTRE. Un mo…
+    273|                 // `frein` distinct rendrait à l'attaquant l'informati…
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write node_modules/ws/lib/receiver.js:117:10
+ ❯ writeOrBuffer node:internal/streams/writable:570:12
+ ❯ _write node:internal/streams/writable:499:10
+
+This error originated in "src/agents/canal.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "🔴 `battement` après `enroler` AVANCE `vu_a` en base". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+TypeError: frein.consulterNEUTRALISEE is not a function
+ ❯ WebSocket.<anonymous> src/agents/canal.ts:271:23
+    269|                 parAdresse,
+    270|             ];
+    271|             if (frein.consulterNEUTRALISEE().freine) {
+       |                       ^
+    272|                 // 🔴 LE MOTIF EST `enrolement`, ET RIEN D'AUTRE. Un mo…
+    273|                 // `frein` distinct rendrait à l'attaquant l'informati…
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write node_modules/ws/lib/receiver.js:117:10
+ ❯ writeOrBuffer node:internal/streams/writable:570:12
+ ❯ _write node:internal/streams/writable:499:10
+
+This error originated in "src/agents/canal.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "🔴 `battement` rend un jeton FRAIS, valide à un instant où le précédent est EXPIRÉ". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+TypeError: frein.consulterNEUTRALISEE is not a function
+ ❯ WebSocket.<anonymous> src/agents/canal.ts:271:23
+    269|                 parAdresse,
+    270|             ];
+    271|             if (frein.consulterNEUTRALISEE().freine) {
+       |                       ^
+    272|                 // 🔴 LE MOTIF EST `enrolement`, ET RIEN D'AUTRE. Un mo…
+    273|                 // `frein` distinct rendrait à l'attaquant l'informati…
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write node_modules/ws/lib/receiver.js:117:10
+ ❯ writeOrBuffer node:internal/streams/writable:570:12
+ ❯ _write node:internal/streams/writable:499:10
+
+This error originated in "src/agents/canal.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "🔴 le chemin `/agent` du service sert réellement le canal". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+TypeError: frein.consulterNEUTRALISEE is not a function
+ ❯ WebSocket.<anonymous> src/agents/canal.ts:271:23
+    269|                 parAdresse,
+    270|             ];
+    271|             if (frein.consulterNEUTRALISEE().freine) {
+       |                       ^
+    272|                 // 🔴 LE MOTIF EST `enrolement`, ET RIEN D'AUTRE. Un mo…
+    273|                 // `frein` distinct rendrait à l'attaquant l'informati…
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write node_modules/ws/lib/receiver.js:117:10
+ ❯ writeOrBuffer node:internal/streams/writable:570:12
+ ❯ _write node:internal/streams/writable:499:10
+
+This error originated in "src/agents/canal.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "(a) la n+1ᵉ tentative sur la MÊME VM est refusée par le frein". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+TypeError: frein.consulterNEUTRALISEE is not a function
+ ❯ WebSocket.<anonymous> src/agents/canal.ts:271:23
+    269|                 parAdresse,
+    270|             ];
+    271|             if (frein.consulterNEUTRALISEE().freine) {
+       |                       ^
+    272|                 // 🔴 LE MOTIF EST `enrolement`, ET RIEN D'AUTRE. Un mo…
+    273|                 // `frein` distinct rendrait à l'attaquant l'informati…
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write node_modules/ws/lib/receiver.js:117:10
+ ❯ writeOrBuffer node:internal/streams/writable:570:12
+ ❯ _write node:internal/streams/writable:499:10
+
+This error originated in "src/agents/canal.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "(b) la n+1ᵉ depuis la MÊME adresse, VMs toutes DISTINCTES, est freinée". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+TypeError: frein.consulterNEUTRALISEE is not a function
+ ❯ WebSocket.<anonymous> src/agents/canal.ts:271:23
+    269|                 parAdresse,
+    270|             ];
+    271|             if (frein.consulterNEUTRALISEE().freine) {
+       |                       ^
+    272|                 // 🔴 LE MOTIF EST `enrolement`, ET RIEN D'AUTRE. Un mo…
+    273|                 // `frein` distinct rendrait à l'attaquant l'informati…
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write node_modules/ws/lib/receiver.js:117:10
+ ❯ writeOrBuffer node:internal/streams/writable:570:12
+ ❯ _write node:internal/streams/writable:499:10
+
+This error originated in "src/agents/canal.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "(c) 🔴 le refus freiné est le MÊME MESSAGE que le refus d’enrôlement". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+TypeError: frein.consulterNEUTRALISEE is not a function
+ ❯ WebSocket.<anonymous> src/agents/canal.ts:271:23
+    269|                 parAdresse,
+    270|             ];
+    271|             if (frein.consulterNEUTRALISEE().freine) {
+       |                       ^
+    272|                 // 🔴 LE MOTIF EST `enrolement`, ET RIEN D'AUTRE. Un mo…
+    273|                 // `frein` distinct rendrait à l'attaquant l'informati…
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write node_modules/ws/lib/receiver.js:117:10
+ ❯ writeOrBuffer node:internal/streams/writable:570:12
+ ❯ _write node:internal/streams/writable:499:10
+
+This error originated in "src/agents/canal.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "(d) le JOURNAL, lui, distingue les deux". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+TypeError: frein.consulterNEUTRALISEE is not a function
+ ❯ WebSocket.<anonymous> src/agents/canal.ts:271:23
+    269|                 parAdresse,
+    270|             ];
+    271|             if (frein.consulterNEUTRALISEE().freine) {
+       |                       ^
+    272|                 // 🔴 LE MOTIF EST `enrolement`, ET RIEN D'AUTRE. Un mo…
+    273|                 // `frein` distinct rendrait à l'attaquant l'informati…
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write node_modules/ws/lib/receiver.js:117:10
+ ❯ writeOrBuffer node:internal/streams/writable:570:12
+ ❯ _write node:internal/streams/writable:499:10
+
+This error originated in "src/agents/canal.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "(e) 🔴 le refus freiné ne lit RIEN en base — donc ne dérive aucun `scrypt`". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+TypeError: frein.consulterNEUTRALISEE is not a function
+ ❯ WebSocket.<anonymous> src/agents/canal.ts:271:23
+    269|                 parAdresse,
+    270|             ];
+    271|             if (frein.consulterNEUTRALISEE().freine) {
+       |                       ^
+    272|                 // 🔴 LE MOTIF EST `enrolement`, ET RIEN D'AUTRE. Un mo…
+    273|                 // `frein` distinct rendrait à l'attaquant l'informati…
+ ❯ WebSocket.emit node:events:508:28
+ ❯ Receiver.receiverOnMessage node_modules/ws/lib/websocket.js:1239:20
+ ❯ Receiver.emit node:events:508:28
+ ❯ Receiver.dataMessage node_modules/ws/lib/receiver.js:633:14
+ ❯ Receiver.getData node_modules/ws/lib/receiver.js:532:10
+ ❯ Receiver.startLoop node_modules/ws/lib/receiver.js:190:16
+ ❯ Receiver._write node_modules/ws/lib/receiver.js:117:10
+ ❯ writeOrBuffer node:internal/streams/writable:570:12
+ ❯ _write node:internal/streams/writable:499:10
+
+This error originated in "src/agents/canal.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "(f) un enrôlement RÉUSSI remet le compteur de la VM à zéro". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  12 failed | 21 passed (33)
+     Errors  12 errors
+   Start at  10:40:26
+   Duration  96.86s (transform 655ms, setup 0ms, collect 1.46s, tests 109.20s, environment 1ms, prepare 336ms)
+
+sortie ROUGE B bis = 1  (attendu : non nul)
+restauration : 0 ligne(s) de diff residuel (0 = restaure)
+
+########## CE QUE LES DEUX ROUGES ONT REELLEMENT ETABLI ##########
+
+🔴 LA « ROUGE B bis » EST UNE MAUVAISE MUTATION, ET ELLE EST DECLAREE COMME
+   TELLE PLUTOT QUE COMPTEE. Elle a bien rougi (12 echecs), mais pour la
+   MAUVAISE RAISON : elle a casse le module au-dela du frein — des tests
+   etrangers au frein tombent (« enroler avec le BON secret rend enrole »,
+   « battement AVANCE vu_a en base ») et deux crochets expirent. Une mutation
+   qui casse plus que ce qu'elle vise ne mesure pas le contrale qu'on lui
+   oppose. Elle est ECARTEE du raisonnement, exactement comme le dépôt écarte
+   « un diagnostic qui change deux choses » (D4).
+
+   Elle etait de toute façon INUTILE : les deux sites qu'elle ajoutait
+   (canal.ts l. 382 et 398) ne sont PAS des sites d'application du frein, ce
+   sont les sites de sa JOURNALISATION (`compterLEchec` et
+   `journaliserLeFrein`). Le SEUL site qui applique le frein sur /agent est la
+   l. 270, et c'est celui que la ROUGE B a neutralise. La ROUGE B etait donc
+   deja complete sur ce qu'elle devait mesurer.
+
+🔴 TROUVAILLE DE LA ROUGE B — UN TEST QUI NE PEUT PAS ECHOUER, ET IL EST DANS
+   LE PRODUIT LIVRE : `canal.test.ts` « (a) la n+1e tentative sur la MEME VM
+   est refusee par le frein » RESTE VERT quand l'unique site d'application du
+   frein est neutralise.
+
+   La cause n'est pas un defaut du produit, c'est le titre du test qui promet
+   plus que son assertion : il n'affirme que `type === 'refus'` — or le refus
+   freine et le refus par mauvais secret sont IDENTIQUES PAR CONCEPTION (c'est
+   l'oracle d'enumeration que le test (c) existe pour verrouiller). Ce test ne
+   peut donc structurellement pas distinguer les deux, quel que soit le
+   produit. Idem pour (c), (d) et (f), qui restent verts sous la mutation.
+
+   LES SEULS TESTS QUI DISCRIMINENT REELLEMENT L'APPLICATION DU FREIN SUR
+   /agent SONT (b) ET (e), et tous deux par le MEME discriminant :
+   `compteur.acces() === 0` — « le refus freine n'a RIEN lu en base ». C'est
+   ce discriminant-la, et lui seul, qui porte le critere ③ cote /agent.
+
+   ⚠️ Ce n'est pas une lacune de couverture — le comportement EST couvert, par
+   (b) et (e). C'est un titre de test plus large que sa mesure, consigne comme
+   constat de la revue transverse (tache 18).
+
+########## VERDICT ③ ##########
+
+TENU. DEUX executions vertes : sqlite (33/33, sortie 0) et postgres (33/33,
+sortie 0), sur les DEUX chemins ensemble (routes-auth.test.ts + canal.test.ts).
+
+Les DEUX rouges prescrites ont ete VUES, et elles sont DISTINCTES :
+  ROUGE A (http/routes-auth.ts) -> 8 echecs, TOUS dans routes-auth.test.ts,
+                                   AUCUN dans canal.test.ts.
+  ROUGE B (agents/canal.ts)     -> 2 echecs, TOUS dans canal.test.ts,
+                                   AUCUN dans routes-auth.test.ts.
+Aucune des deux ne fait tomber le chemin de l'autre : c'est la FORME attendue,
+et c'est ce qui etablit que les deux chemins sont freines SEPAREMENT.
+
+Restauration verifiee : `git diff --stat` vide sur les deux fichiers.
