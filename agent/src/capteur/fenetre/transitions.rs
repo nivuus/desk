@@ -182,6 +182,28 @@ impl Fenetre {
                         return Fin::Terminer(motif);
                     }
                 }
+                Ok(Message::PressePapier { texte, octets }) => {
+                    // Rien à faire localement — même régime que `Audio` et
+                    // `Part` ci-dessus : le capteur DÉTIENT le presse-papier
+                    // (il est le seul à le sonder et à porter le garde
+                    // anti-écho, D1), mais il n'a rien à en faire pour
+                    // lui-même. Il n'est ici que le facteur.
+                    let message = DepuisCapteur::PressePapier { texte, octets };
+                    // `deposer` et non un `send` bloquant : c'est le cinquième
+                    // ingrédient du patron, et il compte davantage ici
+                    // qu'ailleurs — ce message peut peser jusqu'à 64 Kio, là
+                    // où `Sommeil`, `Part` et `Audio` pèsent quelques octets,
+                    // donc il remplit la file plus vite. Attendre sur une file
+                    // pleine sans servir les commandes recréerait
+                    // l'interblocage à six maillons de la tâche 10 du
+                    // sous-bloc D4. Voir le commentaire du bras `Dormir` plus
+                    // haut, qui le dit en toutes lettres.
+                    if let Fin::Terminer(motif) =
+                        deposer(AEcrire::Etat(message), ecritures, self.source.as_mut(), ctx)
+                    {
+                        return Fin::Terminer(motif);
+                    }
+                }
                 Err(TryRecvError::Empty) => return Fin::Continuer,
                 // Le registre a laissé tomber notre émetteur : la fenêtre n'est
                 // plus arbitrée. On continue de servir plutôt que de clore —
