@@ -218,6 +218,19 @@ async fn une_session(
                     Ok(DepuisLaPlateforme::Refus { motif, .. }) => {
                         return sur_refus(url, motif);
                     }
+                    // ⚠️ AUCUN CONSOMMATEUR D'ORDRES N'EST ENCORE BRANCHÉ :
+                    // le canal n'a pas de chemin descendant vers le reste de
+                    // l'agent (c'est la tâche 10 du sous-bloc G1 qui le crée).
+                    // En attendant, l'ordre est journalisé et abandonné —
+                    // JAMAIS traité comme illisible, car le bras `Err`
+                    // ci-dessous FERME la session : un ordre parfaitement
+                    // valide y déclencherait une reprise en boucle.
+                    Ok(DepuisLaPlateforme::Lancer { demande, cle, .. }) => {
+                        tracing::warn!(
+                            url, %demande, %cle,
+                            "ordre de lancement reçu sans consommateur, abandonné"
+                        );
+                    }
                     // 🔴 CE CAS EST TRÈS PROBABLEMENT UNE DIVERGENCE DE
                     // VERSION, et il se réessaie quand même — délibérément.
                     // `verifie_version` refuse à la désérialisation, donc une
