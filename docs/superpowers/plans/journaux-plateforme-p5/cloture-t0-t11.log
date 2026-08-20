@@ -1,0 +1,89 @@
+=== CLOTURE DES TACHES 0 A 11 : releve du 2026-08-20T09:50:37+02:00 ===
+
+--- la commande des 500 lignes (source, hors docs et CLAUDE.md) ---
+  96944 total
+   1536 agent/src/encode.rs
+    630 agent/src/windows_source.rs
+    561 proto/src/plateforme/tests.rs
+    512 proto/ts/plateforme.test.ts
+
+--- les fichiers de plateforme/ que P5 a touches ou crees ---
+ 16350 total
+   480 plateforme/src/http/routes-applications.test.ts
+   417 plateforme/src/agents/canal.ts
+   399 plateforme/src/agents/canal.test.ts
+   398 plateforme/src/http/routes-auth.test.ts
+   397 plateforme/src/http/routes-auth.ts
+   371 plateforme/src/http/serveur.ts
+   369 plateforme/src/orchestration/inventaire-statique.test.ts
+   359 plateforme/src/http/serveur.test.ts
+   356 plateforme/src/securite/secrets.test.ts
+   340 plateforme/src/signaling/server.test.ts
+   332 plateforme/src/base/pilotes.test.ts
+   327 plateforme/src/signaling/relais.ts
+   323 plateforme/src/http/routes-vm.test.ts
+   315 plateforme/src/http/routes-applications.ts
+   301 plateforme/src/signaling/trace.test.ts
+
+--- la porte a 450 : y a-t-il un fichier de plateforme/ au-dessus ? ---
+  480	plateforme/src/http/routes-applications.test.ts
+
+--- le temoin de D13 : aucune dependance de production ajoutee ---
+dependencies = ["pg","ws"]
+
+--- grep -cE '^etape ' scripts/verify-all.sh (doit rester 10) ---
+10
+
+--- git status --porcelain : le perimetre P5 est-il propre ? ---
+?? docs/superpowers/plans/journaux-plateforme-p5/cloture-t0-t11.log
+?? docs/superpowers/plans/journaux-plateforme-p5/mutations-t1-frein.log
+?? docs/superpowers/plans/journaux-plateforme-p5/mutations-t10-entetes.log
+?? docs/superpowers/plans/journaux-plateforme-p5/mutations-t2-adresse-source.log
+?? docs/superpowers/plans/journaux-plateforme-p5/mutations-t3-t4.log
+?? docs/superpowers/plans/journaux-plateforme-p5/mutations-t5-config.log
+?? docs/superpowers/plans/journaux-plateforme-p5/mutations-t6-maxpayload.log
+?? docs/superpowers/plans/journaux-plateforme-p5/mutations-t7-frein-auth.log
+?? docs/superpowers/plans/journaux-plateforme-p5/mutations-t8-frein-agent.log
+?? docs/superpowers/plans/journaux-plateforme-p5/mutations-t9-sante.log
+?? docs/superpowers/plans/journaux-plateforme-p5/rouge-t11-secrets.log
+
+--- P5 a-t-il touche agent/ proto/ client/ scripts/ CLAUDE.md ? ---
+agent/Cargo.toml
+agent/src/capteur/distante.rs
+agent/src/capteur/distante/tests_etats.rs
+agent/src/capteur/distante/tests.rs
+agent/src/capteur/fenetre/transitions.rs
+agent/src/capteur/pont_media.rs
+agent/src/capteur/protocole.rs
+agent/src/capteur/sommeil/presse_papier.rs
+agent/src/capteur/sommeil/registre.rs
+agent/src/capteur/sommeil.rs
+agent/src/capteur/sommeil/tests.rs
+agent/src/configuration.rs
+agent/src/diagnostics/presse_papier.rs
+agent/src/diagnostics.rs
+agent/src/main.rs
+agent/src/presse_papier.rs
+agent/src/presse_papier/win32.rs
+agent/src/source.rs
+agent/src/transport/controle.rs
+agent/src/transport/tick.rs
+agent/src/transport/tick/tests/reste.rs
+agent/src/transport/tick/tests.rs
+client/src/presse-papier.test.ts
+client/src/presse-papier.ts
+docs/superpowers/plans/journaux-presse-papier-p1/divergences-taches-1-a-8.md
+docs/superpowers/plans/journaux-presse-papier-p1/instrument-p0-copieur.ps1
+docs/superpowers/plans/journaux-presse-papier-p1/p0-copieur-1.log
+docs/superpowers/plans/journaux-presse-papier-p1/p0-copieur-2.log
+docs/superpowers/plans/journaux-presse-papier-p1/p0-sonde-0-instrument-defectueux.log
+docs/superpowers/plans/journaux-presse-papier-p1/p0-sonde-0-instrument-defectueux-plat.log
+docs/superpowers/plans/journaux-presse-papier-p1/p0-sonde-1.log
+docs/superpowers/plans/journaux-presse-papier-p1/p0-sonde-1-plat.log
+docs/superpowers/plans/journaux-presse-papier-p1/p0-sonde-2.log
+docs/superpowers/plans/journaux-presse-papier-p1/p0-sonde-2-plat.log
+proto/src/control.rs
+proto/src/control/tests.rs
+proto/ts/control.test.ts
+proto/ts/control.ts
+scripts/run-agent.sh

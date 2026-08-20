@@ -1,0 +1,305 @@
+===== MUTATION T1-b : la comparaison de budget devient '>' au lieu de '>=' =====
+fichier   : src/securite/frein.ts
+sha AVANT : 9831b524445ad0eac4cfa5be36f4baf1265917022b3dc416bff4300e5b200ae8
+sha MUTE  : cf018a1c82968752049caf4eba2fca897bda73bb909e6595a8cf513a26187526
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/securite/frein.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -144,3 +144,3 @@ export class Frein {
+             // accorderait un essai de plus que ce que la constante annonce.
+-            if (entree.compte >= budget.max) {
++            if (entree.compte > budget.max) {
+                 const restant = entree.premierA + entree.fenetreMs - maintenant;
+--- SORTIE DU TEST SOUS MUTATION ---
+     69|     });
+     70| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+ FAIL  src/securite/frein.test.ts > Frein > (h) `retryApresS` est le temps RESTANT, arrondi vers le haut
+AssertionError: expected +0 to be 450 // Object.is equality
+- Expected
++ Received
+- 450
++ 0
+ ❯ src/securite/frein.test.ts:117:60
+    115|         // entière, qui est ce qu'une constante en dur rendrait.
+    116|         const moitie = FENETRE_MS / 2;
+    117|         expect(f.consulter(cles, T0 + moitie).retryApresS).toBe(moitie…
+       |                                                            ^
+    118|         // 1 ms restante s'arrondit à 1 s, jamais à 0 : un `Retry-Afte…
+    119|         // inviterait le demandeur à revenir immédiatement.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+ FAIL  src/securite/frein.test.ts > Frein > (i) une seule clé freinée suffit, et le verdict porte SON temps
+AssertionError: expected false to be true // Object.is equality
+- Expected
++ Received
+- true
++ false
+ ❯ src/securite/frein.test.ts:131:26
+    129|         for (let i = 0; i < ECHECS_MAX_COMPTE; i++) f.echec([compte, a…
+    130|         const v = f.consulter([compte, adresse], T0 + 1000);
+    131|         expect(v.freine).toBe(true);
+       |                          ^
+    132|         expect(v.retryApresS).toBe(FENETRE_MS / 1000 - 1);
+    133|     });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+ Test Files  1 failed (1)
+      Tests  5 failed | 6 passed (11)
+   Start at  09:03:10
+   Duration  725ms (transform 145ms, setup 0ms, collect 156ms, tests 66ms, environment 0ms, prepare 104ms)
+--- RESTAURATION ---
+sha APRES : 9831b524445ad0eac4cfa5be36f4baf1265917022b3dc416bff4300e5b200ae8
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T1-c : la fenetre n'expire jamais (le test d'expiration est retire) =====
+fichier   : src/securite/frein.ts
+sha AVANT : 9831b524445ad0eac4cfa5be36f4baf1265917022b3dc416bff4300e5b200ae8
+sha MUTE  : c5f809699c6056abf1d267d9ee71234a57f5f60aee603249b91ff9d606b0b13c
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/securite/frein.ts | 1 -
+ 1 file changed, 1 deletion(-)
+@@ -141,3 +141,2 @@ export class Frein {
+             if (entree === undefined) continue;
+-            if (this.expiree(entree, maintenant)) continue;
+             // `>=`, jamais `>` : au budget exactement, on refuse. Un `>`
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+ ✓ src/securite/frein.test.ts (11 tests) 32ms
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  09:03:13
+   Duration  637ms (transform 122ms, setup 0ms, collect 136ms, tests 32ms, environment 0ms, prepare 121ms)
+--- RESTAURATION ---
+sha APRES : 9831b524445ad0eac4cfa5be36f4baf1265917022b3dc416bff4300e5b200ae8
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+### RELANCE de T1-c apres retrait de la garde morte (voir commit 4294bcd)
+===== MUTATION T1-c : l'expiration cesse de decider (un reste negatif compte quand meme) =====
+fichier   : src/securite/frein.ts
+sha AVANT : b42a175fa34be9086f472629db6de710b2f4817e6c898b1e37ae7e64b8b7d7e5
+sha MUTE  : 6eb9b19ad7c089f48399c067461c04426b57844c875f05ca9b15a97edab0a67f
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/securite/frein.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -161,3 +161,3 @@ export class Frein {
+                 // ICI, et la mutation `T1-c` porte desormais sur cette ligne.
+-                if (restant > restantMs) restantMs = restant;
++                if (Math.abs(restant) > restantMs) restantMs = Math.abs(restant);
+             }
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+ ❯ src/securite/frein.test.ts (11 tests | 1 failed) 22ms
+   × Frein > (c) après la fenêtre, le budget est rendu 11ms
+     → expected true to be false // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/securite/frein.test.ts > Frein > (c) après la fenêtre, le budget est rendu
+AssertionError: expected true to be false // Object.is equality
+- Expected
++ Received
+- false
++ true
+ ❯ src/securite/frein.test.ts:56:63
+     54|         expect(f.consulter(cles, T0 + FENETRE_MS - 1).freine).toBe(tru…
+     55|         // L'horloge est un PARAMÈTRE : le test avance, il n'attend pa…
+     56|         expect(f.consulter(cles, T0 + FENETRE_MS + 1).freine).toBe(fal…
+       |                                                               ^
+     57|     });
+     58| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 passed (11)
+   Start at  09:04:37
+   Duration  657ms (transform 83ms, setup 0ms, collect 77ms, tests 22ms, environment 0ms, prepare 97ms)
+--- RESTAURATION ---
+sha APRES : b42a175fa34be9086f472629db6de710b2f4817e6c898b1e37ae7e64b8b7d7e5
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T1-d : succes efface TOUTE la table au lieu de la seule cle nommee =====
+fichier   : src/securite/frein.ts
+sha AVANT : b42a175fa34be9086f472629db6de710b2f4817e6c898b1e37ae7e64b8b7d7e5
+sha MUTE  : cb4659b5ee5c29a16dc7d28fce1ba359e69b56f8134f369ca10a28a2f1e68b41
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/securite/frein.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -192,3 +192,3 @@ export class Frein {
+     succes(cle: string): void {
+-        this.entrees.delete(cle);
++        this.entrees.clear();
+     }
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+ ❯ src/securite/frein.test.ts (11 tests | 1 failed) 63ms
+   × Frein > (d) `succes` efface la clé donnée, et elle seule 34ms
+     → expected false to be true // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/securite/frein.test.ts > Frein > (d) `succes` efface la clé donnée, et elle seule
+AssertionError: expected false to be true // Object.is equality
+- Expected
++ Received
+- true
++ false
+ ❯ src/securite/frein.test.ts:68:72
+     66|         f.succes(compte[0]);
+     67|         expect(f.consulter([compte], T0 + ECHECS_MAX_ADRESSE).freine).…
+     68|         expect(f.consulter([adresse], T0 + ECHECS_MAX_ADRESSE).freine)…
+       |                                                                        ^
+     69|     });
+     70| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 passed (11)
+   Start at  09:04:39
+   Duration  686ms (transform 142ms, setup 0ms, collect 160ms, tests 63ms, environment 0ms, prepare 124ms)
+--- RESTAURATION ---
+sha APRES : b42a175fa34be9086f472629db6de710b2f4817e6c898b1e37ae7e64b8b7d7e5
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T1-e : consulter ENREGISTRE au lieu de seulement consulter =====
+fichier   : src/securite/frein.ts
+sha AVANT : b42a175fa34be9086f472629db6de710b2f4817e6c898b1e37ae7e64b8b7d7e5
+sha MUTE  : 590c2039f8271ca92e7cc1dbba1baa00870ee29308061df273025d3f40990140
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/securite/frein.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -140,3 +140,3 @@ export class Frein {
+             const entree = this.entrees.get(cle);
+-            if (entree === undefined) continue;
++            if (entree === undefined) { this.entrees.set(cle, { compte: 1, premierA: maintenant, fenetreMs: budget.fenetreMs }); continue; }
+             // `>=`, jamais `>` : au budget exactement, on refuse. Un `>`
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+ ❯ src/securite/frein.test.ts (11 tests | 1 failed) 52ms
+   × Frein > (e) `consulter` n'enregistre RIEN 28ms
+     → expected 1 to be +0 // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/securite/frein.test.ts > Frein > (e) `consulter` n'enregistre RIEN
+AssertionError: expected 1 to be +0 // Object.is equality
+- Expected
++ Received
+- 0
++ 1
+ ❯ src/securite/frein.test.ts:80:28
+     78|             expect(f.consulter(cles, T0 + i).freine).toBe(false);
+     79|         }
+     80|         expect(f.taille()).toBe(0);
+       |                            ^
+     81|     });
+     82| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 passed (11)
+   Start at  09:04:41
+   Duration  695ms (transform 143ms, setup 0ms, collect 155ms, tests 52ms, environment 0ms, prepare 111ms)
+--- RESTAURATION ---
+sha APRES : b42a175fa34be9086f472629db6de710b2f4817e6c898b1e37ae7e64b8b7d7e5
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T1-f+g : la purge et l eviction sont retirees (le plafond ne borne plus rien) =====
+fichier   : src/securite/frein.ts
+sha AVANT : b42a175fa34be9086f472629db6de710b2f4817e6c898b1e37ae7e64b8b7d7e5
+sha MUTE  : 354c97950766531923110927145fefc5c53c6cfd3da13b6c71d09a8441056316
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/securite/frein.ts | 1 +
+ 1 file changed, 1 insertion(+)
+@@ -214,2 +214,3 @@ export class Frein {
+     private faireDeLaPlace(maintenant: number): void {
++        if (maintenant >= 0) return;
+         if (this.entrees.size < this.entreesMax) return;
+--- SORTIE DU TEST SOUS MUTATION ---
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/securite/frein.test.ts > Frein > (f) 🔴 la table ne dépasse JAMAIS son plafond d’entrées
+AssertionError: expected 9 to be less than or equal to 8
+ ❯ src/securite/frein.test.ts:89:28
+     87|         const f = new Frein(8);
+     88|         for (let i = 0; i < 9; i++) f.echec([cleCompte(`n${i}@exemple.…
+     89|         expect(f.taille()).toBeLessThanOrEqual(8);
+       |                            ^
+     90|     });
+     91| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+ FAIL  src/securite/frein.test.ts > Frein > (g) une éviction est COMPTÉE, jamais silencieuse
+AssertionError: expected 0 to be greater than or equal to 1
+ ❯ src/securite/frein.test.ts:96:31
+     94|         expect(f.evictions()).toBe(0);
+     95|         for (let i = 0; i < 9; i++) f.echec([cleCompte(`n${i}@exemple.…
+     96|         expect(f.evictions()).toBeGreaterThanOrEqual(1);
+       |                               ^
+     97|     });
+     98| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+ FAIL  src/securite/frein.test.ts > Frein > (g bis) une entrée EXPIRÉE est purgée avant qu’on évince une vivante
+AssertionError: expected 3 to be less than or equal to 2
+ ❯ src/securite/frein.test.ts:106:28
+    104|         // suffire, sans qu'aucune entrée vivante ne soit évincée.
+    105|         f.echec([cleCompte('neuve@exemple.test')], T0 + FENETRE_MS + 2…
+    106|         expect(f.taille()).toBeLessThanOrEqual(2);
+       |                            ^
+    107|         expect(f.evictions()).toBe(0);
+    108|     });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+ Test Files  1 failed (1)
+      Tests  3 failed | 8 passed (11)
+   Start at  09:04:43
+   Duration  619ms (transform 96ms, setup 0ms, collect 87ms, tests 34ms, environment 0ms, prepare 107ms)
+--- RESTAURATION ---
+sha APRES : b42a175fa34be9086f472629db6de710b2f4817e6c898b1e37ae7e64b8b7d7e5
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T1-h : retryApresS rend la fenetre ENTIERE en dur au lieu du temps restant =====
+fichier   : src/securite/frein.ts
+sha AVANT : b42a175fa34be9086f472629db6de710b2f4817e6c898b1e37ae7e64b8b7d7e5
+sha MUTE  : d4f81eb555da64500dd365a9d3711ce3da8b9f012bbc740e2b2d7b621e27bd67
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/securite/frein.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -166,3 +166,3 @@ export class Frein {
+         // Arrondi VERS LE HAUT : voir `Verdict.retryApresS`.
+-        return { freine: true, retryApresS: Math.ceil(restantMs / 1000) };
++        return { freine: true, retryApresS: FENETRE_MS / 1000 };
+     }
+--- SORTIE DU TEST SOUS MUTATION ---
+   × Frein > (i) une seule clé freinée suffit, et le verdict porte SON temps 4ms
+     → expected 900 to be 899 // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/securite/frein.test.ts > Frein > (h) `retryApresS` est le temps RESTANT, arrondi vers le haut
+AssertionError: expected 900 to be 450 // Object.is equality
+- Expected
++ Received
+- 450
++ 900
+ ❯ src/securite/frein.test.ts:117:60
+    115|         // entière, qui est ce qu'une constante en dur rendrait.
+    116|         const moitie = FENETRE_MS / 2;
+    117|         expect(f.consulter(cles, T0 + moitie).retryApresS).toBe(moitie…
+       |                                                            ^
+    118|         // 1 ms restante s'arrondit à 1 s, jamais à 0 : un `Retry-Afte…
+    119|         // inviterait le demandeur à revenir immédiatement.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+ FAIL  src/securite/frein.test.ts > Frein > (i) une seule clé freinée suffit, et le verdict porte SON temps
+AssertionError: expected 900 to be 899 // Object.is equality
+- Expected
++ Received
+- 899
++ 900
+ ❯ src/securite/frein.test.ts:132:31
+    130|         const v = f.consulter([compte, adresse], T0 + 1000);
+    131|         expect(v.freine).toBe(true);
+    132|         expect(v.retryApresS).toBe(FENETRE_MS / 1000 - 1);
+       |                               ^
+    133|     });
+    134| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+ Test Files  1 failed (1)
+      Tests  2 failed | 9 passed (11)
+   Start at  09:04:46
+   Duration  703ms (transform 126ms, setup 0ms, collect 120ms, tests 64ms, environment 0ms, prepare 108ms)
+--- RESTAURATION ---
+sha APRES : b42a175fa34be9086f472629db6de710b2f4817e6c898b1e37ae7e64b8b7d7e5
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+

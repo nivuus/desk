@@ -1,0 +1,253 @@
+===== MUTATION T3 : l'objet des en-tetes est VIDE =====
+fichier   : src/http/entetes.ts
+sha AVANT : ffc1faf2878329b7b4d902525fe00fde44782c1ea3a1a74e5acba9eab8b7e35d
+sha MUTE  : a86681a04f6c724558618a01a6f933b95efd08993c5f6c504355085361b82079
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/entetes.ts | 2 --
+ 1 file changed, 2 deletions(-)
+@@ -39,3 +39,2 @@ export const ENTETES_SECURITE: Readonly<Record<string, string>> = Object.freeze(
+     // ferait interpréter comme du HTML deviendrait un vecteur XSS.
+-    'X-Content-Type-Options': 'nosniff',
+     // Voir l'en-tête : `/auth/*` rend des jetons. `no-store` est plus fort que
+@@ -43,3 +42,2 @@ export const ENTETES_SECURITE: Readonly<Record<string, string>> = Object.freeze(
+     // revalider.
+-    'Cache-Control': 'no-store',
+ });
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+ ❯ src/http/entetes.test.ts (3 tests | 2 failed) 16ms
+   × ENTETES_SECURITE > (a) porte les deux en-têtes, avec leurs valeurs exactes 12ms
+     → expected undefined to be 'nosniff' // Object.is equality
+   × ENTETES_SECURITE > (c) est INCONDITIONNEL : c'est un objet, jamais `undefined` 2ms
+     → expected 0 to be greater than 0
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/entetes.test.ts > ENTETES_SECURITE > (a) porte les deux en-têtes, avec leurs valeurs exactes
+AssertionError: expected undefined to be 'nosniff' // Object.is equality
+- Expected: 
+"nosniff"
++ Received: 
+undefined
+ ❯ src/http/entetes.test.ts:6:60
+      4| describe('ENTETES_SECURITE', () => {
+      5|     it('(a) porte les deux en-têtes, avec leurs valeurs exactes', () =…
+      6|         expect(ENTETES_SECURITE['X-Content-Type-Options']).toBe('nosni…
+       |                                                            ^
+      7|         expect(ENTETES_SECURITE['Cache-Control']).toBe('no-store');
+      8|     });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+ FAIL  src/http/entetes.test.ts > ENTETES_SECURITE > (c) est INCONDITIONNEL : c'est un objet, jamais `undefined`
+AssertionError: expected 0 to be greater than 0
+ ❯ src/http/entetes.test.ts:24:54
+     22|         // dépendre la sécurité d'une configuration CORS FACULTATIVE.
+     23|         expect(ENTETES_SECURITE).toBeTypeOf('object');
+     24|         expect(Object.keys(ENTETES_SECURITE).length).toBeGreaterThan(0…
+       |                                                      ^
+     25|     });
+     26| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+ Test Files  1 failed (1)
+      Tests  2 failed | 1 passed (3)
+   Start at  09:09:06
+   Duration  547ms (transform 63ms, setup 0ms, collect 55ms, tests 16ms, environment 0ms, prepare 101ms)
+--- RESTAURATION ---
+sha APRES : ffc1faf2878329b7b4d902525fe00fde44782c1ea3a1a74e5acba9eab8b7e35d
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T4 : la ligne devient un JSON.stringify des champs =====
+fichier   : src/obs/journal.ts
+sha AVANT : 3d421ac3fa264ef00b3b8e7f6cc1e834680f6426f87e4af8e09e854d95d430c0
+Undefined subroutine &main::stringify called at -e line 1, <> chunk 1.
+sha MUTE  : 3d421ac3fa264ef00b3b8e7f6cc1e834680f6426f87e4af8e09e854d95d430c0
+🔴 ECHEC DU HARNAIS : la mutation n'a RIEN change. Test non joue.
+===== MUTATION T4-c : les valeurs sont TRONQUEES a 64 caracteres =====
+fichier   : src/obs/journal.ts
+sha AVANT : 3d421ac3fa264ef00b3b8e7f6cc1e834680f6426f87e4af8e09e854d95d430c0
+sha MUTE  : 0b113a28d70c71152de330725f97ec8079083a7f2f6282a27ff9f5fda361fb0c
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/obs/journal.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -69,3 +69,3 @@ export function ligne(evenement: string, champs: Record<string, string | number>
+     for (const [cle, brut] of Object.entries(champs)) {
+-        const valeur = String(brut);
++        const valeur = String(brut).slice(0, 64);
+         morceaux.push(
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+ ❯ src/obs/journal.test.ts (8 tests | 1 failed) 19ms
+   × ligne > (c) 🔴 aucune valeur n'est TRONQUÉE 12ms
+     → expected 'frein cle=aaaaaaaaaaaaaaaaaaaaaaaaaaa…' to be 'frein cle=aaaaaaaaaaaaaaaaaaaaaaaaaaa…' // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/obs/journal.test.ts > ligne > (c) 🔴 aucune valeur n'est TRONQUÉE
+AssertionError: expected 'frein cle=aaaaaaaaaaaaaaaaaaaaaaaaaaa…' to be 'frein cle=aaaaaaaaaaaaaaaaaaaaaaaaaaa…' // Object.is equality
+Expected: "frein cle=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+Received: "frein cle=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+ ❯ src/obs/journal.test.ts:35:49
+     33|         // SEUL remède au mode de défaillance de `adresse-source.ts`.
+     34|         const longue = 'a'.repeat(500);
+     35|         expect(ligne('frein', { cle: longue })).toBe(`frein cle=${long…
+       |                                                 ^
+     36|         expect(ligne('frein', { cle: longue })).toContain(longue);
+     37|     });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  09:09:08
+   Duration  619ms (transform 94ms, setup 0ms, collect 66ms, tests 19ms, environment 0ms, prepare 136ms)
+--- RESTAURATION ---
+sha APRES : 3d421ac3fa264ef00b3b8e7f6cc1e834680f6426f87e4af8e09e854d95d430c0
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T4-d : les champs sont TRIES au lieu de suivre l ordre de l objet =====
+fichier   : src/obs/journal.ts
+sha AVANT : 3d421ac3fa264ef00b3b8e7f6cc1e834680f6426f87e4af8e09e854d95d430c0
+sha MUTE  : affe696788762289075e7c7a73f5719fc946c44f6bc56ab9413de2f038f08556
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/obs/journal.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+@@ -68,3 +68,3 @@ export function ligne(evenement: string, champs: Record<string, string | number>
+     const morceaux = [evenement];
+-    for (const [cle, brut] of Object.entries(champs)) {
++    for (const [cle, brut] of Object.entries(champs).sort((x, y) => x[0] < y[0] ? -1 : 1)) {
+         const valeur = String(brut);
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+ ❯ src/obs/journal.test.ts (8 tests | 1 failed) 22ms
+   × ligne > (d) l'ordre des champs suit celui de l'objet 15ms
+     → expected 'e a=2 z=1' to be 'e z=1 a=2' // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/obs/journal.test.ts > ligne > (d) l'ordre des champs suit celui de l'objet
+AssertionError: expected 'e a=2 z=1' to be 'e z=1 a=2' // Object.is equality
+Expected: "e z=1 a=2"
+Received: "e a=2 z=1"
+ ❯ src/obs/journal.test.ts:43:44
+     41|         // trient. Un `JSON.stringify` d'objet ne le garantit pas dava…
+     42|         // mais un tri alphabétique le romprait.
+     43|         expect(ligne('e', { z: 1, a: 2 })).toBe('e z=1 a=2');
+       |                                            ^
+     44|         expect(ligne('e', { a: 2, z: 1 })).toBe('e a=2 z=1');
+     45|     });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  09:09:09
+   Duration  556ms (transform 77ms, setup 0ms, collect 63ms, tests 22ms, environment 0ms, prepare 148ms)
+--- RESTAURATION ---
+sha APRES : 3d421ac3fa264ef00b3b8e7f6cc1e834680f6426f87e4af8e09e854d95d430c0
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+### RELANCE de T4 : le motif perl ne matchait pas (le compte de points de
+### \(. .\) ne couvrait pas les cinq caracteres de join(' ')). Le HARNAIS a
+### refuse de jouer le test plutot que de rendre un faux vert.
+===== MUTATION T4 : la ligne devient un JSON.stringify des champs =====
+fichier   : src/obs/journal.ts
+sha AVANT : 3d421ac3fa264ef00b3b8e7f6cc1e834680f6426f87e4af8e09e854d95d430c0
+sha MUTE  : 1b04091c2c920c9841b07e50856f23dee582d21ffdbf13aa4ea7e7487d7ee577
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/obs/journal.ts | 1 +
+ 1 file changed, 1 insertion(+)
+@@ -67,2 +67,3 @@ function doitEtreCitee(valeur: string): boolean {
+ export function ligne(evenement: string, champs: Record<string, string | number>): string {
++    return evenement + " " + JSON.stringify(champs);
+     const morceaux = [evenement];
+--- SORTIE DU TEST SOUS MUTATION ---
+     33|         // SEUL remède au mode de défaillance de `adresse-source.ts`.
+     34|         const longue = 'a'.repeat(500);
+     35|         expect(ligne('frein', { cle: longue })).toBe(`frein cle=${long…
+       |                                                 ^
+     36|         expect(ligne('frein', { cle: longue })).toContain(longue);
+     37|     });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+ FAIL  src/obs/journal.test.ts > ligne > (d) l'ordre des champs suit celui de l'objet
+AssertionError: expected 'e {"z":1,"a":2}' to be 'e z=1 a=2' // Object.is equality
+Expected: "e z=1 a=2"
+Received: "e {"z":1,"a":2}"
+ ❯ src/obs/journal.test.ts:43:44
+     41|         // trient. Un `JSON.stringify` d'objet ne le garantit pas dava…
+     42|         // mais un tri alphabétique le romprait.
+     43|         expect(ligne('e', { z: 1, a: 2 })).toBe('e z=1 a=2');
+       |                                            ^
+     44|         expect(ligne('e', { a: 2, z: 1 })).toBe('e a=2 z=1');
+     45|     });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+ FAIL  src/obs/journal.test.ts > ligne > (e) une valeur VIDE reste visible, plutôt que de disparaître
+AssertionError: expected 'frein {"adresse":""}' to be 'frein adresse=""' // Object.is equality
+Expected: "frein adresse="""
+Received: "frein {"adresse":""}"
+ ❯ src/obs/journal.test.ts:50:49
+     48|         // Un champ qui disparaîtrait ferait croire que le service ne …
+     49|         // mesuré, là où il l'a mesuré vide.
+     50|         expect(ligne('frein', { adresse: '' })).toBe('frein adresse=""…
+       |                                                 ^
+     51|     });
+     52| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯
+ Test Files  1 failed (1)
+      Tests  8 failed (8)
+   Start at  09:09:30
+   Duration  678ms (transform 82ms, setup 0ms, collect 67ms, tests 30ms, environment 0ms, prepare 118ms)
+--- RESTAURATION ---
+sha APRES : 3d421ac3fa264ef00b3b8e7f6cc1e834680f6426f87e4af8e09e854d95d430c0
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T4-b : les valeurs ne sont JAMAIS citees =====
+fichier   : src/obs/journal.ts
+sha AVANT : 3d421ac3fa264ef00b3b8e7f6cc1e834680f6426f87e4af8e09e854d95d430c0
+sha MUTE  : 3d421ac3fa264ef00b3b8e7f6cc1e834680f6426f87e4af8e09e854d95d430c0
+🔴 ECHEC DU HARNAIS : la mutation n'a RIEN change. Test non joue.
+### RELANCE de T4-b (troisieme motif) : la citation ne se declenche plus jamais.
+===== MUTATION T4-b : les valeurs ne sont JAMAIS citees =====
+fichier   : src/obs/journal.ts
+sha AVANT : 3d421ac3fa264ef00b3b8e7f6cc1e834680f6426f87e4af8e09e854d95d430c0
+sha MUTE  : c5ac835f520ca360e4fdce858087f832e53dcf59847d6ff3073819580d48f483
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/obs/journal.ts | 1 +
+ 1 file changed, 1 insertion(+)
+@@ -51,2 +51,3 @@
+ function doitEtreCitee(valeur: string): boolean {
++    return false;
+     return valeur === '' || /[\s="]/.test(valeur);
+--- SORTIE DU TEST SOUS MUTATION ---
+     20|         // Sans quoi `k=a=b` serait illisible : on ne saurait pas où f…
+     21|         // valeur et où commence le champ suivant.
+     22|         expect(ligne('frein', { cle: 'compte=alice' })).toBe('frein cl…
+       |                                                         ^
+     23|     });
+     24| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+ FAIL  src/obs/journal.test.ts > ligne > (b ter) les guillemets internes sont échappés
+AssertionError: expected 'frein cle=un "truc" cité' to be 'frein cle="un \"truc\" cité"' // Object.is equality
+Expected: "frein cle="un \"truc\" cité""
+Received: "frein cle=un "truc" cité"
+ ❯ src/obs/journal.test.ts:26:59
+     24| 
+     25|     it('(b ter) les guillemets internes sont échappés', () => {
+     26|         expect(ligne('frein', { cle: 'un "truc" cité' })).toBe('frein …
+       |                                                           ^
+     27|     });
+     28| 
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+ FAIL  src/obs/journal.test.ts > ligne > (e) une valeur VIDE reste visible, plutôt que de disparaître
+AssertionError: expected 'frein adresse=' to be 'frein adresse=""' // Object.is equality
+Expected: "frein adresse="""
+Received: "frein adresse="
+ ❯ src/obs/journal.test.ts:50:49
+     48|         // Un champ qui disparaîtrait ferait croire que le service ne …
+     49|         // mesuré, là où il l'a mesuré vide.
+     50|         expect(ligne('frein', { adresse: '' })).toBe('frein adresse=""…
+       |                                                 ^
+     51|     });
+     52| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+ Test Files  1 failed (1)
+      Tests  4 failed | 4 passed (8)
+   Start at  09:09:41
+   Duration  634ms (transform 93ms, setup 0ms, collect 64ms, tests 23ms, environment 0ms, prepare 163ms)
+--- RESTAURATION ---
+sha APRES : 3d421ac3fa264ef00b3b8e7f6cc1e834680f6426f87e4af8e09e854d95d430c0
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+

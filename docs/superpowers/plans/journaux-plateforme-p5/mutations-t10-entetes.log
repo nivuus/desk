@@ -1,0 +1,133 @@
+### LA ROUGE DE LA TACHE 10 : retirer l'etalement d'UN SEUL routeur.
+### Son it() doit tomber, et LES QUATRE AUTRES rester verts.
+===== MUTATION T10-vm : l'etalement est retire de routes-vm SEUL =====
+fichier   : src/http/routes-vm.ts
+sha AVANT : 603b417bd1f513786967a982476e33dc916c7797dc56ec98b556a0612eb8e57a
+sha MUTE  : 05e334605f9c3e02b1549a4e59de2b0714781c2e7496566b6099d001ef869f6e
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/routes-vm.ts | 1 -
+ 1 file changed, 1 deletion(-)
+@@ -71,3 +71,2 @@ function repondre(
+         // ne puisse jamais les écraser par mégarde.
+-        ...ENTETES_SECURITE,
+         ...(cors ?? {}),
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+(node:2461900) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ src/http/entetes-routeurs.test.ts (8 tests | 1 failed) 941ms
+   × les en-têtes de sécurité, un routeur à la fois > (2) `routes-vm` les pose 55ms
+     → 401 de /vm : en-tête X-Content-Type-Options: expected null to be 'nosniff' // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/entetes-routeurs.test.ts > les en-têtes de sécurité, un routeur à la fois > (2) `routes-vm` les pose
+AssertionError: 401 de /vm : en-tête X-Content-Type-Options: expected null to be 'nosniff' // Object.is equality
+- Expected: 
+"nosniff"
++ Received: 
+null
+ ❯ porteLesEntetes src/http/entetes-routeurs.test.ts:62:78
+     60| function porteLesEntetes(r: Response, quoi: string): void {
+     61|     for (const [cle, valeur] of Object.entries(ENTETES_SECURITE)) {
+     62|         expect(r.headers.get(cle.toLowerCase()), `${quoi} : en-tête ${…
+       |                                                                              ^
+     63|     }
+     64| }
+ ❯ src/http/entetes-routeurs.test.ts:82:9
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  09:39:11
+   Duration  1.99s (transform 498ms, setup 0ms, collect 733ms, tests 941ms, environment 0ms, prepare 61ms)
+--- RESTAURATION ---
+sha APRES : 603b417bd1f513786967a982476e33dc916c7797dc56ec98b556a0612eb8e57a
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T10-applications : l'etalement est retire du CINQUIEME routeur SEUL =====
+fichier   : src/http/routes-applications.ts
+sha AVANT : b2ca734397a367f26ee4258771874669558dfb80aa0529e45dac14b922b8d56c
+sha MUTE  : 1d1e45457cc652ee2735b3690a08c6138dac383fb4b2cf945076e368d1828f74
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/routes-applications.ts | 1 -
+ 1 file changed, 1 deletion(-)
+@@ -82,3 +82,2 @@ function repondre(
+         // ne puisse jamais les écraser par mégarde.
+-        ...ENTETES_SECURITE,
+         ...(cors ?? {}),
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+(node:2462589) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ src/http/entetes-routeurs.test.ts (8 tests | 1 failed) 1097ms
+   × les en-têtes de sécurité, un routeur à la fois > (4) `routes-applications` les pose — le CINQUIÈME routeur, ajouté par G1 162ms
+     → 401 de /applications : en-tête X-Content-Type-Options: expected null to be 'nosniff' // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/entetes-routeurs.test.ts > les en-têtes de sécurité, un routeur à la fois > (4) `routes-applications` les pose — le CINQUIÈME routeur, ajouté par G1
+AssertionError: 401 de /applications : en-tête X-Content-Type-Options: expected null to be 'nosniff' // Object.is equality
+- Expected: 
+"nosniff"
++ Received: 
+null
+ ❯ porteLesEntetes src/http/entetes-routeurs.test.ts:62:78
+     60| function porteLesEntetes(r: Response, quoi: string): void {
+     61|     for (const [cle, valeur] of Object.entries(ENTETES_SECURITE)) {
+     62|         expect(r.headers.get(cle.toLowerCase()), `${quoi} : en-tête ${…
+       |                                                                              ^
+     63|     }
+     64| }
+ ❯ src/http/entetes-routeurs.test.ts:100:9
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  09:39:14
+   Duration  1.80s (transform 300ms, setup 0ms, collect 393ms, tests 1.10s, environment 0ms, prepare 84ms)
+--- RESTAURATION ---
+sha APRES : b2ca734397a367f26ee4258771874669558dfb80aa0529e45dac14b922b8d56c
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
+===== MUTATION T10-404 : le 404 generique de serveur.ts perd les en-tetes =====
+fichier   : src/http/serveur.ts
+sha AVANT : 05f46e7fc1fb888b881977cd75ce72296582e2d6e4c800c8159f31e4b6bca39c
+sha MUTE  : 075ba971ffcd72524051c64332e2efa6b179ba3698a325a1548ca39f4cd460c0
+--- PREUVE DU DIFF NON VIDE (git diff --stat puis le diff) ---
+ plateforme/src/http/serveur.ts | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+@@ -244,4 +244,3 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
+                 reponse.writeHead(404, {
+-                    'content-type': 'text/plain; charset=utf-8',
+-                    ...ENTETES_SECURITE,
++                    "content-type": "text/plain; charset=utf-8",
+                 });
+--- SORTIE DU TEST SOUS MUTATION ---
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/plateforme
+(node:2463391) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ src/http/entetes-routeurs.test.ts (8 tests | 1 failed) 930ms
+   × les en-têtes de sécurité, un routeur à la fois > (7) le 404 générique et le 500 les portent aussi 110ms
+     → 404 générique : en-tête X-Content-Type-Options: expected null to be 'nosniff' // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/http/entetes-routeurs.test.ts > les en-têtes de sécurité, un routeur à la fois > (7) le 404 générique et le 500 les portent aussi
+AssertionError: 404 générique : en-tête X-Content-Type-Options: expected null to be 'nosniff' // Object.is equality
+- Expected: 
+"nosniff"
++ Received: 
+null
+ ❯ porteLesEntetes src/http/entetes-routeurs.test.ts:62:78
+     60| function porteLesEntetes(r: Response, quoi: string): void {
+     61|     for (const [cle, valeur] of Object.entries(ENTETES_SECURITE)) {
+     62|         expect(r.headers.get(cle.toLowerCase()), `${quoi} : en-tête ${…
+       |                                                                              ^
+     63|     }
+     64| }
+ ❯ src/http/entetes-routeurs.test.ts:135:9
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  09:39:17
+   Duration  1.83s (transform 420ms, setup 0ms, collect 573ms, tests 930ms, environment 0ms, prepare 104ms)
+--- RESTAURATION ---
+sha APRES : 05f46e7fc1fb888b881977cd75ce72296582e2d6e4c800c8159f31e4b6bca39c
+✅ source RESTAUREE (sha identique)
+✅ git status --porcelain IDENTIQUE a celui d'avant
+
