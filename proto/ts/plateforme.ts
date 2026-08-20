@@ -68,20 +68,6 @@ export interface Application {
  */
 export type SourceMax = { pixels: number } | 'non-mesuree';
 
-/**
- * Le CHAMP `string` de `Application` à valider, un par un — voir
- * `estApplication`.
- *
- * 🔴 `icone` ET `source_max` N'Y SONT PAS, ET LES Y METTRE SERAIT UN DÉFAUT
- * SILENCIEUX. Cette liste est parcourue par `estChaine` : y ajouter `icone`
- * ferait REFUSER TOUT CATALOGUE dont une seule application n'a pas d'icône —
- * `null` n'est pas une chaîne —, avec le motif `forme`, c'est-à-dire un
- * catalogue entier perdu sans qu'aucune trace ne dise pourquoi. Les deux
- * champs neufs ont donc leurs propres gardes.
- */
-const CHAMPS_APPLICATION: ReadonlyArray<keyof Application> = [
-    'cle', 'nom', 'chemin', 'cible', 'arguments', 'repertoire',
-];
 
 /**
  * Ce qu'un ordre de lancement a réellement fait.
@@ -95,7 +81,6 @@ const CHAMPS_APPLICATION: ReadonlyArray<keyof Application> = [
  */
 export type IssueLancement = 'raccourci' | 'cible' | 'inconnue' | 'echec';
 
-const ISSUES: ReadonlyArray<IssueLancement> = ['raccourci', 'cible', 'inconnue', 'echec'];
 
 export interface EnrolerMessage { v: number; type: 'enroler'; vm: string; secret: string }
 export interface BattementMessage { v: number; type: 'battement' }
@@ -304,54 +289,16 @@ export type LectureVersLaPlateforme =
     | { ok: true; message: VersLaPlateforme }
     | { ok: false; motif: MotifCanal };
 
-function estObjetJson(valeur: unknown): valeur is Record<string, unknown> {
-    return typeof valeur === 'object' && valeur !== null && !Array.isArray(valeur);
-}
-
-function chaineNonVide(valeur: unknown): valeur is string {
-    return typeof valeur === 'string' && valeur.length > 0;
-}
-
-/** ⚠️ `arguments` est LÉGITIMEMENT VIDE : la garde est `string`, pas `chaineNonVide`. */
-function estChaine(valeur: unknown): valeur is string {
-    return typeof valeur === 'string';
-}
-
-/**
- * ⚠️ `null` EST UNE VALEUR ATTENDUE, PAS UNE ABSENCE. La garde exige que la
- * clé soit PRÉSENTE — `'icone' in valeur` — puis que sa valeur soit `null` ou
- * une chaîne. Se contenter de `=== null || typeof === 'string'` accepterait
- * un objet SANS le champ, `valeur.icone` valant alors `undefined`… qui n'est
- * ni `null` ni une chaîne, donc le cas serait refusé par accident. Écrire la
- * présence explicitement rend la propriété lisible plutôt qu'heureuse.
- */
-function estIcone(valeur: Record<string, unknown>): boolean {
-    if (!('icone' in valeur)) return false;
-    return valeur.icone === null || estChaine(valeur.icone);
-}
-
-/**
- * 🔴 UN OBJET QUELCONQUE NE PASSE PAS. `{"pixels":"gros"}` est refusé, et
- * `{"pixels":256,"bonus":1}` aussi : la forme est exactement l'une des deux
- * que le Rust sait émettre, et rien d'autre.
- */
-function estSourceMax(valeur: unknown): valeur is SourceMax {
-    if (valeur === 'non-mesuree') return true;
-    if (!estObjetJson(valeur)) return false;
-    const cles = Object.keys(valeur);
-    if (cles.length !== 1 || cles[0] !== 'pixels') return false;
-    return typeof valeur.pixels === 'number' && Number.isInteger(valeur.pixels);
-}
-
-function estApplication(valeur: unknown): valeur is Application {
-    if (!estObjetJson(valeur)) return false;
-    if (!CHAMPS_APPLICATION.every((champ) => estChaine(valeur[champ]))) return false;
-    return estIcone(valeur) && estSourceMax(valeur.source_max);
-}
-
-function estIssue(valeur: unknown): valeur is IssueLancement {
-    return ISSUES.includes(valeur as IssueLancement);
-}
+// 🔴 LES GARDES DE FORME VIVENT DANS UN MODULE VOISIN, extraites parce que ce
+// fichier a FRANCHI 500 lignes (528). Voir l'en-tête de `plateforme-gardes.ts`
+// pour la déclaration du franchissement.
+import {
+    chaineNonVide,
+    estApplication,
+    estChaine,
+    estIssue,
+    estObjetJson,
+} from './plateforme-gardes';
 
 /**
  * Lit un message venant de l'agent.

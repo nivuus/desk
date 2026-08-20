@@ -81,24 +81,10 @@ const FILE_EMISSION: usize = 32;
 /// /agent fermé : découverte d'applications arrêtée ». `main` le garde vivant
 /// pour toute la durée du processus, et c'est désormais vrai pour deux
 /// mécanismes au lieu d'un.
-/// Ce que la plateforme demande à la boucle d'applications.
-///
-/// 🔴 UN ENUM PLUTÔT QU'UNE SECONDE FILE, ET C'EST UNE DÉCISION. Les deux
-/// messages descendants vont au MÊME consommateur — la boucle d'apps, sur son
-/// fil COM dédié —, et deux files l'obligeraient à interroger les deux à
-/// chaque tour d'attente, avec le risque qu'un ajout futur en oublie une. Un
-/// enum rend l'exhaustivité vérifiable par le compilateur là où deux files la
-/// laisseraient à la vigilance.
-///
-/// ⚠️ IL NE TRANSPORTE AUCUN OCTET D'IMAGE. `IconesManquantes` ne porte qu'un
-/// inventaire d'empreintes ; les images montent par `PUT /icone/:sha256`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Ordre {
-    /// Lancer une application, par sa clé. `demande` apparie la réponse.
-    Lancer { demande: String, cle: String },
-    /// Téléverser les icônes que la plateforme n'a pas.
-    IconesManquantes { empreintes: Vec<String> },
-}
+/// Le vocabulaire des ordres descendants vit dans un module enfant — voir son
+/// en-tête pour la déclaration du franchissement de plafond qui l'a produit.
+mod ordre;
+pub use ordre::Ordre;
 
 pub struct Canal {
     identite: watch::Receiver<Option<Identite>>,
