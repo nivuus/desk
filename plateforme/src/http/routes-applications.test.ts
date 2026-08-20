@@ -1,0 +1,378 @@
+// `GET /applications` et `POST /application/:id/lancer`, éprouvées À TRAVERS un
+// serveur HTTP réel, dans le style de `routes-vm.test.ts` et de
+// `routes-auth.test.ts`.
+//
+// 🔴 LE REGISTRE EST RÉEL, LE SOCKET EST UN DOUBLE. C'est ce qui permet
+// d'éprouver les trois issues du lancement — succès, agent absent, expiration —
+// sans monter d'agent : le double répond, ou se tait. Ce que fait un VRAI socket
+// est éprouvé ailleurs, par `agents/canal-apps.test.ts`.
+
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createServer, type Server } from 'node:http';
+import { DELAI_LANCEMENT_MS, RegistreAgents, type SocketAgent } from '../agents/registre';
+import { baseNeuve, MOTEUR } from '../base/harnais';
+import type { Pilote } from '../base/pilote';
+import { appliquer, lireParVm } from '../depot/application';
+import { creerUtilisateur } from '../depot/utilisateur';
+import { signer } from '../identite/jeton';
+import { parseDepuisLaPlateforme, type Application } from '../../../proto/ts/plateforme';
+import { servirApplications } from './routes-applications';
+
+const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
+const ORIGINE = 'http://127.0.0.1:5173';
+const MS = 1_787_136_773_742;
+
+let base: Pilote | undefined;
+let http: Server | undefined;
+let registre = new RegistreAgents();
+let maintenant = MS;
+
+afterEach(async () => {
+    if (http) await new Promise<void>((r) => http!.close(() => r()));
+    http = undefined;
+    await base?.fermer();
+    base = undefined;
+    vi.restoreAllMocks();
+});
+
+/// Monte un serveur qui ne porte QUE cette route, plus le 404 générique de
+/// `serveur.ts` reproduit mot pour mot : c'est ainsi qu'un `false` rendu par
+/// `servirApplications` devient observable.
+async function servir(nom: string, origineClient?: string): Promise<string> {
+    base = await baseNeuve(nom);
+    registre = new RegistreAgents();
+    maintenant = MS;
+    const b = base;
+    http = createServer((req, rep) => {
+        void servirApplications(req, rep, {
+            base: b,
+            secretJeton: SECRET,
+            origineClient,
+            registre,
+            maintenant: () => maintenant,
+        })
+            .then((servie) => {
+                if (servie) return;
+                rep.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
+                rep.end('introuvable\n');
+            })
+            .catch((cause) => {
+                rep.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
+                rep.end(JSON.stringify({ refus: 'interne', cause: String(cause) }));
+            });
+    });
+    await new Promise<void>((r) => http!.listen(0, '127.0.0.1', () => r()));
+    const a = http!.address();
+    return `http://127.0.0.1:${typeof a === 'object' && a ? a.port : 0}`;
+}
+
+async function poserVm(p: Pilote, id: string): Promise<void> {
+    await p.executer('INSERT INTO vm(id, nom, adresse) VALUES(?, ?, ?)', [id, `vm-${id}`, '192.168.3.2']);
+}
+
+async function attribuer(p: Pilote, vmId: string, email: string): Promise<string> {
+    const u = await creerUtilisateur(p, email, 'empreinte-opaque-de-test', MS);
+    await p.executer('UPDATE vm SET utilisateur_id = ? WHERE id = ?', [u, vmId]);
+    return u;
+}
+
+function app(nom: string, cle: string): Application {
+    return {
+        cle,
+        nom,
+        chemin: `C:\\Users\\guacamole\\Desktop\\${nom}.lnk`,
+        cible: `c:\\program files\\${nom}\\${nom}.exe`,
+        arguments: '',
+        repertoire: `c:\\program files\\${nom}`,
+    };
+}
+
+async function poserApp(p: Pilote, vmId: string, nom: string, cle: string): Promise<string> {
+    await appliquer(p, vmId, {
+        aInserer: [app(nom, cle)],
+        aMettreAJour: [],
+        aMarquerDisparues: [],
+        aRessusciter: [],
+    }, MS);
+    return (await lireParVm(p, vmId)).find((l) => l.nom === nom)!.id;
+}
+
+function jetonDe(sujet: string, type: 'utilisateur' | 'agent' = 'utilisateur'): string {
+    return signer(sujet, SECRET, MS, undefined, type);
+}
+
+function avec(jeton?: string, autres: Record<string, string> = {}): Record<string, string> {
+    return jeton === undefined ? autres : { authorization: `Bearer ${jeton}`, ...autres };
+}
+
+/// Un socket qui répond à tout ordre par l'issue donnée — ou qui se tait.
+function agentQuiRepond(issue: 'raccourci' | 'cible' | 'echec' | null): SocketAgent {
+    return {
+        readyState: 1,
+        send(donnees: string) {
+            if (issue === null) return;
+            const ordre = parseDepuisLaPlateforme(donnees);
+            if (ordre.type !== 'lancer') return;
+            // Sur le tour de boucle suivant, comme le ferait un vrai socket.
+            setTimeout(() => registre.resoudre(ordre.demande, issue), 0);
+        },
+        close() {},
+    };
+}
+
+describe(`routes /applications, moteur=${MOTEUR}`, () => {
+    it("rend `false` sur un chemin étranger : le 404 du serveur suit", async () => {
+        // 🔴 Rendre `true` ferait manger à cette route les 404 de toutes les
+        // autres, et un chemin inconnu répondrait un corps JSON d'application.
+        const url = await servir('apps-etranger');
+        const r = await fetch(`${url}/rien-du-tout`);
+        expect(r.status).toBe(404);
+        expect(await r.text()).toBe('introuvable\n');
+    });
+
+    it('🔴 le motif de `/application/:id/lancer` est ANCRÉ DES DEUX BOUTS', async () => {
+        // 🔴 Un `startsWith` ouvrirait « une famille entière de chemins que
+        // personne n'a décidés » (`serveur.ts`).
+        //
+        // 🔴 C'EST LE CORPS QUI DISCRIMINE, PAS LE CODE. Une première rédaction
+        // n'assertait que `404`, et une mutation `startsWith('/application')`
+        // LUI A SURVÉCU : la route mangeait alors toute la famille et rendait
+        // son PROPRE 404 typé, indiscernable du 404 générique tant qu'on ne
+        // lisait que le statut. Le corps `introuvable\n` est celui de
+        // `serveur.ts`, et il ne peut être rendu que si la route a bien décliné.
+        const url = await servir('apps-ancre');
+        const declines = [
+            `${url}/application/x/lancer/y`,
+            `${url}/application/x`,
+            `${url}/applicationsdetournees`,
+            `${url}/applications/x`,
+        ];
+        for (const cible of declines) {
+            const r = await fetch(cible, { method: 'POST' });
+            expect([cible, r.status, await r.text()]).toEqual([cible, 404, 'introuvable\n']);
+        }
+        // Et le chemin JUSTE est bien servi — sans ce témoin, les assertions
+        // ci-dessus seraient vraies d'une route qui ne sert RIEN.
+        expect((await fetch(`${url}/application/x/lancer`, { method: 'POST' })).status).not.toBe(404);
+    });
+
+    it('SANS en-tête `Authorization`, rend 401', async () => {
+        // 🔴 Les deux routes de P1/P2 sont ouvertes par construction, et rien
+        // dans ce dépôt n'authentifiait une requête HTTP avant P4. L'omettre
+        // ici rendrait le catalogue de toute VM lisible par n'importe qui.
+        const url = await servir('apps-sans-jeton');
+        const r = await fetch(`${url}/applications?vm=v-1`);
+        expect(r.status).toBe(401);
+        expect(await r.json()).toEqual({ refus: 'jeton-absent' });
+    });
+
+    it("🔴 avec un jeton d'AGENT, refuse — agent et humain sont signés par le MÊME secret", async () => {
+        // 🔴 Accepter tout jeton valide rouvrirait E5 de P3 : sans le claim de
+        // type, les deux identités sont INTERCHANGEABLES. Un agent compromis
+        // lirait alors le catalogue de son propre utilisateur, et le lancerait.
+        const url = await servir('apps-jeton-agent');
+        const r = await fetch(`${url}/applications?vm=v-1`, {
+            headers: avec(jetonDe('RhH1x2QmTz9kLpVbNc7dAw', 'agent')),
+        });
+        expect(r.status).toBe(403);
+        expect(await r.json()).toEqual({ refus: 'jeton-agent' });
+    });
+
+    it('avec un jeton EXPIRÉ, refuse — et le test fait AVANCER l’horloge', async () => {
+        // 🔴 Une horloge figée rendrait ce cas inerte : il lirait un état
+        // final au lieu de voir la transition. Le jeton est signé à `MS`, et
+        // la requête est servie bien après son expiration.
+        const url = await servir('apps-jeton-expire');
+        const jeton = jetonDe('u-1');
+        maintenant = MS + 24 * 60 * 60 * 1000;
+        const r = await fetch(`${url}/applications?vm=v-1`, { headers: avec(jeton) });
+        expect(r.status).toBe(401);
+        expect(await r.json()).toEqual({ refus: 'jeton-expire' });
+    });
+
+    it('sert la requête préalable `OPTIONS`, sans laquelle rien n’est atteignable', async () => {
+        // ⚠️ Les deux routes exigent `Authorization`, ce qui rend la requête
+        // NON SIMPLE : le navigateur émet d'abord un `OPTIONS`, et un 404 lui
+        // ferait abandonner sans jamais envoyer la vraie requête. AUCUN test
+        // Node ne peut voir la politique d'origine — c'est cette assertion, et
+        // rien d'autre, qui tient l'en-tête.
+        const url = await servir('apps-options', ORIGINE);
+        const r = await fetch(`${url}/applications`, {
+            method: 'OPTIONS',
+            headers: { origin: ORIGINE },
+        });
+        expect(r.status).toBe(204);
+        expect(r.headers.get('access-control-allow-origin')).toBe(ORIGINE);
+    });
+
+    it('rend les applications de la VM demandée, et rien d’autre', async () => {
+        const url = await servir('apps-liste');
+        await poserVm(base!, 'v-1');
+        await poserVm(base!, 'v-2');
+        const u = await attribuer(base!, 'v-1', 'a@exemple.test');
+        await poserApp(base!, 'v-1', 'Firefox', 'c-1');
+        await poserApp(base!, 'v-2', 'Excel', 'c-2');
+
+        const r = await fetch(`${url}/applications?vm=v-1`, { headers: avec(jetonDe(u)) });
+        expect(r.status).toBe(200);
+        const corps = (await r.json()) as { applications: Array<{ nom: string }> };
+        expect(corps.applications.map((a) => a.nom)).toEqual(['Firefox']);
+    });
+
+    it("🔴 une VM appartenant à QUELQU'UN D'AUTRE est refusée", async () => {
+        // ⚠️ CE TEST POSE `vm.utilisateur_id` À LA MAIN, puisque rien ne le
+        // remplit avant P4 — `npm run admin:agent` laisse la colonne NULL.
+        const url = await servir('apps-etrangere');
+        await poserVm(base!, 'v-1');
+        await attribuer(base!, 'v-1', 'proprietaire@exemple.test');
+        const autre = await creerUtilisateur(base!, 'autre@exemple.test', 'x', MS);
+        await poserApp(base!, 'v-1', 'Firefox', 'c-1');
+
+        const r = await fetch(`${url}/applications?vm=v-1`, { headers: avec(jetonDe(autre)) });
+        expect(r.status).toBe(403);
+        expect(await r.json()).toEqual({ refus: 'vm-etrangere' });
+    });
+
+    it('🔴 une VM NON ATTRIBUÉE est servie, ET la ligne de journal est ÉMISE', async () => {
+        // 🔴 SERVIR EN SILENCE RENDRAIT L'ABSENCE D'ISOLATION INVISIBLE. Tant
+        // qu'aucune VM n'est attribuée, tout utilisateur authentifié voit
+        // toutes les VMs — ce n'est PAS une isolation, et la ligne de journal
+        // est ce qui rend l'état visible à l'opérateur. Le test LIT LA TRACE,
+        // pas seulement le code de réponse.
+        const traces: string[] = [];
+        vi.spyOn(console, 'warn').mockImplementation((l: string) => void traces.push(l));
+        const url = await servir('apps-non-attribuee');
+        await poserVm(base!, 'v-1');
+        const u = await creerUtilisateur(base!, 'quiconque@exemple.test', 'x', MS);
+        await poserApp(base!, 'v-1', 'Firefox', 'c-1');
+
+        const r = await fetch(`${url}/applications?vm=v-1`, { headers: avec(jetonDe(u)) });
+        expect(r.status).toBe(200);
+        expect(traces.join(' | ')).toContain('vm non attribuee');
+        expect(traces.join(' | ')).toContain('v-1');
+    });
+
+    it('rend 404 sur une application INCONNUE', async () => {
+        const url = await servir('apps-lancer-inconnue');
+        const u = await creerUtilisateur(base!, 'u@exemple.test', 'x', MS);
+        const r = await fetch(`${url}/application/jamais-vue/lancer`, {
+            method: 'POST',
+            headers: avec(jetonDe(u)),
+        });
+        expect(r.status).toBe(404);
+        expect(await r.json()).toEqual({ refus: 'application-inconnue' });
+    });
+
+    it('🔴 rend 503 quand l’agent est ABSENT, jamais 200', async () => {
+        // 🔴 Rendre 200 ferait afficher au hub un succès pour un lancement qui
+        // n'a PAS eu lieu — la panne la plus difficile à diagnostiquer qui
+        // soit, parce que rien nulle part ne la contredit.
+        const url = await servir('apps-lancer-absent');
+        await poserVm(base!, 'v-1');
+        const u = await attribuer(base!, 'v-1', 'u@exemple.test');
+        const id = await poserApp(base!, 'v-1', 'Firefox', 'c-1');
+
+        const r = await fetch(`${url}/application/${id}/lancer`, {
+            method: 'POST',
+            headers: avec(jetonDe(u)),
+        });
+        expect(r.status).toBe(503);
+        expect(await r.json()).toEqual({ refus: 'agent-injoignable' });
+    });
+
+    it("🔴 rend 504 quand l'agent NE RÉPOND PAS, jamais 202 sans attendre", async () => {
+        // 🔴 Rendre 202 sans attendre ferait passer le critère de recette sur
+        // un binaire qui n'a RIEN lancé : la plateforme dirait « c'est parti »
+        // pour un ordre dont personne n'a jamais vu l'issue.
+        const url = await servir('apps-lancer-delai');
+        await poserVm(base!, 'v-1');
+        const u = await attribuer(base!, 'v-1', 'u@exemple.test');
+        const id = await poserApp(base!, 'v-1', 'Firefox', 'c-1');
+        // Un agent inscrit, mais MUET.
+        registre.inscrire('v-1', agentQuiRepond(null));
+
+        const debut = Date.now();
+        const r = await fetch(`${url}/application/${id}/lancer`, {
+            method: 'POST',
+            headers: avec(jetonDe(u)),
+        });
+        expect(r.status).toBe(504);
+        expect(await r.json()).toEqual({ refus: 'delai' });
+        // ⚠️ ET IL A RÉELLEMENT ATTENDU : sans cette borne, une route qui
+        // rendrait 504 immédiatement passerait le test tout en n'ayant laissé
+        // aucune chance à l'agent.
+        expect(Date.now() - debut).toBeGreaterThanOrEqual(DELAI_LANCEMENT_MS - 50);
+    }, 20_000);
+
+    it("🔴 un lancement réussi rend L'ISSUE, jamais un booléen", async () => {
+        // 🔴 Aplatir l'issue en booléen ferait perdre au critère de recette
+        // toute discrimination : `raccourci` contre `cible` est ce qui dit si
+        // c'est bien le `.lnk` qu'on a lancé, ou une cible reconstruite.
+        const url = await servir('apps-lancer-ok');
+        await poserVm(base!, 'v-1');
+        const u = await attribuer(base!, 'v-1', 'u@exemple.test');
+        const id = await poserApp(base!, 'v-1', 'Firefox', 'c-1');
+        registre.inscrire('v-1', agentQuiRepond('raccourci'));
+
+        const r = await fetch(`${url}/application/${id}/lancer`, {
+            method: 'POST',
+            headers: avec(jetonDe(u)),
+        });
+        expect(r.status).toBe(200);
+        expect(await r.json()).toEqual({ issue: 'raccourci' });
+    });
+
+    it("un lancement en ÉCHEC côté agent rend 200 et l'issue `echec`, jamais une erreur HTTP", async () => {
+        // ⚠️ L'ORDRE A ABOUTI : la plateforme a fait son travail, et l'agent a
+        // répondu. Rendre une 5xx dirait que le SERVICE a échoué, ce qui est
+        // faux — et le distinguer de `agent-injoignable` est tout l'intérêt
+        // d'avoir une issue plutôt qu'un booléen.
+        const url = await servir('apps-lancer-echec');
+        await poserVm(base!, 'v-1');
+        const u = await attribuer(base!, 'v-1', 'u@exemple.test');
+        const id = await poserApp(base!, 'v-1', 'Firefox', 'c-1');
+        registre.inscrire('v-1', agentQuiRepond('echec'));
+
+        const r = await fetch(`${url}/application/${id}/lancer`, {
+            method: 'POST',
+            headers: avec(jetonDe(u)),
+        });
+        expect(r.status).toBe(200);
+        expect(await r.json()).toEqual({ issue: 'echec' });
+    });
+
+    it("🔴 lancer une application d'une VM ÉTRANGÈRE est refusé", async () => {
+        // Sans cette garde, l'identifiant d'application suffirait à lancer un
+        // programme sur la machine de quelqu'un d'autre — et l'agent, lui,
+        // n'a aucun moyen de savoir qui a demandé.
+        const url = await servir('apps-lancer-etrangere');
+        await poserVm(base!, 'v-1');
+        await attribuer(base!, 'v-1', 'proprietaire@exemple.test');
+        const autre = await creerUtilisateur(base!, 'autre@exemple.test', 'x', MS);
+        const id = await poserApp(base!, 'v-1', 'Firefox', 'c-1');
+        registre.inscrire('v-1', agentQuiRepond('raccourci'));
+
+        const r = await fetch(`${url}/application/${id}/lancer`, {
+            method: 'POST',
+            headers: avec(jetonDe(autre)),
+        });
+        expect(r.status).toBe(403);
+        expect(await r.json()).toEqual({ refus: 'vm-etrangere' });
+    });
+
+    it('refuse la MÉTHODE sur un chemin qui existe, plutôt qu’un 404', async () => {
+        // Le chemin EXISTE, c'est la méthode qui ne convient pas : un 404
+        // ferait chercher une route absente. Même choix que `routes-vm.ts`.
+        const url = await servir('apps-methode');
+        expect((await fetch(`${url}/applications`, { method: 'POST' })).status).toBe(405);
+        expect((await fetch(`${url}/application/x/lancer`)).status).toBe(405);
+    });
+
+    it('exige le paramètre `vm`, et le dit', async () => {
+        const url = await servir('apps-sans-vm');
+        const u = await creerUtilisateur(base!, 'u@exemple.test', 'x', MS);
+        const r = await fetch(`${url}/applications`, { headers: avec(jetonDe(u)) });
+        expect(r.status).toBe(400);
+        expect(await r.json()).toEqual({ refus: 'vm-absente' });
+    });
+});
