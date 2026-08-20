@@ -163,8 +163,13 @@ pub(crate) fn aiguiller() -> Result<bool> {
     // et elle est décisive** : le père s'arrête avant d'atteindre `lanceur.rs`,
     // donc un `env_remove` posé là ne préviendrait RIEN. Le seul remède qui
     // mordrait serait de déplacer l'aiguillage des sondes après les branches de
-    // mode, ce qui changerait le contrat de `diagnostics::aiguiller` pour ses
-    // douze variables — hors périmètre de P1, et nommé ici plutôt que dormant.
+    // mode, ce qui changerait le contrat de `diagnostics::aiguiller` pour
+    // TOUTES ses variables — sept lues ici même, plus celles que
+    // `multifenetre::aiguiller` lit en queue. Hors périmètre de P1, et nommé
+    // ici plutôt que dormant. ⚠️ Cette phrase annonçait « ses douze
+    // variables » : aucun décompte ne donne douze, et un nombre qu'on ne peut
+    // pas refaire est pire qu'une absence de nombre (revue transverse,
+    // 20 août 2026).
     #[cfg(windows)]
     if let Ok(secondes) = std::env::var("PRESSE_PAPIER_SONDE") {
         presse_papier::executer(&secondes)?;

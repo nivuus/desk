@@ -53,8 +53,14 @@ export interface PressePapierAttache {
     recevoir(recu: Recu): void;
     /// Retire l'écouteur de focus. **Indispensable** : sans lui il survivrait
     /// à la fin de session et écrirait le presse-papier local pour une session
-    /// morte — le défaut que les quatre détachements voisins de `main.ts`
-    /// existent déjà pour éviter.
+    /// morte — le défaut que les détachements voisins de `main.ts` existent
+    /// déjà pour éviter.
+    ///
+    /// ⚠️ Cette phrase disait « les QUATRE détachements voisins » : ils sont
+    /// **six** (pointeur, manette, plein écran, armement, visibilité, micro),
+    /// et ils l'étaient déjà quand elle a été écrite. Un compte cité doit être
+    /// relu, ou ne pas être cité — corrigé par la revue transverse du 20 août
+    /// 2026, qui a trouvé le même « quatre » **aux deux endroits**.
     detacher(): void;
 }
 

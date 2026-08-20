@@ -295,8 +295,9 @@ pub(super) fn oublier(garde: &mut MutexGuard<'static, Etat>, session: &str) -> V
 /// protocole** (revue de la première version de cette tâche, D9) : la
 /// frapper au LANCEMENT d'un processus ne couvre pas la course réelle. Les
 /// deux seuls chemins qui réinscrivent un nom sont soit un enfant relancé
-/// par le superviseur — auquel cas `Table::compteur`
-/// (`superviseur/table.rs:399`) donne un nom NEUF, donc aucune course —,
+/// par le superviseur — auquel cas `Table::prochaine_session`
+/// (`superviseur/table.rs`, qui incrémente `compteur` avant de composer
+/// `w-<n>`) donne un nom NEUF, donc aucune course —,
 /// soit le MÊME enfant qui se rattache au capteur (`CanalTube::rattacher`)
 /// après une rupture de tube, auquel cas il redit délibérément le même
 /// `hwnd`/`sortie` dans une attache qui n'a jamais porté de génération. La
