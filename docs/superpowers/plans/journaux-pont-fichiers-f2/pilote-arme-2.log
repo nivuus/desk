@@ -1,0 +1,8 @@
+[2026-08-20T22:57:07.936Z] jeton de recette obtenu
+[2026-08-20T22:57:08.308Z] chrome : Chrome/151.0.7922.169
+[2026-08-20T22:57:08.512Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+[2026-08-20T22:57:12.592Z] OPFS peuple : 5 entrees
+[2026-08-20T22:57:12.592Z] la page-shell est connectee : lancement de l agent
+[2026-08-20T22:57:13.072Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-20T22:57:17.104Z] 1 fenetre(s) d application apres 4 s
+[2026-08-20T22:57:17.111Z] clic sur #choisir-dossier

@@ -1,0 +1,55 @@
+# 🔴 LA PREMIÈRE EXÉCUTION DE LA RECETTE F2 A MESURÉ SON PROPRE INSTRUMENT
+
+Pièces : `pilote-diagnostic-instrument.log`, `agent-diagnostic-instrument-plat.log`,
+`pilote-diagnostic-instrument.json`.
+
+## Ce qu'on lisait
+
+Aucun octet n'arrive, `avant_compte = 0` ET `apres_compte = 0` sur la racine du
+pont, `projete.txt` déclaré ABSENT côté VM alors qu'OPFS le porte, et
+l'écriture du critère ② refusée par « Une erreur interne s'est produite ».
+**Cela se lit exactement comme un pont en panne.**
+
+## Ce que c'était
+
+Le journal d'agent le dit sans ambiguïté :
+
+```
+22:48:46  WARN commande expirée : le navigateur n'a pas répondu commande=Some(2)  correlation=0
+22:48:48  WARN commande expirée … Some(4)  correlation=1
+   … VINGT commandes expirées, de 22:48:46 à 22:50:22 …
+22:50:25 DEBUG réponse tardive ou inconnue : jetée correlation=0
+22:50:25 DEBUG réponse tardive ou inconnue : jetée correlation=11
+   … VINGT réponses, TOUTES dans la même seconde …
+```
+
+**Le navigateur avait tout préparé et n'a rien pu émettre** — puis a tout émis
+d'un coup, **à la seconde exacte** où la mesure côté VM a rendu la main
+(`mesure VM : JSON lu` à 22:50:24,873 ; premières réponses à 22:50:25,061).
+
+## La cause : `execFileSync` dans le pilote
+
+Le pilote lançait la mesure VM par `execFileSync`, comme celui de F1. Cet appel
+**bloque la boucle d'événements de Node** pendant toute sa durée — deux minutes
+ici. Le pilote cesse alors de lire sa WebSocket CDP ; la file de messages
+DevTools se remplit ; et **le rendu de la page-shell se bloque avec elle**.
+
+**L'instrument détruisait ce qu'il mesurait.** C'est le piège maison que ce dépôt
+a déjà payé deux fois — la trace par paquet du chantier TURN, la capture d'écran
+CDP du sous-bloc D1 — sous une troisième forme.
+
+## ⚠️ CE QUE CELA SUGGÈRE DU LEGS 4 DE F1, ET QUI N'EST PAS ÉTABLI ICI
+
+F1 lègue « des lectures CALENT sans jamais expirer — la mesure VM d'`exec1` ne
+rend pas la main en 540 s », et son pilote employait **le même `execFileSync`**
+pour la même sorte de mesure. **Le rapprochement est fort et il n'est pas une
+preuve** : je n'ai pas rejoué F1, et rien ici ne dit que sa mesure à lui
+bloquait le navigateur. **Ce qui est établi est que CE montage-ci le faisait**,
+et qu'un successeur qui reprendra le legs 4 doit écarter cette cause avant
+d'accuser le produit.
+
+## Le remède, et la preuve qu'il porte
+
+`execFileAsync` (`promisify(execFile)`) : la boucle d'événements continue de
+pomper CDP pendant la mesure. La comparaison est dans les exécutions
+`arme-1` et `arme-2`, jouées **sur le MÊME binaire** — seul le pilote change.

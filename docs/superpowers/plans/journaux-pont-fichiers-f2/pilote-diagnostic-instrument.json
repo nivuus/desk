@@ -1,0 +1,682 @@
+{
+ "maintien_s": 40,
+ "prefixe": "F4z7KQooOQfJqh47PM0ETA",
+ "journal": [
+  "[2026-08-20T22:48:05.528Z] jeton de recette obtenu",
+  "[2026-08-20T22:48:06.079Z] chrome : Chrome/151.0.7922.169",
+  "[2026-08-20T22:48:06.214Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA",
+  "[2026-08-20T22:48:10.288Z] OPFS peuple : 5 entrees",
+  "[2026-08-20T22:48:10.289Z] la page-shell est connectee : lancement de l agent",
+  "[2026-08-20T22:48:10.758Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+  "[2026-08-20T22:48:14.781Z] 1 fenetre(s) d application apres 4 s",
+  "[2026-08-20T22:48:14.781Z] clic sur #choisir-dossier",
+  "[2026-08-20T22:48:17.823Z] #etat-fichiers : \"Lecteur « Mes Fichiers » monté sur « Mes documents ».\"",
+  "[2026-08-20T22:48:17.823Z] repos de 8000 ms avant la mesure",
+  "[2026-08-20T22:48:25.834Z] compteur AVANT : {\"dues\":0,\"vues\":0,\"texte\":\"\"}",
+  "[2026-08-20T22:48:25.834Z] mesure cote VM (ecriture dans la racine)",
+  "[2026-08-20T22:50:24.873Z] mesure VM : JSON lu",
+  "[2026-08-20T22:51:26.565Z] compteur FINAL : {\"t\":59,\"dues\":0,\"vues\":0,\"texte\":\"\"}",
+  "[2026-08-20T22:51:26.571Z] relecture ecrit-par-la-vm.bin : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-20T22:51:26.588Z] relecture projete.txt : {\"present\":true,\"taille\":52,\"sha256\":\"8c9605738f6e92bf92f59d84196dc4bcb9cbd136181a471a5f3b4ad86f2fb0f3\"}",
+  "[2026-08-20T22:51:26.592Z] relecture vide.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-20T22:51:26.597Z] relecture dossier-neuf/dedans.txt : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-20T22:51:26.625Z] relecture Casse.txt : {\"present\":true,\"taille\":15,\"sha256\":\"2c7f4c21a3c14c7c42ced552981f8f1cbe36c5775d7a0a773f739f10fa5ee870\"}",
+  "[2026-08-20T22:51:26.642Z] relecture CASSE.TXT : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-20T22:51:26.660Z] arbre OPFS : [{\"chemin\":\"sous-dossier\",\"type\":\"d\"},{\"chemin\":\"sous-dossier/autre.txt\",\"type\":\"f\",\"taille\":35},{\"chemin\":\"projete.txt\",\"type\":\"f\",\"taille\":52},{\"chemin\":\"gros-lecture.bin\",\"type\":\"f\",\"taille\":300000},{\"chemin\":\"Casse.txt\",\"type\":\"f\",\"taille\":15}]",
+  "[2026-08-20T22:51:36.676Z] echantillon : {\"t\":10,\"fenetres\":1,\"flux\":[{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1\",\"v\":\"{\\\"sansPc\\\":true}\"}]}",
+  "[2026-08-20T22:51:46.688Z] echantillon : {\"t\":20,\"fenetres\":1,\"flux\":[{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1\",\"v\":\"{\\\"sansPc\\\":true}\"}]}",
+  "[2026-08-20T22:51:56.697Z] echantillon : {\"t\":30,\"fenetres\":1,\"flux\":[{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1\",\"v\":\"{\\\"sansPc\\\":true}\"}]}",
+  "[2026-08-20T22:52:06.710Z] echantillon : {\"t\":40,\"fenetres\":1,\"flux\":[{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1\",\"v\":\"{\\\"sansPc\\\":true}\"}]}"
+ ],
+ "erreurs": [],
+ "chrome": "Chrome/151.0.7922.169",
+ "console_page": [
+  {
+   "t": 1787266086377,
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": 1787266086396,
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": 1787266096984,
+   "niveau": "info",
+   "texte": "offre du pont envoyée, attente de l’agent…"
+  },
+  {
+   "t": 1787266096990,
+   "niveau": "info",
+   "texte": "pont fichiers : réponse reçue"
+  },
+  {
+   "t": 1787266096991,
+   "niveau": "info",
+   "texte": "pont fichiers : connecting"
+  },
+  {
+   "t": 1787266097165,
+   "niveau": "info",
+   "texte": "pont fichiers : connected"
+  },
+  {
+   "t": 1787266097249,
+   "niveau": "info",
+   "texte": "canal fichiers ouvert"
+  },
+  {
+   "t": 1787266225161,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 1 : A requested file or directory could not be found at the time an operation was processed."
+  },
+  {
+   "t": 1787266225172,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 2 : A requested file or directory could not be found at the time an operation was processed."
+  },
+  {
+   "t": 1787266225174,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 3 : A requested file or directory could not be found at the time an operation was processed."
+  },
+  {
+   "t": 1787266225174,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 4 : A requested file or directory could not be found at the time an operation was processed."
+  },
+  {
+   "t": 1787266225175,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 5 : A requested file or directory could not be found at the time an operation was processed."
+  },
+  {
+   "t": 1787266225175,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 6 : A requested file or directory could not be found at the time an operation was processed."
+  },
+  {
+   "t": 1787266225175,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 7 : A requested file or directory could not be found at the time an operation was processed."
+  },
+  {
+   "t": 1787266225175,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 8 : A requested file or directory could not be found at the time an operation was processed."
+  },
+  {
+   "t": 1787266225178,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 9 : A requested file or directory could not be found at the time an operation was processed."
+  },
+  {
+   "t": 1787266225179,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 10 : A requested file or directory could not be found at the time an operation was processed."
+  },
+  {
+   "t": 1787266225179,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 12 : A requested file or directory could not be found at the time an operation was processed."
+  },
+  {
+   "t": 1787266225179,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 14 : A requested file or directory could not be found at the time an operation was processed."
+  },
+  {
+   "t": 1787266225179,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 15 : A requested file or directory could not be found at the time an operation was processed."
+  },
+  {
+   "t": 1787266225180,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 16 : A requested file or directory could not be found at the time an operation was processed."
+  },
+  {
+   "t": 1787266225180,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 17 : A requested file or directory could not be found at the time an operation was processed."
+  },
+  {
+   "t": 1787266225180,
+   "niveau": "warning",
+   "texte": "échec introuvable sur la corrélation 18 : A requested file or directory could not be found at the time an operation was processed."
+  },
+  {
+   "t": 1787266244787,
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": 1787266244838,
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": 1787266258637,
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": 1787266258657,
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": 1787266271590,
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": 1787266271608,
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": 1787266271944,
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": 1787266279429,
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  }
+ ],
+ "opfs_entrees": 5,
+ "fenetres_ouvertes": 1,
+ "etat_fichiers": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+ "bien_monte": true,
+ "compteur_avant": {
+  "dues": 0,
+  "vues": 0,
+  "texte": ""
+ },
+ "mesure_vm_brut": "﻿Exception lors de l'appel de « WriteAllBytes » avec « 2 » argument(s) : « Une erreur interne s’est produite.\r\n »\r\nAu caractère C:\\dev\\mesurer-f2.ps1:36 : 1\r\n+ [IO.File]::WriteAllBytes($neuf, $octets)\r\n+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException\r\n    + FullyQualifiedErrorId : IOException\r\n \r\nException lors de l'appel de « WriteAllBytes » avec « 2 » argument(s) : « Une erreur interne s’est produite.\r\n »\r\nAu caractère C:\\dev\\mesurer-f2.ps1:61 : 1\r\n+ [IO.File]::WriteAllBytes($vide, (New-Object byte[] 0))\r\n+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException\r\n    + FullyQualifiedErrorId : IOException\r\n \r\nGet-Item : Impossible de trouver le chemin d'accès «C:\\Users\\Administrateur\\Mes Fichiers\\vide.txt», car il n'existe \r\npas.\r\nAu caractère C:\\dev\\mesurer-f2.ps1:62 : 19\r\n+ $r.vide_taille = (Get-Item $vide).Length\r\n+                   ~~~~~~~~~~~~~~\r\n    + CategoryInfo          : ObjectNotFound: (C:\\Users\\Admini...chiers\\vide.txt:String) [Get-Item], ItemNotFoundExcep \r\n   tion\r\n    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.GetItemCommand\r\n \r\nException lors de l'appel de « WriteAllText » avec « 2 » argument(s) : « Une erreur interne s’est produite.\r\n »\r\nAu caractère C:\\dev\\mesurer-f2.ps1:67 : 1\r\n+ [IO.File]::WriteAllText((Join-Path $dossier 'dedans.txt'), 'un fichie ...\r\n+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException\r\n    + FullyQualifiedErrorId : IOException\r\n \r\n{\"racine\":\"C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\",\"horodatage\":\"2026-08-21T00:48:26.4449754+02:00\",\"avant\":[],\"avant_compte\":0,\"critere1_chemin\":\"ecrit-par-la-vm.bin\",\"critere1_taille\":1572869,\"critere1_sha_vm\":\"\\u003cABSENT\\u003e\",\"critere2_present_avant\":false,\"critere2_taille_avant\":-1,\"critere2_ecriture\":\"REFUSEE Exception lors de l\\u0027appel de « WriteAllText » avec « 2 » argument(s) : « Une erreur interne s’est produite.\\r\\n »\",\"critere2_sha_vm\":\"\\u003cABSENT\\u003e\",\"critere2_taille_apres\":-1,\"vide_taille\":0,\"sous_fichier_sha_vm\":\"\\u003cABSENT\\u003e\",\"casse_ecriture\":\"REFUSEE Exception lors de l\\u0027appel de « WriteAllText » avec « 2 » argument(s) : « Une erreur interne s’est produite.\\r\\n »\",\"apres\":[],\"apres_compte\":0}\r\n",
+ "mesure_vm": {
+  "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+  "horodatage": "2026-08-21T00:48:26.4449754+02:00",
+  "avant": [],
+  "avant_compte": 0,
+  "critere1_chemin": "ecrit-par-la-vm.bin",
+  "critere1_taille": 1572869,
+  "critere1_sha_vm": "<ABSENT>",
+  "critere2_present_avant": false,
+  "critere2_taille_avant": -1,
+  "critere2_ecriture": "REFUSEE Exception lors de l'appel de « WriteAllText » avec « 2 » argument(s) : « Une erreur interne s’est produite.\r\n »",
+  "critere2_sha_vm": "<ABSENT>",
+  "critere2_taille_apres": -1,
+  "vide_taille": 0,
+  "sous_fichier_sha_vm": "<ABSENT>",
+  "casse_ecriture": "REFUSEE Exception lors de l'appel de « WriteAllText » avec « 2 » argument(s) : « Une erreur interne s’est produite.\r\n »",
+  "apres": [],
+  "apres_compte": 0
+ },
+ "suivi_compteur": [
+  {
+   "t": 0,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 1,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 2,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 3,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 4,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 5,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 6,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 7,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 8,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 9,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 10,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 11,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 12,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 13,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 14,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 15,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 16,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 17,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 18,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 19,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 20,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 21,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 22,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 23,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 24,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 25,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 26,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 27,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 28,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 29,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 30,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 31,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 32,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 33,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 34,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 35,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 36,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 37,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 38,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 39,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 40,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 41,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 42,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 43,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 44,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 45,
+   "absent": true
+  },
+  {
+   "t": 46,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 47,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 48,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 49,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 50,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 51,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 52,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 53,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 54,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 55,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 56,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 57,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 58,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  },
+  {
+   "t": 59,
+   "dues": 0,
+   "vues": 0,
+   "texte": ""
+  }
+ ],
+ "compteur_final": {
+  "t": 59,
+  "dues": 0,
+  "vues": 0,
+  "texte": ""
+ },
+ "relectures": {
+  "ecrit-par-la-vm.bin": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "projete.txt": {
+   "present": true,
+   "taille": 52,
+   "sha256": "8c9605738f6e92bf92f59d84196dc4bcb9cbd136181a471a5f3b4ad86f2fb0f3"
+  },
+  "vide.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "dossier-neuf/dedans.txt": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  },
+  "Casse.txt": {
+   "present": true,
+   "taille": 15,
+   "sha256": "2c7f4c21a3c14c7c42ced552981f8f1cbe36c5775d7a0a773f739f10fa5ee870"
+  },
+  "CASSE.TXT": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  }
+ },
+ "arbre_opfs": [
+  {
+   "chemin": "sous-dossier",
+   "type": "d"
+  },
+  {
+   "chemin": "sous-dossier/autre.txt",
+   "type": "f",
+   "taille": 35
+  },
+  {
+   "chemin": "projete.txt",
+   "type": "f",
+   "taille": 52
+  },
+  {
+   "chemin": "gros-lecture.bin",
+   "type": "f",
+   "taille": 300000
+  },
+  {
+   "chemin": "Casse.txt",
+   "type": "f",
+   "taille": 15
+  }
+ ],
+ "echantillons": [
+  {
+   "t": 10,
+   "fenetres": 1,
+   "flux": [
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-1",
+     "v": "{\"sansPc\":true}"
+    }
+   ]
+  },
+  {
+   "t": 20,
+   "fenetres": 1,
+   "flux": [
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-1",
+     "v": "{\"sansPc\":true}"
+    }
+   ]
+  },
+  {
+   "t": 30,
+   "fenetres": 1,
+   "flux": [
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-1",
+     "v": "{\"sansPc\":true}"
+    }
+   ]
+  },
+  {
+   "t": 40,
+   "fenetres": 1,
+   "flux": [
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-1",
+     "v": "{\"sansPc\":true}"
+    }
+   ]
+  }
+ ],
+ "ok": true
+}
