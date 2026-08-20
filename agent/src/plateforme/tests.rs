@@ -10,6 +10,7 @@
 //! reprise, qui est le seul comportement neuf de ce fichier.
 
 use super::*;
+use proto::plateforme::IssueLancement;
 
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
@@ -193,4 +194,162 @@ async fn un_refus_d_enrolement_se_reessaie() {
         .expect("aucune reprise en 5 s après un refus d'enrôlement")
         .expect("la boucle a renoncé sur un refus qui n'est PAS `version`");
     assert_eq!(identite.prefixe, "APRES-ENROLEMENT");
+}
+
+// ---------------------------------------------------------------------------
+// Sous-bloc G1 — le canal devient BIDIRECTIONNEL.
+// ---------------------------------------------------------------------------
+
+/// Un scénario qui enrôle, tient, et RENVOIE tout ce que l'agent lui pousse.
+///
+/// Le harnais ci-dessus ne lit qu'UN message par connexion — celui de
+/// l'enrôlement — et ne peut donc rien dire d'un catalogue émis après coup.
+/// Celui-ci ouvre en plus un canal d'ordres que le test alimente.
+async fn faux_canal_bidirectionnel(
+    prefixe: &'static str,
+) -> (String, mpsc::UnboundedReceiver<String>, mpsc::UnboundedSender<String>) {
+    let ecoute = TcpListener::bind("127.0.0.1:0").await.expect("écoute locale");
+    let port = ecoute.local_addr().expect("adresse locale").port();
+    let (recus_tx, recus_rx) = mpsc::unbounded_channel();
+    let (ordres_tx, mut ordres_rx) = mpsc::unbounded_channel::<String>();
+    tokio::spawn(async move {
+        let Ok((flux, _)) = ecoute.accept().await else { return };
+        let mut ws = tokio_tungstenite::accept_async(flux).await.expect("montée WebSocket");
+        if let Some(Ok(Message::Text(texte))) = ws.next().await {
+            let _ = recus_tx.send(texte);
+        }
+        envoyer_enrole(&mut ws, prefixe).await;
+        loop {
+            tokio::select! {
+                ordre = ordres_rx.recv() => match ordre {
+                    Some(texte) => { let _ = ws.send(Message::Text(texte)).await; }
+                    None => return,
+                },
+                recu = ws.next() => match recu {
+                    Some(Ok(Message::Text(texte))) => { let _ = recus_tx.send(texte); }
+                    Some(Ok(_)) => {}
+                    _ => return,
+                },
+            }
+        }
+    });
+    (format!("ws://127.0.0.1:{port}"), recus_rx, ordres_tx)
+}
+
+async fn attendre_message(
+    recus: &mut mpsc::UnboundedReceiver<String>,
+    predicat: impl Fn(&str) -> bool,
+) -> String {
+    let attente = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let texte = recus.recv().await.expect("le faux canal s'est tu");
+            if predicat(&texte) {
+                return texte;
+            }
+        }
+    });
+    attente.await.expect("aucun message correspondant en 5 s")
+}
+
+#[tokio::test]
+async fn un_message_pousse_dans_la_file_arrive_au_serveur() {
+    // 🔴 LA ROUGE : ne pas drainer la file dans le `select!`. Elle grossirait
+    // sans fin, l'agent croirait avoir émis son catalogue, et RIEN ne le
+    // dirait — ni erreur, ni trace, la plateforme resterait simplement vide.
+    let (url, mut recus, _ordres) = faux_canal_bidirectionnel("PPP").await;
+    let mut canal = ouvrir(&url, "w1".into(), "chut".into());
+    canal.attendre_identite().await.expect("enrôlement");
+
+    canal.emettre(VersLaPlateforme::catalogue(true, Vec::new(), Vec::new()));
+    let texte = attendre_message(&mut recus, |t| t.contains("catalogue")).await;
+    assert_eq!(
+        texte,
+        r#"{"type":"catalogue","v":2,"complet":true,"applications":[],"disparues":[]}"#
+    );
+}
+
+#[tokio::test]
+async fn un_ordre_de_lancement_arrive_au_consommateur_et_ne_ferme_pas_la_session() {
+    // 🔴 DEUX ROUGES EN UNE. Oublier le bras `Lancer` le ferait tomber dans le
+    // bras `Err` (« message illisible »), qui FERME la session : un ordre
+    // parfaitement valide déclencherait une reprise en boucle. Le second
+    // `assert` mesure que la session survit — sans lui, un bras qui
+    // journaliserait puis reviendrait `Fin::Reprenable` passerait le premier.
+    let (url, mut recus, ordres) = faux_canal_bidirectionnel("PPP").await;
+    let mut canal = ouvrir(&url, "w1".into(), "chut".into());
+    canal.attendre_identite().await.expect("enrôlement");
+    let mut recu_ordres = canal.ordres().expect("la file d'ordres n'est prise qu'une fois");
+
+    ordres
+        .send(r#"{"type":"lancer","v":2,"demande":"d-7","cle":"a1b2"}"#.into())
+        .expect("envoi de l'ordre");
+
+    let ordre = tokio::time::timeout(Duration::from_secs(5), recu_ordres.recv())
+        .await
+        .expect("aucun ordre reçu en 5 s")
+        .expect("la file d'ordres est fermée");
+    assert_eq!(ordre, ("d-7".to_string(), "a1b2".to_string()));
+
+    // La session vit toujours : l'émission suivante arrive.
+    canal.emettre(VersLaPlateforme::lancee("d-7", IssueLancement::Raccourci));
+    let texte = attendre_message(&mut recus, |t| t.contains("lancee")).await;
+    assert_eq!(
+        texte,
+        r#"{"type":"lancee","v":2,"demande":"d-7","issue":"raccourci"}"#
+    );
+}
+
+#[tokio::test]
+async fn un_message_mis_en_file_alors_que_le_socket_est_tombe_est_perdu_sans_tuer_le_canal() {
+    // 🔴 C'EST LE COMPORTEMENT VOULU, ET CE TEST L'ASSÈNE. Le rendre bloquant
+    // ferait de la file une fuite mémoire sur un canal qui peut rester coupé
+    // des heures ; le rendre fatal tuerait le canal sur une coupure réseau
+    // ordinaire. La perte est acceptable pour une seule raison, écrite auprès
+    // de la file : l'agent renvoie son catalogue COMPLET à chaque
+    // réenrôlement, donc toute divergence a un terme.
+    let (url, mut recus) = faux_canal(vec![
+        Scenario::EnroleEtCoupe("AAA"),
+        Scenario::EnroleEtTient("BBB"),
+    ])
+    .await;
+    let mut canal = ouvrir(&url, "w1".into(), "chut".into());
+    assert_eq!(canal.attendre_identite().await.expect("1er enrôlement").prefixe, "AAA");
+
+    // La coupure survient ; on pousse pendant qu'il n'y a plus de socket.
+    for _ in 0..64 {
+        canal.emettre(VersLaPlateforme::catalogue(false, Vec::new(), Vec::new()));
+    }
+
+    // Le canal reprend malgré tout : c'est la preuve qu'aucune émission n'a
+    // été fatale, et le second enrôlement l'atteste.
+    assert_eq!(prochain_prefixe(&mut canal).await, "BBB");
+    let _ = recus.recv().await;
+}
+
+#[tokio::test]
+async fn l_identite_est_reannoncee_a_chaque_reenrolement() {
+    // 🔴 LA ROUGE : ne pousser l'identité qu'UNE fois. La boucle de découverte
+    // observe ce `watch` pour savoir qu'un réenrôlement a eu lieu, et c'est
+    // ce qui la fait renvoyer le catalogue COMPLET. Sans ce second envoi, une
+    // plateforme redémarrée resterait divergente SANS TERME.
+    let (url, _recus) = faux_canal(vec![
+        Scenario::EnroleEtCoupe("AAA"),
+        Scenario::EnroleEtTient("BBB"),
+    ])
+    .await;
+    let mut canal = ouvrir(&url, "w1".into(), "chut".into());
+    assert_eq!(canal.attendre_identite().await.expect("1er").prefixe, "AAA");
+    assert_eq!(prochain_prefixe(&mut canal).await, "BBB");
+}
+
+#[tokio::test]
+async fn la_file_d_ordres_ne_se_prend_qu_une_fois() {
+    // Deux consommateurs se voleraient les ordres l'un à l'autre, et chacun
+    // n'en verrait qu'une partie — un défaut dont le symptôme serait « un
+    // lancement sur deux ne part pas ».
+    let (url, _recus, _ordres) = faux_canal_bidirectionnel("PPP").await;
+    let mut canal = ouvrir(&url, "w1".into(), "chut".into());
+    canal.attendre_identite().await.expect("enrôlement");
+    assert!(canal.ordres().is_some());
+    assert!(canal.ordres().is_none());
 }
