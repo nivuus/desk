@@ -202,8 +202,20 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
     // reçu, et l'échec éventuel enverra un second `Capabilities` à false.
     // Annoncer l'optimisme évite d'afficher « manette indisponible » à un
     // utilisateur qui n'en a simplement pas branché.
+    //
+    // ⚠️ **Le second argument est le PRESSE-PAPIER, et il n'a rien à voir avec
+    // la manette** : c'est `PRESSE_PAPIER`, lue par le même `actif()` que le
+    // capteur. Les deux replis ci-dessous rejouent donc `actif()` et NON
+    // `false` — un `capabilities(false, false)` recopié éteindrait le collage
+    // parce qu'une manette manque, ce qui n'a aucun sens. La condition de
+    // validité de cette annonce vit dans la doc du champ
+    // (`proto/src/control.rs`, `Capabilities::clipboard`) : elle tient parce
+    // que capteur et enfant lisent la MÊME variable héritée.
     #[cfg(windows)]
-    let _ = control_tx.send(proto::control::AgentControl::capabilities(true));
+    let _ = control_tx.send(proto::control::AgentControl::capabilities(
+        true,
+        crate::presse_papier::actif(),
+    ));
 
     // Clone dédiée au fil de transport ci-dessous (`spawn_blocking` est
     // `move` : il faut lui donner sa propre copie de l'`Arc`, faute de quoi
@@ -274,8 +286,12 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                             pad_indisponible = true;
                             connexion_manette = None;
                             tracing::warn!(erreur = %e, "manette virtuelle indisponible");
-                            let _ = control_tx
-                                .send(proto::control::AgentControl::capabilities(false));
+                            let _ = control_tx.send(
+                                proto::control::AgentControl::capabilities(
+                                    false,
+                                    crate::presse_papier::actif(),
+                                ),
+                            );
                         }
                         Err(std::sync::mpsc::TryRecvError::Empty) => {
                             // Connexion encore en cours (jusqu'à 5 s
@@ -294,8 +310,12 @@ pub(crate) async fn executer(config: Config) -> Result<()> {
                             tracing::warn!(
                                 "fil de connexion à la manette virtuelle interrompu de façon inattendue"
                             );
-                            let _ = control_tx
-                                .send(proto::control::AgentControl::capabilities(false));
+                            let _ = control_tx.send(
+                                proto::control::AgentControl::capabilities(
+                                    false,
+                                    crate::presse_papier::actif(),
+                                ),
+                            );
                         }
                     }
                 }

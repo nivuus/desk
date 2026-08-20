@@ -377,6 +377,32 @@ impl VideoSource for SourceDistante {
         self.commander_simple(VersCapteur::Visibilite { visible, focalisee })
     }
 
+    /// Fait écrire le presse-papier de la VM par le CAPTEUR, qui en est le seul
+    /// propriétaire (D1), et **attend sa réponse**.
+    ///
+    /// 🔴 **Synchrone à dessein, et c'est tout l'ordre de D6** :
+    /// `commander_simple` bloque jusqu'au `Fait` du capteur, si bien que
+    /// l'appelant (`transport/tick.rs`, branche `a1octies`) ne peut armer
+    /// l'injection de `Ctrl+V` qu'après une écriture RÉELLEMENT survenue.
+    /// Aucun ordonnancement de canal n'entre là-dedans.
+    ///
+    /// ⚠️ **Le coût est réel et il est nommé** : cet appel bloque la boucle de
+    /// transport le temps d'un aller-retour de tube. Le précédent existe et il
+    /// est exercé — `set_awake` juste au-dessus commande le capteur depuis
+    /// cette même boucle, et D4 a mesuré une attache en 34 µs. Mais la borne du
+    /// canal est de **12 s**, et un capteur mort ferait attendre la boucle
+    /// jusque-là. **Ce chemin-là n'a jamais couru** (la borne de 12 s est
+    /// déclarée « code jamais couru » depuis D4) : c'est un legs de P2, pas un
+    /// remède.
+    ///
+    /// `commander_simple` — et non `commander` nu — parce que lui seul traduit
+    /// `DepuisCapteur::Erreur` en `Err` : un refus d'ouverture du presse-papier
+    /// par une autre application (cas NORMAL sous Windows) doit empêcher
+    /// l'injection, pas la laisser passer.
+    fn ecrire_le_presse_papier(&mut self, texte: &str) -> Result<()> {
+        self.commander_simple(VersCapteur::PressePapierEcrire { texte: texte.to_owned() })
+    }
+
     /// Rend le changement de sommeil en attente, et le consomme.
     ///
     /// **Une annonce ne se répète pas** : la boucle de transport l'interroge à

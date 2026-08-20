@@ -41,6 +41,46 @@ fn un_message_de_visibilite_est_memorise_et_non_applique_sur_le_champ() {
     assert_eq!(session.pending_visibility, Some((false, false)));
 }
 
+/// `ClientControl::Clipboard` reçu doit être mémorisé dans
+/// `pending_clipboard`, pas appliqué sur-le-champ — même raison que ses deux
+/// voisins.
+///
+/// ROUGE si le bras posait le mauvais champ. Le bras ABSENT, lui, ne compile
+/// pas : le `match` de `memoriser_controle` est exhaustif, et c'est le
+/// compilateur qui l'a exigé au moment où la variante est née.
+#[test]
+fn un_message_de_collage_est_memorise_et_non_applique_sur_le_champ() {
+    let source = Box::new(fixtures::video_test_source());
+    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
+        .expect("session");
+
+    session.dispatch_controle_de_test(r#"{"type":"clipboard","v":3,"text":"bonjour"}"#);
+
+    assert_eq!(session.pending_clipboard.as_deref(), Some("bonjour"));
+    // Mémoriser n'injecte RIEN : l'écriture et l'injection vivent dans
+    // `act_on_timeout`, hors du drainage de `poll_output`.
+    assert!(!session.collage_a_injecter);
+}
+
+/// 🔴 **C'est la décision D-P2-3 rendue vérifiable, et c'est le seul endroit
+/// où elle l'est.** Deux collages entre deux tours de boucle se réduisent au
+/// SECOND ; le premier est perdu sans trace.
+///
+/// ROUGE si le champ accumulait (une file, un `Vec`) : le test lirait alors le
+/// premier ou les deux. Ce test ne dit pas que l'écrasement est bon — il dit
+/// que c'est bien ce que le produit fait, et la doc du champ en porte le coût.
+#[test]
+fn deux_collages_successifs_ne_laissent_que_le_second() {
+    let source = Box::new(fixtures::video_test_source());
+    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
+        .expect("session");
+
+    session.dispatch_controle_de_test(r#"{"type":"clipboard","v":3,"text":"premier"}"#);
+    session.dispatch_controle_de_test(r#"{"type":"clipboard","v":3,"text":"second"}"#);
+
+    assert_eq!(session.pending_clipboard.as_deref(), Some("second"));
+}
+
 /// Preuve d'intégration que `Event::KeyframeRequest` (émis par str0m
 /// quand le pair envoie un PLI/FIR RTCP — ce que fait un navigateur après
 /// une perte de paquet détectée par son décodeur) est bien relayé jusqu'à

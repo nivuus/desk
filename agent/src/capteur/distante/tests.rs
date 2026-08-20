@@ -72,6 +72,27 @@ pub(super) fn source_avec(
     (source, tx, recus)
 }
 
+/// Comme `source_avec`, mais le canal factice rend les `reponses` données, dans
+/// l'ordre, avant de retomber sur son `Fait` par défaut. C'est ce qui permet
+/// d'éprouver un REFUS du capteur.
+pub(super) fn source_avec_reponses(
+    reponses: Vec<anyhow::Result<DepuisCapteur>>,
+) -> (
+    SourceDistante,
+    std::sync::mpsc::SyncSender<Recu>,
+    std::sync::Arc<std::sync::Mutex<Vec<VersCapteur>>>,
+) {
+    let (tx, rx) = sync_channel(4);
+    let recus = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let canal = CanalFactice {
+        reponses,
+        recus: recus.clone(),
+        rattachements: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
+        essais: std::sync::Arc::new(std::sync::Mutex::new(0)),
+    };
+    (SourceDistante::nouvelle(Box::new(canal), rx, 1280, 720), tx, recus)
+}
+
 #[allow(clippy::type_complexity)]
 pub(super) fn source_rattachable(
     rattachements: Vec<Option<u32>>,

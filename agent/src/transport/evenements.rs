@@ -339,6 +339,13 @@ impl Session {
             ClientControl::Visibility { visible, focused, .. } => {
                 self.pending_visibility = Some((*visible, *focused));
             }
+            // Écrasement du dernier, comme les deux au-dessus — et pour ce
+            // champ-ci le coût n'est PAS le même : un redimensionnement
+            // intermédiaire n'a aucun intérêt, un collage perdu en a un. Voir
+            // la doc du champ, qui porte le coût et le remède non livré.
+            ClientControl::Clipboard { text, .. } => {
+                self.pending_clipboard = Some(text.clone());
+            }
         }
     }
 

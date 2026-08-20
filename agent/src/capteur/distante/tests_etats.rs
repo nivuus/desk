@@ -30,6 +30,69 @@ fn set_awake_transmet_la_visibilite_au_capteur() {
     );
 }
 
+/// `ecrire_le_presse_papier` relaie le texte tel quel au capteur, qui en est
+/// le seul propriétaire (D1). `source_avec` sert de canal espion pour
+/// vérifier le message ÉMIS, pas seulement l'effet.
+///
+/// ROUGE si `commander_simple` n'est pas appelé, ou si le texte est altéré en
+/// route — l'enfant l'a déjà normalisé, borné et dénormalisé, et le capteur
+/// n'a rien à en décider.
+#[test]
+fn ecrire_le_presse_papier_transmet_le_texte_au_capteur() {
+    let (mut source, _tx, recus) = source_avec(4);
+    source.ecrire_le_presse_papier("une\r\ndeux").expect("le capteur accepte");
+    assert_eq!(
+        recus.lock().unwrap().as_slice(),
+        &[VersCapteur::PressePapierEcrire { texte: "une\r\ndeux".to_string() }]
+    );
+}
+
+/// 🔴 **Un refus du capteur doit remonter en `Err`, et c'est ce qui empêche
+/// l'injection de `Ctrl+V`** : sans lui, la touche partirait sur un
+/// presse-papier inchangé et collerait le contenu PRÉCÉDENT.
+///
+/// ROUGE si l'implémentation employait `commander` nu au lieu de
+/// `commander_simple` : elle accepterait alors n'importe quelle réponse, y
+/// compris une `Erreur`. Ce test ne vérifie donc pas `commander_simple`
+/// lui-même — il vérifie qu'on l'a bien employé, LUI.
+#[test]
+fn un_refus_du_capteur_empeche_le_collage() {
+    let (mut source, _tx, _recus) = super::tests::source_avec_reponses(vec![Ok(
+        DepuisCapteur::Erreur { motif: "OpenClipboard".into() },
+    )]);
+    let erreur = source
+        .ecrire_le_presse_papier("colle")
+        .expect_err("un refus du capteur doit remonter");
+    assert!(
+        erreur.to_string().contains("OpenClipboard"),
+        "le motif du capteur doit survivre : {erreur}"
+    );
+}
+
+/// 🔴 **LE DÉFAUT DU TRAIT, ET C'EST LE PIÈGE QUE D10 A PAYÉ.** Les sources
+/// factices de ce dépôt implémentent leurs effets de bord en NO-OP, et 456
+/// tests sont restés verts sur un produit muet. Ce test-ci porte donc sur une
+/// source qui **NE REDÉFINIT PAS** la méthode — `FileSource`, la source de
+/// test du dépôt —, c'est-à-dire sur le défaut lui-même.
+///
+/// ROUGE si le défaut est un `Ok(())` inerte, comme ses quatre voisines de
+/// `source.rs`. Ce serait le mode MONO-FENÊTRE collant silencieusement le
+/// contenu PRÉCÉDENT à chaque `Ctrl+V`.
+#[test]
+fn le_defaut_du_trait_refuse_d_ecrire_plutot_que_de_faire_semblant() {
+    let source_path =
+        std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/testsrc.264"));
+    let mut source = crate::source::FileSource::from_path(source_path, 1280, 720, 60)
+        .expect("chargement du flux de test");
+    let erreur = source
+        .ecrire_le_presse_papier("colle")
+        .expect_err("le défaut du trait DOIT rendre Err, jamais Ok(())");
+    assert!(
+        erreur.to_string().contains("aucun capteur"),
+        "le motif doit nommer la cause : {erreur}"
+    );
+}
+
 /// Un `Sommeil` poussé par le capteur est retenu, pas ignoré : c'est
 /// `sommeil_a_annoncer` qui le rend disponible à la boucle de transport, et
 /// une seule fois — la réémettre à chaque tour inonderait le canal de

@@ -1,19 +1,25 @@
-//! Les deux appels Win32 du presse-papier, et **rien d'autre**.
+//! Les appels Win32 du presse-papier, et **rien d'autre**.
 //!
-//! Ce module ne décide rien : il lit le numéro de séquence et il lit le
-//! texte. Toute la décision — normaliser, borner, refuser, comparer au
-//! dernier émis — vit dans le parent, qui est pur et se teste sur l'hôte.
+//! Ce module ne décide rien : il lit le numéro de séquence, il lit le texte,
+//! il écrit le texte. Toute la décision — normaliser, dénormaliser, borner,
+//! refuser, comparer au dernier émis, armer les gardes — vit dans le parent,
+//! qui est pur et se teste sur l'hôte.
 //!
-//! ⚠️ **Il n'ÉCRIT jamais le presse-papier.** Le sens navigateur → VM est le
-//! sous-bloc P2. La seule écriture du dépôt à ce jour est celle de la sonde
-//! `diagnostics/presse_papier.rs`, qui est un geste de mesure et le déclare.
+//! ❌ **Ce module disait « il n'ÉCRIT jamais le presse-papier ; le sens
+//! navigateur → VM est le sous-bloc P2 ». Ce sous-bloc a eu lieu**, et
+//! `ecrire_texte` vit désormais ici. La sonde `diagnostics/presse_papier.rs`
+//! garde son propre `mod win` privé, à dessein : elle mesure, ses phases C et
+//! D écrivent le presse-papier de la VM pour l'éprouver, et le produit ne doit
+//! pas hériter d'un chemin de banc.
 
 use anyhow::{Context, Result};
 use windows::Win32::Foundation::HGLOBAL;
+use windows::Win32::Foundation::HANDLE;
 use windows::Win32::System::DataExchange::{
-    CloseClipboard, GetClipboardData, GetClipboardSequenceNumber, OpenClipboard,
+    CloseClipboard, EmptyClipboard, GetClipboardData, GetClipboardSequenceNumber, OpenClipboard,
+    SetClipboardData,
 };
-use windows::Win32::System::Memory::{GlobalLock, GlobalUnlock};
+use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
 use windows::Win32::System::Ole::CF_UNICODETEXT;
 
 /// Le compteur de séquence du presse-papier de la station de fenêtres.
@@ -68,6 +74,63 @@ pub fn lire_texte() -> Result<Option<String>> {
         let _ = GlobalUnlock(global);
         Ok(Some(texte))
     }
+}
+
+/// Écrit `texte` dans le presse-papier de la VM, et rend le numéro de séquence
+/// relu **APRÈS** la fermeture.
+///
+/// **Aucune décision ici.** Le texte arrive déjà normalisé, borné et
+/// dénormalisé (`\r\n`) par le parent : ce module se contente de l'écrire.
+///
+/// 🔴 **Le numéro est relu APRÈS `CloseClipboard`, et cet ordre est
+/// PORTANT.** Le relire avant la fermeture rendrait un compteur que la
+/// fermeture peut encore faire bouger — le garde n°1 de D5 serait alors faux
+/// d'un cran, c'est-à-dire **silencieusement inopérant** : aucune panne,
+/// seulement un aller-retour parasite par collage, que rien ne signalerait.
+///
+/// - `Err` sur refus d'ouverture : **cas NORMAL sous Windows** (une autre
+///   application tient le presse-papier — risque R7 de la spec), et non une
+///   panne. **On ne boucle JAMAIS en attente** : l'appelant journalise et
+///   n'injecte pas, la touche `V` étant perdue plutôt que reportée (D6).
+/// - `EmptyClipboard` **précède** `SetClipboardData`, faute de quoi les
+///   formats de l'application précédente survivraient dans d'autres
+///   `CF_*` et le collage deviendrait imprévisible : une application qui
+///   préfère `CF_RTF` ou `CF_HTML` collerait l'ancien contenu.
+pub fn ecrire_texte(texte: &str) -> Result<u32> {
+    // UTF-16 terminé par un `\0` : `CF_UNICODETEXT` l'exige, et un bloc non
+    // terminé ferait lire au-delà par toute application qui colle.
+    let mut unites: Vec<u16> = texte.encode_utf16().collect();
+    unites.push(0);
+
+    unsafe { OpenClipboard(None) }.context("OpenClipboard")?;
+    // 🔴 LE GARDE EST CONSTRUIT IMMÉDIATEMENT APRÈS L'OUVERTURE, comme dans
+    // `lire_texte` : à partir d'ici tous les chemins de sortie referment, la
+    // panique comprise. Un presse-papier laissé ouvert bloque TOUTE la window
+    // station, pas seulement l'agent.
+    let ecriture = (|| unsafe {
+        let _garde = PressePapierOuvert;
+        EmptyClipboard().context("EmptyClipboard")?;
+        let octets = unites.len() * std::mem::size_of::<u16>();
+        let global = GlobalAlloc(GMEM_MOVEABLE, octets).context("GlobalAlloc")?;
+        let pointeur = GlobalLock(global) as *mut u16;
+        if pointeur.is_null() {
+            anyhow::bail!("GlobalLock a rendu un pointeur nul");
+        }
+        std::ptr::copy_nonoverlapping(unites.as_ptr(), pointeur, unites.len());
+        let _ = GlobalUnlock(global);
+        // 🔴 Le presse-papier PREND POSSESSION du bloc : ne pas le libérer.
+        // `GlobalFree` ici rendrait le presse-papier de la station pointant sur
+        // de la mémoire rendue au tas — un défaut à effet différé, et global à
+        // la session Windows.
+        SetClipboardData(CF_UNICODETEXT.0 as u32, Some(HANDLE(global.0)))
+            .context("SetClipboardData")?;
+        Ok(())
+    })();
+    // Le garde a couru à la sortie de la fermeture ci-dessus : le
+    // presse-papier est refermé, et c'est seulement maintenant que le compteur
+    // est stable.
+    ecriture?;
+    Ok(numero_de_sequence())
 }
 
 /// Le garde RAII qui referme le presse-papier — **sur TOUS les chemins de

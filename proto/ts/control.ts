@@ -27,7 +27,25 @@ export interface VisibilityMessage {
     focused: boolean;
 }
 
-export type ClientControl = ResizeMessage | VisibilityMessage;
+/// L'utilisateur a collé dans la fenêtre de session (sous-bloc P2).
+///
+/// ⚠️ **Le nom porte `Client` là où son jumeau descendant porte `Agent`**
+/// (`ClipboardAgentMessage`), et les DEUX portent le même tag `'clipboard'` :
+/// c'est le sens qui les distingue, pas le tag. P1 avait réservé ce nom avec
+/// sa raison, deux interfaces plus bas ; P2 l'occupe.
+///
+/// ⚠️ **`text` est un `string`, jamais `string | null`, et l'asymétrie avec
+/// `ClipboardAgentMessage` est voulue** : là-bas le `null` PORTE le refus de
+/// taille, que le bandeau doit dire. Ici c'est le client qui borne AVANT
+/// d'émettre — il a le bandeau sous la main —, donc il n'a jamais de refus à
+/// exprimer dans le message.
+export interface ClipboardClientMessage {
+    v: number;
+    type: 'clipboard';
+    text: string;
+}
+
+export type ClientControl = ResizeMessage | VisibilityMessage | ClipboardClientMessage;
 
 export interface ReadyMessage {
     v: number;
@@ -70,6 +88,13 @@ export interface CapabilitiesMessage {
     v: number;
     type: 'capabilities';
     gamepad: boolean;
+    /// Le collage navigateur → VM est-il disponible (sous-bloc P2) ?
+    ///
+    /// **OPTIONNEL, et c'est le point** : un agent d'avant P2 ne porte pas ce
+    /// champ, et `undefined` vaut alors `false` gratuitement — le client
+    /// n'arme rien, exactement comme `ReadyMessage.mic`. Le rendre obligatoire
+    /// ferait échouer `tsc` sur un message parfaitement légitime.
+    clipboard?: boolean;
 }
 
 export type LinkQuality = 'bonne' | 'degradee' | 'insuffisante';
@@ -172,6 +197,31 @@ export function encodeVisibility(visible: boolean, focused: boolean): string {
     return JSON.stringify(message);
 }
 
+/// Encode un collage venu du navigateur.
+///
+/// 🔴 **Il n'existe délibérément AUCUN `TYPES_CLIENT` pour garder cette union
+/// exhaustive, et ce n'est pas un oubli.** `TOUS_AGENT` existe parce que
+/// `parseAgentControl` PARSE `AgentControl` côté TypeScript : une variante
+/// oubliée y était perdue contre un `console.warn`, en silence. Dans ce
+/// sens-ci il n'y a rien à parser — le client ENCODE, et c'est `serde` qui
+/// désérialise côté Rust, avec un `match` exhaustif que le compilateur garde
+/// (il l'a d'ailleurs exigé au moment où la variante est née). Un témoin
+/// d'exhaustivité écrit ici serait **incapable d'échouer**, c'est-à-dire le
+/// mode de défaillance que ce dépôt paie depuis D7.
+export function encodeClipboard(text: string): string {
+    const message: ClipboardClientMessage = {
+        v: CONTROL_VERSION,
+        type: 'clipboard',
+        text,
+    };
+    return JSON.stringify(message);
+}
+
+/// ⚠️ **Ce parseur ne valide QUE `v` et `type`**, puis CASTE. Il ne regarde
+/// aucun autre champ, et un test qui prétendrait vérifier qu'il « accepte un
+/// `capabilities` sans `clipboard` » serait donc décoratif : il ne pourrait
+/// pas échouer. C'est le typage (`clipboard?: boolean`) qui porte cette
+/// propriété, et un `satisfies` qui la mesure.
 export function parseAgentControl(raw: string): AgentControl {
     const parsed = JSON.parse(raw) as Partial<AgentControl>;
     if (parsed.v !== CONTROL_VERSION) {

@@ -324,6 +324,29 @@ impl Sondeur {
     }
 }
 
+/// Écrit le presse-papier de la VM, et rend le numéro de séquence relu APRÈS
+/// la fermeture — celui qu'il faut passer à `Sondeur::apres_notre_ecriture`.
+///
+/// **Jumelle exacte de `Sondeur::lire_la_plateforme`**, et posée au même
+/// endroit pour la même raison : l'appelant (`capteur/sommeil/presse_papier.rs`)
+/// n'est pas gaté et doit compiler sur l'hôte Linux.
+///
+/// ⚠️ **Le texte doit arriver DÉJÀ dénormalisé** (`\r\n`) : cette fonction ne
+/// décide rien, elle transmet.
+#[cfg(windows)]
+pub fn ecrire_la_plateforme(texte: &str) -> anyhow::Result<u32> {
+    win32::ecrire_texte(texte)
+}
+
+/// Repli non-Windows. **Un `Err`, jamais un `Ok`** : rendre `Ok(0)` ferait
+/// croire à un succès, et l'appelant injecterait `Ctrl+V` sur un
+/// presse-papier inchangé — c'est-à-dire collerait le contenu PRÉCÉDENT, le
+/// mode de défaillance silencieux que D6 existe entièrement pour éviter.
+#[cfg(not(windows))]
+pub fn ecrire_la_plateforme(_texte: &str) -> anyhow::Result<u32> {
+    anyhow::bail!("le presse-papier de la VM n'existe pas hors de Windows")
+}
+
 #[cfg(windows)]
 mod win32;
 

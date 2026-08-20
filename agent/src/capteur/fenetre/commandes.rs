@@ -120,6 +120,23 @@ fn executer_commande(
             crate::capteur::sommeil::signaler_audio_vivant(ctx.session);
             return DepuisCapteur::Fait;
         }
+        // Sous-bloc P2 : le collage venu du navigateur. Étage 0 comme ses
+        // voisines — il ne touche ni encodeur ni duplication —, et traité
+        // AVANT la source pour la même raison qu'elles : l'ignorer pendant un
+        // sommeil ferait qu'une fenêtre endormie ne pourrait plus rien coller,
+        // alors que le presse-papier de la VM est global et n'a rien à voir
+        // avec son encodeur.
+        //
+        // 🔴 **C'est la SEULE de cette famille dont le `Fait` porte l'effet**,
+        // et la seule qui puisse rendre `Erreur` : l'enfant attend cette
+        // réponse pour savoir s'il doit injecter `Ctrl+V`. Voir la doc de la
+        // variante, qui porte tout l'ordre de D6.
+        VersCapteur::PressePapierEcrire { texte } => {
+            return match crate::capteur::sommeil::ecrire_le_presse_papier(&texte) {
+                Ok(()) => DepuisCapteur::Fait,
+                Err(erreur) => DepuisCapteur::Erreur { motif: format!("{erreur:#}") },
+            };
+        }
         VersCapteur::Attache { .. } => {
             return DepuisCapteur::Erreur {
                 motif: "seconde attache sur un canal déjà attaché".into(),
@@ -221,7 +238,8 @@ fn executer_commande(
         | VersCapteur::Identite { .. }
         | VersCapteur::Visibilite { .. }
         | VersCapteur::AudioMort
-        | VersCapteur::AudioVivant => {
+        | VersCapteur::AudioVivant
+        | VersCapteur::PressePapierEcrire { .. } => {
             return DepuisCapteur::Erreur {
                 motif: "commande déjà traitée hors de la source".into(),
             }

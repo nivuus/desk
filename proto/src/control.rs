@@ -103,6 +103,33 @@ pub enum ClientControl {
         visible: bool,
         focused: bool,
     },
+    /// L'utilisateur a collé dans la fenêtre de session : voici ce que porte
+    /// le presse-papier de SA machine (sous-bloc P2 du chantier presse-papier).
+    ///
+    /// Émis sur un événement `paste` DE CONFIANCE, jamais sur un sondage :
+    /// le client n'appelle `navigator.clipboard.readText()` nulle part, ne
+    /// demande donc aucune permission, et ne lit le presse-papier de
+    /// l'utilisateur qu'au moment exact où celui-ci exprime l'intention de
+    /// coller. Mesuré favorable sur un `<video>` focalisé, deux exécutions —
+    /// `docs/superpowers/plans/journaux-presse-papier-p2/p2-paste-video-*.json`.
+    ///
+    /// ⚠️ **`text` est un `String`, PAS un `Option<String>`, et l'asymétrie
+    /// avec `AgentControl::Clipboard` est voulue** — ce n'est pas un oubli.
+    /// Là-bas, le `None` PORTE le refus de taille, parce que le refus vient de
+    /// l'agent et doit remonter au bandeau. Ici le sens est inverse : c'est le
+    /// **client** qui borne avant d'émettre (il a le bandeau sous la main), et
+    /// l'agent qui refuse en journalisant, sans rien renvoyer. Un `Option` de
+    /// ce côté n'aurait donc personne pour l'écrire ni personne pour le lire.
+    ///
+    /// **Pas de champ `bytes` non plus, pour la même raison** : il sert
+    /// là-bas à rendre le message auto-descriptif au journal ET à alimenter le
+    /// bandeau ; ici la taille se lit sur `text.len()`, et il n'y a pas de
+    /// bandeau à alimenter.
+    Clipboard {
+        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        version: u8,
+        text: String,
+    },
 }
 
 /// Message de l'agent vers le client web.
@@ -183,6 +210,38 @@ pub enum AgentControl {
         #[serde(rename = "v", deserialize_with = "verifie_version")]
         version: u8,
         gamepad: bool,
+        /// Le collage navigateur → VM est-il disponible pour cette session
+        /// (sous-bloc P2 du chantier presse-papier) ?
+        ///
+        /// **Le client GATE son exception clavier là-dessus.** Sans ce gate,
+        /// `PRESSE_PAPIER=0` produirait le pire des deux mondes : le client
+        /// retiendrait le `Ctrl+V` (il ne l'enverrait plus sur le canal
+        /// d'entrées) alors que personne ne l'injecterait côté VM — la touche
+        /// serait perdue, et l'utilisateur verrait un raccourci mort.
+        ///
+        /// ⚠️ **Aucun bump de `CONTROL_VERSION`**, exactement comme `mic`, et
+        /// pour la raison que le commentaire de `mic` porte : un client ancien
+        /// ignore un champ supplémentaire, un client récent face à un agent
+        /// ancien lit `undefined`, donc falsy, donc n'arme rien.
+        ///
+        /// ⚠️ **`#[serde(default)]` est OBLIGATOIRE, et la raison n'est PAS
+        /// `deny_unknown_fields`** — celui-ci refuse un champ INCONNU, quand
+        /// c'est le défaut de serde qui refuse un champ MANQUANT. Les deux
+        /// mécanismes n'ont rien à voir ; la spec les confond, le commentaire
+        /// de `mic` dit la chose juste.
+        ///
+        /// 🔴 **CONDITION DE VALIDITÉ DE CETTE ANNONCE, à ne pas perdre.**
+        /// Elle est émise par l'ENFANT, alors que le presse-papier appartient
+        /// au CAPTEUR (D1). Elle n'est vraie que parce que les deux lisent la
+        /// **même variable d'environnement héritée** : `std::process::Command`
+        /// hérite l'environnement du père, et `superviseur/lanceur.rs` n'efface
+        /// pas `PRESSE_PAPIER` en lançant le capteur. **Le jour où le capteur
+        /// déciderait autrement qu'à la lecture de cette variable — un réglage
+        /// par session, une capacité Windows sondée à chaud —, cette annonce
+        /// deviendrait fausse EN SILENCE.** Ce n'est pas « le capteur annonce
+        /// sa capacité » ; c'est « les deux lisent la même variable ».
+        #[serde(default)]
+        clipboard: bool,
     },
     /// L'application Windows est passée en plein écran, ou en est sortie.
     ///
@@ -249,6 +308,11 @@ impl ClientControl {
     pub fn resize(width: u32, height: u32) -> Self {
         ClientControl::Resize { version: CONTROL_VERSION, width, height }
     }
+
+    /// Construit un message de collage à la version courante du protocole.
+    pub fn clipboard(text: impl Into<String>) -> Self {
+        ClientControl::Clipboard { version: CONTROL_VERSION, text: text.into() }
+    }
 }
 
 impl AgentControl {
@@ -301,8 +365,8 @@ impl AgentControl {
         AgentControl::Rumble { version: CONTROL_VERSION, left, right }
     }
 
-    pub fn capabilities(gamepad: bool) -> Self {
-        AgentControl::Capabilities { version: CONTROL_VERSION, gamepad }
+    pub fn capabilities(gamepad: bool, clipboard: bool) -> Self {
+        AgentControl::Capabilities { version: CONTROL_VERSION, gamepad, clipboard }
     }
 
     pub fn link(

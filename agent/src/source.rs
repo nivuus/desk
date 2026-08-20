@@ -211,6 +211,33 @@ pub trait VideoSource {
     /// parlent à aucun capteur (test, mono-fenêtre) n'ont rien à annoncer.
     fn signaler_audio_vivant(&mut self) {}
 
+    /// Écrit `texte` dans le presse-papier de la VM (sens navigateur → VM,
+    /// sous-bloc P2). Le texte arrive **déjà normalisé, borné et dénormalisé**
+    /// (`\r\n`) : cette méthode ne décide rien de son contenu.
+    ///
+    /// 🔴 **DÉFAUT `Err`, ET C'EST UNE RUPTURE DE PATRON DANS CE FICHIER** —
+    /// `est_endormie`, `signaler_audio_mort`, `signaler_audio_vivant` et
+    /// `presse_papier_a_annoncer` ont tous un défaut INERTE. **Ne pas
+    /// l'aligner sur ses voisines.**
+    ///
+    /// La raison est que l'appelant n'utilise pas ce retour pour décider s'il
+    /// *journalise*, mais s'il **INJECTE `Ctrl+V`**. Un `Ok(())` inerte ferait
+    /// injecter la touche sur un presse-papier Windows **inchangé**, donc
+    /// coller le contenu PRÉCÉDENT — le mode de défaillance silencieux que D6
+    /// existe entièrement pour éviter, et le seul qui donne à l'utilisateur un
+    /// résultat FAUX plutôt qu'absent. Un `Err` fait journaliser l'échec et ne
+    /// rien injecter, ce que D6 prescrit en toutes lettres pour ce cas : « si
+    /// le presse-papier ne peut pas être écrit, la touche `V` est PERDUE, pas
+    /// reportée ».
+    ///
+    /// ⚠️ **Conséquence assumée : le mode MONO-FENÊTRE n'a pas de collage, et
+    /// il le DIT.** Sans capteur, `SourceDistante` n'existe pas et c'est ce
+    /// défaut qui court. Le propriétaire mono-fenêtre reste le legs n°1 de P1,
+    /// non comblé ; P2 le rend bruyant au lieu de silencieux.
+    fn ecrire_le_presse_papier(&mut self, _texte: &str) -> anyhow::Result<()> {
+        anyhow::bail!("aucun capteur : le presse-papier de la VM n'est pas accessible")
+    }
+
     /// Vrai une seule fois, juste après que le canal vers le capteur s'est
     /// RATTACHÉ (capteur relancé, ou perte d'accès DXGI encaissée par la
     /// fenêtre de reprise). Consommé, comme `sommeil_a_annoncer`.

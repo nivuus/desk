@@ -261,6 +261,18 @@ pub fn echec_de_reveil(session: &str) {
 /// peut concerner une AUTRE fenêtre. L'effet revient par
 /// `DepuisCapteur::Audio`, poussé sur la connexion média de chaque fenêtre
 /// concernée — exactement le patron de `signaler`.
+/// Écrit `texte` dans le presse-papier de la VM (sens navigateur → VM).
+///
+/// **Le capteur est le seul propriétaire du presse-papier** (D1) : c'est
+/// pourquoi cette porte existe, et pourquoi aucun enfant n'écrit lui-même.
+///
+/// Rend `Err` quand l'écriture a échoué — refus d'ouverture par une autre
+/// application (cas NORMAL sous Windows), ou mécanisme désarmé. **L'appelant
+/// n'injecte alors PAS `Ctrl+V`** : la touche est perdue, pas reportée (D6).
+pub fn ecrire_le_presse_papier(texte: &str) -> anyhow::Result<()> {
+    presse_papier::ecrire(texte)
+}
+
 pub fn audio_mort(session: &str) {
     let mut garde = etat();
     // Une session déjà inapte (répit en cours, ou abandon définitif) qui
