@@ -160,8 +160,14 @@ describe('miroir TypeScript du canal plateforme', () => {
     it('🔴 REJETTE une version PLATEFORME_VERSION + 1', () => {
         // 🔴 La rouge : ne comparer que `parsed.type`. Le message passerait, et
         // c'est la moitié TypeScript du critère ③.
+        //
+        // ⚠️ CE CAS PORTAIT UN `refus` JUSQU'AU 20 AOÛT 2026. Le refus est
+        // désormais la seule variante hors versionnement — voir
+        // `RefusMessage` —, il ne peut donc plus porter cette propriété. Un
+        // `lancer` la porte, et c'est le message où elle mord le plus : une
+        // version future pourrait donner à `cle` un tout autre sens.
         expect(() => parseDepuisLaPlateforme(
-            `{"type":"refus","v":${PLATEFORME_VERSION + 1},"motif":"version"}`,
+            `{"type":"lancer","v":${PLATEFORME_VERSION + 1},"demande":"d","cle":"c"}`,
         )).toThrow(/version de plateforme non supportée/);
     });
 
@@ -173,8 +179,13 @@ describe('miroir TypeScript du canal plateforme', () => {
         // l'inverse — accepter l'absence, par exemple `parsed.v ?? VERSION`.
         // Le plan nous demandait de le vérifier avant de le déclarer : c'est
         // fait, et il avait raison de douter.
+        //
+        // ⚠️ LE VÉHICULE RESTE UN `refus`, ET C'EST DÉSORMAIS LE MEILLEUR
+        // ENDROIT POUR CE TEST : depuis le 20 août 2026 le refus tolère toute
+        // VALEUR de `v`, et cette assertion est ce qui garde la frontière —
+        // « toute valeur » n'est pas « pas de champ du tout ».
         expect(() => parseDepuisLaPlateforme('{"type":"refus","motif":"version"}'))
-            .toThrow(/version de plateforme non supportée/);
+            .toThrow(/version de plateforme absente ou non numérique/);
     });
 
     it('🔴 REJETTE une version NULLE, que `?? ` laisserait passer', () => {
@@ -182,7 +193,7 @@ describe('miroir TypeScript du canal plateforme', () => {
         // implémentation par valeur par défaut accepterait ce message-ci sans
         // que rien d'autre ne bouge.
         expect(() => parseDepuisLaPlateforme('{"type":"refus","v":null,"motif":"version"}'))
-            .toThrow(/version de plateforme non supportée/);
+            .toThrow(/version de plateforme absente ou non numérique/);
     });
 
     it('REJETTE un `type` inconnu', () => {
@@ -405,9 +416,15 @@ describe('la version 2, et les listes blanches DÉRIVÉES de l’union', () => {
         // SILENCE : le Rust émettrait `v:2`, ce parseur attendrait `v:1`, et
         // seuls les vecteurs partagés le diraient.
         expect(PLATEFORME_VERSION).toBe(2);
-        expect(() => parseDepuisLaPlateforme('{"type":"refus","v":1,"motif":"version"}')).toThrow(
-            /version de plateforme non supportée/,
-        );
+        // ⚠️ CE CAS PORTAIT UN `refus` JUSQU'AU 20 AOÛT 2026, et il épinglait
+        // le défaut au lieu de le garder : le refus est désormais la SEULE
+        // variante hors versionnement, précisément pour qu'un agent v1 puisse
+        // lire celui qui lui apprend qu'il est périmé. La propriété gardée ici
+        // — « un message v1 est refusé » — reste éprouvée, sur une variante qui
+        // la porte encore.
+        expect(() =>
+            parseDepuisLaPlateforme('{"type":"enrole","v":1,"prefixe":"P","jeton":"j","expire_a":1}'),
+        ).toThrow(/version de plateforme non supportée/);
         expect(parseVersLaPlateforme('{"type":"battement","v":1}')).toEqual({
             ok: false,
             motif: 'version',
@@ -426,4 +443,70 @@ describe('la version 2, et les listes blanches DÉRIVÉES de l’union', () => {
         );
         expect([...typesVers()].sort()).toEqual(['battement', 'catalogue', 'enroler', 'lancee']);
     });
+});
+
+// ---------------------------------------------------------------------------
+// Correction du 20 août 2026 — UN REFUS DOIT ÊTRE LISIBLE PAR SON DESTINATAIRE.
+// ---------------------------------------------------------------------------
+
+describe('le refus est une enveloppe HORS versionnement', () => {
+    // 🔴 LA ROUGE DU DÉFAUT 2, côté miroir. Mesuré en recette G1 : un agent v1
+    // face à une plateforme v2 ne peut pas lire le refus qui lui dit POURQUOI
+    // il est refusé, parce que le contrôle de version s'applique aussi au
+    // refus. Les deux bouts doivent tolérer, sans quoi le miroir divergerait
+    // du Rust en silence.
+    it('🔴 se lit quelle que soit la version de son émetteur', () => {
+        const futur = parseDepuisLaPlateforme('{"type":"refus","v":97,"motif":"version"}') as
+            unknown as Record<string, unknown>;
+        expect(futur.type).toBe('refus');
+        expect(futur.motif).toBe('version');
+        const passe = parseDepuisLaPlateforme('{"type":"refus","v":1,"motif":"enrolement"}') as
+            unknown as Record<string, unknown>;
+        expect(passe.motif).toBe('enrolement');
+    });
+
+    it('🔴 conserve un motif qu’aucune version de ce dépôt ne connaît', () => {
+        const lu = parseDepuisLaPlateforme('{"type":"refus","v":98,"motif":"quota-depasse"}') as
+            unknown as Record<string, unknown>;
+        expect(lu.motif).toBe('quota-depasse');
+    });
+
+    it('🔴 et les AUTRES types restent refusés sur une version divergente', () => {
+        // Sans cette moitié, la tolérance ci-dessus pourrait s'obtenir en ne
+        // vérifiant plus rien du tout.
+        for (const brut of [
+            '{"type":"enrole","v":97,"prefixe":"P","jeton":"j","expire_a":1}',
+            '{"type":"battement-recu","v":97,"jeton":"j","expire_a":1}',
+            '{"type":"lancer","v":97,"demande":"d","cle":"c"}',
+        ]) {
+            expect(() => parseDepuisLaPlateforme(brut)).toThrow(
+                /version de plateforme non supportée/,
+            );
+        }
+    });
+});
+
+describe('les refus lisibles du fichier de vecteurs partagés', () => {
+    // 🔴 LES MÊMES CHAÎNES QUE `conformite_aux_refus_lisibles_partages` CÔTÉ
+    // RUST. Sans ce vecteur partagé, le remède pourrait ne vivre que d'un
+    // côté — c'est exactement la divergence silencieuse que
+    // `plateforme-vectors.json` existe pour fermer.
+    const lisibles = (vecteurs as unknown as {
+        refus_lisibles: { name: string; json: string; v: number; motif: string }[];
+    }).refus_lisibles;
+
+    it('🔴 en porte quatre, et pas zéro', () => {
+        // Anti-tautologie : un tableau vide ferait passer la boucle ci-dessous
+        // sans rien éprouver. Même garde que du côté Rust.
+        expect(lisibles).toHaveLength(4);
+    });
+
+    for (const cas of lisibles) {
+        it(`lit « ${cas.name} » quelle que soit sa version`, () => {
+            const lu = parseDepuisLaPlateforme(cas.json) as unknown as Record<string, unknown>;
+            expect(lu.type).toBe('refus');
+            expect(lu.v).toBe(cas.v);
+            expect(lu.motif).toBe(cas.motif);
+        });
+    }
 });
