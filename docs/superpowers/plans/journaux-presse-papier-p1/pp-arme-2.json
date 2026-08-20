@@ -1,0 +1,273 @@
+{
+  "etiquette": "arme-2",
+  "desarme": false,
+  "nonce": "arme-2-rmjmxt",
+  "phases": [
+    {
+      "nom": "0-avant-toute-copie",
+      "t": "2026-08-20T08:55:07.341Z",
+      "etat": {
+        "pp": {
+          "messages": [],
+          "ecritures": [],
+          "erreurs": []
+        },
+        "focus": true,
+        "statut_texte": "780×492, 6.3 Mb/s",
+        "statut_cache": "true",
+        "video_pret": true
+      },
+      "relecture_navigateur": {
+        "lu": ""
+      }
+    },
+    {
+      "nom": "1-apres-copie-neuve",
+      "t": "2026-08-20T08:55:13.866Z",
+      "etat": {
+        "pp": {
+          "messages": [
+            {
+              "t": 1787216107664,
+              "texte_present": true,
+              "longueur": 19,
+              "debut": "alpha-arme-2-rmjmxt",
+              "bytes": 19,
+              "v": 3
+            }
+          ],
+          "ecritures": [
+            {
+              "t": 1787216107665,
+              "longueur": 19,
+              "debut": "alpha-arme-2-rmjmxt",
+              "resolue": true
+            }
+          ],
+          "erreurs": []
+        },
+        "focus": true,
+        "statut_texte": "cliquez pour activer le son",
+        "statut_cache": "true",
+        "video_pret": true
+      },
+      "relecture_navigateur": {
+        "lu": "alpha-arme-2-rmjmxt"
+      }
+    },
+    {
+      "nom": "2-apres-recopie-identique",
+      "t": "2026-08-20T08:55:20.587Z",
+      "etat": {
+        "pp": {
+          "messages": [
+            {
+              "t": 1787216107664,
+              "texte_present": true,
+              "longueur": 19,
+              "debut": "alpha-arme-2-rmjmxt",
+              "bytes": 19,
+              "v": 3
+            }
+          ],
+          "ecritures": [
+            {
+              "t": 1787216107665,
+              "longueur": 19,
+              "debut": "alpha-arme-2-rmjmxt",
+              "resolue": true
+            }
+          ],
+          "erreurs": []
+        },
+        "focus": true,
+        "statut_texte": "cliquez pour activer le son",
+        "statut_cache": "true",
+        "video_pret": true
+      },
+      "relecture_navigateur": {
+        "lu": "alpha-arme-2-rmjmxt"
+      }
+    },
+    {
+      "nom": "3-apres-copie-differente",
+      "t": "2026-08-20T08:55:27.097Z",
+      "etat": {
+        "pp": {
+          "messages": [
+            {
+              "t": 1787216107664,
+              "texte_present": true,
+              "longueur": 19,
+              "debut": "alpha-arme-2-rmjmxt",
+              "bytes": 19,
+              "v": 3
+            },
+            {
+              "t": 1787216120694,
+              "texte_present": true,
+              "longueur": 18,
+              "debut": "beta-arme-2-rmjmxt",
+              "bytes": 18,
+              "v": 3
+            }
+          ],
+          "ecritures": [
+            {
+              "t": 1787216107665,
+              "longueur": 19,
+              "debut": "alpha-arme-2-rmjmxt",
+              "resolue": true
+            },
+            {
+              "t": 1787216120694,
+              "longueur": 18,
+              "debut": "beta-arme-2-rmjmxt",
+              "resolue": true
+            }
+          ],
+          "erreurs": []
+        },
+        "focus": true,
+        "statut_texte": "780×492, 12.0 Mb/s",
+        "statut_cache": "true",
+        "video_pret": true
+      },
+      "relecture_navigateur": {
+        "lu": "beta-arme-2-rmjmxt"
+      }
+    },
+    {
+      "nom": "4-apres-copie-100kio",
+      "t": "2026-08-20T08:55:35.635Z",
+      "etat": {
+        "pp": {
+          "messages": [
+            {
+              "t": 1787216107664,
+              "texte_present": true,
+              "longueur": 19,
+              "debut": "alpha-arme-2-rmjmxt",
+              "bytes": 19,
+              "v": 3
+            },
+            {
+              "t": 1787216120694,
+              "texte_present": true,
+              "longueur": 18,
+              "debut": "beta-arme-2-rmjmxt",
+              "bytes": 18,
+              "v": 3
+            },
+            {
+              "t": 1787216127204,
+              "texte_present": false,
+              "longueur": 0,
+              "debut": null,
+              "bytes": 102400,
+              "v": 3
+            }
+          ],
+          "ecritures": [
+            {
+              "t": 1787216107665,
+              "longueur": 19,
+              "debut": "alpha-arme-2-rmjmxt",
+              "resolue": true
+            },
+            {
+              "t": 1787216120694,
+              "longueur": 18,
+              "debut": "beta-arme-2-rmjmxt",
+              "resolue": true
+            }
+          ],
+          "erreurs": []
+        },
+        "focus": true,
+        "statut_texte": "copie trop volumineuse (100 Kio) — elle n'a pas été recopiée ici, réduisez la sélection",
+        "statut_cache": "false",
+        "video_pret": true
+      },
+      "relecture_navigateur": {
+        "lu": "beta-arme-2-rmjmxt"
+      }
+    },
+    {
+      "nom": "5-apres-copie-bloc-notes",
+      "t": "2026-08-20T08:55:52.168Z",
+      "etat": {
+        "pp": {
+          "messages": [
+            {
+              "t": 1787216107664,
+              "texte_present": true,
+              "longueur": 19,
+              "debut": "alpha-arme-2-rmjmxt",
+              "bytes": 19,
+              "v": 3
+            },
+            {
+              "t": 1787216120694,
+              "texte_present": true,
+              "longueur": 18,
+              "debut": "beta-arme-2-rmjmxt",
+              "bytes": 18,
+              "v": 3
+            },
+            {
+              "t": 1787216127204,
+              "texte_present": false,
+              "longueur": 0,
+              "debut": null,
+              "bytes": 102400,
+              "v": 3
+            },
+            {
+              "t": 1787216140234,
+              "texte_present": true,
+              "longueur": 19,
+              "debut": "gamma-arme-2-rmjmxt",
+              "bytes": 19,
+              "v": 3
+            }
+          ],
+          "ecritures": [
+            {
+              "t": 1787216107665,
+              "longueur": 19,
+              "debut": "alpha-arme-2-rmjmxt",
+              "resolue": true
+            },
+            {
+              "t": 1787216120694,
+              "longueur": 18,
+              "debut": "beta-arme-2-rmjmxt",
+              "resolue": true
+            },
+            {
+              "t": 1787216140234,
+              "longueur": 19,
+              "debut": "gamma-arme-2-rmjmxt",
+              "resolue": true
+            }
+          ],
+          "erreurs": []
+        },
+        "focus": true,
+        "statut_texte": "780×492, 11.7 Mb/s",
+        "statut_cache": "true",
+        "video_pret": true
+      },
+      "relecture_navigateur": {
+        "lu": "gamma-arme-2-rmjmxt"
+      }
+    }
+  ],
+  "prep": "chrome=0",
+  "copieur_pret": true,
+  "shell_attachee": true,
+  "repli_page_directe": "http://127.0.0.1:5173/?session=y4FQP1ev5fYOd_Pzr9XWUw%3Aw-1&signaling=ws%3A%2F%2F192.168.3.1%3A8090",
+  "url_app": "http://127.0.0.1:5173/?session=y4FQP1ev5fYOd_Pzr9XWUw%3Aw-1&signaling=ws%3A%2F%2F192.168.3.1%3A8090",
+  "copieur_journal": "﻿2026-08-20T08:54:26.8866385Z copieur pret\r\n2026-08-20T08:55:07.5203279Z ordre 1 mode=texte longueur=19\r\n2026-08-20T08:55:07.5243146Z fait 1 : texte pose, longueur=19\r\n2026-08-20T08:55:14.0935331Z ordre 2 mode=texte longueur=19\r\n2026-08-20T08:55:14.0951071Z fait 2 : texte pose, longueur=19\r\n2026-08-20T08:55:20.6534284Z ordre 3 mode=texte longueur=18\r\n2026-08-20T08:55:20.6554230Z fait 3 : texte pose, longueur=18\r\n2026-08-20T08:55:27.2114460Z ordre 4 mode=gros longueur=0\r\n2026-08-20T08:55:27.2134450Z fait 4 : gros pose, longueur=102400\r\n2026-08-20T08:55:35.9683864Z ordre 5 mode=notepad longueur=19\r\n2026-08-20T08:55:42.0886553Z fait 5 : notepad, presse-papier=19 octets, debut=gamma-arme-2-rmjmxt\r\n"
+}

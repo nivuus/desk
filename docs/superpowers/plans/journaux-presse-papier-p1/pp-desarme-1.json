@@ -1,0 +1,121 @@
+{
+  "etiquette": "desarme-1",
+  "desarme": true,
+  "nonce": "desarme-1-y5g3od",
+  "phases": [
+    {
+      "nom": "0-avant-toute-copie",
+      "t": "2026-08-20T08:57:08.314Z",
+      "etat": {
+        "pp": {
+          "messages": [],
+          "ecritures": [],
+          "erreurs": []
+        },
+        "focus": true,
+        "statut_texte": "780×492, 0.6 Mb/s",
+        "statut_cache": "false",
+        "video_pret": true
+      },
+      "relecture_navigateur": {
+        "lu": ""
+      }
+    },
+    {
+      "nom": "1-apres-copie-neuve",
+      "t": "2026-08-20T08:57:14.837Z",
+      "etat": {
+        "pp": {
+          "messages": [],
+          "ecritures": [],
+          "erreurs": []
+        },
+        "focus": true,
+        "statut_texte": "cliquez pour activer le son",
+        "statut_cache": "true",
+        "video_pret": true
+      },
+      "relecture_navigateur": {
+        "lu": ""
+      }
+    },
+    {
+      "nom": "2-apres-recopie-identique",
+      "t": "2026-08-20T08:57:21.352Z",
+      "etat": {
+        "pp": {
+          "messages": [],
+          "ecritures": [],
+          "erreurs": []
+        },
+        "focus": true,
+        "statut_texte": "cliquez pour activer le son",
+        "statut_cache": "true",
+        "video_pret": true
+      },
+      "relecture_navigateur": {
+        "lu": ""
+      }
+    },
+    {
+      "nom": "3-apres-copie-differente",
+      "t": "2026-08-20T08:57:27.865Z",
+      "etat": {
+        "pp": {
+          "messages": [],
+          "ecritures": [],
+          "erreurs": []
+        },
+        "focus": true,
+        "statut_texte": "780×492, 12.0 Mb/s — adaptation indisponible",
+        "statut_cache": "true",
+        "video_pret": true
+      },
+      "relecture_navigateur": {
+        "lu": ""
+      }
+    },
+    {
+      "nom": "4-apres-copie-100kio",
+      "t": "2026-08-20T08:57:36.384Z",
+      "etat": {
+        "pp": {
+          "messages": [],
+          "ecritures": [],
+          "erreurs": []
+        },
+        "focus": true,
+        "statut_texte": "780×492, 12.0 Mb/s",
+        "statut_cache": "true",
+        "video_pret": true
+      },
+      "relecture_navigateur": {
+        "lu": ""
+      }
+    },
+    {
+      "nom": "5-apres-copie-bloc-notes",
+      "t": "2026-08-20T08:57:52.928Z",
+      "etat": {
+        "pp": {
+          "messages": [],
+          "ecritures": [],
+          "erreurs": []
+        },
+        "focus": true,
+        "statut_texte": "780×492, 11.7 Mb/s",
+        "statut_cache": "true",
+        "video_pret": true
+      },
+      "relecture_navigateur": {
+        "lu": ""
+      }
+    }
+  ],
+  "prep": "chrome=0",
+  "copieur_pret": true,
+  "shell_attachee": true,
+  "repli_page_directe": "http://127.0.0.1:5173/?session=y4FQP1ev5fYOd_Pzr9XWUw%3Aw-1&signaling=ws%3A%2F%2F192.168.3.1%3A8090",
+  "url_app": "http://127.0.0.1:5173/?session=y4FQP1ev5fYOd_Pzr9XWUw%3Aw-1&signaling=ws%3A%2F%2F192.168.3.1%3A8090",
+  "copieur_journal": "﻿2026-08-20T08:56:27.8423886Z copieur pret\r\n2026-08-20T08:57:08.4917286Z ordre 1 mode=texte longueur=22\r\n2026-08-20T08:57:08.4952712Z fait 1 : texte pose, longueur=22\r\n2026-08-20T08:57:15.0630492Z ordre 2 mode=texte longueur=22\r\n2026-08-20T08:57:15.0640375Z fait 2 : texte pose, longueur=22\r\n2026-08-20T08:57:21.6250642Z ordre 3 mode=texte longueur=21\r\n2026-08-20T08:57:21.6266298Z fait 3 : texte pose, longueur=21\r\n2026-08-20T08:57:28.1820661Z ordre 4 mode=gros longueur=0\r\n2026-08-20T08:57:28.1830664Z fait 4 : gros pose, longueur=102400\r\n2026-08-20T08:57:36.6252233Z ordre 5 mode=notepad longueur=22\r\n2026-08-20T08:57:42.7637007Z fait 5 : notepad, presse-papier=22 octets, debut=gamma-desarme-1-y5g3od\r\n"
+}

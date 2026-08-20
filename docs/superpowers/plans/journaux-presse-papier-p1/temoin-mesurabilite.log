@@ -1,0 +1,5 @@
+2026-08-20T08:03:34.467Z writeText : {"resolue":true}
+2026-08-20T08:03:34.473Z readText (page) : {"lu":"temoin-mt18he3h-gqfpf9"}
+2026-08-20T08:03:35.494Z hôte : [{"outil":"xclip","present":false},{"outil":"wl-paste","present":false},{"outil":"xsel","present":true,"code":1,"stdout":"","stderr":"xsel: Can't open display: (null)\n: Inappropriate ioctl for device\n"}]
+2026-08-20T08:03:35.495Z VERDICT : NIVEAU 2 NON MESURABLE sur ce montage — le nonce ne revient pas à l'hôte
+2026-08-20T08:03:35.497Z relevé écrit dans temoin-mesurabilite.json

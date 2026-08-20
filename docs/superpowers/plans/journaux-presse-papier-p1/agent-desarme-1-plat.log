@@ -1,0 +1,176 @@
+2026-08-20T08:56:37.280705Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T08:56:37.395901Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=y4FQP1ev5fYOd_Pzr9XWUw expire_a=1787216797368
+2026-08-20T08:56:37.400730Z  INFO agent::superviseur::signalisation: déclaration du superviseur émise sur la session de contrôle (acceptation encore inconnue) session="y4FQP1ev5fYOd_Pzr9XWUw:bureau"
+2026-08-20T08:56:37.402670Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-20T08:56:37.402698Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-20T08:56:37.402713Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=2 attachees=2
+2026-08-20T08:56:37.402723Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-20T08:56:37.402730Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-20T08:56:37.413671Z  INFO agent::moniteurs_virtuels::purge: sortie virtuelle retirée par la purge numero=1 guid=9C4A1F6E-2B73-4D51-9E08-677541430001
+2026-08-20T08:56:37.522529Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\Gestionnaire de périphériques.lnk motif="extension" extension=msc
+2026-08-20T08:56:37.522618Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\Paramètres Windows.lnk motif="cible-vide"
+2026-08-20T08:56:37.522626Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\Desktop\Services.lnk motif="extension" extension=msc
+2026-08-20T08:56:37.522954Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\computer.lnk motif="cible-vide"
+2026-08-20T08:56:37.522963Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\Control Panel.lnk motif="cible-vide"
+2026-08-20T08:56:37.522966Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\File Explorer.lnk motif="cible-vide"
+2026-08-20T08:56:37.522968Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\System Tools\Run.lnk motif="cible-vide"
+2026-08-20T08:56:37.523071Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\IDLE (Python 3.13 64-bit).lnk motif="cible-absente"
+2026-08-20T08:56:37.523086Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\Python 3.13 (64-bit).lnk motif="cible-absente"
+2026-08-20T08:56:37.523091Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\Python 3.13 Manuals (64-bit).lnk motif="extension" extension=html
+2026-08-20T08:56:37.523102Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Python 3.13\Python 3.13 Module Docs (64-bit).lnk motif="cible-absente"
+2026-08-20T08:56:37.523558Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Documentation for Desktop Apps.lnk motif="extension" extension=url
+2026-08-20T08:56:37.523566Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Documentation for UWP Apps.lnk motif="extension" extension=url
+2026-08-20T08:56:37.523570Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Sample Desktop Apps.lnk motif="extension" extension=url
+2026-08-20T08:56:37.523572Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Sample UWP Apps.lnk motif="extension" extension=url
+2026-08-20T08:56:37.523575Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Tools for Desktop Apps.lnk motif="extension" extension=url
+2026-08-20T08:56:37.523578Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Windows Kits\Windows Software Development Kit\Tools for UWP Apps.lnk motif="extension" extension=url
+2026-08-20T08:56:37.523859Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\smartmontools Daily Builds.lnk motif="cible-vide"
+2026-08-20T08:56:37.523866Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\smartmontools Home Page.lnk motif="cible-vide"
+2026-08-20T08:56:37.524251Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\ChangeLog.lnk motif="extension" extension=txt
+2026-08-20T08:56:37.524257Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\COPYING.lnk motif="extension" extension=txt
+2026-08-20T08:56:37.524306Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\NEWS.lnk motif="extension" extension=txt
+2026-08-20T08:56:37.524309Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartctl manual page (html).lnk motif="extension" extension=html
+2026-08-20T08:56:37.524311Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartctl manual page (pdf).lnk motif="extension" extension=pdf
+2026-08-20T08:56:37.524314Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd manual page (html).lnk motif="extension" extension=html
+2026-08-20T08:56:37.524317Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd manual page (pdf).lnk motif="extension" extension=pdf
+2026-08-20T08:56:37.524322Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd.conf manual page (html).lnk motif="extension" extension=html
+2026-08-20T08:56:37.524325Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\smartmontools\Documentation\smartd.conf manual page (pdf).lnk motif="extension" extension=pdf
+2026-08-20T08:56:37.524375Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Revo Uninstaller\Revo Uninstaller Help.lnk motif="extension" extension=pdf
+2026-08-20T08:56:37.524393Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\RetroArch\RetroArch Website.lnk motif="extension" extension=url
+2026-08-20T08:56:37.524458Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\NVIDIA Tools Extension (64 bit)\Browse NVIDIA Tools Extension.lnk motif="extension" extension=
+2026-08-20T08:56:37.524479Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\Nsight Visual Studio Edition 2025.1\Nsight Redistributable.lnk motif="extension" extension=msi
+2026-08-20T08:56:37.524573Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\CUDA Toolkit\v11.2\Visual Profiler.lnk motif="extension" extension=bat
+2026-08-20T08:56:37.524578Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\NVIDIA Corporation\CUDA Samples\v11.2\Browse CUDA Samples.lnk motif="extension" extension=2
+2026-08-20T08:56:37.524597Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Microsoft Xbox 360 Accessories\Aide de Microsoft Xbox 360 Accessories.lnk motif="extension" extension=chm
+2026-08-20T08:56:37.524773Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\CMake\CMake Documentation.lnk motif="extension" extension=html
+2026-08-20T08:56:37.524807Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Blue Ripple Sound\Rapture3D - Help.lnk motif="extension" extension=chm
+2026-08-20T08:56:37.524883Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Component Services.lnk motif="extension" extension=msc
+2026-08-20T08:56:37.524887Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Computer Management.lnk motif="extension" extension=msc
+2026-08-20T08:56:37.524927Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Event Viewer.lnk motif="extension" extension=msc
+2026-08-20T08:56:37.524997Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Network Policy Server.lnk motif="extension" extension=msc
+2026-08-20T08:56:37.525039Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Performance Monitor.lnk motif="extension" extension=msc
+2026-08-20T08:56:37.525091Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Security Configuration Management.lnk motif="extension" extension=msc
+2026-08-20T08:56:37.525112Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\services.lnk motif="extension" extension=msc
+2026-08-20T08:56:37.525150Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Task Scheduler.lnk motif="extension" extension=msc
+2026-08-20T08:56:37.525155Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Windows Defender Firewall with Advanced Security.lnk motif="extension" extension=msc
+2026-08-20T08:56:37.525158Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Windows Server Backup.lnk motif="extension" extension=msc
+2026-08-20T08:56:37.525160Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Remote Desktop Services\RD Gateway Manager.lnk motif="extension" extension=msc
+2026-08-20T08:56:37.525180Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Remote Desktop Services\Remote Desktop Licensing Diagnosis.lnk motif="extension" extension=msc
+2026-08-20T08:56:37.525375Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Accessories\System Tools\Windows Server Backup.lnk motif="extension" extension=msc
+2026-08-20T08:56:37.525413Z  INFO agent::apps::boucle: raccourci ecarte chemin=C:\ProgramData\Microsoft\Windows\Start Menu\Programs\7-Zip\7-Zip Help.lnk motif="extension" extension=chm
+2026-08-20T08:56:37.525503Z  INFO agent::apps::boucle: catalogue reconcilie total=218 retenus=154 cles=154 apparues=154 modifiees=0 disparues=0 duree_ms=128
+2026-08-20T08:56:40.415509Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-20T08:56:40.415540Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-20T08:56:40.415562Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-08-20T08:56:40.415565Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-20T08:56:40.415573Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=1 avant=2 apres=1
+2026-08-20T08:56:40.419599Z  INFO agent::superviseur::lanceur: capteur lancé pid=16204
+2026-08-20T08:56:40.421179Z  INFO agent::superviseur::lanceur::pont: pont fichiers lancé pid=3824 session="y4FQP1ev5fYOd_Pzr9XWUw:fichiers"
+2026-08-20T08:56:40.421193Z  WARN agent::superviseur::boucle::surveillance_pont: pont fichiers lancé ou relancé (tentatives suivantes silencieuses tant que le cycle se répète) pid_neuf=3824
+2026-08-20T08:56:40.427835Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T08:56:40.427864Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-08-20T08:56:40.428169Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T08:56:40.428202Z  INFO agent: identité héritée du superviseur (AGENT_JETON) : ce processus n'ouvre aucun canal /agent, un seul socket par VM
+2026-08-20T08:56:40.428209Z  WARN agent::apps: decouverte d'applications inactive : ce processus n'a pas de canal /agent (identité héritée du superviseur, ou AGENT_VM/AGENT_SECRET absents)
+2026-08-20T08:56:40.429147Z  INFO agent::pont::transport: socket UDP du pont fichiers addr=192.168.3.2:59685
+2026-08-20T08:56:40.466706Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="y4FQP1ev5fYOd_Pzr9XWUw:fichiers"
+2026-08-20T08:56:40.622001Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-20T08:56:40.622034Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-20T08:56:40.622043Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=1 attachees=1
+2026-08-20T08:56:40.622048Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-20T08:56:40.622329Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=258 adaptateur_bas=62078 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430001 largeur=780 hauteur=492 hertz=60
+2026-08-20T08:56:40.857269Z  INFO agent::superviseur::enfants: enfant lancé session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 pid=15456 sortie=\\.\DISPLAY5
+2026-08-20T08:56:40.867394Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T08:56:40.867430Z  INFO agent: identité héritée du superviseur (AGENT_JETON) : ce processus n'ouvre aucun canal /agent, un seul socket par VM
+2026-08-20T08:56:40.867437Z  WARN agent::apps: decouverte d'applications inactive : ce processus n'a pas de canal /agent (identité héritée du superviseur, ou AGENT_VM/AGENT_SECRET absents)
+2026-08-20T08:56:40.867453Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY5 bitrate=12000000 fps=90
+2026-08-20T08:56:40.871618Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-20T08:56:40.871816Z  INFO agent::capteur::tube: attaché au capteur session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 sortie=\\.\DISPLAY5 largeur=780 hauteur=492
+2026-08-20T08:56:40.871992Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::capteur::fenetre: fenêtre attachée au capteur session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 sortie=\\.\DISPLAY5 largeur=780 hauteur=492
+2026-08-20T08:56:40.872087Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::capteur::sommeil::parts: budget de debit de la session budget_bps=12000000
+2026-08-20T08:56:40.874086Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="y4FQP1ev5fYOd_Pzr9XWUw:w-1"
+2026-08-20T08:56:40.874161Z  INFO agent::transport::initialisation: socket UDP de l'agent addr=192.168.3.2:59688
+2026-08-20T08:56:40.914178Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=6492 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-20T08:56:40.914194Z  INFO agent::demarrage::audio: audio activé format="process loopback pid=6492 — 48000 Hz, 2 canaux, 16 bits entiers" pid=6492
+2026-08-20T08:56:40.958354Z  INFO agent::superviseur::boucle::surveillance_pont: pont fichiers de nouveau stable pid=3824
+2026-08-20T08:56:41.122328Z  WARN agent::presse_papier: presse-papier DESARME (PRESSE_PAPIER=0) : le contenu copie dans la VM n'est plus pousse au navigateur
+2026-08-20T08:56:50.874475Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::capteur::fenetre: cadence du capteur session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 images=0 endormie=true cadence="0.0"
+2026-08-20T08:57:00.878565Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::capteur::fenetre: cadence du capteur session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 images=0 endormie=true cadence="0.0"
+2026-08-20T08:57:05.637444Z  INFO agent::demarrage: offre reçue
+2026-08-20T08:57:05.639668Z  INFO agent::demarrage: réponse envoyée
+2026-08-20T08:57:05.639907Z  INFO agent::transport::evenements: état ICE state=Checking écoulé=24.738198s
+2026-08-20T08:57:05.656778Z  INFO agent::transport::evenements: état ICE state=Completed écoulé=24.7550674s
+2026-08-20T08:57:05.664548Z  INFO agent::transport::evenements: piste négociée mid=Mid(0) kind=Video direction=SendOnly
+2026-08-20T08:57:05.664563Z  INFO agent::transport::evenements: piste négociée mid=Mid(1) kind=Audio direction=SendOnly
+2026-08-20T08:57:05.664566Z  INFO agent::transport::evenements: piste négociée mid=Mid(2) kind=Audio direction=RecvOnly
+2026-08-20T08:57:05.664584Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 unites=0 cadence="0.0"
+2026-08-20T08:57:05.664597Z  INFO agent::transport::part: part de budget appliquee session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 part_bps=256000 endormie=true
+2026-08-20T08:57:05.664602Z  INFO agent::transport::piste_audio: ordre audio applique session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 actif=true capture_morte=false
+2026-08-20T08:57:05.677778Z  INFO agent::transport::evenements: canal de données ouvert label=input
+2026-08-20T08:57:05.677850Z  INFO agent::transport::evenements: canal de données ouvert label=control
+2026-08-20T08:57:05.798605Z  INFO agent::demarrage: contrôle reçu session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 Visibility { version: 3, visible: true, focused: true }
+2026-08-20T08:57:05.816367Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-20T08:57:05.905506Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::capture::ouverture: protection multi-fils activée sur le contexte immédiat D3D11 protection_precedente=false
+2026-08-20T08:57:05.905798Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::capture: duplication de sortie établie desktop_width=1280 desktop_height=720
+2026-08-20T08:57:05.906804Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::encode: encodeur matériel retenu encodeur=NVIDIA H.264 Encoder MFT
+2026-08-20T08:57:05.967927Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::encode::arret: file de travail sérialisée imposée mft="encodeur" file=327681
+2026-08-20T08:57:05.972922Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::encode: convertisseur BGRA→NV12 (Video Processor MFT) configuré converter_provides_samples=true
+2026-08-20T08:57:05.973279Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::capteur::fenetre::transitions: fenêtre réveillée session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 largeur=780 hauteur=492 duree_ms=157
+2026-08-20T08:57:05.975484Z  INFO agent::transport::part: part de budget appliquee session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 part_bps=12000000 endormie=false
+2026-08-20T08:57:05.999250Z  INFO agent::demarrage: contrôle reçu session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 Resize { version: 3, width: 780, height: 493 }
+2026-08-20T08:57:06.001187Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::windows_source::redimensionnement: redimensionnement ignoré : la source capture une sortie DXGI entière (voir le constat de mesure de capteur::plein_ecran, sous-bloc D9) width=780 height=493 mode=SortieEntiere
+2026-08-20T08:57:07.403034Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-20T08:57:07.590716Z  INFO agent::apps::boucle: catalogue reconcilie total=218 retenus=154 cles=154 apparues=0 modifiees=0 disparues=0 duree_ms=64
+2026-08-20T08:57:10.884459Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::capteur::fenetre: cadence du capteur session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 images=425 endormie=false cadence="42.5"
+2026-08-20T08:57:10.918437Z  INFO agent::windows_audio::fil: compteurs audio pid=6492 actif=true rejetes=0 complements=1 echantillons_jetes=0
+2026-08-20T08:57:15.664732Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 unites=834 cadence="83.4"
+2026-08-20T08:57:20.884768Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::capteur::fenetre: cadence du capteur session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 images=849 endormie=false cadence="84.9"
+2026-08-20T08:57:22.646791Z  WARN agent::transport::evenements: aucune estimation de bande passante reçue : l'adaptation reste indisponible et le débit demeure au plafond configuré
+2026-08-20T08:57:25.664882Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 unites=844 cadence="84.4"
+2026-08-20T08:57:30.888284Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::capteur::fenetre: cadence du capteur session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 images=847 endormie=false cadence="84.7"
+2026-08-20T08:57:35.665068Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 unites=851 cadence="85.1"
+2026-08-20T08:57:36.971277Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-20T08:57:36.971313Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-20T08:57:36.971322Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant création de sortie" nombre=2 attachees=2
+2026-08-20T08:57:36.971328Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-20T08:57:36.971334Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant création de sortie" nom=\\.\DISPLAY5 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 attachee=true x=2400 y=0 largeur=1280 hauteur=720
+2026-08-20T08:57:36.971538Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle créée id=261 adaptateur_bas=62078 adaptateur_haut=0 guid=9C4A1F6E-2B73-4D51-9E08-677541430002 largeur=780 hauteur=492 hertz=60
+2026-08-20T08:57:37.037245Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-20T08:57:37.055386Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-20T08:57:37.108214Z  INFO agent::superviseur::enfants: enfant lancé session=y4FQP1ev5fYOd_Pzr9XWUw:w-2 pid=15912 sortie=\\.\DISPLAY6
+2026-08-20T08:57:37.118991Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T08:57:37.119050Z  INFO agent: identité héritée du superviseur (AGENT_JETON) : ce processus n'ouvre aucun canal /agent, un seul socket par VM
+2026-08-20T08:57:37.119068Z  WARN agent::apps: decouverte d'applications inactive : ce processus n'a pas de canal /agent (identité héritée du superviseur, ou AGENT_VM/AGENT_SECRET absents)
+2026-08-20T08:57:37.119094Z  INFO agent::demarrage::source: source distante servie par le capteur (mode multi-fenêtres) nom_sortie=\\.\DISPLAY6 bitrate=12000000 fps=90
+2026-08-20T08:57:37.120950Z  INFO agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=2 nom_sortie=\\.\DISPLAY6 attachee=true
+2026-08-20T08:57:37.121133Z  INFO agent::capteur::tube: attaché au capteur session=y4FQP1ev5fYOd_Pzr9XWUw:w-2 sortie=\\.\DISPLAY6 largeur=780 hauteur=492
+2026-08-20T08:57:37.121281Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-2}: agent::capteur::fenetre: fenêtre attachée au capteur session=y4FQP1ev5fYOd_Pzr9XWUw:w-2 sortie=\\.\DISPLAY6 largeur=780 hauteur=492
+2026-08-20T08:57:37.124897Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="y4FQP1ev5fYOd_Pzr9XWUw:w-2"
+2026-08-20T08:57:37.124998Z  INFO agent::transport::initialisation: socket UDP de l'agent addr=192.168.3.2:57890
+2026-08-20T08:57:37.134661Z  INFO agent::transport::part: part de budget appliquee session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 part_bps=11744000 endormie=false
+2026-08-20T08:57:37.159781Z  INFO agent::windows_audio: source audio démarrée format=process loopback pid=3700 — 48000 Hz, 2 canaux, 16 bits entiers
+2026-08-20T08:57:37.159798Z  INFO agent::demarrage::audio: audio activé format="process loopback pid=3700 — 48000 Hz, 2 canaux, 16 bits entiers" pid=3700
+2026-08-20T08:57:37.456417Z  INFO agent::apps::boucle: reenrolement observe : le prochain catalogue sera COMPLET
+2026-08-20T08:57:37.663757Z  INFO agent::apps::boucle: catalogue reconcilie total=218 retenus=154 cles=154 apparues=0 modifiees=0 disparues=0 duree_ms=72
+2026-08-20T08:57:40.888826Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::capteur::fenetre: cadence du capteur session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 images=843 endormie=false cadence="84.3"
+2026-08-20T08:57:40.922948Z  INFO agent::windows_audio::fil: compteurs audio pid=6492 actif=true rejetes=0 complements=1 echantillons_jetes=0
+2026-08-20T08:57:42.844483Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-2}: agent::capteur::fenetre: fin de la fenêtre côté capteur session=y4FQP1ev5fYOd_Pzr9XWUw:w-2 images=0 motif="l'enfant a fermé le canal"
+2026-08-20T08:57:42.850739Z  INFO agent::moniteurs_virtuels::pilote: sortie virtuelle détruite id=261
+2026-08-20T08:57:42.850770Z  INFO agent::superviseur::boucle::creation_sortie: sortie virtuelle rendue au pilote sortie_pilote=261
+2026-08-20T08:57:42.855696Z  INFO agent::transport::part: part de budget appliquee session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 part_bps=12000000 endormie=false
+2026-08-20T08:57:42.885911Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::capture: accès à la duplication perdu, réouverture tentative=1 cible=Sortie("\\\\.\\DISPLAY5") hresult="0x887a0026"
+2026-08-20T08:57:42.896854Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::capture::ouverture: sortie retenue pour la duplication adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=1 nom_sortie=\\.\DISPLAY5 attachee=true
+2026-08-20T08:57:45.674744Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 unites=840 cadence="83.9"
+2026-08-20T08:57:50.890366Z  INFO fenetre{session=y4FQP1ev5fYOd_Pzr9XWUw:w-1}: agent::capteur::fenetre: cadence du capteur session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 images=845 endormie=false cadence="84.5"
+2026-08-20T08:57:53.026278Z  INFO agent::signaling: le client s'est déconnecté
+2026-08-20T08:57:53.026760Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T08:57:53.029723Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=2 backoff_ms=4
+2026-08-20T08:57:53.034924Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=3 backoff_ms=8
+2026-08-20T08:57:53.043464Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=4 backoff_ms=16
+2026-08-20T08:57:53.060620Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=5 backoff_ms=32
+2026-08-20T08:57:53.093622Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=6 backoff_ms=64
+2026-08-20T08:57:54.029109Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T08:57:55.028684Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T08:57:55.679223Z  INFO agent::transport::cadence_video: cadence de la piste vidéo (côté enfant) session=y4FQP1ev5fYOd_Pzr9XWUw:w-1 unites=847 cadence="84.7"
+2026-08-20T08:57:56.034072Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2
+2026-08-20T08:57:57.033301Z  WARN agent::transport::socket: échec de réception UDP transitoire, ignoré erreur=Une connexion existante a dû être fermée par l’hôte distant. (os error 10054) consecutives=1 backoff_ms=2

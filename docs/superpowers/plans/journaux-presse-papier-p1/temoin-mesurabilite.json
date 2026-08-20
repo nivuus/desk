@@ -1,0 +1,48 @@
+{
+  "nonce": "temoin-mt18he3h-gqfpf9",
+  "url": "http://127.0.0.1:5173/",
+  "display": null,
+  "wayland": null,
+  "avant_hote": [
+    {
+      "outil": "xclip",
+      "present": false
+    },
+    {
+      "outil": "wl-paste",
+      "present": false
+    },
+    {
+      "outil": "xsel",
+      "present": true,
+      "code": 1,
+      "stdout": "",
+      "stderr": "xsel: Can't open display: (null)\n: Inappropriate ioctl for device\n"
+    }
+  ],
+  "ecriture": {
+    "resolue": true
+  },
+  "relecture_page": {
+    "lu": "temoin-mt18he3h-gqfpf9"
+  },
+  "apres_hote": [
+    {
+      "outil": "xclip",
+      "present": false
+    },
+    {
+      "outil": "wl-paste",
+      "present": false
+    },
+    {
+      "outil": "xsel",
+      "present": true,
+      "code": 1,
+      "stdout": "",
+      "stderr": "xsel: Can't open display: (null)\n: Inappropriate ioctl for device\n"
+    }
+  ],
+  "niveau_2_mesurable": false,
+  "verdict": "NIVEAU 2 NON MESURABLE sur ce montage — le nonce ne revient pas à l'hôte"
+}
