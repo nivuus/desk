@@ -186,6 +186,41 @@
     --e-7: 3rem;        /* 48 px */
     --e-8: 4rem;        /* 64 px */
 
+    /* ── Trois mesures de CONTENANT — une famille NOMMÉE, pas une échelle ──
+       Sous-bloc S4, tâche 8, à valeur STRICTEMENT ÉGALE aux littéraux qu'elles
+       remplacent : aucune valeur ne change, donc aucune apparence.
+
+       🔴 POURQUOI ELLES MÉRITENT DES TOKENS, ET POURQUOI CE N'EST PAS UNE
+       ÉCHELLE. Les échelles du §4.4 couvrent l'ESPACEMENT et la TYPOGRAPHIE ;
+       AUCUNE ne prétend couvrir une mesure de contenant — la plus grande,
+       `--e-8`, vaut 4rem, soit une carte de 64 px. `shell.css` et
+       `connexion.css` l'ont chacune relevé sans en tirer de conséquence, et
+       le journal de S3 note de lui-même que « l'étiquette de `connexion.css`
+       est plus large qu'elle ». Un design system qui n'a pas de nom pour la
+       largeur de ses pages en manque un ; et c'est la DERNIÈRE OCCASION de le
+       lui donner, ⑥ finissant à S4.
+
+       ⚠️ TROIS TOKENS POUR TROIS APPELANTS : ce n'est pas une échelle, c'est
+       une FAMILLE NOMMÉE À TROIS MEMBRES, et le dire est plus honnête que de
+       prétendre à un pas. ⚠️ QU'ELLES MÉRITENT DES TOKENS EST UN JUGEMENT
+       HUMAIN (spec §8), et que ces trois LARGEURS soient les bonnes en est un
+       autre — il l'était déjà, et S4 ne le tranche pas.
+
+       ⚠️ ELLES VIVENT DANS LA RACINE SEULE, comme les échelles, et la clause ③
+       de §7.4 NE LES CONCERNE PAS : elle est restreinte aux COULEURS, et
+       `estUneCouleur` (`tokens.ts`) décide SUR LA VALEUR — `72rem` n'en est
+       pas une. Vérifié par la sortie du contrôle, pas par lecture seule.
+
+       ⚠️ L'ALTERNATIVE ÉCARTÉE, ET POURQUOI. Laisser les trois littérales et
+       CORRIGER la clause §8 — écrire qu'« aucune longueur hors échelle » ne
+       porte que sur la typographie et l'espacement. Écartée parce que
+       REDÉFINIR UNE RÈGLE POUR PUBLIER UN ZÉRO est exactement le geste que ce
+       dépôt combat : S3 a publié six *et* neuf plutôt que de choisir la règle
+       qui l'arrangeait. */
+    --contenant-page: 72rem;      /* la largeur maximale d'une page          */
+    --contenant-colonne: 18rem;   /* la largeur minimale d'une colonne       */
+    --contenant-carte: 26rem;     /* la largeur d'une carte centrée          */
+
     /* ── Rayons — en PIXELS, délibérément ──────────────────────────────────
        Un rayon qui grandit avec le réglage de police déforme les petits
        éléments. `--r-2` est la valeur d'avant ce socle. */

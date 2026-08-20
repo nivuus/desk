@@ -16,14 +16,25 @@
    alors que la spec §5.2 ne le nomme que pour la page-shell et le hub —
    extension raisonnée, déclarée au §6.2 du plan S3.
 
-   ── DEUX MESURES DE CONTENANT, HORS ÉCHELLE ET DÉCLARÉES ─────────────────
-   ⚠️ La hauteur de la scène (`100dvh`) et la largeur maximale de la carte
-   (26rem) ne passent par aucun cran d'échelle. Les échelles du §4.4 couvrent
-   l'ESPACEMENT et la TYPOGRAPHIE, jamais une mesure de contenant, et les
-   inventer en tokens changerait le compte de 48 que trois documents publient.
-   Elles sont écrites en LITTÉRAL et non en propriété personnalisée locale :
-   l'inclusion ① du §7.6 exige qu'un `var(--…)` soit déclaré par `tokens.css`,
-   la source unique — leçon payée par `shell.css` à la tâche 4, qui avait
+   ── DEUX MESURES DE CONTENANT, DONT UNE EST DEVENUE UN TOKEN ─────────────
+   ✅ La largeur maximale de la carte passe désormais par `--contenant-carte`
+   (sous-bloc S4, tâche 8), à valeur strictement égale.
+   ❌ « La hauteur de la scène (`100dvh`) et la largeur maximale de la carte
+   (26rem) NE PASSENT PAR AUCUN CRAN D'ÉCHELLE … et les inventer en tokens
+   changerait le compte de 48 que trois documents publient » — écrit ici par
+   S3, vrai à sa date pour la première moitié, et FAUX au présent pour la
+   seconde. Le constat de fond tient et c'est lui qui a justifié le token : les
+   échelles du §4.4 couvrent l'ESPACEMENT et la TYPOGRAPHIE, jamais une mesure
+   de contenant. L'argument DE COMPTE, lui, ne pouvait pas tenir — un compte
+   n'est pas une raison de ne pas nommer une valeur, et les contrôles
+   impriment le leur à chaque exécution.
+   ⚠️ `100dvh` RESTE LITTÉRALE, ET C'EST LA MÊME RÈGLE QU'AVANT : un
+   REMPLISSAGE DE FENÊTRE n'est pas une mesure de contenant, aucune échelle ne
+   prétend couvrir « toute la fenêtre », et un token qui vaudrait `100dvh` ne
+   serait qu'un alias. C'est l'exception ① de §7.10, nommée et close.
+   Le token est déclaré par `tokens.css` et non en propriété personnalisée
+   LOCALE : l'inclusion ① du §7.6 exige qu'un `var(--…)` soit déclaré par la
+   source unique — leçon payée par `shell.css` à la tâche 4 de S3, qui avait
    affirmé le contraire et que le contrôle a réfuté.
 
    ⚠️ UNE SEULE DES DEUX COMPTE DANS LA CLAUSE « aucune longueur hors échelle »
@@ -35,6 +46,13 @@
    que le compte : elle dit « ne vient d'aucun cran », ce qui est vrai des
    deux ; le compte, lui, en retient une. Total à la fin de S3 : SIX, énuméré
    dans l'en-tête de `shell.css`.
+   ⚠️ CE BLOC EST UN ÉNONCÉ DATÉ, ET IL RESTE VRAI COMME HISTOIRE : le barrer
+   le rendrait faux. Annotation datée du sous-bloc S4, tâche 8 : `26rem` est
+   devenue `--contenant-carte` et le total est tombé à ZÉRO ; il ne reste
+   sous cette étiquette que `100dvh`, dont ce bloc dit déjà qu'elle ne compte
+   pas. ⚠️ Et « posée deux fois plus bas » ne vaut plus que POUR UNE FOIS —
+   celle de `100dvh` : l'autre est partie avec le littéral qu'elle
+   étiquetait.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ⚠️ LA CARTE EST CENTRÉE, ET SA LARGEUR EST UN JUGEMENT HUMAIN : aucune
@@ -51,8 +69,7 @@
 
 .connexion__carte {
     inline-size: 100%;
-    /* Mesure de CONTENANT, hors échelle — voir l'en-tête. */
-    max-inline-size: 26rem;
+    max-inline-size: var(--contenant-carte);
 }
 
 .connexion__titre {
