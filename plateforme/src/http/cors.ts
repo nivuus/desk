@@ -35,9 +35,17 @@ export function entetesCors(
         Vary: 'Origin',
         // `GET` depuis P4 : `GET /vm` est la première route de ce service que
         // le navigateur atteigne autrement qu'en `POST`.
+        //
+        // ✅ ET G1 N'A RIEN EU À CHANGER ICI : `GET /applications` est le
+        // second consommateur de la même valeur, et le sous-bloc l'a trouvée
+        // déjà posée. La modification que son plan prescrivait était donc
+        // idempotente, et sa « rouge gratuite » n'était plus jouable — P4
+        // l'avait jouée, et son test l'annonçait en toutes lettres
+        // (`cors.test.ts`). Relevé plutôt que supposé fait.
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         // 🔴 `authorization` DEPUIS P4, ET SANS LUI RIEN N'EST ATTEIGNABLE.
-        // Les deux routes de P4 exigent `Authorization: Bearer`
+        // Les deux routes de P4 — et les deux de G1 — exigent
+        // `Authorization: Bearer`
         // (`http/porteur.ts`), et cet en-tête rend la requête NON SIMPLE : le
         // navigateur envoie une requête préalable portant
         // `Access-Control-Request-Headers: authorization`, qu'un serveur ne

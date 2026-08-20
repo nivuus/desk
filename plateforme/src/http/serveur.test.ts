@@ -160,8 +160,8 @@ describe('demarrerServeur', () => {
     });
 });
 
-describe('le chaînage des trois routeurs', () => {
-    it('🔴 les TROIS chemins répondent, et `/inconnu` rend le 404 MOT POUR MOT', async () => {
+describe('le chaînage des quatre routeurs', () => {
+    it('🔴 les QUATRE chemins répondent, et `/inconnu` rend le 404 MOT POUR MOT', async () => {
         // 🔴 La rouge : retirer un maillon de la chaîne. Sa route rend alors
         // 404 — et c'est la panne la plus discrète possible, puisque le service
         // répond, écoute, et sert les deux autres.
@@ -185,6 +185,21 @@ describe('le chaînage des trois routeurs', () => {
         // `/session` répond : sans jeton, 401 — pas 404.
         const session = await fetch(`${url}/session`, { method: 'POST' });
         expect(session.status).toBe(401);
+
+        // 🔴 `/applications` ET `/application/:id/lancer` RÉPONDENT : sans
+        // jeton, 401 — pas 404. C'est LA SEULE LIGNE qui prouve que le
+        // quatrième maillon est réellement chaîné dans `demarrerServeur`, et
+        // c'est le même argument que celui du canal `/agent` : sans elle, le
+        // pair verrait un service qui répond, écoute, sert les trois autres, et
+        // rend 404 sur celui-ci.
+        //
+        // ⚠️ LE CORPS EST LU, PAS SEULEMENT LE CODE. Un 401 `{refus:...}` ne
+        // peut venir que de la route ; un 404 générique porte `introuvable\n`.
+        const liste = await fetch(`${url}/applications?vm=v-1`);
+        expect([liste.status, await liste.json()]).toEqual([401, { refus: 'jeton-absent' }]);
+
+        const lancer = await fetch(`${url}/application/a-1/lancer`, { method: 'POST' });
+        expect([lancer.status, await lancer.json()]).toEqual([401, { refus: 'jeton-absent' }]);
 
         // Et le 404 de P1 est intact, CARACTÈRE POUR CARACTÈRE.
         const inconnu = await fetch(`${url}/inconnu`);
