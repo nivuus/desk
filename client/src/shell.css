@@ -1,0 +1,166 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA FEUILLE DE LA PAGE-SHELL, ET D'ELLE SEULE — sous-projet ⑥, sous-bloc S3.
+
+   Trois surfaces, trois feuilles, une convention : `style.css` est celle de la
+   fenêtre de session, `connexion.css` celle de l'écran de connexion, celle-ci
+   celle du bureau. Aucune ne connaît les deux autres.
+
+   🔴 ELLE SE LIE DEPUIS `shell.html`, ELLE NE S'IMPORTE JAMAIS. C'est
+   l'arrangement B, mesuré par S1 et reconfirmé par le plan S3 : un `@import`
+   fait RÉ-INLINER la feuille dans chaque entrée qui la traverse, un `<link>`
+   laisse Vite la PARTAGER. C'est ce qui permet à `primitives.css` d'être servie
+   une seule fois pour les trois pages qui la lient, au même hachage.
+
+   ── AUCUN SÉLECTEUR D'ÉLÉMENT NU ─────────────────────────────────────────
+   Tout passe par une classe, comme dans `primitives.css` et pour la même
+   raison : c'est ce qui garantit que cette feuille ne peut RIEN changer à
+   `index.html` le jour où quelqu'un lierait la mauvaise feuille. La fenêtre de
+   session appartient à S4, et S3 n'a pas le droit d'y toucher.
+
+   ── DEUX LONGUEURS LITTÉRALES, DÉCLARÉES PLUTÔT QUE DISSIMULÉES ──────────
+   ⚠️ Les deux mesures de CONTENANT de cette feuille — la largeur maximale de
+   la page (72rem) et la largeur minimale d'une carte dans la grille (18rem) —
+   ne passent par aucun cran d'échelle, et il faut le dire. Les échelles du
+   §4.4 couvrent l'ESPACEMENT (`--e-*`) et la TYPOGRAPHIE (`--t-*`) ; elles ne
+   portent aucune mesure de contenant — la plus grande, `--e-8`, vaut 4rem,
+   soit une carte de 64 px. Les inventer en tokens changerait le compte de 48
+   que §7.4, §7.6 et trois documents publient.
+
+   🔴 ELLES SONT ÉCRITES EN LITTÉRAL, ET NON EN PROPRIÉTÉ PERSONNALISÉE LOCALE.
+   Une première rédaction les posait en `--largeur-page` / `--largeur-carte-min`
+   sur `.bureau`, en affirmant en toutes lettres qu'elles échappaient au §7.6
+   « qui exige qu'un `var(--…)` soit déclaré : ces deux-là le sont, juste
+   au-dessous ». LE CONTRÔLE A RÉFUTÉ CETTE PHRASE À LA PREMIÈRE EXÉCUTION :
+   son inclusion ① exige qu'un `var(--…)` soit déclaré par `tokens.css`, la
+   source UNIQUE des valeurs, et pas seulement quelque part —
+
+       NON DÉCLARÉ  --largeur-carte-min  employé par client/src/shell.css
+       NON DÉCLARÉ  --largeur-page       employé par client/src/shell.css
+
+   C'est le contrôle qui a raison : une feuille de surface qui se déclare ses
+   propres tokens rouvrirait par la fenêtre la dispersion des valeurs que
+   `tokens.css` existe pour fermer.
+
+   ⚠️ AUCUN CONTRÔLE NE MESURE UNE LONGUEUR — ni celles-ci, ni les trois de
+   `style.css` que S4 doit reprendre. La clause « aucune longueur hors échelle »
+   du §8 de la spec reste FAUSSE à la fin de S3, désormais de CINQ valeurs et
+   non de trois, et c'est déclaré plutôt que compensé.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.bureau {
+    box-sizing: border-box;
+    /* Mesure de CONTENANT, hors échelle — voir l'en-tête. */
+    max-inline-size: 72rem;
+    /* `--e-7` : la marge de tête des surfaces. */
+    margin-block: var(--e-7);
+    margin-inline: auto;
+    padding-inline: var(--e-5);
+}
+
+.bureau__titre {
+    margin-block: 0 var(--e-5);
+    color: var(--texte-fort);
+    /* `--t-2xl` : le titre de PAGE (spec §4.4). Le cran au-dessus, `--t-3xl`,
+       est celui de l'écran de connexion, qui n'a que lui à montrer. */
+    font-size: var(--t-2xl);
+    line-height: var(--lh-serre);
+}
+
+.bureau__section {
+    /* `--e-6` : la marge des sections. */
+    margin-block-start: var(--e-6);
+}
+
+.bureau__section-titre {
+    margin-block: 0 var(--e-4);
+    color: var(--texte-fort);
+    font-size: var(--t-xl);
+    line-height: var(--lh-serre);
+}
+
+/* ⚠️ LE BANDEAU VIDE DISPARAÎT, IL NE DEVIENT PAS UN CADRE VIDE. `.message`
+   porte un trait et un fond ; sans cette règle, `lecteurDemonte()` — qui émet
+   délibérément la CHAÎNE VIDE — laisserait un rectangle bordé sans texte, et
+   l'effacement que ce vide existe pour dire se lirait comme un défaut
+   d'affichage. La règle du ton reste dans `shell.ts` ; celle-ci ne fait que
+   ne rien montrer quand il n'y a rien à dire. */
+.bureau__bandeau:empty {
+    display: none;
+}
+
+.bureau__bandeau {
+    margin-block-start: var(--e-4);
+}
+
+.bureau__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-3);
+    align-items: center;
+}
+
+/* ── LA GRILLE DE CARTES ──────────────────────────────────────────────────
+   ⚠️ QUE LA GRILLE SOIT LA BONNE FORME pour une liste de fenêtres — plutôt
+   qu'une liste dense ou un tableau — EST UN JUGEMENT HUMAIN, et aucune
+   commande ne le dira. Il s'ajoute aux onze du dépôt à l'entrée de S3.
+
+   `min()` borne la piste à la largeur disponible : sans lui, une carte de
+   18rem déborderait sur un téléphone étroit, et la page défilerait
+   horizontalement. */
+.bureau__fenetres {
+    display: grid;
+    /* `18rem` : mesure de CONTENANT, hors échelle — voir l'en-tête. */
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+    /* `--e-5` : la gouttière entre cartes. */
+    gap: var(--e-5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.bureau__fenetre {
+    display: grid;
+}
+
+.bureau__carte {
+    display: grid;
+    gap: var(--e-3);
+    align-content: start;
+}
+
+/* ── LA PASTILLE D'ÉTAT ───────────────────────────────────────────────────
+   🔴 ELLE SE DIT PAR L'ENCRE, JAMAIS PAR UN FOND COLORÉ, et c'est une décision
+   MESURÉE. Le contrôle §7.1 mesure `--succes` et `--texte-faible` comme des
+   ENCRES sur les trois fonds — jamais comme des fonds. Un
+   `background: var(--succes)` poserait le texte de la pastille sur une couleur
+   dont AUCUNE des 52 paires ne dit rien, et l'état d'une fenêtre serait le seul
+   du produit dont le contraste ne serait mesuré par personne. C'est la décision
+   que S2 a prise pour ses quatre tons de message, et la reprendre coûte ZÉRO
+   paire neuve et ZÉRO token neuf.
+
+   ⚠️ QUE DEUX ÉTATS AINSI DISTINGUÉS SE LISENT ASSEZ EST UN JUGEMENT HUMAIN.
+   Ce qui EST mesuré, c'est leur contraste sur le fond ; distinguer deux états
+   n'est pas la même chose que lire un texte, et WCAG ne le mesure pas ici.
+
+   ⚠️ ET LA COULEUR SEULE NE PORTE PAS L'INFORMATION : la pastille écrit
+   « ouverte » ou « fermée » en toutes lettres. Le §3 de la spec l'exige, et une
+   pastille muette de couleur serait précisément ce qu'il interdit. */
+.bureau__pastille {
+    display: inline-block;
+    border: var(--trait) solid currentColor;
+    /* `--r-plein` : la forme de pastille. */
+    border-radius: var(--r-plein);
+    /* `--e-1` : l'écart interne d'une étiquette. */
+    padding: var(--e-1) var(--e-2);
+    /* `--t-xs` : les étiquettes. */
+    font-size: var(--t-xs);
+    line-height: var(--lh-normal);
+}
+
+.bureau__pastille--ouverte {
+    color: var(--succes);
+}
+
+.bureau__pastille--fermee {
+    color: var(--texte-faible);
+}

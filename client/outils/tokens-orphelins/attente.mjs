@@ -117,18 +117,30 @@
 // Chaque entrée nomme le sous-bloc qui la consommera. Relevé le 20 août 2026,
 // au commit de la tâche 8 du sous-bloc S2.
 // ═══════════════════════════════════════════════════════════════════════════
+//
+// 🔴 SEPT ENTRÉES SONT SORTIES À LA TÂCHE 4 DU SOUS-BLOC S3, dans le commit
+// même qui a écrit leurs appelants — `client/src/shell.css`, la feuille de la
+// page-shell. Le contrôle exige l'ÉGALITÉ : les retirer sans écrire l'appelant
+// aurait rendu `NOUVEL ORPHELIN`, l'écrire sans les retirer
+// `À RETIRER DE LA LISTE`, et les deux sens ont été vus rouges en S1.
+//
+//   --t-2xl    le titre de la page-shell        (.bureau__titre)
+//   --e-5      la gouttière entre cartes        (.bureau__fenetres)
+//   --e-6      la marge des sections            (.bureau__section)
+//   --e-7      la marge de tête de la surface   (.bureau)
+//   --t-xs     l'étiquette de la pastille       (.bureau__pastille)
+//   --e-1      son écart interne                (.bureau__pastille)
+//   --r-plein  sa forme                         (.bureau__pastille)
+//
+// ⚠️ LA FAMILLE ÉTIQUETTE / PASTILLE ÉTAIT RE-TAGUÉE « S3 ou plus tard » PAR
+// S2, faute de savoir si une pastille existerait. Elle existe : c'est l'état
+// ouverte / fermée d'une fenêtre, dit par l'ENCRE et jamais par un fond, pour
+// que son contraste reste dans les 52 paires mesurées du §7.1.
+// ═══════════════════════════════════════════════════════════════════════════
 const EN_ATTENTE_D_APPELANT = new Map([
-    // ── Famille ÉTIQUETTE / PASTILLE — RE-TAGUÉE S2 → S3+ par S2 (tâche 8) ─
-    ['--t-xs', 'S3 ou plus tard — la mention légale et les étiquettes'],
-    ['--e-1', 'S3 ou plus tard — l’écart interne d’une étiquette'],
-    ['--r-plein', 'S3 ou plus tard — les pastilles et les boutons ronds'],
-    // ── Typographie, interligne et espacement — S3 ────────────────────────
-    ['--t-2xl', 'S3 — le titre de l’écran de connexion'],
+    // ── Typographie et interligne — S3 ────────────────────────────────────
     ['--t-3xl', 'S3 — le titre du hub'],
     ['--lh-large', 'S3 — les paragraphes longs'],
-    ['--e-5', 'S3 — la gouttière entre cartes'],
-    ['--e-6', 'S3 — la marge des sections'],
-    ['--e-7', 'S3 — la marge de tête des surfaces'],
     // ── Le cas particulier, et il est nommé ───────────────────────────────
     // 🔴 `--police-mono` N'A QU'UN SEUL APPELANT PRÉVU, `#stats`, et la spec
     // §4.3 laisse son sort ouvert : « si aucun appelant n'apparaît, le token
