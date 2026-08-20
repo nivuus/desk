@@ -115,6 +115,60 @@ pub fn normaliser(texte: &str) -> String {
     sortie
 }
 
+/// `\n` → `\r\n`, la réciproque de `normaliser`. **Windows attend `\r\n`.**
+///
+/// Elle n'est PAS un `replace("\n", "\r\n")` : le texte qui arrive du
+/// navigateur peut porter DÉJÀ des `\r\n` — un copier depuis un éditeur
+/// Windows local en porte —, et le remplacement naïf rendrait alors `\r\r\n`,
+/// donc une ligne vide de plus à chaque collage. La fonction est **idempotente**
+/// exactement comme `normaliser` l'est dans l'autre sens, et l'aller-retour
+/// `normaliser(denormaliser(x)) == x` est ce qu'un test doit voir rouge en
+/// premier (spec §7.1).
+pub fn denormaliser(texte: &str) -> String {
+    let mut sortie = String::with_capacity(texte.len() + texte.len() / 16);
+    let mut precedent_cr = false;
+    for c in texte.chars() {
+        match c {
+            '\r' => {
+                sortie.push_str("\r\n");
+                precedent_cr = true;
+            }
+            '\n' => {
+                // Le `\n` d'un `\r\n` a déjà été rendu par le `\r`.
+                if !precedent_cr {
+                    sortie.push_str("\r\n");
+                }
+                precedent_cr = false;
+            }
+            autre => {
+                sortie.push(autre);
+                precedent_cr = false;
+            }
+        }
+    }
+    sortie
+}
+
+/// Borne le texte ENTRANT, en octets d'UTF-8. **On REFUSE, on ne tronque pas.**
+///
+/// ⚠️ **Ce n'est pas la même borne que celle du sens sortant, et l'asymétrie
+/// est voulue.** Côté sortant, `PRESSE_PAPIER_MAX` protège le **canal de
+/// contrôle** (D4) : le texte n'y est pas encore passé. Côté entrant, le texte
+/// a **déjà** traversé ce canal quand l'agent le voit — la borne y protège le
+/// tube capteur↔enfant et la mémoire, pas le canal. C'est le client qui doit
+/// appliquer la sienne AVANT d'émettre ; celle-ci est la ceinture.
+///
+/// **Le refus entrant se journalise et ne remonte aucun bandeau** : le client a
+/// déjà refusé et dit pourquoi, et un second bandeau pour le même geste serait
+/// du bruit.
+///
+/// La borne porte sur `len()`, c'est-à-dire des **octets**, jamais sur
+/// `chars().count()` : c'est l'unité du canal, et un texte d'emojis dont le
+/// compte de caractères tient déborde de quatre fois en octets.
+pub fn borner_entrant(texte: &str) -> Option<String> {
+    (texte.len() <= PRESSE_PAPIER_MAX).then(|| texte.to_owned())
+}
+
 /// Observe le presse-papier et décide ce qu'il faut annoncer.
 ///
 /// Il ne tient **aucune** ressource Windows : c'est l'appelant qui lui donne
@@ -198,6 +252,40 @@ impl Sondeur {
         }
         self.dernier_emis = Some(texte.clone());
         Some(Annonce::Texte(texte))
+    }
+
+    /// Arme les gardes n°1 et n°2 de D5 **sur NOTRE PROPRE écriture**.
+    ///
+    /// À appeler juste après avoir écrit le presse-papier Windows nous-mêmes
+    /// (sens navigateur → VM, sous-bloc P2). `seq` est le numéro de séquence
+    /// relu **APRÈS `CloseClipboard`** — le relire avant rendrait un compteur
+    /// que la fermeture peut encore faire bouger, et le garde n°1 serait faux
+    /// d'un cran, c'est-à-dire silencieusement inopérant.
+    ///
+    /// Les **deux** champs sont posés, et chacun est un garde distinct :
+    ///
+    /// - `reference` **est le garde n°1** : au tour suivant, `observer` sort
+    ///   sur sa première ligne et **ne rouvre même pas** le presse-papier ;
+    /// - `dernier_emis` **est le garde n°2 armé sur notre écriture** : il
+    ///   rattrape le cas où une écriture TIERCE se serait intercalée entre
+    ///   notre `SetClipboardData` et cette relecture du compteur. Le numéro
+    ///   relu n'est alors déjà plus le courant, le garde n°1 ne mord pas, et
+    ///   c'est la comparaison de contenu qui empêche l'aller-retour.
+    ///
+    /// Le texte est **normalisé** avant d'être mémorisé, comme l'est celui que
+    /// lit `observer` : sans cela le garde n°2 comparerait un texte à `\r\n`
+    /// (ce que Windows nous rendra, puisque c'est `denormaliser` qui les y met)
+    /// à un texte à `\n`, et ne reconnaîtrait jamais notre propre écriture.
+    ///
+    /// ⚠️ **Ce que cette méthode ne peut PAS faire**, et il faut le dire : si
+    /// une autre copie survient entre notre écriture et le tour de roue qui
+    /// consomme ce couple, poser `reference` sur *notre* `seq` ne la masque
+    /// pas — le compteur aura encore bougé, et la copie tierce sera annoncée.
+    /// **C'est le comportement voulu** : le garde reste exact au sens de D5, et
+    /// un test le vérifie.
+    pub fn apres_notre_ecriture(&mut self, seq: u32, texte: &str) {
+        self.reference = Some(seq);
+        self.dernier_emis = Some(normaliser(texte));
     }
 
     /// Un tour de sondage complet, **hors de tout verrou**.

@@ -182,3 +182,140 @@ fn le_premier_tour_prend_reference_et_n_annonce_rien() {
         Some(Annonce::Texte(String::from("neuf")))
     );
 }
+
+// ---------------------------------------------------------------------------
+// Sous-bloc P2 — le sens navigateur → VM : le garde n°1 de D5, la réciproque
+// de `normaliser`, et la borne du texte ENTRANT.
+// ---------------------------------------------------------------------------
+
+/// 🔴 **C'est le garde n°1 de D5, et rien d'autre ne le mesure.**
+///
+/// Le témoin n'est pas que `observer` rende `None` — le garde n°2 le rendrait
+/// aussi. Le témoin est que la fermeture de lecture **ne soit pas appelée du
+/// tout** : le presse-papier Windows n'est même pas rouvert. D'où une
+/// fermeture qui PANIQUE.
+///
+/// ROUGE si `apres_notre_ecriture` ne pose pas `reference` : `observer` lit,
+/// et le test explose.
+#[test]
+fn apres_notre_ecriture_le_tour_suivant_n_ouvre_pas_le_presse_papier() {
+    let mut sondeur = Sondeur::nouveau();
+    amorce(&mut sondeur);
+    sondeur.apres_notre_ecriture(7, "colle");
+    assert_eq!(
+        sondeur.observer(7, || panic!("le garde n°1 a laissé rouvrir le presse-papier")),
+        None
+    );
+}
+
+/// 🔴 **C'est le garde n°2 ARMÉ SUR NOTRE PROPRE ÉCRITURE**, c'est-à-dire le
+/// cas que D5 donne pour raison d'être du n°2 : une écriture TIERCE s'est
+/// intercalée entre notre `SetClipboardData` et notre relecture du compteur,
+/// si bien que le numéro que nous avons relu n'est déjà plus le courant.
+///
+/// ROUGE si `apres_notre_ecriture` ne pose que `reference` : le compteur ayant
+/// bougé, `observer` lit, trouve notre propre texte, et le renvoie au
+/// navigateur — un aller-retour pour rien.
+#[test]
+fn apres_notre_ecriture_un_compteur_qui_a_bouge_ne_renvoie_pas_notre_texte() {
+    let mut sondeur = Sondeur::nouveau();
+    amorce(&mut sondeur);
+    sondeur.apres_notre_ecriture(7, "colle");
+    assert_eq!(sondeur.observer(8, || Some(String::from("colle"))), None);
+}
+
+/// Le pendant du précédent : le garde n°2 ne doit pas absorber TOUT ce qui
+/// suit une écriture. Une copie tierce d'un AUTRE texte est bien annoncée.
+///
+/// ROUGE si `apres_notre_ecriture` posait un état « on se tait désormais ».
+/// Sans ce test, un garde trop large passerait les deux précédents.
+#[test]
+fn apres_notre_ecriture_une_copie_tierce_est_quand_meme_annoncee() {
+    let mut sondeur = Sondeur::nouveau();
+    amorce(&mut sondeur);
+    sondeur.apres_notre_ecriture(7, "colle");
+    assert_eq!(
+        sondeur.observer(8, || Some(String::from("autre chose"))),
+        Some(Annonce::Texte(String::from("autre chose")))
+    );
+}
+
+/// `apres_notre_ecriture` normalise le texte qu'elle mémorise, comme
+/// `observer` normalise celui qu'il lit — sans quoi le garde n°2 comparerait
+/// un texte à `\r\n` (ce que Windows nous rendra) à un texte à `\n`, et ne
+/// reconnaîtrait jamais notre propre écriture.
+///
+/// ROUGE si l'on mémorise le texte brut.
+#[test]
+fn apres_notre_ecriture_memorise_le_texte_normalise() {
+    let mut sondeur = Sondeur::nouveau();
+    amorce(&mut sondeur);
+    // Ce que l'on a REMIS à Windows porte des `\r\n` (c'est `denormaliser` qui
+    // les y met) ; ce que l'on relira en portera donc aussi.
+    sondeur.apres_notre_ecriture(7, "une\r\ndeux");
+    assert_eq!(sondeur.observer(8, || Some(String::from("une\r\ndeux"))), None);
+}
+
+/// 🔴 **La première chose qu'un test doit voir rouge** (spec §7.1) :
+/// l'aller-retour ne doit rien changer.
+///
+/// ROUGE si `denormaliser` double les `\r` — `normaliser` rendrait alors deux
+/// lignes là où il y en avait une.
+#[test]
+fn l_aller_retour_normaliser_denormaliser_est_l_identite() {
+    let normalise = "une\ndeux\ntrois";
+    assert_eq!(normaliser(&denormaliser(normalise)), normalise);
+}
+
+/// ROUGE si `denormaliser` ajoutait un `\r\n` là où il n'y a pas de saut.
+#[test]
+fn denormaliser_laisse_un_texte_sans_saut_de_ligne_intact() {
+    assert_eq!(denormaliser("abc"), "abc");
+}
+
+/// 🔴 **C'est le cas RÉEL, pas une curiosité** : le texte vient d'un
+/// navigateur, et rien ne garantit qu'il n'a pas déjà des `\r\n` — un copier
+/// depuis un éditeur Windows local en porte.
+///
+/// ROUGE si `denormaliser` est un `replace("\n", "\r\n")` naïf : il rendrait
+/// `a\r\r\nb`, et le Bloc-notes afficherait une ligne vide de plus.
+#[test]
+fn denormaliser_ne_double_pas_des_crlf_deja_presents() {
+    assert_eq!(denormaliser("a\r\nb"), "a\r\nb");
+}
+
+/// Un `\r` seul devient `\r\n` lui aussi : Windows n'affiche pas un `\r` nu
+/// comme un saut de ligne dans le Bloc-notes.
+#[test]
+fn denormaliser_traite_aussi_un_cr_seul() {
+    assert_eq!(denormaliser("a\rb"), "a\r\nb");
+}
+
+/// ROUGE si la comparaison est un `>=` au lieu d'un `>` : le cas limite exact
+/// serait refusé alors qu'il tient.
+#[test]
+fn borner_entrant_accepte_exactement_la_borne_et_refuse_un_octet_de_plus() {
+    let pile = "a".repeat(PRESSE_PAPIER_MAX);
+    assert_eq!(borner_entrant(&pile), Some(pile.clone()));
+    let un_de_trop = "a".repeat(PRESSE_PAPIER_MAX + 1);
+    assert_eq!(borner_entrant(&un_de_trop), None);
+}
+
+/// 🔴 La borne compte des **octets d'UTF-8**, jamais des `char` — c'est la
+/// même unité que celle du sens sortant, qui protège un canal.
+///
+/// ROUGE si l'implémentation est `texte.chars().count()` : ce texte a
+/// `PRESSE_PAPIER_MAX / 4` caractères, donc passerait, pour exactement
+/// `PRESSE_PAPIER_MAX` octets — puis un caractère de plus le ferait déborder
+/// de quatre octets sans que le compte de `char` ne s'en aperçoive.
+#[test]
+fn borner_entrant_compte_des_octets_utf8_et_non_des_char() {
+    let emojis = "😀".repeat(PRESSE_PAPIER_MAX / 4);
+    assert_eq!(emojis.len(), PRESSE_PAPIER_MAX);
+    assert_eq!(emojis.chars().count(), PRESSE_PAPIER_MAX / 4);
+    assert_eq!(borner_entrant(&emojis), Some(emojis.clone()));
+
+    let un_de_trop = format!("{emojis}😀");
+    assert_eq!(un_de_trop.chars().count(), PRESSE_PAPIER_MAX / 4 + 1);
+    assert_eq!(borner_entrant(&un_de_trop), None);
+}
