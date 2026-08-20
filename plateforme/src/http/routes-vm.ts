@@ -44,6 +44,7 @@ import { inventaireStatique } from '../orchestration/inventaire-statique';
 import { BACKEND_STATIQUE, CODE_HTTP } from '../orchestration/refus';
 import { vmsDe } from '../orchestration/selection';
 import { entetesCors } from './cors';
+import { ENTETES_SECURITE } from './entetes';
 import { lirePorteur } from './porteur';
 
 export interface DependancesVm {
@@ -63,6 +64,12 @@ function repondre(
 ): void {
     rep.writeHead(code, {
         'content-type': 'application/json; charset=utf-8',
+        // ⚠️ INCONDITIONNELS, et posés sur TOUTE réponse — y compris les
+        // réponses d'ERREUR (401, 405, 413, 429, 500, 503), qui portent
+        // souvent plus d'information qu'une réponse normale. Ils sont étalés
+        // AVANT `cors` pour que la politique d'origine, qui est facultative,
+        // ne puisse jamais les écraser par mégarde.
+        ...ENTETES_SECURITE,
         ...(cors ?? {}),
     });
     rep.end(JSON.stringify(corps));
@@ -113,7 +120,7 @@ export async function servirVm(
     // autorisation le navigateur refusera la vraie requête — un refus BRUYANT,
     // que l'opérateur voit. Même choix que `routes-auth.ts`.
     if (req.method === 'OPTIONS') {
-        rep.writeHead(204, cors ?? {});
+        rep.writeHead(204, { ...ENTETES_SECURITE, ...(cors ?? {}) });
         rep.end();
         return true;
     }
