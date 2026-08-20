@@ -1,0 +1,8 @@
+2026-08-20T07:02:03.708676Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T07:02:03.708745Z  INFO agent::diagnostics::presse_papier: P0 DEBUT sonde presse-papier — elle ECRIT le presse-papier de la VM (phases C et D) secondes=45
+2026-08-20T07:02:03.708755Z  INFO agent::diagnostics::presse_papier: P0 A repos releve=0 seq=0
+2026-08-20T07:02:03.959491Z  INFO agent::diagnostics::presse_papier: P0 A repos releve=1 seq=0
+2026-08-20T07:02:04.209924Z  INFO agent::diagnostics::presse_papier: P0 A repos releve=2 seq=0
+2026-08-20T07:02:04.209949Z  INFO agent::diagnostics::presse_papier: P0 A bilan q1="NON-MESURABLE-compteur-nul" seq_min=0 seq_max=0
+2026-08-20T07:02:04.209974Z  WARN agent::diagnostics::presse_papier: P0 NON MESURABLE : GetClipboardSequenceNumber rend 0 aux trois releves — le processus n'a probablement pas WINSTA_ACCESSCLIPBOARD. Les phases B a D ne peuvent rien mesurer, elles sont sautees.
+2026-08-20T07:02:04.209980Z  INFO agent::diagnostics::presse_papier: P0 BILAN q1="NON-MESURABLE-compteur-nul" q1bis="NON-MESUREE" q2="NON-MESUREE" q3="NON-MESUREE" echecs_open=0 tentatives_open=0 seq_debut=0 seq_fin=0

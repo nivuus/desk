@@ -74,16 +74,51 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
         tracing::info!(releve = i, seq, "P0 A repos");
         repos.push(seq);
     }
-    // `GetClipboardSequenceNumber` rend 0 quand le processus n'a pas l'accès
-    // `WINSTA_ACCESSCLIPBOARD` sur la station de fenêtres. Trois zéros ne
-    // sont donc pas « un compteur stable » : c'est un compteur ABSENT, et le
-    // verdict doit pouvoir le dire — un verdict positif exige que la chose
-    // mesurée existe (piège de D9, `survit=true` rendu par une sortie
-    // disparue).
-    let compteur_absent = repos.iter().all(|&s| s == 0);
     let stable_au_repos = repos.windows(2).all(|paire| paire[0] == paire[1]);
+
+    // ---- Phase A-bis : DÉSAMBIGUÏSER un zéro, jamais en conclure ----
+    //
+    // 🔴 **Trois zéros ont DEUX causes, et la première version de cette sonde
+    // les confondait — elle a rendu un verdict éliminatoire FAUX sur un
+    // système parfaitement sain** (exécution n°1 du 20 août 2026, journal
+    // `p0-sonde-1.log`, conservé pour cela) :
+    //
+    // 1. `GetClipboardSequenceNumber` a ÉCHOUÉ — le processus n'a pas
+    //    l'accès `WINSTA_ACCESSCLIPBOARD` sur sa station de fenêtres. La
+    //    documentation ne prévoit que ce cas, et c'est ce que la première
+    //    version supposait.
+    // 2. Le compteur EXISTE et vaut réellement zéro, parce que **rien n'a
+    //    jamais été copié depuis le démarrage de la station de fenêtres**.
+    //    Mesuré : la VM venait d'être démarrée, la sonde a lu `0, 0, 0` et
+    //    a déclaré `P0 NON MESURABLE` ; cinq copies plus tard, la même sonde
+    //    sur la même station lisait **53**, stable, et toutes les phases
+    //    passaient. Le zéro était le compteur, pas son absence.
+    //
+    // On ne conclut donc pas : on écrit nous-mêmes le presse-papier — le
+    // geste de la phase C, joué ici en désambiguïsateur — et on relit. S'il
+    // bouge, le compteur existe et les phases suivantes ont un sens. **Un
+    // verdict négatif exige que la chose mesurée soit ABSENTE, pas
+    // seulement nulle** ; c'est la symétrie du piège de D9 (`survit=true`
+    // rendu par une sortie disparue).
+    let mut repos = repos;
+    if repos.iter().all(|&s| s == 0) {
+        tracing::info!(
+            "P0 A-bis : trois zeros — on ecrit le presse-papier pour departager \
+             « compteur absent » de « rien n'a encore ete copie »"
+        );
+        let _ = win::ecrire_texte("sonde-presse-papier-desambiguisation");
+        std::thread::sleep(PAS_REPOS);
+        let apres = win::numero_de_sequence();
+        tracing::info!(apres, "P0 A-bis releve apres notre ecriture");
+        if apres != 0 {
+            // Le compteur existe : la station était simplement vierge. On
+            // repart de ce relevé-ci, qui est le vrai état de référence.
+            repos = vec![apres; RELEVES_REPOS];
+        }
+    }
+    let compteur_absent = repos.iter().all(|&s| s == 0);
     let q1 = if compteur_absent {
-        "NON-MESURABLE-compteur-nul"
+        "NON-MESURABLE-compteur-absent"
     } else if stable_au_repos {
         "stable"
     } else {
@@ -93,9 +128,10 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
 
     if compteur_absent {
         tracing::warn!(
-            "P0 NON MESURABLE : GetClipboardSequenceNumber rend 0 aux trois releves — \
-             le processus n'a probablement pas WINSTA_ACCESSCLIPBOARD. Les phases B a D \
-             ne peuvent rien mesurer, elles sont sautees."
+            "P0 NON MESURABLE : GetClipboardSequenceNumber rend 0 aux trois releves ET \
+             apres une ecriture de la sonde elle-meme — le processus n'a donc pas \
+             WINSTA_ACCESSCLIPBOARD. Les phases B a D ne peuvent rien mesurer, elles \
+             sont sautees."
         );
         tracing::info!(
             q1,
@@ -104,8 +140,8 @@ pub fn executer(secondes_texte: &str) -> Result<()> {
             q3 = "NON-MESUREE",
             echecs_open = 0,
             tentatives_open = 0,
-            seq_debut = repos[0],
-            seq_fin = repos[RELEVES_REPOS - 1],
+            seq_debut = 0,
+            seq_fin = 0,
             "P0 BILAN"
         );
         return Ok(());

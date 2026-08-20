@@ -1,0 +1,16 @@
+2026-08-20T07:06:52.075438Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T07:06:52.075477Z  INFO agent::diagnostics::presse_papier: P0 DEBUT sonde presse-papier — elle ECRIT le presse-papier de la VM (phases C et D) secondes=60
+2026-08-20T07:06:52.075484Z  INFO agent::diagnostics::presse_papier: P0 A repos releve=0 seq=179
+2026-08-20T07:06:52.326156Z  INFO agent::diagnostics::presse_papier: P0 A repos releve=1 seq=179
+2026-08-20T07:06:52.576986Z  INFO agent::diagnostics::presse_papier: P0 A repos releve=2 seq=179
+2026-08-20T07:06:52.577016Z  INFO agent::diagnostics::presse_papier: P0 A bilan q1="stable" seq_min=179 seq_max=179
+2026-08-20T07:06:52.577028Z  INFO agent::diagnostics::presse_papier: P0 B debut — COPIER MAINTENANT trois textes distincts a la main dans la VM, puis RECOPIER le troisieme a l'identique secondes=60 seq_debut=179
+2026-08-20T07:07:01.361544Z  INFO agent::diagnostics::presse_papier: P0 B mouvement, texte lu seq=191 precedent=179 octets_utf16=22 octets_utf8=11 empreinte="bfb25a7e7091"
+2026-08-20T07:07:06.372479Z  INFO agent::diagnostics::presse_papier: P0 B mouvement, texte lu seq=203 precedent=191 octets_utf16=74 octets_utf8=37 empreinte="58762fd2b810"
+2026-08-20T07:07:11.401434Z  INFO agent::diagnostics::presse_papier: P0 B mouvement, texte lu seq=215 precedent=203 octets_utf16=22 octets_utf8=11 empreinte="43aa947a10a8"
+2026-08-20T07:07:16.409140Z  INFO agent::diagnostics::presse_papier: P0 B mouvement, texte lu seq=227 precedent=215 octets_utf16=22 octets_utf8=11 empreinte="43aa947a10a8"
+2026-08-20T07:07:26.177456Z  INFO agent::diagnostics::presse_papier: P0 B mouvement, texte lu seq=232 precedent=227 octets_utf16=66 octets_utf8=33 empreinte="e6be46794b39"
+2026-08-20T07:07:52.727662Z  INFO agent::diagnostics::presse_papier: P0 B bilan q1bis="bouge" mouvements=5 lectures=5 echecs_open=0
+2026-08-20T07:07:52.978621Z  INFO agent::diagnostics::presse_papier: P0 C notre ecriture q3="bouge" avant=232 apres=237 api_annonce_succes=true empreinte="4a3fa519bded" octets=24
+2026-08-20T07:07:53.229377Z  INFO agent::diagnostics::presse_papier: P0 D reecriture identique q2="bouge" avant=237 apres=242 api_annonce_succes=true
+2026-08-20T07:07:53.229404Z  INFO agent::diagnostics::presse_papier: P0 BILAN q1="stable" q1bis="bouge" q2="bouge" q3="bouge" mouvements=5 lectures=5 echecs_open=0 tentatives_open=5 seq_debut=179 seq_fin=242
