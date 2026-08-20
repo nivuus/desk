@@ -16,7 +16,13 @@ chaque journal.
 | Famille | État | Ce qu'il faut faire |
 | --- | --- | --- |
 | tout le répertoire, sauf la ligne ci-dessous | UTF-8, aucune séquence ANSI | rien : les journaux se `grep`ent à plat |
-| `vm-1-agent.log`, `vm-2-agent.log` | UTF-8, **séquences ANSI de `tracing`**, CRLF | `sed 's/\x1b\[[0-9;]*m//g'` — ou lire le jumeau `-plat`, versé pour chacun |
+| `vm-1-agent.log`, `vm-2-agent.log` | UTF-8, **séquences ANSI de `tracing`** | `sed 's/\x1b\[[0-9;]*m//g'` — ou lire le jumeau `-plat`, versé pour chacun |
+
+⚠️ **Les CRLF et les séquences ANSI ne coïncident PAS**, et le dire évite une
+règle fausse : `grep -rlP '\x1b\['` rend **deux** fichiers, `grep -rlU $'\r'`
+en rend **six** — les deux bruts, leurs deux jumeaux `-plat`, et les deux
+`vm-{1,2}-corroboration.log`, tous venus de la VM. **Les CRLF ne gênent aucun
+`grep`** ; seules les séquences ANSI le font.
 
 C'est la famille de lecture la plus simple de tous les sous-blocs de ce dépôt,
 et pour une raison structurelle : **P4 ne fait presque rien tourner sur la VM
