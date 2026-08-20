@@ -1,6 +1,11 @@
 -- L'identite des agents : la table que le canal /agent lit et ecrit, et la
 -- table `application` qui nait avec ses contraintes et reste vide.
 --
+-- MISE A JOUR (sous-bloc G1, 20 aout 2026) : elle NE RESTE PLUS VIDE. La
+-- migration 0004 lui ajoute ses colonnes et son index d'unicite, et
+-- `agents/canal.ts` l'ecrit a chaque `catalogue` recu. Voir l'encadre pose
+-- sur la table elle-meme, plus bas.
+--
 -- Les horodatages sont BIGINT et non INTEGER, et c'est MESURE par P1 :
 -- INTEGER vaut jusqu'a 8 octets sur SQLite et exactement 4 sur Postgres, ou
 -- le 19 aout 2026, sur PostgreSQL 16.15, un Date.now() rendait
@@ -43,12 +48,28 @@ CREATE TABLE agent_enrole (
 -- `application` est creee par P3 et RESTE VIDE : son chemin d'ecriture est le
 -- sous-projet ④, qui empruntera le canal /agent pour la remplir.
 --
+-- ❌ CES DEUX PHRASES SONT DEVENUES FAUSSES LE 20 AOUT 2026, sous-bloc G1 --
+-- c'est-a-dire par le sous-projet ④ lui-meme, qui les a prises au mot. Elles
+-- sont conservees comme relevé daté de P3 plutot que reecrites, et corrigees
+-- ici : `application` a desormais un ecrivain, `agents/canal.ts`, qui applique
+-- la fusion de `apps/catalogue.ts` a chaque message `catalogue` de l'agent, et
+-- des colonnes que lui ajoute la migration 0004 (cle, cible, arguments,
+-- repertoire, apparue_a, disparue_a, masquee_a). Mesure en recette :
+-- 154 lignes pour la VM de developpement.
+--
 -- Elle nait ici, et pas plus tard, POUR SA CLE ETRANGERE : SQLite ne sait pas
 -- ajouter une contrainte par ALTER TABLE -- mesure par P1 le 19 aout 2026 sur
 -- SQLite 3.50.4 : near "CONSTRAINT": syntax error. Une cle etrangere nait
 -- avec sa table ou n'existe jamais (leg n°2 de P1). Ce n'est donc PAS un
 -- oubli si aucun code ne l'ecrit : c'est le prix, connu et paye d'avance, de
 -- la contrainte qu'elle porte.
+--
+-- ⚠️ LA CLAUSE FINALE NE DECRIT PLUS LE DEPOT depuis G1 : du code l'ecrit. Le
+-- RAISONNEMENT, lui, reste entier et c'est pourquoi il n'est pas supprime --
+-- c'est parce que la cle etrangere ne pouvait naitre qu'ici que la table a du
+-- naitre vide en P3, et la migration 0004 n'a eu qu'a lui ajouter des
+-- colonnes. La mesure de G1 confirme le prix paye d'avance : `ADD COLUMN ...
+-- NOT NULL` sans DEFAUT ne passe QUE sur une table vide (divergence E8).
 CREATE TABLE application (
     id     TEXT PRIMARY KEY,
     vm_id  TEXT NOT NULL REFERENCES vm(id),

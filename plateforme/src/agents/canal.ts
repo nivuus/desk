@@ -1,4 +1,11 @@
-// La boucle du canal `/agent` : enrôlement, battement, jeton frais.
+// La boucle du canal `/agent` : enrôlement, battement, jeton frais — et,
+// depuis le sous-bloc G1, le CATALOGUE qui monte et les ORDRES DE LANCEMENT
+// qui descendent.
+//
+// ⚠️ LE CANAL N'EST DONC PLUS SEULEMENT UN CANAL D'IDENTITÉ, et cette
+// première ligne disait le contraire jusqu'au 20 août 2026. Trois variantes
+// s'y sont ajoutées (`catalogue` et `lancee` montantes, `lancer` descendante),
+// et `PLATEFORME_VERSION` est passée à 2 pour cela.
 //
 // C'est l'UNIQUE consommateur du protocole `plateforme`
 // (`proto/ts/plateforme.ts`), et il ne recopie aucune forme de message : il
@@ -7,7 +14,14 @@
 // plateforme met réellement sur le fil.
 //
 // 🔴 CE CANAL NE PARTAGE RIEN AVEC LE RELAIS — ni garde, ni registre
-// d'appartenance, ni observateur de session. C'est la conséquence directe
+// d'appartenance, ni observateur de session.
+//
+// ⚠️ NE PAS CONFONDRE DEUX REGISTRES DEPUIS G1. La phrase ci-dessus reste
+// vraie du registre d'appartenance du RELAIS (`identite/garde.ts`), qu'il ne
+// partage toujours pas. Mais ce canal en tient désormais un AUTRE, qui lui est
+// propre : `agents/registre.ts`, la table des sockets d'agent vivants, sans
+// laquelle `POST /application/:id/lancer` n'aurait aucun moyen de joindre la
+// VM. Les deux ne se ressemblent que par le nom. C'est la conséquence directe
 // d'E4 : l'enrôlement est ASYNCHRONE (il lit `agent_enrole` et dérive une
 // empreinte `scrypt`), quand la garde du relais est PURE et SYNCHRONE. Les
 // faire cohabiter obligerait l'un des deux à céder.
