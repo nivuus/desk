@@ -1,0 +1,93 @@
+# CORROBORATION SUR VM RÉELLE — TÂCHE 16, HORS CRITÈRE
+# Jouée le 2026-08-20T05:27:33+02:00, commit 0614f63
+# Durée de la phase page-shell : 40 s
+
+[05:27:33] === 0. état de la VM et du binaire ===
+     ID   Nom       État
+    --------------------------------------
+     10   Windows   en cours d’exécution
+    
+[05:27:33] attente de WinRM puis du MONTAGE (pas du port : /media/vm se monte après)…
+[05:27:33] agent.exe : 9914368 octets, modifié 2026-08-20 01:16:35.720502600 +0200
+[05:27:33]    ⚠️ CE BINAIRE N’EST ATTRIBUABLE À AUCUN COMMIT DE P4 : il vient d’une
+[05:27:33]       compilation d’un chantier voisin. P4 ne touche aucun fichier Rust,
+[05:27:33]       donc il n’en exige aucun — mais la provenance est DITE, pas tue.
+[05:27:34] Get-Process agent avant lancement : 0
+[05:27:34] === 1. démarrage du service de plateforme ===
+    plateforme à l'écoute sur 192.168.3.1, le port 8090
+[05:27:35] === 2. npm run admin:agent ===
+[05:27:36]     vm_id            = c811f663-aa31-4297-984b-a64ba4d273f8
+[05:27:36]     prefixe (enrôlé) = EruXE9GcSN1r8MPeEbcAyA
+[05:27:36]     secret           = <non imprimé — 43 caractères>
+[05:27:36] === 3. npm run admin:utilisateur ===
+[05:27:37]     utilisateur = dde4571e-5d2b-440d-9859-9d16af85b5ac
+[05:27:37] === 4. POST /auth/connexion — un VRAI jeton, par la VRAIE route ===
+[05:27:37]     code = 200, jeton d’accès : 169 caractères
+[05:27:37] === 5. POST /session AVANT toute attribution — attendu 409 aucune-vm ===
+[05:27:37]     code = 409  corps = {"motif":"aucune-vm"}
+[05:27:37] === 6. npm run admin:attribuer ===
+    vm=c811f663-aa31-4297-984b-a64ba4d273f8
+    nom=w1
+    utilisateur=dde4571e-5d2b-440d-9859-9d16af85b5ac
+    email=p4@essai.local
+    (node:930754) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+    (Use `node --trace-warnings ...` to show where the warning was created)
+[05:27:38] === 7. vu_a AVANT que l’agent ne batte : null ===
+[05:27:38] === 8. POST /session, attribuée mais AGENT MUET — attendu 503 agent-injoignable ===
+[05:27:39]     code = 503  corps = {"vm":"c811f663-aa31-4297-984b-a64ba4d273f8","nom":"w1","prefixe":"EruXE9GcSN1r8MPeEbcAyA","etat":"injoignable","motif":"agent-injoignable","redemarrage":{"possible":false,"motif":"non-supporte","backend":"inventaire-statique"}}
+[05:27:39] === 9. ouverture d’une fenêtre éligible dans la session interactive ===
+    Opration russie : la tche planifie "p4-fenetre" a t cre.
+    Opration russie : tentative d'excution de la tche planifie "p4-fenetre".[05:27:45] === 10. lancement de l’agent, AVEC AGENT_VM et AGENT_SECRET ===
+    Opration russie : la tche planifie "guacamole-agent" a t  supprime.
+    Opration russie : la tche planifie "guacamole-agent" a t cre.
+    Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[05:27:45]     attente du premier battement…
+[05:28:06] === 11. vu_a APRÈS le battement : null ===
+[05:28:06] === 12. POST /session, agent VIVANT — attendu 200 avec le préfixe ===
+[05:28:06]     code = 503  corps = {"vm":"c811f663-aa31-4297-984b-a64ba4d273f8","nom":"w1","prefixe":"EruXE9GcSN1r8MPeEbcAyA","etat":"injoignable","motif":"agent-injoignable","redemarrage":{"possible":false,"motif":"non-supporte","backend":"inventaire-statique"}}
+[05:28:06] === 13. GET /vm ===
+[05:28:06]     code = 200  corps = {"vms":[{"id":"c811f663-aa31-4297-984b-a64ba4d273f8","nom":"w1","etat":"injoignable","prefixe":"EruXE9GcSN1r8MPeEbcAyA","sessions_ouvertes":0}]}
+[05:28:06] === 14. page-shell scriptée sur le préfixe RENDU PAR LA ROUTE, 40 s ===
+[05:28:06]     préfixe employé : EruXE9GcSN1r8MPeEbcAyA
+[05:28:47]     shell : 8 lignes
+[05:28:47] === 15. GET /vm pendant/après la session — sessions_ouvertes ===
+[05:28:47]     code = 200  corps = {"vms":[{"id":"c811f663-aa31-4297-984b-a64ba4d273f8","nom":"w1","etat":"injoignable","prefixe":"EruXE9GcSN1r8MPeEbcAyA","sessions_ouvertes":0}]}
+[05:28:47] === 16. arrêt de l’agent et copie des pièces ===
+    agents restants : 0[05:28:51]     agent.log : 15 lignes
+[05:28:51] === 17. la table session, telle que la plateforme l’a écrite ===
+    (node:935071) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+    (Use `node --trace-warnings ...` to show where the warning was created)
+[05:28:51] === 18. le RELEVÉ, assertion par assertion ===
+
+    --- ⓐ la chaîne de refus, sur le service réel ---
+    ⓐ sans attribution, la route refuse `aucune-vm`           : TENU
+    ⓐ et elle ne délivre AUCUN préfixe                        : TENU
+    --- ⓑ attribuée mais agent MUET : l’aveu, pas la fonction ---
+    ⓑ l’état annoncé est `injoignable`                        : TENU
+    ⓑ la plateforme AVOUE ne pas savoir redémarrer            : TENU
+    ⓑ et le préfixe est rendu QUAND MÊME                      : TENU
+    --- ⓒ agent VIVANT : c’est le battement réel qui décide ---
+    ⓒ l’état annoncé est `prete`                              : 🔴 NON TENU — obtenu "injoignable", attendu "prete"
+    ⓒ aucun aveu de redémarrage sur une VM prête              : 🔴 NON TENU — obtenu {"possible":false,"motif":"non-supporte","backend":"inventaire-statique"}, attendu undefined
+    ⓒ le préfixe RENDU est celui de la VM enrôlée             : TENU
+    ⓒ GET /vm annonce le même état                            : 🔴 NON TENU — obtenu "injoignable", attendu "prete"
+    --- ⓓ la page-shell, sur le préfixe RENDU PAR LA ROUTE ---
+    ⓓ la poignée de main humaine est acceptée sur <préfixe>:bureau: TENU
+    ⓓ et le relais lui délivre son `ice-config` pour CETTE session: TENU
+    --- ⓕ l’agent, en face : enrôlé, ou refusé ? ---
+    ⓕ refus de version relevés au journal de l’agent          : 7
+    ⓕ reprises du canal /agent relevées                       : 7
+    ⓕ l’agent est enrôlé auprès de la plateforme              : 🔴 NON TENU — obtenu false, attendu true
+    ⓕ aucune ligne ERROR au journal de l’agent                : TENU
+    ⓕ (pour mémoire) lignes WARN au journal de l’agent        : 7
+    --- ⓔ le lecteur de session.utilisateur_id (legs n°3 de P3) ---
+    ⓔ GET /vm porte le champ `sessions_ouvertes`              : TENU
+
+    VERDICT : 🔴 4 assertion(s) NON TENUE(S)
+[05:28:52] === 19. état final de la VM ===
+     ID   Nom       État
+    --------------------------------------
+     10   Windows   en cours d’exécution
+    
+    agents restants : 0
+[05:28:52] terminé — code du verdict : 1 (0 = tout tenu)

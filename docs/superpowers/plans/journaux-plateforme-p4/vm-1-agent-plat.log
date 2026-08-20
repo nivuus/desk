@@ -1,0 +1,15 @@
+2026-08-20T03:26:20.814006Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T03:26:20.820757Z  WARN agent::plateforme: message de la plateforme illisible (version divergente ?) url="ws://192.168.3.1:8090/agent" erreur=version de plateforme non supportée : 2 texte="{\"type\":\"refus\",\"v\":2,\"motif\":\"version\"}"
+2026-08-20T03:26:20.820823Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T03:26:21.367260Z  WARN agent::plateforme: message de la plateforme illisible (version divergente ?) url="ws://192.168.3.1:8090/agent" erreur=version de plateforme non supportée : 2 texte="{\"type\":\"refus\",\"v\":2,\"motif\":\"version\"}"
+2026-08-20T03:26:21.367374Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=1 delai_ms=1000
+2026-08-20T03:26:22.414186Z  WARN agent::plateforme: message de la plateforme illisible (version divergente ?) url="ws://192.168.3.1:8090/agent" erreur=version de plateforme non supportée : 2 texte="{\"type\":\"refus\",\"v\":2,\"motif\":\"version\"}"
+2026-08-20T03:26:22.414268Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=2 delai_ms=2000
+2026-08-20T03:26:24.461077Z  WARN agent::plateforme: message de la plateforme illisible (version divergente ?) url="ws://192.168.3.1:8090/agent" erreur=version de plateforme non supportée : 2 texte="{\"type\":\"refus\",\"v\":2,\"motif\":\"version\"}"
+2026-08-20T03:26:24.461162Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=3 delai_ms=4000
+2026-08-20T03:26:28.507882Z  WARN agent::plateforme: message de la plateforme illisible (version divergente ?) url="ws://192.168.3.1:8090/agent" erreur=version de plateforme non supportée : 2 texte="{\"type\":\"refus\",\"v\":2,\"motif\":\"version\"}"
+2026-08-20T03:26:28.507971Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=4 delai_ms=8000
+2026-08-20T03:26:36.554763Z  WARN agent::plateforme: message de la plateforme illisible (version divergente ?) url="ws://192.168.3.1:8090/agent" erreur=version de plateforme non supportée : 2 texte="{\"type\":\"refus\",\"v\":2,\"motif\":\"version\"}"
+2026-08-20T03:26:36.554843Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=5 delai_ms=16000
+2026-08-20T03:26:52.601522Z  WARN agent::plateforme: message de la plateforme illisible (version divergente ?) url="ws://192.168.3.1:8090/agent" erreur=version de plateforme non supportée : 2 texte="{\"type\":\"refus\",\"v\":2,\"motif\":\"version\"}"
+2026-08-20T03:26:52.601615Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=6 delai_ms=30000
