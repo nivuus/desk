@@ -26,6 +26,30 @@
 //! comportements, deux traces distinctes — sans quoi une incompatibilité de
 //! version se déguiserait en boucle de reconnexion infinie, qui est le mode de
 //! panne le plus coûteux à diagnostiquer.
+//!
+//! ❌ **CE PARAGRAPHE EST RÉFUTÉ PAR LA MESURE, ET C'EST EXACTEMENT LE MODE DE
+//! PANNE QU'IL NOMME QUI SE PRODUIT** (recette du sous-bloc G1, 20 août 2026,
+//! UNE exécution, journal
+//! `docs/superpowers/plans/journaux-gestion-apps/step3-version-v1-contre-v2-plat.log`).
+//! Un agent v1 opposé à une plateforme v2 a journalisé **0** ligne « la
+//! plateforme REFUSE la version » et **10** couples « message de la plateforme
+//! illisible (version divergente ?) » / « reprise du canal /agent », jusqu'au
+//! palier de 30 s, sans terme.
+//!
+//! **La cause est dans ce fichier**, et elle est structurelle : `verifie_version`
+//! est un `deserialize_with` posé sur le champ `v` de **tout** message, le
+//! refus compris, et la plateforme émet son refus avec SA version —
+//! `{"type":"refus","v":2,"motif":"version"}`. Un agent de version N ne peut
+//! donc JAMAIS LIRE le refus d'une plateforme de version M ≠ N : il tombe dans
+//! la branche « illisible », qui est reprenable. Le bras
+//! `MotifCanal::Version` de `sur_refus` n'est atteignable que si les deux
+//! bouts s'accordent déjà sur `v` — c'est-à-dire jamais dans le seul cas pour
+//! lequel il existe.
+//!
+//! **Constat, pas correctif.** Le remède demande de décider comment lire un
+//! message dont la version diverge sans le désérialiser entièrement (lire `v`
+//! et `type` avant de valider, par exemple), et c'est une décision de
+//! protocole qui appartient au propriétaire du dépôt.
 
 use serde::{Deserialize, Serialize};
 
@@ -41,6 +65,11 @@ use serde::{Deserialize, Serialize};
 /// déploient AU MÊME COMMIT, sans quoi la VM se tait sans boucler, ce qui est
 /// exactement le comportement voulu — un silence franc plutôt qu'une
 /// reconnexion infinie.
+///
+/// ❌ **« LA VM SE TAIT SANS BOUCLER » EST FAUX, MESURÉ** — voir l'encadré de
+/// l'en-tête de ce module. La VM boucle, à 30 s d'intervalle et sans terme.
+/// L'obligation de déployer les deux bouts au même commit, elle, est
+/// INCHANGÉE et même renforcée : c'est la seule parade qui existe aujourd'hui.
 pub const PLATEFORME_VERSION: u8 = 2;
 
 // Note : pas de `default` sur le champ `v` — un message sans champ `v` doit être

@@ -751,6 +751,13 @@ scripts/run-agent.sh             MODIFIÉ — deux lignes, tâche DÉDIÉE (D1)
 ```
 
 ⚠️ **`scripts/verify-all.sh` N'EST PAS MODIFIÉ** : ses neuf étapes couvrent déjà
+
+<!-- ANNOTATION G1 (20 août 2026) — « ses neuf étapes » EST FAUX : il en compte
+DIX. Relevé par la commande, `grep -c '^etape "' scripts/verify-all.sh` → 10,
+au 19 août puis au 20 août 2026. La dixième est
+`client : npm run design:verifier` (`scripts/verify-all.sh:73`), ajoutée par le
+sous-projet ⑥ APRÈS la rédaction de ce plan. La conclusion de la phrase — le
+script n'est pas modifié — reste vraie, et G1 ne l'a pas modifié non plus. -->
 `proto/` (1, 5, 6), `plateforme/` (7, 8, 9), `client/` (3, 4). Relevé, pas
 supposé.
 
@@ -1750,6 +1757,9 @@ sont les **pronostics** qu'il faut reprendre — « c'est P3 », « avant P3 »,
   `vm(utilisateur_id)` **existe déjà depuis P1** (`0001-socle.sql:57-58`) et P3
   n'y touche pas.
 - **Aucune écriture dans `application`** : ④ empruntera le canal.
+  <!-- ANNOTATION G1 (20 août 2026) : ④ L'A EMPRUNTÉ. `agents/canal.ts` écrit
+  `application` à chaque message `catalogue`, via `apps/catalogue.ts::fusionner`
+  et `depot/application.ts::appliquer`. Ce legs est CLOS. -->
 - **Aucun frein, aucun TLS, aucun cookie, aucun en-tête de sécurité, aucun
   `/sante`, aucun `coturn` restreint** : P5.
 - **Aucune revérification d'une session en cours** : la garde ne couvre que la

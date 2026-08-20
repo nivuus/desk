@@ -1,5 +1,13 @@
 //! Client du canal `/agent` : l'agent s'y enrôle, y bat le cœur, et en reçoit
-//! son préfixe de session et son jeton d'agent.
+//! son préfixe de session et son jeton d'agent — et, depuis le sous-bloc G1,
+//! il y POUSSE son catalogue d'applications et en REÇOIT des ordres de
+//! lancement.
+//!
+//! ⚠️ CE CANAL NE PORTE DONC PLUS SEULEMENT UNE IDENTITÉ, contrairement à ce
+//! que dit le paragraphe suivant, écrit au sous-bloc P3 et conservé pour son
+//! raisonnement. Deux voies l'ont traversé depuis : une file d'émission
+//! bornée (`FILE_EMISSION`) pour ce qui monte, et une `mpsc` d'ordres pour ce
+//! qui descend.
 //!
 //! ⚠️ **CE CANAL N'EST PAS LE SIGNALING**, même s'il vit sur le même serveur.
 //! `crate::signaling` et `crate::superviseur::signalisation` négocient une
@@ -67,7 +75,11 @@ pub struct Identite {
 const FILE_EMISSION: usize = 32;
 
 /// Le canal ouvert, et le fil qui le tient. **Le lâcher arrête le battement
-/// de cœur** : `main` le garde vivant pour toute la durée du processus.
+/// de cœur — et, depuis G1, la DÉCOUVERTE D'APPLICATIONS avec lui** : la
+/// boucle d'`apps` sort sur `TryRecvError::Disconnected` et journalise « canal
+/// /agent fermé : découverte d'applications arrêtée ». `main` le garde vivant
+/// pour toute la durée du processus, et c'est désormais vrai pour deux
+/// mécanismes au lieu d'un.
 pub struct Canal {
     identite: watch::Receiver<Option<Identite>>,
     /// Le fil de reprise. Jamais attendu — il ne se termine que sur un refus
@@ -377,6 +389,17 @@ async fn une_session(
 /// version divergente rendra le même refus à la millionième tentative, alors
 /// qu'un enrôlement refusé cesse de l'être dès que l'exploitant enrôle la VM,
 /// sans que personne n'ait à redémarrer l'agent.
+///
+/// ❌ **CE BRAS EST INATTEIGNABLE DANS LE SEUL CAS POUR LEQUEL IL EXISTE, et
+/// c'est mesuré** (recette G1, 20 août 2026, UNE exécution). Pour l'atteindre
+/// il faudrait avoir DÉSÉRIALISÉ un `refus`, donc avoir accepté son champ
+/// `v` — or la plateforme émet son refus avec SA version, et
+/// `proto::plateforme::verifie_version` rejette tout `v` divergent avant que
+/// le `motif` ne soit seulement lu. Un agent v1 face à une plateforme v2
+/// tombe donc dans la branche « illisible » de `une_session`, qui est
+/// reprenable, et reprend indéfiniment. Le raisonnement ci-dessus reste juste ;
+/// c'est son ATTEIGNABILITÉ qui est fausse. Voir l'en-tête de
+/// `proto/src/plateforme.rs` pour le relevé et le remède non tranché.
 fn sur_refus(url: &str, motif: MotifCanal) -> Fin {
     match motif {
         MotifCanal::Version => {

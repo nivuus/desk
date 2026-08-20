@@ -268,6 +268,21 @@ ajouter des colonnes à cette table :
 ADD COLUMN nullable : OK
 ADD COLUMN NOT NULL DEFAULT : OK
 ADD COLUMN avec REFERENCES : OK
+
+<!-- ANNOTATION G1 (20 août 2026) — RELEVÉ DATÉ, CONSERVÉ, COMPLÉTÉ.
+Ce relevé est exact ET INCOMPLET : il n'a mesuré ni `ADD COLUMN … UNIQUE`, ni
+`ADD COLUMN … NOT NULL` SANS DÉFAUT sur une table NON VIDE. Le plan de G1 a
+mesuré les deux, le 19 août 2026, une exécution chacune sur base neuve :
+  - `ADD COLUMN TEXT UNIQUE` : 🔴 REFUSÉ par SQLite 3.50.4 (`Cannot add a
+    UNIQUE column`), accepté par PostgreSQL 16.15 — divergence E7. Remède
+    retenu : `CREATE UNIQUE INDEX`, OK des deux côtés.
+  - `ADD COLUMN … NOT NULL` sans DÉFAUT : OK sur table VIDE, 🔴 REFUSÉ dès
+    qu'elle porte une ligne (`Cannot add a NOT NULL column with default value
+    NULL`) — divergence E8. Conséquence qui dépasse G1 : toute colonne NOT NULL
+    dont un sous-bloc ultérieur aura besoin sur `application` doit naître tant
+    que la table est vide.
+Rien de ce qui est écrit ci-dessus n'est réfuté ; c'est la portée qui était
+plus étroite qu'il n'y paraissait. -->
 version SQLite = 3.50.4
 ```
 
@@ -697,7 +712,21 @@ fenêtre.
 | ② | Un raccourci **neuf** apparaît sans redémarrer l'agent | créer un `.lnk` sur le Bureau, attendre au plus 2 × `PERIODE_RECONCILIATION`, relire | figer le catalogue au démarrage : le compte ne bouge pas. **À exercer** |
 | ③ | Un raccourci **retiré** quitte le catalogue **sans que sa ligne disparaisse** | `disparue_a` non nul, ligne toujours présente en base | supprimer la ligne : la PWA installée côté navigateur perd son identifiant. Le test lit **les deux** |
 | ④ | Les 7 raccourcis sans cible sont **exclus et journalisés** | 7 lignes de trace nommant chacune son fichier | les exclure en silence : le test compte les lignes de trace, pas seulement l'absence des entrées |
+<!-- ANNOTATION G1 — ④ N'EST PAS APPLICABLE TEL QUEL (divergence E12). Sous une
+réconciliation périodique de 30 s, « 7 lignes de trace » vaudrait 7 lignes
+TOUTES LES 30 SECONDES dans un journal partagé. Décision D13 : la trace est
+émise AU CHANGEMENT, et le critère se mesure sur la PREMIÈRE réconciliation,
+BORNÉE TEMPORELLEMENT — jamais sur un total de fichier. MESURÉ en recette, deux
+exécutions : 7 `motif="cible-vide"` sur la première réconciliation, aux deux. -->
 | ⑤ | Un lancement ouvre **la bonne fenêtre** | `POST … /lancer` sur Bloc-notes, puis une fenêtre `notepad.exe` est détectée par le superviseur | lancer par la cible reconstruite au lieu du `.lnk` **passerait ce critère-ci** : c'est pourquoi ⑥ existe |
+<!-- ANNOTATION G1 — ⑤ EST DEVENU DÉCIDABLE (divergence E13). La colonne de
+droite dit elle-même que ce critère ne discrimine pas ; la décision D4 le
+répare en typant l'issue du lancement — `IssueLancement::Raccourci` contre
+`::Cible` —, ce qui donne DEUX contrôles indépendants au lieu d'un seul plus un
+contournement. ⑥ reste. MESURÉ en recette : la route rend
+`{"issue":"raccourci"}` (3/3), et la rouge jouée sur la VM — tentative par le
+raccourci détournée vers un fichier inexistant — rend `{"issue":"cible"}` (3/3)
+avec le fichier témoin de ⑥ qui n'atterrit alors nulle part. -->
 | ⑥ | Le lancement honore le **répertoire de travail** du raccourci | un raccourci vers `cmd.exe /c cd > sortie.txt` avec un `WorkingDirectory` posé ; le fichier atterrit là | reconstruire la ligne de commande sans le répertoire : `sortie.txt` atterrit ailleurs. **À exercer** |
 
 ### G2 — Les icônes 256, et la preuve que c'en est
@@ -850,6 +879,15 @@ ceux de la **gestion d'apps**.
 
 ⚠️ **`plateforme/` doit entrer au § « Portée » de `CLAUDE.md`** — la spec ⑤ §5 le
 relève déjà, et `client/src/hub/` relève de `client/`, déjà nommé.
+
+<!-- ANNOTATION G1 — DEUX POINTS.
+(E1) `plateforme/` EST DÉJÀ au § « Portée » de `CLAUDE.md` (ligne 20, relue) :
+c'était fait avant G1, et il n'y avait rien à faire.
+(E14) `client/src/hub/…` est rangé « (G1, G3) » par cette spec, mais AUCUN des
+six critères de G1 ne juge une page : sa tranche verticale est décrite en
+`GET /applications` et `POST … /lancer`, c'est-à-dire en HTTP. Décision D12 :
+G1 ne touche pas `client/`, et la recette exerce les deux routes par `curl`,
+ce qui les éprouve DAVANTAGE qu'une page. Le hub arrive avec G3. -->
 
 **La « Convention de module enfant » de `CLAUDE.md` s'applique-t-elle ?** Elle
 vise les modules extraits d'un parent `#[cfg(windows)]` pour compiler sur
