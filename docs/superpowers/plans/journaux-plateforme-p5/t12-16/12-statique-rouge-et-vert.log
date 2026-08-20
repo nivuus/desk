@@ -1,0 +1,37 @@
+=== Tâche 12 — le contrôle STATIQUE, ses deux moitiés ===
+Date : 21 août 2026, commit du fichier d'avant : e4c5e66
+
+─── ROUGE : le fichier d'AVANT ───
+  docker compose -f docker-compose.coturn.yml --env-file /dev/null config
+  SORTIE MESURÉE = 0   (il aurait dû être 1)
+  lignes de la liste blanche :
+    - --listening-port=3478
+    - --min-port=49160
+    - --max-port=49200
+  => ni --listening-ip ni --relay-ip : rien n'est borné, et rien ne le dit.
+
+─── VERT : le fichier NEUF, aucune variable posée ───
+  SORTIE MESURÉE = 1
+    error while interpolating services.coturn.command.[]: required variable TURN_LISTENING_IP is missing a value: TURN_LISTENING_IP est obligatoire - l adresse sur laquelle coturn ecoute. Sans elle il ecouterait sur TOUTES les interfaces de l hote, adresse publique comprise
+    error while interpolating services.coturn.command.[]: required variable TURN_RELAY_IP is missing a value: TURN_RELAY_IP est obligatoire - l adresse depuis laquelle coturn relaie. Borner la seule ecoute laisse les allocations de relais sur toutes les interfaces
+  => les DEUX variables sont nommées, pas seulement la première.
+
+─── CONTRE-ÉPREUVE : les deux adresses posées, le secret laissé VIDE ───
+  SORTIE MESURÉE = 0, et les options apparaissent :
+    - --listening-ip=127.0.0.1
+    - --relay-ip=127.0.0.1
+
+─── PREUVE QUE CES PIÈCES NE PORTENT PAS LE SECRET ───
+  Méthode : grep -c -F -f <motif tiré de .env>, qui rend un COMPTE, jamais la valeur.
+  occurrences de TURN_SECRET dans la sortie de la rouge   : 0
+  occurrences de TURN_SECRET dans la sortie du vert       : 0
+  occurrences de TURN_SECRET dans la contre-épreuve       : 0
+  occurrences de TURN_SECRET dans CE fichier-ci           : (contrôlé après écriture, voir 12-preuve-sans-secret.log)
+
+⚠️ PIÈGE NEUF, RENCONTRÉ ET MESURÉ : avec ${VAR:?}, TOUTE sous-commande
+   compose exige les variables — 'logs', 'ps' et 'down' compris. Un
+   'docker compose ... logs' lancé sans elles rend le message
+   d'interpolation À LA PLACE du journal, et le compte de lignes
+   'listener opened' tombe à ZÉRO. Ce zéro est indiscernable d'un coturn
+   qui n'aurait rien ouvert : c'est le patron du contrôle vacueux, et il
+   s'est produit ici avant d'être corrigé (variables EXPORTÉES).

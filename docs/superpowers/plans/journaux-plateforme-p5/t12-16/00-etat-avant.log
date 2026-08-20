@@ -1,0 +1,59 @@
+=== relevé du 20-21 août 2026, tâche 12 : état AVANT toute action ===
+--- conteneur coturn ---
+guacamole-coturn-1 coturn/coturn:4.6 Exited (0) 2 weeks ago
+--- écoute sur 3478 (tcp+udp) ---
+rien n ecoute sur 3478
+--- écoute sur 443/tcp : le tiers qui l occupe ---
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=145))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=146))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=147))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=148))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=149))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=150))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=151))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=152))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=153))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=154))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=155))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=156))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=157))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=158))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=159))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=160))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=161))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=162))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=163))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=164))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=165))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=166))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=167))
+LISTEN 0.0.0.0:443 users:(("envoy",pid=3495367,fd=168))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=121))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=122))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=123))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=124))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=125))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=126))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=127))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=128))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=129))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=130))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=131))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=132))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=133))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=134))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=135))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=136))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=137))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=138))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=139))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=140))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=141))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=142))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=143))
+LISTEN [::]:443 users:(("envoy",pid=3495367,fd=144))
+--- images locales utiles ---
+coturn/coturn:4.6
+nginx:alpine
+postgres:15-alpine
+postgres:16-alpine

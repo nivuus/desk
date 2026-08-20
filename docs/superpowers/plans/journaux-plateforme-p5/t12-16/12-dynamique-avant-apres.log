@@ -1,0 +1,54 @@
+=== Tâche 12 — contrôle DYNAMIQUE : SUR QUOI coturn ouvre réellement ===
+Date : 21 août 2026. UNE exécution par bras — aucun taux n'est revendiqué.
+
+⚠️ FILTRÉ PAR LISTE BLANCHE. Seules sont reprises ci-dessous les lignes
+   'listener opened on: <adresse>' et 'Relay address to use'. Le journal brut
+   de coturn --verbose n'est PAS versé : il porte la configuration complète.
+
+⚠️ PROJET DOCKER JETABLE 'p5-t12r' / 'p5-t12' : le conteneur préexistant
+   guacamole-coturn-1 (Exited (0) depuis deux semaines) n'a jamais été touché.
+
+─── ROUGE : le fichier D'AVANT (git show HEAD:docker-compose.coturn.yml) ───
+adresses DISTINCTES sur lesquelles coturn a ouvert :
+  127.0.0.1:3478
+  ::1:3478
+  172.17.0.1:3478
+  172.18.0.1:3478
+  172.19.0.1:3478
+  172.20.0.1:3478
+  172.21.0.1:3478
+  172.22.0.1:3478
+  172.23.0.1:3478
+  172.24.0.1:3478
+  172.25.0.1:3478
+  172.27.0.1:3478
+  192.168.0.1:3478
+  192.168.2.1:3478
+  192.168.3.1:3478
+  90.87.35.18:3478
+  fd34:7b91:777b:c11::1:3478
+  fdb0:916c:b74f:73cf:0:ff:fe00:0:3478
+  fdb0:916c:b74f:73cf:0:ff:fe00:fc10:3478
+  fdb0:916c:b74f:73cf:0:ff:fe00:fc11:3478
+  fdb0:916c:b74f:73cf:0:ff:fe00:fc38:3478
+  fdb0:916c:b74f:73cf:f50b:69d0:b77d:b15d:3478
+  fdeb:2b9:f74e:1:89b7:e3fc:d95:b432:3478
+  → nombre d'adresses distinctes : 23
+  → lignes 'listener opened' au total : 575
+  → dont l'adresse PUBLIQUE 90.87.35.18 : 29 lignes
+
+  🔴 C'EST EXACTEMENT LE CONSTAT DE CLAUDE.md DU 30 JUILLET 2026,
+     « UDP listener opened on: 90.87.35.18:3478 », REPRODUIT LE 21 AOÛT 2026.
+
+─── VERT : le fichier NEUF, TURN_LISTENING_IP=TURN_RELAY_IP=127.0.0.1 ───
+adresses DISTINCTES sur lesquelles coturn a ouvert :
+  127.0.0.1:3478
+  → nombre d'adresses distinctes : 1
+  → lignes 'listener opened' au total : 25
+  → dont l'adresse PUBLIQUE 90.87.35.18 : 0 ligne(s)
+  → le RELAIS, seconde moitié que --listening-ip seul ne borne pas :
+     Relay address to use: 127.0.0.1
+
+⚠️ CE QUE CE CONTRÔLE N'ÉTABLIT PAS : l'inaccessibilité effective du relais
+   DEPUIS INTERNET. Elle se jugerait sur une sonde extérieure, qui exigerait
+   une machine hors de ce réseau. Elle n'a pas été faite.
