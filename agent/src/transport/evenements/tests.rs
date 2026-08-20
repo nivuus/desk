@@ -20,66 +20,18 @@ use crate::source::VideoSource;
 use crate::transport::fixtures;
 use str0m::media::{Direction, MediaKind, Mid};
 
-/// `ClientControl::Visibility` reçu doit être mémorisé dans
-/// `pending_visibility`, pas appliqué sur-le-champ.
+/// Les tests de `memoriser_controle`, extraits AVANT que ce fichier ne
+/// franchisse 500 (sous-bloc P2) — voir leur commentaire de tête.
 ///
-/// Même raison que pour `Resize` : ce code court pendant le drainage de
-/// `poll_output`, et relâcher un encodeur y romprait l'invariant d'une
-/// seule mutation de `Rtc` par appel. `dispatch_controle_de_test` est un
-/// point d'entrée `#[cfg(test)]` qui court-circuite `ChannelData` (str0m
-/// interdit délibérément sa construction hors du crate) tout en exerçant
-/// exactement le même chemin de mémorisation que `dispatch_channel_data`.
-#[test]
-fn un_message_de_visibilite_est_memorise_et_non_applique_sur_le_champ() {
-    let source = Box::new(fixtures::video_test_source());
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
-
-    let json = r#"{"type":"visibility","v":3,"visible":false,"focused":false}"#;
-    session.dispatch_controle_de_test(json);
-
-    assert_eq!(session.pending_visibility, Some((false, false)));
-}
-
-/// `ClientControl::Clipboard` reçu doit être mémorisé dans
-/// `pending_clipboard`, pas appliqué sur-le-champ — même raison que ses deux
-/// voisins.
-///
-/// ROUGE si le bras posait le mauvais champ. Le bras ABSENT, lui, ne compile
-/// pas : le `match` de `memoriser_controle` est exhaustif, et c'est le
-/// compilateur qui l'a exigé au moment où la variante est née.
-#[test]
-fn un_message_de_collage_est_memorise_et_non_applique_sur_le_champ() {
-    let source = Box::new(fixtures::video_test_source());
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
-
-    session.dispatch_controle_de_test(r#"{"type":"clipboard","v":3,"text":"bonjour"}"#);
-
-    assert_eq!(session.pending_clipboard.as_deref(), Some("bonjour"));
-    // Mémoriser n'injecte RIEN : l'écriture et l'injection vivent dans
-    // `act_on_timeout`, hors du drainage de `poll_output`.
-    assert!(!session.collage_a_injecter);
-}
-
-/// 🔴 **C'est la décision D-P2-3 rendue vérifiable, et c'est le seul endroit
-/// où elle l'est.** Deux collages entre deux tours de boucle se réduisent au
-/// SECOND ; le premier est perdu sans trace.
-///
-/// ROUGE si le champ accumulait (une file, un `Vec`) : le test lirait alors le
-/// premier ou les deux. Ce test ne dit pas que l'écrasement est bon — il dit
-/// que c'est bien ce que le produit fait, et la doc du champ en porte le coût.
-#[test]
-fn deux_collages_successifs_ne_laissent_que_le_second() {
-    let source = Box::new(fixtures::video_test_source());
-    let mut session = Session::new(source, fixtures::local_ip(), Instant::now(), 12_000_000)
-        .expect("session");
-
-    session.dispatch_controle_de_test(r#"{"type":"clipboard","v":3,"text":"premier"}"#);
-    session.dispatch_controle_de_test(r#"{"type":"clipboard","v":3,"text":"second"}"#);
-
-    assert_eq!(session.pending_clipboard.as_deref(), Some("second"));
-}
+/// ⚠️ **Le `#[path]` est OBLIGATOIRE ici, et ce n'est pas un choix de style** :
+/// ce module-ci est lui-même déclaré par `#[path]` depuis `evenements.rs`, et
+/// rustc résout alors ses enfants dans le répertoire du fichier PARENT
+/// (`evenements/`), pas dans un répertoire portant son nom. Un `mod
+/// memorisation;` nu chercherait `evenements/memorisation.rs`. C'est ce qui
+/// distingue ce cas de `tick/tests.rs`, dont le parent emploie un `mod`
+/// ordinaire et dont les enfants tombent donc bien dans `tick/tests/`.
+#[path = "tests/memorisation.rs"]
+mod memorisation;
 
 /// Preuve d'intégration que `Event::KeyframeRequest` (émis par str0m
 /// quand le pair envoie un PLI/FIR RTCP — ce que fait un navigateur après
