@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 import type { Garde } from '../identite/garde';
 import { createSignalingServer } from './relais';
+import { poserTurnAmbiant } from './turn-harnais';
 
 /// Une garde qui accepte tout, LOCALE À CE FICHIER DE TEST et jamais exportée
 /// par du code de production.
@@ -18,6 +19,30 @@ const GARDE_OUVERTE: Garde = {
     revendiquer: () => {},
     liberer: () => {},
 };
+
+/// 🔴 CES DOUZE TESTS LISENT « LE MESSAGE SUIVANT », DONC ILS EXIGENT UN
+/// RELAIS SANS TURN — et ils le POSENT, au lieu de l'espérer.
+///
+/// `relais.ts` envoie un `ice-config` à chaque pair dès qu'il se déclare, dès
+/// lors que `TURN_URL` et `TURN_SECRET` sont posées. `nextMessage` rendrait
+/// alors cet `ice-config` à la place de l'offre attendue. Ce fichier a échoué
+/// exactement ainsi — six tests sur douze — quand `scripts/verify-all.sh`
+/// était lancé depuis un shell ayant fait `source .env` : la mesure portait
+/// sur l'environnement de celui qui lançait, pas sur le service.
+///
+/// ⚠️ Neutraliser N'EST PAS abandonner la configuration de production, où TURN
+/// est bel et bien posé : le `describe` « avec un serveur TURN configuré », en
+/// bas de ce fichier, la mesure explicitement. Sans lui, retirer TURN d'ici
+/// retirerait ce cas de la couverture au lieu de le nommer.
+let restaurerTurn: () => void;
+
+beforeAll(() => {
+    restaurerTurn = poserTurnAmbiant();
+});
+
+afterAll(() => {
+    restaurerTurn();
+});
 
 let server: ReturnType<typeof createSignalingServer>;
 
@@ -268,5 +293,48 @@ describe('serveur de signaling', () => {
         await expect(nextMessage(agent)).rejects.toThrow(/aucun message/);
 
         agent.close();
+    });
+});
+
+// La configuration de PRODUCTION : un serveur TURN est posé. C'est le cas que
+// le `poserTurnAmbiant()` de ce fichier écarte partout ailleurs, et il serait
+// malhonnête de l'écarter sans le mesurer nulle part — on l'écarterait alors
+// de la couverture en croyant seulement stabiliser les tests.
+//
+// ⚠️ C'est aussi le test qui aurait ATTRAPÉ le défaut : il énonce que
+// l'`ice-config` arrive, et que le relais continue de relayer APRÈS lui. Les
+// douze tests ci-dessus l'énonçaient à l'envers, sans le dire, en supposant
+// que le premier message reçu était toujours celui qu'ils attendaient.
+describe('avec un serveur TURN configuré', () => {
+    let restaurer: () => void;
+
+    beforeAll(() => {
+        restaurer = poserTurnAmbiant({
+            url: 'turn:127.0.0.1:3478',
+            secret: 'un-secret-turn-de-test',
+        });
+    });
+
+    afterAll(() => {
+        restaurer();
+    });
+
+    it("délivre l'ice-config à chaque pair, PUIS relaie normalement", async () => {
+        const agent = await connect('agent', 'turn-1');
+        // Premier message de l'agent : sa configuration ICE, avant tout relais.
+        const iceAgent = await nextMessage(agent);
+        expect(iceAgent.type).toBe('ice-config');
+        expect(iceAgent.iceServers[0].urls).toBe('turn:127.0.0.1:3478');
+
+        const client = await connect('client', 'turn-1');
+        // Le client reçoit la sienne : les deux extrémités en ont besoin.
+        expect((await nextMessage(client)).type).toBe('ice-config');
+
+        // Et le relais relaie toujours, une fois l'ice-config passé.
+        client.send(JSON.stringify({ type: 'offer', sdp: 'v=0 apres ice' }));
+        expect(await nextMessage(agent)).toEqual({ type: 'offer', sdp: 'v=0 apres ice' });
+
+        agent.close();
+        client.close();
     });
 });

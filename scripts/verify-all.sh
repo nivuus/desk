@@ -2,7 +2,10 @@
 #
 # Enchaîne toutes les vérifications du projet en une seule commande, dans
 # l'ordre : tests Rust, lint Rust, tests et typage TypeScript (client, proto,
-# puis plateforme). S'arrête au premier échec et dit lequel.
+# puis plateforme). Il joue les DIX étapes jusqu'au bout, même après une
+# rouge, et récapitule à la fin celles qui ont échoué — voir l'encadré posé
+# sur `echecs` plus bas, qui dit ce que cet arbitrage a coûté quand il était
+# inverse.
 #
 # Pourquoi ce script existe : c'est le seul endroit du projet qui vérifie le
 # typage TypeScript strict. `npm test` (Vitest) et `npm run build` (Vite)
@@ -37,9 +40,28 @@ etape() {
     echo "==> $1"
 }
 
+# 🔴 LE SCRIPT NE S'ARRÊTE PLUS AU PREMIER ÉCHEC, ET C'EST UN ARBITRAGE, PAS
+# UNE ÉVIDENCE. Il s'arrêtait ; le 20 août 2026, une seule étape rouge
+# (`plateforme : npm run test:sqlite`) a masqué les DEUX dernières —
+# `test:postgres` et `typecheck` — pendant toute la durée du défaut. Personne
+# ne savait si elles étaient vertes : elles n'étaient pas mesurées. Un échec
+# précoce coûtait donc DEUX pertes, la sienne et celle de tout l'aval.
+#
+# Ce que l'arrêt achetait — la rapidité — ne vaut presque rien ici : la chaîne
+# entière tourne en ~30 s tout en cache (mesuré). Ce qu'il coûtait est le
+# verdict lui-même : une barrière qui ne rend qu'une ligne sur dix ne dit pas
+# l'état de l'arbre, elle dit l'état de sa première marche.
+#
+# Les dix étapes sont INDÉPENDANTES — chacune est un `(cd X && …)` autonome,
+# et aucune ne consomme la sortie d'une autre —, donc continuer après une
+# rouge ne mesure rien de faux. Le statut de sortie reste 1 dès qu'une seule a
+# échoué : ce n'est pas une barrière qu'on adoucit, c'est une barrière qui
+# rend enfin le compte de tout ce qu'elle a mesuré.
+echecs=()
+
 echec() {
     echo "ÉCHEC : $1" >&2
-    exit 1
+    echecs+=("$1")
 }
 
 etape "cargo test --workspace"
@@ -89,4 +111,13 @@ etape "plateforme : npm run typecheck"
 (cd plateforme && npm run typecheck) || echec "plateforme : npm run typecheck"
 
 echo
-echo "Toutes les vérifications sont passées."
+if [ ${#echecs[@]} -eq 0 ]; then
+    echo "Les 10 étapes sont passées."
+    exit 0
+fi
+
+echo "══ ${#echecs[@]} étape(s) sur 10 en ÉCHEC ══" >&2
+for e in "${echecs[@]}"; do
+    echo "  - $e" >&2
+done
+exit 1

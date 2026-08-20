@@ -20,6 +20,7 @@ import { garde as fabriquerGarde, type Garde } from '../identite/garde';
 import { signer, DUREE_JETON_ACCES_MS } from '../identite/jeton';
 import { ProprieteDeSession } from './propriete';
 import { createSignalingServer } from './relais';
+import { poserTurnAmbiant } from './turn-harnais';
 
 const SECRET = 'un-secret-de-plateforme-de-quarante-octets';
 const T0 = 1_787_000_000_000;
@@ -32,16 +33,25 @@ let serveur: ReturnType<typeof createSignalingServer> | undefined;
 let maintenant = T0;
 let proprietes: ProprieteDeSession;
 let garde: Garde;
-const turnAvant = { url: process.env.TURN_URL, secret: process.env.TURN_SECRET };
+/// ⚠️ LA RESTAURATION PASSE PAR LE HARNAIS, ET CE N'EST PAS DU CONFORT.
+/// Écrite à la main, elle réaffectait `process.env.TURN_URL = turnAvant.url`,
+/// où `turnAvant.url` vaut `undefined` sur une machine sans TURN — et
+/// `process.env` coerce en chaîne : la variable ressortait à `"undefined"`,
+/// TRUTHY, donc `configurationIce` délivrait ensuite une configuration ICE
+/// dont l'URL était le mot `undefined`. Mesuré, jamais observé mordant :
+/// l'ordre des fichiers place aujourd'hui `server.test.ts` AVANT celui-ci, et
+/// il aurait suffi que l'un des deux change de taille pour l'inverser.
+let restaurerTurn: () => void;
 
 beforeAll(() => {
-    process.env.TURN_URL = 'turn:127.0.0.1:3478';
-    process.env.TURN_SECRET = 'un-secret-turn-de-test';
+    restaurerTurn = poserTurnAmbiant({
+        url: 'turn:127.0.0.1:3478',
+        secret: 'un-secret-turn-de-test',
+    });
 });
 
 afterAll(() => {
-    process.env.TURN_URL = turnAvant.url;
-    process.env.TURN_SECRET = turnAvant.secret;
+    restaurerTurn();
 });
 
 function demarrer(): number {
