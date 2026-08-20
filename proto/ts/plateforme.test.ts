@@ -10,6 +10,12 @@ import {
     parseDepuisLaPlateforme,
     parseVersLaPlateforme,
     type MotifCanal,
+    type Application,
+    encodeCatalogue,
+    encodeLancee,
+    encodeLancer,
+    typesDepuis,
+    typesVers,
 } from './plateforme';
 
 /**
@@ -110,19 +116,19 @@ describe('miroir TypeScript du canal plateforme', () => {
         // son côté. Une divergence d'un caractère et les deux bouts ne se
         // parlent plus.
         expect(encodeEnroler('w1', 'chut'))
-            .toBe('{"type":"enroler","v":1,"vm":"w1","secret":"chut"}');
+            .toBe('{"type":"enroler","v":2,"vm":"w1","secret":"chut"}');
     });
 
     it('encode `battement`', () => {
-        expect(encodeBattement()).toBe('{"type":"battement","v":1}');
+        expect(encodeBattement()).toBe('{"type":"battement","v":2}');
     });
 
     it('lit un `enrole` bien formé', () => {
         const m = parseDepuisLaPlateforme(
-            '{"type":"enrole","v":1,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}',
+            '{"type":"enrole","v":2,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}',
         );
         expect(m).toEqual({
-            type: 'enrole', v: 1, prefixe: 'PPP', jeton: 'jjj', expire_a: 1787136773742,
+            type: 'enrole', v: 2, prefixe: 'PPP', jeton: 'jjj', expire_a: 1787136773742,
         });
     });
 
@@ -155,7 +161,7 @@ describe('miroir TypeScript du canal plateforme', () => {
     });
 
     it('REJETTE un `type` inconnu', () => {
-        expect(() => parseDepuisLaPlateforme('{"type":"vol","v":1}'))
+        expect(() => parseDepuisLaPlateforme('{"type":"vol","v":2}'))
             .toThrow(/type de message de plateforme inconnu/);
     });
 
@@ -163,7 +169,7 @@ describe('miroir TypeScript du canal plateforme', () => {
         // 🔴 Le parseur ne lit QUE le sens plateforme -> agent. Accepter
         // `enroler` ici ferait qu'un agent traiterait son propre message comme
         // une réponse — une confusion de sens qu'aucun autre test ne verrait.
-        expect(() => parseDepuisLaPlateforme('{"type":"enroler","v":1,"vm":"w","secret":"s"}'))
+        expect(() => parseDepuisLaPlateforme('{"type":"enroler","v":2,"vm":"w","secret":"s"}'))
             .toThrow(/type de message de plateforme inconnu/);
     });
 });
@@ -179,16 +185,16 @@ describe('le parseur du sens AGENT -> PLATEFORME', () => {
     // seulement échouer.
 
     it('lit un `enroler` bien formé', () => {
-        expect(parseVersLaPlateforme('{"type":"enroler","v":1,"vm":"w1","secret":"chut"}')).toEqual({
+        expect(parseVersLaPlateforme('{"type":"enroler","v":2,"vm":"w1","secret":"chut"}')).toEqual({
             ok: true,
-            message: { type: 'enroler', v: 1, vm: 'w1', secret: 'chut' },
+            message: { type: 'enroler', v: 2, vm: 'w1', secret: 'chut' },
         });
     });
 
     it('lit un `battement`', () => {
-        expect(parseVersLaPlateforme('{"type":"battement","v":1}')).toEqual({
+        expect(parseVersLaPlateforme('{"type":"battement","v":2}')).toEqual({
             ok: true,
-            message: { type: 'battement', v: 1 },
+            message: { type: 'battement', v: 2 },
         });
     });
 
@@ -231,9 +237,9 @@ describe('le parseur du sens AGENT -> PLATEFORME', () => {
         // `enrole` ici ferait que la plateforme traiterait sa propre réponse
         // comme une demande.
         for (const brut of [
-            '{"type":"enrole","v":1,"prefixe":"P","jeton":"j","expire_a":1}',
-            '{"type":"battement-recu","v":1,"jeton":"j","expire_a":1}',
-            '{"type":"refus","v":1,"motif":"forme"}',
+            '{"type":"enrole","v":2,"prefixe":"P","jeton":"j","expire_a":1}',
+            '{"type":"battement-recu","v":2,"jeton":"j","expire_a":1}',
+            '{"type":"refus","v":2,"motif":"forme"}',
         ]) {
             expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });
         }
@@ -256,12 +262,143 @@ describe('le parseur du sens AGENT -> PLATEFORME', () => {
         // sortirait dirait `enrolement` — donc « secret faux » — pour un
         // message qui n'a jamais porté de VM.
         for (const brut of [
-            '{"type":"enroler","v":1,"secret":"chut"}',
-            '{"type":"enroler","v":1,"vm":"w1"}',
-            '{"type":"enroler","v":1,"vm":"","secret":"chut"}',
-            '{"type":"enroler","v":1,"vm":42,"secret":"chut"}',
+            '{"type":"enroler","v":2,"secret":"chut"}',
+            '{"type":"enroler","v":2,"vm":"w1"}',
+            '{"type":"enroler","v":2,"vm":"","secret":"chut"}',
+            '{"type":"enroler","v":2,"vm":42,"secret":"chut"}',
         ]) {
             expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });
         }
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Sous-bloc G1 — catalogue d'applications et lancement (v2).
+// ---------------------------------------------------------------------------
+
+const APP_TEMOIN: Application = {
+    cle: 'a1b2',
+    nom: 'Bloc-notes',
+    chemin: 'C:\\Users\\u\\Desktop\\Bloc-notes.lnk',
+    cible: 'c:\\windows\\system32\\notepad.exe',
+    arguments: '',
+    repertoire: 'c:\\windows\\system32',
+};
+
+const CATALOGUE_TEMOIN =
+    '{"type":"catalogue","v":2,"complet":true,"applications":[{"cle":"a1b2",'
+    + '"nom":"Bloc-notes","chemin":"C:\\\\Users\\\\u\\\\Desktop\\\\Bloc-notes.lnk",'
+    + '"cible":"c:\\\\windows\\\\system32\\\\notepad.exe","arguments":"",'
+    + '"repertoire":"c:\\\\windows\\\\system32"}],"disparues":["disparue-1"]}';
+
+describe('le catalogue et le lancement, sens AGENT -> PLATEFORME', () => {
+    it('encode `catalogue` exactement comme Rust', () => {
+        // 🔴 L'ordre des champs est `type` PUIS `v` : serde émet le tag interne
+        // en premier, `JSON.stringify` respecte l'ordre d'insertion, et le
+        // vecteur fige la chaîne octet pour octet. Écrire `v` d'abord — ce que
+        // fait `control.ts` — produirait une chaîne différente, et la
+        // divergence a été trouvée par ce test en P3, pas par la relecture.
+        expect(encodeCatalogue(true, [APP_TEMOIN], ['disparue-1'])).toBe(CATALOGUE_TEMOIN);
+    });
+
+    it('encode `lancee` exactement comme Rust', () => {
+        expect(encodeLancee('d-7', 'raccourci')).toBe(
+            '{"type":"lancee","v":2,"demande":"d-7","issue":"raccourci"}',
+        );
+    });
+
+    it('lit un `catalogue` bien formé, et retrouve chacun de ses champs', () => {
+        const lu = parseVersLaPlateforme(CATALOGUE_TEMOIN);
+        expect(lu.ok).toBe(true);
+        if (!lu.ok) return;
+        expect(lu.message.type).toBe('catalogue');
+        if (lu.message.type !== 'catalogue') return;
+        expect(lu.message.complet).toBe(true);
+        expect(lu.message.disparues).toEqual(['disparue-1']);
+        expect(lu.message.applications).toEqual([APP_TEMOIN]);
+    });
+
+    it('🔴 REJETTE un `catalogue` dont `applications` n’est pas un tableau, motif `forme`', () => {
+        // 🔴 C'est le SEUL parseur du fichier dont les octets viennent d'un
+        // tiers. Sans cette garde, un `applications` absent ou scalaire
+        // traverserait jusqu'à la requête SQL. Et rendre `enrolement` ferait
+        // lire « secret faux » au pair pour un message parfaitement
+        // authentifié : le motif désigne la cause, il ne la déguise pas.
+        expect(
+            parseVersLaPlateforme('{"type":"catalogue","v":2,"complet":true,"applications":3,"disparues":[]}'),
+        ).toEqual({ ok: false, motif: 'forme' });
+        expect(
+            parseVersLaPlateforme('{"type":"catalogue","v":2,"complet":true,"disparues":[]}'),
+        ).toEqual({ ok: false, motif: 'forme' });
+    });
+
+    it('🔴 REJETTE un `catalogue` dont une application est incomplète, motif `forme`', () => {
+        expect(
+            parseVersLaPlateforme(
+                '{"type":"catalogue","v":2,"complet":true,"applications":[{"cle":"a"}],"disparues":[]}',
+            ),
+        ).toEqual({ ok: false, motif: 'forme' });
+    });
+
+    it('🔴 REJETTE une `lancee` dont l’issue est inconnue, motif `forme`', () => {
+        expect(
+            parseVersLaPlateforme('{"type":"lancee","v":2,"demande":"d","issue":"peut-etre"}'),
+        ).toEqual({ ok: false, motif: 'forme' });
+    });
+
+    it('lit une `lancee` bien formée', () => {
+        const lu = parseVersLaPlateforme('{"type":"lancee","v":2,"demande":"d-7","issue":"echec"}');
+        expect(lu).toEqual({
+            ok: true,
+            message: { type: 'lancee', v: 2, demande: 'd-7', issue: 'echec' },
+        });
+    });
+});
+
+describe('le lancement, sens PLATEFORME -> AGENT', () => {
+    it('encode `lancer` exactement comme Rust', () => {
+        expect(encodeLancer('d-7', 'a1b2')).toBe(
+            '{"type":"lancer","v":2,"demande":"d-7","cle":"a1b2"}',
+        );
+    });
+
+    it('relit un `lancer`', () => {
+        // 🔴 La rouge : l'omettre de `TYPES_DEPUIS`. Le parseur lèverait
+        // « type de message de plateforme inconnu » sur un ordre valide.
+        const lu = parseDepuisLaPlateforme(
+            '{"type":"lancer","v":2,"demande":"d-7","cle":"a1b2"}',
+        ) as unknown as Record<string, unknown>;
+        expect(lu.type).toBe('lancer');
+        expect(lu.demande).toBe('d-7');
+        expect(lu.cle).toBe('a1b2');
+    });
+});
+
+describe('la version 2, et les listes blanches DÉRIVÉES de l’union', () => {
+    it('🔴 annonce la version 2, et REFUSE un message v1', () => {
+        // 🔴 Oublier le bump côté TypeScript ferait diverger les deux bouts EN
+        // SILENCE : le Rust émettrait `v:2`, ce parseur attendrait `v:1`, et
+        // seuls les vecteurs partagés le diraient.
+        expect(PLATEFORME_VERSION).toBe(2);
+        expect(() => parseDepuisLaPlateforme('{"type":"refus","v":1,"motif":"version"}')).toThrow(
+            /version de plateforme non supportée/,
+        );
+        expect(parseVersLaPlateforme('{"type":"battement","v":1}')).toEqual({
+            ok: false,
+            motif: 'version',
+        });
+    });
+
+    it('🔴 les deux listes blanches couvrent EXACTEMENT leur union', () => {
+        // 🔴 REMÈDE STRUCTUREL, ET C'EST SA MOITIÉ OBSERVABLE À L'EXÉCUTION.
+        // L'autre moitié est le typecheck : `TOUS_DEPUIS` et `TOUS_VERS` sont
+        // des `Record<Union['type'], true>`, et `tsc` refuse une clé
+        // manquante. C'est le jumeau de `TYPES_AGENT` (`control.ts`), écrit à
+        // la main, que rien ne confronte à son union — et dont l'oubli ne
+        // casse « ni compilation ni test ». Ici l'oubli casse le typecheck.
+        expect([...typesDepuis()].sort()).toEqual(
+            ['battement-recu', 'enrole', 'lancer', 'refus'],
+        );
+        expect([...typesVers()].sort()).toEqual(['battement', 'catalogue', 'enroler', 'lancee']);
     });
 });
