@@ -225,8 +225,10 @@ export function encodeClipboard(text: string): string {
 /// ⚠️ **Ce parseur ne valide QUE `v` et `type`**, puis CASTE. Il ne regarde
 /// aucun autre champ, et un test qui prétendrait vérifier qu'il « accepte un
 /// `capabilities` sans `clipboard` » serait donc décoratif : il ne pourrait
-/// pas échouer. C'est le typage (`clipboard?: boolean`) qui porte cette
-/// propriété, et un `satisfies` qui la mesure.
+/// pas échouer. C'est le TYPAGE (`clipboard?: boolean`) qui porte cette
+/// propriété, et une annotation explicite de `control.test.ts` qui la mesure —
+/// dont la rouge est `tsc`, jamais vitest, qui transpile par esbuild sans
+/// vérifier les types.
 export function parseAgentControl(raw: string): AgentControl {
     const parsed = JSON.parse(raw) as Partial<AgentControl>;
     if (parsed.v !== CONTROL_VERSION) {
