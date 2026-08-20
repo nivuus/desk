@@ -144,6 +144,24 @@ pub struct Application {
 /// ⚠️ CE N'EST PAS UN [`MotifCanal`], et le réemployer serait un défaut :
 /// deux valeurs de `MotifCanal` FERMENT le socket, et un lancement raté ne
 /// doit fermer aucun canal.
+///
+/// ⚠️ **LACUNE DE COUVERTURE, INSCRITE PLUTÔT QUE SUBIE (recette G1, 20 août
+/// 2026).** Le `rename_all` ci-dessous est INOBSERVABLE sur cet enum : ses
+/// quatre variantes sont d'UN SEUL MOT, donc `kebab-case`, `snake_case`,
+/// `lowercase` et `camelCase` produisent tous les quatre mêmes chaînes.
+/// **Aucun test ne peut donc rougir si la convention de nommage change ici**
+/// — vérifié par mutation : remplacer `kebab-case` par `snake_case` sur cet
+/// enum laisse `cargo test -p proto` à **75 passed, 0 failed**.
+///
+/// **Le contraste est mesuré sur le même fichier** : la même mutation appliquée
+/// à l'enum qui porte `BattementRecu` — deux mots, donc `battement-recu` contre
+/// `battement_recu` — fait ÉCHOUER `conformite_aux_vecteurs_partages`. La
+/// protection existe donc bel et bien pour les variantes composées, et pas pour
+/// celles-ci.
+///
+/// **Conséquence pratique** : la première variante d'`IssueLancement` écrite en
+/// deux mots refermera la lacune d'elle-même, et jusque-là toute modification de
+/// cette ligne doit être relue à la main.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum IssueLancement {
