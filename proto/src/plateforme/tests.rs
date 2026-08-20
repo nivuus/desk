@@ -15,13 +15,13 @@ use super::*;
 #[test]
 fn serialise_l_enrolement_en_kebab_case() {
     let json = serde_json::to_string(&VersLaPlateforme::enroler("w1", "chut")).expect("sér.");
-    assert_eq!(json, r#"{"type":"enroler","v":1,"vm":"w1","secret":"chut"}"#);
+    assert_eq!(json, r#"{"type":"enroler","v":2,"vm":"w1","secret":"chut"}"#);
 }
 
 #[test]
 fn serialise_le_battement() {
     let json = serde_json::to_string(&VersLaPlateforme::battement()).expect("sér.");
-    assert_eq!(json, r#"{"type":"battement","v":1}"#);
+    assert_eq!(json, r#"{"type":"battement","v":2}"#);
 }
 
 #[test]
@@ -37,7 +37,7 @@ fn serialise_le_battement_recu_en_kebab_case() {
         .expect("sér.");
     assert_eq!(
         json,
-        r#"{"type":"battement-recu","v":1,"jeton":"kkk","expire_a":1787136774000}"#
+        r#"{"type":"battement-recu","v":2,"jeton":"kkk","expire_a":1787136774000}"#
     );
 }
 
@@ -47,11 +47,11 @@ fn serialise_l_enrole_et_le_refus() {
         .expect("sér.");
     assert_eq!(
         json,
-        r#"{"type":"enrole","v":1,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}"#
+        r#"{"type":"enrole","v":2,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}"#
     );
     let json = serde_json::to_string(&DepuisLaPlateforme::refus(MotifCanal::Enrolement))
         .expect("sér.");
-    assert_eq!(json, r#"{"type":"refus","v":1,"motif":"enrolement"}"#);
+    assert_eq!(json, r#"{"type":"refus","v":2,"motif":"enrolement"}"#);
 }
 
 // 🔴 UN TEST DE VERSION PAR VARIANTE ENTRANTE, jamais un seul pour toutes.
@@ -98,7 +98,7 @@ fn rejette_une_version_absente_sur_refus() {
 #[test]
 fn rejette_la_version_suivante_sur_enroler() {
     assert!(serde_json::from_str::<VersLaPlateforme>(
-        r#"{"type":"enroler","v":2,"vm":"w","secret":"s"}"#
+        r#"{"type":"enroler","v":3,"vm":"w","secret":"s"}"#
     )
     .is_err());
 }
@@ -106,14 +106,14 @@ fn rejette_la_version_suivante_sur_enroler() {
 #[test]
 fn rejette_la_version_suivante_sur_battement() {
     assert!(
-        serde_json::from_str::<VersLaPlateforme>(r#"{"type":"battement","v":2}"#).is_err()
+        serde_json::from_str::<VersLaPlateforme>(r#"{"type":"battement","v":3}"#).is_err()
     );
 }
 
 #[test]
 fn rejette_la_version_suivante_sur_enrole() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        r#"{"type":"enrole","v":2,"prefixe":"P","jeton":"j","expire_a":1}"#
+        r#"{"type":"enrole","v":3,"prefixe":"P","jeton":"j","expire_a":1}"#
     )
     .is_err());
 }
@@ -121,7 +121,7 @@ fn rejette_la_version_suivante_sur_enrole() {
 #[test]
 fn rejette_la_version_suivante_sur_battement_recu() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        r#"{"type":"battement-recu","v":2,"jeton":"j","expire_a":1}"#
+        r#"{"type":"battement-recu","v":3,"jeton":"j","expire_a":1}"#
     )
     .is_err());
 }
@@ -129,15 +129,15 @@ fn rejette_la_version_suivante_sur_battement_recu() {
 #[test]
 fn rejette_la_version_suivante_sur_refus() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        r#"{"type":"refus","v":2,"motif":"version"}"#
+        r#"{"type":"refus","v":3,"motif":"version"}"#
     )
     .is_err());
 }
 
 #[test]
 fn rejette_un_type_inconnu() {
-    assert!(serde_json::from_str::<VersLaPlateforme>(r#"{"type":"vol","v":1}"#).is_err());
-    assert!(serde_json::from_str::<DepuisLaPlateforme>(r#"{"type":"vol","v":1}"#).is_err());
+    assert!(serde_json::from_str::<VersLaPlateforme>(r#"{"type":"vol","v":2}"#).is_err());
+    assert!(serde_json::from_str::<DepuisLaPlateforme>(r#"{"type":"vol","v":2}"#).is_err());
 }
 
 #[test]
@@ -145,7 +145,7 @@ fn rejette_un_champ_inconnu() {
     // `deny_unknown_fields` : un champ de trop est une divergence de
     // format, pas une extension tolérable — le canal n'a qu'une version.
     assert!(serde_json::from_str::<VersLaPlateforme>(
-        r#"{"type":"battement","v":1,"bonus":1}"#
+        r#"{"type":"battement","v":2,"bonus":1}"#
     )
     .is_err());
 }
@@ -250,4 +250,154 @@ fn round_trip_des_trois_reponses() {
         let relu: DepuisLaPlateforme = serde_json::from_str(&json).expect("désér.");
         assert_eq!(message, relu);
     }
+}
+
+// ---------------------------------------------------------------------------
+// Sous-bloc G1 — catalogue d'applications et lancement (v2).
+// ---------------------------------------------------------------------------
+
+fn app_temoin() -> Application {
+    Application {
+        cle: "a1b2".into(),
+        nom: "Bloc-notes".into(),
+        chemin: r"C:\Users\u\Desktop\Bloc-notes.lnk".into(),
+        cible: r"c:\windows\system32\notepad.exe".into(),
+        arguments: String::new(),
+        repertoire: r"c:\windows\system32".into(),
+    }
+}
+
+#[test]
+fn serialise_le_catalogue() {
+    let json = serde_json::to_string(&VersLaPlateforme::catalogue(
+        true,
+        vec![app_temoin()],
+        vec!["disparue-1".into()],
+    ))
+    .expect("sér.");
+    assert_eq!(
+        json,
+        r#"{"type":"catalogue","v":2,"complet":true,"applications":[{"cle":"a1b2","nom":"Bloc-notes","chemin":"C:\\Users\\u\\Desktop\\Bloc-notes.lnk","cible":"c:\\windows\\system32\\notepad.exe","arguments":"","repertoire":"c:\\windows\\system32"}],"disparues":["disparue-1"]}"#
+    );
+}
+
+#[test]
+fn serialise_le_lancer() {
+    let json = serde_json::to_string(&DepuisLaPlateforme::lancer("d-7", "a1b2")).expect("sér.");
+    assert_eq!(json, r#"{"type":"lancer","v":2,"demande":"d-7","cle":"a1b2"}"#);
+}
+
+#[test]
+fn serialise_la_lancee() {
+    let json = serde_json::to_string(&VersLaPlateforme::lancee("d-7", IssueLancement::Raccourci))
+        .expect("sér.");
+    assert_eq!(
+        json,
+        r#"{"type":"lancee","v":2,"demande":"d-7","issue":"raccourci"}"#
+    );
+}
+
+/// ⚠️ LACUNE ATTENDUE, ÉCRITE PLUTÔT QUE DÉCOUVERTE : aucune des quatre
+/// issues n'a DEUX mots, donc `kebab-case` et `snake_case` ne diffèrent sur
+/// aucune d'elles. Ce test fige les quatre chaînes, mais il ne peut pas
+/// rougir sur un changement de `rename_all` — contrairement à
+/// `battement-recu`, qui est le seul témoin de ce genre dans ce module. Le
+/// jour où une issue à deux mots apparaîtra, elle devra porter son propre
+/// test de casse, sans quoi elle divergera du miroir TypeScript en silence.
+#[test]
+fn serialise_les_quatre_issues() {
+    let attendus = [
+        (IssueLancement::Raccourci, "raccourci"),
+        (IssueLancement::Cible, "cible"),
+        (IssueLancement::Inconnue, "inconnue"),
+        (IssueLancement::Echec, "echec"),
+    ];
+    for (issue, attendu) in attendus {
+        assert_eq!(
+            serde_json::to_string(&issue).expect("sér."),
+            format!("\"{attendu}\"")
+        );
+    }
+}
+
+#[test]
+fn rejette_une_version_absente_sur_catalogue() {
+    assert!(serde_json::from_str::<VersLaPlateforme>(
+        r#"{"type":"catalogue","complet":true,"applications":[],"disparues":[]}"#
+    )
+    .is_err());
+}
+
+#[test]
+fn rejette_la_version_suivante_sur_catalogue() {
+    assert!(serde_json::from_str::<VersLaPlateforme>(
+        r#"{"type":"catalogue","v":3,"complet":true,"applications":[],"disparues":[]}"#
+    )
+    .is_err());
+}
+
+#[test]
+fn rejette_une_version_absente_sur_lancee() {
+    assert!(serde_json::from_str::<VersLaPlateforme>(
+        r#"{"type":"lancee","demande":"d","issue":"echec"}"#
+    )
+    .is_err());
+}
+
+#[test]
+fn rejette_la_version_suivante_sur_lancee() {
+    assert!(serde_json::from_str::<VersLaPlateforme>(
+        r#"{"type":"lancee","v":3,"demande":"d","issue":"echec"}"#
+    )
+    .is_err());
+}
+
+#[test]
+fn rejette_une_version_absente_sur_lancer() {
+    assert!(serde_json::from_str::<DepuisLaPlateforme>(
+        r#"{"type":"lancer","demande":"d","cle":"c"}"#
+    )
+    .is_err());
+}
+
+#[test]
+fn rejette_la_version_suivante_sur_lancer() {
+    assert!(serde_json::from_str::<DepuisLaPlateforme>(
+        r#"{"type":"lancer","v":3,"demande":"d","cle":"c"}"#
+    )
+    .is_err());
+}
+
+#[test]
+fn rejette_un_champ_inconnu_sur_lancer() {
+    assert!(serde_json::from_str::<DepuisLaPlateforme>(
+        r#"{"type":"lancer","v":2,"demande":"d","cle":"c","bonus":1}"#
+    )
+    .is_err());
+}
+
+/// 🔴 LA ROUGE DU BUMP LUI-MÊME. Si `PLATEFORME_VERSION` restait à 1, ce
+/// test resterait vert sur les seules variantes neuves et la rupture ne
+/// serait pas jouée : c'est ici qu'on assène qu'un agent déployé au format
+/// v1 N'EST PLUS COMPRIS, et que le refus `version` NE SE RÉESSAIE PAS
+/// (en-tête du module). Agent et plateforme se déploient au même commit.
+#[test]
+fn les_variantes_de_p3_rejettent_desormais_la_version_1() {
+    assert!(serde_json::from_str::<VersLaPlateforme>(
+        r#"{"type":"enroler","v":1,"vm":"w","secret":"s"}"#
+    )
+    .is_err());
+    assert!(serde_json::from_str::<VersLaPlateforme>(r#"{"type":"battement","v":1}"#).is_err());
+    assert!(serde_json::from_str::<DepuisLaPlateforme>(
+        r#"{"type":"enrole","v":1,"prefixe":"P","jeton":"j","expire_a":1}"#
+    )
+    .is_err());
+    assert!(serde_json::from_str::<DepuisLaPlateforme>(
+        r#"{"type":"battement-recu","v":1,"jeton":"j","expire_a":1}"#
+    )
+    .is_err());
+    assert!(serde_json::from_str::<DepuisLaPlateforme>(
+        r#"{"type":"refus","v":1,"motif":"version"}"#
+    )
+    .is_err());
 }
