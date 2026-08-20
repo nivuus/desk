@@ -46,12 +46,39 @@ import { declarationsDe, sansCommentaires } from './css';
  * déclare pour les classes, et la même parade : la convention est d'écrire les
  * longueurs dans le CSS.
  *
+ * ⚠️ DÉFAUT DU PLAN, SIGNALÉ PLUTÔT QUE RECOPIÉ. Le plan de S4 prescrit de
+ * jouer la rouge d'atteignabilité « en vidant `client/src/style.css` ». MESURÉ :
+ * cela ne suffit PAS — la portée étant dérivée sur TROIS feuilles, vider la
+ * seule `style.css` laisse `shell.css` et `connexion.css` porter leurs
+ * déclarations et 3 occurrences hors token, et l'assertion d'atteignabilité
+ * reste VERTE, à juste titre. La rouge qui vaut vide LES TROIS : l'assertion
+ * d'absence passe alors au vert avec `0 occurrence(s)` — l'état exact qu'elle
+ * existe pour dénoncer — et seule l'atteignabilité tombe. La prescription du
+ * plan supposait un fichier unique ; elle est fausse d'une portée dérivée.
+ *
  * 🔴 CE FICHIER NE LIT UN TEXTE NON VIDE QUE GRÂCE À `test: { css: true }` de
  * `client/vite.config.ts`. Sans cette ligne, Vitest court-circuite les fichiers
  * CSS — la requête `?raw` comprise — et les feuilles vaudraient la chaîne VIDE :
  * l'assertion d'absence passerait au vert EN NE MESURANT RIEN. C'est aussi
  * pourquoi il n'y a délibérément pas de `client/vitest.config.ts`, qui prendrait
  * le pas sur la configuration Vite sans rien dire.
+ *
+ * 🔴 PIÈGE NEUF, MESURÉ LE 20 AOÛT 2026, ET IL REND UNE ROUGE INDISCERNABLE
+ * D'UNE BONNE. Ce test doit être lancé DEPUIS `client/`. Lancé depuis la racine
+ * du dépôt (`npm --prefix client exec -- vitest run …`), la racine Vite change,
+ * `client/vite.config.ts` n'est plus la configuration retenue, et le CSS est
+ * court-circuité EN SILENCE : les trois feuilles sont trouvées par le glob —
+ * « feuilles de surface : 3 » s'imprime — mais valent la chaîne VIDE.
+ * L'assertion d'absence passe au vert, et c'est l'atteignabilité qui tombe.
+ * Deux rouges de la tâche 2 ont d'abord été jouées ainsi : elles rougissaient
+ * pour cette raison-là, jamais pour celle qu'on croyait mesurer. « Une rouge
+ * qui rougit pour la mauvaise raison est indiscernable d'une bonne si l'on ne
+ * lit que son `exit=1` » — le §9 du plan, payé le jour même où il l'écrit.
+ * ⚠️ L'assertion d'atteignabilité, elle, A ATTRAPÉ CE CAS. C'est sa seconde
+ * valeur, non prévue : elle garde aussi le HARNAIS, pas seulement l'arbre.
+ * ⚠️ `npm --prefix client test` NE TOMBE PAS DANS CE PIÈGE — le script `test`
+ * du `package.json` s'exécute avec `client/` pour cwd. C'est `exec` qui le
+ * tend, et `npx vitest` lancé de la racine aussi.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
