@@ -91,14 +91,28 @@ body {
    « une règle morte est pire qu'une règle absente : elle se lit comme une
    protection existante » — cette feuille le dit déjà d'une autre.
    ═══════════════════════════════════════════════════════════════════════════ */
+/* ── LES DEUX BANDEAUX SONT DES `.message message--flottant` (S4, tâche 5) ──
+   Le remplissage, le rayon, la bordure, le fond, l'encre, l'interligne et la
+   règle `:empty` viennent de la PRIMITIVE ; il ne reste ici que ce qui est
+   propre à cette surface — le placement fixe, les nombres tabulaires, la
+   transition d'apparition, et le cran de taille de `#stats`.
+
+   🔴 CES DÉCLARATIONS ONT ÉTÉ RETIRÉES, PAS ÉCRASÉES. Un sélecteur d'`ID`
+   l'emporte sur une classe : les laisser ici aurait rendu la primitive INERTE
+   tout en la donnant à lire comme appliquée — c'est-à-dire la divergence même
+   que le design system existe pour empêcher.
+
+   ⚠️ TROIS CHANGEMENTS D'APPARENCE, TOUS AU CONTRAT DU §5 DU PLAN : le
+   remplissage vertical passe de 6 à 8 px (`--e-2`), le rayon de `--r-2` à
+   `--r-1` (6 → 4 px), et la bordure de `.message` est désormais présente mais
+   TRANSPARENTE. ⚠️ Le rayon n'est PAS compensé, et c'est délibéré : le
+   compenser par une règle d'`ID` qui écrase la primitive recréerait la
+   divergence ci-dessus. Le déclarer coûte une ligne ; le compenser coûterait
+   la règle. Qu'il soit acceptable est un JUGEMENT HUMAIN (§8). */
 #status {
     position: fixed;
     inset-block-start: var(--e-3);
     inset-inline-start: var(--e-3);
-    padding: 6px var(--e-3);
-    border-radius: var(--r-2);
-    background: var(--voile-flottant);
-    color: var(--sur-voile);
     font-variant-numeric: tabular-nums;
     transition: opacity var(--duree-2);
 }
@@ -112,11 +126,10 @@ body {
     position: fixed;
     inset-block-end: var(--e-3);
     inset-inline-start: var(--e-3);
-    padding: 6px var(--e-3);
-    border-radius: var(--r-2);
-    background: var(--voile-flottant);
-    color: var(--sur-voile);
     font-variant-numeric: tabular-nums;
+    /* L'`ID` l'emporte sur la classe : `#stats` garde son cran, `--t-s`, là où
+       `.message` pose `--t-m`. C'est le seul écrasement volontaire, et il porte
+       sur une TAILLE, pas sur la forme de la primitive. */
     font-size: var(--t-s);
     letter-spacing: 0.02em;
 }
