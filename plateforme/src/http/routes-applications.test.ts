@@ -219,7 +219,20 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect(corps.applications.map((a) => a.nom)).toEqual(['Firefox']);
     });
 
-    it("🔴 une VM appartenant à QUELQU'UN D'AUTRE est refusée", async () => {
+    it("🔴 une VM ÉTRANGÈRE répond EXACTEMENT comme une VM INCONNUE", async () => {
+        // 🔴 CE TEST A ÉTÉ RETOURNÉ. Il épinglait `403 {refus:'vm-etrangere'}`,
+        // c'est-à-dire la décision D9 du plan de G1 — un ORACLE
+        // D'ÉNUMÉRATION : le code de retour confirmait à qui n'y a pas droit
+        // qu'une VM existe. Le propriétaire du dépôt a tranché pour le refus
+        // INDISTINGUABLE de `routes-vm.ts`, et le test épingle désormais
+        // l'indistinguabilité elle-même.
+        //
+        // 🔴 LES DEUX CORPS SONT COMPARÉS CARACTÈRE POUR CARACTÈRE, pas
+        // seulement les deux statuts : un test qui ne lirait que `404` serait
+        // satisfait par le MAUVAIS 404 — celui, générique, de `serveur.ts` —
+        // exactement le piège que le test d'ancrage du motif, plus haut dans ce
+        // fichier, a déjà payé une fois.
+        //
         // ⚠️ CE TEST POSE `vm.utilisateur_id` À LA MAIN, puisque rien ne le
         // remplit avant P4 — `npm run admin:agent` laisse la colonne NULL.
         const url = await servir('apps-etrangere');
@@ -228,9 +241,68 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         const autre = await creerUtilisateur(base!, 'autre@exemple.test', 'x', MS);
         await poserApp(base!, 'v-1', 'Firefox', 'c-1');
 
+        const entetes = avec(jetonDe(autre));
+        const etrangere = await fetch(`${url}/applications?vm=v-1`, { headers: entetes });
+        const inconnue = await fetch(`${url}/applications?vm=jamais-vue`, { headers: entetes });
+
+        expect([etrangere.status, await etrangere.text()]).toEqual([
+            inconnue.status,
+            await inconnue.text(),
+        ]);
+        expect(etrangere.status).toBe(404);
+    });
+
+    it("🔴 le corps du refus NE PORTE AUCUNE TRACE du cas réel", async () => {
+        // 🔴 C'EST L'OBJET MÊME DE LA DÉCISION : la ligne de journal distingue,
+        // la réponse HTTP jamais. Sans cette assertion, un champ de diagnostic
+        // ajouté « pour aider » rétablirait l'oracle sans qu'aucun test ne
+        // rougisse — les deux corps resteraient de même FORME tout en
+        // différant, et le test ci-dessus les comparant l'un à l'autre le
+        // verrait, mais celui-ci le dit par son nom.
+        const url = await servir('apps-etrangere-muette');
+        await poserVm(base!, 'v-1');
+        await attribuer(base!, 'v-1', 'proprietaire@exemple.test');
+        const autre = await creerUtilisateur(base!, 'autre@exemple.test', 'x', MS);
+        await poserApp(base!, 'v-1', 'Firefox', 'c-1');
+
         const r = await fetch(`${url}/applications?vm=v-1`, { headers: avec(jetonDe(autre)) });
-        expect(r.status).toBe(403);
-        expect(await r.json()).toEqual({ refus: 'vm-etrangere' });
+        const corps = await r.text();
+        expect(corps).toBe(JSON.stringify({ refus: 'vm-inconnue' }));
+        expect(corps).not.toContain('etrangere');
+        expect(corps).not.toContain('proprietaire');
+    });
+
+    it("🔴 la LIGNE DE JOURNAL, elle, distingue les deux cas", async () => {
+        // 🔴 C'EST LA CONTREPARTIE EXPLICITE DU REFUS INDISTINGUABLE. Sans
+        // elle, uniformiser coûterait à l'exploitant tout le diagnostic : « la
+        // VM n'existe pas » et « elle est à quelqu'un d'autre » se liraient
+        // pareil des DEUX côtés, et plus personne ne pourrait distinguer une
+        // erreur de saisie d'une tentative d'énumération.
+        //
+        // CE QUI REND CE CONTRÔLE ROUGE, et l'état est ATTEIGNABLE : une ligne
+        // qui disparaîtrait, une ligne qui nommerait le même cas dans les deux
+        // situations, ou une ligne qui tairait l'identifiant de la VM.
+        const traces: string[] = [];
+        vi.spyOn(console, 'warn').mockImplementation((l: string) => void traces.push(l));
+        const url = await servir('apps-journal-distingue');
+        await poserVm(base!, 'v-1');
+        await attribuer(base!, 'v-1', 'proprietaire@exemple.test');
+        const autre = await creerUtilisateur(base!, 'autre@exemple.test', 'x', MS);
+
+        const entetes = avec(jetonDe(autre));
+        await fetch(`${url}/applications?vm=v-1`, { headers: entetes });
+        const apresEtrangere = traces.join(' | ');
+        await fetch(`${url}/applications?vm=jamais-vue`, { headers: entetes });
+        const apresInconnue = traces.join(' | ').slice(apresEtrangere.length);
+
+        expect(apresEtrangere).toContain('cas=etrangere');
+        expect(apresEtrangere).toContain('v-1');
+        expect(apresInconnue).toContain('cas=inconnue');
+        expect(apresInconnue).toContain('jamais-vue');
+        // Et les deux lignes ne sont PAS la même : sans ce témoin, une ligne
+        // unique disant toujours « refus » satisferait les quatre assertions
+        // ci-dessus dès lors qu'elle porterait les deux mots.
+        expect(apresInconnue).not.toContain('cas=etrangere');
     });
 
     it('🔴 une VM NON ATTRIBUÉE est servie, ET la ligne de journal est ÉMISE', async () => {
@@ -341,10 +413,34 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         expect(await r.json()).toEqual({ issue: 'echec' });
     });
 
-    it("🔴 lancer une application d'une VM ÉTRANGÈRE est refusé", async () => {
+    it("🔴 lancer une application d'une VM ÉTRANGÈRE répond comme une VM INCONNUE", async () => {
         // Sans cette garde, l'identifiant d'application suffirait à lancer un
         // programme sur la machine de quelqu'un d'autre — et l'agent, lui,
         // n'a aucun moyen de savoir qui a demandé.
+        //
+        // 🔴 CE TEST A ÉTÉ RETOURNÉ, pour la même raison que son jumeau de la
+        // liste : il épinglait `403 {refus:'vm-etrangere'}`, l'oracle
+        // d'énumération que le propriétaire du dépôt a tranché contre. La
+        // garde, elle, n'a pas bougé d'un pouce — seul le refus qu'elle rend
+        // change, et le témoin de son EFFET est que l'agent inscrit ne reçoit
+        // rien.
+        //
+        // 🔴 LE CORPS EST COMPARÉ, jamais le seul statut : `404` seul serait
+        // rendu par le 404 générique de `serveur.ts` aussi bien que par
+        // celui-ci. Le témoin employé est le refus que l'AUTRE route de ce
+        // fichier rend sur une VM vraiment inconnue — ce qui éprouve du même
+        // coup « un seul motif, un seul code » ENTRE LES DEUX ROUTES.
+        //
+        // ⚠️ POURQUOI LE TÉMOIN VIENT DE L'AUTRE ROUTE, ET NON DE CELLE-CI :
+        // `application.vm_id` porte `REFERENCES vm(id)` sans `ON DELETE`
+        // (migration 0003) — une application dont la VM n'existe pas est
+        // INSÉRABLE nulle part, la contrainte rougit. Le verdict `inconnue`
+        // est donc INATTEIGNABLE sur `/application/:id/lancer` : la seule VM
+        // que cette route puisse lire est celle que l'application désigne, et
+        // elle existe par construction. *(Une première rédaction de ce test
+        // posait une application orpheline pour servir de témoin ; SQLite l'a
+        // refusée par `FOREIGN KEY constraint failed`, et c'est ce rouge qui a
+        // corrigé la supposition.)*
         const url = await servir('apps-lancer-etrangere');
         await poserVm(base!, 'v-1');
         await attribuer(base!, 'v-1', 'proprietaire@exemple.test');
@@ -352,12 +448,18 @@ describe(`routes /applications, moteur=${MOTEUR}`, () => {
         const id = await poserApp(base!, 'v-1', 'Firefox', 'c-1');
         registre.inscrire('v-1', agentQuiRepond('raccourci'));
 
-        const r = await fetch(`${url}/application/${id}/lancer`, {
+        const entetes = avec(jetonDe(autre));
+        const etrangere = await fetch(`${url}/application/${id}/lancer`, {
             method: 'POST',
-            headers: avec(jetonDe(autre)),
+            headers: entetes,
         });
-        expect(r.status).toBe(403);
-        expect(await r.json()).toEqual({ refus: 'vm-etrangere' });
+        const temoin = await fetch(`${url}/applications?vm=jamais-vue`, { headers: entetes });
+
+        expect([etrangere.status, await etrangere.text()]).toEqual([
+            temoin.status,
+            await temoin.text(),
+        ]);
+        expect(etrangere.status).toBe(404);
     });
 
     it('refuse la MÉTHODE sur un chemin qui existe, plutôt qu’un 404', async () => {

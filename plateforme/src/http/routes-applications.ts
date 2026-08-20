@@ -19,18 +19,29 @@
 // mieux argumenté que le `401` : le jeton est VALIDE, il n'est simplement pas
 // celui d'un humain, et un 401 inviterait à se reconnecter pour rien.
 //
-// 🔴 ⚠️ DIVERGENCE DE SÉCURITÉ NON TRANCHÉE, ET ELLE APPARTIENT AU
-// PROPRIÉTAIRE DU DÉPÔT — ce module l'applique, il ne la décide pas.
-// La décision D9 du plan de G1 retient `403 {refus:'vm-etrangere'}` sur une VM
-// appartenant à autrui, DISTINCT du refus d'une VM inconnue : c'est un ORACLE
-// D'ÉNUMÉRATION, un utilisateur apprend par tâtonnement quelles VMs existent.
-// `http/routes-vm.ts` (sous-bloc P4) retient l'inverse — un `404 vm-inconnue`
-// indistinguable, sur le modèle de `routes-auth.ts` et d'`agents/enrolement.ts`,
-// qui refusent tous deux de distinguer « inconnu » de « faux ». LES DEUX
-// CHANTIERS NE PEUVENT PAS AVOIR RAISON EN MÊME TEMPS, et le même service rend
-// aujourd'hui les deux réponses selon la route. G1 est implémenté tel qu'il est
-// écrit ; unifier est une décision, pas une correction, et elle est signalée
-// plutôt que prise en douce.
+// 🔴 DIVERGENCE DE SÉCURITÉ TRANCHÉE PAR LE PROPRIÉTAIRE DU DÉPÔT, ET
+// C'EST CE MODULE QUI A CÉDÉ. Deux sous-blocs avaient livré deux réponses
+// contradictoires à la même question — une demande portant sur une VM qui
+// n'appartient pas au demandeur — et l'avaient chacun signalée sans la
+// trancher : la décision D9 du plan de G1 retenait ici
+// `403 {refus:'vm-etrangere'}`, DISTINCT du refus d'une VM inconnue, quand
+// `http/routes-vm.ts` (sous-bloc P4) retenait un `404 vm-inconnue`
+// INDISTINGUABLE, sur le modèle de `routes-auth.ts` et d'`agents/enrolement.ts`.
+//
+// LE PROPRIÉTAIRE DU DÉPÔT A RETENU LE REFUS INDISTINGUABLE, et la raison est
+// que le `403` était un ORACLE D'ÉNUMÉRATION : il CONFIRMAIT l'existence d'une
+// ressource à qui n'y a précisément aucun droit, si bien qu'un utilisateur
+// apprenait par tâtonnement quelles VMs existent, sans jamais en voir une
+// seule. Les deux routes de ce fichier rendent donc désormais le MÊME
+// `404 {refus:'vm-inconnue'}`, produit par le même chemin, pour les deux cas.
+//
+// 🔴 LA CONTREPARTIE EST UNE LIGNE DE JOURNAL, ET ELLE N'EST PAS
+// DÉCORATIVE : sans elle, uniformiser coûterait à l'exploitant tout le
+// diagnostic — « la VM n'existe pas » et « elle est à quelqu'un d'autre » se
+// liraient pareil des DEUX côtés, et plus rien ne distinguerait une erreur de
+// saisie d'une tentative d'énumération. `acces` la pose, elle nomme le cas
+// réel, et ⚠️ ELLE NE DOIT JAMAIS ATTEINDRE LA RÉPONSE HTTP : c'est tout
+// l'objet. Un test asserte que le corps ne porte aucune trace du cas réel.
 //
 // ⚠️ LE PLAFOND DE CORPS DE `routes-auth.ts` NE S'APPLIQUE PAS ICI, et ne doit
 // SURTOUT PAS être relevé : ces deux routes n'ont aucun corps significatif —
@@ -97,13 +108,26 @@ function lancementDe(chemin: string): string | undefined {
 /// Le comportement se DURCIT TOUT SEUL le jour où le sous-bloc P4 remplira la
 /// colonne : la branche NULL cessera d'être atteinte, sans qu'une ligne change
 /// ici.
+///
+/// 🔴 `'etrangere'` SURVIT COMME VERDICT INTERNE ALORS QUE LE MOTIF DE FIL
+/// `'vm-etrangere'` A DISPARU, et les deux faits ne se contredisent pas.
+/// Le motif de fil n'avait plus que des sites d'émission morts une fois
+/// l'uniformisation faite — un motif inatteignable est une variante morte que
+/// le prochain lecteur croirait vivante, et il aurait pu la rendre à nouveau
+/// atteignable en croyant réparer. Il est donc retiré, et il ne subsiste nulle
+/// part : ce n'était un membre d'aucune union (`orchestration/refus.ts`
+/// n'a jamais connu que `vm-inconnue`), seulement deux littéraux et leurs deux
+/// assertions de test, toutes quatre parties avec lui.
+/// Le VERDICT, lui, est ce qui alimente la ligne de journal : l'aplatir en
+/// booléen supprimerait la seule distinction que la décision conserve
+/// délibérément. Il est vivant, éprouvé, et il ne franchit jamais le fil.
 async function acces(
     deps: DependancesApplications,
     vmId: string,
     utilisateurId: string,
 ): Promise<'ok' | 'inconnue' | 'etrangere'> {
     const vm = await lireVm(deps.base, vmId);
-    if (vm === undefined) return 'inconnue';
+    if (vm === undefined) return journaliserLeRefus('inconnue', vmId, utilisateurId);
     if (vm.utilisateur_id === null) {
         console.warn(
             `vm non attribuee, acces accorde sans isolation a la VM ${vmId} `
@@ -111,7 +135,42 @@ async function acces(
         );
         return 'ok';
     }
-    return vm.utilisateur_id === utilisateurId ? 'ok' : 'etrangere';
+    return vm.utilisateur_id === utilisateurId
+        ? 'ok'
+        : journaliserLeRefus('etrangere', vmId, utilisateurId);
+}
+
+/// La contrepartie du refus indistinguable : la seule chose, dans tout le
+/// service, qui dise LEQUEL des deux cas s'est produit.
+///
+/// 🔴 ELLE EST POSÉE DANS `acces`, ET PAS AUX POINTS D'APPEL. Les deux routes
+/// de ce fichier refusent par le même chemin, et un troisième appelant
+/// arrivera un jour ; poser la ligne chez l'appelant la rendrait
+/// OUBLIABLE — et l'oublier ne casserait rien de visible, ce qui est
+/// exactement le mode de défaillance que ce dépôt appelle une panne muette.
+/// Ici, le refus et sa trace naissent ensemble ou pas du tout.
+///
+/// ⚠️ `cas=` EST UN CHAMP, PAS UNE PHRASE : c'est lui que l'exploitant `grep`e,
+/// et une phrase se réécrit sans que rien ne casse. Un test l'épingle, et il
+/// épingle AUSSI que les deux cas ne rendent pas le même — sans quoi une ligne
+/// unique disant « refus » satisferait un contrôle qui ne chercherait que la
+/// présence de la trace.
+///
+/// ⚠️ LE RETOUR EST LE VERDICT LUI-MÊME, pour que la ligne ne puisse pas
+/// dériver de la décision qu'elle décrit : il n'existe aucun chemin où l'on
+/// journalise un cas et où l'on rende l'autre.
+function journaliserLeRefus(
+    cas: 'inconnue' | 'etrangere',
+    vmId: string,
+    utilisateurId: string,
+): 'inconnue' | 'etrangere' {
+    console.warn(
+        `refus d'accès à la VM ${vmId} pour l'utilisateur ${utilisateurId} : `
+            + `cas=${cas} — la réponse HTTP, elle, est le même 404 « vm-inconnue » `
+            + `dans les deux cas (décision du propriétaire du dépôt : pas d'oracle `
+            + `d'énumération).`,
+    );
+    return cas;
 }
 
 export async function servirApplications(
@@ -171,12 +230,13 @@ export async function servirApplications(
         }
         const verdict = await acces(deps, vmId, porteur.utilisateurId);
         if (verdict !== 'ok') {
-            repondre(
-                rep,
-                verdict === 'inconnue' ? 404 : 403,
-                { refus: verdict === 'inconnue' ? 'vm-inconnue' : 'vm-etrangere' },
-                cors,
-            );
+            // 🔴 LE VERDICT N'EST PAS RELU ICI, et c'est le fond de la
+            // décision : « inconnue » et « étrangère » passent par la MÊME
+            // expression, si bien que les deux corps ne PEUVENT pas différer.
+            // Un ternaire, même rendant deux fois la même valeur, laisserait
+            // la porte ouverte à ce qu'un jour l'une des deux branches
+            // change. Même geste que `routes-vm.ts`.
+            repondre(rep, 404, { refus: 'vm-inconnue' }, cors);
             return true;
         }
         const lignes = await lireParVm(deps.base, vmId);
@@ -206,12 +266,9 @@ export async function servirApplications(
         // UN PROGRAMME SUR LA MACHINE DE QUELQU'UN D'AUTRE — et l'agent, lui,
         // n'a aucun moyen de savoir qui a demandé : il exécute ce qu'on lui
         // dit d'exécuter.
-        repondre(
-            rep,
-            verdict === 'inconnue' ? 404 : 403,
-            { refus: verdict === 'inconnue' ? 'vm-inconnue' : 'vm-etrangere' },
-            cors,
-        );
+        // Le refus est celui de la liste, mot pour mot : un seul motif, un
+        // seul code, pour les deux routes comme pour les deux cas.
+        repondre(rep, 404, { refus: 'vm-inconnue' }, cors);
         return true;
     }
 
