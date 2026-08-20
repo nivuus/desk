@@ -192,6 +192,17 @@ fn conformite_aux_vecteurs_partages() {
                         case["secret"].as_str().unwrap(),
                     ),
                     "battement" => VersLaPlateforme::battement(),
+                    "catalogue" => VersLaPlateforme::catalogue(
+                        case["complet"].as_bool().unwrap(),
+                        serde_json::from_value(case["applications"].clone())
+                            .expect("applications"),
+                        serde_json::from_value(case["disparues"].clone())
+                            .expect("disparues"),
+                    ),
+                    "lancee" => VersLaPlateforme::lancee(
+                        case["demande"].as_str().unwrap(),
+                        serde_json::from_value(case["issue"].clone()).expect("issue"),
+                    ),
                     autre => panic!("kind inconnu dans le sens vers : {autre}"),
                 };
                 assert_eq!(
@@ -216,6 +227,10 @@ fn conformite_aux_vecteurs_partages() {
                     ),
                     "refus" => DepuisLaPlateforme::refus(
                         serde_json::from_value(case["motif"].clone()).expect("motif"),
+                    ),
+                    "lancer" => DepuisLaPlateforme::lancer(
+                        case["demande"].as_str().unwrap(),
+                        case["cle"].as_str().unwrap(),
                     ),
                     autre => panic!("kind inconnu dans le sens depuis : {autre}"),
                 };

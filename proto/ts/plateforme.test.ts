@@ -11,6 +11,7 @@ import {
     parseVersLaPlateforme,
     type MotifCanal,
     type Application,
+    type IssueLancement,
     encodeCatalogue,
     encodeLancee,
     encodeLancer,
@@ -35,9 +36,42 @@ interface CasVecteur {
     jeton?: string;
     expire_a?: number;
     motif?: string;
+    complet?: boolean;
+    applications?: Application[];
+    disparues?: string[];
+    demande?: string;
+    issue?: string;
+    cle?: string;
 }
 
-const cas: CasVecteur[] = vecteurs.cases;
+const cas: CasVecteur[] = vecteurs.cases as CasVecteur[];
+
+/**
+ * 🔴 UN `kind` INCONNU LÈVE, il ne retombe pas sur un défaut. Le dispatch
+ * était un ternaire dont la dernière branche servait de fourre-tout : un
+ * `kind` mal orthographié y aurait été encodé par la mauvaise fonction, et le
+ * seul symptôme aurait été une chaîne fausse — impossible à distinguer d'une
+ * divergence d'encodage réelle. C'est le `panic!` du côté Rust, transposé.
+ */
+function encodeVers(c: CasVecteur): string {
+    switch (c.kind) {
+        case 'enroler': return encodeEnroler(c.vm!, c.secret!);
+        case 'battement': return encodeBattement();
+        case 'catalogue': return encodeCatalogue(c.complet!, c.applications!, c.disparues!);
+        case 'lancee': return encodeLancee(c.demande!, c.issue as IssueLancement);
+        default: throw new Error(`kind inconnu dans le sens vers : ${c.kind}`);
+    }
+}
+
+function encodeDepuis(c: CasVecteur): string {
+    switch (c.kind) {
+        case 'enrole': return encodeEnrole(c.prefixe!, c.jeton!, c.expire_a!);
+        case 'battement-recu': return encodeBattementRecu(c.jeton!, c.expire_a!);
+        case 'refus': return encodeRefus(c.motif as MotifCanal);
+        case 'lancer': return encodeLancer(c.demande!, c.cle!);
+        default: throw new Error(`kind inconnu dans le sens depuis : ${c.kind}`);
+    }
+}
 
 describe('vecteurs partagés du canal plateforme', () => {
     it('🔴 déclare la MÊME version que le protocole', () => {
@@ -57,10 +91,7 @@ describe('vecteurs partagés du canal plateforme', () => {
     it.each(cas.filter((c) => c.sens === 'vers'))(
         'encode « $name » exactement comme le vecteur',
         (c) => {
-            const produit = c.kind === 'enroler'
-                ? encodeEnroler(c.vm!, c.secret!)
-                : encodeBattement();
-            expect(produit).toBe(c.json);
+            expect(encodeVers(c)).toBe(c.json);
         },
     );
 
@@ -72,7 +103,7 @@ describe('vecteurs partagés du canal plateforme', () => {
             expect(lu.v).toBe(PLATEFORME_VERSION);
             // Les champs propres à chaque variante, comparés un par un : un
             // `toBe(c.kind)` seul passerait sur un message tronqué.
-            for (const champ of ['prefixe', 'jeton', 'expire_a', 'motif'] as const) {
+            for (const champ of ['prefixe', 'jeton', 'expire_a', 'motif', 'demande', 'cle'] as const) {
                 if (c[champ] !== undefined) expect(lu[champ]).toBe(c[champ]);
             }
         },
@@ -88,13 +119,7 @@ describe('vecteurs partagés du canal plateforme', () => {
             // messages-là, en TypeScript. Personne ne fixait donc les octets
             // qu'elle met réellement sur le fil — un ordre de champs qui
             // divergerait du Rust ne se serait vu nulle part.
-            const produit =
-                c.kind === 'enrole'
-                    ? encodeEnrole(c.prefixe!, c.jeton!, c.expire_a!)
-                    : c.kind === 'battement-recu'
-                      ? encodeBattementRecu(c.jeton!, c.expire_a!)
-                      : encodeRefus(c.motif as MotifCanal);
-            expect(produit).toBe(c.json);
+            expect(encodeDepuis(c)).toBe(c.json);
         },
     );
 
