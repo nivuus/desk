@@ -162,3 +162,48 @@ fn une_image_sans_en_tete_complet_est_refusee() {
     tampon.extend_from_slice(&[0, 0]);
     assert!(lire_trame(&mut Cursor::new(tampon)).is_err());
 }
+
+/// ROUGE si la variante est absente. Le patron est celui des tests
+/// aller-retour voisins de ce fichier.
+#[test]
+fn aller_retour_de_l_ecriture_du_presse_papier() {
+    let message = VersCapteur::PressePapierEcrire { texte: String::from("une\r\ndeux") };
+    let mut tampon = Vec::new();
+    ecrire_json(&mut tampon, &message).unwrap();
+    match lire_trame(&mut Cursor::new(tampon)).unwrap() {
+        Trame::Json(octets) => {
+            assert_eq!(serde_json::from_slice::<VersCapteur>(&octets).unwrap(), message)
+        }
+        autre => panic!("attendu du JSON, reçu {autre:?}"),
+    }
+}
+
+/// 🔴 **La borne du tube capteur↔enfant n'est PAS le facteur contraignant**,
+/// et ce test le MESURE là où la spec l'affirmait.
+///
+/// `PRESSE_PAPIER_MAX` vaut 64 Kio ; `TAILLE_MAX` vaut 8 Mio, soit cent
+/// vingt-huit fois plus. Un texte de la taille maximale que le produit accepte
+/// traverse donc ce tube sans l'approcher.
+///
+/// ROUGE si `TAILLE_MAX` descendait sous 64 Kio, ou si l'encodage du texte
+/// gonflait d'un facteur imprévu — le JSON échappe `\r` et `\n` en deux
+/// caractères chacun, et un texte fait entièrement de sauts de ligne double
+/// donc de taille.
+#[test]
+fn un_texte_de_la_taille_maximale_du_produit_traverse_le_tube() {
+    let texte = "a".repeat(crate::presse_papier::PRESSE_PAPIER_MAX);
+    let message = VersCapteur::PressePapierEcrire { texte };
+    let mut tampon = Vec::new();
+    ecrire_json(&mut tampon, &message).unwrap();
+    assert!(
+        tampon.len() < TAILLE_MAX,
+        "{} octets sur le tube, borne {TAILLE_MAX}",
+        tampon.len()
+    );
+    match lire_trame(&mut Cursor::new(tampon)).unwrap() {
+        Trame::Json(octets) => {
+            assert_eq!(serde_json::from_slice::<VersCapteur>(&octets).unwrap(), message)
+        }
+        autre => panic!("attendu du JSON, reçu {autre:?}"),
+    }
+}

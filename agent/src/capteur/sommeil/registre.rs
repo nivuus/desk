@@ -62,6 +62,29 @@ pub(super) struct Etat {
     /// **Ici et pas dans `capteur::audio`** : ce module a l'horloge, l'autre
     /// est pur et le reste.
     pub(super) inaptes: HashMap<String, Instant>,
+    /// Le couple (numéro de séquence, texte) de NOTRE PROPRE écriture du
+    /// presse-papier, en attente d'être consommé par le tour de roue pour
+    /// armer les gardes n°1 et n°2 de D5 (sous-bloc P2).
+    ///
+    /// 🔴 **Il vit ICI, sous le verrou, et non à côté du `Sondeur`, parce que
+    /// les deux ne courent pas sur le même fil.** Le `Sondeur` est local au fil
+    /// du tour de roue ; l'écriture, elle, arrive du fil de FENÊTRE qui sert la
+    /// commande `PressePapierEcrire`. Il n'existe aucun moyen d'armer le garde
+    /// depuis là sans course — sinon ce registre, qui est déjà le point de
+    /// rendez-vous verrouillé des deux.
+    ///
+    /// ⚠️ **Cela DÉPLACE la course, cela ne la supprime pas, et il faut le
+    /// dire** : jusqu'à `PERIODE_REARBITRAGE` (250 ms) peut s'écouler entre
+    /// notre `SetClipboardData` et la consommation ci-dessous. Si une AUTRE
+    /// copie survient dans cet intervalle, poser `reference` sur *notre* `seq`
+    /// ne la masque pas — le compteur aura encore bougé, et cette copie sera
+    /// annoncée. **C'est le comportement voulu**, exact au sens de D5, et un
+    /// test le vérifie plutôt que de le supposer.
+    ///
+    /// Écrasement du dernier : deux écritures en moins d'un tour de roue ne
+    /// laissent que la seconde, qui est celle que le presse-papier porte
+    /// réellement.
+    pub(super) notre_ecriture: Option<(u32, String)>,
     /// Nombre de réarmements consécutifs déjà accordés à chaque session.
     ///
     /// ❌ **« Remis à zéro dès qu'elle porte le son sans mourir » décrit la
@@ -132,6 +155,7 @@ pub(super) fn etat() -> MutexGuard<'static, Etat> {
             horloge: 0,
             derniers_audio: HashMap::new(),
             inaptes: HashMap::new(),
+            notre_ecriture: None,
             rearmements: HashMap::new(),
             generations: HashMap::new(),
             prochaine_generation: 0,
@@ -179,6 +203,14 @@ fn demarrer_le_tour_de_roue() {
             // `tour()`, AVANT toute lecture : `PRESSE_PAPIER=0` empêche donc
             // jusqu'à la lecture du compteur, pas seulement l'envoi. Le
             // dupliquer ici doublerait une décision déjà prise au bon endroit.
+            // 🔴 **AVANT `tour()`, et l'ordre EST le mécanisme** (sous-bloc
+            // P2). Consomme l'écriture que le fil de FENÊTRE a posée dans
+            // `Etat` en servant un collage, et arme sur elle les gardes n°1 et
+            // n°2 de D5. Placée après `tour()`, elle arriverait trop tard : le
+            // tour aurait déjà relu notre propre texte et l'aurait renvoyé aux
+            // fenêtres.
+            presse_papier::armer_les_gardes(&mut sondeur);
+
             let annonce = sondeur.tour();
 
             let mut garde = etat();

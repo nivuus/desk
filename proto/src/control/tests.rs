@@ -65,7 +65,7 @@ fn round_trip_du_message_de_vibration() {
 
 #[test]
 fn round_trip_des_capacites() {
-    let message = AgentControl::capabilities(true);
+    let message = AgentControl::capabilities(true, true);
     let json = serde_json::to_string(&message).expect("sérialisation");
     let relu: AgentControl = serde_json::from_str(&json).expect("désérialisation");
     assert_eq!(message, relu);
@@ -234,4 +234,75 @@ fn un_presse_papier_en_version_2_est_rejete() {
 fn un_presse_papier_portant_un_champ_inconnu_est_rejete() {
     let brut = r#"{"type":"clipboard","v":3,"text":"bonjour","bytes":7,"surprise":1}"#;
     assert!(serde_json::from_str::<AgentControl>(brut).is_err());
+}
+
+// ---------------------------------------------------------------------------
+// Sous-bloc P2 du chantier presse-papier — le sens navigateur → VM.
+// ---------------------------------------------------------------------------
+
+/// ROUGE si la variante `ClientControl::Clipboard` est absente.
+#[test]
+fn deserialise_le_collage_venu_du_client() {
+    let msg: ClientControl =
+        serde_json::from_str(r#"{"v":3,"type":"clipboard","text":"bonjour"}"#)
+            .expect("désérialisation");
+    assert_eq!(msg, ClientControl::clipboard("bonjour"));
+}
+
+#[test]
+fn serialise_le_collage_venu_du_client() {
+    assert_eq!(
+        serde_json::to_string(&ClientControl::clipboard("bonjour")).unwrap(),
+        r#"{"type":"clipboard","v":3,"text":"bonjour"}"#
+    );
+}
+
+/// 🔴 ROUGE si l'on oublie `deserialize_with = "verifie_version"` sur le champ
+/// `version` — **c'est la ligne qu'on omet en recopiant une variante
+/// voisine**, et rien d'autre dans ce dépôt ne le verrait : la variante
+/// fonctionnerait, simplement elle accepterait n'importe quelle version.
+#[test]
+fn un_collage_client_a_la_mauvaise_version_est_rejete() {
+    let erreur = serde_json::from_str::<ClientControl>(r#"{"v":2,"type":"clipboard","text":"x"}"#);
+    assert!(erreur.is_err(), "une version 2 doit être refusée");
+}
+
+/// 🔴 ROUGE si l'on posait la variante sur un enum sans `deny_unknown_fields` :
+/// un client mal conduit pourrait alors faire passer n'importe quoi.
+#[test]
+fn un_collage_client_avec_un_champ_en_trop_est_rejete() {
+    let erreur = serde_json::from_str::<ClientControl>(
+        r#"{"v":3,"type":"clipboard","text":"x","bytes":1}"#,
+    );
+    assert!(erreur.is_err(), "un champ inconnu doit être refusé");
+}
+
+/// 🔴 ROUGE si l'on oublie `#[serde(default)]` sur `Capabilities::clipboard`.
+///
+/// ⚠️ **La raison n'est PAS `deny_unknown_fields`**, contrairement à ce que la
+/// spec avance : `deny_unknown_fields` refuse un champ INCONNU ; c'est le
+/// défaut de serde qui refuse un champ MANQUANT. Les deux mécanismes n'ont
+/// rien à voir, et c'est le commentaire de `mic` qui dit la chose juste.
+///
+/// Un agent d'avant P2 n'émet pas ce champ ; un désérialiseur récent doit donc
+/// le tolérer et lire `false`.
+#[test]
+fn capabilities_sans_clipboard_se_deserialise_a_false() {
+    let msg: AgentControl =
+        serde_json::from_str(r#"{"v":3,"type":"capabilities","gamepad":true}"#)
+            .expect("désérialisation");
+    assert_eq!(msg, AgentControl::capabilities(true, false));
+}
+
+/// ROUGE si l'on posait un `skip_serializing_if` : le champ disparaîtrait
+/// quand il vaut `false`, et le client ne pourrait plus distinguer « l'agent
+/// dit non » de « l'agent est trop ancien pour le dire ». Les deux se traitent
+/// de la même façon aujourd'hui, mais la distinction est ce qui permettra un
+/// jour de le journaliser.
+#[test]
+fn capabilities_serialise_les_deux_champs() {
+    assert_eq!(
+        serde_json::to_string(&AgentControl::capabilities(false, true)).unwrap(),
+        r#"{"type":"capabilities","v":3,"gamepad":false,"clipboard":true}"#
+    );
 }

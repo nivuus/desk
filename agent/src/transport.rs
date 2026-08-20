@@ -181,6 +181,35 @@ pub struct Session {
     /// Dernière visibilité annoncée par le navigateur, en attente
     /// d'application. Même raison de différer que `pending_resize`.
     pending_visibility: Option<(bool, bool)>,
+    /// Dernier collage annoncé par le navigateur, en attente d'application
+    /// (sous-bloc P2 du chantier presse-papier). Même raison de différer que
+    /// `pending_resize` : `memoriser_controle` court pendant le drainage de
+    /// `poll_output`, et str0m impose une seule mutation de `Rtc` par appel.
+    ///
+    /// ⚠️ **Un collage est un ÉVÉNEMENT, et il est pourtant mémorisé comme un
+    /// ÉTAT — écrasement du dernier. Le coût est réel, et il est écrit :** deux
+    /// collages arrivés entre deux tours de boucle se réduisent au second, le
+    /// premier étant **perdu sans trace**. C'est acceptable parce qu'un tour de
+    /// boucle est borné par la cadence vidéo et qu'un humain ne produit pas
+    /// deux `Ctrl+V` dans cet intervalle — **mais un client qui se conduirait
+    /// mal, lui, le pourrait**. Le remède serait une file bornée ; il n'est pas
+    /// livré, et c'est un legs de P2.
+    pending_clipboard: Option<String>,
+    /// Le collage a été écrit dans le presse-papier de la VM : il reste à
+    /// injecter `Ctrl+V`.
+    ///
+    /// 🔴 **Ce drapeau porte L'ORDRE de D6 à lui seul**, et c'est pourquoi il
+    /// existe plutôt qu'un appel direct. Il n'est posé que lorsque l'écriture
+    /// a **réussi** (`act_on_timeout`, branche `a1octies`), et il est consommé
+    /// par `run` (`transport/boucle.rs`) juste après. L'écriture étant
+    /// synchrone et précédant la pose, l'ordre « le presse-papier Windows
+    /// d'abord, la touche ensuite » est garanti **par construction** — aucun
+    /// ordonnancement de canal n'y entre.
+    ///
+    /// Sur échec d'écriture, il n'est **pas** posé : la touche `V` est PERDUE,
+    /// pas reportée (D6). Un `Ctrl+V` sur un presse-papier inchangé collerait
+    /// le contenu PRÉCÉDENT, ce que D6 existe entièrement pour éviter.
+    collage_a_injecter: bool,
     /// Contrôleur de congestion. Alimenté par `Event::EgressBitrateEstimate`
     /// et `Event::MediaEgressStats`, tous deux déjà émis par str0m — le
     /// second l'était même déjà avant ce chantier, et tombait dans le `_ =>
@@ -385,6 +414,8 @@ impl Session {
             warned_audio_negotiation: false,
             pending_resize: None,
             pending_visibility: None,
+            pending_clipboard: None,
+            collage_a_injecter: false,
             congestion: congestion::Controleur::new(
                 congestion::Config {
                     plafond_bps,

@@ -111,6 +111,27 @@ pub enum VersCapteur {
     /// d'`AudioMort`, elle ne ré-arbitre rien : la preuve ne concerne que la
     /// session qui l'apporte, jamais une AUTRE fenêtre du même groupe de PID.
     AudioVivant,
+    /// L'utilisateur a collé dans SA fenêtre : écris ce texte dans le
+    /// presse-papier de la VM (sous-bloc P2 du chantier presse-papier).
+    ///
+    /// 🔴 **Elle SE RÉPOND par `Fait`, et c'est le seul point où cette famille
+    /// de commandes le fait — la différence n'est pas stylistique.**
+    /// `Visibilite`, `AudioMort` et `AudioVivant` ne se répondent pas parce
+    /// que leur effet est un ARBITRAGE global, qui peut concerner une autre
+    /// fenêtre et revient par la connexion média. Ici l'appelant a besoin de
+    /// savoir que l'écriture a **réellement eu lieu AVANT** d'injecter
+    /// `Ctrl+V` : c'est tout l'ordre de D6, et rien d'autre ne le porte. Sur
+    /// `DepuisCapteur::Erreur`, l'enfant n'injecte pas — la touche `V` est
+    /// **perdue, pas reportée**, parce qu'un `Ctrl+V` sur un presse-papier
+    /// inchangé collerait le contenu PRÉCÉDENT, sans que rien ne le dise.
+    ///
+    /// Le texte est déjà **normalisé, borné et dénormalisé** (`\r\n`) par
+    /// l'enfant quand il arrive ici : le propriétaire ne décide rien de son
+    /// contenu, il l'écrit. La borne de ce tube (`TAILLE_MAX`, 8 Mio) n'est
+    /// donc **pas** le facteur contraignant — `PRESSE_PAPIER_MAX` (64 Kio)
+    /// mord cent-vingt-huit fois plus tôt —, et un test le vérifie plutôt que
+    /// de le supposer.
+    PressePapierEcrire { texte: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
