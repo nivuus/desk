@@ -49,6 +49,110 @@ function declarationsDuBloc(css: string, selecteur: string): string[] {
         .map((d) => `${d.propriete}: ${d.valeur}`);
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LE GARDE DU WINDOW CONTROLS OVERLAY — sous-bloc S4, tâche 10.
+ *
+ * 🔴 IL PROUVE QUE LA RÈGLE WCO EST INERTE AUJOURD'HUI, ET RIEN D'AUTRE. Il
+ * n'existe AUCUN manifeste dans ce dépôt — donc `display_override:
+ * ["window-controls-overlay"]` n'est déclaré nulle part, les variables
+ * `titlebar-area-*` ne sont jamais définies, et AUCUN ÉTAT ATTEIGNABLE ne fait
+ * agir la règle. Un critère de recette qui prétendrait l'exercer serait vacueux
+ * PAR CONSTRUCTION, et pas faute d'effort : c'est pourquoi S4 n'en prescrit
+ * aucun. Ce que ce garde tient est une propriété de FORME dont la rouge, elle,
+ * a une conséquence RÉELLE — écrire `env(titlebar-area-height, 8px)` descend le
+ * bandeau de 8 px MAINTENANT, sur le produit tel qu'il tourne. Ce n'est donc
+ * pas un contrôle qui valide sa propre écriture.
+ *
+ * 🔴 CE QU'IL NE PROUVE PAS : rien du comportement SOUS WCO. La règle n'a jamais
+ * été rendue dans une fenêtre à barre de titre superposée. Le destinataire de ce
+ * legs est NOMMÉ : la recette du sous-bloc G5 de la gestion d'apps, celui qui
+ * pose le manifeste — c'est à elle de regarder la fenêtre de session sous une
+ * barre superposée.
+ *
+ * ── POURQUOI ② INTERDIT UNE REQUÊTE MÉDIA PLUTÔT QUE DE LA VÉRIFIER ────────
+ * Un repli neutralise un `env()` ; RIEN ne neutralise un bloc `@media`. Une
+ * règle conditionnelle au WCO écrite en `@media (display-mode:
+ * window-controls-overlay)` pourrait donc changer la mise en page d'AUJOURD'HUI
+ * sans qu'aucune commande ne le dise. L'interdire rend la propriété « inerte
+ * aujourd'hui » TOTALE au lieu de partielle.
+ *
+ * ⚠️ LA PORTÉE EST DÉRIVÉE, JAMAIS ÉNUMÉRÉE : toutes les `*.css` de
+ * `client/src/`, socle et primitives compris. Une feuille neuve entre donc dans
+ * ce garde sans qu'une ligne d'ici ne change, et une liste recopiée ne peut pas
+ * diverger de ce qu'elle décrit.
+ *
+ * ⚠️ TOUT EST LU APRÈS BLANCHIMENT, dans les DEUX SENS : un `env(titlebar-area-
+ * height, 8px)` écrit dans un COMMENTAIRE ne fait pas rougir ①, et un
+ * `env(titlebar-area-` qui ne vivrait que dans un commentaire ne satisfait PAS
+ * l'atteignabilité ③. C'est le piège que ce dépôt a payé trois fois, et
+ * l'encadré de `./style.css` écrit précisément ces chaînes-là.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+const FEUILLES_SRC = import.meta.glob<string>('./**/*.css', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+});
+
+/** `./session/etat-terminal.css` → `client/src/session/etat-terminal.css`. */
+const cheminSrc = (cle: string) => cle.replace(/^\.\//, 'client/src/');
+
+/** Tout `env(titlebar-area-…)` des feuilles, avec sa queue d'arguments. */
+const envs: { fichier: string; texte: string; repli: string }[] = [];
+/** Tout prélude d'at-rule conditionnel au WCO. */
+const requetesWco: { fichier: string; prelude: string }[] = [];
+
+for (const [cle, brut] of Object.entries(FEUILLES_SRC).sort()) {
+    const css = sansCommentaires(brut);
+    for (const m of css.matchAll(/env\(\s*(titlebar-area-[a-z-]+)\s*([^)]*)\)/g)) {
+        envs.push({ fichier: cheminSrc(cle), texte: `env(${m[1]}${m[2]})`, repli: m[2].trim() });
+    }
+    for (const p of preludes(css)) {
+        if (/display-mode\s*:\s*window-controls-overlay/.test(p)) {
+            requetesWco.push({ fichier: cheminSrc(cle), prelude: p });
+        }
+    }
+}
+
+// Le relevé, toujours imprimé, succès compris — « un contrôle de dérive dont on
+// ne lit jamais la valeur ne sert qu'à passer » (`poids-css.mjs`).
+console.log(`garde WCO  feuilles de client/src/ : ${Object.keys(FEUILLES_SRC).length}`);
+console.log(`           env(titlebar-area-*) lus : ${envs.length}`);
+for (const e of envs) console.log(`           ${e.fichier}  ${e.texte}`);
+
+describe('le Window Controls Overlay — la règle est livrée, et elle est INERTE', () => {
+    it('③ atteignabilité : il existe au moins un env(titlebar-area-) à lire', () => {
+        // 🔴 SANS CETTE ASSERTION, ① EST VERTE EN NE MESURANT RIEN — et ② l'est
+        // de toute façon, puisqu'elle nie. Sa rouge se joue en VIDANT les
+        // feuilles qui portent la règle.
+        // ⚠️ ET IL FAUT LES VIDER TOUTES : la portée est dérivée sur toutes les
+        // `*.css` de `client/src/`, donc vider `style.css` SEULE laisse
+        // `session/etat-terminal.css` porter son `env()` et l'atteignabilité
+        // reste VERTE, à juste titre. C'est le défaut de prescription que
+        // `design/longueurs.test.ts` a déjà mesuré sur sa propre rouge.
+        expect(
+            envs.length,
+            'aucun env(titlebar-area-) dans client/src/ : le garde WCO est vert en ne mesurant rien',
+        ).toBeGreaterThan(0);
+    });
+
+    it('① tout env(titlebar-area-*) porte le repli 0px', () => {
+        expect(
+            envs.filter((e) => e.repli !== ', 0px').map((e) => `${e.fichier}  ${e.texte}`),
+            'un env(titlebar-area-*) sans le repli « , 0px » change la mise en page AUJOURD’HUI',
+        ).toEqual([]);
+    });
+
+    it('② aucune requête @media conditionnelle au WCO', () => {
+        // Un repli neutralise un `env()` ; rien ne neutralise un bloc `@media`.
+        expect(
+            requetesWco.map((r) => `${r.fichier}  ${r.prelude}`),
+            'une @media (display-mode: window-controls-overlay) peut changer la mise en page sans qu’aucune commande ne le dise',
+        ).toEqual([]);
+    });
+});
+
 describe('style.css — les gardes de la fenêtre de session', () => {
     it('② atteignabilité : la feuille déclare des règles', () => {
         // 🔴 SANS CETTE ASSERTION, LA SUIVANTE EST VERTE SUR UNE FEUILLE VIDE.

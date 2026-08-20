@@ -47,6 +47,12 @@
     display: grid;
     place-items: center;
     padding: var(--e-4);
+    /* Le remplissage de tête suit la barre de titre superposée (WCO, S4,
+       tâche 10) : le repli `0px` rend cette ligne INERTE tant qu'aucun
+       manifeste ne déclare `display_override` — et il n'en existe aucun dans
+       ce dépôt. Voir l'encadré de `../style.css`, qui porte la raison entière,
+       et `../style.test.ts`, qui en fait une commande. */
+    padding-block-start: calc(env(titlebar-area-height, 0px) + var(--e-4));
     background: var(--voile-flottant);
 }
 

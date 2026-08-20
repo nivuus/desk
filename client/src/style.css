@@ -116,9 +116,35 @@ body {
    compenser par une règle d'`ID` qui écrase la primitive recréerait la
    divergence ci-dessus. Le déclarer coûte une ligne ; le compenser coûterait
    la règle. Qu'il soit acceptable est un JUGEMENT HUMAIN (§8). */
+/* ── LE WINDOW CONTROLS OVERLAY (S4, tâche 10) ─────────────────────────────
+   Sous WCO, la fenêtre de l'application n'a plus de barre de titre : les
+   commandes de fenêtre se superposent au HAUT de la zone client, et un bandeau
+   posé à `var(--e-3)` du bord passerait DESSOUS. `env(titlebar-area-height)`
+   donne la hauteur de cette bande — et vaut son repli partout ailleurs.
+
+   🔴 LE REPLI EST `0px`, ET C'EST CE QUI REND CETTE RÈGLE INERTE AUJOURD'HUI.
+   Les variables `titlebar-area-*` ne sont définies QUE si le manifeste porte
+   `display_override: ["window-controls-overlay"]`. IL N'EXISTE AUCUN MANIFESTE
+   DANS CE DÉPÔT — mesuré, pas supposé —, donc aucun état atteignable où cette
+   règle agisse : `calc(0px + var(--e-3))` vaut exactement `var(--e-3)`, la
+   valeur d'avant. `client/src/style.test.ts` en fait une commande, et sa rouge
+   a une conséquence RÉELLE sur le produit d'aujourd'hui : écrire un repli non
+   nul descend le bandeau maintenant, sur toutes les sessions.
+
+   ⚠️ CE GARDE PROUVE L'INERTIE, JAMAIS LE COMPORTEMENT. La règle n'a JAMAIS
+   été rendue dans une fenêtre à barre de titre superposée, et elle ne le sera
+   pas avant que le sous-bloc G5 de la gestion d'apps ne pose le manifeste —
+   c'est à SA recette de regarder la fenêtre de session sous une barre
+   superposée. Aucun critère de recette de S4 ne la couvre, délibérément : un
+   critère qu'aucun état ne peut rendre rouge se lit comme une preuve.
+
+   ⚠️ CE QUE S4 NE LIVRE PAS DU WCO : aucune zone de glissement
+   (`-webkit-app-region: drag`), aucun emploi de `navigator.windowControlsOverlay`,
+   aucun repositionnement des trois éléments du BAS — le WCO n'occupe que le
+   haut de la zone client. */
 #status {
     position: fixed;
-    inset-block-start: var(--e-3);
+    inset-block-start: calc(env(titlebar-area-height, 0px) + var(--e-3));
     inset-inline-start: var(--e-3);
     font-variant-numeric: tabular-nums;
     transition: opacity var(--duree-2);
