@@ -1,0 +1,42 @@
+# LA BORNE DU CRITÈRE ③, MESURÉE AVANT D'ÊTRE FIXÉE
+# 100 refus 409 consécutifs par moteur, contre le service RÉEL, sur les deux moteurs.
+#
+# ⚠️ LA BORNE N'EST PAS UN QUANTILE DE CE RELEVÉ, et ce serait une erreur qu'elle
+#   le soit : calée sur le p99 mesuré, elle rougirait au premier ralentissement de
+#   la machine et transformerait le critère en détecteur de charge d'hôte.
+#
+# ⚠️ UNE PREMIÈRE RÉDACTION DE CE JOURNAL DISAIT « deux ordres de grandeur au-dessus
+#   du pire cas ». C'ÉTAIT FAUX, et le relevé qu'elle surmontait le disait : le pire
+#   cas brut est de 70,7 ms, soit 3,5 fois seulement sous la borne. Corrigé ci-dessous
+#   en séparant le démarrage à froid, que le critère ne mesure jamais.
+
+# MESURE DE LA BORNE DU CRITÈRE ③ — 100 refus 409 consécutifs, moteur sqlite
+# Prise le 2026-08-20T03:01:21.614Z, commit c16c748
+#
+appels                                        : 100
+PREMIER appel, à froid (ms)                   : 78.738
+maximum des 99 SUIVANTS (ms)                  : 7.479
+minimum (ms)                                  : 1.085
+médiane (ms)                                  : 1.335
+p90 (ms)                                      : 3.342
+p99 (ms)                                      : 7.479
+MAXIMUM (ms)                                  : 78.738
+# MESURE DE LA BORNE DU CRITÈRE ③ — 100 refus 409 consécutifs, moteur postgres
+# Prise le 2026-08-20T03:01:23.762Z, commit c16c748
+#
+appels                                        : 100
+PREMIER appel, à froid (ms)                   : 39.866
+maximum des 99 SUIVANTS (ms)                  : 12.934
+minimum (ms)                                  : 1.945
+médiane (ms)                                  : 5.023
+p90 (ms)                                      : 7.083
+p99 (ms)                                      : 12.934
+MAXIMUM (ms)                                  : 39.866
+BORNE RETENUE (ms)                            : 250
+
+# LES TROIS RAPPORTS QUI JUSTIFIENT CE 250, et aucun n'est arrondi en sa faveur :
+#   ① borne / pire cas hors démarrage à froid    : voir « maximum des 99 SUIVANTS »
+#   ② borne / pire cas des 20 appels du critère  : 250 / 9,04 ms (postgres) ≈ 27×
+#   ③ rouge prescrite / borne                    : 2000 / 250 = 8×
+# Le rapport ③ est celui qui rend le critère DISCRIMINANT ; les deux autres disent
+# seulement qu'il ne rougira pas sans raison.

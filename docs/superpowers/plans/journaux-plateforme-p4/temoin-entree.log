@@ -1,0 +1,60 @@
+# TÉMOIN D'ENTRÉE de la recette P4 — les références ① à ⑫ du plan, relevées PAR LA COMMANDE
+# Relevé le 2026-08-20T04:56:12+02:00, commit c16c748
+#
+# ⚠️ COMPTES ANNONCÉS AVANT D'ÊTRE LUS (la leçon que D10 a payée) :
+#   ① plateforme sqlite   : 284 tests / 37 fichiers
+#   ② plateforme postgres : 284 tests / 37 fichiers
+#   ④ client              : 223 tests / 24 fichiers — 219 relevés avant la tâche 13, PLUS 4
+#   ⑥ proto               : 111 tests
+#   ③ ⑤ ⑦ typecheck       : sortie 0
+# Les cinq annonces sont VÉRIFIÉES par les relevés ci-dessous.
+#
+# ⚠️ LE PLAN DONNE D'AUTRES CHIFFRES (196/196/196/79) : ce sont ceux du 20 août 2026
+#   AVANT les tâches 1 à 12 de P4 et avant deux chantiers voisins (design S1-S2,
+#   pont fichiers F1). La montée est donc ATTENDUE, et attribuée : +88 sur
+#   plateforme (P4, tâches 1-12), +27 sur client (design + fichiers + les 4 de la
+#   tâche 13), +32 sur proto (chantiers voisins). SEULS les 4 tests client sont à P4
+#   tâches 13-15 ; aucun test de plateforme n'est ajouté par la recette.
+
+--- ① plateforme npm run test:sqlite ---
+ Test Files  37 passed (37)
+      Tests  284 passed (284)
+--- ② plateforme npm run test:postgres ---
+ Test Files  37 passed (37)
+      Tests  284 passed (284)
+--- ③ plateforme npm run typecheck ---
+sortie=0
+--- ④ client npm test ---
+ Test Files  24 passed (24)
+      Tests  223 passed (223)
+--- ⑤ client npm run typecheck ---
+sortie=0
+--- ⑥ proto npm test ---
+ Test Files  5 passed (5)
+      Tests  111 passed (111)
+--- ⑦ proto npm run typecheck ---
+sortie=0
+--- ⑧ node --version ---
+v24.9.0
+--- ⑨ docker compose -f docker-compose.plateforme.yml ps ---
+guacamole-postgres-plateforme-1 — Up 16 hours (healthy) — 127.0.0.1:5433->5432/tcp
+--- ⑩ la commande des 500 lignes de CLAUDE.md ---
+  83629 total
+   1536 agent/src/encode.rs
+    630 agent/src/windows_source.rs
+--- ⑪ grep -cE '^etape ' scripts/verify-all.sh ---
+10
+--- ⑫ git status --porcelain ---
+ M agent/src/pont.rs
+ M agent/src/pont/chemins.rs
+ M agent/src/pont/projfs/rappels.rs
+ M docs/superpowers/plans/2026-08-19-pont-fichiers-f1.md
+ M docs/superpowers/specs/2026-08-19-pont-fichiers-design.md
+?? .playwright-mcp/
+?? docs/superpowers/plans/journaux-plateforme-p4/
+
+# ⚠️ ⑫ NE VAUT PLUS « une seule ligne » : trois fichiers d'agent/src/pont* sont
+#   MODIFIÉS par le chantier concurrent F1, qui travaille dans le même arbre au
+#   moment de ce relevé. AUCUN n'est du périmètre de P4, et aucun git add de cette
+#   recette ne les nomme. C'est relevé plutôt que tu, parce que le témoin de
+#   clôture lancera cargo sur CET arbre-là.
