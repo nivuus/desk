@@ -1,7 +1,7 @@
 // Câblage de la page-shell : WebSocket du signaling d'un côté, DOM de
 // l'autre. Aucune règle ici — elles sont dans `shell.ts`, qui est testé.
 
-import { creerBureau } from './shell';
+import { creerBureau, type Ton } from './shell';
 import { jetonAcces } from './jeton';
 import { composer, lirePrefixe } from './prefixe';
 import { creerAdaptateur } from './fichiers/adaptateur';
@@ -25,6 +25,33 @@ const statut = document.querySelector<HTMLDivElement>('#statut')!;
 const liste = document.querySelector<HTMLUListElement>('#fenetres')!;
 const boutonDossier = document.querySelector<HTMLButtonElement>('#choisir-dossier')!;
 const etatFichiers = document.querySelector<HTMLDivElement>('#etat-fichiers')!;
+const modeleFenetre = document.querySelector<HTMLTemplateElement>('#modele-fenetre')!;
+
+/* ── LE TON D'UN BANDEAU : UNE TABLE, PAS UNE RÈGLE ───────────────────────
+   QUEL ton porte quel message est décidé dans `shell.ts`, qui est testé. Ce
+   qui suit ne fait que traduire un ton en classe de la famille `message` —
+   une correspondance, sans aucune décision de domaine. Une condition sur le
+   SENS d'un message qui apparaîtrait ici serait au mauvais endroit.
+
+   ⚠️ CES TROIS CLASSES SONT INVISIBLES AU CONTRÔLE §7.9, et c'est une limite
+   connue et déclarée de ce contrôle, pas un contournement : il ne voit que les
+   littéraux passés à `classList.add('…')` et à `className = '…'`, jamais une
+   classe qui transite par une variable. Elles sont bien DÉCLARÉES par
+   `design/primitives/message.css` et bien EMPLOYÉES par `primitives.html`, si
+   bien qu'aucune n'est morte — mais c'est la galerie et l'œil qui le disent
+   ici, pas la commande. */
+const CLASSE_DE_TON: Record<Ton, string> = {
+    neutre: '',
+    succes: 'message--succes',
+    alerte: 'message--alerte',
+    danger: 'message--danger',
+};
+
+function poserTon(element: HTMLElement, ton: Ton): void {
+    element.classList.remove('message--succes', 'message--alerte', 'message--danger');
+    const classe = CLASSE_DE_TON[ton];
+    if (classe !== '') element.classList.add(classe);
+}
 
 // 🔴 C'EST ICI, ET NULLE PART AILLEURS, QUE L'ON REDIRIGE VERS LA CONNEXION.
 // Cette page est l'entrée réelle de l'utilisateur ; les pages de session, elle
@@ -49,11 +76,13 @@ const bureau = creerBureau({
     envoyer(message) {
         if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
     },
-    afficher(message) {
+    afficher(message, ton) {
         statut.textContent = message;
+        poserTon(statut, ton);
     },
-    afficherEtatFichiers(texte) {
+    afficherEtatFichiers(texte, ton) {
         etatFichiers.textContent = texte;
+        poserTon(etatFichiers, ton);
     },
 });
 
@@ -123,13 +152,26 @@ async function monterLeLecteur(): Promise<void> {
 function redessiner(): void {
     liste.replaceChildren();
     for (const f of bureau.liste()) {
-        const item = document.createElement('li');
-        item.textContent = `${f.titre} — ${f.ouverte ? 'ouverte' : 'fermée'} `;
-        if (!f.ouverte) {
-            const bouton = document.createElement('button');
-            bouton.textContent = 'Rouvrir';
+        // Le balisage vient du `<template>` de `shell.html`, pas d'ici : les
+        // classes restent dans le HTML, où le contrôle §7.9 les lit sans avoir
+        // à analyser du TypeScript.
+        const item = modeleFenetre.content.cloneNode(true) as DocumentFragment;
+        item.querySelector('[data-titre]')!.textContent = f.titre;
+
+        const pastille = item.querySelector<HTMLElement>('[data-etat]')!;
+        pastille.textContent = f.ouverte ? 'ouverte' : 'fermée';
+        // Deux littéraux, et non une classe composée : une classe calculée est
+        // invisible au contrôle §7.9 (voir la table des tons ci-dessus).
+        if (f.ouverte) pastille.classList.add('bureau__pastille--ouverte');
+        else pastille.classList.add('bureau__pastille--fermee');
+
+        const bouton = item.querySelector<HTMLButtonElement>('[data-rouvrir]')!;
+        if (f.ouverte) {
+            // Une fenêtre ouverte n'a rien à rouvrir : le bouton part, plutôt
+            // que d'être désactivé — il n'y a pas d'action à suggérer.
+            bouton.remove();
+        } else {
             bouton.addEventListener('click', () => { bureau.rouvrir(f.session); redessiner(); });
-            item.append(bouton);
         }
         liste.append(item);
     }
@@ -140,6 +182,7 @@ socket.addEventListener('open', () => {
     // `webrtc.ts`, et pour la même raison de compatibilité descendante.
     socket.send(JSON.stringify({ role: 'client', session: SESSION_DE_CONTROLE, jeton }));
     statut.textContent = 'bureau connecté';
+    poserTon(statut, 'neutre');
 });
 
 socket.addEventListener('message', (evenement) => {
