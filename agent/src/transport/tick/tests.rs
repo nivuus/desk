@@ -146,3 +146,32 @@ impl VideoSource for SourceAvecAudioMort {
         self.rattachement_prepare.swap(false, std::sync::atomic::Ordering::Relaxed)
     }
 }
+
+/// Source factice qui rend une annonce de presse-papier préparée une seule
+/// fois — comme le fait réellement `SourceDistante` (`Option` consommé par
+/// `take()`), sans dépendre du capteur : ce test vérifie le CÂBLAGE de la
+/// branche a1septies d'`act_on_timeout`, pas la logique de `SourceDistante`,
+/// couverte par `capteur/distante/tests_etats.rs`.
+///
+/// **Ce test existe parce que le dépôt a déjà payé son absence** : la revue de
+/// la tâche 8 du sous-bloc D6 a relevé que supprimer tout le bloc a1quater
+/// laissait les tests verts, les tests de `transport/part.rs` appelant
+/// `Session::appliquer_part` directement. Le plan de P1 n'en prescrivait aucun
+/// pour a1septies (« `cargo test -p agent` → inchangé ») ; c'est une
+/// divergence assumée, et dans le sens que ce fichier documente déjà.
+struct SourceAvecPressePapier {
+    inner: crate::source::FileSource,
+    presse_papier_prepare: Option<(Option<String>, u32)>,
+}
+
+impl VideoSource for SourceAvecPressePapier {
+    fn next_frame(&mut self) -> Option<AccessUnit> {
+        self.inner.next_frame()
+    }
+    fn dimensions(&self) -> (u32, u32) {
+        self.inner.dimensions()
+    }
+    fn presse_papier_a_annoncer(&mut self) -> Option<(Option<String>, u32)> {
+        self.presse_papier_prepare.take()
+    }
+}
