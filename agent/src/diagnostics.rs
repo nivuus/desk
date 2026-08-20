@@ -27,6 +27,8 @@ pub(crate) mod exceptions;
 pub(crate) mod multifenetre;
 #[cfg(windows)]
 pub(crate) mod pixels;
+#[cfg(windows)]
+mod presse_papier;
 
 /// Renvoie `true` si une sonde a tourné — `main` doit alors s'arrêter là.
 ///
@@ -113,6 +115,35 @@ pub(crate) fn aiguiller() -> Result<bool> {
     #[cfg(windows)]
     if std::env::var("INPUT_LINEARITY_PROBE").is_ok() {
         entree::executer_linearite()?;
+        return Ok(true);
+    }
+
+    // Sonde P0 du sous-bloc P1 (presse-papier) : `PRESSE_PAPIER_SONDE=<secondes>`
+    // mesure ce que la spécification (§8) déclare NON MESURÉ — le compteur
+    // `GetClipboardSequenceNumber` existe-t-il, est-il stable au repos, bouge-t-il
+    // sur une copie, et bouge-t-il sur une RÉÉCRITURE IDENTIQUE. C'est une porte
+    // éliminatoire : trois de ses cinq verdicts rendent le mécanisme de détection
+    // retenu non livrable en l'état.
+    //
+    // ⚠️ Cette sonde ÉCRIT le presse-papier de la VM (phases C et D) et le détruit
+    // donc. Le produit, lui, ne l'écrit jamais en P1.
+    //
+    // 🔴 **Cette variable ne doit JAMAIS coexister avec `SUPERVISEUR`** — c'est la
+    // divergence E10 du plan. `main()` appelle `diagnostics::aiguiller()` AVANT de
+    // regarder `CAPTEUR`, et `superviseur/lanceur.rs::lancer_capteur` lance le capteur
+    // en héritant de l'environnement : il n'en retire que `SUPERVISEUR`, `PONT`,
+    // `TEST_FILE`, `WINDOW_TITLE` et les trois variables d'identité — **aucune
+    // variable de diagnostic**. Un `PRESSE_PAPIER_SONDE` resté posé ferait donc
+    // exécuter la sonde par le processus CAPTEUR, qui s'arrêterait aussitôt — et le
+    // superviseur le relancerait en boucle. La sonde se lance SEULE.
+    //
+    // ⚠️ Le plan ne pose PAS d'`env_remove` pour cette variable, et le dit : ce
+    // serait une convention que les huit `MULTIFENETRE_*` existantes ne suivent
+    // pas. Le prix est celui, connu, d'une garantie qui tient à un ordre plutôt
+    // qu'à un retrait — la dissymétrie est ici DÉCLARÉE, pas dormante.
+    #[cfg(windows)]
+    if let Ok(secondes) = std::env::var("PRESSE_PAPIER_SONDE") {
+        presse_papier::executer(&secondes)?;
         return Ok(true);
     }
 
