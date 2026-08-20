@@ -28,6 +28,14 @@ mod micro;
 mod opus;
 #[cfg(windows)]
 mod pointer_settings;
+// Le presse-papier de la VM, sens VM -> navigateur. Pas de `#[cfg(windows)]` :
+// toute la décision (normalisation, bornage, gardes) est PURE et doit se
+// compiler et se tester sur l'hôte Linux ; les deux appels Win32 vivent dans
+// `presse_papier/win32.rs`, gaté à l'intérieur du module. À la racine nue et
+// non sous `capteur/` : le propriétaire est le capteur aujourd'hui, l'enfant
+// le jour où le mode mono-fenêtre en aura un — un nom sous `capteur/` serait
+// faux ce jour-là.
+mod presse_papier;
 // Le client du canal `/agent` de la plateforme. Pas de `#[cfg(windows)]` :
 // le calcul du délai de reprise (`plateforme::repli`) est pur et doit se
 // compiler et se tester sur l'hôte Linux, et le socket lui-même n'a rien de
