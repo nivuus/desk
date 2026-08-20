@@ -1,0 +1,21 @@
+=== ROUGE de la tâche 12 — le contrôle STATIQUE sur le fichier d'AVANT ===
+Date : 21 août 2026. Commit du fichier mesuré : e4c5e66
+
+Commande :
+  docker compose -f docker-compose.coturn.yml --env-file /dev/null config
+
+⚠️ --env-file /dev/null rend TOUTES les variables VIDES : la sortie de cette
+   commande ne peut donc porter aucun secret. La liste blanche est appliquée
+   malgré tout, parce que c'est la règle et non parce que le cas l'exige.
+
+SORTIE ATTENDUE une fois la tâche faite : 1, avec le message de la variable manquante.
+SORTIE MESURÉE sur le fichier d'avant : 0
+
+--- lignes de la LISTE BLANCHE dans la sortie (mesurées) ---
+      - --listening-port=3478
+      - --min-port=49160
+      - --max-port=49200
+
+=> AUCUNE ligne --listening-ip, AUCUNE ligne --relay-ip : coturn écouterait sur
+   toutes les interfaces, ce que CLAUDE.md a constaté le 30 juillet 2026
+   (« UDP listener opened on: 90.87.35.18:3478 »).

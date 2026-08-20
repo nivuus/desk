@@ -10,6 +10,61 @@
 #
 # Journal :
 #   docker compose -f docker-compose.yml -f docker-compose.coturn.yml logs coturn
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# 🔴 `docker compose … config` IMPRIME LE SECRET EN CLAIR — MESURÉ, PAS SUPPOSÉ
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# La commande `docker compose -f docker-compose.coturn.yml config` interpole les
+# variables avant d'imprimer, donc rend `--static-auth-secret=<la valeur>` sur la
+# sortie standard. Relevé le 20 août 2026, et la valeur n'est recopiée nulle part.
+#
+# **Sa sortie ne se verse donc JAMAIS telle quelle** dans un journal, un rapport
+# ou un ticket. Deux gestes, dans cet ordre :
+#
+#   ① filtrer par LISTE BLANCHE de lignes — garder `--listening-ip`,
+#      `--listening-port`, `--relay-ip`, `--min-port`, `--max-port` et le message
+#      d'erreur, jeter tout le reste. Jamais une liste noire : ce qu'on oublie
+#      d'y mettre passe ;
+#   ② prouver que la pièce versée ne porte pas le secret, par un `grep -c -F -f`
+#      alimenté depuis `.env`, qui rend un COMPTE et jamais la valeur.
+#
+# ⚠️ Le contrôle STATIQUE des deux adresses ci-dessous emploie
+# `--env-file /dev/null`, qui rend toutes les variables VIDES : cette
+# invocation-là ne peut porter aucun secret. Les deux gestes restent la règle.
+#
+# ⚠️ `--verbose` est CONSERVÉ, et c'est lui qui produit les lignes
+# `listener opened` sans lesquelles on ne peut pas vérifier SUR QUOI coturn
+# écoute. Son journal est soumis exactement au même traitement.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# ⛔ TURNS N'EST PAS LIVRÉ, ET LA CIBLE « RÉSEAUX RESTRICTIFS » N'EST PAS COUVERTE
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Le relais reste **en clair sur 3478**. Ce n'est pas un oubli, c'est un constat
+# écrit plutôt que contourné, et il porte ses trois raisons :
+#
+#   ① **443/tcp est déjà occupé par un tiers sur la machine de mesure** — `envoy`
+#      (pomerium), étranger à ce dépôt, relevé de nouveau le 21 août 2026 par
+#      `ss -lntp | grep ':443 '`. Le déplacer n'appartient pas à ce sous-projet ;
+#   ② **et le conflit n'est pas seulement local : il est structurel.** Sur une
+#      seule adresse IP, TURNS/443 et le proxy HTTPS/443 se disputent le même
+#      port. Les faire coexister exige soit une seconde adresse, soit un
+#      multiplexage par ALPN (`stun.turn`, RFC 7443) dans un étage `stream` —
+#      technique réelle, que ce dépôt n'a jamais éprouvée ;
+#   ③ **TURNS sur 5349 ne s'y substitue pas** : il exigerait un certificat valide
+#      pour un nom public, donc ACME, donc le port 80 ou un défi DNS —
+#      l'infrastructure de nommage que ce dépôt n'a pas. Un certificat auto-signé
+#      serait refusé par les navigateurs, et le livrer donnerait **l'apparence
+#      d'une couverture sans la couverture**.
+#
+# 🔴 **CONSÉQUENCE PRODUIT, EN TOUTES LETTRES : la cible « réseaux restrictifs »
+# du cadrage §5 ⑤ N'EST PAS COUVERTE.** Ces réseaux filtrent précisément l'UDP
+# sur 3478, qui est tout ce que ce relais offre. Un client derrière un tel réseau
+# n'établira pas sa session, et rien dans ce dépôt ne le rattrapera.
+#
+# `--no-tls` et `--no-dtls` restent donc posés, **assumés et commentés**, plutôt
+# que remplacés par un TLS qui ne servirait personne.
 
 services:
   coturn:
@@ -17,10 +72,28 @@ services:
     # Le mode réseau hôte est indispensable : coturn alloue des ports de relais
     # dans une plage étendue, et les publier un par un à travers le NAT de
     # Docker ne fonctionne pas.
+    #
+    # ⚠️ C'EST AUSSI CE QUI REND LES DEUX ADRESSES CI-DESSOUS OBLIGATOIRES : en
+    # réseau hôte, un coturn qui ne borne pas son écoute la prend sur TOUTES les
+    # interfaces de la machine, adresse publique comprise.
     network_mode: host
     restart: unless-stopped
     command:
       - --listening-port=3478
+      # 🔴 OÙ COTURN ÉCOUTE — OBLIGATOIRE, SANS DÉFAUT.
+      #
+      # Sans cette option, coturn se lie à toutes les interfaces de l'hôte.
+      # Ce n'est pas une hypothèse : `CLAUDE.md` porte le constat du 30 juillet
+      # 2026, `UDP listener opened on: 90.87.35.18:3478` — l'adresse publique de
+      # la machine. L'accès est authentifié et les identifiants expirent, mais
+      # c'était un relais joignable depuis Internet.
+      #
+      # 🔴 L'IDIOME `${VAR:?message}` FAIT ÉCHOUER LA COMMANDE si la variable
+      # manque, avec ce message et le code de sortie 1 — au lieu de retomber en
+      # silence sur une écoute universelle. C'est la doctrine de
+      # `PLATEFORME_HOTE` (`plateforme/src/config.ts`), reprise ici : **une
+      # rupture bruyante vaut mieux qu'une écoute universelle silencieuse.**
+      - --listening-ip=${TURN_LISTENING_IP:?TURN_LISTENING_IP est obligatoire - l adresse sur laquelle coturn ecoute. Sans elle il ecouterait sur TOUTES les interfaces de l hote, adresse publique comprise}
       - --fingerprint
       # Identifiants éphémères dérivés d'un secret partagé : le signaling en
       # fabrique pour chaque session, coturn les vérifie sans base d'usagers.
@@ -29,10 +102,25 @@ services:
       - --realm=${TURN_REALM}
       - --min-port=49160
       - --max-port=49200
+      # 🔴 DEPUIS QUELLE ADRESSE COTURN RELAIE — OBLIGATOIRE AUSSI, ET C'EST LE
+      # SECOND DEMI-TOUR QUE PERSONNE NE FAIT.
+      #
+      # `--listening-ip` borne où coturn **écoute** ; `--relay-ip` borne
+      # l'adresse depuis laquelle il **relaie**. Restreindre l'une sans l'autre
+      # laisse la moitié du problème ouverte : les allocations de relais
+      # prendraient encore leur adresse locale sur n'importe quelle interface.
+      - --relay-ip=${TURN_RELAY_IP:?TURN_RELAY_IP est obligatoire - l adresse depuis laquelle coturn relaie. Borner la seule ecoute laisse les allocations de relais sur toutes les interfaces}
       # Sans cette option, coturn refuse de démarrer s'il ne parvient pas à
       # déterminer son adresse externe. En déploiement local elle vaut
       # l'adresse de l'hôte ; en production, l'adresse publique.
+      #
+      # ⚠️ ELLE N'EST PAS RENDUE OBLIGATOIRE, contrairement aux deux ci-dessus,
+      # et la raison est qu'elle ne garde rien : une adresse externe absente ou
+      # fausse empêche le relais de fonctionner — panne bruyante — là où une
+      # écoute non bornée fonctionne parfaitement en exposant la machine.
       - --external-ip=${TURN_EXTERNAL_IP}
+      # ⛔ ASSUMÉ : voir le constat TURNS en tête de fichier. La conséquence est
+      # que la cible « réseaux restrictifs » du cadrage n'est pas couverte.
       - --no-tls
       - --no-dtls
       - --no-cli
@@ -40,4 +128,8 @@ services:
       # un fichier interne au conteneur, invisible à `docker compose logs`, et
       # le diagnostic des tâches 4 et 9 devient aveugle.
       - --log-file=stdout
+      # ⚠️ Conservé À DESSEIN : c'est lui qui produit les lignes
+      # `listener opened`, seule preuve relisible de ce sur quoi coturn écoute.
+      # Son journal est filtré par liste blanche avant d'être versé — voir la
+      # mise en garde en tête de fichier.
       - --verbose
