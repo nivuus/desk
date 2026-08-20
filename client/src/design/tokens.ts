@@ -174,13 +174,21 @@ export function tokensReferences(css: string): Set<string> {
  */
 
 /**
- * Les six tokens de COULEUR que ③ n'exige PAS dans les blocs clairs — NOMMÉS
+ * Les sept tokens de COULEUR que ③ n'exige PAS dans les blocs clairs — NOMMÉS
  * un par un, jamais dérivés d'un préfixe.
  *
  * Ce sont les six voiles hors thème de `tokens.css` (« déclarés une fois,
  * jamais redéfinis ») : ils sont posés SUR LA VIDÉO, dont le contenu ne suit
  * aucun thème, et un encadrement clair autour d'une image vidéo se lit comme
  * un défaut d'affichage.
+ *
+ * ⚠️ LE SEPTIÈME EST UNE ENCRE, PAS UN VOILE, et il est ici pour une raison
+ * SYMÉTRIQUE, pas identique : `--sur-voile` se pose SUR ces voiles, qui ne
+ * suivent aucun thème. Une encre qui suivrait le thème sur un fond qui ne le
+ * suit pas est exactement le défaut que la tâche 4 de S4 répare — en thème
+ * clair, du quasi-noir sur un voile quasi-noir. ⚠️ Il est, LUI, dans les paires
+ * de contraste (la 53ᵉ) : c'est ce qui le distingue des six autres, et la
+ * raison est écrite auprès de la paire (`contraste.ts`).
  *
  * ⚠️ C'est une SECONDE COPIE d'un fait déjà écrit dans le commentaire de
  * `tokens.css`, et le coût est assumé. Ce qu'elle achète : une couleur hors
@@ -195,6 +203,7 @@ export const COULEURS_HORS_THEME: readonly string[] = [
     '--voile-bouton-survol',
     '--voile-micro-actif',
     '--voile-micro-refuse',
+    '--sur-voile',
 ];
 
 /** Une valeur de token est-elle une couleur ? Décidé sur la VALEUR seule. */
