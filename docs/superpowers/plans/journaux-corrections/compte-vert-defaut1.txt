@@ -1,0 +1,9 @@
+etiquette=vert-defaut1
+duree_s=64
+debut_utc=2026-08-20T06:11:55Z
+fin_utc=2026-08-20T06:12:59Z
+enrolements=1
+evictions_remplace=0
+reprises_canal=0
+lignes_catalogue=5
+binaire_octets=10043392

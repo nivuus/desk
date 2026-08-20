@@ -1,0 +1,9 @@
+etiquette=rouge-defaut1
+duree_s=64
+debut_utc=2026-08-20T05:53:02Z
+fin_utc=2026-08-20T05:54:06Z
+enrolements=95
+evictions_remplace=94
+reprises_canal=94
+lignes_catalogue=99
+binaire_octets=10035712
