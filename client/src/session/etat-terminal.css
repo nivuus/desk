@@ -1,0 +1,74 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   L'ÉCRAN PLEIN CADRE DES ÉTATS TERMINAUX — sous-bloc S4, tâche 9.
+
+   Feuille de la FENÊTRE DE SESSION, comme `../style.css`, et extraite d'elle
+   D'EMBLÉE plutôt qu'après coup : `style.css` était à 265 lignes pour une porte
+   à 300, ce dépôt écrit de longs commentaires, et « on extrait AVANT
+   d'ajouter » est la doctrine (tâche 6 de D9, tâches 1 à 3 de D10 ; S2 sur
+   `primitives.css`). C'est aussi le point de chute que le §10 de la spec nomme
+   d'avance — `client/src/session/`.
+
+   ⚠️ ELLE EST `@import`ÉE PAR `../style.css`, PAS LIÉE DEPUIS `index.html`, et
+   c'est l'inverse de l'arrangement que `style.css` défend pour le socle. Sa
+   mesure tient toujours — un `@import` RÉ-INLINE la feuille dans chaque entrée
+   qui le traverse, ce qui coûte une copie par entrée —, et elle est SANS
+   CONSÉQUENCE ici : cette feuille n'a QU'UN SEUL consommateur, la fenêtre de
+   session. Il n'y a rien à partager, donc rien à dupliquer. C'est la forme
+   exacte de `design/primitives.css`, qui `@import`e ses quatre familles.
+
+   ⚠️ AUCUNE COULEUR LITTÉRALE, AUCUNE LONGUEUR HORS ÉCHELLE : §7.2 et §7.10
+   couvrent cette feuille sans qu'une ligne de leur code ne change — leurs
+   portées sont DÉRIVÉES (« toutes les `*.css` de `client/src/` hors
+   `client/src/design/` »), et une feuille de surface neuve y entre d'elle-même.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* 🔴 `[hidden]` PERD CONTRE UNE RÈGLE D'AUTEUR, ET LA RÈGLE CI-DESSOUS EXISTE
+   POUR ÇA. Le `[hidden] { display: none }` qui rend l'attribut efficace vit
+   dans la feuille de l'AGENT UTILISATEUR, et la cascade compare l'ORIGINE
+   avant la spécificité : n'importe quelle déclaration d'auteur portant
+   `display` sur ce même élément l'emporte, fût-elle moins spécifique. Sans la
+   règle explicite ci-dessous, `.ecran { display: grid }` rendrait donc l'écran
+   terminal VISIBLE DÈS LE CHARGEMENT, sur toutes les sessions, par-dessus la
+   vidéo. Elle est écrite AVANT `.ecran` pour se lire d'abord, et
+   `client/src/style.test.ts` en fait une commande — assertion ancrée sur la
+   règle entière, jamais sur une sous-chaîne. */
+.ecran[hidden] {
+    display: none;
+}
+
+/* Plein cadre, au-dessus des deux boutons de coin (`z-index: 10`). Le voile est
+   le même que celui des bandeaux flottants : hors thème, donc sombre dans les
+   deux thèmes, parce que ce qui est dessous est une vidéo dont on ne sait rien
+   (`design/tokens.css`, l'encadré des six voiles). */
+.ecran {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: grid;
+    place-items: center;
+    padding: var(--e-4);
+    background: var(--voile-flottant);
+}
+
+/* La carte porte, elle, un fond OPAQUE qui suit le thème (`.carte` des
+   primitives) : contrairement à un bandeau posé sur l'image, rien ne transparaît
+   sous elle, et la réserve de `tokens.css` sur les fonds clairs au-dessus d'une
+   vidéo ne s'applique pas. `inline-size: 100%` avec un plafond de mesure lui
+   donne sa largeur sur un écran étroit comme sur un écran large. */
+.ecran__carte {
+    display: grid;
+    gap: var(--e-4);
+    inline-size: 100%;
+    max-inline-size: var(--contenant-carte);
+    text-align: center;
+}
+
+/* `margin: 0` : un `<h1>` porte une marge de l'agent utilisateur, et `base.css`
+   ne remet à zéro que le `body`. `--t-2xl` place le titre un cran au-dessus de
+   `.carte__titre` (`--t-xl`), parce que cet écran n'a rien d'autre à montrer. */
+.ecran__titre {
+    margin: 0;
+    color: var(--texte-fort);
+    font-size: var(--t-2xl);
+    line-height: var(--lh-serre);
+}

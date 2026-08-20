@@ -3,6 +3,7 @@ import { connectSession } from './webrtc';
 import { attachStats } from './stats';
 import { armerLeSon } from './audio';
 import { creerStatut } from './status';
+import { creerEcranTerminalAuDOM } from './ecran-terminal';
 import { attachPointerAuDOM } from './pointer';
 import { attachGamepadAuDOM } from './gamepad';
 import { armerPleinEcranAuDOM, attachFullscreenAuDOM } from './fullscreen';
@@ -22,7 +23,9 @@ const microElement = document.querySelector<HTMLButtonElement>('#micro')!;
 // Point d'écriture unique du bandeau de statut : protège un message TERMINAL
 // (fin de session, échec) contre l'écrasement par un message ordinaire
 // arrivant après lui. Voir `status.ts` pour la justification complète.
-const statut = creerStatut(statusElement);
+// La SECONDE cible est l'écran plein cadre des états terminaux (S4, tâche 9) :
+// `creerStatut` la lève pour un message `terminal` et pour lui seul.
+const statut = creerStatut(statusElement, creerEcranTerminalAuDOM());
 
 // La session et le signaling sont paramétrables par l'URL pour faciliter les
 // essais : ?session=demo&signaling=ws://192.168.3.2:8080
@@ -156,7 +159,12 @@ connectSession({
             // `session.close()` n'est pas appelé sur ce chemin. Sans ceci
             // l'indicateur de Chrome resterait allumé après la fin (spec §9).
             micro?.detacher();
-            statut.afficher(`session terminée : ${message.reason}`, { terminal: true });
+            // `neutre` : l'utilisateur a fermé l'application distante, ce
+            // n'est pas une erreur. Le ton ne sert QU'À l'écran terminal.
+            statut.afficher(`session terminée : ${message.reason}`, {
+                terminal: true,
+                ton: 'neutre',
+            });
         } else if (message.type === 'pointer') {
             pointeur?.surMessagePointeur(message.visible, message.shape);
         } else if (message.type === 'rumble') {
@@ -447,5 +455,6 @@ connectSession({
     .catch((error: unknown) => {
         statut.afficher(`échec : ${error instanceof Error ? error.message : String(error)}`, {
             terminal: true,
+            ton: 'danger',
         });
     });

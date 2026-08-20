@@ -51,6 +51,14 @@
    tokens. Les deux sommes ci-dessus ne préjugent pas du chiffre final.
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* L'écran plein cadre des états terminaux vit à part (sous-bloc S4, tâche 9),
+   et il est IMPORTÉ plutôt que lié depuis `index.html` : contrairement au
+   socle, il n'a qu'un seul consommateur, donc la copie que l'`@import` fait
+   dans chaque entrée qui le traverse ne se paie qu'une fois. Voir son en-tête,
+   et l'encadré « POURQUOI CE FICHIER N'IMPORTE PAS LE SOCLE » ci-dessus, qui
+   mesure le cas INVERSE — celui d'une feuille partagée par cinq pages. */
+@import './session/etat-terminal.css';
+
 /* `overflow: hidden` reste ICI, et n'est pas monté dans `base.css` : la vidéo
    occupe 100vw/100vh, mais l'appliquer au hub ou à l'écran de connexion
    couperait leur contenu sans aucun message. Tout le reste de l'ancien bloc
