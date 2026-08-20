@@ -22,8 +22,16 @@
 
 #![cfg(windows)]
 
+/// L'ÉCRITURE d'échantillons sur un point de terminaison de rendu : la moitié
+/// Windows du microphone (bloc E2). Miroir de `LoopbackCapture` ci-dessous —
+/// celui-ci lit ce que la machine joue, celui-là fait jouer à la machine ce
+/// que le navigateur envoie.
+pub mod ecriture;
 pub mod process_loopback;
-/// Résolution du point de terminaison de rendu à capter (correction « A-bis »).
+/// Résolution d'un point de terminaison audio de **rendu** — celui que capte
+/// le loopback (correction « A-bis »), **et** celui du câble sur lequel le
+/// micro écrit (bloc E2). Deux consommateurs, deux politiques de repli
+/// opposées : voir l'en-tête du module.
 pub mod rendu;
 
 use anyhow::{bail, Context, Result};

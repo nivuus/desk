@@ -1,0 +1,91 @@
+# Tâche 7 — les rouges et les mutations, relevées le 20 août 2026
+
+## ROUGE n°1 — les tests de `wasapi/format.rs` avant toute implémentation
+$ cd agent && cargo test -p agent
+error[E0425]: cannot find function `verifier` in this scope
+  --> agent/src/wasapi/format.rs:57:17
+error[E0425]: cannot find function `verifier` in this scope
+  --> agent/src/wasapi/format.rs:67:17
+error[E0425]: cannot find function `verifier` in this scope
+  --> agent/src/wasapi/format.rs:76:17
+error[E0425]: cannot find function `verifier` in this scope
+  --> agent/src/wasapi/format.rs:82:17
+error[E0425]: cannot find function `verifier` in this scope
+  --> agent/src/wasapi/format.rs:90:17
+error[E0425]: cannot find function `verifier` in this scope
+  --> agent/src/wasapi/format.rs:96:17
+error: could not compile `agent` (bin "agent" test) due to 6 previous errors; 4 warnings emitted
+
+VERT après implémentation : 7 passed.
+
+## MUTATIONS — première salve, 4 posées, 2 SURVIVANTES
+Source sauvegardée puis restaurée à chaque fois ; `diff` non vide relevé avant
+chaque exécution.
+
+M1 « la fréquence n'est plus vérifiée » (`if frequence != attendu` -> `if false`)
+  diff non vide : 4 lignes
+  test wasapi_format::tests::une_frequence_autre_est_refusee_EN_LA_NOMMANT ... FAILED
+  test result: FAILED. 6 passed; 1 failed.                              -> TUÉE
+
+M2 « le mono est accepté » (`if canaux != CANAUX` -> `if canaux > 8`)
+  diff non vide : 4 lignes
+  test ...le_multicanal_est_refuse ... FAILED
+  test ...le_mono_est_refuse_plutot_que_converti ... FAILED
+  test result: FAILED. 5 passed; 2 failed.                              -> TUÉE
+
+M3 « l'entier passe » (`if !flottant` -> `if false`)
+  diff non vide : 4 lignes
+  test result: ok. 7 passed; 0 failed.                                  -> SURVIVANTE
+  Cause : le test éprouvait (48000, 2, 16, entier), refusé par DEUX gardes
+  indépendantes ; et le mot « entier » qu'il cherchait venait de la
+  description, pas du motif.
+
+M4 « le motif ne nomme plus la fréquence rencontrée »
+  diff non vide : 4 lignes
+  test result: ok. 7 passed; 0 failed.                                  -> SURVIVANTE
+  Cause : `[{description}]` porte la fréquence de toute façon. L'affirmation
+  testée reste vraie — elle l'est par un autre chemin.
+
+## MUTATIONS — seconde salve, après renforcement des tests (8 tests)
+M3-bis « l'entier passe », test refait sur (48000, 2, 32, entier) — cas que
+        SEULE la garde du flottant peut refuser
+  diff non vide : 4 lignes
+  test ...un_format_entier_32_bits_est_refuse_par_la_SEULE_garde_du_flottant ... FAILED
+  test result: FAILED. 7 passed; 1 failed.                              -> TUÉE
+
+M4-bis « ni nom ni description dans le motif de refus de fréquence »
+  diff non vide : 5 lignes
+  test ...une_frequence_autre_est_refusee_EN_LA_NOMMANT ... FAILED
+  test result: FAILED. 7 passed; 1 failed.                              -> TUÉE
+
+M5 « la largeur de bits n'est plus vérifiée » (`if bits != BITS` -> `if false`)
+  diff non vide : 4 lignes
+  test ...un_flottant_qui_n_est_pas_32_bits_est_refuse ... FAILED
+  assertion failed: verifier(48_000, 2, 64, true).is_err()
+  test result: FAILED. 7 passed; 1 failed.                              -> TUÉE
+
+Restauration vérifiée : `sha256sum -c` -> src/wasapi/format.rs: Réussi
+
+## CONTRÔLES DE FIN DE TÂCHE
+$ cargo test -p agent                            -> 693 passed; 0 failed  (685 à l'entrée, +8)
+$ cargo check --target x86_64-pc-windows-gnu     -> sortie 0, 37 avertissements
+   TOUS `dead_code` (« never used » / « never constructed » / « never read »),
+   propriété du legs n°4 de E1 PRÉSERVÉE. 23 à l'entrée ; les 14 neufs sont les
+   items que les tâches 8 à 10 consommeront.
+
+## LIGNES, PAR LA COMMANDE
+  172 src/wasapi/format.rs   (neuf, PUR)
+  446 src/wasapi/ecriture.rs (neuf, #![cfg(windows)])
+  378 src/wasapi.rs          (370 à l'entrée, +8)
+  311 src/main.rs
+  483 src/micro.rs           (INCHANGÉ — voir la divergence ci-dessous)
+
+## DIVERGENCE DU PLAN, signalée
+La tâche 7 step 1 demande une règle de format « PURE et testée sur l'hôte », et
+son propre encadré de fin écrit que `wasapi/ecriture.rs` « ne se teste PAS sur
+l'hôte » (`#![cfg(windows)]`). Les deux ne peuvent pas être vraies du même
+fichier. La règle vit donc dans `agent/src/wasapi/format.rs`, hissée à la
+racine du crate par `#[path]` (`main.rs`) — le montage EXACT de
+`wasapi/peripherique.rs`, pur et hissé pour la même raison. Effet de bord
+recherché : `micro.rs` (483, marge 17, la plus étroite du chemin) ne reçoit
+AUCUNE ligne.
