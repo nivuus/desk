@@ -102,7 +102,20 @@ pub struct Emetteur {
 }
 
 impl Emetteur {
-    /// Voir [`Canal::emettre`] : mêmes garanties, même perte assumée.
+    /// Met un message montant en file. **Ne bloque jamais, et ne rend aucune
+    /// erreur.**
+    ///
+    /// 🔴 UN MESSAGE MIS EN FILE PENDANT QUE LE SOCKET EST TOMBÉ EST PERDU, ET
+    /// C'EST VOULU. Ce canal est un `push` WebSocket : il n'a aucune garantie
+    /// de livraison, dans aucun des deux sens. Le rendre bloquant ferait de la
+    /// file une fuite mémoire sur un canal qui peut rester coupé des heures ;
+    /// le rendre fatal tuerait le canal sur une coupure réseau ordinaire.
+    ///
+    /// **Ce qui rend la perte acceptable est ailleurs, et une seule chose la
+    /// rend acceptable** : l'agent renvoie son catalogue COMPLET
+    /// (`complet = true`) à chaque réenrôlement, donc toute divergence née
+    /// d'un message perdu a un TERME. Retirer ce renvoi complet rendrait cette
+    /// perte silencieuse et définitive.
     pub fn emettre(&self, message: VersLaPlateforme) {
         if let Err(erreur) = self.file.try_send(message) {
             tracing::warn!(%erreur, "message montant abandonné : canal coupé ou file pleine");
@@ -189,26 +202,6 @@ impl Canal {
             if self.identite.changed().await.is_err() {
                 return None;
             }
-        }
-    }
-
-    /// Met un message montant en file. **Ne bloque jamais, et ne rend aucune
-    /// erreur.**
-    ///
-    /// 🔴 UN MESSAGE MIS EN FILE PENDANT QUE LE SOCKET EST TOMBÉ EST PERDU, ET
-    /// C'EST VOULU. Ce canal est un `push` WebSocket : il n'a aucune garantie
-    /// de livraison, dans aucun des deux sens. Le rendre bloquant ferait de la
-    /// file une fuite mémoire sur un canal qui peut rester coupé des heures ;
-    /// le rendre fatal tuerait le canal sur une coupure réseau ordinaire.
-    ///
-    /// **Ce qui rend la perte acceptable est ailleurs, et une seule chose la
-    /// rend acceptable** : l'agent renvoie son catalogue COMPLET
-    /// (`complet = true`) à chaque réenrôlement, donc toute divergence née
-    /// d'un message perdu a un TERME. Retirer ce renvoi complet rendrait cette
-    /// perte silencieuse et définitive.
-    pub fn emettre(&self, message: VersLaPlateforme) {
-        if let Err(erreur) = self.emission.try_send(message) {
-            tracing::warn!(%erreur, "message montant abandonné : canal coupé ou file pleine");
         }
     }
 

@@ -260,7 +260,7 @@ async fn un_message_pousse_dans_la_file_arrive_au_serveur() {
     let mut canal = ouvrir(&url, "w1".into(), "chut".into());
     canal.attendre_identite().await.expect("enrôlement");
 
-    canal.emettre(VersLaPlateforme::catalogue(true, Vec::new(), Vec::new()));
+    canal.emetteur().emettre(VersLaPlateforme::catalogue(true, Vec::new(), Vec::new()));
     let texte = attendre_message(&mut recus, |t| t.contains("catalogue")).await;
     assert_eq!(
         texte,
@@ -291,7 +291,7 @@ async fn un_ordre_de_lancement_arrive_au_consommateur_et_ne_ferme_pas_la_session
     assert_eq!(ordre, ("d-7".to_string(), "a1b2".to_string()));
 
     // La session vit toujours : l'émission suivante arrive.
-    canal.emettre(VersLaPlateforme::lancee("d-7", IssueLancement::Raccourci));
+    canal.emetteur().emettre(VersLaPlateforme::lancee("d-7", IssueLancement::Raccourci));
     let texte = attendre_message(&mut recus, |t| t.contains("lancee")).await;
     assert_eq!(
         texte,
@@ -317,7 +317,7 @@ async fn un_message_mis_en_file_alors_que_le_socket_est_tombe_est_perdu_sans_tue
 
     // La coupure survient ; on pousse pendant qu'il n'y a plus de socket.
     for _ in 0..64 {
-        canal.emettre(VersLaPlateforme::catalogue(false, Vec::new(), Vec::new()));
+        canal.emetteur().emettre(VersLaPlateforme::catalogue(false, Vec::new(), Vec::new()));
     }
 
     // Le canal reprend malgré tout : c'est la preuve qu'aucune émission n'a
