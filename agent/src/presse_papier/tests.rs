@@ -319,3 +319,59 @@ fn borner_entrant_compte_des_octets_utf8_et_non_des_char() {
     assert_eq!(un_de_trop.chars().count(), PRESSE_PAPIER_MAX / 4 + 1);
     assert_eq!(borner_entrant(&un_de_trop), None);
 }
+
+/// 🔴 **LE BRAS DÉSARMÉ DU CRITÈRE ④, ET IL DOIT DÉSARMER LES DEUX GARDES.**
+///
+/// L'observable est double, et les deux moitiés comptent :
+/// - la fermeture de lecture **est appelée** ⟹ `reference` n'a pas été posée,
+///   donc le garde n°1 est bien désarmé ;
+/// - `observer` rend **`Some`** ⟹ `dernier_emis` n'a pas été posé non plus,
+///   donc le garde n°2 l'est aussi.
+///
+/// ROUGE si `armer` ne désarme que `reference` : la lecture aurait bien lieu,
+/// mais le garde n°2 absorberait l'annonce et le compte de la recette resterait
+/// à ZÉRO — la rouge du critère ④ serait vacueuse une seconde fois.
+#[test]
+fn desarme_les_gardes_laisse_relire_et_annoncer_notre_propre_ecriture() {
+    let mut sondeur = Sondeur::nouveau();
+    amorce(&mut sondeur);
+    sondeur.armer(false, 7, "colle");
+
+    let lu = Cell::new(false);
+    let annonce = sondeur.observer(7, || {
+        lu.set(true);
+        Some(String::from("colle"))
+    });
+
+    assert!(lu.get(), "désarmé, le presse-papier DOIT être rouvert (garde n°1)");
+    assert_eq!(
+        annonce,
+        Some(Annonce::Texte(String::from("colle"))),
+        "désarmé, notre propre texte DOIT être annoncé (garde n°2)"
+    );
+}
+
+/// Le pendant : armé — l'état par défaut, sans la variable —, les deux gardes
+/// mordent. C'est le test que `apres_notre_ecriture` porte déjà ; celui-ci
+/// vérifie que `armer(true, …)` en est bien le même chemin, et non un second.
+///
+/// ROUGE si `apres_notre_ecriture` cessait de déléguer à `armer`.
+#[test]
+fn armer_a_vrai_est_le_meme_chemin_qu_apres_notre_ecriture() {
+    let mut par_defaut = Sondeur::nouveau();
+    amorce(&mut par_defaut);
+    par_defaut.apres_notre_ecriture(7, "colle");
+
+    let mut explicite = Sondeur::nouveau();
+    amorce(&mut explicite);
+    explicite.armer(true, 7, "colle");
+
+    assert_eq!(
+        par_defaut.observer(7, || panic!("garde n°1")),
+        explicite.observer(7, || panic!("garde n°1"))
+    );
+    assert_eq!(
+        par_defaut.observer(8, || Some(String::from("colle"))),
+        explicite.observer(8, || Some(String::from("colle")))
+    );
+}
