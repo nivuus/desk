@@ -1,9 +1,20 @@
 # SONDE PRÉALABLE DE F2 — quel idiome d'enregistrement emploie CETTE VM ?
 #
-# 🔴 ELLE N'A PAS ÉTÉ EXÉCUTÉE. Elle est versée pour que la recette qui la
-# jouera n'ait pas à la réécrire, et ce fichier le déclare plutôt que de
-# laisser croire à une mesure. Rien de ce qu'elle affirme n'est acquis tant
-# qu'un journal n'est pas versé à côté d'elle.
+# ✅ ELLE A ÉTÉ EXÉCUTÉE, DEUX FOIS, le 21 aout 2026 — en session 0 (WinRM) et
+# en session 1 (tache planifiee /it). Ses deux journaux sont verses a cote
+# d'elle (`f2-tache14-sonde-idiome-session{0,1}.log`), et son verdict dans
+# `f2-tache14-verdict.md`.
+#
+# ⚠️ Une redaction anterieure de cet en-tete disait « ELLE N'A PAS ETE
+# EXECUTEE » : c'etait exact a sa date, la VM etant tenue par un chantier
+# concurrent.
+#
+# 🔵 VERDICT : R-F2-1 EST LEVE. Les CINQ outils eprouves ecrivent EN PLACE --
+# `WriteAllText`, `Add-Content`, `cmd >`, `Set-Content`, et `notepad.exe` en
+# session interactive. ⚠️ PORTEE EXACTE : mesure sur un repertoire NTFS
+# ORDINAIRE, pas dans une racine ProjFS, et cela ne dit RIEN de LibreOffice ni
+# de Word -- dont l'idiome « ecrire un temporaire, renommer, supprimer » est
+# precisement l'objet de F3.
 #
 # POURQUOI ELLE EXISTE, ET POURQUOI AVANT LA RECETTE
 #
