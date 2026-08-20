@@ -15,13 +15,30 @@
 //! module rangé sous `capteur/` porterait un nom faux le jour où le
 //! propriétaire mono-fenêtre arrivera.
 //!
-//! **Ce que ce module ne fait PAS, et ne doit pas se mettre à faire** : il
-//! n'écrit **jamais** le presse-papier Windows. Le sens navigateur → VM est le
-//! sous-bloc P2, et c'est lui qui portera les gardes anti-écho de D5. Le seul
-//! garde livré ici est le n°2, l'égalité de contenu — il ne ferme aucune
-//! boucle (il n'y en a pas), il absorbe le faux positif du compteur : celui-ci
-//! **bouge sur une réécriture identique**, mesuré (sonde P0, `q2="bouge"`, deux
-//! exécutions du 20 août 2026).
+//! ❌ **Ce module disait « il n'écrit JAMAIS le presse-papier Windows ; le sens
+//! navigateur → VM est le sous-bloc P2, et c'est lui qui portera les gardes
+//! anti-écho de D5 ; le seul garde livré ici est le n°2 ». LES TROIS CLAUSES
+//! SONT PÉRIMÉES : ce sous-bloc a eu lieu.** Relevé par la revue transverse du
+//! 21 août 2026. La règle qu'il énonçait tient toujours, mais autrement :
+//!
+//! - **il n'écrit toujours pas lui-même** — l'appel Win32 vit dans
+//!   `presse_papier/win32.rs`, gaté, et `ecrire_la_plateforme` n'est que
+//!   l'aiguillage de plateforme, jumeau de `Sondeur::lire_la_plateforme` ;
+//! - **les gardes n°1 et n°2 sont ici**, tous deux posés par
+//!   `Sondeur::apres_notre_ecriture` sur NOTRE PROPRE écriture. Le n°3 vit
+//!   côté page (`client/src/presse-papier.ts`), le seul endroit d'où un écho
+//!   pourrait repartir ;
+//! - **le n°2 absorbe toujours le faux positif du compteur** — celui-ci **bouge
+//!   sur une réécriture identique**, mesuré (sonde P0, `q2="bouge"`, deux
+//!   exécutions du 20 août 2026) — mais il ferme désormais AUSSI l'aller-retour
+//!   d'un collage, ce que P1 ne pouvait pas produire.
+//!
+//! ⚠️ **Et « il ne ferme aucune boucle (il n'y en a pas) » reste VRAI**, contre
+//! toute attente : dans l'architecture livrée, aucune oscillation
+//! auto-entretenue n'est possible, chaque tour exigeant un geste humain — le
+//! client n'émet vers l'agent que sur un `paste`. Ce que les gardes suppriment
+//! est **un aller-retour par collage**, pas une divergence. Voir `gardes_armes`,
+//! qui porte la démonstration et la conséquence sur la rouge du critère ④.
 
 use std::time::{Duration, Instant};
 

@@ -67,11 +67,12 @@ function monter(): void {
 beforeEach(monter);
 
 describe("l'exception étroite du collage", () => {
-    // 🔴 **LA ROUGE CENTRALE DE P2.** Aujourd'hui — avant P2 —, `onKeyDown`
-    // appelle `preventDefault()` SANS CONDITION : aucun événement `paste` ne
-    // peut naître dans la fenêtre de session. Le §0 du plan établit par mesure
-    // (deux exécutions) que retirer ce `preventDefault` sur le seul `KeyV`
-    // suffit à faire naître un `paste` de confiance sur un `<video>` focalisé.
+    // 🔴 **LA ROUGE CENTRALE DE P2.** Jusqu'au commit `4cf2206`, `onKeyDown`
+    // appelait `preventDefault()` SANS CONDITION : aucun événement `paste` ne
+    // pouvait naître dans la fenêtre de session. Le §0 du plan établit par
+    // mesure (deux exécutions) que retirer ce `preventDefault` sur le seul
+    // `KeyV` suffit à faire naître un `paste` de confiance sur un `<video>`
+    // focalisé — et ce test est ce qui garde la propriété désormais.
     it('Ctrl+V : ni preventDefault, ni octet envoyé', () => {
         const pd = clavier.frapper('keydown', { ctrlKey: true, code: 'KeyV' });
         expect(pd).not.toHaveBeenCalled();

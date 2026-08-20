@@ -203,6 +203,13 @@ fn demarrer_le_tour_de_roue() {
             // `tour()`, AVANT toute lecture : `PRESSE_PAPIER=0` empêche donc
             // jusqu'à la lecture du compteur, pas seulement l'envoi. Le
             // dupliquer ici doublerait une décision déjà prise au bon endroit.
+            //
+            // ⚠️ **Le sens INVERSE le teste une seconde fois, et ce n'est PAS
+            // le doublon que la phrase ci-dessus interdit** : `actif()` y garde
+            // un autre point de décision — l'ÉCRITURE, servie depuis un fil de
+            // fenêtre (`sommeil::presse_papier::ecrire_avec`). Sans lui,
+            // `PRESSE_PAPIER=0` couperait la lecture et laisserait l'écriture,
+            // et « le mécanisme entier est désarmé » serait une demi-vérité.
             // 🔴 **AVANT `tour()`, et l'ordre EST le mécanisme** (sous-bloc
             // P2). Consomme l'écriture que le fil de FENÊTRE a posée dans
             // `Etat` en servant un collage, et arme sur elle les gardes n°1 et

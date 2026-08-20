@@ -316,6 +316,15 @@ texte seul est donc une décision de produit, pas une limite d'API.**
   donc **supposée, pas mesurée**. Elle est traitée comme réelle par la
   conception (§4.2, règle du dépôt différé) parce que s'en protéger est gratuit
   et que s'en passer serait un pari.
+- ✅ **CETTE LIGNE EST PÉRIMÉE : `paste` sur un `<video>` focalisé A ÉTÉ
+  MESURÉ, le 20 août 2026, et le verdict est FAVORABLE aux DEUX exécutions**
+  (`docs/superpowers/plans/journaux-presse-papier-p2/p2-paste-video-{1,2}.json`).
+  Focus sur `<video id="remote" tabindex="0">`, régime « exception étroite »,
+  `Ctrl+V` de confiance : **1 `paste`, `isTrusted: true`,
+  `types: ["text/plain"]`, `e.target` = `VIDEO#remote`**, et
+  `clipboard-read` = `denied`/`prompt` avec `readText()` levant
+  `NotAllowedError` aux deux. Le relevé de juillet ci-dessous reste vrai **comme
+  histoire** ; il n'est plus la question ouverte qu'il annonce.
 - **Rien de `paste` sur un `<video>` focalisé.** La sonde a tourné avec le focus
   sur le `body` d'une page ordinaire. Le `<video>` est le seul élément qui prenne
   le focus dans la fenêtre de session (`client/src/main.ts:230`,
@@ -843,10 +852,10 @@ la boucle possible, et qu'un sous-bloc ne livre pas un défaut qu'il crée.
 
 | # | Critère | Ce qui le rend ROUGE |
 | --- | --- | --- |
-| ① | **L'événement `paste` parvient bien quand le focus est sur le `<video>`** | 🔴 **c'est le préalable, et il n'est PAS acquis** : R2 a été mesuré avec le focus sur un `body`. Si `paste` ne parvient pas sur un `<video>` focalisé, **P2 est bloqué** et la conception doit se replier sur `readText()` avec permission — c'est-à-dire sur l'ancien produit. **À jouer AVANT tout le reste de P2** |
+| ① | **L'événement `paste` parvient bien quand le focus est sur le `<video>`** | ✅ **MESURÉ LE 20 AOÛT 2026, VERDICT FAVORABLE, DEUX EXÉCUTIONS** — la clause « il n'est PAS acquis » est périmée. La rouge est jouée et versée : le régime « produit » de la sonde, qui recopie le `preventDefault()` inconditionnel de `client/src/input.ts`, rend **ZÉRO `paste` sur ses huit cellules**, aux deux exécutions. **Ne pas la rejouer sur la VM : la citer.** ~~c'est le préalable, et il n'est PAS acquis : R2 a été mesuré avec le focus sur un `body`~~ |
 | ② | Coller dans le Bloc-notes de la VM depuis le presse-papier local **fonctionne**, permission `clipboard-read` **refusée** | rouge = accorder la permission et voir si cela change quelque chose : **cela ne doit rien changer.** Si cela change quelque chose, le chemin employé n'est pas celui qu'on croit |
 | ③ | Le contenu collé est **le dernier copié**, jamais le précédent | rouge du chemin naïf : envoyer la touche `V` sur le canal d'entrées **au lieu de** l'injection de D6, et coller deux textes différents à la suite. **Cette rouge est le seul contrôle de l'ordre**, et elle est la justification entière de D6 — si elle ne se déclenche pas, D6 est du coût pour rien et doit être rouverte |
-| ④ | Aucune oscillation : copier dans la VM puis **ne rien faire** ne produit aucun trafic | rouge = désarmer le garde n°1 et compter les messages sur 30 s. **Le compte doit croître sans borne** ; s'il reste à un, le garde n°1 ne servait à rien et il faut le dire |
+| ④ | ❌ **REFORMULÉ — la rouge ci-dessous est VACUEUSE, et cette spec avait prévu le cas qui se produit.** Énoncé retenu : après **k** collages, **aucun** message `clipboard` ne revient vers la fenêtre | 🔴 **ROUGE REMPLACÉE : `PRESSE_PAPIER_GARDE=0` ⟹ EXACTEMENT k messages.** ~~désarmer le garde n°1 et compter les messages sur 30 s ; le compte doit croître sans borne~~ — **il reste à UN**, et la démonstration tient au code : le `Sondeur` relit notre texte, l'annonce une fois, puis pose lui-même `dernier_emis` ET `reference`, si bien qu'`observer` sort dès sa première ligne au tour suivant ; et **rien ne relance**, le client n'émettant vers l'agent que sur un `paste`, donc sur un geste humain. **Désarmer le seul n°1 rendrait donc ZÉRO message aussi.** D'où une variable qui désarme les DEUX gardes. 🔵 **Conséquence qui contredit D5** : dans l'architecture livrée, **aucune oscillation auto-entretenue n'est possible** — ce que les gardes suppriment est un aller-retour PAR COLLAGE, pas une divergence |
 | ⑤ | Un raccourci **qui n'est pas un collage** garde son `preventDefault` | rouge = frapper `Ctrl+W`, `Ctrl+T`, `Ctrl+N` : la fenêtre navigateur ne doit ni se fermer, ni ouvrir d'onglet. **C'est le risque le plus concret de P2** — élargir la condition de D6 rendrait le navigateur au clavier |
 
 ### P3 — Les N fenêtres
@@ -1014,8 +1023,10 @@ extractions préalables et n'en a payé aucune.
   fenêtre de dialogue de permission n'a jamais été affichée à un humain.
 - **`writeText` depuis une fenêtre non focalisée n'est pas mesuré** (§3.3) ; le
   critère ④ de P3 le mesurera, et pourra réfuter la règle du dépôt différé.
-- **`paste` sur un `<video>` focalisé n'est pas mesuré** — c'est le préalable
-  éliminatoire de P2, et il peut faire échouer le sous-bloc entier.
+- ✅ ~~**`paste` sur un `<video>` focalisé n'est pas mesuré** — c'est le préalable
+  éliminatoire de P2, et il peut faire échouer le sous-bloc entier.~~ **MESURÉ
+  le 20 août 2026, verdict FAVORABLE, deux exécutions, avec sa rouge et son
+  témoin de mesurabilité** — voir le §3.3 et le §10 (R1).
 - **Aucun jugement visuel n'est porté sur la couleur d'accent.** C'est la lacune
   exacte que ce dépôt traîne depuis `BPP_MIN` (chantier C volet 1), et A1 ne la
   ferme pas : le contraste sera **mesuré**, la **beauté** de la teinte ne le sera
@@ -1064,7 +1075,7 @@ extractions préalables et n'en a payé aucune.
 
 | # | Risque | Gravité | Ce qui le lève, ou le borne |
 | --- | --- | --- | --- |
-| R1 | 🔴 **`paste` ne parvient pas sur un `<video>` focalisé** | **éliminatoire pour P2** | mesuré en premier (P2-①). Repli : `readText()` avec permission, c'est-à-dire l'ancien produit, avec son défaut de refus silencieux à corriger |
+| R1 | ~~🔴 **`paste` ne parvient pas sur un `<video>` focalisé**~~ | ~~éliminatoire pour P2~~ | ✅ **LEVÉ le 20 août 2026** — verdict FAVORABLE, deux exécutions, journaux versés sous `journaux-presse-papier-p2/`. La sonde mesure une matrice de 24 cellules dans une seule session et porte les deux témoins qui manquaient à la sonde P0 de P1 : une **ROUGE d'instrument** (le régime « produit » rend zéro `paste`) et un **témoin de mesurabilité** (`body` rend un `paste` dans la même session). Le repli `readText()` n'est PAS emprunté, et **le produit livré ne demande aucune permission de presse-papier** |
 | R2 | 🔴 **Le bras de `pont_media.rs` est oublié** | tue la session au premier message | c'est le **critère ① de P1**, joué en rouge avant le vert. Cinquième rappel d'un défaut payé quatre fois |
 | R3 | 🔴 **Le type est oublié dans `TYPES_AGENT`** | message perdu contre un `console.warn`, **aucun test ne le voit** | §2.2. Le contrôle est un test qui confronte `TYPES_AGENT` à l'union — **qu'aucun test ne fait aujourd'hui** |
 | R4 | ⚠️ **`WM_GETICON` bloque sur une application figée** | **gèle le tour de roue du capteur, donc TOUTES les fenêtres** | `SendMessageTimeout` + `SMTO_ABORTIFHUNG` obligatoire (D9). Repli non bloquant : `GetClassLongPtrW` |
