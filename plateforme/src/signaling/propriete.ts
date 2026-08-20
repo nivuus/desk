@@ -37,6 +37,22 @@
 // renseignée à l'appariement par la trace (tâche 13). C'est ce qui rend le mot
 // « enregistrée » du critère ③ littéralement vrai, et c'est ce dont P4 aura
 // besoin. La DÉCISION et l'ENREGISTREMENT sont deux étages distincts.
+//
+// ✅ P4 EN A EU BESOIN, ET IL LA LIT (20 août 2026) : `depot/session.ts::
+// compterOuvertesDe` compte les lignes non closes d'un utilisateur, et
+// `GET /vm` en rend le champ `sessions_ouvertes` par VM. Le futur « aura
+// besoin » est donc du passé. ⚠️ MAIS CE LECTEUR NE DIT PAS CE QU'ON POURRAIT
+// LUI FAIRE DIRE : il compte des LIGNES ouvertes, pas des sessions média
+// vivantes — le média survit à un redémarrage du service alors que la ligne
+// est close par le balayage, et une ligne ouverte peut correspondre à un pair
+// parti sans que la déconnexion ait été vue. Le champ s'appelle
+// `sessions_ouvertes` et non `sessions_actives` : le NOM porte la réserve.
+//
+// ⚠️ ET LE PARAGRAPHE PLUS HAUT — le préfixe PAR VM, ce registre EN MÉMOIRE —
+// n'est PAS soldé par P4, qui n'a fait que brancher la SOURCE du préfixe
+// (`client/src/connexion.ts` -> `poserPrefixe`). Sa PORTÉE n'a pas changé :
+// deux clients humains de la même VM retrouvent toujours le même préfixe après
+// un redémarrage du service, et `<préfixe>:w-1` redevient revendicable.
 
 export class ProprieteDeSession {
     private readonly proprietaires = new Map<string, string>();

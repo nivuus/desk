@@ -54,6 +54,31 @@ CREATE TABLE vm (
 -- attribution est refusée. Éprouvé le 19 août 2026 sur SQLite 3.50.4 --
 -- deux NULL tolérés : OK, double attribution : REFUSEE -> UNIQUE constraint
 -- failed: vm.utilisateur_id. C'est de lui que dépendra le critère 2 de P4.
+--
+-- ❌ LA DERNIÈRE PHRASE CI-DESSUS EST FAUSSE, ET LA PHRASE « une seconde
+-- attribution est refusée » EST AMBIGUË AU POINT DE TROMPER (relevé le
+-- 20 août 2026, revue transverse du sous-bloc P4, sur MESURE et non par
+-- lecture). Ce que cet index interdit est qu'UN UTILISATEUR AIT DEUX VMs :
+-- `utilisateur_id` est unique À TRAVERS LES LIGNES. Il n'interdit RIEN à
+-- `UPDATE vm SET utilisateur_id = 'bob' WHERE id = 'v1'` quand v1 est déjà à
+-- alice — une VM n'a qu'un `utilisateur_id`, et l'ÉCRASER ne viole aucune
+-- unicité. Le vol d'une VM par un tiers passe donc, index en place.
+--
+-- 🔵 CE N'EST PAS UN RAISONNEMENT, C'EST UNE ROUGE JOUÉE. Journal versé :
+-- `docs/superpowers/plans/journaux-plateforme-p4/rouge-2a-vol-sans-clause-conditionnelle.log`.
+-- Cet index INTACT, il a suffi de retirer la clause `AND utilisateur_id IS
+-- NULL` de `depot/vm.ts::attribuerSiLibre` pour que le vol réussisse —
+-- `lignes touchées par l'UPDATE de vol : 1`, propriétaire de v1 changé — sur
+-- SQLite 3.50.4 comme sur PostgreSQL 16.15. UNE exécution par moteur.
+--
+-- Ce que le critère 2 de P4 exige se scinde donc en DEUX propriétés, à DEUX
+-- gardes, qui ne sont PAS toutes deux ici :
+--   ②a « une VM n'est attribuée qu'une fois » -> la clause `AND
+--       utilisateur_id IS NULL` de l'UPDATE, dans `depot/vm.ts`, PAS cet
+--       index ;
+--   ②b « un utilisateur ne reçoit qu'une VM »  -> cet index, qui LÈVE.
+-- La même attribution fausse vit dans la spec §3.2 et son §4 « P4 » ; elle y
+-- est annotée au même endroit et à la même date.
 CREATE UNIQUE INDEX vm_un_utilisateur ON vm(utilisateur_id)
     WHERE utilisateur_id IS NOT NULL;
 

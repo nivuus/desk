@@ -309,7 +309,21 @@ ON CONFLICT        : {"u_id":"z"}
 Le quatrième et le cinquième point sont ceux dont dépend le critère ② de P4
 (deux utilisateurs ne peuvent pas recevoir la même VM) : l'index unique
 **partiel** tolère plusieurs VM non attribuées **et** refuse la seconde
-attribution. ⚠️ **Le pendant Postgres de ce relevé n'a PAS été pris** — ces
+attribution.
+
+> ❌ **CETTE ATTRIBUTION EST FAUSSE, et elle l'est SUR MESURE** (20 août 2026,
+> revue transverse du sous-bloc P4). L'index rend `utilisateur_id` unique **à
+> travers les lignes** : il interdit qu'**un utilisateur ait deux VMs**, ce qui
+> n'est pas « deux utilisateurs ne peuvent pas recevoir la même VM ». Il
+> n'interdit rien à `UPDATE vm SET utilisateur_id='bob' WHERE id='v1'` quand v1
+> est à alice — écraser un `utilisateur_id` ne viole aucune unicité. **Rouge
+> jouée, index INTACT, la seule clause `AND utilisateur_id IS NULL` retirée de
+> `depot/vm.ts::attribuerSiLibre` : le vol réussit, `1 ligne`**, sur SQLite
+> 3.50.4 **et** sur PostgreSQL 16.15— une exécution par moteur, journal versé
+> (`journaux-plateforme-p4/rouge-2a-vol-sans-clause-conditionnelle.log`). Le
+> critère ② se scinde donc en **②a** (la clause de l'`UPDATE`) et **②b** (cet
+> index). La même correction est portée sur `0001-socle.sql:53-56` et sur la
+> colonne ROUGE du critère ② de la §4 « P4 ». ⚠️ **Le pendant Postgres de ce relevé n'a PAS été pris** — ces
 constructions y sont documentées comme supportées, et c'est précisément ce que
 le test de portabilité de §7.1 a pour rôle d'établir plutôt que de croire.
 
@@ -466,6 +480,34 @@ Backend v1 : **`InventaireStatique`**, alimenté par un fichier de configuration
 déclaratif décrivant des VMs qui existent déjà (nom, adresse, empreinte du
 secret d'enrôlement) — c'est littéralement ce que dit le cadrage.
 
+> ❌ **DEUX AFFIRMATIONS DE CE BLOC SONT PÉRIMÉES PAR P4 (20 août 2026), et
+> elles le sont pour la même raison : ce paragraphe a été écrit AVANT que P3
+> n'existe.**
+>
+> - **Le fichier de configuration n'existe pas** (E1). Ses trois champs sont
+>   déjà en base depuis P3, écrits par `admin/enroler-agent.ts` ; un second
+>   porteur des mêmes valeurs divergerait en silence, et une empreinte de
+>   secret dans un fichier serait un chemin de secret de plus. `lister()` lit
+>   `vm` ⟕ `agent_enrole`. **« Statique » = « ne pilote aucun hyperviseur »**,
+>   et non « rechargeable » : le backend n'allume rien, n'éteint rien, ne
+>   photographie rien, et n'agit sur le monde que par la seule colonne dont il
+>   est propriétaire, `vm.utilisateur_id`.
+> - **`EtatVm` n'a que DEUX variantes** (E2), pas les quatre du bloc `ts`
+>   ci-dessus : `'prete' | 'injoignable'`. `arretee` et `demarrage` supposent
+>   un hyperviseur qu'aucun backend ne pilote — la §8 le range hors périmètre —
+>   et deux variantes que rien n'émet seraient du code mort **dans un type**,
+>   l'espèce la plus difficile à retirer. Le jour où un backend d'hyperviseur
+>   élargira l'union, toute exhaustivité qui en dépend **cassera à la
+>   compilation** : c'est la bonne panne, et c'est pourquoi la table des codes
+>   HTTP de P4 est un `Record<Motif, number>`.
+>
+> ⚠️ **Ce qui suit — le refus TYPÉ plutôt que le succès silencieux — n'est PAS
+> périmé : c'est la décision que P4 a tenue**, à ceci près que le champ `refus`
+> y est un **code court** (`'non-supporte'`) et non la phrase française du bloc
+> ci-dessous. Une phrase ne se compare pas, ne se traduit pas, et se réécrit
+> sans que rien ne casse ; tout le reste du service emploie déjà des codes
+> courts (`routes-auth.ts`, `serveur.ts:76`, `garde.ts`).
+
 ⚠️ **Décision de forme, et c'est la plus importante de ce paragraphe : une
 opération que le backend ne sait pas faire rend un REFUS TYPÉ, jamais un
 succès silencieux.** `InventaireStatique::instantane` et `::demarrer` ne
@@ -611,9 +653,40 @@ refus typés.
 | # | Critère | Comment il est jugé | Ce qui le rend ROUGE |
 | --- | --- | --- | --- |
 | ① | `instantane` sur le backend statique **refuse explicitement** | refus typé, exposé en `501`, journalisé | le remplacer par un `return` silencieux : le test doit alors échouer |
-| ② | Deux utilisateurs ne peuvent pas recevoir la même VM | violation d'index traduite en refus typé, jamais en 500 | retirer l'index partiel : la double attribution réussit |
+| ② | Deux utilisateurs ne peuvent pas recevoir la même VM | violation d'index traduite en refus typé, jamais en 500 | ❌ ~~retirer l'index partiel : la double attribution réussit~~ — **cette rouge ne rougit PAS la propriété que le critère énonce** (voir l'encadré sous ce tableau) |
 | ③ | Un utilisateur sans VM reçoit un refus **immédiat** | pas d'attente, pas de délai d'expiration | une implémentation qui attend puis expire passerait un test qui ne mesure que l'issue : le test **borne le temps** |
 | ④ | Une VM dont l'agent n'a pas été vu récemment est annoncée injoignable | l'API le dit, et dit qu'elle ne sait pas la redémarrer | masquer l'état derrière un « réessayez » générique |
+
+> ✅ **P4 A EU LIEU (20 août 2026), et QUATRE points de ce paragraphe ont été
+> tranchés autrement que ce qu'il annonce.** Résultats complets :
+> `docs/superpowers/plans/2026-08-19-plateforme-p4-resultats.md`. Les quatre
+> critères sont TENUS, **deux exécutions chacun** (exécution 1 = `sqlite`,
+> exécution 2 = `postgres`), et **dix rouges** ont été jouées.
+>
+> - **E1 — le « fichier de configuration déclaratif » de la §3.6 n'existe
+>   pas.** `InventaireStatique` lit la **base** (`vm` ⟕ `agent_enrole`) : ses
+>   trois champs — nom, adresse, empreinte du secret — y sont déjà écrits par
+>   `admin/enroler-agent.ts`, et deux sources de vérité pour la même chose
+>   divergent en silence. **« Statique » signifie donc « ne pilote aucun
+>   hyperviseur »**, lecture plus forte que « rechargeable ».
+> - **E2 — `EtatVm` a DEUX états, pas quatre.** `arretee` et `demarrage` ne
+>   sont productibles par aucun code de P4 : ils supposent un hyperviseur que
+>   la §8 range hors périmètre. Les écrire ferait du code mort **dans un
+>   type**. `EtatVm = EtatAgent = 'prete' | 'injoignable'`
+>   (`agents/fraicheur.ts`), réexporté par `orchestration/interface.ts`.
+> - **E3 — la colonne ROUGE du critère ② ci-dessus est réfutée par la
+>   mesure**, et la §3.2 porte la même annotation.
+> - **E4 — la route ne rend PAS la configuration ICE.** `signaling/ice.ts:39`
+>   compose l'identifiant TURN à partir du **nom de session**, et une VM ouvre
+>   `<préfixe>:bureau` **plus une session par fenêtre** : une route HTTP n'en
+>   connaîtrait qu'une sur N. Elle rend `{ vm, nom, prefixe, etat }` ; le
+>   relais continue de servir `ice-config` par session, comme aujourd'hui.
+>   **Aucun code client n'est privé de quoi que ce soit.**
+>
+> ⚠️ **`attribuer` n'est pas exposée sur HTTP** : il n'existe aucun rôle
+> d'administration dans ce service (`identite/jeton.ts` ne connaît que
+> `'utilisateur' | 'agent'`), et une route l'aurait ouverte à tout utilisateur
+> authentifié. Elle s'expose par `npm run admin:attribuer`.
 
 ### P5 — La production : Postgres déployé, et le durcissement
 
