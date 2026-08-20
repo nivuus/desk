@@ -71,17 +71,43 @@ pub enum Erreur {
     DelaiDepasse,
     /// La commande a été annulée, par ProjFS ou par l'arrêt du pont.
     Abandonnee,
-    /// Le disque du poste local est plein (F2 et au-delà).
+    /// Le disque du poste local est plein.
+    ///
+    /// ✅ **CONSTRUITE DEPUIS F2** *(cette ligne disait « (F2 et au-delà) »)* :
+    /// `service::cause_de` la produit sur un `CodeEchec::DisquePlein`.
+    ///
+    /// 🔴 **ET SON `HRESULT` N'ATTEINT PERSONNE.** Elle naît d'une poussée
+    /// d'ÉCRITURE, c'est-à-dire APRÈS que l'application a refermé son handle et
+    /// cru avoir enregistré : il n'y a **plus aucune commande ProjFS à
+    /// compléter**. `ERROR_DISK_FULL` est ici une valeur de JOURNAL, et rien
+    /// d'autre. Sans cette phrase, un successeur croirait que le code d'erreur
+    /// fait quelque chose.
     DisquePlein,
     /// L'opération n'a pas d'équivalent dans la File System Access API.
     NonSupporte,
     /// Suppression d'un répertoire non vide (F3).
     RepertoireNonVide,
-    /// Création d'une entrée qui existe déjà (F2).
+    /// Création d'une entrée qui existe déjà.
+    ///
+    /// ✅ **CONSTRUITE DEPUIS F2** *(cette ligne disait « (F2) »)*. Même réserve
+    /// que [`Erreur::DisquePlein`] : son `HRESULT` n'atteint personne.
     DejaPresent,
-    /// **F1 vit tout entier dans cet état** : le lecteur est en lecture seule.
-    /// ⚠️ *Sauf pour un fichier créé DE TOUTES PIÈCES, que ProjFS ne laisse
-    /// pas refuser (POST) — mesuré en recette F1.*
+    /// ❌ **« F1 VIT TOUT ENTIER DANS CET ÉTAT » N'EST PLUS VRAI.** F2 a ouvert
+    /// l'écriture : `PRE_CONVERT_TO_FULL` est **autorisée** quand la racine est
+    /// inscriptible et le canal ouvert, et les octets sont poussés vers le
+    /// poste local après coup (`pont::notifications`).
+    ///
+    /// **Ce que cette variante signifie DÉSORMAIS**, et c'est plus étroit :
+    /// - la racine est montée en lecture seule (`PONT_ECRITURE=0` ne la produit
+    ///   PAS — c'est une variable de banc du fil, pas de la racine) ;
+    /// - ou l'opération est un **renommage** ou une **suppression**, que F2
+    ///   refuse inconditionnellement parce que `Renommer` et `Supprimer` sont
+    ///   des livrables de **F3** ;
+    /// - ou le navigateur a répondu `protege-en-ecriture`.
+    ///
+    /// ⚠️ *La réserve de F1 tient : un fichier créé DE TOUTES PIÈCES n'est
+    /// toujours pas refusable, la notification étant une POST — mais F2 le
+    /// POUSSE désormais, ce qui referme la divergence qu'elle décrivait.*
     ProtegeEnEcriture,
     /// Tout le reste. Une seule variante fourre-tout, et elle est nommée comme
     /// telle — c'est ce qui empêche qu'elle avale les onze autres.

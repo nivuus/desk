@@ -4,7 +4,9 @@
 //!
 //! Ce fichier reste mince à dessein — **il assemble, il ne décide pas**. Même
 //! découpage que `capteur.rs` et `superviseur.rs` : la logique pure (chemins,
-//! erreurs, découpe, table, transport) est hors `cfg` et se teste sur l'hôte ;
+//! erreurs, découpe, table, transport, **et depuis F2 le journal des écritures
+//! dues, la file d'écriture et le fil qui la sert**) est hors `cfg` et se teste
+//! sur l'hôte ;
 //! ce qui touche ProjFS est gaté.
 //!
 //! **Pourquoi un processus séparé** (spec §3.2) : les rappels ProjFS

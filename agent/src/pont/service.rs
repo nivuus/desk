@@ -15,6 +15,10 @@
 //!   inscrivent une commande que **ce fil-ci** doit compléter : il
 //!   s'attendrait lui-même. C'est pourquoi le relevé d'hydratation compte ce
 //!   que le pont écrit au lieu de mesurer le disque.
+//!
+//!   ⚠️ **ET C'EST EXACTEMENT POURQUOI LE FIL D'ÉCRITURE DE F2 LUI EST
+//!   DISTINCT** : celui-là, lui, LIT des fichiers de la racine
+//!   (`pont::ecriture::fil`). Le loger ici rejouerait la phrase ci-dessus.
 //! - **Il ne rejoue jamais une commande expirée.** Une requête rejouée
 //!   produirait une seconde réponse sans destinataire (spec §5.3).
 
