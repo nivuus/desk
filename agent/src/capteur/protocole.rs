@@ -202,20 +202,25 @@ pub enum DepuisCapteur {
     /// deux ordres de grandeur d'écart. La borne est une décision de produit
     /// (D4), pas une limite de transport.
     ///
-    /// 🔴 **CETTE VARIANTE N'EST PAS ENCORE RELIÉE DANS
-    /// `capteur/pont_media.rs`, ET L'OUBLI Y EST SILENCIEUX.** Ce fichier
-    /// porte un bras catch-all `Ok(autre)` qui **tue le fil `lire_le_media`
-    /// sans aucune panne apparente** : la session tombe dans sa fenêtre de
-    /// reprise, et rien ne dit pourquoi. Le dépôt a payé ce défaut **quatre
-    /// fois** — `Sommeil` (D5), `Part` (D6), `Audio` (D7), `PleinEcran` (D8) —
-    /// et le commentaire de `pont_media.rs` le dénonce contre lui-même depuis
-    /// D5. La tâche 9 du plan P1 ajoute le bras **et son test** ; ce fichier
-    /// est livré avant elle, et le dit plutôt que de le taire.
+    /// ✅ **CETTE VARIANTE EST RELIÉE DANS `capteur/pont_media.rs` depuis la
+    /// tâche 9 du sous-bloc P1** (`pont_media.rs:87`), avec son test, et la
+    /// ROUGE a été jouée avant le bras : sans lui, la toute première annonce
+    /// rendait `RecvError` au bout de la file. L'avertissement qui vivait ici
+    /// disait « pas encore reliée » et « le contrôle doit rendre UNE ligne » :
+    /// les deux sont devenus faux, et les laisser aurait été précisément le
+    /// défaut d'énoncé périmé que la revue transverse de ce dépôt traque.
     ///
-    /// **Le contrôle tient en une commande, et il doit rendre une ligne :**
-    /// `grep -n 'DepuisCapteur::PressePapier' agent/src/capteur/pont_media.rs`.
-    /// Tant qu'il rend zéro, aucun presse-papier ne peut traverser — et la
-    /// première trame en tuerait le fil.
+    /// Ce que le contrôle rend AUJOURD'HUI, relevé par la commande :
+    /// `grep -n 'DepuisCapteur::PressePapier' agent/src/capteur/pont_media.rs`
+    /// rend **quatre** lignes — une pour le bras, trois pour le test qui le
+    /// garde. **Ce qui compte est qu'il ne rende pas ZÉRO** : le bras manquant
+    /// ne se signale par aucune erreur de compilation, il fait tomber le
+    /// message dans le catch-all `Ok(autre)`, qui **tue le fil `lire_le_media`
+    /// sans aucune panne apparente** — la session tombe dans sa fenêtre de
+    /// reprise, et rien ne dit pourquoi. Le dépôt a payé ce défaut **quatre
+    /// fois** avant celle-ci — `Sommeil` (D5), `Part` (D6), `Audio` (D7),
+    /// `PleinEcran` (D8) —, et toute variante NEUVE de cette énumération
+    /// poussée sur la connexion média devra refaire le même chemin.
     PressePapier { texte: Option<String>, octets: u32 },
 }
 
