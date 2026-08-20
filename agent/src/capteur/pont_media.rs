@@ -72,6 +72,21 @@ pub(crate) fn lire_le_media<R: Read>(mut lecteur: R, images: SyncSender<Recu>) {
                 Ok(DepuisCapteur::PleinEcran { actif }) => {
                     images.send(Recu::PleinEcran { actif }).is_ok()
                 }
+                // Tâche 9, sous-bloc P1 (presse-papier) : **la CINQUIÈME fois
+                // que ce point de passage doit être relié**, après `Sommeil`
+                // (D5), `Part` (D6), `Audio` (D7) et `PleinEcran` (D8). Chacun
+                // des quatre précédents nomme son rang juste au-dessus, et
+                // chacun a été payé de la même façon : le bras manquant ne se
+                // signale par AUCUNE erreur de compilation — il fait tomber le
+                // message dans `Ok(autre)` ci-dessous, qui tue ce fil en
+                // silence, affame `SourceDistante` et jette la session dans sa
+                // fenêtre de reprise sans qu'aucune panne n'apparaisse.
+                // La ROUGE correspondante a été jouée avant ce bras (E13) :
+                // `lire_le_media_survit_a_un_presse_papier_et_le_transmet`
+                // rendait `RecvError` sur la toute première annonce.
+                Ok(DepuisCapteur::PressePapier { texte, octets }) => {
+                    images.send(Recu::PressePapier { texte, octets }).is_ok()
+                }
                 Ok(autre) => {
                     tracing::warn!(?autre, "trame inattendue sur la connexion média, abandonnée");
                     return;
@@ -230,6 +245,51 @@ mod tests {
         match rx.recv().unwrap() {
             Recu::Image(unite) => assert_eq!(unite.pts_90k, 13),
             autre => panic!("attendu une image après l'ordre plein écran, reçu {autre:?}"),
+        }
+        assert!(
+            rx.try_recv().is_err(),
+            "aucune trame de plus après la fin du tampon : le fil n'a rien perdu ni rien inventé"
+        );
+    }
+
+    /// `DepuisCapteur::PressePapier` (tâche 9, sous-bloc P1) : **la CINQUIÈME
+    /// fois** que ce point de passage doit être relié, après `Sommeil` (D5),
+    /// `Part` (D6), `Audio` (D7) et `PleinEcran` (D8). Sans le bras, ce test
+    /// échoue — et c'est la ROUGE du critère ① de la spécification, jouée sur
+    /// l'hôte (E13) plutôt que sur la VM, parce que le défaut s'y observe au
+    /// même saut avec plus de précision et sans compilation distante.
+    #[test]
+    fn lire_le_media_survit_a_un_presse_papier_et_le_transmet() {
+        let mut tampon = Vec::new();
+        ecrire_json(
+            &mut tampon,
+            &DepuisCapteur::PressePapier { texte: Some("bonjour".into()), octets: 7 },
+        )
+        .unwrap();
+        // Un REFUS de taille voyage par la même variante, `texte` à `None` :
+        // il doit traverser aussi, sans quoi le bandeau du navigateur ne
+        // saurait jamais qu'une copie a été refusée.
+        ecrire_json(&mut tampon, &DepuisCapteur::PressePapier { texte: None, octets: 100_000 })
+            .unwrap();
+        // Une image APRÈS les deux annonces : si le fil s'était abandonné
+        // dessus, cette image ne serait jamais relayée non plus.
+        ecrire_image(
+            &mut tampon,
+            &AccessUnit { data: vec![7, 7, 7], is_keyframe: true, pts_90k: 21 },
+        )
+        .unwrap();
+
+        let (tx, rx) = sync_channel(8);
+        lire_le_media(std::io::Cursor::new(tampon), tx);
+
+        assert_eq!(
+            rx.recv().unwrap(),
+            Recu::PressePapier { texte: Some("bonjour".into()), octets: 7 }
+        );
+        assert_eq!(rx.recv().unwrap(), Recu::PressePapier { texte: None, octets: 100_000 });
+        match rx.recv().unwrap() {
+            Recu::Image(unite) => assert_eq!(unite.pts_90k, 21),
+            autre => panic!("attendu une image après le presse-papier, reçu {autre:?}"),
         }
         assert!(
             rx.try_recv().is_err(),
