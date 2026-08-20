@@ -5,38 +5,147 @@ constats de revue parce que sa preuve vivait dans un espace gitignoré.
 
 Plan : `docs/superpowers/plans/2026-08-20-pont-fichiers-f2.md`.
 Conception : `docs/superpowers/specs/2026-08-19-pont-fichiers-design.md`.
-Journaux : `docs/superpowers/plans/journaux-pont-fichiers-f2/` — **UNE seule
-famille de lecture** : sorties `npm`/`cargo`/`node` sur l'**hôte**, aucune
-séquence ANSI, aucun octet de contrôle. Elles se `grep`ent à plat.
+Journaux : `docs/superpowers/plans/journaux-pont-fichiers-f2/` — **44 fichiers
+suivis par git** (36 au premier niveau, 8 sous `instrument/`), **DEUX familles de
+lecture depuis la recette**, et c'est **mesuré, pas supposé** :
+
+| Famille | État | Ce qu'il faut faire |
+| --- | --- | --- |
+| tout ce qui vient de l'hôte (`f2-*.txt`, `pilote-*.log`, `pilote-*.json`, `instrument/`) et les `agent-*-plat.log` | UTF-8, **aucune séquence ANSI** | rien : ils se `grep`ent à plat |
+| les **sept** `agent-*.log` **bruts**, copiés de la VM | UTF-8, **CRLF**, **séquences ANSI de `tracing` PRÉSENTES** | `sed 's/\x1b\[[0-9;]*m//g'` — ou lire le `-plat` jumeau, **versé pour chacun** |
+
+✅ **AUCUN fichier ne porte d'octet NUL**, relevé par la commande sur les **36** du premier niveau
+après la dernière écriture — donc, contrairement aux journaux de pilote de P1 et
+de D10, **`grep -a` n'est ici obligatoire nulle part**. *La précaution générale
+tient pour tout journal copié de la VM ; elle ne décrit pas ceux-ci.*
+⚠️ **Seize fichiers portent des CRLF** (les quatorze journaux d'agent et les deux
+de la sonde d'idiome) : cela ne gêne aucun `grep`.
 
 ---
 
-## 0. 🔴 CE DOCUMENT NE RAPPORTE AUCUNE RECETTE SUR VM
+## 0. La recette sur VM — SIX exécutions, et ce qu'elles établissent
 
-**Les tâches 14 (sonde d'idiome) et 15 (recette) N'ONT PAS ÉTÉ JOUÉES.** La VM
-Windows était tenue par un chantier concurrent (**sous-projet ④, sous-bloc G2**)
-au moment de cette branche : elle tournait, son `agent.log` avait été écrit
-**vingt secondes** avant le relevé, et la recette de F2 exige de **reconstruire
-`agent.exe`**, ce qui aurait remplacé le binaire que le voisin mesurait.
+**Jouée le 21 août 2026**, une fois la VM rendue par le sous-projet ④ (G2).
+Binaire rebâti depuis cet arbre après `cargo clean --release -p proto -p agent`
+— **les DEUX crates**, la parade `-p agent` seule étant insuffisante quand
+`proto` a franchi le partage réseau.
 
-**Conséquence, écrite plutôt que déduite :**
+⚠️ **Une rédaction antérieure de ce §0 disait « CE DOCUMENT NE RAPPORTE AUCUNE
+RECETTE SUR VM ».** Elle était exacte à sa date — la VM était tenue par un
+chantier concurrent — et elle ne l'est plus. Les trois clauses qu'elle portait
+sont reprises une à une ci-dessous.
 
-- 🔴 **AUCUN OCTET N'A TRAVERSÉ.** Tout ce que ce document rapporte est éprouvé
-  par des tests d'hôte et par la compilation croisée. **Le critère ① de F2 — un
-  fichier enregistré depuis la VM, relu depuis le navigateur, condensat contre
-  condensat — n'est ni tenu ni réfuté : il n'a pas été essayé.**
-- 🔴 **`PRE_CONVERT_TO_FULL` N'A TOUJOURS JAMAIS ÉTÉ EXERCÉ**, et c'est le legs
-  8 de F1, reconduit **entier**. F2 en fait l'unique porte de refus d'une
-  écriture ; **rien n'établit qu'elle existe pour de bon.**
-- 🔴 **LE RISQUE R-F2-1 EST INTACT.** Si aucun outil d'écriture de cette VM
-  n'écrit **en place**, F2 est **codé et non recevable** — le critère ① partirait
-  en F3 avec le critère 2. La sonde qui tranche est **écrite et versée**
-  (`instrument/sonde-idiome.ps1`), **jamais exécutée**, et son en-tête le dit.
+⚠️ **AUCUN TAUX n'est revendiqué nulle part.** Deux exécutions par critère au
+mieux ; les nombres d'exécutions sont dans chaque énoncé.
 
-*Ce paragraphe est le premier du document à dessein : un lecteur qui n'en lit
-qu'un doit repartir en sachant que F2 est **livré, pas recetté**.*
+| Critère | Verdict | Exéc. | Le chiffre, **relevé** |
+| --- | --- | --- | --- |
+| ① les octets traversent, **à l'identique** | **TENU** | **2** | 1 572 869 octets, **25 morceaux**, SHA-256 `5d040545…` **des deux côtés**, 16 636 / 16 642 ms |
+| ② `PRE_CONVERT_TO_FULL` est traversée et **acceptée** | **TENU** | **2** | `present_avant=true, taille_avant=52, ecriture=OK`, condensats égaux |
+| ③ le journal est **rejoué** après une mort du pont | **TENU** | **2** | 5 dues poussées sur 6 ; la 6ᵉ reste, et c'est le bon comportement |
+| ④ `PONT_ECRITURE=0` désarme | **TENU** | **1** + 1 côté produit | `dues=6` qui ne redescend **jamais** sur 59 échantillons |
+| garde de casse, en conditions réelles | **TENU** | **2** | `ecriture due retenue … code=CasseAmbigue`, `Casse.txt` **intact** |
+| ⑥ la vidéo ne perd pas une image | **NON MESURABLE** à ce montage | 2 | voir plus bas |
 
----
+**Ce que les trois clauses de l'ancienne rédaction deviennent :**
+
+- ✅ **DES OCTETS ONT TRAVERSÉ.** Le critère ① est **tenu** : un fichier de
+  1 572 869 octets écrit *depuis la VM* est relu *depuis le navigateur* avec le
+  **même condensat**, aux deux exécutions armées. S'y ajoutent, aux deux : un
+  fichier **vide** (0 octet, et non « aucun morceau » — divergence 4), un
+  **répertoire neuf**, et un fichier **dans** ce répertoire.
+- ✅ **`PRE_CONVERT_TO_FULL` A ÉTÉ EXERCÉE**, et le legs 8 de F1 — « jamais
+  exercé » — **tombe**. ⚠️ **La preuve est de CONDUITE, pas de trace** :
+  `Reponse::Autoriser` **n'émet rien**, à dessein (il n'y a rien à faire). Ce qui
+  l'établit est qu'un **marque-page ne peut pas devenir complet sans passer par
+  cette porte**, et que l'écriture a réussi sur un fichier **projeté**
+  (`present_avant=true`, `taille_avant=52`). *Un successeur qui voudrait une
+  trace devra l'ajouter — c'est un legs.*
+- ✅ **R-F2-1 EST LEVÉ** (tâche 14, sonde d'idiome, **2 exécutions**, session 0
+  **et** session 1) : les **cinq** outils éprouvés écrivent **EN PLACE** —
+  `WriteAllText`, `Add-Content`, `cmd >`, `Set-Content`, et `notepad.exe` en
+  session interactive. ⚠️ **Portée exacte** : mesuré sur un répertoire NTFS
+  ordinaire, **pas** dans une racine ProjFS, et il ne dit **rien** de LibreOffice
+  ni de Word — dont l'idiome « écrire un temporaire, renommer, supprimer » est
+  précisément l'objet de **F3**.
+
+### Le rejeu, et ce qu'il a traversé
+
+`reprise-1` et `reprise-2` relancent le pont sur un journal de **six** dues
+laissé par le bras désarmé. Aux deux : la **première poussée part AVANT toute
+écriture neuve** (`ecriture poussee … correlation=0` à `23:15:47.876`, quand la
+mesure VM ne commence qu'à `23:15:56`), les **cinq** poussables sont acquittées,
+et la sixième reste au journal.
+
+🔵 **`reprise-1` a en outre traversé une HIBERNATION COMPLÈTE de la VM** — la
+machine s'est éteinte d'elle-même à `23:11:11` (piège documenté depuis D1,
+déclencheur toujours non identifié) entre le bras désarmé et le rejeu. **Le
+journal a survécu à l'extinction de la machine, octet pour octet** (196, contenu
+identique relevé avant et après). Ce n'était pas prévu au protocole ; c'est une
+épreuve plus forte que celle qui l'était.
+
+⚠️ **Le journal ne redevient PAS vide, et c'est le comportement juste.** Il
+retient exactement `CASSE.TXT`, que l'écrivain refuse pour ambiguïté de casse —
+une écriture refusée **doit** rester due. Le compteur final le dit en toutes
+lettres : `1 fichier … n'a pas encore été recopié sur ce poste : « CASSE.TXT »
+(casse-ambigue)`. *Le critère ③ du plan écrit « le journal redevient vide » : il
+est tenu de ses cinq entrées poussables, et sa formulation ignorait le cas du
+refus légitime.*
+
+### 🔴 Le défaut n°1 trouvé par la recette : une fenêtre de 30 s où tout est perdu, compteur compris
+
+**Reproduit 2 fois sur 2.** Une écriture poussée **entre l'ouverture du canal et
+l'installation de l'écrivain côté navigateur** n'obtient **aucune réponse**, et
+n'est rattrapée qu'au bout de `DELAI_ECRIRE`.
+
+| | `reprise-1` | `reprise-2` |
+| --- | --- | --- |
+| poussée du rejeu | `23:15:47.876` | `23:31:59.278` |
+| `commande expirée … correlation=0` | `23:16:18.092` (**+30,2 s**) | `23:32:29` (**+30,0 s**) |
+| montage annoncé par le navigateur | `23:15:48.677` — **0,8 s APRÈS la poussée** | idem |
+| issue | rejeu **réussi**, 5 acquittements | idem |
+
+🔵 **LES OCTETS NE SONT JAMAIS PERDUS** — c'est exactement ce pour quoi le
+journal existe, et il fait son travail. **C'est la LATENCE qui l'est**, et c'est
+assez grave pour être un legs.
+
+🔴 **Et le pire est l'indicateur, pas la latence** : l'annonce `Dues` part dans
+la **même** fenêtre, donc le compteur du navigateur affiche **`dues: 0`** pendant
+que **six** écritures attendent. Aux deux rejeux, `compteur AVANT` vaut
+`{"dues":0,"vues":0}` alors que le journal en portait six. **L'indicateur qui
+existe pour dénoncer la perte est MUET pendant trente secondes.**
+
+### ⚠️ Le défaut n°2, d'instrument : un `JSON.parse` qui tue une recette
+
+`evalBorne` rend un **objet** (`{__timeout}` / `{__erreur}`), jamais une chaîne.
+Un `JSON.parse` posé dessus reçoit « [object Object] » et **lève**. C'est ce qui
+a tué le pilote de `reprise-1` à son 51ᵉ échantillon — **alors que le produit,
+lui, poussait correctement, comme le journal d'agent le montre**. Corrigé :
+`lireCompteur` **CONSERVE** l'échantillon illisible plutôt que de le sauter,
+*un trou silencieux dans une série se lisant comme une série continue*.
+
+### Ce qui est déclaré plutôt que tu
+
+- **`desarme-2` est ABANDONNÉE côté pilote** : la page-shell a cessé de répondre
+  aux `eval` après `23:21:31`, et les 90 échantillons se sont mis à expirer un
+  par un. Le pilote a été arrêté. **Le côté PRODUIT est complet et versé** — 1
+  `DESARMEE`, 0 poussée, 0 acquittement, et un journal **identique octet pour
+  octet** (196) à celui de `desarme-1`. **Cause non établie.**
+  `pilote-desarme-2.json` n'existe donc pas.
+- **Le premier lancement de `reprise-1` a échoué AVANT de toucher la VM**
+  (`/media/vm/dev/run-agent.ps1: Aucun fichier`) : la VM s'était hibernée seule.
+  Elle a été redémarrée, les **deux** conditions attendues (port 5985, **puis**
+  un **accès réel** à `/media/vm/dev` — la table de montage CIFS survit à la VM
+  éteinte), et `Get-Process agent` relevé **à zéro** avant de reprendre.
+- **Le critère ⑥ n'est pas mesurable à ce montage** : `window.__pc` est absent et
+  l'unique fenêtre est `endormie=true images=0` (piège D5 du Chrome sans
+  interface, jamais levé par aucun sous-bloc). **Ce qui EST établi** : **0**
+  `clôture de session amorcée` sur toute la campagne d'écriture, poussée de
+  16,6 s comprise.
+- **Aucune exécution ne s'est chevauchée**, et le contrôle a été fait **avant
+  chaque lancement** — F1 en a perdu une pour l'avoir omis. ⚠️ Le premier
+  contrôle écrit, `pgrep -f jouer-f2.sh`, **matchait le shell qui le lançait**
+  (piège maison, payé une fois de plus) : il porte désormais sur le **pilote**.
 
 ## 1. Ce que F2 livre
 
@@ -118,7 +227,7 @@ de données que F1 avait mesurée en lecture, transposée à l'écriture.
 
 ## 3. 🔴 Ce que F2 N'ÉTABLIT PAS
 
-- **Aucun taux, nulle part** — et surtout : **aucune exécution sur la VM** (§0).
+- **Aucun taux, nulle part.** Deux exécutions par critère au mieux (§0).
 - **Rien du renommage ni de la suppression**, donc **rien de l'idiome
   d'enregistrement atomique**. Le critère 2 de la spec §8 F2 est **déplacé en
   F3**, comme le plan le décide.
@@ -138,8 +247,11 @@ de données que F1 avait mesurée en lecture, transposée à l'écriture.
 - **`showDirectoryPicker()` n'est toujours jamais appelé**, ni
   `queryPermission`/`requestPermission`, ni **le mode `readwrite`** que F2 pose :
   l'instrument de recette est OPFS, qui n'a aucun modèle de permission.
-- **Le journal n'est jamais relu APRÈS un arrêt brutal réel** : la reprise est
-  éprouvée en posant un journal à la main, jamais en tuant un pont.
+- ✅ ~~Le journal n'est jamais relu APRÈS un arrêt brutal réel~~ — **il l'est
+  depuis la recette** : deux rejeux sur un pont tué, dont un **après une
+  hibernation complète de la machine** (§0). ⚠️ **Ce qui reste vrai** : aucun
+  arrêt *pendant* une poussée en vol n'a été provoqué — le pont a toujours été
+  tué entre deux écritures, jamais au milieu d'un morceau.
 - **`TAILLE_MAX_FICHIER` de la spec §3.5.2 n'est pas implémenté**, et la raison
   est de fond : un refus de taille serait **invisible** au write-back, et
   `ERROR_DISK_FULL` **n'atteindrait personne**. F2 pose un plafond de **journal**.
@@ -265,10 +377,32 @@ mais elle **signifie autre chose** depuis F2, et c'est écrit.
 
 **Sans destinataire :**
 
-12. 🔴 **LA RECETTE DE F2 ELLE-MÊME** (§0) : les tâches 14 et 15, la sonde
-    d'idiome et les six critères. **L'instrument de la sonde est versé et prêt.**
-13. ⛔ **`PRE_CONVERT_TO_FULL` n'a jamais été exercé** — legs 8 de F1, reconduit.
+12. ✅ ~~LA RECETTE DE F2 ELLE-MÊME~~ — **JOUÉE le 21 août 2026**, six
+    exécutions, quatre critères tenus, R-F2-1 levé (§0).
+13. ✅ ~~`PRE_CONVERT_TO_FULL` n'a jamais été exercé~~ — **EXERCÉ et ACCEPTÉ**,
+    2 exécutions. ⚠️ **La preuve est de conduite, pas de trace** : la voie
+    `Autoriser` n'émet rien. **Legs neuf** : lui donner un `debug!`, sans quoi
+    F3 — qui refusera renommage et suppression à cette même porte — n'aura
+    aucun moyen d'observer ses propres décisions.
 14. ⛔ **L'inférence du §3.4 du plan — `createWritable()` est atomique par
     fichier — n'est pas mesurée.** C'est le critère ⑤, non joué.
 15. ⛔ **L'inférence du fil PUR — lire un fichier hydraté ne ré-entre pas dans
     nos rappels — n'est pas mesurée** non plus. C'est le critère ④.
+
+**Legs NEUFS, nés de la recette :**
+
+16. 🔴 **LA FENÊTRE DE TRENTE SECONDES** (§0) : ce qui est poussé entre
+    l'ouverture du canal et l'installation de l'écrivain côté navigateur est
+    perdu, et le **compteur affiche `dues: 0` pendant que six écritures
+    attendent**. Les octets, eux, arrivent. Remède nommé : que le pont
+    n'ouvre son canal d'écriture qu'**après** un acquittement de l'écrivain,
+    plutôt qu'à l'ouverture du canal de données.
+17. ⛔ **Le critère ⑥ n'est pas mesurable au montage de recette** : `window.__pc`
+    absent, fenêtre `endormie=true`. Limite héritée de **D5**, qu'aucun
+    sous-bloc n'a levée.
+18. ⛔ **La page-shell a cessé de répondre aux `eval` pendant `desarme-2`**,
+    cause non établie. C'est la seule exécution abandonnée de la campagne.
+19. ⛔ **`showDirectoryPicker()` n'est toujours jamais appelé**, ni le mode
+    `readwrite` que F2 pose : l'instrument est OPFS, qui n'a **aucun modèle de
+    permission**. La voie qui le lèverait — `Xvfb` + `xdotool` — a son
+    consentement donné **en D8** et jamais suivi d'effet.
