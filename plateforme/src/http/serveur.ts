@@ -41,6 +41,36 @@ import { RegistreAgents } from '../agents/registre';
 /// EXACTEMENT : voir le routage plus bas.
 const CHEMIN_AGENT = '/agent';
 
+/// 🔴 LA TAILLE MAXIMALE D'UNE TRAME WEBSOCKET, SUR LES DEUX SERVEURS.
+///
+/// MESURÉ le 20 août 2026 :
+/// `plateforme/node_modules/ws/lib/websocket-server.js:74` porte
+/// `maxPayload: 100 * 1024 * 1024` — CENT MÉBIOCTETS par défaut. Les deux
+/// serveurs de ce fichier étaient construits sans cette option.
+///
+/// CE QUE CELA OUVRAIT, et ce n'est pas théorique : UN PAIR ANONYME POUVAIT
+/// POUSSER UNE TRAME DE 100 Mio AVANT TOUTE AUTHENTIFICATION. Le contrôle de
+/// FORME court avant la garde — `signaling/relais.ts:84-86` l'écrit lui-même,
+/// « `isJsonObject` est appelé une trentaine de lignes avant
+/// `garde.verifier` » —, si bien que `JSON.parse` sur 100 Mio est une
+/// allocation puis un pic CPU, par socket et par trame, offerts à quiconque
+/// atteint le port. Et le canal `/agent` est la SECONDE porte anonyme : le
+/// borner sur `/` seulement laisserait la moitié du problème entière.
+///
+/// Avec cette option, `ws` ferme le socket en 1009 (« message trop grand »)
+/// SANS JAMAIS transmettre la trame au gestionnaire `message`.
+///
+/// ⚠️ LA VALEUR N'EST PAS CALIBRÉE, ET SON PLANCHER EST RAISONNÉ, PAS MESURÉ.
+/// Le plus gros message légitime est une offre ou une réponse SDP, dont les
+/// sessions de ce dépôt tiennent en quelques kilo-octets ; 256 Kio laisse deux
+/// ordres de grandeur de marge. AUCUNE SDP RÉELLE N'A ÉTÉ MESURÉE pour poser
+/// ce chiffre, et le dire vaut mieux que de laisser croire à un calibrage.
+///
+/// ⚠️ CE QU'ELLE NE FERME PAS, et qu'aucune tâche de P5 ne ferme : un pair
+/// peut toujours ouvrir BEAUCOUP DE CONNEXIONS. Le frein d'enrôlement en
+/// compte les tentatives ; il ne compte pas les sockets ouverts et MUETS.
+export const TRAME_MAX_OCTETS = 256 * 1024;
+
 export interface ServicePlateforme {
     port: number;
     close(): Promise<void>;
@@ -51,6 +81,56 @@ export interface ServicePlateforme {
 /// c'est la classe exacte de panne muette contre laquelle tout ce dépôt est
 /// écrit. `demarrage.ts` garantit par ailleurs que le port ne s'ouvre qu'après
 /// la base et ses migrations.
+/// 🔴 SANS CETTE FONCTION, `TRAME_MAX_OCTETS` DONNE UN DÉNI DE SERVICE PIRE
+/// QUE CELUI QU'IL FERME, et ce n'est pas une conjecture : MESURÉ le 20 août
+/// 2026 sur le vrai point d'entrée, `connect ECONNREFUSED` — LE PROCESS ÉTAIT
+/// MORT, tué par UNE SEULE TRAME ANONYME.
+///
+/// LA CHAÎNE, en trois maillons dont chacun est banal : `ws` refuse une trame
+/// au-delà de `maxPayload` et ÉMET `error` sur le socket serveur ; aucun
+/// socket serveur de ce service n'avait d'écouteur `error` (vérifié :
+/// `grep -n "on('error'" relais.ts canal.ts serveur.ts` ne rendait que le
+/// `http.once('error', reject)` du démarrage) ; et un `EventEmitter` qui émet
+/// `error` sans écouteur LÈVE. L'exception traverse alors un gestionnaire
+/// d'évènement Node, qui n'a personne pour l'attraper — le mode de défaillance
+/// exact que `signaling/relais.ts` et `signaling/trace.ts` documentent tous
+/// deux, atteint ici par une porte neuve.
+///
+/// ⚠️ AUCUN TEST « DANS » VITEST NE POUVAIT LE VOIR : vitest installe son
+/// propre gestionnaire d'exceptions non interceptées, si bien que les tests de
+/// `http/serveur.test.ts` restaient VERTS pendant que le service réel mourait
+/// (ils signalaient seulement « Vitest caught N unhandled errors »). La preuve
+/// vit donc dans `signaling/resilience.test.ts`, qui lance `index.ts` comme un
+/// vrai process enfant — c'est précisément la raison d'être de ce fichier-là,
+/// et son en-tête l'écrivait avant P5.
+///
+/// ⚠️ ELLE NE JOURNALISE RIEN, ET C'EST UN CHOIX MOTIVÉ, PAS UNE NÉGLIGENCE.
+/// `CLAUDE.md` porte la règle depuis le chantier TURN : « ne jamais tracer par
+/// paquet dans la boucle de transport — compter ou échantillonner, jamais
+/// tracer par paquet », après qu'une trace par `Transmit` a écrit 18 619
+/// lignes en quelques secondes et détruit la mesure qu'elle servait. Une ligne
+/// par socket fautif rendrait ici le service à nouveau amplificateur : un
+/// attaquant ouvrant N sockets ferait écrire N lignes, sur le chemin même que
+/// `TRAME_MAX_OCTETS` vient de fermer.
+///
+/// ⚠️ LE COÛT EST NOMMÉ : une erreur de socket est donc INVISIBLE à
+/// l'exploitant. Ce qui reste observable est la FERMETURE, que le pair voit
+/// (code 1009), et le fait que le service continue de servir. Le jour où il
+/// faudra les compter, c'est un compteur qu'il faudra — pas une trace.
+function encaisserLesErreursDeSocket(wss: WebSocketServer): void {
+    // Enregistré AVANT `createSignalingServer` et `servirLeCanalAgent`, qui
+    // posent leurs propres gestionnaires `connection` : les écouteurs courent
+    // dans leur ordre d'enregistrement, et celui-ci doit être attaché au
+    // socket avant que quoi que ce soit d'autre ne lui parle.
+    wss.on('connection', (socket) => {
+        socket.on('error', () => {
+            // Volontairement vide — voir ci-dessus. La seule chose qui compte
+            // est qu'un écouteur EXISTE : c'est lui, et lui seul, qui empêche
+            // `EventEmitter` de lever.
+        });
+    });
+}
+
 export async function demarrerServeur(config: Config, base: Pilote): Promise<ServicePlateforme> {
     // Les routeurs sont essayés DANS L'ORDRE ; si aucun ne reconnaît le
     // chemin, le 404 de P1 est conservé MOT POUR MOT. ⚠️ Ne pas changer son
@@ -144,14 +224,20 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
             });
     });
 
-    const wssRacine = new WebSocketServer({ noServer: true });
+    // `maxPayload` sur les DEUX serveurs, jamais un seul : voir
+    // `TRAME_MAX_OCTETS`. La borne s'applique dans `ws`, donc AVANT le
+    // gestionnaire `message` — c'est ce qui la rend utile, le contrôle de
+    // forme du relais courant avant la garde.
+    const wssRacine = new WebSocketServer({ noServer: true, maxPayload: TRAME_MAX_OCTETS });
+    encaisserLesErreursDeSocket(wssRacine);
     // Le canal `/agent` (P3) : son propre `WebSocketServer`, qui ne partage
     // avec le relais ni garde, ni registre d'appartenance, ni observateur de
     // session. C'est la conséquence directe d'E4 : l'enrôlement est
     // ASYNCHRONE (il lit `agent_enrole`), et la garde du relais est PURE et
     // SYNCHRONE. Les faire cohabiter dans le même serveur obligerait l'un des
     // deux à céder.
-    const wssAgent = new WebSocketServer({ noServer: true });
+    const wssAgent = new WebSocketServer({ noServer: true, maxPayload: TRAME_MAX_OCTETS });
+    encaisserLesErreursDeSocket(wssAgent);
     // La garde est construite ICI, à partir du secret de configuration, et
     // c'est le SEUL endroit du service qui en fabrique une. Elle est REQUISE
     // par le relais : il n'existe aucun chemin qui produise une garde ouverte
