@@ -8,6 +8,16 @@
 //     `base/pilote-sqlite.ts:29` et non un appel — donc DIX-HUIT sites réels.
 //     Les plus chargés : `agents/canal.ts` (5), `signaling/trace.ts` (3),
 //     `signaling/relais.ts` (2), `http/routes-applications.ts` (2) ;
+//
+//     ⚠️ **CE COMPTE A ÉTÉ PÉRIMÉ PAR P5 LUI-MÊME, DEUX TÂCHES APRÈS SA
+//     RÉDACTION** (revue transverse, 20 août 2026, remesuré par la commande) :
+//     **VINGT-ET-UNE** occurrences, toujours dans **ONZE** fichiers, et
+//     `agents/canal.ts` en porte **SIX**. Les deux sites neufs sont
+//     `http/routes-auth.ts:262` et `agents/canal.ts:399` — les lignes de frein
+//     que les tâches 7 et 8 ont posées, **et toutes deux passent par ce
+//     module-ci**. **LA DETTE, ELLE, N'A PAS BOUGÉ : elle vaut toujours
+//     DIX-HUIT sites de forme libre**, puisque les deux additions sont
+//     structurées. C'est le nombre à reprendre, pas celui des occurrences ;
 //   - `grep -rln 'spyOn(console' --include='*.test.ts'` rend HUIT fichiers de
 //     test qui capturent la console ET ASSERTENT SUR LE CONTENU du message :
 //     `agents/canal.test.ts`, `agents/canal-apps.test.ts`,

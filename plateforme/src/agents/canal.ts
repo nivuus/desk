@@ -101,10 +101,16 @@ export interface OptionsCanal {
 /// Les motifs qui FERMENT le socket, et ceux qui le laissent ouvert.
 ///
 /// 🔴 `enrolement` ferme : un pair refusé qui garderait sa connexion pourrait
-/// réessayer sans limite sur le même socket, ce qui est le déni de service que
-/// P5 doit freiner. Fermer ne l'empêche pas de se reconnecter — cela lui en
-/// fait payer le coût, et rend le nombre de tentatives comptable à l'étage
-/// au-dessus le jour où on voudra le brider.
+/// réessayer sans limite sur le même socket. Fermer ne l'empêche pas de se
+/// reconnecter — cela lui en fait payer le coût, et rend le nombre de
+/// tentatives comptable à l'étage au-dessus.
+///
+/// ✅ **CET ÉTAGE EXISTE DEPUIS P5, ET IL EST DANS CE FICHIER** : le frein est
+/// consulté cent-soixante lignes plus bas, avant `verifierEnrolement`. Cette
+/// phrase disait « le déni de service que P5 doit freiner … le jour où on
+/// voudra le brider » : ce jour est arrivé, et le même fichier l'écrit en
+/// toutes lettres à ce site-là. La fermeture reste ce qu'elle était — la
+/// moitié gratuite —, et le frein est l'autre.
 ///
 /// ⚠️ `version` ferme AUSSI, et c'est une décision de ce module que le plan ne
 /// prescrivait pas : un pair qui ne parle pas notre version ne réussira JAMAIS

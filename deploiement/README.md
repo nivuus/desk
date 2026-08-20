@@ -13,16 +13,22 @@ rien ne le dise. C'est pour cela qu'ils sont en tête et non en annexe.
 
 ### ① Une instance de `plateforme`, et une seule
 
-**Ne jamais répliquer le service.** Trois états de routage vivent en mémoire du
-processus :
+**Ne jamais répliquer le service.** **Quatre** états de routage vivent en
+mémoire du processus :
 
 | Fichier | Ce qu'il retient | Ce que deux instances font |
 | --- | --- | --- |
 | `signaling/appariement.ts` | la table des sessions et leurs deux pairs | **deux pairs de la même session ne s'apparient jamais** — chacun attend l'autre |
+| `agents/registre.ts` | la VM et son socket d'agent courant, plus les ordres en vol | **`POST /session` ne trouve aucun socket** si l'instance qui le traite n'est pas celle qui tient l'agent |
 | `signaling/propriete.ts` | qui possède quel nom de session | la même session peut être revendiquée deux fois |
 | `securite/frein.ts` | les échecs récents | le budget du frein est **multiplié** par le nombre d'instances |
 
-La première ligne est la grave : un usager verrait sa page se charger, son
+⚠️ **Ce tableau en a longtemps annoncé TROIS**, et il a été corrigé le 20 août
+2026 par la revue transverse de P5. Le manquant — `agents/registre.ts` — est né
+du sous-bloc G1, **concurrent** de P5 : aucune revue à l'échelle d'une tâche ne
+pouvait le voir apparaître. C'est aussi le plus fréquenté des quatre.
+
+Les deux premières lignes sont les graves : un usager verrait sa page se charger, son
 jeton être accepté, et **le média ne jamais s'établir**. Aucun journal ne le
 dirait, parce que du point de vue de chaque instance il ne s'est rien passé
 d'anormal — elle attend un pair, ce qui est un état parfaitement normal.

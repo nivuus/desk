@@ -126,10 +126,13 @@ describe('la boucle du canal /agent', () => {
     });
 
     it('🔴 `enroler` au MAUVAIS secret rend `refus` et FERME le socket, sans écrire le secret au journal', async () => {
-        // 🔴 LA FERMETURE EST LA MOITIÉ QUI COMPTE. Un pair refusé qui
+        // 🔴 LA FERMETURE EST LA MOITIÉ GRATUITE. Un pair refusé qui
         // garderait son socket ouvert pourrait réessayer sans limite sur la
-        // même connexion : c'est le déni de service que P5 doit freiner, et
-        // c'est ici gratuit à fermer.
+        // même connexion. ✅ L'AUTRE MOITIÉ EXISTE DEPUIS P5 — le frein du
+        // canal, éprouvé par `describe('le frein du canal /agent')` plus bas
+        // dans ce fichier. Cette ligne disait « le déni de service que P5 doit
+        // freiner » : c'est fait, et les deux moitiés vivent désormais côte à
+        // côte ici.
         base = await baseNeuve('canal-mauvais-secret');
         await enrolerUneVm(base, 'v-1');
         const journal = vi.spyOn(console, 'warn').mockImplementation(() => {});

@@ -21,8 +21,15 @@
 // **L'argument ci-dessus n'en perd RIEN**, et c'est pourquoi le paragraphe est
 // corrigé plutôt que supprimé : `PLATEFORME_HOTE` borne QUI PEUT ATTEINDRE le
 // port, ce qui vaut avant toute authentification et pour les deux chemins —
-// le relais comme le canal d'enrôlement, dont les tentatives de secret ne sont
-// bridées par rien à ce jour (c'est le sujet de P5).
+// le relais comme le canal d'enrôlement.
+//
+// ✅ **P5 A LIVRÉ CE QUE CETTE PHRASE ANNONÇAIT**, et elle est corrigée plutôt
+// que supprimée : elle disait « les tentatives de secret ne sont bridées par
+// rien à ce jour (c'est le sujet de P5) ». Elles le sont — `agents/canal.ts`
+// consulte le frein AVANT `verifierEnrolement`, donc avant tout `scrypt`.
+// L'argument de `PLATEFORME_HOTE` ci-dessus n'en perd rien : il vaut toujours
+// avant toute authentification, et il couvre le relais, que le frein NE couvre
+// PAS (voir l'annotation de `signaling/resilience.test.ts`).
 
 //
 // La lecture d'environnement se fait ICI et nulle part ailleurs : `env` est un
