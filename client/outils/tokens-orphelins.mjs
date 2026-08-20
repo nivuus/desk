@@ -67,7 +67,8 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { tokensDeclares, tokensReferences } from '../src/design/tokens.ts';
 import configVite from '../vite.config.ts';
-import { EN_ATTENTE_D_APPELANT, SOUS_BLOCS_CLOS } from './tokens-orphelins/attente.mjs';
+import { EN_ATTENTE_D_APPELANT } from './tokens-orphelins/attente.mjs';
+import { SOUS_BLOCS_CLOS } from './tokens-orphelins/sous-blocs-clos.mjs';
 
 /** La source unique : elle DÉCLARE, elle n'emploie pas. Hors du périmètre. */
 const SOURCE = 'client/src/design/tokens.css';

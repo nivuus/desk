@@ -1,5 +1,10 @@
 // La LISTE D'ATTENTE du contrôle §7.6, et TOUTE la doctrine qui la justifie.
 //
+// ⚠️ `SOUS_BLOCS_CLOS` N'EST PLUS ICI — extrait vers `sous-blocs-clos.mjs` par
+// la tâche 6 de S4, AVEC toute sa doctrine, parce que retirer la dernière
+// entrée de cette liste a fait GROSSIR ce fichier de 227 à 243 pour un seuil
+// d'extraction à 240. Le fichier voisin porte la mesure et la raison.
+//
 // 🔴 EXTRAIT DE `tokens-orphelins.mjs` PAR LA TÂCHE 8 DE S2, ET LA DOCTRINE EST
 // PARTIE AVEC SA DONNÉE — c'est le geste que `CLAUDE.md` exige nommément
 // (« extraire, jamais compresser » ; `serveur/instances.rs` a emporté `TAMPON`
@@ -30,7 +35,20 @@
 // logique, seulement une donnée et sa justification. Ce qui l'emploie est
 // `tokens-orphelins.mjs`, dont le contrôle échoue dans les deux sens.
 // ═══════════════════════════════════════════════════════════════════════════
-// LA LISTE D'ATTENTE — 10 tokens déclarés que le produit n'appelle pas ENCORE.
+// LA LISTE D'ATTENTE — ELLE EST VIDE DEPUIS LE SOUS-BLOC S4, TÂCHE 6.
+//
+// 🔴 ET ELLE NE DISPARAÎT PAS POUR AUTANT : L'ÉNONCÉ DE S1 QUI LE PROMETTAIT
+// EST CORRIGÉ PLUTÔT QU'EXÉCUTÉ. « Le jour où elle est vide, tout ce bloc
+// disparaît avec elle » — écrit plus bas par S1, et FAUX. Supprimer ce fichier
+// supprimerait l'ÉGALITÉ elle-même : c'est elle qui fait rougir
+// `NOUVEL ORPHELIN` pour tout token futur déclaré sans appelant, et S4 en
+// déclare QUATRE de plus (`--sur-voile`, puis les trois tokens de contenant).
+// Une `Map` vide est ce qui rend ce contrôle STRICT ; la supprimer le rendrait
+// muet. La clause ③ (`SOUS_BLOCS_CLOS`) continue de mordre pour la même
+// raison, et c'est la troisième rouge de la tâche 6.
+//
+// La doctrine part AVEC sa donnée — règle d'extraction que ce fichier porte
+// déjà —, et le fichier MAIGRIT : 227 → voir le message du commit.
 //
 // ⚠️ CE NOMBRE EST TENU À JOUR PAR LA TÂCHE QUI LE REND FAUX, jamais par une
 // tâche de ménage plus tard : elle en avait 28 à la fin de S1, et les QUATRE
@@ -48,8 +66,11 @@
 //
 // La seconde moitié est celle qui compte : elle rend la liste AUTO-NETTOYANTE.
 // Un seuil (« au plus N orphelins ») aurait pourri sur place ; une liste
-// nommée dont chaque retrait est FORCÉ par le contrôle rétrécit toute seule,
-// et le jour où elle est vide, tout ce bloc disparaît avec elle.
+// nommée dont chaque retrait est FORCÉ par le contrôle rétrécit toute seule.
+// ❌ « ET LE JOUR OÙ ELLE EST VIDE, TOUT CE BLOC DISPARAÎT AVEC ELLE » — écrit
+// ici par S1, RÉFUTÉ par S4 (tâche 6), le jour même où elle s'est vidée : voir
+// l'encadré de tête. C'est l'égalité qui vaut, pas la liste, et l'égalité a
+// besoin de ce fichier.
 //
 // ── 🔴 RE-TAGUER UNE ENTRÉE N'EST VU PAR AUCUN CONTRÔLE ────────────────────
 // Le contrôle compare des ENSEMBLES DE NOMS. Changer « S2 » en « S3 » dans une
@@ -177,25 +198,6 @@
 // non-redémarrage, cause réseau citée en entier. Le paragraphe long existait
 // déjà ; en fabriquer un aurait été vider un contrôle pour en verdir un autre.
 // ═══════════════════════════════════════════════════════════════════════════
-/**
- * LES SOUS-BLOCS CLOS DE ⑥ — aucune entrée de la liste ci-dessous n'a le droit
- * d'en nommer un.
- *
- * 🔴 SA CLAUSE DE TENUE EST CELLE DE LA LISTE ELLE-MÊME : « ce nombre est tenu
- * à jour par la tâche qui le rend faux, jamais par une tâche de ménage plus
- * tard ». Un sous-bloc s'y inscrit dans le commit qui achève son
- * implémentation.
- *
- * ⚠️ `S3` S'Y INSCRIT LUI-MÊME, ET IL FAUT DIRE CE QUE CELA VEUT DIRE : au
- * moment où cette ligne est écrite, la recette et la revue transverse de S3
- * n'ont pas encore tourné. C'est délibéré, et la propriété obtenue est la
- * bonne — si l'une des deux devait re-étiqueter une entrée vers « S3 », le
- * contrôle rougirait, ce qui est exactement le comportement voulu : un token
- * que S3 n'a PAS consommé ne doit pas réclamer S3. Aucune des deux ne
- * re-étiquette quoi que ce soit ; la tâche 7 elle-même n'en re-étiquette
- * aucune — elle change la FORME, pas le contenu.
- */
-const SOUS_BLOCS_CLOS = new Set(['S1', 'S2', 'S3']);
 
 /**
  * ⚠️ LE SOUS-BLOC EST UN CHAMP STRUCTURÉ, IL N'EST PLUS NOYÉ DANS UNE PHRASE.
@@ -203,25 +205,17 @@ const SOUS_BLOCS_CLOS = new Set(['S1', 'S2', 'S3']);
  * préfixe de prose, aucune commande ne pouvait le lire sans deviner. Le champ
  * `raison` porte le reste, et lui reste hors de toute portée automatique.
  */
-const EN_ATTENTE_D_APPELANT = new Map([
-    // ── Le cas particulier, et il est nommé ───────────────────────────────
-    // 🔴 `--police-mono` N'A QU'UN SEUL APPELANT PRÉVU, `#stats`, et la spec
-    // §4.3 laisse son sort ouvert : « si aucun appelant n'apparaît, le token
-    // sort ». Il N'A PAS été câblé par S1, et pas par oubli : `#stats` hérite
-    // aujourd'hui de `--police-ui`, si bien que lui poser la pile monospace
-    // CHANGERAIT SON APPARENCE — ce que S1 s'interdit nommément (« visuellement
-    // quasi neutre sur index.html »). C'est donc S4, le sous-bloc qui a le
-    // droit de toucher la fenêtre de session, qui tranche : ou il le câble, ou
-    // il le retire. Aucun autre sous-bloc n'a le droit de laisser cette ligne
-    // en place sans décider. ⚠️ S2 NE L'A PAS ROUVERT, et pas par omission :
-    // aucune de ses quatre familles n'a besoin d'une pile monospace.
-    [
-        '--police-mono',
-        {
-            sousBloc: 'S4',
-            raison: '#stats, OU RETRAIT : le seul token dont le sort est encore ouvert',
-        },
-    ],
-]);
+/**
+ * ⚠️ VIDE DEPUIS S4, TÂCHE 6, ET C'EST UN ÉTAT NORMAL — pas une invitation à
+ * supprimer ce fichier. Voir l'encadré de tête : c'est l'ÉGALITÉ qui vaut.
+ *
+ * 🔴 LA DERNIÈRE ENTRÉE SORTIE EST `--police-mono`, et sa doctrine est partie
+ * AVEC elle. Ce qu'il faut en garder tient en trois lignes, parce que le fait
+ * vaut plus que la prose : trois sous-blocs se sont passé « le câbler ou le
+ * retirer » faute d'avoir le droit de changer l'apparence de la fenêtre de
+ * session ; S4 l'a, et il l'a CÂBLÉ sur `#stats` (`client/src/style.css`), que
+ * la spec §4.3 désignait comme son unique appelant prévu depuis S1.
+ */
+const EN_ATTENTE_D_APPELANT = new Map([]);
 
-export { EN_ATTENTE_D_APPELANT, SOUS_BLOCS_CLOS };
+export { EN_ATTENTE_D_APPELANT };
