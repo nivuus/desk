@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ReadyMessage } from './control';
-import { CONTROL_VERSION, encodeResize, encodeVisibility, parseAgentControl } from './control';
+import { CONTROL_VERSION, TYPES_AGENT, encodeResize, encodeVisibility, parseAgentControl } from './control';
 
 describe('protocole de contrôle', () => {
     it('encode un redimensionnement', () => {
@@ -127,5 +127,40 @@ describe('protocole de contrôle', () => {
             JSON.stringify({ v: CONTROL_VERSION, type: 'fullscreen', active: true }),
         );
         expect(message).toEqual({ v: CONTROL_VERSION, type: 'fullscreen', active: true });
+    });
+
+    it('analyse un message de presse-papier portant du texte', () => {
+        const message = parseAgentControl(
+            JSON.stringify({ v: CONTROL_VERSION, type: 'clipboard', text: 'bonjour', bytes: 7 }),
+        );
+        expect(message).toEqual({ v: CONTROL_VERSION, type: 'clipboard', text: 'bonjour', bytes: 7 });
+    });
+
+    it('analyse un refus de presse-papier, text à null', () => {
+        const message = parseAgentControl(
+            JSON.stringify({ v: CONTROL_VERSION, type: 'clipboard', text: null, bytes: 102400 }),
+        );
+        expect(message).toEqual({ v: CONTROL_VERSION, type: 'clipboard', text: null, bytes: 102400 });
+    });
+
+    // 🔴 La vérification de `v` précède celle du type : ce test la fige pour
+    // la variante neuve. Sans elle, un agent d'une version future ferait
+    // écrire n'importe quoi dans le presse-papier local.
+    it('rejette un presse-papier en version 2', () => {
+        const raw = JSON.stringify({ v: 2, type: 'clipboard', text: 'bonjour', bytes: 7 });
+        expect(() => parseAgentControl(raw)).toThrow(/version de contrôle non supportée/);
+    });
+
+    // 🔴 Le témoin d'EXÉCUTION de la dérivation de `TYPES_AGENT`. Les neuf
+    // valeurs sont écrites À LA MAIN ici, précisément pour que le test soit
+    // indépendant de la table qu'il juge : une clé de trop dans `TOUS_AGENT`
+    // le fait tomber, et une clé manquante fait d'abord tomber `tsc`.
+    it('TYPES_AGENT contient exactement les type de l’union', () => {
+        expect(TYPES_AGENT.slice().sort()).toEqual(
+            [
+                'ready', 'session-end', 'pointer', 'rumble', 'capabilities',
+                'link', 'asleep', 'fullscreen', 'clipboard',
+            ].sort(),
+        );
     });
 });

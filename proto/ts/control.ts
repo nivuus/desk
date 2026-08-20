@@ -98,14 +98,59 @@ export interface FullscreenMessage {
     active: boolean;
 }
 
+/// Le presse-papier de la VM a changé.
+///
+/// L'interface s'appelle `ClipboardAgentMessage` et non `ClipboardMessage`,
+/// alors qu'elle est seule aujourd'hui : le sous-bloc P2 ajoutera un
+/// `ClipboardClientMessage` portant le MÊME tag `'clipboard'` dans l'autre
+/// sens. Aucune collision réelle — `parseAgentControl` n'analyse que
+/// `AgentControl`, et un message client ne passe jamais par là — mais les
+/// deux interfaces ne peuvent pas porter le même nom. Nommer celle-ci
+/// maintenant évite à P2 de renommer du code livré.
+///
+/// ⚠️ **`text` est `string | null`, jamais optionnel.** L'agent l'émet
+/// toujours ; un `?` ferait passer un message tronqué en route pour un refus.
+/// `null` EST le refus, et `bytes` en porte alors la taille.
+export interface ClipboardAgentMessage {
+    v: number;
+    type: 'clipboard';
+    text: string | null;
+    bytes: number;
+}
+
 export type AgentControl =
     | ReadyMessage | SessionEndMessage
     | PointerMessage | RumbleMessage | CapabilitiesMessage | LinkMessage
-    | AsleepMessage | FullscreenMessage;
+    | AsleepMessage | FullscreenMessage | ClipboardAgentMessage;
 
-const TYPES_AGENT = [
-    'ready', 'session-end', 'pointer', 'rumble', 'capabilities', 'link', 'asleep', 'fullscreen',
-] as const;
+/// 🔴 Écrit comme un enregistrement EXHAUSTIF typé par l'union, jamais comme
+/// un littéral : ajouter une variante à `AgentControl` sans ajouter sa clé
+/// ici fait échouer `npm run typecheck`, parce qu'un `Record<K, true>` dont
+/// une clé manque est une erreur `tsc`.
+///
+/// **Avant ce remède, l'oubli ne cassait NI la compilation NI aucun test.**
+/// `parseAgentControl` levait, `client/src/webrtc.ts` interceptait, et le
+/// message était simplement perdu contre un `console.warn` — un mode de
+/// défaillance entièrement silencieux, sur le fichier qui définit le
+/// protocole. C'est le même remède que celui du chantier de gestion d'apps,
+/// appliqué ici à sa source.
+const TOUS_AGENT: Record<AgentControl['type'], true> = {
+    ready: true,
+    'session-end': true,
+    pointer: true,
+    rumble: true,
+    capabilities: true,
+    link: true,
+    asleep: true,
+    fullscreen: true,
+    clipboard: true,
+};
+
+/// Exporté pour que la dérivation ait un témoin d'EXÉCUTION, et pas seulement
+/// un témoin de compilation. Élargissement de surface assumé et déclaré :
+/// sans lui, `TOUS_AGENT` n'est gardé que par `tsc`, et un test ne peut pas
+/// constater que la liste et l'union coïncident.
+export const TYPES_AGENT = Object.keys(TOUS_AGENT) as AgentControl['type'][];
 
 export function encodeResize(width: number, height: number): string {
     const message: ResizeMessage = {
@@ -132,7 +177,7 @@ export function parseAgentControl(raw: string): AgentControl {
     if (parsed.v !== CONTROL_VERSION) {
         throw new Error(`version de contrôle non supportée : ${parsed.v}`);
     }
-    if (!TYPES_AGENT.includes(parsed.type as (typeof TYPES_AGENT)[number])) {
+    if (!TYPES_AGENT.includes(parsed.type as AgentControl['type'])) {
         throw new Error(`type de contrôle inconnu : ${parsed.type}`);
     }
     return parsed as AgentControl;
