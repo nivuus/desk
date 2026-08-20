@@ -8807,8 +8807,8 @@ par place après**.
 | 1 | `plateforme/src/base/migrations/0001-socle.sql:53-56` | 🔴 attribution **FAUSSE** (voir ③). Annotée, avec le chemin du journal qui la réfute |
 | 2 | spec §3.2 | la même, mot pour mot. Annotée |
 | 3 | spec §4 « P4 », colonne ROUGE du critère ② | la même. **Barrée** |
-| 4 | `plateforme/src/agents/fraicheur.ts:11-20` | « IL N'A AUCUN APPELANT DE PRODUCTION » — P4 lui en donne un. Annotée |
-| 5 | `plateforme/src/signaling/appariement.ts:28` | « P4 reste à venir » — faux dès la fusion. Annotée, **et la propriété du fichier tient une TROISIÈME fois** : il n'a toujours pas gagné une ligne |
+| 4 | `plateforme/src/agents/fraicheur.ts` — **`:21-30` depuis l'annotation, `:11-20` avant elle** | « IL N'A AUCUN APPELANT DE PRODUCTION » — P4 lui en donne un. Annotée aux lignes **11-20**, qui poussent la phrase réfutée de dix lignes vers le bas : **c'est le déplacement de citation que le plan prévenait, relevé en relisant après l'édition** |
+| 5 | `plateforme/src/signaling/appariement.ts:28` | « P4 reste à venir » — faux dès la fusion. **REMPLACÉE, pas annotée sous elle** : la ligne 28 porte désormais la correction, qui cite la phrase disparue pour que le registre en garde trace. **Et la propriété du fichier tient une TROISIÈME fois** : il n'a toujours pas gagné une ligne |
 | 6 | `plateforme/src/signaling/propriete.ts:36-39` | « c'est ce dont P4 **aura** besoin » — il la lit. Annotée **avec la réserve du nom** |
 | 7 | `plateforme/src/depot/session.ts:56` | la même formule au futur. Annotée |
 | 8 | `client/src/prefixe.ts:11-17` | déjà corrigée par la tâche 13 ; **vérifiée** à la revue plutôt que supposée |
