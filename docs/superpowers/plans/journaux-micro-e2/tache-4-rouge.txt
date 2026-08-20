@@ -1,0 +1,24 @@
+=== ROUGE 1 : evaluer rend toujours Aucune ===
+test micro::boucle_locale::tests::deux_endpoints_distincts_ne_bouclent_pas ... ok
+test micro::boucle_locale::tests::sans_capture_il_n_y_a_pas_de_boucle ... ok
+test micro::boucle_locale::tests::la_comparaison_est_INSENSIBLE_a_la_casse_de_l_identifiant ... FAILED
+test micro::boucle_locale::tests::un_identifiant_VIDE_ne_boucle_pas ... ok
+test micro::boucle_locale::tests::le_cable_capte_par_le_loopback_est_un_RISQUE ... FAILED
+thread 'micro::boucle_locale::tests::la_comparaison_est_INSENSIBLE_a_la_casse_de_l_identifiant' (3300364) panicked at agent/src/micro/boucle_locale.rs:86:9:
+assertion `left == right` failed
+  left: Aucune
+thread 'micro::boucle_locale::tests::le_cable_capte_par_le_loopback_est_un_RISQUE' (3300365) panicked at agent/src/micro/boucle_locale.rs:67:9:
+assertion `left == right` failed
+  left: Aucune
+test result: FAILED. 3 passed; 2 failed; 0 ignored; 0 measured; 676 filtered out; finished in 0.00s
+
+=== ROUGE 2 : la comparaison n'ecarte pas le vide ===
+test micro::boucle_locale::tests::le_cable_capte_par_le_loopback_est_un_RISQUE ... ok
+test micro::boucle_locale::tests::sans_capture_il_n_y_a_pas_de_boucle ... ok
+test micro::boucle_locale::tests::un_identifiant_VIDE_ne_boucle_pas ... FAILED
+test micro::boucle_locale::tests::deux_endpoints_distincts_ne_bouclent_pas ... ok
+test micro::boucle_locale::tests::la_comparaison_est_INSENSIBLE_a_la_casse_de_l_identifiant ... ok
+thread 'micro::boucle_locale::tests::un_identifiant_VIDE_ne_boucle_pas' (3300811) panicked at agent/src/micro/boucle_locale.rs:101:9:
+assertion `left == right` failed
+  left: Risque
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 676 filtered out; finished in 0.00s
