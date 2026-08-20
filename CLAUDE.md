@@ -7524,7 +7524,12 @@ lui-même**, avec l'énoncé daté qui, lui, est exact.
    sait pas l'ajouter par `ALTER TABLE`, et la reconstruction en douze étapes
    n'est pas portable. **P2 l'a APPLIQUÉ** : `0002-identite.sql` fait naître
    `famille` et `remplace_par` **avec** `jeton_rafraichissement`, ainsi que sa
-   clé étrangère vers `utilisateur(id)`. **La consigne reste entière pour P4.**
+   clé étrangère vers `utilisateur(id)`. ~~**La consigne reste entière pour
+   P4.**~~ ✅ **P4 N'A EU AUCUNE MIGRATION À ÉCRIRE** (20 août 2026) : la seule
+   colonne dont il est propriétaire, `vm.utilisateur_id`, existe depuis P1 avec
+   son index unique partiel. La consigne n'a donc pas été mise à l'épreuve par
+   lui, et **elle reste entière pour le premier sous-bloc qui ajoutera une
+   table**.
 
 3. ✅ **P3 — `session.vm_id` EST RENSEIGNÉE** (19 août 2026) : le nom de
    session porte la VM (`<préfixe>:bureau`), et `signaling/trace.ts` découpe le
@@ -7955,10 +7960,17 @@ par `0002-identite.sql`, et **la consigne reste entière pour P4**).
    session sans préfixe ou à préfixe inconnu n'a rien d'honnête à inscrire, pas
    plus qu'une session appariée par un agent seul n'a d'utilisateur.
    **`NOT NULL` serait FAUX, pas seulement coûteux.**
-4. ⛔ **P4 — l'appartenance en base est là, et elle attend son lecteur.**
+4. ✅ **FERMÉ PAR P4 (20 août 2026) — `session.utilisateur_id` a son lecteur.**
+   ~~⛔ **P4 — l'appartenance en base est là, et elle attend son lecteur.**~~
    `session.utilisateur_id` porte l'`id` de l'utilisateur, vérifié sur le
-   chemin réel (1 exécution, `critere-3-appartenance-en-base.log`). **C'est ce
-   dont P4 a besoin ; personne ne le lit encore.**
+   chemin réel (1 exécution, `critere-3-appartenance-en-base.log`). ~~**C'est ce
+   dont P4 a besoin ; personne ne le lit encore.**~~ **`depot/session.ts::
+   compterOuvertesDe` la lit, et `GET /vm` en rend le champ `sessions_ouvertes`
+   par VM.** ⚠️ **La réserve est dans le NOM du champ, et il faut la garder** :
+   il compte des LIGNES non closes, jamais des sessions média vivantes — le
+   média survit à un redémarrage du service alors que la ligne est close par le
+   balayage, et une ligne ouverte peut correspondre à un pair parti sans que la
+   déconnexion ait été vue. C'est `sessions_ouvertes`, pas `sessions_actives`.
 5. ⛔ **P5 — le frein sur les routes d'authentification** (son critère ③).
    `/auth/connexion` est ouverte à la force brute, bornée seulement par les
    ~29 ms de `scrypt` et par l'écoute restreinte. **Même raison, même
@@ -8457,19 +8469,28 @@ RÉDUIT, pas soldé** — voir le point 4 ci-dessous.
 
 **Ce qui reste dû :**
 
-1. ⛔ **P4 — la route qui rend un préfixe à un navigateur.**
-   `client/src/prefixe.ts` lit le coffre puis la chaîne de requête, et **rend la
-   chaîne vide à défaut** (E3). C'est un **paramètre sans source** : P4 doit
-   brancher la sienne, avec l'attribution d'une VM à un utilisateur. ⚠️ **Coût
-   nommé par la spec §10 elle-même** : une plateforme mal configurée retombe
-   silencieusement dans un espace de noms partagé.
-2. ⛔ **P4 — `agents/fraicheur.ts` n'a AUCUN appelant de production**, et c'est
-   **déclaré plutôt que dissimulé**. Ce qu'il décide n'est lu par personne tant
-   qu'aucune vue ne liste les VMs. Lui inventer un appelant reviendrait à décider
-   à la place de P4 où l'état s'affiche.
-3. ⛔ **P4 — `session.utilisateur_id` attend toujours son lecteur**, et
-   `application` attend son écrivain (sous-projet ④, qui empruntera le canal
-   `/agent`).
+1. ✅ **FERMÉ PAR P4 (20 août 2026).** ~~⛔ **P4 — la route qui rend un préfixe
+   à un navigateur.**~~ `POST /session` la rend, `client/src/connexion.ts`
+   l'appelle une fois le jeton posé, et `poserPrefixe` l'écrit au coffre.
+   Corroboré sur un VRAI navigateur, en origine croisée
+   (`journaux-plateforme-p4/corroboration-navigateur.log`), et sur le service
+   réel de la VM (`vm-corroboration-releve.log`). ⚠️ **LE COÛT DE LA SPEC §10
+   EST RÉDUIT, PAS SOLDÉ, et il faut dire par quoi** : deux gardes, aux deux
+   bouts — `poserPrefixe` **LÈVE** sur la chaîne vide plutôt que de la coucher
+   au coffre, et la route rend **409 `aucune-vm`** au lieu d'un 200 à préfixe
+   vide. Ce qui reste ouvert est le point 4 ci-dessous, que P4 ne touche pas.
+2. ✅ **FERMÉ PAR P4 (20 août 2026).** ~~⛔ **P4 — `agents/fraicheur.ts` n'a
+   AUCUN appelant de production.**~~ `orchestration/inventaire-statique.ts::etat`
+   l'appelle, et **les deux routes de P4 le lisent** — `GET /vm` pour l'état de
+   chaque VM, `POST /session` pour décider entre 200 et 503. L'orchestrateur lui
+   donne son horloge, qui reste un **paramètre** : c'est ce qui rend la
+   transition du critère ④ observable à la milliseconde près, borne assiégée des
+   deux côtés (`critere-4-{1,2}.log`, 2 exécutions).
+3. ⚠️ **À MOITIÉ FERMÉ PAR P4 (20 août 2026).** ~~⛔ **P4 —
+   `session.utilisateur_id` attend toujours son lecteur.**~~ Elle a le sien
+   (`compterOuvertesDe`, voir le legs n°4 de P2 et sa réserve de nom). **Mais
+   `application` attend toujours son écrivain** — sous-projet ④, qui empruntera
+   le canal `/agent`, et P4 ne l'approche pas : sa table reste vide.
 4. 🔴 **P4 ou P5 — le préfixe ne ferme PAS la revendication au sein d'une VM.**
    Il est **par VM**, et le registre d'appartenance de `signaling/propriete.ts`
    est **en mémoire** : après un redémarrage du service, deux clients humains de
@@ -8497,6 +8518,495 @@ RÉDUIT, pas soldé** — voir le point 4 ci-dessous.
 
 ---
 
+## 🖥️ Sous-projet ⑤ Plateforme — sous-bloc P4 : l'orchestration, et la première VM qui appartient à quelqu'un (20 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-19-plateforme-p4-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-19-plateforme-p4.md` (commit `7523ea5`).
+Conception : `docs/superpowers/specs/2026-08-19-plateforme-design.md`
+(commit `217a765`), §3.6 et §4 « P4 ».
+Journaux : `docs/superpowers/plans/journaux-plateforme-p4/` — **43 fichiers
+suivis par git** (relevé par `git ls-files … | wc -l` à la clôture), dont **9**
+d'instrument. **DEUX familles de lecture**, et c'est la répartition la plus
+simple qu'ait connue ce dépôt :
+
+| Famille | Fichiers | Ce qu'il faut faire |
+| --- | --- | --- |
+| tout le répertoire | **41** | rien : aucune séquence ANSI, `grep`-ables à plat |
+| `vm-1-agent.log`, `vm-2-agent.log` | **2** | **séquences ANSI de `tracing` PRÉSENTES** : `sed 's/\x1b\[[0-9;]*m//g'`, **ou** lire le `-plat` jumeau, versé pour chacun |
+
+⚠️ **Les CRLF et les séquences ANSI ne coïncident PAS, et le dire évite une
+règle fausse** : `grep -rlP '\x1b\['` rend **deux** fichiers (les deux
+ci-dessus), `grep -rlU $'\r'` en rend **six** — les deux bruts, leurs deux
+jumeaux `-plat`, et les deux `vm-{1,2}-corroboration.log`. Tous les six
+viennent de la VM. **Les CRLF ne gênent aucun `grep`** ; seules les séquences
+ANSI le font.
+
+⚠️ **P4 n'a employé la VM Windows que pour sa tâche 16, hors critère.** Les
+quatre critères sont tenus sans elle.
+
+**Convention des exécutions, reconduite de P2 et P3** : **exécution 1 =
+`sqlite`, exécution 2 = `postgres`**, déclaré dans l'en-tête de chaque journal.
+**Aucun taux n'est revendiqué nulle part.**
+
+### ① Le fait n°1 : `vm.utilisateur_id` a enfin son écrivain ET son lecteur filtrant
+
+C'était le point le plus lourd de toute la plateforme, et le plan le nommait
+comme tel avant dispatch : « **aucun code de production ne lit ni n'écrit
+`vm.utilisateur_id`** ». La colonne existait depuis P1 avec son index unique
+partiel, et personne ne s'en servait — c'est-à-dire qu'**il n'y avait aucune
+isolation entre utilisateurs** : n'importe quel compte authentifié aurait vu
+n'importe quelle VM, s'il avait existé une route pour les lister.
+
+Les deux bouts existent désormais, éprouvés de bout en bout :
+
+- **l'écrivain** — `npm run admin:attribuer -- --email <courriel> --vm <nom|id>`,
+  plus `--detacher`. Il passe par `orchestration/inventaire-statique.ts::
+  attribuer`, **jamais par un `UPDATE` écrit à part** : dupliquer l'ordre
+  « lire, écrire sous clause, traduire l'exception » ferait diverger les deux
+  chemins le jour où l'un changerait, et la commande d'administration est
+  précisément celle qu'on relit le moins souvent ;
+- **le lecteur filtrant** — `orchestration/selection.ts::vmsDe`, **pur**, sur
+  lequel `GET /vm` et `POST /session` s'appuient tous deux.
+
+🔴 **`attribuer` N'EST PAS EXPOSÉE SUR HTTP, et c'est une décision, pas un
+oubli.** Relevé : `identite/jeton.ts` ne connaît que `'utilisateur' | 'agent'`,
+et `config.ts` n'a aucune variable d'administrateur — **il n'existe aucun rôle
+d'administration dans ce service**. Une route qui attribuerait une VM aurait
+donc été, au mieux, ouverte à tout utilisateur authentifié : une escalade de
+privilège offerte. **Un test assère nommément qu'`attribuer` ne figure pas dans
+la liste blanche des opérations HTTP** — sans lui, l'y ajouter un jour de
+fatigue ouvrirait l'attribution à tout le monde sans qu'aucun test ne bouge.
+
+### ② Le verdict des quatre critères, avec leur nombre d'exécutions
+
+**Les quatre sont TENUS, DEUX exécutions chacun.** Aucune assertion n'est
+tombée, sur aucun des deux moteurs.
+
+| # | Critère | Verdict | Exéc. |
+| --- | --- | --- | --- |
+| ① | `instantane` refuse explicitement, en **501**, et le **journalise** | **TENU** | **2** |
+| ② | Deux utilisateurs ne partagent pas une VM, un utilisateur n'en a pas deux, **et jamais un 500** | **TENU** | **2** |
+| ③ | Un utilisateur sans VM reçoit un refus **immédiat** | **TENU** | **2** |
+| ④ | Une VM dont l'agent n'a pas été vu est **annoncée injoignable**, et l'API **avoue** ne pas savoir la redémarrer | **TENU** | **2** |
+
+**① en détail** : `501 {"motif":"non-supporte","operation":"instantane",
+"backend":"inventaire-statique"}`, et **exactement une** ligne de journal, qui
+nomme l'opération **et** le backend. Le `501` n'est pas écrit à la main dans la
+route : il est lu dans `CODE_HTTP`, un `Record<Motif, number>` dont la clé est
+l'union **dérivée** du tableau `as const` `MOTIFS`. **Ajouter un motif sans lui
+donner son code HTTP est une erreur de compilation.** Et le sens de la
+dérivation compte : le tableau produit le type, si bien que la liste
+d'exécution et la liste de types sont **le même objet**, non deux objets qu'on
+espère égaux — le remède structurel au catch-all silencieux que ce dépôt a payé
+quatre fois (`pont_media.rs`, D5 à D8).
+
+**③ en détail — la borne est MESURÉE avant d'être fixée** : 100 refus
+consécutifs par moteur (`mesure-borne-3.log`). Premier appel **à froid** 78,7 ms
+(sqlite) et 39,9 ms (postgres) ; **maximum des 99 suivants** 7,5 et 12,9 ms.
+**Borne retenue : 250 ms**, et **ce n'est PAS le p99 du relevé** — calée sur
+lui, elle rougirait au premier ralentissement de la machine et transformerait
+le critère en détecteur de charge d'hôte.
+
+**④ en détail — la transition est ASSIÉGÉE des deux côtés, à la milliseconde** :
+`t = vu_a + SEUIL` (90 000 ms) rend encore `prete`, `t + 1 ms` rend
+`injoignable`. Une VM **jamais vue** est `injoignable`, jamais « peut-être ».
+🔴 **`redemarrage` est l'aveu, pas la fonction** : le cadrage promet « VM
+injoignable → le hub l'indique, **propose redémarrage** » ; avec le backend v1
+le hub **indique** et **dit qu'il ne sait pas redémarrer**. Le champ est rendu
+plutôt que laissé au navigateur à deviner, **parce qu'une absence de champ se
+lit comme un oubli**. Et **le préfixe est rendu QUAND MÊME sur le 503** : il est
+connu et juste, et le navigateur en a besoin pour ne pas rejoindre l'espace de
+noms partagé en attendant que la VM revienne.
+
+### ③ 🔴 La ROUGE que la spec prescrivait pour le critère ② ne rougissait PAS ce que le critère énonce
+
+**C'est le fait de conception le plus réutilisable du sous-bloc, il a été
+établi AVANT dispatch, par une sonde, et il réfutait trois documents à la
+fois.**
+
+La spec §3.2, sa §4 « P4 » et `0001-socle.sql:53-56` disaient tous trois que
+l'index unique partiel `vm_un_utilisateur` établissait « deux utilisateurs ne
+peuvent pas recevoir la même VM », et prescrivaient comme ROUGE « retirer
+l'index partiel ». **C'est faux.** `CREATE UNIQUE INDEX vm_un_utilisateur ON
+vm(utilisateur_id) WHERE utilisateur_id IS NOT NULL` rend `utilisateur_id`
+unique **à travers les lignes** : il interdit qu'**un utilisateur ait deux
+VMs**. Il n'interdit **rien** à `UPDATE vm SET utilisateur_id='bob' WHERE
+id='v1'` quand `v1` est à alice — **une VM n'a qu'un `utilisateur_id`, et
+l'écraser ne viole aucune unicité.**
+
+**MESURÉ, index INTACT** (`rouge-2a-vol-sans-clause-conditionnelle.log`) : il a
+suffi de retirer la clause `AND utilisateur_id IS NULL` de
+`depot/vm.ts::attribuerSiLibre` pour que le vol réussisse — `lignes touchées
+par l'UPDATE de vol : 1`, propriétaire changé —, sur **SQLite 3.50.4** comme
+sur **PostgreSQL 16.15**, une exécution par moteur.
+
+Le critère se scinde donc en **trois** propriétés, à **trois** gardes :
+
+| | Propriété | Garde | Rouge |
+| --- | --- | --- | --- |
+| ②a | une VM n'est attribuée qu'une fois | la clause `AND utilisateur_id IS NULL` | retirer la clause |
+| ②b | un utilisateur ne reçoit qu'une VM | l'index partiel, qui **lève** | retirer l'index de `0001-socle.sql` |
+| ②c | la violation est traduite en refus **typé**, jamais un 500 | la **relecture** après exception | laisser l'exception remonter |
+
+🔴 **LES DEUX MOTEURS NE LÈVENT PAS LE MÊME TEXTE** — `UNIQUE constraint
+failed: vm.utilisateur_id` contre `duplicate key value violates unique
+constraint "vm_un_utilisateur"`, les deux relevés. **Le code ne compare donc
+JAMAIS le message de l'exception** : il **relit** l'état et ne traduit que ce
+que la relecture explique ; **sinon il RELANCE**. Un `catch` qui traduirait
+*toute* exception avalerait une base injoignable et la présenterait comme un
+refus métier — la panne muette exacte que la spec §6 interdit. Un `Pilote`
+factice dont `executer` lève une erreur étrangère éprouve ce point à part.
+
+⚠️ **Un contrôle atteste que la relecture a EU LIEU, pas seulement que le motif
+est juste** : `lectures faites par la course : 2`. Un code qui devinerait le
+motif rendrait **1**, et la rouge ②a le montre.
+
+**Les trois places de l'attribution fausse sont annotées à leur place**
+(`0001-socle.sql`, spec §3.2, spec §4 « P4 »), pas seulement là où on nous
+l'avait montrée.
+
+### ④ 🔴 Trois contrôles vacueux attrapés en chemin — dont un d'une espèce NEUVE
+
+Ce dépôt tient une doctrine : *un contrôle qu'on n'a jamais vu rouge n'est pas
+un contrôle*. P4 en a attrapé **trois** qui la violaient, chacun d'une espèce
+différente, et **les trois par l'exécution, jamais par la relecture**.
+
+- **(a) Un `toThrow()` NU, vert alors que la fonction n'existait pas.** Le test
+  appelait une fonction absente ; `expect(() => …).toThrow()` attrapait le
+  `ReferenceError` et se déclarait satisfait. **Un `toThrow()` doit nommer ce
+  qu'il attend.**
+- 🔵 **(b) UNE ROUGE RESTÉE VERTE PARCE QUE LA CHAÎNE À MUTER APPARAISSAIT
+  D'ABORD DANS LE COMMENTAIRE QUI LA JUSTIFIE.** La mutation devait retirer
+  `AND utilisateur_id IS NULL` du SQL ; la substitution a frappé la **première**
+  occurrence, qui était dans la phrase française expliquant pourquoi la clause
+  est là. **Le code est resté intact, et le contrôle est resté vert.** Ce qui
+  l'a attrapé n'est pas une relecture mais un **garde** ajouté à l'instrument :
+  *une rouge doit produire une sortie non vide*, et un diff vide est un échec
+  de la rouge, jamais un succès du produit.
+  > ⚠️ **LEÇON NEUVE, ET ELLE VISE CE DÉPÔT EN PARTICULIER** : dans un dépôt
+  > qui commente abondamment ses invariants, **une mutation par substitution de
+  > chaîne frappe le commentaire AVANT le code**. Plus un invariant est bien
+  > documenté, plus sa rouge est fragile. **Muter par numéro de ligne, ou par
+  > un motif ancré sur la syntaxe — jamais par la seule sous-chaîne.**
+- **(c) Une mutation restée verte a révélé qu'une clause du critère n'était
+  éprouvée par RIEN.** « Violation d'index traduite en refus typé, jamais un
+  500 » passait par un chemin où la **lecture préalable** refuse avant toute
+  écriture : l'`UPDATE` n'était jamais atteint, donc l'exception jamais levée,
+  donc la traduction jamais exercée. **Le contrôle mesurait un chemin, la
+  clause en décrivait un autre.**
+
+### ⑤ 🔴 Deux défauts CORS rendaient les DEUX routes inatteignables depuis un navigateur
+
+Et **aucun test de Node ne pouvait les voir** — c'est ce qui en fait une
+classe, pas deux accidents.
+
+1. **`Access-Control-Allow-Headers` ne permettait pas `Authorization`.** Un
+   `fetch` de Node envoie l'en-tête sans rien demander à personne ; un
+   navigateur ne l'envoie que si la réponse préalable le permet.
+2. **La requête préalable `OPTIONS` n'était pas traitée.** `Authorization` rend
+   la requête **non simple** : le navigateur envoie d'abord un `OPTIONS`, et
+   **abandonne sans jamais envoyer la vraie requête** si la réponse ne lui
+   convient pas.
+
+Trouvés par une corroboration navigateur montée exprès
+(`corroboration-navigateur.log`) : service réel sur un port, client servi par
+`vite` sur un autre, donc **origine croisée** — c'est ce qui met la politique du
+navigateur dans le chemin. ⚠️ **La classe reste OUVERTE** : « ce qu'un
+navigateur exige et qu'un test serveur ne voit pas » n'a **aucun garde
+automatique** dans ce dépôt, et la seule parade employée est manuelle.
+
+⚠️ **Le montage porte un détail à réemployer** : le coffre garde délibérément
+le préfixe de l'utilisateur précédent avant d'éprouver le cas « aucune VM ».
+**Sans ce résidu, l'assertion d'effacement ne pourrait pas échouer** — on
+constaterait qu'un coffre déjà vide le reste.
+
+### ⑥ La corroboration sur VM réelle — PARTIELLE, et la collision de D6 est ARRIVÉE
+
+**Deux exécutions** (`vm-1-*`, `vm-2-*`, synthèse dans
+`vm-corroboration-releve.log`) : **dix assertions tenues aux deux, quatre non
+tenues aux deux**, toutes de la même cause, relevée verbatim :
+
+```
+WARN agent::plateforme: message de la plateforme illisible (version divergente ?)
+erreur=version de plateforme non supportée : 2
+texte="{\"type\":\"refus\",\"v\":2,\"motif\":\"version\"}"
+```
+
+L'agent présent sur la VM parle `PLATEFORME_VERSION = 1` ; le service, bâti
+depuis l'arbre partagé, parle la **2**. **C'est EXACTEMENT la collision que la
+décision D6 du plan avait nommée avant tout dispatch** — « `PLATEFORME_VERSION`
+a un seul propriétaire à la fois, et c'est G1 » —, et elle est survenue
+**pendant cette tâche même**, le sous-bloc G1 ayant fusionné sa montée de
+version dans le même arbre entre la clôture de P4 et sa corroboration.
+
+🔵 **ET LA COLLISION EST BRUYANTE, PAS MUETTE — c'est le fait le plus utile de
+cette tâche.** Le service refuse, l'agent journalise chacun de ses essais,
+`vu_a` reste `null`, et la plateforme annonce donc correctement `injoignable` :
+**elle n'a rien fait de faux**, elle a fait de cette VM exactement ce que le
+critère ④ lui demande de faire d'une VM dont l'agent ne bat pas. Une plateforme
+qui aurait accepté un message de version inconnue aurait produit un agent à
+moitié enrôlé, et c'est cette panne-là que P3 a payé pour rendre impossible.
+
+**L'agent n'a PAS été rebâti, et c'est une décision** : P4 ne touche ni
+`agent/` ni `proto/` ; le rebâtissage appartient à G1, actif dans le même
+arbre ; et à la première tentative `proto/` y était **modifié et non commité**,
+si bien qu'une compilation depuis l'hôte aurait poussé du travail à demi fait
+sur la VM.
+
+**Ce qui est établi malgré tout, contre le VRAI service HTTP** (par `curl`,
+sans une ligne de code à nous entre la surface et le relevé), **avec un VRAI
+jeton obtenu par `POST /auth/connexion`, sur une base neuve** : `POST /session`
+sans attribution rend **409** sans délivrer de préfixe ; attribuée et agent
+muet, **503** avec l'aveu **et** le préfixe ; le préfixe rendu est celui de la
+VM enrôlée ; la page-shell compose `<préfixe>:bureau` **à partir du préfixe
+rendu par la route** et sa poignée de main est acceptée ; `GET /vm` porte
+`sessions_ouvertes`. **Les trois commandes d'administration ont tourné à la
+suite sur une base neuve** — c'est la première fois que le chemin d'attribution
+complet tourne hors des tests.
+
+✅ **Un legs de P3 exercé PAR ACCIDENT, et seulement à moitié.** E9 — « la
+reprise du canal `/agent` n'a jamais été exercée » — était encore due. Les deux
+journaux portent **sept** reprises, avec leur échelle doublante relevée :
+`delai_ms=500, 1000, 2000, 4000, 8000, 16000, 30000`. ⚠️ **Ce que cela
+n'établit PAS, et c'est l'essentiel** : l'échec est ici **permanent** (une
+divergence de version ne se répare pas d'elle-même). Ce qui est exercé est
+**l'échelle de réessai et son plafonnement à 30 s**, jamais une reprise
+**RÉUSSIE**. Le legs reste dû dans sa moitié utile.
+
+### ⑦ Ce que le code livre
+
+| Étage | Fichier | Nature |
+| --- | --- | --- |
+| le vocabulaire du refus | `plateforme/src/orchestration/refus.ts` (**98**) | **PUR** — `MOTIFS` `as const`, `Motif` dérivé, `CODE_HTTP: Record<Motif, number>` |
+| l'interface | `plateforme/src/orchestration/interface.ts` (**127**) | **PUR** — `EtatVm` réexporté de `fraicheur.ts`, DEUX variantes et non quatre |
+| la sélection | `plateforme/src/orchestration/selection.ts` (**48**) | **PUR** — `vmsDe`, `laVmDe` ; `laVmDe` **LÈVE** sur deux VMs pour un même utilisateur |
+| l'orchestrateur | `plateforme/src/orchestration/inventaire-statique.ts` (**189**) | lit, attribue sous transaction, refuse par un type |
+| le dépôt | `plateforme/src/depot/vm.ts` (**143**) | ⚠️ son `SELECT` énumère ses colonnes **pour EXCLURE `vue_a`**, avec son commentaire |
+| le jeton porteur | `plateforme/src/http/porteur.ts` (**90**) | **PUR** — exige `type === 'utilisateur'`, **deux rouges, une par sens de confusion** |
+| les routes | `http/routes-vm.ts` (**212**), `http/routes-session.ts` (**157**) | liste blanche **dérivée de l'union** ; `attribuer` n'y figure pas, et un test le dit |
+| l'administration | `plateforme/src/admin/attribuer-vm.ts` (**224**) | passe par l'orchestrateur, **jamais par un `UPDATE` à part** |
+| le coffre | `client/src/prefixe.ts` (**123**) | `poserPrefixe` **LÈVE** sur la chaîne vide ; `effacerPrefixe` |
+| le câblage | `client/src/connexion.ts` (**171**) | non testé, **déclaré**, et la clause qui le rend tenable est **resserrée** (voir ⑧) |
+
+**Tailles relevées PAR LA COMMANDE, APRÈS la dernière édition de la ronde,
+revue transverse comprise.** 🔴 **AUCUNE EXTRACTION N'A ÉTÉ REQUISE PAR P4, et
+ce n'est pas une omission : c'est un relevé**, annoncé par le plan avant
+dispatch et confirmé à la clôture. **Aucun fichier de `plateforme/` ni de
+`client/src/` n'atteint 450 lignes**, et le tableau de dette reste à **deux**
+entrées inchangées — `agent/src/encode.rs` **1536**,
+`agent/src/windows_source.rs` **630**.
+
+### ⑧ La revue transverse de fin de branche — huit places, et deux constats neufs
+
+Les places ont été **énumérées par `grep -n` avant d'écrire** et **relues place
+par place après**.
+
+| # | Place | Sort |
+| --- | --- | --- |
+| 1 | `plateforme/src/base/migrations/0001-socle.sql:53-56` | 🔴 attribution **FAUSSE** (voir ③). Annotée, avec le chemin du journal qui la réfute |
+| 2 | spec §3.2 | la même, mot pour mot. Annotée |
+| 3 | spec §4 « P4 », colonne ROUGE du critère ② | la même. **Barrée** |
+| 4 | `plateforme/src/agents/fraicheur.ts:11-20` | « IL N'A AUCUN APPELANT DE PRODUCTION » — P4 lui en donne un. Annotée |
+| 5 | `plateforme/src/signaling/appariement.ts:28` | « P4 reste à venir » — faux dès la fusion. Annotée, **et la propriété du fichier tient une TROISIÈME fois** : il n'a toujours pas gagné une ligne |
+| 6 | `plateforme/src/signaling/propriete.ts:36-39` | « c'est ce dont P4 **aura** besoin » — il la lit. Annotée **avec la réserve du nom** |
+| 7 | `plateforme/src/depot/session.ts:56` | la même formule au futur. Annotée |
+| 8 | `client/src/prefixe.ts:11-17` | déjà corrigée par la tâche 13 ; **vérifiée** à la revue plutôt que supposée |
+
+**Trois affirmations du plan VÉRIFIÉES plutôt que supposées** : `TYPES_RELAYES`
+inchangé (**vrai** — deux places, toutes deux dans `signaling/relais.ts`) ;
+`pilote.test.ts:49` vaut toujours `expect(deps).toEqual(['pg', 'ws'])`
+(**vrai** — **P4 n'ajoute aucune dépendance de production**) ; et
+`PLATEFORME_VERSION` vaut 1 des deux côtés — ❌ **FAUX au moment du relevé, et
+pas du fait de P4** : elle vaut **2**, montée par G1.
+
+**Deux constats NEUFS, documentés et NON corrigés :**
+
+- 🔴 **(a) Le littéral `aucune-vm` du client est une COPIE qu'aucun type ne
+  confronte à sa source.** `MOTIFS` est un tableau `as const` dont le type
+  dérive, précisément pour qu'ajouter un motif sans son code HTTP soit une
+  erreur de compilation — **et cette propriété s'arrête à la frontière du
+  paquet** : `client/` ne peut pas importer de `plateforme/`, et le seul paquet
+  partagé est `proto/`, que P4 s'interdit de toucher. **Renommer `aucune-vm`
+  côté service laisserait le test du client toujours faux, donc le préfixe
+  périmé au coffre — une panne MUETTE que ni `typecheck` ni aucun test de ce
+  dépôt ne verrait.**
+- ⚠️ **(b) La tension du plan sur `connexion.ts` est ARBITRÉE, pas
+  contournée.** Sa tâche 14 interdit toute condition dans ce fichier **puis en
+  prescrit les branches** ; l'implémenteur l'a signalée sans la trancher.
+  L'arbitrage est écrit **dans le fichier** plutôt que dans un rapport : *ce que
+  la clause interdit est qu'une RÈGLE vive dans un fichier non testé, pas qu'un
+  `if` y apparaisse*, et le critère qui départage est reproductible — **une
+  condition est une règle si la changer change ce que le produit décide ; elle
+  est du câblage si elle ne fait que router une décision déjà prise ailleurs,
+  et testée là-bas.** La clause est **resserrée, pas assouplie**.
+
+### ⑨ ⛔ Une divergence de SÉCURITÉ avec G1, déclarée et NON TRANCHÉE
+
+Sur une VM qui appartient à **quelqu'un d'autre** :
+
+- **P4** rend **404 `vm-inconnue`**, *indistinguable* du cas où la VM n'existe
+  pas. Distinguer les deux ferait un **oracle d'énumération** — un utilisateur
+  apprendrait quelles VMs existent en lisant le code de retour. C'est la règle
+  du critère ② de P3 et celle de `routes-auth.ts`, appliquées pour la troisième
+  fois ;
+- **G1** retient, pour ses propres routes, **403 `vm-etrangere`** —
+  c'est-à-dire **un oracle**, distinct du 404 d'une VM inconnue.
+
+**Les deux chantiers ne peuvent pas avoir raison en même temps.** P4 ne
+l'aligne pas : **unifier est une décision de sécurité qui appartient au
+PROPRIÉTAIRE DU DÉPÔT**, pas à la seconde branche arrivée. L'écart est inscrit
+dans `plateforme/src/http/routes-vm.ts`, dans le document de résultats, et ici.
+
+### ⑩ Ce que P4 n'établit PAS
+
+- **Aucun taux, nulle part.** Deux exécutions par critère, deux pour la
+  corroboration VM, **une** pour la corroboration navigateur, **une** pour la
+  mesure de la borne du critère ③.
+- **Aucun backend d'hyperviseur** : `demarrer`, `arreter` et `instantane` ne
+  sont **jamais exécutés**, seule leur voie de refus l'est. Le hub **indique**
+  et **avoue** ; il ne redémarre rien.
+- **La corroboration sur VM est PARTIELLE** (⑥) : l'état `prete` n'a **jamais**
+  été obtenu d'un battement RÉEL. Il l'est en test, sur les deux moteurs, avec
+  sa transition assiégée — jamais sur la VM.
+- **La concurrence n'est mesurée qu'à DEUX transactions**, une exécution, sur
+  **Postgres seul** ; et le test de la suite la reproduit **séquentiellement** :
+  il éprouve la traduction du refus, **pas** la sérialisation par le moteur.
+  Rien n'est établi à N concurrents, ni sous une autre isolation.
+- **`compterOuvertesDe` compte des LIGNES ouvertes, pas des sessions média
+  vivantes** — le nom du champ porte la réserve.
+- **`vm.vue_a` reste ORPHELINE**, vérifié à la clôture : aucun code de
+  production ne l'écrit ni ne la lit. P4 lit `agent_enrole.vu_a`.
+- **`depot/session.ts::lireParNom` reste sans appelant de production.**
+  ⚠️ Ne pas le confondre avec `depot/vm.ts::lireParNom`, homonyme, qui en a un.
+- **La reprise RÉUSSIE du canal `/agent` n'est toujours pas exercée.**
+- **Aucune revérification d'une session en cours** : legs n°9 de P2, reconduit.
+- **Aucun durcissement de production** : ni TLS, ni cookies, ni en-têtes de
+  sécurité, ni frein, ni `coturn` restreint, ni `/sante`. **Les deux routes
+  neuves sont ouvertes à la force brute exactement comme `/auth/connexion`
+  l'est.** C'est P5.
+- **AUCUNE CONSTANTE N'EST CALIBRÉE**, et aucune ne l'a été depuis `BPP_MIN` :
+  `SEUIL_INJOIGNABLE_MS` et `PERIODE_BATTEMENT` — qui se recalibrent
+  **ENSEMBLE** et vivent dans **DEUX DÉPÔTS DISTINCTS** —,
+  `DUREE_JETON_ACCES_MS`, `OCTETS_PREFIXE`, `DUREE_SECONDES`, et la borne de
+  250 ms du critère ③. ⚠️ **Celle-là est MESURÉE avant d'être fixée, ce qui
+  n'est pas la même chose qu'être calibrée.**
+- **La table `application` reste vide** : son écrivain est le sous-projet ④.
+
+### ⑪ Le témoin de clôture — DEUX témoins, et pourquoi le second sort en 1
+
+⚠️ **Il faut dire ce que chacun mesure, sans quoi le second se lit comme un
+échec de P4.**
+
+- ✅ **`temoin-verify-all-cloture.log`, joué au commit `b4b9adb` — sortie 0.**
+  **C'est le témoin de P4, et c'est lui qui fait foi.**
+- 🔴 **`temoin-verify-all-cloture-finale.log`, relancé après la dernière édition
+  de la ronde — sortie 1.** L'échec **n'est pas celui de P4**, et c'est établi
+  par **trois relevés**, jamais par une conviction : ① l'étape qui échoue est la
+  dernière, `plateforme : npm run typecheck`, sur
+  `agents/canal.ts(147): Property 'vm' does not exist on type 'EnrolerMessage |
+  CatalogueMessage | LanceeMessage'` ; ② `git log -S 'CatalogueMessage' -- proto/ts/plateforme.ts`
+  rend **`3bb7487 apps(g1)`**, un commit du sous-bloc **G1** qui a élargi
+  l'union sans que `canal.ts` ne suive ; ③ `git diff --stat b4b9adb..HEAD --
+  plateforme/src/agents/canal.ts` rend **VIDE** — le fichier qui ne compile pas
+  n'a pas bougé, et tout ce que P4 a touché depuis est du **commentaire** (sept
+  fichiers, 165 insertions, 4 suppressions, **aucune ligne exécutable**).
+
+⚠️ **Lequel des deux comptes est rapporté** — les deux sont vrais de choses
+différentes, et P3 a payé une correction pour ne pas l'avoir dit : **dix**
+appels de la fonction `etape` dans le script (`grep -cE '^etape '`), et
+**dix-sept** en-têtes `==>` à l'écran de cette exécution, les sept de plus
+venant de l'intérieur de l'étape `client : npm run design:verifier`. **Les deux
+sont relevés ce jour.**
+
+Comptes de tests de ce témoin : `plateforme` **284 / 37 fichiers** sur les deux
+moteurs, `client` **223 / 24**, `proto` **130 / 5**. ⚠️ **La montée de `proto`
+(111 → 130) est ENTIÈREMENT celle de G1** ; et **`cargo test --workspace` est
+rapporté, jamais revendiqué** — deux chantiers voisins travaillent dans
+`agent/`.
+
+### ⑫ Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔵 **Une mutation par substitution de chaîne frappe le COMMENTAIRE avant le
+  CODE**, dans un dépôt qui commente ses invariants. Voir ④(b) : la rouge est
+  restée verte, et seul un garde « une rouge doit produire une sortie non
+  vide » l'a attrapée. **Muter par numéro de ligne, ou par un motif ancré sur
+  la syntaxe.**
+- ⚠️ **Une clause d'un critère peut décrire un chemin que le contrôle
+  n'emprunte pas** (④c) : ici, une lecture préalable refusait avant toute
+  écriture, si bien que l'exception qu'on croyait éprouver n'était jamais
+  levée. **Compter les gestes réellement faits**, pas seulement lire l'issue.
+- ⚠️ **Un `toThrow()` NU est vert sur une fonction qui n'existe pas** — il
+  attrape le `ReferenceError`. **Nommer ce qu'on attend.**
+- 🔴 **Ce qu'un navigateur exige, aucun test de Node ne le voit** (⑤) : deux
+  défauts CORS rendaient les deux routes neuves inatteignables, avec une suite
+  entièrement verte. **Une route qui exige `Authorization` doit être éprouvée
+  en ORIGINE CROISÉE, dans un vrai navigateur.**
+- ⚠️ **Une assertion d'effacement a besoin d'un RÉSIDU pour pouvoir échouer.**
+  Constater qu'un coffre déjà vide reste vide n'éprouve rien.
+- 🔴 **Deux chantiers ne peuvent pas monter la même version de protocole** — et
+  quand cela arrive, **c'est le binaire déjà déployé qui devient muet** (⑥). Le
+  symptôme est propre et bruyant grâce à la vérification de version ; **sans
+  elle, ce serait un agent à moitié enrôlé**.
+- ⚠️ **Ne jamais lancer `scripts/build-agent.sh` quand `proto/` porte des
+  modifications non commitées d'un chantier voisin** : il rsynchronise les
+  sources, et pousserait sur la VM du travail à demi fait.
+- ⚠️ **Un port « libre par convention » ne l'est pas.** 8082 était tenu par
+  `otbr-agent`, et 8081 par `crowdsec` : une exécution a été perdue. **Relever
+  `ss -ltn` avant de choisir**, plutôt que de reprendre le port du sous-bloc
+  précédent.
+
+### ⑬ Ce que P4 lègue à P5
+
+**Legs de P3 réglés** : n°1 (la route du préfixe — ⚠️ **le coût de la spec §10
+est RÉDUIT par deux gardes, pas soldé**), n°2 (`fraicheur.ts` a son appelant),
+n°3 **à moitié** (`session.utilisateur_id` a son lecteur ; `application` attend
+toujours son écrivain). **Legs de P2 réglé** : n°4.
+⚠️ **Le n°4 de P3 n'est NI réglé NI réduit** : P4 branche la **source** du
+préfixe, pas sa **portée**.
+
+**Ce qui reste dû :**
+
+1. 🔴 **P5 ou ④ — le préfixe reste PAR VM, et `signaling/propriete.ts` reste EN
+   MÉMOIRE.** Après un redémarrage du service, deux clients humains de la même
+   VM retrouvent le même préfixe et `<préfixe>:w-1` redevient revendicable.
+   **Legs n°4 de P3, reconduit sans réduction.**
+2. 🔴 **Tous — faire descendre `MOTIFS` dans `proto/ts`.** Sans quoi le littéral
+   `aucune-vm` du client reste une copie qu'aucun type ne confronte à sa source,
+   et son renommage côté service serait une **panne muette** (⑧a).
+3. ⛔ **Le PROPRIÉTAIRE DU DÉPÔT — trancher la divergence de refus avec G1**
+   (⑨) : `404 vm-inconnue` contre `403 vm-etrangere`, c'est-à-dire l'absence
+   d'oracle d'énumération contre un oracle. **Ce n'est pas une décision de
+   chantier.**
+4. ⛔ **Tous — rejouer la corroboration VM sur un arbre où `PLATEFORME_VERSION`
+   est stable.** L'instrument est versé et prêt
+   (`journaux-plateforme-p4/instrument/vm-corroboration.sh`), les quatre
+   assertions qui tombent sont écrites, et **le script n'a pas une ligne à
+   changer**.
+5. ⛔ **Tous — la reprise RÉUSSIE du canal `/agent`** (E9). Son échelle de
+   réessai est désormais vue (⑥) ; une reprise qui **aboutit**, non.
+6. ⚠️ **Tous — la classe « ce qu'un navigateur exige et qu'un test serveur ne
+   voit pas » n'a AUCUN garde automatique** (⑤). Deux défauts y sont passés ; la
+   seule parade employée est une corroboration **manuelle**.
+7. ⛔ **P5 — le frein sur `/auth/connexion`, `/agent`, ET les DEUX routes
+   neuves.** `GET /vm` et `POST /session` sont ouvertes à la force brute
+   exactement comme `/auth/connexion` l'est.
+8. ⛔ **P5 — le secret d'enrôlement en clair dans `C:\dev\run-agent.ps1`** :
+   intouché, P4 n'écrit pas dans `scripts/`.
+9. ⛔ **P5 — TLS, cookies, en-têtes de sécurité, `/sante`, `coturn` restreint.**
+10. ⛔ **Tous — `vm.vue_a` reste ORPHELINE** et `depot/session.ts::lireParNom`
+    **sans appelant de production**. Le `SELECT` de `depot/vm.ts` exclut
+    explicitement `vue_a`, avec son commentaire : c'est la seule garde bon
+    marché contre un successeur qui la croirait renseignée.
+11. ⛔ **Tous — la garde ne couvre que la POIGNÉE DE MAIN.** Legs n°9 de P2,
+    reconduit par P3, reconduit ici.
+12. ⛔ **Tous — aucune constante calibrée** (⑩), et P4 en ajoute une, **mesurée
+    avant d'être fixée mais pas calibrée**.
+13. ⚠️ **Tous — un jeton reste valide jusqu'à son expiration même si le compte
+    disparaissait.** Aucun chemin de suppression d'utilisateur n'existe, donc le
+    cas n'est pas atteignable — **déclaré, non corrigé**.
+
+---
 ## 🎨 Sous-projet ⑥ Design system — sous-bloc S1 : le socle, et les sept contrôles (19 août 2026)
 
 Résultats complets :
