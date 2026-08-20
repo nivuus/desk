@@ -46,13 +46,32 @@ pub fn desarme(valeur: Option<&str>) -> bool {
     valeur == Some("0")
 }
 
-/// Branche la découverte sur le canal, ou rend `None` en disant pourquoi.
+/// Branche la découverte, ou rend `None` en DISANT laquelle des trois raisons.
+///
+/// ⚠️ « PAS DE CANAL » N'EST PAS « `APPS=0` », ET UN SILENCE LES CONFONDRAIT.
+/// Sans `AGENT_VM`/`AGENT_SECRET` il n'y a pas de canal, donc nulle part où
+/// envoyer un catalogue ; c'est un état DIFFÉRENT d'un désarmement explicite,
+/// et il doit se lire comme tel dans le journal.
 ///
 /// ⚠️ RIEN N'EST BRANCHÉ EN MODE CAPTEUR, et ce n'est pas un oubli : le mode
 /// `CAPTEUR` retourne AVANT l'enrôlement dans `main.rs`, donc un capteur n'a
 /// ni canal, ni jeton, ni préfixe, et ne peut porter aucun catalogue.
+///
+/// Elle prend l'`Option` plutôt que le canal pour que `main.rs` ne reçoive
+/// qu'un appel : c'est la règle des 500 lignes appliquée là où elle mord, le
+/// fichier étant déjà au-dessus de la porte de 450.
+pub fn brancher(
+    canal: Option<&mut crate::plateforme::Canal>,
+) -> Option<std::thread::JoinHandle<()>> {
+    let Some(canal) = canal else {
+        tracing::warn!("decouverte d'applications inactive : aucun canal /agent");
+        return None;
+    };
+    demarrer(canal)
+}
+
 #[cfg(windows)]
-pub fn brancher(canal: &mut crate::plateforme::Canal) -> Option<std::thread::JoinHandle<()>> {
+fn demarrer(canal: &mut crate::plateforme::Canal) -> Option<std::thread::JoinHandle<()>> {
     if desarme(std::env::var("APPS").ok().as_deref()) {
         tracing::warn!("decouverte d'applications DESARMEE (APPS=0)");
         return None;
@@ -87,7 +106,7 @@ pub fn brancher(canal: &mut crate::plateforme::Canal) -> Option<std::thread::Joi
 /// pas découvrir d'applications Windows, et la confondre avec `APPS=0` — qui,
 /// lui, DIT qu'il est désarmé — brouillerait deux états distincts.
 #[cfg(not(windows))]
-pub fn brancher(_canal: &mut crate::plateforme::Canal) -> Option<std::thread::JoinHandle<()>> {
+fn demarrer(_canal: &mut crate::plateforme::Canal) -> Option<std::thread::JoinHandle<()>> {
     None
 }
 

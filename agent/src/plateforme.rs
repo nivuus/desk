@@ -73,14 +73,18 @@ pub struct Canal {
     /// Le fil de reprise. Jamais attendu — il ne se termine que sur un refus
     /// définitif —, mais conservé pour ne pas être abandonné en silence.
     ///
-    /// ⚠️ L'`allow` COUVRE DÉSORMAIS TROIS CHAMPS, PAS UN. Vérifié par la
-    /// commande en le retirant : « fields `tache`, `emission`, and `ordres`
-    /// are never read ». `emission` et `ordres` ne sont lus que par les
-    /// méthodes ci-dessous, dont la boucle de découverte (`apps::brancher`)
-    /// est le seul appelant — et elle n'est branchée qu'à la tâche 11. Un
-    /// `allow` devenu inutile est une affirmation devenue fausse : celui-ci
-    /// est à relire le jour où un mode de l'agent cesserait d'appeler
-    /// `apps::brancher`.
+    /// ⚠️ L'`allow` RESTE JUSTIFIÉ, MAIS PAS POUR LA MÊME RAISON SUR LES DEUX
+    /// CIBLES — relevé en le RETIRANT, sur chacune :
+    ///   - `--target x86_64-pc-windows-gnu` : « field `tache` is never read ».
+    ///     C'est la raison HISTORIQUE, et la seule qui reste sur la cible
+    ///     réelle ; `emission` et `ordres` sont bien lus, par la boucle de
+    ///     découverte ;
+    ///   - sur l'hôte : « fields `tache`, `emission`, and `ordres` are never
+    ///     read », parce que `apps::demarrer` y est un talon qui rend `None`
+    ///     sans rien toucher.
+    ///
+    /// Un `allow` devenu inutile est une affirmation devenue fausse : celui-ci
+    /// est à relire le jour où plus rien n'appellerait `apps::brancher`.
     #[allow(dead_code)]
     tache: tokio::task::JoinHandle<()>,
     /// La file montante, drainée dans le `select!` de [`une_session`].
