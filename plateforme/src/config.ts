@@ -49,6 +49,17 @@ export interface Config {
     /// PLATEFORME_ORIGINE_CLIENT — FACULTATIVE. Absente, aucun en-tête CORS
     /// n'est émis et le navigateur refuse : le défaut est le refus.
     origineClient?: string;
+    /// PLATEFORME_PROXY_DE_CONFIANCE — FACULTATIVE, liste séparée par des
+    /// virgules. Absente ou vide, l'ensemble est VIDE : on ne croit l'en-tête
+    /// `X-Forwarded-For` d'AUCUNE source. Voir le commentaire au point de
+    /// lecture, plus bas.
+    ///
+    /// ⚠️ ELLE N'EST JAMAIS `undefined` : un ensemble vide se traverse, un
+    /// `undefined` se déréférence. C'est l'asymétrie voulue avec
+    /// `origineClient` ci-dessus, dont l'absence a un sens pour l'appelant
+    /// (« n'émets aucun en-tête ») là où celle-ci n'en a qu'un (« ne crois
+    /// personne »), déjà porté par l'ensemble vide.
+    proxyDeConfiance: ReadonlySet<string>;
 }
 
 const BASES = ['sqlite', 'postgres'] as const;
@@ -117,5 +128,49 @@ export function lireConfig(env: Record<string, string | undefined>): Config {
     const brutOrigine = env.PLATEFORME_ORIGINE_CLIENT;
     const origineClient = brutOrigine === undefined || brutOrigine === '' ? undefined : brutOrigine;
 
-    return { hote, port, base, urlBase, secretJeton, origineClient };
+    // FACULTATIVE, comme l'origine ci-dessus, et pour une raison voisine : un
+    // déploiement SANS proxy inverse — celui des tests, et celui d'un
+    // exploitant qui expose le service directement — n'a aucune valeur qui ait
+    // du sens ici. Refuser de démarrer casserait ces deux cas.
+    //
+    // 🔴 MAIS SON DÉFAUT EST LE REFUS DE CROIRE, JAMAIS UNE PERMISSION. Même
+    // doctrine que `PLATEFORME_ORIGINE_CLIENT` : absente, l'ensemble est vide,
+    // et `http/adresse-source.ts` ignore alors `X-Forwarded-For` quel qu'il
+    // soit. Un défaut permissif — croire l'en-tête de tout le monde, ou même
+    // seulement des adresses privées — rendrait l'adresse du client FORGEABLE
+    // PAR LE CLIENT, donc le frein par adresse contournable en une ligne
+    // d'en-tête. C'est le seul défaut qui échange une panne bruyante contre
+    // un contournement silencieux, et c'est exactement ce que ce fichier
+    // refuse depuis `PLATEFORME_HOTE`.
+    //
+    // ⚠️ LE MODE DE DÉFAILLANCE DE L'OUBLI EST NOMMÉ, et il n'est pas
+    // silencieux par accident mais par CHOIX ASSUMÉ. Un exploitant qui pose un
+    // proxy sans déclarer sa confiance verra TOUTES les requêtes porter
+    // l'adresse du proxy : le frein par adresse dégénère en frein GLOBAL, et
+    // le service se refuse à lui-même au 51e échec. Le remède n'est PAS de
+    // croire par défaut — ce serait le contournement ci-dessus — mais que LA
+    // TRACE DU FREIN NOMME L'ADRESSE RETENUE : un exploitant qui lit
+    // `adresse=172.18.0.5` sur toutes les lignes reconnaît l'adresse de son
+    // proxy. `deploiement/README.md` le dit aussi.
+    //
+    // ⚠️ EXACTEMENT UN PROXY EN TÊTE DE CHAÎNE. Deux proxies enchaînés font
+    // rendre à `adresseSource` l'adresse du PREMIER PROXY, pas celle du
+    // client : P5 ne livre pas la chaîne à N sauts, et
+    // `http/adresse-source.ts` le documente.
+    //
+    // Le test de la chaîne VIDE est distinct de celui de l'absence, pour la
+    // raison déjà payée par P1 plus haut dans ce fichier : `??` ne rattrape
+    // pas `''`. Ici, `''.split(',')` rendrait `['']` — donc un ensemble à UNE
+    // entrée vide, qui rendrait de confiance tout pair sans adresse.
+    const brutProxy = env.PLATEFORME_PROXY_DE_CONFIANCE;
+    const proxyDeConfiance: ReadonlySet<string> = new Set(
+        (brutProxy ?? '')
+            .split(',')
+            .map((entree) => entree.trim())
+            // Sans ce filtre, `'172.18.0.5,,10.0.0.1'` porterait une entrée
+            // vide — et `'  '` en porterait une aussi, après `trim`.
+            .filter((entree) => entree !== ''),
+    );
+
+    return { hote, port, base, urlBase, secretJeton, origineClient, proxyDeConfiance };
 }

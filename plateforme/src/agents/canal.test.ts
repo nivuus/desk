@@ -255,6 +255,9 @@ describe('le canal, CÂBLÉ dans le service entier', () => {
             base: 'sqlite',
             urlBase: ':memory:',
             secretJeton: SECRET,
+            // Aucun proxy declare : voir `config.ts`, l'ensemble vide est le
+            // defaut et signifie « ne croire l'adresse annoncee par personne ».
+            proxyDeConfiance: new Set(),
         };
         base = await baseNeuve('canal-service');
         await enrolerUneVm(base, 'v-1');

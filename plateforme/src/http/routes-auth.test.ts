@@ -28,6 +28,9 @@ function config(origineClient?: string): Config {
         urlBase: ':memory:',
         secretJeton: SECRET,
         origineClient,
+        // Aucun proxy declare : voir `config.ts`, l'ensemble vide est le defaut
+        // et signifie « ne croire l'adresse annoncee par personne ».
+        proxyDeConfiance: new Set(),
     };
 }
 
