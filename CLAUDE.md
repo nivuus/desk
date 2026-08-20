@@ -39,8 +39,29 @@ où l'on travaille dedans, pas en chantier séparé.
 | --- | --- | --- |
 | `agent/src/encode.rs` | 1536 | `#[cfg(windows)]`, aucun test |
 | `agent/src/windows_source.rs` | ~~638~~ ~~628~~ **630** (7 août 2026, D10) | `#[cfg(windows)]`, aucun test |
-| `proto/src/plateforme/tests.rs` | **561** (20 août 2026, P1 presse-papier) | 🔴 **DETTE NEUVE, ET ELLE N'AVAIT JAMAIS ÉTÉ ÉCRITE** — voir l'encadré ci-dessous |
-| `proto/ts/plateforme.test.ts` | **512** (20 août 2026, P1 presse-papier) | 🔴 idem |
+
+> ✅ **LES DEUX LIGNES DE `proto/` SONT SORTIES DE CETTE TABLE (21 août 2026,
+> sous-bloc G2, tâches 1 et 2).** Elles y avaient été inscrites la veille par
+> le sous-bloc P1 du presse-papier, **sans point de chute**, avec cette
+> phrase : « c'est au chantier qui les rouvrira de le choisir ». **G2 les a
+> rouvertes**, parce qu'il y ajoutait ses propres cas — et la règle écrite en
+> tête de cette section est que le découpage rétroactif se fait « au moment où
+> l'on travaille dedans ».
+>
+> Le point de chute suit la coupure que le protocole porte déjà — le cycle de
+> vie d'un côté, la gestion d'apps de l'autre :
+> `proto/src/plateforme/tests.rs` **561 → 449** plus
+> `proto/src/plateforme/tests_apps.rs` (**279**) ; `proto/ts/plateforme.test.ts`
+> **512 → 417** plus `proto/ts/plateforme-apps.test.ts` (**230**). ⚠️ **Les
+> comptes de tests ont été ANNONCÉS avant d'être mesurés, et ils n'ont pas
+> bougé** : `cargo test -p proto` **83 → 83**, `proto` vitest **142 tests /
+> 5 fichiers → 142 tests / 6 fichiers** — *le compte de FICHIERS change, celui
+> de TESTS non, et il faut dire lequel on annonce.*
+>
+> 🔴 **UNE DETTE PURGÉE QUI RESTE ÉCRITE EST AUSSI TROMPEUSE QU'UNE DETTE NON
+> ÉCRITE** — c'est la symétrie exacte du legs n°6 de P1 (« le legs n'est pas la
+> dette, c'est que personne ne l'avait vue »). L'encadré ci-dessous reste,
+> **daté et non barré** : il était vrai le 20 août.
 
 > 🔴 **DEUX FICHIERS DÉPASSAIENT 500 LIGNES SANS FIGURER NULLE PART, et c'est le
 > sous-bloc P1 du chantier PRESSE-PAPIER qui les a trouvés en relançant la
@@ -954,6 +975,31 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > qui empêche qu'elles vivent un sous-bloc entier sans figurer nulle part** —
 > c'est exactement ce qui est arrivé à `proto/src/plateforme/tests.rs` et
 > `proto/ts/plateforme.test.ts`, nés de G1 et trouvés par le presse-papier P1.
+>
+> ✅ **LES TROIS SONT RÉSORBÉES (21 août 2026, clôture de G2), ET CE RELEVÉ EST
+> CE QUI LES A FAIT VOIR — par le chantier VOISIN, pas par le leur.** G2 ne les
+> avait pas vues passer : son plan annonçait ces trois fichiers à 433, 429 et
+> 453 lignes pour « +1 enum », « le miroir » et « +1 branche descendante », et
+> c'est la DOCUMENTATION de ces additions qui a fait franchir. **Son propre
+> relevé de clôture les a trouvées aussi**, et les a rattrapées par TROIS
+> EXTRACTIONS, jamais par une compression :
+>
+> | Fichier | Franchi | Extraction | Après |
+> | --- | --- | --- | --- |
+> | `proto/src/plateforme.rs` | 588 | `plateforme/apps.rs` (**162**) | **468** |
+> | `proto/ts/plateforme.ts` | 528 | `plateforme-gardes.ts` (**85**) | **475** |
+> | `agent/src/plateforme.rs` | 504 | `plateforme/ordre.rs` (**34**) | **490** |
+>
+> ⚠️ **L'EXTRACTION AURAIT DÛ PRÉCÉDER L'ADDITION.** G2 avait trois extractions
+> prévues d'avance et les a jouées toutes les trois avant leur addition ; ces
+> trois-ci n'étaient pas prévues. **Le franchissement est DÉCLARÉ**, comme D10
+> l'a fait de ses trois et D9 de ses deux.
+>
+> 🔵 **CE QUE CET ÉPISODE AJOUTE À LA DOCTRINE** : un chantier ne voit pas
+> toujours ses propres franchissements, et c'est **le relevé d'un voisin** qui
+> les a nommés ici en premier. La table des marges de ce fichier n'est donc pas
+> qu'un registre — **elle a servi**, une fois, à un chantier qui n'était pas
+> celui qui l'écrivait.
 >
 > ✅ **Et ces deux-là SONT RÉSORBÉES** : le commit `727e6e5` de G2 les ramène de
 > **561 → 449** et de **512 → 417**, *« avant toute addition »*. **Le tableau de
@@ -9535,7 +9581,10 @@ qui en a gagné un. **Un nombre juste à sa date.**
 
 **Le tableau de dette a QUATRE lignes, et P5 n'en ajoute aucune** : `encode.rs`
 **1536**, `windows_source.rs` **630**, `proto/src/plateforme/tests.rs` **561**,
-`proto/ts/plateforme.test.ts` **512**. ✅ **Les deux dernières ont été inscrites
+`proto/ts/plateforme.test.ts` **512**. ⚠️ **LES DEUX DERNIÈRES SONT SORTIES DE
+LA TABLE LE 21 AOÛT 2026** (sous-bloc G2, qui les a découpées en travaillant
+dedans) : ce relevé de P5 reste EXACT À SA DATE, et il n'est pas réécrit. Le
+tableau de dette est retombé à DEUX lignes. ✅ **Les deux dernières ont été inscrites
 le même jour par le sous-bloc P1 du chantier presse-papier** ; P5 les a relevées
 indépendamment, aux **mêmes valeurs**, et confirme l'inscription plutôt que de
 la dupliquer.
@@ -12614,7 +12663,14 @@ n'y avait rien à faire (divergence E1).
 5. ⛔ **`verify-all.sh` n'est pas hermétique.**
 6. ⛔ **Le corpus reste celui de `WScript.Shell` par entrée.** Le fermer demande
    un mode de vidage dans l'agent.
-7. ⛔ **Le champ `retenus` de la trace ne compte pas ce que son nom dit.**
+7. ✅ **FERMÉ PAR G2 (21 août 2026).** ~~Le champ `retenus` de la trace ne
+   compte pas ce que son nom dit.~~ Un compteur distinct est incrémenté dans la
+   branche `Ok(())` de `raccourci::retenir`. **Mesuré sur la VM : `retenus=167`
+   pour `cles=154`** — DEUX NOMBRES DIFFÉRENTS, donc un contrôle qui peut
+   échouer, là où l'ancien était `lancables.len()` et valait toujours `cles`.
+   ⚠️ Le même relevé rend **169/156** en fin de recette G2 : la recette a laissé
+   **deux raccourcis témoins** sur le Bureau de la VM, qui rendent son critère ②
+   rejouable.
 8. ⛔ **Deux boucles de découverte tournent** quand le superviseur est actif —
    conséquence du legs n°1.
 9. ⛔ **La lacune de nommage d'`IssueLancement`** est inscrite, pas fermée.
@@ -12890,6 +12946,12 @@ fabriquée** : les comptes publiés en amont ont été **relancés**.
 
 ### ⑧ Les tailles, **relevées par la commande le 20 août 2026, après la dernière édition**
 
+⚠️ **CES DEUX LIGNES SONT SORTIES DE LA TABLE LE LENDEMAIN** (21 août 2026,
+sous-bloc G2) : il y ajoutait ses propres cas, donc il « travaillait dedans »,
+donc la règle du découpage rétroactif s'appliquait à lui. **Le relevé ci-dessous
+reste exact à sa date, et c'est lui qui a rendu la dette VISIBLE** — sans quoi
+G2 ne l'aurait pas rouverte.
+
 **Le tableau de dette gagne DEUX lignes** — `proto/src/plateforme/tests.rs`
 (**561**) et `proto/ts/plateforme.test.ts` (**512**), nés de **G1** et
 **absents de ce fichier jusqu'ici**. Les deux entrées gelées sont inchangées
@@ -12997,6 +13059,310 @@ aussi la ligne de résumé.
 10. ⛔ **Aucun texte non-ASCII ni multi-ligne n'a traversé la chaîne réelle.**
 11. ⛔ **Le niveau 2 du critère ① n'a jamais été atteint** — `Xvfb` + `xdotool`.
 12. ⛔ **`PRESSE_PAPIER_MAX` et `PERIODE_PRESSE_PAPIER` ne sont pas calibrées.**
+
+---
+
+## 🖼️ Sous-projet ④ Gestion d'apps — sous-bloc G2 : les icônes 256, et la preuve que c'en est (21 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-20-gestion-apps-g2-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-20-gestion-apps-g2.md`.
+Conception : `docs/superpowers/specs/2026-08-19-gestion-apps-design.md`.
+Journaux : `docs/superpowers/plans/journaux-gestion-apps-g2/` — **26 fichiers
+suivis par git**, et **DEUX familles de lecture**, relevées par la commande :
+
+| Famille | Fichiers | Ce qu'il faut faire |
+| --- | --- | --- |
+| les **sept** journaux d'agent BRUTS (`agent-*.log`) | 7 | **séquences ANSI PRÉSENTES** : `sed 's/\x1b\[[0-9;]*m//g'`, ou lire le `-plat` jumeau, **versé pour chacun** |
+| tout le reste (`-plat`, `.txt`, `.json`, journal de plateforme) | 19 | rien, ils se `grep`ent à plat |
+
+✅ **AUCUN octet NUL, aucun fichier non-UTF-8**, vérifié par balayage — à la
+différence de D10, dont un journal en portait 558 et faisait rendre à `grep`
+une sortie **vide** indiscernable d'un zéro. ⚠️ **17 fichiers portent des CR**
+(ils viennent de la VM) : **les CR et les séquences ANSI ne coïncident PAS**, et
+le dire évite une règle fausse.
+
+### Le fait qui gouverne tout : la preuve ne peut PAS venir de l'image
+
+🔴 **UN `.ico` NE CONTENANT QU'UNE ENTRÉE 48×48, INTERROGÉ À 256, REND
+256×256 32bpp.** Par `IShellItemImageFactory::GetImage` **comme** par
+`PrivateExtractIconsW`, sans `SIIGBF_SCALEUP` et **MÊME avec
+`SIIGBF_BIGGERSIZEOK`** — c'est-à-dire en disant explicitement au Shell qu'une
+taille plus grande conviendrait. **Mesuré trois fois** : par la spécification le
+19 août, par le plan le 20 sur des témoins fabriqués, et **par le produit
+lui-même le 21**.
+
+**Un critère de réception qui comparerait la taille rendue à 256 NE PEUT DONC
+PAS ÉCHOUER.** La preuve vient de la **RESSOURCE** — le `GRPICONDIR` d'un
+module PE, l'`ICONDIR` d'un `.ico` —, et le module qui la lit est **PUR**
+(`agent/src/apps/icone/ressource.rs`, 127 lignes, aucun `cfg`, 10 tests
+d'hôte). Sans cette coupure, le critère ② n'aurait **aucun** test d'hôte et sa
+seule preuve serait un argument de flot de contrôle — la situation exacte que
+le défaut F1 du sous-bloc D7 a payée.
+
+⚠️ **`bWidth == 0` VAUT 256**, et c'est le seul piège de l'analyse : le champ
+fait un octet. Un lecteur qui rendrait `0` ferait dire à une icône 256 qu'elle
+est de taille **nulle**, et un `max()` la classerait **sous** n'importe quelle
+autre entrée.
+
+🔵 **DEUX TÉMOINS `.ico` SONT VERSÉS, ET LEUR FABRIQUE AVEC EUX** :
+`agent/testdata/g2-temoin-{48,256}.ico` et
+`agent/testdata/fabriquer-temoins-ico.py`, un script **hôte, sans Windows**.
+Les témoins d'origine de la spécification vivaient dans `C:\dev\`,
+« c'est-à-dire nulle part de durable ».
+
+### Les huit critères, avec leur nombre d'exécutions
+
+**DEUX EXÉCUTIONS AU MIEUX. AUCUN TAUX N'EST REVENDIQUÉ.**
+
+| # | Critère | Verdict | Le chiffre, **relevé** |
+| --- | --- | --- | --- |
+| ① | 256×256 et **alpha non trivial** | **TENU** | **92 des 96** PNG distincts ; **96/96** en 256×256 |
+| ② | `source_max` **distingue** un vrai 256 d'un agrandissement | **TENU** | témoin 48 → PNG **256×256**, `{"pixels":48}` ; témoin 256 → PNG **256×256**, `{"pixels":256}` |
+| ③ | le corpus porte **les deux valeurs** | **TENU** | **69** à 256, **14** en dessous, **71** `non-mesuree` |
+| ④ | `NonMesuree` **jamais** un nombre | **TENU** | **71** `"non-mesuree"` sur le fil, **0** `{"pixels":0}` |
+| ⑤ | une icône connue n'est **pas** retéléversée | **TENU** | magasin plein → **ZÉRO** inventaire, **ZÉRO** octet ; `icones=0` aux tours 2 et 3 |
+| ⑥ | la déduplication **paie** | **TENU** | **156** applications, **98** empreintes → **58 évités (37,2 %)** |
+| ⑦ | le magasin **se reconstruit tout seul** | **TENU** | 98 → **0** → **98**, **même poids exact** |
+| ⑧ | un agent **v2** face à une plateforme **v3** RENONCE | **TENU** | **1** refus, `version_emise=2 version_recue=3`, **0** reprise |
+
+⚠️ **LE CRITÈRE ① NE PEUT PAS EXIGER « TOUTES »** : **92 sur 96**, donc
+**quatre sans alpha** — et la mesure du plan relevait **149 sur 153**, soit
+quatre également. Un critère écrit « toutes » serait faux par construction. Sa
+rouge reste réelle : `WICBitmapUseAlpha` → `WICBitmapIgnoreAlpha`, une
+**constante nommée**, ferait tomber le compte à **zéro**.
+
+🔴 **LE CRITÈRE ⑧ VAUT PAR SON CONTRASTE.** Au moment de G1 ce même montage
+rendait **0 refus et 10 reprises** ; il rend **1 et 0**. C'est la correction du
+20 août — le refus sorti du versionnement — et **G2 est le premier bump depuis,
+donc le premier à pouvoir le prouver**.
+
+### La détermination de WIC : VERDICT POSITIF, et le repli n'a pas eu à être écrit
+
+Deux exécutions, **DEUX PROCESSUS DISTINCTS** : **154 couples présents des deux
+côtés et ÉGAUX DEUX À DEUX, zéro différent.** Le plan demandait dix icônes.
+
+🔴 **LA RÉDACTION DU VERDICT ÉTAIT CONTRAINTE, ET ELLE A ÉTÉ RESPECTÉE** : un
+journal incomplet n'aurait **pas** été un verdict positif, une empreinte absente
+n'aurait **pas** été un verdict négatif. Le repli nommé d'avance —
+n'empreindre que `IHDR`/`PLTE`/`IDAT`/`IEND`, dans le module pur — **n'a donc
+pas eu à être écrit**.
+
+### 🔴 Les deux défauts que seule la VM pouvait trouver
+
+**① UN NOM NUL N'EST PAS « LA PREMIÈRE RESSOURCE ».** Une première rédaction
+passait `PCWSTR(null())` à `FindResourceW` pour un index de 0, en croyant
+demander le premier groupe d'icônes : `FindResourceW` cherche alors une
+ressource dont le NOM est nul, et n'en trouve aucune. **Mesuré : 148 des 154
+applications** rendaient `aucune ressource RT_GROUP_ICON`, y compris des modules
+qui en portent manifestement (`steam.exe`). **Le catalogue restait juste et les
+icônes étaient servies ; seule la PROVENANCE tombait à `NonMesuree`** — la
+chose même que le sous-bloc existe pour mesurer. Le remède était **écrit dans le
+plan** (`EnumResourceNamesW`), et son omission est ce qui a produit le défaut.
+
+> 🔴 **ET IL N'A ÉTÉ VU QUE PARCE QUE J'AI RE-MESURÉ AVEC LE BON `RUST_LOG`.**
+> Un premier relevé rendait `ressource illisible : 0` — et **ce zéro ne voulait
+> RIEN DIRE** : `RUST_LOG` n'activait `debug` que pour `apps::boucle`, pas pour
+> `apps::icone`. **Un zéro rendu par une trace qu'on n'a pas allumée n'est pas
+> une mesure.** C'est le piège maison « un contrôle qui ne peut pas échouer »
+> sous une forme neuve : le contrôle était bon, c'est son **alimentation** qui
+> manquait.
+
+**② UN DÉSARMEMENT N'EST PAS UN ÉCHEC.** Sous `ICONES=0`, la boucle émettait
+`icones_echouees=156` : un exploitant aurait lu 156 pannes sur un agent
+parfaitement sain **qu'il venait lui-même de couper**. C'est exactement le
+défaut que le legs n°7 de G1 portait sur `retenus` — **un compteur qui ment sur
+son nom** — et que G2 venait de fermer.
+
+### La variable neuve : `ICONES`
+
+| Variable | Effet |
+| --- | --- |
+| `ICONES=0` | **Désarme l'extraction d'icônes**, et elle seule — le catalogue reste COMPLET. ⚠️ **`=0` DÉSARME ; une simple PRÉSENCE n'active pas** — convention d'`APPS`, `PLEIN_ECRAN`, `AUDIO`, `PART_SONDAGE`, `PRESSE_PAPIER`, et pour la même raison : tester `is_ok()` activerait le mécanisme en écrivant `ICONES=0` **pour le couper**. Le prédicat lui-même est **RÉUTILISÉ**, pas recopié : `apps::desarme`, pur et testé. Lue dans `agent/src/apps/icone/extraction.rs` par `OnceLock`. Transmise par `scripts/run-agent.sh`. Trace, **seulement si désarmé** : `extraction d'icones DESARMEE (ICONES=0) : le catalogue reste complet, mais aucune application ne portera d'icone`. 🔴 **LE CONTRÔLE QUI VAUT N'EST PAS LA TRACE** — elle prouve que la variable a atteint le processus, pas que le mécanisme est coupé. Ce qui vaut est le COMPTE : **0 ligne `icone extraite` sur DEUX périodes**, et `icones=0 icones_distinctes=0` |
+
+✅ **Le dernier saut PowerShell → `agent.exe` est VÉRIFIÉ** : `$env:ICONES = '0'`
+figure dans le `run-agent.ps1` **généré**. Piège payé cinq fois (`SUPERVISEUR`
+en D1, `MULTIFENETRE_REPRISE` en D2, `AUDIO` en D7), évité ici par une **tâche
+dédiée qui ne fait que cela**.
+
+⚠️ **`PLATEFORME_ICONES` est une variable de la PLATEFORME, pas de l'agent** —
+facultative, défaut `donnees/icones`, **journalisée au démarrage**. Les
+confondre ferait chercher un piège là où il n'est pas : `scripts/run-agent.sh`
+n'a rien à voir avec elle.
+
+### Trois faits de conception qui survivront au code
+
+1. 🔴 **`immutable` N'EST HONNÊTE QUE PARCE QUE L'URL PORTE L'EMPREINTE.** La
+   spécification écrivait « `Cache-Control` immuable **clé sur l'empreinte** »
+   sur une URL qui ne la porte pas : **les deux moitiés se contredisent**. D'où
+   `GET /application/:id/icone?e=<empreinte>`, et un `e` périmé rend **404** —
+   sans quoi une vieille URL servirait l'icône **courante** sous un en-tête
+   immuable, empoisonnant le cache **pour un an** avec une image qui n'est pas
+   celle que l'URL nomme.
+2. 🔴 **UN BLOB NE TRAVERSE PAS LA DOUBLE PASSE SANS MENTIR.** Postgres n'a pas
+   de `BLOB` (il a `bytea`) ; SQLite accepte **n'importe quel nom de type par
+   affinité**. Écrire `BYTEA` passerait **les deux passes** en signifiant deux
+   choses différentes — **le piège `SERIAL` à l'envers**, qu'aucun des deux
+   gardes du dépôt n'attrape. Les octets vivent donc sur le **DISQUE**, et c'est
+   l'**auto-reconstruction** (critère ⑦) qui le rend acceptable, pas une
+   commodité.
+3. 🔴 **UN `<img src>` NE PORTE PAS D'EN-TÊTE `Authorization`.** Une page devra
+   chercher ces icônes par `fetch()` puis `URL.createObjectURL`, et **un
+   manifeste PWA — dont le navigateur va chercher les icônes tout seul — NE
+   POURRA PAS pointer cette route en l'état**. C'est une contrainte réelle pour
+   **G5**, écrite ici plutôt que découverte là-bas ; G2 ne la tranche pas, car
+   le faire demanderait de décider si une icône se sert sans jeton.
+
+### Sept écarts avec le plan, relevés et corrigés
+
+| # | Ce que le plan affirme | Ce que la mesure rend |
+| --- | --- | --- |
+| 1 | D1 : un champ `icone` manquant est **refusé** (« aucun `default` ») | 🔴 **FAUX.** `serde_derive` traite tout `Option<T>` comme portant un `#[serde(default)]` IMPLICITE, et `deny_unknown_fields` n'y change rien — il regarde les champs EN TROP. **Mesuré.** Remède : un `deserialize_with` qui ne fait que déléguer |
+| 2 | Tâche 8 : des cas « tirés du corpus versé » | ⚠️ Le corpus **ne porte aucun `IconLocation`**. Les cibles en viennent ; les `IconLocation` sont les lignes verbatim de M1 |
+| 3 | Tâche 12 : un « `PUT` HTTP » | ⚠️ **L'agent n'a AUCUN client HTTP** — relevé dans `Cargo.lock`. Écrit à la main, et **aucune pile TLS n'existe** : un `wss://` est **refusé explicitement, avec sa trace** |
+| 4 | `icone.rs` est `#[cfg(windows)]` **et** ses enfants purs sont déclarés dans `apps.rs` « ce qui évite le `#[path]` » | ⚠️ **Les deux ne tiennent pas ensemble** : on ne peut pas déclarer un petit-fils depuis le grand-parent sans `#[path]` |
+| 5 | E10 : `routes-applications.test.ts` porte **dix-sept** tests | ⚠️ **DIX-NEUF** |
+| 6 | E8 : la liste des migrations est figée en **un** endroit | ⚠️ **DEUX** — `pilotes.test.ts` et `index.test.ts` |
+| 7 | Tâche 17 : `catalogue.ts` doit faire voyager les deux champs | ✅ **Rien à changer** : il fait voyager des `Application` entières |
+
+### 🔴 Trois plafonds franchis, trois extractions — et c'est un VOISIN qui les a vus
+
+`proto/src/plateforme.rs` **588**, `proto/ts/plateforme.ts` **528**,
+`agent/src/plateforme.rs` **504**. **G2 ne les avait pas vus passer** : son plan
+les annonçait à 433, 429 et 453, et c'est la **documentation** de ses additions
+qui a fait franchir. **Le relevé de clôture du chantier E2, voisin, les a nommés
+ici avant que G2 ne les trouve lui-même.**
+
+Rattrapés par **trois extractions, jamais par une compression** :
+`plateforme/apps.rs` (**162**) → 468 ; `plateforme-gardes.ts` (**85**) → 475 ;
+`plateforme/ordre.rs` (**34**) → 490.
+
+⚠️ **L'EXTRACTION AURAIT DÛ PRÉCÉDER L'ADDITION.** G2 avait **trois** extractions
+prévues d'avance — les deux dettes de `proto/` et
+`routes-applications.test.ts` — et **les trois ont été jouées avant leur
+addition**. Ces trois-ci ne l'étaient pas. **Le franchissement est DÉCLARÉ**,
+comme D10 l'a fait de ses trois et D9 de ses deux.
+
+### Ce que G2 n'établit PAS
+
+- **Aucun taux, nulle part.** Deux exécutions au mieux, **une seule** pour
+  plusieurs relevés annexes.
+- 🔴 **AUCUNE ICÔNE N'A ÉTÉ REGARDÉE.** `source_max` dit **d'où vient l'image**,
+  jamais si elle est bonne — la lacune exacte de `BPP_MIN`.
+- **Aucune constante calibrée** : `ICONE_MAX_OCTETS` (**aucune taille
+  individuelle n'a jamais été relevée**), le défaut de `PLATEFORME_ICONES`, le
+  délai de 10 s du téléversement, et la règle d'extraction — **dont le taux de
+  réextraction inutile n'est mesuré par rien**.
+- 🔴 **RIEN D'UNE ICÔNE QUI CHANGE SANS QUE LE RACCOURCI CHANGE** : une mise à
+  jour qui réécrit son `.exe` **en place** ne sera pas revue. **Trou nommé.**
+- **71 des 154 applications restent `NonMesuree`**, et la cause n'est établie
+  pour **aucune**.
+- **Le téléversement ne fait pas de TLS**, et le refuse **par son nom**.
+- **Rien du HiDPI, rien d'un client réel, aucune page de hub** — la recette est
+  `curl`.
+- **Rien de la charge** : une VM, un catalogue, un magasin.
+- **Le magasin n'est JAMAIS nettoyé** : une icône dont plus aucune application
+  ne porte l'empreinte reste sur le disque, **pour toujours**.
+- **Aucun test d'hôte ne couvre `extraction.rs` ni `lecture_pe.rs`** — leur
+  seule preuve est la recette, et c'est elle qui a trouvé leur défaut.
+
+### Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔴 **UN ZÉRO RENDU PAR UNE TRACE QU'ON N'A PAS ALLUMÉE N'EST PAS UNE MESURE.**
+  **Vérifier que la trace cherchée PEUT sortir avant de lire son compte.**
+- 🔴 **DEUX RACCOURCIS À LA MÊME CIBLE SANS ARGUMENTS SONT LA MÊME
+  APPLICATION.** Le premier montage du critère ② a perdu un témoin sur deux —
+  ce n'était **pas** un défaut du produit, c'était la déduplication (spec D4)
+  faisant son travail sur un montage qui l'ignorait.
+- 🔴 **`Cache-Control` ET `cache-control` SONT DEUX CLÉS D'OBJET DISTINCTES**, et
+  `writeHead` **émet les deux** : le client lisait `no-store, private,
+  max-age=…`, une réponse à la fois non stockable et immuable.
+- ⚠️ **UN `#[serde(default)]` PEUT ÊTRE IMPLICITE** : tout champ `Option<T>` en
+  porte un, et `deny_unknown_fields` ne le voit pas.
+- 🔴 **`build-agent.sh` RSYNCHRONISE L'ARBRE ENTIER**, donc le travail **non
+  commité et non compilant** d'un chantier voisin. G2 a dû bâtir depuis un
+  `git worktree` à son propre commit — **avec `node_modules` lié**, sans quoi le
+  script s'arrête en silence après « sources synchronisées ».
+- ⚠️ **LA VM ÉTAIT ÉTEINTE** alors qu'un rapport la disait démarrée depuis
+  1 j 11 h. **Vérifier `virsh list --all`, ne pas croire.**
+- ⚠️ **Des tests peuvent écrire dans le DÉPÔT** : le magasin par défaut créait
+  `plateforme/donnees/icones`. Fixtures pointées sur un répertoire temporaire, et
+  le défaut de production gitignoré.
+
+### Le relevé de tailles, PAR LA COMMANDE, APRÈS la dernière édition
+
+🔴 **LE TABLEAU DE DETTE EST RETOMBÉ À DEUX LIGNES** — `agent/src/encode.rs`
+**1536** et `agent/src/windows_source.rs` **630**, ni l'un ni l'autre touché par
+G2 —, et **les deux lignes de `proto/` en sont SORTIES** (voir l'encadré du
+tableau, en tête de ce fichier). **Aucun autre fichier de code source ne dépasse
+500 lignes.**
+
+| Fichier | Lignes | Remarque |
+| --- | --- | --- |
+| `agent/src/plateforme.rs` | ~~453~~ ~~504~~ **490** (marge 10) | 🔴 franchi puis extrait |
+| `proto/ts/plateforme.ts` | ~~429~~ ~~528~~ **475** | 🔴 franchi puis extrait |
+| `proto/src/plateforme.rs` | ~~433~~ ~~588~~ **468** | 🔴 franchi puis extrait |
+| `proto/src/plateforme/tests.rs` | ~~561~~ **449** | **sort de la dette** |
+| `plateforme/src/http/routes-applications.test.ts` | ~~480~~ **448** | extrait **AVANT** l'addition |
+| `proto/ts/plateforme.test.ts` | ~~512~~ **417** | **sort de la dette** |
+| `agent/src/apps/boucle.rs` | ~~213~~ **358** | le câblage, et le legs n°7 de G1 |
+| `plateforme/src/http/routes-icone.ts` | **313** | neuf — les deux routes |
+| `proto/src/plateforme/tests_apps.rs` | **279** | neuf — l'extraction |
+| `agent/src/apps/icone/extraction.rs` | **233** | neuf — `#[cfg(windows)]`, WIC |
+| `proto/ts/plateforme-apps.test.ts` | **230** | neuf — l'extraction |
+| `agent/src/apps/icone/televersement.rs` | **187** | neuf — le `PUT` écrit à la main |
+| `agent/src/apps/icone/lecture_pe.rs` | **166** | neuf — `#[cfg(windows)]` |
+| `proto/src/plateforme/apps.rs` | **162** | neuf — l'extraction du plafond |
+| `scripts/run-agent.sh` | ~~145~~ **157** | +1 ligne par G2 ; le reste est du chantier E2 |
+| `plateforme/src/http/routes-harnais.ts` | **140** | neuf — extrait AVANT l'addition |
+| `plateforme/src/apps/icones.ts` | **140** | neuf — le magasin de disque |
+| `agent/src/apps/icone/magasin.rs` | **132** | neuf — **PUR** |
+| `agent/src/apps/icone/ressource.rs` | **127** | neuf — **PUR**, la preuve du sous-bloc |
+| `agent/src/apps/icone/source.rs` | **90** | neuf — **PUR** |
+| `proto/ts/plateforme-gardes.ts` | **85** | neuf — l'extraction du plafond |
+| `plateforme/src/base/migrations/0005-icones.sql` | **83** | neuf — deux colonnes NULLABLES |
+| `agent/src/apps/icone.rs` | **53** | neuf — le parent, SANS `cfg` |
+| `agent/src/plateforme/ordre.rs` | **34** | neuf — l'extraction du plafond |
+
+**Comptes de clôture** : `cargo test -p proto` **93**, `cargo test -p agent`
+**778**, `proto` vitest **176**, `plateforme` **472** sur les **DEUX** moteurs,
+`cargo check --target x86_64-pc-windows-gnu` **sortie 0**, et **AUCUN
+avertissement hors de la famille `dead_code`** — vérifié par filtrage, pas
+supposé. ⚠️ **Leur NOMBRE n'est PAS rapporté** : il vaut 18 dans un `git
+worktree` au commit de G2 et 19 dans l'arbre partagé, et ce dépôt écrit depuis
+D3 qu'on vérifie **la nature, jamais le nombre**, trois `typecheck` à 0.
+
+⚠️ **`cargo test -p agent` rend 778 dans l'arbre PARTAGÉ et 735 dans un
+`git worktree` au commit de G2.** L'écart n'est **pas** de G2 : c'est le travail
+non commité du chantier pont-fichiers. **Un compte de tests n'est attribuable
+qu'assorti de son arbre** — leçon de D11, repayée ici.
+
+### Ce que G2 lègue
+
+**Legs de G1 réglés** : n°7 (le champ `retenus` — **fermé et MESURÉ**,
+`retenus=167` pour `cles=154`, deux nombres différents).
+
+1. ⛔ **71 applications restent `NonMesuree`**, et la cause n'est établie pour
+   aucune. `runcmdu.exe` (×26), `powershell.exe`, `odbcint.dll` y figurent.
+2. ⛔ **Aucune icône n'a été regardée.**
+3. 🔴 **Un `<img src>` ne porte pas d'`Authorization`** — **G5 ne pourra pas
+   pointer cette route depuis un manifeste PWA.** Décision de sécurité, qui
+   appartient au propriétaire du dépôt.
+4. ⛔ **Une icône qui change sans que le raccourci change n'est jamais revue.**
+5. ⛔ **Le magasin n'est jamais nettoyé.**
+6. ⛔ **Le téléversement ne fait pas de TLS** ; le jour où l'agent devra franchir
+   un lien non fiable, ce sera **une dépendance à décider, pas à glisser**.
+7. ⛔ **`ICONE_MAX_OCTETS` n'est pas calibrée.**
+8. ⛔ **`magasin::manquantes` (agent) n'a aucun appelant de production** —
+   conservé et **déclaré**. ⚠️ Ce dépôt n'a **toujours pas** de doctrine sur le
+   code orphelin.
+9. ⚠️ **DEUX raccourcis témoins RESTENT sur le Bureau de la VM**
+   (`G2 Temoin 48.lnk`, `G2 Temoin 256.lnk`, **arguments distincts**). C'est ce
+   qui rend le critère ② rejouable — **et cela porte le corpus de 154 à 156**.
+   Un chantier suivant qui compterait 154 les cherchera.
+10. ⛔ **La lacune de nommage d'`IssueLancement` reste OUVERTE.** G2 ajoute un
+    second témoin (`SourceMax::NonMesuree`, deux mots) sans refermer celle-là.
+
 
 ---
 
@@ -13208,7 +13574,9 @@ winrm.runCommand('Get-ChildItem C:\\', '192.168.3.2', 'Administrator', 'PASSWORD
 fichier a été écrit tout du long jusqu'au ~~**6 août 2026** (sous-bloc D9)~~
 **19 août 2026** (sous-blocs D10, D11, P1, P2, P3, S1, et le **chantier E**)
 ⚠️ **et le 20 août 2026** (P4, P5, S2, S3, S4, F0/F1, G1, presse-papier P1, et
-le **bloc E2 du chantier E**) — *cette date-ci vieillira comme les autres.*
+le **bloc E2 du chantier E**) ⚠️ **puis le 21 août 2026** (sous-bloc **G2** de
+la gestion d'apps) — *cette date-ci vieillira comme les autres, et la reprendre
+est un geste de clôture au même titre qu'un compte de tests.*
 Elle ne date que le pied de page hérité du Guacamole historique, ci-dessous,
 qu'aucun chantier du projet agent n'a touché.
 ⚠️ **Le « 6 août 2026 » avait à son tour dormi SEPT sous-blocs**, dans la phrase
