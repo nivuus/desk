@@ -1,0 +1,302 @@
+2026-08-20T05:18:36.578029Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T05:18:36.696359Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203716652
+2026-08-20T05:18:36.696542Z  WARN agent::apps: decouverte d'applications DESARMEE (APPS=0)
+2026-08-20T05:18:36.698486Z  INFO agent::superviseur::signalisation: déclaration du superviseur émise sur la session de contrôle (acceptation encore inconnue) session="_AXxNIlw-MDltKE2lCMPOw:bureau"
+2026-08-20T05:18:36.701032Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-20T05:18:36.701067Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-20T05:18:36.701082Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="avant purge" nombre=1 attachees=1
+2026-08-20T05:18:36.701090Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="avant purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-20T05:18:39.703476Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=1
+2026-08-20T05:18:39.703511Z  INFO agent::capture::enumeration: adaptateur DXGI sans sortie adaptateur=Microsoft Basic Render Driver index_adaptateur=2
+2026-08-20T05:18:39.703520Z  INFO agent::diagnostics::multifenetre::montee: topologie relevée moment="après purge" nombre=1 attachees=1
+2026-08-20T05:18:39.703523Z  INFO agent::diagnostics::multifenetre::montee: sortie moment="après purge" nom=\\.\DISPLAY1 adaptateur=NVIDIA GeForce RTX 4070 index_adaptateur=0 index_sortie=0 attachee=true x=0 y=0 largeur=2400 hauteur=1080
+2026-08-20T05:18:39.703532Z  INFO agent::moniteurs_virtuels::purge: purge terminée retirees=0 avant=1 apres=1
+2026-08-20T05:18:39.707653Z  INFO agent::superviseur::lanceur: capteur lancé pid=8724
+2026-08-20T05:18:39.709474Z  INFO agent::superviseur::lanceur::pont: pont fichiers lancé pid=9404 session="_AXxNIlw-MDltKE2lCMPOw:fichiers"
+2026-08-20T05:18:39.709492Z  WARN agent::superviseur::boucle::surveillance_pont: pont fichiers lancé ou relancé (tentatives suivantes silencieuses tant que le cycle se répète) pid_neuf=9404
+2026-08-20T05:18:39.715937Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T05:18:39.715972Z  INFO agent::capteur: capteur démarré tube="\\\\.\\pipe\\agent-capteur"
+2026-08-20T05:18:39.716679Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T05:18:39.782430Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:39.782507Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:39.782684Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203719739
+2026-08-20T05:18:39.782723Z  WARN agent::apps: decouverte d'applications DESARMEE (APPS=0)
+2026-08-20T05:18:39.783334Z  INFO agent::pont::transport: socket UDP du pont fichiers addr=192.168.3.2:64454
+2026-08-20T05:18:39.810300Z  INFO agent::signaling: déclaration de l'agent émise au signaling (acceptation encore inconnue) session="_AXxNIlw-MDltKE2lCMPOw:fichiers"
+2026-08-20T05:18:40.212999Z  INFO agent::superviseur::boucle::surveillance_pont: pont fichiers de nouveau stable pid=9404
+2026-08-20T05:18:40.455373Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:40.455455Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:40.455804Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203720412
+2026-08-20T05:18:41.135419Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:41.135490Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:41.135585Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203721092
+2026-08-20T05:18:41.806042Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:41.806110Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:41.806449Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203721763
+2026-08-20T05:18:42.477505Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:42.477573Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:42.478127Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203722434
+2026-08-20T05:18:43.146131Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:43.146198Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:43.146387Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203723103
+2026-08-20T05:18:43.825578Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:43.825655Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:43.825785Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203723782
+2026-08-20T05:18:44.500134Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:44.500206Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:44.500400Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203724457
+2026-08-20T05:18:45.174107Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:45.174182Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:45.174409Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203725131
+2026-08-20T05:18:45.789050Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:45.789128Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:45.789310Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203725746
+2026-08-20T05:18:46.441489Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:46.441562Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:46.441779Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203726398
+2026-08-20T05:18:47.054726Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:47.054798Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:47.055266Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203727011
+2026-08-20T05:18:47.721605Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:47.721676Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:47.721798Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203727678
+2026-08-20T05:18:48.398093Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:48.398163Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:48.398997Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203728355
+2026-08-20T05:18:49.025870Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:49.025937Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:49.026870Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203728983
+2026-08-20T05:18:49.629104Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:49.629180Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:49.629317Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203729586
+2026-08-20T05:18:50.224709Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:50.224800Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:50.225078Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203730181
+2026-08-20T05:18:50.846241Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:50.846310Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:50.846575Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203730803
+2026-08-20T05:18:51.465688Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:51.465762Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:51.465970Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203731422
+2026-08-20T05:18:52.041708Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:52.041780Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:52.041986Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203731998
+2026-08-20T05:18:52.698357Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:52.698436Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:52.698627Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203732655
+2026-08-20T05:18:53.305216Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:53.305293Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:53.305461Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203733262
+2026-08-20T05:18:53.908288Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:53.908352Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:53.908360Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203733865
+2026-08-20T05:18:54.532215Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:54.532293Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:54.532437Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203734489
+2026-08-20T05:18:55.166200Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:55.166276Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:55.166430Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203735123
+2026-08-20T05:18:55.802069Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:55.802144Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:55.802212Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203735759
+2026-08-20T05:18:56.398185Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:56.398259Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:56.398490Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203736355
+2026-08-20T05:18:56.982357Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:56.982432Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:56.982755Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203736939
+2026-08-20T05:18:57.599500Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:57.599576Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:57.599978Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203737556
+2026-08-20T05:18:58.223871Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:58.223944Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:58.224090Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203738181
+2026-08-20T05:18:58.888109Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:58.888192Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:58.888361Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203738845
+2026-08-20T05:18:59.556285Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:18:59.556356Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:18:59.556431Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203739513
+2026-08-20T05:19:00.203793Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:00.203871Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:00.204031Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203740160
+2026-08-20T05:19:00.797082Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:00.797160Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:00.797398Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203740754
+2026-08-20T05:19:01.469780Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:01.469857Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:01.470062Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203741427
+2026-08-20T05:19:02.120812Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:02.120890Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:02.120971Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203742078
+2026-08-20T05:19:02.747925Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:02.747997Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:02.748158Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203742705
+2026-08-20T05:19:03.357059Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:03.357128Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:03.357427Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203743314
+2026-08-20T05:19:04.016703Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:04.016799Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:04.016964Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203743973
+2026-08-20T05:19:04.587113Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:04.587187Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:04.587349Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203744544
+2026-08-20T05:19:05.233495Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:05.233570Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:05.233737Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203745190
+2026-08-20T05:19:05.908609Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:05.908687Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:05.909062Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203745865
+2026-08-20T05:19:06.498174Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:06.498248Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:06.498399Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203746455
+2026-08-20T05:19:07.168369Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:07.168445Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:07.168535Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203747125
+2026-08-20T05:19:07.813186Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:07.813265Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:07.813630Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203747770
+2026-08-20T05:19:08.469881Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:08.469952Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:08.470753Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203748427
+2026-08-20T05:19:09.136309Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:09.136389Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:09.136643Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203749093
+2026-08-20T05:19:09.805802Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:09.805874Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:09.806065Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203749763
+2026-08-20T05:19:10.484697Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:10.484773Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:10.484941Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203750442
+2026-08-20T05:19:11.154727Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:11.154793Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:11.154922Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203751112
+2026-08-20T05:19:11.817976Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:11.818034Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:11.818064Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203751775
+2026-08-20T05:19:12.494412Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:12.494480Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:12.494709Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203752451
+2026-08-20T05:19:13.165524Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:13.165596Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:13.165854Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203753123
+2026-08-20T05:19:13.836086Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:13.836160Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:13.836368Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203753793
+2026-08-20T05:19:14.515171Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:14.515245Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:14.515563Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203754472
+2026-08-20T05:19:15.105240Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:15.105310Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:15.105635Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203755062
+2026-08-20T05:19:15.768831Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:15.768905Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:15.769132Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203755726
+2026-08-20T05:19:16.447664Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:16.447743Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:16.447960Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203756405
+2026-08-20T05:19:17.106238Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:17.106312Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:17.106505Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203757063
+2026-08-20T05:19:17.770123Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:17.770191Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:17.770690Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203757727
+2026-08-20T05:19:18.365282Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:18.365357Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:18.365585Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203758322
+2026-08-20T05:19:19.049342Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:19.049414Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:19.049755Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203759006
+2026-08-20T05:19:19.718031Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:19.718104Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:19.718818Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203759675
+2026-08-20T05:19:20.384387Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:20.384459Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:20.384628Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203760341
+2026-08-20T05:19:21.056486Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:21.056559Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:21.057062Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203761014
+2026-08-20T05:19:21.684975Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:21.685053Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:21.685313Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203761642
+2026-08-20T05:19:22.326761Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:22.326835Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:22.326993Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203762284
+2026-08-20T05:19:22.915966Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:22.916036Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:22.916059Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203762873
+2026-08-20T05:19:23.564162Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:23.564239Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:23.564341Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203763521
+2026-08-20T05:19:24.238071Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:24.238143Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:24.238578Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203764195
+2026-08-20T05:19:24.909525Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:24.909601Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:24.909778Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203764866
+2026-08-20T05:19:25.576224Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:25.576295Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:25.576743Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203765533
+2026-08-20T05:19:26.163114Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:26.163195Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:26.163434Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203766120
+2026-08-20T05:19:26.817529Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203766774
+2026-08-20T05:19:26.817526Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:26.817598Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:27.401031Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:27.401105Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:27.401338Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203767358
+2026-08-20T05:19:28.052813Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:28.052882Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:28.053327Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203768010
+2026-08-20T05:19:28.703299Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:28.703376Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:28.703567Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203768660
+2026-08-20T05:19:29.348331Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:29.348349Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203769305
+2026-08-20T05:19:29.348397Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:30.010534Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:30.010630Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:30.010664Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203769967
+2026-08-20T05:19:30.664430Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:30.664534Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:30.664537Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203770621
+2026-08-20T05:19:31.353178Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:31.353250Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:31.353870Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203771310
+2026-08-20T05:19:32.044765Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:32.044841Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:32.045359Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203772002
+2026-08-20T05:19:32.674814Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:32.674889Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:32.675096Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203772631
+2026-08-20T05:19:33.325768Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:33.325844Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:33.326307Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203773283
+2026-08-20T05:19:33.999499Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:33.999570Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:33.999954Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203773956
+2026-08-20T05:19:34.627344Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:34.627420Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:34.627510Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203774584
+2026-08-20T05:19:35.290237Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:35.290307Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:35.290471Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203775247
+2026-08-20T05:19:35.956021Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:35.956091Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:35.956263Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203775913
+2026-08-20T05:19:36.619439Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:36.619511Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:36.619848Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203776576
+2026-08-20T05:19:37.203429Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:37.203503Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:37.203629Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203777160
+2026-08-20T05:19:37.867800Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:37.867871Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:37.868198Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203777824
+2026-08-20T05:19:38.540876Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:38.540952Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:38.541174Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203778497
+2026-08-20T05:19:39.203876Z  WARN agent::plateforme: canal /agent fermé par la plateforme url="ws://192.168.3.1:8090/agent" cadre=Some(CloseFrame { code: Policy, reason: "remplace" })
+2026-08-20T05:19:39.203948Z  INFO agent::plateforme: reprise du canal /agent url="ws://192.168.3.1:8090/agent" tentative=0 delai_ms=500
+2026-08-20T05:19:39.204146Z  INFO agent::plateforme: agent enrôlé auprès de la plateforme url="ws://192.168.3.1:8090/agent" prefixe=_AXxNIlw-MDltKE2lCMPOw expire_a=1787203779160
