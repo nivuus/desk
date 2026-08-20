@@ -34,6 +34,7 @@ import { createSignalingServer } from '../signaling/relais';
 import { ProprieteDeSession } from '../signaling/propriete';
 import { observateurDeSession } from '../signaling/trace';
 import { servirLeCanalAgent } from '../agents/canal';
+import { RegistreAgents } from '../agents/registre';
 
 /// Le chemin du canal plateforme <-> agent (P3). ⚠️ Il est comparé
 /// EXACTEMENT : voir le routage plus bas.
@@ -133,6 +134,16 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
     // Son coût — il ne survit pas à un redémarrage — est écrit dans
     // `signaling/propriete.ts`.
     const gardeDuService = garde(config.secretJeton, Date.now, new ProprieteDeSession());
+    // Le registre des sockets d'agent vivants, construit UNE FOIS et partagé
+    // entre le canal (qui y inscrit) et les routes (qui y lancent). C'est le
+    // seul endroit du service qui en fabrique un.
+    //
+    // ⚠️ IL A LE MÊME COÛT QUE `ProprieteDeSession`, ET IL EST NOMMÉ AU MÊME
+    // ENDROIT : il ne survit pas à un redémarrage. Après un redémarrage, aucun
+    // agent n'y figure tant qu'il ne s'est pas ré-enrôlé, et tout lancement
+    // rend `agent-injoignable` — bruyamment. Le rattrapage est la reconnexion
+    // de l'agent, qui le reconstitue sans que personne ne le persiste.
+    const registreAgents = new RegistreAgents();
     // 🔴 LE CANAL EST BRANCHÉ ICI, ET C'EST LA SEULE LIGNE QUI LE FAIT VIVRE.
     // Sans elle, `wssAgent` accepterait toujours la montée sur `/agent` et
     // n'écouterait RIEN : le pair verrait une connexion réussie, puis un
@@ -147,6 +158,7 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         base,
         secretJeton: config.secretJeton,
         maintenant: Date.now,
+        registre: registreAgents,
     });
 
     // `Date.now` est passée ICI, et une seule fois pour la trace : c'est le

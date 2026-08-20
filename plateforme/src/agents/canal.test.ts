@@ -25,6 +25,7 @@ import { garde as fabriquerGarde } from '../identite/garde';
 import { DUREE_JETON_ACCES_MS, verifierJeton } from '../identite/jeton';
 import { ProprieteDeSession } from '../signaling/propriete';
 import { servirLeCanalAgent } from './canal';
+import { RegistreAgents } from './registre';
 import {
     attendreVu,
     enrolerUneVm,
@@ -61,7 +62,12 @@ async function demarrer(p: Pilote): Promise<number> {
     maintenant = T0;
     wss = new WebSocketServer({ port: 0, host: '127.0.0.1' });
     await new Promise<void>((r) => wss!.once('listening', () => r()));
-    servirLeCanalAgent(wss, { base: p, secretJeton: SECRET, maintenant: () => maintenant });
+    servirLeCanalAgent(wss, {
+        base: p,
+        secretJeton: SECRET,
+        maintenant: () => maintenant,
+        registre: new RegistreAgents(),
+    });
     const adresse = wss.address();
     return typeof adresse === 'object' && adresse ? adresse.port : 0;
 }
