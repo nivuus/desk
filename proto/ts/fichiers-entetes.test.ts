@@ -3,17 +3,24 @@ import vecteurs from '../fichiers-vectors.json';
 import { FICHIERS_VERSION, type CodeEchec } from './fichiers';
 import {
     encodeChemin,
+    encodeCreer,
     encodeDonnees,
+    encodeDues,
     encodeEchec,
+    encodeEcrire,
     encodeEntrees,
     encodeLire,
     encodeMeta,
     parseChemin,
+    parseCreer,
     parseDonnees,
+    parseDues,
     parseEchec,
+    parseEcrire,
     parseEntrees,
     parseLire,
     parseMeta,
+    type Due,
     type EntreeJson,
 } from './fichiers-entetes';
 
@@ -34,6 +41,9 @@ interface CasVecteur {
     taille?: number;
     modifie?: number;
     code?: string;
+    premier?: boolean;
+    dernier?: boolean;
+    dues?: Due[];
 }
 
 const cas: CasVecteur[] = vecteurs.cases as CasVecteur[];
@@ -51,6 +61,12 @@ function encoder(c: CasVecteur): string {
             return encodeMeta(c.repertoire!, c.taille!, c.modifie!);
         case 'donnees':
             return encodeDonnees(c.position!, c.longueur!);
+        case 'ecrire':
+            return encodeEcrire(c.chemin!, c.position!, c.longueur!, c.premier!, c.dernier!);
+        case 'creer':
+            return encodeCreer(c.chemin!, c.repertoire!);
+        case 'dues':
+            return encodeDues(c.dues!);
         case 'echec':
             return encodeEchec(c.code as CodeEchec);
         default:
@@ -72,6 +88,12 @@ function analyser(c: CasVecteur): unknown {
             return parseMeta(brut);
         case 'donnees':
             return parseDonnees(brut);
+        case 'ecrire':
+            return parseEcrire(brut);
+        case 'creer':
+            return parseCreer(brut);
+        case 'dues':
+            return parseDues(brut);
         case 'echec':
             return parseEchec(brut);
         default:
@@ -128,6 +150,31 @@ describe('les en-têtes incomplets sont rejetés', () => {
 
     it('refuse un code d’échec inconnu', () => {
         expect(() => parseEchec({ code: 'inventé' })).toThrow(/code/);
+    });
+
+    it('🔴 refuse un Ecrire sans `premier`', () => {
+        // Sans `premier`, le flux s'ouvrirait avec `keepExistingData` : un
+        // fichier réécrit plus court garderait sa queue d'octets, ce qui est le
+        // défaut EXACT de l'ancien pont (spec §12).
+        expect(() =>
+            parseEcrire({ chemin: 'a', position: 0, longueur: 1, dernier: true }),
+        ).toThrow(/premier/);
+    });
+
+    it('🔴 refuse un Ecrire sans `dernier`', () => {
+        // Sans `dernier`, le `close()` ne viendrait jamais : rien ne serait
+        // jamais commis côté poste local, et l'entrée resterait due à jamais.
+        expect(() =>
+            parseEcrire({ chemin: 'a', position: 0, longueur: 1, premier: true }),
+        ).toThrow(/dernier/);
+    });
+
+    it('refuse un Creer sans `repertoire`', () => {
+        expect(() => parseCreer({ chemin: 'a' })).toThrow(/repertoire/);
+    });
+
+    it('refuse une due incomplète', () => {
+        expect(() => parseDues({ dues: [{ chemin: 'a' }] })).toThrow(/octets/);
     });
 
     it('refuse une entrée de répertoire incomplète', () => {

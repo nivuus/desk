@@ -67,6 +67,55 @@
       "json": "{\"position\":128,\"longueur\":64}"
     },
     {
+      "name": "ecrire_premier_et_dernier",
+      "forme": "ecrire",
+      "chemin": "note.txt",
+      "position": 0,
+      "longueur": 12,
+      "premier": true,
+      "dernier": true,
+      "json": "{\"chemin\":\"note.txt\",\"position\":0,\"longueur\":12,\"premier\":true,\"dernier\":true}"
+    },
+    {
+      "name": "ecrire_morceau_du_milieu",
+      "forme": "ecrire",
+      "chemin": "dossier/gros.bin",
+      "position": 65536,
+      "longueur": 65536,
+      "premier": false,
+      "dernier": false,
+      "json": "{\"chemin\":\"dossier/gros.bin\",\"position\":65536,\"longueur\":65536,\"premier\":false,\"dernier\":false}"
+    },
+    {
+      "name": "creer_fichier",
+      "forme": "creer",
+      "chemin": "été/résumé final.txt",
+      "repertoire": false,
+      "json": "{\"chemin\":\"été/résumé final.txt\",\"repertoire\":false}"
+    },
+    {
+      "name": "creer_repertoire",
+      "forme": "creer",
+      "chemin": "nouveau dossier",
+      "repertoire": true,
+      "json": "{\"chemin\":\"nouveau dossier\",\"repertoire\":true}"
+    },
+    {
+      "name": "dues_deux_entrees",
+      "forme": "dues",
+      "dues": [
+        { "chemin": "note.txt", "octets": 12 },
+        { "chemin": "dossier/gros.bin", "octets": 12582912 }
+      ],
+      "json": "{\"dues\":[{\"chemin\":\"note.txt\",\"octets\":12},{\"chemin\":\"dossier/gros.bin\",\"octets\":12582912}]}"
+    },
+    {
+      "name": "dues_vides",
+      "forme": "dues",
+      "dues": [],
+      "json": "{\"dues\":[]}"
+    },
+    {
       "name": "echec_a_un_mot",
       "forme": "echec",
       "code": "introuvable",
@@ -83,6 +132,24 @@
       "forme": "echec",
       "code": "protege-en-ecriture",
       "json": "{\"code\":\"protege-en-ecriture\"}"
+    },
+    {
+      "name": "echec_disque_plein",
+      "forme": "echec",
+      "code": "disque-plein",
+      "json": "{\"code\":\"disque-plein\"}"
+    },
+    {
+      "name": "echec_deja_present",
+      "forme": "echec",
+      "code": "deja-present",
+      "json": "{\"code\":\"deja-present\"}"
+    },
+    {
+      "name": "echec_casse_ambigue",
+      "forme": "echec",
+      "code": "casse-ambigue",
+      "json": "{\"code\":\"casse-ambigue\"}"
     }
   ]
 }

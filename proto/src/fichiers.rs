@@ -24,6 +24,19 @@
 use serde::{Deserialize, Serialize};
 
 /// Version du protocole de fichiers. Incrémenter à tout changement de format.
+///
+/// 🔴 **F2 AJOUTE QUATRE TYPES DE MESSAGE ET NE L'INCRÉMENTE PAS, et c'est une
+/// décision, pas un oubli.** F1 l'a laissée à 1 « précisément pour que
+/// l'arrivée de ces verbes soit une rupture visible » (son legs 13) — mais la
+/// rupture est **ADDITIVE** : un pont v1 en lecture seule et un client v1 qui
+/// sait écrire s'entendent sans réserve, le client ignorant simplement des
+/// types qu'il ne recevra jamais. Incrémenter à 2 casserait la compatibilité
+/// dans le seul sens où elle n'a aucune valeur — les deux bouts sont livrés
+/// ensemble — et ferait échouer une session en cours pendant une migration.
+///
+/// ⚠️ **Ce qui l'incrémentera est un changement de FORME, pas d'inventaire** :
+/// un champ renommé, un ordre d'octets différent, un en-tête dont le sens
+/// change. Ceux-là, un pair d'une autre version ne peut pas les ignorer.
 pub const FICHIERS_VERSION: u8 = 1;
 
 /// Taille maximale de la **charge** d'une trame, en octets.
@@ -48,15 +61,35 @@ pub const TAILLE_TRAME_MAX: usize = 64 * 1024;
 /// longueur d'en-tête.
 pub const TAILLE_ENTETE_FIXE: usize = 1 + 1 + 4 + 4;
 
-// Requêtes pont → navigateur (v1).
+// Requêtes pont → navigateur — **elles ATTENDENT une réponse**.
 pub const TYPE_LISTER: u8 = 1;
 pub const TYPE_ATTRIBUTS: u8 = 2;
 pub const TYPE_LIRE: u8 = 3;
-// Réponses navigateur → pont (v1).
+pub const TYPE_ECRIRE: u8 = 4; // F2 — en-tête `Ecrire`, la charge porte les octets
+pub const TYPE_CREER: u8 = 5; // F2 — en-tête `Creer`, charge vide
+
+// Annonces pont → navigateur — **elles n'attendent RIEN**.
+//
+// 🔴 **TROISIÈME FAMILLE, et elle casse l'invariant que le navigateur énonce
+// en majuscules** (`client/src/fichiers/protocole.ts`) : « une requête reçoit
+// toujours une réponse ». Une ANNONCE n'en reçoit aucune — aucune entrée de
+// table ne lui correspond côté pont, et n'y pas répondre ne laisse donc rien
+// en vol. **La liste des annonces est CLOSE**, et c'est ce qui empêche cette
+// famille de devenir le bras fourre-tout silencieux que ce dépôt a payé quatre
+// fois sur `capteur/pont_media.rs`.
+pub const TYPE_DUES: u8 = 6; // F2 — en-tête `Dues`, charge vide
+
+// Réponses navigateur → pont.
 pub const TYPE_ENTREES: u8 = 64;
 pub const TYPE_META: u8 = 65;
 pub const TYPE_DONNEES: u8 = 66;
+pub const TYPE_FAIT: u8 = 67; // F2 — en-tête VIDE `{}`, charge vide
 pub const TYPE_ECHEC: u8 = 127;
+
+// ⚠️ **7 et 8 sont RÉSERVÉS à F3** (`TYPE_RENOMMER`, `TYPE_SUPPRIMER`), qui les
+// nomme dans son propre plan. Les prendre ici obligerait l'un des deux
+// sous-blocs à renuméroter, et une renumérotation tardive est exactement le
+// geste par lequel une référence survit à ce qu'elle désigne.
 
 /// Cause d'un échec renvoyé par le navigateur.
 ///
@@ -64,7 +97,13 @@ pub const TYPE_ECHEC: u8 = 127;
 /// deux mots ou plus sont celles qui se cassent en silence : ce dépôt a laissé
 /// passer une variante `battement-recu` verte sur cinquante tests parce que
 /// rien n'épinglait ses octets. `un_code_d_echec_a_une_forme_epinglee_sur_le_fil`
-/// épingle les sept, littéralement.
+/// épingle les **dix**, littéralement.
+///
+/// ⚠️ **Le plan de F2 en annonçait NEUF et appelait `CasseAmbigue` « la
+/// neuvième variante ».** Sa tâche 1 en ajoute déjà deux aux sept de F1
+/// (`DisquePlein`, `DejaPresent`), ce qui fait neuf ; sa tâche 9 en ajoute une
+/// troisième. **`CasseAmbigue` est donc la DIXIÈME**, et le compte du plan est
+/// corrigé ici plutôt que recopié.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum CodeEchec {
@@ -75,6 +114,29 @@ pub enum CodeEchec {
     NonSupporte,
     TropGrand,
     Interne,
+    /// Le disque du poste local est plein — `QuotaExceededError` côté
+    /// navigateur (F2).
+    ///
+    /// 🔴 **CE CODE N'ATTEINT AUCUNE APPLICATION WINDOWS, et le dire ici est le
+    /// seul moyen qu'un successeur ne croie pas le contraire.** Il naît d'une
+    /// poussée d'écriture, c'est-à-dire APRÈS que l'application a refermé son
+    /// handle et cru avoir enregistré : il n'y a plus aucune commande ProjFS à
+    /// compléter. Ce code sert au JOURNAL et au compteur d'écritures dues de la
+    /// page-shell, jamais à un `HRESULT` rendu à qui que ce soit.
+    DisquePlein,
+    /// Une entrée du même nom existe déjà (F2).
+    DejaPresent,
+    /// 🔴 **Le poste local porte un homonyme qui ne diffère QUE par la casse, et
+    /// l'écrivain a REFUSÉ d'écrire.**
+    ///
+    /// Le cas qui l'atteint : un fichier créé dans la VM avec une casse
+    /// différente d'une entrée locale existante. Le système de fichiers du
+    /// poste local est insensible à la casse sur Windows et sur macOS ;
+    /// `getFileHandle('CASSE.TXT', { create: true })` y ouvrirait donc
+    /// `Casse.txt` et **l'écraserait**. Refuser bruyamment est le seul
+    /// arbitrage disponible entre « refuser à tort » et « écraser le mauvais
+    /// fichier » — voir `client/src/fichiers/ecriture.ts`.
+    CasseAmbigue,
 }
 
 /// Une trame décodée. Emprunte les octets d'entrée : ni l'en-tête ni la charge

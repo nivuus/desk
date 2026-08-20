@@ -119,9 +119,11 @@ fn le_vecteur_epingle_se_decode_comme_annonce() {
 fn un_code_d_echec_a_une_forme_epinglee_sur_le_fil() {
     // ⚠️ Les variantes à DEUX MOTS sont celles qui se cassent en silence : ce
     // dépôt a laissé passer `battement-recu` verte sur cinquante tests parce que
-    // rien n'épinglait ses octets. Les sept sont épinglées littéralement, et
+    // rien n'épinglait ses octets. Les DIX sont épinglées littéralement, et
     // dans les DEUX sens — sérialiser puis désérialiser ne prouverait que la
     // cohérence de serde avec lui-même.
+    //
+    // ⚠️ Les TROIS neuves de F2 sont toutes à deux mots ou plus.
     let attendu = [
         (CodeEchec::Introuvable, "\"introuvable\""),
         (CodeEchec::CheminIntrouvable, "\"chemin-introuvable\""),
@@ -130,6 +132,9 @@ fn un_code_d_echec_a_une_forme_epinglee_sur_le_fil() {
         (CodeEchec::NonSupporte, "\"non-supporte\""),
         (CodeEchec::TropGrand, "\"trop-grand\""),
         (CodeEchec::Interne, "\"interne\""),
+        (CodeEchec::DisquePlein, "\"disque-plein\""),
+        (CodeEchec::DejaPresent, "\"deja-present\""),
+        (CodeEchec::CasseAmbigue, "\"casse-ambigue\""),
     ];
     for (code, texte) in attendu {
         assert_eq!(serde_json::to_string(&code).unwrap(), texte, "sérialisation de {code:?}");
@@ -147,12 +152,44 @@ fn les_types_de_message_ne_se_chevauchent_pas() {
     // serait traitée comme une requête. Le balayage l'interdit, et il couvre
     // toute addition future — une énumération à la main ne l'aurait pas fait.
     let tous = [
-        TYPE_LISTER, TYPE_ATTRIBUTS, TYPE_LIRE,
-        TYPE_ENTREES, TYPE_META, TYPE_DONNEES, TYPE_ECHEC,
+        TYPE_LISTER, TYPE_ATTRIBUTS, TYPE_LIRE, TYPE_ECRIRE, TYPE_CREER,
+        TYPE_DUES,
+        TYPE_ENTREES, TYPE_META, TYPE_DONNEES, TYPE_FAIT, TYPE_ECHEC,
     ];
     for (i, a) in tous.iter().enumerate() {
         for b in &tous[i + 1..] {
             assert_ne!(a, b, "deux types de message partagent la valeur {a}");
         }
     }
+}
+
+/// 🔴 **UNE TRAME `ECRIRE` PLEINE PASSE, en-tête compris.**
+///
+/// ⚠️ **C'est le contrôle qui distingue les deux lectures possibles de
+/// `TAILLE_TRAME_MAX`**, et le module l'annonce lui-même comme une divergence :
+/// le nom dit « trame », la valeur borne la **charge**. Si un jour la borne
+/// devenait `TAILLE_TRAME_MAX - taille_entete`, un morceau plein d'écriture —
+/// c'est-à-dire le cas NOMINAL d'un gros fichier, celui que `pont::decoupe`
+/// produit à chaque tour sauf le dernier — serait refusé par le décodeur. Le
+/// symptôme serait une écriture qui échoue **uniquement** sur les fichiers de
+/// plus de 64 Kio.
+#[test]
+fn une_trame_ecrire_pleine_passe_entete_compris() {
+    let entete = serde_json::to_string(&entetes::Ecrire {
+        chemin: "dossier/un nom accentué très long pour gonfler l'en-tête.bin".to_string(),
+        position: 65_536,
+        longueur: TAILLE_TRAME_MAX as u32,
+        premier: false,
+        dernier: false,
+    })
+    .expect("un en-tête Ecrire se sérialise toujours");
+    let charge = vec![0xCDu8; TAILLE_TRAME_MAX];
+    let octets = encoder(TYPE_ECRIRE, 42, &entete, &charge);
+    assert!(octets.len() > TAILLE_TRAME_MAX, "la trame pèse PLUS que sa charge");
+
+    let trame = decoder(&octets).expect("une trame d'écriture pleine doit passer");
+    assert_eq!(trame.type_message, TYPE_ECRIRE);
+    assert_eq!(trame.charge.len(), TAILLE_TRAME_MAX);
+    let relu: entetes::Ecrire = serde_json::from_slice(trame.entete).expect("en-tête relu");
+    assert_eq!(relu.longueur as usize, trame.charge.len());
 }

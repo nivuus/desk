@@ -87,6 +87,37 @@ fn conformite_aux_vecteurs_partages() {
                 };
                 verifier(nom, attendu, &v);
             }
+            "ecrire" => {
+                let v = Ecrire {
+                    chemin: c["chemin"].as_str().unwrap().to_string(),
+                    position: c["position"].as_u64().unwrap(),
+                    longueur: c["longueur"].as_u64().unwrap() as u32,
+                    premier: c["premier"].as_bool().unwrap(),
+                    dernier: c["dernier"].as_bool().unwrap(),
+                };
+                verifier(nom, attendu, &v);
+            }
+            "creer" => {
+                let v = Creer {
+                    chemin: c["chemin"].as_str().unwrap().to_string(),
+                    repertoire: c["repertoire"].as_bool().unwrap(),
+                };
+                verifier(nom, attendu, &v);
+            }
+            "dues" => {
+                let v = Dues {
+                    dues: c["dues"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .map(|d| Due {
+                            chemin: d["chemin"].as_str().unwrap().to_string(),
+                            octets: d["octets"].as_u64().unwrap(),
+                        })
+                        .collect(),
+                };
+                verifier(nom, attendu, &v);
+            }
             "echec" => {
                 let code: crate::fichiers::CodeEchec =
                     serde_json::from_value(c["code"].clone()).expect("code d'échec connu");
@@ -125,4 +156,48 @@ fn un_entete_incomplet_est_rejete_plutot_que_complete() {
     assert!(serde_json::from_str::<Meta>(r#"{"repertoire":false,"taille":1}"#).is_err());
     assert!(serde_json::from_str::<Donnees>(r#"{"position":0}"#).is_err());
     assert!(serde_json::from_str::<Lire>(r#"{"chemin":"a","position":0}"#).is_err());
+    // 🔴 Les deux drapeaux d'`Ecrire` sont ceux dont l'absence est la plus
+    // coûteuse : sans `premier`, le flux s'ouvrirait avec `keepExistingData` et
+    // un fichier réécrit plus court garderait sa queue d'octets — le défaut
+    // EXACT de l'ancien pont (spec §12). Sans `dernier`, le `close()` ne
+    // viendrait jamais et l'écriture ne serait **jamais** commise.
+    assert!(serde_json::from_str::<Ecrire>(
+        r#"{"chemin":"a","position":0,"longueur":1,"dernier":true}"#
+    )
+    .is_err());
+    assert!(serde_json::from_str::<Ecrire>(
+        r#"{"chemin":"a","position":0,"longueur":1,"premier":true}"#
+    )
+    .is_err());
+    assert!(serde_json::from_str::<Creer>(r#"{"chemin":"a"}"#).is_err());
+    assert!(serde_json::from_str::<Due>(r#"{"chemin":"a"}"#).is_err());
+}
+
+/// 🔴 **LES NEUF FORMES ONT LEUR VECTEUR** — et c'est ce qui empêche qu'une
+/// forme neuve soit ajoutée sans être épinglée.
+///
+/// La boucle de [`conformite_aux_vecteurs_partages`] n'éprouve que les formes
+/// PRÉSENTES dans le fichier : ajouter `Ecrire` au code sans lui donner de
+/// vecteur y passerait inaperçu. Ce test compte les formes distinctes du
+/// fichier et exige qu'elles soient les neuf que le protocole porte.
+///
+/// ⚠️ **`TYPE_FAIT` n'a pas de forme** : son en-tête est `{}`. Le compter
+/// ferait attendre un vecteur pour une structure qui n'existe pas.
+#[test]
+fn les_neuf_formes_ont_leur_vecteur() {
+    let brut = include_str!("../../../fichiers-vectors.json");
+    let doc: serde_json::Value = serde_json::from_str(brut).expect("vecteurs valides");
+    let mut formes: Vec<&str> = doc["cases"]
+        .as_array()
+        .expect("tableau de cas")
+        .iter()
+        .map(|c| c["forme"].as_str().expect("forme"))
+        .collect();
+    formes.sort_unstable();
+    formes.dedup();
+    assert_eq!(
+        formes,
+        ["chemin", "creer", "donnees", "dues", "echec", "ecrire", "entrees", "lire", "meta"],
+        "une forme du protocole n'a pas de vecteur, ou un vecteur n'a pas de forme"
+    );
 }

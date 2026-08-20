@@ -112,7 +112,7 @@ describe('trame binaire du pont fichiers', () => {
     it('épingle la forme des codes d\'échec sur le fil', () => {
         // ⚠️ Les variantes à DEUX MOTS sont celles qui se cassent en silence :
         // ce dépôt a laissé passer `battement-recu` verte sur cinquante tests
-        // parce que rien n'épinglait ses octets. Ces sept chaînes doivent être
+        // parce que rien n'épinglait ses octets. Ces DIX chaînes doivent être
         // identiques, caractère pour caractère, au `#[serde(rename_all =
         // "kebab-case")]` de `CodeEchec` côté Rust.
         expect(CODES_ECHEC).toEqual([
@@ -123,6 +123,9 @@ describe('trame binaire du pont fichiers', () => {
             'non-supporte',
             'trop-grand',
             'interne',
+            'disque-plein',
+            'deja-present',
+            'casse-ambigue',
         ]);
     });
 
