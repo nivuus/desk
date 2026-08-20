@@ -338,6 +338,16 @@ vérifiera ; si aucun appelant n'apparaît, le token sort — un token orphelin 
 du code mort, et ce dépôt en a déjà deux qu'il conserve en le déclarant
 (`TAILLE_MAX_SORTIE`, `borner_a_la_taille_max`).
 
+> ✅ **RÉSERVE LEVÉE : `--police-mono` EST CÂBLÉ** (sous-bloc S4, tâche 6), sur
+> `#stats` — l'appelant unique que ce paragraphe désigne. Trois sous-blocs se
+> sont passé la décision « le câbler ou le retirer », faute d'avoir le droit de
+> changer l'apparence de la fenêtre de session ; S4 l'a, et il câble. **La liste
+> d'attente de §7.6 est désormais VIDE**, 52 tokens déclarés pour 52 employés,
+> et elle **ne disparaît pas pour autant** : c'est l'ÉGALITÉ qui vaut, pas la
+> liste, et celle-ci doit rester pour attraper un orphelin futur.
+> ⚠️ **Que la pile monospace se lise mieux que le crénage qu'elle remplace est
+> un JUGEMENT HUMAIN** (§8) : aucune commande ne le dira.
+
 ### 4.4 Les échelles, chiffrées
 
 **Décision : toutes les longueurs typographiques et d'espacement sont en `rem`,
@@ -518,22 +528,55 @@ nommée au point 2 de §3.
 
 ⚠️ **Une contrainte de comportement à ne pas casser, écrite dans le code
 d'aujourd'hui** : `#fullscreen[data-actif="true"]` porte
-`pointer-events: none` (`style.css:84`), et le commentaire qui l'accompagne
-(`style.css:79-83`) explique qu'une zone d'environ 40×36 px en bas à droite
-avalait sinon les clics destinés au jeu. **Toute reprise du bouton en S4 doit
-conserver cette propriété** ; changer sa taille change la zone qu'il occupe, et
-la justification est écrite en fonction d'elle.
+`pointer-events: none`, et le commentaire qui l'accompagne explique qu'une zone
+d'environ 40×36 px en bas à droite avalait sinon les clics destinés au jeu.
+**Toute reprise du bouton en S4 doit conserver cette propriété** ; changer sa
+taille change la zone qu'il occupe, et la justification est écrite en fonction
+d'elle.
+
+> ✅ **LA REPRISE A EU LIEU, ET LA PHRASE EST DEVENUE UNE COMMANDE** (S4,
+> tâches 7 et 5). `client/src/style.test.ts` exige la déclaration
+> `pointer-events: none` sur la règle `#fullscreen[data-actif="true"]`, **ancrée
+> sur la règle entière et lue après blanchiment** — un garde qui aurait cherché
+> la sous-chaîne aurait été satisfait par le commentaire du fichier qu'il
+> analyse. Il a été **écrit et vu ROUGE AVANT** le changement de taille, et
+> l'ordre est portant : un garde écrit après ne prouve pas qu'il aurait attrapé
+> la régression.
+> ⚠️ **Le glyphe est passé de 18 px à `var(--t-xl)` (20 px), et le « 40×36 »
+> ci-dessus N'A PAS ÉTÉ RECALCULÉ** : la hauteur se CALCULE (8 + 8 + 20 = 36 px
+> à racine 16), la LARGEUR non — elle dépend de l'avance du glyphe `⛶`, que
+> personne n'a mesurée. Le commentaire du code cesse donc de la chiffrer plutôt
+> que de remplacer une estimation par une autre. **Que 20 px soit la bonne
+> taille, et que la zone occupée soit la bonne, sont deux JUGEMENTS HUMAINS**
+> (§8), et **aucun n'a été porté**.
+> ⚠️ **Les deux numéros de ligne que ce paragraphe portait (`style.css:84` et
+> `:79-83`) ont dérivé et sont retirés** : ce dépôt a déjà écrit qu'un numéro de
+> ligne recopié survit à la réalité qu'il décrivait.
 
 **Demain**, trois familles s'ajoutent, et aucune n'existe encore :
 
 1. **Les écrans d'erreur et de reconnexion.** Le cadrage les promet (§7 :
    « la PWA affiche "reconnexion…" puis se rattache »). Aujourd'hui **il n'y a
    pas d'écran** : tout passe par le bandeau `#status`, y compris les états
-   terminaux — `client/src/main.ts:136` (`session terminée`, `terminal: true`)
-   et `main.ts:405-406` (`échec : …`, `terminal: true`). Un état terminal
+   terminaux — les **deux** appels de `client/src/main.ts` qui passent
+   `terminal: true` (`session terminée`, puis `échec : …`). Un état terminal
    occupe donc six lignes de texte dans un bandeau de 12 px de marge. **S4
    livre un écran plein cadre pour les seuls états terminaux**, et laisse les
-   messages transitoires au bandeau. *Ce n'est pas qu'une décision d'esthétique* :
+   messages transitoires au bandeau.
+   ✅ **LIVRÉ (S4, tâche 9)** : `client/src/ecran-terminal.ts` (pur,
+   dépendances injectées), `client/src/session/etat-terminal.css`, et le
+   balisage `#fin` d'`index.html`. **L'écran se branche DANS `creerStatut`**,
+   par une seconde cible **optionnelle**, et non par un appelant de plus : ce
+   module existe pour qu'« aucun appelant ne puisse oublier la garde », et deux
+   écritures côte à côte seraient deux choses que rien n'oblige à rester
+   d'accord. **Aucune frontière n'est déplacée** — les onze autres appels de
+   `main.ts` restent au bandeau. **Aucune action** n'est posée sur cet écran :
+   une action est un comportement de ②, et l'inventer ici la ferait naître sans
+   recette. ⚠️ **Que l'écran plein cadre soit la bonne forme, et qu'il doive
+   rester sans action, sont deux JUGEMENTS HUMAINS** (§8), non portés.
+   ⚠️ **Les deux numéros de ligne (`main.ts:136`, `:405-406`) ont dérivé** et
+   sont remplacés par le fait qui, lui, ne dérive pas : il y a EXACTEMENT deux
+   appels terminaux. *Ce n'est pas qu'une décision d'esthétique* :
    `status.ts` distingue déjà `terminal` de `persistant` et d'ordinaire, donc la
    frontière existe dans le modèle avant d'exister à l'écran.
 2. **Le chrome de fenêtre PWA (Window Controls Overlay).** Stylable par
@@ -665,6 +708,33 @@ Window Controls Overlay.
 posé de manifest. Elle est sûre (les `env(…)` valent 0 sans WCO) et **non
 mesurée** — §9.
 
+> ✅ **S4 EST LIVRÉ (20 août 2026)**, et trois précisions que cette page ne
+> pouvait pas porter :
+>
+> - **la reprise des bandeaux a demandé une VARIANTE, pas seulement une
+>   classe.** `.message` pose `background: var(--fond-1)`, un fond **opaque qui
+>   suit le thème** : posée nue sur `#status`, elle mettrait en thème clair un
+>   panneau clair et opaque au-dessus de la vidéo — exactement ce que le §4.5
+>   interdit en une phrase, quand le §5.2 exige `--voile-flottant` sur ces
+>   mêmes bandeaux. **Les deux exigences de cette spécification se
+>   contredisaient**, et `.message--flottant` les tient toutes les deux.
+> - **un défaut d'encre a été trouvé et réparé, qu'aucun document de ⑥ ne
+>   portait** : sous le thème clair, les éléments de la fenêtre de session
+>   écrivaient du quasi-noir sur un voile quasi-noir, effet de bord de S1 qui
+>   avait donné un thème clair à une surface qui n'en avait pas. D'où
+>   `--sur-voile`, **septième** hors-thème, et la **53ᵉ** paire de contraste.
+> - 🔴 **le WCO n'a AUCUN critère de recette, et c'est délibéré.** Il n'existe
+>   aucun manifeste dans ce dépôt, donc **aucun état atteignable** où la règle
+>   agisse : un critère qui prétendrait l'exercer serait vacueux **par
+>   construction**, et un critère vacueux est pire qu'un critère absent — il se
+>   lit comme une preuve. Ce qui est livré à la place est un **garde de forme**
+>   (`client/src/style.test.ts`) à trois assertions — repli `0px` obligatoire,
+>   **aucune** `@media (display-mode: window-controls-overlay)`, et
+>   atteignabilité — **dont la rouge a une conséquence RÉELLE aujourd'hui** :
+>   un repli non nul descend le bandeau maintenant. **Il prouve l'inertie,
+>   jamais le comportement.** Destinataire nommé du legs : la **recette de ④
+>   G5**, celle qui pose le manifeste.
+
 ---
 
 ## 7. Les contrôles automatisés — et la preuve que chacun peut échouer
@@ -673,13 +743,16 @@ Sept contrôles. Pour chacun : ce qu'il vérifie, la commande, et **l'état qui 
 rend ROUGE**. Trois sont **rouges aujourd'hui sans rien casser** — ce n'est pas
 une hypothèse, c'est le relevé du §2.
 
-> ✅ **ILS SONT HUIT DEPUIS LE SOUS-BLOC S3 (20 août 2026), et le huitième
-> n'est pas de cette spécification : c'est une ADDITION DE PLAN, déclarée comme
-> telle.** Voir le **§7.9** ci-dessous. La phrase « sept contrôles » reste vraie
-> comme HISTOIRE — c'est ce que ⑥ prévoyait — et elle est fausse au présent.
+> ✅ **ILS SONT NEUF DEPUIS LE SOUS-BLOC S4 (20 août 2026), et les deux derniers
+> ne sont pas de cette spécification : ce sont des ADDITIONS DE PLAN, déclarées
+> comme telles.** Voir le **§7.9** (S3) et le **§7.10** (S4) ci-dessous. La
+> phrase « sept contrôles » reste vraie comme HISTOIRE — c'est ce que ⑥
+> prévoyait — et elle est fausse au présent.
 > ⚠️ **Le nombre à ne pas confondre** : `npm run design:verifier` en lance
-> **SEPT**, parce que le §7.5 est un test unitaire qui tourne dans `npm test`.
-> Sept scripts, huit contrôles.
+> **SEPT**, parce que **deux** des neuf sont des tests unitaires qui tournent
+> dans `npm test` — le §7.5 et le §7.10. **Sept scripts, neuf contrôles**, et
+> ni l'un ni l'autre ne se suffit sans dire lequel on compte.
+> ❌ « ILS SONT HUIT DEPUIS LE SOUS-BLOC S3 » : vrai à sa date, réfuté par S4.
 
 ### 7.1 Les contrastes tiennent les seuils WCAG
 
@@ -804,8 +877,14 @@ galerie et rien d'autre. C'est la classe de défaut dont ce dépôt a attrapé
 quatre exemplaires sur le seul sous-bloc D10.
 
 **ROUGE.** Une faute de frappe dans un `var(--fond-O)` tombe sur la seconde
-inclusion ; un token déclaré et jamais employé (le cas prévu de
-`--police-mono`, §4.3) tombe sur la première.
+inclusion ; un token déclaré et jamais employé tombe sur la première.
+❌ « **le cas prévu de `--police-mono`, §4.3** » : ce n'est plus un cas prévu —
+il est **câblé** depuis le sous-bloc S4 (tâche 6), et la liste d'attente est
+vide. La rouge que le plan de S4 prescrivait pour ce sens — retirer
+`font-family: var(--police-mono)` de `#stats`, attendu `NOUVEL ORPHELIN
+--police-mono` — n'a **aucun journal versé** : ⚠️ **les rouges des tâches 1 à 8
+de S4 ne sont rapportées que par leurs messages de commit**, contrairement à
+celles des tâches 9 et 10 (`journaux-design-s4/rouges-t9.log`, `rouges-t10.log`).
 
 ### 7.7 Le poids ne dérive pas
 
@@ -854,6 +933,50 @@ raisonnement. Les trois rouges sont versées sous
 est employée* —, qui exigerait une seconde liste d'attente. Il relève
 l'écart (52 déclarées / 51 employées à la fin de S3) **sans le juger**.
 
+### 7.10 Aucune longueur hors token dans une feuille de surface — ADDITION DE S4
+
+🔴 **CE CONTRÔLE N'EST PAS DE CETTE SPÉCIFICATION : c'est une ADDITION DU PLAN
+DE S4**, inscrite ici par sa revue transverse, « parce qu'un contrôle qui ne vit
+que dans un plan de sous-bloc se perd ». Même statut que le §7.9 ci-dessus.
+
+**Pourquoi.** La clause « aucune longueur hors échelle » du §8 était une **dette
+d'énoncé** : elle était fausse depuis S1, nommée comme telle, et **invérifiable**
+— « aucun des huit contrôles ne mesure une longueur » était écrit à cinq endroits
+du dépôt sous cette formule exacte, et davantage sous d'autres tournures. §7.10
+est **le premier contrôle de ⑥ qui en mesure une**.
+
+**Comment.** `client/src/design/longueurs.test.ts`, **test unitaire** (comme le
+§7.5), lancé par `npm test` **depuis `client/`**. Il lit les feuilles de
+**surface** — portée **DÉRIVÉE, jamais énumérée** : toutes les `*.css` de
+`client/src/` **hors** `client/src/design/`. Une feuille de surface neuve y entre
+sans qu'une ligne du contrôle ne change. Il blanchit les commentaires, découpe en
+déclarations, et refuse toute valeur dimensionnée qui ne passe pas par un
+`var(--…)`. **Trois exceptions closes, chacune avec sa raison** : les
+remplissages de fenêtre (`100vw`, `100vh`, `100dvh`), le **zéro** (aucune échelle
+n'a de cran nul, et le repli des `env(titlebar-area-*)` du WCO en porte un par
+construction), et `tokens.css` — dont les littéraux **sont** l'échelle, et qui
+est de toute façon hors de la portée dérivée.
+
+**Sortie, toujours imprimée, succès compris** : le nombre de feuilles, de
+déclarations lues, celles qui passent par un token, puis **deux nombres** — les
+**occurrences** et les **valeurs distinctes**. Les deux, jamais un seul : ils sont
+vrais de choses différentes, un contrôle ne pouvant pas dédupliquer sans décider
+que deux `6px` écrits à deux endroits sont le même.
+
+**ROUGE.** Il est **né rouge sur l'arbre intact** — **8 occurrences pour 6
+valeurs** —, et c'est sa preuve d'atteignabilité. Il porte en outre son
+**assertion d'atteignabilité** : un contrôle d'absence est vert sur des fichiers
+vides. ⚠️ **Sa rouge d'atteignabilité doit vider LES TROIS feuilles de surface**,
+pas une seule : la portée étant dérivée, vider `style.css` seule laisse les deux
+autres porter leurs déclarations, et l'assertion reste verte à juste titre.
+
+**Ce qu'il NE dit PAS** — et c'est **exactement la limite de G4** : *que le BON
+token a été choisi.* `padding: var(--e-8)` sur un bandeau serait vert et absurde.
+Le bon emploi reste une **règle de revue**. Il ne voit pas non plus une longueur
+calculée à l'exécution (`el.style.padding = …`), même angle mort que §7.9 pour
+les classes, et même parade : la convention est d'écrire les longueurs dans le
+CSS.
+
 ### 7.8 Ce qui n'est PAS un contrôle de ⑥, et pourquoi
 
 **La comparaison d'images de référence est ÉCARTÉE pour S1 à S4.** Trois
@@ -882,17 +1005,60 @@ Ce dépôt nomme ses constantes non calibrées plutôt que de les laisser passer
 pour des mesures. Les suivantes sont dans cet état, **par construction et non
 par négligence** :
 
+> 🔴 **ILS SONT VINGT-CINQ À LA FIN DU SOUS-PROJET, ET AUCUN N'A ÉTÉ PORTÉ.**
+> La table ci-dessous en porte **huit** ; S2 en a ajouté **trois**, S3 **quatre**
+> (quinze à sa fin, relevé par son propre document de résultats), et S4 **dix** —
+> ÉNUMÉRÉS, pas recopiés, chacun avec le fichier qui le déclare :
+> `--police-mono` plus lisible que le crénage (`style.css`) ; 20 px la bonne
+> taille des boutons de coin (`style.css`) ; `#e6e8eb` la bonne encre sur un
+> voile (`design/contraste.ts`) ; les trois mesures de contenant méritent des
+> tokens (`design/tokens.css`) ; le rayon 6 → 4 px acceptable (`style.css`) ;
+> **la zone occupée** par le bouton, distincte de sa taille (`style.test.ts`) ;
+> `--e-8` reste la bonne marge du micro après ce changement (`style.css`) ;
+> l'écran plein cadre est la bonne forme, et il doit rester **sans action**
+> (`ecran-terminal.ts`, deux jugements) ; et les deux **libellés de titre** de
+> cet écran (`ecran-terminal.ts`).
+> ⚠️ **Les trois derniers de S4 n'étaient PAS prévus par son plan** — qui en
+> annonçait sept — et **le taire les aurait déguisés en mesures**.
+>
+> 🔴 **ET LE JUGEMENT VISUEL N'A JAMAIS ÉTÉ PORTÉ SUR ⑥, D'UN BOUT À L'AUTRE :
+> aucune page du sous-projet n'a été ouverte dans un navigateur, ni en S1, ni en
+> S2, ni en S3, ni en S4.** La galerie existe pour cela, et personne ne l'a
+> regardée. S4 était la dernière occasion, et **il la laisse passer en le
+> déclarant** — un agent qui prendrait une capture d'écran ne porterait pas un
+> jugement, il produirait une image que personne n'a regardée.
+
 | Ce qui n'est pas mesuré | Ce qui est mesuré à la place |
 | --- | --- |
 | que la direction soit « sobre » et « pro » (cadrage §3) | rien. C'est l'objet même du sous-projet, et c'est un goût |
 | le **choix des teintes** — que `#7aa2f7` soit le bon bleu | leur **contraste** (§7.1). Une centaine d'autres bleus passeraient les mêmes seuils |
 | que le ratio **1,2** de l'échelle typographique soit le bon | que l'échelle ait sept crans nommés et un plancher dur à 11 px |
 | que **14 px** soit assez dense sans être trop petit | qu'il soit exprimé en `rem` sur une racine libre, donc réglable (§4.4) |
-| que le pas de **4 px** d'espacement soit le bon | qu'il soit unique — ~~aucune longueur hors échelle~~ **voir l'encadré ci-dessous : cette clause est FAUSSE de SIX valeurs** |
+| que le pas de **4 px** d'espacement soit le bon | qu'il soit unique — et, **depuis le sous-bloc S4, que la clause « aucune longueur hors échelle » soit TENUE ET MESURÉE** par le contrôle §7.10 : 0 occurrence, 0 valeur. ~~cette clause est FAUSSE de SIX valeurs~~ **voir l'encadré ci-dessous** |
 | que `--bord` ait été employé là où il fallait, et non `--bord-fort` | que `--bord-fort` tienne 3:1 (§7.1). **Le bon emploi est une règle de revue** |
 | que le **plafond de 12 Kio** (§7.7) soit au bon endroit | la ligne de base, 1 055 octets, elle mesurée |
 | que la **galerie** montre ce qu'il faut regarder | qu'elle existe et qu'elle soit exclue de §7.6 |
 
+> ✅ **CETTE CLAUSE EST TENUE DEPUIS LE SOUS-BLOC S4, ET ELLE EST DEVENUE UNE
+> COMMANDE** (20 août 2026). Le contrôle **§7.10**
+> (`client/src/design/longueurs.test.ts`, addition de plan) mesure les longueurs
+> des feuilles de SURFACE. Il est **né ROUGE de HUIT OCCURRENCES pour SIX
+> VALEURS** sur l'arbre intact — les deux nombres sont vrais de choses
+> différentes, un contrôle comptant des occurrences là où S3 comptait des
+> valeurs — et les tâches 5 à 8 de S4 les ont **toutes** fait tomber : le relevé
+> de recette rend **0 occurrence, 0 valeur** (`journaux-design-s4/recette-1.log`
+> et `recette-2.log`, deux exécutions).
+> ⚠️ **CE QU'IL NE DIT TOUJOURS PAS : que le BON token a été choisi.**
+> `padding: var(--e-8)` sur un bandeau serait vert et absurde. C'est la limite
+> exacte de G4, et elle ne bouge pas — **le bon emploi reste une règle de
+> revue**, comme celui de `--bord` contre `--bord-fort`.
+> ⚠️ **Et sa portée exclut `client/src/design/`** : `tokens.css` est son
+> exception ③ nommée (ses littéraux SONT l'échelle), et les quatre familles de
+> primitives restent gardées par G4.
+>
+> ❌ **CE QUI SUIT ÉTAIT LE RELEVÉ DE S3, ET IL EST RÉFUTÉ PAR S4 — conservé
+> parce qu'il reste vrai à sa date, et parce qu'il nomme les six.**
+>
 > ❌ **LA CLAUSE « aucune longueur hors échelle » EST FAUSSE, ET DE SIX
 > VALEURS** (relevé par la revue transverse de S3, 20 août 2026 ; journal
 > `journaux-design-s3/longueurs-hors-echelle.log`). **Elle l'était déjà de
@@ -975,7 +1141,7 @@ Tailles prévues, et le point de chute de chacune si elle est dépassée :
 | `design/base.css` | ~90 | — |
 | `design/primitives.css` (S2) | ~250 | **seuil d'action à 300** : un fichier par famille (§6, S2) |
 | `design/theme.ts` | ~90 | — |
-| `style.css` (fenêtre de session) | ~120 après S1 | scinder l'écran terminal de S4 en `session/etat-terminal.css` |
+| `style.css` (fenêtre de session) | ~120 après S1 | ✅ **FAIT (S4, tâche 9)** : `client/src/session/etat-terminal.css` existe, et l'extraction a été faite **AVANT** l'addition, pas après |
 | `design.html` (galerie) | ~150 | scinder par famille, au même rythme que les primitives |
 
 **Aucun fichier neuf ne naît au-dessus de 500 lignes**, et le seuil d'action

@@ -4,7 +4,7 @@
    ⚠️ `.champ--erreur` PORTE L'ÉTAT, `.champ__erreur` PORTE LE MESSAGE. Le
    tiret double est le modificateur, le souligné double l'élément : une
    confusion entre les deux produit une règle qui ne s'applique JAMAIS, et
-   aucun des huit contrôles ne verrait une règle morte. Le dépôt a déjà payé
+   aucun des neuf contrôles ne verrait une règle morte. Le dépôt a déjà payé
    exactement cela sous D9, sur un `~` qui ne pouvait pas s'appliquer.
 
    ⚠️ L'ANNEAU DE FOCUS N'EST PAS DÉCLARÉ ICI, ET CE N'EST PAS UN OUBLI :
