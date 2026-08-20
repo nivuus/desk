@@ -40,8 +40,9 @@
 //! 7. sur un `Echec` ou une expiration : **l'entrée RESTE au journal**, un
 //!    `warn!` nomme le chemin et le code.
 
+mod disque;
+
 use std::collections::VecDeque;
-use std::io::Write;
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex};
@@ -172,7 +173,7 @@ impl Fil {
         let a_reprendre: Vec<String> =
             self.journal.dues().iter().map(|(c, _)| c.clone()).collect();
         for chemin in a_reprendre {
-            let local = self.local(&chemin);
+            let local = disque::local(&self.config.racine, &chemin);
             let evenement = match std::fs::metadata(&local) {
                 Ok(m) if m.is_dir() => Evenement::Cree { chemin, repertoire: true },
                 Ok(_) => Evenement::Modifie { chemin },
@@ -202,7 +203,7 @@ impl Fil {
         match ordre {
             Ordre::Survenu(evenement) => {
                 let chemin = evenement.chemin().to_string();
-                let octets = self.taille_de(&chemin);
+                let octets = disque::taille_de(&self.config.racine, &chemin);
                 // ÉTAPE 2 : le journal AVANT la première trame.
                 let ligne = self.journal.inscrire(&chemin, octets);
                 self.ecrire_journal(&ligne);
@@ -243,7 +244,7 @@ impl Fil {
             self.pousser_creation(&chemin, false);
             return;
         }
-        let octets = self.taille_de(&chemin);
+        let octets = disque::taille_de(&self.config.racine, &chemin);
         let mut morceaux: VecDeque<Morceau> =
             decouper(0, octets, proto::fichiers::TAILLE_TRAME_MAX).into();
         if morceaux.is_empty() {
@@ -310,7 +311,7 @@ impl Fil {
         })
         .expect("un en-tete Ecrire se serialise toujours");
 
-        let octets = match self.lire(&chemin, morceau) {
+        let octets = match disque::lire(&self.config.racine, &chemin, morceau) {
             Ok(octets) => octets,
             Err(erreur) => {
                 tracing::warn!(chemin, %erreur, "lecture du fichier local echouee : ecriture due RETENUE");
@@ -414,79 +415,22 @@ impl Fil {
         }
     }
 
-    fn local(&self, chemin: &str) -> PathBuf {
-        let mut local = self.config.racine.clone();
-        for composant in chemin.split('/').filter(|c| !c.is_empty()) {
-            local.push(composant);
-        }
-        local
-    }
-
-    fn taille_de(&self, chemin: &str) -> u64 {
-        std::fs::metadata(self.local(chemin)).map(|m| if m.is_dir() { 0 } else { m.len() }).unwrap_or(0)
-    }
-
-    fn lire(&self, chemin: &str, morceau: Morceau) -> std::io::Result<Vec<u8>> {
-        use std::io::{Read, Seek, SeekFrom};
-        if morceau.longueur == 0 {
-            // Un fichier vide : rien à lire, et le flux se ferme sur un morceau
-            // sans octet. `File::open` échouerait tout de même si le fichier a
-            // disparu entre-temps, ce qu'on veut savoir.
-            std::fs::File::open(self.local(chemin))?;
-            return Ok(Vec::new());
-        }
-        let mut fichier = std::fs::File::open(self.local(chemin))?;
-        fichier.seek(SeekFrom::Start(morceau.position))?;
-        let mut tampon = vec![0u8; morceau.longueur as usize];
-        let lus = fichier.read(&mut tampon)?;
-        // ⚠️ **La longueur ANNONCÉE doit être celle RÉELLEMENT lue.** Le fichier
-        // a pu rétrécir entre le `metadata` et la lecture ; annoncer la demande
-        // ferait diverger l'en-tête de la charge, et le navigateur écrirait des
-        // zéros de remplissage.
-        tampon.truncate(lus);
-        Ok(tampon)
-    }
-
-    /// Ajoute une ligne au journal, **et la vide sur le disque**.
+    /// Ajoute une ligne au journal, et le compacte si c'est possible.
     ///
-    /// ⚠️ **`sync_all` et non un simple `write`** : une ligne restée dans le
-    /// cache du système ne survit pas à un arrêt brutal, et c'est exactement le
-    /// cas que ce journal existe pour couvrir.
-    ///
-    /// ⚠️ **Un échec d'écriture du journal n'empêche PAS la poussée.** Ne pas
-    /// pousser perdrait la donnée tout autant, et sans même la nommer. Le
-    /// `warn!` est tout ce qu'on peut faire.
+    /// ⚠️ **UN ÉCHEC D'ÉCRITURE DU JOURNAL N'EMPÊCHE PAS LA POUSSÉE.** Ne pas
+    /// pousser perdrait la donnée tout autant, et **sans même la nommer**. Le
+    /// `warn!` est tout ce qu'on peut faire — et il dit exactement ce qui est
+    /// perdu : la capacité de REPRENDRE cette entrée après un arrêt brutal.
     fn ecrire_journal(&mut self, ligne: &str) {
-        let issue = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&self.config.chemin_journal)
-            .and_then(|mut f| {
-                f.write_all(ligne.as_bytes())?;
-                f.sync_all()
-            });
-        if let Err(erreur) = issue {
+        if let Err(erreur) = disque::ajouter(&self.config.chemin_journal, ligne) {
             tracing::warn!(
                 %erreur, chemin = %self.config.chemin_journal.display(),
-                "journal des ecritures dues non ecrit : une reprise apres arret brutal perdrait cette entree"
+                "journal des ecritures dues non ecrit : une reprise apres arret brutal perdrait \
+                 cette entree"
             );
             return;
         }
-        self.compacter_si_possible();
-    }
-
-    fn compacter_si_possible(&self) {
-        let Ok(meta) = std::fs::metadata(&self.config.chemin_journal) else { return };
-        if !self.journal.compactable(meta.len()) {
-            return;
-        }
-        // Le journal est VIDE : le tronquer ne perd rien. Le tronquer alors
-        // qu'il porte une due la perdrait exactement quand elle sert.
-        if let Err(erreur) = std::fs::write(&self.config.chemin_journal, b"") {
-            tracing::warn!(%erreur, "compactage du journal des ecritures echoue");
-        } else {
-            tracing::info!(octets = meta.len(), "journal des ecritures compacte (aucune due)");
-        }
+        disque::compacter_si_possible(&self.config.chemin_journal, &self.journal);
     }
 }
 
