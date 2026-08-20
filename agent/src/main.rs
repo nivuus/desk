@@ -102,6 +102,17 @@ mod windows_source_telemetrie;
 #[path = "wasapi/peripherique.rs"]
 mod wasapi_peripherique;
 
+// Même montage, une troisième fois (bloc E2, 20 août 2026) : le format de
+// mixage que l'écriture du micro sur le câble accepte — et surtout ceux
+// qu'elle REFUSE en les nommant — est une règle sans un octet de COM. Elle
+// vit chez `wasapi` parce que c'est de WASAPI qu'elle parle, et elle est
+// hissée ici parce que `wasapi.rs` est `#![cfg(windows)]` : le plan E2
+// demande cette règle « PURE et testée sur l'hôte » et loge par ailleurs
+// `wasapi/ecriture.rs` sous ce même `cfg`. Les deux ne peuvent pas tenir dans
+// le même fichier ; elles tiennent dans le même répertoire.
+#[path = "wasapi/format.rs"]
+mod wasapi_format;
+
 #[cfg(windows)]
 mod capture;
 #[cfg(windows)]
