@@ -929,6 +929,87 @@ Les quatre fichiers que la suite de tests couvrait ont été résorbés le
 > `turn/allocation.rs` **456**, `client/src/main.ts` **451**,
 > `moniteurs_virtuels.rs` **448**, `superviseur/placement.rs` **441**.
 
+> ✅ **Relance du 20 août 2026, clôture du CHANTIER E, BLOC E2 (microphone —
+> le câble), PAR LA COMMANDE, APRÈS la dernière édition de code de la ronde**
+> (revue transverse comprise). 🔴 **Relevé au commit `78cc5a5`, et le nommer
+> n'est pas une coquetterie : l'arbre est PARTAGÉ avec le sous-bloc G2 de la
+> gestion d'apps, qui y écrit au même moment.** Quatre relevés successifs du
+> 19 août ont chacun nommé une « deuxième marge la plus serrée » différente, et
+> chacun avait raison à son heure.
+>
+> 🔴 **LE TABLEAU DE DETTE PASSE DE DEUX À CINQ LIGNES, ET AUCUNE DES TROIS
+> NEUVES N'EST DE E2.** Les deux gelées sont inchangées — `agent/src/encode.rs`
+> **1536**, `agent/src/windows_source.rs` **630**, ni l'une ni l'autre touchée
+> par ce bloc. **Les trois autres viennent du protocole v3 du sous-bloc G2**,
+> livré dans `proto/` pendant cette ronde :
+>
+> | Fichier | Lignes | Propriétaire |
+> | --- | --- | --- |
+> | `proto/src/plateforme.rs` | **588** | 🔴 **G2**, en cours |
+> | `proto/ts/plateforme.ts` | **528** | 🔴 **G2**, en cours |
+> | `agent/src/plateforme.rs` | **504** | 🔴 **G2**, en cours |
+>
+> ⚠️ **Elles sont RELEVÉES ET ATTRIBUÉES, pas corrigées** : elles appartiennent
+> à un chantier vivant, qui écrira sa propre section. **Les nommer ici est ce
+> qui empêche qu'elles vivent un sous-bloc entier sans figurer nulle part** —
+> c'est exactement ce qui est arrivé à `proto/src/plateforme/tests.rs` et
+> `proto/ts/plateforme.test.ts`, nés de G1 et trouvés par le presse-papier P1.
+>
+> ✅ **Et ces deux-là SONT RÉSORBÉES** : le commit `727e6e5` de G2 les ramène de
+> **561 → 449** et de **512 → 417**, *« avant toute addition »*. **Le tableau de
+> dette ne les porte plus.**
+>
+> ⚠️ **`cargo check --target x86_64-pc-windows-gnu` ÉCHOUE à cette date, et ce
+> n'est le fait d'aucun de ces deux chantiers pris isolément** : `proto/` porte
+> la v3, `agent/src/apps/boucle.rs` ne l'a pas encore rattrapée. **Établi par la
+> commande, pas supposé** : HEAD nu, dans un arbre isolé et sans aucune
+> correction de E2, rend les deux mêmes erreurs.
+>
+> **Fichiers que le bloc E2 a fait bouger, tous mesurés par la commande :**
+>
+> | Fichier | Lignes | Remarque |
+> | --- | --- | --- |
+> | `agent/src/micro.rs` | **483** (marge **17**) | ⚠️ E2 n'y a mis qu'une correction de temps verbal, **NEUTRE EN LIGNES** — la marge de 17 interdisait toute addition. **Toute addition future appelle une extraction** |
+> | `agent/src/wasapi/ecriture.rs` | **457** | neuf — le client de rendu WASAPI. C'est le module que la revue de E1 réclamait sous un autre nom : ⚠️ **`wasapi/rendu.rs` n'a PAS été contourné, il a été RÉUTILISÉ** (second point d'entrée `resoudre_cable`, politique opposée), et **`wasapi/sortie.rs` est délibérément écarté** — « sortie » désigne une sortie d'**affichage** dans tout ce dépôt |
+> | `agent/src/wasapi/peripherique.rs` | ~~422~~ **461** | +39 : la désignation intégrée du câble et ses tests |
+> | `agent/src/windows_micro.rs` | **430** | neuf — **le seul fichier du bloc qui ASSEMBLE** ; tout ce qui peut se tromper en est sorti et s'éprouve sous Linux |
+> | `agent/src/demarrage/micro/mesure.rs` | **424** | neuf — extraction du puits de mesure **AVANT** l'addition de l'aiguillage |
+> | `agent/src/micro/dissimulation.rs` | **248** | +17 : les DEUX silences (revue transverse) |
+> | `agent/src/demarrage/micro.rs` | ~~452~~ **234** | −218 par l'extraction ci-dessus, puis l'aiguillage entre les deux puits |
+> | `agent/src/micro/exclusivite.rs` | **175** | neuf — **pur**, la politique du refus non collant |
+> | `agent/src/windows_micro/verrou.rs` | **185** | neuf — le mutex nommé, et le repli `Local\` que la recette a montré **jamais couru** |
+> | `agent/src/micro/boucle_locale.rs` | **154** | neuf — **pur**, la garde mesurée nécessaire le 20 août 2026 |
+> | `agent/src/wasapi/format.rs` | **236** | neuf — **pur**, le contrôle de format |
+> | `scripts/run-agent.sh` | **156** | +3 : les trois variables du bloc (hors portée de la règle) |
+>
+> ❌ **DEUX CHIFFRES DE CETTE TABLE ONT ÉTÉ ÉCRITS DE MÉMOIRE ET ÉTAIENT FAUX** —
+> `wasapi/format.rs` **158** pour **236**, `scripts/run-agent.sh` **148** pour
+> **156**. Ils ont été attrapés **avant le commit**, en relançant `wc -l` sur
+> **toutes** les lignes de la table plutôt qu'en la relisant. C'est le naufrage
+> du « 487 » pris à sa source, et la défense n'est pas de mieux se souvenir :
+> **c'est de mesurer chaque ligne d'une table de comptes au moment où on
+> l'écrit.**
+>
+> ⚠️ **AUCUN PLAFOND N'A ÉTÉ FRANCHI par ce bloc, et aucune compression n'a été
+> employée** : le seul fichier à marge étroite qu'il touche est `micro.rs`, et
+> son édition est neutre en lignes. **Une extraction a été jouée AVANT son
+> addition** (`demarrage/micro/mesure.rs`, tâche 6), sur le patron que D9 a
+> inventé et que D10 a joué trois fois.
+>
+> ✅ **Marges les plus serrées à cette date, RELEVÉES ce jour** :
+> `agent/src/encode/arret.rs` **500** (marge **0**),
+> `client/verify-webrtc.mjs` **494** (6), `agent/src/capture.rs` **492** (8),
+> `agent/src/demarrage.rs` **491** (9),
+> `agent/src/superviseur/lanceur.rs` **488** (12),
+> `agent/src/pont/projfs/rappels.rs` **488** (12),
+> `agent/src/micro.rs` **483** (17), `agent/src/transport/socket.rs` **481** (19),
+> `plateforme/src/http/routes-applications.test.ts` **480** (20).
+>
+> ⚠️ **La divergence de convention que D10 a signalée sans la trancher tient
+> toujours** : le § « Portée » ne liste que `client/src/`, et la commande
+> attrape `client/verify-webrtc.mjs`, qui est hors de ce répertoire. **Décision
+> de convention, et elle appartient au propriétaire du dépôt.**
+
 **Vérifier l'état** :
 
 ```bash
@@ -2801,6 +2882,9 @@ l'**enfant** ; et `main.rs:268` rend la main à `capteur::executer` avant que `d
 | `MICRO_MESURE=1` | **Chantier E, bloc E1** — **variable de BANC, jamais une configuration livrée**. Arme le **puits de mesure du micro** (`agent/src/demarrage/micro.rs`) : un consommateur qui joue le rôle du futur fil WASAPI d'E2, retire du tampon à la cadence réelle et journalise ce qu'il obtient. ⚠️ **Convention `=1` qui ARME** — et non `=0` qui désarmerait : le puits n'est **pas** livré, donc c'est sa présence qu'il faut déclarer, pas son absence. Trace de contrôle, dont **l'absence prouve que la variable n'a pas atteint le processus** : `micro de mesure ARME (MICRO_MESURE=1) : instrument de banc, jamais une configuration livree`. Trace périodique : `micro mesuré`, portant `crete` et `frequence_hz` **côte à côte** (une crête sans fréquence est du bruit), `plc` et `plc_plafonnees` **côte à côte** (le second est **disjoint** du premier — c'est ce qui rend le plafond de dissimulation observable), plus `deposees`, `famines`, `occupation_ms` et `occupation_max_ms`. Transmise par `scripts/run-agent.sh` |
 | `PRESSE_PAPIER=0` | **Sous-projet ① Divers — presse-papier, sous-bloc P1** (20 août 2026) — **variable de PRODUIT**, pas de banc. Désarme le mécanisme ENTIER : `Sondeur::tour` teste le garde **AVANT toute lecture**, donc `PRESSE_PAPIER=0` empêche jusqu'à la lecture du compteur de séquence, pas seulement l'envoi. ⚠️ **`=0` DÉSACTIVE ; une simple PRÉSENCE n'active pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR` et `PART_SONDAGE`, et pour la même raison : tester `is_ok()` armerait le mécanisme en écrivant `PRESSE_PAPIER=0` pour le couper. Lue dans le **capteur** (le propriétaire, D1), par `OnceLock`. Transmise par `scripts/run-agent.sh:37`. Trace, **émise seulement si désarmé** : `presse-papier DESARME (PRESSE_PAPIER=0) : le contenu copie dans la VM n'est plus pousse au navigateur` (`warn!`). 🔴 **LE CONTRÔLE QUI VAUT EST LE ZÉRO DE MESSAGES, PAS LA TRACE** : la trace prouve que la variable a atteint le processus, elle ne prouve pas que le mécanisme est coupé — et un zéro seul serait rendu par un produit entièrement en panne. C'est le bras SANS la variable, avec ses 4 messages, qui rend le zéro discriminant (2 exécutions par bras, recette P1) |
 | `PRESSE_PAPIER_SONDE=<secondes>` | **Sous-projet ① Divers — presse-papier, sous-bloc P1, sonde P0** — **variable de BANC, jamais une configuration livrée**. ⚠️ **Convention INVERSE de la ligne ci-dessus, et les deux sont écrites côte à côte pour qu'on ne les confonde pas : ABSENTE = DÉSARMÉE**, présente = armée (la valeur est une durée, pas un interrupteur). Mesure les cinq questions de la porte éliminatoire sur `GetClipboardSequenceNumber` (`agent/src/diagnostics/presse_papier.rs`). Transmise par `scripts/run-agent.sh:89`. ⚠️ **Elle ÉCRIT le presse-papier de la VM** en phases C et D, et le détruit donc ; le produit, lui, ne l'écrit jamais en P1. 🔴 **Ne jamais la poser en même temps que `SUPERVISEUR`** : `main()` appelle `diagnostics::aiguiller()` en `main.rs:172`, AVANT la branche `CAPTEUR` (`:180`) et avant `PONT` (`:279`) — **quel que soit le mode demandé**, un agent qui la porte exécute la sonde et s'arrête. ⚠️ **La menace que la divergence E10 du plan lui prêtait est FAUSSE** : elle annonçait un capteur exécutant la sonde pendant qu'un superviseur vivant le relance en boucle, ce qui supposerait que l'enfant porte la variable et pas son père — or `Command` hérite de l'environnement, donc le père se serait arrêté le premier. La consigne ne change pas, sa raison si |
+| `MICRO=0` | **Chantier E, bloc E2** — **variable de PRODUIT**. Désarme le microphone **entier** : aucun puits n'est posé, `micro_disponible()` reste faux, `ready` porte `mic: false`, et le bouton du navigateur ne paraît pas. ⚠️ **`=0` DÉSARME ; une simple présence n'arme pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR`, `PRESSE_PAPIER` et `PART_SONDAGE`, et pour la même raison : tester `is_ok()` allumerait le micro chez qui écrit `MICRO=0` pour le couper. Un test garde le prédicat (`demarrage/micro.rs::arme_micro`). Trace, **émise au branchement** donc avant toute session : `micro DESARME (MICRO=0)`. **Mesurée** (recette E2) : bouton caché sur une session `ice=connected`, **0** ligne `windows_micro`, juge à `AMPLITUDE=0,000000` |
+| `MICRO_PERIPHERIQUE=<nom ou identifiant>` | **Chantier E, bloc E2** — **variable de PRODUIT**. Désigne le point de terminaison de **rendu** sur lequel le micro écrit. Convention **VALUÉE**, celle d'`AUDIO_PERIPHERIQUE` et de `MULTIFENETRE_SORTIE`. 🔴 **DEUX DIFFÉRENCES DÉLIBÉRÉES AVEC `AUDIO_PERIPHERIQUE`** : ① **absente, elle ne vaut PAS le défaut de Windows mais la désignation INTÉGRÉE `"VB-Audio"`** — retomber sur `GetDefaultAudioEndpoint` ferait sortir la voix de l'utilisateur **par les haut-parleurs de la VM** sur une machine où le défaut est la carte son ; ② **il n'y a AUCUN repli** — `Choix::Introuvable` et `Choix::Ambigu` valent **échec**, pas de fil de rendu, `mic: false`, un `warn!` avec l'inventaire. A-bis se replie parce que « du son, peut-être le mauvais » vaut mieux que rien ; ici l'arbitrage s'**inverse** : « la voix de l'utilisateur, peut-être dans le mauvais tuyau » n'est pas un moindre mal, c'est une **fuite**. Règle de sélection : `wasapi_peripherique::choisir`. Trace : `cable de rendu retenu pour l'ecriture du micro … integree=true … critere="nom partiel"` — **comparer la valeur RETENUE, jamais la seule présence de la ligne** |
+| `MICRO_FAUTE_ECRITURE=<n>` | **Chantier E, bloc E2** — **variable de BANC, jamais une configuration livrée**. Fait échouer les *n* prochaines **écritures** WASAPI sur le câble. ⚠️ **ABSENTE = DÉSARMÉE**, et **budget GLOBAL AU PROCESSUS** (`OnceLock`) — c'est la leçon que D10 a payée sur `AUDIO_FAUTE_LECTURE` : un budget relu par fil se réarme à chaque reconstruction, et le chiffre-juge qu'il sert devient **structurellement incapable de quitter zéro**. Transmise par `scripts/run-agent.sh`. 🔴 **JAMAIS ARMÉE À CE JOUR** : le chemin d'échec d'écriture WASAPI **n'a jamais couru** (recette E2, legs n°9) |
 
 ---
 
@@ -11465,8 +11549,30 @@ sans dérive, appel réel sans écho), le **format asymétrique** dont le remèd
 écrit et non appliqué, la **silenciosité inconnue** de l'installation, et la
 **licence VB-Audio personnelle seulement** (à régler avant mise sur le marché).
 
+> ✅ **E2 EST FAIT (20 août 2026) — voir la section « Chantier E, bloc E2 »
+> ci-dessous.** Ce qui de ce legs est **soldé** : le rendu sur le câble (une
+> application entend, 440,0 Hz), `windows_micro.rs`, le mutex nommé (et
+> `WAIT_ABANDONED` **observé**), les dix minutes sans dérive, et le conflit de
+> nom — ⚠️ **résolu autrement que cette ligne ne le suggérait** : `rendu.rs`
+> n'a pas été contourné mais **RÉUTILISÉ**, et le module qui écrit s'appelle
+> `wasapi/ecriture.rs`.
+>
+> ⛔ **Ce qui de ce legs RESTE DÛ** : le **format asymétrique** — le remède
+> n'est pas seulement « non appliqué », il est **INAPPLICABLE**, la tâche 2 de
+> E2 ayant mesuré qu'il **casse** le point de terminaison (`0x88890008`) ; la
+> **silenciosité de l'installation**, jamais tentée ; la **licence VB-Audio** ;
+> et l'**appel réel sans écho**, qui exige un correspondant humain. ⚠️ **Et
+> « personne n'a écouté »** : le critère de fin de la spec §13 n'est atteint que
+> par un juge logiciel.
+
 **E3, conditionnel** : l'**AEC structurellement incomplète en multi-fenêtres**,
 dont l'exercice est un critère de E2 — **avec deux fenêtres qui jouent du son**.
+
+> ⚠️ **CE CRITÈRE DE E2 EST DÉCLARÉ NON MESURABLE PAR SON MONTAGE (20 août
+> 2026), et le déclarer tenu aurait été un mensonge.** Chrome sans interface,
+> sans haut-parleur ni microphone réels, **n'a aucun chemin acoustique** :
+> aucune mesure faite là ne dirait quoi que ce soit de l'écho. **E3 en hérite**,
+> avec le protocole humain écrit au § « Step 2 » de la tâche 13 du plan E2.
 
 **Propres à E1** :
 
@@ -11479,6 +11585,310 @@ dont l'exercice est un critère de E2 — **avec deux fenêtres qui jouent du so
 6. ⛔ **Un binaire témoin doit s'identifier lui-même.**
 7. ⛔ **Le périphérique par défaut de la session INTERACTIVE n'a jamais été
    relevé** — tous les relevés WinRM sont ceux de la session 0.
+
+---
+
+## 🎤🔌 Chantier E — Microphone, bloc E2 : une application Windows ENTEND (20 août 2026)
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-20-micro-e2-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-20-micro-e2.md`.
+Spécification : `docs/superpowers/specs/2026-07-28-micro-design.md` — ⚠️ **écrite
+le 28 juillet 2026, avant les chantiers A, B, C et D** ; le plan de E1 en a
+confronté quatorze affirmations au code, celui de E2 en réfute deux de plus, et
+**E2 en annote une troisième** (son § « Silence », voir ⑥). **Ne recopier aucune
+affirmation de cette spec sans passer par ces tableaux.**
+Journaux : `docs/superpowers/plans/journaux-micro-e2/` — **128 fichiers suivis
+par git**, et **DEUX familles de lecture seulement** :
+
+| Famille | Compte | Ce qu'il faut faire |
+| --- | --- | --- |
+| les journaux d'agent **bruts** (`agent-*.log`) | **10** | **séquences ANSI PRÉSENTES** : `sed 's/\x1b\[[0-9;]*m//g'` — ou lire le jumeau `-plat`, **versé pour chacun des dix**, vérifié un par un |
+| tout le reste (`*-plat.log`, journaux du juge, `*.json`, `*.ps1`, `*.mjs`, `*.md`, `*.txt`) | **118** | rien |
+
+✅ **AUCUN octet NUL dans aucun fichier** (balayage sur les 128) : contrairement
+à D10 et au presse-papier P1, **aucun `grep -a` n'est nécessaire ici**.
+
+E1 avait porté la voix du navigateur jusqu'au **PCM décodé dans l'agent**. E2
+l'écrit sur le point de terminaison de rendu du câble virtuel par un **fil WASAPI
+dédié**, et une application Windows qui choisit `CABLE Output` comme microphone
+l'entend. **C'est le maillon qui manquait au critère de fin de la spec §13.**
+
+**Binaires mesurés** : vert **10 160 640** octets, rouge (avant E2, `08dabab`)
+**10 088 448**. Les deux après `cargo clean --release -p proto -p agent`, taille
+relevée **après** compilation.
+
+### ① Le fait qui gouverne : 440,0 Hz sur CABLE Output
+
+Le juge (`micro-ecoute-e2.ps1`) ouvre `CABLE Output` par `IAudioClient` en mode
+partagé — **exactement ce que fait une application qui choisit ce microphone**.
+La source est un WAV de 440 Hz joué par Chrome **à la place d'un microphone**,
+par un `getUserMedia` RÉEL : permission, contraintes de `client/src/micro.ts`,
+et pipeline audio compris. **Le bouton `#micro` de la page est CLIQUÉ.**
+
+| Exécution | Crête | **Fréquence / amplitude** |
+| --- | --- | --- |
+| V1 | 0,449513 | **440,0 Hz** / 0,050500 |
+| V2, deux passages | 0,058250 / 0,058216 | **440,0 Hz** / 0,054905 et 0,055365 |
+
+🔴 **LE ROUGE PORTE LE MÉCANISME, PAS LE RÉSULTAT** — le rouge vacueux de D10
+évité. Sur le binaire d'avant E2 : juge à `AMPLITUDE=0,000000`, **0** ligne
+`windows_micro`, bouton caché — **mais session `ice=connected` avec deux flux
+entrants, donc `ready` est bien arrivé** — et, **dans la MÊME exécution**, le
+témoin fait entendre **660,0 Hz** au juge. Sans cette dernière ligne, « E2
+n'écrit pas » et « le juge est cassé » se liraient pareil.
+
+### ② Les cinq points que l'abstention de l'implémenteur avait laissés ouverts
+
+Les tâches 7 à 10 s'étaient **délibérément abstenues** de toucher la VM et
+avaient nommé ce que cela laissait non vérifié. **Les cinq sont mesurés**, et
+quatre d'entre eux par **une seule ligne**, identique aux **cinq** exécutions
+vertes :
+
+```
+micro : ecriture sur le cable ARMEE  format=48000 Hz, 2 canaux, 32 bits, flottant
+                                     reveil="evenement"  espace_mutex="Global"
+```
+
+| Point | Verdict |
+| --- | --- |
+| espace de nommage du mutex | **`Global`**, 5/5 |
+| `WAIT_ABANDONED` survient-il ? | **OUI** — voir ④ |
+| la garde de boucle locale mord-elle ? | **OUI, et c'est le chemin NOMINAL** — voir ③ |
+| quel réveil a servi ? | **`evenement`**, 5/5 |
+| le compteur de retards | **0**, y compris **cumul 0 sur deux fois dix minutes** |
+
+🔴 **DEUX CHEMINS DE REPLI SONT DU CODE LIVRÉ ET JAMAIS COURU**, et c'est le
+corollaire à ne pas perdre : le repli **`Local\`** du mutex et le repli **sur
+échéance** du réveil (`Reveil::Echeance`). **Leurs `warn!` n'ont jamais été
+émises, sur aucune machine.** Les deux fichiers le portent désormais dans leur
+en-tête.
+
+🔵 **`AUDCLNT_STREAMFLAGS_EVENTCALLBACK` est ACCEPTÉ** : la spec §6 l'affirmait
+sans l'avoir mesuré, et **aucun code de ce dépôt n'avait jamais ouvert un flux
+de RENDU WASAPI**. C'est mesuré, et la spec avait raison.
+
+### ③ 🔴 La garde de boucle locale mord — et c'est le chemin NOMINAL de cette VM
+
+Sans `AUDIO_PERIPHERIQUE`, le rendu **par défaut** de cette VM **est le câble** :
+le loopback du chantier A capterait le point de terminaison même sur lequel le
+micro écrit, et l'utilisateur s'entendrait lui-même. Les deux identifiants
+comparés sont **le même** `{deec1914-…}`, et le `warn!` **nomme le remède avec
+l'inventaire des trois candidats**. Quatre moitiés relevées : le `warn!`,
+`ready` portant `mic: false` **sur une session `ice=connected`**, le juge à
+`CRETE=0,000000`, et **0** ligne `micro ecrit sur le cable`.
+
+🔵 **C'est ce critère qui donne son sens à la configuration de tous les
+autres** : `AUDIO_PERIPHERIQUE='Steam Streaming'` dans les exécutions vertes
+n'est pas un contournement de recette, **c'est le remède que la garde nomme
+elle-même.**
+
+### ④ L'exclusivité : ce qui est mesuré, et ce qui ne l'est PAS
+
+⚠️ **LE CRITÈRE ⑤ DU PLAN N'A PAS ÉTÉ JOUÉ TEL QU'ÉCRIT.** Il exigeait « deux
+enfants, micro allumé dans les deux ». **Deux agents mono-fenêtre ne peuvent pas
+coexister** : DXGI n'autorise qu'**une** duplication ouverte par sortie, et le
+second mourrait avant d'atteindre le micro. Deux enfants exigent le mode
+**superviseur**, hors périmètre.
+
+**Ce qui a été exercé est le chemin de code exact, avec un contendant qui n'est
+pas un enfant** : un tiers acquiert `Global\guacamole-agent-micro-cable`,
+l'agent est **refusé** (**une seule** ligne de journal) et le juge n'entend
+rien malgré 6590 paquets qui montent ; le tiers est **TUÉ** sans `ReleaseMutex`,
+et l'agent **acquiert 46 s après son refus**, le juge repassant à **440,0 Hz**.
+
+🔵 **Deux acquis que rien d'autre n'établissait** : **`WAIT_ABANDONED` survient
+réellement** — c'était une prédiction de la Décision 2 — et **le refus n'est PAS
+collant**, la correction que E1 n'avait pas vue fonctionnant sans redémarrage ni
+renégociation, **le journal restant unique**.
+
+### ⑤ Dix minutes, deux fois : aucune grandeur ne croît
+
+| | passage 1 | passage 2 |
+| --- | --- | --- |
+| `retards` **cumulés** | **0** | **0** |
+| `insertions` cumulées | **0** | **0** |
+| `sauts` cumulés | 3 (amorçage) | 3 (amorçage) |
+| `deposees` / minute | **50** aux neuf | **50** aux neuf |
+| `silence` / minute | 5 à 10 **sur 48 000** | 5 à 9 **sur 48 000** |
+
+**Côté navigateur** : croissance **exactement linéaire**, 3038 paquets montants
+par minute, **`packetsLost = 0` aux onze relevés**, RTT 1 à 2 ms,
+`ice=connected` de bout en bout, **30 369** paquets à t+600 s. 🔵 **C'est aussi
+la mesure de l'EFFET des trois drapeaux anti-gel** : deux sessions de 11 minutes
+du chantier TURN s'étaient interrompues à 331 s et 340 s faute d'eux. **La page
+n'a pas gelé.**
+
+⚠️ **NON EXPLIQUÉ** : l'amplitude décroît de **17,6 %** sur sept minutes
+(0,056246 → 0,046255). **Trois points, une exécution — un relevé, pas une
+tendance**, et ce n'est aucune des grandeurs du critère. `autoGainControl` est
+un suspect **NON ÉPROUVÉ**.
+
+### ⑥ Il y a DEUX silences, et le critère ④ n'en nommait qu'un
+
+**Le critère ④ annonçait « 60 s de DTX : `plc_plafonnees` court ». Cette
+moitié-là est RÉFUTÉE, et elle ne pouvait pas être tenue ainsi :**
+
+- **le silence de E1** — la **source** de la piste est arrêtée
+  (`OscillatorNode` éteint) ⇒ `packetsSent` se fige. **C'est du DTX**, et c'est
+  là que le plafond de dissimulation existe ;
+- **le silence de E2** — un **périphérique de capture VIVANT qui produit du
+  silence numérique** ⇒ Chrome émet **50 paquets/s sans interruption**,
+  `plc = 0` **ET** `plc_plafonnees = 0`. Aucune trame ne manque.
+
+✅ **Ce que le critère jugeait vraiment est TENU** (`AMPLITUDE=0,000000`, deux
+exécutions), **et le plafond a bien été vu courir** — sur une piste **ARRÊTÉE**,
+`plc_plafonnees=100/s`, le câble restant à **3,1 × 10⁻⁵** là où E1 relevait
+0,53 à 0,67. Le § « Silence » de la spec voit **sa prémisse rétrécie et sa
+conclusion intacte** ; `micro/dissimulation.rs` porte l'encadré auprès du code.
+
+### ⑦ 🔴 LE PIÈGE LE PLUS RÉUTILISABLE : LA CRÊTE MENT, quatre fois ici
+
+VB-Cable **rejoue une fois** le contenu resté dans son tampon à tout client de
+capture neuf. Dans cette seule recette, **quatre** relevés portent une crête
+franche (0,449822 ou 0,054249…) sur un spectre **rigoureusement nul**
+(`AMPLITUDE=0,000000`). **Une recette qui aurait jugé à la crête aurait conclu
+« ça porte » là où rien ne portait, quatre fois.** On juge à la **fréquence
+dominante**, jamais à un compte d'octets ni à une crête seule — doctrine payée
+en D7, et re-confirmée ici sur ce matériel exact.
+
+⚠️ **Corollaire de lecture** : `FREQUENCE=80.0` est la **borne basse du
+balayage**. Sur du silence, toutes les puissances valent 0 et c'est le premier
+pas qui gagne. **C'est `AMPLITUDE` qui tranche, jamais `FREQUENCE` seule.**
+
+### ⑧ Ce que E2 n'établit PAS
+
+- **Aucun taux.** Deux exécutions par critère au mieux, **une** pour
+  l'exclusivité.
+- 🔴 **PERSONNE N'A ÉCOUTÉ.** L'enregistreur vocal Windows (spec §11.1) n'a pas
+  été ouvert : **le critère de fin de la spec §13 n'est atteint que par un JUGE
+  LOGICIEL**, qui ne dit rien de la qualité ni de la distorsion. **L'appel réel
+  sans écho** (§11.2) exige un correspondant humain : non joué.
+- 🔴 **La latence ajoutée par l'agent n'est PAS jugée** — troisième critère de
+  la spec §13. E2 relève **une composante sur deux** (`retards` = 0) : ⚠️
+  **l'occupation du tampon N'EST PAS OBSERVABLE sur le chemin de production**.
+  La trace du câble ne porte **ni `famines`, ni `occupation_ms`** ; ces deux-là
+  ne vivent que dans la trace du puits de **mesure** de E1, qui **ne peut pas
+  coexister avec le câble** (Décision 10). **C'est l'instrument qui manque, pas
+  la mesure.**
+- 🔴 **L'écho à deux fenêtres est DÉCLARÉ NON MESURABLE PAR CE MONTAGE** :
+  Chrome sans interface, sans haut-parleur ni microphone réels, **n'a aucun
+  chemin acoustique**. Le protocole qu'un humain doit jouer est écrit. **Le
+  déclarer tenu serait un mensonge.**
+- **`CABLE Output` reste à 44 100 Hz** quand `CABLE Input` est à 48 000, aux
+  **19** exécutions du juge. Le remède au registre est **INAPPLICABLE** (il
+  casse le point de terminaison, `0x88890008`). **Le critère d'écoute y survit**
+  — un rééchantillonnage préserve la fréquence d'un ton pur —, mais **la qualité
+  et la latence que cette conversion coûte ne sont mesurées par PERSONNE**.
+- **`MICRO_FAUTE_ECRITURE` n'a jamais été armée** : le chemin d'échec d'écriture
+  WASAPI **n'a pas couru**.
+- **Une seule fréquence, un seul débit, une seule application, une seule
+  fenêtre**, et un navigateur **sans interface à décodage logiciel** — pas un
+  client réel, pas de HiDPI.
+- **Aucune constante calibrée, aucun jugement d'écoute** — la lacune que ce
+  dépôt traîne depuis `BPP_MIN`.
+
+### ⑨ Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔴 **LA CRÊTE MENT** (voir ⑦).
+- 🔴 **Sous zsh, `"$VAR:suffixe"` applique le modificateur d'historique `:e`** et
+  **mange la valeur** : `$P:e2-v1` rend **`2-v1`**. Reproduit et isolé contre
+  bash. Le symptôme est un `SESSION_ID` **tronqué** dans `C:\dev\run-agent.ps1`,
+  donc un agent qui s'enregistre sous un nom que personne n'appelle.
+  **Toujours des accolades.** *(C'est le jumeau du piège déjà écrit « zsh ne
+  découpe pas les variables en mots » — lequel a d'ailleurs fait rendre ZÉRO au
+  premier `grep` de la revue transverse, sans message d'erreur.)*
+- 🔴 **`AGENT_VM` attend l'IDENTIFIANT de la VM, pas son NOM.** Le refus est
+  **volontairement indiscernable** d'un mauvais secret (aucun oracle
+  d'énumération) : **rien sur le fil ne dit lequel des deux est en cause**, seul
+  le journal de la plateforme le montre. ⚠️ **Cinq refus arment un frein**
+  (~900 s), en mémoire — relancer le service le vide.
+- 🔴 **`getUserMedia` n'existe pas sur une origine NON SÛRE.**
+  `http://192.168.3.1:5173` — l'adresse qu'employait E1 — n'en est pas une ;
+  `http://127.0.0.1:5173` en est une. **E1 ne s'en apercevait pas : il
+  n'appelait jamais `getUserMedia`.** Le client accepte `?plateforme=` et
+  `?signaling=` (`client/src/adresse-plateforme.ts`) pour compenser.
+- ⚠️ **`scripts/run-agent.sh` exige `.env`, et `.env` porte
+  `SIGNALING_URL=…:8080`** — la plateforme d'un AUTRE chantier. Un
+  `set -a; source .env` **postérieur** aux réglages de recette les écrase **en
+  silence**, et l'agent parle au mauvais service. **L'ordre compte.**
+- ⚠️ **Un agent survivant tient `C:\dev\agent.log`** et l'on relit alors le
+  journal de la tentative **précédente**. Payé trois fois en D8, **une fois de
+  plus ici** — d'où une mise à mort câblée en tête de chaque lancement.
+- ⚠️ **`nodejs-winrm` rend la main dès la PREMIÈRE ligne et TUE le processus
+  distant** : le juge, qui écrit dès sa première ligne, exige une **enveloppe
+  muette**.
+- ⚠️ **Corrélation relevée sur QUATRE exécutions, cause NON identifiée** : quand
+  le client arrive **~10 s** après l'agent, ICE passe `Connected` aussitôt ;
+  quand il arrive **~42 à 48 s** après, ICE reste en `Checking` puis se
+  déconnecte au bout de 18 s. **Rien n'exclut une coïncidence** — nommée parce
+  qu'elle a coûté deux exécutions.
+- ⚠️ **Le harnais borne un appel à dix minutes** : une épreuve de dix minutes
+  menée au premier plan **perd le compte rendu de son pilote**. La mener en
+  arrière-plan. *(C'est ce qui est arrivé au premier passage long, rejoué pour
+  cette seule raison.)*
+- ⚠️ **`noiseSuppression: true` arme NS3, qui efface le bruit STATIONNAIRE** —
+  et une sinusoïde continue en est un du point de vue de l'algorithme. Un
+  contrôle d'instrument qui s'arrêterait à « `getUserMedia` rend une piste »
+  passerait sur un périphérique **entièrement effacé**, et toute la recette
+  mesurerait le silence en croyant mesurer une voix. **Mesuré : le ton continu
+  survit** (détachement 106,9 dB), et le WAV **haché** écrit d'avance en repli
+  n'a pas eu à servir.
+
+### ⑩ La revue transverse de fin de branche — huit affirmations, quatorze places
+
+Barème : 5 en D7, 3 en D8, 6 en D9, douze en D10, sept en D11, huit en P1, dix
+en P2, cinq en S1, neuf en E1, douze en P3, douze en S2, treize en S3, huit en
+P4, huit en G1, vingt-sept en S4, dix-sept au presse-papier P1. **Huit ici.**
+Les plus instructives : « c'est une **prédiction** » sur `EVENTCALLBACK`, devenu
+une mesure ; le repli `Local\` **présenté comme un chemin employé** alors qu'il
+n'a jamais couru ; `WAIT_ABANDONED` « cas nominal », raisonnement devenu relevé ;
+et **trois places** du plan E2 sur les grandeurs de la tâche 13 — dont la
+troisième, celle qu'un successeur lit pour savoir ce que E2 a mesuré.
+
+⚠️ **Une édition a dû être NEUTRE EN LIGNES** : `micro.rs` est à **483** pour une
+porte à 500.
+
+🔴 **`cargo check --target x86_64-pc-windows-gnu` ÉCHOUE à la clôture, et ce
+n'est PAS de ce chantier** : `proto/` porte la **v3** du sous-bloc G2 et
+`agent/src/apps/boucle.rs` ne l'a pas encore rattrapée. **Établi, pas affirmé** :
+**HEAD nu**, dans un arbre isolé et sans une seule correction de E2, rend les
+**deux mêmes erreurs**. Les corrections de E2 ont donc été contrôlées sur
+**`016b611`**, dernier commit avant celui de G2 : **16 avertissements tous
+`dead_code`**, **706 tests d'hôte**.
+
+### ⑪ Ce que E2 lègue
+
+**À E3** :
+
+1. ⛔ **L'écho à deux fenêtres**, déclaré **non mesurable par ce montage**. Le
+   protocole humain est écrit : deux fenêtres émettant du son, micro dans une
+   seule, **sans casque** puis **avec** — l'écart est la mesure.
+2. ⛔ **Le refus d'exclusivité n'est PAS dit au client** (Décision 9) : à deux
+   fenêtres, le bouton de la perdante s'allume et **rien ne sort**. Le fermer
+   demande un message de contrôle neuf, donc `proto/` **et** `client/`.
+3. ⛔ **L'exclusivité à DEUX ENFANTS n'est pas exercée** — il y faut le mode
+   superviseur.
+
+**Sur le câble** :
+
+4. ⛔ **Le rééchantillonnage 48 000 → 44 100 subsiste**, son remède est
+   **inapplicable**, et **sa qualité comme sa latence ne sont mesurées par
+   personne**.
+5. ⛔ **La licence VB-Audio est gratuite en usage PERSONNEL seulement** — legs de
+   E1, **à régler avant mise sur le marché**.
+
+**Propres à E2** :
+
+6. 🔴 **Personne n'a écouté** : le critère de fin de la spec §13 n'est atteint
+   que par un juge logiciel.
+7. 🔴 **La latence ajoutée par l'agent n'est pas jugée**, et **l'occupation du
+   tampon n'est pas observable** sur le chemin de production. La rendre
+   observable demanderait de l'ajouter à la trace du câble.
+8. ⛔ **Deux replis livrés et JAMAIS COURUS** : `Local\` et `Reveil::Echeance`.
+9. ⛔ **`MICRO_FAUTE_ECRITURE` n'a jamais été armée.**
+10. ⛔ **La décroissance de 17,6 % de l'amplitude**, non expliquée.
+11. ⛔ **Aucune constante calibrée, aucun jugement d'écoute.**
 
 ---
 
@@ -12796,7 +13206,9 @@ winrm.runCommand('Get-ChildItem C:\\', '192.168.3.2', 'Administrator', 'PASSWORD
 **Dernière mise à jour**: ~~21 octobre 2025 (Session de bugfixing complète)~~ —
 ⚠️ **cette ligne dormait depuis huit sous-blocs et se réfutait elle-même** : le
 fichier a été écrit tout du long jusqu'au ~~**6 août 2026** (sous-bloc D9)~~
-**19 août 2026** (sous-blocs D10, D11, P1, P2, P3, S1, et le **chantier E**).
+**19 août 2026** (sous-blocs D10, D11, P1, P2, P3, S1, et le **chantier E**)
+⚠️ **et le 20 août 2026** (P4, P5, S2, S3, S4, F0/F1, G1, presse-papier P1, et
+le **bloc E2 du chantier E**) — *cette date-ci vieillira comme les autres.*
 Elle ne date que le pied de page hérité du Guacamole historique, ci-dessous,
 qu'aucun chantier du projet agent n'a touché.
 ⚠️ **Le « 6 août 2026 » avait à son tour dormi SEPT sous-blocs**, dans la phrase
