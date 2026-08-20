@@ -93,7 +93,9 @@
        ne l'avait relevé, `base.css` posait `color: var(--texte-fort)` sur
        `body`, `--texte-fort` valait `#10131a` en thème clair, et les cinq
        éléments de la fenêtre de session écrivaient du quasi-noir sur un voile
-       quasi-noir. AUCUN des huit contrôles ne pouvait le voir.
+       quasi-noir. AUCUN des neuf contrôles ne pouvait le voir (le « huit »
+       d'origine était faux à la date même où la tâche 4 l'a écrit : voir
+       `design/contraste.ts`, qui porte le relevé).
        ✅ D'où `--sur-voile`, le SEPTIÈME hors-thème, et la 53ᵉ paire de
        contraste : `--sur-voile` sur `--video-letterbox`, la SEULE région où le
        fond sous l'encre soit connu — les bandes que laisse `object-fit:
@@ -104,8 +106,15 @@
        à `--danger` / `--alerte` (divergence D3). Les employer ferait CHANGER
        DE COULEUR le bouton micro, et sa couleur suivrait le thème du produit
        alors qu'elle est posée sur une vidéo qui n'en suit aucun. Ce serait un
-       changement d'apparence, que ce socle s'interdit. Le raccordement
-       sémantique du micro appartient au sous-bloc S4. */
+       changement d'apparence, que ce socle s'interdit.
+       ❌ « Le raccordement sémantique du micro appartient au sous-bloc S4 » —
+       écrit ici par S1, et S4 LE CORRIGE PLUTÔT QUE DE L'EXÉCUTER. Raccorder
+       `--voile-micro-actif` à `--danger` ferait suivre au bouton LE THÈME DU
+       PRODUIT alors qu'il est posé sur une vidéo qui n'en suit aucun : c'est
+       MOT POUR MOT l'argument que les six lignes ci-dessus emploient pour
+       tenir les six voiles hors thème. La phrase promettait donc ce que sa
+       propre page réfute. ✅ TRANCHÉ, et tranché NON : le micro reste hors
+       thème, et c'est sa raison — non pas une dette reportée. */
     --video-letterbox: #000;
     --voile-flottant: rgb(0 0 0 / 0.72);
     --voile-bouton: rgb(0 0 0 / 0.55);
@@ -175,8 +184,10 @@
        ⚠️ `--e-3` VAUT 12 px À RACINE 16, et c'est la reprise exacte des
        décalages des bandeaux d'avant ce socle. Cette égalité DÉPEND de ce que
        `base.css` ne force pas la racine : avec le `font: 14px` que `style.css`
-       posait sur `html`, `0.75rem` vaudrait 10,5 px — et AUCUN des huit
-       contrôles ne mesure une longueur. */
+       posait sur `html`, `0.75rem` vaudrait 10,5 px — et AUCUN des neuf
+       contrôles ne mesure CETTE longueur-ci. ❌ « aucun ne mesure une
+       longueur » n'est plus vrai depuis S4 : §7.10 en mesure une, mais
+       `tokens.css` est son exception ③ — ses littéraux SONT l'échelle. */
     --e-1: 0.25rem;     /* 4 px */
     --e-2: 0.5rem;      /* 8 px */
     --e-3: 0.75rem;     /* 12 px */

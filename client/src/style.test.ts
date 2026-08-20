@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import styleCss from './style.css?raw';
 import etatTerminalCss from './session/etat-terminal.css?raw';
+import boutonsDeCoinCss from './session/boutons-de-coin.css?raw';
 import { declarationsDe, preludes, sansCommentaires } from './design/css';
 
 /**
@@ -39,6 +40,11 @@ import { declarationsDe, preludes, sansCommentaires } from './design/css';
 const CSS = sansCommentaires(styleCss);
 const SELECTEURS = preludes(CSS).filter((p) => !p.startsWith('@'));
 const CSS_TERMINAL = sansCommentaires(etatTerminalCss);
+// 🔴 LE BLOC DES DEUX BOUTONS DE COIN A ÉTÉ EXTRAIT de `style.css` par la revue
+// transverse de S4 (plafond de 300 lignes franchi, rattrapé par une EXTRACTION
+// et jamais par une compression). Le garde ① le suit dans son fichier : il tient
+// la RÈGLE, pas le fichier où elle vit.
+const CSS_BOUTONS = sansCommentaires(boutonsDeCoinCss);
 
 /** Les déclarations du bloc dont le prélude est exactement `selecteur`. */
 function declarationsDuBloc(css: string, selecteur: string): string[] {
@@ -161,7 +167,16 @@ describe('style.css — les gardes de la fenêtre de session', () => {
         // VIDANT `client/src/style.css`, jamais en y ajoutant quelque chose.
         expect(
             SELECTEURS.length,
-            'style.css ne déclare AUCUNE règle : le garde ① est alors vert en ne mesurant rien',
+            'style.css ne déclare AUCUNE règle : les gardes de cette feuille sont alors verts en ne mesurant rien',
+        ).toBeGreaterThan(0);
+        // 🔴 ET L'ATTEIGNABILITÉ SUIT LA RÈGLE, PAS LE FICHIER D'ORIGINE.
+        // Depuis l'extraction, vider `style.css` seule laisserait le garde ①
+        // vert : sa règle vit ailleurs. C'est le défaut de portée que
+        // `design/longueurs.test.ts` a mesuré sur sa propre rouge, et il se
+        // rejoue ici à l'identique dès qu'une extraction déplace une règle.
+        expect(
+            preludes(sansCommentaires(boutonsDeCoinCss)).filter((p) => !p.startsWith('@')).length,
+            'session/boutons-de-coin.css ne déclare AUCUNE règle : le garde ① est alors vert en ne mesurant rien',
         ).toBeGreaterThan(0);
     });
 
@@ -178,8 +193,8 @@ describe('style.css — les gardes de la fenêtre de session', () => {
         // inconnue de tous ici. Que la zone occupée soit la bonne est un
         // JUGEMENT HUMAIN (spec §8), et il n'a pas été porté.
         expect(
-            declarationsDuBloc(CSS, '#fullscreen[data-actif="true"]'),
-            'la règle #fullscreen[data-actif="true"] ne déclare pas pointer-events: none',
+            declarationsDuBloc(CSS_BOUTONS, '#fullscreen[data-actif="true"]'),
+            'session/boutons-de-coin.css : la règle #fullscreen[data-actif="true"] ne déclare pas pointer-events: none',
         ).toContain('pointer-events: none');
     });
 

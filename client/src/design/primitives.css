@@ -14,7 +14,7 @@
       ni `:root`. C'est ce qui garantit que ce fichier ne change RIEN à
       `client/index.html`, dont les cinq éléments ne portent aucune classe de
       primitive et dont DEUX sont des `<button>`. Un `button { … }` ici
-      changerait la fenêtre de session sans qu'aucun des huit contrôles ne le
+      changerait la fenêtre de session sans qu'aucun des neuf contrôles ne le
       dise.
    ② L'ANNEAU DE FOCUS NE S'EFFACE JAMAIS. `design/base.css` le pose
       globalement sur `:focus-visible` : les primitives l'ont toutes, y compris
@@ -26,7 +26,12 @@
       contraste ne serait mesuré par rien. Le désactivé se dit donc par des
       TOKENS : `--texte-faible` sur `--fond-1`/`--fond-2`.
    ④ AUCUNE LONGUEUR HORS ÉCHELLE. Un `4px` écrit ici ne serait vu par AUCUN
-      des huit contrôles — aucun ne mesure une longueur. Les seuls littéraux
+      des neuf contrôles, et la RAISON A CHANGÉ avec le sous-bloc S4.
+      ❌ « aucun ne mesure une longueur » était vrai jusque-là ; §7.10
+      (`design/longueurs.test.ts`) en mesure une. Ce qui laisse CE fichier
+      découvert est désormais une PORTÉE, pas une absence : §7.10 exclut
+      `client/src/design/`, et G4 de `primitives.test.ts` ne lit que les
+      QUATRE familles, jamais cet agrégateur d'`@import`. Les seuls littéraux
       autorisés sont `0`, `100%`, `1` et les mots-clés (`auto`, `inherit`,
       `transparent`, `1fr`).
 

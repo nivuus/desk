@@ -1,0 +1,284 @@
+════ ÉNUMÉRATION AVANT TOUTE ÉDITION — revue transverse de S4 ════
+arbre : ff49f14   date : 2026-08-20T08:23:49+02:00
+
+───── CIBLE ① : le compte des contrôles, « huit » → « neuf » ─────
+[a] 'huit contrôle' (la formule du plan) :
+client/src/style.css:30:   INVÉRIFIABLE : « aucun des huit contrôles ne mesure une longueur » était
+client/src/style.css:89:   déclaraient explicitement. AUCUN des huit contrôles ne pouvait le voir.
+client/src/design/longueurs.test.ts:9: * c'est ce qui fait sa raison d'être. Jusqu'ici, « aucun des huit contrôles ne
+client/src/design/primitives.css:17:      changerait la fenêtre de session sans qu'aucun des huit contrôles ne le
+client/src/design/primitives.css:29:      des huit contrôles — aucun ne mesure une longueur. Les seuls littéraux
+client/src/design/amorce-theme.js:9:   aucun des huit contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+client/src/design/primitives.test.ts:112:        // apparence sans qu'aucun des huit contrôles ne le dise.
+client/src/design/primitives.test.ts:127:        // faire propre ». Aucun des huit contrôles ne le verrait.
+client/src/design/primitives.test.ts:150:        // qu'aucun des huit contrôles ne mesure, puisque aucun ne mesure une
+client/src/design/primitives/champ.css:7:   aucun des huit contrôles ne verrait une règle morte. Le dépôt a déjà payé
+client/src/design/reprise.test.ts:40:        // exactement le genre d'erreur qu'aucun des huit contrôles n'attrape,
+client/src/design/reprise.test.ts:85:        // vaudrait 10,5 px — et AUCUN des huit contrôles ne le dirait.
+client/src/design/tokens.css:96:       quasi-noir. AUCUN des huit contrôles ne pouvait le voir.
+client/src/design/base.css:24:   Les huit contrôles du sous-projet ⑥ portent sur les couleurs, les
+docs/superpowers/specs/2026-08-19-design-system-design.md:682:> Sept scripts, huit contrôles.
+[a] total : 15
+
+[b] 'huit' tout court — le SENS, pas la formule :
+client/src/main.ts:75:    // décodeur du navigateur saturé dès huit fenêtres de 1280×720.
+client/src/style.css:30:   INVÉRIFIABLE : « aucun des huit contrôles ne mesure une longueur » était
+client/src/style.css:33:   mesure une, et il est NÉ ROUGE de huit occurrences sur l'arbre intact.
+client/src/style.css:89:   déclaraient explicitement. AUCUN des huit contrôles ne pouvait le voir.
+client/src/design/tokens.ts:129: * typographiques, les huit d'espacement, les rayons, les durées et les piles
+client/src/design/amorce-theme.js:9:   aucun des huit contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+client/src/design/primitives.css:17:      changerait la fenêtre de session sans qu'aucun des huit contrôles ne le
+client/src/design/primitives.css:29:      des huit contrôles — aucun ne mesure une longueur. Les seuls littéraux
+client/src/design/tokens.css:96:       quasi-noir. AUCUN des huit contrôles ne pouvait le voir.
+client/src/design/tokens.css:174:    /* ── Échelle d'espacement — pas de 4 px, huit crans (spec §4.4) ────────
+client/src/design/tokens.css:178:       posait sur `html`, `0.75rem` vaudrait 10,5 px — et AUCUN des huit
+client/src/design/base.css:24:   Les huit contrôles du sous-projet ⑥ portent sur les couleurs, les
+client/primitives.html:34:            sont les trois jugements humains que S2 ajoute aux huit du §8, et
+client/src/design/longueurs.test.ts:9: * c'est ce qui fait sa raison d'être. Jusqu'ici, « aucun des huit contrôles ne
+client/src/design/primitives/message.css:17:   HUMAIN, et il s'ajoute aux huit du §8 : aucune commande ne le dira.
+client/src/design/primitives.test.ts:112:        // apparence sans qu'aucun des huit contrôles ne le dise.
+client/src/design/primitives.test.ts:127:        // faire propre ». Aucun des huit contrôles ne le verrait.
+client/src/design/primitives.test.ts:150:        // qu'aucun des huit contrôles ne mesure, puisque aucun ne mesure une
+client/src/design/reprise.test.ts:40:        // exactement le genre d'erreur qu'aucun des huit contrôles n'attrape,
+client/src/design/reprise.test.ts:85:        // vaudrait 10,5 px — et AUCUN des huit contrôles ne le dirait.
+client/src/design/primitives/champ.css:7:   aucun des huit contrôles ne verrait une règle morte. Le dépôt a déjà payé
+docs/superpowers/specs/2026-08-19-design-system-design.md:376:**Échelle d'espacement** — pas de 4 px, huit crans :
+docs/superpowers/specs/2026-08-19-design-system-design.md:591:  tokens hors thème, les sept crans typographiques, les huit d'espacement, les
+docs/superpowers/specs/2026-08-19-design-system-design.md:676:> ✅ **ILS SONT HUIT DEPUIS LE SOUS-BLOC S3 (20 août 2026), et le huitième
+docs/superpowers/specs/2026-08-19-design-system-design.md:682:> Sept scripts, huit contrôles.
+docs/superpowers/specs/2026-08-19-design-system-design.md:842:nommé — *« les dix-huit tokens sortis de la liste ont un appelant ÉCRIT, pas un
+client/outils/classes-employees.mjs:7:// ne peut voir l'écart que S2 a lui-même nommé — « les dix-huit tokens sortis
+client/design.html:18:            sont les huit jugements humains du §8 de la spec, et AUCUN NE
+client/design.html:222:        <h2>Espacement — huit crans, pas de 4 px</h2>
+[b] total : 29
+
+[c] autres tournures du même compte (sept, HUIT, 8 contrôles, neuf) :
+client/src/style.css:30:   INVÉRIFIABLE : « aucun des huit contrôles ne mesure une longueur » était
+client/src/style.css:89:   déclaraient explicitement. AUCUN des huit contrôles ne pouvait le voir.
+client/src/design/longueurs.test.ts:9: * c'est ce qui fait sa raison d'être. Jusqu'ici, « aucun des huit contrôles ne
+client/src/design/contraste.ts:96: * 🔴 ELLE RÉPARE UN DÉFAUT RÉEL, ET AUCUN DES HUIT CONTRÔLES NE POUVAIT LE
+client/src/design/reprise.test.ts:40:        // exactement le genre d'erreur qu'aucun des huit contrôles n'attrape,
+client/src/design/reprise.test.ts:85:        // vaudrait 10,5 px — et AUCUN des huit contrôles ne le dirait.
+client/outils/classes-employees.mjs:6:// déclarée comme telle. Il existe parce qu'AUCUN des sept contrôles précédents
+client/src/design/galerie.ts:155: * 🔴 AUCUN DES HUIT CONTRÔLES NE REGARDE LE DOM. `design.html` porte un
+client/src/design/primitives.css:17:      changerait la fenêtre de session sans qu'aucun des huit contrôles ne le
+client/src/design/primitives.css:29:      des huit contrôles — aucun ne mesure une longueur. Les seuls littéraux
+client/src/design/primitives/champ.css:7:   aucun des huit contrôles ne verrait une règle morte. Le dépôt a déjà payé
+client/src/design/tokens.css:96:       quasi-noir. AUCUN des huit contrôles ne pouvait le voir.
+client/src/design/base.css:24:   Les huit contrôles du sous-projet ⑥ portent sur les couleurs, les
+client/outils/verifier-design.mjs:4:// Il lance les SEPT contrôles qui sont des scripts, imprime le verdict de
+client/outils/verifier-design.mjs:17:// qu'ici les sept contrôles sont indépendants et rapides, là-bas les étapes sont
+client/src/design/amorce-theme.js:9:   aucun des huit contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+client/src/design/primitives.test.ts:112:        // apparence sans qu'aucun des huit contrôles ne le dise.
+client/src/design/primitives.test.ts:127:        // faire propre ». Aucun des huit contrôles ne le verrait.
+client/src/design/primitives.test.ts:150:        // qu'aucun des huit contrôles ne mesure, puisque aucun ne mesure une
+docs/superpowers/specs/2026-08-19-design-system-design.md:672:Sept contrôles. Pour chacun : ce qu'il vérifie, la commande, et **l'état qui le
+docs/superpowers/specs/2026-08-19-design-system-design.md:678:> telle.** Voir le **§7.9** ci-dessous. La phrase « sept contrôles » reste vraie
+docs/superpowers/specs/2026-08-19-design-system-design.md:682:> Sept scripts, huit contrôles.
+
+[d] 'huit contrôle' INSENSIBLE À LA CASSE — deux places que [a] manquait :
+17
+> client/src/design/contraste.ts:96: * 🔴 ELLE RÉPARE UN DÉFAUT RÉEL, ET AUCUN DES HUIT CONTRÔLES NE POUVAIT LE
+> client/src/design/galerie.ts:155: * 🔴 AUCUN DES HUIT CONTRÔLES NE REGARDE LE DOM. `design.html` porte un
+> client/src/design/tokens.css:96:       quasi-noir. AUCUN des huit contrôles ne pouvait le voir.
+> client/src/design/base.css:24:   Les huit contrôles du sous-projet ⑥ portent sur les couleurs, les
+> docs/superpowers/specs/2026-08-19-design-system-design.md:682:> Sept scripts, huit contrôles.
+
+───── CIBLE ② : « aucun contrôle ne mesure une longueur » ─────
+[e] 'mesure une longueur' :
+client/src/design/primitives.css:29:      des huit contrôles — aucun ne mesure une longueur. Les seuls littéraux
+client/src/design/tokens.css:179:       contrôles ne mesure une longueur. */
+client/src/style.css:30:   INVÉRIFIABLE : « aucun des huit contrôles ne mesure une longueur » était
+client/src/design/longueurs.test.ts:10: * mesure une longueur » était écrit à cinq endroits du dépôt sous cette formule
+client/src/design/reprise.test.ts:41:        // puisque aucun ne mesure une longueur.
+[e] total : 5
+
+[f] balayage par la CHOSE NIÉE — 'longueur' croisé avec mesur/aucun :
+docs/superpowers/specs/2026-08-19-design-system-design.md:891:| que le pas de **4 px** d'espacement soit le bon | qu'il soit unique — ~~aucune longueur hors échelle~~ **voir l'encadré ci-dessous : cette clause est FAUSSE de SIX valeurs** |
+docs/superpowers/specs/2026-08-19-design-system-design.md:896:> ❌ **LA CLAUSE « aucune longueur hors échelle » EST FAUSSE, ET DE SIX
+docs/superpowers/specs/2026-08-19-design-system-design.md:953:  des longueurs relatives, il ne mesure rien à `devicePixelRatio > 1`.
+client/src/style.css:30:   INVÉRIFIABLE : « aucun des huit contrôles ne mesure une longueur » était
+client/src/connexion.css:40:   ⚠️ UNE SEULE DES DEUX COMPTE DANS LA CLAUSE « aucune longueur hors échelle »
+client/src/style.test.ts:133:        // `design/longueurs.test.ts` a déjà mesuré sur sa propre rouge.
+client/src/shell.css:53:   `style.css` que S4 doit reprendre. La clause “aucune longueur hors échelle”
+client/src/shell.css:56:   (`client/src/design/longueurs.test.ts`, tâche 2) mesure les longueurs des
+client/src/design/longueurs.test.ts:10: * mesure une longueur » était écrit à cinq endroits du dépôt sous cette formule
+client/src/design/longueurs.test.ts:11: * exacte, et davantage sous d'autres tournures : la clause « aucune longueur
+client/src/design/longueurs.test.ts:174:describe('§7.10 — aucune longueur hors token dans une feuille de surface', () => {
+client/src/design/longueurs.test.ts:191:            'aucune longueur ne passe par un token : le contrôle ne mesure pas ce qu’il croit',
+client/src/design/primitives.css:29:      des huit contrôles — aucun ne mesure une longueur. Les seuls littéraux
+client/src/design/tokens.css:4:   Aucune couleur, aucune longueur d'échelle ne s'écrit ailleurs. Le contrôle
+client/src/design/tokens.css:179:       contrôles ne mesure une longueur. */
+client/src/design/tokens.css:215:       CORRIGER la clause §8 — écrire qu'« aucune longueur hors échelle » ne
+client/src/design/primitives.test.ts:147:    it('G4 — aucune longueur hors échelle : toute unité passe par un token', () => {
+client/src/design/primitives.test.ts:149:        // qu'aucune longueur ne s'écrit hors des échelles du §4.4 — ce
+client/src/design/reprise.test.ts:41:        // puisque aucun ne mesure une longueur.
+[f] total : 19
+
+[g] variantes de la négation (hors échelle / n'en mesure aucune / littérale) :
+client/src/session/etat-terminal.css:19:   ⚠️ AUCUNE COULEUR LITTÉRALE, AUCUNE LONGUEUR HORS ÉCHELLE : §7.2 et §7.10
+client/src/style.css:12:   ✅ IL NE RESTE PLUS AUCUNE LONGUEUR LITTÉRALE ICI — sous-bloc S4.
+client/src/style.css:28:   ⚠️ ET LA CLAUSE « AUCUNE LONGUEUR HORS ÉCHELLE » DU §8 CESSE D'ÊTRE UNE
+client/src/connexion.css:40:   ⚠️ UNE SEULE DES DEUX COMPTE DANS LA CLAUSE « aucune longueur hors échelle »
+client/src/connexion.css:43:   FENÊTRE n'est pas une valeur hors échelle — `style.css` ne compte ni son
+client/src/connexion.css:45:   L'étiquette « hors échelle » posée deux fois plus bas est donc plus LARGE
+client/src/connexion.css:65:    /* Mesure de CONTENANT, hors échelle — voir l'en-tête. */
+client/src/shell.css:53:   `style.css` que S4 doit reprendre. La clause “aucune longueur hors échelle”
+client/src/shell.css:67:   un remplissage de fenêtre n'est pas une valeur hors échelle — `style.css`
+client/src/design/primitives.css:28:   ④ AUCUNE LONGUEUR HORS ÉCHELLE. Un `4px` écrit ici ne serait vu par AUCUN
+client/src/design/tokens.css:215:       CORRIGER la clause §8 — écrire qu'« aucune longueur hors échelle » ne
+client/src/design/primitives.test.ts:147:    it('G4 — aucune longueur hors échelle : toute unité passe par un token', () => {
+client/src/design/longueurs.test.ts:12: * hors échelle » du §8 de la spec était une DETTE D'ÉNONCÉ que rien ne pouvait
+client/src/design/longueurs.test.ts:114: *    valeur hors échelle ». Aucune échelle ne prétend couvrir « toute la
+docs/superpowers/specs/2026-08-19-design-system-design.md:891:| que le pas de **4 px** d'espacement soit le bon | qu'il soit unique — ~~aucune longueur hors échelle~~ **voir l'encadré ci-dessous : cette clause est FAUSSE de SIX valeurs** |
+docs/superpowers/specs/2026-08-19-design-system-design.md:896:> ❌ **LA CLAUSE « aucune longueur hors échelle » EST FAUSSE, ET DE SIX
+docs/superpowers/specs/2026-08-19-design-system-design.md:902:> | Feuille | Valeurs hors échelle |
+docs/superpowers/specs/2026-08-19-design-system-design.md:910:> valeur hors échelle — `style.css` ne compte ni son `100vw` ni son `100vh`, et
+
+───── CIBLE ③ : la promesse de raccordement du micro ─────
+client/src/design/tokens.css:105:       DE COULEUR le bouton micro, et sa couleur suivrait le thème du produit
+client/src/design/tokens.css:108:       sémantique du micro appartient au sous-bloc S4. */
+client/src/design/tokens.css:113:    --voile-micro-actif: rgb(220 38 38 / 0.85);
+client/src/design/tokens.css:114:    --voile-micro-refuse: rgb(120 53 15 / 0.85);
+
+───── SWEEP A : la liste d'attente, --police-mono, et sa disparition ─────
+client/src/design/tokens.ts:197: * passer. C'est la forme de la liste d'attente de §7.6, en plus petit.
+client/src/style.css:22:        `--police-mono` : le crénage et la pile monospace servent la MÊME fin,
+client/src/style.css:163:       `--police-mono` avait UN SEUL appelant prévu depuis S1 — celui-ci — et
+client/src/style.css:185:    font-family: var(--police-mono);
+client/src/connexion.css:79:       ⚠️ La liste d'attente attribuait ce cran au « titre du hub », que le
+client/src/connexion.css:99:   celui des paragraphes longs, ce que l'annotation de la liste d'attente lui
+client/design.html:102:                font-family: var(--police-mono);
+client/design.html:135:                font-family: var(--police-mono);
+client/src/design/primitives.css:41:   liste d'attente ont UN APPELANT ÉCRIT, pas UN PIXEL RENDU […] C'est S3 qui
+client/src/design/tokens.css:128:       ✅ `--police-mono` EST CÂBLÉ, et son sort n'est plus ouvert : sous-bloc
+client/src/design/tokens.css:136:       ⚠️ ET LA LISTE D'ATTENTE EST DÉSORMAIS VIDE — sans disparaître : c'est
+client/outils/tokens-orphelins.mjs:6:// production, plus une sur la liste d'attente elle-même :
+client/outils/tokens-orphelins.mjs:13://   ③ aucune entrée de la liste d'attente ne nomme un sous-bloc DÉJÀ CLOS —
+client/outils/tokens-orphelins.mjs:40:// qu'à `56b975a` (233) », les 18 entrées retirées de la liste d'attente devant
+client/outils/tokens-orphelins.mjs:94:        // mise en page de démonstration. La liste d'attente aurait rétréci de
+client/outils/tokens-orphelins.mjs:104:// 🔴 LA LISTE D'ATTENTE VIT DANS `tokens-orphelins/attente.mjs`, AVEC TOUTE SA
+client/outils/tokens-orphelins.mjs:183:// ② déclaré ⊆ employé, à la liste d'attente près — et l'ÉGALITÉ, pas l'inclusion.
+client/outils/tokens-orphelins.mjs:188:        `dont ${orphelins.length - nouveaux.length} en attente déclarée`,
+client/outils/tokens-orphelins.mjs:196:            `(${employePar.get(token).join(', ')}) : la liste d'attente doit rétrécir`,
+client/outils/tokens-orphelins.mjs:233:            `en attente d'appelant, nommés dans tokens-orphelins/attente.mjs`,
+client/src/design/primitives/champ.css:22:   encore en liste d'attente sous l'annotation "l'écart interne d'une
+client/primitives.html:26:            ferait sortir de la liste d'attente des tokens que LE PRODUIT
+docs/superpowers/specs/2026-08-19-design-system-design.md:325:--police-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", "SF Mono",
+docs/superpowers/specs/2026-08-19-design-system-design.md:335:*Réserve de portée* : `--police-mono` est déclarée en S1 et n'a **qu'un seul
+docs/superpowers/specs/2026-08-19-design-system-design.md:808:`--police-mono`, §4.3) tombe sur la première.
+docs/superpowers/specs/2026-08-19-design-system-design.md:854:est employée* —, qui exigerait une seconde liste d'attente. Il relève
+client/outils/classes-employees.mjs:67://     Il exigerait une SECONDE liste d'attente (`.bouton--discret` peut n'avoir
+client/outils/tokens-orphelins/attente.mjs:1:// La LISTE D'ATTENTE du contrôle §7.6, et TOUTE la doctrine qui la justifie.
+client/outils/tokens-orphelins/attente.mjs:38:// LA LISTE D'ATTENTE — ELLE EST VIDE DEPUIS LE SOUS-BLOC S4, TÂCHE 6.
+client/outils/tokens-orphelins/attente.mjs:139:// REFAIT : `--police-mono`, seule entrée restante, n'est pas une couleur.
+client/outils/tokens-orphelins/attente.mjs:212: * 🔴 LA DERNIÈRE ENTRÉE SORTIE EST `--police-mono`, et sa doctrine est partie
+
+───── SWEEP B : « la fenêtre de session n'emploie aucune primitive » ─────
+client/src/design/tokens.css:132:       de changer l'apparence de la fenêtre de session ; S4 l'a, et il câble. Le
+docs/superpowers/specs/2026-08-19-design-system-design.md:563:| **S4** | La fenêtre de session : état terminal plein cadre, et Window Controls Overlay | S1 ; WCO dépend en outre du manifest de ② |
+docs/superpowers/specs/2026-08-19-design-system-design.md:657:### S4 — La fenêtre de session
+docs/superpowers/specs/2026-08-19-design-system-design.md:978:| `style.css` (fenêtre de session) | ~120 après S1 | scinder l'écran terminal de S4 en `session/etat-terminal.css` |
+client/outils/classes-employees.mjs:36://      était VERT. La fenêtre de session est reprise par S4 ; le quantifieur
+
+════ RELECTURE APRÈS ÉDITION — place par place, étape 3 de la méthode ════
+date : 2026-08-20T08:33:10+02:00
+
+[A] « huit contrôle » (insensible à la casse) : ce qui RESTE, et pourquoi
+client/src/style.css:30:   INVÉRIFIABLE : « aucun des huit contrôles ne mesure une longueur » était
+client/src/design/longueurs.test.ts:9: * c'est ce qui fait sa raison d'être. Jusqu'ici, « aucun des huit contrôles ne
+docs/superpowers/specs/2026-08-19-design-system-design.md:944:— « aucun des huit contrôles ne mesure une longueur » était écrit à cinq endroits
+    total restant : 3  (17 avant)
+
+[B] « neuf contrôle » : les places corrigées
+client/src/style.css:89:   déclaraient explicitement. AUCUN des neuf contrôles ne pouvait le voir — le
+client/src/design/contraste.ts:96: * 🔴 ELLE RÉPARE UN DÉFAUT RÉEL, ET AUCUN DES NEUF CONTRÔLES NE POUVAIT LE
+client/src/design/amorce-theme.js:9:   aucun des neuf contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+client/src/design/galerie.ts:155: * 🔴 AUCUN DES NEUF CONTRÔLES NE REGARDE LE DOM. `design.html` porte un
+client/src/design/primitives.css:17:      changerait la fenêtre de session sans qu'aucun des neuf contrôles ne le
+client/src/design/primitives.css:29:      des neuf contrôles, et la RAISON A CHANGÉ avec le sous-bloc S4.
+client/src/design/tokens.css:96:       quasi-noir. AUCUN des neuf contrôles ne pouvait le voir (le « huit »
+client/src/design/base.css:24:   Les neuf contrôles du sous-projet ⑥ portent sur les couleurs, les
+client/src/design/primitives.test.ts:112:        // apparence sans qu'aucun des neuf contrôles ne le dise.
+client/src/design/primitives.test.ts:127:        // faire propre ». Aucun des neuf contrôles ne le verrait.
+client/src/design/primitives.test.ts:150:        // qu'aucun des neuf contrôles ne mesure ICI.
+client/src/design/reprise.test.ts:40:        // exactement le genre d'erreur qu'aucun des neuf contrôles n'attrape.
+client/src/design/reprise.test.ts:89:        // vaudrait 10,5 px — et AUCUN des neuf contrôles ne le dirait.
+client/src/design/primitives/champ.css:7:   aucun des neuf contrôles ne verrait une règle morte. Le dépôt a déjà payé
+docs/superpowers/specs/2026-08-19-design-system-design.md:753:> dans `npm test` — le §7.5 et le §7.10. **Sept scripts, neuf contrôles**, et
+    total : 15
+
+[C] « mesure une longueur » : ce qui RESTE
+docs/superpowers/specs/2026-08-19-design-system-design.md:944:— « aucun des huit contrôles ne mesure une longueur » était écrit à cinq endroits
+client/src/style.css:30:   INVÉRIFIABLE : « aucun des huit contrôles ne mesure une longueur » était
+client/src/design/longueurs.test.ts:10: * mesure une longueur » était écrit à cinq endroits du dépôt sous cette formule
+client/src/design/primitives.css:30:      ❌ « aucun ne mesure une longueur » était vrai jusque-là ; §7.10
+client/src/design/base.css:27:   ❌ « AUCUN ne mesure une longueur » n'est plus vrai ; ce qui l'est encore,
+client/src/design/primitives.test.ts:151:        // ❌ « puisque aucun ne mesure une longueur » : plus vrai depuis le
+client/src/design/reprise.test.ts:41:        // ❌ « puisque aucun ne mesure une longueur » : plus vrai depuis le
+    total restant : 7  (5 avant)
+
+[D] « huit » tout court — contrôle que les AUTRES comptes n'ont pas bougé
+18
+    (29 avant ; l'écart doit valoir exactement le nombre de « huit contrôles » corrigés)
+
+[E] DIFF des lignes portant « huit » — AVANT (git stash-free : depuis HEAD) contre APRÈS
+    « < » = ligne disparue (corrigée)   « > » = ligne apparue (annotation neuve)
+1,21c1,5
+< client/design.html:18:            sont les huit jugements humains du §8 de la spec, et AUCUN NE
+< client/design.html:222:        <h2>Espacement — huit crans, pas de 4 px</h2>
+< client/outils/classes-employees.mjs:7:// ne peut voir l'écart que S2 a lui-même nommé — « les dix-huit tokens sortis
+< client/primitives.html:34:            sont les trois jugements humains que S2 ajoute aux huit du §8, et
+< client/src/design/amorce-theme.js:9:   aucun des huit contrôles ne l'aurait dit (§7.7 ne pèse que le CSS).
+< client/src/design/base.css:24:   Les huit contrôles du sous-projet ⑥ portent sur les couleurs, les
+< client/src/design/longueurs.test.ts:9: * c'est ce qui fait sa raison d'être. Jusqu'ici, « aucun des huit contrôles ne
+< client/src/design/primitives.css:17:      changerait la fenêtre de session sans qu'aucun des huit contrôles ne le
+< client/src/design/primitives.css:29:      des huit contrôles — aucun ne mesure une longueur. Les seuls littéraux
+< client/src/design/primitives.test.ts:112:        // apparence sans qu'aucun des huit contrôles ne le dise.
+< client/src/design/primitives.test.ts:127:        // faire propre ». Aucun des huit contrôles ne le verrait.
+< client/src/design/primitives.test.ts:150:        // qu'aucun des huit contrôles ne mesure, puisque aucun ne mesure une
+< client/src/design/primitives/champ.css:7:   aucun des huit contrôles ne verrait une règle morte. Le dépôt a déjà payé
+< client/src/design/primitives/message.css:17:   HUMAIN, et il s'ajoute aux huit du §8 : aucune commande ne le dira.
+< client/src/design/reprise.test.ts:40:        // exactement le genre d'erreur qu'aucun des huit contrôles n'attrape,
+< client/src/design/reprise.test.ts:85:        // vaudrait 10,5 px — et AUCUN des huit contrôles ne le dirait.
+< client/src/design/tokens.css:96:       quasi-noir. AUCUN des huit contrôles ne pouvait le voir.
+< client/src/design/tokens.css:174:    /* ── Échelle d'espacement — pas de 4 px, huit crans (spec §4.4) ────────
+< client/src/design/tokens.css:178:       posait sur `html`, `0.75rem` vaudrait 10,5 px — et AUCUN des huit
+< client/src/design/tokens.ts:129: * typographiques, les huit d'espacement, les rayons, les durées et les piles
+< client/src/main.ts:75:    // décodeur du navigateur saturé dès huit fenêtres de 1280×720.
+---
+> docs/superpowers/specs/2026-08-19-design-system-design.md:386:**Échelle d'espacement** — pas de 4 px, huit crans :
+> docs/superpowers/specs/2026-08-19-design-system-design.md:634:  tokens hors thème, les sept crans typographiques, les huit d'espacement, les
+> docs/superpowers/specs/2026-08-19-design-system-design.md:921:nommé — *« les dix-huit tokens sortis de la liste ont un appelant ÉCRIT, pas un
+> docs/superpowers/specs/2026-08-19-design-system-design.md:944:— « aucun des huit contrôles ne mesure une longueur » était écrit à cinq endroits
+> docs/superpowers/specs/2026-08-19-design-system-design.md:1009:> La table ci-dessous en porte **huit** ; S2 en a ajouté **trois**, S3 **quatre**
+24,29c8,18
+< client/src/style.css:89:   déclaraient explicitement. AUCUN des huit contrôles ne pouvait le voir.
+< docs/superpowers/specs/2026-08-19-design-system-design.md:376:**Échelle d'espacement** — pas de 4 px, huit crans :
+< docs/superpowers/specs/2026-08-19-design-system-design.md:591:  tokens hors thème, les sept crans typographiques, les huit d'espacement, les
+< docs/superpowers/specs/2026-08-19-design-system-design.md:676:> ✅ **ILS SONT HUIT DEPUIS LE SOUS-BLOC S3 (20 août 2026), et le huitième
+< docs/superpowers/specs/2026-08-19-design-system-design.md:682:> Sept scripts, huit contrôles.
+< docs/superpowers/specs/2026-08-19-design-system-design.md:842:nommé — *« les dix-huit tokens sortis de la liste ont un appelant ÉCRIT, pas un
+---
+> client/src/style.css:90:   « huit » d'origine était faux à la date même où la tâche 4 l'a écrit, §7.10
+> client/src/main.ts:75:    // décodeur du navigateur saturé dès huit fenêtres de 1280×720.
+> client/src/design/tokens.ts:129: * typographiques, les huit d'espacement, les rayons, les durées et les piles
+> client/src/design/tokens.css:96:       quasi-noir. AUCUN des neuf contrôles ne pouvait le voir (le « huit »
+> client/src/design/tokens.css:183:    /* ── Échelle d'espacement — pas de 4 px, huit crans (spec §4.4) ────────
+> client/src/design/longueurs.test.ts:9: * c'est ce qui fait sa raison d'être. Jusqu'ici, « aucun des huit contrôles ne
+> client/src/design/primitives/message.css:17:   HUMAIN, et il s'ajoute aux huit du §8 : aucune commande ne le dira.
+> client/primitives.html:34:            sont les trois jugements humains que S2 ajoute aux huit du §8, et
+> client/outils/classes-employees.mjs:7:// ne peut voir l'écart que S2 a lui-même nommé — « les dix-huit tokens sortis
+> client/design.html:18:            sont les huit jugements humains du §8 de la spec, et AUCUN NE
+> client/design.html:222:        <h2>Espacement — huit crans, pas de 4 px</h2>
+
+[F] CONTRÔLE DE NON-RÉGRESSION DES AUTRES COMPTES — ils doivent être INTACTS :
+   huit crans                 : 3
+   huit d.espacement          : 2
+   huit jugements humains     : 1
+   aux huit du §8             : 2
+   dix-huit tokens            : 2
+   huit fenêtres              : 1
+   huit occurrences           : 1
+   SEPT contrôles             : 1
+   sept contrôles             : 3

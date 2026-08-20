@@ -93,8 +93,18 @@ function pairesDuTheme(theme: string): Paire[] {
 /**
  * LA 53ᵉ PAIRE — `--sur-voile` sur `--video-letterbox` (sous-bloc S4, tâche 4).
  *
- * 🔴 ELLE RÉPARE UN DÉFAUT RÉEL, ET AUCUN DES HUIT CONTRÔLES NE POUVAIT LE
- * VOIR. `base.css` pose `color: var(--texte-fort)` sur `body` ; en thème clair
+ * 🔴 ELLE RÉPARE UN DÉFAUT RÉEL, ET AUCUN DES NEUF CONTRÔLES NE POUVAIT LE
+ * VOIR.
+ *
+ * ❌ CETTE PHRASE DISAIT « HUIT », ET ELLE ÉTAIT DÉJÀ FAUSSE QUAND ELLE A ÉTÉ
+ * ÉCRITE — c'est la revue transverse de S4 qui l'a relevée, aux TROIS endroits
+ * où la tâche 4 l'a posée (ici, `tokens.css` et `style.css`). Le neuvième
+ * contrôle, §7.10, est né à la tâche 2 (`ee56e1e`), dont `git merge-base
+ * --is-ancestor` établit qu'elle précède la tâche 4 (`fb629ea`). Une tâche a
+ * donc décrit la suite de contrôles telle qu'elle était AVANT la tâche qui
+ * l'avait déjà changée, deux commits plus tôt, DANS LA MÊME BRANCHE. C'est la
+ * forme exacte que la revue transverse existe pour attraper : chaque tâche
+ * était correcte de ce qu'elle voyait. `base.css` pose `color: var(--texte-fort)` sur `body` ; en thème clair
  * `--texte-fort` vaut `#10131a`, une encre quasi noire ; et les voiles sont
  * HORS THÈME, donc noirs dans les deux. Sous le thème clair, les cinq éléments
  * de la fenêtre de session écrivaient donc du quasi-noir sur un voile
