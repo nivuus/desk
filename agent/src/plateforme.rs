@@ -30,7 +30,7 @@ use std::time::Duration;
 use anyhow::{Context, Result};
 use futures_util::{SinkExt, StreamExt};
 use proto::plateforme::{DepuisLaPlateforme, MotifCanal, VersLaPlateforme};
-use tokio::sync::watch;
+use tokio::sync::{mpsc, watch};
 use tokio_tungstenite::tungstenite::Message;
 
 /// Période du battement de cœur.
@@ -54,14 +54,41 @@ pub struct Identite {
     pub expire_a: i64,
 }
 
+/// Combien de messages montants peuvent attendre leur socket.
+///
+/// 🔴 BORNÉE, ET NON ILLIMITÉE : ce canal peut rester coupé des heures, et une
+/// file illimitée derrière un socket mort est une fuite mémoire dont rien ne
+/// dit le nom. Ce qui déborde est PERDU — voir [`Canal::emettre`], qui porte
+/// la raison pour laquelle c'est acceptable.
+///
+/// La valeur tient au trafic réel : un catalogue par réconciliation, soit un
+/// message toutes les trente secondes, plus une `Lancee` par ordre.
+/// Trente-deux couvre un quart d'heure de coupure. **NON CALIBRÉE.**
+const FILE_EMISSION: usize = 32;
+
 /// Le canal ouvert, et le fil qui le tient. **Le lâcher arrête le battement
 /// de cœur** : `main` le garde vivant pour toute la durée du processus.
 pub struct Canal {
     identite: watch::Receiver<Option<Identite>>,
     /// Le fil de reprise. Jamais attendu — il ne se termine que sur un refus
     /// définitif —, mais conservé pour ne pas être abandonné en silence.
+    ///
+    /// ⚠️ L'`allow` COUVRE DÉSORMAIS TROIS CHAMPS, PAS UN. Vérifié par la
+    /// commande en le retirant : « fields `tache`, `emission`, and `ordres`
+    /// are never read ». `emission` et `ordres` ne sont lus que par les
+    /// méthodes ci-dessous, dont la boucle de découverte (`apps::brancher`)
+    /// est le seul appelant — et elle n'est branchée qu'à la tâche 11. Un
+    /// `allow` devenu inutile est une affirmation devenue fausse : celui-ci
+    /// est à relire le jour où un mode de l'agent cesserait d'appeler
+    /// `apps::brancher`.
     #[allow(dead_code)]
     tache: tokio::task::JoinHandle<()>,
+    /// La file montante, drainée dans le `select!` de [`une_session`].
+    emission: mpsc::Sender<VersLaPlateforme>,
+    /// Les ordres descendants. `Option` parce qu'un seul consommateur peut la
+    /// prendre : deux se voleraient les ordres l'un à l'autre, et chacun n'en
+    /// verrait qu'une partie.
+    ordres: Option<mpsc::UnboundedReceiver<(String, String)>>,
 }
 
 /// Pourquoi une session du canal s'est terminée.
@@ -89,6 +116,14 @@ pub fn url_du_canal(signaling_url: &str) -> String {
 pub fn ouvrir(signaling_url: &str, vm: String, secret: String) -> Canal {
     let url = url_du_canal(signaling_url);
     let (tx, identite) = watch::channel(None);
+    let (emission, mut a_emettre) = mpsc::channel(FILE_EMISSION);
+    // ⚠️ NON BORNÉE, à l'inverse de la file montante, et pour une raison
+    // opposée : son consommateur traite chaque ordre dans un `spawn_blocking`
+    // et ne doit JAMAIS faire attendre la boucle du canal — un `send` bloquant
+    // ici suspendrait le battement de cœur, et la plateforme déclarerait la VM
+    // injoignable pendant qu'elle lance une application. Le débit la borne de
+    // fait : un ordre par clic d'utilisateur.
+    let (ordres_tx, ordres_rx) = mpsc::unbounded_channel();
     let tache = tokio::spawn(async move {
         // La tentative repart de ZÉRO après chaque enrôlement réussi : un
         // agent connecté depuis trois jours qui perd son réseau une seconde
@@ -99,7 +134,7 @@ pub fn ouvrir(signaling_url: &str, vm: String, secret: String) -> Canal {
             if reussite_precedente {
                 tentative = 0;
             }
-            match une_session(&url, &vm, &secret, &tx).await {
+            match une_session(&url, &vm, &secret, &tx, &mut a_emettre, &ordres_tx).await {
                 Fin::Definitive => {
                     tracing::warn!(
                         url,
@@ -115,7 +150,12 @@ pub fn ouvrir(signaling_url: &str, vm: String, secret: String) -> Canal {
             tokio::time::sleep(Duration::from_millis(delai)).await;
         }
     });
-    Canal { identite, tache }
+    Canal {
+        identite,
+        tache,
+        emission,
+        ordres: Some(ordres_rx),
+    }
 }
 
 impl Canal {
@@ -132,6 +172,42 @@ impl Canal {
             }
         }
     }
+
+    /// Met un message montant en file. **Ne bloque jamais, et ne rend aucune
+    /// erreur.**
+    ///
+    /// 🔴 UN MESSAGE MIS EN FILE PENDANT QUE LE SOCKET EST TOMBÉ EST PERDU, ET
+    /// C'EST VOULU. Ce canal est un `push` WebSocket : il n'a aucune garantie
+    /// de livraison, dans aucun des deux sens. Le rendre bloquant ferait de la
+    /// file une fuite mémoire sur un canal qui peut rester coupé des heures ;
+    /// le rendre fatal tuerait le canal sur une coupure réseau ordinaire.
+    ///
+    /// **Ce qui rend la perte acceptable est ailleurs, et une seule chose la
+    /// rend acceptable** : l'agent renvoie son catalogue COMPLET
+    /// (`complet = true`) à chaque réenrôlement, donc toute divergence née
+    /// d'un message perdu a un TERME. Retirer ce renvoi complet rendrait cette
+    /// perte silencieuse et définitive.
+    pub fn emettre(&self, message: VersLaPlateforme) {
+        if let Err(erreur) = self.emission.try_send(message) {
+            tracing::warn!(%erreur, "message montant abandonné : canal coupé ou file pleine");
+        }
+    }
+
+    /// Prend la file des ordres descendants. Rend `None` au second appel.
+    ///
+    /// Un seul consommateur, parce que deux se voleraient les ordres l'un à
+    /// l'autre et que le symptôme serait « un lancement sur deux ne part pas ».
+    pub fn ordres(&mut self) -> Option<mpsc::UnboundedReceiver<(String, String)>> {
+        self.ordres.take()
+    }
+
+    /// Observe les changements d'identité — un réenrôlement en est un.
+    ///
+    /// C'est par lui que la boucle de découverte sait qu'elle doit renvoyer le
+    /// catalogue COMPLET plutôt qu'un delta.
+    pub fn veille_identite(&self) -> watch::Receiver<Option<Identite>> {
+        self.identite.clone()
+    }
 }
 
 /// Une session du canal, de la connexion à sa chute.
@@ -140,6 +216,8 @@ async fn une_session(
     vm: &str,
     secret: &str,
     tx: &watch::Sender<Option<Identite>>,
+    a_emettre: &mut mpsc::Receiver<VersLaPlateforme>,
+    ordres: &mpsc::UnboundedSender<(String, String)>,
 ) -> Fin {
     let mut socket = match connecter(url).await {
         Ok(socket) => socket,
@@ -172,6 +250,20 @@ async fn une_session(
 
     loop {
         tokio::select! {
+            // ⚠️ CE BRAS EST CE QUI REND LE CANAL BIDIRECTIONNEL. Sans lui, la
+            // file grossirait jusqu'à sa borne puis rejetterait en silence :
+            // l'agent croirait émettre son catalogue, la plateforme resterait
+            // vide, et RIEN ne le dirait.
+            Some(message) = a_emettre.recv() => {
+                let Ok(texte) = serde_json::to_string(&message) else {
+                    tracing::error!("sérialisation d'un message montant impossible");
+                    continue;
+                };
+                if let Err(erreur) = socket.send(Message::Text(texte)).await {
+                    tracing::warn!(url, %erreur, "message montant non émis");
+                    return Fin::Reprenable;
+                }
+            }
             _ = battement.tick() => {
                 let Ok(texte) = serde_json::to_string(&VersLaPlateforme::battement()) else {
                     return Fin::Definitive;
@@ -218,18 +310,21 @@ async fn une_session(
                     Ok(DepuisLaPlateforme::Refus { motif, .. }) => {
                         return sur_refus(url, motif);
                     }
-                    // ⚠️ AUCUN CONSOMMATEUR D'ORDRES N'EST ENCORE BRANCHÉ :
-                    // le canal n'a pas de chemin descendant vers le reste de
-                    // l'agent (c'est la tâche 10 du sous-bloc G1 qui le crée).
-                    // En attendant, l'ordre est journalisé et abandonné —
-                    // JAMAIS traité comme illisible, car le bras `Err`
-                    // ci-dessous FERME la session : un ordre parfaitement
-                    // valide y déclencherait une reprise en boucle.
+                    // 🔴 CE BRAS DOIT EXISTER, ET IL NE DOIT SURTOUT PAS
+                    // FERMER LA SESSION. Sans lui, un ordre parfaitement
+                    // valide tomberait dans le bras `Err` ci-dessous, qui rend
+                    // `Fin::Reprenable` : le canal se reprendrait en boucle à
+                    // chaque clic de l'utilisateur, et la trace accuserait une
+                    // divergence de version qui n'existe pas.
                     Ok(DepuisLaPlateforme::Lancer { demande, cle, .. }) => {
-                        tracing::warn!(
-                            url, %demande, %cle,
-                            "ordre de lancement reçu sans consommateur, abandonné"
-                        );
+                        tracing::info!(url, %demande, %cle, "ordre de lancement reçu");
+                        // Un envoi qui échoue signifie que le consommateur
+                        // n'est plus là — l'agent s'arrête, ou personne n'a
+                        // pris la file. On le journalise sans tuer le canal :
+                        // le battement de cœur doit continuer.
+                        if ordres.send((demande, cle)).is_err() {
+                            tracing::warn!(url, "aucun consommateur d'ordres, lancement abandonné");
+                        }
                     }
                     // 🔴 CE CAS EST TRÈS PROBABLEMENT UNE DIVERGENCE DE
                     // VERSION, et il se réessaie quand même — délibérément.
