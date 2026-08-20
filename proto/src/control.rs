@@ -197,6 +197,40 @@ pub enum AgentControl {
         version: u8,
         active: bool,
     },
+    /// Le presse-papier de la VM a changé.
+    ///
+    /// Poussé **non sollicité**, et **au changement seulement** : le
+    /// propriétaire compare le contenu au dernier émis avant d'émettre
+    /// (garde n°2 de D5), parce que le compteur de séquence Windows bouge
+    /// même sur une réécriture identique — mesuré, sonde P0 du 20 août 2026,
+    /// `q2="bouge"` sur deux exécutions.
+    ///
+    /// `text` vaut `None` quand le contenu dépasse la borne du propriétaire
+    /// (`agent::presse_papier::PRESSE_PAPIER_MAX`) : il est **REFUSÉ, jamais
+    /// tronqué** — un collage silencieusement amputé est le pire résultat
+    /// possible, et il est pire que pas de collage du tout, l'utilisateur ne
+    /// pouvant pas voir qu'il lui manque la fin.
+    ///
+    /// `bytes` porte alors la taille refusée, en octets d'UTF-8 **après
+    /// normalisation des fins de ligne**, pour que le bandeau puisse la dire ;
+    /// dans le cas normal il porte la taille du texte émis, ce qui rend le
+    /// message auto-descriptif au journal. Il n'est donc pas redondant avec
+    /// `text`.
+    ///
+    /// ⚠️ **`text` n'est pas `Option` par commodité de sérialisation** : le
+    /// champ doit rester PRÉSENT et valoir `null` sur un refus. Le rendre
+    /// omissible (`skip_serializing_if`) ferait qu'un client ne pourrait plus
+    /// distinguer un refus d'un message tronqué en route.
+    ///
+    /// **Une variante, pas deux** : le précédent du dépôt est `Asleep`
+    /// (un état plus sa raison) et `Link` (une décision plus ses grandeurs) ;
+    /// le dépôt n'a aucun précédent de deux variantes pour un seul état.
+    Clipboard {
+        #[serde(rename = "v", deserialize_with = "verifie_version")]
+        version: u8,
+        text: Option<String>,
+        bytes: u32,
+    },
     /// État du lien réseau, émis à chaque changement de décision
     /// d'adaptation — donc rarement, pas à chaque seconde.
     Link {
@@ -242,6 +276,20 @@ impl AgentControl {
 
     pub fn fullscreen(active: bool) -> AgentControl {
         AgentControl::Fullscreen { version: CONTROL_VERSION, active }
+    }
+
+    /// Le presse-papier de la VM a changé.
+    ///
+    /// ⚠️ **`CONTROL_VERSION` NE MONTE PAS pour cette variante, et ce n'est
+    /// pas un oubli.** Les deux vérifications de `v` — `verifie_version`
+    /// ci-dessus et `parseAgentControl` côté TypeScript — sont des **égalités
+    /// strictes** : monter la version ferait rejeter **tous** les messages,
+    /// `Ready` et `SessionEnd` compris. Une incompatibilité TOTALE
+    /// remplacerait une dégradation PAR MESSAGE. Le précédent est à trois
+    /// lignes d'ici : le champ `mic` a été ajouté à `Ready` sans monter la
+    /// version, pour la même raison.
+    pub fn clipboard(text: Option<String>, bytes: u32) -> AgentControl {
+        AgentControl::Clipboard { version: CONTROL_VERSION, text, bytes }
     }
 
     pub fn rumble(left: u8, right: u8) -> Self {
