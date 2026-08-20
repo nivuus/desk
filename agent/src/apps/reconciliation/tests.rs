@@ -10,6 +10,11 @@ fn app(cle: &str, nom: &str, chemin: &str) -> Application {
         cible: r"c:\x\y.exe".into(),
         arguments: String::new(),
         repertoire: r"c:\x".into(),
+        // ⚠️ Ce fixture N'A PAS D'ICÔNE, et c'est délibéré : le diff apparie
+        // sur la CLÉ, et l'icône n'est pas une identité. Le cas d'une icône
+        // qui change sans que la clé change est éprouvé à part.
+        icone: None,
+        source_max: proto::plateforme::SourceMax::NonMesuree,
     }
 }
 

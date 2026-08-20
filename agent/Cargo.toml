@@ -58,6 +58,21 @@ windows = { version = "0.62", features = [
     "Win32_Graphics_Dxgi",
     "Win32_Graphics_Dxgi_Common",
     "Win32_Graphics_Gdi",
+    # Sous-bloc G2 : l'encodage PNG des icones passe par WIC, et JAMAIS par une
+    # conversion qui perd le canal alpha. `IWICImagingFactory`,
+    # `CreateBitmapFromHBITMAP`, `WICBitmapUseAlpha` et `GUID_ContainerFormatPng`
+    # vivent tous ici, derriere cette fonctionnalite
+    # (`Win32/Graphics/mod.rs`, le `#[cfg(feature = "Win32_Graphics_Imaging")]`).
+    # Aucune dependance nouvelle : c'est une fonctionnalite d'un crate deja
+    # present, comme `Win32_System_Environment` pour G1 et
+    # `Win32_System_DataExchange` pour le presse-papier.
+    #
+    # HYPOTHESE A LA REDACTION, CONFIRMEE PAR LA COMPILATION : le plan G2
+    # (divergence E11) annoncait celle-ci seule, et rappelait que G1 avait paye
+    # exactement cette affirmation — `Win32_UI_Shell` annoncee seule pour
+    # `ShellExecuteExW`, refutee par `cargo check --target x86_64-pc-windows-gnu`.
+    # Ici la compilation croisee a confirme : elle suffit.
+    "Win32_Graphics_Imaging",
     "Win32_Media_Audio",
     "Win32_Media_MediaFoundation",
     "Win32_Media_Multimedia",

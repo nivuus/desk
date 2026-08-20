@@ -36,6 +36,7 @@ ${AUDIO_PERIPHERIQUE:+\$env:AUDIO_PERIPHERIQUE = '$AUDIO_PERIPHERIQUE'}
 ${PLEIN_ECRAN:+\$env:PLEIN_ECRAN = '$PLEIN_ECRAN'}
 ${PRESSE_PAPIER:+\$env:PRESSE_PAPIER = '$PRESSE_PAPIER'}
 ${APPS:+\$env:APPS = '$APPS'}
+${ICONES:+\$env:ICONES = '$ICONES'}
 ${MICRO_MESURE:+\$env:MICRO_MESURE = '$MICRO_MESURE'}
 # Chantier E, bloc E2 — les TROIS variables du microphone, plus
 # MICRO_MESURE ci-dessus. Sans ces lignes l'agent demarre sans elles ET

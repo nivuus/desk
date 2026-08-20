@@ -8,6 +8,7 @@
 
 use std::time::Duration;
 
+pub mod icone;
 pub mod raccourci;
 pub mod reconciliation;
 pub mod sha256;
@@ -96,6 +97,9 @@ fn demarrer(canal: &mut crate::plateforme::Canal) -> Option<std::thread::JoinHan
         return None;
     }
     let ordres = canal.ordres()?;
+    // L'adresse HTTP du téléversement d'icônes est DÉRIVÉE de celle du canal :
+    // les deux vivent sur le même service, et deux variables divergeraient.
+    let base = canal.url_signaling().to_string();
     let identite = canal.veille_identite();
     let emetteur = canal.emetteur();
     // 🔴 UN VRAI FIL, PAS UN `spawn_blocking`. L'appartement COM appartient à
@@ -109,6 +113,7 @@ fn demarrer(canal: &mut crate::plateforme::Canal) -> Option<std::thread::JoinHan
                 move |message| emetteur.emettre(message),
                 ordres,
                 identite,
+                base,
                 PERIODE_RECONCILIATION,
             )
         })

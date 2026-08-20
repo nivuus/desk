@@ -130,6 +130,29 @@ pub fn lire(chemin: &Path) -> Result<Raccourci> {
     // l'agent et un double-clic dans l'Explorateur donnent la même chose.
     let montrer = unsafe { lien.GetShowCmd() }.map(|c| c.0).unwrap_or(1);
 
+    // 🔴 L'`IconLocation` AU FORMAT BRUT `<chemin>,<index>` — sous-bloc G2.
+    // C'est de lui que `apps::icone::source` tire la PROVENANCE de l'image, et
+    // c'est pourquoi il n'est ni développé ni normalisé ici : le module qui le
+    // lit est PUR, et il doit voir exactement ce que le raccourci porte.
+    //
+    // ⚠️ UN CHEMIN VIDE N'EST PAS UNE ABSENCE D'ICÔNE : il renvoie à la CIBLE,
+    // et **92 des 153 raccourcis retenus de cette VM sont dans ce cas**. Une
+    // erreur de lecture rend donc la chaîne vide, qui porte exactement ce
+    // sens-là.
+    let mut tampon = vec![0u16; TAMPON];
+    let mut index = 0i32;
+    let icone = match unsafe { lien.GetIconLocation(&mut tampon, &mut index) } {
+        Ok(()) => {
+            let chemin = depuis_utf16(&tampon);
+            if chemin.is_empty() && index == 0 {
+                String::new()
+            } else {
+                format!("{chemin},{index}")
+            }
+        }
+        Err(_) => String::new(),
+    };
+
     let nom = chemin
         .file_stem()
         .map(|s| s.to_string_lossy().into_owned())
@@ -144,6 +167,7 @@ pub fn lire(chemin: &Path) -> Result<Raccourci> {
             repertoire,
         },
         montrer,
+        icone,
     })
 }
 
@@ -155,6 +179,9 @@ pub fn lire(chemin: &Path) -> Result<Raccourci> {
 pub struct Raccourci {
     pub brut: Brut,
     pub montrer: i32,
+    /// L'`IconLocation` BRUTE, `<chemin>,<index>` — vide quand le raccourci
+    /// n'en déclare aucune, ce qui renvoie à la cible. Sous-bloc G2.
+    pub icone: String,
 }
 
 /// Les quatre racines de raccourcis, résolues par le système.
@@ -267,7 +294,12 @@ fn developper(valeur: &str) -> String {
     depuis_utf16(&tampon)
 }
 
-fn vers_utf16(valeur: &str) -> Vec<u16> {
+/// ⚠️ `pub(super)` DEPUIS LE SOUS-BLOC G2, et c'est une réutilisation
+/// DÉLIBÉRÉE plutôt qu'une copie : `apps::icone` et `apps::icone::lecture_pe`
+/// en ont besoin, et deux encodages identiques divergeraient le jour où l'un
+/// cesserait d'ajouter son nul terminal — panne que rien ne dirait avant un
+/// dépassement de tampon côté Windows.
+pub(super) fn vers_utf16(valeur: &str) -> Vec<u16> {
     valeur.encode_utf16().chain(std::iter::once(0)).collect()
 }
 
