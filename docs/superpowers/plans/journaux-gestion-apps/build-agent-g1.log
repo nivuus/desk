@@ -1,0 +1,30 @@
+   |
+35 | pub const ATTENTE_EXPIREE: i32 = 0x887A0027u32 as i32;
+   |           ^^^^^^^^^^^^^^^
+
+warning: field `capture` is never read
+   --> agent\src\encode.rs:289:5
+    |
+253 | pub struct H264Encoder {
+    |            ----------- field in this struct
+...
+289 |     capture: (u32, u32),
+    |     ^^^^^^^
+
+warning: function `client_size` is never used
+  --> agent\src\window.rs:79:8
+   |
+79 | pub fn client_size(hwnd: HWND) -> Result<(u32, u32)> {
+   |        ^^^^^^^^^^^
+
+warning: method `hwnd` is never used
+   --> agent\src\windows_source.rs:239:12
+    |
+153 | impl WindowsSource {
+    | ------------------ method in this implementation
+...
+239 |     pub fn hwnd(&self) -> HWND {
+    |            ^^^^
+
+warning: `agent` (bin "agent") generated 16 warnings (run `cargo fix --bin "agent" -p agent` to apply 1 suggestion)
+    Finished `release` profile [optimized] target(s) in 44.51s
