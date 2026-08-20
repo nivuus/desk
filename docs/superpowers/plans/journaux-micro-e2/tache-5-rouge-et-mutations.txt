@@ -1,0 +1,99 @@
+Tache 5 — les quatre ROUGES, obtenus par MUTATION de l'implementation.
+
+⚠️ DECLARATION HONNETE : ces quatre tests ont ete VERTS a leur premiere
+execution, l'implementation ayant ete ecrite dans la meme edition qu'eux.
+La doctrine du depot demande le rouge d'abord ; elle n'a PAS ete suivie a la
+lettre ici. La compensation est ci-dessous : chacun des quatre tests est
+amene a l'autre valeur par exactement la mutation que la colonne ROUGE du
+plan prescrit, et le message d'echec est verse. Ce qui manque, et qui ne se
+rattrape pas, c'est l'ORDRE.
+
+=== ROUGE/MUTATION : la designation de la spec : CABLE Input ===
+--- preuve que le diff n'est pas vide ---
+@@ -142,7 +142,7 @@
+ /// de cette VM. Sur une machine portant deux câbles VB-Audio elle deviendrait
+ /// **ambiguë**, et la règle **refuse** : mieux vaut pas de micro qu'un micro
+ /// dans le mauvais tuyau.
+-pub const DESIGNATION_CABLE: &str = "VB-Audio";
++pub const DESIGNATION_CABLE: &str = "CABLE Input";
+ 
+ /// La désignation à passer à [`choisir`] pour trouver le câble, à partir de la
+ /// valeur de `MICRO_PERIPHERIQUE`.
+--- resultat ---
+test wasapi_peripherique::tests_cable::la_demande_du_cable_n_est_JAMAIS_None ... ok
+test wasapi_peripherique::tests_cable::deux_cables_VB_rendent_la_designation_AMBIGUE ... FAILED
+test wasapi_peripherique::tests_cable::une_demande_explicite_prime_sur_la_designation_integree ... ok
+test wasapi_peripherique::tests_cable::la_designation_integree_elit_le_cable_de_la_VM ... FAILED
+thread 'wasapi_peripherique::tests_cable::deux_cables_VB_rendent_la_designation_AMBIGUE' (3318882) panicked at agent/src/wasapi/peripherique/tests_cable.rs:78:18:
+thread 'wasapi_peripherique::tests_cable::la_designation_integree_elit_le_cable_de_la_VM' (3318884) panicked at agent/src/wasapi/peripherique/tests_cable.rs:51:18:
+test result: FAILED. 2 passed; 2 failed; 0 ignored; 0 measured; 681 filtered out; finished in 0.00s
+
+=== ROUGE/MUTATION : demande_cable ignore la variable ===
+--- preuve que le diff n'est pas vide ---
+@@ -156,10 +156,8 @@
+ /// haut-parleurs. `Choix::Defaut` est donc rendu inatteignable par ce chemin,
+ /// et un test le garde.
+ pub fn demande_cable(variable: Option<&str>) -> &str {
+-    match variable {
+-        Some(v) if !v.trim().is_empty() => v,
+-        _ => DESIGNATION_CABLE,
+-    }
++    let _ = variable;
++    DESIGNATION_CABLE
+ }
+ 
+ /// Normalise une désignation pour la comparaison : bords rognés, casse
+--- resultat ---
+test wasapi_peripherique::tests_cable::la_designation_integree_elit_le_cable_de_la_VM ... ok
+test wasapi_peripherique::tests_cable::la_demande_du_cable_n_est_JAMAIS_None ... ok
+test wasapi_peripherique::tests_cable::deux_cables_VB_rendent_la_designation_AMBIGUE ... ok
+test wasapi_peripherique::tests_cable::une_demande_explicite_prime_sur_la_designation_integree ... FAILED
+thread 'wasapi_peripherique::tests_cable::une_demande_explicite_prime_sur_la_designation_integree' (3320214) panicked at agent/src/wasapi/peripherique/tests_cable.rs:85:5:
+assertion `left == right` failed
+  left: "VB-Audio"
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 681 filtered out; finished in 0.00s
+
+=== ROUGE/MUTATION : demande_cable rend le vide quand la variable est absente ===
+--- preuve que le diff n'est pas vide ---
+@@ -158,7 +158,7 @@
+ pub fn demande_cable(variable: Option<&str>) -> &str {
+     match variable {
+         Some(v) if !v.trim().is_empty() => v,
+-        _ => DESIGNATION_CABLE,
++        _ => "",
+     }
+ }
+ 
+--- resultat ---
+test wasapi_peripherique::tests_cable::deux_cables_VB_rendent_la_designation_AMBIGUE ... ok
+test wasapi_peripherique::tests_cable::la_designation_integree_elit_le_cable_de_la_VM ... ok
+test wasapi_peripherique::tests_cable::une_demande_explicite_prime_sur_la_designation_integree ... ok
+test wasapi_peripherique::tests_cable::la_demande_du_cable_n_est_JAMAIS_None ... FAILED
+thread 'wasapi_peripherique::tests_cable::la_demande_du_cable_n_est_JAMAIS_None' (3320698) panicked at agent/src/wasapi/peripherique/tests_cable.rs:103:9:
+assertion `left == right` failed: variable None
+  left: ""
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 681 filtered out; finished in 0.00s
+
+=== ROUGE/MUTATION : l'ambiguite tranche au PREMIER (le rang d'enumeration par la porte de derriere) ===
+--- preuve que le diff n'est pas vide ---
+@@ -198,9 +198,9 @@
+                 }
+             }
+             _ => {
+-                return Choix::Ambigu {
+-                    demande: demande.trim().to_string(),
+-                    candidats: retenus.iter().map(|p| p.nom.clone()).collect(),
++                return Choix::Elu {
++                    peripherique: retenus[0],
++                    critere,
+                 }
+             }
+         }
+--- resultat ---
+test wasapi_peripherique::tests_cable::une_demande_explicite_prime_sur_la_designation_integree ... ok
+test wasapi_peripherique::tests_cable::la_demande_du_cable_n_est_JAMAIS_None ... ok
+test wasapi_peripherique::tests_cable::la_designation_integree_elit_le_cable_de_la_VM ... ok
+test wasapi_peripherique::tests_cable::deux_cables_VB_rendent_la_designation_AMBIGUE ... FAILED
+thread 'wasapi_peripherique::tests_cable::deux_cables_VB_rendent_la_designation_AMBIGUE' (3321986) panicked at agent/src/wasapi/peripherique/tests_cable.rs:78:18:
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 681 filtered out; finished in 0.00s
+

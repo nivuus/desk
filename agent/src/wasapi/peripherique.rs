@@ -127,6 +127,41 @@ impl Choix<'_> {
     }
 }
 
+/// La désignation **INTÉGRÉE** du câble virtuel, employée quand
+/// `MICRO_PERIPHERIQUE` est absente ou vide.
+///
+/// ⚠️ **Ce n'est PAS « CABLE Input ».** Le `PKEY_Device_FriendlyName` du point
+/// de terminaison de **RENDU** du câble vaut « Haut-parleurs (VB-Audio Virtual
+/// Cable) » — relevé sur la VM le 20 août 2026, et c'est **cette propriété
+/// exacte** que lit `wasapi::rendu::decrire`, donc c'est elle et pas une autre
+/// que la règle ci-dessous comparera. « CABLE Output » est le nom de l'autre
+/// bout, celui de CAPTURE, que nous n'ouvrons jamais.
+///
+/// La sous-chaîne courte est retenue plutôt que « VB-Audio Virtual Cable »
+/// parce qu'elle suffit et qu'elle est **unique parmi les trois rendus actifs**
+/// de cette VM. Sur une machine portant deux câbles VB-Audio elle deviendrait
+/// **ambiguë**, et la règle **refuse** : mieux vaut pas de micro qu'un micro
+/// dans le mauvais tuyau.
+pub const DESIGNATION_CABLE: &str = "VB-Audio";
+
+/// La désignation à passer à [`choisir`] pour trouver le câble, à partir de la
+/// valeur de `MICRO_PERIPHERIQUE`.
+///
+/// 🔴 **Elle n'est JAMAIS `None`, et c'est tout l'objet de cette fonction.**
+/// A-bis se replie sur le défaut de Windows parce que « du son, peut-être le
+/// mauvais, et un `warn!` qui le dit » vaut mieux que « aucun son ». Ici
+/// l'arbitrage s'**inverse** : « la voix de l'utilisateur, peut-être dans le
+/// mauvais périphérique » n'est pas un moindre mal, c'est une **fuite** — sur
+/// une machine où le défaut est la carte son, la voix sortirait des
+/// haut-parleurs. `Choix::Defaut` est donc rendu inatteignable par ce chemin,
+/// et un test le garde.
+pub fn demande_cable(variable: Option<&str>) -> &str {
+    match variable {
+        Some(v) if !v.trim().is_empty() => v,
+        _ => DESIGNATION_CABLE,
+    }
+}
+
 /// Normalise une désignation pour la comparaison : bords rognés, casse
 /// abaissée. Le rognage compte — une variable d'environnement passée par un
 /// script PowerShell arrive volontiers avec une espace de fin.
@@ -420,3 +455,7 @@ mod tests {
         assert_eq!(Critere::NomPartiel.libelle(), "nom partiel");
     }
 }
+
+#[cfg(test)]
+#[path = "peripherique/tests_cable.rs"]
+mod tests_cable;
