@@ -476,6 +476,38 @@ branche même.*
 l'écrit lui-même. Un `grep -c '^warning'` rend 17 parce qu'il compte AUSSI la
 ligne de résumé. **Le chiffre de cargo fait foi** (§9).
 
+### 8bis.2bis Les affirmations de CODE — neuf, dont **une** que la branche a elle-même réfutée
+
+Une seconde vague, sur les commentaires du code livré. **Toutes vérifiées par la
+commande avant d'être corrigées.**
+
+🔴 **R9 — LA CIBLE PROPRE DE CETTE REVUE, et elle est trouvée.**
+`client/src/presse-papier.ts` disait « c'est `main.ts` qui appelle `writeText`
+**et lui rapporte le résultat** ». C'était **vrai à l'écriture** (tâche 5). La
+**tâche 15 de la même branche** a extrait `presse-papier-dom.ts`, qui porte
+désormais `PressePapierLocal` et lui rend `confirmer`/`echouer` :
+`grep -c PressePapierLocal client/src/main.ts` rend **0**. *Une affirmation
+devenue fausse dans sa propre branche, par une tâche de cette branche même.*
+
+**Huit autres, fausses dès leur écriture** — vérifiées, corrigées, aucune ne
+change de comportement :
+
+| Fichier | Ce qui était écrit | Ce qui est vrai |
+| --- | --- | --- |
+| `client/src/main.ts` | « les **quatre** détachements ci-dessus » | il y en a **six**, et ils y étaient déjà |
+| `client/src/presse-papier-dom.ts` | « les **quatre** détachements voisins de `main.ts` » | **le même nombre faux aux DEUX endroits** |
+| `proto/src/control.rs` | « Le précédent est **à trois lignes d'ici** » | `pub fn ready` est **trente-deux** lignes plus haut. *Un déictique de distance vieillit à la première insertion* |
+| `agent/src/capteur/sommeil.rs` | « ce fichier-ci est **proche de son plafond** » | **328** lignes à l'écriture, **363** aujourd'hui, plafond 500. Le **geste** reste bon — le module inliné aurait franchi 500 — ; c'est sa **raison écrite** qui était fausse, et la comparaison à `parts` trompeuse, celui-là ayant réellement **franchi** 500 |
+| `agent/src/capteur/sommeil/presse_papier.rs` | idem | idem |
+| `agent/src/diagnostics.rs` | « pour ses **douze** variables » | **sept** lues dans ce fichier, davantage avec `multifenetre::aiguiller`. *Aucun décompte ne donne douze* |
+| `agent/src/capteur/pont_media.rs` | « chacun des quatre précédents **nomme son rang** » | **aucun** des quatre ne porte d'ordinal : cette occurrence-ci inaugure le décompte |
+| `agent/src/capteur/sommeil.rs` | « le plus gros message de ce canal, de **deux** ordres de grandeur » | **quatre** (64 Kio contre quelques octets). La phrase voisine de `protocole.rs` est, elle, **exacte** (8 Mio / 64 Kio) : les deux n'employaient pas la même échelle |
+
+⚠️ **Un `fichier:ligne` PRÉEXISTANT relevé au passage** (dette de D9, pas de
+cette branche) : `sommeil/registre.rs` citait `superviseur/table.rs:399` pour
+`Table::compteur` ; cette ligne porte un commentaire sans rapport. Corrigé en
+nommant la **fonction** (`prochaine_session`) plutôt qu'un numéro.
+
 ### 8bis.3 Les contrôles incapables d'échouer — les trois candidats désignés d'avance
 
 Le plan (tâche 17, étape 3) en nommait trois. **Les trois ont été éprouvés, et

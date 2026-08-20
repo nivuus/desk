@@ -39,6 +39,28 @@ où l'on travaille dedans, pas en chantier séparé.
 | --- | --- | --- |
 | `agent/src/encode.rs` | 1536 | `#[cfg(windows)]`, aucun test |
 | `agent/src/windows_source.rs` | ~~638~~ ~~628~~ **630** (7 août 2026, D10) | `#[cfg(windows)]`, aucun test |
+| `proto/src/plateforme/tests.rs` | **561** (20 août 2026, P1 presse-papier) | 🔴 **DETTE NEUVE, ET ELLE N'AVAIT JAMAIS ÉTÉ ÉCRITE** — voir l'encadré ci-dessous |
+| `proto/ts/plateforme.test.ts` | **512** (20 août 2026, P1 presse-papier) | 🔴 idem |
+
+> 🔴 **DEUX FICHIERS DÉPASSAIENT 500 LIGNES SANS FIGURER NULLE PART, et c'est le
+> sous-bloc P1 du chantier PRESSE-PAPIER qui les a trouvés en relançant la
+> commande (20 août 2026).** Ils sont **nés du sous-bloc G1** (`proto/`, le
+> catalogue d'applications) et sont **tous deux des fichiers de TESTS** :
+> `proto/src/plateforme/tests.rs` **561** et `proto/ts/plateforme.test.ts`
+> **512**.
+>
+> ⚠️ **P1 (presse-papier) N'Y TOUCHE PAS**, et ce n'est pas un oubli : ils
+> appartiennent à un autre chantier, et le découpage rétroactif se fait « au
+> moment où l'on travaille dedans, pas en chantier séparé » — c'est la règle
+> écrite en tête de cette section. **Ce que P1 fait, c'est les ÉCRIRE** : une
+> dette non écrite est une dette qu'on découvre, et celle-ci a vécu un sous-bloc
+> entier sans que rien ne la nomme.
+>
+> ⚠️ **Leur point de chute n'est PAS nommé ici**, faute d'avoir travaillé
+> dedans : c'est au chantier qui les rouvrira de le choisir. Les deux
+> précédents du dépôt sont `superviseur/table.rs` (qui scinde ses tests par
+> `#[path]`) et `capteur/distante/tests.rs` (dont P1 a extrait
+> `tests_etats.rs`, 187 lignes, pour rester sous le plafond).
 
 > ✅ **`wasapi.rs` SORT de cette table (3 août 2026, sous-bloc D7, tâche 1).**
 > Il faisait 543 lignes ; la tâche 1 en a extrait la machinerie COM du *process
@@ -2755,6 +2777,8 @@ l'**enfant** ; et `main.rs:268` rend la main à `capteur::executer` avant que `d
 | `AUDIO_FAUTE_LECTURE_MS=<ms>` | **Sous-bloc D11, tâche 5** — **variable de BANC**. Borne **dans le temps** l'armement de `AUDIO_FAUTE_LECTURE` (prédicat pur `crate::audio::injection_encore_armee`, testé sur l'hôte ; lue dans `windows_audio/fil.rs`). **ABSENTE = ILLIMITÉ**, donc le comportement de D10 est strictement préservé et ses recettes restent reproductibles. Sans elle, la voisine qu'on veut voir promue meurt **à l'instant même de sa promotion** et le critère reste non démontrable. Transmise par `scripts/run-agent.sh:43`. La trace est celle de `AUDIO_FAUTE_LECTURE`, **enrichie du champ `fenetre_ms`** — un seul `warn!`, à dessein : deux traces au même instant se compteraient comme deux événements (piège maison de D6). ⚠️ **L'ORIGINE DU BUDGET EST LE DÉMARRAGE DU FIL, PAS L'ÉLECTION** : `3000` rend le critère **inatteignable** (le premier arbitrage du capteur arrive ~2,7 s après le démarrage du fil, et la fenêtre se referme 6 ms avant l'élection de la porteuse), **`5000` est la valeur dérivée de la mesure**. ⚠️ **Non calibrée** : c'est une valeur de banc, pas une constante de produit |
 | `AUDIO_PERIPHERIQUE=<nom ou identifiant>` | **Correction « A-bis », 19 août 2026** — **variable de PRODUIT**, pas de banc. Désigne le point de terminaison de **rendu** que le loopback de session doit capter, au lieu de subir le rendu **par défaut** de Windows. ⚠️ **Convention VALUÉE** — celle de `MULTIFENETRE_SORTIE` et `BUDGET_BPS`, **pas** celle de `PLEIN_ECRAN` : **absente ou vide, le comportement est EXACTEMENT celui d'avant** (le défaut de Windows). Trois critères, dans cet ordre : **identifiant d'endpoint** exact (`IMMDevice::GetId`, forme `{0.0.0.00000000}.{guid}` — stable, opaque), **nom convivial** exact (`PKEY_Device_FriendlyName`), puis **sous-chaîne insensible à la casse**. 🔵 **Une sous-chaîne AMBIGUË refuse de trancher** (`Choix::Ambigu`) au lieu de prendre le premier : prendre le premier serait retomber sur un **rang d'énumération** par la porte de derrière — la leçon des index DXGI de D1, payée une fois, appliquée ici d'avance. Règle **PURE** dans `agent/src/wasapi/peripherique.rs` (aucun `cfg`, éprouvée sur l'hôte), moitié COM dans `agent/src/wasapi/rendu.rs`. Lue par `LoopbackCapture::open`, donc **le mode MONO-FENÊTRE et la sonde `AUDIO_PROBE` seulement** — `pour_processus` (multi-fenêtres, D7+) **ne résout aucun endpoint** et n'est pas concerné. Transmise par `scripts/run-agent.sh`. **Le périphérique réellement retenu est JOURNALISÉ à chaque ouverture**, et tout repli l'est aussi : jamais silencieux |
 | `MICRO_MESURE=1` | **Chantier E, bloc E1** — **variable de BANC, jamais une configuration livrée**. Arme le **puits de mesure du micro** (`agent/src/demarrage/micro.rs`) : un consommateur qui joue le rôle du futur fil WASAPI d'E2, retire du tampon à la cadence réelle et journalise ce qu'il obtient. ⚠️ **Convention `=1` qui ARME** — et non `=0` qui désarmerait : le puits n'est **pas** livré, donc c'est sa présence qu'il faut déclarer, pas son absence. Trace de contrôle, dont **l'absence prouve que la variable n'a pas atteint le processus** : `micro de mesure ARME (MICRO_MESURE=1) : instrument de banc, jamais une configuration livree`. Trace périodique : `micro mesuré`, portant `crete` et `frequence_hz` **côte à côte** (une crête sans fréquence est du bruit), `plc` et `plc_plafonnees` **côte à côte** (le second est **disjoint** du premier — c'est ce qui rend le plafond de dissimulation observable), plus `deposees`, `famines`, `occupation_ms` et `occupation_max_ms`. Transmise par `scripts/run-agent.sh` |
+| `PRESSE_PAPIER=0` | **Sous-projet ① Divers — presse-papier, sous-bloc P1** (20 août 2026) — **variable de PRODUIT**, pas de banc. Désarme le mécanisme ENTIER : `Sondeur::tour` teste le garde **AVANT toute lecture**, donc `PRESSE_PAPIER=0` empêche jusqu'à la lecture du compteur de séquence, pas seulement l'envoi. ⚠️ **`=0` DÉSACTIVE ; une simple PRÉSENCE n'active pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR` et `PART_SONDAGE`, et pour la même raison : tester `is_ok()` armerait le mécanisme en écrivant `PRESSE_PAPIER=0` pour le couper. Lue dans le **capteur** (le propriétaire, D1), par `OnceLock`. Transmise par `scripts/run-agent.sh:37`. Trace, **émise seulement si désarmé** : `presse-papier DESARME (PRESSE_PAPIER=0) : le contenu copie dans la VM n'est plus pousse au navigateur` (`warn!`). 🔴 **LE CONTRÔLE QUI VAUT EST LE ZÉRO DE MESSAGES, PAS LA TRACE** : la trace prouve que la variable a atteint le processus, elle ne prouve pas que le mécanisme est coupé — et un zéro seul serait rendu par un produit entièrement en panne. C'est le bras SANS la variable, avec ses 4 messages, qui rend le zéro discriminant (2 exécutions par bras, recette P1) |
+| `PRESSE_PAPIER_SONDE=<secondes>` | **Sous-projet ① Divers — presse-papier, sous-bloc P1, sonde P0** — **variable de BANC, jamais une configuration livrée**. ⚠️ **Convention INVERSE de la ligne ci-dessus, et les deux sont écrites côte à côte pour qu'on ne les confonde pas : ABSENTE = DÉSARMÉE**, présente = armée (la valeur est une durée, pas un interrupteur). Mesure les cinq questions de la porte éliminatoire sur `GetClipboardSequenceNumber` (`agent/src/diagnostics/presse_papier.rs`). Transmise par `scripts/run-agent.sh:89`. ⚠️ **Elle ÉCRIT le presse-papier de la VM** en phases C et D, et le détruit donc ; le produit, lui, ne l'écrit jamais en P1. 🔴 **Ne jamais la poser en même temps que `SUPERVISEUR`** : `main()` appelle `diagnostics::aiguiller()` en `main.rs:172`, AVANT la branche `CAPTEUR` (`:180`) et avant `PONT` (`:279`) — **quel que soit le mode demandé**, un agent qui la porte exécute la sonde et s'arrête. ⚠️ **La menace que la divergence E10 du plan lui prêtait est FAUSSE** : elle annonçait un capteur exécutant la sonde pendant qu'un superviseur vivant le relance en boucle, ce qui supposerait que l'enfant porte la variable et pas son père — or `Command` hérite de l'environnement, donc le père se serait arrêté le premier. La consigne ne change pas, sa raison si |
 
 ---
 
@@ -11725,6 +11749,385 @@ n'y avait rien à faire (divergence E1).
 8. ⛔ **Deux boucles de découverte tournent** quand le superviseur est actif —
    conséquence du legs n°1.
 9. ⛔ **La lacune de nommage d'`IssueLancement`** est inscrite, pas fermée.
+
+---
+
+## 📋 Sous-projet ① Divers — presse-papier, sous-bloc P1 : la VM copie, le navigateur colle (20 août 2026)
+
+> ⚠️ **CE P1 N'EST PAS CELUI DE LA PLATEFORME.** Le sous-projet ⑤ a aussi un
+> sous-bloc « P1 » (§ « Sous-projet ⑤ Plateforme — sous-bloc P1 », plus haut),
+> clos et sans rapport. Celui-ci est le **premier sous-bloc du chantier
+> presse-papier**.
+
+Résultats complets :
+`docs/superpowers/plans/2026-08-19-presse-papier-p1-resultats.md`.
+Plan : `docs/superpowers/plans/2026-08-19-presse-papier-p1.md`.
+Conception : `docs/superpowers/specs/2026-08-19-presse-papier-design.md`.
+Journaux et instrument : `docs/superpowers/plans/journaux-presse-papier-p1/` —
+**TROIS familles de lecture**, relevées par `file` et par un `grep` d'essai :
+
+| Famille | État | Ce qu'il faut faire |
+| --- | --- | --- |
+| `agent-*.log` (bruts) | UTF-8, CRLF, **séquences ANSI PRÉSENTES**, 0 octet NUL | `sed 's/\x1b\[[0-9;]*m//g'` — ou lire le `-plat` jumeau, versé pour chacun |
+| `agent-*-plat.log` | UTF-8, CRLF, ANSI retirées | rien |
+| `critere-*.log` (journaux de **PILOTE**) | classés **« data »** — **33 à 36 octets NUL** | 🔴 **`grep -a` OBLIGATOIRE** |
+
+🔴 **La troisième ligne est MESURÉE, pas prudentielle** : sur
+`critere-arme-1.log`, `grep -c 'copie'` rend une **sortie VIDE** et
+`grep -ac 'copie'` rend **17**. C'est le piège de D10 rejoué à l'identique —
+**une sortie vide n'est pas un zéro**. ⚠️ **La cause des octets NUL n'est pas
+établie** (lecture CIFS concurrente d'un fichier que Windows réécrit : hypothèse
+non éprouvée).
+
+P1 livre le sens **VM → navigateur** : ce qu'on copie dans la VM apparaît dans le
+presse-papier de la fenêtre navigateur. Rien de plus — **le sens inverse est P2**,
+et **les N fenêtres sont P3**.
+
+### ① La porte d'entrée : la sonde P0, verdict **V0 FAVORABLE**, deux exécutions
+
+`GetClipboardSequenceNumber` est **stable au repos**, **bouge à chaque copie**
+(5 mouvements / 5 lectures / **0 échec d'ouverture**), **bouge sur une
+réécriture identique** (`q2="bouge"`) et **bouge sur notre propre écriture**
+(`q3="bouge"`).
+
+Deux conséquences que tout le sous-bloc emploie :
+
+- **le critère ② est MESURABLE** — c'était la condition que la spec posait
+  explicitement (« si aucun message ne part même sans le garde, le critère est
+  NON MESURABLE et doit le dire ») ;
+- **le garde n°2 de D5 a quelque chose à absorber**, et ce n'est **pas** une
+  boucle d'écho : P1 n'écrit jamais le presse-papier. C'est le **faux positif du
+  compteur**. ⚠️ La spec §6 écrit « aucun garde anti-écho n'est nécessaire » —
+  vrai de la boucle, **trompeur sur ce qui est livré** ; annoté à sa place.
+
+⚠️ **L'instrument de cette sonde a rendu un FAUX verdict ÉLIMINATOIRE à sa
+première exécution** : trois zéros lus sur une VM saine, parce que rien n'avait
+été copié depuis le démarrage de la station de fenêtres. **Un verdict négatif
+exige que la chose mesurée soit ABSENTE, pas seulement nulle.** Journal du défaut
+conservé : `p0-sonde-0-instrument-defectueux.log`.
+
+⚠️ **Fait annexe, à ne bâtir sur rien** : le compteur avance de **12** par
+`Set-Clipboard` PowerShell et de **5** par un `SetClipboardData` unique — **il
+compte des formats offerts, pas des copies**. Sans conséquence pour P1, qui ne
+lit que le **mouvement**.
+
+### ② Le témoin de mesurabilité : **le NIVEAU 2 est NON MESURABLE**, et c'est écrit
+
+Joué **AVANT tout critère**, **une exécution**
+(`temoin-mesurabilite.log`) : `navigator.clipboard.writeText` **résout**, la page
+**se relit elle-même** (`readText` rend le nonce exact), mais **l'HÔTE ne le voit
+pas** — `xclip` et `wl-paste` **absents**, `xsel` présent et refusé
+(`xsel: Can't open display: (null)`). Aucun serveur X n'est joignable.
+
+🔴 **Ce n'est PAS un échec du produit, c'est une mesure non prise.** Le critère ①
+tombe au **niveau 1**. **Ce témoin POUVAIT échouer, et il a échoué — sur sa
+troisième branche seulement**, les deux premières ayant réussi : c'est ce qui en
+fait un témoin.
+
+⚠️ **Que la page se relise elle-même n'est PAS le niveau 2** : un presse-papier
+interne au processus Chromium suffirait à le satisfaire. **Personne n'a jamais
+vérifié qu'un humain peut coller** — ni dans ce sous-bloc, ni ailleurs. La voie
+qui le permettrait est nommée : `Xvfb` + `xdotool`, dont le consentement
+d'installation a été **donné en D8 et jamais suivi d'effet**, et ⚠️ **les mesures
+qui en sortiraient ne se compareraient à aucune campagne antérieure**.
+
+### ③ Les quatre critères — **deux exécutions par bras, aucun taux**
+
+Binaire mesuré : **10 088 448 octets**, rebâti le 20 août 2026 après
+`cargo clean --release -p proto -p agent` (le précédent valait 10 075 136).
+
+| # | Critère | Verdict | Exéc. |
+| --- | --- | --- | --- |
+| ① | Copier dans la VM rend collable | **TENU au NIVEAU 1**, avec sa réserve | **2** |
+| ② | Un texte **inchangé** ne produit **aucun** message | **TENU**, et **mesurable** | **2** |
+| ③ | Au-dessus de la borne : **refusé et dit**, jamais tronqué | **TENU** | **2** |
+| ④ | `PRESSE_PAPIER=0` désarme | **TENU** | **2 + 2** |
+
+Le protocole enchaîne cinq copies, **après** que la session est établie
+(D-P1-4 : l'état lu au premier sondage fait référence et n'est jamais annoncé —
+copier avant mesurerait zéro sur un produit correct) :
+
+**C1** copie neuve → **C2 la même à l'identique** → **C3 une différente** →
+**C4 100 KiB** → **C5 une VRAIE copie Bloc-notes** (`SendKeys` Ctrl+A, Ctrl+C).
+
+Compte cumulé de messages lus **dans la page**, aux **deux** exécutions armées :
+`0 → 1 → 1 → 2 → 3 → 4`. Et côté agent, **4 annonces pour 5 copies** :
+
+```
+octets=19     refus=false   (C1)
+                            ← C2 : AUCUNE annonce
+octets=18     refus=false   (C3)
+octets=102400 refus=true    (C4)
+octets=19     refus=false   (C5)
+```
+
+**Les deux bouts concordent exactement.** Bras désarmé : **0 message** et
+**0 annonce** sur les cinq mêmes copies, aux deux exécutions, avec la trace
+`presse-papier DESARME`. **Zéro `ERROR`** aux quatre exécutions, et **zéro**
+`sortie créée mais introuvable dans la topologie DXGI` — la pollution de registre
+qui avait plafonné D9 à trois fenêtres ne mord pas ici.
+
+🔴 **C3 est ce qui rend ② DISCRIMINANT** : sans une copie différente ensuite,
+« aucun message » serait aussi le relevé d'un mécanisme mort.
+
+🔴 **LES MESSAGES SONT COMPTÉS SUR LE CANAL DE CONTRÔLE, PAS SUR LES APPELS À
+`writeText`, et c'est ce qui rend ② capable d'échouer.**
+`PressePapierLocal::aEcrire` dédoublonne **lui aussi** (`enAttente === ecrit`) :
+compter les écritures mesurerait le garde du **client**, pas celui de l'**agent**
+— deux messages identiques ne produiraient qu'une écriture même garde retiré.
+C'est le patron que ce dépôt paie depuis D6, et il a été payé **une fois de plus
+à l'intérieur de ce sous-bloc** (un test du canal rompu passait avec un
+distributeur vide, parce qu'un appel intercalé détectait la même rupture).
+
+**③ en détail** : le message porte `text: null` et `bytes: 102400`, le bandeau
+dit « copie trop volumineuse (100 Kio) — elle n'a pas été recopiée ici, réduisez
+la sélection », **`#status.dataset.hidden` vaut `false`** (les DEUX sont lus :
+`masquer()` n'efface jamais `textContent`, piège de D5 jamais corrigé), et le
+presse-papier du navigateur reste **inchangé**.
+
+### ④ 🔴 Le câblage du tour de roue est MESURÉ BRANCHÉ, et il ne l'est que par là
+
+**Aucun test d'hôte ne le couvre** : le fil dort `PERIODE_REARBITRAGE` et
+`Sondeur::lire_la_plateforme` rend `None` hors Windows — **le retirer laisserait
+les trois tests verts**. L'observation est **directe** : la trace
+`presse-papier de la VM` ne sort que de
+`capteur/sommeil/presse_papier.rs::distribuer`, dont l'**unique** appelant est
+`registre.rs::demarrer_le_tour_de_roue` (vérifié par `grep -rn`), **et le
+navigateur reçoit le message correspondant, avec le même contenu et la même
+taille**.
+
+⚠️ **Ce que cela n'établit pas** : ni la période réelle du sondage, ni qu'il lise
+**hors du verrou** (D-P1-3 / E3). La lecture hors verrou est une propriété du
+code ; **aucune mesure ne la démontre**, et la contention qu'elle évite n'a
+jamais été exercée.
+
+### ⑤ Pièges neufs — à connaître avant de toucher à ce terrain
+
+- 🔴 **UNE TÂCHE PLANIFIÉE PAR GESTE DÉTRUIT LA MESURE.** Copier par un
+  `vm-it.sh` à chaque copie ouvrait **une page navigateur de plus 0,5 s après
+  CHAQUE appel** : la console PowerShell d'une tâche planifiée est **éligible à
+  la capture** même en `-WindowStyle Hidden` (piège de D11, rencontré ici
+  **pendant** la mesure et non au montage), le superviseur lui donnait une
+  session, la page-shell lui ouvrait une fenêtre, la session tombait et l'enfant
+  était relancé. **L'instrument détruisait ce qu'il mesurait.** Remède : un
+  **copieur à demeure**, un seul processus né **avant** le superviseur, piloté
+  par fichiers, dont l'attente porte sur le **FAIT** (un numéro d'ordre relu) et
+  jamais sur une durée.
+- ⚠️ **Une vraie copie Bloc-notes ouvre une fenêtre ÉLIGIBLE**, donc crée une
+  session de plus. C'est inhérent au geste : la placer **en dernier**.
+- ⚠️ **`Get-Clipboard` par WinRM (session 0) rend `-1`** : le presse-papier est
+  par **station de fenêtres**. Toute copie de recette passe par la **session 1**.
+- 🔴 **L'AUTO-ATTACHE CDP NE SUFFIT PAS.** Une exécution entière n'a vu **aucune**
+  cible d'application — deux cibles attachées en tout — alors que le viewport
+  était bien arrivé (`enfant lancé … largeur=780 hauteur=492`) : la fenêtre
+  s'était ouverte **puis refermée**. ⚠️ **Cause non établie.** Parade : balayer
+  aussi `Target.getTargets`, et savoir ouvrir la page d'application soi-même.
+- ⚠️ **Une cible ouverte par `window.open` s'attache avec une URL VIDE**, l'URL
+  n'arrivant qu'au `targetInfoChanged` suivant. Un instrument qui teste l'URL sur
+  `Target.attachedToTarget` **ne peut jamais réussir, en silence**.
+- ⚠️ **Chercher `session=` dans un journal d'agent BRUT ne matche jamais** :
+  `tracing` intercale des séquences ANSI entre le nom du champ et sa valeur.
+  **Mettre à plat d'abord** — le `grep` de la recette d'entrée de D8, rejoué.
+- ⚠️ **Un pilote CDP ne SORT PAS tout seul** : le `WebSocket` tient la boucle
+  d'événements après la mort de Chrome. Sans sortie explicite, le harnais le
+  bascule en arrière-plan alors que tout est fini, et cela se lit comme une
+  mesure interminable.
+- 🔴 **DEPUIS LE SOUS-BLOC P3 DE LA PLATEFORME, L'AGENT DOIT S'ENRÔLER.** Sans
+  `AGENT_VM`/`AGENT_SECRET`, le signaling le refuse
+  (`session de contrôle REFUSÉE … motif=jeton-absent`), aucune session ne
+  s'établit, **et le symptôme se lit exactement comme une panne du produit**. Une
+  exécution y a été perdue. La page-shell exige en outre un **jeton
+  d'utilisateur** en `localStorage`, et la VM doit être **attribuée** à ce compte.
+- ⚠️ **Un service de plateforme resté en vie refuse la version 2 du canal
+  `/agent`** (`version_emise=2 version_recue=1`) s'il tourne depuis avant
+  `e4671e6`. La recette a lancé une **seconde instance** plutôt que de redémarrer
+  celle du chantier concurrent, dont elle aurait invalidé les jetons.
+- ⚠️ **`shell-page.ts` ouvre `/?session=<id>` SANS paramètre `signaling`** :
+  `main.ts` retombe alors sur `ws://<hôte>:8080` **en dur**. Une recette qui parle
+  à un autre port doit poser le paramètre elle-même.
+
+### ⑥ Ce que P1 n'établit PAS
+
+- **Aucun taux.** Deux exécutions par bras au mieux ; une seule pour le témoin.
+- 🔴 **Le NIVEAU 2 du critère ① n'a jamais été atteint** : *personne n'a vérifié
+  qu'un humain peut coller.*
+- **Rien d'un navigateur autre que Chromium**, rien d'un Chromium **avec
+  interface**, **aucune fenêtre de dialogue de permission montrée à un humain**
+  — et il se trouve que **P1 n'en demande aucune** : `readText` n'est appelée
+  nulle part, ce qui est le meilleur résultat de ce chantier.
+- **Rien au-delà d'UNE fenêtre** — c'est P3.
+- **Le sens navigateur → VM n'est pas touché** — c'est P2, dont le **préalable
+  éliminatoire** (`paste` sur un `<video>` focalisé) **n'est toujours pas
+  mesuré** : R2 a été relevé avec le focus sur un `body`. **Si la réponse est
+  non, P2 est bloqué.**
+- **`writeText` depuis une fenêtre NON focalisée n'est pas mesuré** : les quatre
+  exécutions ont `document.hasFocus() === true` à chaque phase. La règle du dépôt
+  différé est livrée sur une contrainte **supposée**, que le critère ④ de P3 peut
+  **réfuter**.
+- **`PRESSE_PAPIER_MAX` (64 KiB) et `PERIODE_PRESSE_PAPIER` (250 ms) ne sont pas
+  calibrées** — elles rejoignent `BPP_MIN`, `FACTEUR_FOCUS`, `PART_DORMANTE_BPS`,
+  `HYSTERESIS`, `REPIT_APRES_ECHEC`, `TAILLE_MAX_SORTIE`,
+  `REPIT_REARMEMENT_AUDIO`, `REARMEMENTS_MAX`.
+- **Le propriétaire MONO-FENÊTRE n'existe pas** : un agent sans `SUPERVISEUR` ni
+  `CAPTEUR` n'a **aucun** presse-papier. Ce n'est pas une régression — il n'en
+  avait pas non plus —, mais c'est la forme exacte du legs n°4 de D10.
+- **Le chemin D-P1-5** — une lecture échouée n'avance pas la référence — **n'a
+  jamais couru en production** : `echecs_open=0` partout. Code livré, jamais
+  emprunté, comme `borner_a_la_taille_max` un sous-bloc entier.
+- **Aucun texte non-ASCII ni multi-ligne n'a traversé la chaîne réelle** :
+  `normaliser` (le cœur de D-P1-2) n'est éprouvée que sur l'hôte.
+- **Rien de la latence de bout en bout**, qu'aucun sous-bloc du chantier D n'a
+  jamais mesurée.
+- **Le presse-papier reste PARTAGÉ entre les fenêtres d'une même session** (D3)
+  et **entre deux utilisateurs d'une même VM** (R11) — la seconde est une
+  question de **confidentialité**, réelle, hors périmètre v1, et elle
+  appartient à ⑤.
+
+### ⑦ La revue transverse — huit constats, tous franchissant une frontière de tâche
+
+Les **six** questions que le plan posait répondent toutes **juste** : l'audit
+d'`act_on_timeout` compte bien onze branches dont `a1septies` (*D6 avait payé
+deux rondes pour l'avoir laissé faux*), le catch-all de `pont_media.rs` dit bien
+**CINQUIÈME**, et le commentaire du `Sondeur` dit bien **pourquoi** le garde n°2
+existe. Ce qu'elle a trouvé en plus :
+
+- 🔴 **La menace de la divergence E10 du plan est FAUSSE.** Un
+  `PRESSE_PAPIER_SONDE` hérité ne fait pas exécuter la sonde « par le processus
+  CAPTEUR pendant que le superviseur le relance en boucle » : `Command` hérite de
+  l'environnement du père, donc si le capteur la porte, **le père la portait déjà
+  et s'est arrêté avant d'avoir lancé quoi que ce soit**. La **décision** est la
+  même, la **raison** est autre — et elle est désormais écrite dans le code et
+  dans le plan.
+- **Quatre affirmations de la SPEC devenues fausses**, annotées à leur place —
+  dont **une barrée pour MOITIÉ seulement** : « rien du presse-papier Windows
+  n'est mesuré » est réfuté pour `GetClipboardSequenceNumber` et **tient** pour
+  `AddClipboardFormatListener`, que D2 écarte et que la sonde n'a pas éprouvé.
+- 🔴 **L'étape 2 de la tâche 18 du plan était DÉJÀ FAITE quand elle a été
+  atteinte, et son premier chiffre était DÉJÀ FAUX.** Le tableau de clôture de
+  **F1** publie déjà `transport.rs` **448** et `verify-webrtc.mjs` **494**, avec
+  l'énumération des quatre places datées où le 497 subsiste et la raison de ne
+  pas les réécrire. **Et le 495 que ce plan avait lui-même MESURÉ le 19 août
+  valait 448 le 20** — le naufrage du « 487 » sous sa forme la plus brève.
+- **Le legs n°1 du plan citait `main.rs:434`**, ligne qui n'existe plus : le
+  fichier a été **extrait en cours de sous-bloc** et fait **300** lignes.
+- **Un compte publié en amont valait 17 là où `cargo` en écrit 16** : un
+  `grep -c '^warning'` compte **aussi** la ligne de résumé.
+
+**Les trois contrôles que le plan désignait comme candidats à l'invalidité ont
+été éprouvés, et aucun n'est vacueux** — le témoin de mesurabilité a d'ailleurs
+**échoué** sur sa troisième branche, ce qui est la seule preuve qui vaille. Un
+**quatrième**, non désigné, a été trouvé dans l'instrument. **Aucune pièce
+fabriquée** : les comptes publiés en amont ont été **relancés**.
+
+### ⑧ Les tailles, **relevées par la commande le 20 août 2026, après la dernière édition**
+
+**Le tableau de dette gagne DEUX lignes** — `proto/src/plateforme/tests.rs`
+(**561**) et `proto/ts/plateforme.test.ts` (**512**), nés de **G1** et
+**absents de ce fichier jusqu'ici**. Les deux entrées gelées sont inchangées
+(`encode.rs` **1536**, `windows_source.rs` **630**). **Aucun autre fichier de
+code source ne dépasse 500 lignes.**
+
+**Fichiers que P1 a fait bouger. ⚠️ Les valeurs EN GRAS sont mesurées par la
+commande le 20 août 2026, après la dernière édition de la branche, revue
+transverse comprise. Les valeurs ~~barrées~~ sont, elles, RECOPIÉES du tableau
+du plan (relevé du 19 août) : ce sont des points de départ historiques, pas des
+mesures de ce jour, et c'est dit plutôt que dissimulé.**
+
+| Fichier | Lignes | Remarque |
+| --- | --- | --- |
+| `agent/src/presse_papier.rs` | **428** | neuf — **pur, aucun `cfg`**, 13 tests d'hôte : la règle entière (normaliser, borner, comparer) |
+| `agent/src/transport/tick.rs` | ~~403~~ **421** | la branche `a1septies` |
+| `agent/src/source.rs` | ~~393~~ **414** | +1 méthode de trait, à défaut inerte |
+| `client/src/main.ts` | ~~451~~ **414** | l'extraction de `presse-papier-dom.ts` a PRÉCÉDÉ l'addition ; +7 depuis, par le chantier concurrent |
+| `agent/src/capteur/sommeil/registre.rs` | ~~346~~ **378** | le sondage sur le tour de roue, **hors du verrou** |
+| `agent/src/capteur/protocole.rs` | ~~419~~ **464** | `DepuisCapteur::PressePapier` et sa documentation |
+| `agent/src/capteur/sommeil.rs` | ~~328~~ **363** | +1 variante de `Message` |
+| `agent/src/capteur/distante.rs` | ~~409~~ **446** | `Recu`, 1 champ, 1 méthode |
+| `proto/src/control.rs` | ~~470~~ **327** | **extraction préalable** vers `control/tests.rs` avant l'addition |
+| `proto/src/control/tests.rs` | **237** | neuf — l'extraction |
+| `agent/src/capteur/distante/tests.rs` | ~~474~~ **339** | **extraction** vers `tests_etats.rs` : la porte de mesure que E1 exigeait |
+| `agent/src/capteur/distante/tests_etats.rs` | **187** | neuf — l'extraction |
+| `agent/src/main.rs` | ~~505~~ **300** | 🔴 il **dépassait 500 AVANT P1** sans figurer nulle part (voir le legs n°6) ; **extrait**, dette purgée |
+| `agent/src/configuration.rs` | **244** | neuf — l'extraction ci-dessus |
+| `agent/src/diagnostics/presse_papier.rs` | **324** | neuf — la sonde P0 |
+| `agent/src/capteur/fenetre/transitions.rs` | ~~193~~ **215** | +1 bras de relais |
+| `agent/src/transport/controle.rs` | ~~225~~ **226** | +1 bras du `match` de journal |
+| `agent/src/capteur/pont_media.rs` | ~~263~~ **326** | +1 bras du catch-all, **CINQUIÈME fois**, et son test — la ROUGE jouée d'abord |
+| `agent/src/capteur/sommeil/presse_papier.rs` | **193** | neuf — la distribution, **extraite** de `sommeil.rs` |
+| `proto/ts/control.ts` | ~~139~~ **184** | +1 interface, l'union, `TYPES_AGENT` **DÉRIVÉ** |
+| `agent/src/diagnostics.rs` | ~~128~~ **188** | +1 bras d'aiguillage, et la réfutation de E10 |
+| `client/src/presse-papier-dom.test.ts` | **149** | neuf |
+| `client/src/presse-papier.ts` | **112** | neuf — **pur, sans DOM** |
+| `agent/src/presse_papier/win32.rs` | **98** | neuf — les deux appels Win32, **aucune décision** |
+| `client/src/presse-papier-dom.ts` | **101** | neuf — l'extraction préalable de `main.ts` |
+| `client/src/presse-papier.test.ts` | **92** | neuf |
+| `scripts/run-agent.sh` | ~~130~~ **145** | les deux variables |
+
+✅ **Chiffres voisins RELEVÉS et EXACTS ce jour-là**, à ne pas re-vérifier :
+`encode/arret.rs` **500** (marge 0), `client/verify-webrtc.mjs` **494** (6),
+`capture.rs` **492** (8), `demarrage.rs` **491** (9),
+`superviseur/lanceur.rs` **488** (12), `pont/projfs/rappels.rs` **488** (12),
+`transport/socket.rs` **481**, `transport/piste_video.rs` **477**,
+`pont/transport/tests.rs` **474**, `congestion/controleur.rs` **472**,
+`transport/adaptation.rs` **468**, `transport.rs` **448**.
+
+⚠️ **`agent/src/transport.rs` vaut 448, et non 491 (son entrée au tableau du
+chantier **E**, plus haut) ni 495 (le plan de P1).** Les deux nombres sont
+**datés** et restent vrais comme histoire ; le tableau de clôture de **F1**
+publiait déjà 448. **C'est 448 qui fait foi**, et `transport.rs` **n'est donc
+plus** l'une des marges les plus serrées d'`agent/src` — ce que son entrée du
+chantier E affirme encore au présent.
+
+> ⚠️ **Cette phrase citait d'abord `CLAUDE.md:723`, et ce numéro était déjà
+> faux quand l'encre a séché : l'entrée est à la ligne 745.** Ce n'est pas une
+> dérive lente — **c'est l'insertion du tableau de dette de CE sous-bloc, vingt
+> lignes plus haut dans CE fichier, qui l'a décalée**. Un numéro de ligne dans
+> `CLAUDE.md` est faux dès qu'on écrit au-dessus, et **on écrit toujours
+> au-dessus**. La règle qui vaut est celle que la revue transverse de P1 vient
+> d'inscrire dans `proto/src/control.rs` : **nommer la chose, jamais compter
+> les lignes qui l'en séparent.**
+
+### ⑨ Les comptes, relevés APRÈS la dernière édition
+
+| Commande | Résultat |
+| --- | --- |
+| `cargo test -p agent` | **671 passed, 0 failed** |
+| `cargo test -p proto` | **83 passed, 0 failed** |
+| `cd proto && npx vitest run` | **142 passed**, 5 fichiers |
+| `cd client && npx vitest run` | **304 passed**, 33 fichiers |
+| `cd agent && cargo check --target x86_64-pc-windows-gnu` | **sortie 0**, **16 avertissements** |
+
+⚠️ **304 et non 295** : le chantier concurrent a ajouté des tests à `client/`
+entre l'écriture du plan et sa clôture. **Aucun test de P1 n'a disparu.**
+⚠️ **16 et non 17** : `cargo` l'écrit lui-même ; un `grep -c '^warning'` compte
+aussi la ligne de résumé.
+
+### ⑩ Ce que P1 lègue
+
+1. ⛔ **Le propriétaire MONO-FENÊTRE n'existe pas.** Point de chute :
+   `agent/src/demarrage.rs` — **491 lignes, marge 9** : 🔴 **une extraction
+   préalable y sera requise.**
+2. ⛔ **`Capabilities.clipboard`** — reporté à P2, où il sert.
+3. ⛔ **Une fenêtre attachée après une copie ne reçoit jamais ce contenu.** Sans
+   conséquence à une fenêtre, **réel en P3**. Remède nommé : émettre l'état
+   courant à l'inscription, comme `parts::distribuer_les_parts` le fait déjà.
+4. ⛔ **Le canal `Message` du registre est non borné**, et P1 y fait circuler
+   jusqu'à 64 KiB par fenêtre et par changement. Nommé, non corrigé.
+5. ⛔ **Le préalable éliminatoire de P2 n'est toujours pas mesuré.** **Si la
+   réponse est non, P2 est bloqué** et la conception se replie sur `readText()`
+   avec permission — c'est-à-dire sur l'ancien produit.
+6. ⛔ **`agent/src/main.rs` avait franchi 500 lignes AVANT P1 sans que rien ne le
+   déclare** — 470 → **505** au commit `264c275`, relevé par la commande. P1 l'a
+   **résorbé** (300 + 244). **Le legs n'est pas la dette — elle est purgée —
+   c'est que personne ne l'avait vue.**
+7. ⛔ **Deux fichiers de `proto/` dépassent 500 lignes**, nés de G1 : ils entrent
+   au tableau de dette par ce sous-bloc, sans point de chute nommé.
+8. ⛔ **La lecture hors verrou n'est démontrée par aucune mesure**, et la
+   contention qu'elle évite n'a jamais été exercée.
+9. ⛔ **Le chemin D-P1-5 (échec d'ouverture) n'a jamais couru en production.**
+10. ⛔ **Aucun texte non-ASCII ni multi-ligne n'a traversé la chaîne réelle.**
+11. ⛔ **Le niveau 2 du critère ① n'a jamais été atteint** — `Xvfb` + `xdotool`.
+12. ⛔ **`PRESSE_PAPIER_MAX` et `PERIODE_PRESSE_PAPIER` ne sont pas calibrées.**
 
 ---
 
