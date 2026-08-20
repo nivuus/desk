@@ -1,0 +1,79 @@
+=== MUTATION : refus collant : on ne retente plus une fois le refus journalise ===
+--- preuve que le diff n'est pas vide ---
+@@ -65,6 +65,7 @@
+     /// Un second épisode de refus rouvre son propre journal : perdre le câble
+     /// une seconde fois est un fait neuf, pas la répétition du premier.
+     pub fn arbitrer(&mut self) -> Issue {
++        if self.refus_dit { return Issue::RefuseDejaDit; }
+         if self.verrou.tenter() {
+             self.tenue = true;
+             if std::mem::take(&mut self.refus_dit) {
+--- resultat ---
+test micro::exclusivite::tests::un_refus_ne_se_journalise_qu_une_fois ... ok
+test micro::exclusivite::tests::la_tentative_est_REFAITE_apres_un_refus ... FAILED
+test micro::exclusivite::tests::un_verrou_libre_accepte_sans_rien_journaliser ... ok
+test micro::exclusivite::tests::une_acquisition_tardive_est_ANNONCEE ... FAILED
+test micro::exclusivite::tests::une_acquisition_deja_tenue_ne_reannonce_rien ... ok
+thread 'micro::exclusivite::tests::la_tentative_est_REFAITE_apres_un_refus' (3290049) panicked at agent/src/micro/exclusivite.rs:147:9:
+assertion `left == right` failed: la tentative doit être refaite à CHAQUE dépôt, refus compris
+  left: 1
+thread 'micro::exclusivite::tests::une_acquisition_tardive_est_ANNONCEE' (3290053) panicked at agent/src/micro/exclusivite.rs:161:9:
+assertion `left == right` failed
+  left: RefuseDejaDit
+test result: FAILED. 3 passed; 2 failed; 0 ignored; 0 measured; 671 filtered out; finished in 0.00s
+
+=== MUTATION : AccepteApresRefus rendu TOUJOURS ===
+--- preuve que le diff n'est pas vide ---
+@@ -67,11 +67,8 @@
+     pub fn arbitrer(&mut self) -> Issue {
+         if self.verrou.tenter() {
+             self.tenue = true;
+-            if std::mem::take(&mut self.refus_dit) {
+-                Issue::AccepteApresRefus
+-            } else {
+-                Issue::Accepte
+-            }
++            self.refus_dit = false;
++            Issue::AccepteApresRefus
+         } else {
+             self.tenue = false;
+             if self.refus_dit {
+--- resultat ---
+test micro::exclusivite::tests::un_refus_ne_se_journalise_qu_une_fois ... ok
+test micro::exclusivite::tests::la_tentative_est_REFAITE_apres_un_refus ... ok
+test micro::exclusivite::tests::un_verrou_libre_accepte_sans_rien_journaliser ... FAILED
+test micro::exclusivite::tests::une_acquisition_deja_tenue_ne_reannonce_rien ... FAILED
+test micro::exclusivite::tests::une_acquisition_tardive_est_ANNONCEE ... FAILED
+thread 'micro::exclusivite::tests::un_verrou_libre_accepte_sans_rien_journaliser' (3290757) panicked at agent/src/micro/exclusivite.rs:119:9:
+assertion `left == right` failed
+  left: AccepteApresRefus
+thread 'micro::exclusivite::tests::une_acquisition_deja_tenue_ne_reannonce_rien' (3290758) panicked at agent/src/micro/exclusivite.rs:168:13:
+assertion `left == right` failed
+  left: AccepteApresRefus
+thread 'micro::exclusivite::tests::une_acquisition_tardive_est_ANNONCEE' (3290759) panicked at agent/src/micro/exclusivite.rs:160:13:
+assertion `left == right` failed
+  left: AccepteApresRefus
+test result: FAILED. 2 passed; 3 failed; 0 ignored; 0 measured; 671 filtered out; finished in 0.00s
+
+=== MUTATION : tenue() fige a true ===
+--- preuve que le diff n'est pas vide ---
+@@ -85,7 +85,7 @@
+ 
+     /// Vrai si le dernier arbitrage a laissé ce processus propriétaire.
+     pub fn tenue(&self) -> bool {
+-        self.tenue
++        true
+     }
+ }
+ 
+--- resultat ---
+test micro::exclusivite::tests::une_acquisition_deja_tenue_ne_reannonce_rien ... ok
+test micro::exclusivite::tests::la_tentative_est_REFAITE_apres_un_refus ... ok
+test micro::exclusivite::tests::un_verrou_libre_accepte_sans_rien_journaliser ... ok
+test micro::exclusivite::tests::un_refus_ne_se_journalise_qu_une_fois ... FAILED
+test micro::exclusivite::tests::une_acquisition_tardive_est_ANNONCEE ... ok
+thread 'micro::exclusivite::tests::un_refus_ne_se_journalise_qu_une_fois' (3291244) panicked at agent/src/micro/exclusivite.rs:133:9:
+assertion failed: !e.tenue()
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 671 filtered out; finished in 0.00s
+
+sha256 avant=49a4bad4055689aa apres=49a4bad4055689aa  identiques=OUI

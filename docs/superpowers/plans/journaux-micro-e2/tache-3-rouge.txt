@@ -1,0 +1,189 @@
+warning: unused imports: `Exclusivite`, `Issue`, and `Verrou`
+   --> agent/src/micro.rs:451:23
+    |
+451 | pub use exclusivite::{Exclusivite, Issue, Verrou};
+    |                       ^^^^^^^^^^^  ^^^^^  ^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `Event`
+  --> agent/src/transport/piste_micro/tests.rs:16:13
+   |
+16 | use str0m::{Event, Output};
+   |             ^^^^^
+
+warning: variable does not need to be mutable
+   --> agent/src/capteur/repartiteur/tests.rs:129:9
+    |
+129 |     let mut fenetres: Vec<Fenetre> = regime_1.iter().map(|(fenetre, _)| fenetre.clone()).collect();
+    |         ----^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `tete`
+   --> agent/src/micro.rs:196:18
+    |
+196 |         let Some(tete) = self.file.front().map(|t| t.rtp_48k) else {
+    |                  ^^^^ help: if this is intentional, prefix it with an underscore: `_tete`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> agent/src/micro/tests_lecteur.rs:371:9
+    |
+371 |     let mut reveil = |l: &mut LecteurMicro| {
+    |         ----^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: function `actif` is never used
+   --> agent/src/capteur/plein_ecran.rs:118:8
+    |
+118 | pub fn actif() -> bool {
+    |        ^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `PERIODE_STYLE` is never used
+   --> agent/src/capteur/plein_ecran.rs:138:11
+    |
+138 | pub const PERIODE_STYLE: Duration = Duration::from_millis(250);
+    |           ^^^^^^^^^^^^^
+
+warning: constant `NOM_TUBE` is never used
+  --> agent/src/capteur/protocole.rs:15:11
+   |
+15 | pub const NOM_TUBE: &str = r"\\.\pipe\agent-capteur";
+   |           ^^^^^^^^
+
+warning: method `courant` is never used
+  --> agent/src/cursor.rs:49:12
+   |
+28 | impl Hysteresis {
+   | --------------- method in this implementation
+...
+49 |     pub fn courant(&self) -> bool {
+   |            ^^^^^^^
+
+warning: method `tenter` is never used
+  --> agent/src/micro/exclusivite.rs:24:8
+   |
+14 | pub trait Verrou {
+   |           ------ method in this trait
+...
+24 |     fn tenter(&mut self) -> bool;
+   |        ^^^^^^
+
+warning: field `refus_dit` is never read
+  --> agent/src/micro/exclusivite.rs:47:5
+   |
+44 | pub struct Exclusivite<V: Verrou> {
+   |            ----------- field in this struct
+...
+47 |     refus_dit: bool,
+   |     ^^^^^^^^^
+
+warning: field `reponses` is never read
+  --> agent/src/micro/exclusivite.rs:75:9
+   |
+73 |     struct VerrouFactice {
+   |            ------------- field in this struct
+74 |         /// Les réponses à rendre, dans l'ordre ; la dernière se répète.
+75 |         reponses: Vec<bool>,
+   |         ^^^^^^^^
+
+warning: variant `Lire` is never constructed
+  --> agent/src/pont/table.rs:49:5
+   |
+45 | pub enum Attendue {
+   |          -------- variant in this enum
+...
+49 |     Lire {
+   |     ^^^^
+   |
+   = note: `Attendue` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: field `adaptateur` is never read
+  --> agent/src/sortie_dxgi.rs:19:9
+   |
+16 | pub struct SortieDxgi {
+   |            ---------- field in this struct
+...
+19 |     pub adaptateur: String,
+   |         ^^^^^^^^^^
+   |
+   = note: `SortieDxgi` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: method `sessions_vivantes` is never used
+   --> agent/src/superviseur/table.rs:337:12
+    |
+199 | impl Table {
+    | ---------- method in this implementation
+...
+337 |     pub fn sessions_vivantes(&self) -> Vec<IdSession> {
+    |            ^^^^^^^^^^^^^^^^^
+
+warning: function `une_application_absente_d_aujourdhui_disparait_PAR_SA_CLE` should have a snake case name
+  --> agent/src/apps/reconciliation/tests.rs:58:4
+   |
+58 | fn une_application_absente_d_aujourdhui_disparait_PAR_SA_CLE() {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `une_application_absente_d_aujourdhui_disparait_par_sa_cle`
+   |
+   = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: `agent` (bin "agent" test) generated 16 warnings (run `cargo fix --bin "agent" -p agent --tests` to apply 5 suggestions)
+
+running 5 tests
+test micro::exclusivite::tests::un_refus_ne_se_journalise_qu_une_fois ... FAILED
+test micro::exclusivite::tests::la_tentative_est_REFAITE_apres_un_refus ... FAILED
+test micro::exclusivite::tests::un_verrou_libre_accepte_sans_rien_journaliser ... FAILED
+test micro::exclusivite::tests::une_acquisition_deja_tenue_ne_reannonce_rien ... FAILED
+test micro::exclusivite::tests::une_acquisition_tardive_est_ANNONCEE ... FAILED
+
+failures:
+
+---- micro::exclusivite::tests::un_refus_ne_se_journalise_qu_une_fois stdout ----
+
+thread 'micro::exclusivite::tests::un_refus_ne_se_journalise_qu_une_fois' (3283765) panicked at agent/src/micro/exclusivite.rs:103:9:
+assertion `left == right` failed
+  left: Accepte
+ right: RefusePremierement
+
+---- micro::exclusivite::tests::la_tentative_est_REFAITE_apres_un_refus stdout ----
+
+thread 'micro::exclusivite::tests::la_tentative_est_REFAITE_apres_un_refus' (3283764) panicked at agent/src/micro/exclusivite.rs:120:9:
+assertion `left == right` failed: la tentative doit être refaite à CHAQUE dépôt, refus compris
+  left: 0
+ right: 20
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- micro::exclusivite::tests::un_verrou_libre_accepte_sans_rien_journaliser stdout ----
+
+thread 'micro::exclusivite::tests::un_verrou_libre_accepte_sans_rien_journaliser' (3283766) panicked at agent/src/micro/exclusivite.rs:97:9:
+assertion failed: e.tenue()
+
+---- micro::exclusivite::tests::une_acquisition_deja_tenue_ne_reannonce_rien stdout ----
+
+thread 'micro::exclusivite::tests::une_acquisition_deja_tenue_ne_reannonce_rien' (3283767) panicked at agent/src/micro/exclusivite.rs:147:9:
+assertion failed: e.tenue()
+
+---- micro::exclusivite::tests::une_acquisition_tardive_est_ANNONCEE stdout ----
+
+thread 'micro::exclusivite::tests::une_acquisition_tardive_est_ANNONCEE' (3283768) panicked at agent/src/micro/exclusivite.rs:131:9:
+assertion `left == right` failed
+  left: Accepte
+ right: RefusePremierement
+
+
+failures:
+    micro::exclusivite::tests::la_tentative_est_REFAITE_apres_un_refus
+    micro::exclusivite::tests::un_refus_ne_se_journalise_qu_une_fois
+    micro::exclusivite::tests::un_verrou_libre_accepte_sans_rien_journaliser
+    micro::exclusivite::tests::une_acquisition_deja_tenue_ne_reannonce_rien
+    micro::exclusivite::tests::une_acquisition_tardive_est_ANNONCEE
+
+test result: FAILED. 0 passed; 5 failed; 0 ignored; 0 measured; 671 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p agent --bin agent`
