@@ -1,0 +1,10 @@
+JUGE micro-ecoute-e2 : prefixe='CABLE Output' secondes=3 debut=2026-08-20T12:08:56.5084872+02:00
+ECHEC : System.Management.Automation.MethodInvocationException: Exception lors de l'appel de « Mesurer » avec « 2 » argument(s) : « Exception de HRESULT : 0x88890008 » ---> System.Runtime.InteropServices.COMException: Exception de HRESULT : 0x88890008
+   à Ecoute.IAudioClient.Initialize(Int32 mode, Int32 flags, Int64 buf, Int64 per, IntPtr fmt, IntPtr sess)
+   à Ecoute.Mesurer(String prefixe, Int32 secondes)
+   à CallSite.Target(Closure , CallSite , Type , Object , Object )
+   --- Fin de la trace de la pile d'exception interne ---
+   à System.Management.Automation.ExceptionHandlingOps.CheckActionPreference(FunctionContext funcContext, Exception exception)
+   à System.Management.Automation.Interpreter.ActionCallInstruction`2.Run(InterpretedFrame frame)
+   à System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame)
+   à System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame)
