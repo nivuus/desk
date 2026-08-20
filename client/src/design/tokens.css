@@ -125,17 +125,21 @@
        pour un gain purement esthétique. Le coût assumé : le rendu DIFFÈRE
        d'une machine à l'autre, ce qui interdit toute recette par comparaison
        d'images (§7.8).
-       ⚠️ `--police-mono` n'a QU'UN SEUL appelant prévu, `#stats`, ET IL N'EST
-       TOUJOURS PAS CÂBLÉ à la fin du sous-bloc S1.
-       ❌ « Sans appelant, le token sort » — écrit ici par la tâche 7 — A ÉTÉ
-       RÉFUTÉ par la tâche 12 de la MÊME branche : le token n'est pas sorti. Le
-       câbler CHANGERAIT l'apparence de `#stats`, qui hérite aujourd'hui de
-       `--police-ui`, et S1 s'interdit nommément de changer l'apparence
-       d'`index.html`. Il vit donc dans la liste d'attente nommée, et c'est
-       **S4** — le seul sous-bloc qui a le droit de toucher la fenêtre de
-       session — qui tranche : ou il le câble, ou il le retire. C'est le SEUL
-       token en attente dont le sort soit encore ouvert ; les autres ont un
-       appelant nommé.
+       ✅ `--police-mono` EST CÂBLÉ, et son sort n'est plus ouvert : sous-bloc
+       S4, tâche 6, sur `#stats` (`client/src/style.css`) — son unique appelant
+       prévu depuis S1, celui que le §4.3 de la spec désigne. Trois sous-blocs se
+       sont passé la décision « le câbler ou le retirer », faute d'avoir le droit
+       de changer l'apparence de la fenêtre de session ; S4 l'a, et il câble. Le
+       retirer aurait emporté ses deux appelants de galerie
+       (`client/design.html`) et fait perdre au design system sa pile monospace
+       ENTIÈRE, pour vider une ligne de liste.
+       ⚠️ ET LA LISTE D'ATTENTE EST DÉSORMAIS VIDE — sans disparaître : c'est
+       l'ÉGALITÉ de §7.6 qui vaut, pas la liste, et S4 déclare quatre tokens de
+       plus qu'elle garde. Voir l'encadré de tête de
+       `client/outils/tokens-orphelins/attente.mjs`.
+       ❌ « Sans appelant, le token sort » — écrit ici par la tâche 7 de S1 — a
+       été RÉFUTÉ par la tâche 12 de la MÊME branche : le token n'est pas sorti.
+       Il ne sortira plus : il a un appelant.
        ⚠️ DEUX CHIFFRES ET UN CHEMIN ONT VIEILLI ICI, corrigés par la revue
        transverse de S2 (20 août 2026) : ils disaient « 28 tokens en attente »
        et « les 27 autres », et renvoyaient à `client/outils/tokens-orphelins.mjs`.

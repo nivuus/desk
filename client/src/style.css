@@ -126,12 +126,32 @@ body {
     position: fixed;
     inset-block-end: var(--e-3);
     inset-inline-start: var(--e-3);
+    /* ── LA PILE MONOSPACE (S4, tâche 6) ──────────────────────────────────
+       `--police-mono` avait UN SEUL appelant prévu depuis S1 — celui-ci — et
+       trois sous-blocs se sont passé la décision « le câbler ou le retirer »
+       faute d'avoir le droit de changer l'apparence de cette surface. S4 l'a,
+       et il câble : la spec §4.3 le DÉSIGNE pour ce bandeau, qui « affiche des
+       nombres qui changent » et porte déjà `font-variant-numeric` pour la même
+       raison. Le retirer aurait emporté ses deux appelants de galerie et fait
+       perdre au design system sa pile monospace ENTIÈRE, pour vider une ligne.
+
+       ⚠️ LE CRÉNAGE DE 0,02em EST PARTI AVEC, ET CE N'EST PAS UN TOUR DE
+       PASSE-PASSE. Le crénage et la pile monospace servent la MÊME FIN — lire
+       des nombres qui changent —, et la spec §4.3 désigne la pile comme le
+       moyen. Le crénage est en outre ANTÉRIEUR au design system : il vient de
+       `bd78d75` (« overlay de mesure et recette du jalon 1 »), relevé par
+       `git log -S 'letter-spacing' -- client/src/style.css`. Il n'avait aucun
+       cran d'échelle, et aucune famille de crénage n'est déclarée.
+       ⚠️ QUE LE RÉSULTAT SOIT PLUS LISIBLE EST UN JUGEMENT HUMAIN (spec §8) :
+       aucune commande ne le dira, et aucun œil n'est passé.
+
+       L'`ID` l'emporte sur la classe : `#stats` garde son cran, `--t-s`, là où
+       `.message` pose `--t-m`, et sa pile là où `base.css` pose `--police-ui`.
+       Deux écrasements volontaires, tous deux sur une VALEUR TYPOGRAPHIQUE et
+       jamais sur la forme de la primitive. */
+    font-family: var(--police-mono);
     font-variant-numeric: tabular-nums;
-    /* L'`ID` l'emporte sur la classe : `#stats` garde son cran, `--t-s`, là où
-       `.message` pose `--t-m`. C'est le seul écrasement volontaire, et il porte
-       sur une TAILLE, pas sur la forme de la primitive. */
     font-size: var(--t-s);
-    letter-spacing: 0.02em;
 }
 
 #fullscreen {
