@@ -1,0 +1,11 @@
+=== CRITERE 7 — LE MAGASIN SE RECONSTRUIT TOUT SEUL ===
+avant  : 98 fichiers, 3215893 octets
+vide   : 0 fichiers
+-> on attend UNE reconciliation (periode 30 s) ; l'inventaire interroge le DISQUE.
+apres  : 98 fichiers, 3215893 octets
+
+🔴 C'EST CE QUI REND LE DISQUE ACCEPTABLE, ET C'EST EPROUVE PLUTOT QUE SUPPOSE.
+   La rouge est un inventaire deduit de la BASE : rien ne serait redemande,
+   et les icones seraient perdues POUR TOUJOURS. Ici l'inventaire interroge
+   le disque, donc la perte se repare seule a la reconciliation suivante.
+   ⚠️ LA RECONSTRUCTION EST BORNEE PAR LA RECONCILIATION, PAS IMMEDIATE.

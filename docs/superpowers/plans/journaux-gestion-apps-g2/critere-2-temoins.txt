@@ -1,0 +1,18 @@
+=== CRITERE 2 — source_max DISTINGUE un vrai 256 d'un AGRANDISSEMENT ===
+
+⚠️ PREMIER MONTAGE ECARTE, ET LA RAISON EST ECRITE : les deux raccourcis
+   visaient notepad.exe SANS arguments, donc portaient la MEME cle — le
+   triplet (cible, arguments, repertoire) est l'identite (spec D4). Le
+   catalogue n'en gardait qu'UNE. Ce n'etait pas un defaut du produit :
+   c'etait la deduplication faisant exactement son travail, sur un montage
+   qui l'ignorait. Les deux temoins portent desormais des arguments
+   distincts.
+
+  G2 Temoin 256    PNG SERVI = 256x256   source_max = {"pixels": 256}
+  G2 Temoin 48     PNG SERVI = 256x256   source_max = {"pixels": 48}
+
+  🔴 LES DEUX PNG FONT 256x256. SEUL source_max LES DISTINGUE.
+     Un code qui deduirait la provenance de la taille RENDUE donnerait 256
+     AUX DEUX — mesure M2 du plan, prise deux fois.
+
+  VERDICT : TENU

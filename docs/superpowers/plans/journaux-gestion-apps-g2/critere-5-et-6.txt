@@ -1,0 +1,8 @@
+=== CRITERES 5 et 6 — magasin DEJA PLEIN (98 fichiers) au demarrage ===
+2026-08-20T22:20:33.456435Z  INFO agent::apps::boucle: catalogue reconcilie total=220 retenus=169 cles=156 icones=156 icones_echouees=0 icones_distinctes=98 apparues=156 modifiees=0 disparues=0 duree_ms=1554
+2026-08-20T22:21:03.526311Z  INFO agent::apps::boucle: catalogue reconcilie total=220 retenus=169 cles=156 icones=0 icones_echouees=0 icones_distinctes=98 apparues=0 modifiees=0 disparues=0 duree_ms=69
+2026-08-20T22:21:33.593980Z  INFO agent::apps::boucle: catalogue reconcilie total=220 retenus=169 cles=156 icones=0 icones_echouees=0 icones_distinctes=98 apparues=0 modifiees=0 disparues=0 duree_ms=66
+
+--- televersements ---
+  AUCUNE ligne : aucun inventaire n'a ete pousse.
+  inventaires recus par l'agent : 0

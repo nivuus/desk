@@ -1,0 +1,18 @@
+=== TACHE 10 — DETERMINATION DE WIC, DEUX PROCESSUS DISTINCTS ===
+chemins vus au run 1 : 154
+chemins vus au run 2 : 154
+chemins PRESENTS DANS LES DEUX : 154
+  empreintes EGALES    : 154
+  empreintes DIFFERENTES: 0
+
+--- VERDICT, selon la regle de redaction du plan ---
+POSITIF : les 154 couples sont PRESENTS dans les deux journaux
+  ET EGAUX DEUX A DEUX.
+  ⚠️ Une empreinte ABSENTE, un journal vide ou une execution qui n'a pas
+     demarre n'auraient PAS ete un verdict negatif — ce sont des mesures
+     non prises. Ici les deux journaux sont COMPLETS (154 = 154).
+
+--- PORTEE EXACTE ---
+DEUX executions, DEUX processus distincts, un corpus, une VM, le 21 aout 2026.
+AUCUN TAUX N'EST REVENDIQUE. Rien n'est mesure d'une autre machine, d'une
+autre version de Windows, ni d'un redemarrage de la VM entre les deux.

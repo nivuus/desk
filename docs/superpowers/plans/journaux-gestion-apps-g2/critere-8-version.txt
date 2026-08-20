@@ -1,0 +1,13 @@
+=== CRITERE 8 — un agent v2 face a une plateforme v3 RENONCE, et le DIT ===
+binaire mesure : agent-v2-avant-g2.exe (10 160 640 octets), conserve avant G2
+
+lignes « la plateforme REFUSE la version » : 1
+2026-08-20T22:16:14.572884Z  WARN agent::plateforme: la plateforme REFUSE la version du canal /agent : aucune reprise, il faut rebâtir l'agent ou la plateforme url="ws://192.168.3.1:8090/agent" version_emise=2 version_recue=3
+
+lignes « reprise du canal /agent » APRES le refus : 0
+lignes « agent enrole »                          : 0
+
+🔴 AU MOMENT DE G1, CE MEME MONTAGE RENDAIT 0 ET 10 — zero ligne de refus
+   et dix reprises jusqu'au palier de 30 s. C'est le CONTRASTE qui fait la
+   preuve : la correction du 20 aout 2026 a sorti le refus du versionnement,
+   et G2 est le PREMIER bump depuis, donc le premier a pouvoir le prouver.

@@ -126,7 +126,18 @@ fn reconcilier(memoire: &mut Memoire) -> (reconciliation::Diff, Vec<Application>
                         }
                         _ => {
                             let (e, s) = mesurer(&chemin_lnk, &icone_location, &app.cible, &mut icones);
-                            if e.is_some() { extraites += 1 } else { echecs_icone += 1 }
+                            // 🔴 UN DÉSARMEMENT N'EST PAS UN ÉCHEC, et les
+                            // compter ensemble ferait lire 156 pannes sur un
+                            // agent parfaitement sain qu'on vient de couper
+                            // avec `ICONES=0` — MESURÉ le 21 août 2026, avant
+                            // cette ligne. C'est exactement le défaut que le
+                            // legs n°7 de G1 portait sur `retenus` : un
+                            // compteur qui ment sur son nom.
+                            if e.is_some() {
+                                extraites += 1;
+                            } else if icone::armee() {
+                                echecs_icone += 1;
+                            }
                             app.icone = e;
                             app.source_max = s;
                         }
@@ -206,7 +217,21 @@ fn mesurer(
     }
     match icone::extraire(std::path::Path::new(lnk)) {
         Ok(png) => {
+            let octets = png.len();
             let empreinte = icones.ajouter(png);
+            // ⚠️ `debug!` ET NON `info!`, ET C'EST MESURÉ : cette ligne sort
+            // une fois PAR APPLICATION au premier tour — 153 lignes sur ce
+            // corpus —, dans un journal que le superviseur, le capteur et tous
+            // les enfants partagent depuis D4. Elle ne sort ensuite QUE pour
+            // les clés neuves, donc zéro sur un disque au repos.
+            //
+            // 🔴 C'EST ELLE QUI REND LA DÉTERMINATION DE WIC MESURABLE : deux
+            // exécutions séparées de l'agent, deux journaux, et les empreintes
+            // se comparent chemin par chemin. Sans elle, la seule chose
+            // observable serait `icones_distinctes`, qui ne dirait RIEN d'une
+            // empreinte qui change d'un processus à l'autre — le compte
+            // resterait le même.
+            tracing::debug!(lnk, %empreinte, octets, "icone extraite");
             // ⚠️ LA PROVENANCE EST MESURÉE MÊME QUAND ELLE EST INCONNUE : elle
             // rend `NonMesuree` sans erreur, et ce n'est pas une panne — 37 des
             // 153 applications de cette VM sont dans ce cas.

@@ -1,0 +1,4 @@
+2026-08-20T22:16:14.540834Z  INFO agent: accélération pointeur neutralisée rapport="seuils relus = [0, 0, 0], vitesse relue = 10 (attendu : [0, 0, 0] et 10)"
+2026-08-20T22:16:14.572884Z  WARN agent::plateforme: la plateforme REFUSE la version du canal /agent : aucune reprise, il faut rebâtir l'agent ou la plateforme url="ws://192.168.3.1:8090/agent" version_emise=2 version_recue=3
+2026-08-20T22:16:14.573003Z  WARN agent::plateforme: canal /agent abandonné DÉFINITIVEMENT : aucune reprise ne le rattrapera url="ws://192.168.3.1:8090/agent"
+Error: enrôlement abandonné par la plateforme : voir le journal du canal /agent
