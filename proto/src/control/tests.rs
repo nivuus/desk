@@ -194,3 +194,44 @@ fn un_ready_sans_micro_se_lit_avec_micro_faux() {
         serde_json::from_str(r#"{"type":"ready","v":3,"width":1,"height":1}"#).unwrap();
     assert_eq!(m, AgentControl::ready(1, 1, false));
 }
+
+#[test]
+fn serialise_le_presse_papier_avec_son_texte() {
+    let json = serde_json::to_string(&AgentControl::clipboard(Some("bonjour".into()), 7))
+        .expect("sérialisation");
+    assert_eq!(json, r#"{"type":"clipboard","v":3,"text":"bonjour","bytes":7}"#);
+}
+
+/// 🔴 Un REFUS sérialise `"text":null`, champ PRÉSENT.
+///
+/// ROUGE si l'on pose `#[serde(skip_serializing_if = "Option::is_none")]` :
+/// le champ disparaîtrait, et le client ne pourrait plus distinguer un refus
+/// d'un message tronqué en route.
+#[test]
+fn un_refus_de_presse_papier_serialise_un_text_null_present() {
+    let json =
+        serde_json::to_string(&AgentControl::clipboard(None, 102_400)).expect("sérialisation");
+    assert_eq!(json, r#"{"type":"clipboard","v":3,"text":null,"bytes":102400}"#);
+    assert!(json.contains("\"text\":null"), "le champ text doit rester présent");
+}
+
+/// 🔴 Ce qui prouve que `verifie_version` est bien branché sur la variante
+/// NEUVE — l'oublier est une erreur silencieuse, `version` n'étant vérifié
+/// que par son attribut.
+#[test]
+fn un_presse_papier_en_version_2_est_rejete() {
+    let brut = r#"{"type":"clipboard","v":2,"text":"bonjour","bytes":7}"#;
+    let erreur = serde_json::from_str::<AgentControl>(brut).expect_err("v:2 doit être rejeté");
+    assert!(
+        erreur.to_string().contains("version de contrôle non supportée"),
+        "message inattendu : {erreur}"
+    );
+}
+
+/// ROUGE si l'on retire `deny_unknown_fields` de l'enum : ce test le fige
+/// pour la variante neuve.
+#[test]
+fn un_presse_papier_portant_un_champ_inconnu_est_rejete() {
+    let brut = r#"{"type":"clipboard","v":3,"text":"bonjour","bytes":7,"surprise":1}"#;
+    assert!(serde_json::from_str::<AgentControl>(brut).is_err());
+}
