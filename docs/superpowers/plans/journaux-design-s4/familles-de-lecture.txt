@@ -15,15 +15,23 @@ SANS octet NUL. Ils se `grep`ent à plat, sans `sed`, sans `grep -a`.
 
 RELEVÉ PAR LA COMMANDE, le 20 août 2026, APRÈS la dernière écriture :
 
-  fichier                    encodage      CR  NUL  ESC[  lignes  octets
-  recette-1.log              UTF-8 valide   0    0     0     202   10014
-  recette-2.log              UTF-8 valide   0    0     0     202   10015
-  rouges-t10.log             UTF-8 valide   0    0     0     121    8722
-  rouges-t9.log              UTF-8 valide   0    0     0      63    4760
-  instrument/recette-s4.sh   UTF-8 valide   0    0     0      77    4717
+  fichier                            encodage      CR NUL ESC[ lignes  octets
+  familles-de-lecture.txt            UTF-8 valide   0   0    0     61    3084
+  recette-1.log                      UTF-8 valide   0   0    0    202   10014
+  recette-2.log                      UTF-8 valide   0   0    0    202   10015
+  recette-3-apres-revue.log          UTF-8 valide   0   0    0    202   10052
+  revue-transverse-enumeration.log   UTF-8 valide   0   0    0    284   27880
+  rouges-t9.log                      UTF-8 valide   0   0    0     63    4760
+  rouges-t10.log                     UTF-8 valide   0   0    0    121    8722
+  rouges-t12.log                     UTF-8 valide   0   0    0     22    1545
+  instrument/recette-s4.sh           UTF-8 valide   0   0    0     77    4717
 
   (commande : un script python3 qui compte les octets 13, 0 et la
    sous-chaîne ESC-crochet sur chaque fichier, et tente un decode('utf-8'))
+
+  ⚠️ La ligne de `familles-de-lecture.txt` est celle de sa RÉDACTION
+  PRÉCÉDENTE : un fichier ne peut pas contenir sa propre taille finale. Elle
+  est conservée telle quelle plutôt que d'être devinée.
 
 POURQUOI IL N'Y A PAS DE SECONDE FAMILLE, ET CE N'EST PAS UN MÉRITE
 --------------------------------------------------------------------
@@ -47,15 +55,44 @@ CE QU'IL Y A DANS CHAQUE FICHIER
       de vitest (fichiers de test exécutés en parallèle) : AUCUN nombre ne
       change. Un `diff` qui neutralise les horodatages le montre.
 
+  recette-3-apres-revue.log
+      Une TROISIÈME exécution, prise APRÈS la revue transverse, et elle ne
+      sert qu'à une chose : dire ce que la revue a changé aux actifs bâtis.
+      EXACTEMENT DEUX hachages bougent — `dist/index.html`, parce que
+      `client/src/design/amorce-theme.js` part VERBATIM dans chaque page bâtie
+      et que la revue y a corrigé un mot ; et `main-*.css`, parce que
+      l'extraction des deux boutons de coin réordonne les règles — à taille
+      RIGOUREUSEMENT égale, 1 849 octets avant comme après. Les quatre autres
+      actifs CSS sont octet pour octet identiques : c'est la contre-épreuve
+      que la revue n'a pas touché ce qu'elle ne devait pas.
+
   rouges-t9.log
       Les trois rouges de l'écran terminal, harnais du §9 du plan en sept
-      étapes, PREUVE DE DIFF NON VIDE comprise.
+      étapes, PREUVE DE DIFF NON VIDE comprise. La première est le SENS
+      INVERSE : un écran qui se lèverait toujours passerait le test ①.
 
   rouges-t10.log
       Les rouges du garde WCO : ① repli non nul, ② requête média,
-      ③ atteignabilité en deux temps (vider UNE feuille ne suffit pas —
-      la portée est dérivée), plus les DEUX SENS du blanchiment.
+      ③ atteignabilité EN DEUX TEMPS — vider UNE feuille ne suffit pas, la
+      portée étant dérivée —, plus les DEUX SENS du blanchiment.
+
+  rouges-t12.log
+      La rouge de la revue transverse : l'extraction des deux boutons de coin
+      a DÉPLACÉ la règle du garde ①, et l'atteignabilité a dû être DÉDOUBLÉE.
+      Sans elle, vider la feuille NEUVE laisserait ① vert en ne mesurant rien.
+
+  revue-transverse-enumeration.log
+      L'ÉNUMÉRATION AVANT ÉDITION, puis la RELECTURE APRÈS — les deux étapes
+      que la méthode prescrit. Elle porte aussi le contrôle de non-régression
+      des AUTRES comptes qui emploient le mot « huit ».
 
   instrument/recette-s4.sh
       L'instrument de la recette, versé dans son état final — celui des
-      deux exécutions ci-dessus.
+      trois exécutions ci-dessus.
+
+⚠️ CE QUE CE RÉPERTOIRE NE PORTE PAS : les rouges des tâches 1 à 8 de S4. Elles
+ne sont rapportées que par leurs MESSAGES DE COMMIT, qui sont en git et donc
+permanents, mais qui ne sont pas des journaux. Deux de ces huit commits
+(`aa27fb8`, `1c05dde`) ne contiennent pas même le mot « rouge ». Constat, pas
+reproche : le plan prescrivait de verser les journaux à la tâche 11, et les
+tâches antérieures n'en avaient pas la consigne.
