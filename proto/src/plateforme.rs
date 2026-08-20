@@ -109,124 +109,20 @@ use serde::{Deserialize, Serialize};
 /// strictement inchangée.
 pub const PLATEFORME_VERSION: u8 = 3;
 
-// Note : pas de `default` sur le champ `v` — un message sans champ `v` doit être
-// rejeté (champ obligatoire), pas silencieusement complété avec la version
-// courante. `default` court-circuiterait `deserialize_with` quand le champ est
-// absent, ce qui romprait la vérification.
-fn verifie_version<'de, D>(deserializer: D) -> Result<u8, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let v = u8::deserialize(deserializer)?;
-    if v != PLATEFORME_VERSION {
-        return Err(serde::de::Error::custom(format!(
-            "version de plateforme non supportée : {v}"
-        )));
-    }
-    Ok(v)
-}
-
-/// Lit le champ `v` d'un REFUS **sans le vérifier** — voir la clause 1 de
-/// l'en-tête de ce module.
+/// Les trois lecteurs de champ appelés par `deserialize_with`, extraits pour
+/// que ce fichier ne franchisse pas 500 lignes en accueillant le sous-bloc G3.
 ///
-/// 🔴 CE N'EST PAS « SANS `v` » : le champ reste obligatoire et reste un
-/// entier. Le rendre facultatif rouvrirait le trou que
-/// [`verifie_version`] refuse — un `v: null`, ou un `v` absent, deviendrait
-/// acceptable — et priverait le journal de la seule information qui dise
-/// QUELLE version nous refuse.
-fn version_toleree<'de, D>(deserializer: D) -> Result<u8, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    u8::deserialize(deserializer)
-}
+/// 🔴 LE `use` N'EST PAS COSMÉTIQUE : `serde` résout le chemin d'un
+/// `deserialize_with = "verifie_version"` **dans la portée du module qui porte
+/// l'attribut**. C'est lui qui permet à l'extraction de ne toucher AUCUN des
+/// attributs des structures ci-dessous, donc d'être une transposition pure.
+mod champs;
+use champs::{icone_obligatoire, verifie_version, version_toleree};
 
-/// Lit une `Option<String>` en la gardant **OBLIGATOIRE sur le fil**.
-///
-/// 🔴 SANS CETTE FONCTION, LE CHAMP SERAIT SILENCIEUSEMENT FACULTATIF, ET LA
-/// PLANIFICATION DE G2 SE TROMPAIT SUR CE POINT PRÉCIS. `serde_derive` traite
-/// tout champ de type `Option<T>` comme portant un `#[serde(default)]`
-/// IMPLICITE : un champ absent devient `None` sans qu'aucun `default` n'ait
-/// été écrit, et `deny_unknown_fields` n'y change rien — il regarde les champs
-/// EN TROP, jamais ceux qui manquent.
-///
-/// **Mesuré le 20 août 2026**, deux structures identiques à ce détail près,
-/// `deny_unknown_fields` sur les deux :
-/// ```text
-/// Option<String> nue                          -> `{"a":1}` ACCEPTÉ
-/// Option<String> + deserialize_with           -> `{"a":1}` REFUSÉ
-/// Option<String> + deserialize_with, `b:null` -> Ok(None), et sérialise `"b":null`
-/// ```
-/// La seule chose que `deserialize_with` change est donc l'implicite : il
-/// coupe le défaut, et le champ redevient exigé.
-///
-/// **Ce qui serait perdu sans elle** : le catalogue d'un agent v2 — six champs,
-/// sans `icone` — serait accepté par une plateforme v3, avec une icône
-/// silencieusement absente. C'est exactement le déguisement que le bump de
-/// version existe pour empêcher, et la règle que ce module s'impose déjà pour
-/// le champ `v` : **un champ absent se refuse, il ne se complète pas**.
-fn icone_obligatoire<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    Option::<String>::deserialize(deserializer)
-}
+/// La table des motifs de refus, extraite pour la même raison.
+mod motifs;
+pub use motifs::MotifCanal;
 
-/// Pourquoi la plateforme refuse.
-///
-/// ⚠️ `Enrolement` NE DISTINGUE PAS « VM inconnue » de « secret faux », et
-/// c'est délibéré : les distinguer donnerait à quiconque ouvre le canal un
-/// oracle d'énumération des VMs enrôlées. Le diagnostic vit dans le journal de
-/// la plateforme, jamais sur le fil.
-/// ⚠️ **PLUS DE `Serialize`/`Deserialize` DEPUIS LA CORRECTION DU 20 AOÛT
-/// 2026, ET C'EST DÉLIBÉRÉ.** Le motif voyage en MOT LIBRE dans
-/// [`DepuisLaPlateforme::Refus`] (clause 2 de l'en-tête) : cet enum n'est plus
-/// une forme de fil, c'est la table des motifs que NOUS savons interpréter.
-/// La correspondance mot ↔ variante est écrite une seule fois, dans
-/// [`MotifCanal::mot`] et [`MotifCanal::depuis_mot`], et un test la parcourt
-/// dans les deux sens sur les quatre variantes — ce qu'un `rename_all` ne
-/// permettait pas de faire rougir tant qu'aucune variante n'a deux mots.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MotifCanal {
-    /// La version du message reçu n'est pas [`PLATEFORME_VERSION`].
-    /// 🔴 CELUI-CI NE SE RÉESSAIE PAS.
-    Version,
-    /// Le message n'a pas la forme attendue.
-    Forme,
-    /// L'enrôlement est refusé. Indistinct par construction (voir ci-dessus).
-    Enrolement,
-    /// Un `battement` est arrivé avant tout `enroler`.
-    Sequence,
-}
-
-impl MotifCanal {
-    /// Les quatre variantes, dans l'ordre où un test les parcourt.
-    ///
-    /// 🔴 ANTI-OUBLI : une variante ajoutée sans sa ligne ici serait absente
-    /// du test de correspondance, qui compare cette liste à un `match`
-    /// EXHAUSTIF — le compilateur exige la branche, et le test exige l'entrée.
-    pub const TOUS: [Self; 4] =
-        [Self::Version, Self::Forme, Self::Enrolement, Self::Sequence];
-
-    /// Le mot exact qui voyage sur le fil.
-    pub fn mot(self) -> &'static str {
-        match self {
-            Self::Version => "version",
-            Self::Forme => "forme",
-            Self::Enrolement => "enrolement",
-            Self::Sequence => "sequence",
-        }
-    }
-
-    /// Le motif que ce mot désigne, ou `None` si nous ne le connaissons pas.
-    ///
-    /// 🔴 `None` N'EST PAS UNE ERREUR : c'est un motif d'une version qui nous
-    /// dépasse, et l'appelant doit le journaliser tel quel plutôt que de le
-    /// perdre. C'est la clause 2 de l'en-tête de ce module.
-    pub fn depuis_mot(mot: &str) -> Option<Self> {
-        Self::TOUS.into_iter().find(|candidat| candidat.mot() == mot)
-    }
-}
 
 /// Les types de la GESTION D'APPLICATIONS vivent dans un module enfant.
 ///

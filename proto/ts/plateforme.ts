@@ -20,66 +20,17 @@ export const PLATEFORME_VERSION = 3;
  * oracle d'énumération. */
 export type MotifCanal = 'version' | 'forme' | 'enrolement' | 'sequence';
 
-/**
- * Une application telle que l'agent la découvre sur le disque de la VM.
- *
- * ⚠️ `arguments` est BRUT et SENSIBLE À LA CASSE, contrairement à `cible` et
- * `repertoire` qui sont normalisés. Deux chemins Windows qui ne diffèrent que
- * par la casse désignent le même fichier ; deux lignes de commande qui ne
- * diffèrent que par la casse d'un argument sont deux invocations distinctes.
- */
-export interface Application {
-    /** Empreinte du triplet `(cible, arguments, repertoire)` — l'identité. */
-    cle: string;
-    /** Le nom du `.lnk`, sans son extension. */
-    nom: string;
-    /** Le chemin du `.lnk` LUI-MÊME, et c'est lui qu'on lance. */
-    chemin: string;
-    cible: string;
-    /** BRUTS (voir ci-dessus). Vide = `''`, jamais absent. */
-    arguments: string;
-    repertoire: string;
-    /**
-     * L'empreinte SHA-256 du PNG de l'icône, en hexadécimal minuscule — ou
-     * `null` quand l'extraction a échoué.
-     *
-     * ⚠️ UNE APPLICATION SANS ICÔNE VAUT MIEUX QU'UNE APPLICATION ABSENTE.
-     * `null` n'est pas une erreur, et le champ reste PRÉSENT sur le fil.
-     */
-    icone: string | null;
-    /** Toujours présent. Vaut `'non-mesuree'` quand `icone` est `null`. */
-    source_max: SourceMax;
-}
-
-/**
- * D'où vient l'image : la plus grande entrée réellement PRÉSENTE dans le
- * répertoire d'icônes de la source.
- *
- * 🔴 CE N'EST PAS LA TAILLE RENDUE. Mesuré le 20 août 2026 sur deux témoins
- * fabriqués (`agent/testdata/g2-temoin-{48,256}.ico`) : un `.ico` ne contenant
- * QU'UNE entrée 48×48, interrogé à 256, rend 256×256 32bpp — par
- * `IShellItemImageFactory` comme par `PrivateExtractIconsW`, sans
- * `SIIGBF_SCALEUP` et MÊME avec `SIIGBF_BIGGERSIZEOK`. Un critère qui
- * comparerait la taille rendue à 256 NE PEUT PAS ÉCHOUER.
- *
- * 🔵 `'non-mesuree'` s'écrit avec un TIRET, jamais un tiret bas : c'est le
- * `rename_all = "kebab-case"` du Rust sur une variante à DEUX MOTS, donc la
- * seule du module dont la convention soit observable.
- */
-export type SourceMax = { pixels: number } | 'non-mesuree';
-
-
-/**
- * Ce qu'un ordre de lancement a réellement fait.
- *
- * 🔴 `raccourci` CONTRE `cible` EST CE QUI REND LE CRITÈRE DE RECETTE
- * DÉCIDABLE : lancer par la cible reconstruite au lieu du `.lnk` passerait un
- * critère qui ne dirait que « quelque chose s'est lancé ».
- *
- * ⚠️ CE N'EST PAS UN `MotifCanal` : deux valeurs de `MotifCanal` FERMENT le
- * socket, et un lancement raté ne doit fermer aucun canal.
- */
-export type IssueLancement = 'raccourci' | 'cible' | 'inconnue' | 'echec';
+// Les types de charge utile de ④ vivent dans un module frère, extrait AVANT
+// l'addition du sous-bloc G3 pour que ce fichier ne franchisse pas 500
+// lignes. Ils sont RÉEXPORTÉS ici : aucun des dix importateurs relevés n'a eu
+// à bouger, et c'est ce qui fait de l'extraction une transposition pure.
+// ⚠️ IMPORT **ET** RÉEXPORT, ET LES DEUX SONT NÉCESSAIRES : un
+// `export … from` réexporte sans rien mettre dans la portée locale, et les
+// quatre emplois de `Application` et `IssueLancement` ci-dessous ne
+// compileraient plus. Le typecheck l'a dit, et il vaut mieux qu'il le dise ici
+// que dans un paquet consommateur.
+import type { Application, IssueLancement } from './plateforme-apps';
+export type { Application, SourceMax, IssueLancement } from './plateforme-apps';
 
 
 export interface EnrolerMessage { v: number; type: 'enroler'; vm: string; secret: string }

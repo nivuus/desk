@@ -1,0 +1,25 @@
+=== TÂCHES 3 et 4 — CONSTAT, pas extraction (relevé du 21 août 2026) ===
+
+Le plan de G3 (20 août) relevait proto/src/plateforme/tests.rs à 561 et
+proto/ts/plateforme.test.ts à 512, tous deux INSCRITS au tableau de dette
+de CLAUDE.md sans point de chute, et prescrivait de les extraire SI G2
+n'était pas passé (décision D3 : le premier arrivé extrait, le second
+constate). G2 est passé.
+
+  468 proto/src/plateforme.rs
+  449 proto/src/plateforme/tests.rs
+  279 proto/src/plateforme/tests_apps.rs
+  162 proto/src/plateforme/apps.rs
+ 1358 total
+
+  475 proto/ts/plateforme.ts
+  417 proto/ts/plateforme.test.ts
+  230 proto/ts/plateforme-apps.test.ts
+   85 proto/ts/plateforme-gardes.ts
+ 1207 total
+
+--- les deux dettes sont PURGÉES, et G2 les a déjà retirées de CLAUDE.md ---
+358:> | `agent/src/wasapi.rs` | **352** | sort de la dette gelée (543 → 352) |
+5185:  sonde — hors de `wasapi.rs`, qui retombe à 352 lignes et sort de la dette
+13588:| `proto/src/plateforme/tests.rs` | ~~561~~ **449** | **sort de la dette** |
+13590:| `proto/ts/plateforme.test.ts` | ~~512~~ **417** | **sort de la dette** |
