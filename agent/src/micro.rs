@@ -193,7 +193,11 @@ impl TamponGigue {
     /// Ce qui est dû maintenant. Ne bloque jamais et rend toujours quelque
     /// chose : à défaut de trame, une consigne de dissimulation.
     pub fn retirer(&mut self) -> Retrait {
-        let Some(tete) = self.file.front().map(|t| t.rtp_48k) else {
+        // `_tete` : le `let … else` n'existe que pour son bras `else` — la
+        // valeur est relue plus bas, après la correction de dérive. Le tiret
+        // bas ferme le legs n°4 de E1, seul avertissement du crate qui ne fût
+        // pas un `dead_code`.
+        let Some(_tete) = self.file.front().map(|t| t.rtp_48k) else {
             self.compteurs.famines += 1;
             return Retrait::Manquante;
         };
@@ -445,6 +449,20 @@ impl LecteurMicro {
 pub use frequence::frequence_par_passages_a_zero;
 
 mod frequence;
+
+/// La politique d'exclusivité du câble : un seul écrivain, la tentative
+/// refaite à chaque dépôt, et un journal qui ne se répète pas.
+///
+/// ⚠️ **`pub mod`, et NON le `pub use` + `mod` que le plan E2 prescrit
+/// (tâche 3, « Files »), et c'est une divergence assumée.** Ré-exporter trois
+/// noms que personne ne consomme encore — les tâches 7 à 10 les câbleront —
+/// lève un `unused_imports`, c'est-à-dire un avertissement d'une **catégorie
+/// neuve**, alors que le contrôle de cette même tâche exige que tous les
+/// avertissements restants soient des `dead_code`. Le plan se contredit sur ce
+/// point ; on garde son contrôle et l'on suit le patron de `wasapi.rs`
+/// (`pub mod rendu;`, `pub mod process_loopback;`). Les sites d'appel écriront
+/// `crate::micro::exclusivite::Exclusivite`.
+pub mod exclusivite;
 
 /// Le plafond de dissimulation, et la règle pure qui le tient.
 pub use dissimulation::{BudgetDissimulation, PLAFOND_DISSIMULATION};
