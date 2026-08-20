@@ -1,0 +1,1760 @@
+{
+ "provenance": "Les 218 raccourcis reels des quatre racines de la VM Windows, au 19 aout 2026. Les CINQ premiers champs sont extraits verbatim de C:\\dev\\gapps-sonde-lnk.txt, la sortie de la sonde WScript.Shell de la spec 2026-08-19 §3.1 (WScript.Shell.CreateShortcut, enveloppe COM d'IShellLinkW). Le champ `existe` n'est PAS dans cette sortie : il a ete mesure separement, le 20 aout 2026, en eprouvant chaque cible sur le montage CIFS //192.168.3.2/c (parcours insensible a la casse, comme NTFS). Controle croise, le seul de ce corpus et celui-la meme que la spec emploie : 170 cibles .exe moins 3 absentes = 167 retenus, et les deux comptes de cles rendent 154 et 104 — les cinq chiffres de la spec, reproduits a l'unite.",
+ "avertissement": "🔴 CE CORPUS N'EST PAS PRODUIT PAR L'AGENT. Il vient de WScript.Shell, pas d'IShellLinkW : tres probablement equivalent, et ce n'est PAS mesure (divergence E16 du plan G1). La tache 20 le remplace par un releve de l'agent lui-meme et change ce champ. Si les deux divergent, l'ecart est une MESURE a ecrire, jamais un corpus a ajuster.",
+ "attendus": {
+  "commentaire": "Les chiffres que ce corpus doit rendre, ecrits ici pour qu'un test qui les lirait depuis le corpus lui-meme soit une tautologie : ils sont ecrits EN DUR dans le test Rust, jamais lus d'ici.",
+  "lus": 218,
+  "cibles_vides": 7,
+  "cibles_exe": 170,
+  "cibles_exe_absentes": 3,
+  "retenus": 167,
+  "cles_triplet": 154,
+  "cles_cible_seule": 104
+ },
+ "raccourcis": [
+  {
+   "nom": "Gestionnaire de périphériques",
+   "chemin": "C:\\Users\\Administrateur\\Desktop\\Gestionnaire de périphériques.lnk",
+   "cible": "C:\\Windows\\system32\\devmgmt.msc",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Gestionnaire des tâches",
+   "chemin": "C:\\Users\\Administrateur\\Desktop\\Gestionnaire des tâches.lnk",
+   "cible": "C:\\Windows\\system32\\taskmgr.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Panneau de configuration",
+   "chemin": "C:\\Users\\Administrateur\\Desktop\\Panneau de configuration.lnk",
+   "cible": "C:\\Windows\\system32\\control.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Paramètres Windows",
+   "chemin": "C:\\Users\\Administrateur\\Desktop\\Paramètres Windows.lnk",
+   "cible": "",
+   "arguments": "",
+   "repertoire": "",
+   "existe": false
+  },
+  {
+   "nom": "Services",
+   "chemin": "C:\\Users\\Administrateur\\Desktop\\Services.lnk",
+   "cible": "C:\\Windows\\system32\\services.msc",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Steam",
+   "chemin": "C:\\Users\\Administrateur\\Desktop\\Steam.lnk",
+   "cible": "C:\\Program Files (x86)\\Steam\\steam.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files (x86)\\Steam",
+   "existe": true
+  },
+  {
+   "nom": "yuzu",
+   "chemin": "C:\\Users\\Administrateur\\Desktop\\yuzu.lnk",
+   "cible": "C:\\Users\\Administrateur\\AppData\\Local\\yuzu\\maintenancetool.exe",
+   "arguments": "--launcher \"C:\\Users\\Administrateur\\AppData\\Local\\yuzu\\yuzu-windows-msvc/yuzu.exe\"",
+   "repertoire": "C:\\Users\\Administrateur\\AppData\\Local\\yuzu",
+   "existe": true
+  },
+  {
+   "nom": "Battle.net",
+   "chemin": "C:\\Users\\Public\\Desktop\\Battle.net.lnk",
+   "cible": "C:\\Program Files (x86)\\Battle.net\\Battle.net Launcher.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files (x86)\\Battle.net",
+   "existe": true
+  },
+  {
+   "nom": "CCleaner",
+   "chemin": "C:\\Users\\Public\\Desktop\\CCleaner.lnk",
+   "cible": "C:\\Program Files\\CCleaner\\CCleaner64.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\CCleaner",
+   "existe": true
+  },
+  {
+   "nom": "Hearthstone",
+   "chemin": "C:\\Users\\Public\\Desktop\\Hearthstone.lnk",
+   "cible": "C:\\Program Files (x86)\\Hearthstone\\Hearthstone Beta Launcher.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files (x86)\\Hearthstone",
+   "existe": true
+  },
+  {
+   "nom": "NVIDIA App",
+   "chemin": "C:\\Users\\Public\\Desktop\\NVIDIA App.lnk",
+   "cible": "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\CEF\\NVIDIA App.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App",
+   "existe": true
+  },
+  {
+   "nom": "Revo Uninstaller",
+   "chemin": "C:\\Users\\Public\\Desktop\\Revo Uninstaller.lnk",
+   "cible": "C:\\Program Files\\VS Revo Group\\Revo Uninstaller\\RevoUnin.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\VS Revo Group\\Revo Uninstaller",
+   "existe": true
+  },
+  {
+   "nom": "RSI Launcher",
+   "chemin": "C:\\Users\\Public\\Desktop\\RSI Launcher.lnk",
+   "cible": "C:\\Program Files\\Roberts Space Industries\\RSI Launcher\\RSI Launcher.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Roberts Space Industries\\RSI Launcher",
+   "existe": true
+  },
+  {
+   "nom": "Studio 2.0",
+   "chemin": "C:\\Users\\Public\\Desktop\\Studio 2.0.lnk",
+   "cible": "C:\\Program Files\\Studio 2.0\\Studio.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Studio 2.0",
+   "existe": true
+  },
+  {
+   "nom": "Visual Studio Code",
+   "chemin": "C:\\Users\\Public\\Desktop\\Visual Studio Code.lnk",
+   "cible": "C:\\Program Files\\Microsoft VS Code\\Code.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Microsoft VS Code",
+   "existe": true
+  },
+  {
+   "nom": "µTorrent",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\µTorrent.lnk",
+   "cible": "C:\\Users\\Administrateur\\AppData\\Roaming\\uTorrent\\uTorrent.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "LM Studio",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\LM Studio.lnk",
+   "cible": "C:\\Users\\Administrateur\\AppData\\Local\\Programs\\lm-studio\\LM Studio.exe",
+   "arguments": "",
+   "repertoire": "C:\\Users\\Administrateur\\AppData\\Local\\Programs\\lm-studio",
+   "existe": true
+  },
+  {
+   "nom": "yuzu",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\yuzu.lnk",
+   "cible": "C:\\Users\\Administrateur\\AppData\\Local\\yuzu\\maintenancetool.exe",
+   "arguments": "--launcher \"C:\\Users\\Administrateur\\AppData\\Local\\yuzu\\yuzu-windows-msvc/yuzu.exe\"",
+   "repertoire": "C:\\Users\\Administrateur\\AppData\\Local\\yuzu",
+   "existe": true
+  },
+  {
+   "nom": "Magnify",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Accessibility\\Magnify.lnk",
+   "cible": "C:\\Windows\\system32\\magnify.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Narrator",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Accessibility\\Narrator.lnk",
+   "cible": "C:\\Windows\\system32\\narrator.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "On-Screen Keyboard",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Accessibility\\On-Screen Keyboard.lnk",
+   "cible": "C:\\Windows\\system32\\osk.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Internet Explorer",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Internet Explorer.lnk",
+   "cible": "C:\\Program Files\\Internet Explorer\\iexplore.exe",
+   "arguments": "",
+   "repertoire": "%HOMEDRIVE%%HOMEPATH%",
+   "existe": true
+  },
+  {
+   "nom": "Text",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Applications Chrome\\Text.lnk",
+   "cible": "C:\\Program Files\\Google\\Chrome\\Application\\chrome_proxy.exe",
+   "arguments": " --profile-directory=Default --app-id=mmfbcljfglbokpmkimbfghdkjmjhdgbg",
+   "repertoire": "C:\\Program Files\\Google\\Chrome\\Application",
+   "existe": true
+  },
+  {
+   "nom": "Blender 3.6",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\blender\\Blender 3.6.lnk",
+   "cible": "C:\\Program Files\\Blender Foundation\\Blender 3.6\\blender-launcher.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Blender Foundation\\Blender 3.6\\",
+   "existe": true
+  },
+  {
+   "nom": "IDLE (Python 3.13 64-bit)",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Python 3.13\\IDLE (Python 3.13 64-bit).lnk",
+   "cible": "C:\\Users\\Administrateur\\AppData\\Local\\Programs\\Python\\Python313\\pythonw.exe",
+   "arguments": "\"C:\\Users\\Administrateur\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\idlelib\\idle.pyw\"",
+   "repertoire": "C:\\Users\\Administrateur\\AppData\\Local\\Programs\\Python\\Python313\\",
+   "existe": false
+  },
+  {
+   "nom": "Python 3.13 (64-bit)",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Python 3.13\\Python 3.13 (64-bit).lnk",
+   "cible": "C:\\Users\\Administrateur\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+   "arguments": "",
+   "repertoire": "C:\\Users\\Administrateur\\AppData\\Local\\Programs\\Python\\Python313\\",
+   "existe": false
+  },
+  {
+   "nom": "Python 3.13 Manuals (64-bit)",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Python 3.13\\Python 3.13 Manuals (64-bit).lnk",
+   "cible": "C:\\Users\\Administrateur\\AppData\\Local\\Programs\\Python\\Python313\\Doc\\html\\index.html",
+   "arguments": "",
+   "repertoire": "C:\\Users\\Administrateur\\AppData\\Local\\Programs\\Python\\Python313\\",
+   "existe": false
+  },
+  {
+   "nom": "Python 3.13 Module Docs (64-bit)",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Python 3.13\\Python 3.13 Module Docs (64-bit).lnk",
+   "cible": "C:\\Users\\Administrateur\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+   "arguments": "-m pydoc -b",
+   "repertoire": "C:\\Users\\Administrateur\\AppData\\Local\\Programs\\Python\\Python313\\",
+   "existe": false
+  },
+  {
+   "nom": "IDLE (Python 3.8 64-bit)",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Python 3.8\\IDLE (Python 3.8 64-bit).lnk",
+   "cible": "C:\\Users\\Administrateur\\AppData\\Local\\Programs\\Python\\Python38\\pythonw.exe",
+   "arguments": "\"C:\\Users\\Administrateur\\AppData\\Local\\Programs\\Python\\Python38\\Lib\\idlelib\\idle.pyw\"",
+   "repertoire": "C:\\Users\\Administrateur\\AppData\\Local\\Programs\\Python\\Python38\\",
+   "existe": true
+  },
+  {
+   "nom": "Python 3.8 (64-bit)",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Python 3.8\\Python 3.8 (64-bit).lnk",
+   "cible": "C:\\Users\\Administrateur\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+   "arguments": "",
+   "repertoire": "C:\\Users\\Administrateur\\AppData\\Local\\Programs\\Python\\Python38\\",
+   "existe": true
+  },
+  {
+   "nom": "Python 3.8 Manuals (64-bit)",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Python 3.8\\Python 3.8 Manuals (64-bit).lnk",
+   "cible": "C:\\Windows\\hh.exe",
+   "arguments": "C:\\Users\\Administrateur\\AppData\\Local\\Programs\\Python\\Python38\\Doc\\python380.chm",
+   "repertoire": "C:\\Users\\Administrateur\\AppData\\Local\\Programs\\Python\\Python38\\",
+   "existe": true
+  },
+  {
+   "nom": "Python 3.8 Module Docs (64-bit)",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Python 3.8\\Python 3.8 Module Docs (64-bit).lnk",
+   "cible": "C:\\Users\\Administrateur\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+   "arguments": "-m pydoc -b",
+   "repertoire": "C:\\Users\\Administrateur\\AppData\\Local\\Programs\\Python\\Python38\\",
+   "existe": true
+  },
+  {
+   "nom": "Steam",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Steam\\Steam.lnk",
+   "cible": "C:\\Program Files (x86)\\Steam\\steam.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files (x86)\\Steam",
+   "existe": true
+  },
+  {
+   "nom": "Administrative Tools",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\System Tools\\Administrative Tools.lnk",
+   "cible": "C:\\Windows\\system32\\control.exe",
+   "arguments": "/name Microsoft.AdministrativeTools",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Command Prompt",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\System Tools\\Command Prompt.lnk",
+   "cible": "C:\\Windows\\system32\\cmd.exe",
+   "arguments": "",
+   "repertoire": "%HOMEDRIVE%%HOMEPATH%",
+   "existe": true
+  },
+  {
+   "nom": "computer",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\System Tools\\computer.lnk",
+   "cible": "",
+   "arguments": "",
+   "repertoire": "",
+   "existe": false
+  },
+  {
+   "nom": "Control Panel",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\System Tools\\Control Panel.lnk",
+   "cible": "",
+   "arguments": "",
+   "repertoire": "",
+   "existe": false
+  },
+  {
+   "nom": "File Explorer",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\System Tools\\File Explorer.lnk",
+   "cible": "",
+   "arguments": "",
+   "repertoire": "",
+   "existe": false
+  },
+  {
+   "nom": "Run",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\System Tools\\Run.lnk",
+   "cible": "",
+   "arguments": "",
+   "repertoire": "",
+   "existe": false
+  },
+  {
+   "nom": "Windows PowerShell (x86)",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Windows PowerShell\\Windows PowerShell (x86).lnk",
+   "cible": "C:\\Windows\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe",
+   "arguments": "",
+   "repertoire": "%HOMEDRIVE%%HOMEPATH%",
+   "existe": true
+  },
+  {
+   "nom": "Windows PowerShell",
+   "chemin": "C:\\Users\\Administrateur\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Windows PowerShell\\Windows PowerShell.lnk",
+   "cible": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+   "arguments": "",
+   "repertoire": "%HOMEDRIVE%%HOMEPATH%",
+   "existe": true
+  },
+  {
+   "nom": "Adobe After Effects 2024",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Adobe After Effects 2024.lnk",
+   "cible": "C:\\Program Files\\Adobe\\Adobe After Effects 2024\\Support Files\\AfterFX.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Adobe\\Adobe After Effects 2024\\Support Files",
+   "existe": true
+  },
+  {
+   "nom": "Adobe Character Animator 2024",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Adobe Character Animator 2024.lnk",
+   "cible": "C:\\Program Files\\Adobe\\Adobe Character Animator 2024\\Support Files\\Character Animator.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Adobe\\Adobe Character Animator 2024\\Support Files",
+   "existe": true
+  },
+  {
+   "nom": "Adobe Creative Cloud",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Adobe Creative Cloud.lnk",
+   "cible": "C:\\Program Files\\Adobe\\Adobe Creative Cloud\\ACC\\Creative Cloud.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Adobe Dreamweaver 2021",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Adobe Dreamweaver 2021.lnk",
+   "cible": "C:\\Program Files\\Adobe\\Adobe Dreamweaver 2021\\Dreamweaver.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Adobe\\Adobe Dreamweaver 2021",
+   "existe": true
+  },
+  {
+   "nom": "Adobe Illustrator 2024",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Adobe Illustrator 2024.lnk",
+   "cible": "C:\\Program Files\\Adobe\\Adobe Illustrator 2024\\Support Files\\Contents\\Windows\\Illustrator.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Adobe\\Adobe Illustrator 2024\\Support Files\\Contents\\Windows",
+   "existe": true
+  },
+  {
+   "nom": "Adobe InDesign 2024",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Adobe InDesign 2024.lnk",
+   "cible": "C:\\Program Files\\Adobe\\Adobe InDesign 2024\\InDesign.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Adobe\\Adobe InDesign 2024",
+   "existe": true
+  },
+  {
+   "nom": "Adobe Media Encoder 2024",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Adobe Media Encoder 2024.lnk",
+   "cible": "C:\\Program Files\\Adobe\\Adobe Media Encoder 2024\\Adobe Media Encoder.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Adobe\\Adobe Media Encoder 2024",
+   "existe": true
+  },
+  {
+   "nom": "Adobe Photoshop 2024",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Adobe Photoshop 2024.lnk",
+   "cible": "C:\\Program Files\\Adobe\\Adobe Photoshop 2024\\Photoshop.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Adobe\\Adobe Photoshop 2024",
+   "existe": true
+  },
+  {
+   "nom": "Adobe Premiere Pro 2024",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Adobe Premiere Pro 2024.lnk",
+   "cible": "C:\\Program Files\\Adobe\\Adobe Premiere Pro 2024\\Adobe Premiere Pro.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Adobe\\Adobe Premiere Pro 2024",
+   "existe": true
+  },
+  {
+   "nom": "Azure Arc Setup",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Azure Arc Setup.lnk",
+   "cible": "C:\\Windows\\AzureArcSetup\\ArcSetup\\AzureArcSetup.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Firefox",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Firefox.lnk",
+   "cible": "C:\\Program Files\\Mozilla Firefox\\firefox.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Mozilla Firefox",
+   "existe": true
+  },
+  {
+   "nom": "Google Chrome",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Google Chrome.lnk",
+   "cible": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Google\\Chrome\\Application",
+   "existe": true
+  },
+  {
+   "nom": "GSmartControl",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\GSmartControl.lnk",
+   "cible": "C:\\Program Files\\GSmartControl\\gsmartcontrol.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\GSmartControl",
+   "existe": true
+  },
+  {
+   "nom": "Immersive Control Panel",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Immersive Control Panel.lnk",
+   "cible": "C:\\Windows\\System32\\Control.exe",
+   "arguments": "",
+   "repertoire": "%HOMEDRIVE%%HOMEPATH%",
+   "existe": true
+  },
+  {
+   "nom": "Navigation privée de Firefox",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Navigation privée de Firefox.lnk",
+   "cible": "C:\\Program Files\\Mozilla Firefox\\private_browsing.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Mozilla Firefox",
+   "existe": true
+  },
+  {
+   "nom": "Novabench 5",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Novabench 5.lnk",
+   "cible": "C:\\Program Files\\Novabench\\Novabench.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Novabench\\",
+   "existe": true
+  },
+  {
+   "nom": "Novabench",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Novabench.lnk",
+   "cible": "C:\\Program Files\\Novawave\\Novabench\\NovabenchGUI.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Server Manager",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Server Manager.lnk",
+   "cible": "C:\\Windows\\system32\\ServerManager.exe",
+   "arguments": "",
+   "repertoire": "%windir%\\system32",
+   "existe": true
+  },
+  {
+   "nom": "Studio 2.0",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Studio 2.0.lnk",
+   "cible": "C:\\Program Files\\Studio 2.0\\Studio.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Studio 2.0",
+   "existe": true
+  },
+  {
+   "nom": "Visual Studio Installer",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio Installer.lnk",
+   "cible": "C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\setup.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer",
+   "existe": true
+  },
+  {
+   "nom": "7-Zip File Manager",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\7-Zip\\7-Zip File Manager.lnk",
+   "cible": "C:\\Program Files\\7-Zip\\7zFM.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "7-Zip Help",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\7-Zip\\7-Zip Help.lnk",
+   "cible": "C:\\Program Files\\7-Zip\\7-zip.chm",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Speech Recognition",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessibility\\Speech Recognition.lnk",
+   "cible": "C:\\Windows\\Speech\\Common\\sapisvr.exe",
+   "arguments": "-SpeechUX",
+   "repertoire": "%windir%\\system32\\Speech\\SpeechUX",
+   "existe": true
+  },
+  {
+   "nom": "Calculator",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Calculator.lnk",
+   "cible": "C:\\Windows\\system32\\win32calc.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Math Input Panel",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Math Input Panel.lnk",
+   "cible": "C:\\Program Files\\Common Files\\Microsoft Shared\\Ink\\mip.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Notepad",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Notepad.lnk",
+   "cible": "C:\\Windows\\system32\\notepad.exe",
+   "arguments": "",
+   "repertoire": "%HOMEDRIVE%%HOMEPATH%",
+   "existe": true
+  },
+  {
+   "nom": "Paint",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Paint.lnk",
+   "cible": "C:\\Windows\\system32\\mspaint.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Remote Desktop Connection",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Remote Desktop Connection.lnk",
+   "cible": "C:\\Windows\\system32\\mstsc.exe",
+   "arguments": "",
+   "repertoire": "%windir%\\system32\\",
+   "existe": true
+  },
+  {
+   "nom": "Snipping Tool",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Snipping Tool.lnk",
+   "cible": "C:\\Windows\\system32\\SnippingTool.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Steps Recorder",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Steps Recorder.lnk",
+   "cible": "C:\\Windows\\system32\\psr.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Windows Media Player",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Windows Media Player.lnk",
+   "cible": "C:\\Program Files (x86)\\Windows Media Player\\wmplayer.exe",
+   "arguments": "/prefetch:1",
+   "repertoire": "%ProgramFiles(x86)%\\Windows Media Player",
+   "existe": true
+  },
+  {
+   "nom": "Wordpad",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\Wordpad.lnk",
+   "cible": "C:\\Program Files\\Windows NT\\Accessories\\wordpad.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "XPS Viewer",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\XPS Viewer.lnk",
+   "cible": "C:\\Windows\\system32\\xpsrchvw.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Character Map",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\System Tools\\Character Map.lnk",
+   "cible": "C:\\Windows\\system32\\charmap.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Windows Server Backup",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\System Tools\\Windows Server Backup.lnk",
+   "cible": "C:\\Windows\\system32\\wbadmin.msc",
+   "arguments": "",
+   "repertoire": "%windir%\\system32",
+   "existe": true
+  },
+  {
+   "nom": "Component Services",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Component Services.lnk",
+   "cible": "C:\\Windows\\system32\\comexp.msc",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Computer Management",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Computer Management.lnk",
+   "cible": "C:\\Windows\\system32\\compmgmt.msc",
+   "arguments": "/s",
+   "repertoire": "%HOMEDRIVE%%HOMEPATH%",
+   "existe": true
+  },
+  {
+   "nom": "dfrgui",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\dfrgui.lnk",
+   "cible": "C:\\Windows\\system32\\dfrgui.exe",
+   "arguments": "",
+   "repertoire": "%systemroot%\\system32",
+   "existe": true
+  },
+  {
+   "nom": "Disk Cleanup",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Disk Cleanup.lnk",
+   "cible": "C:\\Windows\\system32\\cleanmgr.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Event Viewer",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Event Viewer.lnk",
+   "cible": "C:\\Windows\\system32\\eventvwr.msc",
+   "arguments": "/s",
+   "repertoire": "%windir%\\system32",
+   "existe": true
+  },
+  {
+   "nom": "IIS Manager",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\IIS Manager.lnk",
+   "cible": "C:\\Windows\\system32\\inetsrv\\InetMgr.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "iSCSI Initiator",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\iSCSI Initiator.lnk",
+   "cible": "C:\\Windows\\system32\\iscsicpl.exe",
+   "arguments": "",
+   "repertoire": "%windir%\\system32",
+   "existe": true
+  },
+  {
+   "nom": "Memory Diagnostics Tool",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Memory Diagnostics Tool.lnk",
+   "cible": "C:\\Windows\\system32\\MdSched.exe",
+   "arguments": "",
+   "repertoire": "%windir%\\system32",
+   "existe": true
+  },
+  {
+   "nom": "Microsoft Azure services",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Microsoft Azure services.lnk",
+   "cible": "C:\\Windows\\explorer.exe",
+   "arguments": "\"http://go.microsoft.com/fwlink/?LinkId=401298\"",
+   "repertoire": "%windir%\\system32",
+   "existe": true
+  },
+  {
+   "nom": "Network Policy Server",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Network Policy Server.lnk",
+   "cible": "C:\\Windows\\system32\\nps.msc",
+   "arguments": "",
+   "repertoire": "%windir%\\system32",
+   "existe": true
+  },
+  {
+   "nom": "ODBC Data Sources (32-bit)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\ODBC Data Sources (32-bit).lnk",
+   "cible": "C:\\Windows\\syswow64\\odbcad32.exe",
+   "arguments": "",
+   "repertoire": "%windir%\\syswow64",
+   "existe": true
+  },
+  {
+   "nom": "ODBC Data Sources (64-bit)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\ODBC Data Sources (64-bit).lnk",
+   "cible": "C:\\Windows\\system32\\odbcad32.exe",
+   "arguments": "",
+   "repertoire": "%windir%\\system32",
+   "existe": true
+  },
+  {
+   "nom": "Performance Monitor",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Performance Monitor.lnk",
+   "cible": "C:\\Windows\\system32\\perfmon.msc",
+   "arguments": "/s",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "RecoveryDrive",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\RecoveryDrive.lnk",
+   "cible": "C:\\Windows\\system32\\RecoveryDrive.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Registry Editor",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Registry Editor.lnk",
+   "cible": "C:\\Windows\\regedit.exe",
+   "arguments": "",
+   "repertoire": "%windir%",
+   "existe": true
+  },
+  {
+   "nom": "Resource Monitor",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Resource Monitor.lnk",
+   "cible": "C:\\Windows\\system32\\perfmon.exe",
+   "arguments": "/res",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Security Configuration Management",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Security Configuration Management.lnk",
+   "cible": "C:\\Windows\\system32\\secpol.msc",
+   "arguments": "/s",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Server Manager",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Server Manager.lnk",
+   "cible": "C:\\Windows\\system32\\ServerManager.exe",
+   "arguments": "",
+   "repertoire": "%windir%\\system32",
+   "existe": true
+  },
+  {
+   "nom": "services",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\services.lnk",
+   "cible": "C:\\Windows\\system32\\services.msc",
+   "arguments": "",
+   "repertoire": "%HOMEDRIVE%%HOMEPATH%",
+   "existe": true
+  },
+  {
+   "nom": "System Configuration",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\System Configuration.lnk",
+   "cible": "C:\\Windows\\system32\\msconfig.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "System Information",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\System Information.lnk",
+   "cible": "C:\\Windows\\system32\\msinfo32.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Task Scheduler",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Task Scheduler.lnk",
+   "cible": "C:\\Windows\\system32\\taskschd.msc",
+   "arguments": "/s",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Windows Defender Firewall with Advanced Security",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Windows Defender Firewall with Advanced Security.lnk",
+   "cible": "C:\\Windows\\system32\\WF.msc",
+   "arguments": "",
+   "repertoire": "%windir%\\system32",
+   "existe": true
+  },
+  {
+   "nom": "Windows Server Backup",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Windows Server Backup.lnk",
+   "cible": "C:\\Windows\\system32\\wbadmin.msc",
+   "arguments": "",
+   "repertoire": "%windir%\\system32",
+   "existe": true
+  },
+  {
+   "nom": "RD Gateway Manager",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Remote Desktop Services\\RD Gateway Manager.lnk",
+   "cible": "C:\\Windows\\system32\\tsgateway.msc",
+   "arguments": "",
+   "repertoire": "%windir%\\system32",
+   "existe": true
+  },
+  {
+   "nom": "RD Licensing Manager",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Remote Desktop Services\\RD Licensing Manager.lnk",
+   "cible": "C:\\Windows\\system32\\licmgr.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Remote Desktop Licensing Diagnosis",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Remote Desktop Services\\Remote Desktop Licensing Diagnosis.lnk",
+   "cible": "C:\\Windows\\system32\\lsdiag.msc",
+   "arguments": "",
+   "repertoire": "%windir%\\system32",
+   "existe": true
+  },
+  {
+   "nom": "Android Studio",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Android Studio\\Android Studio.lnk",
+   "cible": "C:\\Program Files\\Android\\Android Studio\\bin\\studio64.exe",
+   "arguments": "",
+   "repertoire": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Android Studio",
+   "existe": true
+  },
+  {
+   "nom": "Apollo",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Apollo\\Apollo.lnk",
+   "cible": "C:\\Program Files\\Apollo\\sunshine.exe",
+   "arguments": "--shortcut",
+   "repertoire": "C:\\Program Files\\Apollo",
+   "existe": true
+  },
+  {
+   "nom": "Uninstall",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Apollo\\Uninstall.lnk",
+   "cible": "C:\\Program Files\\Apollo\\Uninstall.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Apollo",
+   "existe": true
+  },
+  {
+   "nom": "Battle.net",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Battle.net\\Battle.net.lnk",
+   "cible": "C:\\Program Files (x86)\\Battle.net\\Battle.net Launcher.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files (x86)\\Battle.net",
+   "existe": true
+  },
+  {
+   "nom": "Rapture3D - Help",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Blue Ripple Sound\\Rapture3D - Help.lnk",
+   "cible": "C:\\Program Files (x86)\\BRS\\rapture3dgame.chm",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Rapture3D - Speaker Layout",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Blue Ripple Sound\\Rapture3D - Speaker Layout.lnk",
+   "cible": "C:\\Program Files (x86)\\BRS\\UserLayout.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files (x86)\\BRS",
+   "existe": true
+  },
+  {
+   "nom": "CCleaner",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\CCleaner\\CCleaner.lnk",
+   "cible": "C:\\Program Files\\CCleaner\\CCleaner64.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\CCleaner",
+   "existe": true
+  },
+  {
+   "nom": "CMake (cmake-gui)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\CMake\\CMake (cmake-gui).lnk",
+   "cible": "C:\\Program Files\\CMake\\bin\\cmake-gui.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\CMake\\bin\\",
+   "existe": true
+  },
+  {
+   "nom": "CMake Documentation",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\CMake\\CMake Documentation.lnk",
+   "cible": "C:\\Program Files\\CMake\\doc\\cmake\\html\\index.html",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\CMake\\doc\\cmake\\html\\",
+   "existe": true
+  },
+  {
+   "nom": "Uninstall CMake",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\CMake\\Uninstall CMake.lnk",
+   "cible": "C:\\Windows\\SysWOW64\\msiexec.exe",
+   "arguments": "/x {7EB9F905-BCFF-469F-9C7C-D30F08EEBF82}",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "FastestVPN",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\FastestVPN\\FastestVPN.lnk",
+   "cible": "C:\\Program Files\\FastestVPN\\FastestVPN.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\FastestVPN",
+   "existe": true
+  },
+  {
+   "nom": "Uninstall FastestVPN",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\FastestVPN\\Uninstall FastestVPN.lnk",
+   "cible": "C:\\Program Files\\FastestVPN\\unins000.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\FastestVPN",
+   "existe": true
+  },
+  {
+   "nom": "Hearthstone",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Hearthstone\\Hearthstone.lnk",
+   "cible": "C:\\Program Files (x86)\\Hearthstone\\Hearthstone Beta Launcher.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files (x86)\\Hearthstone",
+   "existe": true
+  },
+  {
+   "nom": "A propos de Java",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Java\\A propos de Java.lnk",
+   "cible": "C:\\Program Files (x86)\\Java\\jre-1.8\\bin\\javacpl.exe",
+   "arguments": "-tab about",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Configurer Java",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Java\\Configurer Java.lnk",
+   "cible": "C:\\Program Files (x86)\\Java\\jre-1.8\\bin\\javacpl.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Rechercher les mises à jour",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Java\\Rechercher les mises à jour.lnk",
+   "cible": "C:\\Program Files (x86)\\Java\\jre-1.8\\bin\\javacpl.exe",
+   "arguments": "-tab update",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Commandline 2024",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Maxon\\Maxon Cinema 4D\\Commandline 2024.lnk",
+   "cible": "C:\\Program Files\\Maxon Cinema 4D 2024\\Commandline.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Maxon Cinema 4D 2024",
+   "existe": true
+  },
+  {
+   "nom": "Maxon Cinema 4D 2024",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Maxon\\Maxon Cinema 4D\\Maxon Cinema 4D 2024.lnk",
+   "cible": "C:\\Program Files\\Maxon Cinema 4D 2024\\Cinema 4D.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Maxon Cinema 4D 2024",
+   "existe": true
+  },
+  {
+   "nom": "Team Render Client 2024",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Maxon\\Maxon Cinema 4D\\Team Render Client 2024.lnk",
+   "cible": "C:\\Program Files\\Maxon Cinema 4D 2024\\Cinema 4D Team Render Client.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Maxon Cinema 4D 2024",
+   "existe": true
+  },
+  {
+   "nom": "Team Render Server 2024",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Maxon\\Maxon Cinema 4D\\Team Render Server 2024.lnk",
+   "cible": "C:\\Program Files\\Maxon Cinema 4D 2024\\Cinema 4D Team Render Server.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Maxon Cinema 4D 2024",
+   "existe": true
+  },
+  {
+   "nom": "Aide de Microsoft Xbox 360 Accessories",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Xbox 360 Accessories\\Aide de Microsoft Xbox 360 Accessories.lnk",
+   "cible": "C:\\Program Files\\Microsoft Xbox 360 Accessories\\Xboxhelp.chm",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Microsoft Xbox 360 Accessories\\",
+   "existe": true
+  },
+  {
+   "nom": "Rechercher des mises à jour",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Xbox 360 Accessories\\Rechercher des mises à jour.lnk",
+   "cible": "C:\\Program Files\\Microsoft Xbox 360 Accessories\\AUSetting.exe",
+   "arguments": "-forcecheck",
+   "repertoire": "C:\\Program Files\\Microsoft Xbox 360 Accessories\\",
+   "existe": true
+  },
+  {
+   "nom": "État de Microsoft Xbox 360 Accessories",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Xbox 360 Accessories\\État de Microsoft Xbox 360 Accessories.lnk",
+   "cible": "C:\\Program Files\\Microsoft Xbox 360 Accessories\\XBoxStat.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Microsoft Xbox 360 Accessories\\",
+   "existe": true
+  },
+  {
+   "nom": "Minecraft Launcher",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Minecraft Launcher\\Minecraft Launcher.lnk",
+   "cible": "C:\\Program Files (x86)\\Minecraft Launcher\\MinecraftLauncher.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files (x86)\\Minecraft Launcher\\",
+   "existe": true
+  },
+  {
+   "nom": "NVIDIA App",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\NVIDIA App.lnk",
+   "cible": "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\CEF\\NVIDIA App.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App",
+   "existe": true
+  },
+  {
+   "nom": "Browse CUDA Samples",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\CUDA Samples\\v11.2\\Browse CUDA Samples.lnk",
+   "cible": "C:\\ProgramData\\NVIDIA Corporation\\CUDA Samples\\v11.2",
+   "arguments": "",
+   "repertoire": "",
+   "existe": false
+  },
+  {
+   "nom": "Visual Profiler",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\CUDA Toolkit\\v11.2\\Visual Profiler.lnk",
+   "cible": "C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v11.2\\bin\\nvvp.bat",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Nsight Compute",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\Nsight Compute 2020.3.0\\Nsight Compute.lnk",
+   "cible": "C:\\Program Files\\NVIDIA Corporation\\Nsight Compute 2020.3.0\\host\\windows-desktop-win7-x64\\ncu-ui.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\NVIDIA Corporation\\Nsight Compute 2020.3.0\\host\\windows-desktop-win7-x64\\",
+   "existe": true
+  },
+  {
+   "nom": "Uninstall NVIDIA Nsight Compute 2020.3.0",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\Nsight Compute 2020.3.0\\Uninstall NVIDIA Nsight Compute 2020.3.0.lnk",
+   "cible": "C:\\Windows\\SysWOW64\\msiexec.exe",
+   "arguments": "/x {E52AB240-34E6-45D8-BDD6-CFCE7A6E783F}",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Nsight Systems 2020.4.3",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\Nsight Systems 2020.4.3\\Nsight Systems 2020.4.3.lnk",
+   "cible": "C:\\Program Files\\NVIDIA Corporation\\Nsight Systems 2020.4.3\\host-windows-x64\\nsys-ui.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\NVIDIA Corporation\\Nsight Systems 2020.4.3\\host-windows-x64\\",
+   "existe": true
+  },
+  {
+   "nom": "Uninstall NVIDIA Nsight Systems 2020.4.3",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\Nsight Systems 2020.4.3\\Uninstall NVIDIA Nsight Systems 2020.4.3.lnk",
+   "cible": "C:\\Windows\\SysWOW64\\msiexec.exe",
+   "arguments": "/x {8A00392B-A561-4D04-990C-4D1741A5CDDE}",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Nsight Systems 2024.6.2",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\Nsight Systems 2024.6.2\\Nsight Systems 2024.6.2.lnk",
+   "cible": "C:\\Program Files\\NVIDIA Corporation\\Nsight Systems 2024.6.2\\host-windows-x64\\nsys-ui.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\NVIDIA Corporation\\Nsight Systems 2024.6.2\\host-windows-x64\\",
+   "existe": true
+  },
+  {
+   "nom": "Uninstall NVIDIA Nsight Systems 2024.6.2",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\Nsight Systems 2024.6.2\\Uninstall NVIDIA Nsight Systems 2024.6.2.lnk",
+   "cible": "C:\\Windows\\SysWOW64\\msiexec.exe",
+   "arguments": "/x {7BE9431F-8C18-4E5A-990A-243DD2C555A7}",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Nsight Monitor",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\Nsight Visual Studio Edition 2025.1\\Nsight Monitor.lnk",
+   "cible": "C:\\Program Files (x86)\\NVIDIA Corporation\\Nsight Visual Studio Edition 2025.1\\Monitor\\Common\\Nsight.Monitor.exe",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Nsight Redistributable",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\Nsight Visual Studio Edition 2025.1\\Nsight Redistributable.lnk",
+   "cible": "C:\\ProgramData\\NVIDIA Corporation\\Nsight\\nsight_vse\\nsight_visual_studio_edition-windows-x86_64-2025.1.0.25055_35593039.msi",
+   "arguments": "",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Browse NVIDIA Tools Extension",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\NVIDIA Corporation\\NVIDIA Tools Extension (64 bit)\\Browse NVIDIA Tools Extension.lnk",
+   "cible": "C:\\Program Files\\NVIDIA Corporation\\NvToolsExt",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\NVIDIA Corporation\\NvToolsExt\\",
+   "existe": false
+  },
+  {
+   "nom": "PowerShell 7 (x64)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\PowerShell\\PowerShell 7 (x64).lnk",
+   "cible": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+   "arguments": "-WorkingDirectory ~",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "RetroArch Website",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\RetroArch\\RetroArch Website.lnk",
+   "cible": "C:\\Program Files\\Retroarch\\RetroArch website.url",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Retroarch",
+   "existe": true
+  },
+  {
+   "nom": "RetroArch",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\RetroArch\\RetroArch.lnk",
+   "cible": "C:\\Program Files\\Retroarch\\retroarch.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Retroarch",
+   "existe": true
+  },
+  {
+   "nom": "Uninstall RetroArch",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\RetroArch\\Uninstall RetroArch.lnk",
+   "cible": "C:\\Program Files\\Retroarch\\uninstall.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Retroarch",
+   "existe": true
+  },
+  {
+   "nom": "Désinstaller Revo Uninstaller",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Revo Uninstaller\\Désinstaller Revo Uninstaller.lnk",
+   "cible": "C:\\Program Files\\VS Revo Group\\Revo Uninstaller\\unins000.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\VS Revo Group\\Revo Uninstaller",
+   "existe": true
+  },
+  {
+   "nom": "Revo Uninstaller Help",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Revo Uninstaller\\Revo Uninstaller Help.lnk",
+   "cible": "C:\\Program Files\\VS Revo Group\\Revo Uninstaller\\Revo Uninstaller Help.pdf",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\VS Revo Group\\Revo Uninstaller",
+   "existe": true
+  },
+  {
+   "nom": "Revo Uninstaller",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Revo Uninstaller\\Revo Uninstaller.lnk",
+   "cible": "C:\\Program Files\\VS Revo Group\\Revo Uninstaller\\RevoUnin.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\VS Revo Group\\Revo Uninstaller",
+   "existe": true
+  },
+  {
+   "nom": "RSI Launcher",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Roberts Space Industries\\RSI Launcher.lnk",
+   "cible": "C:\\Program Files\\Roberts Space Industries\\RSI Launcher\\RSI Launcher.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Roberts Space Industries\\RSI Launcher",
+   "existe": true
+  },
+  {
+   "nom": "drivedb.h update (ps1)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\drivedb.h update (ps1).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "powershell -NoProfile -ExecutionPolicy Bypass .\\update-smart-drivedb.ps1",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "smartctl (Admin CMD)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl (Admin CMD).lnk",
+   "cible": "C:\\Windows\\System32\\cmd.exe",
+   "arguments": "/k PATH=C:\\Program Files\\smartmontools\\bin;%PATH%&cd /d \"C:\\Program Files\\smartmontools\\bin\"",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "smartmontools Daily Builds",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartmontools Daily Builds.lnk",
+   "cible": "",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\smartmontools\\doc",
+   "existe": false
+  },
+  {
+   "nom": "smartmontools Home Page",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartmontools Home Page.lnk",
+   "cible": "",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\smartmontools\\doc",
+   "existe": false
+  },
+  {
+   "nom": "Uninstall smartmontools",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Uninstall smartmontools.lnk",
+   "cible": "C:\\Program Files\\smartmontools\\uninst-smartmontools.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\smartmontools",
+   "existe": true
+  },
+  {
+   "nom": "ChangeLog",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Documentation\\ChangeLog.lnk",
+   "cible": "C:\\Program Files\\smartmontools\\doc\\ChangeLog.txt",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\smartmontools\\doc",
+   "existe": true
+  },
+  {
+   "nom": "COPYING",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Documentation\\COPYING.lnk",
+   "cible": "C:\\Program Files\\smartmontools\\doc\\COPYING.txt",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\smartmontools\\doc",
+   "existe": true
+  },
+  {
+   "nom": "drivedb-add.h (create, edit)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Documentation\\drivedb-add.h (create, edit).lnk",
+   "cible": "C:\\Windows\\system32\\notepad.exe",
+   "arguments": "\"C:\\Program Files\\smartmontools\\bin\\drivedb-add.h\"",
+   "repertoire": "C:\\Program Files\\smartmontools\\doc",
+   "existe": true
+  },
+  {
+   "nom": "drivedb.h (view)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Documentation\\drivedb.h (view).lnk",
+   "cible": "C:\\Windows\\system32\\notepad.exe",
+   "arguments": "\"C:\\Program Files\\smartmontools\\bin\\drivedb.h\"",
+   "repertoire": "C:\\Program Files\\smartmontools\\doc",
+   "existe": true
+  },
+  {
+   "nom": "drivedb.h update help (ps1)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Documentation\\drivedb.h update help (ps1).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "powershell -NoProfile -ExecutionPolicy Bypass \"Get-Help .\\update-smart-drivedb.ps1 -Detail | more\"",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "NEWS",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Documentation\\NEWS.lnk",
+   "cible": "C:\\Program Files\\smartmontools\\doc\\NEWS.txt",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\smartmontools\\doc",
+   "existe": true
+  },
+  {
+   "nom": "smartctl manual page (html)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Documentation\\smartctl manual page (html).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\doc\\smartctl.8.html",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\smartmontools\\doc",
+   "existe": true
+  },
+  {
+   "nom": "smartctl manual page (pdf)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Documentation\\smartctl manual page (pdf).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\doc\\smartctl.8.pdf",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\smartmontools\\doc",
+   "existe": true
+  },
+  {
+   "nom": "smartd manual page (html)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Documentation\\smartd manual page (html).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\doc\\smartd.8.html",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\smartmontools\\doc",
+   "existe": true
+  },
+  {
+   "nom": "smartd manual page (pdf)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Documentation\\smartd manual page (pdf).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\doc\\smartd.8.pdf",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\smartmontools\\doc",
+   "existe": true
+  },
+  {
+   "nom": "smartd.conf manual page (html)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Documentation\\smartd.conf manual page (html).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\doc\\smartd.conf.5.html",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\smartmontools\\doc",
+   "existe": true
+  },
+  {
+   "nom": "smartd.conf manual page (pdf)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Documentation\\smartd.conf manual page (pdf).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\doc\\smartd.conf.5.pdf",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\smartmontools\\doc",
+   "existe": true
+  },
+  {
+   "nom": "smartd.conf sample",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\Documentation\\smartd.conf sample.lnk",
+   "cible": "C:\\Windows\\system32\\notepad.exe",
+   "arguments": "\"C:\\Program Files\\smartmontools\\doc\\smartd.conf\"",
+   "repertoire": "C:\\Program Files\\smartmontools\\doc",
+   "existe": true
+  },
+  {
+   "nom": "All info (-x)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\All info (-x).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartctl -x sda",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Identify drive (-i)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\Identify drive (-i).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartctl -i sda",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "SMART attributes (-A -f brief)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\SMART attributes (-A -f brief).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartctl -A -f brief sda",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "SMART capabilities (-c)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\SMART capabilities (-c).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartctl -c sda",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "SMART error log (-l error)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\SMART error log (-l error).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartctl -l error sda",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "SMART health status (-H)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\SMART health status (-H).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartctl -H sda",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "SMART selftest log (-l selftest)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\SMART selftest log (-l selftest).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartctl -l selftest sda",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Start long selftest (-t long)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\Start long selftest (-t long).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartctl -t long sda",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Start offline test (-t offline)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\Start offline test (-t offline).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartctl -t offline sda",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Start short selftest (-t short)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\Start short selftest (-t short).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartctl -t short sda",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Stop(Abort) selftest (-X)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\Stop(Abort) selftest (-X).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartctl -X sda",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Turn SMART off (-s off)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\Turn SMART off (-s off).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartctl -s off sda",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Turn SMART on (-s on)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartctl Examples\\Turn SMART on (-s on).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartctl -s on sda",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Daemon start, eventlog",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Daemon start, eventlog.lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartd",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Daemon start, smartd.log",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Daemon start, smartd.log.lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartd -l local0",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Daemon stop",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Daemon stop.lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartd stop",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Debug mode (-d)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Debug mode (-d).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartd -d",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Do all tests once (-q onecheck)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Do all tests once (-q onecheck).lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartd -q onecheck",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Service install, eventlog, 30min",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Service install, eventlog, 30min.lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartd install",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Service install, smartd.log, 10min",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Service install, smartd.log, 10min.lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartd install -l local0 -i 600",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Service install, smartd.log, 30min",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Service install, smartd.log, 30min.lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartd install -l local0",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Service remove",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Service remove.lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "smartd remove",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Service start",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Service start.lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "net start smartd",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Service stop",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\Service stop.lnk",
+   "cible": "C:\\Program Files\\smartmontools\\bin\\runcmdu.exe",
+   "arguments": "net stop smartd",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "smartd.conf (edit)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\smartd.conf (edit).lnk",
+   "cible": "C:\\Windows\\system32\\notepad.exe",
+   "arguments": "\"C:\\Program Files\\smartmontools\\bin\\smartd.conf\"",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "smartd.conf (view)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\smartd.conf (view).lnk",
+   "cible": "C:\\Windows\\system32\\notepad.exe",
+   "arguments": "\"C:\\Program Files\\smartmontools\\bin\\smartd.conf\"",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "smartd.log (view)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\smartd.log (view).lnk",
+   "cible": "C:\\Windows\\system32\\notepad.exe",
+   "arguments": "\"C:\\Program Files\\smartmontools\\bin\\smartd.log\"",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "smartd_mailer.conf.ps1 (create, edit)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\smartd_mailer.conf.ps1 (create, edit).lnk",
+   "cible": "C:\\Windows\\system32\\notepad.exe",
+   "arguments": "\"C:\\Program Files\\smartmontools\\bin\\smartd_mailer.conf.ps1\"",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "smartd_mailer.conf.sample.ps1 (view)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\smartmontools\\smartd Examples\\smartd_mailer.conf.sample.ps1 (view).lnk",
+   "cible": "C:\\Windows\\system32\\notepad.exe",
+   "arguments": "\"C:\\Program Files\\smartmontools\\bin\\smartd_mailer.conf.sample.ps1\"",
+   "repertoire": "C:\\Program Files\\smartmontools\\bin",
+   "existe": true
+  },
+  {
+   "nom": "Steam",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Steam\\Steam.lnk",
+   "cible": "C:\\Program Files (x86)\\Steam\\Steam.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files (x86)\\Steam",
+   "existe": true
+  },
+  {
+   "nom": "Sunshine",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Sunshine\\Sunshine.lnk",
+   "cible": "C:\\Program Files\\Sunshine\\sunshine.exe",
+   "arguments": "--shortcut",
+   "repertoire": "C:\\Program Files\\Sunshine",
+   "existe": true
+  },
+  {
+   "nom": "Uninstall",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Sunshine\\Uninstall.lnk",
+   "cible": "C:\\Program Files\\Sunshine\\Uninstall.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Sunshine",
+   "existe": true
+  },
+  {
+   "nom": "Task Manager",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\System Tools\\Task Manager.lnk",
+   "cible": "C:\\Windows\\system32\\taskmgr.exe",
+   "arguments": "/7",
+   "repertoire": "",
+   "existe": true
+  },
+  {
+   "nom": "Debuggable Package Manager",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio 2022\\Visual Studio Tools\\Debuggable Package Manager.lnk",
+   "cible": "C:\\Windows\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe",
+   "arguments": "-NoExit -Command \"& { Import-Module Appx; Import-Module .\\AppxDebug.dll; Show-AppxDebug}\"",
+   "repertoire": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\IDE\\Remote Debugger\\Appx\\",
+   "existe": true
+  },
+  {
+   "nom": "Developer Command Prompt for VS 2022",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio 2022\\Visual Studio Tools\\Developer Command Prompt for VS 2022.lnk",
+   "cible": "C:\\Windows\\System32\\cmd.exe",
+   "arguments": "/k \"C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\Tools\\VsDevCmd.bat\"",
+   "repertoire": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\",
+   "existe": true
+  },
+  {
+   "nom": "Developer PowerShell for VS 2022",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio 2022\\Visual Studio Tools\\Developer PowerShell for VS 2022.lnk",
+   "cible": "C:\\Windows\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe",
+   "arguments": "-noe -c \"&{Import-Module \"\"\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\Tools\\Microsoft.VisualStudio.DevShell.dll\"\"\"; Enter-VsDevShell 1e527edc}\"",
+   "repertoire": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\",
+   "existe": true
+  },
+  {
+   "nom": "x64 Native Tools Command Prompt for VS 2022",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio 2022\\Visual Studio Tools\\VC\\x64 Native Tools Command Prompt for VS 2022.lnk",
+   "cible": "C:\\Windows\\System32\\cmd.exe",
+   "arguments": "/k \"C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat\"",
+   "repertoire": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\",
+   "existe": true
+  },
+  {
+   "nom": "x64_x86 Cross Tools Command Prompt for VS 2022",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio 2022\\Visual Studio Tools\\VC\\x64_x86 Cross Tools Command Prompt for VS 2022.lnk",
+   "cible": "C:\\Windows\\System32\\cmd.exe",
+   "arguments": "/k \"C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Auxiliary\\Build\\vcvarsamd64_x86.bat\"",
+   "repertoire": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\",
+   "existe": true
+  },
+  {
+   "nom": "x86 Native Tools Command Prompt for VS 2022",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio 2022\\Visual Studio Tools\\VC\\x86 Native Tools Command Prompt for VS 2022.lnk",
+   "cible": "C:\\Windows\\System32\\cmd.exe",
+   "arguments": "/k \"C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Auxiliary\\Build\\vcvars32.bat\"",
+   "repertoire": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\",
+   "existe": true
+  },
+  {
+   "nom": "x86_x64 Cross Tools Command Prompt for VS 2022",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio 2022\\Visual Studio Tools\\VC\\x86_x64 Cross Tools Command Prompt for VS 2022.lnk",
+   "cible": "C:\\Windows\\System32\\cmd.exe",
+   "arguments": "/k \"C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Auxiliary\\Build\\vcvarsx86_amd64.bat\"",
+   "repertoire": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\",
+   "existe": true
+  },
+  {
+   "nom": "Visual Studio Code",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio Code\\Visual Studio Code.lnk",
+   "cible": "C:\\Program Files\\Microsoft VS Code\\Code.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files\\Microsoft VS Code",
+   "existe": true
+  },
+  {
+   "nom": "Application Verifier (X64)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Windows Kits\\Application Verifier (X64)\\Application Verifier (X64).lnk",
+   "cible": "C:\\Windows\\System32\\appverif.exe",
+   "arguments": "",
+   "repertoire": "C:\\Windows\\system32\\",
+   "existe": true
+  },
+  {
+   "nom": "Application Verifier (WOW)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Windows Kits\\Application Verifier (X86)\\Application Verifier (WOW).lnk",
+   "cible": "C:\\Windows\\SysWOW64\\appverif.exe",
+   "arguments": "",
+   "repertoire": "C:\\Windows\\SysWOW64\\",
+   "existe": true
+  },
+  {
+   "nom": "Windows App Cert Kit",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Windows Kits\\Windows App Certification Kit\\Windows App Cert Kit.lnk",
+   "cible": "C:\\Program Files (x86)\\Windows Kits\\10\\App Certification Kit\\appcertui.exe",
+   "arguments": "",
+   "repertoire": "C:\\Program Files (x86)\\Windows Kits\\10\\App Certification Kit\\",
+   "existe": true
+  },
+  {
+   "nom": "Documentation for Desktop Apps",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Windows Kits\\Windows Software Development Kit\\Documentation for Desktop Apps.lnk",
+   "cible": "C:\\Program Files (x86)\\Windows Kits\\10\\Shortcuts\\DesktopAppsDocumentation.url",
+   "arguments": "",
+   "repertoire": "C:\\Program Files (x86)\\Windows Kits\\10\\",
+   "existe": true
+  },
+  {
+   "nom": "Documentation for UWP Apps",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Windows Kits\\Windows Software Development Kit\\Documentation for UWP Apps.lnk",
+   "cible": "C:\\Program Files (x86)\\Windows Kits\\10\\Shortcuts\\UWPAppsDocumentation.url",
+   "arguments": "",
+   "repertoire": "C:\\Program Files (x86)\\Windows Kits\\10\\",
+   "existe": true
+  },
+  {
+   "nom": "Sample Desktop Apps",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Windows Kits\\Windows Software Development Kit\\Sample Desktop Apps.lnk",
+   "cible": "C:\\Program Files (x86)\\Windows Kits\\10\\Shortcuts\\DesktopAppsSamples.url",
+   "arguments": "",
+   "repertoire": "C:\\Program Files (x86)\\Windows Kits\\10\\",
+   "existe": true
+  },
+  {
+   "nom": "Sample UWP Apps",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Windows Kits\\Windows Software Development Kit\\Sample UWP Apps.lnk",
+   "cible": "C:\\Program Files (x86)\\Windows Kits\\10\\Shortcuts\\UWPAppsSamples.url",
+   "arguments": "",
+   "repertoire": "C:\\Program Files (x86)\\Windows Kits\\10\\",
+   "existe": true
+  },
+  {
+   "nom": "Tools for Desktop Apps",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Windows Kits\\Windows Software Development Kit\\Tools for Desktop Apps.lnk",
+   "cible": "C:\\Program Files (x86)\\Windows Kits\\10\\Shortcuts\\DesktopAppsToolsDocumentation.url",
+   "arguments": "",
+   "repertoire": "C:\\Program Files (x86)\\Windows Kits\\10\\",
+   "existe": true
+  },
+  {
+   "nom": "Tools for UWP Apps",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Windows Kits\\Windows Software Development Kit\\Tools for UWP Apps.lnk",
+   "cible": "C:\\Program Files (x86)\\Windows Kits\\10\\Shortcuts\\UWPAppsToolsDocumentation.url",
+   "arguments": "",
+   "repertoire": "C:\\Program Files (x86)\\Windows Kits\\10\\",
+   "existe": true
+  },
+  {
+   "nom": "Windows Software Development Kit",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Windows Kits\\Windows Software Development Kit\\Windows Software Development Kit.lnk",
+   "cible": "C:\\Windows\\explorer.exe",
+   "arguments": "\"C:\\Program Files (x86)\\Windows Kits\\10\\\"",
+   "repertoire": "C:\\Program Files (x86)\\Windows Kits\\10\\",
+   "existe": true
+  },
+  {
+   "nom": "Windows PowerShell ISE (x86)",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Windows PowerShell\\Windows PowerShell ISE (x86).lnk",
+   "cible": "C:\\Windows\\syswow64\\WindowsPowerShell\\v1.0\\PowerShell_ISE.exe",
+   "arguments": "",
+   "repertoire": "%HOMEDRIVE%%HOMEPATH%",
+   "existe": true
+  },
+  {
+   "nom": "Windows PowerShell ISE",
+   "chemin": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Windows PowerShell\\Windows PowerShell ISE.lnk",
+   "cible": "C:\\Windows\\system32\\WindowsPowerShell\\v1.0\\PowerShell_ISE.exe",
+   "arguments": "",
+   "repertoire": "%HOMEDRIVE%%HOMEPATH%",
+   "existe": true
+  }
+ ]
+}

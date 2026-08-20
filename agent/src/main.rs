@@ -1,3 +1,4 @@
+mod apps;
 mod audio;
 // Pas de `#[cfg(windows)]` ici : le protocole du canal média et la
 // `SourceDistante` sont de la logique pure, et doivent se compiler et se
