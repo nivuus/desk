@@ -10,8 +10,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { baseNeuve, MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { lireParVm } from '../depot/agent';
+import { verifierEnrolement } from '../agents/enrolement';
 import { verifier } from '../identite/mot-de-passe';
-import { analyserArguments, enrolerLaVm } from './enroler-agent';
+import { analyserArguments, enrolerLaVm, roterLeSecret } from './enroler-agent';
 
 let base: Pilote | undefined;
 
@@ -23,7 +24,34 @@ afterEach(async () => {
 describe('analyserArguments de admin:agent', () => {
     it('lit --vm et --adresse', () => {
         expect(analyserArguments(['--vm', 'w1', '--adresse', '192.168.3.2']))
-            .toEqual({ vm: 'w1', adresse: '192.168.3.2' });
+            .toEqual({ mode: 'enroler', vm: 'w1', adresse: '192.168.3.2' });
+    });
+
+    it('--roter n\'exige QUE --vm : il ne crée aucune VM, il en corrige une', () => {
+        expect(analyserArguments(['--vm', 'w1', '--roter']))
+            .toEqual({ mode: 'roter', vm: 'w1' });
+        // Et --adresse, s'il traîne, ne change rien : la rotation ne touche
+        // pas la table `vm`.
+        expect(analyserArguments(['--vm', 'w1', '--roter', '--adresse', '10.0.0.1']))
+            .toEqual({ mode: 'roter', vm: 'w1' });
+    });
+
+    it('🔴 --roter sans --vm est refusé, plutôt que de faire tourner au hasard', () => {
+        // 🔴 LA ROUGE : laisser passer. Une rotation sans cible nommée ne peut
+        // pas deviner LAQUELLE des VMs enrôlées doit changer de secret.
+        expect('refus' in analyserArguments(['--roter'])).toBe(true);
+    });
+
+    it('🔴 REFUSE --secret MÊME accompagné de --roter', () => {
+        // 🔴 LA ROUGE : ne contrôler les drapeaux interdits que sur le chemin
+        // d'enrôlement. Le secret d'une ROTATION est tout aussi sensible que
+        // celui d'un enrôlement — `ps` l'exposerait de la même façon —, et
+        // c'est justement le chemin qu'on emprunte quand un secret a fuité.
+        const r = analyserArguments(['--vm', 'w1', '--roter', '--secret', 'chut']);
+        expect('refus' in r).toBe(true);
+        if (!('refus' in r)) return;
+        expect(r.refus).toMatch(/tiré au sort|tire au sort/i);
+        expect(r.refus).not.toContain('chut');
     });
 
     it('🔴 REFUSE --secret sur la ligne de commande, avec son motif', () => {
@@ -95,5 +123,68 @@ describe(`enrolerLaVm, moteur=${MOTEUR}`, () => {
         expect(await verifier(secret, ligne!.empreinte_secret)).toBe(true);
         // Une VM enrôlée n'a pas encore battu.
         expect(ligne!.vu_a).toBeNull();
+    });
+});
+
+describe(`roterLeSecret, moteur=${MOTEUR}`, () => {
+    it("🔴 (a) l'ANCIEN secret est refusé et le NEUF accepté, de bout en bout", async () => {
+        // 🔴 LA ROUGE : écrire le secret en clair au lieu de son empreinte, ou
+        // ne rien écrire du tout. Le juge n'est pas la colonne mais
+        // `verifierEnrolement`, c'est-à-dire le chemin RÉEL du canal /agent :
+        // c'est la seule façon de savoir que la rotation a produit une
+        // empreinte que le service sait vérifier.
+        base = await baseNeuve('admin-roter-bout-en-bout');
+        const { vmId, secret: ancien } = await enrolerLaVm(
+            base, 'w1', '192.168.3.2', 1_787_136_773_742);
+
+        const r = await roterLeSecret(base, vmId);
+        expect('refus' in r).toBe(false);
+        if ('refus' in r) return;
+
+        expect((await verifierEnrolement(base, vmId, ancien, () => {})).ok).toBe(false);
+        expect((await verifierEnrolement(base, vmId, r.secret, () => {})).ok).toBe(true);
+    });
+
+    it('🔴 (b) le PRÉFIXE DE SESSION est inchangé — relu des deux côtés', async () => {
+        // 🔴 LA ROUGE : faire tourner le préfixe aussi. Il compose le nom des
+        // sessions VIVANTES de la VM : le changer les couperait toutes. Le
+        // test relit la colonne AVANT et APRÈS l'appel, sans quoi il ne
+        // mesurerait rien.
+        base = await baseNeuve('admin-roter-prefixe');
+        const { vmId, prefixe: avant } = await enrolerLaVm(
+            base, 'w1', '192.168.3.2', 1_787_136_773_742);
+
+        const r = await roterLeSecret(base, vmId);
+        expect('refus' in r).toBe(false);
+
+        const apres = (await lireParVm(base, vmId))!.prefixe_session;
+        expect(apres).toBe(avant);
+        expect(apres).toHaveLength(22);
+    });
+
+    it('🔴 (b bis) le secret neuf est TIRÉ AU SORT : deux rotations diffèrent', async () => {
+        // 🔴 LA ROUGE : le dériver de l'identifiant de VM. Il serait devinable
+        // par quiconque le connaît, et la rotation ne réparerait rien.
+        base = await baseNeuve('admin-roter-alea');
+        const { vmId } = await enrolerLaVm(base, 'w1', '192.168.3.2', 1_787_136_773_742);
+        const un = await roterLeSecret(base, vmId);
+        const deux = await roterLeSecret(base, vmId);
+        expect('refus' in un).toBe(false);
+        expect('refus' in deux).toBe(false);
+        if ('refus' in un || 'refus' in deux) return;
+        expect(un.secret).not.toBe(deux.secret);
+    });
+
+    it('🔴 (c) une VM INCONNUE rend un refus MOTIVÉ, jamais une exception', async () => {
+        // 🔴 LA ROUGE : laisser l'UPDATE toucher zéro ligne en silence et
+        // rendre un succès. L'administrateur croirait avoir fait tourner un
+        // secret compromis, et l'ancien resterait valide — le pire résultat
+        // possible pour cette commande, puisqu'on ne l'emploie QUE lorsqu'un
+        // secret a fuité.
+        base = await baseNeuve('admin-roter-inconnue');
+        const r = await roterLeSecret(base, 'aucune-vm-de-ce-nom');
+        expect('refus' in r).toBe(true);
+        if (!('refus' in r)) return;
+        expect(r.refus).toMatch(/enrôlée|enrolee/i);
     });
 });

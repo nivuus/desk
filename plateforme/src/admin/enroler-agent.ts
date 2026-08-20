@@ -1,6 +1,7 @@
 // L'enrôlement d'une VM par ligne de commande d'administration.
 //
-//     npm run admin:agent -- --vm w1 --adresse 192.168.3.2
+//     npm run admin:agent -- --vm w1 --adresse 192.168.3.2      (enrôler)
+//     npm run admin:agent -- --vm <id> --roter                  (faire tourner)
 //
 // 🔴 LE SECRET EST TIRÉ AU SORT PAR LA COMMANDE, ET ÉCRIT UNE SEULE FOIS SUR
 // STDOUT. Il n'est jamais relisible : seule son empreinte va en base. Un
@@ -13,8 +14,19 @@
 // ⚠️ CE QU'ON EN FAIT ENSUITE N'EST PAS PROTÉGÉ, et il faut le dire ici :
 // le secret est destiné à `AGENT_SECRET` dans `scripts/run-agent.sh`, qui
 // l'écrit EN CLAIR dans `C:\dev\run-agent.ps1` sur un partage CIFS lisible
-// depuis l'hôte — comme les cinquante-sept autres variables. C'est acceptable
-// pour une VM de développement, et c'est à rouvrir au sous-bloc P5.
+// depuis l'hôte — comme les cinquante-sept autres variables.
+//
+// 🔴 LE SOUS-BLOC P5 A ROUVERT CE POINT, ET IL NE LE CORRIGE PAS : IL LE REND
+// RÉPARABLE. Retirer le secret de ce fichier exigerait de modifier `scripts/`,
+// de faire lire à `agent/` un coffre Windows (DPAPI), et d'éprouver le
+// résultat SUR LA VM — trois choses hors de son périmètre. Livrer un demi-
+// remède non éprouvé serait pire que de déclarer le manque.
+//
+// **La contrepartie est `--roter`, et elle n'existait pas.** Avant elle, un
+// exploitant qui apprenait qu'un secret avait fuité n'avait AUCUN moyen de le
+// remplacer : `enroler` ne sait qu'INSÉRER, `vm_id` est clé primaire
+// (`0003-agents.sql`), donc réenrôler une VM déjà enrôlée LÈVE. Il ne restait
+// que le `DELETE` manuel en base. Le vol d'un secret est désormais réparable.
 //
 // ⚠️ Une VM déjà enrôlée fait LEVER, par la clé primaire de `agent_enrole`.
 // Il n'y a PAS d'oracle d'énumération ici, contrairement au canal `/agent` :
@@ -26,11 +38,19 @@ import { lireConfig } from '../config';
 import { appliquerMigrations, REPERTOIRE_MIGRATIONS } from '../base/migrations';
 import { ouvrirBase } from '../base/ouvrir';
 import type { Pilote } from '../base/pilote';
-import { enroler } from '../depot/agent';
+import { enroler, lireParVm, remplacerEmpreinte } from '../depot/agent';
 import { hacher } from '../identite/mot-de-passe';
 import { nouveauPrefixe } from '../agents/prefixe';
 
-export type Arguments = { vm: string; adresse: string } | { refus: string };
+/// Les deux gestes de cette commande, et le refus.
+///
+/// ⚠️ `mode` EST EXPLICITE plutôt que déduit de la présence d'`adresse` : un
+/// jour où un troisième geste apparaîtrait, la déduction se tromperait en
+/// silence, là où un champ nommé oblige à trancher.
+export type Arguments =
+    | { mode: 'enroler'; vm: string; adresse: string }
+    | { mode: 'roter'; vm: string }
+    | { refus: string };
 
 /// Les drapeaux qui tenteraient de faire passer un secret par l'argv. Ils sont
 /// ÉNUMÉRÉS plutôt que devinés : un motif large refuserait un jour un drapeau
@@ -75,11 +95,25 @@ export function analyserArguments(argv: string[]): Arguments {
     if (vm === undefined || vm === '') {
         return { refus: "--vm <nom> est obligatoire, et n'a aucun défaut." };
     }
+
+    // 🔴 LA ROTATION N'EXIGE PAS `--adresse`, et ce n'est pas une commodité :
+    // elle ne touche PAS la table `vm`. Exiger une adresse inviterait à en
+    // saisir une au hasard, qui serait ignorée — un paramètre qu'on demande
+    // sans l'employer finit par être cru employé.
+    //
+    // ⚠️ LE CONTRÔLE DES DRAPEAUX INTERDITS EST EN AMONT DE CETTE BRANCHE, donc
+    // il couvre `--roter` aussi. C'est le chemin qu'on emprunte précisément
+    // quand un secret a fuité : y laisser passer un `--secret` sur l'argv
+    // rejouerait la fuite qu'on est en train de réparer.
+    if (argv.includes('--roter')) {
+        return { mode: 'roter', vm };
+    }
+
     const adresse = lire('--adresse');
     if (adresse === undefined || adresse === '') {
         return { refus: "--adresse <hôte> est obligatoire, et n'a aucun défaut." };
     }
-    return { vm, adresse };
+    return { mode: 'enroler', vm, adresse };
 }
 
 export interface Enrolement {
@@ -117,6 +151,49 @@ export async function enrolerLaVm(
     return { vmId, prefixe: ligne[0].prefixe_session, secret };
 }
 
+/// Ce qu'une rotation rend : le secret NEUF, ou un refus motivé.
+export type Rotation = { vmId: string; prefixe: string; secret: string } | { refus: string };
+
+/// Fait tourner le secret d'enrôlement d'une VM DÉJÀ enrôlée.
+///
+/// 🔴 LE PRÉFIXE DE SESSION N'EST PAS TOUCHÉ, ET C'EST DÉLIBÉRÉ. Il compose le
+/// nom des sessions VIVANTES de cette VM (`agents/prefixe.ts`, spec §3.4) : le
+/// faire tourner couperait toutes les sessions en cours, au moment même où
+/// l'exploitant réagit à une fuite et où il a le moins besoin d'une panne de
+/// plus. **Rotation du secret n'est pas rotation de l'identité.** Il est
+/// d'ailleurs RENDU à l'appelant, inchangé, pour qu'il le voie de ses yeux.
+///
+/// 🔴 UNE VM NON ENRÔLÉE REND UN REFUS MOTIVÉ, jamais un succès silencieux.
+/// L'`UPDATE` seul toucherait zéro ligne sans rien dire, et l'administrateur
+/// croirait avoir réparé une fuite alors que l'ancien secret resterait valide —
+/// le pire résultat possible pour une commande qu'on n'emploie QUE dans ce
+/// cas-là. ⚠️ Il n'y a PAS d'oracle d'énumération ici, contrairement au canal
+/// `/agent` : l'appelant est l'administrateur, et le refus le lui dit.
+///
+/// ⚠️ CE QUE LA ROTATION NE FAIT PAS : révoquer les jetons d'agent DÉJÀ
+/// délivrés, qui restent valides jusqu'à leur expiration. Même propriété que
+/// les jetons humains (spec §3.5) ; la fenêtre est bornée par
+/// `DUREE_JETON_ACCES_MS`, et le runbook l'écrit.
+export async function roterLeSecret(p: Pilote, vmId: string): Promise<Rotation> {
+    const ligne = await lireParVm(p, vmId);
+    if (ligne === undefined) {
+        return {
+            refus:
+                `la VM ${vmId} n'est pas enrôlée : il n'y a aucun secret à faire ` +
+                "tourner. Vérifier l'identifiant — c'est `vm_id`, celui qu'`--vm " +
+                "<nom> --adresse <hôte>` a imprimé à l'enrôlement, pas le nom " +
+                "d'affichage de la VM.",
+        };
+    }
+
+    // 🔴 TIRÉ AU SORT, exactement comme à l'enrôlement, et par le même appel :
+    // un secret de rotation dérivé de quoi que ce soit serait devinable, et la
+    // rotation ne réparerait rien.
+    const secret = randomBytes(OCTETS_SECRET).toString('base64url');
+    await remplacerEmpreinte(p, vmId, await hacher(secret));
+    return { vmId, prefixe: ligne.prefixe_session, secret };
+}
+
 /// Le corps impur. Rend le code de sortie.
 export async function executer(argv: string[]): Promise<number> {
     const args = analyserArguments(argv);
@@ -132,6 +209,27 @@ export async function executer(argv: string[]): Promise<number> {
         // sur une base neuve, et un `INSERT` sur une table absente rendrait un
         // diagnostic sans rapport avec la cause.
         await appliquerMigrations(base, REPERTOIRE_MIGRATIONS, Date.now());
+
+        if (args.mode === 'roter') {
+            const r = await roterLeSecret(base, args.vm);
+            if ('refus' in r) {
+                process.stderr.write(`rotation refusée : ${r.refus}\n`);
+                return 2;
+            }
+            // ⚠️ LE MÊME PARTAGE QU'À L'ENRÔLEMENT : l'avertissement sur
+            // stderr, la valeur sur stdout, pour que la sortie standard reste
+            // utilisable dans un tube.
+            process.stderr.write(
+                'Le secret ci-dessous ne sera JAMAIS réaffiché : seule son empreinte est en base.\n' +
+                    "Le préfixe de session est INCHANGÉ — les sessions en cours de cette VM ne sont pas coupées.\n" +
+                    "⚠️ Les jetons d'agent DÉJÀ délivrés restent valides jusqu'à leur expiration.\n",
+            );
+            process.stdout.write(
+                `vm_id=${r.vmId}\nprefixe=${r.prefixe}\nAGENT_SECRET=${r.secret}\n`,
+            );
+            return 0;
+        }
+
         const { vmId, prefixe, secret } = await enrolerLaVm(
             base,
             args.vm,
