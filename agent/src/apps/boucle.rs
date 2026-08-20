@@ -93,8 +93,20 @@ fn reconcilier(memoire: &mut Memoire) -> (reconciliation::Diff, Vec<Application>
     // 🔴 LE LEGS N°7 DE G1, FERMÉ ICI. Le champ `retenus` émis plus bas valait
     // `lancables.len()` — une table indexée par CLÉ, donc TOUJOURS égale à
     // `cles`. Les raccourcis réellement retenus n'étaient émis NULLE PART, et
-    // le champ mentait sur son nom. Sur ce corpus : **167 retenus pour 154
-    // clés**, deux nombres différents, donc un contrôle qui peut échouer.
+    // le champ mentait sur son nom.
+    //
+    // **Mesuré le 21 août 2026 sur la VM de développement : `retenus=167` pour
+    // `cles=154`.** DEUX NOMBRES DIFFÉRENTS, donc un contrôle qui peut
+    // échouer — c'est tout ce qu'on lui demande.
+    //
+    // ⚠️ **Le même relevé rend `169`/`156` en fin de recette G2**, et l'écart
+    // n'est pas une dérive : la recette a créé DEUX raccourcis témoins sur le
+    // Bureau (`G2 Temoin 48.lnk`, `G2 Temoin 256.lnk`) pour le critère ②, et
+    // **ils y sont RESTÉS** — c'est ce qui rend ce critère rejouable sans rien
+    // remonter. Un chantier suivant qui compterait 154 sur cette VM les
+    // cherchera : ils portent des arguments distincts (`--g2-temoin-48` et
+    // `--g2-temoin-256`), sans quoi leur clé serait la même et le catalogue
+    // n'en garderait qu'un.
     let mut retenus = 0usize;
     let mut icones = Magasin::new();
     let mut vues = BTreeMap::new();
