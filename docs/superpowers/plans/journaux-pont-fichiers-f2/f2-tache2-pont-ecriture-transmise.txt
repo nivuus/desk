@@ -1,0 +1,36 @@
+# Tâche 2 — PONT_ECRITURE traverse scripts/run-agent.sh.
+# Date : 2026-08-20T23:48:09+02:00
+
+## Le fichier porte la ligne :
+33:${PONT:+\$env:PONT = '$PONT'}
+34:${PONT_ECRITURE:+\$env:PONT_ECRITURE = '$PONT_ECRITURE'}
+
+## VERT — la variable posée apparaît dans le .ps1 rendu :
+8:$env:PONT = '1'
+9:$env:PONT_ECRITURE = '0'
+
+## CONTRÔLE D'ATTEIGNABILITÉ — sans la variable, la ligne n'apparaît PAS :
+## (sans quoi le vert ci-dessus serait vrai de n'importe quel script)
+0
+^ 0 attendu
+
+## ROUGE — retirer la ligne du script :
+## ligne 34
+=== ROUGE : retirer la ligne PONT_ECRITURE de run-agent.sh
+--- fichier : scripts/run-agent.sh
+--- sha256 AVANT : b9dd22d5454b9ef2781a553f280a92eb6cd0294ea09c9b3076cbc976d0a6f65e
+--- diff de la MUTATION SEULE (contre la copie prise à l'instant) :
+@@ -31,7 +31,6 @@
+ ${SUPERVISEUR:+\$env:SUPERVISEUR = '$SUPERVISEUR'}
+ ${CAPTEUR:+\$env:CAPTEUR = '$CAPTEUR'}
+ ${PONT:+\$env:PONT = '$PONT'}
+-${PONT_ECRITURE:+\$env:PONT_ECRITURE = '$PONT_ECRITURE'}
+ ${AUDIO:+\$env:AUDIO = '$AUDIO'}
+ ${AUDIO_PERIPHERIQUE:+\$env:AUDIO_PERIPHERIQUE = '$AUDIO_PERIPHERIQUE'}
+ ${PLEIN_ECRAN:+\$env:PLEIN_ECRAN = '$PLEIN_ECRAN'}
+--- contrôle :
+lignes PONT_ECRITURE du .ps1 : 0
+--- (le code de sortie du contrôle est celui de la commande ci-dessus)
+--- sha256 APRÈS restauration : b9dd22d5454b9ef2781a553f280a92eb6cd0294ea09c9b3076cbc976d0a6f65e
+--- restauration VÉRIFIÉE
+
