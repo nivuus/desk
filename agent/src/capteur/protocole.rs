@@ -177,6 +177,46 @@ pub enum DepuisCapteur {
     /// y mêler une annonce ponctuelle passerait par un chemin conçu pour un
     /// état permanent.
     PleinEcran { actif: bool },
+    /// Le presse-papier de la VM a changé. Poussé non sollicité, **au
+    /// changement seulement**.
+    ///
+    /// Distinct d'`Etat` pour la même raison que `Sommeil`, `Part`, `Audio` et
+    /// `PleinEcran` : `Etat` alimente un cache lu à chaque tour de la boucle de
+    /// transport, et y mêler une annonce ponctuelle passerait par un chemin
+    /// conçu pour un état permanent.
+    ///
+    /// **Le capteur est propriétaire du presse-papier, et lui seul.** La raison
+    /// n'est pas l'écriture — P1 n'écrit rien — mais l'ÉCOUTE et le garde
+    /// anti-écho : N enfants observant une ressource GLOBALE à la session
+    /// Windows auraient N gardes qui ne se voient pas, et l'oscillation serait
+    /// **inter-processus, donc irréparable localement**.
+    ///
+    /// `texte` est `None` sur un refus de taille : le contenu dépassait
+    /// `presse_papier::PRESSE_PAPIER_MAX` et il est **refusé, jamais tronqué**.
+    /// `octets` porte alors la taille refusée, après normalisation des fins de
+    /// ligne.
+    ///
+    /// ⚠️ **Ce n'est PAS ce canal qui contraint la taille**, et l'écrire ici
+    /// évite qu'un successeur croie l'inverse : `TAILLE_MAX` vaut **8 Mio**
+    /// (voir en tête de fichier) quand `PRESSE_PAPIER_MAX` vaut **64 Kio** —
+    /// deux ordres de grandeur d'écart. La borne est une décision de produit
+    /// (D4), pas une limite de transport.
+    ///
+    /// 🔴 **CETTE VARIANTE N'EST PAS ENCORE RELIÉE DANS
+    /// `capteur/pont_media.rs`, ET L'OUBLI Y EST SILENCIEUX.** Ce fichier
+    /// porte un bras catch-all `Ok(autre)` qui **tue le fil `lire_le_media`
+    /// sans aucune panne apparente** : la session tombe dans sa fenêtre de
+    /// reprise, et rien ne dit pourquoi. Le dépôt a payé ce défaut **quatre
+    /// fois** — `Sommeil` (D5), `Part` (D6), `Audio` (D7), `PleinEcran` (D8) —
+    /// et le commentaire de `pont_media.rs` le dénonce contre lui-même depuis
+    /// D5. La tâche 9 du plan P1 ajoute le bras **et son test** ; ce fichier
+    /// est livré avant elle, et le dit plutôt que de le taire.
+    ///
+    /// **Le contrôle tient en une commande, et il doit rendre une ligne :**
+    /// `grep -n 'DepuisCapteur::PressePapier' agent/src/capteur/pont_media.rs`.
+    /// Tant qu'il rend zéro, aucun presse-papier ne peut traverser — et la
+    /// première trame en tuerait le fil.
+    PressePapier { texte: Option<String>, octets: u32 },
 }
 
 #[derive(Debug)]
