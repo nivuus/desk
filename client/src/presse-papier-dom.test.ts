@@ -1,26 +1,35 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { attacherPressePapierAuDOM } from './presse-papier-dom';
-import { MESSAGE_ECHEC, messageDeRefus } from './presse-papier';
+import { attacherPressePapierAuDOM, type EvenementCollage } from './presse-papier-dom';
+import { CONTROL_VERSION } from '../../proto/ts/control';
+import { MESSAGE_ECHEC, PRESSE_PAPIER_MAX, messageDeRefus } from './presse-papier';
 
 /// Une cible d'événements minimale, sans DOM : le module n'a besoin que de
-/// `focus`, et l'injecter est ce qui rend ce fichier éprouvable sans jsdom.
+/// `focus` et de `paste`, et l'injecter est ce qui rend ce fichier éprouvable
+/// sans jsdom.
 function cibleFactice() {
-    const rappels = new Map<string, Set<() => void>>();
+    const rappels = new Map<string, Set<(event: EvenementCollage) => void>>();
     return {
-        addEventListener(nom: string, rappel: () => void) {
+        addEventListener(nom: string, rappel: (event: EvenementCollage) => void) {
             if (!rappels.has(nom)) rappels.set(nom, new Set());
             rappels.get(nom)!.add(rappel);
         },
-        removeEventListener(nom: string, rappel: () => void) {
+        removeEventListener(nom: string, rappel: (event: EvenementCollage) => void) {
             rappels.get(nom)?.delete(rappel);
         },
-        declencher(nom: string) {
-            for (const rappel of rappels.get(nom) ?? []) rappel();
+        declencher(nom: string, event?: EvenementCollage) {
+            for (const rappel of rappels.get(nom) ?? []) rappel(event as EvenementCollage);
         },
         compte(nom: string) {
             return rappels.get(nom)?.size ?? 0;
         },
+    };
+}
+
+/// Un `paste` factice portant `texte` en `text/plain`.
+function collage(texte: string | null) {
+    return {
+        clipboardData: texte === null ? null : { getData: () => texte },
     };
 }
 
@@ -33,6 +42,7 @@ describe('attacherPressePapierAuDOM', () => {
             focalise: () => true,
             cible,
             surMessage: vi.fn(),
+            emettre: vi.fn(),
         });
 
         attache.recevoir({ texte: 'bonjour', octets: 7 });
@@ -54,6 +64,7 @@ describe('attacherPressePapierAuDOM', () => {
             focalise: () => focalise,
             cible,
             surMessage: vi.fn(),
+            emettre: vi.fn(),
         });
 
         attache.recevoir({ texte: 'differe', octets: 7 });
@@ -77,6 +88,7 @@ describe('attacherPressePapierAuDOM', () => {
             focalise: () => true,
             cible: cibleFactice(),
             surMessage,
+            emettre: vi.fn(),
         });
 
         attache.recevoir({ texte: null, octets: 100_000 });
@@ -99,6 +111,7 @@ describe('attacherPressePapierAuDOM', () => {
             focalise: () => true,
             cible,
             surMessage,
+            emettre: vi.fn(),
         });
 
         attache.recevoir({ texte: 'un', octets: 2 });
@@ -123,6 +136,7 @@ describe('attacherPressePapierAuDOM', () => {
             focalise: () => true,
             cible,
             surMessage: vi.fn(),
+            emettre: vi.fn(),
         });
 
         expect(cible.compte('focus')).toBe(1);
@@ -136,14 +150,141 @@ describe('attacherPressePapierAuDOM', () => {
     /// Ce test garde cette propriété contre une régression future — le module
     /// ne reçoit aucune fonction de lecture, et son interface ne peut donc pas
     /// en acquérir une sans que ce fichier ne cesse de compiler.
+    ///
+    /// ✅ **CE GARDE A MORDU AU SOUS-BLOC P2, ET C'EST EXACTEMENT SON OFFICE.**
+    /// L'ajout d'`emettre` l'a fait rougir, forçant à regarder la clé neuve et
+    /// à trancher : `emettre` écrit sur le canal de contrôle **vers l'agent**,
+    /// elle ne lit rien du presse-papier de l'utilisateur. Le seul endroit du
+    /// produit où celui-ci est lu reste l'événement `paste` DE CONFIANCE, qui
+    /// n'est pas une capacité reçue mais un geste de l'utilisateur — et il ne
+    /// passe par aucune de ces clés. La liste est donc étendue **sciemment**,
+    /// et non par accommodement.
     it('ne reçoit aucune capacité de LECTURE du presse-papier', () => {
         const options = {
             ecrire: vi.fn().mockResolvedValue(undefined),
             focalise: () => true,
             cible: cibleFactice(),
             surMessage: vi.fn(),
+            emettre: vi.fn(),
         };
-        expect(Object.keys(options).sort()).toEqual(['cible', 'ecrire', 'focalise', 'surMessage']);
+        expect(Object.keys(options).sort()).toEqual([
+            'cible',
+            'ecrire',
+            'emettre',
+            'focalise',
+            'surMessage',
+        ]);
         attacherPressePapierAuDOM(options).detacher();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Sous-bloc P2 — l'écouteur `paste`, le sens navigateur → VM.
+// ---------------------------------------------------------------------------
+
+describe("l'écouteur de collage", () => {
+    function monter(surMessage = vi.fn()) {
+        const cible = cibleFactice();
+        const emettre = vi.fn();
+        const attache = attacherPressePapierAuDOM({
+            ecrire: vi.fn().mockResolvedValue(undefined),
+            focalise: () => true,
+            cible,
+            surMessage,
+            emettre,
+        });
+        return { cible, emettre, surMessage, attache };
+    }
+
+    // 🔴 ROUGE si l'écouteur est absent : rien ne remonterait jamais à l'agent.
+    // La forme émise est celle que `proto/src/control.rs` désérialise, avec
+    // `deny_unknown_fields` — un encodeur maison serait refusé par serde.
+    it('émet le texte collé sur le canal de contrôle', () => {
+        const { cible, emettre } = monter();
+        cible.declencher('paste', collage('bonjour'));
+        expect(emettre).toHaveBeenCalledOnce();
+        expect(JSON.parse(emettre.mock.calls[0][0] as string)).toEqual({
+            v: CONTROL_VERSION,
+            type: 'clipboard',
+            text: 'bonjour',
+        });
+    });
+
+    // 🔴 ROUGE si l'on émettait une chaîne vide : elle VIDERAIT le
+    // presse-papier de la VM sans que l'utilisateur l'ait demandé.
+    it("un collage vide n'émet rien", () => {
+        const { cible, emettre } = monter();
+        cible.declencher('paste', collage(''));
+        expect(emettre).not.toHaveBeenCalled();
+    });
+
+    // Un `paste` sans `clipboardData` (une image, un format inconnu) est le
+    // même cas : rien à émettre, et rien à dire.
+    it("un collage sans clipboardData n'émet rien", () => {
+        const { cible, emettre } = monter();
+        cible.declencher('paste', collage(null));
+        expect(emettre).not.toHaveBeenCalled();
+    });
+
+    // 🔴 **LA BORNE CÔTÉ CLIENT EST OBLIGATOIRE.** Sans elle, l'agent la ferait
+    // respecter — mais le canal aurait DÉJÀ porté la charge, et le bandeau ne
+    // paraîtrait jamais : l'agent refuse en journalisant, sans rien renvoyer.
+    it('au-delà de la borne : rien n émis, et le refus est DIT', () => {
+        const surMessage = vi.fn();
+        const { cible, emettre } = monter(surMessage);
+        const trop = 'a'.repeat(PRESSE_PAPIER_MAX + 1);
+        cible.declencher('paste', collage(trop));
+        expect(emettre).not.toHaveBeenCalled();
+        expect(surMessage).toHaveBeenCalledWith(messageDeRefus(PRESSE_PAPIER_MAX + 1));
+    });
+
+    // Le cas limite exact passe : rouge si la comparaison est un `>=`.
+    it('exactement la borne passe', () => {
+        const { cible, emettre } = monter();
+        cible.declencher('paste', collage('a'.repeat(PRESSE_PAPIER_MAX)));
+        expect(emettre).toHaveBeenCalledOnce();
+    });
+
+    // 🔴 **LA BORNE COMPTE DES OCTETS D'UTF-8, PAS DES UNITÉS UTF-16.**
+    // ROUGE si l'implémentation est `texte.length` : ce texte compte
+    // `PRESSE_PAPIER_MAX / 2` unités UTF-16 — donc passerait — pour
+    // `PRESSE_PAPIER_MAX * 2` octets, soit le DOUBLE de ce que l'agent accepte.
+    // Le client émettrait alors une charge que l'agent refuserait en silence.
+    it('la borne compte des octets UTF-8, pas des unités UTF-16', () => {
+        const { cible, emettre, surMessage } = monter();
+        const emojis = '😀'.repeat(PRESSE_PAPIER_MAX / 4);
+        expect(emojis.length).toBe(PRESSE_PAPIER_MAX / 2);
+        cible.declencher('paste', collage(emojis + '😀'));
+        expect(emettre).not.toHaveBeenCalled();
+        expect(surMessage).toHaveBeenCalled();
+    });
+
+    // 🔴 **LE GARDE N°3 CÂBLÉ** : un texte qu'on vient de recevoir de l'agent
+    // n'est pas réémis vers lui. Sans cet appel, chaque collage d'un contenu
+    // venu de la VM produirait un aller-retour complet.
+    it("ne réémet pas un texte qu'on vient de recevoir", () => {
+        const { cible, emettre, attache } = monter();
+        attache.recevoir({ texte: 'venu-de-la-vm', octets: 13 });
+        cible.declencher('paste', collage('venu-de-la-vm'));
+        expect(emettre).not.toHaveBeenCalled();
+    });
+
+    // Le jumeau du précédent : sans lui, un `aEmettre` qui rendrait toujours
+    // `undefined` passerait le test ci-dessus et le collage serait mort.
+    it('réémet bien un texte DIFFÉRENT après une réception', () => {
+        const { cible, emettre, attache } = monter();
+        attache.recevoir({ texte: 'venu-de-la-vm', octets: 13 });
+        cible.declencher('paste', collage('autre chose'));
+        expect(emettre).toHaveBeenCalledOnce();
+    });
+
+    // ROUGE si `detacher` oubliait le `paste` : l'écouteur survivrait à la fin
+    // de session et émettrait pour une session morte.
+    it('detacher retire AUSSI l écouteur de collage', () => {
+        const { cible, attache } = monter();
+        expect(cible.compte('paste')).toBe(1);
+        attache.detacher();
+        expect(cible.compte('paste')).toBe(0);
+        expect(cible.compte('focus')).toBe(0);
     });
 });

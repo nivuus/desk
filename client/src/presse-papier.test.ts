@@ -1,8 +1,18 @@
+// ⚠️ **`?raw` et non `node:fs`** : `client/` n'a pas `@types/node`, et un test
+// écrit avec `readFileSync` passerait sous vitest — qui transpile par esbuild,
+// sans vérifier les types — tout en CASSANT `npm run typecheck`. Piège relevé
+// par le sous-bloc P2 de la plateforme, et payé ici une seconde fois.
+//
+// `?raw` exige `test.css: true` dans `client/vite.config.ts` pour les feuilles
+// de style ; sur un fichier `.rs` il n'y a pas de court-circuit à lever, et le
+// test ci-dessous vérifie de toute façon que le texte lu n'est pas vide.
+import rustPressePapier from '../../agent/src/presse_papier.rs?raw';
 import { describe, it, expect } from 'vitest';
 import {
     PressePapierLocal,
     MESSAGE_ECHEC,
     ECHECS_AVANT_MESSAGE,
+    PRESSE_PAPIER_MAX,
 } from './presse-papier';
 
 describe('PressePapierLocal', () => {
@@ -154,5 +164,26 @@ describe('PressePapierLocal.aEmettre — le garde n°3', () => {
         etat.recevoir({ texte: 'x', octets: 1 });
         expect(etat.aEcrire(false)).toBeUndefined();
         expect(etat.aEmettre('x')).toBeUndefined();
+    });
+});
+
+/// 🔴 **LA BORNE EST ÉCRITE DANS DEUX LANGAGES QU'AUCUN `import` NE RELIE**, et
+/// ce test est la seule chose qui les empêche de diverger en silence.
+///
+/// Le dépôt a payé cette classe au sous-bloc P2 de la plateforme, et le remède
+/// employé est le même : **relire le fichier source de l'autre langage** plutôt
+/// que d'espérer qu'on pensera aux deux.
+///
+/// ROUGE si l'une des deux valeurs bouge sans l'autre.
+describe('PRESSE_PAPIER_MAX', () => {
+    it("vaut ce que l'agent Rust déclare", () => {
+        const trouve = /pub const PRESSE_PAPIER_MAX: usize = ([^;]+);/.exec(rustPressePapier);
+        // ⚠️ Sans cette assertion, un renommage côté Rust rendrait `trouve`
+        // nul et le test passerait en ne mesurant RIEN — le contrôle vacueux
+        // que ce dépôt paie depuis D7.
+        expect(trouve, "la constante Rust n'a pas été retrouvée").not.toBeNull();
+        // eslint-disable-next-line no-eval
+        const valeurRust = Number(new Function(`return ${trouve![1].replace(/_/g, '')}`)());
+        expect(PRESSE_PAPIER_MAX).toBe(valeurRust);
     });
 });

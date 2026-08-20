@@ -44,6 +44,24 @@ export const MESSAGE_ECHEC =
 /// bandeau permanent sur un produit qui marche.
 export const ECHECS_AVANT_MESSAGE = 2;
 
+/// Taille maximale, en **octets d'UTF-8**, d'un texte que la page accepte
+/// d'émettre vers l'agent (sous-bloc P2).
+///
+/// 🔴 **C'EST UNE COPIE, ET RIEN DANS LE LANGAGE NE LA CONFRONTE À SA
+/// SOURCE.** La valeur qui fait foi est `agent::presse_papier::PRESSE_PAPIER_MAX`
+/// (`agent/src/presse_papier.rs`), et `client/` ne peut pas importer de Rust.
+/// Le dépôt a déjà payé cette classe — deux constantes écrites dans deux
+/// langages sans `import` possible divergent en SILENCE (sous-bloc P2 de la
+/// plateforme). Le remède employé est le même qu'alors : **un test qui relit
+/// le fichier Rust et refuse la divergence**, dans `presse-papier.test.ts`.
+///
+/// **Pourquoi la borne est ici et pas seulement chez l'agent** : sans elle,
+/// l'agent la ferait bien respecter, mais le canal de contrôle aurait DÉJÀ
+/// porté la charge, et le bandeau ne paraîtrait jamais — l'agent refuse en
+/// journalisant, sans rien renvoyer. C'est ici, et ici seulement, que
+/// l'utilisateur peut être averti.
+export const PRESSE_PAPIER_MAX = 64 * 1024;
+
 /// Le message de refus, qui NOMME la taille — « trop grand » seul ne dit pas
 /// à l'utilisateur ce qu'il doit réduire.
 export function messageDeRefus(octets: number): string {

@@ -123,6 +123,16 @@ let micro: ReturnType<typeof attacherBoutonMicro> | undefined;
 // `connectSession` ne résolve. Ce qu'un message arrivé avant l'attache
 // devient est écrit sur `PressePapierAttache.recevoir`.
 let pressePapier: ReturnType<typeof attacherPressePapierAuDOM> | undefined;
+/// L'agent a-t-il annoncé `Capabilities.clipboard` ?
+///
+/// **Un `let` relu par une fermeture, jamais une valeur passée à l'attache** :
+/// `Capabilities` arrive avant `Ready` mais rien ne garantit qu'il précède
+/// `attachInput`, et un booléen figé au montage vaudrait `false` à jamais.
+/// C'est la même indépendance à l'ordre que le reste de ce fichier.
+///
+/// `undefined` sur un agent d'avant P2 : `Boolean(undefined)` vaut `false`,
+/// donc rien n'est armé, et le `Ctrl+V` garde son comportement d'avant.
+let collageArme = false;
 // `mic` tel que l'agent l'a annoncé, `undefined` compris. Mémorisé parce que
 // `ready` peut précéder la construction du bouton : sans cela, une annonce
 // arrivée tôt serait perdue et le bouton resterait caché pour toujours,
@@ -245,6 +255,11 @@ connectSession({
                 statut.afficher('manette indisponible sur cette machine');
                 setTimeout(() => statut.masquer(), 4000);
             }
+            // Aucune logique ici non plus : ce drapeau ne fait que GATER
+            // l'exception clavier de `input.ts`. Sans lui, `PRESSE_PAPIER=0`
+            // donnerait le pire des deux mondes — le client retiendrait le
+            // `Ctrl+V` alors que personne ne l'injecterait côté VM.
+            collageArme = Boolean(message.clipboard);
         } else if (message.type === 'clipboard') {
             // Aucune logique ici : toute la décision — écrire ou différer,
             // dire un refus, crier au deuxième échec — vit dans le module
@@ -254,7 +269,14 @@ connectSession({
     },
 })
     .then((session) => {
-        attachInput({ video, channel: session.inputChannel });
+        attachInput({
+            video,
+            channel: session.inputChannel,
+            // `window` et non `video` : c'est là que les écouteurs clavier
+            // vivaient déjà avant P2.
+            clavier: window,
+            collageArme: () => collageArme,
+        });
         attachStats(session.pc, statsElement);
         video.focus();
 
@@ -323,6 +345,15 @@ connectSession({
             ecrire: (texte) => navigator.clipboard.writeText(texte),
             focalise: () => document.hasFocus(),
             cible: window,
+            // Le canal de CONTRÔLE, jamais celui des entrées : un collage
+            // exige un ORDRE (le presse-papier Windows d'abord, `Ctrl+V`
+            // ensuite), et le canal d'entrées est `ordered: false`. Même
+            // canal, et même geste, qu'`encodeResize` plus haut.
+            emettre: (message) => {
+                if (session.controlChannel.readyState === 'open') {
+                    session.controlChannel.send(message);
+                }
+            },
             // `persistant`, sur le patron EXACT du micro : refus de taille et
             // échec répété demandent tous deux un geste de l'utilisateur.
             surMessage: (texte) => statut.afficher(texte, { persistant: true }),
