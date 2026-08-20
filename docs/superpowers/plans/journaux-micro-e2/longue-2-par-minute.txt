@@ -1,0 +1,10 @@
+21:00:23  ecrites=48000 silence=5 retards=0 reveil="evenement" deposees=50 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+21:01:23  ecrites=48000 silence=8 retards=0 reveil="evenement" deposees=50 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+21:02:24  ecrites=48000 silence=5 retards=0 reveil="evenement" deposees=50 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+21:03:24  ecrites=48000 silence=8 retards=0 reveil="evenement" deposees=50 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+21:04:24  ecrites=48480 silence=9 retards=0 reveil="evenement" deposees=50 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+21:05:25  ecrites=48000 silence=8 retards=0 reveil="evenement" deposees=50 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+21:06:25  ecrites=48000 silence=5 retards=0 reveil="evenement" deposees=50 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+21:07:25  ecrites=48000 silence=6 retards=0 reveil="evenement" deposees=50 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+21:08:26  ecrites=48480 silence=9 retards=0 reveil="evenement" deposees=50 sauts=0 insertions=0 plc=0 plc_plafonnees=0
+21:09:26  ecrites=48480 silence=7 retards=0 reveil="evenement" deposees=51 sauts=0 insertions=0 plc=0 plc_plafonnees=0

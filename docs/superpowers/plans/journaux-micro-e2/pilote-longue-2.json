@@ -1,0 +1,3499 @@
+{
+  "scenario": "ecoute",
+  "session": "njM-lkUQyT-n8oXT_4pEdg:e2-longue2",
+  "wav": "/tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/38dfbdff-6ff8-4fcc-b60c-f9c36ea58b66/scratchpad/e2/wav/ton-440.wav",
+  "url": "http://127.0.0.1:5173/?session=njM-lkUQyT-n8oXT_4pEdg%3Ae2-longue2&plateforme=http%3A%2F%2F127.0.0.1%3A8091&signaling=ws%3A%2F%2F127.0.0.1%3A8091",
+  "duree": 600000,
+  "debut": "2026-08-20T20:59:31.195Z",
+  "etapes": [
+    {
+      "quoi": "ready",
+      "issue": "bouton visible",
+      "quand": "2026-08-20T20:59:34.371Z"
+    },
+    {
+      "quoi": "clic",
+      "quand": "2026-08-20T20:59:34.371Z",
+      "compte": {
+        "clique": true
+      }
+    },
+    {
+      "quoi": "micro",
+      "issue": "actif",
+      "quand": "2026-08-20T20:59:34.632Z"
+    }
+  ],
+  "stats": [
+    {
+      "etiquette": "apres-ready",
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 31,
+          "packetsLost": 0,
+          "bytesReceived": 33
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 116,
+          "packetsLost": 0,
+          "bytesReceived": 127069,
+          "framesDecoded": 1,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 432
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 0,
+          "bytesSent": 0,
+          "mid": "2"
+        }
+      ],
+      "paire": {
+        "rtt": 0.002,
+        "recu": 137198,
+        "envoye": 2895
+      },
+      "paires": [
+        {
+          "etat": "waiting",
+          "nominee": false,
+          "demandesEnvoyees": 0,
+          "reponsesRecues": 0,
+          "demandesRecues": 1
+        },
+        {
+          "etat": "waiting",
+          "nominee": false,
+          "demandesEnvoyees": 0,
+          "reponsesRecues": 0,
+          "demandesRecues": 1
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 1,
+          "reponsesRecues": 1,
+          "demandesRecues": 1
+        },
+        {
+          "etat": "waiting",
+          "nominee": false,
+          "demandesEnvoyees": 0,
+          "reponsesRecues": 0,
+          "demandesRecues": 1
+        },
+        {
+          "etat": "waiting",
+          "nominee": false,
+          "demandesEnvoyees": 0,
+          "reponsesRecues": 0,
+          "demandesRecues": 1
+        },
+        {
+          "etat": "waiting",
+          "nominee": false,
+          "demandesEnvoyees": 0,
+          "reponsesRecues": 0,
+          "demandesRecues": 1
+        },
+        {
+          "etat": "waiting",
+          "nominee": false,
+          "demandesEnvoyees": 0,
+          "reponsesRecues": 0,
+          "demandesRecues": 1
+        },
+        {
+          "etat": "waiting",
+          "nominee": false,
+          "demandesEnvoyees": 0,
+          "reponsesRecues": 0,
+          "demandesRecues": 1
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 3,
+          "reponsesRecues": 3,
+          "demandesRecues": 1
+        },
+        {
+          "etat": "waiting",
+          "nominee": false,
+          "demandesEnvoyees": 0,
+          "reponsesRecues": 0,
+          "demandesRecues": 1
+        },
+        {
+          "etat": "waiting",
+          "nominee": false,
+          "demandesEnvoyees": 0,
+          "reponsesRecues": 0,
+          "demandesRecues": 1
+        }
+      ],
+      "candidats": [
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.3.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.0.1",
+          "port": 46982
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.19.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.18.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.2.1",
+          "port": 56688
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.23.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.20.0.1",
+          "port": 49104
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.2.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.27.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "90.87.35.18",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.18.0.1",
+          "port": 36732
+        },
+        {
+          "cote": "distant",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.2",
+          "port": 64127
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.1",
+          "port": 36181
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.22.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 44710
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.23.0.1",
+          "port": 44640
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.27.0.1",
+          "port": 46496
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.20.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 45605
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.22.0.1",
+          "port": 46588
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "90.87.35.18",
+          "port": 56734
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.19.0.1",
+          "port": 55500
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.17.0.1",
+          "port": 51476
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.17.0.1",
+          "port": 9
+        }
+      ],
+      "etatIce": "connected",
+      "etatCnx": "connected",
+      "horodatage": "2026-08-20T20:59:34.369Z"
+    },
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 6057,
+          "packetsLost": 0,
+          "bytesReceived": 6353
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 7464,
+          "packetsLost": 0,
+          "bytesReceived": 670400,
+          "framesDecoded": 2,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 432
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 3047,
+          "bytesSent": 244150,
+          "mid": "2",
+          "targetBitrate": 32000
+        }
+      ],
+      "paire": {
+        "rtt": 0.002,
+        "recu": 1630790,
+        "envoye": 2895
+      },
+      "paires": [
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 3,
+          "reponsesRecues": 3,
+          "demandesRecues": 23
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 3,
+          "reponsesRecues": 3,
+          "demandesRecues": 23
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 27,
+          "reponsesRecues": 27,
+          "demandesRecues": 23
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 3,
+          "reponsesRecues": 3,
+          "demandesRecues": 23
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 3,
+          "reponsesRecues": 3,
+          "demandesRecues": 23
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 3,
+          "reponsesRecues": 3,
+          "demandesRecues": 23
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 3,
+          "reponsesRecues": 3,
+          "demandesRecues": 23
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 3,
+          "reponsesRecues": 3,
+          "demandesRecues": 23
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 5,
+          "reponsesRecues": 5,
+          "demandesRecues": 23
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 3,
+          "reponsesRecues": 3,
+          "demandesRecues": 23
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 3,
+          "reponsesRecues": 3,
+          "demandesRecues": 23
+        }
+      ],
+      "candidats": [
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.3.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.0.1",
+          "port": 46982
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.19.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.18.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.2.1",
+          "port": 56688
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.23.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.20.0.1",
+          "port": 49104
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.2.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.27.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "90.87.35.18",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.18.0.1",
+          "port": 36732
+        },
+        {
+          "cote": "distant",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.2",
+          "port": 64127
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.1",
+          "port": 36181
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.22.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 44710
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.23.0.1",
+          "port": 44640
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.27.0.1",
+          "port": 46496
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.20.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 45605
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.22.0.1",
+          "port": 46588
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "90.87.35.18",
+          "port": 56734
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.19.0.1",
+          "port": 55500
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.17.0.1",
+          "port": 51476
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.17.0.1",
+          "port": 9
+        }
+      ],
+      "etatIce": "connected",
+      "etatCnx": "connected",
+      "horodatage": "2026-08-20T21:00:34.677Z",
+      "etiquette": "t+60s",
+      "etatBouton": {
+        "hidden": false,
+        "disabled": false,
+        "etat": "actif",
+        "titre": "Microphone actif — cliquez pour couper"
+      }
+    },
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 12062,
+          "packetsLost": 0,
+          "bytesReceived": 12650
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 14840,
+          "packetsLost": 0,
+          "bytesReceived": 1208960,
+          "framesDecoded": 2,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 432
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 6085,
+          "bytesSent": 487393,
+          "mid": "2",
+          "targetBitrate": 32000
+        }
+      ],
+      "paire": {
+        "rtt": 0.002,
+        "recu": 3118916,
+        "envoye": 2895
+      },
+      "paires": [
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 5,
+          "reponsesRecues": 5,
+          "demandesRecues": 43
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 5,
+          "reponsesRecues": 5,
+          "demandesRecues": 43
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 50,
+          "reponsesRecues": 50,
+          "demandesRecues": 43
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 5,
+          "reponsesRecues": 5,
+          "demandesRecues": 43
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 5,
+          "reponsesRecues": 5,
+          "demandesRecues": 43
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 5,
+          "reponsesRecues": 5,
+          "demandesRecues": 43
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 5,
+          "reponsesRecues": 5,
+          "demandesRecues": 43
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 5,
+          "reponsesRecues": 5,
+          "demandesRecues": 43
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 7,
+          "reponsesRecues": 7,
+          "demandesRecues": 43
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 5,
+          "reponsesRecues": 5,
+          "demandesRecues": 43
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 5,
+          "reponsesRecues": 5,
+          "demandesRecues": 43
+        }
+      ],
+      "candidats": [
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.3.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.0.1",
+          "port": 46982
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.19.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.18.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.2.1",
+          "port": 56688
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.23.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.20.0.1",
+          "port": 49104
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.2.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.27.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "90.87.35.18",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.18.0.1",
+          "port": 36732
+        },
+        {
+          "cote": "distant",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.2",
+          "port": 64127
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.1",
+          "port": 36181
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.22.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 44710
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.23.0.1",
+          "port": 44640
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.27.0.1",
+          "port": 46496
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.20.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 45605
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.22.0.1",
+          "port": 46588
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "90.87.35.18",
+          "port": 56734
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.19.0.1",
+          "port": 55500
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.17.0.1",
+          "port": 51476
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.17.0.1",
+          "port": 9
+        }
+      ],
+      "etatIce": "connected",
+      "etatCnx": "connected",
+      "horodatage": "2026-08-20T21:01:34.731Z",
+      "etiquette": "t+120s",
+      "etatBouton": {
+        "hidden": false,
+        "disabled": false,
+        "etat": "actif",
+        "titre": "Microphone actif — cliquez pour couper"
+      }
+    },
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 18067,
+          "packetsLost": 0,
+          "bytesReceived": 18949
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 22228,
+          "packetsLost": 0,
+          "bytesReceived": 1747520,
+          "framesDecoded": 2,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 432
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 9123,
+          "bytesSent": 730555,
+          "mid": "2",
+          "targetBitrate": 32000
+        }
+      ],
+      "paire": {
+        "rtt": 0.001,
+        "recu": 4607894,
+        "envoye": 2895
+      },
+      "paires": [
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 7,
+          "reponsesRecues": 7,
+          "demandesRecues": 63
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 7,
+          "reponsesRecues": 7,
+          "demandesRecues": 63
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 72,
+          "reponsesRecues": 72,
+          "demandesRecues": 63
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 8,
+          "reponsesRecues": 8,
+          "demandesRecues": 63
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 7,
+          "reponsesRecues": 7,
+          "demandesRecues": 63
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 8,
+          "reponsesRecues": 8,
+          "demandesRecues": 63
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 8,
+          "reponsesRecues": 8,
+          "demandesRecues": 63
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 8,
+          "reponsesRecues": 8,
+          "demandesRecues": 63
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 10,
+          "reponsesRecues": 10,
+          "demandesRecues": 63
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 8,
+          "reponsesRecues": 8,
+          "demandesRecues": 63
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 7,
+          "reponsesRecues": 7,
+          "demandesRecues": 63
+        }
+      ],
+      "candidats": [
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.3.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.0.1",
+          "port": 46982
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.19.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.18.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.2.1",
+          "port": 56688
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.23.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.20.0.1",
+          "port": 49104
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.2.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.27.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "90.87.35.18",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.18.0.1",
+          "port": 36732
+        },
+        {
+          "cote": "distant",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.2",
+          "port": 64127
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.1",
+          "port": 36181
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.22.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 44710
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.23.0.1",
+          "port": 44640
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.27.0.1",
+          "port": 46496
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.20.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 45605
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.22.0.1",
+          "port": 46588
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "90.87.35.18",
+          "port": 56734
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.19.0.1",
+          "port": 55500
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.17.0.1",
+          "port": 51476
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.17.0.1",
+          "port": 9
+        }
+      ],
+      "etatIce": "connected",
+      "etatCnx": "connected",
+      "horodatage": "2026-08-20T21:02:34.776Z",
+      "etiquette": "t+180s",
+      "etatBouton": {
+        "hidden": false,
+        "disabled": false,
+        "etat": "actif",
+        "titre": "Microphone actif — cliquez pour couper"
+      }
+    },
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 24071,
+          "packetsLost": 0,
+          "bytesReceived": 25245
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 29621,
+          "packetsLost": 0,
+          "bytesReceived": 2286080,
+          "framesDecoded": 2,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 432
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 12161,
+          "bytesSent": 973717,
+          "mid": "2",
+          "targetBitrate": 32000
+        }
+      ],
+      "paire": {
+        "rtt": 0.002,
+        "recu": 6097188,
+        "envoye": 2895
+      },
+      "paires": [
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 10,
+          "reponsesRecues": 10,
+          "demandesRecues": 83
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 10,
+          "reponsesRecues": 10,
+          "demandesRecues": 83
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 95,
+          "reponsesRecues": 95,
+          "demandesRecues": 83
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 10,
+          "reponsesRecues": 10,
+          "demandesRecues": 83
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 10,
+          "reponsesRecues": 10,
+          "demandesRecues": 83
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 10,
+          "reponsesRecues": 10,
+          "demandesRecues": 83
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 10,
+          "reponsesRecues": 10,
+          "demandesRecues": 83
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 10,
+          "reponsesRecues": 10,
+          "demandesRecues": 83
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 12,
+          "reponsesRecues": 12,
+          "demandesRecues": 83
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 10,
+          "reponsesRecues": 10,
+          "demandesRecues": 83
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 10,
+          "reponsesRecues": 10,
+          "demandesRecues": 83
+        }
+      ],
+      "candidats": [
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.3.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.0.1",
+          "port": 46982
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.19.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.18.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.2.1",
+          "port": 56688
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.23.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.20.0.1",
+          "port": 49104
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.2.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.27.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "90.87.35.18",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.18.0.1",
+          "port": 36732
+        },
+        {
+          "cote": "distant",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.2",
+          "port": 64127
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.1",
+          "port": 36181
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.22.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 44710
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.23.0.1",
+          "port": 44640
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.27.0.1",
+          "port": 46496
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.20.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 45605
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.22.0.1",
+          "port": 46588
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "90.87.35.18",
+          "port": 56734
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.19.0.1",
+          "port": 55500
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.17.0.1",
+          "port": 51476
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.17.0.1",
+          "port": 9
+        }
+      ],
+      "etatIce": "connected",
+      "etatCnx": "connected",
+      "horodatage": "2026-08-20T21:03:34.824Z",
+      "etiquette": "t+240s",
+      "etatBouton": {
+        "hidden": false,
+        "disabled": false,
+        "etat": "actif",
+        "titre": "Microphone actif — cliquez pour couper"
+      }
+    },
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 30076,
+          "packetsLost": 0,
+          "bytesReceived": 31544
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 37020,
+          "packetsLost": 0,
+          "bytesReceived": 2824640,
+          "framesDecoded": 2,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 432
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 15200,
+          "bytesSent": 1216960,
+          "mid": "2",
+          "targetBitrate": 32000
+        }
+      ],
+      "paire": {
+        "rtt": 0.002,
+        "recu": 7587030,
+        "envoye": 2895
+      },
+      "paires": [
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 12,
+          "reponsesRecues": 12,
+          "demandesRecues": 103
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 12,
+          "reponsesRecues": 12,
+          "demandesRecues": 103
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 117,
+          "reponsesRecues": 117,
+          "demandesRecues": 103
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 12,
+          "reponsesRecues": 12,
+          "demandesRecues": 103
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 12,
+          "reponsesRecues": 12,
+          "demandesRecues": 103
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 12,
+          "reponsesRecues": 12,
+          "demandesRecues": 103
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 12,
+          "reponsesRecues": 12,
+          "demandesRecues": 103
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 12,
+          "reponsesRecues": 12,
+          "demandesRecues": 103
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 14,
+          "reponsesRecues": 14,
+          "demandesRecues": 103
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 12,
+          "reponsesRecues": 12,
+          "demandesRecues": 103
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 12,
+          "reponsesRecues": 12,
+          "demandesRecues": 103
+        }
+      ],
+      "candidats": [
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.3.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.0.1",
+          "port": 46982
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.19.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.18.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.2.1",
+          "port": 56688
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.23.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.20.0.1",
+          "port": 49104
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.2.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.27.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "90.87.35.18",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.18.0.1",
+          "port": 36732
+        },
+        {
+          "cote": "distant",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.2",
+          "port": 64127
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.1",
+          "port": 36181
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.22.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 44710
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.23.0.1",
+          "port": 44640
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.27.0.1",
+          "port": 46496
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.20.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 45605
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.22.0.1",
+          "port": 46588
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "90.87.35.18",
+          "port": 56734
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.19.0.1",
+          "port": 55500
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.17.0.1",
+          "port": 51476
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.17.0.1",
+          "port": 9
+        }
+      ],
+      "etatIce": "connected",
+      "etatCnx": "connected",
+      "horodatage": "2026-08-20T21:04:34.872Z",
+      "etiquette": "t+300s",
+      "etatBouton": {
+        "hidden": false,
+        "disabled": false,
+        "etat": "actif",
+        "titre": "Microphone actif — cliquez pour couper"
+      }
+    },
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 36081,
+          "packetsLost": 0,
+          "bytesReceived": 37841
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 44418,
+          "packetsLost": 0,
+          "bytesReceived": 3363200,
+          "framesDecoded": 2,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 432
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 18238,
+          "bytesSent": 1460122,
+          "mid": "2",
+          "targetBitrate": 32000
+        }
+      ],
+      "paire": {
+        "rtt": 0.001,
+        "recu": 9076816,
+        "envoye": 2895
+      },
+      "paires": [
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 15,
+          "reponsesRecues": 15,
+          "demandesRecues": 123
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 14,
+          "reponsesRecues": 14,
+          "demandesRecues": 123
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 139,
+          "reponsesRecues": 139,
+          "demandesRecues": 123
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 15,
+          "reponsesRecues": 15,
+          "demandesRecues": 123
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 15,
+          "reponsesRecues": 15,
+          "demandesRecues": 123
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 15,
+          "reponsesRecues": 15,
+          "demandesRecues": 123
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 15,
+          "reponsesRecues": 15,
+          "demandesRecues": 123
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 15,
+          "reponsesRecues": 15,
+          "demandesRecues": 123
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 17,
+          "reponsesRecues": 17,
+          "demandesRecues": 123
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 15,
+          "reponsesRecues": 15,
+          "demandesRecues": 123
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 15,
+          "reponsesRecues": 15,
+          "demandesRecues": 123
+        }
+      ],
+      "candidats": [
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.3.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.0.1",
+          "port": 46982
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.19.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.18.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.2.1",
+          "port": 56688
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.23.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.20.0.1",
+          "port": 49104
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.2.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.27.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "90.87.35.18",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.18.0.1",
+          "port": 36732
+        },
+        {
+          "cote": "distant",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.2",
+          "port": 64127
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.1",
+          "port": 36181
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.22.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 44710
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.23.0.1",
+          "port": 44640
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.27.0.1",
+          "port": 46496
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.20.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 45605
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.22.0.1",
+          "port": 46588
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "90.87.35.18",
+          "port": 56734
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.19.0.1",
+          "port": 55500
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.17.0.1",
+          "port": 51476
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.17.0.1",
+          "port": 9
+        }
+      ],
+      "etatIce": "connected",
+      "etatCnx": "connected",
+      "horodatage": "2026-08-20T21:05:34.917Z",
+      "etiquette": "t+360s",
+      "etatBouton": {
+        "hidden": false,
+        "disabled": false,
+        "etat": "actif",
+        "titre": "Microphone actif — cliquez pour couper"
+      }
+    },
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 42085,
+          "packetsLost": 0,
+          "bytesReceived": 44139
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 51821,
+          "packetsLost": 0,
+          "bytesReceived": 3901760,
+          "framesDecoded": 2,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 432
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 21276,
+          "bytesSent": 1703284,
+          "mid": "2",
+          "targetBitrate": 32000
+        }
+      ],
+      "paire": {
+        "rtt": 0.001,
+        "recu": 10567232,
+        "envoye": 2895
+      },
+      "paires": [
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 17,
+          "reponsesRecues": 17,
+          "demandesRecues": 143
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 17,
+          "reponsesRecues": 17,
+          "demandesRecues": 143
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 162,
+          "reponsesRecues": 162,
+          "demandesRecues": 143
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 17,
+          "reponsesRecues": 17,
+          "demandesRecues": 143
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 17,
+          "reponsesRecues": 17,
+          "demandesRecues": 143
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 17,
+          "reponsesRecues": 17,
+          "demandesRecues": 143
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 17,
+          "reponsesRecues": 17,
+          "demandesRecues": 143
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 17,
+          "reponsesRecues": 17,
+          "demandesRecues": 143
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 19,
+          "reponsesRecues": 19,
+          "demandesRecues": 143
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 17,
+          "reponsesRecues": 17,
+          "demandesRecues": 143
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 17,
+          "reponsesRecues": 17,
+          "demandesRecues": 143
+        }
+      ],
+      "candidats": [
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.3.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.0.1",
+          "port": 46982
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.19.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.18.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.2.1",
+          "port": 56688
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.23.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.20.0.1",
+          "port": 49104
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.2.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.27.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "90.87.35.18",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.18.0.1",
+          "port": 36732
+        },
+        {
+          "cote": "distant",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.2",
+          "port": 64127
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.1",
+          "port": 36181
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.22.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 44710
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.23.0.1",
+          "port": 44640
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.27.0.1",
+          "port": 46496
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.20.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 45605
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.22.0.1",
+          "port": 46588
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "90.87.35.18",
+          "port": 56734
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.19.0.1",
+          "port": 55500
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.17.0.1",
+          "port": 51476
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.17.0.1",
+          "port": 9
+        }
+      ],
+      "etatIce": "connected",
+      "etatCnx": "connected",
+      "horodatage": "2026-08-20T21:06:34.963Z",
+      "etiquette": "t+420s",
+      "etatBouton": {
+        "hidden": false,
+        "disabled": false,
+        "etat": "actif",
+        "titre": "Microphone actif — cliquez pour couper"
+      }
+    },
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 48090,
+          "packetsLost": 0,
+          "bytesReceived": 50436
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 59219,
+          "packetsLost": 0,
+          "bytesReceived": 4440320,
+          "framesDecoded": 2,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 432
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 24314,
+          "bytesSent": 1946446,
+          "mid": "2",
+          "targetBitrate": 32000
+        }
+      ],
+      "paire": {
+        "rtt": 0.002,
+        "recu": 12057010,
+        "envoye": 2895
+      },
+      "paires": [
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 19,
+          "reponsesRecues": 19,
+          "demandesRecues": 163
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 19,
+          "reponsesRecues": 19,
+          "demandesRecues": 163
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 184,
+          "reponsesRecues": 184,
+          "demandesRecues": 163
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 19,
+          "reponsesRecues": 19,
+          "demandesRecues": 163
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 19,
+          "reponsesRecues": 19,
+          "demandesRecues": 163
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 19,
+          "reponsesRecues": 19,
+          "demandesRecues": 163
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 19,
+          "reponsesRecues": 19,
+          "demandesRecues": 163
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 19,
+          "reponsesRecues": 19,
+          "demandesRecues": 163
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 21,
+          "reponsesRecues": 21,
+          "demandesRecues": 163
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 19,
+          "reponsesRecues": 19,
+          "demandesRecues": 163
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 19,
+          "reponsesRecues": 19,
+          "demandesRecues": 163
+        }
+      ],
+      "candidats": [
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.3.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.0.1",
+          "port": 46982
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.19.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.18.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.2.1",
+          "port": 56688
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.23.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.20.0.1",
+          "port": 49104
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.2.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.27.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "90.87.35.18",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.18.0.1",
+          "port": 36732
+        },
+        {
+          "cote": "distant",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.2",
+          "port": 64127
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.1",
+          "port": 36181
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.22.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 44710
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.23.0.1",
+          "port": 44640
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.27.0.1",
+          "port": 46496
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.20.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 45605
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.22.0.1",
+          "port": 46588
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "90.87.35.18",
+          "port": 56734
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.19.0.1",
+          "port": 55500
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.17.0.1",
+          "port": 51476
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.17.0.1",
+          "port": 9
+        }
+      ],
+      "etatIce": "connected",
+      "etatCnx": "connected",
+      "horodatage": "2026-08-20T21:07:35.008Z",
+      "etiquette": "t+480s",
+      "etatBouton": {
+        "hidden": false,
+        "disabled": false,
+        "etat": "actif",
+        "titre": "Microphone actif — cliquez pour couper"
+      }
+    },
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 54094,
+          "packetsLost": 0,
+          "bytesReceived": 56732
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 66613,
+          "packetsLost": 0,
+          "bytesReceived": 4978880,
+          "framesDecoded": 2,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 432
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 27352,
+          "bytesSent": 2189608,
+          "mid": "2",
+          "targetBitrate": 32000
+        }
+      ],
+      "paire": {
+        "rtt": 0.001,
+        "recu": 13546444,
+        "envoye": 2895
+      },
+      "paires": [
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 22,
+          "reponsesRecues": 22,
+          "demandesRecues": 183
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 22,
+          "reponsesRecues": 22,
+          "demandesRecues": 183
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 207,
+          "reponsesRecues": 207,
+          "demandesRecues": 183
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 22,
+          "reponsesRecues": 22,
+          "demandesRecues": 183
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 22,
+          "reponsesRecues": 22,
+          "demandesRecues": 183
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 22,
+          "reponsesRecues": 22,
+          "demandesRecues": 183
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 22,
+          "reponsesRecues": 22,
+          "demandesRecues": 183
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 22,
+          "reponsesRecues": 22,
+          "demandesRecues": 183
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 24,
+          "reponsesRecues": 24,
+          "demandesRecues": 183
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 22,
+          "reponsesRecues": 22,
+          "demandesRecues": 183
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 22,
+          "reponsesRecues": 22,
+          "demandesRecues": 183
+        }
+      ],
+      "candidats": [
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.3.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.0.1",
+          "port": 46982
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.19.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.18.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.2.1",
+          "port": 56688
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.23.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.20.0.1",
+          "port": 49104
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.2.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.27.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "90.87.35.18",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.18.0.1",
+          "port": 36732
+        },
+        {
+          "cote": "distant",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.2",
+          "port": 64127
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.1",
+          "port": 36181
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.22.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 44710
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.23.0.1",
+          "port": 44640
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.27.0.1",
+          "port": 46496
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.20.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 45605
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.22.0.1",
+          "port": 46588
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "90.87.35.18",
+          "port": 56734
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.19.0.1",
+          "port": 55500
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.17.0.1",
+          "port": 51476
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.17.0.1",
+          "port": 9
+        }
+      ],
+      "etatIce": "connected",
+      "etatCnx": "connected",
+      "horodatage": "2026-08-20T21:08:35.054Z",
+      "etiquette": "t+540s",
+      "etatBouton": {
+        "hidden": false,
+        "disabled": false,
+        "etat": "actif",
+        "titre": "Microphone actif — cliquez pour couper"
+      }
+    },
+    {
+      "entrant": [
+        {
+          "kind": "audio",
+          "packetsReceived": 60056,
+          "packetsLost": 0,
+          "bytesReceived": 62986
+        },
+        {
+          "kind": "video",
+          "packetsReceived": 74009,
+          "packetsLost": 0,
+          "bytesReceived": 5517440,
+          "framesDecoded": 2,
+          "framesDropped": 0,
+          "frameWidth": 764,
+          "frameHeight": 432
+        }
+      ],
+      "sortant": [
+        {
+          "kind": "audio",
+          "packetsSent": 30369,
+          "bytesSent": 2431069,
+          "mid": "2",
+          "targetBitrate": 32000
+        }
+      ],
+      "paire": {
+        "rtt": 0.001,
+        "recu": 15033218,
+        "envoye": 2895
+      },
+      "paires": [
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 24,
+          "reponsesRecues": 24,
+          "demandesRecues": 203
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 24,
+          "reponsesRecues": 24,
+          "demandesRecues": 203
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 229,
+          "reponsesRecues": 229,
+          "demandesRecues": 203
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 24,
+          "reponsesRecues": 24,
+          "demandesRecues": 203
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 24,
+          "reponsesRecues": 24,
+          "demandesRecues": 203
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 24,
+          "reponsesRecues": 24,
+          "demandesRecues": 203
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 24,
+          "reponsesRecues": 24,
+          "demandesRecues": 203
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 24,
+          "reponsesRecues": 24,
+          "demandesRecues": 203
+        },
+        {
+          "etat": "succeeded",
+          "nominee": true,
+          "demandesEnvoyees": 26,
+          "reponsesRecues": 26,
+          "demandesRecues": 203
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 24,
+          "reponsesRecues": 24,
+          "demandesRecues": 203
+        },
+        {
+          "etat": "succeeded",
+          "nominee": false,
+          "demandesEnvoyees": 24,
+          "reponsesRecues": 24,
+          "demandesRecues": 203
+        }
+      ],
+      "candidats": [
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.3.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.0.1",
+          "port": 46982
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.19.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.18.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.2.1",
+          "port": 56688
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.23.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.20.0.1",
+          "port": 49104
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "192.168.2.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.27.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "90.87.35.18",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.18.0.1",
+          "port": 36732
+        },
+        {
+          "cote": "distant",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.2",
+          "port": 64127
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "192.168.3.1",
+          "port": 36181
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.22.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fdeb:2b9:f74e:1:89b7:e3fc:d95:b432",
+          "port": 44710
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.23.0.1",
+          "port": 44640
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.27.0.1",
+          "port": 46496
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.20.0.1",
+          "port": 9
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "fd34:7b91:777b:c11::1",
+          "port": 45605
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.22.0.1",
+          "port": 46588
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "90.87.35.18",
+          "port": 56734
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.19.0.1",
+          "port": 55500
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "udp",
+          "adresse": "172.17.0.1",
+          "port": 51476
+        },
+        {
+          "cote": "local",
+          "typeCandidat": "host",
+          "protocole": "tcp",
+          "adresse": "172.17.0.1",
+          "port": 9
+        }
+      ],
+      "etatIce": "connected",
+      "etatCnx": "connected",
+      "horodatage": "2026-08-20T21:09:34.676Z",
+      "etiquette": "t+600s",
+      "etatBouton": {
+        "hidden": false,
+        "disabled": false,
+        "etat": "actif",
+        "titre": "Microphone actif — cliquez pour couper"
+      }
+    }
+  ],
+  "boutonParait": true,
+  "etatBoutonInitial": {
+    "hidden": false,
+    "disabled": false,
+    "etat": "ferme",
+    "titre": "Microphone — cliquez pour parler"
+  },
+  "microActif": true,
+  "etatBoutonApresClic": {
+    "hidden": false,
+    "disabled": false,
+    "etat": "actif",
+    "titre": "Microphone actif — cliquez pour couper"
+  },
+  "fin": "2026-08-20T21:09:34.682Z",
+  "console": [
+    "[debug] [vite] connecting...",
+    "[debug] [vite] connected.",
+    "[debug] [instrumentation resize] declenchement ResizeObserver Object",
+    "[debug] [instrumentation resize] emission Object"
+  ],
+  "erreursPage": [],
+  "code": 0
+}

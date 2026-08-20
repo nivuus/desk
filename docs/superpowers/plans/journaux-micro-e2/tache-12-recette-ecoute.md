@@ -24,7 +24,7 @@ c'est le critère ③ qui le montre.
 | # | Critère | Verdict | Exéc. |
 | --- | --- | --- | --- |
 | ① | Une application Windows entend le bon signal | **TENU** — 440,0 Hz sur CABLE Output | **2** vertes + **1** rouge |
-| ② | `ready` porte `mic: true`, et le bouton paraît | **TENU** | **2** vertes + **2** rouges de natures différentes |
+| ② | `ready` porte `mic: true`, et le bouton paraît | **TENU** | **2** vertes + **3** rouges de natures différentes |
 | ③ | 🔴 La garde de boucle locale mord, et nomme son remède | **TENU** | **2** côté agent, dont **1** avec session établie |
 | ④ | Le silence ne fait pas de bourdon | **TENU** | **2** |
 | ⑤ | L'exclusivité : un seul écrivain | **PARTIELLEMENT EXERCÉ** — voir la réserve | **1** |
@@ -74,15 +74,28 @@ rien** :
 | V1, V2 (vertes) | `false` | `dataset.etat = "actif"`, titre « Microphone actif — cliquez pour couper » |
 | rouge, binaire d'avant E2 | **`true`** | — |
 | rouge, garde de boucle armée | **`true`** | — |
+| rouge, `MICRO=0` | **`true`** | — |
 
-⚠️ **Les deux rouges ont une session VIVANTE** (`ice=connected` aux deux) : le
+⚠️ **Les trois rouges ont une session VIVANTE** (`ice=connected` aux trois) : le
 bouton est caché parce que `ready` portait `mic: false`, **pas** parce que
 `ready` n'est jamais venu. Sans ce contrôle, le critère aurait été vacueux.
 
-⚠️ **Le rouge que le plan nommait — `MICRO=0` — n'a PAS été joué.** Les deux
-rouges ci-dessus produisent le même observable par deux mécanismes différents ;
-`MICRO=0` en serait un troisième, et il est le seul qui exercerait la trace
-`micro DESARME (MICRO=0)`. **Déclaré non joué, non remplacé.**
+✅ **Le rouge que le plan nommait — `MICRO=0` — a été joué, en TROISIÈME**, et
+c'est le seul des trois qui exerce le prédicat `arme_micro` de bout en bout sur
+la VM :
+
+```
+INFO agent::demarrage::micro: micro DESARME (MICRO=0) session=…:e2-micro0
+```
+
+`agent-micro0-plat.log` : **0** ligne `windows_micro`. `pilote-micro0.json` :
+`boutonParait=false` sur une session **`ice=connected`** portant deux flux
+entrants. `e2-juge-micro0.log` : **`AMPLITUDE=0,000000`**.
+
+⚠️ *Une première rédaction de ce document déclarait ce rouge « non joué, non
+remplacé » ; il l'a été une demi-heure plus tard, et la phrase est corrigée ICI
+plutôt que laissée à trouver — c'est la classe de défaut exacte que la revue
+transverse de fin de branche cherche.*
 
 ## ③ 🔴 La garde de boucle locale mord — et c'est le chemin NOMINAL de cette VM
 
@@ -224,7 +237,6 @@ rééchantillonnage 48 000 → 44 100 que le câble impose toujours.
 
 - **Aucun taux.** Deux exécutions par critère au mieux, une pour ⑤.
 - **⑤ n'exerce pas deux enfants** (voir sa réserve).
-- **Le rouge `MICRO=0` n'a pas été joué.**
 - **Aucune écoute humaine**, donc rien de la qualité ni de la latence
   de bout en bout — que rien ne mesure dans ce dépôt depuis D1.
 - **Le repli `Local\` du mutex et le repli sur échéance du réveil sont du code
