@@ -1,0 +1,15 @@
+CLE      : HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Capture\{5fae72b2-f885-4038-9827-0d91f862a7d5}\Properties
+PROPRIETAIRE : AUTORITE NT\Système
+  NT SERVICE\Audiosrv                           Allow  SetValue, CreateSubKey, CreateLink, Delete, ReadKey
+  NT SERVICE\Audiosrv                           Allow  -536805376
+  NT SERVICE\TrustedInstaller                   Allow  FullControl
+  NT SERVICE\TrustedInstaller                   Allow  268435456
+  NT SERVICE\AudioEndpointBuilder               Allow  SetValue, CreateSubKey, CreateLink, Delete, ReadKey
+  NT SERVICE\AudioEndpointBuilder               Allow  -536805376
+  BUILTIN\Administrateurs                       Allow  SetValue, ReadKey
+  BUILTIN\Utilisateurs                          Allow  CreateLink, ReadKey
+  BUILTIN\Utilisateurs                          Allow  -1610612736
+  AUTORITÉ DE PACKAGE D’APPLICATION\TOUS LES PACKAGES D’APPLICATION Allow  ReadKey
+  AUTORITÉ DE PACKAGE D’APPLICATION\TOUS LES PACKAGES D’APPLICATION Allow  -2147483648
+  S-1-15-3-1024-1692970155-4054893335-185714091-3362601943-3526593181-1159816984-2199008581-497492991 Allow  ReadKey
+  S-1-15-3-1024-1692970155-4054893335-185714091-3362601943-3526593181-1159816984-2199008581-497492991 Allow  -2147483648
