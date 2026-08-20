@@ -140,10 +140,67 @@ export function tokensReferences(css: string): Set<string> {
  *      surcharge un token sans contrepartie sombre est une faute de frappe,
  *      pas une intention.
  *
- * L'inclusion inverse — `racine` ⊆ les blocs clairs — est délibérément ABSENTE :
- * c'est elle, et elle seule, que les tokens hors thème et les échelles
- * rendraient fausse.
+ *   ③ toute COULEUR de `racine`, hors les six hors-thème NOMMÉS ci-dessous,
+ *      est redéclarée dans les blocs clairs — l'inclusion `racine` ⊆ clair,
+ *      restreinte aux couleurs (sous-bloc S3).
+ *
+ * 🔴 ③ EST L'ANGLE MORT QUE S3 A FERMÉ, ET LE TROU ÉTAIT MESURÉ. Le sous-bloc
+ * S2 l'a versé (`docs/superpowers/plans/journaux-design-s2/trou-7-4.log`) :
+ * `--accent-survol` retiré des DEUX blocs clairs et laissé à la racine seule
+ * rendait `bloc racine : 48 / media-clair : 13 / attribut-clair : 13`,
+ * `écarts : 0`, `exit=0`. Une couleur oubliée dans le thème clair ne se
+ * découvrait donc que par l'œil, sur une page claire.
+ *
+ * ⚠️ LA PORTÉE DU CONTRÔLE §7.4 A CHANGÉ AVEC ③, et ce n'est plus « les trois
+ * blocs déclarent le même ensemble de noms » : c'est « les deux blocs clairs
+ * sont identiques, et toute couleur de la racine y est redéclarée sauf les
+ * hors-thème nommés ».
+ *
+ * ⚠️ ③ NE MORD QUE SUR L'ABSENCE DES DEUX BLOCS À LA FOIS. Une couleur
+ * présente dans un seul est déjà attrapée par ①, et la compter deux fois ne
+ * dirait rien de plus.
+ *
+ * 🔵 LA FERMETURE EST ARITHMÉTIQUEMENT PROPRE, et c'est mesuré le 20 août 2026
+ * par `lireBlocsDeTheme` sur `tokens.css` : racine **48** tokens dont **20**
+ * couleurs ; blocs clairs **14** ; les **6** couleurs de la racine absentes du
+ * bloc clair sont EXACTEMENT les six hors-thème listés ci-dessous. 20 − 6 = 14,
+ * donc ZÉRO écart dès le jour où ③ est né — il n'y avait aucun cas douteux à
+ * arbitrer.
+ *
+ * ⚠️ « EST UNE COULEUR » SE DÉCIDE SUR LA VALEUR, JAMAIS SUR LE NOM. Un
+ * préfixe (`--voile-*`) est une convention qu'une faute de frappe contourne ;
+ * une valeur qui commence par `#`, `rgb(`/`rgba(` ou `hsl(`/`hsla(` ne se
+ * contourne pas.
  */
+
+/**
+ * Les six tokens de COULEUR que ③ n'exige PAS dans les blocs clairs — NOMMÉS
+ * un par un, jamais dérivés d'un préfixe.
+ *
+ * Ce sont les six voiles hors thème de `tokens.css` (« déclarés une fois,
+ * jamais redéfinis ») : ils sont posés SUR LA VIDÉO, dont le contenu ne suit
+ * aucun thème, et un encadrement clair autour d'une image vidéo se lit comme
+ * un défaut d'affichage.
+ *
+ * ⚠️ C'est une SECONDE COPIE d'un fait déjà écrit dans le commentaire de
+ * `tokens.css`, et le coût est assumé. Ce qu'elle achète : une couleur hors
+ * thème ajoutée sans être listée ici fait ROUGIR le contrôle, ce qui force la
+ * question « hors thème, ou blocs clairs oubliés ? » au lieu de la laisser
+ * passer. C'est la forme de la liste d'attente de §7.6, en plus petit.
+ */
+export const COULEURS_HORS_THEME: readonly string[] = [
+    '--video-letterbox',
+    '--voile-flottant',
+    '--voile-bouton',
+    '--voile-bouton-survol',
+    '--voile-micro-actif',
+    '--voile-micro-refuse',
+];
+
+/** Une valeur de token est-elle une couleur ? Décidé sur la VALEUR seule. */
+function estUneCouleur(valeur: string): boolean {
+    return /^(#|rgba?\(|hsla?\()/.test(valeur.trim());
+}
 export function ecartsEntreBlocs(blocs: BlocDeTheme[]): string[] {
     const parNom = new Map(blocs.map((b) => [b.nom, b]));
     const ecarts: string[] = [];
@@ -171,6 +228,17 @@ export function ecartsEntreBlocs(blocs: BlocDeTheme[]): string[] {
                 ecarts.push(`racine : ${token} surchargé par ${bloc.nom} sans y être déclaré`);
             }
         }
+    }
+    // ③ toute couleur de la racine, hors les hors-thème nommés, a une
+    //   contrepartie claire. Absente des DEUX blocs seulement : ① tient déjà
+    //   le cas où elle ne manque qu'à l'un.
+    for (const [token, valeur] of racine.tokens) {
+        if (!estUneCouleur(valeur)) continue;
+        if (COULEURS_HORS_THEME.includes(token)) continue;
+        if (media.tokens.has(token) || attribut.tokens.has(token)) continue;
+        ecarts.push(
+            `blocs clairs : ${token} est une couleur de la racine sans contrepartie claire`,
+        );
     }
     return [...new Set(ecarts)].sort();
 }

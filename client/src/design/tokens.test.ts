@@ -6,6 +6,7 @@ import {
     tokensReferences,
     valeurDePropriete,
 } from './tokens';
+import tokensCss from './tokens.css?raw';
 
 /**
  * Un CSS de DÉMONSTRATION, jamais le vrai `tokens.css`. Ces tests éprouvent la
@@ -129,5 +130,112 @@ describe('ecartsEntreBlocs', () => {
         const css = demonstration.replace('        --fond-0: #ffffff;\n', '');
         const ecarts = ecartsEntreBlocs(lireBlocsDeTheme(css));
         expect(ecarts).toEqual(['media-clair : --fond-0 manquant']);
+    });
+});
+
+describe('ecartsEntreBlocs — inclusion ③, les COULEURS de la racine', () => {
+    // 🔴 L'ANGLE MORT QUE S3 FERME. Jusqu'ici `ecartsEntreBlocs` comparait
+    // clair ⇄ clair (①) et clair ⊆ racine (②), JAMAIS racine ⊆ clair : une
+    // couleur déclarée à la racine et oubliée dans les DEUX blocs clairs
+    // passait sans un mot. S2 l'a mesuré et versé
+    // (`journaux-design-s2/trou-7-4.log`) : `--accent-survol` retiré des deux
+    // blocs clairs rendait `écarts : 0`, `exit=0`.
+    //
+    // ⚠️ ③ NE MORD QUE SUR L'ABSENCE DES DEUX BLOCS À LA FOIS. Une couleur
+    // présente dans un seul est déjà attrapée par ①, et la faire compter deux
+    // fois ne dirait rien de plus.
+
+    /** Racine avec une couleur intermédiaire — ni `#000` ni `#fff`. */
+    const avecCouleur = `
+:root {
+    --fond-0: #0b0d10;
+    --accent-survol: #3b82f6;
+    --e-3: 12px;
+    --police-ui: system-ui, sans-serif;
+    --voile-flottant: rgb(0 0 0 / 0.72);
+}
+
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="sombre"]) {
+        --fond-0: #ffffff;
+        --accent-survol: #1d4ed8;
+    }
+}
+
+:root[data-theme="clair"] {
+    --fond-0: #ffffff;
+    --accent-survol: #1d4ed8;
+}
+`;
+
+    it('rend VIDE quand toutes les couleurs de la racine sont dans les deux blocs clairs', () => {
+        expect(ecartsEntreBlocs(lireBlocsDeTheme(avecCouleur))).toEqual([]);
+    });
+
+    it('signale une couleur de la racine absente des DEUX blocs clairs', () => {
+        // La mutation exacte que S2 a jouée et versée.
+        const css = avecCouleur
+            .replaceAll('        --accent-survol: #1d4ed8;\n', '')
+            .replaceAll('    --accent-survol: #1d4ed8;\n', '');
+        const ecarts = ecartsEntreBlocs(lireBlocsDeTheme(css));
+        expect(ecarts).toEqual([
+            'blocs clairs : --accent-survol est une couleur de la racine sans contrepartie claire',
+        ]);
+    });
+
+    it('ne signale AUCUN écart pour un token HORS THÈME de la liste nommée', () => {
+        // `--voile-flottant` est une couleur de la racine absente des deux
+        // blocs clairs, et c'est VOULU : les six voiles sont posés sur la
+        // vidéo, dont le contenu ne suit aucun thème. Sans cette exemption la
+        // fermeture serait rouge sur un fichier correct — le risque §11.
+        expect(ecartsEntreBlocs(lireBlocsDeTheme(avecCouleur))).toEqual([]);
+    });
+
+    it('ne signale AUCUN écart pour un token de la racine qui N\'EST PAS une couleur', () => {
+        // 🔴 SANS CETTE PROPRIÉTÉ la fermeture rendrait des dizaines d'écarts
+        // sur l'arbre intact — les crans typographiques, l'espacement, les
+        // rayons, les durées et les piles de polices ne vivent QUE dans
+        // `:root`, par le §4.4 de la spec. Elle serait rejetée en bloc.
+        const ecarts = ecartsEntreBlocs(lireBlocsDeTheme(avecCouleur));
+        expect(ecarts.join(' ')).not.toContain('--e-3');
+        expect(ecarts.join(' ')).not.toContain('--police-ui');
+    });
+
+    it('signale une couleur NEUVE ajoutée à la seule racine', () => {
+        // 🔴 LE TEST QUI ATTRAPE LA VACUITÉ. Un prédicat « est une couleur »
+        // qui rendrait `false` pour tout laisserait ce cas passer, et la
+        // fermeture entière serait un contrôle qui ne mord jamais.
+        const css = avecCouleur.replace(
+            '    --fond-0: #0b0d10;',
+            '    --fond-0: #0b0d10;\n    --bord-neuf: #4b5563;',
+        );
+        const ecarts = ecartsEntreBlocs(lireBlocsDeTheme(css));
+        expect(ecarts).toEqual([
+            'blocs clairs : --bord-neuf est une couleur de la racine sans contrepartie claire',
+        ]);
+    });
+
+    it('reconnaît une couleur écrite en rgb() et en hsl(), pas seulement en #', () => {
+        // Le prédicat décide sur la VALEUR, jamais sur le nom : un préfixe de
+        // nom est une convention qu'une faute de frappe contourne.
+        const css = avecCouleur.replace(
+            '    --fond-0: #0b0d10;',
+            '    --fond-0: #0b0d10;\n    --a-rgb: rgb(12 34 56);\n    --a-hsl: hsl(210 40% 30%);',
+        );
+        const ecarts = ecartsEntreBlocs(lireBlocsDeTheme(css));
+        expect(ecarts).toEqual([
+            'blocs clairs : --a-hsl est une couleur de la racine sans contrepartie claire',
+            'blocs clairs : --a-rgb est une couleur de la racine sans contrepartie claire',
+        ]);
+    });
+
+    it('rend ZÉRO écart sur le VRAI tokens.css', () => {
+        // 🔴 Ce test dépend de `test: { css: true }` dans `vite.config.ts` :
+        // sans lui `?raw` rend la chaîne VIDE, `lireBlocsDeTheme` ne trouve
+        // aucun bloc, et l'assertion « zéro écart » passerait en ne mesurant
+        // rien. L'assertion sur le compte de blocs est ce qui l'empêche.
+        const blocs = lireBlocsDeTheme(tokensCss);
+        expect(blocs).toHaveLength(3);
+        expect(ecartsEntreBlocs(blocs)).toEqual([]);
     });
 });
