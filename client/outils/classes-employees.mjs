@@ -20,11 +20,31 @@
 //   ① employé ⊆ déclaré — un `class="bouton--principale"` (faute de frappe)
 //      est une règle qui ne s'applique à rien, et le navigateur ne dit RIEN :
 //      la page reste debout et fausse. Aucun autre contrôle ne le voit.
-//   ② A — ATTEIGNABILITÉ : au moins une classe de PRIMITIVE est employée par
-//      une SURFACE DU PRODUIT. C'est cette assertion, et elle seule, qui
-//      referme l'écart de S2. Elle est née ROUGE sur l'arbre intact — mesuré
-//      le 20 août 2026, `grep -n 'class=' client/{index,shell,connexion}.html`
-//      ne rendait AUCUNE ligne.
+//   ② A — ATTEIGNABILITÉ : CHACUNE des trois surfaces du produit emploie au
+//      moins une famille de primitives. C'est cette assertion, et elle seule,
+//      qui referme l'écart de S2. Elle est née ROUGE sur l'arbre intact —
+//      mesuré le 20 août 2026, `grep -n 'class=' client/{index,shell,connexion}
+//      .html` ne rendait AUCUNE ligne.
+//
+//      🔴 DURCIE PAR LA TÂCHE 3 DU SOUS-BLOC S4, ET ELLE RENAÎT ROUGE. Elle
+//      exigeait « AU MOINS UNE surface, AU MOINS UNE famille » : ce quantifieur
+//      était juste tant qu'une seule surface avait été reprise, et il est devenu
+//      un plafond dès la deuxième — deux surfaces sur trois habillées le
+//      laissaient vert, et la troisième pouvait rester nue pour toujours sans
+//      qu'aucune commande ne le dise. C'est exactement ce qui s'est passé : à la
+//      fin de S3, `client/index.html` rendait « aucune famille », et le contrôle
+//      était VERT. La fenêtre de session est reprise par S4 ; le quantifieur
+//      suit.
+//
+//      ⚠️ ELLE EST DURCIE AVANT LA TÂCHE QUI L'ÉTEINT, ET C'EST LE POINT. La
+//      durcir dans le même commit que l'habillage la rendrait verte dès sa
+//      naissance, donc jamais vue rouge sur l'arbre — un contrôle qu'on n'a
+//      jamais vu rouge n'est pas un contrôle. L'arbre lui-même est sa preuve
+//      d'atteignabilité, comme en S3.
+//
+//      ⚠️ LA SORTIE NOMME LA SURFACE QUI N'EMPLOIE RIEN, pas seulement le fait
+//      qu'il en existe une : « la surface X n'emploie aucune famille » est
+//      actionnable, « aucune surface n'en emploie » ne l'était pas.
 //   ③ B — chacune des familles de primitives apparaît dans la galerie
 //      `client/primitives.html`. Elle prend une part du legs n°4 de S2 : « une
 //      galerie qui cesserait de rendre une famille entière ne serait attrapée
@@ -159,26 +179,33 @@ for (const nom of nonDeclarees) {
 }
 
 // ② A — une primitive atteint une surface du produit
-console.log('\n② A — les primitives atteignent le PRODUIT :');
-let atteintes = 0;
+console.log('\n② A — les primitives atteignent le PRODUIT, CHACUNE des trois surfaces :');
+const nues = [];
 for (const surface of SURFACES_PRODUIT) {
     const chemin = join(racine, surface);
-    const employees = existsSync(chemin)
-        ? classesEmployeesHtml(readFileSync(chemin, 'utf8'))
-        : new Set();
+    if (!existsSync(chemin)) {
+        console.log(`  ${surface} : INTROUVABLE`);
+        nues.push(surface);
+        continue;
+    }
+    const employees = classesEmployeesHtml(readFileSync(chemin, 'utf8'));
     const parFamille = familles
         .filter((f) => [...f.classes].some((c) => employees.has(c)))
         .map((f) => f.nom);
-    atteintes += parFamille.length;
+    if (parFamille.length === 0) nues.push(surface);
     console.log(
         `  ${surface} : ${parFamille.length === 0 ? 'aucune famille' : parFamille.join(', ')}`,
     );
 }
-const echecA = atteintes === 0 ? 1 : 0;
-if (echecA) {
+// 🔴 UNE SURFACE NUE EST UN ÉCHEC, ET ELLE EST NOMMÉE. Le compte est celui des
+// surfaces SANS famille, plus celui des surfaces INTROUVABLES : une surface
+// retirée de `SURFACES_PRODUIT` sans être retirée du disque rendrait `0 écart`
+// en ne mesurant plus rien, et c'est le patron du contrôle vacueux.
+const echecA = nues.length;
+for (const surface of nues) {
     console.log(
-        '  AUCUNE classe de primitive employée par une surface du produit : ' +
-            'les primitives ont un appelant ÉCRIT, pas un pixel RENDU',
+        `  ${surface} n'emploie AUCUNE famille de primitives : ` +
+            'les primitives y ont un appelant ÉCRIT, pas un pixel RENDU',
     );
 }
 
