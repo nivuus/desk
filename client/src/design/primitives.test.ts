@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { blocApres, compounds, declarationsDe, preludes, sansCommentaires } from './css';
 import primitivesCss from './primitives.css?raw';
 import boutonCss from './primitives/bouton.css?raw';
 import champCss from './primitives/champ.css?raw';
@@ -62,61 +63,18 @@ const FAMILLES = new Map([
  * G4 sont écrits qui les met hors d'atteinte du piège, pas lui.
  */
 
-/** Retire les commentaires `/* … *​/` — voir l'en-tête. */
-function sansCommentaires(css: string): string {
-    return css.replace(/\/\*[\s\S]*?\*\//g, ' ');
-}
-
-/** Tout ce qui précède un `{`. Les at-rules (`@media …`) commencent par `@`. */
-function preludes(css: string): string[] {
-    return [...css.matchAll(/([^{}]+)\{/g)].map((m) => m[1].trim()).filter(Boolean);
-}
-
-interface Declaration {
-    propriete: string;
-    valeur: string;
-}
-
-/**
- * Les déclarations des blocs les plus intérieurs. `[^{}]*` ne franchit ni `{`
- * ni `}` : le corps d'un `@media` n'est donc jamais pris pour une déclaration.
- */
-function declarationsDe(css: string): Declaration[] {
-    const sortie: Declaration[] = [];
-    for (const bloc of css.matchAll(/\{([^{}]*)\}/g)) {
-        for (const morceau of bloc[1].split(';')) {
-            const coupe = morceau.indexOf(':');
-            if (coupe === -1) continue;
-            sortie.push({
-                propriete: morceau.slice(0, coupe).trim(),
-                valeur: morceau.slice(coupe + 1).trim(),
-            });
-        }
-    }
-    return sortie;
-}
-
-/** Le corps du bloc qui suit `index`, accolades appariées. */
-function blocApres(css: string, index: number): string {
-    const debut = css.indexOf('{', index);
-    if (debut === -1) return '';
-    let profondeur = 0;
-    for (let i = debut; i < css.length; i += 1) {
-        if (css[i] === '{') profondeur += 1;
-        else if (css[i] === '}') {
-            profondeur -= 1;
-            if (profondeur === 0) return css.slice(debut + 1, i);
-        }
-    }
-    return '';
-}
+/* 🔴 LE LECTEUR DE FEUILLE VIT DANS `./css`, EXTRAIT PAR LA TÂCHE 1 DE S4 —
+   blanchiment, préludes, déclarations, bloc apparié, compounds. Il était ici en
+   propre ; les gardes neufs de S4 (§7.10, `style.test.ts`) le réemploient au
+   lieu de le recopier, et une machinerie recopiée diverge d'un garde à l'autre
+   sans qu'aucune commande ne le dise. Ce fichier rend EXACTEMENT les mêmes
+   verdicts qu'avant l'extraction : G1 à G7, neuf tests, aucun message changé.
+   ⚠️ `Declaration` n'est plus déclarée ici : `declarationsDe` en rend le type,
+   et les gardes ci-dessous n'en nomment jamais un. */
 
 const CSS = sansCommentaires([...FAMILLES.values()].join('\n'));
 const SELECTEURS = preludes(CSS).filter((p) => !p.startsWith('@'));
 const DECLARATIONS = declarationsDe(CSS);
-
-/** `.carte > .carte__titre` rend `['.carte', '.carte__titre']`. */
-const compounds = (selecteur: string) => selecteur.split(/[\s>+~]+/).filter(Boolean);
 
 /** Les listes de sélecteurs qui citent une famille — l'outil de G5 et de G6. */
 const famille = (nom: string) => SELECTEURS.filter((s) => s.includes(`.${nom}`));
