@@ -1,0 +1,12 @@
+waveOut[0] = Haut-parleurs (VB-Audio Virtual
+waveOut[1] = Haut-parleurs (Steam Streaming 
+waveOut[2] = HDP-V104 (NVIDIA High Definitio
+CIBLE waveOut[0] = Haut-parleurs (VB-Audio Virtual
+waveOutOpen = 0
+waveOutPrepareHeader = 0 ; waveOutWrite = 0
+LECTURE 660 Hz pendant 26000 ms sur 'Haut-parleurs (VB-Audio Virtual'
+METRE crete=0,000000  Haut-parleurs (Steam Streaming Speakers)
+METRE crete=0,000000  HDP-V104 (NVIDIA High Definition Audio)
+METRE crete=0,449982  Haut-parleurs (VB-Audio Virtual Cable)
+
+LECTURE TERMINEE

@@ -1,0 +1,45 @@
+{
+  "scenario": "instrument",
+  "session": "e2",
+  "wav": "/tmp/user/0/claude-0/-home-mallanic-Projects-Guacamole/38dfbdff-6ff8-4fcc-b60c-f9c36ea58b66/scratchpad/e2/wav/silence.wav",
+  "url": "http://127.0.0.1:5173/?session=e2&plateforme=http%3A%2F%2F127.0.0.1%3A8091&signaling=ws%3A%2F%2F127.0.0.1%3A8091",
+  "duree": 8000,
+  "debut": "2026-08-20T20:07:27.619Z",
+  "etapes": [],
+  "stats": [],
+  "controle": {
+    "pisteObtenue": true,
+    "etiquette": "Fake Default Audio Input",
+    "etatPiste": "live",
+    "reglages": {
+      "autoGainControl": true,
+      "channelCount": 1,
+      "deviceId": "default",
+      "echoCancellation": true,
+      "groupId": "c02e5db0ec8321da602120c305d0851b6da669f43df52c8e339caab3d660b7fc",
+      "latency": 0.01,
+      "noiseSuppression": true,
+      "sampleRate": 48000,
+      "sampleSize": 16,
+      "voiceIsolation": false
+    },
+    "contraintesAppliquees": {
+      "autoGainControl": true,
+      "echoCancellation": true,
+      "noiseSuppression": true
+    },
+    "tours": 155,
+    "resolutionHz": 5.859375,
+    "dominanteHz": 0,
+    "dominanteDb": "-Infinity",
+    "medianeDb": -321.9033169817029,
+    "detachementDb": "-Infinity",
+    "creteTemporelle": 0
+  },
+  "console": [
+    "[debug] [vite] connecting...",
+    "[debug] [vite] connected."
+  ],
+  "erreursPage": [],
+  "code": 0
+}
