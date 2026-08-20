@@ -24,6 +24,17 @@ BASE="$TRAVAIL/plateforme-$ETIQUETTE.sqlite"
 mkdir -p "$TRAVAIL"
 rm -f "$BASE"
 
+# Un service laissé par un relevé précédent ferait échouer le suivant sur un
+# EADDRINUSE — et, pire, on mesurerait sinon contre une plateforme dont on
+# ignore la version. Tué PAR PID relevé sur le port, jamais par `pkill -f` :
+# ce dépôt a déjà vu un `pkill -f <motif>` tuer le shell qui le lançait.
+RESIDU="$(ss -ltnp 2>/dev/null | grep ":$PORT " | grep -o 'pid=[0-9]*' | cut -d= -f2 | head -1 || true)"
+if [ -n "${RESIDU:-}" ]; then
+    echo "== 0. plateforme résiduelle sur le port $PORT (pid $RESIDU) : arrêtée"
+    kill "$RESIDU" 2>/dev/null || true
+    sleep 2
+fi
+
 export PLATEFORME_HOTE=0.0.0.0
 export PLATEFORME_PORT=$PORT
 export PLATEFORME_BASE=sqlite
@@ -41,7 +52,14 @@ echo "   vm_id=$VM_ID prefixe=$PREFIXE secret=<${#SECRET} caractères>"
 echo "== 2. démarrage de la plateforme sur le port $PORT"
 (cd "$ROOT/plateforme" && nohup npx tsx src/index.ts > "$SORTIE/plateforme-$ETIQUETTE.log" 2>&1 & echo $! > "$TRAVAIL/plateforme.pid")
 PID_PLAT="$(cat "$TRAVAIL/plateforme.pid")"
-nettoyer() { kill "$PID_PLAT" 2>/dev/null || true; }
+# Le PID retenu est celui du `npx`, qui n'est pas forcément celui qui écoute :
+# on tue les deux, le second relevé sur le port au moment du nettoyage.
+nettoyer() {
+    kill "$PID_PLAT" 2>/dev/null || true
+    local ecoutant
+    ecoutant="$(ss -ltnp 2>/dev/null | grep ":$PORT " | grep -o 'pid=[0-9]*' | cut -d= -f2 | head -1 || true)"
+    [ -n "${ecoutant:-}" ] && kill "$ecoutant" 2>/dev/null || true
+}
 trap nettoyer EXIT
 for _ in $(seq 1 60); do
     grep -q "le port $PORT" "$SORTIE/plateforme-$ETIQUETTE.log" && break

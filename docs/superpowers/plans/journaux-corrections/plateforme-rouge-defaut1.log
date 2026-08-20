@@ -1,0 +1,3 @@
+(node:1786055) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+plateforme à l'écoute sur 0.0.0.0, le port 8090
