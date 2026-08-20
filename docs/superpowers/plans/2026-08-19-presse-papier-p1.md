@@ -125,9 +125,11 @@ doit naître au-dessus de 500 lignes**, et aucun n'en approche.
 
 ⚠️ **Aucun fichier de la dette gelée n'est touché** : ni `encode.rs` (1536),
 ni `windows_source.rs` (630), ni `encode/arret.rs` (500, marge 0), ni
-`capture.rs` (492). Ni `agent/src/transport.rs` (**495**, marge 5) — **et il
-faut le dire, parce que c'est la marge la plus serrée d'`agent/src` après
-`arret.rs`**, et que P1 passe par `transport/tick.rs` et
+`capture.rs` (492). Ni `agent/src/transport.rs` (~~**495**, marge 5~~ — **448**
+au 20 août 2026, marge **52** : voir la correction ci-dessous ; **ce n'est
+donc PLUS la marge la plus serrée d'`agent/src`**, qui revient à
+`encode/arret.rs` (500, marge 0) puis à `capture.rs` (492, marge 8)) — **et il
+faut le dire**, parce que P1 passe par `transport/tick.rs` et
 `transport/controle.rs`, ses voisins. **Si une addition dérivait vers
 `transport.rs`, elle exigerait une extraction préalable.**
 
@@ -136,9 +138,16 @@ il ne les corrige pas non plus, `CLAUDE.md` étant sous périmètre concurrent
 (voir plus bas) :
 
 - `agent/src/transport.rs` : `CLAUDE.md:723` publie **491** (relevé de clôture
-  du chantier E) ; la commande rend **495**.
+  du chantier E) ; la commande rend ~~**495**~~.
+  > ❌ **CE 495 A VIEILLI À SON TOUR, EN UNE JOURNÉE.** Relevé par la commande
+  > le 20 août 2026, à la clôture de P1 : `agent/src/transport.rs` fait **448**
+  > lignes. Le chantier concurrent l'a allégé entre l'écriture de ce plan et son
+  > exécution. **Ni 491 ni 495 ne décrivent le dépôt** ; c'est **448** que la
+  > tâche 18 inscrit. *C'est le naufrage du « 487 » sous sa forme la plus
+  > brève : un nombre relevé le 19 était faux le 20.*
 - `client/verify-webrtc.mjs` : `CLAUDE.md:598` publie **497** ; la commande
   rend **494**. La spec de ce chantier l'avait déjà relevé (§7.2).
+  > ✅ **Toujours 494 le 20 août 2026**, remesuré à la clôture.
 
 **La tâche 18 (mise à jour de `CLAUDE.md`) remesure tout par la commande** et
 corrige ces deux nombres à leur place, en énumérant les places par
@@ -475,6 +484,28 @@ variable de banc y poserait une convention que les huit variables
 l'inscrit **dans le commentaire de la sonde et dans `run-agent.sh`** : **la
 sonde se lance SEULE**, sans `SUPERVISEUR`, et le tableau des variables de
 `CLAUDE.md` (tâche 18) le dit.
+
+> ❌ **LA MENACE DÉCRITE CI-DESSUS EST FAUSSE, établie par la tâche 14 le
+> 20 août 2026 — la DÉCISION reste la même, sa RAISON est autre.** Ce paragraphe
+> annonce que la sonde serait exécutée « par le processus CAPTEUR, qui
+> s'arrêterait aussitôt — et le superviseur le relancerait en boucle ». Cela
+> supposerait que l'**enfant** porte la variable et pas son **père**. Or
+> `superviseur/lanceur.rs` lance ses enfants par `std::process::Command`, qui
+> hérite de l'environnement du père : si le capteur la porte, **le superviseur
+> la portait déjà** — et il s'est donc arrêté à `main.rs:172`, AVANT d'avoir
+> lancé quoi que ce soit. **Il n'existe aucun chemin où un capteur exécute la
+> sonde pendant qu'un superviseur vivant le relance.**
+>
+> **Ce qui est vrai, et qui suffit à la prescription** : `main()` appelle
+> `diagnostics::aiguiller()` en `main.rs:172`, AVANT la branche `CAPTEUR`
+> (`:180`), avant l'enrôlement et avant `PONT` (`:279`) — **quel que soit le
+> mode demandé**, un agent qui porte cette variable exécute la sonde et
+> s'arrête. La sonde se lance donc bien SEULE. *(Les trois numéros de ligne
+> ci-dessus sont relevés le 20 août 2026, après l'extraction de `main.rs`, qui
+> le fait passer de 505 à 300 lignes.)*
+>
+> La réfutation vit aussi **dans le code**, auprès du bras d'aiguillage
+> (`agent/src/diagnostics.rs`), là où un lecteur la rencontrera.
 
 ### E11 — 🔴 Le montage de recette peut être incapable de lire ce que `writeText` a écrit
 
@@ -1480,6 +1511,21 @@ même ronde, erreur que D8 a commise en croyant bien faire.
       `agent/src/transport.rs` **491 → 495** (`CLAUDE.md:723`) et
       `client/verify-webrtc.mjs` **497 → 494** (`CLAUDE.md:598`, et **quatre
       autres places**, l. 529, 531, 613, 666).
+      > ❌ **CETTE ÉTAPE ÉTAIT DÉJÀ FAITE QUAND ELLE A ÉTÉ ATTEINTE, ET SON
+      > PREMIER CHIFFRE ÉTAIT DÉJÀ FAUX (relevé le 20 août 2026, tâche 17).**
+      > Le tableau de clôture du chantier **F1** publie déjà
+      > `agent/src/transport.rs` **448** et `client/verify-webrtc.mjs` **494**,
+      > et il **énumère nommément** les quatre places datées où le 497 subsiste
+      > — l. 598, 666, 669 et 750 — avec la raison de ne PAS les réécrire :
+      > *ce sont des énoncés datés, vrais à leur date.* **Les numéros de ligne
+      > que cette étape donne (529, 531, 613, 666) ne sont d'ailleurs plus les
+      > bons** : `grep -n '497' CLAUDE.md` rend aujourd'hui 534, 598, 666, 669,
+      > 687, 689, 750, 804, 834, 843 et davantage.
+      >
+      > **Et le 495 lui-même a vieilli en une journée** : `transport.rs` vaut
+      > **448** (voir la correction en tête de ce plan). **Ni 491, ni 495 ne
+      > décrivent le dépôt.** La tâche 18 n'a donc rien réécrit à ces
+      > places-là : elle a **remesuré** et publié dans sa propre section.
       🔴 **« Corrigé à sa place » est une affirmation de COMPLÉTUDE, et elle se
       vérifie en énumérant les places AVANT d'écrire** : `grep -n '497' CLAUDE.md`,
       `grep -n '491' CLAUDE.md`. Le naufrage du « 487 » s'est rejoué **neuf**
@@ -1586,7 +1632,10 @@ rapport gitignoré (leçon de D9, tâche 18 de D10).
 
 1. ⛔ **Le propriétaire MONO-FENÊTRE n'existe pas.** D1 pose « le capteur quand
    il existe, l'enfant sinon » ; P1 ne livre que le capteur. Un agent
-   mono-fenêtre (ni `SUPERVISEUR` ni `CAPTEUR`, `agent/src/main.rs:434`) n'a
+   mono-fenêtre (ni `SUPERVISEUR` ni `CAPTEUR`, ~~`agent/src/main.rs:434`~~
+   **`agent/src/main.rs:299`**, relevé par la commande le 20 août 2026 : le
+   fichier a été extrait en cours de sous-bloc et ne fait plus que **300**
+   lignes) n'a
    donc **aucun** presse-papier. **Ce n'est pas une régression** — il n'en avait
    pas non plus —, mais c'est exactement la forme du legs n°4 de D10 (« le
    remède est INERTE en mono-fenêtre »), et il faut le nommer avant qu'un
