@@ -10,6 +10,10 @@
 set -uo pipefail
 ETIQUETTE="$1"
 MAINTIEN="${2:-40}"
+# `--sans-purge` : GARDE la racine ET le journal des ecritures dues de
+# l'execution precedente. C'est ce qui rend le critere ③ mesurable — le pont
+# relance doit RELIRE son journal et repousser ce qui y reste.
+SANS_PURGE="${3:-}"
 RACINE=/home/mallanic/Projects/Guacamole
 I="$RACINE/docs/superpowers/plans/journaux-pont-fichiers-f2/instrument"
 J="$RACINE/docs/superpowers/plans/journaux-pont-fichiers-f2"
@@ -20,8 +24,13 @@ source /tmp/f2/env.sh
 echo "=== [$ETIQUETTE] agents survivants AVANT (un agent SURVIT a l hibernation) ==="
 node "$RACINE/scripts/winrm.js" 'Get-Process agent -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Sleep 2; (Get-Process agent -ErrorAction SilentlyContinue | Measure-Object).Count' 2>&1 | tail -2
 
-echo "=== [$ETIQUETTE] purge de la racine du pont et de son etat ==="
-node "$RACINE/scripts/winrm.js" 'powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\purger-pont.ps1' 2>&1 | tail -4
+if [ "$SANS_PURGE" = "--sans-purge" ]; then
+    echo "=== [$ETIQUETTE] SANS PURGE : la racine et le journal de l execution precedente sont GARDES ==="
+    node "$RACINE/scripts/winrm.js" 'powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\etat-pont.ps1' 2>&1 | tail -6
+else
+    echo "=== [$ETIQUETTE] purge de la racine du pont et de son etat ==="
+    node "$RACINE/scripts/winrm.js" 'powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\purger-pont.ps1' 2>&1 | tail -4
+fi
 
 # 🔴 LES ARTEFACTS DE L'EXECUTION PRECEDENTE PARTENT AVANT, TOUS.
 # Paye sur place : un `pilote-arme-1.json` laisse par une tentative anterieure a

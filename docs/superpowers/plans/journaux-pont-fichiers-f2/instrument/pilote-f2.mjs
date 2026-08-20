@@ -55,6 +55,23 @@ const execFileAsync = promisify(execFile);
 const journal = [];
 const dire = (m) => { const l = `[${new Date().toISOString()}] ${m}`; journal.push(l); console.log(l); };
 
+// 🔴 `evalBorne` REND UN OBJET quand elle expire (`{__timeout}`) ou echoue
+// (`{__erreur}`), jamais une chaine. Un `JSON.parse` pose dessus recoit
+// « [object Object] » et LEVE : c'est ce qui a fait perdre l'execution
+// `reprise-1` du 20 aout 2026 a son 51e echantillon, alors que le produit,
+// lui, poussait correctement — le journal d'agent le montre. La lecture d'un
+// compteur ne doit pas pouvoir tuer une recette.
+//
+// ⚠️ L'echantillon illisible est CONSERVE tel quel dans le suivi plutot que
+// saute : un trou silencieux dans une serie se lit comme une serie continue.
+async function lireCompteur(cdp, session) {
+    const brut = await cdp.evalBorne(session, `window.__compteur()`, 15000, false);
+    if (typeof brut === 'string') {
+        try { return JSON.parse(brut); } catch { return { illisible: brut.slice(0, 200) }; }
+    }
+    return { illisible: JSON.stringify(brut).slice(0, 200) };
+}
+
 async function obtenirPaire() {
     const r = await fetch(`${PLATEFORME_URL}/auth/connexion`, {
         method: 'POST',
@@ -117,6 +134,24 @@ try {
     }
     if (!sessionShell) throw new Error('aucune session CDP pour la page-shell');
 
+    // 🔴 L'INJECTION EST RE-POSÉE ICI, ET ATTENDUE, AVANT DE NAVIGUER.
+    //
+    // Le gestionnaire de `Target.attachedToTarget` est ASYNCHRONE : il inscrit
+    // la session dans la table AVANT d'avoir fini de poser
+    // `addScriptToEvaluateOnNewDocument`. La boucle ci-dessus peut donc rendre
+    // une session dont l'injection n'est pas encore armée, et `Page.navigate`
+    // partir sur une page qui ne verra jamais le jeton.
+    //
+    // ⚠️ **LE SYMPTÔME NE RESSEMBLE PAS À UNE COURSE** : sans jeton,
+    // `shell-page.ts` fait `location.replace('connexion.html')`, la page-shell
+    // n'existe plus, et `#etat-fichiers` rend `null` — ce qui se lit comme un
+    // lecteur qui n'a pas monté. L'exécution `arme-2` a été perdue ainsi, et
+    // son journal de page portait TROIS `[vite] connecting` pour une seule
+    // navigation demandée.
+    //
+    // ⚠️ Le pilote de F1 porte la même course, et elle n'y a jamais été vue.
+    await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: injection }, sessionShell);
+
     const console_page = [];
     cdp.on((m) => {
         if (m.method === 'Runtime.consoleAPICalled' && m.sessionId === sessionShell) {
@@ -156,6 +191,15 @@ try {
         }
     }
 
+    // 🔴 LE JETON EST VÉRIFIÉ AVANT LE CLIC. Sans lui la page se redirige, et
+    // tout ce qui suit mesurerait `connexion.html`.
+    const jetonVu = await cdp.evalBorne(sessionShell, `JSON.stringify({ href: location.href, jeton: !!localStorage.getItem('guac.jeton.acces'), bouton: !!document.querySelector('#choisir-dossier') })`, 8000, false);
+    dire(`etat avant le clic : ${jetonVu}`);
+    resultat.etat_avant_clic = jetonVu;
+    if (!String(jetonVu).includes('"jeton":true') || !String(jetonVu).includes('"bouton":true')) {
+        throw new Error(`la page-shell n est pas dans l etat attendu : ${jetonVu}`);
+    }
+
     dire('clic sur #choisir-dossier');
     const boite = await cdp.evalBorne(sessionShell, `(() => { const b = document.querySelector('#choisir-dossier'); const r = b.getBoundingClientRect(); return JSON.stringify({ x: Math.round(r.x + r.width/2), y: Math.round(r.y + r.height/2) }); })()`, 5000, false);
     const { x, y } = JSON.parse(boite);
@@ -185,7 +229,7 @@ try {
     dire(`repos de ${repos} ms avant la mesure`);
     await dodo(repos);
 
-    resultat.compteur_avant = JSON.parse(await cdp.evalBorne(sessionShell, `window.__compteur()`, 5000, false));
+    resultat.compteur_avant = await lireCompteur(cdp, sessionShell);
     dire(`compteur AVANT : ${JSON.stringify(resultat.compteur_avant)}`);
 
     // ── LA MESURE COTE VM, pendant que le lecteur est monte ────────────────
@@ -205,8 +249,8 @@ try {
     // ── Attendre que les ecritures dues redescendent a zero ────────────────
     // 🔴 ON ATTEND LE FAIT, jamais une duree.
     const suivi = [];
-    for (let i = 0; i < 60; i += 1) {
-        const c = JSON.parse(await cdp.evalBorne(sessionShell, `window.__compteur()`, 5000, false));
+    for (let i = 0; i < 90; i += 1) {
+        const c = await lireCompteur(cdp, sessionShell);
         suivi.push({ t: i, ...c });
         if (i > 3 && c.dues === 0 && c.vues > 0) break;
         await dodo(1000);

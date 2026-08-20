@@ -44,7 +44,22 @@
         if (window.__f2.etapes.length > 300) window.__f2.etapes.shift();
     };
 
+    // 🔴 OPFS N'EST PEUPLÉ QUE PAR LA PAGE-SHELL, ET C'EST UN DÉFAUT
+    // D'INSTRUMENT PAYÉ SUR PLACE.
+    //
+    // L'injection est posée par `Target.setAutoAttach`, donc sur TOUTES les
+    // pages — y compris les fenêtres d'application ouvertes par
+    // `window.open('/?session=…')`. Chacune exécutait alors la PURGE d'OPFS et
+    // la repeuplait, **pendant que le pont y écrivait**.
+    //
+    // ⚠️ **LE SYMPTÔME SE LIT COMME UN DÉFAUT DU PRODUIT** : à l'exécution
+    // `arme-2`, `Casse.txt`, `gros-lecture.bin` et `sous-dossier` avaient
+    // DISPARU d'OPFS, et `CASSE.TXT` — que la garde de casse refuse en temps
+    // normal — s'y trouvait créé. **La garde n'avait pas failli : l'homonyme
+    // qu'elle cherche avait été effacé sous elle par une autre page.**
+    const EST_SHELL = location.pathname.endsWith('/shell.html');
     const pret = (async () => {
+        if (!EST_SHELL) throw new Error('OPFS n est peuple que par la page-shell');
         const racineOpfs = await navigator.storage.getDirectory();
         const dossier = await racineOpfs.getDirectoryHandle('Mes documents', { create: true });
         // Purge : OPFS persiste dans le profil, et une seconde execution lirait

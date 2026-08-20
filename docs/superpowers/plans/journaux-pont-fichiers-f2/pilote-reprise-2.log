@@ -1,0 +1,27 @@
+[2026-08-20T23:31:47.874Z] jeton de recette obtenu
+[2026-08-20T23:31:48.243Z] chrome : Chrome/151.0.7922.169
+[2026-08-20T23:31:48.484Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+[2026-08-20T23:31:52.590Z] OPFS peuple : 5 entrees
+[2026-08-20T23:31:52.590Z] la page-shell est connectee : lancement de l agent
+[2026-08-20T23:31:53.003Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-20T23:31:57.074Z] 1 fenetre(s) d application apres 4 s
+[2026-08-20T23:31:57.081Z] etat avant le clic : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA","jeton":true,"bouton":true}
+[2026-08-20T23:31:57.081Z] clic sur #choisir-dossier
+[2026-08-20T23:32:00.133Z] #etat-fichiers : "Lecteur « Mes Fichiers » monté sur « Mes documents »."
+[2026-08-20T23:32:00.133Z] repos de 8000 ms avant la mesure
+[2026-08-20T23:32:08.146Z] compteur AVANT : {"dues":0,"vues":0,"texte":""}
+[2026-08-20T23:32:08.147Z] mesure cote VM (ecriture dans la racine) — ASYNCHRONE, voir l en-tete
+[2026-08-20T23:32:12.595Z] mesure VM : JSON lu
+[2026-08-20T23:33:43.217Z] compteur FINAL : {"t":89,"dues":1,"vues":76,"texte":"1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."}
+[2026-08-20T23:33:43.240Z] relecture ecrit-par-la-vm.bin : {"present":true,"taille":1572869,"sha256":"5d040545405cfe3b0c8f28b841df2c973e9fcd08351b1a01851588b70a49fdca"}
+[2026-08-20T23:33:43.245Z] relecture projete.txt : {"present":true,"taille":54,"sha256":"289a608c64d672db68585380b534bafb585efb3b7604f0f27673df770cf4097d"}
+[2026-08-20T23:33:43.248Z] relecture vide.txt : {"present":true,"taille":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
+[2026-08-20T23:33:43.252Z] relecture dossier-neuf/dedans.txt : {"present":true,"taille":31,"sha256":"9c0c84dabb7c97d69fefce49599ee317825728326288f118935579a0e1cc54aa"}
+[2026-08-20T23:33:43.256Z] relecture Casse.txt : {"present":true,"taille":15,"sha256":"2c7f4c21a3c14c7c42ced552981f8f1cbe36c5775d7a0a773f739f10fa5ee870"}
+[2026-08-20T23:33:43.258Z] relecture CASSE.TXT : {"present":false,"erreur":"NotFoundError: A requested file or directory could not be found at the time an operation was processed."}
+[2026-08-20T23:33:43.264Z] arbre OPFS : [{"chemin":"vide.txt","type":"f","taille":0},{"chemin":"sous-dossier","type":"d"},{"chemin":"sous-dossier/autre.txt","type":"f","taille":35},{"chemin":"projete.txt","type":"f","taille":54},{"chemin":"gros-lecture.bin","type":"f","taille":300000},{"chemin":"ecrit-par-la-vm.bin","type":"f","taille":1572869},{"chemin":"dossier-neuf","type":"d"},{"chemin":"dossier-neuf/dedans.txt","type":"f","taille":31},{"chemin":"Casse.txt","type":"f","taille":15}]
+[2026-08-20T23:33:53.276Z] echantillon : {"t":10,"fenetres":1,"flux":[{"url":"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1","v":"{\"sansPc\":true}"}]}
+[2026-08-20T23:34:03.290Z] echantillon : {"t":20,"fenetres":1,"flux":[{"url":"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1","v":"{\"sansPc\":true}"}]}
+[2026-08-20T23:34:13.298Z] echantillon : {"t":30,"fenetres":1,"flux":[{"url":"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1","v":"{\"sansPc\":true}"}]}
+[2026-08-20T23:34:23.318Z] echantillon : {"t":40,"fenetres":1,"flux":[{"url":"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1","v":"{\"sansPc\":true}"}]}
+[2026-08-20T23:34:23.320Z] resultat ecrit : /tmp/f2/pilote-reprise-2.json
