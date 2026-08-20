@@ -1,0 +1,118 @@
+{
+ "maintien_s": 40,
+ "prefixe": "F4z7KQooOQfJqh47PM0ETA",
+ "journal": [
+  "[2026-08-20T23:15:35.199Z] jeton de recette obtenu",
+  "[2026-08-20T23:15:35.793Z] chrome : Chrome/151.0.7922.169",
+  "[2026-08-20T23:15:35.967Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA",
+  "[2026-08-20T23:15:39.994Z] OPFS peuple : 5 entrees",
+  "[2026-08-20T23:15:39.994Z] la page-shell est connectee : lancement de l agent",
+  "[2026-08-20T23:15:40.576Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+  "[2026-08-20T23:15:45.642Z] 1 fenetre(s) d application apres 5 s",
+  "[2026-08-20T23:15:45.645Z] etat avant le clic : {\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+  "[2026-08-20T23:15:45.645Z] clic sur #choisir-dossier",
+  "[2026-08-20T23:15:48.677Z] #etat-fichiers : \"Lecteur « Mes Fichiers » monté sur « Mes documents ».\"",
+  "[2026-08-20T23:15:48.678Z] repos de 8000 ms avant la mesure",
+  "[2026-08-20T23:15:56.696Z] compteur AVANT : {\"dues\":0,\"vues\":0,\"texte\":\"\"}",
+  "[2026-08-20T23:15:56.696Z] mesure cote VM (ecriture dans la racine) — ASYNCHRONE, voir l en-tete",
+  "[2026-08-20T23:16:01.233Z] mesure VM : JSON lu",
+  "[2026-08-20T23:16:52.399Z] ERREUR : SyntaxError: \"[object Object]\" is not valid JSON"
+ ],
+ "erreurs": [
+  "SyntaxError: \"[object Object]\" is not valid JSON"
+ ],
+ "chrome": "Chrome/151.0.7922.169",
+ "console_page": [
+  {
+   "t": 1787267736171,
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": 1787267736187,
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": 1787267747874,
+   "niveau": "info",
+   "texte": "offre du pont envoyée, attente de l’agent…"
+  },
+  {
+   "t": 1787267747880,
+   "niveau": "info",
+   "texte": "pont fichiers : réponse reçue"
+  },
+  {
+   "t": 1787267747881,
+   "niveau": "info",
+   "texte": "pont fichiers : connecting"
+  },
+  {
+   "t": 1787267748022,
+   "niveau": "info",
+   "texte": "pont fichiers : connected"
+  },
+  {
+   "t": 1787267748096,
+   "niveau": "info",
+   "texte": "canal fichiers ouvert"
+  },
+  {
+   "t": 1787267794460,
+   "niveau": "warning",
+   "texte": "échec casse-ambigue sur la corrélation 42 : « CASSE.TXT » ne diffère de « Casse.txt » que par la casse : écrire écraserait le mauvais fichier, rien n'a été écrit"
+  }
+ ],
+ "opfs_entrees": 5,
+ "fenetres_ouvertes": 1,
+ "etat_avant_clic": "{\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+ "etat_fichiers": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+ "bien_monte": true,
+ "compteur_avant": {
+  "dues": 0,
+  "vues": 0,
+  "texte": ""
+ },
+ "mesure_vm_brut": "﻿{\"racine\":\"C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\",\"horodatage\":\"2026-08-21T01:15:57.3176025+02:00\",\"avant\":[\"dossier-neuf\",\"sous-dossier\",\"CASSE.TXT\",\"ecrit-par-la-vm.bin\",\"gros-lecture.bin\",\"projete.txt\",\"vide.txt\",\"dossier-neuf\\\\dedans.txt\",\"sous-dossier\\\\autre.txt\"],\"avant_compte\":9,\"critere1_chemin\":\"ecrit-par-la-vm.bin\",\"critere1_taille\":1572869,\"critere1_sha_vm\":\"5d040545405cfe3b0c8f28b841df2c973e9fcd08351b1a01851588b70a49fdca\",\"critere2_present_avant\":true,\"critere2_taille_avant\":0,\"critere2_ecriture\":\"OK\",\"critere2_sha_vm\":\"9bbd3e8ac988f71068f7ecbc3d48b1eac82e715418c0f1c0c0a238cd4ca7e26a\",\"critere2_taille_apres\":54,\"vide_taille\":0,\"sous_fichier_sha_vm\":\"9c0c84dabb7c97d69fefce49599ee317825728326288f118935579a0e1cc54aa\",\"casse_ecriture\":\"OK cote VM\",\"apres\":[\"dossier-neuf\",\"sous-dossier\",\"CASSE.TXT\",\"ecrit-par-la-vm.bin\",\"gros-lecture.bin\",\"projete.txt\",\"vide.txt\",\"dossier-neuf\\\\dedans.txt\",\"sous-dossier\\\\autre.txt\"],\"apres_compte\":9}\r\n",
+ "mesure_vm": {
+  "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+  "horodatage": "2026-08-21T01:15:57.3176025+02:00",
+  "avant": [
+   "dossier-neuf",
+   "sous-dossier",
+   "CASSE.TXT",
+   "ecrit-par-la-vm.bin",
+   "gros-lecture.bin",
+   "projete.txt",
+   "vide.txt",
+   "dossier-neuf\\dedans.txt",
+   "sous-dossier\\autre.txt"
+  ],
+  "avant_compte": 9,
+  "critere1_chemin": "ecrit-par-la-vm.bin",
+  "critere1_taille": 1572869,
+  "critere1_sha_vm": "5d040545405cfe3b0c8f28b841df2c973e9fcd08351b1a01851588b70a49fdca",
+  "critere2_present_avant": true,
+  "critere2_taille_avant": 0,
+  "critere2_ecriture": "OK",
+  "critere2_sha_vm": "9bbd3e8ac988f71068f7ecbc3d48b1eac82e715418c0f1c0c0a238cd4ca7e26a",
+  "critere2_taille_apres": 54,
+  "vide_taille": 0,
+  "sous_fichier_sha_vm": "9c0c84dabb7c97d69fefce49599ee317825728326288f118935579a0e1cc54aa",
+  "casse_ecriture": "OK cote VM",
+  "apres": [
+   "dossier-neuf",
+   "sous-dossier",
+   "CASSE.TXT",
+   "ecrit-par-la-vm.bin",
+   "gros-lecture.bin",
+   "projete.txt",
+   "vide.txt",
+   "dossier-neuf\\dedans.txt",
+   "sous-dossier\\autre.txt"
+  ],
+  "apres_compte": 9
+ },
+ "ok": false
+}

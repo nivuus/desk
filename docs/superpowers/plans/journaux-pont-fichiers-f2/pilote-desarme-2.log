@@ -1,0 +1,14 @@
+[2026-08-20T23:21:07.324Z] jeton de recette obtenu
+[2026-08-20T23:21:07.683Z] chrome : Chrome/151.0.7922.169
+[2026-08-20T23:21:07.886Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+[2026-08-20T23:21:11.958Z] OPFS peuple : 5 entrees
+[2026-08-20T23:21:11.958Z] la page-shell est connectee : lancement de l agent
+[2026-08-20T23:21:12.351Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-20T23:21:16.384Z] 1 fenetre(s) d application apres 4 s
+[2026-08-20T23:21:16.386Z] etat avant le clic : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA","jeton":true,"bouton":true}
+[2026-08-20T23:21:16.386Z] clic sur #choisir-dossier
+[2026-08-20T23:21:19.411Z] #etat-fichiers : "Lecteur « Mes Fichiers » monté sur « Mes documents »."
+[2026-08-20T23:21:19.411Z] repos de 8000 ms avant la mesure
+[2026-08-20T23:21:27.430Z] compteur AVANT : {"dues":0,"vues":0,"texte":""}
+[2026-08-20T23:21:27.430Z] mesure cote VM (ecriture dans la racine) — ASYNCHRONE, voir l en-tete
+[2026-08-20T23:21:31.956Z] mesure VM : JSON lu

@@ -1,0 +1,793 @@
+{
+ "maintien_s": 40,
+ "prefixe": "F4z7KQooOQfJqh47PM0ETA",
+ "journal": [
+  "[2026-08-20T23:31:47.874Z] jeton de recette obtenu",
+  "[2026-08-20T23:31:48.243Z] chrome : Chrome/151.0.7922.169",
+  "[2026-08-20T23:31:48.484Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA",
+  "[2026-08-20T23:31:52.590Z] OPFS peuple : 5 entrees",
+  "[2026-08-20T23:31:52.590Z] la page-shell est connectee : lancement de l agent",
+  "[2026-08-20T23:31:53.003Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+  "[2026-08-20T23:31:57.074Z] 1 fenetre(s) d application apres 4 s",
+  "[2026-08-20T23:31:57.081Z] etat avant le clic : {\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+  "[2026-08-20T23:31:57.081Z] clic sur #choisir-dossier",
+  "[2026-08-20T23:32:00.133Z] #etat-fichiers : \"Lecteur « Mes Fichiers » monté sur « Mes documents ».\"",
+  "[2026-08-20T23:32:00.133Z] repos de 8000 ms avant la mesure",
+  "[2026-08-20T23:32:08.146Z] compteur AVANT : {\"dues\":0,\"vues\":0,\"texte\":\"\"}",
+  "[2026-08-20T23:32:08.147Z] mesure cote VM (ecriture dans la racine) — ASYNCHRONE, voir l en-tete",
+  "[2026-08-20T23:32:12.595Z] mesure VM : JSON lu",
+  "[2026-08-20T23:33:43.217Z] compteur FINAL : {\"t\":89,\"dues\":1,\"vues\":76,\"texte\":\"1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet.\"}",
+  "[2026-08-20T23:33:43.240Z] relecture ecrit-par-la-vm.bin : {\"present\":true,\"taille\":1572869,\"sha256\":\"5d040545405cfe3b0c8f28b841df2c973e9fcd08351b1a01851588b70a49fdca\"}",
+  "[2026-08-20T23:33:43.245Z] relecture projete.txt : {\"present\":true,\"taille\":54,\"sha256\":\"289a608c64d672db68585380b534bafb585efb3b7604f0f27673df770cf4097d\"}",
+  "[2026-08-20T23:33:43.248Z] relecture vide.txt : {\"present\":true,\"taille\":0,\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"}",
+  "[2026-08-20T23:33:43.252Z] relecture dossier-neuf/dedans.txt : {\"present\":true,\"taille\":31,\"sha256\":\"9c0c84dabb7c97d69fefce49599ee317825728326288f118935579a0e1cc54aa\"}",
+  "[2026-08-20T23:33:43.256Z] relecture Casse.txt : {\"present\":true,\"taille\":15,\"sha256\":\"2c7f4c21a3c14c7c42ced552981f8f1cbe36c5775d7a0a773f739f10fa5ee870\"}",
+  "[2026-08-20T23:33:43.258Z] relecture CASSE.TXT : {\"present\":false,\"erreur\":\"NotFoundError: A requested file or directory could not be found at the time an operation was processed.\"}",
+  "[2026-08-20T23:33:43.264Z] arbre OPFS : [{\"chemin\":\"vide.txt\",\"type\":\"f\",\"taille\":0},{\"chemin\":\"sous-dossier\",\"type\":\"d\"},{\"chemin\":\"sous-dossier/autre.txt\",\"type\":\"f\",\"taille\":35},{\"chemin\":\"projete.txt\",\"type\":\"f\",\"taille\":54},{\"chemin\":\"gros-lecture.bin\",\"type\":\"f\",\"taille\":300000},{\"chemin\":\"ecrit-par-la-vm.bin\",\"type\":\"f\",\"taille\":1572869},{\"chemin\":\"dossier-neuf\",\"type\":\"d\"},{\"chemin\":\"dossier-neuf/dedans.txt\",\"type\":\"f\",\"taille\":31},{\"chemin\":\"Casse.txt\",\"type\":\"f\",\"taille\":15}]",
+  "[2026-08-20T23:33:53.276Z] echantillon : {\"t\":10,\"fenetres\":1,\"flux\":[{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1\",\"v\":\"{\\\"sansPc\\\":true}\"}]}",
+  "[2026-08-20T23:34:03.290Z] echantillon : {\"t\":20,\"fenetres\":1,\"flux\":[{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1\",\"v\":\"{\\\"sansPc\\\":true}\"}]}",
+  "[2026-08-20T23:34:13.298Z] echantillon : {\"t\":30,\"fenetres\":1,\"flux\":[{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1\",\"v\":\"{\\\"sansPc\\\":true}\"}]}",
+  "[2026-08-20T23:34:23.318Z] echantillon : {\"t\":40,\"fenetres\":1,\"flux\":[{\"url\":\"n=F4z7KQooOQfJqh47PM0ETA%3Aw-1\",\"v\":\"{\\\"sansPc\\\":true}\"}]}"
+ ],
+ "erreurs": [],
+ "chrome": "Chrome/151.0.7922.169",
+ "console_page": [
+  {
+   "t": 1787268708742,
+   "niveau": "debug",
+   "texte": "[vite] connecting..."
+  },
+  {
+   "t": 1787268708771,
+   "niveau": "debug",
+   "texte": "[vite] connected."
+  },
+  {
+   "t": 1787268719288,
+   "niveau": "info",
+   "texte": "offre du pont envoyée, attente de l’agent…"
+  },
+  {
+   "t": 1787268719288,
+   "niveau": "info",
+   "texte": "pont fichiers : réponse reçue"
+  },
+  {
+   "t": 1787268719288,
+   "niveau": "info",
+   "texte": "pont fichiers : connecting"
+  },
+  {
+   "t": 1787268719464,
+   "niveau": "info",
+   "texte": "pont fichiers : connected"
+  },
+  {
+   "t": 1787268719547,
+   "niveau": "info",
+   "texte": "canal fichiers ouvert"
+  },
+  {
+   "t": 1787268765748,
+   "niveau": "warning",
+   "texte": "échec casse-ambigue sur la corrélation 42 : « CASSE.TXT » ne diffère de « Casse.txt » que par la casse : écrire écraserait le mauvais fichier, rien n'a été écrit"
+  }
+ ],
+ "opfs_entrees": 5,
+ "fenetres_ouvertes": 1,
+ "etat_avant_clic": "{\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+ "etat_fichiers": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+ "bien_monte": true,
+ "compteur_avant": {
+  "dues": 0,
+  "vues": 0,
+  "texte": ""
+ },
+ "mesure_vm_brut": "﻿{\"racine\":\"C:\\\\Users\\\\Administrateur\\\\Mes Fichiers\",\"horodatage\":\"2026-08-21T01:32:08.6840424+02:00\",\"avant\":[\"dossier-neuf\",\"sous-dossier\",\"CASSE.TXT\",\"ecrit-par-la-vm.bin\",\"gros-lecture.bin\",\"projete.txt\",\"vide.txt\",\"dossier-neuf\\\\dedans.txt\",\"sous-dossier\\\\autre.txt\"],\"avant_compte\":9,\"critere1_chemin\":\"ecrit-par-la-vm.bin\",\"critere1_taille\":1572869,\"critere1_sha_vm\":\"5d040545405cfe3b0c8f28b841df2c973e9fcd08351b1a01851588b70a49fdca\",\"critere2_present_avant\":true,\"critere2_taille_avant\":0,\"critere2_ecriture\":\"OK\",\"critere2_sha_vm\":\"289a608c64d672db68585380b534bafb585efb3b7604f0f27673df770cf4097d\",\"critere2_taille_apres\":54,\"vide_taille\":0,\"sous_fichier_sha_vm\":\"9c0c84dabb7c97d69fefce49599ee317825728326288f118935579a0e1cc54aa\",\"casse_ecriture\":\"OK cote VM\",\"apres\":[\"dossier-neuf\",\"sous-dossier\",\"CASSE.TXT\",\"ecrit-par-la-vm.bin\",\"gros-lecture.bin\",\"projete.txt\",\"vide.txt\",\"dossier-neuf\\\\dedans.txt\",\"sous-dossier\\\\autre.txt\"],\"apres_compte\":9}\r\n",
+ "mesure_vm": {
+  "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+  "horodatage": "2026-08-21T01:32:08.6840424+02:00",
+  "avant": [
+   "dossier-neuf",
+   "sous-dossier",
+   "CASSE.TXT",
+   "ecrit-par-la-vm.bin",
+   "gros-lecture.bin",
+   "projete.txt",
+   "vide.txt",
+   "dossier-neuf\\dedans.txt",
+   "sous-dossier\\autre.txt"
+  ],
+  "avant_compte": 9,
+  "critere1_chemin": "ecrit-par-la-vm.bin",
+  "critere1_taille": 1572869,
+  "critere1_sha_vm": "5d040545405cfe3b0c8f28b841df2c973e9fcd08351b1a01851588b70a49fdca",
+  "critere2_present_avant": true,
+  "critere2_taille_avant": 0,
+  "critere2_ecriture": "OK",
+  "critere2_sha_vm": "289a608c64d672db68585380b534bafb585efb3b7604f0f27673df770cf4097d",
+  "critere2_taille_apres": 54,
+  "vide_taille": 0,
+  "sous_fichier_sha_vm": "9c0c84dabb7c97d69fefce49599ee317825728326288f118935579a0e1cc54aa",
+  "casse_ecriture": "OK cote VM",
+  "apres": [
+   "dossier-neuf",
+   "sous-dossier",
+   "CASSE.TXT",
+   "ecrit-par-la-vm.bin",
+   "gros-lecture.bin",
+   "projete.txt",
+   "vide.txt",
+   "dossier-neuf\\dedans.txt",
+   "sous-dossier\\autre.txt"
+  ],
+  "apres_compte": 9
+ },
+ "suivi_compteur": [
+  {
+   "t": 0,
+   "dues": 6,
+   "vues": 54,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 1,
+   "dues": 6,
+   "vues": 54,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 2,
+   "dues": 6,
+   "vues": 54,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 3,
+   "dues": 6,
+   "vues": 54,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 4,
+   "dues": 6,
+   "vues": 54,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 5,
+   "dues": 6,
+   "vues": 54,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 6,
+   "dues": 6,
+   "vues": 54,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 7,
+   "dues": 6,
+   "vues": 54,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 8,
+   "dues": 6,
+   "vues": 54,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 9,
+   "dues": 6,
+   "vues": 54,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 10,
+   "dues": 6,
+   "vues": 54,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 11,
+   "dues": 6,
+   "vues": 54,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 12,
+   "dues": 6,
+   "vues": 54,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 13,
+   "dues": 6,
+   "vues": 54,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 14,
+   "dues": 6,
+   "vues": 54,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 15,
+   "dues": 6,
+   "vues": 54,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 16,
+   "dues": 6,
+   "vues": 54,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 17,
+   "dues": 6,
+   "vues": 60,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 18,
+   "dues": 6,
+   "vues": 60,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 19,
+   "dues": 6,
+   "vues": 60,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 20,
+   "dues": 6,
+   "vues": 60,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 21,
+   "dues": 6,
+   "vues": 60,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 22,
+   "dues": 6,
+   "vues": 60,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 23,
+   "dues": 6,
+   "vues": 60,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 24,
+   "dues": 6,
+   "vues": 60,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 25,
+   "dues": 6,
+   "vues": 60,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 26,
+   "dues": 6,
+   "vues": 60,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 27,
+   "dues": 6,
+   "vues": 60,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 28,
+   "dues": 6,
+   "vues": 60,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 29,
+   "dues": 6,
+   "vues": 60,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 30,
+   "dues": 6,
+   "vues": 60,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 31,
+   "dues": 6,
+   "vues": 60,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 32,
+   "dues": 6,
+   "vues": 60,
+   "texte": "6 fichiers enregistrés dans la VM n'ont pas encore été recopiés sur ce poste : « ecrit-par-la-vm.bin », « projete.txt », « vide.txt », « dossier-neuf », « dossier-neuf/dedans.txt », « CASSE.TXT ». Ne fermez pas cet onglet."
+  },
+  {
+   "t": 33,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 34,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 35,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 36,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 37,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 38,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 39,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 40,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 41,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 42,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 43,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 44,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 45,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 46,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 47,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 48,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 49,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 50,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 51,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 52,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 53,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 54,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 55,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 56,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 57,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 58,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 59,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 60,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 61,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 62,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 63,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 64,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 65,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 66,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 67,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 68,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 69,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 70,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 71,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 72,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 73,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 74,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 75,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 76,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 77,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 78,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 79,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 80,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 81,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 82,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 83,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 84,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 85,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 86,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 87,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 88,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  },
+  {
+   "t": 89,
+   "dues": 1,
+   "vues": 76,
+   "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+  }
+ ],
+ "compteur_final": {
+  "t": 89,
+  "dues": 1,
+  "vues": 76,
+  "texte": "1 fichier enregistré dans la VM n'a pas encore été recopié sur ce poste : « CASSE.TXT » (casse-ambigue). Ne fermez pas cet onglet."
+ },
+ "relectures": {
+  "ecrit-par-la-vm.bin": {
+   "present": true,
+   "taille": 1572869,
+   "sha256": "5d040545405cfe3b0c8f28b841df2c973e9fcd08351b1a01851588b70a49fdca"
+  },
+  "projete.txt": {
+   "present": true,
+   "taille": 54,
+   "sha256": "289a608c64d672db68585380b534bafb585efb3b7604f0f27673df770cf4097d"
+  },
+  "vide.txt": {
+   "present": true,
+   "taille": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "dossier-neuf/dedans.txt": {
+   "present": true,
+   "taille": 31,
+   "sha256": "9c0c84dabb7c97d69fefce49599ee317825728326288f118935579a0e1cc54aa"
+  },
+  "Casse.txt": {
+   "present": true,
+   "taille": 15,
+   "sha256": "2c7f4c21a3c14c7c42ced552981f8f1cbe36c5775d7a0a773f739f10fa5ee870"
+  },
+  "CASSE.TXT": {
+   "present": false,
+   "erreur": "NotFoundError: A requested file or directory could not be found at the time an operation was processed."
+  }
+ },
+ "arbre_opfs": [
+  {
+   "chemin": "vide.txt",
+   "type": "f",
+   "taille": 0
+  },
+  {
+   "chemin": "sous-dossier",
+   "type": "d"
+  },
+  {
+   "chemin": "sous-dossier/autre.txt",
+   "type": "f",
+   "taille": 35
+  },
+  {
+   "chemin": "projete.txt",
+   "type": "f",
+   "taille": 54
+  },
+  {
+   "chemin": "gros-lecture.bin",
+   "type": "f",
+   "taille": 300000
+  },
+  {
+   "chemin": "ecrit-par-la-vm.bin",
+   "type": "f",
+   "taille": 1572869
+  },
+  {
+   "chemin": "dossier-neuf",
+   "type": "d"
+  },
+  {
+   "chemin": "dossier-neuf/dedans.txt",
+   "type": "f",
+   "taille": 31
+  },
+  {
+   "chemin": "Casse.txt",
+   "type": "f",
+   "taille": 15
+  }
+ ],
+ "echantillons": [
+  {
+   "t": 10,
+   "fenetres": 1,
+   "flux": [
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-1",
+     "v": "{\"sansPc\":true}"
+    }
+   ]
+  },
+  {
+   "t": 20,
+   "fenetres": 1,
+   "flux": [
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-1",
+     "v": "{\"sansPc\":true}"
+    }
+   ]
+  },
+  {
+   "t": 30,
+   "fenetres": 1,
+   "flux": [
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-1",
+     "v": "{\"sansPc\":true}"
+    }
+   ]
+  },
+  {
+   "t": 40,
+   "fenetres": 1,
+   "flux": [
+    {
+     "url": "n=F4z7KQooOQfJqh47PM0ETA%3Aw-1",
+     "v": "{\"sansPc\":true}"
+    }
+   ]
+  }
+ ],
+ "ok": true
+}
