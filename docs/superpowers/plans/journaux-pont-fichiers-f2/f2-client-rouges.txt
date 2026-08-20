@@ -1,0 +1,171 @@
+# Les états ROUGES du navigateur, JOUÉS. Mutation par NUMÉRO DE LIGNE.
+# Date : 2026-08-21T00:28:01+02:00
+
+## 🔴 (1) LE ROUGE LE PLUS IMPORTANT DE F2 : retirer la garde de casse.
+## Le faux — INSENSIBLE À LA CASSE, comme un vrai poste local — doit
+## montrer Casse.txt ÉCRASÉ.
+## ligne 155 de client/src/fichiers/ecriture.ts
+=== ROUGE : retirer la garde de casse
+--- fichier : client/src/fichiers/ecriture.ts
+--- sha256 AVANT : c6a5198828f56b480bb17d947e8a89f458d5c7567e66e5689bb77c38c24d232a
+--- diff de la MUTATION SEULE (contre la copie prise à l'instant) :
+@@ -152,7 +152,7 @@
+         } catch (e) {
+             throw classer(e, 'chemin-introuvable');
+         }
+-        if (homonymes.length > 0) {
++        if (false) {
+             // ⚠️ Le message NOMME les deux, parce que c'est tout ce que
+             // l'utilisateur pourra faire : renommer l'un des deux. Le CODE, lui,
+             // traverse le fil ; le message reste dans la console du navigateur
+--- contrôle :
+     → expected undefined to be an instance of EchecFichiers
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: promise resolved "undefined" instead of rejecting
+AssertionError: expected undefined to be an instance of EchecFichiers
+AssertionError: promise resolved "undefined" instead of rejecting
+      Tests  3 failed | 11 passed (14)
+--- (le code de sortie du contrôle est celui de la commande ci-dessus)
+--- sha256 APRÈS restauration : c6a5198828f56b480bb17d947e8a89f458d5c7567e66e5689bb77c38c24d232a
+--- restauration VÉRIFIÉE
+
+(eval):18: command not found: keepExistingData:
+## (2)  — la queue d'octets de l'ancien pont survit.
+## ligne 183
+=== ROUGE : createWritable avec keepExistingData
+--- fichier : client/src/fichiers/ecriture.ts
+--- sha256 AVANT : c6a5198828f56b480bb17d947e8a89f458d5c7567e66e5689bb77c38c24d232a
+--- diff de la MUTATION SEULE (contre la copie prise à l'instant) :
+@@ -180,7 +180,7 @@
+             // sans `truncate`, si bien qu'UN FICHIER RÉÉCRIT PLUS COURT
+             // CONSERVAIT SA QUEUE D'OCTETS (spec §12). Le fichier local aurait
+             // alors un contenu que la VM n'a jamais eu.
+-            return await poignee.createWritable();
++            return await poignee.createWritable({ keepExistingData: true });
+         } catch (e) {
+             throw classer(e, 'introuvable');
+         }
+--- contrôle :
+     → expected [ 7, 8, 3 ] to deeply equal [ 7, 8 ]
+     → expected [ 9, 9, 3, 4, 5, 6, 7, 8 ] to deeply equal [ 9, 9 ]
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected [ 7, 8, 3 ] to deeply equal [ 7, 8 ]
+AssertionError: expected [ 9, 9, 3, 4, 5, 6, 7, 8 ] to deeply equal [ 9, 9 ]
+      Tests  2 failed | 12 passed (14)
+--- (le code de sortie du contrôle est celui de la commande ci-dessus)
+--- sha256 APRÈS restauration : c6a5198828f56b480bb17d947e8a89f458d5c7567e66e5689bb77c38c24d232a
+--- restauration VÉRIFIÉE
+
+## (3) LE COMPTEUR CUMULATIF REMIS À ZÉRO — un verdict négatif devient
+## indiscernable d'une MESURE NON PRISE.
+## ligne 197 de client/src/shell.ts
+=== ROUGE : remettre le compteur cumulatif a zero
+--- fichier : client/src/shell.ts
+--- sha256 AVANT : 276b5b9d3af6d4b87a16a80c39d6c2f7399c73179b32863240ce3e630af11de7
+--- diff de la MUTATION SEULE (contre la copie prise à l'instant) :
+@@ -194,7 +194,7 @@
+             // l'ÉTAT complet de son journal à chaque changement : cumuler ferait
+             // qu'un chemin acquitté resterait affiché pour toujours.
+             dues = neuves;
+-            vues += neuves.length;
++            vues = neuves.length;
+             // Un chemin qui n'est plus dû n'a plus d'échec à montrer : il est
+             // arrivé.
+             for (const chemin of [...echecs.keys()]) {
+--- contrôle :
+     → expected [ [ 1, 1 ], [ +0, +0 ] ] to deeply equal [ [ 1, 1 ], [ +0, 1 ] ]
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected [ [ 1, 1 ], [ +0, +0 ] ] to deeply equal [ [ 1, 1 ], [ +0, 1 ] ]
+      Tests  1 failed | 23 passed (24)
+--- (le code de sortie du contrôle est celui de la commande ci-dessus)
+--- sha256 APRÈS restauration : 276b5b9d3af6d4b87a16a80c39d6c2f7399c73179b32863240ce3e630af11de7
+--- restauration VÉRIFIÉE
+
+(eval):32: command not found: TYPE_DUES
+(eval):32: command not found: null
+## (4) L'ANNONCE  REND UNE TRAME au lieu de  — le pont
+## recevrait une réponse à une corrélation qu'il ne connaît pas, et la
+## jetterait en debug!, SILENCIEUSEMENT.
+## ligne 130 de client/src/fichiers/protocole.ts
+=== ROUGE : l'annonce repond au lieu de se taire
+--- fichier : client/src/fichiers/protocole.ts
+--- sha256 AVANT : 67c851913b91fdad25de6193b8e217a935acc81e05fc1e5a548e592db07d7e6d
+--- diff de la MUTATION SEULE (contre la copie prise à l'instant) :
+@@ -127,7 +127,7 @@
+                 // ── ANNONCE : elle ne reçoit RIEN, et la famille est NOMMÉE.
+                 case TYPE_DUES: {
+                     try {
+-                        options.onDues?.(parseDues(trame.entete).dues);
++                        options.onDues?.(parseDues(trame.entete).dues); return encoderTexte(TYPE_FAIT, trame.correlation, '{}');
+                     } catch (e) {
+                         journal(`annonce de dues illisible : ${(e as Error).message}`);
+                     }
+--- contrôle :
+     → expected  to be null
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected  to be null
+      Tests  1 failed | 18 passed (19)
+--- (le code de sortie du contrôle est celui de la commande ci-dessus)
+--- sha256 APRÈS restauration : 67c851913b91fdad25de6193b8e217a935acc81e05fc1e5a548e592db07d7e6d
+--- restauration VÉRIFIÉE
+
+## (5) LE CODE D'ÉCHEC ÉCRASÉ EN `interne` — la cause détruite à
+## l'émission, exactement comme web/index.js:669.
+## ligne 169
+=== ROUGE : ecraser le code d'echec en interne
+--- fichier : client/src/fichiers/protocole.ts
+--- sha256 AVANT : 67c851913b91fdad25de6193b8e217a935acc81e05fc1e5a548e592db07d7e6d
+--- diff de la MUTATION SEULE (contre la copie prise à l'instant) :
+@@ -166,7 +166,7 @@
+                 // le reste — en-tête malformé compris — est `interne`. Inventer
+                 // un code plus précis ferait traduire à l'agent un HRESULT faux
+                 // plutôt qu'un HRESULT vague.
+-                const code = e instanceof EchecFichiers ? e.code : 'interne';
++                const code = 'interne' as const;
+                 journal(`échec ${code} sur la corrélation ${trame.correlation} : ${(e as Error).message}`);
+                 if (trame.type === TYPE_ECRIRE || trame.type === TYPE_CREER) {
+                     // ⚠️ Le chemin est relu de l'en-tête plutôt que retenu :
+--- contrôle :
+     → expected 'interne' to be 'acces-refuse' // Object.is equality
+     → expected 'interne' to be 'casse-ambigue' // Object.is equality
+     → expected 'interne' to be 'protege-en-ecriture' // Object.is equality
+     → expected [ [ 'dossier/rapport.docx', …(1) ] ] to deeply equal [ [ 'dossier/rapport.docx', …(1) ] ]
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected 'interne' to be 'acces-refuse' // Object.is equality
+AssertionError: expected 'interne' to be 'casse-ambigue' // Object.is equality
+AssertionError: expected 'interne' to be 'protege-en-ecriture' // Object.is equality
+--- (le code de sortie du contrôle est celui de la commande ci-dessus)
+--- sha256 APRÈS restauration : 67c851913b91fdad25de6193b8e217a935acc81e05fc1e5a548e592db07d7e6d
+--- restauration VÉRIFIÉE
+
+
+## 🔴 (1 bis) LA MÊME MUTATION, MAIS LES TROIS ASSERTIONS SÉPARÉES.
+## ⚠️ La première rédaction les mettait dans UN SEUL test : `expect` l'aurait
+## interrompu à la première, et « Casse.txt est écrasé » — l'assertion qui porte
+## la PERTE DE DONNÉES — n'aurait été éprouvée par RIEN. C'est la leçon ①A-bis
+## du sous-bloc P2, rejouée ici sur le rouge le plus important de F2.
+=== ROUGE : retirer la garde de casse (assertions separees)
+--- fichier : client/src/fichiers/ecriture.ts
+--- sha256 AVANT : c6a5198828f56b480bb17d947e8a89f458d5c7567e66e5689bb77c38c24d232a
+--- diff de la MUTATION SEULE (contre la copie prise à l'instant) :
+@@ -152,7 +152,7 @@
+         } catch (e) {
+             throw classer(e, 'chemin-introuvable');
+         }
+-        if (homonymes.length > 0) {
++        if (false) {
+             // ⚠️ Le message NOMME les deux, parce que c'est tout ce que
+             // l'utilisateur pourra faire : renommer l'un des deux. Le CODE, lui,
+             // traverse le fil ; le message reste dans la console du navigateur
+--- contrôle :
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: promise resolved "undefined" instead of rejecting
+AssertionError: expected { nom: 'Casse.txt', contenu: [ 9 ] } to deeply equal { nom: 'Casse.txt', …(1) }
+AssertionError: expected 1 to be +0 // Object.is equality
+AssertionError: expected undefined to be an instance of EchecFichiers
+AssertionError: promise resolved "undefined" instead of rejecting
+      Tests  5 failed | 11 passed (16)
+--- (le code de sortie du contrôle est celui de la commande ci-dessus)
+--- sha256 APRÈS restauration : c6a5198828f56b480bb17d947e8a89f458d5c7567e66e5689bb77c38c24d232a
+--- restauration VÉRIFIÉE
+

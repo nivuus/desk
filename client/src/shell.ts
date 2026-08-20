@@ -28,6 +28,12 @@ export interface FenetreConnue {
     ouverte: boolean;
 }
 
+/** Une écriture DUE : des octets qui vivent sur la VM et pas encore ici. */
+export interface EcritureDue {
+    chemin: string;
+    octets: number;
+}
+
 export interface OptionsBureau {
     /// Rend `null` si le navigateur a bloqué l'ouverture.
     ouvrirFenetre(session: string, titre: string): Window | null;
@@ -36,6 +42,15 @@ export interface OptionsBureau {
     /// L'état du lecteur de fichiers, séparé du bandeau général : les deux
     /// messages ne se chassent pas l'un l'autre.
     afficherEtatFichiers(texte: string, ton: Ton): void;
+    /// Le compteur d'écritures dues.
+    ///
+    /// 🔴 **`dues` ET `vues` SONT DEUX NOMBRES, ET LE SECOND EST CUMULATIF.**
+    /// `dues` redescend, `vues` jamais. Un `dues = 0` **seul** ne dit RIEN :
+    /// c'est aussi ce que rend une machine où rien n'a encore eu lieu. *Un
+    /// verdict négatif exige que la chose mesurée soit ABSENTE, pas seulement
+    /// nulle* — la sonde P0 du presse-papier a rendu un faux verdict
+    /// éliminatoire pour avoir lu trois zéros sur une VM saine.
+    afficherEcrituresDues(dues: number, vues: number, texte: string, ton: Ton): void;
 }
 
 export interface Bureau {
@@ -53,6 +68,17 @@ export interface Bureau {
     /// partagé » et « le partage a raté, voici pourquoi » n'appellent pas le
     /// même geste de l'utilisateur.
     lecteurEchoue(motif: string): void;
+    /// Le pont annonce ce qui n'est PAS encore arrivé sur le poste local.
+    ecrituresDues(dues: EcritureDue[]): void;
+    /// Une écriture a échoué. Elle reste due, et elle est NOMMÉE.
+    ecritureEchouee(chemin: string, motif: string): void;
+    /// Faut-il prévenir l'utilisateur avant qu'il ne referme l'onglet ?
+    ///
+    /// ⚠️ **PRÉDICAT PUR, testé ici** ; le câblage de `beforeunload` vit dans
+    /// `shell-page.ts`, qui n'est pas testé. Prévenir TOUJOURS apprendrait à
+    /// l'utilisateur à ignorer l'avertissement, ce qui le rendrait inutile
+    /// exactement le jour où il compte.
+    doitPrevenir(): boolean;
 }
 
 interface Entree {
@@ -62,6 +88,27 @@ interface Entree {
 
 export function creerBureau(options: OptionsBureau): Bureau {
     const connues = new Map<string, Entree>();
+    /** Les écritures dues à l'instant. Redescend à zéro. */
+    let dues: EcritureDue[] = [];
+    /**
+     * Le nombre CUMULÉ de dues jamais vues. **Monotone, jamais remis à zéro.**
+     *
+     * 🔴 C'est ce qui distingue « rien n'est dû » de « rien n'a eu lieu ». Sans
+     * lui, `data-dues="0"` sur une machine saine serait indiscernable d'une
+     * MESURE NON PRISE, et un verdict négatif se lirait comme un succès.
+     */
+    let vues = 0;
+    /** Les échecs, par chemin. Ils survivent au compteur : l'entrée reste due. */
+    const echecs = new Map<string, string>();
+
+    function redessinerLesDues(): void {
+        const texte = phraseDesDues(dues, echecs);
+        // DANGER dès qu'un échec est nommé — l'utilisateur doit AGIR. Sinon
+        // ALERTE tant qu'il reste des dues : ce n'est pas un refus, c'est une
+        // attente, mais une attente qu'il ne faut pas refermer par accident.
+        const ton: Ton = echecs.size > 0 ? 'danger' : dues.length > 0 ? 'alerte' : 'neutre';
+        options.afficherEcrituresDues(dues.length, vues, texte, ton);
+    }
 
     function ouvrir(session: string, titre: string): void {
         const fenetre = options.ouvrirFenetre(session, titre);
@@ -142,6 +189,31 @@ export function creerBureau(options: OptionsBureau): Bureau {
             options.afficherEtatFichiers('', 'neutre');
         },
 
+        ecrituresDues(neuves) {
+            // ⚠️ **L'ANNONCE ÉCRASE, elle ne s'ajoute pas.** Le pont envoie
+            // l'ÉTAT complet de son journal à chaque changement : cumuler ferait
+            // qu'un chemin acquitté resterait affiché pour toujours.
+            dues = neuves;
+            vues += neuves.length;
+            // Un chemin qui n'est plus dû n'a plus d'échec à montrer : il est
+            // arrivé.
+            for (const chemin of [...echecs.keys()]) {
+                if (!neuves.some((d) => d.chemin === chemin)) echecs.delete(chemin);
+            }
+            redessinerLesDues();
+        },
+
+        ecritureEchouee(chemin, motif) {
+            // 🔴 **LE FICHIER EST NOMMÉ, ET LA CAUSE AUSSI.** « Une écriture a
+            // échoué » ne dit pas à l'utilisateur quel document rouvrir.
+            echecs.set(chemin, motif);
+            redessinerLesDues();
+        },
+
+        doitPrevenir() {
+            return dues.length > 0;
+        },
+
         lecteurEchoue(motif) {
             // DANGER : le partage a raté, et « rien n'est partagé » n'appelle
             // pas le même geste que « le partage a raté, voici pourquoi ».
@@ -151,4 +223,30 @@ export function creerBureau(options: OptionsBureau): Bureau {
             );
         },
     };
+}
+
+/**
+ * La phrase du compteur. **Elle NOMME les fichiers**, parce que le dialogue de
+ * `beforeunload` ne le peut pas.
+ *
+ * ⛔ **Le message personnalisé de `beforeunload` est IGNORÉ par tous les
+ * navigateurs modernes** : ils n'affichent qu'un libellé générique de leur
+ * choix. La spec §6.2 demande « un `beforeunload` avec un texte qui nomme les
+ * fichiers » — **ce texte n'existe pas**. Les nommer DANS LA PAGE, à côté du
+ * compteur, est ce qui reste. *(Fait de plateforme, non mesuré ici, déclaré
+ * comme tel.)*
+ */
+function phraseDesDues(dues: EcritureDue[], echecs: Map<string, string>): string {
+    if (dues.length === 0) return '';
+    const noms = dues
+        .map((d) => {
+            const motif = echecs.get(d.chemin);
+            return motif === undefined ? `« ${d.chemin} »` : `« ${d.chemin} » (${motif})`;
+        })
+        .join(', ');
+    const pluriel = dues.length > 1 ? 's' : '';
+    return (
+        `${dues.length} fichier${pluriel} enregistré${pluriel} dans la VM n'${dues.length > 1 ? 'ont' : 'a'} ` +
+        `pas encore été recopié${pluriel} sur ce poste : ${noms}. Ne fermez pas cet onglet.`
+    );
 }

@@ -16,6 +16,14 @@ function bureauDeTest() {
     const etatsFichiers: string[] = [];
     const bandeaux: Array<{ message: string; ton: Ton }> = [];
     const etats: Array<{ texte: string; ton: Ton }> = [];
+    /**
+     * 🔴 LE COMPTEUR EST COLLECTÉ TEL QUEL — deux NOMBRES, un texte, un ton —
+     * et non reformaté ici. Le lire d'une phrase serait rejouer le piège que F1
+     * a payé neuf minutes : « Lecteur … monté » et « n'a pas pu être monté »
+     * partagent une sous-chaîne, le pilote testait `includes('mont')`, et une
+     * mesure entière a tourné sur un pont NON monté.
+     */
+    const compteurs: Array<{ dues: number; vues: number; texte: string; ton: Ton }> = [];
     const bureau = creerBureau({
         ouvrirFenetre: (session) => {
             const f = { closed: false, close: () => { f.closed = true; } };
@@ -28,8 +36,11 @@ function bureauDeTest() {
             etatsFichiers.push(texte);
             etats.push({ texte, ton });
         },
+        afficherEcrituresDues: (dues, vues, texte, ton) => {
+            compteurs.push({ dues, vues, texte, ton });
+        },
     });
-    return { bureau, ouvertes, envoyes, etatsFichiers, bandeaux, etats };
+    return { bureau, ouvertes, envoyes, etatsFichiers, bandeaux, etats, compteurs };
 }
 
 describe('page-shell', () => {
@@ -90,6 +101,7 @@ describe('page-shell', () => {
             envoyer: () => {},
             afficher: affiche,
             afficherEtatFichiers: () => {},
+            afficherEcrituresDues: () => {},
         });
         bureau.refus('F9', 'plus aucune sortie virtuelle disponible');
         // Le motif du refus est REPRIS TEL QUEL, et le ton l'accompagne : le
@@ -111,6 +123,7 @@ describe('page-shell', () => {
             envoyer: () => {},
             afficher: affiche,
             afficherEtatFichiers: () => {},
+            afficherEcrituresDues: () => {},
         });
         bureau.fenetreOuverte('w-1', 'Bloc-notes');
         expect(affiche).toHaveBeenCalledWith(expect.stringContaining('pop-up'), 'danger');
@@ -179,6 +192,7 @@ describe('page-shell — le TON du bandeau', () => {
             envoyer: () => {},
             afficher: (message, ton) => { bandeaux.push({ message, ton }); },
             afficherEtatFichiers: () => {},
+            afficherEcrituresDues: () => {},
         });
         sansPopup.fenetreOuverte('w-1', 'Bloc-notes');
         expect(bandeaux).toHaveLength(1);
@@ -212,5 +226,87 @@ describe('page-shell — le TON du bandeau', () => {
         const { bureau, etats } = bureauDeTest();
         bureau.lecteurDemonte();
         expect(etats[0].ton).toBe('neutre');
+    });
+});
+
+describe('le compteur d’écritures dues', () => {
+    it('🔴 rend DEUX nombres, dont un CUMULATIF qui ne redescend jamais', () => {
+        // 🔴 Le remettre à zéro rendrait un verdict négatif INDISCERNABLE d'une
+        // mesure non prise : `dues = 0` est aussi ce que rend une machine où
+        // rien n'a encore eu lieu. *Un verdict négatif exige que la chose
+        // mesurée soit ABSENTE, pas seulement nulle.*
+        const { bureau, compteurs } = bureauDeTest();
+        bureau.ecrituresDues([{ chemin: 'a.txt', octets: 3 }]);
+        bureau.ecrituresDues([]);
+        expect(compteurs.map((c) => [c.dues, c.vues])).toEqual([
+            [1, 1],
+            [0, 1],
+        ]);
+    });
+
+    it('l’annonce ÉCRASE l’état, elle ne s’y ajoute pas', () => {
+        // Le pont envoie l'ÉTAT complet de son journal à chaque changement :
+        // cumuler ferait qu'un chemin acquitté resterait affiché POUR TOUJOURS.
+        const { bureau, compteurs } = bureauDeTest();
+        bureau.ecrituresDues([
+            { chemin: 'a.txt', octets: 1 },
+            { chemin: 'b.txt', octets: 2 },
+        ]);
+        bureau.ecrituresDues([{ chemin: 'b.txt', octets: 2 }]);
+        expect(compteurs.at(-1)?.dues).toBe(1);
+        expect(compteurs.at(-1)?.texte).toContain('b.txt');
+        expect(compteurs.at(-1)?.texte).not.toContain('a.txt');
+    });
+
+    it('🔴 NOMME les fichiers, parce que `beforeunload` ne le peut pas', () => {
+        // ⛔ Le message personnalisé de `beforeunload` est IGNORÉ par tous les
+        // navigateurs modernes. Les nommer DANS LA PAGE est ce qui reste.
+        const { bureau, compteurs } = bureauDeTest();
+        bureau.ecrituresDues([{ chemin: 'dossier/rapport final.docx', octets: 12 }]);
+        expect(compteurs.at(-1)?.texte).toContain('dossier/rapport final.docx');
+    });
+
+    it('🔴 un échec NOMME le fichier ET la cause', () => {
+        // « Une écriture a échoué » ne dit pas à l'utilisateur quel document
+        // rouvrir, ni s'il doit libérer de la place ou rendre une permission.
+        const { bureau, compteurs } = bureauDeTest();
+        bureau.ecrituresDues([{ chemin: 'note.txt', octets: 3 }]);
+        bureau.ecritureEchouee('note.txt', 'disque-plein');
+        expect(compteurs.at(-1)?.texte).toContain('note.txt');
+        expect(compteurs.at(-1)?.texte).toContain('disque-plein');
+        expect(compteurs.at(-1)?.ton).toBe('danger');
+    });
+
+    it('🔴 zéro due efface le texte ET pose le ton neutre', () => {
+        // 🔴 C'EST LE DÉFAUT DE D5, que `lecteurDemonte` documente déjà contre
+        // lui-même : un bandeau qui garde son texte fait lire un état PÉRIMÉ
+        // comme l'état courant. Et un ton coloré sans texte serait une alarme
+        // sans énoncé — les deux propriétés sont éprouvées SÉPARÉMENT.
+        const { bureau, compteurs } = bureauDeTest();
+        bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }]);
+        bureau.ecrituresDues([]);
+        expect(compteurs.at(-1)?.texte).toBe('');
+        expect(compteurs.at(-1)?.ton).toBe('neutre');
+    });
+
+    it('une écriture qui finit par arriver efface son échec', () => {
+        const { bureau, compteurs } = bureauDeTest();
+        bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }]);
+        bureau.ecritureEchouee('a.txt', 'interne');
+        bureau.ecrituresDues([]);
+        expect(compteurs.at(-1)?.ton).toBe('neutre');
+        expect(compteurs.at(-1)?.texte).toBe('');
+    });
+
+    it('🔴 ne prévient PAS quand il n’y a rien à perdre', () => {
+        // Prévenir TOUJOURS apprendrait à l'utilisateur à ignorer
+        // l'avertissement, ce qui le rendrait inutile exactement le jour où il
+        // compte.
+        const { bureau } = bureauDeTest();
+        expect(bureau.doitPrevenir()).toBe(false);
+        bureau.ecrituresDues([{ chemin: 'a.txt', octets: 1 }]);
+        expect(bureau.doitPrevenir()).toBe(true);
+        bureau.ecrituresDues([]);
+        expect(bureau.doitPrevenir()).toBe(false);
     });
 });

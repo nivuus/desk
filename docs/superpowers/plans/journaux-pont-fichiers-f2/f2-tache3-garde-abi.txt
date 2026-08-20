@@ -1,0 +1,64 @@
+# Tâche 3 — l'extraction de rappels.rs, et la preuve que le garde d'ABI a SUIVI.
+# Date : 2026-08-20T23:51:57+02:00
+
+## ① LA TRANSPOSITION EST-ELLE VERBATIM ? Comparaison ligne à ligne contre le commit d'avant.
+## Seul changement déclaré : `pub(super)` devant les `unsafe extern "system" fn`,
+## sans quoi `bloc()` — resté chez le parent — ne pourrait plus les nommer.
+listage      : IDENTIQUE — 109 lignes
+notification : IDENTIQUE — 53 lignes
+
+## ⚠️ Une PREMIÈRE rédaction de ce contrôle rendait « DIFFÈRE » sur les deux.
+## L'écart était d'UNE ligne, la dernière : mon `sed '$d'` supprimait l'accolade
+## fermante du fichier extrait. LE DÉFAUT ÉTAIT DANS L'INSTRUMENT, pas dans la
+## transposition — et un `DIFFÈRE` qu'on ne lit pas ligne à ligne se conclut
+## dans les deux sens. C'est pourquoi le diff est imprimé, jamais le seul verdict.
+
+## ② LES TAILLES, RELEVÉES PAR LA COMMANDE
+  320 agent/src/pont/projfs/rappels.rs
+  165 agent/src/pont/projfs/rappels/listage.rs
+   87 agent/src/pont/projfs/rappels/notification.rs
+  572 total
+## avant l'extraction : 488 (marge 12). Le plan PRÉVOYAIT ≈ 330 pour le parent ;
+## le relevé est ci-dessus, et l'écart au plan est de moins de 20 lignes.
+
+## ③ LE GARDE D'ABI A-T-IL SUIVI SA FONCTION ?
+## Contrôle en DEUX temps, parce qu'un seul ne prouverait rien :
+##   (a) un paramètre EN TROP sur debut_enumeration → la compilation croisée REFUSE ;
+##   (b) la MÊME mutation, le `const _` retiré → elle PASSE.
+## (b) établit que c'est le `const _` qui voit, et non un appel interne.
+
+## ⚠️ UNE PREMIÈRE RÉDACTION MUTAIT `*const GUID` EN `*const u8`, et sa
+## partie (b) rendait DEUX erreurs au lieu de zéro : le corps de la fonction
+## passe ce paramètre à `identifiant()`, qui le type lui aussi. La mutation
+## n'était PAS isolée, et le contrôle aurait été lu comme un échec du garde.
+## Un paramètre EN TROP, que le corps n'emploie pas, l'isole.
+
+### (a) ligne 61 de listage.rs — un paramètre en trop, garde d'ABI EN PLACE
+=== ROUGE : un parametre en trop, garde d'ABI en place
+--- fichier : agent/src/pont/projfs/rappels/listage.rs
+--- sha256 AVANT : 3acdd25c73583e19abad27207458a312501ea1bed55ed955bcd942deb090cd2a
+--- diff de la MUTATION SEULE (contre la copie prise à l'instant) :
+@@ -59,6 +59,7 @@
+ pub(super) unsafe extern "system" fn debut_enumeration(
+     donnees: *const PRJ_CALLBACK_DATA,
+     enumeration: *const GUID,
++    _en_trop: u32,
+ ) -> HRESULT {
+     garde("StartDirectoryEnumeration", || {
+         let (Some(etat), Some(id)) = (unsafe { etat(donnees) }, unsafe { identifiant(enumeration) })
+--- contrôle :
+error[E0308]: mismatched types
+53 | const _: PRJ_START_DIRECTORY_ENUMERATION_CB = Some(debut_enumeration);
+   = note: expected fn pointer `unsafe extern "system" fn(*const PRJ_CALLBACK_DATA, *const GUID) -> HRESULT`
+53 | const _: PRJ_START_DIRECTORY_ENUMERATION_CB = Some(debut_enumeration);
+error[E0308]: mismatched types
+    = note: expected fn pointer `unsafe extern "system" fn(*const PRJ_CALLBACK_DATA, *const GUID) -> HRESULT`
+error: could not compile `agent` (bin "agent") due to 2 previous errors
+--- (le code de sortie du contrôle est celui de la commande ci-dessus)
+--- sha256 APRÈS restauration : 3acdd25c73583e19abad27207458a312501ea1bed55ed955bcd942deb090cd2a
+--- restauration VÉRIFIÉE
+
+### (b) la MÊME mutation, PLUS le `const _` retiré et `bloc()` neutralisé
+erreurs de compilation croisée : 0
+^ 0 attendu — plus AUCUN garde ne voit la divergence, donc c'est bien le `const _` qui la voyait.
+restauration : 0 fichier(s) modifié(s), 0 attendu

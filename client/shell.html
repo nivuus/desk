@@ -36,6 +36,28 @@
           </button>
         </div>
         <div id="etat-fichiers" class="message bureau__bandeau" role="status"></div>
+        <!--
+          🔴 LE COMPTEUR D'ÉCRITURES DUES EST UN NOMBRE DANS UN ATTRIBUT, PAS UNE
+          PHRASE. Le pilote de recette lit `data-dues`, jamais le texte.
+
+          ⚠️ C'est le remède direct au piège que F1 a payé NEUF MINUTES :
+          « Lecteur … monté » et « n'a pas pu être monté » partagent une
+          sous-chaîne, le pilote testait `includes('mont')`, et une mesure
+          entière a tourné sur un pont NON monté. Le produit garde cette
+          ambiguïté sur ce bandeau-là ; F2 ne la rejoue pas sur le compteur.
+
+          ⚠️ ET `data-vues` EST CUMULATIF, JAMAIS REMIS À ZÉRO. `data-dues="0"`
+          SEUL ne dit rien : c'est aussi ce que rend une machine où rien n'a eu
+          lieu. `dues=0` ET `vues>0` est un succès ; `dues=0` ET `vues=0` est une
+          MESURE NON PRISE.
+        -->
+        <div
+          id="ecritures-dues"
+          class="message bureau__bandeau"
+          role="status"
+          data-dues="0"
+          data-vues="0"
+        ></div>
       </section>
 
       <section class="bureau__section">

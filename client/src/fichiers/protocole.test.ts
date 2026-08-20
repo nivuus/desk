@@ -1,9 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
     TYPE_ATTRIBUTS,
+    TYPE_CREER,
     TYPE_DONNEES,
+    TYPE_DUES,
     TYPE_ECHEC,
+    TYPE_ECRIRE,
     TYPE_ENTREES,
+    TYPE_FAIT,
     TYPE_LIRE,
     TYPE_LISTER,
     TYPE_META,
@@ -13,6 +17,23 @@ import { parseDonnees, parseEchec, parseEntrees, parseMeta } from '../../../prot
 import { decoder } from '../../../proto/ts/fichiers';
 import { EchecFichiers, type Adaptateur } from './adaptateur';
 import { creerServeur } from './protocole';
+import type { Ecrivain } from './ecriture';
+
+/** Un écrivain factice : le protocole ne connaît AUCUN système de fichiers. */
+function fauxEcrivain(surcharge: Partial<Ecrivain> = {}): Ecrivain & { vus: string[] } {
+    const vus: string[] = [];
+    return {
+        vus,
+        ecrire: async (chemin, position, octets, premier, dernier) => {
+            vus.push(`ecrire ${chemin} @${position} +${octets.length} ${premier}/${dernier}`);
+        },
+        creer: async (chemin, repertoire) => {
+            vus.push(`creer ${chemin} ${repertoire}`);
+        },
+        abandonner: () => vus.push('abandonner'),
+        ...surcharge,
+    };
+}
 
 /** Un adaptateur factice : le protocole ne connaît AUCUN système de fichiers. */
 function fauxAdaptateur(surcharge: Partial<Adaptateur> = {}): Adaptateur {
@@ -145,5 +166,181 @@ describe('serveur du protocole fichiers', () => {
         expect(trame.type).toBe(TYPE_ECHEC);
         expect(trame.correlation).toBe(8);
         expect(parseEchec(trame.entete).code).toBe('interne');
+    });
+});
+
+describe('les verbes d’écriture de F2', () => {
+    it('🔴 une écriture reçoit TOUJOURS un FAIT ou un ECHEC', async () => {
+        // Ne rien rendre laisserait la commande en vol côté agent jusqu'à
+        // `DELAI_ECRIRE` — trente secondes pendant lesquelles le fil d'écriture
+        // ne pousserait plus rien, et le compteur de dues ne bougerait pas.
+        const ecrivain = fauxEcrivain();
+        const serveur = creerServeur(fauxAdaptateur(), () => {}, { ecrivain });
+        const trame = decoder(
+            (await serveur.traiter(
+                encoder(
+                    TYPE_ECRIRE,
+                    7,
+                    { chemin: 'note.txt', position: 0, longueur: 3, premier: true, dernier: true },
+                    new Uint8Array([1, 2, 3]),
+                ),
+            ))!,
+        );
+        expect(trame.type).toBe(TYPE_FAIT);
+        expect(trame.correlation).toBe(7);
+        expect(ecrivain.vus).toEqual(['ecrire note.txt @0 +3 true/true']);
+    });
+
+    it('une création reçoit un FAIT', async () => {
+        const ecrivain = fauxEcrivain();
+        const serveur = creerServeur(fauxAdaptateur(), () => {}, { ecrivain });
+        const trame = decoder(
+            (await serveur.traiter(encoder(TYPE_CREER, 8, { chemin: 'dossier', repertoire: true })))!,
+        );
+        expect(trame.type).toBe(TYPE_FAIT);
+        expect(ecrivain.vus).toEqual(['creer dossier true']);
+    });
+
+    it('🔴 LE CODE D’ÉCHEC DE L’ÉCRIVAIN TRAVERSE, il n’est pas écrasé', async () => {
+        // Rendre `interne` pour tout détruirait la cause à l'émission —
+        // exactement le défaut de `web/index.js:669`, qui émettait
+        // `JSON.stringify(e)` et rendait `"{}"` pour toute `Error`.
+        const ecrivain = fauxEcrivain({
+            ecrire: async () => {
+                throw new EchecFichiers('casse-ambigue', 'homonyme');
+            },
+        });
+        const serveur = creerServeur(fauxAdaptateur(), () => {}, { ecrivain });
+        const trame = decoder(
+            (await serveur.traiter(
+                encoder(TYPE_ECRIRE, 9, {
+                    chemin: 'a.txt',
+                    position: 0,
+                    longueur: 0,
+                    premier: true,
+                    dernier: true,
+                }),
+            ))!,
+        );
+        expect(trame.type).toBe(TYPE_ECHEC);
+        expect(parseEchec(trame.entete).code).toBe('casse-ambigue');
+    });
+
+    it('🔴 sans écrivain, l’écriture est refusée en `protege-en-ecriture`', async () => {
+        // PAS `interne` : « ce lecteur est en lecture seule » et « le lecteur
+        // est en panne » n'appellent pas le même geste, et c'est tout l'objet
+        // de `CodeEchec`.
+        const serveur = creerServeur(fauxAdaptateur());
+        const trame = decoder(
+            (await serveur.traiter(
+                encoder(TYPE_ECRIRE, 1, {
+                    chemin: 'a.txt',
+                    position: 0,
+                    longueur: 0,
+                    premier: true,
+                    dernier: true,
+                }),
+            ))!,
+        );
+        expect(parseEchec(trame.entete).code).toBe('protege-en-ecriture');
+    });
+
+    it('🔴 refuse une trame dont l’en-tête et la charge se contredisent', async () => {
+        // Écrire une quantité d'octets que l'émetteur ne croyait pas envoyer
+        // est le genre de divergence qu'aucun contrôle en aval ne rattrape :
+        // seul un condensat le dirait.
+        const ecrivain = fauxEcrivain();
+        const serveur = creerServeur(fauxAdaptateur(), () => {}, { ecrivain });
+        const trame = decoder(
+            (await serveur.traiter(
+                encoder(
+                    TYPE_ECRIRE,
+                    2,
+                    { chemin: 'a.txt', position: 0, longueur: 99, premier: true, dernier: true },
+                    new Uint8Array([1, 2, 3]),
+                ),
+            ))!,
+        );
+        expect(trame.type).toBe(TYPE_ECHEC);
+        // RIEN ne doit avoir été écrit : le refus vient AVANT l'écrivain.
+        expect(ecrivain.vus).toEqual([]);
+    });
+});
+
+describe('la dénonciation d’un échec d’écriture', () => {
+    it('🔴 NOMME le fichier et la cause à la page-shell', async () => {
+        // 🔴 Le navigateur est le SEUL à connaître la cause, et il n'a personne
+        // à qui la dire : le code traverse bien le fil, mais il n'atteint
+        // AUCUNE application Windows — le handle est refermé depuis longtemps.
+        // Ce rappel est le chemin le plus court vers la seule personne que cela
+        // concerne.
+        const vus: Array<[string, string]> = [];
+        const ecrivain = fauxEcrivain({
+            ecrire: async () => {
+                throw new EchecFichiers('disque-plein', 'plus de place');
+            },
+        });
+        const serveur = creerServeur(fauxAdaptateur(), () => {}, {
+            ecrivain,
+            onEchecEcriture: (chemin, code) => vus.push([chemin, code]),
+        });
+        await serveur.traiter(
+            encoder(TYPE_ECRIRE, 4, {
+                chemin: 'dossier/rapport.docx',
+                position: 0,
+                longueur: 0,
+                premier: true,
+                dernier: true,
+            }),
+        );
+        expect(vus).toEqual([['dossier/rapport.docx', 'disque-plein']]);
+    });
+
+    it('ne nomme RIEN quand l’en-tête lui-même est illisible', async () => {
+        // Deviner un chemin qu'on n'a pas lu serait pire que se taire : la
+        // page-shell nommerait un fichier au hasard.
+        const vus: unknown[] = [];
+        const serveur = creerServeur(fauxAdaptateur(), () => {}, {
+            ecrivain: fauxEcrivain(),
+            onEchecEcriture: (...a) => vus.push(a),
+        });
+        await serveur.traiter(encoder(TYPE_ECRIRE, 5, { rien: 'du tout' }));
+        expect(vus).toEqual([]);
+    });
+});
+
+describe('l’ANNONCE des écritures dues', () => {
+    it('🔴 ne répond RIEN, et appelle le rappel injecté', async () => {
+        // Rendre une trame ferait recevoir au pont une réponse à une
+        // corrélation qu'il ne connaît pas, et il la jetterait en `debug!` —
+        // SILENCIEUSEMENT. C'est le bras catch-all payé quatre fois sur
+        // `capteur/pont_media.rs`.
+        const vues: unknown[] = [];
+        const serveur = creerServeur(fauxAdaptateur(), () => {}, {
+            onDues: (dues) => vues.push(dues),
+        });
+        const reponse = await serveur.traiter(
+            encoder(TYPE_DUES, 0, { dues: [{ chemin: 'note.txt', octets: 12 }] }),
+        );
+        expect(reponse).toBeNull();
+        expect(vues).toEqual([[{ chemin: 'note.txt', octets: 12 }]]);
+    });
+
+    it('une annonce illisible est journalisée, jamais fatale', async () => {
+        const messages: string[] = [];
+        const serveur = creerServeur(fauxAdaptateur(), (m) => messages.push(m), {
+            onDues: () => {
+                throw new Error('jamais atteint');
+            },
+        });
+        expect(await serveur.traiter(encoder(TYPE_DUES, 0, { dues: 'pas un tableau' }))).toBeNull();
+        expect(messages.join(' ')).toMatch(/dues/);
+    });
+
+    it('un FAIT reçu par le navigateur est IGNORÉ : il ne demande rien', async () => {
+        const messages: string[] = [];
+        const serveur = creerServeur(fauxAdaptateur(), (m) => messages.push(m));
+        expect(await serveur.traiter(encoder(TYPE_FAIT, 3, {}))).toBeNull();
+        expect(messages.join(' ')).toMatch(/ne demande rien/);
     });
 });
