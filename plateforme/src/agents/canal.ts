@@ -367,7 +367,7 @@ export function servirLeCanalAgent(wss: WebSocketServer, options: OptionsCanal):
                     // base est momentanément indisponible, et une promesse
                     // rejetée sans `catch` abattrait tout le process Node.
                     void reemettreLesInstallations(
-                        { base, socket, vmId: verdict.vmId, envoyer: (brut) => envoyer(socket, brut) },
+                        { base, vmId: verdict.vmId, envoyer: (brut) => envoyer(socket, brut) },
                     ).catch((cause) => {
                         console.error(
                             `réémission des installations impossible pour la VM `

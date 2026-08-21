@@ -211,8 +211,9 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         secretJeton: config.secretJeton,
         origineClient: config.origineClient,
         maintenant: Date.now,
-        // ⚠️ SEUL `servirApplications` LE LIT ; les trois autres routeurs
-        // l'ignorent. Il est posé ici plutôt que passé à part pour que le
+        // ⚠️ `servirApplications` ET `servirInstallation` LE LISENT — le
+        // premier pour lancer une application, le second pour pousser un ordre
+        // d'installation à une VM déjà connectée. Les autres l'ignorent. Il est posé ici plutôt que passé à part pour que le
         // chaînage reste une seule ligne par routeur, et parce qu'un objet de
         // dépendances par routeur ferait quatre listes à tenir à jour.
         registre: registreAgents,
@@ -232,6 +233,10 @@ export async function demarrerServeur(config: Config, base: Pilote): Promise<Ser
         // des icônes à la place des tranches sans qu'aucun contrôle ne
         // bronche.**
         tranches: magasinTranches,
+        // ⚠️ `registre` EST DÉJÀ PLUS HAUT, et il sert désormais à DEUX
+        // routeurs : `servirApplications` (le lancement) et `servirInstallation`
+        // (la poussée de l'ordre). Le commentaire qui le disait lu par un seul
+        // a été corrigé à sa place.
     };
 
     /// Essaie les routeurs dans l'ordre, et rend `false` si aucun n'a servi.

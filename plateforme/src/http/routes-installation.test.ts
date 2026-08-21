@@ -22,6 +22,7 @@ import { Readable } from 'node:stream';
 import { MOTEUR } from '../base/harnais';
 import type { Pilote } from '../base/pilote';
 import { ouvrirMagasinTranches, type MagasinTranches } from '../apps/magasin-tranches';
+import { RegistreAgents } from '../agents/registre';
 import { enroler, marquerVu } from '../depot/agent';
 import { creer as creerInstallation, terminer, avancer } from '../depot/installation';
 import { creer as creerTeleversement, sceller } from '../depot/televersement';
@@ -61,6 +62,13 @@ async function servir(nom: string, origineClient?: string): Promise<string> {
             secretJeton: 'un-secret-de-plateforme-de-quarante-octets',
             origineClient,
             tranches: tranches!,
+            // ⚠️ UN REGISTRE VIDE, ET C'EST LE CAS QUI COMPTE ICI : aucun socket
+            // n'est inscrit, donc `pousser` rend `false` et l'ordre reste
+            // `en_attente` en base — exactement le filet que
+            // `reemettreLesInstallations` livrera au prochain enrôlement. Ces
+            // tests éprouvent la ROUTE, jamais la livraison, qui demande un
+            // socket vivant (recette, §5quater).
+            registre: new RegistreAgents(),
             maintenant: () => maintenant,
         }));
     return m.url;

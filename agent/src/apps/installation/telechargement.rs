@@ -47,10 +47,14 @@ const TAMPON: usize = 64 * 1024;
 pub enum Refus {
     /// L'URL n'est pas une URL `http://` que ce client sache lire.
     ///
-    /// 🔴 `https://` TOMBE ICI, ET C'EST UN REFUS NOMMÉ. **Ce n'est PAS une
-    /// régression de G3** : le canal `/agent` lui-même ne parle que `ws://`
-    /// aujourd'hui, et l'URL de téléchargement se dérive de `SIGNALING_URL`
-    /// exactement comme `url_du_canal` dérive la sienne.
+    /// 🔴 `https://` ET `wss://` TOMBENT ICI, ET C'EST UN REFUS NOMMÉ — pas un
+    /// « schéma inconnu ». Le canal `/agent` ne parle que `ws://` aujourd'hui,
+    /// et l'URL de téléchargement se dérive de `SIGNALING_URL` exactement comme
+    /// `url_du_canal` dérive la sienne : le jour où la plateforme passera en
+    /// TLS, c'est ce refus-là qui le dira, et non une erreur d'analyse.
+    ///
+    /// ✅ `ws://` EST ACCEPTÉ, LUI, depuis que la recette a montré que **tout**
+    /// ordre d'installation était refusé sans cela.
     Url(String),
     /// La connexion n'a pas pu s'ouvrir, ou s'est rompue au-delà du budget.
     Reseau(String),
@@ -101,14 +105,37 @@ fn decouper(url: &str) -> Result<Cible, Refus> {
     // URL malformée est ce qui permet au journal de dire « cet agent ne parle
     // pas TLS » plutôt que « URL illisible », qui enverrait chercher une
     // coquille là où il y a une capacité manquante.
-    if let Some(reste) = url.strip_prefix("https://") {
-        let _ = reste;
+    //
+    // ⚠️ `wss://` TOMBE ICI AUSSI, et pour la même raison : l'URL de
+    // téléchargement se dérive de celle du canal, qui est un schéma WebSocket.
+    // Un `wss://` refusé « schéma non reconnu » enverrait chercher une coquille
+    // là où il y a, là encore, une capacité manquante.
+    if url.starts_with("https://") || url.starts_with("wss://") {
         return Err(Refus::Url(format!(
-            "https non pris en charge : cet agent ne parle pas TLS ({url})"
+            "TLS non pris en charge : cet agent ne parle ni https ni wss ({url})"
         )));
     }
+    // 🔴 `ws://` EST ACCEPTÉ AU MÊME TITRE QUE `http://`, ET C'EST LA RECETTE
+    // QUI L'A EXIGÉ. L'URL de l'installeur est **dérivée, pas configurée** :
+    // `canal-apps.ts` envoie le chemin relatif `/televersement/:id/contenu`, et
+    // l'agent le résout contre l'adresse de son PROPRE canal — laquelle est un
+    // `ws://`, puisque c'est un WebSocket. Le client n'acceptant que `http://`,
+    // **tout ordre d'installation était refusé** sur `schéma non reconnu :
+    // ws://…`, mesuré sur la chaîne réelle.
+    //
+    // ⚠️ CE FICHIER PORTAIT DÉJÀ LE FAIT SANS PORTER LE REMÈDE : la doc de
+    // `Refus::Url` dit, mot pour mot, que « le canal `/agent` lui-même ne parle
+    // que `ws://` ». La lecture était juste et le code ne la suivait pas — un
+    // écart qu'aucun test d'hôte ne pouvait voir, tous construisant leurs URL
+    // en `http://` contre un `TcpListener` local.
+    //
+    // ✅ C'EST AUSSI LE PRÉCÉDENT DE G2, ET IL EST RÉEMPLOYÉ PLUTÔT QUE
+    // RÉINVENTÉ : `apps/icone/televersement.rs` accepte exactement ces deux
+    // schémas, par le même `strip_prefix(…).or_else(…)`. Deux modules qui
+    // dérivent la même adresse doivent en accepter la même forme.
     let reste = url
         .strip_prefix("http://")
+        .or_else(|| url.strip_prefix("ws://"))
         .ok_or_else(|| Refus::Url(format!("schéma non reconnu : {url}")))?;
     let (autorite, chemin) = match reste.find('/') {
         Some(i) => (&reste[..i], &reste[i..]),
