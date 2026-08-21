@@ -30,10 +30,20 @@
 //! **jamais** : le défaut exact de l'ancien pont, dont le cache de données
 //! n'avait aucun TTL (`src/file.js:232-241`).
 //!
-//! Conséquence à écrire plutôt qu'à découvrir : **le critère ROUGE de F5 (« le
-//! fichier apparaît SANS `Rafraichir` ») sera par construction rouge tant que
-//! F5 n'existe pas.** C'est cohérent, et le taire ferait lire à F5 un vert qui
-//! ne veut rien dire.
+//! ✅ **CE PRONOSTIC A ÉTÉ VÉRIFIÉ, ET F5 EXISTE (21 août 2026).** *Ces lignes
+//! annonçaient : « le critère ROUGE de F5 — le fichier apparaît SANS
+//! `Rafraichir` — sera par construction rouge tant que F5 n'existe pas ».*
+//! **Il l'était, et c'est mesuré** : sur le binaire de F5 avec `PONT_CACHE=0`,
+//! qui reproduit exactement le produit d'avant, le fichier ajouté côté poste
+//! local apparaît **sans** `Rafraichir` — 2 exécutions. Avec le cache armé, il
+//! n'apparaît **qu'après** — 3 exécutions.
+//!
+//! ⚠️ **LE CACHE VIT DÉSORMAIS DANS [`crate::pont::cache`], PAS ICI**, et la
+//! distinction que ce module énonce reste entière : une [`Session`] meurt avec
+//! `EndDirectoryEnumeration`, le cache lui survit et n'est indexé que par
+//! CHEMIN. **`preparer` court à chaque chargement de session, y compris sur un
+//! succès de cache** — celui-ci mémorise les entrées BRUTES, précisément pour
+//! qu'un `dir *.txt` n'empoisonne pas le `dir` suivant.
 
 use std::cmp::Ordering;
 

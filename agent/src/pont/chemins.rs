@@ -22,8 +22,12 @@
 //! et la donnaient comme appartenant « à F3 ou plus tard ».)* F3 livre
 //! `client/src/fichiers/noms.ts`, qui **énumère le parent à CHAQUE
 //! résolution, SANS AUCUN CACHE** — un cache que rien n'invalide est le défaut
-//! de l'ancien pont (`src/file.js`, cache SANS TTL), et le seul moyen de le
-//! vider, `Rafraichir`, est un livrable de **F5**.
+//! de l'ancien pont (`src/file.js`, cache SANS TTL). ✅ **`Rafraichir` EST
+//! LIVRÉ DEPUIS F5** (21 août 2026) : un bouton de la page-shell vide le cache
+//! d'énumération du pont **et** le cache négatif de ProjFS.
+//! ⚠️ **`noms.ts` N'EN PROFITE PAS, et c'est à dire** : il n'a toujours aucun
+//! cache, donc rien à vider. Le `Rafraichir` de F5 vide le cache
+//! d'ÉNUMÉRATION, qui est un autre objet.
 //!
 //! ⚠️ **CE MODULE-CI N'A PAS CHANGÉ POUR AUTANT, et c'est délibéré** : il
 //! conserve toujours la casse telle que ProjFS l'a livrée. C'est le NAVIGATEUR

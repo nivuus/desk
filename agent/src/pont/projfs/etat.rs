@@ -177,7 +177,12 @@ pub struct Etat {
     /// est un mécanisme que le produit n'exerce jamais, donc qu'on ne verra
     /// jamais rouge. Collecter toujours coûte trois opérations atomiques sur un
     /// chemin qui fait déjà un `HashMap::remove` sous un `Mutex`, et fait que
-    /// F5 et ses successeurs exercent l'histogramme sans le savoir.
+    /// F5 exerce l'histogramme sans le savoir.
+    ///
+    /// ⚠️ *Ces lignes disaient « F5 **et ses successeurs** ».* **F5 n'a pas de
+    /// successeur** : il est le dernier sous-bloc du sous-projet ③. Le pari
+    /// tient quand même — F5 l'a bien exercé sans le savoir —, mais il n'y a
+    /// personne derrière pour le prolonger.
     ///
     /// ⚠️ **Ici et non dans un statique**, comme [`Etat::compteurs`] et pour la
     /// même raison : il doit mourir avec la racine, sans quoi un pont relancé
@@ -350,8 +355,18 @@ impl Etat {
     ///
     /// **Ce que le chiffre dit exactement** : les octets et les entrées que
     /// CETTE exécution du pont a hydratés. Pas ce que la racine porte
-    /// cumulativement d'exécutions antérieures. La mesure de fond appartient à
-    /// F5, avec la politique d'éviction qu'elle servira.
+    /// cumulativement d'exécutions antérieures.
+    ///
+    /// ⚠️ **CETTE PHRASE ÉTAIT À MOITIÉ FAUSSE, ET C'EST LA MOITIÉ DANGEREUSE
+    /// QUI RESTE VRAIE.** *Elle disait : « la mesure de fond appartient à F5,
+    /// avec la politique d'éviction qu'elle servira ».* **La mesure est
+    /// arrivée** — la porte P1 de F5 a relevé les trois candidates, et retenu
+    /// `GetDiskFreeSpaceEx` (confondeur **non levable** : tout le reste de la
+    /// VM y compte) plus la somme des longueurs des fichiers hydratés, lue
+    /// **sans aucune traversée du pont**. ⛔ **LA POLITIQUE D'ÉVICTION N'EST
+    /// PAS ARRIVÉE**, `PrjDeleteFile` n'a toujours aucun appelant, et **③ se
+    /// ferme derrière F5 sans lui en laisser un**. *Corriger cette phrase d'un
+    /// seul mot ferait croire que l'éviction est venue.*
     pub fn tracer_hydratation(&self) {
         tracing::info!(
             octets = self.octets_hydrates.load(Ordering::Relaxed),

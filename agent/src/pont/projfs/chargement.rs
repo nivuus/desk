@@ -238,11 +238,19 @@ pub struct ProjFs {
     pub allouer_tampon_aligne: AllouerTamponAligne,
     /// ⚠️ **Chargée sans appelant, DÉLIBÉRÉMENT.** Elle vide le cache négatif
     /// de ProjFS, ce qu'aucun chemin de F1 ne demande : le seul moyen de le
-    /// solliciter est `Rafraichir`, un livrable de **F5**. Elle est résolue
-    /// dès maintenant pour que F5 n'ait pas à rouvrir cette couche — et parce
-    /// qu'une entrée absente doit être découverte au CHARGEMENT, avec un
-    /// message qui la nomme, jamais au premier appel.
-    #[allow(dead_code)]
+    /// solliciter est `Rafraichir`. Elle est résolue dès maintenant pour que
+    /// F5 n'ait pas à rouvrir cette couche — et parce qu'une entrée absente
+    /// doit être découverte au CHARGEMENT, avec un message qui la nomme,
+    /// jamais au premier appel.
+    ///
+    /// ✅ **ELLE A SON PREMIER APPELANT DE PRODUCTION DEPUIS F5**
+    /// (`service::annonces::rafraichir`), et le pari de F1 a donc tenu : la
+    /// couche n'a pas été rouverte. **R7 se referme d'UNE entrée sur cinq** —
+    /// pas « R7 est fermé ».
+    /// 🔵 **Et son `totalentrynumber` est TRACÉ** : le cache négatif est
+    /// devenu OBSERVABLE pour la première fois. Relevé, 3 exécutions :
+    /// `cache_negatif_purge=1`. F4 n'avait pu en mesurer qu'un différentiel
+    /// **nul**, faute qu'un sondage atteigne le fournisseur.
     pub vider_cache_negatif: ViderCacheNegatif,
     pub completer_commande: CompleterCommande,
     /// ⚠️ **Chargée sans appelant, DÉLIBÉRÉMENT**, pour la même raison :
@@ -251,6 +259,11 @@ pub struct ProjFs {
     /// sans mesure serait exactement le geste que ce dépôt reproche à ses
     /// constantes non calibrées ; la mesure appartient à F5, et l'entrée est
     /// prête pour elle.
+    ///
+    /// ⛔ **F5 A MESURÉ, ET N'A POSÉ AUCUNE POLITIQUE** — c'était sa décision
+    /// D9, écrite d'avance. **Cette entrée reste donc sans appelant, et le
+    /// sous-projet ③ se ferme derrière elle** : il n'y aura pas de F6. Quatre
+    /// des cinq entrées ProjFS sans jumeau `PRJ_*_CB` le restent.
     #[allow(dead_code)]
     pub supprimer_fichier: SupprimerFichier,
     pub comparer_noms: ComparerNoms,

@@ -117,8 +117,9 @@ use crate::pont::transport::VersNavigateur;
 /// **Aucune politique d'éviction en F1** : `PrjDeleteFile` est chargée
 /// (tâche 12) pour que la politique, quand elle viendra, n'ait pas à rouvrir la
 /// couche. Poser une politique sans mesure serait exactement le geste que ce
-/// dépôt reproche à ses constantes non calibrées. **La mesure appartient à F5,
-/// l'instrument est ici.**
+/// dépôt reproche à ses constantes non calibrées. ✅ **LA MESURE EST ARRIVÉE
+/// EN F5** (porte P1), ⛔ **LA POLITIQUE D'ÉVICTION NON** : `PrjDeleteFile`
+/// reste chargée et sans appelant, et le sous-projet ③ se ferme derrière F5.
 pub const PERIODE_HYDRATATION: std::time::Duration = std::time::Duration::from_secs(60);
 
 /// Le contexte de virtualisation, partagé entre les fils de rappel, le fil du
