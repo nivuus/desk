@@ -84,7 +84,7 @@ const CHEMIN_SIGNAL = '/signal';
 /// `garde.verifier` » —, si bien que `JSON.parse` sur 100 Mio est une
 /// allocation puis un pic CPU, par socket et par trame, offerts à quiconque
 /// atteint le port. Et le canal `/agent` est la SECONDE porte anonyme : le
-/// borner sur `/` seulement laisserait la moitié du problème entière.
+/// borner sur `/signal` seulement laisserait la moitié du problème entière.
 ///
 /// Avec cette option, `ws` ferme le socket en 1009 (« message trop grand »)
 /// SANS JAMAIS transmettre la trame au gestionnaire `message`.
