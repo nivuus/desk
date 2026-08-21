@@ -271,6 +271,7 @@ describe('le canal, CÂBLÉ dans le service entier', () => {
             proxyDeConfiance: new Set(),
             repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
             repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'g3-tranches-')), 'televersements'),
+            auth: 'pomerium',
         };
         base = await baseNeuve('canal-service');
         await enrolerUneVm(base, 'v-1');

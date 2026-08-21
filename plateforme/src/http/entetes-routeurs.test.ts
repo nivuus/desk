@@ -42,6 +42,14 @@ const CONFIG: Config = {
     proxyDeConfiance: new Set(),
     repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
     repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'g3-tranches-')), 'televersements'),
+    // ⚠️ CE FICHIER PORTE UN TEST DE ROUTE DE MOT DE PASSE (« (6) » plus bas,
+    // `/auth/connexion`) DANS LE MÊME `CONFIG` PARTAGÉ que les sept autres.
+    // Laissé à `pomerium` ICI, à dessein : la tâche 1 ne câble `auth` dans
+    // AUCUN routeur, donc rien ne dépend encore de cette valeur. La tâche 3,
+    // qui gate les routes de mot de passe sur le mode, devra trancher si ce
+    // test (6) a besoin de son propre `CONFIG` à `motdepasse` plutôt que de
+    // partager celui-ci.
+    auth: 'pomerium',
 };
 
 let base: Pilote | undefined;

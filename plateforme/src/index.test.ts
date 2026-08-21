@@ -58,6 +58,7 @@ describe('démarrage du service', () => {
             proxyDeConfiance: new Set(),
             repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
             repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'g3-tranches-')), 'televersements'),
+            auth: 'pomerium',
         };
         // Deux assertions DISTINCTES, et la seconde est le point de ce test.
         await expect(demarrer(config)).rejects.toThrow(/base/i);
@@ -93,6 +94,7 @@ describe('démarrage du service', () => {
             proxyDeConfiance: new Set(),
             repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
             repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'g3-tranches-')), 'televersements'),
+            auth: 'pomerium',
         });
         expect(service.port).toBeGreaterThan(0);
         await expect(connecterA(service.port)).resolves.toBeUndefined();

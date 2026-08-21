@@ -37,6 +37,12 @@ function config(origineClient?: string): Config {
         proxyDeConfiance: new Set(),
         repertoireIcones: join(mkdtempSync(join(tmpdir(), 'g2-icones-')), 'icones'),
         repertoireTeleversements: join(mkdtempSync(join(tmpdir(), 'g3-tranches-')), 'televersements'),
+        // ⚠️ CE FICHIER ÉPROUVE LES DEUX ROUTES DE MOT DE PASSE ELLES-MÊMES.
+        // Laissé à `pomerium` ICI parce que la tâche 1 ne câble `auth` dans
+        // AUCUN routeur — donc cette valeur est encore sans effet. La tâche 3
+        // devra revoir ce fichier en premier : c'est probablement lui qui
+        // reçoit `auth: 'motdepasse'` une fois le gate posé.
+        auth: 'pomerium',
     };
 }
 

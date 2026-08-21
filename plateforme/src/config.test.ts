@@ -27,6 +27,10 @@ describe('lireConfig', () => {
             base: 'sqlite',
             urlBase: ':memory:',
             secretJeton: SECRET,
+            // Absente, donc le défaut : voir la description ci-dessous. Ce
+            // `toEqual` compare l'objet ENTIER — un champ ajouté à `Config`
+            // sans être ajouté ici le rendrait rouge, et c'est voulu.
+            auth: 'pomerium',
             // Absente, donc `undefined` : aucun en-tête CORS ne sera émis, et
             // le refus est le défaut.
             origineClient: undefined,
@@ -158,5 +162,98 @@ describe('lireConfig', () => {
         // tout pair dont l'adresse est vide — c'est-à-dire `ADRESSE_INCONNUE`
         // s'il venait à valoir `''`.
         expect(c.proxyDeConfiance.has('')).toBe(false);
+    });
+});
+
+describe('PLATEFORME_AUTH', () => {
+    /// Le montage minimal — copié du haut de ce fichier, jamais réinventé.
+    ///
+    /// ⚠️ ÉCART ASSUMÉ AVEC LE BRIEF : celui-ci portait `'x'.repeat(32)` en
+    /// littéral, ce que `securite/secrets.test.ts` dénonce — il balaie toute
+    /// AFFECTATION LITTÉRALE de `PLATEFORME_SECRET_JETON` dans un fichier
+    /// versionné, et une chaîne citée en est une, peu importe qu'elle soit
+    /// triviale. `SECRET`, la constante déjà déclarée en tête de ce fichier,
+    /// est un IDENTIFIANT — la même convention que `BASE` juste plus bas,
+    /// exemptée nommément par `inoffensive()`.
+    const base = {
+        PLATEFORME_HOTE: '127.0.0.1',
+        PLATEFORME_SECRET_JETON: SECRET,
+    };
+
+    it('vaut pomerium par défaut', () => {
+        expect(lireConfig({ ...base }).auth).toBe('pomerium');
+    });
+
+    it('accepte motdepasse', () => {
+        expect(lireConfig({ ...base, PLATEFORME_AUTH: 'motdepasse' }).auth).toBe('motdepasse');
+    });
+
+    it('retombe sur le défaut quand la valeur est VIDE', () => {
+        expect(lireConfig({ ...base, PLATEFORME_AUTH: '' }).auth).toBe('pomerium');
+    });
+
+    // 🔴 LA ROUGE DU CRITÈRE ④ : une coquille de casse ne doit PAS retomber
+    // sur le défaut, sinon le mode mot de passe tournerait sous le nom du
+    // mode Pomerium — et le second sens est une OUVERTURE.
+    it('LÈVE sur une valeur inconnue, jamais un repli', () => {
+        expect(() => lireConfig({ ...base, PLATEFORME_AUTH: 'Pomerium' })).toThrow(
+            /PLATEFORME_AUTH/,
+        );
+    });
+});
+
+describe("la garde d'écoute du mode pomerium", () => {
+    // Même écart assumé que ci-dessus : `SECRET` plutôt que le littéral du
+    // brief, pour ne pas déclencher `securite/secrets.test.ts`.
+    const base = { PLATEFORME_SECRET_JETON: SECRET };
+
+    // 🔴 LA ROUGE DU CRITÈRE ⑤, et elle décrit le montage RÉEL du
+    // 21 août 2026 : le service tourne aujourd'hui sur 0.0.0.0:8080.
+    it('REFUSE 0.0.0.0 en mode pomerium', () => {
+        expect(() => lireConfig({ ...base, PLATEFORME_HOTE: '0.0.0.0' })).toThrow(
+            /écoute universelle/,
+        );
+    });
+
+    it('REFUSE :: en mode pomerium', () => {
+        expect(() => lireConfig({ ...base, PLATEFORME_HOTE: '::' })).toThrow(
+            /écoute universelle/,
+        );
+    });
+
+    // ⚠️ ARBITRAGE : le brief propose `ECOUTES_UNIVERSELLES` avec QUATRE
+    // membres (`0.0.0.0`, `::`, `[::]`, `*`) mais ne fait tester que les deux
+    // ci-dessus. Un membre non éprouvé est exactement « un contrôle qu'on n'a
+    // jamais vu rouge » (§ méthode de mesure, CLAUDE.md) : les deux tests
+    // suivants ferment ce trou plutôt que de retirer les membres du set.
+    it('REFUSE [::] en mode pomerium', () => {
+        expect(() => lireConfig({ ...base, PLATEFORME_HOTE: '[::]' })).toThrow(
+            /écoute universelle/,
+        );
+    });
+
+    it('REFUSE * en mode pomerium', () => {
+        expect(() => lireConfig({ ...base, PLATEFORME_HOTE: '*' })).toThrow(
+            /écoute universelle/,
+        );
+    });
+
+    // La garde est liée au MODE, pas universelle : sans ce test, on ne saurait
+    // pas si elle refuse 0.0.0.0 ou si elle refuse toujours.
+    it('LAISSE PASSER 0.0.0.0 en mode motdepasse', () => {
+        const c = lireConfig({ ...base, PLATEFORME_HOTE: '0.0.0.0', PLATEFORME_AUTH: 'motdepasse' });
+        expect(c.hote).toBe('0.0.0.0');
+    });
+
+    // Le déploiement Docker pose un NOM DE SERVICE, pas une adresse : la garde
+    // doit le laisser passer, sinon elle casse le montage le plus sûr des trois.
+    it('LAISSE PASSER un nom de service de réseau interne', () => {
+        const c = lireConfig({ ...base, PLATEFORME_HOTE: 'plateforme' });
+        expect(c.hote).toBe('plateforme');
+    });
+
+    // Le montage retenu par la spec § 7.1.
+    it("LAISSE PASSER l'adresse du pont libvirt", () => {
+        expect(lireConfig({ ...base, PLATEFORME_HOTE: '192.168.3.1' }).hote).toBe('192.168.3.1');
     });
 });
