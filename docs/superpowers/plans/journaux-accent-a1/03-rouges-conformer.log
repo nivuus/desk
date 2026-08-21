@@ -1,0 +1,465 @@
+=== A1 — LES ROUGES DE conformer (tache 5) — LE SEUL REMPART ===
+Date : 21 aout 2026. Harnais §6.4. client/src/accent.ts est NEUF : l'etape 7
+rend « ?? », et la preuve de restauration est le sha256 de l'etape 6.
+⚠️ Reporter VERBOSE : le reporter par defaut de vitest DEDUPLIQUE les echecs
+   et n'en montre qu'UN. Un releve qui doit dire QUELLE assertion a rougi ne
+   peut pas s'en contenter.
+⚠️ La commande de controle est ecrite LITTERALEMENT, jamais passee par une
+   variable : ZSH NE DECOUPE PAS LES VARIABLES EN MOTS, et une premiere passe
+   de ces rouges a rendu « Aucun fichier ou dossier de ce nom » avec la
+   commande ENTIERE pour nom de fichier — c'est-a-dire UN CONTROLE QUI N'A
+   PAS TOURNE, code 127, indiscernable d'un echec si l'on ne lit pas.
+
+### ROUGE 0 — ne mute rien. Le harnais DOIT la REFUSER.
+───────────────────────────────────────────────────────────────
+ROUGE « c0-ne-mute-rien »  sur  client/src/accent.ts
+1. copie nommée : /tmp/a1-rouge-c0-ne-mute-rien.orig   sha256(avant) = 3574800ae16a95c342bb2e56fa58c65824df9b82d47d964243f87fc4fea8b826
+2. mutation appliquée
+3. 🔴 DIFF VIDE — LE HARNAIS REFUSE CETTE ROUGE : elle ne mute RIEN.
+   (restauré ; rouge NON COMPTÉE)
+REFUSÉE
+
+### ROUGE C1 — 🔴 CELLE QUE LA SPEC EXIGE (critere ③) : ne plus juger la lisibilite
+───────────────────────────────────────────────────────────────
+ROUGE « c1-sans-lisibilite »  sur  client/src/accent.ts
+1. copie nommée : /tmp/a1-rouge-c1-sans-lisibilite.orig   sha256(avant) = 3574800ae16a95c342bb2e56fa58c65824df9b82d47d964243f87fc4fea8b826
+2. mutation appliquée
+3. diff NON VIDE (3 ligne(s)) ✅
+4. contrôle : npx --prefix client vitest run --root client --reporter=verbose client/src/accent.test.ts
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/client
+
+ × src/accent.test.ts > conformer > 🔴 un gris ILLISIBLE est REFUSÉ, et le thème reprend la main
+   → expected '#1e2229' to be '#7aa2f7' // Object.is equality
+ ✓ src/accent.test.ts > conformer > une couleur LISIBLE est rendue telle quelle
+ × src/accent.test.ts > conformer > une couleur lisible sur DEUX fonds sur trois est REFUSÉE
+   → expected '#5060a0' to be '#7aa2f7' // Object.is equality
+ ✓ src/accent.test.ts > conformer > une forme NON HEXADÉCIMALE est REFUSÉE, sans lever
+ ✓ src/accent.test.ts > conformer > une casse MAJUSCULE est acceptée après normalisation
+ × src/accent.test.ts > conformer > la couleur rendue n'est JAMAIS corrigée
+   → expected '#1e2229' to be '#7aa2f7' // Object.is equality
+ ✓ src/accent.test.ts > conformer > un fond mal formé fait REFUSER, il ne fait pas lever
+ ✓ src/accent.test.ts > conformer > une liste de fonds VIDE fait REFUSER
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/accent.test.ts > conformer > 🔴 un gris ILLISIBLE est REFUSÉ, et le thème reprend la main
+AssertionError: expected '#1e2229' to be '#7aa2f7' // Object.is equality
+
+Expected: "#7aa2f7"
+Received: "#1e2229"
+
+ ❯ src/accent.test.ts:29:69
+     27|         // `rapportDeContraste` lui-même, pas estimé.
+     28|         // 🔴 C'EST LA ROUGE QUE LA SPEC EXIGE (critère ③).
+     29|         expect(conformer('#1e2229', FONDS_SOMBRE, ACCENT_DU_THEME)).to…
+       |                                                                     ^
+     30|     });
+     31| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/accent.test.ts > conformer > une couleur lisible sur DEUX fonds sur trois est REFUSÉE
+AssertionError: expected '#5060a0' to be '#7aa2f7' // Object.is equality
+
+Expected: "#7aa2f7"
+Received: "#5060a0"
+
+ ❯ src/accent.test.ts:44:69
+     42|         // `#5060a0` vaut 3,263 / 3,013 / 2,740 contre les trois fonds…
+     43|         // le seuil de 3 sur les DEUX premiers et le rate sur le trois…
+     44|         expect(conformer('#5060a0', FONDS_SOMBRE, ACCENT_DU_THEME)).to…
+       |                                                                     ^
+     45|     });
+     46| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/accent.test.ts > conformer > la couleur rendue n'est JAMAIS corrigée
+AssertionError: expected '#1e2229' to be '#7aa2f7' // Object.is equality
+
+Expected: "#7aa2f7"
+Received: "#1e2229"
+
+ ❯ src/accent.test.ts:69:69
+     67|         // Ni la couleur acceptée ni le repli ne sont retouchés d'un b…
+     68|         expect(conformer('#fa8c16', FONDS_SOMBRE, ACCENT_DU_THEME)).to…
+     69|         expect(conformer('#1e2229', FONDS_SOMBRE, ACCENT_DU_THEME)).to…
+       |                                                                     ^
+     70|     });
+     71| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 5 passed (8)
+   Start at  10:17:38
+   Duration  598ms (transform 71ms, setup 0ms, collect 68ms, tests 20ms, environment 0ms, prepare 169ms)
+
+   (code de sortie du contrôle : 1)
+5. restauré DEPUIS LA COPIE
+6. sha256(après) = 3574800ae16a95c342bb2e56fa58c65824df9b82d47d964243f87fc4fea8b826
+   ✅ ÉGAL
+7. git status --porcelain : « ?? client/src/accent.ts » — le fichier est NEUF, pas encore commité : la preuve de restauration est le sha256 de l ETAPE 6 ✅
+
+### ROUGE C2 — retirer l'etape FORME : rapportDeContraste doit LEVER (E9)
+───────────────────────────────────────────────────────────────
+ROUGE « c2-sans-forme »  sur  client/src/accent.ts
+1. copie nommée : /tmp/a1-rouge-c2-sans-forme.orig   sha256(avant) = 3574800ae16a95c342bb2e56fa58c65824df9b82d47d964243f87fc4fea8b826
+2. mutation appliquée
+3. diff NON VIDE (1 ligne(s)) ✅
+4. contrôle : npx --prefix client vitest run --root client --reporter=verbose client/src/accent.test.ts
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/client
+
+ ✓ src/accent.test.ts > conformer > 🔴 un gris ILLISIBLE est REFUSÉ, et le thème reprend la main
+ ✓ src/accent.test.ts > conformer > une couleur LISIBLE est rendue telle quelle
+ ✓ src/accent.test.ts > conformer > une couleur lisible sur DEUX fonds sur trois est REFUSÉE
+ × src/accent.test.ts > conformer > une forme NON HEXADÉCIMALE est REFUSÉE, sans lever
+   → couleur non reconnue : « rgb(1,2,3) » (attendu #rgb ou #rrggbb)
+ ✓ src/accent.test.ts > conformer > une casse MAJUSCULE est acceptée après normalisation
+ ✓ src/accent.test.ts > conformer > la couleur rendue n'est JAMAIS corrigée
+ ✓ src/accent.test.ts > conformer > un fond mal formé fait REFUSER, il ne fait pas lever
+ ✓ src/accent.test.ts > conformer > une liste de fonds VIDE fait REFUSER
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/accent.test.ts > conformer > une forme NON HEXADÉCIMALE est REFUSÉE, sans lever
+Error: couleur non reconnue : « rgb(1,2,3) » (attendu #rgb ou #rrggbb)
+ ❯ luminanceRelative src/design/contraste.ts:48:15
+     46|             : brut.slice(0, 6);
+     47|     if (!/^[0-9a-fA-F]{6}$/.test(hex)) {
+     48|         throw new Error(`couleur non reconnue : « ${couleur} » (attend…
+       |               ^
+     49|     }
+     50|     const [r, v, b] = [0, 2, 4].map((i) => canalLineaire(parseInt(hex.…
+ ❯ Module.rapportDeContraste src/design/contraste.ts:56:21
+ ❯ Module.conformer src/accent.ts:94:13
+ ❯ src/accent.test.ts:53:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  10:18:00
+   Duration  593ms (transform 106ms, setup 0ms, collect 83ms, tests 16ms, environment 0ms, prepare 161ms)
+
+   (code de sortie du contrôle : 1)
+5. restauré DEPUIS LA COPIE
+6. sha256(après) = 3574800ae16a95c342bb2e56fa58c65824df9b82d47d964243f87fc4fea8b826
+   ✅ ÉGAL
+7. git status --porcelain : « ?? client/src/accent.ts » — le fichier est NEUF, pas encore commité : la preuve de restauration est le sha256 de l ETAPE 6 ✅
+
+### ROUGE C3 — accepter des le PREMIER fond qui passe (.some() au lieu de .every())
+───────────────────────────────────────────────────────────────
+ROUGE « c3-some »  sur  client/src/accent.ts
+1. copie nommée : /tmp/a1-rouge-c3-some.orig   sha256(avant) = 3574800ae16a95c342bb2e56fa58c65824df9b82d47d964243f87fc4fea8b826
+2. mutation appliquée
+3. diff NON VIDE (4 ligne(s)) ✅
+4. contrôle : npx --prefix client vitest run --root client --reporter=verbose client/src/accent.test.ts
+   → expected '#5060a0' to be '#7aa2f7' // Object.is equality
+ ✓ src/accent.test.ts > conformer > une forme NON HEXADÉCIMALE est REFUSÉE, sans lever
+ ✓ src/accent.test.ts > conformer > une casse MAJUSCULE est acceptée après normalisation
+ × src/accent.test.ts > conformer > la couleur rendue n'est JAMAIS corrigée
+   → expected '#1e2229' to be '#7aa2f7' // Object.is equality
+ × src/accent.test.ts > conformer > un fond mal formé fait REFUSER, il ne fait pas lever
+   → expected '#fa8c16' to be '#7aa2f7' // Object.is equality
+ ✓ src/accent.test.ts > conformer > une liste de fonds VIDE fait REFUSER
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/accent.test.ts > conformer > 🔴 un gris ILLISIBLE est REFUSÉ, et le thème reprend la main
+AssertionError: expected '#1e2229' to be '#7aa2f7' // Object.is equality
+
+Expected: "#7aa2f7"
+Received: "#1e2229"
+
+ ❯ src/accent.test.ts:29:69
+     27|         // `rapportDeContraste` lui-même, pas estimé.
+     28|         // 🔴 C'EST LA ROUGE QUE LA SPEC EXIGE (critère ③).
+     29|         expect(conformer('#1e2229', FONDS_SOMBRE, ACCENT_DU_THEME)).to…
+       |                                                                     ^
+     30|     });
+     31| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/accent.test.ts > conformer > une couleur lisible sur DEUX fonds sur trois est REFUSÉE
+AssertionError: expected '#5060a0' to be '#7aa2f7' // Object.is equality
+
+Expected: "#7aa2f7"
+Received: "#5060a0"
+
+ ❯ src/accent.test.ts:44:69
+     42|         // `#5060a0` vaut 3,263 / 3,013 / 2,740 contre les trois fonds…
+     43|         // le seuil de 3 sur les DEUX premiers et le rate sur le trois…
+     44|         expect(conformer('#5060a0', FONDS_SOMBRE, ACCENT_DU_THEME)).to…
+       |                                                                     ^
+     45|     });
+     46| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/accent.test.ts > conformer > la couleur rendue n'est JAMAIS corrigée
+AssertionError: expected '#1e2229' to be '#7aa2f7' // Object.is equality
+
+Expected: "#7aa2f7"
+Received: "#1e2229"
+
+ ❯ src/accent.test.ts:69:69
+     67|         // Ni la couleur acceptée ni le repli ne sont retouchés d'un b…
+     68|         expect(conformer('#fa8c16', FONDS_SOMBRE, ACCENT_DU_THEME)).to…
+     69|         expect(conformer('#1e2229', FONDS_SOMBRE, ACCENT_DU_THEME)).to…
+       |                                                                     ^
+     70|     });
+     71| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  src/accent.test.ts > conformer > un fond mal formé fait REFUSER, il ne fait pas lever
+AssertionError: expected '#fa8c16' to be '#7aa2f7' // Object.is equality
+
+Expected: "#7aa2f7"
+Received: "#fa8c16"
+
+ ❯ src/accent.test.ts:79:14
+     77|         // provoque en posant le token sur `document.body`.
+     78|         expect(conformer('#fa8c16', ['#0b0d10', '', '#1c2027'], ACCENT…
+     79|             .toBe(ACCENT_DU_THEME);
+       |              ^
+     80|     });
+     81| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 4 passed (8)
+   Start at  10:18:02
+   Duration  634ms (transform 131ms, setup 0ms, collect 97ms, tests 24ms, environment 0ms, prepare 130ms)
+
+   (code de sortie du contrôle : 1)
+5. restauré DEPUIS LA COPIE
+6. sha256(après) = 3574800ae16a95c342bb2e56fa58c65824df9b82d47d964243f87fc4fea8b826
+   ✅ ÉGAL
+7. git status --porcelain : « ?? client/src/accent.ts » — le fichier est NEUF, pas encore commité : la preuve de restauration est le sha256 de l ETAPE 6 ✅
+
+### ROUGE C4 — comparer sans MINUSCULER
+───────────────────────────────────────────────────────────────
+ROUGE « c4-sans-minuscule »  sur  client/src/accent.ts
+1. copie nommée : /tmp/a1-rouge-c4-sans-minuscule.orig   sha256(avant) = 3574800ae16a95c342bb2e56fa58c65824df9b82d47d964243f87fc4fea8b826
+2. mutation appliquée
+3. diff NON VIDE (2 ligne(s)) ✅
+4. contrôle : npx --prefix client vitest run --root client --reporter=verbose client/src/accent.test.ts
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/client
+
+ ✓ src/accent.test.ts > conformer > 🔴 un gris ILLISIBLE est REFUSÉ, et le thème reprend la main
+ ✓ src/accent.test.ts > conformer > une couleur LISIBLE est rendue telle quelle
+ ✓ src/accent.test.ts > conformer > une couleur lisible sur DEUX fonds sur trois est REFUSÉE
+ ✓ src/accent.test.ts > conformer > une forme NON HEXADÉCIMALE est REFUSÉE, sans lever
+ × src/accent.test.ts > conformer > une casse MAJUSCULE est acceptée après normalisation
+   → expected '#7aa2f7' to be '#fa8c16' // Object.is equality
+ ✓ src/accent.test.ts > conformer > la couleur rendue n'est JAMAIS corrigée
+ ✓ src/accent.test.ts > conformer > un fond mal formé fait REFUSER, il ne fait pas lever
+ ✓ src/accent.test.ts > conformer > une liste de fonds VIDE fait REFUSER
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/accent.test.ts > conformer > une casse MAJUSCULE est acceptée après normalisation
+AssertionError: expected '#7aa2f7' to be '#fa8c16' // Object.is equality
+
+Expected: "#fa8c16"
+Received: "#7aa2f7"
+
+ ❯ src/accent.test.ts:60:73
+     58|         // ROUGE : comparer sans minusculer ⟹ `#FA8C16` serait refusé …
+     59|         // motif de forme, alors que c'est la MÊME couleur.
+     60|         expect(conformer('  #FA8C16  ', FONDS_SOMBRE, ACCENT_DU_THEME)…
+       |                                                                         ^
+     61|     });
+     62| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  10:18:04
+   Duration  647ms (transform 118ms, setup 0ms, collect 89ms, tests 20ms, environment 0ms, prepare 138ms)
+
+   (code de sortie du contrôle : 1)
+5. restauré DEPUIS LA COPIE
+6. sha256(après) = 3574800ae16a95c342bb2e56fa58c65824df9b82d47d964243f87fc4fea8b826
+   ✅ ÉGAL
+7. git status --porcelain : « ?? client/src/accent.ts » — le fichier est NEUF, pas encore commité : la preuve de restauration est le sha256 de l ETAPE 6 ✅
+
+### ROUGE C5 — rendre TOUJOURS accentDuTheme : le mecanisme entier serait INERTE
+───────────────────────────────────────────────────────────────
+ROUGE « c5-toujours-repli »  sur  client/src/accent.ts
+1. copie nommée : /tmp/a1-rouge-c5-toujours-repli.orig   sha256(avant) = 3574800ae16a95c342bb2e56fa58c65824df9b82d47d964243f87fc4fea8b826
+2. mutation appliquée
+3. diff NON VIDE (2 ligne(s)) ✅
+4. contrôle : npx --prefix client vitest run --root client --reporter=verbose client/src/accent.test.ts
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/client
+
+ ✓ src/accent.test.ts > conformer > 🔴 un gris ILLISIBLE est REFUSÉ, et le thème reprend la main
+ × src/accent.test.ts > conformer > une couleur LISIBLE est rendue telle quelle
+   → expected '#7aa2f7' to be '#fa8c16' // Object.is equality
+ ✓ src/accent.test.ts > conformer > une couleur lisible sur DEUX fonds sur trois est REFUSÉE
+ ✓ src/accent.test.ts > conformer > une forme NON HEXADÉCIMALE est REFUSÉE, sans lever
+ × src/accent.test.ts > conformer > une casse MAJUSCULE est acceptée après normalisation
+   → expected '#7aa2f7' to be '#fa8c16' // Object.is equality
+ × src/accent.test.ts > conformer > la couleur rendue n'est JAMAIS corrigée
+   → expected '#7aa2f7' to be '#fa8c16' // Object.is equality
+ ✓ src/accent.test.ts > conformer > un fond mal formé fait REFUSER, il ne fait pas lever
+ ✓ src/accent.test.ts > conformer > une liste de fonds VIDE fait REFUSER
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/accent.test.ts > conformer > une couleur LISIBLE est rendue telle quelle
+AssertionError: expected '#7aa2f7' to be '#fa8c16' // Object.is equality
+
+Expected: "#fa8c16"
+Received: "#7aa2f7"
+
+ ❯ src/accent.test.ts:36:69
+     34|         // inerte. SANS CE TEST, le précédent serait tenu par une fonc…
+     35|         // refuse tout — c'est-à-dire par un produit mort.
+     36|         expect(conformer('#fa8c16', FONDS_SOMBRE, ACCENT_DU_THEME)).to…
+       |                                                                     ^
+     37|     });
+     38| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/accent.test.ts > conformer > une casse MAJUSCULE est acceptée après normalisation
+AssertionError: expected '#7aa2f7' to be '#fa8c16' // Object.is equality
+
+Expected: "#fa8c16"
+Received: "#7aa2f7"
+
+ ❯ src/accent.test.ts:60:73
+     58|         // ROUGE : comparer sans minusculer ⟹ `#FA8C16` serait refusé …
+     59|         // motif de forme, alors que c'est la MÊME couleur.
+     60|         expect(conformer('  #FA8C16  ', FONDS_SOMBRE, ACCENT_DU_THEME)…
+       |                                                                         ^
+     61|     });
+     62| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/accent.test.ts > conformer > la couleur rendue n'est JAMAIS corrigée
+AssertionError: expected '#7aa2f7' to be '#fa8c16' // Object.is equality
+
+Expected: "#fa8c16"
+Received: "#7aa2f7"
+
+ ❯ src/accent.test.ts:68:69
+     66|         // produirait une teinte que personne n'a choisie »).
+     67|         // Ni la couleur acceptée ni le repli ne sont retouchés d'un b…
+     68|         expect(conformer('#fa8c16', FONDS_SOMBRE, ACCENT_DU_THEME)).to…
+       |                                                                     ^
+     69|         expect(conformer('#1e2229', FONDS_SOMBRE, ACCENT_DU_THEME)).to…
+     70|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 5 passed (8)
+   Start at  10:18:06
+   Duration  700ms (transform 106ms, setup 0ms, collect 101ms, tests 24ms, environment 0ms, prepare 125ms)
+
+   (code de sortie du contrôle : 1)
+5. restauré DEPUIS LA COPIE
+6. sha256(après) = 3574800ae16a95c342bb2e56fa58c65824df9b82d47d964243f87fc4fea8b826
+   ✅ ÉGAL
+7. git status --porcelain : « ?? client/src/accent.ts » — le fichier est NEUF, pas encore commité : la preuve de restauration est le sha256 de l ETAPE 6 ✅
+
+### ROUGE C6 — ne pas controler la FORME DES FONDS : rapportDeContraste leve sur le fond
+───────────────────────────────────────────────────────────────
+ROUGE « c6-fond-non-controle »  sur  client/src/accent.ts
+1. copie nommée : /tmp/a1-rouge-c6-fond-non-controle.orig   sha256(avant) = 3574800ae16a95c342bb2e56fa58c65824df9b82d47d964243f87fc4fea8b826
+2. mutation appliquée
+3. diff NON VIDE (1 ligne(s)) ✅
+4. contrôle : npx --prefix client vitest run --root client --reporter=verbose client/src/accent.test.ts
+
+ RUN  v2.1.9 /home/mallanic/Projects/Guacamole/client
+
+ ✓ src/accent.test.ts > conformer > 🔴 un gris ILLISIBLE est REFUSÉ, et le thème reprend la main
+ ✓ src/accent.test.ts > conformer > une couleur LISIBLE est rendue telle quelle
+ ✓ src/accent.test.ts > conformer > une couleur lisible sur DEUX fonds sur trois est REFUSÉE
+ ✓ src/accent.test.ts > conformer > une forme NON HEXADÉCIMALE est REFUSÉE, sans lever
+ ✓ src/accent.test.ts > conformer > une casse MAJUSCULE est acceptée après normalisation
+ ✓ src/accent.test.ts > conformer > la couleur rendue n'est JAMAIS corrigée
+ × src/accent.test.ts > conformer > un fond mal formé fait REFUSER, il ne fait pas lever
+   → couleur non reconnue : «  » (attendu #rgb ou #rrggbb)
+ ✓ src/accent.test.ts > conformer > une liste de fonds VIDE fait REFUSER
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/accent.test.ts > conformer > un fond mal formé fait REFUSER, il ne fait pas lever
+Error: couleur non reconnue : «  » (attendu #rgb ou #rrggbb)
+ ❯ luminanceRelative src/design/contraste.ts:48:15
+     46|             : brut.slice(0, 6);
+     47|     if (!/^[0-9a-fA-F]{6}$/.test(hex)) {
+     48|         throw new Error(`couleur non reconnue : « ${couleur} » (attend…
+       |               ^
+     49|     }
+     50|     const [r, v, b] = [0, 2, 4].map((i) => canalLineaire(parseInt(hex.…
+ ❯ Module.rapportDeContraste src/design/contraste.ts:56:43
+ ❯ Module.conformer src/accent.ts:94:13
+ ❯ src/accent.test.ts:78:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  10:18:08
+   Duration  762ms (transform 146ms, setup 0ms, collect 152ms, tests 39ms, environment 0ms, prepare 119ms)
+
+   (code de sortie du contrôle : 1)
+5. restauré DEPUIS LA COPIE
+6. sha256(après) = 3574800ae16a95c342bb2e56fa58c65824df9b82d47d964243f87fc4fea8b826
+   ✅ ÉGAL
+7. git status --porcelain : « ?? client/src/accent.ts » — le fichier est NEUF, pas encore commité : la preuve de restauration est le sha256 de l ETAPE 6 ✅
+
+=== BILAN DES ROUGES DE conformer ===
+ROUGE 0   ne mute rien ................................ REFUSÉE par le harnais ✅
+ROUGE C1  la lisibilité n'est plus jugée
+          🔴 « un gris ILLISIBLE est REFUSÉ, et le thème reprend la main » FAIL
+             AssertionError: expected '#1e2229' to be '#7aa2f7'
+          🔴 C'EST LA ROUGE QUE LA SPEC EXIGE POUR LE CRITÈRE ③, ET ELLE A ÉTÉ VUE.
+          + « lisible sur DEUX fonds sur trois » et « JAMAIS corrigée »   3/8
+ROUGE C2  l'étape FORME retirée
+          « une forme NON HEXADÉCIMALE est REFUSÉE, sans lever »          1/8
+          Error: couleur non reconnue : « rgb(1,2,3) » (attendu #rgb ou #rrggbb)
+          🔴 E9 N'EST PLUS UNE LECTURE : `rapportDeContraste` LÈVE, MESURÉ.
+ROUGE C3  accepter dès le premier fond qui passe                          4/8
+ROUGE C4  comparer sans minusculer
+          « une casse MAJUSCULE est acceptée après normalisation »        1/8
+ROUGE C5  rendre TOUJOURS accentDuTheme (mécanisme inerte)
+          « une couleur LISIBLE est rendue telle quelle » + 2             3/8
+          🔴 SANS CE TEST, C1 SERAIT TENU PAR UNE FONCTION QUI REFUSE TOUT.
+ROUGE C6  la forme des FONDS n'est plus contrôlée
+          « un fond mal formé fait REFUSER, il ne fait pas lever »        1/8
+          Error: couleur non reconnue : «  » (attendu #rgb ou #rrggbb)
+          ⚠️ Le cas est RÉEL : `getComputedStyle` rend la CHAÎNE VIDE pour un
+             token absent — c'est exactement ce que la rouge du critère ②
+             provoque en posant le token sur `document.body`.
+
+SIX rouges jouées, plus la ROUGE 0 refusée. Toutes rougissent SUR L'ASSERTION
+QU'ELLES VISENT, nommée à chaque fois. Aucune n'est restée verte.
+
+🔴 UN CONTRÔLE N'AVAIT PAS TOURNÉ À LA PREMIÈRE PASSE, ET IL SE LISAIT COMME UN
+   ÉCHEC. La commande de contrôle était passée par une variable shell ; ZSH NE
+   DÉCOUPE PAS LES VARIABLES EN MOTS, et le harnais a reçu la commande ENTIÈRE
+   pour nom de fichier : « Aucun fichier ou dossier de ce nom », code 127.
+   Le harnais imprime le code de sortie du contrôle, et c'est LUI qui l'a dit.
+   Les commandes sont désormais écrites LITTÉRALEMENT.
+⚠️ ET LE REPORTER PAR DÉFAUT DE VITEST DÉDUPLIQUE : une première passe ne
+   montrait qu'UN échec sur trois. Un relevé qui doit dire QUELLE assertion a
+   rougi ne peut pas s'en contenter. `--reporter=verbose` partout.
+
+⚠️ Ce que ces rouges N'ÉTABLISSENT PAS : rien du DOM (c'est `accent-dom.ts`),
+rien d'une couleur reçue d'un agent RÉEL, et aucun jugement visuel sur aucune
+teinte. UNE exécution par rouge : aucun taux.
