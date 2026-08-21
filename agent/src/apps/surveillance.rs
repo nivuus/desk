@@ -23,5 +23,9 @@
 //! PETIT-fils depuis le grand-parent sans `#[path]`*. Suivre la spec à la
 //! lettre obligerait au `#[path]` que ④ évite depuis G2.
 
+/// L'injection de fautes de surveillance. **PUR** + un budget global.
+pub mod faute;
 /// Les quatre états d'`APPS_SURVEILLANCE`. **PUR.**
 pub mod mode;
+/// L'anti-rebond, horloge en paramètre. **PUR.**
+pub mod rebond;

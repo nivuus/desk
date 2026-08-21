@@ -1,0 +1,141 @@
+=== ROUGES DE LA TACHE 3 — rebond.rs (cinq) et faute.rs (une)
+--- date : 2026-08-21T06:59:07+00:00   HEAD : 8057f50
+
+==================================================================
+=== ROUGE 2 — l'echeance devient IMMEDIATE
+--- sha256 AVANT : 5c909d38c3f618824b943f07cfa402f4bc21d9c478f1f5fc6c94135a1cef82dd
+--- ligne mutee (par NUMERO) : 88    ancre : Some((derniere + DELAI_ANTI_REBOND).min(premiere + DELAI_ANTI_REBOND_MAX))
+--- diff (une sortie VIDE serait un ECHEC de la rouge) :
+88c88
+<         Some((derniere + DELAI_ANTI_REBOND).min(premiere + DELAI_ANTI_REBOND_MAX))
+---
+>         Some(derniere)
+--- le controle (rebond::tests::une_notification_isolee) :
+test apps::surveillance::rebond::tests::une_notification_isolee_echoit_apres_le_delai_court ... FAILED
+thread 'apps::surveillance::rebond::tests::une_notification_isolee_echoit_apres_le_delai_court' (844960) panicked at agent/src/apps/surveillance/rebond.rs:128:9:
+assertion `left == right` failed
+  left: Some(Instant { tv_sec: 411837, tv_nsec: 724841606 })
+ right: Some(Instant { tv_sec: 411838, tv_nsec: 474841606 })
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 939 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE ; sha256 APRES : 5c909d38c3f618824b943f07cfa402f4bc21d9c478f1f5fc6c94135a1cef82dd
+
+==================================================================
+=== ROUGE 3 — la seconde notification NE REPOUSSE PLUS
+--- sha256 AVANT : 5c909d38c3f618824b943f07cfa402f4bc21d9c478f1f5fc6c94135a1cef82dd
+--- ligne mutee (par NUMERO) : 76    ancre :         self.derniere = Some(maintenant);
+--- diff (une sortie VIDE serait un ECHEC de la rouge) :
+76c76
+<         self.derniere = Some(maintenant);
+---
+>         if self.derniere.is_none() { self.derniere = Some(maintenant); }
+--- le controle (rebond::tests::une_seconde_notification) :
+test apps::surveillance::rebond::tests::une_seconde_notification_repousse_l_echeance ... FAILED
+thread 'apps::surveillance::rebond::tests::une_seconde_notification_repousse_l_echeance' (845517) panicked at agent/src/apps/surveillance/rebond.rs:141:9:
+assertion `left == right` failed
+  left: Some(Instant { tv_sec: 411844, tv_nsec: 961958236 })
+ right: Some(Instant { tv_sec: 411845, tv_nsec: 461958236 })
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 939 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE ; sha256 APRES : 5c909d38c3f618824b943f07cfa402f4bc21d9c478f1f5fc6c94135a1cef82dd
+
+==================================================================
+=== ROUGE 4 — la BORNE HAUTE est retiree — l'echeance fuit sans terme
+--- sha256 AVANT : 5c909d38c3f618824b943f07cfa402f4bc21d9c478f1f5fc6c94135a1cef82dd
+--- ligne mutee (par NUMERO) : 88    ancre : Some((derniere + DELAI_ANTI_REBOND).min(premiere + DELAI_ANTI_REBOND_MAX))
+--- diff (une sortie VIDE serait un ECHEC de la rouge) :
+88c88
+<         Some((derniere + DELAI_ANTI_REBOND).min(premiere + DELAI_ANTI_REBOND_MAX))
+---
+>         let _ = premiere; Some(derniere + DELAI_ANTI_REBOND)
+--- le controle (rebond::tests::un_train_continu) :
+test apps::surveillance::rebond::tests::un_train_continu_echoit_quand_meme_au_plafond ... FAILED
+thread 'apps::surveillance::rebond::tests::un_train_continu_echoit_quand_meme_au_plafond' (846130) panicked at agent/src/apps/surveillance/rebond.rs:165:9:
+assertion `left == right` failed
+  left: Some(Instant { tv_sec: 411860, tv_nsec: 579113735 })
+ right: Some(Instant { tv_sec: 411853, tv_nsec: 929113735 })
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 939 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE ; sha256 APRES : 5c909d38c3f618824b943f07cfa402f4bc21d9c478f1f5fc6c94135a1cef82dd
+(eval):36: command not found: premiere
+
+==================================================================
+=== ROUGE 5 — consommer ne remet PAS  a None
+--- sha256 AVANT : 5c909d38c3f618824b943f07cfa402f4bc21d9c478f1f5fc6c94135a1cef82dd
+--- ligne mutee (par NUMERO) : 108    ancre :         self.premiere = None;
+--- diff (une sortie VIDE serait un ECHEC de la rouge) :
+108c108
+<         self.premiere = None;
+---
+>         // la premiere SURVIT au train : la borne haute mordrait pour toujours
+--- le controle (rebond::tests::consommer_remet) :
+test apps::surveillance::rebond::tests::consommer_remet_le_train_a_zero_et_le_suivant_repart_de_sa_premiere ... FAILED
+thread 'apps::surveillance::rebond::tests::consommer_remet_le_train_a_zero_et_le_suivant_repart_de_sa_premiere' (847027) panicked at agent/src/apps/surveillance/rebond.rs:178:9:
+assertion `left == right` failed: le train suivant repart de SA première, jamais de l'ancienne
+  left: Some(Instant { tv_sec: 411858, tv_nsec: 943417196 })
+ right: Some(Instant { tv_sec: 411915, tv_nsec: 693417196 })
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 939 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE ; sha256 APRES : 5c909d38c3f618824b943f07cfa402f4bc21d9c478f1f5fc6c94135a1cef82dd
+
+==================================================================
+=== ROUGE 6 — une echeance existe AU REPOS
+--- sha256 AVANT : 5c909d38c3f618824b943f07cfa402f4bc21d9c478f1f5fc6c94135a1cef82dd
+--- ligne mutee (par NUMERO) : 86    ancre :         let premiere = self.premiere?;
+--- diff (une sortie VIDE serait un ECHEC de la rouge) :
+86c86
+<         let premiere = self.premiere?;
+---
+>         let premiere = self.premiere.unwrap_or_else(Instant::now);
+--- le controle (rebond::tests::aucune_notification) :
+test apps::surveillance::rebond::tests::aucune_notification_ne_produit_aucune_echeance ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 939 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE ; sha256 APRES : 5c909d38c3f618824b943f07cfa402f4bc21d9c478f1f5fc6c94135a1cef82dd
+
+==================================================================
+=== ROUGE 7 — le budget est RELU a chaque appel (la panne de D10)
+--- sha256 AVANT : deddc4561b133c15f720dd17ba57afc8d6f2694a343f01fc32405b5d70c6180f
+--- ligne mutee (par NUMERO) : 140    ancre :     let (armee, reste) = etat();
+--- diff (une sortie VIDE serait un ECHEC de la rouge) :
+140c140
+<     let (armee, reste) = etat();
+---
+>     let (armee, reste) = &(AtomicU8::new(0), AtomicU32::new(0)); // budget RELU a chaque appel
+--- le controle (faute::tests) :
+test apps::surveillance::faute::tests::le_code_zero_est_reserve_a_aucune_famille ... ok
+test apps::surveillance::faute::tests::le_budget_est_global_au_processus_et_s_epuise_une_seule_fois ... FAILED
+test apps::surveillance::faute::tests::lire_desarme_sur_tout_ce_qui_n_est_pas_une_famille_suivie_d_un_compte ... ok
+test apps::surveillance::faute::tests::lire_reconnait_les_trois_familles_et_leur_compte ... ok
+test apps::surveillance::faute::tests::un_etat_desarme_ne_consomme_rien ... ok
+test apps::surveillance::faute::tests::une_famille_ne_consomme_pas_le_budget_d_une_autre ... FAILED
+thread 'apps::surveillance::faute::tests::le_budget_est_global_au_processus_et_s_epuise_une_seule_fois' (849453) panicked at agent/src/apps/surveillance/faute.rs:191:9:
+thread 'apps::surveillance::faute::tests::une_famille_ne_consomme_pas_le_budget_d_une_autre' (849458) panicked at agent/src/apps/surveillance/faute.rs:210:9:
+assertion failed: consommer(Famille::Debordement)
+test result: FAILED. 4 passed; 2 failed; 0 ignored; 0 measured; 934 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE ; sha256 APRES : deddc4561b133c15f720dd17ba57afc8d6f2694a343f01fc32405b5d70c6180f
+
+=== git status --porcelain sur les deux fichiers (?? = neufs, non suivis) :
+?? agent/src/apps/surveillance/faute.rs
+?? agent/src/apps/surveillance/rebond.rs
+
+==================================================================
+=== ROUGE 6 — SECOND JET. Le premier N'A PAS ROUGI, et ce n'est PAS
+=== le test qui est vacueux : c'est MA MUTATION qui etait a moitie.
+=== 'echeance' porte DEUX gardes -- self.premiere? ET self.derniere? --
+=== et n'en lever qu'un laisse le second court-circuiter au repos.
+=== Les DEUX sont mutes ici. Une rouge qui ne rougit pas est un echec
+=== de la rouge, jamais un succes du produit ; le premier jet est
+=== conserve plus haut dans ce journal, comme piece.
+--- date : 2026-08-21T07:00:23+00:00
+--- sha256 AVANT : 5c909d38c3f618824b943f07cfa402f4bc21d9c478f1f5fc6c94135a1cef82dd
+--- lignes mutees (par NUMERO) : 86 et 87
+--- diff (une sortie VIDE serait un ECHEC de la rouge) :
+86,87c86,87
+<         let premiere = self.premiere?;
+<         let derniere = self.derniere?;
+---
+>         let premiere = self.premiere.unwrap_or_else(Instant::now);
+>         let derniere = self.derniere.unwrap_or_else(Instant::now);
+--- le controle :
+test apps::surveillance::rebond::tests::aucune_notification_ne_produit_aucune_echeance ... FAILED
+thread 'apps::surveillance::rebond::tests::aucune_notification_ne_produit_aucune_echeance' (852242) panicked at agent/src/apps/surveillance/rebond.rs:188:9:
+assertion `left == right` failed
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 939 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE ; sha256 APRES : 5c909d38c3f618824b943f07cfa402f4bc21d9c478f1f5fc6c94135a1cef82dd
+--- git status --porcelain : [?? agent/src/apps/surveillance/rebond.rs]
