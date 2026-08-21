@@ -306,3 +306,50 @@ fn capabilities_serialise_les_deux_champs() {
         r#"{"type":"capabilities","v":3,"gamepad":false,"clipboard":true}"#
     );
 }
+
+/// 🔴 **LE PRESSE-PAPIER NE DOIT JAMAIS ATTEINDRE UN JOURNAL, ET CE TEST EST
+/// LE SEUL REMPART.**
+///
+/// Il est né d'une MESURE, pas d'une précaution : la recette de P2 a relevé
+/// dans `agent.log` quatre lignes portant le contenu du presse-papier **en
+/// clair** — `Clipboard { version: 3, text: "alpha-arme-1-crwor9" }` —, parce
+/// que `demarrage.rs` imprime le message reçu par `?message` et que
+/// `ClientControl` DÉRIVAIT `Debug`. La décision D-P1-7 l'interdit nommément.
+///
+/// ROUGE si l'on remet `#[derive(Debug)]` sur l'un des deux enums. Le remède
+/// est au TYPE et non au site de journalisation, précisément pour que le
+/// PROCHAIN site n'ait pas à y penser.
+#[test]
+fn le_debug_du_presse_papier_montre_la_taille_et_jamais_le_texte() {
+    let rendu = format!("{:?}", ClientControl::clipboard("mot-de-passe-tres-secret"));
+    assert!(!rendu.contains("secret"), "le texte a fui au Debug : {rendu}");
+    assert!(rendu.contains("octets: 24"), "la taille doit rester lisible : {rendu}");
+
+    let descendant = format!("{:?}", AgentControl::clipboard(Some("mot-de-passe".into()), 12));
+    assert!(!descendant.contains("mot-de-passe"), "le texte a fui au Debug : {descendant}");
+    assert!(descendant.contains("octets: 12"), "la taille doit rester lisible : {descendant}");
+    assert!(descendant.contains("refus: false"), "le refus doit rester lisible : {descendant}");
+
+    let refus = format!("{:?}", AgentControl::clipboard(None, 100_000));
+    assert!(refus.contains("refus: true"), "un refus doit se lire : {refus}");
+}
+
+/// Le `Debug` écrit à la main ne doit pas AVALER les autres variantes en
+/// chemin : sans ce test, une variante rendue vide passerait inaperçue, et le
+/// journal perdrait tout pouvoir de diagnostic sans que rien ne le dise.
+///
+/// ROUGE si une variante rend une forme vide ou omet ses champs.
+#[test]
+fn le_debug_manuel_conserve_les_champs_des_autres_variantes() {
+    let r = format!("{:?}", ClientControl::resize(1280, 720));
+    assert!(r.contains("Resize") && r.contains("1280") && r.contains("720"), "{r}");
+
+    let l = format!(
+        "{:?}",
+        AgentControl::link(4_000_000, (800, 600), LinkQuality::Degradee, LinkAdaptation::Active)
+    );
+    assert!(l.contains("Link") && l.contains("4000000") && l.contains("Degradee"), "{l}");
+
+    let c = format!("{:?}", AgentControl::capabilities(true, false));
+    assert!(c.contains("gamepad: true") && c.contains("clipboard: false"), "{c}");
+}
