@@ -1,0 +1,73 @@
+=== A1 — SONDE H1 (tâche 2) : que voient RÉELLEMENT les neuf contrôles ? ===
+Date : 21 août 2026. HORS VM.
+Montage : `git archive HEAD client proto` vers un arbre JETABLE hors du dépôt,
+`node_modules` lié. AUCUN fichier du dépôt n'est touché — vérifié à la fin par
+`git status --porcelain client/ proto/`, VIDE.
+
+Objet : D-A1-2 est prise sur une LECTURE de tokens-orphelins.mjs et de tokens.ts.
+Cette sonde la transforme en MESURE, ou la réfute. Ses quatre issues étaient
+écrites d'avance dans le plan (§ tâche 2), et TROIS d'entre elles la réfutaient.
+
+--- Step 0 : l'arbre jetable INTACT ---
+npm run design:verifier .......... 7/7 contrôle(s) vert(s)
+npx vitest theme.test.ts longueurs.test.ts ... 12 passed (§7.5 et §7.10)
+=> le montage ne mesure pas lui-même. Les cellules qui suivent sont
+   interprétables.
+
+--- CELLULE A : `--accent-fenetre: var(--accent);` dans :root SEUL ---
+§7.4  écarts : 0                                              ✅ VERT (attendu)
+§7.6  « NOUVEL ORPHELIN  --accent-fenetre  déclaré et appelé par personne »
+      total : 1 écart(s)                                      🔴 ROUGE (attendu)
+      ═══ 6/7 contrôle(s) vert(s) ═══
+      ÉCHEC  §7.6  aucun token orphelin, aucun var() non déclaré (sortie 1)
+=> D-A1-3 est CONFIRMÉE par un bout : la clause ③ de §7.4 ne mord pas sur une
+   valeur `var()`, qui n'est pas une couleur (`estUneCouleur`, tokens.ts:210).
+=> Et §7.6 rougit bien : un token déclaré sans appelant CSS est un orphelin.
+
+--- CELLULE B : idem A, plus une entrée de liste d'attente ---
+B(1/2) — l'entrée posée, A1 NON inscrit dans SOUS_BLOCS_CLOS :
+      ═══ 7/7 contrôle(s) vert(s) ═══                         ✅ VERT
+B(2/2) — 'A1' ajouté à SOUS_BLOCS_CLOS (ce que la convention EXIGE d'un
+         sous-bloc dans le commit qui achève son implémentation) :
+      « SOUS-BLOC CLOS  --accent-fenetre  nommait A1, qui est clos :
+        décider ou re-étiqueter avec sa raison »
+      total : 1 écart(s)                                      🔴 ROUGE (attendu)
+      ═══ 6/7 contrôle(s) vert(s) ═══
+🔴 C'EST LA MESURE DU PIÈGE DE D-A1-2 POINT 4 : la voie « ligne d'attente » que
+   la spec D10 déclare acceptable n'est tenable QUE si A1 refuse de se déclarer
+   clos — ce qui est pire que le mal qu'elle soigne.
+
+--- CELLULE C : `--accent-fenetre: #7aa2f7;` (une VRAIE couleur) à la racine ---
+§7.4  « ÉCART  blocs clairs : --accent-fenetre est une couleur de la racine
+        sans contrepartie claire »
+      écarts : 1                                              🔴 ROUGE (attendu)
+§7.6  NOUVEL ORPHELIN (inchangé)                              🔴 ROUGE
+      ═══ 5/7 contrôle(s) vert(s) ═══
+=> D-A1-3 est CONFIRMÉE PAR L'AUTRE BOUT : c'est bien la VALEUR qui décide, pas
+   le nom du token. Une couleur exige les trois blocs ; un `var()` non.
+
+--- CELLULE D : AUCUNE déclaration, un `setProperty` dans un .ts de client/src/ ---
+      ═══ 7/7 contrôle(s) vert(s) ═══                         ✅ VERT
+      §7.5 et §7.10 : 12 passed                               ✅ VERT
+🔴 LES NEUF CONTRÔLES SONT VERTS. C'EST LA MESURE QUI FONDE D-A1-2.
+   §7.6 est aveugle deux fois à ce chemin : son périmètre « employé » est
+   `.css` seulement, et sa détection ne reconnaît que `var(--…)`.
+
+--- CELLULE E : idem D, plus une couleur LITTÉRALE en dur dans le .ts ---
+§7.2  « client/src/sonde-h1-cellule-d.ts:2: const REPLI = '#7aa2f7'; »
+      couleurs littérales : 1                                 🔴 ROUGE (attendu)
+      ═══ 6/7 contrôle(s) vert(s) ═══
+=> C'EST LA MESURE QUI FONDE LE POINT 3 DE D-A1-2 : §7.2 balaie bien les `.ts`,
+   donc le repli doit être LU par getComputedStyle, JAMAIS écrit en dur.
+
+=== VERDICT : la PREMIÈRE ligne du tableau des quatre issues ===
+A rouge sur §7.6, D vert, E rouge sur §7.2 — c'est l'attendu.
+**D-A1-2 EST CONFIRMÉE PAR LA MESURE. Le plan continue tel quel.**
+Aucune des trois issues qui la réfutaient n'est survenue :
+  - A n'est pas verte sur §7.6 ;
+  - C n'est pas verte sur §7.4 ;
+  - D n'est rouge sur AUCUN contrôle.
+
+=== CE QUE CETTE SONDE N'ÉTABLIT PAS ===
+Rien de ce que le navigateur RENDRA, rien du contraste d'une couleur réelle,
+rien de la VM. Cinq cellules, UNE exécution chacune : aucun taux.
