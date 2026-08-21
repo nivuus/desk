@@ -1,0 +1,40 @@
+=== TACHE 4 — CONTROLE DE L'EXTRACTION VERBATIM
+--- date : 2026-08-21T07:03:14+00:00   HEAD : 45880d2
+
+--- Le controle n'est PAS 'ca compile' : c'est le corps, ligne a ligne,
+--- oppose aux lignes 18-257 de l'original.
+--- lignes d'origine : 240   lignes du corps neuf : 240
+--- diff origine <-> corps neuf :
+3c3
+< struct Memoire {
+---
+> pub(super) struct Memoire {
+5c5
+<     catalogue: Vec<Application>,
+---
+>     pub(super) catalogue: Vec<Application>,
+12c12
+<     lancables: BTreeMap<String, (String, i32)>,
+---
+>     pub(super) lancables: BTreeMap<String, (String, i32)>,
+18c18
+<     icones: Magasin,
+---
+>     pub(super) icones: Magasin,
+51c51
+< fn reconcilier(memoire: &mut Memoire) -> (reconciliation::Diff, Vec<Application>) {
+---
+> pub(super) fn reconcilier(memoire: &mut Memoire) -> (reconciliation::Diff, Vec<Application>) {
+
+--- LES SEULES DIFFERENCES ADMISES SONT LES CINQ pub(super), et les voici
+--- toutes. Elles ne sont pas un embellissement : un item PRIVE d'un module
+--- ENFANT n'est pas visible de son PARENT en Rust, et une extraction
+--- rigoureusement verbatim ne compilerait donc pas.
+
+--- Tailles PAR LA COMMANDE :
+  153 agent/src/apps/boucle.rs
+  278 agent/src/apps/boucle/memoire.rs
+  431 total
+--- avant extraction : agent/src/apps/boucle.rs valait 385 lignes
+
+--- cargo check --target x86_64-pc-windows-gnu :
