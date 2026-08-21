@@ -1,0 +1,300 @@
+{
+  "sonde": "S1 — mesurabilite du focus a N fenetres",
+  "etiquette": "1",
+  "date": "2026-08-21T05:03:15.335Z",
+  "navigateur": "Chrome/151.0.7922.169",
+  "n_demande": 3,
+  "n_trouve": 3,
+  "emulationDeFocusActivee": false,
+  "armeDuProduit": {
+    "arme": "window.open",
+    "n_trouve": 3,
+    "basculements": [
+      {
+        "amenee": "http://127.0.0.1:45893/w0",
+        "releves": [
+          {
+            "url": "http://127.0.0.1:45893/w0",
+            "hasFocus": true,
+            "isActive": false,
+            "hasBeenActive": false,
+            "visible": true
+          },
+          {
+            "url": "http://127.0.0.1:45893/w1",
+            "hasFocus": true,
+            "isActive": false,
+            "hasBeenActive": false,
+            "visible": true
+          },
+          {
+            "url": "http://127.0.0.1:45893/w2",
+            "hasFocus": true,
+            "isActive": false,
+            "hasBeenActive": false,
+            "visible": true
+          }
+        ],
+        "focalisees": [
+          "http://127.0.0.1:45893/w0",
+          "http://127.0.0.1:45893/w1",
+          "http://127.0.0.1:45893/w2"
+        ]
+      },
+      {
+        "amenee": "http://127.0.0.1:45893/w1",
+        "releves": [
+          {
+            "url": "http://127.0.0.1:45893/w0",
+            "hasFocus": true,
+            "isActive": false,
+            "hasBeenActive": false,
+            "visible": true
+          },
+          {
+            "url": "http://127.0.0.1:45893/w1",
+            "hasFocus": true,
+            "isActive": false,
+            "hasBeenActive": false,
+            "visible": true
+          },
+          {
+            "url": "http://127.0.0.1:45893/w2",
+            "hasFocus": true,
+            "isActive": false,
+            "hasBeenActive": false,
+            "visible": true
+          }
+        ],
+        "focalisees": [
+          "http://127.0.0.1:45893/w0",
+          "http://127.0.0.1:45893/w1",
+          "http://127.0.0.1:45893/w2"
+        ]
+      },
+      {
+        "amenee": "http://127.0.0.1:45893/w2",
+        "releves": [
+          {
+            "url": "http://127.0.0.1:45893/w0",
+            "hasFocus": true,
+            "isActive": false,
+            "hasBeenActive": false,
+            "visible": true
+          },
+          {
+            "url": "http://127.0.0.1:45893/w1",
+            "hasFocus": true,
+            "isActive": false,
+            "hasBeenActive": false,
+            "visible": true
+          },
+          {
+            "url": "http://127.0.0.1:45893/w2",
+            "hasFocus": true,
+            "isActive": false,
+            "hasBeenActive": false,
+            "visible": true
+          }
+        ],
+        "focalisees": [
+          "http://127.0.0.1:45893/w0",
+          "http://127.0.0.1:45893/w1",
+          "http://127.0.0.1:45893/w2"
+        ]
+      }
+    ],
+    "issue": "NON MESURABLE — true PARTOUT"
+  },
+  "armeDeControle": {
+    "arme": "Target.createTarget",
+    "n_trouve": 3,
+    "basculements": [
+      {
+        "amenee": "http://127.0.0.1:45893/t0",
+        "releves": [
+          {
+            "url": "http://127.0.0.1:45893/t0",
+            "hasFocus": true,
+            "isActive": false,
+            "hasBeenActive": false,
+            "visible": true
+          },
+          {
+            "url": "http://127.0.0.1:45893/t1",
+            "hasFocus": false,
+            "isActive": false,
+            "hasBeenActive": false,
+            "visible": false
+          },
+          {
+            "url": "http://127.0.0.1:45893/t2",
+            "hasFocus": false,
+            "isActive": false,
+            "hasBeenActive": false,
+            "visible": false
+          }
+        ],
+        "focalisees": [
+          "http://127.0.0.1:45893/t0"
+        ]
+      },
+      {
+        "amenee": "http://127.0.0.1:45893/t1",
+        "releves": [
+          {
+            "url": "http://127.0.0.1:45893/t0",
+            "hasFocus": false,
+            "isActive": false,
+            "hasBeenActive": false,
+            "visible": false
+          },
+          {
+            "url": "http://127.0.0.1:45893/t1",
+            "hasFocus": true,
+            "isActive": false,
+            "hasBeenActive": false,
+            "visible": true
+          },
+          {
+            "url": "http://127.0.0.1:45893/t2",
+            "hasFocus": false,
+            "isActive": false,
+            "hasBeenActive": false,
+            "visible": false
+          }
+        ],
+        "focalisees": [
+          "http://127.0.0.1:45893/t1"
+        ]
+      },
+      {
+        "amenee": "http://127.0.0.1:45893/t2",
+        "releves": [
+          {
+            "url": "http://127.0.0.1:45893/t0",
+            "hasFocus": false,
+            "isActive": false,
+            "hasBeenActive": false,
+            "visible": false
+          },
+          {
+            "url": "http://127.0.0.1:45893/t1",
+            "hasFocus": false,
+            "isActive": false,
+            "hasBeenActive": false,
+            "visible": false
+          },
+          {
+            "url": "http://127.0.0.1:45893/t2",
+            "hasFocus": true,
+            "isActive": false,
+            "hasBeenActive": false,
+            "visible": true
+          }
+        ],
+        "focalisees": [
+          "http://127.0.0.1:45893/t2"
+        ]
+      }
+    ],
+    "issue": "MESURABLE — exactement un true a chaque basculement, et c'est bien la fenetre amenee au premier plan"
+  },
+  "basculements": [
+    {
+      "amenee": "http://127.0.0.1:45893/w0",
+      "releves": [
+        {
+          "url": "http://127.0.0.1:45893/w0",
+          "hasFocus": true,
+          "isActive": false,
+          "hasBeenActive": false,
+          "visible": true
+        },
+        {
+          "url": "http://127.0.0.1:45893/w1",
+          "hasFocus": true,
+          "isActive": false,
+          "hasBeenActive": false,
+          "visible": true
+        },
+        {
+          "url": "http://127.0.0.1:45893/w2",
+          "hasFocus": true,
+          "isActive": false,
+          "hasBeenActive": false,
+          "visible": true
+        }
+      ],
+      "focalisees": [
+        "http://127.0.0.1:45893/w0",
+        "http://127.0.0.1:45893/w1",
+        "http://127.0.0.1:45893/w2"
+      ]
+    },
+    {
+      "amenee": "http://127.0.0.1:45893/w1",
+      "releves": [
+        {
+          "url": "http://127.0.0.1:45893/w0",
+          "hasFocus": true,
+          "isActive": false,
+          "hasBeenActive": false,
+          "visible": true
+        },
+        {
+          "url": "http://127.0.0.1:45893/w1",
+          "hasFocus": true,
+          "isActive": false,
+          "hasBeenActive": false,
+          "visible": true
+        },
+        {
+          "url": "http://127.0.0.1:45893/w2",
+          "hasFocus": true,
+          "isActive": false,
+          "hasBeenActive": false,
+          "visible": true
+        }
+      ],
+      "focalisees": [
+        "http://127.0.0.1:45893/w0",
+        "http://127.0.0.1:45893/w1",
+        "http://127.0.0.1:45893/w2"
+      ]
+    },
+    {
+      "amenee": "http://127.0.0.1:45893/w2",
+      "releves": [
+        {
+          "url": "http://127.0.0.1:45893/w0",
+          "hasFocus": true,
+          "isActive": false,
+          "hasBeenActive": false,
+          "visible": true
+        },
+        {
+          "url": "http://127.0.0.1:45893/w1",
+          "hasFocus": true,
+          "isActive": false,
+          "hasBeenActive": false,
+          "visible": true
+        },
+        {
+          "url": "http://127.0.0.1:45893/w2",
+          "hasFocus": true,
+          "isActive": false,
+          "hasBeenActive": false,
+          "visible": true
+        }
+      ],
+      "focalisees": [
+        "http://127.0.0.1:45893/w0",
+        "http://127.0.0.1:45893/w1",
+        "http://127.0.0.1:45893/w2"
+      ]
+    }
+  ],
+  "verdict": "NON MESURABLE — true PARTOUT",
+  "attribution": "LES DEUX ARMES DIVERGENT — window.open : « NON MESURABLE — true PARTOUT » ; Target.createTarget : « MESURABLE — exactement un true a chaque basculement, et c'est bien la fenetre amenee au premier plan ». 🔴 LA CAUSE EST DONC LE MODE D'OUVERTURE, PAS LE --headless. Et le produit ouvre ses fenetres par window.open (client/src/shell-page.ts) : le verdict qui commande la recette est celui de la premiere arme."
+}

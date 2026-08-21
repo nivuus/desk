@@ -1,0 +1,57 @@
+{
+  "sonde": "S2 — writeText x focus x activation",
+  "etiquette": "2",
+  "date": "2026-08-21T05:01:26.031Z",
+  "navigateur": "Chrome/151.0.7922.169",
+  "emulationDeFocusActivee": false,
+  "tentativesDeRetraitDuFocus": [
+    {
+      "moyen": "Page.bringToFront sur A",
+      "hasFocus": false
+    },
+    {
+      "moyen": "retrait du focus APRES un geste de confiance",
+      "hasFocus": true
+    }
+  ],
+  "focusRetirable": true,
+  "cellules": {
+    "focus=vrai,activation=faux": {
+      "etat": {
+        "hasFocus": true,
+        "isActive": false,
+        "hasBeenActive": false
+      },
+      "res": "THROW:NotAllowedError: Failed to execute 'writeText' on 'Clipboard': Write permission denied."
+    },
+    "focus=vrai,activation=vrai": {
+      "etat": {
+        "hasFocus": true,
+        "isActive": true,
+        "hasBeenActive": true
+      },
+      "res": "OK"
+    },
+    "focus=faux,activation=faux": {
+      "etat": {
+        "hasFocus": false,
+        "isActive": false,
+        "hasBeenActive": false
+      },
+      "res": "THROW:NotAllowedError: Failed to execute 'writeText' on 'Clipboard': Document is not focused."
+    },
+    "focus=faux,activation=vrai": {
+      "inatteignable": true,
+      "requalifiee": true,
+      "etatObserve": {
+        "hasFocus": true,
+        "isActive": true,
+        "hasBeenActive": true
+      },
+      "res": "OK"
+    }
+  },
+  "verdict": "NON TRANCHE — la cellule {focus:faux, activation:vrai} est INATTEIGNABLE a ce montage : elle a ete JOUEE mais son etat observe ne correspond pas a son etiquette ({\"hasFocus\":true,\"isActive\":true,\"hasBeenActive\":true}), donc ce n'est pas cette cellule. ⚠️ MAIS LE §3.3 EST CORROBORE SANS ETRE ETABLI, et par une piece : sans focus et sans geste, writeText refuse en NOMMANT le focus — « THROW:NotAllowedError: Failed to execute 'writeText' on 'Clipboard': Document is not focused. » — la ou le refus d'activation dit « THROW:NotAllowedError: Failed to execute 'writeText' on 'Clipboard': Write permission denied. ». Les deux portent le MEME NOM et des MESSAGES DIFFERENTS : un chemin de refus PROPRE AU FOCUS existe donc et se nomme lui-meme. Ce qui reste non mesure est s'il survit a une activation. Le §3.3 reste SUPPOSE au sens strict. C'est un verdict recevable ; en fabriquer un autre ne le serait pas.",
+  "messagesDeRefusDistincts": true,
+  "leRefusSansFocusNommeLeFocus": true
+}

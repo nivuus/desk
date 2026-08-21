@@ -1,0 +1,18 @@
+navigateur Chrome/151.0.7922.169
+[window.open] cibles trouvees : 3 / 3 — http://127.0.0.1:45893/w0 http://127.0.0.1:45893/w1 http://127.0.0.1:45893/w2
+[window.open] bringToFront(http://127.0.0.1:45893/w0) → http://127.0.0.1:45893/w0:FOCUS http://127.0.0.1:45893/w1:FOCUS http://127.0.0.1:45893/w2:FOCUS
+[window.open] bringToFront(http://127.0.0.1:45893/w1) → http://127.0.0.1:45893/w0:FOCUS http://127.0.0.1:45893/w1:FOCUS http://127.0.0.1:45893/w2:FOCUS
+[window.open] bringToFront(http://127.0.0.1:45893/w2) → http://127.0.0.1:45893/w0:FOCUS http://127.0.0.1:45893/w1:FOCUS http://127.0.0.1:45893/w2:FOCUS
+[Target.createTarget] cibles trouvees : 3 / 3 — http://127.0.0.1:45893/t0 http://127.0.0.1:45893/t1 http://127.0.0.1:45893/t2
+[Target.createTarget] bringToFront(http://127.0.0.1:45893/t0) → http://127.0.0.1:45893/t0:FOCUS http://127.0.0.1:45893/t1:— http://127.0.0.1:45893/t2:—
+[Target.createTarget] bringToFront(http://127.0.0.1:45893/t1) → http://127.0.0.1:45893/t0:— http://127.0.0.1:45893/t1:FOCUS http://127.0.0.1:45893/t2:—
+[Target.createTarget] bringToFront(http://127.0.0.1:45893/t2) → http://127.0.0.1:45893/t0:— http://127.0.0.1:45893/t1:— http://127.0.0.1:45893/t2:FOCUS
+
+=== VERDICT S1 (arme du PRODUIT : window.open) ===
+NON MESURABLE — true PARTOUT
+attribution : LES DEUX ARMES DIVERGENT — window.open : « NON MESURABLE — true PARTOUT » ; Target.createTarget : « MESURABLE — exactement un true a chaque basculement, et c'est bien la fenetre amenee au premier plan ». 🔴 LA CAUSE EST DONC LE MODE D'OUVERTURE, PAS LE --headless. Et le produit ouvre ses fenetres par window.open (client/src/shell-page.ts) : le verdict qui commande la recette est celui de la premiere arme.
+⟹ ④ NE PEUT PAS ETRE MESURE en conditions de produit. Xvfb + xdotool est la seule voie nommee
+   (consentement donne en D8, jamais suivi d'effet ; releve ce jour : Xvfb et xdotool ABSENTS de l'hote),
+   et les mesures qui en sortiraient ne se compareraient a AUCUNE campagne anterieure.
+emulation de focus : JAMAIS activee (Emulation.setFocusEmulationEnabled n'est appelee nulle part dans ce fichier)
+releve ecrit : p3-focus-2.json
