@@ -201,6 +201,27 @@ impl Fil {
 
     fn traiter(&mut self, ordre: Ordre) {
         match ordre {
+            Ordre::Survenu(evenement) if evenement.est_mutation() => {
+                // 🔴 **UNE MUTATION N'EST PAS UNE ÉCRITURE, ET LA CONFONDRE
+                // DÉTRUIRAIT.** Sans ce bras, `commencer` tomberait sur le
+                // chemin de CONTENU : `disque::taille_de` rendrait 0 sur une
+                // source qui n'existe plus — renommée, ou effacée —, `decouper`
+                // rendrait zéro morceau, et le morceau vide de secours
+                // **TRONQUERAIT LE FICHIER LOCAL À ZÉRO** ou **RECRÉERAIT
+                // VIDE** ce que l'utilisateur vient d'effacer.
+                //
+                // ⚠️ **C'est le bras catch-all silencieux que ce dépôt a payé
+                // CINQ fois sur `capteur/pont_media.rs`** (D5 `Sommeil`, D6
+                // `Part`, D7 `Audio`, D8 `PleinEcran`, presse-papier P1), sous
+                // une forme pire : là-bas le message était perdu, ici il aurait
+                // été appliqué au mauvais verbe.
+                //
+                // ⚠️ **Une mutation ne passe donc NI par le journal des
+                // écritures dues, NI par la file de contenu** : elle ne porte
+                // aucun octet, et l'inscrire ferait monter le compteur de la
+                // page-shell pour un geste qui n'a rien à transférer.
+                self.mutation(evenement);
+            }
             Ordre::Survenu(evenement) => {
                 let chemin = evenement.chemin().to_string();
                 let octets = disque::taille_de(&self.config.racine, &chemin);
@@ -222,6 +243,25 @@ impl Fil {
             Ordre::Fait { correlation } => self.acquitte(correlation),
             Ordre::Echec { correlation, code } => self.refuse(correlation, code),
         }
+    }
+
+    /// Ce qu'on fait d'un renommage ou d'une suppression.
+    ///
+    /// ⚠️ **CE CORPS EST PROVISOIRE, ET IL EST DÉCLARÉ COMME TEL** : il
+    /// journalise et ne pousse rien. La poussée arrive avec
+    /// `crate::pont::mutation`, qui doit d'abord ORDONNANCER la mutation par
+    /// rapport aux écritures dues sur le même chemin (règle §0.3 du plan de
+    /// F3) — pousser un renommage avant d'avoir vidé les octets dus sur la
+    /// source perdrait l'enregistrement de LibreOffice.
+    ///
+    /// 🔵 **Ce qu'il fait déjà, et qui n'est pas rien : il EXISTE.** Le bras
+    /// qui l'appelle est ce qui empêche une mutation de tomber dans le chemin
+    /// de contenu, où elle tronquerait.
+    fn mutation(&mut self, evenement: Evenement) {
+        tracing::warn!(
+            ?evenement,
+            "mutation recue par le fil d'ecriture : reconnue, PAS ENCORE POUSSEE"
+        );
     }
 
     fn commencer(&mut self, evenement: Evenement) {

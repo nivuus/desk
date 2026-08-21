@@ -13,6 +13,14 @@
 //! **Elle n'ajoute aucun comportement.** La transposition est VERBATIM. Ce qui
 //! l'a fait grossir vient de la tâche 12, dans un commit séparé, pour que la
 //! revue puisse comparer l'un et l'autre.
+//!
+//! # ✅ F3 EST ARRIVÉ, ET IL LIT LES DEUX PARAMÈTRES QUE F2 IGNORAIT
+//!
+//! `_est_repertoire` et `_destination` étaient préfixés d'un souligné parce que
+//! F2 refusait renommage et suppression. **Les deux sont désormais lus** —
+//! l'un est transporté tel quel dans l'en-tête, l'autre normalisé par
+//! `pont::chemins`. `_parametres`, en revanche, **reste `_parametres`** : voir
+//! ci-dessous, c'est toujours une union.
 
 use windows::core::HRESULT;
 use windows::Win32::Foundation::{E_UNEXPECTED, S_OK};
@@ -58,18 +66,35 @@ const _: PRJ_NOTIFICATION_CB = Some(notification);
 /// `_parametres` — **ne pas la lire du tout est le seul moyen sûr**, et le dire
 /// évite qu'un successeur y voie un oubli.
 ///
-/// ⚠️ **`_destination` non plus** : elle ne porte un nom que pour
-/// `PRE_RENAME` / `FILE_RENAMED`, que F2 refuse (F3 les livrera).
+/// ✅ **`destination` EST LUE DEPUIS F3, et ce n'est PAS un membre de l'union.**
+/// C'est un **paramètre DIRECT** du rappel (`mod.rs:334`,
+/// `destinationfilename: PCWSTR`). Le dire évite qu'un successeur aille la
+/// chercher dans `PRJ_NOTIFICATION_PARAMETERS.FileRenamed`, qui ne porte qu'un
+/// masque de notification.
+///
+/// ⚠️ **Elle ne porte un nom que pour `PRE_RENAME` et `FILE_RENAMED`.** Pour
+/// les sept autres notifications du masque, elle est vide ou nulle — et c'est
+/// pourquoi [`destination_de`] rend une [`notifications::Cible`] plutôt qu'un
+/// chemin : « il n'y a pas de destination » est un état légitime, distinct de
+/// « la destination est irrecevable ».
 pub(super) unsafe extern "system" fn notification(
     donnees: *const PRJ_CALLBACK_DATA,
     est_repertoire: bool,
     notification: PRJ_NOTIFICATION,
-    _destination: windows::core::PCWSTR,
+    destination: windows::core::PCWSTR,
     _parametres: *mut PRJ_NOTIFICATION_PARAMETERS,
 ) -> HRESULT {
     garde("Notification", || {
         let Some(etat) = (unsafe { etat(donnees) }) else { return E_UNEXPECTED };
-        match notifications::decider(notification.0, etat.etat_de_notification()) {
+        // SÛRETÉ : `destination` est un `PCWSTR` que ProjFS a fourni ; il est
+        // ou bien nul, ou bien terminé par un nul.
+        let vers = unsafe { destination_de(destination) };
+        let cible = match &vers {
+            None => notifications::Cible::SansObjet,
+            Some(Ok(_)) => notifications::Cible::DansLaRacine,
+            Some(Err(())) => notifications::Cible::HorsRacine,
+        };
+        match notifications::decider(notification.0, etat.etat_de_notification(), cible) {
             notifications::Reponse::Refuser(cause) => HRESULT(etat.compteurs.rendre(cause)),
             // 🔵 L'écriture est autorisée. **Il n'y a rien de plus à faire
             // ici** : les octets ne nous concernent qu'à la fermeture du
@@ -92,6 +117,40 @@ pub(super) unsafe extern "system" fn notification(
                         Evenement::Cree { chemin, repertoire: est_repertoire }
                     }
                     notifications::Poussee::Contenu => Evenement::Modifie { chemin },
+                    // ── LES DEUX POUSSÉES DE F3 ───────────────────────────
+                    notifications::Poussee::Renommage => {
+                        // 🔴 **DEUX INVARIANTS QUI REFUSENT PLUTÔT QUE DE
+                        // DEVINER, et c'est la parade au risque le plus grave
+                        // de F3 (R-F3-1).** Se tromper de SENS ne produirait
+                        // aucune erreur : le renommage aurait lieu, à l'envers,
+                        // et la destination écraserait la source.
+                        //
+                        // ⚠️ **Cette parade NE DÉPEND D'AUCUNE MESURE.** La
+                        // sonde S1 relève sur pièces quel champ ProjFS porte
+                        // quoi ; celle-ci tient même si la sonde n'a jamais été
+                        // jouée.
+                        let Some(Ok(vers)) = vers else {
+                            tracing::warn!(
+                                de = %chemin,
+                                destination_lisible = vers.is_some(),
+                                "renommage sans destination utilisable : RIEN n'est pousse"
+                            );
+                            return S_OK;
+                        };
+                        if vers.is_empty() || vers == chemin {
+                            tracing::warn!(
+                                de = %chemin,
+                                vers = %vers,
+                                "renommage dont la destination est vide ou egale a la source : \
+                                 RIEN n'est pousse"
+                            );
+                            return S_OK;
+                        }
+                        Evenement::Renomme { de: chemin, vers, repertoire: est_repertoire }
+                    }
+                    notifications::Poussee::Suppression => {
+                        Evenement::Supprime { chemin, repertoire: est_repertoire }
+                    }
                 };
                 if etat.vers_ecriture.send(Ordre::Survenu(evenement)).is_err() {
                     // 🔴 **Le fil d'écriture est parti, et l'application a DÉJÀ
@@ -117,4 +176,41 @@ pub(super) unsafe extern "system" fn notification(
             }
         }
     })
+}
+
+/// La destination d'une notification, normalisée.
+///
+/// Trois issues, et **la distinction entre les deux dernières est ce qui rend
+/// [`notifications::Cible`] plus honnête qu'un `bool`** :
+///
+/// - `None` — le paramètre est nul ou vide : **il n'y a pas de destination**,
+///   ce qui est le cas des sept notifications du masque autres que
+///   `PRE_RENAME` et `FILE_RENAMED` ;
+/// - `Some(Ok(chemin))` — une destination recevable, normalisée en chemin
+///   logique ;
+/// - `Some(Err(()))` — une destination que `pont::chemins` refuse : remontée
+///   `..`, flux alternatif NTFS, nom de périphérique réservé, chemin absolu.
+///   **C'est aussi ce qu'on obtient d'une cible hors de la racine**, ProjFS ne
+///   livrant que des chemins relatifs à celle-ci.
+///
+/// # Sûreté
+///
+/// L'appelant garantit que `brut` est le `destinationfilename` que ProjFS vient
+/// de fournir : nul, ou terminé par un nul.
+unsafe fn destination_de(brut: windows::core::PCWSTR) -> Option<Result<String, ()>> {
+    if brut.is_null() {
+        return None;
+    }
+    // SÛRETÉ : garantie de l'appelant.
+    let unites = unsafe { brut.as_wide() };
+    if unites.is_empty() {
+        return None;
+    }
+    match crate::pont::chemins::normaliser_utf16(unites) {
+        Ok(logique) => Some(Ok(logique)),
+        Err(refus) => {
+            tracing::warn!(?refus, "destination de renommage refusee par la normalisation");
+            Some(Err(()))
+        }
+    }
 }
