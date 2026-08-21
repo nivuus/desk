@@ -1,0 +1,80 @@
+{
+  "etiquette": "4",
+  "accent_pose": "(armé, défaut)",
+  "theme_emule": "dark",
+  "palier_ms": 75000,
+  "phases": [
+    {
+      "nom": "apres-etablissement",
+      "t": "2026-08-21T10:27:11.377Z",
+      "pages": {
+        "ijnwFbeyRDc0913Hxyuo2A:w-1": {
+          "messages": [],
+          "erreurs": []
+        },
+        "ijnwFbeyRDc0913Hxyuo2A:w-2": {
+          "messages": [],
+          "erreurs": []
+        }
+      },
+      "annonces_agent": {
+        "ijnwFbeyRDc0913Hxyuo2A:w-2": [
+          "#8ec7d4"
+        ],
+        "ijnwFbeyRDc0913Hxyuo2A:w-1": [
+          "#f5d472"
+        ],
+        "ijnwFbeyRDc0913Hxyuo2A:w-4": [
+          "#8ec7d4"
+        ],
+        "ijnwFbeyRDc0913Hxyuo2A:w-3": [
+          "#f5d472"
+        ]
+      }
+    },
+    {
+      "nom": "apres-palier",
+      "t": "2026-08-21T10:28:26.459Z",
+      "pages": {
+        "ijnwFbeyRDc0913Hxyuo2A:w-1": {
+          "messages": [],
+          "erreurs": []
+        },
+        "ijnwFbeyRDc0913Hxyuo2A:w-2": {
+          "messages": [],
+          "erreurs": []
+        }
+      },
+      "annonces_agent": {
+        "ijnwFbeyRDc0913Hxyuo2A:w-2": [
+          "#8ec7d4"
+        ],
+        "ijnwFbeyRDc0913Hxyuo2A:w-1": [
+          "#f5d472"
+        ],
+        "ijnwFbeyRDc0913Hxyuo2A:w-4": [
+          "#8ec7d4"
+        ],
+        "ijnwFbeyRDc0913Hxyuo2A:w-3": [
+          "#f5d472"
+        ]
+      }
+    }
+  ],
+  "criteres": {},
+  "prep": "agent=0",
+  "notepad": 1,
+  "shell_attachee": true,
+  "ps1_accent": [],
+  "ps1_temoin_negatif": [],
+  "sessions": [
+    "ijnwFbeyRDc0913Hxyuo2A:w-1",
+    "ijnwFbeyRDc0913Hxyuo2A:w-2"
+  ],
+  "attributions": [
+    {
+      "session": "ijnwFbeyRDc0913Hxyuo2A:w-2",
+      "pid": 23052
+    }
+  ]
+}

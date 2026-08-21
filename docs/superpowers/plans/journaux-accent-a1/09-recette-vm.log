@@ -1,0 +1,142 @@
+=== A1 — LA RECETTE SUR LA VM (taches 13 et 14) ===
+Date : 21 aout 2026. VM rendue par le sous-bloc G4 de la gestion d'apps.
+
+--- ETAT DE DEPART, MESURE ET NON SUPPOSE ---
+stat -c '%F' /dev/null ......... character special file      (SAIN)
+virsh list --all ............... Windows : en cours d'execution
+acces REEL a /media/vm ......... `ls /media/vm/dev` repond   (jamais le seul port 5985)
+Get-Process agent .............. 0                            (AVANT la premiere tentative)
+
+--- LE BINAIRE EST LE MIEN, ET C'EST UNE CHAINE QUI LE PROUVE ---
+🔴 LA TAILLE NE PROUVE RIEN, DANS LES DEUX SENS : un vert restaure a deja pese
+EXACTEMENT autant que son rouge dans ce depot, et deux compilations de la meme
+source different. Le discriminant est une chaine que MOI SEUL ai posee.
+  cargo clean --release -p proto -p agent   (les DEUX crates : purger `agent`
+    seul laisse le rlib de `proto`, que l'horloge de la VM fait paraitre frais)
+  build-agent.sh, .env SOURCE ... « Finished `release` profile in 19.18s »
+    (une compilation de 0,13 s serait un aveu ; 19 s est un vrai travail)
+  strings agent.exe | grep -c 'accent de la fenetre Windows' .... 1
+  strings agent.exe | grep -c 'accent de fenetre DESARME' ....... 1
+  TEMOIN NEGATIF « accent-inexistant-xyz » ...................... 0
+=> les deux 1 sont discriminants PARCE QUE le temoin negatif rend 0.
+
+⚠️ ET UN ZERO A DEJA MENTI DANS CETTE MEME RECETTE : la premiere interrogation
+portait sur `/media/vm/dev/agent.exe`, qui N'EXISTE PAS — le binaire vit sous
+`target/release/`. Les trois comptes rendaient 0... ET LE TEMOIN NEGATIF AUSSI.
+C'est lui, et lui seul, qui a montre que ces zeros ne discriminaient rien.
+
+--- LE MONTAGE ---
+🔴 UNE SECONDE INSTANCE DE PLATEFORME (port 8092), JAMAIS UN REDEMARRAGE DE
+CELLE DU VOISIN qui ecoute sur 8080 : la redemarrer invaliderait ses jetons.
+Client servi par vite sur 5176. Utilisateur, VM et agent enroles a part, dans
+une base sqlite jetable. Le secret d'enrolement et le mot de passe ne sont NI
+journalises NI ecrits dans les releves : ils vivent hors du depot.
+
+DEUX APPLICATIONS AUX ICONES VISIBLEMENT CONTRASTEES, et c'est la condition
+que le plan pose pour que ① soit MESURABLE :
+  Bloc-notes ..... dominante mesuree #8ec7d4  (bleu clair)
+  Explorateur .... dominante mesuree #f5d472  (jaune du dossier)
+⚠️ `mspaint` est ECARTE : il ouvre DEUX fenetres eligibles (piege de D2).
+
+--- LES QUATRE CRITERES ---
+
+① DEUX FENETRES D'APPLICATIONS DIFFERENTES ANNONCENT DES COULEURS DIFFERENTES
+   VERDICT : TENU. Executions : 4 (deux en theme clair, deux en sombre).
+   #f5d472 (Explorateur) contre #8ec7d4 (Bloc-notes), sur deux `session`
+   distinctes, aux QUATRE executions armees. LE CRITERE EST MESURABLE : les
+   deux dominantes different, et le releve le dit comme le plan l'exige.
+   🔵 UN FAIT QUE JE N'AVAIS PAS CHERCHE : une execution a porte QUATRE
+   sessions au lieu de deux (deux fenetres de chaque application). Les DEUX
+   Explorateur ont rendu #f5d472 et les DEUX Bloc-notes #8ec7d4 : la dominante
+   est stable PAR APPLICATION, ce que D9 revendique sans l'avoir mesure.
+   ⚠️ Cette execution-la est par ailleurs DISQUALIFIEE pour ② (voir plus bas).
+
+② LA COULEUR ATTERRIT SUR :root
+   VERDICT : TENU, et pleinement DISCRIMINANT — en theme SOMBRE.
+   Executions : 2 (sombre), plus 2 en clair qui etablissent l'autre sens.
+     SOMBRE : token = "#f5d472" et "#8ec7d4", EXACTEMENT les couleurs
+       annoncees, et DIFFERENTES de --accent (#7aa2f7). C'est ce qui distingue
+       « la couleur est posee » de « le repli est pose ».
+     CLAIR  : token = "#2f5fd0" = --accent, aux deux executions.
+   🔴 CE N'EST PAS UN ECHEC, C'EST LE REMPART QUI FONCTIONNE SUR LE CHEMIN
+   REEL, et c'est le releve le plus fort de cette recette. Mesure par
+   `rapportDeContraste` lui-meme :
+     #f5d472 sur les fonds CLAIRS : 1,444 / 1,347 / 1,243  -> REFUSE
+     #8ec7d4 sur les fonds CLAIRS : 1,863 / 1,738 / 1,604  -> REFUSE
+     #f5d472 sur les fonds SOMBRES: 13,475 / 12,440 / 11,315 -> ACCEPTE
+     #8ec7d4 sur les fonds SOMBRES: 10,442 /  9,640 /  8,769 -> ACCEPTE
+   Le critere ③, jusqu'ici tenu par un SEUL test d'hote, est donc OBSERVE SUR
+   LE PRODUIT : deux icones reelles, trop claires pour un theme clair, sont
+   refusees et le theme reprend la main. AUCUN test d'hote ne pouvait etablir
+   cela — il injectait une couleur choisie pour echouer ; ici la couleur vient
+   d'une VRAIE ICONE, et personne ne l'avait choisie.
+   ⚠️ LE THEME EST EMULE PAR L'INSTRUMENT (`Emulation.setEmulatedMedia`), et
+   c'est DECLARE : Chrome sans interface rend `prefers-color-scheme: light`.
+   Sans cette emulation, ② n'aurait ete mesure que dans le sens du refus.
+
+④ AUCUN MESSAGE TANT QUE L'ICONE NE CHANGE PAS
+   VERDICT : TENU. Executions : 4 armees, palier de 75 s chacune.
+   75 s pour une PERIODE_ACCENT de 5 s = facteur 15. D6 a vu trois promotions
+   arriver APRES un palier qui n'excedait la temporisation observee que de 25 %.
+   Compte sur le journal MIS A PLAT, bras arme sombre :
+     grep -ac 'accent de la fenetre Windows' ......... 2   (pour 2 sessions)
+   EXACTEMENT UNE ANNONCE PAR SESSION, palier compris.
+   ⚠️ ET LE COMPTE ATTENDU EST UN, JAMAIS ZERO : `SuiviAccent` part de `None`
+   et ANNONCE SA PREMIERE LECTURE (D-A1-7). Un releve de zero serait rendu par
+   un mecanisme entierement mort.
+
+⑤ LES NEUF CONTROLES DU DESIGN SYSTEM  -> tenu sur l'hote, voir la cloture.
+
+--- LE BRAS DESARME, ET LA DETTE DE VERIFICATION DE LA TACHE 12 ---
+Executions : 2.
+🔴 LA LIGNE `ACCENT` EST LUE DANS LE run-agent.ps1 GENERE SUR LA VM, jamais
+dans le script hote — c'est le seul controle qui vaille, et ce depot a paye SIX
+FOIS qu'une variable n'atteigne pas le processus, dont une la semaine derniere
+par l'instrument d'un chantier qui connaissait le piege.
+  ps1_accent ............... ["$env:ACCENT = '0'"]
+  ps1_temoin_negatif ....... []                       (ACCENT_INEXISTANT)
+⚠️ ET SUR LE BRAS ARME LA LISTE EST VIDE, ce qui est CORRECT et non un echec :
+`${ACCENT:+...}` ne rend rien quand la variable n'est pas posee, l'accent etant
+arme PAR DEFAUT. C'est le bras desarme qui qualifie ce vide.
+
+Ce que le bras desarme rend, sur le journal MIS A PLAT :
+  annonces 'accent de la fenetre Windows' ........ 0
+  trace   'accent de fenetre DESARME' ............ 1   (OnceLock : une par processus)
+  fenetres attachees au capteur .................. 16  (le mecanisme est VIVANT)
+  ERROR .......................................... 0
+  token, par page ................................ ""  (JAMAIS pose)
+  messages recus sur le canal de controle ........ []
+🔴 LE ZERO EST DISCRIMINANT PARCE QUE LE MEME MONTAGE EN REND DEUX SUR LE BRAS
+ARME, et parce que 16 lignes d'attache prouvent qu'il ne s'agit pas d'un
+produit entierement en panne. La trace, elle, prouve seulement que la variable
+a atteint le processus — pas que le mecanisme est coupe.
+
+--- CHAQUE MOTIF DE grep VERIFIE CONTRE LE CODE, ET VU RENDRE SUR LE VERT ---
+  'accent de la fenetre Windows' : 2 sur le bras arme, 0 sur le desarme
+  'accent de fenetre DESARME'    : 0 sur le bras arme, 1 sur le desarme
+  'capteur lancé'  (temoin d'existence) : 1 sur les DEUX bras
+  'chaine-inexistante-xyz' (temoin negatif) : 0
+=> les quatre comptes se qualifient mutuellement ; aucun zero n'est nu.
+
+--- UNE EXECUTION DISQUALIFIEE, DECLAREE ET CONSERVEE ---
+`a1-arme-3-DISQUALIFIEE.{json,log}` : quatre sessions au journal, mais UNE seule
+attribution session-pid et des pages qui ne rendent plus (`token: undefined`).
+Elle N'EST PAS exploitable pour ② ; elle l'est pour ① et ④ cote agent, et c'est
+elle qui porte le fait de la stabilite par application. Conservee sous son nom,
+jamais silencieusement jetee.
+
+--- CE QUE CETTE RECETTE N'ETABLIT PAS ---
+- AUCUN JUGEMENT VISUEL : personne n'a vu une couleur d'accent A L'ECRAN, et il
+  n'y a rien a voir — `--accent-fenetre` n'est peint par RIEN avant que ② ne
+  pose un manifeste (G5). Ce qui est mesure est la VALEUR, jamais un rendu.
+- La conversion BGRA -> RGBA n'est TOUJOURS pas eprouvee formellement. ⚠️ Elle
+  est en revanche CORROBOREE : le dossier de l'Explorateur est JAUNE et rend
+  #f5d472 (r=245 g=212 b=114, donc rouge > vert > bleu) ; une inversion aurait
+  rendu #72d4f5, un BLEU. Corroboration, PAS une preuve — une icone jaune et
+  son inverse bleu sont distinguables, une icone grise ne le serait pas.
+- SMTO_ABORTIFHUNG reste POSE, JAMAIS EXERCE : aucune application figee n'a ete
+  provoquee. Le repli `GetClassLongPtrW` n'a pas non plus ete emprunte.
+- Rien d'une icone qui CHANGE en cours de session ; rien de la latence ; rien
+  au-dela de deux applications ; aucun HiDPI.
+- AUCUN TAUX : quatre executions armees, deux desarmees, une disqualifiee. Ces
+  comptes sont RELEVES sur les fichiers verses, jamais ecrits de memoire.

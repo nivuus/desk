@@ -372,3 +372,83 @@ jamais vu rouge n'est pas un contrôle »*, appliqué **au harnais lui-même**.
 exigeait un `git status --porcelain` **vide**, ce qu'un fichier **neuf** ne rend
 jamais (il rend `??`). Corrigé pour le dire, plutôt que pour l'ignorer — la
 preuve de restauration qui vaut y est le `sha256` de l'étape 6.
+
+---
+
+## ⑭ LA RECETTE SUR VM — jouée le 21 août 2026, après que G4 a rendu la VM
+
+> ⚠️ **Ce document a été écrit une première fois AVANT la recette, et il
+> déclarait les tâches 13 et 14 NON FAITES.** Ce chapitre les remplace ; les
+> paragraphes antérieurs restent **datés et non barrés**, parce qu'ils étaient
+> vrais à leur heure. Le journal complet est `journaux-accent-a1/09-recette-vm.log`.
+
+**SEPT exécutions, comptées sur les fichiers versés et non de mémoire** : quatre
+armées exploitables (deux en thème clair, deux en sombre), deux désarmées, une
+**disqualifiée et conservée sous son nom**. **Aucun taux n'est revendiqué.**
+
+### Le binaire est le mien, et c'est une CHAÎNE qui le prouve
+
+🔴 **La taille ne prouve rien, dans les deux sens** — ce dépôt a vu un vert
+restauré peser *exactement* autant que son rouge. Le discriminant est une chaîne
+que j'ai posée moi-même : `accent de la fenetre Windows` → **1**,
+`accent de fenetre DESARME` → **1**, **témoin négatif → 0**. Compilation en
+**19,18 s** (une compilation de 0,13 s serait un aveu), après
+`cargo clean --release -p proto -p agent` — **les deux crates**.
+
+🔴 **Et un zéro a menti dans cette recette même** : la première interrogation
+portait sur `/media/vm/dev/agent.exe`, **qui n'existe pas** — le binaire vit sous
+`target/release/`. Les trois comptes rendaient 0… **et le témoin négatif aussi**.
+*C'est lui, et lui seul, qui a montré que ces zéros ne discriminaient rien.*
+
+### Les quatre critères
+
+| # | Verdict | Le chiffre, **relevé** | Exéc. |
+| --- | --- | --- | --- |
+| ① | **TENU, et MESURABLE** | `#f5d472` (Explorateur) contre `#8ec7d4` (Bloc-notes), sur deux `session` distinctes | **4** |
+| ② | **TENU et DISCRIMINANT en SOMBRE** | token = la couleur annoncée, **≠ `--accent`** (`#7aa2f7`) | **2** (+2 en clair) |
+| ④ | **TENU** | **exactement UNE** annonce par session, palier de **75 s** (facteur 15) | **4** |
+| `ACCENT=0` | **TENU** | 0 annonce, token **jamais posé**, ligne lue dans le ps1 **GÉNÉRÉ** | **2** |
+
+### 🔵 Le résultat que la recette a trouvé sans le chercher
+
+**En thème CLAIR, les deux couleurs d'icône sont REFUSÉES, et le thème reprend
+la main.** Mesuré par `rapportDeContraste` lui-même :
+
+| Couleur | fonds CLAIRS | fonds SOMBRES |
+| --- | --- | --- |
+| `#f5d472` | 1,444 / 1,347 / 1,243 → **REFUSÉ** | 13,475 / 12,440 / 11,315 → **accepté** |
+| `#8ec7d4` | 1,863 / 1,738 / 1,604 → **REFUSÉ** | 10,442 / 9,640 / 8,769 → **accepté** |
+
+🔴 **Le critère ③ — le seul rempart, jusque-là tenu par un unique test d'hôte —
+est donc OBSERVÉ SUR LE PRODUIT.** Et il l'est avec une couleur que **personne
+n'avait choisie pour échouer** : elle vient d'une vraie icône. Aucun test d'hôte
+ne pouvait établir cela.
+
+⚠️ **Le thème est ÉMULÉ par l'instrument**, et c'est déclaré : Chrome sans
+interface rend `light`. **Sans cette émulation, ② n'aurait été mesuré que dans le
+sens du refus** — et « le token vaut `--accent` » ne distingue pas une couleur
+acceptée d'un repli.
+
+### 🔵 La conversion BGRA → RGBA est CORROBORÉE, jamais prouvée
+
+Le dossier de l'Explorateur est **jaune**, et rend `#f5d472` — `r=245 > g=212 >
+b=114`. Une inversion aurait rendu `#72d4f5`, un **bleu**. ⚠️ **C'est une
+corroboration, pas une preuve** : elle ne vaut que parce que l'icône choisie est
+fortement colorée. Une icône grise ne dirait rien.
+
+### La dette de vérification de la tâche 12 est fermée
+
+`ps1_accent` = `["$env:ACCENT = '0'"]`, **lu dans le `run-agent.ps1` GÉNÉRÉ sur
+la VM**, témoin négatif `[]`. ⚠️ **Sur le bras armé la liste est VIDE, et c'est
+correct** — `${ACCENT:+…}` ne rend rien quand la variable n'est pas posée : c'est
+le bras désarmé qui qualifie ce vide.
+
+### Ce que la recette N'ÉTABLIT PAS
+
+- **Aucun jugement visuel** : personne n'a vu une couleur d'accent **à l'écran**,
+  et il n'y a rien à voir — `--accent-fenetre` n'est peint par rien avant que ②
+  ne pose un manifeste (**G5**).
+- **`SMTO_ABORTIFHUNG` reste POSÉ, JAMAIS EXERCÉ** ; le repli `GetClassLongPtrW`
+  n'a pas été emprunté.
+- **Rien d'une icône qui CHANGE en cours de session**, rien de la latence, rien
+  au-delà de **deux** applications, aucun HiDPI.

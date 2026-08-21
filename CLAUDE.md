@@ -2981,7 +2981,7 @@ l'**enfant** ; et `main.rs:268` rend la main à `capteur::executer` avant que `d
 | `MICRO=0` | **Chantier E, bloc E2** — **variable de PRODUIT**. Désarme le microphone **entier** : aucun puits n'est posé, `micro_disponible()` reste faux, `ready` porte `mic: false`, et le bouton du navigateur ne paraît pas. ⚠️ **`=0` DÉSARME ; une simple présence n'arme pas** — convention d'`AUDIO`, `PLEIN_ECRAN`, `SUPERVISEUR`, `CAPTEUR`, `PRESSE_PAPIER` et `PART_SONDAGE`, et pour la même raison : tester `is_ok()` allumerait le micro chez qui écrit `MICRO=0` pour le couper. Un test garde le prédicat (`demarrage/micro.rs::arme_micro`). Trace, **émise au branchement** donc avant toute session : `micro DESARME (MICRO=0)`. **Mesurée** (recette E2) : bouton caché sur une session `ice=connected`, **0** ligne `windows_micro`, juge à `AMPLITUDE=0,000000` |
 | `MICRO_PERIPHERIQUE=<nom ou identifiant>` | **Chantier E, bloc E2** — **variable de PRODUIT**. Désigne le point de terminaison de **rendu** sur lequel le micro écrit. Convention **VALUÉE**, celle d'`AUDIO_PERIPHERIQUE` et de `MULTIFENETRE_SORTIE`. 🔴 **DEUX DIFFÉRENCES DÉLIBÉRÉES AVEC `AUDIO_PERIPHERIQUE`** : ① **absente, elle ne vaut PAS le défaut de Windows mais la désignation INTÉGRÉE `"VB-Audio"`** — retomber sur `GetDefaultAudioEndpoint` ferait sortir la voix de l'utilisateur **par les haut-parleurs de la VM** sur une machine où le défaut est la carte son ; ② **il n'y a AUCUN repli** — `Choix::Introuvable` et `Choix::Ambigu` valent **échec**, pas de fil de rendu, `mic: false`, un `warn!` avec l'inventaire. A-bis se replie parce que « du son, peut-être le mauvais » vaut mieux que rien ; ici l'arbitrage s'**inverse** : « la voix de l'utilisateur, peut-être dans le mauvais tuyau » n'est pas un moindre mal, c'est une **fuite**. Règle de sélection : `wasapi_peripherique::choisir`. Trace : `cable de rendu retenu pour l'ecriture du micro … integree=true … critere="nom partiel"` — **comparer la valeur RETENUE, jamais la seule présence de la ligne** |
 | `MICRO_FAUTE_ECRITURE=<n>` | **Chantier E, bloc E2** — **variable de BANC, jamais une configuration livrée**. Fait échouer les *n* prochaines **écritures** WASAPI sur le câble. ⚠️ **ABSENTE = DÉSARMÉE**, et **budget GLOBAL AU PROCESSUS** (`OnceLock`) — c'est la leçon que D10 a payée sur `AUDIO_FAUTE_LECTURE` : un budget relu par fil se réarme à chaque reconstruction, et le chiffre-juge qu'il sert devient **structurellement incapable de quitter zéro**. Transmise par `scripts/run-agent.sh`. 🔴 **JAMAIS ARMÉE À CE JOUR** : le chemin d'échec d'écriture WASAPI **n'a jamais couru** (recette E2, legs n°9) |
-| `ACCENT=0` | **Sous-projet ① Divers — la couleur d'accent, sous-bloc A1** (21 août 2026) — **variable de PRODUIT**, pas de banc. Désarme le mécanisme ENTIER : `capteur/fenetre/accent.rs::tour` teste `accent::actif()` **AVANT toute lecture Win32**, donc `ACCENT=0` empêche jusqu'au `SendMessageTimeout` vers l'application, pas seulement l'envoi. ⚠️ **`=0` DÉSACTIVE ; une simple PRÉSENCE n'active pas** — convention de `PLEIN_ECRAN`, `AUDIO`, `SUPERVISEUR`, `CAPTEUR`, `PART_SONDAGE`, `PRESSE_PAPIER` et `APPS`, et pour la même raison : tester `is_ok()` armerait le mécanisme en écrivant `ACCENT=0` pour le couper. Lue dans le **capteur**, par `OnceLock`. Transmise par `scripts/run-agent.sh` (ligne posée par une **tâche DÉDIÉE**, quatre fois payée : `SUPERVISEUR` en D1, `MULTIFENETRE_REPRISE` en D2, `AUDIO` en D7, `APPS` évité en G1). Trace, **émise seulement si désarmé** : `accent de fenetre DESARME (ACCENT=0) : la couleur de l'icone n'est plus poussee au navigateur` (`warn!`). 🔴 **LE CONTRÔLE QUI VAUT EST LE ZÉRO D'ANNONCES `accent de la fenetre Windows`, PAS LA TRACE** — même patron que `PRESSE_PAPIER=0` ci-dessus : la trace prouve que la variable a atteint le processus, elle ne prouve pas que le mécanisme est coupé, et un zéro seul serait rendu par un produit entièrement en panne. 🔴 **ET CE CONTRÔLE N'A JAMAIS ÉTÉ JOUÉ** : la VM était tenue par un chantier voisin pendant toute la durée de A1, et **le seul contrôle qui vaille pour cette ligne est de la lire dans le `run-agent.ps1` GÉNÉRÉ sur la VM**. Dette de vérification, déclarée. |
+| `ACCENT=0` | **Sous-projet ① Divers — la couleur d'accent, sous-bloc A1** (21 août 2026) — **variable de PRODUIT**, pas de banc. Désarme le mécanisme ENTIER : `capteur/fenetre/accent.rs::tour` teste `accent::actif()` **AVANT toute lecture Win32**, donc `ACCENT=0` empêche jusqu'au `SendMessageTimeout` vers l'application, pas seulement l'envoi. ⚠️ **`=0` DÉSACTIVE ; une simple PRÉSENCE n'active pas** — convention de `PLEIN_ECRAN`, `AUDIO`, `SUPERVISEUR`, `CAPTEUR`, `PART_SONDAGE`, `PRESSE_PAPIER` et `APPS`, et pour la même raison : tester `is_ok()` armerait le mécanisme en écrivant `ACCENT=0` pour le couper. Lue dans le **capteur**, par `OnceLock`. Transmise par `scripts/run-agent.sh` (ligne posée par une **tâche DÉDIÉE**, quatre fois payée : `SUPERVISEUR` en D1, `MULTIFENETRE_REPRISE` en D2, `AUDIO` en D7, `APPS` évité en G1). Trace, **émise seulement si désarmé** : `accent de fenetre DESARME (ACCENT=0) : la couleur de l'icone n'est plus poussee au navigateur` (`warn!`). 🔴 **LE CONTRÔLE QUI VAUT EST LE ZÉRO D'ANNONCES `accent de la fenetre Windows`, PAS LA TRACE** — même patron que `PRESSE_PAPIER=0` ci-dessus : la trace prouve que la variable a atteint le processus, elle ne prouve pas que le mécanisme est coupé, et un zéro seul serait rendu par un produit entièrement en panne. ✅ **CE CONTRÔLE A ÉTÉ JOUÉ, et la ligne a été LUE DANS LE `run-agent.ps1` GÉNÉRÉ SUR LA VM** — jamais dans le script hôte (21 août 2026, **2 exécutions**) : `ps1_accent` rend `["$env:ACCENT = '0'"]`, et le témoin négatif `ACCENT_INEXISTANT` rend `[]`. ⚠️ **Sur le bras ARMÉ la liste est VIDE, et c'est CORRECT** : `${ACCENT:+…}` ne rend rien quand la variable n'est pas posée, l'accent étant armé PAR DÉFAUT — c'est le bras désarmé qui qualifie ce vide. **Relevé du bras désarmé** : **0** annonce `accent de la fenetre Windows`, **1** trace de désarmement (`OnceLock`), **16** lignes d'attache au capteur, **0** `ERROR`, et le token **jamais posé** (chaîne vide) sur les deux pages. 🔴 **Le zéro est discriminant parce que le MÊME montage en rend DEUX sur le bras armé**, et parce que les 16 attaches prouvent qu'il ne s'agit pas d'un produit en panne. |
 
 ---
 
@@ -15299,18 +15299,34 @@ Conception : `docs/superpowers/specs/2026-08-19-presse-papier-design.md`, §6.4
 et décisions **D9** et **D10** — **annotées par A1** : *deux de leurs clauses
 sont mesurées inapplicables* (voir ① et ② ci-dessous).
 Résultats : `docs/superpowers/plans/2026-08-21-accent-a1-resultats.md`.
-Journaux : `docs/superpowers/plans/journaux-accent-a1/` — **UNE SEULE FAMILLE
-DE LECTURE, la plus simple du dépôt, et c'est MESURÉ** (`file`,
-`grep -lP '\x1b\['`, `grep -lU $'\r'`, balayage `tr -dc '\000'`) : **UTF-8
-partout, aucune séquence ANSI, aucun `\r`, aucun octet NUL**. Ils se `grep`ent
-à plat, sans `sed`, sans `grep -a`. La raison est structurelle : ce sont des
-sorties `npm`/`cargo`/`node` sur l'**hôte**, jamais du PowerShell distant — le
-défaut à deux réglages ne peut pas les atteindre.
+Journaux : `docs/superpowers/plans/journaux-accent-a1/` — **TROIS familles de
+lecture**, et c'est **MESURÉ** (`file`, `grep -lP '\x1b\['`, `grep -lU $'\r'`,
+balayage `tr -dc '\000'`), **après la dernière écriture** :
 
-⛔ **A1 N'A PAS TOUCHÉ LA VM**, et ce n'est pas un choix : elle a été tenue par
-le sous-bloc **G4** de la gestion d'apps pendant toute la durée du sous-bloc.
-**Douze tâches sur dix-sept n'en dépendaient pas**, et elles sont faites ; les
-tâches **13 et 14 — l'instrument et la recette — NE SONT PAS FAITES.**
+| Famille | Fichiers | Ce qu'il faut faire |
+| --- | --- | --- |
+| les `*.log` de contrôle, de sonde et de revue, les `*.json`, l'`instrument/` | UTF-8, LF, **rien** | rien : ils se `grep`ent à plat |
+| les **trois** `agent-*.log` **bruts** de la recette | UTF-8, **CRLF**, **séquences ANSI PRÉSENTES** | `sed 's/\x1b\[[0-9;]*m//g'` — ou lire le `-plat` jumeau, **versé pour chacun** |
+| les **sept** `a1-*.log` de pilote | classés **« data »** par `file` — **cinq octets de contrôle** (`\x02`×4, `\x03`) du PowerShell de `run-agent.sh` | ⚠️ **`grep` fonctionne SANS `-a` ici, et c'est MESURÉ** (`grep -c` et `grep -ac` rendent le même 2) : il n'y a **aucun octet NUL**. `grep -a` reste l'habitude sûre |
+
+✅ **AUCUN octet NUL dans aucun des vingt fichiers** — balayage `tr -dc '\000'`,
+liste vide. C'est ce qui fait que la troisième famille reste `grep`-able malgré
+son classement `data`.
+
+⚠️ **L'état précédent de cette ligne annonçait « UNE SEULE FAMILLE, la plus
+simple du dépôt »** : c'était vrai tant que A1 n'avait produit aucun journal de
+VM. Le défaut à deux réglages de `build-agent.sh`/`run-agent.sh` — **toujours
+non corrigé** — atteint les deux familles neuves.
+
+✅ **LA RECETTE SUR VM A EU LIEU (21 août 2026)**, la VM ayant été rendue par le
+sous-bloc **G4** de la gestion d'apps. **SEPT exécutions** : quatre armées
+exploitables (deux en thème clair, deux en sombre), deux désarmées, **une
+disqualifiée et conservée sous son nom**. Les comptes sont **relevés sur les
+fichiers versés**, jamais écrits de mémoire.
+
+⚠️ **L'état précédent de cette section disait « A1 n'a pas touché la VM » et
+listait les tâches 13 et 14 comme NON FAITES** : c'était vrai à sa date, et
+c'est ce paragraphe qui le corrige.
 
 ### ① 🔴 Deux clauses de la spécification sont MESURÉES INAPPLICABLES
 
@@ -15403,7 +15419,10 @@ la partie **WCO** de S4.
 | Le trou de `pont_media.rs` | 🔴 **ROUGE JOUÉE AVANT LE BRAS** : `RecvError` sur la toute première annonce, 6 passed / 1 failed | 1 |
 | `TOUS_AGENT` (seul garde `tsc`) | 🔴 **VU ÉCHOUER** : « Property 'accent' is missing » | 1 |
 | Branche `a1nonies` | 🔴 rouge T1 : les DEUX tests tombent | 1 |
-| Critères **①, ②, ④** | ⛔ **NON MESURÉS** — ils exigent la VM | **0** |
+| **①** deux applications, deux couleurs | ✅ **TENU**, et **MESURABLE** : `#f5d472` (Explorateur, dossier jaune) contre `#8ec7d4` (Bloc-notes, bleu clair) | **4** |
+| **②** la couleur atterrit sur `:root` | ✅ **TENU et DISCRIMINANT en thème SOMBRE** : le token porte la couleur annoncée, **différente de `--accent`** | **2** (+2 en clair) |
+| **④** aucun message tant que l'icône ne change pas | ✅ **TENU** — **exactement UNE** annonce par session sur un palier de **75 s** (facteur 15 sur `PERIODE_ACCENT`) | **4** |
+| bras **`ACCENT=0`** | ✅ **TENU** — 0 annonce, token jamais posé, et la ligne lue dans le `run-agent.ps1` **GÉNÉRÉ** | **2** |
 | Critère **⑤** (les NEUF contrôles) | **TENU** — 7/7 scripts + §7.5 et §7.10 | 2 |
 
 **Comptes de clôture, tous ANNONCÉS avant d'être mesurés** : `cargo test -p agent`
@@ -15509,9 +15528,11 @@ trait doit être en portée pour que ses méthodes soient appelables.
 
 ### ⑧ Ce que A1 N'ÉTABLIT PAS
 
-- 🔴 **RIEN DE LA VM.** Les critères ①, ② et ④ ne sont **pas mesurés**, l'agent
-  n'a **pas été rebâti**, **aucune icône réelle n'a jamais été lue**, et **aucune
-  dominante n'a été calculée sur autre chose que des pixels de test**.
+- ✅ **Cette ligne disait « RIEN DE LA VM », et elle est CORRIGÉE** : la recette
+  a eu lieu, l'agent a été rebâti — **binaire prouvé mien par une chaîne que
+  j'ai posée moi-même, jamais par sa taille** —, et **deux icônes réelles ont
+  été lues**. ⚠️ **Ce qui reste vrai** : deux applications seulement, et rien
+  au-delà.
 - 🔴 **`agent/src/accent/win32.rs` (200 lignes) n'est couvert par AUCUN test** :
   il est `#[cfg(windows)]`, et `cargo check --target x86_64-pc-windows-gnu`
   vérifie types, emprunts, visibilités et durées de vie — **jamais le
@@ -15549,12 +15570,18 @@ trait doit être en portée pour que ses méthodes soient appelables.
    paiera alors la scission de `tokens.css`**, à 300/300, dont le point de chute
    est écrit dans le fichier même. ⚠️ **G5 n'a pas de plan**, et rien ne garantit
    sa date.
-2. 🔴 **Les critères ①, ② et ④ restent à jouer sur la VM**, avec l'instrument
-   (tâche 13) et la recette (tâche 14) **non faits**. ⚠️ **Le critère ① est NON
-   MESURABLE si les deux icônes ont la même dominante** : la sonde qui le dirait
-   n'a pas été jouée.
-3. ⛔ **La ligne `ACCENT` de `scripts/run-agent.sh` n'a jamais été lue dans le
-   `run-agent.ps1` GÉNÉRÉ** — le seul contrôle qui vaille. Dette de vérification.
+2. ✅ **RÉGLÉ : les critères ①, ② et ④ ont été joués** (21 août 2026, sept
+   exécutions). ⚠️ **Ce que la recette a trouvé et que personne n'avait
+   demandé** : en thème CLAIR, les deux couleurs d'icône sont **REFUSÉES** —
+   1,24 à 1,86 contre les trois fonds clairs, pour un seuil de 3 — et le thème
+   reprend la main. **Le critère ③, jusque-là tenu par un seul test d'hôte, est
+   donc OBSERVÉ SUR LE PRODUIT**, avec une couleur que personne n'avait choisie
+   pour échouer. ⚠️ **Le thème est ÉMULÉ par l'instrument** (Chrome sans
+   interface rend `light`) : sans cette émulation, ② n'aurait été mesuré que
+   dans le sens du refus.
+3. ✅ **RÉGLÉ : la ligne `ACCENT` a été lue dans le `run-agent.ps1` GÉNÉRÉ**,
+   `["$env:ACCENT = '0'"]`, témoin négatif à `[]`. La dette de vérification de
+   la tâche 12 est fermée.
 4. ⛔ **Le point de réunion avec ④ reste PROPOSÉ** : `agent/src/accent.rs::dominante`
    est le candidat, et G5 aura un **PNG** là où A1 a un **DIB** — besoin
    différent en amont, identique en aval. ⚠️ Relevé avant d'écrire :
@@ -15577,6 +15604,31 @@ trait doit être en portée pour que ses méthodes soient appelables.
 
 ### ⑩ Pièges neufs — à connaître avant de toucher à ce terrain
 
+- 🔴 **UN ZÉRO PEUT VENIR D'UN CHEMIN QUI N'EXISTE PAS, ET LE TÉMOIN NÉGATIF EST
+  CE QUI LE DIT.** Le contrôle du binaire cherchait trois chaînes dans
+  `/media/vm/dev/agent.exe` : les trois ont rendu **0**… **et le témoin négatif
+  aussi**. Le fichier était sous `target/release/`. *Un zéro n'est
+  interprétable que si une chose CONNUE POUR EXISTER rend non-zéro dans la même
+  commande* — sans ce témoin, j'aurais conclu que le binaire n'était pas le mien.
+- 🔵 **ÉMULER LE THÈME DU NAVIGATEUR EST CE QUI REND UN CRITÈRE DISCRIMINANT.**
+  Chrome sans interface rend `prefers-color-scheme: light`, et les deux icônes
+  réelles de cette VM y sont **illisibles** — donc **refusées**. Le token portait
+  alors le repli, et « il vaut `--accent` » ne distingue pas une couleur acceptée
+  d'un refus. En sombre, les mêmes couleurs sont acceptées et le token porte une
+  valeur **différente** de `--accent`. **Les deux sens ont été mesurés ; un seul
+  aurait laissé le critère ambigu.**
+- 🔵 **UN ACCIDENT DE MONTAGE PEUT ÉTABLIR CE QU'ON N'AVAIT PAS CHERCHÉ.** Une
+  exécution a porté **quatre** sessions au lieu de deux — et les deux fenêtres
+  d'une même application ont rendu **la même dominante**, ce qui établit la
+  stabilité **par application** que D9 revendique sans l'avoir mesurée.
+  ⚠️ Cette exécution est par ailleurs **disqualifiée pour ②** (pages ne rendant
+  plus, une seule attribution pour quatre sessions) : elle est **conservée sous
+  le nom `a1-arme-3-DISQUALIFIEE`**, jamais silencieusement jetée.
+- ⚠️ **`nodejs-winrm` enveloppe la commande dans `powershell -Command "& { … }"`** :
+  un script en ligne portant des parenthèses ou des guillemets doubles entre en
+  collision, **et le symptôme est un script qui ne tourne jamais** —
+  `CommandNotFoundException`, pas une erreur claire. Écrire le script sur le
+  partage et l'invoquer par `-File` (piège de D3, payé deux fois ici).
 - 🔴 **ZSH NE DÉCOUPE PAS LES VARIABLES EN MOTS**, et le symptôme n'est pas celui
   qu'on attend : une commande de contrôle passée par `$VAR` à un harnais arrive
   **entière comme nom de fichier**, « Aucun fichier ou dossier de ce nom »,
