@@ -47,6 +47,30 @@ pub enum Ordre {
     Fait { correlation: u32 },
     /// Le navigateur a refusé, ou la commande a expiré.
     Echec { correlation: u32, code: CodeEchec },
+    /// **F5** — le navigateur s'est annoncé, et il dit sur quelle racine.
+    ///
+    /// 🔴 **C'EST LE SEUL ORDRE QUI DÉCLENCHE LA REPRISE**, et c'est ce qui
+    /// ferme la fenêtre de trente secondes que F2 a mesurée deux fois sur deux.
+    /// Avant F5, `Fil::demarrer` appelait `reprendre()` **au démarrage du
+    /// fil** — c'est-à-dire au démarrage du pont, *sans savoir si un navigateur
+    /// est là, ni lequel, ni sur quel répertoire*. F2 a relevé la poussée du
+    /// rejeu **0,8 s AVANT** que le navigateur n'annonce son montage, puis
+    /// `commande expirée … correlation=0` **+30,2 s** plus tard : *« l'indicateur
+    /// qui existe pour dénoncer la perte est MUET pendant trente secondes. »*
+    ///
+    /// C'est **littéralement le remède que F2 a nommé** : « que le pont n'ouvre
+    /// son canal d'écriture qu'après un acquittement de l'écrivain ».
+    ///
+    /// ⚠️ **Il n'y avait AUCUN ordre correspondant à `CanalOuvert`**, et c'est
+    /// la cause structurelle de cette fenêtre : le fil ne pouvait pas savoir que
+    /// le navigateur était prêt, faute qu'on le lui dise.
+    Bonjour {
+        /// Le nom de la racine que l'utilisateur a choisie. **Un indice, pas une
+        /// preuve** — voir [`crate::pont::bonjour`].
+        racine: String,
+        /// L'utilisateur a confirmé vouloir pousser malgré un nom différent.
+        forcer: bool,
+    },
 }
 
 /// Ce dont le fil a besoin pour tourner.

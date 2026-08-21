@@ -160,7 +160,7 @@ impl Fil {
             // taire ferait croire à un journal intact.
             tracing::warn!(ignorees, "lignes illisibles jetees au rechargement du journal");
         }
-        let mut fil = Self {
+        let fil = Self {
             config,
             journal,
             file: File::nouvelle(),
@@ -169,12 +169,26 @@ impl Fil {
             mutation_en_vol: None,
             retenues: false,
         };
-        fil.reprendre();
+        // 🔴 **F5 — `reprendre()` N'EST PLUS APPELÉE ICI, ET C'EST LE REMÈDE.**
+        //
+        // *Cette ligne était `fil.reprendre();`.* Le fil démarre avec le PONT,
+        // c'est-à-dire **avant** que le moindre navigateur ne soit là : F2 a
+        // mesuré la poussée du rejeu **0,8 s AVANT** l'annonce de montage, et
+        // l'expiration `correlation=0` **+30,2 s** plus tard. Trente secondes
+        // pendant lesquelles l'indicateur qui existe pour dénoncer la perte
+        // était **MUET**.
+        //
+        // La reprise attend désormais [`Ordre::Bonjour`], qui seul dit qu'un
+        // navigateur est là **et sur quel répertoire**. ⚠️ **Le cas « aucun
+        // `Bonjour` n'arrive » n'a AUCUN repli qui pousserait** : un repli
+        // rouvrirait exactement le danger du §6.4 cas 2, celui pour lequel
+        // `Bonjour` existe. Il a un `warn!`, et rien d'autre.
         fil
     }
 
     fn traiter(&mut self, ordre: Ordre) {
         match ordre {
+            Ordre::Bonjour { racine, forcer } => self.bonjour(&racine, forcer),
             Ordre::Survenu(evenement) if evenement.est_mutation() => {
                 // 🔴 **UNE MUTATION N'EST PAS UNE ÉCRITURE, ET LA CONFONDRE
                 // DÉTRUIRAIT.** Sans ce bras, `commencer` tomberait sur le

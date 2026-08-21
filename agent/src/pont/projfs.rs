@@ -164,6 +164,7 @@ impl Virtualisation {
         vers_ecriture: std::sync::mpsc::Sender<crate::pont::ecriture::fil::Ordre>,
         inscriptible: bool,
         mutations_armees: bool,
+        cache_arme: bool,
     ) -> Result<Self> {
         let racine = racine::racine()?;
         let etat = Arc::new(Etat {
@@ -184,6 +185,8 @@ impl Virtualisation {
             canal_ouvert: std::sync::atomic::AtomicBool::new(false),
             compteurs: crate::pont::compteurs::Compteurs::nouveaux(),
             latences: crate::pont::latence::Histogramme::nouveau(),
+            cache: Mutex::new(crate::pont::cache::CacheEnumeration::nouveau()),
+            cache_arme,
             octets_hydrates: AtomicU64::new(0),
             entrees_hydratees: AtomicU64::new(0),
         });

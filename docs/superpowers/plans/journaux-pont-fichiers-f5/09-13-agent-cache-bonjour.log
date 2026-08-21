@@ -1,0 +1,90 @@
+# F5 — tâches 9, 11, 12, 13 : l'aiguillage, le cache câblé, Rafraichir, Bonjour.
+# 21 août 2026. Tout sur l'HÔTE : la VM est éteinte et tenue par G5.
+
+## LE HARNAIS DE ROUGE — chaque mutation jouée SEULE
+ROUGE 0 (mutation vide) : le harnais la REFUSE à l'étape 3. ✅ rejouée à chaque campagne.
+Chaque rouge : copie nommée dans /tmp/f5-temoin, mutation PAR NUMÉRO DE LIGNE, `diff` non
+vide vérifié AVANT, contrôle joué, assertion tombée LUE, `cp` sans -p, `diff` vide et
+`sha256sum` relevés après.
+
+## TÂCHE 10 — la rouge du cache fait tomber TROIS tests, et non un
+`invalider` prend le CHEMIN au lieu du PARENT (cache.rs:121) :
+  8 passed, 3 failed — invalider_oublie_le_repertoire_parent_du_chemin_mute,
+  invalider_ne_touche_pas_les_repertoires_voisins,
+  le_parent_d_un_chemin_de_premier_niveau_est_la_racine.
+sha256 après restauration : 8ee0d381…
+
+## TÂCHE 13 — les DEUX rouges prescrites, jouées, et elles mordent
+ROUGE n°1 « la condition retirée, le pont pousse quel que soit le nom »
+  (bonjour.rs:65, `Decision::Retenir` -> `Decision::Pousser`) : **999 passed, 4 failed**
+  — les trois tests purs de la règle, PLUS `un_repertoire_different_retient_et_le_dit`,
+  qui est le test de bout en bout du fil. sha256 après restauration : 265f08a6…
+ROUGE n°2 « remettre `fil.reprendre()` dans `Fil::demarrer` » (fil.rs:186)
+  : **1000 passed, 3 failed** — dont les DEUX assertions que j'ai ajoutées exprès pour
+  qu'elles voient le déplacement :
+     `assert!(bac.trames().is_empty(), "aucune trame avant Bonjour")`
+     `assert_eq!(avant.compte(), 2, "demarrer ne reprend RIEN : il attend Bonjour")`
+  **Sans ces deux moitiés, les tests adaptés seraient passés aussi sur un produit ayant
+  gardé l'ancien moment** — c'est-à-dire qu'ils n'auraient rien mesuré.
+  sha256 après restauration : 267db43d…
+
+## 🔴 DEUX TESTS ONT DÛ ÊTRE ADAPTÉS, ET C'ÉTAIT LE POINT
+`les_dues_sont_annoncees_avant_toute_poussee_au_demarrage` et
+`un_fichier_absent_au_redemarrage_sort_du_journal_en_le_nommant` appelaient
+`Fil::demarrer` et n'attendaient rien d'autre : ils PINGLAIENT la reprise au démarrage
+du fil, qui est exactement ce que F5 déplace. Ils ne sont pas « réparés pour passer » :
+ils sont adaptés au contrat neuf (la reprise attend `Bonjour`) **et renforcés** d'une
+assertion qui vérifie que `demarrer` ne reprend RIEN. Le premier est RENOMMÉ
+(`…_a_la_reprise`), parce qu'un nom qui ment sur ce qu'il mesure est un nom qu'on cesse
+de lire.
+
+## 🔴 UNE FENÊTRE RÉELLE FERMÉE, ET ELLE N'ÉTAIT PAS DANS LE PLAN
+D3(3) demande d'invalider sur les réponses `Fait`. Or `Attendue::Muter` ne portait que la
+SOURCE, et son commentaire disait « la table n'a pas à connaître la destination pour
+apparier une réponse » — vrai de l'APPARIEMENT, et c'est bien pourquoi je n'ai pas barré
+la prémisse. Mais entre la notification ProjFS (qui invalide les DEUX parents) et le
+`Fait`, **le navigateur n'a pas encore renommé** : un listage du parent de destination y
+mémoriserait, LÉGITIMEMENT, un contenu sans le nom neuf — qui devient faux au `Fait`, et
+le resterait jusqu'au terme de `TTL_ENUMERATION`. `Muter` porte donc
+`destination: Option<String>`, et les 4 sites partent dans le même commit (§1.4).
+
+## L'INVALIDATION A DEUX MOITIÉS, ET LA PORTE P3 N'A PAS ÉTÉ JOUÉE
+La première (notifications ProjFS) suppose que le filtre nous rappelle sur une création
+locale. **Je ne le sais pas** : c'est la porte P3, et la VM était éteinte. Les deux
+moitiés sont posées quand même, et la raison est écrite dans le code : l'une est
+INDISPENSABLE si le filtre nous rappelle, et INOFFENSIVE s'il fusionne. **Le coût de se
+tromper n'est pas symétrique.**
+
+## 🔵 `PrjClearNegativePathCache` GAGNE SON PREMIER APPELANT DE PRODUCTION
+Chargée depuis F1 et sans site d'appel (vérifié tâche 1). **R7 se referme d'UNE entrée
+sur cinq** — pas « R7 est fermé » : `PrjDeleteFile` et trois autres restent sans jumeau.
+Son `totalentrynumber` est TRACÉ, ce qui rend le cache négatif observable pour la
+première fois ; F4 n'en avait mesuré qu'un différentiel NUL. ⚠️ Et `-1` (contexte absent)
+se distingue de `0` (cache vide) dans la trace : *les confondre ferait lire une absence
+de mesure comme une mesure nulle*.
+
+## L'EXTRACTION DE `service/annonces.rs`, JOUÉE AVANT LA REVUE TRANSVERSE
+`service.rs` : 341 -> **463** (marge 37) par F5, puis -> **380** par extraction (marge 120).
+`service/annonces.rs` : 104. La revue transverse AJOUTE du commentaire — S3 y a mis 48
+lignes, S2 a vu une marge tomber de 30 à 17 par ce seul geste. **L'aiguillage RESTE dans
+`service.rs`** : il doit courir avant `resoudre`, et le déplacer ferait de `annonces.rs`
+l'endroit où l'on croit qu'il vit.
+
+## ⚠️ TROIS FICHIERS DANS LA BANDE DE VIGILANCE (>460), DÉCLARÉS
+  agent/src/pont/ecriture/fil/tests.rs  **472** (marge 28) — mes tests neufs
+  agent/src/pont/ecriture/fil.rs        **465** (marge 35) — 🔴 il valait **442** après
+      l'extraction de `contrat.rs`, jouée dans CE MÊME sous-bloc. *La marge regagnée par
+      une extraction se reperd* — la leçon que ce dépôt a payée cinq fois, payée une
+      sixième par la branche qui l'écrit.
+  agent/src/pont/transport/tests.rs     **474** (marge 26) — ⛔ **NON TOUCHÉ par F5**, et
+      c'est délibéré (§2.2 du plan).
+
+## UN AVERTISSEMENT D'UNE AUTRE FAMILLE, ATTRAPÉ
+`fil.rs:163` — `variable does not need to be mutable`, conséquence du retrait de
+`fil.reprendre()`. **Famille autre que `dead_code`**, celle que ce dépôt vérifie par sa
+NATURE. Corrigé. Après : **24 avertissements, tous `dead_code`** (vérifié par
+`grep -v 'never used|never read'` : sortie vide).
+
+## COMPTES
+  cargo test -p agent : 994 -> **1003** (+9 : 8 `bonjour` + 1 test de retenue)
+  cargo check --target x86_64-pc-windows-gnu : exit 0, 24 avertissements, tous dead_code

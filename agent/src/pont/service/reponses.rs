@@ -249,8 +249,18 @@ pub(super) fn appliquer(
                 tracing::warn!(chemin, "en-tête Entrees illisible");
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
             };
+            // **F5** — le cache mémorise les entrées BRUTES, avant `preparer`.
+            // Voir `pont::cache` : le résultat préparé dépend de la requête, et
+            // le mémoriser ferait qu'un `dir *.txt` empoisonnerait le `dir`
+            // suivant.
+            let brutes = verbes::entrees_depuis(entete.entrees);
+            if etat.cache_arme {
+                if let Ok(mut cache) = etat.cache.lock() {
+                    cache.poser(chemin.clone(), brutes.clone(), std::time::Instant::now());
+                }
+            }
             let entrees = crate::pont::enumeration::preparer(
-                verbes::entrees_depuis(entete.entrees),
+                brutes,
                 expression.as_deref(),
                 |nom, motif| etat.apparier(nom, motif),
                 |a, b| etat.comparer(a, b),
@@ -290,7 +300,7 @@ pub(super) fn appliquer(
         // : une mutation n'a ni tampon d'énumération, ni flux de données. Elle
         // naît d'une notification POST, qui a déjà rendu la main à
         // l'application.
-        (Attendue::Muter { chemin, renommage }, None) => {
+        (Attendue::Muter { chemin, renommage, destination }, None) => {
             if trame.type_message != proto::fichiers::TYPE_FAIT {
                 tracing::warn!(
                     chemin, correlation, renommage, type_message = trame.type_message,
@@ -299,6 +309,12 @@ pub(super) fn appliquer(
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
             }
             tracing::debug!(chemin, correlation, renommage, "mutation acquittee");
+            // **F5 — SECONDE MOITIÉ DE L'INVALIDATION : ce que le NAVIGATEUR a
+            // fait.** Elle ne double pas la première, elle ferme la fenêtre que
+            // la première laisse : entre la notification et cet acquittement,
+            // le poste local n'avait pas encore changé, et un listage aurait pu
+            // y mémoriser — légitimement — un contenu qui devient faux ICI.
+            invalider_le_cache(etat, &chemin, destination.as_deref());
             let _ = etat.vers_ecriture.send(Ordre::Fait { correlation });
             Suite::Termine(S_OK)
         }
@@ -311,6 +327,7 @@ pub(super) fn appliquer(
                 return Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)));
             }
             tracing::debug!(chemin, correlation, "création acquittée");
+            invalider_le_cache(etat, &chemin, None);
             let _ = etat.vers_ecriture.send(Ordre::Fait { correlation });
             Suite::Termine(S_OK)
         }
@@ -327,6 +344,25 @@ pub(super) fn appliquer(
                 "réponse d'un type qui ne correspond pas à la commande : jetée"
             );
             Suite::Termine(HRESULT(etat.compteurs.rendre(Erreur::Inattendue)))
+        }
+    }
+}
+
+/// Oublie ce que contenaient les répertoires qu'une mutation acquittée a
+/// changés — **le parent de la source, et celui de la destination s'il y en a
+/// une**.
+///
+/// ⚠️ **Inerte si `PONT_CACHE=0`**, comme tout ce que F5 ajoute : le bras
+/// désarmé doit se comporter EXACTEMENT comme le produit d'avant F5, sans quoi
+/// le rouge du critère ① mesurerait autre chose que l'absence de cache.
+fn invalider_le_cache(etat: &Etat, source: &str, destination: Option<&str>) {
+    if !etat.cache_arme {
+        return;
+    }
+    if let Ok(mut cache) = etat.cache.lock() {
+        cache.invalider(source);
+        if let Some(vers) = destination {
+            cache.invalider(vers);
         }
     }
 }

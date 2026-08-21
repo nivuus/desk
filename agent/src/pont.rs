@@ -27,6 +27,7 @@
 //! fichier ni dans ses enfants purs, ne doit importer quoi que ce soit de
 //! `Win32::Storage::ProjectedFileSystem`.**
 
+pub mod bonjour;
 pub mod cache;
 pub mod chemins;
 pub mod compteurs;
@@ -158,12 +159,33 @@ pub async fn executer(config: crate::Config) -> anyhow::Result<()> {
         );
     }
 
+    // ⚠️ **`PONT_CACHE=0` DÉSARME, et une simple PRÉSENCE n'active pas** — la
+    // convention de `SUPERVISEUR`, `CAPTEUR`, `PONT`, `PONT_ECRITURE`,
+    // `PONT_MUTATION`, `AUDIO`, `PLEIN_ECRAN`, `PRESSE_PAPIER` et `APPS`, et
+    // pour la même raison : tester `is_ok()` **armerait** le mécanisme en
+    // écrivant `PONT_CACHE=0` pour le couper.
+    //
+    // 🔴 **VARIABLE DE BANC, jamais une configuration livrée.** Elle existe
+    // pour rendre ROUGE le critère ① de la recette de F5 **sur le produit
+    // lui-même** : désarmée, le pont paie chaque listage, et le fichier ajouté
+    // côté navigateur **apparaît sans `Rafraichir`**. C'est un rouge du
+    // MÉCANISME — présent et sans effet —, jamais un rouge vacueux, et c'est la
+    // forme que D10 a nommée après avoir produit l'autre.
+    let cache_arme = std::env::var("PONT_CACHE").as_deref() != Ok("0");
+    if !cache_arme {
+        tracing::warn!(
+            "cache d'enumeration DESARME (PONT_CACHE=0) : bras de banc, jamais une \
+             configuration livree"
+        );
+    }
+
     let virtualisation = projfs::Virtualisation::demarrer(
         projfs,
         vers_navigateur.clone(),
         vers_ecriture,
         ecriture_armee,
         mutations_armees,
+        cache_arme,
     )?;
     let etat = virtualisation.etat();
     tracing::info!(racine = %virtualisation.racine().display(), "racine du pont fichiers montée");
