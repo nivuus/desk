@@ -1,0 +1,28 @@
+[2026-08-21T14:25:37.713Z] jeton de recette obtenu
+[2026-08-21T14:25:38.095Z] chrome : Chrome/151.0.7922.169
+[2026-08-21T14:25:38.413Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA
+[2026-08-21T14:25:42.468Z] etat de la shell : {"href":"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA","jeton":true}
+[2026-08-21T14:25:42.468Z] la page-shell est connectee : lancement de l agent
+[2026-08-21T14:25:42.861Z] agent lance : Opration russie : tentative d'excution de la tche planifie "guacamole-agent".agent lancé en session interactive ; journal : /media/vm/dev/agent.log
+[2026-08-21T14:25:46.895Z] 2 fenetre(s) d application apres 4 s
+[2026-08-21T14:25:46.896Z] fenetres : F4z7KQooOQfJqh47PM0ETA:w-2 , F4z7KQooOQfJqh47PM0ETA:w-1
+[2026-08-21T14:25:46.927Z]   [attente 0s] [{"href":"http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-2&signaling=ws%3A%2F%2F192.168.3.1%3A8080","statut":"Connexion…","video":true,"cache":true,"canaux":2,"injecte":true},{"href":"http://127.0.0.1:5173/?session=F4z7KQooOQfJqh47PM0ETA%3Aw-1&signaling=ws%3A%2F%2F192.168.3.1%3A8080","statut":"Connexion…","video":true,"cache":true,"canaux":2,"injecte":true}]
+[2026-08-21T14:25:51.958Z] les 2 boutons micro sont visibles apres 5 s
+[2026-08-21T14:25:53.967Z]   [0-repos] F4z7KQooOQfJqh47PM0ETA:w-2 etat=ferme cache=false mic-state=0 titre="Microphone — cliquez pour parler"
+[2026-08-21T14:25:53.967Z]   [0-repos] F4z7KQooOQfJqh47PM0ETA:w-1 etat=ferme cache=false mic-state=0 titre="Microphone — cliquez pour parler"
+[2026-08-21T14:25:53.978Z] clic micro sur F4z7KQooOQfJqh47PM0ETA:w-2 a 2026-08-21T14:25:53.970Z
+[2026-08-21T14:26:01.985Z] juge « A-une-seule » : 10 s sur CABLE Output
+[2026-08-21T14:26:12.978Z]   [A-une-seule] F4z7KQooOQfJqh47PM0ETA:w-2 etat=actif cache=false mic-state=1 titre="Microphone actif — cliquez pour couper"
+[2026-08-21T14:26:12.978Z]   [A-une-seule] F4z7KQooOQfJqh47PM0ETA:w-1 etat=ferme cache=false mic-state=0 titre="Microphone — cliquez pour parler"
+[2026-08-21T14:26:12.992Z] clic micro sur F4z7KQooOQfJqh47PM0ETA:w-1 a 2026-08-21T14:26:12.983Z
+[2026-08-21T14:26:20.997Z] juge « B-les-deux » : 10 s sur CABLE Output
+[2026-08-21T14:26:32.093Z]   [B-les-deux] F4z7KQooOQfJqh47PM0ETA:w-2 etat=actif cache=false mic-state=1 titre="Microphone actif — cliquez pour couper"
+[2026-08-21T14:26:32.093Z]   [B-les-deux] F4z7KQooOQfJqh47PM0ETA:w-1 etat=actif cache=false mic-state=1 titre="Microphone actif — mais une autre fenêtre tient le micro de la VM : celle-ci n’y"
+[2026-08-21T14:26:32.110Z] gagnante = F4z7KQooOQfJqh47PM0ETA:w-2 ; pids = {"F4z7KQooOQfJqh47PM0ETA:w-2":"5800","F4z7KQooOQfJqh47PM0ETA:w-1":"5664"}
+[2026-08-21T14:26:32.110Z] phase C : mise a mort de l enfant gagnant, PID RELEVÉ 5800 (session F4z7KQooOQfJqh47PM0ETA:w-2)
+[2026-08-21T14:26:34.484Z] mise a mort : agents restants = 5
+[2026-08-21T14:26:54.508Z] juge « C-reprise » : 10 s sur CABLE Output
+[2026-08-21T14:27:05.505Z]   [C-reprise] F4z7KQooOQfJqh47PM0ETA:w-2 etat=null cache=null mic-state=0 titre="null"
+[2026-08-21T14:27:05.506Z]   [C-reprise] F4z7KQooOQfJqh47PM0ETA:w-1 etat=actif cache=false mic-state=2 titre="Microphone actif — cliquez pour couper"
+[2026-08-21T14:27:05.506Z] mesure terminee
+[2026-08-21T14:27:05.508Z] sortie : /tmp/e3/pilote-1.json
