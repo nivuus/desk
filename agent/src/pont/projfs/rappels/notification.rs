@@ -94,6 +94,38 @@ pub(super) unsafe extern "system" fn notification(
             Some(Ok(_)) => notifications::Cible::DansLaRacine,
             Some(Err(())) => notifications::Cible::HorsRacine,
         };
+        // 🔵 **LA TRACE QUE LA SONDE S1 LIT, ET C'EST UN `debug!` À DESSEIN.**
+        //
+        // Elle porte les QUATRE champs bruts du rappel — le code, `isdirectory`,
+        // le chemin, la destination —, c'est-à-dire exactement ce dont S1 a
+        // besoin pour répondre à ses trois questions **sans qu'aucun octet ne
+        // parte vers le poste local**.
+        //
+        // ⚠️ **`debug!` et non `info!`, contrairement au recensement des codes**
+        // : ce rappel court sur un fil que le système possède, à chaque
+        // notification. Ce n'est PAS le chemin le plus chaud du pont — les
+        // lectures n'en produisent aucune, `FILE_HANDLE_CLOSED_NO_MODIFICATION`
+        // n'étant délibérément pas demandée —, mais une ligne `info!` par
+        // création de fichier inonderait un journal d'exploitation pour un
+        // besoin de banc.
+        //
+        // ⚠️ **Elle se lit avec un filtre CIBLÉ**, jamais `RUST_LOG=debug`
+        // global : celui-ci ferait une ligne par morceau lu, ce qui est le
+        // piège « ne jamais tracer par paquet » du chantier TURN. Le filtre
+        // le plus étroit qui la rende est
+        // `agent::pont::projfs::rappels::notification=debug`. ⚠️ **La recette
+        // de F3 a employé `RUST_LOG=info,agent::pont=debug`**, plus large :
+        // mesuré sur les huit exécutions versées, il ne produit **aucune** ligne
+        // par morceau lu — le chemin de lecture n'appelle pas `debug!`. Le
+        // relevé le plus volumineux fait 3 100 lignes pour une session de 90 s.
+        tracing::debug!(
+            code = notification.0,
+            est_repertoire,
+            chemin = %chemin_brut(donnees),
+            destination = ?vers,
+            ?cible,
+            "notification ProjFS"
+        );
         match notifications::decider(notification.0, etat.etat_de_notification(), cible) {
             notifications::Reponse::Refuser(cause) => HRESULT(etat.compteurs.rendre(cause)),
             // 🔵 L'écriture est autorisée. **Il n'y a rien de plus à faire
@@ -213,4 +245,24 @@ unsafe fn destination_de(brut: windows::core::PCWSTR) -> Option<Result<String, (
             Some(Err(()))
         }
     }
+}
+
+/// Le `FilePathName` du rappel, **tel quel**, pour la trace de la sonde S1.
+///
+/// ⚠️ **Ce n'est PAS le chemin normalisé** : la sonde a besoin de voir ce que
+/// ProjFS a livré, y compris ce que `pont::chemins` refuserait. Un chemin
+/// refusé par la normalisation ne produit aucune trace ailleurs, et S1 doit
+/// pouvoir constater qu'il est arrivé.
+///
+/// # Sûreté
+///
+/// L'appelant garantit que `donnees` est le `PRJ_CALLBACK_DATA` que ProjFS
+/// vient de fournir.
+unsafe fn chemin_brut(donnees: *const PRJ_CALLBACK_DATA) -> String {
+    let Some(brut) = (unsafe { donnees.as_ref() }) else { return String::new() };
+    if brut.FilePathName.is_null() {
+        return String::new();
+    }
+    // SÛRETÉ : ProjFS garantit un `PCWSTR` terminé par un nul.
+    String::from_utf16_lossy(unsafe { brut.FilePathName.as_wide() })
 }
