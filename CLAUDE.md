@@ -406,6 +406,7 @@ démarre donc pas — et il dit pourquoi.
 | `PLATEFORME_PORT` | défaut **8080**. Un port non entier **lève**, jamais ne retombe sur le défaut |
 | `PLATEFORME_BASE` | `sqlite` (défaut) ou `postgres`. **Une valeur inconnue LÈVE**, à deux endroits |
 | `PLATEFORME_BASE_URL` | chemin SQLite (défaut `:memory:`) ou URL `pg`. ⚠️ **`pg` prend `:memory:` pour un nom d'hôte** |
+| `PLATEFORME_AUTH` | `pomerium` (défaut) ou `motdepasse`. 🔴 **UN CHOIX DE MODE, PAS UN ARMEMENT** — la convention `=0 désarme` de `agent/` ne s'applique pas ici, précédent `PLATEFORME_BASE` deux lignes plus haut, et pour la même raison : un repli silencieux ferait tourner un mode sous le nom de l'autre, et l'un des deux sens est une **ouverture**. **Une valeur inconnue LÈVE.** En mode `pomerium`, `GET /auth/moi` échange l'en-tête `X-Pomerium-Claim-Email` posé par le proxy contre le MÊME jeton interne que le mot de passe, et `POST /auth/connexion`/`/auth/rafraichir` rendent le 404 générique (route retirée). Chantier `auth-pomerium`, tâches 1 à 3 — voir l'index des chantiers |
 | `PLATEFORME_ORIGINE_CLIENT` | l'origine CORS. **FACULTATIVE, et son défaut est le REFUS** : absente, aucun en-tête CORS n'est émis. **Jamais `*`, sous aucune condition.** ⚠️ Son absence est le cas **nominal** derrière le proxy, où page et API partagent l'origine |
 | `PLATEFORME_PROXY_DE_CONFIANCE` | **FACULTATIVE.** Absente, `X-Forwarded-For` **n'est pas cru du tout** — le défaut sûr. 🔴 **Mal posée, le frein par adresse dégénère en frein GLOBAL** et le premier attaquant bloque tout le monde ; le seul endroit où cela se voit est la ligne de journal du frein, qui **nomme l'adresse retenue** |
 | `PLATEFORME_ICONES` | **FACULTATIVE**, défaut `donnees/icones`. ⚠️ Une valeur **vide** retombe sur le défaut, à dessein |
@@ -827,6 +828,10 @@ Ils sont **datés**, et plusieurs se réfutent les uns les autres à dessein.
 - **Sous-projet ① Divers — presse-papier, sous-bloc P3 : les N fenêtres (21 août 2026)** — [résultats](docs/superpowers/plans/2026-08-21-presse-papier-p3-resultats.md)
 - **Sous-projet ① Divers — la couleur d'accent, sous-bloc A1 (21 août 2026)** — [résultats](docs/superpowers/plans/2026-08-21-accent-a1-resultats.md)
 
+### Chantier auth-pomerium — l'identité vient du proxy (CLOS)
+
+- **auth-pomerium : l'identité vient du proxy, le jeton interne RESTE (21 août 2026)** — [résultats](docs/superpowers/plans/2026-08-21-auth-pomerium-resultats.md)
+
 ### Le retrait du legacy (CLOS)
 
 - **Retrait du legacy — état des verrous : DEUX satisfaits sur dix (21 août 2026)** — [relevé](docs/superpowers/plans/2026-08-21-retrait-legacy-etat-des-verrous.md)
@@ -913,7 +918,7 @@ par D11, et **toujours le quatrième**, inexpliqué.
 | **E** microphone | 🔴 **personne n'a écouté** — le critère de fin n'est atteint que par un juge logiciel ; le son d'une **autre application** n'est pas annulé (−13 dB, donc **amplifié**) et rien ne le dit à l'utilisateur ; le rééchantillonnage 48 → 44,1 kHz du câble, **remède inapplicable** ; deux replis livrés et **jamais courus** ; la licence VB-Audio est **personnelle seulement** |
 | **③** pont fichiers | 🔴 **~33 Kio/s**, et **aucun fichier de plus de 128 Kio n'est lisible** ; 🔴 **aucun listage de plus de ~3 150 entrées n'aboutit** (taille d'un message SCTP) ; 🔴 **l'idiome « temporaire + renommage » n'a jamais été exercé sur un éditeur réel** — *le seul chemin par lequel une sauvegarde peut se perdre en silence* ; un renommage fait **disparaître un répertoire frère** ; aucune éviction, le disque grossit |
 | **④** gestion d'apps | 🔴 **un `<img src>` ne porte pas d'`Authorization`** — le hub n'est **pas installable**, faute d'icône, et ses `file_handlers` sont donc inertes ; 71 applications restent `NonMesuree` ; une icône qui change **sans que le raccourci change** n'est jamais revue ; le magasin n'est **jamais nettoyé** |
-| **⑤** plateforme | 🔴 **la scalabilité horizontale est IMPOSSIBLE** — **quatre** états de routage vivent en mémoire, et `--scale plateforme=2` donne une panne **muette** que rien n'empêche ; 🔴 **TURNS sur 443 n'est pas livré**, donc **la cible « réseaux restrictifs » n'est pas couverte** ; `GET /vm` et `POST /session` ne sont **pas freinées** ; le relais de signaling non plus ; le jeton vit dans `localStorage` (**aucun cookie livré**) ; le secret d'enrôlement est **en clair sur la VM** (rotation possible, retrait non) |
+| **⑤** plateforme | 🔴 **la scalabilité horizontale est IMPOSSIBLE** — **quatre** états de routage vivent en mémoire, et `--scale plateforme=2` donne une panne **muette** que rien n'empêche ; 🔴 **TURNS sur 443 n'est pas livré**, donc **la cible « réseaux restrictifs » n'est pas couverte** ; `GET /vm` et `POST /session` ne sont **pas freinées** ; le relais de signaling — `/signal` depuis le chantier `auth-pomerium` (il vivait à la racine `/` avant) — non plus ; le jeton vit dans `localStorage` (**aucun cookie livré**) ; le secret d'enrôlement est **en clair sur la VM** (rotation possible, retrait non) |
 | **⑥** design system | le **WCO** n'a jamais été rendu ; `--accent-fenetre` **n'est déclaré nulle part et peint par rien** ; `client/src/design/tokens.css` est à **300/300, marge nulle**, avec **onze** lecteurs qui le nomment par son chemin ; les galeries n'ont **aucun test** |
 | **①** divers | le **propriétaire mono-fenêtre n'existe pas** (ni presse-papier, ni accent) ; le canal `Message` du registre est **non borné**, et trois sous-blocs l'ont aggravé ; le **niveau 2** du presse-papier (qu'un humain puisse coller) reste **non mesurable** |
 
