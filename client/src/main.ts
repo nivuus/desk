@@ -301,6 +301,9 @@ connectSession({
             // Aucune logique ici : conformer, refuser, poser — tout vit dans
             // `accent-dom.ts`, adossé à `accent.ts`, pur et testé.
             accent.recevoir(message.couleur);
+        } else if (message.type === 'mic-state') {
+            // Une LIGNE qui délègue : toute la doctrine vit dans `micro.ts`.
+            micro?.annoncerExclusivite(message.granted);
         }
     },
 })

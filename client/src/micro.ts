@@ -222,6 +222,22 @@ export interface ControleBoutonMicro {
     /// À appeler sur le message `ready` de l'agent, avec `message.mic` TEL
     /// QUEL — `undefined` compris.
     annoncerDisponibilite(mic: boolean | undefined): void;
+    /// À appeler sur chaque `mic-state` de l'agent (bloc E3) : ce micro
+    /// est-il ENTENDU par la VM ?
+    ///
+    /// 🔴 **Ce n'est PAS un cinquième état, et ce n'est surtout pas
+    /// `'refuse'`.** `'refuse'` désigne le refus de PERMISSION par le
+    /// navigateur, qui se répare dans les réglages du site ; celui-ci se
+    /// répare en fermant l'autre fenêtre. Les confondre enverrait l'utilisateur
+    /// régler une permission qui n'est pas en cause — le défaut exact que le
+    /// quatrième état (`'indisponible'`) existe déjà pour éviter.
+    ///
+    /// 🔴 **L'état reste `'actif'`, et mentir serait interdit** : la piste EST
+    /// ouverte, le navigateur ÉMET, et l'indicateur de capture de Chrome est
+    /// allumé. Éteindre le bouton d'une fenêtre qui capte réellement est
+    /// exactement le mensonge visuel que la spec §9 « Vie privée » qualifie
+    /// d'inacceptable « sur cette fonction précisément ».
+    annoncerExclusivite(granted: boolean): void;
     /// La bascule en cours, pour que le test puisse l'attendre. En production
     /// personne ne l'attend : un clic est asynchrone par nature.
     enCours(): Promise<unknown>;
@@ -236,15 +252,46 @@ const TITRES: Record<EtatMicro, string> = {
     indisponible: 'Aucun microphone disponible',
 };
 
+/// Ce que le bouton affiche quand il capte réellement mais qu'une AUTRE
+/// fenêtre tient le câble de la VM (bloc E3).
+///
+/// ⚠️ **Il dit les deux moitiés, et l'ordre compte** : d'abord que le micro
+/// EST ouvert — sans quoi l'utilisateur croirait le bouton en panne alors que
+/// l'indicateur de Chrome est allumé —, puis que cette fenêtre-ci n'est pas
+/// entendue, et par quoi.
+const TITRE_NON_ENTENDU =
+    'Microphone actif — mais une autre fenêtre tient le micro de la VM : celle-ci n’y est pas entendue';
+
+/// Le même fait, en bandeau. ⚠️ **La formulation est un JUGEMENT HUMAIN**, et
+/// il rejoint la liste que ce dépôt tient depuis `BPP_MIN` : aucune mesure ne
+/// dira si elle est claire. Personne ne l'a lue à l'écran à ce jour.
+const DETAIL_NON_ENTENDU =
+    'Votre micro est ouvert, mais une autre fenêtre tient le micro de la VM — fermez-la, ou coupez son micro, pour être entendu depuis celle-ci.';
+
+/// Et le retour, qui doit être dit : un bandeau qui monte sans jamais
+/// redescendre laisserait croire au défaut après sa disparition.
+const DETAIL_ENTENDU = 'Votre micro est de nouveau entendu par la VM.';
+
 export function attacherBoutonMicro(options: OptionsBoutonMicro): ControleBoutonMicro {
     const { bouton, surMessage } = options;
     let enVol: Promise<unknown> = Promise.resolve();
+    /// Dernier verdict d'exclusivité REÇU. `true` au départ : tant que l'agent
+    /// n'a rien dit, il n'y a aucun refus à montrer — et une fenêtre seule,
+    /// qui est le cas courant, n'en recevra jamais d'autre que `true`.
+    let entendu = true;
 
     const micro = attacherMicro({
         ...options,
         surEtat(etat, detail) {
             bouton.dataset.etat = etat;
             bouton.title = TITRES[etat];
+            // ⚠️ Toute transition d'état REMET le verdict d'exclusivité à neuf.
+            // Sans cela, éteindre puis rallumer le micro alors que l'autre
+            // fenêtre tient toujours le câble laisserait `entendu === false` :
+            // le prochain `mic-state { granted: false }` serait vu comme « pas
+            // un changement », et le bandeau ne remonterait jamais. C'est le
+            // pendant client de la transition côté agent.
+            entendu = true;
             // ⚠️ SEUL « indisponible » désactive. Un refus de permission laisse
             // le bouton cliquable, parce que son message dit d'aller rétablir
             // la permission puis de recliquer (spec §10) : le désactiver
@@ -271,6 +318,27 @@ export function attacherBoutonMicro(options: OptionsBoutonMicro): ControleBouton
     bouton.addEventListener('click', onClick);
 
     return {
+        annoncerExclusivite(granted) {
+            // ⚠️ **Rien n'est fait tant que le micro n'est pas ACTIF.** L'agent
+            // n'émet ce message qu'au premier paquet montant, donc micro
+            // ouvert ; mais un `mic-state` qui arriverait après une extinction
+            // (une trame en vol, un tour de boucle de retard) écraserait le
+            // titre d'un bouton fermé avec un libellé qui parle d'un micro
+            // ouvert. Le seul état où ce fait a un sens est `'actif'`.
+            if (micro.etat() !== 'actif') return;
+            if (granted) {
+                // Ne repose le titre nominal que si l'on avait annoncé le
+                // contraire : sans ce garde, chaque `mic-state { granted: true }`
+                // pousserait un bandeau « de nouveau entendu » à une fenêtre qui
+                // n'a jamais cessé de l'être.
+                if (!entendu) surMessage?.(DETAIL_ENTENDU);
+                bouton.title = TITRES.actif;
+            } else {
+                bouton.title = TITRE_NON_ENTENDU;
+                surMessage?.(DETAIL_NON_ENTENDU);
+            }
+            entendu = granted;
+        },
         annoncerDisponibilite(mic) {
             // ⚠️ `mic` est lu TEL QUEL, et son absence vaut `false` (spec §10) :
             // un agent d'avant le chantier E ne porte pas le champ, et un

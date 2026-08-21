@@ -1,49 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { attacherBoutonMicro, attacherMicro, type EtatMicro } from './micro';
-
-/// Piste factice : ce que ce module fait d'une `MediaStreamTrack` se réduit à
-/// `stop()`, et c'est précisément l'appel que la spec §9 rend obligatoire.
-/// `arretee` est le seul instrument capable de distinguer une extinction RÉELLE
-/// d'un `enabled = false` — le « mensonge visuel » que la spec écarte.
-function faussePiste(): MediaStreamTrack & { arretee: boolean; enabled: boolean } {
-    return {
-        kind: 'audio',
-        enabled: true,
-        arretee: false,
-        stop(this: { arretee: boolean }) {
-            this.arretee = true;
-        },
-    } as unknown as MediaStreamTrack & { arretee: boolean; enabled: boolean };
-}
-
-/// Flux factice porteur d'une seule piste audio, comme en rend `getUserMedia`.
-function fauxFlux(piste: MediaStreamTrack): MediaStream {
-    return { getAudioTracks: () => [piste] } as unknown as MediaStream;
-}
-
-/// Sender factice : mémorise TOUT ce qui lui est passé, dans l'ordre. Un
-/// booléen « a reçu une piste » ne distinguerait pas une extinction d'une
-/// absence d'allumage.
-function fauxSender() {
-    const recus: Array<MediaStreamTrack | null> = [];
-    return {
-        recus,
-        replaceTrack(piste: MediaStreamTrack | null): Promise<void> {
-            recus.push(piste);
-            return Promise.resolve();
-        },
-    };
-}
-
-/// Erreur telle que `getUserMedia` la lève : c'est le `name` qui porte le sens,
-/// jamais le message.
-function erreurDom(name: string): Error {
-    const e = new Error(name);
-    e.name = name;
-    return e;
-}
-
+import { erreurDom, faussePiste, fauxBouton, fauxFlux, fauxSender } from './micro.fixtures';
 describe('attacherMicro — la bascule et ses quatre états', () => {
     it('au départ, le sender n’a pas de piste et l’état est « fermé »', () => {
         const sender = fauxSender();
@@ -248,30 +206,6 @@ describe('attacherMicro — la bascule et ses quatre états', () => {
         expect(demanderFlux).toHaveBeenCalledTimes(2);
     });
 });
-
-/// Bouton factice : ce que le module écrit dessus, et rien d'autre. Un vrai
-/// `HTMLButtonElement` exigerait un DOM, que `client/src` évite partout par
-/// injection de dépendances (`audio.ts`, `fullscreen.ts`, `visibilite.ts`).
-function fauxBouton() {
-    const ecouteurs = new Map<string, Set<EventListener>>();
-    return {
-        hidden: true,
-        disabled: false,
-        title: '',
-        dataset: {} as { etat?: string },
-        addEventListener(type: string, e: EventListener) {
-            if (!ecouteurs.has(type)) ecouteurs.set(type, new Set());
-            ecouteurs.get(type)!.add(e);
-        },
-        removeEventListener(type: string, e: EventListener) {
-            ecouteurs.get(type)?.delete(e);
-        },
-        cliquer() {
-            for (const e of [...(ecouteurs.get('click') ?? [])]) e(new Event('click'));
-        },
-        nombreEcouteurs: () => (ecouteurs.get('click')?.size ?? 0),
-    };
-}
 
 describe('attacherBoutonMicro — le bouton et ses états', () => {
     it("le bouton reste CACHÉ tant que l'agent n'a pas annoncé `mic: true`", () => {
