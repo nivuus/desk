@@ -89,7 +89,10 @@ pub(super) struct Memoire {
 ///
 /// Rend aussi le catalogue entier, parce que l'appelant en a besoin pour le
 /// renvoi `complet` d'un réenrôlement.
-pub(super) fn reconcilier(memoire: &mut Memoire) -> (reconciliation::Diff, Vec<Application>) {
+pub(super) fn reconcilier(
+    memoire: &mut Memoire,
+    contexte: super::Contexte,
+) -> (reconciliation::Diff, Vec<Application>) {
     let depart = Instant::now();
     let mut brutes = Vec::new();
     let mut total = 0usize;
@@ -221,6 +224,15 @@ pub(super) fn reconcilier(memoire: &mut Memoire) -> (reconciliation::Diff, Vec<A
         modifiees = diff.modifiees.len(),
         disparues = diff.disparues.len(),
         duree_ms = depart.elapsed().as_millis(),
+        // 🔴 LES TROIS CHAMPS DE G4. `declencheur` rend le critère ① lisible :
+        // sans lui, une réconciliation arrivée juste après la création d'un
+        // raccourci est indiscernable d'une périodique tombée là par hasard.
+        // `notifications` et `debordements` sont CUMULÉS depuis le démarrage du
+        // fil — deux lignes successives se soustraient, un delta déjà pris ne
+        // se recompose pas.
+        declencheur = contexte.declencheur.mot(),
+        notifications = contexte.notifications,
+        debordements = contexte.debordements,
         "catalogue reconcilie"
     );
 
