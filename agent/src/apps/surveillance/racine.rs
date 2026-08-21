@@ -67,6 +67,14 @@ pub(super) enum Issue {
     /// produit, et c'est tout son objet : elle fabrique la seule panne que la
     /// réconciliation périodique achète réellement, celle d'une surveillance
     /// qui **cesse de délivrer SANS ERREUR**.
+    ///
+    /// ✅ **MESURÉE, ET C'EST LE SEUL MONTAGE DISCRIMINANT DU CRITÈRE ③**
+    /// (deux exécutions par bras) : `notifications=0` des deux côtés — les
+    /// complétions sont bien avalées —, et le catalogue passe à `cles=157` par
+    /// `declencheur="periode"` quand la période est armée, contre `cles=156`
+    /// **indéfiniment** sous `APPS_SURVEILLANCE=seule`.
+    ///
+    /// ⚠️ **ELLE ÉTABLIT QUE LE REMÈDE FONCTIONNE, JAMAIS QU'UNE CAUSE EXISTE.**
     Avalee,
 }
 
