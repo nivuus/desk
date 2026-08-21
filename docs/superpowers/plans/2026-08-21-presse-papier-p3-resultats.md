@@ -12,42 +12,158 @@ Journaux : `journaux-presse-papier-p3/`.
 
 ---
 
-## 0. 🔴 LE VERDICT D'ENSEMBLE : LA RECETTE N'A PAS EU LIEU
+## 0. LE VERDICT D'ENSEMBLE : LES QUATRE CRITÈRES SONT TENUS
 
-**Onze tâches sur treize sont faites. La tâche 10 — la recette sur la VM
-Windows — n'a PAS été jouée**, et avec elle rien des quatre critères ①②③④ en
-conditions de produit.
+**Les treize tâches sont faites, recette comprise.** La VM, tenue par le
+chantier F3 (pont fichiers) pendant tout le travail hôte, a été libérée à la fin
+de la ronde ; la recette a été jouée ensuite. **Deux exécutions (`e1`, `e2`),
+relevés IDENTIQUES sur les quatre critères.**
 
-**La raison est nommée d'avance par le plan (RP3-4) et elle est externe** : la
-VM était tenue par le chantier **F3** (pont fichiers), qui y mesurait et portait
-du travail **non commité** dans `agent/`. `scripts/build-agent.sh` rsynchronise
-l'arbre entier : le lancer aurait poussé sur la VM du travail à demi fait, puis
-écrasé le binaire que F3 était en train de mesurer. Le plan classe explicitement
-la tâche 10 comme un **préalable EXTERNE, jamais une dépendance de tâche**.
+⚠️ **Aucun taux n'est revendiqué nulle part.** Deux exécutions établissent la
+reproductibilité d'un mécanisme déterministe, **jamais une fréquence**.
 
-**Ce qui est donc établi** : du code, des tests d'hôte, douze rouges jouées, et
-**DEUX SONDES MESURÉES HORS VM, deux exécutions chacune**. **Rien du produit en
-marche à N fenêtres.**
+| # | Critère | Verdict | Exéc. |
+| --- | --- | --- | --- |
+| ① | une copie dans la VM parvient aux **trois** fenêtres | **TENU** — 3/3 | **2** |
+| ① bis | une **quatrième** fenêtre attachée **APRÈS** la copie reçoit le contenu courant | **TENU** | **2** |
+| ② | un collage depuis B met le texte de B dans la VM, **et dans SA fenêtre** | **TENU, et ATTRIBUABLE** | **2** |
+| ③ | deux collages quasi simultanés : ni interblocage, ni contenu mêlé, le dernier gagne | **TENU sur ses TROIS volets** | **2** |
+| ④ | une fenêtre sans focus n'écrit pas localement, et écrit à la reprise | **TENU** | **2** |
 
-> 🔵 **LE BLOCAGE A ÉTÉ LEVÉ À LA TOUTE FIN DE LA RONDE, ET IL FAUT LE DIRE POUR
-> QUE CE DOCUMENT NE MENTE PAS PAR VIEILLISSEMENT.** F3 a clos son sous-bloc
-> (commits `30bc42e` puis `6f0aaa5`), `git status --porcelain` est redevenu
-> **vide**, et `Get-Process agent` sur la VM rend **0** — la VM est libre.
-> **Cela s'est produit APRÈS que tout le travail hôte de P3 était fait et
-> commité**, et la recette n'a donc pas été jouée pour autant.
->
-> **Ce qu'il reste à faire est donc entièrement débloqué**, et son montage est
-> nommé : un service de plateforme au bon numéro de version, un compte
-> (`npm run admin:utilisateur`), un agent enrôlé (`npm run admin:agent`), une VM
-> attribuée (`npm run admin:attribuer`), un serveur `vite` pour le client, un
-> fichier d'identité **hors dépôt** portant `AGENT_VM`, `AGENT_SECRET`,
-> `PREFIXE_VM`, `RECETTE_EMAIL` et `RECETTE_MOTDEPASSE`, puis
-> `cargo clean --release -p proto -p agent` et `scripts/build-agent.sh` —
-> **jamais** avant d'avoir sourcé `.env`, faute de quoi il s'arrête EN SILENCE
-> après « sources synchronisées ».
->
-> ⚠️ **Et le pilote n'a jamais tourné** : sa première exécution sera aussi son
-> premier débogage.
+**Le montage** : trois Bloc-notes pré-semés de marqueurs distincts, trois
+sessions, **quatre** `fenêtre attachée au capteur` avec la tardive, **quatre
+`pid` DISTINCTS** aux deux exécutions — c'est le contrôle du Step 4 de la
+tâche 8, et il passe. **ZÉRO `ERROR`**, **zéro** `introuvable dans la
+topologie` (aucune pollution de registre).
+
+⚠️ **Le nombre de fenêtres est RELEVÉ, jamais exigé** (D-P3-8) : trois demandées,
+trois attachées.
+
+### 🔴 Le résultat le plus lourd : le produit a réfuté ma propre sonde
+
+La sonde S1 avait conclu **« ④ NON MESURABLE en conditions de produit »**. La
+recette relève l'inverse : **le focus discrimine parfaitement**, aux deux
+exécutions et aux trois basculements.
+
+**Cause, trouvée en RELISANT `client/src/shell-page.ts:117`** : il appelle
+`window.open(url, nom)` — **DEUX arguments**. La sonde en passait **TROIS**,
+avec `'width=800,height=600'`. **Avec une chaîne de caractéristiques Chrome
+ouvre une POPUP, sans elle un ONGLET**, et c'est cela qui décide.
+
+S1 est corrigée et rejouée avec **TROIS armes**, deux exécutions, relevés
+identiques :
+
+| arme | issue |
+| --- | --- |
+| `window.open(url, nom)` — **LE PRODUIT** | **MESURABLE** |
+| `window.open(url, nom, 'width=…')` — une **POPUP** | NON MESURABLE |
+| `Target.createTarget` | MESURABLE |
+
+⚠️ **La « seconde arme » de S1 avait raison sur la CAUSE — le mode
+d'ouverture — et TORT sur laquelle était celle du produit.** *Une sonde qui
+croit reproduire un geste doit le RELIRE, pas s'en souvenir.*
+
+🔵 **Corollaire : le régime de N ÉCRIVAINS CONCURRENTS ne s'est PAS présenté**,
+puisque le focus discrimine. **Il reste non mesuré**, et c'est un legs.
+
+### 🔴 Cinq défauts de mon instrument, tous trouvés en le jouant
+
+**Sa première exécution a été son premier débogage**, comme il était prévu.
+Trois exécutions sont versées **sous un nom qui le dit** —
+`1-DISQUALIFIEE`, `2-DIAGNOSTIC`, `r1-DIAGNOSTIC` — plutôt que jetées : ce sont
+les pièces des diagnostics.
+
+**a) Le parse attrapait le SPAN, pas le champ.** `/session=(\S+)/` matchait
+`fenetre{session=…}:` d'abord, d'où des noms portant `}:` et une attribution
+**INUTILISABLE** — ② et ③ cessaient d'être jugeables. **C'est le piège de D8,
+rejoué.** Ancré sur `session=… pid=…` **adjacents** : le span ne porte jamais de
+`pid`, donc il s'exclut par construction.
+
+**b) `agent.log` lu par CIFS est EN RETARD** — l'attribution rendait `[]` cinq
+secondes après que les lignes y étaient écrites. Attente sur le **FAIT**, bornée.
+
+**c) 🔴 Mes motifs de ③(a) cherchaient des chaînes que le presse-papier n'émet
+JAMAIS.** Le plan prescrivait `aucune réponse du capteur` et `commande
+expirée` : la première **n'existe nulle part dans le dépôt**, la seconde
+**n'existe que dans `agent/src/pont/`** — le **pont fichiers**. Leur zéro était
+**VACUEUX** : il serait resté zéro alors même que la borne de 12 s aurait mordu.
+C'est la règle 10 du §2.2 du plan, **payée sur le plan lui-même**. Les motifs
+réels, relevés par `grep` dans `agent/src/` :
+
+- côté **enfant**, le décisif — toute commande qui échoue y passe :
+  `collage NON écrit : la touche V est perdue, pas reportée` ;
+- côté **capteur**, la borne `DELAI_REPONSE_FENETRE` (12 s) :
+  `aucune réponse du fil de fenêtre en …` et `le fil de fenêtre n'a pas
+  répondu …`.
+
+⚠️ **Et le zéro se qualifie** : un **contre-contrôle** vérifie que chacun des
+quatre motifs matche sa propre ligne. **Les quatre rendent `true`.**
+
+**d) L'amorce était posée trop tard sur la fenêtre tardive.** Elle enveloppe
+`createDataChannel`, et le canal existait déjà : `① bis` rendait **`false`**
+alors que l'agent **avait émis** — sa trace le porte, une fois, avec ses onze
+octets. **Ce qui a tranché est une SECONDE ARME indépendante du navigateur : le
+journal de l'agent.** Remède : guetter `Target.getTargets` dès le lancement du
+Bloc-notes, la cible existant dès le `window.open` quand la session met des
+secondes de plus.
+
+**e) 🔴 `lire()` n'est pas concurrent, et je l'appelais en parallèle.** Le
+protocole du lecteur tient dans **un seul** couple de fichiers : deux lectures
+concurrentes s'écrasent l'ordre, et les perdants **expirent**. Deux Bloc-notes
+sur trois rendaient `null`, ce qui se lit **exactement** comme « fenêtre
+introuvable », c'est-à-dire comme un défaut du produit. **Ce qui a tranché** :
+le pré-semage réussissait sur les **trois** (`ecrit longueur=13` × 3). Lecture
+séquentielle.
+
+🔵 **Les cinq ont en commun de rendre un verdict qui se lit comme un défaut du
+PRODUIT.** Aucun n'a été classé : chacun a été diagnostiqué par une seconde
+voie — le journal de l'agent, le pré-semage, le contre-contrôle des motifs.
+
+### Ce que chaque critère a relevé, en détail
+
+**② est ATTRIBUABLE, et c'est ce qui en fait un verdict.** Collage depuis w-1 →
+`deux-A` dans le Bloc-notes de **w-1 seul** ; depuis w-2 → `deux-B` dans celui
+de **w-2 seul** ; **w-3, jamais collée, garde son marqueur intact** — le témoin
+négatif. L'attribution passe par le `pid` de la tâche 8, **jamais** par un nonce
+collé dont on regarderait quel Bloc-notes a grandi : cette voie-là est
+**circulaire** (D8, `resoudreIdentite`).
+
+**③ sur ses trois volets** : (a) **zéro** échec sur les quatre motifs, tous
+vérifiés discriminants ; (b) chaque Bloc-notes porte un texte **entier**, jamais
+mêlé — w-1 = `deux-A` + `trois-T1` + `BBB`, w-2 = `deux-B` + `trois-T2` + `CCC`,
+**aucun caractère de l'un dans l'autre** ; (c) **ZÉRO message en retour**
+(1,1,1,1 → 1,1,1,1). Le presse-papier de la VM porte **T2** : **le dernier
+gagne**.
+
+🔵 **(c) EST LA MESURE DE D-P3-6.** « Deux collages quasi simultanés » est
+littéralement l'entrelacement de la course, et la seconde prise l'absorbe.
+**Témoin positif** : `presse-papier de la VM` compte **2** annonces sur toute
+l'exécution — la copie de ① et celle de ④ — et **aucune** produite par les
+collages. Un zéro seul aurait aussi été rendu par un mécanisme mort.
+
+**① bis mesure le legs n°3 de bout en bout, ses DEUX moitiés ensemble**, et
+c'est le **seul** contrôle des deux lignes de câblage de `client/src/main.ts`,
+que rien ne teste. Côté agent : `etat courant du presse-papier emis a
+l'inscription` **× 1 exactement** — **jamais un fan-out**.
+
+**④** est observé en enveloppant `navigator.clipboard.writeText` **par page** :
+lire le presse-papier local ne dirait pas **laquelle** a écrit, il est partagé
+entre les pages d'un même navigateur.
+
+### Le binaire, et un contrôle qui n'était pas discriminant
+
+Rebâti après `cargo clean --release -p proto -p agent`, `.env` sourcé.
+⚠️ **Il pèse 10 658 816 octets — exactement le binaire de F3.** Le contrôle
+prescrit — « vérifie la TAILLE » — se serait donc lu « la compilation n'a pas eu
+lieu ». **Ce qui tranche est une CHAÎNE que moi seul ai ajoutée** :
+`etat courant du presse-papier emis a l'inscription`, présente ×1 dans le
+binaire. *Une taille identique n'est pas une preuve d'identité.*
+
+⚠️ **`/dev/null` vérifié `character special file` avant la première tentative** :
+aucune mesure de cette ronde n'a traversé la coupure connue de l'hôte.
+
+⚠️ **Trois agents survivaient à la première tentative** : `Get-Process agent` a
+été revérifié **avant et après chaque tentative**, y compris échouée.
 
 ### Note de lecture des journaux — RELEVÉE, pas supposée
 
@@ -56,58 +172,62 @@ la dernière écriture** :
 
 | Famille | Fichiers | Ce qu'il faut faire |
 | --- | --- | --- |
-| **tous** | les 12 journaux et JSON, plus les 5 fichiers d'`instrument/` | **rien** — UTF-8 partout, **aucune séquence ANSI**, **aucun `\r`**, **aucun octet NUL** : ils se `grep`ent à plat |
+| les **cinq** `agent-*.log` **bruts** | ceux de la VM | `sed 's/\x1b\[[0-9;]*m//g'` — ou lire le `-plat` jumeau, **versé pour chacun** |
+| **tout le reste** | les `-plat`, les JSON, les journaux de sondes et de pilote, l'`instrument/` | **rien** : ils se `grep`ent à plat |
 
-**UNE SEULE FAMILLE DE LECTURE**, et c'est structurel : ce sont des sorties
-`node`, `cargo` et `npx` sur l'**hôte**, jamais du PowerShell distant. Le défaut
-à deux réglages ne peut pas les atteindre. ⚠️ **Les journaux de la recette,
-quand elle aura lieu, ne seront PAS de cette famille** : ceux de P1 portaient 33
-à 36 octets NUL et exigeaient `grep -a`, faute de quoi `grep` rend une sortie
-**vide** — pas un zéro.
+**Dix fichiers portent des CRLF** — les cinq bruts **et** leurs cinq jumeaux,
+tous venus de la VM. **Les CRLF ne gênent aucun `grep` ; seules les séquences
+ANSI le font.**
+
+✅ **AUCUN OCTET NUL, dans aucun fichier — mesuré, pas supposé.** Ce n'est PAS
+la règle : les journaux de pilote de **P1** en portaient **33 à 36**, et `grep`
+sans `-a` y rendait une sortie **VIDE**, pas un zéro. Ici `grep -a` n'est pas
+nécessaire ; il ne nuit pas.
+
+🔴 **ET METTRE À PLAT AVANT TOUT `grep` SUR UN CHAMP** : `tracing` sépare le nom
+du champ de sa valeur par des séquences ANSI, donc `grep 'pid='` **ne matche
+JAMAIS** sur un journal brut. C'est le piège de la recette d'entrée de D8 — et
+c'est aussi ce qui a fait attraper le span au lieu du champ dans mon parse
+(§0, défaut a).
 
 ---
 
-## 1. 🔴 Le fait qui gouverne : ④ n'est pas mesurable, et la cause n'est pas celle qu'on croirait
+## 1. La sonde S1, corrigée : c'est le TROISIÈME ARGUMENT de `window.open` qui décide
 
-**Sonde S1**, hors VM, hors agent, hors session WebRTC. **Deux exécutions, aux
-relevés identiques** (`p3-focus-{1,2}.json`, `.log`).
+**Deux exécutions de la sonde corrigée, relevés identiques**
+(`p3-focus-{1,2}.json`, `.log`). Trois armes, dans la **même exécution** et
+avec le **même code de mesure** :
 
-Trois fenêtres ouvertes par `window.open` — **le geste du produit**,
-`client/src/shell-page.ts` — rapportent **TOUTES** `document.hasFocus() === true`,
-aux trois basculements, aux deux exécutions. **RP3-2 est réalisé**, et le témoin
-a échoué sur sa **deuxième issue**, écrite d'avance par le plan.
-
-🔵 **MAIS UNE PREMIÈRE RÉDACTION DE CETTE SONDE AURAIT ATTRIBUÉ L'ÉCHEC AU
-`--headless`, ET C'EÛT ÉTÉ FAUX.** La sonde S2, qui ouvre ses pages par
-`Target.createTarget`, a relevé **l'inverse dans la même heure** : `bringToFront`
-y retire parfaitement le focus. Les deux ne pouvaient pas décrire la même cause.
-D'où une **SECONDE ARME** ajoutée à S1, dans la **même exécution** et avec le
-**même code de mesure** :
-
-| arme | issue |
+| arme | ce qu'elle relève |
 | --- | --- |
-| `window.open` — **le geste du PRODUIT** | `true` PARTOUT ⟹ **NON MESURABLE** |
-| `Target.createTarget` — le geste de l'instrument | **un seul `true`, et c'est la fenêtre amenée au premier plan** |
+| `window.open(url, nom)` — **LE GESTE DU PRODUIT**, relu dans `client/src/shell-page.ts:117` | **un seul `true`, et c'est la fenêtre amenée au premier plan** |
+| `window.open(url, nom, 'width=800,height=600')` — une **POPUP** | `true` PARTOUT |
+| `Target.createTarget` | un seul `true`, et c'est le bon |
 
-**L'attribution est au MODE D'OUVERTURE, pas au `--headless`.** Le verdict qui
-commande la recette est celui de l'arme du produit.
+**Avec une chaîne de caractéristiques, Chrome ouvre une POPUP ; sans, un
+ONGLET.** Les popups rapportent toutes le focus, les onglets le discriminent.
 
-`Xvfb` et `xdotool` sont relevés **ABSENTS de l'hôte** ce jour-là (consentement
-donné en D8, **jamais suivi d'effet**), et ⚠️ **les mesures qui en sortiraient
-ne se compareraient à AUCUNE campagne antérieure**.
+❌ **LA PREMIÈRE RÉDACTION DE CETTE SONDE PASSAIT LE TROISIÈME ARGUMENT, QUE LE
+PRODUIT NE PASSE PAS**, et elle a donc publié « ④ NON MESURABLE en conditions de
+produit ». **C'est la recette sur la VM qui l'a réfutée** : le focus y
+discrimine parfaitement, aux deux exécutions.
 
-🔴 **COROLLAIRE INCONFORTABLE, ET IL N'EST PAS TU** : si toutes les fenêtres du
-produit rapportent le focus, alors **toutes écrivent leur presse-papier local** —
-c'est-à-dire le régime de **N ÉCRIVAINS CONCURRENTS** que D-P3-4 nomme et que
-**rien ne mesure**. La recette le rencontrera **par accident**, et le pilote le
-relève explicitement (`n_ecrivains_concurrents`) plutôt que de le taire.
+⚠️ **Sa « seconde arme » avait pourtant raison sur la CAUSE — le mode
+d'ouverture — et tort sur laquelle était celle du produit.** Elle avait bien
+empêché d'attribuer l'échec au `--headless`, ce qui aurait été faux aussi.
+*Une sonde qui croit reproduire un geste doit le RELIRE, pas s'en souvenir.*
 
-⚠️ **Ce que S1 n'établit pas** : rien de Firefox, rien de Safari, rien d'un
-Chromium **avec interface**, rien d'un humain. Et le rejeu **en conditions de
-produit** (Step 2 de la tâche 10) **peut la contredire** — les fenêtres du
-produit portent un flux WebRTC, celles de S1 n'en portaient pas.
+🔵 **Ce que la sonde établit malgré tout, et qui vaut** : le `--headless` n'est
+pas en cause, et Xvfb/xdotool — relevés **absents** de l'hôte, consentement
+donné en D8 et jamais suivi d'effet — **n'étaient pas nécessaires**. ④ est
+mesurable avec l'outillage existant.
 
----
+⚠️ **Corollaire, et il retire un fait annoncé** : le régime de **N écrivains
+concurrents** ne s'est **PAS** présenté, puisque le focus discrimine. **Il reste
+non mesuré**, et c'est un legs.
+
+⚠️ **Ce que S1 n'établit toujours pas** : rien de Firefox, rien de Safari, rien
+d'un Chromium **avec interface**, rien d'un humain.
 
 ## 2. 🔵 Le §3.3 est mesuré, et le verdict est plus fin que « vrai » ou « faux »
 
@@ -384,24 +504,37 @@ Déclaré ; aucune porte n'est franchie, et rien n'est comprimé.
 
 ## 8. Ce que P3 n'établit PAS
 
-- 🔴 **RIEN DU PRODUIT EN MARCHE À N FENÊTRES.** Les quatre critères ①②③④ n'ont
-  pas été joués.
-- 🔴 **Les deux lignes de câblage de `client/src/main.ts` ne sont couvertes par
-  AUCUN test**, et leur seul contrôle de bout en bout est le critère ① dans sa
-  forme « une fenêtre attachée APRÈS la copie ». **Il n'a pas été joué**, donc
-  elles ne sont éprouvées par rien — **RP3-17, réalisé**.
+- **Aucun taux, nulle part.** Deux exécutions par critère, deux par sonde, une
+  par rouge.
+- ⚠️ **Les deux lignes de câblage de `client/src/main.ts` ne sont couvertes par
+  AUCUN test d'hôte**, et ne peuvent pas l'être. Leur seul contrôle est le
+  critère ① bis — une fenêtre attachée APRÈS la copie —, **et il a été joué,
+  deux fois** : RP3-17 est **écarté**, mais la couverture reste une mesure de
+  bout en bout, jamais un test.
+- 🔴 **Rien au-delà de TROIS fenêtres** — c'est le nombre que la VM a rendu ce
+  jour-là, relevé et non exigé.
 - 🔴 **Le site d'appel de `registre.rs`** n'est couvert par aucun test d'hôte :
   il vit dans le fil du tour de roue.
-- 🔴 **④ n'est pas mesurable** en conditions de produit, et la cause est le mode
-  d'ouverture du produit lui-même.
+- 🔴 **Le régime de N ÉCRIVAINS CONCURRENTS ne s'est PAS présenté**, puisque le
+  focus discrimine : **il reste non mesuré**, et c'était l'inquiétude que S1
+  avait fait naître à tort.
 - **Le §3.3 reste SUPPOSÉ au sens strict** — corroboré, non établi.
 - **Le régime de N écrivains concurrents n'est mesuré par rien.**
 - **La borne de 12 s de `commander` n'a toujours pas couru** (legs n°5 de P2) :
   P3 est le premier à pouvoir la mettre sous contention réelle, **et il ne l'a
   pas fait**.
-- **Le pilote multi-fenêtres N'A JAMAIS ÉTÉ EXÉCUTÉ**, et le fichier le dit de
-  lui-même. Ce qui est vérifié : il parse, ses imports résolvent, et un import
-  réel s'arrête sur son garde d'identité — la première chose qui doit l'arrêter.
+- ⚠️ **Le pilote a porté CINQ défauts, tous trouvés en le jouant** (§0), et sa
+  première exécution a bien été son premier débogage. **Trois exécutions sont
+  versées comme DISQUALIFIÉE ou DIAGNOSTIC** : elles ne comptent pour aucun
+  verdict, et elles sont les pièces des diagnostics.
+- **Rien de la latence** d'un collage ni d'une copie.
+- **Rien d'un texte non-ASCII ni multi-ligne à N fenêtres** : les textes de la
+  recette sont ASCII et d'une seule ligne. Legs n°10 de P1, reconduit.
+- **Rien du refus de taille à N fenêtres** : les deux bornes ne sont éprouvées
+  que par leurs tests d'hôte (legs n°8 de P2).
+- **La borne de 12 s de `commander` n'a toujours pas couru** : ses motifs sont
+  désormais les BONS et vérifiés discriminants, et ils rendent **zéro** — mais
+  un zéro sur des collages qui aboutissent tous ne dit rien de la borne.
 - **Aucun taux, nulle part.** Deux exécutions par sonde, une par rouge. **Deux
   exécutions établissent la reproductibilité d'un mécanisme déterministe, jamais
   une fréquence.**
@@ -424,13 +557,12 @@ Déclaré ; aucune porte n'est franchie, et rien n'est comprimé.
 
 **Ce qui reste dû :**
 
-1. 🔴 **LA RECETTE ENTIÈRE.** Les quatre critères, le témoin de focus en
-   conditions de produit, l'attribution par `pid`, et le nombre de fenêtres que
-   la VM rend ce jour-là (**il se RELÈVE, il ne s'exige pas** — D-P3-8, et à une
-   seule fenêtre P3 n'est pas livrable, RP3-1). L'instrument est versé, prêt, et
-   **n'a jamais tourné**.
-2. 🔴 **Le régime de N ÉCRIVAINS CONCURRENTS n'est mesuré par rien**, et le
-   relevé de S1 dit que la recette le rencontrera **par accident**.
+1. 🔴 **Le régime de N ÉCRIVAINS CONCURRENTS n'est mesuré par rien**, et il ne
+   peut PAS l'être tant que le focus discrimine — c'est-à-dire tant que la
+   page-shell ouvre des ONGLETS. Le provoquer exigerait de lui faire ouvrir des
+   POPUPS, c'est-à-dire de changer le produit pour mesurer un régime qu'il n'a
+   pas. **Nommé, non mesuré.**
+2. 🔴 **Rien au-delà de TROIS fenêtres**, et rien de la latence.
 3. 🔴 **Le résidu de D-P3-6** : `ecrire_avec` pose `notre_ecriture` **après**
    l'E/S Win32, et la seconde prise ne ferme pas cet intervalle. Le fermer
    demanderait de tenir le verrou autour de l'E/S — ce que

@@ -6,6 +6,22 @@
 // fait un témoin. Le témoin de mesurabilité de P1 a échoué sur sa troisième
 // branche ; celui-ci a les siennes écrites d'avance dans le plan (tâche 1).
 //
+// ❌ **ET SA PREMIÈRE RÉDACTION A RENDU UN VERDICT FAUX SUR LE PRODUIT, QUE LA
+// RECETTE SUR LA VM A RÉFUTÉ.** Elle appelait
+// `window.open(url, nom, 'width=800,height=600')` en croyant reproduire le
+// geste du produit ; `client/src/shell-page.ts:117` appelle
+// `window.open(url, nom)` — **DEUX arguments**. Avec une chaîne de
+// caractéristiques Chrome ouvre une **POPUP**, sans elle un **ONGLET**, et
+// c'est cela qui décide : les popups rapportent toutes le focus, les onglets le
+// discriminent. Le verdict publié était « ④ NON MESURABLE en conditions de
+// produit » ; il est **MESURABLE**, et ④ est **TENU** (deux exécutions de
+// recette).
+//
+// ⚠️ **La seconde arme avait raison sur la CAUSE — le mode d'ouverture — et
+// TORT sur laquelle était celle du produit.** *Une sonde qui croit reproduire
+// un geste doit le RELIRE, pas s'en souvenir.* D'où les TROIS armes
+// ci-dessous, dont la première est le geste relu, caractère pour caractère.
+//
 // Ce qu'il établit, ou réfute : un Chrome `--headless=new` peut-il faire
 // qu'EXACTEMENT UNE fenêtre sur trois rapporte `document.hasFocus() === true`,
 // et est-ce bien celle qu'on a amenée au premier plan ? **Sans cela, le

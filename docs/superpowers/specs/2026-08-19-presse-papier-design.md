@@ -926,23 +926,35 @@ autres écrivent à la reprise du focus » (D3), et sa mesure.
 | ① | À **trois** fenêtres, une copie dans la VM parvient aux **trois** | ❌ **CETTE ROUGE DÉSIGNE UN MÉCANISME QUI N'EXISTE PAS** (E2 du plan de P3) : il n'y a **aucune élection de porteuse** dans le presse-papier — c'est le mécanisme de l'AUDIO (`capteur/sommeil/porteurs.rs`), et `presse_papier::distribuer` n'en a jamais eu. La rouge n'est pas jouable telle qu'écrite. **REMPLACÉE** : muter `distribuer` pour n'envoyer qu'à la **PREMIÈRE clé**, le compte tombant de 3 à **1**. ⚠️ Une mutation qui n'enverrait à PERSONNE serait MOINS BONNE : elle rendrait **0**, et zéro est aussi ce que rend un mécanisme entièrement mort — **1 ne peut venir que d'une distribution qui fonctionne et qu'on a restreinte** |
 | ② | Un collage depuis la fenêtre **B** met le texte de B dans la VM, pas celui de A | rouge = deux textes distincts dans deux fenêtres |
 | ③ | Deux collages **quasi simultanés** ne produisent ni interblocage ni contenu mêlé ; **le dernier gagne** | rouge = un contenu **mixte**, ou une commande sans réponse dans les 12 s de la borne du canal |
-| ④ | Une fenêtre **sans focus** n'écrit pas le presse-papier local, et l'écrit **à la reprise du focus** | 🔴 **NON MESURABLE en conditions de produit, et c'est MESURÉ** — voir l'encadré ci-dessous |
+| ④ | Une fenêtre **sans focus** n'écrit pas le presse-papier local, et l'écrit **à la reprise du focus** | ✅ **TENU, deux exécutions de recette sur la VM** — voir l'encadré ci-dessous, qui porte AUSSI la sonde qui s'était trompée |
 
-> 🔴 **④ N'EST PAS MESURABLE EN CONDITIONS DE PRODUIT, ET LA SONDE S1 DE P3 LE
-> DIT — DEUX EXÉCUTIONS, RELEVÉS IDENTIQUES** (`p3-focus-{1,2}.json`). Trois
-> fenêtres ouvertes par `window.open` — **le geste du produit**,
-> `client/src/shell-page.ts` — rapportent TOUTES `document.hasFocus() === true`,
-> aux trois basculements. RP3-2 est réalisé, et le témoin a échoué sur sa
-> deuxième issue, écrite d'avance.
+> ✅ **④ EST TENU — deux exécutions de recette sur la VM, relevés identiques.**
+> La fenêtre sans focus REÇOIT le message et **n'écrit pas** ; elle écrit **à la
+> reprise du focus**. Observé en enveloppant `navigator.clipboard.writeText`
+> **par page** : lire le presse-papier local ne dirait pas LAQUELLE a écrit, il
+> est partagé entre les pages d'un même navigateur.
 >
-> ⚠️ **MAIS LA CAUSE N'EST PAS LE `--headless`, et une première rédaction de la
-> sonde l'aurait attribué à lui.** Une SECONDE ARME, dans la même exécution et
-> avec le même code de mesure, ouvre par `Target.createTarget` : `bringToFront`
-> y retire parfaitement le focus. **L'attribution est au MODE D'OUVERTURE**, et
-> le verdict qui commande la recette est celui de l'arme du produit. Xvfb et
-> xdotool sont relevés ABSENTS de l'hôte ce jour-là (consentement donné en D8,
-> jamais suivi d'effet), et les mesures qui en sortiraient **ne se compareraient
-> à aucune campagne antérieure**.
+> 🔴 **ET C'EST LE PRODUIT QUI A RÉFUTÉ LA SONDE, PAS L'INVERSE.** La sonde S1
+> de P3 avait d'abord conclu « ④ NON MESURABLE en conditions de produit » :
+> trois fenêtres ouvertes par `window.open` rapportaient TOUTES
+> `document.hasFocus() === true`. La recette relève l'inverse — le focus
+> discrimine parfaitement.
+>
+> **Cause, trouvée en RELISANT `client/src/shell-page.ts:117`** : il appelle
+> `window.open(url, nom)` — **DEUX arguments**. La sonde en passait **TROIS**,
+> avec `'width=800,height=600'`. **Avec une chaîne de caractéristiques Chrome
+> ouvre une POPUP, sans elle un ONGLET**, et c'est cela qui décide. S1 est
+> corrigée et rejouée avec TROIS armes (deux exécutions, relevés identiques) :
+>
+> | arme | issue |
+> | --- | --- |
+> | `window.open(url, nom)` — **LE PRODUIT** | **MESURABLE** |
+> | `window.open(url, nom, 'width=…')` — une **POPUP** | NON MESURABLE |
+> | `Target.createTarget` | MESURABLE |
+>
+> ⚠️ **La « seconde arme » de S1 avait raison sur la CAUSE — le mode
+> d'ouverture — et TORT sur laquelle était celle du produit.** *Une sonde qui
+> croit reproduire un geste doit le RELIRE, pas s'en souvenir.*
 >
 > 🔵 **ET « DU COÛT POUR RIEN » SUPPOSE UNE FENÊTRE — c'est E4 du plan de P3, et
 > c'est sa contribution de conception.** À N, le test de focus fait autre chose
@@ -952,10 +964,8 @@ autres écrivent à la reprise du focus » (D3), et sa mesure.
 > quel que soit le verdict du §3.3, et son retrait serait une **décision du
 > propriétaire du dépôt**, jamais une conséquence mécanique d'une sonde.
 >
-> ⚠️ **Corollaire du relevé de S1, et il n'est pas confortable** : si toutes les
-> fenêtres du produit rapportent le focus, alors **toutes écrivent**, et la
-> recette rencontrera ce régime PAR ACCIDENT. Le pilote de P3 le relève
-> explicitement (`n_ecrivains_concurrents`) plutôt que de le taire.
+> ⚠️ **Le régime de N ÉCRIVAINS CONCURRENTS NE S'EST PAS PRÉSENTÉ**, puisque le
+> focus discrimine : il reste **non mesuré**.
 
 ⚠️ **Trois fenêtres, pas huit.** Le blocage par pollution du registre a plafonné
 D9 à trois fenêtres, et D10 l'a levé sur mesure. **Ce chantier ne re-mesure pas
