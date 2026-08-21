@@ -1,0 +1,24 @@
+=== G4 PORTE S1 -- N=1000
+date          : 2026-08-21T10:49:15.2764095+02:00
+session       : 1
+guet          : C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu
+cible         : C:\Users\Administrateur\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\g4-rafale
+a_corpus_avant : 220
+preparation_ms : 227  fichiers=1000
+guetteur_arme  : tampon=65536 sousarbre=True consommateur=C#
+d_rafale_ms    : 296  robocopy_code=1
+d_fichiers_poses : 1000
+d_debit_fichiers_par_s : 3378.4
+drainage_ms    : 5500  (stable pendant 5000 ms)
+c_crees        : 1001
+c_erreurs      : 0
+c_debordements : 0
+c_fenetre_evenements_ms : 297.8
+c_debit_evenements_par_s : 3361.3
+c_manquants    : -1
+VERDICT : NE DEBORDE PAS
+e_corpus_apres : 220
+e_nettoyage : OK (220 inchange)
+f_repertoire_rafale : retire
+f_preparation : retiree
+=== FIN
