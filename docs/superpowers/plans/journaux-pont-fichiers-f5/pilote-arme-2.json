@@ -1,0 +1,183 @@
+{
+  "maintien_s": 15,
+  "prefixe": "F4z7KQooOQfJqh47PM0ETA",
+  "journal": [
+    "[2026-08-21T12:25:08.825Z] jeton de recette obtenu",
+    "[2026-08-21T12:25:09.162Z] chrome : Chrome/151.0.7922.169",
+    "[2026-08-21T12:25:09.331Z] navigation : http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA",
+    "[2026-08-21T12:25:13.375Z] OPFS peuple : 5 entrees",
+    "[2026-08-21T12:25:13.375Z] la page-shell est connectee : lancement de l agent",
+    "[2026-08-21T12:25:13.785Z] agent lance : Op\u0002ration r\u0002ussie : tentative d'ex\u0002cution de la t\u0003che planifi\u0002e \"guacamole-agent\".agent lancé en session interactive ; journal : /media/vm/dev/agent.log",
+    "[2026-08-21T12:25:17.819Z] 2 fenetre(s) d application apres 4 s",
+    "[2026-08-21T12:25:17.823Z] etat avant le clic : {\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+    "[2026-08-21T12:25:17.823Z] clic sur #choisir-dossier",
+    "[2026-08-21T12:25:21.846Z] #etat-fichiers : \"Lecteur « Mes Fichiers » monté sur « Mes documents ».\"",
+    "[2026-08-21T12:25:21.846Z] repos de 8000 ms avant la mesure",
+    "[2026-08-21T12:25:29.849Z] PORTE P3 : creation DANS la VM, puis relistage immediat",
+    "[2026-08-21T12:25:32.797Z] P3 : present_apres=true",
+    "[2026-08-21T12:25:32.797Z] PORTE P1 : les candidates d occupation disque",
+    "[2026-08-21T12:25:35.726Z] (1) amorcage du cache",
+    "[2026-08-21T12:25:38.664Z] (1) 5 entrees en 7 ms",
+    "[2026-08-21T12:25:38.664Z] (2) ajout d un fichier COTE NAVIGATEUR, hors du pont",
+    "[2026-08-21T12:25:38.672Z] (2) {\"ok\":true,\"entrees\":6}",
+    "[2026-08-21T12:25:38.672Z] (3) relistage : le fichier doit etre ABSENT",
+    "[2026-08-21T12:25:41.604Z] (3) ecart (1)->(3) = 5878 ms — admissible : true",
+    "[2026-08-21T12:25:41.604Z] (4) clic sur #rafraichir",
+    "[2026-08-21T12:25:41.609Z] (4) clique",
+    "[2026-08-21T12:25:43.610Z] (5) relistage : le fichier doit etre PRESENT",
+    "[2026-08-21T12:25:46.625Z] boutons : {\"rafraichir\":true,\"reprendre_present\":true,\"reprendre_cache\":true,\"retenues\":\"false\",\"dues\":\"0\",\"vues\":\"2\"}",
+    "[2026-08-21T12:25:46.635Z] maintien de 15 s"
+  ],
+  "erreurs": [],
+  "chrome": "Chrome/151.0.7922.169",
+  "console_page": [
+    {
+      "t": 1787315109517,
+      "niveau": "debug",
+      "texte": "[vite] connecting..."
+    },
+    {
+      "t": 1787315109598,
+      "niveau": "debug",
+      "texte": "[vite] connected."
+    },
+    {
+      "t": 1787315120902,
+      "niveau": "info",
+      "texte": "offre du pont envoyée, attente de l’agent…"
+    },
+    {
+      "t": 1787315120905,
+      "niveau": "info",
+      "texte": "pont fichiers : réponse reçue"
+    },
+    {
+      "t": 1787315120905,
+      "niveau": "warning",
+      "texte": "canal fichiers ferme : annonce non envoyee"
+    },
+    {
+      "t": 1787315120905,
+      "niveau": "info",
+      "texte": "pont fichiers : connecting"
+    },
+    {
+      "t": 1787315121080,
+      "niveau": "info",
+      "texte": "pont fichiers : connected"
+    },
+    {
+      "t": 1787315121162,
+      "niveau": "info",
+      "texte": "canal fichiers ouvert"
+    },
+    {
+      "t": 1787315131009,
+      "niveau": "warning",
+      "texte": "échec introuvable sur la corrélation 1 : « ne-vient-pas-du-navigateur.txt » n’existe pas"
+    },
+    {
+      "t": 1787315131030,
+      "niveau": "warning",
+      "texte": "échec introuvable sur la corrélation 2 : « ne-vient-pas-du-navigateur.txt » n’existe pas"
+    }
+  ],
+  "fautes_armees": false,
+  "opfs_entrees": 5,
+  "fenetres_ouvertes": 2,
+  "etat_avant_clic": "{\"href\":\"http://127.0.0.1:5173/shell.html?signaling=ws%3A%2F%2F192.168.3.1%3A8080&prefixe=F4z7KQooOQfJqh47PM0ETA\",\"jeton\":true,\"bouton\":true}",
+  "etat_fichiers": "Lecteur « Mes Fichiers » monté sur « Mes documents ».",
+  "bien_monte": true,
+  "p3": {
+    "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+    "phase": "creer-dans-la-vm",
+    "horodatage": "2026-08-21T14:25:30.9346779+02:00",
+    "creation": "OK",
+    "avant": {
+      "compte": 4,
+      "noms": [
+        "sous-dossier",
+        "Casse.txt",
+        "gros-lecture.bin",
+        "projete.txt"
+      ],
+      "ms": 69
+    },
+    "apres": {
+      "compte": 5,
+      "noms": [
+        "sous-dossier",
+        "Casse.txt",
+        "gros-lecture.bin",
+        "ne-vient-pas-du-navigateur.txt",
+        "projete.txt"
+      ],
+      "ms": 49
+    },
+    "present_apres": true
+  },
+  "p1": {
+    "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+    "phase": "occupation",
+    "horodatage": "2026-08-21T14:25:33.8649228+02:00",
+    "disque_libre_octets": 814731870208,
+    "disque_utilise_octets": 1184946597888,
+    "somme_longueurs_octets": 300081,
+    "duree_metadata_ms": 28
+  },
+  "c1_amorcage": {
+    "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+    "phase": "lister",
+    "horodatage": "2026-08-21T14:25:36.8037435+02:00",
+    "liste": {
+      "compte": 5,
+      "noms": [
+        "sous-dossier",
+        "Casse.txt",
+        "gros-lecture.bin",
+        "ne-vient-pas-du-navigateur.txt",
+        "projete.txt"
+      ],
+      "ms": 7
+    }
+  },
+  "c1_ajout": "{\"ok\":true,\"entrees\":6}",
+  "c1_avant_rafraichir": {
+    "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+    "phase": "lister",
+    "horodatage": "2026-08-21T14:25:39.7353241+02:00",
+    "liste": {
+      "compte": 5,
+      "noms": [
+        "sous-dossier",
+        "Casse.txt",
+        "gros-lecture.bin",
+        "ne-vient-pas-du-navigateur.txt",
+        "projete.txt"
+      ],
+      "ms": 8
+    }
+  },
+  "c1_ecart_ms": 5878,
+  "c1_admissible": true,
+  "c1_bouton": "clique",
+  "c1_apres_rafraichir": {
+    "racine": "C:\\Users\\Administrateur\\Mes Fichiers",
+    "phase": "lister",
+    "horodatage": "2026-08-21T14:25:44.7620412+02:00",
+    "liste": {
+      "compte": 6,
+      "noms": [
+        "sous-dossier",
+        "AJOUTE-COTE-LOCAL.txt",
+        "Casse.txt",
+        "gros-lecture.bin",
+        "ne-vient-pas-du-navigateur.txt",
+        "projete.txt"
+      ],
+      "ms": 91
+    }
+  },
+  "etat_boutons": "{\"rafraichir\":true,\"reprendre_present\":true,\"reprendre_cache\":true,\"retenues\":\"false\",\"dues\":\"0\",\"vues\":\"2\"}",
+  "arbre_opfs": "[{\"chemin\":\"sous-dossier\",\"type\":\"d\"},{\"chemin\":\"sous-dossier/autre.txt\",\"type\":\"f\",\"taille\":35},{\"chemin\":\"projete.txt\",\"type\":\"f\",\"taille\":52},{\"chemin\":\"ne-vient-pas-du-navigateur.txt\",\"type\":\"f\",\"taille\":14},{\"chemin\":\"gros-lecture.bin\",\"type\":\"f\",\"taille\":300000},{\"chemin\":\"Casse.txt\",\"type\":\"f\",\"taille\":15},{\"chemin\":\"AJOUTE-COTE-LOCAL.txt\",\"type\":\"f\",\"taille\":44}]"
+}

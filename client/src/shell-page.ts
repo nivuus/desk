@@ -279,9 +279,35 @@ async function monterLeLecteur(): Promise<void> {
     // l'utilisateur, jamais un défaut : un `true` ici rendrait le bouton
     // « Reprendre » inatteignable et réintroduirait le danger du §6.4 cas 2.
     // ════════════════════════════════════════════════════════════════════
+    // 🔴 **L'ANNONCE ATTEND L'OUVERTURE DU CANAL, ET C'EST UN DÉFAUT QUE SEUL
+    // LE CHEMIN RÉEL POUVAIT MONTRER.**
+    //
+    // *La première rédaction envoyait ici même, sans attendre.*
+    // `connecterCanalFichiers` rend dès que la réponse SDP est reçue ; le canal
+    // de données, lui, s'ouvre **après**. Mesuré sur la VM, dans cet ordre :
+    // « pont fichiers : réponse reçue » → **`canal fichiers ferme : annonce non
+    // envoyee`** → « connecting » → « connected » → « canal fichiers ouvert ».
+    // Le `Bonjour` partait dans le vide, **et donc AUCUNE écriture due n'aurait
+    // jamais été poussée** — un silence, c'est-à-dire pire que les trente
+    // secondes que F2 avait mesurées et que F5 existe pour supprimer.
+    //
+    // 🔵 **C'est mon propre `console.warn` qui l'a dénoncé.** Un envoi qui
+    // aurait échoué en silence aurait laissé la recette verte sur ses critères
+    // de cache et muette sur celui-ci.
+    //
+    // ⚠️ **LES DEUX BRANCHES SONT NÉCESSAIRES** : le canal peut être déjà
+    // ouvert quand on arrive ici (rien ne l'interdit), et n'écouter que
+    // `'open'` manquerait alors l'événement pour toujours.
     const envoyerAuPont = (trame: ArrayBuffer): void => {
-        if (pont && pont.canal.readyState === 'open') pont.canal.send(trame);
-        else console.warn('canal fichiers ferme : annonce non envoyee');
+        if (!pont) {
+            console.warn('aucun pont : annonce non envoyee');
+            return;
+        }
+        const canal = pont.canal;
+        if (canal.readyState === 'open') canal.send(trame);
+        else if (canal.readyState === 'connecting') {
+            canal.addEventListener('open', () => canal.send(trame), { once: true });
+        } else console.warn('canal fichiers ferme : annonce non envoyee');
     };
     envoyerAuPont(trameBonjour(choix.nom, false));
     boutonRafraichir.onclick = () => envoyerAuPont(trameRafraichir());
