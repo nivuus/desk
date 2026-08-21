@@ -89,7 +89,17 @@ async function publierLeManifeste(application: ApplicationListee): Promise<void>
     // que la spec §4.1 de ⑥ sanctionne et que `design/galerie.ts` emploie.
     const fond = getComputedStyle(document.documentElement).getPropertyValue('--fond-0').trim();
     const manifeste = batirManifeste(
-        { id: application.id, nom: application.nom, icone },
+        {
+            id: application.id,
+            nom: application.nom,
+            icone,
+            // ⚠️ `?? undefined` ET NON `?? fond` : `null` veut dire « cette
+            // icône n'a AUCUNE dominante », et le manifeste doit alors OMETTRE
+            // `theme_color` plutôt que d'en inventer un. Reprendre le fond
+            // ferait paraître une couleur choisie là où il n'y en a pas.
+            accent: application.accent ?? undefined,
+            associations: application.associations,
+        },
         window.location.origin,
         fond,
     );

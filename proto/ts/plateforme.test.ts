@@ -182,16 +182,16 @@ describe('miroir TypeScript du canal plateforme', () => {
         // son côté. Une divergence d'un caractère et les deux bouts ne se
         // parlent plus.
         expect(encodeEnroler('w1', 'chut'))
-            .toBe('{"type":"enroler","v":4,"vm":"w1","secret":"chut"}');
+            .toBe('{"type":"enroler","v":5,"vm":"w1","secret":"chut"}');
     });
 
     it('encode `battement`', () => {
-        expect(encodeBattement()).toBe('{"type":"battement","v":4}');
+        expect(encodeBattement()).toBe('{"type":"battement","v":5}');
     });
 
     it('lit un `enrole` bien formé', () => {
         const m = parseDepuisLaPlateforme(
-            '{"type":"enrole","v":4,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}',
+            '{"type":"enrole","v":5,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}',
         );
         expect(m).toEqual({
             type: 'enrole', v: PLATEFORME_VERSION, prefixe: 'PPP', jeton: 'jjj', expire_a: 1787136773742,
@@ -238,7 +238,7 @@ describe('miroir TypeScript du canal plateforme', () => {
     });
 
     it('REJETTE un `type` inconnu', () => {
-        expect(() => parseDepuisLaPlateforme('{"type":"vol","v":4}'))
+        expect(() => parseDepuisLaPlateforme('{"type":"vol","v":5}'))
             .toThrow(/type de message de plateforme inconnu/);
     });
 
@@ -246,7 +246,7 @@ describe('miroir TypeScript du canal plateforme', () => {
         // 🔴 Le parseur ne lit QUE le sens plateforme -> agent. Accepter
         // `enroler` ici ferait qu'un agent traiterait son propre message comme
         // une réponse — une confusion de sens qu'aucun autre test ne verrait.
-        expect(() => parseDepuisLaPlateforme('{"type":"enroler","v":4,"vm":"w","secret":"s"}'))
+        expect(() => parseDepuisLaPlateforme('{"type":"enroler","v":5,"vm":"w","secret":"s"}'))
             .toThrow(/type de message de plateforme inconnu/);
     });
 });
@@ -262,14 +262,14 @@ describe('le parseur du sens AGENT -> PLATEFORME', () => {
     // seulement échouer.
 
     it('lit un `enroler` bien formé', () => {
-        expect(parseVersLaPlateforme('{"type":"enroler","v":4,"vm":"w1","secret":"chut"}')).toEqual({
+        expect(parseVersLaPlateforme('{"type":"enroler","v":5,"vm":"w1","secret":"chut"}')).toEqual({
             ok: true,
             message: { type: 'enroler', v: PLATEFORME_VERSION, vm: 'w1', secret: 'chut' },
         });
     });
 
     it('lit un `battement`', () => {
-        expect(parseVersLaPlateforme('{"type":"battement","v":4}')).toEqual({
+        expect(parseVersLaPlateforme('{"type":"battement","v":5}')).toEqual({
             ok: true,
             message: { type: 'battement', v: PLATEFORME_VERSION },
         });
@@ -314,9 +314,9 @@ describe('le parseur du sens AGENT -> PLATEFORME', () => {
         // `enrole` ici ferait que la plateforme traiterait sa propre réponse
         // comme une demande.
         for (const brut of [
-            '{"type":"enrole","v":4,"prefixe":"P","jeton":"j","expire_a":1}',
-            '{"type":"battement-recu","v":4,"jeton":"j","expire_a":1}',
-            '{"type":"refus","v":4,"motif":"forme"}',
+            '{"type":"enrole","v":5,"prefixe":"P","jeton":"j","expire_a":1}',
+            '{"type":"battement-recu","v":5,"jeton":"j","expire_a":1}',
+            '{"type":"refus","v":5,"motif":"forme"}',
         ]) {
             expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });
         }
@@ -339,10 +339,10 @@ describe('le parseur du sens AGENT -> PLATEFORME', () => {
         // sortirait dirait `enrolement` — donc « secret faux » — pour un
         // message qui n'a jamais porté de VM.
         for (const brut of [
-            '{"type":"enroler","v":4,"secret":"chut"}',
-            '{"type":"enroler","v":4,"vm":"w1"}',
-            '{"type":"enroler","v":4,"vm":"","secret":"chut"}',
-            '{"type":"enroler","v":4,"vm":42,"secret":"chut"}',
+            '{"type":"enroler","v":5,"secret":"chut"}',
+            '{"type":"enroler","v":5,"vm":"w1"}',
+            '{"type":"enroler","v":5,"vm":"","secret":"chut"}',
+            '{"type":"enroler","v":5,"vm":42,"secret":"chut"}',
         ]) {
             expect(parseVersLaPlateforme(brut)).toEqual({ ok: false, motif: 'forme' });
         }
@@ -363,7 +363,11 @@ describe('la version du protocole, et les listes blanches DÉRIVÉES de l’unio
         // 🔴 LITTÉRAL DÉLIBÉRÉ, ET C'EST UN TRÉBUCHET : `toBe(PLATEFORME_VERSION)`
         // serait une tautologie. Ce nombre existe pour qu'un bump OBLIGE une
         // main humaine à passer ici, et le commentaire du dessus dit pourquoi.
-        expect(PLATEFORME_VERSION).toBe(4);
+        // ⚠️ PASSÉ DE 4 À 5 PAR LE SOUS-BLOC G5 (tranche F), et LE TRÉBUCHET A
+        // FONCTIONNÉ : ce test a échoué, ce qui a obligé une main à venir ici
+        // constater le bump plutôt qu'à le subir. C'est le troisième bump que
+        // ce littéral attrape.
+        expect(PLATEFORME_VERSION).toBe(5);
         // ⚠️ CE CAS PORTAIT UN `refus` JUSQU'AU 20 AOÛT 2026, et il épinglait
         // le défaut au lieu de le garder : le refus est désormais la SEULE
         // variante hors versionnement, précisément pour qu'un agent v1 puisse

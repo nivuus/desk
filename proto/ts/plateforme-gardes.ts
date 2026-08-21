@@ -76,7 +76,32 @@ export function estSourceMax(valeur: unknown): valeur is SourceMax {
 export function estApplication(valeur: unknown): valeur is Application {
     if (!estObjetJson(valeur)) return false;
     if (!CHAMPS_APPLICATION.every((champ) => estChaine(valeur[champ]))) return false;
-    return estIcone(valeur) && estSourceMax(valeur.source_max);
+    return (
+        estIcone(valeur)
+        && estSourceMax(valeur.source_max)
+        && estAccent(valeur)
+        && estAssociations(valeur.associations)
+    );
+}
+
+/**
+ * ⚠️ MÊME FORME QUE `estIcone`, ET POUR LA MÊME RAISON : `null` est une valeur
+ * LÉGITIME — « pas de dominante » —, mais le champ doit être PRÉSENT. Un champ
+ * absent serait un catalogue d'une autre version, et l'accepter en silence est
+ * exactement ce que le versionnement de ce protocole existe pour empêcher.
+ */
+export function estAccent(valeur: Record<string, unknown>): boolean {
+    if (!('accent' in valeur)) return false;
+    return valeur.accent === null || estChaine(valeur.accent);
+}
+
+/**
+ * 🔴 UN TABLEAU DE CHAÎNES, ET VIDE EST VALIDE. Refuser le vide ferait rejeter
+ * la très grande majorité des applications, qui n'ouvrent aucun type de
+ * fichier.
+ */
+export function estAssociations(valeur: unknown): valeur is string[] {
+    return Array.isArray(valeur) && valeur.every((e) => estChaine(e));
 }
 
 export function estIssue(valeur: unknown): valeur is IssueLancement {

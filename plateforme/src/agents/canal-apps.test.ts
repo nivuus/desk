@@ -91,6 +91,8 @@ function app(nom: string, cle: string, icone: string | null = null): Application
         repertoire: `c:\\program files\\${nom}`,
         icone,
         source_max: icone === null ? 'non-mesuree' : { pixels: 256 },
+        accent: null,
+        associations: [],
     };
 }
 

@@ -8,6 +8,9 @@
 
 use std::time::Duration;
 
+/// Les associations de fichiers — la partie PURE ici, le registre derrière un
+/// `#[cfg(windows)]` (sous-bloc G5, tranche F).
+pub mod associations;
 pub mod icone;
 pub mod installation;
 pub mod raccourci;

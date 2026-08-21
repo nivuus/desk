@@ -23,7 +23,7 @@ use super::*;
 /// Rend le gabarit avec une version qui **n'est PAS la nôtre**.
 ///
 /// 🔴 POURQUOI UN GABARIT PLUTÔT QU'UN LITTÉRAL, ET C'EST UNE LEÇON PAYÉE AU
-/// BUMP DE G3. Les six tests ci-dessous portaient `"v":4` en dur — « la version
+/// BUMP DE G3. Les six tests ci-dessous portaient `"v":5` en dur — « la version
 /// suivante » telle qu'elle se lisait au temps de G2. Le sous-bloc G3 a monté
 /// `PLATEFORME_VERSION` à 4, et **les six ont alors affirmé que NOTRE PROPRE
 /// version est rejetée**. Ils ont échoué bruyamment, ce qui est le bon
@@ -43,13 +43,13 @@ pub(super) fn etrangere(gabarit: &str) -> String {
 #[test]
 fn serialise_l_enrolement_en_kebab_case() {
     let json = serde_json::to_string(&VersLaPlateforme::enroler("w1", "chut")).expect("sér.");
-    assert_eq!(json, r#"{"type":"enroler","v":4,"vm":"w1","secret":"chut"}"#);
+    assert_eq!(json, r#"{"type":"enroler","v":5,"vm":"w1","secret":"chut"}"#);
 }
 
 #[test]
 fn serialise_le_battement() {
     let json = serde_json::to_string(&VersLaPlateforme::battement()).expect("sér.");
-    assert_eq!(json, r#"{"type":"battement","v":4}"#);
+    assert_eq!(json, r#"{"type":"battement","v":5}"#);
 }
 
 #[test]
@@ -65,7 +65,7 @@ fn serialise_le_battement_recu_en_kebab_case() {
         .expect("sér.");
     assert_eq!(
         json,
-        r#"{"type":"battement-recu","v":4,"jeton":"kkk","expire_a":1787136774000}"#
+        r#"{"type":"battement-recu","v":5,"jeton":"kkk","expire_a":1787136774000}"#
     );
 }
 
@@ -75,11 +75,11 @@ fn serialise_l_enrole_et_le_refus() {
         .expect("sér.");
     assert_eq!(
         json,
-        r#"{"type":"enrole","v":4,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}"#
+        r#"{"type":"enrole","v":5,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}"#
     );
     let json = serde_json::to_string(&DepuisLaPlateforme::refus(MotifCanal::Enrolement))
         .expect("sér.");
-    assert_eq!(json, r#"{"type":"refus","v":4,"motif":"enrolement"}"#);
+    assert_eq!(json, r#"{"type":"refus","v":5,"motif":"enrolement"}"#);
 }
 
 // 🔴 UN TEST DE VERSION PAR VARIANTE ENTRANTE, jamais un seul pour toutes.
@@ -202,8 +202,8 @@ fn le_refus_tolere_toute_version_mais_exige_le_champ() {
 
 #[test]
 fn rejette_un_type_inconnu() {
-    assert!(serde_json::from_str::<VersLaPlateforme>(r#"{"type":"vol","v":4}"#).is_err());
-    assert!(serde_json::from_str::<DepuisLaPlateforme>(r#"{"type":"vol","v":4}"#).is_err());
+    assert!(serde_json::from_str::<VersLaPlateforme>(r#"{"type":"vol","v":5}"#).is_err());
+    assert!(serde_json::from_str::<DepuisLaPlateforme>(r#"{"type":"vol","v":5}"#).is_err());
 }
 
 #[test]
@@ -211,7 +211,7 @@ fn rejette_un_champ_inconnu() {
     // `deny_unknown_fields` : un champ de trop est une divergence de
     // format, pas une extension tolérable — le canal n'a qu'une version.
     assert!(serde_json::from_str::<VersLaPlateforme>(
-        r#"{"type":"battement","v":4,"bonus":1}"#
+        r#"{"type":"battement","v":5,"bonus":1}"#
     )
     .is_err());
 }

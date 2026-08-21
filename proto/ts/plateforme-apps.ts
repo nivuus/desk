@@ -46,6 +46,34 @@ export interface Application {
     icone: string | null;
     /** Toujours présent. Vaut `'non-mesuree'` quand `icone` est `null`. */
     source_max: SourceMax;
+    /**
+     * La couleur DOMINANTE de l'icône, en `#rrggbb`, ou `null`.
+     *
+     * 🔴 C'est la « couleur d'accent » que la conception de ④ demande au §G5,
+     * et elle est **PAR APPLICATION** — à ne pas confondre avec celle du
+     * sous-projet ①, qui est **par FENÊTRE** et arrive sur le canal WebRTC.
+     * Les deux se calculent par la même règle pure ; c'est leur SUJET qui
+     * diffère.
+     *
+     * ⚠️ `null` N'EST PAS UNE ERREUR : une icône trop pâle, trop sombre ou
+     * trop transparente n'a pas de dominante. Le manifeste OMET alors
+     * `theme_color` plutôt que d'en inventer un.
+     */
+    accent: string | null;
+    /**
+     * Les extensions que cette application ouvre — minuscules, **avec** le
+     * point, triées et dédupliquées par l'agent.
+     *
+     * 🔴 DES EXTENSIONS, JAMAIS DES TYPES MIME (décision D13 du plan de G5) :
+     * un MIME n'est pas une propriété de la VM, c'est une convention du Web.
+     * La carte extension → MIME vit **une seule fois**, côté plateforme, à
+     * l'endroit qui écrit le manifeste — la faire voyager doublerait une table
+     * en Rust **et** en TypeScript.
+     *
+     * ⚠️ VIDE EST UN ÉTAT NORMAL : la plupart des applications n'ouvrent aucun
+     * type de fichier. Le champ reste PRÉSENT sur le fil.
+     */
+    associations: string[];
 }
 
 /**

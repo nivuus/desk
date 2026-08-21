@@ -59,6 +59,16 @@ export interface ApplicationListee {
     /// L'empreinte sha256 de l'icône, ou `null` s'il n'y en a pas.
     icone: string | null;
     source_max: string;
+    /// La couleur dominante de l'icône, en `#rrggbb`, ou `null`.
+    ///
+    /// ⚠️ `null` VEUT DIRE « PAS D'ACCENT », JAMAIS « PAS ENCORE MESURÉ » : une
+    /// icône trop pâle, trop sombre ou trop transparente n'a aucune dominante.
+    /// Le manifeste OMET alors `theme_color` plutôt que d'en inventer un.
+    accent: string | null;
+    /// Les extensions que cette application ouvre — minuscules, avec le point.
+    ///
+    /// ⚠️ VIDE EST LE CAS LE PLUS FRÉQUENT, pas une panne.
+    associations: string[];
 }
 
 export type Refus =
@@ -127,6 +137,14 @@ export async function listerApplications(
             nom: e.nom,
             icone: typeof e.icone === 'string' ? e.icone : null,
             source_max: typeof e.source_max === 'string' ? e.source_max : 'non-mesuree',
+            accent: typeof e.accent === 'string' ? e.accent : null,
+            // ⚠️ ON FILTRE LES ÉLÉMENTS, ET ON NE SE CONTENTE PAS DE VÉRIFIER
+            // QUE C'EST UN TABLEAU : une entrée non textuelle atterrirait dans
+            // un `accept` de manifeste, où le navigateur la rejetterait sans
+            // qu'on sache d'où elle vient.
+            associations: Array.isArray(e.associations)
+                ? e.associations.filter((x): x is string => typeof x === 'string')
+                : [],
         });
     }
     return { etat: 'ok', valeur: applications };

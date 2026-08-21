@@ -113,6 +113,43 @@ pub struct Application {
     /// ⚠️ La combinaison inverse — `icone` nul et une taille mesurée — est
     /// INTERDITE, et aucun chemin ne l'écrit.
     pub source_max: SourceMax,
+    /// La couleur DOMINANTE de l'icône, en `#rrggbb`, ou `None`.
+    ///
+    /// 🔴 C'EST LA « COULEUR D'ACCENT » QUE LA CONCEPTION DE ④ DEMANDE AU §G5,
+    /// et elle est **PAR APPLICATION** — à ne pas confondre avec celle du
+    /// sous-projet ①, qui est **par FENÊTRE**, arrive en cours de session sur
+    /// le canal de contrôle WebRTC, et ne décrit pas la même chose. Les deux
+    /// se calculent par la même règle pure (`agent::accent::dominante`) ;
+    /// c'est leur SUJET qui diffère.
+    ///
+    /// ⚠️ `None` N'EST PAS UNE ERREUR : une icône trop pâle, trop sombre ou
+    /// trop transparente n'a pas de dominante, et `dominante` rend `None` par
+    /// construction (sa clause 5). Le manifeste OMET alors `theme_color`
+    /// plutôt que d'en inventer un.
+    ///
+    /// 🔴 MÊME `deserialize_with` QUE `icone`, ET POUR LA MÊME RAISON : sans
+    /// lui, serde rendrait le champ facultatif TOUT SEUL parce qu'il est de
+    /// type `Option`, et un catalogue d'agent d'une autre version passerait
+    /// sans que rien ne le dise.
+    #[serde(deserialize_with = "super::icone_obligatoire")]
+    pub accent: Option<String>,
+    /// Les extensions que cette application ouvre — minuscules, **avec** le
+    /// point, triées et dédupliquées.
+    ///
+    /// 🔴 DES EXTENSIONS, JAMAIS DES TYPES MIME (décision D13 du plan de G5).
+    /// Faire voyager le MIME doublerait la table — Rust **et** TypeScript —
+    /// pour une donnée qui n'est **pas une propriété de la VM** : c'est une
+    /// convention du Web. La carte extension → MIME vit **une seule fois**,
+    /// côté plateforme, à l'endroit qui écrit le manifeste.
+    ///
+    /// ⚠️ VIDE EST UN ÉTAT NORMAL, PAS UNE PANNE : la plupart des applications
+    /// n'ouvrent aucun type de fichier. Le champ reste PRÉSENT sur le fil.
+    ///
+    /// ⚠️ L'ORDRE EST IMPOSÉ PAR L'AGENT (`apps::associations::ranger`) et il
+    /// n'est pas décoratif : la plateforme compare le catalogue reçu à celui
+    /// qu'elle connaît, et deux listes IDENTIQUES dans un ordre différent la
+    /// feraient écrire à chaque tour.
+    pub associations: Vec<String>,
 }
 
 /// Ce qu'un ordre de lancement a réellement fait.

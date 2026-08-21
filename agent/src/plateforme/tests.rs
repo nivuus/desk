@@ -284,7 +284,7 @@ async fn un_message_pousse_dans_la_file_arrive_au_serveur() {
     let texte = attendre_message(&mut recus, |t| t.contains("catalogue")).await;
     assert_eq!(
         texte,
-        r#"{"type":"catalogue","v":4,"complet":true,"applications":[],"disparues":[]}"#
+        r#"{"type":"catalogue","v":5,"complet":true,"applications":[],"disparues":[]}"#
     );
 }
 
@@ -301,7 +301,7 @@ async fn un_ordre_de_lancement_arrive_au_consommateur_et_ne_ferme_pas_la_session
     let mut recu_ordres = canal.ordres().expect("la file d'ordres n'est prise qu'une fois");
 
     ordres
-        .send(r#"{"type":"lancer","v":4,"demande":"d-7","cle":"a1b2"}"#.into())
+        .send(r#"{"type":"lancer","v":5,"demande":"d-7","cle":"a1b2"}"#.into())
         .expect("envoi de l'ordre");
 
     let ordre = tokio::time::timeout(Duration::from_secs(5), recu_ordres.recv())
@@ -315,7 +315,7 @@ async fn un_ordre_de_lancement_arrive_au_consommateur_et_ne_ferme_pas_la_session
     let texte = attendre_message(&mut recus, |t| t.contains("lancee")).await;
     assert_eq!(
         texte,
-        r#"{"type":"lancee","v":4,"demande":"d-7","issue":"raccourci"}"#
+        r#"{"type":"lancee","v":5,"demande":"d-7","issue":"raccourci"}"#
     );
 }
 

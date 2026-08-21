@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import tokensCss from '../design/tokens.css?raw';
 import {
     lancerApplication,
     listerVms,
@@ -32,7 +33,27 @@ function faux(reponses: Record<string, Partial<ReponseHttp>>): {
     return { fetch, appels };
 }
 
-const APP: ApplicationListee = { id: 'u-1', nom: 'Bloc-notes', icone: 'abc123', source_max: '256' };
+/// 🔴 AUCUNE COULEUR N'EST ÉCRITE DANS CE FICHIER, ET §7.2 L'EXIGE : son
+/// balayage couvre les `.ts` autant que les `.css`, et il a relevé deux
+/// littérales que ce test portait. **Élargir son exclusion aurait satisfait le
+/// contrôle en le VIDANT** ; la valeur est donc LUE sur `tokens.css`, comme
+/// dans `manifeste.test.ts` — il n'existe qu'une source de vérité pour une
+/// couleur.
+const ACCENT = (() => {
+    const racine = tokensCss.slice(tokensCss.indexOf(':root'));
+    const trouve = /--accent:\s*([^;]+);/.exec(racine);
+    if (trouve === null) throw new Error('tokens.css ne declare plus --accent');
+    return trouve[1].trim();
+})();
+
+const APP: ApplicationListee = {
+    id: 'u-1',
+    nom: 'Bloc-notes',
+    icone: 'abc123',
+    source_max: '256',
+    accent: null,
+    associations: [],
+};
 
 describe('listerApplications', () => {
     it('appelle GET /applications?vm=… AVEC le porteur, et rend la liste', async () => {
@@ -40,7 +61,14 @@ describe('listerApplications', () => {
             'https://x/applications?vm=vm-1': {
                 json: async () => ({
                     applications: [
-                        { id: 'u-1', nom: 'Bloc-notes', icone: 'abc123', source_max: '256' },
+                        {
+                            id: 'u-1',
+                            nom: 'Bloc-notes',
+                            icone: 'abc123',
+                            source_max: '256',
+                            accent: ACCENT,
+                            associations: ['.txt', '.log'],
+                        },
                         { id: 'u-2', nom: 'Paint', icone: null, source_max: 'non-mesuree' },
                     ],
                 }),
@@ -52,6 +80,13 @@ describe('listerApplications', () => {
         if (issue.etat !== 'ok') return;
         expect(issue.valeur.map((a) => a.nom)).toEqual(['Bloc-notes', 'Paint']);
         expect(issue.valeur[1].icone).toBeNull();
+        expect(issue.valeur[0].accent).toBe(ACCENT);
+        expect(issue.valeur[0].associations).toEqual(['.txt', '.log']);
+        // ⚠️ UNE ENTRÉE SANS LES DEUX CHAMPS RETOMBE SUR DES VALEURS NEUTRES,
+        //    et non sur `undefined` : le hub ne doit pas avoir à distinguer
+        //    « aucune association » de « champ absent ».
+        expect(issue.valeur[1].accent).toBeNull();
+        expect(issue.valeur[1].associations).toEqual([]);
         // 🔴 L'EN-TÊTE EST LA MOITIÉ QUI COMPTE : toute la voie V1 repose sur
         //    le fait que la page lit AUTHENTIFIÉE ce que le navigateur ne
         //    saurait pas aller chercher lui-même.
@@ -200,5 +235,42 @@ describe('listerVms', () => {
         const { fetch } = faux({ 'https://x/vm': { json: async () => ({}) } });
         const issue = await listerVms({ base: 'https://x', jeton: 'J', fetch });
         expect(issue.etat).toBe('refus');
+    });
+});
+
+describe('les deux champs de la tranche F', () => {
+    it("ECARTE une entree d'`associations` qui n'est pas une chaine", async () => {
+        // ⚠️ Une entrée non textuelle atterrirait dans un `accept` de
+        //    manifeste, où le navigateur la rejetterait sans qu'on sache d'où
+        //    elle vient.
+        const { fetch } = faux({
+            'https://x/applications?vm=v': {
+                json: async () => ({
+                    applications: [
+                        { id: 'u', nom: 'N', icone: null, source_max: 'non-mesuree', associations: ['.a', 3, null, '.b'] },
+                    ],
+                }),
+            },
+        });
+        const issue = await listerApplications('v', { base: 'https://x', jeton: 'J', fetch });
+        expect(issue.etat).toBe('ok');
+        if (issue.etat !== 'ok') return;
+        expect(issue.valeur[0].associations).toEqual(['.a', '.b']);
+    });
+
+    it("retombe sur `[]` quand `associations` n'est pas un tableau", async () => {
+        const { fetch } = faux({
+            'https://x/applications?vm=v': {
+                json: async () => ({
+                    applications: [
+                        { id: 'u', nom: 'N', icone: null, source_max: 'non-mesuree', associations: 'non' },
+                    ],
+                }),
+            },
+        });
+        const issue = await listerApplications('v', { base: 'https://x', jeton: 'J', fetch });
+        expect(issue.etat).toBe('ok');
+        if (issue.etat !== 'ok') return;
+        expect(issue.valeur[0].associations).toEqual([]);
     });
 });

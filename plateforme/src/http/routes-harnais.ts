@@ -103,6 +103,8 @@ export function app(nom: string, cle: string, icone: string | null = null,
         repertoire: `c:\\program files\\${nom}`,
         icone,
         source_max: source,
+        accent: null,
+        associations: [],
     };
 }
 
