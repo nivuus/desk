@@ -11,30 +11,35 @@
 // valeurs et lève des `EchecFichiers`. C'est `protocole.ts` qui les met sur le
 // fil.
 //
-// ⚠️ EN LECTURE, LA CASSE N'EST TRAITÉE NULLE PART, ET C'EST UN LEGS DÉCLARÉ.
-// Windows est insensible à la casse, la File System Access API ne l'est pas :
-// l'Explorateur peut demander `NOTE.TXT` là où le répertoire local porte
-// `note.txt`, et `getFileHandle` lèvera `NotFoundError`.
+// ✅ LA CASSE EST TRAITÉE DEPUIS F3, EN LECTURE COMME EN ÉCRITURE.
 //
-// ❌ CE N'EST PAS CE QUE LA RECETTE DE F1 A MESURÉ, ET LE VRAI DÉFAUT EST PIRE :
-// avec `Casse.txt` sur le poste local, `casse.txt` ET `CASSE.TXT` rendent tous
-// deux le CONTENU de `Casse.txt`, sans erreur — trois exécutions sur trois. La
-// `NotFoundError` promise ci-dessus n'arrive que pour un fichier jamais hydraté
-// (`GROS.BIN`, même exécution). Le mécanisme le plus vraisemblable est que NTFS
-// résout la casse sur le fichier local DÉJÀ hydraté, sans jamais atteindre cet
-// adaptateur. Voir l'en-tête d'`agent/src/pont/chemins.rs`.
+// ❌ Ces lignes disaient : « EN LECTURE, LA CASSE N'EST TRAITÉE NULLE PART, ET
+// C'EST UN LEGS DÉCLARÉ », puis décrivaient le défaut mesuré par F1 et
+// concluaient « le remède complet, une table de correspondance alimentée par
+// l'énumération, reste F3 ». **F3 est arrivé, et le remède n'est PAS une table
+// de correspondance** : c'est `fichiers/noms.ts`, qui énumère le parent à
+// CHAQUE résolution, **sans aucun cache**. Un cache que rien n'invalide est le
+// défaut de l'ancien pont (`src/file.js`, cache SANS TTL), et le seul moyen de
+// le vider — `Rafraichir` — est un livrable de F5.
 //
-// ❌ ET CE LEGS NE VAUT PLUS DE L'ÉCRITURE : `fichiers/ecriture.ts` REFUSE
-// d'écrire dans un homonyme qui ne diffère que par la casse. La raison est que
-// l'erreur n'y a pas la même conséquence — en lecture c'est un mauvais fichier
-// RENDU, en écriture c'est un fichier ÉCRASÉ. Le remède complet, une table de
-// correspondance alimentée par l'énumération, reste F3 ; la garde d'écriture,
-// elle, énumère le répertoire parent à CHAQUE écriture, et ce coût est déclaré
-// là-bas.
+// Chaque composant de chemin passe donc par `canoniser`, et ce module rend le
+// nom **STOCKÉ**, jamais le nom demandé.
+//
+// ⚠️ CE QUE F3 NE CORRIGE PAS, ET QUI N'EST PAS RÉPARABLE ICI : la moitié VM du
+// phénomène. NTFS résout la casse sur un fichier DÉJÀ HYDRATÉ sans jamais
+// atteindre ce module — et quand NTFS répond, nous ne sommes pas consultés.
+// C'est le comportement NORMAL de Windows, et l'en-tête de `noms.ts` le
+// détaille.
+//
+// ⚠️ LE COÛT EST RÉEL ET IL EST DÉCLARÉ : une énumération du parent par
+// composant résolu, en plus du `getFile()` par entrée que le listage paie déjà.
+// **F3 échange de la latence contre une correction**, et c'est F4 qui dira ce
+// que l'échange coûte.
 
 import type { CodeEchec } from '../../../proto/ts/fichiers';
 import { TAILLE_TRAME_MAX } from '../../../proto/ts/fichiers';
 import type { EnteteMeta, EntreeJson } from '../../../proto/ts/fichiers-entetes';
+import { canoniserOuLever, injecterFaute } from './noms';
 
 /* ── LES POIGNÉES, DÉCRITES PAR CE DONT ON SE SERT ────────────────────────
    Ces interfaces sont un SOUS-ENSEMBLE STRUCTUREL de `FileSystemDirectoryHandle`,
@@ -180,34 +185,44 @@ export interface Adaptateur {
     lire(chemin: string, position: number, longueur: number): Promise<Uint8Array>;
 }
 
-export function creerAdaptateur(racine: Racine): Adaptateur {
-    /** Descend les `jusqua` premiers composants, tous des répertoires. */
+export function creerAdaptateur(racine: Racine, fautesArmees = false): Adaptateur {
+    /**
+     * Descend les `jusqua` premiers composants, tous des répertoires, **en les
+     * CANONICALISANT**.
+     */
     async function descendre(parts: string[], jusqua: number): Promise<PoigneeRepertoire> {
         let ici = racine;
         for (let i = 0; i < jusqua; i += 1) {
+            // Un composant INTERMÉDIAIRE : le chemin lui-même est en cause, et
+            // ProjFS distingue les deux (`ERROR_PATH_NOT_FOUND` contre
+            // `ERROR_FILE_NOT_FOUND`).
+            const nom = await canoniserOuLever(ici, parts[i], 'chemin-introuvable');
             try {
-                ici = await ici.getDirectoryHandle(parts[i]);
+                ici = await ici.getDirectoryHandle(nom);
             } catch (e) {
-                // Un composant INTERMÉDIAIRE : le chemin lui-même est en cause.
                 throw classer(e, 'chemin-introuvable');
             }
         }
         return ici;
     }
 
-    async function metaDuFichier(f: PoigneeFichier): Promise<EnteteMeta> {
+    async function metaDuFichier(nom: string, f: PoigneeFichier): Promise<EnteteMeta> {
         const fichier = await f.getFile();
-        return { repertoire: false, taille: fichier.size, modifie: fichier.lastModified };
+        // 🔴 **`nom` EST LE NOM STOCKÉ**, celui que le canonicaliseur a rendu —
+        // et c'est lui que `PrjWritePlaceholderInfo` recevra.
+        return { nom, repertoire: false, taille: fichier.size, modifie: fichier.lastModified };
     }
 
     return {
         async lister(chemin) {
             const parts = composants(chemin);
+            await injecterFaute(parts, fautesArmees);
             const parent = await descendre(parts, Math.max(parts.length - 1, 0));
             let dossier = parent;
             if (parts.length > 0) {
+                const nom = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
                 try {
-                    dossier = await parent.getDirectoryHandle(parts[parts.length - 1]);
+                    dossier = await parent.getDirectoryHandle(nom);
                 } catch (e) {
                     throw classer(e, 'introuvable');
                 }
@@ -248,14 +263,22 @@ export function creerAdaptateur(racine: Racine): Adaptateur {
 
         async attributs(chemin) {
             const parts = composants(chemin);
+            await injecterFaute(parts, fautesArmees);
             if (parts.length === 0) {
-                return { repertoire: true, taille: 0, modifie: 0 };
+                // ⚠️ La RACINE n'a pas de nom : `nom` vaut la chaîne vide, et
+                // `PrjWritePlaceholderInfo` n'est de toute façon jamais appelée
+                // pour elle.
+                return { nom: '', repertoire: true, taille: 0, modifie: 0 };
             }
             const parent = await descendre(parts, parts.length - 1);
-            const dernier = parts[parts.length - 1];
+            // 🔴 **LA RÉSOLUTION EST FAITE UNE FOIS, ICI**, et le nom obtenu
+            // sert aux DEUX tentatives — répertoire puis fichier. La refaire
+            // deux fois coûterait deux énumérations du parent pour la même
+            // question.
+            const dernier = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
             try {
                 await parent.getDirectoryHandle(dernier);
-                return { repertoire: true, taille: 0, modifie: 0 };
+                return { nom: dernier, repertoire: true, taille: 0, modifie: 0 };
             } catch (e) {
                 // On ne retente EN FICHIER que si l'échec est une absence. Un
                 // refus de permission retenté serait masqué en « introuvable »,
@@ -264,13 +287,14 @@ export function creerAdaptateur(racine: Racine): Adaptateur {
                 if (!estAbsence(e)) throw classer(e, 'introuvable');
             }
             try {
-                return await metaDuFichier(await parent.getFileHandle(dernier));
+                return await metaDuFichier(dernier, await parent.getFileHandle(dernier));
             } catch (e) {
                 throw classer(e, 'introuvable');
             }
         },
 
         async lire(chemin, position, longueur) {
+            await injecterFaute(composants(chemin), fautesArmees);
             if (longueur > TAILLE_TRAME_MAX) {
                 // Le pair ne se voit pas accorder de confiance sur la taille
                 // qu'il demande : `pont::decoupe` borne déjà côté agent, mais
@@ -285,9 +309,10 @@ export function creerAdaptateur(racine: Racine): Adaptateur {
                 throw new EchecFichiers('introuvable', 'la racine n’est pas un fichier');
             }
             const parent = await descendre(parts, parts.length - 1);
+            const nom = await canoniserOuLever(parent, parts[parts.length - 1], 'introuvable');
             let fichier: FichierLu;
             try {
-                fichier = await (await parent.getFileHandle(parts[parts.length - 1])).getFile();
+                fichier = await (await parent.getFileHandle(nom)).getFile();
             } catch (e) {
                 throw classer(e, 'introuvable');
             }

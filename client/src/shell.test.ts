@@ -310,3 +310,64 @@ describe('le compteur d’écritures dues', () => {
         expect(bureau.doitPrevenir()).toBe(false);
     });
 });
+
+/** Le harnais des tests de mutation : `bureauDeTest` plus un accès au dernier compteur. */
+function vues() {
+    const h = bureauDeTest();
+    return {
+        bureau: h.bureau,
+        dernieresDues: () => h.compteurs[h.compteurs.length - 1],
+    };
+}
+
+describe('les mutations en échec (F3)', () => {
+    it('🔴 sont NOMMÉES, et un renommage porte SES DEUX chemins', () => {
+        // « impossible de renommer X » ne dit pas vers quoi — et c'est
+        // précisément ce que l'utilisateur doit vérifier : la destination
+        // existe peut-être déjà.
+        const v = vues();
+        v.bureau.mutationEchouee('brouillon.txt → note.txt', 'deja-present');
+        expect(v.dernieresDues()?.texte).toContain('brouillon.txt → note.txt');
+        expect(v.dernieresDues()?.texte).toContain('deja-present');
+    });
+
+    it('🔴 sont un DANGER même sans aucune écriture due', () => {
+        // C'est ce qui les distingue d'une écriture en échec : les deux côtés
+        // ont divergé, et rien ne les réconciliera tout seul.
+        const v = vues();
+        v.bureau.mutationEchouee('a → b', 'introuvable');
+        expect(v.dernieresDues()?.ton).toBe('danger');
+        expect(v.dernieresDues()?.dues).toBe(0);
+    });
+
+    it('🔴 NE DISPARAISSENT PAS quand les écritures dues redescendent à zéro', () => {
+        // Rouge : les effacer dans `ecrituresDues`, comme les échecs
+        // d'écriture. Une divergence définitive s'effacerait alors toute seule,
+        // et l'utilisateur ne saurait jamais qu'un fichier n'a pas été renommé
+        // sur son poste.
+        const v = vues();
+        v.bureau.ecrituresDues([{ chemin: 'x.txt', octets: 1 }]);
+        v.bureau.mutationEchouee('a → b', 'introuvable');
+        v.bureau.ecrituresDues([]);
+        expect(v.dernieresDues()?.texte).toContain('a → b');
+        expect(v.dernieresDues()?.ton).toBe('danger');
+    });
+
+    it('sont effacées au REMONTAGE du lecteur, et là seulement', () => {
+        const v = vues();
+        v.bureau.mutationEchouee('a → b', 'introuvable');
+        v.bureau.lecteurDemonte();
+        expect(v.dernieresDues()?.texte).toBe('');
+        expect(v.dernieresDues()?.ton).toBe('neutre');
+    });
+
+    it('s’accumulent, à l’inverse des écritures dues qui écrasent', () => {
+        const v = vues();
+        v.bureau.mutationEchouee('a → b', 'x');
+        v.bureau.mutationEchouee('c', 'y');
+        const texte = v.dernieresDues()?.texte ?? '';
+        expect(texte).toContain('a → b');
+        expect(texte).toContain('c');
+        expect(texte).toContain('2 renommages ou suppressions');
+    });
+});

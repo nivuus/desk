@@ -54,8 +54,14 @@ export interface EnteteEntrees {
     entrees: EntreeJson[];
 }
 
-/** L'en-tête de `TYPE_META`. Charge binaire **vide**. */
+/**
+ * L'en-tête de `TYPE_META`. Charge binaire **vide**.
+ *
+ * 🔴 `nom` EST LE NOM CANONIQUE — CELUI QUI EST STOCKÉ, jamais celui que
+ * l'application a tapé (F3). Vide pour la RACINE, qui n'a pas de nom.
+ */
 export interface EnteteMeta {
+    nom: string;
     repertoire: boolean;
     taille: number;
     modifie: number;
@@ -166,8 +172,15 @@ export function encodeEntrees(entrees: EntreeJson[]): string {
     } satisfies EnteteEntrees);
 }
 
-export function encodeMeta(repertoire: boolean, taille: number, modifie: number): string {
-    return JSON.stringify({ repertoire, taille, modifie } satisfies EnteteMeta);
+export function encodeMeta(
+    nom: string,
+    repertoire: boolean,
+    taille: number,
+    modifie: number,
+): string {
+    // ⚠️ L'ORDRE DES CLÉS EST CELUI DE LA DÉCLARATION RUST, et le vecteur le
+    // fige : `nom` vient EN PREMIER.
+    return JSON.stringify({ nom, repertoire, taille, modifie } satisfies EnteteMeta);
 }
 
 export function encodeDonnees(position: number, longueur: number): string {
@@ -290,6 +303,7 @@ export function parseEntrees(brut: unknown): EnteteEntrees {
 export function parseMeta(brut: unknown): EnteteMeta {
     const o = objet(brut, 'Meta');
     return {
+        nom: chaine(o, 'nom', 'Meta'),
         repertoire: booleen(o, 'repertoire', 'Meta'),
         taille: entier(o, 'taille', 'Meta'),
         modifie: entier(o, 'modifie', 'Meta'),

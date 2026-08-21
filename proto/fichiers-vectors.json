@@ -38,6 +38,15 @@
       "json": "{\"entrees\":[{\"nom\":\"a.txt\",\"repertoire\":false,\"taille\":7,\"modifie\":42},{\"nom\":\"sous-dossier\",\"repertoire\":true,\"taille\":0,\"modifie\":-1}]}"
     },
     {
+      "name": "meta_de_la_racine",
+      "forme": "meta",
+      "nom": "",
+      "repertoire": true,
+      "taille": 0,
+      "modifie": 0,
+      "json": "{\"nom\":\"\",\"repertoire\":true,\"taille\":0,\"modifie\":0}"
+    },
+    {
       "name": "entrees_vides",
       "forme": "entrees",
       "entrees": [],
@@ -46,18 +55,20 @@
     {
       "name": "meta",
       "forme": "meta",
+      "nom": "Rapport Final.PDF",
       "repertoire": false,
       "taille": 1234,
       "modifie": 1690000000000,
-      "json": "{\"repertoire\":false,\"taille\":1234,\"modifie\":1690000000000}"
+      "json": "{\"nom\":\"Rapport Final.PDF\",\"repertoire\":false,\"taille\":1234,\"modifie\":1690000000000}"
     },
     {
       "name": "meta_anterieure_a_1970",
       "forme": "meta",
+      "nom": "été",
       "repertoire": true,
       "taille": 0,
       "modifie": -86400000,
-      "json": "{\"repertoire\":true,\"taille\":0,\"modifie\":-86400000}"
+      "json": "{\"nom\":\"été\",\"repertoire\":true,\"taille\":0,\"modifie\":-86400000}"
     },
     {
       "name": "donnees",

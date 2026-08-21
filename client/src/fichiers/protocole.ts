@@ -31,9 +31,19 @@
 // `Sommeil`, D6 `Part`, D7 `Audio`, D8 `PleinEcran`).
 //
 // Les trois familles, et ce qu'on en fait :
-//   REQUÊTES  (1..5)  → une réponse, toujours ;
-//   ANNONCES  (6)     → un rappel injecté, et `null` ;
-//   RÉPONSES  (64..)  → ignorées : le navigateur ne demande rien.
+//   REQUÊTES  (1..5, 7, 8) → une réponse, toujours ;
+//   ANNONCES  (6)          → un rappel injecté, et `null` ;
+//   RÉPONSES  (64..)       → ignorées : le navigateur ne demande rien.
+//
+// ⚠️ LA NUMÉROTATION N'EST PAS CONTIGUË PAR FAMILLE : 6 est une ANNONCE, 7 et 8
+// des REQUÊTES. F2 a sauté 7 et 8 pour F3, ce qui a évité une renumérotation
+// tardive — et c'est cet aiguillage NOMMÉ qui dit la famille, jamais la valeur.
+//
+// ⚠️ L'INVARIANT DE F3 EST CELUI DE F1, ET NON L'EXCEPTION DE F2 :
+// `TYPE_RENOMMER` et `TYPE_SUPPRIMER` sont des REQUÊTES. Elles reçoivent
+// `Fait` ou `Echec`, toujours. Ne rien répondre laisserait la commande en vol
+// côté pont jusqu'à son expiration, et l'Explorateur se figerait sur une panne
+// pourtant immédiate.
 //
 // Le seul cas où l'on ne répond pas SANS que ce soit une annonce est celui où
 // l'on n'a pas de requête — trame illisible, type de réponse, type inconnu.
@@ -41,6 +51,8 @@
 import {
     TYPE_ATTRIBUTS,
     TYPE_CREER,
+    TYPE_RENOMMER,
+    TYPE_SUPPRIMER,
     TYPE_DONNEES,
     TYPE_DUES,
     TYPE_ECHEC,
@@ -63,10 +75,13 @@ import {
     parseDues,
     parseEcrire,
     parseLire,
+    parseRenommer,
+    parseSupprimer,
     type Due,
 } from '../../../proto/ts/fichiers-entetes';
 import { EchecFichiers, type Adaptateur } from './adaptateur';
 import type { Ecrivain } from './ecriture';
+import type { Mutateur } from './mutation-service';
 
 /** Où partent les trames qu'on n'a pas su traiter. Injecté, donc observable. */
 export type Journal = (message: string) => void;
@@ -88,6 +103,38 @@ export interface OptionsServeur {
      * la page-shell qui décide ce qu'elle en fait, et ce module reste PUR.
      */
     onDues?: (dues: Due[]) => void;
+    /**
+     * Le mutateur — renommage et suppression. **Absent = lecture seule.**
+     *
+     * ⚠️ **DISTINCT de l'écrivain, et le rester est le point** : `PONT_MUTATION`
+     * et `PONT_ECRITURE` sont deux variables de banc distinctes côté agent, et
+     * les confondre ferait qu'une recette du renommage couperait aussi l'idiome
+     * temp+rename qu'elle veut exercer.
+     */
+    mutateur?: Mutateur;
+    /**
+     * Une MUTATION a échoué ici. Même raison que [`onEchecEcriture`] : le
+     * navigateur est le seul à connaître la cause, et il n'a personne d'autre à
+     * qui la dire.
+     *
+     * ⚠️ **Un renommage porte DEUX chemins**, et le message doit les nommer
+     * tous deux : « impossible de renommer X » ne dit pas vers quoi, et c'est
+     * précisément ce que l'utilisateur doit vérifier.
+     */
+    onEchecMutation?: (quoi: string, code: string) => void;
+    /**
+     * Le repli de renommage a COPIÉ. **L'instrumentation que la spec §3.5.1
+     * exige.**
+     *
+     * ⚠️ **DIVERGENCE DÉCLARÉE AVEC LE PLAN**, qui la fait « rendre au pont
+     * dans l'en-tête de la réponse `Fait` ». `TYPE_FAIT` n'a **aucune forme
+     * propre** — son en-tête est `{}`, F2 l'écrit en toutes lettres, et lui en
+     * donner une exigerait un vecteur partagé de plus pour une donnée purement
+     * diagnostique. La trace part donc par le journal injecté, **là où le
+     * navigateur SAIT ce qu'il a fait** ; le pont, lui, journalise ce que LUI
+     * sait — c'est la doctrine « une trace dit ce qu'elle SAIT ».
+     */
+    onRenommagePorCopie?: (de: string, vers: string, octets: number, entrees: number) => void;
     /**
      * Une écriture a échoué ICI, côté navigateur.
      *
@@ -123,6 +170,8 @@ export function creerServeur(
                 case TYPE_LIRE:
                 case TYPE_ECRIRE:
                 case TYPE_CREER:
+                case TYPE_RENOMMER:
+                case TYPE_SUPPRIMER:
                     break;
                 // ── ANNONCE : elle ne reçoit RIEN, et la famille est NOMMÉE.
                 case TYPE_DUES: {
@@ -155,7 +204,7 @@ export function creerServeur(
             try {
                 return await servir(
                     adaptateur,
-                    options.ecrivain,
+                    options,
                     trame.type,
                     trame.correlation,
                     trame.entete,
@@ -168,7 +217,13 @@ export function creerServeur(
                 // plutôt qu'un HRESULT vague.
                 const code = e instanceof EchecFichiers ? e.code : 'interne';
                 journal(`échec ${code} sur la corrélation ${trame.correlation} : ${(e as Error).message}`);
-                if (trame.type === TYPE_ECRIRE || trame.type === TYPE_CREER) {
+                if (trame.type === TYPE_RENOMMER || trame.type === TYPE_SUPPRIMER) {
+                    // ⚠️ Le chemin est relu de l'en-tête plutôt que retenu :
+                    // l'échec a pu venir de son ANALYSE, auquel cas il n'y a
+                    // rien à nommer.
+                    const quoi = mutationDe(trame.type, trame.entete);
+                    if (quoi !== undefined) options.onEchecMutation?.(quoi, code);
+                } else if (trame.type === TYPE_ECRIRE || trame.type === TYPE_CREER) {
                     // ⚠️ Le chemin est relu de l'en-tête plutôt que retenu :
                     // l'échec a pu venir de son ANALYSE, auquel cas il n'y a
                     // rien à nommer, et deviner serait pire que se taire.
@@ -181,6 +236,25 @@ export function creerServeur(
     };
 }
 
+/**
+ * Ce qu'une mutation en échec doit NOMMER, si l'en-tête est lisible.
+ *
+ * ⚠️ **Un renommage porte DEUX chemins**, et les deux comptent : « impossible
+ * de renommer X » ne dit pas vers quoi, et c'est précisément ce que
+ * l'utilisateur doit vérifier — la destination existe peut-être déjà.
+ */
+function mutationDe(type: number, entete: unknown): string | undefined {
+    if (typeof entete !== 'object' || entete === null) return undefined;
+    const o = entete as { chemin?: unknown; de?: unknown; vers?: unknown };
+    if (type === TYPE_SUPPRIMER) {
+        return typeof o.chemin === 'string' ? o.chemin : undefined;
+    }
+    if (typeof o.de === 'string' && typeof o.vers === 'string') {
+        return `${o.de} → ${o.vers}`;
+    }
+    return undefined;
+}
+
 /** Le chemin d'un en-tête d'écriture, s'il est lisible. */
 function cheminDe(entete: unknown): string | undefined {
     if (typeof entete !== 'object' || entete === null) return undefined;
@@ -190,12 +264,37 @@ function cheminDe(entete: unknown): string | undefined {
 
 async function servir(
     adaptateur: Adaptateur,
-    ecrivain: Ecrivain | undefined,
+    options: OptionsServeur,
     type: number,
     correlation: number,
     entete: unknown,
     charge: Uint8Array,
 ): Promise<ArrayBuffer> {
+    const ecrivain: Ecrivain | undefined = options.ecrivain;
+    if (type === TYPE_RENOMMER || type === TYPE_SUPPRIMER) {
+        const mutateur = options.mutateur;
+        if (mutateur === undefined) {
+            // ⚠️ **PAS `interne` : `protege-en-ecriture`.** Un lecteur monté
+            // sans mutateur et un lecteur en panne n'appellent pas le même
+            // geste — le contre-exemple est l'ancien pont, qui rendait `EPERM`
+            // à neuf sites distincts.
+            throw new EchecFichiers(
+                'protege-en-ecriture',
+                'ce lecteur ne sait pas renommer ni supprimer',
+            );
+        }
+        if (type === TYPE_RENOMMER) {
+            const r = parseRenommer(entete);
+            const trace = await mutateur.renommer(r.de, r.vers, r.repertoire);
+            if (!trace.parMove) {
+                options.onRenommagePorCopie?.(r.de, r.vers, trace.octets, trace.entrees);
+            }
+        } else {
+            const s = parseSupprimer(entete);
+            await mutateur.supprimer(s.chemin, s.repertoire);
+        }
+        return encoderTexte(TYPE_FAIT, correlation, '{}');
+    }
     if (type === TYPE_ECRIRE || type === TYPE_CREER) {
         if (ecrivain === undefined) {
             // ⚠️ **PAS `interne` : `protege-en-ecriture`.** Un serveur monté en
@@ -238,7 +337,11 @@ async function servir(
     if (type === TYPE_ATTRIBUTS) {
         const { chemin } = parseChemin(entete);
         const m = await adaptateur.attributs(chemin);
-        return encoderTexte(TYPE_META, correlation, encodeMeta(m.repertoire, m.taille, m.modifie));
+        return encoderTexte(
+            TYPE_META,
+            correlation,
+            encodeMeta(m.nom, m.repertoire, m.taille, m.modifie),
+        );
     }
     const { chemin, position, longueur } = parseLire(entete);
     const octets = await adaptateur.lire(chemin, position, longueur);

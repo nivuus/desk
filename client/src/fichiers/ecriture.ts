@@ -62,9 +62,33 @@ import {
    `FileSystemDirectoryHandle` les satisfait sans conversion — `canal.ts` le
    vérifie à la compilation, exactement comme pour la lecture en F1. */
 
+/**
+ * Les octets qu'un flux du navigateur accepte.
+ *
+ * 🔴 **`Uint8Array<ArrayBuffer>` ET NON `Uint8Array` NU, ET C'EST LE CONTRÔLE
+ * STRUCTUREL DE `canal.ts` QUI L'A EXIGÉ.** `Uint8Array` seul vaut
+ * `Uint8Array<ArrayBufferLike>`, donc **`SharedArrayBuffer` compris** — et la
+ * vraie `FileSystemWritableFileStream.write` n'accepte qu'un `BufferSource`,
+ * c'est-à-dire un `ArrayBufferView<ArrayBuffer>`. La vraie poignée ne
+ * satisfaisait donc **PAS** `RacineInscriptible`, et personne ne l'avait vu :
+ * le « contrôle de compatibilité structurelle » de F2 était un `as` vers un
+ * sous-type, qui asserte au lieu de vérifier.
+ *
+ * ⚠️ **Ce n'est PAS une incompatibilité d'exécution** — un `Uint8Array` adossé
+ * à un `ArrayBuffer` ordinaire est un `BufferSource` parfaitement valide. C'est
+ * le TYPE qui mentait, en promettant d'accepter des vues sur mémoire partagée
+ * que ce module ne produit ni ne reçoit jamais. Le resserrer, c'est le rendre
+ * vrai.
+ */
+export type OctetsInscriptibles = Uint8Array<ArrayBuffer>;
+
 /** Le flux d'écriture rendu par `createWritable()`. */
 export interface FluxInscriptible {
-    write(donnees: { type: 'write'; position: number; data: Uint8Array }): Promise<void>;
+    write(donnees: {
+        type: 'write';
+        position: number;
+        data: OctetsInscriptibles;
+    }): Promise<void>;
     /**
      * 🔵 LA COMMITTAISON EST ICI, ET NULLE PART AILLEURS. `createWritable()`
      * écrit dans un fichier d'échange et ne commet qu'au `close()` : une
@@ -214,7 +238,20 @@ export function creerEcrivain(racine: RacineInscriptible): Ecrivain {
                 );
             }
             try {
-                await ouvert.write({ type: 'write', position, data: octets });
+                // ⚠️ **LE RESSERREMENT DE TYPE SE FAIT ICI, ET UNE SEULE FOIS.**
+                // `proto/ts/fichiers` rend un `Uint8Array` NU — donc
+                // `Uint8Array<ArrayBufferLike>`, `SharedArrayBuffer` compris —
+                // parce que c'est ce que le décodeur de trame produit. Rien, à
+                // l'exécution, ne peut lui donner une vue sur mémoire
+                // partagée : la trame vient d'un `ArrayBuffer` de
+                // `RTCDataChannel`. **La copie est donc gratuite en pratique et
+                // honnête en type** : elle dit ce que le module reçoit
+                // réellement, plutôt que de l'asserter.
+                //
+                // 🔵 C'est le contrôle structurel de `canal.ts` qui a exigé ce
+                // resserrement — voir [`OctetsInscriptibles`].
+                const donnees: OctetsInscriptibles = new Uint8Array(octets);
+                await ouvert.write({ type: 'write', position, data: donnees });
             } catch (e) {
                 // Le flux est perdu : le retirer, sinon le morceau suivant
                 // écrirait dans un flux mort et l'échec changerait de cause.

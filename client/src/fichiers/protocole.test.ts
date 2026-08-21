@@ -8,6 +8,8 @@ import {
     TYPE_ECRIRE,
     TYPE_ENTREES,
     TYPE_FAIT,
+    TYPE_RENOMMER,
+    TYPE_SUPPRIMER,
     TYPE_LIRE,
     TYPE_LISTER,
     TYPE_META,
@@ -18,6 +20,7 @@ import { decoder } from '../../../proto/ts/fichiers';
 import { EchecFichiers, type Adaptateur } from './adaptateur';
 import { creerServeur } from './protocole';
 import type { Ecrivain } from './ecriture';
+import type { Mutateur } from './mutation-service';
 
 /** Un écrivain factice : le protocole ne connaît AUCUN système de fichiers. */
 function fauxEcrivain(surcharge: Partial<Ecrivain> = {}): Ecrivain & { vus: string[] } {
@@ -39,7 +42,12 @@ function fauxEcrivain(surcharge: Partial<Ecrivain> = {}): Ecrivain & { vus: stri
 function fauxAdaptateur(surcharge: Partial<Adaptateur> = {}): Adaptateur {
     return {
         lister: async () => [{ nom: 'a.txt', repertoire: false, taille: 7, modifie: 42 }],
-        attributs: async () => ({ repertoire: false, taille: 1234, modifie: 1_690_000_000_000 }),
+        attributs: async () => ({
+            nom: 'Nom Stocké.txt',
+            repertoire: false,
+            taille: 1234,
+            modifie: 1_690_000_000_000,
+        }),
         lire: async () => new Uint8Array([9, 8, 7]),
         ...surcharge,
     };
@@ -62,6 +70,10 @@ describe('serveur du protocole fichiers', () => {
         const trame = decoder((await serveur.traiter(encoder(TYPE_ATTRIBUTS, 3, { chemin: '' })))!);
         expect(trame.type).toBe(TYPE_META);
         expect(parseMeta(trame.entete).taille).toBe(1234);
+        // 🔴 **LE NOM CANONIQUE TRAVERSE LE FIL.** Sans lui, le substitut
+        // serait créé sous le nom que l'application a TAPÉ, et non sous celui
+        // qui existe sur le poste local.
+        expect(parseMeta(trame.entete).nom).toBe('Nom Stocké.txt');
     });
 
     it('🔴 répond à LIRE par DONNEES dont la longueur est celle REELLEMENT lue', async () => {
@@ -342,5 +354,131 @@ describe('l’ANNONCE des écritures dues', () => {
         const serveur = creerServeur(fauxAdaptateur(), (m) => messages.push(m));
         expect(await serveur.traiter(encoder(TYPE_FAIT, 3, {}))).toBeNull();
         expect(messages.join(' ')).toMatch(/ne demande rien/);
+    });
+});
+
+/** Un mutateur factice : le protocole ne connaît AUCUN système de fichiers. */
+function fauxMutateur(surcharge: Partial<Mutateur> = {}): Mutateur & { vus: string[] } {
+    const vus: string[] = [];
+    return {
+        vus,
+        async renommer(de, vers, repertoire) {
+            vus.push(`renommer ${de} -> ${vers} ${repertoire}`);
+            return { parMove: true, octets: 0, entrees: 0 };
+        },
+        async supprimer(chemin, repertoire) {
+            vus.push(`supprimer ${chemin} ${repertoire}`);
+        },
+        ...surcharge,
+    };
+}
+
+describe('les deux verbes de F3', () => {
+    it('🔴 RENOMMER répond TOUJOURS — par FAIT', async () => {
+        // Rouge : rendre `null`. La commande resterait en vol côté pont
+        // **jusqu'à son expiration**, et l'Explorateur se figerait sur une
+        // panne pourtant immédiate. C'est l'invariant que `protocole.ts` énonce
+        // en majuscules depuis F1, et que F3 ne relâche PAS : `TYPE_RENOMMER`
+        // est une REQUÊTE, pas une annonce.
+        const mutateur = fauxMutateur();
+        const serveur = creerServeur(fauxAdaptateur(), () => {}, { mutateur });
+        const reponse = await serveur.traiter(
+            encoder(TYPE_RENOMMER, 11, { de: 'a.txt', vers: 'b.txt', repertoire: false }),
+        );
+        expect(reponse).not.toBeNull();
+        expect(decoder(reponse!).type).toBe(TYPE_FAIT);
+        expect(mutateur.vus).toEqual(['renommer a.txt -> b.txt false']);
+    });
+
+    it('🔴 SUPPRIMER répond TOUJOURS — par FAIT', async () => {
+        const mutateur = fauxMutateur();
+        const serveur = creerServeur(fauxAdaptateur(), () => {}, { mutateur });
+        const reponse = await serveur.traiter(
+            encoder(TYPE_SUPPRIMER, 12, { chemin: 'd', repertoire: true }),
+        );
+        expect(reponse).not.toBeNull();
+        expect(decoder(reponse!).type).toBe(TYPE_FAIT);
+        expect(mutateur.vus).toEqual(['supprimer d true']);
+    });
+
+    it('🔴 SANS mutateur, c’est `protege-en-ecriture` et NON `interne`', async () => {
+        // Un lecteur monté sans mutateur et un lecteur en panne n'appellent pas
+        // le même geste — le contre-exemple est l'ancien pont, qui rendait
+        // `EPERM` à neuf sites distincts.
+        const serveur = creerServeur(fauxAdaptateur(), () => {});
+        const trame = decoder(
+            (await serveur.traiter(
+                encoder(TYPE_RENOMMER, 13, { de: 'a', vers: 'b', repertoire: false }),
+            ))!,
+        );
+        expect(parseEchec(trame.entete).code).toBe('protege-en-ecriture');
+    });
+
+    it('🔴 un échec de RENOMMAGE nomme LES DEUX chemins', async () => {
+        // « impossible de renommer X » ne dit pas vers quoi, et c'est
+        // précisément ce que l'utilisateur doit vérifier.
+        const vus: Array<[string, string]> = [];
+        const mutateur = fauxMutateur({
+            renommer: async () => {
+                throw new EchecFichiers('deja-present', 'déjà là');
+            },
+        });
+        const serveur = creerServeur(fauxAdaptateur(), () => {}, {
+            mutateur,
+            onEchecMutation: (quoi, code) => vus.push([quoi, code]),
+        });
+        const trame = decoder(
+            (await serveur.traiter(
+                encoder(TYPE_RENOMMER, 14, { de: 'x.txt', vers: 'y.txt', repertoire: false }),
+            ))!,
+        );
+        expect(parseEchec(trame.entete).code).toBe('deja-present');
+        expect(vus).toEqual([['x.txt → y.txt', 'deja-present']]);
+    });
+
+    it('un échec de SUPPRESSION nomme le chemin', async () => {
+        const vus: Array<[string, string]> = [];
+        const mutateur = fauxMutateur({
+            supprimer: async () => {
+                throw new EchecFichiers('repertoire-non-vide', 'pas vide');
+            },
+        });
+        const serveur = creerServeur(fauxAdaptateur(), () => {}, {
+            mutateur,
+            onEchecMutation: (quoi, code) => vus.push([quoi, code]),
+        });
+        await serveur.traiter(encoder(TYPE_SUPPRIMER, 15, { chemin: 'd', repertoire: true }));
+        expect(vus).toEqual([['d', 'repertoire-non-vide']]);
+    });
+
+    it('🔵 le repli de COPIE est INSTRUMENTÉ, et `move()` ne l’est pas', async () => {
+        // L'instrumentation que la spec §3.5.1 exige. Elle part par le journal
+        // parce que le navigateur est le SEUL à savoir ce qu'il a fait.
+        const vus: Array<[string, string, number, number]> = [];
+        const parCopie = fauxMutateur({
+            renommer: async () => ({ parMove: false, octets: 4096, entrees: 3 }),
+        });
+        const serveur = creerServeur(fauxAdaptateur(), () => {}, {
+            mutateur: parCopie,
+            onRenommagePorCopie: (de, vers, octets, entrees) =>
+                vus.push([de, vers, octets, entrees]),
+        });
+        await serveur.traiter(
+            encoder(TYPE_RENOMMER, 16, { de: 'p', vers: 'q', repertoire: true }),
+        );
+        expect(vus).toEqual([['p', 'q', 4096, 3]]);
+
+        // Et sur la branche `move`, RIEN n'est instrumenté : il n'y a rien à
+        // mesurer.
+        vus.length = 0;
+        const parMove = creerServeur(fauxAdaptateur(), () => {}, {
+            mutateur: fauxMutateur(),
+            onRenommagePorCopie: (de, vers, octets, entrees) =>
+                vus.push([de, vers, octets, entrees]),
+        });
+        await parMove.traiter(
+            encoder(TYPE_RENOMMER, 17, { de: 'a', vers: 'b', repertoire: false }),
+        );
+        expect(vus).toEqual([]);
     });
 });

@@ -72,6 +72,19 @@ export interface Bureau {
     ecrituresDues(dues: EcritureDue[]): void;
     /// Une écriture a échoué. Elle reste due, et elle est NOMMÉE.
     ecritureEchouee(chemin: string, motif: string): void;
+    /// **F3** — une MUTATION a échoué : renommage ou suppression.
+    ///
+    /// 🔴 **DISTINCTE d'`ecritureEchouee`, et ce n'est pas une subtilité.** Une
+    /// écriture en échec reste DUE : le pont la repoussera, et le compteur
+    /// redescendra. Une mutation en échec, elle, **ne sera jamais rejouée** —
+    /// ProjFS ne renvoie pas de notification pour un geste déjà accompli dans
+    /// la VM. Les deux côtés ont donc DIVERGÉ, définitivement, et le seul
+    /// remède est humain.
+    ///
+    /// ⚠️ **Elles ne se cumulent pas non plus** : les mutations en échec
+    /// s'accumulent jusqu'au remontage du lecteur, alors que les écritures en
+    /// échec disparaissent dès que leur chemin cesse d'être dû.
+    mutationEchouee(quoi: string, motif: string): void;
     /// Faut-il prévenir l'utilisateur avant qu'il ne referme l'onglet ?
     ///
     /// ⚠️ **PRÉDICAT PUR, testé ici** ; le câblage de `beforeunload` vit dans
@@ -100,13 +113,33 @@ export function creerBureau(options: OptionsBureau): Bureau {
     let vues = 0;
     /** Les échecs, par chemin. Ils survivent au compteur : l'entrée reste due. */
     const echecs = new Map<string, string>();
+    /**
+     * Les MUTATIONS en échec, dans leur ordre d'arrivée.
+     *
+     * 🔴 **ELLES NE DISPARAISSENT JAMAIS TOUTES SEULES**, à l'inverse des
+     * écritures en échec : rien ne les rejouera. Elles sont effacées au
+     * remontage du lecteur, et là seulement — c'est-à-dire par un geste de
+     * l'utilisateur, qui est le seul remède.
+     */
+    let mutations: string[] = [];
 
     function redessinerLesDues(): void {
-        const texte = phraseDesDues(dues, echecs);
+        const texte = [phraseDesDues(dues, echecs), phraseDesMutations(mutations)]
+            .filter((p) => p.length > 0)
+            .join(' ');
         // DANGER dès qu'un échec est nommé — l'utilisateur doit AGIR. Sinon
         // ALERTE tant qu'il reste des dues : ce n'est pas un refus, c'est une
         // attente, mais une attente qu'il ne faut pas refermer par accident.
-        const ton: Ton = echecs.size > 0 ? 'danger' : dues.length > 0 ? 'alerte' : 'neutre';
+        //
+        // ⚠️ **Une MUTATION en échec est un DANGER même sans aucune due**, et
+        // c'est ce qui la distingue : les deux côtés ont divergé, et rien ne
+        // les réconciliera tout seul.
+        const ton: Ton =
+            echecs.size > 0 || mutations.length > 0
+                ? 'danger'
+                : dues.length > 0
+                  ? 'alerte'
+                  : 'neutre';
         options.afficherEcrituresDues(dues.length, vues, texte, ton);
     }
 
@@ -172,6 +205,10 @@ export function creerBureau(options: OptionsBureau): Bureau {
         },
 
         lecteurDemonte() {
+            // Le remontage est le SEUL remède à une mutation en échec : rien ne
+            // la rejouera. Les effacer ici, et là seulement.
+            mutations = [];
+            redessinerLesDues();
             // 🔴 LA CHAÎNE VIDE, ET NON UN MESSAGE « démonté ». C'est le défaut
             // relevé en D5 : le bandeau `#status` gardait son `textContent`
             // après `expirer()`, si bien que lire le texte prouvait qu'un
@@ -210,6 +247,15 @@ export function creerBureau(options: OptionsBureau): Bureau {
             redessinerLesDues();
         },
 
+        mutationEchouee(quoi, motif) {
+            // 🔴 **`quoi` PORTE LES DEUX CHEMINS D'UN RENOMMAGE** (`de → vers`),
+            // parce que « impossible de renommer X » ne dit pas vers quoi — et
+            // c'est précisément ce que l'utilisateur doit vérifier : la
+            // destination existe peut-être déjà.
+            mutations.push(`« ${quoi} » (${motif})`);
+            redessinerLesDues();
+        },
+
         doitPrevenir() {
             return dues.length > 0;
         },
@@ -236,6 +282,17 @@ export function creerBureau(options: OptionsBureau): Bureau {
  * compteur, est ce qui reste. *(Fait de plateforme, non mesuré ici, déclaré
  * comme tel.)*
  */
+function phraseDesMutations(mutations: string[]): string {
+    if (mutations.length === 0) return '';
+    const pluriel = mutations.length > 1 ? 's' : '';
+    return (
+        `${mutations.length} renommage${pluriel} ou suppression${pluriel} n'${
+            mutations.length > 1 ? 'ont' : 'a'
+        } PAS été répercuté${pluriel} sur ce poste : ${mutations.join(', ')}. ` +
+        `Les deux côtés ont divergé, et rien ne le rejouera.`
+    );
+}
+
 function phraseDesDues(dues: EcritureDue[], echecs: Map<string, string>): string {
     if (dues.length === 0) return '';
     const noms = dues

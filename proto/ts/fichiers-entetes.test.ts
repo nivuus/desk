@@ -45,6 +45,7 @@ interface CasVecteur {
     taille?: number;
     modifie?: number;
     code?: string;
+    nom?: string;
     premier?: boolean;
     dernier?: boolean;
     dues?: Due[];
@@ -64,7 +65,7 @@ function encoder(c: CasVecteur): string {
         case 'entrees':
             return encodeEntrees(c.entrees!);
         case 'meta':
-            return encodeMeta(c.repertoire!, c.taille!, c.modifie!);
+            return encodeMeta(c.nom!, c.repertoire!, c.taille!, c.modifie!);
         case 'donnees':
             return encodeDonnees(c.position!, c.longueur!);
         case 'ecrire':
@@ -145,7 +146,13 @@ describe('les en-têtes incomplets sont rejetés', () => {
     // silencieusement complété. Le jumeau Rust est
     // `un_entete_incomplet_est_rejete_plutot_que_complete`.
     it('refuse un Meta sans `modifie`', () => {
-        expect(() => parseMeta({ repertoire: false, taille: 1 })).toThrow(/modifie/);
+        expect(() => parseMeta({ nom: 'a', repertoire: false, taille: 1 })).toThrow(/modifie/);
+    });
+
+    it('🔴 refuse un Meta sans `nom` — le nom CANONIQUE', () => {
+        // Sans lui, le substitut serait créé sous le nom que l'application a
+        // TAPÉ, et non sous celui qui existe sur le poste local.
+        expect(() => parseMeta({ repertoire: false, taille: 1, modifie: 0 })).toThrow(/nom/);
     });
 
     it('refuse un Donnees sans `longueur`', () => {
@@ -159,7 +166,9 @@ describe('les en-têtes incomplets sont rejetés', () => {
     it('refuse un champ du mauvais TYPE, pas seulement un champ absent', () => {
         // Un `taille` en chaîne passerait un contrôle de présence et
         // produirait une taille de fichier absurde côté ProjFS.
-        expect(() => parseMeta({ repertoire: false, taille: '1', modifie: 0 })).toThrow(/taille/);
+        expect(() => parseMeta({ nom: 'a', repertoire: false, taille: '1', modifie: 0 })).toThrow(
+            /taille/,
+        );
     });
 
     it('🔴 refuse un Renommer sans `vers` — le seul champ dont l’absence DÉTRUIT', () => {

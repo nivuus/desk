@@ -1,0 +1,64 @@
+🔴 LE « CONTRÔLE DE COMPATIBILITÉ STRUCTURELLE » DE F2 EST VACUEUX.
+Mesuré le 21 août 2026, avant d'écrire la moindre ligne de la tâche 10.
+
+`client/src/shell-page.ts:165-171` porte :
+
+    // 🔴 LA MÊME POIGNÉE SERT À LIRE ET À ÉCRIRE, et le transtypage est le
+    // CONTRÔLE DE COMPATIBILITÉ STRUCTURELLE de F2 : `RacineInscriptible`
+    // décrit un sous-ensemble de `FileSystemDirectoryHandle`, et si la vraie
+    // poignée cessait de le satisfaire, `tsc --noEmit` le dirait ICI plutôt
+    // qu'en session réelle.
+    const racineInscriptible: RacineInscriptible = choix.racine as RacineInscriptible;
+
+**`choix.racine` est typée `Racine = PoigneeRepertoire`, et
+`RacineInscriptible extends PoigneeRepertoire`.** Un `as` vers un SOUS-type est
+une assertion de rétrécissement : TypeScript l'autorise sans rien vérifier. La
+vraie `FileSystemDirectoryHandle` n'apparaît nulle part sur cette ligne — elle a
+été élargie en `PoigneeRepertoire` par `choisirDossier`, plusieurs frontières
+plus tôt.
+
+MESURE. On ajoute à `RacineInscriptible` une méthode que
+`FileSystemDirectoryHandle` n'a pas :
+
+    export interface RacineInscriptible extends PoigneeRepertoire {
+        methodeQuiNExistePas(): void;
+        …
+
+    $ cd client && npx tsc --noEmit
+    src/fichiers/ecriture.test.ts(69,9): error TS2741: Property
+      'methodeQuiNExistePas' is missing in type '{ kind: "directory"; … }'
+      but required in type 'RacineInscriptible'.
+
+**UNE SEULE erreur, et elle est dans le FAUX DE TEST.** `shell-page.ts` ne dit
+rien. Le contrôle que le commentaire revendique n'existe pas.
+
+⚠️ **Ce n'est PAS le cas du contrôle de F1**, et la différence tient à une
+seule chose : `canal.ts:219` écrit `const racine: Racine = poignee;` — une
+AFFECTATION, sur la vraie `FileSystemDirectoryHandle`. Une affectation vérifie ;
+un `as` vers un sous-type asserte.
+
+REMÈDE, appliqué par la tâche 10 : l'affectation est ramenée dans `canal.ts`,
+là où la vraie poignée existe, et elle porte les DEUX interfaces —
+`RacineInscriptible` (F2) et `RacineMutable` (F3). Le commentaire de
+`shell-page.ts` est corrigé pour dire ce que la ligne fait réellement.
+
+════════════════════════════════════════════════════════════════════════════
+SUITE — CE QUE LE CONTRÔLE RÉEL A TROUVÉ DÈS QU'IL A ÉTÉ POSÉ
+════════════════════════════════════════════════════════════════════════════
+
+Les trois affectations posées dans `canal.ts` sur la VRAIE poignée ont
+échoué **immédiatement**, et pas sur un détail de F3 : sur une interface
+de **F2**, jamais confrontée à la réalité.
+
+=== ROUGE 11-controle-structurel-reel ===
+fichier      : client/src/fichiers/mutation.ts
+sha256 avant : 69ede4122fd9fc084d364d4c774d450bf28db4ac998debe6962646417d60cafc
+diff contre la copie : 1 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+106a107
+>     methodeQueLaVraiePoigneeNAPas(): void;
+--- contrôle ---
+src/fichiers/canal.ts(258,11): error TS2741: Property 'methodeQueLaVraiePoigneeNAPas' is missing in type 'FileSystemDirectoryHandle' but required in type 'RacineMutable'.
+src/fichiers/mutation.test.ts(59,11): error TS2741: Property 'methodeQueLaVraiePoigneeNAPas' is missing in type '{ kind: "directory"; name: string; getDirectoryHandle(nom: string, opts?: { create?: boolean | undefined; } | undefined): Promise<RacineMutable>; getFileHandle(nom: string, opts?: { ...; } | undefined): Promise<...>; values(): AsyncIterable<...>; removeEntry(nom: string): Promise<...>; }' but required in type 'RacineMutable'.
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [?? client/src/fichiers/mutation.ts]

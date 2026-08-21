@@ -74,6 +74,7 @@ fn conformite_aux_vecteurs_partages() {
             }
             "meta" => {
                 let v = Meta {
+                    nom: c["nom"].as_str().unwrap().to_string(),
                     repertoire: c["repertoire"].as_bool().unwrap(),
                     taille: c["taille"].as_u64().unwrap(),
                     modifie: c["modifie"].as_i64().unwrap(),
@@ -168,7 +169,13 @@ where
 /// en-têtes : aucun `#[serde(default)]` nulle part.
 #[test]
 fn un_entete_incomplet_est_rejete_plutot_que_complete() {
-    assert!(serde_json::from_str::<Meta>(r#"{"repertoire":false,"taille":1}"#).is_err());
+    assert!(serde_json::from_str::<Meta>(r#"{"nom":"a","repertoire":false,"taille":1}"#).is_err());
+    // 🔴 **Sans `nom`, le substitut serait créé sous le nom que l'application a
+    // TAPÉ**, et non sous celui qui existe sur le poste local — deux noms pour
+    // un fichier, dont un qui n'existe nulle part.
+    assert!(
+        serde_json::from_str::<Meta>(r#"{"repertoire":false,"taille":1,"modifie":0}"#).is_err()
+    );
     assert!(serde_json::from_str::<Donnees>(r#"{"position":0}"#).is_err());
     assert!(serde_json::from_str::<Lire>(r#"{"chemin":"a","position":0}"#).is_err());
     // 🔴 Les deux drapeaux d'`Ecrire` sont ceux dont l'absence est la plus
