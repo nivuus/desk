@@ -1,6 +1,6 @@
 {
   "comment": "Vecteurs partagés Rust/TypeScript du canal plateforme <-> agent. Toute modification doit être répercutée des deux côtés. Fichier NEUF et distinct de vectors.json, qui est structuré pour le protocole d'entrée binaire seul : y ajouter des kind étrangers traverserait le match de input.rs. La clé version est vérifiée des DEUX côtés, ce qui corrige pour ce fichier-ci la lacune de vectors.json, dont seul le consommateur TypeScript la contrôle. Les deux champs icone et source_max sont NEUFS (sous-bloc G2, v3) : source_max porte la PROVENANCE de l'image — la plus grande entree presente dans le repertoire d'icones de la source — et JAMAIS la taille rendue, que le Shell agrandit sans le dire. La clé refus_lisibles est NEUVE (correction du 20 août 2026) : elle porte des refus émis dans d'AUTRES versions que la nôtre, que les deux bouts doivent savoir LIRE — le refus est le seul message hors versionnement du protocole. Elle est séparée de cases parce que ces trames ne sont pas des round-trips : ce dépôt ne sait pas les émettre, il doit seulement les lire.",
-  "version": 3,
+  "version": 4,
   "cases": [
     {
       "name": "enroler",
@@ -8,7 +8,7 @@
       "kind": "enroler",
       "vm": "w1",
       "secret": "chut",
-      "json": "{\"type\":\"enroler\",\"v\":3,\"vm\":\"w1\",\"secret\":\"chut\"}"
+      "json": "{\"type\":\"enroler\",\"v\":4,\"vm\":\"w1\",\"secret\":\"chut\"}"
     },
     {
       "name": "enroler_a_nom_accentue",
@@ -16,13 +16,13 @@
       "kind": "enroler",
       "vm": "vm-générale",
       "secret": "sécret-éphémère",
-      "json": "{\"type\":\"enroler\",\"v\":3,\"vm\":\"vm-générale\",\"secret\":\"sécret-éphémère\"}"
+      "json": "{\"type\":\"enroler\",\"v\":4,\"vm\":\"vm-générale\",\"secret\":\"sécret-éphémère\"}"
     },
     {
       "name": "battement",
       "sens": "vers",
       "kind": "battement",
-      "json": "{\"type\":\"battement\",\"v\":3}"
+      "json": "{\"type\":\"battement\",\"v\":4}"
     },
     {
       "name": "enrole",
@@ -31,7 +31,7 @@
       "prefixe": "RhH1x2QmTz9kLpVbNc7dAw",
       "jeton": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJQIn0.c2ln",
       "expire_a": 1787136773742,
-      "json": "{\"type\":\"enrole\",\"v\":3,\"prefixe\":\"RhH1x2QmTz9kLpVbNc7dAw\",\"jeton\":\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJQIn0.c2ln\",\"expire_a\":1787136773742}"
+      "json": "{\"type\":\"enrole\",\"v\":4,\"prefixe\":\"RhH1x2QmTz9kLpVbNc7dAw\",\"jeton\":\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJQIn0.c2ln\",\"expire_a\":1787136773742}"
     },
     {
       "name": "battement_recu",
@@ -39,35 +39,35 @@
       "kind": "battement-recu",
       "jeton": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJRIn0.c2ln",
       "expire_a": 1787136774342,
-      "json": "{\"type\":\"battement-recu\",\"v\":3,\"jeton\":\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJRIn0.c2ln\",\"expire_a\":1787136774342}"
+      "json": "{\"type\":\"battement-recu\",\"v\":4,\"jeton\":\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJRIn0.c2ln\",\"expire_a\":1787136774342}"
     },
     {
       "name": "refus_version",
       "sens": "depuis",
       "kind": "refus",
       "motif": "version",
-      "json": "{\"type\":\"refus\",\"v\":3,\"motif\":\"version\"}"
+      "json": "{\"type\":\"refus\",\"v\":4,\"motif\":\"version\"}"
     },
     {
       "name": "refus_forme",
       "sens": "depuis",
       "kind": "refus",
       "motif": "forme",
-      "json": "{\"type\":\"refus\",\"v\":3,\"motif\":\"forme\"}"
+      "json": "{\"type\":\"refus\",\"v\":4,\"motif\":\"forme\"}"
     },
     {
       "name": "refus_enrolement",
       "sens": "depuis",
       "kind": "refus",
       "motif": "enrolement",
-      "json": "{\"type\":\"refus\",\"v\":3,\"motif\":\"enrolement\"}"
+      "json": "{\"type\":\"refus\",\"v\":4,\"motif\":\"enrolement\"}"
     },
     {
       "name": "refus_sequence",
       "sens": "depuis",
       "kind": "refus",
       "motif": "sequence",
-      "json": "{\"type\":\"refus\",\"v\":3,\"motif\":\"sequence\"}"
+      "json": "{\"type\":\"refus\",\"v\":4,\"motif\":\"sequence\"}"
     },
     {
       "name": "catalogue_complet",
@@ -89,7 +89,7 @@
         }
       ],
       "disparues": [],
-      "json": "{\"type\":\"catalogue\",\"v\":3,\"complet\":true,\"applications\":[{\"cle\":\"3f2a\",\"nom\":\"Bloc-notes\",\"chemin\":\"C:\\\\Users\\\\u\\\\Desktop\\\\Bloc-notes.lnk\",\"cible\":\"c:\\\\windows\\\\system32\\\\notepad.exe\",\"arguments\":\"\",\"repertoire\":\"c:\\\\windows\\\\system32\",\"icone\":\"3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a\",\"source_max\":{\"pixels\":256}}],\"disparues\":[]}"
+      "json": "{\"type\":\"catalogue\",\"v\":4,\"complet\":true,\"applications\":[{\"cle\":\"3f2a\",\"nom\":\"Bloc-notes\",\"chemin\":\"C:\\\\Users\\\\u\\\\Desktop\\\\Bloc-notes.lnk\",\"cible\":\"c:\\\\windows\\\\system32\\\\notepad.exe\",\"arguments\":\"\",\"repertoire\":\"c:\\\\windows\\\\system32\",\"icone\":\"3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a\",\"source_max\":{\"pixels\":256}}],\"disparues\":[]}"
     },
     {
       "name": "catalogue_delta",
@@ -114,7 +114,7 @@
         "ab12",
         "cd34"
       ],
-      "json": "{\"type\":\"catalogue\",\"v\":3,\"complet\":false,\"applications\":[{\"cle\":\"3f2a\",\"nom\":\"Bloc-notes\",\"chemin\":\"C:\\\\Users\\\\u\\\\Desktop\\\\Bloc-notes.lnk\",\"cible\":\"c:\\\\windows\\\\system32\\\\notepad.exe\",\"arguments\":\"\",\"repertoire\":\"c:\\\\windows\\\\system32\",\"icone\":\"3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a\",\"source_max\":{\"pixels\":256}}],\"disparues\":[\"ab12\",\"cd34\"]}"
+      "json": "{\"type\":\"catalogue\",\"v\":4,\"complet\":false,\"applications\":[{\"cle\":\"3f2a\",\"nom\":\"Bloc-notes\",\"chemin\":\"C:\\\\Users\\\\u\\\\Desktop\\\\Bloc-notes.lnk\",\"cible\":\"c:\\\\windows\\\\system32\\\\notepad.exe\",\"arguments\":\"\",\"repertoire\":\"c:\\\\windows\\\\system32\",\"icone\":\"3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a\",\"source_max\":{\"pixels\":256}}],\"disparues\":[\"ab12\",\"cd34\"]}"
     },
     {
       "name": "catalogue_vide",
@@ -123,7 +123,7 @@
       "complet": true,
       "applications": [],
       "disparues": [],
-      "json": "{\"type\":\"catalogue\",\"v\":3,\"complet\":true,\"applications\":[],\"disparues\":[]}"
+      "json": "{\"type\":\"catalogue\",\"v\":4,\"complet\":true,\"applications\":[],\"disparues\":[]}"
     },
     {
       "name": "catalogue_a_nom_accentue",
@@ -145,7 +145,7 @@
         }
       ],
       "disparues": [],
-      "json": "{\"type\":\"catalogue\",\"v\":3,\"complet\":true,\"applications\":[{\"cle\":\"9c7e\",\"nom\":\"Éditeur générique\",\"chemin\":\"C:\\\\Users\\\\u\\\\Desktop\\\\Éditeur générique.lnk\",\"cible\":\"c:\\\\program files\\\\éditeur\\\\edit.exe\",\"arguments\":\"--profil Général\",\"repertoire\":\"c:\\\\program files\\\\éditeur\",\"icone\":\"3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a\",\"source_max\":{\"pixels\":256}}],\"disparues\":[]}"
+      "json": "{\"type\":\"catalogue\",\"v\":4,\"complet\":true,\"applications\":[{\"cle\":\"9c7e\",\"nom\":\"Éditeur générique\",\"chemin\":\"C:\\\\Users\\\\u\\\\Desktop\\\\Éditeur générique.lnk\",\"cible\":\"c:\\\\program files\\\\éditeur\\\\edit.exe\",\"arguments\":\"--profil Général\",\"repertoire\":\"c:\\\\program files\\\\éditeur\",\"icone\":\"3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a\",\"source_max\":{\"pixels\":256}}],\"disparues\":[]}"
     },
     {
       "name": "lancee_raccourci",
@@ -153,7 +153,7 @@
       "kind": "lancee",
       "demande": "d-7",
       "issue": "raccourci",
-      "json": "{\"type\":\"lancee\",\"v\":3,\"demande\":\"d-7\",\"issue\":\"raccourci\"}"
+      "json": "{\"type\":\"lancee\",\"v\":4,\"demande\":\"d-7\",\"issue\":\"raccourci\"}"
     },
     {
       "name": "lancee_echec",
@@ -161,7 +161,7 @@
       "kind": "lancee",
       "demande": "d-8",
       "issue": "echec",
-      "json": "{\"type\":\"lancee\",\"v\":3,\"demande\":\"d-8\",\"issue\":\"echec\"}"
+      "json": "{\"type\":\"lancee\",\"v\":4,\"demande\":\"d-8\",\"issue\":\"echec\"}"
     },
     {
       "name": "lancer",
@@ -169,7 +169,7 @@
       "kind": "lancer",
       "demande": "d-7",
       "cle": "3f2a",
-      "json": "{\"type\":\"lancer\",\"v\":3,\"demande\":\"d-7\",\"cle\":\"3f2a\"}"
+      "json": "{\"type\":\"lancer\",\"v\":4,\"demande\":\"d-7\",\"cle\":\"3f2a\"}"
     },
     {
       "name": "catalogue_a_application_sans_icone",
@@ -189,7 +189,7 @@
         }
       ],
       "disparues": [],
-      "json": "{\"type\":\"catalogue\",\"v\":3,\"complet\":true,\"applications\":[{\"cle\":\"3f2a\",\"nom\":\"Bloc-notes\",\"chemin\":\"C:\\\\Users\\\\u\\\\Desktop\\\\Bloc-notes.lnk\",\"cible\":\"c:\\\\windows\\\\system32\\\\notepad.exe\",\"arguments\":\"\",\"repertoire\":\"c:\\\\windows\\\\system32\",\"icone\":null,\"source_max\":\"non-mesuree\"}],\"disparues\":[]}"
+      "json": "{\"type\":\"catalogue\",\"v\":4,\"complet\":true,\"applications\":[{\"cle\":\"3f2a\",\"nom\":\"Bloc-notes\",\"chemin\":\"C:\\\\Users\\\\u\\\\Desktop\\\\Bloc-notes.lnk\",\"cible\":\"c:\\\\windows\\\\system32\\\\notepad.exe\",\"arguments\":\"\",\"repertoire\":\"c:\\\\windows\\\\system32\",\"icone\":null,\"source_max\":\"non-mesuree\"}],\"disparues\":[]}"
     },
     {
       "name": "icones_manquantes",
@@ -199,7 +199,7 @@
         "3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a",
         "c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4"
       ],
-      "json": "{\"type\":\"icones-manquantes\",\"v\":3,\"empreintes\":[\"3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a\",\"c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4\"]}"
+      "json": "{\"type\":\"icones-manquantes\",\"v\":4,\"empreintes\":[\"3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a\",\"c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4c3d4\"]}"
     },
     {
       "name": "icones_manquantes_a_une_seule",
@@ -208,7 +208,100 @@
       "empreintes": [
         "3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a"
       ],
-      "json": "{\"type\":\"icones-manquantes\",\"v\":3,\"empreintes\":[\"3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a\"]}"
+      "json": "{\"type\":\"icones-manquantes\",\"v\":4,\"empreintes\":[\"3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a3f2a\"]}"
+    },
+    {
+      "name": "installer",
+      "sens": "depuis",
+      "kind": "installer",
+      "installation": "i-1",
+      "url": "http://127.0.0.1:8080/televersement/t-1/contenu",
+      "nom": "setup.exe",
+      "taille": 1073741824,
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "json": "{\"type\":\"installer\",\"v\":4,\"installation\":\"i-1\",\"url\":\"http://127.0.0.1:8080/televersement/t-1/contenu\",\"nom\":\"setup.exe\",\"taille\":1073741824,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}"
+    },
+    {
+      "name": "progression_transfert",
+      "sens": "vers",
+      "kind": "progression",
+      "installation": "i-1",
+      "phase": "transfert",
+      "octets_faits": 8388608,
+      "octets_total": 1073741824,
+      "ecoule_ms": 1200,
+      "json": "{\"type\":\"progression\",\"v\":4,\"installation\":\"i-1\",\"phase\":\"transfert\",\"octets_faits\":8388608,\"octets_total\":1073741824,\"ecoule_ms\":1200}"
+    },
+    {
+      "name": "progression_execution_sans_total",
+      "sens": "vers",
+      "kind": "progression",
+      "installation": "i-1",
+      "phase": "execution",
+      "octets_faits": 0,
+      "octets_total": 0,
+      "ecoule_ms": 95000,
+      "json": "{\"type\":\"progression\",\"v\":4,\"installation\":\"i-1\",\"phase\":\"execution\",\"octets_faits\":0,\"octets_total\":0,\"ecoule_ms\":95000}"
+    },
+    {
+      "name": "termine_reussie",
+      "sens": "vers",
+      "kind": "termine",
+      "installation": "i-1",
+      "issue": "reussie",
+      "motif": null,
+      "code_sortie": 0,
+      "journal": "",
+      "journal_tronque": false,
+      "json": "{\"type\":\"termine\",\"v\":4,\"installation\":\"i-1\",\"issue\":\"reussie\",\"motif\":null,\"code_sortie\":0,\"journal\":\"\",\"journal_tronque\":false}"
+    },
+    {
+      "name": "termine_sans_effet",
+      "sens": "vers",
+      "kind": "termine",
+      "installation": "i-2",
+      "issue": "sans-effet",
+      "motif": null,
+      "code_sortie": 0,
+      "journal": "",
+      "journal_tronque": false,
+      "json": "{\"type\":\"termine\",\"v\":4,\"installation\":\"i-2\",\"issue\":\"sans-effet\",\"motif\":null,\"code_sortie\":0,\"journal\":\"\",\"journal_tronque\":false}"
+    },
+    {
+      "name": "termine_reussie_a_code_3010",
+      "sens": "vers",
+      "kind": "termine",
+      "installation": "i-3",
+      "issue": "reussie",
+      "motif": null,
+      "code_sortie": 3010,
+      "journal": "Installation terminée. Redémarrage requis.\n",
+      "journal_tronque": false,
+      "json": "{\"type\":\"termine\",\"v\":4,\"installation\":\"i-3\",\"issue\":\"reussie\",\"motif\":null,\"code_sortie\":3010,\"journal\":\"Installation terminée. Redémarrage requis.\\n\",\"journal_tronque\":false}"
+    },
+    {
+      "name": "termine_refusee_elevation",
+      "sens": "vers",
+      "kind": "termine",
+      "installation": "i-4",
+      "issue": "refusee",
+      "motif": "elevation-requise",
+      "code_sortie": null,
+      "journal": "",
+      "journal_tronque": false,
+      "json": "{\"type\":\"termine\",\"v\":4,\"installation\":\"i-4\",\"issue\":\"refusee\",\"motif\":\"elevation-requise\",\"code_sortie\":null,\"journal\":\"\",\"journal_tronque\":false}"
+    },
+    {
+      "name": "termine_issue_inconnue_a_journal_tronque",
+      "sens": "vers",
+      "kind": "termine",
+      "installation": "i-5",
+      "issue": "issue-inconnue",
+      "motif": null,
+      "code_sortie": null,
+      "journal": "…dernières lignes du journal",
+      "journal_tronque": true,
+      "json": "{\"type\":\"termine\",\"v\":4,\"installation\":\"i-5\",\"issue\":\"issue-inconnue\",\"motif\":null,\"code_sortie\":null,\"journal\":\"…dernières lignes du journal\",\"journal_tronque\":true}"
     }
   ],
   "refus_lisibles": [
@@ -226,8 +319,8 @@
     },
     {
       "name": "refus_de_notre_version",
-      "json": "{\"type\":\"refus\",\"v\":2,\"motif\":\"sequence\"}",
-      "v": 2,
+      "json": "{\"type\":\"refus\",\"v\":4,\"motif\":\"sequence\"}",
+      "v": 4,
       "motif": "sequence"
     },
     {

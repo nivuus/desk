@@ -56,14 +56,14 @@ fn serialise_le_catalogue() {
     .expect("sér.");
     assert_eq!(
         json,
-        r#"{"type":"catalogue","v":3,"complet":true,"applications":[{"cle":"a1b2","nom":"Bloc-notes","chemin":"C:\\Users\\u\\Desktop\\Bloc-notes.lnk","cible":"c:\\windows\\system32\\notepad.exe","arguments":"","repertoire":"c:\\windows\\system32","icone":"a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2","source_max":{"pixels":256}}],"disparues":["disparue-1"]}"#
+        r#"{"type":"catalogue","v":4,"complet":true,"applications":[{"cle":"a1b2","nom":"Bloc-notes","chemin":"C:\\Users\\u\\Desktop\\Bloc-notes.lnk","cible":"c:\\windows\\system32\\notepad.exe","arguments":"","repertoire":"c:\\windows\\system32","icone":"a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2","source_max":{"pixels":256}}],"disparues":["disparue-1"]}"#
     );
 }
 
 #[test]
 fn serialise_le_lancer() {
     let json = serde_json::to_string(&DepuisLaPlateforme::lancer("d-7", "a1b2")).expect("sér.");
-    assert_eq!(json, r#"{"type":"lancer","v":3,"demande":"d-7","cle":"a1b2"}"#);
+    assert_eq!(json, r#"{"type":"lancer","v":4,"demande":"d-7","cle":"a1b2"}"#);
 }
 
 #[test]
@@ -72,7 +72,7 @@ fn serialise_la_lancee() {
         .expect("sér.");
     assert_eq!(
         json,
-        r#"{"type":"lancee","v":3,"demande":"d-7","issue":"raccourci"}"#
+        r#"{"type":"lancee","v":4,"demande":"d-7","issue":"raccourci"}"#
     );
 }
 
@@ -110,7 +110,7 @@ fn rejette_une_version_absente_sur_catalogue() {
 #[test]
 fn rejette_la_version_suivante_sur_catalogue() {
     assert!(serde_json::from_str::<VersLaPlateforme>(
-        r#"{"type":"catalogue","v":4,"complet":true,"applications":[],"disparues":[]}"#
+        &super::tests::etrangere(r#"{"type":"catalogue","v":0,"complet":true,"applications":[],"disparues":[]}"#)
     )
     .is_err());
 }
@@ -126,7 +126,7 @@ fn rejette_une_version_absente_sur_lancee() {
 #[test]
 fn rejette_la_version_suivante_sur_lancee() {
     assert!(serde_json::from_str::<VersLaPlateforme>(
-        r#"{"type":"lancee","v":4,"demande":"d","issue":"echec"}"#
+        &super::tests::etrangere(r#"{"type":"lancee","v":0,"demande":"d","issue":"echec"}"#)
     )
     .is_err());
 }
@@ -142,7 +142,7 @@ fn rejette_une_version_absente_sur_lancer() {
 #[test]
 fn rejette_la_version_suivante_sur_lancer() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        r#"{"type":"lancer","v":4,"demande":"d","cle":"c"}"#
+        &super::tests::etrangere(r#"{"type":"lancer","v":0,"demande":"d","cle":"c"}"#)
     )
     .is_err());
 }
@@ -150,7 +150,7 @@ fn rejette_la_version_suivante_sur_lancer() {
 #[test]
 fn rejette_un_champ_inconnu_sur_lancer() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        r#"{"type":"lancer","v":3,"demande":"d","cle":"c","bonus":1}"#
+        r#"{"type":"lancer","v":4,"demande":"d","cle":"c","bonus":1}"#
     )
     .is_err());
 }
@@ -242,7 +242,7 @@ fn serialise_les_icones_manquantes() {
     .expect("sér.");
     assert_eq!(
         json,
-        r#"{"type":"icones-manquantes","v":3,"empreintes":["a1b2","c3d4"]}"#
+        r#"{"type":"icones-manquantes","v":4,"empreintes":["a1b2","c3d4"]}"#
     );
     let relu: DepuisLaPlateforme = serde_json::from_str(&json).expect("désér.");
     assert_eq!(
@@ -262,7 +262,7 @@ fn rejette_une_version_absente_sur_icones_manquantes() {
 #[test]
 fn rejette_la_version_suivante_sur_icones_manquantes() {
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        r#"{"type":"icones-manquantes","v":4,"empreintes":[]}"#
+        &super::tests::etrangere(r#"{"type":"icones-manquantes","v":0,"empreintes":[]}"#)
     )
     .is_err());
 }

@@ -20,16 +20,36 @@
 
 use super::*;
 
+/// Rend le gabarit avec une version qui **n'est PAS la nôtre**.
+///
+/// 🔴 POURQUOI UN GABARIT PLUTÔT QU'UN LITTÉRAL, ET C'EST UNE LEÇON PAYÉE AU
+/// BUMP DE G3. Les six tests ci-dessous portaient `"v":4` en dur — « la version
+/// suivante » telle qu'elle se lisait au temps de G2. Le sous-bloc G3 a monté
+/// `PLATEFORME_VERSION` à 4, et **les six ont alors affirmé que NOTRE PROPRE
+/// version est rejetée**. Ils ont échoué bruyamment, ce qui est le bon
+/// comportement — mais il a fallu les rouvrir un par un, et le prochain bump
+/// aurait recommencé. **Dérivée de la constante, la version étrangère ne peut
+/// plus vieillir.**
+///
+/// Le gabarit porte le repère `"v":0` : zéro n'est la version de personne, donc
+/// un gabarit qu'on aurait oublié de faire passer ici échouerait, au lieu de
+/// passer en éprouvant autre chose que ce qu'il annonce.
+pub(super) fn etrangere(gabarit: &str) -> String {
+    assert!(gabarit.contains("\"v\":0"), "le gabarit doit porter le repère \"v\":0");
+    gabarit.replace("\"v\":0", &format!("\"v\":{}", PLATEFORME_VERSION.wrapping_add(1)))
+}
+
+
 #[test]
 fn serialise_l_enrolement_en_kebab_case() {
     let json = serde_json::to_string(&VersLaPlateforme::enroler("w1", "chut")).expect("sér.");
-    assert_eq!(json, r#"{"type":"enroler","v":3,"vm":"w1","secret":"chut"}"#);
+    assert_eq!(json, r#"{"type":"enroler","v":4,"vm":"w1","secret":"chut"}"#);
 }
 
 #[test]
 fn serialise_le_battement() {
     let json = serde_json::to_string(&VersLaPlateforme::battement()).expect("sér.");
-    assert_eq!(json, r#"{"type":"battement","v":3}"#);
+    assert_eq!(json, r#"{"type":"battement","v":4}"#);
 }
 
 #[test]
@@ -45,7 +65,7 @@ fn serialise_le_battement_recu_en_kebab_case() {
         .expect("sér.");
     assert_eq!(
         json,
-        r#"{"type":"battement-recu","v":3,"jeton":"kkk","expire_a":1787136774000}"#
+        r#"{"type":"battement-recu","v":4,"jeton":"kkk","expire_a":1787136774000}"#
     );
 }
 
@@ -55,11 +75,11 @@ fn serialise_l_enrole_et_le_refus() {
         .expect("sér.");
     assert_eq!(
         json,
-        r#"{"type":"enrole","v":3,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}"#
+        r#"{"type":"enrole","v":4,"prefixe":"PPP","jeton":"jjj","expire_a":1787136773742}"#
     );
     let json = serde_json::to_string(&DepuisLaPlateforme::refus(MotifCanal::Enrolement))
         .expect("sér.");
-    assert_eq!(json, r#"{"type":"refus","v":3,"motif":"enrolement"}"#);
+    assert_eq!(json, r#"{"type":"refus","v":4,"motif":"enrolement"}"#);
 }
 
 // 🔴 UN TEST DE VERSION PAR VARIANTE ENTRANTE, jamais un seul pour toutes.
@@ -105,32 +125,33 @@ fn rejette_une_version_absente_sur_refus() {
 
 #[test]
 fn rejette_la_version_suivante_sur_enroler() {
-    assert!(serde_json::from_str::<VersLaPlateforme>(
-        r#"{"type":"enroler","v":4,"vm":"w","secret":"s"}"#
-    )
+    assert!(serde_json::from_str::<VersLaPlateforme>(&etrangere(
+        r#"{"type":"enroler","v":0,"vm":"w","secret":"s"}"#
+    ))
     .is_err());
 }
 
 #[test]
 fn rejette_la_version_suivante_sur_battement() {
     assert!(
-        serde_json::from_str::<VersLaPlateforme>(r#"{"type":"battement","v":4}"#).is_err()
+        serde_json::from_str::<VersLaPlateforme>(&etrangere(r#"{"type":"battement","v":0}"#))
+            .is_err()
     );
 }
 
 #[test]
 fn rejette_la_version_suivante_sur_enrole() {
-    assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        r#"{"type":"enrole","v":4,"prefixe":"P","jeton":"j","expire_a":1}"#
-    )
+    assert!(serde_json::from_str::<DepuisLaPlateforme>(&etrangere(
+        r#"{"type":"enrole","v":0,"prefixe":"P","jeton":"j","expire_a":1}"#
+    ))
     .is_err());
 }
 
 #[test]
 fn rejette_la_version_suivante_sur_battement_recu() {
-    assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        r#"{"type":"battement-recu","v":4,"jeton":"j","expire_a":1}"#
-    )
+    assert!(serde_json::from_str::<DepuisLaPlateforme>(&etrangere(
+        r#"{"type":"battement-recu","v":0,"jeton":"j","expire_a":1}"#
+    ))
     .is_err());
 }
 
@@ -146,8 +167,20 @@ fn rejette_la_version_suivante_sur_battement_recu() {
 #[test]
 fn le_refus_tolere_toute_version_mais_exige_le_champ() {
     let lu: DepuisLaPlateforme =
-        serde_json::from_str(r#"{"type":"refus","v":4,"motif":"version"}"#).expect("lisible");
-    assert_eq!(lu, DepuisLaPlateforme::Refus { version: 4, motif: "version".into() });
+        serde_json::from_str(&etrangere(r#"{"type":"refus","v":0,"motif":"version"}"#))
+            .expect("lisible");
+    // ⚠️ LA VERSION ATTENDUE SE DÉRIVE ELLE AUSSI. Elle valait `4` en dur, ce
+    // qui était juste tant que 4 n'était la version de personne ; le bump de G3
+    // l'a rendue nôtre, et l'assertion a échoué. C'est le même piège que
+    // `etrangere` referme au-dessus, et il vaut aussi pour ce qu'on ATTEND, pas
+    // seulement pour ce qu'on ENVOIE.
+    assert_eq!(
+        lu,
+        DepuisLaPlateforme::Refus {
+            version: PLATEFORME_VERSION.wrapping_add(1),
+            motif: "version".into()
+        }
+    );
     // Sans `v`, en revanche, c'est toujours une forme invalide : un message
     // sans version n'est pas un message d'une version que nous ignorons. Et
     // `v: null` non plus — c'est le trou exact que `verifie_version` ferme
@@ -162,15 +195,15 @@ fn le_refus_tolere_toute_version_mais_exige_le_champ() {
     // (`deny_unknown_fields`), ce qui est la clause 3 de l'en-tête du module —
     // écrite comme une contrainte sur les versions FUTURES, éprouvée ici.
     assert!(serde_json::from_str::<DepuisLaPlateforme>(
-        r#"{"type":"refus","v":4,"motif":"version","detail":"x"}"#
+        &etrangere(r#"{"type":"refus","v":0,"motif":"version","detail":"x"}"#)
     )
     .is_err());
 }
 
 #[test]
 fn rejette_un_type_inconnu() {
-    assert!(serde_json::from_str::<VersLaPlateforme>(r#"{"type":"vol","v":3}"#).is_err());
-    assert!(serde_json::from_str::<DepuisLaPlateforme>(r#"{"type":"vol","v":3}"#).is_err());
+    assert!(serde_json::from_str::<VersLaPlateforme>(r#"{"type":"vol","v":4}"#).is_err());
+    assert!(serde_json::from_str::<DepuisLaPlateforme>(r#"{"type":"vol","v":4}"#).is_err());
 }
 
 #[test]
@@ -178,7 +211,7 @@ fn rejette_un_champ_inconnu() {
     // `deny_unknown_fields` : un champ de trop est une divergence de
     // format, pas une extension tolérable — le canal n'a qu'une version.
     assert!(serde_json::from_str::<VersLaPlateforme>(
-        r#"{"type":"battement","v":3,"bonus":1}"#
+        r#"{"type":"battement","v":4,"bonus":1}"#
     )
     .is_err());
 }
@@ -236,6 +269,27 @@ fn conformite_aux_vecteurs_partages() {
                         case["demande"].as_str().unwrap(),
                         serde_json::from_value(case["issue"].clone()).expect("issue"),
                     ),
+                    "progression" => VersLaPlateforme::progression(
+                        case["installation"].as_str().unwrap(),
+                        serde_json::from_value(case["phase"].clone()).expect("phase"),
+                        case["octets_faits"].as_u64().unwrap(),
+                        case["octets_total"].as_u64().unwrap(),
+                        case["ecoule_ms"].as_u64().unwrap(),
+                    ),
+                    // ⚠️ `motif` et `code_sortie` SE LISENT PAR `from_value`, ce
+                    // qui distingue le champ ABSENT du champ à `null` — et
+                    // c'est exactement la distinction que `option_obligatoire`
+                    // rétablit sur le fil. Un `as_str().map(...)` les
+                    // confondrait, et le vecteur cesserait d'éprouver la garde.
+                    "termine" => VersLaPlateforme::termine(
+                        case["installation"].as_str().unwrap(),
+                        serde_json::from_value(case["issue"].clone()).expect("issue"),
+                        serde_json::from_value(case["motif"].clone()).expect("motif"),
+                        serde_json::from_value(case["code_sortie"].clone())
+                            .expect("code_sortie"),
+                        case["journal"].as_str().unwrap(),
+                        case["journal_tronque"].as_bool().unwrap(),
+                    ),
                     autre => panic!("kind inconnu dans le sens vers : {autre}"),
                 };
                 assert_eq!(
@@ -275,6 +329,13 @@ fn conformite_aux_vecteurs_partages() {
                     "icones-manquantes" => DepuisLaPlateforme::icones_manquantes(
                         serde_json::from_value(case["empreintes"].clone())
                             .expect("empreintes"),
+                    ),
+                    "installer" => DepuisLaPlateforme::installer(
+                        case["installation"].as_str().unwrap(),
+                        case["url"].as_str().unwrap(),
+                        case["nom"].as_str().unwrap(),
+                        case["taille"].as_u64().unwrap(),
+                        case["sha256"].as_str().unwrap(),
                     ),
                     autre => panic!("kind inconnu dans le sens depuis : {autre}"),
                 };
@@ -444,6 +505,19 @@ fn conformite_aux_refus_lisibles_partages() {
             panic!("le vecteur « {name} » n'a pas été lu comme un refus");
         };
         assert_eq!(u64::from(version), cas["v"].as_u64().expect("v"), "version de « {name} »");
+        // 🔴 CE CAS EST LE SEUL DONT LE NOM AFFIRME QUELQUE CHOSE SUR LA
+        // VERSION COURANTE, ET IL AVAIT DÉJÀ VIEILLI : le sous-bloc G2 a monté
+        // `PLATEFORME_VERSION` de 2 à 3 sans reprendre ce vecteur, qui portait
+        // donc `"v":2` sous un nom disant « notre version ». Trouvé par G3, qui
+        // montait à son tour. **La rattacher à la constante est ce qui empêche
+        // le nom de re-vieillir en silence au bump suivant** — un test, plutôt
+        // qu'une vigilance.
+        if name == "refus_de_notre_version" {
+            assert_eq!(
+                version, PLATEFORME_VERSION,
+                "« refus_de_notre_version » ne porte PLUS la version courante : son nom est devenu faux"
+            );
+        }
         assert_eq!(motif, cas["motif"].as_str().expect("motif"), "motif de « {name} »");
     }
 }

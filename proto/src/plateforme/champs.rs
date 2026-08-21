@@ -82,5 +82,30 @@ pub(super) fn icone_obligatoire<'de, D>(deserializer: D) -> Result<Option<String
 where
     D: serde::Deserializer<'de>,
 {
-    Option::<String>::deserialize(deserializer)
+    // ⚠️ DÉLÈGUE À LA FORME GÉNÉRIQUE CI-DESSOUS depuis le sous-bloc G3, qui en
+    // avait besoin pour un `Option<i32>` et pour un second `Option<String>`.
+    // Le nom d'origine est CONSERVÉ parce qu'il est cité par l'attribut
+    // `deserialize_with = "icone_obligatoire"` du champ qu'il garde, et que le
+    // renommer aurait été une addition de risque pour un gain de style.
+    option_obligatoire(deserializer)
+}
+
+/// La forme GÉNÉRIQUE de la fonction ci-dessus : rend un champ de type
+/// `Option<T>` **obligatoire sur le fil**, quel que soit `T`.
+///
+/// 🔴 SANS ELLE, LE CHAMP SERAIT SILENCIEUSEMENT FACULTATIF. Le raisonnement
+/// entier est écrit au-dessus, pour `icone` — il ne dépend en rien du type, et
+/// il vaut mot pour mot pour le `motif` et le `code_sortie` du sous-bloc G3 :
+/// un `termine` sans `motif` serait accepté avec un motif absent, ce qui est
+/// exactement le déguisement que le bump de version existe pour empêcher.
+///
+/// ⚠️ `null` RESTE ACCEPTÉ, ET C'EST VOULU : « le champ est là et il ne porte
+/// rien » est un fait, « le champ manque » en est un autre. C'est cette
+/// distinction seule que cette fonction rétablit.
+pub(super) fn option_obligatoire<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    Option::<T>::deserialize(deserializer)
 }
