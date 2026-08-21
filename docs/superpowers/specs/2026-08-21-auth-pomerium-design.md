@@ -235,6 +235,24 @@ le montage **hôte**, celui qui tourne aujourd'hui.
 ### 7.2 Le bloc de routes
 
 ```yaml
+  # 🔴 LES DEUX ROUTES PRÉFIXÉES D'ABORD, LA ROUTE NUE EN DERNIER — voir
+  # l'avertissement sous ce bloc. La première rédaction de cette spec les
+  # écrivait dans l'ordre inverse, ce qui aurait cassé tout le chantier.
+
+  # Le relais de signaling : PUBLIC pour Pomerium, gardé par le jeton interne.
+  - from: https://app.allanic.me
+    to: http://192.168.3.1:8080
+    prefix: /signal
+    allow_websockets: true
+    allow_public_unauthenticated_access: true
+
+  # Le canal d'enrôlement des agents : idem, gardé par le secret d'enrôlement.
+  - from: https://app.allanic.me
+    to: http://192.168.3.1:8080
+    prefix: /agent
+    allow_websockets: true
+    allow_public_unauthenticated_access: true
+
   # La page et l'API : AUTHENTIFIÉES, avec l'identité relayée au service.
   - from: https://app.allanic.me
     to: http://192.168.3.1:8080
@@ -250,21 +268,26 @@ le montage **hôte**, celui qui tourne aujourd'hui.
                 ends_with: .ico
             - http_path:
                 ends_with: .png
-
-  # Le relais de signaling : PUBLIC pour Pomerium, gardé par le jeton interne.
-  - from: https://app.allanic.me
-    to: http://192.168.3.1:8080
-    prefix: /signal
-    allow_websockets: true
-    allow_public_unauthenticated_access: true
-
-  # Le canal d'enrôlement des agents : idem, gardé par le secret d'enrôlement.
-  - from: https://app.allanic.me
-    to: http://192.168.3.1:8080
-    prefix: /agent
-    allow_websockets: true
-    allow_public_unauthenticated_access: true
 ```
+
+🔴 **L'ORDRE DES ROUTES COMPTE, ET LA PREMIÈRE RÉDACTION DE CETTE SPEC LES
+ÉCRIVAIT À L'ENVERS.** Pomerium évalue **dans l'ordre du fichier, premier
+appariement gagnant**. Une route nue placée en tête AVALE donc `/signal` et
+`/agent`, qui partent alors vers la redirection Google — **que l'agent Windows
+ne peut JAMAIS satisfaire**, n'ayant ni navigateur, ni cookie, ni session.
+Le chantier entier aurait été livré cassé.
+
+⚠️ **Le plan disait en outre s'appuyer sur « le précédent du couple
+`grocy.allanic.me` » : ce précédent dit L'INVERSE de ce qu'il en tirait.**
+Relevé le 21 août 2026 par lecture du fichier réel — `grocy.allanic.me` écrit
+sa route `prefix: /api/` **EN PREMIER** (l. 81) et sa route nue **ensuite**
+(l. 91) ; `personas.allanic.me` fait de même. La consigne « suivre le précédent
+du fichier » était bonne ; c'est la lecture du précédent qui était fausse.
+
+🔵 **LA MESURE QUI TRANCHE, jouée après rechargement** : `GET /` rend **302**
+vers `authenticate.allanic.me`, tandis que `GET /signal` et `GET /agent`
+rendent **404 depuis le backend**. C'est le **404 — et non un 302 —** qui
+prouve que Pomerium les laisse passer.
 
 🔴 **`allow_public_unauthenticated_access` SUR LES DEUX WEBSOCKETS N'OUVRE
 RIEN**, et c'est le point le plus facile à mal lire de tout ce document. Ces
