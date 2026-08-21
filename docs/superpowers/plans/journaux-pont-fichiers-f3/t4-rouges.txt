@@ -1,0 +1,96 @@
+TÂCHE 4 — LES QUATRE ROUGES DU PROTOCOLE, jouées le 21 août 2026.
+
+Harnais : sha256 avant → COPIE NOMMÉE → mutation → PREUVE de diff non vide
+CONTRE LA COPIE → contrôle → restauration DEPUIS LA COPIE → sha256 identique
+→ état git inchangé.
+
+⚠️ `git checkout --` n'est JAMAIS employé : il restaure HEAD, pas l'état
+   d'avant, et a effacé du travail non commité deux fois dans ce dépôt.
+
+🔴 LE HARNAIS A LUI-MÊME PORTÉ UN CONTRÔLE VACUEUX, ET IL EST CONSIGNÉ.
+Sa première rédaction prouvait la mutation par `git diff --numstat`. Sur un
+fichier dont le travail de la tâche n'est pas encore commité, cela rend un
+compte NON NUL même quand la mutation n'a rien muté : le garde écrit pour
+dénoncer une rouge vacueuse en était une. Relevé sur la première exécution
+(39 lignes annoncées pour une mutation d'UNE ligne), corrigé en comparant à la
+copie nommée, et le garde corrigé a été VU se déclencher :
+
+  $ rouge.sh "garde-du-harnais" proto/src/fichiers.rs "echo inatteignable" "true"
+  diff contre la copie : 0 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+  🔴 LA MUTATION N'A RIEN MUTÉ : cette rouge NE PROUVE RIEN.
+  code de sortie = 9
+
+=== ROUGE 4a-valeur-epinglee ===
+fichier      : proto/src/fichiers.rs
+sha256 avant : 554d74403da4b1e18a6cb4039c96e4ebe20e4529886560f1a85032578bf7f921
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+70c70
+< pub const TYPE_RENOMMER: u8 = 7; // F3 — en-tête `Renommer`, charge vide
+---
+> pub const TYPE_RENOMMER: u8 = 6; // F3 — en-tête `Renommer`, charge vide
+--- contrôle ---
+thread 'fichiers::tests::un_type_de_message_a_une_valeur_epinglee' (3831241) panicked at proto/src/fichiers/tests.rs:223:5:
+assertion `left == right` failed
+  left: 6
+ right: 7
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 108 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [ M proto/src/fichiers.rs]
+
+=== ROUGE 4b-vecteur-rust-champ-renomme ===
+fichier      : proto/src/fichiers/entetes.rs
+sha256 avant : 99bee33048fb0f2cb8e06a23e59dd9ddc6752cf3854faccac2639efe93c9641b
+diff contre la copie : 1 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+162a163
+>     #[serde(rename = "destination")]
+--- contrôle ---
+thread 'fichiers::entetes::tests::conformite_aux_vecteurs_partages' (3832022) panicked at proto/src/fichiers/entetes/tests.rs:157:5:
+assertion `left == right` failed: sérialisation du vecteur « renommer »
+  left: "{\"de\":\"dossier/brouillon.txt\",\"destination\":\"dossier/note finale.txt\",\"repertoire\":false}"
+ right: "{\"de\":\"dossier/brouillon.txt\",\"vers\":\"dossier/note finale.txt\",\"repertoire\":false}"
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 106 filtered out; finished in 0.01s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [ M proto/src/fichiers/entetes.rs]
+
+=== ROUGE 4c-vecteur-ts-champ-renomme ===
+fichier      : proto/ts/fichiers-entetes.ts
+sha256 avant : a51248595b09ca0dc41187fc592f3b642c1f569649ca26153c4fbe8dbbbadacd
+diff contre la copie : 2 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+202c202
+<     return JSON.stringify({ de, vers, repertoire } satisfies EnteteRenommer);
+---
+>     return JSON.stringify({ de, destination: vers, repertoire } as unknown as EnteteRenommer);
+--- contrôle ---
+   × vecteurs partagés des en-têtes du pont fichiers > encode « 'renommer' » exactement comme le vecteur 19ms
+     → expected '{"de":"dossier/brouillon.txt","destin…' to be '{"de":"dossier/brouillon.txt","vers":…' // Object.is equality
+   × vecteurs partagés des en-têtes du pont fichiers > encode « 'renommer_repertoire' » exactement comme le vecteur 2ms
+     → expected '{"de":"été","destination":"archives/é…' to be '{"de":"été","vers":"archives/été 2026…' // Object.is equality
+   × vecteurs partagés des en-têtes du pont fichiers > encode « 'renommer_casse_pure' » exactement comme le vecteur 2ms
+     → expected '{"de":"a.txt","destination":"A.txt","…' to be '{"de":"a.txt","vers":"A.txt","reperto…' // Object.is equality
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  ../proto/ts/fichiers-entetes.test.ts > vecteurs partagés des en-têtes du pont fichiers > encode « 'renommer' » exactement comme le vecteur
+AssertionError: expected '{"de":"dossier/brouillon.txt","destin…' to be '{"de":"dossier/brouillon.txt","vers":…' // Object.is equality
+ FAIL  ../proto/ts/fichiers-entetes.test.ts > vecteurs partagés des en-têtes du pont fichiers > encode « 'renommer_repertoire' » exactement comme le vecteur
+AssertionError: expected '{"de":"été","destination":"archives/é…' to be '{"de":"été","vers":"archives/été 2026…' // Object.is equality
+ FAIL  ../proto/ts/fichiers-entetes.test.ts > vecteurs partagés des en-têtes du pont fichiers > encode « 'renommer_casse_pure' » exactement comme le vecteur
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [ M proto/ts/fichiers-entetes.ts]
+
+=== ROUGE 4d-code-echec-camel ===
+fichier      : proto/src/fichiers.rs
+sha256 avant : 554d74403da4b1e18a6cb4039c96e4ebe20e4529886560f1a85032578bf7f921
+diff contre la copie : 1 ligne(s) — 0 SERAIT UN ÉCHEC DE LA ROUGE
+167a168
+>     #[serde(rename = "repertoireNonVide")]
+--- contrôle ---
+thread 'fichiers::tests::un_code_d_echec_a_une_forme_epinglee_sur_le_fil' (3834440) panicked at proto/src/fichiers/tests.rs:142:9:
+assertion `left == right` failed: sérialisation de RepertoireNonVide
+  left: "\"repertoireNonVide\""
+ right: "\"repertoire-non-vide\""
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 108 filtered out; finished in 0.00s
+--- restauration DEPUIS LA COPIE NOMMÉE (jamais `git checkout --`) ---
+sha256 identique ✅
+état git inchangé ✅ [ M proto/src/fichiers.rs]

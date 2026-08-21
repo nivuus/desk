@@ -67,6 +67,8 @@ pub const TYPE_ATTRIBUTS: u8 = 2;
 pub const TYPE_LIRE: u8 = 3;
 pub const TYPE_ECRIRE: u8 = 4; // F2 — en-tête `Ecrire`, la charge porte les octets
 pub const TYPE_CREER: u8 = 5; // F2 — en-tête `Creer`, charge vide
+pub const TYPE_RENOMMER: u8 = 7; // F3 — en-tête `Renommer`, charge vide
+pub const TYPE_SUPPRIMER: u8 = 8; // F3 — en-tête `Supprimer`, charge vide
 
 // Annonces pont → navigateur — **elles n'attendent RIEN**.
 //
@@ -86,10 +88,18 @@ pub const TYPE_DONNEES: u8 = 66;
 pub const TYPE_FAIT: u8 = 67; // F2 — en-tête VIDE `{}`, charge vide
 pub const TYPE_ECHEC: u8 = 127;
 
-// ⚠️ **7 et 8 sont RÉSERVÉS à F3** (`TYPE_RENOMMER`, `TYPE_SUPPRIMER`), qui les
-// nomme dans son propre plan. Les prendre ici obligerait l'un des deux
-// sous-blocs à renuméroter, et une renumérotation tardive est exactement le
-// geste par lequel une référence survit à ce qu'elle désigne.
+// ✅ **7 ET 8 SONT PRIS, ET PAR CELUI POUR QUI ILS ÉTAIENT RÉSERVÉS.** *(Ces
+// lignes disaient « RÉSERVÉS à F3 » ; F3 les a prises, et la réservation est
+// devenue un constat plutôt que d'être laissée au futur.)* La réservation a
+// tenu son office : F2 a pris 4, 5 et 6 **en sautant** 7 et 8, si bien
+// qu'aucun des deux sous-blocs n'a eu à renuméroter — et une renumérotation
+// tardive est exactement le geste par lequel une référence survit à ce qu'elle
+// désigne.
+//
+// ⚠️ **La numérotation n'est donc PAS contiguë : 6 est une ANNONCE, 7 et 8 sont
+// des REQUÊTES.** L'ordre des valeurs ne dit rien de la famille ; c'est
+// l'aiguillage nommé de `client/src/fichiers/protocole.ts` qui la dit, et lui
+// seul.
 
 /// Cause d'un échec renvoyé par le navigateur.
 ///
@@ -97,7 +107,9 @@ pub const TYPE_ECHEC: u8 = 127;
 /// deux mots ou plus sont celles qui se cassent en silence : ce dépôt a laissé
 /// passer une variante `battement-recu` verte sur cinquante tests parce que
 /// rien n'épinglait ses octets. `un_code_d_echec_a_une_forme_epinglee_sur_le_fil`
-/// épingle les **dix**, littéralement.
+/// épingle les **onze**, littéralement — les dix de F2, plus
+/// `RepertoireNonVide` que F3 ajoute, **à trois mots**, donc de la famille
+/// exacte qui casse en silence.
 ///
 /// ⚠️ **Le plan de F2 en annonçait NEUF et appelait `CasseAmbigue` « la
 /// neuvième variante ».** Sa tâche 1 en ajoute déjà deux aux sept de F1
@@ -137,6 +149,23 @@ pub enum CodeEchec {
     /// arbitrage disponible entre « refuser à tort » et « écraser le mauvais
     /// fichier » — voir `client/src/fichiers/ecriture.ts`.
     CasseAmbigue,
+    /// 🔴 **Le poste local refuse de supprimer un répertoire NON VIDE, et cela
+    /// veut dire que le MIROIR A DÉRIVÉ.**
+    ///
+    /// F3 appelle `removeEntry(nom)` **sans `recursive`** : un geste dans la VM
+    /// ne doit pas déclencher une destruction récursive sur le disque du poste
+    /// local, sur la foi d'un miroir qu'aucune preuve ne dit à jour. Windows ne
+    /// supprime jamais un répertoire non vide en un geste non plus —
+    /// l'Explorateur et `rd /s` effacent les enfants un à un, et chaque enfant
+    /// produit sa propre notification.
+    ///
+    /// 🔵 **Ce code est donc DIAGNOSTIQUE, et c'est ce qui le distingue des
+    /// trois de F2** : le recevoir signifie que le poste local porte des
+    /// entrées que la VM ne connaît pas. Il atteint bien une application
+    /// Windows — la suppression naît d'une notification POST, mais la voie
+    /// `PRE_DELETE` la précède, et c'est `ERROR_DIR_NOT_EMPTY` qu'un
+    /// successeur y lirait.
+    RepertoireNonVide,
 }
 
 /// Une trame décodée. Emprunte les octets d'entrée : ni l'en-tête ni la charge

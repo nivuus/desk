@@ -29,6 +29,8 @@ export const TYPE_ATTRIBUTS = 2;
 export const TYPE_LIRE = 3;
 export const TYPE_ECRIRE = 4; // F2 — en-tête `Ecrire`, la charge porte les octets
 export const TYPE_CREER = 5; // F2 — en-tête `Creer`, charge vide
+export const TYPE_RENOMMER = 7; // F3 — en-tête `Renommer`, charge vide
+export const TYPE_SUPPRIMER = 8; // F3 — en-tête `Supprimer`, charge vide
 
 // Annonces pont → navigateur — elles n'attendent RIEN.
 //
@@ -46,7 +48,10 @@ export const TYPE_DONNEES = 66;
 export const TYPE_FAIT = 67; // F2 — en-tête VIDE `{}`, charge vide
 export const TYPE_ECHEC = 127;
 
-// ⚠️ 7 et 8 sont RÉSERVÉS à F3 (`TYPE_RENOMMER`, `TYPE_SUPPRIMER`).
+// ✅ 7 ET 8 SONT PRIS, ET PAR CELUI POUR QUI ILS ÉTAIENT RÉSERVÉS. *(Cette
+// ligne disait « RÉSERVÉS à F3 ».)* La numérotation n'est donc PAS contiguë par
+// famille : 6 est une ANNONCE, 7 et 8 des REQUÊTES. C'est l'aiguillage nommé de
+// `client/src/fichiers/protocole.ts` qui dit la famille, jamais la valeur.
 
 /** L'union des types de message. */
 export type TypeMessage =
@@ -55,6 +60,8 @@ export type TypeMessage =
     | typeof TYPE_LIRE
     | typeof TYPE_ECRIRE
     | typeof TYPE_CREER
+    | typeof TYPE_RENOMMER
+    | typeof TYPE_SUPPRIMER
     | typeof TYPE_DUES
     | typeof TYPE_ENTREES
     | typeof TYPE_META
@@ -81,6 +88,8 @@ const TYPES_CONNUS: Readonly<Record<TypeMessage, true>> = {
     [TYPE_LIRE]: true,
     [TYPE_ECRIRE]: true,
     [TYPE_CREER]: true,
+    [TYPE_RENOMMER]: true,
+    [TYPE_SUPPRIMER]: true,
     [TYPE_DUES]: true,
     [TYPE_ENTREES]: true,
     [TYPE_META]: true,
@@ -94,11 +103,16 @@ export const TOUS_LES_TYPES: readonly TypeMessage[] = Object.keys(TYPES_CONNUS).
 ) as TypeMessage[];
 
 /**
- * Les DIX causes d'échec, dans leur forme EXACTE sur le fil.
+ * Les ONZE causes d'échec, dans leur forme EXACTE sur le fil.
  *
  * ⚠️ Doit correspondre caractère pour caractère au `#[serde(rename_all =
  * "kebab-case")]` de `CodeEchec` côté Rust. Les variantes à deux mots sont
- * celles qui se cassent en silence — et les TROIS neuves de F2 en sont.
+ * celles qui se cassent en silence — les TROIS neuves de F2 en sont, et la
+ * seule de F3, `repertoire-non-vide`, est à TROIS mots.
+ *
+ * 🔵 `repertoire-non-vide` EST DIAGNOSTIQUE, et c'est ce qui le distingue :
+ * le recevoir signifie que le poste local porte des entrées que la VM ne
+ * connaît pas — F3 supprime SANS `recursive`, à dessein.
  *
  * 🔴 `disque-plein` N'ATTEINT AUCUNE APPLICATION WINDOWS : il naît d'une
  * poussée d'écriture, donc APRÈS que l'application a refermé son handle. Il
@@ -115,6 +129,7 @@ export const CODES_ECHEC = [
     'disque-plein',
     'deja-present',
     'casse-ambigue',
+    'repertoire-non-vide',
 ] as const;
 
 export type CodeEchec = (typeof CODES_ECHEC)[number];

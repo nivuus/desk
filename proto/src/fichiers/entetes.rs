@@ -133,6 +133,51 @@ pub struct Creer {
     pub repertoire: bool,
 }
 
+/// L'en-tête de `TYPE_RENOMMER`. Charge binaire **vide**.
+///
+/// 🔴 **L'ORDRE DES DEUX CHAMPS EST LE SENS DE L'OPÉRATION, et s'y tromper
+/// DÉTRUIT.** `de` est la source, `vers` la destination — c'est-à-dire, côté
+/// ProjFS, `FilePathName` puis `destinationFileName`. Inverser les deux ne
+/// produirait aucune erreur : le renommage aurait lieu, à l'envers, et le
+/// fichier de destination écraserait la source. C'est le risque R-F3-1 du plan,
+/// et il porte **deux** parades qui ne dépendent pas l'une de l'autre :
+///
+/// 1. la sonde S1 relève sur pièces quel champ ProjFS porte quoi, **avant**
+///    toute recette ;
+/// 2. le pont **refuse de pousser** un renommage dont `vers` est vide ou égal à
+///    `de`, avec un `warn!` qui nomme les deux champs bruts. Celle-ci ne dépend
+///    d'aucune mesure.
+///
+/// ⚠️ **`repertoire` est TRANSPORTÉ plutôt que redécouvert.** C'est
+/// l'`isdirectory` que le rappel de notification reçoit du système ; le
+/// navigateur le redemanderait au prix d'un aller-retour, et se tromperait sur
+/// une entrée disparue entre-temps. Il décide de deux choses : la récursion du
+/// repli de copie, et la façon dont l'écriture due d'un ENFANT retarde le
+/// renommage d'un répertoire (`agent/src/pont/mutation.rs`).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct Renommer {
+    /// La source, telle qu'elle existe aujourd'hui sur le poste local.
+    pub de: String,
+    /// La destination. **Jamais vide, jamais égale à `de`** — le pont refuse de
+    /// pousser autrement.
+    pub vers: String,
+    pub repertoire: bool,
+}
+
+/// L'en-tête de `TYPE_SUPPRIMER`. Charge binaire **vide**.
+///
+/// ⚠️ **La suppression n'est PAS récursive côté navigateur**, contre la lettre
+/// de la spec §3.5 (`dir.removeEntry(nom, { recursive })`). Un geste dans la VM
+/// ne doit pas déclencher une destruction récursive sur le disque du poste
+/// local, sur la foi d'un miroir qu'aucune preuve ne dit à jour. Le refus
+/// remonte alors sous [`super::CodeEchec::RepertoireNonVide`], qui devient de
+/// ce fait **diagnostique** au lieu d'être un code jamais produit.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct Supprimer {
+    pub chemin: String,
+    pub repertoire: bool,
+}
+
 /// Une écriture DUE : des octets qui vivent sur la VM et pas encore sur le
 /// poste local.
 ///

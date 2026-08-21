@@ -119,11 +119,12 @@ fn le_vecteur_epingle_se_decode_comme_annonce() {
 fn un_code_d_echec_a_une_forme_epinglee_sur_le_fil() {
     // ⚠️ Les variantes à DEUX MOTS sont celles qui se cassent en silence : ce
     // dépôt a laissé passer `battement-recu` verte sur cinquante tests parce que
-    // rien n'épinglait ses octets. Les DIX sont épinglées littéralement, et
+    // rien n'épinglait ses octets. Les ONZE sont épinglées littéralement, et
     // dans les DEUX sens — sérialiser puis désérialiser ne prouverait que la
     // cohérence de serde avec lui-même.
     //
-    // ⚠️ Les TROIS neuves de F2 sont toutes à deux mots ou plus.
+    // ⚠️ Les TROIS neuves de F2 sont toutes à deux mots ou plus, et la seule
+    // de F3 — `repertoire-non-vide` — est à TROIS.
     let attendu = [
         (CodeEchec::Introuvable, "\"introuvable\""),
         (CodeEchec::CheminIntrouvable, "\"chemin-introuvable\""),
@@ -135,6 +136,7 @@ fn un_code_d_echec_a_une_forme_epinglee_sur_le_fil() {
         (CodeEchec::DisquePlein, "\"disque-plein\""),
         (CodeEchec::DejaPresent, "\"deja-present\""),
         (CodeEchec::CasseAmbigue, "\"casse-ambigue\""),
+        (CodeEchec::RepertoireNonVide, "\"repertoire-non-vide\""),
     ];
     for (code, texte) in attendu {
         assert_eq!(serde_json::to_string(&code).unwrap(), texte, "sérialisation de {code:?}");
@@ -153,6 +155,7 @@ fn les_types_de_message_ne_se_chevauchent_pas() {
     // toute addition future — une énumération à la main ne l'aurait pas fait.
     let tous = [
         TYPE_LISTER, TYPE_ATTRIBUTS, TYPE_LIRE, TYPE_ECRIRE, TYPE_CREER,
+        TYPE_RENOMMER, TYPE_SUPPRIMER,
         TYPE_DUES,
         TYPE_ENTREES, TYPE_META, TYPE_DONNEES, TYPE_FAIT, TYPE_ECHEC,
     ];
@@ -192,4 +195,36 @@ fn une_trame_ecrire_pleine_passe_entete_compris() {
     assert_eq!(trame.charge.len(), TAILLE_TRAME_MAX);
     let relu: entetes::Ecrire = serde_json::from_slice(trame.entete).expect("en-tête relu");
     assert_eq!(relu.longueur as usize, trame.charge.len());
+}
+
+/// 🔴 **CHAQUE TYPE DE MESSAGE A UNE VALEUR ÉPINGLÉE, ET LE TEST LA NOMME.**
+///
+/// ⚠️ **`les_types_de_message_ne_se_chevauchent_pas` ne suffit PAS**, et c'est
+/// ce qui justifie ce test-ci : il interdit deux valeurs égales, jamais un
+/// DÉPLACEMENT. Renuméroter `TYPE_RENOMMER` de 7 à 9 le laisserait vert, et
+/// pourtant un agent de la version d'avant et un navigateur de celle d'après
+/// ne se comprendraient plus — sans que `FICHIERS_VERSION` ait bougé, puisque
+/// l'addition d'un type est réputée additive.
+///
+/// C'est la même lacune que ce dépôt a payée sur `battement-recu` : un test
+/// qui vérifie une PROPRIÉTÉ d'un ensemble ne remplace pas un test qui épingle
+/// ses ÉLÉMENTS.
+#[test]
+fn un_type_de_message_a_une_valeur_epinglee() {
+    // ⚠️ 6 est une ANNONCE, 7 et 8 sont des REQUÊTES : la numérotation n'est
+    // pas contiguë par famille, et le trou de F2 — qui a sauté 7 et 8 pour F3 —
+    // est ce qui a évité une renumérotation tardive.
+    assert_eq!(TYPE_LISTER, 1);
+    assert_eq!(TYPE_ATTRIBUTS, 2);
+    assert_eq!(TYPE_LIRE, 3);
+    assert_eq!(TYPE_ECRIRE, 4);
+    assert_eq!(TYPE_CREER, 5);
+    assert_eq!(TYPE_DUES, 6);
+    assert_eq!(TYPE_RENOMMER, 7);
+    assert_eq!(TYPE_SUPPRIMER, 8);
+    assert_eq!(TYPE_ENTREES, 64);
+    assert_eq!(TYPE_META, 65);
+    assert_eq!(TYPE_DONNEES, 66);
+    assert_eq!(TYPE_FAIT, 67);
+    assert_eq!(TYPE_ECHEC, 127);
 }
