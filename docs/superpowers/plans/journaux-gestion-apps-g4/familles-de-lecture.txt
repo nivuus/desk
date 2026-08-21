@@ -1,0 +1,23 @@
+FAMILLES DE LECTURE DES JOURNAUX DE G4 — relevees PAR LA COMMANDE le 21 aout 2026
+
+  for f in *; do file -b "$f"; done
+  grep -lP '\x1b\[' *                       -> AUCUN fichier
+  for f in *; do tr -dc '\000' < "$f" | wc -c; done   -> 0 partout
+  grep -lU $'\r' *                          -> AUCUN fichier
+
+UNE SEULE FAMILLE. Tous les fichiers sont en UTF-8 (ou ASCII), SANS sequence
+ANSI, SANS octet NUL, SANS retour chariot. ILS SE grep-ENT A PLAT : ni `sed`,
+ni `grep -a`, ni `iconv`.
+
+⚠️ CE N'EST PAS UN MERITE, ET LA RAISON EST STRUCTURELLE : ce sont des sorties
+`cargo` et `git` sur l'HOTE. Les trois familles de D6, les quatre de D8 et les
+trois de D9 viennent toutes d'un chemin qui passe par la VM Windows, dont
+`run-agent.sh` et `build-agent.sh` ne posent pas `[Console]::OutputEncoding`.
+Le defaut a deux reglages reste ENTIER ; il n'est simplement pas rencontre ici.
+
+🔴 ET CETTE PROPRIETE NE SURVIVRA PROBABLEMENT PAS A LA RECETTE : les journaux
+d'agent de la VM portent les sequences ANSI de `tracing`, et ceux de pilote
+portent des octets NUL. Le tableau devra etre REMESURE apres la recette, pas
+recopie — et un fichier ne peut pas contenir sa propre taille finale, ni sa
+propre famille : la ligne ci-dessus decrit les QUATRE journaux presents au
+moment ou elle est ecrite, plus le temoin `verify-all-cloture-hote.log`.
