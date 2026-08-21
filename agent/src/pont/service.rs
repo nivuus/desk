@@ -139,6 +139,13 @@ pub fn tourner(etat: Arc<Etat>, entrant: Receiver<DuNavigateur>) {
 /// alors un `grep` sur UNE ligne, et il **ne peut pas être satisfait par
 /// accident** : une exécution qui n'exerce rien rend douze zéros.
 ///
+/// ⚠️ **CE QUE CE RECENSEMENT NE PEUT PAS DIRE, mesuré par la recette de F3** :
+/// il est émis **à la fermeture du canal**, et le fil du service RETOURNE
+/// aussitôt. Un code produit APRÈS cette fermeture — `CanalFerme` sur un geste
+/// qui arrive alors qu'il n'y a plus de navigateur — est bien **compté**, et
+/// **personne ne l'imprime**. Le compteur est juste ; la ligne qui le rend
+/// observable, elle, est déjà partie.
+///
 /// ⚠️ **`info!` et non `debug!`** : `scripts/run-agent.sh` pose `RUST_LOG=info`
 /// par défaut, et la doctrine de ce dépôt est que l'exploitation y tourne. Une
 /// mitigation muette n'en est pas une — c'est la raison écrite pour les deux

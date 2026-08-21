@@ -74,8 +74,20 @@ export async function copierFichier(
  * `web/index.js:631` écrit `const newDir = await newDir.getDirectoryHandle(...)`
  * **à l'intérieur du bloc où `newDir` est le paramètre** — une zone morte
  * temporelle, donc un `ReferenceError`. **Le renommage d'un répertoire
- * contenant un sous-répertoire y échoue donc TOUJOURS.** C'est le critère (1)
- * de F3, écrit pour exercer exactement ce cas.
+ * contenant un sous-répertoire y échoue donc TOUJOURS.**
+ *
+ * ⛔ **CE CHEMIN N'EST JAMAIS EMPRUNTÉ, ET C'EST LA RECETTE DE F3 QUI L'A
+ * ÉTABLI.** Une rédaction antérieure disait « c'est le critère (1) de F3,
+ * écrit pour exercer exactement ce cas » : **la mesure la réfute**. ProjFS
+ * REFUSE le renommage d'un répertoire **avant de consulter le fournisseur** —
+ * `Cette demande n'est pas prise en charge`, et **aucune** notification
+ * `code=32` au journal, deux exécutions de recette plus la sonde S1. Le
+ * critère (1) b n'est donc pas livrable, et **aucune ligne de cette fonction
+ * n'a jamais couru en conditions réelles**.
+ *
+ * ⚠️ Elle reste écrite et testée sur l'hôte : le défaut de l'ancien pont est
+ * réel, et le jour où un chemin l'atteindra — un copier/supprimer piloté
+ * depuis la VM — c'est ici qu'il faudra regarder.
  */
 export async function copierRepertoire(
     parentSource: RacineMutable,

@@ -135,7 +135,13 @@ pub fn tourner(config: Config, ordres: Receiver<Ordre>) {
     tracing::info!("fil d'ecriture du pont arrete");
 }
 
-struct EnCours {
+// ⚠️ `pub(super)` PARCE QUE LE CHAMP QUI LA PORTE L'EST, et pas l'inverse.
+// L'extraction de `fil/mutations.rs` a rendu `Fil::en_cours` visible au module
+// parent sans hisser son TYPE avec lui : `rustc` le dit par
+// `private_interfaces` — **un avertissement d'une autre famille que
+// `dead_code`**, et ce dépôt vérifie ses avertissements par leur NATURE à
+// chaque clôture. Une extraction déplace la visibilité autant que le code.
+pub(super) struct EnCours {
     chemin: String,
     restants: VecDeque<Morceau>,
     correlation: u32,

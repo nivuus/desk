@@ -167,10 +167,19 @@ export async function canoniserOuLever(
 // L'INJECTION DE FAUTE — l'instrument du critère (4) de F3
 // ════════════════════════════════════════════════════════════════════════════
 //
-// Quatre des douze causes du §5 ne sont atteignables par AUCUN geste réel sur
+// TROIS des douze causes du §5 ne sont atteignables par AUCUN geste réel sur
 // ce montage : `acces-refuse` (OPFS n'a aucun modèle de permission, F1 §3),
 // `disque-plein` (`QuotaExceededError` n'y est pas provocable) et le délai
 // dépassé (il faudrait un navigateur qui ne réponde jamais).
+//
+// ⚠️ **Cette phrase annonçait « quatre » et n'en nommait que trois.** Corrigé
+// sur le compte, et la recette de F3 a trouvé les DEUX qui manquaient — elles
+// ne relèvent pas de l'injection, mais d'un fait de plateforme :
+// `repertoire-non-vide` et `deja-present` disent que le miroir a DÉRIVÉ, et
+// **ProjFS montre à la VM le contenu que seul le poste local connaît**. Windows
+// résout donc la dérive AVANT nous, et ces deux codes restent hors d'atteinte
+// par un geste réel. Ce sont bien CINQ causes sur douze, pour deux raisons
+// différentes qu'il ne faut pas confondre.
 //
 // ⚠️ **UNE INJECTION PROUVE QUE LA TABLE N'EST PAS DÉCORATIVE ; ELLE NE PROUVE
 // PAS QUE LA CAUSE EST ATTEIGNABLE EN EXPLOITATION.** Les deux colonnes sont
