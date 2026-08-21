@@ -39,7 +39,7 @@ fi
 echo "3. diff NON VIDE ($(diff "$FICHIER" "$COPIE" | grep -c '^[<>]') ligne(s)) ✅"
 
 echo "4. contrôle : $*"
-"$@" 2>&1 | tail -30
+"$@" 2>&1 | tail -80
 echo "   (code de sortie du contrôle : ${PIPESTATUS[0]})"
 
 cp "$COPIE" "$FICHIER"
