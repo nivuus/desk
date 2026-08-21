@@ -42,7 +42,27 @@ export function entetesCors(
         // idempotente, et sa « rouge gratuite » n'était plus jouable — P4
         // l'avait jouée, et son test l'annonçait en toutes lettres
         // (`cors.test.ts`). Relevé plutôt que supposé fait.
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        //
+        // 🔴 `PUT` DEPUIS G3, ET SANS LUI LE TÉLÉVERSEMENT EST INATTEIGNABLE
+        // DEPUIS UN NAVIGATEUR EN ORIGINE CROISÉE. `PUT /televersement/:id/
+        // tranche/:n` est la PREMIÈRE route `PUT` de tout le service, et son
+        // appelant EST le navigateur : c'est lui qui découpe le fichier et
+        // dépose les tranches. Un `PUT` portant `Authorization` est une requête
+        // NON SIMPLE — le navigateur envoie d'abord une préalable portant
+        // `Access-Control-Request-Method: PUT`, et **abandonne sans jamais
+        // envoyer la vraie requête** si la réponse ne l'annonce pas. Sans
+        // effet en origine unique (le profil `deploiement`, où nginx sert la
+        // page et l'API sur la même origine) ; **mordant en développement**,
+        // où `vite` sert le client sur 5173 et le service écoute sur 8080.
+        //
+        // ⚠️ C'EST LA CLASSE QUE P4 A NOMMÉE ET DÉCLARÉE SANS GARDE
+        // AUTOMATIQUE — « ce qu'un navigateur exige et qu'un test serveur ne
+        // voit pas ». Elle a mordu deux fois en P4 (`Authorization` non permis,
+        // préalable non traitée) et une troisième fois ici. Le seul garde
+        // possible reste une ASSERTION SUR LA VALEUR, dans `cors.test.ts` :
+        // aucun `fetch` de Node n'applique la politique d'origine, donc aucun
+        // test de bout en bout ne peut la rendre rouge.
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
         // 🔴 `authorization` DEPUIS P4, ET SANS LUI RIEN N'EST ATTEIGNABLE.
         // Les deux routes de P4 — et les deux de G1 — exigent
         // `Authorization: Bearer`
