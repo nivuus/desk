@@ -28,6 +28,7 @@
 //! `Win32::Storage::ProjectedFileSystem`.**
 
 pub mod chemins;
+pub mod compteurs;
 pub mod decoupe;
 pub mod ecriture;
 pub mod entetes;

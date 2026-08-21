@@ -22,6 +22,7 @@
 //! - **Il ne rejoue jamais une commande expirée.** Une requête rejouée
 //!   produirait une seconde réponse sans destinataire (spec §5.3).
 
+mod reponses;
 mod verbes;
 
 use std::sync::atomic::Ordering;
@@ -30,14 +31,12 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use windows::core::HRESULT;
-use windows::Win32::Foundation::S_OK;
 
 use proto::fichiers::entetes;
 use crate::pont::ecriture::fil::Ordre;
 use crate::pont::enumeration::Session;
-use crate::pont::erreurs::{hresult, Erreur};
+use crate::pont::erreurs::Erreur;
 use crate::pont::projfs::{ContexteProjFs, Etat, PERIODE_HYDRATATION};
-use crate::pont::table::Attendue;
 use crate::pont::transport::DuNavigateur;
 
 /// Période du balayage des expirations.
@@ -47,10 +46,29 @@ use crate::pont::transport::DuNavigateur;
 /// une application attend donc au pire son budget plus cette période.
 pub const PERIODE_BALAYAGE: Duration = Duration::from_millis(250);
 
+/// Période du **recensement** : une ligne `info!` qui nomme les douze causes et
+/// leurs comptes.
+///
+/// ⚠️ **NON CALIBRÉE.** Posée, pas mesurée, comme les cinq autres constantes de
+/// temps de ce pont.
+///
+/// 🔴 **UNE LIGNE PAR PÉRIODE, JAMAIS UNE PAR ÉCHEC.** Le chantier TURN a payé
+/// 18 619 lignes en quelques secondes pour une trace par paquet, écrites sur un
+/// partage CIFS depuis la boucle : **la mesure détruisait ce qu'elle
+/// mesurait**. Et l'alternative naïve — monter le pont en `RUST_LOG=debug` —
+/// produirait une ligne par rappel, c'est-à-dire le même défaut par une autre
+/// porte.
+///
+/// ⚠️ **Plus courte que [`PERIODE_HYDRATATION`] (60 s), et à dessein** : le
+/// relevé d'hydratation dit une grandeur qui croît lentement, le recensement
+/// sert à décider si une recette a exercé ce qu'elle croit avoir exercé.
+pub const PERIODE_RECENSEMENT: Duration = Duration::from_secs(10);
+
 /// La boucle du fil du pont. Rend quand le canal se ferme ou que le transport
 /// s'arrête.
 pub fn tourner(etat: Arc<Etat>, entrant: Receiver<DuNavigateur>) {
     let mut dernier_releve = Instant::now();
+    let mut dernier_recensement = Instant::now();
     loop {
         match entrant.recv_timeout(PERIODE_BALAYAGE) {
             Ok(DuNavigateur::CanalOuvert) => {
@@ -65,6 +83,13 @@ pub fn tourner(etat: Arc<Etat>, entrant: Receiver<DuNavigateur>) {
                 etat.canal_ouvert.store(false, Ordering::Relaxed);
                 tracing::warn!("canal du pont fermé : les commandes en vol sont abandonnées");
                 tout_completer(&etat, Erreur::CanalFerme);
+                // ⚠️ **UNE DERNIÈRE LIGNE À L'ARRÊT, sur les DEUX sorties.**
+                // Sans elle, une session plus courte que `PERIODE_RECENSEMENT`
+                // ne rendrait AUCUN recensement — et un critère (4) lu sur un
+                // journal vide serait indiscernable d'un critère non tenu.
+                // C'est le piège du `grep` de D8 : un contrôle qui rend zéro
+                // pour deux raisons opposées.
+                recenser(&etat);
                 return;
             }
             Ok(DuNavigateur::Reponse { correlation, trame }) => {
@@ -74,6 +99,7 @@ pub fn tourner(etat: Arc<Etat>, entrant: Receiver<DuNavigateur>) {
             Err(RecvTimeoutError::Disconnected) => {
                 tracing::info!("transport du pont arrêté : le fil du pont s'arrête");
                 tout_completer(&etat, Erreur::CanalFerme);
+                recenser(&etat);
                 return;
             }
         }
@@ -82,7 +108,45 @@ pub fn tourner(etat: Arc<Etat>, entrant: Receiver<DuNavigateur>) {
             etat.tracer_hydratation();
             dernier_releve = Instant::now();
         }
+        if dernier_recensement.elapsed() >= PERIODE_RECENSEMENT {
+            recenser(&etat);
+            dernier_recensement = Instant::now();
+        }
     }
+}
+
+/// La ligne de recensement — **l'instrument du critère (4) de F3**.
+///
+/// ```text
+/// codes rendus total=17 introuvable=3 chemin-introuvable=1 acces-refuse=0 …
+/// ```
+///
+/// 🔴 **UN CODE JAMAIS PRODUIT AFFICHE `0`, ET C'EST TOUT L'INTÉRÊT.** Le
+/// critère (4) — « chacun des douze est observé au moins une fois » — devient
+/// alors un `grep` sur UNE ligne, et il **ne peut pas être satisfait par
+/// accident** : une exécution qui n'exerce rien rend douze zéros.
+///
+/// ⚠️ **`info!` et non `debug!`** : `scripts/run-agent.sh` pose `RUST_LOG=info`
+/// par défaut, et la doctrine de ce dépôt est que l'exploitation y tourne. Une
+/// mitigation muette n'en est pas une — c'est la raison écrite pour les deux
+/// traces de `encode/arret.rs`, appliquée ici.
+fn recenser(etat: &Etat) {
+    let manquants: Vec<&str> = etat
+        .compteurs
+        .manquants()
+        .into_iter()
+        .map(crate::pont::compteurs::nom)
+        .collect();
+    tracing::info!(
+        // ⚠️ **Un champ `tracing` porterait des séquences ANSI entre son nom et
+        // sa valeur sur un journal BRUT** — c'est le piège que la recette
+        // d'entrée de D8 a payé, et que le `grep` de F1 a rejoué trois fois.
+        // Le recensement est donc **une chaîne unique**, `nom=valeur` séparés
+        // par des espaces, et il se lit tel quel sans `sed`.
+        "codes rendus {} | jamais rendus : {}",
+        etat.compteurs.recensement(),
+        if manquants.is_empty() { "aucun".to_string() } else { manquants.join(",") }
+    );
 }
 
 /// Complète en erreur tout ce qui reste en vol. Appelée quand plus aucune
@@ -99,7 +163,7 @@ fn tout_completer(etat: &Etat, cause: Erreur) {
         // plus. L'entrée, elle, RESTE au journal — c'est le fil qui décide, et
         // c'est ce qui la rend récupérable.
         prevenir_l_ecriture(etat, commande, correlation, cause);
-        verbes::completer(etat, commande, HRESULT(hresult(cause)));
+        verbes::completer(etat, commande, HRESULT(etat.compteurs.rendre(cause)));
     }
 }
 
@@ -134,7 +198,7 @@ fn balayer(etat: &Etat) {
         tracing::warn!(?commande, correlation, "commande expirée : le navigateur n'a pas répondu");
         oublier_contexte(etat, correlation);
         prevenir_l_ecriture(etat, commande, correlation, Erreur::DelaiDepasse);
-        verbes::completer(etat, commande, HRESULT(hresult(Erreur::DelaiDepasse)));
+        verbes::completer(etat, commande, HRESULT(etat.compteurs.rendre(Erreur::DelaiDepasse)));
     }
 }
 
@@ -186,193 +250,15 @@ fn traiter(etat: &Etat, correlation: u32, octets: &[u8]) {
                 },
             });
         }
-        return terminer(etat, commande, contexte, HRESULT(hresult(cause)));
+        return reponses::terminer(etat, commande, contexte, HRESULT(etat.compteurs.rendre(cause)));
     }
 
-    let issue = appliquer(etat, correlation, commande, attendue, &trame, contexte.as_ref());
+    let issue = reponses::appliquer(etat, correlation, commande, attendue, &trame, contexte.as_ref());
     match issue {
-        Suite::Termine(resultat) => terminer(etat, commande, contexte, resultat),
+        reponses::Suite::Termine(resultat) => reponses::terminer(etat, commande, contexte, resultat),
         // La lecture continue : la commande est déjà réinscrite, et son
         // contexte est resté en place — surtout ne pas la compléter.
-        Suite::Poursuit => {}
-    }
-}
-
-/// Ce qu'il reste à faire après avoir appliqué une réponse.
-enum Suite {
-    Termine(HRESULT),
-    Poursuit,
-}
-
-/// Complète, en tenant compte du fait qu'une énumération exige des paramètres
-/// étendus.
-fn terminer(
-    etat: &Etat,
-    commande: Option<i32>,
-    contexte: Option<ContexteProjFs>,
-    resultat: HRESULT,
-) {
-    match contexte {
-        Some(ContexteProjFs::Enumeration { tampon, .. }) => match commande {
-            Some(commande) => verbes::completer_enumeration(etat, commande, tampon.0, resultat),
-            // Un contexte d'énumération sans commande n'existe pas ; le dire
-            // plutôt que de l'ignorer.
-            None => tracing::warn!("contexte d'énumération sans commande ProjFS : ignoré"),
-        },
-        _ => verbes::completer(etat, commande, resultat),
-    }
-}
-
-fn appliquer(
-    etat: &Etat,
-    correlation: u32,
-    commande: Option<i32>,
-    attendue: Attendue,
-    trame: &proto::fichiers::Trame<'_>,
-    contexte: Option<&ContexteProjFs>,
-) -> Suite {
-    match (attendue, contexte) {
-        (Attendue::Attributs { chemin }, Some(ContexteProjFs::Attributs { chemin_projfs })) => {
-            let Ok(meta) = serde_json::from_slice::<entetes::Meta>(trame.entete) else {
-                tracing::warn!(chemin, "en-tête Meta illisible");
-                return Suite::Termine(HRESULT(hresult(Erreur::Inattendue)));
-            };
-            Suite::Termine(verbes::ecrire_marqueur(
-                etat,
-                chemin_projfs,
-                meta.repertoire,
-                meta.taille,
-                meta.modifie,
-            ))
-        }
-        // `QueryFileName` : le nom existe, et c'est TOUT ce que ProjFS attend.
-        // Écrire un marqueur ici créerait un objet projeté pour un fichier que
-        // personne n'ouvre. Un `TYPE_ECHEC` est traité en amont et rend
-        // `ERROR_FILE_NOT_FOUND`, ce qui alimente le cache négatif.
-        (Attendue::Attributs { .. }, Some(ContexteProjFs::Existence)) => Suite::Termine(S_OK),
-        (
-            Attendue::Lire { chemin, position, longueur },
-            Some(ContexteProjFs::Lecture { flux, restants }),
-        ) => {
-            let Ok(entete) = serde_json::from_slice::<entetes::Donnees>(trame.entete) else {
-                tracing::warn!(chemin, "en-tête Donnees illisible");
-                return Suite::Termine(HRESULT(hresult(Erreur::Inattendue)));
-            };
-            // ⚠️ **L'en-tête et la charge doivent se corroborer.** Écrire dans
-            // le tampon de ProjFS une quantité d'octets que l'émetteur ne
-            // croyait pas envoyer est le genre de divergence qu'aucun contrôle
-            // en aval ne rattrape : le fichier serait tronqué ou allongé, et
-            // seul un condensat le dirait.
-            if entete.longueur as usize != trame.charge.len()
-                || entete.position != position
-                || entete.longueur != longueur
-            {
-                tracing::warn!(
-                    chemin, position, longueur,
-                    recu_position = entete.position, recu_longueur = entete.longueur,
-                    octets = trame.charge.len(),
-                    "réponse Donnees incohérente avec la plage demandée : jetée"
-                );
-                return Suite::Termine(HRESULT(hresult(Erreur::Inattendue)));
-            }
-            let issue = verbes::ecrire_donnees(etat, flux.0, position, trame.charge);
-            if issue.is_err() {
-                return Suite::Termine(issue);
-            }
-            etat.octets_hydrates.fetch_add(trame.charge.len() as u64, Ordering::Relaxed);
-
-            // ⚠️ **UN morceau en vol à la fois** : le morceau *n+1* n'est
-            // demandé qu'après réception du morceau *n*. C'est le plus simple,
-            // et c'est suffisant — le contrôle de flux par `bufferedAmount` et
-            // `SEUIL_TAMPON` est un livrable de **F3** (spec §8), pas de F1.
-            // L'implémenter à moitié ici serait pire que de ne pas
-            // l'implémenter.
-            let mut restants = restants.clone();
-            match verbes::prochain_morceau(&mut restants) {
-                Some(morceau) => {
-                    // Une lecture porte TOUJOURS une commande ProjFS : c'est un
-                    // rappel `GetFileData` qui l'a inscrite.
-                    let Some(commande) = commande else {
-                        tracing::warn!(chemin, "lecture sans commande ProjFS : impossible");
-                        return Suite::Termine(HRESULT(hresult(Erreur::Inattendue)));
-                    };
-                    etat.demander_lecture(commande, &chemin, morceau, flux.0, restants);
-                    Suite::Poursuit
-                }
-                None => {
-                    etat.entrees_hydratees.fetch_add(1, Ordering::Relaxed);
-                    tracing::debug!(chemin, correlation, "lecture complète");
-                    Suite::Termine(S_OK)
-                }
-            }
-        }
-        (
-            Attendue::Lister { chemin, enumeration },
-            Some(ContexteProjFs::Enumeration { tampon, expression, .. }),
-        ) => {
-            let Ok(entete) = serde_json::from_slice::<entetes::Entrees>(trame.entete) else {
-                tracing::warn!(chemin, "en-tête Entrees illisible");
-                return Suite::Termine(HRESULT(hresult(Erreur::Inattendue)));
-            };
-            let entrees = crate::pont::enumeration::preparer(
-                verbes::entrees_depuis(entete.entrees),
-                expression.as_deref(),
-                |nom, motif| etat.apparier(nom, motif),
-                |a, b| etat.comparer(a, b),
-            );
-            let mut sessions = match etat.sessions.lock() {
-                Ok(sessions) => sessions,
-                Err(_) => return Suite::Termine(HRESULT(hresult(Erreur::Inattendue))),
-            };
-            let session = sessions.entry(enumeration).or_insert_with(Session::nouvelle);
-            session.poser(entrees);
-            Suite::Termine(verbes::remplir(etat, session, tampon.0))
-        }
-        // 🔴 **LES DEUX BRAS DE L'ÉCRITURE.** Ils ne complètent AUCUN rappel —
-        // `command_id` est `None` — et ne font que relayer l'acquittement au
-        // fil d'écriture, qui décide s'il pousse le morceau suivant ou retire
-        // l'entrée du journal.
-        //
-        // ⚠️ **Le contexte ProjFS est `None` ici, et ce n'est pas une anomalie**
-        // : une écriture n'a ni tampon d'énumération, ni flux de données.
-        (Attendue::Ecrire { chemin, dernier }, None) => {
-            if trame.type_message != proto::fichiers::TYPE_FAIT {
-                tracing::warn!(
-                    chemin, correlation, type_message = trame.type_message,
-                    "réponse d'un type inattendu à une écriture : jetée"
-                );
-                return Suite::Termine(HRESULT(hresult(Erreur::Inattendue)));
-            }
-            tracing::debug!(chemin, correlation, dernier, "morceau d'écriture acquitté");
-            let _ = etat.vers_ecriture.send(Ordre::Fait { correlation });
-            Suite::Termine(S_OK)
-        }
-        (Attendue::Creer { chemin }, None) => {
-            if trame.type_message != proto::fichiers::TYPE_FAIT {
-                tracing::warn!(
-                    chemin, correlation, type_message = trame.type_message,
-                    "réponse d'un type inattendu à une création : jetée"
-                );
-                return Suite::Termine(HRESULT(hresult(Erreur::Inattendue)));
-            }
-            tracing::debug!(chemin, correlation, "création acquittée");
-            let _ = etat.vers_ecriture.send(Ordre::Fait { correlation });
-            Suite::Termine(S_OK)
-        }
-        // Une réponse dont le type ne correspond pas à ce que la commande
-        // attendait. Elle n'est pas appliquée « au mieux » : le navigateur et
-        // le pont divergent, et deviner ferait écrire n'importe quoi dans le
-        // tampon de ProjFS.
-        (attendue, contexte) => {
-            tracing::warn!(
-                correlation,
-                type_message = trame.type_message,
-                ?attendue,
-                contexte_present = contexte.is_some(),
-                "réponse d'un type qui ne correspond pas à la commande : jetée"
-            );
-            Suite::Termine(HRESULT(hresult(Erreur::Inattendue)))
-        }
+        reponses::Suite::Poursuit => {}
     }
 }
 
@@ -413,6 +299,15 @@ fn cause_de(code: proto::fichiers::CodeEchec) -> Erreur {
         // dont c'est précisément le rôle d'être nommé comme tel. Ce qui porte
         // la cause est le JOURNAL et la page-shell, qui nomment le fichier.
         CodeEchec::CasseAmbigue => Erreur::Inattendue,
+        // 🔵 **LA SEULE DE F3, ET LA SEULE QUI SOIT DIAGNOSTIQUE.** Elle n'est
+        // pas un fourre-tout : le navigateur refuse de supprimer un répertoire
+        // NON VIDE parce que F3 appelle `removeEntry(nom)` **sans
+        // `recursive`** — un geste dans la VM ne doit pas déclencher une
+        // destruction récursive du poste local sur la foi d'un miroir qu'aucune
+        // preuve ne dit à jour. La recevoir signifie donc que **le miroir a
+        // dérivé**, et `ERROR_DIR_NOT_EMPTY` est exactement ce qu'un
+        // successeur cherchera au journal.
+        CodeEchec::RepertoireNonVide => Erreur::RepertoireNonVide,
     }
 }
 

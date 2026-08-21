@@ -38,7 +38,7 @@ use windows::Win32::Storage::ProjectedFileSystem::{
 };
 
 use super::{chemins_de, etat, garde, identifiant};
-use crate::pont::erreurs::{hresult, Erreur, EN_COURS};
+use crate::pont::erreurs::{Erreur, EN_COURS};
 use crate::pont::projfs::{ContexteProjFs, TamponEntrees};
 use crate::pont::table::{Attendue, DELAI_LISTER};
 use proto::fichiers::entetes;
@@ -109,7 +109,7 @@ pub(super) unsafe extern "system" fn suite_enumeration(
             return E_UNEXPECTED;
         };
         let Some((chemin, _)) = (unsafe { chemins_de(donnees) }) else {
-            return HRESULT(hresult(Erreur::CheminIntrouvable));
+            return HRESULT(etat.compteurs.rendre(Erreur::CheminIntrouvable));
         };
         let motif = if expression.is_null() {
             None
@@ -159,7 +159,7 @@ pub(super) unsafe extern "system" fn suite_enumeration(
         if demandee {
             HRESULT(EN_COURS)
         } else {
-            HRESULT(hresult(Erreur::CanalFerme))
+            HRESULT(etat.compteurs.rendre(Erreur::CanalFerme))
         }
     })
 }

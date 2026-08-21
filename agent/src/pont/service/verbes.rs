@@ -167,7 +167,7 @@ pub(super) fn ecrire_marqueur(
     modifie_ms: i64,
 ) -> HRESULT {
     let Some(Contexte(contexte)) = etat.contexte() else {
-        return HRESULT(crate::pont::erreurs::hresult(crate::pont::erreurs::Erreur::Inattendue));
+        return HRESULT(etat.compteurs.rendre(crate::pont::erreurs::Erreur::Inattendue));
     };
     let info = PRJ_PLACEHOLDER_INFO {
         FileBasicInfo: info_de_base(repertoire, taille, modifie_ms),
@@ -206,11 +206,11 @@ pub(super) fn ecrire_marqueur(
 /// charger `PrjGetVirtualizationInstanceInfo` et arrondir. Legs déclaré.
 pub(super) fn ecrire_donnees(etat: &Etat, flux: GUID, position: u64, charge: &[u8]) -> HRESULT {
     let Some(Contexte(contexte)) = etat.contexte() else {
-        return HRESULT(crate::pont::erreurs::hresult(crate::pont::erreurs::Erreur::Inattendue));
+        return HRESULT(etat.compteurs.rendre(crate::pont::erreurs::Erreur::Inattendue));
     };
     let Some(tampon) = TamponAligne::allouer(&etat.projfs, contexte, charge.len()) else {
         tracing::warn!(octets = charge.len(), "PrjAllocateAlignedBuffer a rendu NULL");
-        return HRESULT(crate::pont::erreurs::hresult(crate::pont::erreurs::Erreur::Inattendue));
+        return HRESULT(etat.compteurs.rendre(crate::pont::erreurs::Erreur::Inattendue));
     };
     // SÛRETÉ : `tampon.pointeur` est non nul et fait au moins `charge.len()`
     // octets ; les deux régions ne se recouvrent pas.

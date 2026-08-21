@@ -18,7 +18,7 @@ use windows::core::PCWSTR;
 use super::{chargement, Contexte};
 use crate::pont::decoupe::Morceau;
 use crate::pont::enumeration::Session;
-use crate::pont::erreurs::{hresult, Erreur};
+use crate::pont::erreurs::Erreur;
 use crate::pont::table::{Attendue, Table};
 use crate::pont::transport::VersNavigateur;
 
@@ -139,6 +139,17 @@ pub struct Etat {
     /// pont (sur `CanalOuvert` / `CanalFerme`) et lu par les fils de rappel du
     /// système.
     pub canal_ouvert: AtomicBool,
+    /// 🔴 **LE COMPTEUR DES DOUZE CAUSES, ET LE SEUL CHEMIN VERS UN
+    /// `HRESULT`.**
+    ///
+    /// Il vit ici, et non dans un statique, parce qu'il doit mourir avec la
+    /// racine : un compteur de processus survivrait à un pont relancé et
+    /// ferait lire le recensement de l'exécution précédente — exactement la
+    /// réserve que [`Etat::tracer_hydratation`] écrit sur ses propres chiffres.
+    ///
+    /// ⚠️ **PUR, et sans verrou** : il est incrémenté depuis les fils de rappel
+    /// que le SYSTÈME possède, où la discipline de fil interdit d'attendre.
+    pub compteurs: crate::pont::compteurs::Compteurs,
     /// Ce que CE processus a hydraté depuis son démarrage — voir
     /// [`PERIODE_HYDRATATION`] et [`Etat::tracer_hydratation`].
     pub octets_hydrates: AtomicU64,
@@ -264,7 +275,7 @@ impl Etat {
                     (self.projfs.completer_commande)(
                         contexte,
                         commande,
-                        windows::core::HRESULT(hresult(Erreur::CanalFerme)),
+                        windows::core::HRESULT(self.compteurs.rendre(Erreur::CanalFerme)),
                         std::ptr::null(),
                     )
                 };

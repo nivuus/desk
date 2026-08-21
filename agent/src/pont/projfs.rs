@@ -105,7 +105,7 @@ use windows::Win32::Storage::ProjectedFileSystem::{
     PRJ_NOTIFICATION_MAPPING, PRJ_STARTVIRTUALIZING_OPTIONS,
 };
 
-use crate::pont::erreurs::{hresult, Erreur};
+use crate::pont::erreurs::Erreur;
 use crate::pont::table::Table;
 use crate::pont::transport::VersNavigateur;
 
@@ -180,6 +180,7 @@ impl Virtualisation {
             // Partir de `true` autoriserait une écriture qui n'aurait personne
             // à qui être poussée.
             canal_ouvert: std::sync::atomic::AtomicBool::new(false),
+            compteurs: crate::pont::compteurs::Compteurs::nouveaux(),
             octets_hydrates: AtomicU64::new(0),
             entrees_hydratees: AtomicU64::new(0),
         });
@@ -298,7 +299,7 @@ impl Drop for Virtualisation {
                 empoisonne.into_inner().vider()
             }
         };
-        let echec = windows::core::HRESULT(hresult(Erreur::CanalFerme));
+        let echec = windows::core::HRESULT(self.etat.compteurs.rendre(Erreur::CanalFerme));
         for (commande, correlation) in &restantes {
             // 🔴 **UNE ÉCRITURE EN VOL EST VIDÉE DE LA TABLE COMME LES AUTRES,
             // MAIS N'EST PAS RETIRÉE DU JOURNAL** — c'est exactement le cas que
